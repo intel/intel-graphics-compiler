@@ -33,6 +33,7 @@ namespace vc {
 // register) or directly through registers (hardware itself initializes special
 // registers with the arguments).
 enum class ThreadPayloadKind {
+  InStatelessMemory,
   InMemory,
   OnRegister,
 };
@@ -72,6 +73,7 @@ enum Enum {
   Padding0,
   RtGlobalBufferPtr,
   AssertBufferPtr,
+  ScratchPtr,
   Size
 };
 } // namespace Indices
@@ -100,6 +102,9 @@ llvm::PointerType &getPtrType(llvm::Module &M, ThreadPayloadKind Kind);
 llvm::Value &getPointer(llvm::IRBuilder<> &IRB, ThreadPayloadKind Kind);
 template <ThreadPayloadKind Kind>
 llvm::Value &getPointer(llvm::IRBuilder<> &IRB);
+template <>
+llvm::Value &
+getPointer<ThreadPayloadKind::InStatelessMemory>(llvm::IRBuilder<> &IRB);
 template <>
 llvm::Value &getPointer<ThreadPayloadKind::InMemory>(llvm::IRBuilder<> &IRB);
 template <>
@@ -169,6 +174,9 @@ llvm::Value &getPointer(llvm::Value &BufferPtr, llvm::IRBuilder<> &IRB,
 template <ThreadPayloadKind Kind>
 llvm::Value &getPointer(llvm::Value &BufferPtr, llvm::IRBuilder<> &IRB,
                         const llvm::Twine &Name = "ia.local.id.ptr");
+template <>
+llvm::Value &getPointer<ThreadPayloadKind::InStatelessMemory>(
+    llvm::Value &BufferPtr, llvm::IRBuilder<> &IRB, const llvm::Twine &Name);
 template <>
 llvm::Value &getPointer<ThreadPayloadKind::InMemory>(llvm::Value &BufferPtr,
                                                      llvm::IRBuilder<> &IRB,

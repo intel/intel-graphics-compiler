@@ -840,6 +840,9 @@ static Error fillApiOptions(const opt::ArgList &ApiOptions,
                             .Case("160", 160)
                             .Case("192", 192)
                             .Case("256", 256)
+                            .Case("320", 320)
+                            .Case("448", 448)
+                            .Case("512", 512)
                             .Default({});
     if (!MaybeGRFSize)
       return makeOptionError(*A, ApiOptions, /*IsInternal=*/false);
@@ -978,6 +981,11 @@ static Error fillInternalOptions(const opt::ArgList &InternalOptions,
 
   Opts.FeaturesString =
       llvm::join(InternalOptions.getAllArgValues(OPT_target_features), ",");
+  if (InternalOptions.hasArg(OPT_efficient_64b_common)) {
+    if (!Opts.FeaturesString.empty())
+      Opts.FeaturesString.append(",");
+    Opts.FeaturesString.append("+efficient_64b_enabled");
+  }
 
   if (InternalOptions.hasArg(OPT_help)) {
     constexpr const char *Usage = "-options \"-vc-codegen [options]\"";

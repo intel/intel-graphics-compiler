@@ -95,10 +95,15 @@ void GenXBIFFlagCtrlResolution::FillFlagCtrl() {
   BIF_FLAG_CTRL_SET(MaxHWThreadIDPerSubDevice, 1);
   BIF_FLAG_CTRL_SET(HasHWTileIDRegister, false);
   BIF_FLAG_CTRL_SET(UseOOBChecks, false);
+  BIF_FLAG_CTRL_SET(HasWideMulMad, false);
   BIF_FLAG_CTRL_SET(HasNativeTanh, false);
   BIF_FLAG_CTRL_SET(HasNativeSigm, false);
   BIF_FLAG_CTRL_SET(UseNativeFP32LocalAtomicAdd, false);
   BIF_FLAG_CTRL_SET(HasEfficient64bEnabled, false);
+  BIF_FLAG_CTRL_SET(HasNativeSinCos, false);
+  BIF_FLAG_CTRL_SET(HasAccurateLog2, false);
+  BIF_FLAG_CTRL_SET(SupportsRayTracingExtendedCacheControl, false);
+  BIF_FLAG_CTRL_SET(IsRayQueryReturnOptimizationPackedStatusEnabled, false);
   BIF_FLAG_CTRL_SET(IsRayQueryReturnOptimizationEnabled, false);
   BIF_FLAG_CTRL_SET(UseBindlessImage, false);
 }

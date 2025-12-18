@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2024 Intel Corporation
+Copyright (C) 2017-2025 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -35,6 +35,7 @@ SPDX-License-Identifier: MIT
 #include "GenX.h"
 #include "GenXBaling.h"
 #include "GenXUtil.h"
+#include "GenXTargetMachine.h"
 
 #include "vc/Utils/GenX/GlobalVariable.h"
 
@@ -52,6 +53,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/InitializePasses.h"
 #include "llvm/Support/Debug.h"
 #include "llvm/Transforms/Utils/Local.h"
+#include "llvm/CodeGen/TargetPassConfig.h"
 
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "vc/GenXCodeGen/GenXRegionCollapsing.h"
@@ -69,16 +71,21 @@ class GenXRegionCollapsing : public FunctionPass {
   const DominatorTree *DT = nullptr;
   bool Modified = false;
 
+  const GenXSubtarget *ST = nullptr;
+
 public:
   static char ID;
   explicit GenXRegionCollapsing(DominatorTree *DT = nullptr)
       : DT(DT), FunctionPass(ID) {}
   StringRef getPassName() const override { return "GenX Region Collapsing"; }
   void getAnalysisUsage(AnalysisUsage &AU) const override {
+    AU.addRequired<TargetPassConfig>();
     AU.addRequired<DominatorTreeWrapperPass>();
     AU.setPreservesCFG();
   }
   bool runOnFunction(Function &F) override;
+
+  void setGenXSubtarget(const GenXSubtarget *GenXST) { ST = GenXST; }
 
 private:
   void runOnBasicBlock(BasicBlock *BB);
@@ -116,6 +123,9 @@ llvm::PreservedAnalyses
 GenXRegionCollapsingPass::run(Function &F, FunctionAnalysisManager &AM) {
   auto &DT = AM.getResult<DominatorTreeAnalysis>(F);
   GenXRegionCollapsing GenXRegCollaps(&DT);
+  const GenXTargetMachine *LTM = static_cast<const GenXTargetMachine *>(TM);
+  IGC_ASSERT(LTM);
+  GenXRegCollaps.setGenXSubtarget(&LTM->getGenXSubtarget());
   if (GenXRegCollaps.runOnFunction(F))
     return PreservedAnalyses::none();
   return PreservedAnalyses::all();
@@ -123,6 +133,7 @@ GenXRegionCollapsingPass::run(Function &F, FunctionAnalysisManager &AM) {
 #endif // LLVM_VERSION_MAJOR >= 16
 INITIALIZE_PASS_BEGIN(GenXRegionCollapsing, "GenXRegionCollapsing",
                       "GenXRegionCollapsing", false, false)
+INITIALIZE_PASS_DEPENDENCY(TargetPassConfig)
 INITIALIZE_PASS_DEPENDENCY(DominatorTreeWrapperPass)
 INITIALIZE_PASS_END(GenXRegionCollapsing, "GenXRegionCollapsing",
                     "GenXRegionCollapsing", false, false)
@@ -140,6 +151,10 @@ bool GenXRegionCollapsing::runOnFunction(Function &F) {
   DL = &F.getParent()->getDataLayout();
   if (!DT)
     DT = &getAnalysis<DominatorTreeWrapperPass>().getDomTree();
+  if (!ST)
+    ST = &getAnalysis<TargetPassConfig>()
+              .getTM<GenXTargetMachine>()
+              .getGenXSubtarget();
 
   // Track if there is any modification to the function.
   bool Changed = false;
@@ -536,6 +551,12 @@ void GenXRegionCollapsing::processRdRegion(Instruction *InnerRd) {
     }
   }
 
+  // The packed_4bit_upconvert_lut intrinsic is a special case. We can do only
+  // limited collapsing for such operations. The final regioning must be <4;1,0>
+  // for byte input and <2;1,0> for word input.
+  const bool UsedBy4BitUpconv =
+      any_of(InnerRd->users(), vc::InternalIntrinsic::isPacked4BitUpconvertLut);
+
   for (;;) {
     Instruction *OuterRd = dyn_cast<Instruction>(InnerRd->getOperand(0));
 
@@ -584,6 +605,12 @@ void GenXRegionCollapsing::processRdRegion(Instruction *InnerRd) {
     if (!OuterRd)
       break; // no outer rdregion that we can combine with
     Region OuterR = genx::makeRegionWithOffset(OuterRd);
+
+    if (UsedBy4BitUpconv &&
+        (Extend || OuterR.Indirect || !OuterR.isContiguous() ||
+         (OuterR.Offset % ST->getGRFByteSize() != 0)))
+      return;
+
     // There was a sext/zext. Because we are going to put that after the
     // collapsed region, we want to modify the inner region to the
     // extend's input element type without changing the region parameters

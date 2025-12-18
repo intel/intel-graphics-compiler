@@ -110,6 +110,10 @@ SPDX-License-Identifier: MIT
 
 using namespace llvm;
 
+static cl::opt<bool> Efficient64bOpt(
+    "cmkernelargoffset-efficient64b", cl::init(false), cl::Hidden,
+    cl::desc("Should be used only in llvm opt to enable 64-bit addressing"));
+
 namespace llvm {
 unsigned getValueAlignmentInBytes(const Value &Val, const DataLayout &DL) {
   // If this is a volatile global, then its pointer
@@ -139,12 +143,15 @@ struct GrfParamZone {
 // CMKernelArgOffset pass
 class CMKernelArgOffset : public ModulePass {
   vc::KernelMetadata *KM = nullptr;
+  bool Efficient64b = true;
   bool UseBindlessImages;
 
 public:
   static char ID;
-  CMKernelArgOffset(unsigned GrfByteSize = 32, bool UseBindlessImages = false)
+  CMKernelArgOffset(unsigned GrfByteSize = 32, bool Efficient64b = false,
+                    bool UseBindlessImages = false)
       : ModulePass(ID), GrfByteSize(GrfByteSize),
+        Efficient64b(Efficient64b || Efficient64bOpt),
         UseBindlessImages(UseBindlessImages) {
     initializeCMKernelArgOffsetPass(*PassRegistry::getPassRegistry());
     GrfMaxCount = 256;
@@ -182,9 +189,9 @@ INITIALIZE_PASS_END(CMKernelArgOffset, "CMKernelArgOffset",
                     "CM kernel arg offset determination", false, false)
 
 namespace llvm {
-Pass *createCMKernelArgOffsetPass(unsigned GrfByteSize,
+Pass *createCMKernelArgOffsetPass(unsigned GrfByteSize, bool Efficient64b,
                                   bool UseBindlessImages) {
-  return new CMKernelArgOffset(GrfByteSize, UseBindlessImages);
+  return new CMKernelArgOffset(GrfByteSize, Efficient64b, UseBindlessImages);
 }
 } // namespace llvm
 
@@ -192,7 +199,7 @@ Pass *createCMKernelArgOffsetPass(unsigned GrfByteSize,
 PreservedAnalyses
 CMKernelArgOffsetPass::run(llvm::Module &M,
                            llvm::AnalysisManager<llvm::Module> &) {
-  CMKernelArgOffset CMKern(GrfByteSize, UseBindlessImages);
+  CMKernelArgOffset CMKern(GrfByteSize, Efficient64b, UseBindlessImages);
   if (CMKern.runOnModule(M))
     return PreservedAnalyses::none();
   return PreservedAnalyses::all();
@@ -294,18 +301,29 @@ void CMKernelArgOffset::processKernelOnOCLRT(Function *F) {
     //     0        1        2        3        4        5        6        7
     // R0:          GX                                           GY       GZ
     // R1: LIDx LIDy LIDz
+    // When efficient 64-bit addressing is supported and enabled:
+    // R2: indirect_data_ptr scratch_ptr
     //
     unsigned Offset = GrfStartOffset;
 
     unsigned ThreadPayloads[] = {
         Offset, // R1: local_id_x, local_id_y, local_id_z
+        // R2: indirect_data_buf, scratch_buf
+        Offset + 1 * GrfByteSize,
     };
     auto getImpOffset = [&](uint32_t ArgKind) -> int {
       if (vc::isLocalIDKind(ArgKind))
         return ThreadPayloads[0];
+      if (vc::isIndirectDataBufferKind(ArgKind))
+        return ThreadPayloads[1];
+      if (vc::isScratchBufferKind(ArgKind))
+        return ThreadPayloads[1] + 8;
       return -1;
     };
 
+    // Starting offset for rest impicit arguments
+    if (Efficient64b)
+      Offset += 1 * GrfByteSize;
     // Starting offsets for non-implicit arguments.
     Offset += 1 * GrfByteSize;
 
@@ -365,6 +383,10 @@ void CMKernelArgOffset::processKernelOnOCLRT(Function *F) {
       bool IsPtr = vc::isDescBufferType(Desc) ||
                    (UseBindlessImages &&
                     (vc::isDescImageType(Desc) || vc::isDescSamplerType(Desc)));
+      // When efficient 64-bit addressing is supported and enabled, image and
+      // sampler arguments are passed as 64-bit state pointers.
+      IsPtr |= Efficient64b &&
+               (vc::isDescImageType(Desc) || vc::isDescSamplerType(Desc));
 
       // Skip alaready assigned arguments.
       if (PlacedArgs.count(&Arg))

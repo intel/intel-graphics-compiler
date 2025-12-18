@@ -80,6 +80,8 @@ private:
   bool isHandleUgmAtomics(const CallInst &II) const;
   bool isHandleSlmAtomics(const CallInst &II) const;
 
+  Value *createMxfpRoutineCall(CallInst &CI, StringRef Name);
+
   const GenXSubtarget *ST = nullptr;
   BuiltinFunctionKind Kind;
 };
@@ -309,8 +311,9 @@ bool GenXBuiltinFunctions::isHandleUgmAtomics(const CallInst &II) const {
   case LSC_ATOMIC_FADD:
   case LSC_ATOMIC_FSUB:
     return (Ty->isDoubleTy() && !ST->hasGlobalAtomicAddF64()) ||
-           cast<ConstantInt>(II.getArgOperand(3))->getZExtValue() ==
-               LSC_DATA_SIZE_16c32b;
+           (cast<ConstantInt>(II.getArgOperand(3))->getZExtValue() ==
+                LSC_DATA_SIZE_16c32b &&
+            !ST->hasInstrAtomicHF16());
   case LSC_ATOMIC_FMIN:
   case LSC_ATOMIC_FMAX:
   case LSC_ATOMIC_FCAS:
@@ -332,7 +335,17 @@ bool GenXBuiltinFunctions::isHandleSlmAtomics(const CallInst &II) const {
     return false;
   case LSC_ATOMIC_FADD:
   case LSC_ATOMIC_FSUB:
-    return !Ty->isDoubleTy() || ST->hasLocalIntegerCas64();
+    return (Ty->isDoubleTy() && ST->hasLocalIntegerCas64()) ||
+           (Ty->isFloatTy() && !ST->hasInstrLocalAtomicAddF32()) ||
+           (cast<ConstantInt>(II.getArgOperand(3))->getZExtValue() ==
+                LSC_DATA_SIZE_16c32b &&
+            !ST->hasInstrAtomicHF16());
+  case LSC_ATOMIC_BFADD:
+  case LSC_ATOMIC_BFSUB:
+  case LSC_ATOMIC_BFMIN:
+  case LSC_ATOMIC_BFMAX:
+  case LSC_ATOMIC_BFCAS:
+    return false;
   default:
     return (Ty->isIntegerTy(64) || Ty->isDoubleTy()) &&
            ST->hasLocalIntegerCas64();
@@ -387,11 +400,34 @@ Value *GenXBuiltinFunctions::visitCallInst(CallInst &II) {
     if (!isHandleUgmAtomics(II))
       return nullptr;
     return createAtomicLibraryCall(II, "atomic_ugm");
+  case GenXIntrinsic::genx_mxfp_reduce_32x32:
+    return createMxfpRoutineCall(II, "mxfp_reduce_32x32");
+  case GenXIntrinsic::genx_mxfp_linearize:
+    return createMxfpRoutineCall(II, "mxfp_linearize");
   default:
     break;
   }
 
   return createLibraryCall(II, Func, Args);
+}
+
+Value *GenXBuiltinFunctions::createMxfpRoutineCall(CallInst &CI,
+                                                   StringRef Name) {
+  auto *Ty = CI.getType();
+  auto &M = *CI.getModule();
+  IRBuilder<> Builder(&CI);
+
+  auto *Func = getBuiltinDeclaration(M, Name, false, {});
+
+  auto *Arg = CI.getArgOperand(0);
+
+  auto *ArgTy = cast<IGCLLVM::FixedVectorType>(Arg->getType());
+  auto *NewArgTy = IGCLLVM::FixedVectorType::get(Builder.getInt16Ty(),
+                                                 ArgTy->getNumElements());
+  Arg = Builder.CreateBitCast(Arg, NewArgTy);
+
+  auto *NewCI = createLibraryCall(CI, Func, {Arg});
+  return Builder.CreateBitCast(NewCI, Ty);
 }
 
 Value *GenXBuiltinFunctions::createAtomicLibraryCall(CallInst &II,

@@ -307,6 +307,20 @@ void CMKernel::createImplArgsBufferAnnotation(unsigned Size,
       zebin::PreDefinedAttrGetter::ArgType::implicit_arg_buffer, ArgOffset,
       Size);
 }
+void CMKernel::createIndirectDataBufferAnnotation(unsigned Size,
+                                                  unsigned ArgOffset) {
+  zebin::ZEInfoBuilder::addPayloadArgumentImplicit(
+      m_kernelInfo.m_zePayloadArgs,
+      zebin::PreDefinedAttrGetter::ArgType::indirect_data_pointer, ArgOffset,
+      Size);
+}
+
+void CMKernel::createScratchBufferAnnotation(unsigned Size,
+                                             unsigned ArgOffset) {
+  zebin::ZEInfoBuilder::addPayloadArgumentImplicit(
+      m_kernelInfo.m_zePayloadArgs,
+      zebin::PreDefinedAttrGetter::ArgType::scratch_pointer, ArgOffset, Size);
+}
 
 // TODO: refactor this function with the OCL part.
 void CMKernel::RecomputeBTLayout(int numUAVs, int numResources) {
@@ -466,6 +480,13 @@ static void setArgumentsInfo(const GenXOCLRuntimeInfo::KernelInfo &Info,
     case ArgKind::ImplicitArgsBuffer:
       Kernel.createImplArgsBufferAnnotation(Arg.getSizeInBytes(), ArgOffset);
       break;
+    case ArgKind::IndirectDataBuffer:
+      Kernel.createIndirectDataBufferAnnotation(Arg.getSizeInBytes(),
+                                                ArgOffset);
+      break;
+    case ArgKind::ScratchBuffer:
+      Kernel.createScratchBufferAnnotation(Arg.getSizeInBytes(), ArgOffset);
+      break;
     }
   }
 
@@ -522,6 +543,8 @@ static void setExecutionInfo(const GenXOCLRuntimeInfo::KernelInfo &BackendInfo,
   ExecEnv.HasLscStoresWithNonDefaultL1CacheControls =
       BackendInfo.hasLscStoresWithNonDefaultL1CacheControls();
 
+  auto &ThreadPayload = Kernel.m_kernelInfo.m_threadPayload;
+  ThreadPayload.PassInlineDataSize = BackendInfo.getInlineDataPayloadSize();
 
   // Allocate spill-fill buffer
   if (JitterInfo.hasStackcalls) {

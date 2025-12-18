@@ -201,6 +201,7 @@ private:
   CmpInst *reduceCmpWidth(CmpInst *Cmp);
   bool simplifyNullDst(CallInst *Inst);
   bool simplifyDpasNullSrc(CallInst *Inst);
+  bool simplifyBDpasNullSrc(CallInst *Inst);
   // Transform logic operation with a mask from <N x iM> to <N/(32/M) x i32>
   bool extendMask(BinaryOperator *BO);
   bool mergeApply(CallInst *CI);
@@ -298,9 +299,9 @@ private:
 // Helper class to share common code.
 class MadMatcher {
 public:
-  explicit MadMatcher(Instruction *I)
+  explicit MadMatcher(Instruction *I, bool UseMadDDQ = false)
       : AInst(I), MInst(nullptr), ID(GenXIntrinsic::not_any_intrinsic),
-        NegIndex(-1) {
+        NegIndex(-1), AllowMadI64(UseMadDDQ), FoundMadI64(false) {
     IGC_ASSERT_MESSAGE(I, "null instruction");
     Srcs[0] = Srcs[1] = Srcs[2] = nullptr;
   }
@@ -328,6 +329,9 @@ private:
     auto isI64 = [this](Value *Val) {
       return Val->getType()->getScalarType()->isIntegerTy(64);
     };
+    // i64 operation is allowed for this case
+    if (AllowMadI64 && FoundMadI64)
+      return false;
 
     return isI64(MInst) || isI64(AInst);
   }
@@ -362,6 +366,10 @@ private:
   // Indicates whether Srcs[NegIndex] needs to be negated. Value -1 means no
   // negation is needed.
   int NegIndex;
+
+  // A knob to enable matching for DxD+Q->Q variant
+  bool AllowMadI64;
+  bool FoundMadI64;
 };
 
 class Add3Matcher {
@@ -782,7 +790,7 @@ void GenXPatternMatch::visitBinaryOperator(BinaryOperator &I) {
         break;
       case Instruction::Add:
       case Instruction::Sub:
-        if (EnableMadMatcher && MadMatcher(&I).match())
+        if (EnableMadMatcher && MadMatcher(&I, ST && ST->useMadDDQ()).match())
           Changed = true;
         else if (ST && (ST->hasAdd3Bfn()))
           Changed |= EnableAdd3Matcher && Add3Matcher(&I).matchIntegerAdd3();
@@ -810,7 +818,7 @@ void GenXPatternMatch::visitBinaryOperator(BinaryOperator &I) {
       break;
     case Instruction::Add:
     case Instruction::Sub:
-      if (EnableMadMatcher && MadMatcher(&I).match())
+      if (EnableMadMatcher && MadMatcher(&I, ST && ST->useMadDDQ()).match())
         Changed = true;
       break;
     }
@@ -829,6 +837,9 @@ void GenXPatternMatch::visitCallInst(CallInst &I) {
   case GenXIntrinsic::genx_dpas:
   case GenXIntrinsic::genx_dpas2:
     Changed |= simplifyDpasNullSrc(&I);
+    break;
+  case GenXIntrinsic::genx_bdpas:
+    Changed |= simplifyBDpasNullSrc(&I);
     break;
   case GenXIntrinsic::genx_inv:
   case GenXIntrinsic::genx_sqrt:
@@ -1624,15 +1635,25 @@ bool MadMatcher::isProfitable() const {
     // multiplicative operands.
     return false;
 
+  // Match special case: DxD+Q->Q
+  if (AllowMadI64 && Vals[0]->getType()->isIntOrIntVectorTy(32) &&
+      Vals[1]->getType()->isIntOrIntVectorTy(32) &&
+      Vals[2]->getType()->isIntOrIntVectorTy(64)) {
+    return true;
+  }
+
   // Do not match unless both of multiplicands are of type *B/*W
+  // or if the target supports big integer mul/mad and both multiplicands
+  // are of type *B/*W/*D.
   bool IsProfitable = true;
 
-  auto Checker = [](Value *V) {
+  auto Checker = [](Value *V, bool AllowI64) {
     // TODO, handle constants more accurately.
     if (isa<Constant>(V))
       return true;
     const unsigned DWordSizeInBits = 32;
-    return (V->getType()->getScalarSizeInBits() < DWordSizeInBits);
+    return (AllowI64 ? V->getType()->getScalarSizeInBits() <= DWordSizeInBits
+                     : V->getType()->getScalarSizeInBits() < DWordSizeInBits);
   };
 
   auto HasKnownShAmtLT16 = [](Value *V) {
@@ -1647,11 +1668,12 @@ bool MadMatcher::isProfitable() const {
     return C->getValue().ult(16);
   };
 
-  IsProfitable = Checker(Vals[0]);
+  IsProfitable = Checker(Vals[0], AllowMadI64);
   if (!IsProfitable)
     return false;
 
-  IsProfitable = isLShift() ? HasKnownShAmtLT16(Vals[1]) : Checker(Vals[1]);
+  IsProfitable =
+      isLShift() ? HasKnownShAmtLT16(Vals[1]) : Checker(Vals[1], AllowMadI64);
   if (!IsProfitable)
     return false;
 
@@ -1727,7 +1749,19 @@ public:
   static bool isMulLikeOpcode(unsigned Opc) {
     return Opc == Instruction::Mul || Opc == Instruction::Shl;
   }
+  static inline bool classof(const CallInst *CI) {
+    Function *Callee = CI->getCalledFunction();
+    // Check for inline asm
+    if (!Callee)
+      return false;
+    auto IntrinsicID = vc::getAnyIntrinsicID(Callee);
+    return IntrinsicID == GenXIntrinsic::genx_ssmul ||
+           IntrinsicID == GenXIntrinsic::genx_uumul;
+  }
   static inline bool classof(const Instruction *I) {
+    if (isa<CallInst>(I) && classof(cast<CallInst>(I))) {
+      return true;
+    }
     return isMulLikeOpcode(I->getOpcode());
   }
   static inline bool classof(const Value *V) {
@@ -1862,8 +1896,28 @@ bool MadMatcher::match() {
     }
   }
 
-  // Always use ssmad.
+  if (!MInst)
+    return false;
+
   ID = GenXIntrinsic::genx_ssmad;
+
+  if (auto *CI = dyn_cast<CallInst>(MInst)) {
+    FoundMadI64 = true;
+
+    Function *Callee = CI->getCalledFunction();
+    auto IntrinsicID = vc::getAnyIntrinsicID(Callee);
+
+    switch (IntrinsicID) {
+    case GenXIntrinsic::genx_ssmul:
+      ID = GenXIntrinsic::genx_ssmad;
+      break;
+    case GenXIntrinsic::genx_uumul:
+      ID = GenXIntrinsic::genx_uumad;
+      break;
+    default:
+      IGC_ASSERT(!"Unsupported intrinsic. This point should be never reached");
+    }
+  }
 
   // Emit mad if matched and profitable.
   return emit();
@@ -4319,6 +4373,86 @@ bool GenXPatternMatch::simplifyDpasNullSrc(CallInst *Inst) {
   NewCI->takeName(Inst);
   Inst->replaceAllUsesWith(NewCI);
   Inst->eraseFromParent();
+
+  return true;
+}
+
+bool GenXPatternMatch::simplifyBDpasNullSrc(CallInst *Inst) {
+  constexpr unsigned NullScaleValue = 127;
+
+  auto IID = vc::getAnyIntrinsicID(Inst);
+  IGC_ASSERT_EXIT(IID == GenXIntrinsic::genx_bdpas);
+
+  // Check if a block scale operand can be null.
+  unsigned NumNullScaleArgs = 0;
+  for (auto Idx : {3, 4}) {
+    auto *Src = dyn_cast<ConstantDataVector>(Inst->getArgOperand(Idx));
+    if (!Src)
+      continue;
+
+    auto *Splat = dyn_cast_or_null<ConstantInt>(Src->getSplatValue());
+    if (!Splat)
+      continue;
+
+    auto SplatValue = Splat->getZExtValue();
+    if (SplatValue != NullScaleValue)
+      continue;
+
+    auto *SrcTy = Src->getType();
+    auto *NullSrc = UndefValue::get(SrcTy);
+    Inst->setArgOperand(Idx, NullSrc);
+    NumNullScaleArgs++;
+  }
+
+  // If both of the block scale arguments are null, we can replace the bdpas
+  // with dpas.
+  if (NumNullScaleArgs == 2) {
+    IRBuilder<> Builder(Inst);
+
+    auto *Acc = Inst->getArgOperand(0);
+    auto *Src1 = Inst->getArgOperand(1);
+    auto *Src2 = Inst->getArgOperand(2);
+    auto *Src1Precision = Inst->getArgOperand(5);
+    auto *Src2Precision = Inst->getArgOperand(6);
+    auto *SystolicDepth = Inst->getArgOperand(7);
+    auto *RepeatCount = Inst->getArgOperand(8);
+
+    auto *ResTy = Inst->getType();
+    auto *AccTy = Acc->getType();
+    auto *Src1Ty = Src1->getType();
+    auto *Src2Ty = Src2->getType();
+
+    SmallVector<Value *, 9> Args = {
+        Acc,
+        Src1,
+        Src2,
+        Src1Precision,
+        Src2Precision,
+        SystolicDepth,
+        RepeatCount,
+        Builder.getInt32(0),
+        Builder.getInt32(0),
+    };
+
+    auto *Func =
+        vc::getAnyDeclaration(Inst->getModule(), GenXIntrinsic::genx_dpas2,
+                              {ResTy, AccTy, Src1Ty, Src2Ty});
+    auto *NewCI = Builder.CreateCall(Func, Args);
+    NewCI->takeName(Inst);
+    Inst->replaceAllUsesWith(NewCI);
+    Inst->eraseFromParent();
+
+    simplifyDpasNullSrc(NewCI);
+    return true;
+  }
+
+  auto *Acc = dyn_cast<Constant>(Inst->getArgOperand(0));
+  if (!Acc || !Acc->isZeroValue())
+    return false;
+
+  auto *AccTy = Acc->getType();
+  auto *NullAcc = UndefValue::get(AccTy);
+  Inst->setArgOperand(0, NullAcc);
 
   return true;
 }

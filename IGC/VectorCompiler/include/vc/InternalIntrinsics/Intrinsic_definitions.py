@@ -132,6 +132,37 @@ Imported_Intrinsics = {
 ### ALU intrinsics
 ### --------------
 
+## ``llvm.vc.internal.tanh`` : compute hyperbolic tangent
+## ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+##
+## * arg0: input data, floating-point scalar or vector, same as return value
+##
+## * Return value: floating-point scalar or vector (overloaded)
+##
+## This intrinsic represents tanh(x) math function
+##
+## TODO: Support this intrinsic for all the platforms using a scalar routine and a vectorizer.
+    "tanh": { "result": "anyfloat",
+              "arguments": [0],
+              "attributes": "None",
+              "memory_effects":
+                  { "access": "NoModRef" }, },
+
+## ``llvm.vc.internal.sigmoid` : compute sigmoid function
+## ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+##
+## * arg0: input data, floating-point scalar or vector, same as return value
+##
+## * Return value: floating-point scalar or vector (overloaded)
+##
+## This intrinsic represents sigma(x) = 1 / (1 + exp(-x)) math function
+##
+    "sigmoid": { "result": "anyfloat",
+                 "arguments": [0],
+                 "attributes": "None",
+                 "memory_effects":
+                     { "access": "NoModRef" }, },
+
 ## ``llvm.vc.internal.cast.to.bf16`` : convert float into bfloat16
 ## ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 ##
@@ -191,17 +222,52 @@ Imported_Intrinsics = {
 ## ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 ##
 ## * arg0: input data, f16 scalar or vector (overloaded)
+## * arg0: input data, bf16 scalar or vector (overloaded)
 ## * arg1: random number, i8 scalar or vector of the same width as arg0
 ##
 ## * Return value: i8 scalar or vector of the same width as arg0
 ##
 ## This intrinsic represents half->bf8 stochastic rounding operations
+## This intrinsic represents bfloat->bf8 stochastic rounding operations
     "stochastic_round_to_bf8" : { "result": "anyint",
                                   "arguments": ["anyfloat", "anyint"],
                                   "attributes": "None",
                                   "memory_effects":
                                       { "access": "NoModRef" }, },
 
+
+## ``llvm.vc.internal.stochastic.round.to.hf8`` : hf8 stochastic rounding operation
+## ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+##
+## * arg0: input data, f16/bf16 scalar or vector (overloaded)
+## * arg1: random number, i8 scalar or vector of the same width as arg0
+##
+## * Return value: i8 scalar or vector of the same width as arg0
+##
+## This intrinsic represents half->hf8 and bfloat->hf8 stochastic rounding operations
+    "stochastic_round_to_hf8" : { "result": "anyint",
+                                  "arguments": ["anyfloat", "anyint"],
+                                  "attributes": "None",
+                                  "memory_effects":
+                                      { "access": "NoModRef" }, },
+
+## ``llvm.vc.internal.packed.4bit.upconvert.lut`` : packed fp4/int4 upconvert operation
+## ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+##
+## * arg0: lookup table, vNi32 vector. Regioning is restricted.
+## * arg1: input packed 4-bit data, vNi8 or vNi16 vector (overloaded),
+##         must be a region of <4;1,0> (for i8) or <2;1,0> (for i16).
+##
+## * Return value: packed 8 or 16-bit values, same as arg0
+##
+## N must be 16 or 32. If N is 32, arg0 regioning must be <0;16,1>.
+##
+## This intrinsic represents 4bit->8bit and 4bit->16bit upconvert thru a lookup table
+    "packed_4bit_upconvert_lut" : { "result": "anyint",
+                                    "arguments": [0, "anyint"],
+                                    "attributes": "None",
+                                    "memory_effects":
+                                        { "access": "NoModRef" }, },
 
 ## ``llvm.vc.internal.atomic.`` : intrinsics to represent SPIR-V atomic instructions
 ## ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -321,6 +387,7 @@ Imported_Intrinsics = {
                             0,        # passthru value
                         ],
                         "target" : [
+                            "!hasEfficient64b",
                             "hasLSCMessages",
                         ],
                         "attributes": "NoWillReturn",
@@ -342,6 +409,7 @@ Imported_Intrinsics = {
                             0,        # passthru value
                         ],
                         "target" : [
+                            "!hasEfficient64b",
                             "hasLSCMessages",
                         ],
                         "attributes": "NoWillReturn",
@@ -384,6 +452,50 @@ Imported_Intrinsics = {
                             0,        # passthru value
                         ],
                         "target" : [
+                            "hasLSCMessages",
+                        ],
+                        "attributes": "NoWillReturn",
+                        "memory_effects":
+                            { "access": "ModRef" }, },
+## ``llvm.vc.internal.lsc.atomic.surf``: LSC atomic intrinsics
+## ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+##
+## * arg0: vNxi1 Predicate (overloaded)
+## * arg1: i8 Atomic opcode [MBC]
+## * arg2: i8 Address size [MBC]
+## * arg3: i8 Element size [MBC]
+## * arg4: vNi8 Cache controls, where N is a number of supported cache levels [MBC]
+## * arg5: i64 Surface surface state pointer
+## * arg6: i8 Surface state index [MBC]
+## * arg7: vNxi32 or vNxi64 Address indices (overloaded)
+## * arg8: i16 Address scale [MBC]
+## * arg9: i32 Address immediate offset [MBC]
+## * arg10: 1st source vector for the atomic operation,
+##          must be undef for unary operations
+## * arg11: 2nd source vector for the atomic operation,
+##          must be undef for unary and binary operations
+## * arg12: vector to take values for masked simd lanes from
+##
+## * Return value: the value read from memory, merged with arg12 by predicate
+##
+    "lsc_atomic_surf": { "result": "anyvector",
+                         "arguments": [
+                             "anyint", # vNxi1, predicate
+                             "char",   # atomic opcode
+                             "char",   # address size
+                             "char",   # element size
+                             "anyint", # cache controls
+                             "long",   # surface state pointer
+                             "char",   # surface state index
+                             "anyint", # vNi32 address offsets
+                             "short",  # address scale
+                             "int",    # address immediate offset
+                             0,        # src1
+                             0,        # src2
+                             0,        # passthru value
+                        ],
+                        "target" : [
+                            "hasEfficient64b",
                             "hasLSCMessages",
                         ],
                         "attributes": "NoWillReturn",
@@ -499,6 +611,7 @@ Imported_Intrinsics = {
                                0,        # passthru value
                            ],
                            "target" : [
+                               "!hasEfficient64b",
                                "hasLSCMessages",
                            ],
                            "attributes": "None",
@@ -518,6 +631,7 @@ Imported_Intrinsics = {
                                0,        # passthru value
                            ],
                            "target" : [
+                               "!hasEfficient64b",
                                "hasLSCMessages",
                            ],
                            "attributes": "None",
@@ -561,6 +675,66 @@ Imported_Intrinsics = {
                            "attributes": "None",
                            "memory_effects":
                                { "access": "Ref" }, },
+## ``llvm.vc.internal.lsc.load.surf`` : LSC load intrinsics
+## ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+##
+## * arg0: vNxi1 Predicate (overloaded)
+## * arg1: i8 Address size [MBC]
+## * arg2: i8 Element size [MBC]
+## * arg3: i8 Vector size (number of elements per SIMD lane) [MBC]
+##         i8 Channel mask (for quad intrinsics) [MBC]
+## * arg4: vNi8 Cache controls, where N is a number of supported cache levels [MBC]
+## * arg5: i64 Surface surface state pointer
+## * arg6: i8 Surface state index [MBC]
+## * arg7: vNxi32 or vNxi64 Address indices (overloaded)
+## * arg8: i16 Address scale [MBC]
+## * arg9: i32 Address immediate offset [MBC]
+## * arg10: vector to take values for masked simd lanes from
+##
+## * Return value: the value read from memory, merged with arg10 by predicate
+##
+    "lsc_load_surf": { "result": "anyvector",
+                       "arguments": [
+                           "anyint", # vNxi1, predicate
+                           "char",   # address size
+                           "char",   # element size
+                           "char",   # vector size
+                           "anyint", # cache controls
+                           "long",   # surface state pointer
+                           "char",   # surface state index
+                           "anyint", # vNi32 address offsets
+                           "short",  # address scale
+                           "int",    # address immediate offset
+                           0,        # passthru value
+                      ],
+                      "target" : [
+                          "hasEfficient64b",
+                          "hasLSCMessages",
+                      ],
+                      "attributes": "None",
+                      "memory_effects":
+                          { "access": "Ref" }, },
+    "lsc_load_quad_surf": { "result": "anyvector",
+                            "arguments": [
+                                "anyint", # vNxi1, predicate
+                                "char",   # address size
+                                "char",   # element size
+                                "char",   # channel mask
+                                "anyint", # cache controls
+                                "long",   # surface state pointer
+                                "char",   # surface state index
+                                "anyint", # vNi32 address offsets
+                                "short",  # address scale
+                                "int",    # address immediate offset
+                                0,        # passthru value
+                           ],
+                           "target" : [
+                               "hasEfficient64b",
+                               "hasLSCMessages",
+                           ],
+                           "attributes": "None",
+                           "memory_effects":
+                               { "access": "Ref" }, },
 
 ## ``llvm.vc.internal.lsc.prefetch.*`` : LSC prefetch intrinsics
 ## ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -592,6 +766,7 @@ Imported_Intrinsics = {
                               "int",    # address immediate offset
                           ],
                           "target" : [
+                              "!hasEfficient64b",
                               "hasLSCMessages",
                           ],
                           "attributes": "SideEffects", },
@@ -608,6 +783,7 @@ Imported_Intrinsics = {
                               "int",    # address immediate offset
                           ],
                           "target" : [
+                              "!hasEfficient64b",
                               "hasLSCMessages",
                           ],
                           "attributes": "SideEffects", },
@@ -641,6 +817,7 @@ Imported_Intrinsics = {
                                    "int",    # address immediate offset
                                ],
                                "target" : [
+                                   "!hasEfficient64b",
                                    "hasLSCMessages",
                                ],
                                "attributes": "SideEffects", },
@@ -657,6 +834,7 @@ Imported_Intrinsics = {
                                    "int",    # address immediate offset
                                ],
                                "target" : [
+                                   "!hasEfficient64b",
                                    "hasLSCMessages",
                                ],
                                "attributes": "SideEffects", },
@@ -673,6 +851,59 @@ Imported_Intrinsics = {
                                    "int",    # address immediate offset
                                ],
                                "target" : [
+                                   "hasLSCMessages",
+                               ],
+                               "attributes": "SideEffects", },
+## ``llvm.vc.internal.lsc.prefetch.surf`` : LSC prefetch intrinsics
+## ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+##
+## * arg0: vNxi1 Predicate (overloaded)
+## * arg1: i8 Address size [MBC]
+## * arg2: i8 Element size [MBC]
+## * arg3: i8 Vector size (number of elements per SIMD lane) [MBC]
+##         i8 Channel mask (for quad intrinsics) [MBC]
+## * arg4: vNi8 Cache controls, where N is a number of supported cache levels [MBC]
+## * arg5: i64 Surface surface state pointer
+## * arg6: i8 Surface state index [MBC]
+## * arg7: vNxi32 or vNxi64 Address indices (overloaded)
+## * arg8: i16 Address scale [MBC]
+## * arg9: i32 Address immediate offset [MBC]
+##
+## * Return value: void
+##
+    "lsc_prefetch_surf": { "result": "void",
+                           "arguments": [
+                               "anyint", # vNxi1, predicate
+                               "char",   # address size
+                               "char",   # element size
+                               "char",   # vector size
+                               "anyint", # cache controls
+                               "long",   # surface state pointer
+                               "char",   # surface state index
+                               "anyint", # vNi32 address offsets
+                               "short",  # address scale
+                               "int",    # address immediate offset
+                          ],
+                          "target" : [
+                              "hasEfficient64b",
+                              "hasLSCMessages",
+                          ],
+                          "attributes": "SideEffects", },
+    "lsc_prefetch_quad_surf": { "result": "void",
+                                "arguments": [
+                                    "anyint", # vNxi1, predicate
+                                    "char",   # address size
+                                    "char",   # element size
+                                    "char",   # channel mask
+                                    "anyint", # cache controls
+                                    "long",   # surface state pointer
+                                    "char",   # surface state index
+                                    "anyint", # vNi32 address offsets
+                                    "short",  # address scale
+                                    "int",    # address immediate offset
+                               ],
+                               "target" : [
+                                   "hasEfficient64b",
                                    "hasLSCMessages",
                                ],
                                "attributes": "SideEffects", },
@@ -709,6 +940,7 @@ Imported_Intrinsics = {
                            "anyvector", # Data to write
                        ],
                        "target" : [
+                           "!hasEfficient64b",
                            "hasLSCMessages",
                        ],
                        "attributes": "None",
@@ -728,6 +960,7 @@ Imported_Intrinsics = {
                            "anyvector", # Data to write
                        ],
                        "target" : [
+                           "!hasEfficient64b",
                            "hasLSCMessages",
                        ],
                        "attributes": "None",
@@ -786,6 +1019,7 @@ Imported_Intrinsics = {
                                 "anyvector", # Data to write
                             ],
                             "target" : [
+                                "!hasEfficient64b",
                                 "hasLSCMessages",
                             ],
                             "attributes": "None",
@@ -805,6 +1039,7 @@ Imported_Intrinsics = {
                                 "anyvector", # Data to write
                             ],
                             "target" : [
+                                "!hasEfficient64b",
                                 "hasLSCMessages",
                             ],
                             "attributes": "None",
@@ -849,6 +1084,66 @@ Imported_Intrinsics = {
                             "memory_effects":
                                 { "access": "Mod" }, },
 
+## ``llvm.vc.internal.lsc.store.surf`` : LSC store intrinsics
+## ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+##
+## * arg0: vNxi1 Predicate (overloaded)
+## * arg1: i8 Address size [MBC]
+## * arg2: i8 Element size [MBC]
+## * arg3: i8 Vector size (number of elements per SIMD lane) [MBC]
+##         i8 Channel mask (for quad intrinsics) [MBC]
+## * arg4: vNi8 Cache controls, where N is a number of supported cache levels [MBC]
+## * arg5: i64 Surface surface state pointer
+## * arg6: i8 Surface state index [MBC]
+## * arg7: vNxi32 or vNxi64 Address indices (overloaded)
+## * arg8: i16 Address scale [MBC]
+## * arg9: i32 Address immediate offset [MBC]
+## * arg10: Data to write (overloaded)
+##
+## * Return value: void
+##
+    "lsc_store_surf": { "result": "void",
+                        "arguments": [
+                            "anyint", # vNxi1, predicate
+                            "char",   # address size
+                            "char",   # element size
+                            "char",   # vector size
+                            "anyint", # cache controls
+                            "long",   # surface state pointer
+                            "char",   # surface state index
+                            "anyint", # vNi32 address offsets
+                            "short",  # address scale
+                            "int",    # address immediate offset
+                            "anyvector", # Data to write
+                       ],
+                       "target" : [
+                           "hasEfficient64b",
+                           "hasLSCMessages",
+                       ],
+                       "attributes": "None",
+                       "memory_effects":
+                           { "access": "Mod" }, },
+    "lsc_store_quad_surf": { "result": "void",
+                             "arguments": [
+                                 "anyint", # vNxi1, predicate
+                                 "char",   # address size
+                                 "char",   # element size
+                                 "char",   # channel mask
+                                 "anyint", # cache controls
+                                 "long",   # surface state pointer
+                                 "char",   # surface state index
+                                 "anyint", # vNi32 address offsets
+                                 "short",  # address scale
+                                 "int",    # address immediate offset
+                                 "anyvector", # Data to write
+                            ],
+                            "target" : [
+                                "hasEfficient64b",
+                                "hasLSCMessages",
+                            ],
+                            "attributes": "None",
+                            "memory_effects":
+                                { "access": "Mod" }, },
 ## ``llvm.vc.internal.lsc.*.block.2d.ugm.*`` : LSC untyped 2d block intrinsics
 ## ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 ##
@@ -1130,6 +1425,7 @@ Imported_Intrinsics = {
                                   "int"        # Y offset
                               ],
                               "target" : [
+                                  "!hasEfficient64b",
                                   "hasLSCMessages",
                                   "hasLSCTypedMessages",
                               ],
@@ -1147,6 +1443,7 @@ Imported_Intrinsics = {
                                   "anyvector"
                                ],
                                "target" : [
+                                   "!hasEfficient64b",
                                    "hasLSCMessages",
                                    "hasLSCTypedMessages",
                                ],
@@ -1176,6 +1473,7 @@ Imported_Intrinsics = {
                                   "int"        # Y offset
                               ],
                               "target" : [
+                                  "!hasEfficient64b",
                                   "hasLSCMessages",
                                   "hasLSCTypedMessages",
                               ],
@@ -1193,6 +1491,7 @@ Imported_Intrinsics = {
                                   "anyvector"
                                ],
                                "target" : [
+                                   "!hasEfficient64b",
                                    "hasLSCMessages",
                                    "hasLSCTypedMessages",
                                ],
@@ -1201,6 +1500,56 @@ Imported_Intrinsics = {
                                    { "access": "Mod" }, },
 
 
+## ``llvm.vc.internal.lsc.*2d.typed.surf.*`` : LSC typed 2d block surface state pointer intrinsics
+## ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+## * arg0: vNi8, Cache controls, where N is the number of supported cache levels [MBC]
+## * arg1: i64, Surface state pointer
+## * arg2: i8, Surface state index [MBC]
+## * arg3: i32, Block height [MBC]
+## * arg4: i32, Block width (in elements) [MBC]
+## * arg5: i32, Memory block X position (in bytes)
+## * arg6: i32, Memory block Y position
+## * arg7: data to write (store only)
+##
+## * Return value: the value read or void
+##
+    "lsc_load_2d_tgm_surf" : { "result" : "anyvector",
+                               "arguments" : [
+                                   "anyvector", # cache controls
+                                   "long",      # surface state pointer
+                                   "char",      # surface state index
+                                   "int",       # block height
+                                   "int",       # block width
+                                   "int",       # X offset
+                                   "int"        # Y offset
+                               ],
+                               "target" : [
+                                   "hasEfficient64b",
+                                   "hasLSCMessages",
+                                   "hasLSCTypedMessages",
+                               ],
+                               "attributes" : "None",
+                               "memory_effects":
+                                   { "access": "Ref" }, },
+    "lsc_store_2d_tgm_surf" : { "result" : "void",
+                                "arguments" : [
+                                   "anyvector", # cache controls
+                                   "long",      # surface state pointer
+                                   "char",      # surface state index
+                                   "int",       # block height
+                                   "int",       # block width
+                                   "int",       # X offset
+                                   "int",       # Y offset
+                                   "anyvector"
+                                ],
+                                "target" : [
+                                    "hasEfficient64b",
+                                    "hasLSCMessages",
+                                    "hasLSCTypedMessages",
+                                ],
+                                "attributes" : "None",
+                                "memory_effects":
+                                    { "access": "Mod" }, },
 
 ## ``llvm.vc.internal.lsc.*.quad.tgm`` : Typed LSC load BTI intrinsic
 ## ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -1230,6 +1579,7 @@ Imported_Intrinsics = {
                                0,           # passthru value
                            ],
                            "target" : [
+                               "!hasEfficient64b",
                                "hasLSCMessages",
                                "hasLSCTypedMessages",
                            ],
@@ -1249,6 +1599,7 @@ Imported_Intrinsics = {
                                 "anyvector", # data to write
                             ],
                             "target" : [
+                                "!hasEfficient64b",
                                 "hasLSCMessages",
                                 "hasLSCTypedMessages",
                             ],
@@ -1267,6 +1618,7 @@ Imported_Intrinsics = {
                                    2,           # vNi32 LOD pixel index
                                ],
                                "target" : [
+                                   "!hasEfficient64b",
                                    "hasLSCMessages",
                                    "hasLSCTypedMessages",
                                ],
@@ -1300,6 +1652,7 @@ Imported_Intrinsics = {
                                    0,           # passthru value
                                ],
                                "target" : [
+                                   "!hasEfficient64b",
                                    "hasLSCMessages",
                                    "hasLSCTypedMessages",
                                ],
@@ -1319,6 +1672,7 @@ Imported_Intrinsics = {
                                     "anyvector", # data to write
                                 ],
                                 "target" : [
+                                    "!hasEfficient64b",
                                     "hasLSCMessages",
                                     "hasLSCTypedMessages",
                                 ],
@@ -1337,11 +1691,88 @@ Imported_Intrinsics = {
                                        2,           # vNi32 LOD pixel index
                                    ],
                                    "target" : [
+                                       "!hasEfficient64b",
                                        "hasLSCMessages",
                                        "hasLSCTypedMessages",
                                    ],
                                    "attributes": "SideEffects", },
 
+## ``llvm.vc.internal.lsc.*.quad.tgm.surf`` : Typed LSC load surface state pointer intrinsic
+## ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+## * arg0: vNi1, Predicate (overloaded)
+## * arg1: vNi8, Cache controls, where N is the number of supported cache levels [MBC]
+## * arg2: i8, Channel mask [MBC]
+## * arg3: i64, Surface state pointer
+## * arg4: i8, Surface state index [MBC]
+## * arg5: vNi32, U pixel indices (overloaded)
+## * arg6: vNi32, V pixel indices
+## * arg7: vNi32, R pixel indices
+## * arg8: vNi32, LOD pixel indices
+## * arg9: vector to take values for masked simd lanes from (load)
+##         vector to take values to write (store)
+##
+## * Return value: the value read from memory (load) or void (store, prefetch)
+##
+    "lsc_load_quad_tgm_surf": { "result": "anyvector",
+                                "arguments": [
+                                    "anyint",    # vNxi1, predicate
+                                    "anyvector", # cache controls
+                                    "char",      # channel mask
+                                    "long",      # surface state pointer
+                                    "char",      # surface state index
+                                    "anyint",    # vNi32 U pixel index
+                                    3,           # vNi32 V pixel index
+                                    3,           # vNi32 R pixel index
+                                    3,           # vNi32 LOD pixel index
+                                    0,           # passthru value
+                                ],
+                                "target" : [
+                                    "hasEfficient64b",
+                                    "hasLSCMessages",
+                                    "hasLSCTypedMessages",
+                                ],
+                                "attributes": "None",
+                                "memory_effects":
+                                    { "access": "Ref" }, },
+    "lsc_store_quad_tgm_surf": { "result": "void",
+                                 "arguments": [
+                                     "anyint",    # vNxi1, predicate
+                                     "anyvector", # cache controls
+                                     "char",      # channel mask
+                                     "long",      # surface state pointer
+                                     "char",      # surface state index
+                                     "anyint",    # vNi32 U pixel index
+                                     2,           # vNi32 V pixel index
+                                     2,           # vNi32 R pixel index
+                                     2,           # vNi32 LOD pixel index
+                                     "anyvector", # data to write
+                                 ],
+                                 "target" : [
+                                     "hasEfficient64b",
+                                     "hasLSCMessages",
+                                     "hasLSCTypedMessages",
+                                 ],
+                                 "attributes": "None",
+                                 "memory_effects":
+                                     { "access": "Mod" }, },
+    "lsc_prefetch_quad_tgm_surf": { "result": "void",
+                                    "arguments": [
+                                        "anyint",    # vNxi1, predicate
+                                        "anyvector", # cache controls
+                                        "char",      # channel mask
+                                        "long",      # surface state pointer
+                                        "char",      # surface state index
+                                        "anyint",    # vNi32 U pixel index
+                                        2,           # vNi32 V pixel index
+                                        2,           # vNi32 R pixel index
+                                        2,           # vNi32 LOD pixel index
+                                    ],
+                                    "target" : [
+                                        "hasEfficient64b",
+                                        "hasLSCMessages",
+                                        "hasLSCTypedMessages",
+                                    ],
+                                    "attributes": "SideEffects", },
 
 ### ----------------------------
 ### Low-level sampler intrinsics
@@ -1373,6 +1804,7 @@ Imported_Intrinsics = {
                                2, 2, 2, 2, 2, 2, 2, 2, # sampler message parameters
                            ],
                            "target" : [
+                               "!hasEfficient64b",
                                "hasSampler",
                            ],
                            "attributes" : "None",
@@ -1406,11 +1838,46 @@ Imported_Intrinsics = {
                                           3, 3, 3, 3, 3, 3, 3, 3, # sampler message parameters
                                       ],
                                       "target" : [
+                                          "!hasEfficient64b",
                                           "hasSampler",
                                       ],
                                       "attributes" : "None",
                                       "memory_effects":
                                           { "access": "Ref" }, },
+## ``llvm.vc.internal.sampler.load.surf.*`` : Sampler load intrinsic
+## ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+##
+## * arg0: vNi1 Predicate (overloaded)
+## * arg1: i16, Opcode [MBC]
+## * arg2: i8, Channel mask [MBC]
+## * arg3: i16, Address offset packed immediates (aoffimmi) [MBC]
+## * arg4: i64, Surface state pointer
+## * arg5: i8, Surface state index [MBC]
+## * arg6: vector to take values for masked simd lanes from
+## * arg7: vNi32 or vNi16, first sampler message parameter (overloaded)
+## * arg8-arg15: sampler message parameters, same type as arg7
+##
+## * Return value: the value read from image (overloaded)
+##
+    "sampler_load_surf" : { "result" : "anyvector",
+                            "arguments" : [
+                                "anyint", # vNxi1, predicate
+                                "short",  # opcode
+                                "char",   # channel mask
+                                "short",  # aoffimmi
+                                "long",   # surface state pointer
+                                "char",   # surface state index
+                                0,        # passthru
+                                "anyint", # first sampler message parameter
+                                2, 2, 2, 2, 2, 2, 2, 2, # sampler message parameters
+                           ],
+                           "target" : [
+                               "hasEfficient64b",
+                               "hasSampler",
+                           ],
+                           "attributes" : "None",
+                           "memory_effects":
+                               { "access": "Ref" }, },
 
 ## ``llvm.vc.internal.sample.bti.*`` : Sampler load intrinsic
 ## ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -1440,6 +1907,7 @@ Imported_Intrinsics = {
                          2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, # sampler message parameters
                      ],
                      "target" : [
+                         "!hasEfficient64b",
                          "hasSampler",
                      ],
                      "attributes" : "None",
@@ -1474,12 +1942,51 @@ Imported_Intrinsics = {
                                     4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, # sampler message parameters
                                 ],
                                 "target" : [
+                                    "!hasEfficient64b",
                                     "hasSampler",
                                 ],
                                 "attributes" : "None",
                                 "memory_effects":
                                     { "access": "Ref" }, },
 
+## ``llvm.vc.internal.sample.surf.*`` : Sampler load intrinsic
+## ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+##
+## * arg0: vNi1 Predicate (overloaded)
+## * arg1: i16, Opcode [MBC]
+## * arg2: i8, Channel mask [MBC]
+## * arg3: i16, Address offset packed immediates (aoffimmi) [MBC]
+## * arg4: i64, Surface state pointer
+## * arg5: i8, Surface state index [MBC]
+## * arg6: i64, Sampler state pointer
+## * arg7: i8, Sampler state index [MBC]
+## * arg8: vector to take values for masked simd lanes from
+## * arg9: vNi32 or vNi16, first sampler message parameter (overloaded)
+## * arg10-arg21: sampler message parameters, same type as arg9
+##
+## * Return value: the value read from image (overloaded)
+##
+    "sample_surf" : { "result" : "anyvector",
+                      "arguments" : [
+                          "anyint", # vNxi1, predicate
+                          "short",  # opcode
+                          "char",   # channel mask
+                          "short",  # aoffimmi
+                          "long",   # Surface state pointer
+                          "char",   # Surface state index
+                          "long",   # Sampler state pointer
+                          "char",   # Sampler state index
+                          0,        # passthru
+                          "anyint", # first sampler message parameter
+                          2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, # sampler message parameters
+                      ],
+                      "target" : [
+                          "hasEfficient64b",
+                          "hasSampler",
+                      ],
+                      "attributes" : "None",
+                      "memory_effects":
+                          { "access": "Ref" }, },
 
 ### --------------------
 ### Thread ID intrinsics
@@ -1549,6 +2056,50 @@ Imported_Intrinsics = {
                              "attributes": "None",
                              "memory_effects":
                                  { "access": "NoModRef" }, },
+
+### -----------------------------
+### Low-level raw send intrinsics
+### -----------------------------
+
+## ``llvm.vc.internal.raw.sendg`` : raw send generalized message
+## ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+##
+## * arg0: i16 dst size (in bytes) [MBC]
+## * arg1: i1 IsConditional
+## * arg2: i1 IsEOT
+## * arg3: i8 SFID [MBC]
+## * arg4: vNxi1 Predicate (overloaded)
+## * arg5: vector src0 (overloaded)
+## * arg6: i16 src0 size (in bytes) [MBC]
+## * arg7: vector src1 (overloaded)
+## * arg8: i16 src1 size (in bytes) [MBC]
+## * arg9: i64 indirect descriptor 0
+## * arg10: i64 indirect descriptor 1
+## * arg11: i64 descriptor [MBC]
+## * arg12: vector to take values for masked simd lanes from
+##
+## * Return value: vector dst (overloaded)
+##
+    "raw_sendg": { "result" : "anyvector",
+                   "arguments" : [
+                       "short",     # dst size
+                       "bool",      # cond
+                       "bool",      # EOT
+                       "char",      # sfid
+                       "anyint",    # predicate
+                       "anyvector", # src0
+                       "short",     # src0 size
+                       "anyvector", # src1
+                       "short",     # src1 size
+                       "long",      # ind0
+                       "long",      # ind1
+                       "long",      # desc
+                       0,           # passthru
+                   ],
+                   "target" : [
+                       "hasEfficient64b",
+                   ],
+                   "attributes" : "NoWillReturn,SideEffects", },
 
 ## ``llvm.vc.internal.media.ld.predef.surface.*`` : legacy media load predefined surface
 ## ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -1943,6 +2494,7 @@ Imported_Intrinsics = {
                                    "int"
                                 ],
                                 "target" : [
+                                    "!hasEfficient64b",
                                     "hasSampler",
                                 ],
                                 "attributes" : "None",

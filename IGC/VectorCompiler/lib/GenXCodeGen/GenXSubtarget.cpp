@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2024 Intel Corporation
+Copyright (C) 2017-2025 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -70,6 +70,7 @@ void GenXSubtarget::initSubtargetFeatures(StringRef CPU, StringRef FS) {
                  .Case("XeHPCVG", XeHPCVG)
                  .Case("Xe2", Xe2)
                  .Case("Xe3", Xe3)
+                 .Case("Xe3P", Xe3P)
                  .Default(Invalid);
 
   std::string CPUName(CPU);
@@ -104,6 +105,8 @@ uint32_t GenXSubtarget::getMaxThreadsNumPerSubDevice() const {
     return 1 << 13;
   case Xe3:
     return 1 << 15;
+  case Xe3P:
+    return 1 << 14;
   }
   return 0;
 }
@@ -157,6 +160,16 @@ ArrayRef<std::pair<int, int>> GenXSubtarget::getThreadIdReservedBits() const {
     // [6:4] : EUID
     // [3:0] : TID
     static const std::pair<int, int> Bits[] = {{12, 2}, {7, 1}};
+    return Bits;
+  }
+  case GenXSubtarget::Xe3P: {
+    // [17:14] Slice ID.
+    // [13:12] : Reserved MBZ
+    // [11:8] SubSlice ID
+    // [7] : Reserved MBZ
+    // [6:4] : EUID
+    // [3:0] : TID, using only [2:0] (8 threads/eu)
+    static const std::pair<int, int> Bits[] = {{12, 2}, {7, 1}, {3, 1}};
     return Bits;
   }
   default:
@@ -217,6 +230,7 @@ ArrayRef<std::pair<int, int>> GenXSubtarget::getEUIdBits() const {
     return Bits;
   }
   case GenXSubtarget::Xe2:
+  case GenXSubtarget::Xe3P:
   case GenXSubtarget::Xe3: {
     // [6:4] : EUID
     static const std::pair<int, int> Bits[] = {{4, 3}};
@@ -271,6 +285,8 @@ TARGET_PLATFORM GenXSubtarget::getVisaPlatform() const {
     return TARGET_PLATFORM::Xe2;
   case Xe3:
     return TARGET_PLATFORM::Xe3;
+  case Xe3P:
+    return TARGET_PLATFORM::Xe3P_CRI;
   default:
     return TARGET_PLATFORM::GENX_NONE;
   }
@@ -310,6 +326,10 @@ ArrayRef<unsigned> GenXSubtarget::getSupportedGRFSizes() const {
   }
   case GenXSubtarget::Xe3: {
     static const unsigned Supported[] = {32, 64, 96, 128, 160, 192, 256};
+    return Supported;
+  }
+  case GenXSubtarget::Xe3P: {
+    static const unsigned Supported[] = {32, 64, 96, 128, 160, 192, 256, 512};
     return Supported;
   }
   default: {

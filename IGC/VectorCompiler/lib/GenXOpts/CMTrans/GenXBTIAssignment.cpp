@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2021-2024 Intel Corporation
+Copyright (C) 2021-2025 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -44,6 +44,9 @@ SPDX-License-Identifier: MIT
 #include <vector>
 
 using namespace llvm;
+static cl::opt<bool> Efficient64bOpt(
+    "vc-bti-assignment-efficient64b", cl::init(false), cl::Hidden,
+    cl::desc("Should be used only in llvm opt to enable 64-bit addressing"));
 
 static cl::opt<bool> EnforceBTIZeroReservation(
     "vc-reserve-bti-zero", cl::init(false), cl::Hidden,
@@ -88,6 +91,7 @@ private:
 };
 
 class GenXBTIAssignment final : public ModulePass {
+  bool Efficient64b = true;
 
 #if LLVM_VERSION_MAJOR >= 16
   GenXBackendConfigPass::Result &BC;
@@ -97,10 +101,12 @@ public:
   static char ID;
 
 #if LLVM_VERSION_MAJOR >= 16
-  GenXBTIAssignment(GenXBackendConfigPass::Result &BC)
-      : BC(BC), ModulePass(ID) {}
+  GenXBTIAssignment(GenXBackendConfigPass::Result &BC,
+                    bool Efficient64b = false)
+      : BC(BC), ModulePass(ID), Efficient64b(Efficient64b || Efficient64bOpt) {}
 #else  // LLVM_VERSION_MAJOR >= 16
-  GenXBTIAssignment() : ModulePass(ID) {}
+  GenXBTIAssignment(bool Efficient64b = false)
+      : ModulePass(ID), Efficient64b(Efficient64b || Efficient64bOpt) {}
 #endif // LLVM_VERSION_MAJOR >= 16
 
   void getAnalysisUsage(AnalysisUsage &AU) const override {
@@ -123,16 +129,16 @@ INITIALIZE_PASS_END(GenXBTIAssignment, "GenXBTIAssignment", "GenXBTIAssignment",
 
 #if LLVM_VERSION_MAJOR < 16
 namespace llvm {
-ModulePass *createGenXBTIAssignmentPass() {
+ModulePass *createGenXBTIAssignmentPass(bool Efficient64b) {
   initializeGenXBTIAssignmentPass(*PassRegistry::getPassRegistry());
-  return new GenXBTIAssignment();
+  return new GenXBTIAssignment(Efficient64b);
 }
 } // namespace llvm
 #else // LLVM_VERSION_MAJOR < 16
 PreservedAnalyses
 GenXBTIAssignmentPass::run(llvm::Module &M,
                            llvm::AnalysisManager<llvm::Module> &AM) {
-  GenXBTIAssignment GenXBTI(BC);
+  GenXBTIAssignment GenXBTI(BC, Efficient64b);
   if (GenXBTI.runOnModule(M))
     return PreservedAnalyses::none();
   return PreservedAnalyses::all();
@@ -147,6 +153,10 @@ bool GenXBTIAssignment::runOnModule(Module &M) {
   bool useBindlessBuffers = BC.useBindlessBuffers();
   bool useBindlessImages = BC.useBindlessImages();
   bool useBindlessSamplers = BC.useBindlessImages();
+
+  useBindlessBuffers |= Efficient64b;
+  useBindlessImages |= Efficient64b;
+  useBindlessSamplers |= Efficient64b;
 
   BTIAssignment BA(M, emitDebuggableKernels, useBindlessBuffers,
                    useBindlessImages, useBindlessSamplers);

@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2023-2024 Intel Corporation
+Copyright (C) 2023-2025 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -55,6 +55,7 @@ private:
   Value *translateBFloat16Convert(CallInst &I) const;
   Value *translateTFloat32Convert(CallInst &I) const;
   Value *translateStochasticRounding(CallInst &I) const;
+  Value *translateUpconvertLut4Bit(CallInst &I) const;
   Value *translateLscAtomic(CallInst &I) const;
   Value *translateLscLoadStore(CallInst &I) const;
   Value *translateLscLoadStoreBlock2D(CallInst &I) const;
@@ -63,6 +64,7 @@ private:
   Value *translateLscTyped2D(CallInst &I) const;
   Value *translateSamplerSimple(CallInst &I) const;
   Value *translateSampler(CallInst &I) const;
+  Value *translateRawSendG(CallInst &I) const;
 };
 } // namespace
 
@@ -140,8 +142,12 @@ void GenXTranslateIntrinsics::visitCallInst(CallInst &I) const {
   case GenXIntrinsic::genx_umin:
     NewI = translateMinMax(I);
     break;
+  case GenXIntrinsic::genx_packed_4bit_upconvert_lut:
+    NewI = translateUpconvertLut4Bit(I);
+    break;
   case GenXIntrinsic::genx_srnd:
   case GenXIntrinsic::genx_biased_rounding_bf8:
+  case GenXIntrinsic::genx_biased_rounding_hf8:
     NewI = translateStochasticRounding(I);
     break;
   case GenXIntrinsic::genx_lsc_xatomic_bti:
@@ -201,6 +207,9 @@ void GenXTranslateIntrinsics::visitCallInst(CallInst &I) const {
   case GenXIntrinsic::genx_3d_load:
   case GenXIntrinsic::genx_3d_sample:
     NewI = translateSampler(I);
+    break;
+  case GenXIntrinsic::genx_raw_sendg:
+    NewI = translateRawSendG(I);
     break;
   }
 
@@ -329,7 +338,8 @@ Value *GenXTranslateIntrinsics::translateTFloat32Convert(CallInst &I) const {
 Value *GenXTranslateIntrinsics::translateStochasticRounding(CallInst &I) const {
   auto InputIID = GenXIntrinsic::getGenXIntrinsicID(&I);
   IGC_ASSERT_EXIT(InputIID == GenXIntrinsic::genx_srnd ||
-                  InputIID == GenXIntrinsic::genx_biased_rounding_bf8);
+                  InputIID == GenXIntrinsic::genx_biased_rounding_bf8 ||
+                  InputIID == GenXIntrinsic::genx_biased_rounding_hf8);
   LLVM_DEBUG(dbgs() << "Translate: " << I << "\n");
   IRBuilder<> Builder(&I);
   Module *M = I.getModule();
@@ -373,8 +383,20 @@ Value *GenXTranslateIntrinsics::translateStochasticRounding(CallInst &I) const {
   case GenXIntrinsic::genx_biased_rounding_bf8:
     IID = vc::InternalIntrinsic::stochastic_round_to_bf8;
     break;
+  case GenXIntrinsic::genx_biased_rounding_hf8:
+    IID = vc::InternalIntrinsic::stochastic_round_to_hf8;
+    break;
   }
 
+  if (SrcTy->isIntOrIntVectorTy(16)) {
+    if (auto *VTy = dyn_cast<IGCLLVM::FixedVectorType>(SrcTy))
+      SrcTy = IGCLLVM::FixedVectorType::get(Builder.getBFloatTy(),
+                                            VTy->getNumElements());
+    else
+      SrcTy = Builder.getBFloatTy();
+
+    SrcV = Builder.CreateBitCast(SrcV, SrcTy);
+  }
 
   Function *Func = vc::InternalIntrinsic::getInternalDeclaration(
       M, IID, {RetTy, SrcTy, RndTy});
@@ -384,8 +406,60 @@ Value *GenXTranslateIntrinsics::translateStochasticRounding(CallInst &I) const {
   return NewI;
 }
 
+Value *GenXTranslateIntrinsics::translateUpconvertLut4Bit(CallInst &I) const {
+  IGC_ASSERT_EXIT(GenXIntrinsic::getGenXIntrinsicID(&I) ==
+                  GenXIntrinsic::genx_packed_4bit_upconvert_lut);
+  LLVM_DEBUG(dbgs() << "Translate: " << I << "\n");
+  IRBuilder<> Builder(&I);
+  Module *M = I.getModule();
+
+  auto *Ty = cast<IGCLLVM::FixedVectorType>(I.getType());
+
+  auto *LutV = I.getArgOperand(0);
+  if (Ty->getNumElements() == 32) {
+    // Replicate 16-element LUT
+    auto *LutTy = LutV->getType();
+    auto *F = vc::getAnyDeclaration(M, GenXIntrinsic::genx_rdregioni,
+                                    {Ty, LutTy, Builder.getInt16Ty()});
+
+    SmallVector<Value *, 6> Args = {
+        LutV,
+        Builder.getInt32(0),  // vstride
+        Builder.getInt32(16), // width
+        Builder.getInt32(1),  // stride
+        Builder.getInt16(0),  // offset
+        Builder.getInt32(0),  // parent width - ignored
+    };
+
+    LutV = Builder.CreateCall(F, Args, LutV->getName() + ".replicate");
+  }
+
+  auto *SrcV = I.getArgOperand(1);
+  auto *SrcTy = SrcV->getType();
+
+  constexpr auto IID = vc::InternalIntrinsic::packed_4bit_upconvert_lut;
+  auto *Func =
+      vc::InternalIntrinsic::getInternalDeclaration(M, IID, {Ty, SrcTy});
+
+  auto *NewI = Builder.CreateCall(Func, {LutV, SrcV});
+  LLVM_DEBUG(dbgs() << "Created: " << *NewI << "\n");
+
+  return NewI;
+}
+
 Constant *GenXTranslateIntrinsics::translateCacheControls(Constant *L1,
                                                           Constant *L3) const {
+  auto L3Value = cast<ConstantInt>(L3)->getZExtValue();
+  if ((L3Value & 0xF) != L3Value) {
+    // Input has L2 and L3 hints. Subtarget is unavaliable here, so translate
+    // both. If L3 hint is unsupported, it will be ignored.
+    auto *Ty = L3->getType();
+    Constant *L2 = ConstantInt::get(Ty, L3Value & 0xF);
+    L3 = ConstantInt::get(Ty, L3Value >> 4);
+    return ConstantVector::get({L1, L2, L3});
+  }
+  // If L3 hint is required, but not present, CisaBuilder will emit default
+  // value.
   return ConstantVector::get({L1, L3});
 }
 
@@ -956,3 +1030,19 @@ Value *GenXTranslateIntrinsics::translateSampler(CallInst &I) const {
   return NewI;
 }
 
+Value *GenXTranslateIntrinsics::translateRawSendG(CallInst &I) const {
+  IGC_ASSERT(GenXIntrinsic::getGenXIntrinsicID(&I) ==
+             GenXIntrinsic::genx_raw_sendg);
+  LLVM_DEBUG(dbgs() << "Translate: " << I << "\n");
+  IRBuilder<> Builder(&I);
+  Module *M = I.getModule();
+
+  constexpr auto NewIID = vc::InternalIntrinsic::raw_sendg;
+
+  SmallVector<Value *, 13> Args(I.args());
+  auto *Func = vc::getAnyDeclarationForArgs(M, NewIID, I.getType(), Args);
+  auto *NewI = Builder.CreateCall(Func, Args);
+  LLVM_DEBUG(dbgs() << "New intrinsic generated: " << *NewI);
+
+  return NewI;
+}

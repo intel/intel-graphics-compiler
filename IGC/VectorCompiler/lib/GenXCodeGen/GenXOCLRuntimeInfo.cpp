@@ -187,6 +187,10 @@ KernelArgBuilder::getOCLArgKind(ArrayRef<StringRef> Tokens,
     return ArgKindType::ByValSVM;
   if (vc::isImplicitArgsBufferKind(RawKind))
     return ArgKindType::ImplicitArgsBuffer;
+  if (vc::isIndirectDataBufferKind(RawKind))
+    return ArgKindType::IndirectDataBuffer;
+  if (vc::isScratchBufferKind(RawKind))
+    return ArgKindType::ScratchBuffer;
 
   // Explicit arguments.
   switch (auto Cat = KM.getArgCategory(ArgNo)) {
@@ -312,6 +316,7 @@ GenXOCLRuntimeInfo::FunctionInfo::FunctionInfo(const FunctionGroup &FG,
     : DisableEUFusion(BC.isDisableEUFusion()),
       SupportsDebugging(BC.emitDebuggableKernels()),
       GRFSizeInBytes(ST.getGRFByteSize()),
+      InlineDataPayloadSize(ST.hasEfficient64b() ? ST.getGRFByteSize() : 0),
       StatelessPrivateMemSize(
           vc::getStackAmount(FG.getHead(), BC.getStatelessPrivateMemSize())) {
   initInstructionLevelProperties(FG, RI, ST, BC);
@@ -361,6 +366,8 @@ void GenXOCLRuntimeInfo::FunctionInfo::initInstructionLevelProperties(
     case vc::InternalIntrinsic::sample_predef_surface:
     case vc::InternalIntrinsic::sampler_load_bti:
     case vc::InternalIntrinsic::sampler_load_predef_surface:
+    case vc::InternalIntrinsic::sample_surf:
+    case vc::InternalIntrinsic::sampler_load_surf:
       UsesSample = true;
       LLVM_DEBUG(dbgs() << ">> UsesSample: true\n");
       break;
@@ -373,6 +380,7 @@ void GenXOCLRuntimeInfo::FunctionInfo::initInstructionLevelProperties(
         LLVM_DEBUG(dbgs() << ">> DisableEUFusion: " << DisableEUFusion << "\n");
       }
       LLVM_FALLTHROUGH;
+    case GenXIntrinsic::genx_bdpas:
     case GenXIntrinsic::genx_dpasw:
     case GenXIntrinsic::genx_dpasw_nosrc0:
       LLVM_DEBUG(dbgs() << ">> UsesDPAS: true\n");

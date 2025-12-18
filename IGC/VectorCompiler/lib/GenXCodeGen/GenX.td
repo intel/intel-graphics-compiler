@@ -51,6 +51,10 @@ def FeatureUseMulDDQ : SubtargetFeature<"mul_ddq",
                                         "UseMulDDQ",
                                         "true",
                                         "use native support for mul [U]Dx[U]D->Q">;
+def FeatureUseMadDDQ : SubtargetFeature<"mad_ddq",
+                                        "UseMadDDQ",
+                                        "true",
+                                        "use native support for mad DxD+Q->Q">;
 def FeatureLongLongEmulation : SubtargetFeature<"emulate_i64",
                                         "EmulateLongLong",
                                         "true",
@@ -110,6 +114,16 @@ def FeatureInstrGlobalAtomicAddF64: SubtargetFeature<"globaldoubleaddsub",
                                                     "HasGlobalAtomicAddF64",
                                                     "true",
                                                     "support of global double precision atomic add/sub instructions">;
+
+def FeatureInstrAtomicHF16: SubtargetFeature<"halfprecisionatomics",
+                                            "HasInstrAtomicHF16",
+                                            "true",
+                                            "support of half precision atomic instructions">;
+
+def FeatureInstrLocalAtomicAddF32: SubtargetFeature<"localsingleaddsub",
+                                                    "HasInstrLocalAtomicAddF32",
+                                                    "true",
+                                                    "support of local single precision atomic add/sub instructions">;
 
 def FeatureHWTIDFromPredef: SubtargetFeature<"hwtidfrompredef",
                                              "GetsHWTIDFromPredef",
@@ -214,6 +228,12 @@ def FeatureSLM64K : SubtargetFeature<"slm_64k",
 def FeatureSLM128K : SubtargetFeature<"slm_128k",
                                       "MaxSLMSize", "128",
                                       "Target supports up to 128k of SLM">;
+def FeatureSLM192K : SubtargetFeature<"slm_192k",
+                                      "MaxSLMSize", "192",
+                                      "Target supports up to 192k of SLM">;
+def FeatureSLM384K : SubtargetFeature<"slm_384k",
+                                      "MaxSLMSize", "384",
+                                      "Target supports up to 384k of SLM">;
 def FeatureHasSad2 : SubtargetFeature<"feature_has_sad2",
                                       "HasSad2", "true",
                                       "Target supports sad2/sad2a instructions">;
@@ -249,6 +269,29 @@ def FeatureHas7ThreadsPerEU : SubtargetFeature<"feature_7threads_per_eu",
 def FeatureHas8ThreadsPerEU : SubtargetFeature<"feature_8threads_per_eu",
                                                 "NumThreadsPerEU", "8",
                                                 "Target has 8 threads per EU">;
+def FeatureEfficient64b: SubtargetFeature<
+  "efficient_64b", "HasEfficient64b", "true",
+  "Target supports efficient 64-bit addressing">;
+def FeatureEfficient64bEnabled: SubtargetFeature<
+  "efficient_64b_enabled", "EnabledEfficient64b", "true",
+  "Efficient 64-bit addressing is enabled for the target">;
+def FeatureL1L2L3Cache: SubtargetFeature<
+  "l1_l2_l3_cache", "NumCacheLevels", "3",
+  "L1, L2 and L3 cache hierarchy is supported for the target">;
+def FeatureHasNativeBFloat16 : SubtargetFeature<
+  "feature_has_native_bfloat16", "HasNativeBFloat16", "true",
+  "Native bfloat16 arithmetic operations are supported by the target">;
+def FeatureHasMxfp : SubtargetFeature<
+  "feature_has_mxfp", "HasMxfp", "true",
+  "Target supports MXFP data types">;
+def FeatureAddressRegisterElements32 : SubtargetFeature<"addr_register_size_32",
+                                            "AddressRegisterElements",
+                                            "32",
+                                            "Number of Address Register Elements is 32">;
+def FeatureHasEfficientSIMD32: SubtargetFeature<
+  "feature_has_efficient_simd32", "HasEfficientSIMD32", "true",
+  "support of SIMD32 programming model for all types">;
+
 
 //===----------------------------------------------------------------------===//
 // GenX processors supported.
@@ -562,6 +605,47 @@ def : Proc<"Xe3", [
   FeatureSystolicDenormControl,
   FeatureThreadPayloadInMemory,
   FeatureTransLegacy,
+]>;
+
+def : Proc<"Xe3P", [
+  FeatureAddressRegisterElements32,
+  FeatureEfficient64b,
+  FeatureFP64,
+  FeatureGRFByteSize64,
+  FeatureHas8ThreadsPerEU,
+  FeatureHasAdd3,
+  FeatureHasBfn,
+  FeatureHasLSC,
+  FeatureHasLSCOffset,
+  FeatureHasLSCTyped,
+  FeatureHasLargeGRF,
+  FeatureHasMadSimd32,
+  FeatureHasMxfp,
+  FeatureHasNamedBarriers,
+  FeatureHasNativeBFloat16,
+  FeatureHasOWordSLM,
+  FeatureHasVRT,
+  FeatureIEEEDivSqrt,
+  FeatureIndirectGRFCrossing,
+  FeatureInstr64BitRotate,
+  FeatureInstrAdd64,
+  FeatureInstrAtomicHF16,
+  FeatureInstrGlobalAtomicAddF64,
+  FeatureInstrLocalAtomicAddF32,
+  FeatureInstrLocalIntegerCas64,
+  FeatureL1L2L3Cache,
+  FeatureLSCMaxWidth32,
+  FeatureLongLong,
+  FeatureNoLegacyDataport,
+  FeaturePartialI64Emulation,
+  FeaturePreemption,
+  FeatureSLM384K,
+  FeatureSwitchjmp,
+  FeatureSystolicDenormControl,
+  FeatureThreadPayloadInMemory,
+  FeatureTransLegacy,
+  FeatureUseMadDDQ,
+  FeatureUseMulDDQ,
 ]>;
 
 def GenX : Target {

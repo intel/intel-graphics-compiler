@@ -538,3 +538,11 @@ ATOMIC(4, 2)
 ATOMIC(8, 2)
 ATOMIC(16, 2)
 ATOMIC(32, 2)
+
+// Atomic routines required for L1-L2-L3 cache hierarchy
+ATOMIC(1, 3)
+ATOMIC(2, 3)
+ATOMIC(4, 3)
+ATOMIC(8, 3)
+ATOMIC(16, 3)
+ATOMIC(32, 3)

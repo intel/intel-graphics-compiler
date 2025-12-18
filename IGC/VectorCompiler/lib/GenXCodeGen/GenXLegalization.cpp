@@ -723,6 +723,7 @@ bool GenXLegalization::processInst(Instruction *Inst) {
       case GenXIntrinsic::genx_dpasw:
       case GenXIntrinsic::genx_dpas_nosrc0:
       case GenXIntrinsic::genx_dpasw_nosrc0:
+      case GenXIntrinsic::genx_bdpas:
         return false;
       default:
         if (GenXIntrinsicInfo(IntrinID).getRetInfo().getCategory() !=
@@ -1608,6 +1609,8 @@ unsigned GenXLegalization::determineNonRegionWidth(Instruction *Inst,
     }
   }
   unsigned NumGRF = 2;
+  if (ST && ST->hasEfficientSIMD32() && Width == 32u && BytesPerElement == 8u)
+    NumGRF = 4;
 
   unsigned int MaxWidthAllowed = ST ? (NumGRF * ST->getGRFByteSize()) : 64;
 

@@ -16,6 +16,11 @@ void initializeGenXBTIAssignmentPass(PassRegistry &);
 
 struct GenXBTIAssignmentPass
     : public llvm::PassInfoMixin<GenXBTIAssignmentPass> {
+  bool Efficient64b = false;
+
+  explicit GenXBTIAssignmentPass(GenXBackendConfigPass::Result &BC,
+                                 bool Efficient64b)
+      : BC(BC), Efficient64b(Efficient64b) {};
   explicit GenXBTIAssignmentPass(GenXBackendConfigPass::Result &BC) : BC(BC) {};
   llvm::PreservedAnalyses run(llvm::Module &M, llvm::ModuleAnalysisManager &AM);
 

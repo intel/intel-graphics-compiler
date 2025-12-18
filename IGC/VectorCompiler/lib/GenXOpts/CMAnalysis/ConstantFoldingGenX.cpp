@@ -247,6 +247,13 @@ Constant *llvm::ConstantFoldGenX(Instruction *I, const DataLayout &DL) {
     return nullptr;
   }
 
+  bool CanFold = llvm::none_of(I->users(),
+                               vc::InternalIntrinsic::isPacked4BitUpconvertLut);
+  if (!CanFold) {
+    LLVM_DEBUG(dbgs() << "Fail: intrinsic shouldn't be fold\n");
+    return nullptr;
+  }
+
   auto &CS = *cast<CallInst>(I);
 
   auto CheckConst = [](const Use &A) {

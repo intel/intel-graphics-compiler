@@ -45,6 +45,7 @@ class PassRegistry;
 #include "GenXPrintfPhiClonning.h"
 #include "GenXPrintfResolution.h"
 #include "GenXSimplify.h"
+#include "GenXStatePointerFence.h"
 #include "GenXTrampolineInsertion.h"
 #include "GenXTranslateIntrinsics.h"
 #include "GenXTranslateSPIRVBuiltins.h"

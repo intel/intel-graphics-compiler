@@ -536,6 +536,7 @@ void GenXVisaRegAlloc::extraCoalescing() {
         case GenXIntrinsic::genx_dpas2:
         case GenXIntrinsic::genx_dpasw:
         case GenXIntrinsic::genx_dpasw_nosrc0:
+        case GenXIntrinsic::genx_bdpas:
           IsDpas = true;
           break;
         default:
@@ -566,6 +567,7 @@ void GenXVisaRegAlloc::extraCoalescing() {
             case GenXIntrinsic::genx_dpas_nosrc0:
             case GenXIntrinsic::genx_dpasw:
             case GenXIntrinsic::genx_dpasw_nosrc0:
+            case GenXIntrinsic::genx_bdpas:
        // Not an intrinsic or safe non-alu intrinsic
               continue;
             default:
@@ -611,6 +613,8 @@ void GenXVisaRegAlloc::extraCoalescing() {
           case GenXIntrinsic::genx_dpas:
           case GenXIntrinsic::genx_dpasw:
             return operandNum == 1 || operandNum == 2;
+          case GenXIntrinsic::genx_bdpas:
+            return operandNum >= 1 && operandNum <= 4;
           case GenXIntrinsic::genx_dpas_nosrc0:
           case GenXIntrinsic::genx_dpasw_nosrc0:
             return operandNum == 0 || operandNum == 1;

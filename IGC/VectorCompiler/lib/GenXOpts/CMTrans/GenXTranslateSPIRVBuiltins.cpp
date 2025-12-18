@@ -208,6 +208,8 @@ Value *SPIRVExpander::visitCallInst(CallInst &CI) {
 
   auto IID = StringSwitch<unsigned>(CalleeName)
                  .StartsWith("BitCount", Intrinsic::ctpop)
+                 // SPV_INTEL_sigmoid extension.
+                 .StartsWith("FSigmoidINTEL", vc::InternalIntrinsic::sigmoid)
                  .Default(Intrinsic::not_intrinsic);
 
   if (IID != Intrinsic::not_intrinsic) {
@@ -308,6 +310,7 @@ Value *SPIRVExpander::visitCallInst(CallInst &CI) {
             .StartsWith("mad", Intrinsic::fmuladd)
             .StartsWith("sqrt", Intrinsic::sqrt)
             .StartsWith("rsqrt", GenXIntrinsic::genx_rsqrt)
+            .StartsWith("tanh", vc::InternalIntrinsic::tanh)
             .Default(Intrinsic::not_intrinsic);
 
   if (IID != Intrinsic::not_intrinsic) {

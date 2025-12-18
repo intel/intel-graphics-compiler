@@ -24,6 +24,7 @@ set(OPT_SOURCES
   CMTrans/GenXTypeLegalization.cpp
   CMTrans/GenXCloneIndirectFunctions.cpp
   CMTrans/GenXLinkageCorruptor.cpp
+  CMTrans/GenXStatePointerFence.cpp
   CMPacketize/GenXLegalizeGVLoadUses.cpp
   CMPacketize/GenXPacketize.cpp
   CMPacketize/PacketBuilder.cpp

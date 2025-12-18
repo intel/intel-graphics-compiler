@@ -10,6 +10,10 @@
 ; RUN: -vc-skip-ocl-runtime-info -finalizer-opts='-asmToConsole' -o /dev/null | FileCheck %s
 ; RUN: %llc_opaque_ptrs %s -march=genx64 -mcpu=XeLPG -vc-builtins-bif-path=%VC_BIF_XeLPG_OPAQUE_PTRS% \
 ; RUN: -vc-skip-ocl-runtime-info -finalizer-opts='-asmToConsole' -o /dev/null | FileCheck %s
+; RUN: %llc_typed_ptrs %s -march=genx64 -mcpu=Xe3P -vc-builtins-bif-path=%VC_BIF_Xe3P_TYPED_PTRS% \
+; RUN: -vc-skip-ocl-runtime-info -finalizer-opts='-asmToConsole' -o /dev/null | FileCheck %s
+; RUN: %llc_opaque_ptrs %s -march=genx64 -mcpu=Xe3P -vc-builtins-bif-path=%VC_BIF_Xe3P_OPAQUE_PTRS% \
+; RUN: -vc-skip-ocl-runtime-info -finalizer-opts='-asmToConsole' -o /dev/null | FileCheck %s
 
 ; CHECK-NOT: ERROR
 target triple = "genx64-unknown-unknown"

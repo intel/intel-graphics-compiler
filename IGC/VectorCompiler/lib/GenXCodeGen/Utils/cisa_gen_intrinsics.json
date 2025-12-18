@@ -132,6 +132,22 @@
       "src0": "CreateOpndPredefinedSrc(PREDEFINED_TSC, 0, 0, 1, 1, 0)"
     },
     // Internal vc intrinsics
+    "vc::InternalIntrinsic::tanh": {
+      "opc": "ISA_TANH",
+      "exec_size": [ "EXECSIZE" ],
+      "elementwise": [ "ELEMENTWISE" ],
+      "pred": [ "IMPLICITPRED" ],
+      "dst": [ "GENERAL", 0 ],
+      "src0": [ "GENERAL", 1 ]
+    },
+    "vc::InternalIntrinsic::sigmoid": {
+      "opc": "ISA_SIGM",
+      "exec_size": [ "EXECSIZE" ],
+      "elementwise": [ "ELEMENTWISE" ],
+      "pred": [ "IMPLICITPRED" ],
+      "dst": [ "GENERAL", 0 ],
+      "src0": [ "GENERAL", 1 ]
+    },
     "vc::InternalIntrinsic::rsqrtm": {
       "opc": "ISA_RSQTM",
       "exec_size": [ "EXECSIZE" ],
@@ -201,6 +217,41 @@
       "src0": [ "GENERAL", 1 ],
       "src1": [ "GENERAL", "UNSIGNED", "NOIMM", "DIRECTONLY", 2 ]
     },
+    "vc::InternalIntrinsic::stochastic_round_to_hf8": {
+      "opc": "ISA_SRND",
+      "exec_size": [ "EXECSIZE_NOMASK" ],
+      "elementwise": [ "ELEMENTWISE" ],
+      "pred": [ "IMPLICITPRED" ],
+      "dst": [ "GENERAL", "SIGNED", "SATURATION_INTALLOWED", 0 ],
+      "src0": [ "GENERAL", 1 ],
+      "src1": [ "GENERAL", "UNSIGNED", "NOIMM", "DIRECTONLY", 2 ]
+    },
+    "vc::InternalIntrinsic::packed_4bit_upconvert_lut": {
+      "opc": "ISA_SHFL_IDX4",
+      "exec_size": [ "EXECSIZE" ],
+      "pred": [ "IMPLICITPRED" ],
+      "dst": [ "URAW", 0 ],
+      "lut": [ "GENERAL", "UNSIGNED", "NOIMM", "DIRECTONLY", 1 ],
+      "src": [ "GENERAL", "UNSIGNED", "NOIMM", "DIRECTONLY", 2 ]
+    },
+    "vc::InternalIntrinsic::raw_sendg": {
+      "opc": "ISA_RAW_SENDG",
+      "exec_size": ["EXECSIZE_FROM_ARG", 5],
+      "Dest": ["RAW", "RAW_NULLALLOWED", 0],
+      "DestSize": ["SHORT", 1],
+      "IsCond": ["BYTE", 2],
+      "IsEOT": ["BYTE", 3],
+      "SFID": ["BYTE", 4],
+      "pred": ["PREDICATION", 5],
+      "Src0": ["RAW", "RAW_NULLALLOWED", 6],
+      "Src0Size": ["SHORT", 7],
+      "Src1": ["RAW", "RAW_NULLALLOWED", 8],
+      "Src1Size": ["SHORT", 9],
+      "Ind0": ["GENERAL", "UNSIGNED", "NULLALLOWED", 10],
+      "Ind1": ["GENERAL", "UNSIGNED", "NULLALLOWED", 11],
+      "Desc": ["GENERAL", "UNSIGNED", 12],
+      "twoaddr": ["TWOADDR", 13]
+    },
     "vc::InternalIntrinsic::lsc_atomic_bti": {
       "opc": "ISA_LSC_UNTYPED",
       "gen_opc": "ISA_LSC_ATOMIC",
@@ -240,6 +291,27 @@
       "Src1": ["RAW", "RAW_NULLALLOWED", 10],
       "Src2": ["RAW", "RAW_NULLALLOWED", 11],
       "twoaddr": ["TWOADDR", 12]
+    },
+    "vc::InternalIntrinsic::lsc_atomic_surf": {
+      "opc": "ISA_LSC_UNTYPED",
+      "gen_opc": "ISA_LSC_ATOMIC",
+      "exec_size": [ "EXECSIZE_FROM_ARG", 1 ],
+      "Dest": ["RAW", "RAW_NULLALLOWED", 0],
+      "pred": ["PREDICATION", 1],
+      "Opcode": ["BYTE", 2],
+      "LscSFID": ["LITERAL", "LSC_UGM"],
+      "AddrType": ["LITERAL", "LSC_ADDR_TYPE_SURF"],
+      "AddrSize": ["BYTE", 3],
+      "ElementSize": ["BYTE", 4],
+      "CacheOpts": ["CACHEOPTS", 5],
+      "Base": ["GENERAL", 6],
+      "SurfaceIndex": [ "BYTE", 7 ],
+      "Indices": ["URAW", 8],
+      "Scale": ["SHORT", 9],
+      "Offset": ["INT", 10],
+      "Src1": ["RAW", "RAW_NULLALLOWED", 11],
+      "Src2": ["RAW", "RAW_NULLALLOWED", 12],
+      "twoaddr": ["TWOADDR", 13]
     },
     "vc::InternalIntrinsic::lsc_atomic_slm": {
       "opc": "ISA_LSC_UNTYPED",
@@ -319,6 +391,26 @@
       "Offset": ["INT", 9],
       "twoaddr": ["TWOADDR", 10]
     },
+    "vc::InternalIntrinsic::lsc_load_surf": {
+      "opc": "ISA_LSC_UNTYPED",
+      "gen_opc": "ISA_LSC_LOAD",
+      "exec_size": [ "EXECSIZE_FROM_ARG", 1 ],
+      "Dest": ["RAW", 0],
+      "pred": ["PREDICATION", 1],
+      "Opcode": ["LITERAL", "LSC_LOAD"],
+      "LscSFID": ["LITERAL", "LSC_UGM"],
+      "AddrType": ["LITERAL", "LSC_ADDR_TYPE_SURF"],
+      "AddrSize": ["BYTE", 2],
+      "ElementSize": ["BYTE", 3],
+      "VectorAttr": ["BYTE", 4],
+      "CacheOpts": ["CACHEOPTS", 5],
+      "Base": ["GENERAL", 6],
+      "SurfaceIndex": ["BYTE", 7],
+      "Indices": ["URAW", 8],
+      "Scale": ["SHORT", 9],
+      "Offset": ["INT", 10],
+      "twoaddr": ["TWOADDR", 11]
+    },
     "vc::InternalIntrinsic::lsc_load_slm": {
       "opc": "ISA_LSC_UNTYPED",
       "gen_opc": "ISA_LSC_LOAD",
@@ -395,6 +487,26 @@
       "Offset": ["INT", 9],
       "twoaddr": ["TWOADDR", 10]
     },
+    "vc::InternalIntrinsic::lsc_load_quad_surf": {
+      "opc": "ISA_LSC_UNTYPED",
+      "gen_opc": "ISA_LSC_LOAD",
+      "exec_size": [ "EXECSIZE_FROM_ARG", 1 ],
+      "Dest": ["RAW", 0],
+      "pred": ["PREDICATION", 1],
+      "Opcode": ["LITERAL", "LSC_LOAD_QUAD"],
+      "LscSFID": ["LITERAL", "LSC_UGM"],
+      "AddrType": ["LITERAL", "LSC_ADDR_TYPE_SURF"],
+      "AddrSize": ["BYTE", 2],
+      "ElementSize": ["BYTE", 3],
+      "VectorAttr": ["BYTE", 4],
+      "CacheOpts": ["CACHEOPTS", 5],
+      "Base": ["GENERAL", 6],
+      "SurfaceIndex": ["BYTE", 7],
+      "Indices": ["URAW", 8],
+      "Scale": ["SHORT", 9],
+      "Offset": ["INT", 10],
+      "twoaddr": ["TWOADDR", 11]
+    },
     "vc::InternalIntrinsic::lsc_load_quad_slm": {
       "opc": "ISA_LSC_UNTYPED",
       "gen_opc": "ISA_LSC_LOAD",
@@ -469,6 +581,25 @@
       "Scale": ["SHORT", 8],
       "Offset": ["INT", 9]
     },
+    "vc::InternalIntrinsic::lsc_prefetch_surf": {
+      "opc": "ISA_LSC_UNTYPED",
+      "gen_opc": "ISA_LSC_LOAD",
+      "exec_size": [ "EXECSIZE_FROM_ARG", 1 ],
+      "Dest": ["NULLRAW"],
+      "pred": ["PREDICATION", 1],
+      "Opcode": ["LITERAL", "LSC_LOAD"],
+      "LscSFID": ["LITERAL", "LSC_UGM"],
+      "AddrType": ["LITERAL", "LSC_ADDR_TYPE_SURF"],
+      "AddrSize": ["BYTE", 2],
+      "ElementSize": ["BYTE", 3],
+      "VectorAttr": ["BYTE", 4],
+      "CacheOpts": ["CACHEOPTS", 5],
+      "Base": ["GENERAL", 6],
+      "SurfaceIndex": ["BYTE", 7],
+      "Indices": ["URAW", 8],
+      "Scale": ["SHORT", 9],
+      "Offset": ["INT", 10]
+    },
     "vc::InternalIntrinsic::lsc_prefetch_ugm": {
       "opc": "ISA_LSC_UNTYPED",
       "gen_opc": "ISA_LSC_LOAD",
@@ -523,6 +654,25 @@
       "Scale": ["SHORT", 8],
       "Offset": ["INT", 9]
     },
+    "vc::InternalIntrinsic::lsc_prefetch_quad_surf": {
+      "opc": "ISA_LSC_UNTYPED",
+      "gen_opc": "ISA_LSC_LOAD",
+      "exec_size": [ "EXECSIZE_FROM_ARG", 1 ],
+      "Dest": ["NULLRAW"],
+      "pred": ["PREDICATION", 1],
+      "Opcode": ["LITERAL", "LSC_LOAD_QUAD"],
+      "LscSFID": ["LITERAL", "LSC_UGM"],
+      "AddrType": ["LITERAL", "LSC_ADDR_TYPE_SURF"],
+      "AddrSize": ["BYTE", 2],
+      "ElementSize": ["BYTE", 3],
+      "VectorAttr": ["BYTE", 4],
+      "CacheOpts": ["CACHEOPTS", 5],
+      "Base": ["GENERAL", 6],
+      "SurfaceIndex": ["BYTE", 7],
+      "Indices": ["URAW", 8],
+      "Scale": ["SHORT", 9],
+      "Offset": ["INT", 10]
+    },
     "vc::InternalIntrinsic::lsc_prefetch_quad_ugm": {
       "opc": "ISA_LSC_UNTYPED",
       "gen_opc": "ISA_LSC_LOAD",
@@ -576,6 +726,25 @@
       "Scale": ["SHORT", 8],
       "Offset": ["INT", 9],
       "Data": ["RAW", 10]
+    },
+    "vc::InternalIntrinsic::lsc_store_surf": {
+      "opc": "ISA_LSC_UNTYPED",
+      "gen_opc": "ISA_LSC_STORE",
+      "exec_size": [ "EXECSIZE_FROM_ARG", 1 ],
+      "pred": ["PREDICATION", 1],
+      "Opcode": ["LITERAL", "LSC_STORE"],
+      "LscSFID": ["LITERAL", "LSC_UGM"],
+      "AddrType": ["LITERAL", "LSC_ADDR_TYPE_SURF"],
+      "AddrSize": ["BYTE", 2],
+      "ElementSize": ["BYTE", 3],
+      "VectorAttr": ["BYTE", 4],
+      "CacheOpts": ["CACHEOPTS", 5],
+      "Base": ["GENERAL", 6],
+      "SurfaceIndex": ["BYTE", 7],
+      "Indices": ["URAW", 8],
+      "Scale": ["SHORT", 9],
+      "Offset": ["INT", 10],
+      "Data": ["RAW", 11]
     },
     "vc::InternalIntrinsic::lsc_store_slm": {
       "opc": "ISA_LSC_UNTYPED",
@@ -648,6 +817,25 @@
       "Scale": ["SHORT", 8],
       "Offset": ["INT", 9],
       "Data": ["RAW", 10]
+    },
+    "vc::InternalIntrinsic::lsc_store_quad_surf": {
+      "opc": "ISA_LSC_UNTYPED",
+      "gen_opc": "ISA_LSC_STORE",
+      "exec_size": [ "EXECSIZE_FROM_ARG", 1 ],
+      "pred": ["PREDICATION", 1],
+      "Opcode": ["LITERAL", "LSC_STORE_QUAD"],
+      "LscSFID": ["LITERAL", "LSC_UGM"],
+      "AddrType": ["LITERAL", "LSC_ADDR_TYPE_SURF"],
+      "AddrSize": ["BYTE", 2],
+      "ElementSize": ["BYTE", 3],
+      "VectorAttr": ["BYTE", 4],
+      "CacheOpts": ["CACHEOPTS", 5],
+      "Base": ["GENERAL", 6],
+      "SurfaceIndex": ["BYTE", 7],
+      "Indices": ["URAW", 8],
+      "Scale": ["SHORT", 9],
+      "Offset": ["INT", 10],
+      "Data": ["RAW", 11]
     },
     "vc::InternalIntrinsic::lsc_store_quad_slm": {
       "opc": "ISA_LSC_UNTYPED",
@@ -776,6 +964,55 @@
       "AddrsV": ["RAW", "UNSIGNED", "RAW_NULLALLOWED", 6],
       "AddrsR": ["RAW", "UNSIGNED", "RAW_NULLALLOWED", 7],
       "AddrsLOD": ["RAW", "UNSIGNED", "RAW_NULLALLOWED", 8]
+    },
+    "vc::InternalIntrinsic::lsc_load_quad_tgm_surf" : {
+      "opc": "ISA_LSC_TYPED",
+      "gen_opc": "ISA_LSC_TYPED_LOAD",
+      "exec_size": ["EXECSIZE_FROM_ARG", 1],
+      "pred": ["PREDICATION", 1],
+      "CacheOpts": ["CACHEOPTS", 2],
+      "ChMask": ["BYTE", 3],
+      "AddrType": ["LITERAL", "LSC_ADDR_TYPE_SURF"],
+      "Surface": ["GENERAL", "UNSIGNED", 4],
+      "SamplerIndex": ["BYTE", 5],
+      "Dst": ["RAW", 0],
+      "AddrsU": ["RAW", "UNSIGNED", "RAW_NULLALLOWED", 6],
+      "AddrsV": ["RAW", "UNSIGNED", "RAW_NULLALLOWED", 7],
+      "AddrsR": ["RAW", "UNSIGNED", "RAW_NULLALLOWED", 8],
+      "AddrsLOD": ["RAW", "UNSIGNED", "RAW_NULLALLOWED", 9],
+      "twoaddr": ["TWOADDR", 10]
+    },
+    "vc::InternalIntrinsic::lsc_store_quad_tgm_surf" : {
+      "opc": "ISA_LSC_TYPED",
+      "gen_opc": "ISA_LSC_TYPED_STORE",
+      "exec_size": ["EXECSIZE_FROM_ARG", 1],
+      "pred": ["PREDICATION", 1],
+      "CacheOpts": ["CACHEOPTS", 2],
+      "ChMask": ["BYTE", 3],
+      "AddrType": ["LITERAL", "LSC_ADDR_TYPE_SURF"],
+      "Surface": ["GENERAL", "UNSIGNED", 4],
+      "SamplerIndex": ["BYTE", 5],
+      "AddrsU": ["RAW", "UNSIGNED", "RAW_NULLALLOWED", 6],
+      "AddrsV": ["RAW", "UNSIGNED", "RAW_NULLALLOWED", 7],
+      "AddrsR": ["RAW", "UNSIGNED", "RAW_NULLALLOWED", 8],
+      "AddrsLOD": ["RAW", "UNSIGNED", "RAW_NULLALLOWED", 9],
+      "Src": ["RAW", 10]
+    },
+    "vc::InternalIntrinsic::lsc_prefetch_quad_tgm_surf" : {
+      "opc": "ISA_LSC_TYPED",
+      "gen_opc": "ISA_LSC_TYPED_LOAD",
+      "exec_size": ["EXECSIZE_FROM_ARG", 1],
+      "pred": ["PREDICATION", 1],
+      "CacheOpts": ["CACHEOPTS", 2],
+      "ChMask": ["BYTE", 3],
+      "AddrType": ["LITERAL", "LSC_ADDR_TYPE_SURF"],
+      "Surface": ["GENERAL", "UNSIGNED", 4],
+      "SamplerIndex": ["BYTE", 5],
+      "Dst": ["NULLRAW"],
+      "AddrsU": ["RAW", "UNSIGNED", "RAW_NULLALLOWED", 6],
+      "AddrsV": ["RAW", "UNSIGNED", "RAW_NULLALLOWED", 7],
+      "AddrsR": ["RAW", "UNSIGNED", "RAW_NULLALLOWED", 8],
+      "AddrsLOD": ["RAW", "UNSIGNED", "RAW_NULLALLOWED", 9]
     },
     "vc::InternalIntrinsic::lsc_load_block_2d_ugm" : {
       "opc": "ISA_LSC_UNTYPED",
@@ -1054,6 +1291,36 @@
       "YOff": [ "GENERAL", "UNSIGNED", 6 ],
       "Src": [ "RAW", 7 ]
     },
+    "vc::InternalIntrinsic::lsc_load_2d_tgm_surf" : {
+      "opc": "ISA_LSC_TYPED",
+      "gen_opc": "ISA_LSC_TYPED_2D",
+      "sub_opc": [ "LITERAL", "LSC_LOAD_BLOCK2D" ],
+      "address_model": [ "LITERAL", "LSC_ADDR_TYPE_SURF" ],
+      "Dst": [ "RAW", 0 ],
+      "CacheOpts": ["CACHEOPTS", 1],
+      "Surface": [ "GENERAL", "UNSIGNED", 2 ],
+      "SurfaceIndex": [ "BYTE", 3 ],
+      "BlockHeight": [ "INT", 4 ],
+      "BlockWidth": [ "INT", 5 ],
+      "XOff": [ "GENERAL", "UNSIGNED", 6 ],
+      "YOff": [ "GENERAL", "UNSIGNED", 7 ],
+      "Src": [ "NULLRAW" ]
+    },
+    "vc::InternalIntrinsic::lsc_store_2d_tgm_surf" : {
+      "opc": "ISA_LSC_TYPED",
+      "gen_opc": "ISA_LSC_TYPED_2D",
+      "sub_opc": [ "LITERAL", "LSC_STORE_BLOCK2D" ],
+      "address_model": [ "LITERAL", "LSC_ADDR_TYPE_SURF" ],
+      "Dst": [ "NULLRAW" ],
+      "CacheOpts": ["CACHEOPTS", 1],
+      "Surface": [ "GENERAL", "UNSIGNED", 2 ],
+      "SurfaceIndex": [ "BYTE", 3 ],
+      "BlockHeight": [ "INT", 4 ],
+      "BlockWidth": [ "INT", 5 ],
+      "XOff": [ "GENERAL", "UNSIGNED", 6 ],
+      "YOff": [ "GENERAL", "UNSIGNED", 7 ],
+      "Src": [ "RAW", 8 ]
+    },
     "vc::InternalIntrinsic::sampler_load_bti" : {
       "opc": "ISA_3D_LOAD",
       "exec_size": [ "EXECSIZE_FROM_ARG", 1 ],
@@ -1063,6 +1330,7 @@
       "Dst": [ "RAW", 0 ],
       "AOffImmI": [ "GENERAL", "UNSIGNED", 4 ],
       "Surface": [ "SURFACE", 5 ],
+      "SurfaceIndex": [ "LITERAL", 0 ],
       "PairedSurface": [ "NULLRAW" ],
       "twoaddr": [ "TWOADDR", 6 ],
       "NumSrcs": [ "ARGCOUNT", "ARGCOUNTMIN1", 7 ],
@@ -1077,10 +1345,26 @@
       "Dst": [ "RAW", 0 ],
       "AOffImmI": [ "GENERAL", "UNSIGNED", 4 ],
       "Surface": [ "PREDEF_SURFACE", 5 ],
+      "SurfaceIndex": [ "LITERAL", 0 ],
       "PairedSurface": [ "NULLRAW" ],
       "twoaddr": [ "TWOADDR", 6 ],
       "NumSrcs": [ "ARGCOUNT", "ARGCOUNTMIN1", 7 ],
       "Srcs": [ "RAW_OPERANDS", "RAW", 7 ]
+    },
+    "vc::InternalIntrinsic::sampler_load_surf" : {
+      "opc": "ISA_3D_LOAD",
+      "exec_size": [ "EXECSIZE_FROM_ARG", 1 ],
+      "pred": ["PREDICATION", 1],
+      "sub_opc": [ "SHORT", 2 ],
+      "ChMask": [ "BYTE", 3 ],
+      "Dst": [ "RAW", 0 ],
+      "AOffImmI": [ "GENERAL", "UNSIGNED", 4 ],
+      "Surface": [ "GENERAL", "UNSIGNED", 5 ],
+      "SurfaceIndex": [ "BYTE", 6 ],
+      "PairedSurface": [ "NULLRAW" ],
+      "twoaddr": [ "TWOADDR", 7 ],
+      "NumSrcs": [ "ARGCOUNT", "ARGCOUNTMIN1", 8 ],
+      "Srcs": [ "RAW_OPERANDS", "RAW", 8 ]
     },
     "vc::InternalIntrinsic::sample_bti" : {
       "opc": "ISA_3D_SAMPLE",
@@ -1092,6 +1376,8 @@
       "AOffImmI": [ "GENERAL", "UNSIGNED", 4 ],
       "Surface": [ "SURFACE", 5 ],
       "Sampler": [ "SAMPLER", 6 ],
+      "SurfaceIndex": [ "LITERAL", 0 ],
+      "SamplerIndex": [ "LITERAL", 0 ],
       "PairedSurface": [ "NULLRAW" ],
       "twoaddr": [ "TWOADDR", 7 ],
       "NumSrcs": [ "ARGCOUNT", "ARGCOUNTMIN1", 8 ],
@@ -1107,10 +1393,29 @@
       "AOffImmI": [ "GENERAL", "UNSIGNED", 4 ],
       "Surface": [ "PREDEF_SURFACE", 5 ],
       "Sampler": [ "PREDEF_SAMPLER", 6 ],
+      "SurfaceIndex": [ "LITERAL", 0 ],
+      "SamplerIndex": [ "LITERAL", 0 ],
       "PairedSurface": [ "NULLRAW" ],
       "twoaddr": [ "TWOADDR", 7 ],
       "NumSrcs": [ "ARGCOUNT", "ARGCOUNTMIN1", 8 ],
       "Srcs": [ "RAW_OPERANDS", "RAW", 8 ]
+    },
+    "vc::InternalIntrinsic::sample_surf" : {
+      "opc": "ISA_3D_SAMPLE",
+      "exec_size": [ "EXECSIZE_FROM_ARG", 1 ],
+      "pred": ["PREDICATION", 1],
+      "sub_opc": [ "SHORT", 2 ],
+      "ChMask": [ "BYTE", 3 ],
+      "Dst": [ "RAW", 0 ],
+      "AOffImmI": [ "GENERAL", "UNSIGNED", 4 ],
+      "Surface": [ "GENERAL", 5 ],
+      "SurfaceIndex": [ "BYTE", 6 ],
+      "Sampler": [ "GENERAL", 7 ],
+      "SamplerIndex": [ "BYTE", 8 ],
+      "PairedSurface": [ "NULLRAW" ],
+      "twoaddr": [ "TWOADDR", 9 ],
+      "NumSrcs": [ "ARGCOUNT", "ARGCOUNTMIN1", 10 ],
+      "Srcs": [ "RAW_OPERANDS", "RAW", 10 ]
     },
     // vc-intrinsics
     "genx_fptosi_sat": {
@@ -3436,6 +3741,15 @@
       "src2": [ "GENERAL", "UNSIGNED", "IMM16ONLY", 3 ],
       "src4_LUT_value_constant": [ "BYTE", 4 ]
     },
+    "genx_lfsr": {
+      "opc": "ISA_LFSR",
+      "exec_size": [ "EXECSIZE" ],
+      "pred": [ "IMPLICITPRED" ],
+      "dst": [ "GENERAL", "UNSIGNED", "DIRECTONLY", "SATURATION_NOSAT", 0 ],
+      "src0": [ "GENERAL", "UNSIGNED", "DIRECTONLY", "NOIMM", 1 ],
+      "src1": [ "GENERAL", "UNSIGNED", "DIRECTONLY", 2 ],
+      "mode": [ "BYTE", 3 ]
+    },
     "genx_va_minmax": {
       "opc": "ISA_VA",
       "gen_opc": "ISA_VA_MINMAX_FOPCODE",
@@ -3684,6 +3998,19 @@
       "dst": [ "GENERAL", "SIGNED", "SATURATION_INTALLOWED", 0 ],
       "src0": [ "GENERAL", "SIGNED", "NOIMM", 1 ]
     },
+    "genx_4bit_downconvert": {
+      "opc": "ISA_DNSCL",
+      "exec_size": [ "EXECSIZE" ],
+      "elementwise": [ "ELEMENTWISE" ],
+      "pred": [ "IMPLICITPRED" ],
+      "dst": [ "RAW", "UNSIGNED", 0 ],
+      "src0": [ "RAW", "UNSIGNED", 1 ],
+      "src1": [ "RAW", "UNSIGNED", 2 ],
+      "bias": [ "RAW", "UNSIGNED", "RAW_NULLALLOWED", 3 ],
+      "CvtType": [ "BYTE", 4 ],
+      "CvtMode": [ "BYTE", 5 ],
+      "RndMode": [ "BYTE", 6 ]
+    },
     "genx_bfrev": {
       "opc": "ISA_BFREV",
       "exec_size": [ "EXECSIZE" ],
@@ -3883,6 +4210,20 @@
       "src1": [ "RAW", 1 ],
       "src2": [ "GENERAL", "CONTIGUOUS", "OWALIGNED", "NOIMM", "DIRECTONLY", 2 ],
       "src3": [ "INT", 3 ]
+    },
+    "genx_bdpas": {
+      "opc": "ISA_BDPAS",
+      "exec_size": [ "EXECSIZE_GE8" ],
+      "Dst": [ "RAW", 0 ],
+      "Src0": [ "RAW", "RAW_NULLALLOWED", 1 ],
+      "Src1": [ "RAW", "RAW_UNSIGNED", 2 ],
+      "Src2": [ "RAW", "RAW_UNSIGNED", 3 ],
+      "Src3": [ "GENERAL", "UNSIGNED", "NOIMM", "DIRECTONLY", "CONTIGUOUS", "NULLALLOWED", "OWALIGNED", 4 ],
+      "Src4": [ "GENERAL", "UNSIGNED", "NOIMM", "DIRECTONLY", "CONTIGUOUS", "NULLALLOWED", "QWALIGNED", 5 ],
+      "Src1Precision": [ "INT", 6 ],
+      "Src2Precision": [ "INT", 7 ],
+      "SystolicDepth": [ "INT", 8 ],
+      "RepeatCount":   [ "INT", 9 ]
     },
     "genx_sfbh": {
       "opc": "ISA_FBH",
@@ -4990,6 +5331,65 @@
         ]
       ]
     ],
+    "ISA_TANH": [
+      [ "CISA_CALL",
+        [ "Kernel->AppendVISAArithmeticInst",
+          "opc",
+          "pred",
+          "Mod & MODIFIER_SAT",
+          "exec_mask",
+          "exec_size",
+          "dst",
+          "src0",
+          "nullptr",
+          "nullptr"
+        ]
+      ]
+    ],
+    "ISA_SIGM": [
+      [ "CISA_CALL",
+        [ "Kernel->AppendVISAArithmeticInst",
+          "opc",
+          "pred",
+          "Mod & MODIFIER_SAT",
+          "exec_mask",
+          "exec_size",
+          "dst",
+          "src0",
+          "nullptr",
+          "nullptr"
+        ]
+      ]
+    ],
+    "ISA_LFSR": [
+      [ "CISA_CALL",
+        [ "Kernel->AppendVISALfsrInst",
+          "pred",
+          "exec_mask",
+          "exec_size",
+          "static_cast<LFSR_FC>(mode)",
+          "dst",
+          "src0",
+          "src1"
+        ]
+      ]
+    ],
+    "ISA_DNSCL": [
+      [ "CISA_CALL",
+        [ "Kernel->AppendVISADnsclInst",
+          "pred",
+          "exec_mask",
+          "exec_size",
+          "static_cast<DNSCL_CONVERT_TYPE>(CvtType)",
+          "static_cast<DNSCL_MODE>(CvtMode)",
+          "static_cast<DNSCL_RND_MODE>(RndMode)",
+          "dst",
+          "src0",
+          "src1",
+          "bias"
+        ]
+      ]
+    ],
     "ISA_AVG": [
       [ "CISA_CALL",
         [ "Kernel->AppendVISAArithmeticInst",
@@ -5133,6 +5533,24 @@
         "src",
         "numsrc2",
         "src2"
+      ]
+    ],
+    "ISA_RAW_SENDG": [
+      [ "CreateRawSendG",
+        "exec_mask",
+        "exec_size",
+        "pred",
+        "SFID",
+        "IsCond",
+        "IsEOT",
+        "Dest",
+        "DestSize",
+        "Src0",
+        "Src0Size",
+        "Src1",
+        "Src1Size",
+        "Ind0",
+        "Ind1"
       ]
     ],
     "ISA_RNDD": [
@@ -5558,6 +5976,7 @@
           "convertChannelMaskToVisaType(ChMask)",
           "AOffImmI",
           "reinterpret_cast<VISA_StateOpndHandle *>(Surface)",
+          "SurfaceIndex",
           "PairedSurface",
           "Dst",
           "NumSrcs",
@@ -5578,7 +5997,9 @@
           "convertChannelMaskToVisaType(ChMask)",
           "AOffImmI",
           "reinterpret_cast<VISA_StateOpndHandle *>(Sampler)",
+          "SamplerIndex",
           "reinterpret_cast<VISA_StateOpndHandle *>(Surface)",
+          "SurfaceIndex",
           "PairedSurface",
           "Dst",
           "NumSrcs",
@@ -5860,6 +6281,25 @@
         ]
       ]
     ],
+    "ISA_BDPAS": [
+      [ "CISA_CALL",
+        [ "Kernel->AppendVISABdpasInst",
+          "opc",
+          "exec_mask",
+          "exec_size",
+          "Dst",
+          "Src0",
+          "Src1",
+          "Src2",
+          "Src3",
+          "Src4",
+          "static_cast<GenPrecision>(Src2Precision)",
+          "static_cast<GenPrecision>(Src1Precision)",
+          "SystolicDepth",
+          "RepeatCount"
+        ]
+      ]
+    ],
     "ISA_FBH": [
       [ "CISA_CALL",
         [ "Kernel->AppendVISALogicOrShiftInst",
@@ -5904,6 +6344,20 @@
           "src0",
           "src1",
           "nullptr"
+        ]
+      ]
+    ],
+    "ISA_SHFL_IDX4": [
+      [ "CISA_CALL",
+        [
+          "Kernel->AppendVISAShflIdx4Inst",
+          "opc",
+          "pred",
+          "exec_mask",
+          "exec_size",
+          "dst",
+          "lut",
+          "src"
         ]
       ]
     ],

@@ -14,8 +14,11 @@ void initializeCMImpParamPass(PassRegistry &);
 
 struct CMImpParamPass : public llvm::PassInfoMixin<CMImpParamPass> {
   bool HasPayloadInMemory = false;
-  CMImpParamPass(bool HasPayloadInMemoryIn)
-      : HasPayloadInMemory{HasPayloadInMemoryIn} {};
+  bool HasEfficient64b = false;
+
+  CMImpParamPass(bool HasPayloadInMemoryIn, bool HasEfficient64bIn)
+      : HasPayloadInMemory{HasPayloadInMemoryIn},
+        HasEfficient64b{HasEfficient64bIn} {};
 
   CMImpParamPass();
 

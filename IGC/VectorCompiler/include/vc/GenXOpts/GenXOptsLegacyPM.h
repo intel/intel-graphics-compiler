@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2019-2024 Intel Corporation
+Copyright (C) 2019-2025 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -26,13 +26,14 @@ class PassRegistry;
 //
 // CMImpParam - Transforms to enable implicit parameters
 //
-Pass *createCMImpParamPass(bool);
+Pass *createCMImpParamPass(bool, bool);
 
 //===----------------------------------------------------------------------===//
 //
 // CMKernelArgOffset - Determine offset of each CM kernel argument
 //
-Pass *createCMKernelArgOffsetPass(unsigned GrfByteSize, bool UseBindlessImages);
+Pass *createCMKernelArgOffsetPass(unsigned GrfByteSize, bool Efficient64b,
+                                  bool UseBindlessImages);
 
 //===----------------------------------------------------------------------===//
 //
@@ -74,7 +75,7 @@ void initializeGenXImportOCLBiFPass(PassRegistry &);
 ModulePass *createGenXBIFFlagCtrlResolutionPass();
 void initializeGenXBIFFlagCtrlResolutionPass(PassRegistry &);
 
-ModulePass *createGenXBTIAssignmentPass();
+ModulePass *createGenXBTIAssignmentPass(bool);
 void initializeGenXBTIAssignmentPass(PassRegistry &);
 
 ModulePass *createGenXTranslateSPIRVBuiltinsPass();
@@ -94,6 +95,9 @@ void initializeGenXTranslateIntrinsicsPass(PassRegistry &);
 
 FunctionPass *createGenXTypeLegalizationPass();
 void initializeGenXTypeLegalizationPass(PassRegistry &);
+
+FunctionPass *createGenXStatePointerFencePass();
+void initializeGenXStatePointerFencePass(PassRegistry &);
 
 void initializeCMLowerVLoadVStorePass(PassRegistry &);
 

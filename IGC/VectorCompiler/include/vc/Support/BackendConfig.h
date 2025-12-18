@@ -189,6 +189,9 @@ struct GenXBackendOptions {
   // Compile until vISA stage only.
   bool EmitVisaOnly = false;
 
+  // Enable efficient 64-bit addressing mode for Xe3P platform
+  bool EnableEfficient64b = false;
+
   bool EnableHashMovs = false;
   bool EnableHashMovsAtPrologue = false;
   uint64_t AsmHash = 0;

@@ -114,6 +114,8 @@ static Type *getFloatTyFromBfloat(Type *Ty) {
 
 // fadd, fsub e.t.c
 void GenXBFloatLowering::visitBinaryOperator(BinaryOperator &Inst) {
+  if (ST->hasNativeBFloat16())
+    return;
   auto *Ty = Inst.getType();
   if (!Inst.getType()->getScalarType()->isBFloatTy())
     return;
@@ -140,6 +142,8 @@ void GenXBFloatLowering::visitBinaryOperator(BinaryOperator &Inst) {
 }
 
 void GenXBFloatLowering::visitFCmpInst(FCmpInst &Inst) {
+  if (ST->hasNativeBFloat16())
+    return;
   auto *Src0 = Inst.getOperand(0);
   auto *Src1 = Inst.getOperand(1);
   auto *SrcTy = Src0->getType();
@@ -159,6 +163,8 @@ void GenXBFloatLowering::visitFCmpInst(FCmpInst &Inst) {
 
 // fneg
 void GenXBFloatLowering::visitUnaryOperator(UnaryOperator &Inst) {
+  if (ST->hasNativeBFloat16())
+    return;
   auto *Src = Inst.getOperand(0);
   auto *SrcTy = Src->getType();
   if (!SrcTy->getScalarType()->isBFloatTy())
@@ -201,6 +207,8 @@ void GenXBFloatLowering::visitUIToFPInst(UIToFPInst &Inst) {
 }
 
 void GenXBFloatLowering::visitSelectInst(SelectInst &Inst) {
+  if (ST->hasNativeBFloat16())
+    return;
   auto *Ty = Inst.getType();
   if (!Ty->getScalarType()->isBFloatTy())
     return;
@@ -257,9 +265,13 @@ void GenXBFloatLowering::visitCallInst(CallInst &Inst) {
   case Intrinsic::pow:
   case Intrinsic::sin:
   case Intrinsic::sqrt:
+    if (ST->hasNativeBFloat16())
+      return;
     break;
   case Intrinsic::fptosi_sat:
   case Intrinsic::fptoui_sat:
+    if (ST->hasNativeBFloat16())
+      return;
     Types.push_back(Ty);
     Ty = Inst.getArgOperand(0)->getType();
     break;

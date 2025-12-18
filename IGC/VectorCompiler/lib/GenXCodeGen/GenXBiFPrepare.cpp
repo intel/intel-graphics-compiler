@@ -160,10 +160,30 @@ bool GenXBiFPrepare::isNeededForTarget(const Function &F,
   if (IsFpCvt && !ST.emulateLongLong())
     return false;
 
+  // Remove L1-L2-L3 atomic routines for the platforms which don't support
+  // efficient 64-bit addressing
+  if (!ST.supportEfficient64b() && Name.startswith("atomic") &&
+      Name.endswith("v3i8"))
+    return false;
+
+  if (!ST.hasMxfp() && Name.startswith("mxfp"))
+    return false;
+
   bool Is64bit =
       IsDouble || F.getReturnType()->getScalarType()->isIntegerTy(64);
 
   if (!ST.hasLocalIntegerCas64() && Is64bit && Name.startswith("atomic_slm"))
+    return false;
+
+  if (ST.hasInstrLocalAtomicAddF32() &&
+      F.getReturnType()->getScalarType()->isFloatTy() &&
+      Name.startswith("atomic_slm"))
+    return false;
+
+  // only half precision uses i32 data type
+  if (ST.hasInstrAtomicHF16() &&
+      F.getReturnType()->getScalarType()->isIntegerTy(32) &&
+      Name.startswith("atomic_"))
     return false;
 
   return true;

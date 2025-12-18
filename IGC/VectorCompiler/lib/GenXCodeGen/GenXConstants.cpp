@@ -1786,6 +1786,12 @@ bool ConstantLoader::isLegalSize() const {
     return false;
   const unsigned GRFSizeInBits = Subtarget.getGRFByteSize() * genx::ByteBits;
   unsigned NumGRF = 2;
+  const unsigned BytesPerElement =
+      VT->getElementType()->getPrimitiveSizeInBits() / genx::ByteBits;
+  if (Subtarget.hasEfficientSIMD32() && VT->getNumElements() == 32u &&
+      BytesPerElement == 8u) {
+    NumGRF = 4;
+  }
   if (NumBits > GRFSizeInBits * NumGRF)
     return false; // bigger than NumGRF GRFs
   if (VT->getNumElements() > 32)

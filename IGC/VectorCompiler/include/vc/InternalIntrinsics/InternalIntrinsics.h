@@ -177,6 +177,8 @@ inline int getMemorySurfaceOperandIndex(const llvm::Instruction *I) {
 
 int getMemorySamplerOperandIndex(unsigned IID);
 
+bool hasImmSurfaceIndex(unsigned IID);
+
 int getMemoryCacheControlOperandIndex(unsigned IID);
 
 inline int getMemoryCacheControlOperandIndex(const llvm::Value *V) {
@@ -213,6 +215,11 @@ inline llvm::Value *getMemoryBaseOperand(const llvm::Instruction *I) {
 }
 
 int getTwoAddrOpIndex(const llvm::CallInst *CI);
+
+inline bool isPacked4BitUpconvertLut(const llvm::Value *V) {
+  auto IID = getInternalIntrinsicID(V);
+  return IID == InternalIntrinsic::packed_4bit_upconvert_lut;
+}
 
 } // namespace vc::InternalIntrinsic
 

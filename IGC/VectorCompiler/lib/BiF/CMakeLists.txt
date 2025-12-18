@@ -57,6 +57,8 @@ set(BUILTIN_SOURCES
   Library/Math/Integer/sdivrem.cpp
   Library/Math/Integer/udivrem.cpp
 
+  Library/ML/mxfp.cpp
+
   Library/Atomics/Local/binop.cpp)
 
 vc_embed_optimized_bif(BUILTINS_TYPED_PTRS "${BUILTIN_SOURCES}" VCBuiltins 64 FALSE)

@@ -60,6 +60,7 @@ StructType &vc::ImplicitArgs::Buffer::getType(Module &M) {
   ElementTys[Indices::Padding0] = Int32Ty;
   ElementTys[Indices::RtGlobalBufferPtr] = Int64Ty;
   ElementTys[Indices::AssertBufferPtr] = Int64Ty;
+  ElementTys[Indices::ScratchPtr] = Int64Ty;
   IGC_ASSERT_MESSAGE(std::all_of(ElementTys.begin(), ElementTys.end(),
                                  [](Type *Ty) -> bool { return Ty; }),
                      "all structure element types must be set by the function");
@@ -79,6 +80,24 @@ PointerType &vc::ImplicitArgs::Buffer::getPtrType(Module &M,
                                                   vc::ThreadPayloadKind Kind) {
   return *PointerType::get(&vc::ImplicitArgs::Buffer::getType(M),
                            vc::ImplicitArgs::Buffer::getPtrAddrSpace(Kind));
+}
+
+template <>
+Value &
+vc::ImplicitArgs::Buffer::getPointer<vc::ThreadPayloadKind::InStatelessMemory>(
+    IRBuilder<> &IRB) {
+  auto *M = IRB.GetInsertBlock()->getModule();
+  auto *R0VTy = IGCLLVM::FixedVectorType::get(IRB.getInt64Ty(), 8);
+  auto *R0Func =
+      GenXIntrinsic::getGenXDeclaration(M, GenXIntrinsic::genx_r0, R0VTy);
+
+  auto *R0 = IRB.CreateCall(R0Func, {}, "r0");
+  auto *IntPtr = IRB.CreateExtractElement(R0, 7, "indir.data.heap.ptr.int");
+
+  auto *PtrTy = &vc::ImplicitArgs::Buffer::getPtrType(
+      *M, vc::ThreadPayloadKind::InStatelessMemory);
+  auto *Ptr = IRB.CreateIntToPtr(IntPtr, PtrTy, "indir.data.heap.ptr");
+  return *Ptr;
 }
 
 template <>
@@ -113,6 +132,9 @@ Value &vc::ImplicitArgs::Buffer::getPointer<vc::ThreadPayloadKind::OnRegister>(
 
 Value &vc::ImplicitArgs::Buffer::getPointer(llvm::IRBuilder<> &IRB,
                                             ThreadPayloadKind Kind) {
+  if (Kind == vc::ThreadPayloadKind::InStatelessMemory)
+    return vc::ImplicitArgs::Buffer::getPointer<
+        vc::ThreadPayloadKind::InStatelessMemory>(IRB);
   if (Kind == vc::ThreadPayloadKind::InMemory)
     return vc::ImplicitArgs::Buffer::getPointer<
         vc::ThreadPayloadKind::InMemory>(IRB);
@@ -129,7 +151,10 @@ Value &vc::ImplicitArgs::Buffer::loadField(Value &BufferPtr,
   IGC_ASSERT_MESSAGE(
       BufferPtr.getType() == &vc::ImplicitArgs::Buffer::getPtrType(
                                  *IRB.GetInsertBlock()->getModule(),
-                                 vc::ThreadPayloadKind::InMemory) ||
+                                 vc::ThreadPayloadKind::InStatelessMemory) ||
+          BufferPtr.getType() == &vc::ImplicitArgs::Buffer::getPtrType(
+                                     *IRB.GetInsertBlock()->getModule(),
+                                     vc::ThreadPayloadKind::InMemory) ||
           BufferPtr.getType() == &vc::ImplicitArgs::Buffer::getPtrType(
                                      *IRB.GetInsertBlock()->getModule(),
                                      vc::ThreadPayloadKind::OnRegister),
@@ -168,6 +193,17 @@ Value &vc::ImplicitArgs::LocalID::getBasePtr(Value &BufferPtr, IRBuilder<> &IRB,
                              &vc::ImplicitArgs::LocalID::getPtrType(
                                  *IRB.GetInsertBlock()->getModule()),
                              Name);
+}
+template <>
+Value &
+vc::ImplicitArgs::LocalID::getPointer<vc::ThreadPayloadKind::InStatelessMemory>(
+    Value &BufferPtr, IRBuilder<> &IRB, const Twine &Name) {
+  auto &BasePtr =
+      vc::ImplicitArgs::LocalID::getBasePtr(BufferPtr, IRB, Name + ".base");
+  Value *Index = vc::getGroupThreadIDForPIM(IRB);
+  return *IRB.CreateGEP(
+      &vc::ImplicitArgs::LocalID::getType(*IRB.GetInsertBlock()->getModule()),
+      &BasePtr, Index, Name);
 }
 template <>
 Value &vc::ImplicitArgs::LocalID::getPointer<vc::ThreadPayloadKind::InMemory>(

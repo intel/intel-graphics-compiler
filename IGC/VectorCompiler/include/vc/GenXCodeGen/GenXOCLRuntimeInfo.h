@@ -60,6 +60,8 @@ public:
       ByValSVM,
       BindlessBuffer,
       ImplicitArgsBuffer,
+      IndirectDataBuffer,
+      ScratchBuffer,
     };
 
     enum class AccessKindType { None, ReadOnly, WriteOnly, ReadWrite };
@@ -181,6 +183,7 @@ public:
     unsigned SLMSize = 0;
     unsigned StatelessPrivateMemSize = 0;
     unsigned ThreadPrivateMemSize = 0;
+    unsigned InlineDataPayloadSize = 0;
     unsigned IndirectCount = 0;
 
   private:
@@ -252,6 +255,10 @@ public:
     unsigned getTPMSize() const { return FuncInfo.ThreadPrivateMemSize; }
     unsigned getStatelessPrivMemSize() const {
       return FuncInfo.StatelessPrivateMemSize;
+    }
+
+    unsigned getInlineDataPayloadSize() const {
+      return FuncInfo.InlineDataPayloadSize;
     }
 
     unsigned getGRFSizeInBytes() const { return FuncInfo.GRFSizeInBytes; }

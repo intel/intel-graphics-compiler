@@ -1168,6 +1168,7 @@ Value *GenXPacketize::packetizeGenXIntrinsic(Instruction *Inst) {
       case GenXIntrinsic::genx_usdp4a_sat:
       case GenXIntrinsic::genx_uudp4a_sat:
       case GenXIntrinsic::genx_dpas:
+      case GenXIntrinsic::genx_bdpas:
       case GenXIntrinsic::genx_dpas2:
       case GenXIntrinsic::genx_dpasw:
       case GenXIntrinsic::genx_dpas_nosrc0:

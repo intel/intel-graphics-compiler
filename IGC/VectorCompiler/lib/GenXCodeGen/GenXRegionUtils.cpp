@@ -346,6 +346,8 @@ unsigned genx::getLegalRegionSizeForTarget(const GenXSubtarget &ST,
   IGC_ASSERT_EXIT(GRFByteSize > 0);
   unsigned LogGRFWidth = genx::log2(GRFByteSize);
   unsigned NumGRF = 2;
+  if (ST.hasEfficientSIMD32() && R.Width == 32u && R.ElementBytes == 8u)
+    NumGRF = 4;
 
   if ((!R.Stride || exactLog2(R.Stride) >= 0) &&
       (Allow2D || R.Stride <= MaxStride)) {
@@ -1135,6 +1137,11 @@ Value *llvm::genx::simplifyRegionInst(Instruction *Inst, const DataLayout *DL,
                                       const GenXSubtarget *ST,
                                       const DominatorTree *DT) {
   if (Inst->use_empty())
+    return nullptr;
+
+  bool CanSimplify = llvm::none_of(
+      Inst->users(), vc::InternalIntrinsic::isPacked4BitUpconvertLut);
+  if (!CanSimplify)
     return nullptr;
 
   Value *NewVal = nullptr;

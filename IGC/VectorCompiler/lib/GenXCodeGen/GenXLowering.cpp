@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2024 Intel Corporation
+Copyright (C) 2017-2025 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -268,6 +268,8 @@ private:
   bool lowerLogicalThreadID(CallInst *CI);
   bool lowerNamedBarrierArrive(CallInst *CI);
   bool lowerDpas(CallInst *CI);
+  bool lowerBDpas(CallInst *CI);
+  bool lower4BitDownConvert(CallInst *CI);
 
   Value *swapLowHighHalves(IRBuilder<> &Builder, Value *Arg) const;
   bool lowerByteSwap(CallInst *CI);
@@ -2185,12 +2187,18 @@ bool GenXLowering::processInst(Instruction *Inst) {
       return true;
     case GenXIntrinsic::genx_nbarrier_arrive:
       return lowerNamedBarrierArrive(CI);
+    case GenXIntrinsic::genx_bdpas:
+      if (lowerBDpas(CI))
+        return true;
+      LLVM_FALLTHROUGH;
     case GenXIntrinsic::genx_dpas:
     case GenXIntrinsic::genx_dpas_nosrc0:
     case GenXIntrinsic::genx_dpas2:
       // The genx_dpasw and genx_dpasw_nosrc0 are intentionally not handled
       // here, because they don't support bfloat accumulator.
       return lowerDpas(CI);
+    case GenXIntrinsic::genx_4bit_downconvert:
+      return lower4BitDownConvert(CI);
     }
     return false;
   }
@@ -3571,6 +3579,31 @@ bool GenXLowering::lowerTrap(CallInst *CI) {
   auto *PayloadFunc =
       vc::getAnyDeclaration(M, GenXIntrinsic::genx_r0, {PayloadTy});
   auto *Payload = Builder.CreateCall(PayloadFunc, {});
+  if (ST->hasEfficient64b()) {
+    auto *Func = vc::getAnyDeclaration(
+        M, vc::InternalIntrinsic::raw_sendg,
+        {PayloadTy, Builder.getInt1Ty(), PayloadTy, PayloadTy});
+    auto *PayloadSize = Builder.getInt16(Width * DWordBytes);
+    SmallVector<Value *, 13> Args = {
+        Builder.getInt16(0),                   // dst size
+        Builder.getFalse(),                    // not sendgc
+        Builder.getTrue(),                     // EOT
+        Builder.getInt8(3),                    // message gateway
+        Builder.getTrue(),                     // predicate
+        Payload,                               // Src0
+        PayloadSize,                           // Src0 size
+        UndefValue::get(PayloadTy),            // Src1 (null)
+        Builder.getInt16(0),                   // Src1 size
+        UndefValue::get(Builder.getInt64Ty()), // Ind0 (null)
+        UndefValue::get(Builder.getInt64Ty()), // Ind1 (null)
+        Builder.getInt64(0),                   // desc
+        UndefValue::get(PayloadTy),            // passthru
+    };
+
+    Builder.CreateCall(Func, Args);
+    ToErase.push_back(CI);
+    return true;
+  }
 
   SmallVector<Value *, 8> Args{
       Builder.getInt8(2),                        // modifier (EOT)
@@ -4065,11 +4098,33 @@ bool GenXLowering::lowerMul64(Instruction *Inst) {
     Cari = Builder.CreateExtractValue(UMadI, {0}, ".cari");
   }
 
-  // create muls and adds
-  auto *Temp0 = Builder.CreateMul(Src0.Lo, Src1.Hi);
-  auto *Temp1 = Builder.CreateAdd(Cari, Temp0);
-  auto *Temp2 = Builder.CreateMul(Src0.Hi, Src1.Lo);
-  auto *ResH = Builder.CreateAdd(Temp2, Temp1);
+  Value *ResH = nullptr;
+
+  if (ST->useMadDDQ()) { // create mad intrinsics
+    auto *SrcTy = Src0.Lo->getType();
+    auto *AccTy = IGCLLVM::FixedVectorType::get(
+        Inst->getType()->getScalarType(),
+        cast<IGCLLVM::FixedVectorType>(SrcTy)->getNumElements());
+    Type *Tys[] = {AccTy, SrcTy};
+    Function *IntrinsicUUMad =
+        GenXIntrinsic::getGenXDeclaration(M, GenXIntrinsic::genx_uumad, Tys);
+
+    auto *CariExt = Builder.CreateZExt(Cari, AccTy, Cari->getName() + ".zext");
+
+    SmallVector<llvm::Value *, 3> Args0{Src0.Lo, Src1.Hi, CariExt};
+    auto *Temp0 = Builder.CreateCall(IntrinsicUUMad, Args0);
+
+    SmallVector<llvm::Value *, 3> Args1{Src0.Hi, Src1.Lo, Temp0};
+    auto *Temp1 = Builder.CreateCall(IntrinsicUUMad, Args1);
+
+    auto High = SplitBuilder.splitValueLoHi(*Temp1);
+    ResH = High.Lo;
+  } else { // create muls and adds
+    auto *Temp0 = Builder.CreateMul(Src0.Lo, Src1.Hi);
+    auto *Temp1 = Builder.CreateAdd(Cari, Temp0);
+    auto *Temp2 = Builder.CreateMul(Src0.Hi, Src1.Lo);
+    ResH = Builder.CreateAdd(Temp2, Temp1);
+  }
 
   // create the bitcast to the destination-type
   auto *Replace = SplitBuilder.combineLoHiSplit({ResL, ResH}, "mul64",
@@ -5060,6 +5115,123 @@ bool GenXLowering::lowerDpas(CallInst *CI) {
   return true;
 }
 
+static Value *unpackBlockScale(Value *V, Instruction *InsertPt) {
+  auto *Ty = cast<IGCLLVM::FixedVectorType>(V->getType());
+  IGC_ASSERT(Ty->isIntOrIntVectorTy(8));
+
+  if (isa<UndefValue>(V))
+    return nullptr;
+
+  if (auto *C = dyn_cast<ConstantDataVector>(V)) {
+    auto *Splat = dyn_cast_or_null<ConstantInt>(C->getSplatValue());
+    // The splat value of 127 will be replaced with undef in GenXPatternMatch
+    // and translated into null register by the GenXCisaBuilder.
+    if (Splat && Splat->getZExtValue() == 127)
+      return nullptr;
+  }
+
+  constexpr unsigned VStride = 32;
+  const auto NumElements = Ty->getNumElements();
+  const auto HalfNumElements = NumElements / 2;
+
+  if (NumElements > VStride) // Already lowered
+    return nullptr;
+
+  IRBuilder<> Builder(InsertPt);
+  const auto &DL = InsertPt->getModule()->getDataLayout();
+  const auto &DebugLoc = InsertPt->getDebugLoc();
+
+  auto *NewTy = IGCLLVM::FixedVectorType::get(Builder.getInt8Ty(),
+                                              HalfNumElements + VStride);
+
+  if (GenXIntrinsic::isRdRegion(V)) {
+    auto *RdRgn = cast<CallInst>(V);
+    vc::CMRegion R(RdRgn);
+
+    if (!R.Indirect && R.VStride == VStride && R.Width == HalfNumElements &&
+        R.Stride == 1 && R.Offset % HalfNumElements == 0) {
+      auto *Src = RdRgn->getArgOperand(0);
+
+      vc::CMRegion NewR(NewTy, &DL);
+      NewR.NumElements = HalfNumElements + VStride;
+      NewR.VStride = 1;
+      NewR.Width = 1;
+      NewR.Stride = 0;
+      NewR.Offset = R.Offset;
+
+      return NewR.createRdRegion(Src, "", InsertPt, DebugLoc);
+    }
+  }
+
+  vc::CMRegion WidenR(NewTy, &DL);
+  WidenR.NumElements = NumElements;
+  WidenR.VStride = VStride;
+  WidenR.Width = HalfNumElements;
+  WidenR.Stride = 1;
+
+  return WidenR.createWrRegion(UndefValue::get(NewTy), V, "", InsertPt,
+                               DebugLoc);
+}
+
+bool GenXLowering::lowerBDpas(CallInst *CI) {
+  constexpr unsigned Src1ScaleIdx = 3;
+  constexpr unsigned Src2ScaleIdx = 4;
+  constexpr unsigned Src1PrecIdx = 5;
+
+  const auto IID = vc::getAnyIntrinsicID(CI);
+  IGC_ASSERT(IID == GenXIntrinsic::genx_bdpas);
+
+  auto *Src1PrecV = cast<ConstantInt>(CI->getArgOperand(Src1PrecIdx));
+  auto Src1Precision = static_cast<GenPrecision>(Src1PrecV->getZExtValue());
+  if (Src1Precision != GenPrecision::E2M1)
+    return false;
+
+  SmallVector<Value *, 10> Args(CI->args());
+  bool IsLoweringRequired = false;
+
+  for (auto Idx : {Src1ScaleIdx, Src2ScaleIdx})
+    if (auto *V = unpackBlockScale(Args[Idx], CI)) {
+      Args[Idx] = V;
+      IsLoweringRequired = true;
+    }
+
+  if (!IsLoweringRequired)
+    return false;
+
+  SmallVector<Type *, 6> Types = {CI->getType()};
+
+  for (auto &IdxArg : enumerate(Args))
+    if (vc::isOverloadedArg(IID, IdxArg.index()))
+      Types.push_back(IdxArg.value()->getType());
+
+  IRBuilder<> Builder(CI);
+  auto *F = vc::getAnyDeclaration(CI->getModule(), IID, Types);
+  auto *NewCI = Builder.CreateCall(F, Args);
+
+  NewCI->takeName(CI);
+  CI->replaceAllUsesWith(NewCI);
+  ToErase.push_back(CI);
+
+  return true;
+}
+
+bool GenXLowering::lower4BitDownConvert(CallInst *CI) {
+  const auto IID = vc::getAnyIntrinsicID(CI);
+  IGC_ASSERT(IID == GenXIntrinsic::genx_4bit_downconvert);
+
+  auto *RndModeV = cast<ConstantInt>(CI->getArgOperand(5));
+  auto RndMode = static_cast<DNSCL_RND_MODE>(RndModeV->getZExtValue());
+
+  // For RNE mode, the last argument is not used and should be replaced with the
+  // null register.
+  if (RndMode == DNSCL_RND_MODE::RNE) {
+    CI->setArgOperand(2, UndefValue::get(CI->getType()));
+    return true;
+  }
+
+  return false;
+}
+
 bool GenXLowering::lowerNamedBarrierArrive(CallInst *CI) {
   IGC_ASSERT(vc::getAnyIntrinsicID(CI) == GenXIntrinsic::genx_nbarrier_arrive);
   if (!ST->hasNBarrier()) {
@@ -5091,6 +5263,33 @@ bool GenXLowering::lowerNamedBarrierArrive(CallInst *CI) {
   Payload = Builder.CreateAdd(Payload, Builder.CreateShl(NumConsumers, 24));
 
   Payload = Builder.CreateInsertElement(UndefV, Payload, 2);
+
+  if (ST->hasEfficient64b()) {
+    auto *Func = vc::getAnyDeclaration(
+        M, vc::InternalIntrinsic::raw_sendg,
+        {PayloadTy, Builder.getInt1Ty(), PayloadTy, PayloadTy});
+
+    auto *PayloadSize = Builder.getInt16(Width * DWordBytes);
+    SmallVector<Value *, 13> Args = {
+        Builder.getInt16(0),                   // dst size
+        Builder.getFalse(),                    // not sendgc
+        Builder.getFalse(),                    // not EOT
+        Builder.getInt8(3),                    // message gateway
+        Builder.getTrue(),                     // predicate
+        Payload,                               // Src0
+        PayloadSize,                           // Src0 size
+        UndefV,                                // Src1 (null)
+        Builder.getInt16(0),                   // Src1 size
+        UndefValue::get(Builder.getInt64Ty()), // Ind0 (null)
+        UndefValue::get(Builder.getInt64Ty()), // Ind1 (null)
+        Builder.getInt64(5),                   // Signal Named Barrier
+        UndefV,                                // passthru
+    };
+
+    Builder.CreateCall(Func, Args);
+    ToErase.push_back(CI);
+    return true;
+  }
 
   SmallVector<Value *, 8> Args = {
       Builder.getInt8(0),           // modifier (none)

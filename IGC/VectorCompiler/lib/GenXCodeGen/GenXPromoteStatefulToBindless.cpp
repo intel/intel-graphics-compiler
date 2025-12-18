@@ -154,6 +154,10 @@ bool GenXPromoteStatefulToBindless::runOnModule(Module &M) {
 // Currently only buffers and images are supported
 // extra objects can be easily added here later.
 unsigned PromoteToBindless::convertSingleArg(unsigned Kind, StringRef Desc) {
+  if (ST.hasEfficient64b() &&
+      (vc::isDescBufferType(Desc) || vc::isDescImageType(Desc) ||
+       vc::isDescSamplerType(Desc)))
+    return vc::KernelMetadata::AK_NORMAL;
 
   if (Kind != vc::KernelMetadata::AK_SURFACE &&
       Kind != vc::KernelMetadata::AK_SAMPLER)
@@ -569,6 +573,41 @@ PromoteToBindless::createBindlessSurfaceDataportIntrinsicChain(CallInst &CI) {
 vc::InternalIntrinsic::ID
 PromoteToBindless::getBindlessLscIntrinsicID(unsigned IID) {
 
+  if (ST.hasEfficient64b()) {
+    switch (IID) {
+    case vc::InternalIntrinsic::lsc_atomic_bti:
+      return vc::InternalIntrinsic::lsc_atomic_surf;
+    case vc::InternalIntrinsic::lsc_load_bti:
+      return vc::InternalIntrinsic::lsc_load_surf;
+    case vc::InternalIntrinsic::lsc_load_quad_bti:
+      return vc::InternalIntrinsic::lsc_load_quad_surf;
+    case vc::InternalIntrinsic::lsc_prefetch_bti:
+      return vc::InternalIntrinsic::lsc_prefetch_surf;
+    case vc::InternalIntrinsic::lsc_prefetch_quad_bti:
+      return vc::InternalIntrinsic::lsc_prefetch_quad_surf;
+    case vc::InternalIntrinsic::lsc_store_bti:
+      return vc::InternalIntrinsic::lsc_store_surf;
+    case vc::InternalIntrinsic::lsc_store_quad_bti:
+      return vc::InternalIntrinsic::lsc_store_quad_surf;
+    case vc::InternalIntrinsic::lsc_load_2d_tgm_bti:
+      return vc::InternalIntrinsic::lsc_load_2d_tgm_surf;
+    case vc::InternalIntrinsic::lsc_store_2d_tgm_bti:
+      return vc::InternalIntrinsic::lsc_store_2d_tgm_surf;
+    case vc::InternalIntrinsic::lsc_load_quad_tgm:
+      return vc::InternalIntrinsic::lsc_load_quad_tgm_surf;
+    case vc::InternalIntrinsic::lsc_store_quad_tgm:
+      return vc::InternalIntrinsic::lsc_store_quad_tgm_surf;
+    case vc::InternalIntrinsic::lsc_prefetch_quad_tgm:
+      return vc::InternalIntrinsic::lsc_prefetch_quad_tgm_surf;
+    case vc::InternalIntrinsic::sampler_load_bti:
+      return vc::InternalIntrinsic::sampler_load_surf;
+    case vc::InternalIntrinsic::sample_bti:
+      return vc::InternalIntrinsic::sample_surf;
+    default:
+      return vc::InternalIntrinsic::not_any_intrinsic;
+    }
+  }
+
   switch (IID) {
   case vc::InternalIntrinsic::lsc_atomic_bti:
     return vc::InternalIntrinsic::lsc_atomic_bss;
@@ -611,6 +650,72 @@ CallInst *PromoteToBindless::createBindlessLscIntrinsic(CallInst &CI) {
 
   SmallVector<Value *, 16> Args{CI.args()};
   IRBuilder<> IRB{&CI};
+
+  if (ST.hasEfficient64b()) {
+    auto ConvertState = [&](Value *SSO) -> Value * {
+      auto *RdRegion = dyn_cast<CallInst>(SSO);
+      IGC_ASSERT_MESSAGE(RdRegion && GenXIntrinsic::isRdRegion(RdRegion),
+                         "RdRegion is expected");
+      auto *OV = RdRegion->getArgOperand(
+          GenXIntrinsic::GenXRegion::OldValueOperandNum);
+      auto *Ty = OV->getType();
+      auto *VTy = dyn_cast<IGCLLVM::FixedVectorType>(Ty);
+      IGC_ASSERT_MESSAGE(
+          VTy && VTy->isIntOrIntVectorTy(32) && VTy->getNumElements() % 2 == 0,
+          "RdRegion OldValueOperand is expected to be <2N x i32>");
+
+      IGC_ASSERT(
+          cast<ConstantInt>(RdRegion->getArgOperand(
+                                GenXIntrinsic::GenXRegion::RdWidthOperandNum))
+              ->getZExtValue() == 1);
+
+      auto *BC = dyn_cast<BitCastInst>(OV);
+      IGC_ASSERT_MESSAGE(BC, "BitCast is expected");
+      auto *BitCastSrc = BC->getOperand(0);
+      auto *BitCastSrcTy = BitCastSrc->getType();
+      IGC_ASSERT_MESSAGE(BitCastSrcTy->isIntOrIntVectorTy(64),
+                         "BitCast src is expected to be i64 or <N x i64>");
+
+      if (auto *SrcVTy = dyn_cast<IGCLLVM::FixedVectorType>(BitCastSrcTy)) {
+        auto *IO = RdRegion->getArgOperand(
+            GenXIntrinsic::GenXRegion::RdIndexOperandNum);
+        vc::Region R(SrcVTy->getElementType());
+        if (auto *Offset = dyn_cast<ConstantInt>(IO))
+          R.Offset = Offset->getZExtValue();
+        else
+          R.Indirect = IO;
+
+        R.VStride = 0;
+        R.Width = 1;
+        R.Stride = 0;
+
+        return R.createRdRegion(BitCastSrc, "", &CI, CI.getDebugLoc(), true);
+      }
+
+      return BitCastSrc;
+    };
+
+    if (auto AddrSizeOpNo = getAddrSizeOperandNo(ID); AddrSizeOpNo >= 0)
+      Args[AddrSizeOpNo] = IRB.getInt8(LSC_ADDR_SIZE_32bU);
+
+    bool HasImmSurfaceIndex = vc::InternalIntrinsic::hasImmSurfaceIndex(NewId);
+
+    if (auto Index = vc::InternalIntrinsic::getMemorySamplerOperandIndex(ID);
+        Index >= 0) {
+      auto *Sampler = Args[Index];
+      Args[Index] = ConvertState(Sampler);
+      if (HasImmSurfaceIndex)
+        Args.insert(Args.begin() + Index + 1, IRB.getInt8(0));
+    }
+
+    const auto SurfaceOpNo =
+        vc::InternalIntrinsic::getMemorySurfaceOperandIndex(ID);
+    IGC_ASSERT_EXIT_MESSAGE(SurfaceOpNo >= 0, "Unknown surface operand number");
+    auto *SSO = Args[SurfaceOpNo];
+    Args[SurfaceOpNo] = ConvertState(SSO);
+    if (HasImmSurfaceIndex)
+      Args.insert(Args.begin() + SurfaceOpNo + 1, IRB.getInt8(0));
+  }
 
   auto *Decl = vc::getInternalDeclarationForIdFromArgs(CI.getType(), Args,
                                                        NewId, *CI.getModule());
@@ -680,7 +785,7 @@ void PromoteToBindless::rewriteStatefulIntrinsic(CallInst &CI) {
   case vc::InternalIntrinsic::lsc_prefetch_quad_bti:
   case vc::InternalIntrinsic::lsc_store_bti:
   case vc::InternalIntrinsic::lsc_store_quad_bti:
-    if (BC.useBindlessBuffers())
+    if (BC.useBindlessBuffers() || ST.hasEfficient64b())
       BindlessCI = createBindlessLscIntrinsic(CI);
     break;
   case vc::InternalIntrinsic::lsc_load_2d_tgm_bti:
@@ -688,11 +793,15 @@ void PromoteToBindless::rewriteStatefulIntrinsic(CallInst &CI) {
   case vc::InternalIntrinsic::lsc_load_quad_tgm:
   case vc::InternalIntrinsic::lsc_store_quad_tgm:
   case vc::InternalIntrinsic::lsc_prefetch_quad_tgm:
-    if (BC.useBindlessImages())
+    if (BC.useBindlessImages() || ST.hasEfficient64b())
       BindlessCI = createBindlessLscIntrinsic(CI);
     break;
   case vc::InternalIntrinsic::sampler_load_bti:
   case vc::InternalIntrinsic::sample_bti: {
+    if (ST.hasEfficient64b()) {
+      BindlessCI = createBindlessLscIntrinsic(CI);
+      break;
+    }
     if (BC.useBindlessImages())
       BindlessCI = createBindlessSurfaceDataportIntrinsicChain(CI);
     break;

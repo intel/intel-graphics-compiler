@@ -9,6 +9,7 @@
 ; RUN: %opt %use_old_pass_manager% -GenXLowering -march=genx64 -mcpu=XeHPG -mattr=-mul_ddq -mtriple=spir64-unknown-unknown -S < %s | FileCheck %s
 ; RUN: %opt %use_old_pass_manager% -GenXLowering -march=genx64 -mcpu=XeHPG -mattr=+mul_ddq -mtriple=spir64-unknown-unknown -S < %s | FileCheck --check-prefix=UseMulDDQ %s
 ; RUN: %opt %use_old_pass_manager% -GenXLowering -march=genx64 -mcpu=XeHPC -mtriple=spir64-unknown-unknown -S < %s | FileCheck --check-prefix=SIMD16 %s
+; RUN: %opt %use_old_pass_manager% -GenXLowering -march=genx64 -mcpu=Xe3P -mtriple=spir64-unknown-unknown -S < %s | FileCheck --check-prefix=UseMadDDQ %s
 
 ; CHECK-LABEL: testi32suSc
 ; CHECK: call <16 x i32> @llvm.genx.umadw.v16i32.v1i32
@@ -19,6 +20,9 @@
 ; UseMulDDQ-LABEL: testi32suSc
 ; UseMulDDQ: call i64 @llvm.genx.uumul.i64.v1i32
 ; UseMulDDQ-COUNT-2: mul <1 x i32>
+; UseMadDDQ-LABEL: testi32suSc
+; UseMadDDQ: call i64 @llvm.genx.uumul.i64.v1i32
+; UseMadDDQ-COUNT-2: call <1 x i64> @llvm.genx.uumad.v1i64.v1i32
 define internal spir_func void @testi32suSc(i32 %op1) {
   %sop1 = sext i32 %op1 to i64
   %mul64 = mul i64 %sop1, 12147483648
@@ -34,6 +38,9 @@ define internal spir_func void @testi32suSc(i32 %op1) {
 ; UseMulDDQ-LABEL: test_v_c1
 ; UseMulDDQ: call <2 x i64> @llvm.genx.uumul.v2i64.v2i32
 ; UseMulDDQ-COUNT-2: mul <2 x i32>
+; UseMadDDQ-LABEL: test_v_c1
+; UseMadDDQ: call <2 x i64> @llvm.genx.uumul.v2i64.v2i32
+; UseMadDDQ-COUNT-2: call <2 x i64> @llvm.genx.uumad.v2i64.v2i32
 define internal spir_func void @test_v_c1(<2 x i32> %op1) {
   %sop1 = sext <2 x i32> %op1 to <2 x i64>
   %mul64 = mul <2 x i64> %sop1, <i64 -2147483649, i64 2>
@@ -50,6 +57,9 @@ define internal spir_func void @test_v_c1(<2 x i32> %op1) {
 ; UseMulDDQ-LABEL: test_v_c2
 ; UseMulDDQ: call <2 x i64> @llvm.genx.uumul.v2i64.v2i32
 ; UseMulDDQ-COUNT-2: mul <2 x i32>
+; UseMadDDQ-LABEL: test_v_c2
+; UseMadDDQ: call <2 x i64> @llvm.genx.uumul.v2i64.v2i32
+; UseMadDDQ-COUNT-2: call <2 x i64> @llvm.genx.uumad.v2i64.v2i32
 define internal spir_func void @test_v_c2(<2 x i32> %op1) {
   %sop1 = sext <2 x i32> %op1 to <2 x i64>
   %mul64 = mul <2 x i64> %sop1, <i64  4294967295, i64 4294967296>

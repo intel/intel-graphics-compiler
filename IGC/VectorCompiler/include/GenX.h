@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2024 Intel Corporation
+Copyright (C) 2017-2025 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -159,6 +159,7 @@ FunctionPass *createGenXLegacyToLscTranslatorPass();
 ModulePass *createGenXSLMResolution();
 FunctionPass *createGenXLscAddrCalcFoldingPass();
 ModulePass *createGenXDetectPointerArgPass();
+ModulePass *createGenXPropagateSurfaceStatePass();
 FunctionPass *createGenXLCECalculationPass();
 FunctionPass *createGenXFloatControlPass();
 ModulePass *createGenXCountIndirectStatelessPass();

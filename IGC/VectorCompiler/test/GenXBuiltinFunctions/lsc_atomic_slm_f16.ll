@@ -9,10 +9,13 @@
 ; RUN: %opt %use_old_pass_manager% -GenXBuiltinFunctions -march=genx64 -mtriple=spir64-unknown-unknown \
 ; RUN: -mcpu=XeLPG -S < %s 2>&1 | FileCheck %s
 ; RUN: %opt %use_old_pass_manager% -GenXBuiltinFunctions -march=genx64 -mtriple=spir64-unknown-unknown \
-; RUN: -mcpu=XeHPC -S < %s 2>&1 | FileCheck --check-prefix=CHECK-2 %s
+; RUN: -mcpu=XeHPC -S < %s 2>&1 | FileCheck %s
+
+; RUN: %opt %use_old_pass_manager% -GenXBuiltinFunctions -march=genx64 -mtriple=spir64-unknown-unknown \
+; RUN: -mcpu=Xe3P -S < %s 2>&1 | FileCheck --check-prefix=CHECK-XE3P %s
 
 ; CHECK-NOT: WARNING
-; CHECK-2-NOT: WARNING
+; CHECK-XE3P-NOT: WARNING
 
 ; CHECK: @test_fadd_kernel
 ; CHECK: = call <16 x i32> @__vc_builtin_atomic_slm_v16i32_v2i8
@@ -26,18 +29,20 @@
 ; CHECK: @test_load_kernel
 ; CHECK: = tail call <16 x i32> @llvm.vc.internal.lsc.atomic.slm.v16i32.v16i1.v2i8.v16i32
 ; CHECK: ret void
-; CHECK-2: @test_fadd_kernel
-; CHECK-2: = call <16 x i32> @__vc_builtin_atomic_slm_v16i32_v2i8
-; CHECK-2: ret void
-; CHECK-2: @test_fcas_kernel
-; CHECK-2: = tail call <16 x i32> @llvm.vc.internal.lsc.atomic.slm.v16i32.v16i1.v2i8.v16i32
-; CHECK-2: ret void
-; CHECK-2: @test_store_kernel
-; CHECK-2: = tail call <16 x i32> @llvm.vc.internal.lsc.atomic.slm.v16i32.v16i1.v2i8.v16i32
-; CHECK-2: ret void
-; CHECK-2: @test_load_kernel
-; CHECK-2: = tail call <16 x i32> @llvm.vc.internal.lsc.atomic.slm.v16i32.v16i1.v2i8.v16i32
-; CHECK-2: ret void
+
+; CHECK-XE3P: @test_fadd_kernel
+; CHECK-XE3P: = tail call <16 x i32> @llvm.vc.internal.lsc.atomic.slm.v16i32.v16i1.v2i8.v16i32
+; CHECK-XE3P: ret void
+; CHECK-XE3P: @test_fcas_kernel
+; CHECK-XE3P: = tail call <16 x i32> @llvm.vc.internal.lsc.atomic.slm.v16i32.v16i1.v2i8.v16i32
+; CHECK-XE3P: ret void
+; CHECK-XE3P: @test_store_kernel
+; CHECK-XE3P: = tail call <16 x i32> @llvm.vc.internal.lsc.atomic.slm.v16i32.v16i1.v2i8.v16i32
+; CHECK-XE3P: ret void
+; CHECK-XE3P: @test_load_kernel
+; CHECK-XE3P: = tail call <16 x i32> @llvm.vc.internal.lsc.atomic.slm.v16i32.v16i1.v2i8.v16i32
+; CHECK-XE3P: ret void
+
 
 declare <16 x i32> @llvm.vc.internal.lsc.atomic.slm.v16i32.v16i1.v2i8.v16i32(<16 x i1>, i8, i8, i8, <2 x i8>, i32, <16 x i32>, i16, i32, <16 x i32>, <16 x i32>, <16 x i32>)
 
@@ -61,8 +66,6 @@ define dllexport spir_kernel void @test_load_kernel(<16 x i1> %pred, <16 x i32> 
   ret void
 }
 
-; COM: The presence of these __vc_builtin_* funcitions is a HACK to trick VC
-; COM: backend into thinking that we have built-in routines
 define <16 x i32> @__vc_builtin_atomic_slm_v16i32_v2i8(<16 x i8> noundef %pred, i8 noundef signext %op, <2 x i8> %cachecontrols, i32 noundef %base, <16 x i32> noundef %index, i16 noundef signext %scale, i32 noundef %offset, <16 x i32> noundef %src1, <16 x i32> noundef %src2, <16 x i32> noundef %passthru) #0 {
   ret <16 x i32> zeroinitializer
 }

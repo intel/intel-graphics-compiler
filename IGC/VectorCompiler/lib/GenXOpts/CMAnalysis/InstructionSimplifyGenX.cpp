@@ -565,6 +565,11 @@ Value *llvm::SimplifyGenXIntrinsic(CallInst *CI, const DataLayout &DL) {
   switch (IID) {
   case GenXIntrinsic::genx_rdregioni:
   case GenXIntrinsic::genx_rdregionf: {
+    bool CanSimplify = llvm::none_of(
+        CI->users(), vc::InternalIntrinsic::isPacked4BitUpconvertLut);
+    if (!CanSimplify)
+      break;
+
     // Identity rdregion can be simplified to its "old value" input.
     if (RetTy ==
         Args[GenXIntrinsic::GenXRegion::OldValueOperandNum]->getType()) {

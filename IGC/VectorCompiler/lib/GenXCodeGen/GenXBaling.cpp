@@ -394,6 +394,8 @@ bool GenXBaling::canSplitBale(Instruction *Inst) const {
       (IID == GenXIntrinsic::genx_dpasw_nosrc0) ||
       (IID == GenXIntrinsic::genx_umadw) || (IID == GenXIntrinsic::genx_smadw))
     return false;
+  if (IID == GenXIntrinsic::genx_bdpas)
+    return false;
   return true;
 }
 

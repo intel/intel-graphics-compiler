@@ -19,6 +19,10 @@
 ; RUN: %llc_opaque_ptrs %s -march=genx64 -mcpu=XeHPC -vc-skip-ocl-runtime-info -finalizer-opts='-dumpcommonisa -isaasmToConsole' -o /dev/null \
 ; RUN: | FileCheck %s --check-prefix=CHECK-LSC-SIMD16
 
+; RUN: %llc_typed_ptrs %s -march=genx64 -mcpu=Xe3P -vc-skip-ocl-runtime-info -mattr=+efficient_64b_enabled -finalizer-opts='-dumpcommonisa -isaasmToConsole' -o /dev/null \
+; RUN: | FileCheck %s --check-prefix=CHECK-SENDG
+; RUN: %llc_opaque_ptrs %s -march=genx64 -mcpu=Xe3P -vc-skip-ocl-runtime-info -mattr=+efficient_64b_enabled -finalizer-opts='-dumpcommonisa -isaasmToConsole' -o /dev/null \
+; RUN: | FileCheck %s --check-prefix=CHECK-SENDG
 
 target triple = "genx64-unknown-unknown"
 
@@ -37,6 +41,9 @@ declare void @llvm.trap()
 ; CHECK-LSC-SIMD16: mov (M1, 16) [[PAYLOAD:V[0-9]+]](0,0)<1> %r0(0,0)<1;1,0>
 ; CHECK-LSC-SIMD16: raw_sends_eot.3.1.0.0 (M1, 1)  0x0:ud 0x2000010:ud [[PAYLOAD]].0 %null.0 %null.0
 
+; CHECK-SENDG: test_trap
+; CHECK-SENDG: mov (M1, 16) [[PAYLOAD:V[0-9]+]](0,0)<1> %r0(0,0)<1;1,0>
+; CHECK-SENDG: raw_sendg_eot.0x3 (M1, 1)  %null.0/0 [[PAYLOAD]].0/64 %null.0/0 %null(0,0)<0;1,0> %null(0,0)<0;1,0> 0x0
 
 define spir_kernel void @test_trap(<4 x i32> %arg) local_unnamed_addr #0 {
   %1 = shl <4 x i32> %arg, <i32 3, i32 3, i32 3, i32 3>

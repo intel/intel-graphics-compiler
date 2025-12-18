@@ -182,6 +182,10 @@ getPlatformName(const PLATFORM &Platform) {
     if (Product == IGFX_NVL_XE3G)
       return {"Xe3", RevId};
     LLVM_FALLTHROUGH;
+  case IGFX_XE3P_CORE:
+    if (Product == IGFX_CRI)
+      return {"Xe3P", RevId};
+    break;
   default:
     break;
   }
@@ -203,6 +207,12 @@ static void adjustPlatform(const IGC::CPlatform &IGCPlatform,
       IGCPlatform.hasL3FlushOnGPUScopeInvalidate();
   Opts.HasHalfSIMDLSC = IGCPlatform.hasHalfSIMDLSC();
   Opts.WATable = &IGCPlatform.getWATable();
+
+  if (IGCPlatform.hasEfficient64bEnabled()) {
+    if (!Opts.FeaturesString.empty())
+      Opts.FeaturesString.append(",");
+    Opts.FeaturesString.append("+efficient_64b_enabled");
+  }
 }
 
 static void adjustFileType(TC::TB_DATA_FORMAT DataFormat,

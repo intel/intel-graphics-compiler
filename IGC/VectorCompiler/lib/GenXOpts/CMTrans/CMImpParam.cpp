@@ -163,6 +163,9 @@ static cl::opt<bool>
     PayloadInMemoryOpt("cmimpparam-payload-in-memory", cl::init(true),
                        cl::Hidden,
                        cl::desc("Whether the target has payload in memory"));
+static cl::opt<bool> Efficient64bOpt(
+    "cmimpparam-efficient-64b", cl::init(false), cl::Hidden,
+    cl::desc("Whether efficient 64-bit addressing is supported"));
 
 // Sometimes full list of elements cannot be defined, e.g. list of called
 // functions when indirect call instructions are present.
@@ -203,6 +206,8 @@ enum Enum : unsigned {
   First = vc::InternalIntrinsic::not_any_intrinsic,
   PrivateBase = First,
   ImplicitArgsBuffer,
+  IndirectDataBuffer,
+  ScratchBuffer,
   Last
 };
 } // namespace PseudoIntrinsic
@@ -212,26 +217,32 @@ struct CMImpParam : public ModulePass {
   // Defines whether payload is in memory or on registers. It depends on target
   // architecture.
   bool HasPayloadInMemory = false;
+  bool HasEfficient64b = false;
   const DataLayout *DL = nullptr;
 
 #if LLVM_VERSION_MAJOR >= 16
   CallGraph &CG;
-  CMImpParam(CallGraph &CG, bool HasPayloadInMemoryIn)
-      : ModulePass{ID}, HasPayloadInMemory{HasPayloadInMemoryIn}, CG(CG) {
+  CMImpParam(CallGraph &CG, bool HasPayloadInMemoryIn, bool HasEfficient64bIn)
+      : ModulePass{ID}, HasPayloadInMemory{HasPayloadInMemoryIn},
+        HasEfficient64b{HasEfficient64bIn}, CG(CG) {
     initializeCMImpParamPass(*PassRegistry::getPassRegistry());
   }
 
   CMImpParam(CallGraph &CG)
-      : ModulePass{ID}, HasPayloadInMemory{PayloadInMemoryOpt}, CG(CG) {
+      : ModulePass{ID}, HasPayloadInMemory{PayloadInMemoryOpt},
+        HasEfficient64b{Efficient64bOpt}, CG(CG) {
     initializeCMImpParamPass(*PassRegistry::getPassRegistry());
   }
 #else  // LLVM_VERSION_MAJOR
-  CMImpParam(bool HasPayloadInMemoryIn)
-      : ModulePass{ID}, HasPayloadInMemory{HasPayloadInMemoryIn} {
+  CMImpParam(bool HasPayloadInMemoryIn, bool HasEfficient64bIn)
+      : ModulePass{ID}, HasPayloadInMemory{HasPayloadInMemoryIn},
+        HasEfficient64b{HasEfficient64bIn} {
     initializeCMImpParamPass(*PassRegistry::getPassRegistry());
   }
 
-  CMImpParam() : ModulePass{ID}, HasPayloadInMemory{PayloadInMemoryOpt} {
+  CMImpParam()
+      : ModulePass{ID}, HasPayloadInMemory{PayloadInMemoryOpt},
+        HasEfficient64b{Efficient64bOpt} {
     initializeCMImpParamPass(*PassRegistry::getPassRegistry());
   }
 #endif // LLVM_VERSION_MAJOR
@@ -267,6 +278,8 @@ private:
                                             IRBuilder<> &IRB);
 
   vc::ThreadPayloadKind getThreadPayloadKind() const {
+    if (HasPayloadInMemory && HasEfficient64b)
+      return vc::ThreadPayloadKind::InStatelessMemory;
     if (HasPayloadInMemory)
       return vc::ThreadPayloadKind::InMemory;
     return vc::ThreadPayloadKind::OnRegister;
@@ -320,6 +333,12 @@ private:
     case PseudoIntrinsic::ImplicitArgsBuffer:
       return static_cast<KernelMetadata::ImpValue>(KernelMetadata::AK_NORMAL) |
              KernelMetadata::IMP_IMPL_ARGS_BUFFER;
+    case PseudoIntrinsic::IndirectDataBuffer:
+      return static_cast<KernelMetadata::ImpValue>(KernelMetadata::AK_NORMAL) |
+             KernelMetadata::IMP_INDIRECT_DATA_BUFFER;
+    case PseudoIntrinsic::ScratchBuffer:
+      return static_cast<KernelMetadata::ImpValue>(KernelMetadata::AK_NORMAL) |
+             KernelMetadata::IMP_SCRATCH_BUFFER;
     }
     return KernelMetadata::AK_NORMAL;
   }
@@ -370,6 +389,8 @@ private:
     case vc::InternalIntrinsic::sync_buffer:
     case PseudoIntrinsic::PrivateBase:
     case PseudoIntrinsic::ImplicitArgsBuffer:
+    case PseudoIntrinsic::IndirectDataBuffer:
+    case PseudoIntrinsic::ScratchBuffer:
       return llvm::Type::getInt64Ty(Context);
     case GenXIntrinsic::genx_local_id:
     case GenXIntrinsic::genx_local_size:
@@ -609,6 +630,10 @@ void CMImpParam::processKernels(
     if (KernelRequiresPrologueInsertion) {
       RequiredImplArgs.emplace(PseudoIntrinsic::ImplicitArgsBuffer);
       RequiredImplArgs.emplace(GenXIntrinsic::genx_local_id16);
+    }
+    if (HasEfficient64b) {
+      RequiredImplArgs.emplace(PseudoIntrinsic::IndirectDataBuffer);
+      RequiredImplArgs.emplace(PseudoIntrinsic::ScratchBuffer);
     }
     // For OCL/L0 RT we should unconditionally add implicit PRIVATE_BASE
     // argument which is not supported on CM RT.
@@ -1098,6 +1123,10 @@ static std::string getImplicitArgName(unsigned IID) {
   switch (IID) {
   case PseudoIntrinsic::ImplicitArgsBuffer:
     return "impl.arg.impl.args.buffer";
+  case PseudoIntrinsic::IndirectDataBuffer:
+    return "impl.arg.indirect.data.buffer";
+  case PseudoIntrinsic::ScratchBuffer:
+    return "impl.arg.scratch.buffer";
   default:
     IGC_ASSERT_MESSAGE(IID == PseudoIntrinsic::PrivateBase,
                        "there's only private base pseudo intrinsic for now");
@@ -1276,8 +1305,8 @@ INITIALIZE_PASS_END(CMImpParam, "CMImpParam",
 
 #if LLVM_VERSION_MAJOR < 16
 namespace llvm {
-Pass *createCMImpParamPass(bool HasPayloadInMemory) {
-  return new CMImpParam{HasPayloadInMemory};
+Pass *createCMImpParamPass(bool HasPayloadInMemory, bool HasEfficient64b) {
+  return new CMImpParam{HasPayloadInMemory, HasEfficient64b};
 }
 } // namespace llvm
 
@@ -1285,10 +1314,12 @@ Pass *createCMImpParamPass(bool HasPayloadInMemory) {
 PreservedAnalyses CMImpParamPass::run(llvm::Module &M,
                                       llvm::AnalysisManager<llvm::Module> &AM) {
   auto &CG = AM.getResult<CallGraphAnalysis>(M);
-  CMImpParam CMIP(CG, HasPayloadInMemory);
+  CMImpParam CMIP(CG, HasPayloadInMemory, HasEfficient64b);
   if (CMIP.runOnModule(M))
     return PreservedAnalyses::none();
   return PreservedAnalyses::all();
 }
-CMImpParamPass::CMImpParamPass() : HasPayloadInMemory{PayloadInMemoryOpt} {};
+CMImpParamPass::CMImpParamPass()
+    : HasPayloadInMemory{PayloadInMemoryOpt},
+      HasEfficient64b{Efficient64bOpt} {};
 #endif // LLVM_VERSION_MAJOR < 16

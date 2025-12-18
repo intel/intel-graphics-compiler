@@ -267,6 +267,7 @@ void initializeGenXBuiltinFunctionsPass(PassRegistry &);
 void initializeGenXSLMResolutionPass(PassRegistry &);
 void initializeGenXLscAddrCalcFoldingPass(PassRegistry &);
 void initializeGenXDetectPointerArgPass(PassRegistry &);
+void initializeGenXPropagateSurfaceStatePass(PassRegistry &);
 void initializeGenXLCECalculationPass(PassRegistry &);
 void initializeGenXFloatControlPass(PassRegistry &);
 void initializeGenXCountIndirectStatelessPass(PassRegistry &);

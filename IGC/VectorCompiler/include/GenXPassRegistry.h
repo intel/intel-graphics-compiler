@@ -16,10 +16,13 @@ MODULE_PASS("CMABI", CMABIPass())
 MODULE_PASS("CMImpParam", CMImpParamPass())
 MODULE_PASS("CMKernelArgOffset",
             CMKernelArgOffsetPass(GTM->getGenXSubtarget().getGRFByteSize(),
+                                  GTM->getGenXSubtarget().hasEfficient64b(),
                                   BC->useBindlessImages()))
 MODULE_PASS("GenXPacketize", GenXPacketizePass())
 MODULE_PASS("GenXBIFFlagCtrlResolution", GenXBIFFlagCtrlResolutionPass())
-MODULE_PASS("GenXBTIAssignment", GenXBTIAssignmentPass(BC->getResult()))
+MODULE_PASS("GenXBTIAssignment",
+            GenXBTIAssignmentPass(BC->getResult(),
+                                  GTM->getGenXSubtarget().hasEfficient64b()))
 
 MODULE_PASS("GenXImportOCLBiF", GenXImportOCLBiFPass())
 MODULE_PASS("GenXLegalizeGVLoadUses", GenXLegalizeGVLoadUsesPass())
@@ -42,6 +45,7 @@ MODULE_PASS("GenXVerify", GenXVerifyPass())
 #endif
 
 FUNCTION_PASS("GenXSimplify", GenXSimplifyPass())
+FUNCTION_PASS("GenXStatePointerFence", GenXStatePointerFencePass())
 FUNCTION_PASS("CMLowerVLoadVStore", CMLowerVLoadVStorePass())
 FUNCTION_PASS("GenXTypeLegalization", GenXTypeLegalizationPass())
 FUNCTION_PASS("GenXTranslateIntrinsics", GenXTranslateIntrinsicsPass())

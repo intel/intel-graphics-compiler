@@ -1,6 +1,6 @@
 #=========================== begin_copyright_notice ============================
 #
-# Copyright (C) 2020-2022 Intel Corporation
+# Copyright (C) 2020-2025 Intel Corporation
 #
 # SPDX-License-Identifier: MIT
 #
@@ -20,4 +20,5 @@ set(SUPPORTED_VC_PLATFORMS
     "XeHPCVG"
     "Xe2"
     "Xe3"
+    "Xe3P"
     )

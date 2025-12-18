@@ -106,6 +106,7 @@ set(CODEGEN_SOURCES
   GenXVisaRegAlloc.cpp
   OCLRuntimeInfoPrinter.cpp
   ${IGC_WrapperLLVM_SRC}
+  GenXPropagateSurfaceState.cpp
 )
 
 add_library(VCCodeGen STATIC ${CODEGEN_SOURCES})

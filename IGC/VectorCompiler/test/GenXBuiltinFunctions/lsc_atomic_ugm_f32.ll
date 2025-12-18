@@ -9,10 +9,11 @@
 ; RUN: %opt %use_old_pass_manager% -GenXBuiltinFunctions -march=genx64 -mtriple=spir64-unknown-unknown \
 ; RUN: -mcpu=XeLPG -S < %s 2>&1 | FileCheck %s
 ; RUN: %opt %use_old_pass_manager% -GenXBuiltinFunctions -march=genx64 -mtriple=spir64-unknown-unknown \
-; RUN: -mcpu=XeHPC -S < %s 2>&1 | FileCheck --check-prefix=CHECK-2 %s
+; RUN: -mcpu=XeHPC -S < %s 2>&1 | FileCheck %s
+; RUN: %opt %use_old_pass_manager% -GenXBuiltinFunctions -march=genx64 -mtriple=spir64-unknown-unknown \
+; RUN: -mcpu=Xe3P -S < %s 2>&1 | FileCheck %s
 
 ; CHECK-NOT: WARNING
-; CHECK-2-NOT: WARNING
 
 ; CHECK: @test_fadd_kernel
 ; CHECK: = tail call <16 x float> @llvm.vc.internal.lsc.atomic.ugm.v16f32.v16i1.v2i8.v16i64
@@ -26,18 +27,6 @@
 ; CHECK: @test_load_kernel
 ; CHECK: = tail call <16 x float> @llvm.vc.internal.lsc.atomic.ugm.v16f32.v16i1.v2i8.v16i64
 ; CHECK: ret void
-; CHECK-2: @test_fadd_kernel
-; CHECK-2: = tail call <16 x float> @llvm.vc.internal.lsc.atomic.ugm.v16f32.v16i1.v2i8.v16i64
-; CHECK-2: ret void
-; CHECK-2: @test_fcas_kernel
-; CHECK-2: = tail call <16 x float> @llvm.vc.internal.lsc.atomic.ugm.v16f32.v16i1.v2i8.v16i64
-; CHECK-2: ret void
-; CHECK-2: @test_store_kernel
-; CHECK-2: = tail call <16 x float> @llvm.vc.internal.lsc.atomic.ugm.v16f32.v16i1.v2i8.v16i64
-; CHECK-2: ret void
-; CHECK-2: @test_load_kernel
-; CHECK-2: = tail call <16 x float> @llvm.vc.internal.lsc.atomic.ugm.v16f32.v16i1.v2i8.v16i64
-; CHECK-2: ret void
 
 declare <16 x float> @llvm.vc.internal.lsc.atomic.ugm.v16f32.v16i1.v2i8.v16i64(<16 x i1>, i8, i8, i8, <2 x i8>, i64, <16 x i64>, i16, i32, <16 x float>, <16 x float>, <16 x float>)
 
@@ -61,8 +50,6 @@ define dllexport spir_kernel void @test_load_kernel(<16 x i1> %pred, <16 x i64> 
   ret void
 }
 
-; COM: The presence of these __vc_builtin_* funcitions is a HACK to trick VC
-; COM: backend into thinking that we have built-in routines
 define <16 x float> @__vc_builtin_atomic_ugm_v16f32_v2i8(<16 x i8> noundef %pred, i8 noundef signext %op, <2 x i8> %cachecontrols, i64 noundef %base, <16 x i64> noundef %index, i16 noundef signext %scale, i32 noundef %offset, <16 x float> noundef %src1, <16 x float> noundef %src2, <16 x float> noundef %passthru) #0 {
   ret <16 x float> zeroinitializer
 }

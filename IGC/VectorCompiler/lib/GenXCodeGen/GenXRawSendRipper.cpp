@@ -87,6 +87,10 @@ bool GenXRawSendRipper::runOnFunction(Function &F) {
       PredIdx = 2;
       PassthruIdx = 11;
       break;
+    case vc::InternalIntrinsic::raw_sendg:
+      PredIdx = 4;
+      PassthruIdx = 12;
+      break;
     }
 
     IGC_ASSERT_EXIT(PredIdx >= 0 && PassthruIdx >= 0);

@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2024 Intel Corporation
+Copyright (C) 2017-2025 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -63,6 +63,7 @@ public:
     XeHPCVG,
     Xe2,
     Xe3,
+    Xe3P,
     Invalid,
   };
 
@@ -78,6 +79,12 @@ private:
 
   // HasFP64 - True if subtarget supports double type
   bool HasFP64 = false;
+
+  // HasNativeBFloat16 - True if subtarget supports bfloat16 arithmeics
+  bool HasNativeBFloat16 = false;
+
+  // HasMxfp - True if subtarget supports mxfp* operations
+  bool HasMxfp = false;
 
   // HasIEEEDivSqrt - True if subtarget supports IEEE-754 div and sqrt
   bool HasIEEEDivSqrt = false;
@@ -122,6 +129,10 @@ private:
 
   // True if it is profitable to use native DxD->Q multiplication
   bool UseMulDDQ = false;
+
+  // True if it is profitable to use native DxD+D->Q and DxD+Q->Q multiply-add
+  // operations
+  bool UseMadDDQ = false;
 
   // True if codegenerating for OCL runtime (set by default since CMRT removed)
   bool OCLRuntime = true;
@@ -174,6 +185,15 @@ private:
 
   /// True if subtarget supports half SIMD LSC messages
   bool HasHalfSIMDLSC = false;
+
+  /// True if subtarget supports efficient 64-bit addressing mode
+  bool HasEfficient64b = false;
+
+  /// True if efficient 64-bit mode is enabled
+  bool EnabledEfficient64b = false;
+
+  /// Number of supported cache levels
+  unsigned NumCacheLevels = 2;
 
   /// True if subtarget supports sampler messages
   bool HasSampler = false;
@@ -235,11 +255,20 @@ private:
   // True if target supports global double precision atomic add/sub
   bool HasGlobalAtomicAddF64 = false;
 
+  // True if target supports half precision atomics
+  bool HasInstrAtomicHF16 = false;
+
+  // True if target supports local single precision atomic add/sub
+  bool HasInstrLocalAtomicAddF32 = false;
+
   /// Max supported SLM size (in kbytes)
   int MaxSLMSize = 64;
 
   // Number of elements in Address Register
   unsigned AddressRegisterElements = 16;
+
+  // True if subtarget supports SIMD32 programming model
+  bool HasEfficientSIMD32 = false;
 
   // Shows which surface should we use for stack
   PreDefined_Surface StackSurf;
@@ -303,6 +332,18 @@ public:
 
   bool hasLSCOffset() const { return HasLSCOffset; }
 
+  // * efficient 64-bit addressing is supported
+  bool supportEfficient64b() const { return HasEfficient64b; }
+
+  // * efficient 64-bit addressing is supported and enabled
+  bool hasEfficient64b() const {
+    return HasEfficient64b && EnabledEfficient64b;
+  }
+
+  bool hasLSCBase() const { return hasEfficient64b(); }
+
+  unsigned getLSCScaleMax() const { return hasEfficient64b() ? 32 : 1; }
+
   bool translateLegacyMessages() const {
     return HasLSCMessages && TranslateLegacyMessages;
   }
@@ -332,6 +373,12 @@ public:
   /// * hasFP64 - true if target supports double fp
   bool hasFP64() const { return HasFP64; }
 
+  /// * hasNativeBFloat16 - true if target supports bfloat16 arithmetic
+  bool hasNativeBFloat16() const { return HasNativeBFloat16; }
+
+  /// * hasMxfp - true if target supports mxfp* operations
+  bool hasMxfp() const { return HasMxfp; }
+
   /// * hasIEEEDivSqrt - true if target supports IEEE-754 div and sqrt
   bool hasIEEEDivSqrt() const { return HasIEEEDivSqrt; }
 
@@ -343,6 +390,10 @@ public:
 
   /// * useMulDDQ - true if is desired to emit DxD->Q mul instruction
   bool useMulDDQ() const { return UseMulDDQ; }
+
+  /// * useMadDDQ - true if is desired to emit DxD+Q->Q and DxD+D->Q mad
+  /// instruction
+  bool useMadDDQ() const { return UseMadDDQ; }
 
   /// * disableJmpi - true if jmpi is disabled.
   bool disableJmpi() const { return DisableJmpi; }
@@ -411,6 +462,9 @@ public:
 
   bool hasGlobalAtomicAddF64() const { return HasGlobalAtomicAddF64; }
 
+  bool hasInstrAtomicHF16() const { return HasInstrAtomicHF16; }
+  bool hasInstrLocalAtomicAddF32() const { return HasInstrLocalAtomicAddF32; }
+
   bool hasL1ReadOnlyCache() const { return HasL1ReadOnlyCache; }
   bool hasLocalMemFenceSupress() const { return HasLocalMemFenceSupress; }
   bool hasMultiTile() const { return HasMultiTile; };
@@ -447,12 +501,18 @@ public:
   /// bit fields for ThreadID (from lsb to msb).
   ArrayRef<std::pair<int, int>> getThreadIdBits() const;
 
-  unsigned getNumCacheLevels() const { return 2; }
+  unsigned getNumCacheLevels() const {
+    if (hasEfficient64b())
+      return NumCacheLevels;
+    return 2;
+  }
 
   // Address Register size in elements.
   unsigned getAddressRegisterElements() const {
     return AddressRegisterElements;
   }
+
+  bool hasEfficientSIMD32() const { return HasEfficientSIMD32; }
 
   // Generic helper functions...
   const Triple &getTargetTriple() const { return TargetTriple; }

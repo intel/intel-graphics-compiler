@@ -3822,8 +3822,11 @@ void GenXKernelBuilder::buildIntrinsic(CallInst *CI, unsigned IntrinID,
           VISA_VectorOpnd *Surface, VISA_RawOpnd *Dst, VISA_RawOpnd *AddrsU,
           VISA_RawOpnd *AddrsV, VISA_RawOpnd *AddrsR, VISA_RawOpnd *AddrsLOD) {
         LLVM_DEBUG(dbgs() << "CreateLscTypedLoadQuad: " << *CI << "\n");
-        IGC_ASSERT(AddrType == LSC_ADDR_TYPE_BTI ||
-                   AddrType == LSC_ADDR_TYPE_BSS);
+        if (Subtarget->hasEfficient64b())
+          IGC_ASSERT(AddrType == LSC_ADDR_TYPE_SURF);
+        else
+          IGC_ASSERT(AddrType == LSC_ADDR_TYPE_BTI ||
+                     AddrType == LSC_ADDR_TYPE_BSS);
         LSC_DATA_SHAPE Shape = {LSC_DATA_SIZE_32b, LSC_DATA_ORDER_NONTRANSPOSE};
         Shape.chmask = ChMask;
         CISA_CALL(Kernel->AppendVISALscTypedLoad(
@@ -3838,8 +3841,11 @@ void GenXKernelBuilder::buildIntrinsic(CallInst *CI, unsigned IntrinID,
           VISA_VectorOpnd *Surface, VISA_RawOpnd *AddrsU, VISA_RawOpnd *AddrsV,
           VISA_RawOpnd *AddrsR, VISA_RawOpnd *AddrsLOD, VISA_RawOpnd *Data) {
         LLVM_DEBUG(dbgs() << "CreateLscTypedStoreQuad: " << *CI << "\n");
-        IGC_ASSERT(AddrType == LSC_ADDR_TYPE_BTI ||
-                   AddrType == LSC_ADDR_TYPE_BSS);
+        if (Subtarget->hasEfficient64b())
+          IGC_ASSERT(AddrType == LSC_ADDR_TYPE_SURF);
+        else
+          IGC_ASSERT(AddrType == LSC_ADDR_TYPE_BTI ||
+                     AddrType == LSC_ADDR_TYPE_BSS);
         LSC_DATA_SHAPE Shape = {LSC_DATA_SIZE_32b, LSC_DATA_ORDER_NONTRANSPOSE};
         Shape.chmask = ChMask;
         CISA_CALL(Kernel->AppendVISALscTypedStore(
@@ -3889,11 +3895,15 @@ void GenXKernelBuilder::buildIntrinsic(CallInst *CI, unsigned IntrinID,
     IGC_ASSERT((LscSfid == LSC_SLM && AddressType == LSC_ADDR_TYPE_FLAT &&
                 AddressSize == LSC_ADDR_SIZE_32b) ||
                (LscSfid == LSC_UGM && AddressType == LSC_ADDR_TYPE_FLAT &&
-                AddressSize == LSC_ADDR_SIZE_64b) ||
+                (AddressSize == LSC_ADDR_SIZE_32bU ||
+                 AddressSize == LSC_ADDR_SIZE_32bS ||
+                 AddressSize == LSC_ADDR_SIZE_64b)) ||
                (LscSfid == LSC_UGM &&
                 (AddressType == LSC_ADDR_TYPE_BTI ||
                  AddressType == LSC_ADDR_TYPE_BSS) &&
-                AddressSize == LSC_ADDR_SIZE_32b));
+                AddressSize == LSC_ADDR_SIZE_32b) ||
+               (LscSfid == LSC_UGM && AddressType == LSC_ADDR_TYPE_SURF &&
+                AddressSize == LSC_ADDR_SIZE_32bU));
     IGC_ASSERT(ElementSize == LSC_DATA_SIZE_8c32b ||
                ElementSize == LSC_DATA_SIZE_16c32b ||
                ElementSize == LSC_DATA_SIZE_32b ||
@@ -3927,6 +3937,34 @@ void GenXKernelBuilder::buildIntrinsic(CallInst *CI, unsigned IntrinID,
 
     auto *L3Opt = cast<ConstantInt>(CacheOpts->getAggregateElement(1u));
     Res.l3 = static_cast<LSC_CACHE_OPT>(L3Opt->getZExtValue());
+    if (Subtarget->hasEfficient64b() && Res.l1 == LSC_CACHING_READINVALIDATE) {
+      Res.l2 = LSC_CACHING_READINVALIDATE;
+      Res.l3 = LSC_CACHING_READINVALIDATE;
+      return Res;
+    }
+
+    // If target platform supports 2 cache levels, L1 and L3 hints should be
+    // present. For the platforms supporting 3 cache levels, L2 hint should be
+    // passed as well.
+    auto NumCacheLevels = Subtarget->getNumCacheLevels();
+    IGC_ASSERT(NumCacheLevels == 2 || NumCacheLevels == 3);
+
+    if (NumCacheLevels == 2)
+      return Res;
+
+    const auto *VTy = cast<IGCLLVM::FixedVectorType>(CacheOpts->getType());
+    const auto NumHints = VTy->getNumElements();
+    IGC_ASSERT(NumHints == 2 || NumHints == 3);
+
+    Res.l2 = Res.l3;
+
+    if (NumHints == 3) {
+      L3Opt = cast<ConstantInt>(CacheOpts->getAggregateElement(2u));
+      Res.l3 = static_cast<LSC_CACHE_OPT>(L3Opt->getZExtValue());
+      if (Res.l3 == LSC_CACHING_DEFAULT && Res.l2 != LSC_CACHING_DEFAULT)
+        Res.l3 = LSC_CACHING_UNCACHED;
+    } else if (Res.l2 != LSC_CACHING_DEFAULT)
+      Res.l3 = LSC_CACHING_UNCACHED;
 
     return Res;
   };
@@ -3963,7 +4001,9 @@ void GenXKernelBuilder::buildIntrinsic(CallInst *CI, unsigned IntrinID,
         LLVM_DEBUG(dbgs() << "CreateLscAtomic\n");
         CheckLscOp(LscSfid, AddressType, AddressSize, ElementSize);
         IGC_ASSERT(ElementSize != LSC_DATA_SIZE_8c32b);
-        IGC_ASSERT(Opcode >= LSC_ATOMIC_IINC && Opcode <= LSC_ATOMIC_XOR);
+        IGC_ASSERT((Opcode >= LSC_ATOMIC_IINC && Opcode <= LSC_ATOMIC_XOR) ||
+                   (Opcode >= LSC_ATOMIC_BFADD && Opcode <= LSC_ATOMIC_BFCAS &&
+                    ElementSize == LSC_DATA_SIZE_16c32b));
 
         LSC_ADDR AddressDesc = {AddressType, Scale, Offset, AddressSize};
         LSC_DATA_SHAPE DataDesc = {ElementSize, LSC_DATA_ORDER_NONTRANSPOSE,
@@ -4067,6 +4107,10 @@ void GenXKernelBuilder::buildIntrinsic(CallInst *CI, unsigned IntrinID,
                             uint8_t NumDst, VISA_RawOpnd *Dst, uint8_t NumSrc0,
                             VISA_RawOpnd *Src0, uint8_t NumSrc1,
                             VISA_RawOpnd *Src1) {
+    if (Subtarget->hasEfficient64b())
+      vc::diagnose(
+          getContext(), "GenXCisaBuilder",
+          "Intrinsic is not supported in efficient 64-bit addressing mode", CI);
 
     const bool IsEOT = Modifier & 2;
     CISA_CALL(Kernel->AppendVISAMiscRawSends(
@@ -4074,6 +4118,17 @@ void GenXKernelBuilder::buildIntrinsic(CallInst *CI, unsigned IntrinID,
         NumDst, Desc, Src0, Src1, Dst, IsEOT));
   };
 
+  auto CreateRawSendG = [&](VISA_EMask_Ctrl ExecMask, VISA_Exec_Size ExecSize,
+                            VISA_PredOpnd *Pred, char SFID, bool IsCond,
+                            bool IsEOT, VISA_RawOpnd *DstData, short DstSize,
+                            VISA_RawOpnd *Src0Data, short Src0Size,
+                            VISA_RawOpnd *Src1Data, short Src1Size,
+                            VISA_VectorOpnd *Ind0, VISA_VectorOpnd *Ind1) {
+    uint64_t Desc = cast<ConstantInt>(CI->getArgOperand(11))->getZExtValue();
+    CISA_CALL(Kernel->AppendVISAMiscRawSendg(
+        SFID, Pred, ExecMask, ExecSize, DstData, DstSize, Src0Data, Src0Size,
+        Src1Data, Src1Size, Ind0, Ind1, Desc, IsCond, IsEOT));
+  };
 
   VISA_EMask_Ctrl exec_mask;
 #include "GenXIntrinsicsBuildMap.inc"
@@ -5859,6 +5914,11 @@ collectFinalizerArgs(StringSaver &Saver, const GenXSubtarget &ST,
   if (ST.hasHalfSIMDLSC())
     addArgument("-enableHalfLSC");
 
+  if (ST.useMulDDQ())
+    addArgument("-wideMulMadOpsEn");
+  if (ST.hasEfficient64b())
+    addArgument("-enableEfficient64b");
+
   for (const auto &Fos : FinalizerOpts)
     cl::TokenizeGNUCommandLine(Fos, Saver, Argv);
 
@@ -5891,10 +5951,13 @@ collectFinalizerArgs(StringSaver &Saver, const GenXSubtarget &ST,
     addArgument("-fusedCallWA");
     addArgument("1");
   }
-  if (BC.getBinaryFormat() == vc::BinaryKind::ZE) {
-    addArgument("-abiver");
+  addArgument("-abiver");
+  if (ST.hasEfficient64b())
+    addArgument("3");
+  else if (BC.getBinaryFormat() == vc::BinaryKind::ZE)
     addArgument("2");
-  }
+  else
+    addArgument("1");
   if (WATable && WATable->Wa_14012437816)
     addArgument("-LSCFenceWA");
 

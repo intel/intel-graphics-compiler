@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2021-2024 Intel Corporation
+Copyright (C) 2021-2025 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -184,6 +184,9 @@ uint32_t __cm_cl_group_id_y();
 uint32_t __cm_cl_group_id_z();
 
 int __cm_cl_hw_thread_id();
+
+template <typename T, typename U>
+T __cm_cl_packed_4bit_upconvert_lut(T lut, U src);
 
 void __cm_cl_barrier();
 void __cm_cl_sbarrier(uint8_t);

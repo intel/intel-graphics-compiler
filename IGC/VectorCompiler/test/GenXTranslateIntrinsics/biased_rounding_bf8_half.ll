@@ -10,6 +10,9 @@
 ; RUN: %opt %use_old_pass_manager% -GenXTranslateIntrinsics -march=genx64 -mcpu=Xe3 -mtriple=spir64-unknown-unknown  -S < %s | FileCheck %s
 ; RUN: %opt_new_pm_typed -passes=GenXTranslateIntrinsics -march=genx64 -mcpu=Xe3 -mtriple=spir64-unknown-unknown  -S < %s | FileCheck %s
 
+; RUN: %opt %use_old_pass_manager% -GenXTranslateIntrinsics -march=genx64 -mcpu=Xe3P -mtriple=spir64-unknown-unknown  -S < %s | FileCheck %s
+; RUN: %opt_new_pm_typed -passes=GenXTranslateIntrinsics -march=genx64 -mcpu=Xe3P -mtriple=spir64-unknown-unknown  -S < %s | FileCheck %s
+
 target datalayout = "e-p:64:64-i64:64-n8:16:32"
 target triple = "genx64-unknown-unknown"
 

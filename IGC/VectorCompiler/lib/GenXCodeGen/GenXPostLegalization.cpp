@@ -127,7 +127,9 @@ bool GenXPostLegalization::runOnFunction(Function &F) {
       case GenXIntrinsic::genx_dpas_nosrc0:
       case GenXIntrinsic::genx_dpasw:
       case GenXIntrinsic::genx_dpasw_nosrc0:
+      case GenXIntrinsic::genx_bdpas:
       case vc::InternalIntrinsic::stochastic_round_to_bf8:
+      case vc::InternalIntrinsic::stochastic_round_to_hf8:
         Modified |= loadConstants(Inst, *ST, *DL);
         break;
       }

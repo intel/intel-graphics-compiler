@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2021-2024 Intel Corporation
+Copyright (C) 2021-2025 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -378,6 +378,27 @@ vector<T, width> cosine(vector<T, width> src, cm::tag::fast_t) {
 }
 
 /*==========================================================*/
+
+template <int Index, typename T, int NumElts>
+auto upconvert_4bit_lut(vector<uint32_t, 16> Lut, vector<T, NumElts> Src) {
+  constexpr int Stride = sizeof(uint32_t) / sizeof(T);
+  constexpr int Width = NumElts / Stride;
+  constexpr int VWidth = Width / 16;
+
+  static_assert(Width == 16 || Width == 32,
+                "upconvert_4bit_lut expects 16 or 32 elements");
+
+  vector<uint32_t, Width> Res;
+
+  vector<T, Width> _Src = Src.template select<Width, Stride>(Index);
+
+  auto _Lut =
+      detail::read_region<VWidth, 0, 16, 1, uint32_t, 16>(Lut.cl_vector(), 0);
+
+  Res = detail::__cm_cl_packed_4bit_upconvert_lut(_Lut, _Src.cl_vector());
+
+  return Res;
+}
 
 } // namespace math
 } // namespace cm

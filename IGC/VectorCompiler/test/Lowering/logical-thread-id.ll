@@ -13,6 +13,7 @@
 ; COM:  - XeHPC-like concatenation (CHECK-XeHPC): XeHPC
 ; COM:  - Xe2-like concatenation (CHECK-Xe2): Xe2
 ; COM:  - Xe3-like concatenation (CHECK-Xe3): Xe3
+; COM:  - Xe3P-like concatenation (CHECK-Xe3P): Xe3P
 
 ; RUN: %opt %use_old_pass_manager% -GenXLowering -march=genx64 -mcpu=Gen9 -mtriple=spir64-unknown-unknown -S < %s | \
 ; RUN: FileCheck %s --check-prefix=CHECK-PREDEF
@@ -41,6 +42,8 @@
 ; RUN: %opt %use_old_pass_manager% -GenXLowering -march=genx64 -mcpu=Xe3 -mtriple=spir64-unknown-unknown -S < %s | \
 ; RUN: FileCheck %s --check-prefix=CHECK-Xe3
 
+; RUN: %opt %use_old_pass_manager% -GenXLowering -march=genx64 -mcpu=Xe3P -mtriple=spir64-unknown-unknown -S < %s | \
+; RUN: FileCheck %s --check-prefix=CHECK-Xe3P
 
 ; CHECK-PREDEF: [[RES:%[^ ]+]] = call i32 @llvm.genx.read.predef.reg.i32.i32(i32 12, i32 undef)
 ; CHECK-PREDEF: ret i32 [[RES]]
@@ -91,6 +94,18 @@
 ; CHECK-Xe3: [[MUL:%[^ ]+]] = mul i32 [[SSEUID]], 10
 ; CHECK-Xe3: [[RES:%[^ ]+]] = add i32 [[MUL]], [[TID]]
 ; CHECK-Xe3: ret i32 [[RES]]
+
+; CHECK-Xe3P: [[SR0:%[^ ]+]] = call i32 @llvm.genx.read.predef.reg.i32.i32(i32 13, i32 undef)
+; CHECK-Xe3P: [[TID:%[^ ]+]] = and i32 [[SR0]], 7
+; CHECK-Xe3P: [[EUID:%[^ ]+]] = and i32 [[SR0]], 112
+; CHECK-Xe3P: [[EUSHIFT:%[^ ]+]] = lshr i32 [[EUID]], 1
+; CHECK-Xe3P: [[EUTID:%[^ ]+]] = or i32 [[TID]], [[EUSHIFT]]
+; CHECK-Xe3P: [[MSG0:%[^ ]+]] = call i32 @llvm.genx.read.predef.reg.i32.i32(i32 20, i32 undef)
+; CHECK-Xe3P: [[SSID:%[^ ]+]] = and i32 [[MSG0]], 255
+; CHECK-Xe3P: [[SSIDSHIFT:%[^ ]+]] = shl i32 [[SSID]], 6
+; CHECK-Xe3P: [[RES:%[^ ]+]] = or i32 [[EUTID]], [[SSIDSHIFT]]
+; CHECK-Xe3P: ret i32 [[RES]]
+
 target datalayout = "e-p:64:64-i64:64-n8:16:32"
 target triple = "genx64-unknown-unknown"
 

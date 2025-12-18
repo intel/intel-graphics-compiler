@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2019-2024 Intel Corporation
+Copyright (C) 2019-2025 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -108,6 +108,8 @@ public:
                                      unsigned Size, unsigned ArgOffset);
 
   void createImplArgsBufferAnnotation(unsigned Size, unsigned ArgOffset);
+  void createIndirectDataBufferAnnotation(unsigned Size, unsigned ArgOffset);
+  void createScratchBufferAnnotation(unsigned Size, unsigned ArgOffset);
 
   void RecomputeBTLayout(int numUAVs, int numResources);
 };

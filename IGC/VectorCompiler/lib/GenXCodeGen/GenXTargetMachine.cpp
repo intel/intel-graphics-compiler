@@ -144,7 +144,8 @@ bool isDpasAccumulator(const Value *V) {
   const auto *User = V->user_back();
   const auto IID = vc::getAnyIntrinsicID(User);
 
-  if (IID != GenXIntrinsic::genx_dpas && IID != GenXIntrinsic::genx_dpas2)
+  if (IID != GenXIntrinsic::genx_dpas && IID != GenXIntrinsic::genx_dpas2 &&
+      IID != GenXIntrinsic::genx_bdpas)
     return false;
 
   const auto *CI = cast<CallInst>(User);
@@ -249,8 +250,10 @@ void initializeGenXPasses(PassRegistry &registry) {
   initializeGenXTypeLegalizationPass(registry);
   initializeGenXLscAddrCalcFoldingPass(registry);
   initializeGenXDetectPointerArgPass(registry);
+  initializeGenXPropagateSurfaceStatePass(registry);
   initializeGenXLCECalculationPass(registry);
   initializeGenXFloatControlPass(registry);
+  initializeGenXStatePointerFencePass(registry);
   initializeGenXCountIndirectStatelessPass(registry);
   initializeGenXUnfreezePass(registry);
   // WRITE HERE MORE PASSES IF IT'S NEEDED;
@@ -683,6 +686,9 @@ bool GenXTargetMachine::addPassesToEmitFile(
     vc::addPass(PM, createAlwaysInlinerLegacyPass());
   }
 
+  /// .. include:: GenXPropagateSurfaceState.cpp
+  vc::addPass(PM, createGenXPropagateSurfaceStatePass());
+
   /// .. include:: GenXLscAddrCalcFolding.cpp
   vc::addPass(PM, createGenXLscAddrCalcFoldingPass());
 
@@ -909,8 +915,8 @@ void GenXTargetMachine::adjustPassManager(PassManagerBuilder &PMBuilder) {
       });
 
   // Packetize.
-  auto AddPacketize = [](const PassManagerBuilder &Builder,
-                         PassManagerBase &PM) {
+  auto AddPacketize = [this](const PassManagerBuilder &Builder,
+                             PassManagerBase &PM) {
     PM.add(createGenXLegalizeGVLoadUsesPass());
 #ifndef NDEBUG
     PM.add(createGenXVerifyPass(GenXVerifyStage::PostSPIRVReader));
@@ -920,6 +926,8 @@ void GenXTargetMachine::adjustPassManager(PassManagerBuilder &PMBuilder) {
     PM.add(createAlwaysInlinerLegacyPass());
     PM.add(createAlwaysInlinerLegacyPass());
     PM.add(createGenXPrintfPhiClonningPass());
+    if (Subtarget.hasEfficient64b())
+      PM.add(createGenXStatePointerFencePass());
     PM.add(createInstructionCombiningPass());
     PM.add(createGenXPrintfResolutionPass());
     PM.add(createGenXImportOCLBiFPass());
@@ -1022,7 +1030,8 @@ void GenXTargetMachine::adjustPassManager(PassManagerBuilder &PMBuilder) {
   // CM implicit parameters.
   auto AddCMImpParam = [this](const PassManagerBuilder &Builder,
                               PassManagerBase &PM) {
-    PM.add(createCMImpParamPass(Subtarget.hasThreadPayloadInMemory()));
+    PM.add(createCMImpParamPass(Subtarget.hasThreadPayloadInMemory(),
+                                Subtarget.hasEfficient64b()));
   };
   PMBuilder.addExtension(PassManagerBuilder::EP_ModuleOptimizerEarly,
                          AddCMImpParam);
@@ -1039,7 +1048,7 @@ void GenXTargetMachine::adjustPassManager(PassManagerBuilder &PMBuilder) {
   // BTI assignment.
   auto AddBTIAssign = [this](const PassManagerBuilder &Builder,
                              PassManagerBase &PM) {
-    PM.add(createGenXBTIAssignmentPass());
+    PM.add(createGenXBTIAssignmentPass(Subtarget.hasEfficient64b()));
   };
   PMBuilder.addExtension(PassManagerBuilder::EP_ModuleOptimizerEarly,
                          AddBTIAssign);
@@ -1054,6 +1063,7 @@ void GenXTargetMachine::adjustPassManager(PassManagerBuilder &PMBuilder) {
     const GenXBackendConfig &BackendConfig = PassConfig->getBackendConfig();
 
     PM.add(createCMKernelArgOffsetPass(Subtarget.getGRFByteSize(),
+                                       Subtarget.hasEfficient64b(),
                                        BackendConfig.useBindlessImages()));
   };
   PMBuilder.addExtension(PassManagerBuilder::EP_ModuleOptimizerEarly,
@@ -1108,6 +1118,9 @@ void GenXTargetMachine::registerPassBuilderCallbacks(PassBuilder &PB) {
     PM.addPass(AlwaysInlinerPass());
     PM.addPass(AlwaysInlinerPass());
     PM.addPass(GenXPrintfPhiClonningPass());
+    if (Subtarget.hasEfficient64b())
+      PM.addPass(
+          createModuleToFunctionPassAdaptor(GenXStatePointerFencePass()));
     PM.addPass(createModuleToFunctionPassAdaptor(InstCombinePass()));
     PM.addPass(GenXPrintfResolutionPass(this));
     PM.addPass(GenXImportOCLBiFPass());
@@ -1193,15 +1206,18 @@ void GenXTargetMachine::registerPassBuilderCallbacks(PassBuilder &PB) {
     PM.addPass(GenXLinkageCorruptorPass(BC->getResult()));
 
     // AddCMImpParam
-    PM.addPass(CMImpParamPass(Subtarget.hasThreadPayloadInMemory()));
+    PM.addPass(CMImpParamPass(Subtarget.hasThreadPayloadInMemory(),
+                              Subtarget.hasEfficient64b()));
 
     // CM ABI.
     PM.addPass(CMABIPass());
 
     // BTI assignment.
-    PM.addPass(GenXBTIAssignmentPass(BC->getResult()));
+    PM.addPass(
+        GenXBTIAssignmentPass(BC->getResult(), Subtarget.hasEfficient64b()));
 
     PM.addPass(CMKernelArgOffsetPass(Subtarget.getGRFByteSize(),
+                                     Subtarget.hasEfficient64b(),
                                      BC->useBindlessImages()));
   });
 

@@ -363,6 +363,8 @@ public:
     IMP_IMPL_ARGS_BUFFER = 0xF << AKBitsForCategory,
     IMP_PSEUDO_INPUT = 0x10 << AKBitsForCategory,
     IMP_OCL_ASSERT_BUFFER = 0x11 << AKBitsForCategory,
+    IMP_INDIRECT_DATA_BUFFER = 0x12 << AKBitsForCategory,
+    IMP_SCRATCH_BUFFER = 0x13 << AKBitsForCategory,
     IMP_OCL_SYNC_BUFFER = 0x17 << AKBitsForCategory,
   };
 
@@ -444,6 +446,13 @@ inline bool isSyncBufferKind(uint32_t ArgKind) {
   return isImplicitArgKind(ArgKind, KernelMetadata::IMP_OCL_SYNC_BUFFER);
 }
 
+inline bool isIndirectDataBufferKind(uint32_t ArgKind) {
+  return isImplicitArgKind(ArgKind, KernelMetadata::IMP_INDIRECT_DATA_BUFFER);
+}
+
+inline bool isScratchBufferKind(uint32_t ArgKind) {
+  return isImplicitArgKind(ArgKind, KernelMetadata::IMP_SCRATCH_BUFFER);
+}
 
 // Get implicit argument of the kernel \p Kernel defined by ID \p ImplArgID.
 // If kernel has no such argument behavior is undefined.
