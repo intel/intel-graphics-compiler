@@ -90,6 +90,13 @@ CIF_DEFINE_INTERFACE_VER_WITH_COMPATIBILITY(IgcFeaturesAndWorkarounds, 2, 1) {
 
 CIF_DEFINE_INTERFACE_VER_WITH_COMPATIBILITY(IgcFeaturesAndWorkarounds, 3, 2) { CIF_INHERIT_CONSTRUCTOR(); };
 
+CIF_DEFINE_INTERFACE_VER_WITH_COMPATIBILITY(IgcFeaturesAndWorkarounds, 4, 2) {
+  CIF_INHERIT_CONSTRUCTOR();
+
+  virtual void SetFtrEfficient64BitAddressing(bool v);
+  virtual bool GetFtrEfficient64BitAddressing() const;
+};
+
 CIF_GENERATE_VERSIONS_LIST(IgcFeaturesAndWorkarounds);
 CIF_MARK_LATEST_VERSION(IgcFeaturesAndWorkaroundsLatest, IgcFeaturesAndWorkarounds);
 

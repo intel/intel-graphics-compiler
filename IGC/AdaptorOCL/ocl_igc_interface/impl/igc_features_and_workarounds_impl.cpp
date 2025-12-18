@@ -54,6 +54,13 @@ void CIF_GET_INTERFACE_CLASS(IgcFeaturesAndWorkarounds, 2)::SetMaxOCLParamSize(u
   CIF_GET_PIMPL()->OCLCaps.MaxParameterSize = s;
 }
 
+bool CIF_GET_INTERFACE_CLASS(IgcFeaturesAndWorkarounds, 4)::GetFtrEfficient64BitAddressing() const {
+  return CIF_GET_PIMPL()->FeTable.FtrEfficient64BitAddressing;
+}
+void CIF_GET_INTERFACE_CLASS(IgcFeaturesAndWorkarounds, 4)::SetFtrEfficient64BitAddressing(bool v) {
+  CIF_GET_PIMPL()->FeTable.FtrEfficient64BitAddressing = v;
+}
+
 } // namespace IGC
 
 #include "cif/macros/disable.h"
