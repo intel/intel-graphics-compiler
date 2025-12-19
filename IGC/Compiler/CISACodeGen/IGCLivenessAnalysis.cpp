@@ -45,8 +45,7 @@ unsigned int IGCLivenessAnalysisBase::registerSizeInBytes() {
   return 32;
 }
 
-SIMDMode IGCLivenessAnalysisBase::bestGuessSIMDSize(IGC::CodeGenContext *CGCtx, IGCMD::MetaDataUtils *MDUtils,
-                                                    Function *F, GenXFunctionGroupAnalysis *FGA) {
+SIMDMode IGCLivenessAnalysisBase::bestGuessSIMDSize(Function *F) {
   switch (IGC_GET_FLAG_VALUE(ForceOCLSIMDWidth)) {
   case 0:
     break;
@@ -70,22 +69,18 @@ SIMDMode IGCLivenessAnalysisBase::bestGuessSIMDSize(IGC::CodeGenContext *CGCtx, 
   if (CGCtx->platform.isProductChildOf(IGFX_PVC)) {
     bool abortOnSpills =
         IGC_GET_FLAG_VALUE(AllowSIMD16DropForXE2Plus) && (CGCtx->platform.isCoreXE2() || CGCtx->platform.isCoreXE3());
-    if (abortOnSpills)
+    auto FG = FGA ? FGA->getGroup(F) : nullptr;
+    bool hasStackCall = (FG && FG->hasStackCall()) || (F && F->hasFnAttribute("visaStackCall"));
+    bool isIndirectGroup = FG && FGA->isIndirectCallGroup(FG);
+    bool hasSubroutine = FG && !FG->isSingle() && !hasStackCall && !isIndirectGroup;
+    if (abortOnSpills || hasSubroutine) {
       return SIMDMode::SIMD16;
-    if (FGA) {
-      auto FG = FGA ? FGA->getGroup(F) : nullptr;
-      bool hasStackCall = (FG && FG->hasStackCall()) || (F && F->hasFnAttribute("visaStackCall"));
-      bool isIndirectGroup = FG && FGA->isIndirectCallGroup(FG);
-      bool hasSubroutine = FG && !FG->isSingle() && !hasStackCall && !isIndirectGroup;
-      if (hasSubroutine)
-        return SIMDMode::SIMD16;
     }
     return SIMDMode::SIMD32;
   }
+
   return SIMDMode::SIMD8;
 }
-
-SIMDMode IGCLivenessAnalysisBase::bestGuessSIMDSize(Function *F) { return bestGuessSIMDSize(CGCtx, MDUtils, F, FGA); }
 
 ValueSet IGCLivenessAnalysisBase::getDefs(llvm::BasicBlock &BB) {
 
