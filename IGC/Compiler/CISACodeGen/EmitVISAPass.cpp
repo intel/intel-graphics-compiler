@@ -2299,8 +2299,10 @@ void EmitPass::EmitSimpleAlu(EOPCODE opCode, CVariable *dst, CVariable *src0, CV
     m_encoder->Inv(dst, src0);
     break;
   case llvm_tanh:
+    m_encoder->Tanh(dst, src0);
     break;
   case llvm_sigm:
+    m_encoder->Sigm(dst, src0);
     break;
   default:
     // need support
@@ -11397,6 +11399,7 @@ void EmitPass::emitStackCall(llvm::CallInst *inst) {
     IGC_ASSERT_MESSAGE(IGCLLVM::getNumArgOperands(inst) == 0, "Arguments for non-returning call are not implemented");
 
     auto *funcAddr = GetSymbol(IGCLLVM::getCalledValue(inst));
+    if (!m_currShader->m_Platform->hasEfficient64bEnabled())
       funcAddr = TruncatePointer(funcAddr);
     IGC_ASSERT_MESSAGE(funcAddr->IsUniform(), "Function address must be uniform for non-returning stack call");
     m_encoder->IndirectStackCall(nullptr, funcAddr, 0, 0);
@@ -22846,23 +22849,28 @@ void EmitPass::emitLscIntrinsicTypedLoadStatus(llvm::GenIntrinsicInst *inst) {
     CVariable *flag = nullptr;
     bool needLoop = ResourceLoopHeader(m_destination, resource, flag, label);
     CVariable *prevResult = nullptr;
+    if (!isEfficient64bEnabled && needLoop) {
       prevResult = m_currShader->GetNewVariable(numElements, ISA_TYPE_D, EALIGN_DWORD, "typedLoadStatusResult");
       CVariable *initVal = m_currShader->ImmToVariable(0, ISA_TYPE_D);
       m_encoder->SetSimdSize(SIMDMode::SIMD1);
       m_encoder->SetNoMask();
       m_encoder->Copy(m_destination, initVal);
       m_encoder->Push();
+    }
     ResourceLoopSubIteration(resource, flag, label);
     m_encoder->SetPredicate(flag);
     m_encoder->LSC_TypedReadWrite(lscOp, &resource, pU, pV, pR, pLODorSampleIdx,
                                   needLoop && prevResult ? prevResult : m_destination, eltBitSize, numElements,
                                   addrSize, writeMask.getEM(), cacheOpts);
     m_encoder->Push();
+    if (!isEfficient64bEnabled && needLoop) {
       m_encoder->SetSimdSize(SIMDMode::SIMD1);
       m_encoder->SetNoMask();
       m_encoder->Or(m_destination, prevResult, m_destination);
       m_encoder->Push();
+    }
     ResourceLoopBackEdge(needLoop, flag, label);
+    if (!isEfficient64bEnabled) {
       // Extract per-lane status from the packed status register.
       // The hardware returns a single dw register with one status bit per lane.
       // We need to broadcast the bit result into per-lane values.
@@ -22880,6 +22888,7 @@ void EmitPass::emitLscIntrinsicTypedLoadStatus(llvm::GenIntrinsicInst *inst) {
       CVariable *nonResident = m_currShader->ImmToVariable(0x0, m_destination->GetType());
       m_encoder->Select(statusFlag, m_destination, resident, nonResident);
       m_encoder->Push();
+    }
   }
   m_currShader->m_State.isMessageTargetDataCacheDataPort = true;
 }

@@ -338,6 +338,8 @@ public:
   inline void USubB(CVariable *dst, CVariable *dstCarryBorrow, CVariable *src0, CVariable *src1);
   inline void IEEESqrt(CVariable *dst, CVariable *src0);
   inline void IEEEDivide(CVariable *dst, CVariable *src0, CVariable *src1);
+  inline void Tanh(CVariable *dst, CVariable *src0);
+  inline void Sigm(CVariable *dst, CVariable *src0);
   void AddPair(CVariable *Lo, CVariable *Hi, CVariable *L0, CVariable *H0, CVariable *L1, CVariable *H1 = nullptr);
   void SubPair(CVariable *Lo, CVariable *Hi, CVariable *L0, CVariable *H0, CVariable *L1, CVariable *H1);
   inline void dp4a(CVariable *dst, CVariable *src0, CVariable *src1, CVariable *src2);
@@ -897,6 +899,9 @@ inline void CEncoder::IEEESqrt(CVariable *dst, CVariable *src0) { Arithmetic(ISA
 inline void CEncoder::IEEEDivide(CVariable *dst, CVariable *src0, CVariable *src1) {
   Arithmetic(ISA_DIVM, dst, src0, src1);
 }
+inline void CEncoder::Tanh(CVariable *dst, CVariable *src0) { Arithmetic(ISA_TANH, dst, src0); }
+
+inline void CEncoder::Sigm(CVariable *dst, CVariable *src0) { Arithmetic(ISA_SIGM, dst, src0); }
 
 inline void CEncoder::dp4a(CVariable *dst, CVariable *src0, CVariable *src1, CVariable *src2) {
   Arithmetic(ISA_DP4A, dst, src0, src1, src2);
