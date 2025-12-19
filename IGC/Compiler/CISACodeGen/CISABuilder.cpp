@@ -1499,6 +1499,8 @@ void CEncoder::ShflIdx4(CVariable *dst, CVariable *src0, CVariable *src1) {
   VISA_RawOpnd *dstOpnd = GetRawDestination(dst);
   VISA_PredOpnd *predOpnd = GetFlagOperand(m_encoderState.m_flag);
 
+  V(vKernel->AppendVISAShflIdx4Inst(ISA_SHFL_IDX4, predOpnd, GetAluEMask(dst), GetAluExecSize(dst), dstOpnd, src0Opnd,
+                                    src1Opnd));
 }
 // We allow H1 to be nullptr for the common case of adding 64-bit variable
 // with 32-bit imm
@@ -4363,6 +4365,9 @@ void CEncoder::InitVISABuilderOptions(TARGET_PLATFORM VISAPlatform, SIMDMode sim
   if (IGC_IS_FLAG_ENABLED(CopyA0ToDBG0)) {
     SaveOption(vISA_CopyA0ToDBG0, true);
   }
+  if (IGC_IS_FLAG_ENABLED(CopyMsg0ToDbg0)) {
+    SaveOption(vISA_CopyMsg0ToDbg0, true);
+  }
 
   if (VISAPlatform == Xe_XeHPSDV && IGC_IS_FLAG_ENABLED(DPASTokenReduction)) {
     SaveOption(vISA_EnableDPASTokenReduction, true);
@@ -4581,6 +4586,15 @@ void CEncoder::InitVISABuilderOptions(TARGET_PLATFORM VISAPlatform, SIMDMode sim
     SaveOption(vISA_EnableProgrammableOffsetsMessageBitInHeader, true);
   }
 
+  if (m_program->m_Platform->hasEfficient64bEnabled()) {
+    SaveOption(vISA_enableEfficient64b, true);
+  }
+  if (!m_program->m_Platform->supportStatefulScaleFolding()) {
+    // vISA_supportLSCImmScale has value 3 by default, which enables address
+    // offset scaling in all cases. Set value to 0 to disable UGM-scratch and
+    // SLM cases.
+    SaveOption(vISA_supportLSCImmScale, (uint32_t)0);
+  }
   if (uint32_t Val = IGC_GET_FLAG_VALUE(EnableScalarPipe)) {
     SaveOption(vISA_ScalarPipe, Val);
   }
@@ -7056,6 +7070,8 @@ void CEncoder::bdpas(CVariable *Dst, CVariable *Acc, CVariable *B, PrecisionType
       VISA_VectorOpnd *srcOpnd3 = GetSourceOperand(scalingPartsB[partIndex], noMod);
       VISA_VectorOpnd *srcOpnd4 = GetSourceOperand(scalingPartsA[partIndex], noMod);
 
+      V(vKernel->AppendVISABdpasInst(ISA_BDPAS, splitExecMask, toExecSize, dstOpnd, srcOpnd0, srcOpnd1, srcOpnd2,
+                                     srcOpnd3, srcOpnd4, src2Precision, src1Precision, systolicDepth, repeatCount));
     }
     uint32_t dstOfstBytes = m_encoderState.m_dstOperand.subVar * getGRFSize() + Dst->GetAliasOffset();
     MergePayloadToHigherSIMD(partsDst[0], partsDst[1], repeatCount, Dst, dstOfstBytes, visaNumLanes(fromExecSize));
@@ -7080,6 +7096,8 @@ void CEncoder::bdpas(CVariable *Dst, CVariable *Acc, CVariable *B, PrecisionType
     VISA_VectorOpnd *srcOpnd3 = GetSourceOperand(BScaling, noMod);
     VISA_VectorOpnd *srcOpnd4 = GetSourceOperand(AScaling, noMod);
 
+    V(vKernel->AppendVISABdpasInst(ISA_BDPAS, execMask, execSize, dstOpnd, srcOpnd0, srcOpnd1, srcOpnd2, srcOpnd3,
+                                   srcOpnd4, src2Precision, src1Precision, systolicDepth, repeatCount));
   }
 }
 
@@ -7241,6 +7259,9 @@ void CEncoder::lfsr(CVariable *dst, CVariable *src0, CVariable *src1, LFSR_FC fu
   VISA_VectorOpnd *srcOpnd0 = GetSourceOperand(src0, m_encoderState.m_srcOperand[0]);
   VISA_VectorOpnd *srcOpnd1 = GetSourceOperand(src1, m_encoderState.m_srcOperand[1]);
 
+  V(vKernel->AppendVISALfsrInst(predOpnd, GetAluEMask(dst),
+                                visaExecSize(dst->IsUniform() ? m_encoderState.m_uniformSIMDSize : simdMode), funcCtrl,
+                                dstOpnd, srcOpnd0, srcOpnd1));
 }
 
 void CEncoder::srnd(CVariable *D, CVariable *S0, CVariable *R) {
@@ -7264,6 +7285,10 @@ void CEncoder::emitDnscl(CVariable *dst, CVariable *src0, CVariable *src1, CVari
   VISA_RawOpnd *srcOpnd1 = GetRawSource(src1);
   VISA_RawOpnd *srcOpnd2 = GetRawSource(bias);
 
+  V(vKernel->AppendVISADnsclInst(
+      predOpnd, GetAluEMask(dst),
+      visaExecSize(dst->IsUniform() ? m_encoderState.m_uniformSIMDSize : m_encoderState.m_simdSize), convType, packMode,
+      roundMode, dstOpnd, srcOpnd0, srcOpnd1, srcOpnd2));
 }
 
 std::string CEncoder::GetVariableName(CVariable *var) {
