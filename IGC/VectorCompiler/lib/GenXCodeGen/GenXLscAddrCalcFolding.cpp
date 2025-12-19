@@ -449,7 +449,7 @@ bool GenXLscAddrCalcFolding::foldLscAddrExtend(CallInst &Inst) {
     SmallVector<Constant *, 32> Values;
     for (unsigned I = 0; I < Const->getType()->getNumElements(); I++) {
       auto V = Const->getAggregateElement(I)->getUniqueInteger();
-      if (V.getMinSignedBits() > 32)
+      if (V.getSignificantBits() > 32)
         return false;
       Values.push_back(Builder.getInt32(V.getSExtValue()));
     }
