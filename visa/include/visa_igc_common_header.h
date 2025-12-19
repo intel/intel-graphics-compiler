@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2025 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -411,14 +411,14 @@ typedef enum {
   ISA_RESERVED_90 = 0x90,
   ISA_MADW = 0x91,
   ISA_ADD3O = 0x92,
-  ISA_RESERVED_93 = 0x93,
+  ISA_RAW_SENDG = 0x93,
   ISA_BREAKPOINT = 0x94,
-  ISA_RESERVED_95 = 0x95,
-  ISA_RESERVED_96 = 0x96,
-  ISA_RESERVED_97 = 0x97,
-  ISA_RESERVED_98 = 0x98,
-  ISA_RESERVED_99 = 0x99,
-  ISA_RESERVED_9A = 0x9A,
+  ISA_SHFL_IDX4 = 0x95,
+  ISA_TANH = 0x96,
+  ISA_SIGM = 0x97,
+  ISA_LFSR = 0x98,
+  ISA_BDPAS = 0x99,
+  ISA_DNSCL = 0x9A,
   ISA_INVM = 0x9B,
   ISA_RSQTM = 0x9C,
   ISA_NUM_OPCODE,
@@ -474,6 +474,8 @@ typedef enum {
   VISA_3D_GATHER4_PO_PACKED_L_C = 55,
   VISA_3D_SAMPLE_PO_LZ = 56,
   VISA_3D_SAMPLE_PO_C_LZ = 57,
+  VISA_3D_SAMPLE_PO_B_C = 58,
+  VISA_3D_SAMPLE_PO_D_C = 59,
   VISA_3D_TOTAL_NUM_OPS,
 } VISASampler3DSubOpCode;
 
@@ -529,6 +531,8 @@ typedef enum {
   Xe_PVCXT,
   Xe2,
   Xe3,
+  Xe3P_CRI,
+  Xe3P_Graphics,
   ALL
 } TARGET_PLATFORM;
 
@@ -987,8 +991,14 @@ enum LSC_OP {
   LSC_ATOMIC_BFMIN = 0x23,
   LSC_ATOMIC_BFMAX = 0x24,
   LSC_ATOMIC_BFCAS = 0x25,
+  LSC_GET_WATCHPT = 0x2D,
+  LSC_SET_WATCHPT = 0x2E,
+  LSC_LOAD_ELEMENT_TEXTURE = 0x2F,
+  LSC_LOAD_ELEMENT_STATUS_TEXTURE = 0x30,
   LSC_LOAD_QUAD_MSRT = 0x31,
   LSC_STORE_QUAD_MSRT = 0x32,
+  LSC_EXTENDED_CACHE_CTRL = 0x33,
+  LSC_LOAD_QUAD_STATUS = 0x36, // HW encoding value is 0x1C.
   LSC_INVALID = 0xFFFFFFFF,
 };
 
@@ -1060,7 +1070,7 @@ typedef enum {
   VISA_LSC_IMMOFF_ADDR_TYPE_BSS = 2,
   VISA_LSC_IMMOFF_ADDR_TYPE_SS = 3,
   VISA_LSC_IMMOFF_ADDR_TYPE_BTI = 4,
-  VISA_LSC_IMMOFF_ADDR_TYPE_XXXX = 5,
+  VISA_LSC_IMMOFF_ADDR_TYPE_SURF = 5,
   VISA_LSC_IMMOFF_PAYLOAD_LOADING = 16,
   VISA_LSC_IMMOFF_SPILL_FILL = 17
 } VISALscImmOffOpts;
@@ -1091,6 +1101,21 @@ enum class STACK_ADDRESS_MODE : unsigned char
 {
     DEFAULT_ADDRESSING = 0,
     ASYNC_RT_ADDRESSING = 1
+};
+enum class BTD_SPAWN_MODE : unsigned char
+{
+    ORDINARY_SPAWN = 0,
+    DIVERGING_SPAWN = 1,
+    CONVERGING_SPAWN = 2
+};
+
+enum LSC_CACHE_CTRL_SIZE{
+  CCSIZE_64B = 0,
+};
+
+enum LSC_CACHE_CTRL_OPERATION {
+  CCOP_DIRTY_RESET = 1,
+
 };
 
 #endif // _VISA_IGC_COMMON_HEADER_H_

@@ -22825,8 +22825,15 @@ void EmitPass::emitLscIntrinsicTypedLoadStatus(llvm::GenIntrinsicInst *inst) {
 
   LSC_ADDR_SIZE addrSize = LSC_ADDR_SIZE_32b;
   const unsigned int eltBitSize = 32;
-  const unsigned int numElements = 1;
-  const LSC_OP lscOp = LSC_LOAD_STATUS;
+  const bool isEfficient64bEnabled = m_currShader->m_Platform->hasEfficient64bEnabled();
+  const unsigned int numElements =
+      isEfficient64bEnabled ? numLanes(m_currShader->m_SIMDSize)
+                            : 1; // The dest data payload is dword per SIMT lane/bit per SIMT lane (one dword).
+  if (isEfficient64bEnabled && resource.m_isStatefulForEfficient64b) {
+    // stateful access for efficient64b -> 64bit pointer with 32bit offset
+    addrSize = LSC_ADDR_SIZE_32bU;
+  }
+  const LSC_OP lscOp = isEfficient64bEnabled ? LSC_LOAD_QUAD_STATUS : LSC_LOAD_STATUS;
   if (destIsUniform) {
     m_encoder->SetSimdSize(SIMDMode::SIMD1);
     m_encoder->SetPredicate(nullptr);

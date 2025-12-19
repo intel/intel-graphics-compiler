@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2020-2021 Intel Corporation
+Copyright (C) 2020-2025 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -67,6 +67,50 @@ static bool encodeLscFenceScope(LSC_SCOPE fs, uint32_t &enc) {
   }
 }
 
+static G4_INST *translateFenceUnified(IR_Builder &irb, G4_Predicate *pred,
+                                      SFID sfid, LSC_FENCE_OP fenceOp,
+                                      LSC_SCOPE scope, int &status) {
+  auto check = [&](bool z, const char *what) {
+    if (!z) {
+      irb.criticalMsgStream() << what << "\n";
+      vISA_ASSERT_INPUT(false, std::string(what));
+      status = VISA_FAILURE;
+    }
+  };
+
+  uint64_t desc = 0;
+  desc |= MsgOpEncode(MsgOp::FENCE);
+
+  uint32_t fOp = 0;
+  if (!encodeLscFenceSubOp(fenceOp, fOp)) {
+    check(false, "invalid fence op");
+  }
+  desc |= fOp << 8;
+
+  uint32_t fsEnc = 0;
+  if (!encodeLscFenceScope(scope, fsEnc)) {
+    check(false, "invalid fence scope");
+  }
+  desc |= fsEnc << 11;
+
+  G4_SendgDesc *sendDesc = new (irb.mem) G4_SendgDesc(sfid, desc, irb);
+  sendDesc->setDstLen(0);
+  sendDesc->setSrc0Len(1);
+  sendDesc->setSrc1Len(0);
+
+  G4_SrcRegRegion *src0 =
+    irb.createSrcRegRegion(irb.getRealR0(), irb.getRegionStride1());
+
+  G4_INST *inst = irb.createLscSendgInst(
+      pred,
+      irb.createNullDst(Type_UD), // dst
+      src0,                       // src0 legacy barrier requires r0 (r0.2)
+      irb.createNullSrc(Type_UD), // src1
+      g4::SIMD1,                  // exec size
+      sendDesc, Get_Gen4_Emask(vISA_EMASK_M1_NM, g4::SIMD1),
+      nullptr);              // no surface state or a64 base
+  return inst;
+}
 
 G4_INST *IR_Builder::translateLscFence(G4_Predicate *pred, SFID sfid,
                                        LSC_FENCE_OP fenceOp, LSC_SCOPE scope,
@@ -74,6 +118,9 @@ G4_INST *IR_Builder::translateLscFence(G4_Predicate *pred, SFID sfid,
   TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
   status = VISA_SUCCESS;
 
+  if (isEfficient64bEnabled()) {
+    return translateFenceUnified(*this, pred, sfid, fenceOp, scope, status);
+  }
 
   auto check = [&](bool z, const char *what) {
     if (!z) {
@@ -265,6 +312,28 @@ static void generateNamedBarrier(int &status, IR_Builder &irb,
     i->setComments("set consumer");
   }
 
+  if (irb.isEfficient64bEnabled()) {
+    // named barrier descriptor
+    const uint64_t desc = MsgOpEncode(MsgOp::BARRIER_SIGNAL_NAMED);
+    // no other descriptor fields for named barrier
+
+    G4_SendgDesc *sendDesc =
+        new (irb.mem) G4_SendgDesc(SFID::GATEWAY, desc, irb);
+    sendDesc->setDstLen(0);
+    sendDesc->setSrc0Len(1);
+    sendDesc->setSrc1Len(0);
+
+    G4_INST *inst = irb.createLscSendgInst(
+        prd,
+        irb.createNullDst(Type_UD),                             // dst
+        irb.createSrcRegRegion(header, irb.getRegionStride1()), // src0
+        irb.createNullSrc(Type_UD),                             // src1
+        g4::SIMD1, sendDesc, Get_Gen4_Emask(vISA_EMASK_M1_NM, g4::SIMD1),
+        nullptr // no ind0
+    );
+    (void)inst; // createLscSendgInst appends by default
+    return;
+  }
   int desc = (0x1 << 25) + 0x4;
 
   auto msgDesc = irb.createSyncMsgDesc(SFID::GATEWAY, desc);
@@ -274,8 +343,43 @@ static void generateNamedBarrier(int &status, IR_Builder &irb,
       irb.createImm(desc, Type_UD), InstOpt_WriteEnable, msgDesc, true);
 }
 
+static void appendDefaultBarrierUnified(IR_Builder &irb, G4_Predicate *prd) {
+  uint64_t ACTIVE_ONLY_BARRIER;
+  if (irb.getOption(vISA_ActiveThreadsOnlyBarrier)) {
+    ACTIVE_ONLY_BARRIER = 0x1;
+  }
+  else {
+    ACTIVE_ONLY_BARRIER = 0x0;
+  }
+
+  uint64_t desc =
+    MsgOpEncode(MsgOp::BARRIER_SIGNAL) | (ACTIVE_ONLY_BARRIER << 7);
+
+  G4_SendgDesc *sendDesc =
+      new (irb.mem) G4_SendgDesc(SFID::GATEWAY, desc, irb);
+  sendDesc->setDstLen(0);
+  sendDesc->setSrc0Len(1);
+  sendDesc->setSrc1Len(0);
+
+  G4_SrcRegRegion *src0 =
+    irb.createSrcRegRegion(irb.getRealR0(), irb.getRegionScalar());
+
+  G4_INST *inst = irb.createLscSendgInst(
+      prd,
+      irb.createNullDst(Type_UD), // dst
+      src0,                       // src0 (legacy barrier needs r0 copy)
+      irb.createNullSrc(Type_UD), // src1
+      g4::SIMD1,                  // exec size
+      sendDesc, Get_Gen4_Emask(vISA_EMASK_M1_NM, g4::SIMD1),
+      nullptr); // no surface state or a64 base
+  (void)inst;
+}
 
 void IR_Builder::generateSingleBarrier(G4_Predicate *prd, uint32_t id) {
+  if (isEfficient64bEnabled() && id == 0) {
+    appendDefaultBarrierUnified(*this, prd);
+    return;
+  }
   // single barrier: # producer = # consumer = # threads, barrier id = 0
   // For now produce no fence
   // Number of threads per threadgroup is r0.2[31:24]
@@ -311,6 +415,34 @@ void IR_Builder::generateSingleBarrier(G4_Predicate *prd, uint32_t id) {
       createSrc(getBuiltinR0()->getRegVar(), 0, 11, getRegionScalar(), Type_UB);
   auto inst1 = createMov(g4::SIMD2, dst, src0, InstOpt_WriteEnable, true);
   inst1->addComment("signal barrier payload (nprods, ncons)");
+  if (isEfficient64bEnabled() && id != 0) {
+    // This sendg to gateway is produced with the named barrier
+    // because there is also usage of the workgroup barrier
+    // which uses the barrier ID:0, so we need to use diffrent ID
+    // for the split barrier to avoid cross usage of the same ID.
+    auto& irb = *this;
+    // named barrier descriptor
+    const uint64_t desc = MsgOpEncode(MsgOp::BARRIER_SIGNAL_NAMED);
+    // no other descriptor fields for named barrier
+
+    G4_SendgDesc* sendDesc =
+      new (irb.mem) G4_SendgDesc(SFID::GATEWAY, desc, irb);
+    sendDesc->setDstLen(0);
+    sendDesc->setSrc0Len(1);
+    sendDesc->setSrc1Len(0);
+
+    G4_INST* inst = irb.createLscSendgInst(
+      prd,
+      irb.createNullDst(Type_UD),                             // dst
+      irb.createSrcRegRegion(header, irb.getRegionStride1()), // src0
+      irb.createNullSrc(Type_UD),                             // src1
+      g4::SIMD1, sendDesc, Get_Gen4_Emask(vISA_EMASK_M1_NM, g4::SIMD1),
+      nullptr // no ind0
+    );
+    (void)inst; // createLscSendgInst appends by default
+
+    return;
+  }
   // 1 message length, 0 response length, no header, no ack
   int desc = (0x1 << 25) + 0x4;
 
@@ -632,6 +764,9 @@ int IR_Builder::translateVISASyncInst(ISA_Opcode opcode, unsigned int mask) {
     generateBarrierWait(nullptr);
   } break;
   case ISA_SAMPLR_CACHE_FLUSH: {
+    if (isEfficient64bEnabled()) {
+      return translateVISASampleCacheFlushInstUnified();
+    }
        // msg length = 1, response length = 1, header_present = 1,
        // Bit 16-12 = 11111 for Sampler Message Type
        // Bit 18-17 = 11 for SIMD32 mode
@@ -770,3 +905,39 @@ int IR_Builder::translateVISASplitBarrierInst(G4_Predicate *prd,
   return VISA_SUCCESS;
 }
 
+G4_INST *IR_Builder::translateEot(G4_Predicate *prd) {
+  vISA_ASSERT(isEfficient64bEnabled(), "missing option required for EOT");
+
+  // Desc[5:0] SIG_EOT = 0
+  // Desc[8:7] EOT_REPLAY_OP = 0
+  uint64_t desc = 0x0;
+
+  G4_SendgDesc *sendDesc = new (mem) G4_SendgDesc(SFID::GATEWAY, desc, *this);
+  sendDesc->setDstLen(0);
+  sendDesc->setSrc0Len(1);
+  sendDesc->setSrc1Len(0);
+
+  G4_SrcRegRegion *src0 =
+    createSrcRegRegion(getRealR0(), getRegionStride1());
+
+  if (prd) {
+    // if the sequence accepts a predicate and one is given
+    // we must emulate with an extra cmp
+    prd = duplicateOperand(prd);
+    vISA_ASSERT(prd->getControl() == PRED_DEFAULT,
+                "predication must be default");
+    prd->setControl(G4_Predicate_Control::PRED_ANY_WHOLE);
+  }
+
+  G4_InstSend *inst = createLscSendgInst(
+      prd,
+      createNullDst(Type_UD), // dst
+      src0,                   // src0 (requires r0 for num threads-per-TG)
+      createNullSrc(Type_UD), // src1
+      g4::SIMD1,              // exec size
+      sendDesc, Get_Gen4_Emask(vISA_EMASK_M1_NM, g4::SIMD1),
+      nullptr,
+      false); // no surface state or a64 base
+  inst->setEOT();
+  return inst;
+}

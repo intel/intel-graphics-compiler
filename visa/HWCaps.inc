@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2025 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -65,7 +65,8 @@ bool encodeUnitStrideTernary() const {
 }
 
 bool hasMacMacl() const {
-  return getPlatform() >= GENX_CNL && !removedAccRestrictionsAsGRF();
+  return getPlatform() >= GENX_CNL && getPlatform() <= Xe3 &&
+         !removedAccRestrictionsAsGRF();
 }
 
 bool hasCPS() const { return getPlatform() >= GENX_CNL; }
@@ -168,6 +169,9 @@ bool hasCondModForTernary() const {
 }
 
 bool hasSWSB() const { return getPlatformGeneration() >= PlatformGen::XE; }
+bool hasSWSBCounter() const {
+  return getPlatform() > Xe3;
+}
 
 bool hasPartialMixMode() const {
   return getPlatformGeneration() >= PlatformGen::XE;
@@ -183,7 +187,7 @@ bool hasSmov() const { return getPlatformGeneration() < PlatformGen::XE; }
 bool doAccSub() const { return getPlatformGeneration() >= PlatformGen::GEN11; }
 
 bool doFlagLVN() const {
-  return false;
+  return getPlatform() >= Xe3P_Graphics;
 }
 
 bool hasNFType() const {
@@ -285,6 +289,10 @@ bool hasFPU0ReadSuppressionIssue() const {
   return getPlatform() == Xe_PVCXT && hasRSForSpecificPlatform();
 }
 
+bool hasWideMulMadOpsEnabled() const {
+  return getPlatform() > Xe3 &&
+         getOptions()->getOption(vISA_WideMulMadOpsEnable);
+}
 
 bool alignBindlessSampler() const {
   return getPlatformGeneration() == PlatformGen::GEN9;
@@ -359,8 +367,8 @@ bool noFP64() const {
 
 bool hasQDDMul() const {
   return getPlatform() == GENX_BDW || getPlatform() == GENX_SKL ||
-         getPlatform() == GENX_CNL ||
-         getPlatform() == Xe_XeHPSDV || getPlatform() == Xe_PVC;
+         getPlatform() == GENX_CNL || getPlatform() == Xe_XeHPSDV ||
+         getPlatform() == Xe_PVC || getPlatform() > Xe3;
 }
 
 bool no64bitRegioning() const {
@@ -430,7 +438,7 @@ bool needsToLoadLocalID() const {
 }
 
 bool noDwDstForDwordMul() const {
-  return noInt64() || getPlatform() >= Xe_XeHPSDV;
+  return (noInt64() || getPlatform() >= Xe_XeHPSDV) && getPlatform() <= Xe3;
 }
 
 bool useNewExtDescFormat() const { return getPlatform() >= Xe_XeHPSDV; }
@@ -465,23 +473,25 @@ G4_Type getMixModeType() const {
 uint32_t getNumFlagRegisters(void) { return getPlatform() >= Xe_PVC ? 8 : 4; }
 
 uint32_t getNumAddrRegisters() const {
-    return 16;
+    return supportNativeSIMD32() ? 32 : 16;
 }
 
 // each address register is 16 bits
 uint32_t getNumAddrRegistersInGRFSizeSWSB() const {
-    if (hasThreeALUPipes() || hasFourALUPipes()) {
-      return ((16 * G4_WSIZE) + numEltPerGRF<Type_UB>() - 1) / numEltPerGRF<Type_UB>();
-    } else {
-      return 0;
-    }
+  if (hasThreeALUPipes() || hasFourALUPipes()) {
+    return ((supportNativeSIMD32() ? 32 : 16) * G4_WSIZE +
+            numEltPerGRF<Type_UB>() - 1) /
+           numEltPerGRF<Type_UB>();
+  } else {
+    return 0;
+  }
 }
 
 uint32_t getNumScalarRegisters(void) {
   if (auto n = getuint32Option(vISA_ScalarPipe)) {
     return n;
   }
-  if (enableSendIndirect()) {
+  if (enableSendIndirect() || isEfficient64bEnabled()) {
     return 1;
   }
   return 0;
@@ -491,7 +501,7 @@ uint32_t getScalarRegisterSizeInBytes() {
   if (getuint32Option(vISA_ScalarPipe)) {
     return 64; // 64 Bytes in s0
   }
-  return 32; // 32B in s0
+  return getPlatform () > Xe3 ? 64 : 32; // 64B in s0
 }
 
 bool encodeAccWrEn() const { return getPlatform() < Xe_PVC; }
@@ -512,9 +522,9 @@ bool noHFToInteger() const {
 }
 
 bool useAccForDF() const {
-  return
-      getPlatform() == Xe_PVCXT || getPlatform() == Xe_PVC ||
-      getPlatform() == Xe_XeHPSDV;
+  return getPlatform() > Xe3 ||
+         getPlatform() == Xe_PVCXT || getPlatform() == Xe_PVC ||
+         getPlatform() == Xe_XeHPSDV;
 }
 
 bool hasAccExecSizeRestrictions() const {
@@ -552,11 +562,14 @@ bool relaxedACCRestrictions4() const {
 }
 
 bool hasACCRestrictionsForCdyn() const {
-  return false;
+  return getPlatform() >= Xe3P_Graphics;
 }
 
 bool enableACCBeforRA() const {
-  return (getOption(vISA_accSubBeforeRA) && (getPlatform() >= Xe2));
+  return (getOption(vISA_accSubBeforeRA) &&
+          (getPlatform() >= Xe2 && getPlatform() <= Xe3 ||
+           getPlatform() >= Xe3P_Graphics)) ||
+         getOption(vISA_enableAccSubBeforeRA);
 }
 
 bool enablePreSchedACC() const {
@@ -686,6 +699,19 @@ bool hasFiveALUPipes() const {
 
 bool hasDpasSrc2ReadSupression() const { return getPlatform() >= Xe_PVCXT; }
 
+bool hasDpasFwdAndDoubleSrcReadSupression() const {
+  if (getuint32Option(vISA_enableDpasFwd) != -1)
+    return getuint32Option(vISA_enableDpasFwd);
+  return getPlatform() == Xe3P_CRI;
+}
+
+bool allowsMixedDstAndSrc0TypesInMacro() const {
+  return getPlatform() > Xe3;
+}
+
+bool hasDpasFP4() const {
+  return getPlatform() > Xe3;
+}
 
 bool hasDpasSrc2ReadSupressionSameRegSameType() const {
   return getPlatform() == Xe_PVC && !getOption(vISA_HasPartialInt64);
@@ -789,6 +815,9 @@ unsigned int getMaxPTSS() const {
     return getuint32Option(vISA_maxPTSSOverride);
   }
 
+  if (getPlatform() > Xe3) {
+      return 16 * 1024 * 1024;
+  }
   if (hasScratchSurface()) {
     // Max PTSS supported is 256kb
     return 256 * 1024;
@@ -799,12 +828,21 @@ unsigned int getMaxPTSS() const {
 }
 
 uint32_t getInlineDataSize() const {
+  if (isEfficient64bEnabled()) {
+    return 64;
+  }
   if (getPlatform() >= Xe_XeHPSDV) {
     return 32;
   }
   return 0;
 }
 
+bool isEfficient64bEnabled() const {
+  return getPlatform() > Xe3 && getOption(vISA_enableEfficient64b);
+}
+bool isKernelArgumentEnabled() const {
+  return getPlatform() >= Xe3 && getOption(vISA_EnableKernelArgument);
+}
 
 // Return true if platform has structured control-flow instructions.
 // Note: stop using SCF for DG2+ even though DG2/PVC still support it.
@@ -815,11 +853,18 @@ bool hasBDstWSrc1EvenAlignIssue() const {
 }
 
 bool removedAccRestrictionsAsGRF() const {
-  return false;
+  return getOption(vISA_GAReArchACC) && getPlatform() > Xe3;
 }
 
+bool hasSimplifiedRegions() const {
+  return getPlatform() > Xe3;
+}
 
 bool needBothAcc(G4_Operand *opnd) const {
+  if (hasSimplifiedRegions() || getOption(vISA_GAReArchBugFix)) {
+    return (((unsigned)opnd->getInst()->getExecSize() * opnd->getTypeSize())
+        > getACCSize());
+  }
   switch (opnd->getType()) {
   case Type_UD:
   case Type_D:
@@ -873,6 +918,9 @@ bool noSrc0Src1OverlapSend() const {
   return getPlatformGeneration() < PlatformGen::XE;
 }
 
+bool enableMovCvt() const { return getPlatform() > Xe3; }
+
+bool hasAPQIDInMsg0() const { return getPlatform() > Xe3; }
 
 bool WARLocalization() const {
   if (getOption(vISA_SWSBMakeLocalWAR)) {
@@ -890,7 +938,7 @@ bool PVCSendWARWA() const {
 }
 
 bool supportPureBF() const {
-  return false;
+  return getPlatform() > Xe3;
 }
 
 // WA to support debugger stepping. Currently only enabled when compiling with
@@ -911,7 +959,7 @@ bool hasReadSuppressionOrSharedLocalMemoryWAs() const {
 }
 
 bool supportNativeSIMD32() const {
-  return false;
+  return getPlatform() >= Xe3P_CRI && getOption(vISA_enableOptimizeSIMD32);
 }
 
 bool supports4GRFAlign() const {
@@ -919,7 +967,7 @@ bool supports4GRFAlign() const {
 }
 
 bool onlyDoLocalVariableSplitWhenSpill() const {
-  return false;
+  return getPlatform() >= Xe3P_Graphics;
 }
 
 bool needA0WAR() const {
@@ -950,6 +998,9 @@ uint32_t getSizeOfSendQueue() const {
   if (getuint32Option(vISA_SendQueueEntries)) {
     return getuint32Option(vISA_SendQueueEntries);
   }
+  if (getPlatform() > Xe3) {
+    return 8;
+  }
   return 6;
 }
 
@@ -963,13 +1014,18 @@ bool needTGMDoubleFenceWA() const {
 }
 
 bool useDynamicAddrForExDesc() const {
-  return getOption(vISA_dynamicAddrForExDescInLscSend);
+  return getPlatform() <= Xe3 && getOption(vISA_dynamicAddrForExDescInLscSend);
 }
 
+bool samplerCachingInHeader() const {
+  if (m_options->getOption(vISA_enableEfficient64b))
+    return false;
+  return (getPlatform() >= TARGET_PLATFORM::Xe3P_Graphics &&
+      getOption(vISA_enableSamplerLSCCaching));
+}
 
-bool src1Src2SwapForCompaction()
-{
-  return false;
+bool src1Src2SwapForCompaction() {
+  return getPlatform() >= Xe3P_Graphics && getOption(vISA_Compaction);
 }
 
 bool reserver510() {
@@ -980,4 +1036,36 @@ bool skipPredicateAndExecMaskForWARDepCheck() {
   return false;
 }
 
+// Check if the message supports address offset scaling according to the option
+// setting
+bool supportSendAddrScale(bool isSLM, bool isBTS) {
+  // global address can support offset scaling
+  if (!isSLM && !isBTS)
+    return true;
+
+  // vISA_supportLSCImmScale value:
+  // 0: disable both SLM and UGM-scratch
+  // 1: enable SLM
+  // 2: enable UGM-scratch
+  // 3: enable both SLM and UGM-scratch (default)
+  auto immScaleOptVal = getuint32Option(vISA_supportLSCImmScale);
+
+  // Otherwise, enable SLM/UGM offset scaling according to immScaleOptVal:
+  // offset scaling is supported for SLM and UGM-scratch
+  if (immScaleOptVal == 3)
+    return true;
+
+  // offset scaling is supported for SLM
+  if (isSLM && immScaleOptVal == 1)
+    return true;
+
+  // offset scaling is supported for UGM-scratch
+  if (isBTS && immScaleOptVal == 2)
+    return true;
+
+  return false;
+}
+bool needThreeSrcInstNullSrc2WA() {
+  return getPlatform() == Xe3P_Graphics;
+}
 // end HW capabilities

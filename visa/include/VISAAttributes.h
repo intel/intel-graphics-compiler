@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2020-2021 Intel Corporation
+Copyright (C) 2020-2025 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -77,6 +77,15 @@ DEF_ATTR_INT32(ATTR_NBarrierCnt, "NBarrierCnt", AK_KERNEL, 0, "")
 DEF_ATTR_INT32(ATTR_MaxRegThreadDispatch, "MaxRegThreadDispatch", AK_KERNEL,
                0, "Maximum register number used for thread dispatch")
 
+DEF_ATTR_INT32(ATTR_ScratchInlineOffset, "ScratchInlineOffset", AK_KERNEL, 0,
+               "Scratch inline offset")
+DEF_ATTR_INT32(ATTR_ScratchIndirectRegOffset, "ScratchIndirectRegOffset",
+               AK_KERNEL, 0, "Scratch indirect data pointer register offset")
+DEF_ATTR_INT32(ATTR_ScratchIndirectMemOffset, "ScratchIndirectMemOffset",
+               AK_KERNEL, 0, "Scratch indirect pointer memory offset")
+DEF_ATTR_BOOL(ATTR_DisableLoadThreadPayloadWA, "DisableLoadThreadPayloadWA",
+              AK_KERNEL, false,
+              "WA to suppress load thread payload for shaders")
 // C String Attributes
 DEF_ATTR_CSTR(ATTR_OutputAsmPath, "OutputAsmPath", AK_KERNEL, "",
               "Directory name under which output files go")

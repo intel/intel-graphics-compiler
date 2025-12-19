@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2023 Intel Corporation
+Copyright (C) 2017-2025 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -43,6 +43,8 @@ HANDLE_INST(movi, 1, 1, InstTypeMov, GENX_BDW, ATTR_NONE)
 HANDLE_INST(smov, 2, 1, InstTypeMov, GENX_BDW, ATTR_NONE)
 HANDLE_INST(csel, 3, 1, InstTypeMov, GENX_SKL, ATTR_FLOAT_SRC_ONLY)
 HANDLE_INST(fcvt, 1, 1, InstTypeMov, Xe_PVCXT, ATTR_PSEUDO)
+HANDLE_INST(shfl, 2, 1, InstTypeMov, Xe3P_CRI, ATTR_NONE)
+HANDLE_INST(dnscl, 3, 1, InstTypeMov, Xe3P_CRI, ATTR_NONE)
 
 //
 // InstTypeLogic
@@ -59,6 +61,7 @@ HANDLE_INST(fbh, 1, 1, InstTypeLogic, GENX_BDW, ATTR_NONE)
 HANDLE_INST(fbl, 1, 1, InstTypeLogic, GENX_BDW, ATTR_NONE)
 HANDLE_INST(cbit, 1, 1, InstTypeLogic, GENX_BDW, ATTR_NONE)
 HANDLE_INST(bfn, 3, 1, InstTypeLogic, Xe_XeHPSDV, ATTR_NONE)
+HANDLE_INST(lfsr, 2, 1, InstTypeLogic, Xe3P_CRI, ATTR_NONE)
 
 //
 // InstTypeArith
@@ -90,7 +93,10 @@ HANDLE_INST(dpas, 3, 1, InstTypeArith, Xe_XeHPSDV, ATTR_NONE)
 HANDLE_INST(dpasw, 3, 1, InstTypeArith, Xe_XeHPSDV, ATTR_NONE)
 HANDLE_INST(add3, 3, 1, InstTypeArith, Xe_XeHPSDV, ATTR_COMMUTATIVE)
 
+HANDLE_INST(bdpas, 5, 1, InstTypeArith, Xe3P_CRI, ATTR_NONE)
 
+HANDLE_INST(mullh, 2, 1, InstTypeArith, Xe3P_CRI,
+            ATTR_COMMUTATIVE | ATTR_WIDE_DST)
 HANDLE_INST(madm, 3, 1, InstTypeArith, GENX_BDW, ATTR_NONE)
 //
 // Following are pseudo instructions
@@ -171,12 +177,17 @@ HANDLE_INST(sendc, 2, 1, InstTypeMisc, GENX_BDW, ATTR_NONE)
 HANDLE_INST(sends, 4, 1, InstTypeMisc, GENX_SKL, ATTR_NONE)
 HANDLE_INST(sendsc, 4, 1, InstTypeMisc, GENX_SKL, ATTR_NONE)
 
+HANDLE_INST(sendg, 4, 1, InstTypeMisc, Xe3P_CRI, ATTR_NONE)
+HANDLE_INST(sendgc, 4, 1, InstTypeMisc, Xe3P_CRI, ATTR_NONE)
+HANDLE_INST(sendgx, 4, 1, InstTypeMisc, Xe3P_CRI, ATTR_NONE)
+HANDLE_INST(sendgxc, 4, 1, InstTypeMisc, Xe3P_CRI, ATTR_NONE)
 HANDLE_INST(nop, 0, 0, InstTypeMisc, GENX_BDW, ATTR_NONE)
 
 HANDLE_INST(sync_nop, 1, 0, InstTypeMisc, GENX_TGLLP, ATTR_NONE)
 HANDLE_INST(sync_allrd, 1, 0, InstTypeMisc, GENX_TGLLP, ATTR_NONE)
 HANDLE_INST(sync_allwr, 1, 0, InstTypeMisc, GENX_TGLLP, ATTR_NONE)
 HANDLE_INST(sync_fence, 1, 0, InstTypeMisc, Xe_PVC, ATTR_NONE)
+HANDLE_INST(thryld, 0, 0, InstTypeMisc, Xe3P_Graphics, ATTR_NONE)
 
 //
 // Following are pseudo instructions

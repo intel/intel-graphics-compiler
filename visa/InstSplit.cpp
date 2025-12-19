@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2020-2021 Intel Corporation
+Copyright (C) 2020-2025 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -17,6 +17,7 @@ static bool DoNotSplit(G4_INST* inst) {
   if (inst->isDpas() || inst->isSend() || inst->opcode() == G4_label ||
       inst->opcode() == G4_pln || inst->opcode() == G4_return ||
       inst->isFlowControl() || inst->isPseudoLogic() ||
+      inst->opcode() == G4_mullh ||
       inst->opcode() == G4_madw)
     return true;
 
@@ -207,7 +208,8 @@ INST_LIST_ITER InstSplitPass::splitInstruction(INST_LIST_ITER it,
       doSplit = true;
       break;
     }
-    if (m_builder->getPlatform() >= Xe_XeHPSDV) {
+    if (m_builder->getPlatform() >= Xe_XeHPSDV &&
+        m_builder->getPlatform() <= Xe3) {
       // Instructions whose operands are 64b and have 2D regioning need to be
       // split up front to help fixUnalignedRegions(..) covering 2D cases.
       if ((src->getType() == Type_DF || IS_QTYPE(src->getType())) &&

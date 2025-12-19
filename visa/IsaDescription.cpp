@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2025 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -168,14 +168,14 @@ struct ISA_Inst_Info ISA_Inst_Table[ISA_OPCODE_ENUM_SIZE] = {
     {ISA_RESERVED_90, ISA_Inst_Reserved, "reserved90", 0, 0},
     {ISA_MADW, ISA_Inst_Arith, "madw", 3, 1},
     {ISA_ADD3O, ISA_Inst_Arith, "add3.o", 3, 1},
-    {ISA_RESERVED_93, ISA_Inst_Reserved, "reserved93", 0, 0},
+    {ISA_RAW_SENDG, ISA_Inst_Misc, "raw_sendg", 4, 1},
     {ISA_BREAKPOINT, ISA_Inst_Misc, "breakpoint", 0, 0},
-    {ISA_RESERVED_95, ISA_Inst_Reserved, "reserved95", 0, 0},
-    {ISA_RESERVED_96, ISA_Inst_Reserved, "reserved96", 0, 0},
-    {ISA_RESERVED_97, ISA_Inst_Reserved, "reserved97", 0, 0},
-    {ISA_RESERVED_98, ISA_Inst_Reserved, "reserved98", 0, 0},
-    {ISA_RESERVED_99, ISA_Inst_Reserved, "reserved99", 0, 0},
-    {ISA_RESERVED_9A, ISA_Inst_Reserved, "reserved9a", 0, 0},
+    {ISA_SHFL_IDX4, ISA_Inst_Mov, "shfl_idx4", 2, 1},
+    {ISA_TANH, ISA_Inst_Arith, "tanh", 1, 1},
+    {ISA_SIGM, ISA_Inst_Arith, "sigm", 1, 1},
+    {ISA_LFSR, ISA_Inst_Logic, "lfsr", 2, 1},
+    {ISA_BDPAS, ISA_Inst_Misc, "bdpas", 5, 1},
+    {ISA_DNSCL, ISA_Inst_Mov, "dnscl", 3, 1},
     {ISA_INVM,  ISA_Inst_Arith, "invm",  2, 2},
     {ISA_RSQTM, ISA_Inst_Arith, "rsqtm", 1, 2},
 };
@@ -389,7 +389,6 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] = {
 
     },
 
-
     /// 12
     {
         ALL,
@@ -401,10 +400,11 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] = {
         {
             {OPND_EXECSIZE, ISA_TYPE_UB, 0},
             {OPND_PRED, ISA_TYPE_UW, 0},
-            {OPND_VECTOR_DST_G_I, TYPE_FLOAT_ALL, SAT_FLOAT_ONLY},
-            {OPND_VECTOR_SRC_G_I_IMM_AO, TYPE_FLOAT_ALL, 0},
-            {OPND_VECTOR_SRC_G_I_IMM_AO, TYPE_FLOAT_ALL, 0},
-            {OPND_VECTOR_SRC_G_I_IMM_AO, TYPE_FLOAT_ALL, 0},
+            {OPND_VECTOR_DST_G_I, TYPE_FLOAT_ALL | TYPE_INTEGER,
+             SAT_FLOAT_ONLY},
+            {OPND_VECTOR_SRC_G_I_IMM_AO, TYPE_FLOAT_ALL | TYPE_INTEGER, 0},
+            {OPND_VECTOR_SRC_G_I_IMM_AO, TYPE_FLOAT_ALL | TYPE_INTEGER, 0},
+            {OPND_VECTOR_SRC_G_I_IMM_AO, TYPE_FLOAT_ALL | TYPE_INTEGER, 0},
         },
 
     },
@@ -2029,14 +2029,17 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] = {
             {OPND_EXECSIZE, ISA_TYPE_UB, SIZE_1},
             {OPND_PRED, ISA_TYPE_UW, 0},
             {OPND_OTHER, ISA_TYPE_UB, 0}, /// Channel
-            {OPND_VECTOR_SRC_G_I_IMM_AO, ISA_TYPE_UD, SCALAR_REGION}, /// aoffimmi
-            {OPND_SAMPLE | OPND_SRC_GEN | OPND_IMM | OPND_SRC_ADDR, ISA_TYPE_UB | ISA_TYPE_UQ, 0}, /// sampler
-            {OPND_OTHER, ISA_TYPE_UD, 0}, /// reserved
-            {OPND_SURFACE | OPND_SRC_GEN | OPND_IMM | OPND_SRC_ADDR, ISA_TYPE_UB | ISA_TYPE_UQ, 0}, /// surface
-            {OPND_OTHER, ISA_TYPE_UD, 0}, /// reserved
+            {OPND_VECTOR_SRC_G_I_IMM_AO, ISA_TYPE_UD,
+             SCALAR_REGION}, /// aoffimmi
+            {OPND_SAMPLE | OPND_SRC_GEN | OPND_IMM | OPND_SRC_ADDR,
+             ISA_TYPE_UB | ISA_TYPE_UQ, 0}, /// sampler
+            {OPND_OTHER, ISA_TYPE_UD, 0},   /// reserved
+            {OPND_SURFACE | OPND_SRC_GEN | OPND_IMM | OPND_SRC_ADDR,
+             ISA_TYPE_UB | ISA_TYPE_UQ, 0},      /// surface
+            {OPND_OTHER, ISA_TYPE_UD, 0},        /// reserved
             {OPND_RAW, ISA_TYPE_F, GRF_ALIGNED}, /// Destination
-            {OPND_RAW, ISA_TYPE_UD, 0},   /// Paired Surface
-            {OPND_OTHER, ISA_TYPE_UB, 0}, ///  numberMsgSpecific Operands
+            {OPND_RAW, ISA_TYPE_UD, 0},          /// Paired Surface
+            {OPND_OTHER, ISA_TYPE_UB, 0},        ///  numberMsgSpecific Operands
         },
 
     },
@@ -2054,10 +2057,13 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] = {
             {OPND_EXECSIZE, ISA_TYPE_UB, SIZE_1},
             {OPND_PRED, ISA_TYPE_UW, 0},
             {OPND_OTHER, ISA_TYPE_UB, 0}, /// Channel
-            {OPND_VECTOR_SRC_G_I_IMM_AO, ISA_TYPE_UD, SCALAR_REGION}, /// aoffimmi
-            {OPND_SRC_GEN | OPND_IMM | OPND_SRC_ADDR | OPND_SURFACE, ISA_TYPE_UB | ISA_TYPE_UQ, 0}, /// surface
-            {OPND_OTHER, ISA_TYPE_UD, 0}, /// reserved
-            {OPND_RAW, ISA_TYPE_F | ISA_TYPE_UD | ISA_TYPE_D, 0}, /// Destination
+            {OPND_VECTOR_SRC_G_I_IMM_AO, ISA_TYPE_UD,
+             SCALAR_REGION}, /// aoffimmi
+            {OPND_SRC_GEN | OPND_IMM | OPND_SRC_ADDR | OPND_SURFACE,
+             ISA_TYPE_UB | ISA_TYPE_UQ, 0}, /// surface
+            {OPND_OTHER, ISA_TYPE_UD, 0},   /// reserved
+            {OPND_RAW, ISA_TYPE_F | ISA_TYPE_UD | ISA_TYPE_D,
+             0},                          /// Destination
             {OPND_RAW, ISA_TYPE_UD, 0},   /// Paired Surface
             {OPND_OTHER, ISA_TYPE_UB, 0}, ///  numberMsgSpecific Operands
         },
@@ -2077,12 +2083,16 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] = {
             {OPND_EXECSIZE, ISA_TYPE_UB, SIZE_1},
             {OPND_PRED, ISA_TYPE_UW, 0},
             {OPND_OTHER, ISA_TYPE_UB, 0}, /// Channel
-            {OPND_VECTOR_SRC_G_I_IMM_AO, ISA_TYPE_UD, SCALAR_REGION}, /// aoffimmi
-            {OPND_SAMPLE | OPND_SRC_GEN | OPND_IMM | OPND_SRC_ADDR, ISA_TYPE_UB | ISA_TYPE_UQ, 0}, /// sampler
-            {OPND_OTHER, ISA_TYPE_UD, 0}, /// reserved
-            {OPND_SURFACE | OPND_SRC_GEN | OPND_IMM | OPND_SRC_ADDR, ISA_TYPE_UB | ISA_TYPE_UQ, 0}, /// surface
-            {OPND_OTHER, ISA_TYPE_UD, 0}, /// reserved
-            {OPND_RAW, ISA_TYPE_F | ISA_TYPE_UD | ISA_TYPE_D, 0}, /// Destination
+            {OPND_VECTOR_SRC_G_I_IMM_AO, ISA_TYPE_UD,
+             SCALAR_REGION}, /// aoffimmi
+            {OPND_SAMPLE | OPND_SRC_GEN | OPND_IMM | OPND_SRC_ADDR,
+             ISA_TYPE_UB | ISA_TYPE_UQ, 0}, /// sampler
+            {OPND_OTHER, ISA_TYPE_UD, 0},   /// reserved
+            {OPND_SURFACE | OPND_SRC_GEN | OPND_IMM | OPND_SRC_ADDR,
+             ISA_TYPE_UB | ISA_TYPE_UQ, 0}, /// surface
+            {OPND_OTHER, ISA_TYPE_UD, 0},   /// reserved
+            {OPND_RAW, ISA_TYPE_F | ISA_TYPE_UD | ISA_TYPE_D,
+             0},                          /// Destination
             {OPND_RAW, ISA_TYPE_UD, 0},   /// Paired Surface
             {OPND_OTHER, ISA_TYPE_UB, 0}, ///  numberMsgSpecific Operands
         },
@@ -2101,10 +2111,10 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] = {
             {OPND_EXECSIZE, ISA_TYPE_UB, 0},
             {OPND_OTHER, ISA_TYPE_UB, 0},
             {OPND_SURFACE, ISA_TYPE_UB, 0}, /// Surface
-            {OPND_OTHER, ISA_TYPE_UD, 0}, /// reserved
-            {OPND_RAW, ISA_TYPE_UD, 0}, /// LOD
-                 // LOD is only for one of the opcodes, it will be handled in
-                 // the builder interface, and operand number incremented.
+            {OPND_OTHER, ISA_TYPE_UD, 0},   /// reserved
+            {OPND_RAW, ISA_TYPE_UD, 0},     /// LOD
+            // LOD is only for one of the opcodes, it will be handled in
+            // the builder interface, and operand number incremented.
             {OPND_RAW, ISA_TYPE_UD, 0} /// dst
         },
 
@@ -2120,9 +2130,10 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] = {
         0,
         {
             {OPND_EXECSIZE, ISA_TYPE_UB, SIZE_1},
-            {OPND_PRED, ISA_TYPE_UW, 0},    /// predicate
-            {OPND_OTHER, ISA_TYPE_UW, 0},   /// mode
-            {OPND_SURFACE | OPND_SRC_GEN | OPND_IMM | OPND_SRC_ADDR, ISA_TYPE_UB | ISA_TYPE_Q | ISA_TYPE_UQ, 0}, /// Surface
+            {OPND_PRED, ISA_TYPE_UW, 0},  /// predicate
+            {OPND_OTHER, ISA_TYPE_UW, 0}, /// mode
+            {OPND_SURFACE | OPND_SRC_GEN | OPND_IMM | OPND_SRC_ADDR,
+             ISA_TYPE_UB | ISA_TYPE_Q | ISA_TYPE_UQ, 0}, /// Surface
         },
 
     },
@@ -2699,87 +2710,140 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] = {
     },
     /// 147 (0x93)
     {
-        ALL,
-        ISA_RESERVED_93,
-        ISA_Inst_Reserved,
-        "reserved_93",
-        0,
-        0,
-        {},
-    },
-    {
-        ALL,
-        ISA_BREAKPOINT,
+        Xe3P_CRI,
+        ISA_RAW_SENDG,
         ISA_Inst_Misc,
-        "breakpoint",
+        "raw_sendg",
+        14,
         0,
-        0,
-        { }
+        {
+            {OPND_IMM, ISA_TYPE_UB,
+             0}, /// modifier (bit 0 is conditional, bit 1 EoT)
+            {OPND_EXECSIZE, ISA_TYPE_UB, 0},           /// exec_size
+            {OPND_IMM, ISA_TYPE_UD, 0},                /// sfid
+            {OPND_PRED, ISA_TYPE_UW, 0},               /// predicate
+            {OPND_RAW, ISA_TYPE_UB, GRF_ALIGNED},      /// dst
+            {OPND_IMM, ISA_TYPE_UD, 0},                /// dstLen
+            {OPND_RAW, ISA_TYPE_UB, GRF_ALIGNED},      /// src0
+            {OPND_IMM, ISA_TYPE_UD, 0},                /// src0Len
+            {OPND_RAW, ISA_TYPE_UB, GRF_ALIGNED},      /// src1
+            {OPND_IMM, ISA_TYPE_UD, 0},                /// src1Len
+            {OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_UQ, 0}, /// ind0
+            {OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_UQ, 0}, /// ind1
+            {OPND_IMM, ISA_TYPE_UD, 0},                /// desc[31:0]
+            {OPND_IMM, ISA_TYPE_UD, 0},                /// desc[63:32]
+        },
     },
+    {ALL, ISA_BREAKPOINT, ISA_Inst_Misc, "breakpoint", 0, 0, {}},
     /// 149 (0x95)
     {
-        ALL,
-        ISA_RESERVED_95,
-        ISA_Inst_Reserved,
-        "reserved_95",
-        0,
-        0,
-        {},
+        Xe3P_CRI,
+        ISA_SHFL_IDX4,
+        ISA_Inst_Mov,
+        "shfl_idx4",
+        5,
+        SAME_DATA_TYPE,
+        {
+            {OPND_EXECSIZE, ISA_TYPE_UB, 0},
+            {OPND_PRED, ISA_TYPE_UW, 0},
+            {OPND_RAW, ISA_TYPE_UD, 0},
+            {OPND_SRC_GEN, ISA_TYPE_UD, 0},
+            {OPND_SRC_GEN, ISA_TYPE_UW | ISA_TYPE_UB, 0},
+        },
+    },
+    /// 150 (0x96)
+    {
+        Xe3P_CRI,
+        ISA_TANH,
+        ISA_Inst_Arith,
+        "tanh",
+        4,
+        SAME_DATA_TYPE,
+        {
+            {OPND_EXECSIZE, ISA_TYPE_UB, 0},
+            {OPND_PRED, ISA_TYPE_UW, 0},
+            {OPND_VECTOR_DST_G_I, TYPE_FLOAT_ALL, SAT_C},
+            {OPND_VECTOR_SRC_G_I_IMM_AO, TYPE_FLOAT_ALL, 0},
+        },
+
     },
 
-    // 150 (0x96)
+    /// 151 (0x97)
     {
-        ALL,
-        ISA_RESERVED_96,
-        ISA_Inst_Reserved,
-        "reserved_96",
-        0,
-        0,
-        {},
+        Xe3P_CRI,
+        ISA_SIGM,
+        ISA_Inst_Arith,
+        "sigm",
+        4,
+        SAME_DATA_TYPE,
+        {
+            {OPND_EXECSIZE, ISA_TYPE_UB, 0},
+            {OPND_PRED, ISA_TYPE_UW, 0},
+            {OPND_VECTOR_DST_G_I, TYPE_FLOAT_ALL, SAT_C},
+            {OPND_VECTOR_SRC_G_I_IMM_AO, TYPE_FLOAT_ALL, 0},
+        },
+
     },
 
-    // 151 (0x97)
+    /// 152 (0x98)
     {
-        ALL,
-        ISA_RESERVED_97,
-        ISA_Inst_Reserved,
-        "reserved_97",
-        0,
-        0,
-        {},
+        Xe3P_CRI,
+        ISA_LFSR,
+        ISA_Inst_Logic,
+        "lfsr",
+        6,
+        SAME_DATA_TYPE,
+        {
+            {OPND_EXECSIZE, ISA_TYPE_UB, 0},           // execSize
+            {OPND_PRED, ISA_TYPE_UW, 0},               // predicate
+            {OPND_OTHER, ISA_TYPE_UB, 0},              // LfsrCF
+            {OPND_DST_GEN, ISA_TYPE_UD, 0},            // dst
+            {OPND_SRC_GEN, ISA_TYPE_UD, 0},            // src0
+            {OPND_SRC_GEN | OPND_IMM, ISA_TYPE_UD, 0}, // src1
+        },
     },
 
-    // 152 (0x98)
+    /// 153 (0x99)
     {
-        ALL,
-        ISA_RESERVED_98,
-        ISA_Inst_Reserved,
-        "reserved_98",
-        0,
-        0,
-        {},
+        Xe3P_CRI,
+        ISA_BDPAS,
+        ISA_Inst_Misc,
+        "bdpas",
+        8,
+        SAME_DATA_TYPE,
+        {
+            {OPND_EXECSIZE, ISA_TYPE_UB, 0}, // execSize
+            {OPND_DST_GEN, ISA_TYPE_F | ISA_TYPE_HF | ISA_TYPE_BF, 0},
+            {OPND_SRC_GEN, ISA_TYPE_F | ISA_TYPE_HF | ISA_TYPE_BF, 0},
+            {OPND_SRC_GEN, ISA_TYPE_UD | ISA_TYPE_HF | ISA_TYPE_BF,
+             GRF_ALIGNED},
+            {OPND_SRC_GEN, ISA_TYPE_UD | ISA_TYPE_HF | ISA_TYPE_BF,
+             GRF_ALIGNED},
+            {OPND_VECTOR_SRC, ISA_TYPE_UB, 0},
+            {OPND_VECTOR_SRC, ISA_TYPE_UB, 0},
+            {OPND_OTHER, ISA_TYPE_UD, 0},
+        },
     },
 
-    // 153 (0x99)
+    /// 154 (0x9A)
     {
-        ALL,
-        ISA_RESERVED_99,
-        ISA_Inst_Reserved,
-        "reserved_99",
-        0,
-        0,
-        {},
-    },
-
-    // 154 (0x9A)
-    {
-        ALL,
-        ISA_RESERVED_9A,
-        ISA_Inst_Reserved,
-        "reserved_9a",
-        0,
-        0,
-        {},
+        Xe3P_CRI,
+        ISA_DNSCL,
+        ISA_Inst_Mov,
+        "dnscl",
+        9,
+        SAME_DATA_TYPE,
+        {
+            {OPND_EXECSIZE, ISA_TYPE_UB, 0},          // execSize
+            {OPND_PRED, ISA_TYPE_UW, 0},              // predicate
+            {OPND_OTHER, ISA_TYPE_UB, 0},             // Dttodt
+            {OPND_OTHER, ISA_TYPE_UB, 0},             // Mode
+            {OPND_OTHER, ISA_TYPE_UB, 0},             // RoundingMode
+            {OPND_DST_GEN, ISA_TYPE_UD, GRF_ALIGNED}, // dst
+            {OPND_SRC_GEN, ISA_TYPE_UD, GRF_ALIGNED}, // src0
+            {OPND_SRC_GEN, ISA_TYPE_UD, GRF_ALIGNED}, // src1
+            {OPND_SRC_GEN, ISA_TYPE_UD, GRF_ALIGNED}, // src2
+        },
     },
 
     /// 155 (0x9B)
@@ -2792,10 +2856,12 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] = {
         SAME_DATA_TYPE,
         {
             {OPND_EXECSIZE, ISA_TYPE_UB, 0},
-            {OPND_VECTOR_DST_G_I, ISA_TYPE_DF | ISA_TYPE_F, 0},      // dst = invm(src0/src1)
-            {OPND_DST_PRED, ISA_TYPE_UD | ISA_TYPE_UW, 0},           // flag = (eo) of invm
-            {OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_DF | ISA_TYPE_F, 0},  // src0
-            {OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_DF | ISA_TYPE_F, 0},  // src1
+            {OPND_VECTOR_DST_G_I, ISA_TYPE_DF | ISA_TYPE_F,
+             0}, // dst = invm(src0/src1)
+            {OPND_DST_PRED, ISA_TYPE_UD | ISA_TYPE_UW,
+             0}, // flag = (eo) of invm
+            {OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_DF | ISA_TYPE_F, 0}, // src0
+            {OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_DF | ISA_TYPE_F, 0}, // src1
         },
 
     },
@@ -2810,9 +2876,11 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] = {
         SAME_DATA_TYPE,
         {
             {OPND_EXECSIZE, ISA_TYPE_UB, 0},
-            {OPND_VECTOR_DST_G_I, ISA_TYPE_DF | ISA_TYPE_F, 0},      // dst = rsqtm(src0)
-            {OPND_DST_PRED, ISA_TYPE_UD | ISA_TYPE_UW, 0},           // flag = (eo) of rsqtm
-            {OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_DF | ISA_TYPE_F, 0},  // src0
+            {OPND_VECTOR_DST_G_I, ISA_TYPE_DF | ISA_TYPE_F,
+             0}, // dst = rsqtm(src0)
+            {OPND_DST_PRED, ISA_TYPE_UD | ISA_TYPE_UW,
+             0}, // flag = (eo) of rsqtm
+            {OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_DF | ISA_TYPE_F, 0}, // src0
         },
 
     },
@@ -3446,6 +3514,11 @@ static const ISA_SubInst_Desc LscUntypedSubOpcodeDescs[] {
       LSC_OP_INVALID, // lsc_read_state_info only for typed
       LSC_OP_INVALID, // fence handled separately
       LSC_OP_INVALID, // reserved
+      LSC_UNTYPED_OP(LSC_ATOMIC_BFADD, "lsc_atomic_bfadd"),
+      LSC_UNTYPED_OP(LSC_ATOMIC_BFSUB, "lsc_atomic_bfsub"),
+      LSC_UNTYPED_OP(LSC_ATOMIC_BFMIN, "lsc_atomic_bfmin"),
+      LSC_UNTYPED_OP(LSC_ATOMIC_BFMAX, "lsc_atomic_bfmax"),
+      LSC_UNTYPED_OP(LSC_ATOMIC_BFCAS, "lsc_atomic_bfcas"),
       LSC_OP_INVALID, // reserved
       LSC_OP_INVALID, // reserved
       LSC_UNTYPED_OP(LSC_APNDCTR_ATOMIC_ADD, "lsc_apndctr_atomic_add"),
@@ -3463,7 +3536,8 @@ static const ISA_SubInst_Desc LscUntypedSubOpcodeDescs[] {
       // which are only applicable for typed surfaces
       LSC_TYPED_OP(LSC_LOAD_QUAD_MSRT, "lsc_load_quad_msrt"),
       LSC_TYPED_OP(LSC_STORE_QUAD_MSRT, "lsc_store_quad_msrt"),
-      LSC_OP_INVALID,
+      LSC_UNTYPED_OP(LSC_EXTENDED_CACHE_CTRL, "lsc_extended_cache_ctrl"),
+      LSC_UNTYPED_OP(LSC_LOAD_QUAD_STATUS, "lsc_load_quad_status"),
 };
 
 static const ISA_SubInst_Desc LscTypedSubOpcodeDescs[] {
@@ -3522,6 +3596,7 @@ static const ISA_SubInst_Desc LscTypedSubOpcodeDescs[] {
       LSC_OP_INVALID,
       LSC_OP_INVALID,
       LSC_OP_INVALID,
+      LSC_TYPED_OP(LSC_LOAD_QUAD_STATUS, "lsc_load_quad_status"),
 };
 
 LscOpInfo LscOpInfoGet(LSC_OP op) {
@@ -3670,11 +3745,32 @@ bool LscOpInfoFind(LSC_OP op, LscOpInfo &opInfo) {
     atomicOp("lsc_apndctr_atomic_store", 0x30, 1);
     break;
 
-  case LSC_LOAD_QUAD_MSRT:
+  case LSC_ATOMIC_BFADD:
+    atomicOp("lsc_atomic_bfadd", 0x21, 1);
+    break;
+  case LSC_ATOMIC_BFSUB:
+    atomicOp("lsc_atomic_bfsub", 0x22, 1);
+    break;
+  case LSC_ATOMIC_BFMIN:
+    atomicOp("lsc_atomic_bfmin", 0x23, 1);
+    break;
+  case LSC_ATOMIC_BFMAX:
+    atomicOp("lsc_atomic_bfmax", 0x24, 1);
+    break;
+  case LSC_ATOMIC_BFCAS:
+    atomicOp("lsc_atomic_bfcas", 0x25, 2);
+    break;
+  case LSC_EXTENDED_CACHE_CTRL:
+    loadOp("lsc_extended_cache_ctrl", 0x33);
+    break;
+ case LSC_LOAD_QUAD_MSRT:
     loadOp("lsc_load_quad_msrt", 0x31);
     break;
   case LSC_STORE_QUAD_MSRT:
     storeOp("lsc_store_quad_msrt", 0x32);
+    break;
+  case LSC_LOAD_QUAD_STATUS:
+    loadOp("lsc_load_quad_status", 0x1C);
     break;
   default:
     return false;
@@ -3739,7 +3835,119 @@ bool LscTryEncodeCacheOptsBits17_19(const LscOpInfo &opInfo,
   cacheEnc = cacheEnc << 17;
   return true;
 }
-// retuen the encoding value for descriptor bits[19:16]
+// return the encoding value for descriptor bits[19:17] for XE3P three cache control
+bool LscTryEncodeCacheOptsL1L2L3(const LscOpInfo &opInfo, LSC_CACHE_OPTS cacheOpts,
+                                 uint32_t &cacheEnc) {
+  auto matches = [&](LSC_CACHE_OPT l1, LSC_CACHE_OPT l2, LSC_CACHE_OPT l3) {
+    return (cacheOpts.l1 == l1 && cacheOpts.l2 == l2 && cacheOpts.l3 == l3);
+  };
+
+  if (matches(LSC_CACHING_DEFAULT, LSC_CACHING_DEFAULT, LSC_CACHING_DEFAULT)) {
+    // same for load/atomic/store
+    cacheEnc = 0x0;
+  } else if (matches(LSC_CACHING_UNCACHED, LSC_CACHING_UNCACHED,
+                     LSC_CACHING_UNCACHED)) {
+    // same for load/atomic/store
+    cacheEnc = 0x2;
+  } else if (opInfo.isLoad()) {
+    if (matches(LSC_CACHING_UNCACHED, LSC_CACHING_UNCACHED,
+                LSC_CACHING_CACHED)) {
+      cacheEnc = 0x3;
+    } else if (matches(LSC_CACHING_UNCACHED,LSC_CACHING_CACHED,
+                       LSC_CACHING_UNCACHED)) {
+      cacheEnc = 0x4;
+    } else if (matches(LSC_CACHING_UNCACHED, LSC_CACHING_CACHED,
+                       LSC_CACHING_CACHED)) {
+      cacheEnc = 0x5;
+    } else if (matches(LSC_CACHING_CACHED, LSC_CACHING_UNCACHED,
+                       LSC_CACHING_UNCACHED)) {
+      cacheEnc = 0x6;
+    } else if (matches(LSC_CACHING_CACHED, LSC_CACHING_UNCACHED,
+                       LSC_CACHING_CACHED)) {
+      cacheEnc = 0x7;
+    } else if (matches(LSC_CACHING_CACHED, LSC_CACHING_CACHED,
+                       LSC_CACHING_UNCACHED)) {
+      cacheEnc = 0x8;
+    } else if (matches(LSC_CACHING_CACHED, LSC_CACHING_CACHED,
+                       LSC_CACHING_CACHED)) {
+      cacheEnc = 0x9;
+    } else if (matches(LSC_CACHING_STREAMING, LSC_CACHING_UNCACHED,
+                       LSC_CACHING_UNCACHED)) {
+      cacheEnc = 0xA;
+    } else if (matches(LSC_CACHING_STREAMING, LSC_CACHING_UNCACHED,
+                       LSC_CACHING_CACHED)) {
+      cacheEnc = 0xB;
+    } else if (matches(LSC_CACHING_STREAMING, LSC_CACHING_CACHED,
+                       LSC_CACHING_UNCACHED)) {
+      cacheEnc = 0xC;
+    } else if (matches(LSC_CACHING_STREAMING, LSC_CACHING_CACHED,
+                       LSC_CACHING_CACHED)) {
+      cacheEnc = 0xD;
+    } else if (matches(LSC_CACHING_READINVALIDATE, LSC_CACHING_READINVALIDATE,
+                       LSC_CACHING_READINVALIDATE)) {
+      cacheEnc = 0xE;
+    } else {
+      return false;
+    }
+  } else if (opInfo.isAtomic()) {
+    if (matches(LSC_CACHING_UNCACHED, LSC_CACHING_UNCACHED,
+                LSC_CACHING_WRITEBACK)) {
+      cacheEnc = 0x3;
+    } else if (matches(LSC_CACHING_UNCACHED, LSC_CACHING_WRITEBACK,
+                       LSC_CACHING_UNCACHED)) {
+      cacheEnc = 0x4;
+    } else {
+      return false;
+    }
+  } else {
+    if (matches(LSC_CACHING_UNCACHED, LSC_CACHING_UNCACHED,
+                LSC_CACHING_WRITEBACK)) {
+      cacheEnc = 0x3;
+    } else if (matches(LSC_CACHING_UNCACHED, LSC_CACHING_WRITEBACK,
+                       LSC_CACHING_UNCACHED)) {
+      cacheEnc = 0x4;
+    } else if (matches(LSC_CACHING_UNCACHED, LSC_CACHING_WRITEBACK,
+                       LSC_CACHING_WRITEBACK)) {
+      cacheEnc = 0x5;
+    } else if (matches(LSC_CACHING_WRITETHROUGH, LSC_CACHING_UNCACHED,
+                       LSC_CACHING_UNCACHED)) {
+      cacheEnc = 0x6;
+    } else if (matches(LSC_CACHING_WRITETHROUGH, LSC_CACHING_UNCACHED,
+                       LSC_CACHING_WRITEBACK)) {
+      cacheEnc = 0x7;
+    } else if (matches(LSC_CACHING_WRITETHROUGH, LSC_CACHING_WRITEBACK,
+                       LSC_CACHING_UNCACHED)) {
+      cacheEnc = 0x8;
+    } else if (matches(LSC_CACHING_WRITETHROUGH, LSC_CACHING_WRITEBACK,
+                       LSC_CACHING_WRITEBACK)) {
+      cacheEnc = 0x9;
+    } else if (matches(LSC_CACHING_STREAMING, LSC_CACHING_UNCACHED,
+                       LSC_CACHING_UNCACHED)) {
+      cacheEnc = 0xA;
+    } else if (matches(LSC_CACHING_STREAMING, LSC_CACHING_UNCACHED,
+                       LSC_CACHING_WRITEBACK)) {
+      cacheEnc = 0xB;
+    } else if (matches(LSC_CACHING_STREAMING, LSC_CACHING_WRITEBACK,
+                       LSC_CACHING_UNCACHED)) {
+      cacheEnc = 0xC;
+    } else if (matches(LSC_CACHING_WRITEBACK, LSC_CACHING_UNCACHED,
+                       LSC_CACHING_UNCACHED)) {
+      cacheEnc = 0xD;
+    } else if (matches(LSC_CACHING_WRITEBACK, LSC_CACHING_WRITEBACK,
+                       LSC_CACHING_UNCACHED)) {
+      cacheEnc = 0xE;
+    } else if (matches(LSC_CACHING_WRITEBACK, LSC_CACHING_UNCACHED,
+                       LSC_CACHING_WRITEBACK)) {
+      cacheEnc = 0xF;
+    } else {
+      return false;
+    }
+  }
+
+  cacheEnc = cacheEnc << 17;
+  return true;
+}
+// return the encoding value for descriptor bits[19:16]
 bool LscTryEncodeCacheOptsBits16_19(const LscOpInfo &opInfo,
                                     LSC_CACHE_OPTS cacheOpts,
                                     uint32_t &cacheEnc) {

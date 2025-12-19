@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2025 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -1317,6 +1317,37 @@ static void readInstructionMisc(unsigned &bytePos, const char *buf,
     kernelBuilder->AppendVISAMiscRawSends(pred, emask, esize, modifier, ffid,
                                           exMsgDesc, numSrc0, numSrc1, numDst,
                                           desc, src0, src1, dst, hasEOT);
+    break;
+  }
+  case ISA_RAW_SENDG: {
+    uint8_t modifier = readPrimitiveOperandNG<uint8_t>(bytePos, buf);
+    bool isCond = (modifier & (1 << 0));
+    bool issueEoT = (modifier & (1 << 1));
+
+    VISA_EMask_Ctrl emask = vISA_EMASK_M1;
+    VISA_Exec_Size esize = EXEC_SIZE_ILLEGAL;
+    readExecSizeNG(bytePos, buf, esize, emask, container);
+
+    auto sfid = readPrimitiveOperandNG<uint32_t>(bytePos, buf);
+
+    VISA_PredOpnd *pred = readPredicateOperandNG(bytePos, buf, container);
+
+    VISA_RawOpnd *dst = readRawOperandNG(bytePos, buf, container);
+    int dstLenB = (int)readPrimitiveOperandNG<uint32_t>(bytePos, buf);
+    VISA_RawOpnd *src0 = readRawOperandNG(bytePos, buf, container);
+    int src0LenB = (int)readPrimitiveOperandNG<uint32_t>(bytePos, buf);
+    VISA_RawOpnd *src1 = readRawOperandNG(bytePos, buf, container);
+    int src1LenB = (int)readPrimitiveOperandNG<uint32_t>(bytePos, buf);
+    VISA_VectorOpnd *ind0 = readVectorOperandNG(bytePos, buf, container, false);
+    VISA_VectorOpnd *ind1 = readVectorOperandNG(bytePos, buf, container, false);
+    uint64_t descLo = (uint64_t)readPrimitiveOperandNG<uint32_t>(bytePos, buf);
+    uint64_t descHi = (uint64_t)readPrimitiveOperandNG<uint32_t>(bytePos, buf);
+    uint64_t desc = (descHi << 32) | descLo;
+
+    kernelBuilder->AppendVISAMiscRawSendg(
+      sfid, pred, emask, esize,
+      dst, dstLenB, src0, src0LenB, src1, src1LenB,
+      ind0, ind1, desc, isCond, issueEoT);
     break;
   }
   case ISA_VME_FBR: {

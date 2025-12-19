@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2025 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -31,12 +31,10 @@ const PlatformInfo PlatformInfo::ALL_PLATFORMS[] = {
     PlatformInfo(Xe_ARL, PlatformGen::XE, 13, 32, "ARL"),
     PlatformInfo(Xe_PVC, PlatformGen::XE, 14, 64, "PVC"),
     PlatformInfo(Xe_PVCXT, PlatformGen::XE, 15, 64, "PVCXT"),
-    PlatformInfo(Xe2, PlatformGen::XE2, 18, 64,
-                 "XE2",
+    PlatformInfo(Xe2, PlatformGen::XE2, 18, 64, "XE2",
                  "LNL"),
-    PlatformInfo(Xe3, PlatformGen::XE3, 19, 64,
-                 "XE3",
-                 "PTL"),
+    PlatformInfo(Xe3, PlatformGen::XE3, 19, 64, "XE3", "PTL"),
+    PlatformInfo(Xe3P_CRI, PlatformGen::XE3, 21, 64, "XE3P_CRI", "CRI"),
 }; // ALL_PLATFORMS
 
 const PlatformInfo *PlatformInfo::LookupPlatformInfo(TARGET_PLATFORM p) {

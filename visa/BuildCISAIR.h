@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2023 Intel Corporation
+Copyright (C) 2017-2025 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -518,6 +518,13 @@ public:
       VISA_opnd *exMsgDesc, unsigned char ffid, unsigned char src0Size,
       unsigned char src1Size, unsigned char dstSize, VISA_opnd *Desc,
       VISA_opnd *src0, VISA_opnd *src1, VISA_opnd *dst, int lineNum);
+  bool CISA_create_raw_sendg_instruction(
+      unsigned sfid, VISA_opnd *pred, VISA_EMask_Ctrl emask,
+      VISA_Exec_Size esize, VISA_opnd *dst, int dstLenBytes, VISA_opnd *src0,
+      int src0LenBytes, VISA_opnd *src1, int src1LenBytes, VISA_opnd *ind0,
+      VISA_opnd *ind1, uint64_t desc,
+      bool isConditional, // raw_sendg vs raw_sendgc
+      bool hasEOT, int lineNum);
 
   bool CISA_create_fence_instruction(ISA_Opcode opcode, unsigned char mode,
                                      int lineNum);
@@ -612,12 +619,21 @@ public:
 
   LSC_CACHE_OPTS CISA_create_caching_opts(int lineNum);
   LSC_CACHE_OPTS CISA_create_caching_opts(LSC_CACHE_OPT l1, LSC_CACHE_OPT l3, int lineNum);
+  LSC_CACHE_OPTS CISA_create_caching_opts(LSC_CACHE_OPT l1, LSC_CACHE_OPT l2,
+                                          LSC_CACHE_OPT l3, int lineNum);
   bool CISA_create_dpas_instruction(ISA_Opcode opcode, VISA_EMask_Ctrl emask,
                                     unsigned exec_size, VISA_opnd *dst_cisa,
                                     VISA_opnd *src0_cisa, VISA_opnd *src1_cisa,
                                     VISA_opnd *src2_cisa, GenPrecision A,
                                     GenPrecision W, uint8_t D, uint8_t C,
                                     int lineNum);
+  bool CISA_create_bdpas_instruction(ISA_Opcode opcode, VISA_EMask_Ctrl emask,
+                                     unsigned exec_size, VISA_opnd *dst_cisa,
+                                     VISA_opnd *src0_cisa, VISA_opnd *src1_cisa,
+                                     VISA_opnd *src2_cisa, VISA_opnd *src3_cisa,
+                                     VISA_opnd *src4_cisa, GenPrecision A,
+                                     GenPrecision W, uint8_t D, uint8_t C,
+                                     int lineNum);
 
   bool CISA_create_bfn_instruction(VISA_opnd *pred, uint8_t func_ctrl, bool sat,
                                    VISA_EMask_Ctrl emask, unsigned exec_size,
@@ -630,6 +646,10 @@ public:
       unsigned execSize, unsigned numBlocks, const char *surfaceName,
       VISA_opnd *offsets, VISA_opnd *dstSrc, int lineNum);
 
+  bool CISA_create_lsc_extended_cache_ctrl_inst(
+      VISA_opnd *pred, LSC_OP opcode, LSC_SFID sfid, LSC_CACHE_CTRL_OPERATION ccop,
+      LSC_CACHE_CTRL_SIZE ccsize, LSC_CACHE_OPTS caching, VISA_Exec_Size execSize,
+      VISA_EMask_Ctrl emask, LSC_ADDR addr, VISA_opnd *src0Addr, int linenum);
   bool CISA_create_lsc_untyped_inst(
       VISA_opnd *pred, LSC_OP opcode, LSC_SFID sfid, LSC_CACHE_OPTS caching, bool ov,
       VISA_Exec_Size execSize, VISA_EMask_Ctrl emask, LSC_ADDR addr,
@@ -695,6 +715,27 @@ public:
       LSC_ADDR_TYPE addr, LSC_DATA_SHAPE dataShape,
       VISA_opnd *surface, unsigned surfaceIndex,
       VISA_opnd *dst, VISA_opnd *srcData, int lineNum);
+  bool CISA_create_shfl_idx4_instruction(VISA_opnd *pred, ISA_Opcode opcode,
+                                         VISA_EMask_Ctrl emask,
+                                         VISA_Exec_Size execSize,
+                                         VISA_opnd *dst, VISA_opnd *src0,
+                                         VISA_opnd *src1, int lineNum);
+
+  bool CISA_create_lfsr_instruction(VISA_opnd *pred,
+                                    VISA_EMask_Ctrl emask,
+                                    VISA_Exec_Size execSize,
+                                    LFSR_FC funcCtrl,
+                                    VISA_opnd *dst,
+                                    VISA_opnd *src0,
+                                    VISA_opnd *src1,
+                                    int lineNum);
+
+  bool CISA_create_dnscl_instruction(VISA_opnd *pred, VISA_EMask_Ctrl emask,
+                                     VISA_Exec_Size execSize,
+                                     DNSCL_CONVERT_TYPE type, DNSCL_MODE mode,
+                                     DNSCL_RND_MODE rndMode, VISA_opnd *dst,
+                                     VISA_opnd *src0, VISA_opnd *src1,
+                                     VISA_opnd *src2, int lineNum);
 
 private:
   const vISA::PlatformInfo *m_platformInfo;

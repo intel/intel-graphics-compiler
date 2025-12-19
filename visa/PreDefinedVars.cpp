@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2025 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -55,6 +55,7 @@ static const PreDefinedVarInfo preDefinedVarTable[static_cast<int>(
     {PreDefinedVarsInternal::LOCAL_ID_BUF_PTR, ISA_TYPE_UQ, 3, false, false, 0,
      1, "%local_id_buf_ptr"},
     {PreDefinedVarsInternal::MSG0, ISA_TYPE_UD, 3, false, false, 0, 3, "%msg0"},
+    {PreDefinedVarsInternal::SCRATCHLOC, ISA_TYPE_UQ, 1, false, false, 0, 1, "%scratchloc"},
 };
 
 // This is the same as visa_igc_common_header.h/PreDefined_Vars
@@ -81,7 +82,8 @@ enum class PreDefinedVarsInternal_3_4 {
   IMPL_ARG_BUF_PTR = 18,
   LOCAL_ID_BUF_PTR = 19,
   MSG0 = 20,
-  VAR_LAST = MSG0
+  SCRATCHLOC = 21,
+  VAR_LAST = SCRATCHLOC
 };
 
 PreDefinedVarsInternal mapExternalToInternalPreDefVar(int id) {
@@ -153,6 +155,9 @@ PreDefinedVarsInternal mapExternalToInternalPreDefVar(int id) {
       break;
     case PreDefinedVarsInternal_3_4::MSG0:
       newIndex = PreDefinedVarsInternal::MSG0;
+      break;
+    case PreDefinedVarsInternal_3_4::SCRATCHLOC:
+      newIndex = PreDefinedVarsInternal::SCRATCHLOC;
       break;
     default:
       break;

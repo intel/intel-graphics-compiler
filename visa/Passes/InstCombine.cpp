@@ -425,6 +425,7 @@ bool InstCombiner::tryInstPropagate(INST_LIST_ITER iitr, INST_LIST_ITER eitr) {
           case LSC_ADDR_TYPE_BSS:
           case LSC_ADDR_TYPE_SS:
           case LSC_ADDR_TYPE_BTI:
+          case LSC_ADDR_TYPE_SURF:
             return true;
           default:
             break;

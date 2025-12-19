@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2025 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -122,7 +122,12 @@ class Optimizer {
                          unsigned int srcNum, INST_LIST_ITER lastIter,
                          INST_LIST_ITER iend);
   void removePseudoMov();
+  void expandSendg();
   void FoldAddrImmediate();
+  void insertThryld();
+  void fixSamplerCacheBitInHeader();
+  void InsertS0Movs();
+  void fixSamplerCacheBit();
   bool foldCmpSel(G4_BB *BB, G4_INST *selInst, INST_LIST_ITER &selInst_II);
   bool foldPseudoNot(G4_BB *bb, INST_LIST_ITER &iter);
   bool createSmov(G4_BB *bb, G4_INST *flagMove, G4_INST *nextInst);
@@ -161,6 +166,7 @@ class Optimizer {
       Sched.runWithGRFSelection(KernelPressure);
       // FIXME: remove the platform check when 3D regressions are resolved
       bool PlatformCheck = true;
+      PlatformCheck = builder.getPlatform() < Xe3P_Graphics;
       if (PlatformCheck && InitialGRFNumber != kernel.getNumRegTotal() &&
           kernel.getNumRegTotal() > InitialGRFNumber)
         Sched.run(KernelPressure);
@@ -273,6 +279,7 @@ private:
   void insertIEEEExceptionTrap();
   void expandIEEEExceptionTrap(INST_LIST_ITER it, G4_BB *bb);
   void fixDirectAddrBoundOnDst();
+  void applyThreeSrcInstNullSrc2WA(INST_LIST_ITER it, G4_BB *bb);
 
   typedef std::vector<vISA::G4_INST *> InstListType;
   // create instruction sequence to calculate call offset from ip
@@ -307,6 +314,7 @@ private:
   void insertDummyMovForHWRSWAonDPAS();
   void insertDummyMovForHWRSWA();
   void insertHashMovs();
+  void insertMsg0ToDbg0Copy();
   void insertDummyCompactInst();
   void swapSrc1Src2OfMadForCompaction();
   void removeLifetimeOps();
@@ -374,6 +382,10 @@ public:
     PI_reassignBlockIDs,      // always
     PI_evalAddrExp,           // always
     PI_FoldAddrImmediate,
+    PI_insertThryld,
+    PI_fixSamplerCacheBitInHeader,
+    PI_InsertS0Movs,
+    PI_fixSamplerCacheBit,
     PI_localSchedule,
     PI_HWWorkaround,        // always
     PI_fixEndIfWhileLabels, // always
@@ -398,6 +410,7 @@ public:
     PI_accSubPostSchedule,
     PI_s0SubAfterRA,
     PI_removePseudoMov,
+    PI_expandSendg,
     PI_dce,
     PI_reassociateConst,
     PI_split4GRFVars,

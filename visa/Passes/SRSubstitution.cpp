@@ -43,6 +43,14 @@ void changeToIndirectSend(G4_INST *inst, G4_Declare *s0Var, int totalRegs,
                           IR_Builder &builder, bool isLargeGRF) {
   // Change the send instruction to sendi
   G4_InstSend *Send = inst->asSendInst();
+  if (Send->opcode() == G4_sendg || Send->opcode() == G4_sendgc) {
+    G4_SendgDesc *desc = (G4_SendgDesc *)inst->getMsgDesc();
+    desc->setSrc0Len(totalRegs);
+    desc->setSrc1Len(0);
+    if (isLargeGRF) {
+      Send->setSendgx();
+    }
+  } else {
     G4_SendDescRaw *desc = Send->getMsgDescRaw();
     desc->setExtMessageLength(0);
     G4_Operand *msgDesc = inst->getSrc(2);
@@ -52,6 +60,7 @@ void changeToIndirectSend(G4_INST *inst, G4_Declare *s0Var, int totalRegs,
     descImm |= totalRegs << 25;
     G4_Imm *msgDescImm = builder.createImm(descImm, Type_UD);
     inst->setSrc(msgDescImm, 2);
+  }
 
   // Replace source 0 with scalar register
   G4_SrcRegRegion *headerOpnd =
@@ -430,6 +439,19 @@ void SRSubPass::SRSub(G4_BB *bb) {
   }
 }
 
+bool SRSubPassAfterRA::isLargeGRFOpnd(G4_Operand *opnd) {
+  if (!opnd || opnd->isNullReg() || !opnd->isGreg()) {
+    return false;
+  }
+  return opnd->getLinearizedEnd() > (256 * builder.numEltPerGRF<Type_UB>() - 1);
+}
+
+bool SRSubPassAfterRA::canRegisterBeEncoded(G4_Operand *opnd) {
+  // In some platforms, mov is not removable and dst register > r255, cannot be
+  // gather instruction
+  return !isLargeGRFOpnd(opnd);
+}
+
 // Check if current instruction is the candidate of sendi.
 // Recorded as candidate.
 bool SRSubPassAfterRA::isSRCandidateAfterRA(G4_INST *inst,
@@ -438,7 +460,7 @@ bool SRSubPassAfterRA::isSRCandidateAfterRA(G4_INST *inst,
     return false;
   }
 
-  if (!inst->asSendInst()->getMsgDescRaw()) {
+  if (!inst->asSendInst()->getMsgDescRaw() && !inst->isSendg()) {
     return false;
   }
 
@@ -480,6 +502,12 @@ bool SRSubPassAfterRA::isSRCandidateAfterRA(G4_INST *inst,
     return false;
   }
 
+  if (inst->getDst() && !inst->getDst()->isNullReg()) {
+    // In some platforms, gather send doesn't support register > r255
+    if (!canRegisterBeEncoded(inst->getDst())) {
+      return false;
+    }
+  }
 
   int movInstNum = 0;
   int32_t firstDefID = 0x7FFFFFFF; // the ID of the first instruction define the
@@ -584,6 +612,10 @@ bool SRSubPassAfterRA::isSRCandidateAfterRA(G4_INST *inst,
         if (kernel.fg.globalOpndHT.isOpndGlobal(dstRgn) && !dstRgn->getTopDcl()->getIsBBLocal()) {
           return false;
         }
+      }
+      // In some platforms, mov is not removeable if the src register > r255
+      if (!canRegisterBeEncoded(src)) {
+        return false;
       }
 
       return true;
@@ -691,6 +723,9 @@ bool SRSubPassAfterRA::isSRCandidateAfterRA(G4_INST *inst,
           });
       // if multiple defined, cannot be removed
       if (iter != dstSrcRegs.dstSrcMap.end()) {
+        if (!canRegisterBeEncoded(dst)) {
+          return false;
+        }
         for (unsigned offset = startOffset; offset < (startOffset + dstSize);
              offset++) {
           notRemoveableMap.push_back(std::make_pair(opndNum, offset));
@@ -703,6 +738,9 @@ bool SRSubPassAfterRA::isSRCandidateAfterRA(G4_INST *inst,
         movInstNum++;
       }
     } else {
+      if (!canRegisterBeEncoded(dst)) {
+        return false;
+      }
       if (movInst->opcode() == G4_mov && movInst->getSrc(0) &&
           movInst->getSrc(0)->isImm()) {
         // Check if there is mov instruction with same imm value
@@ -754,6 +792,58 @@ bool SRSubPassAfterRA::isSRCandidateAfterRA(G4_INST *inst,
   if (movInstNum < 2) {
     return false;
   }
+  // Even keep original GRF of src0 or src1, the original one cannot be more than 255
+  unsigned short GRFSize = builder.getGRFSize();
+  int src0Size = inst->getMsgDesc()->getSrc0LenRegs();
+  G4_Operand *src0 = inst->getSrc(0);
+  int j = 0;
+  for (int i = 0; i < src0Size; i++) {
+    bool replaced = false;
+    int srcOffset = src0->getLeftBound() / GRFSize + i;
+    if (j < (int)dstSrcRegs.dstSrcMap.size() &&
+        dstSrcRegs.dstSrcMap[j].opndNum == Opnd_src0) {
+      int opndSize =
+          (dstSrcRegs.dstSrcMap[j].opnd->getLinearizedEnd() -
+           dstSrcRegs.dstSrcMap[j].opnd->getLinearizedStart() + GRFSize - 1) /
+          GRFSize;
+      int opndOffset = dstSrcRegs.dstSrcMap[j].offset;
+
+      if ((srcOffset >= opndOffset) && (srcOffset < opndOffset + opndSize)) {
+        replaced = true;
+        i += opndSize - 1;
+        j++;
+      }
+    }
+    if (!replaced && (src0->getLinearizedStart() / GRFSize + i) > 255) {
+      return false;
+    }
+  }
+
+  G4_Operand *src1 = inst->getSrc(0);
+  if (src1 && !src1->isNullReg()) {
+    int src1Size = inst->getMsgDesc()->getSrc1LenRegs();
+    for (int i = 0; i < src1Size; i++) {
+      bool replaced = false;
+      int src1ffset = src1->getLeftBound() / GRFSize + i;
+      if (j < (int)dstSrcRegs.dstSrcMap.size() &&
+          dstSrcRegs.dstSrcMap[j].opndNum == Opnd_src1) {
+        int opndSize =
+            (dstSrcRegs.dstSrcMap[j].opnd->getLinearizedEnd() -
+             dstSrcRegs.dstSrcMap[j].opnd->getLinearizedStart() + GRFSize - 1) /
+            GRFSize;
+        int opndOffset = dstSrcRegs.dstSrcMap[j].offset;
+
+        if ((src1ffset >= opndOffset) && (src1ffset < opndOffset + opndSize)) {
+          replaced = true;
+          i += opndSize - 1;
+          j++;
+        }
+      }
+      if (!replaced && (src1->getLinearizedStart() / GRFSize + i) > 255) {
+        return false;
+      }
+    }
+  }
 
   dstSrcRegs.firstDefID = firstDefID;
   // Sort according to the register order in the original payload
@@ -763,6 +853,88 @@ bool SRSubPassAfterRA::isSRCandidateAfterRA(G4_INST *inst,
   return true;
 }
 
+bool SRSubPassAfterRA::checkCandidateForLargeGRF(G4_INST *inst,
+                                                 regCandidatesBRA &dstSrcRegs) {
+  // Check the source only, because large GRF is dst doesn't affect index
+  // register encoding.
+  // At the same time, much check each register of indexed regsiters. Because
+  // the original register may be replace, may not be replaced. So cannot use
+  // operand based check
+
+  unsigned short GRFSize = builder.getGRFSize();
+  int j = 0;
+  // Check the source of define mov if the mov can be removed, otherwise, check
+  // original source 0 directly
+  int src0Size = inst->getMsgDesc()->getSrc0LenRegs();
+  G4_Operand *src0 = inst->getSrc(0);
+  for (int i = 0; i < src0Size; i++) {
+    if (j < (int)dstSrcRegs.dstSrcMap.size() &&
+        dstSrcRegs.dstSrcMap[j].opndNum == Opnd_src0) {
+      int opndSize =
+          (dstSrcRegs.dstSrcMap[j].opnd->getLinearizedEnd() -
+           dstSrcRegs.dstSrcMap[j].opnd->getLinearizedStart() + GRFSize - 1) /
+          GRFSize;
+      int srcOffset = src0->getLeftBound() / GRFSize + i;
+      int opndOffset = dstSrcRegs.dstSrcMap[j].offset;
+
+      if ((srcOffset >= opndOffset) && (srcOffset < opndOffset + opndSize)) {
+        for (int k = 0; k < opndSize; k++) {
+          if ((dstSrcRegs.dstSrcMap[j].opnd->getLinearizedStart() +
+               k * GRFSize) > (256 * builder.numEltPerGRF<Type_UB>() - 1)) {
+            dstSrcRegs.isLargeGRF = true;
+          }
+        }
+        i += opndSize - 1;
+        j++;
+        continue;
+      }
+    }
+
+    // Not replaced
+    if ((src0->getLinearizedStart() + i * GRFSize) >
+        (256 * builder.numEltPerGRF<Type_UB>() - 1)) {
+      dstSrcRegs.isLargeGRF = true;
+    }
+  }
+
+  // Check the ource of define mov if the mov can be removed, otherwise, check
+  // original source 1 register
+  G4_Operand *src1 = inst->getSrc(1);
+  int src1Size = inst->getMsgDesc()->getSrc1LenRegs();
+  if (src1 && !src1->isNullReg()) {
+    for (int i = 0; i < src1Size; i++) {
+      if (j < (int)dstSrcRegs.dstSrcMap.size() &&
+          dstSrcRegs.dstSrcMap[j].opndNum == Opnd_src1) {
+        int opndSize =
+            (dstSrcRegs.dstSrcMap[j].opnd->getLinearizedEnd() -
+             dstSrcRegs.dstSrcMap[j].opnd->getLinearizedStart() + GRFSize - 1) /
+            GRFSize;
+        int srcOffset = src1->getLeftBound() / GRFSize + i;
+        int opndOffset = dstSrcRegs.dstSrcMap[j].offset;
+
+        if ((srcOffset >= opndOffset) && (srcOffset < opndOffset + opndSize)) {
+          for (int k = 0; k < opndSize; k++) {
+            if ((dstSrcRegs.dstSrcMap[j].opnd->getLinearizedStart() +
+                 k * GRFSize) > (256 * builder.numEltPerGRF<Type_UB>() - 1)) {
+              dstSrcRegs.isLargeGRF = true;
+            }
+          }
+          i += opndSize - 1;
+          j++;
+          continue;
+        }
+      }
+
+      // Add source 1 register directly
+      if ((src1->getLinearizedStart() + i * GRFSize) >
+          (256 * builder.numEltPerGRF<Type_UB>() - 1)) {
+        dstSrcRegs.isLargeGRF = true;
+      }
+    }
+  }
+
+  return !dstSrcRegs.isLargeGRF;
+}
 
 // Replace the send instruction with the payload of
 // Insert the scalar register intialization mov instructions.
@@ -983,6 +1155,7 @@ void SRSubPassAfterRA::SRSubAfterRA(G4_BB *bb) {
       INST_LIST_RITER scan_ri = ri;
       scan_ri++;
       G4_INST *rInst = *scan_ri;
+      bool unsupportGRF = false;
 
       while (rInst->getLocalId() > candidates[inst].firstDefID) {
         if (rInst->isDead()) {
@@ -1040,6 +1213,13 @@ void SRSubPassAfterRA::SRSubAfterRA(G4_BB *bb) {
               int srcRegLB = (*dstSrcRegsIter).opnd->getLinearizedStart();
               int srcRegRB = (*dstSrcRegsIter).opnd->getLinearizedEnd();
               if (!(srcRegRB < dstRegLB || srcRegLB > dstRegRB)) {
+                // mov is not removeable and dst register > r255, cannot be
+                // gather instruction.
+                G4_DstRegRegion *removedDst = (*dstSrcRegsIter).inst->getDst();
+                if (!canRegisterBeEncoded(removedDst)) {
+                  unsupportGRF = true;
+                  break;
+                }
 
                 // Register is redefined
                 dstSrcRegsIter =
@@ -1050,6 +1230,9 @@ void SRSubPassAfterRA::SRSubAfterRA(G4_BB *bb) {
             }
           }
         }
+        if (unsupportGRF) {
+          break;
+        }
         scan_ri++;
         if (scan_ri == rend) {
           break;
@@ -1057,6 +1240,10 @@ void SRSubPassAfterRA::SRSubAfterRA(G4_BB *bb) {
         rInst = *scan_ri;
       }
 
+      if (unsupportGRF || !checkCandidateForLargeGRF(inst, candidates[inst])) {
+        candidates.erase(candidatesIt);
+        continue;
+      }
       // Due to extra mov for s0, so don't use s0 if equal or less than 1 mov
       // inst can be removed.
       if (candidates[inst].dstSrcMap.size() <= 1 &&

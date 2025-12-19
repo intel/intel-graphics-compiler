@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2022 Intel Corporation
+Copyright (C) 2017-2025 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -904,6 +904,19 @@ G4_Declare *SpillManagerGRF::createTransientGRFRangeDeclare(
     vASSERT(builder_->numEltPerGRF<Type_UB>() % region->getElemSize() == 0);
     width = builder_->numEltPerGRF<Type_UB>() / region->getElemSize();
     height = 2;
+    vASSERT(!gra.use4GRFAlign ||
+            (segmentByteSize + builder_->numEltPerGRF<Type_UB>() - 1) /
+                    builder_->numEltPerGRF<Type_UB>() <=
+                4);
+    vASSERT(gra.use4GRFAlign ||
+            (segmentByteSize + builder_->numEltPerGRF<Type_UB>() - 1) /
+                    builder_->numEltPerGRF<Type_UB>() <=
+                2);
+    if (gra.use4GRFAlign)
+      height = std::max<unsigned short>(
+          2, (segmentByteSize + builder_->numEltPerGRF<Type_UB>() - 1) /
+                 builder_->numEltPerGRF<Type_UB>());
+    vISA_ASSERT(height == 2 || height == 4, "unexpected height");
   } else {
     vASSERT(segmentByteSize % region->getElemSize() == 0);
     width = segmentByteSize / region->getElemSize();
@@ -4586,7 +4599,12 @@ void GlobalRA::saveRestoreA0(G4_BB *bb) {
     auto SSOsrc =
         builder.createSrc(builder.getSpillSurfaceOffset()->getRegVar(), 0, 0,
                           builder.getRegionScalar(), Type_UD);
-    {
+    if (builder.getPlatform() >= Xe3 && builder.isKernelArgumentEnabled()) {
+      // SSO starts from the beginning of DW, no shift needed
+      // mov (1) a0.2   SSO   {NM}
+      return builder.createMov(g4::SIMD1, dst, SSOsrc, InstOpt_WriteEnable,
+                               false);
+    } else {
       // shr (1) a0.2   SSO   0x4 {NM}
       auto imm4 = builder.createImm(4, Type_UD);
       return builder.createBinOp(G4_shr, g4::SIMD1, dst, SSOsrc, imm4,
@@ -4766,6 +4784,10 @@ static std::string makeSpillFillComment(const char *spillFill,
 }
 
 void GlobalRA::expandSpillLSC(G4_BB *bb, INST_LIST_ITER &instIt) {
+  if (kernel.fg.builder->isEfficient64bEnabled()) {
+    expandSpillLscEff64(bb, instIt);
+    return;
+  }
   auto &builder = kernel.fg.builder;
   auto inst = (*instIt)->asSpillIntrinsic();
   // offset into scratch surface in bytes
@@ -4971,6 +4993,10 @@ void GlobalRA::expandScatterSpillLSC(G4_BB *bb, INST_LIST_ITER &instIt) {
 }
 
 void GlobalRA::expandFillLSC(G4_BB *bb, INST_LIST_ITER &instIt) {
+  if (kernel.fg.builder->isEfficient64bEnabled()) {
+    expandFillLscEff64(bb, instIt);
+    return;
+  }
   auto &builder = kernel.fg.builder;
   auto inst = (*instIt)->asFillIntrinsic();
   // offset into scratch surface in bytes
@@ -5077,6 +5103,138 @@ void GlobalRA::expandFillLSC(G4_BB *bb, INST_LIST_ITER &instIt) {
 
   splice(bb, instIt, builder->instList, inst->getVISAId());
 }
+void GlobalRA::expandFillLscEff64(G4_BB *bb, INST_LIST_ITER &instIt) {
+  auto &builder = kernel.fg.builder;
+  auto inst = (*instIt)->asFillIntrinsic();
+  // offset into scratch surface in bytes
+  auto fillOffset = inst->getOffsetInBytes();
+  uint32_t numRows = inst->getNumRows();
+  auto rowOffset = inst->getDst()->getRegOff();
+  LSC_L1_L3_CC overrideCaching =
+      (LSC_L1_L3_CC)builder->getuint32Option(vISA_lscSpillLoadCCOverride);
+  const auto cachingOpt = ToLdCaching(overrideCaching);
+
+  builder->instList.clear();
+  while (numRows > 0) {
+    unsigned numGRFToRead = getPayloadSizeGRF(numRows);
+
+    G4_Declare *fillAddr = inst->getFP() ? kernel.fg.scratchRegDcl
+                                         : inst->getHeader()->getTopDcl();
+    int addrImmOff = 0;
+    if (canUseLscImmediateOffsetSpillFill) {
+      vISA_ASSERT((fillOffset % 4) == 0 &&
+                      fillOffset < SPILL_FILL_IMMOFF_MAX_EFF64b,
+                  "invalid fill immediate offset");
+      addrImmOff = fillOffset;
+    } else {
+      createSpillFillAddr(*builder, fillAddr, inst->getFP(), fillOffset);
+    }
+    auto dstRead = builder->createDst(inst->getDst()->getTopDcl()->getRegVar(),
+                                      (short)rowOffset, 0, 1, Type_UD);
+    auto surface =
+        builder->createSrcRegRegion(builder->getSpillSurfaceEfficient64b(),
+                                    builder->getRegionScalar());
+    auto src0 =
+        builder->createSrcRegRegion(fillAddr, builder->getRegionScalar());
+
+    auto vecSize = ToVecElems(numGRFToRead * builder->getGRFSize() / 4);
+    auto sendInst =
+        builder->createLscVecSendgInstSeq(nullptr, MsgOp::LOAD, SFID::UGM,
+                                          g4::SIMD1,
+                                          DataSize::D32, vecSize,
+                                          DataOrder::TRANSPOSE,
+                                          AddrSizeType::GLB_STATE_A32, cachingOpt,
+                                          LdStAttrs::SCRATCH_SURFACE,
+                                          dstRead,
+                                          surface, 0, 1, src0, addrImmOff,
+                                          nullptr,
+                                          inst->getOption());
+    sendInst->addComment(makeSpillFillComment(
+        "fill", "from", inst->getFP() ? "FP" : "offset", fillOffset,
+        dstRead->getTopDcl()->getName(), builder->getGRFSize()));
+
+    numRows -= numGRFToRead;
+    rowOffset += numGRFToRead;
+    fillOffset += numGRFToRead * builder->getGRFSize();
+  } // numRows > 0
+
+  if (inst->getFP() && kernel.getOption(vISA_GenerateDebugInfo)) {
+    kernel.getKernelDebugInfo()->updateExpandedIntrinsic(
+        inst->asFillIntrinsic(), builder->instList);
+  }
+  splice(bb, instIt, builder->instList, inst->getVISAId());
+} // expandFillLscEff64
+void GlobalRA::expandSpillLscEff64(G4_BB *bb, INST_LIST_ITER &instIt) {
+  auto &builder = kernel.fg.builder;
+  auto inst = (*instIt)->asSpillIntrinsic();
+  // offset into scratch surface in bytes
+  auto spillOffset = inst->getOffsetInBytes();
+  uint32_t numRows = inst->getNumRows();
+  auto payload = inst->getSrc(1)->asSrcRegRegion();
+  auto rowOffset = payload->getRegOff();
+
+  // if unset, vISA_lscSpillStoreCCOverride defaults to 0 (giving .df.df)
+  LSC_L1_L3_CC overrideCaching =
+      (LSC_L1_L3_CC)builder->getuint32Option(vISA_lscSpillStoreCCOverride);
+  const auto cachingOpt = ToStCaching(overrideCaching);
+
+  builder->instList.clear();
+  while (numRows > 0) {
+    auto numGRFToWrite = std::min(4u, getPayloadSizeGRF(numRows));
+
+    // For common cases of stackcall, the spillAddr is the scratchRegDcl. But
+    // for frame descriptor spill/fill messages, the spillAddr is the header
+    // in src0.
+    G4_Declare *spillAddr =
+        (inst->getFP() && !(kernel.fg.getIsStackCallFunc() && spillOffset == 0))
+            ? kernel.fg.scratchRegDcl
+            : inst->getHeader()->getTopDcl();
+    int addrImmOff = 0;
+    if (!canUseLscImmediateOffsetSpillFill) {
+      // need to calculate spill address
+      createSpillFillAddr(*builder, spillAddr, inst->getFP(), spillOffset);
+    } else {
+      vISA_ASSERT((spillOffset % 4) == 0 &&
+                      spillOffset < SPILL_FILL_IMMOFF_MAX_EFF64b,
+                  "invalid spill immediate offset");
+      addrImmOff = spillOffset;
+    }
+
+    auto surface =
+        builder->createSrcRegRegion(builder->getSpillSurfaceEfficient64b(),
+                                    builder->getRegionScalar());
+    auto src0Addr = builder->createSrcRegRegion(spillAddr,
+                                                builder->getRegionStride1());
+    auto spillData = builder->createSrcWithNewRegOff(payload, rowOffset);
+    auto vecSize = ToVecElems(numGRFToWrite * builder->getGRFSize() / 4);
+    auto sendInst =
+        builder->createLscVecSendgInstSeq(nullptr, MsgOp::STORE, SFID::UGM,
+                                          g4::SIMD1,
+                                          DataSize::D32, vecSize,
+                                          DataOrder::TRANSPOSE,
+                                          AddrSizeType::GLB_STATE_A32, cachingOpt,
+                                          LdStAttrs::SCRATCH_SURFACE,
+                                          nullptr,
+                                          surface, 0, 1, src0Addr, addrImmOff,
+                                          spillData,
+                                          inst->getOption());
+
+    sendInst->addComment(makeSpillFillComment(
+        "spill", "to", inst->getFP() ? "FP" : "offset", spillOffset,
+        payload->getTopDcl()->getName(), builder->getGRFSize()));
+
+    numRows -= numGRFToWrite;
+    rowOffset += numGRFToWrite;
+    spillOffset += numGRFToWrite * builder->getGRFSize();
+  } // numRows > 0
+
+  if (inst->getFP() && kernel.getOption(vISA_GenerateDebugInfo)) {
+    kernel.getKernelDebugInfo()->updateExpandedIntrinsic(
+        inst->asSpillIntrinsic(), builder->instList);
+  }
+
+  splice(bb, instIt, builder->instList, inst->getVISAId());
+} // expandSpillLscEff64
 
 void GlobalRA::insertSlot1HwordR0Set(G4_BB *bb, INST_LIST_ITER &instIt) {
   auto &builder = kernel.fg.builder;
@@ -5750,6 +5908,18 @@ void GlobalRA::expandFillIntrinsic(G4_BB *bb) {
   }
 }
 
+// Initialize spill/fill header for LSC XE3P spill/fill messages.
+void GlobalRA::initAddrRegForImmOffUseEfficient64bNonStackCall() {
+  G4_BB *entryBB = builder.kernel.fg.getEntryBB();
+  auto iter = std::find_if(entryBB->begin(), entryBB->end(),
+                           [](G4_INST *inst) { return !inst->isLabel(); });
+  auto movInst = builder.createMov(
+      g4::SIMD1, builder.createDstRegRegion(builder.getSpillFillHeader(), 1),
+      builder.createImm(0x0, Type_UD), InstOpt_WriteEnable, false);
+  movInst->addComment("spill/fill zero register");
+
+  entryBB->insertBefore(iter, movInst);
+}
 
 // Initialize address for immediate offset usage in LSC spill/fill messages
 void GlobalRA::initAddrRegForImmOffUseNonStackCall() {
@@ -5765,9 +5935,46 @@ void GlobalRA::initAddrRegForImmOffUseNonStackCall() {
       builder.createImm(0x10000, Type_UD), InstOpt_WriteEnable, false);
   entryBB->insertBefore(iter, movInst);
 }
+void GlobalRA::expandSpillFillIntrinsicsXE3P(unsigned int spillSizeInBytes) {
+  bool hasStackCall =
+      kernel.fg.getHasStackCalls() || kernel.fg.getIsStackCallFunc();
+  // Effficient64b uses a simplified path.
+  //  Xe3p.v1: we allocate a zero register with DW aligned 0
+  //           for the spill header; this suffices all spill locations
+  //           within [0..256k]; addresses outside of this range will insert
+  //           extra emulation
+  //  Xe3p.v2: we can use the null register with :1 to generate 0's
+  //           "src0 null means zero"
+  vASSERT(builder.isEfficient64bEnabled());
+
+  auto globalScratchOffset =
+      kernel.getInt32KernelAttr(Attributes::ATTR_SpillMemOffset);
+
+  // turn off immediate offset if the spill size is larger than 256k for non
+  // stack call. Such test should be rare and don't think it needs to be fast.
+  if (!hasStackCall &&
+      ((spillSizeInBytes + globalScratchOffset) > SPILL_FILL_IMMOFF_MAX_EFF64b))
+    canUseLscImmediateOffsetSpillFill = false;
+
+  // No need to init address reg for immediate offset usage if there is no
+  // scratch message
+  if (canUseLscImmediateOffsetSpillFill && !hasStackCall &&
+      spillSizeInBytes > 0) {
+    initAddrRegForImmOffUseEfficient64bNonStackCall();
+  }
+  // TODO: If spillSize is zero, do we need to exercise this?
+  for (auto bb : kernel.fg) {
+    expandSpillIntrinsic(bb);
+    expandFillIntrinsic(bb);
+  }
+}
 
 void GlobalRA::expandSpillFillIntrinsics(unsigned int spillSizeInBytes) {
 
+  if (builder.isEfficient64bEnabled()) {
+    expandSpillFillIntrinsicsXE3P(spillSizeInBytes);
+    return;
+  }
   auto globalScratchOffset =
       kernel.getInt32KernelAttr(Attributes::ATTR_SpillMemOffset);
   bool hasStackCall =
