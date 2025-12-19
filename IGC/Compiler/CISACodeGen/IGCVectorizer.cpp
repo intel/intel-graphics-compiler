@@ -906,6 +906,12 @@ bool IGCVectorizer::handleWaveAll(VecArr &Slice) {
   if (!IGC_GET_FLAG_VALUE(VectorizerAllowWAVEALLJoint))
     return true;
 
+  // if the platform is unsupported we vectorize as stubs
+  if (!AllowedPlatform) {
+    PRINT_LOG_NL("Unsupported platform");
+    return true;
+  }
+
   auto *First = llvm::dyn_cast<WaveAllIntrinsic>(Slice.front());
   if (!First)
     return false;
@@ -1529,6 +1535,7 @@ bool IGCVectorizer::runOnFunction(llvm::Function &F) {
   CGCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
   initializeLogFile(F);
 
+  AllowedPlatform = CGCtx->platform.isCoreXE2() || CGCtx->platform.isPVC();
   SIMDSize = checkSIMD(F);
   // we have DPAS and simd8 for DG2 platforms
   bool SupportedSIMD = SIMDSize == 16 || SIMDSize == 32;

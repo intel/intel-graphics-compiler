@@ -194,6 +194,7 @@ public:
     return m_platformInfo.eProductFamily >= product;
   }
 
+  bool isPVC() const { return (m_platformInfo.eProductFamily == IGFX_PVC); }
   bool isCoreXE2() const { return (m_platformInfo.eRenderCoreFamily == IGFX_XE2_HPG_CORE); }
 
   bool isCoreXE3() const {

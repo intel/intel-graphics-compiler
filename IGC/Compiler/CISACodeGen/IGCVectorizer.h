@@ -72,6 +72,7 @@ class IGCVectorizer : public llvm::FunctionPass {
   llvm::raw_string_ostream OutputLogStream = raw_string_ostream(LogStr);
   Module *M = nullptr;
   unsigned SIMDSize = 0;
+  bool AllowedPlatform = true;
   unsigned checkSIMD(llvm::Function &F);
   void initializeLogFile(Function &F);
   void writeLog();

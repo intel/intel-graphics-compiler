@@ -1,5 +1,5 @@
 ; REQUIRES: llvm-16-plus, regkeys
-; RUN: igc_opt -S -opaque-pointers --igc-vectorizer -dce --regkey=VectorizerAllowWAVEALL=1 --regkey=VectorizerAllowWAVEALLJoint=1 < %s 2>&1 | FileCheck %s
+; RUN: igc_opt -S -opaque-pointers -platformbmg --igc-vectorizer -dce --regkey=VectorizerAllowWAVEALL=1 --regkey=VectorizerAllowWAVEALLJoint=1 < %s 2>&1 | FileCheck %s
 
 ;CHECK: %vectorized_joint_waveall = call <8 x float> @llvm.genx.GenISA.WaveAll.v8f32(<8 x float> %{{.*}}, i8 12, i32 0)
 ;CHECK: %{{vectorized_joint_waveall.*}} = call <8 x float> @llvm.genx.GenISA.WaveAll.v8f32(<8 x float> %{{.*}}, i8 12, i32 0)
