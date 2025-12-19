@@ -773,7 +773,7 @@ bool EmitPass::runOnFunction(llvm::Function &F) {
     }
     // call builder after pre-analysis pass where scratchspace offset to VISA is
     // calculated
-    m_encoder->InitEncoder(m_SimdMode, m_canAbortOnSpill, m_currShader->HasStackCalls(), hasInlineAsmCall,
+    m_encoder->InitEncoder(m_canAbortOnSpill, m_currShader->HasStackCalls(), hasInlineAsmCall,
                            hasAdditionalVisaAsmToLink, numThreadsPerEU, lowerBoundGRF, upperBoundGRF, prevKernel);
 
     if (!m_encoder->IsCodePatchCandidate())
