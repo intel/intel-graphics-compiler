@@ -96,6 +96,26 @@ SPDX-License-Identifier: MIT
 //    - If you want uniform platform support → use regular extension with explicit platform
 //    - If you want per-capability platform support → use InheritFromCapabilities
 //    - No mixing of the two approaches in a single extension
+//
+// 5. DUAL EXTENSION DEFINITIONS (OFFICIAL + EXPERIMENTAL):
+//
+//    It is valid to describe the same SPIR-V extension name with two
+//    TableGen records when some platforms support it experimentally and
+//    others officially. Example pattern:
+//
+//      def SPV_INTEL_example : Extension<              // official support
+//        "SPV_INTEL_example",
+//        [ Capability<"ExampleCapabilityINTEL"> ],
+//        "https://example.com/spec/SPV_INTEL_example.asciidoc",
+//        SOME_OFFICIAL_PLATFORM_PREDICATE
+//      >;
+//
+//      def SPV_INTEL_example_experimental : ExperimentalExtension< // experimental
+//        "SPV_INTEL_example",   // same SPIR-V extension string
+//        [ Capability<"ExampleCapabilityINTEL"> ],
+//        "https://example.com/spec/SPV_INTEL_example.asciidoc",
+//        SOME_EXPERIMENTAL_PLATFORM_PREDICATE
+//      >;
 
 class Platform<string ProductFamilyEnum> {
   string ProductFamily = ProductFamilyEnum;

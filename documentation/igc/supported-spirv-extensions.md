@@ -4,13 +4,11 @@ This document lists all SPIR-V extensions supported by IGC and their platform re
 
 ## SPV_EXT_float8
 
-> **Note**: The support for this extension is experimental. It has been implemented but has not been thoroughly tested and should not be used in production environments.
+**Specification**: https://github.khronos.org/SPIRV-Registry/extensions/EXT/SPV_EXT_float8.html
 
-**Specification:** https://github.khronos.org/SPIRV-Registry/extensions/EXT/SPV_EXT_float8.html
+> **Experimentally supported on**: IGFX_XE3P_CORE and newer
 
-**Extension Platform Support:** IGFX_XE3P_CORE and newer
-
-**Capabilities:**
+**Capabilities**:
 
 - **Float8EXT**
 - **Float8CooperativeMatrixEXT**
@@ -19,11 +17,11 @@ This document lists all SPIR-V extensions supported by IGC and their platform re
 
 ## SPV_EXT_optnone
 
-**Specification:** https://github.khronos.org/SPIRV-Registry/extensions/EXT/SPV_EXT_optnone.html
+**Specification**: https://github.khronos.org/SPIRV-Registry/extensions/EXT/SPV_EXT_optnone.html
 
-**Extension Platform Support:** All platforms
+> **Supported on**: All platforms
 
-**Capabilities:**
+**Capabilities**:
 
 - **OptNoneEXT**
 
@@ -31,11 +29,11 @@ This document lists all SPIR-V extensions supported by IGC and their platform re
 
 ## SPV_EXT_shader_atomic_float16_add
 
-**Specification:** https://github.khronos.org/SPIRV-Registry/extensions/EXT/SPV_EXT_shader_atomic_float16_add.html
+**Specification**: https://github.khronos.org/SPIRV-Registry/extensions/EXT/SPV_EXT_shader_atomic_float16_add.html
 
-**Extension Platform Support:** IGFX_XE3P_CORE and newer
+> **Supported on**: IGFX_XE3P_CORE and newer
 
-**Capabilities:**
+**Capabilities**:
 
 - **AtomicFloat16AddEXT**
 
@@ -43,60 +41,58 @@ This document lists all SPIR-V extensions supported by IGC and their platform re
 
 ## SPV_EXT_shader_atomic_float_add
 
-**Specification:** https://github.khronos.org/SPIRV-Registry/extensions/EXT/SPV_EXT_shader_atomic_float_add.html
+**Specification**: https://github.khronos.org/SPIRV-Registry/extensions/EXT/SPV_EXT_shader_atomic_float_add.html
 
-**Capabilities:**
+**Capabilities**:
 
 - **AtomicFloat32AddEXT**
-  - Platform Support: All platforms
+  > **Supported On**: All platforms
 - **AtomicFloat64AddEXT**
-  - Platform Support: IGFX_METEORLAKE and newer
+  > **Supported On**: IGFX_METEORLAKE and newer
 
 ---
 
 ## SPV_EXT_shader_atomic_float_min_max
 
-**Specification:** https://github.khronos.org/SPIRV-Registry/extensions/EXT/SPV_EXT_shader_atomic_float_min_max.html
+**Specification**: https://github.khronos.org/SPIRV-Registry/extensions/EXT/SPV_EXT_shader_atomic_float_min_max.html
 
-**Capabilities:**
+**Capabilities**:
 
 - **AtomicFloat16MinMaxEXT**
-  - Platform Support: IGFX_XE3P_CORE and newer
+  > **Supported On**: IGFX_XE3P_CORE and newer
 - **AtomicFloat32MinMaxEXT**
-  - Platform Support: All platforms
+  > **Supported On**: All platforms
 - **AtomicFloat64MinMaxEXT**
-  - Platform Support: IGFX_METEORLAKE and newer
+  > **Supported On**: IGFX_METEORLAKE and newer
 
 ---
 
 ## SPV_INTEL_16bit_atomics
 
-> **Note**: The support for this extension is experimental. It has been implemented but has not been thoroughly tested and should not be used in production environments.
+**Specification**: https://github.com/intel/llvm/pull/20009
 
-**Specification:** https://github.com/intel/llvm/pull/20009
-
-**Capabilities:**
+**Capabilities**:
 
 - **AtomicInt16CompareExchangeINTEL**
-  - Platform Support: IGFX_XE3P_CORE and newer
+  > **Experimentally supported on**: IGFX_XE3P_CORE and newer
 - **Int16AtomicsINTEL**
-  - Platform Support: Not supported
+  > **Experimentally supported on**: Not supported
 - **AtomicBFloat16LoadStoreINTEL**
-  - Platform Support: IGFX_XE3P_CORE and newer
+  > **Experimentally supported on**: IGFX_XE3P_CORE and newer
 - **AtomicBFloat16AddINTEL**
-  - Platform Support: IGFX_XE3P_CORE and newer
+  > **Experimentally supported on**: IGFX_XE3P_CORE and newer
 - **AtomicBFloat16MinMaxINTEL**
-  - Platform Support: IGFX_XE3P_CORE and newer
+  > **Experimentally supported on**: IGFX_XE3P_CORE and newer
 
 ---
 
 ## SPV_INTEL_2d_block_io
 
-**Specification:** https://github.com/KhronosGroup/SPIRV-Registry/blob/main/extensions/INTEL/SPV_INTEL_2d_block_io.asciidoc
+**Specification**: https://github.com/KhronosGroup/SPIRV-Registry/blob/main/extensions/INTEL/SPV_INTEL_2d_block_io.asciidoc
 
-**Extension Platform Support:** IGFX_XE_HPC_CORE and newer
+> **Supported on**: IGFX_XE_HPC_CORE and newer
 
-**Capabilities:**
+**Capabilities**:
 
 - **Subgroup2DBlockIOINTEL**
 - **Subgroup2DBlockTransformINTEL**
@@ -106,13 +102,11 @@ This document lists all SPIR-V extensions supported by IGC and their platform re
 
 ## SPV_INTEL_bfloat16_arithmetic
 
-> **Note**: The support for this extension is experimental. It has been implemented but has not been thoroughly tested and should not be used in production environments.
+**Specification**: https://github.com/intel/llvm/blob/sycl/sycl/doc/design/spirv-extensions/SPV_INTEL_bfloat16_arithmetic.asciidoc
 
-**Specification:** https://github.com/intel/llvm/blob/sycl/sycl/doc/design/spirv-extensions/SPV_INTEL_bfloat16_arithmetic.asciidoc
+> **Experimentally supported on**: IGFX_XE3P_CORE and newer
 
-**Extension Platform Support:** IGFX_XE3P_CORE and newer
-
-**Capabilities:**
+**Capabilities**:
 
 - **BFloat16ArithmeticINTEL**
 
@@ -120,11 +114,11 @@ This document lists all SPIR-V extensions supported by IGC and their platform re
 
 ## SPV_INTEL_bfloat16_conversion
 
-**Specification:** https://github.khronos.org/SPIRV-Registry/extensions/INTEL/SPV_INTEL_bfloat16_conversion.html
+**Specification**: https://github.khronos.org/SPIRV-Registry/extensions/INTEL/SPV_INTEL_bfloat16_conversion.html
 
-**Extension Platform Support:** IGFX_XE3P_CORE and newer
+> **Supported on**: IGFX_XE3P_CORE and newer
 
-**Capabilities:**
+**Capabilities**:
 
 - **BFloat16ConversionINTEL**
 
@@ -132,13 +126,11 @@ This document lists all SPIR-V extensions supported by IGC and their platform re
 
 ## SPV_INTEL_bindless_images
 
-> **Note**: The support for this extension is experimental. It has been implemented but has not been thoroughly tested and should not be used in production environments.
+**Specification**: https://github.khronos.org/SPIRV-Registry/extensions/INTEL/SPV_INTEL_bindless_images.html
 
-**Specification:** https://github.khronos.org/SPIRV-Registry/extensions/INTEL/SPV_INTEL_bindless_images.html
+> **Experimentally supported on**: IGFX_XE_HPG_CORE and newer (excluding IGFX_PVC, IGFX_CRI)
 
-**Extension Platform Support:** IGFX_XE_HPG_CORE and newer (excluding IGFX_PVC, IGFX_CRI)
-
-**Capabilities:**
+**Capabilities**:
 
 - **BindlessImagesINTEL**
 
@@ -146,11 +138,11 @@ This document lists all SPIR-V extensions supported by IGC and their platform re
 
 ## SPV_INTEL_cache_controls
 
-**Specification:** https://github.com/KhronosGroup/SPIRV-Registry/blob/main/extensions/INTEL/SPV_INTEL_cache_controls.asciidoc
+**Specification**: https://github.com/KhronosGroup/SPIRV-Registry/blob/main/extensions/INTEL/SPV_INTEL_cache_controls.asciidoc
 
-**Extension Platform Support:** All platforms
+> **Supported on**: All platforms
 
-**Capabilities:**
+**Capabilities**:
 
 - **CacheControlsINTEL**
 
@@ -158,13 +150,11 @@ This document lists all SPIR-V extensions supported by IGC and their platform re
 
 ## SPV_INTEL_debug_module
 
-> **Note**: The support for this extension is experimental. It has been implemented but has not been thoroughly tested and should not be used in production environments.
+**Specification**: https://github.com/intel/llvm/blob/sycl/sycl/doc/design/spirv-extensions/SPV_INTEL_debug_module.asciidoc
 
-**Specification:** https://github.com/intel/llvm/blob/sycl/sycl/doc/design/spirv-extensions/SPV_INTEL_debug_module.asciidoc
+> **Experimentally supported on**: All platforms
 
-**Extension Platform Support:** All platforms
-
-**Capabilities:**
+**Capabilities**:
 
 - **DebugInfoModuleINTEL**
 
@@ -172,13 +162,11 @@ This document lists all SPIR-V extensions supported by IGC and their platform re
 
 ## SPV_INTEL_float4
 
-> **Note**: The support for this extension is experimental. It has been implemented but has not been thoroughly tested and should not be used in production environments.
+**Specification**: https://github.com/intel/llvm/pull/20467
 
-**Specification:** https://github.com/intel/llvm/pull/20467
+> **Experimentally supported on**: IGFX_XE3P_CORE and newer
 
-**Extension Platform Support:** IGFX_XE3P_CORE and newer
-
-**Capabilities:**
+**Capabilities**:
 
 - **Float4TypeINTEL**
 - **Float4CooperativeMatrixINTEL**
@@ -187,13 +175,11 @@ This document lists all SPIR-V extensions supported by IGC and their platform re
 
 ## SPV_INTEL_fp_conversions
 
-> **Note**: The support for this extension is experimental. It has been implemented but has not been thoroughly tested and should not be used in production environments.
+**Specification**: https://github.com/intel/llvm/pull/20467
 
-**Specification:** https://github.com/intel/llvm/pull/20467
+> **Experimentally supported on**: IGFX_XE3P_CORE and newer
 
-**Extension Platform Support:** IGFX_XE3P_CORE and newer
-
-**Capabilities:**
+**Capabilities**:
 
 - **FloatConversionsINTEL**
 
@@ -201,13 +187,11 @@ This document lists all SPIR-V extensions supported by IGC and their platform re
 
 ## SPV_INTEL_fp_fast_math_mode
 
-> **Note**: The support for this extension is experimental. It has been implemented but has not been thoroughly tested and should not be used in production environments.
+**Specification**: https://github.khronos.org/SPIRV-Registry/extensions/INTEL/SPV_INTEL_fp_fast_math_mode.html
 
-**Specification:** https://github.khronos.org/SPIRV-Registry/extensions/INTEL/SPV_INTEL_fp_fast_math_mode.html
+> **Experimentally supported on**: All platforms
 
-**Extension Platform Support:** All platforms
-
-**Capabilities:**
+**Capabilities**:
 
 - **FPFastMathModeINTEL**
 
@@ -215,13 +199,11 @@ This document lists all SPIR-V extensions supported by IGC and their platform re
 
 ## SPV_INTEL_fp_max_error
 
-> **Note**: The support for this extension is experimental. It has been implemented but has not been thoroughly tested and should not be used in production environments.
+**Specification**: https://github.khronos.org/SPIRV-Registry/extensions/INTEL/SPV_INTEL_fp_max_error.html
 
-**Specification:** https://github.khronos.org/SPIRV-Registry/extensions/INTEL/SPV_INTEL_fp_max_error.html
+> **Experimentally supported on**: All platforms
 
-**Extension Platform Support:** All platforms
-
-**Capabilities:**
+**Capabilities**:
 
 - **FPMaxErrorINTEL**
 
@@ -229,13 +211,11 @@ This document lists all SPIR-V extensions supported by IGC and their platform re
 
 ## SPV_INTEL_function_pointers
 
-> **Note**: The support for this extension is experimental. It has been implemented but has not been thoroughly tested and should not be used in production environments.
+**Specification**: https://github.com/intel/llvm/blob/sycl/sycl/doc/design/spirv-extensions/SPV_INTEL_function_pointers.asciidoc
 
-**Specification:** https://github.com/intel/llvm/blob/sycl/sycl/doc/design/spirv-extensions/SPV_INTEL_function_pointers.asciidoc
+> **Experimentally supported on**: All platforms
 
-**Extension Platform Support:** All platforms
-
-**Capabilities:**
+**Capabilities**:
 
 - **FunctionPointersINTEL**
 - **IndirectReferencesINTEL**
@@ -244,11 +224,11 @@ This document lists all SPIR-V extensions supported by IGC and their platform re
 
 ## SPV_INTEL_global_variable_host_access
 
-**Specification:** https://github.khronos.org/SPIRV-Registry/extensions/INTEL/SPV_INTEL_global_variable_host_access.html
+**Specification**: https://github.khronos.org/SPIRV-Registry/extensions/INTEL/SPV_INTEL_global_variable_host_access.html
 
-**Extension Platform Support:** All platforms
+> **Supported on**: All platforms
 
-**Capabilities:**
+**Capabilities**:
 
 - **GlobalVariableHostAccessINTEL**
 
@@ -256,13 +236,11 @@ This document lists all SPIR-V extensions supported by IGC and their platform re
 
 ## SPV_INTEL_inline_assembly
 
-> **Note**: The support for this extension is experimental. It has been implemented but has not been thoroughly tested and should not be used in production environments.
+**Specification**: https://github.com/intel/llvm/blob/sycl/sycl/doc/design/spirv-extensions/SPV_INTEL_inline_assembly.asciidoc
 
-**Specification:** https://github.com/intel/llvm/blob/sycl/sycl/doc/design/spirv-extensions/SPV_INTEL_inline_assembly.asciidoc
+> **Experimentally supported on**: All platforms
 
-**Extension Platform Support:** All platforms
-
-**Capabilities:**
+**Capabilities**:
 
 - **AsmINTEL**
 
@@ -270,64 +248,58 @@ This document lists all SPIR-V extensions supported by IGC and their platform re
 
 ## SPV_INTEL_int4
 
-> **Note**: The support for this extension is experimental. It has been implemented but has not been thoroughly tested and should not be used in production environments.
+**Specification**: https://github.com/KhronosGroup/SPIRV-Registry/blob/main/extensions/INTEL/SPV_INTEL_int4.asciidoc
 
-**Specification:** https://github.com/KhronosGroup/SPIRV-Registry/blob/main/extensions/INTEL/SPV_INTEL_int4.asciidoc
-
-**Capabilities:**
+**Capabilities**:
 
 - **Int4TypeINTEL**
-  - Platform Support: IGFX_XE3P_CORE and newer
+  > **Experimentally supported on**: IGFX_XE3P_CORE and newer
 - **Int4CooperativeMatrixINTEL**
-  - Platform Support: Not supported
+  > **Experimentally supported on**: Not supported
 
 ---
 
 ## SPV_INTEL_joint_matrix
 
-> **Note**: The support for this extension is experimental. It has been implemented but has not been thoroughly tested and should not be used in production environments.
+**Specification**: https://github.com/intel/llvm/blob/sycl/sycl/doc/design/spirv-extensions/SPV_INTEL_joint_matrix.asciidoc
 
-**Specification:** https://github.com/intel/llvm/blob/sycl/sycl/doc/design/spirv-extensions/SPV_INTEL_joint_matrix.asciidoc
-
-**Capabilities:**
+**Capabilities**:
 
 - **PackedCooperativeMatrixINTEL**
-  - Platform Support: IGFX_XE_HPG_CORE and newer
+  > **Experimentally supported on**: IGFX_XE_HPG_CORE and newer
 - **CooperativeMatrixInvocationInstructionsINTEL**
-  - Platform Support: IGFX_XE_HPG_CORE and newer
+  > **Experimentally supported on**: IGFX_XE_HPG_CORE and newer
 - **CooperativeMatrixTF32ComponentTypeINTEL**
-  - Platform Support: IGFX_XE_HPC_CORE and newer
+  > **Experimentally supported on**: IGFX_XE_HPC_CORE and newer
 - **CooperativeMatrixBFloat16ComponentTypeINTEL**
-  - Platform Support: IGFX_XE_HPG_CORE and newer
+  > **Experimentally supported on**: IGFX_XE_HPG_CORE and newer
 - **CooperativeMatrixPrefetchINTEL**
-  - Platform Support: IGFX_XE_HPC_CORE and newer
+  > **Experimentally supported on**: IGFX_XE_HPC_CORE and newer
 
 ---
 
 ## SPV_INTEL_kernel_attributes
 
-> **Note**: The support for this extension is experimental. It has been implemented but has not been thoroughly tested and should not be used in production environments.
+**Specification**: https://github.khronos.org/SPIRV-Registry/extensions/INTEL/SPV_INTEL_kernel_attributes.html
 
-**Specification:** https://github.khronos.org/SPIRV-Registry/extensions/INTEL/SPV_INTEL_kernel_attributes.html
-
-**Capabilities:**
+**Capabilities**:
 
 - **KernelAttributesINTEL**
-  - Platform Support: All platforms
+  > **Experimentally supported on**: All platforms
 - **FPGAKernelAttributesINTEL**
-  - Platform Support: Not supported
+  > **Experimentally supported on**: Not supported
 - **FPGAKernelAttributesv2INTEL**
-  - Platform Support: Not supported
+  > **Experimentally supported on**: Not supported
 
 ---
 
 ## SPV_INTEL_long_composites
 
-**Specification:** https://github.khronos.org/SPIRV-Registry/extensions/INTEL/SPV_INTEL_long_composites.html
+**Specification**: https://github.khronos.org/SPIRV-Registry/extensions/INTEL/SPV_INTEL_long_composites.html
 
-**Extension Platform Support:** All platforms
+> **Supported on**: All platforms
 
-**Capabilities:**
+**Capabilities**:
 
 - **CapabilityLongCompositesINTEL**
 
@@ -335,13 +307,11 @@ This document lists all SPIR-V extensions supported by IGC and their platform re
 
 ## SPV_INTEL_memory_access_aliasing
 
-> **Note**: The support for this extension is experimental. It has been implemented but has not been thoroughly tested and should not be used in production environments.
+**Specification**: https://github.com/intel/llvm/pull/3426/files
 
-**Specification:** https://github.com/intel/llvm/pull/3426/files
+> **Experimentally supported on**: All platforms
 
-**Extension Platform Support:** All platforms
-
-**Capabilities:**
+**Capabilities**:
 
 - **MemoryAccessAliasingINTEL**
 
@@ -349,13 +319,11 @@ This document lists all SPIR-V extensions supported by IGC and their platform re
 
 ## SPV_INTEL_predicated_io
 
-> **Note**: The support for this extension is experimental. It has been implemented but has not been thoroughly tested and should not be used in production environments.
+**Specification**: https://github.com/intel/llvm/blob/sycl/sycl/doc/design/spirv-extensions/SPV_INTEL_predicated_io.asciidoc
 
-**Specification:** https://github.com/intel/llvm/blob/sycl/sycl/doc/design/spirv-extensions/SPV_INTEL_predicated_io.asciidoc
+> **Experimentally supported on**: All platforms
 
-**Extension Platform Support:** All platforms
-
-**Capabilities:**
+**Capabilities**:
 
 - **PredicatedIOINTEL**
 
@@ -363,13 +331,11 @@ This document lists all SPIR-V extensions supported by IGC and their platform re
 
 ## SPV_INTEL_sigmoid
 
-> **Note**: The support for this extension is experimental. It has been implemented but has not been thoroughly tested and should not be used in production environments.
+**Specification**: https://github.com/intel/llvm/blob/sycl/sycl/doc/design/spirv-extensions/SPV_INTEL_sigmoid.asciidoc
 
-**Specification:** https://github.com/intel/llvm/blob/sycl/sycl/doc/design/spirv-extensions/SPV_INTEL_sigmoid.asciidoc
+> **Experimentally supported on**: All platforms
 
-**Extension Platform Support:** All platforms
-
-**Capabilities:**
+**Capabilities**:
 
 - **SigmoidINTEL**
 
@@ -377,11 +343,11 @@ This document lists all SPIR-V extensions supported by IGC and their platform re
 
 ## SPV_INTEL_split_barrier
 
-**Specification:** https://github.khronos.org/SPIRV-Registry/extensions/INTEL/SPV_INTEL_split_barrier.html
+**Specification**: https://github.khronos.org/SPIRV-Registry/extensions/INTEL/SPV_INTEL_split_barrier.html
 
-**Extension Platform Support:** All platforms
+> **Supported on**: All platforms
 
-**Capabilities:**
+**Capabilities**:
 
 - **SplitBarrierINTEL**
 
@@ -389,11 +355,11 @@ This document lists all SPIR-V extensions supported by IGC and their platform re
 
 ## SPV_INTEL_subgroup_buffer_prefetch
 
-**Specification:** https://github.khronos.org/SPIRV-Registry/extensions/INTEL/SPV_INTEL_subgroup_buffer_prefetch.html
+**Specification**: https://github.khronos.org/SPIRV-Registry/extensions/INTEL/SPV_INTEL_subgroup_buffer_prefetch.html
 
-**Extension Platform Support:** All platforms
+> **Supported on**: All platforms
 
-**Capabilities:**
+**Capabilities**:
 
 - **SubgroupBufferPrefetchINTEL**
 
@@ -401,11 +367,11 @@ This document lists all SPIR-V extensions supported by IGC and their platform re
 
 ## SPV_INTEL_subgroup_matrix_multiply_accumulate
 
-**Specification:** https://github.khronos.org/SPIRV-Registry/extensions/INTEL/SPV_INTEL_subgroup_matrix_multiply_accumulate.html
+**Specification**: https://github.khronos.org/SPIRV-Registry/extensions/INTEL/SPV_INTEL_subgroup_matrix_multiply_accumulate.html
 
-**Extension Platform Support:** IGFX_XE_HPG_CORE and newer (excluding IGFX_METEORLAKE, IGFX_ARROWLAKE)
+> **Supported on**: IGFX_XE_HPG_CORE and newer (excluding IGFX_METEORLAKE, IGFX_ARROWLAKE)
 
-**Capabilities:**
+**Capabilities**:
 
 - **SubgroupMatrixMultiplyAccumulateINTEL**
 
@@ -413,11 +379,11 @@ This document lists all SPIR-V extensions supported by IGC and their platform re
 
 ## SPV_INTEL_subgroups
 
-**Specification:** https://github.khronos.org/SPIRV-Registry/extensions/INTEL/SPV_INTEL_subgroups.html
+**Specification**: https://github.khronos.org/SPIRV-Registry/extensions/INTEL/SPV_INTEL_subgroups.html
 
-**Extension Platform Support:** All platforms
+> **Supported on**: All platforms
 
-**Capabilities:**
+**Capabilities**:
 
 - **SubgroupShuffleINTEL**
 - **SubgroupBufferBlockIOINTEL**
@@ -427,11 +393,11 @@ This document lists all SPIR-V extensions supported by IGC and their platform re
 
 ## SPV_INTEL_tensor_float32_conversion
 
-**Specification:** https://github.khronos.org/SPIRV-Registry/extensions/INTEL/SPV_INTEL_tensor_float32_conversion.html
+**Specification**: https://github.khronos.org/SPIRV-Registry/extensions/INTEL/SPV_INTEL_tensor_float32_conversion.html
 
-**Extension Platform Support:** IGFX_XE2_HPG_CORE and newer
+> **Supported on**: IGFX_XE2_HPG_CORE and newer
 
-**Capabilities:**
+**Capabilities**:
 
 - **TensorFloat32RoundingINTEL**
 
@@ -439,11 +405,11 @@ This document lists all SPIR-V extensions supported by IGC and their platform re
 
 ## SPV_INTEL_unstructured_loop_controls
 
-**Specification:** https://github.khronos.org/SPIRV-Registry/extensions/INTEL/SPV_INTEL_unstructured_loop_controls.html
+**Specification**: https://github.khronos.org/SPIRV-Registry/extensions/INTEL/SPV_INTEL_unstructured_loop_controls.html
 
-**Extension Platform Support:** All platforms
+> **Supported on**: All platforms
 
-**Capabilities:**
+**Capabilities**:
 
 - **UnstructuredLoopControlsINTEL**
 
@@ -451,13 +417,11 @@ This document lists all SPIR-V extensions supported by IGC and their platform re
 
 ## SPV_INTEL_variable_length_array
 
-> **Note**: The support for this extension is experimental. It has been implemented but has not been thoroughly tested and should not be used in production environments.
+**Specification**: https://github.khronos.org/SPIRV-Registry/extensions/INTEL/SPV_INTEL_variable_length_array.html
 
-**Specification:** https://github.khronos.org/SPIRV-Registry/extensions/INTEL/SPV_INTEL_variable_length_array.html
+> **Experimentally supported on**: All platforms
 
-**Extension Platform Support:** All platforms
-
-**Capabilities:**
+**Capabilities**:
 
 - **VariableLengthArrayINTEL**
 - **UntypedVariableLengthArrayINTEL**
@@ -466,13 +430,11 @@ This document lists all SPIR-V extensions supported by IGC and their platform re
 
 ## SPV_KHR_bfloat16
 
-> **Note**: The support for this extension is experimental. It has been implemented but has not been thoroughly tested and should not be used in production environments.
+**Specification**: https://github.khronos.org/SPIRV-Registry/extensions/KHR/SPV_KHR_bfloat16.html
 
-**Specification:** https://github.khronos.org/SPIRV-Registry/extensions/KHR/SPV_KHR_bfloat16.html
+> **Experimentally supported on**: IGFX_XE2_HPG_CORE and newer
 
-**Extension Platform Support:** IGFX_XE2_HPG_CORE and newer
-
-**Capabilities:**
+**Capabilities**:
 
 - **BFloat16TypeKHR**
 - **BFloat16DotProductKHR**
@@ -482,11 +444,11 @@ This document lists all SPIR-V extensions supported by IGC and their platform re
 
 ## SPV_KHR_bit_instructions
 
-**Specification:** https://github.khronos.org/SPIRV-Registry/extensions/KHR/SPV_KHR_bit_instructions.html
+**Specification**: https://github.khronos.org/SPIRV-Registry/extensions/KHR/SPV_KHR_bit_instructions.html
 
-**Extension Platform Support:** All platforms
+> **Supported on**: All platforms
 
-**Capabilities:**
+**Capabilities**:
 
 - **BitInstructions**
 
@@ -494,11 +456,11 @@ This document lists all SPIR-V extensions supported by IGC and their platform re
 
 ## SPV_KHR_expect_assume
 
-**Specification:** https://github.khronos.org/SPIRV-Registry/extensions/KHR/SPV_KHR_expect_assume.html
+**Specification**: https://github.khronos.org/SPIRV-Registry/extensions/KHR/SPV_KHR_expect_assume.html
 
-**Extension Platform Support:** All platforms
+> **Supported on**: All platforms
 
-**Capabilities:**
+**Capabilities**:
 
 - **ExpectAssumeKHR**
 
@@ -506,11 +468,11 @@ This document lists all SPIR-V extensions supported by IGC and their platform re
 
 ## SPV_KHR_integer_dot_product
 
-**Specification:** https://github.khronos.org/SPIRV-Registry/extensions/KHR/SPV_KHR_integer_dot_product.html
+**Specification**: https://github.khronos.org/SPIRV-Registry/extensions/KHR/SPV_KHR_integer_dot_product.html
 
-**Extension Platform Support:** All platforms
+> **Supported on**: All platforms
 
-**Capabilities:**
+**Capabilities**:
 
 - **DotProductKHR**
 - **DotProductInputAllKHR**
@@ -521,11 +483,11 @@ This document lists all SPIR-V extensions supported by IGC and their platform re
 
 ## SPV_KHR_linkonce_odr
 
-**Specification:** https://github.khronos.org/SPIRV-Registry/extensions/KHR/SPV_KHR_linkonce_odr.html
+**Specification**: https://github.khronos.org/SPIRV-Registry/extensions/KHR/SPV_KHR_linkonce_odr.html
 
-**Extension Platform Support:** All platforms
+> **Supported on**: All platforms
 
-**Capabilities:**
+**Capabilities**:
 
 - **Linkage**
 
@@ -533,11 +495,11 @@ This document lists all SPIR-V extensions supported by IGC and their platform re
 
 ## SPV_KHR_no_integer_wrap_decoration
 
-**Specification:** https://github.khronos.org/SPIRV-Registry/extensions/KHR/SPV_KHR_no_integer_wrap_decoration.html
+**Specification**: https://github.khronos.org/SPIRV-Registry/extensions/KHR/SPV_KHR_no_integer_wrap_decoration.html
 
-**Extension Platform Support:** All platforms
+> **Supported on**: All platforms
 
-**Capabilities:**
+**Capabilities**:
 
 - No capabilities defined
 
@@ -545,11 +507,11 @@ This document lists all SPIR-V extensions supported by IGC and their platform re
 
 ## SPV_KHR_shader_clock
 
-**Specification:** https://github.khronos.org/SPIRV-Registry/extensions/KHR/SPV_KHR_shader_clock.html
+**Specification**: https://github.khronos.org/SPIRV-Registry/extensions/KHR/SPV_KHR_shader_clock.html
 
-**Extension Platform Support:** All platforms
+> **Supported on**: All platforms
 
-**Capabilities:**
+**Capabilities**:
 
 - **ShaderClockKHR**
 
@@ -557,13 +519,11 @@ This document lists all SPIR-V extensions supported by IGC and their platform re
 
 ## SPV_KHR_uniform_group_instructions
 
-> **Note**: The support for this extension is experimental. It has been implemented but has not been thoroughly tested and should not be used in production environments.
+**Specification**: https://github.khronos.org/SPIRV-Registry/extensions/KHR/SPV_KHR_uniform_group_instructions.html
 
-**Specification:** https://github.khronos.org/SPIRV-Registry/extensions/KHR/SPV_KHR_uniform_group_instructions.html
+> **Experimentally supported on**: All platforms
 
-**Extension Platform Support:** All platforms
-
-**Capabilities:**
+**Capabilities**:
 
 - **GroupUniformArithmeticKHR**
 

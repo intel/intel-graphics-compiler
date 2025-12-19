@@ -13,6 +13,7 @@ SPDX-License-Identifier: MIT
 
 #include "llvm/ADT/StringRef.h"
 #include "llvm/ADT/SmallVector.h"
+#include "llvm/ADT/StringMap.h"
 #include "llvm/TableGen/Record.h"
 #include "llvm/TableGen/Error.h"
 #include "llvm/Support/SourceMgr.h"
@@ -45,17 +46,17 @@ enum class PlatformSupportKind {
 // Capability entry for an extension.
 struct CapabilityEntry {
   StringRef Name;
-  const Record *Root;              // original capability record
-  const Record *EffectivePlatform; // resolved support (extension or capability)
+  const Record *Root; // original capability record
+  const Record *ProductionSupport = nullptr;
+  const Record *ExperimentalSupport = nullptr;
 };
 
 struct ExtensionEntry {
   StringRef Name;
   StringRef SpecURL;
-  const Record *Root;                 // original extension record
-  const Record *Platforms;            // extension support record (raw)
-  bool IsInheritFromCapabilitiesMode; // true if extSupport == InheritFromCapabilities (aggregated capability mode)
-  bool IsExperimental;                // true if extension is experimental, false if production
+  const Record *Root; // original extension record (first encountered)
+  const Record *ProductionSupport = nullptr;
+  const Record *ExperimentalSupport = nullptr;
   SmallVector<CapabilityEntry, 8> Capabilities;
 };
 
@@ -126,33 +127,91 @@ static void validateExtensionPlatformSupport(const Record *Ext) {
 }
 
 
+// Validate duplicate extension definitions policy: at most two per name,
+// and if two exist, exactly one must be Experimental and one Production.
+static void validateExtensionMultiplicityPolicy(const RecordKeeper &Records) {
+  auto AllExtensions = Records.getAllDerivedDefinitions("SPIRVExtension");
+  llvm::StringMap<SmallVector<const Record *, 4>> Groups;
+  for (const Record *Ext : AllExtensions) {
+    StringRef Name = Ext->getValueAsString("ExtName");
+    Groups[Name].push_back(Ext);
+  }
+
+  for (auto &KV : Groups) {
+    const StringRef ExtName = KV.first();
+    auto &Defs = KV.second;
+    if (Defs.size() > 2) {
+      // Report error on the third definition location as a representative.
+      PrintFatalError(
+          Defs[2]->getLoc(),
+          "Extension '" + ExtName.str() +
+              "' defined more than twice; only one production and one experimental definition are allowed.");
+    }
+    if (Defs.size() == 2) {
+      bool e0 = Defs[0]->getValueAsBit("Experimental");
+      bool e1 = Defs[1]->getValueAsBit("Experimental");
+      if (e0 == e1) {
+        // Both production or both experimental — invalid.
+        PrintFatalError(Defs[1]->getLoc(), "Extension '" + ExtName.str() +
+                                               "' has two definitions with the same Experimental flag; one must be "
+                                               "marked experimental and the other production.");
+      }
+    }
+  }
+}
+
 static SPIRVExtensions collectSPIRVExtensionSupport(const RecordKeeper &Records) {
+  // Enforce duplicate-definition policy before merging.
+  validateExtensionMultiplicityPolicy(Records);
   SPIRVExtensions Result;
   auto AllExtensions = Records.getAllDerivedDefinitions("SPIRVExtension");
   Result.reserve(AllExtensions.size());
+  llvm::StringMap<size_t> ExtIndex; // fast lookup of merged extension entries by name
+
   for (const Record *Ext : AllExtensions) {
     validateExtensionPlatformSupport(Ext);
-    ExtensionEntry Entry;
-    Entry.Name = Ext->getValueAsString("ExtName");
-    Entry.SpecURL = Ext->getValueAsString("ExtSpecURL");
-    Entry.Root = Ext;
-    Entry.Platforms = Ext->getValueAsDef("ExtSupport");
-    Entry.IsInheritFromCapabilitiesMode = Entry.Platforms->getName() == "InheritFromCapabilities";
-    Entry.IsExperimental = Ext->getValueAsBit("Experimental");
-    auto Caps = Ext->getValueAsListOfDefs("ExtCapabilities");
-    for (const Record *Cap : Caps) {
-      CapabilityEntry CapEntry;
-      CapEntry.Name = Cap->getValueAsString("Name");
-      CapEntry.Root = Cap;
-      const Record *CapSupport = Cap->getValueAsDef("Support");
-      if (CapSupport->getName() == "InheritFromExtension" && Entry.Platforms->getName() != "InheritFromCapabilities") {
-        CapEntry.EffectivePlatform = Entry.Platforms;
-      } else {
-        CapEntry.EffectivePlatform = CapSupport; // explicit capability support or InheritFromCapabilities mode
-      }
-      Entry.Capabilities.push_back(CapEntry);
+
+    StringRef ExtName = Ext->getValueAsString("ExtName");
+    const Record *ExtSupport = Ext->getValueAsDef("ExtSupport");
+    bool IsExperimental = Ext->getValueAsBit("Experimental");
+
+    // Look up or create merged extension entry via map
+    if (ExtIndex.find(ExtName) == ExtIndex.end()) {
+      ExtIndex[ExtName] = Result.size();
+      Result.push_back(ExtensionEntry{});
+      Result.back().Name = ExtName;
+      Result.back().SpecURL = Ext->getValueAsString("ExtSpecURL");
+      Result.back().Root = Ext;
     }
-    Result.push_back(std::move(Entry));
+    ExtensionEntry &Entry = Result[ExtIndex[ExtName]];
+
+    // Assign variant-specific platform support
+    (IsExperimental ? Entry.ExperimentalSupport : Entry.ProductionSupport) = ExtSupport;
+
+    // Merge capabilities by name and set variant-specific effective platform
+    bool ExtAggregateMode = (ExtSupport->getName() == "InheritFromCapabilities");
+    for (const Record *Cap : Ext->getValueAsListOfDefs("ExtCapabilities")) {
+      StringRef CapName = Cap->getValueAsString("Name");
+      CapabilityEntry *CapEntry = nullptr;
+      for (auto &CE : Entry.Capabilities) {
+        if (CE.Name == CapName) {
+          CapEntry = &CE;
+          break;
+        }
+      }
+      if (!CapEntry) {
+        Entry.Capabilities.push_back(CapabilityEntry{});
+        CapEntry = &Entry.Capabilities.back();
+        CapEntry->Name = CapName;
+        CapEntry->Root = Cap;
+      }
+
+      const Record *CapSupport = Cap->getValueAsDef("Support");
+      const Record *Effective =
+          (CapSupport->getName() == "InheritFromExtension" && !ExtAggregateMode) ? ExtSupport : CapSupport;
+
+      (IsExperimental ? CapEntry->ExperimentalSupport : CapEntry->ProductionSupport) = Effective;
+    }
   }
   return Result;
 }

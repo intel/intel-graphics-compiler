@@ -62,23 +62,30 @@ void SPIRVSupportDocsEmitter::emit(raw_ostream &OS) {
   OS << "This document lists all SPIR-V extensions supported by IGC and their platform requirements.\n\n";
   for (const auto &Ext : Extensions) {
     OS << "## " << Ext.Name << "\n\n";
-    if (Ext.IsExperimental) {
-      OS << "> **Note**: The support for this extension is experimental. It has been implemented but has not been "
-            "thoroughly tested "
-            "and should not be used in production environments.\n\n";
+    bool HasProd = (Ext.ProductionSupport != nullptr);
+    bool HasExp = (Ext.ExperimentalSupport != nullptr);
+    OS << "**Specification**: " << Ext.SpecURL << "\n\n";
+    // Print explicit extension platform support when not inheriting from capabilities
+    if (HasProd && Ext.ProductionSupport->getName() != "InheritFromCapabilities") {
+      OS << "> **Supported on**: " << formatPlatformSupport(Ext.ProductionSupport) << "\n\n";
     }
-    OS << "**Specification:** " << Ext.SpecURL << "\n\n";
-    if (!Ext.IsInheritFromCapabilitiesMode) {
-      OS << "**Extension Platform Support:** " << formatPlatformSupport(Ext.Platforms) << "\n\n";
+    if (HasExp && Ext.ExperimentalSupport->getName() != "InheritFromCapabilities") {
+      OS << "> **Experimentally supported on**: " << formatPlatformSupport(Ext.ExperimentalSupport) << "\n\n";
     }
-    OS << "**Capabilities:**\n\n";
+    OS << "**Capabilities**:\n\n";
     if (Ext.Capabilities.empty()) {
       OS << "- No capabilities defined\n";
     } else {
       for (const auto &Cap : Ext.Capabilities) {
         OS << "- **" << Cap.Name << "**";
-        if (shouldShowCapabilityPlatformSupport(Ext, Cap))
-          OS << "\n  - Platform Support: " << formatPlatformSupport(Cap.EffectivePlatform);
+        if (shouldShowCapabilityPlatformSupport(Ext, Cap)) {
+          if (Cap.ProductionSupport) {
+            OS << "\n  > **Supported On**: " << formatPlatformSupport(Cap.ProductionSupport);
+          }
+          if (Cap.ExperimentalSupport) {
+            OS << "\n  > **Experimentally supported on**: " << formatPlatformSupport(Cap.ExperimentalSupport);
+          }
+        }
         OS << "\n";
       }
     }
@@ -88,7 +95,11 @@ void SPIRVSupportDocsEmitter::emit(raw_ostream &OS) {
 
 bool SPIRVSupportDocsEmitter::shouldShowCapabilityPlatformSupport(const ExtensionEntry &Ext,
                                                                   const CapabilityEntry &Cap) const {
-  if (Ext.IsInheritFromCapabilitiesMode)
+  // Show capability platform support if extension inherits from capabilities in any variant,
+  // or if the capability specified explicit support (not InheritFromExtension).
+  bool ExtInherit = (Ext.ProductionSupport && Ext.ProductionSupport->getName() == "InheritFromCapabilities") ||
+                    (Ext.ExperimentalSupport && Ext.ExperimentalSupport->getName() == "InheritFromCapabilities");
+  if (ExtInherit)
     return true;
   const Record *OriginalCapSupport = Cap.Root->getValueAsDef("Support");
   return OriginalCapSupport->getName() != "InheritFromExtension";
@@ -281,7 +292,7 @@ class SPIRVSupportQueriesEmitter {
   void emitGetSupportedInfoFn(raw_ostream &OS);
   std::string buildPredicate(const Record *Support, StringRef platformVar);
   void emitSingleExtensionSupportIf(raw_ostream &OS, const ExtensionEntry &Ext);
-  void emitSingleCapabilitySupportIf(raw_ostream &OS, StringRef CapName, const Record *Support);
+  void emitSingleCapabilitySupportIf(raw_ostream &OS, const CapabilityEntry &Cap);
   std::string buildAutoExtensionPredicate(const ExtensionEntry &Ext);
 
 public:
@@ -321,14 +332,15 @@ void SPIRVSupportQueriesEmitter::emitSPIRVExtensionStructures(raw_ostream &OS) {
   OS << "  std::string Name;\n";
   OS << "  std::string SpecURL;\n";
   OS << "  std::vector<SPIRVCapability> Capabilities;\n";
-  OS << "  bool IsExperimental;\n";
   OS << "};\n\n";
 }
 
 void SPIRVSupportQueriesEmitter::emitForwardDecls(raw_ostream &OS) {
   OS << "// Forward declarations\n";
-  OS << "inline bool isExtensionSupported(const std::string& ExtensionName, PLATFORM Platform);\n";
-  OS << "inline bool isCapabilitySupported(const std::string& CapabilityName, PLATFORM Platform);\n\n";
+  OS << "inline bool isExtensionSupported(const std::string& ExtensionName, PLATFORM Platform, bool "
+        "includeExperimental);\n";
+  OS << "inline bool isCapabilitySupported(const std::string& CapabilityName, PLATFORM Platform, bool "
+        "includeExperimental);\n\n";
 }
 
 void SPIRVSupportQueriesEmitter::emitExtensionsVector(raw_ostream &OS) {
@@ -346,8 +358,7 @@ void SPIRVSupportQueriesEmitter::emitExtensionsVector(raw_ostream &OS) {
         OS << ",";
       OS << "\n";
     }
-    OS << "    },\n";
-    OS << "    " << (Ext.IsExperimental ? "true" : "false") << "\n";
+    OS << "    }\n";
     OS << "  }" << (std::next(It) != Extensions.end() ? "," : "") << "\n";
   }
   OS << "};\n\n";
@@ -361,7 +372,7 @@ std::string SPIRVSupportQueriesEmitter::buildAutoExtensionPredicate(const Extens
   for (const auto &Cap : Ext.Capabilities) {
     if (!First)
       Expr += " || ";
-    Expr += "isCapabilitySupported(\"" + Cap.Name.str() + "\", Platform)";
+    Expr += "isCapabilitySupported(\"" + Cap.Name.str() + "\", Platform, includeExperimental)";
     First = false;
   }
   return Expr;
@@ -369,24 +380,44 @@ std::string SPIRVSupportQueriesEmitter::buildAutoExtensionPredicate(const Extens
 
 void SPIRVSupportQueriesEmitter::emitSingleExtensionSupportIf(raw_ostream &OS, const ExtensionEntry &Ext) {
   OS << "  if (ExtensionName == \"" << Ext.Name << "\") {\n";
-  if (Ext.IsInheritFromCapabilitiesMode) {
-    OS << "    return " << buildAutoExtensionPredicate(Ext) << ";\n";
-  } else {
-    OS << "    return " << buildPredicate(Ext.Platforms, "Platform") << ";\n";
+  // Experimental variant (gated by includeExperimental)
+  if (Ext.ExperimentalSupport) {
+    OS << "    if (includeExperimental) {\n";
+    if (Ext.ExperimentalSupport->getName() == "InheritFromCapabilities") {
+      OS << "      if (" << buildAutoExtensionPredicate(Ext) << ") return true;\n";
+    } else {
+      OS << "      if (" << buildPredicate(Ext.ExperimentalSupport, "Platform") << ") return true;\n";
+    }
+    OS << "    }\n";
+  }
+  // Production variant
+  if (Ext.ProductionSupport) {
+    if (Ext.ProductionSupport->getName() == "InheritFromCapabilities") {
+      OS << "    if (" << buildAutoExtensionPredicate(Ext) << ") return true;\n";
+    } else {
+      OS << "    if (" << buildPredicate(Ext.ProductionSupport, "Platform") << ") return true;\n";
+    }
   }
   OS << "  }\n";
 }
 
-void SPIRVSupportQueriesEmitter::emitSingleCapabilitySupportIf(raw_ostream &OS, StringRef CapName,
-                                                               const Record *Support) {
-  OS << "  if (CapabilityName == \"" << CapName << "\") {\n";
-  OS << "    return " << buildPredicate(Support, "Platform") << ";\n";
+void SPIRVSupportQueriesEmitter::emitSingleCapabilitySupportIf(raw_ostream &OS, const CapabilityEntry &Cap) {
+  OS << "  if (CapabilityName == \"" << Cap.Name << "\") {\n";
+  if (Cap.ExperimentalSupport) {
+    OS << "    if (includeExperimental) {\n";
+    OS << "      if (" << buildPredicate(Cap.ExperimentalSupport, "Platform") << ") return true;\n";
+    OS << "    }\n";
+  }
+  if (Cap.ProductionSupport) {
+    OS << "    if (" << buildPredicate(Cap.ProductionSupport, "Platform") << ") return true;\n";
+  }
   OS << "  }\n";
 }
 
 void SPIRVSupportQueriesEmitter::emitExtensionSupportFn(raw_ostream &OS) {
   OS << "// Individual extension/capability query functions\n";
-  OS << "inline bool isExtensionSupported(const std::string& ExtensionName, PLATFORM Platform) {\n";
+  OS << "inline bool isExtensionSupported(const std::string& ExtensionName, PLATFORM Platform, bool "
+        "includeExperimental) {\n";
   for (const auto &Ext : Extensions)
     emitSingleExtensionSupportIf(OS, Ext);
   OS << "  return false;\n";
@@ -394,16 +425,11 @@ void SPIRVSupportQueriesEmitter::emitExtensionSupportFn(raw_ostream &OS) {
 }
 
 void SPIRVSupportQueriesEmitter::emitCapabilitySupportFn(raw_ostream &OS) {
-  OS << "inline bool isCapabilitySupported(const std::string& CapabilityName, PLATFORM Platform) {\n";
-  SmallSet<StringRef, 32> Seen;
+  OS << "inline bool isCapabilitySupported(const std::string& CapabilityName, PLATFORM Platform, bool "
+        "includeExperimental) {\n";
   for (const auto &Ext : Extensions) {
     for (const auto &Cap : Ext.Capabilities) {
-      if (!Seen.insert(Cap.Name).second) {
-        PrintFatalError(Cap.Root->getLoc(), "Duplicate capability name '" + Cap.Name.str() +
-                                                "' encountered in extension '" + Ext.Name.str() +
-                                                "'. Capability names must be unique.");
-      }
-      emitSingleCapabilitySupportIf(OS, Cap.Name, Cap.EffectivePlatform);
+      emitSingleCapabilitySupportIf(OS, Cap);
     }
   }
   OS << "  return false;\n";
@@ -416,16 +442,12 @@ void SPIRVSupportQueriesEmitter::emitGetSupportedInfoFn(raw_ostream &OS) {
         "false) {\n";
   OS << "  std::vector<SPIRVExtension> SupportedExtensions;\n";
   OS << "  for (const auto& Ext : AllExtensions) {\n";
-  OS << "    if (!includeExperimental && Ext.IsExperimental) {\n";
-  OS << "      continue;\n";
-  OS << "    }\n";
-  OS << "    if (isExtensionSupported(Ext.Name, Platform)) {\n";
+  OS << "    if (isExtensionSupported(Ext.Name, Platform, includeExperimental)) {\n";
   OS << "      SPIRVExtension SupportedExt;\n";
   OS << "      SupportedExt.Name = Ext.Name;\n";
   OS << "      SupportedExt.SpecURL = Ext.SpecURL;\n";
-  OS << "      SupportedExt.IsExperimental = Ext.IsExperimental;\n";
   OS << "      for (const auto& Cap : Ext.Capabilities) {\n";
-  OS << "        if (isCapabilitySupported(Cap.Name, Platform)) {\n";
+  OS << "        if (isCapabilitySupported(Cap.Name, Platform, includeExperimental)) {\n";
   OS << "          SupportedExt.Capabilities.push_back(Cap);\n";
   OS << "        }\n";
   OS << "      }\n";
