@@ -159,6 +159,30 @@ void PreprocessSPVIR::visitCallInst(CallInst &CI) {
   }
 }
 
+#if LLVM_VERSION_MAJOR >= 16
+static void addNonKernelFuncsArgTypeHints(Module &M) {
+  for (Function &F : M) {
+    if (F.isDeclaration() || F.getCallingConv() != CallingConv::SPIR_FUNC)
+      continue;
+
+    SmallVector<Metadata *, 8> Hints;
+    for (Argument &Arg : F.args()) {
+      Type *ArgTy = Arg.getType();
+
+      // Hints are needed only for SPIR-V builtin types.
+      std::string HintValue = "";
+      if (TargetExtType *TET = dyn_cast<TargetExtType>(ArgTy))
+        HintValue = TET->getTargetExtName();
+
+      Hints.push_back(MDString::get(M.getContext(), HintValue));
+    }
+
+    MDNode *Node = MDNode::get(M.getContext(), Hints);
+    F.setMetadata("non_kernel_arg_type_hints", Node);
+  }
+}
+#endif
+
 static void fixKernelArgBaseTypes(Module &M) {
   LLVMContext &Ctx = M.getContext();
 
@@ -231,6 +255,14 @@ bool PreprocessSPVIR::runOnModule(Module &M) {
   // !kernel_arg_base_type (instead of an actual OpenCL builtin type), this is
   // incorrect and inconsistent with the prior behavior.
   fixKernelArgBaseTypes(M);
+
+#if LLVM_VERSION_MAJOR >= 16
+  // Add SPIR-V builtin type hints as metadata to non-kernel functions. Kernel functions already have metadata type
+  // hints added by the SPIR-V Reader. Type hints for non-kernel functions are not strictly required, but allow us to
+  // apply certain optimizations (e.g. inlining) without doing costly type deduction. Adding type hints is easier before
+  // retyping since we can rely on TargetExtTy information.
+  addNonKernelFuncsArgTypeHints(M);
+#endif
 
   // Retype function arguments of OpenCL types represented as TargetExtTy to
   // use opaque pointers instead. This is necessary to match function
