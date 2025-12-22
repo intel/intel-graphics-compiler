@@ -62,6 +62,16 @@ def SPV_EXT_optnone : Extension<
   "https://github.khronos.org/SPIRV-Registry/extensions/EXT/SPV_EXT_optnone.html"
 >;
 
+// SPV_INTEL_optnone is an old name for the same extension as SPV_EXT_optnone.
+// We must keep it for compatibility with SPIRV produced by older frontends.
+// By marking it as ExperimentalExtension we avoid advertising it in the list of supported extensions,
+// while it is still accepted by SPIRV validator.
+def SPV_INTEL_optnone : ExperimentalExtension<
+  "SPV_INTEL_optnone",
+  [ Capability<"OptNoneINTEL"> ],
+  "https://github.khronos.org/SPIRV-Registry/extensions/INTEL/SPV_INTEL_optnone.html"
+>;
+
 def SPV_INTEL_cache_controls : Extension<
   "SPV_INTEL_cache_controls",
   [ Capability<"CacheControlsINTEL"> ],
@@ -298,14 +308,19 @@ def SPV_INTEL_bfloat16_arithmetic : ExperimentalExtension<
   "SPV_INTEL_bfloat16_arithmetic",
   [ Capability<"BFloat16ArithmeticINTEL"> ],
   "https://github.com/intel/llvm/blob/sycl/sycl/doc/design/spirv-extensions/SPV_INTEL_bfloat16_arithmetic.asciidoc",
-  isCoreChildOf<IGFX_XE3P_CORE>
+  // isCoreChildOf<IGFX_XE3P_CORE>
+  // This extension has been mainly implemented for XE3P, but there are existing LIT tests for some functionality from
+  // this extension for PVC and DG2. We may consider supporting those platforms fully in the future. Since the support
+  // for this extension is still experimental, we define support for broader set of platforms for now to avoid fails
+  // on existing PVC and DG2 tests.
+  AllOf<[isCoreChildOf<IGFX_XE_HPG_CORE>, Not<ExactPlatform<IGFX_METEORLAKE>>]>
 >;
 
 def SPV_INTEL_bfloat16_conversion : Extension<
   "SPV_INTEL_bfloat16_conversion",
   [ Capability<"BFloat16ConversionINTEL"> ],
   "https://github.khronos.org/SPIRV-Registry/extensions/INTEL/SPV_INTEL_bfloat16_conversion.html",
-  isCoreChildOf<IGFX_XE3P_CORE>
+  AllOf<[isCoreChildOf<IGFX_XE_HPG_CORE>, Not<ExactPlatform<IGFX_METEORLAKE>>]>
 >;
 
 def SPV_INTEL_int4 : ExperimentalExtension<
@@ -349,7 +364,12 @@ def SPV_KHR_bfloat16 : ExperimentalExtension<
     Capability<"BFloat16DotProductKHR">,
     Capability<"BFloat16CooperativeMatrixKHR"> ],
   "https://github.khronos.org/SPIRV-Registry/extensions/KHR/SPV_KHR_bfloat16.html",
-  isCoreChildOf<IGFX_XE2_HPG_CORE>
+  // isCoreChildOf<IGFX_XE3P_CORE>
+  // This extension has been mainly implemented for XE3P, but there are existing LIT tests for some functionality from
+  // this extension for PVC and DG2. We may consider supporting those platforms fully in the future. Since the support
+  // for this extension is still experimental, we define support for broader set of platforms for now to avoid fails
+  // on existing PVC and DG2 tests.
+  AllOf<[isCoreChildOf<IGFX_XE_HPG_CORE>, Not<ExactPlatform<IGFX_METEORLAKE>>]>
 >;
 
 // ----------------------------------------------

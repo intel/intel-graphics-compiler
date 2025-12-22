@@ -104,7 +104,7 @@ This document lists all SPIR-V extensions supported by IGC and their platform re
 
 **Specification**: https://github.com/intel/llvm/blob/sycl/sycl/doc/design/spirv-extensions/SPV_INTEL_bfloat16_arithmetic.asciidoc
 
-> **Experimentally supported on**: IGFX_XE3P_CORE and newer
+> **Experimentally supported on**: IGFX_XE_HPG_CORE and newer (excluding IGFX_METEORLAKE)
 
 **Capabilities**:
 
@@ -116,7 +116,7 @@ This document lists all SPIR-V extensions supported by IGC and their platform re
 
 **Specification**: https://github.khronos.org/SPIRV-Registry/extensions/INTEL/SPV_INTEL_bfloat16_conversion.html
 
-> **Supported on**: IGFX_XE3P_CORE and newer
+> **Supported on**: IGFX_XE_HPG_CORE and newer (excluding IGFX_METEORLAKE)
 
 **Capabilities**:
 
@@ -317,6 +317,18 @@ This document lists all SPIR-V extensions supported by IGC and their platform re
 
 ---
 
+## SPV_INTEL_optnone
+
+**Specification**: https://github.khronos.org/SPIRV-Registry/extensions/INTEL/SPV_INTEL_optnone.html
+
+> **Experimentally supported on**: All platforms
+
+**Capabilities**:
+
+- **OptNoneINTEL**
+
+---
+
 ## SPV_INTEL_predicated_io
 
 **Specification**: https://github.com/intel/llvm/blob/sycl/sycl/doc/design/spirv-extensions/SPV_INTEL_predicated_io.asciidoc
@@ -432,7 +444,7 @@ This document lists all SPIR-V extensions supported by IGC and their platform re
 
 **Specification**: https://github.khronos.org/SPIRV-Registry/extensions/KHR/SPV_KHR_bfloat16.html
 
-> **Experimentally supported on**: IGFX_XE2_HPG_CORE and newer
+> **Experimentally supported on**: IGFX_XE_HPG_CORE and newer (excluding IGFX_METEORLAKE)
 
 **Capabilities**:
 
