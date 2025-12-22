@@ -297,7 +297,7 @@ public:
   void getAnalysisUsage(AnalysisUsage &AU) const override;
 
   bool runOnModule(Module &M) override;
-  bool runOnFunctionGroup(FunctionGroup &FG) const;
+  bool runOnFunctionGroup(FunctionGroup &FG, unsigned KernelId = 0) const;
 
   LLVMContext &getContext() {
     IGC_ASSERT(Ctx);
@@ -344,6 +344,8 @@ class GenXKernelBuilder final {
   vc::KernelMetadata TheKernelMetadata;
   LLVMContext &Ctx;
   const DataLayout &DL;
+
+  unsigned KernelId = 0;
 
   std::map<Function *, VISAFunction *> Func2Kern;
 
@@ -718,9 +720,9 @@ private:
   }
 
 public:
-  GenXKernelBuilder(FunctionGroup &FG)
+  GenXKernelBuilder(FunctionGroup &FG, unsigned KId = 0)
       : TheKernelMetadata(FG.getHead()), Ctx(FG.getContext()),
-        DL(FG.getModule()->getDataLayout()), FG(&FG) {
+        DL(FG.getModule()->getDataLayout()), FG(&FG), KernelId(KId) {
     collectKernelInfo();
   }
   ~GenXKernelBuilder() {}
@@ -790,8 +792,9 @@ bool GenXCisaBuilder::runOnModule(Module &M) {
             .getGenXSubtarget();
 
   bool Changed = false;
+  unsigned KernelId = 0;
   for (auto *FG : FGA->AllGroups())
-    Changed |= runOnFunctionGroup(*FG);
+    Changed |= runOnFunctionGroup(*FG, KernelId++);
 
   auto LTOStrings = BC->getVISALTOStrings();
 
@@ -819,8 +822,9 @@ bool GenXCisaBuilder::runOnModule(Module &M) {
   return Changed;
 }
 
-bool GenXCisaBuilder::runOnFunctionGroup(FunctionGroup &FG) const {
-  auto KernelBuilder = std::make_unique<GenXKernelBuilder>(FG);
+bool GenXCisaBuilder::runOnFunctionGroup(FunctionGroup &FG,
+                                         unsigned KernelId) const {
+  auto KernelBuilder = std::make_unique<GenXKernelBuilder>(FG, KernelId);
 
   KernelBuilder->FGA = FGA;
   KernelBuilder->GM = GM;
@@ -1014,6 +1018,13 @@ std::string GenXKernelBuilder::buildAsmName() const {
     if (ReverseKernels.getValue())
       idx = E - idx - 1;
     AsmName = (UserAsmName + llvm::Twine('_') + llvm::Twine(idx)).str();
+  }
+
+  // FIXME: set OS-dependent limit. Currently set to the following:
+  //   255 - shader dump prefix - ".visaasm" suffix
+  if (AsmName.length() > 220) {
+    AsmName = "Kernel";
+    AsmName += std::to_string(KernelId);
   }
 
   // Currently installed shader dumper can provide its own path for
