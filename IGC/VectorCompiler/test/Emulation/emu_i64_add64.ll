@@ -101,8 +101,38 @@ define dllexport spir_kernel void @test_kernel_constant(<8 x i64> %left) {
   ret void
 }
 
+; COM: ===============================
+; COM:             TEST #4
+; COM: ===============================
+; COM: add64 with zero-extended src1 operand:
+; COM: 1. operands are splitted to lo/hi parts
+; COM: 2. [add_lo, carry] = genx_addc(src0.l0, src1.lo)
+; COM: 3. add_hi = add carry, src0.hi
+; COM: 4. add64  = combine(add_lo,add_hi)
+
+; CHECK-LABEL: @test_kernel_zext
+
+; CHECK: [[IV1:%[^ ]+.iv32cast[0-9]*]] = bitcast <[[OT:8 x i64]]> %left to <[[CT:16 x i32]]>
+; CHECK-NEXT: [[Lo_l:%[^ ]+.LoSplit[0-9]*]] = call <[[ET:8 x i32]]> [[rgn:@llvm.genx.rdregioni.[^(]+]](<[[CT]]> [[IV1]], [[low_reg:i32 0, i32 8, i32 2, i16 0,]]
+; CHECK-NEXT: [[Hi_l:%[^ ]+.HiSplit[0-9]*]] = call <[[ET]]> [[rgn]](<[[CT]]> [[IV1]], [[high_reg:i32 0, i32 8, i32 2, i16 4,]]
+
+; CHECK: [[ADDC:%[^ ]+]] = call { <[[ET]]>, <[[ET]]> } @llvm.genx.addc.{{[^(]+}}(<[[ET]]> [[Lo_l]], <[[ET]]> %right_i32)
+; CHECK-NEXT: [[ADDC_ADD:%[^ ]+]] = extractvalue { <[[ET]]>, <[[ET]]> } [[ADDC]], 1
+; CHECK-NEXT: [[ADDC_CARRY:%[^ ]+]] = extractvalue { <[[ET]]>, <[[ET]]> } [[ADDC]], 0
+; CHECK-NEXT: [[Add_Hi:%add_hi]] = add <[[ET]]> [[ADDC_CARRY]], [[Hi_l]]
+
+define dllexport spir_kernel void @test_kernel_zext(i32 %0, i32 %1, i32 %2) {
+  %left = tail call <8 x i64> @llvm.genx.oword.ld.v8i64(i32 0, i32 %0, i32 0)
+  %right_i32 = tail call <8 x i32> @llvm.genx.oword.ld.v8i32(i32 0, i32 %1, i32 0)
+  %right = zext <8 x i32> %right_i32 to <8 x i64>
+  %add64 = add <8 x i64> %left, %right
+  tail call void @llvm.genx.oword.st.v8i64(i32 %2, i32 0, <8 x i64> %add64)
+  ret void
+}
+
 declare i64 @llvm.genx.rdregioni.i64.v8i64.i16(<8 x i64>, i32, i32, i32, i16, i32)
 declare <8 x i32> @llvm.genx.add3.v8i32.v8i32(<8 x i32>, <8 x i32>, <8 x i32>)
 declare { <8 x i32>, <8 x i32> } @llvm.genx.addc.v8i32.v8i32(<8 x i32>, <8 x i32>)
 declare <8 x i64> @llvm.genx.oword.ld.v8i64(i32, i32, i32)
+declare <8 x i32> @llvm.genx.oword.ld.v8i32(i32, i32, i32)
 declare void @llvm.genx.oword.st.v8i64(i32, i32, <8 x i64>)

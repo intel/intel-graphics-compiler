@@ -1437,7 +1437,7 @@ Instruction *ConstantLoader::load(Instruction *InsertBefore) {
 
   if (!PackedFloat && !PackedIntScale &&
       !isa<UndefValue>(C)) { // not packed int constant or undef
-    if (auto CC = getConsolidatedConstant(C)) {
+    if (auto *CC = getConsolidatedConstant(C)) {
       // We're loading a vector of byte or short (but not i1). Use int so the
       // instruction does not use so many channels. This may also save it being
       // split by legalization.
@@ -1476,6 +1476,10 @@ Instruction *ConstantLoader::load(Instruction *InsertBefore) {
   Instruction *NewInst = Builder.CreateCall(Decl, Args);
 
   NewInst = cast<Instruction>(Builder.CreateBitCast(NewInst, Ty));
+
+  if (Ty->isIntOrIntVectorTy(64) && !allowI64Ops())
+    NewInst =
+        genx::emulateI64Operation(&Subtarget, NewInst, EmulationFlag::RAUWE);
 
   if (AddedInstructions)
     AddedInstructions->push_back(NewInst);
@@ -1548,9 +1552,11 @@ Instruction *ConstantLoader::loadPackedInt(Instruction *Inst) {
       Val -= PackedIntAdjust;
       Val /= PackedIntScale;
     }
-    PackedVals.push_back(ConstantInt::get(PackTy, Val, /*isSigned=*/true));
-    IGC_ASSERT(cast<ConstantInt>(PackedVals.back())->getSExtValue() >= -8 &&
-               cast<ConstantInt>(PackedVals.back())->getSExtValue() <= 15);
+    auto *PackedConst =
+        cast<ConstantInt>(ConstantInt::get(PackTy, Val, /*isSigned=*/true));
+    PackedVals.push_back(PackedConst);
+    IGC_ASSERT(PackedConst->getSExtValue() >= -8 &&
+               PackedConst->getSExtValue() <= 15);
   }
 
   ConstantLoader Packed(ConstantVector::get(PackedVals), Subtarget, DL);

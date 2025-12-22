@@ -157,7 +157,6 @@ define dllexport spir_kernel void @test_ssaddsat_si64(i64 %lsop, i64 %rsop) {
 ; CHECK-NEXT: [[JOINED:%[^ ]+]] = call <[[CT]]> @llvm.genx.wrregioni.{{[^(]+}}(<[[CT]]> [[P_JOIN]], <[[ET]]> [[Hi]], [[high_reg]]
 ; CHECK-NEXT: [[RECAST:%[^ ]+]] = bitcast <[[CT]]> [[JOINED]] to <[[RT]]>
 ; COM: here emulation of i64->i16 sstrunc.sat, we don't have rigous checks for these
-; CHECK-NEXT: [[CAST_PREPARE:%[^ ]+]] = bitcast <[[RT]]> [[RECAST]] to <[[CT]]>
 ; COM: ...
 ; CHECK: [[SATURATE_I32:%[^ ]+]] = call <2 x i16> @llvm.genx.sstrunc.sat.v2i16.v2i32(<2 x i32> {{[^)]+}})
 ; CHECK-NEXT: [[USER:%[^ ]+]] = bitcast <2 x i16> [[SATURATE_I32]] to <2 x i16>
