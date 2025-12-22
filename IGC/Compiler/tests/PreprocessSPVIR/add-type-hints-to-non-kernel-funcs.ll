@@ -11,7 +11,7 @@
 ; RUN: igc_opt --opaque-pointers -igc-preprocess-spvir -igc-process-func-attributes  -S < %s | FileCheck %s --check-prefixes=CHECK-B
 
 ; CHECK-A: !non_kernel_arg_type_hints ![[#NODE:]]
-; CHECK-A: ![[#NODE:]] = !{!"spirv.Image", !"spirv.SampledImage"}
+; CHECK-A: ![[#NODE]] = !{!"spirv.Image", !"spirv.SampledImage"}
 ; CHECK-B: alwaysinline
 
 define spir_func void @testNonKernel(target("spirv.Image", void, 0, 0, 0, 0, 0, 0, 2) %img, target("spirv.SampledImage", void, 1, 1, 0, 0, 0, 0, 0) %sampledImg) {
