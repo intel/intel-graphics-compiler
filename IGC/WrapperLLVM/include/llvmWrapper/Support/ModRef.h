@@ -12,15 +12,11 @@ SPDX-License-Identifier: MIT
 #include "llvm/Config/llvm-config.h"
 #include "llvm/IR/Attributes.h"
 #include "llvm/IR/LLVMContext.h"
-#if LLVM_VERSION_MAJOR >= 17
+#if LLVM_VERSION_MAJOR >= 17 && !defined(IGC_LLVM_TRUNK_REVISION)
 #include "llvm/IR/AttributeMask.h"
 #endif
 #if LLVM_VERSION_MAJOR >= 16
 #include "llvm/Support/ModRef.h"
-// TODO: For interim LLVM revisions on major ver. 16, the following path should
-// be used in between  https://reviews.llvm.org/D135589 and
-// https://reviews.llvm.org/D137641:
-// #include "llvm/IR/ModRef.h"
 #endif // LLVM_VERSION_MAJOR
 
 #include <Probe/Assertion.h>

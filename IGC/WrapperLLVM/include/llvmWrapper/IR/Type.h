@@ -19,7 +19,7 @@ namespace IGCLLVM {
 // latest relevant LLVM revision to simplify migration. In this instance,
 // a shorthand is chosen primarily for formatting reasons.
 inline llvm::Type *getNonOpaquePtrEltTy(const llvm::Type *PtrTy) {
-#if LLVM_VERSION_MAJOR < 17
+#if LLVM_VERSION_MAJOR < 17 || defined(IGC_LLVM_TRUNK_REVISION)
   return PtrTy->getNonOpaquePointerElementType();
 #else
   // not supported above LLVM 16
@@ -28,7 +28,7 @@ inline llvm::Type *getNonOpaquePtrEltTy(const llvm::Type *PtrTy) {
 }
 
 inline bool isPointerTy(const llvm::Type *PtrTy) {
-#if LLVM_VERSION_MAJOR < 17
+#if LLVM_VERSION_MAJOR < 17 || defined(IGC_LLVM_TRUNK_REVISION)
   return PtrTy->isOpaquePointerTy();
 #else
   return PtrTy->isPointerTy();

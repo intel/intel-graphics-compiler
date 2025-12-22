@@ -13,7 +13,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/Analysis/InstructionSimplify.h"
 
 namespace IGCLLVM {
-#if (LLVM_VERSION_MAJOR < 15) || defined(IGC_LLVM_TRUNK_REVISION)
+#if (LLVM_VERSION_MAJOR < 15)
 inline llvm::Value *simplifyInstruction(llvm::Instruction *I, const llvm::SimplifyQuery &Q,
                                         llvm::OptimizationRemarkEmitter *ORE = nullptr) {
   return llvm::SimplifyInstruction(I, Q, ORE);
@@ -22,7 +22,7 @@ inline llvm::Value *simplifyInstruction(llvm::Instruction *I, const llvm::Simpli
 using llvm::simplifyInstruction;
 #endif
 
-#if (LLVM_VERSION_MAJOR < 15) || defined(IGC_LLVM_TRUNK_REVISION)
+#if (LLVM_VERSION_MAJOR < 15)
 inline llvm::Value *simplifyBinOp(unsigned Opcode, llvm::Value *LHS, llvm::Value *RHS, const llvm::SimplifyQuery &Q) {
   return llvm::SimplifyBinOp(Opcode, LHS, RHS, Q);
 }
@@ -30,7 +30,7 @@ inline llvm::Value *simplifyBinOp(unsigned Opcode, llvm::Value *LHS, llvm::Value
 using llvm::simplifyBinOp;
 #endif
 
-#if (LLVM_VERSION_MAJOR < 15) || defined(IGC_LLVM_TRUNK_REVISION)
+#if (LLVM_VERSION_MAJOR < 15)
 inline llvm::Value *simplifyCall(llvm::CallBase *Call, const llvm::SimplifyQuery &Q) {
   return llvm::SimplifyCall(Call, Q);
 }

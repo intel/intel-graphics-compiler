@@ -1,0 +1,46 @@
+/*========================== begin_copyright_notice ============================
+
+Copyright (C) 2025 Intel Corporation
+
+SPDX-License-Identifier: MIT
+
+============================= end_copyright_notice ===========================*/
+
+This patch builds upon changes introduced in commit:
+https://github.com/llvm/llvm-project/commit/88da01997725f4ff1587d8944540986c42d47bf6
+
+Original commit diagnosed an issue in the legacy inliner and claimed to fix it
+but the change was non-functional and only added a debug mode assert.
+This patch modifies it to mitigate the problem in the cases where
+the assert would happen.
+
+diff --git a/llvm/lib/Transforms/IPO/Inliner.cpp b/llvm/lib/Transforms/IPO/Inliner.cpp
+index 5bcfc38c5..e7ab62d0d 100644
+--- a/llvm/lib/Transforms/IPO/Inliner.cpp
++++ b/llvm/lib/Transforms/IPO/Inliner.cpp
+@@ -533,7 +533,6 @@ inlineCallsImpl(CallGraphSCC &SCC, CallGraph &CG,
+           int NewHistoryID = InlineHistory.size();
+           InlineHistory.push_back(std::make_pair(Callee, InlineHistoryID));
+
+-#ifndef NDEBUG
+           // Make sure no dupplicates in the inline candidates. This could
+           // happen when a callsite is simpilfied to reusing the return value
+           // of another callsite during function cloning, thus the other
+@@ -541,14 +540,11 @@ inlineCallsImpl(CallGraphSCC &SCC, CallGraph &CG,
+           DenseSet<CallBase *> DbgCallSites;
+           for (auto &II : CallSites)
+             DbgCallSites.insert(II.first);
+-#endif
+
+           for (Value *Ptr : InlineInfo.InlinedCalls) {
+-#ifndef NDEBUG
+-            assert(DbgCallSites.count(dyn_cast<CallBase>(Ptr)) == 0);
+-#endif
+-            CallSites.push_back(
+-                std::make_pair(dyn_cast<CallBase>(Ptr), NewHistoryID));
++            if (DbgCallSites.count(dyn_cast<CallBase>(Ptr)) == 0)
++              CallSites.push_back(
++                  std::make_pair(dyn_cast<CallBase>(Ptr), NewHistoryID));
+           }
+         }
+       }

@@ -40,7 +40,7 @@ bool GlobalDCELegacyPassWrapper::runOnModule(llvm::Module &M) {
 
 char GlobalDCELegacyPassWrapper::ID = 0;
 ModulePass *createLegacyWrappedGlobalDCEPass() {
-#if LLVM_VERSION_MAJOR > 16
+#if LLVM_VERSION_MAJOR > 16 && !defined(IGC_LLVM_TRUNK_REVISION)
   return new GlobalDCELegacyPassWrapper();
 #else
   return llvm::createGlobalDCEPass();

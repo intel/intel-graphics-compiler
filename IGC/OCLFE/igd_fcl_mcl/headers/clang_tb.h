@@ -149,7 +149,7 @@ bool GetFCLShaderDumpPidDisable();
 bool GetFCLDumpToCurrentDir();
 bool GetFCLDumpToCustomDir();
 bool GetFCLEnableKernelNamesBasedHash();
-#if LLVM_VERSION_MAJOR <= 16
+#if LLVM_VERSION_MAJOR < 17 || defined(IGC_LLVM_TRUNK_REVISION)
 bool GetFCLEnableOpaquePointersBackend();
 #endif
 } // namespace FCL

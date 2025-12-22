@@ -455,7 +455,7 @@ static void optimizeIR(const vc::CompileOptions &Opts,
   else
     OptLevel = llvm::OptimizationLevel::O2;
 
-#if LLVM_VERSION_MAJOR < 17
+#if LLVM_VERSION_MAJOR < 17 || defined(IGC_LLVM_TRUNK_REVISION)
   // On llvm-16 a separate method must be used to build default O0 pipeline,
   // otherwise it hits an assertion.
   llvm::ModulePassManager MPM;
@@ -463,9 +463,9 @@ static void optimizeIR(const vc::CompileOptions &Opts,
     MPM = PB.buildO0DefaultPipeline(OptLevel);
   else
     MPM = PB.buildPerModuleDefaultPipeline(OptLevel);
-#else  // LLVM_VERSION_MAJOR < 17
+#else  // LLVM_VERSION_MAJOR < 17 || defined(IGC_LLVM_TRUNK_REVISION)
   llvm::ModulePassManager MPM = PB.buildPerModuleDefaultPipeline(OptLevel);
-#endif // LLVM_VERSION_MAJOR < 17
+#endif // LLVM_VERSION_MAJOR < 17 || defined(IGC_LLVM_TRUNK_REVISION)
 
   MPM.run(M, MAM);
 #endif // LLVM_VERSION_MAJOR < 16

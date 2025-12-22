@@ -16,7 +16,7 @@ namespace IGCLLVM {
 inline bool equals_insensitive(llvm::StringRef LHS, llvm::StringRef RHS) { return LHS.equals_insensitive(RHS); }
 
 inline bool ends_with_insensitive(llvm::StringRef LHS, llvm::StringRef RHS) {
-#if LLVM_VERSION_MAJOR > 16
+#if LLVM_VERSION_MAJOR > 16 && !defined(IGC_LLVM_TRUNK_REVISION)
   return LHS.ends_with_insensitive(RHS);
 #else
   return LHS.endswith_insensitive(RHS);

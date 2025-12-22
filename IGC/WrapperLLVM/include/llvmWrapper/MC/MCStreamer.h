@@ -19,7 +19,7 @@ inline void initSections(llvm::MCStreamer *streamer, bool NoExecStack, const llv
 
 inline void switchSection(llvm::MCStreamer *streamer, llvm::MCSection *Section,
                           const llvm::MCExpr *Subsection = nullptr) {
-#if (LLVM_VERSION_MAJOR < 15) || defined(IGC_LLVM_TRUNK_REVISION)
+#if (LLVM_VERSION_MAJOR < 15)
   streamer->SwitchSection(Section, Subsection);
 #else
   streamer->switchSection(Section, Subsection);
@@ -27,7 +27,7 @@ inline void switchSection(llvm::MCStreamer *streamer, llvm::MCSection *Section,
 }
 
 inline void finish(llvm::MCStreamer *streamer) {
-#if (LLVM_VERSION_MAJOR < 15) || defined(IGC_LLVM_TRUNK_REVISION)
+#if (LLVM_VERSION_MAJOR < 15)
   streamer->Finish();
 #else
   streamer->finish();

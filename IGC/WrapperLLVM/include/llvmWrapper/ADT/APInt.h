@@ -17,7 +17,7 @@ SPDX-License-Identifier: MIT
 namespace IGCLLVM {
 using SignedDivisionByConstantInfo = llvm::SignedDivisionByConstantInfo;
 using UnsignedDivisionByConstantInfo =
-#if (LLVM_VERSION_MAJOR == 14) || defined(IGC_LLVM_TRUNK_REVISION)
+#if (LLVM_VERSION_MAJOR == 14)
     // Account for a typo
     llvm::UnsignedDivisonByConstantInfo;
 #else // LLVM_VERSION_MAJOR == 14

@@ -7,10 +7,15 @@
 #============================ end_copyright_notice =============================
 
 # Add some default paths where SPIRV can be placed.
-if (WIN32)
+if(WIN32)
   list(APPEND IGC_LLVM_SPIRV_PATHS
     ${CMAKE_CURRENT_LIST_DIR}/../../../SPIRV-LLVM-Translator_${IGC_OPTION__LLVM_PREFERRED_VERSION}
     ${CMAKE_CURRENT_LIST_DIR}/../../../../SPIRV-LLVM-Translator_${IGC_OPTION__LLVM_PREFERRED_VERSION}
+    )
+elseif(DEFINED IGC_BUILD_LLVM_INTERIM)
+  list(APPEND IGC_LLVM_SPIRV_PATHS
+    ${CMAKE_CURRENT_LIST_DIR}/../../../SPIRV-LLVM-Translator
+    ${CMAKE_CURRENT_LIST_DIR}/../../../../SPIRV-LLVM-Translator
     )
 else()
   list(APPEND IGC_LLVM_SPIRV_PATHS

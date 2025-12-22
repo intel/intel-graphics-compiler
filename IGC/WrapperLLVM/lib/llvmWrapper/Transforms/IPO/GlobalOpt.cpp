@@ -49,7 +49,7 @@ void GlobalOptLegacyPassWrapper::getAnalysisUsage(AnalysisUsage &AU) const {
 
 char GlobalOptLegacyPassWrapper::ID = 0;
 Pass *createLegacyWrappedGlobalOptPass() {
-#if LLVM_VERSION_MAJOR <= 16
+#if LLVM_VERSION_MAJOR <= 16 || defined(IGC_LLVM_TRUNK_REVISION)
   return llvm::createGlobalOptimizerPass();
 #else
   return new GlobalOptLegacyPassWrapper();

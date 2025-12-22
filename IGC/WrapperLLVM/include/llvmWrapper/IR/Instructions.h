@@ -83,7 +83,7 @@ inline llvm::Type *getGEPIndexedType(llvm::Type *Ty, llvm::ArrayRef<llvm::Value 
   return llvm::GetElementPtrInst::getIndexedType(Ty, indices);
 }
 
-#if LLVM_VERSION_MAJOR <= 16
+#if LLVM_VERSION_MAJOR <= 16 || defined(IGC_LLVM_TRUNK_REVISION)
 constexpr int PoisonMaskElem = llvm::UndefMaskElem;
 #else
 constexpr int PoisonMaskElem = llvm::PoisonMaskElem;

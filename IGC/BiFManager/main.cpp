@@ -53,7 +53,7 @@ int main(int argc, char *argv[]) {
     printf("[BiFManager] - Disabling Opaque Pointers\n");
   }
 
-#if LLVM_VERSION_MAJOR < 17
+#if LLVM_VERSION_MAJOR < 17 || defined(IGC_LLVM_TRUNK_REVISION)
   Context.setOpaquePointers(enableOpaquePointers);
 #endif
 #endif

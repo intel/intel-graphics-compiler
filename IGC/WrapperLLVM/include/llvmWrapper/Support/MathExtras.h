@@ -17,7 +17,7 @@ using llvm::MulOverflow;
 using llvm::SubOverflow;
 
 inline uint64_t bit_floor(uint64_t A) {
-#if LLVM_VERSION_MAJOR > 16
+#if LLVM_VERSION_MAJOR > 16 && !defined(IGC_LLVM_TRUNK_REVISION)
   return llvm::bit_floor(A);
 #else
   return llvm::PowerOf2Floor(A);
@@ -26,7 +26,7 @@ inline uint64_t bit_floor(uint64_t A) {
 
 template <typename T> unsigned countr_zero(T Val) {
   static_assert(std::is_unsigned_v<T>, "Only unsigned integral types are allowed.");
-#if LLVM_VERSION_MAJOR > 16
+#if LLVM_VERSION_MAJOR > 16 && !defined(IGC_LLVM_TRUNK_REVISION)
   return llvm::countr_zero(Val);
 #else
   return llvm::countTrailingZeros(Val);
@@ -35,7 +35,7 @@ template <typename T> unsigned countr_zero(T Val) {
 
 template <typename T> unsigned countl_zero(T Val) {
   static_assert(std::is_unsigned_v<T>, "Only unsigned integral types are allowed.");
-#if LLVM_VERSION_MAJOR > 16
+#if LLVM_VERSION_MAJOR > 16 && !defined(IGC_LLVM_TRUNK_REVISION)
   return llvm::countl_zero(Val);
 #else
   return llvm::countLeadingZeros(Val);
@@ -43,13 +43,13 @@ template <typename T> unsigned countl_zero(T Val) {
 }
 
 template <typename T> unsigned countl_one(T Val) {
-#if LLVM_VERSION_MAJOR > 16
+#if LLVM_VERSION_MAJOR > 16 && !defined(IGC_LLVM_TRUNK_REVISION)
   return llvm::countl_one(Val);
 #else
   return llvm::countLeadingOnes(Val);
 #endif
 }
-#if LLVM_VERSION_MAJOR > 16
+#if LLVM_VERSION_MAJOR > 16 && !defined(IGC_LLVM_TRUNK_REVISION)
 
 enum ZeroBehavior {
   /// The returned value is undefined.
@@ -59,7 +59,7 @@ enum ZeroBehavior {
 };
 #endif
 
-#if LLVM_VERSION_MAJOR > 16
+#if LLVM_VERSION_MAJOR > 16 && !defined(IGC_LLVM_TRUNK_REVISION)
 template <typename T> T findFirstSet(T Val, IGCLLVM::ZeroBehavior ZB = IGCLLVM::ZB_Max) {
   if (ZB == IGCLLVM::ZB_Max && Val == 0)
     return std::numeric_limits<T>::max();
@@ -70,7 +70,7 @@ template <typename T> T findFirstSet(T Val, llvm::ZeroBehavior ZB = llvm::ZB_Max
 #endif
 }
 
-#if LLVM_VERSION_MAJOR > 16
+#if LLVM_VERSION_MAJOR > 16 && !defined(IGC_LLVM_TRUNK_REVISION)
 template <typename T> T findLastSet(T Val, IGCLLVM::ZeroBehavior ZB = IGCLLVM::ZB_Max) {
   if (ZB == IGCLLVM::ZB_Max && Val == 0)
     return std::numeric_limits<T>::max();

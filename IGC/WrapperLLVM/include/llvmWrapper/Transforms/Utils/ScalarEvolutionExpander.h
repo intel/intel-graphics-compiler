@@ -18,7 +18,7 @@ namespace IGCLLVM {
 bool isSafeToExpand(const llvm::SCEV *S, llvm::ScalarEvolution *SE, llvm::SCEVExpander *SCEVE) {
   IGC_ASSERT(SE);
   IGC_ASSERT(SCEVE);
-#if (LLVM_VERSION_MAJOR < 15) || defined(IGC_LLVM_TRUNK_REVISION)
+#if (LLVM_VERSION_MAJOR < 15)
   return isSafeToExpand(S, *SE);
 #else
   return SCEVE->isSafeToExpand(S);
@@ -29,7 +29,7 @@ bool isSafeToExpandAt(const llvm::SCEV *S, const llvm::Instruction *InsertionPoi
                       llvm::SCEVExpander *SCEVE) {
   IGC_ASSERT(SE);
   IGC_ASSERT(SCEVE);
-#if (LLVM_VERSION_MAJOR < 15) || defined(IGC_LLVM_TRUNK_REVISION)
+#if (LLVM_VERSION_MAJOR < 15)
   return isSafeToExpandAt(S, InsertionPoint, *SE);
 #else
   return SCEVE->isSafeToExpandAt(S, InsertionPoint);

@@ -74,7 +74,7 @@ void JumpThreadingPassWrapper::getAnalysisUsage(AnalysisUsage &AU) const {
 
 char JumpThreadingPassWrapper::ID = 0;
 FunctionPass *createLegacyWrappedJumpThreadingPass(int Threshold) {
-#if LLVM_VERSION_MAJOR > 16
+#if LLVM_VERSION_MAJOR > 16 && !defined(IGC_LLVM_TRUNK_REVISION)
   return new JumpThreadingPassWrapper(Threshold);
 #else
   return llvm::createJumpThreadingPass(Threshold);

@@ -57,7 +57,7 @@ void MemCpyOptLegacyPassWrapper::getAnalysisUsage(AnalysisUsage &AU) const {
 
 char MemCpyOptLegacyPassWrapper::ID = 0;
 FunctionPass *createLegacyWrappedMemCpyOptPass() {
-#if LLVM_VERSION_MAJOR > 16
+#if LLVM_VERSION_MAJOR > 16 && !defined(IGC_LLVM_TRUNK_REVISION)
   return new MemCpyOptLegacyPassWrapper();
 #else
   return llvm::createMemCpyOptPass();

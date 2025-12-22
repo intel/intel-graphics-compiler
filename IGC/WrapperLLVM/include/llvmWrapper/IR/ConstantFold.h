@@ -11,14 +11,14 @@ SPDX-License-Identifier: MIT
 
 #include "llvm/Config/llvm-config.h"
 #include "llvm/IR/Constants.h"
-#if (LLVM_VERSION_MAJOR >= 15) && !defined(IGC_LLVM_TRUNK_REVISION)
+#if (LLVM_VERSION_MAJOR >= 15)
 #include "llvm/IR/ConstantFold.h"
 #endif
 
 namespace IGCLLVM {
 inline llvm::Constant *ConstantFoldExtractValueInstruction(llvm::Constant *Agg, llvm::ArrayRef<unsigned> Idxs,
                                                            llvm::Type *OnlyIfReducedTy = nullptr) {
-#if (LLVM_VERSION_MAJOR < 15) || defined(IGC_LLVM_TRUNK_REVISION)
+#if (LLVM_VERSION_MAJOR < 15)
   return llvm::ConstantExpr::getExtractValue(Agg, Idxs, OnlyIfReducedTy);
 #else
   return llvm::ConstantFoldExtractValueInstruction(Agg, Idxs);
@@ -28,7 +28,7 @@ inline llvm::Constant *ConstantFoldExtractValueInstruction(llvm::Constant *Agg, 
 inline llvm::Constant *ConstantFoldInsertValueInstruction(llvm::Constant *Agg, llvm::Constant *Val,
                                                           llvm::ArrayRef<unsigned> Idxs,
                                                           llvm::Type *OnlyIfReducedTy = nullptr) {
-#if (LLVM_VERSION_MAJOR < 15) || defined(IGC_LLVM_TRUNK_REVISION)
+#if (LLVM_VERSION_MAJOR < 15)
   return llvm::ConstantExpr::getInsertValue(Agg, Val, Idxs, OnlyIfReducedTy);
 #else
   return llvm::ConstantFoldInsertValueInstruction(Agg, Val, Idxs);
@@ -36,7 +36,7 @@ inline llvm::Constant *ConstantFoldInsertValueInstruction(llvm::Constant *Agg, l
 }
 
 inline llvm::Constant *ConstantFoldBinaryInstruction(unsigned Opcode, llvm::Constant *V1, llvm::Constant *V2) {
-#if (LLVM_VERSION_MAJOR < 15) || defined(IGC_LLVM_TRUNK_REVISION)
+#if (LLVM_VERSION_MAJOR < 15)
   // TODO: Add other opcodes as needed
   switch (Opcode) {
   case llvm::Instruction::SDiv:

@@ -40,7 +40,7 @@ inline llvm::Type *getWithNewBitWidth(const llvm::Type *Ty, unsigned NewBitWidth
 }
 
 inline llvm::PointerType *get(llvm::PointerType *PT, unsigned AddressSpace) {
-#if LLVM_VERSION_MAJOR < 17
+#if LLVM_VERSION_MAJOR < 17 || defined(IGC_LLVM_TRUNK_REVISION)
   return llvm::PointerType::getWithSamePointeeType(PT, AddressSpace);
 #else
   return llvm::PointerType::get(PT, AddressSpace);
@@ -48,7 +48,7 @@ inline llvm::PointerType *get(llvm::PointerType *PT, unsigned AddressSpace) {
 }
 
 inline bool isOpaqueOrPointeeTypeMatches(llvm::PointerType *PT, llvm::Type *Ty) {
-#if LLVM_VERSION_MAJOR < 17
+#if LLVM_VERSION_MAJOR < 17 || defined(IGC_LLVM_TRUNK_REVISION)
   return PT->isOpaqueOrPointeeTypeMatches(Ty);
 #else
   return true;
@@ -56,7 +56,7 @@ inline bool isOpaqueOrPointeeTypeMatches(llvm::PointerType *PT, llvm::Type *Ty) 
 }
 
 inline bool isOpaque(const llvm::PointerType *PT) {
-#if LLVM_VERSION_MAJOR < 17
+#if LLVM_VERSION_MAJOR < 17 || defined(IGC_LLVM_TRUNK_REVISION)
   return PT->isOpaque();
 #else
   return true;

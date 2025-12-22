@@ -46,7 +46,7 @@ void CorrelatedValuePropagationLegacyPassWrapper::getAnalysisUsage(AnalysisUsage
 
 char CorrelatedValuePropagationLegacyPassWrapper::ID = 0;
 Pass *createLegacyWrappedCorrelatedValuePropagationPass() {
-#if LLVM_VERSION_MAJOR > 16
+#if LLVM_VERSION_MAJOR > 16 && !defined(IGC_LLVM_TRUNK_REVISION)
   return new CorrelatedValuePropagationLegacyPassWrapper();
 #else
   return llvm::createCorrelatedValuePropagationPass();

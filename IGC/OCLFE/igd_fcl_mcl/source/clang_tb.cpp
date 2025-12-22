@@ -76,7 +76,7 @@ int32_t FCLDumpToCurrDir = 0;
 int32_t FCLDumpToCustomDir = 0;
 int32_t FCLShDumpPidDis = 0;
 int32_t FCLEnableKernelNamesBasedHash = 0;
-#if LLVM_VERSION_MAJOR <= 16
+#if LLVM_VERSION_MAJOR < 17 || defined(IGC_LLVM_TRUNK_REVISION)
 int32_t FCLEnableOpaquePointersBackend = 0;
 #endif
 int32_t FCLEnvKeysRead = 0;
@@ -161,7 +161,7 @@ void FCLReadKeysFromEnv() {
                       (RegKeysFlagsFromOptions.find("ShaderDumpPidDisable=1") != std::string::npos);
     FCLEnableKernelNamesBasedHash = getFCLIGCBinaryKey("EnableKernelNamesBasedHash") ||
                                     (RegKeysFlagsFromOptions.find("EnableKernelNamesBasedHash=1") != std::string::npos);
-#if LLVM_VERSION_MAJOR <= 16
+#if LLVM_VERSION_MAJOR < 17 || defined(IGC_LLVM_TRUNK_REVISION)
     FCLEnableOpaquePointersBackend =
         getFCLIGCBinaryKey("EnableOpaquePointersBackend") ||
         (RegKeysFlagsFromOptions.find("EnableOpaquePointersBackend=1") != std::string::npos);
@@ -195,7 +195,7 @@ bool GetFCLEnableKernelNamesBasedHash() {
   return FCLEnableKernelNamesBasedHash;
 }
 
-#if LLVM_VERSION_MAJOR <= 16
+#if LLVM_VERSION_MAJOR < 17 || defined(IGC_LLVM_TRUNK_REVISION)
 bool GetFCLEnableOpaquePointersBackend() {
   FCLReadKeysFromEnv();
   return FCLEnableOpaquePointersBackend;
@@ -1381,16 +1381,16 @@ bool CClangTranslationBlock::TranslateClang(const TranslateClangArgs *pInputArgs
     optionsEx += " -debug-info-kind=line-tables-only -dwarf-version=4";
   }
 
-#if LLVM_VERSION_MAJOR <= 16 && defined(IGC_DEBUG_VARIABLES)
+#if (LLVM_VERSION_MAJOR < 17 || defined(IGC_LLVM_TRUNK_REVISION)) && defined(IGC_DEBUG_VARIABLES)
   // Allow to dynamically switch from typed to opaque pointers on
-  // LLVM <= 16. Disabling opaque pointers dynamically is not possible.
+  // LLVM < 17. Disabling opaque pointers dynamically is not possible.
   if (FCL_IGC_IS_FLAG_ENABLED(EnableOpaquePointersBackend)) {
     optionsEx += " -opaque-pointers";
   } else {
 #endif
     optionsEx += " ";
     optionsEx += __IGC_OPAQUE_POINTERS_DEFAULT_ARG_CLANG;
-#if LLVM_VERSION_MAJOR <= 16 && defined(IGC_DEBUG_VARIABLES)
+#if (LLVM_VERSION_MAJOR < 17 || defined(IGC_LLVM_TRUNK_REVISION)) && defined(IGC_DEBUG_VARIABLES)
   }
 #endif
 
