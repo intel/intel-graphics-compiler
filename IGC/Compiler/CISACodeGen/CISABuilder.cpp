@@ -4259,6 +4259,9 @@ void CEncoder::InitVISABuilderOptions(TARGET_PLATFORM VISAPlatform, bool canAbor
   if (IGC_IS_FLAG_ENABLED(ForceBCR)) {
     SaveOption(vISA_forceBCR, true);
   }
+  if (IGC_IS_FLAG_ENABLED(BumpGRFForForceBCR)) {
+    SaveOption(vISA_bumpGRFForForceBCR, true);
+  }
   if (IGC_IS_FLAG_ENABLED(forceSamplerHeader)) {
     SaveOption(vISA_forceSamplerHeader, true);
   }

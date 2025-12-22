@@ -101,6 +101,7 @@ DECLARE_IGC_REGKEY(bool, DisableGatherRSFusionSyncWA, false,
                    "Disable WA for gather instruction when read suppression and EU fusion are enabled.", true)
 DECLARE_IGC_REGKEY(bool, EnableBCR, false, "Enable bank conflict reduction.", true)
 DECLARE_IGC_REGKEY(bool, ForceBCR, false, "Force bank conflict reduction, no matter spill or not.", true)
+DECLARE_IGC_REGKEY(bool, BumpGRFForForceBCR, false, "Bump up GRF mode for force BCR.", true)
 DECLARE_IGC_REGKEY(bool, EnableForceDebugSWSB, false,
                    "Enable force debugging functionality for software scoreboard generation", true)
 DECLARE_IGC_REGKEY(DWORD, EnableSWSBInstStall, 0,
