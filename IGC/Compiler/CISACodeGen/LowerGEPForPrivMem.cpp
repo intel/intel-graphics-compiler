@@ -603,6 +603,50 @@ bool IGC::SOALayoutChecker::MismatchDetected(Instruction &I) {
   if (!allocaEltTy)
     return false;
 
+  // Check for byte-level access patterns. This detects memcpy-like patterns where an alloca with multi-byte elements
+  // (e.g., [4 x float]) is accessed through i8 GEPs, which the promotion transformation cannot handle correctly.
+  if (allocaEltTy && !allocaEltTy->isIntegerTy(8)) {
+    uint64_t allocaEltSize = pDL->getTypeStoreSizeInBits(allocaEltTy);
+    if (allocaEltSize > 8) {
+      SmallVector<Value *, 16> worklist;
+      SmallPtrSet<Value *, 16> visited;
+
+      // Start with the alloca itself
+      worklist.push_back(&allocaRef);
+
+      while (!worklist.empty()) {
+        Value *current = worklist.pop_back_val();
+
+        // Skip if already visited
+        if (!visited.insert(current).second)
+          continue;
+
+        for (User *U : current->users()) {
+          if (auto *GEP = dyn_cast<GetElementPtrInst>(U)) {
+            Type *gepSrcTy = GEP->getSourceElementType();
+            // If this GEP uses i8 (byte) indexing into a non-byte alloca element type,
+            // this is a memcpy-like pattern that we cannot handle correctly.
+            // The transformation would incorrectly treat each byte as a separate
+            // element rather than accumulating bytes into complete lanes.
+            if (gepSrcTy->isIntegerTy(8)) {
+              pInfo->canUseSOALayout = false;
+              return true;
+            }
+            // Add GEP to worklist to check its users.
+            worklist.push_back(GEP);
+          } else if (auto *BC = dyn_cast<BitCastInst>(U)) {
+            // Follow bitcasts to find derived pointers.
+            worklist.push_back(BC);
+          } else if (auto *ASC = dyn_cast<AddrSpaceCastInst>(U)) {
+            // Follow address space casts.
+            worklist.push_back(ASC);
+          }
+          // Load/Store/Intrinsics are terminal, don't need to follow them.
+        }
+      }
+    }
+  }
+
   // Skip when we see a non-promoted type GEP with a non-constant (dynamic) byte offset. The legacy (old) algorithm
   // assumes byte offsets map exactly to whole promoted elements (e.g. multiples of the lane size) and cannot safely
   // reconstruct sub‑element (inter-lane or unaligned) accesses. Using it would risk incorrect indexing. The new
