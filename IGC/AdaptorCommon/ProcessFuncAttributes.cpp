@@ -267,6 +267,30 @@ ModulePass *createProcessFuncAttributesPass() { return new ProcessFuncAttributes
 
 extern bool isSupportedAggregateArgument(Argument *arg);
 
+static bool hasImageTypesInMetadataTypeHints(Function *F, ModuleMetaData *ModMD) {
+  auto It = ModMD->FuncMD.find(F);
+  if (It != ModMD->FuncMD.end()) {
+    const FunctionMetaData &FuncMD = It->second;
+    IGC_ASSERT_MESSAGE(FuncMD.m_OpenCLArgBaseTypes.size() == F->arg_size(),
+                       "m_OpenCLArgBaseTypes and function argument size mismatch!");
+
+    for (const auto &BaseTy : FuncMD.m_OpenCLArgBaseTypes) {
+      if (BaseTy.find("image") != std::string::npos)
+        return true;
+    }
+  }
+
+  MDNode *Hints = F->getMetadata("non_kernel_arg_type_hints");
+  if (Hints) {
+    for (auto &Operand : Hints->operands())
+      if (MDString *MDStr = dyn_cast<MDString>(Operand))
+        if (MDStr->getString().contains_insensitive("image"))
+          return true;
+  }
+
+  return false;
+}
+
 // Only pointer, struct and array types are considered. E.g. vector type
 // cannot contain opaque subtypes, function type may contain but ignored.
 static void getBuiltinType(Type *T, SmallPtrSetImpl<Type *> &BuiltinTypes) {
@@ -688,11 +712,17 @@ bool ProcessFuncAttributes::runOnModule(Module &M) {
       // Curently, ExtensionArgAnalysis assumes that all functions with image arguments
       // to be inlined. We add always inline for such cases.
       for (auto &arg : F->args()) {
+        // TODO: Remove following the migration to opaque pointers. The following method won't be able to recognize
+        // builtin types. TargetExtTy information is lost at this point (following the retyping in PreprocessSPVIR) and
+        // type hints in the metadata should be used instead, see hasImageTypesInMetadataTypeHints below.
         if (containsImageType(arg.getType())) {
           mustAlwaysInline = true;
           break;
         }
       }
+
+      if (hasImageTypesInMetadataTypeHints(F, modMD))
+        mustAlwaysInline = true;
 
       if (pCtx->m_hasDPEmu && !mustAlwaysInline && !isKernel) {
         // Prefer stackcall if a func has double operations
