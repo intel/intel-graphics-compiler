@@ -14,7 +14,7 @@
 ; LiveRange for the 1st element
 
 ; RUN: %opt %use_old_pass_manager% -GenXModule -GenXNumberingWrapper -GenXLiveRangesWrapper -GenXCoalescingWrapper \
-; RUN:  -march=genx64 -mcpu=Gen9 -mtriple=spir64-unknown-unknown -vc-disable-coalescing -S \
+; RUN:  -march=genx64 -mcpu=Xe2 -mtriple=spir64-unknown-unknown -vc-disable-coalescing -S \
 ; RUN:  -disable-output < %s
 
 ; ModuleID = 'test.ll'

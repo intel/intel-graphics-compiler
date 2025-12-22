@@ -1,16 +1,16 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2022-2024 Intel Corporation
+; Copyright (C) 2022-2025 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 ;
-; RUN: %opt_typed_ptrs %use_old_pass_manager% -GenXImportOCLBiF -march=genx64 -mtriple=spir64-unknown-unknown  -mcpu=Gen9 -S < %s | FileCheck %s
-; RUN: %opt_opaque_ptrs %use_old_pass_manager% -GenXImportOCLBiF -march=genx64 -mtriple=spir64-unknown-unknown  -mcpu=Gen9 -S < %s | FileCheck %s
+; RUN: %opt_typed_ptrs %use_old_pass_manager% -GenXImportOCLBiF -march=genx64 -mtriple=spir64-unknown-unknown -mcpu=Xe2 -S < %s | FileCheck %s
+; RUN: %opt_opaque_ptrs %use_old_pass_manager% -GenXImportOCLBiF -march=genx64 -mtriple=spir64-unknown-unknown -mcpu=Xe2 -S < %s | FileCheck %s
 ;
-; RUN: %opt_new_pm_typed -passes=GenXImportOCLBiF -march=genx64 -mtriple=spir64-unknown-unknown  -mcpu=Gen9 -S < %s | FileCheck %s
-; RUN: %opt_new_pm_opaque -passes=GenXImportOCLBiF -march=genx64 -mtriple=spir64-unknown-unknown  -mcpu=Gen9 -S < %s | FileCheck %s
+; RUN: %opt_new_pm_typed -passes=GenXImportOCLBiF -march=genx64 -mtriple=spir64-unknown-unknown -mcpu=Xe2 -S < %s | FileCheck %s
+; RUN: %opt_new_pm_opaque -passes=GenXImportOCLBiF -march=genx64 -mtriple=spir64-unknown-unknown -mcpu=Xe2 -S < %s | FileCheck %s
 ;
 ; ------------------------------------------------
 ; GenXImportOCLBiF

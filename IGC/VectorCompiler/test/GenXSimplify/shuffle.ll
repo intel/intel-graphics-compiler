@@ -6,8 +6,8 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; RUN: %opt_legacy_typed %use_old_pass_manager% -GenXSimplify -dce -mcpu=Gen9 -march=genx64 -mtriple=spir64 -S < %s | FileCheck %s
-; RUN: %opt_new_pm_opaque -passes=GenXSimplify,dce -mcpu=Gen9 -march=genx64 -mtriple=spir64 -S < %s | FileCheck %s
+; RUN: %opt_legacy_typed %use_old_pass_manager% -GenXSimplify -dce -mcpu=Xe2 -march=genx64 -mtriple=spir64 -S < %s | FileCheck %s
+; RUN: %opt_new_pm_opaque -passes=GenXSimplify,dce -mcpu=Xe2 -march=genx64 -mtriple=spir64 -S < %s | FileCheck %s
 ; ------------------------------------------------
 ; GenXSimplify
 ; ------------------------------------------------

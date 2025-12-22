@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2023-2024 Intel Corporation
+; Copyright (C) 2023-2025 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -9,16 +9,16 @@
 ;-----------------------------------------------------------------------------------------
 ; Standalone mode
 ;-----------------------------------------------------------------------------------------
-; RUN: %opt_typed_ptrs %use_old_pass_manager% -GenXGVClobberChecker -check-gv-clobbering-standalone-mode=true -check-gv-clobbering=true -check-gv-clobbering-collect-kill-call-sites=true -check-gv-clobbering-try-fixup=true -check-gv-clobbering-abort-on-detection=false -march=genx64 -mtriple=spir64-unknown-unknown -mcpu=Gen9 -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-TYPED-PTRS
-; RUN: %opt_opaque_ptrs %use_old_pass_manager% -GenXGVClobberChecker -check-gv-clobbering-standalone-mode=true -check-gv-clobbering=true -check-gv-clobbering-collect-kill-call-sites=true -check-gv-clobbering-try-fixup=true -check-gv-clobbering-abort-on-detection=false -march=genx64 -mtriple=spir64-unknown-unknown -mcpu=Gen9 -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE-PTRS
+; RUN: %opt_typed_ptrs %use_old_pass_manager% -GenXGVClobberChecker -check-gv-clobbering-standalone-mode=true -check-gv-clobbering=true -check-gv-clobbering-collect-kill-call-sites=true -check-gv-clobbering-try-fixup=true -check-gv-clobbering-abort-on-detection=false -march=genx64 -mtriple=spir64-unknown-unknown -mcpu=Xe2 -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-TYPED-PTRS
+; RUN: %opt_opaque_ptrs %use_old_pass_manager% -GenXGVClobberChecker -check-gv-clobbering-standalone-mode=true -check-gv-clobbering=true -check-gv-clobbering-collect-kill-call-sites=true -check-gv-clobbering-try-fixup=true -check-gv-clobbering-abort-on-detection=false -march=genx64 -mtriple=spir64-unknown-unknown -mcpu=Xe2 -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE-PTRS
 ;-----------------------------------------------------------------------------------------
-; RUN: %opt_typed_ptrs %use_old_pass_manager% -GenXGVClobberChecker -check-gv-clobbering-standalone-mode=true -check-gv-clobbering=true -check-gv-clobbering-collect-kill-call-sites=false -check-gv-clobbering-try-fixup=true -check-gv-clobbering-abort-on-detection=false -march=genx64 -mtriple=spir64-unknown-unknown -mcpu=Gen9 -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-TYPED-PTRS
-; RUN: %opt_opaque_ptrs %use_old_pass_manager% -GenXGVClobberChecker -check-gv-clobbering-standalone-mode=true -check-gv-clobbering=true -check-gv-clobbering-collect-kill-call-sites=false -check-gv-clobbering-try-fixup=true -check-gv-clobbering-abort-on-detection=false -march=genx64 -mtriple=spir64-unknown-unknown -mcpu=Gen9 -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE-PTRS
+; RUN: %opt_typed_ptrs %use_old_pass_manager% -GenXGVClobberChecker -check-gv-clobbering-standalone-mode=true -check-gv-clobbering=true -check-gv-clobbering-collect-kill-call-sites=false -check-gv-clobbering-try-fixup=true -check-gv-clobbering-abort-on-detection=false -march=genx64 -mtriple=spir64-unknown-unknown -mcpu=Xe2 -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-TYPED-PTRS
+; RUN: %opt_opaque_ptrs %use_old_pass_manager% -GenXGVClobberChecker -check-gv-clobbering-standalone-mode=true -check-gv-clobbering=true -check-gv-clobbering-collect-kill-call-sites=false -check-gv-clobbering-try-fixup=true -check-gv-clobbering-abort-on-detection=false -march=genx64 -mtriple=spir64-unknown-unknown -mcpu=Xe2 -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE-PTRS
 ;-----------------------------------------------------------------------------------------
 ; In-pipeline mode (simulating situation when running during normal compilation)
 ;-----------------------------------------------------------------------------------------
-; RUN: %opt_typed_ptrs %use_old_pass_manager% -GenXModule -GenXCategoryWrapper -GenXGVClobberChecker -check-gv-clobbering-standalone-mode=false -check-gv-clobbering=true -check-gv-clobbering-collect-kill-call-sites=true -check-gv-clobbering-try-fixup=true -check-gv-clobbering-abort-on-detection=false -march=genx64 -mtriple=spir64-unknown-unknown -mcpu=Gen9 -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-TYPED-PTRS
-; RUN: %opt_opaque_ptrs %use_old_pass_manager% -GenXModule -GenXCategoryWrapper -GenXGVClobberChecker -check-gv-clobbering-standalone-mode=false -check-gv-clobbering=true -check-gv-clobbering-collect-kill-call-sites=true -check-gv-clobbering-try-fixup=true -check-gv-clobbering-abort-on-detection=false -march=genx64 -mtriple=spir64-unknown-unknown -mcpu=Gen9 -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE-PTRS
+; RUN: %opt_typed_ptrs %use_old_pass_manager% -GenXModule -GenXCategoryWrapper -GenXGVClobberChecker -check-gv-clobbering-standalone-mode=false -check-gv-clobbering=true -check-gv-clobbering-collect-kill-call-sites=true -check-gv-clobbering-try-fixup=true -check-gv-clobbering-abort-on-detection=false -march=genx64 -mtriple=spir64-unknown-unknown -mcpu=Xe2 -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-TYPED-PTRS
+; RUN: %opt_opaque_ptrs %use_old_pass_manager% -GenXModule -GenXCategoryWrapper -GenXGVClobberChecker -check-gv-clobbering-standalone-mode=false -check-gv-clobbering=true -check-gv-clobbering-collect-kill-call-sites=true -check-gv-clobbering-try-fixup=true -check-gv-clobbering-abort-on-detection=false -march=genx64 -mtriple=spir64-unknown-unknown -mcpu=Xe2 -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE-PTRS
 ; ------------------------------------------------
 ; This test checks global volatile clobbering checker/fixup introduced late in pipeline to catch over-optimizations of global volatile access. This is an auxiliary utility used to help in detecting and fixing erroneous over-optimizations cases. The checker/fixup is only available under the -check-gv-clobbering=true option and for a limited number of cases.
 

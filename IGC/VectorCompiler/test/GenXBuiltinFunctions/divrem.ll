@@ -7,7 +7,7 @@
 ;============================ end_copyright_notice =============================
 
 ; RUN: %opt %use_old_pass_manager% -enable-debugify -GenXBuiltinFunctions -march=genx64 -mtriple=spir64-unknown-unknown \
-; RUN: -mcpu=Gen9 -S < %s 2>&1 | FileCheck %s
+; RUN: -mcpu=Xe2 -S < %s 2>&1 | FileCheck %s
 
 ; CHECK-NOT: WARNING
 ; CHECK: CheckModuleDebugify: PASS

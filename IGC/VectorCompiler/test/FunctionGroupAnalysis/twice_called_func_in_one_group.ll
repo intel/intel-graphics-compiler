@@ -1,16 +1,16 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2022-2024 Intel Corporation
+; Copyright (C) 2022-2025 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 
 ; RUN: %opt_typed_ptrs %use_old_pass_manager% -GenXModule -FunctionGroupAnalysis -march=genx64 \
-; RUN: -print-function-group-info -disable-output -mcpu=Gen9 -S < %s | FileCheck \
+; RUN: -print-function-group-info -disable-output -mcpu=Xe2 -S < %s | FileCheck \
 ; RUN: %s --match-full-lines
 ; RUN: %opt_opaque_ptrs %use_old_pass_manager% -GenXModule -FunctionGroupAnalysis -march=genx64 \
-; RUN: -print-function-group-info -disable-output -mcpu=Gen9 -S < %s | FileCheck \
+; RUN: -print-function-group-info -disable-output -mcpu=Xe2 -S < %s | FileCheck \
 ; RUN: %s --match-full-lines
 
 target datalayout = "e-p:64:64-p6:32:32-i64:64-n8:16:32:64"

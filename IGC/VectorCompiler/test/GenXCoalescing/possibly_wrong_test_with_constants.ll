@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2021-2024 Intel Corporation
+; Copyright (C) 2021-2025 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -9,9 +9,9 @@
 ; COM: Check that GenXCoalescing does not fail on bitcast with constants
 
 ; RUN: %opt_typed_ptrs %use_old_pass_manager% -GenXModule -GenXNumberingWrapper -GenXLiveRangesWrapper -GenXCoalescingWrapper \
-; RUN:  -march=genx64 -mcpu=Gen9 -mtriple=spir64-unknown-unknown -S -disable-output < %s
+; RUN:  -march=genx64 -mcpu=Xe2 -mtriple=spir64-unknown-unknown -S -disable-output < %s
 ; RUN: %opt_opaque_ptrs %use_old_pass_manager% -GenXModule -GenXNumberingWrapper -GenXLiveRangesWrapper -GenXCoalescingWrapper \
-; RUN:  -march=genx64 -mcpu=Gen9 -mtriple=spir64-unknown-unknown -S -disable-output < %s
+; RUN:  -march=genx64 -mcpu=Xe2 -mtriple=spir64-unknown-unknown -S -disable-output < %s
 
 ; ModuleID = 'reduced.bc'
 source_filename = "before_coalesc_0.ll"

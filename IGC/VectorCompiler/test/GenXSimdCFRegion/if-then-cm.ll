@@ -1,12 +1,12 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2023 Intel Corporation
+; Copyright (C) 2025 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 ;
-; RUN: %opt %use_old_pass_manager% -simdcf-region -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s
+; RUN: %opt %use_old_pass_manager% -simdcf-region -march=genx64 -mcpu=Xe2 -S < %s | FileCheck %s
 ; ------------------------------------------------
 ; GenXSimdCFRegion
 ; ------------------------------------------------

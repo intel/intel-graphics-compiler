@@ -1,16 +1,16 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2021-2024 Intel Corporation
+; Copyright (C) 2021-2025 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: %llc_typed_ptrs %s -march=genx64 -mcpu=Gen9 -save-stack-call-linkage \
+; RUN: %llc_typed_ptrs %s -march=genx64 -mcpu=Xe2 -save-stack-call-linkage \
 ; RUN: -vc-skip-ocl-runtime-info \
 ; RUN: -finalizer-opts='-dumpcommonisa -isaasmToConsole' \
 ; RUN: -vc-function-control=stackcall -o /dev/null | FileCheck %s
-; RUN: %llc_opaque_ptrs %s -march=genx64 -mcpu=Gen9 -save-stack-call-linkage \
+; RUN: %llc_opaque_ptrs %s -march=genx64 -mcpu=Xe2 -save-stack-call-linkage \
 ; RUN: -vc-skip-ocl-runtime-info \
 ; RUN: -finalizer-opts='-dumpcommonisa -isaasmToConsole' \
 ; RUN: -vc-function-control=stackcall -o /dev/null | FileCheck %s

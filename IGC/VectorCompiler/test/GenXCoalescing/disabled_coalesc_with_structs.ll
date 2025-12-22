@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2021-2024 Intel Corporation
+; Copyright (C) 2021-2025 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -9,10 +9,10 @@
 ; COM: check that GenXCoalescing works in a specific case with struct arguments
 
 ; RUN: %opt_typed_ptrs %use_old_pass_manager% -GenXModule -GenXNumberingWrapper -GenXLiveRangesWrapper -GenXCoalescingWrapper \
-; RUN:  -march=genx64 -mcpu=Gen9 -mtriple=spir64-unknown-unknown -vc-disable-coalescing -S \
+; RUN:  -march=genx64 -mcpu=Xe2 -mtriple=spir64-unknown-unknown -vc-disable-coalescing -S \
 ; RUN:  < %s | FileCheck %s
 ; RUN: %opt_opaque_ptrs %use_old_pass_manager% -GenXModule -GenXNumberingWrapper -GenXLiveRangesWrapper -GenXCoalescingWrapper \
-; RUN:  -march=genx64 -mcpu=Gen9 -mtriple=spir64-unknown-unknown -vc-disable-coalescing -S \
+; RUN:  -march=genx64 -mcpu=Xe2 -mtriple=spir64-unknown-unknown -vc-disable-coalescing -S \
 ; RUN:  < %s | FileCheck %s
 
 ; ModuleID = 'reduced.ll'

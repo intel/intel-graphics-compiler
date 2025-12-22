@@ -1,12 +1,12 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2020-2021 Intel Corporation
+; Copyright (C) 2020-2025 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: %opt %use_old_pass_manager% -GenXGEPLowering -march=genx64 -mcpu=Gen9 -S < %s | FileCheck %s
+; RUN: %opt %use_old_pass_manager% -GenXGEPLowering -march=genx64 -mcpu=Xe2 -S < %s | FileCheck %s
 ; CHECK: llvm.genx.thread.x
 
 define dllexport spir_kernel void @linear(i32 %0, i32 %1) {

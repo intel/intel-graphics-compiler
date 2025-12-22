@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2023-2024 Intel Corporation
+; Copyright (C) 2023-2025 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -23,24 +23,24 @@
 ; use(L)
 ;=================================================
 ;
-; RUN: %opt_typed_ptrs %use_old_pass_manager% -mem2reg -march=genx64 -mtriple=spir64-unknown-unknown  -mcpu=Gen9 -S < %s | \
+; RUN: %opt_typed_ptrs %use_old_pass_manager% -mem2reg -march=genx64 -mtriple=spir64-unknown-unknown -mcpu=Xe2 -S < %s | \
 ; RUN:     FileCheck %s --check-prefixes=UNFIXED,UNFIXED-TYPED-PTRS
-; RUN: %opt_opaque_ptrs %use_old_pass_manager% -mem2reg -march=genx64 -mtriple=spir64-unknown-unknown  -mcpu=Gen9 -S < %s | \
+; RUN: %opt_opaque_ptrs %use_old_pass_manager% -mem2reg -march=genx64 -mtriple=spir64-unknown-unknown -mcpu=Xe2 -S < %s | \
 ; RUN:     FileCheck %s --check-prefixes=UNFIXED,UNFIXED-OPAQUE-PTRS
 ;
-; RUN: %opt_typed_ptrs %use_old_pass_manager% -GenXLegalizeGVLoadUses -mem2reg -march=genx64 -mtriple=spir64-unknown-unknown  -mcpu=Gen9 -S < %s | \
+; RUN: %opt_typed_ptrs %use_old_pass_manager% -GenXLegalizeGVLoadUses -mem2reg -march=genx64 -mtriple=spir64-unknown-unknown -mcpu=Xe2 -S < %s | \
 ; RUN:     FileCheck %s --check-prefixes=FIXED,FIXED-TYPED-PTRS
-; RUN: %opt_opaque_ptrs %use_old_pass_manager% -GenXLegalizeGVLoadUses -mem2reg -march=genx64 -mtriple=spir64-unknown-unknown  -mcpu=Gen9 -S < %s | \
+; RUN: %opt_opaque_ptrs %use_old_pass_manager% -GenXLegalizeGVLoadUses -mem2reg -march=genx64 -mtriple=spir64-unknown-unknown -mcpu=Xe2 -S < %s | \
 ; RUN:     FileCheck %s --check-prefixes=FIXED,FIXED-OPAQUE-PTRS
 ;
-; RUN: %opt_new_pm_typed -passes=mem2reg -march=genx64 -mtriple=spir64-unknown-unknown  -mcpu=Gen9 -S < %s | \
+; RUN: %opt_new_pm_typed -passes=mem2reg -march=genx64 -mtriple=spir64-unknown-unknown -mcpu=Xe2 -S < %s | \
 ; RUN:     FileCheck %s --check-prefixes=UNFIXED,UNFIXED-TYPED-PTRS
-; RUN: %opt_new_pm_opaque -passes=mem2reg -march=genx64 -mtriple=spir64-unknown-unknown  -mcpu=Gen9 -S < %s | \
+; RUN: %opt_new_pm_opaque -passes=mem2reg -march=genx64 -mtriple=spir64-unknown-unknown -mcpu=Xe2 -S < %s | \
 ; RUN:     FileCheck %s --check-prefixes=UNFIXED,UNFIXED-OPAQUE-PTRS
 ;
-; RUN: %opt_new_pm_typed -passes=GenXLegalizeGVLoadUses,mem2reg -march=genx64 -mtriple=spir64-unknown-unknown  -mcpu=Gen9 -S < %s | \
+; RUN: %opt_new_pm_typed -passes=GenXLegalizeGVLoadUses,mem2reg -march=genx64 -mtriple=spir64-unknown-unknown -mcpu=Xe2 -S < %s | \
 ; RUN:     FileCheck %s --check-prefixes=FIXED,FIXED-TYPED-PTRS
-; RUN: %opt_new_pm_opaque -passes=GenXLegalizeGVLoadUses,mem2reg -march=genx64 -mtriple=spir64-unknown-unknown  -mcpu=Gen9 -S < %s | \
+; RUN: %opt_new_pm_opaque -passes=GenXLegalizeGVLoadUses,mem2reg -march=genx64 -mtriple=spir64-unknown-unknown -mcpu=Xe2 -S < %s | \
 ; RUN:     FileCheck %s --check-prefixes=FIXED,FIXED-OPAQUE-PTRS
 ;
 

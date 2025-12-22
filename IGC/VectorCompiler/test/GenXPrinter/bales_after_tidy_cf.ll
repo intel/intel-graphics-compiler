@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2022-2023 Intel Corporation
+; Copyright (C) 2022-2025 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -8,7 +8,7 @@
 
 ; COM: Check that bales are printed after tidy control flow.
 
-; RUN: llc -march=genx64 -mcpu=Gen9 -print-after=GenXTidyControlFlow \
+; RUN: llc -march=genx64 -mcpu=Xe2 -print-after=GenXTidyControlFlow \
 ; RUN:  -finalizer-opts='-dumpcommonisa' -o /dev/null %s 2>&1 | FileCheck %s
 
 ; RUN: FileCheck %s --input-file=_test_f0.visaasm --check-prefix=CHECK_ARGSIZE

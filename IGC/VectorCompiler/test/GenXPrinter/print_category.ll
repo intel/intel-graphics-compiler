@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2022-2023 Intel Corporation
+; Copyright (C) 2022-2025 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -8,7 +8,7 @@
 
 ; COM: Check that value category category is printed.
 
-; RUN: llc -march=genx64 -mcpu=Gen9 -print-before=GenXVisaRegAllocWrapper \
+; RUN: llc -march=genx64 -mcpu=Xe2 -print-before=GenXVisaRegAllocWrapper \
 ; RUN:   -o /dev/null %s 2>&1 | FileCheck %s
 
 target datalayout = "e-p:64:64-p6:32:32-i64:64-n8:16:32:64"

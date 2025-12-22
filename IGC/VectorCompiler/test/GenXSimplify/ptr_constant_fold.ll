@@ -1,16 +1,16 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2020-2024 Intel Corporation
+; Copyright (C) 2020-2025 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: %opt_legacy_typed %use_old_pass_manager% -GenXSimplify -mcpu=Gen9 -march=genx64 -mtriple=spir64 -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-TYPED-PTRS
-; RUN: %opt_legacy_opaque %use_old_pass_manager% -GenXSimplify -mcpu=Gen9 -march=genx64 -mtriple=spir64 -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE-PTRS
+; RUN: %opt_legacy_typed %use_old_pass_manager% -GenXSimplify -mcpu=Xe2 -march=genx64 -mtriple=spir64 -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-TYPED-PTRS
+; RUN: %opt_legacy_opaque %use_old_pass_manager% -GenXSimplify -mcpu=Xe2 -march=genx64 -mtriple=spir64 -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE-PTRS
 
-; RUN: %opt_new_pm_typed -passes=GenXSimplify -mcpu=Gen9 -march=genx64 -mtriple=spir64 -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-TYPED-PTRS
-; RUN: %opt_new_pm_opaque -passes=GenXSimplify -mcpu=Gen9 -march=genx64 -mtriple=spir64 -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE-PTRS
+; RUN: %opt_new_pm_typed -passes=GenXSimplify -mcpu=Xe2 -march=genx64 -mtriple=spir64 -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-TYPED-PTRS
+; RUN: %opt_new_pm_opaque -passes=GenXSimplify -mcpu=Xe2 -march=genx64 -mtriple=spir64 -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE-PTRS
 
 ;; Test constant folding of pointers -- that pass do not fails and
 ;; correctly handles pointer size.
