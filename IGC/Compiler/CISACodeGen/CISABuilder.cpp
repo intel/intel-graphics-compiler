@@ -4246,6 +4246,7 @@ void CEncoder::InitVISABuilderOptions(TARGET_PLATFORM VISAPlatform, bool canAbor
   uint32_t RegPressureThreshold = (uint32_t)(context->getNumGRFPerThread(true) * 0.6);
 
   if (context->type == ShaderType::OPENCL_SHADER &&
+      m_program->m_Platform->getPlatformInfo().eProductFamily != IGFX_DG2 &&
       (m_program->m_Platform->limitedBCR() || (MaxRegPressure > 0 && MaxRegPressure < RegPressureThreshold))) {
     SaveOption(vISA_enableBCR, true);
     if (m_program->GetParent()->getLLVMFunction()->size() == 1 &&
