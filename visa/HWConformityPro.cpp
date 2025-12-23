@@ -2077,10 +2077,22 @@ void HWConformityPro::fixMadw(INST_LIST_ITER it, G4_BB *bb) {
     mullhDst = builder.duplicateOperand(dst);
     tmpType = dstType;
   } else {
-    // If src2 is not 0, then madw will convert to gen mullh + addc + add:
-    //   mullh  (16) mullh_dst<1>:d    src0<1;1,0>:d    src1<1;1,0>:d
-    //   addc (16) dst_lo32<1>:d  mullh_dst_lo32<1;1,0>:d  src2<1;1,0>:d
-    //   add  (16) dst_hi32<1>:d  acc0.0<1;1,0>:d    mullh_dst_hi32<1;1,0>:d
+    // If src2 is not 0 and has unsigned datatype, then madw will convert to gen
+    // mullh + addc + add:
+    //   madw (16) dst<1>:ud src0<1;1,0>:ud src0<1;1,0>:ud src2<1;1,0>:ud
+    //   =>
+    //   mullh  (16) mullh_dst<1>:ud    src0<1;1,0>:ud    src0<1;1,0>:ud
+    //   addc (16) dst_lo32<1>:ud  mullh_dst_lo32<1;1,0>:ud  src2<1;1,0>:ud
+    //   add  (16) dst_hi32<1>:ud  acc0.0<1;1,0>:ud    mullh_dst_hi32<1;1,0>:ud
+    // If src2 is not 0 and has signed datatype, then madw will convert to gen
+    // mullh + addc + mov + add3:
+    //   madw (16) dst<1>:d src0<1;1,0>:ud src0<1;1,0>:ud src2<1;1,0>:d
+    //   =>
+    //   mullh  (16) mullh_dst<1>:d    src0<1;1,0>:ud    src1<1;1,0>:ud
+    //   addc (16) dst_lo32<1>:ud  mullh_dst_lo32<1;1,0>:ud  src2<1;1,0>:ud
+    //   mov (16) signExt<1>:q  src2<1;1,0>:d
+    //   add3  (16) dst_hi32<1>:d  signExt.1<2;1,0>:d   acc0.0<1;1,0>:d
+    //              mullh_dst_hi32<1;1,0>:d
     tmpType =
         (IS_UNSIGNED_INT(src0->getType()) && IS_UNSIGNED_INT(src1->getType()) &&
          IS_UNSIGNED_INT(src2->getType()))
@@ -2133,8 +2145,27 @@ void HWConformityPro::fixMadw(INST_LIST_ITER it, G4_BB *bb) {
   addcInst->setOptionOn(InstOpt_AccWrCtrl);
   auto insertIter = bb->insertAfter(it, addcInst);
 
-  // Create add instruction:
+  // If src2 is signed datatype, we need to extend the sign bit of src2 which
+  // is the addend for higher 32-bits result calculation:
+  //  mov (16) signExt<1>:q  src2<1;1,0>:d
+  G4_Declare *signExtDclQword = nullptr;
+  if (src2->getType() == Type_D) {
+    signExtDclQword = builder.createTempVar(
+        builder.numEltPerGRF(Type_Q) * execSize, Type_Q, builder.getGRFAlign());
+    auto movDst = builder.createDstRegRegion(signExtDclQword, 1);
+    auto movInst = builder.createMov(
+        execSize, movDst, builder.duplicateOperand(src2), origOptions, false);
+    movInst->setPredicate(builder.duplicateOperand(origPredicate));
+    movInst->setOptionOff(InstOpt_AccWrCtrl);
+    insertIter = bb->insertAfter(insertIter, movInst);
+  }
+
+  // Create add or add3 instruction:
+  // If src2 is unsigned datatype:
   //   add  (16) dst_hi32<1>:d  acc0.0<1;1,0>:d  mullh_dst_hi32<1;1,0>:d
+  // Otherwise:
+  //   add3 (16) dst_hi32<1>:d  signExt.1<2;1,0>:d acc0.0<1;1,0>:d
+  //             mullh_dst_hi32<1;1,0>:d
   int DstHiRegOffset = (int)std::ceil(
       (float)(execSize * dst->getExecTypeSize()) / builder.getGRFSize());
   auto *dstHi32 =
@@ -2145,7 +2176,7 @@ void HWConformityPro::fixMadw(INST_LIST_ITER it, G4_BB *bb) {
                             tmpType, builder.getGRFAlign());
   mullhTmpDclHi->setAliasDeclare(mullhTmpDcl,
                                  mullhDstLowGRFNum * builder.getGRFSize());
-  auto src1Add = builder.createSrcRegRegion(
+  auto srcAdd = builder.createSrcRegRegion(
       mullhTmpDclHi, execSize == g4::SIMD1 ? builder.getRegionScalar()
                                            : builder.getRegionStride1());
   auto accSrcOpnd =
@@ -2153,11 +2184,27 @@ void HWConformityPro::fixMadw(INST_LIST_ITER it, G4_BB *bb) {
                         execSize == g4::SIMD1 ? builder.getRegionScalar()
                                               : builder.getRegionStride1(),
                         tmpType);
-  auto addInst = builder.createBinOp(G4_add, execSize, dstHi32, accSrcOpnd,
-                                     src1Add, origOptions, false);
-  addInst->setPredicate(builder.duplicateOperand(origPredicate));
-  addInst->setOptionOff(InstOpt_AccWrCtrl);
-  bb->insertAfter(insertIter, addInst);
+  G4_INST *addOrAdd3Inst = nullptr;
+  if (src2->getType() == Type_D) {
+    G4_Declare *signExtDclDword =
+        builder.createTempVar(builder.numEltPerGRF(tmpType) * execSize * 2,
+                              tmpType, builder.getGRFAlign());
+    signExtDclDword->setAliasDeclare(signExtDclQword, 0);
+    auto src0Add3 =
+        builder.createSrc(signExtDclDword->getRegVar(), 0, 1,
+                          execSize == g4::SIMD1 ? builder.getRegionScalar()
+                                                : builder.getRegionStride2(),
+                          tmpType);
+    addOrAdd3Inst = builder.createInternalInst(
+        nullptr, G4_add3, nullptr, g4::NOSAT, execSize, dstHi32, src0Add3,
+        accSrcOpnd, srcAdd, origOptions);
+  } else {
+    addOrAdd3Inst = builder.createBinOp(G4_add, execSize, dstHi32, accSrcOpnd,
+                                        srcAdd, origOptions, false);
+  }
+  addOrAdd3Inst->setPredicate(builder.duplicateOperand(origPredicate));
+  addOrAdd3Inst->setOptionOff(InstOpt_AccWrCtrl);
+  bb->insertAfter(insertIter, addOrAdd3Inst);
 }
 
 // Restrictions for fcvt instruction:
