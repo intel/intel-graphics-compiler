@@ -618,6 +618,7 @@ void GenXPacketize::findUniformInsts(Function &F) {
       const Value *Use = (*UI);
       if (auto *LI = dyn_cast<LoadInst>(Use)) {
         UniformInsts.insert(LI);
+        UVSet.push((Value *)LI);
       } else if (auto *GEP = dyn_cast<GetElementPtrInst>(Use)) {
         if (GEP->getPointerOperand() == Def) {
           UniformInsts.insert(GEP);
