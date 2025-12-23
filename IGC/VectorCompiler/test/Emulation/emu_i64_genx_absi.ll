@@ -29,11 +29,20 @@ declare <2 x i64> @llvm.genx.absi.v2i64(<2 x i64>)
 ; CHECK-NEXT: [[SUBB_SUB:%[^ ]+]] = extractvalue { <[[ET]]>, <[[ET]]> } [[SUBB]], 1
 ; CHECK-NEXT: [[SUBB_BORROW:%[^ ]+]] = extractvalue { <[[ET]]>, <[[ET]]> } [[SUBB]], 0
 ; CHECK-NEXT: [[BORROW_NEGATE:%[^ ]+]] = sub <[[ET]]> zeroinitializer, [[SUBB_BORROW]]
-; CHECK-NEXT: [[Sub_Hi:%[^ ]+]] = sub <[[ET]]> [[BORROW_NEGATE]], [[Sub_Hi_r]]
+; CHECK-NEXT: [[Hi_r_negate:%[^ ]+]] = sub <[[ET]]> zeroinitializer, [[Sub_Hi_r]]
+; CHECK-NEXT: [[Sub_Hi_Part:%[^ ]+]] = add <[[ET]]> zeroinitializer, [[BORROW_NEGATE]]
+; CHECK-NEXT: [[Sub_Hi:%[^ ]+]] = add <[[ET]]> [[Sub_Hi_Part]], [[Hi_r_negate]]
 
-; CHECK: [[CMP:%[^ ]+]] = icmp slt <[[ET]]> [[Hi_l]], zeroinitializer
-; CHECK-NEXT: [[SEL_LO:%[^ ]+]] = select <2 x i1> [[CMP]], <[[ET]]> [[SUBB_SUB]], <[[ET]]> [[Lo_l]]
-; CHECK-NEXT: [[SEL_HI:%[^ ]+]] = select <2 x i1> [[CMP]], <[[ET]]> [[Sub_Hi]], <[[ET]]> [[Hi_l]]
+; CHECK-NEXT: [[P_JOIN:%[^ ]+]] = call <[[CT]]> @llvm.genx.wrregioni.{{[^(]+}}(<[[CT]]> undef, <[[ET]]> [[SUBB_SUB]], [[low_reg]]
+; CHECK-NEXT: [[JOINED:%[^ ]+]] = call <[[CT]]> @llvm.genx.wrregioni.{{[^(]+}}(<[[CT]]> [[P_JOIN]], <[[ET]]> [[Sub_Hi]], [[high_reg]]
+; CHECK-NEXT: [[RECAST:%[^ ]+]] = bitcast <[[CT]]> [[JOINED]] to <[[RT]]>
+; CHECK-NEXT: [[RECAST2:%[^ ]+]] = bitcast <[[RT]]> [[RECAST]] to <[[CT]]>
+
+; CHECK-NEXT: [[NegLo:%[^ ]+]] = call <[[ET]]> [[rgn]](<[[CT]]> [[RECAST2]], [[low_reg]]
+; CHECK-NEXT: [[NegHi:%[^ ]+]] = call <[[ET]]> [[rgn]](<[[CT]]> [[RECAST2]], [[high_reg]]
+; CHECK-NEXT: [[CMP:%[^ ]+]] = icmp slt <[[ET]]> [[Hi_l]], zeroinitializer
+; CHECK-NEXT: [[SEL_LO:%[^ ]+]] = select <2 x i1> [[CMP]], <[[ET]]> [[NegLo]], <[[ET]]> [[Lo_l]]
+; CHECK-NEXT: [[SEL_HI:%[^ ]+]] = select <2 x i1> [[CMP]], <[[ET]]> [[NegHi]], <[[ET]]> [[Hi_l]]
 
 ; CHECK-NEXT: [[P_JOIN:%[^ ]+]] = call <[[CT]]> @llvm.genx.wrregioni.{{[^(]+}}(<[[CT]]> undef, <[[ET]]> [[SEL_LO]], [[low_reg]]
 ; CHECK-NEXT: [[JOINED:%[^ ]+]] = call <[[CT]]> @llvm.genx.wrregioni.{{[^(]+}}(<[[CT]]> [[P_JOIN]], <[[ET]]> [[SEL_HI]], [[high_reg]]

@@ -23,7 +23,6 @@ SPDX-License-Identifier: MIT
 #include "vc/Utils/GenX/InternalMetadata.h"
 #include "vc/Utils/GenX/PredefinedVariable.h"
 #include "vc/Utils/GenX/Printf.h"
-#include "vc/Utils/GenX/Region.h"
 #include "vc/Utils/General/Types.h"
 
 #include "llvmWrapper/IR/Instructions.h"
@@ -1241,97 +1240,7 @@ IVSplitter::HalfSplit IVSplitter::splitOperandHalf(unsigned SourceIdx,
   return splitValueHalf(*Inst.getOperand(SourceIdx), FoldConstants);
 }
 
-// Returns tuple of InsertTo, InsertV, Offset if Src is a legalized
-// <2;1,0> write-region with full mask, otherwise nullptrs and 0.
-static std::tuple<Value *, Value *, unsigned> getInsertedValue(Value *Src) {
-  auto *Ty = cast<IGCLLVM::FixedVectorType>(Src->getType());
-  auto NumElements = Ty->getNumElements();
-  IGC_ASSERT(Ty->getElementType()->isIntegerTy(32));
-
-  auto *I = dyn_cast<CallInst>(Src);
-  if (!I || !GenXIntrinsic::isWrRegion(I))
-    return {nullptr, nullptr, 0};
-
-  vc::CMRegion Wr(I);
-  // Only direct, full-mask regions are supported.
-  if (Wr.Indirect || Wr.Mask)
-    return {nullptr, nullptr, 0};
-
-  // Support only 1D regions with stride == 2
-  if (!Wr.is1D() || Wr.Stride != 2 || Wr.Width != NumElements / 2)
-    return {nullptr, nullptr, 0};
-
-  auto *InsertTo = I->getArgOperand(0);
-  auto *InsertV = I->getArgOperand(1);
-  unsigned Offset = Wr.Offset / 4; // in elements
-
-  auto *InsertTy = InsertV->getType();
-  if (InsertTy->isIntegerTy(32)) {
-    IRBuilder<> Builder(I);
-    auto *VTy = IGCLLVM::FixedVectorType::get(InsertTy, 1);
-    InsertV = Builder.CreateBitCast(InsertV, VTy);
-  }
-
-  return {InsertTo, InsertV, Offset};
-}
-
-static IVSplitter::LoHiSplit matchLoHiCombine(Value &V) {
-  auto *Cast = dyn_cast<BitCastInst>(&V);
-  if (!Cast)
-    return {nullptr, nullptr};
-
-  auto *SrcTy = Cast->getSrcTy();
-  if (!SrcTy->isIntOrIntVectorTy(32))
-    return {nullptr, nullptr};
-
-  Value *Lo = nullptr;
-  Value *Hi = nullptr;
-
-  // Check the first write-region
-  auto [InsertTo, InsertV, Offset] = getInsertedValue(Cast->getOperand(0));
-  if (!InsertTo || !InsertV || (Offset != 1 && Offset != 0))
-    return {nullptr, nullptr};
-
-  if (Offset == 0)
-    Lo = InsertV;
-  else
-    Hi = InsertV;
-
-  // Check the second write-region
-  std::tie(InsertTo, InsertV, Offset) = getInsertedValue(InsertTo);
-  if (!InsertTo || !InsertV || (Offset != 1 && Offset != 0))
-    return {nullptr, nullptr};
-
-  if (Offset == 0)
-    Lo = InsertV;
-  else
-    Hi = InsertV;
-
-  return {Lo, Hi};
-}
-
 IVSplitter::LoHiSplit IVSplitter::splitValueLoHi(Value &V, bool FoldConstants) {
-  // When the source is a zext from i32 to i64, we can just take the source
-  // and a zero constant as the lo/hi parts.
-  if (auto *ZExt = dyn_cast<ZExtInst>(&V)) {
-    auto *Src = ZExt->getOperand(0);
-    auto *SrcTy = Src->getType();
-    if (SrcTy->isIntegerTy(32)) {
-      IRBuilder<> Builder(ZExt);
-      auto *VTy = IGCLLVM::FixedVectorType::get(SrcTy, 1);
-      auto *Cast = Builder.CreateBitCast(Src, VTy);
-      return {Cast, Constant::getNullValue(VTy)};
-    }
-    if (SrcTy->isIntOrIntVectorTy(32)) {
-      // special case: splitting a zext of i32 to i64
-      return {Src, Constant::getNullValue(SrcTy)};
-    }
-  }
-
-  auto MaybeSplit = matchLoHiCombine(V);
-  if (MaybeSplit.Lo && MaybeSplit.Hi)
-    return MaybeSplit;
-
   auto Splitted = splitValue(V, RegionType::LoRegion, ".LoSplit",
                              RegionType::HiRegion, ".HiSplit", FoldConstants);
   return {Splitted.first, Splitted.second};

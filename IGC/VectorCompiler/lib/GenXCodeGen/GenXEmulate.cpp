@@ -175,10 +175,8 @@ class GenXEmulate : public ModulePass {
     // handles genx_{XX}add_sat cases
     Value *visitGenxAddSat(CallInst &CI);
 
-    // handles genx_constanti
-    Value *visitConstantI(CallInst &CI);
-
     // [+] bitcast
+    // [-] genx.constanti ?
     // [-] genx.scatter ?
     // [-] genx.gather ?
     Value *visitCallInst(CallInst &CI);
@@ -193,7 +191,6 @@ class GenXEmulate : public ModulePass {
     static bool isI64ToFP(const Instruction &I);
     static bool isI64Cmp(const Instruction &I);
     static bool isI64AddSat(const Instruction &I);
-    static bool isI64Constant(const Instruction &I);
     static Value *detectBitwiseNot(BinaryOperator &);
     static Type *changeScalarType(Type *T, Type *NewTy);
 
@@ -219,7 +216,7 @@ class GenXEmulate : public ModulePass {
     bool needsEmulation() const {
       return (SplitBuilder.IsI64Operation() || isI64Cmp(Inst) ||
               isConvertOfI64(Inst) || isI64PointerOp(Inst) ||
-              isI64AddSat(Inst) || isI64Constant(Inst));
+              isI64AddSat(Inst));
     }
 
     IRBuilder getIRBuilder() {
@@ -457,13 +454,6 @@ bool GenXEmulate::Emu64Expander::isI64AddSat(const Instruction &I) {
   }
   return false;
 }
-bool GenXEmulate::Emu64Expander::isI64Constant(const Instruction &I) {
-  auto IID = vc::getAnyIntrinsicID(&I);
-  if (IID != GenXIntrinsic::genx_constanti)
-    return false;
-  Type *RetTy = I.getType();
-  return RetTy->isIntOrIntVectorTy(64);
-}
 
 Value *GenXEmulate::Emu64Expander::detectBitwiseNot(BinaryOperator &Op) {
   if (Instruction::Xor != Op.getOpcode())
@@ -574,24 +564,8 @@ Value *GenXEmulate::Emu64Expander::visitAdd(BinaryOperator &Op) {
   auto AddcRes = buildAddc(Inst.getModule(), Builder, *Src0.Lo, *Src1.Lo,
                            "int_emu.add64.lo.");
   auto *AddLo = AddcRes.Val;
-  Value *AddHi = nullptr;
-
-  auto *Src0HiConst = dyn_cast<Constant>(Src0.Hi);
-  auto *Src1HiConst = dyn_cast<Constant>(Src1.Hi);
-  if (Src0HiConst && Src1HiConst && Src0HiConst->isZeroValue() &&
-      Src1HiConst->isZeroValue()) {
-    // Optimization for the case when both high parts are zero
-    AddHi = AddcRes.CB;
-  } else if (Src0HiConst && Src0HiConst->isZeroValue()) {
-    // Optimization for the case when src0 high part is zero
-    AddHi = Builder.CreateAdd(AddcRes.CB, Src1.Hi, "add_hi");
-  } else if (Src1HiConst && Src1HiConst->isZeroValue()) {
-    // Optimization for the case when src1 high part is zero
-    AddHi = Builder.CreateAdd(AddcRes.CB, Src0.Hi, "add_hi");
-  } else {
-    AddHi = buildTernaryAddition(Builder, *AddcRes.CB, *Src0.Hi, *Src1.Hi,
-                                 "add_hi");
-  }
+  auto *AddHi =
+      buildTernaryAddition(Builder, *AddcRes.CB, *Src0.Hi, *Src1.Hi, "add_hi");
   return SplitBuilder.combineLoHiSplit(
       {AddLo, AddHi}, Twine("int_emu.") + Op.getOpcodeName() + ".",
       Inst.getType()->isIntegerTy());
@@ -615,26 +589,9 @@ Value *GenXEmulate::Emu64Expander::visitSub(BinaryOperator &Op) {
   auto *Borrow =
       Builder.CreateExtractValue(SubbVal, {IdxSubb_Borrow}, "subb.borrow");
   auto *MinusBorrow = Builder.CreateNeg(Borrow, "borrow.negate");
-
-  Value *SubHi = nullptr;
-
-  auto *Src0HiConst = dyn_cast<Constant>(Src0.Hi);
-  auto *Src1HiConst = dyn_cast<Constant>(Src1.Hi);
-  if (Src0HiConst && Src1HiConst && Src0HiConst->isZeroValue() &&
-      Src1HiConst->isZeroValue()) {
-    // Optimization for the case when both high parts are zero
-    SubHi = MinusBorrow;
-  } else if (Src0HiConst && Src0HiConst->isZeroValue()) {
-    // Optimization for the case when src0 high part is zero
-    SubHi = Builder.CreateSub(MinusBorrow, Src1.Hi, "sub_hi");
-  } else if (Src1HiConst && Src1HiConst->isZeroValue()) {
-    // Optimization for the case when src1 high part is zero
-    SubHi = Builder.CreateAdd(Src0.Hi, MinusBorrow, "sub_hi");
-  } else {
-    auto *MinusS1Hi = Builder.CreateNeg(Src1.Hi, "negative.src1_hi");
-    SubHi = buildTernaryAddition(Builder, *Src0.Hi, *MinusBorrow, *MinusS1Hi,
-                                 "sub_hi");
-  }
+  auto *MinusS1Hi = Builder.CreateNeg(Src1.Hi, "negative.src1_hi");
+  auto *SubHi = buildTernaryAddition(Builder, *Src0.Hi, *MinusBorrow,
+                                     *MinusS1Hi, "sub_hi");
   return SplitBuilder.combineLoHiSplit(
       {SubLo, SubHi}, Twine("int_emu.") + Op.getOpcodeName() + ".",
       Inst.getType()->isIntegerTy());
@@ -1249,57 +1206,6 @@ Value *GenXEmulate::Emu64Expander::visitGenxAddSat(CallInst &CI) {
   return Result;
 }
 
-Value *GenXEmulate::Emu64Expander::visitConstantI(CallInst &CI) {
-  auto Builder = getIRBuilder();
-  auto *M = CI.getModule();
-  auto &Ctx = M->getContext();
-
-  auto *Src = CI.getOperand(0);
-  auto *SrcTy = cast<IGCLLVM::FixedVectorType>(Src->getType());
-  auto NumElements = SrcTy->getNumElements();
-
-  SmallVector<uint32_t, 8> Values;
-  bool CanBeZext = false;
-
-  if (auto *SrcC = dyn_cast<ConstantDataVector>(Src)) {
-    CanBeZext = true;
-    for (unsigned I = 0; CanBeZext && I < NumElements; I++) {
-      auto Val = SrcC->getElementAsInteger(I);
-      CanBeZext &= Val <= std::numeric_limits<uint32_t>::max();
-      Values.emplace_back(static_cast<uint32_t>(Val));
-    }
-  }
-
-  Value *Result = nullptr;
-  if (CanBeZext) {
-    // Can be represented as zext from 32-bit values, so create 32-bit constants
-    // and zext it to 64-bit.
-    auto *NewSrc = ConstantDataVector::get(Ctx, Values);
-    auto *NewTy = NewSrc->getType();
-    IGC_ASSERT_EXIT(NewTy->getScalarSizeInBits() == 32);
-
-    auto *NewIntr =
-        vc::getAnyDeclaration(M, GenXIntrinsic::genx_constanti, {NewTy});
-    auto *NewConst = Builder.CreateCall(NewIntr, {NewSrc});
-    Result = Builder.CreateZExt(NewConst, CI.getType());
-  } else {
-    // Cannot be represented as zext from 32-bit values, so bitcast the
-    // <N x i64> constant to <2N x i32>.
-    auto *NewTy =
-        IGCLLVM::FixedVectorType::get(Builder.getInt32Ty(), NumElements * 2);
-
-    auto *Cast = Builder.CreateBitCast(Src, NewTy);
-    IGC_ASSERT_EXIT(isa<Constant>(Cast));
-
-    auto *NewIntr =
-        vc::getAnyDeclaration(M, GenXIntrinsic::genx_constanti, {NewTy});
-    auto *NewConst = Builder.CreateCall(NewIntr, {Cast});
-    Result = Builder.CreateBitCast(NewConst, CI.getType());
-  }
-
-  return Result;
-}
-
 Value *GenXEmulate::Emu64Expander::visitCallInst(CallInst &CI) {
   switch (vc::getAnyIntrinsicID(&Inst)) {
   case Intrinsic::smax:
@@ -1319,8 +1225,6 @@ Value *GenXEmulate::Emu64Expander::visitCallInst(CallInst &CI) {
   case GenXIntrinsic::genx_uuadd_sat:
   case GenXIntrinsic::genx_ssadd_sat:
     return visitGenxAddSat(CI);
-  case GenXIntrinsic::genx_constanti:
-    return visitConstantI(CI);
   }
   return nullptr;
 }
