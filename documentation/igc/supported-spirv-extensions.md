@@ -100,6 +100,18 @@ This document lists all SPIR-V extensions supported by IGC and their platform re
 
 ---
 
+## SPV_INTEL_arbitrary_precision_integers
+
+**Specification**: https://github.com/KhronosGroup/SPIRV-Registry/blob/main/extensions/INTEL/SPV_INTEL_arbitrary_precision_integers.html
+
+> **Experimentally supported on**: All platforms
+
+**Capabilities**:
+
+- **ArbitraryPrecisionIntegersINTEL**
+
+---
+
 ## SPV_INTEL_bfloat16_arithmetic
 
 **Specification**: https://github.com/intel/llvm/blob/sycl/sycl/doc/design/spirv-extensions/SPV_INTEL_bfloat16_arithmetic.asciidoc

@@ -218,6 +218,17 @@ def SPV_INTEL_predicated_io : ExperimentalExtension<
   "https://github.com/intel/llvm/blob/sycl/sycl/doc/design/spirv-extensions/SPV_INTEL_predicated_io.asciidoc"
 >;
 
+// Some SPIR-V producers may emit arbitrary precision integer types, often as a result of LLVM optimizations in frontends.
+// IGC provides partial support for this extension to enable processing of such SPIR-V modules.
+// Supported functionality includes:
+// - Integer types with widths divisible by 8 (e.g., 8, 16, 24, 32, ...) up to a maximum size of 1024 bits
+// - The largest supported type is i1024, corresponding to the total width of the maximum supported vector type <16 x i64>
+def SPV_INTEL_arbitrary_precision_integers : ExperimentalExtension<
+  "SPV_INTEL_arbitrary_precision_integers",
+  [ Capability<"ArbitraryPrecisionIntegersINTEL"> ],
+  "https://github.com/KhronosGroup/SPIRV-Registry/blob/main/extensions/INTEL/SPV_INTEL_arbitrary_precision_integers.html"
+>;
+
 // ---------------------------------------------
 
 // --- Extensions not supported on all platforms ---
