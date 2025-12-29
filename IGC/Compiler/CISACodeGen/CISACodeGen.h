@@ -158,7 +158,6 @@ struct ResourceDescriptor {
 struct SamplerDescriptor {
   CVariable *m_sampler;
   e_predefSampler m_samplerType;
-  unsigned m_SamplerStateIndex = 0;
   SamplerDescriptor() : m_sampler(nullptr), m_samplerType(ESAMPLER_NORMAL) {}
 };
 
