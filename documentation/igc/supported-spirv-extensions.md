@@ -529,6 +529,18 @@ This document lists all SPIR-V extensions supported by IGC and their platform re
 
 ---
 
+## SPV_KHR_non_semantic_info
+
+**Specification**: https://github.khronos.org/SPIRV-Registry/extensions/KHR/SPV_KHR_non_semantic_info.html
+
+> **Experimentally supported on**: All platforms
+
+**Capabilities**:
+
+- No capabilities defined
+
+---
+
 ## SPV_KHR_shader_clock
 
 **Specification**: https://github.khronos.org/SPIRV-Registry/extensions/KHR/SPV_KHR_shader_clock.html
