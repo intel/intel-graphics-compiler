@@ -1067,6 +1067,28 @@ IGCLLVM::optional<llvm::MD5::MD5Result> DwarfDebug::getMD5AsBytes(const llvm::DI
   return CKMem;
 }
 
+/// Sort and unique GVEs by comparing their fragment offset.
+static SmallVectorImpl<CompileUnit::GlobalExpr> &sortGlobalExprs(SmallVectorImpl<CompileUnit::GlobalExpr> &GVEs) {
+  llvm::sort(GVEs, [](CompileUnit::GlobalExpr A, CompileUnit::GlobalExpr B) {
+    // Sort order: first null exprs, then exprs without fragment
+    // info, then sort by fragment offset in bits.
+    // FIXME: Come up with a more comprehensive comparator so
+    // the sorting isn't non-deterministic, and so the following
+    // std::unique call works correctly.
+    if (!A.Expr || !B.Expr)
+      return !!B.Expr;
+    auto FragmentA = A.Expr->getFragmentInfo();
+    auto FragmentB = B.Expr->getFragmentInfo();
+    if (!FragmentA || !FragmentB)
+      return !!FragmentB;
+    return FragmentA->OffsetInBits < FragmentB->OffsetInBits;
+  });
+  GVEs.erase(std::unique(GVEs.begin(), GVEs.end(),
+                         [](CompileUnit::GlobalExpr A, CompileUnit::GlobalExpr B) { return A.Expr == B.Expr; }),
+             GVEs.end());
+  return GVEs;
+}
+
 // Emit all Dwarf sections that should come prior to the content. Create
 // global DIEs and emit initial debug info sections.
 void DwarfDebug::beginModule() {
@@ -1076,6 +1098,14 @@ void DwarfDebug::beginModule() {
   if (M->debug_compile_units().begin() == M->debug_compile_units().end())
     return;
 
+  DenseMap<DIGlobalVariable *, SmallVector<CompileUnit::GlobalExpr, 1>> GVMap;
+  for (const GlobalVariable &Global : M->globals()) {
+    SmallVector<DIGlobalVariableExpression *, 1> GVs;
+    Global.getDebugInfo(GVs);
+    for (auto *GVE : GVs)
+      GVMap[GVE->getVariable()].push_back({&Global, GVE->getExpression()});
+  }
+
   // discover DISubprogramNodes for all the registered visaModules
   discoverDISPNodes();
   // Emit initial sections so we can reference labels later.
@@ -1083,6 +1113,35 @@ void DwarfDebug::beginModule() {
 
   DICompileUnit *CUNode = *M->debug_compile_units_begin();
   CompileUnit *CU = constructCompileUnit(CUNode);
+
+  // Global Variables.
+  for (auto *GVE : CUNode->getGlobalVariables()) {
+    // Don't bother adding DIGlobalVariableExpressions listed in the CU if we
+    // already know about the variable and it isn't adding a constant
+    // expression.
+    auto &GVMapEntry = GVMap[GVE->getVariable()];
+    auto *Expr = GVE->getExpression();
+    if (!GVMapEntry.size() || (Expr && Expr->isConstant()))
+      GVMapEntry.push_back({nullptr, Expr});
+  }
+
+  DenseSet<DIGlobalVariable *> Processed;
+  for (auto *GVE : CUNode->getGlobalVariables()) {
+    DIGlobalVariable *GV = GVE->getVariable();
+
+    // Skip variables in different addrspaces than global,
+    // SLM globals and constants will be handled later. This
+    // will avoid duplication.
+    if (GVMap.find(GV) == GVMap.end())
+      continue;
+
+    bool AllInGlobalAS = llvm::all_of(GVMap.find(GV)->second, [](const CompileUnit::GlobalExpr &GE) {
+      return GE.Var && GE.Var->getAddressSpace() == ADDRESS_SPACE_GLOBAL;
+    });
+
+    if (Processed.insert(GV).second && AllInGlobalAS)
+      CU->getOrCreateGlobalVariableDIE(GV, sortGlobalExprs(GVMap[GV]));
+  }
 
   for (auto *DISP : DISubprogramNodes)
     constructSubprogramDIE(CU, DISP);

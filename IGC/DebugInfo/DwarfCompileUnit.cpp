@@ -416,6 +416,19 @@ void CompileUnit::addSourceLine(DIE *Die, DIImportedEntity *IE, unsigned Line) {
 
 /// addSourceLine - Add location information to specified debug information
 /// entry.
+void CompileUnit::addSourceLine(DIE *Die, unsigned Line, const DIFile *File) {
+  if (!File || Line == 0)
+    return;
+
+  unsigned FileID = DD->getOrCreateSourceID(File->getFilename(), File->getDirectory(), DD->getMD5AsBytes(File),
+                                            File->getSource(), getUniqueID(), false);
+  IGC_ASSERT_MESSAGE(FileID, "Invalid file id");
+  addUInt(Die, dwarf::DW_AT_decl_file, std::nullopt, FileID);
+  addUInt(Die, dwarf::DW_AT_decl_line, std::nullopt, Line);
+}
+
+/// addSourceLine - Add location information to specified debug information
+/// entry.
 void CompileUnit::addSourceLine(DIE *Die, DIVariable *V) {
   // Verify variable.
   if (!isa<DIVariable>(V))
@@ -442,6 +455,16 @@ void CompileUnit::addSourceLine(DIE *Die, DIType *Ty) {
     return;
 
   addSourceLine(Die, Ty, Ty->getLine());
+}
+
+/// addSourceLine - Add location information to specified debug information
+/// entry.
+void CompileUnit::addSourceLine(DIE *Die, DIGlobalVariable *GV) {
+  // Verify type.
+  if (!isa<DIGlobalVariable>(GV))
+    return;
+
+  addSourceLine(Die, GV->getLine(), GV->getFile());
 }
 
 void CompileUnit::addRegOrConst(IGC::DIEBlock *TheDie, unsigned DWReg) {
@@ -1505,10 +1528,6 @@ void CompileUnit::constructTemplateValueParameterDIE(DIE &Buffer, DITemplateValu
 /// constructImportedEntityDIE - Create a DIE for DIImportedEntity.
 IGC::DIE *CompileUnit::constructImportedEntityDIE(DIImportedEntity *Module) {
   DINode *Entity = Module->getEntity();
-  if (auto *GV = dyn_cast<DIGlobalVariable>(Entity))
-    return nullptr; // Missing support for imported entity linked to a global
-                    // variable
-
   DIE *IMDie = new DIE(Module->getTag());
   insertDIE(Module, IMDie);
 
@@ -1521,9 +1540,8 @@ IGC::DIE *CompileUnit::constructImportedEntityDIE(DIImportedEntity *Module) {
     EntityDie = getOrCreateSubprogramDIE(SP);
   else if (auto *T = dyn_cast<DIType>(Entity))
     EntityDie = getOrCreateTypeDIE(T);
-  // else if (auto* GV = dyn_cast<DIGlobalVariable>(Entity))  // TODO missing
-  // support
-  //    EntityDie = getOrCreateGlobalVariableDIE(GV, {});
+  else if (auto *GV = dyn_cast<DIGlobalVariable>(Entity))
+    EntityDie = getOrCreateGlobalVariableDIE(GV, {});
   else
     EntityDie = getDIE(Entity);
 
@@ -1554,6 +1572,66 @@ IGC::DIE *CompileUnit::getOrCreateNameSpace(DINamespace *NS) {
     addString(NDie, dwarf::DW_AT_name, NS->getName());
   }
   return NDie;
+}
+
+IGC::DIE *CompileUnit::getOrCreateGlobalVariableDIE(DIGlobalVariable *GV, ArrayRef<GlobalExpr> GlobalExprs) {
+  // Check for pre-existence.
+  if (DIE *Die = getDIE(GV))
+    return Die;
+
+  auto *GVContext = GV->getScope();
+  DIType *GTy = GV->getType();
+
+  DIE *ContextDIE = getOrCreateContextDIE(GVContext);
+  if (!ContextDIE) {
+    // FIXME: this scenario seems to be the case only on windows,
+    // where global variables can be attached to compile units
+    // that has not been processed yet.
+    IGC_ASSERT_MESSAGE(GV, "Expected to find context die");
+    return nullptr;
+  }
+
+  // Add to map.
+  DIE *VariableDIE = createAndAddDIE(GV->getTag(), *ContextDIE, GV);
+  DIScope *DeclContext;
+  if (auto *SDMDecl = GV->getStaticDataMemberDeclaration()) {
+    DeclContext = SDMDecl->getScope();
+    assert(SDMDecl->isStaticMember() && "Expected static member decl");
+    assert(GV->isDefinition());
+    // We need the declaration DIE that is in the static member's class.
+    DIE *VariableSpecDIE = getOrCreateStaticMemberDIE(SDMDecl);
+    addDIEEntry(VariableDIE, dwarf::DW_AT_specification, VariableSpecDIE);
+    // If the global variable's type is different from the one in the class
+    // member type, assume that it's more specific and also emit it.
+    if (GTy != SDMDecl->getBaseType())
+      addType(VariableDIE, GTy);
+  } else {
+    DeclContext = GV->getScope();
+    // Add name and type.
+    addString(VariableDIE, dwarf::DW_AT_name, GV->getDisplayName());
+    if (GTy)
+      addType(VariableDIE, GTy);
+
+    // Add scoping info.
+    if (!GV->isLocalToUnit())
+      addFlag(VariableDIE, dwarf::DW_AT_external);
+
+    // Add line number info.
+    addSourceLine(VariableDIE, GV);
+  }
+
+  if (!GV->isDefinition())
+    addFlag(VariableDIE, dwarf::DW_AT_declaration);
+
+  if (uint32_t AlignInBytes = GV->getAlignInBytes())
+    addUInt(VariableDIE, dwarf::DW_AT_alignment, dwarf::DW_FORM_udata, AlignInBytes);
+
+  if (MDTuple *TP = GV->getTemplateParams())
+    addTemplateParams(*VariableDIE, DINodeArray(TP));
+
+  // TODO: Add location and relocation entry to Global Variable
+  // addLocationAttribute(VariableDIE, GV, GlobalExprs);
+  return VariableDIE;
 }
 
 /// getOrCreateSubprogramDIE - Create new DIE using SP.
