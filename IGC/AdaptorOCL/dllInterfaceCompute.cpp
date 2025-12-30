@@ -13,6 +13,8 @@ SPDX-License-Identifier: MIT
 #include "llvm/Support/ScaledNumber.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/Process.h"
+#include "llvm/IR/DiagnosticInfo.h"
+#include "llvm/IR/DiagnosticPrinter.h"
 #include "llvmWrapper/ADT/Optional.h"
 #include "common/LLVMWarningsPop.hpp"
 
@@ -674,6 +676,18 @@ bool ProcessElfInput(STB_TranslateInputArgs &InputArgs, STB_TranslateOutputArgs 
       }
     }
 
+    Context.getLLVMContext()->setDiagnosticHandlerCallBack(
+        [](const llvm::DiagnosticInfo &DI, void *Ptr) {
+          if (DI.getSeverity() == llvm::DS_Error) {
+            auto *S = static_cast<std::string *>(Ptr);
+            llvm::raw_string_ostream OS(*S);
+            llvm::DiagnosticPrinterRawOStream DP(OS);
+            DI.print(DP);
+            OS << '\n';
+          }
+        },
+        &ErrorMsg);
+
     for (auto &InputModule : LLVMBinariesToLink) {
       if (OutputModule.get() == NULL) {
         InputModule.swap(OutputModule);
@@ -684,6 +698,10 @@ bool ProcessElfInput(STB_TranslateInputArgs &InputArgs, STB_TranslateOutputArgs 
       if (!success) {
         break;
       }
+    }
+
+    if (!success) {
+      SetErrorMessage(ErrorMsg.empty() ? "Module linking failed." : ErrorMsg, OutputArgs);
     }
 
     if (success == true) {
