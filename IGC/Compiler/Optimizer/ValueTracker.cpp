@@ -238,6 +238,26 @@ Value *ValueTracker::findAllocaValue(Value *V, const uint depth) {
       }
 
       unsigned numIndices = GEP->getNumIndices();
+
+      // Handle the case where a load accesses offset 0 of a struct implicitly
+      // (without a GEP), but the corresponding store uses an explicit GEP.
+      // When depth is 0 (no gepIndices on the load path), check if the GEP
+      // has all indices equal to 0. This is equivalent to implicit offset 0 access.
+      if (depth == 0) {
+        bool allZeroIndices = true;
+        for (unsigned int i = 1; i <= numIndices; ++i) {
+          if (cast<ConstantInt>(GEP->getOperand(i))->getZExtValue() != 0) {
+            allZeroIndices = false;
+            break;
+          }
+        }
+        if (allZeroIndices) {
+          if (auto leaf = findAllocaValue(GEP, 0); isValidLeaf(leaf))
+            return leaf;
+        }
+        continue;
+      }
+
       if (numIndices > depth + 1)
         continue;
 
