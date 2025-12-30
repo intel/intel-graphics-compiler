@@ -23,6 +23,7 @@ DECLARE_IGC_REGKEY(bool, EnablePreemption, true, "Enable generating preeemptable
 DECLARE_IGC_REGKEY(bool, ForcePreemptionWA, false, "Force generating preemptable code across platforms", true)
 DECLARE_IGC_REGKEY(bool, EnableVISANoSchedule, false, "Enable VISA No-Schedule", true)
 DECLARE_IGC_REGKEY(bool, EnableVISAPreSched, true, "Enable VISA Pre-RA Scheduler", true)
+DECLARE_IGC_REGKEY(bool, DisableVISASBIDCounter, false, "Disable VISA SBID Counter feature", true)
 DECLARE_IGC_REGKEY(DWORD, VISAPreSchedCtrl, 0,
                    "Configure Pre-RA Scheduler, default(0), logging(1), latency(2), pressure(4)", true)
 DECLARE_IGC_REGKEY(DWORD, VISAPreSchedCtrlDpas, 0, "Special Pre-RA Scheduler configuration for kernels with dpas", true)

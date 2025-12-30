@@ -3744,6 +3744,11 @@ void CEncoder::InitVISABuilderOptions(TARGET_PLATFORM VISAPlatform, bool canAbor
     return false;
   };
 
+
+  if (IGC_GET_FLAG_VALUE(DisableVISASBIDCounter)) {
+    SaveOption(vISA_UseSBIDCntrFeature, false);
+  }
+
   if (enableScheduler()) {
     SaveOption(vISA_preRA_Schedule, true);
     bool hasDpas = m_program->m_State.GetHasDPAS();

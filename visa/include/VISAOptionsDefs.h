@@ -351,7 +351,8 @@ DEF_VISA_OPTION(vISA_lscSpillLoadCCOverride, ET_INT32,
 DEF_VISA_OPTION(vISA_lscSpillStoreCCOverride, ET_INT32,
                 "-lscSpillStoreCCOverride",
                 "lsc store cache control option for spill", 0)
-DEF_VISA_OPTION(vISA_UseSBIDCntrFeature, ET_BOOL_TRUE, "-useSBIDCntr", UNUSED, true)
+DEF_VISA_OPTION(vISA_UseSBIDCntrFeature, ET_BOOL_TRUE, "-useSBIDCntr",
+                "Enable SBID counter feature for send instructions in divergent loops", true)
 
 //=== RA options ===
 DEF_VISA_OPTION(vISA_RoundRobin, ET_BOOL, "-noroundrobin", UNUSED, true)
