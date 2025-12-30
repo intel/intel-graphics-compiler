@@ -2271,8 +2271,9 @@ inline llvm::Value *LLVM3DBuilder<T, Inserter>::create_indirectStore(llvm::Value
       srcBuffer->getType(),
       data->getType(),
   };
-  llvm::Function *pFunc =
-      llvm::GenISAIntrinsic::getDeclaration(module, llvm::GenISAIntrinsic::GenISA_storerawvector_indexed, types);
+  llvm::GenISAIntrinsic::ID id = data->getType()->isVectorTy() ? llvm::GenISAIntrinsic::GenISA_storerawvector_indexed
+                                                               : llvm::GenISAIntrinsic::GenISA_storeraw_indexed;
+  llvm::Function *pFunc = llvm::GenISAIntrinsic::getDeclaration(module, id, types);
   llvm::Value *alignment = this->getInt32(data->getType()->getScalarSizeInBits() / 8);
   return this->CreateCall5(pFunc, srcBuffer, offset, data, alignment, this->getInt1(isVolatile));
 }
