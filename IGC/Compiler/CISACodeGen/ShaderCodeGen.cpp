@@ -504,7 +504,10 @@ void AddLegalizationPasses(CodeGenContext &ctx, IGCPassManager &mpm, PSSignature
 
     mpm.add(createBarrierNoopPass());
 
-    if (IGC_IS_FLAG_ENABLED(allowLICM) && ctx.m_retryManager.AllowLICM()) {
+    bool AllowLICM =
+        IGC_IS_FLAG_SET(allowLICM) ? IGC_IS_FLAG_ENABLED(allowLICM) : ctx.getModuleMetaData()->compOpt.AllowLICM;
+
+    if (ctx.m_retryManager.AllowLICM() && AllowLICM) {
       mpm.add(createSpecialCasesDisableLICM());
       mpm.add(llvm::createLICMPass(100, 500, true));
     }
@@ -815,8 +818,11 @@ void AddLegalizationPasses(CodeGenContext &ctx, IGCPassManager &mpm, PSSignature
     } else if (highAllocaPressure || isPotentialHPCKernel) {
       mpm.add(createSinkingPass());
     }
-    if (!fastCompile && !highAllocaPressure && !isPotentialHPCKernel && IGC_IS_FLAG_ENABLED(allowLICM) &&
-        ctx.m_retryManager.AllowLICM()) {
+
+    bool AllowLICM =
+        IGC_IS_FLAG_SET(allowLICM) ? IGC_IS_FLAG_ENABLED(allowLICM) : ctx.getModuleMetaData()->compOpt.AllowLICM;
+
+    if (!fastCompile && !highAllocaPressure && !isPotentialHPCKernel && AllowLICM && ctx.m_retryManager.AllowLICM()) {
       mpm.add(createSpecialCasesDisableLICM());
       mpm.add(llvm::createLICMPass(100, 500, true));
       mpm.add(llvm::createEarlyCSEPass());
@@ -1360,7 +1366,9 @@ void OptimizeIR(CodeGenContext *const pContext) {
 
     if (pContext->m_instrTypes.hasMultipleBB && !disableGOPT) {
       if (pContext->m_instrTypes.numOfLoop) {
-        bool allowLICM = IGC_IS_FLAG_ENABLED(allowLICM) && pContext->m_retryManager.AllowLICM();
+        bool AllowLICM = pContext->m_retryManager.AllowLICM() &&
+                         (IGC_IS_FLAG_SET(allowLICM) ? IGC_IS_FLAG_ENABLED(allowLICM)
+                                                     : pContext->getModuleMetaData()->compOpt.AllowLICM);
         bool runGEPLSR = IGC_IS_FLAG_ENABLED(EnableGEPLSR) && pContext->type == ShaderType::OPENCL_SHADER &&
                          (pContext->platform.getPlatformInfo().eProductFamily == IGFX_PVC ||
                           pContext->platform.getPlatformInfo().eProductFamily == IGFX_CRI) &&
@@ -1368,10 +1376,10 @@ void OptimizeIR(CodeGenContext *const pContext) {
                          pContext->m_retryManager.IsFirstTry();
 
         if (runGEPLSR && IGC_IS_FLAG_DISABLED(RunGEPLSRAfterLICM)) {
-          mpm.add(createGEPLoopStrengthReductionPass(allowLICM));
+          mpm.add(createGEPLoopStrengthReductionPass(AllowLICM));
         }
 
-        if (allowLICM) {
+        if (AllowLICM) {
           mpm.add(createSpecialCasesDisableLICM());
           int licmTh = IGC_GET_FLAG_VALUE(LICMStatThreshold);
           mpm.add(new InstrStatistic(pContext, LICM_STAT, InstrStatStage::BEGIN, licmTh));
@@ -1380,7 +1388,7 @@ void OptimizeIR(CodeGenContext *const pContext) {
         }
 
         if (runGEPLSR && IGC_IS_FLAG_ENABLED(RunGEPLSRAfterLICM)) {
-          mpm.add(createGEPLoopStrengthReductionPass(allowLICM));
+          mpm.add(createGEPLoopStrengthReductionPass(AllowLICM));
         }
 
 
@@ -1429,7 +1437,7 @@ void OptimizeIR(CodeGenContext *const pContext) {
         // LoopUnroll and LICM.
         mpm.add(createBarrierNoopPass());
 
-        if (allowLICM) {
+        if (AllowLICM) {
           mpm.add(createSpecialCasesDisableLICM());
           mpm.add(llvm::createLICMPass(100, 500, true));
         }

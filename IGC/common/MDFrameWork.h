@@ -459,6 +459,7 @@ enum class ShaderTypeMD
         bool disableMathRefactoring                     = false;
         bool atomicBranch                               = false;
         bool spillCompression                           = false;
+        bool AllowLICM                                  = true;
         bool DisableEarlyOut                            = false;
         bool ForceInt32DivRemEmu                        = false;
         bool ForceInt32DivRemEmuSP                      = false;
