@@ -531,7 +531,7 @@ void CShader::AddPatchConstantSetup(uint index, CVariable *var) {
   }
 }
 
-void CShader::AllocateInput(CVariable *var, uint offset, uint instance, bool forceLiveOut) {
+void CShader::AllocateInput(CVariable *var, uint offset, uint instance, bool forceLiveOut, bool forceOutput) {
   // the input offset must respect the variable alignment
   IGC_ASSERT(nullptr != var);
   IGC_ASSERT(offset % (1u << var->GetAlign()) == 0);
@@ -541,6 +541,10 @@ void CShader::AllocateInput(CVariable *var, uint offset, uint instance, bool for
   // so that inputs will be alive across the entire payload section
   if (forceLiveOut) {
     encoder.MarkAsPayloadLiveOut(var);
+  }
+
+  if (forceOutput) {
+    encoder.MarkAsOutput(var);
   }
 }
 

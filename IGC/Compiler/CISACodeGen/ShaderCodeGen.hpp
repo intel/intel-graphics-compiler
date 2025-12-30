@@ -254,7 +254,8 @@ public:
 
   void RemoveBitRange(CVariable *&src, unsigned removebit, unsigned range);
 
-  void AllocateInput(CVariable *var, uint offset, uint instance = 0, bool forceLiveOut = false);
+  void AllocateInput(CVariable *var, uint offset, uint instance = 0, bool forceLiveOut = false,
+                     bool forceOutput = false);
   void AllocateOutput(CVariable *var, uint offset, uint instance = 0);
   void AllocatePred(CVariable *var, uint offset, bool forceLiveOut = false);
   CVariable *ImmToVariable(uint64_t immediate, VISA_Type type, bool isCodePatchCandidate = false);
