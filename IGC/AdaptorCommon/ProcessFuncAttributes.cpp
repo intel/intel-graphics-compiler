@@ -267,7 +267,7 @@ ModulePass *createProcessFuncAttributesPass() { return new ProcessFuncAttributes
 
 extern bool isSupportedAggregateArgument(Argument *arg);
 
-static bool hasImageTypesInMetadataTypeHints(Function *F, ModuleMetaData *ModMD) {
+static bool deduceIfUsesImageParams(Function *F, ModuleMetaData *ModMD) {
   auto It = ModMD->FuncMD.find(F);
   if (It != ModMD->FuncMD.end()) {
     const FunctionMetaData &FuncMD = It->second;
@@ -286,6 +286,28 @@ static bool hasImageTypesInMetadataTypeHints(Function *F, ModuleMetaData *ModMD)
       if (MDString *MDStr = dyn_cast<MDString>(Operand))
         if (MDStr->getString().contains_insensitive("image"))
           return true;
+  }
+
+  // SYCL/DPC++ generates image accessor helpers that take image parameters indirectly (through a class referenced
+  // using a pointer). With typed pointers enabled, the pointer type is inspected and the helpers are inlined. This
+  // is not possible with opaque pointers and in this case the parameter types must be deduced based on the mangled
+  // function name.
+  auto IsSyclImageAccessor = [](StringRef Name) {
+    return Name.startswith("_Z") && Name.contains("sycl") && Name.contains("accessor") && Name.contains("image");
+  };
+
+  if (IsSyclImageAccessor(F->getName()))
+    return true;
+
+  for (auto &BB : *F) {
+    for (auto &I : BB) {
+      if (CallInst *CI = dyn_cast<CallInst>(&I)) {
+        if (Function *Callee = CI->getCalledFunction()) {
+          if (IsSyclImageAccessor(Callee->getName()))
+            return true;
+        }
+      }
+    }
   }
 
   return false;
@@ -714,14 +736,14 @@ bool ProcessFuncAttributes::runOnModule(Module &M) {
       for (auto &arg : F->args()) {
         // TODO: Remove following the migration to opaque pointers. The following method won't be able to recognize
         // builtin types. TargetExtTy information is lost at this point (following the retyping in PreprocessSPVIR) and
-        // type hints in the metadata should be used instead, see hasImageTypesInMetadataTypeHints below.
+        // type hints in the metadata should be used instead, see deduceIfUsesImageParams below.
         if (containsImageType(arg.getType())) {
           mustAlwaysInline = true;
           break;
         }
       }
 
-      if (hasImageTypesInMetadataTypeHints(F, modMD))
+      if (deduceIfUsesImageParams(F, modMD))
         mustAlwaysInline = true;
 
       if (pCtx->m_hasDPEmu && !mustAlwaysInline && !isKernel) {
