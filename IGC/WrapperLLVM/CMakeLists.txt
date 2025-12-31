@@ -71,7 +71,6 @@ set(IGC_WrapperLLVM_HDR
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/Transforms/Utils/BasicBlockUtils.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/Transforms/Utils/LibCallsShrinkWrap.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/Transforms/InitializePasses.h"
-    "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/Transforms/Scalar/ADCE.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/Transforms/Scalar/BDCE.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/Transforms/Scalar/CallSiteSplitting.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/Transforms/Scalar/CorrelatedValuePropagation.h"
@@ -110,7 +109,6 @@ set(IGC_WrapperLLVM_HDR
   )
 
 set(IGC_WrapperLLVM_SRC
-    "${CMAKE_CURRENT_SOURCE_DIR}/lib/llvmWrapper/Transforms/Scalar/ADCE.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/lib/llvmWrapper/Transforms/Scalar/BDCE.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/lib/llvmWrapper/Transforms/Scalar/CallSiteSplitting.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/lib/llvmWrapper/Transforms/Scalar/CorrelatedValuePropagation.cpp"
