@@ -15,6 +15,8 @@ SPDX-License-Identifier: MIT
 // 1. BASIC PLATFORM SUPPORT TYPES:
 //    - AllPlatformSupport: Supported on all platforms
 //    - isCoreChildOf<CoreFamily>: Supported on specified core family and newer
+//    - ExactCoreFamily<CoreFamily>: Supported only on the exact core family specified
+//    - isProductChildOf<Platform>: Supported on specified product family and newer
 //    - ExactPlatform<Platform>: Supported only on the exact platform specified
 //    - isInGroup<PlatformGroup>: Supported on any platform in the group
 //    - AnyOf<[condition1, condition2, ...]>: Supported if ANY condition matches (OR logic)
@@ -134,6 +136,10 @@ class PlatformSupport;
 
 class isCoreChildOf<CoreFamily baseCore> : PlatformSupport {
   CoreFamily BaseCore = baseCore;
+}
+
+class ExactCoreFamily<CoreFamily core> : PlatformSupport {
+  CoreFamily TargetCore = core;
 }
 
 class isProductChildOf<Platform basePlatform> : PlatformSupport {

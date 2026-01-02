@@ -104,6 +104,17 @@ def SPV_INTEL_global_variable_host_access : Extension<
   "https://github.khronos.org/SPIRV-Registry/extensions/INTEL/SPV_INTEL_global_variable_host_access.html"
 >;
 
+// SPV_INTEL_global_variable_decorations has been split, into SPV_INTEL_global_variable_host_access
+// and SPV_INTEL_global_variable_fpga_decorations, while publishing it to Khronos SPIR-V Registry.
+// Defining this extension to keep compatibility with old SPIR-V producers. Without it, IGC's SPIR-V Reader
+// will reject modules produced by those old frontends. It is intentionally marked as ExperimentalExtension
+// to avoid advertising it in the list of supported extensions.
+def SPV_INTEL_global_variable_decorations : ExperimentalExtension<
+  "SPV_INTEL_global_variable_decorations",
+  [],
+  "https://github.khronos.org/SPIRV-Registry/extensions/INTEL/SPV_INTEL_global_variable_host_access.html"
+>;
+
 def SPV_INTEL_inline_assembly : ExperimentalExtension<
   "SPV_INTEL_inline_assembly",
   [ Capability<"AsmINTEL"> ],
@@ -248,6 +259,13 @@ def SPV_INTEL_2d_block_io : Extension<
     Capability<"Subgroup2DBlockTransposeINTEL"> ],
   "https://github.com/KhronosGroup/SPIRV-Registry/blob/main/extensions/INTEL/SPV_INTEL_2d_block_io.asciidoc",
   isCoreChildOf<IGFX_XE_HPC_CORE>
+>;
+
+def SPV_INTEL_media_block_io : Extension<
+  "SPV_INTEL_media_block_io",
+  [ Capability<"SubgroupImageMediaBlockIOINTEL"> ],
+  "https://github.khronos.org/SPIRV-Registry/extensions/INTEL/SPV_INTEL_media_block_io.html",
+  AnyOf<[ExactCoreFamily<IGFX_GEN12LP_CORE>, ExactCoreFamily<IGFX_XE_HPG_CORE>]>
 >;
 
 def SPV_INTEL_kernel_attributes : ExperimentalExtension<

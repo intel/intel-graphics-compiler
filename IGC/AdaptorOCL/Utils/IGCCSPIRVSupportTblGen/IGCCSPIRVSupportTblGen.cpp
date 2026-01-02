@@ -198,6 +198,12 @@ void SPIRVSupportDocsEmitter::accumulatePlatformTokens(const Record *Support, st
     Tokens.insert(Token);
     return;
   }
+  case PlatformSupportKind::ExactCoreFamily: {
+    const Record *Core = Support->getValueAsDef("TargetCore");
+    std::string Token = Core->getValueAsString("RenderCoreFamily").str();
+    Tokens.insert(Token);
+    return;
+  }
   case PlatformSupportKind::ProductChildOf: {
     const Record *BasePlatform = Support->getValueAsDef("BasePlatform");
     std::string Token = (BasePlatform->getValueAsString("ProductFamily") + StringRef(" and newer")).str();
@@ -476,6 +482,11 @@ std::string SPIRVSupportQueriesEmitter::buildPredicate(const Record *Support, St
     const Record *BaseCore = Support->getValueAsDef("BaseCore");
     StringRef BaseRenderCoreFamily = BaseCore->getValueAsString("RenderCoreFamily");
     return (Twine("isCoreChildOf(" + PlatformVar + ", ") + BaseRenderCoreFamily + ")").str();
+  }
+  case PlatformSupportKind::ExactCoreFamily: {
+    const Record *Core = Support->getValueAsDef("TargetCore");
+    StringRef CoreFamily = Core->getValueAsString("RenderCoreFamily");
+    return (Twine(PlatformVar) + ".eRenderCoreFamily == " + CoreFamily).str();
   }
   case PlatformSupportKind::ProductChildOf: {
     const Record *BasePlatform = Support->getValueAsDef("BasePlatform");

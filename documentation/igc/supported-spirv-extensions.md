@@ -234,6 +234,18 @@ This document lists all SPIR-V extensions supported by IGC and their platform re
 
 ---
 
+## SPV_INTEL_global_variable_decorations
+
+**Specification**: https://github.khronos.org/SPIRV-Registry/extensions/INTEL/SPV_INTEL_global_variable_host_access.html
+
+> **Experimentally supported on**: All platforms
+
+**Capabilities**:
+
+- No capabilities defined
+
+---
+
 ## SPV_INTEL_global_variable_host_access
 
 **Specification**: https://github.khronos.org/SPIRV-Registry/extensions/INTEL/SPV_INTEL_global_variable_host_access.html
@@ -314,6 +326,18 @@ This document lists all SPIR-V extensions supported by IGC and their platform re
 **Capabilities**:
 
 - **CapabilityLongCompositesINTEL**
+
+---
+
+## SPV_INTEL_media_block_io
+
+**Specification**: https://github.khronos.org/SPIRV-Registry/extensions/INTEL/SPV_INTEL_media_block_io.html
+
+> **Supported on**: IGFX_GEN12LP_CORE, IGFX_XE_HPG_CORE
+
+**Capabilities**:
+
+- **SubgroupImageMediaBlockIOINTEL**
 
 ---
 

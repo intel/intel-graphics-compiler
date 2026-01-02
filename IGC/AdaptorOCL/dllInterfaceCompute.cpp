@@ -424,6 +424,7 @@ bool TranslateSPIRVToLLVM(const STB_TranslateInputArgs &InputArgs, llvm::LLVMCon
   // Set SPIRV-LLVM-Translator translation options
   SPIRV::TranslatorOpts Opts;
   Opts.enableGenArgNameMD();
+#if __has_include("SPIRVExtensionsSupport.h")
   if (IGC_IS_FLAG_ENABLED(ValidateSPIRVExtensionSupport)) {
     std::vector<IGC::SPIRVExtensionsSupport::SPIRVExtension> SupportedExtensions =
         IGC::SPIRVExtensionsSupport::getSupportedExtensionInfo(platform, true);
@@ -434,6 +435,9 @@ bool TranslateSPIRVToLLVM(const STB_TranslateInputArgs &InputArgs, llvm::LLVMCon
   } else {
     Opts.enableAllExtensions();
   }
+#else
+  Opts.enableAllExtensions();
+#endif
 
   Opts.setDesiredBIsRepresentation(SPIRV::BIsRepresentation::SPIRVFriendlyIR);
 
