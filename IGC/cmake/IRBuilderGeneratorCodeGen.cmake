@@ -103,7 +103,7 @@ function(generate_irbuilder_headers)
     set(CLANG_HEADERS_INCLUDE "")
     if(EXISTS ${CLANG_HEADERS})
         set(NOSTDINC_FLAG "-nostdinc")
-        set(CLANG_HEADERS_INCLUDE "-I" ${CLANG_HEADERS})
+        set(CLANG_HEADERS_INCLUDE "-isystem" ${CLANG_HEADERS})
     endif()
 
     # Common clang options
