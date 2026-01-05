@@ -69,33 +69,36 @@ list(TRANSFORM LLVM_INCLUDE_DIRS PREPEND "-I=" OUTPUT_VARIABLE LLVM_TABLEGEN_FLA
 # Add major version definition for llvm wrapper.
 add_compile_definitions(LLVM_VERSION_MAJOR=${LLVM_VERSION_MAJOR})
 
-set(IGC_BUILD__OPAQUE_POINTERS_ENABLE_OPT "-opaque-pointers=1")
-set(IGC_BUILD__OPAQUE_POINTERS_DISABLE_OPT "-opaque-pointers=0")
-set(IGC_BUILD__OPAQUE_POINTERS_ENABLE_CLANG "-opaque-pointers")
+# Only set flags related to opaque pointers on llvm versions before 17
+if(LLVM_VERSION_MAJOR LESS 17)
+  set(IGC_BUILD__OPAQUE_POINTERS_ENABLE_OPT "-opaque-pointers=1")
+  set(IGC_BUILD__OPAQUE_POINTERS_DISABLE_OPT "-opaque-pointers=0")
+  set(IGC_BUILD__OPAQUE_POINTERS_ENABLE_CLANG "-opaque-pointers")
 
-if(IGC_BUILD__CLANG_VERSION_MAJOR GREATER_EQUAL 15)
-  set(IGC_BUILD__OPAQUE_POINTERS_DISABLE_CLANG "-no-opaque-pointers")
-endif()
-
-# Based on the default behavior for opaque/typed pointers, propagate
-# corresponding options to all the in-tree calls of clang/opt tools.
-
-
-if(IGC_OPTION__API_ENABLE_OPAQUE_POINTERS)
-  if(LLVM_VERSION_MAJOR GREATER_EQUAL 14)
-    set(IGC_BUILD__OPAQUE_POINTERS_DEFAULT_ARG_OPT ${IGC_BUILD__OPAQUE_POINTERS_ENABLE_OPT})
-    set(IGC_BUILD__OPAQUE_POINTERS_DEFAULT_ARG_CLANG ${IGC_BUILD__OPAQUE_POINTERS_ENABLE_CLANG})
-    add_compile_definitions(__IGC_OPAQUE_POINTERS_API_ENABLED=true)
+  if(IGC_BUILD__CLANG_VERSION_MAJOR GREATER_EQUAL 15)
+    set(IGC_BUILD__OPAQUE_POINTERS_DISABLE_CLANG "-no-opaque-pointers")
   endif()
-else(IGC_OPTION__API_ENABLE_OPAQUE_POINTERS)
-  set(IGC_BUILD__OPAQUE_POINTERS_DEFAULT_ARG_OPT ${IGC_BUILD__OPAQUE_POINTERS_DISABLE_OPT})
-  set(IGC_BUILD__OPAQUE_POINTERS_DEFAULT_ARG_CLANG ${IGC_BUILD__OPAQUE_POINTERS_DISABLE_CLANG})
-  add_compile_definitions(__IGC_OPAQUE_POINTERS_API_ENABLED=false)
-endif()
 
-message("OPT OpaquePtrs Status: ${IGC_BUILD__OPAQUE_POINTERS_DEFAULT_ARG_OPT}")
-message("Clang OpaquePtrs Status: ${IGC_BUILD__OPAQUE_POINTERS_DEFAULT_ARG_CLANG}")
-add_compile_definitions(__IGC_OPAQUE_POINTERS_DEFAULT_ARG_CLANG="${IGC_BUILD__OPAQUE_POINTERS_DEFAULT_ARG_CLANG}")
+  # Based on the default behavior for opaque/typed pointers, propagate
+  # corresponding options to all the in-tree calls of clang/opt tools.
+
+
+  if(IGC_OPTION__API_ENABLE_OPAQUE_POINTERS)
+    if(LLVM_VERSION_MAJOR GREATER_EQUAL 14)
+      set(IGC_BUILD__OPAQUE_POINTERS_DEFAULT_ARG_OPT ${IGC_BUILD__OPAQUE_POINTERS_ENABLE_OPT})
+      set(IGC_BUILD__OPAQUE_POINTERS_DEFAULT_ARG_CLANG ${IGC_BUILD__OPAQUE_POINTERS_ENABLE_CLANG})
+      add_compile_definitions(__IGC_OPAQUE_POINTERS_API_ENABLED=true)
+    endif()
+  else(IGC_OPTION__API_ENABLE_OPAQUE_POINTERS)
+    set(IGC_BUILD__OPAQUE_POINTERS_DEFAULT_ARG_OPT ${IGC_BUILD__OPAQUE_POINTERS_DISABLE_OPT})
+    set(IGC_BUILD__OPAQUE_POINTERS_DEFAULT_ARG_CLANG ${IGC_BUILD__OPAQUE_POINTERS_DISABLE_CLANG})
+    add_compile_definitions(__IGC_OPAQUE_POINTERS_API_ENABLED=false)
+  endif()
+
+  message("OPT OpaquePtrs Status: ${IGC_BUILD__OPAQUE_POINTERS_DEFAULT_ARG_OPT}")
+  message("Clang OpaquePtrs Status: ${IGC_BUILD__OPAQUE_POINTERS_DEFAULT_ARG_CLANG}")
+  add_compile_definitions(__IGC_OPAQUE_POINTERS_DEFAULT_ARG_CLANG="${IGC_BUILD__OPAQUE_POINTERS_DEFAULT_ARG_CLANG}")
+endif()
 
 # Include LLVM headers as system ones.
 # This will disable warnings on linux.

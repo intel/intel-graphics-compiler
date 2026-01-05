@@ -473,7 +473,7 @@ static void collectGlobalAnnotationsPointers(const Module &M, DenseSet<const Val
 
     // In case of opaque pointers add whole struct, since it
     // will be visible as function user, otherwise add bitcast
-    if (Annot->getOperand(0)->getType()->isOpaquePointerTy()) {
+    if (IGCLLVM::isPointerTy(Annot->getOperand(0)->getType())) {
       GlobalAnnotations.insert(Annot);
     } else {
       GlobalAnnotations.insert(Annot->getOperand(0));

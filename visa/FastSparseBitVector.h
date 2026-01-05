@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
-#include "llvm/Support/MathExtras.h"
+#include "llvmWrapper/Support/MathExtras.h"
 
 #ifndef _FASTSPARSEVECTOR_H_
 #define _FASTSPARSEVECTOR_H_
@@ -103,7 +103,7 @@ public:
   size_type count() const {
     unsigned NumBits = 0;
     for (unsigned i = 0; i < BITWORDS_PER_ELEMENT; ++i)
-      NumBits += llvm::countPopulation(Bits[i]);
+      NumBits += IGCLLVM::popcount(Bits[i]);
     return NumBits;
   }
 

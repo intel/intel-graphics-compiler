@@ -10,7 +10,7 @@ SPDX-License-Identifier: MIT
 #include "StreamEmitter.hpp"
 #include "llvm/ADT/ArrayRef.h"
 #include "llvm/ADT/None.h"
-#include "llvm/ADT/Optional.h"
+#include "llvmWrapper/ADT/Optional.h"
 #include "llvm/ADT/SmallVector.h"
 #include "llvm/IR/DebugInfoMetadata.h"
 #include <cassert>
@@ -77,7 +77,9 @@ public:
   DIExpression::expr_op_iterator end() const { return End; }
 
   /// Retrieve the fragment information, if any.
-  Optional<DIExpression::FragmentInfo> getFragmentInfo() const { return DIExpression::getFragmentInfo(Start, End); }
+  IGCLLVM::optional<DIExpression::FragmentInfo> getFragmentInfo() const {
+    return DIExpression::getFragmentInfo(Start, End);
+  }
 };
 
 class DwarfExpression {

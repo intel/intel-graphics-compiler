@@ -37,6 +37,7 @@ See LICENSE.TXT for details.
 #include "llvmWrapper/IR/Type.h"
 #include "llvmWrapper/Support/ModRef.h"
 #include "llvmWrapper/Support/TypeSize.h"
+#include "llvmWrapper/Support/MathExtras.h"
 
 using namespace llvm;
 using namespace vc;
@@ -250,6 +251,7 @@ DecodeIITType(unsigned &NextElt, ArrayRef<unsigned char> Infos,
         IITDescriptor::get(IITDescriptor::SameVecWidthArgument, ArgInfo));
     return;
   }
+#if LLVM_VERSION_MAJOR < 17 || defined(IGC_LLVM_TRUNK_REVISION)
   case IIT_PTR_TO_ARG: {
     unsigned ArgInfo = (NextElt == Infos.size() ? 0 : Infos[NextElt++]);
     OutputTable.push_back(
@@ -261,6 +263,7 @@ DecodeIITType(unsigned &NextElt, ArrayRef<unsigned char> Infos,
     OutputTable.push_back(IITDescriptor::get(IITDescriptor::PtrToElt, ArgInfo));
     return;
   }
+#endif
   case IIT_VEC_OF_ANYPTRS_TO_ELT: {
     unsigned short ArgNo = (NextElt == Infos.size() ? 0 : Infos[NextElt++]);
     unsigned short RefNo = (NextElt == Infos.size() ? 0 : Infos[NextElt++]);
@@ -373,6 +376,7 @@ static Type *DecodeFixedType(ArrayRef<Intrinsic::IITDescriptor> &Infos,
     IGC_ASSERT_EXIT_MESSAGE(0, "unhandled");
     break;
   }
+#if LLVM_VERSION_MAJOR < 17 || defined(IGC_LLVM_TRUNK_REVISION)
   case IITDescriptor::PtrToArgument: {
     Type *Ty = Tys[D.getArgumentNumber()];
     return PointerType::getUnqual(Ty);
@@ -384,6 +388,7 @@ static Type *DecodeFixedType(ArrayRef<Intrinsic::IITDescriptor> &Infos,
     Type *EltTy = VTy->getElementType();
     return PointerType::getUnqual(EltTy);
   }
+#endif
   case IITDescriptor::VecOfAnyPtrsToElt:
     // Return the overloaded type (which determines the pointers address space)
     return Tys[D.getOverloadArgNumber()];
@@ -931,7 +936,7 @@ InternalIntrinsic::getMemoryVectorSizePerLane(const llvm::Instruction *I) {
   case InternalIntrinsic::lsc_store_quad_ugm: {
     auto *ChannelMask = cast<ConstantInt>(I->getOperand(3));
     auto Mask = ChannelMask->getZExtValue();
-    auto Size = countPopulation(Mask);
+    auto Size = IGCLLVM::popcount(Mask);
     IGC_ASSERT(Size > 0 && Size <= 4);
     return Size;
   }
@@ -952,7 +957,7 @@ InternalIntrinsic::getMemoryVectorSizePerLane(const llvm::Instruction *I) {
   case InternalIntrinsic::sampler_load_predef_surface: {
     auto *ChannelMask = cast<ConstantInt>(I->getOperand(2));
     auto Mask = ChannelMask->getZExtValue();
-    auto Size = countPopulation(Mask);
+    auto Size = IGCLLVM::popcount(Mask);
     IGC_ASSERT(Size > 0 && Size <= 4);
     return Size;
   }

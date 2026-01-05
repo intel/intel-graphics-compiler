@@ -12,7 +12,6 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/CFG.h>
 #include <llvm/Pass.h>
 #include <llvm/Transforms/Utils/Local.h>
-#include <llvm/ADT/Optional.h>
 #include "llvmWrapper/Analysis/TargetLibraryInfo.h"
 #include "llvmWrapper/Transforms/Utils/LoopUtils.h"
 #include "llvmWrapper/ADT/Optional.h"

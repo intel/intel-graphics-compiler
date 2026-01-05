@@ -17,6 +17,7 @@ SPDX-License-Identifier: MIT
 #include "vc/Utils/GenX/Region.h"
 
 #include "llvmWrapper/IR/Instructions.h"
+#include "llvmWrapper/Support/MathExtras.h"
 
 #include <llvm/CodeGen/TargetPassConfig.h>
 #include <llvm/IR/IRBuilder.h>
@@ -613,7 +614,7 @@ GenXLegacyToLscTranslator::translateQuadGatherScatter(CallInst &CI) const {
   IGC_ASSERT(ChannelMaskIndex >= 0);
   auto ChannelMask =
       cast<ConstantInt>(CI.getArgOperand(ChannelMaskIndex))->getZExtValue();
-  auto NumChannels = countPopulation(ChannelMask);
+  auto NumChannels = IGCLLVM::popcount(ChannelMask);
 
   Type *DataVTy = nullptr;
   Value *Data = nullptr;

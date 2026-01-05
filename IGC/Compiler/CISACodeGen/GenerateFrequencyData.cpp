@@ -22,7 +22,6 @@ SPDX-License-Identifier: MIT
 #include <llvm/Analysis/BranchProbabilityInfo.h>
 #include <llvm/Analysis/LoopInfo.h>
 #include <llvm/Analysis/SyntheticCountsUtils.h>
-#include <llvm/ADT/Optional.h>
 
 #include <llvm/Support/ScaledNumber.h>
 #include <unordered_map>

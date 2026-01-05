@@ -182,6 +182,7 @@ SPDX-License-Identifier: MIT
 #include "Probe/Assertion.h"
 #include "llvmWrapper/IR/InstrTypes.h"
 #include "llvmWrapper/IR/Instructions.h"
+#include "llvmWrapper/Support/MathExtras.h"
 
 #include "llvm/ADT/Statistic.h"
 #include "llvm/CodeGen/TargetPassConfig.h"
@@ -835,7 +836,7 @@ unsigned GenXCoalescing::getPriority(Type *Ty, BasicBlock *BB) const {
   // Estimate number of moves required for this type.
   unsigned VecWidth = vc::getTypeSize(Ty, DL).inBytesCeil();
   unsigned Priority = VecWidth / ST->getGRFByteSize() +
-                      countPopulation(VecWidth % ST->getGRFByteSize());
+                      IGCLLVM::popcount(VecWidth % ST->getGRFByteSize());
   // Scale by loop depth.
   Priority *=
       std::pow(LoopScale, getLoopInfo(BB->getParent())->getLoopDepth(BB));

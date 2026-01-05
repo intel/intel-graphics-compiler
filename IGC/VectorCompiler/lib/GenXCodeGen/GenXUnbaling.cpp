@@ -279,6 +279,7 @@ SPDX-License-Identifier: MIT
 #include "Probe/Assertion.h"
 
 #include "llvmWrapper/IR/DerivedTypes.h"
+#include "llvmWrapper/Support/MathExtras.h"
 
 #define DEBUG_TYPE "GENX_UNBALING"
 
@@ -984,7 +985,7 @@ bool GenXUnbaling::scanUsesForUnbaleAndMove(Instruction *Inst,
   unsigned NumBytes = TwoAddrOperand->getType()->getPrimitiveSizeInBits() / 8U;
   unsigned NumCopies = NumBytes / 64U; // one copy per 2 GRFs
   NumBytes -= NumCopies * 64U;
-  NumCopies += countPopulation(NumBytes); // extra copy per power of 2
+  NumCopies += IGCLLVM::popcount(NumBytes); // extra copy per power of 2
   LLVM_DEBUG(dbgs() << NumCopies << " copy insts, vs " << UnbaleCount
                     << " unbales\n");
   if (NumCopies < UnbaleCount) {
