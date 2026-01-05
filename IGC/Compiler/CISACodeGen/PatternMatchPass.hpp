@@ -18,6 +18,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/InstVisitor.h>
 #include <llvm/ADT/DenseSet.h>
 #include <llvm/ADT/MapVector.h>
+#include <llvm/Analysis/AssumptionCache.h>
 #include <llvm/Analysis/LoopInfo.h>
 #include <llvm/IR/DataLayout.h>
 #include "common/LLVMWarningsPop.hpp"
@@ -122,6 +123,7 @@ public:
     AU.addRequired<llvm::DominatorTreeWrapperPass>();
     AU.addRequired<llvm::PostDominatorTreeWrapperPass>();
     AU.addRequired<llvm::LoopInfoWrapperPass>();
+    AU.addRequired<llvm::AssumptionCacheTracker>();
     AU.addRequired<WIAnalysis>();
     AU.addRequired<LiveVarsAnalysis>();
     AU.addRequired<MetaDataUtilsWrapper>();
@@ -311,6 +313,7 @@ private:
   llvm::DominatorTree *DT;
   llvm::PostDominatorTree *PDT;
   llvm::LoopInfo *LI;
+  llvm::AssumptionCache *AC;
   const llvm::DataLayout *m_DL;
   WIAnalysis *m_WI;
   LiveVars *m_LivenessInfo;
