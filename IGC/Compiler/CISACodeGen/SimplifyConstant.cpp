@@ -148,10 +148,30 @@ void ConstantLoader::analyze() {
 
 // Returns the dynamic element index of a GEP addressing a flat (unnested) aggregate. This is the last GEP index operand
 // which addresses array elements. Earlier index operands (if present) select the indexed array itself. However, the
-// number of index operands is variable and depends on the type.
-static Value *getGEPElementIndex(GetElementPtrInst *GEP) {
+// number of index operands is variable and depends on the type. With opaque pointers, SROA may create byte-indexed GEPs
+// (with i8 source element type). In that case, the index is a byte offset that must be converted to an element index.
+static Value *getGEPElementIndex(GetElementPtrInst *GEP, Type *ArrayEltTy, const DataLayout &DL) {
   IGC_ASSERT(GEP && GEP->getNumIndices() >= 1);
-  return GEP->getOperand(1 + (GEP->getNumIndices() - 1));
+  Value *Index = GEP->getOperand(1 + (GEP->getNumIndices() - 1));
+  // With opaque pointers, SROA creates GEPs like: getelementptr i8, ptr @arr, i64 4
+  // where 4 is a byte offset, not an element index.
+  Type *GEPSrcEltTy = GEP->getSourceElementType();
+  if (GEPSrcEltTy->isIntegerTy(8) && ArrayEltTy && !ArrayEltTy->isIntegerTy(8)) {
+    uint64_t EltSize = DL.getTypeAllocSize(ArrayEltTy);
+    if (EltSize > 1) {
+      if (auto *CI = dyn_cast<ConstantInt>(Index)) {
+        // The index is a constant, compute the element index directly.
+        uint64_t ByteOffset = CI->getZExtValue();
+        uint64_t EltIndex = ByteOffset / EltSize;
+        return ConstantInt::get(Index->getType(), EltIndex);
+      }
+      // The index is dynamic, insert a divsion to compute the element index.
+      IRBuilder<> Builder(GEP);
+      return Builder.CreateUDiv(Index, ConstantInt::get(Index->getType(), EltSize));
+    }
+  }
+
+  return Index;
 }
 
 void ConstantLoader::simplify() {
@@ -166,6 +186,9 @@ void ConstantLoader::simplify() {
     V1 = CDA->getElementAsConstant(1);
   else if (Kind == CK_Ladder2)
     V1 = CDA->getElementAsConstant(Pivot);
+
+  Type *ArrayEltTy = CDA->getElementType();
+  const DataLayout &DL = GV->getParent()->getDataLayout();
 
   // Replace all GEP + load uses with V0 or a select of V0 and V1.
   for (auto UI = GV->user_begin(); UI != GV->user_end(); /* empty */) {
@@ -183,7 +206,7 @@ void ConstantLoader::simplify() {
       if (!LI)
         continue;
 
-      Value *Index = getGEPElementIndex(GEP);
+      Value *Index = getGEPElementIndex(GEP, ArrayEltTy, DL);
       Value *Val = V0;
       IRBuilder<> Builder(LI);
       if (Kind == CK_Ladder2) {
@@ -502,6 +525,10 @@ static void promote(GlobalVariable *GV, IGCLLVM::FixedVectorType *AllocaType, bo
   }
   Constant *VectorData = ConstantVector::get(Vals);
 
+  ArrayType *ArrayTy = cast<ArrayType>(Init->getType());
+  Type *ArrayEltTy = ArrayTy->getElementType();
+  const DataLayout &DL = GV->getParent()->getDataLayout();
+
   // Transform all uses
   for (auto UI = GV->user_begin(); UI != GV->user_end(); /*empty*/) {
     auto GEP = dyn_cast<GetElementPtrInst>(*UI++);
@@ -509,7 +536,7 @@ static void promote(GlobalVariable *GV, IGCLLVM::FixedVectorType *AllocaType, bo
     if (!GEP || GEP->getParent()->getParent() != F)
       continue;
 
-    Value *Index = getGEPElementIndex(GEP);
+    Value *Index = getGEPElementIndex(GEP, ArrayEltTy, DL);
     // Demote the index type to int32 to avoid 64 multiplications during vISA
     // emission, e.g. it is illegal to emit Q x W.
     if (Index->getType()->getPrimitiveSizeInBits() > 32) {
@@ -568,7 +595,10 @@ static bool rewriteAsCmpSel(GlobalVariable *GV, Function &F) {
 
   Type *Ty = GV->getInitializer()->getType();
   IGC_ASSERT(Ty->isArrayTy());
-  unsigned NElts = (unsigned)Ty->getArrayNumElements();
+  ArrayType *ArrayTy = cast<ArrayType>(Ty);
+  unsigned NElts = (unsigned)ArrayTy->getArrayNumElements();
+  Type *ArrayEltTy = ArrayTy->getElementType();
+  const DataLayout &DL = GV->getParent()->getDataLayout();
 
   for (auto UI = GV->user_begin(); UI != GV->user_end(); /*empty*/) {
     auto GEP = dyn_cast<GetElementPtrInst>(*UI++);
@@ -576,7 +606,7 @@ static bool rewriteAsCmpSel(GlobalVariable *GV, Function &F) {
     if (!GEP || GEP->getParent()->getParent() != &F)
       continue;
 
-    Value *Index = getGEPElementIndex(GEP);
+    Value *Index = getGEPElementIndex(GEP, ArrayEltTy, DL);
     if (Index->getType()->getPrimitiveSizeInBits() > 32) {
       IRBuilder<> Builder(GEP);
       Index = Builder.CreateTrunc(Index, Builder.getInt32Ty());
