@@ -10,7 +10,6 @@ SPDX-License-Identifier: MIT
 #include "GenIntrinsicEnum.h"
 
 #include "common/LLVMWarningsPush.hpp"
-#include "llvm/ADT/None.h"
 #include "llvm/IR/Function.h"
 #include "common/LLVMWarningsPop.hpp"
 

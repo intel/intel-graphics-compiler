@@ -9,7 +9,6 @@ SPDX-License-Identifier: MIT
 #include "DwarfDebug.hpp"
 #include "StreamEmitter.hpp"
 #include "llvm/ADT/ArrayRef.h"
-#include "llvm/ADT/None.h"
 #include "llvmWrapper/ADT/Optional.h"
 #include "llvm/ADT/SmallVector.h"
 #include "llvm/IR/DebugInfoMetadata.h"

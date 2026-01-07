@@ -31,7 +31,6 @@ SPDX-License-Identifier: MIT
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/Support/Alignment.h"
 #include <llvm/IR/Verifier.h>
-#include "llvm/ADT/None.h"
 #include "common/LLVMWarningsPop.hpp"
 
 #include <optional>
