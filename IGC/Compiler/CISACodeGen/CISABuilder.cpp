@@ -2701,6 +2701,9 @@ TARGET_PLATFORM GetVISAPlatform(const CPlatform *platform) {
   case IGFX_XE3_CORE:
     return Xe3;
     // fall-through
+  case IGFX_XE3P_CORE:
+    if (platform->getPlatformInfo().eProductFamily == IGFX_CRI)
+      return Xe3P_CRI;
   default:
     IGC_ASSERT_MESSAGE(0, "unsupported platform");
     break;
