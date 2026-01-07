@@ -303,6 +303,13 @@ def SPV_INTEL_joint_matrix : ExperimentalExtension<
   InheritFromCapabilities
 >;
 
+def SPV_KHR_cooperative_matrix : ExperimentalExtension<
+  "SPV_KHR_cooperative_matrix",
+  [ Capability<"CooperativeMatrixKHR"> ],
+  "https://github.khronos.org/SPIRV-Registry/extensions/KHR/SPV_KHR_cooperative_matrix.html",
+  isCoreChildOf<IGFX_XE_HPG_CORE>
+>;
+
 def SPV_INTEL_subgroup_matrix_multiply_accumulate : Extension<
   "SPV_INTEL_subgroup_matrix_multiply_accumulate",
   [ Capability<"SubgroupMatrixMultiplyAccumulateINTEL"> ],
@@ -407,6 +414,13 @@ def SPV_KHR_bfloat16 : ExperimentalExtension<
   // for this extension is still experimental, we define support for broader set of platforms for now to avoid fails
   // on existing PVC and DG2 tests.
   AllOf<[isCoreChildOf<IGFX_XE_HPG_CORE>, Not<ExactPlatform<IGFX_METEORLAKE>>]>
+>;
+
+def SPV_INTEL_subgroup_scaled_matrix_multiply_accumulate : ExperimentalExtension<
+  "SPV_INTEL_subgroup_scaled_matrix_multiply_accumulate",
+  [ Capability<"Subgroup​Scaled​Matrix​Multiply​Accumulate​INTEL"> ],
+  "https://github.com/intel/llvm/pull/20656",
+  isCoreChildOf<IGFX_XE3P_CORE>
 >;
 
 // ----------------------------------------------

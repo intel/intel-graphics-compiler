@@ -425,6 +425,18 @@ This document lists all SPIR-V extensions supported by IGC and their platform re
 
 ---
 
+## SPV_INTEL_subgroup_scaled_matrix_multiply_accumulate
+
+**Specification**: https://github.com/intel/llvm/pull/20656
+
+> **Experimentally supported on**: IGFX_XE3P_CORE and newer
+
+**Capabilities**:
+
+- **Subgroup​Scaled​Matrix​Multiply​Accumulate​INTEL**
+
+---
+
 ## SPV_INTEL_subgroups
 
 **Specification**: https://github.khronos.org/SPIRV-Registry/extensions/INTEL/SPV_INTEL_subgroups.html
@@ -499,6 +511,18 @@ This document lists all SPIR-V extensions supported by IGC and their platform re
 **Capabilities**:
 
 - **BitInstructions**
+
+---
+
+## SPV_KHR_cooperative_matrix
+
+**Specification**: https://github.khronos.org/SPIRV-Registry/extensions/KHR/SPV_KHR_cooperative_matrix.html
+
+> **Experimentally supported on**: IGFX_XE_HPG_CORE and newer
+
+**Capabilities**:
+
+- **CooperativeMatrixKHR**
 
 ---
 
