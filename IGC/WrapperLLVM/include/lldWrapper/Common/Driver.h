@@ -16,6 +16,10 @@ SPDX-License-Identifier: MIT
 #include "lld/Common/Driver.h"
 #include "lld/Common/CommonLinkerContext.h"
 
+#if LLVM_VERSION_MAJOR >= 17 && !defined(IGC_LLVM_TRUNK_REVISION)
+LLD_HAS_DRIVER(elf)
+#endif
+
 namespace IGCLLD {
 namespace elf {
 inline bool link(llvm::ArrayRef<const char *> Args, bool CanExitEarly, llvm::raw_ostream &stdoutOS,
