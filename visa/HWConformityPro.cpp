@@ -829,10 +829,10 @@ bool HWConformityPro::isAllowedTrueRegionPatternOnSrc0(G4_Operand *src) {
       if (srcStride < 4)
         return true; // Allowed
       if (srcStride == 4 && isSrcUniformStride && dstHasFixedSubReg &&
-          srcHasFixedSubReg && (2 * dstSubReg % 16 == srcSubReg / 2))
+          srcHasFixedSubReg && (2 * (dstSubReg % 16) == srcSubReg / 2))
         return true; // Allowed
       if (srcStride == 8 && isSrcUniformStride && dstHasFixedSubReg &&
-          srcHasFixedSubReg && (2 * dstSubReg % 8 == srcSubReg / 4))
+          srcHasFixedSubReg && (2 * (dstSubReg % 8) == srcSubReg / 4))
         return true; // Allowed
     }
 
@@ -868,7 +868,7 @@ bool HWConformityPro::isAllowedTrueRegionPatternOnSrc0(G4_Operand *src) {
           (srcHS == 2 && srcVS < 2))
         return true; // Allowed
       if (srcHS == 1 && srcVS == 4 && dstHasFixedSubReg && srcHasFixedSubReg &&
-          (dstSubReg % 32 == 2 * srcSubReg / 4) && (srcSubReg % 2 == 0))
+          (dstSubReg % 32 == 2 * (srcSubReg / 4)) && (srcSubReg % 2 == 0))
         return true; // Allowed
       if (srcHS == 2 && srcVS == 4 && dstHasFixedSubReg && srcHasFixedSubReg &&
           (dstSubReg % 32 == srcSubReg / 2))
