@@ -498,7 +498,7 @@ enum class ShaderTypeMD
         bool ForceUniformSurfaceSampler                 = false;
         bool EnableIndependentSharedMemoryFenceFunctionality = false;
         bool NewSpillCostFunction                       = false;
-        bool EnableVRT                                  = false;
+        bool EnableVRT                                  = true;
         bool ForceLargeGRFNum4RQ                        = false;
         bool DisableEUFusion                            = false;
         bool DisableFDivToFMulInvOpt                    = false;
