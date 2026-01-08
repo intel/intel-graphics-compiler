@@ -805,7 +805,7 @@ DECLARE_IGC_REGKEY(DWORD, ForceLoosenSimd32Occu, 2,
 DECLARE_IGC_REGKEY(bool, ForceFunctionsToNop, false,
                    "Replace functions with immediate return to help narrow down shaders; use with Options.txt.", false)
 DECLARE_IGC_REGKEY(bool, DisableWarnings, false, "Disable all warnings generated from IGC compiler", true)
-DECLARE_IGC_REGKEY(bool, DisableDuplicateWarnings, false, "Limit duplicate warnings to a single occurrence", true)
+DECLARE_IGC_REGKEY(bool, DisableDuplicateWarnings, true, "Limit duplicate warnings to a single occurrence", true)
 
 DECLARE_IGC_GROUP("Shader dumping")
 DECLARE_IGC_REGKEY(bool, EnableCosDump, false, "Enable cos dump", true)

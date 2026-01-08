@@ -944,7 +944,7 @@ public:
 
 private:
   // For storing emitted warning messages
-  std::unordered_set<std::string_view> m_emittedWarnings;
+  std::unordered_set<std::string> m_emittedWarnings;
 
   // For storing error message
   std::stringstream oclErrorMessage;
