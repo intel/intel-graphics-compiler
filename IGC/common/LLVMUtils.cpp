@@ -738,10 +738,19 @@ void IGCPassManager::addPrintPass(Pass *P, bool isBefore) {
 void DumpLLVMIR(IGC::CodeGenContext *pContext, const char *dumpName) {
   SetCurrentDebugHash(pContext->hash);
   SetCurrentEntryPoints(pContext->entry_names);
+  auto makeName = [&]() {
+    return DumpName(IGC::Debug::GetShaderOutputName())
+        .ShaderName(pContext->shaderName)
+        .Hash(pContext->hash)
+        .Type(pContext->type)
+        .Pass(dumpName)
+        .Retry(pContext->m_retryManager.GetRetryId())
+        .StagedInfo(pContext)
+        .Extension("ll");
+  };
 
   if (IGC_IS_FLAG_ENABLED(DumpLLVMIR)) {
     auto module = pContext->getModule();
-
     if (IGC_IS_FLAG_ENABLED(ShaderDumpInstNamer)) {
       // We first clear out any old entries of x if exists
       // from the ValueSymTab by overriding the x variable to _x
@@ -772,29 +781,14 @@ void DumpLLVMIR(IGC::CodeGenContext *pContext, const char *dumpName) {
 
     pContext->getMetaDataUtils()->save(*pContext->getLLVMContext());
     serialize(*(pContext->getModuleMetaData()), module);
-    using namespace IGC::Debug;
-    auto name = DumpName(IGC::Debug::GetShaderOutputName())
-                    .ShaderName(pContext->shaderName)
-                    .Hash(pContext->hash)
-                    .Type(pContext->type)
-                    .Pass(dumpName)
-                    .Retry(pContext->m_retryManager.GetRetryId())
-                    .Extension("ll");
 
     auto new_annotator = IntrinsicAnnotator();
     auto annotator = (pContext->annotater != nullptr) ? pContext->annotater : &new_annotator;
-    DumpLLVMIRText(module, name, annotator);
+    DumpLLVMIRText(module, makeName(), annotator);
   }
   if (IGC_IS_FLAG_ENABLED(ShaderOverride)) {
-    auto name = DumpName(IGC::Debug::GetShaderOutputName())
-                    .ShaderName(pContext->shaderName)
-                    .Hash(pContext->hash)
-                    .Type(pContext->type)
-                    .Pass(dumpName)
-                    .Retry(pContext->m_retryManager.GetRetryId())
-                    .Extension("ll");
     SMDiagnostic Err;
-    std::string fileName = name.overridePath();
+    std::string fileName = makeName().overridePath();
     FILE *fp = fopen(fileName.c_str(), "r");
     if (fp != nullptr) {
       fclose(fp);
