@@ -13,10 +13,12 @@
 ; This test checks that after kernel recompilation there is no more spills
 
 ; CHECK://.kernel _ZTSN2at15AtenIpexTypeXPU4impl35FastGroupRadixSortImplKernelFunctorIbxLi1024ELb0ELb1EtLi32ELi4ENS0_19GroupRadixProcesserIbLi1024ELi32ELi4ELb0EttjLi4EEEbEE
-; CHECK-NOT://.spill size
-; CHECK: end of thread
+; CHECK: //.RA type  GRAPH_COLORING_SPILL_FF_RA
+; CHECK: //.spill size
 
-; CHECK: warning: [RetryManager] Start recompilation of the kernel
+; CHECK://.kernel _ZTSN2at15AtenIpexTypeXPU4impl35FastGroupRadixSortImplKernelFunctorIbxLi1024ELb0ELb1EtLi32ELi4ENS0_19GroupRadixProcesserIbLi1024ELi32ELi4ELb0EttjLi4EEEbEE
+; CHECK: //.RA type  HYBRID_RA
+; CHECK-NOT://.spill size
 
 ; ModuleID = 'reduced.ll'
 source_filename = "reduced.ll"
