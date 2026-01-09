@@ -208,6 +208,9 @@ private:
     TranslationTable *m_TT;
   };
 
+  // In current implementation merged loads are aligned to at least 4 bytes.
+  const alignment_t m_ChunkMinAlignment = 4;
+
   CodeGenContext *m_ctx;
   llvm::Function *curFunc;
   // agent to modify the llvm-ir
@@ -268,6 +271,7 @@ private:
 
   alignment_t GetAlignment(Instruction *load) const;
   void SetAlignment(Instruction *load, uint alignment);
+  void SetAlignmentFromOffset(Instruction *load);
 
   bool CheckForAliasingWrites(uint32_t addrSpace, llvm::Instruction *dominatingChunk,
                               llvm::Instruction *mergeCandidate);

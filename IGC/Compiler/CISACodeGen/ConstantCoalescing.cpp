@@ -692,6 +692,7 @@ void ConstantCoalescing::CombineTwoLoads(BufChunk *cov_chunk, Instruction *load,
     IGC_ASSERT(nullptr != addr_ptr);
     IGC_ASSERT(nullptr != (cast<PointerType>(addr_ptr->getType())));
     unsigned addrSpace = (cast<PointerType>(addr_ptr->getType()))->getAddressSpace();
+
     if (addrSpace == ADDRESS_SPACE_CONSTANT) {
       // OCL path
       IGC_ASSERT(isa<IntToPtrInst>(addr_ptr) || isa<BitCastInst>(addr_ptr) ||
@@ -708,13 +709,11 @@ void ConstantCoalescing::CombineTwoLoads(BufChunk *cov_chunk, Instruction *load,
       m_TT->RegisterNewValueAndAssignID(ptrcast);
       wiAns->incUpdateDepend(ptrcast, WIAnalysis::RANDOM);
       cov_chunk->chunkIO = irBuilder->CreateLoad(vty, ptrcast, false);
-      cast<LoadInst>(cov_chunk->chunkIO)->setAlignment(getAlign(4)); // \todo, more precise
       wiAns->incUpdateDepend(cov_chunk->chunkIO, WIAnalysis::RANDOM);
     } else {
       IGC_ASSERT(isa<IntToPtrInst>(addr_ptr));
       addr_ptr->mutateType(PointerType::get(vty, addrSpace));
       cov_chunk->chunkIO = irBuilder->CreateLoad(cov_chunk->chunkIO->getType(), addr_ptr, false);
-      cast<LoadInst>(cov_chunk->chunkIO)->setAlignment(getAlign(4)); // \todo, more precise
       wiAns->incUpdateDepend(cov_chunk->chunkIO, WIAnalysis::RANDOM);
       // modify the address calculation if the chunk-start is changed
       if (eltid0 != cov_chunk->chunkStart) {
@@ -761,12 +760,16 @@ void ConstantCoalescing::CombineTwoLoads(BufChunk *cov_chunk, Instruction *load,
       }
     }
     IGC_ASSERT(!ldRaw0->isVolatile() && !ldRaw1->isVolatile());
-    Value *args[] = {ldRaw0->getResourceValue(), offsetInBuffer, ldRaw0->getAlignmentValue(), irBuilder->getFalse()};
+    Value *args[] = {ldRaw0->getResourceValue(), offsetInBuffer, irBuilder->getInt32(m_ChunkMinAlignment),
+                     irBuilder->getFalse()};
     cov_chunk->chunkIO = irBuilder->CreateCall(ldRawFn, args, ldRaw0->getName());
     IGC_ASSERT(CompareMetadata(ldRaw0, ldRaw1));
     CopyMetadata(cov_chunk->chunkIO, ldRaw0);
     wiAns->incUpdateDepend(cov_chunk->chunkIO, wiAns->whichDepend(ldRaw0));
   }
+
+  // Update the alignment of the new load instruction created above
+  SetAlignmentFromOffset(cov_chunk->chunkIO);
 
   // add two splitters
   Instruction *splitter;
@@ -805,6 +808,28 @@ void ConstantCoalescing::SetAlignment(Instruction *load, uint alignment) {
   } else {
     cast<LdRawIntrinsic>(load)->setAlignment(alignment);
   }
+}
+
+void ConstantCoalescing::SetAlignmentFromOffset(Instruction *load) {
+  IGC_ASSERT(isa<LdRawIntrinsic>(load) || isa<LoadInst>(load));
+  Value *offset = nullptr;
+  if (auto loadInst = dyn_cast<LoadInst>(load)) {
+    Value *ptr = loadInst->getOperand(0);
+    if (!isa<IntToPtrInst>(ptr)) {
+      IGC_ASSERT_MESSAGE(false, "Unexpected pointer operand for LoadInst");
+      return;
+    }
+    offset = cast<IntToPtrInst>(ptr)->getOperand(0);
+  } else {
+    offset = cast<LdRawIntrinsic>(load)->getOffsetValue();
+  }
+  IGC_ASSERT(offset != nullptr);
+  const DominatorTree &DT = getAnalysis<DominatorTreeWrapperPass>().getDomTree();
+  KnownBits kb = computeKnownBits(offset, *dataLayout, 0 /*current depth*/, nullptr /*AssumptionCache*/, load, &DT);
+  uint32_t numTrailZeros = std::min(kb.countMinTrailingZeros(), Value::MaxAlignmentExponent);
+  alignment_t alignment = (1ull << std::min(kb.getBitWidth() - 1, numTrailZeros));
+  alignment = std::max<alignment_t>(alignment, m_ChunkMinAlignment);
+  SetAlignment(load, alignment);
 }
 
 void ConstantCoalescing::MergeUniformLoad(Instruction *load, Value *bufIdxV, uint addrSpace, Value *eltIdxV,
@@ -1421,9 +1446,10 @@ void ConstantCoalescing::AdjustChunk(BufChunk *cov_chunk, uint start_adj, uint s
     if (addrSpace == ADDRESS_SPACE_CONSTANT || addrSpace == ADDRESS_SPACE_GLOBAL) {
       // ocl path
       IGC_ASSERT(isa<IntToPtrInst>(addr_ptr));
-      irBuilder->SetInsertPoint(dyn_cast<Instruction>(addr_ptr));
+      Instruction *intToPtr = cast<Instruction>(addr_ptr);
+      irBuilder->SetInsertPoint(intToPtr);
       addr_ptr->mutateType(PointerType::get(vty, addrSpace));
-      Value *eac = cast<Instruction>(addr_ptr)->getOperand(0);
+      Value *eac = intToPtr->getOperand(0);
       Instruction *expr = dyn_cast<Instruction>(eac);
       bool foundOffset = false;
       if (expr && expr->getOpcode() == Instruction::Add && expr->hasOneUse()) {
@@ -1460,7 +1486,7 @@ void ConstantCoalescing::AdjustChunk(BufChunk *cov_chunk, uint start_adj, uint s
       if (!foundOffset) {
         // if we cannot modify the offset, create a new chain of address calculation
         eac = FormChunkAddress(cov_chunk, Extension);
-        cast<Instruction>(addr_ptr)->setOperand(0, eac);
+        intToPtr->setOperand(0, eac);
       }
     } else {
       // gfx path
@@ -1513,6 +1539,11 @@ void ConstantCoalescing::AdjustChunk(BufChunk *cov_chunk, uint start_adj, uint s
       Value *cv_start = irBuilder->getInt32(cov_chunk->chunkStart * cov_chunk->elementSize);
       cast<Instruction>(eac)->setOperand(1, cv_start);
     }
+  }
+
+  // Update the alignment if the starting offset changed.
+  if (start_adj != 0) {
+    SetAlignmentFromOffset(cov_chunk->chunkIO);
   }
 
   SmallVector<Instruction *, 4> use_set;
