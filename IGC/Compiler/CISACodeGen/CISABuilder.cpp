@@ -7927,7 +7927,10 @@ void CEncoder::LSC_2DBlockMessage(LSC_OP subOp, ResourceDescriptor *resource, CV
   VISA_RawOpnd *dstVarMerged = nullptr;
   VISA_Exec_Size fromExecSize = EXEC_SIZE_16;
   uint32_t repeatCount = 1;
-  if (subOp == LSC_LOAD_BLOCK2D && isTranspose && dataShape2D.size == LSC_DATA_SIZE_64b && blockHeight == 16) {
+
+  // Note: we do not split for prefetch messages (dst is null in this case).
+  if (subOp == LSC_LOAD_BLOCK2D && isTranspose && dataShape2D.size == LSC_DATA_SIZE_64b && blockHeight == 16 &&
+      dst != nullptr) {
     needsSplitting = true;
     dataShape2D.height = 8;
     dstVarMerged = dstVar;
