@@ -248,6 +248,17 @@ def SPV_KHR_non_semantic_info : ExperimentalExtension<
   "https://github.khronos.org/SPIRV-Registry/extensions/KHR/SPV_KHR_non_semantic_info.html"
 >;
 
+// Scalar IGC compilation path does not support SPV_INTEL_vector_compute extension. However, some
+// cassian tests use ext_vector_type to define bigger than 16-elements vector types. Khronos SPIRVWriter
+// automatically add SPV_INTEL_vector_compute extension if a module contains such vector types.
+// To avoid compilation failure in such cases, we mark this extension as supported on all platforms.
+def SPV_INTEL_vector_compute : ExperimentalExtension<
+  "SPV_INTEL_vector_compute",
+  [ Capability<"VectorComputeINTEL">,
+    Capability<"VectorAnyINTEL"> ],
+  "https://github.com/intel/llvm/pull/1612"
+>;
+
 // ---------------------------------------------
 
 // --- Extensions not supported on all platforms ---

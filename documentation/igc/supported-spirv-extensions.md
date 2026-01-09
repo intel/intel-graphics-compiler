@@ -488,6 +488,19 @@ This document lists all SPIR-V extensions supported by IGC and their platform re
 
 ---
 
+## SPV_INTEL_vector_compute
+
+**Specification**: https://github.com/intel/llvm/pull/1612
+
+> **Experimentally supported on**: All platforms
+
+**Capabilities**:
+
+- **VectorComputeINTEL**
+- **VectorAnyINTEL**
+
+---
+
 ## SPV_KHR_bfloat16
 
 **Specification**: https://github.khronos.org/SPIRV-Registry/extensions/KHR/SPV_KHR_bfloat16.html
