@@ -967,7 +967,7 @@ bool supports4GRFAlign() const {
 }
 
 bool onlyDoLocalVariableSplitWhenSpill() const {
-  return getPlatform() >= Xe3P_Graphics;
+  return getPlatform() >= Xe3P_Graphics && getOption(vISA_DelayLocalDeclareSplitInGlobalRA);
 }
 
 bool needA0WAR() const {

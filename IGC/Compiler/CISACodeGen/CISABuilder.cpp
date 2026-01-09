@@ -3918,6 +3918,10 @@ void CEncoder::InitVISABuilderOptions(TARGET_PLATFORM VISAPlatform, bool canAbor
     SaveOption(vISA_LocalDeclareSplitInGlobalRA, false);
   }
 
+  if (IGC_IS_FLAG_ENABLED(delayVarSplit)) {
+    SaveOption(vISA_DelayLocalDeclareSplitInGlobalRA, true);
+  }
+
   if (IGC_IS_FLAG_ENABLED(disableRemat) || context->getModuleMetaData()->compOpt.allowDisableRematforCS) {
     SaveOption(vISA_NoRemat, true);
   }

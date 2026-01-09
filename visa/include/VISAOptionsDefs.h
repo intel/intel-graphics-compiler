@@ -387,6 +387,8 @@ DEF_VISA_OPTION(vISA_EnableGlobalScopeAnalysis, ET_BOOL,
                 "-enableGlobalScopeAnalysis", UNUSED, false)
 DEF_VISA_OPTION(vISA_LocalDeclareSplitInGlobalRA, ET_BOOL, "-noLocalSplit",
                 UNUSED, true)
+DEF_VISA_OPTION(vISA_DelayLocalDeclareSplitInGlobalRA, ET_BOOL, "-delayLocalSplit",
+                UNUSED, false)
 DEF_VISA_OPTION(vISA_DisableSpillCoalescing, ET_BOOL, "-nospillcleanup", UNUSED,
                 false)
 DEF_VISA_OPTION(vISA_GlobalSendVarSplit, ET_BOOL, "-globalSendVarSplit", UNUSED,

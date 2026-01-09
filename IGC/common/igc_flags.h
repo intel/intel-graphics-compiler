@@ -1492,6 +1492,7 @@ DECLARE_IGC_REGKEY(bool, EnableIntelFast, false, "Enable intel fast, experimenta
 DECLARE_IGC_REGKEY(bool, disableUnormTypedReadWA, false, "disable software conversion for UNORM surface in Dx10", false)
 DECLARE_IGC_REGKEY(bool, forceGlobalRA, false, "force global register allocator", false)
 DECLARE_IGC_REGKEY(bool, disableVarSplit, false, "disable variable splitting", false)
+DECLARE_IGC_REGKEY(bool, delayVarSplit, false, "delay local variable splitting", false)
 DECLARE_IGC_REGKEY(bool, disableRemat, false, "disable re-materialization", false)
 DECLARE_IGC_REGKEY(bool, EnableDisableMidThreadPreemptionOpt, true, "Disable mid thread preemption", false)
 DECLARE_IGC_REGKEY(DWORD, MidThreadPreemptionDisableThreshold, 600, "Threshold to disable mid thread preemption", false)
