@@ -62,27 +62,6 @@ struct regCandidatesBRA {
   regCandidatesBRA() : firstDefID(-1), isLargeGRF(false) { dstSrcMap.clear(); }
 };
 
-class SRSubPass {
-  IR_Builder &builder;
-  G4_Kernel &kernel;
-
-public:
-  SRSubPass(IR_Builder &B, G4_Kernel &K) : builder(B), kernel(K) {}
-  SRSubPass(const SRSubPass &) = delete;
-  SRSubPass& operator=(const SRSubPass&) = delete;
-  virtual ~SRSubPass() = default;
-
-  void run() {
-    for (auto bb : kernel.fg) {
-      SRSub(bb);
-    }
-  }
-  bool isSRCandidate(G4_INST *inst, regCandidates &dstSrcRegs);
-  bool replaceWithSendi(G4_BB *bb, INST_LIST_ITER instIter,
-                        std::vector<regMap> &dstSrcRegs, bool src0Mov);
-  void SRSub(G4_BB *bb);
-};
-
 class SRSubPassAfterRA {
   IR_Builder &builder;
   G4_Kernel &kernel;
