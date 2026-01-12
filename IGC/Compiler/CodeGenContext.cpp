@@ -326,12 +326,8 @@ LLVMContextWrapper::LLVMContextWrapper(bool createResourceDimTypes) : m_UserAddr
   // This WA_OpaquePointersCL flag is related to the same flag in LLVM itself
   // We're using it here to have consistent behaviour.
   // https://github.com/llvm/llvm-project/blob/release/16.x/llvm/lib/IR/LLVMContextImpl.cpp#L50
-#if LLVM_VERSION_MAJOR < 17 || defined(IGC_LLVM_TRUNK_REVISION)
   auto WA_OpaquePointersCL = cl::getRegisteredOptions()["opaque-pointers"];
   auto opaquesEnabledByFlag = WA_OpaquePointersCL && WA_OpaquePointersCL->getNumOccurrences() > 0;
-#else
-  auto opaquesEnabledByFlag = true;
-#endif
   if (opaquesEnabledByFlag) {
     IGC_IsPointerModeAlreadySet = true;
   }

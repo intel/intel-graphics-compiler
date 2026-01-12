@@ -1491,7 +1491,7 @@ static bool widenNewSIMD8Load(CallInst *CI, unsigned IID,
   constexpr unsigned WidenFactor = 2;
 
   unsigned NumChannels =
-      IGCLLVM::popcount(cast<ConstantInt>(CI->getOperand(0))->getZExtValue());
+      countPopulation(cast<ConstantInt>(CI->getOperand(0))->getZExtValue());
   IGC_ASSERT(NumChannels);
   const DebugLoc &DL = CI->getDebugLoc();
   unsigned LoadWidth =

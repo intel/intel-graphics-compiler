@@ -12,7 +12,6 @@ SPDX-License-Identifier: MIT
 #include "llvm/Transforms/Scalar/BDCE.h"
 #include "llvm/Analysis/GlobalsModRef.h"
 #include "llvm/Analysis/PostDominators.h"
-#include "llvmWrapper/Analysis/DemandedBits.h"
 #include "llvm/Analysis/DemandedBits.h"
 #include "llvm/IR/Function.h"
 #include "llvm/IR/PassManager.h"
@@ -49,11 +48,7 @@ bool BDCELegacyPassWrapper::runOnFunction(Function &F) {
 
 void BDCELegacyPassWrapper::getAnalysisUsage(AnalysisUsage &AU) const {
   AU.setPreservesCFG();
-#if LLVM_VERSION_MAJOR > 16 && !defined(IGC_LLVM_TRUNK_REVISION)
-  AU.addRequired<IGCLLVM::DemandedBitsLegacyPassWrapper>();
-#else
   AU.addRequired<DemandedBitsWrapperPass>();
-#endif
   AU.addPreserved<GlobalsAAWrapperPass>();
 }
 
@@ -68,9 +63,5 @@ using namespace IGCLLVM;
 #define PASS_CFG_ONLY false
 #define PASS_ANALYSIS false
 IGC_INITIALIZE_PASS_BEGIN(BDCELegacyPassWrapper, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
-#if LLVM_VERSION_MAJOR > 16 && !defined(IGC_LLVM_TRUNK_REVISION)
-IGC_INITIALIZE_PASS_DEPENDENCY(DemandedBitsLegacyPassWrapper)
-#else
 IGC_INITIALIZE_PASS_DEPENDENCY(DemandedBitsWrapperPass)
-#endif
 IGC_INITIALIZE_PASS_END(BDCELegacyPassWrapper, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)

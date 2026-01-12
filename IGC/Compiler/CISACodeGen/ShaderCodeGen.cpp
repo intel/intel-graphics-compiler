@@ -165,10 +165,7 @@ SPDX-License-Identifier: MIT
 #include "llvmWrapper/Transforms/Scalar/LoopDeletion.h"
 #include "llvmWrapper/Transforms/Scalar/LoopLoadElimination.h"
 #include "llvmWrapper/Transforms/Scalar/SCCP.h"
-#include "llvmWrapper/Transforms/Scalar/IndVarSimplify.h"
-#include "llvmWrapper/Transforms/Scalar/LICM.h"
-#include "llvmWrapper/Transforms/Scalar/LoopUnrollPass.h"
-#include "llvmWrapper/Transforms/IPO/ConstantMerge.h"
+
 #include "common/LLVMWarningsPop.hpp"
 #include "Compiler/CISACodeGen/PatternMatchPass.hpp"
 #include "Compiler/CISACodeGen/EmitVISAPass.hpp"
@@ -501,7 +498,7 @@ void AddLegalizationPasses(CodeGenContext &ctx, IGCPassManager &mpm, PSSignature
     int LoopUnrollThreshold = ctx.m_DriverInfo.GetLoopUnrollThreshold();
 
     if (LoopUnrollThreshold > 0 && (ctx.m_tempCount < 64)) {
-      mpm.add(IGCLLVM::createLegacyWrappedLoopUnrollPass(2, false, false, LoopUnrollThreshold, -1, 1, -1, -1, -1));
+      mpm.add(llvm::createLoopUnrollPass(2, false, false, LoopUnrollThreshold, -1, 1, -1, -1, -1));
     }
 
     mpm.add(createBarrierNoopPass());
@@ -511,7 +508,7 @@ void AddLegalizationPasses(CodeGenContext &ctx, IGCPassManager &mpm, PSSignature
 
     if (ctx.m_retryManager.AllowLICM() && AllowLICM) {
       mpm.add(createSpecialCasesDisableLICM());
-      mpm.add(IGCLLVM::createLegacyWrappedLICMPass(100, 500, true));
+      mpm.add(llvm::createLICMPass(100, 500, true));
     }
     mpm.add(llvm::createLoopSimplifyPass());
   }
@@ -826,7 +823,7 @@ void AddLegalizationPasses(CodeGenContext &ctx, IGCPassManager &mpm, PSSignature
 
     if (!fastCompile && !highAllocaPressure && !isPotentialHPCKernel && AllowLICM && ctx.m_retryManager.AllowLICM()) {
       mpm.add(createSpecialCasesDisableLICM());
-      mpm.add(IGCLLVM::createLegacyWrappedLICMPass(100, 500, true));
+      mpm.add(llvm::createLICMPass(100, 500, true));
       mpm.add(llvm::createEarlyCSEPass());
     }
     mpm.add(createAggressiveDCEPass());
@@ -1385,7 +1382,7 @@ void OptimizeIR(CodeGenContext *const pContext) {
           mpm.add(createSpecialCasesDisableLICM());
           int licmTh = IGC_GET_FLAG_VALUE(LICMStatThreshold);
           mpm.add(new InstrStatistic(pContext, LICM_STAT, InstrStatStage::BEGIN, licmTh));
-          mpm.add(IGCLLVM::createLegacyWrappedLICMPass(100, 500, true));
+          mpm.add(llvm::createLICMPass(100, 500, true));
           mpm.add(new InstrStatistic(pContext, LICM_STAT, InstrStatStage::END, licmTh));
         }
 
@@ -1402,7 +1399,7 @@ void OptimizeIR(CodeGenContext *const pContext) {
         mpm.add(createIGCInstructionCombiningPass());
 
         if (IGC_IS_FLAG_ENABLED(EnableIndVarSimplification) && pContext->type == ShaderType::OPENCL_SHADER) {
-          mpm.add(IGCLLVM::createLegacyWrappedIndVarSimplifyPass());
+          mpm.add(llvm::createIndVarSimplifyPass());
         }
 
         if (IGC_IS_FLAG_ENABLED(EnableLoopHoistConstant)) {
@@ -1432,7 +1429,7 @@ void OptimizeIR(CodeGenContext *const pContext) {
             IsStage1FastestCompile(pContext->m_CgFlag, pContext->m_StagingCtx) &&
             (FastestS1Options(pContext) == FCEXP_NO_EXPRIMENT || (FastestS1Options(pContext) & FCEXP_DISABLE_UNROLL));
         if ((LoopUnrollThreshold > 0 && unroll && !disableLoopUnrollStage1) || hasIndexTemp) {
-          mpm.add(IGCLLVM::createLegacyWrappedLoopUnrollPass(2, false, false, -1, -1, -1, -1, -1, -1));
+          mpm.add(llvm::createLoopUnrollPass(2, false, false, -1, -1, -1, -1, -1, -1));
         }
 
         // Due to what looks like a bug in LICM, we need to break the LoopPassManager between
@@ -1441,13 +1438,13 @@ void OptimizeIR(CodeGenContext *const pContext) {
 
         if (AllowLICM) {
           mpm.add(createSpecialCasesDisableLICM());
-          mpm.add(IGCLLVM::createLegacyWrappedLICMPass(100, 500, true));
+          mpm.add(llvm::createLICMPass(100, 500, true));
         }
 
         // Second unrolling with the same threshold.
         unroll = !pContext->getModuleMetaData()->compOpt.DisableLoopUnroll && IGC_IS_FLAG_DISABLED(DisableLoopUnroll);
         if (LoopUnrollThreshold > 0 && unroll) {
-          mpm.add(IGCLLVM::createLegacyWrappedLoopUnrollPass(2, false, false, -1, -1, -1, -1, -1, -1));
+          mpm.add(llvm::createLoopUnrollPass(2, false, false, -1, -1, -1, -1, -1, -1));
         }
         // Should be after LICM to accurately reason about which
         // instructions are loop-dependent or not. Needs to be before
@@ -1550,7 +1547,7 @@ void OptimizeIR(CodeGenContext *const pContext) {
         // to JumpThreading pass, but since LLVM-15.x it was removed again.
         mpm.add(IGCLLVM::createLegacyWrappedJumpThreadingPass(BBDuplicateThreshold));
 #else  // LLVM_VERSION_MAJOR
-        mpm.add(IGCLLVM::createLegacyWrappedJumpThreadingPass(false, BBDuplicateThreshold));
+        mpm.add(llvm::createJumpThreadingPass(false, BBDuplicateThreshold));
 #endif // LLVM_VERSION_MAJOR
       }
       mpm.add(llvm::createCFGSimplificationPass());
@@ -1580,7 +1577,7 @@ void OptimizeIR(CodeGenContext *const pContext) {
       if (IGC_IS_FLAG_ENABLED(EnableJumpThreading) && !pContext->m_instrTypes.hasAtomics &&
           !extensiveShader(pContext)) {
         // After lowering 'switch', run jump threading to remove redundant jumps.
-        mpm.add(IGCLLVM::createLegacyWrappedJumpThreadingPass());
+        mpm.add(llvm::createJumpThreadingPass());
       }
 
       // run instruction combining to clean up the code after CFG optimizations
@@ -1621,7 +1618,7 @@ void OptimizeIR(CodeGenContext *const pContext) {
                                          ( // FastestS1Options(pContext) == FCEXP_NO_EXPRIMENT ||
                                              (FastestS1Options(pContext) & FCEXP_DISABLE_UNROLL));
           if ((LoopUnrollThreshold > 0 && unroll && !disableLoopUnrollStage1) || hasIndexTemp) {
-            mpm.add(IGCLLVM::createLegacyWrappedLoopUnrollPass(2, false, false, -1, -1, -1, -1, -1, -1));
+            mpm.add(llvm::createLoopUnrollPass(2, false, false, -1, -1, -1, -1, -1, -1));
           }
         }
 
@@ -1725,7 +1722,7 @@ void OptimizeIR(CodeGenContext *const pContext) {
       mpm.add(createSinkLoadOptPass());
     }
 
-    mpm.add(IGCLLVM::createLegacyWrappedConstantMergePass());
+    mpm.add(createConstantMergePass());
     GFX_ONLY_PASS { mpm.add(CreateMCSOptimization()); }
     GFX_ONLY_PASS { mpm.add(CreateGatingSimilarSamples()); }
 

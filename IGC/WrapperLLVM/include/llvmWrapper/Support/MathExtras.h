@@ -81,15 +81,6 @@ template <typename T> T findLastSet(T Val, llvm::ZeroBehavior ZB = llvm::ZB_Max)
 #endif
 }
 
-template <typename T> inline unsigned popcount(T Value) {
-  static_assert(std::is_unsigned_v<T>, "Only unsigned integral types are allowed.");
-#if LLVM_VERSION_MAJOR > 16 && !defined(IGC_LLVM_TRUNK_REVISION)
-  return (unsigned)llvm::popcount(Value);
-#else
-  return llvm::countPopulation(Value);
-#endif
-}
-
 } // namespace IGCLLVM
 
 #endif

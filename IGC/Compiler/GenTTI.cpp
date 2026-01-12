@@ -142,9 +142,6 @@ bool GenIntrinsicsTTIImpl::isGEPLoopConstDerived(GetElementPtrInst *GEP, const L
       case scZeroExtend:
       case scSignExtend:
       case scAddExpr:
-#if LLVM_VERSION_MAJOR > 16 && !defined(IGC_LLVM_TRUNK_REVISION)
-      case scVScale:
-#endif
       case scMulExpr:
       case scUMaxExpr:
       case scSMaxExpr:

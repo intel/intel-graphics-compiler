@@ -86,7 +86,6 @@ SPDX-License-Identifier: MIT
 #include "llvm/Transforms/Scalar/LoopIdiomRecognize.h"
 #include "llvm/Transforms/Scalar/LoopRotation.h"
 #include "llvm/Transforms/Scalar/LoopUnrollPass.h"
-#include "llvmWrapper/Transforms/Scalar/LoopUnrollPass.h"
 #include "llvm/Transforms/Scalar/LowerExpectIntrinsic.h"
 #include "llvm/Transforms/Scalar/Reassociate.h"
 #include "llvm/Transforms/Scalar/SROA.h"
@@ -99,8 +98,6 @@ SPDX-License-Identifier: MIT
 #include "llvmWrapper/Transforms/Scalar/LoopIdiomRecognize.h"
 #include "llvmWrapper/Transforms/Scalar/CorrelatedValuePropagation.h"
 #include "llvmWrapper/Transforms/Scalar/JumpThreading.h"
-#include "llvmWrapper/Transforms/Scalar/IndVarSimplify.h"
-#include "llvmWrapper/Transforms/Scalar/LICM.h"
 
 using namespace llvm;
 
@@ -794,7 +791,7 @@ bool GenXTargetMachine::addPassesToEmitFile(
   /// ----
   /// This is a standard LLVM pass to hoist/sink the loop invariant code after
   /// legalization.
-  vc::addPass(PM, IGCLLVM::createLegacyWrappedLICMPass());
+  vc::addPass(PM, createLICMPass());
   vc::addPass(PM, createEarlyCSEPass());
   /// DeadCodeElimination
   /// -------------------
@@ -987,11 +984,11 @@ void GenXTargetMachine::adjustPassManager(PassManagerBuilder &PMBuilder) {
         PM.add(createLICMPass());
         PM.add(createInstructionCombiningPass());
         if (!(BackendConfig.disableIndvarsOpt())) {
-          PM.add(IGCLLVM::createLegacyWrappedIndVarSimplifyPass());
+          PM.add(createIndVarSimplifyPass());
         }
         PM.add(IGCLLVM::createLegacyWrappedLoopIdiomRecognizePass());
         PM.add(IGCLLVM::createLegacyWrappedLoopDeletionPass());
-        PM.add(IGCLLVM::createLegacyWrappedSimpleLoopUnrollPass());
+        PM.add(createSimpleLoopUnrollPass());
         PM.add(createInstructionCombiningPass());
         // Simplify region accesses.
         PM.add(createGenXRegionCollapsingPass());

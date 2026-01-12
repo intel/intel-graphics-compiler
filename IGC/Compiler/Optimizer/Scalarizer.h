@@ -123,7 +123,7 @@ private:
                               llvm::Value *origValue, llvm::Instruction &origInst, int dstIdx = -1);
 
   /// @brief a set contains vector from original kernel that need to be used after sclarization
-  llvm::SetVector<llvm::Value *> m_usedVectors;
+  llvm::SmallSetVector<llvm::Value *, ESTIMATED_INST_NUM> m_usedVectors;
 
   /// @brief update museVectors set with the vectori value to be obtained at when scalarization finish
   /// @param vectorVal Vector being added to set

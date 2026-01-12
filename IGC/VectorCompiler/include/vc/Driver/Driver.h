@@ -20,6 +20,7 @@ SPDX-License-Identifier: MIT
 #include <inc/common/sku_wa.h>
 
 #include <llvm/ADT/ArrayRef.h>
+#include <llvm/ADT/Optional.h>
 #include <llvm/Support/Error.h>
 #include <llvm/Support/MemoryBuffer.h>
 #include <llvm/Target/TargetOptions.h>

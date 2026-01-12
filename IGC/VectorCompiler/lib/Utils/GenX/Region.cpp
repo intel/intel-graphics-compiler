@@ -226,7 +226,7 @@ CMRegion::CMRegion(unsigned Bits, unsigned ElementBytes)
 
     if (Bits != 1) {
       Stride = IGCLLVM::countr_zero(Bits & ~1);
-      NumElements = Width = IGCLLVM::popcount(Bits);
+      NumElements = Width = countPopulation(Bits);
     }
   }
 }

@@ -12,7 +12,6 @@ SPDX-License-Identifier: MIT
 #include "llvm/Transforms/Vectorize/SLPVectorizer.h"
 #include "llvm/Analysis/GlobalsModRef.h"
 #include "llvm/Analysis/PostDominators.h"
-#include "llvmWrapper/Analysis/DemandedBits.h"
 #include "llvm/Analysis/DemandedBits.h"
 #include "llvm/Analysis/AssumptionCache.h"
 #include "llvm/Analysis/ScalarEvolution.h"
@@ -20,7 +19,6 @@ SPDX-License-Identifier: MIT
 #include "llvm/Analysis/ProfileSummaryInfo.h"
 #include "llvm/Analysis/TargetLibraryInfo.h"
 #include "llvm/Transforms/Utils/InjectTLIMappings.h"
-#include "llvmWrapper/Transforms/Utils/InjectTLIMappings.h"
 #include "llvm/Analysis/TargetTransformInfo.h"
 #include "llvm/Analysis/BasicAliasAnalysis.h"
 #include "llvm/Analysis/OptimizationRemarkEmitter.h"
@@ -70,14 +68,9 @@ void SLPVectorizerPassWrapper::getAnalysisUsage(AnalysisUsage &AU) const {
   AU.addRequired<TargetTransformInfoWrapperPass>();
   AU.addRequired<LoopInfoWrapperPass>();
   AU.addRequired<DominatorTreeWrapperPass>();
-#if LLVM_VERSION_MAJOR > 16 && !defined(IGC_LLVM_TRUNK_REVISION)
-  AU.addRequired<IGCLLVM::DemandedBitsLegacyPassWrapper>();
-  AU.addRequired<IGCLLVM::InjectTLIMappingsLegacyPassWrapper>();
-#else
   AU.addRequired<DemandedBitsWrapperPass>();
-  AU.addRequired<InjectTLIMappingsLegacy>();
-#endif
   AU.addRequired<OptimizationRemarkEmitterWrapperPass>();
+  AU.addRequired<InjectTLIMappingsLegacy>();
   AU.addPreserved<LoopInfoWrapperPass>();
   AU.addPreserved<DominatorTreeWrapperPass>();
   AU.addPreserved<AAResultsWrapperPass>();
@@ -101,12 +94,7 @@ IGC_INITIALIZE_PASS_DEPENDENCY(TargetTransformInfoWrapperPass)
 IGC_INITIALIZE_PASS_DEPENDENCY(AssumptionCacheTracker)
 IGC_INITIALIZE_PASS_DEPENDENCY(ScalarEvolutionWrapperPass)
 IGC_INITIALIZE_PASS_DEPENDENCY(LoopSimplify)
-#if LLVM_VERSION_MAJOR > 16 && !defined(IGC_LLVM_TRUNK_REVISION)
-IGC_INITIALIZE_PASS_DEPENDENCY(DemandedBitsLegacyPassWrapper)
-IGC_INITIALIZE_PASS_DEPENDENCY(InjectTLIMappingsLegacyPassWrapper)
-#else
 IGC_INITIALIZE_PASS_DEPENDENCY(DemandedBitsWrapperPass)
-IGC_INITIALIZE_PASS_DEPENDENCY(InjectTLIMappingsLegacy)
-#endif
 IGC_INITIALIZE_PASS_DEPENDENCY(OptimizationRemarkEmitterWrapperPass)
+IGC_INITIALIZE_PASS_DEPENDENCY(InjectTLIMappingsLegacy)
 IGC_INITIALIZE_PASS_END(SLPVectorizerPassWrapper, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
