@@ -234,11 +234,11 @@ KernelArg::ArgType KernelArg::calcArgType(const ImplicitArg &arg) const {
   case ImplicitArg::ENQUEUED_LOCAL_WORK_SIZE:
     return KernelArg::ArgType::IMPLICIT_ENQUEUED_LOCAL_WORK_SIZE;
   case ImplicitArg::LOCAL_ID_X:
-    // fall through until LOCAL_ID_Z
+    return KernelArg::ArgType::IMPLICIT_LOCAL_ID_X;
   case ImplicitArg::LOCAL_ID_Y:
-    // fall through until LOCAL_ID_Z
+    return KernelArg::ArgType::IMPLICIT_LOCAL_ID_Y;
   case ImplicitArg::LOCAL_ID_Z:
-    return KernelArg::ArgType::IMPLICIT_LOCAL_IDS;
+    return KernelArg::ArgType::IMPLICIT_LOCAL_ID_Z;
   case ImplicitArg::BUFFER_SIZE:
     return KernelArg::ArgType::IMPLICIT_BUFFER_SIZE;
   case ImplicitArg::STAGE_IN_GRID_ORIGIN:
@@ -584,6 +584,11 @@ bool KernelArg::isArgPtrType() {
          m_argType == ArgType::PTR_DEVICE_QUEUE;
 }
 
+bool KernelArg::isImplicitLocalId() {
+  return m_argType == ArgType::IMPLICIT_LOCAL_ID_X || m_argType == ArgType::IMPLICIT_LOCAL_ID_Y ||
+         m_argType == ArgType::IMPLICIT_LOCAL_ID_Z;
+}
+
 bool KernelArgsOrder::VerifyOrder(std::array<KernelArg::ArgType, static_cast<int32_t>(KernelArg::ArgType::End)> &order,
                                   KernelArg::ArgType sent) {
   bool validOrder = false;
@@ -685,7 +690,9 @@ KernelArgsOrder::KernelArgsOrder(InputType layout) {
 
         KernelArg::ArgType::R1,
         KernelArg::ArgType::RT_STACK_ID,
-        KernelArg::ArgType::IMPLICIT_LOCAL_IDS,
+        KernelArg::ArgType::IMPLICIT_LOCAL_ID_X,
+        KernelArg::ArgType::IMPLICIT_LOCAL_ID_Y,
+        KernelArg::ArgType::IMPLICIT_LOCAL_ID_Z,
 
         KernelArg::ArgType::IMPLICIT_BUFFER_SIZE,
 
@@ -742,7 +749,9 @@ KernelArgsOrder::KernelArgsOrder(InputType layout) {
 
         KernelArg::ArgType::R1,
         KernelArg::ArgType::RT_STACK_ID,
-        KernelArg::ArgType::IMPLICIT_LOCAL_IDS,
+        KernelArg::ArgType::IMPLICIT_LOCAL_ID_X,
+        KernelArg::ArgType::IMPLICIT_LOCAL_ID_Y,
+        KernelArg::ArgType::IMPLICIT_LOCAL_ID_Z,
 
         KernelArg::ArgType::RUNTIME_VALUE,
         KernelArg::ArgType::IMPLICIT_INDIRECT_DATA_POINTER,

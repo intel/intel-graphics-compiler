@@ -727,7 +727,9 @@ bool COpenCLKernel::CreateZEPayloadArguments(IGC::KernelArg *kernelArg, uint pay
     break;
 
   // Local ids are supported in per-thread payload arguments
-  case KernelArg::ArgType::IMPLICIT_LOCAL_IDS:
+  case KernelArg::ArgType::IMPLICIT_LOCAL_ID_X:
+  case KernelArg::ArgType::IMPLICIT_LOCAL_ID_Y:
+  case KernelArg::ArgType::IMPLICIT_LOCAL_ID_Z:
     break;
 
   // Bindless offset for pointer argument. This ArgType presents when bindless-advanced-mode
@@ -1393,7 +1395,7 @@ void COpenCLKernel::AllocatePayload() {
     }
 
     // Local IDs are non-uniform and may have two instances in SIMD32 mode
-    int numAllocInstances = arg.getArgType() == KernelArg::ArgType::IMPLICIT_LOCAL_IDS ? m_numberInstance : 1;
+    int numAllocInstances = arg.isImplicitLocalId() ? m_numberInstance : 1;
 
     if (arg.getArgType() == KernelArg::ArgType::RT_STACK_ID) {
       numAllocInstances = m_numberInstance;
@@ -1410,8 +1412,7 @@ void COpenCLKernel::AllocatePayload() {
           alignment = m_Context->getModule()->getDataLayout().getPointerTypeSize(arg.getArg()->getType());
 
         // FIXME: move alignment checks to implicit arg creation
-        if ((arg.getArgType() == KernelArg::ArgType::IMPLICIT_LOCAL_IDS ||
-             arg.getArgType() == KernelArg::ArgType::RT_STACK_ID) &&
+        if ((arg.isImplicitLocalId() || arg.getArgType() == KernelArg::ArgType::RT_STACK_ID) &&
             m_Platform->getGRFSize() == 64) {
           alignment = 64;
           // generate a single SIMD32 variable in this case
@@ -1454,7 +1455,7 @@ void COpenCLKernel::AllocatePayload() {
             offsetCorrection = offset - constantBufferStart;
           }
 
-          if (useInlineData && !inlineDataProcessed && arg.getArgType() != KernelArg::ArgType::IMPLICIT_LOCAL_IDS &&
+          if (useInlineData && !inlineDataProcessed && !arg.isImplicitLocalId() &&
               arg.getArgType() != KernelArg::ArgType::RT_STACK_ID &&
               arg.getArgType() != KernelArg::ArgType::IMPLICIT_R0) {
             // Calc if we can fit this arg in inlinedata:
@@ -1504,7 +1505,8 @@ void COpenCLKernel::AllocatePayload() {
 
       const uint offsetInPayload = offset - constantBufferStart - offsetCorrection;
 
-      if (arg.getArgType() == KernelArg::ArgType::IMPLICIT_LOCAL_IDS) {
+      // All three local IDs are always present.
+      if (arg.isImplicitLocalId()) {
         m_kernelInfo.m_threadPayload.HasLocalIDx = true;
         m_kernelInfo.m_threadPayload.HasLocalIDy = true;
         m_kernelInfo.m_threadPayload.HasLocalIDz = true;

@@ -105,7 +105,9 @@ public:
     IMPLICIT_LOCAL_MEMORY_STATELESS_WINDOW_SIZE,
     IMPLICIT_PRIVATE_MEMORY_STATELESS_SIZE,
 
-    IMPLICIT_LOCAL_IDS,
+    IMPLICIT_LOCAL_ID_X,
+    IMPLICIT_LOCAL_ID_Y,
+    IMPLICIT_LOCAL_ID_Z,
 
     // Buffer bounds checking
     IMPLICIT_BUFFER_SIZE,
@@ -259,6 +261,10 @@ public:
   /// @brief  Checks whether the given argument is a sampler
   /// @return true is argument type is PTR_LOCAL | PTR_GLOBAL | PTR_CONSTANT | PTR_DEVICE_QUEUE
   bool isArgPtrType();
+
+  /// @brief  Checks whether the given argument is an implicit local id
+  /// @return true is argument type is IMPLICIT_LOCAL_ID_X | IMPLICIT_LOCAL_ID_Y | IMPLICIT_LOCAL_ID_Z
+  bool isImplicitLocalId();
 
 private:
   /// @brief  Calculates the allocation size needed for the given explicit argument
