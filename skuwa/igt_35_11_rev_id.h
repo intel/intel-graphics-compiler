@@ -9,6 +9,7 @@ SPDX-License-Identifier: MIT
 // This is an auto-generated file. Please do not edit!
 // If changes are needed here please reach out to the codeowners, thanks.
 
+
 #include "wa_def.h"
 
 #define GT_35_11_REV_ID_A0   SI_REV_ID(0,0)

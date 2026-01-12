@@ -412,6 +412,12 @@ SPDX-License-Identifier: MIT
         WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_UNKNOWN)
 
         WA_DECLARE(
+        Wa_14025275057,
+        "Workaround",
+        WA_BUG_TYPE_UNKNOWN,
+        WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_UNKNOWN)
+
+        WA_DECLARE(
         Wa_1406306137,
         "Workaround",
         WA_BUG_TYPE_HANG,
@@ -668,10 +674,4 @@ SPDX-License-Identifier: MIT
         "Workaround",
         WA_BUG_TYPE_FUNCTIONAL,
         WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_D3D)
-
-        WA_DECLARE(
-        Wa_14025275057,
-        "Workaround",
-        WA_BUG_TYPE_UNKNOWN,
-        WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_UNKNOWN)
 
