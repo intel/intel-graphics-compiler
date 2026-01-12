@@ -1344,7 +1344,7 @@ unsigned ConstantLoader::getRegionBits(unsigned NeededBits,
         if ((Bits & NeededBits) == NeededBits)
           return Bits;
         // See if it is the best one we have seen so far.
-        unsigned Count = countPopulation(Bits & NeededBits);
+        unsigned Count = IGCLLVM::popcount(Bits & NeededBits);
         if (Count > BestCount) {
           BestCount = Count;
           BestBits = Bits;
@@ -1633,7 +1633,7 @@ Instruction *ConstantLoader::loadCyclicConstruct(
   // Remove any splat set with only a single element.
   unsigned NewSize = 0;
   for (unsigned i = 0, e = SplatSets.size(); i != e; ++i) {
-    if (countPopulation(SplatSets[i]) >= 2)
+    if (IGCLLVM::popcount(SplatSets[i]) >= 2)
       SplatSets[NewSize++] = SplatSets[i];
   }
   SplatSets.resize(NewSize);
@@ -1680,7 +1680,7 @@ Instruction *ConstantLoader::loadCyclicConstruct(
       unsigned Bits =
           getRegionBits(SplatSets[i] & RemainingBits,
                         SplatSets[i] | RemainingBits | UndefBits, NumElements);
-      unsigned Count = countPopulation(Bits);
+      unsigned Count = IGCLLVM::popcount(Bits);
       // For this splat set, Bits is a bitmap of the vector elements that
       // we can set in this splat set in a legal 1D region (possibly including
       // elements already set and undef elements), and Count is how many

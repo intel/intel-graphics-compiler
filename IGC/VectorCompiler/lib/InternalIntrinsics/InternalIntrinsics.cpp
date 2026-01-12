@@ -37,6 +37,7 @@ See LICENSE.TXT for details.
 #include "llvmWrapper/IR/Type.h"
 #include "llvmWrapper/Support/ModRef.h"
 #include "llvmWrapper/Support/TypeSize.h"
+#include "llvmWrapper/Support/MathExtras.h"
 
 using namespace llvm;
 using namespace vc;
@@ -937,7 +938,7 @@ InternalIntrinsic::getMemoryVectorSizePerLane(const llvm::Instruction *I) {
   case InternalIntrinsic::lsc_store_quad_ugm: {
     auto *ChannelMask = cast<ConstantInt>(I->getOperand(3));
     auto Mask = ChannelMask->getZExtValue();
-    auto Size = countPopulation(Mask);
+    auto Size = IGCLLVM::popcount(Mask);
     IGC_ASSERT(Size > 0 && Size <= 4);
     return Size;
   }
@@ -958,7 +959,7 @@ InternalIntrinsic::getMemoryVectorSizePerLane(const llvm::Instruction *I) {
   case InternalIntrinsic::sampler_load_predef_surface: {
     auto *ChannelMask = cast<ConstantInt>(I->getOperand(2));
     auto Mask = ChannelMask->getZExtValue();
-    auto Size = countPopulation(Mask);
+    auto Size = IGCLLVM::popcount(Mask);
     IGC_ASSERT(Size > 0 && Size <= 4);
     return Size;
   }

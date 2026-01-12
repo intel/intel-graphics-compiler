@@ -1138,11 +1138,11 @@ bool GenIRLowering::combinePack4i8Or2i16(Instruction *inst, uint64_t numBits) co
     uint64_t rMask = 0;
     // Match patterns that pack the sign and magnitude parts.
     if (match(v, m_Or(m_And(m_Value(lOp), m_ConstantInt(lMask)), m_And(m_Value(rOp), m_ConstantInt(rMask)))) &&
-        (countPopulation(rMask) == 1 || countPopulation(lMask) == 1)) {
-      Value *signOp = countPopulation(rMask) == 1 ? rOp : lOp;
-      Value *magnOp = countPopulation(rMask) == 1 ? lOp : rOp;
-      uint64_t signMask = countPopulation(rMask) == 1 ? rMask : lMask;
-      uint64_t magnMask = countPopulation(rMask) == 1 ? lMask : rMask;
+        (IGCLLVM::popcount(rMask) == 1 || IGCLLVM::popcount(lMask) == 1)) {
+      Value *signOp = IGCLLVM::popcount(rMask) == 1 ? rOp : lOp;
+      Value *magnOp = IGCLLVM::popcount(rMask) == 1 ? lOp : rOp;
+      uint64_t signMask = IGCLLVM::popcount(rMask) == 1 ? rMask : lMask;
+      uint64_t magnMask = IGCLLVM::popcount(rMask) == 1 ? lMask : rMask;
       uint64_t shlBits = 0;
       uint64_t shrBits = 0;
       // %b = shl nsw i32 %a, 24
