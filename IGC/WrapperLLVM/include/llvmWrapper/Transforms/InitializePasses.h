@@ -13,6 +13,7 @@ namespace llvm {
 class PassRegistry;
 }
 
+void initializeADCELegacyPassWrapperPass(llvm::PassRegistry &);
 void initializeCorrelatedValuePropagationLegacyPassWrapperPass(llvm::PassRegistry &);
 void initializeDSELegacyPassWrapperPass(llvm::PassRegistry &);
 void initializeJumpThreadingPassWrapperPass(llvm::PassRegistry &);

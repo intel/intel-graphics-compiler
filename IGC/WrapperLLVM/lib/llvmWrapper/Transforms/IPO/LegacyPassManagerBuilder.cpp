@@ -23,6 +23,7 @@ SPDX-License-Identifier: MIT
 #include "llvmWrapper/Transforms/Scalar/DivRemPairs.h"
 #include "llvmWrapper/Transforms/IPO/Annotation2Metadata.h"
 #include "llvmWrapper/Transforms/IPO/ForceFunctionAttrs.h"
+#include "llvmWrapper/Transforms/Scalar/ADCE.h"
 #include "llvmWrapper/Transforms/Scalar/BDCE.h"
 #include "llvmWrapper/Transforms/Scalar/AlignmentFromAssumptions.h"
 #include "llvmWrapper/Transforms/Scalar/CallSiteSplitting.h"
@@ -172,7 +173,7 @@ void PassManagerBuilder::addFunctionSimplificationPasses(legacy::PassManagerBase
     MPM.add(createJumpThreadingPass()); // Thread jumps
     MPM.add(createCorrelatedValuePropagationPass());
   }
-  MPM.add(createAggressiveDCEPass()); // Delete dead instructions
+  MPM.add(IGCLLVM::createLegacyWrappedADCEPass()); // Delete dead instructions
 
   MPM.add(createMemCpyOptPass()); // Remove memcpy / form memset
   // TODO: Investigate if this is too expensive at O1.
