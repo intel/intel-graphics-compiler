@@ -217,6 +217,11 @@ class IfConverter {
       return false;
     }
 
+    if (I->isDpas()) {
+      // dpas does not allow predicate
+      return false;
+    }
+
     G4_opcode op = I->opcode();
     switch (G4_Inst_Table[op].instType) {
     case InstTypeMov:
