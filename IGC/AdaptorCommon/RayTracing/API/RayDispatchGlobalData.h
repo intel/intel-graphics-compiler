@@ -119,6 +119,8 @@ public:
   uint64_t GetScratchSpaceBufferPointer() const { return 0; };
   uint64_t GetResourceDescriptorHeap() const { return 0; };
   uint64_t GetBaseSurfaceStatePointer() const { return 0; };
+  uint32_t GetResourceDescriptorHeapOffset() const { return 0; };
+  uint32_t GetSamplerDescriptorHeapOffset() const { return 0; };
 };
 
 // Layout used to pass global data to the shaders
@@ -156,6 +158,8 @@ struct RayDispatchGlobalData {
     uint32_t pMissShaderStride;  // stride of miss shader records (8-bytes alignment)
     uint64_t pRtMemBasePtr;      // base address of the allocated stack memory
 
+    uint32_t SamplerDescriptorHeapOffset; // Offset in surface states to the start of the sampler descriptor heap
+
     union {
       struct {
         uint32_t baseSSHOffset; // (index/bindless offset) of first memory region for stateful indirect accesses
@@ -173,8 +177,8 @@ struct RayDispatchGlobalData {
       };
     };
 
-    uint64_t uberTilesMap; // base address of the uber tiles map used for AtomicPull model
-    uint32_t paddingBits4; // 1 dword of padding to make sure the struct size is multiple of 8 on all platforms
+    uint64_t uberTilesMap;                 // base address of the uber tiles map used for AtomicPull model
+    uint32_t ResourceDescriptorHeapOffset; // Offset in surface states to the start of the resource descriptor heap
 
     uint32_t pStackSizePerRay;          // maximal stack size of a ray
     uint32_t swStackSizePerRay;         // size in bytes per ray of the SWStack
@@ -210,6 +214,8 @@ struct RayDispatchGlobalData {
       dispatchRaysDimensions[1] = umd.GetDispatchHeight();
       dispatchRaysDimensions[2] = umd.GetDispatchDepth();
       uberTilesMap = umd.GetUberTilesMap();
+      ResourceDescriptorHeapOffset = umd.GetResourceDescriptorHeapOffset();
+      SamplerDescriptorHeapOffset = umd.GetSamplerDescriptorHeapOffset();
 
     }
   };
@@ -343,7 +349,7 @@ static_assert((sizeof(RayDispatchGlobalData::RT::Xe3) - sizeof(RayDispatchGlobal
                   0,
               "Unexpected GlobalData alignment");
 
-static_assert(sizeof(RayDispatchGlobalData) == 192, "unexpected size?");
+static_assert(sizeof(RayDispatchGlobalData) == 200, "unexpected size?");
 
 static_assert(sizeof(RayDispatchGlobalData::RT::Xe) == sizeof(RayDispatchGlobalData), "unexpected size?");
 static_assert(sizeof(RayDispatchGlobalData::RT::Xe3) == sizeof(RayDispatchGlobalData), "unexpected size?");
