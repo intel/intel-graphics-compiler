@@ -609,16 +609,6 @@ bool IGCRegisterPressurePublisher::runOnModule(llvm::Module &M) {
       continue;
     }
 
-    auto ExternalPressure = getAnalysis<IGCFunctionExternalRegPressureAnalysis>().getExternalPressureForFunction(&F);
-    auto *DT = &getAnalysis<DominatorTreeWrapperPass>(F).getDomTree();
-    auto *PDT = &getAnalysis<PostDominatorTreeWrapperPass>(F).getPostDomTree();
-    auto *LI = &getAnalysis<LoopInfoWrapperPass>(F).getLoopInfo();
-
-    TranslationTable TT;
-    TT.run(F);
-    WIAnalysisRunner WI(&F, LI, DT, PDT, MDUtils, CGCtx, ModMD, &TT, false);
-    WI.run();
-
     IGCLivenessAnalysisRunner RPE(CGCtx, MDUtils, FGA);
     RPE.livenessAnalysis(F, nullptr);
 
@@ -629,6 +619,17 @@ bool IGCRegisterPressurePublisher::runOnModule(llvm::Module &M) {
     bool AlreadyPublished = (RPE.checkPublishRegPressureMetadata(F) != 0);
 
     if (!AlreadyPublished) {
+      auto ExternalPressure = getAnalysis<IGCFunctionExternalRegPressureAnalysis>().getExternalPressureForFunction(&F);
+
+      auto *DT = &getAnalysis<DominatorTreeWrapperPass>(F).getDomTree();
+      auto *PDT = &getAnalysis<PostDominatorTreeWrapperPass>(F).getPostDomTree();
+      auto *LI = &getAnalysis<LoopInfoWrapperPass>(F).getLoopInfo();
+
+      TranslationTable TT;
+      TT.run(F);
+      WIAnalysisRunner WI(&F, LI, DT, PDT, MDUtils, CGCtx, ModMD, &TT, false);
+      WI.run();
+
       MaxPressureInFunction = RPE.getMaxRegCountForFunction(F, SimdSize, &WI);
       RPE.publishRegPressureMetadata(F, MaxPressureInFunction + ExternalPressure);
     }
