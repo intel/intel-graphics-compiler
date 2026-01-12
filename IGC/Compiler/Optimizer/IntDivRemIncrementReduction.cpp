@@ -500,13 +500,13 @@ std::pair<Value *, APInt> IntDivRemIncrementReductionImpl::getBaseAndOffset(Valu
 }
 
 Instruction *IntDivRemIncrementReductionImpl::getRemForDiv(Instruction *div) {
+  IGC_ASSERT(div);
   // Find corresponding urem for a udiv instruction
   // Just return the first one, multiple urem with same dividend/divisor should have been CSE'ed away
   for (auto *user : div->getOperand(0)->users()) {
-    if (cast<Instruction>(user)->getParent() != div->getParent())
-      continue; // only consider urem in the same basic block for simplicity
-
     if (auto *inst = dyn_cast<Instruction>(user)) {
+      if (inst->getParent() != div->getParent())
+        continue; // only consider urem in the same basic block for simplicity
       if (inst->getOpcode() == Instruction::URem && inst->getOperand(0) == div->getOperand(0) &&
           inst->getOperand(1) == div->getOperand(1)) {
         return inst;
