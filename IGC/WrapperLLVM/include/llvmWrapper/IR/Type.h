@@ -11,6 +11,7 @@ SPDX-License-Identifier: MIT
 
 #include "llvm/IR/Type.h"
 #include "llvm/Support/ErrorHandling.h"
+#include <utility>
 
 namespace IGCLLVM {
 /// Only use this method in code that is not reachable with opaque pointers,
@@ -24,7 +25,7 @@ inline llvm::Type *getNonOpaquePtrEltTy(const llvm::Type *PtrTy) {
   return PtrTy->getNonOpaquePointerElementType();
 #else
   // not supported above LLVM 16
-  llvm::llvm_unreachable("Typed pointers are discontinued above LLVM16.");
+  llvm_unreachable("Typed pointers are discontinued above LLVM16.");
   return nullptr;
 #endif
 }

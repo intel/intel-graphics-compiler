@@ -57,7 +57,7 @@ void DemandedBitsLegacyPassWrapper::getAnalysisUsage(AnalysisUsage &AU) const {
 
 char DemandedBitsLegacyPassWrapper::ID = 0;
 FunctionPass *createLegacyWrappedDemandedBitsPass() {
-#if LLLVM_VERSION_MAJOR > 16
+#if LLVM_VERSION_MAJOR > 16
   return new DemandedBitsLegacyPassWrapper();
 #else
   return llvm::createDemandedBitsWrapperPass();
