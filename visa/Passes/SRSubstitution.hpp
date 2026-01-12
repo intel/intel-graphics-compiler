@@ -80,6 +80,8 @@ public:
   }
   bool isLargeGRFOpnd(G4_Operand *inst);
   bool canRegisterBeEncoded(G4_Operand *opnd);
+  bool isRemoveAble(G4_INST *i);
+  G4_INST *getRemoveableImm(G4_INST *inst, std::vector<G4_INST *> &immMovs);
   bool checkCandidateForLargeGRF(G4_INST *inst, regCandidatesBRA &dstSrcRegs);
   bool isSRCandidateAfterRA(G4_INST *inst, regCandidatesBRA &dstSrcRegs);
   bool replaceWithSendiAfterRA(G4_BB *bb, INST_LIST_ITER instIter,

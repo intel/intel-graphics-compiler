@@ -86,6 +86,184 @@ bool SRSubPassAfterRA::canRegisterBeEncoded(G4_Operand *opnd) {
   return !isLargeGRFOpnd(opnd);
 }
 
+bool SRSubPassAfterRA::isRemoveAble(G4_INST *i) {
+  if (i->opcode() != G4_mov) {
+    return false;
+  }
+
+  if (i->getPredicate() || i->getCondMod() || i->getSaturate()) {
+    return false;
+  }
+
+  // The instruction is only used for payload preparation.
+  if (i->use_size() != 1) {
+    return false;
+  }
+
+  G4_DstRegRegion *dstRgn = i->getDst();
+  G4_Operand *src = i->getSrc(0);
+
+  if (!src->isSrcRegRegion()) {
+    return false;
+  }
+
+  // Not GRF source
+  if (!(src->getBase()->isRegVar() &&
+        (src->getBase()->asRegVar()->getDeclare()->getRegFile() == G4_GRF ||
+         src->getBase()->asRegVar()->getDeclare()->getRegFile() == G4_INPUT))) {
+    return false;
+  }
+
+  // The src region is scalar
+  if (src->isScalarSrc()) {
+    return false;
+  }
+
+  G4_SrcRegRegion *srcRgn = src->asSrcRegRegion();
+
+  if (srcRgn->hasModifier()) {
+    return false;
+  }
+
+  // dst GRF aligned and contigous
+  if (dstRgn->getSubRegOff() || dstRgn->getHorzStride() != 1) {
+    return false;
+  }
+
+  // src GRF aligned and contigous
+  if (srcRgn->getSubRegOff() ||
+      !srcRgn->getRegion()->isContiguous(i->getExecSize())) {
+    return false;
+  }
+
+  // The src region is not packed
+  if (!srcRgn->getRegion()->isPackedRegion()) {
+    return false;
+  }
+
+  // No type conversion
+  if (dstRgn->getType() != src->getType()) {
+    return false;
+  }
+
+  // If the destination operand size is less than 1 GRF
+  if ((dstRgn->getLinearizedEnd() - dstRgn->getLinearizedStart() + 1) <
+      builder.getGRFSize()) {
+    return false;
+  }
+
+  // If the source operand size is less than 1 GRF
+  if ((src->getLinearizedEnd() - src->getLinearizedStart() + 1) <
+      builder.getGRFSize()) {
+    return false;
+  }
+
+  // GRF Alignment with physical register assigned
+  if (dstRgn->getLinearizedStart() % builder.getGRFSize() != 0 ||
+      src->getLinearizedStart() % builder.getGRFSize() != 0) {
+    return false;
+  }
+
+  // Move to self instruction will be removed by following pass. So cannot
+  // be counted.
+  if (dstRgn->getLinearizedStart() == src->getLinearizedStart()) {
+    return false;
+  }
+
+  // It's not global define
+  if (!(builder.getIsKernel() && kernel.fg.getNumBB() == 1)) {
+    if (kernel.fg.globalOpndHT.isOpndGlobal(dstRgn) &&
+        !dstRgn->getTopDcl()->getIsBBLocal()) {
+      return false;
+    }
+  }
+
+  // In some platforms, mov is not removeable if the src register > r255
+  if (!canRegisterBeEncoded(src)) {
+    return false;
+  }
+
+  return true;
+}
+
+// mov (16)             r81.0<1>:f  0x8:f // $52:&54:
+// mov (16|M16)         r89.0<1>:f  0x8:f // $53:&55:
+// mov (16)             r82.0<1>:f  0x0:f // $54:&56:
+// mov (16|M16)         r90.0<1>:f  0x0:f // $55:&57:
+// mov (16)             r83.0<1>:f  0x0:f // $56:&58:
+// mov (16|M16)         r91.0<1>:f  0x0:f // $57:&59:
+// mov (16)             r84.0<1>:f  0x0:f // $58:&60:
+// mov (16|M16)         r92.0<1>:f  0x0:f // $59:&61:
+// mov (16)             r85.0<1>:f  0x0:f // $60:&62:
+// mov (16|M16)         r93.0<1>:f  0x0:f // $61:&63:
+// mov (16)             r86.0<1>:f  0x0:f // $62:&64:
+// mov (16|M16)         r94.0<1>:f  0x0:f // $63:&65:
+// mov (16)             r87.0<1>:f  0x0:f // $64:&66:
+// mov (16|M16)         r95.0<1>:f  0x0:f // $65:&67:
+// mov (16)             r88.0<1>:f  0x0:f // $66:&68:
+// mov (16|M16)         r96.0<1>:f  0x0:f // $67:&69:
+// ==>
+// mov (16)             r81.0<1>:f  0x8:f // $52:&54:
+// mov (16|M16)         r89.0<1>:f  0x8:f // $53:&55:
+// mov (16)             r82.0<1>:f  0x0:f // $54:&56:
+// mov (16|M16)         r90.0<1>:f  0x0:f // $55:&57:
+//
+// Reuse r81, r89, r82, r90 in the gather send
+G4_INST *SRSubPassAfterRA::getRemoveableImm(G4_INST *inst,
+                                            std::vector<G4_INST *> &immMovs) {
+  // The instruction is only used for payload preparation.
+  if (inst->use_size() != 1) {
+    return (G4_INST *)nullptr;
+  }
+
+  if (inst->opcode() != G4_mov) {
+    return (G4_INST *)nullptr;
+  }
+
+  G4_DstRegRegion *dst = inst->getDst();
+  // dst GRF aligned and contigous
+  if (dst->getSubRegOff() || dst->getHorzStride() != 1) {
+    return (G4_INST *)nullptr;
+  }
+
+  if (kernel.fg.globalOpndHT.isOpndGlobal(dst)) {
+    return (G4_INST *)nullptr;
+  }
+
+  // GRF Alignment with physical register assigned
+  if (dst->getLinearizedStart() % builder.getGRFSize() != 0) {
+    return (G4_INST *)nullptr;
+  }
+
+  // If the destination operand size is less than 1 GRF
+  if ((dst->getLinearizedEnd() - dst->getLinearizedStart() + 1) <
+      builder.getGRFSize()) {
+    return (G4_INST *)nullptr;
+  }
+
+  G4_Operand *src = inst->getSrc(0);
+  int64_t imm = src->asImm()->getImm();
+  for (size_t i = 0; i < immMovs.size(); i++) {
+    G4_INST *imov = immMovs[i];
+    G4_Operand *isrc = imov->getSrc(0);
+    int64_t iimm = isrc->asImm()->getImm();
+    if (imm == iimm &&
+        src->getType() == isrc->getType() && // Same value and same type
+        inst->getDst()->getType() ==
+            imov->getDst()->getType() && // Same dst type
+        inst->getDst()->asDstRegRegion()->getHorzStride() ==
+            imov->getDst()->asDstRegRegion()->getHorzStride() && // Same region
+        inst->getExecSize() == imov->getExecSize() &&     // Same execution size
+        inst->getMaskOffset() == imov->getMaskOffset()) { // Same mask offset
+      return imov;
+    }
+  }
+
+  immMovs.push_back(inst);
+
+  return (G4_INST *)nullptr;
+}
+
 // Check if current instruction is the candidate of sendi.
 // Recorded as candidate.
 bool SRSubPassAfterRA::isSRCandidateAfterRA(G4_INST *inst,
@@ -156,184 +334,6 @@ bool SRSubPassAfterRA::isSRCandidateAfterRA(G4_INST *inst,
     }
 
     G4_INST *movInst = def.first;
-    auto isRemoveAble = [this](G4_INST *i) {
-      if (i->opcode() != G4_mov) {
-        return false;
-      }
-
-      if (i->getPredicate() || i->getCondMod() || i->getSaturate()) {
-        return false;
-      }
-
-      // The instruction is only used for payload preparation.
-      if (i->use_size() != 1) {
-        return false;
-      }
-
-      G4_DstRegRegion *dstRgn = i->getDst();
-      G4_Operand *src = i->getSrc(0);
-
-      if (!src->isSrcRegRegion()) {
-        return false;
-      }
-
-      // Not GRF source
-      if (!(src->getBase()->isRegVar() &&
-            (src->getBase()->asRegVar()->getDeclare()->getRegFile() == G4_GRF ||
-             src->getBase()->asRegVar()->getDeclare()->getRegFile() == G4_INPUT))) {
-        return false;
-      }
-
-      // The src region is scalar
-      if (src->isScalarSrc()) {
-        return false;
-      }
-
-      G4_SrcRegRegion *srcRgn = src->asSrcRegRegion();
-
-      if (srcRgn->hasModifier()) {
-        return false;
-      }
-
-      //dst GRF aligned and contigous
-      if (dstRgn->getSubRegOff() ||
-          dstRgn->getHorzStride() != 1) {
-        return false;
-      }
-
-      // src GRF aligned and contigous
-      if (srcRgn->getSubRegOff() ||
-          !srcRgn->getRegion()->isContiguous(i->getExecSize())) {
-        return false;
-      }
-
-      // The src region is not packed
-      if (!srcRgn->getRegion()->isPackedRegion()) {
-        return false;
-      }
-
-      //No type conversion
-      if (dstRgn->getType() != src->getType()) {
-        return false;
-      }
-
-      // If the destination operand size is less than 1 GRF
-      if ((dstRgn->getLinearizedEnd() - dstRgn->getLinearizedStart() + 1) <
-          builder.getGRFSize()) {
-        return false;
-      }
-
-      // If the source operand size is less than 1 GRF
-      if ((src->getLinearizedEnd() - src->getLinearizedStart() + 1) <
-          builder.getGRFSize()) {
-        return false;
-      }
-
-      //GRF Alignment with physical register assigned
-      if (dstRgn->getLinearizedStart() % builder.getGRFSize() != 0 ||
-          src->getLinearizedStart() % builder.getGRFSize() != 0) {
-        return false;
-      }
-
-      // Move to self instruction will be removed by following pass. So cannot
-      // be counted.
-      if (dstRgn->getLinearizedStart() == src->getLinearizedStart()) {
-        return false;
-      }
-
-      // It's not global define
-      if (!(builder.getIsKernel() && kernel.fg.getNumBB() == 1)) {
-        if (kernel.fg.globalOpndHT.isOpndGlobal(dstRgn) && !dstRgn->getTopDcl()->getIsBBLocal()) {
-          return false;
-        }
-      }
-      // In some platforms, mov is not removeable if the src register > r255
-      if (!canRegisterBeEncoded(src)) {
-        return false;
-      }
-
-      return true;
-    };
-
-    // mov (16)             r81.0<1>:f  0x8:f // $52:&54:
-    // mov (16|M16)         r89.0<1>:f  0x8:f // $53:&55:
-    // mov (16)             r82.0<1>:f  0x0:f // $54:&56:
-    // mov (16|M16)         r90.0<1>:f  0x0:f // $55:&57:
-    // mov (16)             r83.0<1>:f  0x0:f // $56:&58:
-    // mov (16|M16)         r91.0<1>:f  0x0:f // $57:&59:
-    // mov (16)             r84.0<1>:f  0x0:f // $58:&60:
-    // mov (16|M16)         r92.0<1>:f  0x0:f // $59:&61:
-    // mov (16)             r85.0<1>:f  0x0:f // $60:&62:
-    // mov (16|M16)         r93.0<1>:f  0x0:f // $61:&63:
-    // mov (16)             r86.0<1>:f  0x0:f // $62:&64:
-    // mov (16|M16)         r94.0<1>:f  0x0:f // $63:&65:
-    // mov (16)             r87.0<1>:f  0x0:f // $64:&66:
-    // mov (16|M16)         r95.0<1>:f  0x0:f // $65:&67:
-    // mov (16)             r88.0<1>:f  0x0:f // $66:&68:
-    // mov (16|M16)         r96.0<1>:f  0x0:f // $67:&69:
-    // ==>
-    // mov (16)             r81.0<1>:f  0x8:f // $52:&54:
-    // mov (16|M16)         r89.0<1>:f  0x8:f // $53:&55:
-    // mov (16)             r82.0<1>:f  0x0:f // $54:&56:
-    // mov (16|M16)         r90.0<1>:f  0x0:f // $55:&57:
-    //
-    // Reuse r81, r89, r82, r90 in the gather send
-    auto getRemoveableImm = [this](G4_INST *inst,
-                                   std::vector<G4_INST *> &immMovs) {
-      // The instruction is only used for payload preparation.
-      if (inst->use_size() != 1) {
-        return (G4_INST *)nullptr;
-      }
-
-      if (inst->opcode() != G4_mov) {
-        return (G4_INST *)nullptr;
-      }
-
-      G4_DstRegRegion *dst = inst->getDst();
-      // dst GRF aligned and contigous
-      if (dst->getSubRegOff() || dst->getHorzStride() != 1) {
-        return (G4_INST *)nullptr;
-      }
-
-      if (kernel.fg.globalOpndHT.isOpndGlobal(dst)) {
-        return (G4_INST *)nullptr;
-      }
-
-      // GRF Alignment with physical register assigned
-      if (dst->getLinearizedStart() % builder.getGRFSize() != 0) {
-        return (G4_INST *)nullptr;
-      }
-
-      // If the destination operand size is less than 1 GRF
-      if ((dst->getLinearizedEnd() - dst->getLinearizedStart() + 1) <
-          builder.getGRFSize()) {
-        return (G4_INST *)nullptr;
-      }
-
-      G4_Operand *src = inst->getSrc(0);
-      int64_t imm = src->asImm()->getImm();
-      for (size_t i = 0; i < immMovs.size(); i++) {
-        G4_INST *imov = immMovs[i];
-        G4_Operand *isrc = imov->getSrc(0);
-        int64_t iimm = isrc->asImm()->getImm();
-        if (imm == iimm &&
-            src->getType() == isrc->getType() && // Same value and same type
-            inst->getDst()->getType() ==
-                imov->getDst()->getType() && // Same dst type
-            inst->getDst()->asDstRegRegion()->getHorzStride() ==
-                imov->getDst()
-                    ->asDstRegRegion()
-                    ->getHorzStride() &&                  // Same region
-            inst->getExecSize() == imov->getExecSize() && // Same execution size
-            inst->getMaskOffset() ==
-                imov->getMaskOffset()) { // Same mask offset
-          return imov;
-        }
-      }
-      immMovs.push_back(inst);
-
-      return (G4_INST *)nullptr;
-    };
 
     // The source opndNum of send instruction which was defined
     Gen4_Operand_Number opndNum = (*I).second;
