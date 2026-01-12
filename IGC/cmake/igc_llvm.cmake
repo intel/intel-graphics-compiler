@@ -81,6 +81,12 @@ endif()
 # corresponding options to all the in-tree calls of clang/opt tools.
 
 
+
+if(LLVM_VERSION_MAJOR GREATER_EQUAL 17)
+  message("Force Enable Opaque Pointers due to LLVM >= 17")
+  SET(IGC_OPTION__API_ENABLE_OPAQUE_POINTERS ON)
+endif()
+
 if(IGC_OPTION__API_ENABLE_OPAQUE_POINTERS)
   if(LLVM_VERSION_MAJOR GREATER_EQUAL 14)
     set(IGC_BUILD__OPAQUE_POINTERS_DEFAULT_ARG_OPT ${IGC_BUILD__OPAQUE_POINTERS_ENABLE_OPT})
