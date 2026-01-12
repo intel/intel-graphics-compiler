@@ -1,16 +1,16 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2021-2024 Intel Corporation
+; Copyright (C) 2021-2025 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 
 ; RUN: %opt_typed_ptrs %use_old_pass_manager% -GenXPrologEpilogInsertion -mattr=+ocl_runtime -march=genx64 \
-; RUN: -mtriple=spir64-unknown-unknown -mcpu=Gen9 -S -vc-arg-reg-size=32 \
+; RUN: -mtriple=spir64-unknown-unknown -mcpu=XeLPG -S -vc-arg-reg-size=32 \
 ; RUN: -vc-ret-reg-size=12 < %s | FileCheck %s
 ; RUN: %opt_opaque_ptrs %use_old_pass_manager% -GenXPrologEpilogInsertion -mattr=+ocl_runtime -march=genx64 \
-; RUN: -mtriple=spir64-unknown-unknown -mcpu=Gen9 -S -vc-arg-reg-size=32 \
+; RUN: -mtriple=spir64-unknown-unknown -mcpu=XeLPG -S -vc-arg-reg-size=32 \
 ; RUN: -vc-ret-reg-size=12 < %s | FileCheck %s
 
 target datalayout = "e-p:64:64-i64:64-n8:16:32:64"

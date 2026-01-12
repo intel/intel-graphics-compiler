@@ -9,7 +9,7 @@
 ; The only purpose of this test is to test warning when arg indirection can not happen
 ; It is convoluted enough for this purpose
 
-; RUN: %opt %use_old_pass_manager% -GenXModule -GenXLiveRangesWrapper -GenXArgIndirectionWrapper -march=genx64 -mcpu=Gen9 \
+; RUN: %opt %use_old_pass_manager% -GenXModule -GenXLiveRangesWrapper -GenXArgIndirectionWrapper -march=genx64 -mcpu=XeLPG \
 ; RUN: -mtriple=spir64-unknown-unknown -S %s 2>&1 | FileCheck %s
 
 ; CHECK: warning: GenXArgIndirection failed for: < Argument 1 in foo>: Use of argument cannot be indirected

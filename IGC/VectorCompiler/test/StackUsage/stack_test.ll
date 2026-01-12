@@ -7,9 +7,9 @@
 ;============================ end_copyright_notice =============================
 
 ; RUN: %opt_typed_ptrs %use_old_pass_manager% -dbgonly-enforce-privmem-stateless=128 -GenXStackUsage -march=genx64 \
-; RUN: -stack-analysis -mcpu=Gen9 -S %s -disable-output 2>&1 | FileCheck %s
+; RUN: -stack-analysis -mcpu=XeLPG -S %s -disable-output 2>&1 | FileCheck %s
 ; RUN: %opt_opaque_ptrs %use_old_pass_manager% -dbgonly-enforce-privmem-stateless=128 -GenXStackUsage -march=genx64 \
-; RUN: -stack-analysis -mcpu=Gen9 -S %s -disable-output 2>&1 | FileCheck %s
+; RUN: -stack-analysis -mcpu=XeLPG -S %s -disable-output 2>&1 | FileCheck %s
 ; CHECK: 1152
 ; CHECK: 1152
 ; CHECK: 720

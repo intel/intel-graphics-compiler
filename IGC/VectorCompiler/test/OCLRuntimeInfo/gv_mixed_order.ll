@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: llc %s -march=genx64 -mcpu=Gen9 -mattr=+ocl_runtime -vc-analyze=GenXOCLRuntimeInfo \
+; RUN: llc %s -march=genx64 -mcpu=XeLPG -mattr=+ocl_runtime -vc-analyze=GenXOCLRuntimeInfo \
 ; RUN: -vc-choose-pass-manager-override=false -o /dev/null 2>&1 | FileCheck %s
 
 target datalayout = "e-p:64:64-i64:64-n8:16:32"

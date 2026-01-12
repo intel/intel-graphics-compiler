@@ -6,8 +6,8 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: %opt %use_old_pass_manager% -GenXPatternMatch --enable-mad=true --fp-contract=fast  -march=genx64 -mcpu=Gen9 -mtriple=spir64-unknown-unknown -S < %s | FileCheck %s
-; RUN: %opt %use_old_pass_manager% -GenXPatternMatch --enable-mad=true --fp-contract=off  -march=genx64 -mcpu=Gen9 -mtriple=spir64-unknown-unknown -S < %s |  FileCheck  --check-prefix=CHECK-NOFMA %s
+; RUN: %opt %use_old_pass_manager% -GenXPatternMatch --enable-mad=true --fp-contract=fast  -march=genx64 -mcpu=Xe2 -mtriple=spir64-unknown-unknown -S < %s | FileCheck %s
+; RUN: %opt %use_old_pass_manager% -GenXPatternMatch --enable-mad=true --fp-contract=off  -march=genx64 -mcpu=Xe2 -mtriple=spir64-unknown-unknown -S < %s |  FileCheck  --check-prefix=CHECK-NOFMA %s
 
 ; CHECK-LABEL: @test_mul_add_f32
 ; CHECK-NOFMA-LABEL: @test_mul_add_f32

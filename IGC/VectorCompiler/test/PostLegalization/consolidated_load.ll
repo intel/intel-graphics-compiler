@@ -1,12 +1,12 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2020-2021 Intel Corporation
+; Copyright (C) 2020-2025 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: %opt %use_old_pass_manager% -GenXPostLegalization -march=genx64 -mcpu=Gen9 -mtriple=spir64 -S < %s | FileCheck %s
+; RUN: %opt %use_old_pass_manager% -GenXPostLegalization -march=genx64 -mcpu=Xe2 -mtriple=spir64 -S < %s | FileCheck %s
 
 ;; Test that constant materilization works as expected in case of consolidated constants
 

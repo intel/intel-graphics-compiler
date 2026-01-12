@@ -7,7 +7,7 @@
 ;============================ end_copyright_notice =============================
 
 ; RUN: %opt %use_old_pass_manager% -GenXFuncLiveElements -print-live-elements-info \
-; RUN: -march=genx64 -mcpu=Gen9 -mtriple=spir64-unknown-unknown -disable-output -S < %s | FileCheck %s
+; RUN: -march=genx64 -mcpu=XeLPG -mtriple=spir64-unknown-unknown -disable-output -S < %s | FileCheck %s
 
 declare {<8 x i32>, <8 x i32>} @llvm.genx.addc.v8i32.v8i32(<8 x i32>, <8 x i32>)
 declare <8 x i64> @llvm.genx.wrregioni.v8i64.v4i64.i16.i1(<8 x i64>, <4 x i64>, i32, i32, i32, i16, i32, i1)

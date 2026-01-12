@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: %opt %use_old_pass_manager% -GenXLegalization -march=genx64 -mcpu=Gen9 -mtriple=spir64-unknown-unknown -S < %s | FileCheck %s
+; RUN: %opt %use_old_pass_manager% -GenXLegalization -march=genx64 -mcpu=Xe2 -mtriple=spir64-unknown-unknown -S < %s | FileCheck %s
 
 declare <16 x float> @llvm.genx.ieee.sqrt.v16f32(<16 x float>)
 declare <16 x float> @llvm.genx.ieee.div.v16f32(<16 x float>, <16 x float>)

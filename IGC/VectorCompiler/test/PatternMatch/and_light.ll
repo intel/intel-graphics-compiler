@@ -7,7 +7,7 @@
 ;============================ end_copyright_notice =============================
 
 ; RUN: %opt %use_old_pass_manager% -GenXPatternMatch \
-; RUN:  -march=genx64 -mcpu=Gen11 -mtriple=spir64-unknown-unknown -S < %s
+; RUN:  -march=genx64 -mcpu=XeLPG -mtriple=spir64-unknown-unknown -S < %s
 
 ; Test verifies that there will be no asserts here
 define spir_kernel void @and() {

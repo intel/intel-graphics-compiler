@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: %opt %use_old_pass_manager% -GenXLegalization -march=genx64 -mcpu=Gen11 -mtriple=spir64-unknown-unknown -S < %s | FileCheck %s
+; RUN: %opt %use_old_pass_manager% -GenXLegalization -march=genx64 -mcpu=XeLPG -mtriple=spir64-unknown-unknown -S < %s | FileCheck %s
 
 declare i16 @llvm.genx.rdregioni.i16.v2i16.i16(<2 x i16>, i32, i32, i32, i16, i32)
 declare <64 x i16> @llvm.genx.wrregioni.v64i16.v4i16.i16.i1(<64 x i16>, <4 x i16>, i32, i32, i32, i16, i32, i1)

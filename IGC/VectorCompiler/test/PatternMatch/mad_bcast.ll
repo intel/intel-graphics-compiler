@@ -7,7 +7,7 @@
 ;============================ end_copyright_notice =============================
 
 ; RUN: %opt %use_old_pass_manager% -GenXPatternMatch -mcpu=Xe3P -march=genx64 -mtriple=spir64-unknown-unknown -S < %s | FileCheck %s --check-prefix=UseMadDDQ
-; RUN: %opt %use_old_pass_manager% -GenXPatternMatch -mcpu=Gen11 -march=genx64 -mtriple=spir64-unknown-unknown -S < %s | FileCheck %s
+; RUN: %opt %use_old_pass_manager% -GenXPatternMatch -mcpu=XeLPG -march=genx64 -mtriple=spir64-unknown-unknown -S < %s | FileCheck %s
 
 ; UseMadDDQ-LABEL: foo_bcast_I64ToI32
 ; UseMadDDQ: [[BI32:%[^ ]+]] = bitcast <8 x i64> %data to <16 x i32>
