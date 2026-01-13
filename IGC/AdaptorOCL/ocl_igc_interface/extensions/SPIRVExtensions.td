@@ -292,7 +292,7 @@ def SPV_INTEL_tensor_float32_conversion : Extension<
   "SPV_INTEL_tensor_float32_conversion",
   [ Capability<"TensorFloat32RoundingINTEL"> ],
   "https://github.khronos.org/SPIRV-Registry/extensions/INTEL/SPV_INTEL_tensor_float32_conversion.html",
-  isCoreChildOf<IGFX_XE2_HPG_CORE>
+  isCoreChildOf<IGFX_XE_HPC_CORE>
 >;
 
 def SPV_EXT_shader_atomic_float_add : Extension<

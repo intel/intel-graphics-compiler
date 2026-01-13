@@ -455,7 +455,7 @@ This document lists all SPIR-V extensions supported by IGC and their platform re
 
 **Specification**: https://github.khronos.org/SPIRV-Registry/extensions/INTEL/SPV_INTEL_tensor_float32_conversion.html
 
-> **Supported on**: IGFX_XE2_HPG_CORE and newer
+> **Supported on**: IGFX_XE_HPC_CORE and newer
 
 **Capabilities**:
 
