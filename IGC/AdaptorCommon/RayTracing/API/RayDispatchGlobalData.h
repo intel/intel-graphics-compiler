@@ -12,7 +12,7 @@ SPDX-License-Identifier: MIT
 #include <stdint.h>
 #undef HAS_INCLUDE_TYPE_TRAITS
 #ifdef _MSC_VER
-#if !defined(__clang__) || (__clang_major__ > 16)
+#if !defined(__clang__) || (__clang_major__ > 17)
 #define HAS_INCLUDE_TYPE_TRAITS
 #endif
 #endif // _MSC_VER

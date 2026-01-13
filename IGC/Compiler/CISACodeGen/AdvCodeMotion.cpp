@@ -9,7 +9,6 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/ADT/EquivalenceClasses.h>
 #include <llvm/ADT/PostOrderIterator.h>
-#include <llvm/ADT/Optional.h>
 #include <llvm/Analysis/LoopInfo.h>
 #include <llvm/Analysis/ScalarEvolution.h>
 #include <llvm/Analysis/ScalarEvolutionExpressions.h>
