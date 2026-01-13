@@ -46,6 +46,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CISACodeGen/SplitLoads.h"
 #include "Compiler/CISACodeGen/PreRARematFlag.h"
 #include "Compiler/CISACodeGen/PromoteConstantStructs.hpp"
+#include "Compiler/CISACodeGen/PropagateCmpUniformity.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/Decompose2DBlockFuncs/Decompose2DBlockFuncs.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/Decompose2DBlockFuncsWithHoisting/Decompose2DBlockFuncsWithHoisting.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/GenericAddressResolution/GASResolving.h"
@@ -1609,6 +1610,9 @@ void OptimizeIR(CodeGenContext *const pContext) {
 #else  // LLVM_VERSION_MAJOR
         mpm.add(llvm::createJumpThreadingPass(false, BBDuplicateThreshold));
 #endif // LLVM_VERSION_MAJOR
+      }
+      if (IGC_IS_FLAG_ENABLED(EnablePropagateCmpUniformity)) {
+        mpm.add(createPropagateCmpUniformityPass());
       }
       mpm.add(llvm::createCFGSimplificationPass());
       mpm.add(llvm::createEarlyCSEPass());

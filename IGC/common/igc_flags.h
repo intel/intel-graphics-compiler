@@ -544,6 +544,10 @@ DECLARE_IGC_REGKEY(bool, DisableIPConstantPropagation, false, "Disable Inter-pro
 DECLARE_IGC_REGKEY(bool, EnableSplitIndirectEEtoSel, true, "Enable the split indirect extractelement to icmp+sel pass",
                    false)
 DECLARE_IGC_REGKEY(DWORD, SplitIndirectEEtoSelThreshold, 8, "Split indirect extractelement cost threshold", false)
+DECLARE_IGC_REGKEY(DWORD, EnablePropagateCmpUniformity, 0,
+                   "Enable propagation of compare-based uniformity: replace non-uniform/divergent values with uniform "
+                   "values in dominated BBs as determined by WIAnalysis (1 enable, 2 enable and print)",
+                   false)
 DECLARE_IGC_REGKEY(bool, DisableImmConstantOpt, false, "Disable IGC IndirectICBPropagaion optimization", false)
 DECLARE_IGC_REGKEY(DWORD, MaxImmConstantSizePushed, 256, "Set the max size of immediate constant buffer pushed", false)
 DECLARE_IGC_REGKEY(bool, RemoveUnusedSLM, true, "Remove SLM that are not used", false)
