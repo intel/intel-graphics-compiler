@@ -58,17 +58,6 @@ void GenericNullPtrPropagation::visitAddrSpaceCastInst(AddrSpaceCastInst &I) {
   if ((I.getSrcAddressSpace() == ADDRESS_SPACE_LOCAL ||
        (I.getSrcAddressSpace() == ADDRESS_SPACE_PRIVATE && m_ctx->mustDistinguishBetweenPrivateAndGlobalPtr())) &&
       I.getDestAddressSpace() == ADDRESS_SPACE_GENERIC) {
-
-    // If optimizations are disabled we can move addrspace cast closer to use, to enable PrivateMemoryResolution to
-    // optimize alloca location better.
-    if (I.hasOneUser()) {
-      if (auto *user = llvm::dyn_cast<llvm::Instruction>(*I.user_begin())) {
-        if (user->getParent() != I.getParent()) {
-          I.moveBefore(user);
-        }
-      }
-    }
-
     Value *src = I.getPointerOperand();
     Value *srcNull = ConstantPointerNull::get(cast<PointerType>(src->getType()));
     Value *dstNull = ConstantPointerNull::get(cast<PointerType>(I.getType()));
