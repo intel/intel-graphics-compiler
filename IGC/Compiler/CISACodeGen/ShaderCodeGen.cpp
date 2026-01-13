@@ -167,6 +167,7 @@ SPDX-License-Identifier: MIT
 #include "llvmWrapper/Transforms/Scalar/LoopDeletion.h"
 #include "llvmWrapper/Transforms/Scalar/LoopLoadElimination.h"
 #include "llvmWrapper/Transforms/Scalar/SCCP.h"
+#include "llvmWrapper/Transforms/Scalar/LoopUnrollPass.h"
 
 #include "common/LLVMWarningsPop.hpp"
 #include "Compiler/CISACodeGen/PatternMatchPass.hpp"
@@ -500,7 +501,7 @@ void AddLegalizationPasses(CodeGenContext &ctx, IGCPassManager &mpm, PSSignature
     int LoopUnrollThreshold = ctx.m_DriverInfo.GetLoopUnrollThreshold();
 
     if (LoopUnrollThreshold > 0 && (ctx.m_tempCount < 64)) {
-      mpm.add(llvm::createLoopUnrollPass(2, false, false, LoopUnrollThreshold, -1, 1, -1, -1, -1));
+      mpm.add(IGCLLVM::createLegacyWrappedLoopUnrollPass(2, false, false, LoopUnrollThreshold, -1, 1, -1, -1, -1));
     }
 
     mpm.add(createBarrierNoopPass());
@@ -1431,7 +1432,7 @@ void OptimizeIR(CodeGenContext *const pContext) {
             IsStage1FastestCompile(pContext->m_CgFlag, pContext->m_StagingCtx) &&
             (FastestS1Options(pContext) == FCEXP_NO_EXPRIMENT || (FastestS1Options(pContext) & FCEXP_DISABLE_UNROLL));
         if ((LoopUnrollThreshold > 0 && unroll && !disableLoopUnrollStage1) || hasIndexTemp) {
-          mpm.add(llvm::createLoopUnrollPass(2, false, false, -1, -1, -1, -1, -1, -1));
+          mpm.add(IGCLLVM::createLegacyWrappedLoopUnrollPass(2, false, false, -1, -1, -1, -1, -1, -1));
         }
 
         // Due to what looks like a bug in LICM, we need to break the LoopPassManager between
@@ -1446,7 +1447,7 @@ void OptimizeIR(CodeGenContext *const pContext) {
         // Second unrolling with the same threshold.
         unroll = !pContext->getModuleMetaData()->compOpt.DisableLoopUnroll && IGC_IS_FLAG_DISABLED(DisableLoopUnroll);
         if (LoopUnrollThreshold > 0 && unroll) {
-          mpm.add(llvm::createLoopUnrollPass(2, false, false, -1, -1, -1, -1, -1, -1));
+          mpm.add(IGCLLVM::createLegacyWrappedLoopUnrollPass(2, false, false, -1, -1, -1, -1, -1, -1));
         }
         // Should be after LICM to accurately reason about which
         // instructions are loop-dependent or not. Needs to be before
@@ -1620,7 +1621,7 @@ void OptimizeIR(CodeGenContext *const pContext) {
                                          ( // FastestS1Options(pContext) == FCEXP_NO_EXPRIMENT ||
                                              (FastestS1Options(pContext) & FCEXP_DISABLE_UNROLL));
           if ((LoopUnrollThreshold > 0 && unroll && !disableLoopUnrollStage1) || hasIndexTemp) {
-            mpm.add(llvm::createLoopUnrollPass(2, false, false, -1, -1, -1, -1, -1, -1));
+            mpm.add(IGCLLVM::createLegacyWrappedLoopUnrollPass(2, false, false, -1, -1, -1, -1, -1, -1));
           }
         }
 

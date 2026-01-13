@@ -33,6 +33,7 @@ SPDX-License-Identifier: MIT
 #include "llvmWrapper/Transforms/Scalar/Float2Int.h"
 #include "llvmWrapper/Transforms/Scalar/LoopDistribute.h"
 #include "llvmWrapper/Transforms/IPO/PostOrderFunctionAttrs.h"
+#include "llvmWrapper/Transforms/Scalar/LoopUnrollPass.h"
 #include "llvm/Analysis/TypeBasedAliasAnalysis.h"
 #include "llvm/Analysis/ScopedNoAliasAA.h"
 #include "llvm/IR/LegacyPassManager.h"
@@ -202,7 +203,7 @@ void PassManagerBuilder::addVectorPasses(legacy::PassManagerBase &PM, bool IsFul
     // FIXME: It would be really good to use a loop-integrated instruction
     // combiner for cleanup here so that the unrolling and LICM can be pipelined
     // across the loop nests.
-    PM.add(createLoopUnrollPass(OptLevel, DisableUnrollLoops, ForgetAllSCEVInLoopUnroll));
+    PM.add(IGCLLVM::createLegacyWrappedLoopUnrollPass(OptLevel, DisableUnrollLoops, ForgetAllSCEVInLoopUnroll));
     PM.add(IGCLLVM::createLegacyWrappedWarnMissedTransformsPass());
   }
 
@@ -249,7 +250,7 @@ void PassManagerBuilder::addVectorPasses(legacy::PassManagerBase &PM, bool IsFul
     PM.add(createInstructionCombiningPass());
 
     // Unroll small loops
-    PM.add(createLoopUnrollPass(OptLevel, DisableUnrollLoops, ForgetAllSCEVInLoopUnroll));
+    PM.add(IGCLLVM::createLegacyWrappedLoopUnrollPass(OptLevel, DisableUnrollLoops, ForgetAllSCEVInLoopUnroll));
 
     if (!DisableUnrollLoops) {
       // LoopUnroll may generate some redundency to cleanup.

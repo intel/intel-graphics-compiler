@@ -98,6 +98,7 @@ SPDX-License-Identifier: MIT
 #include "llvmWrapper/Transforms/Scalar/LoopIdiomRecognize.h"
 #include "llvmWrapper/Transforms/Scalar/CorrelatedValuePropagation.h"
 #include "llvmWrapper/Transforms/Scalar/JumpThreading.h"
+#include "llvmWrapper/Transforms/Scalar/LoopUnrollPass.h"
 
 using namespace llvm;
 
@@ -988,7 +989,7 @@ void GenXTargetMachine::adjustPassManager(PassManagerBuilder &PMBuilder) {
         }
         PM.add(IGCLLVM::createLegacyWrappedLoopIdiomRecognizePass());
         PM.add(IGCLLVM::createLegacyWrappedLoopDeletionPass());
-        PM.add(createSimpleLoopUnrollPass());
+        PM.add(IGCLLVM::createLegacyWrappedSimpleLoopUnrollPass());
         PM.add(createInstructionCombiningPass());
         // Simplify region accesses.
         PM.add(createGenXRegionCollapsingPass());
