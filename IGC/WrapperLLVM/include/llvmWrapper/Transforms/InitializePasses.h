@@ -24,6 +24,7 @@ void initializeInstructionCombiningPassWrapperPass(llvm::PassRegistry &);
 void initializeLoopDeletionLegacyPassWrapperPass(llvm::PassRegistry &);
 void initializeLoopIdiomRecognizeLegacyPassWrapperPass(llvm::PassRegistry &);
 void initializeLoopLoadEliminationLegacyPassWrapperPass(llvm::PassRegistry &);
+void initializePostOrderFunctionAttrsLegacyPassWrapperPass(llvm::PassRegistry &);
 void initializeSCCPLegacyPassWrapperPass(llvm::PassRegistry &);
 void initializeStripDeadDebugInfoLegacyPassWrapperPass(llvm::PassRegistry &);
 void initializeStripDeadPrototypesLegacyPassWrapperPass(llvm::PassRegistry &);

@@ -32,6 +32,7 @@ SPDX-License-Identifier: MIT
 #include "llvmWrapper/Transforms/IPO/FunctionAttrs.h"
 #include "llvmWrapper/Transforms/Scalar/Float2Int.h"
 #include "llvmWrapper/Transforms/Scalar/LoopDistribute.h"
+#include "llvmWrapper/Transforms/IPO/PostOrderFunctionAttrs.h"
 #include "llvm/Analysis/TypeBasedAliasAnalysis.h"
 #include "llvm/Analysis/ScopedNoAliasAA.h"
 #include "llvm/IR/LegacyPassManager.h"
@@ -318,7 +319,7 @@ void PassManagerBuilder::populateModulePassManager(legacy::PassManagerBase &MPM)
     RunInliner = true;
   }
 
-  MPM.add(createPostOrderFunctionAttrsLegacyPass());
+  MPM.add(IGCLLVM::createLegacyWrappedPostOrderFunctionAttrsPass());
 
   addFunctionSimplificationPasses(MPM);
 

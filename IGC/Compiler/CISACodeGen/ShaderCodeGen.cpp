@@ -162,6 +162,7 @@ SPDX-License-Identifier: MIT
 #include "llvmWrapper/Transforms/Scalar/JumpThreading.h"
 #include "llvmWrapper/Transforms/IPO/SCCP.h"
 #include "llvmWrapper/Transforms/IPO/GlobalDCE.h"
+#include "llvmWrapper/Transforms/IPO/PostOrderFunctionAttrs.h"
 #include "llvmWrapper/Transforms/Scalar/MemCpyOptimizer.h"
 #include "llvmWrapper/Transforms/Scalar/LoopDeletion.h"
 #include "llvmWrapper/Transforms/Scalar/LoopLoadElimination.h"
@@ -1231,7 +1232,7 @@ void OptimizeIR(CodeGenContext *const pContext) {
       // in ProcessBuiltinMetaData can have that attribute stripped if
       // possible which potentially allows late stage code sinking of
       // those calls by the instruction combiner.
-      mpm.add(createPostOrderFunctionAttrsLegacyPass());
+      mpm.add(IGCLLVM::createLegacyWrappedPostOrderFunctionAttrsPass());
 
       // Don't run IPConstantProp if there are stackcalls
       const bool allowIPConstProp = !pContext->m_hasStackCalls && IGC_IS_FLAG_DISABLED(DisableIPConstantPropagation);
