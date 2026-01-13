@@ -28,12 +28,16 @@ public:
   ~GenericNullPtrPropagation() = default;
 
   StringRef getPassName() const override { return "GenericNullPtrPropagation"; }
-  void getAnalysisUsage(AnalysisUsage &AU) const override { AU.addRequired<CodeGenContextWrapper>(); }
+  void getAnalysisUsage(AnalysisUsage &AU) const override {
+    AU.addRequired<CodeGenContextWrapper>();
+    AU.addRequired<llvm::DominatorTreeWrapperPass>();
+  }
   bool runOnFunction(Function &F) override;
   void visitAddrSpaceCastInst(AddrSpaceCastInst &I);
 
 private:
   bool m_modified = false;
+  DominatorTree *dt = nullptr;
   CodeGenContext *m_ctx = nullptr;
 };
 } // namespace
@@ -50,14 +54,45 @@ char GenericNullPtrPropagation::ID = 0;
 
 bool GenericNullPtrPropagation::runOnFunction(Function &F) {
   m_ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+  dt = &getAnalysis<llvm::DominatorTreeWrapperPass>().getDomTree();
   visit(F);
   return m_modified;
+}
+
+static void updateAddrSpaceCastLocation(AddrSpaceCastInst &I, DominatorTree *dt) {
+  if (!I.hasOneUser()) {
+    return;
+  }
+  // If we can move addrspace cast closer to use we do it, to enable PrivateMemoryResolution to
+  // optimize alloca location better.
+  auto *user = llvm::dyn_cast<llvm::Instruction>(*I.user_begin());
+  if (!user) {
+    return;
+  }
+
+  if (llvm::isa<llvm::PHINode>(user)) {
+    return;
+  }
+
+  auto *addrSpaceCastParent = I.getParent();
+  auto *userParent = user->getParent();
+  if (addrSpaceCastParent != userParent && dt->dominates(addrSpaceCastParent, userParent)) {
+    auto firstInsertPt = userParent->getFirstInsertionPt();
+
+    if (firstInsertPt == userParent->end() || user->comesBefore(&*firstInsertPt)) {
+      return;
+    }
+    I.moveBefore(user);
+  }
 }
 
 void GenericNullPtrPropagation::visitAddrSpaceCastInst(AddrSpaceCastInst &I) {
   if ((I.getSrcAddressSpace() == ADDRESS_SPACE_LOCAL ||
        (I.getSrcAddressSpace() == ADDRESS_SPACE_PRIVATE && m_ctx->mustDistinguishBetweenPrivateAndGlobalPtr())) &&
       I.getDestAddressSpace() == ADDRESS_SPACE_GENERIC) {
+
+    updateAddrSpaceCastLocation(I, dt);
+
     Value *src = I.getPointerOperand();
     Value *srcNull = ConstantPointerNull::get(cast<PointerType>(src->getType()));
     Value *dstNull = ConstantPointerNull::get(cast<PointerType>(I.getType()));
