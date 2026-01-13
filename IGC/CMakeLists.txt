@@ -1730,8 +1730,8 @@ target_compile_definitions(${IGC_BUILD__PROJ__igc_dll} PRIVATE VER_ORIGINALNAME=
 
 if(UNIX)
   # Allow user to pick a linker explicitly:
-  # cmake -DUSE_LINKER=lld ..
-  set(USE_LINKER "" CACHE STRING "Preferred linker (lld, wild, mold etc.)")
+  # cmake -DIGC_USE_LINKER=lld ..
+  set(IGC_USE_LINKER "" CACHE STRING "Preferred linker (lld, wild, mold etc.) to link IGC shared lib with.")
 
   include(CheckLinkerFlag)
 
@@ -1748,39 +1748,39 @@ if(UNIX)
   # List of linkers to auto-detect when user didn't specify one
   set(_default_linkers mold lld ld)
 
-  if (USE_LINKER STREQUAL "")
-      message(STATUS "No linker specified — probing system")
+  if (IGC_USE_LINKER STREQUAL "")
+      message(STATUS "[IGC] : No linker specified — probing system")
 
       foreach(L IN LISTS _default_linkers)
           _try_linker(${L} HAS_${L})
           if (HAS_${L})
-              message(STATUS "Using detected linker: ${L}")
-              set(USE_LINKER "${L}" CACHE STRING "" FORCE)
+              message(STATUS "[IGC] : Using detected linker: ${L}")
+              set(IGC_USE_LINKER "${L}" CACHE STRING "" FORCE)
               break()
           endif()
       endforeach()
 
-      if (USE_LINKER STREQUAL "")
-          message(STATUS "No preferred linkers found — using compiler default")
+      if (IGC_USE_LINKER STREQUAL "")
+          message(STATUS "[IGC] : No preferred linkers found — using compiler default")
       endif()
 
   else()
     # User explicitly requested a linker — verify it
-    _try_linker(${USE_LINKER} HAS_${USE_LINKER})
-    if (NOT HAS_${USE_LINKER})
+    _try_linker(${IGC_USE_LINKER} HAS_${IGC_USE_LINKER})
+    if (NOT HAS_${IGC_USE_LINKER})
           message(FATAL_ERROR
-              "Requested linker '${USE_LINKER}' is not usable on this system.")
+              "[IGC] : Requested linker '${IGC_USE_LINKER}' is not usable on this system.")
       endif()
-      message(STATUS "Using user-requested linker: ${USE_LINKER}")
+      message(STATUS "[IGC] : Using user-requested linker: ${IGC_USE_LINKER}")
   endif()
 
-  if ((NOT USE_LINKER STREQUAL "") AND (NOT USE_LINKER STREQUAL "ld"))
+  if ((NOT IGC_USE_LINKER STREQUAL "") AND (NOT IGC_USE_LINKER STREQUAL "ld"))
     igc_config_flag_apply_settings(
         LinkerOptions
         CMAKE_SHARED_LINKER_FLAGS
         ALL_PATTERN ""
         SET_RAW
-          -fuse-ld=${USE_LINKER}
+          -fuse-ld=${IGC_USE_LINKER}
           # other linkers than `ld` seem to have behave slightly differently and require this option
           -Wl,--undefined-version
           # different linkers might use build id (lld might use 8 bytes which is too small), so make make it consistent
