@@ -74,15 +74,15 @@ extra_args_typed_new_pm = vc_extra_args_new_pm+[config.opaque_pointers_disable_o
 extra_args_opaque_new_pm = vc_extra_args_new_pm+[config.opaque_pointers_enable_opt]
 
 if int(config.llvm_version) >= 16:
-  command_opt_legacy = 'true ||'
+  command_opt_legacy = ': ||'
   command_opt_new_pm = FindTool('opt')
-  command_not_legacy = 'true ||'
+  command_not_legacy = ': ||'
   command_not_new_pm = FindTool('not')
 else:
   command_opt_legacy = FindTool('opt')
-  command_opt_new_pm = 'true ||'
+  command_opt_new_pm = ': ||'
   command_not_legacy = FindTool('not')
-  command_not_new_pm = 'true ||'
+  command_not_new_pm = ': ||'
 
 command_opt = FindTool('opt')
 
