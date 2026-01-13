@@ -26,6 +26,7 @@ SPDX-License-Identifier: MIT
 #include "llvmWrapper/Transforms/Scalar/ADCE.h"
 #include "llvmWrapper/Transforms/Scalar/BDCE.h"
 #include "llvmWrapper/Transforms/Scalar/AlignmentFromAssumptions.h"
+#include "llvmWrapper/Transforms/Scalar/LICM.h"
 #include "llvmWrapper/Transforms/Scalar/CallSiteSplitting.h"
 #include "llvmWrapper/Transforms/IPO/CalledValuePropagation.h"
 #include "llvmWrapper/Transforms/IPO/GlobalOpt.h"
@@ -132,13 +133,13 @@ void PassManagerBuilder::addFunctionSimplificationPasses(legacy::PassManagerBase
   // will destroy metadata that may not need to be destroyed if run
   // after loop rotation.
   // TODO: Investigate promotion cap for O1.
-  MPM.add(createLICMPass(LicmMssaOptCap, LicmMssaNoAccForPromotionCap,
-                         /*AllowSpeculation=*/false));
+  MPM.add(IGCLLVM::createLegacyWrappedLICMPass(LicmMssaOptCap, LicmMssaNoAccForPromotionCap,
+                                               /*AllowSpeculation=*/false));
   // Rotate Loop - disable header duplication at -Oz
   MPM.add(createLoopRotatePass(SizeLevel == 2 ? 0 : -1, false));
   // TODO: Investigate promotion cap for O1.
-  MPM.add(createLICMPass(LicmMssaOptCap, LicmMssaNoAccForPromotionCap,
-                         /*AllowSpeculation=*/true));
+  MPM.add(IGCLLVM::createLegacyWrappedLICMPass(LicmMssaOptCap, LicmMssaNoAccForPromotionCap,
+                                               /*AllowSpeculation=*/true));
   MPM.add(createSimpleLoopUnswitchLegacyPass(OptLevel == 3));
   // FIXME: We break the loop pass pipeline here in order to do full
   // simplifycfg. Eventually loop-simplifycfg should be enhanced to replace the
@@ -181,8 +182,8 @@ void PassManagerBuilder::addFunctionSimplificationPasses(legacy::PassManagerBase
   // TODO: Investigate if this is too expensive at O1.
   if (OptLevel > 1) {
     MPM.add(createDeadStoreEliminationPass()); // Delete dead stores
-    MPM.add(createLICMPass(LicmMssaOptCap, LicmMssaNoAccForPromotionCap,
-                           /*AllowSpeculation=*/true));
+    MPM.add(IGCLLVM::createLegacyWrappedLICMPass(LicmMssaOptCap, LicmMssaNoAccForPromotionCap,
+                                                 /*AllowSpeculation=*/true));
   }
 
   // Merge & remove BBs and sink & hoist common instructions.
@@ -260,8 +261,8 @@ void PassManagerBuilder::addVectorPasses(legacy::PassManagerBase &PM, bool IsFul
       // unrolled loop is a inner loop, then the prologue will be inside the
       // outer loop. LICM pass can help to promote the runtime check out if the
       // checked value is loop invariant.
-      PM.add(createLICMPass(LicmMssaOptCap, LicmMssaNoAccForPromotionCap,
-                            /*AllowSpeculation=*/true));
+      PM.add(IGCLLVM::createLegacyWrappedLICMPass(LicmMssaOptCap, LicmMssaNoAccForPromotionCap,
+                                                  /*AllowSpeculation=*/true));
     }
 
     PM.add(IGCLLVM::createLegacyWrappedWarnMissedTransformsPass());

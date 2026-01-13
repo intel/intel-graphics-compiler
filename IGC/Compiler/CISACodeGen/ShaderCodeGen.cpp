@@ -168,6 +168,7 @@ SPDX-License-Identifier: MIT
 #include "llvmWrapper/Transforms/Scalar/LoopLoadElimination.h"
 #include "llvmWrapper/Transforms/Scalar/SCCP.h"
 #include "llvmWrapper/Transforms/Scalar/LoopUnrollPass.h"
+#include "llvmWrapper/Transforms/Scalar/LICM.h"
 
 #include "common/LLVMWarningsPop.hpp"
 #include "Compiler/CISACodeGen/PatternMatchPass.hpp"
@@ -511,7 +512,7 @@ void AddLegalizationPasses(CodeGenContext &ctx, IGCPassManager &mpm, PSSignature
 
     if (ctx.m_retryManager.AllowLICM() && AllowLICM) {
       mpm.add(createSpecialCasesDisableLICM());
-      mpm.add(llvm::createLICMPass(100, 500, true));
+      mpm.add(IGCLLVM::createLegacyWrappedLICMPass(100, 500, true));
     }
     mpm.add(llvm::createLoopSimplifyPass());
   }
@@ -826,7 +827,7 @@ void AddLegalizationPasses(CodeGenContext &ctx, IGCPassManager &mpm, PSSignature
 
     if (!fastCompile && !highAllocaPressure && !isPotentialHPCKernel && AllowLICM && ctx.m_retryManager.AllowLICM()) {
       mpm.add(createSpecialCasesDisableLICM());
-      mpm.add(llvm::createLICMPass(100, 500, true));
+      mpm.add(IGCLLVM::createLegacyWrappedLICMPass(100, 500, true));
       mpm.add(llvm::createEarlyCSEPass());
     }
     mpm.add(IGCLLVM::createLegacyWrappedADCEPass());
@@ -1385,7 +1386,7 @@ void OptimizeIR(CodeGenContext *const pContext) {
           mpm.add(createSpecialCasesDisableLICM());
           int licmTh = IGC_GET_FLAG_VALUE(LICMStatThreshold);
           mpm.add(new InstrStatistic(pContext, LICM_STAT, InstrStatStage::BEGIN, licmTh));
-          mpm.add(llvm::createLICMPass(100, 500, true));
+          mpm.add(IGCLLVM::createLegacyWrappedLICMPass(100, 500, true));
           mpm.add(new InstrStatistic(pContext, LICM_STAT, InstrStatStage::END, licmTh));
         }
 
@@ -1441,7 +1442,7 @@ void OptimizeIR(CodeGenContext *const pContext) {
 
         if (AllowLICM) {
           mpm.add(createSpecialCasesDisableLICM());
-          mpm.add(llvm::createLICMPass(100, 500, true));
+          mpm.add(IGCLLVM::createLegacyWrappedLICMPass(100, 500, true));
         }
 
         // Second unrolling with the same threshold.
