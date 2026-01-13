@@ -97,7 +97,9 @@ enum IIT_Info {
   IIT_VARARG = 29,
   IIT_HALF_VEC_ARG = 30,
   IIT_SAME_VEC_WIDTH_ARG = 31,
+#if LLVM_VERSION_MAJOR < 17 || defined(IGC_LLVM_TRUNK_REVISION)
   IIT_PTR_TO_ARG = 32,
+#endif
   IIT_PTR_TO_ELT = 33,
   IIT_VEC_OF_ANYPTRS_TO_ELT = 34,
   IIT_I128 = 35,
@@ -250,12 +252,14 @@ DecodeIITType(unsigned &NextElt, ArrayRef<unsigned char> Infos,
         IITDescriptor::get(IITDescriptor::SameVecWidthArgument, ArgInfo));
     return;
   }
+#if LLVM_VERSION_MAJOR < 17 || defined(IGC_LLVM_TRUNK_REVISION)
   case IIT_PTR_TO_ARG: {
     unsigned ArgInfo = (NextElt == Infos.size() ? 0 : Infos[NextElt++]);
     OutputTable.push_back(
         IITDescriptor::get(IITDescriptor::PtrToArgument, ArgInfo));
     return;
   }
+#endif
   case IIT_PTR_TO_ELT: {
     unsigned ArgInfo = (NextElt == Infos.size() ? 0 : Infos[NextElt++]);
     OutputTable.push_back(IITDescriptor::get(IITDescriptor::PtrToElt, ArgInfo));
@@ -373,10 +377,12 @@ static Type *DecodeFixedType(ArrayRef<Intrinsic::IITDescriptor> &Infos,
     IGC_ASSERT_EXIT_MESSAGE(0, "unhandled");
     break;
   }
+#if LLVM_VERSION_MAJOR < 17 || defined(IGC_LLVM_TRUNK_REVISION)
   case IITDescriptor::PtrToArgument: {
     Type *Ty = Tys[D.getArgumentNumber()];
     return PointerType::getUnqual(Ty);
   }
+#endif
   case IITDescriptor::PtrToElt: {
     Type *Ty = Tys[D.getArgumentNumber()];
     VectorType *VTy = dyn_cast<VectorType>(Ty);

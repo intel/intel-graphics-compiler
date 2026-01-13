@@ -12,7 +12,7 @@ SPDX-License-Identifier: MIT
 #include "vc/Support/BackendConfig.h"
 #include "vc/Utils/GenX/KernelInfo.h"
 
-#include "llvm/ADT/Optional.h"
+#include "llvmWrapper/ADT/Optional.h"
 #include "llvm/Pass.h"
 
 #include "JitterDataStruct.h"

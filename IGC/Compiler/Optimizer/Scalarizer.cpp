@@ -1066,8 +1066,8 @@ void ScalarizeFunction::obtainScalarizedValues(SmallVectorImpl<Value *> &retValu
 void ScalarizeFunction::obtainVectorValueWhichMightBeScalarized(Value *vectorVal) { m_usedVectors.insert(vectorVal); }
 
 void ScalarizeFunction::resolveVectorValues() {
-  SmallSetVector<Value *, ESTIMATED_INST_NUM>::iterator it = m_usedVectors.begin();
-  SmallSetVector<Value *, ESTIMATED_INST_NUM>::iterator e = m_usedVectors.end();
+  auto it = m_usedVectors.begin();
+  auto e = m_usedVectors.end();
   for (; it != e; ++it) {
     obtainVectorValueWhichMightBeScalarizedImpl(*it);
   }

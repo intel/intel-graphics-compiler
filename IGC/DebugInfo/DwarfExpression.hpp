@@ -76,7 +76,9 @@ public:
   DIExpression::expr_op_iterator end() const { return End; }
 
   /// Retrieve the fragment information, if any.
-  Optional<DIExpression::FragmentInfo> getFragmentInfo() const { return DIExpression::getFragmentInfo(Start, End); }
+  IGCLLVM::optional<DIExpression::FragmentInfo> getFragmentInfo() const {
+    return DIExpression::getFragmentInfo(Start, End);
+  }
 };
 
 class DwarfExpression {

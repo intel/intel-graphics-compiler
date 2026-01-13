@@ -13,6 +13,7 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPush.hpp"
 #include <llvmWrapper/IR/IRBuilder.h>
 #include "llvmWrapper/IR/DerivedTypes.h"
+#include "llvmWrapper/IR/Type.h"
 #include <llvm/IR/Function.h>
 #include <llvmWrapper/IR/Instructions.h>
 #include <llvm/IR/Module.h>
@@ -563,7 +564,7 @@ void BIImport::addOCLObjectCastFunctionDefinitions(llvm::Module &M) {
 
       if (ArgV->getType()->getPointerAddressSpace() != DstTy->getPointerAddressSpace()) {
         RetValue = Builder.CreateAddrSpaceCast(ArgV, DstTy);
-      } else if (!ArgV->getType()->isOpaquePointerTy() && ArgV->getType() != DstTy) {
+      } else if (!IGCLLVM::isPointerTy(ArgV->getType()) && ArgV->getType() != DstTy) {
         RetValue = Builder.CreateBitCast(ArgV, DstTy);
       }
 
