@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2025 Intel Corporation
+Copyright (C) 2017-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -1353,6 +1353,9 @@ void COpenCLKernel::AllocatePayload() {
 
   KernelArgs kernelArgs(*entry, m_DL, m_pMdUtils, m_ModuleMetadata, getGRFSize(), layout);
 
+  // Before main loop, check which local IDs are used.
+  setOCLThreadPayloadLocalIDs(kernelArgs);
+
   if (layout == KernelArgsOrder::InputType::INDIRECT && !loadThreadPayload) {
     kernelArgs.checkForZeroPerThreadData();
   }
@@ -1505,13 +1508,6 @@ void COpenCLKernel::AllocatePayload() {
 
       const uint offsetInPayload = offset - constantBufferStart - offsetCorrection;
 
-      // All three local IDs are always present.
-      if (arg.isImplicitLocalId()) {
-        m_kernelInfo.m_threadPayload.HasLocalIDx = true;
-        m_kernelInfo.m_threadPayload.HasLocalIDy = true;
-        m_kernelInfo.m_threadPayload.HasLocalIDz = true;
-      }
-
       bool Res = CreateZEPayloadArguments(&arg, offsetInPayload, ptrArgsAttrMap);
       IGC_ASSERT_MESSAGE(Res, "ZEBin: unsupported KernelArg Type");
       (void)Res;
@@ -1542,7 +1538,9 @@ void COpenCLKernel::AllocatePayload() {
   if (m_kernelInfo.m_threadPayload.HasLocalIDx || m_kernelInfo.m_threadPayload.HasLocalIDy ||
       m_kernelInfo.m_threadPayload.HasLocalIDz) {
     if (loadThreadPayload) {
-      uint perThreadInputSize = SIZE_WORD * 3 * (m_State.m_dispatchSize == SIMDMode::SIMD32 ? 32 : 16);
+      uint dimensions =
+          m_kernelInfo.m_threadPayload.HasLocalIDz ? 3 : (m_kernelInfo.m_threadPayload.HasLocalIDy ? 2 : 1);
+      uint perThreadInputSize = SIZE_WORD * dimensions * (m_State.m_dispatchSize == SIMDMode::SIMD32 ? 32 : 16);
       if (m_State.m_dispatchSize == SIMDMode::SIMD16 && getGRFSize() == 64) {
         perThreadInputSize *= 2;
       }
@@ -1560,6 +1558,21 @@ void COpenCLKernel::AllocatePayload() {
 }
 
 bool COpenCLKernel::isUnusedArg(KernelArg &arg) const {
+
+  // For local ID, read from payload.
+  if (arg.isImplicitLocalId()) {
+    switch (arg.getArgType()) {
+    case KernelArg::ArgType::IMPLICIT_LOCAL_ID_X:
+      return !m_kernelInfo.m_threadPayload.HasLocalIDx;
+    case KernelArg::ArgType::IMPLICIT_LOCAL_ID_Y:
+      return !m_kernelInfo.m_threadPayload.HasLocalIDy;
+    case KernelArg::ArgType::IMPLICIT_LOCAL_ID_Z:
+      return !m_kernelInfo.m_threadPayload.HasLocalIDz;
+    default:
+      return false;
+    }
+  }
+
   if (!arg.getArg() || !arg.getArg()->use_empty())
     return false;
 
@@ -1662,6 +1675,48 @@ bool COpenCLKernel::canSkipScratchPointer(KernelArgs &args) const {
 
   uint limit = m_ctx->platform.getInlineDataSize();
   return constantBufferWithScratchPointer > limit && constantBufferWithoutScratchPointer <= limit;
+}
+
+// Set in thread payload what local IDs are required by the kernel.
+// Request all local IDs up to highest used dimension.
+// Example: If Y is used, X must also be requested.
+void COpenCLKernel::setOCLThreadPayloadLocalIDs(KernelArgs &args) {
+
+  m_kernelInfo.m_threadPayload.HasLocalIDx = false;
+  m_kernelInfo.m_threadPayload.HasLocalIDy = false;
+  m_kernelInfo.m_threadPayload.HasLocalIDz = false;
+
+  const bool canRemove = AllowRemovingUnusedImplicitLocalIDs(m_Context) && !HasSubroutines() && !HasStackCalls();
+
+  for (KernelArgs::const_iterator i = args.begin(), e = args.end(); i != e; ++i) {
+    KernelArg arg = *i;
+
+    if (!arg.isImplicitLocalId())
+      continue;
+
+    // If kernel has local ID and removing is disabled, all local IDs are marked as used.
+    if (!canRemove) {
+      m_kernelInfo.m_threadPayload.HasLocalIDx = true;
+      m_kernelInfo.m_threadPayload.HasLocalIDy = true;
+      m_kernelInfo.m_threadPayload.HasLocalIDz = true;
+      return;
+    }
+
+    // If local ID is used, all lower dimesions are also used.
+    // Let pass through switch cases to set all required flags.
+    if (arg.getArg() && !arg.getArg()->use_empty()) {
+      switch (arg.getArgType()) {
+      case KernelArg::ArgType::IMPLICIT_LOCAL_ID_Z:
+        m_kernelInfo.m_threadPayload.HasLocalIDz = true;
+      case KernelArg::ArgType::IMPLICIT_LOCAL_ID_Y:
+        m_kernelInfo.m_threadPayload.HasLocalIDy = true;
+      case KernelArg::ArgType::IMPLICIT_LOCAL_ID_X:
+        m_kernelInfo.m_threadPayload.HasLocalIDx = true;
+      default:
+        break;
+      }
+    }
+  }
 }
 
 bool COpenCLKernel::passNOSInlineData() {

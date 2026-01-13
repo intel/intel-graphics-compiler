@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2024 Intel Corporation
+Copyright (C) 2017-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -591,4 +591,5 @@ bool UsedWithoutImmInMemInst(llvm::Value *v);
 
 bool AllowShortImplicitPayloadHeader(const CodeGenContext *ctx);
 bool AllowRemovingUnusedImplicitArguments(const CodeGenContext *ctx);
+bool AllowRemovingUnusedImplicitLocalIDs(const CodeGenContext *ctx);
 } // namespace IGC

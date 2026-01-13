@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2025 Intel Corporation
+Copyright (C) 2017-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -1825,6 +1825,12 @@ DECLARE_IGC_REGKEY_ENUM(ShortImplicitPayloadHeader, -1,
 DECLARE_IGC_REGKEY_ENUM(RemoveUnusedIdImplicitArguments, -1,
                         "Remove implicit arguments: global_id_offset (payloadHeader) and/or enqueued_local_size if "
                         "unused. Useful if kernel doesn't use global id."
+                        "-1 - platform default"
+                        " 0 - force disabled"
+                        " 1 - force enabled",
+                        TRIBOOL_OPTIONS, true)
+DECLARE_IGC_REGKEY_ENUM(RemoveUnusedIdImplicitLocalIDs, -1,
+                        "Remove implicit arguments localIDs if unused."
                         "-1 - platform default"
                         " 0 - force disabled"
                         " 1 - force enabled",

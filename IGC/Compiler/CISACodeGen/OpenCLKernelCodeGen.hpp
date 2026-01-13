@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2023 Intel Corporation
+Copyright (C) 2017-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -225,6 +225,7 @@ private:
   uint32_t getMaxPressure(llvm::Function &F, IGC::IGCMD::MetaDataUtils *MDUtils) const;
   bool isUnusedArg(KernelArg &arg) const;
   bool canSkipScratchPointer(KernelArgs &args) const;
+  void setOCLThreadPayloadLocalIDs(KernelArgs &args);
 };
 
 void CodeGen(OpenCLProgramContext *ctx);

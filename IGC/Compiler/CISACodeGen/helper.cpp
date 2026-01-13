@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2024 Intel Corporation
+Copyright (C) 2017-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -2943,6 +2943,21 @@ bool AllowRemovingUnusedImplicitArguments(const CodeGenContext *ctx) {
   }
 
   return ctx->platform.isCoreChildOf(IGFX_XE_HP_CORE);
+}
+
+bool AllowRemovingUnusedImplicitLocalIDs(const CodeGenContext *ctx) {
+  const IGC::TriboolFlag value = static_cast<TriboolFlag>(IGC_GET_FLAG_VALUE(RemoveUnusedIdImplicitLocalIDs));
+
+  if (value != TriboolFlag::Default)
+    return value == TriboolFlag::Enabled;
+
+  if (ctx->type == ShaderType::OPENCL_SHADER) {
+    auto *OCLCtx = static_cast<const OpenCLProgramContext *>(ctx);
+    if (OCLCtx->m_InternalOptions.PromoteStatelessToBindless && OCLCtx->m_InternalOptions.UseBindlessLegacyMode)
+      return false;
+  }
+
+  return false;
 }
 
 } // namespace IGC
