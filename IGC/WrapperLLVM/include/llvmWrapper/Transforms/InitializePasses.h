@@ -51,4 +51,5 @@ void initializeSLPVectorizerPassWrapperPass(llvm::PassRegistry &);
 void initializeVectorCombineLegacyPassWrapperPass(llvm::PassRegistry &);
 void initializeLoopUnrollLegacyPassWrapperPass(llvm::PassRegistry &);
 void initializeLICMLegacyPassWrapperPass(llvm::PassRegistry &);
+void initializeIndVarSimplifyLegacyPassWrapperPass(llvm::PassRegistry &);
 #endif // IGCLLVM_TRANSFORMS_INITIALIZE_PASSES_H

@@ -35,6 +35,7 @@ SPDX-License-Identifier: MIT
 #include "llvmWrapper/Transforms/Scalar/LoopDistribute.h"
 #include "llvmWrapper/Transforms/IPO/PostOrderFunctionAttrs.h"
 #include "llvmWrapper/Transforms/Scalar/LoopUnrollPass.h"
+#include "llvmWrapper/Transforms/Scalar/IndVarSimplify.h"
 #include "llvm/Analysis/TypeBasedAliasAnalysis.h"
 #include "llvm/Analysis/ScopedNoAliasAA.h"
 #include "llvm/IR/LegacyPassManager.h"
@@ -148,7 +149,7 @@ void PassManagerBuilder::addFunctionSimplificationPasses(legacy::PassManagerBase
   MPM.add(createInstructionCombiningPass());
   // We resume loop passes creating a second loop pipeline here.
   MPM.add(IGCLLVM::createLegacyWrappedLoopIdiomRecognizePass()); // Recognize idioms like memset.
-  MPM.add(createIndVarSimplifyPass());                           // Canonicalize indvars
+  MPM.add(IGCLLVM::createLegacyWrappedIndVarSimplifyPass());     // Canonicalize indvars
   MPM.add(IGCLLVM::createLegacyWrappedLoopDeletionPass());       // Delete dead loops
 
   // Unroll small loops and perform peeling.

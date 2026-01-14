@@ -169,6 +169,7 @@ SPDX-License-Identifier: MIT
 #include "llvmWrapper/Transforms/Scalar/SCCP.h"
 #include "llvmWrapper/Transforms/Scalar/LoopUnrollPass.h"
 #include "llvmWrapper/Transforms/Scalar/LICM.h"
+#include "llvmWrapper/Transforms/Scalar/IndVarSimplify.h"
 
 #include "common/LLVMWarningsPop.hpp"
 #include "Compiler/CISACodeGen/PatternMatchPass.hpp"
@@ -1403,7 +1404,7 @@ void OptimizeIR(CodeGenContext *const pContext) {
         mpm.add(createIGCInstructionCombiningPass());
 
         if (IGC_IS_FLAG_ENABLED(EnableIndVarSimplification) && pContext->type == ShaderType::OPENCL_SHADER) {
-          mpm.add(llvm::createIndVarSimplifyPass());
+          mpm.add(IGCLLVM::createLegacyWrappedIndVarSimplifyPass());
         }
 
         if (IGC_IS_FLAG_ENABLED(EnableLoopHoistConstant)) {
