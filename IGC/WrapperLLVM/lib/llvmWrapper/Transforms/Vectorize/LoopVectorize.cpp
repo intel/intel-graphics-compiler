@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2025 Intel Corporation
+Copyright (C) 2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -13,12 +13,15 @@ SPDX-License-Identifier: MIT
 #include "llvm/Analysis/GlobalsModRef.h"
 #include "llvm/Analysis/PostDominators.h"
 #include "llvm/Analysis/DemandedBits.h"
+#include "llvmWrapper/Analysis/DemandedBits.h"
 #include "llvm/Analysis/AssumptionCache.h"
 #include "llvm/Analysis/ScalarEvolution.h"
 #include "llvm/Analysis/LoopAccessAnalysis.h"
+#include "llvmWrapper/Analysis/LoopAccessAnalysis.h"
 #include "llvm/Analysis/ProfileSummaryInfo.h"
 #include "llvm/Analysis/TargetLibraryInfo.h"
 #include "llvm/Transforms/Utils/InjectTLIMappings.h"
+#include "llvmWrapper/Transforms/Utils/InjectTLIMappings.h"
 #include "llvm/Analysis/TargetTransformInfo.h"
 #include "llvm/Analysis/BasicAliasAnalysis.h"
 #include "llvm/Analysis/OptimizationRemarkEmitter.h"
@@ -63,13 +66,19 @@ void LoopVectorizeLegacyPassWrapper::getAnalysisUsage(AnalysisUsage &AU) const {
   AU.addRequired<LoopInfoWrapperPass>();
   AU.addRequired<ScalarEvolutionWrapperPass>();
   AU.addRequired<TargetTransformInfoWrapperPass>();
+  AU.addRequired<OptimizationRemarkEmitterWrapperPass>();
+  AU.addRequired<ProfileSummaryInfoWrapperPass>();
+#if LLVM_VERSION_MAJOR > 16 && !defined(IGC_LLVM_TRUNK_REVISION)
+  AU.addRequired<IGCLLVM::LoopAccessAnalysisLegacyPassWrapper>();
+  AU.addRequired<IGCLLVM::DemandedBitsLegacyPassWrapper>();
+  AU.addRequired<IGCLLVM::InjectTLIMappingsLegacyPassWrapper>();
+#else
   AU.addRequired<LoopAccessLegacyAnalysis>();
   AU.addRequired<DemandedBitsWrapperPass>();
-  AU.addRequired<OptimizationRemarkEmitterWrapperPass>();
   AU.addRequired<InjectTLIMappingsLegacy>();
+#endif
   AU.addPreserved<BasicAAWrapperPass>();
   AU.addPreserved<GlobalsAAWrapperPass>();
-  AU.addRequired<ProfileSummaryInfoWrapperPass>();
 }
 
 char LoopVectorizeLegacyPassWrapper::ID = 0;
@@ -91,8 +100,13 @@ IGC_INITIALIZE_PASS_DEPENDENCY(BlockFrequencyInfoWrapperPass)
 IGC_INITIALIZE_PASS_DEPENDENCY(DominatorTreeWrapperPass)
 IGC_INITIALIZE_PASS_DEPENDENCY(ScalarEvolutionWrapperPass)
 IGC_INITIALIZE_PASS_DEPENDENCY(LoopInfoWrapperPass)
-IGC_INITIALIZE_PASS_DEPENDENCY(LoopAccessLegacyAnalysis)
-IGC_INITIALIZE_PASS_DEPENDENCY(DemandedBitsWrapperPass)
 IGC_INITIALIZE_PASS_DEPENDENCY(OptimizationRemarkEmitterWrapperPass)
 IGC_INITIALIZE_PASS_DEPENDENCY(ProfileSummaryInfoWrapperPass)
+#if LLVM_VERSION_MAJOR > 16 && !defined(IGC_LLVM_TRUNK_REVISION)
+IGC_INITIALIZE_PASS_DEPENDENCY(LoopAccessAnalysisLegacyPassWrapper)
+IGC_INITIALIZE_PASS_DEPENDENCY(DemandedBitsLegacyPassWrapper)
+#else
+IGC_INITIALIZE_PASS_DEPENDENCY(DemandedBitsWrapperPass)
+IGC_INITIALIZE_PASS_DEPENDENCY(LoopAccessLegacyAnalysis)
+#endif
 IGC_INITIALIZE_PASS_END(LoopVectorizeLegacyPassWrapper, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)

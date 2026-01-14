@@ -14,7 +14,6 @@ SPDX-License-Identifier: MIT
 #include "llvm/Analysis/AssumptionCache.h"
 #include "llvm/Analysis/GlobalsModRef.h"
 #include "llvm/Analysis/PostDominators.h"
-#include "llvm/Analysis/DemandedBits.h"
 #include "llvm/Analysis/ScalarEvolution.h"
 #include "llvm/IR/Function.h"
 #include "llvm/IR/PassManager.h"

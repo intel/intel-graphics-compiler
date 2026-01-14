@@ -1,10 +1,11 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2025 Intel Corporation
+Copyright (C) 2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
+
 #include "common/LLVMWarningsPush.hpp"
 #include "llvmWrapper/Analysis/DemandedBits.h"
 
