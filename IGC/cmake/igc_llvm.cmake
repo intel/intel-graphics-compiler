@@ -69,14 +69,6 @@ list(TRANSFORM LLVM_INCLUDE_DIRS PREPEND "-I=" OUTPUT_VARIABLE LLVM_TABLEGEN_FLA
 # Add major version definition for llvm wrapper.
 add_compile_definitions(LLVM_VERSION_MAJOR=${LLVM_VERSION_MAJOR})
 
-set(IGC_BUILD__OPAQUE_POINTERS_ENABLE_OPT "-opaque-pointers=1")
-set(IGC_BUILD__OPAQUE_POINTERS_DISABLE_OPT "-opaque-pointers=0")
-set(IGC_BUILD__OPAQUE_POINTERS_ENABLE_CLANG "-opaque-pointers")
-
-if(IGC_BUILD__CLANG_VERSION_MAJOR GREATER_EQUAL 15)
-  set(IGC_BUILD__OPAQUE_POINTERS_DISABLE_CLANG "-no-opaque-pointers")
-endif()
-
 # Based on the default behavior for opaque/typed pointers, propagate
 # corresponding options to all the in-tree calls of clang/opt tools.
 
@@ -85,6 +77,14 @@ endif()
 if(LLVM_VERSION_MAJOR GREATER_EQUAL 17)
   message("Force Enable Opaque Pointers due to LLVM >= 17")
   SET(IGC_OPTION__API_ENABLE_OPAQUE_POINTERS ON)
+else()
+  set(IGC_BUILD__OPAQUE_POINTERS_ENABLE_OPT "-opaque-pointers=1")
+  set(IGC_BUILD__OPAQUE_POINTERS_DISABLE_OPT "-opaque-pointers=0")
+  set(IGC_BUILD__OPAQUE_POINTERS_ENABLE_CLANG "-opaque-pointers")
+
+  if(IGC_BUILD__CLANG_VERSION_MAJOR GREATER_EQUAL 15)
+    set(IGC_BUILD__OPAQUE_POINTERS_DISABLE_CLANG "-no-opaque-pointers")
+  endif()
 endif()
 
 if(IGC_OPTION__API_ENABLE_OPAQUE_POINTERS)
