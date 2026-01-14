@@ -1118,4 +1118,12 @@ enum LSC_CACHE_CTRL_OPERATION {
 
 };
 
+enum class FILENAME_COLLISION_MODE : unsigned char
+{
+#define FILENAME_COLLISION_MODE(Name, Val, Description) Name = Val,
+#include "IGC/common/igc_regkeys_enums_defs.h"
+  FILENAME_COLLISION_MODES
+#undef FILENAME_COLLISION_MODE
+#undef FILENAME_COLLISION_MODES
+};
 #endif // _VISA_IGC_COMMON_HEADER_H_

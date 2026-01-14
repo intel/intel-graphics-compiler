@@ -27,6 +27,7 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPop.hpp"
 
 #include <stdarg.h>
+#include <filesystem>
 #include <fstream>
 #include <sstream>
 #include <iomanip>
@@ -519,13 +520,22 @@ Dump::Dump(DumpName const &dumpName, DumpType type)
 
 void Dump::flush() {
   m_pStringStream->flush();
-  std::ios_base::openmode mode = std::ios_base::out | std::ios_base::app;
+  std::ios_base::openmode mode = std::ios_base::out;
   if (!isText(m_type))
     mode |= std::ios_base::binary;
+  const FILENAME_COLLISION_MODE collisionMode =
+      static_cast<FILENAME_COLLISION_MODE>(IGC_GET_FLAG_VALUE(ShaderDumpCollisionMode));
   if (m_name.allow()) {
-    std::ofstream asmFile(m_name.str(), mode);
-    asmFile << m_string;
-    asmFile.close();
+    if (collisionMode == FILENAME_COLLISION_MODE::OVERRIDE || !std::filesystem::exists(m_name.str())) {
+      std::ofstream asmFile(m_name.str(), mode);
+      asmFile << m_string;
+    } else if (isText(m_type)) { // Do NOT append binary files
+      std::ofstream asmFile(m_name.str(), mode | std::ios_base::app);
+      if (collisionMode == FILENAME_COLLISION_MODE::APPEND)
+        asmFile << commentPrefix(m_type) << "Warning: appending filename collides\n" << m_string;
+      else
+        asmFile << commentPrefix(m_type) << "Warning: skipping filename collides\n";
+    }
   }
   m_string.clear();
 }

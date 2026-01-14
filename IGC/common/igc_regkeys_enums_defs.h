@@ -164,3 +164,11 @@ SPDX-License-Identifier: MIT
   INJECT_PRINTF_OPTION(InjectPrintfLoadsAndStores, 3)
 #endif // INJECT_PRINTF_OPTION
 
+#ifdef FILENAME_COLLISION_MODE
+#define FILENAME_COLLISION_MODES                                                                                       \
+  FILENAME_COLLISION_MODE(OVERRIDE, 0, "Override, the file will be the last one")                                      \
+  FILENAME_COLLISION_MODE(LOG_SKIP, 1, "Log collisions and skip overriding, the file will be the first one with logs") \
+  FILENAME_COLLISION_MODE(APPEND, 2, "Append whole content, the file will contain EVERY writes")
+#endif // FILENAME_COLLISION_MODE
+
+

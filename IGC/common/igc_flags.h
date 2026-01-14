@@ -825,6 +825,8 @@ DECLARE_IGC_REGKEY(
     bool, ShaderDumpInstNamer, false,
     "dump all unnamed LLVM IR instruction with variable names 'tmp' which makes easier for shaderoverriding", true)
 DECLARE_IGC_REGKEY(debugString, ShaderDumpRegexFilter, 0, "Only dump files matching the given regex", true)
+DECLARE_IGC_REGKEY_ENUM(ShaderDumpCollisionMode, 0, "What to do when file collision happens", FILENAME_COLLISION_MODES,
+                        true)
 DECLARE_IGC_REGKEY(bool, DumpZEInfoToConsole, false, "Dump zeinfo to console", true)
 DECLARE_IGC_REGKEY(debugString, ProgbinDumpFileName, 0,
                    "Specify filename to use for dumping progbin file to current dir", true)

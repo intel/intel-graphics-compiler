@@ -33,6 +33,7 @@ SPDX-License-Identifier: MIT
 #define SHADER_TYPE_MASK(Name, Val) #Name "=" #Val ","
 #define TRIBOOL_OPTION(Name, Val) #Name "=" #Val ","
 #define RTMEMORY_STYLE_OPTION(Name, Val) #Name "=" #Val ","
+#define FILENAME_COLLISION_MODE(Name, Val, Description) #Name " [" Description "]=" #Val ","
 #define NEW_INLINE_RAYTRACING_FLAG(Name, Val, Description) #Name " [" Description "]=" #Val ","
 #define REMAT_FLAG(Name, Val, Description) #Name " [" Description "]=" #Val ","
 
@@ -66,6 +67,8 @@ SPDX-License-Identifier: MIT
 
 #undef RTMEMORY_STYLE_OPTION
 #undef RTMEMORY_STYLE_OPTIONS
+#undef FILENAME_COLLISION_MODE
+#undef FILENAME_COLLISION_MODES
 #undef INJECT_PRINTF_OPTION
 #undef INJECT_PRINTF_OPTIONS
 
