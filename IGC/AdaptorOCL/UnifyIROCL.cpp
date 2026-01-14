@@ -25,6 +25,7 @@ SPDX-License-Identifier: MIT
 #include <llvmWrapper/Transforms/InstCombine/InstCombineWorklist.h>
 #include <llvmWrapper/Transforms/Scalar/SCCP.h>
 #include "llvmWrapper/Transforms/IPO/GlobalDCE.h"
+#include "llvmWrapper/Transforms/IPO/InlineSimple.h"
 #include <llvm/Transforms/Utils.h>
 
 #include "common/LLVMWarningsPop.hpp"
@@ -406,7 +407,7 @@ static void CommonOCLBasedPasses(OpenCLProgramContext *pContext) {
 
     if (!IGC::ForceAlwaysInline(pContext)) {
       int Threshold = IGC_GET_FLAG_VALUE(OCLInlineThreshold);
-      mpm.add(createFunctionInliningPass(Threshold));
+      mpm.add(IGCLLVM::createLegacyWrappedSimpleInlinerPass(Threshold));
     } else {
       mpm.add(createAlwaysInlinerLegacyPass());
     }

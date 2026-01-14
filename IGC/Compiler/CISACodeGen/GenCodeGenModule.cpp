@@ -23,6 +23,12 @@ SPDX-License-Identifier: MIT
 #include "llvm/ADT/SCCIterator.h"
 #include "llvm/Analysis/InlineCost.h"
 #include "llvm/Analysis/ValueTracking.h"
+#include "llvm/Analysis/BasicAliasAnalysis.h"
+#include "llvm/Analysis/AliasAnalysis.h"
+#include "llvm/Analysis/ProfileSummaryInfo.h"
+#include "llvm/Analysis/ScopedNoAliasAA.h"
+#include "llvm/Analysis/TypeBasedAliasAnalysis.h"
+#include "llvm/Analysis/GlobalsModRef.h"
 #include "llvmWrapper/IR/CallSite.h"
 #include "llvm/IR/Module.h"
 #include "llvm/IR/Function.h"
@@ -35,6 +41,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/IR/DIBuilder.h"
 #include "common/LLVMWarningsPop.hpp"
 #include "DebugInfo/VISADebugEmitter.hpp"
+#include "llvmWrapper/Transforms/IPO/InlineHelper.h"
 #include <numeric>
 #include <utility>
 #include "Probe/Assertion.h"
@@ -1085,10 +1092,61 @@ void GenXFunctionGroupAnalysis::print(raw_ostream &os) {
 void GenXFunctionGroupAnalysis::dump() { print(llvm::errs()); }
 #endif
 
+using InlinedArrayAllocasTy = DenseMap<ArrayType *, std::vector<AllocaInst *>>;
 namespace {
 
+#if LLVM_VERSION_MAJOR > 16
+AAResults createLegacyPMAAResults(Pass &P, Function &F, BasicAAResult &BAR) {
+  AAResults AAR(P.getAnalysis<TargetLibraryInfoWrapperPass>().getTLI());
+  AAR.addAAResult(BAR);
+
+  // Populate the results with the other currently available AAs.
+  if (auto *WrapperPass = P.getAnalysisIfAvailable<ScopedNoAliasAAWrapperPass>())
+    AAR.addAAResult(WrapperPass->getResult());
+  if (auto *WrapperPass = P.getAnalysisIfAvailable<TypeBasedAAWrapperPass>())
+    AAR.addAAResult(WrapperPass->getResult());
+  if (auto *WrapperPass = P.getAnalysisIfAvailable<GlobalsAAWrapperPass>())
+    AAR.addAAResult(WrapperPass->getResult());
+  if (auto *WrapperPass = P.getAnalysisIfAvailable<ExternalAAWrapperPass>())
+    if (WrapperPass->CB)
+      WrapperPass->CB(P, F, AAR);
+
+  return AAR;
+}
+
+BasicAAResult createLegacyPMBasicAAResult(Pass &P, Function &F) {
+  return BasicAAResult(F.getParent()->getDataLayout(), F, P.getAnalysis<TargetLibraryInfoWrapperPass>().getTLI(),
+                       P.getAnalysis<AssumptionCacheTracker>().getAssumptionCache(F));
+}
+
+class LegacyAARGetter {
+  Pass &P;
+  std::optional<BasicAAResult> BAR;
+  std::optional<AAResults> AAR;
+
+public:
+  LegacyAARGetter(Pass &P) : P(P) {}
+  AAResults &operator()(Function &F) {
+    BAR.emplace(createLegacyPMBasicAAResult(P, F));
+    AAR.emplace(createLegacyPMAAResults(P, F, *BAR));
+    return *AAR;
+  }
+};
+#endif
+
 /// \brief Custom inliner for subroutines.
+#if LLVM_VERSION_MAJOR >= 16
+class SubroutineInliner : public llvm::CallGraphSCCPass, public llvm::InstVisitor<SubroutineInliner> {
+
+protected:
+  llvm::AssumptionCacheTracker *ACT;
+  llvm::ProfileSummaryInfo *PSI;
+  std::function<const TargetLibraryInfo &(Function &)> GetTLI;
+  bool InsertLifetime = true;
+  llvm::ImportedFunctionsInliningStatistics ImportedFunctionsStats;
+#else
 class SubroutineInliner : public LegacyInlinerBase, public llvm::InstVisitor<SubroutineInliner> {
+#endif
   EstimateFunctionSize *FSA = nullptr;
   MetaDataUtilsWrapper *MDUW = nullptr;
 
@@ -1096,10 +1154,15 @@ public:
   static char ID; // Pass identification, replacement for typeid
 
   // Use extremely low threshold.
+#if LLVM_VERSION_MAJOR >= 16
+  SubroutineInliner();
+  InlineCost getInlineCost(IGCLLVM::CallSiteRef CS);
+  bool inlineCalls(CallGraphSCC &SCC);
+
+#else
   SubroutineInliner() : LegacyInlinerBase(ID, /*InsertLifetime*/ false), FSA(nullptr) {}
-
   InlineCost getInlineCost(IGCLLVM::CallSiteRef CS) override;
-
+#endif
   void getAnalysisUsage(AnalysisUsage &AU) const override;
   bool runOnSCC(CallGraphSCC &SCC) override;
   void verifyAddrSpaceMismatch(CallGraphSCC &SCC);
@@ -1108,7 +1171,11 @@ public:
 
   using llvm::Pass::doFinalization;
   bool doFinalization(CallGraph &CG) override {
-    bool Changed = removeDeadFunctions(CG);
+#if LLVM_VERSION_MAJOR >= 16
+    bool Changed = IGCLLVM::removeDeadFunctions(CG);
+#else
+    bool Changed = LegacyInlinerBase::removeDeadFunctions(CG);
+#endif
     Changed |= purgeMetaDataUtils(CG.getModule(), MDUW);
     return Changed;
   }
@@ -1128,8 +1195,36 @@ void SubroutineInliner::getAnalysisUsage(AnalysisUsage &AU) const {
   AU.addRequired<EstimateFunctionSize>();
   AU.addRequired<CodeGenContextWrapper>();
   AU.addRequired<MetaDataUtilsWrapper>();
+#if LLVM_VERSION_MAJOR >= 16
+  AU.addRequired<AssumptionCacheTracker>();
+  AU.addRequired<ProfileSummaryInfoWrapperPass>();
+  AU.addRequired<TargetLibraryInfoWrapperPass>();
+  AU.addUsedIfAvailable<ScopedNoAliasAAWrapperPass>();
+  AU.addUsedIfAvailable<TypeBasedAAWrapperPass>();
+  AU.addUsedIfAvailable<GlobalsAAWrapperPass>();
+  AU.addUsedIfAvailable<ExternalAAWrapperPass>();
+  CallGraphSCCPass::getAnalysisUsage(AU);
+#else
   LegacyInlinerBase::getAnalysisUsage(AU);
+#endif
 }
+
+#if LLVM_VERSION_MAJOR >= 16
+SubroutineInliner::SubroutineInliner() : CallGraphSCCPass(ID), FSA(nullptr) {}
+
+bool SubroutineInliner::inlineCalls(CallGraphSCC &SCC) {
+  CallGraph &CG = getAnalysis<CallGraphWrapperPass>().getCallGraph();
+  ACT = &getAnalysis<AssumptionCacheTracker>();
+  PSI = &getAnalysis<ProfileSummaryInfoWrapperPass>().getPSI();
+  GetTLI = [&](Function &F) -> const TargetLibraryInfo & {
+    return getAnalysis<TargetLibraryInfoWrapperPass>().getTLI();
+  };
+  auto GetAssumptionCache = [&](Function &F) -> AssumptionCache & { return ACT->getAssumptionCache(F); };
+  return IGCLLVM::inlineCallsImpl(
+      SCC, CG, GetAssumptionCache, PSI, GetTLI, InsertLifetime, [&](CallBase &CB) { return getInlineCost(CB); },
+      LegacyAARGetter(*this), ImportedFunctionsStats);
+}
+#endif
 
 void SubroutineInliner::visitGetElementPtrInst(GetElementPtrInst &GEPI) {
   for (auto *useOfGEPI : GEPI.users()) {
@@ -1202,7 +1297,13 @@ void SubroutineInliner::verifyAddrSpaceMismatch(CallGraphSCC &SCC) {
 bool SubroutineInliner::runOnSCC(CallGraphSCC &SCC) {
   FSA = &getAnalysis<EstimateFunctionSize>();
   MDUW = &getAnalysis<MetaDataUtilsWrapper>();
+#if LLVM_VERSION_MAJOR >= 16
+  if (skipSCC(SCC))
+    return false;
+  bool changed = inlineCalls(SCC);
+#else
   bool changed = LegacyInlinerBase::runOnSCC(SCC);
+#endif
   if (changed)
     verifyAddrSpaceMismatch(SCC);
 
