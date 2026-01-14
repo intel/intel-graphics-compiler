@@ -2952,7 +2952,7 @@ bool AllowRemovingUnusedImplicitLocalIDs(const CodeGenContext *ctx) {
       return false;
   }
 
-  return false;
+  return ctx->platform.isCoreChildOf(IGFX_XE2_HPG_CORE) && !ctx->platform.isCoreChildOf(IGFX_XE3_CORE);
 }
 
 } // namespace IGC
