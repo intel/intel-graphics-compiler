@@ -21,6 +21,13 @@ SPDX-License-Identifier: MIT
 #include "llvmWrapper/Transforms/Scalar/WarnMissedTransforms.h"
 #include "llvmWrapper/Transforms/Scalar/LoopIdiomRecognize.h"
 #include "llvmWrapper/Transforms/Scalar/DivRemPairs.h"
+#include "llvmWrapper/Transforms/Scalar/JumpThreading.h"
+#include "llvmWrapper/Transforms/Scalar/SCCP.h"
+#include "llvmWrapper/Transforms/IPO/SCCP.h"
+#include "llvmWrapper/Transforms/IPO/GlobalDCE.h"
+#include "llvmWrapper/Transforms/Scalar/CorrelatedValuePropagation.h"
+#include "llvmWrapper/Transforms/Scalar/DeadStoreElimination.h"
+#include "llvmWrapper/Transforms/Scalar/LoopLoadElimination.h"
 #include "llvmWrapper/Transforms/IPO/Annotation2Metadata.h"
 #include "llvmWrapper/Transforms/IPO/ForceFunctionAttrs.h"
 #include "llvmWrapper/Transforms/Scalar/ADCE.h"
@@ -34,6 +41,7 @@ SPDX-License-Identifier: MIT
 #include "llvmWrapper/Transforms/Scalar/Float2Int.h"
 #include "llvmWrapper/Transforms/Scalar/LoopDistribute.h"
 #include "llvmWrapper/Transforms/IPO/PostOrderFunctionAttrs.h"
+#include "llvmWrapper/Transforms/Scalar/MemCpyOptimizer.h"
 #include "llvmWrapper/Transforms/Scalar/LoopUnrollPass.h"
 #include "llvmWrapper/Transforms/Scalar/IndVarSimplify.h"
 #include "llvm/Analysis/TypeBasedAliasAnalysis.h"
@@ -104,8 +112,8 @@ void PassManagerBuilder::addFunctionSimplificationPasses(legacy::PassManagerBase
     // Speculative execution if the target has divergent branches; otherwise nop.
     MPM.add(createSpeculativeExecutionIfHasBranchDivergencePass());
 
-    MPM.add(createJumpThreadingPass());              // Thread jumps.
-    MPM.add(createCorrelatedValuePropagationPass()); // Propagate conditionals
+    MPM.add(IGCLLVM::createLegacyWrappedJumpThreadingPass());              // Thread jumps.
+    MPM.add(IGCLLVM::createLegacyWrappedCorrelatedValuePropagationPass()); // Propagate conditionals
   }
   MPM.add(createCFGSimplificationPass(SimplifyCFGOptions().convertSwitchRangeToICmp(true))); // Merge & remove BBs
   // Combine silly seq's
@@ -153,7 +161,7 @@ void PassManagerBuilder::addFunctionSimplificationPasses(legacy::PassManagerBase
   MPM.add(IGCLLVM::createLegacyWrappedLoopDeletionPass());       // Delete dead loops
 
   // Unroll small loops and perform peeling.
-  MPM.add(createSimpleLoopUnrollPass(OptLevel, DisableUnrollLoops, ForgetAllSCEVInLoopUnroll));
+  MPM.add(IGCLLVM::createLegacyWrappedSimpleLoopUnrollPass(OptLevel, DisableUnrollLoops, ForgetAllSCEVInLoopUnroll));
   // This ends the loop pass pipelines.
 
   // Break up allocas that may now be splittable after loop unrolling.
@@ -163,7 +171,7 @@ void PassManagerBuilder::addFunctionSimplificationPasses(legacy::PassManagerBase
     MPM.add(createMergedLoadStoreMotionPass()); // Merge ld/st in diamonds
     MPM.add(createGVNPass(false));              // Remove redundancies
   }
-  MPM.add(createSCCPPass()); // Constant prop with SCCP
+  MPM.add(IGCLLVM::createLegacyWrappedSCCPPass()); // Constant prop with SCCP
 
   // Delete dead bit computations (instcombine runs after to fold away the dead
   // computations, and then ADCE will run later to exploit any new DCE
@@ -174,15 +182,15 @@ void PassManagerBuilder::addFunctionSimplificationPasses(legacy::PassManagerBase
   // opened up by them.
   MPM.add(createInstructionCombiningPass());
   if (OptLevel > 1) {
-    MPM.add(createJumpThreadingPass()); // Thread jumps
-    MPM.add(createCorrelatedValuePropagationPass());
+    MPM.add(IGCLLVM::createLegacyWrappedJumpThreadingPass()); // Thread jumps
+    MPM.add(IGCLLVM::createLegacyWrappedCorrelatedValuePropagationPass());
   }
   MPM.add(IGCLLVM::createLegacyWrappedADCEPass()); // Delete dead instructions
 
-  MPM.add(createMemCpyOptPass()); // Remove memcpy / form memset
+  MPM.add(IGCLLVM::createLegacyWrappedMemCpyOptPass()); // Remove memcpy / form memset
   // TODO: Investigate if this is too expensive at O1.
   if (OptLevel > 1) {
-    MPM.add(createDeadStoreEliminationPass()); // Delete dead stores
+    MPM.add(IGCLLVM::createLegacyWrappedDeadStoreEliminationPass()); // Delete dead stores
     MPM.add(IGCLLVM::createLegacyWrappedLICMPass(LicmMssaOptCap, LicmMssaNoAccForPromotionCap,
                                                  /*AllowSpeculation=*/true));
   }
@@ -212,7 +220,7 @@ void PassManagerBuilder::addVectorPasses(legacy::PassManagerBase &PM, bool IsFul
   if (!IsFullLTO) {
     // Eliminate loads by forwarding stores from the previous iteration to loads
     // of the current iteration.
-    PM.add(createLoopLoadEliminationPass());
+    PM.add(IGCLLVM::createLegacyWrappedLoopLoadEliminationPass());
   }
   // Cleanup after the loop optimization passes.
   PM.add(createInstructionCombiningPass());
@@ -235,7 +243,7 @@ void PassManagerBuilder::addVectorPasses(legacy::PassManagerBase &PM, bool IsFul
                                          .sinkCommonInsts(true)));
 
   if (IsFullLTO) {
-    PM.add(createSCCPPass());                 // Propagate exposed constants
+    PM.add(IGCLLVM::createLegacyWrappedSCCPPass()); // Propagate exposed constants
     PM.add(createInstructionCombiningPass()); // Clean up again
     PM.add(IGCLLVM::createLegacyWrappedBDCEPass());
   }
@@ -296,7 +304,7 @@ void PassManagerBuilder::populateModulePassManager(legacy::PassManagerBase &MPM)
   if (OptLevel > 2)
     MPM.add(IGCLLVM::createLegacyWrappedCallSiteSplittingPass());
 
-  MPM.add(createIPSCCPPass()); // IP SCCP
+  MPM.add(IGCLLVM::createLegacyWrappedIPSCCPPass()); // IP SCCP
   MPM.add(IGCLLVM::createLegacyWrappedCalledValuePropagationPass());
 
   MPM.add(IGCLLVM::createLegacyWrappedGlobalOptPass()); // Optimize out global vars
@@ -353,7 +361,7 @@ void PassManagerBuilder::populateModulePassManager(legacy::PassManagerBase &MPM)
   // faster.
   if (RunInliner) {
     MPM.add(IGCLLVM::createLegacyWrappedGlobalOptPass());
-    MPM.add(createGlobalDCEPass());
+    MPM.add(IGCLLVM::createLegacyWrappedGlobalDCEPass());
   }
 
   // We add a fresh GlobalsModRef run at this point. This is particularly
@@ -395,7 +403,7 @@ void PassManagerBuilder::populateModulePassManager(legacy::PassManagerBase &MPM)
   // GlobalOpt already deletes dead functions and globals, at -O2 try a
   // late pass of GlobalDCE.  It is capable of deleting dead cycles.
   if (OptLevel > 1) {
-    MPM.add(createGlobalDCEPass());     // Remove dead fns and globals.
+    MPM.add(IGCLLVM::createLegacyWrappedGlobalDCEPass());     // Remove dead fns and globals.
     MPM.add(IGCLLVM::createLegacyWrappedConstantMergePass()); // Merge dup global constants
   }
 

@@ -160,6 +160,7 @@ SPDX-License-Identifier: MIT
 #include "llvmWrapper/Transforms/Scalar/CorrelatedValuePropagation.h"
 #include "llvmWrapper/Transforms/Scalar/DeadStoreElimination.h"
 #include "llvmWrapper/Transforms/Scalar/JumpThreading.h"
+#include "llvmWrapper/Transforms/IPO/ConstantMerge.h"
 #include "llvmWrapper/Transforms/IPO/SCCP.h"
 #include "llvmWrapper/Transforms/IPO/GlobalDCE.h"
 #include "llvmWrapper/Transforms/IPO/PostOrderFunctionAttrs.h"
@@ -1582,7 +1583,7 @@ void OptimizeIR(CodeGenContext *const pContext) {
       if (IGC_IS_FLAG_ENABLED(EnableJumpThreading) && !pContext->m_instrTypes.hasAtomics &&
           !extensiveShader(pContext)) {
         // After lowering 'switch', run jump threading to remove redundant jumps.
-        mpm.add(llvm::createJumpThreadingPass());
+        mpm.add(IGCLLVM::createLegacyWrappedJumpThreadingPass());
       }
 
       // run instruction combining to clean up the code after CFG optimizations
@@ -1727,7 +1728,7 @@ void OptimizeIR(CodeGenContext *const pContext) {
       mpm.add(createSinkLoadOptPass());
     }
 
-    mpm.add(createConstantMergePass());
+    mpm.add(IGCLLVM::createLegacyWrappedConstantMergePass());
     GFX_ONLY_PASS { mpm.add(CreateMCSOptimization()); }
     GFX_ONLY_PASS { mpm.add(CreateGatingSimilarSamples()); }
 

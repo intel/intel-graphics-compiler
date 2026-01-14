@@ -70,9 +70,7 @@ void SLPVectorizerPassWrapper::getAnalysisUsage(AnalysisUsage &AU) const {
   AU.addRequired<TargetTransformInfoWrapperPass>();
   AU.addRequired<LoopInfoWrapperPass>();
   AU.addRequired<DominatorTreeWrapperPass>();
-  AU.addRequired<DemandedBitsWrapperPass>();
   AU.addRequired<OptimizationRemarkEmitterWrapperPass>();
-  AU.addRequired<InjectTLIMappingsLegacy>();
 #if LLVM_VERSION_MAJOR > 16 && !defined(IGC_LLVM_TRUNK_REVISION)
   AU.addRequired<IGCLLVM::DemandedBitsLegacyPassWrapper>();
   AU.addRequired<IGCLLVM::InjectTLIMappingsLegacyPassWrapper>();

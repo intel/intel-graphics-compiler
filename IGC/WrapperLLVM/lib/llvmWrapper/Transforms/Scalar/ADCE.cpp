@@ -31,7 +31,7 @@ using namespace llvm;
 namespace IGCLLVM {
 
 ADCELegacyPassWrapper::ADCELegacyPassWrapper() : FunctionPass(ID) {
-  initializeADCELegacyPassPass(*PassRegistry::getPassRegistry());
+  initializeADCELegacyPassWrapperPass(*PassRegistry::getPassRegistry());
   PB.registerFunctionAnalyses(FAM);
 }
 
