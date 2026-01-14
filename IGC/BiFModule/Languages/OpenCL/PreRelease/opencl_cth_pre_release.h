@@ -4191,3 +4191,278 @@ void intel_manageable_barrier_arrivewait(manageable_barrier_t* BData);
 void intel_manageable_barrier_arrivedrop(manageable_barrier_t* BData);
 
 void region_barrier(uint SubRegionSize);
+
+// FP4 / INT4 conversion functions
+// Int4
+// Int4 -> Bfloat8:
+uchar   intel_convert_as_i4_bfloat8_as_uchar(char source);
+uchar2  intel_convert_as_i42_bfloat82_as_uchar2(char2 source);
+uchar3  intel_convert_as_i43_bfloat83_as_uchar3(char3 source);
+uchar4  intel_convert_as_i44_bfloat84_as_uchar4(char4 source);
+uchar8  intel_convert_as_i48_bfloat88_as_uchar8(char8 source);
+uchar16 intel_convert_as_i416_bfloat816_as_uchar16(char16 source);
+
+ushort   intel_convert_as_i42_bfloat82_as_ushort_packed(char source);
+ushort2  intel_convert_as_i44_bfloat84_as_ushort2_packed(char2 source);
+ushort3  intel_convert_as_i46_bfloat86_as_ushort3_packed(char3 source);
+ushort4  intel_convert_as_i48_bfloat88_as_ushort4_packed(char4 source);
+ushort8  intel_convert_as_i416_bfloat816_as_ushort8_packed(char8 source);
+ushort16 intel_convert_as_i432_bfloat832_as_ushort16_packed(char16 source);
+
+// Int4 -> Hfloat8:
+uchar   intel_convert_as_i4_hfloat8_as_uchar(char source);
+uchar2  intel_convert_as_i42_hfloat82_as_uchar2(char2 source);
+uchar3  intel_convert_as_i43_hfloat83_as_uchar3(char3 source);
+uchar4  intel_convert_as_i44_hfloat84_as_uchar4(char4 source);
+uchar8  intel_convert_as_i48_hfloat88_as_uchar8(char8 source);
+uchar16 intel_convert_as_i416_hfloat816_as_uchar16(char16 source);
+
+ushort   intel_convert_as_i42_hfloat82_as_ushort_packed(char source);
+ushort2  intel_convert_as_i44_hfloat84_as_ushort2_packed(char2 source);
+ushort3  intel_convert_as_i46_hfloat86_as_ushort3_packed(char3 source);
+ushort4  intel_convert_as_i48_hfloat88_as_ushort4_packed(char4 source);
+ushort8  intel_convert_as_i416_hfloat816_as_ushort8_packed(char8 source);
+ushort16 intel_convert_as_i432_hfloat832_as_ushort16_packed(char16 source);
+
+// Int4 -> Bfloat16:
+ushort   intel_convert_as_i4_bfloat16_as_ushort(char source);
+ushort2  intel_convert_as_i42_bfloat162_as_ushort2(char2 source);
+ushort3  intel_convert_as_i43_bfloat163_as_ushort3(char3 source);
+ushort4  intel_convert_as_i44_bfloat164_as_ushort4(char4 source);
+ushort8  intel_convert_as_i48_bfloat168_as_ushort8(char8 source);
+ushort16 intel_convert_as_i416_bfloat1616_as_ushort16(char16 source);
+
+uint   intel_convert_as_i42_bfloat162_as_uint_packed(char source);
+uint2  intel_convert_as_i44_bfloat164_as_uint2_packed(char2 source);
+uint3  intel_convert_as_i46_bfloat166_as_uint3_packed(char3 source);
+uint4  intel_convert_as_i48_bfloat168_as_uint4_packed(char4 source);
+uint8  intel_convert_as_i416_bfloat1616_as_uint8_packed(char8 source);
+uint16 intel_convert_as_i432_bfloat1632_as_uint16_packed(char16 source);
+
+#ifdef cl_khr_fp16
+// Int4 -> Half:
+half   intel_convert_as_i4_half(char source);
+half2  intel_convert_as_i42_half2(char2 source);
+half3  intel_convert_as_i43_half3(char3 source);
+half4  intel_convert_as_i44_half4(char4 source);
+half8  intel_convert_as_i48_half8(char8 source);
+half16 intel_convert_as_i416_half16(char16 source);
+
+uint   intel_convert_as_i42_half2_as_uint_packed(char source);
+uint2  intel_convert_as_i44_half4_as_uint2_packed(char2 source);
+uint3  intel_convert_as_i46_half6_as_uint3_packed(char3 source);
+uint4  intel_convert_as_i48_half8_as_uint4_packed(char4 source);
+uint8  intel_convert_as_i416_half16_as_uint8_packed(char8 source);
+uint16 intel_convert_as_i432_half32_as_uint16_packed(char16 source);
+#endif // cl_khr_fp16
+
+// e2m1
+// e2m1 -> Bfloat8:
+uchar   intel_convert_as_e2m1_bfloat8_as_uchar(uchar source);
+uchar2  intel_convert_as_e2m12_bfloat82_as_uchar2(uchar2 source);
+uchar3  intel_convert_as_e2m13_bfloat83_as_uchar3(uchar3 source);
+uchar4  intel_convert_as_e2m14_bfloat84_as_uchar4(uchar4 source);
+uchar8  intel_convert_as_e2m18_bfloat88_as_uchar8(uchar8 source);
+uchar16 intel_convert_as_e2m116_bfloat816_as_uchar16(uchar16 source);
+
+ushort   intel_convert_as_e2m12_bfloat82_as_ushort_packed(uchar source);
+ushort2  intel_convert_as_e2m14_bfloat84_as_ushort2_packed(uchar2 source);
+ushort3  intel_convert_as_e2m16_bfloat86_as_ushort3_packed(uchar3 source);
+ushort4  intel_convert_as_e2m18_bfloat88_as_ushort4_packed(uchar4 source);
+ushort8  intel_convert_as_e2m116_bfloat816_as_ushort8_packed(uchar8 source);
+ushort16 intel_convert_as_e2m132_bfloat832_as_ushort16_packed(uchar16 source);
+
+// e2m1 -> Hfloat8:
+uchar   intel_convert_as_e2m1_hfloat8_as_uchar(uchar source);
+uchar2  intel_convert_as_e2m12_hfloat82_as_uchar2(uchar2 source);
+uchar3  intel_convert_as_e2m13_hfloat83_as_uchar3(uchar3 source);
+uchar4  intel_convert_as_e2m14_hfloat84_as_uchar4(uchar4 source);
+uchar8  intel_convert_as_e2m18_hfloat88_as_uchar8(uchar8 source);
+uchar16 intel_convert_as_e2m116_hfloat816_as_uchar16(uchar16 source);
+
+ushort   intel_convert_as_e2m12_hfloat82_as_ushort_packed(uchar source);
+ushort2  intel_convert_as_e2m14_hfloat84_as_ushort2_packed(uchar2 source);
+ushort3  intel_convert_as_e2m16_hfloat86_as_ushort3_packed(uchar3 source);
+ushort4  intel_convert_as_e2m18_hfloat88_as_ushort4_packed(uchar4 source);
+ushort8  intel_convert_as_e2m116_hfloat816_as_ushort8_packed(uchar8 source);
+ushort16 intel_convert_as_e2m132_hfloat832_as_ushort16_packed(uchar16 source);
+
+// e2m1 -> Bfloat16:
+ushort   intel_convert_as_e2m1_bfloat16_as_ushort(uchar source);
+ushort2  intel_convert_as_e2m12_bfloat162_as_ushort2(uchar2 source);
+ushort3  intel_convert_as_e2m13_bfloat163_as_ushort3(uchar3 source);
+ushort4  intel_convert_as_e2m14_bfloat164_as_ushort4(uchar4 source);
+ushort8  intel_convert_as_e2m18_bfloat168_as_ushort8(uchar8 source);
+ushort16 intel_convert_as_e2m116_bfloat1616_as_ushort16(uchar16 source);
+
+uint   intel_convert_as_e2m12_bfloat162_as_uint_packed(uchar source);
+uint2  intel_convert_as_e2m14_bfloat164_as_uint2_packed(uchar2 source);
+uint3  intel_convert_as_e2m16_bfloat166_as_uint3_packed(uchar3 source);
+uint4  intel_convert_as_e2m18_bfloat168_as_uint4_packed(uchar4 source);
+uint8  intel_convert_as_e2m116_bfloat1616_as_uint8_packed(uchar8 source);
+uint16 intel_convert_as_e2m132_bfloat1632_as_uint16_packed(uchar16 source);
+
+#ifdef cl_khr_fp16
+// e2m1 -> Half:
+half   intel_convert_as_e2m1_half(uchar source);
+half2  intel_convert_as_e2m12_half2(uchar2 source);
+half3  intel_convert_as_e2m13_half3(uchar3 source);
+half4  intel_convert_as_e2m14_half4(uchar4 source);
+half8  intel_convert_as_e2m18_half8(uchar8 source);
+half16 intel_convert_as_e2m116_half16(uchar16 source);
+
+uint   intel_convert_as_e2m12_half2_as_uint_packed(uchar source);
+uint2  intel_convert_as_e2m14_half4_as_uint2_packed(uchar2 source);
+uint3  intel_convert_as_e2m16_half6_as_uint3_packed(uchar3 source);
+uint4  intel_convert_as_e2m18_half8_as_uint4_packed(uchar4 source);
+uint8  intel_convert_as_e2m116_half16_as_uint8_packed(uchar8 source);
+uint16 intel_convert_as_e2m132_half32_as_uint16_packed(uchar16 source);
+#endif // cl_khr_fp16
+
+// lfsr
+uint __attribute__((overloadable))    intel_lfsr(uint seed, uint polynomial);
+ushort2 __attribute__((overloadable)) intel_lfsr(ushort2 seed, ushort2 polynomial);
+uchar4 __attribute__((overloadable))  intel_lfsr(uchar4 seed, uchar4 polynomial);
+
+// dnscl
+// dnscl bf16 -> i4/fp4
+uint intel_downscale_as_bf16_i4_mode_0(short2 s0, short2 s1);
+uint intel_downscale_as_bf16_i4_mode_1(short2 s0, short2 s1);
+uint intel_downscale_as_bf16_i4_mode_2(short2 s0, short2 s1);
+uint intel_downscale_as_bf16_i4_mode_3(short2 s0, short2 s1);
+uint intel_downscale_as_bf16_e2m1_mode_0(short2 s0, short2 s1);
+uint intel_downscale_as_bf16_e2m1_mode_1(short2 s0, short2 s1);
+uint intel_downscale_as_bf16_e2m1_mode_2(short2 s0, short2 s1);
+uint intel_downscale_as_bf16_e2m1_mode_3(short2 s0, short2 s1);
+#ifdef cl_khr_fp16
+// dnscl f16 -> i4/fp4
+uint intel_downscale_i4_mode_0(half2 s0, half2 s1);
+uint intel_downscale_i4_mode_1(half2 s0, half2 s1);
+uint intel_downscale_i4_mode_2(half2 s0, half2 s1);
+uint intel_downscale_i4_mode_3(half2 s0, half2 s1);
+uint intel_downscale_e2m1_mode_0(half2 s0, half2 s1);
+uint intel_downscale_e2m1_mode_1(half2 s0, half2 s1);
+uint intel_downscale_e2m1_mode_2(half2 s0, half2 s1);
+uint intel_downscale_e2m1_mode_3(half2 s0, half2 s1);
+#endif // cl_khr_fp16
+// dnscl bf16 -> i4/fp4 stochastic rounding
+uint intel_downscale_as_bf16_i4_mode_0_srnd(short2 s0, short2 s1, ushort2 bias);
+uint intel_downscale_as_bf16_i4_mode_1_srnd(short2 s0, short2 s1, ushort2 bias);
+uint intel_downscale_as_bf16_i4_mode_2_srnd(short2 s0, short2 s1, ushort2 bias);
+uint intel_downscale_as_bf16_i4_mode_3_srnd(short2 s0, short2 s1, ushort2 bias);
+uint intel_downscale_as_bf16_e2m1_mode_0_srnd(short2 s0, short2 s1, ushort2 bias);
+uint intel_downscale_as_bf16_e2m1_mode_1_srnd(short2 s0, short2 s1, ushort2 bias);
+uint intel_downscale_as_bf16_e2m1_mode_2_srnd(short2 s0, short2 s1, ushort2 bias);
+uint intel_downscale_as_bf16_e2m1_mode_3_srnd(short2 s0, short2 s1, ushort2 bias);
+#ifdef cl_khr_fp16
+// dnscl f16 -> i4/fp4 stochastic rounding
+uint intel_downscale_i4_mode_0_srnd(half2 s0, half2 s1, ushort2 bias);
+uint intel_downscale_i4_mode_1_srnd(half2 s0, half2 s1, ushort2 bias);
+uint intel_downscale_i4_mode_2_srnd(half2 s0, half2 s1, ushort2 bias);
+uint intel_downscale_i4_mode_3_srnd(half2 s0, half2 s1, ushort2 bias);
+uint intel_downscale_e2m1_mode_0_srnd(half2 s0, half2 s1, ushort2 bias);
+uint intel_downscale_e2m1_mode_1_srnd(half2 s0, half2 s1, ushort2 bias);
+uint intel_downscale_e2m1_mode_2_srnd(half2 s0, half2 s1, ushort2 bias);
+uint intel_downscale_e2m1_mode_3_srnd(half2 s0, half2 s1, ushort2 bias);
+#endif // cl_khr_fp16
+
+// bf16 precision, f32/bf16 acc
+float8 __attribute__((overloadable)) intel_sub_group_bf16_bf16_scaled_matrix_mad_k16(
+    short8 a, int8 b, float8 acc, uchar scale_a, uchar scale_b);
+short8 __attribute__((overloadable)) intel_sub_group_bf16_bf16_scaled_matrix_mad_k16(
+    short8 a, int8 b, short8 acc, uchar scale_a, uchar scale_b);
+float8 __attribute__((overloadable)) intel_sub_group_bf16_bf16_scaled_matrix_mad_k16_f32(
+    short8 a, int8 b, short8 acc, uchar scale_a, uchar scale_b);
+short8 __attribute__((overloadable)) intel_sub_group_bf16_bf16_scaled_matrix_mad_k16_bf16(
+    short8 a, int8 b, float8 acc, uchar scale_a, uchar scale_b);
+// f16 precision, f32/f16 acc
+float8 __attribute__((overloadable)) intel_sub_group_f16_f16_scaled_matrix_mad_k16(
+    short8 a, int8 b, float8 acc, uchar scale_a, uchar scale_b);
+#if defined(cl_khr_fp16)
+half8 __attribute__((overloadable)) intel_sub_group_f16_f16_scaled_matrix_mad_k16(
+    short8 a, int8 b, half8 acc, uchar scale_a, uchar scale_b);
+float8 __attribute__((overloadable)) intel_sub_group_f16_f16_scaled_matrix_mad_k16_f32(
+    short8 a, int8 b, half8 acc, uchar scale_a, uchar scale_b);
+half8 __attribute__((overloadable)) intel_sub_group_f16_f16_scaled_matrix_mad_k16_f16(
+    short8 a, int8 b, float8 acc, uchar scale_a, uchar scale_b);
+#endif // cl_khr_fp16
+// bf8/hf8 precision, f32/bf16 acc
+float8 __attribute__((overloadable)) intel_sub_group_hf8_hf8_scaled_matrix_mad_k32(
+    short8 a, int8 b, float8 acc, uchar scale_a, uchar scale_b);
+short8 __attribute__((overloadable)) intel_sub_group_hf8_hf8_scaled_matrix_mad_k32(
+    short8 a, int8 b, short8 acc, uchar scale_a, uchar scale_b);
+float8 __attribute__((overloadable)) intel_sub_group_hf8_hf8_scaled_matrix_mad_k32_f32(
+    short8 a, int8 b, short8 acc, uchar scale_a, uchar scale_b);
+short8 __attribute__((overloadable)) intel_sub_group_hf8_hf8_scaled_matrix_mad_k32_bf16(
+    short8 a, int8 b, float8 acc, uchar scale_a, uchar scale_b);
+float8 __attribute__((overloadable)) intel_sub_group_bf8_hf8_scaled_matrix_mad_k32(
+    short8 a, int8 b, float8 acc, uchar scale_a, uchar scale_b);
+short8 __attribute__((overloadable)) intel_sub_group_bf8_hf8_scaled_matrix_mad_k32(
+    short8 a, int8 b, short8 acc, uchar scale_a, uchar scale_b);
+float8 __attribute__((overloadable)) intel_sub_group_bf8_hf8_scaled_matrix_mad_k32_f32(
+    short8 a, int8 b, short8 acc, uchar scale_a, uchar scale_b);
+short8 __attribute__((overloadable)) intel_sub_group_bf8_hf8_scaled_matrix_mad_k32_bf16(
+    short8 a, int8 b, float8 acc, uchar scale_a, uchar scale_b);
+float8 __attribute__((overloadable)) intel_sub_group_hf8_bf8_scaled_matrix_mad_k32(
+    short8 a, int8 b, float8 acc, uchar scale_a, uchar scale_b);
+short8 __attribute__((overloadable)) intel_sub_group_hf8_bf8_scaled_matrix_mad_k32(
+    short8 a, int8 b, short8 acc, uchar scale_a, uchar scale_b);
+float8 __attribute__((overloadable)) intel_sub_group_hf8_bf8_scaled_matrix_mad_k32_f32(
+    short8 a, int8 b, short8 acc, uchar scale_a, uchar scale_b);
+short8 __attribute__((overloadable)) intel_sub_group_hf8_bf8_scaled_matrix_mad_k32_bf16(
+    short8 a, int8 b, float8 acc, uchar scale_a, uchar scale_b);
+float8 __attribute__((overloadable)) intel_sub_group_bf8_bf8_scaled_matrix_mad_k32(
+    short8 a, int8 b, float8 acc, uchar scale_a, uchar scale_b);
+short8 __attribute__((overloadable)) intel_sub_group_bf8_bf8_scaled_matrix_mad_k32(
+    short8 a, int8 b, short8 acc, uchar scale_a, uchar scale_b);
+float8 __attribute__((overloadable)) intel_sub_group_bf8_bf8_scaled_matrix_mad_k32_f32(
+    short8 a, int8 b, short8 acc, uchar scale_a, uchar scale_b);
+short8 __attribute__((overloadable)) intel_sub_group_bf8_bf8_scaled_matrix_mad_k32_bf16(
+    short8 a, int8 b, float8 acc, uchar scale_a, uchar scale_b);
+// fp4 precision, f32/bf16 acc
+float8 __attribute__((overloadable)) intel_sub_group_e2m1_e2m1_scaled_matrix_mad_k64(
+    short8 a, int8 b, float8 acc, uchar2 scale_a, uchar2 scale_b);
+short8 __attribute__((overloadable)) intel_sub_group_e2m1_e2m1_scaled_matrix_mad_k64(
+    short8 a, int8 b, short8 acc, uchar2 scale_a, uchar2 scale_b);
+float8 __attribute__((overloadable)) intel_sub_group_e2m1_e2m1_scaled_matrix_mad_k64_f32(
+    short8 a, int8 b, short8 acc, uchar2 scale_a, uchar2 scale_b);
+short8 __attribute__((overloadable)) intel_sub_group_e2m1_e2m1_scaled_matrix_mad_k64_bf16(
+    short8 a, int8 b, float8 acc, uchar2 scale_a, uchar2 scale_b);
+
+// intel_sub_group_e2m1_e2m1_matrix_mad_k64
+// 8
+float8 __attribute__((overloadable))
+intel_sub_group_e2m1_e2m1_matrix_mad_k64(short8 a, int8 b, float8 acc);
+short8 __attribute__((overloadable))
+intel_sub_group_e2m1_e2m1_matrix_mad_k64(short8 a, int8 b, short8 acc);
+float8 __attribute__((overloadable))
+intel_sub_group_e2m1_e2m1_matrix_mad_k64_f32(short8 a, int8 b, short8 acc);
+short8 __attribute__((overloadable))
+intel_sub_group_e2m1_e2m1_matrix_mad_k64_bf16(short8 a, int8 b, float8 acc);
+// 4
+float4 __attribute__((overloadable))
+intel_sub_group_e2m1_e2m1_matrix_mad_k64(short4 a, int8 b, float4 acc);
+short4 __attribute__((overloadable))
+intel_sub_group_e2m1_e2m1_matrix_mad_k64(short4 a, int8 b, short4 acc);
+float4 __attribute__((overloadable))
+intel_sub_group_e2m1_e2m1_matrix_mad_k64_f32(short4 a, int8 b, short4 acc);
+short4 __attribute__((overloadable))
+intel_sub_group_e2m1_e2m1_matrix_mad_k64_bf16(short4 a, int8 b, float4 acc);
+// 2
+float2 __attribute__((overloadable))
+intel_sub_group_e2m1_e2m1_matrix_mad_k64(short2 a, int8 b, float2 acc);
+short2 __attribute__((overloadable))
+intel_sub_group_e2m1_e2m1_matrix_mad_k64(short2 a, int8 b, short2 acc);
+float2 __attribute__((overloadable))
+intel_sub_group_e2m1_e2m1_matrix_mad_k64_f32(short2 a, int8 b, short2 acc);
+short2 __attribute__((overloadable))
+intel_sub_group_e2m1_e2m1_matrix_mad_k64_bf16(short2 a, int8 b, float2 acc);
+// scalar
+float __attribute__((overloadable))
+intel_sub_group_e2m1_e2m1_matrix_mad_k64(short a, int8 b, float acc);
+short __attribute__((overloadable))
+intel_sub_group_e2m1_e2m1_matrix_mad_k64(short a, int8 b, short acc);
+float __attribute__((overloadable))
+intel_sub_group_e2m1_e2m1_matrix_mad_k64_f32(short a, int8 b, short acc);
+short __attribute__((overloadable))
+intel_sub_group_e2m1_e2m1_matrix_mad_k64_bf16(short a, int8 b, float acc);
