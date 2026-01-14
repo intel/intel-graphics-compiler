@@ -64,22 +64,70 @@ void Optimizer::swapSrc1Src2OfMadForCompaction() {
 
     while (ii != bb->end()) {
       G4_INST *inst = *ii;
-      if (inst->opcode() == G4_mad) {
-        G4_Operand *src1 = inst->getSrc(1);
-        G4_Operand *src2 = inst->getSrc(2);
-        if (src1 && src2 && src1->getType() == src2->getType() &&
-            src1->isSrcRegRegion() &&
-            src2->isSrcRegRegion() &&
-            src1->getBase()->isRegVar() && src2->getBase()->isRegVar() &&
-            src1->getTopDcl()->getRegFile() == G4_GRF &&
-            src2->getTopDcl()->getRegFile() == G4_GRF) {
-          if (src1->asSrcRegRegion()->getRegion()->isScalar() &&
-              src2->asSrcRegRegion()->getRegion()->isFlatRegion()) {
-            inst->setSrc(src2, 1);
-            inst->setSrc(src1, 2);
-          }
-        }
+      if (inst->opcode() != G4_mad) {
+        ii++;
+        continue;
       }
+
+      G4_Operand *dst = inst->getDst();
+      G4_Operand *src0 = inst->getSrc(0);
+      G4_Operand *src1 = inst->getSrc(1);
+      G4_Operand *src2 = inst->getSrc(2);
+
+      // Works only when src1 is scalar region and src2 is contiguous region
+      if (!src1 || !src2 || !src1->isSrcRegRegion() ||
+          !src2->isSrcRegRegion() ||
+          !src1->asSrcRegRegion()->getRegion()->isScalar() ||
+          !src2->asSrcRegRegion()->getRegion()->isFlatRegion()) {
+        ii++;
+        continue;
+      }
+
+      // Check if src1 and src2 are GRF operands.
+      if (!src1->getBase()->isRegVar() || !src2->getBase()->isRegVar() ||
+          src1->getTopDcl()->getRegFile() != G4_GRF ||
+          src2->getTopDcl()->getRegFile() != G4_GRF) {
+        ii++;
+        continue;
+      }
+
+      // Check if all source and dst operands have same type
+      if (!src0 || !src0->isSrcRegRegion() ||
+          src0->getType() != src1->getType() ||
+          src1->getType() != src2->getType() ||
+          src1->getType() != dst->getType()) {
+        ii++;
+        continue;
+      }
+
+      // Src1 will be scalar, so no requirement on alignment. All other operands
+      // are GRF aligned
+      if (src0->getLinearizedStart() % kernel.getGRFSize() ||
+          src2->getLinearizedStart() % kernel.getGRFSize() ||
+          dst->getLinearizedStart() % kernel.getGRFSize()) {
+        ii++;
+        continue;
+      }
+
+      // Only do swapping when src0 channel align with dst
+      // The swap works legally only when src0 aligned with dst. Because src2
+      // will be scalar after swapping, which may made the src0 region illegal.
+
+      uint8_t dstTySize = (uint8_t)inst->getDst()->getTypeSize();
+      auto dstStrideInBytes = dstTySize * inst->getDst()->getHorzStride();
+      uint16_t src0Stride = 0;
+      src0->asSrcRegRegion()->getRegion()->isSingleStride(
+          src0->getInst()->getExecSize(), src0Stride);
+      auto src0StrideInBytes = src0Stride * src0->getTypeSize();
+
+      if (dstStrideInBytes != src0StrideInBytes) {
+        ii++;
+        continue;
+      }
+
+      inst->setSrc(src2, 1);
+      inst->setSrc(src1, 2);
+
       ii++;
     }
   }
