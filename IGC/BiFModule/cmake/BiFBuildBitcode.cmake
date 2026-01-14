@@ -4,6 +4,12 @@ string (REPLACE " " ";" IGC_BUILD__BIF_OCL_INCLUDES "${IGC_BUILD__BIF_OCL_INCLUD
 string (REPLACE " " ";" IGC_BUILD__BIF_OCL_SHARED_INC_PRE_RELEASE "${IGC_BUILD__BIF_OCL_SHARED_INC_PRE_RELEASE}")
 string (REPLACE " " ";" CL_OPTIONS "${CL_OPTIONS}")
 
+
+option(IGC_OPTION__ENABLE_BF16_BIF "Enables BF16 support in BiF (requires patched Clang)" ON)
+# Clang patches needed for BF16 support can be found here (example for Clang 16):
+# https://github.com/intel/opencl-clang/tree/ocl-open-160/patches/clang
+
+
 # Creates custom command which builds LLVM Bitcode file for built-in functions.
 #
 # igc_bif_build_bc(
@@ -284,9 +290,14 @@ set(KHR_DEFINES ${KHR_DEFINES} "cl_intel_subgroup_extended_block_write_cacheopts
 set(KHR_DEFINES ${KHR_DEFINES} "cl_intel_subgroup_2d_block_io")
 set(KHR_DEFINES ${KHR_DEFINES} "cl_intel_subgroup_matrix_multiply_accumulate_bf8")
 
-# These defines are only for convenience, so that code that belongs to specific extension can be easily identified.
-set(KHR_DEFINES ${KHR_DEFINES} "IGC_SPV_INTEL_bfloat16_arithmetic")
-set(KHR_DEFINES ${KHR_DEFINES} "IGC_SPV_KHR_bfloat16")
+if(IGC_OPTION__ENABLE_BF16_BIF)
+  set(KHR_DEFINES ${KHR_DEFINES} "IGC_SPV_INTEL_bfloat16_arithmetic")
+  set(KHR_DEFINES ${KHR_DEFINES} "IGC_SPV_KHR_bfloat16")
+
+  message(STATUS "[IGC] BF16 extensions enabled (requires patched Clang)")
+else(IGC_OPTION__ENABLE_BF16_BIF)
+  message(STATUS "[IGC] BF16 extensions disabled (compatible with upstream Clang)")
+endif()
 
 igc_bif_build_bc(
     OUTPUT               "${IGC_BUILD__BIF_DIR}/IBiF_Impl_int.bc"
