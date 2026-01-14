@@ -1535,7 +1535,7 @@ bool IGCVectorizer::runOnFunction(llvm::Function &F) {
   CGCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
   initializeLogFile(F);
 
-  AllowedPlatform = CGCtx->platform.isCoreXE2() || CGCtx->platform.isPVC();
+  AllowedPlatform = CGCtx->platform.isCoreXE2() || CGCtx->platform.isPVC() || CGCtx->platform.isCoreXE3();
   SIMDSize = checkSIMD(F);
   // we have DPAS and simd8 for DG2 platforms
   bool SupportedSIMD = SIMDSize == 16 || SIMDSize == 32;

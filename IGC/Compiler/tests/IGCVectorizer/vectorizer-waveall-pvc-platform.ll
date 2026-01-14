@@ -9,6 +9,8 @@
 ; UNSUPPORTED: system-windows
 ; REQUIRES: llvm-16-plus, regkeys
 ; RUN: igc_opt -S -opaque-pointers -platformpvc --igc-vectorizer -dce --regkey=VectorizerLog=1 --regkey=VectorizerLogToErr=1 --regkey=VectorizerAllowWAVEALL=1 --regkey=VectorizerAllowWAVEALLJoint=1 < %s 2>&1 | FileCheck %s
+; RUN: igc_opt -S -opaque-pointers -platformPtl --igc-vectorizer -dce --regkey=VectorizerLog=1 --regkey=VectorizerLogToErr=1 --regkey=VectorizerAllowWAVEALL=1 --regkey=VectorizerAllowWAVEALLJoint=1 < %s 2>&1 | FileCheck %s
+; RUN: igc_opt -S -opaque-pointers -platformCri --igc-vectorizer -dce --regkey=VectorizerLog=1 --regkey=VectorizerLogToErr=1 --regkey=VectorizerAllowWAVEALL=1 --regkey=VectorizerAllowWAVEALLJoint=1 < %s 2>&1 | FileCheck %s
 
 ; CHECK-NOT: Unsupported platform
 

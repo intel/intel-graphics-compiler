@@ -7,7 +7,9 @@
 ;============================ end_copyright_notice =============================
 
 ; REQUIRES: llvm-16-plus, regkeys
-; RUN: igc_opt -S -opaque-pointers -platformPtl --igc-vectorizer -dce --regkey=VectorizerLog=1 --regkey=VectorizerLogToErr=1 --regkey=VectorizerAllowWAVEALL=1 --regkey=VectorizerAllowWAVEALLJoint=1 < %s 2>&1 | FileCheck %s
+; RUN: igc_opt -S -opaque-pointers -platformdg2 --igc-vectorizer -dce --regkey=VectorizerLog=1 --regkey=VectorizerLogToErr=1 --regkey=VectorizerAllowWAVEALL=1 --regkey=VectorizerAllowWAVEALLJoint=1 < %s 2>&1 | FileCheck %s
+; RUN: igc_opt -S -opaque-pointers -platformdg1 --igc-vectorizer -dce --regkey=VectorizerLog=1 --regkey=VectorizerLogToErr=1 --regkey=VectorizerAllowWAVEALL=1 --regkey=VectorizerAllowWAVEALLJoint=1 < %s 2>&1 | FileCheck %s
+; RUN: igc_opt -S -opaque-pointers -platformmtl --igc-vectorizer -dce --regkey=VectorizerLog=1 --regkey=VectorizerLogToErr=1 --regkey=VectorizerAllowWAVEALL=1 --regkey=VectorizerAllowWAVEALLJoint=1 < %s 2>&1 | FileCheck %s
 
 
 ; CHECK: Slice:   %tmp34 = call float @llvm.genx.GenISA.WaveAll.f32(float %vector_extract15, i8 12, i32 0)
