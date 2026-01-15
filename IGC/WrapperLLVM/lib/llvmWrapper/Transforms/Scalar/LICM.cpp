@@ -86,11 +86,19 @@ void LICMLegacyPassWrapper::getAnalysisUsage(AnalysisUsage &AU) const {
   AU.addPreserved<LazyBranchProbabilityInfoPass>();
 }
 char LICMLegacyPassWrapper::ID = 0;
-llvm::FunctionPass *createLegacyWrappedLICMPass() { return new LICMLegacyPassWrapper(); }
-llvm::FunctionPass *createLegacyWrappedLICMPass(unsigned LicmMssaOptCap, unsigned LicmMssaNoAccForPromotionCap,
-                                                bool LicmAllowSpeculation) {
+#if LLVM_VERSION_MAJOR > 16
+llvm::Pass *createLegacyWrappedLICMPass() { return new LICMLegacyPassWrapper(); }
+llvm::Pass *createLegacyWrappedLICMPass(unsigned LicmMssaOptCap, unsigned LicmMssaNoAccForPromotionCap,
+                                        bool LicmAllowSpeculation) {
   return new LICMLegacyPassWrapper(LicmMssaOptCap, LicmMssaNoAccForPromotionCap, LicmAllowSpeculation);
 }
+#else
+llvm::Pass *createLegacyWrappedLICMPass() { return createLICMPass(); }
+llvm::Pass *createLegacyWrappedLICMPass(unsigned LicmMssaOptCap, unsigned LicmMssaNoAccForPromotionCap,
+                                        bool LicmAllowSpeculation) {
+  return createLICMPass(LicmMssaOptCap, LicmMssaNoAccForPromotionCap, LicmAllowSpeculation);
+}
+#endif
 } // namespace IGCLLVM
 
 using namespace IGCLLVM;

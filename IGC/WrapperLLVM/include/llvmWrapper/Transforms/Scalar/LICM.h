@@ -39,9 +39,9 @@ private:
   bool LicmAllowSpeculation;
 };
 
-llvm::FunctionPass *createLegacyWrappedLICMPass();
-llvm::FunctionPass *createLegacyWrappedLICMPass(unsigned LicmMssaOptCap, unsigned LicmMssaNoAccForPromotionCap,
-                                                bool LicmAllowSpeculation);
+llvm::Pass *createLegacyWrappedLICMPass();
+llvm::Pass *createLegacyWrappedLICMPass(unsigned LicmMssaOptCap, unsigned LicmMssaNoAccForPromotionCap,
+                                        bool LicmAllowSpeculation);
 } // end namespace IGCLLVM
 
 #endif // IGCLLVM_TRANSFORMS_SCALAR_LEGACY_LICM_H
