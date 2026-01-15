@@ -242,13 +242,18 @@ public:
     AU.addRequired<ScalarEvolutionWrapperPass>();
   }
 
+  void releaseMemory() override { truncatedInsts.clear(); }
+
 protected:
   // Helpers
-  Value *getSExtOrTrunc(Value *, Type *) const;
-  Value *truncExpr(Value *, Type *, bool) const;
+  Value *getSExtOrTrunc(Value *, Type *);
+  Value *truncExpr(Value *, Type *, bool);
 
-  bool simplifyGEP(BasicBlock &BB) const;
-  bool lowerGetElementPtrInst(GetElementPtrInst *GEP) const;
+  bool simplifyGEP(BasicBlock &BB);
+  bool lowerGetElementPtrInst(GetElementPtrInst *GEP);
+
+private:
+  DenseMap<Instruction *, Instruction *> truncatedInsts;
 };
 
 char GEPLowering::ID = 0;
@@ -388,7 +393,7 @@ bool GenIRLowering::runOnFunction(Function &F) {
 }
 
 // For each basic block, simplify GEPs based on the analysis result from SCEV.
-bool GEPLowering::simplifyGEP(BasicBlock &BB) const {
+bool GEPLowering::simplifyGEP(BasicBlock &BB) {
   // Pointers with the form base + zext(idx).
   struct PointerExpr {
     GetElementPtrInst *GEP;
@@ -559,7 +564,7 @@ bool GEPLowering::runOnFunction(Function &F) {
   return Changed;
 }
 
-Value *GEPLowering::getSExtOrTrunc(Value *Val, Type *NewTy) const {
+Value *GEPLowering::getSExtOrTrunc(Value *Val, Type *NewTy) {
   Type *OldTy = Val->getType();
   unsigned OldWidth;
   unsigned NewWidth;
@@ -585,7 +590,7 @@ Value *GEPLowering::getSExtOrTrunc(Value *Val, Type *NewTy) const {
   return Val;
 }
 
-Value *GEPLowering::truncExpr(Value *Val, Type *NewTy, bool initialVal = false) const {
+Value *GEPLowering::truncExpr(Value *Val, Type *NewTy, bool initialVal = false) {
   // Truncation on Gen could be as cheap as NOP by creating the proper region.
   // Instead of truncating the value itself unless it has multiple users, try to truncate how it's
   // calculated.
@@ -595,7 +600,7 @@ Value *GEPLowering::truncExpr(Value *Val, Type *NewTy, bool initialVal = false) 
   if (!isa<Instruction>(Val))
     return Builder->CreateTrunc(Val, NewTy);
 
-  Instruction *I = cast<Instruction>(Val);
+  auto *I = cast<Instruction>(Val);
   unsigned Opc = I->getOpcode();
   switch (Opc) {
   case Instruction::Add:
@@ -606,13 +611,28 @@ Value *GEPLowering::truncExpr(Value *Val, Type *NewTy, bool initialVal = false) 
   case Instruction::Xor: {
     // If the value is used in multiple places, we can just re-use it without duplicating calculation since it can not
     // be removed.
-    if (initialVal &&
-        llvm::any_of(Val->users(), [](const llvm::User *U) { return !llvm::isa<llvm::GetElementPtrInst>(U); })) {
-      return Builder->CreateTrunc(Val, NewTy);
+    if (initialVal) {
+      auto truncatedIt = truncatedInsts.find(I);
+      if (truncatedIt != truncatedInsts.end()) {
+        return truncatedIt->second;
+      }
+      if (llvm::any_of(Val->users(), [](const llvm::User *U) { return !llvm::isa<llvm::GetElementPtrInst>(U); })) {
+        auto *newInst = Builder->CreateTrunc(Val, NewTy);
+        truncatedInsts[I] = cast<Instruction>(newInst);
+        return newInst;
+      }
     }
+    auto getOrCreateTruncForOp = [&](Value *Op, Type *NewTy) -> Value * {
+      if (isa<Instruction>(Op)) {
+        if (auto It = truncatedInsts.find(cast<Instruction>(Op)); It != truncatedInsts.end()) {
+          return It->second;
+        }
+      }
+      return truncExpr(Op, NewTy);
+    };
     BinaryOperator *BO = cast<BinaryOperator>(I);
-    Value *LHS = truncExpr(BO->getOperand(0), NewTy);
-    Value *RHS = truncExpr(BO->getOperand(1), NewTy);
+    Value *LHS = getOrCreateTruncForOp(BO->getOperand(0), NewTy);
+    Value *RHS = getOrCreateTruncForOp(BO->getOperand(1), NewTy);
     return Builder->CreateBinOp(BO->getOpcode(), LHS, RHS);
   }
   case Instruction::Trunc:
@@ -692,7 +712,7 @@ Value *GenIRLowering::rearrangeAdd(Value *val, Loop *loop) const {
   }
 }
 
-bool GEPLowering::lowerGetElementPtrInst(GetElementPtrInst *GEP) const {
+bool GEPLowering::lowerGetElementPtrInst(GetElementPtrInst *GEP) {
   Value *const PtrOp = GEP->getPointerOperand();
   IGC_ASSERT(nullptr != PtrOp);
   PointerType *const PtrTy = dyn_cast<PointerType>(PtrOp->getType());

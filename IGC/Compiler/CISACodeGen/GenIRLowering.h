@@ -13,8 +13,6 @@ SPDX-License-Identifier: MIT
 #include <llvm/Pass.h>
 #include "common/LLVMWarningsPop.hpp"
 
-#include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
-
 namespace IGC {
 
 llvm::FunctionPass *createGenIRLowerPass();
