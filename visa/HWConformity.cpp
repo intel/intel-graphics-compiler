@@ -204,7 +204,18 @@ G4_DstRegRegion *HWConformity::insertMovAfter(INST_LIST_ITER &it,
   }
 
   inst->setExecSize(newExecSize);
-  if (newExecSize == 1) {
+
+  // If the inst has predicate, we shouldn't set NoMask for it as NoMask impacts
+  // predicate control. For example:
+  // (p0.0) sel (1|M8)  v1(0,0)<1>:ub  v2(0,0)<0;1,0>:uw  v3(0,0)<0;1,0>:uw
+  // After inserting mov instruction =>
+  // (p0.0) sel (1|M8)  TV1(0,0)<2>:ub  v2(0,0)<0;1,0>:uw  v3(0,0)<0;1,0>:uw
+  //        mov (1|M8)  v1(0,0)<1>:ub  TV1(0,0)<0;1,0>:ub
+  // The predicate of all instructions except for G4_sel is always moved
+  // to the newly inserted MOV instruction. And newExecSize always equals its
+  // origal execution size for G4_sel. In other words, we must not set NoMask
+  // for SIMD1 G4_sel inst after inserting MOV inst.
+  if (newExecSize == 1 && !inst->getPredicate()) {
     inst->setNoMask(true);
   }
 
