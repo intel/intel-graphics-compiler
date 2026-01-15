@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -213,6 +213,9 @@ private:
 
   CodeGenContext *m_ctx;
   llvm::Function *curFunc;
+  // Helper map that tracks already processed or created base offsets.
+  // The map holds `add` instructions with their arguments as the key.
+  std::map<std::pair<llvm::Value *, llvm::Value *>, llvm::Instruction *> m_BaseOffsets;
   // agent to modify the llvm-ir
   IRBuilderWrapper *irBuilder;
   // maintain the uniformness info

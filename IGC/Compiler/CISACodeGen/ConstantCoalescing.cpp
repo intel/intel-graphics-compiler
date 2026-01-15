@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2023 Intel Corporation
+Copyright (C) 2017-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -71,6 +71,7 @@ void ConstantCoalescing::ProcessFunction(Function *function) {
   irBuilder = new IRBuilderWrapper(function->getContext(), m_TT);
   dataLayout = &function->getParent()->getDataLayout();
   wiAns = &getAnalysis<WIAnalysis>();
+  m_BaseOffsets.clear();
 
   // clean up unnecessary lcssa-phi
   for (Function::iterator I = function->begin(), E = function->end(); I != E; ++I) {
@@ -1135,6 +1136,51 @@ Value *ConstantCoalescing::SimpleBaseOffset(Value *elt_idxv, uint &offset, Exten
       offset = offset1 + static_cast<uint>(csrc1->getZExtValue());
       return base;
     }
+
+    // clang-format off
+    // Match complex patterns where the `add` with a constant offset
+    // is not the last operation in the chain, e.g.:
+    //  %a = call i32 foo()
+    //  %b = call i32 foo()
+    //  %ox = add i32 %a, %b
+    //  %x = call i32 @llvm.genx.GenISA.ldraw.indexed.i32.p3276800(ptr addrspace(3276800) %bso, i32 %ox, i32 4, i1 false)
+    //  %c = add i32 %b, 4
+    //  %oy = add i32 %a, %c
+    //  %y = call i32 @llvm.genx.GenISA.ldraw.indexed.i32.p3276800(ptr addrspace(3276800) %bso, i32 %oy, i32 4, i1 false)
+    // clang-format on
+    Value *src1 = expr->getOperand(1);
+    // Helper lambda to create a sorted pair of Values
+    auto MakeSortedPair = [](Value *a, Value *b) { return a < b ? std::make_pair(a, b) : std::make_pair(b, a); };
+    // Check if this is a previously seen pair
+    auto it = m_BaseOffsets.find(MakeSortedPair(src0, src1));
+    if (it != m_BaseOffsets.end()) {
+      return it->second;
+    }
+    // Check both operands for constant offsets
+    uint offset0 = 0;
+    uint offset1 = 0;
+    ExtensionKind extension1 = EK_NotExtended;
+    ExtensionKind extension2 = EK_NotExtended;
+    Value *base0 = SimpleBaseOffset(src0, offset0, extension1);
+    Value *base1 = SimpleBaseOffset(src1, offset1, extension2);
+    // Bail if no constant offset was found or extension kinds don't match.
+    if ((offset0 == 0 && offset1 == 0) || extension1 != extension2) {
+      // Check for previously created add instruction with these operands.
+      auto [it, inserted] = m_BaseOffsets.try_emplace(MakeSortedPair(src0, src1), expr);
+      return it->second;
+    }
+    IGC_ASSERT(base0 != src0 || base1 != src1);
+    Extension = extension1;
+    offset = offset0 + offset1;
+    // Find or create an `add` instruction with both bases.
+    auto it1 = m_BaseOffsets.find(MakeSortedPair(base0, base1));
+    if (it1 != m_BaseOffsets.end()) {
+      return it1->second;
+    }
+    Instruction *newBase = BinaryOperator::Create(Instruction::Add, base0, base1, "", expr);
+    wiAns->incUpdateDepend(newBase, std::max(wiAns->whichDepend(base0), wiAns->whichDepend(base1)));
+    m_BaseOffsets.insert({MakeSortedPair(base0, base1), newBase});
+    return newBase;
   } else if (expr->getOpcode() == Instruction::Or) {
     Value *src0 = expr->getOperand(0);
     Value *src1 = expr->getOperand(1);
