@@ -1481,6 +1481,10 @@ include_directories(
 include_directories(
   "${CIF_INCLUDE_DIR}"
 )
+# Include directory for shared IR builder concepts (BuilderConcepts.h)
+include_directories(
+  "${CMAKE_CURRENT_SOURCE_DIR}/IRBuilderGenerator"
+)
 # Include directory for auto-generated RT Stack reflection headers
 include_directories(
   "${CMAKE_CURRENT_BINARY_DIR}/AdaptorCommon/RayTracing/RTStackReflectionIRBG"
