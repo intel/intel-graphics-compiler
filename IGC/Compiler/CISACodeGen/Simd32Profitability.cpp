@@ -486,7 +486,9 @@ static bool hasIEEESqrtOrDivFunc(const Function &F) {
         continue;
       switch (GII->getIntrinsicID()) {
       case GenISAIntrinsic::GenISA_IEEE_Sqrt:
+      case GenISAIntrinsic::GenISA_IEEE_Sqrt_rm:
       case GenISAIntrinsic::GenISA_IEEE_Divide:
+      case GenISAIntrinsic::GenISA_IEEE_Divide_rm:
         return true;
       default:
         break;
