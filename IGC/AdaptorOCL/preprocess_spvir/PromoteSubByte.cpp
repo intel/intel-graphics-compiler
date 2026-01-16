@@ -27,7 +27,6 @@ SPDX-License-Identifier: MIT
 
 using namespace llvm;
 using namespace IGC;
-using UV = UndefValue;
 
 static void swapNames(Value *value1, Value *value2) {
   if (value1->getType()->isVoidTy() || value2->getType()->isVoidTy() || (!value1->hasName() && !value2->hasName())) {
@@ -214,7 +213,7 @@ void PromoteSubByte::cleanUp(Module &module) {
   auto erase = [](auto v) {
     // Replace all v uses by undef. It allows us not to worry about
     // the order in which we delete unpromoted values.
-    v->replaceAllUsesWith(UV::get(v->getType()));
+    v->replaceAllUsesWith(UndefValue::get(v->getType()));
     v->eraseFromParent();
   };
 
@@ -625,7 +624,7 @@ Constant *PromoteSubByte::promoteConstant(Constant *constant) {
   }
 
   if (isa<UndefValue>(constant)) {
-    return UV::get(getOrCreatePromotedType(constant->getType()));
+    return UndefValue::get(getOrCreatePromotedType(constant->getType()));
   } else if (isa<ConstantAggregateZero>(constant)) {
     return ConstantAggregateZero::get(getOrCreatePromotedType(constant->getType()));
   } else if (auto constantInteger = dyn_cast<ConstantInt>(constant)) {
@@ -1156,7 +1155,7 @@ Value *PromoteSubByte::promoteAndUnpackInt4Vector(Value *unpromoted, IRBuilder<>
   if (isa<PoisonValue>(promoted))
     return PoisonValue::get(outputTy);
   if (isa<UndefValue>(promoted))
-    return UV::get(outputTy);
+    return UndefValue::get(outputTy);
 
   // Try to handle constant cases without GenISA calls to keep the llvm IR clean
   if (Constant *unpackedConst = unpackConstantInt4Vector(promoted, outputTy, signExtend))
@@ -1198,7 +1197,7 @@ Value *PromoteSubByte::packInt4Vector(Value *input, IRBuilder<> &builder) {
   if (isa<PoisonValue>(input))
     return PoisonValue::get(outputTy);
   if (isa<UndefValue>(input))
-    return UV::get(outputTy);
+    return UndefValue::get(outputTy);
 
   auto GIID = GenISAIntrinsic::GenISA_Int4VectorPack;
   Function *packingFunc = GenISAIntrinsic::getDeclaration(M, GIID, {outputTy, input->getType()});
