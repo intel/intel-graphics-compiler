@@ -282,14 +282,6 @@ KernelArg::ArgType KernelArg::calcArgType(const ImplicitArg &arg) const {
     return KernelArg::ArgType::IMPLICIT_SAMPLER_SNAP_WA;
   case ImplicitArg::INLINE_SAMPLER:
     return KernelArg::ArgType::IMPLICIT_INLINE_SAMPLER;
-  case ImplicitArg::FLAT_IMAGE_BASEOFFSET:
-    return KernelArg::ArgType::IMPLICIT_FLAT_IMAGE_BASEOFFSET;
-  case ImplicitArg::FLAT_IMAGE_HEIGHT:
-    return KernelArg::ArgType::IMPLICIT_FLAT_IMAGE_HEIGHT;
-  case ImplicitArg::FLAT_IMAGE_WIDTH:
-    return KernelArg::ArgType::IMPLICIT_FLAT_IMAGE_WIDTH;
-  case ImplicitArg::FLAT_IMAGE_PITCH:
-    return KernelArg::ArgType::IMPLICIT_FLAT_IMAGE_PITCH;
 
   case ImplicitArg::VME_MB_BLOCK_TYPE:
     return KernelArg::ArgType::IMPLICIT_VME_MB_BLOCK_TYPE;
@@ -666,10 +658,6 @@ KernelArgsOrder::KernelArgsOrder(InputType layout) {
         KernelArg::ArgType::IMPLICIT_SAMPLER_NORMALIZED,
         KernelArg::ArgType::IMPLICIT_SAMPLER_SNAP_WA,
         KernelArg::ArgType::IMPLICIT_INLINE_SAMPLER,
-        KernelArg::ArgType::IMPLICIT_FLAT_IMAGE_BASEOFFSET,
-        KernelArg::ArgType::IMPLICIT_FLAT_IMAGE_HEIGHT,
-        KernelArg::ArgType::IMPLICIT_FLAT_IMAGE_WIDTH,
-        KernelArg::ArgType::IMPLICIT_FLAT_IMAGE_PITCH,
 
         KernelArg::ArgType::IMPLICIT_VME_MB_BLOCK_TYPE,
         KernelArg::ArgType::IMPLICIT_VME_SUBPIXEL_MODE,
@@ -799,10 +787,6 @@ KernelArgsOrder::KernelArgsOrder(InputType layout) {
         KernelArg::ArgType::IMPLICIT_SAMPLER_NORMALIZED,
         KernelArg::ArgType::IMPLICIT_SAMPLER_SNAP_WA,
         KernelArg::ArgType::IMPLICIT_INLINE_SAMPLER,
-        KernelArg::ArgType::IMPLICIT_FLAT_IMAGE_BASEOFFSET,
-        KernelArg::ArgType::IMPLICIT_FLAT_IMAGE_HEIGHT,
-        KernelArg::ArgType::IMPLICIT_FLAT_IMAGE_WIDTH,
-        KernelArg::ArgType::IMPLICIT_FLAT_IMAGE_PITCH,
 
         KernelArg::ArgType::IMPLICIT_VME_MB_BLOCK_TYPE,
         KernelArg::ArgType::IMPLICIT_VME_SUBPIXEL_MODE,

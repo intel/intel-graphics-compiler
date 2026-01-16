@@ -98,14 +98,6 @@ void ImageFuncResolution::visitCallInst(CallInst &CI) {
     imageRes = getSamplerNormalizedCoords(CI);
   } else if (funcName.equals(ImageFuncsAnalysis::GET_SAMPLER_SNAP_WA_REQUIRED)) {
     imageRes = getSamplerSnapWARequired(CI);
-  } else if (funcName.equals(ImageFuncsAnalysis::GET_FLAT_IMAGE_BASEOFFSET)) {
-    imageRes = getImplicitImageArg(CI, ImplicitArg::FLAT_IMAGE_BASEOFFSET);
-  } else if (funcName.equals(ImageFuncsAnalysis::GET_FLAT_IMAGE_HEIGHT)) {
-    imageRes = getImplicitImageArg(CI, ImplicitArg::FLAT_IMAGE_HEIGHT);
-  } else if (funcName.equals(ImageFuncsAnalysis::GET_FLAT_IMAGE_WIDTH)) {
-    imageRes = getImplicitImageArg(CI, ImplicitArg::FLAT_IMAGE_WIDTH);
-  } else if (funcName.equals(ImageFuncsAnalysis::GET_FLAT_IMAGE_PITCH)) {
-    imageRes = getImplicitImageArg(CI, ImplicitArg::FLAT_IMAGE_PITCH);
   } else {
     // Non image function, do nothing
     return;

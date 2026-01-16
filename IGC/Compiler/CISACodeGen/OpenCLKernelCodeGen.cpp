@@ -905,34 +905,6 @@ bool COpenCLKernel::CreateZEPayloadArguments(IGC::KernelArg *kernelArg, uint pay
     arg.arg_index = kernelArg->getAssociatedArgNo();
     break;
   }
-  case KernelArg::ArgType::IMPLICIT_FLAT_IMAGE_BASEOFFSET: {
-    zebin::zeInfoPayloadArgument &arg = zebin::ZEInfoBuilder::addPayloadArgumentImplicit(
-        m_kernelInfo.m_zePayloadArgs, zebin::PreDefinedAttrGetter::ArgType::flat_image_baseoffset, payloadPosition,
-        kernelArg->getSize());
-    arg.arg_index = kernelArg->getAssociatedArgNo();
-    break;
-  }
-  case KernelArg::ArgType::IMPLICIT_FLAT_IMAGE_HEIGHT: {
-    zebin::zeInfoPayloadArgument &arg = zebin::ZEInfoBuilder::addPayloadArgumentImplicit(
-        m_kernelInfo.m_zePayloadArgs, zebin::PreDefinedAttrGetter::ArgType::flat_image_height, payloadPosition,
-        kernelArg->getSize());
-    arg.arg_index = kernelArg->getAssociatedArgNo();
-    break;
-  }
-  case KernelArg::ArgType::IMPLICIT_FLAT_IMAGE_WIDTH: {
-    zebin::zeInfoPayloadArgument &arg = zebin::ZEInfoBuilder::addPayloadArgumentImplicit(
-        m_kernelInfo.m_zePayloadArgs, zebin::PreDefinedAttrGetter::ArgType::flat_image_width, payloadPosition,
-        kernelArg->getSize());
-    arg.arg_index = kernelArg->getAssociatedArgNo();
-    break;
-  }
-  case KernelArg::ArgType::IMPLICIT_FLAT_IMAGE_PITCH: {
-    zebin::zeInfoPayloadArgument &arg = zebin::ZEInfoBuilder::addPayloadArgumentImplicit(
-        m_kernelInfo.m_zePayloadArgs, zebin::PreDefinedAttrGetter::ArgType::flat_image_pitch, payloadPosition,
-        kernelArg->getSize());
-    arg.arg_index = kernelArg->getAssociatedArgNo();
-    break;
-  }
   // sampler
   case KernelArg::ArgType::SAMPLER:
   case KernelArg::ArgType::BINDLESS_SAMPLER: {

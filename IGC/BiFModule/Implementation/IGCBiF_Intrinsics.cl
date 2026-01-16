@@ -128,10 +128,6 @@ int    __builtin_IB_get_image_srgb_channel_order(long) __attribute__((const));
 int    __builtin_IB_get_image_channel_order(long) __attribute__((const));
 int    __builtin_IB_get_image_num_samples(long) __attribute__((const));
 int    __builtin_IB_get_image_num_mip_levels(long) __attribute__((const));
-long   __builtin_IB_get_flat_image_baseoffset(long) __attribute__((const));
-int    __builtin_IB_get_flat_image_width(long) __attribute__((const));
-int    __builtin_IB_get_flat_image_height(long) __attribute__((const));
-int    __builtin_IB_get_flat_image_pitch(long) __attribute__((const));
 
 // Access image or sampler parameter. Argument should be pointer
 // to SampledImage or VMEImageINTEL opaque type.

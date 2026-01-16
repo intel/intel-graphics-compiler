@@ -43,4 +43,4 @@ define i32 @test_addrcast_slm_p4(ptr addrspace(3) %p1) {
 !2 = !{!"function_type", i32 1}
 !3 = !{!"arg_desc"}
 !4 = !{!"implicit_arg_desc", !5}
-!5 = !{i32 49}
+!5 = !{i32 45}
