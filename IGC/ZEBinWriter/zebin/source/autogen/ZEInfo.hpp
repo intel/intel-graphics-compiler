@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2020-2025 Intel Corporation
+Copyright (C) 2020-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -300,7 +300,7 @@ struct zeInfoContainer
     KernelsCostInfoTy kernels_cost_info;
 };
 struct PreDefinedAttrGetter{
-    static zeinfo_str_t getVersionNumber() { return "1.62"; }
+    static zeinfo_str_t getVersionNumber() { return "1.63"; }
 
     enum class ArgThreadSchedulingMode {
         age_based,

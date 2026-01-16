@@ -7,7 +7,7 @@ SPDX-License-Identifier: MIT
 ============================= end_copyright_notice ==========================-->
 
 # ZEBIN Version
-Version 1.62
+Version 1.63
 =======
 
 ## Versioning
@@ -16,6 +16,7 @@ Format: \<_Major number_\>.\<_Minor number_\>
 - Minor number: Increase when backward-compatible features are added. For example, add new attributes.
 
 ## Change Note
+- **Version 1.63**: Internal feature.
 - **Version 1.62**: Internal feature.
 - **Version 1.61**: Add execution env require_assert_buffer and require_sync_buffer.
 - **Version 1.60**: Internal feature.
