@@ -1181,6 +1181,15 @@ bool TranslateBuildSPMD(const STB_TranslateInputArgs *pInputArgs, STB_TranslateO
   IGC::COCLBTILayout oclLayout(&zeroLayout);
   OpenCLProgramContext oclContext(oclLayout, IGCPlatform, pInputArgs, *driverInfo, llvmContext);
 
+  if (oclContext.m_InternalOptions.Efficient64b) {
+    // IGC depends on FtrEfficient64BitAddressing to determine whether 64bit
+    // addressing is supported. To allow testing this feature through ocloc tests
+    // and Neo ULTS, we override the SKU table here to imitate the behavior when
+    // Efficient64Bit is enabled in KMD.
+    auto &skuTable = const_cast<SKU_FEATURE_TABLE &>(IGCPlatform.getSkuTable());
+    skuTable.FtrEfficient64BitAddressing = 1;
+  }
+
 #ifdef __GNUC__
   // Get rid of "the address of 'oclContext' will never be NULL" warning
 #pragma GCC diagnostic push
