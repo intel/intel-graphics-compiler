@@ -209,9 +209,8 @@ void InternalOptions::parseOptions(const char *internalOpts) {
     DisableEUFusion = true;
   }
 
-  if (internalOptions.hasArg(OPT_efficient_64b_common) || IGC_IS_FLAG_ENABLED(EnableEfficient64b)) {
+  if (internalOptions.hasArg(OPT_efficient_64b_common)) {
     Efficient64b = true;
-    IGC_SET_FLAG_VALUE(EnableEfficient64b, true);
   }
 
   if (const llvm::opt::Arg *arg = internalOptions.getLastArg(OPT_functonControl_common)) {
