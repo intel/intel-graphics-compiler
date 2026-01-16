@@ -1534,16 +1534,11 @@ void OptimizeIR(CodeGenContext *const pContext) {
         mpm.add(new PromoteToPredicatedMemoryAccess());
       }
 
-      if (IGC_IS_FLAG_ENABLED(EnableJumpThreading) && !pContext->m_instrTypes.hasAtomics &&
-          !extensiveShader(pContext)) {
+      if (IGC_IS_FLAG_ENABLED(EnableJumpThreading) && !extensiveShader(pContext)) {
         if (pContext->type == ShaderType::OPENCL_SHADER) {
           // Add CFGSimplification for clean-up before JumpThreading.
           mpm.add(llvm::createCFGSimplificationPass());
         }
-
-        // jump threading currently causes the atomic_flag test from c11 conformance to fail.  Right now,
-        // only do jump threading if we don't have atomics as using atomics as locks seems to be the most common
-        // case of violating the no independent forward progress clause from the spec.
 
         // We need to increase default duplication threshold since JumpThreading pass cost estimation does
         // not consider that not all instructions need to be duplicated.
@@ -1578,10 +1573,7 @@ void OptimizeIR(CodeGenContext *const pContext) {
       // to benefit from unreachable instruction when it's in default switch case
       mpm.add(new UnreachableHandling());
 
-      // Conditions apply just as above due to problems with atomics
-      // (see comment above for details).
-      if (IGC_IS_FLAG_ENABLED(EnableJumpThreading) && !pContext->m_instrTypes.hasAtomics &&
-          !extensiveShader(pContext)) {
+      if (IGC_IS_FLAG_ENABLED(EnableJumpThreading) && !extensiveShader(pContext)) {
         // After lowering 'switch', run jump threading to remove redundant jumps.
         mpm.add(IGCLLVM::createLegacyWrappedJumpThreadingPass());
       }
