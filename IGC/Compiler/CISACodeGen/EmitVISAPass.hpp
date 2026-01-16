@@ -722,6 +722,7 @@ public:
   void ResourceLoopBackEdge(bool needLoop, CVariable *flag, uint label, uint ResourceLoopMarker = 0);
   bool ResourceLoopNeedsLoop(ResourceDescriptor &resource, SamplerDescriptor &sampler, CVariable *&flag,
                              uint ResourceLoopMarker);
+  bool ResourceLoopNeedsLoop(ResourceDescriptor &resource, CVariable *&flag, uint ResourceLoopMarker);
   template <typename Func>
   void ResourceLoop(ResourceDescriptor &resource, SamplerDescriptor &sampler, const Func &Fn,
                     uint ResourceLoopMarker = 0) {

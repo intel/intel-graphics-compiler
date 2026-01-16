@@ -20306,6 +20306,11 @@ bool EmitPass::ResourceLoopNeedsLoop(ResourceDescriptor &resource, SamplerDescri
   return true;
 }
 
+bool IGC::EmitPass::ResourceLoopNeedsLoop(ResourceDescriptor &resource, CVariable *&flag, uint ResourceLoopMarker) {
+  SamplerDescriptor sampler;
+  return ResourceLoopNeedsLoop(resource, sampler, flag, ResourceLoopMarker);
+}
+
 bool EmitPass::ResourceLoopSubIteration(ResourceDescriptor &resource, CVariable *&flag, uint &label,
                                         uint ResourceLoopMarker, int iteration, CVariable *prevFlag) {
   SamplerDescriptor sampler;
@@ -22904,8 +22909,8 @@ void EmitPass::emitLscIntrinsicTypedLoadStatus(llvm::GenIntrinsicInst *inst) {
   } else {
     uint label = 0;
     CVariable *flag = nullptr;
-    bool needLoop = ResourceLoopHeader(m_destination, resource, flag, label);
     CVariable *prevResult = nullptr;
+    bool needLoop = ResourceLoopNeedsLoop(resource, flag, label);
     if (!isEfficient64bEnabled && needLoop) {
       prevResult = m_currShader->GetNewVariable(numElements, ISA_TYPE_D, EALIGN_DWORD, "typedLoadStatusResult");
       CVariable *initVal = m_currShader->ImmToVariable(0, ISA_TYPE_D);
@@ -22914,6 +22919,7 @@ void EmitPass::emitLscIntrinsicTypedLoadStatus(llvm::GenIntrinsicInst *inst) {
       m_encoder->Copy(m_destination, initVal);
       m_encoder->Push();
     }
+    ResourceLoopHeader(m_destination, resource, flag, label);
     ResourceLoopSubIteration(resource, flag, label);
     m_encoder->SetPredicate(flag);
     m_encoder->LSC_TypedReadWrite(lscOp, &resource, pU, pV, pR, pLODorSampleIdx,
