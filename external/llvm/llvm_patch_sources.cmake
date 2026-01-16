@@ -36,7 +36,7 @@ endif()
 message(STATUS "[LLVM] : Applying patches for LLVM from version ${DIR_WITH_PATCHES}")
 
 # For Interim mode, dir with patches set to /trunk
-if(IGC_OPTION__LLVM_INTERIM)
+if(IGC_OPTION__LLVM_INTERIM OR IGC_BUILD_LLVM_INTERIM)
     set(IGC_LLVM_PATCHES_DIR ${CMAKE_CURRENT_SOURCE_DIR}/trunk)
     set(IGC_LLVM_INTERIM_PATCHES ON)
     message(STATUS "[LLVM] : IGC_LLVM_INTERIM mode is enabled, apply patches from /trunk dir")

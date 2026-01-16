@@ -37,6 +37,11 @@ include(llvm_source_path)
 # Get default prebuild dirs.
 include(llvm_prebuilt_path)
 
+# Configure LLVM for Interim builds
+if(IGC_BUILD_LLVM_INTERIM)
+  include(llvm_interim_hook)
+endif()
+
 # Handle dependent options for Source mode.
 if(IGC_OPTION__LLVM_MODE STREQUAL SOURCE_MODE_NAME)
   option(IGC_OPTION__LLVM_STOCK_SOURCES "Use stock or patched sources" OFF)

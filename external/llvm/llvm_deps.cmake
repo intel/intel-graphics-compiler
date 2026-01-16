@@ -47,8 +47,8 @@ include(llvm_clang_source_hook)
 # SPIRV translator source hook.
 include(llvm_spirv_source_hook)
 
-# LLD source hook.
-if(IGC_OPTION__LLVM_LLD)
+# LLD source hook. Skip for interim, it will be handled separately.
+if(IGC_OPTION__LLVM_LLD AND NOT IGC_BUILD_LLVM_INTERIM)
   include(llvm_lld_source_hook)
 endif()
 

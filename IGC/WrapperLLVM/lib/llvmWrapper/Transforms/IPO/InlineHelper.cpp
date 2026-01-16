@@ -309,7 +309,7 @@ bool inlineCallsImpl(CallGraphSCC &SCC, CallGraph &CG, std::function<AssumptionC
 
   InlinedArrayAllocasTy InlinedArrayAllocas;
   InlineFunctionInfo InlineInfo(
-#if LLVM_VERSION_MAJOR <= 16
+#if LLVM_VERSION_MAJOR <= 16 || defined(IGC_LLVM_TRUNK_REVISION)
       &CG,
 #endif
       GetAssumptionCache, PSI);

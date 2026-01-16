@@ -8,7 +8,7 @@
 
 include_guard(DIRECTORY)
 
-include(llvm_utils.cmake)
+include(llvm_utils)
 
 # Do not build any backends.
 set_llvm_opt(LLVM_TARGETS_TO_BUILD "" CACHE STRING "desc")
