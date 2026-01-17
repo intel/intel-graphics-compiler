@@ -24249,8 +24249,7 @@ void EmitPass::emitBTD(CVariable *GlobalBufferPtr, CVariable *StackID, CVariable
 }
 
 void EmitPass::emitBTDEff64(CVariable *globalBufferPtr, CVariable *stackID, CVariable *shaderRecord, CVariable *flag,
-                            bool releaseStackID
-) {
+                            bool releaseStackID) {
 
   if (globalBufferPtr) {
     if (!globalBufferPtr->IsUniform())
@@ -24278,10 +24277,8 @@ void EmitPass::emitBTDEff64(CVariable *globalBufferPtr, CVariable *stackID, CVar
 
   m_encoder->SetPredicate(flag);
 
-
-  BTD_OPCODE btdOpcode = releaseStackID ? BTD_OPCODE::BTD_STACKID_RELEASE : BTD_OPCODE::BTD_SPAWN;
-
-  m_encoder->BTD(btdOpcode, globalBufferPtr, stackID, shaderRecord);
+  m_encoder->BTD(releaseStackID ? BTD_OPCODE::BTD_STACKID_RELEASE : BTD_OPCODE::BTD_SPAWN, globalBufferPtr, stackID,
+                 shaderRecord);
 
   m_encoder->Push();
 
@@ -24300,7 +24297,6 @@ void EmitPass::emitBindlessThreadDispatch(BTDIntrinsic *I) {
 
   emitBTD(globalBufferPtr, stackID, shaderRecord, nullptr, false);
 }
-
 
 void EmitPass::emitStackIDRelease(StackIDReleaseIntrinsic *I) {
   CVariable *stackID = GetSymbol(I->getStackID());

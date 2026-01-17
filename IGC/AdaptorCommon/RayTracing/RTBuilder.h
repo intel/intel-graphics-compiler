@@ -424,7 +424,6 @@ public:
   template <typename StackPointerValT, typename RayInfoIntrinsicT>
   Value *lowerRayInfo(StackPointerValT *perLaneStackPtr, RayInfoIntrinsicT *I, Value *shaderType, Value *isProcedural);
 
-
 };
 
 } // namespace llvm
