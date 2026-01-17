@@ -884,6 +884,8 @@ int IR_Builder::translateLscUntypedInstUnified(
   overfetch |= opInfo.isLoad() &&
                cacheOpts.l1 == LSC_CACHE_OPT::LSC_CACHING_CACHED &&
                m_options->getOption(vISA_enableOverfetch);
+
+
   if (MsgOpHasChMask(mop)) {
     msgDesc = createUntypedCMaskDesc(
         sfid, mop, execSize, isNullOperand(dstRead),
@@ -904,6 +906,7 @@ int IR_Builder::translateLscUntypedInstUnified(
         ConvertLSCCacheOpts(cacheOpts.l1, cacheOpts.l2, cacheOpts.l3),
         overfetch);
   }
+
 
   if (addrInfo.immScale != 1 || addrInfo.immOffset != 0) {
     // We were not able to or did not need to encode either of immScale

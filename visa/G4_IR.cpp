@@ -8591,3 +8591,12 @@ bool G4_InstCF::requireNopAfter() const {
   }
   return false;
 }
+
+namespace vISA {
+
+bool isNullZero(G4_Operand *Opr) {
+  return (!Opr || Opr->isNullReg() ||
+          (Opr->isImm() && Opr->asImm()->getImm() == 0));
+}
+
+} // namespace vISA

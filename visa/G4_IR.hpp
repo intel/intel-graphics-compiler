@@ -1971,6 +1971,9 @@ inline bool G4_INST::writesFlag() const {
   return (mod && op != G4_sel) || (dst && dst->isFlag());
 }
 
+// isNullZero() returns true if Opr is null or zero
+bool isNullZero(G4_Operand *Opr);
+
 } // namespace vISA
 
 #endif

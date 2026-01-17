@@ -1981,9 +1981,7 @@ bool IR_Builder::isBuiltinSendIndirectS0(G4_Operand *op) const
 // createSurfaceMove* functions from buildIR
 G4_SrcRegRegion* IR_Builder::setupIndirectDescriptor(G4_Operand *val)
 {
-  bool isZero = !val || val->isNullReg() ||
-      (val->isImm() && val->asImm()->getImm() == 0);
-  if (isZero) {
+  if (isNullZero(val)) {
     // bail out if the value is 0; HW will treat IND0 or IND1 being
     // absent as 0's.
     return nullptr;
@@ -2049,9 +2047,7 @@ G4_SrcRegRegion *IR_Builder::createSurfaceMoveToS0(
   vISA_ASSERT(!val || IS_INT(val->getType()), "invalid type for surface mov");
   G4_Type movDstType = val && IS_SIGNED_INT(val->getType()) ? Type_Q : Type_UQ;
 
-  bool isZero = !val || val->isNullReg() ||
-      (val->isImm() && val->asImm()->getImm() == 0);
-  if (skipIfNullZero && isZero) {
+  if (skipIfNullZero && isNullZero(val)) {
     // bail out if the value is 0; HW will treat IND0 or IND1 being
     // absent as 0's.
     return nullptr;
