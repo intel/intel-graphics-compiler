@@ -73,12 +73,12 @@ template <typename EncodingBaseType> struct EncHeader {
                                         EncodingBaseType version, EncodingBaseType &encodedInterfacesNumRet,
                                         EncodingBaseType &encodedEncoderVersionRet) {
     uint64_t invalidHeader[GetHeaderSizeInEncodingBaseType()];
-    invalidHeader[GetMagicIdx()] = InvalidInterface;
-    invalidHeader[GetVersionIdx()] = InvalidVersion;
-    invalidHeader[GetSizeIdx()] = 0;
 
     auto *header = reinterpret_cast<const EncodingBaseType *>(handle);
     if ((header == nullptr) || (header[GetMagicIdx()] != magic)) {
+      invalidHeader[GetMagicIdx()] = InvalidInterface;
+      invalidHeader[GetVersionIdx()] = InvalidVersion;
+      invalidHeader[GetSizeIdx()] = 0;
       header = invalidHeader;
     }
 
@@ -86,7 +86,7 @@ template <typename EncodingBaseType> struct EncHeader {
     encodedInterfacesNumRet = (header[GetSizeIdx()] - GetHeaderSizeInBytes());
     encodedInterfacesNumRet /= EncInterface<EncodingBaseType>::GetDescriptorSizeInBytes();
 
-    if (header[GetVersionIdx()] != version) {
+    if ((header[GetVersionIdx()] != version) || (header == invalidHeader)) {
       // incompatible encoder/decoders
       // we require strict compatibility (no backwards compatibility),
       // but this encoder should not change very often (hardly ever)
