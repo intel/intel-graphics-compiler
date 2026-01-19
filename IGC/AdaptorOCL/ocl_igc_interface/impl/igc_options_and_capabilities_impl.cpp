@@ -14,24 +14,7 @@ SPDX-License-Identifier: MIT
 #include "cif/helpers/error.h"
 #include "cif/macros/enable.h"
 
-#if __has_include("SPIRVExtensionsSupport.h")
 #include "SPIRVExtensionsSupport.h"
-#else
-namespace IGC {
-namespace SPIRVExtensionsSupport {
-struct SPIRVCapability {
-  std::string Name;
-};
-
-struct SPIRVExtension {
-  std::string Name;
-  std::string SpecURL;
-  std::vector<SPIRVCapability> Capabilities;
-};
-inline std::vector<SPIRVExtension> getSupportedExtensionInfo(PLATFORM Platform) { return {}; }
-} // namespace SPIRVExtensionsSupport
-} // namespace IGC
-#endif
 
 #include "Options/include/igc/Options/Options.h"
 

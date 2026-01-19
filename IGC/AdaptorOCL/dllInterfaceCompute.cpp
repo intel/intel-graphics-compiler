@@ -74,26 +74,7 @@ SPDX-License-Identifier: MIT
 #include "VISALinkerDriver/VLD.hpp"
 #include "VISALinkerDriver/VLD_SPIRVSplitter.hpp"
 
-#if __has_include("SPIRVExtensionsSupport.h")
 #include "SPIRVExtensionsSupport.h"
-#else
-namespace IGC {
-namespace SPIRVExtensionsSupport {
-struct SPIRVCapability {
-  std::string Name;
-};
-
-struct SPIRVExtension {
-  std::string Name;
-  std::string SpecURL;
-  std::vector<SPIRVCapability> Capabilities;
-};
-inline std::vector<SPIRVExtension> getSupportedExtensionInfo(PLATFORM platform, bool includeUnpublished = false) {
-  return {};
-}
-} // namespace SPIRVExtensionsSupport
-} // namespace IGC
-#endif
 
 // In case of use GT_SYSTEM_INFO in GlobalData.h from inc/umKmInc/sharedata.h
 // We have to do this temporary defines
@@ -424,7 +405,6 @@ bool TranslateSPIRVToLLVM(const STB_TranslateInputArgs &InputArgs, llvm::LLVMCon
   // Set SPIRV-LLVM-Translator translation options
   SPIRV::TranslatorOpts Opts;
   Opts.enableGenArgNameMD();
-#if __has_include("SPIRVExtensionsSupport.h")
   if (IGC_IS_FLAG_ENABLED(ValidateSPIRVExtensionSupport)) {
     std::vector<IGC::SPIRVExtensionsSupport::SPIRVExtension> SupportedExtensions =
         IGC::SPIRVExtensionsSupport::getSupportedExtensionInfo(platform, true);
@@ -435,9 +415,6 @@ bool TranslateSPIRVToLLVM(const STB_TranslateInputArgs &InputArgs, llvm::LLVMCon
   } else {
     Opts.enableAllExtensions();
   }
-#else
-  Opts.enableAllExtensions();
-#endif
 
   Opts.setDesiredBIsRepresentation(SPIRV::BIsRepresentation::SPIRVFriendlyIR);
 

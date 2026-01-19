@@ -422,9 +422,6 @@ if(NOT DEFINED IGC_BUILD__VC_ENABLED)
 endif()
 
 
-set(USE_SPIRV_EXTENSIONS_YAML_GENERATOR TRUE)
-
-
 if(IGC_BUILD_LLVM_INTERIM AND IGC_BUILD__VC_ENABLED)
   # Add vc-intrinsics patcher for Interim mode
   include("${IGC_SOURCE_DIR}/../external/vc-intrinsics/CMakeLists.txt")
@@ -1451,9 +1448,7 @@ include_directories(
     "${CMAKE_CURRENT_BINARY_DIR}/Options/include"
     )
 
-if(USE_SPIRV_EXTENSIONS_YAML_GENERATOR)
-  include_directories("${IGC_BUILD__IGC_BIN_DIR}/AdaptorOCL/ocl_igc_interface/extensions")
-endif()
+include_directories("${IGC_BUILD__IGC_BIN_DIR}/AdaptorOCL/ocl_igc_interface/extensions")
 
 
 include_directories(
@@ -1505,9 +1500,7 @@ include_directories("${ZEBIN_INCLUDE_PATH}")
 add_subdirectory(PCH)
 
 # ==================================== YamlAndDocsTblgen ================================================
-if(USE_SPIRV_EXTENSIONS_YAML_GENERATOR)
-  add_subdirectory(AdaptorOCL/Utils/IGCCSPIRVSupportTblGen)
-endif()
+add_subdirectory(AdaptorOCL/Utils/IGCCSPIRVSupportTblGen)
 
 # ===================================== Projects and source groups =====================================
 
@@ -1574,9 +1567,7 @@ endif()
 
 add_subdirectory(GenISAIntrinsics)
 
-if(USE_SPIRV_EXTENSIONS_YAML_GENERATOR)
-  add_subdirectory(AdaptorOCL/ocl_igc_interface/extensions)
-endif()
+add_subdirectory(AdaptorOCL/ocl_igc_interface/extensions)
 
 add_subdirectory(Options)
 
@@ -1953,9 +1944,7 @@ foreach(_libBuildSuffix ${IGC_BUILD__MAIN_IGC_LIB_SUFFIXES})
   add_dependencies("${IGC_BUILD__PROJ${_libBuildSuffix}}"     RTStackReflectionIRBG)
   add_dependencies("${IGC_BUILD__PROJ${_libBuildSuffix}}"     RenderSurfaceStateIRBG)
 
-  if(USE_SPIRV_EXTENSIONS_YAML_GENERATOR)
-    add_dependencies("${IGC_BUILD__PROJ${_libBuildSuffix}}"     SPIRVExtensionsSupportGen)
-  endif()
+  add_dependencies("${IGC_BUILD__PROJ${_libBuildSuffix}}"     SPIRVExtensionsSupportGen)
 
   if(MSVC AND IGC_OPTION__BIF_LINK_BC)
     add_dependencies("${IGC_BUILD__PROJ${_libBuildSuffix}}"   "${IGC_BUILD__PROJ__BiFModule_OCL}")

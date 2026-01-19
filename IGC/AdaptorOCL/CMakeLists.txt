@@ -127,9 +127,7 @@ add_library("${IGC_BUILD__PROJ__AdaptorOCL}" STATIC
 set_target_properties("${IGC_BUILD__PROJ__AdaptorOCL}" PROPERTIES FOLDER "Libraries/Adaptors")
 
 add_dependencies("${IGC_BUILD__PROJ__AdaptorOCL}" "${IGC_BUILD__PROJ__GenISAIntrinsics}")
-if(USE_SPIRV_EXTENSIONS_YAML_GENERATOR)
-  add_dependencies(${IGC_BUILD__PROJ__AdaptorOCL} SPIRVExtensionsSupportGen)
-endif()
+add_dependencies(${IGC_BUILD__PROJ__AdaptorOCL} SPIRVExtensionsSupportGen)
 set_property(TARGET "${IGC_BUILD__PROJ__AdaptorOCL}" PROPERTY PROJECT_LABEL "${IGC_BUILD__PROJ_LABEL__AdaptorOCL}")
 
 if(IGC_BUILD__VC_ENABLED)
