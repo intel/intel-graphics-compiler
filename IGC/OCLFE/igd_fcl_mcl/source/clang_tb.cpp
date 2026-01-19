@@ -23,6 +23,8 @@ SPDX-License-Identifier: MIT
 #include "secure_string.h"
 #include "AdaptorCommon/customApi.hpp"
 
+#include "SPIRVExtensionsSupport.h"
+
 #include <mutex>
 #include <sstream>
 #include <stdlib.h>
@@ -1437,6 +1439,22 @@ bool CClangTranslationBlock::TranslateClang(const TranslateClangArgs *pInputArgs
 
   // TODO: Workaround - remove after some time to be consistent with LLVM15+ behavior
   optionsEx += " -Wno-error=implicit-int";
+
+  // Pass the list of supported SPIR-V extensions from IGC to opencl-clang.
+  // This allows opencl-clang to enable only relevant extensions when compiling
+  // OpenCL C to SPIR-V instead of enabling all extensions by default, and
+  // prevents generating SPIR-V that uses extensions not supported by IGC.
+  const auto &Extensions = IGC::SPIRVExtensionsSupport::AllExtensions;
+  if (!Extensions.empty()) {
+    optionsEx += " --spirv-ext=";
+
+    auto it = Extensions.begin();
+    optionsEx += "+" + it->Name;
+
+    for (++it; it != Extensions.end(); ++it) {
+      optionsEx += ",+" + it->Name;
+    }
+  }
 
   IOCLFEBinaryResult *pResultPtr = NULL;
   int res = 0;
