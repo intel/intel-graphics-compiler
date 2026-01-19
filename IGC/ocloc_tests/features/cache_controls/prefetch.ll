@@ -6,12 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; REQUIRES: llvm-spirv, regkeys, pvc-supported, llvm-16-plus
-
-; LLVM with typed pointers/default pointer typing:
-; RUN: llvm-as -opaque-pointers=0 %s -o %t.bc
-; RUN: llvm-spirv %t.bc -opaque-pointers=0 --spirv-ext=+SPV_INTEL_cache_controls -o %t.spv
-; RUN: ocloc compile -spirv_input -file %t.spv -device pvc -options " -igc_opts 'PrintToConsole=1, PrintAfter=Layout'" 2>&1 | FileCheck %s
+; REQUIRES: llvm-spirv, regkeys, pvc-supported, llvm-16-plus, opaque-pointers
 
 ; LLVM with opaque pointers:
 ; RUN: llvm-as -opaque-pointers=1 %s -o %t.bc
