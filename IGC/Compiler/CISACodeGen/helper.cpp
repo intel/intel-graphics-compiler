@@ -1883,11 +1883,6 @@ ERoundingMode GetRoundingMode_FP(ModuleMetaData *modMD, Instruction *inst) {
     case GenISAIntrinsic::GenISA_fma_rte:
       RM = ERoundingMode::ROUND_TO_NEAREST_EVEN;
       break;
-    case GenISAIntrinsic::GenISA_IEEE_Divide_rm: {
-      ConstantInt *rmVal = cast<ConstantInt>(GII->getArgOperand(2));
-      RM = (ERoundingMode)rmVal->getZExtValue();
-      break;
-    }
     case GenISAIntrinsic::GenISA_ftobf:
     case GenISAIntrinsic::GenISA_2fto2bf: {
       ConstantInt *rmVal;
@@ -1899,7 +1894,6 @@ ERoundingMode GetRoundingMode_FP(ModuleMetaData *modMD, Instruction *inst) {
       RM = (ERoundingMode)rmVal->getZExtValue();
       break;
     }
-    case GenISAIntrinsic::GenISA_IEEE_Sqrt_rm:
     case GenISAIntrinsic::GenISA_hftobf8: {
       ConstantInt *rmVal = cast<ConstantInt>(GII->getArgOperand(1));
       RM = (ERoundingMode)rmVal->getZExtValue();
@@ -1936,8 +1930,6 @@ bool setsRMExplicitly(Instruction *inst) {
     case GenISAIntrinsic::GenISA_ftobf:
     case GenISAIntrinsic::GenISA_2fto2bf:
     case GenISAIntrinsic::GenISA_hftobf8:
-    case GenISAIntrinsic::GenISA_IEEE_Divide_rm:
-    case GenISAIntrinsic::GenISA_IEEE_Sqrt_rm:
       return true;
     default:
       break;

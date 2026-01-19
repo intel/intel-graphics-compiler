@@ -9131,8 +9131,6 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst *inst) {
   case GenISAIntrinsic::GenISA_fma_rte:
   case GenISAIntrinsic::GenISA_fma_rtp:
   case GenISAIntrinsic::GenISA_fma_rtn:
-  case GenISAIntrinsic::GenISA_IEEE_Divide_rm:
-  case GenISAIntrinsic::GenISA_IEEE_Sqrt_rm:
     emitFPOWithNonDefaultRoundingMode(inst);
     break;
   case GenISAIntrinsic::GenISA_ShflIdx4:
@@ -16135,12 +16133,11 @@ void EmitPass::emitfitof(llvm::GenIntrinsicInst *inst) {
 
 // Emit FP Operations (FPO) using a non-default rounding mode
 void EmitPass::emitFPOWithNonDefaultRoundingMode(llvm::GenIntrinsicInst *inst) {
-  IGC_ASSERT_MESSAGE(IGCLLVM::getNumArgOperands(inst) >= 1, "ICE: incorrect gen intrinsic");
+  IGC_ASSERT_MESSAGE(IGCLLVM::getNumArgOperands(inst) >= 2, "ICE: incorrect gen intrinsic");
 
   GenISAIntrinsic::ID GID = inst->getIntrinsicID();
   CVariable *src0 = GetSymbol(inst->getOperand(0));
-
-  CVariable *src1 = (inst->getNumOperands() > 1) ? GetSymbol(inst->getOperand(1)) : nullptr;
+  CVariable *src1 = GetSymbol(inst->getOperand(1));
   CVariable *dst = m_destination;
 
   SetRoundingMode_FP(GetRoundingMode_FP(m_pCtx->getModuleMetaData(), inst));
@@ -16161,14 +16158,6 @@ void EmitPass::emitFPOWithNonDefaultRoundingMode(llvm::GenIntrinsicInst *inst) {
   case GenISAIntrinsic::GenISA_add_rtp:
   case GenISAIntrinsic::GenISA_add_rtn:
     m_encoder->Add(dst, src0, src1);
-    m_encoder->Push();
-    break;
-  case GenISAIntrinsic::GenISA_IEEE_Divide_rm:
-    m_encoder->IEEEDivide(dst, src0, src1);
-    m_encoder->Push();
-    break;
-  case GenISAIntrinsic::GenISA_IEEE_Sqrt_rm:
-    m_encoder->IEEESqrt(dst, src0);
     m_encoder->Push();
     break;
   case GenISAIntrinsic::GenISA_fma_rtz:

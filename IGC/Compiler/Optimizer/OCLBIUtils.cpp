@@ -1865,10 +1865,7 @@ CBuiltinsResolver::CBuiltinsResolver(CImagesBI::ParamMap *paramMap, CImagesBI::I
 
   // Correctly Rounded built ins
   m_CommandMap["__builtin_IB_ieee_sqrt"] = CSimpleIntrinMapping::create(GenISAIntrinsic::GenISA_IEEE_Sqrt, false);
-  m_CommandMap["__builtin_IB_ieee_sqrt_rm"] = CSimpleIntrinMapping::create(GenISAIntrinsic::GenISA_IEEE_Sqrt_rm, false);
   m_CommandMap["__builtin_IB_ieee_divide"] = CSimpleIntrinMapping::create(GenISAIntrinsic::GenISA_IEEE_Divide, true);
-  m_CommandMap["__builtin_IB_ieee_divide_rm"] =
-      CSimpleIntrinMapping::create(GenISAIntrinsic::GenISA_IEEE_Divide_rm, false);
   m_CommandMap["__builtin_IB_ieee_divide_f64"] =
       CSimpleIntrinMapping::create(GenISAIntrinsic::GenISA_IEEE_Divide, true);
 
