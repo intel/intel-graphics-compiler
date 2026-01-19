@@ -6921,10 +6921,11 @@ void Optimizer::mergeScalarInst() {
       G4_INST *inst = *ii;
       auto nextIter = ii;
       ++nextIter;
-      if (nextIter != iiEnd && BUNDLE_INFO::isMergeCandidate(
-                                   inst, builder, !bb->isAllLaneActive())) {
+      if (nextIter != iiEnd &&
+          BUNDLE_INFO::isMergeCandidate(inst, builder, modifiedDcl,
+                                        !bb->isAllLaneActive())) {
         BUNDLE_INFO bundle(bb, ii, bundleSizeLimit);
-        bundle.findInstructionToMerge(nextIter, builder);
+        bundle.findInstructionToMerge(nextIter, modifiedDcl, builder);
         if (bundle.size > 1)
           bundles.emplace_back(bundle);
         ii = nextIter;

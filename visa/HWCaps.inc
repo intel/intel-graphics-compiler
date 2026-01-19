@@ -190,6 +190,10 @@ bool doFlagLVN() const {
   return getPlatform() >= Xe3P_Graphics;
 }
 
+bool shareMergeVarGlobal() const {
+  return getPlatform() >= Xe3P_Graphics;
+}
+
 bool hasNFType() const {
   return getPlatform() >= GENX_ICLLP &&
          getPlatformGeneration() < PlatformGen::XE;

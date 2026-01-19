@@ -60,9 +60,14 @@ struct BUNDLE_INFO {
     inst[--size] = nullptr;
   }
 
-  bool canMergeDst(G4_DstRegRegion *dst, const IR_Builder &builder);
-  bool canMergeSource(G4_Operand *src, int srcPos, const IR_Builder &builder);
-  bool canMerge(G4_INST *inst, const IR_Builder &builder);
+  bool canMergeDst(G4_DstRegRegion *dst,
+                   std::unordered_set<G4_Declare *> &modifiedDcl,
+                   const IR_Builder &builder);
+  bool canMergeSource(G4_Operand *src, int srcPos,
+                      std::unordered_set<G4_Declare *> &modifiedDcl,
+                      const IR_Builder &builder);
+  bool canMerge(G4_INST *inst, std::unordered_set<G4_Declare *> &modifiedDcl,
+                const IR_Builder &builder);
 
   bool doMerge(IR_Builder &builder,
                std::unordered_set<G4_Declare *> &modifiedDcl,
@@ -84,9 +89,12 @@ struct BUNDLE_INFO {
 
   void dump() const { print(std::cerr); }
 
-  void findInstructionToMerge(INST_LIST_ITER &iter, const IR_Builder &builder);
+  void findInstructionToMerge(INST_LIST_ITER &iter,
+                              std::unordered_set<G4_Declare *> &modifiedDcl,
+                              const IR_Builder &builder);
 
   static bool isMergeCandidate(G4_INST *inst, const IR_Builder &builder,
+                               std::unordered_set<G4_Declare *> &modifiedDcl,
                                bool isInSimdFlow);
 }; // BUNDLE_INFO
 } // namespace vISA

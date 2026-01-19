@@ -474,8 +474,9 @@ static bool checkMergedOperandSize(const IR_Builder &builder,
 // -- simd1, NoMask, no predicates or conditional modifier
 // -- dst must be direct GRF whose declare has no alias
 // -- all sources must be either direct GRF or immediates
-bool BUNDLE_INFO::isMergeCandidate(G4_INST *inst, const IR_Builder &builder,
-                                   bool isInSimdFlow) {
+bool BUNDLE_INFO::isMergeCandidate(
+    G4_INST *inst, const IR_Builder &builder,
+    std::unordered_set<G4_Declare *> &modifiedDcl, bool isInSimdFlow) {
   if (inst->isOptBarrier())
     return false;
 
@@ -536,10 +537,21 @@ bool BUNDLE_INFO::isMergeCandidate(G4_INST *inst, const IR_Builder &builder,
    //     mov (16)              dst(0,0)<1>:d v(0,0)<0;1,0>:d
   */
   if (dstDcl != nullptr &&
-      (dstDcl->getAliasDeclare() != nullptr ||
-       inst->getDst()->getTypeSize() != dstDcl->getElemSize() ||
+      (inst->getDst()->getTypeSize() != dstDcl->getElemSize() ||
        !dstDcl->useGRF())) {
     return false;
+  }
+
+  if (dstDcl != nullptr && dstDcl->getAliasDeclare() != nullptr) {
+    // If the merge(alias) declare is created by scalar merge pass, it can be
+    // reused for merging same aliased variables. This was implemented for
+    // instructions in same BB already. So should be valid for instructios in
+    // different BBs as well. The modifiedDcl stores the merge delcares cross
+    // BB, so searching it should be enough.
+    if (!builder.shareMergeVarGlobal() ||
+        modifiedDcl.find(dstDcl) == modifiedDcl.end()) {
+      return false;
+    }
   }
 
   if (dstDcl != nullptr && (dstDcl->isOutput() || dstDcl->isInput())) {
@@ -577,10 +589,27 @@ bool BUNDLE_INFO::isMergeCandidate(G4_INST *inst, const IR_Builder &builder,
 
 // returns true if dcl is a scalar root variable that is naturally aligned
 // Note that this also rules out input
-static bool isScalarNaturalAlignedVar(G4_Declare *dcl) {
-  return dcl->getTotalElems() == 1 && dcl->getAliasDeclare() == nullptr &&
-         dcl->getByteAlignment() == TypeSize(dcl->getElemType()) &&
-         !dcl->isInput();
+static bool isScalarNaturalAlignedVar(
+    G4_Declare *dcl, std::unordered_set<G4_Declare *> &modifiedDcl,
+    const IR_Builder &builder) {
+  bool isNaturalAlignedVar =
+      dcl->getTotalElems() == 1 &&
+      dcl->getByteAlignment() == TypeSize(dcl->getElemType()) &&
+      !dcl->isInput();
+  if (isNaturalAlignedVar && dcl->getAliasDeclare() != nullptr) {
+    if (builder.shareMergeVarGlobal()) {
+      // If the merge(alias) declare is created by scalar merge pass, it can be
+      // reused for merging same aliased variables. This was implemented for
+      // instructions in same BB already. So should be valid for instructios in
+      // different BBs as well. The modifiedDcl stores the merge delcares cross
+      // BB, so searching it should be enough.
+      isNaturalAlignedVar = modifiedDcl.find(dcl) != modifiedDcl.end();
+    } else {
+      isNaturalAlignedVar = false;
+    }
+  }
+
+  return isNaturalAlignedVar;
 }
 
 //
@@ -589,7 +618,9 @@ static bool isScalarNaturalAlignedVar(G4_Declare *dcl) {
 // CONTIGUOUS: the dsts together form a contiguous region
 // DISJOINT: all dsts are distinct scalar, naturally aligned root variables
 //
-bool BUNDLE_INFO::canMergeDst(G4_DstRegRegion *dst, const IR_Builder &builder) {
+bool BUNDLE_INFO::canMergeDst(G4_DstRegRegion *dst,
+                              std::unordered_set<G4_Declare *> &modifiedDcl,
+                              const IR_Builder &builder) {
   // src must be either Imm or SrcRegRegion
 
   G4_DstRegRegion *firstDst = inst[0]->getDst();
@@ -631,15 +662,15 @@ bool BUNDLE_INFO::canMergeDst(G4_DstRegRegion *dst, const IR_Builder &builder) {
     switch (dstPattern) {
     case OPND_PATTERN::UNKNOWN:
       // allow if both sources are size 1 root variables with no alignment
-      if (isScalarNaturalAlignedVar(prevDstDcl) &&
-          isScalarNaturalAlignedVar(dstDcl)) {
+      if (isScalarNaturalAlignedVar(prevDstDcl, modifiedDcl, builder) &&
+          isScalarNaturalAlignedVar(dstDcl, modifiedDcl, builder)) {
         dstPattern = OPND_PATTERN::DISJOINT;
       } else {
         return false;
       }
       break;
     case OPND_PATTERN::DISJOINT:
-      if (!isScalarNaturalAlignedVar(dstDcl)) {
+      if (!isScalarNaturalAlignedVar(dstDcl, modifiedDcl, builder)) {
         return false;
       }
       // also check to see if dst is the same as any other previous dst
@@ -685,6 +716,7 @@ bool BUNDLE_INFO::canMergeDst(G4_DstRegRegion *dst, const IR_Builder &builder) {
 // PACKED: all sources in the bundle are different scalar imm values that can be
 // packed into a wider scalar imm value
 bool BUNDLE_INFO::canMergeSource(G4_Operand *src, int srcPos,
+                                 std::unordered_set<G4_Declare *> &modifiedDcl,
                                  const IR_Builder &builder) {
   // src must be either Imm or SrcRegRegion
 
@@ -818,15 +850,15 @@ bool BUNDLE_INFO::canMergeSource(G4_Operand *src, int srcPos,
       switch (srcPattern[srcPos]) {
       case OPND_PATTERN::UNKNOWN:
         // allow if both sources are size 1 root variables with no alignment
-        if (isScalarNaturalAlignedVar(prevSrcDcl) &&
-            isScalarNaturalAlignedVar(srcDcl)) {
+        if (isScalarNaturalAlignedVar(prevSrcDcl, modifiedDcl, builder) &&
+            isScalarNaturalAlignedVar(srcDcl, modifiedDcl, builder)) {
           srcPattern[srcPos] = OPND_PATTERN::DISJOINT;
         } else {
           return false;
         }
         break;
       case OPND_PATTERN::DISJOINT:
-        if (!isScalarNaturalAlignedVar(srcDcl)) {
+        if (!isScalarNaturalAlignedVar(srcDcl, modifiedDcl, builder)) {
           return false;
         }
         // also check to see if src is the same as any other previous sources
@@ -877,7 +909,9 @@ bool BUNDLE_INFO::canMergeSource(G4_Operand *src, int srcPos,
 // -- dst and src operand for the inst must form one of the legal patterns with
 // the instructions in the bundle
 //
-bool BUNDLE_INFO::canMerge(G4_INST *inst, const IR_Builder &builder) {
+bool BUNDLE_INFO::canMerge(G4_INST *inst,
+                           std::unordered_set<G4_Declare *> &modifiedDcl,
+                           const IR_Builder &builder) {
   G4_INST *firstInst = this->inst[0];
   if (firstInst->opcode() != inst->opcode()) {
     return false;
@@ -902,12 +936,12 @@ bool BUNDLE_INFO::canMerge(G4_INST *inst, const IR_Builder &builder) {
     return false;
   }
 
-  if (!canMergeDst(inst->getDst(), builder)) {
+  if (!canMergeDst(inst->getDst(), modifiedDcl, builder)) {
     return false;
   }
 
   for (int i = 0; i < inst->getNumSrc(); ++i) {
-    if (!canMergeSource(inst->getSrc(i), i, builder)) {
+    if (!canMergeSource(inst->getSrc(i), i, modifiedDcl, builder)) {
       return false;
     }
   }
@@ -920,17 +954,18 @@ bool BUNDLE_INFO::canMerge(G4_INST *inst, const IR_Builder &builder) {
 //
 // iter is advanced to the next instruction not belonging to the handle
 //
-void BUNDLE_INFO::findInstructionToMerge(INST_LIST_ITER &iter,
-                                         const IR_Builder &builder) {
+void BUNDLE_INFO::findInstructionToMerge(
+    INST_LIST_ITER &iter, std::unordered_set<G4_Declare *> &modifiedDcl,
+    const IR_Builder &builder) {
 
   for (; iter != bb->end() && this->size < this->sizeLimit; ++iter) {
     G4_INST *nextInst = *iter;
-    if (!BUNDLE_INFO::isMergeCandidate(nextInst, builder,
+    if (!BUNDLE_INFO::isMergeCandidate(nextInst, builder, modifiedDcl,
                                        !bb->isAllLaneActive())) {
       break;
     }
 
-    if (!canMerge(nextInst, builder)) {
+    if (!canMerge(nextInst, modifiedDcl, builder)) {
       break;
     }
   }
