@@ -44,15 +44,14 @@ IGC_INITIALIZE_PASS_DEPENDENCY(LoopInfoWrapperPass)
 IGC_INITIALIZE_PASS_DEPENDENCY(DominatorTreeWrapperPass)
 IGC_INITIALIZE_PASS_DEPENDENCY(MetaDataUtilsWrapper)
 IGC_INITIALIZE_PASS_DEPENDENCY(PositionDepAnalysis)
-IGC_INITIALIZE_PASS_DEPENDENCY(AssumptionCacheTracker)
 IGC_INITIALIZE_PASS_END(CodeGenPatternMatch, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
 namespace IGC {
 CodeGenPatternMatch::CodeGenPatternMatch()
     : FunctionPass(ID), m_rootIsSubspanUse(false), m_blocks(nullptr), m_numBlocks(0), m_root(nullptr),
       m_currentPattern(nullptr), m_Platform(), m_AllowContractions(true), m_NeedVMask(false),
-      m_samplertoRenderTargetEnable(false), m_ctx(nullptr), DT(nullptr), PDT(nullptr), LI(nullptr), AC(nullptr),
-      m_DL(0), m_WI(nullptr), m_LivenessInfo(nullptr), m_PosDep(nullptr) {
+      m_samplertoRenderTargetEnable(false), m_ctx(nullptr), DT(nullptr), PDT(nullptr), LI(nullptr), m_DL(0),
+      m_WI(nullptr), m_LivenessInfo(nullptr), m_PosDep(nullptr) {
   initializeCodeGenPatternMatchPass(*PassRegistry::getPassRegistry());
 }
 
@@ -93,7 +92,6 @@ bool CodeGenPatternMatch::runOnFunction(llvm::Function &F) {
   delete[] m_blocks;
   m_blocks = nullptr;
 
-  AC = &getAnalysis<AssumptionCacheTracker>().getAssumptionCache(F);
   m_ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
 
   MetaDataUtils *pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
@@ -2703,66 +2701,20 @@ inline bool Is32BitConstInt(llvm::Value *val) {
   return false;
 }
 
-inline bool isFoldableToVarAndImmOffset(Value *varOffset, const CodeGenContext &ctx, bool isA64AddressingModel,
-                                        AssumptionCache *AC, Instruction *ctxI, bool flipVarOffsetSign = false) {
-  // Note that the A64 addressing mode can be only connected with load and store instructions
-  auto DL = ctx.getModule()->getDataLayout();
-
-  // HW does an early bounds check on VarOffset. Thus, if
-  // VarOffset is negative, then the bounds check fails early
-  // even though the immediate offset would bring the final
-  // calculation to a positive number.
-  return IGC_GET_FLAG_VALUE(LscImmOffsMatch) >= 3 || isA64AddressingModel ||
-         (!flipVarOffsetSign && (UsedWithoutImmInMemInst(varOffset) || valueIsPositive(varOffset, &DL, AC, ctxI))) ||
-         (flipVarOffsetSign && valueIsNegative(varOffset, &DL, AC, ctxI));
-}
-
-inline std::tuple<Value *, bool, ConstantInt *> GetVarAndImmOffset(llvm::Value *root, const CodeGenContext &ctx,
-                                                                   AssumptionCache *AC) {
-  using namespace llvm::PatternMatch;
-  auto ptrType = dyn_cast<PointerType>(root->getType());
-  bool isA64AddressingModel = ptrType && IGC::isA64Ptr(cast<PointerType>(root->getType()), &ctx);
-  Value *ptr = nullptr;
-  if (match(root, m_IntToPtr(m_Value(ptr)))) {
-    root = ptr;
-  }
-
-  if (!root) {
-    return {}; // e.g. intToPtr of constant
-  }
-
-  ConstantInt *ImmOffset = nullptr;
-  Value *VarOffset = nullptr;
-  bool flipVarOffsetSign = false;
-  bool flipImmOffsetSign = false;
-  bool matched = match(root, m_c_Add(m_Value(VarOffset), m_ConstantInt(ImmOffset))) ||
-                 match(root, m_c_Add(m_ConstantInt(ImmOffset), m_Value(VarOffset))) ||
-                 (flipImmOffsetSign = match(root, m_Sub(m_Value(VarOffset), m_ConstantInt(ImmOffset)))) ||
-                 (flipVarOffsetSign = match(root, m_Sub(m_ConstantInt(ImmOffset), m_Value(VarOffset))));
-
-  bool foldable = matched && isFoldableToVarAndImmOffset(VarOffset, ctx, isA64AddressingModel, AC,
-                                                         dyn_cast<Instruction>(root), flipVarOffsetSign);
-  if (foldable && flipImmOffsetSign) {
-    ImmOffset = cast<ConstantInt>(ConstantExpr::getNeg(ImmOffset));
-  }
-  return foldable ? std::make_tuple(VarOffset, flipVarOffsetSign, ImmOffset) : std::make_tuple(nullptr, false, nullptr);
-}
-
 bool CodeGenPatternMatch::MatchImmOffsetLSC(llvm::Instruction &I) {
   struct LSCImmOffsetPattern : public Pattern {
-    explicit LSCImmOffsetPattern(Instruction *I, llvm::Value *varOffset, llvm::ConstantInt *immOffset,
-                                 bool negVarOffset)
-        : m_inst(I), m_varOff(varOffset), m_immOff(immOffset), m_flipVarOffSign(negVarOffset) {}
+    explicit LSCImmOffsetPattern(Instruction *I, llvm::Value *varOffset, llvm::ConstantInt *immOffset)
+        : m_inst(I), m_varOff(varOffset), m_immOff(immOffset) {}
 
     virtual void Emit(EmitPass *pass, const DstModifier &modifier) {
       if (isa<LoadInst>(m_inst)) {
-        pass->emitLoad(cast<LoadInst>(m_inst), m_varOff, m_immOff, nullptr, m_flipVarOffSign);
+        pass->emitLoad(cast<LoadInst>(m_inst), m_varOff, m_immOff);
       } else if (isa<StoreInst>(m_inst)) {
-        pass->emitStore(cast<StoreInst>(m_inst), m_varOff, m_immOff, nullptr, m_flipVarOffSign);
+        pass->emitStore(cast<StoreInst>(m_inst), m_varOff, m_immOff);
       } else if (isa<LdRawIntrinsic>(m_inst)) {
-        pass->emitLoadRawIndexed(cast<LdRawIntrinsic>(m_inst), m_varOff, nullptr, m_immOff, m_flipVarOffSign);
+        pass->emitLoadRawIndexed(cast<LdRawIntrinsic>(m_inst), m_varOff, nullptr, m_immOff);
       } else if (isa<StoreRawIntrinsic>(m_inst)) {
-        pass->emitStoreRawIndexed(cast<StoreRawIntrinsic>(m_inst), m_varOff, nullptr, m_immOff, m_flipVarOffSign);
+        pass->emitStoreRawIndexed(cast<StoreRawIntrinsic>(m_inst), m_varOff, nullptr, m_immOff);
       } else {
         IGC_ASSERT_MESSAGE(false, "unmatched imm off pattern");
       }
@@ -2772,7 +2724,6 @@ bool CodeGenPatternMatch::MatchImmOffsetLSC(llvm::Instruction &I) {
     llvm::Instruction *m_inst;
     llvm::Value *m_varOff;
     llvm::ConstantInt *m_immOff;
-    bool m_flipVarOffSign;
   }; // LSCImmOffsetPattern
 
   // match:
@@ -2832,18 +2783,57 @@ bool CodeGenPatternMatch::MatchImmOffsetLSC(llvm::Instruction &I) {
     return false;
   }
 
-  auto [varOffset, negVarOffset, immOffset] = GetVarAndImmOffset(addSubInst, *m_ctx, AC);
+  Type *addInstType = addSubInst->getType();
+  // Note that the A64 addressing mode can be only connected with load and store instructions
+  bool isA64AddressingModel = addInstType->isPointerTy() && IGC::isA64Ptr(cast<PointerType>(addInstType), m_ctx);
 
-  if (varOffset && immOffset) {
+  llvm::Instruction *intToPtrInst = nullptr;
+  if (addSubInst->getOpcode() == llvm::Instruction::IntToPtr) {
+    intToPtrInst = addSubInst;
+    addSubInst = llvm::dyn_cast<llvm::Instruction>(addSubInst->getOperand(0));
+  }
+  if (!addSubInst) {
+    return false; // e.g. intToPtr of constant
+  } else if (addSubInst->getOpcode() != llvm::Instruction::Add && addSubInst->getOpcode() != llvm::Instruction::Sub) {
+    return false;
+  }
+
+  // VISA interface accepts 32-bit immediate offset values
+  const bool isConstant0 = Is32BitConstInt(addSubInst->getOperand(0));
+  const bool isConstant1 = Is32BitConstInt(addSubInst->getOperand(1));
+  if (isConstant1 || (isConstant0 && addSubInst->getOpcode() == llvm::Instruction::Add)) {
+    // YES: var + imm
+    // YES: var - imm
+    // YES: imm + var
+    // NO:  imm - var  (IGC drops the negation otherwise)
+    IGC_ASSERT_MESSAGE(!isConstant0 || !isConstant1,
+                       "Both operands are immediate - constants should be folded elsewhere.");
+
+    llvm::Value *varOffset = isConstant0 ? addSubInst->getOperand(1) : addSubInst->getOperand(0);
+
+    // HW does an early bounds check on varOffset for A32 messages. Thus, if varOffset
+    // is negative, then the bounds check fails early even though the immediate offset
+    // would bring the final calculation to a positive number.
+    bool disableA32ImmediateGlobalBaseOffset =
+        !isA64AddressingModel && !UsedWithoutImmInMemInst(varOffset) && !valueIsPositive(varOffset, m_DL) &&
+        IGC_GET_FLAG_VALUE(LscImmOffsMatch) < 3;
+
+    if (disableA32ImmediateGlobalBaseOffset)
+      return false;
+
     MarkAsSource(varOffset, IsSourceOfSample(&I));
 
     unsigned numSources = GetNbSources(I);
     for (unsigned i = 0; i < numSources; i++) {
-      if (I.getOperand(i) != addSubInst) {
+      if (I.getOperand(i) != intToPtrInst && I.getOperand(i) != addSubInst) {
         MarkAsSource(I.getOperand(i), IsSourceOfSample(&I));
       }
     }
-    LSCImmOffsetPattern *pattern = new (m_allocator) LSCImmOffsetPattern(&I, varOffset, immOffset, negVarOffset);
+
+    llvm::Value *immOffset = isConstant0 ? addSubInst->getOperand(0) : addSubInst->getOperand(1);
+
+    LSCImmOffsetPattern *pattern =
+        new (m_allocator) LSCImmOffsetPattern(&I, varOffset, llvm::dyn_cast<llvm::ConstantInt>(immOffset));
     AddPattern(pattern);
     return true;
   }
@@ -2883,14 +2873,14 @@ bool CodeGenPatternMatch::MatchLoadStoreAtomicsUniformBase(llvm::Instruction &I)
 
     virtual void Emit(EmitPass *pass, const DstModifier &modifier) {
       if (isa<LoadInst>(m_inst)) {
-        pass->emitLoad(cast<LoadInst>(m_inst), m_varOffset, m_immOffset, m_scale, false /*flipVarOffsetSign*/,
-                       m_uniformBase, m_signExtendOffset, m_zeroExtendOffset);
+        pass->emitLoad(cast<LoadInst>(m_inst), m_varOffset, m_immOffset, m_scale, m_uniformBase, m_signExtendOffset,
+                       m_zeroExtendOffset);
       } else if (isa<StoreInst>(m_inst)) {
-        pass->emitStore(cast<StoreInst>(m_inst), m_varOffset, m_immOffset, m_scale, false /*flipVarOffsetSign*/,
-                        m_uniformBase, m_signExtendOffset, m_zeroExtendOffset);
+        pass->emitStore(cast<StoreInst>(m_inst), m_varOffset, m_immOffset, m_scale, m_uniformBase, m_signExtendOffset,
+                        m_zeroExtendOffset);
       } else if (isa<GenIntrinsicInst>(m_inst)) {
-        pass->emitAtomicRaw(cast<GenIntrinsicInst>(m_inst), m_varOffset, m_immOffset, m_scale,
-                            false /*flipVarOffsetSign*/, m_uniformBase, m_signExtendOffset, m_zeroExtendOffset);
+        pass->emitAtomicRaw(cast<GenIntrinsicInst>(m_inst), m_varOffset, m_immOffset, m_scale, m_uniformBase,
+                            m_signExtendOffset, m_zeroExtendOffset);
       } else {
         IGC_ASSERT_MESSAGE(0, "Expected load, store or atomic instruction!");
       }
@@ -3034,7 +3024,7 @@ bool CodeGenPatternMatch::MatchLoadStoreAtomicsUniformBase(llvm::Instruction &I)
 
   if (ImmOffset) {
     bool disableA32ImmediateGlobalBaseOffset =
-        !isFoldableToVarAndImmOffset(Base, *m_ctx, isA64AddressingModel, AC, IntToPtr);
+        !isA64AddressingModel && !valueIsPositive(Offset, m_DL) && IGC_GET_FLAG_VALUE(LscImmOffsMatch) < 3;
 
     if (disableA32ImmediateGlobalBaseOffset)
       return false;
@@ -3096,15 +3086,14 @@ bool CodeGenPatternMatch::MatchLoadStoreStatefulEff64(Instruction &I) {
   using namespace llvm::PatternMatch;
 
   struct LSCStatefulPattern : public Pattern {
-    explicit LSCStatefulPattern(Instruction *I, Value *VarOffset, ConstantInt *ImmScale, ConstantInt *ImmOffset,
-                                bool flipVarOffsetSign)
-        : I(I), VarOffset(VarOffset), ImmScale(ImmScale), ImmOffset(ImmOffset), FlipVarOffsetSign(flipVarOffsetSign) {}
+    explicit LSCStatefulPattern(Instruction *I, Value *VarOffset, ConstantInt *ImmScale, ConstantInt *ImmOffset)
+        : I(I), VarOffset(VarOffset), ImmScale(ImmScale), ImmOffset(ImmOffset) {}
 
     void Emit(EmitPass *pass, const DstModifier & /* modifier */) override {
       if (auto *LRI = dyn_cast<LdRawIntrinsic>(I)) {
-        pass->emitLoadRawIndexed(LRI, VarOffset, ImmScale, ImmOffset, FlipVarOffsetSign);
+        pass->emitLoadRawIndexed(LRI, VarOffset, ImmScale, ImmOffset);
       } else if (auto *SRI = dyn_cast<StoreRawIntrinsic>(I)) {
-        pass->emitStoreRawIndexed(SRI, VarOffset, ImmScale, ImmOffset, FlipVarOffsetSign);
+        pass->emitStoreRawIndexed(SRI, VarOffset, ImmScale, ImmOffset);
       } else {
         IGC_ASSERT_MESSAGE(false, "unmatched pattern");
       }
@@ -3115,7 +3104,6 @@ bool CodeGenPatternMatch::MatchLoadStoreStatefulEff64(Instruction &I) {
     Value *VarOffset;
     ConstantInt *ImmScale;
     ConstantInt *ImmOffset;
-    bool FlipVarOffsetSign = false;
   };
 
   // TODO: handle the subspan destination case in EmitPass::emitLSCVectorLoad().
@@ -3159,13 +3147,21 @@ bool CodeGenPatternMatch::MatchLoadStoreStatefulEff64(Instruction &I) {
 
   ConstantInt *Scale = nullptr;
   ConstantInt *ImmOffset = nullptr;
-  bool flipVarOffsetSign = false;
+
   {
-    auto [VarBase, negVarOffset, ConstOffset] = GetVarAndImmOffset(VarOffset, *m_ctx, AC);
-    if (VarBase && ConstOffset) {
-      VarOffset = VarBase;
-      ImmOffset = ConstOffset;
-      flipVarOffsetSign = negVarOffset;
+    Value *TmpVarOffset = nullptr;
+    if (match(VarOffset, m_c_Add(m_Value(TmpVarOffset), m_ConstantInt(ImmOffset)))) {
+      // HW does an early bounds check on TmpVarOffset. Thus, if
+      // TmpVarOffset is negative, then the bounds check fails early
+      // even though the immediate offset would bring the final
+      // calculation to a positive number.
+      bool CanFoldImmediate =
+          valueIsPositive(TmpVarOffset, m_DL);
+
+      if (ImmOffset->isNegative() || !CanFoldImmediate)
+        ImmOffset = nullptr;
+      else
+        VarOffset = TmpVarOffset;
     }
   }
 
@@ -3185,7 +3181,7 @@ bool CodeGenPatternMatch::MatchLoadStoreStatefulEff64(Instruction &I) {
     }
   }
 
-  auto *Pattern = new (m_allocator) LSCStatefulPattern(&I, VarOffset, Scale, ImmOffset, flipVarOffsetSign);
+  auto *Pattern = new (m_allocator) LSCStatefulPattern(&I, VarOffset, Scale, ImmOffset);
 
   if (auto SurfaceStateIndex = matchSurfaceStateIndex(Base))
     MarkAsSource(SurfaceStateIndex->first, IsSourceOfSample(&I));
