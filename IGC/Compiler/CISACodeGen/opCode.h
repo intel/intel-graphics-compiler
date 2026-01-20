@@ -352,7 +352,10 @@ DECLARE_OPCODE(GenISA_vmeSendFBR, GenISAIntrinsic, llvm_vmeSendFBR, false, false
 
 // Correctly rounded intrinsics
 DECLARE_OPCODE(GenISA_IEEE_Sqrt, GenISAIntrinsic, llvm_ieee_sqrt, false, false, false, false, true, false, false)
+DECLARE_OPCODE(GenISA_IEEE_Sqrt_rm, GenISAIntrinsic, llvm_ieee_sqrt_rne, false, false, false, false, true, false, false)
 DECLARE_OPCODE(GenISA_IEEE_Divide, GenISAIntrinsic, llvm_ieee_divide, false, false, false, false, true, false, false)
+DECLARE_OPCODE(GenISA_IEEE_Divide_rm, GenISAIntrinsic, llvm_ieee_divide_rne, false, false, false, false, true, false,
+               false)
 
 // VA intrinsics
 DECLARE_OPCODE(GenISA_vaErode, GenISAIntrinsic, llvm_vaErode, false, false, false, false, false, false, false)

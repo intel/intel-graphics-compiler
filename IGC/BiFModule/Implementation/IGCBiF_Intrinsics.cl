@@ -498,7 +498,9 @@ void __builtin_IB_memcpy_private_to_generic(generic uchar *dst, private uchar *s
 
 // Correctly rounded sqrt and division
 float   __builtin_IB_ieee_sqrt(float) __attribute__((const));
+float   __builtin_IB_ieee_sqrt_rm(float, int) __attribute__((const));
 float   __builtin_IB_ieee_divide(float, float) __attribute__((const));
+float   __builtin_IB_ieee_divide_rm(float, float, int) __attribute__((const));
 
 #if defined(cl_khr_fp64)
 double   __builtin_IB_ieee_divide_f64(double, double) __attribute__((const));
