@@ -213,23 +213,22 @@ public:
 
   // TODO: unify the functions below and clean up
   void emitStore(llvm::StoreInst *inst, llvm::Value *varOffset, llvm::ConstantInt *immOffset,
-                 ConstantInt *immScale = nullptr, bool flipVarOffsetSign = false, llvm::Value *uniformBase = nullptr,
-                 bool signExtendOffset = false, bool zeroExtendOffset = false);
+                 ConstantInt *immScale = nullptr, llvm::Value *uniformBase = nullptr, bool signExtendOffset = false,
+                 bool zeroExtendOffset = false);
   void emitPredicatedStore(llvm::Instruction *inst);
   void emitStore3DInner(llvm::Value *pllValToStore, llvm::Value *pllDstPtr, llvm::Value *pllElmIdx);
 
   void emitLoad(llvm::LoadInst *inst, llvm::Value *varOffset, llvm::ConstantInt *immOffset,
-                ConstantInt *immScale = nullptr, bool flipVarOffsetSign = false, llvm::Value *uniformBase = nullptr,
-                bool signExtendOffset = false,
+                ConstantInt *immScale = nullptr, llvm::Value *uniformBase = nullptr, bool signExtendOffset = false,
                 bool zeroExtendOffset = false); // single load, no pattern
   void emitPredicatedLoad(llvm::Instruction *inst);
   void emitLoad3DInner(llvm::LdRawIntrinsic *inst, ResourceDescriptor &resource, llvm::Value *elemIdxV);
 
   // when resource is dynamically indexed, load/store must use special intrinsics
   void emitLoadRawIndexed(llvm::LdRawIntrinsic *inst, llvm::Value *varOffset, llvm::ConstantInt *immScale,
-                          llvm::ConstantInt *immOffset, bool flipVarOffsetSign);
+                          llvm::ConstantInt *immOffset);
   void emitStoreRawIndexed(llvm::StoreRawIntrinsic *inst, llvm::Value *varOffset, llvm::ConstantInt *immScale,
-                           llvm::ConstantInt *immOffset, bool flipVarOffsetSign);
+                           llvm::ConstantInt *immOffset);
   void emitGetBufferPtr(llvm::GenIntrinsicInst *inst);
   // \todo, remove this function after we lower all GEP to IntToPtr before CodeGen.
   // Only remaining GEPs are for scratch in GFX path
@@ -348,8 +347,8 @@ public:
 
   bool IsUniformAtomic(llvm::Instruction *pInst);
   void emitAtomicRaw(llvm::GenIntrinsicInst *pInst, Value *varOffset, ConstantInt *immOffset = nullptr,
-                     ConstantInt *immScale = nullptr, bool flipVarOffsetSign = false, Value *uniformBase = nullptr,
-                     bool signExtendOffset = false, bool zeroExtendOffset = false);
+                     ConstantInt *immScale = nullptr, Value *uniformBase = nullptr, bool signExtendOffset = false,
+                     bool zeroExtendOffset = false);
   void emitAtomicTyped(llvm::GenIntrinsicInst *pInst);
   void emitAtomicCounter(llvm::GenIntrinsicInst *pInst);
   void emitFastClear(llvm::LoadInst *inst);
@@ -441,15 +440,14 @@ public:
   bool isUniformStoreOCL(llvm::StoreInst *SI);
   bool isUniformStoreOCL(llvm::Value *ptr, llvm::Value *storeVal);
   void emitVectorBitCast(llvm::BitCastInst *BCI);
-  void emitVectorLoad(llvm::LoadInst *LI, llvm::Value *offset, llvm::ConstantInt *immOffset, bool flipVarOffsetSign);
-  void emitVectorStore(llvm::StoreInst *SI, llvm::Value *offset, llvm::ConstantInt *immOffset, bool flipVarOffsetSign);
+  void emitVectorLoad(llvm::LoadInst *LI, llvm::Value *offset, llvm::ConstantInt *immOffset);
+  void emitVectorStore(llvm::StoreInst *SI, llvm::Value *offset, llvm::ConstantInt *immOffset);
   void emitLSCVectorLoad(llvm::Instruction *Inst, llvm::Value *Ptr, llvm::Value *uniformBase, llvm::Value *offset,
-                         llvm::ConstantInt *immOffset, ConstantInt *immScale, bool flipVarOffsetSign,
-                         LSC_CACHE_OPTS cacheOpts, LSC_DOC_ADDR_SPACE addrSpace, bool signExtendOffset,
-                         bool zeroExtendOffset);
+                         llvm::ConstantInt *immOffset, ConstantInt *immScale, LSC_CACHE_OPTS cacheOpts,
+                         LSC_DOC_ADDR_SPACE addrSpace, bool signExtendOffset, bool zeroExtendOffset);
   void emitLSCVectorStore(llvm::Value *Ptr, Value *uniformBase, llvm::Value *offset, llvm::ConstantInt *immOffset,
-                          llvm::ConstantInt *immScale, bool flipVarOffsetSign, llvm::Value *storedVal,
-                          llvm::BasicBlock *BB, LSC_CACHE_OPTS cacheOpts, alignment_t align, bool dontForceDMask,
+                          llvm::ConstantInt *immScale, llvm::Value *storedVal, llvm::BasicBlock *BB,
+                          LSC_CACHE_OPTS cacheOpts, alignment_t align, bool dontForceDMask,
                           LSC_DOC_ADDR_SPACE addrSpace, bool signExtendOffset, bool zeroExtendOffset,
                           llvm::Value *predicate = nullptr);
   void emitUniformVectorCopy(CVariable *Dst, CVariable *Src, uint32_t nElts, uint32_t DstSubRegOffset = 0,

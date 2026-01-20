@@ -239,7 +239,7 @@ bool setsRMExplicitly(llvm::Instruction *inst);
 bool ignoresRoundingMode(llvm::Instruction *inst);
 
 // isA64Ptr - Queries whether given pointer type requires 64-bit representation in vISA
-bool isA64Ptr(llvm::PointerType *PT, const CodeGenContext *pContext);
+bool isA64Ptr(llvm::PointerType *PT, CodeGenContext *pContext);
 
 // Returns the default dummy kernel to which all symbols are attached
 inline llvm::Function *getIntelSymbolTableVoidProgram(llvm::Module *pM, int SimdSz = 0) {
@@ -432,11 +432,6 @@ bool isNoOpInst(llvm::Instruction *I, CodeGenContext *Ctx);
 // CxtI is the instruction at which V is checked whether
 // it is positive or not.
 bool valueIsPositive(llvm::Value *V, const llvm::DataLayout *DL, llvm::AssumptionCache *AC = nullptr,
-                     llvm::Instruction *CxtI = nullptr);
-
-// CxtI is the instruction at which V is checked whether
-// it is negative or not.
-bool valueIsNegative(llvm::Value *V, const llvm::DataLayout *DL, llvm::AssumptionCache *AC = nullptr,
                      llvm::Instruction *CxtI = nullptr);
 
 inline float GetThreadOccupancyPerSubslice(SIMDMode simdMode, unsigned threadGroupSize, unsigned hwThreadPerSubslice,

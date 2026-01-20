@@ -1786,7 +1786,7 @@ bool IsSignedCmp(const llvm::CmpInst::Predicate Pred) {
 }
 
 // isA64Ptr - Queries whether given pointer type requires 64-bit representation in vISA
-bool isA64Ptr(llvm::PointerType *PT, const CodeGenContext *pContext) {
+bool isA64Ptr(llvm::PointerType *PT, CodeGenContext *pContext) {
   return pContext->getRegisterPointerSizeInBits(PT->getAddressSpace()) == 64;
 }
 
@@ -2212,28 +2212,6 @@ bool isNoOpInst(Instruction *I, CodeGenContext *Ctx) {
 //
 bool valueIsPositive(Value *V, const DataLayout *DL, llvm::AssumptionCache *AC, llvm::Instruction *CxtI) {
   return computeKnownBits(V, *DL, 0, AC, CxtI).isNonNegative();
-}
-
-//
-// Given a value, check if it is likely a negative number.
-//
-// This function works best if llvm.assume() is used in the bif libraries to
-// give ValueTracking hints.  ex:
-//
-// size_t get_local_id(uint dim)
-// {
-//    size_t ret = __builtin_IB_get_local_id()
-//    __builtin_assume(ret >= 0);
-//    __builtin_assume(ret <= 0x0000ffff)
-//    return ret;
-// }
-//
-// This implementation relies completly on native llvm functions
-//
-//
-//
-bool valueIsNegative(Value *V, const DataLayout *DL, llvm::AssumptionCache *AC, llvm::Instruction *CxtI) {
-  return computeKnownBits(V, *DL, 0, AC, CxtI).isNegative();
 }
 
 void appendToUsed(llvm::Module &M, ArrayRef<GlobalValue *> Values) {
