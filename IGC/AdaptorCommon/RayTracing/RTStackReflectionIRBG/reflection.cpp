@@ -752,6 +752,7 @@ CREATE_PRIVATE void _createTraceRayInlinePrologue_Xe3PEff64(RTSAS RTStack2<Xe3PE
                                 updateFlags, initialDoneBitValue);
 }
 
+
 CREATE_PRIVATE void _emitSingleRQMemRayWrite_Xe(RTSAS RTStack2<Xe> *__restrict__ HWStackPtr,
                                                 RTShadowAS RTStack2<Xe> *__restrict__ SMStackPtr,
                                                 bool singleRQProceed) {

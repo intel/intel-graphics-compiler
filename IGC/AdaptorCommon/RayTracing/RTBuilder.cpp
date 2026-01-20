@@ -1879,3 +1879,4 @@ Value *RTBuilder::lowerRayInfo(StackPointerValT *perLaneStackPtr, RayInfoIntrins
 template Value *RTBuilder::lowerRayInfo<RTBuilder::SyncStackPointerVal, RayQueryInfoIntrinsic>(
     RTBuilder::SyncStackPointerVal *, RayQueryInfoIntrinsic *, Value *, std::optional<bool>);
 
+

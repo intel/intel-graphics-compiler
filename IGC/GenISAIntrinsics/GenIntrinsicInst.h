@@ -1363,6 +1363,7 @@ public:
   Value *getShaderRecordAddress() const { return getOperand(2); }
 };
 
+
 class StackIDReleaseIntrinsic : public GenIntrinsicInst {
 public:
   // Methods for support type inquiry through isa, cast, and dyn_cast:
