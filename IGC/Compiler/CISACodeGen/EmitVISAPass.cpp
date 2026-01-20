@@ -17982,7 +17982,7 @@ void EmitPass::emitLSCVectorLoad(Instruction *inst, Value *Ptr, Value *uniformBa
     align = cast<ConstantInt>(inst->getOperand(1))->getZExtValue();
 
   PointerType *ptrType = cast<PointerType>(Ptr->getType());
-  ResourceDescriptor resource = GetResourceVariable(Ptr, true);
+  ResourceDescriptor resource = GetResourceVariable(Ptr);
   bool useA32 = !IGC::isA64Ptr(ptrType, m_currShader->GetContext());
   LSC_ADDR_SIZE addrSize = useA32 ? LSC_ADDR_SIZE_32b : LSC_ADDR_SIZE_64b;
   if (m_currShader->m_Platform->hasEfficient64bEnabled()) {
@@ -18375,7 +18375,7 @@ void EmitPass::emitLSCVectorStore(Value *Ptr, Value *uniformBase, Value *varOffs
 
   unsigned int width = numLanes(m_currShader->m_SIMDSize);
 
-  ResourceDescriptor resource = GetResourceVariable(Ptr, true);
+  ResourceDescriptor resource = GetResourceVariable(Ptr);
   CountStatelessIndirectAccess(Ptr, resource);
   if (ptrType->getPointerAddressSpace() != ADDRESS_SPACE_PRIVATE && !dontForceDmask) {
     ForceDMask(false);
@@ -20025,7 +20025,7 @@ void EmitPass::emitGetBufferPtr(GenIntrinsicInst *inst) {
   m_currShader->SetBindingTableEntryCountAndBitmap(directIdx, bufType, 0, bti);
 }
 
-ResourceDescriptor EmitPass::GetResourceVariable(Value *resourcePtr, bool Check) {
+ResourceDescriptor EmitPass::GetResourceVariable(Value *resourcePtr) {
   ResourceDescriptor resource;
   BufferType bufType = BUFFER_TYPE_UNKNOWN;
   uint as = 0;
@@ -20049,8 +20049,8 @@ ResourceDescriptor EmitPass::GetResourceVariable(Value *resourcePtr, bool Check)
     if (IsBindless(bufType) || (bufType == RENDER_TARGET && m_currShader->m_Platform->hasEfficient64bEnabled()) ||
         !directIndexing) {
       auto SetResource = [&](Value *resourcePtr) {
-        if (m_currShader->m_Platform->hasEfficient64bEnabled() && Check) {
-          if (auto SurfaceStateIndex = m_pattern->matchSurfaceStateIndex(resourcePtr)) {
+        if (m_currShader->m_Platform->hasEfficient64bEnabled()) {
+          if (auto SurfaceStateIndex = m_pattern->matchStateIndex(resourcePtr)) {
             resource.m_resource = GetSymbol(SurfaceStateIndex->first);
             resource.m_SurfaceStateIndex = SurfaceStateIndex->second;
             return;
@@ -20174,7 +20174,17 @@ SamplerDescriptor EmitPass::GetSamplerVariable(Value *sampleOp) {
   sampler.m_samplerType = isBindless ? ESAMPLER_BINDLESS : ESAMPLER_NORMAL;
 
   if (isBindless || !directIdx) {
-    sampler.m_sampler = GetSymbol(sampleOp);
+    if (m_currShader->m_Platform->hasEfficient64bEnabled()) {
+      if (auto SamplerStateIndex = m_pattern->matchStateIndex(sampleOp, true)) {
+        sampler.m_sampler = GetSymbol(SamplerStateIndex->first);
+        sampler.m_SamplerStateIndex = SamplerStateIndex->second;
+        return sampler;
+      }
+    }
+    if (auto *i2p = dyn_cast<IntToPtrInst>(sampleOp))
+      sampler.m_sampler = !isa<ConstantInt>(i2p->getOperand(0)) ? GetSymbol(i2p->getOperand(0)) : GetSymbol(sampleOp);
+    else
+      sampler.m_sampler = GetSymbol(sampleOp);
   } else {
     sampler.m_sampler = m_currShader->ImmToVariable(samplerIdx, ISA_TYPE_UD);
   }
