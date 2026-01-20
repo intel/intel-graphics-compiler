@@ -87,7 +87,12 @@ cd workspace/igc
 echo "[Build Status] IGC commit hash below:"
 echo "[Build Status] All necessary repository Ready"
 
+# Set LLVM build options
 CONFIG_VARS="-DIGC_OPTION__LLVM_MODE=Prebuilds -DIGC_OPTION__LLVM_PREFERRED_VERSION=$LLVM_VERSION_PREFERRED"
+
+# Disable BF16 support for build with unpatched, upstream clang
+CONFIG_VARS="${CONFIG_VARS} -DIGC_OPTION__ENABLE_BF16_BIF=OFF"
+
 case $COMPILER in
     "clang")
         CONFIG_VARS="$CONFIG_VARS -DCMAKE_C_COMPILER=clang-$LLVM_VERSION -DCMAKE_CXX_COMPILER=clang++-$LLVM_VERSION"
