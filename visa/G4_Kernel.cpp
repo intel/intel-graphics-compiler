@@ -19,6 +19,7 @@ SPDX-License-Identifier: MIT
 #include "iga/IGALibrary/api/kv.hpp"
 #include "visa_wa.h"
 
+#include <cstddef>
 #include <fstream>
 #include <functional>
 #include <iomanip>
@@ -1926,12 +1927,13 @@ void G4_Kernel::emitDeviceAsmInstructionsIga(std::ostream &os,
   // avoid printing the same label twice at the same pc. This can happen when
   // there's an empty BB contains only labels. The BB and the following BB will
   // both print those labels. The pair is the pc to label name pair.
-  std::set<std::pair<int32_t, std::string>> printedLabels;
+  std::set<std::pair<int32_t, std::size_t>> printedLabels;
   // tryPrintLabel - check if the given label is already printed with the given
   // pc. Print it if not, and skip it if yes.
   auto tryPrintLabel = [&os, &printedLabels](int32_t label_pc,
                                              const std::string &label_name) {
-    auto [iter, inserted] = printedLabels.emplace(label_pc, label_name);
+    auto [_, inserted] =
+        printedLabels.emplace(label_pc, std::hash<std::string>{}(label_name));
     // print if the label is new in the set.
     if (inserted)
       os << label_name << ":\n";
