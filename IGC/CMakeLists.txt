@@ -1957,6 +1957,7 @@ if (FCL_ENABLED)
   #FCL
   add_dependencies("${IGC_BUILD__PROJ__fcl_dll}"     "${IGC_BUILD__PROJ__BiFModule_OCL}")
   add_dependencies("${IGC_BUILD__PROJ__fcl_dll}"     "${IGC_BUILD__PROJ__BiFManager}")
+  add_dependencies("${IGC_BUILD__PROJ__fcl_dll}"     SPIRVExtensionsSupportGen)
 endif()
 
 
