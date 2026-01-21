@@ -328,6 +328,9 @@ bool inlineCallsImpl(CallGraphSCC &SCC, CallGraph &CG, std::function<AssumptionC
       CallBase &CB = *P.first;
       const int InlineHistoryID = P.second;
 
+      if (!CB.getParent())
+        continue;
+
       Function *Caller = CB.getCaller();
       Function *Callee = CB.getCalledFunction();
 
