@@ -35,10 +35,3 @@ GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_2ARGS( step, half, half, f16 )
 
 #endif // defined(cl_khr_fp16)
 
-#if defined(IGC_SPV_INTEL_bfloat16_arithmetic)
-INLINE bfloat __attribute__((overloadable)) __spirv_ocl_step(bfloat edge, bfloat x ){
-    return x < edge ? (bfloat)0.0f : (bfloat)1.0f;
-}
-
-GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_2ARGS( step, bfloat, bfloat, )
-#endif // defined(IGC_SPV_INTEL_bfloat16_arithmetic)

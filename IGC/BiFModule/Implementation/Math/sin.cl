@@ -16,7 +16,6 @@ SPDX-License-Identifier: MIT
     #include "../IMF/FP64/sin_d_la.cl"
 #endif // defined(cl_khr_fp64)
 
-
 static INLINE float __intel_sin_f32( float x, bool doFast )
 {
     if(BIF_FLAG_CTRL_GET(FastRelaxedMath) && (!BIF_FLAG_CTRL_GET(APIRS)) && doFast)
@@ -73,11 +72,3 @@ GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARG_LOOP( sin, half, half, f16 )
 
 #endif // defined(cl_khr_fp16)
 
-#if defined(IGC_SPV_INTEL_bfloat16_arithmetic)
-INLINE bfloat __attribute__((overloadable)) __spirv_ocl_sin( bfloat x )
-{
-    return __spirv_ocl_native_sin(x);
-}
-
-GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARG_LOOP( sin, bfloat, bfloat, )
-#endif // defined(IGC_SPV_INTEL_bfloat16_arithmetic)

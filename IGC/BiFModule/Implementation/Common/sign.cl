@@ -50,15 +50,3 @@ GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARGS( sign, half, half, f16 )
 
 #endif // defined(cl_khr_fp16)
 
-#if defined(IGC_SPV_INTEL_bfloat16_arithmetic)
-INLINE bfloat __attribute__((overloadable)) __spirv_ocl_sign( bfloat x )
-{
-    bfloat result = x;
-    result = ( x > (bfloat)0.0f ) ? (bfloat) 1.0f : result;
-    result = ( x < (bfloat)0.0f ) ? (bfloat)-1.0f : result;
-    result = __intel_relaxed_isnan(x) ? (bfloat)0.0f : result;
-    return result ;
-}
-
-GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARGS( sign, bfloat, bfloat, )
-#endif // defined(IGC_SPV_INTEL_bfloat16_arithmetic)

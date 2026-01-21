@@ -35,10 +35,3 @@ GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_2ARGS( fmax_common, half, half, f16 )
 
 #endif // defined(cl_khr_fp16)
 
-#if defined(IGC_SPV_INTEL_bfloat16_arithmetic)
-INLINE bfloat __attribute__((overloadable)) __spirv_ocl_fmax_common(bfloat x, bfloat y) {
-    return __spirv_ocl_fmax_common((float)x, (float)y);
-}
-
-GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_2ARGS( fmax_common, bfloat, bfloat, )
-#endif // defined(IGC_SPV_INTEL_bfloat16_arithmetic)

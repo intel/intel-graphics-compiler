@@ -94,7 +94,7 @@ function(build_bif_bitcode bifModuleDepends)
   endif()
 
     add_custom_command(
-        OUTPUT ${IGC_BUILD__BIF_DIR}/OCLBiFImpl.h ${IGC_BUILD__BIF_DIR}/opencl_cth.h ${IGC_BUILD__BIF_DIR}/OCLBiFImpl.bifbc ${IGC_BUILD__BIF_DIR}/OCLBiFImpl.bc ${IGC_BUILD__BIF_DIR}/IBiF_Impl_int_spirv.bc ${IGC_BUILD__BIF_DIR}/IGCsize_t_32.bc ${IGC_BUILD__BIF_DIR}/IGCsize_t_64.bc
+        OUTPUT ${IGC_BUILD__BIF_DIR}/OCLBiFImpl.h ${IGC_BUILD__BIF_DIR}/opencl_cth.h ${IGC_BUILD__BIF_DIR}/OCLBiFImpl.bifbc ${IGC_BUILD__BIF_DIR}/OCLBiFImpl.bc ${IGC_BUILD__BIF_DIR}/IBiF_Impl_int_spirv.bc ${IGC_BUILD__BIF_DIR}/IBiF_BFloat.bc ${IGC_BUILD__BIF_DIR}/IGCsize_t_32.bc ${IGC_BUILD__BIF_DIR}/IGCsize_t_64.bc
         COMMAND ${CMAKE_COMMAND}
             -DIGC_BUILD__OPAQUE_POINTERS_DEFAULT_ARG_CLANG=${IGC_BUILD__OPAQUE_POINTERS_DEFAULT_ARG_CLANG}
             -DIGC_BUILD__OPAQUE_POINTERS_DEFAULT_ARG_OPT=${IGC_BUILD__OPAQUE_POINTERS_DEFAULT_ARG_OPT}
@@ -129,7 +129,7 @@ function(build_bif_bitcode bifModuleDepends)
     set(IGC_BUILD__PROJ__BiFModuleCache_OCL       "${IGC_BUILD__PROJ_NAME_PREFIX}BiFModuleCache")
     set(IGC_BUILD__PROJ__BiFModuleCache_OCL       "${IGC_BUILD__PROJ__BiFModuleCache_OCL}" PARENT_SCOPE)
     add_custom_target("${IGC_BUILD__PROJ__BiFModuleCache_OCL}"
-        DEPENDS ${IGC_BUILD__BIF_DIR}/OCLBiFImpl.h ${IGC_BUILD__BIF_DIR}/opencl_cth.h ${IGC_BUILD__BIF_DIR}/OCLBiFImpl.bifbc ${IGC_BUILD__BIF_DIR}/IBiF_Impl_int_spirv.bc ${IGC_BUILD__BIF_DIR}/OCLBiFImpl.bc ${IGC_BUILD__BIF_DIR}/IGCsize_t_32.bc ${IGC_BUILD__BIF_DIR}/IGCsize_t_64.bc
+        DEPENDS ${IGC_BUILD__BIF_DIR}/OCLBiFImpl.h ${IGC_BUILD__BIF_DIR}/opencl_cth.h ${IGC_BUILD__BIF_DIR}/OCLBiFImpl.bifbc ${IGC_BUILD__BIF_DIR}/IBiF_Impl_int_spirv.bc ${IGC_BUILD__BIF_DIR}/IBiF_BFloat.bc ${IGC_BUILD__BIF_DIR}/OCLBiFImpl.bc ${IGC_BUILD__BIF_DIR}/IGCsize_t_32.bc ${IGC_BUILD__BIF_DIR}/IGCsize_t_64.bc
     )
     set_target_properties("${IGC_BUILD__PROJ__BiFModuleCache_OCL}" PROPERTIES FOLDER "Misc/BiF")
 endfunction()

@@ -43,11 +43,3 @@ GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARGS( asinpi, half, half, f16 )
 
 #endif // defined(cl_khr_fp16)
 
-#if defined(IGC_SPV_INTEL_bfloat16_arithmetic)
-INLINE bfloat __attribute__((overloadable)) __spirv_ocl_asinpi( bfloat x )
-{
-    return __spirv_ocl_asinpi((float)x);
-}
-
-GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARG_LOOP( asinpi, bfloat, bfloat, )
-#endif // defined(IGC_SPV_INTEL_bfloat16_arithmetic)

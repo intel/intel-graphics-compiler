@@ -120,12 +120,3 @@ GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_3ARGS( bitselect, half, half, f16 )
 
 #endif
 
-#if defined(IGC_SPV_INTEL_bfloat16_arithmetic)
-INLINE
-bfloat __attribute__((overloadable)) __spirv_ocl_bitselect( bfloat a, bfloat b, bfloat c )
-{
-    return as_bfloat( __spirv_ocl_bitselect(as_short(a), as_short(b), as_short(c)) );
-}
-
-GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_3ARGS( bitselect, bfloat, bfloat, )
-#endif // defined(IGC_SPV_INTEL_bfloat16_arithmetic)

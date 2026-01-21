@@ -65,18 +65,3 @@ INLINE half4 __attribute__((overloadable)) __spirv_ocl_cross(half4 p0, half4 p1 
 
 #endif // defined(cl_khr_fp16)
 
-#if defined(IGC_SPV_INTEL_bfloat16_arithmetic)
-INLINE bfloat3 __attribute__((overloadable)) __spirv_ocl_cross(bfloat3 p0, bfloat3 p1 ){
-    float3 fp0 = { (float)p0.x, (float)p0.y, (float)p0.z };
-    float3 fp1 = { (float)p1.x, (float)p1.y, (float)p1.z };
-    float3 result = __spirv_ocl_cross(fp0, fp1);
-    return (bfloat3)( (bfloat)result.x, (bfloat)result.y, (bfloat)result.z );
-}
-
-INLINE bfloat4 __attribute__((overloadable)) __spirv_ocl_cross(bfloat4 p0, bfloat4 p1 ){
-    float4 fp0 = { (float)p0.x, (float)p0.y, (float)p0.z, (float)p0.w };
-    float4 fp1 = { (float)p1.x, (float)p1.y, (float)p1.z, (float)p1.w };
-    float4 result = __spirv_ocl_cross(fp0, fp1);
-    return (bfloat4)( (bfloat)result.x, (bfloat)result.y, (bfloat)result.z, (bfloat)result.w );
-}
-#endif // defined(IGC_SPV_INTEL_bfloat16_arithmetic)

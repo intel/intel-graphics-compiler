@@ -89,11 +89,3 @@ GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_2ARGS_VV( ldexp, half, half, int, f16, i32 )
 
 #endif // defined(cl_khr_fp16)
 
-#if defined(IGC_SPV_INTEL_bfloat16_arithmetic)
-INLINE bfloat __attribute__((overloadable)) __spirv_ocl_ldexp( bfloat x, int n )
-{
-    return __spirv_ocl_ldexp((float)x, n);
-}
-
-GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_2ARGS_VV( ldexp, bfloat, bfloat, int, , i32 )
-#endif // defined(IGC_SPV_INTEL_bfloat16_arithmetic)

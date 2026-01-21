@@ -58,11 +58,3 @@ GENERATE_VECTOR_FUNCTIONS_2ARGS_VV_LOOP( __builtin_spirv_OpFRem, half, half, hal
 
 #endif // defined(cl_khr_fp16)
 
-#if defined(IGC_SPV_INTEL_bfloat16_arithmetic)
-INLINE bfloat __attribute__((overloadable)) __spirv_ocl_remainder( bfloat y, bfloat x )
-{
-    return __spirv_ocl_remainder((float)y, (float)x );
-}
-
-GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_2ARGS_VV_LOOP( remainder, bfloat, bfloat, bfloat, , )
-#endif // defined(IGC_SPV_INTEL_bfloat16_arithmetic)

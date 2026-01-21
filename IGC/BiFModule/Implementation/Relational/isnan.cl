@@ -32,12 +32,3 @@ INLINE int OVERLOADABLE __intel_relaxed_isnan( half x )
     return BIF_FLAG_CTRL_GET(FastRelaxedMath) ? 0 : result;
 }
 
-#if defined(IGC_SPV_INTEL_bfloat16_arithmetic)
-INLINE int OVERLOADABLE __intel_relaxed_isnan( bfloat x )
-{
-    int result = __spirv_IsNan(x);
-    // This could check for -cl-finite-math-only, not -cl-fast-relaxed-math.
-    return BIF_FLAG_CTRL_GET(FastRelaxedMath) ? 0 : result;
-}
-#endif // defined(IGC_SPV_INTEL_bfloat16_arithmetic)
-

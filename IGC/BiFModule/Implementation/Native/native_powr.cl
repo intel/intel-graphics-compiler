@@ -28,13 +28,4 @@ GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_2ARGS( native_powr, half, half, f16 )
 
 #endif // defined(cl_khr_fp16)
 
-
 // TODO: do we support pow natively?
-#if defined(IGC_SPV_INTEL_bfloat16_arithmetic)
-INLINE bfloat __attribute__((overloadable)) __spirv_ocl_native_powr( bfloat x, bfloat y )
-{
-    return __spirv_ocl_native_powr((float)x, (float)y);
-}
-
-GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_2ARGS( native_powr, bfloat, bfloat, f16 )
-#endif // defined(IGC_SPV_INTEL_bfloat16_arithmetic)

@@ -153,13 +153,6 @@ typedef char __bool4 __attribute__((ext_vector_type(4)));
 typedef char __bool8 __attribute__((ext_vector_type(8)));
 typedef char __bool16 __attribute__((ext_vector_type(16)));
 
-typedef __bf16 bfloat;
-typedef bfloat bfloat2 __attribute__((ext_vector_type(2)));
-typedef bfloat bfloat3 __attribute__((ext_vector_type(3)));
-typedef bfloat bfloat4 __attribute__((ext_vector_type(4)));
-typedef bfloat bfloat8 __attribute__((ext_vector_type(8)));
-typedef bfloat bfloat16 __attribute__((ext_vector_type(16)));
-
 #define INTEL_PIPE_RESERVE_ID_VALID_BIT (1U << 30)
 #define CLK_NULL_RESERVE_ID                               \
     (__builtin_IB_convert_object_type_to_spirv_reserveid( \
@@ -4230,11 +4223,6 @@ double __attribute__((overloadable)) __spirv_Dot(double4 Vector1, double4 Vector
 double __attribute__((overloadable)) __spirv_Dot(double8 Vector1, double8 Vector2);
 double __attribute__((overloadable)) __spirv_Dot(double16 Vector1, double16 Vector2);
 #endif // defined(cl_khr_fp64)
-bfloat __attribute__((overloadable)) __spirv_Dot(bfloat2 Vector1, bfloat2 Vector2);
-bfloat __attribute__((overloadable)) __spirv_Dot(bfloat3 Vector1, bfloat3 Vector2);
-bfloat __attribute__((overloadable)) __spirv_Dot(bfloat4 Vector1, bfloat4 Vector2);
-bfloat __attribute__((overloadable)) __spirv_Dot(bfloat8 Vector1, bfloat8 Vector2);
-bfloat __attribute__((overloadable)) __spirv_Dot(bfloat16 Vector1, bfloat16 Vector2);
 typedef struct
 {
     uchar a;
@@ -4687,12 +4675,6 @@ __bool4 __attribute__((overloadable))  __spirv_IsNan(double4 x);
 __bool8 __attribute__((overloadable))  __spirv_IsNan(double8 x);
 __bool16 __attribute__((overloadable)) __spirv_IsNan(double16 x);
 #endif // defined(cl_khr_fp64)
-bool __attribute__((overloadable))     __spirv_IsNan(bfloat x);
-__bool2 __attribute__((overloadable))  __spirv_IsNan(bfloat2 x);
-__bool3 __attribute__((overloadable))  __spirv_IsNan(bfloat3 x);
-__bool4 __attribute__((overloadable))  __spirv_IsNan(bfloat4 x);
-__bool8 __attribute__((overloadable))  __spirv_IsNan(bfloat8 x);
-__bool16 __attribute__((overloadable)) __spirv_IsNan(bfloat16 x);
 
 bool __attribute__((overloadable))     __spirv_IsInf(half x);
 bool __attribute__((overloadable))     __spirv_IsInf(float x);
@@ -4714,12 +4696,6 @@ __bool4 __attribute__((overloadable))  __spirv_IsInf(double4 x);
 __bool8 __attribute__((overloadable))  __spirv_IsInf(double8 x);
 __bool16 __attribute__((overloadable)) __spirv_IsInf(double16 x);
 #endif // defined(cl_khr_fp64)
-bool __attribute__((overloadable))     __spirv_IsInf(bfloat x);
-__bool2 __attribute__((overloadable))  __spirv_IsInf(bfloat2 x);
-__bool3 __attribute__((overloadable))  __spirv_IsInf(bfloat3 x);
-__bool4 __attribute__((overloadable))  __spirv_IsInf(bfloat4 x);
-__bool8 __attribute__((overloadable))  __spirv_IsInf(bfloat8 x);
-__bool16 __attribute__((overloadable)) __spirv_IsInf(bfloat16 x);
 
 bool __attribute__((overloadable))     __spirv_IsFinite(half x);
 bool __attribute__((overloadable))     __spirv_IsFinite(float x);
@@ -4741,12 +4717,6 @@ __bool4 __attribute__((overloadable))  __spirv_IsFinite(double4 x);
 __bool8 __attribute__((overloadable))  __spirv_IsFinite(double8 x);
 __bool16 __attribute__((overloadable)) __spirv_IsFinite(double16 x);
 #endif // defined(cl_khr_fp64)
-bool __attribute__((overloadable))     __spirv_IsFinite(bfloat x);
-__bool2 __attribute__((overloadable))  __spirv_IsFinite(bfloat2 x);
-__bool3 __attribute__((overloadable))  __spirv_IsFinite(bfloat3 x);
-__bool4 __attribute__((overloadable))  __spirv_IsFinite(bfloat4 x);
-__bool8 __attribute__((overloadable))  __spirv_IsFinite(bfloat8 x);
-__bool16 __attribute__((overloadable)) __spirv_IsFinite(bfloat16 x);
 
 bool __attribute__((overloadable))     __spirv_IsNormal(half x);
 bool __attribute__((overloadable))     __spirv_IsNormal(float x);
@@ -4768,12 +4738,6 @@ __bool4 __attribute__((overloadable))  __spirv_IsNormal(double4 x);
 __bool8 __attribute__((overloadable))  __spirv_IsNormal(double8 x);
 __bool16 __attribute__((overloadable)) __spirv_IsNormal(double16 x);
 #endif // defined(cl_khr_fp64)
-bool __attribute__((overloadable))     __spirv_IsNormal(bfloat x);
-__bool2 __attribute__((overloadable))  __spirv_IsNormal(bfloat2 x);
-__bool3 __attribute__((overloadable))  __spirv_IsNormal(bfloat3 x);
-__bool4 __attribute__((overloadable))  __spirv_IsNormal(bfloat4 x);
-__bool8 __attribute__((overloadable))  __spirv_IsNormal(bfloat8 x);
-__bool16 __attribute__((overloadable)) __spirv_IsNormal(bfloat16 x);
 
 bool __attribute__((overloadable))     __spirv_SignBitSet(half x);
 bool __attribute__((overloadable))     __spirv_SignBitSet(float x);
@@ -4795,12 +4759,6 @@ __bool4 __attribute__((overloadable))  __spirv_SignBitSet(double4 x);
 __bool8 __attribute__((overloadable))  __spirv_SignBitSet(double8 x);
 __bool16 __attribute__((overloadable)) __spirv_SignBitSet(double16 x);
 #endif // defined(cl_khr_fp64)
-bool __attribute__((overloadable))     __spirv_SignBitSet(bfloat x);
-__bool2 __attribute__((overloadable))  __spirv_SignBitSet(bfloat2 x);
-__bool3 __attribute__((overloadable))  __spirv_SignBitSet(bfloat3 x);
-__bool4 __attribute__((overloadable))  __spirv_SignBitSet(bfloat4 x);
-__bool8 __attribute__((overloadable))  __spirv_SignBitSet(bfloat8 x);
-__bool16 __attribute__((overloadable)) __spirv_SignBitSet(bfloat16 x);
 
 bool __attribute__((overloadable))     __spirv_LessOrGreater(half x, half y);
 bool __attribute__((overloadable))     __spirv_LessOrGreater(float x, float y);
@@ -4822,12 +4780,6 @@ __bool4 __attribute__((overloadable))  __spirv_LessOrGreater(double4 x, double4 
 __bool8 __attribute__((overloadable))  __spirv_LessOrGreater(double8 x, double8 y);
 __bool16 __attribute__((overloadable)) __spirv_LessOrGreater(double16 x, double16 y);
 #endif // defined(cl_khr_fp64)
-bool __attribute__((overloadable))     __spirv_LessOrGreater(bfloat x, bfloat y);
-__bool2 __attribute__((overloadable))  __spirv_LessOrGreater(bfloat2 x, bfloat2 y);
-__bool3 __attribute__((overloadable))  __spirv_LessOrGreater(bfloat3 x, bfloat3 y);
-__bool4 __attribute__((overloadable))  __spirv_LessOrGreater(bfloat4 x, bfloat4 y);
-__bool8 __attribute__((overloadable))  __spirv_LessOrGreater(bfloat8 x, bfloat8 y);
-__bool16 __attribute__((overloadable)) __spirv_LessOrGreater(bfloat16 x, bfloat16 y);
 
 bool __attribute__((overloadable))     __spirv_Ordered(half x, half y);
 bool __attribute__((overloadable))     __spirv_Ordered(float x, float y);
@@ -4896,6 +4848,7 @@ long __attribute__((overloadable))
 __spirv_AtomicLoad(generic long *Pointer, int Scope, int Semantics);
 #endif // __OPENCL_C_VERSION__ >= CL_VERSION_2_0
 #endif // defined(cl_khr_int64_base_atomics) || defined(cl_khr_int64_extended_atomics)
+
 #if defined(cl_intel_bfloat16_atomics)
 short __attribute__((overloadable))
 __spirv_AtomicLoad(private short *Pointer, int Scope, int Semantics);
@@ -4969,6 +4922,7 @@ void __attribute__((overloadable))
 __spirv_AtomicStore(generic long *Pointer, int Scope, int Semantics, long Value);
 #endif // __OPENCL_C_VERSION__ >= CL_VERSION_2_0
 #endif // defined(cl_khr_int64_base_atomics) || defined(cl_khr_int64_extended_atomics)
+
 #if defined(cl_intel_bfloat16_atomics)
 void __attribute__((overloadable))
 __spirv_AtomicStore(private short *Pointer, int Scope, int Semantics, short Value);
@@ -5042,6 +4996,7 @@ long __attribute__((overloadable))
 __spirv_AtomicExchange(generic long *Pointer, int Scope, int Semantics, long Value);
 #endif // __OPENCL_C_VERSION__ >= CL_VERSION_2_0
 #endif // defined(cl_khr_int64_base_atomics)
+
 #if defined(cl_intel_bfloat16_atomics)
 short __attribute__((overloadable))
 __spirv_AtomicExchange(private short *Pointer, int Scope, int Semantics, short Value);
@@ -5420,6 +5375,7 @@ long __attribute__((overloadable))
 __spirv_AtomicOr(generic long *Pointer, int Scope, int Semantics, long Value);
 #endif // __OPENCL_C_VERSION__ >= CL_VERSION_2_0
 #endif // defined(cl_khr_int64_extended_atomics)
+
 #if defined(cl_intel_bfloat16_atomics)
 short __attribute__((overloadable))
 __spirv_AtomicOr(private short *Pointer, int Scope, int Semantics, short Value);
@@ -5588,47 +5544,6 @@ __spirv_AtomicFAddEXT(local half *Pointer, int Scope, int Semantics, half Value)
 half __attribute__((overloadable))
 __spirv_AtomicFAddEXT(generic half *Pointer, int Scope, int Semantics, half Value);
 #endif // __OPENCL_C_VERSION__ >= CL_VERSION_2_0
-
-#if defined(cl_intel_bfloat16_atomics)
-bfloat __attribute__((overloadable))
-__spirv_AtomicFAddEXT(private bfloat *Pointer, int Scope, int Semantics, bfloat Value);
-bfloat __attribute__((overloadable))
-__spirv_AtomicFSubEXT(private bfloat *Pointer, int Scope, int Semantics, bfloat Value);
-bfloat __attribute__((overloadable))
-__spirv_AtomicFMinEXT(private bfloat *Pointer, int Scope, int Semantics, bfloat Value);
-bfloat __attribute__((overloadable))
-__spirv_AtomicFMaxEXT(private bfloat *Pointer, int Scope, int Semantics, bfloat Value);
-
-bfloat __attribute__((overloadable))
-__spirv_AtomicFAddEXT(global bfloat *Pointer, int Scope, int Semantics, bfloat Value);
-bfloat __attribute__((overloadable))
-__spirv_AtomicFSubEXT(global bfloat *Pointer, int Scope, int Semantics, bfloat Value);
-bfloat __attribute__((overloadable))
-__spirv_AtomicFMinEXT(global bfloat *Pointer, int Scope, int Semantics, bfloat Value);
-bfloat __attribute__((overloadable))
-__spirv_AtomicFMaxEXT(global bfloat *Pointer, int Scope, int Semantics, bfloat Value);
-
-bfloat __attribute__((overloadable))
-__spirv_AtomicFAddEXT(local bfloat *Pointer, int Scope, int Semantics, bfloat Value);
-bfloat __attribute__((overloadable))
-__spirv_AtomicFSubEXT(local bfloat *Pointer, int Scope, int Semantics, bfloat Value);
-bfloat __attribute__((overloadable))
-__spirv_AtomicFMinEXT(local bfloat *Pointer, int Scope, int Semantics, bfloat Value);
-bfloat __attribute__((overloadable))
-__spirv_AtomicFMaxEXT(local bfloat *Pointer, int Scope, int Semantics, bfloat Value);
-
-#if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
-bfloat __attribute__((overloadable))
-__spirv_AtomicFAddEXT(generic bfloat *Pointer, int Scope, int Semantics, bfloat Value);
-bfloat __attribute__((overloadable))
-__spirv_AtomicFSubEXT(generic bfloat *Pointer, int Scope, int Semantics, bfloat Value);
-bfloat __attribute__((overloadable))
-__spirv_AtomicFMinEXT(generic bfloat *Pointer, int Scope, int Semantics, bfloat Value);
-bfloat __attribute__((overloadable))
-__spirv_AtomicFMaxEXT(generic bfloat *Pointer, int Scope, int Semantics, bfloat Value);
-#endif // (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
-
-#endif // defined(cl_intel_bfloat16_atomics)
 
 // Barrier Instructions
 

@@ -38,11 +38,3 @@ GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARGS( rsqrt, half, half, f16 )
 
 #endif // defined(cl_khr_fp16)
 
-#if defined(IGC_SPV_INTEL_bfloat16_arithmetic)
-INLINE bfloat __attribute__((overloadable)) __spirv_ocl_rsqrt( bfloat x )
-{
-    return __spirv_ocl_native_rsqrt(x);
-}
-
-GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARGS( rsqrt, bfloat, bfloat, )
-#endif // defined(IGC_SPV_INTEL_bfloat16_arithmetic)

@@ -13,12 +13,6 @@ INLINE float __attribute__((overloadable)) __spirv_ocl_fclamp(float x, float min
     return __spirv_ocl_fmin(__spirv_ocl_fmax(x, minval), maxval);
 }
 
-#if defined(IGC_SPV_INTEL_bfloat16_arithmetic)
-INLINE bfloat __attribute__((overloadable)) __spirv_ocl_fclamp(bfloat x, bfloat minval, bfloat maxval ){
-    return __spirv_ocl_fclamp((float)x, (float)minval, (float)maxval);
-}
-#endif // defined(IGC_SPV_INTEL_bfloat16_arithmetic)
-
 INLINE
 uchar __attribute__((overloadable)) __spirv_ocl_s_abs(char x ){
     return x > 0 ? x : -x;
@@ -547,13 +541,6 @@ float __attribute__((overloadable)) __spirv_ocl_native_tan(float x ){
     return __spirv_ocl_native_divide(__spirv_ocl_native_sin(x), __spirv_ocl_native_cos(x));
 }
 
-#if defined(IGC_SPV_INTEL_bfloat16_arithmetic)
-INLINE
-bfloat __attribute__((overloadable)) __spirv_ocl_native_tan(bfloat x ){
-    return __spirv_ocl_native_tan((float)x);
-}
-#endif // defined(IGC_SPV_INTEL_bfloat16_arithmetic)
-
 #ifdef cl_khr_fp16
 INLINE half __attribute__((overloadable)) __spirv_ocl_fclamp(half x, half minval, half maxval ){
     return __spirv_ocl_fmin(__spirv_ocl_fmax(x, minval), maxval);
@@ -615,7 +602,6 @@ double __attribute__((overloadable)) __spirv_ocl_fma( double a,
 {
     return __builtin_fma(a, b, c);
 }
-
 
 INLINE
 half __attribute__((overloadable)) __spirv_ocl_mad( half a,

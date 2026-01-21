@@ -34,12 +34,6 @@ half3 __attribute__((overloadable))    __spirv_ocl_degrees(half3 x);
 half4 __attribute__((overloadable))    __spirv_ocl_degrees(half4 x);
 half8 __attribute__((overloadable))    __spirv_ocl_degrees(half8 x);
 half16 __attribute__((overloadable))   __spirv_ocl_degrees(half16 x);
-bfloat __attribute__((overloadable))   __spirv_ocl_degrees(bfloat r);
-bfloat2 __attribute__((overloadable))  __spirv_ocl_degrees(bfloat2 x);
-bfloat3 __attribute__((overloadable))  __spirv_ocl_degrees(bfloat3 x);
-bfloat4 __attribute__((overloadable))  __spirv_ocl_degrees(bfloat4 x);
-bfloat8 __attribute__((overloadable))  __spirv_ocl_degrees(bfloat8 x);
-bfloat16 __attribute__((overloadable)) __spirv_ocl_degrees(bfloat16 x);
 
 float __attribute__((overloadable))   __spirv_ocl_fclamp(float x, float y, float z);
 float2 __attribute__((overloadable))  __spirv_ocl_fclamp(float2 x, float2 y, float2 z);
@@ -62,13 +56,6 @@ half3 __attribute__((overloadable))   __spirv_ocl_fclamp(half3 x, half3 y, half3
 half4 __attribute__((overloadable))   __spirv_ocl_fclamp(half4 x, half4 y, half4 z);
 half8 __attribute__((overloadable))   __spirv_ocl_fclamp(half8 x, half8 y, half8 z);
 half16 __attribute__((overloadable))  __spirv_ocl_fclamp(half16 x, half16 y, half16 z);
-bfloat __attribute__((overloadable))  __spirv_ocl_fclamp(bfloat x, bfloat y, bfloat z);
-bfloat2 __attribute__((overloadable)) __spirv_ocl_fclamp(bfloat2 x, bfloat2 y, bfloat2 z);
-bfloat3 __attribute__((overloadable)) __spirv_ocl_fclamp(bfloat3 x, bfloat3 y, bfloat3 z);
-bfloat4 __attribute__((overloadable)) __spirv_ocl_fclamp(bfloat4 x, bfloat4 y, bfloat4 z);
-bfloat8 __attribute__((overloadable)) __spirv_ocl_fclamp(bfloat8 x, bfloat8 y, bfloat8 z);
-bfloat16 __attribute__((overloadable))
-__spirv_ocl_fclamp(bfloat16 x, bfloat16 y, bfloat16 z);
 
 float __attribute__((overloadable))   __spirv_ocl_fmax_common(float x, float y);
 float2 __attribute__((overloadable))  __spirv_ocl_fmax_common(float2 x, float2 y);
@@ -90,12 +77,6 @@ half3 __attribute__((overloadable))    __spirv_ocl_fmax_common(half3 x, half3 y)
 half4 __attribute__((overloadable))    __spirv_ocl_fmax_common(half4 x, half4 y);
 half8 __attribute__((overloadable))    __spirv_ocl_fmax_common(half8 x, half8 y);
 half16 __attribute__((overloadable))   __spirv_ocl_fmax_common(half16 x, half16 y);
-bfloat __attribute__((overloadable))   __spirv_ocl_fmax_common(bfloat x, bfloat y);
-bfloat2 __attribute__((overloadable))  __spirv_ocl_fmax_common(bfloat2 x, bfloat2 y);
-bfloat3 __attribute__((overloadable))  __spirv_ocl_fmax_common(bfloat3 x, bfloat3 y);
-bfloat4 __attribute__((overloadable))  __spirv_ocl_fmax_common(bfloat4 x, bfloat4 y);
-bfloat8 __attribute__((overloadable))  __spirv_ocl_fmax_common(bfloat8 x, bfloat8 y);
-bfloat16 __attribute__((overloadable)) __spirv_ocl_fmax_common(bfloat16 x, bfloat16 y);
 
 float __attribute__((overloadable))   __spirv_ocl_fmin_common(float x, float y);
 half __attribute__((overloadable))    __spirv_ocl_fmin_common(half x, half y);
@@ -117,11 +98,6 @@ half3 __attribute__((overloadable))    __spirv_ocl_fmin_common(half3 x, half3 y)
 half4 __attribute__((overloadable))    __spirv_ocl_fmin_common(half4 x, half4 y);
 half8 __attribute__((overloadable))    __spirv_ocl_fmin_common(half8 x, half8 y);
 half16 __attribute__((overloadable))   __spirv_ocl_fmin_common(half16 x, half16 y);
-bfloat2 __attribute__((overloadable))  __spirv_ocl_fmin_common(bfloat2 x, bfloat2 y);
-bfloat3 __attribute__((overloadable))  __spirv_ocl_fmin_common(bfloat3 x, bfloat3 y);
-bfloat4 __attribute__((overloadable))  __spirv_ocl_fmin_common(bfloat4 x, bfloat4 y);
-bfloat8 __attribute__((overloadable))  __spirv_ocl_fmin_common(bfloat8 x, bfloat8 y);
-bfloat16 __attribute__((overloadable)) __spirv_ocl_fmin_common(bfloat16 x, bfloat16 y);
 
 float __attribute__((overloadable))   __spirv_ocl_mix(float x, float y, float a);
 float2 __attribute__((overloadable))  __spirv_ocl_mix(float2 x, float2 y, float2 z);
@@ -165,12 +141,6 @@ half3 __attribute__((overloadable))    __spirv_ocl_radians(half3 x);
 half4 __attribute__((overloadable))    __spirv_ocl_radians(half4 x);
 half8 __attribute__((overloadable))    __spirv_ocl_radians(half8 x);
 half16 __attribute__((overloadable))   __spirv_ocl_radians(half16 x);
-bfloat __attribute__((overloadable))   __spirv_ocl_radians(bfloat d);
-bfloat2 __attribute__((overloadable))  __spirv_ocl_radians(bfloat2 x);
-bfloat3 __attribute__((overloadable))  __spirv_ocl_radians(bfloat3 x);
-bfloat4 __attribute__((overloadable))  __spirv_ocl_radians(bfloat4 x);
-bfloat8 __attribute__((overloadable))  __spirv_ocl_radians(bfloat8 x);
-bfloat16 __attribute__((overloadable)) __spirv_ocl_radians(bfloat16 x);
 
 float __attribute__((overloadable))   __spirv_ocl_sign(float x);
 float2 __attribute__((overloadable))  __spirv_ocl_sign(float2 x);
@@ -192,12 +162,6 @@ half3 __attribute__((overloadable))    __spirv_ocl_sign(half3 x);
 half4 __attribute__((overloadable))    __spirv_ocl_sign(half4 x);
 half8 __attribute__((overloadable))    __spirv_ocl_sign(half8 x);
 half16 __attribute__((overloadable))   __spirv_ocl_sign(half16 x);
-bfloat __attribute__((overloadable))   __spirv_ocl_sign(bfloat x);
-bfloat2 __attribute__((overloadable))  __spirv_ocl_sign(bfloat2 x);
-bfloat3 __attribute__((overloadable))  __spirv_ocl_sign(bfloat3 x);
-bfloat4 __attribute__((overloadable))  __spirv_ocl_sign(bfloat4 x);
-bfloat8 __attribute__((overloadable))  __spirv_ocl_sign(bfloat8 x);
-bfloat16 __attribute__((overloadable)) __spirv_ocl_sign(bfloat16 x);
 
 float __attribute__((overloadable))
 __spirv_ocl_smoothstep(float edge0, float edge1, float x);
@@ -227,18 +191,6 @@ half3 __attribute__((overloadable))  __spirv_ocl_smoothstep(half3 x, half3 y, ha
 half4 __attribute__((overloadable))  __spirv_ocl_smoothstep(half4 x, half4 y, half4 z);
 half8 __attribute__((overloadable))  __spirv_ocl_smoothstep(half8 x, half8 y, half8 z);
 half16 __attribute__((overloadable)) __spirv_ocl_smoothstep(half16 x, half16 y, half16 z);
-bfloat __attribute__((overloadable))
-__spirv_ocl_smoothstep(bfloat edge0, bfloat edge1, bfloat x);
-bfloat2 __attribute__((overloadable))
-__spirv_ocl_smoothstep(bfloat2 x, bfloat2 y, bfloat2 z);
-bfloat3 __attribute__((overloadable))
-__spirv_ocl_smoothstep(bfloat3 x, bfloat3 y, bfloat3 z);
-bfloat4 __attribute__((overloadable))
-__spirv_ocl_smoothstep(bfloat4 x, bfloat4 y, bfloat4 z);
-bfloat8 __attribute__((overloadable))
-__spirv_ocl_smoothstep(bfloat8 x, bfloat8 y, bfloat8 z);
-bfloat16 __attribute__((overloadable))
-__spirv_ocl_smoothstep(bfloat16 x, bfloat16 y, bfloat16 z);
 
 float __attribute__((overloadable))   __spirv_ocl_step(float edge, float x);
 float2 __attribute__((overloadable))  __spirv_ocl_step(float2 x, float2 y);
@@ -260,12 +212,6 @@ half3 __attribute__((overloadable))    __spirv_ocl_step(half3 x, half3 y);
 half4 __attribute__((overloadable))    __spirv_ocl_step(half4 x, half4 y);
 half8 __attribute__((overloadable))    __spirv_ocl_step(half8 x, half8 y);
 half16 __attribute__((overloadable))   __spirv_ocl_step(half16 x, half16 y);
-bfloat __attribute__((overloadable))   __spirv_ocl_step(bfloat edge, bfloat x);
-bfloat2 __attribute__((overloadable))  __spirv_ocl_step(bfloat2 x, bfloat2 y);
-bfloat3 __attribute__((overloadable))  __spirv_ocl_step(bfloat3 x, bfloat3 y);
-bfloat4 __attribute__((overloadable))  __spirv_ocl_step(bfloat4 x, bfloat4 y);
-bfloat8 __attribute__((overloadable))  __spirv_ocl_step(bfloat8 x, bfloat8 y);
-bfloat16 __attribute__((overloadable)) __spirv_ocl_step(bfloat16 x, bfloat16 y);
 
 //
 //  Geometric
@@ -280,8 +226,6 @@ double4 __attribute__((overloadable)) __spirv_ocl_cross(double4 p0, double4 p1);
 #endif // defined(cl_khr_fp64)
 half3 __attribute__((overloadable))   __spirv_ocl_cross(half3 p0, half3 p1);
 half4 __attribute__((overloadable))   __spirv_ocl_cross(half4 p0, half4 p1);
-bfloat3 __attribute__((overloadable)) __spirv_ocl_cross(bfloat3 p0, bfloat3 p1);
-bfloat4 __attribute__((overloadable)) __spirv_ocl_cross(bfloat4 p0, bfloat4 p1);
 
 float __attribute__((overloadable)) __spirv_ocl_distance(float p0, float p1);
 float __attribute__((overloadable)) __spirv_ocl_distance(float2 p0, float2 p1);
@@ -297,10 +241,6 @@ half __attribute__((overloadable))   __spirv_ocl_distance(half p0, half p1);
 half __attribute__((overloadable))   __spirv_ocl_distance(half2 p0, half2 p1);
 half __attribute__((overloadable))   __spirv_ocl_distance(half3 p0, half3 p1);
 half __attribute__((overloadable))   __spirv_ocl_distance(half4 p0, half4 p1);
-bfloat __attribute__((overloadable)) __spirv_ocl_distance(bfloat p0, bfloat p1);
-bfloat __attribute__((overloadable)) __spirv_ocl_distance(bfloat2 p0, bfloat2 p1);
-bfloat __attribute__((overloadable)) __spirv_ocl_distance(bfloat3 p0, bfloat3 p1);
-bfloat __attribute__((overloadable)) __spirv_ocl_distance(bfloat4 p0, bfloat4 p1);
 
 float __attribute__((overloadable)) __spirv_ocl_fast_distance(float p0, float p1);
 float __attribute__((overloadable)) __spirv_ocl_fast_distance(float2 p0, float2 p1);
@@ -333,10 +273,6 @@ half __attribute__((overloadable)) __spirv_ocl_length(half2 p);
 half __attribute__((overloadable)) __spirv_ocl_length(half3 p);
 half __attribute__((overloadable)) __spirv_ocl_length(half4 p);
 #endif // defined(cl_khr_fp16)
-bfloat __attribute__((overloadable)) __spirv_ocl_length(bfloat p);
-bfloat __attribute__((overloadable)) __spirv_ocl_length(bfloat2 p);
-bfloat __attribute__((overloadable)) __spirv_ocl_length(bfloat3 p);
-bfloat __attribute__((overloadable)) __spirv_ocl_length(bfloat4 p);
 
 float __attribute__((overloadable))  __spirv_ocl_normalize(float p);
 float2 __attribute__((overloadable)) __spirv_ocl_normalize(float2 p);
@@ -352,10 +288,6 @@ half __attribute__((overloadable))    __spirv_ocl_normalize(half p);
 half2 __attribute__((overloadable))   __spirv_ocl_normalize(half2 p);
 half3 __attribute__((overloadable))   __spirv_ocl_normalize(half3 p);
 half4 __attribute__((overloadable))   __spirv_ocl_normalize(half4 p);
-bfloat __attribute__((overloadable))  __spirv_ocl_normalize(bfloat p);
-bfloat2 __attribute__((overloadable)) __spirv_ocl_normalize(bfloat2 p);
-bfloat3 __attribute__((overloadable)) __spirv_ocl_normalize(bfloat3 p);
-bfloat4 __attribute__((overloadable)) __spirv_ocl_normalize(bfloat4 p);
 
 //
 //  Half
@@ -1227,13 +1159,6 @@ half4 __attribute__((overloadable))  __spirv_ocl_acos(half4 x);
 half8 __attribute__((overloadable))  __spirv_ocl_acos(half8 x);
 half16 __attribute__((overloadable)) __spirv_ocl_acos(half16 x);
 
-bfloat __attribute__((overloadable))   __spirv_ocl_acos(bfloat x);
-bfloat2 __attribute__((overloadable))  __spirv_ocl_acos(bfloat2 x);
-bfloat3 __attribute__((overloadable))  __spirv_ocl_acos(bfloat3 x);
-bfloat4 __attribute__((overloadable))  __spirv_ocl_acos(bfloat4 x);
-bfloat8 __attribute__((overloadable))  __spirv_ocl_acos(bfloat8 x);
-bfloat16 __attribute__((overloadable)) __spirv_ocl_acos(bfloat16 x);
-
 float __attribute__((overloadable))   __spirv_ocl_acosh(float x);
 float2 __attribute__((overloadable))  __spirv_ocl_acosh(float2 x);
 float3 __attribute__((overloadable))  __spirv_ocl_acosh(float3 x);
@@ -1254,12 +1179,6 @@ half3 __attribute__((overloadable))    __spirv_ocl_acosh(half3 x);
 half4 __attribute__((overloadable))    __spirv_ocl_acosh(half4 x);
 half8 __attribute__((overloadable))    __spirv_ocl_acosh(half8 x);
 half16 __attribute__((overloadable))   __spirv_ocl_acosh(half16 x);
-bfloat __attribute__((overloadable))   __spirv_ocl_acosh(bfloat x);
-bfloat2 __attribute__((overloadable))  __spirv_ocl_acosh(bfloat2 x);
-bfloat3 __attribute__((overloadable))  __spirv_ocl_acosh(bfloat3 x);
-bfloat4 __attribute__((overloadable))  __spirv_ocl_acosh(bfloat4 x);
-bfloat8 __attribute__((overloadable))  __spirv_ocl_acosh(bfloat8 x);
-bfloat16 __attribute__((overloadable)) __spirv_ocl_acosh(bfloat16 x);
 
 float __attribute__((overloadable))   __spirv_ocl_acospi(float x);
 float2 __attribute__((overloadable))  __spirv_ocl_acospi(float2 x);
@@ -1281,12 +1200,6 @@ half3 __attribute__((overloadable))    __spirv_ocl_acospi(half3 x);
 half4 __attribute__((overloadable))    __spirv_ocl_acospi(half4 x);
 half8 __attribute__((overloadable))    __spirv_ocl_acospi(half8 x);
 half16 __attribute__((overloadable))   __spirv_ocl_acospi(half16 x);
-bfloat __attribute__((overloadable))   __spirv_ocl_acospi(bfloat x);
-bfloat2 __attribute__((overloadable))  __spirv_ocl_acospi(bfloat2 x);
-bfloat3 __attribute__((overloadable))  __spirv_ocl_acospi(bfloat3 x);
-bfloat4 __attribute__((overloadable))  __spirv_ocl_acospi(bfloat4 x);
-bfloat8 __attribute__((overloadable))  __spirv_ocl_acospi(bfloat8 x);
-bfloat16 __attribute__((overloadable)) __spirv_ocl_acospi(bfloat16 x);
 
 float __attribute__((overloadable))   __spirv_ocl_asin(float value);
 float2 __attribute__((overloadable))  __spirv_ocl_asin(float2 x);
@@ -1308,12 +1221,6 @@ half3 __attribute__((overloadable))    __spirv_ocl_asin(half3 x);
 half4 __attribute__((overloadable))    __spirv_ocl_asin(half4 x);
 half8 __attribute__((overloadable))    __spirv_ocl_asin(half8 x);
 half16 __attribute__((overloadable))   __spirv_ocl_asin(half16 x);
-bfloat __attribute__((overloadable))   __spirv_ocl_asin(bfloat x);
-bfloat2 __attribute__((overloadable))  __spirv_ocl_asin(bfloat2 x);
-bfloat3 __attribute__((overloadable))  __spirv_ocl_asin(bfloat3 x);
-bfloat4 __attribute__((overloadable))  __spirv_ocl_asin(bfloat4 x);
-bfloat8 __attribute__((overloadable))  __spirv_ocl_asin(bfloat8 x);
-bfloat16 __attribute__((overloadable)) __spirv_ocl_asin(bfloat16 x);
 
 float __attribute__((overloadable))   __spirv_ocl_asinh(float x);
 float2 __attribute__((overloadable))  __spirv_ocl_asinh(float2 x);
@@ -1335,12 +1242,6 @@ half3 __attribute__((overloadable))    __spirv_ocl_asinh(half3 x);
 half4 __attribute__((overloadable))    __spirv_ocl_asinh(half4 x);
 half8 __attribute__((overloadable))    __spirv_ocl_asinh(half8 x);
 half16 __attribute__((overloadable))   __spirv_ocl_asinh(half16 x);
-bfloat __attribute__((overloadable))   __spirv_ocl_asinh(bfloat x);
-bfloat2 __attribute__((overloadable))  __spirv_ocl_asinh(bfloat2 x);
-bfloat3 __attribute__((overloadable))  __spirv_ocl_asinh(bfloat3 x);
-bfloat4 __attribute__((overloadable))  __spirv_ocl_asinh(bfloat4 x);
-bfloat8 __attribute__((overloadable))  __spirv_ocl_asinh(bfloat8 x);
-bfloat16 __attribute__((overloadable)) __spirv_ocl_asinh(bfloat16 x);
 
 float __attribute__((overloadable))   __spirv_ocl_asinpi(float x);
 float2 __attribute__((overloadable))  __spirv_ocl_asinpi(float2 x);
@@ -1362,12 +1263,6 @@ half3 __attribute__((overloadable))    __spirv_ocl_asinpi(half3 x);
 half4 __attribute__((overloadable))    __spirv_ocl_asinpi(half4 x);
 half8 __attribute__((overloadable))    __spirv_ocl_asinpi(half8 x);
 half16 __attribute__((overloadable))   __spirv_ocl_asinpi(half16 x);
-bfloat __attribute__((overloadable))   __spirv_ocl_asinpi(bfloat x);
-bfloat2 __attribute__((overloadable))  __spirv_ocl_asinpi(bfloat2 x);
-bfloat3 __attribute__((overloadable))  __spirv_ocl_asinpi(bfloat3 x);
-bfloat4 __attribute__((overloadable))  __spirv_ocl_asinpi(bfloat4 x);
-bfloat8 __attribute__((overloadable))  __spirv_ocl_asinpi(bfloat8 x);
-bfloat16 __attribute__((overloadable)) __spirv_ocl_asinpi(bfloat16 x);
 
 float __attribute__((overloadable))   __spirv_ocl_atan(float value);
 float2 __attribute__((overloadable))  __spirv_ocl_atan(float2 x);
@@ -1389,12 +1284,6 @@ half3 __attribute__((overloadable))    __spirv_ocl_atan(half3 x);
 half4 __attribute__((overloadable))    __spirv_ocl_atan(half4 x);
 half8 __attribute__((overloadable))    __spirv_ocl_atan(half8 x);
 half16 __attribute__((overloadable))   __spirv_ocl_atan(half16 x);
-bfloat __attribute__((overloadable))   __spirv_ocl_atan(bfloat x);
-bfloat2 __attribute__((overloadable))  __spirv_ocl_atan(bfloat2 x);
-bfloat3 __attribute__((overloadable))  __spirv_ocl_atan(bfloat3 x);
-bfloat4 __attribute__((overloadable))  __spirv_ocl_atan(bfloat4 x);
-bfloat8 __attribute__((overloadable))  __spirv_ocl_atan(bfloat8 x);
-bfloat16 __attribute__((overloadable)) __spirv_ocl_atan(bfloat16 x);
 
 float __attribute__((overloadable))   __spirv_ocl_atan2(float y, float x);
 float2 __attribute__((overloadable))  __spirv_ocl_atan2(float2 x, float2 y);
@@ -1416,12 +1305,6 @@ half3 __attribute__((overloadable))    __spirv_ocl_atan2(half3 x, half3 y);
 half4 __attribute__((overloadable))    __spirv_ocl_atan2(half4 x, half4 y);
 half8 __attribute__((overloadable))    __spirv_ocl_atan2(half8 x, half8 y);
 half16 __attribute__((overloadable))   __spirv_ocl_atan2(half16 x, half16 y);
-bfloat __attribute__((overloadable))   __spirv_ocl_atan2(bfloat y, bfloat x);
-bfloat2 __attribute__((overloadable))  __spirv_ocl_atan2(bfloat2 x, bfloat2 y);
-bfloat3 __attribute__((overloadable))  __spirv_ocl_atan2(bfloat3 x, bfloat3 y);
-bfloat4 __attribute__((overloadable))  __spirv_ocl_atan2(bfloat4 x, bfloat4 y);
-bfloat8 __attribute__((overloadable))  __spirv_ocl_atan2(bfloat8 x, bfloat8 y);
-bfloat16 __attribute__((overloadable)) __spirv_ocl_atan2(bfloat16 x, bfloat16 y);
 
 float __attribute__((overloadable))   __spirv_ocl_atan2pi(float x, float y);
 float2 __attribute__((overloadable))  __spirv_ocl_atan2pi(float2 x, float2 y);
@@ -1443,12 +1326,6 @@ half3 __attribute__((overloadable))    __spirv_ocl_atan2pi(half3 x, half3 y);
 half4 __attribute__((overloadable))    __spirv_ocl_atan2pi(half4 x, half4 y);
 half8 __attribute__((overloadable))    __spirv_ocl_atan2pi(half8 x, half8 y);
 half16 __attribute__((overloadable))   __spirv_ocl_atan2pi(half16 x, half16 y);
-bfloat __attribute__((overloadable))   __spirv_ocl_atan2pi(bfloat x, bfloat y);
-bfloat2 __attribute__((overloadable))  __spirv_ocl_atan2pi(bfloat2 x, bfloat2 y);
-bfloat3 __attribute__((overloadable))  __spirv_ocl_atan2pi(bfloat3 x, bfloat3 y);
-bfloat4 __attribute__((overloadable))  __spirv_ocl_atan2pi(bfloat4 x, bfloat4 y);
-bfloat8 __attribute__((overloadable))  __spirv_ocl_atan2pi(bfloat8 x, bfloat8 y);
-bfloat16 __attribute__((overloadable)) __spirv_ocl_atan2pi(bfloat16 x, bfloat16 y);
 
 float __attribute__((overloadable))   __spirv_ocl_atanh(float x);
 float2 __attribute__((overloadable))  __spirv_ocl_atanh(float2 x);
@@ -1470,12 +1347,6 @@ half3 __attribute__((overloadable))    __spirv_ocl_atanh(half3 x);
 half4 __attribute__((overloadable))    __spirv_ocl_atanh(half4 x);
 half8 __attribute__((overloadable))    __spirv_ocl_atanh(half8 x);
 half16 __attribute__((overloadable))   __spirv_ocl_atanh(half16 x);
-bfloat __attribute__((overloadable))   __spirv_ocl_atanh(bfloat x);
-bfloat2 __attribute__((overloadable))  __spirv_ocl_atanh(bfloat2 x);
-bfloat3 __attribute__((overloadable))  __spirv_ocl_atanh(bfloat3 x);
-bfloat4 __attribute__((overloadable))  __spirv_ocl_atanh(bfloat4 x);
-bfloat8 __attribute__((overloadable))  __spirv_ocl_atanh(bfloat8 x);
-bfloat16 __attribute__((overloadable)) __spirv_ocl_atanh(bfloat16 x);
 
 float __attribute__((overloadable))   __spirv_ocl_atanpi(float x);
 float2 __attribute__((overloadable))  __spirv_ocl_atanpi(float2 x);
@@ -1497,12 +1368,6 @@ half3 __attribute__((overloadable))    __spirv_ocl_atanpi(half3 x);
 half4 __attribute__((overloadable))    __spirv_ocl_atanpi(half4 x);
 half8 __attribute__((overloadable))    __spirv_ocl_atanpi(half8 x);
 half16 __attribute__((overloadable))   __spirv_ocl_atanpi(half16 x);
-bfloat __attribute__((overloadable))   __spirv_ocl_atanpi(bfloat x);
-bfloat2 __attribute__((overloadable))  __spirv_ocl_atanpi(bfloat2 x);
-bfloat3 __attribute__((overloadable))  __spirv_ocl_atanpi(bfloat3 x);
-bfloat4 __attribute__((overloadable))  __spirv_ocl_atanpi(bfloat4 x);
-bfloat8 __attribute__((overloadable))  __spirv_ocl_atanpi(bfloat8 x);
-bfloat16 __attribute__((overloadable)) __spirv_ocl_atanpi(bfloat16 x);
 
 float __attribute__((overloadable))   __spirv_ocl_cbrt(float x);
 float2 __attribute__((overloadable))  __spirv_ocl_cbrt(float2 x);
@@ -1524,12 +1389,6 @@ half3 __attribute__((overloadable))    __spirv_ocl_cbrt(half3 x);
 half4 __attribute__((overloadable))    __spirv_ocl_cbrt(half4 x);
 half8 __attribute__((overloadable))    __spirv_ocl_cbrt(half8 x);
 half16 __attribute__((overloadable))   __spirv_ocl_cbrt(half16 x);
-bfloat __attribute__((overloadable))   __spirv_ocl_cbrt(bfloat x);
-bfloat2 __attribute__((overloadable))  __spirv_ocl_cbrt(bfloat2 x);
-bfloat3 __attribute__((overloadable))  __spirv_ocl_cbrt(bfloat3 x);
-bfloat4 __attribute__((overloadable))  __spirv_ocl_cbrt(bfloat4 x);
-bfloat8 __attribute__((overloadable))  __spirv_ocl_cbrt(bfloat8 x);
-bfloat16 __attribute__((overloadable)) __spirv_ocl_cbrt(bfloat16 x);
 
 float __attribute__((overloadable))   __spirv_ocl_ceil(float x);
 float2 __attribute__((overloadable))  __spirv_ocl_ceil(float2 x);
@@ -1551,12 +1410,6 @@ half3 __attribute__((overloadable))    __spirv_ocl_ceil(half3 x);
 half4 __attribute__((overloadable))    __spirv_ocl_ceil(half4 x);
 half8 __attribute__((overloadable))    __spirv_ocl_ceil(half8 x);
 half16 __attribute__((overloadable))   __spirv_ocl_ceil(half16 x);
-bfloat __attribute__((overloadable))   __spirv_ocl_ceil(bfloat x);
-bfloat2 __attribute__((overloadable))  __spirv_ocl_ceil(bfloat2 x);
-bfloat3 __attribute__((overloadable))  __spirv_ocl_ceil(bfloat3 x);
-bfloat4 __attribute__((overloadable))  __spirv_ocl_ceil(bfloat4 x);
-bfloat8 __attribute__((overloadable))  __spirv_ocl_ceil(bfloat8 x);
-bfloat16 __attribute__((overloadable)) __spirv_ocl_ceil(bfloat16 x);
 
 float __attribute__((overloadable))   __spirv_ocl_copysign(float x, float y);
 float2 __attribute__((overloadable))  __spirv_ocl_copysign(float2 x, float2 y);
@@ -1578,12 +1431,6 @@ half3 __attribute__((overloadable))    __spirv_ocl_copysign(half3 x, half3 y);
 half4 __attribute__((overloadable))    __spirv_ocl_copysign(half4 x, half4 y);
 half8 __attribute__((overloadable))    __spirv_ocl_copysign(half8 x, half8 y);
 half16 __attribute__((overloadable))   __spirv_ocl_copysign(half16 x, half16 y);
-bfloat __attribute__((overloadable))   __spirv_ocl_copysign(bfloat x, bfloat y);
-bfloat2 __attribute__((overloadable))  __spirv_ocl_copysign(bfloat2 x, bfloat2 y);
-bfloat3 __attribute__((overloadable))  __spirv_ocl_copysign(bfloat3 x, bfloat3 y);
-bfloat4 __attribute__((overloadable))  __spirv_ocl_copysign(bfloat4 x, bfloat4 y);
-bfloat8 __attribute__((overloadable))  __spirv_ocl_copysign(bfloat8 x, bfloat8 y);
-bfloat16 __attribute__((overloadable)) __spirv_ocl_copysign(bfloat16 x, bfloat16 y);
 
 float __attribute__((overloadable))   __spirv_ocl_cos(float x);
 float2 __attribute__((overloadable))  __spirv_ocl_cos(float2 x);
@@ -1605,12 +1452,6 @@ half3 __attribute__((overloadable))    __spirv_ocl_cos(half3 x);
 half4 __attribute__((overloadable))    __spirv_ocl_cos(half4 x);
 half8 __attribute__((overloadable))    __spirv_ocl_cos(half8 x);
 half16 __attribute__((overloadable))   __spirv_ocl_cos(half16 x);
-bfloat __attribute__((overloadable))   __spirv_ocl_cos(bfloat x);
-bfloat2 __attribute__((overloadable))  __spirv_ocl_cos(bfloat2 x);
-bfloat3 __attribute__((overloadable))  __spirv_ocl_cos(bfloat3 x);
-bfloat4 __attribute__((overloadable))  __spirv_ocl_cos(bfloat4 x);
-bfloat8 __attribute__((overloadable))  __spirv_ocl_cos(bfloat8 x);
-bfloat16 __attribute__((overloadable)) __spirv_ocl_cos(bfloat16 x);
 
 float __attribute__((overloadable))   __spirv_ocl_cosh(float x);
 float2 __attribute__((overloadable))  __spirv_ocl_cosh(float2 x);
@@ -1632,12 +1473,6 @@ half3 __attribute__((overloadable))    __spirv_ocl_cosh(half3 x);
 half4 __attribute__((overloadable))    __spirv_ocl_cosh(half4 x);
 half8 __attribute__((overloadable))    __spirv_ocl_cosh(half8 x);
 half16 __attribute__((overloadable))   __spirv_ocl_cosh(half16 x);
-bfloat __attribute__((overloadable))   __spirv_ocl_cosh(bfloat x);
-bfloat2 __attribute__((overloadable))  __spirv_ocl_cosh(bfloat2 x);
-bfloat3 __attribute__((overloadable))  __spirv_ocl_cosh(bfloat3 x);
-bfloat4 __attribute__((overloadable))  __spirv_ocl_cosh(bfloat4 x);
-bfloat8 __attribute__((overloadable))  __spirv_ocl_cosh(bfloat8 x);
-bfloat16 __attribute__((overloadable)) __spirv_ocl_cosh(bfloat16 x);
 
 float __attribute__((overloadable))   __spirv_ocl_cospi(float x);
 float2 __attribute__((overloadable))  __spirv_ocl_cospi(float2 x);
@@ -1659,12 +1494,6 @@ half3 __attribute__((overloadable))    __spirv_ocl_cospi(half3 x);
 half4 __attribute__((overloadable))    __spirv_ocl_cospi(half4 x);
 half8 __attribute__((overloadable))    __spirv_ocl_cospi(half8 x);
 half16 __attribute__((overloadable))   __spirv_ocl_cospi(half16 x);
-bfloat __attribute__((overloadable))   __spirv_ocl_cospi(bfloat x);
-bfloat2 __attribute__((overloadable))  __spirv_ocl_cospi(bfloat2 x);
-bfloat3 __attribute__((overloadable))  __spirv_ocl_cospi(bfloat3 x);
-bfloat4 __attribute__((overloadable))  __spirv_ocl_cospi(bfloat4 x);
-bfloat8 __attribute__((overloadable))  __spirv_ocl_cospi(bfloat8 x);
-bfloat16 __attribute__((overloadable)) __spirv_ocl_cospi(bfloat16 x);
 
 float   __builtin_spirv_divide_cr_f32_f32(float a, float b);
 float2  __builtin_spirv_divide_cr_v2f32_v2f32(float2 a, float2 b);
@@ -1697,12 +1526,6 @@ half3 __attribute__((overloadable))    __spirv_ocl_erf(half3 x);
 half4 __attribute__((overloadable))    __spirv_ocl_erf(half4 x);
 half8 __attribute__((overloadable))    __spirv_ocl_erf(half8 x);
 half16 __attribute__((overloadable))   __spirv_ocl_erf(half16 x);
-bfloat __attribute__((overloadable))   __spirv_ocl_erf(bfloat x);
-bfloat2 __attribute__((overloadable))  __spirv_ocl_erf(bfloat2 x);
-bfloat3 __attribute__((overloadable))  __spirv_ocl_erf(bfloat3 x);
-bfloat4 __attribute__((overloadable))  __spirv_ocl_erf(bfloat4 x);
-bfloat8 __attribute__((overloadable))  __spirv_ocl_erf(bfloat8 x);
-bfloat16 __attribute__((overloadable)) __spirv_ocl_erf(bfloat16 x);
 
 float __attribute__((overloadable))   __spirv_ocl_erfc(float x);
 float2 __attribute__((overloadable))  __spirv_ocl_erfc(float2 x);
@@ -1724,12 +1547,6 @@ half3 __attribute__((overloadable))    __spirv_ocl_erfc(half3 x);
 half4 __attribute__((overloadable))    __spirv_ocl_erfc(half4 x);
 half8 __attribute__((overloadable))    __spirv_ocl_erfc(half8 x);
 half16 __attribute__((overloadable))   __spirv_ocl_erfc(half16 x);
-bfloat __attribute__((overloadable))   __spirv_ocl_erfc(bfloat x);
-bfloat2 __attribute__((overloadable))  __spirv_ocl_erfc(bfloat2 x);
-bfloat3 __attribute__((overloadable))  __spirv_ocl_erfc(bfloat3 x);
-bfloat4 __attribute__((overloadable))  __spirv_ocl_erfc(bfloat4 x);
-bfloat8 __attribute__((overloadable))  __spirv_ocl_erfc(bfloat8 x);
-bfloat16 __attribute__((overloadable)) __spirv_ocl_erfc(bfloat16 x);
 
 float __attribute__((overloadable))   __spirv_ocl_exp(float x);
 float2 __attribute__((overloadable))  __spirv_ocl_exp(float2 x);
@@ -1751,12 +1568,6 @@ half3 __attribute__((overloadable))    __spirv_ocl_exp(half3 x);
 half4 __attribute__((overloadable))    __spirv_ocl_exp(half4 x);
 half8 __attribute__((overloadable))    __spirv_ocl_exp(half8 x);
 half16 __attribute__((overloadable))   __spirv_ocl_exp(half16 x);
-bfloat __attribute__((overloadable))   __spirv_ocl_exp(bfloat x);
-bfloat2 __attribute__((overloadable))  __spirv_ocl_exp(bfloat2 x);
-bfloat3 __attribute__((overloadable))  __spirv_ocl_exp(bfloat3 x);
-bfloat4 __attribute__((overloadable))  __spirv_ocl_exp(bfloat4 x);
-bfloat8 __attribute__((overloadable))  __spirv_ocl_exp(bfloat8 x);
-bfloat16 __attribute__((overloadable)) __spirv_ocl_exp(bfloat16 x);
 
 float __attribute__((overloadable))   __spirv_ocl_exp2(float x);
 float2 __attribute__((overloadable))  __spirv_ocl_exp2(float2 x);
@@ -1778,12 +1589,6 @@ half3 __attribute__((overloadable))    __spirv_ocl_exp2(half3 x);
 half4 __attribute__((overloadable))    __spirv_ocl_exp2(half4 x);
 half8 __attribute__((overloadable))    __spirv_ocl_exp2(half8 x);
 half16 __attribute__((overloadable))   __spirv_ocl_exp2(half16 x);
-bfloat __attribute__((overloadable))   __spirv_ocl_exp2(bfloat x);
-bfloat2 __attribute__((overloadable))  __spirv_ocl_exp2(bfloat2 x);
-bfloat3 __attribute__((overloadable))  __spirv_ocl_exp2(bfloat3 x);
-bfloat4 __attribute__((overloadable))  __spirv_ocl_exp2(bfloat4 x);
-bfloat8 __attribute__((overloadable))  __spirv_ocl_exp2(bfloat8 x);
-bfloat16 __attribute__((overloadable)) __spirv_ocl_exp2(bfloat16 x);
 
 float __attribute__((overloadable))   __spirv_ocl_exp10(float x);
 float2 __attribute__((overloadable))  __spirv_ocl_exp10(float2 x);
@@ -1805,12 +1610,6 @@ half3 __attribute__((overloadable))    __spirv_ocl_exp10(half3 x);
 half4 __attribute__((overloadable))    __spirv_ocl_exp10(half4 x);
 half8 __attribute__((overloadable))    __spirv_ocl_exp10(half8 x);
 half16 __attribute__((overloadable))   __spirv_ocl_exp10(half16 x);
-bfloat __attribute__((overloadable))   __spirv_ocl_exp10(bfloat x);
-bfloat2 __attribute__((overloadable))  __spirv_ocl_exp10(bfloat2 x);
-bfloat3 __attribute__((overloadable))  __spirv_ocl_exp10(bfloat3 x);
-bfloat4 __attribute__((overloadable))  __spirv_ocl_exp10(bfloat4 x);
-bfloat8 __attribute__((overloadable))  __spirv_ocl_exp10(bfloat8 x);
-bfloat16 __attribute__((overloadable)) __spirv_ocl_exp10(bfloat16 x);
 
 float __attribute__((overloadable))   __spirv_ocl_expm1(float a);
 float2 __attribute__((overloadable))  __spirv_ocl_expm1(float2 x);
@@ -1832,12 +1631,6 @@ half3 __attribute__((overloadable))    __spirv_ocl_expm1(half3 x);
 half4 __attribute__((overloadable))    __spirv_ocl_expm1(half4 x);
 half8 __attribute__((overloadable))    __spirv_ocl_expm1(half8 x);
 half16 __attribute__((overloadable))   __spirv_ocl_expm1(half16 x);
-bfloat __attribute__((overloadable))   __spirv_ocl_expm1(bfloat x);
-bfloat2 __attribute__((overloadable))  __spirv_ocl_expm1(bfloat2 x);
-bfloat3 __attribute__((overloadable))  __spirv_ocl_expm1(bfloat3 x);
-bfloat4 __attribute__((overloadable))  __spirv_ocl_expm1(bfloat4 x);
-bfloat8 __attribute__((overloadable))  __spirv_ocl_expm1(bfloat8 x);
-bfloat16 __attribute__((overloadable)) __spirv_ocl_expm1(bfloat16 x);
 
 float __attribute__((overloadable))   __spirv_ocl_fabs(float x);
 float2 __attribute__((overloadable))  __spirv_ocl_fabs(float2 x);
@@ -1859,12 +1652,6 @@ half3 __attribute__((overloadable))    __spirv_ocl_fabs(half3 x);
 half4 __attribute__((overloadable))    __spirv_ocl_fabs(half4 x);
 half8 __attribute__((overloadable))    __spirv_ocl_fabs(half8 x);
 half16 __attribute__((overloadable))   __spirv_ocl_fabs(half16 x);
-bfloat __attribute__((overloadable))   __spirv_ocl_fabs(bfloat x);
-bfloat2 __attribute__((overloadable))  __spirv_ocl_fabs(bfloat2 x);
-bfloat3 __attribute__((overloadable))  __spirv_ocl_fabs(bfloat3 x);
-bfloat4 __attribute__((overloadable))  __spirv_ocl_fabs(bfloat4 x);
-bfloat8 __attribute__((overloadable))  __spirv_ocl_fabs(bfloat8 x);
-bfloat16 __attribute__((overloadable)) __spirv_ocl_fabs(bfloat16 x);
 
 float __attribute__((overloadable))   __spirv_ocl_fdim(float x, float y);
 float2 __attribute__((overloadable))  __spirv_ocl_fdim(float2 x, float2 y);
@@ -1886,12 +1673,6 @@ half3 __attribute__((overloadable))    __spirv_ocl_fdim(half3 x, half3 y);
 half4 __attribute__((overloadable))    __spirv_ocl_fdim(half4 x, half4 y);
 half8 __attribute__((overloadable))    __spirv_ocl_fdim(half8 x, half8 y);
 half16 __attribute__((overloadable))   __spirv_ocl_fdim(half16 x, half16 y);
-bfloat __attribute__((overloadable))   __spirv_ocl_fdim(bfloat x, bfloat y);
-bfloat2 __attribute__((overloadable))  __spirv_ocl_fdim(bfloat2 x, bfloat2 y);
-bfloat3 __attribute__((overloadable))  __spirv_ocl_fdim(bfloat3 x, bfloat3 y);
-bfloat4 __attribute__((overloadable))  __spirv_ocl_fdim(bfloat4 x, bfloat4 y);
-bfloat8 __attribute__((overloadable))  __spirv_ocl_fdim(bfloat8 x, bfloat8 y);
-bfloat16 __attribute__((overloadable)) __spirv_ocl_fdim(bfloat16 x, bfloat16 y);
 
 float __attribute__((overloadable))   __spirv_ocl_floor(float x);
 float2 __attribute__((overloadable))  __spirv_ocl_floor(float2 x);
@@ -1913,12 +1694,6 @@ half3 __attribute__((overloadable))    __spirv_ocl_floor(half3 x);
 half4 __attribute__((overloadable))    __spirv_ocl_floor(half4 x);
 half8 __attribute__((overloadable))    __spirv_ocl_floor(half8 x);
 half16 __attribute__((overloadable))   __spirv_ocl_floor(half16 x);
-bfloat __attribute__((overloadable))   __spirv_ocl_floor(bfloat x);
-bfloat2 __attribute__((overloadable))  __spirv_ocl_floor(bfloat2 x);
-bfloat3 __attribute__((overloadable))  __spirv_ocl_floor(bfloat3 x);
-bfloat4 __attribute__((overloadable))  __spirv_ocl_floor(bfloat4 x);
-bfloat8 __attribute__((overloadable))  __spirv_ocl_floor(bfloat8 x);
-bfloat16 __attribute__((overloadable)) __spirv_ocl_floor(bfloat16 x);
 
 float __attribute__((overloadable))   __spirv_ocl_fma(float a, float b, float c);
 float2 __attribute__((overloadable))  __spirv_ocl_fma(float2 x, float2 y, float2 z);
@@ -1941,13 +1716,6 @@ half3 __attribute__((overloadable))   __spirv_ocl_fma(half3 x, half3 y, half3 z)
 half4 __attribute__((overloadable))   __spirv_ocl_fma(half4 x, half4 y, half4 z);
 half8 __attribute__((overloadable))   __spirv_ocl_fma(half8 x, half8 y, half8 z);
 half16 __attribute__((overloadable))  __spirv_ocl_fma(half16 x, half16 y, half16 z);
-bfloat __attribute__((overloadable))  __spirv_ocl_fma(bfloat a, bfloat b, bfloat c);
-bfloat2 __attribute__((overloadable)) __spirv_ocl_fma(bfloat2 a, bfloat2 b, bfloat2 c);
-bfloat3 __attribute__((overloadable)) __spirv_ocl_fma(bfloat3 a, bfloat3 b, bfloat3 c);
-bfloat4 __attribute__((overloadable)) __spirv_ocl_fma(bfloat4 a, bfloat4 b, bfloat4 c);
-bfloat8 __attribute__((overloadable)) __spirv_ocl_fma(bfloat8 a, bfloat8 b, bfloat8 c);
-bfloat16 __attribute__((overloadable))
-__spirv_ocl_fma(bfloat16 a, bfloat16 b, bfloat16 c);
 
 float __attribute__((overloadable))   __spirv_ocl_fmax(float x, float y);
 float2 __attribute__((overloadable))  __spirv_ocl_fmax(float2 x, float2 y);
@@ -1979,12 +1747,6 @@ half3 __attribute__((overloadable))    __spirv_ocl_fmax(half3 x, half3 y);
 half4 __attribute__((overloadable))    __spirv_ocl_fmax(half4 x, half4 y);
 half8 __attribute__((overloadable))    __spirv_ocl_fmax(half8 x, half8 y);
 half16 __attribute__((overloadable))   __spirv_ocl_fmax(half16 x, half16 y);
-bfloat __attribute__((overloadable))   __spirv_ocl_fmax(bfloat x, bfloat y);
-bfloat2 __attribute__((overloadable))  __spirv_ocl_fmax(bfloat2 x, bfloat2 y);
-bfloat3 __attribute__((overloadable))  __spirv_ocl_fmax(bfloat3 x, bfloat3 y);
-bfloat4 __attribute__((overloadable))  __spirv_ocl_fmax(bfloat4 x, bfloat4 y);
-bfloat8 __attribute__((overloadable))  __spirv_ocl_fmax(bfloat8 x, bfloat8 y);
-bfloat16 __attribute__((overloadable)) __spirv_ocl_fmax(bfloat16 x, bfloat16 y);
 
 half2 __attribute__((overloadable))  __spirv_ocl_fmax(half2 x, half y);
 half3 __attribute__((overloadable))  __spirv_ocl_fmax(half3 x, half y);
@@ -2012,12 +1774,6 @@ half3 __attribute__((overloadable))    __spirv_ocl_fmin(half3 x, half3 y);
 half4 __attribute__((overloadable))    __spirv_ocl_fmin(half4 x, half4 y);
 half8 __attribute__((overloadable))    __spirv_ocl_fmin(half8 x, half8 y);
 half16 __attribute__((overloadable))   __spirv_ocl_fmin(half16 x, half16 y);
-bfloat __attribute__((overloadable))   __spirv_ocl_fmin(bfloat x, bfloat y);
-bfloat2 __attribute__((overloadable))  __spirv_ocl_fmin(bfloat2 x, bfloat2 y);
-bfloat3 __attribute__((overloadable))  __spirv_ocl_fmin(bfloat3 x, bfloat3 y);
-bfloat4 __attribute__((overloadable))  __spirv_ocl_fmin(bfloat4 x, bfloat4 y);
-bfloat8 __attribute__((overloadable))  __spirv_ocl_fmin(bfloat8 x, bfloat8 y);
-bfloat16 __attribute__((overloadable)) __spirv_ocl_fmin(bfloat16 x, bfloat16 y);
 
 float __attribute__((overloadable))   __spirv_ocl_fmod(float xx, float yy);
 float2 __attribute__((overloadable))  __spirv_ocl_fmod(float2 x, float2 y);
@@ -2039,12 +1795,6 @@ half3 __attribute__((overloadable))    __spirv_ocl_fmod(half3 x, half3 y);
 half4 __attribute__((overloadable))    __spirv_ocl_fmod(half4 x, half4 y);
 half8 __attribute__((overloadable))    __spirv_ocl_fmod(half8 x, half8 y);
 half16 __attribute__((overloadable))   __spirv_ocl_fmod(half16 x, half16 y);
-bfloat __attribute__((overloadable))   __spirv_ocl_fmod(bfloat x, bfloat y);
-bfloat2 __attribute__((overloadable))  __spirv_ocl_fmod(bfloat2 x, bfloat2 y);
-bfloat3 __attribute__((overloadable))  __spirv_ocl_fmod(bfloat3 x, bfloat3 y);
-bfloat4 __attribute__((overloadable))  __spirv_ocl_fmod(bfloat4 x, bfloat4 y);
-bfloat8 __attribute__((overloadable))  __spirv_ocl_fmod(bfloat8 x, bfloat8 y);
-bfloat16 __attribute__((overloadable)) __spirv_ocl_fmod(bfloat16 x, bfloat16 y);
 
 /* Helper function for fmod */
 float  __builtin_spirv_fast_fmod_f32_f32(float xx, float yy);
@@ -2265,12 +2015,6 @@ half3 __attribute__((overloadable))    __spirv_ocl_hypot(half3 x, half3 y);
 half4 __attribute__((overloadable))    __spirv_ocl_hypot(half4 x, half4 y);
 half8 __attribute__((overloadable))    __spirv_ocl_hypot(half8 x, half8 y);
 half16 __attribute__((overloadable))   __spirv_ocl_hypot(half16 x, half16 y);
-bfloat __attribute__((overloadable))   __spirv_ocl_hypot(bfloat x, bfloat y);
-bfloat2 __attribute__((overloadable))  __spirv_ocl_hypot(bfloat2 x, bfloat2 y);
-bfloat3 __attribute__((overloadable))  __spirv_ocl_hypot(bfloat3 x, bfloat3 y);
-bfloat4 __attribute__((overloadable))  __spirv_ocl_hypot(bfloat4 x, bfloat4 y);
-bfloat8 __attribute__((overloadable))  __spirv_ocl_hypot(bfloat8 x, bfloat8 y);
-bfloat16 __attribute__((overloadable)) __spirv_ocl_hypot(bfloat16 x, bfloat16 y);
 
 int __attribute__((overloadable))   __spirv_ocl_ilogb(float x);
 int __attribute__((overloadable))   __spirv_ocl_ilogb(float x);
@@ -2293,12 +2037,6 @@ int3 __attribute__((overloadable))  __spirv_ocl_ilogb(half3 x);
 int4 __attribute__((overloadable))  __spirv_ocl_ilogb(half4 x);
 int8 __attribute__((overloadable))  __spirv_ocl_ilogb(half8 x);
 int16 __attribute__((overloadable)) __spirv_ocl_ilogb(half16 x);
-int __attribute__((overloadable))   __spirv_ocl_ilogb(bfloat x);
-int2 __attribute__((overloadable))  __spirv_ocl_ilogb(bfloat2 x);
-int3 __attribute__((overloadable))  __spirv_ocl_ilogb(bfloat3 x);
-int4 __attribute__((overloadable))  __spirv_ocl_ilogb(bfloat4 x);
-int8 __attribute__((overloadable))  __spirv_ocl_ilogb(bfloat8 x);
-int16 __attribute__((overloadable)) __spirv_ocl_ilogb(bfloat16 x);
 
 float __attribute__((overloadable))   __spirv_ocl_ldexp(float x, int n);
 float2 __attribute__((overloadable))  __spirv_ocl_ldexp(float2 x, int2 y);
@@ -2320,12 +2058,6 @@ half3 __attribute__((overloadable))    __spirv_ocl_ldexp(half3 x, int3 y);
 half4 __attribute__((overloadable))    __spirv_ocl_ldexp(half4 x, int4 y);
 half8 __attribute__((overloadable))    __spirv_ocl_ldexp(half8 x, int8 y);
 half16 __attribute__((overloadable))   __spirv_ocl_ldexp(half16 x, int16 y);
-bfloat __attribute__((overloadable))   __spirv_ocl_ldexp(bfloat x, int n);
-bfloat2 __attribute__((overloadable))  __spirv_ocl_ldexp(bfloat2 x, int2 n);
-bfloat3 __attribute__((overloadable))  __spirv_ocl_ldexp(bfloat3 x, int3 n);
-bfloat4 __attribute__((overloadable))  __spirv_ocl_ldexp(bfloat4 x, int4 n);
-bfloat8 __attribute__((overloadable))  __spirv_ocl_ldexp(bfloat8 x, int8 n);
-bfloat16 __attribute__((overloadable)) __spirv_ocl_ldexp(bfloat16 x, int16 n);
 
 float __attribute__((overloadable))   __spirv_ocl_lgamma(float x);
 float2 __attribute__((overloadable))  __spirv_ocl_lgamma(float2 x);
@@ -2347,12 +2079,6 @@ half3 __attribute__((overloadable))    __spirv_ocl_lgamma(half3 x);
 half4 __attribute__((overloadable))    __spirv_ocl_lgamma(half4 x);
 half8 __attribute__((overloadable))    __spirv_ocl_lgamma(half8 x);
 half16 __attribute__((overloadable))   __spirv_ocl_lgamma(half16 x);
-bfloat __attribute__((overloadable))   __spirv_ocl_lgamma(bfloat x);
-bfloat2 __attribute__((overloadable))  __spirv_ocl_lgamma(bfloat2 x);
-bfloat3 __attribute__((overloadable))  __spirv_ocl_lgamma(bfloat3 x);
-bfloat4 __attribute__((overloadable))  __spirv_ocl_lgamma(bfloat4 x);
-bfloat8 __attribute__((overloadable))  __spirv_ocl_lgamma(bfloat8 x);
-bfloat16 __attribute__((overloadable)) __spirv_ocl_lgamma(bfloat16 x);
 
 float __attribute__((overloadable))  __spirv_ocl_lgamma_r(float x, __global int* signp);
 float2 __attribute__((overloadable)) __spirv_ocl_lgamma_r(float2 x, __global int2* signp);
@@ -2490,12 +2216,6 @@ half3 __attribute__((overloadable))    __spirv_ocl_log(half3 x);
 half4 __attribute__((overloadable))    __spirv_ocl_log(half4 x);
 half8 __attribute__((overloadable))    __spirv_ocl_log(half8 x);
 half16 __attribute__((overloadable))   __spirv_ocl_log(half16 x);
-bfloat __attribute__((overloadable))   __spirv_ocl_log(bfloat x);
-bfloat2 __attribute__((overloadable))  __spirv_ocl_log(bfloat2 x);
-bfloat3 __attribute__((overloadable))  __spirv_ocl_log(bfloat3 x);
-bfloat4 __attribute__((overloadable))  __spirv_ocl_log(bfloat4 x);
-bfloat8 __attribute__((overloadable))  __spirv_ocl_log(bfloat8 x);
-bfloat16 __attribute__((overloadable)) __spirv_ocl_log(bfloat16 x);
 
 float __attribute__((overloadable))   __spirv_ocl_log1p(float a);
 float2 __attribute__((overloadable))  __spirv_ocl_log1p(float2 x);
@@ -2517,12 +2237,6 @@ half3 __attribute__((overloadable))    __spirv_ocl_log1p(half3 x);
 half4 __attribute__((overloadable))    __spirv_ocl_log1p(half4 x);
 half8 __attribute__((overloadable))    __spirv_ocl_log1p(half8 x);
 half16 __attribute__((overloadable))   __spirv_ocl_log1p(half16 x);
-bfloat __attribute__((overloadable))   __spirv_ocl_log1p(bfloat x);
-bfloat2 __attribute__((overloadable))  __spirv_ocl_log1p(bfloat2 x);
-bfloat3 __attribute__((overloadable))  __spirv_ocl_log1p(bfloat3 x);
-bfloat4 __attribute__((overloadable))  __spirv_ocl_log1p(bfloat4 x);
-bfloat8 __attribute__((overloadable))  __spirv_ocl_log1p(bfloat8 x);
-bfloat16 __attribute__((overloadable)) __spirv_ocl_log1p(bfloat16 x);
 
 float __attribute__((overloadable))   __spirv_ocl_log2(float x);
 float2 __attribute__((overloadable))  __spirv_ocl_log2(float2 x);
@@ -2544,12 +2258,6 @@ half3 __attribute__((overloadable))    __spirv_ocl_log2(half3 x);
 half4 __attribute__((overloadable))    __spirv_ocl_log2(half4 x);
 half8 __attribute__((overloadable))    __spirv_ocl_log2(half8 x);
 half16 __attribute__((overloadable))   __spirv_ocl_log2(half16 x);
-bfloat __attribute__((overloadable))   __spirv_ocl_log2(bfloat x);
-bfloat2 __attribute__((overloadable))  __spirv_ocl_log2(bfloat2 x);
-bfloat3 __attribute__((overloadable))  __spirv_ocl_log2(bfloat3 x);
-bfloat4 __attribute__((overloadable))  __spirv_ocl_log2(bfloat4 x);
-bfloat8 __attribute__((overloadable))  __spirv_ocl_log2(bfloat8 x);
-bfloat16 __attribute__((overloadable)) __spirv_ocl_log2(bfloat16 x);
 
 float __attribute__((overloadable))   __spirv_ocl_log10(float x);
 float2 __attribute__((overloadable))  __spirv_ocl_log10(float2 x);
@@ -2571,12 +2279,6 @@ half3 __attribute__((overloadable))    __spirv_ocl_log10(half3 x);
 half4 __attribute__((overloadable))    __spirv_ocl_log10(half4 x);
 half8 __attribute__((overloadable))    __spirv_ocl_log10(half8 x);
 half16 __attribute__((overloadable))   __spirv_ocl_log10(half16 x);
-bfloat __attribute__((overloadable))   __spirv_ocl_log10(bfloat x);
-bfloat2 __attribute__((overloadable))  __spirv_ocl_log10(bfloat2 x);
-bfloat3 __attribute__((overloadable))  __spirv_ocl_log10(bfloat3 x);
-bfloat4 __attribute__((overloadable))  __spirv_ocl_log10(bfloat4 x);
-bfloat8 __attribute__((overloadable))  __spirv_ocl_log10(bfloat8 x);
-bfloat16 __attribute__((overloadable)) __spirv_ocl_log10(bfloat16 x);
 
 float __attribute__((overloadable))   __spirv_ocl_logb(float x);
 float2 __attribute__((overloadable))  __spirv_ocl_logb(float2 x);
@@ -2598,12 +2300,6 @@ half3 __attribute__((overloadable))    __spirv_ocl_logb(half3 x);
 half4 __attribute__((overloadable))    __spirv_ocl_logb(half4 x);
 half8 __attribute__((overloadable))    __spirv_ocl_logb(half8 x);
 half16 __attribute__((overloadable))   __spirv_ocl_logb(half16 x);
-bfloat __attribute__((overloadable))   __spirv_ocl_logb(bfloat x);
-bfloat2 __attribute__((overloadable))  __spirv_ocl_logb(bfloat2 x);
-bfloat3 __attribute__((overloadable))  __spirv_ocl_logb(bfloat3 x);
-bfloat4 __attribute__((overloadable))  __spirv_ocl_logb(bfloat4 x);
-bfloat8 __attribute__((overloadable))  __spirv_ocl_logb(bfloat8 x);
-bfloat16 __attribute__((overloadable)) __spirv_ocl_logb(bfloat16 x);
 
 float __attribute__((overloadable))   __spirv_ocl_mad(float a, float b, float c);
 float2 __attribute__((overloadable))  __spirv_ocl_mad(float2 x, float2 y, float2 z);
@@ -2626,13 +2322,6 @@ half3 __attribute__((overloadable))   __spirv_ocl_mad(half3 x, half3 y, half3 z)
 half4 __attribute__((overloadable))   __spirv_ocl_mad(half4 x, half4 y, half4 z);
 half8 __attribute__((overloadable))   __spirv_ocl_mad(half8 x, half8 y, half8 z);
 half16 __attribute__((overloadable))  __spirv_ocl_mad(half16 x, half16 y, half16 z);
-bfloat __attribute__((overloadable))  __spirv_ocl_mad(bfloat a, bfloat b, bfloat c);
-bfloat2 __attribute__((overloadable)) __spirv_ocl_mad(bfloat2 a, bfloat2 b, bfloat2 c);
-bfloat3 __attribute__((overloadable)) __spirv_ocl_mad(bfloat3 a, bfloat3 b, bfloat3 c);
-bfloat4 __attribute__((overloadable)) __spirv_ocl_mad(bfloat4 a, bfloat4 b, bfloat4 c);
-bfloat8 __attribute__((overloadable)) __spirv_ocl_mad(bfloat8 a, bfloat8 b, bfloat8 c);
-bfloat16 __attribute__((overloadable))
-__spirv_ocl_mad(bfloat16 a, bfloat16 b, bfloat16 c);
 
 float __attribute__((overloadable))   __spirv_ocl_maxmag(float x, float y);
 float2 __attribute__((overloadable))  __spirv_ocl_maxmag(float2 x, float2 y);
@@ -2654,12 +2343,6 @@ half3 __attribute__((overloadable))    __spirv_ocl_maxmag(half3 x, half3 y);
 half4 __attribute__((overloadable))    __spirv_ocl_maxmag(half4 x, half4 y);
 half8 __attribute__((overloadable))    __spirv_ocl_maxmag(half8 x, half8 y);
 half16 __attribute__((overloadable))   __spirv_ocl_maxmag(half16 x, half16 y);
-bfloat __attribute__((overloadable))   __spirv_ocl_maxmag(bfloat x, bfloat y);
-bfloat2 __attribute__((overloadable))  __spirv_ocl_maxmag(bfloat2 x, bfloat2 y);
-bfloat3 __attribute__((overloadable))  __spirv_ocl_maxmag(bfloat3 x, bfloat3 y);
-bfloat4 __attribute__((overloadable))  __spirv_ocl_maxmag(bfloat4 x, bfloat4 y);
-bfloat8 __attribute__((overloadable))  __spirv_ocl_maxmag(bfloat8 x, bfloat8 y);
-bfloat16 __attribute__((overloadable)) __spirv_ocl_maxmag(bfloat16 x, bfloat16 y);
 
 float __attribute__((overloadable))   __spirv_ocl_minmag(float x, float y);
 float2 __attribute__((overloadable))  __spirv_ocl_minmag(float2 x, float2 y);
@@ -2681,12 +2364,6 @@ half3 __attribute__((overloadable))    __spirv_ocl_minmag(half3 x, half3 y);
 half4 __attribute__((overloadable))    __spirv_ocl_minmag(half4 x, half4 y);
 half8 __attribute__((overloadable))    __spirv_ocl_minmag(half8 x, half8 y);
 half16 __attribute__((overloadable))   __spirv_ocl_minmag(half16 x, half16 y);
-bfloat __attribute__((overloadable))   __spirv_ocl_minmag(bfloat x, bfloat y);
-bfloat2 __attribute__((overloadable))  __spirv_ocl_minmag(bfloat2 x, bfloat2 y);
-bfloat3 __attribute__((overloadable))  __spirv_ocl_minmag(bfloat3 x, bfloat3 y);
-bfloat4 __attribute__((overloadable))  __spirv_ocl_minmag(bfloat4 x, bfloat4 y);
-bfloat8 __attribute__((overloadable))  __spirv_ocl_minmag(bfloat8 x, bfloat8 y);
-bfloat16 __attribute__((overloadable)) __spirv_ocl_minmag(bfloat16 x, bfloat16 y);
 
 float __attribute__((overloadable))   __spirv_ocl_modf(float x, __global float* iptr);
 float2 __attribute__((overloadable))  __spirv_ocl_modf(float2 x, __global float2* iptr);
@@ -2803,13 +2480,6 @@ half3 __attribute__((overloadable))  __spirv_ocl_nan(short3 x);
 half4 __attribute__((overloadable))  __spirv_ocl_nan(short4 x);
 half8 __attribute__((overloadable))  __spirv_ocl_nan(short8 x);
 half16 __attribute__((overloadable)) __spirv_ocl_nan(short16 x);
-// Not implemented until SPIRV-LLVM Translator support generation of __spirv_ocl_nan_Rbfloat
-//bfloat __attribute__((overloadable))   __spirv_ocl_nan(short nancode);
-//bfloat2 __attribute__((overloadable))  __spirv_ocl_nan(short2 x);
-//bfloat3 __attribute__((overloadable))  __spirv_ocl_nan(short3 x);
-//bfloat4 __attribute__((overloadable))  __spirv_ocl_nan(short4 x);
-//bfloat8 __attribute__((overloadable))  __spirv_ocl_nan(short8 x);
-//bfloat16 __attribute__((overloadable)) __spirv_ocl_nan(short16 x);
 
 float __attribute__((overloadable))   __spirv_ocl_nextafter(float x, float y);
 float2 __attribute__((overloadable))  __spirv_ocl_nextafter(float2 x, float2 y);
@@ -2831,12 +2501,6 @@ half3 __attribute__((overloadable))    __spirv_ocl_nextafter(half3 x, half3 y);
 half4 __attribute__((overloadable))    __spirv_ocl_nextafter(half4 x, half4 y);
 half8 __attribute__((overloadable))    __spirv_ocl_nextafter(half8 x, half8 y);
 half16 __attribute__((overloadable))   __spirv_ocl_nextafter(half16 x, half16 y);
-bfloat __attribute__((overloadable))   __spirv_ocl_nextafter(bfloat x, bfloat y);
-bfloat2 __attribute__((overloadable))  __spirv_ocl_nextafter(bfloat2 x, bfloat2 y);
-bfloat3 __attribute__((overloadable))  __spirv_ocl_nextafter(bfloat3 x, bfloat3 y);
-bfloat4 __attribute__((overloadable))  __spirv_ocl_nextafter(bfloat4 x, bfloat4 y);
-bfloat8 __attribute__((overloadable))  __spirv_ocl_nextafter(bfloat8 x, bfloat8 y);
-bfloat16 __attribute__((overloadable)) __spirv_ocl_nextafter(bfloat16 x, bfloat16 y);
 
 float __attribute__((overloadable))   __spirv_ocl_pow(float x, float y);
 float2 __attribute__((overloadable))  __spirv_ocl_pow(float2 x, float2 y);
@@ -2858,12 +2522,6 @@ half3 __attribute__((overloadable))    __spirv_ocl_pow(half3 x, half3 y);
 half4 __attribute__((overloadable))    __spirv_ocl_pow(half4 x, half4 y);
 half8 __attribute__((overloadable))    __spirv_ocl_pow(half8 x, half8 y);
 half16 __attribute__((overloadable))   __spirv_ocl_pow(half16 x, half16 y);
-bfloat __attribute__((overloadable))   __spirv_ocl_pow(bfloat x, bfloat y);
-bfloat2 __attribute__((overloadable))  __spirv_ocl_pow(bfloat2 x, bfloat2 y);
-bfloat3 __attribute__((overloadable))  __spirv_ocl_pow(bfloat3 x, bfloat3 y);
-bfloat4 __attribute__((overloadable))  __spirv_ocl_pow(bfloat4 x, bfloat4 y);
-bfloat8 __attribute__((overloadable))  __spirv_ocl_pow(bfloat8 x, bfloat8 y);
-bfloat16 __attribute__((overloadable)) __spirv_ocl_pow(bfloat16 x, bfloat16 y);
 
 float __attribute__((overloadable))   __spirv_ocl_pown(float x, int y);
 float2 __attribute__((overloadable))  __spirv_ocl_pown(float2 x, int2 y);
@@ -2885,12 +2543,6 @@ half3 __attribute__((overloadable))    __spirv_ocl_pown(half3 x, int3 y);
 half4 __attribute__((overloadable))    __spirv_ocl_pown(half4 x, int4 y);
 half8 __attribute__((overloadable))    __spirv_ocl_pown(half8 x, int8 y);
 half16 __attribute__((overloadable))   __spirv_ocl_pown(half16 x, int16 y);
-bfloat __attribute__((overloadable))   __spirv_ocl_pown(bfloat x, int n);
-bfloat2 __attribute__((overloadable))  __spirv_ocl_pown(bfloat2 x, int2 n);
-bfloat3 __attribute__((overloadable))  __spirv_ocl_pown(bfloat3 x, int3 n);
-bfloat4 __attribute__((overloadable))  __spirv_ocl_pown(bfloat4 x, int4 n);
-bfloat8 __attribute__((overloadable))  __spirv_ocl_pown(bfloat8 x, int8 n);
-bfloat16 __attribute__((overloadable)) __spirv_ocl_pown(bfloat16 x, int16 n);
 
 float __attribute__((overloadable))   __spirv_ocl_powr(float x, float y);
 float2 __attribute__((overloadable))  __spirv_ocl_powr(float2 x, float2 y);
@@ -2912,12 +2564,6 @@ half3 __attribute__((overloadable))    __spirv_ocl_powr(half3 x, half3 y);
 half4 __attribute__((overloadable))    __spirv_ocl_powr(half4 x, half4 y);
 half8 __attribute__((overloadable))    __spirv_ocl_powr(half8 x, half8 y);
 half16 __attribute__((overloadable))   __spirv_ocl_powr(half16 x, half16 y);
-bfloat __attribute__((overloadable))   __spirv_ocl_powr(bfloat x, bfloat y);
-bfloat2 __attribute__((overloadable))  __spirv_ocl_powr(bfloat2 x, bfloat2 y);
-bfloat3 __attribute__((overloadable))  __spirv_ocl_powr(bfloat3 x, bfloat3 y);
-bfloat4 __attribute__((overloadable))  __spirv_ocl_powr(bfloat4 x, bfloat4 y);
-bfloat8 __attribute__((overloadable))  __spirv_ocl_powr(bfloat8 x, bfloat8 y);
-bfloat16 __attribute__((overloadable)) __spirv_ocl_powr(bfloat16 x, bfloat16 y);
 
 float __attribute__((overloadable))   __spirv_ocl_remainder(float x, float y);
 float2 __attribute__((overloadable))  __spirv_ocl_remainder(float2 x, float2 y);
@@ -2939,12 +2585,6 @@ half3 __attribute__((overloadable))    __spirv_ocl_remainder(half3 x, half3 y);
 half4 __attribute__((overloadable))    __spirv_ocl_remainder(half4 x, half4 y);
 half8 __attribute__((overloadable))    __spirv_ocl_remainder(half8 x, half8 y);
 half16 __attribute__((overloadable))   __spirv_ocl_remainder(half16 x, half16 y);
-bfloat __attribute__((overloadable))   __spirv_ocl_remainder(bfloat y, bfloat x);
-bfloat2 __attribute__((overloadable))  __spirv_ocl_remainder(bfloat2 x, bfloat2 y);
-bfloat3 __attribute__((overloadable))  __spirv_ocl_remainder(bfloat3 x, bfloat3 y);
-bfloat4 __attribute__((overloadable))  __spirv_ocl_remainder(bfloat4 x, bfloat4 y);
-bfloat8 __attribute__((overloadable))  __spirv_ocl_remainder(bfloat8 x, bfloat8 y);
-bfloat16 __attribute__((overloadable)) __spirv_ocl_remainder(bfloat16 x, bfloat16 y);
 
 float __attribute__((overloadable))
 __spirv_ocl_remquo(float xx, float yy, __global int* quo);
@@ -3118,12 +2758,6 @@ half3 __attribute__((overloadable))    __spirv_ocl_rint(half3 x);
 half4 __attribute__((overloadable))    __spirv_ocl_rint(half4 x);
 half8 __attribute__((overloadable))    __spirv_ocl_rint(half8 x);
 half16 __attribute__((overloadable))   __spirv_ocl_rint(half16 x);
-bfloat __attribute__((overloadable))   __spirv_ocl_rint(bfloat x);
-bfloat2 __attribute__((overloadable))  __spirv_ocl_rint(bfloat2 x);
-bfloat3 __attribute__((overloadable))  __spirv_ocl_rint(bfloat3 x);
-bfloat4 __attribute__((overloadable))  __spirv_ocl_rint(bfloat4 x);
-bfloat8 __attribute__((overloadable))  __spirv_ocl_rint(bfloat8 x);
-bfloat16 __attribute__((overloadable)) __spirv_ocl_rint(bfloat16 x);
 
 float __attribute__((overloadable))   __spirv_ocl_rootn(float x, int n);
 float2 __attribute__((overloadable))  __spirv_ocl_rootn(float2 x, int2 y);
@@ -3145,12 +2779,6 @@ half3 __attribute__((overloadable))    __spirv_ocl_rootn(half3 x, int3 y);
 half4 __attribute__((overloadable))    __spirv_ocl_rootn(half4 x, int4 y);
 half8 __attribute__((overloadable))    __spirv_ocl_rootn(half8 x, int8 y);
 half16 __attribute__((overloadable))   __spirv_ocl_rootn(half16 x, int16 y);
-bfloat __attribute__((overloadable))   __spirv_ocl_rootn(bfloat x, int n);
-bfloat2 __attribute__((overloadable))  __spirv_ocl_rootn(bfloat2 x, int2 n);
-bfloat3 __attribute__((overloadable))  __spirv_ocl_rootn(bfloat3 x, int3 n);
-bfloat4 __attribute__((overloadable))  __spirv_ocl_rootn(bfloat4 x, int4 n);
-bfloat8 __attribute__((overloadable))  __spirv_ocl_rootn(bfloat8 x, int8 n);
-bfloat16 __attribute__((overloadable)) __spirv_ocl_rootn(bfloat16 x, int16 n);
 
 float __attribute__((overloadable))   __spirv_ocl_round(float x);
 float2 __attribute__((overloadable))  __spirv_ocl_round(float2 x);
@@ -3172,12 +2800,6 @@ half3 __attribute__((overloadable))    __spirv_ocl_round(half3 x);
 half4 __attribute__((overloadable))    __spirv_ocl_round(half4 x);
 half8 __attribute__((overloadable))    __spirv_ocl_round(half8 x);
 half16 __attribute__((overloadable))   __spirv_ocl_round(half16 x);
-bfloat __attribute__((overloadable))   __spirv_ocl_round(bfloat x);
-bfloat2 __attribute__((overloadable))  __spirv_ocl_round(bfloat2 x);
-bfloat3 __attribute__((overloadable))  __spirv_ocl_round(bfloat3 x);
-bfloat4 __attribute__((overloadable))  __spirv_ocl_round(bfloat4 x);
-bfloat8 __attribute__((overloadable))  __spirv_ocl_round(bfloat8 x);
-bfloat16 __attribute__((overloadable)) __spirv_ocl_round(bfloat16 x);
 
 float __attribute__((overloadable))   __spirv_ocl_rsqrt(float x);
 float2 __attribute__((overloadable))  __spirv_ocl_rsqrt(float2 x);
@@ -3199,12 +2821,6 @@ half3 __attribute__((overloadable))    __spirv_ocl_rsqrt(half3 x);
 half4 __attribute__((overloadable))    __spirv_ocl_rsqrt(half4 x);
 half8 __attribute__((overloadable))    __spirv_ocl_rsqrt(half8 x);
 half16 __attribute__((overloadable))   __spirv_ocl_rsqrt(half16 x);
-bfloat __attribute__((overloadable))   __spirv_ocl_rsqrt(bfloat x);
-bfloat2 __attribute__((overloadable))  __spirv_ocl_rsqrt(bfloat2 x);
-bfloat3 __attribute__((overloadable))  __spirv_ocl_rsqrt(bfloat3 x);
-bfloat4 __attribute__((overloadable))  __spirv_ocl_rsqrt(bfloat4 x);
-bfloat8 __attribute__((overloadable))  __spirv_ocl_rsqrt(bfloat8 x);
-bfloat16 __attribute__((overloadable)) __spirv_ocl_rsqrt(bfloat16 x);
 
 float __attribute__((overloadable))   __spirv_ocl_sin(float x);
 float2 __attribute__((overloadable))  __spirv_ocl_sin(float2 x);
@@ -3226,12 +2842,6 @@ half3 __attribute__((overloadable))    __spirv_ocl_sin(half3 x);
 half4 __attribute__((overloadable))    __spirv_ocl_sin(half4 x);
 half8 __attribute__((overloadable))    __spirv_ocl_sin(half8 x);
 half16 __attribute__((overloadable))   __spirv_ocl_sin(half16 x);
-bfloat __attribute__((overloadable))   __spirv_ocl_sin(bfloat x);
-bfloat2 __attribute__((overloadable))  __spirv_ocl_sin(bfloat2 x);
-bfloat3 __attribute__((overloadable))  __spirv_ocl_sin(bfloat3 x);
-bfloat4 __attribute__((overloadable))  __spirv_ocl_sin(bfloat4 x);
-bfloat8 __attribute__((overloadable))  __spirv_ocl_sin(bfloat8 x);
-bfloat16 __attribute__((overloadable)) __spirv_ocl_sin(bfloat16 x);
 
 float __attribute__((overloadable)) __spirv_ocl_sincos(float x, __private float* cosval);
 float __attribute__((overloadable)) __spirv_ocl_sincos(float x, __global float* cosval);
@@ -3377,12 +2987,6 @@ half3 __attribute__((overloadable))    __spirv_ocl_sinh(half3 x);
 half4 __attribute__((overloadable))    __spirv_ocl_sinh(half4 x);
 half8 __attribute__((overloadable))    __spirv_ocl_sinh(half8 x);
 half16 __attribute__((overloadable))   __spirv_ocl_sinh(half16 x);
-bfloat __attribute__((overloadable))   __spirv_ocl_sinh(bfloat x);
-bfloat2 __attribute__((overloadable))  __spirv_ocl_sinh(bfloat2 x);
-bfloat3 __attribute__((overloadable))  __spirv_ocl_sinh(bfloat3 x);
-bfloat4 __attribute__((overloadable))  __spirv_ocl_sinh(bfloat4 x);
-bfloat8 __attribute__((overloadable))  __spirv_ocl_sinh(bfloat8 x);
-bfloat16 __attribute__((overloadable)) __spirv_ocl_sinh(bfloat16 x);
 
 float __attribute__((overloadable))   __spirv_ocl_sinpi(float x);
 float2 __attribute__((overloadable))  __spirv_ocl_sinpi(float2 x);
@@ -3404,12 +3008,6 @@ half3 __attribute__((overloadable))    __spirv_ocl_sinpi(half3 x);
 half4 __attribute__((overloadable))    __spirv_ocl_sinpi(half4 x);
 half8 __attribute__((overloadable))    __spirv_ocl_sinpi(half8 x);
 half16 __attribute__((overloadable))   __spirv_ocl_sinpi(half16 x);
-bfloat __attribute__((overloadable))   __spirv_ocl_sinpi(bfloat x);
-bfloat2 __attribute__((overloadable))  __spirv_ocl_sinpi(bfloat2 x);
-bfloat3 __attribute__((overloadable))  __spirv_ocl_sinpi(bfloat3 x);
-bfloat4 __attribute__((overloadable))  __spirv_ocl_sinpi(bfloat4 x);
-bfloat8 __attribute__((overloadable))  __spirv_ocl_sinpi(bfloat8 x);
-bfloat16 __attribute__((overloadable)) __spirv_ocl_sinpi(bfloat16 x);
 
 float __attribute__((overloadable))   __spirv_ocl_sqrt(float x);
 float2 __attribute__((overloadable))  __spirv_ocl_sqrt(float2 x);
@@ -3431,12 +3029,6 @@ half3 __attribute__((overloadable))    __spirv_ocl_sqrt(half3 x);
 half4 __attribute__((overloadable))    __spirv_ocl_sqrt(half4 x);
 half8 __attribute__((overloadable))    __spirv_ocl_sqrt(half8 x);
 half16 __attribute__((overloadable))   __spirv_ocl_sqrt(half16 x);
-bfloat __attribute__((overloadable))   __spirv_ocl_sqrt(bfloat x);
-bfloat2 __attribute__((overloadable))  __spirv_ocl_sqrt(bfloat2 x);
-bfloat3 __attribute__((overloadable))  __spirv_ocl_sqrt(bfloat3 x);
-bfloat4 __attribute__((overloadable))  __spirv_ocl_sqrt(bfloat4 x);
-bfloat8 __attribute__((overloadable))  __spirv_ocl_sqrt(bfloat8 x);
-bfloat16 __attribute__((overloadable)) __spirv_ocl_sqrt(bfloat16 x);
 
 float __attribute__((overloadable))   __spirv_ocl_sqrt_cr(float a);
 float2 __attribute__((overloadable))  __spirv_ocl_sqrt_cr(float2 x);
@@ -3479,12 +3071,6 @@ half3 __attribute__((overloadable))    __spirv_ocl_tan(half3 x);
 half4 __attribute__((overloadable))    __spirv_ocl_tan(half4 x);
 half8 __attribute__((overloadable))    __spirv_ocl_tan(half8 x);
 half16 __attribute__((overloadable))   __spirv_ocl_tan(half16 x);
-bfloat __attribute__((overloadable))   __spirv_ocl_tan(bfloat x);
-bfloat2 __attribute__((overloadable))  __spirv_ocl_tan(bfloat2 x);
-bfloat3 __attribute__((overloadable))  __spirv_ocl_tan(bfloat3 x);
-bfloat4 __attribute__((overloadable))  __spirv_ocl_tan(bfloat4 x);
-bfloat8 __attribute__((overloadable))  __spirv_ocl_tan(bfloat8 x);
-bfloat16 __attribute__((overloadable)) __spirv_ocl_tan(bfloat16 x);
 
 float __attribute__((overloadable))   __spirv_ocl_tanh(float x);
 float2 __attribute__((overloadable))  __spirv_ocl_tanh(float2 x);
@@ -3506,12 +3092,6 @@ half3 __attribute__((overloadable))    __spirv_ocl_tanh(half3 x);
 half4 __attribute__((overloadable))    __spirv_ocl_tanh(half4 x);
 half8 __attribute__((overloadable))    __spirv_ocl_tanh(half8 x);
 half16 __attribute__((overloadable))   __spirv_ocl_tanh(half16 x);
-bfloat __attribute__((overloadable))   __spirv_ocl_tanh(bfloat x);
-bfloat2 __attribute__((overloadable))  __spirv_ocl_tanh(bfloat2 x);
-bfloat3 __attribute__((overloadable))  __spirv_ocl_tanh(bfloat3 x);
-bfloat4 __attribute__((overloadable))  __spirv_ocl_tanh(bfloat4 x);
-bfloat8 __attribute__((overloadable))  __spirv_ocl_tanh(bfloat8 x);
-bfloat16 __attribute__((overloadable)) __spirv_ocl_tanh(bfloat16 x);
 
 float __attribute__((overloadable))   __spirv_ocl_sigm(float x);
 float2 __attribute__((overloadable))  __spirv_ocl_sigm(float2 x);
@@ -3547,12 +3127,6 @@ half3 __attribute__((overloadable))    __spirv_ocl_tanpi(half3 x);
 half4 __attribute__((overloadable))    __spirv_ocl_tanpi(half4 x);
 half8 __attribute__((overloadable))    __spirv_ocl_tanpi(half8 x);
 half16 __attribute__((overloadable))   __spirv_ocl_tanpi(half16 x);
-bfloat __attribute__((overloadable))   __spirv_ocl_tanpi(bfloat x);
-bfloat2 __attribute__((overloadable))  __spirv_ocl_tanpi(bfloat2 x);
-bfloat3 __attribute__((overloadable))  __spirv_ocl_tanpi(bfloat3 x);
-bfloat4 __attribute__((overloadable))  __spirv_ocl_tanpi(bfloat4 x);
-bfloat8 __attribute__((overloadable))  __spirv_ocl_tanpi(bfloat8 x);
-bfloat16 __attribute__((overloadable)) __spirv_ocl_tanpi(bfloat16 x);
 
 float __attribute__((overloadable))   __spirv_ocl_tgamma(float x);
 float2 __attribute__((overloadable))  __spirv_ocl_tgamma(float2 x);
@@ -3574,12 +3148,6 @@ half3 __attribute__((overloadable))    __spirv_ocl_tgamma(half3 x);
 half4 __attribute__((overloadable))    __spirv_ocl_tgamma(half4 x);
 half8 __attribute__((overloadable))    __spirv_ocl_tgamma(half8 x);
 half16 __attribute__((overloadable))   __spirv_ocl_tgamma(half16 x);
-bfloat __attribute__((overloadable))   __spirv_ocl_tgamma(bfloat x);
-bfloat2 __attribute__((overloadable))  __spirv_ocl_tgamma(bfloat2 x);
-bfloat3 __attribute__((overloadable))  __spirv_ocl_tgamma(bfloat3 x);
-bfloat4 __attribute__((overloadable))  __spirv_ocl_tgamma(bfloat4 x);
-bfloat8 __attribute__((overloadable))  __spirv_ocl_tgamma(bfloat8 x);
-bfloat16 __attribute__((overloadable)) __spirv_ocl_tgamma(bfloat16 x);
 
 float __attribute__((overloadable))   __spirv_ocl_trunc(float x);
 float2 __attribute__((overloadable))  __spirv_ocl_trunc(float2 x);
@@ -3601,12 +3169,6 @@ half3 __attribute__((overloadable))    __spirv_ocl_trunc(half3 x);
 half4 __attribute__((overloadable))    __spirv_ocl_trunc(half4 x);
 half8 __attribute__((overloadable))    __spirv_ocl_trunc(half8 x);
 half16 __attribute__((overloadable))   __spirv_ocl_trunc(half16 x);
-bfloat __attribute__((overloadable))   __spirv_ocl_trunc(bfloat x);
-bfloat2 __attribute__((overloadable))  __spirv_ocl_trunc(bfloat2 x);
-bfloat3 __attribute__((overloadable))  __spirv_ocl_trunc(bfloat3 x);
-bfloat4 __attribute__((overloadable))  __spirv_ocl_trunc(bfloat4 x);
-bfloat8 __attribute__((overloadable))  __spirv_ocl_trunc(bfloat8 x);
-bfloat16 __attribute__((overloadable)) __spirv_ocl_trunc(bfloat16 x);
 
 //
 //  Native
@@ -3634,12 +3196,6 @@ half3 __attribute__((overloadable))    __spirv_ocl_native_cos(half3 x);
 half4 __attribute__((overloadable))    __spirv_ocl_native_cos(half4 x);
 half8 __attribute__((overloadable))    __spirv_ocl_native_cos(half8 x);
 half16 __attribute__((overloadable))   __spirv_ocl_native_cos(half16 x);
-bfloat __attribute__((overloadable))   __spirv_ocl_native_cos(bfloat x);
-bfloat2 __attribute__((overloadable))  __spirv_ocl_native_cos(bfloat2 x);
-bfloat3 __attribute__((overloadable))  __spirv_ocl_native_cos(bfloat3 x);
-bfloat4 __attribute__((overloadable))  __spirv_ocl_native_cos(bfloat4 x);
-bfloat8 __attribute__((overloadable))  __spirv_ocl_native_cos(bfloat8 x);
-bfloat16 __attribute__((overloadable)) __spirv_ocl_native_cos(bfloat16 x);
 
 float __attribute__((overloadable))   __spirv_ocl_native_divide(float x, float y);
 float2 __attribute__((overloadable))  __spirv_ocl_native_divide(float2 x, float2 y);
@@ -3662,13 +3218,6 @@ half4 __attribute__((overloadable))  __spirv_ocl_native_divide(half4 x, half4 y)
 half8 __attribute__((overloadable))  __spirv_ocl_native_divide(half8 x, half8 y);
 half16 __attribute__((overloadable)) __spirv_ocl_native_divide(half16 x, half16 y);
 
-bfloat __attribute__((overloadable))   __spirv_ocl_native_divide(bfloat x, bfloat y);
-bfloat2 __attribute__((overloadable))  __spirv_ocl_native_divide(bfloat2 x, bfloat2 y);
-bfloat3 __attribute__((overloadable))  __spirv_ocl_native_divide(bfloat3 x, bfloat3 y);
-bfloat4 __attribute__((overloadable))  __spirv_ocl_native_divide(bfloat4 x, bfloat4 y);
-bfloat8 __attribute__((overloadable))  __spirv_ocl_native_divide(bfloat8 x, bfloat8 y);
-bfloat16 __attribute__((overloadable)) __spirv_ocl_native_divide(bfloat16 x, bfloat16 y);
-
 float __attribute__((overloadable))   __spirv_ocl_native_exp(float x);
 float2 __attribute__((overloadable))  __spirv_ocl_native_exp(float2 x);
 float3 __attribute__((overloadable))  __spirv_ocl_native_exp(float3 x);
@@ -3689,12 +3238,6 @@ half3 __attribute__((overloadable))    __spirv_ocl_native_exp(half3 x);
 half4 __attribute__((overloadable))    __spirv_ocl_native_exp(half4 x);
 half8 __attribute__((overloadable))    __spirv_ocl_native_exp(half8 x);
 half16 __attribute__((overloadable))   __spirv_ocl_native_exp(half16 x);
-bfloat __attribute__((overloadable))   __spirv_ocl_native_exp(bfloat x);
-bfloat2 __attribute__((overloadable))  __spirv_ocl_native_exp(bfloat2 x);
-bfloat3 __attribute__((overloadable))  __spirv_ocl_native_exp(bfloat3 x);
-bfloat4 __attribute__((overloadable))  __spirv_ocl_native_exp(bfloat4 x);
-bfloat8 __attribute__((overloadable))  __spirv_ocl_native_exp(bfloat8 x);
-bfloat16 __attribute__((overloadable)) __spirv_ocl_native_exp(bfloat16 x);
 
 float __attribute__((overloadable))   __spirv_ocl_native_exp2(float x);
 float2 __attribute__((overloadable))  __spirv_ocl_native_exp2(float2 x);
@@ -3716,12 +3259,6 @@ half3 __attribute__((overloadable))    __spirv_ocl_native_exp2(half3 x);
 half4 __attribute__((overloadable))    __spirv_ocl_native_exp2(half4 x);
 half8 __attribute__((overloadable))    __spirv_ocl_native_exp2(half8 x);
 half16 __attribute__((overloadable))   __spirv_ocl_native_exp2(half16 x);
-bfloat __attribute__((overloadable))   __spirv_ocl_native_exp2(bfloat x);
-bfloat2 __attribute__((overloadable))  __spirv_ocl_native_exp2(bfloat2 x);
-bfloat3 __attribute__((overloadable))  __spirv_ocl_native_exp2(bfloat3 x);
-bfloat4 __attribute__((overloadable))  __spirv_ocl_native_exp2(bfloat4 x);
-bfloat8 __attribute__((overloadable))  __spirv_ocl_native_exp2(bfloat8 x);
-bfloat16 __attribute__((overloadable)) __spirv_ocl_native_exp2(bfloat16 x);
 
 float __attribute__((overloadable))   __spirv_ocl_native_exp10(float x);
 float2 __attribute__((overloadable))  __spirv_ocl_native_exp10(float2 x);
@@ -3743,12 +3280,6 @@ half3 __attribute__((overloadable))    __spirv_ocl_native_exp10(half3 x);
 half4 __attribute__((overloadable))    __spirv_ocl_native_exp10(half4 x);
 half8 __attribute__((overloadable))    __spirv_ocl_native_exp10(half8 x);
 half16 __attribute__((overloadable))   __spirv_ocl_native_exp10(half16 x);
-bfloat __attribute__((overloadable))   __spirv_ocl_native_exp10(bfloat x);
-bfloat2 __attribute__((overloadable))  __spirv_ocl_native_exp10(bfloat2 x);
-bfloat3 __attribute__((overloadable))  __spirv_ocl_native_exp10(bfloat3 x);
-bfloat4 __attribute__((overloadable))  __spirv_ocl_native_exp10(bfloat4 x);
-bfloat8 __attribute__((overloadable))  __spirv_ocl_native_exp10(bfloat8 x);
-bfloat16 __attribute__((overloadable)) __spirv_ocl_native_exp10(bfloat16 x);
 
 float __attribute__((overloadable))   __spirv_ocl_native_log(float x);
 float2 __attribute__((overloadable))  __spirv_ocl_native_log(float2 x);
@@ -3770,12 +3301,6 @@ half3 __attribute__((overloadable))    __spirv_ocl_native_log(half3 x);
 half4 __attribute__((overloadable))    __spirv_ocl_native_log(half4 x);
 half8 __attribute__((overloadable))    __spirv_ocl_native_log(half8 x);
 half16 __attribute__((overloadable))   __spirv_ocl_native_log(half16 x);
-bfloat __attribute__((overloadable))   __spirv_ocl_native_log(bfloat x);
-bfloat2 __attribute__((overloadable))  __spirv_ocl_native_log(bfloat2 x);
-bfloat3 __attribute__((overloadable))  __spirv_ocl_native_log(bfloat3 x);
-bfloat4 __attribute__((overloadable))  __spirv_ocl_native_log(bfloat4 x);
-bfloat8 __attribute__((overloadable))  __spirv_ocl_native_log(bfloat8 x);
-bfloat16 __attribute__((overloadable)) __spirv_ocl_native_log(bfloat16 x);
 
 float __attribute__((overloadable))   __spirv_ocl_native_log2(float x);
 float2 __attribute__((overloadable))  __spirv_ocl_native_log2(float2 x);
@@ -3797,12 +3322,6 @@ half3 __attribute__((overloadable))    __spirv_ocl_native_log2(half3 x);
 half4 __attribute__((overloadable))    __spirv_ocl_native_log2(half4 x);
 half8 __attribute__((overloadable))    __spirv_ocl_native_log2(half8 x);
 half16 __attribute__((overloadable))   __spirv_ocl_native_log2(half16 x);
-bfloat __attribute__((overloadable))   __spirv_ocl_native_log2(bfloat x);
-bfloat2 __attribute__((overloadable))  __spirv_ocl_native_log2(bfloat2 x);
-bfloat3 __attribute__((overloadable))  __spirv_ocl_native_log2(bfloat3 x);
-bfloat4 __attribute__((overloadable))  __spirv_ocl_native_log2(bfloat4 x);
-bfloat8 __attribute__((overloadable))  __spirv_ocl_native_log2(bfloat8 x);
-bfloat16 __attribute__((overloadable)) __spirv_ocl_native_log2(bfloat16 x);
 
 float __attribute__((overloadable))   __spirv_ocl_native_log10(float x);
 float2 __attribute__((overloadable))  __spirv_ocl_native_log10(float2 x);
@@ -3824,12 +3343,6 @@ half3 __attribute__((overloadable))    __spirv_ocl_native_log10(half3 x);
 half4 __attribute__((overloadable))    __spirv_ocl_native_log10(half4 x);
 half8 __attribute__((overloadable))    __spirv_ocl_native_log10(half8 x);
 half16 __attribute__((overloadable))   __spirv_ocl_native_log10(half16 x);
-bfloat __attribute__((overloadable))   __spirv_ocl_native_log10(bfloat x);
-bfloat2 __attribute__((overloadable))  __spirv_ocl_native_log10(bfloat2 x);
-bfloat3 __attribute__((overloadable))  __spirv_ocl_native_log10(bfloat3 x);
-bfloat4 __attribute__((overloadable))  __spirv_ocl_native_log10(bfloat4 x);
-bfloat8 __attribute__((overloadable))  __spirv_ocl_native_log10(bfloat8 x);
-bfloat16 __attribute__((overloadable)) __spirv_ocl_native_log10(bfloat16 x);
 
 float __attribute__((overloadable))   __spirv_ocl_native_powr(float x, float y);
 float2 __attribute__((overloadable))  __spirv_ocl_native_powr(float2 x, float2 y);
@@ -3851,12 +3364,6 @@ half3 __attribute__((overloadable))    __spirv_ocl_native_powr(half3 x, half3 y)
 half4 __attribute__((overloadable))    __spirv_ocl_native_powr(half4 x, half4 y);
 half8 __attribute__((overloadable))    __spirv_ocl_native_powr(half8 x, half8 y);
 half16 __attribute__((overloadable))   __spirv_ocl_native_powr(half16 x, half16 y);
-bfloat __attribute__((overloadable))   __spirv_ocl_native_powr(bfloat x, bfloat y);
-bfloat2 __attribute__((overloadable))  __spirv_ocl_native_powr(bfloat2 x, bfloat2 y);
-bfloat3 __attribute__((overloadable))  __spirv_ocl_native_powr(bfloat3 x, bfloat3 y);
-bfloat4 __attribute__((overloadable))  __spirv_ocl_native_powr(bfloat4 x, bfloat4 y);
-bfloat8 __attribute__((overloadable))  __spirv_ocl_native_powr(bfloat8 x, bfloat8 y);
-bfloat16 __attribute__((overloadable)) __spirv_ocl_native_powr(bfloat16 x, bfloat16 y);
 
 float __attribute__((overloadable))   __spirv_ocl_native_recip(float x);
 float2 __attribute__((overloadable))  __spirv_ocl_native_recip(float2 x);
@@ -3878,12 +3385,6 @@ half3 __attribute__((overloadable))    __spirv_ocl_native_recip(half3 x);
 half4 __attribute__((overloadable))    __spirv_ocl_native_recip(half4 x);
 half8 __attribute__((overloadable))    __spirv_ocl_native_recip(half8 x);
 half16 __attribute__((overloadable))   __spirv_ocl_native_recip(half16 x);
-bfloat __attribute__((overloadable))   __spirv_ocl_native_recip(bfloat x);
-bfloat2 __attribute__((overloadable))  __spirv_ocl_native_recip(bfloat2 x);
-bfloat3 __attribute__((overloadable))  __spirv_ocl_native_recip(bfloat3 x);
-bfloat4 __attribute__((overloadable))  __spirv_ocl_native_recip(bfloat4 x);
-bfloat8 __attribute__((overloadable))  __spirv_ocl_native_recip(bfloat8 x);
-bfloat16 __attribute__((overloadable)) __spirv_ocl_native_recip(bfloat16 x);
 
 float __attribute__((overloadable))   __spirv_ocl_native_rsqrt(float x);
 float2 __attribute__((overloadable))  __spirv_ocl_native_rsqrt(float2 x);
@@ -3905,12 +3406,6 @@ half3 __attribute__((overloadable))    __spirv_ocl_native_rsqrt(half3 x);
 half4 __attribute__((overloadable))    __spirv_ocl_native_rsqrt(half4 x);
 half8 __attribute__((overloadable))    __spirv_ocl_native_rsqrt(half8 x);
 half16 __attribute__((overloadable))   __spirv_ocl_native_rsqrt(half16 x);
-bfloat __attribute__((overloadable))   __spirv_ocl_native_rsqrt(bfloat x);
-bfloat2 __attribute__((overloadable))  __spirv_ocl_native_rsqrt(bfloat2 x);
-bfloat3 __attribute__((overloadable))  __spirv_ocl_native_rsqrt(bfloat3 x);
-bfloat4 __attribute__((overloadable))  __spirv_ocl_native_rsqrt(bfloat4 x);
-bfloat8 __attribute__((overloadable))  __spirv_ocl_native_rsqrt(bfloat8 x);
-bfloat16 __attribute__((overloadable)) __spirv_ocl_native_rsqrt(bfloat16 x);
 
 float __attribute__((overloadable))   __spirv_ocl_native_sin(float x);
 float2 __attribute__((overloadable))  __spirv_ocl_native_sin(float2 x);
@@ -3932,12 +3427,6 @@ half3 __attribute__((overloadable))    __spirv_ocl_native_sin(half3 x);
 half4 __attribute__((overloadable))    __spirv_ocl_native_sin(half4 x);
 half8 __attribute__((overloadable))    __spirv_ocl_native_sin(half8 x);
 half16 __attribute__((overloadable))   __spirv_ocl_native_sin(half16 x);
-bfloat __attribute__((overloadable))   __spirv_ocl_native_sin(bfloat x);
-bfloat2 __attribute__((overloadable))  __spirv_ocl_native_sin(bfloat2 x);
-bfloat3 __attribute__((overloadable))  __spirv_ocl_native_sin(bfloat3 x);
-bfloat4 __attribute__((overloadable))  __spirv_ocl_native_sin(bfloat4 x);
-bfloat8 __attribute__((overloadable))  __spirv_ocl_native_sin(bfloat8 x);
-bfloat16 __attribute__((overloadable)) __spirv_ocl_native_sin(bfloat16 x);
 
 float __attribute__((overloadable))   __spirv_ocl_native_sqrt(float x);
 float2 __attribute__((overloadable))  __spirv_ocl_native_sqrt(float2 x);
@@ -3959,12 +3448,6 @@ half3 __attribute__((overloadable))    __spirv_ocl_native_sqrt(half3 x);
 half4 __attribute__((overloadable))    __spirv_ocl_native_sqrt(half4 x);
 half8 __attribute__((overloadable))    __spirv_ocl_native_sqrt(half8 x);
 half16 __attribute__((overloadable))   __spirv_ocl_native_sqrt(half16 x);
-bfloat __attribute__((overloadable))   __spirv_ocl_native_sqrt(bfloat x);
-bfloat2 __attribute__((overloadable))  __spirv_ocl_native_sqrt(bfloat2 x);
-bfloat3 __attribute__((overloadable))  __spirv_ocl_native_sqrt(bfloat3 x);
-bfloat4 __attribute__((overloadable))  __spirv_ocl_native_sqrt(bfloat4 x);
-bfloat8 __attribute__((overloadable))  __spirv_ocl_native_sqrt(bfloat8 x);
-bfloat16 __attribute__((overloadable)) __spirv_ocl_native_sqrt(bfloat16 x);
 
 float __attribute__((overloadable))   __spirv_ocl_native_tan(float x);
 float2 __attribute__((overloadable))  __spirv_ocl_native_tan(float2 x);
@@ -3986,12 +3469,6 @@ half3 __attribute__((overloadable))    __spirv_ocl_native_tan(half3 x);
 half4 __attribute__((overloadable))    __spirv_ocl_native_tan(half4 x);
 half8 __attribute__((overloadable))    __spirv_ocl_native_tan(half8 x);
 half16 __attribute__((overloadable))   __spirv_ocl_native_tan(half16 x);
-bfloat __attribute__((overloadable))   __spirv_ocl_native_tan(bfloat x);
-bfloat2 __attribute__((overloadable))  __spirv_ocl_native_tan(bfloat2 x);
-bfloat3 __attribute__((overloadable))  __spirv_ocl_native_tan(bfloat3 x);
-bfloat4 __attribute__((overloadable))  __spirv_ocl_native_tan(bfloat4 x);
-bfloat8 __attribute__((overloadable))  __spirv_ocl_native_tan(bfloat8 x);
-bfloat16 __attribute__((overloadable)) __spirv_ocl_native_tan(bfloat16 x);
 
 //
 //  Relational
@@ -4049,17 +3526,6 @@ half3 __attribute__((overloadable))  __spirv_ocl_bitselect(half3 x, half3 y, hal
 half4 __attribute__((overloadable))  __spirv_ocl_bitselect(half4 x, half4 y, half4 z);
 half8 __attribute__((overloadable))  __spirv_ocl_bitselect(half8 x, half8 y, half8 z);
 half16 __attribute__((overloadable)) __spirv_ocl_bitselect(half16 x, half16 y, half16 z);
-bfloat __attribute__((overloadable)) __spirv_ocl_bitselect(bfloat a, bfloat b, bfloat c);
-bfloat2 __attribute__((overloadable))
-__spirv_ocl_bitselect(bfloat2 x, bfloat2 y, bfloat2 z);
-bfloat3 __attribute__((overloadable))
-__spirv_ocl_bitselect(bfloat3 x, bfloat3 y, bfloat3 z);
-bfloat4 __attribute__((overloadable))
-__spirv_ocl_bitselect(bfloat4 x, bfloat4 y, bfloat4 z);
-bfloat8 __attribute__((overloadable))
-__spirv_ocl_bitselect(bfloat8 x, bfloat8 y, bfloat8 z);
-bfloat16 __attribute__((overloadable))
-__spirv_ocl_bitselect(bfloat16 x, bfloat16 y, bfloat16 z);
 
 char __attribute__((overloadable))  __spirv_ocl_select(char a, char b, char c);
 short __attribute__((overloadable)) __spirv_ocl_select(short a, short b, short c);
@@ -4093,13 +3559,5 @@ half8 __attribute__((overloadable))  __spirv_ocl_select(half8 a, half8 b, short8
 half16 __attribute__((overloadable)) __spirv_ocl_select(half16 a, half16 b, short16 c);
 
 #endif // defined(cl_khr_fp16)
-
-bfloat __attribute__((overloadable))  __spirv_ocl_select(bfloat a, bfloat b, short c);
-bfloat2 __attribute__((overloadable)) __spirv_ocl_select(bfloat2 a, bfloat2 b, short2 c);
-bfloat3 __attribute__((overloadable)) __spirv_ocl_select(bfloat3 a, bfloat3 b, short3 c);
-bfloat4 __attribute__((overloadable)) __spirv_ocl_select(bfloat4 a, bfloat4 b, short4 c);
-bfloat8 __attribute__((overloadable)) __spirv_ocl_select(bfloat8 a, bfloat8 b, short8 c);
-bfloat16 __attribute__((overloadable))
-__spirv_ocl_select(bfloat16 a, bfloat16 b, short16 c);
 
 #endif // __SPIRV_MATH_H__

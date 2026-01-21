@@ -12,7 +12,7 @@ SPDX-License-Identifier: MIT
 //*****************************************************************************/
 
 #if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
-static Scope_t get_spirv_mem_scope(memory_scope scope)
+static inline Scope_t get_spirv_mem_scope(memory_scope scope)
 {
     switch (scope)
     {
@@ -32,7 +32,7 @@ static Scope_t get_spirv_mem_scope(memory_scope scope)
 }
 #endif // __OPENCL_C_VERSION__ >= CL_VERSION_2_0
 
-static uint get_spirv_mem_fence(cl_mem_fence_flags flag)
+static inline uint get_spirv_mem_fence(cl_mem_fence_flags flag)
 {
     uint result = 0;
 
@@ -57,7 +57,7 @@ static uint get_spirv_mem_fence(cl_mem_fence_flags flag)
 }
 
 #if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
-static uint get_spirv_mem_order(memory_order order)
+static inline uint get_spirv_mem_order(memory_order order)
 {
     switch (order)
     {

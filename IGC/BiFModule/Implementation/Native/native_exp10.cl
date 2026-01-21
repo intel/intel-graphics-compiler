@@ -41,16 +41,3 @@ GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARGS( native_exp10, half, half, f16 )
 
 #endif // defined(cl_khr_fp16)
 
-#if defined(IGC_SPV_INTEL_bfloat16_arithmetic)
-INLINE bfloat __attribute__((overloadable)) __spirv_ocl_native_exp10( bfloat x )
-{
-    // Regular multiplication is upconverted to float by clang.
-    // return __spirv_ocl_native_exp2( x * (bfloat)(_M_LOG2_10) );
-    bfloat bf16_LOG2_10 = (bfloat)_M_LOG2_10;
-    bfloat result = as_bfloat(__builtin_bf16_mul(as_ushort(x), as_ushort(bf16_LOG2_10)));
-    result = __spirv_ocl_native_exp2(result);
-    return result;
-}
-
-GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARGS( native_exp10, bfloat, bfloat, )
-#endif // defined(IGC_SPV_INTEL_bfloat16_arithmetic)

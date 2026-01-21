@@ -24,7 +24,7 @@ SPDX-License-Identifier: MIT
 //    accuracy.
 
 // This version is used for sinh and cosh, and part of tanh:
-float __intel_exp_for_hyper(float x, float scale)
+static inline float __intel_exp_for_hyper(float x, float scale)
 {
     // e^x = 2^(log2(e^x)) = 2^(x * log2(e))
     // We'll compute 2^(x * log2(e)) by splitting x * log2(e)
@@ -69,7 +69,7 @@ float __intel_exp_for_hyper(float x, float scale)
     return res;
 }
 
-float __intel_exp_for_tanh(float x, float scale)
+static inline float __intel_exp_for_tanh(float x, float scale)
 {
     float px = __spirv_ocl_fabs(x);
 

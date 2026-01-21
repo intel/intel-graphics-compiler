@@ -9,6 +9,7 @@ SPDX-License-Identifier: MIT
 // Atomic Instructions
 
 #include "../Headers/spirv.h"
+#include "include/atomic_fence_impl.h"
 
 #define ATOMIC_FLAG_TRUE 1
 #define ATOMIC_FLAG_FALSE 0
@@ -17,10 +18,10 @@ SPDX-License-Identifier: MIT
 
 #define SEMANTICS_POST_OP_NEEDS_FENCE ( Acquire | AcquireRelease | SequentiallyConsistent )
 
-  __local int* __builtin_IB_get_local_lock();
-  __global int* __builtin_IB_get_global_lock();
-  void __builtin_IB_eu_thread_pause(uint value);
-  void __intel_memfence_handler(bool flushRW, bool isGlobal, bool invalidateL1, bool evictL1, Scope_t scope);
+__local int* __builtin_IB_get_local_lock();
+__global int* __builtin_IB_get_global_lock();
+void __builtin_IB_eu_thread_pause(uint value);
+void __intel_memfence_handler(bool flushRW, bool isGlobal, bool invalidateL1, bool evictL1, Scope_t scope);
 
 #define LOCAL_SPINLOCK_START() \
   { \
@@ -46,20 +47,6 @@ SPDX-License-Identifier: MIT
             done = true; \
             __spirv_AtomicStore(__builtin_IB_get_global_lock(), Device, SequentiallyConsistent | CrossWorkgroupMemory, 0); \
   }}}
-
-#define FENCE_PRE_OP(Scope, Semantics, isGlobal)                                      \
-  if( ( (Semantics) & ( SEMANTICS_PRE_OP_NEED_FENCE ) ) > 0 )                         \
-  {                                                                                   \
-      bool flushL3 = (isGlobal) && ((Scope) == Device || (Scope) == CrossDevice);     \
-      __intel_memfence_handler(flushL3, isGlobal, false, isGlobal, Scope);            \
-  }
-
-#define FENCE_POST_OP(Scope, Semantics, isGlobal)                                     \
-  if( ( (Semantics) & ( SEMANTICS_POST_OP_NEEDS_FENCE ) ) > 0 )                       \
-  {                                                                                   \
-      bool flushL3 = (isGlobal) && ((Scope) == Device || (Scope) == CrossDevice);     \
-      __intel_memfence_handler(flushL3, isGlobal, isGlobal, false, Scope);            \
-  }
 
 // This fencing scheme allows us to obey the memory model when coherency is
 // enabled or disabled.  Because the L3$ has 2 pipelines (cohereny&atomics and
@@ -214,29 +201,6 @@ short __attribute__((overloadable)) __spirv_AtomicLoad( __generic short *Pointer
 
 #endif // (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
 
-bfloat __attribute__((overloadable)) __spirv_AtomicLoad( __private bfloat *Pointer, int Scope, int Semantics )
-{
-    return as_bfloat(__spirv_AtomicLoad( (__private short*)Pointer, Scope, Semantics ));
-}
-
-bfloat __attribute__((overloadable)) __spirv_AtomicLoad( __global bfloat *Pointer, int Scope, int Semantics )
-{
-    return as_bfloat(__spirv_AtomicLoad( (__global short*)Pointer, Scope, Semantics ) );
-}
-
-bfloat __attribute__((overloadable)) __spirv_AtomicLoad( __local bfloat *Pointer, int Scope, int Semantics )
-{
-    return as_bfloat(__spirv_AtomicLoad( (__local short*)Pointer, Scope, Semantics ));
-}
-
-#if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
-
-bfloat __attribute__((overloadable)) __spirv_AtomicLoad( __generic bfloat *Pointer, int Scope, int Semantics )
-{
-    return as_bfloat(__spirv_AtomicLoad( (__generic short*)Pointer, Scope, Semantics ));
-}
-
-#endif // (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
 #endif // defined(cl_intel_bfloat16_atomics)
 
 float __attribute__((overloadable)) __spirv_AtomicLoad( __private float *Pointer, int Scope, int Semantics )
@@ -416,29 +380,6 @@ void __attribute__((overloadable)) __spirv_AtomicStore( __generic short *Pointer
 
 #endif // (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
 
-void __attribute__((overloadable)) __spirv_AtomicStore( __private bfloat *Pointer, int Scope, int Semantics, bfloat Value )
-{
-    __spirv_AtomicStore( (__private short*)Pointer, Scope, Semantics, as_short(Value) );
-}
-
-void __attribute__((overloadable)) __spirv_AtomicStore( __global bfloat *Pointer, int Scope, int Semantics, bfloat Value )
-{
-    __spirv_AtomicStore( (__global short*)Pointer, Scope, Semantics, as_short(Value) );
-}
-
-void __attribute__((overloadable)) __spirv_AtomicStore( __local bfloat *Pointer, int Scope, int Semantics, bfloat Value )
-{
-    __spirv_AtomicStore( (__local short*)Pointer, Scope, Semantics, as_short(Value) );
-}
-
-#if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
-
-void __attribute__((overloadable)) __spirv_AtomicStore( __generic bfloat *Pointer, int Scope, int Semantics, bfloat Value )
-{
-    __spirv_AtomicStore( (__generic short*)Pointer, Scope, Semantics, as_short(Value) );
-}
-
-#endif // (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
 #endif // defined(cl_intel_bfloat16_atomics)
 
 
@@ -778,31 +719,6 @@ short __attribute__((overloadable)) __spirv_AtomicExchange( __generic short *Poi
     }
 
 }
-
-bfloat __attribute__((overloadable)) __spirv_AtomicExchange( __private bfloat *Pointer, int Scope, int Semantics, bfloat Value )
-{
-    return as_bfloat(__spirv_AtomicExchange( (__private short*)Pointer, Scope, Semantics, as_short(Value) ));
-}
-
-bfloat __attribute__((overloadable)) __spirv_AtomicExchange( __global bfloat *Pointer, int Scope, int Semantics, bfloat Value )
-{
-    return as_bfloat(__spirv_AtomicExchange( (__global short*)Pointer, Scope, Semantics, as_short(Value) ));
-}
-
-
-bfloat __attribute__((overloadable)) __spirv_AtomicExchange( __local bfloat *Pointer, int Scope, int Semantics, bfloat Value )
-{
-    return as_bfloat(__spirv_AtomicExchange( (__local short*)Pointer, Scope, Semantics, as_short(Value) ));
-}
-
-#if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
-
-bfloat __attribute__((overloadable)) __spirv_AtomicExchange( __generic bfloat *Pointer, int Scope, int Semantics, bfloat Value )
-{
-    return as_bfloat(__spirv_AtomicExchange( (__generic short*)Pointer, Scope, Semantics, as_short(Value) ));
-}
-
-#endif // (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
 
 #endif // (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
 #endif // defined(cl_intel_bfloat16_atomics)
@@ -2428,149 +2344,6 @@ half __attribute__((overloadable)) __spirv_AtomicFAddEXT( __generic half *Pointe
     }
 }
 #endif // (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
-
-#if defined(cl_intel_bfloat16_atomics)
-#define atomic_operation_1op_as_bfloat16( INTRINSIC, TYPE, Pointer, Scope, Semantics, Value, isGlobal )\
-{                                                                                             \
-    FENCE_PRE_OP((Scope), (Semantics), isGlobal)                                              \
-    bfloat result = as_bfloat(INTRINSIC( (Pointer), as_##TYPE(Value) ));                      \
-    FENCE_POST_OP((Scope), (Semantics), isGlobal)                                             \
-    return result;                                                                            \
-}
-
-INLINE bfloat __attribute__((overloadable)) __spirv_AtomicFAddEXT(private bfloat* Pointer, int Scope, int Semantics, bfloat Value)
-{
-    bfloat orig = *Pointer;
-    *Pointer += Value;
-    return orig;
-}
-
-INLINE bfloat __attribute__((overloadable)) __spirv_AtomicFSubEXT(private bfloat* Pointer, int Scope, int Semantics, bfloat Value)
-{
-    bfloat orig = *Pointer;
-    *Pointer -= Value;
-    return orig;
-}
-
-INLINE bfloat __attribute__((overloadable)) __spirv_AtomicFMinEXT(private bfloat* Pointer, int Scope, int Semantics, bfloat Value)
-{
-    bfloat orig = *Pointer;
-    *Pointer = (orig < Value) ? orig : Value;
-    return orig;
-}
-
-INLINE bfloat __attribute__((overloadable)) __spirv_AtomicFMaxEXT(private bfloat* Pointer, int Scope, int Semantics, bfloat Value)
-{
-    bfloat orig = *Pointer;
-    *Pointer = (orig > Value) ? orig : Value;
-    return orig;
-}
-
-INLINE bfloat __attribute__((overloadable)) __spirv_AtomicFAddEXT( global bfloat* Pointer, int Scope, int Semantics, bfloat Value)
-{
-    atomic_operation_1op_as_bfloat16( __builtin_IB_atomic_add_global_bf16, short, Pointer, Scope, Semantics, Value, true )
-}
-INLINE bfloat __attribute__((overloadable)) __spirv_AtomicFSubEXT( global bfloat* Pointer, int Scope, int Semantics, bfloat Value)
-{
-    atomic_operation_1op_as_bfloat16( __builtin_IB_atomic_sub_global_bf16, short, Pointer, Scope, Semantics, Value, true )
-}
-INLINE bfloat __attribute__((overloadable)) __spirv_AtomicFMinEXT( global bfloat* Pointer, int Scope, int Semantics, bfloat Value)
-{
-    atomic_operation_1op_as_bfloat16( __builtin_IB_atomic_min_global_bf16, short, Pointer, Scope, Semantics, Value, true )
-}
-INLINE bfloat __attribute__((overloadable)) __spirv_AtomicFMaxEXT( global bfloat* Pointer, int Scope, int Semantics, bfloat Value)
-{
-    atomic_operation_1op_as_bfloat16( __builtin_IB_atomic_max_global_bf16, short, Pointer, Scope, Semantics, Value, true )
-}
-
-INLINE bfloat __attribute__((overloadable)) __spirv_AtomicFAddEXT( local bfloat* Pointer, int Scope, int Semantics, bfloat Value)
-{
-    atomic_operation_1op_as_bfloat16( __builtin_IB_atomic_add_local_bf16, short, Pointer, Scope, Semantics, Value, false )
-}
-INLINE bfloat __attribute__((overloadable)) __spirv_AtomicFSubEXT( local bfloat* Pointer, int Scope, int Semantics, bfloat Value)
-{
-    atomic_operation_1op_as_bfloat16( __builtin_IB_atomic_sub_local_bf16, short, Pointer, Scope, Semantics, Value, false )
-}
-INLINE bfloat __attribute__((overloadable)) __spirv_AtomicFMinEXT( local bfloat* Pointer, int Scope, int Semantics, bfloat Value)
-{
-    atomic_operation_1op_as_bfloat16( __builtin_IB_atomic_min_local_bf16, short, Pointer, Scope, Semantics, Value, false )
-}
-INLINE bfloat __attribute__((overloadable)) __spirv_AtomicFMaxEXT( local bfloat* Pointer, int Scope, int Semantics, bfloat Value)
-{
-    atomic_operation_1op_as_bfloat16( __builtin_IB_atomic_max_local_bf16, short, Pointer, Scope, Semantics, Value, false )
-}
-
-#if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
-INLINE bfloat __attribute__((overloadable)) __spirv_AtomicFAddEXT( generic bfloat* Pointer, int Scope, int Semantics, bfloat Value)
-{
-    __builtin_assume((__local bfloat*)Pointer != 0);
-    if (__spirv_GenericCastToPtrExplicit_ToLocal(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
-    {
-        return __spirv_AtomicFAddEXT((__local bfloat*)Pointer, Scope, Semantics, Value);
-    }
-    else if (__spirv_GenericCastToPtrExplicit_ToPrivate(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
-    {
-        return __spirv_AtomicFAddEXT((__private bfloat*)Pointer, Scope, Semantics, Value);
-    }
-    else
-    {
-        return __spirv_AtomicFAddEXT((__global bfloat*)Pointer, Scope, Semantics, Value);
-    }
-}
-
-INLINE bfloat __attribute__((overloadable)) __spirv_AtomicFSubEXT( generic bfloat* Pointer, int Scope, int Semantics, bfloat Value)
-{
-    __builtin_assume((__local bfloat*)Pointer != 0);
-    if (__spirv_GenericCastToPtrExplicit_ToLocal(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
-    {
-        return __spirv_AtomicFSubEXT((__local bfloat*)Pointer, Scope, Semantics, Value);
-    }
-    else if (__spirv_GenericCastToPtrExplicit_ToPrivate(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
-    {
-        return __spirv_AtomicFSubEXT((__private bfloat*)Pointer, Scope, Semantics, Value);
-    }
-    else
-    {
-        return __spirv_AtomicFSubEXT((__global bfloat*)Pointer, Scope, Semantics, Value);
-    }
-}
-
-INLINE bfloat __attribute__((overloadable)) __spirv_AtomicFMinEXT( generic bfloat* Pointer, int Scope, int Semantics, bfloat Value)
-{
-    __builtin_assume((__local bfloat*)Pointer != 0);
-    if (__spirv_GenericCastToPtrExplicit_ToLocal(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
-    {
-        return __spirv_AtomicFMinEXT((__local bfloat*)Pointer, Scope, Semantics, Value);
-    }
-    else if (__spirv_GenericCastToPtrExplicit_ToPrivate(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
-    {
-        return __spirv_AtomicFMinEXT((__private bfloat*)Pointer, Scope, Semantics, Value);
-    }
-    else
-    {
-        return __spirv_AtomicFMinEXT((__global bfloat*)Pointer, Scope, Semantics, Value);
-    }
-}
-
-INLINE bfloat __attribute__((overloadable)) __spirv_AtomicFMaxEXT( generic bfloat* Pointer, int Scope, int Semantics, bfloat Value)
-{
-    __builtin_assume((__local bfloat*)Pointer != 0);
-    if (__spirv_GenericCastToPtrExplicit_ToLocal(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
-    {
-        return __spirv_AtomicFMaxEXT((__local bfloat*)Pointer, Scope, Semantics, Value);
-    }
-    else if (__spirv_GenericCastToPtrExplicit_ToPrivate(__builtin_astype((Pointer), __generic char*), StorageWorkgroup))
-    {
-        return __spirv_AtomicFMaxEXT((__private bfloat*)Pointer, Scope, Semantics, Value);
-    }
-    else
-    {
-        return __spirv_AtomicFMaxEXT((__global bfloat*)Pointer, Scope, Semantics, Value);
-    }
-}
-#endif // (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
-
-#endif // defined(cl_intel_bfloat16_atomics)
 
 float __attribute__((overloadable)) __spirv_AtomicFMinEXT( private float* Pointer, int Scope, int Semantics, float Value)
 {

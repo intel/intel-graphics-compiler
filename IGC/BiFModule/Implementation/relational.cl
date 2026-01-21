@@ -8,7 +8,6 @@ SPDX-License-Identifier: MIT
 
 // Relational and Logical Instructions
 
-
 bool __attribute__((overloadable)) __spirv_Any(__bool2 Vector)
 {
     return (Vector.s0 | Vector.s1);
@@ -84,21 +83,11 @@ bool  __attribute__((overloadable)) __spirv_IsNan(double x)
 }
 #endif
 
-#if defined(IGC_SPV_INTEL_bfloat16_arithmetic)
-bool  __attribute__((overloadable)) __spirv_IsNan(bfloat x)
-{
-    return x != x;
-}
-#endif // defined(IGC_SPV_INTEL_bfloat16_arithmetic)
-
 SPIRV_GENERATE_VECTOR_FUNCTIONS_1ARG(IsNan, __bool, half,   f16)
 SPIRV_GENERATE_VECTOR_FUNCTIONS_1ARG(IsNan, __bool, float,  f32)
 #if defined(cl_khr_fp64)
 SPIRV_GENERATE_VECTOR_FUNCTIONS_1ARG(IsNan, __bool, double, f64)
 #endif
-#if defined(IGC_SPV_INTEL_bfloat16_arithmetic)
-SPIRV_GENERATE_VECTOR_FUNCTIONS_1ARG(IsNan, __bool, bfloat, )
-#endif // defined(IGC_SPV_INTEL_bfloat16_arithmetic)
 
 bool __attribute__((overloadable)) __spirv_IsInf(half x)
 {
@@ -117,21 +106,11 @@ bool __attribute__((overloadable)) __spirv_IsInf(double x)
 }
 #endif
 
-#if defined(IGC_SPV_INTEL_bfloat16_arithmetic)
-bool __attribute__((overloadable)) __spirv_IsInf(bfloat x)
-{
-    return __spirv_ocl_fabs(x) == (bfloat)(INFINITY);
-}
-#endif // defined(IGC_SPV_INTEL_bfloat16_arithmetic)
-
 SPIRV_GENERATE_VECTOR_FUNCTIONS_1ARG(IsInf, __bool, half,   f16)
 SPIRV_GENERATE_VECTOR_FUNCTIONS_1ARG(IsInf, __bool, float,  f32)
 #if defined(cl_khr_fp64)
 SPIRV_GENERATE_VECTOR_FUNCTIONS_1ARG(IsInf, __bool, double, f64)
 #endif
-#if defined(IGC_SPV_INTEL_bfloat16_arithmetic)
-SPIRV_GENERATE_VECTOR_FUNCTIONS_1ARG(IsInf, __bool, bfloat, )
-#endif // defined(IGC_SPV_INTEL_bfloat16_arithmetic)
 
 bool __attribute__((overloadable)) __spirv_IsFinite(half x)
 {
@@ -150,21 +129,11 @@ bool __attribute__((overloadable)) __spirv_IsFinite(double x)
 }
 #endif
 
-#if defined(IGC_SPV_INTEL_bfloat16_arithmetic)
-bool __attribute__((overloadable)) __spirv_IsFinite(bfloat x)
-{
-    return __spirv_ocl_fabs(x) < (bfloat)(INFINITY);
-}
-#endif // defined(IGC_SPV_INTEL_bfloat16_arithmetic)
-
 SPIRV_GENERATE_VECTOR_FUNCTIONS_1ARG(IsFinite, __bool, half,   f16)
 SPIRV_GENERATE_VECTOR_FUNCTIONS_1ARG(IsFinite, __bool, float,  f32)
 #if defined(cl_khr_fp64)
 SPIRV_GENERATE_VECTOR_FUNCTIONS_1ARG(IsFinite, __bool, double, f64)
 #endif
-#if defined(IGC_SPV_INTEL_bfloat16_arithmetic)
-SPIRV_GENERATE_VECTOR_FUNCTIONS_1ARG(IsFinite, __bool, bfloat, )
-#endif // defined(IGC_SPV_INTEL_bfloat16_arithmetic)
 
 bool __attribute__((overloadable)) __spirv_IsNormal(half x)
 {
@@ -183,21 +152,11 @@ bool __attribute__((overloadable)) __spirv_IsNormal(double x)
 }
 #endif
 
-#if defined(IGC_SPV_INTEL_bfloat16_arithmetic)
-bool __attribute__((overloadable)) __spirv_IsNormal(bfloat x)
-{
-    return __spirv_IsFinite(x) & (__spirv_ocl_fabs(x) >= (bfloat)FLT_MIN);
-}
-#endif // defined(IGC_SPV_INTEL_bfloat16_arithmetic)
-
 SPIRV_GENERATE_VECTOR_FUNCTIONS_1ARG(IsNormal, __bool, half,   f16)
 SPIRV_GENERATE_VECTOR_FUNCTIONS_1ARG(IsNormal, __bool, float,  f32)
 #if defined(cl_khr_fp64)
 SPIRV_GENERATE_VECTOR_FUNCTIONS_1ARG(IsNormal, __bool, double, f64)
 #endif
-#if defined(IGC_SPV_INTEL_bfloat16_arithmetic)
-SPIRV_GENERATE_VECTOR_FUNCTIONS_1ARG(IsNormal, __bool, bfloat, )
-#endif // defined(IGC_SPV_INTEL_bfloat16_arithmetic)
 
 bool __attribute__((overloadable)) __spirv_SignBitSet(half x)
 {
@@ -216,21 +175,11 @@ bool __attribute__((overloadable)) __spirv_SignBitSet(double x)
 }
 #endif
 
-#if defined(IGC_SPV_INTEL_bfloat16_arithmetic)
-bool __attribute__((overloadable)) __spirv_SignBitSet(bfloat x)
-{
-    return (as_ushort(x) & BFLOAT_SIGN_MASK) != 0;
-}
-#endif // defined(IGC_SPV_INTEL_bfloat16_arithmetic)
-
 SPIRV_GENERATE_VECTOR_FUNCTIONS_1ARG(SignBitSet, __bool, half,   f16)
 SPIRV_GENERATE_VECTOR_FUNCTIONS_1ARG(SignBitSet, __bool, float,  f32)
 #if defined(cl_khr_fp64)
 SPIRV_GENERATE_VECTOR_FUNCTIONS_1ARG(SignBitSet, __bool, double, f64)
 #endif
-#if defined(IGC_SPV_INTEL_bfloat16_arithmetic)
-SPIRV_GENERATE_VECTOR_FUNCTIONS_1ARG(SignBitSet, __bool, bfloat, )
-#endif // defined(IGC_SPV_INTEL_bfloat16_arithmetic)
 
 bool __attribute__((overloadable)) __spirv_LessOrGreater(half x, half y)
 {
@@ -249,21 +198,11 @@ bool __attribute__((overloadable)) __spirv_LessOrGreater(double x, double y)
 }
 #endif
 
-#if defined(IGC_SPV_INTEL_bfloat16_arithmetic)
-bool __attribute__((overloadable)) __spirv_LessOrGreater(bfloat x, bfloat y)
-{
-    return (x < y) | (x > y);
-}
-#endif // defined(IGC_SPV_INTEL_bfloat16_arithmetic)
-
 SPIRV_GENERATE_VECTOR_FUNCTIONS_2ARGS(LessOrGreater, __bool, half,   f16)
 SPIRV_GENERATE_VECTOR_FUNCTIONS_2ARGS(LessOrGreater, __bool, float,  f32)
 #if defined(cl_khr_fp64)
 SPIRV_GENERATE_VECTOR_FUNCTIONS_2ARGS(LessOrGreater, __bool, double, f64)
 #endif
-#if defined(IGC_SPV_INTEL_bfloat16_arithmetic)
-SPIRV_GENERATE_VECTOR_FUNCTIONS_2ARGS(LessOrGreater, __bool, bfloat, )
-#endif // defined(IGC_SPV_INTEL_bfloat16_arithmetic)
 
 bool __attribute__((overloadable)) __spirv_Ordered(half x, half y)
 {

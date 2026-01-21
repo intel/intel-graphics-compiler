@@ -79,11 +79,3 @@ GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_2ARGS_VV_LOOP( rootn, half, half, int, f16, 
 
 #endif // defined(cl_khr_fp16)
 
-#if defined(IGC_SPV_INTEL_bfloat16_arithmetic)
-INLINE bfloat __attribute__((overloadable)) __spirv_ocl_rootn( bfloat y, int x )
-{
-    return __spirv_ocl_rootn((float)y, x);
-}
-
-GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_2ARGS_VV_LOOP( rootn, bfloat, bfloat, int, , i32 )
-#endif // defined(IGC_SPV_INTEL_bfloat16_arithmetic)

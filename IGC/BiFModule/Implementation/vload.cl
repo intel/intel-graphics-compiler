@@ -10,6 +10,8 @@ SPDX-License-Identifier: MIT
 // This file defines SPIRV vloadn, vload_half, vload_halfn and vloada_halfn built-ins.
 //
 
+#include "include/vload_vstore_impl.h"
+
 //*****************************************************************************/
 // helper functions
 //*****************************************************************************/
@@ -21,48 +23,6 @@ static OVERLOADABLE float __intel_spirv_half2float(short h)
 
 GENERATE_VECTOR_FUNCTIONS_1ARG_NO_MANG(__intel_spirv_half2float, float, short)
 
-//*****************************************************************************/
-// vloadn
-// "Reads n components from the address computed as (p + (offset * n)) and creates a vector result value from the n components."
-//*****************************************************************************/
-
-#define VLOADN_DEF(addressSpace, scalarType, numElements, offsetType, mangle)                                \
-INLINE scalarType##numElements __attribute__((overloadable)) __spirv_ocl_vloadn_R##scalarType##numElements   \
-    (offsetType offset, addressSpace scalarType * p, int n) {                                                \
-    const addressSpace scalarType *pOffset = p + offset * numElements;                                       \
-    scalarType##numElements ret;                                                                             \
-    __builtin_IB_memcpy_##addressSpace##_to_private((private uchar *)&ret, (addressSpace uchar *)pOffset,    \
-                                                    sizeof(scalarType) * numElements, sizeof(scalarType));   \
-    return ret;                                                                                              \
-}
-
-#define VLOADN_AS(addressSpace, scalarType, mang)          \
-VLOADN_DEF(addressSpace, scalarType, 2,  long, i64_##mang) \
-VLOADN_DEF(addressSpace, scalarType, 2,  int,  i32_##mang) \
-VLOADN_DEF(addressSpace, scalarType, 3,  long, i64_##mang) \
-VLOADN_DEF(addressSpace, scalarType, 3,  int,  i32_##mang) \
-VLOADN_DEF(addressSpace, scalarType, 4,  long, i64_##mang) \
-VLOADN_DEF(addressSpace, scalarType, 4,  int,  i32_##mang) \
-VLOADN_DEF(addressSpace, scalarType, 8,  long, i64_##mang) \
-VLOADN_DEF(addressSpace, scalarType, 8,  int,  i32_##mang) \
-VLOADN_DEF(addressSpace, scalarType, 16, long, i64_##mang) \
-VLOADN_DEF(addressSpace, scalarType, 16, int,  i32_##mang)
-
-#if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
-#define VLOADN_TYPE(TYPE, TYPEMANG)     \
-VLOADN_AS(global,   TYPE, p1##TYPEMANG) \
-VLOADN_AS(constant, TYPE, p2##TYPEMANG) \
-VLOADN_AS(local,    TYPE, p3##TYPEMANG) \
-VLOADN_AS(private,  TYPE, p0##TYPEMANG) \
-VLOADN_AS(generic,  TYPE, p4##TYPEMANG)
-#else
-#define VLOADN_TYPE(TYPE, TYPEMANG)     \
-VLOADN_AS(global,   TYPE, p1##TYPEMANG) \
-VLOADN_AS(constant, TYPE, p2##TYPEMANG) \
-VLOADN_AS(local,    TYPE, p3##TYPEMANG) \
-VLOADN_AS(private,  TYPE, p0##TYPEMANG)
-#endif // __OPENCL_C_VERSION__ >= CL_VERSION_2_0
-
 VLOADN_TYPE(char,   i8)
 VLOADN_TYPE(short,  i16)
 VLOADN_TYPE(int,    i32)
@@ -72,9 +32,6 @@ VLOADN_TYPE(float,  f32)
 #if defined(cl_khr_fp64)
 VLOADN_TYPE(double, f64)
 #endif
-#if defined(IGC_SPV_INTEL_bfloat16_arithmetic)
-VLOADN_TYPE(bfloat, )
-#endif // defined(IGC_SPV_INTEL_bfloat16_arithmetic)
 
 // "When extended by the cl_khr_fp16 extension, the generic type gentypen is extended to include half"
 #define VLOADN_SCALAR_HALF_DEF(addressSpace, offsetType, mangle)                                 \
@@ -187,4 +144,3 @@ VLOADA_HALFX_AS(__local,    3)
 #if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
 VLOADA_HALFX_AS(__generic,  4)
 #endif // __OPENCL_C_VERSION__ >= CL_VERSION_2_0
-

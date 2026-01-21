@@ -35,10 +35,3 @@ GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARGS( radians, half, half, f16 )
 
 #endif // defined(cl_khr_fp16)
 
-#if defined(IGC_SPV_INTEL_bfloat16_arithmetic)
-INLINE bfloat __attribute__((overloadable)) __spirv_ocl_radians(bfloat d ){
-    return as_bfloat(__builtin_bf16_mul(as_ushort(d), as_ushort(PI_OVER_ONE_EIGHTY_BFLT)));
-}
-
-GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARGS( radians, bfloat, bfloat, )
-#endif // defined(IGC_SPV_INTEL_bfloat16_arithmetic)

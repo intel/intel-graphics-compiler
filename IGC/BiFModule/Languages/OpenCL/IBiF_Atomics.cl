@@ -393,46 +393,6 @@ ATOMIC_FETCH_FUNCTION(min, ulong, UMin, i64, ulong)
 #endif // defined(cl_khr_int64_base_atomics) && defined(cl_khr_int64_extended_atomics)
 ATOMIC_FETCH_FUNCTION_ADDRSPACE(add, float, FAdd, f32, float, global, p1)
 ATOMIC_FETCH_FUNCTION_ADDRSPACE(sub, float, FSub, f32, float, global, p1)
-#if defined(cl_intel_bfloat16_atomics)
-typedef ushort atomic_ushort;
-#define as_bfloat(x) __builtin_astype((x), bfloat)
-#define ATOMIC_FETCH_AS_BFLOAT16_FUNCTION_ADDRSPACE(KEY, OCL_TYPE, OPCODE, ADDRSPACE, ABBR_ADDRSPACE) \
-INLINE OCL_TYPE OVERLOADABLE intel_atomic_fetch_##KEY##_as_bfloat16_explicit(volatile ADDRSPACE atomic_##OCL_TYPE *object, OCL_TYPE operand, memory_order order, memory_scope scope) \
-{ \
-  return as_##OCL_TYPE(__spirv_Atomic##OPCODE( \
-            (ADDRSPACE bfloat *)object,                                                  \
-            get_spirv_mem_scope(scope),                                                  \
-            get_spirv_mem_order(order) |                                                 \
-                get_spirv_mem_fence(get_fence((const ADDRSPACE void *)object)),          \
-            as_bfloat(operand)));                                                        \
-} \
-INLINE OCL_TYPE OVERLOADABLE intel_atomic_fetch_##KEY##_as_bfloat16_explicit(volatile ADDRSPACE atomic_##OCL_TYPE *object, OCL_TYPE operand, memory_order order) \
-{ \
-  return intel_atomic_fetch_##KEY##_as_bfloat16_explicit(object, operand, order, memory_scope_device); \
-} \
-INLINE OCL_TYPE OVERLOADABLE intel_atomic_fetch_##KEY##_as_bfloat16(volatile ADDRSPACE atomic_##OCL_TYPE *object, OCL_TYPE operand) \
-{ \
-  return intel_atomic_fetch_##KEY##_as_bfloat16_explicit(object, operand, memory_order_seq_cst); \
-}
-
-ATOMIC_FETCH_AS_BFLOAT16_FUNCTION_ADDRSPACE(add, ushort, FAddEXT, global, p1)
-ATOMIC_FETCH_AS_BFLOAT16_FUNCTION_ADDRSPACE(sub, ushort, FSubEXT, global, p1)
-ATOMIC_FETCH_AS_BFLOAT16_FUNCTION_ADDRSPACE(max, ushort, FMaxEXT, global, p1)
-ATOMIC_FETCH_AS_BFLOAT16_FUNCTION_ADDRSPACE(min, ushort, FMinEXT, global, p1)
-
-ATOMIC_FETCH_AS_BFLOAT16_FUNCTION_ADDRSPACE(add, ushort, FAddEXT, local, p3)
-ATOMIC_FETCH_AS_BFLOAT16_FUNCTION_ADDRSPACE(sub, ushort, FSubEXT, local, p3)
-ATOMIC_FETCH_AS_BFLOAT16_FUNCTION_ADDRSPACE(max, ushort, FMaxEXT, local, p3)
-ATOMIC_FETCH_AS_BFLOAT16_FUNCTION_ADDRSPACE(min, ushort, FMinEXT, local, p3)
-
-#if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
-ATOMIC_FETCH_AS_BFLOAT16_FUNCTION_ADDRSPACE(add, ushort, FAddEXT, generic, p4)
-ATOMIC_FETCH_AS_BFLOAT16_FUNCTION_ADDRSPACE(sub, ushort, FSubEXT, generic, p4)
-ATOMIC_FETCH_AS_BFLOAT16_FUNCTION_ADDRSPACE(max, ushort, FMaxEXT, generic, p4)
-ATOMIC_FETCH_AS_BFLOAT16_FUNCTION_ADDRSPACE(min, ushort, FMinEXT, generic, p4)
-#endif // (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
-
-#endif // defined(cl_intel_bfloat16_atomics)
 
 // The atomic_store Functions
 // void atomic_store(volatile A *object, C desired)

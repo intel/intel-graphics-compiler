@@ -29,10 +29,6 @@ OVERLOADABLE int __intel_relaxed_isfinite(half x );
 OVERLOADABLE int __intel_relaxed_isnormal(half x );
 #endif // defined(cl_khr_fp16)
 
-#if defined(IGC_SPV_INTEL_bfloat16_arithmetic)
-OVERLOADABLE int __intel_relaxed_isnan(bfloat x );
-#endif // defined(IGC_SPV_INTEL_bfloat16_arithmetic)
-
 // Common file for intrinsics implementation used in Math library
 #include "IBiF_Intrinsics_Impl.cl"
 
@@ -56,7 +52,6 @@ OVERLOADABLE int __intel_relaxed_isnan(bfloat x );
 #include "ExternalLibraries/libclc/normalize.cl"
 #include "ExternalLibraries/libclc/length.cl"
 #include "ExternalLibraries/libclc/doubles.cl"
-
 
 // Half
 #include "Half/half_cos.cl"

@@ -65,20 +65,3 @@ INLINE half __attribute__((overloadable)) __spirv_ocl_distance(half4 p0, half4 p
 
 #endif // defined(cl_khr_fp16)
 
-#if defined(IGC_SPV_INTEL_bfloat16_arithmetic)
-INLINE bfloat __attribute__((overloadable)) __spirv_ocl_distance(bfloat p0, bfloat p1 ){
-    return __spirv_ocl_length( p0 - p1 );
-}
-
-INLINE bfloat __attribute__((overloadable)) __spirv_ocl_distance(bfloat2 p0, bfloat2 p1 ){
-    return __spirv_ocl_length( p0 - p1 );
-}
-
-INLINE bfloat __attribute__((overloadable)) __spirv_ocl_distance(bfloat3 p0, bfloat3 p1 ){
-    return __spirv_ocl_length( p0 - p1 );
-}
-
-INLINE bfloat __attribute__((overloadable)) __spirv_ocl_distance(bfloat4 p0, bfloat4 p1 ){
-    return __spirv_ocl_length( p0 - p1 );
-}
-#endif // defined(IGC_SPV_INTEL_bfloat16_arithmetic)

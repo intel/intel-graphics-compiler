@@ -115,11 +115,3 @@ GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_2ARGS_VV_LOOP( hypot, half, half, half, f16,
 
 #endif // defined(cl_khr_fp16)
 
-#if defined(IGC_SPV_INTEL_bfloat16_arithmetic)
-INLINE bfloat __attribute__((overloadable)) __spirv_ocl_hypot( bfloat x, bfloat y )
-{
-    return (bfloat)__spirv_ocl_hypot((float)x, (float)y);
-}
-
-GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_2ARGS_VV_LOOP( hypot, bfloat, bfloat, bfloat, , )
-#endif // defined(IGC_SPV_INTEL_bfloat16_arithmetic)

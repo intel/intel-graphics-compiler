@@ -38,14 +38,3 @@ GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARGS( native_log, half, half, f16 )
 
 #endif // defined(cl_khr_fp16)
 
-#if defined(IGC_SPV_INTEL_bfloat16_arithmetic)
-INLINE bfloat __attribute__((overloadable)) __spirv_ocl_native_log( bfloat x )
-{
-    bfloat bf16_M_LN_2 = (bfloat)M_LN2_F;
-    bfloat bf16_log2_x = __spirv_ocl_native_log2(x);
-    bfloat result = as_bfloat(__builtin_bf16_mul(as_ushort(bf16_log2_x), as_ushort(bf16_M_LN_2)));
-    return result;
-}
-
-GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARGS( native_log, bfloat, bfloat, )
-#endif // defined(IGC_SPV_INTEL_bfloat16_arithmetic)

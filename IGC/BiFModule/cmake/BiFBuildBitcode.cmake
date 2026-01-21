@@ -299,6 +299,19 @@ else(IGC_OPTION__ENABLE_BF16_BIF)
   message(STATUS "[IGC] BF16 extensions disabled (compatible with upstream Clang)")
 endif()
 
+set(BFLOAT_BUILTINS_CL_PATH "${IGC_OPTION__BIF_SRC_OCL_DIR}/Implementation/bfloat/IBiF_BFloat.cl")
+set(BFLOAT_BUILTINS_BC_PATH "${IGC_BUILD__BIF_DIR}/IBiF_BFloat.bc")
+
+igc_bif_build_bc(
+  OUTPUT               ${BFLOAT_BUILTINS_BC_PATH}
+  TRIPLE               spir64
+  SOURCES              ${BFLOAT_BUILTINS_CL_PATH}
+  FORCE_INCLUDE        ${IGC_BUILD__BIF_OCL_INCLUDES}
+  INCLUDE_DIRECTORIES  ${IGC_BUILD__BIF_SPIRV_COMMON_INC_DIRS}
+  DEFINES              "__EXECUTION_MODEL_DEBUG=1" "__OPENCL_C_VERSION__=200" "__IGC_BUILD__" ${KHR_DEFINES} ${FLAG}
+  OPTIONS CL           ${CL_OPTIONS} -cl-std=CL2.0
+)
+
 igc_bif_build_bc(
     OUTPUT               "${IGC_BUILD__BIF_DIR}/IBiF_Impl_int.bc"
     TRIPLE               spir64
@@ -395,6 +408,7 @@ igc_bif_build_bc(
   SOURCES              "${IGC_BUILD__BIF_DIR}/IBiF_Impl_int.bc"
                        "${IGC_BUILD__BIF_DIR}/IBiF_Impl_int_spirv.bc"
                        "${IGC_BUILD__BIF_DIR}/IBiF_PreRelease_int.bc"
+                       ${BFLOAT_BUILTINS_BC_PATH}
   FORCE_INCLUDE        ${IGC_BUILD__BIF_OCL_INCLUDES}
   DEFINES              "__EXECUTION_MODEL_DEBUG=1" "__OPENCL_C_VERSION__=120" ${KHR_DEFINES}
   OPTIONS CL           ${CL_OPTIONS}

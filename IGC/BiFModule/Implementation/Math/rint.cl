@@ -51,11 +51,3 @@ GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARGS( rint, half, half, f16 )
 
 #endif // defined(cl_khr_fp16)
 
-#if defined(IGC_SPV_INTEL_bfloat16_arithmetic)
-INLINE bfloat __attribute__((overloadable)) __spirv_ocl_rint( bfloat x )
-{
-    return __spirv_ocl_rint((float)x);
-}
-
-GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARGS( rint, bfloat, bfloat, )
-#endif // defined(IGC_SPV_INTEL_bfloat16_arithmetic)

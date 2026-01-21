@@ -11,6 +11,8 @@ SPDX-License-Identifier: MIT
 // vstore_halfn_r, vstorea_halfn and vstorea_halfn_r built-ins.
 //
 
+#include "include/vload_vstore_impl.h"
+
 //*****************************************************************************/
 // helper functions
 //*****************************************************************************/
@@ -53,46 +55,6 @@ GENERATE_VECTOR_FUNCTIONS_2ARGS_VS_NO_MANG(__intel_spirv_double2half, half, doub
 
 #endif //defined(cl_khr_fp64)
 
-//*****************************************************************************/
-// vstoren
-// "Writes n components from the data vector value to the address computed as (p + (offset * n)),
-//  where n is equal to the component count of the vector data."
-//*****************************************************************************/
-
-#define VSTOREN_DEF(addressSpace, scalarType, numElements, offsetType, mangle)                              \
-INLINE void __attribute__((overloadable)) __spirv_ocl_vstoren(                        \
-    scalarType##numElements data, offsetType offset, addressSpace scalarType *p) {                          \
-    addressSpace scalarType *pOffset = p + offset * numElements;                                            \
-    scalarType##numElements ret = data;                                                                     \
-    __builtin_IB_memcpy_private_to_##addressSpace((addressSpace uchar *)pOffset, (private uchar *)&ret,     \
-                                                  sizeof(scalarType) * numElements, sizeof(scalarType));    \
-}
-
-#define VSTOREN_AS(addressSpace, scalarType, typemang, mang)                \
-VSTOREN_DEF(addressSpace, scalarType, 2,  long, v2##typemang##_i64_##mang)  \
-VSTOREN_DEF(addressSpace, scalarType, 2,  int,  v2##typemang##_i32_##mang)  \
-VSTOREN_DEF(addressSpace, scalarType, 3,  long, v3##typemang##_i64_##mang)  \
-VSTOREN_DEF(addressSpace, scalarType, 3,  int,  v3##typemang##_i32_##mang)  \
-VSTOREN_DEF(addressSpace, scalarType, 4,  long, v4##typemang##_i64_##mang)  \
-VSTOREN_DEF(addressSpace, scalarType, 4,  int,  v4##typemang##_i32_##mang)  \
-VSTOREN_DEF(addressSpace, scalarType, 8,  long, v8##typemang##_i64_##mang)  \
-VSTOREN_DEF(addressSpace, scalarType, 8,  int,  v8##typemang##_i32_##mang)  \
-VSTOREN_DEF(addressSpace, scalarType, 16, long, v16##typemang##_i64_##mang) \
-VSTOREN_DEF(addressSpace, scalarType, 16, int,  v16##typemang##_i32_##mang)
-
-#if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
-#define VSTOREN_TYPE(TYPE, TYPEMANG)               \
-VSTOREN_AS(global,   TYPE, TYPEMANG, p1##TYPEMANG) \
-VSTOREN_AS(local,    TYPE, TYPEMANG, p3##TYPEMANG) \
-VSTOREN_AS(private,  TYPE, TYPEMANG, p0##TYPEMANG) \
-VSTOREN_AS(generic,  TYPE, TYPEMANG, p4##TYPEMANG)
-#else
-#define VSTOREN_TYPE(TYPE, TYPEMANG)               \
-VSTOREN_AS(global,   TYPE, TYPEMANG, p1##TYPEMANG) \
-VSTOREN_AS(local,    TYPE, TYPEMANG, p3##TYPEMANG) \
-VSTOREN_AS(private,  TYPE, TYPEMANG, p0##TYPEMANG)
-#endif // __OPENCL_C_VERSION__ >= CL_VERSION_2_0
-
 VSTOREN_TYPE(char,   i8)
 VSTOREN_TYPE(short,  i16)
 VSTOREN_TYPE(int,    i32)
@@ -102,9 +64,6 @@ VSTOREN_TYPE(float,  f32)
 #if defined(cl_khr_fp64)
 VSTOREN_TYPE(double, f64)
 #endif
-#if defined(IGC_SPV_INTEL_bfloat16_arithmetic)
-VSTOREN_TYPE(bfloat, )
-#endif // defined(IGC_SPV_INTEL_bfloat16_arithmetic)
 
 //*****************************************************************************/
 // vstore_half
@@ -178,7 +137,6 @@ INLINE void __attribute__((overloadable)) __spirv_ocl_vstore_halfn_r            
 #define VSTORE_HALFN_BOTH(addressSpace, ASNUM, MANGSIZE, SIZETYPE, MANGSRC, srcType, numElements)  \
 VSTORE_HALFN_DEF(addressSpace, ASNUM, MANGSIZE, SIZETYPE, MANGSRC, srcType, numElements)           \
 VSTORE_HALFN_R_DEF(addressSpace, ASNUM, MANGSIZE, SIZETYPE, MANGSRC, srcType, numElements)
-
 
 #if defined(cl_khr_fp64)
 #define VSTORE_HALFN_ALL_TYPES(addressSpace, ASNUM)                 \

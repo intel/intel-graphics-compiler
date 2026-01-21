@@ -41,12 +41,3 @@ GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_3ARGS( smoothstep, half, half, f16 )
 
 #endif // defined(cl_khr_fp16)
 
-#if defined(IGC_SPV_INTEL_bfloat16_arithmetic)
-INLINE bfloat __attribute__((overloadable)) __spirv_ocl_smoothstep(bfloat edge0, bfloat edge1, bfloat x ){
-    bfloat div = (x - edge0) / (edge1 - edge0);
-    bfloat temp = __spirv_ocl_fclamp( div, (bfloat)0.0f, (bfloat)1.0f );
-    return temp * temp * __spirv_ocl_mad( (bfloat)-2.0f, temp, (bfloat)3.0f );
-}
-
-GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_3ARGS( smoothstep, bfloat, bfloat, )
-#endif // defined(IGC_SPV_INTEL_bfloat16_arithmetic)

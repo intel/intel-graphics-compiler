@@ -53,11 +53,3 @@ GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_2ARGS( minmag, half, half, f16 )
 
 #endif // defined(cl_khr_fp16)
 
-#if defined(IGC_SPV_INTEL_bfloat16_arithmetic)
-INLINE bfloat __attribute__((overloadable)) __spirv_ocl_minmag( bfloat x, bfloat y )
-{
-    return __spirv_ocl_minmag((float)x, (float)y);
-}
-
-GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_2ARGS( minmag, bfloat, bfloat, )
-#endif // defined(IGC_SPV_INTEL_bfloat16_arithmetic)

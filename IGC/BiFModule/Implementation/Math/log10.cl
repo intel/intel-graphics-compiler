@@ -63,11 +63,3 @@ GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARG_LOOP( log10, half, half, f16 )
 
 #endif // defined(cl_khr_fp16)
 
-#if defined(IGC_SPV_INTEL_bfloat16_arithmetic)
-INLINE bfloat __attribute__((overloadable)) __spirv_ocl_log10( bfloat x )
-{
-    return __spirv_ocl_native_log10(x);
-}
-
-GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARG_LOOP( log10, bfloat, bfloat, )
-#endif // defined(IGC_SPV_INTEL_bfloat16_arithmetic)

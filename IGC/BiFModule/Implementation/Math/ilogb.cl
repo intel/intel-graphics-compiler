@@ -79,11 +79,3 @@ GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARG_LOOP( ilogb, int, half, f16 )
 
 #endif // defined(cl_khr_fp16)
 
-#if defined(IGC_SPV_INTEL_bfloat16_arithmetic)
-INLINE int __attribute__((overloadable)) __spirv_ocl_ilogb( bfloat x )
-{
-    return __spirv_ocl_ilogb((float)x);
-}
-
-GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARG_LOOP( ilogb, int, bfloat, )
-#endif // defined(IGC_SPV_INTEL_bfloat16_arithmetic)

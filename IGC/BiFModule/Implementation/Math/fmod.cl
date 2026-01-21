@@ -9,7 +9,6 @@ SPDX-License-Identifier: MIT
 #include "../include/BiF_Definitions.cl"
 #include "../../Headers/spirv.h"
 
-
 INLINE
 float __attribute__((overloadable)) __spirv_ocl_fast_fmod( float xx, float yy )
 {
@@ -46,7 +45,6 @@ float4 __attribute__((overloadable)) __spirv_ocl_fast_fmod( float4 xx, float4 yy
     temp.s3 = __spirv_ocl_fast_fmod(xx.s3, yy.s3);
     return temp;
 }
-
 
 #if defined(cl_khr_fp16)
 INLINE
@@ -85,7 +83,6 @@ half4 __attribute__((overloadable)) __spirv_ocl_fast_fmod( half4 xx, half4 yy )
     return temp;
 }
 #endif // cl_khr_fp16
-
 
 #if defined(cl_khr_fp64)
 INLINE
@@ -291,11 +288,3 @@ GENERATE_VECTOR_FUNCTIONS_2ARGS_VV_LOOP( __builtin_spirv_OpFMod, half, half, hal
 
 #endif // defined(cl_khr_fp16)
 
-#if defined(IGC_SPV_INTEL_bfloat16_arithmetic)
-INLINE bfloat __attribute__((overloadable)) __spirv_ocl_fmod( bfloat x, bfloat y )
-{
-    return __spirv_ocl_fmod((float)x, (float)y);
-}
-
-GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_2ARGS_VV_LOOP( fmod, bfloat, bfloat, bfloat, , )
-#endif // defined(IGC_SPV_INTEL_bfloat16_arithmetic)

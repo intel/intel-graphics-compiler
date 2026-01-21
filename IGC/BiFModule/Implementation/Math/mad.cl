@@ -49,21 +49,3 @@ GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_3ARGS( mad, half, half, f16 )
 
 #endif // defined(cl_khr_fp16)
 
-#if defined(IGC_SPV_INTEL_bfloat16_arithmetic)
-INLINE bfloat __attribute__((overloadable)) __spirv_ocl_mad( bfloat a, bfloat b, bfloat c )
-{
-    // If -cl-mad-enable flag set later optimizations will decide how to combine it into mad
-    if(BIF_FLAG_CTRL_GET(MadEnable))
-    {
-        // Clang upconverts to float
-        // return a * b + c;
-        return as_bfloat(__builtin_bf16_add(__builtin_bf16_mul(as_ushort(a), as_ushort(b)), as_ushort(c)));
-    }
-    else
-    {
-        return __spirv_ocl_fma(a,b,c);
-    }
-}
-
-GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_3ARGS( mad, bfloat, bfloat, )
-#endif // defined(IGC_SPV_INTEL_bfloat16_arithmetic)

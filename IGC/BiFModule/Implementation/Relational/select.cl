@@ -101,16 +101,3 @@ GENERATE_VECTOR_FUNCTIONS_3ARGS_SELECT( __intel_vector_select_helper, half, shor
 
 #endif // defined(cl_khr_fp16)
 
-#if defined(IGC_SPV_INTEL_bfloat16_arithmetic)
-INLINE bfloat __attribute__((overloadable)) __spirv_ocl_select( bfloat a, bfloat b, short c )
-{
-    return c ? b : a;
-}
-
-static INLINE OVERLOADABLE bfloat __intel_vector_select_helper( bfloat a, bfloat b, short c )
-{
-    return c < 0 ? b : a;
-}
-
-GENERATE_VECTOR_FUNCTIONS_3ARGS_SELECT( __intel_vector_select_helper, bfloat, short, , )
-#endif // defined(IGC_SPV_INTEL_bfloat16_arithmetic)

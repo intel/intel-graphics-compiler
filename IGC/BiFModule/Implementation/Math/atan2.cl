@@ -161,11 +161,3 @@ GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_2ARGS_VV_LOOP( atan2, half, half, half, f16,
 
 #endif // defined(cl_khr_fp16)
 
-#if defined(IGC_SPV_INTEL_bfloat16_arithmetic)
-INLINE bfloat __attribute__((overloadable)) __spirv_ocl_atan2( bfloat y, bfloat x )
-{
-    return __spirv_ocl_atan2((float)y, (float)x);
-}
-
-GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_2ARGS_VV_LOOP( atan2, bfloat, bfloat, bfloat, , )
-#endif // defined(IGC_SPV_INTEL_bfloat16_arithmetic)

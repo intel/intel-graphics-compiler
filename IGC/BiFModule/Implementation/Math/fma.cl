@@ -23,11 +23,3 @@ GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_3ARGS( fma, half, half, f16 )
 
 #endif // defined(cl_khr_fp16)
 
-#if defined(IGC_SPV_INTEL_bfloat16_arithmetic)
-INLINE bfloat __attribute__((overloadable)) __spirv_ocl_fma( bfloat a, bfloat b, bfloat c )
-{
-    return as_bfloat(__builtin_bf16_mad(as_ushort(a), as_ushort(b), as_ushort(c)));
-}
-
-GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_3ARGS( fma, bfloat, bfloat, )
-#endif // defined(IGC_SPV_INTEL_bfloat16_arithmetic)
