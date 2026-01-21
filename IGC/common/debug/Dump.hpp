@@ -128,6 +128,7 @@ private:
   std::unique_ptr<llvm::raw_ostream> m_pStream;
   llvm::raw_ostream *m_pStringStream;
   const DumpType m_type;
+  bool m_isFlushed;
 };
 
 // Common implementation of the flush pass
