@@ -765,10 +765,6 @@ public:
   G4_Declare *getBuiltinHWTID() const { return builtinHWTID; }
   G4_Declare *getBuiltinSR0Dot1() const { return builtinSR0Dot1; }
 
-  // The first part of s0 is reserved for Xe3+ Gather Send (indirect send)
-  // This tests if an operand refers to Gather Send or something else
-  bool isBuiltinSendIndirectS0(G4_Operand *op) const;
-
   // Creates a mov to the next subregister of s0.# that is reserved
   //   (W[&pred]) mov (1) s0.#:type  [val]
   // where type = :d/:ud or :q/:uq drawn from signedness and size of

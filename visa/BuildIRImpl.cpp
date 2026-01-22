@@ -1959,24 +1959,6 @@ G4_INST *IR_Builder::createInternalBfnInst(
   return ii;
 }
 
-bool IR_Builder::isBuiltinSendIndirectS0(G4_Operand *op) const
-{
-  const G4_Declare *d = op->getTopDcl();
-  if (d == nullptr || d->getRegFile() != G4_SCALAR)
-    return false;
-  unsigned rightBound = 0;
-  if (op->isDstRegRegion()) {
-    G4_DstRegRegion *dst = op->asDstRegRegion();
-    rightBound = dst->getRightBound();
-  } else if (op->isSrcRegRegion()) {
-    G4_SrcRegRegion *dst = op->asSrcRegRegion();
-    rightBound = dst->getRightBound();
-  } else {
-    return false;
-  }
-  return rightBound < 8 * FIRST_SURFACE_S0_QW;
-}
-
 // todo: once all s0 creation is  moved to post-RA, remove the
 // createSurfaceMove* functions from buildIR
 G4_SrcRegRegion* IR_Builder::setupIndirectDescriptor(G4_Operand *val)
