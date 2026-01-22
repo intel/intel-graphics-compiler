@@ -64,7 +64,7 @@ public:
   void collectPressureForBB(llvm::BasicBlock &BB, InsideBlockPressureMap &BBListing, unsigned int SIMD,
                             WIAnalysisRunner *WI = nullptr);
 
-  SIMDMode bestGuessSIMDSize(Function *F = nullptr);
+  SIMDMode bestGuessSIMDSize(Function *F = nullptr, GenXFunctionGroupAnalysis *FGA = nullptr);
 
   unsigned int bytesToRegisters(unsigned int Bytes) {
     unsigned int RegisterSizeInBytes = registerSizeInBytes();
@@ -274,6 +274,7 @@ class IGCRegisterPressurePrinter : public llvm::FunctionPass {
   IGCLivenessAnalysisRunner *RPE = nullptr;
   WIAnalysis *WI = nullptr;
   CodeGenContext *CGCtx = nullptr;
+  GenXFunctionGroupAnalysis *FGA = nullptr;
 
   bool DumpToFile = false;
   std::string DumpFileName = "default";

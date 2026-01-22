@@ -45,7 +45,7 @@ unsigned int IGCLivenessAnalysisBase::registerSizeInBytes() {
   return 32;
 }
 
-SIMDMode IGCLivenessAnalysisBase::bestGuessSIMDSize(Function *F) {
+SIMDMode IGCLivenessAnalysisBase::bestGuessSIMDSize(Function *F, GenXFunctionGroupAnalysis *FGA) {
   switch (IGC_GET_FLAG_VALUE(ForceOCLSIMDWidth)) {
   case 0:
     break;
@@ -61,8 +61,18 @@ SIMDMode IGCLivenessAnalysisBase::bestGuessSIMDSize(Function *F) {
   if (F && MDUtils->findFunctionsInfoItem(F) != MDUtils->end_FunctionsInfo()) {
     IGC::IGCMD::FunctionInfoMetaDataHandle funcInfoMD = MDUtils->getFunctionsInfoItem(F);
     unsigned SimdSize = funcInfoMD->getSubGroupSize()->getSIMDSize();
-    if (SimdSize)
+    if (FGA) {
+      llvm::Function *Kernel = F;
+      auto *FG = FGA->getGroup(F);
+      Kernel = FG ? FG->getHead() : nullptr;
+      if (Kernel && MDUtils->findFunctionsInfoItem(F) != MDUtils->end_FunctionsInfo()) {
+        funcInfoMD = MDUtils->getFunctionsInfoItem(Kernel);
+        SimdSize = funcInfoMD->getSubGroupSize()->getSIMDSize();
+      }
+    }
+    if (SimdSize) {
       return lanesToSIMDMode(SimdSize);
+    }
   }
 
   // rule for pvc
@@ -550,8 +560,9 @@ bool IGCRegisterPressurePrinter::runOnFunction(llvm::Function &F) {
   WI = &getAnalysis<WIAnalysis>();
   CGCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
   MaxPressureInFunction = 0;
+  FGA = getAnalysisIfAvailable<GenXFunctionGroupAnalysis>();
 
-  unsigned int SIMD = numLanes(RPE->bestGuessSIMDSize(&F));
+  unsigned int SIMD = numLanes(RPE->bestGuessSIMDSize(&F, FGA));
 
   if (DumpToFile) {
     dumpRegPressure(F, SIMD);
@@ -614,7 +625,7 @@ bool IGCRegisterPressurePublisher::runOnModule(llvm::Module &M) {
 
     unsigned int MaxPressureInFunction = 0;
 
-    unsigned int SimdSize = numLanes(RPE.bestGuessSIMDSize(&F));
+    unsigned int SimdSize = numLanes(RPE.bestGuessSIMDSize(&F, FGA));
     // If we have some published metadata already don't do anything
     bool AlreadyPublished = (RPE.checkPublishRegPressureMetadata(F) != 0);
 
