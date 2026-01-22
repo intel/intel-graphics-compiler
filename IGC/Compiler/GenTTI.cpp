@@ -542,7 +542,6 @@ void GenIntrinsicsTTIImpl::getUnrollingPreferences(Loop *L, ScalarEvolution &SE,
     return;
   }
 
-#if LLVM_VERSION_MAJOR >= 16
   auto hasCall = [](BasicBlock *BB) {
     for (auto BI = BB->begin(), BE = BB->end(); BI != BE; ++BI)
       if (isa<CallInst>(&*BI) && !BI->isDebugOrPseudoInst())
@@ -553,7 +552,13 @@ void GenIntrinsicsTTIImpl::getUnrollingPreferences(Loop *L, ScalarEvolution &SE,
   // 4 x LoopUnrollThreshold for 1-BB outermost loops in small OCL kernels
   // without Call instructions, since we expect better optimization
   // when these loops are fully unrolled.
-  if (ctx->type == ShaderType::OPENCL_SHADER && !hasCall(L->getHeader()) && L->getHeader()->getParent()->size() < 5) {
+#if LLVM_VERSION_MAJOR < 16
+  const bool AllowSmallKernelOneBBLoopFullUnroll = !ctx->platform.isCoreXE3();
+#else
+  const bool AllowSmallKernelOneBBLoopFullUnroll = true;
+#endif
+  if (AllowSmallKernelOneBBLoopFullUnroll && ctx->type == ShaderType::OPENCL_SHADER && !hasCall(L->getHeader()) &&
+      L->getHeader()->getParent()->size() < 5) {
     if (!L->getParentLoop() && TripCount != 0 && TripCount < 256) {
       UP.Count = TripCount;
       UP.MaxCount = UP.Count;
@@ -564,7 +569,6 @@ void GenIntrinsicsTTIImpl::getUnrollingPreferences(Loop *L, ScalarEvolution &SE,
       return;
     }
   }
-#endif // LLVM_VERSION_MAJOR >= 16
 
   for (I = loopBlock->begin(); I != loopBlock->end(); I++) {
     if (const auto pIntrinsic = llvm::dyn_cast<llvm::GenIntrinsicInst>(I)) {
