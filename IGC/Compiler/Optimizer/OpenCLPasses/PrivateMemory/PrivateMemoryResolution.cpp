@@ -65,8 +65,9 @@ public:
 
   /// @brief  Resolve collected alloca instructions.
   /// @param privateOnStack: whether the private variables are allocated on the stack
+  /// @param hasOptNone: whether the function has the optnone attribute
   /// @return true if there were resolved alloca, false otherwise.
-  bool resolveAllocaInstructions(bool privateOnStack);
+  bool resolveAllocaInstructions(bool privateOnStack, bool hasOptNone);
 
 private:
   struct arrayIndex {
@@ -244,7 +245,7 @@ bool PrivateMemoryResolution::runOnModule(llvm::Module &M) {
       F.addFnAttr(llvm::Attribute::NullPointerIsValid);
     }
     // Resolve collected alloca instructions for current function
-    changed |= resolveAllocaInstructions(hasStackCall || hasVLA || isIndirectGroup);
+    changed |= resolveAllocaInstructions(hasStackCall || hasVLA || isIndirectGroup, m_currFunction->hasOptNone());
 
     // If stackcalls are in use, old FE Frame Pointer is written at the beginning of the stack.
     // FP takes 16 bytes, but padding may be added to satisfy allocas' alignment.
@@ -832,7 +833,7 @@ bool PrivateMemoryResolution::testTransposedMemory(const Type *pTmpType, const T
   return ok;
 }
 
-bool PrivateMemoryResolution::resolveAllocaInstructions(bool privateOnStack) {
+bool PrivateMemoryResolution::resolveAllocaInstructions(bool privateOnStack, bool hasOptNone) {
   CodeGenContext &Ctx = *getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
 
   // It is possible that there is no alloca instruction in the caller but there
@@ -870,7 +871,12 @@ bool PrivateMemoryResolution::resolveAllocaInstructions(bool privateOnStack) {
   // if we have privateOnStack, then address rematerialization will not work for allocas, in this case
   // we need to sink aggressively, even into loops
   // TODO: combine this and the upper heuristic into one independent from number of allocas, but from RegPressure
-  bool highAllocaRAPressure = allocaInsts.size() > IGC_GET_FLAG_VALUE(AllocaRAPressureThreshold) && privateOnStack;
+  auto totalAllocaThreshold =
+      (!hasOptNone ? IGC_GET_FLAG_VALUE(AllocaRAPressureThreshold)
+                   : std::max(static_cast<int>(IGC_GET_FLAG_VALUE(AllocaRAPressureThreshold)) -
+                                  static_cast<int>(IGC_GET_FLAG_VALUE(AllocaSinkingOptNoneAllowance)),
+                              0));
+  bool highAllocaRAPressure = allocaInsts.size() > totalAllocaThreshold && privateOnStack;
   sinkAllocas(allocaInsts, highAllocaRAPressure);
 
   // Each AllocaInst creates a buffer and all buffers are put together

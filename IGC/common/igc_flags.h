@@ -1702,6 +1702,8 @@ DECLARE_IGC_REGKEY(bool, EnableSamplerSplit, false, "Split Sampler 3d message to
 DECLARE_IGC_REGKEY(bool, EnableEvaluateSamplerSplit, true,
                    "Split evaluate messages to sampler into either SIMD8 or SIMD1 messages", false)
 DECLARE_IGC_REGKEY(DWORD, AllocaRAPressureThreshold, 500, "The threshold for the register pressure potential", false)
+DECLARE_IGC_REGKEY(DWORD, AllocaSinkingOptNoneAllowance, 205,
+                   "Amount of how much allowance is given for alloca sinking in case of optnone", false)
 DECLARE_IGC_REGKEY(DWORD, HPCInstNumThreshold, 1000000, "The threshold for the register pressure potential", false)
 DECLARE_IGC_REGKEY(DWORD, HPCGlobalInstNumThreshold, 500000, "The threshold for the register pressure potential", false)
 DECLARE_IGC_REGKEY(bool, HPCFastCompilation, false, "Force to do fast compilation for HPC kernel", false)
