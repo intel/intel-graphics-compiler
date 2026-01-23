@@ -321,7 +321,7 @@ public:
   }
 
   bool NeedResetA0forVxHA0() const {
-    return (m_platformInfo.eRenderCoreFamily >= IGFX_GEN11_CORE);
+    return (m_platformInfo.eRenderCoreFamily >= IGFX_GEN11_CORE && !isCoreChildOf(IGFX_XE3_CORE));
   }
 
 
