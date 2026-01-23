@@ -12,65 +12,60 @@ SPDX-License-Identifier: MIT
 
 namespace IGC {
 
-llvm::GenISAIntrinsic::ID LookupIntrinsicId(const char *pName) {
+llvm::GenISAIntrinsic::ID LookupIntrinsicId(llvm::StringRef GenISAprefix, llvm::StringRef Name) {
+
+  if (!Name.startswith(GenISAprefix))
+    return llvm::GenISAIntrinsic::ID::no_intrinsic;
+
   static auto LengthTable = GetIntrinsicLookupTable();
 
-  std::string input_name(pName);
-  unsigned start = 0;
-  unsigned end = LengthTable.size();
-  unsigned initial_size = end;
-  unsigned cur_pos = (start + end) / 2;
-  char letter;
-  char input_letter;
-  bool isError = false;
-  bool bump = false;
-  unsigned start_index = scIntrinsicPrefix.size();
-  for (unsigned i = 0; i < input_name.length(); i++) {
-    input_letter = input_name[start_index + i];
-    unsigned counter = 0;
-    while (1) {
-      if (counter == initial_size || cur_pos >= initial_size) {
-        isError = true;
-        break;
-      }
-      counter++;
-      letter = LengthTable[cur_pos].str[i];
-      if (letter == input_letter) {
-        if (LengthTable[cur_pos].num == i)
-          return LengthTable[cur_pos].id;
-        bump = true;
-        break;
-      } else if (input_letter == '\0' && letter == '@')
-        return LengthTable[cur_pos].id;
-      else if (input_letter == '.' && letter == '_')
-        break;
-      else if (input_letter == '.' && letter == '@') {
-        unsigned original_cur_pos = cur_pos;
-        while (1) {
-          if (cur_pos >= initial_size || LengthTable[cur_pos].num < i)
-            return LengthTable[original_cur_pos].id;
-          if (LengthTable[cur_pos].str[i] == '_')
-            break;
-          cur_pos += 1;
-        }
-        break;
-      } else if ((bump && letter < input_letter) || letter == '@') {
-        cur_pos += 1;
-        continue;
-      } else if (bump && letter > input_letter) {
-        cur_pos -= 1;
-        continue;
-      } else if (letter < input_letter)
-        start = cur_pos;
-      else
-        end = cur_pos;
-      cur_pos = (start + end) / 2;
-    }
-    if (isError)
+  auto IntrinsicName = Name.substr(GenISAprefix.size());
+  // Extract the base intrinsic name (everything before the first dot)
+  // This is used for the initial binary search to narrow down candidates
+  auto BaseName = IntrinsicName.substr(0, IntrinsicName.find('.'));
+
+  // Perform binary search to find the first entry that could match our input
+  // The lambda removes the trailing marker from lookup table entries for comparison
+  auto it = std::lower_bound(LengthTable.begin(), LengthTable.end(), BaseName, [](const auto &entry, const auto &name) {
+    auto str = llvm::StringRef(entry.str).drop_back(1);
+    return str < name;
+  });
+
+  auto BestId = llvm::GenISAIntrinsic::ID::no_intrinsic;
+  size_t BestMatchLength = 0;
+
+  for (auto iter = it; iter != LengthTable.end(); ++iter) {
+    auto CurrentStr = llvm::StringRef(iter->str);
+
+    // Count how many leading characters match between input and candidate
+    auto MismatchResult =
+        std::mismatch(IntrinsicName.begin(), IntrinsicName.end(), CurrentStr.begin(), CurrentStr.end(),
+                      [](char a, char b) { return (a == b) || (a == '.' && b == '_'); });
+    auto MatchLength = static_cast<size_t>(std::distance(IntrinsicName.begin(), MismatchResult.first));
+
+    // Match doesn't even cover the base name, stop searching
+    if (MatchLength < BaseName.size()) {
       break;
+    }
+
+    // Matches are getting worse, no need to continue
+    if (MatchLength < BestMatchLength) {
+      break;
+    }
+
+    // Don't count a trailing dot as part of the match to avoid
+    // incorrectly favoring matches based on type suffix delimiters
+    // e.g., foo.bar.fp32 should prefer foo.bar over foo.bar.baz
+    if (IntrinsicName[MatchLength - 1] == '.')
+      MatchLength--;
+    // Update best match if this candidate has more matching characters
+    if (MatchLength > BestMatchLength) {
+      BestMatchLength = MatchLength;
+      BestId = iter->id;
+    }
   }
 
-  return llvm::GenISAIntrinsic::ID::no_intrinsic;
+  return BestId;
 }
 
 } // namespace IGC

@@ -8,9 +8,10 @@ SPDX-License-Identifier: MIT
 #pragma once
 
 #include "GenIntrinsicEnum.h"
+#include <llvm/ADT/StringRef.h>
 
 namespace IGC {
 
-llvm::GenISAIntrinsic::ID LookupIntrinsicId(const char *pName);
+llvm::GenISAIntrinsic::ID LookupIntrinsicId(llvm::StringRef GenISAprefix, llvm::StringRef name);
 
 } // namespace IGC
