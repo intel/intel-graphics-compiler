@@ -27,8 +27,11 @@ struct MemCpyOptLegacyPassWrapper : public FunctionPass {
   virtual llvm::StringRef getPassName() const override { return "LegacyWrappedMemCpyOpt"; }
 
 private:
-  PassBuilder PB;
+  LoopAnalysisManager LAM;
   FunctionAnalysisManager FAM;
+  CGSCCAnalysisManager CGAM;
+  ModuleAnalysisManager MAM;
+  PassBuilder PB;
 };
 
 FunctionPass *createLegacyWrappedMemCpyOptPass();
