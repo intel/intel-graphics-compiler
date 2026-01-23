@@ -28,7 +28,11 @@ namespace IGCLLVM {
 
 GlobalOptLegacyPassWrapper::GlobalOptLegacyPassWrapper() : ModulePass(ID) {
   initializeGlobalOptLegacyPassWrapperPass(*PassRegistry::getPassRegistry());
+  PB.registerLoopAnalyses(LAM);
+  PB.registerFunctionAnalyses(FAM);
+  PB.registerCGSCCAnalyses(CGAM);
   PB.registerModuleAnalyses(MAM);
+  PB.crossRegisterProxies(LAM, FAM, CGAM, MAM);
 }
 
 bool GlobalOptLegacyPassWrapper::runOnModule(llvm::Module &M) {
@@ -49,10 +53,10 @@ void GlobalOptLegacyPassWrapper::getAnalysisUsage(AnalysisUsage &AU) const {
 
 char GlobalOptLegacyPassWrapper::ID = 0;
 Pass *createLegacyWrappedGlobalOptPass() {
-#if LLVM_VERSION_MAJOR <= 16 || defined(IGC_LLVM_TRUNK_REVISION)
-  return llvm::createGlobalOptimizerPass();
-#else
+#if LLVM_VERSION_MAJOR >= 16
   return new GlobalOptLegacyPassWrapper();
+#else
+  return llvm::createGlobalOptimizerPass();
 #endif
 }
 } // namespace IGCLLVM

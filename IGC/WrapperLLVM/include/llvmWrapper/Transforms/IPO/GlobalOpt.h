@@ -26,8 +26,11 @@ struct GlobalOptLegacyPassWrapper : public ModulePass {
   virtual llvm::StringRef getPassName() const override { return "LegacyWrappedGlobalOpt"; }
 
 private:
-  PassBuilder PB;
+  LoopAnalysisManager LAM;
+  FunctionAnalysisManager FAM;
+  CGSCCAnalysisManager CGAM;
   ModuleAnalysisManager MAM;
+  PassBuilder PB;
 };
 
 Pass *createLegacyWrappedGlobalOptPass();
