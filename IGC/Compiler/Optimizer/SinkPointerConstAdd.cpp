@@ -118,8 +118,6 @@ bool SinkPointerConstAddPass::skipZextToSext(llvm::Instruction *op, llvm::BasicB
       }
     } else if (llvm::dyn_cast<llvm::Argument>(op) || llvm::dyn_cast<llvm::LoadInst>(op)) {
       return true;
-    } else if (llvm::ExtractElementInst *eei = llvm::dyn_cast<llvm::ExtractElementInst>(op)) {
-      return skipZextToSext(llvm::dyn_cast<llvm::Instruction>(eei->getOperand(0)), parentBB);
     } else if (llvm::BinaryOperator *bo = llvm::dyn_cast<BinaryOperator>(op)) {
       llvm::ConstantInt *cOp0 = llvm::dyn_cast<llvm::ConstantInt>(bo->getOperand(0));
       llvm::ConstantInt *cOp1 = llvm::dyn_cast<llvm::ConstantInt>(bo->getOperand(1));

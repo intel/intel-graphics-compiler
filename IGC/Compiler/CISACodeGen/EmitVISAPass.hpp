@@ -692,7 +692,7 @@ public:
                                                    bool nomask = false);
   CVariable *BroadcastAndTruncPointer(CVariable *pVar);
   CVariable *IndexableResourceIndex(CVariable *indexVar, uint btiIndex);
-  ResourceDescriptor GetResourceVariable(llvm::Value *resourcePtr);
+  ResourceDescriptor GetResourceVariable(llvm::Value *resourcePtr, bool Check = false);
   SamplerDescriptor GetSamplerVariable(llvm::Value *samplerPtr);
   CVariable *ComputeSampleIntOffset(llvm::Instruction *sample, uint sourceIndex);
   void emitPlnInterpolation(CVariable *bary, CVariable *inputvar);
