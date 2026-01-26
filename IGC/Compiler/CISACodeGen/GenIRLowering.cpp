@@ -240,6 +240,7 @@ public:
     AU.addRequired<MetaDataUtilsWrapper>();
     AU.addRequired<LoopInfoWrapperPass>();
     AU.addRequired<ScalarEvolutionWrapperPass>();
+    AU.addRequired<DominatorTreeWrapperPass>();
   }
 
   void releaseMemory() override { truncatedInsts.clear(); }
@@ -254,6 +255,7 @@ protected:
 
 private:
   DenseMap<Instruction *, Instruction *> truncatedInsts;
+  DominatorTree *DT = nullptr;
 };
 
 char GEPLowering::ID = 0;
@@ -529,6 +531,7 @@ bool GEPLowering::runOnFunction(Function &F) {
 
   DL = &F.getParent()->getDataLayout();
   SE = &getAnalysis<ScalarEvolutionWrapperPass>().getSE();
+  DT = &getAnalysis<DominatorTreeWrapperPass>().getDomTree();
 
   BuilderTy TheBuilder(F.getContext(), TargetFolder(*DL));
   Builder = &TheBuilder;
@@ -600,6 +603,35 @@ Value *GEPLowering::truncExpr(Value *Val, Type *NewTy, bool initialVal = false) 
   if (!isa<Instruction>(Val))
     return Builder->CreateTrunc(Val, NewTy);
 
+  auto dominatesInst = [&](const llvm::Instruction *A, const llvm::Instruction *B) -> bool {
+    if (!A || !B) {
+      return false;
+    }
+    return DT->dominates(A, B);
+  };
+
+  auto getTruncatedInst = [&](llvm::Instruction *I) -> Instruction * {
+    auto truncatedInstIt = truncatedInsts.find(I);
+    if (truncatedInstIt == truncatedInsts.end()) {
+      return nullptr;
+    }
+    if (!dominatesInst(truncatedInstIt->second, I)) {
+      truncatedInstIt->second->moveAfter(I);
+    }
+
+    return truncatedInstIt->second;
+  };
+
+  auto getOrCreateTruncForOp = [&](Value *Op, Type *NewTy) -> Value * {
+    if (isa<Instruction>(Op)) {
+      auto *truncatedIt = getTruncatedInst(cast<Instruction>(Op));
+      if (truncatedIt) {
+        return truncatedIt;
+      }
+    }
+    return truncExpr(Op, NewTy);
+  };
+
   auto *I = cast<Instruction>(Val);
   unsigned Opc = I->getOpcode();
   switch (Opc) {
@@ -611,10 +643,10 @@ Value *GEPLowering::truncExpr(Value *Val, Type *NewTy, bool initialVal = false) 
   case Instruction::Xor: {
     // If the value is used in multiple places, we can just re-use it without duplicating calculation since it can not
     // be removed.
-    if (initialVal) {
-      auto truncatedIt = truncatedInsts.find(I);
-      if (truncatedIt != truncatedInsts.end()) {
-        return truncatedIt->second;
+    if (initialVal && IGC_IS_FLAG_ENABLED(GEPLoweringTruncOptEnabled)) {
+      auto *truncatedIt = getTruncatedInst(I);
+      if (truncatedIt) {
+        return truncatedIt;
       }
       if (llvm::any_of(Val->users(), [](const llvm::User *U) { return !llvm::isa<llvm::GetElementPtrInst>(U); })) {
         auto *newInst = Builder->CreateTrunc(Val, NewTy);
@@ -622,14 +654,6 @@ Value *GEPLowering::truncExpr(Value *Val, Type *NewTy, bool initialVal = false) 
         return newInst;
       }
     }
-    auto getOrCreateTruncForOp = [&](Value *Op, Type *NewTy) -> Value * {
-      if (isa<Instruction>(Op)) {
-        if (auto It = truncatedInsts.find(cast<Instruction>(Op)); It != truncatedInsts.end()) {
-          return It->second;
-        }
-      }
-      return truncExpr(Op, NewTy);
-    };
     BinaryOperator *BO = cast<BinaryOperator>(I);
     Value *LHS = getOrCreateTruncForOp(BO->getOperand(0), NewTy);
     Value *RHS = getOrCreateTruncForOp(BO->getOperand(1), NewTy);
@@ -1233,5 +1257,6 @@ IGC_INITIALIZE_PASS_BEGIN(GEPLowering, PASS_FLAG2, PASS_DESCRIPTION2, PASS_CFG_O
 IGC_INITIALIZE_PASS_DEPENDENCY(MetaDataUtilsWrapper)
 IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
 IGC_INITIALIZE_PASS_DEPENDENCY(LoopInfoWrapperPass)
+IGC_INITIALIZE_PASS_DEPENDENCY(DominatorTreeWrapperPass)
 IGC_INITIALIZE_PASS_DEPENDENCY(ScalarEvolutionWrapperPass);
 IGC_INITIALIZE_PASS_END(GEPLowering, PASS_FLAG2, PASS_DESCRIPTION2, PASS_CFG_ONLY2, PASS_ANALYSIS2)
