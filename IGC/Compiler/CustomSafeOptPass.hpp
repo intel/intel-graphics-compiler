@@ -151,6 +151,7 @@ public:
   void visitZExtInst(llvm::ZExtInst &I);
   void visitCastInst(llvm::CastInst &I);
   void visitIntToPtr(llvm::IntToPtrInst &I);
+  void visitPtrToIntInst(llvm::PtrToIntInst &I);
   void visitMul(llvm::BinaryOperator &I);
   void visitSDiv(llvm::BinaryOperator &I);
   void visitTruncInst(llvm::TruncInst &I);
