@@ -264,6 +264,86 @@ G4_INST *SRSubPassAfterRA::getRemoveableImm(G4_INST *inst,
   return (G4_INST *)nullptr;
 }
 
+// if multiple defined, cannot be removed
+// The define instruction is from the DU chain of the send source.
+// The opndNum is the source # in send.
+// immMovs recorded the mov immediate instructions which are define of the send
+// source.
+bool SRSubPassAfterRA::isDefinedMultipleTimes(
+    G4_INST *defInst, Gen4_Operand_Number opndNum, regCandidatesBRA &dstSrcRegs,
+    std::vector<G4_INST *> &immMovs,
+    std::vector<std::pair<Gen4_Operand_Number, unsigned>> &notRemoveableMap,
+    BitSet &definedGRF) {
+  G4_Operand *dst = defInst->getDst();
+  unsigned dstSize = (dst->getLinearizedEnd() - dst->getLinearizedStart() +
+                      builder.getGRFSize() - 1) /
+                     builder.getGRFSize();
+
+  // Check if the register is defined in definedGRF, if not set it as defined.
+  bool definedAlready = false;
+  for (unsigned i = 0; i < dstSize; i++) {
+    unsigned regNum = i + dst->getLinearizedStart() / builder.getGRFSize();
+    if (definedGRF.isSet(regNum)) {
+      definedAlready = true;
+    } else {
+      definedGRF.set(regNum, true);
+    }
+  }
+
+  if (!definedAlready)
+    return false;
+
+  // The startOffset is the offset to the declare
+  unsigned startOffset = dst->getLeftBound() / builder.getGRFSize();
+  // if multiple defined, cannot be removed
+  auto iter =
+      std::find_if(dstSrcRegs.dstSrcMap.begin(), dstSrcRegs.dstSrcMap.end(),
+                   [opndNum, dst](regMapBRA regmap) {
+                     return regmap.opndNum == opndNum &&
+                            !((regmap.inst->getDst()->getLinearizedStart() >
+                               dst->getLinearizedEnd()) ||
+                              (dst->getLinearizedStart() >
+                               regmap.inst->getDst()->getLinearizedEnd()));
+                   });
+  if (iter != dstSrcRegs.dstSrcMap.end()) {
+    // Remove the candidate
+    for (unsigned offset = startOffset; offset < startOffset + dstSize;
+         offset++) {
+      notRemoveableMap.push_back(std::make_pair(opndNum, offset));
+    }
+  }
+
+  // check if mov imm is multiple defined
+  auto immIter =
+      std::find_if(immMovs.begin(), immMovs.end(), [dst](G4_INST *immMov) {
+        return !(
+            (immMov->getDst()->getLinearizedStart() >
+             dst->getLinearizedEnd()) ||
+            (dst->getLinearizedStart() > immMov->getDst()->getLinearizedEnd()));
+      });
+
+  // If reused mov is multiple defined, the removed instructions which used
+  // the dst of the reused mov cannot be removed.
+  if (immIter != immMovs.end()) {
+    G4_INST *immMov = (*immIter);
+    G4_Operand *immDst = immMov->getDst();
+
+    auto iter = std::find_if(
+        dstSrcRegs.dstSrcMap.begin(), dstSrcRegs.dstSrcMap.end(),
+        [immDst](regMapBRA regmap) { return regmap.opnd == immDst; });
+    if (iter != dstSrcRegs.dstSrcMap.end()) {
+      for (unsigned offset = startOffset; offset < startOffset + dstSize;
+           offset++) {
+        notRemoveableMap.push_back(std::make_pair(opndNum, offset));
+      }
+    }
+
+    immMovs.erase(immIter);
+  }
+
+  return true;
+}
+
 // Check if current instruction is the candidate of sendi.
 // Recorded as candidate.
 bool SRSubPassAfterRA::isSRCandidateAfterRA(G4_INST *inst,
@@ -325,67 +405,57 @@ bool SRSubPassAfterRA::isSRCandidateAfterRA(G4_INST *inst,
   int32_t firstDefID = 0x7FFFFFFF; // the ID of the first instruction define the
   std::vector<std::pair<Gen4_Operand_Number, unsigned>> notRemoveableMap;
   std::vector<G4_INST *> immMovs;
+  BitSet definedGRF(builder.kernel.getNumRegTotal(), false);
   for (auto I = inst->def_begin(), E = inst->def_end(); I != E; ++I) {
     auto &&def = *I;
+    // The source opndNum of send instruction which was defined
+    Gen4_Operand_Number opndNum = (*I).second;
+    // Define instruction
+    G4_INST *defInst = def.first;
+
+    G4_Operand *dst = defInst->getDst();
+    unsigned dstSize = (dst->getLinearizedEnd() - dst->getLinearizedStart() +
+                        builder.getGRFSize() - 1) /
+                       builder.getGRFSize();
+    // The startOffset is the offset to the declare
+    unsigned startOffset = dst->getLeftBound() / builder.getGRFSize();
+
+    // Multiple defines are not allowed
+    if (isDefinedMultipleTimes(defInst, opndNum, dstSrcRegs, immMovs,
+                               notRemoveableMap, definedGRF)) {
+      if (!canRegisterBeEncoded(dst)) {
+        return false;
+      }
+      continue;
+    }
 
     // Only src0 and src1 matter
     if (def.second != Opnd_src1 && def.second != Opnd_src0) {
       continue;
     }
 
-    G4_INST *movInst = def.first;
-
-    // The source opndNum of send instruction which was defined
-    Gen4_Operand_Number opndNum = (*I).second;
-    //if opndNum + offset is defined multiple times, cannobe be removed
-    G4_Operand *dst = movInst->getDst();
-    // The startOffset is the offset to the declare
-    unsigned startOffset = dst->getLeftBound() / builder.getGRFSize();
-    unsigned dstSize = (dst->getLinearizedEnd() - dst->getLinearizedStart() +
-                        builder.getGRFSize() - 1) /
-                       builder.getGRFSize();
-
-    if (isRemoveAble(movInst)) {
-      auto iter = std::find_if(
-          dstSrcRegs.dstSrcMap.begin(), dstSrcRegs.dstSrcMap.end(),
-          [opndNum, dst](regMapBRA regmap) {
-                         return regmap.opndNum == opndNum &&
-                                !((regmap.inst->getDst()->getLinearizedStart() >
-                                     dst->getLinearizedEnd()) ||
-                                 (dst->getLinearizedStart() >
-                                     regmap.inst->getDst()->getLinearizedEnd()));
-          });
-      // if multiple defined, cannot be removed
-      if (iter != dstSrcRegs.dstSrcMap.end()) {
-        if (!canRegisterBeEncoded(dst)) {
-          return false;
-        }
-        for (unsigned offset = startOffset; offset < (startOffset + dstSize);
-             offset++) {
-          notRemoveableMap.push_back(std::make_pair(opndNum, offset));
-        }
-      } else {
-        G4_Operand *src = movInst->getSrc(0);
-        regMapBRA regPair(movInst, opndNum, startOffset, src); // mov source
+    // Check if the instruction can be removed
+    if (isRemoveAble(defInst)) {
+      G4_Operand *src = defInst->getSrc(0);
+      regMapBRA regPair(defInst, opndNum, startOffset, src); // mov source
         dstSrcRegs.dstSrcMap.push_back(regPair);
         firstDefID = std::min(firstDefID, def.first->getLocalId());
         movInstNum++;
-      }
     } else {
       if (!canRegisterBeEncoded(dst)) {
         return false;
       }
-      if (movInst->opcode() == G4_mov && movInst->getSrc(0) &&
-          movInst->getSrc(0)->isImm()) {
+      if (defInst->opcode() == G4_mov && defInst->getSrc(0) &&
+          defInst->getSrc(0)->isImm()) {
         // Check if there is mov instruction with same imm value
-        G4_INST *lvnMov = getRemoveableImm(movInst, immMovs);
+        G4_INST *reusedMov = getRemoveableImm(defInst, immMovs);
 
-        if (lvnMov) {
+        if (reusedMov) {
           // The offset is the offset of original dst, which is used to identify
           // the original register used in send.
           // The opndNum is the opndNum of send.
-          regMapBRA regPair(movInst, opndNum, startOffset,
-                            lvnMov->getDst()); // the lvn mov dst can be reused
+          regMapBRA regPair(defInst, opndNum, startOffset,
+              reusedMov->getDst()); // the mov dst can be reused
           dstSrcRegs.dstSrcMap.push_back(regPair);
           firstDefID = std::min(firstDefID, def.first->getLocalId());
           movInstNum++;
@@ -813,10 +883,11 @@ void SRSubPassAfterRA::SRSubAfterRA(G4_BB *bb) {
               (base->isRegVar()) ? base->asRegVar()->getPhyReg() : base;
 
           if (phyReg->getKind() == G4_VarBase::VK_phyGReg) {
-            // If the register redefined happened in the mov instruction which will
-            // be removed. Or the instruction whose dst will be accessed through
-            // s0. It's not real reuse. Such as the r8 in following
-            // instructions.
+            // If the register redefined happened in the mov instruction which
+            // will be removed. Or the instruction whose dst will be accessed
+            // through s0. It's not real reuse. Such as the r8 in following
+            // instructions. The mov to r9.0 cannot be removed because r8 is
+            // redefined.
             // clang-format off
             // mov(8)  r9.0 <1>:f  r8.0<1; 1, 0>:f
             // mov(8)  r10.0<1>:f  r3.0<8; 8, 1>:f
@@ -844,6 +915,9 @@ void SRSubPassAfterRA::SRSubAfterRA(G4_BB *bb) {
                 dstSrcRegsIter = nextIter;
                 continue;
               }
+
+              // If the source of removed instruction is redefined, the
+              // instruction cannot be removed.
               int srcRegLB = (*dstSrcRegsIter).opnd->getLinearizedStart();
               int srcRegRB = (*dstSrcRegsIter).opnd->getLinearizedEnd();
               if (!(srcRegRB < dstRegLB || srcRegLB > dstRegRB)) {

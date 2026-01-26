@@ -83,6 +83,11 @@ public:
   bool isRemoveAble(G4_INST *i);
   G4_INST *getRemoveableImm(G4_INST *inst, std::vector<G4_INST *> &immMovs);
   bool checkCandidateForLargeGRF(G4_INST *inst, regCandidatesBRA &dstSrcRegs);
+  bool isDefinedMultipleTimes(
+      G4_INST *defInst, Gen4_Operand_Number opndNum,
+      regCandidatesBRA &dstSrcRegs, std::vector<G4_INST *> &immMovs,
+      std::vector<std::pair<Gen4_Operand_Number, unsigned>> &notRemoveableMap,
+      BitSet &definedGRF);
   bool isSRCandidateAfterRA(G4_INST *inst, regCandidatesBRA &dstSrcRegs);
   bool replaceWithSendiAfterRA(G4_BB *bb, INST_LIST_ITER instIter,
                                regCandidatesBRA &dstSrcRegs);
