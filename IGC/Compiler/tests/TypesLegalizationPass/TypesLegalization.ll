@@ -92,21 +92,21 @@ define spir_kernel void @f3(ptr addrspace(1) %arg) {
 ; CHECK-SAME: ptr addrspace(1) [[ARG:%.*]]) {
 ; CHECK-NEXT:  [[ENTRY:.*:]]
 ; CHECK-NEXT:    [[TMP0:%.*]] = getelementptr [8 x <2 x double>], ptr addrspace(1) [[ARG]], i32 0, i32 0
-; CHECK-NEXT:    store <2 x double> zeroinitializer, ptr addrspace(1) [[TMP0]], align 16
+; CHECK-NEXT:    store <2 x double> zeroinitializer, ptr addrspace(1) [[TMP0]], align 8
 ; CHECK-NEXT:    [[TMP1:%.*]] = getelementptr [8 x <2 x double>], ptr addrspace(1) [[ARG]], i32 0, i32 1
-; CHECK-NEXT:    store <2 x double> zeroinitializer, ptr addrspace(1) [[TMP1]], align 16
+; CHECK-NEXT:    store <2 x double> zeroinitializer, ptr addrspace(1) [[TMP1]], align 8
 ; CHECK-NEXT:    [[TMP2:%.*]] = getelementptr [8 x <2 x double>], ptr addrspace(1) [[ARG]], i32 0, i32 2
-; CHECK-NEXT:    store <2 x double> zeroinitializer, ptr addrspace(1) [[TMP2]], align 16
+; CHECK-NEXT:    store <2 x double> zeroinitializer, ptr addrspace(1) [[TMP2]], align 8
 ; CHECK-NEXT:    [[TMP3:%.*]] = getelementptr [8 x <2 x double>], ptr addrspace(1) [[ARG]], i32 0, i32 3
-; CHECK-NEXT:    store <2 x double> zeroinitializer, ptr addrspace(1) [[TMP3]], align 16
+; CHECK-NEXT:    store <2 x double> zeroinitializer, ptr addrspace(1) [[TMP3]], align 8
 ; CHECK-NEXT:    [[TMP4:%.*]] = getelementptr [8 x <2 x double>], ptr addrspace(1) [[ARG]], i32 0, i32 4
-; CHECK-NEXT:    store <2 x double> zeroinitializer, ptr addrspace(1) [[TMP4]], align 16
+; CHECK-NEXT:    store <2 x double> zeroinitializer, ptr addrspace(1) [[TMP4]], align 8
 ; CHECK-NEXT:    [[TMP5:%.*]] = getelementptr [8 x <2 x double>], ptr addrspace(1) [[ARG]], i32 0, i32 5
-; CHECK-NEXT:    store <2 x double> zeroinitializer, ptr addrspace(1) [[TMP5]], align 16
+; CHECK-NEXT:    store <2 x double> zeroinitializer, ptr addrspace(1) [[TMP5]], align 8
 ; CHECK-NEXT:    [[TMP6:%.*]] = getelementptr [8 x <2 x double>], ptr addrspace(1) [[ARG]], i32 0, i32 6
-; CHECK-NEXT:    store <2 x double> zeroinitializer, ptr addrspace(1) [[TMP6]], align 16
+; CHECK-NEXT:    store <2 x double> zeroinitializer, ptr addrspace(1) [[TMP6]], align 8
 ; CHECK-NEXT:    [[TMP7:%.*]] = getelementptr [8 x <2 x double>], ptr addrspace(1) [[ARG]], i32 0, i32 7
-; CHECK-NEXT:    store <2 x double> zeroinitializer, ptr addrspace(1) [[TMP7]], align 16
+; CHECK-NEXT:    store <2 x double> zeroinitializer, ptr addrspace(1) [[TMP7]], align 8
 ; CHECK-NEXT:    ret void
 ;
 entry:

@@ -75,9 +75,9 @@ define spir_kernel void @cover.ResolveValue.cast.to.SelectInst(i1 %condition)
 ; CHECK-NEXT:    [[TMP4:%.*]] = select i1 [[CONDITION]], <2 x i16> [[TMP2]], <2 x i16> [[FINAL_VECTOR]]
 ; CHECK-NEXT:    [[FINAL_ARRAY:%.*]] = select i1 [[CONDITION]], [2 x <2 x i16>] [[ARRAY1]], [2 x <2 x i16>] [[ARRAY2]]
 ; CHECK-NEXT:    [[TMP5:%.*]] = getelementptr [2 x <2 x i16>], [2 x <2 x i16>]* [[ARRAY_PTR]], i32 0, i32 0
-; CHECK-NEXT:    store <2 x i16> [[TMP3]], <2 x i16>* [[TMP5]], align 4
+; CHECK-NEXT:    store <2 x i16> [[TMP3]], <2 x i16>* [[TMP5]], align 1
 ; CHECK-NEXT:    [[TMP6:%.*]] = getelementptr [2 x <2 x i16>], [2 x <2 x i16>]* [[ARRAY_PTR]], i32 0, i32 1
-; CHECK-NEXT:    store <2 x i16> [[TMP4]], <2 x i16>* [[TMP6]], align 4
+; CHECK-NEXT:    store <2 x i16> [[TMP4]], <2 x i16>* [[TMP6]], align 1
 ; CHECK-NEXT:    ret void
 ;
 {

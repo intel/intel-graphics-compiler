@@ -93,6 +93,50 @@ Value *TypesLegalizationPass::CreateGEP(IGCLLVM::IRBuilder<> &builder, Type *Ty,
 }
 
 ///////////////////////////////////////////////////////////////////////
+/// @brief Compute safe alignment for a scalar load/store when splitting an aggregate.
+/// @param aggTy Aggregate type being split
+/// @param scalarTy Scalar element type
+/// @param instAlign Alignment from load/store instruction (0 if not specified)
+/// @param DL Data layout for ABI alignment queries
+/// @return Align alignment that respects both the aggregate pointer's alignment
+///         and the scalar type's requirements
+static Align ComputeSafeScalarAlignment(Type *aggTy, Type *scalarTy, uint64_t instAlign, const DataLayout &DL) {
+  // Get ABI alignment required by the scalar type
+  uint64_t scalarTypeABIAlign = IGCLLVM::getAlignmentValue(IGCLLVM::getABITypeAlign(DL, scalarTy));
+
+  // Determine effective alignment of the aggregate pointer.
+  // If the instruction has no explicit alignment attribute, LLVM assumes
+  // the pointer is aligned to the ABI alignment of the aggregate type.
+  uint64_t aggPtrAlign = instAlign;
+  if (aggPtrAlign == 0) {
+    aggPtrAlign = IGCLLVM::getAlignmentValue(IGCLLVM::getABITypeAlign(DL, aggTy));
+  }
+
+  // Check if aggregate is packed (no padding between fields)
+  bool isPacked = false;
+  if (StructType *ST = dyn_cast<StructType>(aggTy)) {
+    isPacked = ST->isPacked();
+  }
+
+  if (isPacked) {
+    // Packed structs have no padding between fields, so fields may be at byte offsets
+    // that don't satisfy their ABI alignment. Must use align=1 for safety.
+    return IGCLLVM::getAlign(1);
+  } else if (aggPtrAlign >= scalarTypeABIAlign) {
+    // The pointer alignment is sufficient for the scalar's ABI alignment.
+    // Non-packed structs have padding to ensure fields meet their ABI alignment,
+    // so we can safely use the scalar's ABI alignment for the load/store.
+    return IGCLLVM::getAlign(scalarTypeABIAlign);
+  } else {
+    // The pointer alignment is less than the scalar's ABI alignment.
+    // This can happen when loading/storing from under-aligned aggregate pointers.
+    // Use the actual pointer alignment to avoid undefined behavior.
+    IGC_ASSERT(aggPtrAlign > 0);
+    return IGCLLVM::getAlign(aggPtrAlign);
+  }
+}
+
+///////////////////////////////////////////////////////////////////////
 /// @brief Resolves a PHI node to alloca store and load.
 /// @param phi instruction to resolve
 
@@ -193,12 +237,13 @@ Value *TypesLegalizationPass::ResolveValue(Instruction *ip, Value *val, SmallVec
   } else if (LoadInst *ld = dyn_cast<LoadInst>(val)) {
     IGCLLVM::IRBuilder<> builder(ld);
     Value *gep = CreateGEP(builder, ld->getType(), ld->getOperand(0), indices);
-    auto alignment = IGCLLVM::getAlignmentValue(ld);
-    unsigned pointerTypeSize = ld->getType()->getScalarSizeInBits() / 8;
     Type *gepTy = IGCLLVM::getGEPIndexedType(ld->getType(), indices);
-    if (alignment && (alignment_t)pointerTypeSize == alignment)
-      return builder.CreateAlignedLoad(gepTy, gep, IGCLLVM::getAlign(alignment));
-    return builder.CreateLoad(gepTy, gep);
+
+    // Determine safe alignment for the scalar element load
+    auto loadInstAlign = IGCLLVM::getAlignmentValue(ld);
+    const DataLayout &DL = ld->getModule()->getDataLayout();
+    Align useAlign = ComputeSafeScalarAlignment(ld->getType(), gepTy, loadInstAlign, DL);
+    return builder.CreateAlignedLoad(gepTy, gep, useAlign);
   } else if (Constant *c = dyn_cast<Constant>(val)) {
     IRBuilder<> builder(ip);
     // Create ExtractValue - it will be folded.
@@ -315,16 +360,15 @@ void TypesLegalizationPass::ResolveStoreInst(StoreInst *storeInst, Type *type, S
     Value *val = ResolveValue(storeInst, storeInst->getOperand(0), indices);
     if (val) {
       IGCLLVM::IRBuilder<> builder(storeInst);
-      bool isPackedStruct = false;
 
-      if (StructType *st = dyn_cast<StructType>(storeInst->getValueOperand()->getType()))
-        isPackedStruct = st->isPacked();
-
-      Value *pGEP = CreateGEP(builder, storeInst->getValueOperand()->getType(), storeInst->getOperand(1), indices);
-      if (isPackedStruct)
-        builder.CreateAlignedStore(val, pGEP, IGCLLVM::getAlign(1));
-      else
-        builder.CreateStore(val, pGEP);
+      // Determine safe alignment for the scalar element store
+      Type *aggTy = storeInst->getValueOperand()->getType();
+      Type *scalarTy = val->getType();
+      auto storeInstAlign = IGCLLVM::getAlignmentValue(storeInst);
+      const DataLayout &DL = storeInst->getModule()->getDataLayout();
+      Align useAlign = ComputeSafeScalarAlignment(aggTy, scalarTy, storeInstAlign, DL);
+      Value *pGEP = CreateGEP(builder, aggTy, storeInst->getOperand(1), indices);
+      builder.CreateAlignedStore(val, pGEP, useAlign);
     }
   }
 }
