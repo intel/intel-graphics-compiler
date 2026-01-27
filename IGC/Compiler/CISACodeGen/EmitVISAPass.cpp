@@ -21942,6 +21942,7 @@ void EmitPass::emitDnscl(llvm::GenIntrinsicInst *GII) {
   CVariable *dst = m_destination;
   CVariable *cs0 = GetSymbol(s0);
   CVariable *cs1 = GetSymbol(s1);
+
   if (dst->GetType() == ISA_TYPE_D)
     dst = m_currShader->BitCast(dst, ISA_TYPE_UD);
   if (cs0->GetType() == ISA_TYPE_D)
@@ -21951,6 +21952,19 @@ void EmitPass::emitDnscl(llvm::GenIntrinsicInst *GII) {
   IGC_ASSERT(dst->GetType() == ISA_TYPE_UD);
   IGC_ASSERT(cs0->GetType() == ISA_TYPE_UD);
   IGC_ASSERT(cs1->GetType() == ISA_TYPE_UD);
+
+  if (cs0->IsImmediate()) {
+    CVariable *cs0imm = cs0;
+    cs0 = m_currShader->GetNewVariable(dst);
+    m_encoder->Copy(cs0, cs0imm);
+    m_encoder->Push();
+  }
+  if (cs1->IsImmediate()) {
+    CVariable *cs1imm = cs1;
+    cs1 = m_currShader->GetNewVariable(dst);
+    m_encoder->Copy(cs1, cs1imm);
+    m_encoder->Push();
+  }
 
   CVariable *cbias;
   if (roundMode == DNSCL_RND_MODE::STOCHASTIC_ROUND) {
