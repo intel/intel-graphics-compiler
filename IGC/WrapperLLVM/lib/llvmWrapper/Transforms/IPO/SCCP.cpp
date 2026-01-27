@@ -49,7 +49,7 @@ void IPSCCPLegacyPassWrapper::getAnalysisUsage(AnalysisUsage &AU) const {
 
 char IPSCCPLegacyPassWrapper::ID = 0;
 ModulePass *createLegacyWrappedIPSCCPPass() {
-#if LLVM_VERSION_MAJOR > 16 && !defined(IGC_LLVM_TRUNK_REVISION)
+#if LLVM_VERSION_MAJOR >= 16
   return new IPSCCPLegacyPassWrapper();
 #else
   return llvm::createIPSCCPPass();
