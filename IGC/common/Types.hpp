@@ -62,6 +62,11 @@ inline uint32_t getPrecisionInBits(PrecisionType P) {
   case S2:
     return 2;
     // PVC
+  case BF8:
+  case HF8:
+    return 8;
+  case DF:
+    return 64;
   case TF32:
     return 32;
   case E2M1:
