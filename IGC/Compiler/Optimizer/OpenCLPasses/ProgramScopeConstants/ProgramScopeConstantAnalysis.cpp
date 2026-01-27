@@ -268,7 +268,7 @@ bool ProgramScopeConstantAnalysis::runOnModule(Module &M) {
   const bool changed = !inlineProgramScopeOffsets.empty();
   for (const auto &offset : inlineProgramScopeOffsets) {
     std::string globalName = offset.first->getName().str();
-    if (Ctx->m_retryManager.IsFirstTry()) {
+    if (Ctx->m_retryManager->IsFirstTry()) {
       m_pModuleMd->inlineProgramScopeOffsets[offset.first] = static_cast<uint64_t>(offset.second);
       Ctx->inlineProgramScopeGlobalOffsets[globalName] = static_cast<uint64_t>(offset.second);
     } else {

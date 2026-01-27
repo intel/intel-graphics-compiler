@@ -2118,17 +2118,17 @@ void InsertOptsMetadata(CodeGenContext *pCtx, llvm::Function *F) {
   }
 
   // Disable opt passes using the retry manager states
-  if (!pCtx->m_retryManager.AllowPromotePrivateMemory(F))
+  if (!pCtx->m_retryManager->AllowPromotePrivateMemory(F))
     OptDisableSet->insert(IGCOpts::LowerGEPForPrivMemPass);
-  if (!pCtx->m_retryManager.AllowAddressArithmeticSinking(F))
+  if (!pCtx->m_retryManager->AllowAddressArithmeticSinking(F))
     OptDisableSet->insert(IGCOpts::AddressArithmeticSinkingPass);
-  if (!pCtx->m_retryManager.AllowLargeURBWrite(F))
+  if (!pCtx->m_retryManager->AllowLargeURBWrite(F))
     OptDisableSet->insert(IGCOpts::MergeURBWritePass);
-  if (!pCtx->m_retryManager.AllowConstantCoalescing(F))
+  if (!pCtx->m_retryManager->AllowConstantCoalescing(F))
     OptDisableSet->insert(IGCOpts::ConstantCoalescingPass);
-  if (!pCtx->m_retryManager.AllowLoadSinking(F))
+  if (!pCtx->m_retryManager->AllowLoadSinking(F))
     OptDisableSet->insert(IGCOpts::SinkLoadOptPass);
-  if (!pCtx->m_retryManager.AllowSimd32Slicing(F))
+  if (!pCtx->m_retryManager->AllowSimd32Slicing(F))
     OptDisableSet->insert(IGCOpts::AllowSimd32Slicing);
 }
 

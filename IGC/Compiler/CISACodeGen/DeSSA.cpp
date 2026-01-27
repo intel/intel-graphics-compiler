@@ -530,7 +530,7 @@ bool DeSSA::runOnFunction(Function &MF) {
                     .Type(CTX->type)
                     .Pass("dessa")
                     .PostFix(fname)
-                    .Retry(CTX->m_retryManager.GetRetryId())
+                    .Retry(CTX->m_retryManager->GetRetryId())
                     .Extension("txt");
 
     Dump dessaDump(name, DumpType::DBG_MSG_TEXT);

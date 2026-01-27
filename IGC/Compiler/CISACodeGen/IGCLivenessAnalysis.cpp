@@ -387,7 +387,7 @@ void IGCRegisterPressurePrinter::dumpRegPressure(llvm::Function &F, unsigned int
     auto Name = Debug::DumpName(IGC::Debug::GetShaderOutputName())
                     .Hash(CGCtx->hash)
                     .Type(CGCtx->type)
-                    .Retry(CGCtx->m_retryManager.GetRetryId())
+                    .Retry(CGCtx->m_retryManager->GetRetryId())
                     .Pass(ss.str().c_str())
                     .Extension("ll");
 
@@ -399,7 +399,7 @@ void IGCRegisterPressurePrinter::dumpRegPressure(llvm::Function &F, unsigned int
       Name = Debug::DumpName(IGC::Debug::GetShaderOutputName())
                  .Hash(CGCtx->hash)
                  .Type(CGCtx->type)
-                 .Retry(CGCtx->m_retryManager.GetRetryId())
+                 .Retry(CGCtx->m_retryManager->GetRetryId())
                  .Pass((ss.str() + "_" + std::to_string(Counter)).c_str())
                  .Extension("ll");
       FileToCheck.open(Name.str());

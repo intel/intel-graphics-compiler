@@ -267,7 +267,7 @@ void AddAnalysisPasses(CodeGenContext &ctx, IGCPassManager &mpm) {
     }
     if (IGC_IS_FLAG_DISABLED(DisableCodeScheduling) && (ctx.type == ShaderType::OPENCL_SHADER) &&
         (ctx.platform.isCoreChildOf(IGFX_XE_HPC_CORE) || ctx.platform.isCoreChildOf(IGFX_XE2_HPG_CORE))) {
-      if (IGC_IS_FLAG_DISABLED(CodeSchedulingOnlyRecompilation) || ctx.m_retryManager.AllowCodeScheduling()) {
+      if (IGC_IS_FLAG_DISABLED(CodeSchedulingOnlyRecompilation) || ctx.m_retryManager->AllowCodeScheduling()) {
         mpm.add(new CodeScheduling());
       }
     }
@@ -516,7 +516,7 @@ void AddLegalizationPasses(CodeGenContext &ctx, IGCPassManager &mpm, PSSignature
     bool AllowLICM =
         IGC_IS_FLAG_SET(allowLICM) ? IGC_IS_FLAG_ENABLED(allowLICM) : ctx.getModuleMetaData()->compOpt.AllowLICM;
 
-    if (ctx.m_retryManager.AllowLICM() && AllowLICM) {
+    if (ctx.m_retryManager->AllowLICM() && AllowLICM) {
       mpm.add(createSpecialCasesDisableLICM());
       mpm.add(IGCLLVM::createLegacyWrappedLICMPass(100, 500, true));
     }
@@ -831,7 +831,7 @@ void AddLegalizationPasses(CodeGenContext &ctx, IGCPassManager &mpm, PSSignature
     bool AllowLICM =
         IGC_IS_FLAG_SET(allowLICM) ? IGC_IS_FLAG_ENABLED(allowLICM) : ctx.getModuleMetaData()->compOpt.AllowLICM;
 
-    if (!fastCompile && !highAllocaPressure && !isPotentialHPCKernel && AllowLICM && ctx.m_retryManager.AllowLICM()) {
+    if (!fastCompile && !highAllocaPressure && !isPotentialHPCKernel && AllowLICM && ctx.m_retryManager->AllowLICM()) {
       mpm.add(createSpecialCasesDisableLICM());
       mpm.add(IGCLLVM::createLegacyWrappedLICMPass(100, 500, true));
       mpm.add(llvm::createEarlyCSEPass());
@@ -868,7 +868,7 @@ void AddLegalizationPasses(CodeGenContext &ctx, IGCPassManager &mpm, PSSignature
   // Run address remat after GVN as it may hoist address calculations and
   // create PHI nodes with addresses.
   if (IGC_IS_FLAG_ENABLED(RematEnable) ||
-      (ctx.m_retryManager.AllowCloneAddressArithmetic() && ctx.type == ShaderType::OPENCL_SHADER)) {
+      (ctx.m_retryManager->AllowCloneAddressArithmetic() && ctx.type == ShaderType::OPENCL_SHADER)) {
 
     if (IGC_GET_FLAG_VALUE(RematInstCombineBefore))
       mpm.add(createIGCInstructionCombiningPass());
@@ -905,7 +905,7 @@ void AddLegalizationPasses(CodeGenContext &ctx, IGCPassManager &mpm, PSSignature
     mpm.add(createDeadCodeEliminationPass());
     if (IGC_IS_FLAG_SET(DumpRegPressureEstimate))
       mpm.add(new IGCRegisterPressurePrinter("after_remat"));
-  } else if (ctx.m_retryManager.AllowCloneAddressArithmetic() && IGC_GET_FLAG_VALUE(RematOptionsForRetry) ||
+  } else if (ctx.m_retryManager->AllowCloneAddressArithmetic() && IGC_GET_FLAG_VALUE(RematOptionsForRetry) ||
              ctx.platform.supportsVRT() && IGC_GET_FLAG_VALUE(RematOptionsForVRT)) {
 
     if (IGC_GET_FLAG_VALUE(RematInstCombineBefore))
@@ -922,7 +922,7 @@ void AddLegalizationPasses(CodeGenContext &ctx, IGCPassManager &mpm, PSSignature
     }
 
     // if both retry and VRT checks go through, retry is more important
-    auto rematOptions = ctx.m_retryManager.AllowCloneAddressArithmetic() && IGC_GET_FLAG_VALUE(RematOptionsForRetry)
+    auto rematOptions = ctx.m_retryManager->AllowCloneAddressArithmetic() && IGC_GET_FLAG_VALUE(RematOptionsForRetry)
                             ? static_cast<IGC::REMAT_OPTIONS>(IGC_GET_FLAG_VALUE(RematOptionsForRetry))
                             : static_cast<IGC::REMAT_OPTIONS>(IGC_GET_FLAG_VALUE(RematOptionsForVRT));
 
@@ -1375,14 +1375,14 @@ void OptimizeIR(CodeGenContext *const pContext) {
 
     if (pContext->m_instrTypes.hasMultipleBB && !disableGOPT) {
       if (pContext->m_instrTypes.numOfLoop) {
-        bool AllowLICM = pContext->m_retryManager.AllowLICM() &&
+        bool AllowLICM = pContext->m_retryManager->AllowLICM() &&
                          (IGC_IS_FLAG_SET(allowLICM) ? IGC_IS_FLAG_ENABLED(allowLICM)
                                                      : pContext->getModuleMetaData()->compOpt.AllowLICM);
         bool runGEPLSR = IGC_IS_FLAG_ENABLED(EnableGEPLSR) && pContext->type == ShaderType::OPENCL_SHADER &&
                          (pContext->platform.getPlatformInfo().eProductFamily == IGFX_PVC ||
                           pContext->platform.getPlatformInfo().eProductFamily == IGFX_CRI) &&
                          !pContext->useStatelessToStateful() && !pContext->platform.hasEfficient64bEnabled() &&
-                         pContext->m_retryManager.IsFirstTry();
+                         pContext->m_retryManager->IsFirstTry();
 
         if (runGEPLSR && IGC_IS_FLAG_DISABLED(RunGEPLSRAfterLICM)) {
           mpm.add(createGEPLoopStrengthReductionPass(AllowLICM));
@@ -1401,7 +1401,7 @@ void OptimizeIR(CodeGenContext *const pContext) {
         }
 
 
-        if (!pContext->m_retryManager.IsFirstTry() && pContext->type == ShaderType::OPENCL_SHADER) {
+        if (!pContext->m_retryManager->IsFirstTry() && pContext->type == ShaderType::OPENCL_SHADER) {
           mpm.add(new DisableLoopUnrollOnRetry());
         }
 

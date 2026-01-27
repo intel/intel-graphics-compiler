@@ -874,7 +874,7 @@ void RebuildGlobalAnnotations(IGC::OpenCLProgramContext &oclContext, Module *pKe
     return;
 
   auto requiresRecompilation = [&oclContext](Function *F) {
-    return oclContext.m_retryManager.kernelSet.find(F->getName().str()) != oclContext.m_retryManager.kernelSet.end();
+    return oclContext.m_retryManager->kernelSet.find(F->getName().str()) != oclContext.m_retryManager->kernelSet.end();
   };
 
   std::vector<Constant *> newGlobalAnnotations;
@@ -1215,7 +1215,7 @@ bool TranslateBuildSPMD(const STB_TranslateInputArgs *pInputArgs, STB_TranslateO
   bool doSplitModule = oclContext.m_InternalOptions.CompileOneKernelAtTime || IGC_IS_FLAG_ENABLED(CompileOneAtTime);
   // set retry manager
   bool retry = false;
-  oclContext.m_retryManager.Enable(ShaderType::OPENCL_SHADER);
+  oclContext.m_retryManager->Enable(ShaderType::OPENCL_SHADER);
   do {
     llvm::TinyPtrVector<const llvm::Function *> kernelFunctions;
     if (doSplitModule) {
@@ -1274,8 +1274,8 @@ bool TranslateBuildSPMD(const STB_TranslateInputArgs *pInputArgs, STB_TranslateO
           modMD->compOpt.FloatDenormModeBFTF = FLOAT_DENORM_FLUSH_TO_ZERO;
         }
         if (IGC_GET_FLAG_VALUE(ForceFastestSIMD)) {
-          oclContext.m_retryManager.AdvanceState();
-          oclContext.m_retryManager.SetFirstStateId(oclContext.m_retryManager.GetRetryId());
+          oclContext.m_retryManager->AdvanceState();
+          oclContext.m_retryManager->SetFirstStateId(oclContext.m_retryManager->GetRetryId());
         }
         // Optimize the IR. This happens once for each program, not per-kernel.
         IGC::OptimizeIR(&oclContext);
@@ -1297,7 +1297,7 @@ bool TranslateBuildSPMD(const STB_TranslateInputArgs *pInputArgs, STB_TranslateO
         return false;
       }
 
-      retry = (!oclContext.m_retryManager.kernelSet.empty() && oclContext.m_retryManager.AdvanceState());
+      retry = (!oclContext.m_retryManager->kernelSet.empty() && oclContext.m_retryManager->AdvanceState());
 
       if (retry) {
         splitter.retry();
@@ -1336,8 +1336,8 @@ bool TranslateBuildSPMD(const STB_TranslateInputArgs *pInputArgs, STB_TranslateO
           Function *pFunc = &*(it++);
           // Only retry compilation on kernels that need it
           if (pFunc->getCallingConv() == llvm::CallingConv::SPIR_KERNEL &&
-              oclContext.m_retryManager.kernelSet.find(pFunc->getName().str()) ==
-                  oclContext.m_retryManager.kernelSet.end()) {
+              oclContext.m_retryManager->kernelSet.find(pFunc->getName().str()) ==
+                  oclContext.m_retryManager->kernelSet.end()) {
             pFunc->eraseFromParent();
             // TODO: Consider running a proper cleanup of
             // !opencl.kernels metadata entries here instead of

@@ -197,7 +197,7 @@ void GenIntrinsicsTTIImpl::getUnrollingPreferences(Loop *L, ScalarEvolution &SE,
 
   unsigned LoopUnrollThreshold = ctx->m_DriverInfo.GetLoopUnrollThreshold();
   bool UnrollLoopForCodeSizeOnly =
-      IGC_IS_FLAG_ENABLED(UnrollLoopForCodeSizeOnly) || (!ctx->m_retryManager.IsFirstTry());
+      IGC_IS_FLAG_ENABLED(UnrollLoopForCodeSizeOnly) || (!ctx->m_retryManager->IsFirstTry());
 
   // override the LoopUnrollThreshold if the registry key is set
   if (IGC_GET_FLAG_VALUE(SetLoopUnrollThreshold) != 0) {

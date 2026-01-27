@@ -786,7 +786,7 @@ void CodeLoopSinking::dumpToFile(const std::string &Log) {
   auto Name = Debug::DumpName(IGC::Debug::GetShaderOutputName())
                   .Hash(CTX->hash)
                   .Type(CTX->type)
-                  .Retry(CTX->m_retryManager.GetRetryId())
+                  .Retry(CTX->m_retryManager->GetRetryId())
                   .Pass("loopsink")
                   .Extension("txt");
   IGC::Debug::DumpLock();

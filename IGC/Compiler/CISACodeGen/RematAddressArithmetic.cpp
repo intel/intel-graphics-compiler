@@ -685,7 +685,7 @@ void CloneAddressArithmetic::initializeLogFile(Function &F) {
   auto Name = Debug::DumpName(IGC::Debug::GetShaderOutputName())
                   .Hash(CGCtx->hash)
                   .Type(CGCtx->type)
-                  .Retry(CGCtx->m_retryManager.GetRetryId())
+                  .Retry(CGCtx->m_retryManager->GetRetryId())
                   .Pass(ss.str().c_str())
                   .Extension("ll");
 

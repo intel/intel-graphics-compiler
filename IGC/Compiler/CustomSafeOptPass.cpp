@@ -1887,7 +1887,7 @@ void CustomSafeOptPass::visitBinaryOperator(BinaryOperator &I) {
   }
 
   if (IGC_IS_FLAG_ENABLED(ForceHoistDp3) ||
-      (!pContext->m_retryManager.IsFirstTry() && IGC_IS_FLAG_ENABLED(EnableHoistDp3))) {
+      (!pContext->m_retryManager->IsFirstTry() && IGC_IS_FLAG_ENABLED(EnableHoistDp3))) {
     hoistDp3(I);
   }
 }

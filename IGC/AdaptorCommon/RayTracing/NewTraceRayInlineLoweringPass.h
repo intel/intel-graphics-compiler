@@ -145,7 +145,7 @@ private:
   bool allowCrossBlockLoadVectorization() {
 
     return IGC_IS_FLAG_ENABLED(UseCrossBlockLoadVectorizationForInlineRaytracing) &&
-           m_pCGCtx->m_retryManager.IsFirstTry();
+           m_pCGCtx->m_retryManager->IsFirstTry();
   }
 
   llvm::RTBuilder::SyncStackPointerVal *getStackPtr(llvm::RTBuilder &IRB, llvm::Value *rqObject,

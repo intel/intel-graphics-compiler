@@ -720,7 +720,7 @@ bool InstrStatistic::runOnFunction(Function &F) {
     }
 
     if (m_type == SROA_PROMOTED) {
-      m_ctx->m_retryManager.Disable();
+      m_ctx->m_retryManager->Disable();
     }
   }
 

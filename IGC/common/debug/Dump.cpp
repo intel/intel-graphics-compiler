@@ -619,7 +619,7 @@ DumpName GetDumpNameObj(const IGC::CShader *pProgram, const char *ext) {
   dumpName = dumpName.PostFix(shaderName);
   dumpName = dumpName.DispatchMode(pProgram->m_ShaderDispatchMode);
   dumpName =
-      dumpName.SIMDSize(pProgram->m_State.m_dispatchSize).Retry(context->m_retryManager.GetRetryId()).Extension(ext);
+      dumpName.SIMDSize(pProgram->m_State.m_dispatchSize).Retry(context->m_retryManager->GetRetryId()).Extension(ext);
 
   return dumpName;
 }
@@ -629,7 +629,7 @@ DumpName GetLLDumpName(IGC::CodeGenContext *pContext, const char *dumpName) {
                   .Hash(pContext->hash)
                   .Type(pContext->type)
                   .Pass(dumpName)
-                  .Retry(pContext->m_retryManager.GetRetryId())
+                  .Retry(pContext->m_retryManager->GetRetryId())
                   .Extension("ll");
   return name;
 }

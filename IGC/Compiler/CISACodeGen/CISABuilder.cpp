@@ -3735,7 +3735,7 @@ void CEncoder::InitVISABuilderOptions(TARGET_PLATFORM VISAPlatform, bool canAbor
 
     // API check.
     bool enableForRetry = m_program->m_DriverInfo->enableVISAPreRASchedulerForRetry() ||
-                          context->m_retryManager.AllowVISAPreRAScheduler();
+                          context->m_retryManager->AllowVISAPreRAScheduler();
     // PreRA scheduler runs always when VRT is enabled
     enableForRetry |= context->supportsVRT();
 
@@ -5663,11 +5663,11 @@ void CEncoder::Compile(bool hasSymbolTable, GenXFunctionGroupAnalysis *&pFGA) {
   }
 
   if (jitInfo->stats.numGRFSpillFillWeighted) {
-    context->m_retryManager.SetSpillSize(jitInfo->stats.numGRFSpillFillWeighted);
+    context->m_retryManager->SetSpillSize(jitInfo->stats.numGRFSpillFillWeighted);
     m_program->m_spillSize = jitInfo->stats.numGRFSpillFillWeighted;
     m_program->m_spillCost = float(jitInfo->stats.numGRFSpillFillWeighted) / jitInfo->stats.numAsmCountUnweighted;
 
-    context->m_retryManager.numInstructions = jitInfo->stats.numAsmCountUnweighted;
+    context->m_retryManager->numInstructions = jitInfo->stats.numAsmCountUnweighted;
   }
 
   m_program->m_asmInstrCount = jitInfo->stats.numAsmCountUnweighted;
@@ -6060,8 +6060,8 @@ void CEncoder::SetKernelRetryState(CodeGenContext *context, vISA::FINALIZER_INFO
   bool isSpill = jitInfo->stats.numGRFSpillFillWeighted || jitInfo->stats.spillMemUsed;
 
   if ((isSpill && noRetry) || (isStackCallProgram && IGC_GET_FLAG_VALUE(AllowStackCallRetry) == 0)) {
-    context->m_retryManager.Disable();
-    context->m_retryManager.kernelSkip.insert(m_program->entry->getName().str());
+    context->m_retryManager->Disable();
+    context->m_retryManager->kernelSkip.insert(m_program->entry->getName().str());
   }
   else if (!isStackCallProgram) {
     auto funcInfoMD = context->getMetaDataUtils()->getFunctionsInfoItem(m_program->entry);
@@ -6082,8 +6082,8 @@ void CEncoder::SetKernelRetryState(CodeGenContext *context, vISA::FINALIZER_INFO
     }
 
     if (noRetry) {
-      context->m_retryManager.Disable();
-      context->m_retryManager.kernelSkip.insert(m_program->entry->getName().str());
+      context->m_retryManager->Disable();
+      context->m_retryManager->kernelSkip.insert(m_program->entry->getName().str());
     }
   } else if (isStackCallProgram) {
     float threshold = 0.0f;
@@ -6094,7 +6094,7 @@ void CEncoder::SetKernelRetryState(CodeGenContext *context, vISA::FINALIZER_INFO
     if (m_program->m_spillCost > threshold) {
       // First check the kernel
       noRetryForStack = false;
-      context->m_retryManager.PerFuncRetrySet.insert(m_program->entry->getName().str());
+      context->m_retryManager->PerFuncRetrySet.insert(m_program->entry->getName().str());
       ss << "  numGRFSpill = " << jitInfo->stats.numGRFSpillFillWeighted << std::endl;
       ss << "  TotalInsts = " << jitInfo->stats.numAsmCountUnweighted << std::endl;
     }
@@ -6107,7 +6107,7 @@ void CEncoder::SetKernelRetryState(CodeGenContext *context, vISA::FINALIZER_INFO
         // Check each stackcall function
         noRetryForStack = false;
         string FName = StripCloneName(func.first->getName().str());
-        context->m_retryManager.PerFuncRetrySet.insert(FName);
+        context->m_retryManager->PerFuncRetrySet.insert(FName);
         ss << "  STACK_FUNC Retry: " << FName << std::endl;
         ss << "    numGRFSpill = " << f_jitInfo->stats.numGRFSpillFillWeighted << std::endl;
         ss << "    TotalInsts = " << f_jitInfo->stats.numAsmCountUnweighted << std::endl;
@@ -6120,7 +6120,7 @@ void CEncoder::SetKernelRetryState(CodeGenContext *context, vISA::FINALIZER_INFO
     // in the function group, and set the per-func retry state if the caller
     // requires retry.
     if (IGC_GET_FLAG_VALUE(AllowStackCallRetry) == 2 && pFGA != nullptr &&
-        !context->m_retryManager.PerFuncRetrySet.empty()) {
+        !context->m_retryManager->PerFuncRetrySet.empty()) {
       if (auto FG = pFGA->getGroupForHead(m_program->entry)) {
         for (auto F : *FG) {
           if (F->hasFnAttribute("visaStackCall") || isEntryFunc(context->getMetaDataUtils(), F))
@@ -6129,9 +6129,9 @@ void CEncoder::SetKernelRetryState(CodeGenContext *context, vISA::FINALIZER_INFO
           Function *SGH = pFGA->getSubGroupMap(F);
           string FName = StripCloneName(F->getName().str());
           string SGHName = StripCloneName(SGH->getName().str());
-          if (context->m_retryManager.PerFuncRetrySet.count(SGHName) != 0) {
+          if (context->m_retryManager->PerFuncRetrySet.count(SGHName) != 0) {
             noRetryForStack = false;
-            context->m_retryManager.PerFuncRetrySet.insert(FName);
+            context->m_retryManager->PerFuncRetrySet.insert(FName);
             ss << "  SUBROUTINE Retry: " << FName << std::endl;
           }
         }
@@ -6139,9 +6139,9 @@ void CEncoder::SetKernelRetryState(CodeGenContext *context, vISA::FINALIZER_INFO
     }
 
     if (noRetryForStack) {
-      context->m_retryManager.Disable();
-      context->m_retryManager.kernelSkip.insert(m_program->entry->getName().str());
-    } else if (!context->m_retryManager.IsLastTry()) {
+      context->m_retryManager->Disable();
+      context->m_retryManager->kernelSkip.insert(m_program->entry->getName().str());
+    } else if (!context->m_retryManager->IsLastTry()) {
       if (IGC_GET_FLAG_VALUE(AllowStackCallRetry) == 1)
         ss << "AllowStackCallRetry=1 (All functions in this kernel group will "
               "be retried with 2nd try states)"
@@ -6158,7 +6158,7 @@ void CEncoder::SetKernelRetryState(CodeGenContext *context, vISA::FINALIZER_INFO
   }
 
   if ((jitInfo->stats.spillMemUsed || jitInfo->stats.numGRFSpillFillWeighted) &&
-      (noRetry || context->m_retryManager.IsLastTry()) && !isStackCallProgram) {
+      (noRetry || context->m_retryManager->IsLastTry()) && !isStackCallProgram) {
     // report a spill warning to build log only if we:
     //   - spilled
     //   - are not retrying (IsLastTry() wasn't considered above

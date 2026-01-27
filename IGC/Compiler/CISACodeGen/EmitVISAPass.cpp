@@ -510,7 +510,7 @@ void EmitPass::CreateKernelShaderMap(CodeGenContext *ctx, MetaDataUtils *pMdUtil
         if (!isEntryFunc(pMdUtils, pFunc))
           continue;
 
-        if (ctx->m_retryManager.kernelSet.empty() || ctx->m_retryManager.kernelSet.count(pFunc->getName().str())) {
+        if (ctx->m_retryManager->kernelSet.empty() || ctx->m_retryManager->kernelSet.count(pFunc->getName().str())) {
           m_shaders[pFunc] = new CShaderProgram(ctx, pFunc);
           COMPILER_SHADER_STATS_INIT(m_shaders[pFunc]->m_shaderStats);
         }
@@ -534,7 +534,7 @@ void EmitPass::CreateKernelShaderMap(CodeGenContext *ctx, MetaDataUtils *pMdUtil
 bool EmitPass::shouldForceEarlyRecompile(MetaDataUtils *pMdUtils, llvm::Function *F) {
   // we only skip first compilation stage, if compilation pipeline
   // was configured to start from retry already, otherwise we do nothing
-  bool IsFirstStage = m_pCtx->m_retryManager.GetRetryId() == 0;
+  bool IsFirstStage = m_pCtx->m_retryManager->GetRetryId() == 0;
   if (!isEntryFunc(pMdUtils, F) || IGC_GET_FLAG_VALUE(DisableRecompilation) || !IsFirstStage) {
     return false;
   }
@@ -619,7 +619,7 @@ bool EmitPass::runOnFunction(llvm::Function &F) {
     // passed to this one to compile, we use this set to prepare data structures
     // and we clear it after compilation is done, not propagate it to the next
     // stage
-    m_pCtx->m_retryManager.earlyRetryKernelSet.insert(F.getName().str());
+    m_pCtx->m_retryManager->earlyRetryKernelSet.insert(F.getName().str());
     return false;
   }
 

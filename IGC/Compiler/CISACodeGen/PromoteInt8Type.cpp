@@ -706,7 +706,7 @@ void PromoteInt8Type::promoteInstructions() {
                     .Type(m_Ctx->type)
                     .Pass("promoteI8")
                     .PostFix(fname)
-                    .Retry(m_Ctx->m_retryManager.GetRetryId())
+                    .Retry(m_Ctx->m_retryManager->GetRetryId())
                     .Extension("txt");
 
     Dump i8Dump(name, DumpType::DBG_MSG_TEXT);

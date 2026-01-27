@@ -1626,8 +1626,8 @@ bool COpenCLKernel::canSkipScratchPointer(KernelArgs &args) const {
   if (IGC_IS_FLAG_DISABLED(RemoveImplicitScratchPointer))
     return false;
 
-  if (m_ctx->getModuleMetaData()->compOpt.OptDisable || m_ctx->m_retryManager.IsLastTry() ||
-      m_ctx->m_retryManager.kernelSkip.count(entry->getName().str()))
+  if (m_ctx->getModuleMetaData()->compOpt.OptDisable || m_ctx->m_retryManager->IsLastTry() ||
+      m_ctx->m_retryManager->kernelSkip.count(entry->getName().str()))
     return false;
 
   if (m_HasStackCall)
@@ -2155,38 +2155,39 @@ RetryType NeedsRetry(OpenCLProgramContext *ctx, COpenCLKernel *pShader, CShaderP
 
   if (pShader->TryNoScratchPointer() && getScratchUse(pShader, ctx) > 0) {
     // If IGC removed scratch pointer, yet vISA requires scratch, force retry.
-    IGC_ASSERT(!ctx->m_retryManager.IsLastTry());
+    IGC_ASSERT(!ctx->m_retryManager->IsLastTry());
     return RetryType::YES_Retry;
   }
 
   bool isWorstThanPrv = false;
   // Look for previous generated shaders
   // ignoring case for multi-simd compilation, or if kernel has stackcalls
+  RetryManager *retryMgr = ctx->m_retryManager.get();
   if (!((ctx->m_enableSimdVariantCompilation) && (ctx->getModuleMetaData()->csInfo.forcedSIMDSize == 0)) &&
       !(program->HasStackCalls() || program->IsIntelSymbolTableVoidProgram())) {
-    isWorstThanPrv = !ctx->m_retryManager.IsBetterThanPrevious(pKernel.get(), 2.0f);
+    isWorstThanPrv = !retryMgr->IsBetterThanPrevious(pKernel.get(), 2.0f);
   }
 
-  auto pPreviousKernel = ctx->m_retryManager.GetPrevious(pKernel.get());
+  auto pPreviousKernel = retryMgr->GetPrevious(pKernel.get());
 
   if (pPreviousKernel && exceedMaxScratchUse(program, ctx)) {
     // For case when we have recompilation but exceed
     // the scratch space in recompiled kernel
     return RetryType::NO_Retry_ExceedScratch;
-  } else if (IGC_IS_FLAG_ENABLED(ForceRecompilation) && !ctx->m_retryManager.IsLastTry()) {
+  } else if (IGC_IS_FLAG_ENABLED(ForceRecompilation) && !ctx->m_retryManager->IsLastTry()) {
     return RetryType::YES_ForceRecompilation;
   } else if (pPreviousKernel && isWorsePrivateMemSize(program, pPreviousKernel)) {
     // For case when we have recompilation but generate 20x more
     // private memory in global memory in recompiled kernel
     return RetryType::NO_Retry_WorseStatelessPrivateMemSize;
-  } else if (pShader->IsRecompilationRequestForced() && !ctx->m_retryManager.IsLastTry()) {
+  } else if (pShader->IsRecompilationRequestForced() && !ctx->m_retryManager->IsLastTry()) {
     return RetryType::YES_Retry;
   } else if (isWorstThanPrv) {
     return RetryType::NO_Retry_Pick_Prv;
   } else if (!ctx->hasSpills(pOutput->m_scratchSpaceUsedBySpills, pOutput->m_numGRFTotal) ||
-             ctx->getModuleMetaData()->compOpt.OptDisable || ctx->m_retryManager.IsLastTry() ||
-             (!ctx->m_retryManager.kernelSkip.empty() &&
-              ctx->m_retryManager.kernelSkip.count(pFunc->getName().str()))) {
+             ctx->getModuleMetaData()->compOpt.OptDisable || ctx->m_retryManager->IsLastTry() ||
+             (!ctx->m_retryManager->kernelSkip.empty() &&
+              ctx->m_retryManager->kernelSkip.count(pFunc->getName().str()))) {
     return RetryType::NO_Retry;
   } else {
     return RetryType::YES_Retry;
@@ -2243,8 +2244,8 @@ void GatherDataForDriver(OpenCLProgramContext *ctx, COpenCLKernel *pShader, CSha
           OutF.write(reason.str().c_str(), reason.str().length());
       }
     }
-
-    pSelectedKernel = CShaderProgram::UPtr(ctx->m_retryManager.GetPrevious(pKernel.get(), true));
+    RetryManager *retryMgr = ctx->m_retryManager.get();
+    pSelectedKernel = CShaderProgram::UPtr(retryMgr->GetPrevious(pKernel.get(), true));
   }
   case RetryType::NO_Retry: {
     // Save the shader program to the state processor to be handled later
@@ -2267,8 +2268,8 @@ void GatherDataForDriver(OpenCLProgramContext *ctx, COpenCLKernel *pShader, CSha
   case RetryType::YES_ForceRecompilation: {
     ctx->EmitWarning("[RetryManager] Start recompilation of the kernel", pFunc);
     // Collect the current compilation for the next compare
-    ctx->m_retryManager.Collect(std::move(pKernel));
-    ctx->m_retryManager.kernelSet.insert(pShader->m_kernelInfo.m_kernelName);
+    ctx->m_retryManager->Collect(std::move(pKernel));
+    ctx->m_retryManager->kernelSet.insert(pShader->m_kernelInfo.m_kernelName);
 
     break;
   }
@@ -2369,16 +2370,16 @@ void CodeGen(OpenCLProgramContext *ctx) {
 #ifndef VK_ONLY_IGC
   // Do program-wide code generation.
   // Currently, this just creates the program-scope patch stream.
-  if (ctx->m_retryManager.IsFirstTry()) {
+  if (ctx->m_retryManager->IsFirstTry()) {
     CollectProgramInfo(ctx);
   }
 
   MetaDataUtils *pMdUtils = ctx->getMetaDataUtils();
 
   // Clear spill parameters of retry manager in the very begining of code gen
-  ctx->m_retryManager.ClearSpillParams();
+  ctx->m_retryManager->ClearSpillParams();
   // early retry kernel set should always be empty before compilation
-  ctx->m_retryManager.earlyRetryKernelSet.clear();
+  ctx->m_retryManager->earlyRetryKernelSet.clear();
 
   CShaderProgram::KernelShaderMap shaders;
   CodeGen(ctx, shaders);
@@ -2411,7 +2412,7 @@ void CodeGen(OpenCLProgramContext *ctx) {
   }
 
   // Clear the retry set and collect kernels for retry in the loop below.
-  ctx->m_retryManager.kernelSet.clear();
+  ctx->m_retryManager->kernelSet.clear();
 
   // If kernel needs retry, its shaderProgram should be deleted
   SmallVector<CShaderProgram *, 8> toBeDeleted;
@@ -2439,9 +2440,9 @@ void CodeGen(OpenCLProgramContext *ctx) {
         GatherDataForDriver(ctx, simd16Shader, std::move(pKernel), pFunc, pMdUtils, SIMDMode::SIMD16);
       else if (COpenCLKernel::IsVisaCompiledSuccessfullyForShader(simd8Shader))
         GatherDataForDriver(ctx, simd8Shader, std::move(pKernel), pFunc, pMdUtils, SIMDMode::SIMD8);
-    } else if (ctx->m_retryManager.earlyRetryKernelSet.count(pFunc->getName().str())) {
+    } else if (ctx->m_retryManager->earlyRetryKernelSet.count(pFunc->getName().str())) {
       ctx->EmitWarning("[RetryManager] Start recompilation of the kernel", pFunc);
-      ctx->m_retryManager.kernelSet.insert(pFunc->getName().str());
+      ctx->m_retryManager->kernelSet.insert(pFunc->getName().str());
     } else {
       // Gather the kernel binary only for 1 SIMD mode of the kernel
       if (COpenCLKernel::IsValidShader(simd32Shader))
@@ -2459,18 +2460,18 @@ void CodeGen(OpenCLProgramContext *ctx) {
 
         IGC_ASSERT(shader);
 
-        if (!ctx->m_retryManager.IsLastTry() && !ctx->getModuleMetaData()->compOpt.OptDisable) {
+        if (!ctx->m_retryManager->IsLastTry() && !ctx->getModuleMetaData()->compOpt.OptDisable) {
           // If this is not the last try, force retry on this kernel to potentially avoid
           // OOB access on the next try by reducing spill size and thus SS usage.
-          ctx->m_retryManager.kernelSet.insert(shader->entry->getName().str());
+          ctx->m_retryManager->kernelSet.insert(shader->entry->getName().str());
         } else {
           auto funcInfoMD = ctx->getMetaDataUtils()->getFunctionsInfoItem(pFunc);
           int reqdSubGroupSize = funcInfoMD->getSubGroupSize()->getSIMDSize();
           if (ctx->m_ForceSIMDRPELimit != 0 && !reqdSubGroupSize) {
             ctx->m_ForceSIMDRPELimit = 0;
-            ctx->m_retryManager.kernelSet.insert(shader->entry->getName().str());
+            ctx->m_retryManager->kernelSet.insert(shader->entry->getName().str());
             ctx->EmitWarning("we couldn't compile without exceeding max permitted PTSS, drop SIMD \n", nullptr);
-            ctx->m_retryManager.DecreaseState();
+            ctx->m_retryManager->DecreaseState();
           } else {
             std::string errorMsg = "total scratch space exceeds HW "
                                    "supported limit for kernel " +
@@ -2487,7 +2488,7 @@ void CodeGen(OpenCLProgramContext *ctx) {
 
   // The skip set to avoid retry is not needed. Clear it and collect a new set
   // during retry compilation.
-  ctx->m_retryManager.kernelSkip.clear();
+  ctx->m_retryManager->kernelSkip.clear();
 #endif // ifndef VK_ONLY_IGC
 #endif // ifndef DX_ONLY_IGC
 }
@@ -2526,7 +2527,7 @@ bool COpenCLKernel::CompileSIMDSize(SIMDMode simdMode, EmitPass &EP, llvm::Funct
     }
   }
 
-  if (!m_Context->m_retryManager.IsFirstTry()) {
+  if (!m_Context->m_retryManager->IsFirstTry()) {
     m_Context->ClearSIMDInfo(simdMode, ShaderDispatchMode::NOT_APPLICABLE);
     m_Context->SetSIMDInfo(SIMD_RETRY, simdMode, ShaderDispatchMode::NOT_APPLICABLE);
   }

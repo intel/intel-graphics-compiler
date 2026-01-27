@@ -752,7 +752,7 @@ bool PreCompiledFuncImport::runOnModule(Module &M) {
 
         if (isDPCallFunc) {
           // To reduce compiling time, disable retry
-          m_pCtx->m_retryManager.Disable(true);
+          m_pCtx->m_retryManager->Disable(true);
         }
       } else {
         // Add AlwaysInline attribute to force inlining all calls.

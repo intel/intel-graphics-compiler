@@ -851,7 +851,7 @@ public:
   bool m_src1RemovedForBlendOpt = false;
   llvm::AssemblyAnnotationWriter *annotater = nullptr;
 
-  RetryManager m_retryManager;
+  std::unique_ptr<RetryManager> m_retryManager;
 
   // Used scratch space for private variables
   llvm::DenseMap<llvm::Function *, uint64_t> m_ScratchSpaceUsage;
@@ -973,7 +973,8 @@ public:
                  const bool createResourceDimTypes = true,
                  LLVMContextWrapper *LLVMContext = nullptr) ///< LLVM context to use, if null a new one will be
                                                             ///< created
-      : type(_type), platform(_platform), btiLayout(_bitLayout), m_DriverInfo(driverInfo), llvmCtxWrapper(LLVMContext) {
+      : type(_type), platform(_platform), btiLayout(_bitLayout), m_DriverInfo(driverInfo), llvmCtxWrapper(LLVMContext),
+        m_retryManager(std::make_unique<RetryManager>()) {
     if (llvmCtxWrapper == nullptr) {
       initLLVMContextWrapper(createResourceDimTypes);
     } else {
@@ -992,7 +993,7 @@ public:
     setFlagsPerCtx();
 
     // Set retry behavor for Disable()
-    m_retryManager.perKernel = (type == ShaderType::OPENCL_SHADER);
+    m_retryManager->perKernel = (type == ShaderType::OPENCL_SHADER);
     m_ForceSIMDRPELimit = IGC_GET_FLAG_VALUE(ForceSIMDRPELimit);
   }
 
