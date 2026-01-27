@@ -26,6 +26,7 @@ SPDX-License-Identifier: MIT
 #include "GenISAIntrinsics/GenIntrinsicInst.h"
 #include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
 #include "common/secure_mem.h"
+#include "common/IGCConstantFolder.h"
 #include "Probe/Assertion.h"
 #include "helper.h"
 
@@ -2662,13 +2663,21 @@ Value *CombineSampleOrGather4Params(IRBuilder<> &builder,
 {
   Value *maskHi = builder.getInt32((~(BITMASK(numBits))));
 
-  Function *rdneFunc =
-      GenISAIntrinsic::getDeclaration(builder.GetInsertBlock()->getModule(), GenISAIntrinsic::GenISA_ROUNDNE);
   // FPToUI cannot be used to avoid generation of a poison value in case of
   // the negative constant value. Such an approach is possible since
   // there is a protection against exceeding limits by param1.
-  Value *intParam1 = builder.CreateFPToSI(builder.CreateCall(rdneFunc, param1), builder.getInt32Ty(),
-                                          VALUE_NAME(std::string("_int") + param1Name));
+  Value *roundNE = nullptr;
+  if (auto constParam1 = dyn_cast<Constant>(param1)) {
+    IGCConstantFolder folder;
+    roundNE = folder.CreateRoundNE(constParam1);
+    // Propagate undef/poison
+    roundNE = roundNE == nullptr ? param1 : roundNE;
+  } else {
+    Function *rdneFunc =
+        GenISAIntrinsic::getDeclaration(builder.GetInsertBlock()->getModule(), GenISAIntrinsic::GenISA_ROUNDNE);
+    roundNE = builder.CreateCall(rdneFunc, param1);
+  }
+  Value *intParam1 = builder.CreateFPToSI(roundNE, builder.getInt32Ty(), VALUE_NAME(std::string("_int") + param1Name));
   Value *minVal = builder.getInt32(0);
   Value *lowRangeCond = builder.CreateICmp(CmpInst::Predicate::ICMP_SGE, intParam1, minVal);
   Value *intParam1Lsb = builder.CreateSelect(lowRangeCond, intParam1, minVal);
