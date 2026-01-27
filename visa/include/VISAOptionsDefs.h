@@ -160,6 +160,7 @@ DEF_VISA_OPTION(
     "USAGE: -gatherWithImmPreRA <0|1|2|3> where 0 is disabled, 1 sampler is "
     "enabled, 2 other msg enabled, 3 always use s0.0 for send",
     2)
+DEF_VISA_OPTION(vISA_allocateS0RoundRobin, ET_BOOL, "-allocateS0RR", UNUSED, true)
 DEF_VISA_OPTION(vISA_doAccSubAfterSchedule, ET_BOOL, "-accSubPostSchedule",
                 UNUSED, true)
 DEF_VISA_OPTION(vISA_localizationForAccSub, ET_BOOL, "-localizeForACC", UNUSED,

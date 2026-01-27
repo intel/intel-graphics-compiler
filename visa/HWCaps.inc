@@ -190,6 +190,10 @@ bool doFlagLVN() const {
   return getPlatform() >= Xe3P_Graphics;
 }
 
+bool doRoundRobinScalarAlloc() const {
+  return getPlatform() >= Xe3P_Graphics && getOption(vISA_allocateS0RoundRobin);
+}
+
 bool shareMergeVarGlobal() const {
   return getPlatform() >= Xe3P_Graphics;
 }

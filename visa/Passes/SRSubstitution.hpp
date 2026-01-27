@@ -65,6 +65,9 @@ struct regCandidatesBRA {
 class SRSubPassAfterRA {
   IR_Builder &builder;
   G4_Kernel &kernel;
+  BitSet UsedS0SubReg;
+  unsigned short MaxS0SubRegNum= 0;
+  unsigned short FirstFreeS0SubRegIndex = 0;
   unsigned candidateID = 0;
 
 public:
@@ -74,6 +77,15 @@ public:
   SRSubPassAfterRA& operator=(const SRSubPassAfterRA&) = delete;
 
   void run() {
+    MaxS0SubRegNum= builder.getScalarRegisterSizeInBytes() / 8;
+    if (builder.isEfficient64bEnabled()) {
+      // When spill or private memory is used, the s0.7 or the largest qword is
+      // reserved for scratch location.
+      if (builder.usesStack() || builder.getJitInfo()->stats.spillMemUsed ||
+          kernel.isPrivateMemUsed())
+        MaxS0SubRegNum-= 1;
+    }
+
     for (auto bb : kernel.fg) {
       SRSubAfterRA(bb);
     }
@@ -89,6 +101,7 @@ public:
       std::vector<std::pair<Gen4_Operand_Number, unsigned>> &notRemoveableMap,
       BitSet &definedGRF);
   bool isSRCandidateAfterRA(G4_INST *inst, regCandidatesBRA &dstSrcRegs);
+  unsigned short allocateS0RoundRobin(unsigned short UQNum);
   bool replaceWithSendiAfterRA(G4_BB *bb, INST_LIST_ITER instIter,
                                regCandidatesBRA &dstSrcRegs);
   void SRSubAfterRA(G4_BB *bb);
