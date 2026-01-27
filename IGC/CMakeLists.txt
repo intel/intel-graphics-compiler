@@ -274,6 +274,10 @@ option(IGC_OPTION__API_ENABLE_OPAQUE_POINTERS "Enable opaque pointers across the
   Forces opaque pointers' usage in IGC/LLVM passes, OCL Clang FE and built-in functions' bitcode.\
   Disabled by default for LLVM 16 and older." OFF)
 
+option(IGC_OPTION__ENABLE_BF16_BIF "Enables BF16 support in BiF (requires patched Clang)" ON)
+# Clang patches needed for BF16 support can be found here (example for Clang 16):
+# https://github.com/intel/opencl-clang/tree/ocl-open-160/patches/clang
+
 option(IGC_OPTION__ENABLE_LIT_TESTS "Enable lit testing for IGC compiler. May require additional tools like llvm lit and opt" OFF)
 
 set(IGC_OPTION__BIF_SRC_OCL_DIR "${IGC_SOURCE_DIR}/BiFModule"
