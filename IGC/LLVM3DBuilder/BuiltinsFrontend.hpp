@@ -10,6 +10,7 @@ SPDX-License-Identifier: MIT
 #define _BUILTINSFRONTEND_H_
 
 #include "common/LLVMWarningsPush.hpp"
+#include "llvm/ADT/SmallVector.h"
 #include <llvm/IR/Module.h>
 #include <llvm/IR/LLVMContext.h>
 #include <llvm/IR/Constants.h>

@@ -3143,12 +3143,12 @@ inline llvm::Value *LLVM3DBuilder<T, Inserter>::create_waveMatch(llvm::Instructi
   // instructions and then branch to the remaining code when done.
 
   auto *PreHeader = inst->getParent();
-  auto *BodyBlock = PreHeader->splitBasicBlock(inst, "wavematch-body");
-  auto *EndBlock = BodyBlock->splitBasicBlock(inst->getNextNode(), "wavematch-end");
+  auto *BodyBlock = PreHeader->splitBasicBlock(inst, VALUE_NAME(inst->getName() + "wavematch-body"));
+  auto *EndBlock = BodyBlock->splitBasicBlock(inst, VALUE_NAME(inst->getName() + "wavematch-end"));
 
   // Make sure that we set the insert point again as we've just invalidated
   // it with the splitBasicBlock() calls above.
-  this->SetInsertPoint(inst);
+  this->SetInsertPoint(BodyBlock->getTerminator());
 
   // Now generate the code for a single iteration of the code
   auto *FirstValue = this->readFirstLane(src);
@@ -3181,11 +3181,11 @@ inline llvm::Value *LLVM3DBuilder<T, Inserter>::create_waveMultiPrefix(llvm::Ins
   // until all subsets of lanes are processed.
   auto *PreHeader = I->getParent();
   auto *BodyBlock = PreHeader->splitBasicBlock(I, "multiprefix-body");
-  auto *EndBlock = BodyBlock->splitBasicBlock(I->getNextNode(), "multiprefix-end");
+  auto *EndBlock = BodyBlock->splitBasicBlock(I, "multiprefix-end");
 
   // Make sure that we set the insert point again as we've just invalidated
   // it with the splitBasicBlock() calls above.
-  this->SetInsertPoint(I);
+  this->SetInsertPoint(BodyBlock->getTerminator());
 
   // Now generate the code for a single iteration of the code
   auto *FirstValue = this->readFirstLane(Mask);
@@ -3213,11 +3213,11 @@ inline llvm::Value *LLVM3DBuilder<T, Inserter>::create_waveMultiPrefixBitCount(l
   // Similar structure to waveMatch and waveMultiPrefix
   auto *PreHeader = I->getParent();
   auto *BodyBlock = PreHeader->splitBasicBlock(I, "multiprefixbitcount-body");
-  auto *EndBlock = BodyBlock->splitBasicBlock(I->getNextNode(), "multiprefixbitcount-end");
+  auto *EndBlock = BodyBlock->splitBasicBlock(I, "multiprefixbitcount-end");
 
   // Make sure that we set the insert point again as we've just invalidated
   // it with the splitBasicBlock() calls above.
-  this->SetInsertPoint(I);
+  this->SetInsertPoint(BodyBlock->getTerminator());
 
   // Now generate the code for a single iteration of the code
   auto *FirstValue = this->readFirstLane(Mask);
