@@ -78,12 +78,16 @@ endfunction()
 # @param bifModuleDepends BiFModule depends
 function(build_bif_bitcode bifModuleDepends)
   set(bif-llvm-as_exe ${LLVM_AS_EXE})
+  set(bif-llvm-dis_exe ${LLVM_DIS_EXE})
   set(bif-llvm-link_exe ${LLVM_LINK_EXE})
   set(bif-llvm-opt_exe ${LLVM_OPT_EXE})
 
   if(NOT (IGC_OPTION__LLVM_MODE STREQUAL PREBUILDS_MODE_NAME AND WIN32))
     if(NOT EXISTS ${LLVM_AS_EXE})
       set(bif-llvm-as_exe $<TARGET_FILE:${LLVM_AS_EXE}>)
+    endif()
+    if(NOT EXISTS ${LLVM_DIS_EXE} AND TARGET ${LLVM_DIS_EXE})
+      set(bif-llvm-dis_exe $<TARGET_FILE:${LLVM_DIS_EXE}>)
     endif()
     if(NOT EXISTS ${LLVM_LINK_EXE})
       set(bif-llvm-link_exe $<TARGET_FILE:${LLVM_LINK_EXE}>)
@@ -99,12 +103,14 @@ function(build_bif_bitcode bifModuleDepends)
             -DIGC_BUILD__OPAQUE_POINTERS_DEFAULT_ARG_CLANG=${IGC_BUILD__OPAQUE_POINTERS_DEFAULT_ARG_CLANG}
             -DIGC_BUILD__OPAQUE_POINTERS_DEFAULT_ARG_OPT=${IGC_BUILD__OPAQUE_POINTERS_DEFAULT_ARG_OPT}
             -Dbif-llvm-as_exe=${bif-llvm-as_exe}
+            -Dbif-llvm-dis_exe=${bif-llvm-dis_exe}
             -Dbif-llvm-link_exe=${bif-llvm-link_exe}
             -Dbif-llvm-opt_exe=${bif-llvm-opt_exe}
             -DIGC_BUILD__BIF_OCL_SHARED_INC="${IGC_BUILD__BIF_OCL_SHARED_INC}"
             -DIGC_BUILD__BIF_OCL_SHARED_INC_PRE_RELEASE="${IGC_BUILD__BIF_OCL_SHARED_INC_PRE_RELEASE}"
             -DIGC_OPTION__BIF_SRC_OCL_DIR="${IGC_OPTION__BIF_SRC_OCL_DIR}"
             -DIGC_OPTION__ENABLE_BF16_BIF="${IGC_OPTION__ENABLE_BF16_BIF}"
+            -DIGC_OPTION__BIF_UPDATE_IR="${IGC_OPTION__BIF_UPDATE_IR}"
             -DVME_TYPES_DEFINED="${VME_TYPES_DEFINED}"
             -D_PRE_RELEASE_CL="${_PRE_RELEASE_CL}"
             -DIGC_SOURCE_DIR="${IGC_SOURCE_DIR}"

@@ -284,6 +284,10 @@ set(IGC_OPTION__BIF_SRC_OCL_DIR "${IGC_SOURCE_DIR}/BiFModule"
     CACHE PATH "Built-in Functions: Root directory where sources for OpenCL builtins are located.")
 mark_as_advanced(IGC_OPTION__BIF_SRC_OCL_DIR)
 
+set(IGC_OPTION__BIF_UPDATE_IR OFF CACHE BOOL
+    "Built-in Functions: Update BiFModule IR files from source files.")
+mark_as_advanced(IGC_OPTION__BIF_UPDATE_IR)
+
 if(IGC_BUILD__CROSSCOMPILE_NEEDED AND (NOT CMAKE_CROSSCOMPILING))
   message(FATAL_ERROR "IGC_OPTION__ARCHITECTURE_TARGET,\nIGC_OPTION__ARCHITECTURE_HOST: Current target / host architecture combination requires cross-compiling. Please specify correct toolchain.")
 endif()
