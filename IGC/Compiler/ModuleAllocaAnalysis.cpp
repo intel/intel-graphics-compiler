@@ -566,9 +566,6 @@ unsigned ModuleAllocaAnalysis::getMinSimdSize(llvm::Function *pFunc) const {
     minSimdSize = modMD.csInfo.forcedSIMDSize > 0 ? modMD.csInfo.forcedSIMDSize : minSimdSize;
     break;
   case ShaderType::PIXEL_SHADER:
-    minSimdSize = modMD.compOpt.forcePixelShaderSIMDMode > 0
-                      ? BIT(iSTD::bsf(modMD.compOpt.forcePixelShaderSIMDMode)) << 3
-                      : minSimdSize;
     break;
   case ShaderType::OPENCL_SHADER: {
     IGCMD::MetaDataUtils *pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
