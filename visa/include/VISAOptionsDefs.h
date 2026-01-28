@@ -161,6 +161,7 @@ DEF_VISA_OPTION(
     "enabled, 2 other msg enabled, 3 always use s0.0 for send",
     2)
 DEF_VISA_OPTION(vISA_allocateS0RoundRobin, ET_BOOL, "-allocateS0RR", UNUSED, true)
+DEF_VISA_OPTION(vISA_s0SubBeforeScheduling, ET_BOOL, "-s0SubBeforeScheduling", UNUSED, true)
 DEF_VISA_OPTION(vISA_doAccSubAfterSchedule, ET_BOOL, "-accSubPostSchedule",
                 UNUSED, true)
 DEF_VISA_OPTION(vISA_localizationForAccSub, ET_BOOL, "-localizeForACC", UNUSED,

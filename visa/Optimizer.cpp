@@ -1009,6 +1009,10 @@ int Optimizer::optimization() {
     runPass(PI_InsertS0Movs);
   }
 
+  if (builder.doS0SubBeforeScheduling()) {
+    runPass(PI_s0SubAfterRA);
+  }
+
   // FIXME houjenko: Disable local scheduling due to issues when
   // using extra regiser that may corrupt unknown liveout
   if (!builder.getIsPayload()) {
@@ -1026,7 +1030,10 @@ int Optimizer::optimization() {
   runPass(PI_legalizeType);
 
   runPass(PI_changeMoveType);
-  runPass(PI_s0SubAfterRA);
+
+  if (!builder.doS0SubBeforeScheduling()) {
+    runPass(PI_s0SubAfterRA);
+  }
 
   // No pass after this should expect def-use to be preserved as this pass
   // removes raw movs with identical src/dst physical GRFs.
