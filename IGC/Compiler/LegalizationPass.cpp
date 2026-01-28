@@ -252,17 +252,21 @@ void Legalization::visitUnaryInstruction(UnaryInstruction &I) {
 }
 
 void Legalization::visitBinaryOperator(llvm::BinaryOperator &I) {
-  if (I.getOpcode() == Instruction::FRem && I.getType()->isFloatTy()) {
-    Function *floorFunc = Intrinsic::getDeclaration(m_ctx->getModule(), Intrinsic::floor, I.getType());
+  if (I.getOpcode() == Instruction::FRem && (I.getType()->isFloatTy() || I.getType()->isHalfTy())) {
+    bool hasFP16Floor = !m_ctx->platform.supportFP16Rounding();
+    Type *floorType = hasFP16Floor ? I.getType() : m_builder->getFloatTy();
+    Function *floorFunc = Intrinsic::getDeclaration(m_ctx->getModule(), Intrinsic::floor, floorType);
     m_builder->SetInsertPoint(&I);
     Value *a = I.getOperand(0);
     Value *b = I.getOperand(1);
     Value *mulab = m_builder->CreateFMul(a, b);
     Value *sign = m_builder->CreateFCmpOGE(mulab, m_builder->CreateFNeg(mulab));
     Value *sel = m_builder->CreateSelect(sign, b, m_builder->CreateFNeg(b));
-    Value *selInv = m_builder->CreateFDiv(ConstantFP::get(m_builder->getFloatTy(), 1.f), sel);
+    Value *selInv = m_builder->CreateFDiv(ConstantFP::get(I.getType(), 1.f), sel);
     Value *div = m_builder->CreateFMul(a, selInv);
-    Value *floordiv = m_builder->CreateCall(floorFunc, div);
+    Value *div1 = m_builder->CreateFPExt(div, floorType);
+    Value *floordiv = m_builder->CreateCall(floorFunc, div1);
+    floordiv = m_builder->CreateFPTrunc(floordiv, div->getType());
     Value *frc = m_builder->CreateFSub(div, floordiv);
     Value *result = m_builder->CreateFMul(frc, sel);
     I.replaceAllUsesWith(result);
