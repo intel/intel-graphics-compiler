@@ -46,7 +46,7 @@ static const RetryState RetryTable[] = {
 
 static constexpr size_t RetryTableSize = sizeof(RetryTable) / sizeof(RetryState);
 
-RetryManager::RetryManager() : enabled(false), perKernel(false) {
+RetryManager::RetryManager(RetryManagerKind KindIn) : Kind(KindIn), enabled(false), perKernel(false) {
   firstStateId = IGC_GET_FLAG_VALUE(RetryManagerFirstStateId);
   stateId = firstStateId;
   prevStateId = 500;
@@ -207,15 +207,22 @@ void RetryManager::ClearSpillParams() {
   numInstructions = 0;
 }
 
-void RetryManager::Collect(CShaderProgram::UPtr pCurrent) {
-  // Get previous kernel name
+/// Implementation of vISA-specific retry manager
+
+RetryManagerVISA::~RetryManagerVISA() {
+  for (auto &it : cache) {
+    if (it.shader) {
+      delete it.shader;
+    }
+  }
+}
+
+void RetryManagerVISA::Collect(CShaderProgram::UPtr pCurrent) {
   std::string funcName = pCurrent->getLLVMFunction()->getName().str();
-  // Delete/unattach from memory previous version of this kernel
-  // and attach new version
   previousKernels[funcName] = std::move(pCurrent);
 }
 
-CShaderProgram *RetryManager::GetPrevious(CShaderProgram *pCurrent, bool ReleaseUPtr) {
+CShaderProgram *RetryManagerVISA::GetPrevious(CShaderProgram *pCurrent, bool ReleaseUPtr) {
   std::string funcName = pCurrent->getLLVMFunction()->getName().str();
   if (previousKernels.find(funcName) != previousKernels.end()) {
     if (ReleaseUPtr) {
@@ -229,22 +236,18 @@ CShaderProgram *RetryManager::GetPrevious(CShaderProgram *pCurrent, bool Release
   return nullptr;
 }
 
-bool RetryManager::IsBetterThanPrevious(CShaderProgram *pCurrent, float threshold) {
+bool RetryManagerVISA::IsBetterThanPrevious(CShaderProgram *pCurrent, float threshold) {
   bool isBetter = true;
   auto pPrevious = GetPrevious(pCurrent);
   if (pPrevious) {
-    auto simdToAnalysis = {SIMDMode::SIMD32, SIMDMode::SIMD16, SIMDMode::SIMD8};
-
     CShader *previousShader = pPrevious->GetShaderIfAny();
     CShader *currentShader = pCurrent->GetShaderIfAny();
 
     IGC_ASSERT(currentShader);
     IGC_ASSERT(previousShader);
-
     // Make sure retry manager will not select kernel without required scratch pointer.
     if (previousShader->TryNoScratchPointer() && previousShader->m_spillSize > 0)
       return true;
-
     // basically a small work around, if we have high spilling kernel on our hands, we are not afraid to use
     // pre-retry shader, when we have less spills than retry one has
     unsigned int Threshold = IGC_GET_FLAG_VALUE(RetryRevertExcessiveSpillingKernelThreshold);
@@ -252,7 +255,6 @@ bool RetryManager::IsBetterThanPrevious(CShaderProgram *pCurrent, float threshol
     float SpillCoefficient = float(IGC_GET_FLAG_VALUE(RetryRevertExcessiveSpillingKernelCoefficient)) / 100.0f;
     if (IsExcessiveSpillKernel)
       threshold = SpillCoefficient;
-
     // Check if current shader spill is larger than previous shader spill
     // Threshold flag controls comparison tolerance - i.e. A threshold of 2.0 means that the
     // current shader spill must be 2x larger than previous spill to be considered "better".
@@ -267,7 +269,7 @@ bool RetryManager::IsBetterThanPrevious(CShaderProgram *pCurrent, float threshol
 }
 
 // save entry for given SIMD mode, to avoid recompile for next retry.
-void RetryManager::SaveSIMDEntry(SIMDMode simdMode, CShader *shader) {
+void RetryManagerVISA::SaveSIMDEntry(SIMDMode simdMode, CShader *shader) {
   auto entry = GetCacheEntry(simdMode);
   IGC_ASSERT(entry);
   if (entry) {
@@ -275,26 +277,18 @@ void RetryManager::SaveSIMDEntry(SIMDMode simdMode, CShader *shader) {
   }
 }
 
-CShader *RetryManager::GetSIMDEntry(SIMDMode simdMode) {
+CShader *RetryManagerVISA::GetSIMDEntry(SIMDMode simdMode) {
   auto entry = GetCacheEntry(simdMode);
   IGC_ASSERT(entry);
   return entry ? entry->shader : nullptr;
 }
 
-RetryManager::~RetryManager() {
-  for (auto &it : cache) {
-    if (it.shader) {
-      delete it.shader;
-    }
-  }
-}
-
-bool RetryManager::AnyKernelSpills() const {
+bool RetryManagerVISA::AnyKernelSpills() const {
   return std::any_of(std::begin(cache), std::end(cache),
                      [](const CacheEntry &entry) { return entry.shader && entry.shader->m_spillCost > 0.0; });
 }
 
-bool RetryManager::PickupKernels(CodeGenContext *cgCtx) {
+bool RetryManagerVISA::PickupKernels(CodeGenContext *cgCtx) {
   {
     IGC_ASSERT_MESSAGE(0, "TODO for other shader types");
     return true;
@@ -302,7 +296,7 @@ bool RetryManager::PickupKernels(CodeGenContext *cgCtx) {
 }
 
 
-RetryManager::CacheEntry *RetryManager::GetCacheEntry(SIMDMode simdMode) {
+RetryManagerVISA::CacheEntry *RetryManagerVISA::GetCacheEntry(SIMDMode simdMode) {
   auto result = std::find_if(std::begin(cache), std::end(cache),
                              [&simdMode](const CacheEntry &entry) { return entry.simdMode == simdMode; });
   return result != std::end(cache) ? result : nullptr;
@@ -457,6 +451,15 @@ void CodeGenContext::setEntryNames(llvm::Module *m) {
     }
   }
 }
+
+/// Returns the retry manager cast to RetryManagerVISA*.
+/// Only valid for contexts that use vISA-based retry management.
+RetryManagerVISA *CodeGenContext::getRetryManagerVISA() const {
+  RetryManagerVISA *retryMgrVISA = llvm::dyn_cast<RetryManagerVISA>(m_retryManager.get());
+  IGC_ASSERT_MESSAGE(retryMgrVISA, "Retry manager is not a RetryManagerVISA instance");
+  return retryMgrVISA;
+}
+
 void CodeGenContext::clearEntryNames() { this->entry_names.clear(); }
 // Several clients explicitly delete module without resetting module to null.
 // This causes the issue later when the dtor is invoked (trying to delete a

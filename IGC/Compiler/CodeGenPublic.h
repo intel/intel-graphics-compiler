@@ -654,15 +654,40 @@ public:
   USC::SShaderStageBTLayout *getModifiableLayout();
 };
 
+enum class RetryManagerKind {
+  VISA
+};
+
 class RetryManager {
 public:
-  RetryManager();
-  ~RetryManager();
+  virtual ~RetryManager() = default;
   RetryManager(const RetryManager &) = delete;
   RetryManager &operator=(const RetryManager &) = delete;
+  RetryManager(RetryManager &&) = delete;
+  RetryManager &operator=(RetryManager &&) = delete;
 
+  [[nodiscard]] RetryManagerKind GetKind() const { return Kind; }
+
+  static bool classof(const RetryManager *p) { return p != nullptr; }
+
+  // === State Management for all retry managers ===
   bool AdvanceState();
   void DecreaseState();
+  void SetFirstStateId(int id);
+  bool IsFirstTry() const;
+  bool IsLastTry() const;
+  bool Trigger2xGRFRetry() const;
+  unsigned GetRetryId() const;
+  unsigned GetPerFuncRetryStateId(llvm::Function *F) const;
+
+  void Enable(ShaderType ty = ShaderType::UNKNOWN);
+  void Disable(bool DisablePerKernel = false);
+
+  void SetSpillSize(unsigned int spillSize);
+  unsigned int GetLastSpillSize() const;
+  void ClearSpillParams();
+
+  // === Optimization flags for all retry managers===
   bool AllowLICM(llvm::Function *F = nullptr) const;
   bool AllowPromotePrivateMemory(llvm::Function *F = nullptr) const;
   bool AllowVISAPreRAScheduler(llvm::Function *F = nullptr) const;
@@ -677,69 +702,81 @@ public:
   bool ForceIndirectCallsInSyncRT() const;
   bool AllowRaytracingSpillCompaction() const;
   bool AllowLoadSinking(llvm::Function *F = nullptr) const;
-  void SetFirstStateId(int id);
-  bool IsFirstTry() const;
-  bool IsLastTry() const;
-  bool Trigger2xGRFRetry() const;
-  unsigned GetRetryId() const;
-  unsigned GetPerFuncRetryStateId(llvm::Function *F) const;
 
-  void Enable(ShaderType ty = ShaderType::UNKNOWN);
-  void Disable(bool DisablePerKernel = false);
-
-  void SetSpillSize(unsigned int spillSize);
-  unsigned int GetLastSpillSize() const;
+  // === Abstract interface for derived classes ===
+  // These must be implemented by backend-specific derived classes
+  virtual bool AnyKernelSpills() const = 0;
+  virtual bool PickupKernels(CodeGenContext *cgCtx) = 0;
 
   unsigned int numInstructions = 0;
-  // For OCL the retry manager will work on per-kernel basis, that means
-  // Disable() will disable only specific kernel. Other kernels still can
-  // be retried. To keep the old behavior for other shader types, Disable()
-  // will check the field and keep the old behavior. If other shader
-  // types want to follow OCL this has to be set, see CodeGenContext
+  // For OCL the retry manager will work on per-kernel basis, that means Disable() will disable only specific kernel.
+  // Other kernels still can be retried. To keep the old behavior for other shader types, Disable() will check the field
+  // and keep the old behavior. If other shader types want to follow OCL this has to be set, see CodeGenContext
   // constructor.
-  bool perKernel;
+  bool perKernel = false;
   /// the set of OCL kernels that was compiled
-  std::map<std::string, CShaderProgram::UPtr> previousKernels;
-  /// the set of OCL kernels that need to recompile
   std::set<std::string> kernelSet;
   /// the set of selected OCL kernels that go through early retry
   std::set<std::string> earlyRetryKernelSet;
   /// the set of OCL kernels that need to skip recompilation
   std::set<std::string> kernelSkip;
+  // Set of functions within a function group that should be retried
+  std::set<std::string> PerFuncRetrySet;
+
+protected:
+  unsigned stateId = 0;
+  unsigned prevStateId = 0;
+  // For debugging purposes, it can be useful to start on a particular
+  // ID rather than id 0.
+  unsigned firstStateId = 0;
+  // internal knob to disable retry manager.
+  bool enabled = false;
+  // shader type for shader specific opt
+  ShaderType shaderType = ShaderType::UNKNOWN;
+  unsigned lastSpillSize = 0;
+  explicit RetryManager(RetryManagerKind KindIn);
+
+private:
+  RetryManagerKind Kind;
+};
+
+/// vISA-specific retry manager
+/// Handles CShader and CShaderProgram caching for the legacy vISA path
+class RetryManagerVISA : public RetryManager {
+public:
+  RetryManagerVISA() : RetryManager(RetryManagerKind::VISA) {}
+  ~RetryManagerVISA() override;
+  RetryManagerVISA(const RetryManagerVISA &) = delete;
+  RetryManagerVISA &operator=(const RetryManagerVISA &) = delete;
+  RetryManagerVISA(RetryManagerVISA &&) = delete;
+  RetryManagerVISA &operator=(RetryManagerVISA &&) = delete;
+
+  static bool classof(const RetryManager *p) { return p && p->GetKind() == RetryManagerKind::VISA; }
+
+  // === Public data member (vISA-specific) ===
+  /// the set of OCL kernels that was compiled
+  std::map<std::string, CShaderProgram::UPtr> previousKernels;
+
+  // === vISA-specific: CShaderProgram collection ===
   // Check if current shader is better then previous one
   bool IsBetterThanPrevious(CShaderProgram *pCurrent, float threshold = 1.0f);
   // Get the previous compilation of the current kernel
   CShaderProgram *GetPrevious(CShaderProgram *pCurrent, bool ReleaseUPtr = false);
   // Collect compilation of the current kernel
   void Collect(CShaderProgram::UPtr pCurrent);
-  // Set of functions within a function group that should be retried
-  std::set<std::string> PerFuncRetrySet;
 
-  void ClearSpillParams();
+  // === vISA-specific: Per-SIMD caching ===
   // save entry for given SIMD mode, to avoid recompile for next retry.
   void SaveSIMDEntry(SIMDMode simdMode, CShader *shader);
   CShader *GetSIMDEntry(SIMDMode simdMode);
-  bool AnyKernelSpills() const;
 
+  // === Implement abstract interface ===
+  bool AnyKernelSpills() const override;
   // Try to pickup the simd mode & kernel based on heuristics and fill
   // programOutput.  If returning true, then stop the further retry.
-  bool PickupKernels(CodeGenContext *cgCtx);
+  bool PickupKernels(CodeGenContext *cgCtx) override;
 
 private:
-  unsigned stateId;
-  unsigned prevStateId;
-  // For debugging purposes, it can be useful to start on a particular
-  // ID rather than id 0.
-  unsigned firstStateId;
-
-  // internal knob to disable retry manager.
-  bool enabled;
-
-  // shader type for shader specific opt
-  ShaderType shaderType;
-
-  unsigned lastSpillSize = 0;
-
   // cache the compiled kernel during retry
   struct CacheEntry {
     SIMDMode simdMode;
@@ -974,7 +1011,7 @@ public:
                  LLVMContextWrapper *LLVMContext = nullptr) ///< LLVM context to use, if null a new one will be
                                                             ///< created
       : type(_type), platform(_platform), btiLayout(_bitLayout), m_DriverInfo(driverInfo), llvmCtxWrapper(LLVMContext),
-        m_retryManager(std::make_unique<RetryManager>()) {
+        m_retryManager(std::make_unique<RetryManagerVISA>()) {
     if (llvmCtxWrapper == nullptr) {
       initLLVMContextWrapper(createResourceDimTypes);
     } else {
@@ -1015,6 +1052,8 @@ public:
   void setModule(llvm::Module *m);
   void setEntryNames(llvm::Module *m);
   void clearEntryNames();
+  RetryManagerVISA *getRetryManagerVISA() const;
+
   // Several clients explicitly delete module without resetting module to null.
   // This causes the issue later when the dtor is invoked (trying to delete a
   // dangling pointer again). This function is used to replace any explicit

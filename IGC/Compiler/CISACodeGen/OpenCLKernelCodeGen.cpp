@@ -2134,13 +2134,13 @@ RetryType NeedsRetry(OpenCLProgramContext *ctx, COpenCLKernel *pShader, CShaderP
   bool isWorstThanPrv = false;
   // Look for previous generated shaders
   // ignoring case for multi-simd compilation, or if kernel has stackcalls
-  RetryManager *retryMgr = ctx->m_retryManager.get();
+  RetryManagerVISA *retryMgrVISA = ctx->getRetryManagerVISA();
   if (!((ctx->m_enableSimdVariantCompilation) && (ctx->getModuleMetaData()->csInfo.forcedSIMDSize == 0)) &&
       !(program->HasStackCalls() || program->IsIntelSymbolTableVoidProgram())) {
-    isWorstThanPrv = !retryMgr->IsBetterThanPrevious(pKernel.get(), 2.0f);
+    isWorstThanPrv = !retryMgrVISA->IsBetterThanPrevious(pKernel.get(), 2.0f);
   }
 
-  auto pPreviousKernel = retryMgr->GetPrevious(pKernel.get());
+  auto pPreviousKernel = retryMgrVISA->GetPrevious(pKernel.get());
 
   if (pPreviousKernel && exceedMaxScratchUse(program, ctx)) {
     // For case when we have recompilation but exceed
@@ -2216,8 +2216,8 @@ void GatherDataForDriver(OpenCLProgramContext *ctx, COpenCLKernel *pShader, CSha
           OutF.write(reason.str().c_str(), reason.str().length());
       }
     }
-    RetryManager *retryMgr = ctx->m_retryManager.get();
-    pSelectedKernel = CShaderProgram::UPtr(retryMgr->GetPrevious(pKernel.get(), true));
+    RetryManagerVISA *retryMgrVISA = ctx->getRetryManagerVISA();
+    pSelectedKernel = CShaderProgram::UPtr(retryMgrVISA->GetPrevious(pKernel.get(), true));
   }
   case RetryType::NO_Retry: {
     // Save the shader program to the state processor to be handled later
@@ -2240,7 +2240,8 @@ void GatherDataForDriver(OpenCLProgramContext *ctx, COpenCLKernel *pShader, CSha
   case RetryType::YES_ForceRecompilation: {
     ctx->EmitWarning("[RetryManager] Start recompilation of the kernel", pFunc);
     // Collect the current compilation for the next compare
-    ctx->m_retryManager->Collect(std::move(pKernel));
+    RetryManagerVISA *retryMgrVISA = ctx->getRetryManagerVISA();
+    retryMgrVISA->Collect(std::move(pKernel));
     ctx->m_retryManager->kernelSet.insert(pShader->m_kernelInfo.m_kernelName);
 
     break;
