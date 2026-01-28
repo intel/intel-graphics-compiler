@@ -169,9 +169,11 @@ void DbgVariable::emitExpression(CompileUnit *CU, IGC::DIEBlock *Block) const {
 
   const DIExpression *DIExpr = DbgInst->getExpression();
   llvm::SmallVector<uint64_t, 5> Elements;
+  int BitPieceIndex = -1;
   for (auto I = DIExpr->expr_op_begin(), E = DIExpr->expr_op_end(); I != E; ++I) {
     switch (I->getOp()) {
     case dwarf::DW_OP_LLVM_fragment: {
+      BitPieceIndex = Elements.size();
       uint64_t offset = I->getArg(0);
       uint64_t size = I->getArg(1);
       Elements.push_back(dwarf::DW_OP_bit_piece);
@@ -216,14 +218,20 @@ void DbgVariable::emitExpression(CompileUnit *CU, IGC::DIEBlock *Block) const {
   bool isStackValueNeeded =
       !isSimpleIndirect && !currentLocationIsMemoryAddress() && !currentLocationIsVector() && !isFirstHalf;
 
+  if (isStackValueNeeded) {
+    auto InsertPos = Elements.end();
+
+    // For expression with DW_OP_bit_piece, DW_OP_stack_value must be before it.
+    if (BitPieceIndex != -1) {
+      InsertPos = Elements.begin() + BitPieceIndex;
+    }
+    Elements.insert(InsertPos, dwarf::DW_OP_stack_value);
+    CU->stackValueOffset = 1;
+  }
+
   for (auto elem : Elements) {
     auto BF = DIEInteger::BestForm(false, elem);
     CU->addUInt(Block, BF, elem);
-  }
-
-  if (isStackValueNeeded) {
-    CU->addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_stack_value);
-    CU->stackValueOffset = 1;
   }
 }
 
