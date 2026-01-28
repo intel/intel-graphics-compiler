@@ -1657,31 +1657,6 @@ bool InstExpander::visitPtrToInt(PtrToIntInst &P2I) {
 
   Value *Ptr = P2I.getOperand(0);
 
-  // If the pointer comes from an addrspacecast of a pair.to.ptr intrinsic (possibly through bitcasts), we can reuse the
-  // original Lo/Hi values instead of creating a redundant ptr.to.pair call. The pattern looks like this:
-  //   %ptr = call ptr @llvm.genx.GenISA.pair.to.ptr(i32 %lo, i32 %hi)
-  //   %asc = addrspacecast ptr addrspace(X) %ptr to ptr addrspace(Y)
-  //   %pair = call { i32, i32 } @llvm.genx.GenISA.ptr.to.pair(ptr %asc)
-  // Since casting doesn't change the pointer value (just the address space annotation), we can directly use %lo and %hi
-  // instead of emitting a new ptr.to.pair call.
-  Value *SrcPtr = Ptr;
-
-  // Skip through bitcasts and addrspacecasts to find the source.
-  while (isa<BitCastInst>(SrcPtr) || isa<AddrSpaceCastInst>(SrcPtr)) {
-    SrcPtr = cast<Instruction>(SrcPtr)->getOperand(0);
-  }
-
-  // Check if the source is a pair.to.ptr intrinsic.
-  if (GenIntrinsicInst *GII = dyn_cast<GenIntrinsicInst>(SrcPtr)) {
-    if (GII->getIntrinsicID() == GenISAIntrinsic::GenISA_pair_to_ptr) {
-      // Reuse the original Lo/Hi values from the pair.to.ptr call.
-      Value *Lo = GII->getArgOperand(0);
-      Value *Hi = GII->getArgOperand(1);
-      Emu->setExpandedValues(&P2I, Lo, Hi);
-      return true;
-    }
-  }
-
   GenISAIntrinsic::ID GIID = GenISAIntrinsic::GenISA_ptr_to_pair;
   Function *IFunc = GenISAIntrinsic::getDeclaration(Emu->getModule(), GIID, Ptr->getType());
   Value *V = IRB->CreateCall(IFunc, Ptr);

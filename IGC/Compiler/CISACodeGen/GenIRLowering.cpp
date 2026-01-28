@@ -778,18 +778,10 @@ bool GEPLowering::lowerGetElementPtrInst(GetElementPtrInst *GEP) {
   IntegerType *PtrMathTy = IntegerType::get(Builder->getContext(), pointerMathSizeInBits);
 
   Value *BasePointer = nullptr;
-
-  // Check if the pointer itself is created from IntToPtr. If it is, and if the int is the same size, we can use the int
-  // directly. Otherwise, we need to add PtrToInt.
-
-  Value *PtrSource = PtrOp;
-
-  // First, look through address space casts.
-  if (AddrSpaceCastInst *ASC = dyn_cast<AddrSpaceCastInst>(PtrSource)) {
-    PtrSource = ASC->getOperand(0);
-  }
-
-  if (IntToPtrInst *I2PI = dyn_cast<IntToPtrInst>(PtrSource)) {
+  // Check if the pointer itself is created from IntToPtr.  If it is, and if
+  // the int is the same size, we can use the int directly.  Otherwise, we
+  // need to add PtrToInt.
+  if (IntToPtrInst *I2PI = dyn_cast<IntToPtrInst>(PtrOp)) {
     Value *IntOp = I2PI->getOperand(0);
     if (IntOp->getType() == IntPtrTy) {
       BasePointer = IntOp;

@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2022-2026 Intel Corporation
+; Copyright (C) 2022 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -29,10 +29,13 @@ define void @test_ptrs(i16 %src1) {
 ; CHECK-NEXT:    [[TMP8:%.*]] = insertelement <2 x i32> [[TMP7]], i32 [[TMP6]], i32 1
 ; CHECK-NEXT:    [[TMP9:%.*]] = bitcast <2 x i32> [[TMP8]] to i64
 ; CHECK-NEXT:    call void @use.i64(i64 [[TMP9]])
-; CHECK-NEXT:    [[TMP10:%.*]] = insertelement <2 x i32> undef, i32 [[TMP1]], i32 0
-; CHECK-NEXT:    [[TMP11:%.*]] = insertelement <2 x i32> [[TMP10]], i32 0, i32 1
-; CHECK-NEXT:    [[TMP12:%.*]] = bitcast i64 addrspace(1)* [[TMP2]] to <2 x i32> addrspace(1)*
-; CHECK-NEXT:    store <2 x i32> [[TMP11]], <2 x i32> addrspace(1)* [[TMP12]], align 4
+; CHECK-NEXT:    [[TMP10:%.*]] = call { i32, i32 } @llvm.genx.GenISA.ptr.to.pair.p1i64(i64 addrspace(1)* [[TMP2]])
+; CHECK-NEXT:    [[TMP11:%.*]] = extractvalue { i32, i32 } [[TMP10]], 0
+; CHECK-NEXT:    [[TMP12:%.*]] = extractvalue { i32, i32 } [[TMP10]], 1
+; CHECK-NEXT:    [[TMP13:%.*]] = insertelement <2 x i32> undef, i32 [[TMP11]], i32 0
+; CHECK-NEXT:    [[TMP14:%.*]] = insertelement <2 x i32> [[TMP13]], i32 [[TMP12]], i32 1
+; CHECK-NEXT:    [[TMP15:%.*]] = bitcast i64 addrspace(1)* [[TMP2]] to <2 x i32> addrspace(1)*
+; CHECK-NEXT:    store <2 x i32> [[TMP14]], <2 x i32> addrspace(1)* [[TMP15]]
 ; CHECK-NEXT:    ret void
 ;
   %1 = inttoptr i16 %src1 to i64 addrspace(1)*
