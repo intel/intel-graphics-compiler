@@ -22,6 +22,7 @@ if(NOT EXISTS ${IGC_BUILD__BIF_ROOT_DIR})
     file(MAKE_DIRECTORY ${IGC_BUILD__BIF_ROOT_DIR})
 endif()
 
+
 # Function generates BiFModule-SRC checksum
 # @param bifModuleTgt BiFModule target
 function(generate_bif_src_checksum bifModuleTgt)
@@ -74,6 +75,7 @@ function(generate_bif_prebuild_pack bifModuleTgt bifModuleDepends)
     set_target_properties("${IGC_BUILD__PROJ__BiFModuleCacheBuildPack_OCL}" PROPERTIES FOLDER "Misc/BiF")
 endfunction()
 
+
 # Function generates BiFModule-Prebuild pack
 # @param bifModuleDepends BiFModule depends
 function(build_bif_bitcode bifModuleDepends)
@@ -124,6 +126,7 @@ function(build_bif_bitcode bifModuleDepends)
             -DVME_TYPES_DEFINED="${VME_TYPES_DEFINED}"
             -DBIF_BINARY_DIR="${CMAKE_CURRENT_BINARY_DIR}"
             -DLLVM_VERSION_MAJOR="${LLVM_VERSION_MAJOR}"
+            -DIGC_BUILD__BIF_DIR="${IGC_BUILD__BIF_DIR}"
             -DBiFModuleCacheTarget=$<IF:$<CONFIG:Release>,"Release","Non-Release">
             -P ${CMAKE_CURRENT_LIST_DIR}/cmake/BiFBuildBitcode.cmake
         COMMENT "Running BiFBuildBitcode script"
