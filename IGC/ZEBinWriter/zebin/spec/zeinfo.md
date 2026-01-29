@@ -144,8 +144,8 @@ If an attribute is **Required**, it must be present in execution_env. If it's **
 | required_work_group_size | int32x3 | Optional | [0, 0, 0] | The value of this key is a sequence of three int32, for example [256, 2, 1]. The values are given by users in kernel attributes "reqd_work_group_size" |
 | simd_size | int32 | Required | | Valid value {1, 8, 16, 32} |
 | slm_size | int32 | Optional | 0 | SLM size in bytes |
-| private_size | int32 | Optional | 0 | Private memory usage per thread |
-| spill_size | int32 | Optional | 0 | Spill/fill memory usage per thread |
+| private_size | int32 | Optional | 0 | This value represents the total stack size for private-only stacks design, or the total private variable size in bytes for shared stacks design. |
+| spill_size | int32 | Optional | 0 | This value represents the total stack size for spill/fill-only stacks design, or the total spill/fill variable size in bytes for shared stacks design. |
 | subgroup_independent_forward_progress | bool | Optional | false | |
 | thread_scheduling_mode | <thread_scheduling_mode> | Optional | | Suggested thread arbitration policy. |
 | work_group_walk_order_dimensions | int32x3 | Optional | [0, 1, 2] | The value of this key is a sequence of three int32. Valid values are x: [0, 0, 0] , xy: [0, 1, 0], xyz: [0, 1, 2], yx: [1, 0, 0], zyx: [2, 1, 0] |
@@ -243,7 +243,7 @@ Supported <argument_type> of payload_arguments or per_thread_payload_arguments.
 | inline_sampler | | Implicit argument for OpenCL inline sampler in bindless addressing mode |
 | const_base | | The base address of constant buffer, or the bindless offset of constant buffer if addrmode = "bindless" |
 | global_base | | The base address of global buffer, or the bindless offset of global buffer if addrmode = "bindless" |
-| region_group_size | int32x3 | The size of a region group in each dimension, in the order of dimention X, Y, Z. |
+| region_group_size | int32x3 | The size of a region group in each dimension, in the order of dimension X, Y, Z. |
 | region_group_dimension | int32 | The partitioning dimension of a region group |
 | region_group_wg_count | int32 | The number of work groups in a region group |
 | region_group_barrier_buffer | int64 | The address of region/subregion barrier buffer. The argument, when presents, indicates region/subregion barrier buffer is required for this kernel |
