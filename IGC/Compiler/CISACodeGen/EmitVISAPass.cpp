@@ -12,6 +12,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CodeGenPublic.h"
 #include "Compiler/Optimizer/OpenCLPasses/NamedBarriers/NamedBarriersResolution.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/LSCFuncs/LSCFuncsResolution.hpp"
+#include "Compiler/Optimizer/BarrierSkipOptimization.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/Decompose2DBlockFuncs/Decompose2DBlockFuncs.hpp"
 #include "Compiler/CISACodeGen/GenerateFrequencyData.hpp"
 #include "AdaptorCommon/RayTracing/RTStackFormat.h"
@@ -15532,19 +15533,20 @@ static void divergentBarrierCheck(const CShader *Shader, const CodeGenContext &C
 
 void EmitPass::emitThreadGroupBarrier(llvm::Instruction *inst) {
 
-  // OPT: Remove barrier instruction when thread group size is less or equal
-  // than simd size.
-  bool skipBarrierInstructionInCS = false;
+  bool canSkipBarrier = false;
+  if (IGC_IS_FLAG_DISABLED(DisableBarrierSkipOptimization)) {
     if (m_currShader->GetShaderType() == ShaderType::OPENCL_SHADER) {
       Function *F = inst->getParent()->getParent();
       MetaDataUtils *pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
-      uint32_t sz = IGCMetaDataHelper::getThreadGroupSize(*pMdUtils, F);
-      if (sz != 0 && sz <= numLanes(m_SimdMode)) {
-        skipBarrierInstructionInCS = true;
+      uint32_t threadGroupSize = IGCMetaDataHelper::getThreadGroupSize(*pMdUtils, F);
+      if (threadGroupSize != 0) {
+        constexpr bool hasFusedEU = false;
+        canSkipBarrier = BarrierSkipOptimization::canSkip(threadGroupSize, numLanes(m_SimdMode), hasFusedEU);
       }
     }
+  }
 
-  if (!skipBarrierInstructionInCS) {
+  if (!canSkipBarrier) {
     e_barrierKind BarrierKind = EBARRIER_NORMAL; // default
     GenIntrinsicInst *geninst = cast<GenIntrinsicInst>(inst);
     if (geninst->getIntrinsicID() == GenISAIntrinsic::GenISA_threadgroupbarrier_signal) {

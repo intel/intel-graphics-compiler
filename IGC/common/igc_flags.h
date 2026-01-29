@@ -644,6 +644,8 @@ DECLARE_IGC_REGKEY(bool, DisableLoopSplitWidePHIs, false,
                    "Disable splitting of loop PHI values to eliminate subvector extract operations", false)
 DECLARE_IGC_REGKEY(bool, EnableBarrierControlFlowOptimizationPass, false,
                    "Enable barrier control flow optimization pass", false)
+DECLARE_IGC_REGKEY(bool, DisableBarrierSkipOptimization, false,
+                   "Disable barrier skip optimization for small thread groups", false)
 DECLARE_IGC_REGKEY(bool, EnableWaveShuffleIndexSinking, true,
                    "Hoist identical instructions operating on WaveShuffleIndex instructions with the same source and a "
                    "constant lane/channel",

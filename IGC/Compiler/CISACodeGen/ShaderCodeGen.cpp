@@ -103,6 +103,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/Optimizer/IntDivRemCombine.hpp"
 #include "Compiler/Optimizer/SynchronizationObjectCoalescing.hpp"
 #include "Compiler/Optimizer/BarrierControlFlowOptimization.hpp"
+#include "Compiler/Optimizer/BarrierSkipOptimization.hpp"
 #include "Compiler/Optimizer/RuntimeValueVectorExtractPass.h"
 #include "Compiler/Optimizer/WaveShuffleIndexSinking.hpp"
 #include "Compiler/Optimizer/SinkPointerConstAdd.h"
