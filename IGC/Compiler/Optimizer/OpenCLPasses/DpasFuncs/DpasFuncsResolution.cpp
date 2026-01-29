@@ -193,11 +193,11 @@ private:
   //
   // Find the following patterns:
   //
-  //    "_bf" | "_hf" | "_<s|u><2|4|8>" | tf32 | bf8 | hf8
-  //
-  // If success, return the type denoted by this string pattern;
-  // otherwise, return PrecisionType::PRECISION_UNUSED.
-  //
+       //    "_bf" | "_hf" | "_<s|u><2|4|8>" | tf32
+       //
+       // If success, return the type denoted by this string pattern;
+       // otherwise, return PrecisionType::PRECISION_UNUSED.
+       //
   PrecisionType parsePrecision(StringRef StrRef, size_t &StrPos, size_t &StrRem);
 
   // Pattern:  '_8'
@@ -208,7 +208,6 @@ private:
   // Return repeat count if valid, return -1 otherwise.
   int parseRCount(StringRef StrRef, size_t &StrPos, size_t &StrRem);
 
-  inline bool isFP8Prec(int P) const { return P == PrecisionType::BF8 || P == PrecisionType::HF8; }
 };
 } // namespace
 
@@ -458,11 +457,6 @@ void DpasFuncsResolution::visitCallInst(CallInst &CI) {
       IGC_ASSERT_MESSAGE(PB == PrecisionType::E2M1, "ICE: wrong type of dpas B!");
     } else { // fdpas
       bool precOk = (PA == PB);
-      const bool isFP8Dpas = isFP8Prec(PA) || isFP8Prec(PB);
-      if (isFP8Dpas) {
-        // any of BF8/HF8 combinations is allowed
-        precOk = isFP8Prec(PA) && isFP8Prec(PB);
-      }
       IGC_ASSERT_MESSAGE(D_nelts == RC, "ICE: dpas intrinsic has mismatched vector sizes of arguments!");
       IGC_ASSERT_MESSAGE(ACC_nelts == RC, "ICE: dpas intrinsic has mismatched vector sizes of arguments!");
       IGC_ASSERT_MESSAGE(B_nelts == SD, "ICE: dpas intrinsic has mismatched vector sizes of arguments!");
@@ -480,13 +474,11 @@ void DpasFuncsResolution::visitCallInst(CallInst &CI) {
 
       IGC_ASSERT_MESSAGE(A_BaseTy->isIntegerTy(AbitsPerDepth) || (PA == PrecisionType::TF32 && A_BaseTy->isFloatTy()),
                          "ICE: dpas intrinsic's A has wrong base type!");
-      if (isFP8Dpas) {
-        IGC_ASSERT_MESSAGE(DstTy == DSTACC_FLOAT && AccTy == DSTACC_FLOAT, "ICE: wrong type of dst for FP8 dpas!");
-      } else if (PA == PrecisionType::TF32) {
-        if (!(DstTy == DSTACC_FLOAT && AccTy == DSTACC_FLOAT)) {
-          IGC_ASSERT_MESSAGE(false, "ICE: wrong type of dst/acc for TF32 dpas!");
+        if (PA == PrecisionType::TF32) {
+          if (!(DstTy == DSTACC_FLOAT && AccTy == DSTACC_FLOAT)) {
+            IGC_ASSERT_MESSAGE(false, "ICE: wrong type of dst/acc for TF32 dpas!");
+          }
         }
-      }
 
       bool typeOK = false;
       if (DstTy == DSTACC_BF16 || AccTy == DSTACC_BF16) {
@@ -1172,43 +1164,27 @@ PrecisionType DpasFuncsResolution::parsePrecision(StringRef StrRef, size_t &StrP
     char c2 = StrRef[StrPos + 2];
     char c3 = StrRem >= 4 ? StrRef[StrPos + 3] : 0;
     char c4 = StrRem >= 5 ? StrRef[StrPos + 4] : 0;
-    if (c0 == '_' && c1 == 'b' && c2 == 'f' && c3 == '8') { // "_bf8"
-      ty = PrecisionType::BF8;
-      StrPos += 4;
-      StrRem -= 4;
-    } else if (c0 == '_' && c1 == 'h' && c2 == 'f' && c3 == '8') { // "_bf8"
-      ty = PrecisionType::HF8;
-      StrPos += 4;
-      StrRem -= 4;
-    } else if (c0 == '_' && c1 == 't' && c2 == 'f' && c3 == '3' && c4 == '2') { // "_tf32"
-      ty = PrecisionType::TF32;
-      StrPos += 5;
-      StrRem -= 5;
-    } else if (c0 == '_' && c1 == 'b' && c2 == 'f') { // "_bf"
-      ty = PrecisionType::BF16;
-      StrPos += 3;
-      StrRem -= 3;
-    } else if (c0 == '_' && c1 == 'h' && c2 == 'f') { // "_hf"
-      ty = PrecisionType::FP16;
-      StrPos += 3;
-      StrRem -= 3;
-    } else if (c0 == '_' && c1 == 'u' && (c2 == '2' || c2 == '4' || c2 == '8')) { // "_u<2|4|8>"
-      ty = (c2 == '2' ? PrecisionType::U2 : (c2 == '4' ? PrecisionType::U4 : PrecisionType::U8));
-      StrPos += 3;
-      StrRem -= 3;
-    } else if (c0 == '_' && c1 == 's' && (c2 == '2' || c2 == '4' || c2 == '8')) { // "s<2|4|8>_"
-      ty = (c2 == '2' ? PrecisionType::S2 : (c2 == '4' ? PrecisionType::S4 : PrecisionType::S8));
-      StrPos += 3;
-      StrRem -= 3;
-    } else if (c0 == '_' && c1 == 'd' && c2 == 'f') { // "_df"
-      ty = PrecisionType::DF;
-      StrPos += 3;
-      StrRem -= 3;
-    } else if (c0 == '_' && c1 == 'e' && c2 == '2' && c3 == 'm' && c4 == '1') { // "_e2m1"
-      ty = PrecisionType::E2M1;
-      StrPos += 5;
-      StrRem -= 5;
-    }
+      if (c0 == '_' && c1 == 't' && c2 == 'f' && c3 == '3' && c4 == '2') { // "_tf32"
+        ty = PrecisionType::TF32;
+        StrPos += 5;
+        StrRem -= 5;
+      } else if (c0 == '_' && c1 == 'b' && c2 == 'f') { // "_bf"
+        ty = PrecisionType::BF16;
+        StrPos += 3;
+        StrRem -= 3;
+      } else if (c0 == '_' && c1 == 'h' && c2 == 'f') { // "_hf"
+        ty = PrecisionType::FP16;
+        StrPos += 3;
+        StrRem -= 3;
+      } else if (c0 == '_' && c1 == 'u' && (c2 == '2' || c2 == '4' || c2 == '8')) { // "_u<2|4|8>"
+        ty = (c2 == '2' ? PrecisionType::U2 : (c2 == '4' ? PrecisionType::U4 : PrecisionType::U8));
+        StrPos += 3;
+        StrRem -= 3;
+      } else if (c0 == '_' && c1 == 's' && (c2 == '2' || c2 == '4' || c2 == '8')) { // "s<2|4|8>_"
+        ty = (c2 == '2' ? PrecisionType::S2 : (c2 == '4' ? PrecisionType::S4 : PrecisionType::S8));
+        StrPos += 3;
+        StrRem -= 3;
+      }
   }
   if (ty == PRECISION_UNUSED) {
     // Not a valid precision
