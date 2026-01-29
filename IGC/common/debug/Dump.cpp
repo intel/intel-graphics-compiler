@@ -499,7 +499,7 @@ private:
 // when the calling function returns)
 Dump::Dump(DumpName const &dumpName, DumpType type)
     : m_name(dumpName), m_pStream(std::make_unique<llvm::raw_string_ostream>(m_string)), // buffered stream!
-      m_pStringStream(nullptr), m_type(type), m_isFlushed(false) {
+      m_pStringStream(nullptr), m_type(type) {
   m_pStringStream = m_pStream.get();
   if (isConsolePrintable(m_type)) {
     if (IGC_IS_FLAG_ENABLED(PrintToConsole)) {
@@ -520,9 +520,6 @@ Dump::Dump(DumpName const &dumpName, DumpType type)
 
 void Dump::flush() {
   m_pStringStream->flush();
-  if (m_string.empty() && m_isFlushed) // Skip consecutive flushes
-    return;
-
   std::ios_base::openmode mode = std::ios_base::out;
   if (!isText(m_type))
     mode |= std::ios_base::binary;
@@ -541,7 +538,6 @@ void Dump::flush() {
     }
   }
   m_string.clear();
-  m_isFlushed = true;
 }
 
 Dump::~Dump() { flush(); }
