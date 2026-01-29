@@ -691,8 +691,23 @@ public:
     return m_WaTable.Wa_22014559856 && IGC_IS_FLAG_DISABLED(DisablePredicatedStackIDRelease);
   }
 
-  // This returns the current maximum size that we recommend for performance.
-  // SIMD32 is still allowed and we may relax this in the future.
+  // This function was originally intended to return the MAXIMUM SIMD size supported by hardware
+  // for shaders with ray queries. It is used by CompileSIMDSizeInCommon as an API-agnostic filter
+  // to determine platform-specific constraints on which SIMD sizes can be compiled.
+  //
+  // However, at some point, shader type was added and the function began returning PREFERRED
+  // SIMD sizes instead of maximum supported sizes. This caused CompileSIMDSizeInCommon to reject
+  // non-preferred SIMD sizes, preventing users from forcing specific SIMD widths (e.g., via
+  // ForceOCLSIMDWidth flag or reqd_sub_group_size attribute in OpenCL).
+  //
+  // For OpenCL (OPENCL_SHADER): This function now returns the maximum SIMD size supported by
+  // the platform, NOT the preferred size. When OCL needs the preferred size, it calls
+  // getPreferredRayQuerySIMDSize() instead.
+  //
+  // For other shader types (COMPUTE_SHADER, RAYTRACING_SHADER, PIXEL_SHADER): The preferred SIMD logic
+  // is still embedded here for backward compatibility. These APIs should eventually migrate to
+  // the same approach as OCL - using this function for max supported size and
+  // getPreferredRayQuerySIMDSize() for preferred size.
   SIMDMode getMaxRayQuerySIMDSize(ShaderType shaderType) const {
       if (isCoreChildOf(IGFX_XE_HPG_CORE)) {
         return SIMDMode::SIMD16;
@@ -702,6 +717,7 @@ public:
       }
   }
 
+  // This returns the current maximum size that we recommend for performance.
   SIMDMode getPreferredRayQuerySIMDSize(ShaderType shaderType) const {
     SIMDMode ret = isCoreChildOf(IGFX_XE_HPC_CORE) ? SIMDMode::SIMD16 : SIMDMode::SIMD8;
 
@@ -1430,8 +1446,7 @@ public:
   bool supports2dBlockTranspose64ByteWidth() const { return isCoreChildOf(IGFX_XE3P_CORE); }
 
   bool supportsReadStateInfo() const {
-    return hasEfficient64bEnabled() && (IGC_IS_FLAG_ENABLED(EnableReadStateToA64Read) ||
-        m_WaTable.Wa_14025275057);
+    return hasEfficient64bEnabled() && (IGC_IS_FLAG_ENABLED(EnableReadStateToA64Read) || m_WaTable.Wa_14025275057);
   }
 
   bool supportsFp4Int4Upsampling() const { return isCoreChildOf(IGFX_XE3P_CORE); }

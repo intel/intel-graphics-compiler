@@ -263,7 +263,10 @@ bool RayTracingShaderLowering::runOnModule(Module &M) {
         IGC_ASSERT(it != FuncMD.end());
         [[maybe_unused]] const FunctionMetaData &MD = it->second;
         IGC_ASSERT(MD.hasSyncRTCalls);
-        IGC_ASSERT(MD.rtInfo.useSyncHWStack || TRS->getStackAddressingMode() != STACK_ADDRESS_MODE::DEFAULT_ADDRESSING);
+        // useSyncHWStack is not used by OCL compilation path currently, so we cannot require it to be set
+        if (CGCtx->type != ShaderType::OPENCL_SHADER)
+          IGC_ASSERT(MD.rtInfo.useSyncHWStack ||
+                     TRS->getStackAddressingMode() != STACK_ADDRESS_MODE::DEFAULT_ADDRESSING);
         break;
       }
       case GenISAIntrinsic::GenISA_BindlessThreadDispatch:

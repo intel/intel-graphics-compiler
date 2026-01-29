@@ -1158,6 +1158,16 @@ bool TranslateBuildSPMD(const STB_TranslateInputArgs *pInputArgs, STB_TranslateO
   IGC::COCLBTILayout oclLayout(&zeroLayout);
   OpenCLProgramContext oclContext(oclLayout, IGCPlatform, pInputArgs, *driverInfo, llvmContext);
 
+  SIMDMode MinDispatchMode = oclContext.platform.getMinDispatchMode();
+  if (IGC_IS_FLAG_SET(ForceOCLSIMDWidth) && IGC_GET_FLAG_VALUE(ForceOCLSIMDWidth) < numLanes(MinDispatchMode)) {
+    std::string errorMsg = "SIMD size of " + std::to_string(IGC_GET_FLAG_VALUE(ForceOCLSIMDWidth)) +
+                           " has been forced when SIMD size of at least " + std::to_string(numLanes(MinDispatchMode)) +
+                           " is required on this platform";
+    oclContext.EmitError(errorMsg.c_str(), nullptr);
+    SetOutputMessage(oclContext.GetError(), *pOutputArgs);
+    return false;
+  }
+
   if (oclContext.m_InternalOptions.Efficient64b) {
     // IGC depends on FtrEfficient64BitAddressing to determine whether 64bit
     // addressing is supported. To allow testing this feature through ocloc tests

@@ -2487,8 +2487,18 @@ bool COpenCLKernel::hasReadWriteImage(llvm::Function &F) {
 }
 
 bool COpenCLKernel::CompileSIMDSize(SIMDMode simdMode, EmitPass &EP, llvm::Function &F) {
-  if (!CompileSIMDSizeInCommon(simdMode))
+  unsigned char forcedSIMDSize = m_Context->getModuleMetaData()->csInfo.forcedSIMDSize;
+  MetaDataUtils *pMdUtils = EP.getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
+  auto reqdSubGroupSize = getReqdSubGroupSize(F, pMdUtils);
+
+  if (!CompileSIMDSizeInCommon(simdMode)) {
+    if (forcedSIMDSize == numLanes(simdMode))
+      m_Context->EmitError(("Failed to compile the forced SIMD size of " + std::to_string(forcedSIMDSize)).c_str(), &F);
+    else if (reqdSubGroupSize == numLanes(simdMode))
+      m_Context->EmitError(
+          ("Failed to compile the required sub-group size of " + std::to_string(reqdSubGroupSize)).c_str(), &F);
     return false;
+  }
 
   // Skip compiling the simd size if -emit-visa-only and there's already
   // one visa compiled for any other simd size.
@@ -2516,39 +2526,11 @@ bool COpenCLKernel::CompileSIMDSize(SIMDMode simdMode, EmitPass &EP, llvm::Funct
     IGC_ASSERT(0);
     return false;
   }
-  const FunctionMetaData &funcMD = FuncIter->second;
-  bool hasSyncRTCalls = funcMD.hasSyncRTCalls; // if the function/kernel has sync raytracing calls
-
-  // If forced SIMD Mode (by driver or regkey), then:
-  //  1. Compile only that SIMD mode and nothing else
-  //  2. Compile that SIMD mode even if it is not profitable, i.e. even if compileThisSIMD() returns false for it.
-  //     So, don't bother checking profitability for it
-
-  unsigned char forcedSIMDSize = m_Context->getModuleMetaData()->csInfo.forcedSIMDSize;
-
-  if (forcedSIMDSize != 0) {
-    // Check if forced SIMD width is smaller than required by used platform. Emit error when true.
-    if (m_Context->platform.getMinDispatchMode() == SIMDMode::SIMD16 && forcedSIMDSize < 16) {
-      m_Context->EmitError((std::string("SIMD size of ") + std::to_string(forcedSIMDSize) +
-                            std::string(" has been forced when SIMD size of at least 16") +
-                            std::string(" is required on this platform"))
-                               .c_str(),
-                           &F);
-      return false;
-    }
-    // Entered here means driver has requested a specific SIMD mode, which was forced in the regkey ForceOCLSIMDWidth.
-    // We return the condition can we compile the given forcedSIMDSize with this simdMode?
-    return (
-        // These statements are basically equivalent to (simdMode == forcedSIMDSize)
-        (simdMode == SIMDMode::SIMD8 && m_Context->getModuleMetaData()->csInfo.forcedSIMDSize == 8) ||
-        (simdMode == SIMDMode::SIMD16 && m_Context->getModuleMetaData()->csInfo.forcedSIMDSize == 16) ||
-        // if we want to compile SIMD32, we need to be lacking any raytracing calls; raytracing doesn't support SIMD16
-        (simdMode == SIMDMode::SIMD32 && m_Context->getModuleMetaData()->csInfo.forcedSIMDSize == 32 &&
-         !hasSyncRTCalls));
-  }
 
   SIMDStatus simdStatus = SIMDStatus::SIMD_FUNC_FAIL;
 
+  const FunctionMetaData &funcMD = FuncIter->second;
+  bool hasSyncRTCalls = funcMD.hasSyncRTCalls;
   if (m_Context->platform.getMinDispatchMode() == SIMDMode::SIMD16) {
     simdStatus = checkSIMDCompileCondsForMin16(simdMode, EP, F, hasSyncRTCalls);
   } else {
@@ -2561,14 +2543,12 @@ bool COpenCLKernel::CompileSIMDSize(SIMDMode simdMode, EmitPass &EP, llvm::Funct
   }
   // Report an error if intel_reqd_sub_group_size cannot be satisfied
   else {
-    MetaDataUtils *pMdUtils = EP.getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
-    CodeGenContext *ctx = GetContext();
-    auto reqdSubGroupSize = getReqdSubGroupSize(F, pMdUtils);
     if (reqdSubGroupSize == numLanes(simdMode)) {
-      ctx->EmitError((std::string("Cannot compile a kernel in the SIMD mode specified by intel_reqd_sub_group_size(") +
-                      std::to_string(reqdSubGroupSize) + std::string(")"))
-                         .c_str(),
-                     &F);
+      m_Context->EmitError(
+          (std::string("Cannot compile a kernel in the SIMD mode specified by intel_reqd_sub_group_size(") +
+           std::to_string(reqdSubGroupSize) + std::string(")"))
+              .c_str(),
+          &F);
       return false;
     }
   }
@@ -2664,12 +2644,6 @@ SIMDStatus COpenCLKernel::checkSIMDCompileCondsForMin16(SIMDMode simdMode, EmitP
     pCtx->getModuleMetaData()->csInfo.forcedSIMDSize = (unsigned char)numLanes(SIMDMode::SIMD16);
   }
 
-  if (simdMode == SIMDMode::SIMD32 && hasSyncRTCalls) {
-      return SIMDStatus::SIMD_FUNC_FAIL;
-  } else if (simdMode == SIMDMode::SIMD16 && hasSyncRTCalls) {
-      return SIMDStatus::SIMD_PASS;
-  }
-
   if (requiredSimdSize) {
     if (requiredSimdSize != numLanes(simdMode)) {
       pCtx->SetSIMDInfo(SIMD_SKIP_HW, simdMode, ShaderDispatchMode::NOT_APPLICABLE);
@@ -2690,6 +2664,12 @@ SIMDStatus COpenCLKernel::checkSIMDCompileCondsForMin16(SIMDMode simdMode, EmitP
     // ATTN: This check is redundant!
     if (numLanes(simdMode) == pCtx->getModuleMetaData()->csInfo.forcedSIMDSize) {
       return SIMDStatus::SIMD_PASS;
+    }
+
+    if (hasSyncRTCalls) {
+      // If we get all the way to here, then set it to the preferred SIMD size for Ray Tracing.
+      SIMDMode preferredMode = m_Context->platform.getPreferredRayQuerySIMDSize(ShaderType::OPENCL_SHADER);
+      return (preferredMode == simdMode) ? SIMDStatus::SIMD_PASS : SIMDStatus::SIMD_FUNC_FAIL;
     }
 
     if (simdMode == SIMDMode::SIMD16 && (!pCtx->platform.isCoreXE2() && !pCtx->platform.isCoreXE3()) &&
@@ -2745,7 +2725,7 @@ SIMDStatus COpenCLKernel::checkSIMDCompileConds(SIMDMode simdMode, EmitPass &EP,
   MetaDataUtils *pMdUtils = EP.getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
   ModuleMetaData *modMD = pCtx->getModuleMetaData();
   FunctionInfoMetaDataHandle funcInfoMD = pMdUtils->getFunctionsInfoItem(&F);
-  uint32_t simd_size = getReqdSubGroupSize(F, pMdUtils);
+  uint32_t requiredSimdSize = getReqdSubGroupSize(F, pMdUtils);
   uint32_t maxPressure = getMaxPressure(F, pMdUtils);
 
   // For simd variant functions, detect which SIMD sizes are needed
@@ -2792,7 +2772,7 @@ SIMDStatus COpenCLKernel::checkSIMDCompileConds(SIMDMode simdMode, EmitPass &EP,
     }
   }
 
-  if (simd_size == 0) {
+  if (requiredSimdSize == 0) {
     // Default to lowest SIMD mode for stack calls/indirect calls
     if (IGC_IS_FLAG_ENABLED(ForceLowestSIMDForStackCalls) && (hasStackCall || isIndirectGroup) &&
         simdMode != SIMDMode::SIMD8) {
@@ -2824,38 +2804,14 @@ SIMDStatus COpenCLKernel::checkSIMDCompileConds(SIMDMode simdMode, EmitPass &EP,
     groupSize = IGCMetaDataHelper::getThreadGroupSizeHint(*pMdUtils, &F);
   }
 
-  if (simd_size) {
-    switch (simd_size) {
-      // Apparently the only possible simdModes here are SIMD8, SIMD16, SIMD32
-    case 8:
-      if (simdMode != SIMDMode::SIMD8) {
-        pCtx->SetSIMDInfo(SIMD_SKIP_THGRPSIZE, simdMode, ShaderDispatchMode::NOT_APPLICABLE);
-        return SIMDStatus::SIMD_FUNC_FAIL;
-      }
-      break;
-    case 16:
-      if (simdMode != SIMDMode::SIMD16) {
-        pCtx->SetSIMDInfo(SIMD_SKIP_THGRPSIZE, simdMode, ShaderDispatchMode::NOT_APPLICABLE);
-        return SIMDStatus::SIMD_FUNC_FAIL;
-      }
-      EP.m_canAbortOnSpill = false;
-      break;
-    case 32:
-      if (simdMode != SIMDMode::SIMD32) {
-        pCtx->SetSIMDInfo(SIMD_SKIP_THGRPSIZE, simdMode, ShaderDispatchMode::NOT_APPLICABLE);
-        return SIMDStatus::SIMD_FUNC_FAIL;
-      } else {
-        if (hasSyncRTCalls) {
-          return SIMDStatus::SIMD_FUNC_FAIL; // SIMD32 unsupported with raytracing calls
-        } else {                             // simdMode == SIMDMode::SIMD32 && !hasSyncRTCalls
-          EP.m_canAbortOnSpill = false;
-        }
-      }
-      break;
-    default:
-      IGC_ASSERT_MESSAGE(0, "Unsupported required sub group size");
-      break;
+  if (requiredSimdSize) {
+    if (requiredSimdSize != numLanes(simdMode)) {
+      pCtx->SetSIMDInfo(SIMD_SKIP_THGRPSIZE, simdMode, ShaderDispatchMode::NOT_APPLICABLE);
+      return SIMDStatus::SIMD_FUNC_FAIL;
     }
+    // Disable abort-on-spill for SIMD16 and SIMD32 when required sub group size is specified
+    if (simdMode == SIMDMode::SIMD16 || simdMode == SIMDMode::SIMD32)
+      EP.m_canAbortOnSpill = false;
   } else {
     // Checking registry/flag here. Note that if ForceOCLSIMDWidth is set to
     // 8/16/32, only corresponding EnableOCLSIMD<N> is set to true. Therefore,
@@ -2875,9 +2831,8 @@ SIMDStatus COpenCLKernel::checkSIMDCompileConds(SIMDMode simdMode, EmitPass &EP,
 
     if (hasSyncRTCalls) {
       // If we get all the way to here, then set it to the preferred SIMD size for Ray Tracing.
-      SIMDMode mode = SIMDMode::UNKNOWN;
-      mode = m_Context->platform.getPreferredRayTracingSIMDSize();
-      return (mode == simdMode) ? SIMDStatus::SIMD_PASS : SIMDStatus::SIMD_FUNC_FAIL;
+      SIMDMode preferredMode = m_Context->platform.getPreferredRayQuerySIMDSize(ShaderType::OPENCL_SHADER);
+      return (preferredMode == simdMode) ? SIMDStatus::SIMD_PASS : SIMDStatus::SIMD_FUNC_FAIL;
     }
 
     if (groupSize != 0 && groupSize <= 16) {
