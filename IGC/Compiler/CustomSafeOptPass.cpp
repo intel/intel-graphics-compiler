@@ -652,16 +652,24 @@ void CustomSafeOptPass::visitUDiv(BinaryOperator &I) {
     return;
   }
 
-  // CSE doesn't seem to handle udiv, so do CSE+hoist to common ancestor for udiv here
+  // Can try hoisting UDiv to common ancestor to speculatively execute if enabled
   SmallVector<Instruction *> ToReplace;
   for (auto u : I.getOperand(0)->users()) {
     if (auto *userInst = dyn_cast<Instruction>(u)) {
       if (userInst->getOpcode() == Instruction::UDiv) {
         if (userInst != &I && userInst->getOperand(0) == I.getOperand(0) &&
             userInst->getOperand(1) == I.getOperand(1)) {
+
+          // May not necessarily converge to 1 udiv instance immediately, but InstVisitor should guarantee that we visit
+          // the udiv instance that ultimately dominates any previously CSE'ed instances, thus doing multiple
+          // replacements and eventually converging
           if (!DT->dominates(&I, userInst)) {
+            if (IGC_IS_FLAG_DISABLED(ForceHoistUDivURem))
+              continue;
+            // Force hoist I to a common ancestor basic block, even if it may result in speculatively executing the udiv
+            // as a result of following a CFG path that reaches neither of the original blocks containing udiv.
             auto *insertBlock = DT->findNearestCommonDominator(I.getParent(), userInst->getParent());
-            I.moveBefore(insertBlock->getTerminator());
+            I.moveBefore(insertBlock->getFirstNonPHI());
           }
           ToReplace.push_back(userInst);
         }
@@ -671,21 +679,28 @@ void CustomSafeOptPass::visitUDiv(BinaryOperator &I) {
 
   for (auto inst : ToReplace) {
     inst->replaceAllUsesWith(&I);
-    inst->eraseFromParent();
   }
 }
 
 void CustomSafeOptPass::visitURem(BinaryOperator &I) {
-  // CSE doesn't seem to handle urem, so do CSE+hoist to common ancestor for urem here
+  // Can try hoisting URem to common ancestor to speculatively execute if enabled
   SmallVector<Instruction *> ToReplace;
   for (auto u : I.getOperand(0)->users()) {
     if (auto *userInst = dyn_cast<Instruction>(u)) {
       if (userInst->getOpcode() == Instruction::URem) {
         if (userInst != &I && userInst->getOperand(0) == I.getOperand(0) &&
             userInst->getOperand(1) == I.getOperand(1)) {
+
+          // May not necessarily converge to 1 udiv instance immediately, but InstVisitor should guarantee that we visit
+          // the udiv instance that ultimately dominates any previously CSE'ed instances, thus doing multiple
+          // replacements and eventually converging
           if (!DT->dominates(&I, userInst)) {
+            if (IGC_IS_FLAG_DISABLED(ForceHoistUDivURem))
+              continue;
+            // Force hoist I to a common ancestor basic block, even if it may result in speculatively executing the udiv
+            // as a result of following a CFG path that reaches neither of the original blocks containing udiv.
             auto *insertBlock = DT->findNearestCommonDominator(I.getParent(), userInst->getParent());
-            I.moveBefore(insertBlock->getTerminator());
+            I.moveBefore(insertBlock->getFirstNonPHI());
           }
           ToReplace.push_back(userInst);
         }
@@ -695,7 +710,6 @@ void CustomSafeOptPass::visitURem(BinaryOperator &I) {
 
   for (auto inst : ToReplace) {
     inst->replaceAllUsesWith(&I);
-    inst->eraseFromParent();
   }
 }
 
