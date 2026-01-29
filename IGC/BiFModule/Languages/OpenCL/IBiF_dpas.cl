@@ -579,6 +579,52 @@ DEFN_INTEL_CVT2CAST( half16_srnd, half16, float16, float16, ushort16, short16, s
 
 #endif // cl_intel_subgroup_matrix_multiply_accumulate
 
+#ifdef cl_intel_subgroup_matrix_multiply_accumulate_bf8
+
+// float result, float accumulation value:
+DEFN_INTEL_SG16_FDPAS(e5m2_e5m2_matrix_mad_k32, float,  float,  short,  int8, fdpas_f_f_bf8_bf8_8_1)
+DEFN_INTEL_SG16_FDPAS(e5m2_e5m2_matrix_mad_k32, float2, float2, short2, int8, fdpas_f_f_bf8_bf8_8_2)
+DEFN_INTEL_SG16_FDPAS(e5m2_e5m2_matrix_mad_k32, float4, float4, short4, int8, fdpas_f_f_bf8_bf8_8_4)
+DEFN_INTEL_SG16_FDPAS(e5m2_e5m2_matrix_mad_k32, float8, float8, short8, int8, fdpas_f_f_bf8_bf8_8_8)
+
+DEFN_INTEL_SG16_FDPAS(e4m3_e4m3_matrix_mad_k32, float,  float,  short,  int8, fdpas_f_f_hf8_hf8_8_1)
+DEFN_INTEL_SG16_FDPAS(e4m3_e4m3_matrix_mad_k32, float2, float2, short2, int8, fdpas_f_f_hf8_hf8_8_2)
+DEFN_INTEL_SG16_FDPAS(e4m3_e4m3_matrix_mad_k32, float4, float4, short4, int8, fdpas_f_f_hf8_hf8_8_4)
+DEFN_INTEL_SG16_FDPAS(e4m3_e4m3_matrix_mad_k32, float8, float8, short8, int8, fdpas_f_f_hf8_hf8_8_8)
+
+DEFN_INTEL_SG16_FDPAS(e5m2_e4m3_matrix_mad_k32, float,  float,  short,  int8, fdpas_f_f_bf8_hf8_8_1)
+DEFN_INTEL_SG16_FDPAS(e5m2_e4m3_matrix_mad_k32, float2, float2, short2, int8, fdpas_f_f_bf8_hf8_8_2)
+DEFN_INTEL_SG16_FDPAS(e5m2_e4m3_matrix_mad_k32, float4, float4, short4, int8, fdpas_f_f_bf8_hf8_8_4)
+DEFN_INTEL_SG16_FDPAS(e5m2_e4m3_matrix_mad_k32, float8, float8, short8, int8, fdpas_f_f_bf8_hf8_8_8)
+
+DEFN_INTEL_SG16_FDPAS(e4m3_e5m2_matrix_mad_k32, float,  float,  short,  int8, fdpas_f_f_hf8_bf8_8_1)
+DEFN_INTEL_SG16_FDPAS(e4m3_e5m2_matrix_mad_k32, float2, float2, short2, int8, fdpas_f_f_hf8_bf8_8_2)
+DEFN_INTEL_SG16_FDPAS(e4m3_e5m2_matrix_mad_k32, float4, float4, short4, int8, fdpas_f_f_hf8_bf8_8_4)
+DEFN_INTEL_SG16_FDPAS(e4m3_e5m2_matrix_mad_k32, float8, float8, short8, int8, fdpas_f_f_hf8_bf8_8_8)
+
+// bfloat16 result, bfloat16 accumulation value:
+DEFN_INTEL_SG16_FDPAS(e5m2_e5m2_matrix_mad_k32, short,  short,  short,  int8, fdpas_bf_bf_bf8_bf8_8_1)
+DEFN_INTEL_SG16_FDPAS(e5m2_e5m2_matrix_mad_k32, short2, short2, short2, int8, fdpas_bf_bf_bf8_bf8_8_2)
+DEFN_INTEL_SG16_FDPAS(e5m2_e5m2_matrix_mad_k32, short4, short4, short4, int8, fdpas_bf_bf_bf8_bf8_8_4)
+DEFN_INTEL_SG16_FDPAS(e5m2_e5m2_matrix_mad_k32, short8, short8, short8, int8, fdpas_bf_bf_bf8_bf8_8_8)
+
+DEFN_INTEL_SG16_FDPAS(e4m3_e4m3_matrix_mad_k32, short,  short,  short,  int8, fdpas_bf_bf_hf8_hf8_8_1)
+DEFN_INTEL_SG16_FDPAS(e4m3_e4m3_matrix_mad_k32, short2, short2, short2, int8, fdpas_bf_bf_hf8_hf8_8_2)
+DEFN_INTEL_SG16_FDPAS(e4m3_e4m3_matrix_mad_k32, short4, short4, short4, int8, fdpas_bf_bf_hf8_hf8_8_4)
+DEFN_INTEL_SG16_FDPAS(e4m3_e4m3_matrix_mad_k32, short8, short8, short8, int8, fdpas_bf_bf_hf8_hf8_8_8)
+
+DEFN_INTEL_SG16_FDPAS(e5m2_e4m3_matrix_mad_k32, short,  short,  short,  int8, fdpas_bf_bf_bf8_hf8_8_1)
+DEFN_INTEL_SG16_FDPAS(e5m2_e4m3_matrix_mad_k32, short2, short2, short2, int8, fdpas_bf_bf_bf8_hf8_8_2)
+DEFN_INTEL_SG16_FDPAS(e5m2_e4m3_matrix_mad_k32, short4, short4, short4, int8, fdpas_bf_bf_bf8_hf8_8_4)
+DEFN_INTEL_SG16_FDPAS(e5m2_e4m3_matrix_mad_k32, short8, short8, short8, int8, fdpas_bf_bf_bf8_hf8_8_8)
+
+DEFN_INTEL_SG16_FDPAS(e4m3_e5m2_matrix_mad_k32, short,  short,  short,  int8, fdpas_bf_bf_hf8_bf8_8_1)
+DEFN_INTEL_SG16_FDPAS(e4m3_e5m2_matrix_mad_k32, short2, short2, short2, int8, fdpas_bf_bf_hf8_bf8_8_2)
+DEFN_INTEL_SG16_FDPAS(e4m3_e5m2_matrix_mad_k32, short4, short4, short4, int8, fdpas_bf_bf_hf8_bf8_8_4)
+DEFN_INTEL_SG16_FDPAS(e4m3_e5m2_matrix_mad_k32, short8, short8, short8, int8, fdpas_bf_bf_hf8_bf8_8_8)
+
+#endif // cl_intel_subgroup_matrix_multiply_accumulate_fp8
+
 
 #ifdef cl_intel_subgroup_split_matrix_multiply_accumulate
 

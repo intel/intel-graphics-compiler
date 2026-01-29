@@ -289,6 +289,7 @@ set(KHR_DEFINES ${KHR_DEFINES} "cl_intel_subgroup_extended_block_read_cacheopts"
 set(KHR_DEFINES ${KHR_DEFINES} "cl_intel_subgroup_extended_block_write_cacheopts")
 set(KHR_DEFINES ${KHR_DEFINES} "cl_intel_subgroup_2d_block_io")
 set(KHR_DEFINES ${KHR_DEFINES} "cl_intel_subgroup_matrix_multiply_accumulate_bf8")
+set(KHR_DEFINES ${KHR_DEFINES} "cl_intel_subgroup_matrix_multiply_accumulate_fp8")
 
 if(IGC_OPTION__ENABLE_BF16_BIF)
   set(KHR_DEFINES ${KHR_DEFINES} "IGC_SPV_INTEL_bfloat16_arithmetic")

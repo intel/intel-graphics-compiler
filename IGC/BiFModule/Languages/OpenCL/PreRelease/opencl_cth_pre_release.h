@@ -3004,8 +3004,83 @@ intel_convert_half16_srnd(float16 source, ushort16 random);
 #endif // cl_khr_fp16
 
 #endif // cl_intel_subgroup_matrix_multiply_accumulate_bf8
-
 #endif // cl_intel_subgroup_matrix_multiply_accumulate
+
+#ifdef cl_intel_subgroup_matrix_multiply_accumulate_fp8
+
+float __attribute__((overloadable))
+intel_sub_group_e5m2_e5m2_matrix_mad_k32(short a, int8 b, float acc);
+float2 __attribute__((overloadable))
+intel_sub_group_e5m2_e5m2_matrix_mad_k32(short2 a, int8 b, float2 acc);
+float4 __attribute__((overloadable))
+intel_sub_group_e5m2_e5m2_matrix_mad_k32(short4 a, int8 b, float4 acc);
+float8 __attribute__((overloadable))
+intel_sub_group_e5m2_e5m2_matrix_mad_k32(short8 a, int8 b, float8 acc);
+
+float __attribute__((overloadable))
+intel_sub_group_e4m3_e4m3_matrix_mad_k32(short a, int8 b, float acc);
+float2 __attribute__((overloadable))
+intel_sub_group_e4m3_e4m3_matrix_mad_k32(short2 a, int8 b, float2 acc);
+float4 __attribute__((overloadable))
+intel_sub_group_e4m3_e4m3_matrix_mad_k32(short4 a, int8 b, float4 acc);
+float8 __attribute__((overloadable))
+intel_sub_group_e4m3_e4m3_matrix_mad_k32(short8 a, int8 b, float8 acc);
+
+float __attribute__((overloadable))
+intel_sub_group_e5m2_e4m3_matrix_mad_k32(short a, int8 b, float acc);
+float2 __attribute__((overloadable))
+intel_sub_group_e5m2_e4m3_matrix_mad_k32(short2 a, int8 b, float2 acc);
+float4 __attribute__((overloadable))
+intel_sub_group_e5m2_e4m3_matrix_mad_k32(short4 a, int8 b, float4 acc);
+float8 __attribute__((overloadable))
+intel_sub_group_e5m2_e4m3_matrix_mad_k32(short8 a, int8 b, float8 acc);
+
+float __attribute__((overloadable))
+intel_sub_group_e4m3_e5m2_matrix_mad_k32(short a, int8 b, float acc);
+float2 __attribute__((overloadable))
+intel_sub_group_e4m3_e5m2_matrix_mad_k32(short2 a, int8 b, float2 acc);
+float4 __attribute__((overloadable))
+intel_sub_group_e4m3_e5m2_matrix_mad_k32(short4 a, int8 b, float4 acc);
+float8 __attribute__((overloadable))
+intel_sub_group_e4m3_e5m2_matrix_mad_k32(short8 a, int8 b, float8 acc);
+
+short __attribute__((overloadable))
+intel_sub_group_e5m2_e5m2_matrix_mad_k32(short a, int8 b, short acc);
+short2 __attribute__((overloadable))
+intel_sub_group_e5m2_e5m2_matrix_mad_k32(short2 a, int8 b, short2 acc);
+short4 __attribute__((overloadable))
+intel_sub_group_e5m2_e5m2_matrix_mad_k32(short4 a, int8 b, short4 acc);
+short8 __attribute__((overloadable))
+intel_sub_group_e5m2_e5m2_matrix_mad_k32(short8 a, int8 b, short8 acc);
+
+short __attribute__((overloadable))
+intel_sub_group_e4m3_e4m3_matrix_mad_k32(short a, int8 b, short acc);
+short2 __attribute__((overloadable))
+intel_sub_group_e4m3_e4m3_matrix_mad_k32(short2 a, int8 b, short2 acc);
+short4 __attribute__((overloadable))
+intel_sub_group_e4m3_e4m3_matrix_mad_k32(short4 a, int8 b, short4 acc);
+short8 __attribute__((overloadable))
+intel_sub_group_e4m3_e4m3_matrix_mad_k32(short8 a, int8 b, short8 acc);
+
+short __attribute__((overloadable))
+intel_sub_group_e5m2_e4m3_matrix_mad_k32(short a, int8 b, short acc);
+short2 __attribute__((overloadable))
+intel_sub_group_e5m2_e4m3_matrix_mad_k32(short2 a, int8 b, short2 acc);
+short4 __attribute__((overloadable))
+intel_sub_group_e5m2_e4m3_matrix_mad_k32(short4 a, int8 b, short4 acc);
+short8 __attribute__((overloadable))
+intel_sub_group_e5m2_e4m3_matrix_mad_k32(short8 a, int8 b, short8 acc);
+
+short __attribute__((overloadable))
+intel_sub_group_e4m3_e5m2_matrix_mad_k32(short a, int8 b, short acc);
+short2 __attribute__((overloadable))
+intel_sub_group_e4m3_e5m2_matrix_mad_k32(short2 a, int8 b, short2 acc);
+short4 __attribute__((overloadable))
+intel_sub_group_e4m3_e5m2_matrix_mad_k32(short4 a, int8 b, short4 acc);
+short8 __attribute__((overloadable))
+intel_sub_group_e4m3_e5m2_matrix_mad_k32(short8 a, int8 b, short8 acc);
+
+#endif // cl_intel_subgroup_matrix_multiply_accumulate_fp8
 
 #ifdef cl_intel_subgroup_split_matrix_multiply_accumulate
 
