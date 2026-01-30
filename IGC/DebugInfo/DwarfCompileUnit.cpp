@@ -1256,19 +1256,8 @@ void CompileUnit::constructTypeDIE(DIE &Buffer, DIDerivedType *DTy) {
   if (!Name.empty())
     addString(&Buffer, dwarf::DW_AT_name, Name);
 
-  // Handle different pointer sizes for non default address spaces.
-  if (Tag == dwarf::DW_TAG_pointer_type) {
-    auto *VM = DD->GetVISAModule();
-    auto *M = VM->GetModule();
-    if (auto dwarfAddrSpace = DTy->getDWARFAddressSpace()) {
-      uint64_t PtrSize = M->getDataLayout().getPointerSize(*dwarfAddrSpace);
-      unsigned DefaultPtrSize = M->getDataLayout().getPointerSize();
-      if (PtrSize != DefaultPtrSize) {
-        addUInt(&Buffer, dwarf::DW_AT_byte_size, std::nullopt, PtrSize);
-      }
-    }
-  } // Add size if non-zero (derived types might be zero-sized.)
-  else if (Size)
+  // Add size if non-zero (derived types might be zero-sized.)
+  if (Size && Tag != dwarf::DW_TAG_pointer_type)
     addUInt(&Buffer, dwarf::DW_AT_byte_size, std::nullopt, Size);
 
   if (Tag == dwarf::DW_TAG_ptr_to_member_type)
