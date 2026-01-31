@@ -1691,6 +1691,12 @@ void FlowGraph::removeUnreachableBlocks(FuncInfoHashTable &funcInfoHT) {
         continue;
       }
 
+      // Remove successors that become unreachable after BB deletion.
+      for (G4_BB *succ : bb->Succs) {
+        if (succ->Preds.size() == 1)
+          preIDMap[succ] = UINT_MAX;
+      }
+
       // Now, remove bb.
       while (bb->Succs.size() > 0) {
         removePredSuccEdges(bb, bb->Succs.front());
