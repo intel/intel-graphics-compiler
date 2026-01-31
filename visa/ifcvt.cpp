@@ -251,6 +251,13 @@ class IfConverter {
       return false;
     }
 
+    // BF<->F conversion doesn't allow predication
+    if (G4_mov == op && ((I->getDst()->getType() == Type_BF &&
+                          I->getSrc(0)->getType() == Type_F) ||
+                         (I->getDst()->getType() == Type_F &&
+                          I->getSrc(0)->getType() == Type_BF)))
+      return false;
+
     unsigned maskOpt = I->getMaskOption();
 
     // Skip 'NoMask' so far as it requires further investigation.
