@@ -38,7 +38,7 @@ define void @fill_length(i32 %a, ptr %dst, ptr %dst2) {
 ; CHECK:    [[TMP7:%.*]] = insertelement <8 x i32> [[TMP6]], i32 [[A]], i64 6
 ; CHECK:    [[TMP8:%.*]] = insertelement <8 x i32> [[TMP7]], i32 [[A]], i64 7
 ; CHECK:    store <8 x i32> [[TMP8]], ptr [[PTR]], align 32, !dbg [[DBG1:![0-9]*]]
-; CHECK:    call void @__builtin_spriv_OpJointMatrixStoreINTEL_PackedA_RowMajor_8x32_i8_8_generic_pi64_v8i8(ptr %dst, ptr [[PTR]], i32 8, i32 0), !dbg [[DBG1]]
+; CHECK:    call void @__builtin_spriv_OpJointMatrixStoreINTEL_PackedA_RowMajor_8x32_i8_8_generic_pi64_v8i8(ptr %dst, ptr [[PTR]], i64 8, i32 0), !dbg [[DBG1]]
 ; CHECK:    ret void
 ; CHECK-NOT: error
 ;
@@ -56,10 +56,10 @@ define void @load_store_legacy(ptr %a, ptr %dst) {
 ; CHECK-LABEL: define void @load_store_legacy(
 ; CHECK: [[TMP4:%.*]] = alloca <8 x i32>
 ; CHECK: [[PTR:%.*]] = alloca <8 x i32>
-; CHECK: call void @__builtin_spriv_OpJointMatrixLoadINTEL_PackedA_RowMajor_8x16_i16_8_generic_v8i8_pi32_i32(ptr [[PTR]], ptr %a, i32 16, i32 0), !dbg [[DBG2:![0-9]*]]
+; CHECK: call void @__builtin_spriv_OpJointMatrixLoadINTEL_PackedA_RowMajor_8x16_i16_8_generic_v8i8_pi32_i32(ptr [[PTR]], ptr %a, i64 16, i32 0), !dbg [[DBG2:![0-9]*]]
 ; CHECK: [[MATRIX:%.*]] = load <8 x i32>, ptr [[PTR]]
 ; CHECK: store <8 x i32> [[MATRIX]], ptr [[TMP4]]
-; CHECK: call void @__builtin_spriv_OpJointMatrixStoreINTEL_PackedA_RowMajor_8x16_i16_8_generic_pi64_v8i8(ptr %dst, ptr [[TMP4]], i32 8, i32 0), !dbg [[DBG3:![0-9]*]]
+; CHECK: call void @__builtin_spriv_OpJointMatrixStoreINTEL_PackedA_RowMajor_8x16_i16_8_generic_pi64_v8i8(ptr %dst, ptr [[TMP4]], i64 8, i32 0), !dbg [[DBG3:![0-9]*]]
 ; CHECK: ret void
 ; CHECK-NOT: error
 ;

@@ -75,6 +75,7 @@ static const char *JointMatrixSliceExtract = "VectorExtractDynamic";
 static const char *JointMatrixGetCoordPrefx = "JointMatrixGetElementCoordINTEL";
 
 static const char *CooperativeMatrixBISuffix = "CooperativeMatrixKHR_";
+static const char *CooperativeMatrixConstantCompositePrefx = "ConstantComposite";
 static const char *CooperativeMatrixLoadPrefx = "CooperativeMatrixLoadKHR";
 static const char *CooperativeMatrixStorePrefx = "CooperativeMatrixStoreKHR";
 static const char *CooperativeMatrixMadPrefx = "CooperativeMatrixMulAddKHR";
@@ -1567,6 +1568,13 @@ template <bool IsJointMatrix, bool IsChecked> Instruction *JointMatrixFuncsResol
   Value *strideVal = CI->getArgOperand(OpVariant::Stride);
   unsigned loadLayout = (unsigned)constIntValue(CI->getArgOperand(OpVariant::Layout));
 
+  // Matrix builtins expect i64 stride
+  Type *i64Ty = Type::getInt64Ty(CI->getContext());
+  if (strideVal->getType() != i64Ty) {
+    IRBuilder<> builder(CI);
+    strideVal = builder.CreateZExtOrBitCast(strideVal, i64Ty);
+  }
+
   JointMatrixTypeDescription desc;
   Type *matTy = ResolveType(CI->getType(), &desc);
   /* Cast floating types to integer types of the same size. This allows to
@@ -1631,6 +1639,14 @@ template <bool IsJointMatrix, bool IsChecked> Instruction *JointMatrixFuncsResol
   Value *ptrVal = CI->getArgOperand(OpVariant::Pointer);
   Value *matrixVal = CI->getArgOperand(OpVariant::Matrix);
   Value *strideVal = CI->getArgOperand(OpVariant::Stride);
+
+  // Matrix builtins expect i64 stride
+  Type *i64Ty = Type::getInt64Ty(CI->getContext());
+  if (strideVal->getType() != i64Ty) {
+    IRBuilder<> builder(CI);
+    strideVal = builder.CreateZExtOrBitCast(strideVal, i64Ty);
+  }
+
   unsigned storeLayout = (unsigned)constIntValue(CI->getArgOperand(OpVariant::Layout));
 
   JointMatrixTypeDescription desc;
@@ -2509,7 +2525,7 @@ Value *JointMatrixFuncsResolutionPass::ResolveCall(CallInst *CI) {
   } else if (funcName.contains(CooperativeMatrixMadPrefx)) {
     InsertPlaceholder(CI);
     NewValue = ResolveMad(CI, CooperativeOp);
-  } else if (funcName.contains(JointMatrixFillPrefx)) {
+  } else if (funcName.contains(JointMatrixFillPrefx) || funcName.contains(CooperativeMatrixConstantCompositePrefx)) {
     InsertPlaceholder(CI);
     NewValue = ResolveFill(CI);
   } else if (funcName.contains(JointMatrixFillCheckedPrefx)) {
