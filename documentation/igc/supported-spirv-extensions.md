@@ -172,6 +172,18 @@ This document lists all SPIR-V extensions supported by IGC and their platform re
 
 ---
 
+## SPV_INTEL_device_barrier
+
+**Specification**: https://github.com/intel/llvm/pull/12092
+
+> **Experimentally supported on**: All platforms
+
+**Capabilities**:
+
+- **DeviceBarrierINTEL**
+
+---
+
 ## SPV_INTEL_float4
 
 **Specification**: https://github.com/intel/llvm/pull/20467

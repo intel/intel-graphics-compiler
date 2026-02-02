@@ -4909,3 +4909,14 @@ float __attribute__((overloadable))
 intel_sub_group_e2m1_e2m1_matrix_mad_k64_f32(short a, int8 b, short acc);
 short __attribute__((overloadable))
 intel_sub_group_e2m1_e2m1_matrix_mad_k64_bf16(short a, int8 b, float acc);
+
+#if defined(cl_intel_concurrent_dispatch)
+
+void __attribute__((overloadable)) intel_device_barrier(cl_mem_fence_flags flags);
+#if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
+void __attribute__((overloadable))
+intel_device_barrier(cl_mem_fence_flags flags, memory_scope memscope);
+#endif // __OPENCL_C_VERSION__ >= CL_VERSION_2_0
+bool __attribute__((overloadable)) __attribute__((const)) intel_is_device_barrier_valid();
+
+#endif // defined(cl_intel_concurrent_dispatch)

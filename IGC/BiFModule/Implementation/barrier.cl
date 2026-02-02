@@ -166,6 +166,14 @@ void __attribute__((overloadable)) __spirv_ControlBarrier(int Execution, int Mem
     }
 }
 
+__global volatile uchar* __builtin_IB_get_sync_buffer();
+
+bool __attribute__((overloadable)) __attribute__((const)) __spirv_BuiltInDeviceBarrierValidINTEL()
+{
+    // The sync buffer is set to null if the device barrier isn't valid.
+    return __builtin_IB_get_sync_buffer();
+}
+
 void __attribute__((overloadable)) __spirv_SubRegionControlBarrierINTEL(int SubRegionSize, int Memory, int Semantics)
 {
     region_barrier(SubRegionSize);
@@ -317,7 +325,6 @@ void __builtin_spirv_OpMemoryNamedBarrierWrapperOCL_p3__namedBarrier_i32_i32(loc
     __builtin_spirv_OpMemoryNamedBarrier_p3__namedBarrier_i32_i32(barrier, get_spirv_mem_scope(scope), AcquireRelease | get_spirv_mem_fence(flags));
 }
 
-__global volatile uchar* __builtin_IB_get_sync_buffer();
 uint __intel_get_local_linear_id( void );
 uint __intel_get_global_linear_id( void );
 uint __intel_get_local_size( void );

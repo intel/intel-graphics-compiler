@@ -5554,6 +5554,13 @@ void __attribute__((overloadable)) __spirv_MemoryBarrier(int Memory, int Semanti
 void __attribute__((overloadable))
 __spirv_SubRegionControlBarrierINTEL(int Execution, int Memory, int Semantics);
 
+#if defined(cl_intel_concurrent_dispatch)
+
+bool __attribute__((overloadable)) __attribute__((const))
+__spirv_BuiltInDeviceBarrierValidINTEL();
+
+#endif // defined(cl_intel_concurrent_dispatch)
+
 #ifndef NAMED_BARRIER_STRUCT_TYPE
 #define NAMED_BARRIER_STRUCT_TYPE
 typedef struct

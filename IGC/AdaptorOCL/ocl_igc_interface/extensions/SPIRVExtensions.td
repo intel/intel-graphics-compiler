@@ -434,4 +434,10 @@ def SPV_INTEL_subgroup_scaled_matrix_multiply_accumulate : ExperimentalExtension
   isCoreChildOf<IGFX_XE3P_CORE>
 >;
 
+def SPV_INTEL_device_barrier : ExperimentalExtension<
+  "SPV_INTEL_device_barrier",
+  [ Capability<"DeviceBarrierINTEL"> ],
+  "https://github.com/intel/llvm/pull/12092"
+>;
+
 // ----------------------------------------------
