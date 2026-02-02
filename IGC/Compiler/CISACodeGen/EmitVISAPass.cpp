@@ -3544,7 +3544,7 @@ void EmitPass::emitSimdMediaRegionCopy(llvm::GenIntrinsicInst *inst) {
     CVariable *pSrcOffset =
         m_currShader->GetNewAddressVariable(1, GetTypeFromSize(typesize), true, false, inst->getName());
 
-    m_encoder->AddrAdd(pSrcOffset, pSrc, m_currShader->BitCast(GetSymbol(sbyteoffset), ISA_TYPE_UW));
+    m_encoder->AddrAdd(pSrcOffset, pSrc, m_currShader->BitCast(GetSymbol(sbyteoffset), ISA_TYPE_UW), m_currentBlock);
     setup();
     m_encoder->Copy(pDstOffset, pSrcOffset);
     m_encoder->Push();
@@ -5767,13 +5767,13 @@ void EmitPass::emitSimdShuffle(llvm::Instruction *inst) {
                                                                   true, m_destination->getName());
 
       if (GII && GII->getIntrinsicID() == GenISAIntrinsic::GenISA_WaveBroadcast) {
-        m_encoder->AddrAdd(pDstArrElm, src, pSrcElm);
+        m_encoder->AddrAdd(pDstArrElm, src, pSrcElm, m_currentBlock);
         m_encoder->Push();
         m_encoder->Copy(m_destination, pDstArrElm);
         m_encoder->Push();
       } else if (GII && GII->getIntrinsicID() == GenISAIntrinsic::GenISA_WaveShuffleIndex) {
         if (channelUniform) {
-          m_encoder->AddrAdd(pDstArrElm, src, pSrcElm);
+          m_encoder->AddrAdd(pDstArrElm, src, pSrcElm, m_currentBlock);
           m_encoder->Push();
 
           m_encoder->Copy(m_destination, pDstArrElm);
@@ -5785,7 +5785,7 @@ void EmitPass::emitSimdShuffle(llvm::Instruction *inst) {
             m_encoder->SetNoMask();
           }
 
-          m_encoder->AddrAdd(pDstArrElm, src, pSrcElm);
+          m_encoder->AddrAdd(pDstArrElm, src, pSrcElm, m_currentBlock);
           m_encoder->Push();
 
           m_encoder->SetSimdSize(SIMDMode::SIMD16);
@@ -5818,7 +5818,7 @@ void EmitPass::emitSimdShuffle(llvm::Instruction *inst) {
           if (forcePreventOOB) {
             m_encoder->SetNoMask();
           }
-          m_encoder->AddrAdd(pDstArrElm, src, pSrcElm);
+          m_encoder->AddrAdd(pDstArrElm, src, pSrcElm, m_currentBlock);
           m_encoder->Push();
 
           m_encoder->SetSimdSize(SIMDMode::SIMD16);
@@ -5899,7 +5899,7 @@ void EmitPass::emitSimdShuffle(llvm::Instruction *inst) {
       m_encoder->SetNoMask();
     }
 
-    m_encoder->AddrAdd(pDstArrElm, src, pSrcElm);
+    m_encoder->AddrAdd(pDstArrElm, src, pSrcElm, m_currentBlock);
     m_encoder->Push();
 
     m_encoder->Copy(m_destination, pDstArrElm);
@@ -5910,7 +5910,7 @@ void EmitPass::emitSimdShuffle(llvm::Instruction *inst) {
       if (forcePreventOOB) {
         m_encoder->SetNoMask();
       }
-      m_encoder->AddrAdd(pDstArrElm, src, pSrcElm);
+      m_encoder->AddrAdd(pDstArrElm, src, pSrcElm, m_currentBlock);
       m_encoder->Push();
       m_encoder->Copy(m_destination, pDstArrElm);
       m_encoder->Push();
@@ -6150,7 +6150,7 @@ void EmitPass::emitSimdShuffleDown(llvm::Instruction *inst) {
                                             false, false, m_destination->getName());
     m_encoder->SetSimdSize(SIMDMode::SIMD16);
     m_encoder->SetSrcRegion(1, 16, 8, 2);
-    m_encoder->AddrAdd(pDstArrElm, pCombinedData, m_currShader->BitCast(pByteOffset, ISA_TYPE_UW));
+    m_encoder->AddrAdd(pDstArrElm, pCombinedData, m_currShader->BitCast(pByteOffset, ISA_TYPE_UW), m_currentBlock);
     m_encoder->Push();
     m_encoder->SetSimdSize(SIMDMode::SIMD16);
     m_encoder->Copy(m_destination, pDstArrElm);
@@ -6160,7 +6160,7 @@ void EmitPass::emitSimdShuffleDown(llvm::Instruction *inst) {
     m_encoder->SetMask(EMASK_H2);
     m_encoder->SetSrcSubReg(1, 32);
     m_encoder->SetSrcRegion(1, 16, 8, 2);
-    m_encoder->AddrAdd(pDstArrElm, pCombinedData, m_currShader->BitCast(pByteOffset, ISA_TYPE_UW));
+    m_encoder->AddrAdd(pDstArrElm, pCombinedData, m_currShader->BitCast(pByteOffset, ISA_TYPE_UW), m_currentBlock);
     m_encoder->Push();
     m_encoder->SetSimdSize(SIMDMode::SIMD16);
     m_encoder->SetMask(EMASK_H2);
@@ -6186,7 +6186,8 @@ void EmitPass::emitSimdShuffleDown(llvm::Instruction *inst) {
 
     m_encoder->SetNoMask();
     m_encoder->SetSrcRegion(1, 16, 8, 2);
-    m_encoder->AddrAdd(pDstArrElm, pCombinedData, m_currShader->BitCast(pCurrentByteOffset, ISA_TYPE_UW));
+    m_encoder->AddrAdd(pDstArrElm, pCombinedData, m_currShader->BitCast(pCurrentByteOffset, ISA_TYPE_UW),
+                       m_currentBlock);
     m_encoder->Push();
 
     if (isSecondHalf) {
@@ -10456,7 +10457,7 @@ void EmitPass::emitExtract(llvm::Instruction *inst) {
         indexAlias[i] =
             m_currShader->GetNewAlias(pOffset3, pOffset3->GetType(), (pOffset3->GetNumberElement() / 2) * 2 * i,
                                       pOffset3->GetNumberElement() / 2);
-        m_encoder->AddrAdd(pDstArrElm, vector, indexAlias[i]);
+        m_encoder->AddrAdd(pDstArrElm, vector, indexAlias[i], m_currentBlock);
         m_encoder->Push();
 
         dstAlias[i] = m_currShader->GetNewAlias(m_destination, m_destination->GetType(),
@@ -10482,7 +10483,7 @@ void EmitPass::emitExtract(llvm::Instruction *inst) {
           pIndexVar->IsUniform(), vector->IsUniform(), m_destination->getName());
 
       // we add offsets to the base that is the beginning of the vector variable
-      m_encoder->AddrAdd(pDstArrElm, vector, pOffset3);
+      m_encoder->AddrAdd(pDstArrElm, vector, pOffset3, m_currentBlock);
       m_encoder->Push();
 
       // to avoid out-of-bounds indirect access (exceeding the maximum number of GRFs)
@@ -12221,7 +12222,7 @@ void EmitPass::emitInsert(llvm::Instruction *inst) {
     if (pIndexVar->IsUniform()) {
       CVariable *pDstArrElm = m_currShader->GetNewAddressVariable(1, m_destination->GetType(), true,
                                                                   pInstVar->IsUniform(), m_destination->getName());
-      m_encoder->AddrAdd(pDstArrElm, m_destination, pOffset2);
+      m_encoder->AddrAdd(pDstArrElm, m_destination, pOffset2, m_currentBlock);
       m_encoder->Push();
       m_encoder->Copy(pDstArrElm, pElemVar);
       m_encoder->Push();
@@ -12299,7 +12300,7 @@ void EmitPass::emitInsert(llvm::Instruction *inst) {
                                                                     pInstVar->IsUniform(), m_destination->getName());
 
         m_encoder->SetSimdSize(simdMode);
-        m_encoder->AddrAdd(pDstArrElm, dst, pOffset2);
+        m_encoder->AddrAdd(pDstArrElm, dst, pOffset2, m_currentBlock);
         m_encoder->Push();
 
         // Handle the case when the index is non-uniform - we need to lookup a
@@ -12819,11 +12820,11 @@ CVariable *EmitPass::UniformCopy(CVariable *var, CVariable *&off, CVariable *eMa
     m_encoder->Push();
 
     m_encoder->SetSecondHalf(false);
-    m_encoder->AddrAdd(addr, merged, off);
+    m_encoder->AddrAdd(addr, merged, off, m_currentBlock);
     m_encoder->Push();
     m_encoder->SetSecondHalf(isSecondHalf);
   } else {
-    m_encoder->AddrAdd(addr, var, off);
+    m_encoder->AddrAdd(addr, var, off, m_currentBlock);
     m_encoder->Push();
   }
 

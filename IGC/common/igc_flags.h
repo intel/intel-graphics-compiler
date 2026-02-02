@@ -914,6 +914,7 @@ DECLARE_IGC_REGKEY(
     false)
 DECLARE_IGC_REGKEY(bool, InitializeAddressRegistersBeforeUse, false,
                    "Setting this to 1 (true) initializes address register to 0 before each use", false)
+DECLARE_IGC_REGKEY(bool, DebugSoftwareNeedsA0Reset, false, "Debug softwareNeedsA0Reset flag in AddrAdd testing", false)
 DECLARE_IGC_REGKEY(bool, AvoidUsingR0R1, false, "Do not use r0 and r1 as generic usage registers", false)
 DECLARE_IGC_REGKEY(bool, EnableRelocations, false,
                    "Setting this to 1 (true) makes IGC emit relocatable ELF with debug info", true)

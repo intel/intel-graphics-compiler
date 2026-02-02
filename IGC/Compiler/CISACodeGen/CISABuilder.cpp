@@ -2347,7 +2347,7 @@ void CEncoder::Gather4Inst(EOPCODE subOpcode, CVariable *offset, const ResourceD
   }
 }
 
-void CEncoder::AddrAdd(CVariable *dst, CVariable *src0, CVariable *src1) {
+void CEncoder::AddrAdd(CVariable *dst, CVariable *src0, CVariable *src1, uint curBB) {
   // On ICL+ platforms address register must be initialized if it is used
   // in VxH indirect addressing to avoid out-of-bounds on inactive lanes.
   // VISA initializes address register [see VISA Optimizer::resetA0()]
@@ -2362,8 +2362,22 @@ void CEncoder::AddrAdd(CVariable *dst, CVariable *src0, CVariable *src1) {
   const bool mayUseA0InSendDesc = m_program->GetContext()->m_instrTypes.mayHaveIndirectResources;
   const bool mayHaveUnalignedA0 = m_program->GetContext()->m_mayHaveUnalignedAddressRegister;
 
-  const bool softwareNeedsA0Reset = mayUseA0InSendDesc || mayHaveUnalignedA0;
-  const bool platformNeedsA0Reset = m_program->m_Platform->NeedResetA0forVxHA0();
+  const bool softwareNeedsA0Reset =
+      mayUseA0InSendDesc || mayHaveUnalignedA0 || IGC_IS_FLAG_ENABLED(DebugSoftwareNeedsA0Reset);
+  const bool needResetA0forVxHA0 = m_program->m_Platform->NeedResetA0forVxHA0();
+  bool platformNeedsA0Reset = needResetA0forVxHA0;
+  if (!platformNeedsA0Reset) {
+    // set true on the first AddrAdd call in this new Basic Block.
+    if ((curBB == UINT32_MAX) || (curBB != m_encoderState.m_lastAddrAddBB)) {
+      m_encoderState.m_lastAddrAddBB = curBB;
+      m_encoderState.m_lastAddrAddEMask = GetAluEMask(dst);
+      platformNeedsA0Reset = true;
+    }
+    // set true if aluEMask has changed since last AddrAdd call.
+    else if (m_encoderState.m_lastAddrAddEMask != GetAluEMask(dst)) {
+      platformNeedsA0Reset = true;
+    }
+  }
   const bool initializeA0 =
       (softwareNeedsA0Reset && platformNeedsA0Reset) || IGC_IS_FLAG_ENABLED(InitializeAddressRegistersBeforeUse);
 
@@ -2377,6 +2391,7 @@ void CEncoder::AddrAdd(CVariable *dst, CVariable *src0, CVariable *src1) {
     V(vKernel->AppendVISADataMovementInst(ISA_MOV, nullptr, false, GetAluEMask(dst),
                                           visaExecSize(m_encoderState.m_simdSize), dstOpnd, srcOpnd));
     m_encoderState.m_noMask = false;
+    m_encoderState.m_lastAddrAddEMask = GetAluEMask(dst);
   }
 
   if (dst->IsUniform()) {

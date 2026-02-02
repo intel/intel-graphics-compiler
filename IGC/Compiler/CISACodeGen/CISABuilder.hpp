@@ -114,6 +114,8 @@ struct SEncoderState {
   bool m_SubSpanDestination;
   bool m_secondHalf;
   bool m_secondNibble = false;
+  uint m_lastAddrAddBB = UINT32_MAX;                   // track BB for AddrAdd
+  VISA_EMask_Ctrl m_lastAddrAddEMask = vISA_NUM_EMASK; // track EMASK for AddrAdd
 };
 
 class CEncoder {
@@ -195,7 +197,7 @@ public:
   void OWStore(CVariable *data, e_predefSurface surfaceType, CVariable *bufidx, CVariable *offset, uint bytesToBeRead,
                uint srcOffset);
 
-  void AddrAdd(CVariable *dst, CVariable *src0, CVariable *src1);
+  void AddrAdd(CVariable *dst, CVariable *src0, CVariable *src1, uint curBB = UINT32_MAX);
   void Barrier(e_barrierKind BarrierKind);
   void Fence(bool CommitEnable, bool L3_Flush_RW_Data, bool L3_Flush_Constant_Data, bool L3_Flush_Texture_Data,
              bool L3_Flush_Instructions, bool Global_Mem_Fence, bool L1_Flush, bool SWFence);
