@@ -320,11 +320,6 @@ bool CGen8OpenCLProgram::GetZEBinary(llvm::raw_pwrite_stream &programBinary, uns
           elfVecPtrs.push_back(elfVecNames.back().c_str());
         }
 
-        // TODO: remove if not needed
-        // std::string elfLinkerOpt1 = "--emit-relocs";  // "-q"
-        // elfVecNames.push_back(elfLinkerOpt1);
-        // elfVecPtrs.push_back((char*)(elfVecNames.at(elfVecNames.size() - 1).c_str()));
-
         ArrayRef<const char *> elfArrRef(elfVecPtrs);
         std::string linkErrStr = "";
         llvm::raw_string_ostream linkErr(linkErrStr);
