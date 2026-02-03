@@ -19,7 +19,7 @@ define i32 @wave_all_add_i32() {
 entry:
 ; CHECK-LABEL: entry:
 ; CHECK:         %0 = call i32 @get_i32()
-; CHECK:         [[RESULT:%.*]] = call i32 @llvm.genx.GenISA.WaveAll.i32(i32 %0, i8 0, i32 0)
+; CHECK:         [[RESULT:%.*]] = call i32 @llvm.genx.GenISA.WaveAll.i32(i32 %0, i8 0, i1 true, i32 0)
 ; CHECK:         ret i32 [[RESULT]]
   %0 = call i32 @get_i32()
   %simdShuffleXor = call i32 @llvm.genx.GenISA.simdShuffleXor.i32(i32 %0, i32 8)
@@ -37,7 +37,7 @@ define i32 @wave_all_mul_i32() {
 entry:
 ; CHECK-LABEL: entry:
 ; CHECK:         %0 = call i32 @get_i32()
-; CHECK:         [[RESULT:%.*]] = call i32 @llvm.genx.GenISA.WaveAll.i32(i32 %0, i8 1, i32 0)
+; CHECK:         [[RESULT:%.*]] = call i32 @llvm.genx.GenISA.WaveAll.i32(i32 %0, i8 1, i1 true, i32 0)
 ; CHECK:         ret i32 [[RESULT]]
   %0 = call i32 @get_i32()
   %simdShuffleXor = call i32 @llvm.genx.GenISA.simdShuffleXor.i32(i32 %0, i32 8)
@@ -55,7 +55,7 @@ define i32 @wave_all_umin_i32() {
 entry:
 ; CHECK-LABEL: entry:
 ; CHECK:         %0 = call i32 @get_i32()
-; CHECK:         [[RESULT:%.*]] = call i32 @llvm.genx.GenISA.WaveAll.i32(i32 %0, i8 2, i32 0)
+; CHECK:         [[RESULT:%.*]] = call i32 @llvm.genx.GenISA.WaveAll.i32(i32 %0, i8 2, i1 true, i32 0)
 ; CHECK:         ret i32 [[RESULT]]
   %0 = call i32 @get_i32()
   %simdShuffleXor = call i32 @llvm.genx.GenISA.simdShuffleXor.i32(i32 %0, i32 8)
@@ -73,7 +73,7 @@ define i32 @wave_all_umax_i32() {
 entry:
 ; CHECK-LABEL: entry:
 ; CHECK:         %0 = call i32 @get_i32()
-; CHECK:         [[RESULT:%.*]] = call i32 @llvm.genx.GenISA.WaveAll.i32(i32 %0, i8 3, i32 0)
+; CHECK:         [[RESULT:%.*]] = call i32 @llvm.genx.GenISA.WaveAll.i32(i32 %0, i8 3, i1 true, i32 0)
 ; CHECK:         ret i32 [[RESULT]]
   %0 = call i32 @get_i32()
   %simdShuffleXor = call i32 @llvm.genx.GenISA.simdShuffleXor.i32(i32 %0, i32 8)
@@ -91,7 +91,7 @@ define i32 @wave_all_smin_i32() {
 entry:
 ; CHECK-LABEL: entry:
 ; CHECK:         %0 = call i32 @get_i32()
-; CHECK:         [[RESULT:%.*]] = call i32 @llvm.genx.GenISA.WaveAll.i32(i32 %0, i8 4, i32 0)
+; CHECK:         [[RESULT:%.*]] = call i32 @llvm.genx.GenISA.WaveAll.i32(i32 %0, i8 4, i1 true, i32 0)
 ; CHECK:         ret i32 [[RESULT]]
   %0 = call i32 @get_i32()
   %simdShuffleXor = call i32 @llvm.genx.GenISA.simdShuffleXor.i32(i32 %0, i32 8)
@@ -109,7 +109,7 @@ define i32 @wave_all_smax_i32() {
 entry:
 ; CHECK-LABEL: entry:
 ; CHECK:         %0 = call i32 @get_i32()
-; CHECK:         [[RESULT:%.*]] = call i32 @llvm.genx.GenISA.WaveAll.i32(i32 %0, i8 5, i32 0)
+; CHECK:         [[RESULT:%.*]] = call i32 @llvm.genx.GenISA.WaveAll.i32(i32 %0, i8 5, i1 true, i32 0)
 ; CHECK:         ret i32 [[RESULT]]
   %0 = call i32 @get_i32()
   %simdShuffleXor = call i32 @llvm.genx.GenISA.simdShuffleXor.i32(i32 %0, i32 8)
@@ -127,7 +127,7 @@ define i32 @wave_all_or_i32() {
 entry:
 ; CHECK-LABEL: entry:
 ; CHECK:         %0 = call i32 @get_i32()
-; CHECK:         [[RESULT:%.*]] = call i32 @llvm.genx.GenISA.WaveAll.i32(i32 %0, i8 6, i32 0)
+; CHECK:         [[RESULT:%.*]] = call i32 @llvm.genx.GenISA.WaveAll.i32(i32 %0, i8 6, i1 true, i32 0)
 ; CHECK:         ret i32 [[RESULT]]
   %0 = call i32 @get_i32()
   %simdShuffleXor = call i32 @llvm.genx.GenISA.simdShuffleXor.i32(i32 %0, i32 8)
@@ -145,7 +145,7 @@ define i32 @wave_all_xor_i32() {
 entry:
 ; CHECK-LABEL: entry:
 ; CHECK:         %0 = call i32 @get_i32()
-; CHECK:         [[RESULT:%.*]] = call i32 @llvm.genx.GenISA.WaveAll.i32(i32 %0, i8 7, i32 0)
+; CHECK:         [[RESULT:%.*]] = call i32 @llvm.genx.GenISA.WaveAll.i32(i32 %0, i8 7, i1 true, i32 0)
 ; CHECK:         ret i32 [[RESULT]]
   %0 = call i32 @get_i32()
   %simdShuffleXor = call i32 @llvm.genx.GenISA.simdShuffleXor.i32(i32 %0, i32 8)
@@ -163,7 +163,7 @@ define i32 @wave_all_and_i32() {
 entry:
 ; CHECK-LABEL: entry:
 ; CHECK:         %0 = call i32 @get_i32()
-; CHECK:         [[RESULT:%.*]] = call i32 @llvm.genx.GenISA.WaveAll.i32(i32 %0, i8 8, i32 0)
+; CHECK:         [[RESULT:%.*]] = call i32 @llvm.genx.GenISA.WaveAll.i32(i32 %0, i8 8, i1 true, i32 0)
 ; CHECK:         ret i32 [[RESULT]]
   %0 = call i32 @get_i32()
   %simdShuffleXor = call i32 @llvm.genx.GenISA.simdShuffleXor.i32(i32 %0, i32 8)
@@ -181,7 +181,7 @@ define float @wave_all_add_float() {
 entry:
 ; CHECK-LABEL: entry:
 ; CHECK:         %0 = call float @get_float()
-; CHECK:         [[RESULT:%.*]] = call float @llvm.genx.GenISA.WaveAll.f32(float %0, i8 9, i32 0)
+; CHECK:         [[RESULT:%.*]] = call float @llvm.genx.GenISA.WaveAll.f32(float %0, i8 9, i1 true, i32 0)
 ; CHECK:         ret float [[RESULT]]
   %0 = call float @get_float()
   %simdShuffleXor = call float @llvm.genx.GenISA.simdShuffleXor.f32(float %0, i32 8)
@@ -199,7 +199,7 @@ define float @wave_all_mul_float() {
 entry:
 ; CHECK-LABEL: entry:
 ; CHECK:         %0 = call float @get_float()
-; CHECK:         [[RESULT:%.*]] = call float @llvm.genx.GenISA.WaveAll.f32(float %0, i8 10, i32 0)
+; CHECK:         [[RESULT:%.*]] = call float @llvm.genx.GenISA.WaveAll.f32(float %0, i8 10, i1 true, i32 0)
 ; CHECK:         ret float [[RESULT]]
   %0 = call float @get_float()
   %simdShuffleXor = call float @llvm.genx.GenISA.simdShuffleXor.f32(float %0, i32 8)
@@ -217,7 +217,7 @@ define float @wave_all_min_float() {
 entry:
 ; CHECK-LABEL: entry:
 ; CHECK:         %0 = call float @get_float()
-; CHECK:         [[RESULT:%.*]] = call float @llvm.genx.GenISA.WaveAll.f32(float %0, i8 11, i32 0)
+; CHECK:         [[RESULT:%.*]] = call float @llvm.genx.GenISA.WaveAll.f32(float %0, i8 11, i1 true, i32 0)
 ; CHECK:         ret float [[RESULT]]
   %0 = call float @get_float()
   %simdShuffleXor = call float @llvm.genx.GenISA.simdShuffleXor.f32(float %0, i32 8)
@@ -235,7 +235,7 @@ define float @wave_all_max_float() {
 entry:
 ; CHECK-LABEL: entry:
 ; CHECK:         %0 = call float @get_float()
-; CHECK:         [[RESULT:%.*]] = call float @llvm.genx.GenISA.WaveAll.f32(float %0, i8 12, i32 0)
+; CHECK:         [[RESULT:%.*]] = call float @llvm.genx.GenISA.WaveAll.f32(float %0, i8 12, i1 true, i32 0)
 ; CHECK:         ret float [[RESULT]]
   %0 = call float @get_float()
   %simdShuffleXor = call float @llvm.genx.GenISA.simdShuffleXor.f32(float %0, i32 8)

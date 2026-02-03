@@ -92,7 +92,8 @@ void WaveAllJointReductionImpl::visitCallInst(CallInst &callInst) {
       // TODO: Can check helper lane mode here if necessary, unsure whether that changes anything
       if (!nextWaveAllInst || nextWaveAllInst->getSrc()->getType()->isVectorTy() ||
           nextWaveAllInst->getSrc()->getType() != waveAllInst->getSrc()->getType() ||
-          nextWaveAllInst->getOpKind() != waveAllInst->getOpKind()) {
+          nextWaveAllInst->getOpKind() != waveAllInst->getOpKind() ||
+          nextWaveAllInst->getPredicate() != waveAllInst->getPredicate()) {
         break;
       }
 
@@ -105,13 +106,13 @@ void WaveAllJointReductionImpl::visitCallInst(CallInst &callInst) {
       // Multiple WaveAll operations eligible to participate in joint operation
       auto *arg0 = createInsertElements(mergeList);
       IRBuilder<> builder(mergeList.front());
-      Type *funcType[] = {arg0->getType(), Type::getInt8Ty(builder.getContext()),
-                          Type::getInt32Ty(builder.getContext())};
+      Type *funcType[] = {arg0->getType()};
       Function *waveAllJointFunc =
           GenISAIntrinsic::getDeclaration(mergeList.front()->getModule(), GenISAIntrinsic::GenISA_WaveAll, funcType);
 
       auto *waveAllJoint = builder.CreateCall(
-          waveAllJointFunc, {arg0, waveAllInst->getOperand(1), waveAllInst->getOperand(2)}, "waveAllJoint");
+          waveAllJointFunc, {arg0, waveAllInst->getOperand(1), waveAllInst->getOperand(2), waveAllInst->getOperand(3)},
+          "waveAllJoint");
       createExtractElements(mergeList, cast<WaveAllIntrinsic>(waveAllJoint));
 
       // Mark merged WaveAll ops participating in joint operation for deletion

@@ -2491,6 +2491,10 @@ intrinsics:
                 comment: "IGC:WaveOps"
             - !<ArgumentDefinition>
                 name: Arg2
+                type_definition: *i1
+                comment: "predicate"
+            - !<ArgumentDefinition>
+                name: Arg3
                 type_definition: *i32
                 comment: "helperLaneMode : 0: not used; 1: helper lanes participatein\
                     \ wave ops, 2: helper lanes do not participate in wave ops."
@@ -2698,7 +2702,7 @@ intrinsics:
             - !<ArgumentDefinition>
                 name: Arg3
                 type_definition: *i1
-                comment: "mask - subset of lanes to participate in the computation."
+                comment: "predicate"
             - !<ArgumentDefinition>
                 name: Arg4
                 type_definition: *i32

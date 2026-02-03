@@ -115,12 +115,12 @@ define void @test_fptosi(half %s1) {
 
 ; CHECK: define void @test_genx_waveall
 ; CHECK-NEXT: [[F_S1:%[0-9A-z]*]] = fpext half %s1 to float
-; CHECK-NEXT: [[F_RES:%[0-9A-z]*]] = call float @llvm.genx.GenISA.WaveAll.f32(float [[F_S1]], i8 1, i32 0)
+; CHECK-NEXT: [[F_RES:%[0-9A-z]*]] = call float @llvm.genx.GenISA.WaveAll.f32(float [[F_S1]], i8 1, i1 true, i32 0)
 ; CHECK-NEXT: [[H_RES:%[0-9A-z]*]] = fptrunc float [[F_RES]] to half
 ; CHECK: call void @use_half(half [[H_RES]])
 
 define void @test_genx_waveall(half %s1) {
-  %1 = call half @llvm.genx.GenISA.WaveAll.f16(half %s1, i8 1, i32 0)
+  %1 = call half @llvm.genx.GenISA.WaveAll.f16(half %s1, i8 1, i1 true, i32 0)
   call void @use_half(half %1)
   ret void
 }
@@ -367,7 +367,7 @@ declare half @llvm.fma.f16(half,half,half)
 declare half @llvm.maxnum.f16(half, half)
 declare half @llvm.minnum.f16(half, half)
 
-declare half @llvm.genx.GenISA.WaveAll.f16(half, i8, i32)
+declare half @llvm.genx.GenISA.WaveAll.f16(half, i8, i1, i32)
 declare half @llvm.genx.GenISA.WaveClustered.f16(half, i8, i32, i32)
 declare half @llvm.genx.GenISA.WavePrefix.f16(half, i8, i1, i1, i32)
 

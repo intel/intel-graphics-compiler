@@ -20963,7 +20963,7 @@ void EmitPass::emitWaveClusteredPrefix(GenIntrinsicInst *I) {
 }
 
 void EmitPass::emitWaveAll(llvm::GenIntrinsicInst *inst) {
-  bool disableHelperLanes = int_cast<int>(cast<ConstantInt>(inst->getArgOperand(2))->getSExtValue()) == 2;
+  bool disableHelperLanes = int_cast<int>(cast<ConstantInt>(inst->getArgOperand(3))->getSExtValue()) == 2;
   if (disableHelperLanes) {
     ForceDMask();
   }

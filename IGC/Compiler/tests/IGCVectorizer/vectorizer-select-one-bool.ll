@@ -22,14 +22,14 @@ bb:
   br label %bb2
 
 bb2:                                              ; preds = %bb2, %bb
-  %tmp = call float @llvm.genx.GenISA.WaveAll.f32(float 0.000000e+00, i8 0, i32 0)
-  %tmp3 = call float @llvm.genx.GenISA.WaveAll.f32(float 0.000000e+00, i8 0, i32 0)
-  %tmp4 = call float @llvm.genx.GenISA.WaveAll.f32(float 0.000000e+00, i8 0, i32 0)
-  %tmp5 = call float @llvm.genx.GenISA.WaveAll.f32(float 0.000000e+00, i8 0, i32 0)
-  %tmp6 = call float @llvm.genx.GenISA.WaveAll.f32(float 0.000000e+00, i8 0, i32 0)
-  %tmp7 = call float @llvm.genx.GenISA.WaveAll.f32(float 0.000000e+00, i8 0, i32 0)
-  %tmp8 = call float @llvm.genx.GenISA.WaveAll.f32(float 0.000000e+00, i8 0, i32 0)
-  %tmp9 = call float @llvm.genx.GenISA.WaveAll.f32(float 0.000000e+00, i8 0, i32 0)
+  %tmp = call float @llvm.genx.GenISA.WaveAll.f32(float 0.000000e+00, i8 0, i1 true, i32 0)
+  %tmp3 = call float @llvm.genx.GenISA.WaveAll.f32(float 0.000000e+00, i8 0, i1 true, i32 0)
+  %tmp4 = call float @llvm.genx.GenISA.WaveAll.f32(float 0.000000e+00, i8 0, i1 true, i32 0)
+  %tmp5 = call float @llvm.genx.GenISA.WaveAll.f32(float 0.000000e+00, i8 0, i1 true, i32 0)
+  %tmp6 = call float @llvm.genx.GenISA.WaveAll.f32(float 0.000000e+00, i8 0, i1 true, i32 0)
+  %tmp7 = call float @llvm.genx.GenISA.WaveAll.f32(float 0.000000e+00, i8 0, i1 true, i32 0)
+  %tmp8 = call float @llvm.genx.GenISA.WaveAll.f32(float 0.000000e+00, i8 0, i1 true, i32 0)
+  %tmp9 = call float @llvm.genx.GenISA.WaveAll.f32(float 0.000000e+00, i8 0, i1 true, i32 0)
   %tmp10 = call float @llvm.maxnum.f32(float 0.000000e+00, float %tmp)
   %tmp11 = call float @llvm.maxnum.f32(float 0.000000e+00, float %tmp3)
   %tmp12 = call float @llvm.maxnum.f32(float 0.000000e+00, float %tmp4)
@@ -128,7 +128,7 @@ bb59:                                             ; preds = %bb2
 }
 
 ; Function Attrs: convergent nounwind
-declare float @llvm.genx.GenISA.WaveAll.f32(float, i8, i32) #0
+declare float @llvm.genx.GenISA.WaveAll.f32(float, i8, i1, i32) #0
 
 ; Function Attrs: convergent nounwind willreturn
 declare <8 x float> @llvm.genx.GenISA.sub.group.dpas.v8f32.v8f32.v8i16.v8i32(<8 x float>, <8 x i16>, <8 x i32>, i32, i32, i32, i32, i1) #1

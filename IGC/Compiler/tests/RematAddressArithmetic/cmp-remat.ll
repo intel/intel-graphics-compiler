@@ -97,12 +97,12 @@ bb57:                                             ; preds = %bb57, %bb
   %tmp109 = insertelement <8 x float> %tmp108, float %tmp101, i64 7
   %tmp110 = call <8 x float> @llvm.maxnum.v8f32(<8 x float> zeroinitializer, <8 x float> %tmp109)
   %tmp111 = extractelement <8 x float> %tmp110, i64 0
-  %tmp118 = call float @llvm.genx.GenISA.WaveAll.f32(float %tmp111, i8 12, i32 0)
+  %tmp118 = call float @llvm.genx.GenISA.WaveAll.f32(float %tmp111, i8 12, i1 true, i32 0)
   br label %bb57
 }
 
 ; Function Attrs: convergent inaccessiblememonly nounwind
-declare float @llvm.genx.GenISA.WaveAll.f32(float, i8, i32) #1
+declare float @llvm.genx.GenISA.WaveAll.f32(float, i8, i1, i32) #1
 
 ; Function Attrs: convergent nounwind readnone willreturn
 declare <8 x float> @llvm.genx.GenISA.sub.group.dpas.v8f32.v8f32.v8i16.v8i32(<8 x float>, <8 x i16>, <8 x i32>, i32, i32, i32, i32, i1) #2

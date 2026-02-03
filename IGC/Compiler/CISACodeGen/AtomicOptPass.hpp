@@ -34,7 +34,7 @@ namespace IGC {
 //  entry:
 //      %2 = call i16 @llvm.genx.GenISA.simdLaneId()
 //      %3 = zext i16 %2 to i32
-//      %4 = call float @llvm.genx.GenISA.WaveAll.f32(float -2.000000e+00, i8 9, i32 0)
+//      %4 = call float @llvm.genx.GenISA.WaveAll.f32(float -2.000000e+00, i8 9, i1 true, i32 0)
 //      %5 = icmp eq i32 %3, 0
 //      br i1 %5, label %back, label %exit
 //  back:

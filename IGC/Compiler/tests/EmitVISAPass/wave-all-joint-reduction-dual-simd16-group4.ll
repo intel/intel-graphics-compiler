@@ -85,7 +85,7 @@ define void @CSMain(i32 %runtime_value_0, i32 %runtime_value_1, i32 %runtime_val
 ; CHECK: add (M1_NM, 8) reduceSrc_waveAllSrc0(0,0)<1> reduceSrc_waveAllSrc0(0,0)<4;2,1> reduceSrc_waveAllSrc0(0,2)<4;2,1>
 ; layer 4
 ; CHECK: add (M1_NM, 4) waveAllJoint(0,0)<1> reduceSrc_waveAllSrc0(0,0)<2;1,1> reduceSrc_waveAllSrc0(0,1)<2;1,1>
-  %waveAllJoint = call <4 x i32> @llvm.genx.GenISA.WaveAll.v4i32.i8.i32(<4 x i32> %waveAllSrc3, i8 0, i32 0)
+  %waveAllJoint = call <4 x i32> @llvm.genx.GenISA.WaveAll.v4i32.i8.i32(<4 x i32> %waveAllSrc3, i8 0, i1 true, i32 0)
   %res_a = extractelement <4 x i32> %waveAllJoint, i32 0
   %res_b = extractelement <4 x i32> %waveAllJoint, i32 1
   %res_c = extractelement <4 x i32> %waveAllJoint, i32 2
@@ -105,7 +105,7 @@ declare i16 @llvm.genx.GenISA.simdLaneId() #1
 
 declare i32 @llvm.genx.GenISA.ldraw.indexed.i32.p2490368v4f32(<4 x float> addrspace(2490368)*, i32, i32, i1) #2
 
-declare <4 x i32> @llvm.genx.GenISA.WaveAll.v4i32.i8.i32(<4 x i32>, i8, i32) #3
+declare <4 x i32> @llvm.genx.GenISA.WaveAll.v4i32.i8.i32(<4 x i32>, i8, i1, i32) #3
 
 declare i32 @llvm.genx.GenISA.WaveShuffleIndex.i32(i32, i32, i32) #4
 

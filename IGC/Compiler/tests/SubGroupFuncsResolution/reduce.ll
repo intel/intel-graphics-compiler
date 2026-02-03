@@ -35,7 +35,7 @@ define spir_kernel void @test_reduce(i32 addrspace(1)* %dst, i32 %src) #0 {
 ; CHECK:    store i32 addrspace(1)* [[DST:%.*]], i32 addrspace(1)** [[DST_ADDR]], align 8
 ; CHECK:    store i32 [[SRC:%.*]], i32* [[SRC_ADDR]], align 4
 ; CHECK:    [[TMP0:%.*]] = load i32, i32* [[SRC_ADDR]], align 4
-; CHECK:    [[TMP1:%.*]] = call i32 @llvm.genx.GenISA.WaveAll.i32(i32 [[TMP0]], i8 0, i32 0)
+; CHECK:    [[TMP1:%.*]] = call i32 @llvm.genx.GenISA.WaveAll.i32(i32 [[TMP0]], i8 0, i1 true, i32 0)
 ; CHECK:    store i32 [[TMP1]], i32* [[RE]], align 4
 ;
 entry:

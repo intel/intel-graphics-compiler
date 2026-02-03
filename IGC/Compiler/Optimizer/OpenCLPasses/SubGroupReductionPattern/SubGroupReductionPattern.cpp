@@ -409,6 +409,9 @@ bool SubGroupReductionPattern::reduce(ShufflePattern &Pattern) {
   Args.push_back(InputValue);
   Args.push_back(IRB.getInt8((uint8_t)Pattern.OpType));
   switch (RTy.IntrinsicType) {
+  case GenISAIntrinsic::GenISA_WaveAll:
+    Args.push_back(IRB.getInt1(true));
+    break;
   case GenISAIntrinsic::GenISA_WaveClustered:
     Args.push_back(IRB.getInt32(RTy.ClusterSize));
     break;

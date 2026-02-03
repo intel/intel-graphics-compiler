@@ -21,7 +21,7 @@ entry:
 ; CHECK-LABEL: entry:
 ;
 ; CHECK-PVC:     %0 = call i64 @get_i64()
-; CHECK-PVC:     [[RESULT:%.*]] = call i64 @llvm.genx.GenISA.WaveAll.i64(i64 %0, i8 0, i32 0)
+; CHECK-PVC:     [[RESULT:%.*]] = call i64 @llvm.genx.GenISA.WaveAll.i64(i64 %0, i8 0, i1 true, i32 0)
 ; CHECK-PVC:     ret i64 [[RESULT]]
 ;
 ; CHECK-DG2-NOT: @llvm.genx.GenISA.WaveAll

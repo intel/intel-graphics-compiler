@@ -106,14 +106,14 @@ bb6:                                              ; preds = %bb6, %bb
   %tmp50 = select i1 %tmp38, float 0xFFF0000000000000, float %tmp49
   %tmp51 = fmul float %tmp33, 0x3FF7154760000000
   %tmp52 = select i1 %tmp38, float 0xFFF0000000000000, float %tmp51
-  %tmp53 = call float @llvm.genx.GenISA.WaveAll.f32(float 0.000000e+00, i8 0, i32 0)
-  %tmp54 = call float @llvm.genx.GenISA.WaveAll.f32(float 0.000000e+00, i8 0, i32 0)
-  %tmp55 = call float @llvm.genx.GenISA.WaveAll.f32(float 0.000000e+00, i8 0, i32 0)
-  %tmp56 = call float @llvm.genx.GenISA.WaveAll.f32(float 0.000000e+00, i8 0, i32 0)
-  %tmp57 = call float @llvm.genx.GenISA.WaveAll.f32(float 0.000000e+00, i8 0, i32 0)
-  %tmp58 = call float @llvm.genx.GenISA.WaveAll.f32(float 0.000000e+00, i8 0, i32 0)
-  %tmp59 = call float @llvm.genx.GenISA.WaveAll.f32(float 0.000000e+00, i8 0, i32 0)
-  %tmp60 = call float @llvm.genx.GenISA.WaveAll.f32(float 0.000000e+00, i8 0, i32 0)
+  %tmp53 = call float @llvm.genx.GenISA.WaveAll.f32(float 0.000000e+00, i8 0, i1 true, i32 0)
+  %tmp54 = call float @llvm.genx.GenISA.WaveAll.f32(float 0.000000e+00, i8 0, i1 true, i32 0)
+  %tmp55 = call float @llvm.genx.GenISA.WaveAll.f32(float 0.000000e+00, i8 0, i1 true, i32 0)
+  %tmp56 = call float @llvm.genx.GenISA.WaveAll.f32(float 0.000000e+00, i8 0, i1 true, i32 0)
+  %tmp57 = call float @llvm.genx.GenISA.WaveAll.f32(float 0.000000e+00, i8 0, i1 true, i32 0)
+  %tmp58 = call float @llvm.genx.GenISA.WaveAll.f32(float 0.000000e+00, i8 0, i1 true, i32 0)
+  %tmp59 = call float @llvm.genx.GenISA.WaveAll.f32(float 0.000000e+00, i8 0, i1 true, i32 0)
+  %tmp60 = call float @llvm.genx.GenISA.WaveAll.f32(float 0.000000e+00, i8 0, i1 true, i32 0)
   %tmp61 = call float @llvm.maxnum.f32(float %tmp8, float %tmp53)
   %tmp62 = call float @llvm.maxnum.f32(float %tmp9, float %tmp54)
   %tmp63 = call float @llvm.maxnum.f32(float %tmp10, float %tmp55)
@@ -170,7 +170,7 @@ bb6:                                              ; preds = %bb6, %bb
 }
 
 ; Function Attrs: convergent inaccessiblememonly nounwind
-declare float @llvm.genx.GenISA.WaveAll.f32(float, i8, i32) #1
+declare float @llvm.genx.GenISA.WaveAll.f32(float, i8, i1, i32) #1
 
 ; Function Attrs: convergent nounwind readnone willreturn
 declare <8 x float> @llvm.genx.GenISA.sub.group.dpas.v8f32.v8f32.v8i16.v8i32(<8 x float>, <8 x i16>, <8 x i32>, i32, i32, i32, i32, i1) #2
@@ -182,7 +182,7 @@ declare float @llvm.maxnum.f32(float, float) #3
 declare float @llvm.exp2.f32(float) #3
 
 ; uselistorder directives
-uselistorder float (float, i8, i32)* @llvm.genx.GenISA.WaveAll.f32, { 7, 6, 5, 4, 3, 2, 1, 0 }
+uselistorder float (float, i8, i1, i32)* @llvm.genx.GenISA.WaveAll.f32, { 7, 6, 5, 4, 3, 2, 1, 0 }
 uselistorder <8 x float> (<8 x float>, <8 x i16>, <8 x i32>, i32, i32, i32, i32, i1)* @llvm.genx.GenISA.sub.group.dpas.v8f32.v8f32.v8i16.v8i32, { 1, 0 }
 uselistorder float (float, float)* @llvm.maxnum.f32, { 7, 6, 5, 4, 3, 2, 1, 0 }
 uselistorder float (float)* @llvm.exp2.f32, { 7, 6, 5, 4, 3, 2, 1, 0 }

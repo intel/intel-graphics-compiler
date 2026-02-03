@@ -38,7 +38,7 @@ Instruction *AtomicOptPass::createReduce(Instruction *Pos, Value *ValueForReduce
   IRBuilder<> Builder(Pos);
 
   Value *OpVal = Builder.getInt8((uint8_t)WaveOps::FSUM);
-  Value *Args[3] = {ValueForReduce, OpVal, Builder.getInt32(0)};
+  Value *Args[] = {ValueForReduce, OpVal, Builder.getInt1(true), Builder.getInt32(0)};
 
   Function *WaveAll = GenISAIntrinsic::getDeclaration(M, GenISAIntrinsic::GenISA_WaveAll, ValueForReduce->getType());
 

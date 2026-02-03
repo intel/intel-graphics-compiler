@@ -35,9 +35,9 @@ define spir_kernel void @quux() {
   %5 = extractelement <8 x float> %4, i64 2
   %6 = extractelement <8 x float> %4, i64 5
   %7 = extractelement <8 x float> %4, i64 6
-  %8 = call float @llvm.genx.GenISA.WaveAll.f32(float 1.250000e-01, i8 12, i32 0)
-  %9 = call float @llvm.genx.GenISA.WaveAll.f32(float 1.250000e-01, i8 12, i32 0)
-  %10 = call float @llvm.genx.GenISA.WaveAll.f32(float 1.250000e-01, i8 12, i32 0)
+  %8 = call float @llvm.genx.GenISA.WaveAll.f32(float 1.250000e-01, i8 12, i1 true, i32 0)
+  %9 = call float @llvm.genx.GenISA.WaveAll.f32(float 1.250000e-01, i8 12, i1 true, i32 0)
+  %10 = call float @llvm.genx.GenISA.WaveAll.f32(float 1.250000e-01, i8 12, i1 true, i32 0)
   %11 = fptrunc float %0 to half
   %12 = fptrunc float %1 to half
   %13 = fptrunc float %5 to half
@@ -59,7 +59,7 @@ define spir_kernel void @quux() {
   br label %._crit_edge333
 }
 
-declare float @llvm.genx.GenISA.WaveAll.f32(float, i8, i32)
+declare float @llvm.genx.GenISA.WaveAll.f32(float, i8, i1, i32)
 
 declare <8 x float> @llvm.genx.GenISA.sub.group.dpas.v8f32.v8f32.v8i16.v8i32(<8 x float>, <8 x i16>, <8 x i32>, i32, i32, i32, i32, i1)
 

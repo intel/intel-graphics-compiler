@@ -68,14 +68,14 @@
 ; CHECK-DAG: [[INSRT_2_6:%.*]] = insertelement <8 x float> [[INSRT_2_5]], float [[SEL_2_6]], i32 6
 ; CHECK-DAG: [[INSRT_2_7:%.*]] = insertelement <8 x float> [[INSRT_2_6]], float [[SEL_2_7]], i32 7
 
-; CHECK: [[WAVE_1_0:%.*]] = call float @llvm.genx.GenISA.WaveAll.f32(float [[SEL_2_0]], i8 12, i32 0)
-; CHECK: [[WAVE_1_1:%.*]] = call float @llvm.genx.GenISA.WaveAll.f32(float [[SEL_2_1]], i8 12, i32 0)
-; CHECK: [[WAVE_1_2:%.*]] = call float @llvm.genx.GenISA.WaveAll.f32(float [[SEL_2_2]], i8 12, i32 0)
-; CHECK: [[WAVE_1_3:%.*]] = call float @llvm.genx.GenISA.WaveAll.f32(float [[SEL_2_3]], i8 12, i32 0)
-; CHECK: [[WAVE_1_4:%.*]] = call float @llvm.genx.GenISA.WaveAll.f32(float [[SEL_2_4]], i8 12, i32 0)
-; CHECK: [[WAVE_1_5:%.*]] = call float @llvm.genx.GenISA.WaveAll.f32(float [[SEL_2_5]], i8 12, i32 0)
-; CHECK: [[WAVE_1_6:%.*]] = call float @llvm.genx.GenISA.WaveAll.f32(float [[SEL_2_6]], i8 12, i32 0)
-; CHECK: [[WAVE_1_7:%.*]] = call float @llvm.genx.GenISA.WaveAll.f32(float [[SEL_2_7]], i8 12, i32 0)
+; CHECK: [[WAVE_1_0:%.*]] = call float @llvm.genx.GenISA.WaveAll.f32(float [[SEL_2_0]], i8 12, i1 true, i32 0)
+; CHECK: [[WAVE_1_1:%.*]] = call float @llvm.genx.GenISA.WaveAll.f32(float [[SEL_2_1]], i8 12, i1 true, i32 0)
+; CHECK: [[WAVE_1_2:%.*]] = call float @llvm.genx.GenISA.WaveAll.f32(float [[SEL_2_2]], i8 12, i1 true, i32 0)
+; CHECK: [[WAVE_1_3:%.*]] = call float @llvm.genx.GenISA.WaveAll.f32(float [[SEL_2_3]], i8 12, i1 true, i32 0)
+; CHECK: [[WAVE_1_4:%.*]] = call float @llvm.genx.GenISA.WaveAll.f32(float [[SEL_2_4]], i8 12, i1 true, i32 0)
+; CHECK: [[WAVE_1_5:%.*]] = call float @llvm.genx.GenISA.WaveAll.f32(float [[SEL_2_5]], i8 12, i1 true, i32 0)
+; CHECK: [[WAVE_1_6:%.*]] = call float @llvm.genx.GenISA.WaveAll.f32(float [[SEL_2_6]], i8 12, i1 true, i32 0)
+; CHECK: [[WAVE_1_7:%.*]] = call float @llvm.genx.GenISA.WaveAll.f32(float [[SEL_2_7]], i8 12, i1 true, i32 0)
 
 ; CHECK-DAG: [[INSRT_1_0:%.*]] = insertelement <8 x float> undef,      float [[WAVE_1_0]], i32 0
 ; CHECK-DAG: [[INSRT_1_1:%.*]] = insertelement <8 x float> [[INSRT_1_0]], float [[WAVE_1_1]], i32 1
@@ -166,14 +166,14 @@ cond-add-join548:
   %58 = select i1 %43, float 0xFFF0000000000000, float %57
   %59 = fmul float %36, 0x3FF7154760000000
   %60 = select i1 %44, float 0xFFF0000000000000, float %59
-  %61 = call float @llvm.genx.GenISA.WaveAll.f32(float %46, i8 12, i32 0)
-  %62 = call float @llvm.genx.GenISA.WaveAll.f32(float %48, i8 12, i32 0)
-  %63 = call float @llvm.genx.GenISA.WaveAll.f32(float %50, i8 12, i32 0)
-  %64 = call float @llvm.genx.GenISA.WaveAll.f32(float %52, i8 12, i32 0)
-  %65 = call float @llvm.genx.GenISA.WaveAll.f32(float %54, i8 12, i32 0)
-  %66 = call float @llvm.genx.GenISA.WaveAll.f32(float %56, i8 12, i32 0)
-  %67 = call float @llvm.genx.GenISA.WaveAll.f32(float %58, i8 12, i32 0)
-  %68 = call float @llvm.genx.GenISA.WaveAll.f32(float %60, i8 12, i32 0)
+  %61 = call float @llvm.genx.GenISA.WaveAll.f32(float %46, i8 12, i1 true, i32 0)
+  %62 = call float @llvm.genx.GenISA.WaveAll.f32(float %48, i8 12, i1 true, i32 0)
+  %63 = call float @llvm.genx.GenISA.WaveAll.f32(float %50, i8 12, i1 true, i32 0)
+  %64 = call float @llvm.genx.GenISA.WaveAll.f32(float %52, i8 12, i1 true, i32 0)
+  %65 = call float @llvm.genx.GenISA.WaveAll.f32(float %54, i8 12, i1 true, i32 0)
+  %66 = call float @llvm.genx.GenISA.WaveAll.f32(float %56, i8 12, i1 true, i32 0)
+  %67 = call float @llvm.genx.GenISA.WaveAll.f32(float %58, i8 12, i1 true, i32 0)
+  %68 = call float @llvm.genx.GenISA.WaveAll.f32(float %60, i8 12, i1 true, i32 0)
   %69 = call float @llvm.maxnum.f32(float %11, float %61)
   %70 = call float @llvm.maxnum.f32(float %12, float %62)
   %71 = call float @llvm.maxnum.f32(float %13, float %63)
@@ -246,7 +246,7 @@ cond-add-join548:
 }
 
 ; Function Attrs: convergent inaccessiblememonly nounwind
-declare float @llvm.genx.GenISA.WaveAll.f32(float, i8, i32) #1
+declare float @llvm.genx.GenISA.WaveAll.f32(float, i8, i1, i32) #1
 
 ; Function Attrs: convergent nounwind readnone willreturn
 declare <8 x float> @llvm.genx.GenISA.sub.group.dpas.v8f32.v8f32.v8i16.v8i32(<8 x float>, <8 x i16>, <8 x i32>, i32, i32, i32, i32, i1) #2

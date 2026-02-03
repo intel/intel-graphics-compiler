@@ -19,7 +19,7 @@ define i32 @wave_all_add_i32() {
 entry:
 ; CHECK-LABEL: entry:
 ; CHECK:         %0 = call i32 @get_i32()
-; CHECK:         [[RESULT:%.*]] = call i32 @llvm.genx.GenISA.WaveAll.i32(i32 %0, i8 0, i32 0)
+; CHECK:         [[RESULT:%.*]] = call i32 @llvm.genx.GenISA.WaveAll.i32(i32 %0, i8 0, i1 true, i32 0)
 ; CHECK:         ret i32 [[RESULT]]
   %simdLaneId = call i16 @llvm.genx.GenISA.simdLaneId()
   %0 = call i32 @get_i32()

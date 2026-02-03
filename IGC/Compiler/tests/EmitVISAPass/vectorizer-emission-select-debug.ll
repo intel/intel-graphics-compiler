@@ -59,7 +59,6 @@ entry:
   ret void
 }
 
-declare float @llvm.genx.GenISA.WaveAll.f32(float, i8, i32)
 
 declare void @llvm.genx.GenISA.LSC2DBlockWrite.v8i16(i64, i32, i32, i32, i32, i32, i32, i32, i32, i32, i1, i1, i32, <8 x i16>)
 

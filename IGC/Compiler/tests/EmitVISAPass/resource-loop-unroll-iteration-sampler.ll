@@ -72,7 +72,6 @@ declare <4 x float> @llvm.genx.GenISA.sampleLptr.v4f32.f32.p2621443__2D_DIM_Reso
 declare i16 @llvm.genx.GenISA.DCL.SystemValue.i16(i32) #1
 declare i32 @llvm.genx.GenISA.WaveShuffleIndex.i32(i32, i32, i32) #6
 
-declare float @llvm.genx.GenISA.WaveAll.f32(float, i8, i32) #0
 declare i32 @llvm.genx.GenISA.WaveBallot(i1, i32)
 declare i32 @llvm.genx.GenISA.firstbitLo(i32)
 

@@ -1165,6 +1165,7 @@ class WaveAllIntrinsic : public GenIntrinsicInst {
 public:
   Value *getSrc() const { return getOperand(0); }
   IGC::WaveOps getOpKind() const { return static_cast<IGC::WaveOps>(getImm64Operand(1)); }
+  Value *getPredicate() const { return getOperand(2); }
 
   // Methods for support type inquiry through isa, cast, and dyn_cast:
   static inline bool classof(const GenIntrinsicInst *I) {

@@ -527,7 +527,7 @@ void SubGroupFuncsResolution::subGroupArithmetic(CallInst &CI, WaveOps op, Group
   Value *opVal = IRB.getInt8((uint8_t)op);
   Value *waveCall = nullptr;
   if (groupType == GroupOperationReduce) {
-    Value *args[3] = {arg, opVal, IRB.getInt32(0)};
+    Value *args[] = {arg, opVal, IRB.getInt1(true), IRB.getInt32(0)};
     Function *waveAll = GenISAIntrinsic::getDeclaration(CI.getCalledFunction()->getParent(),
                                                         GenISAIntrinsic::GenISA_WaveAll, arg->getType());
     waveCall = IRB.CreateCall(waveAll, args);

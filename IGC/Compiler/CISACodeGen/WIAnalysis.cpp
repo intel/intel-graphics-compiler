@@ -1479,8 +1479,19 @@ WIAnalysis::WIDependancy WIAnalysisRunner::calculate_dep(const CallInst *inst) {
       return WIAnalysis::UNIFORM_GLOBAL;
     }
 
-    if (intrinsic_name == llvm_waveBallot || intrinsic_name == llvm_waveAll) {
+    if (intrinsic_name == llvm_waveBallot) {
       return WIAnalysis::UNIFORM_THREAD;
+    }
+
+    if (intrinsic_name == llvm_waveAll) {
+      auto *waveAllInst = cast<WaveAllIntrinsic>(inst);
+      auto *pred = waveAllInst->getPredicate();
+      WIAnalysis::WIDependancy depPred = getDependency(pred);
+      if (WIAnalysis::isDepUniform(depPred)) {
+        return WIAnalysis::UNIFORM_THREAD;
+      } else {
+        return WIAnalysis::RANDOM;
+      }
     }
 
     if (intrinsic_name == llvm_waveClustered) {

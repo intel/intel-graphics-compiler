@@ -3,59 +3,59 @@
 
 
 
-; CHECK: Slice:   %tmp34 = call float @llvm.genx.GenISA.WaveAll.f32(float %tmp26, i8 12, i32 0)
-; CHECK: Slice:   %tmp35 = call float @llvm.genx.GenISA.WaveAll.f32(float %tmp27, i8 12, i32 0)
-; CHECK: Slice:   %tmp36 = call float @llvm.genx.GenISA.WaveAll.f32(float %tmp28, i8 12, i32 0)
-; CHECK: Slice:   %tmp37 = call float @llvm.genx.GenISA.WaveAll.f32(float %tmp34, i8 12, i32 0)
-; CHECK: Slice:   %tmp38 = call float @llvm.genx.GenISA.WaveAll.f32(float %tmp30, i8 12, i32 0)
-; CHECK: Slice:   %tmp39 = call float @llvm.genx.GenISA.WaveAll.f32(float %tmp31, i8 12, i32 0)
-; CHECK: Slice:   %tmp40 = call float @llvm.genx.GenISA.WaveAll.f32(float %tmp32, i8 12, i32 0)
-; CHECK: Slice:   %tmp41 = call float @llvm.genx.GenISA.WaveAll.f32(float %tmp33, i8 12, i32 0)
-; CHECK:   %tmp34 = call float @llvm.genx.GenISA.WaveAll.f32(float %tmp26, i8 12, i32 0)
-; CHECK:   %tmp41 = call float @llvm.genx.GenISA.WaveAll.f32(float %tmp33, i8 12, i32 0)
-; CHECK: Slice Scope:   %tmp34 = call float @llvm.genx.GenISA.WaveAll.f32(float %tmp26, i8 12, i32 0)
-; CHECK: Slice Scope:   %tmp35 = call float @llvm.genx.GenISA.WaveAll.f32(float %tmp27, i8 12, i32 0)
-; CHECK: Slice Scope:   %tmp36 = call float @llvm.genx.GenISA.WaveAll.f32(float %tmp28, i8 12, i32 0)
-; CHECK: Slice Scope:   %tmp37 = call float @llvm.genx.GenISA.WaveAll.f32(float %tmp34, i8 12, i32 0)
+; CHECK: Slice:   %tmp34 = call float @llvm.genx.GenISA.WaveAll.f32(float %tmp26, i8 12, i1 true, i32 0)
+; CHECK: Slice:   %tmp35 = call float @llvm.genx.GenISA.WaveAll.f32(float %tmp27, i8 12, i1 true, i32 0)
+; CHECK: Slice:   %tmp36 = call float @llvm.genx.GenISA.WaveAll.f32(float %tmp28, i8 12, i1 true, i32 0)
+; CHECK: Slice:   %tmp37 = call float @llvm.genx.GenISA.WaveAll.f32(float %tmp34, i8 12, i1 true, i32 0)
+; CHECK: Slice:   %tmp38 = call float @llvm.genx.GenISA.WaveAll.f32(float %tmp30, i8 12, i1 true, i32 0)
+; CHECK: Slice:   %tmp39 = call float @llvm.genx.GenISA.WaveAll.f32(float %tmp31, i8 12, i1 true, i32 0)
+; CHECK: Slice:   %tmp40 = call float @llvm.genx.GenISA.WaveAll.f32(float %tmp32, i8 12, i1 true, i32 0)
+; CHECK: Slice:   %tmp41 = call float @llvm.genx.GenISA.WaveAll.f32(float %tmp33, i8 12, i1 true, i32 0)
+; CHECK:   %tmp34 = call float @llvm.genx.GenISA.WaveAll.f32(float %tmp26, i8 12, i1 true, i32 0)
+; CHECK:   %tmp41 = call float @llvm.genx.GenISA.WaveAll.f32(float %tmp33, i8 12, i1 true, i32 0)
+; CHECK: Slice Scope:   %tmp34 = call float @llvm.genx.GenISA.WaveAll.f32(float %tmp26, i8 12, i1 true, i32 0)
+; CHECK: Slice Scope:   %tmp35 = call float @llvm.genx.GenISA.WaveAll.f32(float %tmp27, i8 12, i1 true, i32 0)
+; CHECK: Slice Scope:   %tmp36 = call float @llvm.genx.GenISA.WaveAll.f32(float %tmp28, i8 12, i1 true, i32 0)
+; CHECK: Slice Scope:   %tmp37 = call float @llvm.genx.GenISA.WaveAll.f32(float %tmp34, i8 12, i1 true, i32 0)
 ; CHECK: Slice Scope:   %tmp30 = select i1 %tmp22, float 0xFFF0000000000000, float 0.000000e+00
 ; CHECK: Slice Scope:   %tmp31 = select i1 %tmp23, float 0xFFF0000000000000, float 0.000000e+00
 ; CHECK: Slice Scope:   %tmp32 = select i1 %tmp24, float 0xFFF0000000000000, float 0.000000e+00
 ; CHECK: Slice Scope:   %tmp33 = select i1 %tmp25, float 0xFFF0000000000000, float 0.000000e+00
-; CHECK: Slice Scope:   %tmp38 = call float @llvm.genx.GenISA.WaveAll.f32(float %tmp30, i8 12, i32 0)
-; CHECK: Slice Scope:   %tmp39 = call float @llvm.genx.GenISA.WaveAll.f32(float %tmp31, i8 12, i32 0)
-; CHECK: Slice Scope:   %tmp40 = call float @llvm.genx.GenISA.WaveAll.f32(float %tmp32, i8 12, i32 0)
-; CHECK: Slice Scope:   %tmp41 = call float @llvm.genx.GenISA.WaveAll.f32(float %tmp33, i8 12, i32 0)
-; CHECK: %tmp34 = call float @llvm.genx.GenISA.WaveAll.f32(float %tmp26, i8 12, i32 0) ---   %tmp37 = call float @llvm.genx.GenISA.WaveAll.f32(float %tmp34, i8 12, i32 0)  <-- operands inside the slice depend on slice results
+; CHECK: Slice Scope:   %tmp38 = call float @llvm.genx.GenISA.WaveAll.f32(float %tmp30, i8 12, i1 true, i32 0)
+; CHECK: Slice Scope:   %tmp39 = call float @llvm.genx.GenISA.WaveAll.f32(float %tmp31, i8 12, i1 true, i32 0)
+; CHECK: Slice Scope:   %tmp40 = call float @llvm.genx.GenISA.WaveAll.f32(float %tmp32, i8 12, i1 true, i32 0)
+; CHECK: Slice Scope:   %tmp41 = call float @llvm.genx.GenISA.WaveAll.f32(float %tmp33, i8 12, i1 true, i32 0)
+; CHECK: %tmp34 = call float @llvm.genx.GenISA.WaveAll.f32(float %tmp26, i8 12, i1 true, i32 0) ---   %tmp37 = call float @llvm.genx.GenISA.WaveAll.f32(float %tmp34, i8 12, i1 true, i32 0)  <-- operands inside the slice depend on slice results
 
-;CHECK-NOT: %vectorized_joint_waveall = call <8 x float> @llvm.genx.GenISA.WaveAll.v8f32(<8 x float> %{{.*}}, i8 12, i32 0)
-;CHECK-NOT: %{{vectorized_joint_waveall.*}} = call <8 x float> @llvm.genx.GenISA.WaveAll.v8f32(<8 x float> %{{.*}}, i8 12, i32 0)
+;CHECK-NOT: %vectorized_joint_waveall = call <8 x float> @llvm.genx.GenISA.WaveAll.v8f32(<8 x float> %{{.*}}, i8 12, i1 true, i32 0)
+;CHECK-NOT: %{{vectorized_joint_waveall.*}} = call <8 x float> @llvm.genx.GenISA.WaveAll.v8f32(<8 x float> %{{.*}}, i8 12, i1 true, i32 0)
 
 ; CHECK:   %tmp113 = fmul float %tmp105, 1.250000e-01
 ; CHECK:   %tmp120 = fmul float %tmp112, 1.250000e-01
 ; CHECK: Slice Scope:   %tmp113 = fmul float %tmp105, 1.250000e-01
 ; CHECK: Slice Scope:   %tmp121 = fmul float %tmp113, 0x3FF7154760000000
-; CHECK: Slice Scope:   %tmp129 = call float @llvm.genx.GenISA.WaveAll.f32(float %tmp121, i8 12, i32 0)
+; CHECK: Slice Scope:   %tmp129 = call float @llvm.genx.GenISA.WaveAll.f32(float %tmp121, i8 12, i1 true, i32 0)
 ; CHECK: Slice Scope:   %tmp137 = call float @llvm.maxnum.f32(float 0.000000e+00, float %tmp129)
 ; CHECK: Slice Scope:   %tmp114 = fmul float %tmp106, 1.250000e-01
 ; CHECK: Slice Scope:   %tmp122 = fmul float %tmp114, 0x3FF7154760000000
-; CHECK: Slice Scope:   %tmp130 = call float @llvm.genx.GenISA.WaveAll.f32(float %tmp122, i8 12, i32 0)
+; CHECK: Slice Scope:   %tmp130 = call float @llvm.genx.GenISA.WaveAll.f32(float %tmp122, i8 12, i1 true, i32 0)
 ; CHECK: Slice Scope:   %tmp138 = call float @llvm.maxnum.f32(float 0.000000e+00, float %tmp130)
 ; CHECK: Slice Scope:   %tmp115 = fmul float %tmp107, 1.250000e-01
 ; CHECK: Slice Scope:   %tmp123 = fmul float %tmp115, 0x3FF7154760000000
-; CHECK: Slice Scope:   %tmp131 = call float @llvm.genx.GenISA.WaveAll.f32(float %tmp123, i8 12, i32 0)
+; CHECK: Slice Scope:   %tmp131 = call float @llvm.genx.GenISA.WaveAll.f32(float %tmp123, i8 12, i1 true, i32 0)
 ; CHECK: Slice Scope:   %tmp139 = call float @llvm.maxnum.f32(float 0.000000e+00, float %tmp131)
 ; CHECK: Slice Scope:   %tmp116 = fmul float %tmp139, 1.250000e-01
 ; CHECK: Slice Scope:   %tmp124 = fmul float %tmp116, 0x3FF7154760000000
-; CHECK: Slice Scope:   %tmp132 = call float @llvm.genx.GenISA.WaveAll.f32(float %tmp124, i8 12, i32 0)
+; CHECK: Slice Scope:   %tmp132 = call float @llvm.genx.GenISA.WaveAll.f32(float %tmp124, i8 12, i1 true, i32 0)
 ; CHECK: Slice Scope:   %tmp117 = fmul float %tmp109, 1.250000e-01
 ; CHECK: Slice Scope:   %tmp125 = fmul float %tmp117, 0x3FF7154760000000
-; CHECK: Slice Scope:   %tmp133 = call float @llvm.genx.GenISA.WaveAll.f32(float %tmp125, i8 12, i32 0)
+; CHECK: Slice Scope:   %tmp133 = call float @llvm.genx.GenISA.WaveAll.f32(float %tmp125, i8 12, i1 true, i32 0)
 ; CHECK: Slice Scope:   %tmp118 = fmul float %tmp110, 1.250000e-01
 ; CHECK: Slice Scope:   %tmp126 = fmul float %tmp118, 0x3FF7154760000000
-; CHECK: Slice Scope:   %tmp134 = call float @llvm.genx.GenISA.WaveAll.f32(float %tmp126, i8 12, i32 0)
+; CHECK: Slice Scope:   %tmp134 = call float @llvm.genx.GenISA.WaveAll.f32(float %tmp126, i8 12, i1 true, i32 0)
 ; CHECK: Slice Scope:   %tmp119 = fmul float %tmp111, 1.250000e-01
 ; CHECK: Slice Scope:   %tmp127 = fmul float %tmp119, 0x3FF7154760000000
-; CHECK: Slice Scope:   %tmp135 = call float @llvm.genx.GenISA.WaveAll.f32(float %tmp127, i8 12, i32 0)
+; CHECK: Slice Scope:   %tmp135 = call float @llvm.genx.GenISA.WaveAll.f32(float %tmp127, i8 12, i1 true, i32 0)
 ; CHECK: Slice Scope:   %tmp120 = fmul float %tmp112, 1.250000e-01
 ; CHECK:   %tmp139 = call float @llvm.maxnum.f32(float 0.000000e+00, float %tmp131) ---   %tmp116 = fmul float %tmp139, 1.250000e-01  <-- operands inside the slice depend on slice results
 
@@ -101,19 +101,19 @@ bb7:                                              ; preds = %bb7, %bb5
   %tmp27 = select i1 %tmp19, float 0xFFF0000000000000, float 0.000000e+00
   %tmp28 = select i1 %tmp20, float 0xFFF0000000000000, float 0.000000e+00
   %tmp29 = select i1 %tmp21, float 0xFFF0000000000000, float 0.000000e+00
-  %tmp34 = call float @llvm.genx.GenISA.WaveAll.f32(float %tmp26, i8 12, i32 0)
-  %tmp35 = call float @llvm.genx.GenISA.WaveAll.f32(float %tmp27, i8 12, i32 0)
-  %tmp36 = call float @llvm.genx.GenISA.WaveAll.f32(float %tmp28, i8 12, i32 0)
+  %tmp34 = call float @llvm.genx.GenISA.WaveAll.f32(float %tmp26, i8 12, i1 true, i32 0)
+  %tmp35 = call float @llvm.genx.GenISA.WaveAll.f32(float %tmp27, i8 12, i1 true, i32 0)
+  %tmp36 = call float @llvm.genx.GenISA.WaveAll.f32(float %tmp28, i8 12, i1 true, i32 0)
   ; tmp37 depends on tmp34 --> inherent non virtual hazard
-  %tmp37 = call float @llvm.genx.GenISA.WaveAll.f32(float %tmp34, i8 12, i32 0)
+  %tmp37 = call float @llvm.genx.GenISA.WaveAll.f32(float %tmp34, i8 12, i1 true, i32 0)
   %tmp30 = select i1 %tmp22, float 0xFFF0000000000000, float 0.000000e+00
   %tmp31 = select i1 %tmp23, float 0xFFF0000000000000, float 0.000000e+00
   %tmp32 = select i1 %tmp24, float 0xFFF0000000000000, float 0.000000e+00
   %tmp33 = select i1 %tmp25, float 0xFFF0000000000000, float 0.000000e+00
-  %tmp38 = call float @llvm.genx.GenISA.WaveAll.f32(float %tmp30, i8 12, i32 0)
-  %tmp39 = call float @llvm.genx.GenISA.WaveAll.f32(float %tmp31, i8 12, i32 0)
-  %tmp40 = call float @llvm.genx.GenISA.WaveAll.f32(float %tmp32, i8 12, i32 0)
-  %tmp41 = call float @llvm.genx.GenISA.WaveAll.f32(float %tmp33, i8 12, i32 0)
+  %tmp38 = call float @llvm.genx.GenISA.WaveAll.f32(float %tmp30, i8 12, i1 true, i32 0)
+  %tmp39 = call float @llvm.genx.GenISA.WaveAll.f32(float %tmp31, i8 12, i1 true, i32 0)
+  %tmp40 = call float @llvm.genx.GenISA.WaveAll.f32(float %tmp32, i8 12, i1 true, i32 0)
+  %tmp41 = call float @llvm.genx.GenISA.WaveAll.f32(float %tmp33, i8 12, i1 true, i32 0)
   %tmp42 = call float @llvm.maxnum.f32(float %tmp9, float %tmp34)
   %tmp43 = call float @llvm.maxnum.f32(float %tmp10, float %tmp35)
   %tmp44 = call float @llvm.maxnum.f32(float %tmp11, float %tmp36)
@@ -193,31 +193,31 @@ bb102:                                            ; preds = %bb102, %bb101
   %tmp112 = extractelement <8 x float> %tmp104, i64 7
   %tmp113 = fmul float %tmp105, 1.250000e-01
   %tmp121 = fmul float %tmp113, 0x3FF7154760000000
-  %tmp129 = call float @llvm.genx.GenISA.WaveAll.f32(float %tmp121, i8 12, i32 0)
+  %tmp129 = call float @llvm.genx.GenISA.WaveAll.f32(float %tmp121, i8 12, i1 true, i32 0)
   %tmp137 = call float @llvm.maxnum.f32(float 0.000000e+00, float %tmp129)
   %tmp114 = fmul float %tmp106, 1.250000e-01
   %tmp122 = fmul float %tmp114, 0x3FF7154760000000
-  %tmp130 = call float @llvm.genx.GenISA.WaveAll.f32(float %tmp122, i8 12, i32 0)
+  %tmp130 = call float @llvm.genx.GenISA.WaveAll.f32(float %tmp122, i8 12, i1 true, i32 0)
   %tmp138 = call float @llvm.maxnum.f32(float 0.000000e+00, float %tmp130)
   %tmp115 = fmul float %tmp107, 1.250000e-01
   %tmp123 = fmul float %tmp115, 0x3FF7154760000000
-  %tmp131 = call float @llvm.genx.GenISA.WaveAll.f32(float %tmp123, i8 12, i32 0)
+  %tmp131 = call float @llvm.genx.GenISA.WaveAll.f32(float %tmp123, i8 12, i1 true, i32 0)
   %tmp139 = call float @llvm.maxnum.f32(float 0.000000e+00, float %tmp131)
   %tmp116 = fmul float %tmp139, 1.250000e-01
   %tmp124 = fmul float %tmp116, 0x3FF7154760000000
-  %tmp132 = call float @llvm.genx.GenISA.WaveAll.f32(float %tmp124, i8 12, i32 0)
+  %tmp132 = call float @llvm.genx.GenISA.WaveAll.f32(float %tmp124, i8 12, i1 true, i32 0)
   %tmp117 = fmul float %tmp109, 1.250000e-01
   %tmp125 = fmul float %tmp117, 0x3FF7154760000000
-  %tmp133 = call float @llvm.genx.GenISA.WaveAll.f32(float %tmp125, i8 12, i32 0)
+  %tmp133 = call float @llvm.genx.GenISA.WaveAll.f32(float %tmp125, i8 12, i1 true, i32 0)
   %tmp118 = fmul float %tmp110, 1.250000e-01
   %tmp126 = fmul float %tmp118, 0x3FF7154760000000
-  %tmp134 = call float @llvm.genx.GenISA.WaveAll.f32(float %tmp126, i8 12, i32 0)
+  %tmp134 = call float @llvm.genx.GenISA.WaveAll.f32(float %tmp126, i8 12, i1 true, i32 0)
   %tmp119 = fmul float %tmp111, 1.250000e-01
   %tmp127 = fmul float %tmp119, 0x3FF7154760000000
-  %tmp135 = call float @llvm.genx.GenISA.WaveAll.f32(float %tmp127, i8 12, i32 0)
+  %tmp135 = call float @llvm.genx.GenISA.WaveAll.f32(float %tmp127, i8 12, i1 true, i32 0)
   %tmp120 = fmul float %tmp112, 1.250000e-01
   %tmp128 = fmul float %tmp120, 0x3FF7154760000000
-  %tmp136 = call float @llvm.genx.GenISA.WaveAll.f32(float %tmp128, i8 12, i32 0)
+  %tmp136 = call float @llvm.genx.GenISA.WaveAll.f32(float %tmp128, i8 12, i1 true, i32 0)
   %tmp140 = call float @llvm.maxnum.f32(float 0.000000e+00, float %tmp132)
   %tmp141 = call float @llvm.maxnum.f32(float 0.000000e+00, float %tmp133)
   %tmp142 = call float @llvm.maxnum.f32(float 0.000000e+00, float %tmp134)
@@ -272,7 +272,7 @@ bb102:                                            ; preds = %bb102, %bb101
 declare float @llvm.fma.f32(float, float, float) #1
 
 ; Function Attrs: convergent inaccessiblememonly nounwind
-declare float @llvm.genx.GenISA.WaveAll.f32(float, i8, i32) #2
+declare float @llvm.genx.GenISA.WaveAll.f32(float, i8, i1, i32) #2
 
 ; Function Attrs: convergent nounwind readnone willreturn
 declare i8 @llvm.genx.GenISA.WaveShuffleIndex.i8(i8, i32, i32) #3

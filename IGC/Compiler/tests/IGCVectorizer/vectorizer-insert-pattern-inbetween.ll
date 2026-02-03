@@ -107,14 +107,14 @@ cond-add-join548:
   %46 = select i1 %33, float 0xFFF0000000000000, float %45
   %47 = fmul float %23, 0x3FF7154760000000
   %48 = select i1 %29, float 0xFFF0000000000000, float %47
-  %49 = call float @llvm.genx.GenISA.WaveAll.f32(float %34, i8 12, i32 0)
-  %50 = call float @llvm.genx.GenISA.WaveAll.f32(float %36, i8 12, i32 0)
-  %51 = call float @llvm.genx.GenISA.WaveAll.f32(float %38, i8 12, i32 0)
-  %52 = call float @llvm.genx.GenISA.WaveAll.f32(float %40, i8 12, i32 0)
-  %53 = call float @llvm.genx.GenISA.WaveAll.f32(float %42, i8 12, i32 0)
-  %54 = call float @llvm.genx.GenISA.WaveAll.f32(float %44, i8 12, i32 0)
-  %55 = call float @llvm.genx.GenISA.WaveAll.f32(float %46, i8 12, i32 0)
-  %56 = call float @llvm.genx.GenISA.WaveAll.f32(float %48, i8 12, i32 0)
+  %49 = call float @llvm.genx.GenISA.WaveAll.f32(float %34, i8 12, i1 true, i32 0)
+  %50 = call float @llvm.genx.GenISA.WaveAll.f32(float %36, i8 12, i1 true, i32 0)
+  %51 = call float @llvm.genx.GenISA.WaveAll.f32(float %38, i8 12, i1 true, i32 0)
+  %52 = call float @llvm.genx.GenISA.WaveAll.f32(float %40, i8 12, i1 true, i32 0)
+  %53 = call float @llvm.genx.GenISA.WaveAll.f32(float %42, i8 12, i1 true, i32 0)
+  %54 = call float @llvm.genx.GenISA.WaveAll.f32(float %44, i8 12, i1 true, i32 0)
+  %55 = call float @llvm.genx.GenISA.WaveAll.f32(float %46, i8 12, i1 true, i32 0)
+  %56 = call float @llvm.genx.GenISA.WaveAll.f32(float %48, i8 12, i1 true, i32 0)
   %57 = call float @llvm.maxnum.f32(float %7, float %49)
   %58 = call float @llvm.maxnum.f32(float %8, float %50)
   %59 = call float @llvm.maxnum.f32(float %9, float %51)
@@ -190,7 +190,7 @@ cond-add-join548:
 declare float @llvm.fma.f32(float, float, float) #1
 
 ; Function Attrs: convergent inaccessiblememonly nounwind
-declare float @llvm.genx.GenISA.WaveAll.f32(float, i8, i32) #2
+declare float @llvm.genx.GenISA.WaveAll.f32(float, i8, i1, i32) #2
 
 ; Function Attrs: convergent nounwind readnone willreturn
 declare i8 @llvm.genx.GenISA.WaveShuffleIndex.i8(i8, i32, i32) #3

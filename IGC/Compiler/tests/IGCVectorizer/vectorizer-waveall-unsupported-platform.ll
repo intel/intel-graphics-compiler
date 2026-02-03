@@ -12,36 +12,36 @@
 ; RUN: igc_opt -S -opaque-pointers -platformmtl --igc-vectorizer -dce --regkey=VectorizerLog=1 --regkey=VectorizerLogToErr=1 --regkey=VectorizerAllowWAVEALL=1 --regkey=VectorizerAllowWAVEALLJoint=1 < %s 2>&1 | FileCheck %s
 
 
-; CHECK: Slice:   %tmp34 = call float @llvm.genx.GenISA.WaveAll.f32(float %vector_extract15, i8 12, i32 0)
-; CHECK: Slice:   %tmp35 = call float @llvm.genx.GenISA.WaveAll.f32(float %vector_extract16, i8 12, i32 0)
-; CHECK: Slice:   %tmp36 = call float @llvm.genx.GenISA.WaveAll.f32(float %vector_extract17, i8 12, i32 0)
-; CHECK: Slice:   %tmp37 = call float @llvm.genx.GenISA.WaveAll.f32(float %vector_extract18, i8 12, i32 0)
-; CHECK: Slice:   %tmp38 = call float @llvm.genx.GenISA.WaveAll.f32(float %vector_extract19, i8 12, i32 0)
-; CHECK: Slice:   %tmp39 = call float @llvm.genx.GenISA.WaveAll.f32(float %vector_extract20, i8 12, i32 0)
-; CHECK: Slice:   %tmp40 = call float @llvm.genx.GenISA.WaveAll.f32(float %vector_extract21, i8 12, i32 0)
-; CHECK: Slice:   %tmp41 = call float @llvm.genx.GenISA.WaveAll.f32(float %vector_extract22, i8 12, i32 0)
-; CHECK: pos: 52   %tmp34 = call float @llvm.genx.GenISA.WaveAll.f32(float %vector_extract15, i8 12, i32 0)
-; CHECK: pos: 53   %tmp35 = call float @llvm.genx.GenISA.WaveAll.f32(float %vector_extract16, i8 12, i32 0)
-; CHECK: pos: 54   %tmp36 = call float @llvm.genx.GenISA.WaveAll.f32(float %vector_extract17, i8 12, i32 0)
-; CHECK: pos: 55   %tmp37 = call float @llvm.genx.GenISA.WaveAll.f32(float %vector_extract18, i8 12, i32 0)
-; CHECK: pos: 56   %tmp38 = call float @llvm.genx.GenISA.WaveAll.f32(float %vector_extract19, i8 12, i32 0)
-; CHECK: pos: 57   %tmp39 = call float @llvm.genx.GenISA.WaveAll.f32(float %vector_extract20, i8 12, i32 0)
-; CHECK: pos: 58   %tmp40 = call float @llvm.genx.GenISA.WaveAll.f32(float %vector_extract21, i8 12, i32 0)
-; CHECK: pos: 59   %tmp41 = call float @llvm.genx.GenISA.WaveAll.f32(float %vector_extract22, i8 12, i32 0)
-; CHECK:   %tmp34 = call float @llvm.genx.GenISA.WaveAll.f32(float %vector_extract15, i8 12, i32 0)
-; CHECK:   %tmp41 = call float @llvm.genx.GenISA.WaveAll.f32(float %vector_extract22, i8 12, i32 0)
-; CHECK: Slice Scope:   %tmp34 = call float @llvm.genx.GenISA.WaveAll.f32(float %vector_extract15, i8 12, i32 0)
-; CHECK: Slice Scope:   %tmp35 = call float @llvm.genx.GenISA.WaveAll.f32(float %vector_extract16, i8 12, i32 0)
-; CHECK: Slice Scope:   %tmp36 = call float @llvm.genx.GenISA.WaveAll.f32(float %vector_extract17, i8 12, i32 0)
-; CHECK: Slice Scope:   %tmp37 = call float @llvm.genx.GenISA.WaveAll.f32(float %vector_extract18, i8 12, i32 0)
-; CHECK: Slice Scope:   %tmp38 = call float @llvm.genx.GenISA.WaveAll.f32(float %vector_extract19, i8 12, i32 0)
-; CHECK: Slice Scope:   %tmp39 = call float @llvm.genx.GenISA.WaveAll.f32(float %vector_extract20, i8 12, i32 0)
-; CHECK: Slice Scope:   %tmp40 = call float @llvm.genx.GenISA.WaveAll.f32(float %vector_extract21, i8 12, i32 0)
-; CHECK: Slice Scope:   %tmp41 = call float @llvm.genx.GenISA.WaveAll.f32(float %vector_extract22, i8 12, i32 0)
+; CHECK: Slice:   %tmp34 = call float @llvm.genx.GenISA.WaveAll.f32(float %vector_extract15, i8 12, i1 true, i32 0)
+; CHECK: Slice:   %tmp35 = call float @llvm.genx.GenISA.WaveAll.f32(float %vector_extract16, i8 12, i1 true, i32 0)
+; CHECK: Slice:   %tmp36 = call float @llvm.genx.GenISA.WaveAll.f32(float %vector_extract17, i8 12, i1 true, i32 0)
+; CHECK: Slice:   %tmp37 = call float @llvm.genx.GenISA.WaveAll.f32(float %vector_extract18, i8 12, i1 true, i32 0)
+; CHECK: Slice:   %tmp38 = call float @llvm.genx.GenISA.WaveAll.f32(float %vector_extract19, i8 12, i1 true, i32 0)
+; CHECK: Slice:   %tmp39 = call float @llvm.genx.GenISA.WaveAll.f32(float %vector_extract20, i8 12, i1 true, i32 0)
+; CHECK: Slice:   %tmp40 = call float @llvm.genx.GenISA.WaveAll.f32(float %vector_extract21, i8 12, i1 true, i32 0)
+; CHECK: Slice:   %tmp41 = call float @llvm.genx.GenISA.WaveAll.f32(float %vector_extract22, i8 12, i1 true, i32 0)
+; CHECK: pos: 52   %tmp34 = call float @llvm.genx.GenISA.WaveAll.f32(float %vector_extract15, i8 12, i1 true, i32 0)
+; CHECK: pos: 53   %tmp35 = call float @llvm.genx.GenISA.WaveAll.f32(float %vector_extract16, i8 12, i1 true, i32 0)
+; CHECK: pos: 54   %tmp36 = call float @llvm.genx.GenISA.WaveAll.f32(float %vector_extract17, i8 12, i1 true, i32 0)
+; CHECK: pos: 55   %tmp37 = call float @llvm.genx.GenISA.WaveAll.f32(float %vector_extract18, i8 12, i1 true, i32 0)
+; CHECK: pos: 56   %tmp38 = call float @llvm.genx.GenISA.WaveAll.f32(float %vector_extract19, i8 12, i1 true, i32 0)
+; CHECK: pos: 57   %tmp39 = call float @llvm.genx.GenISA.WaveAll.f32(float %vector_extract20, i8 12, i1 true, i32 0)
+; CHECK: pos: 58   %tmp40 = call float @llvm.genx.GenISA.WaveAll.f32(float %vector_extract21, i8 12, i1 true, i32 0)
+; CHECK: pos: 59   %tmp41 = call float @llvm.genx.GenISA.WaveAll.f32(float %vector_extract22, i8 12, i1 true, i32 0)
+; CHECK:   %tmp34 = call float @llvm.genx.GenISA.WaveAll.f32(float %vector_extract15, i8 12, i1 true, i32 0)
+; CHECK:   %tmp41 = call float @llvm.genx.GenISA.WaveAll.f32(float %vector_extract22, i8 12, i1 true, i32 0)
+; CHECK: Slice Scope:   %tmp34 = call float @llvm.genx.GenISA.WaveAll.f32(float %vector_extract15, i8 12, i1 true, i32 0)
+; CHECK: Slice Scope:   %tmp35 = call float @llvm.genx.GenISA.WaveAll.f32(float %vector_extract16, i8 12, i1 true, i32 0)
+; CHECK: Slice Scope:   %tmp36 = call float @llvm.genx.GenISA.WaveAll.f32(float %vector_extract17, i8 12, i1 true, i32 0)
+; CHECK: Slice Scope:   %tmp37 = call float @llvm.genx.GenISA.WaveAll.f32(float %vector_extract18, i8 12, i1 true, i32 0)
+; CHECK: Slice Scope:   %tmp38 = call float @llvm.genx.GenISA.WaveAll.f32(float %vector_extract19, i8 12, i1 true, i32 0)
+; CHECK: Slice Scope:   %tmp39 = call float @llvm.genx.GenISA.WaveAll.f32(float %vector_extract20, i8 12, i1 true, i32 0)
+; CHECK: Slice Scope:   %tmp40 = call float @llvm.genx.GenISA.WaveAll.f32(float %vector_extract21, i8 12, i1 true, i32 0)
+; CHECK: Slice Scope:   %tmp41 = call float @llvm.genx.GenISA.WaveAll.f32(float %vector_extract22, i8 12, i1 true, i32 0)
 ; CHECK: Unsupported platform
 
-; CHECK-NOT: %vectorized_joint_waveall = call <8 x float> @llvm.genx.GenISA.WaveAll.v8f32(<8 x float> %{{.*}}, i8 12, i32 0)
-; CHECK-NOT: %{{vectorized_joint_waveall.*}} = call <8 x float> @llvm.genx.GenISA.WaveAll.v8f32(<8 x float> %{{.*}}, i8 12, i32 0)
+; CHECK-NOT: %vectorized_joint_waveall = call <8 x float> @llvm.genx.GenISA.WaveAll.v8f32(<8 x float> %{{.*}}, i8 12, i1 true, i32 0)
+; CHECK-NOT: %{{vectorized_joint_waveall.*}} = call <8 x float> @llvm.genx.GenISA.WaveAll.v8f32(<8 x float> %{{.*}}, i8 12, i1 true, i32 0)
 
 ; ModuleID = 'reduced.ll'
 source_filename = "initial_waveall.ll"
@@ -89,14 +89,14 @@ bb7:                                              ; preds = %bb7, %bb5
   %tmp31 = select i1 %tmp23, float 0xFFF0000000000000, float 0.000000e+00
   %tmp32 = select i1 %tmp24, float 0xFFF0000000000000, float 0.000000e+00
   %tmp33 = select i1 %tmp25, float 0xFFF0000000000000, float 0.000000e+00
-  %tmp34 = call float @llvm.genx.GenISA.WaveAll.f32(float %tmp26, i8 12, i32 0)
-  %tmp35 = call float @llvm.genx.GenISA.WaveAll.f32(float %tmp27, i8 12, i32 0)
-  %tmp36 = call float @llvm.genx.GenISA.WaveAll.f32(float %tmp28, i8 12, i32 0)
-  %tmp37 = call float @llvm.genx.GenISA.WaveAll.f32(float %tmp29, i8 12, i32 0)
-  %tmp38 = call float @llvm.genx.GenISA.WaveAll.f32(float %tmp30, i8 12, i32 0)
-  %tmp39 = call float @llvm.genx.GenISA.WaveAll.f32(float %tmp31, i8 12, i32 0)
-  %tmp40 = call float @llvm.genx.GenISA.WaveAll.f32(float %tmp32, i8 12, i32 0)
-  %tmp41 = call float @llvm.genx.GenISA.WaveAll.f32(float %tmp33, i8 12, i32 0)
+  %tmp34 = call float @llvm.genx.GenISA.WaveAll.f32(float %tmp26, i8 12, i1 true, i32 0)
+  %tmp35 = call float @llvm.genx.GenISA.WaveAll.f32(float %tmp27, i8 12, i1 true, i32 0)
+  %tmp36 = call float @llvm.genx.GenISA.WaveAll.f32(float %tmp28, i8 12, i1 true, i32 0)
+  %tmp37 = call float @llvm.genx.GenISA.WaveAll.f32(float %tmp29, i8 12, i1 true, i32 0)
+  %tmp38 = call float @llvm.genx.GenISA.WaveAll.f32(float %tmp30, i8 12, i1 true, i32 0)
+  %tmp39 = call float @llvm.genx.GenISA.WaveAll.f32(float %tmp31, i8 12, i1 true, i32 0)
+  %tmp40 = call float @llvm.genx.GenISA.WaveAll.f32(float %tmp32, i8 12, i1 true, i32 0)
+  %tmp41 = call float @llvm.genx.GenISA.WaveAll.f32(float %tmp33, i8 12, i1 true, i32 0)
   %tmp42 = call float @llvm.maxnum.f32(float %tmp9, float %tmp34)
   %tmp43 = call float @llvm.maxnum.f32(float %tmp10, float %tmp35)
   %tmp44 = call float @llvm.maxnum.f32(float %tmp11, float %tmp36)
@@ -190,14 +190,14 @@ bb102:                                            ; preds = %bb102, %bb101
   %tmp126 = fmul float %tmp118, 0x3FF7154760000000
   %tmp127 = fmul float %tmp119, 0x3FF7154760000000
   %tmp128 = fmul float %tmp120, 0x3FF7154760000000
-  %tmp129 = call float @llvm.genx.GenISA.WaveAll.f32(float %tmp121, i8 12, i32 0)
-  %tmp130 = call float @llvm.genx.GenISA.WaveAll.f32(float %tmp122, i8 12, i32 0)
-  %tmp131 = call float @llvm.genx.GenISA.WaveAll.f32(float %tmp123, i8 12, i32 0)
-  %tmp132 = call float @llvm.genx.GenISA.WaveAll.f32(float %tmp124, i8 12, i32 0)
-  %tmp133 = call float @llvm.genx.GenISA.WaveAll.f32(float %tmp125, i8 12, i32 0)
-  %tmp134 = call float @llvm.genx.GenISA.WaveAll.f32(float %tmp126, i8 12, i32 0)
-  %tmp135 = call float @llvm.genx.GenISA.WaveAll.f32(float %tmp127, i8 12, i32 0)
-  %tmp136 = call float @llvm.genx.GenISA.WaveAll.f32(float %tmp128, i8 12, i32 0)
+  %tmp129 = call float @llvm.genx.GenISA.WaveAll.f32(float %tmp121, i8 12, i1 true, i32 0)
+  %tmp130 = call float @llvm.genx.GenISA.WaveAll.f32(float %tmp122, i8 12, i1 true, i32 0)
+  %tmp131 = call float @llvm.genx.GenISA.WaveAll.f32(float %tmp123, i8 12, i1 true, i32 0)
+  %tmp132 = call float @llvm.genx.GenISA.WaveAll.f32(float %tmp124, i8 12, i1 true, i32 0)
+  %tmp133 = call float @llvm.genx.GenISA.WaveAll.f32(float %tmp125, i8 12, i1 true, i32 0)
+  %tmp134 = call float @llvm.genx.GenISA.WaveAll.f32(float %tmp126, i8 12, i1 true, i32 0)
+  %tmp135 = call float @llvm.genx.GenISA.WaveAll.f32(float %tmp127, i8 12, i1 true, i32 0)
+  %tmp136 = call float @llvm.genx.GenISA.WaveAll.f32(float %tmp128, i8 12, i1 true, i32 0)
   %tmp137 = call float @llvm.maxnum.f32(float 0.000000e+00, float %tmp129)
   %tmp138 = call float @llvm.maxnum.f32(float 0.000000e+00, float %tmp130)
   %tmp139 = call float @llvm.maxnum.f32(float 0.000000e+00, float %tmp131)
@@ -255,7 +255,7 @@ bb102:                                            ; preds = %bb102, %bb101
 declare float @llvm.fma.f32(float, float, float) #1
 
 ; Function Attrs: convergent inaccessiblememonly nounwind
-declare float @llvm.genx.GenISA.WaveAll.f32(float, i8, i32) #2
+declare float @llvm.genx.GenISA.WaveAll.f32(float, i8, i1, i32) #2
 
 ; Function Attrs: convergent nounwind readnone willreturn
 declare i8 @llvm.genx.GenISA.WaveShuffleIndex.i8(i8, i32, i32) #3

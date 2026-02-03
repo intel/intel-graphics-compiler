@@ -42,7 +42,7 @@ entry:
   call void @llvm.dbg.value(metadata i1 %0, metadata !9, metadata !DIExpression()), !dbg !16
   %1 = call half @llvm.cos.f16(half %src1), !dbg !17
   call void @llvm.dbg.value(metadata half %1, metadata !11, metadata !DIExpression()), !dbg !17
-  %2 = call half @llvm.genx.GenISA.WaveAll.f16(half 0xH4000, i8 1, i32 0), !dbg !18
+  %2 = call half @llvm.genx.GenISA.WaveAll.f16(half 0xH4000, i8 1, i1 true, i32 0), !dbg !18
   call void @llvm.dbg.value(metadata half %2, metadata !13, metadata !DIExpression()), !dbg !18
   br i1 %0, label %var1, label %var2, !dbg !19
 
@@ -73,7 +73,7 @@ var2:                                             ; preds = %var1, %entry
 ; Function Attrs: nounwind readnone speculatable
 declare half @llvm.cos.f16(half) #0
 
-declare half @llvm.genx.GenISA.WaveAll.f16(half, i8, i32)
+declare half @llvm.genx.GenISA.WaveAll.f16(half, i8, i1, i32)
 
 ; Function Attrs: nounwind readnone speculatable
 declare void @llvm.dbg.value(metadata, metadata, metadata) #0

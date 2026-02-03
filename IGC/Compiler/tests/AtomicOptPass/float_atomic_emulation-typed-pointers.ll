@@ -37,7 +37,7 @@ exit:
 ; CHECK:       back:
 ; CHECK-NEXT:    [[TMP0:%.*]] = call i16 @llvm.genx.GenISA.simdLaneId()
 ; CHECK-NEXT:    [[TMP1:%.*]] = zext i16 [[TMP0]] to i32
-; CHECK-NEXT:    [[TMP2:%.*]] = call float @llvm.genx.GenISA.WaveAll.f32(float -2.000000e+00, i8 9, i32 0)
+; CHECK-NEXT:    [[TMP2:%.*]] = call float @llvm.genx.GenISA.WaveAll.f32(float -2.000000e+00, i8 9, i1 true, i32 0)
 ; CHECK-NEXT:    [[TMP3:%.*]] = icmp eq i32 [[TMP1]], 0
 ; CHECK-NEXT:    br i1 [[TMP3]], label %[[TMP4:.*]], label [[EXIT:%.*]]
 ; CHECK:       [[TMP4]]:

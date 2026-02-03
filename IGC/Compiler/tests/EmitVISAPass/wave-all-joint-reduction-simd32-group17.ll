@@ -151,8 +151,8 @@ define void @CSMain(i32 %runtime_value_0, i32 %runtime_value_1, i32 %runtime_val
 ; CHECK: add (M1_NM, 4) reduceSrc_waveAllSrc0(32,0)<1> reduceSrc_waveAllSrc0(32,0)<8;4,1> reduceSrc_waveAllSrc0(32,4)<8;4,1>
 ; CHECK: add (M1_NM, 2) reduceSrc_waveAllSrc0(32,0)<1> reduceSrc_waveAllSrc0(32,0)<4;2,1> reduceSrc_waveAllSrc0(32,2)<4;2,1>
 ; CHECK: add (M1_NM, 1) waveAllJoint(1,0)<1> reduceSrc_waveAllSrc0(32,0)<2;1,1> reduceSrc_waveAllSrc0(32,1)<2;1,1>
-  %waveAllJoint = call <17 x i32> @llvm.genx.GenISA.WaveAll.v17i32.i8.i32(<17 x i32> %waveAllSrc16, i8 0, i32 0)
-  %res_f = call i32 @llvm.genx.GenISA.WaveAll.i32.i8.i32(i32 %f, i8 0, i32 0)
+  %waveAllJoint = call <17 x i32> @llvm.genx.GenISA.WaveAll.v17i32.i8.i32(<17 x i32> %waveAllSrc16, i8 0, i1 true, i32 0)
+  %res_f = call i32 @llvm.genx.GenISA.WaveAll.i32.i8.i32(i32 %f, i8 0, i1 true, i32 0)
   %res_add_0 = extractelement <17 x i32> %waveAllJoint, i32 0
   %res_shl_0 = extractelement <17 x i32> %waveAllJoint, i32 1
   %res_a = extractelement <17 x i32> %waveAllJoint, i32 2
@@ -207,9 +207,9 @@ declare i16 @llvm.genx.GenISA.simdLaneId() #1
 
 declare i32 @llvm.genx.GenISA.ldraw.indexed.i32.p2490368v4f32(<4 x float> addrspace(2490368)*, i32, i32, i1) #2
 
-declare <17 x i32> @llvm.genx.GenISA.WaveAll.v17i32.i8.i32(<17 x i32>, i8, i32) #3
-declare <1 x i32> @llvm.genx.GenISA.WaveAll.v1i32.i8.i32(<1 x i32>, i8, i32) #3
-declare i32 @llvm.genx.GenISA.WaveAll.i32.i8.i32(i32, i8, i32) #3
+declare <17 x i32> @llvm.genx.GenISA.WaveAll.v17i32.i8.i32(<17 x i32>, i8, i1, i32) #3
+declare <1 x i32> @llvm.genx.GenISA.WaveAll.v1i32.i8.i32(<1 x i32>, i8, i1, i32) #3
+declare i32 @llvm.genx.GenISA.WaveAll.i32.i8.i32(i32, i8, i1, i32) #3
 
 declare i32 @llvm.genx.GenISA.WaveShuffleIndex.i32(i32, i32, i32) #4
 

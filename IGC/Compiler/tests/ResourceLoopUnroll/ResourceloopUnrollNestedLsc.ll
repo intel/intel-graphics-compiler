@@ -145,7 +145,6 @@ declare <3 x i32> @llvm.genx.GenISA.ldrawvector.indexed.v3i32.p2621440v4f32(<4 x
 declare i16 @llvm.genx.GenISA.DCL.SystemValue.i16(i32) #1
 declare i32 @llvm.genx.GenISA.WaveShuffleIndex.i32(i32, i32, i32) #6
 
-declare float @llvm.genx.GenISA.WaveAll.f32(float, i8, i32) #0
 declare i32 @llvm.genx.GenISA.WaveBallot(i1, i32)
 declare i32 @llvm.genx.GenISA.firstbitLo(i32)
 

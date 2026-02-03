@@ -46,8 +46,6 @@ define spir_kernel void @foo(<8 x i32> %i32_argument, <8 x float> %vector651, <8
   ret void
 }
 
-declare float @llvm.genx.GenISA.WaveAll.f32(float, i8, i32)
-
 declare void @llvm.genx.GenISA.LSC2DBlockWrite.v8i16(i64, i32, i32, i32, i32, i32, i32, i32, i32, i32, i1, i1, i32, <8 x i16>)
 
 ; Function Attrs: nocallback nofree nosync nounwind speculatable willreturn memory(none)

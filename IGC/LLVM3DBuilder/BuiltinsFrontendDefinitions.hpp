@@ -3071,7 +3071,7 @@ inline llvm::Value *LLVM3DBuilder<T, Inserter>::create_waveAll(llvm::Value *src,
   llvm::Module *module = this->GetInsertBlock()->getParent()->getParent();
   llvm::Function *pFunc =
       llvm::GenISAIntrinsic::getDeclaration(module, llvm::GenISAIntrinsic::GenISA_WaveAll, src->getType());
-  return this->CreateCall3(pFunc, src, type, helperLaneMode ? helperLaneMode : this->getInt32(0));
+  return this->CreateCall4(pFunc, src, type, this->getInt1(true), helperLaneMode ? helperLaneMode : this->getInt32(0));
 }
 
 template <typename T, typename Inserter>

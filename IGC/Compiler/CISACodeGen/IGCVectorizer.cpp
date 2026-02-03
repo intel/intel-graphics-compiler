@@ -925,6 +925,11 @@ bool IGCVectorizer::handleWaveAll(VecArr &Slice) {
       PRINT_LOG_NL("Wavealls are not same type");
       return false;
     }
+    bool SamePredicate = First->getPredicate() == ElWave->getPredicate();
+    if (!SamePredicate) {
+      PRINT_LOG_NL("Wavealls are not same predicate");
+      return false;
+    }
   }
 
   PRINT_DS("waveall: ", Slice);
@@ -940,6 +945,7 @@ bool IGCVectorizer::handleWaveAll(VecArr &Slice) {
   // scalar operands
   Operands.push_back(First->getOperand(1));
   Operands.push_back(First->getOperand(2));
+  Operands.push_back(First->getOperand(3));
 
   PRINT_DS("Operands: ", Operands);
   Instruction *InsertPoint = getInsertPointForCreatedInstruction(Operands, Slice);

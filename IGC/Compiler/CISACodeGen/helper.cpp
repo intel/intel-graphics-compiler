@@ -1209,7 +1209,6 @@ bool subgroupIntrinsicHasHelperLanes(const Instruction &I) {
 
   unsigned int helperLaneIndex = 0;
   switch (GII->getIntrinsicID()) {
-  case GenISAIntrinsic::GenISA_WaveAll:
   case GenISAIntrinsic::GenISA_WaveClusteredBallot:
   case GenISAIntrinsic::GenISA_WaveBroadcast:
   case GenISAIntrinsic::GenISA_WaveShuffleIndex:
@@ -1219,6 +1218,7 @@ bool subgroupIntrinsicHasHelperLanes(const Instruction &I) {
   case GenISAIntrinsic::GenISA_WaveInverseBallot:
     helperLaneIndex = 1;
     break;
+  case GenISAIntrinsic::GenISA_WaveAll:
   case GenISAIntrinsic::GenISA_WaveInterleave:
   case GenISAIntrinsic::GenISA_WaveClustered:
   case GenISAIntrinsic::GenISA_WaveClusteredPrefix:
