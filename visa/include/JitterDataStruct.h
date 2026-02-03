@@ -10,8 +10,10 @@ SPDX-License-Identifier: MIT
 #define JITTERDATASTRUCT_
 
 #include <bitset>
+#include <cstddef>
 #include <optional>
 #include <stdint.h>
+#include <vector>
 
 // clang-format off
 #include "common/LLVMWarningsPush.hpp"
@@ -169,6 +171,35 @@ struct PERF_SENDINFO {
   std::vector<uint32_t> src1Vec;
   // 3rd element = dst Lenth
   std::vector<uint32_t> destVec;
+
+  static constexpr uint32_t SENDINFO_VIEW_MAGIC = 0x53495657; // 'SIVW'
+  static constexpr uint16_t SENDINFO_VIEW_VERSION = 1;
+
+  struct BUFFER {
+    const uint32_t *pBuffer;
+    size_t Size;
+  };
+
+  struct PERF_SENDINFO_VIEW {
+    uint32_t Magic;
+    uint16_t Version;
+    BUFFER Src0;
+    BUFFER Src1;
+    BUFFER Dest;
+  };
+
+  PERF_SENDINFO_VIEW serialize() const {
+    PERF_SENDINFO_VIEW View = {};
+    View.Magic = SENDINFO_VIEW_MAGIC;
+    View.Version = SENDINFO_VIEW_VERSION;
+    View.Src0.pBuffer = (src0Vec.empty()) ? nullptr : src0Vec.data();
+    View.Src0.Size = src0Vec.size();
+    View.Src1.pBuffer = (src1Vec.empty()) ? nullptr : src1Vec.data();
+    View.Src1.Size = src1Vec.size();
+    View.Dest.pBuffer = (destVec.empty()) ? nullptr : destVec.data();
+    View.Dest.Size = destVec.size();
+    return View;
+  }
 };
 
 struct FINALIZER_INFO {

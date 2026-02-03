@@ -8,6 +8,7 @@ SPDX-License-Identifier: MIT
 
 #include <fstream>
 #include <functional>
+#include <new>
 #include <regex>
 #include <sstream>
 
@@ -473,19 +474,20 @@ void *VISAKernelImpl::encodeAndEmit(unsigned int &binarySize) {
 
 #ifdef _WIN32
   if (m_options->getOption(vISA_ShaderStatsDumpless)) {
-      typedef void(__stdcall* PFNOPENWRAPPERDLL)(
-          void* buf, size_t buf_size, char* dump_stem, char* platform,
-          void* sendinfo, size_t sendinfo_size);
-      HMODULE handle = LoadDependency("WrapperLib.dll");
-      if (handle) {
-          auto OpenWrapper =
-              (PFNOPENWRAPPERDLL)GetProcAddress(handle, "process_buffer");
-          if (OpenWrapper) {
-              OpenWrapper(binary, binarySize, (char*)m_asmName.c_str(),
-                  (char*)m_kernel->getGenxPlatformString(),
-                  &m_jitInfo->sendInfo, sizeof(m_jitInfo->sendInfo));
-          }
+    typedef void(__stdcall * PFNOPENWRAPPERDLL)(void *buf, size_t buf_size,
+                                                char *dump_stem, char *platform,
+                                                void *sendinfo);
+    HMODULE handle = LoadDependency("WrapperLib.dll");
+    if (handle) {
+      auto OpenWrapper =
+          (PFNOPENWRAPPERDLL)GetProcAddress(handle, "process_buffer");
+      if (OpenWrapper) {
+        vISA::PERF_SENDINFO::PERF_SENDINFO_VIEW SendInfoView =
+            m_jitInfo->sendInfo.serialize();
+        OpenWrapper(binary, binarySize, (char *)m_asmName.c_str(),
+                    (char *)m_kernel->getGenxPlatformString(), &SendInfoView);
       }
+    }
   }
 #endif
 
@@ -734,7 +736,8 @@ int VISAKernelImpl::InitializeFastPath() {
     m_kernel->getKernelDebugInfo()->setVISAKernel(this);
   }
 
-  m_jitInfo = (FINALIZER_INFO *)m_mem.alloc(sizeof(FINALIZER_INFO));
+  void *pJitInfoMem = m_mem.alloc(sizeof(FINALIZER_INFO));
+  m_jitInfo = new (pJitInfoMem) FINALIZER_INFO();
 
   void *addr = m_kernelMem->alloc(sizeof(class IR_Builder));
   m_builder = new (addr)
@@ -9233,6 +9236,12 @@ VISAKernelImpl::~VISAKernelImpl() {
     // so that internal data structures get cleared.
     m_kernel->~G4_Kernel();
     m_builder->~IR_Builder();
+
+    if (m_jitInfo != nullptr) {
+      m_jitInfo->~FINALIZER_INFO();
+      m_jitInfo = nullptr;
+    }
+
     delete m_kernelMem;
   }
 

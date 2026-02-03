@@ -6107,8 +6107,6 @@ void Optimizer::countGRFUsage() {
     if (GRFUse[i])
       count++;
   fg.builder->getJitInfo()->stats.numGRFUsed = count;
-  fg.builder->criticalMsgStream()
-      << "\tKernel " << kernel.getName() << " : " << count << " registers\n";
 }
 
 //

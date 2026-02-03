@@ -848,14 +848,7 @@ IR_Builder::IR_Builder(INST_LIST_NODE_ALLOCATOR &alloc, G4_Kernel &k,
   arg_size = 0;
   return_var_size = 0;
   if (metaData != NULL) {
-#if defined(__GNUC__) && (__GNUC__ >= 8)
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wclass-memaccess"
-#endif
-    memset(metaData, 0, sizeof(FINALIZER_INFO));
-#if defined(__GNUC__) && (__GNUC__ >= 8)
-#pragma GCC diagnostic pop
-#endif
+    *metaData = FINALIZER_INFO();
   }
 
   usedBarriers = BitSet(kernel.getMaxNumOfBarriers(), false);

@@ -114,8 +114,7 @@ int JITCompileAllOptions(const char *kernelName, const void *kernelIsa,
   }
 
   if (jitInfo != NULL)
-    memcpy_s(jitInfo, sizeof(vISA::FINALIZER_INFO), tempJitInfo,
-             sizeof(vISA::FINALIZER_INFO));
+    *jitInfo = *tempJitInfo;
 
   if (!(0 == kernel->GetGenxBinary(genxBinary, size) && genxBinary != NULL)) {
     return JIT_INVALID_INPUT;
