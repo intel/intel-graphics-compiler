@@ -338,6 +338,7 @@ public:
   unsigned int GetLogBindlessSamplerSize() const { return (unsigned int)iSTD::Log2(GetBindlessSamplerSize()); }
 
   bool SupportCPS() const { return (m_platformInfo.eRenderCoreFamily >= IGFX_GEN10_CORE); }
+  bool hasUnifiedCoarseAndPixelDispatchRates() const { return (m_platformInfo.eRenderCoreFamily >= IGFX_XE3_CORE); }
   bool supportsSIMD32forCPS() const { return (m_platformInfo.eProductFamily >= IGFX_METEORLAKE); }
 
   bool supportsThreadCombining() const {
