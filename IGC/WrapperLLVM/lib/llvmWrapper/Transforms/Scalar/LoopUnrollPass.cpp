@@ -24,26 +24,34 @@ SPDX-License-Identifier: MIT
 #include "llvm/Transforms/Scalar/LoopPassManager.h"
 
 #include "llvmWrapper/Transforms/InitializePasses.h"
+#include "llvmWrapper/ADT/Optional.h"
+#include "llvmWrapper/ADT/None.h"
+
 #include "common/LLVMWarningsPop.hpp"
 
 #include "Compiler/IGCPassSupport.h"
-#include <optional>
-
 using namespace llvm;
 
 namespace IGCLLVM {
 
 LoopUnrollLegacyPassWrapper::LoopUnrollLegacyPassWrapper(
-    int OptLevel, bool OnlyWhenForced, bool ForgetAllSCEV, std::optional<unsigned> Threshold,
-    std::optional<unsigned> Count, std::optional<bool> AllowPartial, std::optional<bool> Runtime,
-    std::optional<bool> UpperBound, std::optional<bool> AllowPeeling, std::optional<bool> AllowProfileBasedPeeling,
-    std::optional<unsigned> ProvidedFullUnrollMaxCount)
+    int OptLevel, bool OnlyWhenForced, bool ForgetAllSCEV, IGCLLVM::optional<bool> AllowPartial,
+    IGCLLVM::optional<bool> Runtime, IGCLLVM::optional<bool> UpperBound, IGCLLVM::optional<bool> AllowPeeling,
+    IGCLLVM::optional<bool> AllowProfileBasedPeeling, IGCLLVM::optional<unsigned> ProvidedFullUnrollMaxCount)
     : FunctionPass(ID), OptLevel(OptLevel), OnlyWhenForced(OnlyWhenForced), ForgetAllSCEV(ForgetAllSCEV),
-      ProvidedCount(std::move(Count)), ProvidedThreshold(Threshold), ProvidedAllowPartial(AllowPartial),
-      ProvidedRuntime(Runtime), ProvidedUpperBound(UpperBound), ProvidedAllowPeeling(AllowPeeling),
-      ProvidedAllowProfileBasedPeeling(AllowProfileBasedPeeling),
+      ProvidedAllowPartial(AllowPartial), ProvidedRuntime(Runtime), ProvidedUpperBound(UpperBound),
+      ProvidedAllowPeeling(AllowPeeling), ProvidedAllowProfileBasedPeeling(AllowProfileBasedPeeling),
       ProvidedFullUnrollMaxCount(ProvidedFullUnrollMaxCount) {
   initializeLoopUnrollLegacyPassWrapperPass(*PassRegistry::getPassRegistry());
+}
+
+void LoopUnrollLegacyPassWrapper::initializeAnalysisManagers(TargetTransformInfoWrapperPass &TTIWP) {
+  // Register New Pass Manager TargetIRAnalysis which is constructed from Legacy Pass Manager
+  // TargetTransformInfoWrapperPass to NPM analysis manager
+  // registerPass and TargetIRAnalysis constructor require callbacks so nested lambdas are used
+  auto LpmTTIWPCallback = [&TTIWP](const Function &F) { return std::move(TTIWP.getTTI(F)); };
+  FAM.registerPass([&LpmTTIWPCallback] { return TargetIRAnalysis(LpmTTIWPCallback); });
+
   PB.registerModuleAnalyses(MAM);
   PB.registerCGSCCAnalyses(CGAM);
   PB.registerFunctionAnalyses(FAM);
@@ -58,7 +66,18 @@ bool LoopUnrollLegacyPassWrapper::runOnFunction(Function &F) {
   if (skipFunction(F))
     return false;
 
-  LoopUnrollPass Implementation;
+  auto &TTIWP = getAnalysis<TargetTransformInfoWrapperPass>();
+  initializeAnalysisManagers(TTIWP);
+
+  LoopUnrollOptions unrollOpts(OptLevel, OnlyWhenForced, ForgetAllSCEV);
+  unrollOpts.AllowPartial = ProvidedAllowPartial;
+  unrollOpts.FullUnrollMaxCount = ProvidedFullUnrollMaxCount;
+  unrollOpts.AllowPeeling = ProvidedAllowPeeling;
+  unrollOpts.AllowProfileBasedPeeling = ProvidedAllowProfileBasedPeeling;
+  unrollOpts.AllowRuntime = ProvidedRuntime;
+  unrollOpts.AllowUpperBound = ProvidedUpperBound;
+
+  LoopUnrollPass Implementation(unrollOpts);
   Implementation.run(F, FAM);
   return true;
 }
@@ -73,14 +92,17 @@ char LoopUnrollLegacyPassWrapper::ID = 0;
 
 Pass *createLegacyWrappedLoopUnrollPass(int OptLevel, bool OnlyWhenForced, bool ForgetAllSCEV, int Threshold, int Count,
                                         int AllowPartial, int Runtime, int UpperBound, int AllowPeeling) {
-#if LLVM_VERSION_MAJOR > 16 && !defined(IGC_LLVM_TRUNK_REVISION)
+#if LLVM_VERSION_MAJOR >= 16
+  // Not using Count and Threshold as New Pass Manager LoopUnroll implementation doesn't use them
+  // Instead it uses Count and Threshold provided by TargetTransformInfo pass which is registered to NPM analysis
+  // manager (FAM member) through initializeAnalysisManagers function above; Count and Threshold have to be provided in
+  // createLegacyWrappedLoopUnrollPass function as both are used in Legacy Pass Manager so we need them in our hybrid
+  // approach
   return new LoopUnrollLegacyPassWrapper(OptLevel, OnlyWhenForced, ForgetAllSCEV,
-                                         Threshold == -1 ? std::nullopt : std::optional<unsigned>(Threshold),
-                                         Count == -1 ? std::nullopt : std::optional<unsigned>(Count),
-                                         AllowPartial == -1 ? std::nullopt : std::optional<bool>(AllowPartial),
-                                         Runtime == -1 ? std::nullopt : std::optional<bool>(Runtime),
-                                         UpperBound == -1 ? std::nullopt : std::optional<bool>(UpperBound),
-                                         AllowPeeling == -1 ? std::nullopt : std::optional<bool>(AllowPeeling));
+                                         AllowPartial == -1 ? IGCLLVM::None : IGCLLVM::optional<bool>(AllowPartial),
+                                         Runtime == -1 ? IGCLLVM::None : IGCLLVM::optional<bool>(Runtime),
+                                         UpperBound == -1 ? IGCLLVM::None : IGCLLVM::optional<bool>(UpperBound),
+                                         AllowPeeling == -1 ? IGCLLVM::None : IGCLLVM::optional<bool>(AllowPeeling));
 #else
   return llvm::createLoopUnrollPass(OptLevel, OnlyWhenForced, ForgetAllSCEV, Threshold, Count, AllowPartial, Runtime,
                                     UpperBound, AllowPeeling);
@@ -88,7 +110,7 @@ Pass *createLegacyWrappedLoopUnrollPass(int OptLevel, bool OnlyWhenForced, bool 
 }
 
 Pass *createLegacyWrappedSimpleLoopUnrollPass(int OptLevel, bool OnlyWhenForced, bool ForgetAllSCEV) {
-#if LLVM_VERSION_MAJOR > 16 && !defined(IGC_LLVM_TRUNK_REVISION)
+#if LLVM_VERSION_MAJOR >= 16
   return createLegacyWrappedLoopUnrollPass(OptLevel, OnlyWhenForced, ForgetAllSCEV, -1, -1, 0, 0, 0, 1);
 #else
   return llvm::createSimpleLoopUnrollPass(OptLevel, OnlyWhenForced, ForgetAllSCEV);

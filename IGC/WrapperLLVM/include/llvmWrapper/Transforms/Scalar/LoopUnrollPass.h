@@ -10,36 +10,36 @@ SPDX-License-Identifier: MIT
 #define IGCLLVM_TRANSFORMS_SCALAR_LEGACY_LOOPUNROLL_H
 
 #include "llvm/Analysis/LoopAnalysisManager.h"
+#include "llvm/Analysis/TargetTransformInfo.h"
 #include "llvm/IR/LegacyPassManager.h"
 #include "llvm/IR/PassManager.h"
 #include "llvm/Pass.h"
 #include "llvm/Passes/PassBuilder.h"
-#include <optional>
+#include "llvmWrapper/ADT/Optional.h"
+#include "llvmWrapper/ADT/None.h"
+
 using namespace llvm;
 
 namespace IGCLLVM {
 
 struct LoopUnrollLegacyPassWrapper : public FunctionPass {
   LoopUnrollLegacyPassWrapper(int OptLevel = 2, bool OnlyWhenForced = false, bool ForgetAllSCEV = false,
-                              std::optional<unsigned> Threshold = std::nullopt,
-                              std::optional<unsigned> Count = std::nullopt,
-                              std::optional<bool> AllowPartial = std::nullopt,
-                              std::optional<bool> Runtime = std::nullopt, std::optional<bool> UpperBound = std::nullopt,
-                              std::optional<bool> AllowPeeling = std::nullopt,
-                              std::optional<bool> AllowProfileBasedPeeling = std::nullopt,
-                              std::optional<unsigned> ProvidedFullUnrollMaxCount = std::nullopt);
+                              IGCLLVM::optional<bool> AllowPartial = IGCLLVM::None,
+                              IGCLLVM::optional<bool> Runtime = IGCLLVM::None,
+                              IGCLLVM::optional<bool> UpperBound = IGCLLVM::None,
+                              IGCLLVM::optional<bool> AllowPeeling = IGCLLVM::None,
+                              IGCLLVM::optional<bool> AllowProfileBasedPeeling = IGCLLVM::None,
+                              IGCLLVM::optional<unsigned> ProvidedFullUnrollMaxCount = IGCLLVM::None);
   static char ID;
   int OptLevel;
   bool OnlyWhenForced;
   bool ForgetAllSCEV;
-  std::optional<unsigned> ProvidedCount;
-  std::optional<unsigned> ProvidedThreshold;
-  std::optional<bool> ProvidedAllowPartial;
-  std::optional<bool> ProvidedRuntime;
-  std::optional<bool> ProvidedUpperBound;
-  std::optional<bool> ProvidedAllowPeeling;
-  std::optional<bool> ProvidedAllowProfileBasedPeeling;
-  std::optional<unsigned> ProvidedFullUnrollMaxCount;
+  IGCLLVM::optional<bool> ProvidedAllowPartial;
+  IGCLLVM::optional<bool> ProvidedRuntime;
+  IGCLLVM::optional<bool> ProvidedUpperBound;
+  IGCLLVM::optional<bool> ProvidedAllowPeeling;
+  IGCLLVM::optional<bool> ProvidedAllowProfileBasedPeeling;
+  IGCLLVM::optional<unsigned> ProvidedFullUnrollMaxCount;
 
   bool runOnFunction(llvm::Function &F) override;
   void getAnalysisUsage(AnalysisUsage &AU) const override;
@@ -51,6 +51,8 @@ private:
   CGSCCAnalysisManager CGAM;
   ModuleAnalysisManager MAM;
   PassBuilder PB;
+
+  void initializeAnalysisManagers(TargetTransformInfoWrapperPass &TTIWP);
 };
 
 Pass *createLegacyWrappedSimpleLoopUnrollPass(int OptLevel = 2, bool OnlyWhenForced = false,
