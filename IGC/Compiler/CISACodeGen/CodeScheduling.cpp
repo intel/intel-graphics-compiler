@@ -30,7 +30,6 @@ SPDX-License-Identifier: MIT
 #include "Probe/Assertion.h"
 
 #include "llvmWrapper/IR/DerivedTypes.h"
-#include "llvmWrapper/IR/Function.h"
 #include "llvmWrapper/IR/Value.h"
 #include <llvmWrapper/Analysis/TargetLibraryInfo.h>
 
@@ -210,8 +209,9 @@ class RegisterPressureTracker {
 public:
   RegisterPressureTracker(BasicBlock *BB, IGCLivenessAnalysisRunner *RPE, IGCFunctionExternalRegPressureAnalysis *FRPE,
                           VectorShuffleAnalysis *VSA, RematChainsAnalysis *RCA, WIAnalysisRunner *WI,
-                          CodeGenContext *CTX, SchedulingConfig *Config, llvm::raw_ostream *LogStream)
-      : BB(BB), RPE(RPE), FRPE(FRPE), VSA(VSA), RCA(RCA), WI(WI), CTX(CTX), C(Config), LogStream(LogStream) {
+                          CodeGenContext *CTX, SchedulingConfig *Config, llvm::raw_ostream *LogStream,
+                          GenXFunctionGroupAnalysis *FGA)
+      : BB(BB), RPE(RPE), FRPE(FRPE), VSA(VSA), RCA(RCA), WI(WI), CTX(CTX), C(Config), LogStream(LogStream), FGA(FGA) {
     F = BB->getParent();
     SIMD = C->get(SchedulingConfig::Option::ForceSIMDSize) > 0 ? C->get(SchedulingConfig::Option::ForceSIMDSize)
                                                                : numLanes(RPE->bestGuessSIMDSize(F));
@@ -231,10 +231,11 @@ public:
     CTX = RPT.CTX;
     C = RPT.C;
     LogStream = RPT.LogStream;
+    FGA = RPT.FGA;
 
     F = BB->getParent();
     SIMD = C->get(SchedulingConfig::Option::ForceSIMDSize) > 0 ? C->get(SchedulingConfig::Option::ForceSIMDSize)
-                                                               : numLanes(RPE->bestGuessSIMDSize(F));
+                                                               : numLanes(RPE->bestGuessSIMDSize(F, FGA));
     DL = &(F->getParent()->getDataLayout());
 
     // copy the state
@@ -506,6 +507,7 @@ private:
   const DataLayout *DL;
   SchedulingConfig *C;
   llvm::raw_ostream *LogStream;
+  GenXFunctionGroupAnalysis *FGA;
 
   int32_t SIMD;
   int32_t CurrentPressure = 0;
@@ -991,8 +993,8 @@ public:
 
   BBScheduler(BasicBlock *BB, IGCLivenessAnalysisRunner *RPE, IGCFunctionExternalRegPressureAnalysis *FRPE,
               AAResults *AA, VectorShuffleAnalysis *VSA, RematChainsAnalysis *RCA, CodeGenContext *CTX,
-              SchedulingConfig *Config, llvm::raw_ostream *LogStream)
-      : BB(BB), RPE(RPE), FRPE(FRPE), AA(AA), VSA(VSA), RCA(RCA), CTX(CTX), C(*Config), LogStream(LogStream) {
+              SchedulingConfig *Config, llvm::raw_ostream *LogStream, GenXFunctionGroupAnalysis *FGA)
+      : BB(BB), RPE(RPE), FRPE(FRPE), AA(AA), VSA(VSA), RCA(RCA), CTX(CTX), C(*Config), LogStream(LogStream), FGA(FGA) {
     F = BB->getParent();
     WI = &FRPE->getWIAnalysis(F);
   }
@@ -1010,7 +1012,7 @@ public:
     // Check if the original schedule can have spills
     // Do nothing if the original schedule can not have spills and rescheduling is not forced
 
-    RegisterPressureTracker RPT(BB, RPE, FRPE, VSA, RCA, WI, CTX, &C, LogStream);
+    RegisterPressureTracker RPT(BB, RPE, FRPE, VSA, RCA, WI, CTX, &C, LogStream, FGA);
 
     int32_t MaxOriginalRegpressure = 0;
     bool OriginalScheduleCanHaveSpills = false;
@@ -1057,7 +1059,7 @@ public:
     std::vector<std::unique_ptr<Schedule>> Schedules;
 
     std::unique_ptr<Schedule> DefaultSchedule =
-        std::make_unique<Schedule>(BB, RPE, FRPE, VSA, RCA, WI, CTX, &C, LogStream);
+        std::make_unique<Schedule>(BB, RPE, FRPE, VSA, RCA, WI, CTX, &C, LogStream, FGA);
 
     // First try if "GreedyMW" scheduling can be applied
     // This approach prioritizes scheduling by the edge weights
@@ -1234,6 +1236,7 @@ private:
   RematChainsAnalysis *RCA;
   SchedulingConfig &C;
   llvm::raw_ostream *LogStream;
+  GenXFunctionGroupAnalysis *FGA;
 
   // Helper function to format debug information string
   static std::string formatDebugInfo(int32_t CurrentPressure, int32_t Estimate, const std::string &Type,
@@ -1702,10 +1705,10 @@ private:
   public:
     Schedule(BasicBlock *BB, IGCLivenessAnalysisRunner *RPE, IGCFunctionExternalRegPressureAnalysis *FRPE,
              VectorShuffleAnalysis *VSA, RematChainsAnalysis *RCA, WIAnalysisRunner *WI, CodeGenContext *CTX,
-             SchedulingConfig *C, llvm::raw_ostream *LogStream)
+             SchedulingConfig *C, llvm::raw_ostream *LogStream, GenXFunctionGroupAnalysis *FGA)
         : BB(BB), C(*C), CTX(CTX), VSA(VSA), RCA(RCA), LogStream(LogStream),
           G(DepGraph(BB, RPE, FRPE, VSA, RCA, WI, CTX, *C, LogStream)),
-          RT(RegisterPressureTracker(BB, RPE, FRPE, VSA, RCA, WI, CTX, C, LogStream)) {
+          RT(RegisterPressureTracker(BB, RPE, FRPE, VSA, RCA, WI, CTX, C, LogStream, FGA)) {
       // init ready list
       for (auto &Node : G.InstNodes) {
         if (Node.Preds.empty()) {
@@ -2634,6 +2637,7 @@ bool CodeScheduling::runOnFunction(Function &F) {
   RPE = &getAnalysis<IGCLivenessAnalysis>().getLivenessRunner();
   FRPE = &getAnalysis<IGCFunctionExternalRegPressureAnalysis>();
   WI = &FRPE->getWIAnalysis(&F);
+  FGA = getAnalysisIfAvailable<GenXFunctionGroupAnalysis>();
 
   bool Changed = false;
 
@@ -2641,7 +2645,7 @@ bool CodeScheduling::runOnFunction(Function &F) {
     if (!std::any_of(BB.begin(), BB.end(), [](Instruction &I) { return isDPAS(&I); }))
       continue;
 
-    BBScheduler Scheduler(&BB, RPE, FRPE, AA, VSA, RCA, CTX, &Config, LogStream);
+    BBScheduler Scheduler(&BB, RPE, FRPE, AA, VSA, RCA, CTX, &Config, LogStream, FGA);
     Changed |= Scheduler.schedule();
   }
 

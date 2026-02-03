@@ -7,15 +7,12 @@ SPDX-License-Identifier: MIT
 ============================= end_copyright_notice ===========================*/
 
 #pragma once
-#include "Compiler/IGCPassSupport.h"
 #include "Compiler/CISACodeGen/WIAnalysis.hpp"
 #include "Compiler/CISACodeGen/IGCLivenessAnalysis.h"
 #include "Compiler/CISACodeGen/VectorShuffleAnalysis.hpp"
 #include "Compiler/CISACodeGen/RematChainsAnalysis.hpp"
 #include "Compiler/CISACodeGen/TranslationTable.hpp"
 #include "Compiler/CodeGenContextWrapper.hpp"
-#include "Compiler/MetaDataUtilsWrapper.h"
-#include "Compiler/MetaDataApi/MetaDataApi.h"
 
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/Analysis/PostDominators.h>
@@ -35,6 +32,7 @@ class CodeScheduling : public llvm::FunctionPass {
   IGCLivenessAnalysisRunner *RPE = nullptr;
   IGCFunctionExternalRegPressureAnalysis *FRPE = nullptr;
   CodeGenContext *CTX = nullptr;
+  GenXFunctionGroupAnalysis *FGA = nullptr;
 
 public:
   static char ID; // Pass identification

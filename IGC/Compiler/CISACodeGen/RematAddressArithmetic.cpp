@@ -107,6 +107,7 @@ public:
 
   CodeGenContext *CGCtx = nullptr;
   IGCLivenessAnalysisRunner *RPE = nullptr;
+  GenXFunctionGroupAnalysis *FGA = nullptr;
 
 private:
   IGC::REMAT_OPTIONS m_rematFlags = REMAT_NONE;
@@ -548,7 +549,7 @@ void CloneAddressArithmetic::speculateWholeChain(RematSet &ToProcess, unsigned i
 bool CloneAddressArithmetic::isRegPressureLow(Function &F) {
 
   RPE = &getAnalysis<IGCLivenessAnalysis>().getLivenessRunner();
-  unsigned int SIMD = numLanes(RPE->bestGuessSIMDSize(&F));
+  unsigned int SIMD = numLanes(RPE->bestGuessSIMDSize(&F, FGA));
   unsigned int PressureLimit = IGC_GET_FLAG_VALUE(RematRPELimit);
   unsigned int MaxPressure = RPE->getMaxRegCountForFunction(F, SIMD, &WI->Runner);
   bool Result = MaxPressure < PressureLimit;
@@ -701,6 +702,7 @@ bool CloneAddressArithmetic::runOnFunction(Function &F) {
 
   CGCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
   WI = &getAnalysis<WIAnalysis>();
+  FGA = getAnalysisIfAvailable<GenXFunctionGroupAnalysis>();
 
   bool Modified = false;
   Modified |= greedyRemat(F);

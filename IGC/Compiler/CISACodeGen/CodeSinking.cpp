@@ -755,6 +755,7 @@ bool CodeLoopSinking::runOnFunction(Function &F) {
   LI = &getAnalysis<LoopInfoWrapperPass>().getLoopInfo();
   AA = &getAnalysis<AAResultsWrapperPass>().getAAResults();
   TLI = &getAnalysis<TargetLibraryInfoWrapperPass>().getTLI();
+  FGA = getAnalysisIfAvailable<GenXFunctionGroupAnalysis>();
 
   // Note: FRPE is a Module analysis and currently it runs only once.
   // If function A calls function B then
@@ -803,7 +804,7 @@ void CodeLoopSinking::dumpToFile(const std::string &Log) {
 uint CodeLoopSinking::getMaxRegCountForLoop(Loop *L) {
   IGC_ASSERT(RPE);
   Function *F = L->getLoopPreheader()->getParent();
-  uint SIMD = numLanes(RPE->bestGuessSIMDSize(F));
+  uint SIMD = numLanes(RPE->bestGuessSIMDSize(F, FGA));
   unsigned int Max = 0;
   for (BasicBlock *BB : L->getBlocks()) {
     auto BBPressureEntry = BBPressures.try_emplace(BB);
@@ -857,7 +858,7 @@ LoopSinkMode CodeLoopSinking::needLoopSink(Loop *L) {
   Function *F = Preheader->getParent();
   uint GRFThresholdDelta = IGC_GET_FLAG_VALUE(LoopSinkThresholdDelta);
   uint NGRF = CTX->getNumGRFPerThread();
-  uint SIMD = numLanes(RPE->bestGuessSIMDSize(F));
+  uint SIMD = numLanes(RPE->bestGuessSIMDSize(F, FGA));
 
   PrintDump(VerbosityLevel::Low, "\n");
   if (!Preheader->getName().empty()) {
@@ -1356,7 +1357,7 @@ bool CodeLoopSinking::loopSink(Loop *L, LoopSinkMode Mode) {
 
       // Getting the size of the sinked on this iteration candidates
       // Must be before local sinking
-      auto SIMD = numLanes(RPE->bestGuessSIMDSize(F));
+      auto SIMD = numLanes(RPE->bestGuessSIMDSize(F, FGA));
       ValueSet InstsSet;
       for (auto &Pair : CurrentInstToCandidate) {
         InstsSet.insert(Pair.first);

@@ -240,8 +240,9 @@ private:
 //   2. Estimates increase in register pressure.
 class Scorer {
 public:
-  Scorer(const DataLayout &DL, ModuleMetaData &MMD, IGCLivenessAnalysisRunner &RPE, WIAnalysisRunner &WI)
-      : DL(DL), MMD(MMD), RPE(RPE), WI(WI) {}
+  Scorer(const DataLayout &DL, ModuleMetaData &MMD, IGCLivenessAnalysisRunner &RPE, WIAnalysisRunner &WI,
+         GenXFunctionGroupAnalysis *FGA)
+      : DL(DL), MMD(MMD), RPE(RPE), WI(WI), FGA(FGA) {}
 
   void score(SmallVectorImpl<ReductionCandidateGroup> &Candidates);
 
@@ -258,6 +259,7 @@ private:
   IGCLivenessAnalysisRunner &RPE;
   ModuleMetaData &MMD;
   WIAnalysisRunner &WI;
+  GenXFunctionGroupAnalysis *FGA;
 };
 
 // Analyzes GEP instructions in a single loop and selects candidates for reduction.
@@ -305,7 +307,8 @@ private:
 class RegisterPressureTracker {
 public:
   RegisterPressureTracker(Function &F, CodeGenContext &CGC, IGCLivenessAnalysisRunner &RPE,
-                          IGCFunctionExternalRegPressureAnalysis &FRPE, WIAnalysisRunner &WI);
+                          IGCFunctionExternalRegPressureAnalysis &FRPE, WIAnalysisRunner &WI,
+                          GenXFunctionGroupAnalysis *FGA);
 
   bool fitsPressureThreshold(ReductionCandidateGroup &C);
   void updatePressure(ReductionCandidateGroup &C, SCEVExpander &E);
@@ -318,6 +321,7 @@ private:
 
   IGCLivenessAnalysisRunner &RPE;
   WIAnalysisRunner &WI;
+  GenXFunctionGroupAnalysis *FGA;
 
   // Basic Blocks impacted by reduction, requiring register pressure reestimation.
   BBSet BBsToUpdate;
@@ -801,7 +805,7 @@ void Scorer::scoreRegisterPressure(ReductionCandidateGroup &Candidate) {
 
   auto *L = Candidate.getLoop();
   auto *F = Cheapest.GEP->getParent()->getParent();
-  uint SIMD = numLanes(RPE.bestGuessSIMDSize(F));
+  uint SIMD = numLanes(RPE.bestGuessSIMDSize(F, FGA));
 
   ValueSet Instructions;
 
@@ -1117,8 +1121,9 @@ bool Analyzer::DeconstructedSCEV::isValid() {
 }
 
 RegisterPressureTracker::RegisterPressureTracker(Function &F, CodeGenContext &CGC, IGCLivenessAnalysisRunner &RPE,
-                                                 IGCFunctionExternalRegPressureAnalysis &FRPE, WIAnalysisRunner &WI)
-    : RPE(RPE), WI(WI) {
+                                                 IGCFunctionExternalRegPressureAnalysis &FRPE, WIAnalysisRunner &WI,
+                                                 GenXFunctionGroupAnalysis *FGA)
+    : RPE(RPE), WI(WI), FGA(FGA) {
   MaxAllowedPressure =
       static_cast<unsigned>(CGC.getNumGRFPerThread() * IGC_GET_FLAG_VALUE(GEPLSRThresholdRatio) / 100.0f);
 
@@ -1143,7 +1148,7 @@ void RegisterPressureTracker::trackDeletedInstruction(Value *V) {
 bool RegisterPressureTracker::fitsPressureThreshold(ReductionCandidateGroup &C) {
   BasicBlock *Preheader = C.getLoop()->getLoopPreheader();
   auto *F = Preheader->getParent();
-  uint SIMD = numLanes(RPE.bestGuessSIMDSize(F));
+  uint SIMD = numLanes(RPE.bestGuessSIMDSize(F, FGA));
 
   unsigned MaxLoopPressure = RPE.getMaxRegCountForLoop(*C.getLoop(), SIMD, &WI);
   unsigned AdditionalPressure = C.getScore().RegisterPressure;
@@ -1474,6 +1479,7 @@ bool GEPLoopStrengthReduction::runOnFunction(llvm::Function &F) {
   auto &MMD = *getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
   auto &RPE = getAnalysis<IGCLivenessAnalysis>().getLivenessRunner();
   auto &SE = getAnalysis<ScalarEvolutionWrapperPass>().getSE();
+  auto *FGA = getAnalysisIfAvailable<GenXFunctionGroupAnalysis>();
 
   // Note: FRPE is a Module analysis and currently runs only once.
   // If function A calls function B then it's possible that transformation of function A
@@ -1487,7 +1493,7 @@ bool GEPLoopStrengthReduction::runOnFunction(llvm::Function &F) {
 
   SmallVector<ReductionCandidateGroup, 32> Candidates;
 
-  RegisterPressureTracker RPT(F, CGC, RPE, FRPE, *WI);
+  RegisterPressureTracker RPT(F, CGC, RPE, FRPE, *WI, FGA);
 
   for (Loop *L : LI.getLoopsInPreorder())
     Analyzer(DL, DT, *L, LI, SE, E).analyze(Candidates);
@@ -1495,7 +1501,7 @@ bool GEPLoopStrengthReduction::runOnFunction(llvm::Function &F) {
   if (Candidates.empty())
     return false;
 
-  Scorer(DL, MMD, RPE, *WI).score(Candidates);
+  Scorer(DL, MMD, RPE, *WI, FGA).score(Candidates);
 
   IGCLLVM::IRBuilder<> IRB(F.getContext());
 

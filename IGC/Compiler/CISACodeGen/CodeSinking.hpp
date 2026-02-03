@@ -96,6 +96,7 @@ class CodeLoopSinking : public llvm::FunctionPass {
   IGCFunctionExternalRegPressureAnalysis *FRPE = nullptr;
   CodeGenContext *CTX = nullptr;
   TargetLibraryInfo *TLI = nullptr;
+  GenXFunctionGroupAnalysis *FGA = nullptr;
 
 public:
   static char ID; // Pass identification
