@@ -61,8 +61,7 @@ void DSELegacyPassWrapper::getAnalysisUsage(AnalysisUsage &AU) const {
 
 char DSELegacyPassWrapper::ID = 0;
 FunctionPass *createLegacyWrappedDeadStoreEliminationPass() {
-#if LLVM_VERSION_MAJOR > 16 && !defined(IGC_LLVM_TRUNK_REVISION)
-
+#if LLVM_VERSION_MAJOR >= 16
   return new DSELegacyPassWrapper();
 #else
   return llvm::createDeadStoreEliminationPass();
