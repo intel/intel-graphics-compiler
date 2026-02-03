@@ -5722,9 +5722,19 @@ G4_SrcRegRegion *IR_Builder::createSubSrcOperand(G4_SrcRegRegion *src,
     if (size < newWd) {
       newWd = size;
     }
-    rd = size == 1
-             ? getRegionScalar()
-             : createRegionDesc(size == newWd ? newWd * hs : newVs, newWd, hs);
+    // Previously when create new src region, we have special handling for
+    // non-SIMD1 instruction if size == newWd:
+    //   createRegionDesc(size == newWd ? newWd * hs : newVs, newWd, hs)
+    // This may cause invalid region desc as the max allowed vstride is 32.
+    // For example, newVs == 1, newWd == size == 16 and hs == 4, we can't
+    // create the new src region as <64; 16, 4>.
+    // Since we normalize below cases to the same region <hs; 1, 0>:
+    // 1, vs == wd * hs
+    // 2, wd == size
+    // We don't need to do the special handling as both <newWd * hs; newWd, hs>
+    // and <newVs; newWd, hs> regions will be normalized to <hs; 1, 0> when
+    // size == newWd.
+    rd = size == 1 ? getRegionScalar() : createRegionDesc(newVs, newWd, hs);
     rd = getNormalizedRegion(size, rd);
   }
 
