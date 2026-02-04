@@ -13,11 +13,9 @@ SPDX-License-Identifier: MIT
 #include "llvm/Analysis/GlobalsModRef.h"
 #include "llvm/Analysis/PostDominators.h"
 #include "llvm/Analysis/DemandedBits.h"
-#include "llvmWrapper/Analysis/DemandedBits.h"
 #include "llvm/Analysis/AssumptionCache.h"
 #include "llvm/Analysis/ScalarEvolution.h"
 #include "llvm/Analysis/LoopAccessAnalysis.h"
-#include "llvmWrapper/Analysis/LoopAccessAnalysis.h"
 #include "llvm/Analysis/ProfileSummaryInfo.h"
 #include "llvm/Analysis/TargetLibraryInfo.h"
 #include "llvm/Transforms/Utils/InjectTLIMappings.h"
@@ -68,11 +66,7 @@ void LoopVectorizeLegacyPassWrapper::getAnalysisUsage(AnalysisUsage &AU) const {
   AU.addRequired<TargetTransformInfoWrapperPass>();
   AU.addRequired<OptimizationRemarkEmitterWrapperPass>();
   AU.addRequired<ProfileSummaryInfoWrapperPass>();
-#if LLVM_VERSION_MAJOR > 16 && !defined(IGC_LLVM_TRUNK_REVISION)
-  AU.addRequired<IGCLLVM::LoopAccessAnalysisLegacyPassWrapper>();
-  AU.addRequired<IGCLLVM::DemandedBitsLegacyPassWrapper>();
-  AU.addRequired<IGCLLVM::InjectTLIMappingsLegacyPassWrapper>();
-#else
+#if LLVM_VERSION_MAJOR <= 16
   AU.addRequired<LoopAccessLegacyAnalysis>();
   AU.addRequired<DemandedBitsWrapperPass>();
   AU.addRequired<InjectTLIMappingsLegacy>();
@@ -102,10 +96,7 @@ IGC_INITIALIZE_PASS_DEPENDENCY(ScalarEvolutionWrapperPass)
 IGC_INITIALIZE_PASS_DEPENDENCY(LoopInfoWrapperPass)
 IGC_INITIALIZE_PASS_DEPENDENCY(OptimizationRemarkEmitterWrapperPass)
 IGC_INITIALIZE_PASS_DEPENDENCY(ProfileSummaryInfoWrapperPass)
-#if LLVM_VERSION_MAJOR > 16 && !defined(IGC_LLVM_TRUNK_REVISION)
-IGC_INITIALIZE_PASS_DEPENDENCY(LoopAccessAnalysisLegacyPassWrapper)
-IGC_INITIALIZE_PASS_DEPENDENCY(DemandedBitsLegacyPassWrapper)
-#else
+#if LLVM_VERSION_MAJOR <= 16
 IGC_INITIALIZE_PASS_DEPENDENCY(DemandedBitsWrapperPass)
 IGC_INITIALIZE_PASS_DEPENDENCY(LoopAccessLegacyAnalysis)
 #endif
