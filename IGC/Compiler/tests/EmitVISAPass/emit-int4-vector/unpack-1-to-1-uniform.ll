@@ -37,8 +37,8 @@ declare i8 @llvm.genx.GenISA.Int4VectorUnpack.i8.i8(i8, i8)
 !6 = !{!"implicit_arg_desc", !7, !8, !9, !10, !11, !13}
 !7 = !{i32 0}
 !8 = !{i32 2}
-!9 = !{i32 62}
-!10 = !{i32 63}
+!9 = !{i32 57}
+!10 = !{i32 58}
 !11 = !{i32 15, !12}
 !12 = !{!"explicit_arg_num", i32 0}
 !13 = !{i32 15, !14}

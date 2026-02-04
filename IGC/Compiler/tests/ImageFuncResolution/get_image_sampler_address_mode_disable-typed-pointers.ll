@@ -8,7 +8,7 @@
 
 ; RUN: igc_opt -igc-image-func-resolution %s -S -o - | FileCheck %s
 
-; Check that __builtin_IB_get_address_mode, __builtin_IB_get_snap_wa_reqd and
+; Check that __builtin_IB_get_address_mode, __builtin_IB_get_address_mode and
 ; __builtin_IB_is_normalized_coords builtins are replaced with 0 when sampler
 ; isn't successfully tracked.
 
@@ -25,20 +25,15 @@ entry:
   %1 = or i64 %sampler_offset, 1
   %conv = trunc i64 %1 to i32
   %call1 = call spir_func i32 @__builtin_IB_get_address_mode(i32 %conv)
-  %call2 = call spir_func i32 @__builtin_IB_get_snap_wa_reqd(i32 %conv)
-  %call3 = call spir_func i32 @__builtin_IB_is_normalized_coords(i32 %conv)
+  %call2 = call spir_func i32 @__builtin_IB_is_normalized_coords(i32 %conv)
 
 ; CHECK: %add1 = add i32 0, 0
-; CHECK: %add2 = add i32 %add1, 0
 
   %add1 = add i32 %call1, %call2
-  %add2 = add i32 %add1, %call3
   ret void
 }
 
 declare spir_func i32 @__builtin_IB_get_address_mode(i32)
-
-declare spir_func i32 @__builtin_IB_get_snap_wa_reqd(i32)
 
 declare spir_func i32 @__builtin_IB_is_normalized_coords(i32)
 

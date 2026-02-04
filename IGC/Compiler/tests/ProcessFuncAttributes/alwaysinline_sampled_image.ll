@@ -79,7 +79,7 @@ entry:
   %call.i.i = tail call spir_func i64 @__builtin_IB_get_image(target("spirv.SampledImage", void, 2, 0, 0, 0, 0, 0, 0) %Image)
   %call1.i.i = tail call spir_func i64 @__builtin_IB_get_sampler(target("spirv.SampledImage", void, 2, 0, 0, 0, 0, 0, 0) %Image)
   %conv2.i.i = trunc i64 %call1.i.i to i32
-  %call3.i.i = tail call spir_func i32 @__builtin_IB_get_snap_wa_reqd(i32 %conv2.i.i)
+  %call3.i.i = tail call spir_func i32 @__builtin_IB_get_address_mode(i32 %conv2.i.i)
   %call19.i.i = tail call spir_func <4 x float> @__builtin_IB_OCL_3d_sample_l(i32 0, i32 %conv2.i.i, <4 x float> zeroinitializer, float 0.000000e+00)
   ret <4 x float> %call19.i.i
 }
@@ -94,7 +94,7 @@ declare spir_func i64 @__builtin_IB_get_image(target("spirv.SampledImage", void,
 
 declare spir_func i64 @__builtin_IB_get_sampler(target("spirv.SampledImage", void, 2, 0, 0, 0, 0, 0, 0))
 
-declare spir_func i32 @__builtin_IB_get_snap_wa_reqd(i32)
+declare spir_func i32 @__builtin_IB_get_address_mode(i32)
 
 declare spir_func <4 x float> @__builtin_IB_OCL_3d_sample_l(i32, i32, <4 x float>, float)
 
