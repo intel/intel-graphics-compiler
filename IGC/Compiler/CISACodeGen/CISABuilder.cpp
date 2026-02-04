@@ -6016,11 +6016,9 @@ void CEncoder::createSymbolAndGlobalHostAccessTables(bool hasSymbolTable, VISAKe
     }
   }
 
-  // create symbols for kernel.
-  // The kernel Symbol has the same name as the kernel, and offset
-  // pointed to 0.
-  CreateLocalSymbol(m_program->entry->getName().str(), vISA::GenSymType::S_KERNEL, 0,
-                    (unsigned)pMainKernel.getGenSize(), pOutput->m_symbols);
+  // The size of the kernel not including stackcall functions.
+  // The `getGenSize` returns the complete size, we will subtract the size of each stack call function later.
+  int64_t bareKernelSize = pMainKernel.getGenSize();
 
   // Emit symbol "_entry' as the actual kernel start. Maybe we can
   // consider to use the value of the _main label in this case. Now
@@ -6041,6 +6039,8 @@ void CEncoder::createSymbolAndGlobalHostAccessTables(bool hasSymbolTable, VISAKe
     VISAFunction *visaFunc = stackFunc.second;
     CreateLocalSymbol(funcName, vISA::GenSymType::S_FUNC, (uint32_t)visaFunc->getGenOffset(),
                       (uint32_t)visaFunc->getGenSize(), pOutput->m_symbols);
+    // Don't forget to subtract this function size from the bare kernel size.
+    bareKernelSize -= visaFunc->getGenSize();
     // Set up per-function GTPIN information for direct stackcall
     // functions as well.
     void *buffer = nullptr;
@@ -6048,6 +6048,13 @@ void CEncoder::createSymbolAndGlobalHostAccessTables(bool hasSymbolTable, VISAKe
     visaFunc->GetGTPinBuffer(buffer, size, 0);
     pOutput->m_FuncGTPinInfoList.push_back({funcName, buffer, size});
   }
+
+  // create symbols for kernel.
+  // The kernel Symbol has the same name as the kernel, and offset
+  // pointed to 0.
+  IGC_ASSERT_MESSAGE(bareKernelSize > 0, "Bare size of the kernel should be positive");
+  CreateLocalSymbol(m_program->entry->getName().str(), vISA::GenSymType::S_KERNEL, 0, bareKernelSize,
+                    pOutput->m_symbols);
 }
 
 void CEncoder::SetKernelRetryState(CodeGenContext *context, vISA::FINALIZER_INFO *jitInfo,
