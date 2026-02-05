@@ -66,7 +66,8 @@ typedef std::multimap<std::pair<uint32_t, uint32_t>, llvm::GenIntrinsicInst *, d
 // according to offset and number of elements of RuntimeValue. RuntimeValue calls
 // representing single scalars have only one element unlike RuntimeValue calls
 // representing vectors of scalars.
-static bool GetAllRuntimeValueCalls(llvm::Module &module, RuntimeValueCollection &runtimeValueCalls) {
+static bool GetAllRuntimeValueCalls(llvm::Module &module, RuntimeValueCollection &runtimeValueCalls,
+                                    const llvm::DataLayout &DL) {
   bool legalizationCheckNeeded = false;
   for (llvm::Function &F : module) {
     for (llvm::BasicBlock &B : F) {
@@ -79,19 +80,20 @@ static bool GetAllRuntimeValueCalls(llvm::Module &module, RuntimeValueCollection
           if (intr->getType()->isVectorTy()) {
             if (llvm::isa<IGCLLVM::FixedVectorType>(intr->getType())) {
               IGCLLVM::FixedVectorType *const fixedVectorTy = cast<IGCLLVM::FixedVectorType>(intr->getType());
-              // Only vectors of 32-bit values are supported at the moment
-              if (fixedVectorTy->getElementType()->getPrimitiveSizeInBits() == 32) {
-                uint32_t numElements = int_cast<uint32_t>(fixedVectorTy->getNumElements());
-                const uint32_t lastElementOffset = offset + numElements - 1;
-
-                runtimeValueCalls.insert(std::make_pair(std::make_pair(offset, lastElementOffset), intr));
-
-                // Having RuntimeValue vectors, further legalization checks are needed
-                legalizationCheckNeeded = true;
-              } else {
-                IGC_ASSERT_MESSAGE(0, "Only vectors of 32-bit values are supported at the moment");
-              }
+              auto *EltTy = fixedVectorTy->getElementType();
+              uint32_t elBitWidth =
+                  int_cast<uint32_t>(EltTy->isPointerTy() ? (DL.getPointerSizeInBits(EltTy->getPointerAddressSpace()))
+                                                          : EltTy->getPrimitiveSizeInBits());
+              IGC_ASSERT(elBitWidth % 32 == 0 && "Only vectors of 32-bit runtime values are supported at the moment");
+              uint32_t elSize = elBitWidth / 32;
+              uint32_t numElements = int_cast<uint32_t>(fixedVectorTy->getNumElements()) * elSize;
+              const uint32_t lastElementOffset = offset + numElements - 1;
+              runtimeValueCalls.insert(std::make_pair(std::make_pair(offset, lastElementOffset), intr));
+              legalizationCheckNeeded = true;
             }
+          } else if (intr->getType()->isPointerTy()) {
+            uint32_t size = DL.getPointerSizeInBits(intr->getType()->getPointerAddressSpace()) / 32;
+            runtimeValueCalls.insert(std::make_pair(std::make_pair(offset, offset + size - 1), intr));
           } else if (intr->getType()->getPrimitiveSizeInBits() == 64) {
             runtimeValueCalls.insert(std::make_pair(std::make_pair(offset, offset + 1), intr));
           } else {
@@ -228,8 +230,11 @@ bool RuntimeValueLegalizationPass::runOnModule(llvm::Module &module) {
   uint32_t dataGRFAlignmentInDwords =
       getAnalysis<CodeGenContextWrapper>().getCodeGenContext()->platform.getGRFSize() / 4;
 
+  // Get DataLayout from the module
+  const llvm::DataLayout &DL = module.getDataLayout();
+
   RuntimeValueCollection runtimeValueCalls(RuntimeValueComparator);
-  bool legalizationCheckNeeded = GetAllRuntimeValueCalls(module, runtimeValueCalls);
+  bool legalizationCheckNeeded = GetAllRuntimeValueCalls(module, runtimeValueCalls, DL);
 
   if (legalizationCheckNeeded) {
     // Get a map of accessed regions of form:
@@ -244,10 +249,15 @@ bool RuntimeValueLegalizationPass::runOnModule(llvm::Module &module) {
 
       IGCLLVM::FixedVectorType *const fixedVectorTy =
           llvm::dyn_cast<IGCLLVM::FixedVectorType>(callToResolve->getType());
+      llvm::Type *dstBaseType = fixedVectorTy ? fixedVectorTy->getElementType() : callToResolve->getType();
+      PointerType *const pointerTy = llvm::dyn_cast<PointerType>(dstBaseType);
+      uint32_t elSize = int_cast<uint32_t>(dstBaseType->isPointerTy()
+                                               ? (DL.getPointerSizeInBits(dstBaseType->getPointerAddressSpace()) / 32)
+                                               : dstBaseType->getPrimitiveSizeInBits() / 32);
+      bool is64bit = elSize > 1;
 
       uint32_t resolvedOffset = int_cast<uint32_t>(cast<ConstantInt>(callToResolve->getArgOperand(0))->getZExtValue());
-      uint32_t resolvedSize = int_cast<uint32_t>(
-          fixedVectorTy ? fixedVectorTy->getNumElements() : callToResolve->getType()->getPrimitiveSizeInBits() / 32);
+      uint32_t resolvedSize = int_cast<uint32_t>(fixedVectorTy ? fixedVectorTy->getNumElements() : 1) * elSize;
 
       // Find corresponding region
       auto regionIter = accessedRegions.find(resolvedOffset);
@@ -259,11 +269,9 @@ bool RuntimeValueLegalizationPass::runOnModule(llvm::Module &module) {
       if ((resolvedOffset != regionOffset) || (resolvedSize != regionSize)) {
         llvm::IRBuilder<> builder(callToResolve);
 
-        llvm::Type *resolvedBaseType = fixedVectorTy ? fixedVectorTy->getElementType() : callToResolve->getType();
+        llvm::Type *resolvedBaseType = dstBaseType;
         IGC_ASSERT(regionSize > 1);
-        bool is64bit = resolvedBaseType->getPrimitiveSizeInBits() == 64;
         if (is64bit) {
-          IGC_ASSERT(fixedVectorTy == nullptr);
           resolvedBaseType = builder.getInt32Ty();
         }
         llvm::Type *vectorType = IGCLLVM::FixedVectorType::get(resolvedBaseType, regionSize);
@@ -281,11 +289,14 @@ bool RuntimeValueLegalizationPass::runOnModule(llvm::Module &module) {
           // Thus related instructions should be adjusted too.
           std::vector<llvm::User *> users(callToResolve->user_begin(), callToResolve->user_end());
 
-          bool EEOnly = true;
-          for (llvm::User *const user : users) {
-            if (!llvm::isa<llvm::ExtractElementInst>(user)) {
-              EEOnly = false;
-              break;
+          uint32_t numElts = fixedVectorTy ? fixedVectorTy->getNumElements() : 1;
+          bool EEOnly = !is64bit;
+          if (EEOnly) {
+            for (llvm::User *const user : users) {
+              if (!llvm::isa<llvm::ExtractElementInst>(user)) {
+                EEOnly = false;
+                break;
+              }
             }
           }
 
@@ -301,14 +312,28 @@ bool RuntimeValueLegalizationPass::runOnModule(llvm::Module &module) {
             }
           } else {
             // Repack the vector and replace all uses with new one
-            llvm::Value *repackedVectorVal =
-                llvm::UndefValue::get((is64bit ? IGCLLVM::FixedVectorType::get(resolvedBaseType, 2) : fixedVectorTy));
-            for (unsigned i = 0; i < resolvedSize; i++) {
-              repackedVectorVal = builder.CreateInsertElement(
-                  repackedVectorVal, builder.CreateExtractElement(newValue, builder.getInt32(eeOffset + i)),
-                  builder.getInt32(i));
+            llvm::Value *dstVal = llvm::UndefValue::get(callToResolve->getType());
+            for (uint32_t i = 0; i < numElts; i++) {
+              llvm::Value *eltVal = llvm::UndefValue::get(
+                  (elSize > 1 ? IGCLLVM::FixedVectorType::get(resolvedBaseType, elSize) : fixedVectorTy));
+              for (unsigned j = 0; j < elSize; j++) {
+                llvm::Value *extractedVal =
+                    builder.CreateExtractElement(newValue, builder.getInt32(eeOffset + i * elSize + j));
+                eltVal =
+                    elSize > 1 ? builder.CreateInsertElement(eltVal, extractedVal, builder.getInt32(j)) : extractedVal;
+              }
+              if (is64bit && pointerTy) {
+                llvm::Type *eltTy = builder.getInt64Ty();
+                eltVal = builder.CreateBitCast(eltVal, eltTy);
+              }
+              eltVal = builder.CreateBitOrPointerCast(eltVal, dstBaseType);
+              if (fixedVectorTy) {
+                dstVal = builder.CreateInsertElement(dstVal, eltVal, builder.getInt32(i));
+              } else {
+                dstVal = eltVal;
+              }
             }
-            callToResolve->replaceAllUsesWith(builder.CreateBitCast(repackedVectorVal, callToResolve->getType()));
+            callToResolve->replaceAllUsesWith(dstVal);
           }
         } else {
           // RuntimeValue calls returning single scalars are converted to extracts of elements
