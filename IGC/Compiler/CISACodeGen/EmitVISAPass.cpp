@@ -17920,17 +17920,29 @@ void EmitPass::emitLSCVectorLoad_uniform(LSC_CACHE_OPTS CacheOpts, bool UseA32, 
       tDest = m_currShader->GetNewVariable(vSize, tDest->GetType(), EALIGN_GRF, true, tDest->getName());
     }
 
-    if (mergeVal)
-      emitVectorCopy(tDest, newMergeVal, vSize);
+    CVariable *mergeValDest = nullptr;
+    if (mergeVal) {
+      // If the load destination is uniform, copy the merge value to temp (if used), otherwise copy to final destination
+      // directly. If the load destination is non-uniform, always copy the merge value to final destination.
+      mergeValDest = destUniform ? tDest : ldDest;
+      emitVectorCopy(mergeValDest, newMergeVal, vSize);
+    }
 
     m_encoder->SetNoMask();
     m_encoder->SetPredicate(inputPredicate);
+    m_encoder->SetPredicateMode(EPRED_ANY);
     emitLSCLoad(CacheOpts, tDest, UniformBaseVar, eOffset, dSize * 8, vSize, 0, &Resource, AddrSize,
                 LSC_DATA_ORDER_TRANSPOSE, ImmOffset, ImmScale, UserAddrSpace);
     m_encoder->Push();
 
     if (needTemp) {
-      emitVectorCopy(ldDest, tDest, vSize, 0, 0, false, mergeVal ? nullptr : inputPredicate);
+      // Use predicate for final copy if mergeVal is stored in the final load destination (not in temp var).
+      // This happens when:
+      // - mergeVal is nullptr: caller has already placed merge value in destination (no other uses of mergeVal)
+      // - mergeValDest == ldDest: merge value was copied directly to load destination
+      bool mergeValInDest = mergeVal == nullptr || mergeValDest == ldDest;
+      CVariable *copyPred = mergeValInDest ? inputPredicate : nullptr;
+      emitVectorCopy(ldDest, tDest, vSize, 0, 0, false, copyPred);
     }
     return;
   }
@@ -17959,17 +17971,29 @@ void EmitPass::emitLSCVectorLoad_uniform(LSC_CACHE_OPTS CacheOpts, bool UseA32, 
     tDest = m_currShader->GetNewVariable(elts, tDest->GetType(), dataAlign, true, CName::NONE);
   }
 
-  if (mergeVal)
-    emitVectorCopy(tDest, newMergeVal, vSize);
+  CVariable *mergeValDest = nullptr;
+  if (mergeVal) {
+    // If the load destination is uniform, copy the merge value to temp (if used), otherwise copy to final destination
+    // directly. If the load destination is non-uniform, always copy the merge value to final destination.
+    mergeValDest = destUniform ? tDest : ldDest;
+    emitVectorCopy(mergeValDest, newMergeVal, vSize);
+  }
 
   m_encoder->SetNoMask();
   m_encoder->SetPredicate(inputPredicate);
+  m_encoder->SetPredicateMode(EPRED_ANY);
   emitLSCLoad(CacheOpts, tDest, UniformBaseVar, nEOff, dSize * 8, 1, 0, &Resource, AddrSize,
               LSC_DATA_ORDER_NONTRANSPOSE, ImmOffset, ImmScale, UserAddrSpace);
   m_encoder->Push();
 
   if (needTemp) {
-    emitVectorCopy(ldDest, tDest, vSize, 0, 0, false, mergeVal ? nullptr : inputPredicate);
+    // Use predicate for final copy if mergeVal is stored in the final load destination (not in temp var).
+    // This happens when:
+    // - mergeVal is nullptr: caller has already placed merge value in destination (no other uses of mergeVal)
+    // - mergeValDest == ldDest: merge value was copied directly to load destination
+    bool mergeValInDest = mergeVal == nullptr || mergeValDest == ldDest;
+    CVariable *copyPred = mergeValInDest ? inputPredicate : nullptr;
+    emitVectorCopy(ldDest, tDest, vSize, 0, 0, false, copyPred);
   }
   return;
 }
@@ -19095,6 +19119,7 @@ void EmitPass::emitUniformVectorCopy(CVariable *Dst, CVariable *Src, uint32_t nE
     m_encoder->SetSrcRegion(0, vStride, 1, 0);
     m_encoder->SetSrcSubReg(0, soff + i);
     m_encoder->SetDstSubReg(doff + i);
+    m_encoder->SetPredicateMode(EPRED_ANY);
     m_encoder->SetPredicate(predicate);
     m_encoder->Copy(Dst, Src);
     m_encoder->Push();

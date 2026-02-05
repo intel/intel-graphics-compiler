@@ -13,7 +13,8 @@ SPDX-License-Identifier: MIT
 // RUN: ocloc compile -file %s -device pvc -options "-igc_opts 'EnablePromoteToPredicatedMemoryAccess=1 VISAOptions=-asmToConsole'" 2>&1 | FileCheck %s --check-prefixes=CHECK-ASM --implicit-check-not jmpi
 
 // CHECK-ASM: kernel uniform_load
-// CHECK-ASM-DAG: (W)       cmp (32|M0)             (ne)[[F1:f[0-9\.]+]]          null<1>:d r{{[\.;,0-9<>:a-z]+}} 0:w
+// CHECK-ASM-DAG: (W)       cmp (32|M0)             (ne)[[F0:f[0-9\.]+]]          null<1>:d r{{[\.;,0-9<>:a-z]+}} 0:w
+// CHECK-ASM-DAG: (W)       cmp (1|M0)              (ne)[[F1:f[0-9\.]+]]          null<1>:ud    [[F0]]<0;1,0>:ud    0x0:ud
 // CHECK-ASM-DAG: (W)       mov (1|M0)                  [[L1:r[0-9]+]].0<1>:f     0x0:f
 // CHECK-ASM:     (W&[[F1]]) load.ugm.d32x1t.a64 (1|M0)  [[L1]]:1                  [{{[a-z0-9:]+}}]
 
@@ -28,8 +29,12 @@ __kernel void uniform_load(__global const float* in, __global float* out, const 
 
 // CHECK-ASM: kernel uniform_load_pred_mov
 // CHECK-ASM: (W)     cmp (32|M0)   (ne)[[F2:f[0-9\.]+]]   null<1>:d
-// CHECK-ASM: (W&[[F2]]) load.ugm.d32x1t.a64 (1|M0)  [[L2:r[0-9]+]]:1
-// CHECK-ASM: (W&[[F2]]) mov (1|M0)              r{{[\.;,0-9<>:a-z]+}}     [[L2]].0<0;1,0>:f
+// CHECK-ASM: (W)     cmp (1|M0)    (ne)[[F3:f[0-9\.]+]]   null<1>:ud    [[F2]]<0;1,0>:ud    0x0:ud
+// CHECK-ASM: (W&[[F3]]) load.ugm.d32x1t.a64 (1|M0)  [[L2:r[0-9]+]]:1
+// TODO: The SIMD1 cmp instruction below is identical to the one in line 43 (both compare [[F2]] != 0).
+//       They are generated from `(PRED.any)` in VISA and should be optimized by LVN, but they aren't.
+// CHECK-ASM: (W)     cmp (1|M0)    (ne)[[F4:f[0-9\.]+]]   null<1>:ud    [[F2]]<0;1,0>:ud    0x0:ud
+// CHECK-ASM: (W&[[F4]]) mov (1|M0)              r{{[\.;,0-9<>:a-z]+}}     [[L2]].0<0;1,0>:f
 
 // SIMT1 transposed load - copy merge value with predicate after load
 __kernel void uniform_load_pred_mov(__global const float* in, __global float* out, const int predicate) {
