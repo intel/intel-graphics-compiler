@@ -922,7 +922,7 @@ void BankConflictPass::setupBankConflictsfor2xDPAS(G4_INST *inst) {
     }
   }
 
-#ifdef VISA_DEBUG_VERBOSE
+#ifdef DEBUG_VERBOSE_ON
   for (int i = 0; i < 3; i += 2) {
     if (opndDcls[i]) {
       printf("%s, ", opndDcls[i]->getName());
