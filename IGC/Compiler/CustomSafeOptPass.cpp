@@ -847,6 +847,60 @@ void CustomSafeOptPass::visitAllocaInst(AllocaInst &I) {
   }
 }
 
+void CustomSafeOptPass::visitGetElementPtrInst(GetElementPtrInst &GEP) {
+  // Fold a pointer load through a "no-op" GEP.
+  //
+  // Typed pointers:
+  //   %p = getelementptr %T, %T addrspace(N)* %base, i64 0, i32 0
+  //   %v = load %T addrspace(N)*, %T addrspace(N)** %p
+  // into:
+  //   %base.cast = bitcast %T addrspace(N)* %base to %T addrspace(N)**
+  //   %v = load %T addrspace(N)*, %T addrspace(N)** %base.cast
+  //
+  // Opaque pointers:
+  //   %p = getelementptr %T, ptr addrspace(N) %base, i64 0, i32 0
+  //   %v = load ptr addrspace(N), ptr addrspace(N) %p
+  // into:
+  //   %v = load ptr addrspace(N), ptr addrspace(N) %base
+  //
+  // A GEP with all-zero indices does not change the address. For typed pointers
+  // the base pointer must be cast to the load's expected pointer-operand type.
+
+  if (!GEP.hasAllZeroIndices() || !GEP.hasOneUse()) {
+    return;
+  }
+  if (!GEP.getResultElementType()->isPointerTy()) {
+    return;
+  }
+
+  User *pUser = GEP.user_back();
+  if (LoadInst *pLoad = dyn_cast<LoadInst>(pUser)) {
+    if (pLoad->isVolatile() || pLoad->isAtomic()) {
+      return;
+    }
+    if (!pLoad->getType()->isPointerTy()) {
+      return;
+    }
+
+    Value *NewPtr = GEP.getPointerOperand();
+    Type *OldPtrTy = pLoad->getPointerOperand()->getType();
+    if (NewPtr->getType() != OldPtrTy) {
+      auto *OldPtrTyPTy = dyn_cast<PointerType>(OldPtrTy);
+      auto *NewPtrTyPTy = dyn_cast<PointerType>(NewPtr->getType());
+      if (!OldPtrTyPTy || !NewPtrTyPTy || (OldPtrTyPTy->getAddressSpace() != NewPtrTyPTy->getAddressSpace())) {
+        return;
+      }
+
+      IRBuilder<> Builder(pLoad);
+      NewPtr = Builder.CreateBitOrPointerCast(NewPtr, OldPtrTy);
+    }
+
+    pLoad->setOperand(0, NewPtr);
+    GEP.eraseFromParent();
+    return;
+  }
+}
+
 void CustomSafeOptPass::visitLoadInst(LoadInst &load) {
   // Optimize indirect access to private arrays. Handle cases where
   // array index is a select between two immediate constant values.

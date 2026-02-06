@@ -65,6 +65,7 @@ public:
   void visitExtractElementInst(llvm::ExtractElementInst &I);
   void visitLdptr(llvm::SamplerLoadIntrinsic *inst);
   void visitLdRawVec(llvm::CallInst *inst);
+  void visitGetElementPtrInst(llvm::GetElementPtrInst &I);
   void visitLoadInst(llvm::LoadInst &I);
   void dp4WithIdentityMatrix(llvm::ExtractElementInst &I);
   std::optional<bool> getSignIfIdentityMatrix(llvm::ExtractElementInst &I);
