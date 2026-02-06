@@ -91,7 +91,7 @@ struct MInst {
   // gets a fragmented field from an array of fields
   // the fields are ordered low bit to high bit
   // we stop when we find a field with length 0
-  template <int N> uint64_t getBits(const Fragment ff[N]) const {
+  template <int N> uint64_t getBits(const Fragment (&ff)[N]) const {
     uint64_t bits = 0;
 
     int off = 0;
