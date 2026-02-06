@@ -1459,13 +1459,13 @@ void DwarfDebug::collectVariableInfo(const Function *MF, SmallPtrSet<const MDNod
   auto encodeImm = [&](IGC::DotDebugLocEntry &dotLoc, uint32_t &offset, DotDebugLocEntryVect &TempDotDebugLocEntries,
                        uint64_t rangeStart, uint64_t rangeEnd, uint32_t pointerSize, DbgVariable *RegVar,
                        const ConstantInt *pConstInt) {
-    auto oldSize = dotLoc.loc.size();
-
     auto op = llvm::dwarf::DW_OP_implicit_value;
     const unsigned int lebSize = 8;
-    write(dotLoc.loc, (unsigned char *)&rangeStart, pointerSize);
-    write(dotLoc.loc, (unsigned char *)&rangeEnd, pointerSize);
-    write(dotLoc.loc, (uint16_t)(sizeof(uint8_t) + sizeof(const unsigned char) + lebSize));
+
+    dotLoc.start = rangeStart;
+    dotLoc.end = rangeEnd;
+
+    // Store location expression bytes in loc
     write(dotLoc.loc, (uint8_t)op);
     write(dotLoc.loc, (const unsigned char *)&lebSize, 1);
     if (isUnsignedDIType(this, RegVar->getType())) {
@@ -1475,9 +1475,11 @@ void DwarfDebug::collectVariableInfo(const Function *MF, SmallPtrSet<const MDNod
       int64_t constValue = pConstInt->getSExtValue();
       write(dotLoc.loc, (unsigned char *)&constValue, lebSize);
     }
-    offset += dotLoc.loc.size() - oldSize;
 
     TempDotDebugLocEntries.push_back(dotLoc);
+
+    // For DWARF v4 offsets, account for start / end + u16 length + expr bytes
+    offset += pointerSize * 2 + 2 + dotLoc.loc.size();
   };
 
   auto encodeReg = [&](IGC::DotDebugLocEntry &dotLoc, uint32_t &offset, DotDebugLocEntryVect &TempDotDebugLocEntries,
@@ -1490,32 +1492,24 @@ void DwarfDebug::collectVariableInfo(const Function *MF, SmallPtrSet<const MDNod
     if (Loc.HasLocationSecondReg())
       vars.push_back(visaRange2nd); // SIMD32 2nd register
 
-    auto oldSize = dotLoc.loc.size();
     dotLoc.start = startRange;
     TempDotDebugLocEntries.push_back(dotLoc);
-    write(TempDotDebugLocEntries.back().loc, (unsigned char *)&startRange, pointerSize);
 
     for (const auto &it : allCallerSave) {
       TempDotDebugLocEntries.back().end = std::get<0>(it);
-      write(TempDotDebugLocEntries.back().loc, (unsigned char *)&std::get<0>(it), pointerSize);
       auto block = FirstCU->buildGeneral(*RegVar, Loc, &vars,
                                          nullptr); // No variable DIE
       std::vector<unsigned char> buffer;
       if (block)
         block->EmitToRawBuffer(buffer);
-      write(TempDotDebugLocEntries.back().loc, (uint16_t)buffer.size());
       write(TempDotDebugLocEntries.back().loc, buffer.data(), buffer.size());
-
-      offset += TempDotDebugLocEntries.back().loc.size() - oldSize;
+      offset += pointerSize * 2 + 2 + buffer.size();
 
       DotDebugLocEntry another(dotLoc.getStart(), dotLoc.getEnd(), dotLoc.getDbgInst(), dotLoc.getVariable());
       another.start = std::get<0>(it);
       another.end = std::get<1>(it);
       TempDotDebugLocEntries.push_back(another);
-      oldSize = TempDotDebugLocEntries.back().loc.size();
-      // write actual caller save location
-      write(TempDotDebugLocEntries.back().loc, (unsigned char *)&std::get<0>(it), pointerSize);
-      write(TempDotDebugLocEntries.back().loc, (unsigned char *)&std::get<1>(it), pointerSize);
+      // write actual caller save location expression
       auto callerSaveVars = vars;
       callerSaveVars.front().var.physicalType = DbgDecoder::VarAlloc::PhysicalVarType::PhyTypeMemory;
       callerSaveVars.front().var.mapping.m.isBaseOffBEFP = 0;
@@ -1525,10 +1519,8 @@ void DwarfDebug::collectVariableInfo(const Function *MF, SmallPtrSet<const MDNod
       buffer.clear();
       if (block)
         block->EmitToRawBuffer(buffer);
-      write(TempDotDebugLocEntries.back().loc, (uint16_t)buffer.size());
       write(TempDotDebugLocEntries.back().loc, buffer.data(), buffer.size());
-
-      offset += TempDotDebugLocEntries.back().loc.size() - oldSize;
+      offset += pointerSize * 2 + 2 + buffer.size();
 
       if (std::get<1>(it) >= endRange)
         return;
@@ -1537,21 +1529,15 @@ void DwarfDebug::collectVariableInfo(const Function *MF, SmallPtrSet<const MDNod
       DotDebugLocEntry yetAnother(dotLoc.getStart(), dotLoc.getEnd(), dotLoc.getDbgInst(), dotLoc.getVariable());
       yetAnother.start = std::get<1>(it);
       TempDotDebugLocEntries.push_back(yetAnother);
-      oldSize = TempDotDebugLocEntries.back().loc.size();
-      write(TempDotDebugLocEntries.back().loc, (unsigned char *)&std::get<1>(it), pointerSize);
     }
 
     TempDotDebugLocEntries.back().end = endRange;
-    write(TempDotDebugLocEntries.back().loc, (unsigned char *)&endRange, pointerSize);
-
     auto block = FirstCU->buildGeneral(*RegVar, Loc, &vars, nullptr); // No variable DIE
     std::vector<unsigned char> buffer;
     if (block)
       block->EmitToRawBuffer(buffer);
-    write(TempDotDebugLocEntries.back().loc, (uint16_t)buffer.size());
     write(TempDotDebugLocEntries.back().loc, buffer.data(), buffer.size());
-
-    offset += TempDotDebugLocEntries.back().loc.size() - oldSize;
+    offset += pointerSize * 2 + 2 + buffer.size();
   };
 
   uint32_t offset = 0;
@@ -1871,7 +1857,7 @@ std::variant<unsigned int, llvm::MCSymbol *> DwarfDebug::CopyDebugLoc(unsigned i
     if (item.isEmpty())
       offset += pointerSize * 2;
     else
-      offset += item.loc.size();
+      offset += pointerSize * 2 + 2 + item.loc.size();
   }
 
   if (relocationEnabled) {
@@ -2596,20 +2582,27 @@ void DwarfDebug::emitDebugLoc() {
     return;
 
   Asm->SwitchSection(Asm->GetDwarfLocSection());
-  unsigned int size = Asm->GetPointerSize();
 
   for (const DotDebugLocEntry &Entry : DotDebugLocEntries) {
     if (Entry.isEmpty()) {
-      Asm->EmitIntValue(0, size);
-      Asm->EmitIntValue(0, size);
+      Asm->EmitIntValue(0, PointerSize);
+      Asm->EmitIntValue(0, PointerSize);
     } else {
       auto *Symbol = Entry.getSymbol();
       if (Symbol)
         Asm->EmitLabel(Symbol);
 
-      for (unsigned int byte = 0; byte != Entry.loc.size(); byte++) {
-        Asm->EmitIntValue(Entry.loc[byte], 1);
-      }
+      // Emit start and end addresses
+      Asm->EmitIntValue(Entry.start, PointerSize);
+      Asm->EmitIntValue(Entry.end, PointerSize);
+
+      // Emit expression bytes
+      const size_t exprSize = Entry.loc.size();
+      IGC_ASSERT_MESSAGE(exprSize <= std::numeric_limits<uint16_t>::max(),
+                         "DWARF v4 uses 16-bit length, expression size is too large");
+      Asm->EmitInt16((uint16_t)exprSize);
+      for (size_t i = 0; i < exprSize; i++)
+        Asm->EmitInt8(Entry.loc[i]);
     }
   }
 
