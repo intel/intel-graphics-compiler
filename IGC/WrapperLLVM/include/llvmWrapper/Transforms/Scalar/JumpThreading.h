@@ -36,6 +36,7 @@ private:
   FunctionAnalysisManager FAM;
   CGSCCAnalysisManager CGAM;
   ModuleAnalysisManager MAM;
+  int Threshold = -1;
 };
 FunctionPass *createLegacyWrappedJumpThreadingPass(int Threshold = -1);
 #if LLVM_VERSION_MAJOR <= 14

@@ -24,7 +24,7 @@ using namespace llvm;
 
 namespace IGCLLVM {
 
-JumpThreadingPassWrapper::JumpThreadingPassWrapper() : FunctionPass(ID) {
+JumpThreadingPassWrapper::JumpThreadingPassWrapper() : FunctionPass(ID), Threshold(-1) {
   initializeJumpThreadingPassWrapperPass(*PassRegistry::getPassRegistry());
   PB.registerLoopAnalyses(LAM);
   PB.registerFunctionAnalyses(FAM);
@@ -32,7 +32,7 @@ JumpThreadingPassWrapper::JumpThreadingPassWrapper() : FunctionPass(ID) {
   PB.registerModuleAnalyses(MAM);
   PB.crossRegisterProxies(LAM, FAM, CGAM, MAM);
 }
-JumpThreadingPassWrapper::JumpThreadingPassWrapper(int Threshold) : FunctionPass(ID) {
+JumpThreadingPassWrapper::JumpThreadingPassWrapper(int Threshold) : FunctionPass(ID), Threshold(Threshold) {
   initializeJumpThreadingPassWrapperPass(*PassRegistry::getPassRegistry());
   PB.registerLoopAnalyses(LAM);
   PB.registerFunctionAnalyses(FAM);
@@ -56,7 +56,7 @@ bool JumpThreadingPassWrapper::runOnFunction(Function &F) {
     return false;
 
   // Run the New Pass Manager implementation of the pass.
-  JumpThreadingPass Implementation;
+  JumpThreadingPass Implementation(Threshold);
   Implementation.run(F, FAM);
   return true;
 }
@@ -74,7 +74,7 @@ void JumpThreadingPassWrapper::getAnalysisUsage(AnalysisUsage &AU) const {
 
 char JumpThreadingPassWrapper::ID = 0;
 FunctionPass *createLegacyWrappedJumpThreadingPass(int Threshold) {
-#if LLVM_VERSION_MAJOR > 16 && !defined(IGC_LLVM_TRUNK_REVISION)
+#if LLVM_VERSION_MAJOR > 16
   return new JumpThreadingPassWrapper(Threshold);
 #else
   return llvm::createJumpThreadingPass(Threshold);
