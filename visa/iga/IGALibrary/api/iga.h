@@ -104,8 +104,7 @@ typedef enum {
   IGA_XE2 = XE_VER(2, 0)
   ,
   IGA_XE3 = XE_VER(3, 0)
-  ,
-  IGA_XE3P_XPC = XE_VER(3, 3)
+  , IGA_XE3P_XPC = XE_VER(3, 3)
 
   // DEPRECATED
   // Preserve the old values to maintain the binary compatibility
