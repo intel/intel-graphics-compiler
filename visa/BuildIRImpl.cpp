@@ -3680,8 +3680,17 @@ G4_InstSend *IR_Builder::createSamplerSendgInst(
     G4_InstOpts option,
     G4_SrcRegRegion *ind0, G4_SrcRegRegion *ind1, bool is_sendc) {
   G4_opcode send_opcode = is_sendc ? G4_sendgc : G4_sendg;
+  vISA_ASSERT(dst->getRegAccess() == Direct,
+              "Send dst must be a direct operand");
+  vISA_ASSERT(dst->getSubRegOff() == 0,
+              "dst may not have a non-zero subreg offset");
 
-  fixSendDstType(dst, execsize, *this);
+  if (dst->getType() == Type_HF) {
+    dst->setType(*this, Type_W);
+  }
+  if (dst->getType() == Type_F) {
+    dst->setType(*this, Type_D);
+  }
 
   return createSendgInst(pred, send_opcode, execsize, dst, src1, src2,
                              ind0, ind1, msgDesc, option, true);
