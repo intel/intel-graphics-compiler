@@ -57,9 +57,9 @@ bool getPassToggles(std::bitset<1024> &toggles) {
   return false;
 }
 
-llvm::Pass *createFlushPass(PassKind kind, Dump &dump) {
+llvm::Pass *createFlushPass(llvm::Pass *pass, Dump &dump) {
   // Choose an appropriate pass to preserve the original order of pass execution in the pass manager
-  switch (kind) {
+  switch (pass->getPassKind()) {
   case PT_Function:
     return new FunctionFlushDumpPass(dump);
   case PT_Module:
@@ -729,7 +729,7 @@ void IGCPassManager::addPrintPass(Pass *P, bool isBefore) {
   }
   PassManager::add(printerPass);
 
-  llvm::Pass *flushPass = createFlushPass(printerPass->getPassKind(), m_irDumps.front());
+  llvm::Pass *flushPass = createFlushPass(P, m_irDumps.front());
   if (nullptr != flushPass) {
     PassManager::add(flushPass);
   }
