@@ -86,7 +86,7 @@ void LICMLegacyPassWrapper::getAnalysisUsage(AnalysisUsage &AU) const {
   AU.addPreserved<LazyBranchProbabilityInfoPass>();
 }
 char LICMLegacyPassWrapper::ID = 0;
-#if LLVM_VERSION_MAJOR >= 16
+#if LLVM_VERSION_MAJOR > 16 && !defined(IGC_LLVM_TRUNK_REVISION)
 llvm::Pass *createLegacyWrappedLICMPass() { return new LICMLegacyPassWrapper(); }
 llvm::Pass *createLegacyWrappedLICMPass(unsigned LicmMssaOptCap, unsigned LicmMssaNoAccForPromotionCap,
                                         bool LicmAllowSpeculation) {
