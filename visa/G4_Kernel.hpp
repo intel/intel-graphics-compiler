@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2021 Intel Corporation
+Copyright (C) 2021-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -158,6 +158,9 @@ public:
   bool hasSmallerGRFSameThreads() const;
   unsigned getSpillThreshold() const;
 
+  bool canUpdateMode() const;
+  unsigned getCurrentMode() const { return currentMode; }
+  unsigned getCountOfMode() const { return configs.size(); }
   unsigned getNumGRF() const { return configs[currentMode].numGRF; }
   unsigned getDefaultGRF() const { return configs[defaultMode].numGRF; }
   void setDefaultGRF() { currentMode = defaultMode; }
@@ -234,6 +237,7 @@ public:
     for (auto i = currentMode + 1; i < configs.size(); ++i) {
       if (configs[i].VRTEnable && configs[i].numGRF <= upperBoundGRF) {
         currentMode = i;
+        currentStepInMode++;
         break;
       }
     }
@@ -264,6 +268,8 @@ private:
   std::vector<Config> configs;
   unsigned defaultMode;
   unsigned currentMode;
+  unsigned currentStepInMode;
+  unsigned allowedStepsInMode;
   unsigned lowerBoundGRF;
   unsigned upperBoundGRF;
   unsigned GRFModeUpValue;

@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2025 Intel Corporation
+Copyright (C) 2017-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -946,3 +946,6 @@ DEF_VISA_OPTION(vISA_enableOptimizeSIMD32, ET_BOOL_TRUE, "-optimizeSIMD32",
                 "Optimize for SIMD32", true)
 DEF_VISA_OPTION(vISA_enable320and448Vrt, ET_BOOL_TRUE, "-enable320and448Vrt",
                 "Enable VRT config 320/448 GRFs", false)
+DEF_VISA_OPTION(vISA_GRFBumpUpNumber, ET_INT32, "-GRFBumpUpNumber",
+                "Sets the number of steps/configs which the RA will try to use (during retry) to compile the kernel",
+                1)

@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2024 Intel Corporation
+Copyright (C) 2017-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -3868,6 +3868,9 @@ void CEncoder::InitVISABuilderOptions(TARGET_PLATFORM VISAPlatform, bool canAbor
     // so, we cannot setup ATOB for this case
     SaveOption(vISA_SplitBarrierID1, true);
   }
+
+  if (IGC_IS_FLAG_SET(VISAGRFBumpUpNumber))
+    SaveOption(vISA_GRFBumpUpNumber, IGC_GET_FLAG_VALUE(VISAGRFBumpUpNumber));
 
   if (m_program->m_Platform->isCoreChildOf(IGFX_XE3_CORE)) {
     if (uint Val = IGC_GET_FLAG_VALUE(VISASpillAllowed)) {

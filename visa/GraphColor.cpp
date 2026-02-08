@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2025 Intel Corporation
+Copyright (C) 2017-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -2290,12 +2290,11 @@ bool GlobalRA::canIncreaseGRF(unsigned spillSize, bool infCostSpilled) {
   //  - Spill size is above threshold
   if ((infCostSpilled || kernel.grfMode.hasLargerGRFSameThreads() ||
        spillSize > kernel.grfMode.getSpillThreshold()) &&
-      !didGRFIncrease) {
+      kernel.grfMode.canUpdateMode()) {
     if (kernel.updateKernelToLargerGRF()) {
       // GRF successfully increased
       RA_TRACE(std::cout << "\t--new GRF size " << kernel.getNumRegTotal()
                          << ". Re-run RA\n ");
-      didGRFIncrease = true;
       return true;
     }
   }

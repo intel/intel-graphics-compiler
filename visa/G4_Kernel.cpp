@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2021 Intel Corporation
+Copyright (C) 2021-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -2165,6 +2165,7 @@ GRFMode::GRFMode(const TARGET_PLATFORM plat, unsigned regSize, Options *op)
   bool isEfficient64bEnabled = op->getOption(vISA_enableEfficient64b);
   bool is320and448GRFEnabled =
       op->getOption(vISA_enable320and448Vrt) && isEfficient64bEnabled;
+  allowedStepsInMode = op->getuInt32Option(vISA_GRFBumpUpNumber);
   switch (platform) {
   case Xe_XeHPSDV:
   case Xe_DG2:
@@ -2233,6 +2234,7 @@ GRFMode::GRFMode(const TARGET_PLATFORM plat, unsigned regSize, Options *op)
     defaultMode = 0;
   }
   currentMode = defaultMode;
+  currentStepInMode = 0;
 
   // Set lower bound GRF
   unsigned minGRF = op->getuInt32Option(vISA_MinGRFNum);
@@ -2352,4 +2354,9 @@ unsigned GRFMode::getSpillThreshold() const {
 
   // Default spill threshold
   return options->getuInt32Option(vISA_SpillAllowed);
+}
+
+bool GRFMode::canUpdateMode() const {
+  return (getCurrentMode() + 1) < getCountOfMode() &&
+    currentStepInMode < allowedStepsInMode;
 }

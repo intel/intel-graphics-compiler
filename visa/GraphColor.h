@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2025 Intel Corporation
+Copyright (C) 2017-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -1564,7 +1564,6 @@ public:
   InterferenceMatrixStorage intfStorage;
   IncrementalRA incRA;
 
-  bool didGRFIncrease = false;
   bool avoidBundleConflict = false;
 
   unsigned getSubRetLoc(const G4_BB *bb) {
