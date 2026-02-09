@@ -10,6 +10,7 @@
 ; RUN: %opt %use_old_pass_manager% -GenXLowering -march=genx64 -mcpu=XeHPG -mtriple=spir64-unknown-unknown -S < %s | FileCheck %s --check-prefix=CHECK-LSC
 ; RUN: %opt %use_old_pass_manager% -GenXLowering -march=genx64 -mcpu=XeHPC -mtriple=spir64-unknown-unknown -S < %s | FileCheck %s --check-prefix=CHECK-LSC-SIMD16
 ; RUN: %opt %use_old_pass_manager% -GenXLowering -march=genx64 -mcpu=Xe3P -mattr=+efficient_64b_enabled -mtriple=spir64-unknown-unknown -S < %s | FileCheck %s --check-prefix=CHECK-SENDG
+; RUN: %opt %use_old_pass_manager% -GenXLowering -march=genx64 -mcpu=Xe3PLPG -mattr=+efficient_64b_enabled -mtriple=spir64-unknown-unknown -S < %s | FileCheck %s --check-prefix=CHECK-SENDG
 
 declare void @llvm.trap()
 

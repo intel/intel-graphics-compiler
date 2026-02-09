@@ -185,6 +185,8 @@ getPlatformName(const PLATFORM &Platform) {
   case IGFX_XE3P_CORE:
     if (Product == IGFX_CRI)
       return {"Xe3P", RevId};
+    if (Product == IGFX_NVL)
+      return {"Xe3PLPG", RevId};
     break;
   default:
     break;

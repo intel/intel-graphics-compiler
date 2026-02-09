@@ -64,6 +64,7 @@ public:
     Xe2,
     Xe3,
     Xe3P,
+    Xe3PLPG,
     Invalid,
   };
 

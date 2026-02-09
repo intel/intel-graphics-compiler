@@ -35,6 +35,7 @@ def IGFX_LUNARLAKE      : Platform<"IGFX_LUNARLAKE">;
 def IGFX_PTL            : Platform<"IGFX_PTL">;
 def IGFX_NVL_XE3G       : Platform<"IGFX_NVL_XE3G">;
 def IGFX_CRI            : Platform<"IGFX_CRI">;
+def IGFX_NVL            : Platform<"IGFX_NVL">;
 
 // Core Families
 def IGFX_GEN12_CORE     : CoreFamily<"IGFX_GEN12_CORE">;

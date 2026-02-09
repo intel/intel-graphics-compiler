@@ -12,6 +12,8 @@
 ; RUN: -mcpu=XeHPC -S < %s 2>&1 | FileCheck %s
 ; RUN: %opt %use_old_pass_manager% -GenXBuiltinFunctions -march=genx64 -mtriple=spir64-unkonwn-unknown \
 ; RUN: -mcpu=Xe3P -S < %s 2>&1 | FileCheck --check-prefix=CHECK-XE3P %s
+; RUN: %opt %use_old_pass_manager% -GenXBuiltinFunctions -march=genx64 -mtriple=spir64-unknown-unknown \
+; RUN: -mcpu=Xe3PLPG -S < %s 2>&1 | FileCheck --check-prefix=CHECK-XE3P %s
 
 ; CHECK-NOT: WARNING
 ; CHECK-XE3P-NOT: WARNING

@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2023-2025 Intel Corporation
+; Copyright (C) 2023-2026 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -14,6 +14,7 @@
 ; COM:  - Xe2-like concatenation (CHECK-Xe2): Xe2
 ; COM:  - Xe3-like concatenation (CHECK-Xe3): Xe3
 ; COM:  - Xe3P-like concatenation (CHECK-Xe3P): Xe3P
+; COM:  - Xe3-like concatenation (CHECK-Xe3): Xe3PLPG
 
 ; RUN: %opt %use_old_pass_manager% -GenXLowering -march=genx64 -mcpu=Gen9 -mtriple=spir64-unknown-unknown -S < %s | \
 ; RUN: FileCheck %s --check-prefixes=CHECK-PREDEF,CHECK
@@ -44,6 +45,9 @@
 
 ; RUN: %opt %use_old_pass_manager% -GenXLowering -march=genx64 -mcpu=Xe3P -mtriple=spir64-unknown-unknown -S < %s | \
 ; RUN: FileCheck %s --check-prefixes=CHECK-Xe3P,CHECK
+
+; RUN: %opt %use_old_pass_manager% -GenXLowering -march=genx64 -mcpu=Xe3PLPG -mtriple=spir64-unknown-unknown -S < %s | \
+; RUN: FileCheck %s --check-prefixes=CHECK-Xe3,CHECK
 
 ; CHECK-PREDEF: [[RES:%[^ ]+]] = call i32 @llvm.genx.read.predef.reg.i32.i32(i32 12, i32 undef)
 ; CHECK-PREDEF: ret i32 [[RES]]

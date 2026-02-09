@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2023-2025 Intel Corporation
+; Copyright (C) 2023-2026 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -12,6 +12,8 @@
 ; RUN: %opt %use_old_pass_manager% -GenXTranslateIntrinsics -mcpu=Xe3P -mtriple=spir64-unknown-unknown -S < %s | FileCheck %s
 ; RUN: %opt_new_pm_typed -passes=GenXTranslateIntrinsics -mcpu=Xe3P -mtriple=spir64-unknown-unknown -S < %s | FileCheck %s
 
+; RUN: %opt %use_old_pass_manager% -GenXTranslateIntrinsics -mcpu=Xe3PLPG -mtriple=spir64-unknown-unknown -S < %s | FileCheck %s
+; RUN: %opt_new_pm_typed -passes=GenXTranslateIntrinsics -mcpu=Xe3PLPG -mtriple=spir64-unknown-unknown -S < %s | FileCheck %s
 
 
 

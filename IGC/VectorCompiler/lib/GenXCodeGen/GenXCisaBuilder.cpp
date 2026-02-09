@@ -5929,6 +5929,8 @@ collectFinalizerArgs(StringSaver &Saver, const GenXSubtarget &ST,
     addArgument("-wideMulMadOpsEn");
   if (ST.hasEfficient64b())
     addArgument("-enableEfficient64b");
+  if (ST.getTargetId() == GenXSubtarget::Xe3PLPG)
+    addArgument("-enable320and448Vrt");
 
   for (const auto &Fos : FinalizerOpts)
     cl::TokenizeGNUCommandLine(Fos, Saver, Argv);

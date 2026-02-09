@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2024-2025 Intel Corporation
+; Copyright (C) 2024-2026 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -11,6 +11,10 @@
 ; RUN: %opt_opaque_ptrs %use_old_pass_manager% -GenXModule -GenXNumberingWrapper -GenXLiveRangesWrapper -GenXCategoryWrapper \
 ; RUN: -march=genx64 -mtriple=spir64-unknown-unknown -mcpu=Xe3P -S < %s | FileCheck %s --check-prefix=Xe3P
 
+; RUN: %opt_typed_ptrs %use_old_pass_manager% -GenXModule -GenXNumberingWrapper -GenXLiveRangesWrapper -GenXCategoryWrapper \
+; RUN: -march=genx64 -mtriple=spir64-unknown-unknown -mcpu=Xe3PLPG -S < %s | FileCheck %s --check-prefix=Xe3PLPG
+; RUN: %opt_opaque_ptrs %use_old_pass_manager% -GenXModule -GenXNumberingWrapper -GenXLiveRangesWrapper -GenXCategoryWrapper \
+; RUN: -march=genx64 -mtriple=spir64-unknown-unknown -mcpu=Xe3PLPG -S < %s | FileCheck %s --check-prefix=Xe3PLPG
 
 
 
@@ -25,7 +29,7 @@ define dllexport spir_kernel void @test(i8 addrspace(1)* nocapture readonly %arg
   ; Xe3P: [[CONST_SPLIT0:%[^ ]+]] = call <32 x i64> @llvm.genx.wrregioni.v32i64.v16i64.i16.i1(<32 x i64> undef, <16 x i64> <i64 1, i64 1, i64 1, i64 1, i64 1, i64 1, i64 1, i64 1, i64 1, i64 1, i64 1, i64 1, i64 1, i64 1, i64 1, i64 1>, i32 16, i32 16, i32 1, i16 0, i32 undef, i1 true)
   ; Xe3P: [[CONST_SPLIT16:%[^ ]+]] = call <32 x i64> @llvm.genx.wrregioni.v32i64.v16i64.i16.i1(<32 x i64> [[CONST_SPLIT0]], <16 x i64> <i64 1, i64 1, i64 1, i64 1, i64 1, i64 1, i64 1, i64 1, i64 1, i64 1, i64 1, i64 1, i64 1, i64 1, i64 1, i64 1>, i32 16, i32 16, i32 1, i16 128, i32 undef, i1 true)
   ; Xe3P: add <32 x i64> %{{[^ ]+}}, [[CONST_SPLIT16]]
-
+  ; Xe3PLPG: add <32 x i64> %{{[^ ]+}}, <i64 1, i64 1, i64 1, i64 1, i64 1, i64 1, i64 1, i64 1, i64 1, i64 1, i64 1, i64 1, i64 1, i64 1, i64 1, i64 1, i64 1, i64 1, i64 1, i64 1, i64 1, i64 1, i64 1, i64 1, i64 1, i64 1, i64 1, i64 1, i64 1, i64 1, i64 1, i64 1>
   %ptrtoint = ptrtoint i8 addrspace(1)* %arg to i64
   %ugm = call <64 x i64> @llvm.vc.internal.lsc.load.ugm.v64i64.v1i1.v2i8.i64(<1 x i1> <i1 true>, i8 3, i8 4, i8 8, <2 x i8> zeroinitializer, i64 0, i64 %ptrtoint, i16 1, i32 0, <64 x i64> undef)
   %1 = tail call <32 x i64> @llvm.genx.rdregioni.v32i64.v64i64.i16(<64 x i64> %ugm, i32 0, i32 32, i32 1, i16 0, i32 undef)

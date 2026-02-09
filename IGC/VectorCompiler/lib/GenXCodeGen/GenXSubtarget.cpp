@@ -71,6 +71,7 @@ void GenXSubtarget::initSubtargetFeatures(StringRef CPU, StringRef FS) {
                  .Case("Xe2", Xe2)
                  .Case("Xe3", Xe3)
                  .Case("Xe3P", Xe3P)
+                 .Case("Xe3PLPG", Xe3PLPG)
                  .Default(Invalid);
 
   std::string CPUName(CPU);
@@ -104,6 +105,8 @@ uint32_t GenXSubtarget::getMaxThreadsNumPerSubDevice() const {
   case Xe2:
     return 1 << 13;
   case Xe3:
+    return 1 << 15;
+  case Xe3PLPG:
     return 1 << 15;
   case Xe3P:
     return 1 << 14;
@@ -152,6 +155,7 @@ ArrayRef<std::pair<int, int>> GenXSubtarget::getThreadIdReservedBits() const {
     static const std::pair<int, int> Bits[] = {{10, 1}, {7, 1}, {3, 1}};
     return Bits;
   }
+  case GenXSubtarget::Xe3PLPG:
   case GenXSubtarget::Xe3: {
     // [17:14] Slice ID.
     // [13:12] : Reserved MBZ
@@ -231,6 +235,7 @@ ArrayRef<std::pair<int, int>> GenXSubtarget::getEUIdBits() const {
   }
   case GenXSubtarget::Xe2:
   case GenXSubtarget::Xe3P:
+  case GenXSubtarget::Xe3PLPG:
   case GenXSubtarget::Xe3: {
     // [6:4] : EUID
     static const std::pair<int, int> Bits[] = {{4, 3}};
@@ -244,7 +249,8 @@ ArrayRef<std::pair<int, int>> GenXSubtarget::getEUIdBits() const {
 
 ArrayRef<std::pair<int, int>> GenXSubtarget::getThreadIdBits() const {
   switch (TargetId) {
-  case GenXSubtarget::Xe3: {
+  case GenXSubtarget::Xe3:
+  case GenXSubtarget::Xe3PLPG: {
     // [3:0] : EUID
     static const std::pair<int, int> Bits[] = {{0, 4}};
     return Bits;
@@ -287,6 +293,8 @@ TARGET_PLATFORM GenXSubtarget::getVisaPlatform() const {
     return TARGET_PLATFORM::Xe3;
   case Xe3P:
     return TARGET_PLATFORM::Xe3P_CRI;
+  case Xe3PLPG:
+    return TARGET_PLATFORM::Xe3P_Graphics;
   default:
     return TARGET_PLATFORM::GENX_NONE;
   }
@@ -330,6 +338,11 @@ ArrayRef<unsigned> GenXSubtarget::getSupportedGRFSizes() const {
   }
   case GenXSubtarget::Xe3P: {
     static const unsigned Supported[] = {32, 64, 96, 128, 160, 192, 256, 512};
+    return Supported;
+  }
+  case GenXSubtarget::Xe3PLPG: {
+    static const unsigned Supported[] = {32,  64,  96,  128, 160,
+                                         192, 256, 320, 448, 512};
     return Supported;
   }
   default: {

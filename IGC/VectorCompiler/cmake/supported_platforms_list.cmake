@@ -21,4 +21,5 @@ set(SUPPORTED_VC_PLATFORMS
     "Xe2"
     "Xe3"
     "Xe3P"
+    "Xe3PLPG"
     )
