@@ -736,6 +736,70 @@ Value *GenIRLowering::rearrangeAdd(Value *val, Loop *loop) const {
   }
 }
 
+// Returns true if the value does not originate from a ptrtoint of a generic address space (AS4) pointer. Generic
+// pointers carry tag bits in the upper bits that encode the source address space. Reusing such an integer across an
+// addrspacecast (which would strip the tags) is incorrect.
+//
+// This traces the value backwards through arithmetic, phi nodes, selects, and integer casts. If any path reaches a
+// ptrtoint of a generic pointer the value is considered tainted. If all paths reach safe leaves (loads, calls,
+// constants, non-generic ptrtoint, arguments, etc.) the value is considered tag-free and safe to reuse.
+static bool isFreeOfGenericPtrTagBits(Value *V) {
+  SmallPtrSet<Value *, 16> Visited;
+  SmallVector<Value *, 8> Worklist;
+  Worklist.push_back(V);
+
+  while (!Worklist.empty()) {
+    Value *Cur = Worklist.pop_back_val();
+    if (!Visited.insert(Cur).second)
+      continue; // Already visited, skip to break cycles.
+
+    // If found ptrtoint, check the pointer's address space.
+    if (auto *P2I = dyn_cast<PtrToIntInst>(Cur)) {
+      if (P2I->getPointerAddressSpace() == ADDRESS_SPACE_GENERIC)
+        return false; // Tainted by generic-pointer tag bits.
+      continue;       // Non-generic ptrtoint is a safe leaf.
+    }
+
+    // Safe leaf values that do not propagate pointer-derived tag bits.
+    if (isa<Constant>(Cur) || isa<LoadInst>(Cur) || isa<CallInst>(Cur) || isa<Argument>(Cur) ||
+        isa<ExtractElementInst>(Cur) || isa<ExtractValueInst>(Cur))
+      continue;
+
+    // Binary arithmetic, both operands may contribute bits.
+    if (auto *BinOp = dyn_cast<BinaryOperator>(Cur)) {
+      Worklist.push_back(BinOp->getOperand(0));
+      Worklist.push_back(BinOp->getOperand(1));
+      continue;
+    }
+
+    // PHI nodes, all incoming values.
+    if (auto *Phi = dyn_cast<PHINode>(Cur)) {
+      for (Value *Inc : Phi->incoming_values())
+        Worklist.push_back(Inc);
+      continue;
+    }
+
+    // Select, both true and false values.
+    if (auto *Sel = dyn_cast<SelectInst>(Cur)) {
+      Worklist.push_back(Sel->getTrueValue());
+      Worklist.push_back(Sel->getFalseValue());
+      continue;
+    }
+
+    // Integer casts (zext, sext, trunc).
+    if (isa<ZExtInst>(Cur) || isa<SExtInst>(Cur) || isa<TruncInst>(Cur)) {
+      Worklist.push_back(cast<Instruction>(Cur)->getOperand(0));
+      continue;
+    }
+
+    // Treat unknown instructions conservatively as tainted.
+    return false;
+  }
+
+  // Every path reached a safe leaf. The value does not carry generic-pointer tag bits.
+  return true;
+}
+
 bool GEPLowering::lowerGetElementPtrInst(GetElementPtrInst *GEP) {
   Value *const PtrOp = GEP->getPointerOperand();
   IGC_ASSERT(nullptr != PtrOp);
@@ -778,13 +842,23 @@ bool GEPLowering::lowerGetElementPtrInst(GetElementPtrInst *GEP) {
   IntegerType *PtrMathTy = IntegerType::get(Builder->getContext(), pointerMathSizeInBits);
 
   Value *BasePointer = nullptr;
-  // Check if the pointer itself is created from IntToPtr.  If it is, and if
-  // the int is the same size, we can use the int directly.  Otherwise, we
-  // need to add PtrToInt.
-  if (IntToPtrInst *I2PI = dyn_cast<IntToPtrInst>(PtrOp)) {
+
+  // Check if the pointer itself is created from IntToPtr. If it is, and if the int is the same size, we can use the int
+  // directly. Otherwise, we need to add PtrToInt.
+
+  Value *PtrSource = PtrOp;
+
+  // First, look through address space casts. This is only valid if the value is free of generic pointer tag bits (from
+  // ptrtoint of AS4).
+  AddrSpaceCastInst *ASC = dyn_cast<AddrSpaceCastInst>(PtrSource);
+  if (ASC)
+    PtrSource = ASC->getOperand(0);
+
+  if (IntToPtrInst *I2PI = dyn_cast<IntToPtrInst>(PtrSource)) {
     Value *IntOp = I2PI->getOperand(0);
     if (IntOp->getType() == IntPtrTy) {
-      BasePointer = IntOp;
+      if (!ASC || isFreeOfGenericPtrTagBits(IntOp))
+        BasePointer = IntOp;
     }
   }
   if (!BasePointer) {

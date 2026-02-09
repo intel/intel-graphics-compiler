@@ -56,6 +56,7 @@ cmp+sel to avoid expensive VxH mov.
 =============================================================================*/
 
 #include "Compiler/CustomSafeOptPass.hpp"
+#include "Compiler/CodeGenPublicEnums.h"
 #include "Compiler/CISACodeGen/helper.h"
 #include "Compiler/IGCPassSupport.h"
 #include "GenISAIntrinsics/GenIntrinsics.h"
@@ -3587,6 +3588,52 @@ void GenSpecificPattern::visitIntToPtr(llvm::IntToPtrInst &I) {
     Value *newV = builder.CreateIntToPtr(zext->getOperand(0), I.getType());
     I.replaceAllUsesWith(newV);
     I.eraseFromParent();
+  }
+}
+
+void GenSpecificPattern::visitPtrToIntInst(llvm::PtrToIntInst &I) {
+  auto &DL = I.getModule()->getDataLayout();
+
+  // With opaque pointers, we might see patterns like this coming from earlier IGC or LLVM passes:
+  //   %i2p = inttoptr i64 %x to ptr addrspace(4)
+  //   %asc = addrspacecast ptr addrspace(4) %i2p to ptr addrspace(1)
+  //   %p2i = ptrtoint ptr addrspace(1) %asc to i64
+  // When address spaces and pointer sizes match (e.g. in opaque pointers mode), ptrtoint(addrspacecast(inttoptr(x)))
+  // can be simplified to just x, removing redundant instructions.
+
+  Value *PtrOp = I.getOperand(0);
+
+  // Look through addrspacecast.
+  Value *CastOp = PtrOp;
+  if (AddrSpaceCastInst *ASC = dyn_cast<AddrSpaceCastInst>(PtrOp)) {
+    CastOp = ASC->getOperand(0);
+  }
+
+  // Check for inttoptr.
+  if (IntToPtrInst *I2P = dyn_cast<IntToPtrInst>(CastOp)) {
+    Value *IntOp = I2P->getOperand(0);
+
+    unsigned SrcAS = I2P->getType()->getPointerAddressSpace();
+    unsigned DstAS = cast<PointerType>(PtrOp->getType())->getPointerAddressSpace();
+
+    // Don't fold if generic address space (AS 4) is used in the addrspacecast. Otherwise, we might modify pointer bits
+    // due to tagging.
+    if (SrcAS == ADDRESS_SPACE_GENERIC || DstAS == ADDRESS_SPACE_GENERIC) {
+      return;
+    }
+
+    // Verify pointer sizes are compatible.
+    unsigned SrcPtrSize = DL.getPointerSizeInBits(SrcAS);
+    unsigned DstPtrSize = DL.getPointerSizeInBits(DstAS);
+    unsigned IntOpSize = IntOp->getType()->getIntegerBitWidth();
+    unsigned ResultSize = I.getType()->getIntegerBitWidth();
+
+    // If all sizes match, we can directly use the original integer.
+    if (SrcPtrSize == DstPtrSize && IntOpSize == ResultSize && IntOpSize == SrcPtrSize) {
+      I.replaceAllUsesWith(IntOp);
+      I.eraseFromParent();
+      return;
+    }
   }
 }
 
