@@ -116,7 +116,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/FixResourcePtr.hpp"
 #include "Compiler/MetaDataApi/SpirMetaDataApi.h"
 #include "Compiler/Optimizer/ReduceOptPass.hpp"
-#include "MoveStaticAllocas.h"
+#include "AdaptorCommon/MoveStaticAllocas.h"
 #include "preprocess_spvir/PreprocessSPVIR.h"
 #include "preprocess_spvir/ConvertUserSemanticDecoratorOnFunctions.h"
 #include "preprocess_spvir/PromoteSubByte.h"

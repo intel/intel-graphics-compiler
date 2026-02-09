@@ -62,6 +62,7 @@ set(IGC_BUILD__SRC__CISACodeGen_Common
     "${CMAKE_CURRENT_SOURCE_DIR}/MemOpt.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/MemOpt2.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/MemOptUtils.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/MergeAllocasOCL.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/OpenCLOptions.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/OpenCLKernelCodeGen.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/POSH_RemoveNonPositionOutput.cpp"

@@ -13,7 +13,6 @@ include_directories(
 set(IGC_BUILD__SRC__DriverInterface
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorCommon/AddImplicitArgs.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorCommon/customApi.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/dllInterfaceCompute.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorCommon/FreezeIntDiv.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorCommon/ImplicitArgs.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorCommon/ProcessFuncAttributes.cpp"
@@ -22,23 +21,7 @@ set(IGC_BUILD__SRC__DriverInterface
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorCommon/ForceFunctionsToNop.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorCommon/DivergentBarrierPass.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorCommon/FastMathConstantHandling.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/OCL/LoadBuffer.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/OCL/Platform/cmd_media_caps_g8.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/OCL/sp/spp_g8.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/OCL/util/BinaryStream.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/UnifyIROCL.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/MoveStaticAllocas.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/MergeAllocasOCL.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/OCL/sp/zebin_builder.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/LowerInvokeSIMD.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/ResolveConstExprCalls.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/preprocess_spvir/HandleSPIRVDecorations/HandleSpirvDecorationMetadata.cpp"
-  )
-
-list(APPEND IGC_BUILD__SRC__DriverInterface
-    "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/preprocess_spvir/PreprocessSPVIR.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/preprocess_spvir/ConvertUserSemanticDecoratorOnFunctions.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/preprocess_spvir/PromoteSubByte.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorCommon/MoveStaticAllocas.cpp"
   )
 
   set(IGC_BUILD__SRC__RAYTRACING
@@ -66,19 +49,7 @@ set(IGC_BUILD__HDR__DriverInterface
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorCommon/customApi.hpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorCommon/DivergentBarrierPass.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorCommon/FastMathConstantHandling.h"
-    "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/OCL/KernelAnnotations.hpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/OCL/CommandStream/SamplerTypes.h"
-    "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/OCL/CommandStream/SurfaceTypes.h"
-    "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/OCL/Platform/cmd_media_caps_g8.h"
-    "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/OCL/Platform/cmd_shared_def_g8.h"
-    "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/OCL/sp/sp_types.h"
-    "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/OCL/sp/spp_g8.h"
-    "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/OCL/util/BinaryStream.h"
-    "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/OCL/sp/zebin_builder.hpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/MoveStaticAllocas.h"
-    "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/MergeAllocasOCL.h"
-    "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/LowerInvokeSIMD.hpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/ResolveConstExprCalls.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorCommon/MoveStaticAllocas.h"
 
     "${IGC_BUILD__COMMON_COMPILER_DIR}/API/ErrorCode.h"
     "${IGC_BUILD__COMMON_COMPILER_DIR}/API/SurfaceFormats.h"
@@ -130,20 +101,6 @@ set(IGC_BUILD__HDR__DriverInterface
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorCommon/LivenessUtils/AllocationLivenessAnalyzer.h"
   )
   list(APPEND IGC_BUILD__SRC__DriverInterface "${IGC_BUILD__SRC_LivenessUtils}")
-
-list(APPEND IGC_BUILD__SRC__DriverInterface
-  "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/ocl_igc_interface/impl/igc_features_and_workarounds_impl.cpp"
-  "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/ocl_igc_interface/impl/igc_ocl_device_ctx_impl.cpp"
-  "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/ocl_igc_interface/impl/igc_ocl_translation_ctx_impl.cpp"
-  "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/ocl_igc_interface/impl/ocl_gen_binary_impl.cpp"
-  "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/ocl_igc_interface/impl/ocl_translation_output_impl.cpp"
-  "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/ocl_igc_interface/impl/gt_system_info_impl.cpp"
-  "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/ocl_igc_interface/impl/platform_impl.cpp"
-  "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/ocl_igc_interface/impl/igc_builtins_impl.cpp"
-  "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/ocl_igc_interface/impl/igc_options_and_capabilities_impl.cpp"
-  ${CIF_SOURCES_EXPORT_ABSOLUTE_PATH}
-  )
-
 
 if (DX_ONLY OR VK_ONLY)
     set(IGC_BUILD__SRC__RAYTRACING_DX

@@ -16,23 +16,27 @@ include_directories("${CMAKE_CURRENT_SOURCE_DIR}")
 
 set(IGC_BUILD__SRC__AdaptorOCL
     "${CMAKE_CURRENT_SOURCE_DIR}/UnifyIROCL.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/MoveStaticAllocas.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/LowerInvokeSIMD.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/ResolveConstExprCalls.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/preprocess_spvir/PreprocessSPVIR.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/preprocess_spvir/PromoteSubByte.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/preprocess_spvir/HandleSPIRVDecorations/HandleSpirvDecorationMetadata.cpp"
-  )
-
-list(APPEND IGC_BUILD__SRC__AdaptorOCL
     "${CMAKE_CURRENT_SOURCE_DIR}/preprocess_spvir/ConvertUserSemanticDecoratorOnFunctions.cpp"
+)
+
+
+# NOTE: Exported functions must be added to final libraries/executables directly.
+
+set(IGC_BUILD__SRC__IGC_AdaptorOCL
+    "${CMAKE_CURRENT_SOURCE_DIR}/preprocess_spvir/PreprocessSPVIR.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/preprocess_spvir/PromoteSubByte.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/preprocess_spvir/ConvertUserSemanticDecoratorOnFunctions.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/preprocess_spvir/HandleSPIRVDecorations/HandleSpirvDecorationMetadata.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/ResolveConstExprCalls.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/LowerInvokeSIMD.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/UnifyIROCL.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/dllInterfaceCompute.cpp"
   )
-
-  # NOTE: Exported functions must be added to final libraries/executables directly.
-
-  set(IGC_BUILD__SRC__IGC_AdaptorOCL
-      "${CMAKE_CURRENT_SOURCE_DIR}/dllInterfaceCompute.cpp"
-    )
 
   set(IGC_BUILD__HDR__IGC_AdaptorOCL "")
 
@@ -46,6 +50,11 @@ list(APPEND IGC_BUILD__SRC__AdaptorOCL
     "${CMAKE_CURRENT_SOURCE_DIR}/ocl_igc_interface/impl/platform_impl.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/ocl_igc_interface/impl/igc_builtins_impl.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/ocl_igc_interface/impl/igc_options_and_capabilities_impl.cpp"
+
+    "${CMAKE_CURRENT_SOURCE_DIR}/OCL/util/BinaryStream.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/OCL/Platform/cmd_media_caps_g8.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/OCL/sp/spp_g8.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/OCL/sp/zebin_builder.cpp"
     ${CIF_SOURCES_EXPORT_ABSOLUTE_PATH})
   list(APPEND IGC_BUILD__HDR__IGC_AdaptorOCL
     "${CMAKE_CURRENT_SOURCE_DIR}/ocl_igc_interface/impl/igc_features_and_workarounds_impl.h"
@@ -67,6 +76,12 @@ list(APPEND IGC_BUILD__SRC__AdaptorOCL
     "${CMAKE_CURRENT_SOURCE_DIR}/ocl_igc_interface/platform.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/ocl_igc_interface/igc_builtins.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/ocl_igc_interface/igc_options_and_capabilities.h"
+
+    "${CMAKE_CURRENT_SOURCE_DIR}/OCL/util/BinaryStream.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/OCL/Platform/cmd_media_caps_g8.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/OCL/sp/spp_g8.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/OCL/sp/zebin_builder.hpp"
+
     ${CIF_HEADERS_ABSOLUTE_PATH})
 
   set(IGC_BUILD__SRC__IGC_AdaptorOCL ${IGC_BUILD__SRC__IGC_AdaptorOCL} PARENT_SCOPE) # set directly
@@ -86,7 +101,6 @@ set(IGC_BUILD__HDR__AdaptorOCL
     "${CMAKE_CURRENT_SOURCE_DIR}/DriverInfoOCL.hpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/Utils/CacheControlsHelper.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/UnifyIROCL.hpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/MoveStaticAllocas.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/LowerInvokeSIMD.hpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/ResolveConstExprCalls.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/preprocess_spvir/PromoteSubByte.h"

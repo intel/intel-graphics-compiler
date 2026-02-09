@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
-#include "../AdaptorCommon/LivenessUtils/MergeAllocas.h"
+#include "AdaptorCommon/LivenessUtils/MergeAllocas.h"
 #include "llvm/PassRegistry.h"
 
 namespace llvm {

@@ -7,7 +7,7 @@ SPDX-License-Identifier: MIT
 ============================= end_copyright_notice ===========================*/
 
 #include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
-#include "AdaptorOCL/MergeAllocasOCL.h"
+#include "MergeAllocasOCL.h"
 #include "Compiler/Legalizer/PeepholeTypeLegalizer.hpp"
 #include "Compiler/CISACodeGen/DropTargetBBs.hpp"
 #include "Compiler/CISACodeGen/layout.hpp"

@@ -1584,12 +1584,14 @@ add_subdirectory(AdaptorOCL/ocl_igc_interface/extensions)
 add_subdirectory(Options)
 
 if(LLVM_ON_WIN32)
-  add_subdirectory(AdaptorOCL)
-  igc_sg_define(IGC__AdaptorOCL)
-
 endif()
 
 
+
+# This needs to be included on WDDM_ON_ANDROID as long as other modules are depend on it
+# For example CISACodeGen
+add_subdirectory(AdaptorOCL)
+igc_sg_define(IGC__AdaptorOCL)
 
 if(FCL_ENABLED)
   include(igc_find_opencl_clang)
