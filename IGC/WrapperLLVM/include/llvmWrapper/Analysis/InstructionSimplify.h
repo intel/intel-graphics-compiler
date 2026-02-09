@@ -11,6 +11,8 @@ SPDX-License-Identifier: MIT
 
 #include "llvm/Config/llvm-config.h"
 #include "llvm/Analysis/InstructionSimplify.h"
+#include "llvm/ADT/SmallVector.h"
+#include "llvm/IR/Value.h"
 
 namespace IGCLLVM {
 #if (LLVM_VERSION_MAJOR < 15)
@@ -30,13 +32,22 @@ inline llvm::Value *simplifyBinOp(unsigned Opcode, llvm::Value *LHS, llvm::Value
 using llvm::simplifyBinOp;
 #endif
 
-#if (LLVM_VERSION_MAJOR < 15)
-inline llvm::Value *simplifyCall(llvm::CallBase *Call, const llvm::SimplifyQuery &Q) {
-  return llvm::SimplifyCall(Call, Q);
-}
+inline llvm::Value *simplifyCall(llvm::CallBase *CI, const llvm::SimplifyQuery &Q) {
+#if LLVM_VERSION_MAJOR <= 14
+  return llvm::SimplifyCall(CI, Q);
+#elif LLVM_VERSION_MAJOR <= 16
+  return llvm::simplifyCall(CI, Q);
 #else
-using llvm::simplifyCall;
+  // Based on:
+  // https://github.com/llvm/llvm-project/commit/3f23c7f5bedc8786d3f4567d2331a7efcbb2a77e
+  llvm::SmallVector<llvm::Value *, 4> Args;
+  Args.reserve(CI->arg_size());
+  for (llvm::Value *Op : CI->args())
+    Args.push_back(Op);
+
+  return llvm::simplifyCall(CI, CI->getCalledOperand(), Args, Q.getWithInstruction(CI));
 #endif
+}
 } // namespace IGCLLVM
 
 #endif // IGCLLVM_ANALYSIS_INSTRUCTIONSIMPLIFY_H
