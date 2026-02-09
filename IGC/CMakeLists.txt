@@ -269,10 +269,12 @@ if (FCL_ENABLED)
   unset(_allowBifLink)
 endif()
 
-# By default IGC uses typed pointers. When IGC will be switched to opaque we should change it to "ON" for LLVM 16
-option(IGC_OPTION__API_ENABLE_OPAQUE_POINTERS "Enable opaque pointers across the IGC stack.\
-  Forces opaque pointers' usage in IGC/LLVM passes, OCL Clang FE and built-in functions' bitcode.\
-  Disabled by default for LLVM 16 and older." OFF)
+# TODO: Remove this flag once only LLVM 16+ is supported (no possibility to enable typed pointers).
+if(IGC_OPTION__LLVM_PREFERRED_VERSION VERSION_GREATER_EQUAL 16)
+  option(IGC_OPTION__API_ENABLE_OPAQUE_POINTERS "Enable opaque pointers across the IGC stack. Forces opaque pointers' usage in IGC/LLVM passes, OCL Clang FE and built-in functions' bitcode. Enabled by default for LLVM 16+." ON)
+else()
+  option(IGC_OPTION__API_ENABLE_OPAQUE_POINTERS "Enable opaque pointers across the IGC stack. Forces opaque pointers' usage in IGC/LLVM passes, OCL Clang FE and built-in functions' bitcode. Enabled by default for LLVM 16+." OFF)
+endif()
 
 option(IGC_OPTION__ENABLE_BF16_BIF "Enables BF16 support in BiF (requires patched Clang)" ON)
 # Clang patches needed for BF16 support can be found here (example for Clang 16):
