@@ -1760,6 +1760,8 @@ void OptimizeIR(CodeGenContext *const pContext) {
       mpm.add(IGCLLVM::createLegacyWrappedADCEPass());
       if (IGC_IS_FLAG_ENABLED(VectorizerCheckScalarizer))
         mpm.add(createScalarizerPass(SelectiveScalarizer::Auto));
+      mpm.add(new IGCVectorCoalescer());
+      mpm.add(IGCLLVM::createLegacyWrappedADCEPass());
     }
 
 

@@ -23,8 +23,9 @@ using namespace IGC;
 
 namespace IGC {
 
-class IGCVectorizer : public llvm::FunctionPass {
+class IGCVectorizerCommon {
 
+public:
   typedef llvm::SmallPtrSet<Instruction *, 8> ValueSet;
   typedef llvm::SmallVector<Instruction *, 8> VecArr;
   typedef llvm::SmallVector<Constant *, 8> VecConst;
@@ -49,33 +50,46 @@ class IGCVectorizer : public llvm::FunctionPass {
     VecOfSlices SlChain;
   };
 
+  bool checkDependencyAndTryToEliminate(VecArr &Slice, unsigned WindowSize);
+  unsigned checkSIMD(llvm::Function &F, IGCMD::MetaDataUtils *MDUtils);
+  void initializeLogFile(Function &F, string Name);
+  void writeLog();
+
+  Instruction *getMaxPoint(VecArr &Slice);
+  Instruction *getMinPoint(VecArr &Slice);
+  unsigned getPositionInsideBB(llvm::Instruction *Inst);
+  void collectPositionInsideBB(llvm::Instruction *Inst);
+
+  // contains information about instruction position inside BB
+  // with relation to other instructions
+  std::unordered_map<Value *, unsigned> PositionMap;
+
+  // logging
+  std::unique_ptr<std::ofstream> OutputLogFile;
+  std::string LogStr;
+  llvm::raw_string_ostream OutputLogStream = raw_string_ostream(LogStr);
+
   CodeGenContext *CGCtx = nullptr;
   IGCMD::MetaDataUtils *MDUtils = nullptr;
   WIAnalysis *WI = nullptr;
+  Module *M = nullptr;
+  unsigned SIMDSize = 0;
+};
 
+class IGCVectorizer : public llvm::FunctionPass, IGCVectorizerCommon {
+
+private:
   // when we vectorize, we build a new vector chain,
   // this map contains associations between scalar and vector
   // basically every element inside scalarSlice should point to the same
   // vectorized element which contains all of them
   std::unordered_map<Value *, Value *> ScalarToVector;
 
-  // contains information about instruction position inside BB
-  // with relation to other instrucitons
-  std::unordered_map<Value *, unsigned> PositionMap;
   // all vector instructions that were produced for chain will be stored
   // in this array, used for clean up if we bail
   VecArr CreatedVectorInstructions;
 
-  // logging
-  std::unique_ptr<std::ofstream> OutputLogFile;
-  std::string LogStr;
-  llvm::raw_string_ostream OutputLogStream = raw_string_ostream(LogStr);
-  Module *M = nullptr;
-  unsigned SIMDSize = 0;
   bool AllowedPlatform = true;
-  unsigned checkSIMD(llvm::Function &F);
-  void initializeLogFile(Function &F);
-  void writeLog();
 
   bool isSafeToVectorize(llvm::Instruction *I);
   bool isSafeToVectorizeSIMD16(llvm::Instruction *I);
@@ -88,13 +102,7 @@ class IGCVectorizer : public llvm::FunctionPass {
   void collectInstructionToProcess(VecArr &ToProcess, Function &F);
   void buildTree(VecArr &V, VecOfSlices &Chain);
   void printSlice(Slice *S);
-  bool checkDependencyAndTryToEliminate(VecArr &Slice);
 
-  unsigned getPositionInsideBB(llvm::Instruction *Inst);
-  void collectPositionInsideBB(llvm::Instruction *Inst);
-
-  Instruction *getMaxPoint(VecArr &Slice);
-  Instruction *getMinPoint(VecArr &Slice);
   Instruction *getInsertPointForVector(VecArr &Arr);
   Instruction *getInsertPointForCreatedInstruction(VecVal &Arr, VecArr &Slice);
 
@@ -139,4 +147,29 @@ public:
   IGCVectorizer(const std::string &FileName);
   static char ID;
 };
+
+class IGCVectorCoalescer : public llvm::FunctionPass, IGCVectorizerCommon {
+
+  void processMap(std::unordered_map<unsigned int, std::vector<Instruction *>> &MapOfInstructions);
+  void mergeHorizontalSlice(VecArr &Slice);
+  void mergeHorizontalSliceIntrinsic(VecArr &Slice);
+  void mergeHorizontalSliceBinary(VecArr &Slice);
+  void ShuffleIn(VecArr &Slice, unsigned StartIndex, unsigned EndIndex, VecVal &Operands);
+  void ShuffleOut(VecArr &Slice, Instruction *WideInstruction);
+
+public:
+  llvm::StringRef getPassName() const override { return "IGCVectorCoalescer"; }
+  IGCVectorCoalescer(const IGCVectorCoalescer &) = delete;
+  IGCVectorCoalescer &operator=(const IGCVectorCoalescer &) = delete;
+  virtual bool runOnFunction(llvm::Function &F) override;
+  virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override {
+    AU.addRequired<CodeGenContextWrapper>();
+    AU.addRequired<MetaDataUtilsWrapper>();
+    AU.addRequired<WIAnalysis>();
+  }
+  IGCVectorCoalescer();
+  IGCVectorCoalescer(const std::string &FileName);
+  static char ID;
+};
+
 }; // namespace IGC

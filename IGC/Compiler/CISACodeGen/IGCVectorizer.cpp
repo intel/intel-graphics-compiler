@@ -129,7 +129,7 @@ IGC_INITIALIZE_PASS_END(IGCVectorizer, PASS_FLAG2, PASS_DESCRIPTION2, PASS_CFG_O
 
 IGCVectorizer::IGCVectorizer() : FunctionPass(ID) { initializeIGCVectorizerPass(*PassRegistry::getPassRegistry()); };
 
-void IGCVectorizer::writeLog() {
+void IGCVectorizerCommon::writeLog() {
 
   if (IGC_IS_FLAG_ENABLED(VectorizerLog) && IGC_IS_FLAG_DISABLED(VectorizerLogToErr) && OutputLogFile->is_open())
     *OutputLogFile << OutputLogStream.str();
@@ -140,7 +140,7 @@ void IGCVectorizer::writeLog() {
   OutputLogStream.str().clear();
 }
 
-void IGCVectorizer::initializeLogFile(Function &F) {
+void IGCVectorizerCommon::initializeLogFile(Function &F, string FileName) {
   if (!IGC_IS_FLAG_ENABLED(VectorizerLog))
     return;
 
@@ -150,7 +150,7 @@ void IGCVectorizer::initializeLogFile(Function &F) {
     FName.resize(128);
 
   std::stringstream ss;
-  ss << FName << "_" << "Vectorizer";
+  ss << FName << "_" << FileName;
   auto Name = Debug::DumpName(IGC::Debug::GetShaderOutputName())
                   .Hash(CGCtx->hash)
                   .Type(CGCtx->type)
@@ -270,6 +270,9 @@ bool isIntrinsicSafe(Instruction *I) {
   bool Result = false;
   IntrinsicInst *IntrinsicI = llvm::dyn_cast<IntrinsicInst>(I);
   if (!IntrinsicI)
+    return Result;
+
+  if (!isFloatTyped(IntrinsicI))
     return Result;
 
   auto IntrinsicID = IntrinsicI->getIntrinsicID();
@@ -517,7 +520,7 @@ Instruction *IGCVectorizer::getInsertPointForCreatedInstruction(VecVal &Operands
   return InsertPoint;
 }
 
-Instruction *IGCVectorizer::getMaxPoint(VecArr &Slice) {
+Instruction *IGCVectorizerCommon::getMaxPoint(VecArr &Slice) {
   unsigned MaxPos = 0;
   Instruction *MaxPoint = Slice.front();
   for (auto &El : Slice) {
@@ -532,7 +535,7 @@ Instruction *IGCVectorizer::getMaxPoint(VecArr &Slice) {
   return MaxPoint;
 }
 
-Instruction *IGCVectorizer::getMinPoint(VecArr &Slice) {
+Instruction *IGCVectorizerCommon::getMinPoint(VecArr &Slice) {
   unsigned MinPos = UINT32_MAX;
   Instruction *MinPoint = Slice.front();
   for (auto &El : Slice) {
@@ -1344,19 +1347,19 @@ bool IGCVectorizer::checkExtractElement(Instruction *Compare, VecArr &Slice) {
   return true;
 }
 
-unsigned IGCVectorizer::getPositionInsideBB(Instruction *Inst) {
+unsigned IGCVectorizerCommon::getPositionInsideBB(Instruction *Inst) {
   collectPositionInsideBB(Inst);
   return PositionMap[Inst];
 }
 
-void IGCVectorizer::collectPositionInsideBB(Instruction *Inst) {
+void IGCVectorizerCommon::collectPositionInsideBB(Instruction *Inst) {
   unsigned Counter = 0;
   for (auto &I : *Inst->getParent()) {
     PositionMap[&I] = Counter++;
   }
 }
 
-bool IGCVectorizer::checkDependencyAndTryToEliminate(VecArr &Slice) {
+bool IGCVectorizerCommon::checkDependencyAndTryToEliminate(VecArr &Slice, unsigned WindowSize) {
   // this set will contain all results our slice produces
   // need to check that they are completely independent
   // from each other, meaning that results from one part of the slice
@@ -1376,6 +1379,14 @@ bool IGCVectorizer::checkDependencyAndTryToEliminate(VecArr &Slice) {
   // SLICE is always located in the same BB
   Instruction *MinPoint = getMinPoint(Slice);
   Instruction *MaxPoint = getMaxPoint(Slice);
+  if (MinPoint->getParent() != MaxPoint->getParent()) {
+    PRINT_LOG_NL("Not the same BB");
+    return true;
+  }
+  PRINT_LOG("Min:");
+  PRINT_INST_NL(MinPoint);
+  PRINT_LOG("Max:");
+  PRINT_INST_NL(MaxPoint);
   VecArr SliceScope;
 
   Instruction *SearchPoint = MinPoint;
@@ -1389,11 +1400,6 @@ bool IGCVectorizer::checkDependencyAndTryToEliminate(VecArr &Slice) {
   PRINT_INST_NL(MaxPoint);
   PRINT_DS("Slice Scope: ", SliceScope);
 
-  unsigned DependencyWindowCoefficient = IGC_GET_FLAG_VALUE(VectorizerDepWindowMultiplier);
-  // limit the window of potential rescheduling
-  // best case when all slice instrucitons are
-  // consecutive
-  unsigned WindowSize = Slice.size() * DependencyWindowCoefficient;
   if (SliceScope.size() > WindowSize) {
     PRINT_LOG_NL("Slice scope is too big -> bail");
     return true;
@@ -1477,7 +1483,12 @@ bool IGCVectorizer::checkSlice(VecArr &Slice, InsertStruct &InSt) {
     }
   }
 
-  if (checkDependencyAndTryToEliminate(Slice))
+  unsigned DependencyWindowCoefficient = IGC_GET_FLAG_VALUE(VectorizerDepWindowMultiplier);
+  // limit the window of potential rescheduling
+  // best case when all slice instrucitons are
+  // consecutive
+  unsigned WindowSize = Slice.size() * DependencyWindowCoefficient;
+  if (checkDependencyAndTryToEliminate(Slice, WindowSize))
     return false;
   return true;
 }
@@ -1523,9 +1534,8 @@ void IGCVectorizer::collectInstructionToProcess(VecArr &ToProcess, Function &F) 
   }
 }
 
-unsigned IGCVectorizer::checkSIMD(llvm::Function &F) {
+unsigned IGCVectorizerCommon::checkSIMD(llvm::Function &F, IGCMD::MetaDataUtils *MDUtils) {
 
-  MDUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
   unsigned SimdSize = 0;
   if (MDUtils->findFunctionsInfoItem(&F) != MDUtils->end_FunctionsInfo()) {
     IGC::IGCMD::FunctionInfoMetaDataHandle funcInfoMD = MDUtils->getFunctionsInfoItem(&F);
@@ -1539,10 +1549,11 @@ bool IGCVectorizer::runOnFunction(llvm::Function &F) {
 
   M = F.getParent();
   CGCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
-  initializeLogFile(F);
+  initializeLogFile(F, "vectorizer");
 
   AllowedPlatform = CGCtx->platform.isCoreXE2() || CGCtx->platform.isPVC() || CGCtx->platform.isCoreXE3();
-  SIMDSize = checkSIMD(F);
+  MDUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
+  SIMDSize = checkSIMD(F, MDUtils);
   // we have DPAS and simd8 for DG2 platforms
   bool SupportedSIMD = SIMDSize == 16 || SIMDSize == 32;
   if (!SupportedSIMD) {
@@ -1661,5 +1672,208 @@ bool IGCVectorizer::runOnFunction(llvm::Function &F) {
 
   writeLog();
 
+  return true;
+}
+
+char IGCVectorCoalescer::ID = 0;
+
+#define PASS_FLAG3 "igc-vector-coalescer"
+#define PASS_DESCRIPTION3 "Vectorizes scalar path around igc vector intrinsics like dpas"
+#define PASS_CFG_ONLY3 false
+#define PASS_ANALYSIS3 false
+IGC_INITIALIZE_PASS_BEGIN(IGCVectorCoalescer, PASS_FLAG3, PASS_DESCRIPTION3, PASS_CFG_ONLY3, PASS_ANALYSIS3)
+IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
+IGC_INITIALIZE_PASS_END(IGCVectorCoalescer, PASS_FLAG3, PASS_DESCRIPTION3, PASS_CFG_ONLY3, PASS_ANALYSIS3)
+
+IGCVectorCoalescer::IGCVectorCoalescer() : FunctionPass(ID) {
+  initializeIGCVectorCoalescerPass(*PassRegistry::getPassRegistry());
+};
+
+void IGCVectorCoalescer::mergeHorizontalSlice(VecArr &Slice) {
+
+  Instruction *First = Slice.front();
+  unsigned int VectorSize = getVectorSize(Slice.front()) * Slice.size();
+
+  // currently our emission will produce naive results
+  // when vector size exceeds the SIMDSize, so we dont want that
+  if (VectorSize > SIMDSize)
+    return;
+
+  PRINT_DS("to be merged: ", Slice);
+  if (llvm::isa<GenIntrinsicInst>(First)) {
+    PRINT_LOG_NL("Gen Intrinsics are not supported");
+  } else if (isIntrinsicSafe(First)) {
+    mergeHorizontalSliceIntrinsic(Slice);
+  }
+}
+
+void IGCVectorCoalescer::ShuffleIn(VecArr &Slice, unsigned StartIndex, unsigned EndIndex, VecVal &Operands) {
+
+  for (unsigned int OperNum = StartIndex; OperNum < EndIndex; OperNum++) {
+
+    VecVal OperandsToCoalesce;
+    for (auto &El : Slice) {
+      OperandsToCoalesce.push_back(El->getOperand(OperNum));
+    }
+
+    Value *Seed = OperandsToCoalesce[0];
+    for (unsigned index = 1; index < OperandsToCoalesce.size(); ++index) {
+
+      llvm::SmallVector<int, 16> Mask;
+      unsigned int VectorSize = getVectorSize(Seed) + getVectorSize(OperandsToCoalesce[index]);
+      for (unsigned i = 0; i < VectorSize; ++i) {
+        Mask.push_back(i);
+      }
+
+      auto ShuffleVector = new llvm::ShuffleVectorInst(Seed, OperandsToCoalesce[index], Mask, "coalesced_input");
+      ShuffleVector->insertBefore(Slice.front());
+      Seed = ShuffleVector;
+      PRINT_INST_NL(ShuffleVector);
+    }
+    Operands.push_back(Seed);
+  }
+}
+
+void IGCVectorCoalescer::ShuffleOut(VecArr &Slice, Instruction *WideInstruction) {
+
+  unsigned int VectorSize = getVectorSize(Slice.front());
+  unsigned int WideVectorSize = getVectorSize(WideInstruction);
+  unsigned int StartIndex = 0;
+
+  for (auto &El : Slice) {
+
+    llvm::SmallVector<int, 16> Mask;
+    // for first one we want to have 0, 1, 2, 3
+    // for second one 4, 5, 6, 7
+    // that's how shufflevector extracts partials from wider vectors
+    // if they are [A, A, A, A, B, B, B, B]
+    for (unsigned i = StartIndex; i < StartIndex + VectorSize; ++i)
+      Mask.push_back(i);
+    StartIndex = VectorSize;
+
+    auto ElementType = llvm::dyn_cast<FixedVectorType>(WideInstruction->getType())->getElementType();
+    llvm::VectorType *VectorType = llvm::FixedVectorType::get(ElementType, WideVectorSize);
+    llvm::Value *UndefVector = llvm::UndefValue::get(VectorType);
+
+    PRINT_INST_NL(UndefVector);
+
+    auto ShuffleVector = new llvm::ShuffleVectorInst(WideInstruction, UndefVector, Mask, "coalesced_output");
+    ShuffleVector->insertAfter(WideInstruction);
+    PRINT_INST_NL(ShuffleVector);
+    El->replaceAllUsesWith(ShuffleVector);
+  }
+}
+
+void IGCVectorCoalescer::mergeHorizontalSliceIntrinsic(VecArr &Slice) {
+
+  VecVal Operands;
+  unsigned int VectorSize = getVectorSize(Slice.front()) * Slice.size();
+  IGCLLVM::FixedVectorType *VecType = llvm::dyn_cast<IGCLLVM::FixedVectorType>(Slice.front()->getType());
+  llvm::VectorType *vectorType = llvm::FixedVectorType::get(VecType->getElementType(), VectorSize);
+
+  ShuffleIn(Slice, 0, Slice.front()->getNumOperands() - 1, Operands);
+  auto IntrinsicID = llvm::cast<IntrinsicInst>(Slice.front())->getIntrinsicID();
+  auto *Decl = Intrinsic::getDeclaration(M, IntrinsicID, {vectorType});
+  auto *CreatedInst = llvm::CallInst::Create(Decl, Operands);
+
+  CreatedInst->setName("coalesced_intrinsic");
+  CreatedInst->setDebugLoc(Slice.front()->getDebugLoc());
+  CreatedInst->insertAfter(Slice.front());
+  PRINT_INST_NL(CreatedInst);
+
+  ShuffleOut(Slice, CreatedInst);
+}
+
+void IGCVectorCoalescer::processMap(std::unordered_map<unsigned int, std::vector<Instruction *>> &MapOfInstructions) {
+
+  for (auto &El : MapOfInstructions) {
+
+    auto &Vector = El.second;
+    // nothing to unify
+    if (Vector.size() < 2)
+      continue;
+
+    PRINT_DS("uniform instructions: ", Vector);
+    VecArr HorizontalSlice;
+    for (unsigned i = 0; i < Vector.size() - 1; ++i) {
+
+      unsigned VectorSize = getVectorSize(Vector[i + 0]) * 2;
+      // currently our emisison will produce naive results
+      // when vector size exceeds the SIMDSize, so we dont want that
+      if (VectorSize > SIMDSize) {
+        PRINT_INST_NL(Vector[i + 0]);
+        PRINT_INST_NL(Vector[i + 1]);
+        PRINT_LOG_NL("do not merge, vector size exceeds SIMD");
+        continue;
+      }
+
+      // Every element is already a vector, we only collect vector types
+      if (Vector[i + 0]->getType() != Vector[i + 1]->getType()) {
+        PRINT_INST_NL(Vector[i + 0]);
+        PRINT_INST_NL(Vector[i + 1]);
+        PRINT_LOG_NL("do not merge, vector size not equal");
+        continue;
+      }
+
+      VecArr Slice = {Vector[i + 0], Vector[i + 1]};
+      unsigned WindowSize = IGC_GET_FLAG_VALUE(CoalescerDepWindowSize);
+      if (!checkDependencyAndTryToEliminate(Slice, WindowSize)) {
+        // if we can merge 2 vectors, we merge them immediately
+        // more complicated unifying algorithm is easy, but currently unnecessary
+        mergeHorizontalSlice(Slice);
+        HorizontalSlice.clear();
+        // move to next
+        ++i;
+      } else {
+        PRINT_LOG_NL("skip");
+        continue;
+      }
+    }
+  }
+}
+
+bool IGCVectorCoalescer::runOnFunction(llvm::Function &F) {
+
+  MDUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
+  SIMDSize = checkSIMD(F, MDUtils);
+  if (SIMDSize != 16)
+    return false;
+
+  CGCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+  initializeLogFile(F, "coalescer");
+
+  PRINT_LOG_NL("Coalescer 0.1");
+  WI = &getAnalysis<WIAnalysis>();
+
+  M = F.getParent();
+
+  std::unordered_map<unsigned int, std::vector<Instruction *>> MapOfIntrinsics;
+  std::unordered_map<unsigned int, std::vector<Instruction *>> MapOfBinary;
+
+  for (auto &BB : F) {
+    for (auto &Inst : BB) {
+
+      bool isVector = Inst.getType()->isVectorTy();
+      if (!isVector)
+        continue;
+
+      // uniformity check is hash table lookup with some logic
+      if (!WI->isUniform(&Inst))
+        continue;
+
+      // we want only llvm intrinsics right now
+      if (isIntrinsicSafe(&Inst)) {
+        unsigned int IntrinsicID = cast<IntrinsicInst>(&Inst)->getIntrinsicID();
+        MapOfIntrinsics[IntrinsicID].push_back(&Inst);
+      } else if (isBinarySafe(&Inst)) {
+        unsigned int BinaryId = cast<BinaryOperator>(&Inst)->getOpcode();
+        MapOfBinary[BinaryId].push_back(&Inst);
+      }
+    }
+    processMap(MapOfIntrinsics);
+    processMap(MapOfBinary);
+    MapOfIntrinsics.clear();
+    MapOfBinary.clear();
+  }
   return true;
 }

@@ -1044,6 +1044,8 @@ DECLARE_IGC_REGKEY(
     bool, VectorizerEnablePartialVectorization, true,
     "Not fully tested option, allows to substitute scalar part with partially vectorized through extract elements",
     true)
+DECLARE_IGC_REGKEY(DWORD, CoalescerDepWindowSize, 100, "Window size to account for vectorizer dependency check window",
+                   true)
 DECLARE_IGC_REGKEY(bool, DisableOCLScalarizer, false, "Disable ScalarizeFunction pass in OCL pipeline", true)
 DECLARE_IGC_REGKEY(bool, DisablePHIScalarization, false, "Disable scalarization of PHINode instructions", true)
 DECLARE_IGC_REGKEY(bool, EnableSelectiveScalarizer, false, "enable selective scalarizer on GPGPU path", true)
