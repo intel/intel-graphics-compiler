@@ -379,12 +379,8 @@ public:
   item_type getItem(const key_type &key) const {
     lazyLoad();
     if (find(key) == end()) {
-      IGC_ASSERT_MESSAGE(0, "Trying to get key that does not exists in Metadata map. Key: %s",
-                         key->getName().str().c_str());
-      std::string Msg = "Invalid user defined function being processed: ";
-      Msg += key->getName();
-      Msg += "()\n";
-      m_pNode->getParent()->getContext().emitError(Msg);
+      // Specialized/cloned functions may not be in metadata
+      return ValTraits::load(NULL);
     }
     return m_data[key];
   }

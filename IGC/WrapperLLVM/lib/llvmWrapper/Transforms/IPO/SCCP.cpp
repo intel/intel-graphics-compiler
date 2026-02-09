@@ -24,9 +24,7 @@ namespace IGCLLVM {
 
 IPSCCPLegacyPassWrapper::IPSCCPLegacyPassWrapper() : ModulePass(ID) {
   initializeIPSCCPLegacyPassWrapperPass(*PassRegistry::getPassRegistry());
-  PB.registerLoopAnalyses(LAM);
   PB.registerFunctionAnalyses(FAM);
-  PB.registerCGSCCAnalyses(CGAM);
   PB.registerModuleAnalyses(MAM);
   PB.crossRegisterProxies(LAM, FAM, CGAM, MAM);
 }
@@ -49,7 +47,7 @@ void IPSCCPLegacyPassWrapper::getAnalysisUsage(AnalysisUsage &AU) const {
 
 char IPSCCPLegacyPassWrapper::ID = 0;
 ModulePass *createLegacyWrappedIPSCCPPass() {
-#if LLVM_VERSION_MAJOR > 16 && !defined(IGC_LLVM_TRUNK_REVISION)
+#if LLVM_VERSION_MAJOR >= 16
   return new IPSCCPLegacyPassWrapper();
 #else
   return llvm::createIPSCCPPass();
