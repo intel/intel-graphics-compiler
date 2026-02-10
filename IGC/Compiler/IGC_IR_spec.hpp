@@ -48,6 +48,7 @@ IGC_IR_VECTOR_TYPE(x15, 15)
 IGC_IR_VECTOR_TYPE(x16, 16)
 IGC_IR_VECTOR_TYPE(x32, 32)
 IGC_IR_VECTOR_TYPE(x64, 64)
+IGC_IR_VECTOR_TYPE(x128, 128)
 
 // LLVM intrinsics supported by IGC IR
 //------------------------------------
