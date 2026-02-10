@@ -441,7 +441,7 @@ float __attribute__((overloadable)) __spirv_ocl_atan(float value ){
         destTemp = -destTemp + 1.5707963705062866f;
     }
 
-    if(value < 0.0f)
+    if(__spirv_SignBitSet(value))
     {
         destTemp = -__spirv_ocl_fabs(destTemp);
     }
