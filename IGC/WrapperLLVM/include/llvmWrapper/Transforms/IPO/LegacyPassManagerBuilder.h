@@ -31,6 +31,9 @@ private:
 public:
   PassManagerBuilder();
   ~PassManagerBuilder();
+  PassManagerBuilder(const PassManagerBuilder &) = delete;
+  PassManagerBuilder &operator=(const PassManagerBuilder &) = delete;
+
   unsigned OptLevel;
   unsigned SizeLevel;
   Pass *Inliner;

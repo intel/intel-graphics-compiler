@@ -348,13 +348,13 @@ enum class ShaderTypeMD
     //to hold metadata of every function
     struct FunctionMetaData
     {
-        std::vector<LocalOffsetMD> localOffsets;
-        WorkGroupWalkOrderMD workGroupWalkOrder;
-        std::vector<FuncArgMD> funcArgs;
+        std::vector<LocalOffsetMD> localOffsets{};
+        WorkGroupWalkOrderMD workGroupWalkOrder{};
+        std::vector<FuncArgMD> funcArgs{};
         FunctionTypeMD functionType = KernelFunction;
-        RayTraceShaderInfo rtInfo;
-        ResourceAllocMD resAllocMD;
-        std::vector<unsigned> maxByteOffsets;
+        RayTraceShaderInfo rtInfo{};
+        ResourceAllocMD resAllocMD{};
+        std::vector<unsigned> maxByteOffsets{};
         bool IsInitializer = false;
         bool IsFinalizer = false;
         unsigned CompiledSubGroupsNumber = 0;
@@ -378,18 +378,18 @@ enum class ShaderTypeMD
         bool hasNonKernelArgStore = false;
         bool hasNonKernelArgAtomic = false;
 
-        std::vector<std::string> UserAnnotations;
+        std::vector<std::string> UserAnnotations{};
 
-        std::vector<int32_t> m_OpenCLArgAddressSpaces;
-        std::vector<std::string> m_OpenCLArgAccessQualifiers;
-        std::vector<std::string> m_OpenCLArgTypes;
-        std::vector<std::string> m_OpenCLArgBaseTypes;
-        std::vector<std::string> m_OpenCLArgTypeQualifiers;
-        std::vector<std::string> m_OpenCLArgNames;
-        std::set<int32_t> m_OpenCLArgScalarAsPointers;
+        std::vector<int32_t> m_OpenCLArgAddressSpaces{};
+        std::vector<std::string> m_OpenCLArgAccessQualifiers{};
+        std::vector<std::string> m_OpenCLArgTypes{};
+        std::vector<std::string> m_OpenCLArgBaseTypes{};
+        std::vector<std::string> m_OpenCLArgTypeQualifiers{};
+        std::vector<std::string> m_OpenCLArgNames{};
+        std::set<int32_t> m_OpenCLArgScalarAsPointers{};
 
         // List of optimizations to disable at a per-function level
-        std::set<std::string> m_OptsToDisablePerFunc;
+        std::set<std::string> m_OptsToDisablePerFunc{};
     };
 
     // isCloned member is added to mark whether a function is clone

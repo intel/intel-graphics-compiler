@@ -1139,11 +1139,11 @@ public:
 class SubroutineInliner : public llvm::CallGraphSCCPass, public llvm::InstVisitor<SubroutineInliner> {
 
 protected:
-  llvm::AssumptionCacheTracker *ACT;
-  llvm::ProfileSummaryInfo *PSI;
-  std::function<const TargetLibraryInfo &(Function &)> GetTLI;
+  llvm::AssumptionCacheTracker *ACT = nullptr;
+  llvm::ProfileSummaryInfo *PSI = nullptr;
+  std::function<const TargetLibraryInfo &(Function &)> GetTLI{};
   bool InsertLifetime = true;
-  llvm::ImportedFunctionsInliningStatistics ImportedFunctionsStats;
+  llvm::ImportedFunctionsInliningStatistics ImportedFunctionsStats{};
 #else
 class SubroutineInliner : public LegacyInlinerBase, public llvm::InstVisitor<SubroutineInliner> {
 #endif

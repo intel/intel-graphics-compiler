@@ -8112,8 +8112,7 @@ void CEncoder::LSC_TypedAtomic(AtomicOp atomic_op, ResourceDescriptor *resource,
   dataShape.order = LSC_DATA_ORDER_NONTRANSPOSE;
   dataShape.elems = LSC_GetElementNum(1);
 
-  unsigned surfaceIndex =
-      m_program->m_Platform->hasEfficient64bEnabled() && resource ? resource->m_SurfaceStateIndex : 0;
+  unsigned surfaceIndex = m_program->m_Platform->hasEfficient64bEnabled() ? resource->m_SurfaceStateIndex : 0;
 
   V(vKernel->AppendVISALscTypedAtomic(subOp, predOpnd, execSize, mask, cacheOpts, getLSCAddrType(resource), addr_size,
                                       dataShape, globalOffsetOpnd, surfaceIndex, dstOpnd, pUOpnd, 0, pVOpnd, 0, pROpnd,

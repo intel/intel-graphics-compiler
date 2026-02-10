@@ -41,17 +41,17 @@ struct SimpleInlinerLegacyPassWrapper : public CallGraphSCCPass {
   bool inlineCalls(CallGraphSCC &SCC);
 
 private:
-  PassBuilder PB;
-  LoopAnalysisManager LAM;
-  FunctionAnalysisManager FAM;
-  CGSCCAnalysisManager CGAM;
-  ModuleAnalysisManager MAM;
-  std::function<const TargetLibraryInfo &(Function &)> GetTLI;
-  TargetTransformInfoWrapperPass *TTIWP;
-  AssumptionCacheTracker *ACT;
-  ProfileSummaryInfo *PSI;
+  PassBuilder PB{};
+  LoopAnalysisManager LAM{};
+  FunctionAnalysisManager FAM{};
+  CGSCCAnalysisManager CGAM{};
+  ModuleAnalysisManager MAM{};
+  std::function<const TargetLibraryInfo &(Function &)> GetTLI{};
+  TargetTransformInfoWrapperPass *TTIWP = nullptr;
+  AssumptionCacheTracker *ACT = nullptr;
+  ProfileSummaryInfo *PSI = nullptr;
   bool InsertLifetime = true;
-  llvm::ImportedFunctionsInliningStatistics ImportedFunctionsStats;
+  llvm::ImportedFunctionsInliningStatistics ImportedFunctionsStats{};
 };
 
 Pass *createLegacyWrappedSimpleInlinerPass();
