@@ -11,9 +11,6 @@ SPDX-License-Identifier: MIT
 
 #include "common/LLVMWarningsPush.hpp"
 
-#include "llvmWrapper/IR/Type.h"
-#include "llvmWrapper/IR/Function.h"
-
 #include <llvm/Pass.h>
 #include <llvm/IR/Module.h>
 #include <llvm/IR/Function.h>
@@ -21,6 +18,8 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/Attributes.h>
 #include <llvm/IR/IRBuilder.h>
 #include "common/LLVMWarningsPop.hpp"
+#include "llvmWrapper/IR/Type.h"
+#include "llvmWrapper/IR/Function.h"
 
 #include "Probe/Assertion.h"
 
@@ -39,16 +38,6 @@ char ResolveConstExprCalls::ID = 0;
 
 ResolveConstExprCalls::ResolveConstExprCalls() : ModulePass(ID) {
   initializeResolveConstExprCallsPass(*PassRegistry::getPassRegistry());
-}
-
-/// Return the specified type promoted as it would be to pass though a va_arg
-/// area.
-static Type *getPromotedType(Type *Ty) {
-  if (IntegerType *ITy = dyn_cast<IntegerType>(Ty)) {
-    if (ITy->getBitWidth() < 32)
-      return Type::getInt32Ty(Ty->getContext());
-  }
-  return Ty;
 }
 
 /// This function is the simplified version of one from LLVM InstCombineCalls.cpp file

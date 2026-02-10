@@ -9,7 +9,9 @@ SPDX-License-Identifier: MIT
 #ifndef IGCLLVM_SUPPORT_REGEX_H
 #define IGCLLVM_SUPPORT_REGEX_H
 
+#include "IGC/common/LLVMWarningsPush.hpp"
 #include "llvm/Support/Regex.h"
+#include "IGC/common/LLVMWarningsPop.hpp"
 
 #include <string>
 

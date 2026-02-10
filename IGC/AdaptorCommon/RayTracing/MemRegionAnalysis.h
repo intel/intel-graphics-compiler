@@ -10,8 +10,8 @@ SPDX-License-Identifier: MIT
 
 #include "common/MDFrameWork.h"
 #include "common/LLVMWarningsPush.hpp"
-#include <optional>
 #include "common/LLVMWarningsPop.hpp"
+#include <optional>
 
 namespace llvm {
 class Value;

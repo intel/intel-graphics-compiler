@@ -49,9 +49,6 @@ SPDX-License-Identifier: MIT
 #include "llvm/IR/IRBuilder.h"
 #include "llvm/ADT/MapVector.h"
 #include "llvm/IR/InstIterator.h"
-#include "llvmWrapper/ADT/StringRef.h"
-#include "llvmWrapper/IR/DerivedTypes.h"
-#include "llvmWrapper/IR/Type.h"
 #include "llvm/Demangle/Demangle.h"
 #include "llvm/IR/IntrinsicInst.h"
 #include "llvm/IR/TypeFinder.h"
@@ -59,10 +56,13 @@ SPDX-License-Identifier: MIT
 #include "llvm/IR/LegacyPassManager.h"
 #include "llvm/Transforms/Utils/UnifyFunctionExitNodes.h"
 #include "llvm/Transforms/Utils.h"
-#include "llvmWrapper/IR/Instructions.h"
 #include "llvm/Support/YAMLTraits.h"
-#include "llvmWrapper/Support/YAMLParser.h"
 #include "common/LLVMWarningsPop.hpp"
+#include "llvmWrapper/ADT/StringRef.h"
+#include "llvmWrapper/IR/DerivedTypes.h"
+#include "llvmWrapper/IR/Type.h"
+#include "llvmWrapper/IR/Instructions.h"
+#include "llvmWrapper/Support/YAMLParser.h"
 
 #include <map>
 #include <optional>

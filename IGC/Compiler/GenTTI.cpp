@@ -14,14 +14,17 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
 
 #include "common/LLVMWarningsPush.hpp"
+
 #include "llvm/Config/llvm-config.h"
 
 #include "llvm/Analysis/CodeMetrics.h"
 #include "llvm/Analysis/LoopInfo.h"
 #include "llvm/Analysis/ScalarEvolution.h"
 #include "llvm/Support/InstructionCost.h"
-#include "llvmWrapper/Transforms/Utils/LoopUtils.h"
+
 #include "common/LLVMWarningsPop.hpp"
+
+#include "llvmWrapper/Transforms/Utils/LoopUtils.h"
 
 #include <algorithm>
 
@@ -185,7 +188,7 @@ void GenIntrinsicsTTIImpl::getUnrollingPreferences(Loop *L, ScalarEvolution &SE,
   bool IsJointMatrixApplyLoop = false;
   for (auto BB : L->blocks()) {
     for (auto &I : *BB) {
-      if (auto *MD = I.getMetadata("joint_matrix_apply")) {
+      if ([[maybe_unused]] auto *MD = I.getMetadata("joint_matrix_apply")) {
         IsJointMatrixApplyLoop = true;
         break;
       }
@@ -387,7 +390,7 @@ void GenIntrinsicsTTIImpl::getUnrollingPreferences(Loop *L, ScalarEvolution &SE,
         UP.Threshold += ThresholdBoost;
         LLVM_DEBUG(dbgs() << "Increasing L:" << L->getName() << " threshold to " << UP.Threshold
                           << " due to Alloca accessed by:");
-        for (const auto &pair : isGEPLoopInduction)
+        for ([[maybe_unused]] const auto &pair : isGEPLoopInduction)
           LLVM_DEBUG(dbgs() << " " << pair.first->getName());
         LLVM_DEBUG(dbgs() << " \n");
       }

@@ -34,15 +34,15 @@ SPDX-License-Identifier: MIT
 #include "AdaptorCommon/ImplicitArgs.hpp"
 #include "Compiler/IGCPassSupport.h"
 #include "common/LLVMWarningsPush.hpp"
-#include "llvmWrapper/IR/Instructions.h"
-#include "llvmWrapper/IR/DerivedTypes.h"
-#include "llvmWrapper/IR/Function.h"
-#include "llvmWrapper/Support/MathExtras.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/Path.h"
 #include "llvm/Support/FormattedStream.h"
 #include "llvm/IR/AssemblyAnnotationWriter.h"
 #include "common/LLVMWarningsPop.hpp"
+#include "llvmWrapper/IR/Instructions.h"
+#include "llvmWrapper/IR/DerivedTypes.h"
+#include "llvmWrapper/IR/Function.h"
+#include "llvmWrapper/Support/MathExtras.h"
 #include "Probe/Assertion.h"
 #include "Compiler/CISACodeGen/LoopCountAnalysis.hpp"
 
@@ -1297,7 +1297,7 @@ SBasicBlock::reverse_iterator EmitPass::emitInSlice(SBasicBlock &block, SBasicBl
     ++sliceIter;
     slicing = false;
     if (sliceIter != E) {
-      unsigned numInstance = DecideInstanceAndSlice(*(block.bb), (*sliceIter), slicing);
+      [[maybe_unused]] unsigned numInstance = DecideInstanceAndSlice(*(block.bb), (*sliceIter), slicing);
       IGC_ASSERT(numInstance == 1 || numInstance == 2);
     }
   }
@@ -2773,7 +2773,6 @@ void EmitPass::EmitExtractValueFromStruct(llvm::ExtractValueInst *EI) {
 
   if (Constant *C = dyn_cast<Constant>(src0)) {
     if (!isa<UndefValue>(C)) {
-      const bool dstUniform = m_destination->IsUniform();
       CVariable *elementSrc = GetSymbol(C->getAggregateElement(idx));
       Type *ty = sTy->getStructElementType(idx);
       emitCopyAll(m_destination, elementSrc, ty);
@@ -2837,7 +2836,7 @@ void EmitPass::EmitInsertValueToLayoutStruct(InsertValueInst *IVI) {
   CVariable *DstV = GetSymbol(IVI);
 
   // For now, do not support uniform dst and non-uniform src1
-  const Type *src1Ty = src1->getType();
+  [[maybe_unused]] const Type *src1Ty = src1->getType();
   IGC_ASSERT_MESSAGE(src1Ty->isSingleValueType(), "Layout struct's members are of single value type.");
   IGC_ASSERT_MESSAGE(!(!EltV->IsUniform() && DstV->IsUniform()),
                      "Can't insert non-uniform value into a uniform struct!");
@@ -2926,7 +2925,7 @@ void EmitPass::EmitExtractValueFromLayoutStruct(ExtractValueInst *EVI) {
   CVariable *DstV = GetSymbol(EVI);
 
   // For now, do not support uniform dst and non-uniform src1
-  const Type *dstTy = EVI->getType();
+  [[maybe_unused]] const Type *dstTy = EVI->getType();
   IGC_ASSERT_MESSAGE(dstTy->isSingleValueType(), "ExtractValue for Layout struct should be of single value type.");
   IGC_ASSERT_MESSAGE(!(!SrcV->IsUniform() && DstV->IsUniform()),
                      "Can't extract value from non-uniform struct into a uniform value!");
@@ -3283,7 +3282,7 @@ void EmitPass::emitVMESendIME(GenIntrinsicInst *inst) {
   CVariable *imeInputVar = GetSymbol(inst->getArgOperand(2));
 
   CVariable *srcImgBTI = GetSymbol(inst->getArgOperand(3));
-  CVariable *refImgBTI = GetSymbol(inst->getArgOperand(4));
+  [[maybe_unused]] CVariable *refImgBTI = GetSymbol(inst->getArgOperand(4));
   CVariable *bwdRefImgBTI = has_bwd_ref_image ? GetSymbol(inst->getArgOperand(5)) : nullptr;
   // If the BTIs aren't consecutive then we can't do VME.
   IGC_ASSERT_MESSAGE(srcImgBTI->GetImmediateValue() + 1 == refImgBTI->GetImmediateValue(),
@@ -3306,7 +3305,7 @@ void EmitPass::emitVMESendIME(GenIntrinsicInst *inst) {
   // costCenterVar needs to be 1 GRF. If it is uniform, extend it to 1 GRF
   // [bdw+]
   if (costCenterVar->IsUniform()) {
-    VISA_Type costVisaTy = costCenterVar->GetType();
+    [[maybe_unused]] VISA_Type costVisaTy = costCenterVar->GetType();
     IGC_ASSERT_MESSAGE(SIZE_DWORD == CEncoder::GetCISADataTypeSize(costVisaTy),
                        "VME IME's cost center var has wrong type!");
     CVariable *newVar = m_currShader->GetNewVariable(8, ISA_TYPE_UD, EALIGN_GRF, CName::NONE);
@@ -3348,7 +3347,7 @@ void EmitPass::emitVMESendFBR(GenIntrinsicInst *inst) {
   CVariable *fbrInputVar = GetSymbol(inst->getArgOperand(2));
 
   CVariable *srcImgBTI = GetSymbol(inst->getArgOperand(3));
-  CVariable *refImgBTI = GetSymbol(inst->getArgOperand(4));
+  [[maybe_unused]] CVariable *refImgBTI = GetSymbol(inst->getArgOperand(4));
   // If the BTIs aren't consecutive then we can't do VME.
   IGC_ASSERT_MESSAGE(srcImgBTI->GetImmediateValue() + 1 == refImgBTI->GetImmediateValue(),
                      "srcImg BTI and refImg BTI are not consecutive!");
@@ -7882,7 +7881,7 @@ void EmitPass::emitSampleInstruction(SampleIntrinsic *inst) {
 
   m_currShader->m_State.SetHasSampleInst();
   ResourceDescriptor resource = GetSampleResourceHelper(inst);
-  bool isEval = isUsedOnlyByEval(inst);
+  [[maybe_unused]] bool isEval = isUsedOnlyByEval(inst);
   ResourceDescriptor pairedResource =
       inst->hasPairedTextureArg() && llvm::isa<llvm::UndefValue>(inst->getPairedTextureValue()) == false
           ? GetResourceVariable(inst->getPairedTextureValue())
@@ -8239,7 +8238,7 @@ void EmitPass::emitGather4Instruction(SamplerGatherIntrinsic *inst) {
   Value *textureValue = inst->getTextureValue();
   ResourceDescriptor resource = GetResourceVariable(textureValue);
 
-  bool isEval = isUsedOnlyByEval(inst);
+  [[maybe_unused]] bool isEval = isUsedOnlyByEval(inst);
   ResourceDescriptor pairedResource = llvm::isa<llvm::UndefValue>(inst->getPairedTextureValue()) == false
                                           ? GetResourceVariable(inst->getPairedTextureValue())
                                           : ResourceDescriptor();
@@ -9441,8 +9440,6 @@ void EmitPass::EmitInlineAsm(llvm::CallInst *inst) {
     // Handle multiple outputs
     unsigned numOutputs = inst->getType()->getStructNumElements();
     std::vector<CVariable *> outputs(numOutputs);
-    for (auto var : outputs)
-      var = nullptr;
 
     for (auto user : inst->users()) {
       ExtractValueInst *ex = dyn_cast<ExtractValueInst>(user);
@@ -9896,9 +9893,9 @@ void EmitPass::emitBitCast(llvm::BitCastInst *btCst) {
   }
   Type *srcType = btCst->getOperand(0)->getType();
   Type *dstType = btCst->getType();
-  unsigned int numSrcElement =
+  [[maybe_unused]] unsigned int numSrcElement =
       srcType->isVectorTy() ? (unsigned)cast<IGCLLVM::FixedVectorType>(srcType)->getNumElements() : 1;
-  unsigned int numDstElement =
+  [[maybe_unused]] unsigned int numDstElement =
       dstType->isVectorTy() ? (unsigned)cast<IGCLLVM::FixedVectorType>(dstType)->getNumElements() : 1;
 
   if (srcType->isPointerTy()) {
@@ -9926,7 +9923,7 @@ void EmitPass::emitCopyToOrFromLayoutStruct(Value *D, Value *S) {
   auto &DL = m_currShader->entry->getParent()->getDataLayout();
   Type *dTy = D->getType();
   Type *sTy = S->getType();
-  Value *otherVal = nullptr;
+  [[maybe_unused]] Value *otherVal = nullptr;
   StructType *stTy = nullptr;
   if (sTy->isStructTy()) {
     otherVal = D;
@@ -10353,7 +10350,7 @@ void EmitPass::emitExtract(llvm::Instruction *inst) {
         // do nothing as we can reuse the symbol from the vector bitcast
         return;
       }
-      uint offset = 0;
+      [[maybe_unused]] uint offset = 0;
       if (m_currShader->GetIsUniform(inst->getOperand(0))) {
         offset = element * eltBytes;
       } else {
@@ -11077,8 +11074,9 @@ void EmitPass::InitializeKernelStack(Function *pKernel, CVariable *stackBufferBa
     // If there are no stack calls in pKernel, but it uses VLA,
     // stack can be initialized in a limited scope, meaning that
     // only SP and FP need to be initialized.
-    bool hasVLA = (m_FGA && m_FGA->getGroup(pKernel) && m_FGA->getGroup(pKernel)->hasVariableLengthAlloca()) ||
-                  pKernel->hasFnAttribute("hasVLA");
+    [[maybe_unused]] bool hasVLA =
+        (m_FGA && m_FGA->getGroup(pKernel) && m_FGA->getGroup(pKernel)->hasVariableLengthAlloca()) ||
+        pKernel->hasFnAttribute("hasVLA");
     IGC_ASSERT_MESSAGE(hasVLA, "Stack initialization, without presence of stack calls, "
                                "is only allowed when VLA is used.");
     m_currShader->InitializeSPFPForVLA();
@@ -11527,7 +11525,7 @@ void EmitPass::emitStackCall(llvm::CallInst *inst) {
     CVariable *Dst = GetSymbol(inst);
     Type *dstTy = inst->getType();
     unsigned numInstance = Dst->GetNumberInstance();
-    uint32_t dstSize = Dst->GetSize() * numInstance;
+    [[maybe_unused]] uint32_t dstSize = Dst->GetSize() * numInstance;
     if (!returnOnStack) {
       // Read back value from RETV
       emitCopyGRFBlock(Dst, m_currShader->GetRETV(), dstTy, 0, numInstance, false);
@@ -12117,7 +12115,7 @@ bool EmitPass::IsIndirectAccess(llvm::Value *pointer) {
   bool isIndirect = false;
   instrMap.try_emplace(inst, isIndirect);
 
-  if (LoadInst *loadInst = dyn_cast<LoadInst>(inst)) {
+  if (isa<LoadInst>(inst)) {
     isIndirect = true;
   } else if (CallInst *callInstr = dyn_cast<CallInst>(inst)) {
     // if the call instruction isn't intrinsic we assume that it should be
@@ -13542,8 +13540,8 @@ void EmitPass::emitReductionClustered(const e_opcode op, const uint64_t identity
                                       CVariable *const dst) {
   const bool isInt64Type = type == ISA_TYPE_Q || type == ISA_TYPE_UQ;
   const bool isFP64Type = type == ISA_TYPE_DF;
-  const bool is64bitType = isInt64Type || isFP64Type;
-  const bool isInt64Mul = ScanReduceIsInt64Mul(op, type);
+  [[maybe_unused]] const bool is64bitType = isInt64Type || isFP64Type;
+  [[maybe_unused]] const bool isInt64Mul = ScanReduceIsInt64Mul(op, type);
 
   IGC_ASSERT_MESSAGE(iSTD::BitCount(clusterSize) == 1, "Cluster size must be a power of two.");
   IGC_ASSERT_MESSAGE(!is64bitType || CEncoder::GetCISADataTypeSize(type) == 8, "Unsupported 64-bit type.");
@@ -16837,10 +16835,6 @@ void EmitPass::emitFastClearSend(llvm::Instruction *pInst) {
 }
 
 void EmitPass::emitVectorLoad(LoadInst *inst, Value *offset, ConstantInt *immOffset) {
-  int immOffsetInt = 0;
-  if (immOffset)
-    immOffsetInt = static_cast<int>(immOffset->getSExtValue());
-
   Value *Ptr = inst->getPointerOperand();
   PointerType *ptrType = cast<PointerType>(Ptr->getType());
   bool useA32 = !IGC::isA64Ptr(ptrType, m_currShader->GetContext());
@@ -17289,10 +17283,6 @@ void EmitPass::emitVectorLoad(LoadInst *inst, Value *offset, ConstantInt *immOff
 }
 
 void EmitPass::emitVectorStore(StoreInst *inst, Value *offset, ConstantInt *immOffset) {
-  int immOffsetInt = 0;
-  if (immOffset)
-    immOffsetInt = static_cast<int>(immOffset->getSExtValue());
-
   Value *Ptr = inst->getPointerOperand();
   PointerType *ptrType = cast<PointerType>(Ptr->getType());
   BasicBlock *BB = inst->getParent();
@@ -17726,7 +17716,7 @@ CVariable *EmitPass::prepareAddressForUniform(CVariable *AddrVar, uint32_t EltBy
 
 CVariable *EmitPass::prepareDataForUniform(CVariable *DataVar, uint32_t RequiredNElts, e_alignment Align) {
   uint32_t NElts = DataVar->GetNumberElement();
-  uint32_t EltBytes = DataVar->GetElemSize();
+  [[maybe_unused]] uint32_t EltBytes = DataVar->GetElemSize();
   uint32_t pow2NElts = (uint32_t)(uint32_t)PowerOf2Ceil(NElts);
   uint32_t allocNElts = RequiredNElts > 0 ? RequiredNElts : pow2NElts;
   IGC_ASSERT(allocNElts >= pow2NElts && NElts <= 8 && (EltBytes == 4 || EltBytes == 8));
@@ -18072,7 +18062,7 @@ void EmitPass::emitLSCVectorLoad(Instruction *inst, Value *Ptr, Value *uniformBa
   }
 
   CVariable *destCVar = m_destination;
-  bool destUniform = destCVar->IsUniform();
+  [[maybe_unused]] bool destUniform = destCVar->IsUniform();
   bool srcUniform = eOffset->IsUniform();
   CVariable *uniformBaseCVar = nullptr;
   if (uniformBase) {
@@ -18194,7 +18184,7 @@ void EmitPass::emitLSCVectorLoad(Instruction *inst, Value *Ptr, Value *uniformBa
 
           m_encoder->SetPredicate(pred);
 
-          VectorMessage::MESSAGE_KIND messageType = VecMessInfo.insts[i].kind;
+          [[maybe_unused]] VectorMessage::MESSAGE_KIND messageType = VecMessInfo.insts[i].kind;
           IGC_ASSERT_MESSAGE(messageType == VectorMessage::MESSAGE_A32_LSC_RW ||
                                  messageType == VectorMessage::MESSAGE_A64_LSC_RW,
                              "Internal Error: unexpected message kind for load!");
@@ -18540,7 +18530,7 @@ void EmitPass::emitLSCVectorStore(Value *Ptr, Value *uniformBase, Value *varOffs
                    CVariable *subStoredVar =
                        m_currShader->GetNewAlias(storedVar, storedType, (uint16_t)eltOffBytes, (uint16_t)nbelts);
 
-                   VectorMessage::MESSAGE_KIND messageType = VecMessInfo.insts[i].kind;
+                   [[maybe_unused]] VectorMessage::MESSAGE_KIND messageType = VecMessInfo.insts[i].kind;
                    IGC_ASSERT_MESSAGE(messageType == VectorMessage::MESSAGE_A32_LSC_RW ||
                                           messageType == VectorMessage::MESSAGE_A64_LSC_RW,
                                       "Internal Error: unexpected message kind for load!");
@@ -19413,7 +19403,6 @@ void EmitPass::emitLayoutStructCopyAOSToAOS(uint32_t AOSBytes, CVariable *Dst, C
     return;
   }
 
-  const uint32_t nLanes = numLanes(m_currShader->m_SIMDSize);
   unsigned doff = DstSubRegOffset, soff = SrcSubRegOffset;
   uint32_t eltBytes = Dst->GetElemSize();
   uint32_t stride = AOSBytes / eltBytes;
@@ -22719,7 +22708,7 @@ void EmitPass::emitLscIntrinsicLoadCmask(llvm::GenIntrinsicInst *inst) {
   auto dataElems = (LSC_DATA_ELEMS)cast<ConstantInt>(inst->getOperand(3))->getZExtValue();
   uint32_t dataElemNum = m_encoder->LSC_GetElementNum(dataElems);
 
-  const LSC_CACHE_OPTS cacheOpts = translateLSCCacheControlsFromValue(inst->getOperand(4), true);
+  [[maybe_unused]] const LSC_CACHE_OPTS cacheOpts = translateLSCCacheControlsFromValue(inst->getOperand(4), true);
 
   CVariable *tempdst[4] = {nullptr, nullptr, nullptr, nullptr};
   auto instWidth = m_currShader->m_Platform->getMaxLSCTypedMessageSize();
@@ -23091,7 +23080,7 @@ void EmitPass::emitLscIntrinsicStoreCmask(llvm::GenIntrinsicInst *inst) {
   auto dataElems = (LSC_DATA_ELEMS)cast<ConstantInt>(inst->getOperand(4))->getZExtValue();
   uint32_t dataElemNum = m_encoder->LSC_GetElementNum(dataElems);
 
-  LSC_CACHE_OPTS cacheOpts = translateLSCCacheControlsFromValue(inst->getOperand(5), false);
+  [[maybe_unused]] LSC_CACHE_OPTS cacheOpts = translateLSCCacheControlsFromValue(inst->getOperand(5), false);
 
   CVariable *pSrc_X = storedVar;
 

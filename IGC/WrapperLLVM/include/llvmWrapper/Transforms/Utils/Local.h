@@ -9,10 +9,12 @@ SPDX-License-Identifier: MIT
 #ifndef IGCLLVM_TRANSFORMS_UTILS_LOCAL_H
 #define IGCLLVM_TRANSFORMS_UTILS_LOCAL_H
 
+#include "common/LLVMWarningsPush.hpp"
 #include "llvm/Config/llvm-config.h"
 #include "llvm/Transforms/Utils/Local.h"
 #include "llvm/ADT/SmallVector.h"
 #include "llvm/IR/ValueHandle.h"
+#include "common/LLVMWarningsPop.hpp"
 
 namespace IGCLLVM {
 /// In LLVM 11 first argument changed type from SmallVectorImpl<Instruction*> to SmallVectorImpl<WeakTrackingVH>

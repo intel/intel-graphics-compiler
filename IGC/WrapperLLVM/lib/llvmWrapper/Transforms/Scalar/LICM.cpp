@@ -7,7 +7,6 @@ SPDX-License-Identifier: MIT
 ============================= end_copyright_notice ===========================*/
 
 #include "common/LLVMWarningsPush.hpp"
-#include "llvmWrapper/Transforms/Scalar/LICM.h"
 
 #include "llvm/Analysis/AliasAnalysis.h"
 #include "llvm/Analysis/AliasSetTracker.h"
@@ -35,8 +34,11 @@ SPDX-License-Identifier: MIT
 #include "llvm/Transforms/Scalar/LICM.h"
 #include "llvm/Transforms/Scalar/LoopPassManager.h"
 
-#include "llvmWrapper/Transforms/InitializePasses.h"
 #include "common/LLVMWarningsPop.hpp"
+
+#include "llvmWrapper/Transforms/Scalar/LICM.h"
+#include "llvmWrapper/Transforms/InitializePasses.h"
+#include "Compiler/IGCPassSupport.h"
 
 #include "Compiler/IGCPassSupport.h"
 

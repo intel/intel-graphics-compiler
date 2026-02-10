@@ -11,12 +11,12 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CodeGenPublic.h"
 #include "common/LLVMWarningsPush.hpp"
 #include "llvm/IR/InstIterator.h"
-#include "llvmWrapper/Support/MathExtras.h"
 #include "llvm/IR/GetElementPtrTypeIterator.h"
 #include "llvm/IR/DiagnosticInfo.h"
+#include "common/LLVMWarningsPop.hpp"
+#include "llvmWrapper/Support/MathExtras.h"
 #include "llvmWrapper/Support/Alignment.h"
 #include "llvmWrapper/IR/Argument.h"
-#include "common/LLVMWarningsPop.hpp"
 #include <deque>
 #include <set>
 #include "Probe/Assertion.h"

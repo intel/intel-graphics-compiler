@@ -41,7 +41,7 @@ This file defines the CEncoder class that's used to generate CISA instructions
 // macro to check the result of VISA API calls
 #define V(x)                                                                                                           \
   do {                                                                                                                 \
-    int result = (x);                                                                                                  \
+    [[maybe_unused]] int result = (x);                                                                                 \
     IGC_ASSERT_MESSAGE((0 == result), "call to VISA API failed");                                                      \
   } while (0)
 
@@ -734,7 +734,7 @@ VISA_VectorOpnd *CEncoder::GetSourceOperand(CVariable *var, const SModifier &mod
     if (var->GetType() == ISA_TYPE_BF) {
       APFloat immBF(APFloat::BFloat(), APInt(16, immediate));
       bool losesInfo = false;
-      auto status = immBF.convert(APFloat::IEEEsingle(), RoundingMode::NearestTiesToEven, &losesInfo);
+      [[maybe_unused]] auto status = immBF.convert(APFloat::IEEEsingle(), RoundingMode::NearestTiesToEven, &losesInfo);
       IGC_ASSERT(status == llvm::APFloatBase::opStatus::opOK && !losesInfo);
       immediate = immBF.bitcastToAPInt().getZExtValue();
       isaType = ISA_TYPE_F;
@@ -933,7 +933,7 @@ bool CEncoder::NeedSplitting(CVariable *var, const SModifier &mod, unsigned &num
     // Checks for some rare cases that are not handled by the splitter, but
     // should be detected and reported. Example: mov (8|M0)    r4.0<1>:q
     // r31.0<2;1,0>:q
-    unsigned maxBlockSize = getGRFSize() * 2; // size of 2 GRFs in bytes
+    [[maybe_unused]] unsigned maxBlockSize = getGRFSize() * 2; // size of 2 GRFs in bytes
     // For uniform variables (which implies simdSize==1) the emitter may set
     // regions with width>1. As it may happen in various places, we detect it
     // here.
@@ -1763,7 +1763,7 @@ void CEncoder::CarryBorrowArith(ISA_Opcode opcode, CVariable *dst, CVariable *ds
   VISA_VectorOpnd *dstOpnd = GetDestinationOperand(dst, m_encoderState.m_dstOperand);
   VISA_VectorOpnd *carryBorrowOpnd = GetDestinationOperand(dstCarryBorrow, m_encoderState.m_dstOperand);
   VISA_PredOpnd *predOpnd = GetFlagOperand(m_encoderState.m_flag);
-  VISA_Exec_Size execSize = GetAluExecSize(dst);
+  [[maybe_unused]] VISA_Exec_Size execSize = GetAluExecSize(dst);
 
   IGC_ASSERT(execSize == EXEC_SIZE_1 || execSize == EXEC_SIZE_8 || execSize == EXEC_SIZE_16 ||
              (execSize == EXEC_SIZE_32 && getGRFSize() == 64));
@@ -1977,13 +1977,13 @@ VISA_StateOpndHandle *CEncoder::GetBTIOperand(uint bindingTableIndex) {
 
 void CEncoder::TraceRay(CVariable *destination, TRACE_RAY_OPCODE opcode, CVariable *globalBufferPointer,
                         STACK_ADDRESS_MODE stackAddressMode, CVariable *payload) {
-  VISA_RawOpnd *dstOpnd = GetRawDestination(destination);
-  VISA_PredOpnd *predOpnd = GetFlagOperand(m_encoderState.m_flag);
-  VISA_EMask_Ctrl emask = ConvertMaskToVisaType(m_encoderState.m_mask, false);
-  VISA_Exec_Size executionSize = visaExecSize(m_encoderState.m_simdSize);
-  VISA_VectorOpnd *globalBufferPointerOpnd = GetSourceOperandNoModifier(globalBufferPointer);
+  [[maybe_unused]] VISA_RawOpnd *dstOpnd = GetRawDestination(destination);
+  [[maybe_unused]] VISA_PredOpnd *predOpnd = GetFlagOperand(m_encoderState.m_flag);
+  [[maybe_unused]] VISA_EMask_Ctrl emask = ConvertMaskToVisaType(m_encoderState.m_mask, false);
+  [[maybe_unused]] VISA_Exec_Size executionSize = visaExecSize(m_encoderState.m_simdSize);
+  [[maybe_unused]] VISA_VectorOpnd *globalBufferPointerOpnd = GetSourceOperandNoModifier(globalBufferPointer);
 
-  VISA_RawOpnd *payloadOpnd = nullptr;
+  [[maybe_unused]] VISA_RawOpnd *payloadOpnd = nullptr;
 
   if (payload != nullptr) {
     payloadOpnd = GetRawSource(payload);
@@ -1992,12 +1992,12 @@ void CEncoder::TraceRay(CVariable *destination, TRACE_RAY_OPCODE opcode, CVariab
 
 void CEncoder::BTD(BTD_OPCODE opcode, CVariable *globalBufferPointer, CVariable *stackId,
                    CVariable *shaderRecordIdentifier) {
-  VISA_PredOpnd *predOpnd = GetFlagOperand(m_encoderState.m_flag);
-  VISA_EMask_Ctrl emask = ConvertMaskToVisaType(m_encoderState.m_mask, false);
-  VISA_Exec_Size executionSize = visaExecSize(m_encoderState.m_simdSize);
-  VISA_RawOpnd *stackIdOpnd = GetRawSource(stackId);
-  VISA_RawOpnd *shaderRecordIdentifierOpnd = GetRawSource(shaderRecordIdentifier);
-  VISA_VectorOpnd *globalBufferPointerOpnd = GetSourceOperandNoModifier(globalBufferPointer);
+  [[maybe_unused]] VISA_PredOpnd *predOpnd = GetFlagOperand(m_encoderState.m_flag);
+  [[maybe_unused]] VISA_EMask_Ctrl emask = ConvertMaskToVisaType(m_encoderState.m_mask, false);
+  [[maybe_unused]] VISA_Exec_Size executionSize = visaExecSize(m_encoderState.m_simdSize);
+  [[maybe_unused]] VISA_RawOpnd *stackIdOpnd = GetRawSource(stackId);
+  [[maybe_unused]] VISA_RawOpnd *shaderRecordIdentifierOpnd = GetRawSource(shaderRecordIdentifier);
+  [[maybe_unused]] VISA_VectorOpnd *globalBufferPointerOpnd = GetSourceOperandNoModifier(globalBufferPointer);
 }
 
 void CEncoder::RenderTargetWrite(CVariable *var[], bool isUndefined[], bool lastRenderTarget, bool isNullRT,
@@ -6222,7 +6222,7 @@ void CEncoder::BoolToInt(CVariable *dst, CVariable *src) {
   IGC_ASSERT(nullptr != src);
   IGC_ASSERT(src->GetType() == ISA_TYPE_BOOL);
 
-  VISA_Type dstType = dst->GetType();
+  [[maybe_unused]] VISA_Type dstType = dst->GetType();
   IGC_ASSERT((dstType == ISA_TYPE_UD) || (dstType == ISA_TYPE_D) || (dstType == ISA_TYPE_UB) ||
              (dstType == ISA_TYPE_B) || (dstType == ISA_TYPE_UW) || (dstType == ISA_TYPE_W));
 
@@ -7681,7 +7681,7 @@ void CEncoder::LSC_LoadBlock1D(CVariable *dst, CVariable *offset, LSC_DATA_SIZE 
   auto execSize = visaExecSize(m_encoderState.m_simdSize);
   auto execOff = ConvertMaskToVisaType(m_encoderState.m_mask, false);
 
-  bool ov = false;
+  [[maybe_unused]] bool ov = false;
   ov = setOverfetch(elemSize, numElems, m_encoderState.m_simdSize, cacheOpts);
   V(vKernel->AppendVISALscUntypedLoad(LSC_LOAD_STRIDED, lscSfid, predOpnd, execSize, execOff, cacheOpts, false, addr,
                                       dataShape, globalOffsetOpnd, 0, dstOpnd, addressOpnd));
@@ -7933,7 +7933,7 @@ void CEncoder::LSC_2DBlockMessage(LSC_OP subOp, ResourceDescriptor *resource, CV
   bool needsSplitting = false;
   uint16_t newNumElemsSplitDst = 0;
   CVariable *dst0 = nullptr;
-  VISA_RawOpnd *dstVarMerged = nullptr;
+  [[maybe_unused]] VISA_RawOpnd *dstVarMerged = nullptr;
   VISA_Exec_Size fromExecSize = EXEC_SIZE_16;
   uint32_t repeatCount = 1;
 

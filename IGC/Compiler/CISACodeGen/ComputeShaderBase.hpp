@@ -11,8 +11,8 @@ SPDX-License-Identifier: MIT
 
 #include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
 #include "common/LLVMWarningsPush.hpp"
-#include <optional>
 #include "common/LLVMWarningsPop.hpp"
+#include <optional>
 
 namespace IGC {
 class CComputeShaderBase : public CShader {

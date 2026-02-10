@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 ============================= end_copyright_notice ===========================*/
 
 #include "common/LLVMWarningsPush.hpp"
+
 #include "llvm/Transforms/IPO/GlobalDCE.h"
 #include "llvm/Analysis/GlobalsModRef.h"
 #include "llvm/Analysis/PostDominators.h"
@@ -15,10 +16,10 @@ SPDX-License-Identifier: MIT
 #include "llvm/IR/Value.h"
 #include "llvm/Transforms/IPO.h"
 
-#include "llvmWrapper/Transforms/InitializePasses.h"
-#include "llvmWrapper/Transforms/IPO/GlobalDCE.h"
 #include "common/LLVMWarningsPop.hpp"
 
+#include "llvmWrapper/Transforms/InitializePasses.h"
+#include "llvmWrapper/Transforms/IPO/GlobalDCE.h"
 #include "Compiler/IGCPassSupport.h"
 
 using namespace llvm;

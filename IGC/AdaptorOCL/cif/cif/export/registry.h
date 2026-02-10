@@ -43,7 +43,7 @@ template <template <Version_t> class Interface> struct EntryPointInterface : Ent
   EntryPointInterface() {}
 
   ICIF *Create(Version_t version, ICIF *parent) const override {
-    return CIF::InterfaceCreator<Interface>::template CreateInterfaceVer(version, version, parent);
+    return CIF::InterfaceCreator<Interface>::template CreateInterfaceVer<>(version, version, parent);
   }
 
   InterfaceId_t GetFirstIncompatible(CIF::CompatibilityDataHandle handle) const override {

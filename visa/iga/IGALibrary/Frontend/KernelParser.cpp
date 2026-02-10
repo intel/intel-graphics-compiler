@@ -3521,6 +3521,7 @@ public:
     RegRef id0{REGREF_INVALID};
     RegRef id1{REGREF_INVALID};
     auto at = NextLoc();
+    (void)at;
     if (ParseScalarRegRefOpt(id0)) {
       ParseScalarRegRefOpt(id1);
     }

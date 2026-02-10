@@ -9,8 +9,10 @@ SPDX-License-Identifier: MIT
 #ifndef IGCLLVM_IR_DATALAYOUT_H
 #define IGCLLVM_IR_DATALAYOUT_H
 
+#include "IGC/common/LLVMWarningsPush.hpp"
 #include "llvm/IR/DataLayout.h"
 #include "llvm/Config/llvm-config.h"
+#include "IGC/common/LLVMWarningsPop.hpp"
 
 namespace IGCLLVM {
 /* * * * *

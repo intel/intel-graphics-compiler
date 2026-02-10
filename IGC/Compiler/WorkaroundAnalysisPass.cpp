@@ -11,12 +11,12 @@ SPDX-License-Identifier: MIT
 #include "GenISAIntrinsics/GenIntrinsics.h"
 #include "Compiler/IGCPassSupport.h"
 #include "common/LLVMWarningsPush.hpp"
-#include "llvmWrapper/IR/DerivedTypes.h"
 #include <llvm/Support/CommandLine.h>
 #include <llvm/IR/Function.h>
 #include <llvm/ADT/SmallVector.h>
-#include <llvmWrapper/IR/Intrinsics.h>
 #include "common/LLVMWarningsPop.hpp"
+#include "llvmWrapper/IR/DerivedTypes.h"
+#include <llvmWrapper/IR/Intrinsics.h>
 #include "Compiler/CISACodeGen/helper.h"
 #include "Compiler/CodeGenPublicEnums.h"
 #include "Compiler/CodeGenPublic.h"

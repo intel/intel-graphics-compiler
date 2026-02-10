@@ -9,9 +9,11 @@ SPDX-License-Identifier: MIT
 #ifndef IGCLLVM_ADT_NONE_H
 #define IGCLLVM_ADT_NONE_H
 
+#include "IGC/common/LLVMWarningsPush.hpp"
 #if LLVM_VERSION_MAJOR < 17 || defined(IGC_LLVM_TRUNK_REVISION)
 #include <llvm/ADT/None.h>
 #endif
+#include "IGC/common/LLVMWarningsPop.hpp"
 
 namespace IGCLLVM {
 #if LLVM_VERSION_MAJOR > 15

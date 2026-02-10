@@ -355,7 +355,7 @@ void DebugInfoData::saveAndMarkPrivateMemoryVars(llvm::Function &F, CShader *pSh
       // and for mark it as output so that emitter will extend it's living time
       // to the end of the function.
       // Mark privateBase as output, because it will need it too.
-      if (MDNode *perThreadOffsetMD = pInst.getMetadata("perThreadOffset")) {
+      if ([[maybe_unused]] MDNode *perThreadOffsetMD = pInst.getMetadata("perThreadOffset")) {
         CVariable *perThreadOffset = pShader->GetSymbol(&pInst);
         CVariable *privateBase = pShader->GetPrivateBase();
 

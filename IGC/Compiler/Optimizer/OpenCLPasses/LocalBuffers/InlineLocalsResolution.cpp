@@ -17,8 +17,8 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/IR/Module.h>
 #include <llvm/IR/Instructions.h>
-#include <llvmWrapper/Support/Alignment.h>
 #include "common/LLVMWarningsPop.hpp"
+#include <llvmWrapper/Support/Alignment.h>
 #include "Probe/Assertion.h"
 
 #include <unordered_set>
@@ -240,13 +240,13 @@ void InlineLocalsResolution::filterGlobals(Module &M) {
 
 bool InlineLocalsResolution::unusedGlobal(Value *V, std::unordered_set<Value *> &unusedNodes) {
   for (Value::user_iterator U = V->user_begin(), UE = V->user_end(); U != UE; ++U) {
-    if (GlobalVariable *globalVar = dyn_cast<GlobalVariable>(*U)) {
+    if (isa<GlobalVariable>(*U)) {
       if (!unusedGlobal(*U, unusedNodes))
         return false;
-    } else if (GetElementPtrInst *gep = dyn_cast<GetElementPtrInst>(*U)) {
+    } else if (isa<GetElementPtrInst>(*U)) {
       if (!unusedGlobal(*U, unusedNodes))
         return false;
-    } else if (BitCastInst *bitcast = dyn_cast<BitCastInst>(*U)) {
+    } else if (isa<BitCastInst>(*U)) {
       if (!unusedGlobal(*U, unusedNodes))
         return false;
     } else if (StoreInst *store = dyn_cast<StoreInst>(*U)) {

@@ -19,7 +19,6 @@ See LICENSE.TXT for details.
 
 // clang-format off
 #include "common/LLVMWarningsPush.hpp"
-#include "llvmWrapper/IR/IntrinsicInst.h"
 #include "llvm/ADT/APFloat.h"
 #include "llvm/IR/Constants.h"
 #include "llvm/IR/DIBuilder.h"
@@ -33,9 +32,10 @@ See LICENSE.TXT for details.
 #include "llvm/MC/MCSymbol.h"
 #include "llvm/MC/MCSymbolELF.h"
 #include "llvm/MC/MachineLocation.h"
+#include "common/LLVMWarningsPop.hpp"
+#include "llvmWrapper/IR/IntrinsicInst.h"
 #include <cmath>
 #include <optional>
-#include "common/LLVMWarningsPop.hpp"
 // clang-format on
 
 #include "DwarfCompileUnit.hpp"
@@ -1593,7 +1593,7 @@ IGC::DIE *CompileUnit::getOrCreateGlobalVariableDIE(DIGlobalVariable *GV, ArrayR
 
   // Add to map.
   DIE *VariableDIE = createAndAddDIE(GV->getTag(), *ContextDIE, GV);
-  DIScope *DeclContext;
+  [[maybe_unused]] DIScope *DeclContext;
   if (auto *SDMDecl = GV->getStaticDataMemberDeclaration()) {
     DeclContext = SDMDecl->getScope();
     assert(SDMDecl->isStaticMember() && "Expected static member decl");
@@ -1940,7 +1940,7 @@ void CompileUnit::constructContainingTypeDIEs() {
 }
 
 IGC::DIE *CompileUnit::constructVariableDIE(DbgVariable &DV, bool isScopeAbstract) {
-  StringRef Name = DV.getName();
+  [[maybe_unused]] StringRef Name = DV.getName();
   LLVM_DEBUG(dbgs() << "[DwarfDebug] constructing DIE for variable <" << Name << ">\n");
   // Define variable debug information entry.
   DIE *VariableDie = new DIE(DV.getTag());
@@ -2421,7 +2421,7 @@ bool CompileUnit::buildValidVar(DbgVariable &var, IGC::DIEBlock *Block, const VI
     } else {
       for (unsigned int vectorElem = 0; vectorElem < loc.GetVectorNumElements(); ++vectorElem) {
         // Emit SIMD lane for GRF (unpacked)
-        constexpr auto MaxUI16 = std::numeric_limits<uint16_t>::max();
+        [[maybe_unused]] constexpr auto MaxUI16 = std::numeric_limits<uint16_t>::max();
         const auto registerSizeInBits = DD->GetVISAModule()->getGRFSizeInBits();
         const auto instrSimdWidth = (DD->simdWidth > 16 && registerSizeInBits == 256) ? 16 : DD->simdWidth;
         auto SimdOffset = instrSimdWidth * vectorElem;

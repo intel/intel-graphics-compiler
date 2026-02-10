@@ -9,12 +9,13 @@ SPDX-License-Identifier: MIT
 #ifndef IGCLLVM_TRANSFORMS_IPO_LEGACY_PASSMANAGERBUILDER_H
 #define IGCLLVM_TRANSFORMS_IPO_LEGACY_PASSMANAGERBUILDER_H
 
-#include "llvm/Pass.h"
-#include "llvm/IR/LegacyPassManager.h"
-
+#include "IGC/common/LLVMWarningsPush.hpp"
 #if LLVM_VERSION_MAJOR < 16
 #include "llvm/Transforms/IPO/PassManagerBuilder.h"
 #endif
+#include "llvm/Pass.h"
+#include "llvm/IR/LegacyPassManager.h"
+#include "IGC/common/LLVMWarningsPop.hpp"
 
 using namespace llvm;
 

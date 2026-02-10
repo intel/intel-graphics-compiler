@@ -8,7 +8,10 @@ SPDX-License-Identifier: MIT
 
 #pragma once
 
+#include "LLVMWarningsPush.hpp"
 #include "llvm/Config/llvm-config.h"
+#include "llvm/PassRegistry.h"
+#include "LLVMWarningsPop.hpp"
 
 namespace llvm {
 class PassRegistry;

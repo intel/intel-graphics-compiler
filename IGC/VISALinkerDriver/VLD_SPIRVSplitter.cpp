@@ -38,7 +38,7 @@ llvm::Error SpvSplitter::ParseSPIRV(const char *spv_buffer, uint32_t spv_buffer_
 
   llvm::Error err = HandleHeader(llvm::ArrayRef<uint32_t>(&binary[0], 5));
   if (err)
-    return std::move(err);
+    return err;
 
   // Now read the instructions
   while (offset < word_count) {
@@ -62,7 +62,7 @@ llvm::Error SpvSplitter::ParseSPIRV(const char *spv_buffer, uint32_t spv_buffer_
     // Handle the instruction
     err = HandleInstruction(instWords);
     if (err)
-      return std::move(err);
+      return err;
 
     offset += wordCount;
   }

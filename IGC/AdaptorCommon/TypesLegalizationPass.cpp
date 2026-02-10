@@ -11,10 +11,10 @@ SPDX-License-Identifier: MIT
 #include "Probe/Assertion.h"
 
 #include "common/LLVMWarningsPush.hpp"
-#include "llvmWrapper/Support/Alignment.h"
 #include <llvm/IR/InstIterator.h>
-#include <llvmWrapper/IR/Instructions.h>
 #include "common/LLVMWarningsPop.hpp"
+#include "llvmWrapper/Support/Alignment.h"
+#include <llvmWrapper/IR/Instructions.h>
 
 using namespace llvm;
 

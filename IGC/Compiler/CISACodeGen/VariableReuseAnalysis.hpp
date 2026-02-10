@@ -13,7 +13,6 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CISACodeGen/CoalescingEngine.hpp"
 #include "Compiler/CISACodeGen/BlockCoalescing.hpp"
 #include "common/LLVMWarningsPush.hpp"
-#include "Compiler/MetaDataUtilsWrapper.h"
 #include "llvm/ADT/DenseMap.h"
 #include "llvm/IR/Dominators.h"
 #include "llvm/ADT/TinyPtrVector.h"
@@ -22,9 +21,10 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/InstIterator.h>
 #include <llvm/IR/InstVisitor.h>
 #include "llvm/Pass.h"
-#include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvm/Support/raw_ostream.h"
 #include "common/LLVMWarningsPop.hpp"
+#include "Compiler/MetaDataUtilsWrapper.h"
+#include "llvmWrapper/IR/DerivedTypes.h"
 #include "Compiler/CISACodeGen/RegisterEstimator.hpp"
 #include <list>
 #include <unordered_map>

@@ -15,8 +15,8 @@ SPDX-License-Identifier: MIT
 #include "llvm/Analysis/CallGraph.h"
 #include "llvm/ADT/PostOrderIterator.h"
 #include "llvm/BinaryFormat/Dwarf.h"
-#include "llvmWrapper/IR/Function.h"
 #include "common/LLVMWarningsPop.hpp"
+#include "llvmWrapper/IR/Function.h"
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "DebugInfo/DwarfDebug.hpp"
 #include <optional>
@@ -218,8 +218,8 @@ void GASRetValuePropagator::updateAllUsesWithNewFunction(Function *oldFunc, Func
 
     IGC_ASSERT(oldFunc->getType()->isPointerTy() && newFunc->getReturnType()->isPointerTy());
 
-    auto *oldRetTy = dyn_cast<PointerType>(oldFunc->getReturnType());
-    auto *newRetTy = dyn_cast<PointerType>(newFunc->getReturnType());
+    [[maybe_unused]] auto *oldRetTy = dyn_cast<PointerType>(oldFunc->getReturnType());
+    [[maybe_unused]] auto *newRetTy = dyn_cast<PointerType>(newFunc->getReturnType());
 
     IGC_ASSERT(oldRetTy->getAddressSpace() == ADDRESS_SPACE_GENERIC &&
                newRetTy->getAddressSpace() != ADDRESS_SPACE_GENERIC);

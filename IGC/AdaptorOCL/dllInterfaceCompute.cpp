@@ -15,8 +15,8 @@ SPDX-License-Identifier: MIT
 #include "llvm/Support/Process.h"
 #include "llvm/IR/DiagnosticInfo.h"
 #include "llvm/IR/DiagnosticPrinter.h"
-#include "llvmWrapper/ADT/Optional.h"
 #include "common/LLVMWarningsPop.hpp"
+#include "llvmWrapper/ADT/Optional.h"
 
 #include <cstring>
 #include <string>
@@ -48,9 +48,9 @@ SPDX-License-Identifier: MIT
 
 #if defined(IGC_VC_ENABLED)
 #include "common/LLVMWarningsPush.hpp"
+#include "common/LLVMWarningsPop.hpp"
 #include "vc/igcdeps/TranslationInterface.h"
 #include "vc/Support/StatusCode.h"
-#include "common/LLVMWarningsPop.hpp"
 #endif // defined(IGC_VC_ENABLED)
 
 #include <iStdLib/MemCopy.h>
@@ -717,7 +717,6 @@ bool ProcessElfInput(STB_TranslateInputArgs &InputArgs, STB_TranslateOutputArgs 
             oss2 << std::hex << std::setfill('0') << std::setw(sizeof(newAsmHash) * CHAR_BIT / 4) << newAsmHash;
             const std::string newHashString = oss2.str();
 
-            llvm::Twine outputPath = outputDir;
             std::error_code ec;
             for (llvm::sys::fs::directory_iterator file(outputDir, ec), fileEnd; file != fileEnd && !ec;
                  file.increment(ec)) {

@@ -11,7 +11,7 @@ SPDX-License-Identifier: MIT
 
 using namespace vISA;
 
-static bool regSortCompare(regMap map1, regMap map2) {
+[[maybe_unused]] static bool regSortCompare(regMap map1, regMap map2) {
   if (map1.dstReg < map2.dstReg) {
     return true;
   }

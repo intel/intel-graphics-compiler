@@ -16,14 +16,14 @@ SPDX-License-Identifier: MIT
 #include "Compiler/IGCPassSupport.h"
 #include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
 #include "common/LLVMWarningsPush.hpp"
-#include "llvmWrapper/IR/DerivedTypes.h"
-#include "llvmWrapper/IR/IRBuilder.h"
 #include "llvm/IR/GetElementPtrTypeIterator.h"
 #include <llvm/IR/Function.h>
 #include <llvm/ADT/SmallVector.h>
 #include <llvm/Transforms/Utils/Local.h>
-#include <llvmWrapper/ADT/Optional.h>
 #include "common/LLVMWarningsPop.hpp"
+#include "llvmWrapper/IR/DerivedTypes.h"
+#include "llvmWrapper/IR/IRBuilder.h"
+#include <llvmWrapper/ADT/Optional.h>
 #include "Probe/Assertion.h"
 
 #include <algorithm>
@@ -182,7 +182,7 @@ bool LowerGEPForPrivMem::runOnFunction(llvm::Function &F) {
 
 void TransposeHelper::EraseDeadCode() {
   for (auto pInst = m_toBeRemovedGEP.rbegin(); pInst != m_toBeRemovedGEP.rend(); ++pInst) {
-    Instruction *I = *pInst;
+    [[maybe_unused]] Instruction *I = *pInst;
     IGC_ASSERT_MESSAGE(I->use_empty(), "Instruction still has usage");
     (*pInst)->eraseFromParent();
   }

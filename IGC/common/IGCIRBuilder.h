@@ -9,9 +9,7 @@ SPDX-License-Identifier: MIT
 #pragma once
 
 #include "common/LLVMWarningsPush.hpp"
-#include "llvmWrapper/IR/IRBuilder.h"
 #include "llvm/ADT/ArrayRef.h"
-#include "llvmWrapper/IR/Instructions.h"
 #include "llvm/IR/Intrinsics.h"
 #include "llvm/IR/LLVMContext.h"
 #include "llvm/ADT/Twine.h"
@@ -21,6 +19,8 @@ SPDX-License-Identifier: MIT
 #include <llvm/Analysis/TargetFolder.h>
 #include "llvm/IR/InstrTypes.h"
 #include "common/LLVMWarningsPop.hpp"
+#include "llvmWrapper/IR/IRBuilder.h"
+#include "llvmWrapper/IR/Instructions.h"
 #include "GenISAIntrinsics/GenIntrinsics.h"
 #include "CommonMacros.h"
 

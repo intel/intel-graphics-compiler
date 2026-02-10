@@ -165,7 +165,7 @@ bool GASResolving::resolveMemoryFromHost(Function &F) const {
         // if we have an unsafe call in the kernel, abort
         // to improve we can collect arguments of writing calls as memlocations for alias analysis
         return false;
-      } else if (auto PI = dyn_cast<PtrToIntInst>(&I)) {
+      } else if (isa<PtrToIntInst>(&I)) {
         return false;
       } else if (auto SI = dyn_cast<StoreInst>(&I)) {
         Value *V = SI->getValueOperand();

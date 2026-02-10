@@ -9,7 +9,9 @@ SPDX-License-Identifier: MIT
 #ifndef IGCLLVM_SUPPORT_SYSTEMUTILS_H
 #define IGCLLVM_SUPPORT_SYSTEMUTILS_H
 
+#include "IGC/common/LLVMWarningsPush.hpp"
 #include "llvm/Support/SystemUtils.h"
+#include "IGC/common/LLVMWarningsPop.hpp"
 
 namespace IGCLLVM {
 bool CheckBitcodeOutputToConsole(llvm::raw_ostream &stream_to_check, bool print_warning = true) {

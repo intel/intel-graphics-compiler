@@ -22,7 +22,6 @@ See LICENSE.TXT for details.
 // clang-format off
 #include "common/LLVMWarningsPush.hpp"
 #include "llvm/ADT/DenseMap.h"
-#include <llvmWrapper/ADT/Optional.h>
 #include "llvm/ADT/SmallVector.h"
 #include <llvm/ADT/ArrayRef.h>
 #include "llvm/ADT/StringMap.h"
@@ -31,6 +30,7 @@ See LICENSE.TXT for details.
 #include "llvm/IR/DebugInfo.h"
 #include "llvm/IR/GlobalValue.h"
 #include "common/LLVMWarningsPop.hpp"
+#include <llvmWrapper/ADT/Optional.h>
 // clang-format on
 
 #include "DIE.hpp"

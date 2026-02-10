@@ -7,12 +7,12 @@ SPDX-License-Identifier: MIT
 ============================= end_copyright_notice ===========================*/
 
 #include "InjectPrintf.hpp"
-#include "llvm/IR/IRBuilder.h"
 #include <common/igc_regkeys.hpp>
+#include "Compiler/IGCPassSupport.h"
 
 #include "common/LLVMWarningsPush.hpp"
+#include "llvm/IR/IRBuilder.h"
 #include "common/LLVMWarningsPop.hpp"
-#include "Compiler/IGCPassSupport.h"
 
 using namespace IGC;
 using namespace llvm;

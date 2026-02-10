@@ -19,14 +19,14 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPush.hpp"
 #include "llvm/ADT/SCCIterator.h"
 #include <llvm/IR/Module.h>
-#include "llvmWrapper/IR/Function.h"
-#include <llvmWrapper/ADT/STLExtras.h>
-#include <llvmWrapper/IR/Instructions.h>
 #include <llvm/IR/Instructions.h>
 #include <llvm/IR/DerivedTypes.h>
 #include "llvm/IR/DIBuilder.h"
 #include <llvm/ADT/DepthFirstIterator.h>
 #include "common/LLVMWarningsPop.hpp"
+#include "llvmWrapper/IR/Function.h"
+#include <llvmWrapper/ADT/STLExtras.h>
+#include <llvmWrapper/IR/Instructions.h>
 
 #include "common/debug/Debug.hpp"
 #include "DebugInfo/VISADebugEmitter.hpp"

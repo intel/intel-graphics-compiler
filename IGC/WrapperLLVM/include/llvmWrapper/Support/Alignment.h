@@ -9,13 +9,15 @@ SPDX-License-Identifier: MIT
 #ifndef IGCLLVM_SUPPORT_ALIGNMENT_H
 #define IGCLLVM_SUPPORT_ALIGNMENT_H
 
+#include "IGC/common/LLVMWarningsPush.hpp"
+#include "llvm/Support/Alignment.h"
 #include "llvm/Config/llvm-config.h"
 #include "llvm/IR/DataLayout.h"
 #include "llvm/IR/GlobalObject.h"
 #include "llvm/IR/Instruction.h"
+#include "IGC/common/LLVMWarningsPop.hpp"
 #include <cstdint>
 #include <type_traits>
-#include "llvm/Support/Alignment.h"
 
 typedef uint64_t alignment_t;
 

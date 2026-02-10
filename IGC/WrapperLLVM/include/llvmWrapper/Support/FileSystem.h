@@ -9,8 +9,10 @@ SPDX-License-Identifier: MIT
 #ifndef IGCLLVM_SUPPORT_FILESYSTEM_H
 #define IGCLLVM_SUPPORT_FILESYSTEM_H
 
+#include "IGC/common/LLVMWarningsPush.hpp"
 #include "llvm/Config/llvm-config.h"
 #include "llvm/Support/FileSystem.h"
+#include "IGC/common/LLVMWarningsPop.hpp"
 
 #define IGCLLVM_OF_None OF_None
 

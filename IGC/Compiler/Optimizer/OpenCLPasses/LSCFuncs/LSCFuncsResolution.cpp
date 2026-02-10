@@ -1016,7 +1016,7 @@ Instruction *LSCFuncsResolution::CreateSubGroup2DBlockOperation(llvm::CallInst &
     tileWidth = subGrpSize;
 
     if (elemSize == 8) {
-      bool is32Height = funcName.consume_front("_k32");
+      [[maybe_unused]] bool is32Height = funcName.consume_front("_k32");
       IGC_ASSERT_MESSAGE(is32Height, "Only k32 is supported for 8 bit element size, at the moment.");
 
       // If sub-group size is 32, we still may want to use width = 16

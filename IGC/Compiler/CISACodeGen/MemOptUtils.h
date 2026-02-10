@@ -14,8 +14,8 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPush.hpp"
 #include "llvm/Analysis/TargetLibraryInfo.h"
 #include <llvm/IR/Instruction.h>
-#include <llvmWrapper/Analysis/MemoryLocation.h>
 #include "common/LLVMWarningsPop.hpp"
+#include <llvmWrapper/Analysis/MemoryLocation.h>
 
 #include "common/IGCIRBuilder.h"
 #include "Compiler/CISACodeGen/SLMConstProp.hpp"

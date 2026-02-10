@@ -13,7 +13,6 @@ SPDX-License-Identifier: MIT
 
 // LLVM
 #include "../common/LLVMWarningsPush.hpp"
-#include "llvm-c/Core.h"
 #include "llvm/ADT/APFloat.h"
 #include "llvm/ADT/APSInt.h"
 #include "llvm/ADT/ArrayRef.h"
@@ -40,7 +39,6 @@ SPDX-License-Identifier: MIT
 #include "llvm/ADT/StringSet.h"
 #include "llvm/ADT/StringSwitch.h"
 #include "llvm/ADT/TinyPtrVector.h"
-#include "llvmWrapper/TargetParser/Triple.h"
 #include "llvm/ADT/Twine.h"
 #include "llvm/Analysis/AliasSetTracker.h"
 #include "llvm/Analysis/AssumptionCache.h"
@@ -199,6 +197,9 @@ SPDX-License-Identifier: MIT
 #include "llvm/Transforms/Utils/SSAUpdater.h"
 #include "llvm/Transforms/Utils/SSAUpdaterBulk.h"
 #include "llvm/Transforms/Utils/UnrollLoop.h"
+#include "../common/LLVMWarningsPop.hpp"
+#include "llvm-c/Core.h"
+#include "llvmWrapper/TargetParser/Triple.h"
 #include "llvmWrapper/ADT/APInt.h"
 #include "llvmWrapper/ADT/Optional.h"
 #include "llvmWrapper/ADT/STLExtras.h"
@@ -247,7 +248,6 @@ SPDX-License-Identifier: MIT
 #include "llvmWrapper/Transforms/Utils/Local.h"
 #include "llvmWrapper/Transforms/Utils/LoopUtils.h"
 #include "llvmWrapper/Transforms/Utils/ValueMapper.h"
-#include "../common/LLVMWarningsPop.hpp"
 
 // Excluded LLVM headers with reasons
 

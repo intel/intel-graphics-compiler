@@ -8,13 +8,15 @@ SPDX-License-Identifier: MIT
 
 #include "Compiler/Optimizer/OpenCLPasses/GenericAddressResolution/GenericNullPtrPropagation.hpp"
 #include "Compiler/CodeGenPublic.h"
-
 #include "IGCPassSupport.h"
+#include <llvmWrapper/IR/IRBuilder.h>
+
+#include "common/LLVMWarningsPush.hpp"
 #include <llvm/IR/Function.h>
 #include <llvm/IR/Instructions.h>
 #include <llvm/Pass.h>
-#include <llvmWrapper/IR/IRBuilder.h>
 #include <llvm/IR/InstVisitor.h>
+#include "common/LLVMWarningsPop.hpp"
 
 using namespace llvm;
 using namespace IGC;

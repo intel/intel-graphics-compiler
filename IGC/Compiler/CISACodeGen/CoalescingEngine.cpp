@@ -1122,7 +1122,7 @@ CVariable *CoalescingEngine::PrepareSplitUrbWritePayload(
   SetCurrentPart(inst, 0);
   IGC_ASSERT(outProgram->m_SIMDSize == SIMDMode::SIMD16);
   IGC_ASSERT(splitPartNo < 2);
-  const GenIntrinsicInst *const intrinsicInst = dyn_cast<GenIntrinsicInst>(inst);
+  [[maybe_unused]] const GenIntrinsicInst *const intrinsicInst = dyn_cast<GenIntrinsicInst>(inst);
   IGC_ASSERT(nullptr != intrinsicInst);
   IGC_ASSERT(intrinsicInst->getIntrinsicID() == GenISAIntrinsic::GenISA_URBWrite);
 

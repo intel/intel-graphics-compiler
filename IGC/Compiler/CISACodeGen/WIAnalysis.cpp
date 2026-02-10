@@ -453,7 +453,7 @@ void WIAnalysisRunner::updateArgsDependency(llvm::Function *pF) {
                                     (IsSubroutine ? 0 : m_ModMD->pushInfo.pushAnalysisWIInfos.size()));
   IGC_ASSERT_MESSAGE(implicitArgStart >= 0, "Function arg size does not match meta data and push args.");
 
-  llvm::Function::arg_iterator ai, ae;
+  [[maybe_unused]] llvm::Function::arg_iterator ai, ae;
   ai = pF->arg_begin();
   ae = pF->arg_end();
 
@@ -1928,7 +1928,7 @@ void WIAnalysisRunner::checkLocalIdUniform(Function *F, bool &IsLxUniform, bool 
   ModuleMetaData *modMD = m_CGCtx->getModuleMetaData();
   auto funcMD = modMD->FuncMD.find(F);
 
-  int32_t WO_0 = -1, WO_1 = -1, WO_2 = -1;
+  [[maybe_unused]] int32_t WO_0 = -1, WO_1 = -1, WO_2 = -1;
   if (funcMD == modMD->FuncMD.end()) {
     return;
   }

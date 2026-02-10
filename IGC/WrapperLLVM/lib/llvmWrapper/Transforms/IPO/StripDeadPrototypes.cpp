@@ -9,9 +9,9 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPush.hpp"
 #include "llvm/Transforms/IPO/StripDeadPrototypes.h"
 
+#include "common/LLVMWarningsPop.hpp"
 #include "llvmWrapper/Transforms/IPO/StripDeadPrototypes.h"
 #include "llvmWrapper/Transforms/InitializePasses.h"
-#include "common/LLVMWarningsPop.hpp"
 #include "Compiler/IGCPassSupport.h"
 
 namespace IGCLLVM {

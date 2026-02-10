@@ -12,12 +12,12 @@ SPDX-License-Identifier: MIT
 #include "Compiler/IGCPassSupport.h"
 #include "common/LLVMWarningsPush.hpp"
 #include "llvm/IR/Attributes.h"
-#include "llvmWrapper/IR/DerivedTypes.h"
-#include "llvmWrapper/Support/Alignment.h"
 #include <llvm/IR/Module.h>
 #include <llvm/IR/Instruction.h>
 #include <llvm/IR/Instructions.h>
 #include "common/LLVMWarningsPop.hpp"
+#include "llvmWrapper/IR/DerivedTypes.h"
+#include "llvmWrapper/Support/Alignment.h"
 #include "ShaderTypesEnum.h"
 #include "Probe/Assertion.h"
 
@@ -256,7 +256,7 @@ void OpenCLPrintfResolution::removeExcessArgs() {
   SPrintfArgDescriptor *formatStringArgDesc = &m_argDescriptors[0];
 
   Value *formatString = formatStringArgDesc->value;
-  IGC::SHADER_PRINTF_TYPE dataType = formatStringArgDesc->argType;
+  [[maybe_unused]] IGC::SHADER_PRINTF_TYPE dataType = formatStringArgDesc->argType;
   IGC_ASSERT(dataType == SHADER_PRINTF_STRING_LITERAL);
 
   if (auto GV = dyn_cast<GlobalVariable>(formatString)) {

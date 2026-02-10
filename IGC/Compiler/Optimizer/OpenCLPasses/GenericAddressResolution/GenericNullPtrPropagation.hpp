@@ -8,8 +8,10 @@ SPDX-License-Identifier: MIT
 
 #pragma once
 
+#include "common/LLVMWarningsPush.hpp"
 #include <llvm/Pass.h>
 #include <llvm/PassRegistry.h>
+#include "common/LLVMWarningsPop.hpp"
 
 namespace IGC {
 llvm::FunctionPass *createGenericNullPtrPropagationPass();

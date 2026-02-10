@@ -3140,7 +3140,7 @@ private:
     // caching
     formatCachingOpts();
 
-    auto ccop = getNextEnumU8<LSC_CACHE_CTRL_OPERATION>();
+    [[maybe_unused]] auto ccop = getNextEnumU8<LSC_CACHE_CTRL_OPERATION>();
     auto ccsize = getNextEnumU8<LSC_CACHE_CTRL_SIZE>();
 
       ss << ".reset";

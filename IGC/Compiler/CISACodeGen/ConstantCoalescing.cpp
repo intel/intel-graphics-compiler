@@ -17,11 +17,11 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CodeGenContextWrapper.hpp"
 #include "Compiler/IGCPassSupport.h"
 #include "common/LLVMWarningsPush.hpp"
-#include "llvmWrapper/IR/DerivedTypes.h"
-#include "llvmWrapper/Support/Alignment.h"
 #include "llvm/Analysis/ValueTracking.h"
 #include "llvm/Support/KnownBits.h"
 #include "common/LLVMWarningsPop.hpp"
+#include "llvmWrapper/IR/DerivedTypes.h"
+#include "llvmWrapper/Support/Alignment.h"
 #include "Probe/Assertion.h"
 
 /// @brief ConstantCoalescing merges multiple constant loads into one load
@@ -733,7 +733,7 @@ void ConstantCoalescing::CombineTwoLoads(BufChunk *cov_chunk, Instruction *load,
     IGC_ASSERT(isa<LdRawIntrinsic>(load0));
     IGC_ASSERT(isa<LdRawIntrinsic>(load));
     LdRawIntrinsic *ldRaw0 = cast<LdRawIntrinsic>(load0);
-    LdRawIntrinsic *ldRaw1 = cast<LdRawIntrinsic>(load);
+    [[maybe_unused]] LdRawIntrinsic *ldRaw1 = cast<LdRawIntrinsic>(load);
     IGC_ASSERT(ldRaw0->getResourceValue()->getType() == ldRaw1->getResourceValue()->getType());
     Type *types[] = {
         vty,
@@ -906,7 +906,7 @@ void ConstantCoalescing::MergeUniformLoad(Instruction *load, Value *bufIdxV, uin
     uint32_t validChunkSize = (supportsVec3Load && chunkSize == 3) ? 3 : iSTD::RoundPower2((DWORD)chunkSize);
     return validChunkSize;
   };
-  const uint32_t loadNumElements =
+  [[maybe_unused]] const uint32_t loadNumElements =
       loadDataTy->isVectorTy() ? int_cast<uint32_t>(cast<IGCLLVM::FixedVectorType>(loadDataTy)->getNumElements()) : 1;
   // VectorPreProcess pass legalizes loaded data size.
   if (!cov_chunk) {
@@ -2075,7 +2075,7 @@ bool ConstantCoalescing::CheckForAliasingWrites(uint32_t addrSpace, Instruction 
     return false;
   }
 
-  const DominatorTree &DT = getAnalysis<DominatorTreeWrapperPass>().getDomTree();
+  [[maybe_unused]] const DominatorTree &DT = getAnalysis<DominatorTreeWrapperPass>().getDomTree();
   const bool statefulResourcesNotAliased = m_ctx->getModuleMetaData()->statefulResourcesNotAliased;
   BasicBlock *chunkBB = dominatingChunk->getParent();
   BasicBlock *candidateBB = mergeCandidate->getParent();

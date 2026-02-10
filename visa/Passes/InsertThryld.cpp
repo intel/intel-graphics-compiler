@@ -14,7 +14,7 @@ using namespace vISA;
 // ALUs separately within basic block and inserting thread yield.
 // TODO: Add global analysis
 void InsertThryld::run() {
-  const auto samplerTH =
+  [[maybe_unused]] const auto samplerTH =
       builder.getOptions()->getuInt32Option(vISA_samplerTholdForThryld);
   const auto nonSamplerLoadTH =
       builder.getOptions()->getuInt32Option(vISA_NonsamplerLoadTholdForThryld);

@@ -1888,7 +1888,7 @@ void HWConformityPro::convertMAD2MulAdd(INST_LIST_ITER it, G4_BB *bb) {
 }
 
 void HWConformityPro::fixMad(INST_LIST_ITER it, G4_BB *bb) {
-  G4_INST *inst = *it;
+  [[maybe_unused]] G4_INST *inst = *it;
   vISA_ASSERT(inst->opcode() == G4_pseudo_mad, "expect mad instruction");
 
   if (generateMad(it, bb))
@@ -3489,8 +3489,9 @@ void HWConformityPro::evenlySplitInst(INST_LIST_ITER iter, G4_BB *bb) {
       G4_InstOption newMask =
           G4_INST::offsetToMask(currExSize, newMaskOffset, nibOk);
       if (newMask == InstOpt_NoOpt) {
-        bool useMask = inst->getPredicate() || inst->getCondModBase() ||
-                       (!bb->isAllLaneActive() && !inst->isWriteEnableInst());
+        [[maybe_unused]] bool useMask =
+            inst->getPredicate() || inst->getCondModBase() ||
+            (!bb->isAllLaneActive() && !inst->isWriteEnableInst());
         vISA_ASSERT(!useMask, "no legal emask found for the split instruction");
       } else {
         newInst->setMaskOption(newMask);

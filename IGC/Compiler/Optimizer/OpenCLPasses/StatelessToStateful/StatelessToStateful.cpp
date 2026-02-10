@@ -13,14 +13,14 @@ SPDX-License-Identifier: MIT
 #include "common/Stats.hpp"
 #include "common/secure_string.h"
 #include "common/LLVMWarningsPush.hpp"
-#include "llvmWrapper/IR/DerivedTypes.h"
-#include "llvmWrapper/Support/Alignment.h"
 #include <llvm/IR/Function.h>
 #include <llvm/IR/Instructions.h>
 #include <llvm/IR/GetElementPtrTypeIterator.h>
 #include <llvm/Analysis/ValueTracking.h>
 #include <llvm/Transforms/Utils/Local.h>
 #include "common/LLVMWarningsPop.hpp"
+#include "llvmWrapper/IR/DerivedTypes.h"
+#include "llvmWrapper/Support/Alignment.h"
 #include <string>
 #include "Probe/Assertion.h"
 #include "PointersSettings.h"
@@ -220,23 +220,25 @@ bool StatelessToStateful::canWriteToMemoryTill(Instruction *Till) {
   return false;
 }
 
-// This function checks if it is safe to hoist the load instruction over the phi instruction.
-// It supports the following cases (BB3 contains load and phi instructions):
-//
-// 1)
-//   BB1  BB2
-//   |   /
-//    BB3
-// Here the function will check that there are no instructions that can write to memory in BB3 (from phi instruction
-// till load instruction).
-//
-// 2)
-//  BB1
-//  |  \
-//  |   BB2
-//  |  /
-//   BB3
-// Here the function will check that there are no instructions that can write to memory in the whole basic block BB2.
+/*
+This function checks if it is safe to hoist the load instruction over the phi instruction.
+It supports the following cases (BB3 contains load and phi instructions):
+
+1)
+  BB1  BB2
+  |   /
+   BB3
+Here the function will check that there are no instructions that can write to memory in BB3 (from phi instruction
+till load instruction).
+
+2)
+ BB1
+ |  \
+ |   BB2
+ |  /
+  BB3
+Here the function will check that there are no instructions that can write to memory in the whole basic block BB2.
+*/
 bool StatelessToStateful::isItSafeToHoistLoad(LoadInst *LI, PHINode *Phi) {
   BasicBlock *LoadBB = LI->getParent();
 
@@ -440,7 +442,7 @@ bool StatelessToStateful::getOffsetFromGEP(Function *F, const SmallVector<GetEle
   for (int i = nGEPs; i > 0; --i) {
     GetElementPtrInst *GEP = GEPs[i - 1];
     Value *PtrOp = GEP->getPointerOperand();
-    PointerType *PtrTy = dyn_cast<PointerType>(PtrOp->getType());
+    [[maybe_unused]] PointerType *PtrTy = dyn_cast<PointerType>(PtrOp->getType());
 
     IGC_ASSERT_MESSAGE(PtrTy, "Only accept scalar pointer!");
 

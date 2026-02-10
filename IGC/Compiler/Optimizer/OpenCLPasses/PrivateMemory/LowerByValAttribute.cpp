@@ -13,9 +13,9 @@ SPDX-License-Identifier: MIT
 #include <llvm/Pass.h>
 #include <llvm/IR/Function.h>
 #include <llvm/IR/Instructions.h>
+#include "common/LLVMWarningsPop.hpp"
 #include <llvmWrapper/IR/Instructions.h>
 #include <llvmWrapper/IR/IRBuilder.h>
-#include "common/LLVMWarningsPop.hpp"
 
 using namespace llvm;
 using namespace IGC;

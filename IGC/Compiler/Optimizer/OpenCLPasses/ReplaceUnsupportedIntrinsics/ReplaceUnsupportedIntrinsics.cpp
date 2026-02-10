@@ -13,11 +13,6 @@ SPDX-License-Identifier: MIT
 #include "common/igc_regkeys.hpp"
 
 #include "common/LLVMWarningsPush.hpp"
-#include "llvmWrapper/IR/DerivedTypes.h"
-#include "llvmWrapper/IR/Instructions.h"
-#include "llvmWrapper/IR/IRBuilder.h"
-#include "llvmWrapper/Support/Alignment.h"
-#include "llvmWrapper/Support/TypeSize.h"
 #include "llvm/IR/DerivedTypes.h"
 #include "llvm/IR/Module.h"
 #include "llvm/IR/Function.h"
@@ -26,6 +21,11 @@ SPDX-License-Identifier: MIT
 #include "llvm/IR/IntrinsicInst.h"
 #include <llvm/IR/InstVisitor.h>
 #include "common/LLVMWarningsPop.hpp"
+#include "llvmWrapper/IR/DerivedTypes.h"
+#include "llvmWrapper/IR/Instructions.h"
+#include "llvmWrapper/IR/IRBuilder.h"
+#include "llvmWrapper/Support/Alignment.h"
+#include "llvmWrapper/Support/TypeSize.h"
 
 #include <map>
 #include "Probe/Assertion.h"
@@ -961,7 +961,7 @@ void ReplaceUnsupportedIntrinsics::replaceLRint(IntrinsicInst *I) {
   IGC_ASSERT(IntrID == Intrinsic::lrint || IntrID == Intrinsic::llrint);
   Value *inVal = I->getArgOperand(0);
   Type *dstType = I->getType();
-  Type *srcType = inVal->getType();
+  [[maybe_unused]] Type *srcType = inVal->getType();
   IGC_ASSERT(!(srcType->isVectorTy() || dstType->isVectorTy()));
   IGC_ASSERT(srcType->isFloatTy() || srcType->isDoubleTy());
   IGC_ASSERT(dstType->isIntegerTy());

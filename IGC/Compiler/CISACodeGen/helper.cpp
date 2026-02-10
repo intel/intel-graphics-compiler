@@ -13,16 +13,16 @@ SPDX-License-Identifier: MIT
 #include "Compiler/Optimizer/OpenCLPasses/KernelArgs/KernelArgs.hpp"
 #include "common/LLVMWarningsPush.hpp"
 #include "llvm/Config/llvm-config.h"
-#include "llvmWrapper/IR/DerivedTypes.h"
-#include "llvmWrapper/IR/Instructions.h"
-#include "llvmWrapper/IR/Intrinsics.h"
-#include "llvmWrapper/Support/Alignment.h"
 #include "llvm/IR/GetElementPtrTypeIterator.h"
 #include <llvm/IR/InstIterator.h>
 #include <llvm/Support/KnownBits.h>
 #include <llvm/Transforms/Utils/Local.h>
 #include "llvm/Analysis/ValueTracking.h"
 #include "common/LLVMWarningsPop.hpp"
+#include "llvmWrapper/IR/DerivedTypes.h"
+#include "llvmWrapper/IR/Instructions.h"
+#include "llvmWrapper/IR/Intrinsics.h"
+#include "llvmWrapper/Support/Alignment.h"
 #include "GenISAIntrinsics/GenIntrinsicInst.h"
 #include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
 #include "common/secure_mem.h"
@@ -191,7 +191,7 @@ StoreRawIntrinsic *CreateStoreRawIntrinsic(StoreInst *inst, Value *bufPtr, Value
     func = GenISAIntrinsic::getDeclaration(module, llvm::GenISAIntrinsic::GenISA_storerawvector_indexed, tys);
   } else {
     Type *dataType = storeVal->getType();
-    const uint64_t typeSize = DL.getTypeSizeInBits(dataType);
+    [[maybe_unused]] const uint64_t typeSize = DL.getTypeSizeInBits(dataType);
     IGC_ASSERT(typeSize == 8 || typeSize == 16 || typeSize == 32 || typeSize == 64);
 
     Type *types[] = {bufPtr->getType(), storeVal->getType()};
@@ -2544,7 +2544,7 @@ std::tuple<std::string, std::string, unsigned> ParseVectorVariantFunctionString(
   outStr << 'N';
   pos++;
   // Parse vector length (input can be 1/2/4/8/16/32, output restricted to 8/16/32)
-  auto idStart = pos;
+  [[maybe_unused]] auto idStart = pos;
   while (*pos >= '0' && *pos <= '9')
     pos++;
   IGC_ASSERT(StringRef(idStart, pos - idStart).getAsInteger(10, vlen) == 0);
@@ -2608,7 +2608,7 @@ bool isSimpleStructTy(StructType *STy, uint32_t EltBytes) {
     return false;
   for (Type *Ty : STy->elements()) {
     Type *eTy = Ty;
-    if (StructType *st = dyn_cast<StructType>(eTy)) {
+    if (isa<StructType>(eTy)) {
       return false;
       // if (!isSimpleStructTy(st, EltBytes))
       //     return false;

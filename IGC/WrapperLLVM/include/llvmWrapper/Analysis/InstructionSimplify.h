@@ -9,10 +9,12 @@ SPDX-License-Identifier: MIT
 #ifndef IGCLLVM_ANALYSIS_INSTRUCTIONSIMPLIFY_H
 #define IGCLLVM_ANALYSIS_INSTRUCTIONSIMPLIFY_H
 
+#include "IGC/common/LLVMWarningsPush.hpp"
 #include "llvm/Config/llvm-config.h"
 #include "llvm/Analysis/InstructionSimplify.h"
 #include "llvm/ADT/SmallVector.h"
 #include "llvm/IR/Value.h"
+#include "IGC/common/LLVMWarningsPop.hpp"
 
 namespace IGCLLVM {
 #if (LLVM_VERSION_MAJOR < 15)

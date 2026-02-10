@@ -9,11 +9,13 @@ SPDX-License-Identifier: MIT
 #ifndef IGCLLVM_IR_MODULE_H
 #define IGCLLVM_IR_MODULE_H
 
+#include "IGC/common/LLVMWarningsPush.hpp"
 #include "llvm/Config/llvm-config.h"
 #include "llvm/IR/Module.h"
 #include "llvm/IR/Attributes.h"
 #include "llvm/IR/DerivedTypes.h"
 #include "llvm/ADT/StringRef.h"
+#include "IGC/common/LLVMWarningsPop.hpp"
 
 namespace IGCLLVM {
 // TODO: Clean up obsolete uses at call sites

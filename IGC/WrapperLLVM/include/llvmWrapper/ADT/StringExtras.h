@@ -9,10 +9,12 @@ SPDX-License-Identifier: MIT
 #ifndef IGCLLVM_ADT_STRINGEXTRAS_H
 #define IGCLLVM_ADT_STRINGEXTRAS_H
 
+#include "IGC/common/LLVMWarningsPush.hpp"
 #include "llvm/Config/llvm-config.h"
 #include "llvm/ADT/StringExtras.h"
 #include "llvm/ADT/APInt.h"
 #include "llvm/ADT/APSInt.h"
+#include "IGC/common/LLVMWarningsPop.hpp"
 
 namespace IGCLLVM {
 inline std::string toString(const llvm::APInt &I, unsigned Radix, bool Signed, bool formatAsCLiteral = false) {

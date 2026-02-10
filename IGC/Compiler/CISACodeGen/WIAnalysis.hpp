@@ -13,7 +13,6 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CISACodeGen/TranslationTable.hpp"
 
 #include "common/LLVMWarningsPush.hpp"
-#include <llvmWrapper/IR/InstrTypes.h>
 #include <llvm/Pass.h>
 #include <llvm/IR/Function.h>
 #include <llvm/IR/Instructions.h>
@@ -30,6 +29,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/Analysis/LoopInfo.h>
 #include <llvm/Analysis/PostDominators.h>
 #include "common/LLVMWarningsPop.hpp"
+#include <llvmWrapper/IR/InstrTypes.h>
 
 #include <vector>
 #include <common/Types.hpp>

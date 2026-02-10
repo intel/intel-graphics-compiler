@@ -357,7 +357,7 @@ void G4Verifier::verifySend(G4_INST *inst) {
     }
     if (kernel.getNumRegTotal() == 512) {
       // verify that r511 is not used as a source for sendgx/sendgxc.
-      auto checkNotLastGRF = [this](G4_Operand *opnd) {
+      [[maybe_unused]] auto checkNotLastGRF = [this](G4_Operand *opnd) {
         auto r511InBytes = 511 * kernel.numEltPerGRF<Type_UB>();
         if (opnd->isNullReg())
           return true;
@@ -1642,12 +1642,13 @@ void G4Verifier::verifyLfsr(G4_INST *inst) {
     vISA_ASSERT(false, "lfsr doesn't support saturation");
 
   G4_DstRegRegion *dst = lfsrInst->getDst();
-  G4_Type dTy = dst->getType();
+  [[maybe_unused]] G4_Type dTy = dst->getType();
   vISA_ASSERT(dTy == Type_UD, "dst type of lfsr must be UD");
   vISA_ASSERT(dst->getHorzStride() == 1, "dst region of lfsr must be <1>");
 
-  G4_SrcRegRegion *src0 = lfsrInst->getSrc(0)->asSrcRegRegion();
-  G4_Type s0Ty = src0->getType();
+  [[maybe_unused]] G4_SrcRegRegion *src0 =
+      lfsrInst->getSrc(0)->asSrcRegRegion();
+  [[maybe_unused]] G4_Type s0Ty = src0->getType();
   vISA_ASSERT(s0Ty == Type_UD, "src0 type of lfsr must be UD");
   vISA_ASSERT(!src0->hasModifier(), "lfsr doesn't support source modifier");
   vISA_ASSERT(src0->getRegion()->isRegion110() || src0->getRegion()->isScalar(),
@@ -1655,8 +1656,9 @@ void G4Verifier::verifyLfsr(G4_INST *inst) {
   vISA_ASSERT(!src0->isIndirect(), "lfsr doesn't support indirect access");
 
   if (lfsrInst->getSrc(1)->isSrcRegRegion()) {
-    G4_SrcRegRegion *src1 = lfsrInst->getSrc(1)->asSrcRegRegion();
-    G4_Type s1Ty = src1->getType();
+    [[maybe_unused]] G4_SrcRegRegion *src1 =
+        lfsrInst->getSrc(1)->asSrcRegRegion();
+    [[maybe_unused]] G4_Type s1Ty = src1->getType();
     vISA_ASSERT(s1Ty == Type_UD, "src1 type of lfsr must be UD");
     vISA_ASSERT(!src1->hasModifier(), "lfsr doesn't support source modifier");
     vISA_ASSERT(src1->getRegion()->isRegion110() ||

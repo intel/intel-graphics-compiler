@@ -7,8 +7,6 @@ SPDX-License-Identifier: MIT
 ============================= end_copyright_notice ===========================*/
 
 #include "common/LLVMWarningsPush.hpp"
-#include "llvmWrapper/Transforms/IPO/InlineSimple.h"
-#include "llvmWrapper/Transforms/IPO/InlineHelper.h"
 #include "llvm/Analysis/CGSCCPassManager.h"
 #include "llvm/Analysis/AssumptionCache.h"
 #include "llvm/Analysis/PostDominators.h"
@@ -19,10 +17,11 @@ SPDX-License-Identifier: MIT
 #include "llvm/Analysis/BasicAliasAnalysis.h"
 #include "llvm/Transforms/IPO.h"
 
+#include "common/LLVMWarningsPop.hpp"
+#include "llvmWrapper/Transforms/IPO/InlineSimple.h"
+#include "llvmWrapper/Transforms/IPO/InlineHelper.h"
 #include "llvmWrapper/Transforms/IPO/SCCP.h"
 #include "llvmWrapper/Transforms/InitializePasses.h"
-
-#include "common/LLVMWarningsPop.hpp"
 #include "Compiler/IGCPassSupport.h"
 
 using namespace llvm;

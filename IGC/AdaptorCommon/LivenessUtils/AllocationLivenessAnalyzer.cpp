@@ -380,7 +380,8 @@ bool AllocationLivenessAnalyzer::LivenessData::OverlapsWith(const LivenessData &
     return true;
 
   // check lifetime boundaries
-  for (auto &[LD1, LD2] : {std::make_pair(this, &LD), std::make_pair(&LD, this)}) {
+  auto pairs = {std::make_pair(this, &LD), std::make_pair(&LD, this)};
+  for (auto &[LD1, LD2] : pairs) {
     // If either the start or any end of LD1 lies within LD2, lifetimes overlap
     if (LD2->ContainsInstruction(LD1->lifetimeStart))
       return true;

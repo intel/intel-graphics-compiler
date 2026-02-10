@@ -75,7 +75,7 @@ bool StaticGASResolution::runOnFunction(llvm::Function &F) {
           (pCalledFunc->getName() == "__builtin_IB_to_private" || pCalledFunc->getName() == "__builtin_IB_to_local")) {
         IGC_ASSERT(IGCLLVM::getNumArgOperands(CI) == 1);
         Value *arg = CI->getArgOperand(0);
-        PointerType *argType = dyn_cast<PointerType>(arg->getType());
+        [[maybe_unused]] PointerType *argType = dyn_cast<PointerType>(arg->getType());
         IGC_ASSERT(argType != nullptr);
         PointerType *dstType = dyn_cast<PointerType>(CI->getType());
         IGC_ASSERT(dstType != nullptr);

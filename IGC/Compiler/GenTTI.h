@@ -12,8 +12,8 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPush.hpp"
 #include "llvm/Config/llvm-config.h"
 #include "llvm/Analysis/TargetTransformInfo.h"
-#include "llvmWrapper/Analysis/TargetTransformInfo.h"
 #include "common/LLVMWarningsPop.hpp"
+#include "llvmWrapper/Analysis/TargetTransformInfo.h"
 
 namespace llvm {
 

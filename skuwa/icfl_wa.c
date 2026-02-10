@@ -23,6 +23,7 @@ void InitCflNonDisplayWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, 
 {
     int iStepId_CFL = (int)pWaParam->usRevId;
     int iStepId_PCH = (int)pWaParam->usRevId_PCH;
+    (void)iStepId_PCH;
     iStepId_PCH = iStepId_PCH;
 
 
@@ -201,7 +202,9 @@ void InitCflNonDisplayWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, 
 void InitCflHASWaTable(PHW_DEVICE_EXTENSION pKchContext, PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_PARAM pWaParam)
 {
     int iStepId_CFL = (int)pWaParam->usRevId;
+    (void)iStepId_CFL;
     int iStepId_PCH = (int)pWaParam->usRevId_PCH;
+    (void)iStepId_PCH;
 
 
     SI_WA_ENABLE(

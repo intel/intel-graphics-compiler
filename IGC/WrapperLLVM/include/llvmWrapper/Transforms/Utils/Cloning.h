@@ -9,9 +9,11 @@ SPDX-License-Identifier: MIT
 #ifndef IGCLLVM_TRANSFORMS_UTILS_CLONING_H
 #define IGCLLVM_TRANSFORMS_UTILS_CLONING_H
 
+#include "common/LLVMWarningsPush.hpp"
 #include "llvm/Config/llvm-config.h"
 #include "llvm/Transforms/Utils/Cloning.h"
 #include "llvm/Support/Casting.h"
+#include "common/LLVMWarningsPop.hpp"
 #include "Probe/Assertion.h"
 
 namespace IGCLLVM {

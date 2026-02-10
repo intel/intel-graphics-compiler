@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 ============================= end_copyright_notice ===========================*/
 
 #include "common/LLVMWarningsPush.hpp"
+
 #include "llvm/Transforms/Scalar/LoopLoadElimination.h"
 #include "llvm/Analysis/GlobalsModRef.h"
 #include "llvm/Analysis/LazyBlockFrequencyInfo.h"
@@ -14,14 +15,14 @@ SPDX-License-Identifier: MIT
 #include "llvm/IR/PassManager.h"
 #include "llvm/Transforms/Utils.h"
 #include "llvm/Transforms/Utils/SizeOpts.h"
-#include "llvmWrapper/Analysis/LoopAccessAnalysis.h"
 #include "llvm/Analysis/LoopAccessAnalysis.h"
 #include "llvm/Analysis/ScalarEvolution.h"
 
-#include "llvmWrapper/Transforms/Scalar/LoopLoadElimination.h"
-#include "llvmWrapper/Transforms/InitializePasses.h"
 #include "common/LLVMWarningsPop.hpp"
 
+#include "llvmWrapper/Analysis/LoopAccessAnalysis.h"
+#include "llvmWrapper/Transforms/Scalar/LoopLoadElimination.h"
+#include "llvmWrapper/Transforms/InitializePasses.h"
 #include "Compiler/IGCPassSupport.h"
 
 using namespace llvm;

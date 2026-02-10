@@ -371,7 +371,7 @@ Output:
     none
 
 \*****************************************************************************/
-static const char *ConvertType(const char *flagType) {
+[[maybe_unused]] static const char *ConvertType(const char *flagType) {
   if (strcmp(flagType, "int") == 0)
     return "DWORD";
   else if (strcmp(flagType, "debugString") == 0)
@@ -630,7 +630,7 @@ static void ParseHashRange(llvm::StringRef line, std::vector<HashRange> &ranges)
   auto parseAsInt = [](StringRef S) {
     unsigned Radix = S.startswith("0x") ? 0 : 16;
     uint64_t Result;
-    bool Err = S.getAsInteger(Radix, Result);
+    [[maybe_unused]] bool Err = S.getAsInteger(Radix, Result);
     IGC_ASSERT(!Err);
     return Result;
   };

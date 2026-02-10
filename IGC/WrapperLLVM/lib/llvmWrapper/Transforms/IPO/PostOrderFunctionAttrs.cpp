@@ -7,7 +7,6 @@ SPDX-License-Identifier: MIT
 ============================= end_copyright_notice ===========================*/
 
 #include "common/LLVMWarningsPush.hpp"
-#include "llvmWrapper/Transforms/IPO/PostOrderFunctionAttrs.h"
 
 #include "llvm/Analysis/CallGraph.h"
 #include "llvm/Analysis/TargetLibraryInfo.h"
@@ -17,8 +16,9 @@ SPDX-License-Identifier: MIT
 #include "llvm/Transforms/IPO.h"
 #include "llvm/Transforms/IPO/FunctionAttrs.h"
 
-#include "llvmWrapper/Transforms/InitializePasses.h"
 #include "common/LLVMWarningsPop.hpp"
+#include "llvmWrapper/Transforms/IPO/PostOrderFunctionAttrs.h"
+#include "llvmWrapper/Transforms/InitializePasses.h"
 
 #include "Compiler/IGCPassSupport.h"
 

@@ -10,8 +10,10 @@ SPDX-License-Identifier: MIT
 #define IGCLLVM_IR_VALUE_H
 
 #include "Probe/Assertion.h"
+#include "IGC/common/LLVMWarningsPush.hpp"
 #include "llvm/ADT/STLExtras.h"
 #include "llvm/Config/llvm-config.h"
+#include "IGC/common/LLVMWarningsPop.hpp"
 #include "llvmWrapper/IR/User.h"
 
 namespace IGCLLVM {

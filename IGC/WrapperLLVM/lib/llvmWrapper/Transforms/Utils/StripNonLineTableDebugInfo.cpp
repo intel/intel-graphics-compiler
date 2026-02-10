@@ -7,11 +7,13 @@ SPDX-License-Identifier: MIT
 ============================= end_copyright_notice ===========================*/
 
 #include "common/LLVMWarningsPush.hpp"
+
 #include "llvm/Transforms/Utils/StripNonLineTableDebugInfo.h"
+
+#include "common/LLVMWarningsPop.hpp"
 
 #include "llvmWrapper/Transforms/Utils/StripNonLineTableDebugInfo.h"
 #include "llvmWrapper/Transforms/InitializePasses.h"
-#include "common/LLVMWarningsPop.hpp"
 #include "Compiler/IGCPassSupport.h"
 
 namespace IGCLLVM {

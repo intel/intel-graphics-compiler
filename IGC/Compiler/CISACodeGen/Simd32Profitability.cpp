@@ -6,19 +6,20 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
+#include "Compiler/CISACodeGen/Platform.hpp"
 #include "Compiler/CISACodeGen/Simd32Profitability.hpp"
 #include "Compiler/CodeGenPublic.h"
 #include "Compiler/IGCPassSupport.h"
-#include "Compiler/CISACodeGen/Platform.hpp"
-#include "common/LLVMWarningsPush.hpp"
-#include <llvmWrapper/IR/ConstantFold.h>
-#include <llvmWrapper/IR/DerivedTypes.h>
-#include <llvmWrapper/Transforms/Utils/LoopUtils.h>
-#include <llvmWrapper/IR/DerivedTypes.h>
-#include <llvm/Support/CommandLine.h>
-#include "common/LLVMWarningsPop.hpp"
 #include "GenISAIntrinsics/GenIntrinsicInst.h"
 #include "Probe/Assertion.h"
+#include <llvmWrapper/IR/ConstantFold.h>
+#include <llvmWrapper/IR/DerivedTypes.h>
+#include <llvmWrapper/IR/DerivedTypes.h>
+#include <llvmWrapper/Transforms/Utils/LoopUtils.h>
+
+#include "common/LLVMWarningsPush.hpp"
+#include <llvm/Support/CommandLine.h>
+#include "common/LLVMWarningsPop.hpp"
 
 using namespace llvm;
 using namespace IGC;

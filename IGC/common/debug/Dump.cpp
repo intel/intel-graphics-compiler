@@ -23,8 +23,8 @@ SPDX-License-Identifier: MIT
 #include <llvm/Support/raw_os_ostream.h>
 #include <llvm/Support/FormattedStream.h>
 #include <llvm/Support/FileSystem.h>
-#include <optional>
 #include "common/LLVMWarningsPop.hpp"
+#include <optional>
 
 #include <stdarg.h>
 #include <filesystem>

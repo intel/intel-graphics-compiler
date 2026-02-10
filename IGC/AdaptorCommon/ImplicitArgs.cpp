@@ -10,11 +10,11 @@ SPDX-License-Identifier: MIT
 #include "Compiler/Optimizer/OpenCLPasses/KernelArgs/KernelArgs.hpp"
 
 #include "common/LLVMWarningsPush.hpp"
-#include <llvmWrapper/IR/DerivedTypes.h>
 #include <llvm/IR/Function.h>
 #include <llvm/IR/Metadata.h>
 #include <llvm/IR/Module.h>
 #include "common/LLVMWarningsPop.hpp"
+#include <llvmWrapper/IR/DerivedTypes.h>
 #include "Probe/Assertion.h"
 
 using namespace llvm;
@@ -349,8 +349,8 @@ ImplicitArgs::ImplicitArgs(const llvm::Function &func, const MetaDataUtils *pMdU
   {
     // Note: the order that implicit args are added here must match the
     // order of the ImplicitArg::Argtype enum.  Let's check that they match:
-    uint32_t CurArgId = ImplicitArg::START_ID;
-    for (auto &Arg : IMPLICIT_ARGS) {
+    [[maybe_unused]] uint32_t CurArgId = ImplicitArg::START_ID;
+    for ([[maybe_unused]] auto &Arg : IMPLICIT_ARGS) {
       IGC_ASSERT_MESSAGE((Arg.getArgType() == CurArgId++), "enum and vector out of sync!");
     }
   }

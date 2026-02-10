@@ -15,6 +15,8 @@ SPDX-License-Identifier: MIT
 #include "common/IntrinsicAnnotator.hpp"
 #include "common/LLVMUtils.h"
 #include "common/SerializePrintMetaDataPass.h"
+#include "llvmWrapper/ADT/StringRef.h"
+#include "llvmWrapper/Transforms/Utils/Cloning.h"
 #include <fstream>
 #include <iomanip>
 #include <iostream>
@@ -27,8 +29,6 @@ SPDX-License-Identifier: MIT
 #include <llvm/IRReader/IRReader.h>
 #include <llvm/Support/FileSystem.h>
 #include <llvm/Support/SourceMgr.h>
-#include <llvmWrapper/ADT/StringRef.h>
-#include "llvmWrapper/Transforms/Utils/Cloning.h"
 #include "common/LLVMWarningsPop.hpp"
 
 using namespace IGC;
@@ -875,7 +875,7 @@ void InlineHelper::InlineAndOptimize(CallInst *callInst) {
 #endif
   auto *fn = callInst->getFunction();
   InlineFunctionInfo IFI;
-  bool CanInline = IGCLLVM::InlineFunction(*callInst, IFI);
+  [[maybe_unused]] bool CanInline = IGCLLVM::InlineFunction(*callInst, IFI);
   IGC_ASSERT_MESSAGE(CanInline, "failed to inline?");
 
   // Merge static array allocas to reduce the use of private

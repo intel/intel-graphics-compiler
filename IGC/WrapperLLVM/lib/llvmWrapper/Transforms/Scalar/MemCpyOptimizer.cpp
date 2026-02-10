@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 ============================= end_copyright_notice ===========================*/
 
 #include "common/LLVMWarningsPush.hpp"
+
 #include "llvm/Transforms/Scalar/MemCpyOptimizer.h"
 #include "llvm/IR/Function.h"
 #include "llvm/IR/PassManager.h"
@@ -16,11 +17,11 @@ SPDX-License-Identifier: MIT
 #include "llvm/Analysis/MemorySSAUpdater.h"
 #include "llvm/Transforms/Scalar.h"
 
+#include "common/LLVMWarningsPop.hpp"
+
 #include "llvmWrapper/Transforms/Scalar/MemCpyOptimizer.h"
 #include "llvmWrapper/Analysis/TargetLibraryInfo.h"
 #include "llvmWrapper/Transforms/InitializePasses.h"
-#include "common/LLVMWarningsPop.hpp"
-
 #include "Compiler/IGCPassSupport.h"
 
 using namespace llvm;

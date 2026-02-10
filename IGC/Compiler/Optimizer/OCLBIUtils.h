@@ -14,8 +14,8 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/ADT/MapVector.h>
 #include <llvm/ADT/StringRef.h>
-#include <llvmWrapper/IR/Intrinsics.h>
 #include "common/LLVMWarningsPop.hpp"
+#include <llvmWrapper/IR/Intrinsics.h>
 #include "GenISAIntrinsics/GenIntrinsics.h"
 #include <map>
 #include "Probe/Assertion.h"

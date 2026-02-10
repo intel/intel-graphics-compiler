@@ -11,8 +11,8 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/Module.h>
 #include <llvm/IR/Instructions.h>
 #include <llvm/Transforms/Utils/BasicBlockUtils.h>
-#include "llvmWrapper/IR/DerivedTypes.h"
 #include "common/LLVMWarningsPop.hpp"
+#include "llvmWrapper/IR/DerivedTypes.h"
 #include "Compiler/IGCPassSupport.h"
 #include "Probe/Assertion.h"
 

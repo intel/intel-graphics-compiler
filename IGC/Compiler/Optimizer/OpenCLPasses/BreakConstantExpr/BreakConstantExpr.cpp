@@ -54,7 +54,7 @@ bool BreakConstantExpr::hasConstantExpr(ConstantStruct *cstruct) const {
       uint32_t Size1 = aCS->getNumOperands();
       for (uint32_t j = 0; j < Size1; ++j) {
         Value *Cij = aCS->getOperand(j);
-        if (ConstantExpr *c = dyn_cast<ConstantExpr>(Cij)) {
+        if (isa<ConstantExpr>(Cij)) {
           return true;
         }
         if (ConstantVector *CVec = dyn_cast<ConstantVector>(Cij)) {
@@ -63,7 +63,7 @@ bool BreakConstantExpr::hasConstantExpr(ConstantStruct *cstruct) const {
           }
         }
       }
-    } else if (ConstantExpr *CE = dyn_cast<ConstantExpr>(Ci)) {
+    } else if (isa<ConstantExpr>(Ci)) {
       return true;
     }
     if (ConstantVector *CVec = dyn_cast<ConstantVector>(Ci)) {
@@ -136,7 +136,7 @@ void BreakConstantExpr::replaceConstantWith(llvm::Constant *exprOrVec, llvm::Ins
     newInst->insertBefore(user);
     // For debug info intrinsic, the operand is a metadata that
     // contains the constant expression.
-    if (auto *DDI = dyn_cast<DbgDeclareInst>(user)) {
+    if (isa<DbgDeclareInst>(user)) {
       MetadataAsValue *MAV = MetadataAsValue::get(user->getContext(), ValueAsMetadata::get(newInst));
       user->setOperand(operandIndex, MAV);
     } else {

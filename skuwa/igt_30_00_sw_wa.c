@@ -16,6 +16,7 @@ SPDX-License-Identifier: MIT
 void InitGt_30_00_SwWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_PARAM pWaParam)
 {
     int iGt_30_00_StepID = (int)pWaParam->usRenderRevID;
+    (void)iGt_30_00_StepID;
     iGt_30_00_StepID = iGt_30_00_StepID;
 
 

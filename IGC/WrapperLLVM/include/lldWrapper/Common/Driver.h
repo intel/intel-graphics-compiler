@@ -9,9 +9,11 @@ SPDX-License-Identifier: MIT
 #ifndef IGCLLVM_LLD_COMMON_DRIVER_H
 #define IGCLLVM_LLD_COMMON_DRIVER_H
 
+#include "IGC/common/LLVMWarningsPush.hpp"
 #include "llvm/Config/llvm-config.h"
 #include "llvm/ADT/ArrayRef.h"
 #include "llvm/Support/raw_ostream.h"
+#include "IGC/common/LLVMWarningsPop.hpp"
 
 #include "lld/Common/Driver.h"
 #include "lld/Common/CommonLinkerContext.h"

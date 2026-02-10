@@ -19,8 +19,8 @@ SPDX-License-Identifier: MIT
 #include <llvm/ADT/SmallVector.h>
 #include <llvm/IR/DataLayout.h>
 #include <llvm/IR/Instructions.h>
-#include <llvmWrapper/IR/DerivedTypes.h>
 #include "common/LLVMWarningsPop.hpp"
+#include <llvmWrapper/IR/DerivedTypes.h>
 #include "Probe/Assertion.h"
 
 using namespace llvm;

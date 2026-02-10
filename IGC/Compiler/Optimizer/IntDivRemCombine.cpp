@@ -10,7 +10,6 @@ SPDX-License-Identifier: MIT
 #include "Compiler/IGCPassSupport.h"
 
 #include "common/LLVMWarningsPush.hpp"
-#include "common/igc_regkeys.hpp"
 #include <llvm/IR/Constants.h>
 #include <llvm/IR/Dominators.h>
 #include <llvm/IR/Function.h>
@@ -19,6 +18,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/Pass.h>
 #include <llvm/Transforms/Utils/BasicBlockUtils.h>
 #include "common/LLVMWarningsPop.hpp"
+#include "common/igc_regkeys.hpp"
 
 #include <cmath>
 

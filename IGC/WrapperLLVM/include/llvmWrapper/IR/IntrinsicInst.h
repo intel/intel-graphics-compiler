@@ -9,11 +9,13 @@ SPDX-License-Identifier: MIT
 #ifndef IGCLLVM_IR_INTRINSICINST_H
 #define IGCLLVM_IR_INTRINSICINST_H
 
+#include "IGC/common/LLVMWarningsPush.hpp"
 #include <llvm/Config/llvm-config.h>
 #include <llvm/IR/Constants.h>
 #include <llvm/IR/IntrinsicInst.h>
 #include "llvm/IR/DebugInfoMetadata.h"
 #include "llvm/Support/Casting.h"
+#include "IGC/common/LLVMWarningsPop.hpp"
 
 #include "Probe/Assertion.h"
 

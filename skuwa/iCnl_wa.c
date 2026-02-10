@@ -43,6 +43,7 @@ void InitCnlWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
 {
     unsigned int ulStepId_CNL, ulStepId_PCH;
     unsigned int usHwRevId_CNL = pWaParam->usRevId;
+    (void)ulStepId_PCH;
 
     ulStepId_CNL = (1 << usHwRevId_CNL);
     ulStepId_PCH = (1 << pWaParam->usRevId_PCH);

@@ -32,8 +32,6 @@ bool DwarfExpression::addExpression(DIExpressionCursor &&ExprCursor,
   // assert(!IsEmittingEntryValue && "Can't emit entry value around
   // expression");
 
-  std::optional<DIExpression::ExprOperand> PrevConvertOp = std::nullopt;
-
   while (ExprCursor) {
     auto Op = ExprCursor.take();
     uint64_t OpNum = Op->getOp();

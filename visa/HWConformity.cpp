@@ -2725,7 +2725,7 @@ void HWConformity::fixMULHInst(INST_LIST_ITER &i, G4_BB *bb) {
     // Use mullh to get high 32-bit results
     //   mullh  (16) tmp<1>:d   src0<1;1,0>:d    src1<1;1,0>:d
     //   mov    (16) dst<1>:d   tmp_hi32<1;1,0>:d
-    G4_DstRegRegion *dst = inst->getDst();
+    [[maybe_unused]] G4_DstRegRegion *dst = inst->getDst();
     vISA_ASSERT(IS_DTYPE(dst->getType()), "mulh dst only supports DW type");
 
     // Fix immediate type as mulh can only support D/UD types

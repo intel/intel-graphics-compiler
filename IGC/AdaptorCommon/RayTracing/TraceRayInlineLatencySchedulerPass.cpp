@@ -7,7 +7,7 @@ SPDX-License-Identifier: MIT
 ============================= end_copyright_notice ===========================*/
 
 //===----------------------------------------------------------------------===//
-///
+/*
 /// This pass schedules latency of rayquery.Proceed() by moving SyncStackToShadowMemory instructions
 /// to as far away as possible from TraceRaySyncProceed.
 /// Note: any BB w/ suspendPoint is split first into <B3.0,B3.1>, <B7.0,B7.1> like below, where B3.1 and B7.1 holds
@@ -52,25 +52,26 @@ SPDX-License-Identifier: MIT
 ///  B0    |
 ///    \  /
 ///     B1
+*/
 //===----------------------------------------------------------------------===//
 
-#include "IGC/common/StringMacros.hpp"
+#include "Compiler/CodeGenPublicEnums.h"
+#include "Compiler/IGCPassSupport.h"
 #include "CrossingAnalysis.h"
-#include "SplitAsyncUtils.h"
+#include "IGC/common/StringMacros.hpp"
+#include "llvmWrapper/Support/Alignment.h"
+#include "llvmWrapper/Transforms/Utils/LoopUtils.h"
 #include "RTBuilder.h"
 #include "RTStackFormat.h"
-#include "Compiler/IGCPassSupport.h"
-#include "Compiler/CodeGenPublicEnums.h"
+#include "SplitAsyncUtils.h"
 
 #include "common/LLVMWarningsPush.hpp"
-#include "llvmWrapper/Support/Alignment.h"
 #include <llvm/IR/InstIterator.h>
 #include <llvm/IR/Dominators.h>
 #include <llvm/Analysis/LoopInfo.h>
 #include <llvm/Analysis/PostDominators.h>
 #include <llvm/Support/MathExtras.h>
 #include <llvm/Transforms/Utils/BasicBlockUtils.h>
-#include "llvmWrapper/Transforms/Utils/LoopUtils.h"
 #include "common/LLVMWarningsPop.hpp"
 
 using namespace std;

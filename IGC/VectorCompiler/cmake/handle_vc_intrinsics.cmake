@@ -45,5 +45,10 @@ else()
   set(BUILD_EXTERNAL YES)
   # We are building intrinsics.
   set(INTRBUILD "${CMAKE_CURRENT_BINARY_DIR}/intrbuild")
+  # Add -Wno-error to avoid build errors from llvm's header deprecation warnings and
+  # unused variables/functions coming from vc-intrinsics.
+  if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+    string(APPEND CMAKE_CXX_FLAGS " -Wno-error")
+  endif()
   add_subdirectory(${INTRSRC} ${INTRBUILD} EXCLUDE_FROM_ALL)
 endif() #VC_INTRINSICS_MODE

@@ -137,6 +137,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/RemoveCodeAssumptions.hpp"
 #include "common/igc_regkeys.hpp"
 #include "common/debug/Dump.hpp"
+
 #include "common/LLVMWarningsPush.hpp"
 #include "llvm/Config/llvm-config.h"
 #include <llvm/IR/DebugInfo.h>
@@ -157,6 +158,8 @@ SPDX-License-Identifier: MIT
 #include <llvm/Transforms/Utils.h>
 #include <llvm/Transforms/Scalar.h>
 #include <llvm/Bitcode/BitcodeWriter.h>
+#include "common/LLVMWarningsPop.hpp"
+
 #include "llvmWrapper/Transforms/Scalar/ADCE.h"
 #include "llvmWrapper/Transforms/Scalar/CorrelatedValuePropagation.h"
 #include "llvmWrapper/Transforms/Scalar/DeadStoreElimination.h"
@@ -173,7 +176,6 @@ SPDX-License-Identifier: MIT
 #include "llvmWrapper/Transforms/Scalar/LICM.h"
 #include "llvmWrapper/Transforms/Scalar/IndVarSimplify.h"
 
-#include "common/LLVMWarningsPop.hpp"
 #include "Compiler/CISACodeGen/PatternMatchPass.hpp"
 #include "Compiler/CISACodeGen/EmitVISAPass.hpp"
 #include "Compiler/CISACodeGen/CoalescingEngine.hpp"

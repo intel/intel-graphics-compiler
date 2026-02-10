@@ -9,7 +9,6 @@ SPDX-License-Identifier: MIT
 #include "Compiler/Optimizer/IntDivConstantReduction.hpp"
 #include "Compiler/IGCPassSupport.h"
 #include "common/LLVMWarningsPush.hpp"
-#include "common/igc_regkeys.hpp"
 #include "llvm/IR/Constants.h"
 #include "llvm/IR/Function.h"
 #include "llvm/IR/IRBuilder.h"
@@ -18,6 +17,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/Pass.h"
 #include "llvm/Transforms/Utils/BasicBlockUtils.h"
 #include "common/LLVMWarningsPop.hpp"
+#include "common/igc_regkeys.hpp"
 #include <cmath>
 #include <limits>
 #include "Probe/Assertion.h"
@@ -80,7 +80,7 @@ struct IntDivConstantReduction : public FunctionPass {
       case Instruction::UDiv:
       case Instruction::SRem:
       case Instruction::URem:
-        if (ConstantInt *divisor = dyn_cast<ConstantInt>(I->getOperand(1))) {
+        if (isa<ConstantInt>(I->getOperand(1))) {
           divRems.push_back(cast<BinaryOperator>(I));
         }
         break;
@@ -174,7 +174,6 @@ struct IntDivConstantReduction : public FunctionPass {
     //
     // c.f. Hacker's Delight 10-2
     //    for the remainder/modulus algorithm
-    const int bitSize = dividend->getType()->getIntegerBitWidth();
     int shiftAmt;
     int64_t twoToTheKminus1;
     if (divisor.isNonNegative()) {

@@ -12,9 +12,9 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/IR/InstVisitor.h>
 #include <llvm/Transforms/Utils/Local.h>
+#include "common/LLVMWarningsPop.hpp"
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include <llvmWrapper/IR/PatternMatch.h>
-#include "common/LLVMWarningsPop.hpp"
 
 #include "common/igc_regkeys.hpp"
 #include "Compiler/CISACodeGen/OpenCLKernelCodeGen.hpp"

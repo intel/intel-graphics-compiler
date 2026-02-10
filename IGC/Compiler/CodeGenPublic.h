@@ -46,8 +46,8 @@ SPDX-License-Identifier: MIT
 #include "llvm/IR/ValueMap.h"
 #include <llvm/Support/ToolOutputFile.h>
 #include "llvm/IR/AssemblyAnnotationWriter.h"
-#include <optional>
 #include "common/LLVMWarningsPop.hpp"
+#include <optional>
 #include "CodeGenPublicEnums.h"
 #include "AdaptorOCL/TranslationBlock.h"
 #include "AdaptorCommon/RayTracing/API/BVHInfo.h"

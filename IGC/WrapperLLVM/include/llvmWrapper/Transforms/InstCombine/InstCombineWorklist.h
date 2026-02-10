@@ -12,7 +12,9 @@ SPDX-License-Identifier: MIT
 #include "llvm/Config/llvm-config.h"
 
 #define DEBUG_TYPE "instcombine"
+#include "IGC/common/LLVMWarningsPush.hpp"
 #include "llvm/Transforms/Utils/InstructionWorklist.h"
+#include "IGC/common/LLVMWarningsPop.hpp"
 #undef DEBUG_TYPE
 using InstCombineWorklist = llvm::InstructionWorklist;
 #endif

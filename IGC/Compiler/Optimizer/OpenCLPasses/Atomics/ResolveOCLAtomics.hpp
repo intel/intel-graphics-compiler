@@ -11,11 +11,11 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CodeGenPublic.h"
 
 #include "common/LLVMWarningsPush.hpp"
-#include "llvmWrapper/IR/Module.h"
 #include <llvm/Pass.h>
 #include <llvm/IR/InstVisitor.h>
 #include <llvm/ADT/StringRef.h>
 #include "common/LLVMWarningsPop.hpp"
+#include "llvmWrapper/IR/Module.h"
 #include "common/IGCIRBuilder.h"
 
 #include <map>

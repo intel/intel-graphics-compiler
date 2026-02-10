@@ -1144,7 +1144,7 @@ private:
 
 using VisaMapType = std::vector<genx::di::VisaMapping::Mapping>;
 
-static bool validateVisaMapping(const VisaMapType &V2I) {
+[[maybe_unused]] static bool validateVisaMapping(const VisaMapType &V2I) {
   // Last used visa index
   auto ExpectedNextId = V2I.cbegin()->VisaIdx;
   for (auto MappingIt = V2I.cbegin(); MappingIt != V2I.cend(); ++MappingIt) {
@@ -1489,7 +1489,7 @@ void GenXDebugInfo::processKernel(const IGC::DebugEmitterOpts &DebugOpts,
     LLVM_DEBUG(dbgs() << "---     \\ Debug Info Finalized /     ---\n");
   }
 
-  const auto &KernelName = KF.getName();
+  [[maybe_unused]] const auto &KernelName = KF.getName();
   LLVM_DEBUG(dbgs() << "got Debug Info for <" << KernelName.str() << "> "
                     << "- " << ElfBin.size() << " bytes\n");
 

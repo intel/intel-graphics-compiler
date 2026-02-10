@@ -331,7 +331,7 @@ std::vector<char> DebugEmitter::Finalize(bool Finalize, const IGC::VISADebugInfo
   m_errs = m_pStreamEmitter->getErrors();
   Reset();
 
-  return std::move(Result);
+  return Result;
 }
 
 void DebugEmitter::prepareElfForZeBinary(bool is64Bit, char *pElfBuffer, size_t elfBufferSize,

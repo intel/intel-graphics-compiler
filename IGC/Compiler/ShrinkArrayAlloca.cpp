@@ -7,9 +7,9 @@ SPDX-License-Identifier: MIT
 ============================= end_copyright_notice ===========================*/
 
 #include "common/LLVMWarningsPush.hpp"
+#include "common/LLVMWarningsPop.hpp"
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/IR/IRBuilder.h"
-#include "common/LLVMWarningsPop.hpp"
 
 #include "common/Types.hpp"
 #include "Compiler/IGCPassSupport.h"

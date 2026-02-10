@@ -9,7 +9,9 @@ SPDX-License-Identifier: MIT
 #ifndef IGCLLVM_SUPPORT_TYPESIZE_H
 #define IGCLLVM_SUPPORT_TYPESIZE_H
 
+#include "IGC/common/LLVMWarningsPush.hpp"
 #include <llvm/Support/TypeSize.h>
+#include "IGC/common/LLVMWarningsPop.hpp"
 
 namespace IGCLLVM {
 inline llvm::ElementCount getElementCount(unsigned EC) { return llvm::ElementCount::get(EC, false); }

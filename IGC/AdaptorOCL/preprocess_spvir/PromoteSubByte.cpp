@@ -9,11 +9,13 @@ SPDX-License-Identifier: MIT
 #include "PromoteSubByte.h"
 #include "Compiler/IGCPassSupport.h"
 #include "GenISAIntrinsics/GenIntrinsicInst.h"
-#include "GenISAIntrinsics/GenIntrinsics.h"
-#include "common/LLVMWarningsPush.hpp"
+#include "PreprocessSPVIR.h"
+#include "BiFManager/BiFManagerHandler.hpp"
 #include "llvmWrapper/IR/Type.h"
 #include "llvmWrapper/Support/Alignment.h"
 #include "llvmWrapper/Transforms/Utils/Cloning.h"
+
+#include "common/LLVMWarningsPush.hpp"
 #include <llvm/IR/Module.h>
 #include <llvm/IR/Function.h>
 #include <llvm/IR/InlineAsm.h>
@@ -22,8 +24,6 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/Mangler.h>
 #include <llvm/Support/Regex.h>
 #include "common/LLVMWarningsPop.hpp"
-#include "PreprocessSPVIR.h"
-#include "BiFManager/BiFManagerHandler.hpp"
 
 using namespace llvm;
 using namespace IGC;

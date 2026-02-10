@@ -18,9 +18,9 @@ SPDX-License-Identifier: MIT
 #include "llvm/Analysis/BasicAliasAnalysis.h"
 #include "llvm/Analysis/CallGraphSCCPass.h"
 
+#include "common/LLVMWarningsPop.hpp"
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/Analysis/CallGraph.h"
-#include "common/LLVMWarningsPop.hpp"
 
 using namespace llvm;
 

@@ -14,8 +14,8 @@ SPDX-License-Identifier: MIT
 #include "Probe/Assertion.h"
 
 #include "common/LLVMWarningsPush.hpp"
-#include "llvmWrapper/Analysis/AliasAnalysis.h"
 #include "common/LLVMWarningsPop.hpp"
+#include "llvmWrapper/Analysis/AliasAnalysis.h"
 
 using namespace llvm;
 using namespace IGC;

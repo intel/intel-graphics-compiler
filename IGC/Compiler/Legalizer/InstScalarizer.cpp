@@ -10,9 +10,9 @@ SPDX-License-Identifier: MIT
 #include "InstScalarizer.h"
 #include "common/LLVMWarningsPush.hpp"
 #include "llvm/Support/Debug.h"
-#include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvm/Support/raw_ostream.h"
 #include "common/LLVMWarningsPop.hpp"
+#include "llvmWrapper/IR/DerivedTypes.h"
 #include "common/Types.hpp"
 #include "Probe/Assertion.h"
 

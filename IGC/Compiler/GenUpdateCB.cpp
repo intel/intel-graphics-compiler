@@ -8,12 +8,12 @@ SPDX-License-Identifier: MIT
 
 #include "common/LLVMWarningsPush.hpp"
 #include "llvm/Bitcode/BitcodeWriter.h"
-#include "llvmWrapper/IR/DerivedTypes.h"
 #include <llvm/Bitcode/BitcodeReader.h>
 #include "llvm/IR/DebugInfo.h"
 #include <llvm/IRReader/IRReader.h>
 #include <llvm/Support/MemoryBuffer.h>
 #include "common/LLVMWarningsPop.hpp"
+#include "llvmWrapper/IR/DerivedTypes.h"
 #include "common/debug/Dump.hpp"
 #include "common/secure_mem.h"
 #include "Compiler/GenUpdateCB.h"
@@ -78,7 +78,8 @@ bool GenUpdateCB::isConstantBufferLoad(LoadInst *inst, unsigned &bufId) {
       if (cExpr->getOpcode() == Instruction::IntToPtr && isa<Constant>(cExpr->getOperand(0))) {
         return true;
       }
-    } else if (ConstantPointerNull *constNullptr = dyn_cast<ConstantPointerNull>(inst->getOperand(0))) {
+    } else if ([[maybe_unused]] ConstantPointerNull *constNullptr =
+                   dyn_cast<ConstantPointerNull>(inst->getOperand(0))) {
       return true;
     }
   }

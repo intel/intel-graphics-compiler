@@ -11,8 +11,8 @@ SPDX-License-Identifier: MIT
 #include "GenISAIntrinsics/GenIntrinsicInst.h"
 
 #include "common/LLVMWarningsPush.hpp"
-#include <llvmWrapper/IR/DerivedTypes.h>
 #include "common/LLVMWarningsPop.hpp"
+#include <llvmWrapper/IR/DerivedTypes.h>
 
 using namespace llvm;
 using namespace IGC;

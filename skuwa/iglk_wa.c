@@ -22,6 +22,7 @@ void InitGlkWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
 {
 
     int StepId_GLK = (int)pWaParam->usRevId;
+    (void)StepId_GLK;
 
 
     SI_WA_ENABLE(

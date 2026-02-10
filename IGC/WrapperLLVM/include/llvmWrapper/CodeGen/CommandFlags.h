@@ -9,8 +9,10 @@ SPDX-License-Identifier: MIT
 #ifndef IGCLLVM_CODEGEN_COMMANDFLAGS_H
 #define IGCLLVM_CODEGEN_COMMANDFLAGS_H
 
+#include "IGC/common/LLVMWarningsPush.hpp"
 #include "llvm/Config/llvm-config.h"
 #include "llvm/CodeGen/CommandFlags.h"
+#include "IGC/common/LLVMWarningsPop.hpp"
 
 namespace IGCLLVM {
 namespace codegen {

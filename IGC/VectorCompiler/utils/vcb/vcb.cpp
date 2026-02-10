@@ -114,7 +114,7 @@ void vcbCompileModule(std::unique_ptr<Module> &M, std::string Platform) {
   auto FileType = IGCLLVM::TargetMachine::CodeGenFileType::CGFT_AssemblyFile;
   bool DisableIrVerifier = true;
   PM.add(new GenXBackendConfig{std::move(Options), GenXBackendData()});
-  bool AddPasses =
+  [[maybe_unused]] bool AddPasses =
       TM.addPassesToEmitFile(PM, NOS, nullptr, FileType, DisableIrVerifier);
   IGC_ASSERT_MESSAGE(!AddPasses, "Bad filetype for vc-codegen");
 

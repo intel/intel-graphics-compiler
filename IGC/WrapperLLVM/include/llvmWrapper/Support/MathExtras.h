@@ -9,8 +9,10 @@ SPDX-License-Identifier: MIT
 #ifndef IGCLLVM_SUPPORT_MATHEXTRAS_H
 #define IGCLLVM_SUPPORT_MATHEXTRAS_H
 
+#include "IGC/common/LLVMWarningsPush.hpp"
 #include "llvm/Config/llvm-config.h"
 #include "llvm/Support/MathExtras.h"
+#include "IGC/common/LLVMWarningsPop.hpp"
 
 namespace IGCLLVM {
 using llvm::MulOverflow;

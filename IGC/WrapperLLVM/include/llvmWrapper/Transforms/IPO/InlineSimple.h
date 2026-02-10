@@ -9,6 +9,7 @@ SPDX-License-Identifier: MIT
 #ifndef IGCLLVM_TRANSFORMS_IPO_SIMPLEINLINER_LEGACY_H
 #define IGCLLVM_TRANSFORMS_IPO_SIMPLEINLINER_LEGACY_H
 
+#include "IGC/common/LLVMWarningsPush.hpp"
 #include "llvm/IR/LegacyPassManager.h"
 #include "llvm/Pass.h"
 #include "llvm/IR/PassManager.h"
@@ -22,6 +23,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/InitializePasses.h"
 #include "llvm/Transforms/IPO.h"
 #include "llvm/Transforms/IPO/Inliner.h"
+#include "IGC/common/LLVMWarningsPop.hpp"
 
 using namespace llvm;
 

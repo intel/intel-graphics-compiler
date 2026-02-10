@@ -18,13 +18,13 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CISACodeGen/LowerGEPForPrivMem.hpp"
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "common/LLVMWarningsPush.hpp"
-#include "llvmWrapper/IR/IRBuilder.h"
 #include "llvm/Transforms/Utils/Local.h"
 #include "llvm/IR/DataLayout.h"
 #include "llvm/IR/DebugInfo.h"
 #include "llvm/IR/Dominators.h"
-#include <llvmWrapper/ADT/Optional.h>
 #include "common/LLVMWarningsPop.hpp"
+#include "llvmWrapper/IR/IRBuilder.h"
+#include <llvmWrapper/ADT/Optional.h>
 #include "Probe/Assertion.h"
 
 #include <optional>
@@ -123,7 +123,7 @@ private:
 //   Possible cases: ptr64 + i32/i64; ptr32 + i32; i64 + i32/i64; i32 + i32.
 Value *addOffset(IGCLLVM::IRBuilder<> &IRB, const DataLayout &pDL, Value *B, Value *O) {
   Type *bTy = B->getType();
-  Type *oTy = O->getType();
+  [[maybe_unused]] Type *oTy = O->getType();
   IGC_ASSERT(oTy->isIntegerTy());
   IGC_ASSERT(bTy->isPointerTy() || bTy->isIntegerTy());
   Value *addr;
@@ -771,8 +771,10 @@ void TransposePrivMem::handleLifetimeMark(IntrinsicInst *inst) {
   inst->eraseFromParent();
 }
 
-bool PrivateMemoryResolution::testTransposedMemory(const Type *pTmpType, const Type *const pTypeOfAccessedObject,
-                                                   uint64_t tmpAllocaSize, const uint64_t bufferSizeLimit) {
+[[maybe_unused]] bool PrivateMemoryResolution::testTransposedMemory(const Type *pTmpType,
+                                                                    const Type *const pTypeOfAccessedObject,
+                                                                    uint64_t tmpAllocaSize,
+                                                                    const uint64_t bufferSizeLimit) {
   // verify that the size of transposed memory fits into the allocated scratch region
 
   bool ok = true;

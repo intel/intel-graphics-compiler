@@ -18,15 +18,15 @@ See LICENSE.TXT for details.
 // clang-format off
 #include "common/LLVMWarningsPush.hpp"
 #include "llvm/Config/llvm-config.h"
-#include "llvmWrapper/MC/MCContext.h"
-#include "llvmWrapper/MC/MCObjectFileInfo.h"
-#include "llvmWrapper/ADT/Optional.h"
 #include "llvm/IR/GlobalValue.h"
 #include "llvm/MC/MCSection.h"
 #include "llvm/Support/DataTypes.h"
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Support/MD5.h"
 #include "common/LLVMWarningsPop.hpp"
+#include "llvmWrapper/MC/MCContext.h"
+#include "llvmWrapper/MC/MCObjectFileInfo.h"
+#include "llvmWrapper/ADT/Optional.h"
 // clang-format on
 
 #include <string>

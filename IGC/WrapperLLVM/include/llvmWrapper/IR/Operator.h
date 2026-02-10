@@ -9,8 +9,10 @@ SPDX-License-Identifier: MIT
 #ifndef IGCLLVM_IR_OPERATOR_H
 #define IGCLLVM_IR_OPERATOR_H
 
+#include "IGC/common/LLVMWarningsPush.hpp"
 #include <llvm/IR/Instructions.h>
 #include <llvm/IR/Operator.h>
+#include "IGC/common/LLVMWarningsPop.hpp"
 
 namespace IGCLLVM {
 using llvm::AddrSpaceCastOperator;

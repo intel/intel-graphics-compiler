@@ -9,8 +9,10 @@ SPDX-License-Identifier: MIT
 #ifndef IGCLLVM_TRANSFORMS_UTILS_SCALAREVOLUTIONEXPANDER_H
 #define IGCLLVM_TRANSFORMS_UTILS_SCALAREVOLUTIONEXPANDER_H
 
+#include "common/LLVMWarningsPush.hpp"
 #include "llvm/Config/llvm-config.h"
 #include <llvm/Transforms/Utils/ScalarEvolutionExpander.h>
+#include "common/LLVMWarningsPop.hpp"
 
 #include "Probe/Assertion.h"
 

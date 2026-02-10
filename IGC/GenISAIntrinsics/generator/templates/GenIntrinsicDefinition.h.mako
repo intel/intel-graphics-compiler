@@ -10,10 +10,10 @@ SPDX-License-Identifier: MIT
 #include "GenIntrinsicDescription.h"
 #include "StringMacros.hpp"
 #include "LlvmTypesMapping.h"
+#include "llvmWrapper/Support/ModRef.h"
 
 #include "common/LLVMWarningsPush.hpp"
 #include "llvm/IR/Attributes.h"
-#include "llvmWrapper/Support/ModRef.h"
 #include "common/LLVMWarningsPop.hpp"
 
 #include <string_view>

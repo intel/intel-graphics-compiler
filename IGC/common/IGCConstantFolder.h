@@ -12,9 +12,9 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPush.hpp"
 #include "llvm/Config/llvm-config.h"
 #include "llvm/IR/ConstantFolder.h"
+#include "common/LLVMWarningsPop.hpp"
 #include "llvmWrapper/IR/Instructions.h"
 #include "llvmWrapper/IR/ConstantFolder.h"
-#include "common/LLVMWarningsPop.hpp"
 
 namespace IGC {
 

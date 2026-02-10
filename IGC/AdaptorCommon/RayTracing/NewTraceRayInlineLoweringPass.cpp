@@ -164,7 +164,7 @@ bool InlineRaytracing::LowerAllocations(Function &F) {
           auto *storeI = cast<StoreInst>(II);
           if (storeI->getValueOperand() == use->get() && v2vMap.count(storeI->getPointerOperand()) == 0) {
             SmallVector<Instruction *> origins;
-            auto hasOrigins = Provenance::tryFindPointerOrigin(storeI->getPointerOperand(), origins);
+            [[maybe_unused]] auto hasOrigins = Provenance::tryFindPointerOrigin(storeI->getPointerOperand(), origins);
 
             IGC_ASSERT_MESSAGE(hasOrigins, "Origin not found?");
 
@@ -912,14 +912,14 @@ void InlineRaytracing::HandleOptimizationsAndSpills(llvm::Function &F, LivenessD
     }
   }
 
-  for (const auto [I, closures] : instructionClosures) {
+  for (const auto &[I, closures] : instructionClosures) {
 
     IRB.SetInsertPoint(const_cast<Instruction *>(I));
     for (const auto &c : closures)
       c(IRB);
   }
 
-  for (const auto [edge, closures] : edgeClosures) {
+  for (const auto &[edge, closures] : edgeClosures) {
 
     auto *succ = edge.to;
     // to avoid multiple executions of rayquery release instructions,

@@ -9,10 +9,12 @@ SPDX-License-Identifier: MIT
 #ifndef IGCLLVM_TARGET_TARGETMACHINE_H
 #define IGCLLVM_TARGET_TARGETMACHINE_H
 
+#include "IGC/common/LLVMWarningsPush.hpp"
 #include "llvm/Config/llvm-config.h"
 #include "llvm/CodeGen/MachineModuleInfo.h"
 #include "llvm/Support/CodeGen.h"
 #include "llvm/Target/TargetMachine.h"
+#include "IGC/common/LLVMWarningsPop.hpp"
 
 #if LLVM_VERSION_MAJOR < 15
 #define LLVM_GET_TTI_API_QUAL

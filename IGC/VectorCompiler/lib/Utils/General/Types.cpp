@@ -79,8 +79,8 @@ Type *vc::getNewTypeForCast(Type *OldOutType, Type *OldInType,
   auto OldInVecType = dyn_cast<IGCLLVM::FixedVectorType>(OldInType);
 
   bool NewInIsPtrOrVecPtr = NewInType->isPtrOrPtrVectorTy();
-  bool OldOutIsPtrOrVecPtr = OldOutType->isPtrOrPtrVectorTy();
-  bool OldInIsPtrOrVecPtr = OldInType->isPtrOrPtrVectorTy();
+  [[maybe_unused]] bool OldOutIsPtrOrVecPtr = OldOutType->isPtrOrPtrVectorTy();
+  [[maybe_unused]] bool OldInIsPtrOrVecPtr = OldInType->isPtrOrPtrVectorTy();
 
   // only  pointer to pointer
   IGC_ASSERT(NewInIsPtrOrVecPtr == OldOutIsPtrOrVecPtr &&

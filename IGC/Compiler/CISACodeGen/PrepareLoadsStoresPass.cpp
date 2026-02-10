@@ -30,11 +30,11 @@ SPDX-License-Identifier: MIT
 #include "PrepareLoadsStoresUtils.h"
 
 #include "common/LLVMWarningsPush.hpp"
-#include "llvmWrapper/Support/Alignment.h"
-#include <optional>
 #include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/InstIterator.h>
 #include "common/LLVMWarningsPop.hpp"
+#include "llvmWrapper/Support/Alignment.h"
+#include <optional>
 
 using namespace llvm;
 using namespace IGC;

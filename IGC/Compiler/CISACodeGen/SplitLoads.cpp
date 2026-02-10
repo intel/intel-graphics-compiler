@@ -15,11 +15,11 @@ SPDX-License-Identifier: MIT
 
 // clang-format off
 #include "common/LLVMWarningsPush.hpp"
+#include "llvm/Support/MathExtras.h"
+#include "common/LLVMWarningsPop.hpp"
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/IR/Function.h"
 #include "llvmWrapper/IR/Value.h"
-#include "llvm/Support/MathExtras.h"
-#include "common/LLVMWarningsPop.hpp"
 // clang-format on
 
 #include "IGC/common/Types.hpp"
@@ -439,7 +439,7 @@ std::optional<Pick> Pick::fromMask(ArrayRef<int> mask, int begin, int end) {
   return std::make_optional(std::move(newPick));
 }
 
-raw_ostream &operator<<(raw_ostream &os, const Pick &pick) {
+[[maybe_unused]] raw_ostream &operator<<(raw_ostream &os, const Pick &pick) {
   os << "{ ";
   for (int x : pick) {
     os << x << ' ';
@@ -584,7 +584,7 @@ std::optional<MBRange> MBRange::fromPick(const Pick &pick) {
   return ret;
 }
 
-raw_ostream &operator<<(raw_ostream &os, const MBRange &range) {
+[[maybe_unused]] raw_ostream &operator<<(raw_ostream &os, const MBRange &range) {
   for (unsigned gr = 0; gr < range.numOfGr; ++gr) {
     os << '[' << range(gr, 0) << ", " << range(gr, range.grSize - 1);
     if (range.strd)
@@ -624,13 +624,6 @@ enum : unsigned {
 /// `ConstantInt`.
 static unsigned getArgZ(GenIntrinsicInst *GII, unsigned n) {
   return static_cast<unsigned>(cast<ConstantInt>(GII->getArgOperand(n))->getZExtValue());
-}
-
-/// Returns the numeric value of the argument number `n` to the intrinsic `GII`
-/// as `signed int`. Assumes `GII->getArgOperand(n)` exists and can be cast to
-/// `ConstantInt`.
-static int getArgS(GenIntrinsicInst *GII, unsigned n) {
-  return static_cast<int>(cast<ConstantInt>(GII->getArgOperand(n))->getSExtValue());
 }
 
 #define DBG(x) LLVM_DEBUG(x);
@@ -716,9 +709,6 @@ struct LoadData {
 
   /// Is the load VNNI-transformed.
   bool vnni = false;
-
-  /// Checks if this `LoadData` is the same as `rhs` as the 2D LSC load data.
-  bool sameAsLoad(const LoadData &rhs) const;
 
   /// Returns the length of a single block in the vector.
   unsigned groupLength() const { return vectorLength / numOfBlocks; }
@@ -819,7 +809,7 @@ private:
 
 // ==========================================================================
 
-raw_ostream &operator<<(raw_ostream &os, const Dims &dims) {
+[[maybe_unused]] raw_ostream &operator<<(raw_ostream &os, const Dims &dims) {
   os << dims.grSize << " x " << dims.numOfGr;
   if (dims.stride > 1)
     os << " (stride " << dims.stride << ")";
@@ -1488,12 +1478,6 @@ unsigned LoadData::getMinGroupLength(unsigned atLeastThisLarge) const {
   return minGroupLen;
 }
 
-bool LoadData::sameAsLoad(const LoadData &rhs) const {
-  return blockWidth_E == rhs.blockWidth_E && blockHeight_E == rhs.blockHeight_E && numOfBlocks == rhs.numOfBlocks &&
-         vectorLength == rhs.vectorLength && scalarBitWidth == rhs.scalarBitWidth &&
-         elementBitWidth == rhs.elementBitWidth && transposed == rhs.transposed && vnni == rhs.vnni;
-}
-
 std::string LoadData::getBlockLoadName() const {
   return std::string("llvm.genx.GenISA.LSC2DBlockRead.") +
          (1 < vectorLength ? "v" + std::to_string(vectorLength) : std::string()) + "i" + std::to_string(scalarBitWidth);
@@ -2081,7 +2065,7 @@ bool SplitLoads::runOnFunction(Function &F) {
 
   DBG(dbgs() << "\nSPLITLOADS ON: " << F.getName() << "\n");
 
-  auto pad = [](const std::string &s, size_t len) -> std::string {
+  [[maybe_unused]] auto pad = [](const std::string &s, size_t len) -> std::string {
     return s.size() < len ? s + std::string(len - s.size(), ' ') : s.substr(0, len);
   };
 

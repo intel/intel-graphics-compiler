@@ -711,8 +711,8 @@ void SynchronizationObjectCoalescing::EraseRedundantL1CacheInvalidation(llvm::In
     break;
   }
   case llvm::GenISAIntrinsic::GenISA_LSCFence: {
-    LSC_SFID mem = GetLscMem(pGenIntrinsicInst);
-    LSC_FENCE_OP op = GetLscFenceOp(pGenIntrinsicInst);
+    [[maybe_unused]] LSC_SFID mem = GetLscMem(pGenIntrinsicInst);
+    [[maybe_unused]] LSC_FENCE_OP op = GetLscFenceOp(pGenIntrinsicInst);
     IGC_ASSERT(mem == LSC_TGM || mem == LSC_UGM);
     IGC_ASSERT(op == LSC_FENCE_OP_INVALIDATE);
     constexpr uint32_t fenceOpArg = 2;
@@ -1027,7 +1027,8 @@ InstructionMask
 SynchronizationObjectCoalescing::GetDefaultWriteMemoryInstructionMask(const llvm::Instruction *pSourceInst) const {
   InstructionMask result = InstructionMask::None;
   if (IsUntypedMemoryFenceOperation(pSourceInst)) {
-    const bool hasInvalidationFunctionality = IsUntypedMemoryFenceOperationWithInvalidationFunctionality(pSourceInst);
+    [[maybe_unused]] const bool hasInvalidationFunctionality =
+        IsUntypedMemoryFenceOperationWithInvalidationFunctionality(pSourceInst);
     const bool hasSharedMemoryInfluence = IsUntypedMemoryFenceOperationForSharedMemoryAccess(pSourceInst);
     const bool hasGlobalInfluence = IsUntypedMemoryFenceOperationForGlobalAccess(pSourceInst);
     if (hasSharedMemoryInfluence) {
@@ -1069,7 +1070,8 @@ SynchronizationObjectCoalescing::GetDefaultWriteMemoryInstructionMask(const llvm
       break;
     }
   } else if (IsTypedMemoryFenceOperation(pSourceInst)) {
-    const bool hasInvalidationFunctionality = IsTypedMemoryFenceOperationWithInvalidationFunctionality(pSourceInst);
+    [[maybe_unused]] const bool hasInvalidationFunctionality =
+        IsTypedMemoryFenceOperationWithInvalidationFunctionality(pSourceInst);
     result = static_cast<InstructionMask>(result | TypedWriteOperation);
   } else if (IsUrbFenceOperation(pSourceInst)) {
     result = static_cast<InstructionMask>(result | UrbWriteOperation);
@@ -1134,7 +1136,8 @@ SynchronizationObjectCoalescing::GetDefaultMemoryInstructionMask(const llvm::Ins
       break;
     }
   } else if (IsTypedMemoryFenceOperation(pSourceInst)) {
-    const bool hasInvalidationFunctionality = IsTypedMemoryFenceOperationWithInvalidationFunctionality(pSourceInst);
+    [[maybe_unused]] const bool hasInvalidationFunctionality =
+        IsTypedMemoryFenceOperationWithInvalidationFunctionality(pSourceInst);
     result = static_cast<InstructionMask>(result | AtomicOperation);
 
     result = static_cast<InstructionMask>(result | TypedWriteOperation | TypedReadOperation);
@@ -1469,7 +1472,6 @@ auto GetIterationFunc(const OrderedInstructionLookupTableT &container, const Ins
     if (it == end) {
       return;
     }
-    constexpr bool isForwardDirection = std::is_same_v<decltype(it), llvm::BasicBlock::const_iterator>;
     const llvm::BasicBlock *pCurrentBasicBlock = it->getParent();
     const auto &currBBInstsIt = container.find(pCurrentBasicBlock);
     if (currBBInstsIt == container.end() || currBBInstsIt->second.empty()) {
@@ -1498,7 +1500,6 @@ auto GetIterationFunc(const OrderedInstructionLookupTableT &container, const Ins
     if (it == end) {
       return;
     }
-    constexpr bool isForwardDirection = std::is_same_v<decltype(it), llvm::BasicBlock::const_iterator>;
     const llvm::BasicBlock *pCurrentBasicBlock = it->getParent();
     const auto &currBBInstsIt = container.find(pCurrentBasicBlock);
     if (currBBInstsIt == container.end() || currBBInstsIt->second.empty()) {
@@ -1529,7 +1530,6 @@ IterationCallbackT GetIterationFunc(const OrderedInstructionLookupTableT &contai
     if (it == end) {
       return;
     }
-    constexpr bool isForwardDirection = std::is_same_v<decltype(it), llvm::BasicBlock::const_iterator>;
     const llvm::BasicBlock *pCurrentBasicBlock = it->getParent();
     const auto &currBBInstsIt = container.find(pCurrentBasicBlock);
     if (currBBInstsIt == container.end() || currBBInstsIt->second.empty()) {

@@ -9,8 +9,9 @@ SPDX-License-Identifier: MIT
 #ifndef IGCLLVM_SUPPORT_TARGETREGISTRY_H
 #define IGCLLVM_SUPPORT_TARGETREGISTRY_H
 
-#include "llvm/Config/llvm-config.h"
-
+#include "IGC/common/LLVMWarningsPush.hpp"
 #include "llvm/MC/TargetRegistry.h"
+#include "llvm/Config/llvm-config.h"
+#include "IGC/common/LLVMWarningsPop.hpp"
 
 #endif

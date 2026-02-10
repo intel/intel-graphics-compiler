@@ -22,10 +22,10 @@ SPDX-License-Identifier: MIT
 #include <llvm/Bitcode/BitcodeWriterPass.h>
 #include <llvm/Support/SourceMgr.h>
 #include <llvm/Support/CommandLine.h>
+#include "common/LLVMWarningsPop.hpp"
 #include <llvmWrapper/IR/Instructions.h>
 #include <llvmWrapper/IR/Module.h>
 #include <llvmWrapper/ADT/STLExtras.h>
-#include "common/LLVMWarningsPop.hpp"
 #include "BiFManagerTool.hpp"
 
 #include <string>

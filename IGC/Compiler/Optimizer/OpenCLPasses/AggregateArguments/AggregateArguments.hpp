@@ -14,8 +14,8 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/Pass.h>
 #include <llvm/IR/DataLayout.h>
-#include <llvmWrapper/IR/IRBuilder.h>
 #include "common/LLVMWarningsPop.hpp"
+#include <llvmWrapper/IR/IRBuilder.h>
 
 namespace IGC {
 class AggregateArgumentsAnalysis : public llvm::ModulePass {

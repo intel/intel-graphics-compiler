@@ -16,10 +16,10 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CodeGenPublic.h"
 #include "visa_igc_common_header.h"
 #include "common/LLVMWarningsPush.hpp"
+#include "common/LLVMWarningsPop.hpp"
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/IR/Module.h"
 #include <optional>
-#include "common/LLVMWarningsPop.hpp"
 #include "Probe/Assertion.h"
 
 

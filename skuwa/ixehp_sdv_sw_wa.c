@@ -17,6 +17,7 @@ SPDX-License-Identifier: MIT
 void InitXeHPSDVSwWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_PARAM pWaParam)
 {
     int StepId_XeHP_SDV = (int)pWaParam->usRevId;
+    (void)StepId_XeHP_SDV;
 
 
     SI_WA_ENABLE(

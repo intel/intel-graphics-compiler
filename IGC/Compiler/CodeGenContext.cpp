@@ -12,8 +12,8 @@ SPDX-License-Identifier: MIT
 #include <llvm/Support/ScaledNumber.h>
 #include <llvm/Demangle/Demangle.h>
 #include <llvm/IR/DebugInfo.h>
-#include "llvmWrapper/IR/LLVMContext.h"
 #include "common/LLVMWarningsPop.hpp"
+#include "llvmWrapper/IR/LLVMContext.h"
 #include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
 #include "Compiler/CodeGenPublic.h"
 #include "Probe/Assertion.h"

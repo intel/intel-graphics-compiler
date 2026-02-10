@@ -9,8 +9,10 @@ SPDX-License-Identifier: MIT
 #ifndef IGCLLVM_ANALYSIS_TARGETLIBRARYINFO_H
 #define IGCLLVM_ANALYSIS_TARGETLIBRARYINFO_H
 
+#include "IGC/common/LLVMWarningsPush.hpp"
 #include "llvm/Config/llvm-config.h"
 #include "llvm/Analysis/TargetLibraryInfo.h"
+#include "IGC/common/LLVMWarningsPop.hpp"
 
 #define getTLI() getTLI(F)
 

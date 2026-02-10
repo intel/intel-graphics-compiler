@@ -31,7 +31,7 @@ void InitKblNonDisplayWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, 
 {
     int iStepId_KBL = (int)pWaParam->usRevId;
     int iStepId_PCH = (int)pWaParam->usRevId_PCH;
-
+    (void)iStepId_KBL;
 
     if ((pWaParam->ePCHProductFamily >= PCH_LPT) &&
         (pWaParam->ePCHProductFamily <= PCH_CNP_H))
@@ -208,7 +208,7 @@ void InitKblDisplayWaTable(
     PWA_INIT_PARAM                  pWaParam)
 {
     int iStepId_KBL = (int)pWaParam->usRevId;
-
+    (void)iStepId_KBL;
 
     if ((pWaParam->ePCHProductFamily == PCH_CNP_LP) || (pWaParam->ePCHProductFamily == PCH_CNP_H))
     {
@@ -222,7 +222,7 @@ void InitKblDisplayWaTable(
 void InitKblHASWaTable(PHW_DEVICE_EXTENSION pKchContext, PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_PARAM pWaParam)
 {
     int iStepId_KBL = (int)pWaParam->usRevId;
-
+    (void)iStepId_KBL;
 
     SI_WA_ENABLE(
         WaSPTMmioAccessSbi,

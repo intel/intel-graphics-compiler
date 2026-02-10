@@ -24,8 +24,8 @@ See LICENSE.TXT for details.
 #include "llvm/IR/Verifier.h"
 #include "llvm/IR/Dominators.h"
 #include "llvm/IR/InstIterator.h"
-#include "llvmWrapper/IR/Function.h"
 #include "common/LLVMWarningsPop.hpp"
+#include "llvmWrapper/IR/Function.h"
 #include "Probe/Assertion.h"
 
 using namespace llvm;

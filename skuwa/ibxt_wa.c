@@ -214,6 +214,7 @@ void InitBxtWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
 void InitBxtHASWaTable(PHW_DEVICE_EXTENSION pKchContext, PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_PARAM pWaParam)
 {
     int StepId_BXT = (int)pWaParam->usRevId;
+    (void)StepId_BXT;
 
 
 }

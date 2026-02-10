@@ -10,9 +10,9 @@ SPDX-License-Identifier: MIT
 
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/ADT/SmallVector.h>
+#include "common/LLVMWarningsPop.hpp"
 #include "llvmWrapper/IR/Instructions.h"
 #include "llvmWrapper/Support/Regex.h"
-#include "common/LLVMWarningsPop.hpp"
 
 #include "Compiler/IGCPassSupport.h"
 #include "Compiler/CodeGenPublic.h"

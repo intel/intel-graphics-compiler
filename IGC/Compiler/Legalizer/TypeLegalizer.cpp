@@ -18,11 +18,11 @@ SPDX-License-Identifier: MIT
 #include "InstElementizer.h"
 */
 #include "common/LLVMWarningsPush.hpp"
-#include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvm/ADT/PostOrderIterator.h"
 #include "llvm/IR/CFG.h"
 #include "llvm/Transforms/Utils/Local.h"
 #include "common/LLVMWarningsPop.hpp"
+#include "llvmWrapper/IR/DerivedTypes.h"
 #include "Compiler/IGCPassSupport.h"
 #include "Probe/Assertion.h"
 

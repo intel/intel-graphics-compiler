@@ -22,13 +22,13 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/Metadata.h>
 #include <llvm/IR/Operator.h>
 #include <llvm/IR/CFG.h>
-#include <llvmWrapper/IR/IRBuilder.h>
 #include <llvm/IR/PassManager.h>
 #include <llvm/ADT/SmallSet.h>
 #include <llvm/ADT/SmallVector.h>
 #include <llvm/ADT/DenseSet.h>
 #include <llvm/Analysis/PostDominators.h>
 #include "common/LLVMWarningsPop.hpp"
+#include <llvmWrapper/IR/IRBuilder.h>
 #include "GenISAIntrinsics/GenIntrinsics.h"
 #include "GenISAIntrinsics/GenIntrinsicInst.h"
 #include "Compiler/CodeGenPublicEnums.h"

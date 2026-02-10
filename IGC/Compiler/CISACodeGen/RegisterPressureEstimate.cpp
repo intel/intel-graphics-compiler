@@ -25,9 +25,9 @@ See LICENSE.TXT for details.
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/IR/Intrinsics.h>
 #include <llvm/IR/InstIterator.h>
-#include "llvmWrapper/IR/Function.h"
 #include <llvm/Transforms/Utils/Local.h>
 #include "common/LLVMWarningsPop.hpp"
+#include "llvmWrapper/IR/Function.h"
 #include "Probe/Assertion.h"
 
 using namespace llvm;

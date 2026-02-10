@@ -12,13 +12,13 @@ SPDX-License-Identifier: MIT
 #include "Compiler/IGCPassSupport.h"
 #include "common/IGCIRBuilder.h"
 #include "common/LLVMWarningsPush.hpp"
-#include "llvmWrapper/Support/Alignment.h"
-#include "llvmWrapper/IR/DerivedTypes.h"
 #include <llvm/IR/DataLayout.h>
 #include <llvm/IR/Instructions.h>
 #include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/InstIterator.h>
 #include "common/LLVMWarningsPop.hpp"
+#include "llvmWrapper/Support/Alignment.h"
+#include "llvmWrapper/IR/DerivedTypes.h"
 #include "Probe/Assertion.h"
 
 using namespace llvm;
@@ -681,7 +681,7 @@ void VectorMessage::getInfo(Type *Ty, uint64_t Align, bool useA32, bool forceByt
                 : ((has_8DW_A64_SM && SM == SIMDMode::SIMD8) ? A64_SCATTERED_MAX_BYTES_8DW_SIMD8
                                                              : A64_SCATTERED_MAX_BYTES_4DW);
 
-    bool allowQWMessage = !useA32 && eltSize == 8 && Align >= 8U;
+    [[maybe_unused]] bool allowQWMessage = !useA32 && eltSize == 8 && Align >= 8U;
 
     defaultDataType = (eltSize == 8) ? ISA_TYPE_UQ : ISA_TYPE_UD;
     // To make sure that send returns the correct layout for vector.

@@ -9,9 +9,11 @@ SPDX-License-Identifier: MIT
 #ifndef INJECT_PRINTF_HPP
 #define INJECT_PRINTF_HPP
 
+#include "common/LLVMWarningsPush.hpp"
 #include "llvm/IR/Function.h"
 #include "llvm/Pass.h"
 #include "llvm/IR/IRBuilder.h"
+#include "common/LLVMWarningsPop.hpp"
 
 namespace IGC {
 class InjectPrintf : public llvm::FunctionPass {

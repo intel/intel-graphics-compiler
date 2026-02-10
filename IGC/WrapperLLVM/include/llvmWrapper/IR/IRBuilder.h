@@ -9,8 +9,10 @@ SPDX-License-Identifier: MIT
 #ifndef IGCLLVM_IR_IRBUILDER_H
 #define IGCLLVM_IR_IRBUILDER_H
 
+#include "IGC/common/LLVMWarningsPush.hpp"
 #include "llvm/Config/llvm-config.h"
 #include "llvm/IR/IRBuilder.h"
+#include "IGC/common/LLVMWarningsPop.hpp"
 #include "llvmWrapper/IR/Type.h"
 #include "llvmWrapper/Support/Alignment.h"
 

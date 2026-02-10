@@ -65,11 +65,11 @@ See LICENSE.TXT for details.
 #include "common/debug/Dump.hpp"
 #include "Compiler/IGCPassSupport.h"
 #include "common/LLVMWarningsPush.hpp"
-#include "llvmWrapper/IR/Instructions.h"
 #include <llvm/IR/InstIterator.h>
 #include <llvm/IR/InlineAsm.h>
-#include <llvmWrapper/IR/DerivedTypes.h>
 #include "common/LLVMWarningsPop.hpp"
+#include "llvmWrapper/IR/Instructions.h"
+#include <llvmWrapper/IR/DerivedTypes.h>
 #include <algorithm>
 #include "Probe/Assertion.h"
 
@@ -1371,13 +1371,13 @@ void DeSSA::coalesceAliasInsertValue(InsertValueInst *theIVI) {
   //  This can be viewed as a tree of IVI chains, rooted at V0, with edge
   //  denoting def-use relation between two chains. The tree for the above
   //  is as below:
-  //
-  //           Chain0
-  //          /      \
-    //      Chain1    Chain2
-  //                /     \
-    //            Chain3   Chain4
-  //
+  /*
+             Chain0
+            /      \
+        Chain1    Chain2
+                  /     \
+              Chain3   Chain4
+  */
   // The algorithm does the following:
   //   1. Find all chains. All insts (Vs) of each chain are aliased to
   //      each other in the same chain.

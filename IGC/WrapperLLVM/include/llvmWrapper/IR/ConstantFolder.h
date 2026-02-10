@@ -9,9 +9,11 @@ SPDX-License-Identifier: MIT
 #ifndef IGCLLVM_IR_CONSTANTFOLDER_H
 #define IGCLLVM_IR_CONSTANTFOLDER_H
 
+#include "IGC/common/LLVMWarningsPush.hpp"
 #include "llvm/Config/llvm-config.h"
 #include "llvm/IR/ConstantFolder.h"
 #include <llvm/Support/Casting.h>
+#include "IGC/common/LLVMWarningsPop.hpp"
 
 namespace IGCLLVM {
 // The main methods of the class now get proxied to an llvm::ConstantFolder

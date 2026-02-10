@@ -691,7 +691,7 @@ void ZEBinaryBuilder::addElfSections(void *elfBin, size_t elfSize) {
     strtabSectionHeader = elfReader->GetSectionHeader(".shstrtab");
   }
 
-  ZEELFObjectBuilder::SectionID zeBinSectionID = 0;
+  [[maybe_unused]] ZEELFObjectBuilder::SectionID zeBinSectionID = 0;
 
   char *secData = NULL;
   size_t secDataSize = 0;

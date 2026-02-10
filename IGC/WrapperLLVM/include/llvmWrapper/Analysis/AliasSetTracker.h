@@ -9,8 +9,10 @@ SPDX-License-Identifier: MIT
 #ifndef IGCLLVM_ANALYSIS_ALIASSETTRACKER_H
 #define IGCLLVM_ANALYSIS_ALIASSETTRACKER_H
 
+#include "IGC/common/LLVMWarningsPush.hpp"
 #include "llvm/Analysis/AliasAnalysis.h"
 #include <llvm/Analysis/AliasSetTracker.h>
+#include "IGC/common/LLVMWarningsPop.hpp"
 
 namespace IGCLLVM {
 namespace AliasAnalysis {

@@ -15,9 +15,9 @@ SPDX-License-Identifier: MIT
 #include "llvm/IR/Value.h"
 #include "llvm/Transforms/IPO.h"
 
+#include "common/LLVMWarningsPop.hpp"
 #include "llvmWrapper/Transforms/InitializePasses.h"
 #include "llvmWrapper/Transforms/IPO/Annotation2Metadata.h"
-#include "common/LLVMWarningsPop.hpp"
 
 #include "Compiler/IGCPassSupport.h"
 

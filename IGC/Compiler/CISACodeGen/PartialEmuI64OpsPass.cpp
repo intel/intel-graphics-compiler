@@ -22,10 +22,10 @@ SPDX-License-Identifier: MIT
 #include "llvm/IR/Value.h"
 #include "llvm/Pass.h"
 #include "llvm/Analysis/TargetFolder.h"
+#include "common/LLVMWarningsPop.hpp"
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/IR/Instructions.h"
 #include "llvmWrapper/Support/Alignment.h"
-#include "common/LLVMWarningsPop.hpp"
 #include "common/LLVMUtils.h"
 #include "common/IGCIRBuilder.h"
 #include "GenISAIntrinsics/GenIntrinsics.h"
@@ -744,7 +744,7 @@ bool InstExpander::expand(Instruction *I) {
 }
 
 bool InstExpander::visitInstruction(Instruction &I) {
-  bool isKnown = IGCLLVM::isFreezeInst(&I);
+  [[maybe_unused]] bool isKnown = IGCLLVM::isFreezeInst(&I);
   IGC_ASSERT_MESSAGE(isKnown, "UNKNOWN INSTRUCTION is BEING EXPANDED!");
   return false;
 }
@@ -1043,7 +1043,7 @@ bool InstExpander::visitLandingPad(LandingPadInst &LPI) {
 }
 
 bool InstExpander::visitAtomicCmpXchg(AtomicCmpXchgInst &ACXI) {
-  Value *V = ACXI.getCompareOperand();
+  [[maybe_unused]] Value *V = ACXI.getCompareOperand();
   IGC_ASSERT(nullptr != V);
   IGC_ASSERT(nullptr != Emu);
   IGC_ASSERT_MESSAGE(false == Emu->isInt64(V), "TODO: NOT IMPLEMENTED YET!");

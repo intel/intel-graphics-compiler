@@ -2914,7 +2914,7 @@ uint32_t DDD::listSchedule(G4_BB_Schedule *schedule) {
       readyList.pop();
       readyNodeVec.push_back(readyNode);
     }
-    const size_t preQueueSize = preReadyQueue.size();
+    [[maybe_unused]] const size_t preQueueSize = preReadyQueue.size();
     while (!preReadyQueue.empty()) {
       Node *preReadyNode = preReadyQueue.top();
       preReadyQueue.pop();

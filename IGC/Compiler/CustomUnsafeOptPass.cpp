@@ -55,9 +55,9 @@ SPDX-License-Identifier: MIT
 #include <llvm/Analysis/TargetLibraryInfo.h>
 #include <llvm/Analysis/LoopPass.h>
 #include "llvm/IR/DebugInfo.h"
+#include "common/LLVMWarningsPop.hpp"
 #include "llvmWrapper/IR/IntrinsicInst.h"
 #include "llvmWrapper/IR/Function.h"
-#include "common/LLVMWarningsPop.hpp"
 #include "Probe/Assertion.h"
 
 using namespace llvm;
@@ -1037,7 +1037,7 @@ bool CustomUnsafeOptPass::visitBinaryOperatorNegateMultiply(BinaryOperator &I) {
         // DW_OP_neg
         if (auto fsubInstr = dyn_cast<Instruction>(fsub)) {
           Value *fsubOp0 = fsubInstr->getOperand(1);
-          if (auto fsubOp0Instr = dyn_cast<Instruction>(fsubOp0)) {
+          if (isa<Instruction>(fsubOp0)) {
             if (Instruction *NewfmulInst = dyn_cast<Instruction>(fmulInst)) {
               const DebugLoc &DL = NewfmulInst->getDebugLoc();
               fsubInstr->setDebugLoc(DL);

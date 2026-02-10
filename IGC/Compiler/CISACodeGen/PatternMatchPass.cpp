@@ -19,9 +19,9 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/IntrinsicInst.h>
 #include <llvm/IR/PatternMatch.h>
 #include "llvm/Support/KnownBits.h"
+#include "common/LLVMWarningsPop.hpp"
 #include <llvmWrapper/IR/Instructions.h>
 #include "llvmWrapper/Support/Alignment.h"
-#include "common/LLVMWarningsPop.hpp"
 #include "Compiler/IGCPassSupport.h"
 #include "Compiler/InitializePasses.h"
 #include "Compiler/DebugInfo/ScalarVISAModule.h"
@@ -891,12 +891,12 @@ bool CodeGenPatternMatch::MatchShrSatModifier(llvm::SelectInst &I) {
 }
 
 void CodeGenPatternMatch::visitFPToSIInst(llvm::FPToSIInst &I) {
-  bool match = MatchFPToIntegerWithSaturation(I) || MatchModifier(I);
+  [[maybe_unused]] bool match = MatchFPToIntegerWithSaturation(I) || MatchModifier(I);
   IGC_ASSERT_MESSAGE(match, "Pattern match Failed");
 }
 
 void CodeGenPatternMatch::visitFPToUIInst(llvm::FPToUIInst &I) {
-  bool match = MatchFPToIntegerWithSaturation(I) || MatchModifier(I);
+  [[maybe_unused]] bool match = MatchFPToIntegerWithSaturation(I) || MatchModifier(I);
   IGC_ASSERT_MESSAGE(match, "Pattern match Failed");
 }
 
@@ -920,7 +920,7 @@ bool CodeGenPatternMatch::MatchSIToFPZExt(llvm::SIToFPInst *S2FI) {
 }
 
 void CodeGenPatternMatch::visitCastInst(llvm::CastInst &I) {
-  bool match = 0;
+  [[maybe_unused]] bool match = 0;
   if (I.getOpcode() == Instruction::SExt) {
     match = MatchUnpack4i8(I) || MatchCmpSext(I) || MatchModifier(I);
   } else if (I.getOpcode() == Instruction::ZExt) {
@@ -1046,15 +1046,15 @@ bool CodeGenPatternMatch::MatchMinMax(llvm::SelectInst &SI) {
 }
 
 void CodeGenPatternMatch::visitSelectInst(SelectInst &I) {
-  bool match = MatchFloatingPointSatModifier(I) || MatchIntegerTruncSatModifier(I) || MatchShrSatModifier(I) ||
-               MatchAbsNeg(I) || MatchFPToIntegerWithSaturation(I) || MatchMinMax(I) || MatchCmpSelect(I) ||
-               MatchSelectModifier(I);
+  [[maybe_unused]] bool match = MatchFloatingPointSatModifier(I) || MatchIntegerTruncSatModifier(I) ||
+                                MatchShrSatModifier(I) || MatchAbsNeg(I) || MatchFPToIntegerWithSaturation(I) ||
+                                MatchMinMax(I) || MatchCmpSelect(I) || MatchSelectModifier(I);
   IGC_ASSERT_MESSAGE(match, "Pattern Match failed");
 }
 
 void CodeGenPatternMatch::visitBinaryOperator(llvm::BinaryOperator &I) {
 
-  bool match = false;
+  [[maybe_unused]] bool match = false;
   switch (I.getOpcode()) {
   case Instruction::FSub:
     match = MatchFloor(I) || MatchFrc(I) || MatchLrp(I) || MatchPredAdd(I) || MatchFMad(I) || MatchAbsNeg(I) ||
@@ -1114,14 +1114,14 @@ void CodeGenPatternMatch::visitBinaryOperator(llvm::BinaryOperator &I) {
 }
 
 void CodeGenPatternMatch::visitCmpInst(llvm::CmpInst &I) {
-  bool match = MatchCondModifier(I) || MatchModifier(I);
+  [[maybe_unused]] bool match = MatchCondModifier(I) || MatchModifier(I);
   IGC_ASSERT(match);
 }
 
 void CodeGenPatternMatch::visitBranchInst(llvm::BranchInst &I) { MatchBranch(I); }
 
 void CodeGenPatternMatch::visitCallInst(CallInst &I) {
-  bool match = false;
+  [[maybe_unused]] bool match = false;
   using namespace GenISAIntrinsic;
   if (GenIntrinsicInst *GII = llvm::dyn_cast<GenIntrinsicInst>(&I)) {
     if (isSampleLoadGather4InfoInstruction(GII)) {
@@ -1287,7 +1287,7 @@ void CodeGenPatternMatch::visitCallInst(CallInst &I) {
 }
 
 void CodeGenPatternMatch::visitUnaryInstruction(llvm::UnaryInstruction &I) {
-  bool match = false;
+  [[maybe_unused]] bool match = false;
   switch (I.getOpcode()) {
   case Instruction::Alloca:
   case Instruction::Load:
@@ -1301,7 +1301,7 @@ void CodeGenPatternMatch::visitUnaryInstruction(llvm::UnaryInstruction &I) {
 }
 
 void CodeGenPatternMatch::visitIntrinsicInst(llvm::IntrinsicInst &I) {
-  bool match = false;
+  [[maybe_unused]] bool match = false;
   switch (I.getIntrinsicID()) {
   case Intrinsic::sqrt:
   case Intrinsic::log2:
@@ -1347,7 +1347,7 @@ void CodeGenPatternMatch::visitIntrinsicInst(llvm::IntrinsicInst &I) {
 }
 
 void CodeGenPatternMatch::visitStoreInst(StoreInst &I) {
-  bool match = false;
+  [[maybe_unused]] bool match = false;
   if (m_Platform.hasEfficient64bEnabled()) {
     match = MatchLoadStoreAtomicsStatelessUniformBase(I);
     if (match)
@@ -1363,7 +1363,7 @@ void CodeGenPatternMatch::visitStoreInst(StoreInst &I) {
 }
 
 void CodeGenPatternMatch::visitLoadInst(LoadInst &I) {
-  bool match = false;
+  [[maybe_unused]] bool match = false;
   if (m_Platform.hasEfficient64bEnabled()) {
     match = MatchLoadStoreAtomicsStatelessUniformBase(I);
     if (match)
@@ -1476,7 +1476,7 @@ void CodeGenPatternMatch::visitBitCastInst(BitCastInst &I) {
       }
     }
   }
-  bool match = false;
+  [[maybe_unused]] bool match = false;
   match = MatchRepack4i8(I) || MatchPack4i8(I) || MatchSingleInstruction(I);
   IGC_ASSERT_MESSAGE(match, "Unsupported BitCast instruction");
 }
@@ -1490,7 +1490,7 @@ void CodeGenPatternMatch::visitAddrSpaceCast(AddrSpaceCastInst &I) { MatchSingle
 void CodeGenPatternMatch::visitDbgInfoIntrinsic(DbgInfoIntrinsic &I) { MatchDbgInstruction(I); }
 
 void CodeGenPatternMatch::visitExtractValueInst(ExtractValueInst &I) {
-  bool Match = false;
+  [[maybe_unused]] bool Match = false;
 
   // Ignore the extract value instruction. Handled in the call inst.
   if (CallInst *call = dyn_cast<CallInst>(I.getOperand(0))) {
@@ -1687,7 +1687,7 @@ bool CodeGenPatternMatch::MatchAbsNeg(llvm::Instruction &I) {
     SSource source;
     virtual void Emit(EmitPass *pass, const DstModifier &modifier) { pass->Mov(source, modifier); }
   };
-  bool match = false;
+  [[maybe_unused]] bool match = false;
   e_modifier mod{};
   Value *source = nullptr;
   if (GetModifier(I, mod, source)) {
@@ -3505,7 +3505,7 @@ bool CodeGenPatternMatch::MatchCmpSext(llvm::Instruction &I) {
       pass->Cmp(inst->getPredicate(), sources, modifier);
     }
   };
-  bool match = false;
+  [[maybe_unused]] bool match = false;
 
   if (CmpInst *cmpInst = dyn_cast<CmpInst>(I.getOperand(0))) {
     if (cmpInst->getOperand(0)->getType()->getPrimitiveSizeInBits() == I.getType()->getPrimitiveSizeInBits()) {
@@ -4412,7 +4412,7 @@ bool CodeGenPatternMatch::MatchFloatingPointSatModifier(llvm::Instruction &I) {
       }
     }
   };
-  bool match = false;
+  [[maybe_unused]] bool match = false;
   llvm::Value *source = nullptr;
   bool isUnsigned = false;
   if (isSat(&I, source, isUnsigned)) {
@@ -4483,7 +4483,7 @@ bool CodeGenPatternMatch::MatchIntegerSatModifier(llvm::Instruction &I) {
     }
   };
 
-  bool match = false;
+  [[maybe_unused]] bool match = false;
   llvm::Value *source = nullptr;
   bool isUnsigned = false;
   if (isSat(&I, source, isUnsigned)) {
@@ -5317,7 +5317,7 @@ bool CodeGenPatternMatch::MatchDp4a(GenIntrinsicInst &I) {
     }
 
     if (wavesrc1 && wavesrc2 && wavesrc1->isZeroValue() && wavesrc2->isZeroValue()) {
-      if (llvm::ExtractElementInst *wavesrc0 = llvm::dyn_cast<llvm::ExtractElementInst>(waveInst[0]->getOperand(0))) {
+      if (llvm::isa<llvm::ExtractElementInst>(waveInst[0]->getOperand(0))) {
         llvm::ExtractElementInst *extractInst[4];
 
         // Find the 4 x extractelement
@@ -5511,7 +5511,7 @@ bool CodeGenPatternMatch::MatchSampleLoadStoreAtomicTypedEff64(llvm::GenIntrinsi
         pass->emitGather4Instruction(GI);
       } else if (auto *II = dyn_cast<InfoIntrinsic>(I)) {
         pass->emitInfoInstruction(II);
-      } else if (auto *ATI = dyn_cast<AtomicTypedIntrinsic>(I)) {
+      } else if (isa<AtomicTypedIntrinsic>(I)) {
         if (pass->shouldGenerateLSC(I)) {
           pass->emitLSCAtomicTyped(I);
         } else
@@ -5736,7 +5736,7 @@ bool CodeGenPatternMatch::MatchShuffleBroadCast(llvm::GenIntrinsicInst &I) {
     SSource source;
     virtual void Emit(EmitPass *pass, const DstModifier &modifier) { pass->Mov(source, modifier); }
   };
-  bool match = false;
+  [[maybe_unused]] bool match = false;
   SSource source;
   Value *sourceV = &I;
   if (GetRegionModifier(source, sourceV, true)) {

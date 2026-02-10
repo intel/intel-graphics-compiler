@@ -242,10 +242,10 @@ VISAModule::getAllCallerSave(const VISAObjectDebugInfo &VDI, uint64_t startRange
   std::vector<std::tuple<uint64_t, uint64_t, unsigned int>> callerSaveIPs;
 
   if (VDI.getCFI().callerSaveEntry.empty())
-    return std::move(callerSaveIPs);
+    return callerSaveIPs;
 
   if (!genIsaRange.isGRF())
-    return std::move(callerSaveIPs);
+    return callerSaveIPs;
 
   auto startRegNum = genIsaRange.getGRF().regNum;
 
@@ -289,7 +289,7 @@ VISAModule::getAllCallerSave(const VISAObjectDebugInfo &VDI, uint64_t startRange
     prevSize = callerSave.numEntries;
   }
 
-  return std::move(callerSaveIPs);
+  return callerSaveIPs;
 }
 
 void VISAModule::coalesceRanges(GenISARange &GenISARange) {
@@ -476,7 +476,7 @@ VISAModule::GenISARange VISAModule::getGenISARange(const VISAObjectDebugInfo &VD
 
   coalesceRanges(GenISARange);
 
-  return std::move(GenISARange);
+  return GenISARange;
 }
 
 const DbgDecoder::VarInfo *VISAModule::getVarInfo(const VISAObjectDebugInfo &VDI, unsigned int vreg) const {

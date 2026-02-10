@@ -17,12 +17,10 @@ SPDX-License-Identifier: MIT
 #include "3d/common/iStdLib/File.h"
 #include "OCLFE/igd_fcl_mcl/headers/clang_tb.h"
 
-#include <optional>
-
-#pragma warning(disable : 4141)
-#pragma warning(disable : 4146)
-#pragma warning(disable : 4242)
 #include "llvmWrapper/TargetParser/Triple.h"
+#include <llvmWrapper/ADT/Optional.h>
+
+#include "IGC/common/LLVMWarningsPush.hpp"
 #include <llvm/ADT/STLExtras.h>
 #include <llvm/Support/CommandLine.h>
 #include <llvm/Support/FileSystem.h>
@@ -32,11 +30,9 @@ SPDX-License-Identifier: MIT
 #include <llvm/Support/DynamicLibrary.h>
 #include <llvm/Support/StringSaver.h>
 #include <llvm/Support/Host.h>
-#include <llvmWrapper/ADT/Optional.h>
-#pragma warning(default : 4242)
-#pragma warning(default : 4146)
-#pragma warning(default : 4141)
+#include "IGC/common/LLVMWarningsPop.hpp"
 
+#include <optional>
 #include <algorithm>
 #include <numeric>
 #include <fstream>
@@ -87,10 +83,10 @@ private:
   CIF::Builtins::BufferSimple *TracingOptions = nullptr;
 };
 
-FeShaderDumpData::FeShaderDumpData(PLATFORM *Platform, const char *Selected, int Stepping,
-                                   CIF::Builtins::BufferSimple *Src, CIF::Builtins::BufferSimple *Opts,
-                                   CIF::Builtins::BufferSimple *InternalOpts,
-                                   CIF::Builtins::BufferSimple *TracingOpts) {
+[[maybe_unused]] FeShaderDumpData::FeShaderDumpData(PLATFORM *Platform, const char *Selected, int Stepping,
+                                                    CIF::Builtins::BufferSimple *Src, CIF::Builtins::BufferSimple *Opts,
+                                                    CIF::Builtins::BufferSimple *InternalOpts,
+                                                    CIF::Builtins::BufferSimple *TracingOpts) {
   std::ostringstream Os;
   if (Platform) {
     auto Core = Platform->eDisplayCoreFamily;

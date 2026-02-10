@@ -23,8 +23,8 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/GetElementPtrTypeIterator.h>
 #include <llvm/Support/MathExtras.h>
-#include "llvmWrapper/IR/DerivedTypes.h"
 #include "common/LLVMWarningsPop.hpp"
+#include "llvmWrapper/IR/DerivedTypes.h"
 #include <vector>
 #include "Probe/Assertion.h"
 

@@ -68,7 +68,7 @@ inline int getStackAmount(const llvm::Function *F,
   llvm::StringRef Val =
       F->getFnAttribute(FunctionMD::VCStackAmount).getValueAsString();
   int Result;
-  bool HaveParseError = Val.getAsInteger<int>(10, Result);
+  [[maybe_unused]] bool HaveParseError = Val.getAsInteger<int>(10, Result);
   IGC_ASSERT(!HaveParseError);
   return Result;
 }

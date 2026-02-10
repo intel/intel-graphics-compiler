@@ -8,21 +8,22 @@ SPDX-License-Identifier: MIT
 
 #include "LegalizeFunctionSignatures.h"
 #include "common/debug/Debug.hpp"
-#include "Compiler/IGCPassSupport.h"
+#include "common/Types.hpp"
 #include "Compiler/CISACodeGen/helper.h"
 #include "Compiler/CodeGenPublic.h"
-#include "common/LLVMWarningsPush.hpp"
+#include "Compiler/IGCPassSupport.h"
 #include "llvmWrapper/IR/DerivedTypes.h"
-#include <llvmWrapper/IR/Instructions.h>
 #include "llvmWrapper/IR/Function.h"
-#include <llvm/IR/Module.h>
-#include <llvm/IR/Function.h>
-#include "llvm/IR/InstIterator.h"
-#include <llvm/Transforms/Utils/BasicBlockUtils.h>
-#include <llvmWrapper/Transforms/Utils/Cloning.h>
-#include "common/LLVMWarningsPop.hpp"
-#include "common/Types.hpp"
+#include "llvmWrapper/IR/Instructions.h"
+#include "llvmWrapper/Transforms/Utils/Cloning.h"
 #include "Probe/Assertion.h"
+
+#include "common/LLVMWarningsPush.hpp"
+#include <llvm/IR/Function.h>
+#include <llvm/IR/InstIterator.h>
+#include <llvm/IR/Module.h>
+#include <llvm/Transforms/Utils/BasicBlockUtils.h>
+#include "common/LLVMWarningsPop.hpp"
 
 using namespace llvm;
 using namespace IGC;

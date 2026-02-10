@@ -5059,7 +5059,7 @@ int VISAKernelImpl::AppendVISAMiscRawSendg(
     if (status != VISA_SUCCESS)
       return nullptr;
     if (ind == nullptr) {
-      auto status = GetPredefinedVar(nullVar, PREDEFINED_NULL);
+      [[maybe_unused]] auto status = GetPredefinedVar(nullVar, PREDEFINED_NULL);
       status = CreateVISASrcOperand(ind, nullVar, MODIFIER_NONE, 0, 1, 0, 0, 0);
     }
     return ind;

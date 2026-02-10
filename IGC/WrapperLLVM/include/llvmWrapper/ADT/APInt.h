@@ -10,9 +10,10 @@ SPDX-License-Identifier: MIT
 #define IGCLLVM_ADT_APINT_H
 
 #include "Probe/Assertion.h"
-#include <llvm/ADT/APInt.h>
-
+#include "IGC/common/LLVMWarningsPush.hpp"
 #include "llvm/Support/DivisionByConstantInfo.h"
+#include <llvm/ADT/APInt.h>
+#include "IGC/common/LLVMWarningsPop.hpp"
 
 namespace IGCLLVM {
 using SignedDivisionByConstantInfo = llvm::SignedDivisionByConstantInfo;

@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 ============================= end_copyright_notice ===========================*/
 
 #include "common/LLVMWarningsPush.hpp"
+
 #include "llvm/Transforms/Scalar/LowerExpectIntrinsic.h"
 #include "llvm/Analysis/GlobalsModRef.h"
 #include "llvm/Analysis/LazyBlockFrequencyInfo.h"
@@ -15,10 +16,10 @@ SPDX-License-Identifier: MIT
 #include "llvm/Transforms/Utils.h"
 #include "llvm/Transforms/Utils/SizeOpts.h"
 
-#include "llvmWrapper/Transforms/Scalar/LowerExpectIntrinsic.h"
-#include "llvmWrapper/Transforms/InitializePasses.h"
 #include "common/LLVMWarningsPop.hpp"
 
+#include "llvmWrapper/Transforms/Scalar/LowerExpectIntrinsic.h"
+#include "llvmWrapper/Transforms/InitializePasses.h"
 #include "Compiler/IGCPassSupport.h"
 
 using namespace llvm;

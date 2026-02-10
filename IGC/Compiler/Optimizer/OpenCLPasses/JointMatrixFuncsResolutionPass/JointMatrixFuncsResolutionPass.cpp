@@ -8,10 +8,19 @@ SPDX-License-Identifier: MIT
 
 #include "JointMatrixFuncsResolutionPass.h"
 
-#include "Compiler/Optimizer/OCLBIUtils.h"
-#include "Compiler/IGCPassSupport.h"
-#include "Compiler/CodeGenPublic.h"
 #include "AdaptorOCL/Utils/CacheControlsHelper.h"
+#include "Compiler/CodeGenPublic.h"
+#include "Compiler/IGCPassSupport.h"
+#include "Compiler/Optimizer/OCLBIUtils.h"
+#include "llvmWrapper/ADT/Optional.h"
+#include "llvmWrapper/IR/DerivedTypes.h"
+#include "llvmWrapper/IR/Type.h"
+#include "llvmWrapper/IR/Value.h"
+#include "llvmWrapper/Support/Alignment.h"
+#include "llvmWrapper/Transforms/Utils/Cloning.h"
+#include "Probe/Assertion.h"
+#include <optional>
+#include <type_traits>
 
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/Pass.h>
@@ -24,20 +33,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/IR/DebugInfo.h"
 #include "llvm/IR/DIBuilder.h"
 #include "llvm/Support/Debug.h"
-
-#include "llvmWrapper/Transforms/Utils/Cloning.h"
-#include <llvmWrapper/ADT/Optional.h>
-#include "llvmWrapper/IR/Value.h"
-#include "llvmWrapper/IR/Type.h"
-#include <llvmWrapper/Analysis/ValueTracking.h>
-#include "llvmWrapper/IR/DerivedTypes.h"
-#include "llvmWrapper/Support/Alignment.h"
 #include "common/LLVMWarningsPop.hpp"
-
-#include "Probe/Assertion.h"
-
-#include <optional>
-#include <type_traits>
 
 using namespace llvm;
 using namespace IGC;
@@ -984,7 +980,7 @@ bool JointMatrixFuncsResolutionPass::parseMatrixTypeNameLegacy(const Type *opaqu
   offset += 1; /* Skip type specifier, [f|i] */
   outDescription->bitWidth = parseNumber(name, &offset);
 
-  bool isBitWidthSupported = ValidateIntegerBitWidth(outDescription->bitWidth);
+  [[maybe_unused]] bool isBitWidthSupported = ValidateIntegerBitWidth(outDescription->bitWidth);
   IGC_ASSERT_MESSAGE(isBitWidthSupported, "Unexpected matrix element size.");
 
   return true;

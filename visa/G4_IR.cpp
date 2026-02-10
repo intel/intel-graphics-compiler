@@ -7337,7 +7337,7 @@ bool G4_INST::isFastHFInstruction(void) const {
 }
 
 bool G4_INST::mayExpandToAccMacro() const {
-  auto isDMul = [](const G4_INST *Inst) {
+  [[maybe_unused]] auto isDMul = [](const G4_INST *Inst) {
     return Inst->opcode() == G4_mul && (IS_QTYPE(Inst->getDst()->getType()) ||
                                         (IS_DTYPE(Inst->getSrc(0)->getType()) &&
                                          IS_DTYPE(Inst->getSrc(1)->getType())));

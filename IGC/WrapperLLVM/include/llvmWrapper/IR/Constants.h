@@ -9,10 +9,11 @@ SPDX-License-Identifier: MIT
 #ifndef IGCLLVM_IR_CONSTANTS_H
 #define IGCLLVM_IR_CONSTANTS_H
 
+#include "IGC/common/LLVMWarningsPush.hpp"
+#include "llvm/Support/TypeSize.h"
 #include "llvm/Config/llvm-config.h"
 #include "llvm/IR/Constants.h"
-
-#include "llvm/Support/TypeSize.h"
+#include "IGC/common/LLVMWarningsPop.hpp"
 
 namespace IGCLLVM {
 inline llvm::ElementCount getElementCount(const llvm::ConstantAggregateZero &C) { return C.getElementCount(); }

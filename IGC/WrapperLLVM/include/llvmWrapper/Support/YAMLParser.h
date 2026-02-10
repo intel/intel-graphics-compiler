@@ -9,6 +9,8 @@ SPDX-License-Identifier: MIT
 #ifndef IGCLLVM_SUPPORT_YAMLPARSER_H
 #define IGCLLVM_SUPPORT_YAMLPARSER_H
 
+#include "IGC/common/LLVMWarningsPush.hpp"
 #include "llvm/Support/YAMLParser.h"
+#include "IGC/common/LLVMWarningsPop.hpp"
 
 #endif // IGCLLVM_SUPPORT_YAMLPARSER_H

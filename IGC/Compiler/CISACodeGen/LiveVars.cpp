@@ -34,11 +34,11 @@ See LICENSE.TXT for details.
 #include "Compiler/IGCPassSupport.h"
 #include "common/debug/Debug.hpp"
 #include "common/LLVMWarningsPush.hpp"
-#include "llvmWrapper/IR/CFG.h"
 #include <llvm/Support/raw_ostream.h>
 #include <llvm/Support/Debug.h>
 #include <llvm/ADT/DepthFirstIterator.h>
 #include "common/LLVMWarningsPop.hpp"
+#include "llvmWrapper/IR/CFG.h"
 #include <algorithm>
 #include "Probe/Assertion.h"
 #include "helper.h"

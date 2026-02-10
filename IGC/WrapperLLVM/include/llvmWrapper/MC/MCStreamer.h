@@ -9,8 +9,10 @@ SPDX-License-Identifier: MIT
 #ifndef IGCLLVM_MC_MCSTREAMER_H
 #define IGCLLVM_MC_MCSTREAMER_H
 
+#include "IGC/common/LLVMWarningsPush.hpp"
 #include <llvm/MC/MCContext.h>
 #include <llvm/MC/MCStreamer.h>
+#include "IGC/common/LLVMWarningsPop.hpp"
 
 namespace IGCLLVM {
 inline void initSections(llvm::MCStreamer *streamer, bool NoExecStack, const llvm::MCContext *Context) {

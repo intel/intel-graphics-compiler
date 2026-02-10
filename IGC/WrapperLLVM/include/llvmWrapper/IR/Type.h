@@ -9,8 +9,10 @@ SPDX-License-Identifier: MIT
 #ifndef IGCLLVM_IR_TYPE_H
 #define IGCLLVM_IR_TYPE_H
 
+#include "IGC/common/LLVMWarningsPush.hpp"
 #include "llvm/IR/Type.h"
 #include "llvm/Support/ErrorHandling.h"
+#include "IGC/common/LLVMWarningsPop.hpp"
 #include <utility>
 
 namespace IGCLLVM {
@@ -44,6 +46,7 @@ inline bool isTargetExtTy(const llvm::Type *PtrTy) {
 #if LLVM_VERSION_MAJOR < 16
   // not supported below LLVM 16
   // to be removed once we switch to 16
+  (void)PtrTy;
   return false;
 #else
   return PtrTy->isTargetExtTy();
@@ -54,6 +57,7 @@ inline llvm::StringRef getTargetExtName(const llvm::Type *PtrTy) {
 #if LLVM_VERSION_MAJOR < 16
   // not supported below LLVM 16
   // to be removed once we switch to 16
+  (void)PtrTy;
   return llvm::StringRef();
 #else
   return PtrTy->getTargetExtName();

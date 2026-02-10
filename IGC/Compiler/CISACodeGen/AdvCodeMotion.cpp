@@ -18,14 +18,15 @@ SPDX-License-Identifier: MIT
 #include <llvm/Pass.h>
 #include <llvm/Support/CommandLine.h>
 #include <llvm/Transforms/Utils/Local.h>
-#include <llvmWrapper/Transforms/Utils/LoopUtils.h>
-#include <llvmWrapper/ADT/Optional.h>
 #include "common/LLVMWarningsPop.hpp"
+
 #include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
 #include "Compiler/IGCPassSupport.h"
 #include "Compiler/MetaDataUtilsWrapper.h"
 #include "Compiler/CISACodeGen/AdvCodeMotion.h"
 #include "Compiler/CISACodeGen/WIAnalysis.hpp"
+#include <llvmWrapper/Transforms/Utils/LoopUtils.h>
+#include <llvmWrapper/ADT/Optional.h>
 #include "Probe/Assertion.h"
 
 using namespace llvm;

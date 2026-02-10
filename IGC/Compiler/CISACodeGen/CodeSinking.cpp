@@ -25,10 +25,10 @@ See LICENSE.TXT for details.
 #include "llvm/IR/CFG.h"
 #include "llvm/IR/Verifier.h"
 #include "llvm/ADT/PostOrderIterator.h"
+#include "common/LLVMWarningsPop.hpp"
 #include "llvmWrapper/IR/Value.h"
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include <llvmWrapper/Analysis/TargetLibraryInfo.h>
-#include "common/LLVMWarningsPop.hpp"
 #include "Compiler/CodeGenPublic.h"
 #include "Compiler/CISACodeGen/CodeSinking.hpp"
 #include "Compiler/CISACodeGen/helper.h"
@@ -1015,7 +1015,6 @@ bool CodeLoopSinking::loopSink(Loop *L, LoopSinkMode Mode) {
 
   bool AllowLoadSinking = IGC_IS_FLAG_ENABLED(ForceLoadsLoopSink);
   bool AllowOnlySingleUseLoadChainSinking = false;
-  bool IterChanged = false;
 
   bool AchievedNeededRegpressure = false;
   bool RecomputeMaxLoopPressure = false;
@@ -1244,8 +1243,6 @@ bool CodeLoopSinking::loopSink(Loop *L, LoopSinkMode Mode) {
     // loop:
     //   ...
 
-    IterChanged = false;
-
     // Try rescheduling the loads that are already in the loop
     // by adding them as a candidates, so that they are moved to the first use by LocalSink
     // Do it only once before starting sinking
@@ -1309,9 +1306,7 @@ bool CodeLoopSinking::loopSink(Loop *L, LoopSinkMode Mode) {
     }
 
     // Sink the beneficial instructions
-    bool IterChanged = false;
-
-    IterChanged |= LateReschedulingIteration;
+    bool IterChanged = LateReschedulingIteration;
 
     if (!LateReschedulingIteration) {
       // Make decisions for "MaybeSink" candidates

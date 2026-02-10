@@ -12,11 +12,11 @@ SPDX-License-Identifier: MIT
 #include "Compiler/Optimizer/OpenCLPasses/KernelArgs/KernelArgs.hpp"
 #include "Compiler/MetaDataUtilsWrapper.h"
 #include "common/LLVMWarningsPush.hpp"
-#include "llvmWrapper/IR/Module.h"
 #include <llvm/Pass.h>
 #include <llvm/IR/InstVisitor.h>
 #include <llvm/IR/IRBuilder.h>
 #include "common/LLVMWarningsPop.hpp"
+#include "llvmWrapper/IR/Module.h"
 
 namespace IGC {
 class BufferBoundsCheckingPatcher : public llvm::ModulePass, public llvm::InstVisitor<BufferBoundsCheckingPatcher> {

@@ -8,8 +8,8 @@ SPDX-License-Identifier: MIT
 
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/Pass.h>
-#include <optional>
 #include "common/LLVMWarningsPop.hpp"
+#include <optional>
 #include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
 #include "Compiler/CISACodeGen/CSWalkOrder.hpp"
 #include "Probe/Assertion.h"

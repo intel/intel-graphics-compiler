@@ -19,8 +19,8 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/Instruction.h>
 #include <llvm/IR/Type.h>
 #include <llvm/Support/raw_ostream.h>
-#include "llvmWrapper/IR/Instructions.h"
 #include "common/LLVMWarningsPop.hpp"
+#include "llvmWrapper/IR/Instructions.h"
 
 #include "Compiler/CodeGenPublic.h"
 #include "Compiler/IGCPassSupport.h"

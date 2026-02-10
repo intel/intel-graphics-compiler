@@ -25,19 +25,20 @@ SPDX-License-Identifier: MIT
 #include "Compiler/IGCPassSupport.h"
 #include "GenISAIntrinsics/GenIntrinsicInst.h"
 #include "LLVM3DBuilder/BuiltinsFrontend.hpp"
-#include "common/LLVMWarningsPush.hpp"
 #include "llvmWrapper/IR/DerivedTypes.h"
-#include "llvm/IR/Module.h"
-#include "llvm/IR/InstIterator.h"
+#include "llvmWrapper/Transforms/Utils/Cloning.h"
+
+#include "common/LLVMWarningsPush.hpp"
 #include "llvm/Analysis/LoopInfo.h"
+#include "llvm/Analysis/OptimizationRemarkEmitter.h"
 #include "llvm/Analysis/PostDominators.h"
 #include "llvm/IR/Dominators.h"
+#include "llvm/IR/InstIterator.h"
+#include "llvm/IR/Module.h"
 #include "llvm/IR/Verifier.h"
 #include "llvm/Transforms/Utils/Cloning.h"
 #include "llvm/Transforms/Utils/Local.h"
-#include "llvmWrapper/Transforms/Utils/Cloning.h"
 #include "common/LLVMWarningsPop.hpp"
-#include "llvm/Analysis/OptimizationRemarkEmitter.h"
 
 using namespace llvm;
 using namespace IGC;
@@ -360,7 +361,7 @@ void DivergentBarrierPass::generateBody(Function *Wrapper, Function *Entry,
   // Now inline all the continuations so we can reassemble SSA.
   for (auto *CI : ContCalls) {
     InlineFunctionInfo IFI;
-    bool CanInline = IGCLLVM::InlineFunction(*CI, IFI, nullptr, false);
+    [[maybe_unused]] bool CanInline = IGCLLVM::InlineFunction(*CI, IFI, nullptr, false);
     IGC_ASSERT_MESSAGE(CanInline, "failed to inline?");
   }
 

@@ -10,9 +10,9 @@ SPDX-License-Identifier: MIT
 #include "Compiler/IGCPassSupport.h"
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "common/LLVMWarningsPush.hpp"
-#include "llvmWrapper/IR/IRBuilder.h"
 #include "llvm/IR/Function.h"
 #include "common/LLVMWarningsPop.hpp"
+#include "llvmWrapper/IR/IRBuilder.h"
 #include "Probe/Assertion.h"
 
 using namespace llvm;
@@ -91,7 +91,7 @@ bool AggregateArgumentsAnalysis::runOnModule(Module &M) {
       else if (arg->getType()->isPointerTy() && arg->hasByValAttr()) {
         Type *type = arg->getParamByValType();
 
-        if (ArrayType *arrayType = dyn_cast<ArrayType>(type)) {
+        if (isa<ArrayType>(type)) {
           getAnalysis<CodeGenContextWrapper>().getCodeGenContext()->EmitError(
               "Array type is not allowed as a kernel argument", arg);
         }

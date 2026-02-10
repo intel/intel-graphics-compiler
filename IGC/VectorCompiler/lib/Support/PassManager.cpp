@@ -159,6 +159,7 @@ enum class IRDumpType { Before, After };
 
 llvm::raw_ostream &getOutputStreamForIRDump(IRDumpType DumpType,
                                             StringRef PassArg, PassNumber N) {
+  (void)PassArg;
   static int Id = 0;
   std::stringstream ss;
   ss.fill('0');
@@ -184,6 +185,7 @@ llvm::raw_ostream &getOutputStreamForIRDump(IRDumpType DumpType,
 
 std::string getIRDumpBanner(StringRef PassName, StringRef PassArg, PassNumber N,
                             IRDumpType Type) {
+  (void)PassName;
   return ("; *** " +
           (Type == IRDumpType::Before ? Twine("IR Dump Before ")
                                       : Twine("IR Dump After")) +
@@ -253,7 +255,9 @@ struct ExtraPrinterPassAfterPass {
   static Pass *createPass(const PassInfo *PI, PassKind PassKindID,
                           PassNumber N) {
     auto PassName = PI->getPassName();
+    (void)PassName;
     auto PassArg = PI->getPassArgument();
+    (void)PassArg;
     switch (PassKindID) {
     case PT_Region:
       return vc::createRegionPassPrinter(PI, llvm::errs());

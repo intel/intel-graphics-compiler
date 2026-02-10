@@ -5,9 +5,8 @@ Copyright (C) 2025 Intel Corporation
 SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
+
 #include "common/LLVMWarningsPush.hpp"
-#include "llvmWrapper/Transforms/Scalar/LoopIdiomRecognize.h"
-#include "llvmWrapper/Transforms/InitializePasses.h"
 
 #include "llvm/Analysis/AliasAnalysis.h"
 #include "llvm/Analysis/AssumptionCache.h"
@@ -23,8 +22,11 @@ SPDX-License-Identifier: MIT
 #include "llvm/Transforms/Scalar/LoopIdiomRecognize.h"
 #include "llvm/Transforms/Scalar/LoopPassManager.h"
 #include "llvm/Analysis/PostDominators.h"
+
 #include "common/LLVMWarningsPop.hpp"
 
+#include "llvmWrapper/Transforms/Scalar/LoopIdiomRecognize.h"
+#include "llvmWrapper/Transforms/InitializePasses.h"
 #include "Compiler/IGCPassSupport.h"
 
 using namespace llvm;

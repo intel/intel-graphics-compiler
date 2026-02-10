@@ -14,8 +14,8 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPush.hpp"
 #include "llvm/ADT/PostOrderIterator.h"
 #include <llvm/IR/DIBuilder.h>
-#include "llvmWrapper/IR/Function.h"
 #include "common/LLVMWarningsPop.hpp"
+#include "llvmWrapper/IR/Function.h"
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include <optional>
 
@@ -287,8 +287,8 @@ void LowerGPCallArg::updateAllUsesWithNewFunction(Function *oldFunc, Function *n
       if (callArg->getType() != funcArg->getType()) {
         IGC_ASSERT(callArg->getType()->isPointerTy() && funcArg->getType()->isPointerTy());
 
-        PointerType *callArgTy = dyn_cast<PointerType>(callArg->getType());
-        PointerType *funcArgTy = dyn_cast<PointerType>(funcArg->getType());
+        [[maybe_unused]] PointerType *callArgTy = dyn_cast<PointerType>(callArg->getType());
+        [[maybe_unused]] PointerType *funcArgTy = dyn_cast<PointerType>(funcArg->getType());
         IGC_ASSERT(callArgTy->getAddressSpace() == ADDRESS_SPACE_GENERIC &&
                    funcArgTy->getAddressSpace() != ADDRESS_SPACE_GENERIC);
         // If call site address space is generic and function arg is non-generic,

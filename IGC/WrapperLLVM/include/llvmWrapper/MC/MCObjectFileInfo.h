@@ -9,8 +9,10 @@ SPDX-License-Identifier: MIT
 #ifndef IGCLLVM_MC_MCOBJECTFILEINFO_H
 #define IGCLLVM_MC_MCOBJECTFILEINFO_H
 
+#include "IGC/common/LLVMWarningsPush.hpp"
 #include "llvm/Config/llvm-config.h"
 #include "llvm/MC/MCObjectFileInfo.h"
+#include "IGC/common/LLVMWarningsPop.hpp"
 
 namespace IGCLLVM {
 class MCObjectFileInfo : public llvm::MCObjectFileInfo {

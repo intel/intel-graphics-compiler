@@ -160,7 +160,7 @@ Value *NamedBarriersResolution::FindAllocStructNBarrier(Value *Val, bool IsNBarr
     // If "work_group_named_barrier" call uses NBarrier directly from "named_barriers_init", it means that alloca
     // has been optimized out by Mem2Reg optimization
     else if (CallInst *callInst = dyn_cast<CallInst>(Val)) {
-      StringRef funcName = callInst->getCalledFunction()->getName();
+      [[maybe_unused]] StringRef funcName = callInst->getCalledFunction()->getName();
       IGC_ASSERT_MESSAGE(isNamedBarrierInit(funcName),
                          "NamedBarriersResolution : Incorrect work_group_named_barrier signature");
       return callInst;

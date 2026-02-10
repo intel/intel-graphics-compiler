@@ -825,7 +825,7 @@ AddrSizeType G4_SendgDesc::getAddrSizeType() const {
   if (MsgOpIsExtendedCacheCtrl(op))
     return AddrSizeType::GLB_A64_A64;
   if (MsgOpHasChMask(op) && getSFID() == SFID::TGM) {
-    uint32_t addrSizeEnc = (descValue >> 14) & 0x1;
+    [[maybe_unused]] uint32_t addrSizeEnc = (descValue >> 14) & 0x1;
     vISA_ASSERT(addrSizeEnc == 0, "Must be 32-bit for TGM messages");
     return AddrSizeType::GLB_STATE_A32;
   }
@@ -867,7 +867,7 @@ DataSize G4_SendgDesc::getDataSize() const {
   if (!MsgOpIsLoadStoreAtomic(op))
     return DataSize::INVALID;
   if (MsgOpHasChMask(op) && getSFID() == SFID::TGM) {
-    uint32_t dataSizeEnc = (descValue >> 15) & 0x1;
+    [[maybe_unused]] uint32_t dataSizeEnc = (descValue >> 15) & 0x1;
     vISA_ASSERT(dataSizeEnc == 0, "Must be 32-bit for TGM messages");
     return DataSize::D32;
   }

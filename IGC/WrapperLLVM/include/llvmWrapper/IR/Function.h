@@ -10,7 +10,9 @@ SPDX-License-Identifier: MIT
 #define IGCLLVM_IR_FUNCTION_H
 
 #include <iterator>
+#include "IGC/common/LLVMWarningsPush.hpp"
 #include "llvm/IR/Function.h"
+#include "IGC/common/LLVMWarningsPop.hpp"
 #include "llvmWrapper/Support/ModRef.h"
 #include "Probe/Assertion.h"
 

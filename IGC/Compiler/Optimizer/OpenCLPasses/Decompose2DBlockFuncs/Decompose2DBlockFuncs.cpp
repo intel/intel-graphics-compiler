@@ -8,11 +8,13 @@ SPDX-License-Identifier: MIT
 
 #include "Compiler/Optimizer/OpenCLPasses/Decompose2DBlockFuncs/Decompose2DBlockFuncs.hpp"
 
+#include "common/LLVMWarningsPush.hpp"
 #include <llvm/Analysis/LoopInfo.h>
-#include <llvmWrapper/IR/Function.h>
 #include <llvm/IR/InstVisitor.h>
 #include <llvm/IR/Instructions.h>
 #include <llvm/Pass.h>
+#include "common/LLVMWarningsPop.hpp"
+#include <llvmWrapper/IR/Function.h>
 
 #include <algorithm>
 

@@ -74,7 +74,7 @@ void MSAAInsertDiscard::visitCallInst(CallInst &I) {
     //          i32 0, i32 % 7, i32 % 9, i32 % 4, i32 % 5, i32 0, i32 0,
     //          <4 x float> addrspace(196608) * null, i32 0, i32 0, i32 0)
 
-    GenIntrinsicInst *ldmcs = nullptr;
+    [[maybe_unused]] GenIntrinsicInst *ldmcs = nullptr;
     Value *extractData1 = I.getOperand(1);
     Value *extractData2 = I.getOperand(2);
     Value *mcsData = nullptr;

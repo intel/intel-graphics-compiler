@@ -10,9 +10,11 @@ SPDX-License-Identifier: MIT
 #define IGCLLVM_IR_DERIVEDTYPES_H
 
 #include "Probe/Assertion.h"
+#include "IGC/common/LLVMWarningsPush.hpp"
 #include "llvm/Config/llvm-config.h"
 #include "llvm/IR/DerivedTypes.h"
 #include "llvm/IR/Module.h"
+#include "IGC/common/LLVMWarningsPop.hpp"
 #include "common/CommonMacros.h"
 
 #include "Type.h"

@@ -70,7 +70,7 @@ ModRefInfo RayTracingAddressSpaceAAResult::getModRefInfo(const CallBase *Call, c
   if (!PtrTy)
     return ModRefInfo::NoModRef;
 
-  if (auto *SRI = dyn_cast<StackIDReleaseIntrinsic>(Call)) {
+  if (isa<StackIDReleaseIntrinsic>(Call)) {
     if (allStateful) {
       uint32_t Addrspace = PtrTy->getPointerAddressSpace();
       return isRTAS(Addrspace) ? ModRefInfo::Mod : ModRefInfo::NoModRef;

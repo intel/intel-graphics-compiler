@@ -9,8 +9,10 @@ SPDX-License-Identifier: MIT
 #ifndef IGCLLVM_IR_ARGUMENT_H
 #define IGCLLVM_IR_ARGUMENT_H
 
+#include "IGC/common/LLVMWarningsPush.hpp"
 #include "llvm/IR/Type.h"
 #include "llvm/IR/Argument.h"
+#include "IGC/common/LLVMWarningsPop.hpp"
 
 #include "Probe/Assertion.h"
 

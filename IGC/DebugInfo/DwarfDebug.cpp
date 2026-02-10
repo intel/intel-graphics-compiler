@@ -19,7 +19,6 @@ See LICENSE.TXT for details.
 
 // clang-format off
 #include "common/LLVMWarningsPush.hpp"
-#include "llvmWrapper/ADT/StringExtras.h"
 #include "llvm/ADT/STLExtras.h"
 #include "llvm/BinaryFormat/Dwarf.h"
 #include "llvm/IR/Constants.h"
@@ -41,6 +40,7 @@ See LICENSE.TXT for details.
 #include "llvm/Support/LEB128.h"
 #include "llvm/Support/MD5.h"
 #include "common/LLVMWarningsPop.hpp"
+#include "llvmWrapper/ADT/StringExtras.h"
 // clang-format on
 
 #include <llvmWrapper/ADT/Optional.h>
@@ -1004,7 +1004,7 @@ void DwarfDebug::ExtractConstantData(const llvm::Constant *ConstVal, DwarfDebug:
       intVal = ci->getValue();
     } else if (const ConstantFP *cfp = dyn_cast<ConstantFP>(ConstVal)) {
       intVal = cfp->getValueAPF().bitcastToAPInt();
-    } else if (const UndefValue *undefVal = dyn_cast<UndefValue>(ConstVal)) {
+    } else if (isa<UndefValue>(ConstVal)) {
       intVal = llvm::APInt(32, 0, false);
     } else if (const ConstantExpr *cExpr = dyn_cast<ConstantExpr>(ConstVal)) {
       // under some weird and obscure conditions we can and up with
@@ -2730,11 +2730,6 @@ uint32_t DwarfDebug::writeStackcallCIE() {
   auto numGRFs = GetVISAModule()->getNumGRFs();
   auto specialGRF = GetSpecialGRF();
 
-  auto copyVec = [&data](std::vector<uint8_t> &other) {
-    for (auto t : other)
-      data.push_back(t);
-  };
-
   auto writeUndefined = [](std::vector<uint8_t> &data, uint32_t srcReg) {
     write(data, (uint8_t)llvm::dwarf::DW_CFA_undefined);
     writeULEB128(data, srcReg);
@@ -2896,20 +2891,6 @@ void DwarfDebug::writeFDESubroutine(VISAModule *m) {
   // CIE_ptr (4/8 bytes)
   write(data, PointerSize == 4 ? (uint32_t)offsetCIESubroutine : (uint64_t)offsetCIESubroutine);
 
-  // TODO: move this to VisaDebugObjectInfo
-  // initial location
-  auto getGenISAOffset = [this](unsigned int VISAIndex) {
-    uint64_t genOffset = 0;
-
-    for (auto &item : VisaDbgInfo->getCISAIndexLUT()) {
-      if (item.first >= VISAIndex) {
-        genOffset = item.second;
-        break;
-      }
-    }
-
-    return genOffset;
-  };
   uint64_t genOffStart = this->lowPc;
   uint64_t genOffEnd = this->highPc;
   auto &retvarLR = sub->retval;

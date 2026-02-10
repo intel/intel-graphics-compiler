@@ -16,14 +16,14 @@ SPDX-License-Identifier: MIT
 #include "Compiler/MetaDataUtilsWrapper.h"
 
 #include "common/LLVMWarningsPush.hpp"
-#include "llvmWrapper/Support/Alignment.h"
-#include "llvmWrapper/IR/DerivedTypes.h"
 #include <llvm/ADT/SmallVector.h>
 #include <llvm/IR/Module.h>
 #include <llvm/IR/Instructions.h>
 #include <llvm/IR/DataLayout.h>
 #include <llvm/IR/DebugInfoMetadata.h>
 #include "common/LLVMWarningsPop.hpp"
+#include "llvmWrapper/Support/Alignment.h"
+#include "llvmWrapper/IR/DerivedTypes.h"
 #include "Probe/Assertion.h"
 
 using namespace llvm;

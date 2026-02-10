@@ -6,16 +6,21 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
-#include "Compiler/Optimizer/BuiltInFuncImport.h"
-#include "Compiler/MetaDataApi/IGCMetaDataHelper.h"
-#include "Compiler/IGCPassSupport.h"
 #include "Compiler/CodeGenPublic.h"
-#include "common/LLVMWarningsPush.hpp"
-#include <llvmWrapper/IR/IRBuilder.h>
+#include "Compiler/IGCPassSupport.h"
+#include "Compiler/MetaDataApi/IGCMetaDataHelper.h"
+#include "Compiler/Optimizer/BuiltInFuncImport.h"
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/IR/Type.h"
-#include <llvm/IR/Function.h>
+#include "Probe/Assertion.h"
+#include <BiFManager/BiFManagerHandler.hpp>
 #include <llvmWrapper/IR/Instructions.h>
+#include <llvmWrapper/IR/IRBuilder.h>
+#include <llvmWrapper/Transforms/Utils/Cloning.h>
+#include <unordered_map>
+
+#include "common/LLVMWarningsPush.hpp"
+#include <llvm/IR/Function.h>
 #include <llvm/IR/Module.h>
 #include <llvm/IR/Instruction.h>
 #include <llvm/IR/InstIterator.h>
@@ -23,14 +28,10 @@ SPDX-License-Identifier: MIT
 #include <llvm/Linker/Linker.h>
 #include <llvm/Transforms/Utils/BasicBlockUtils.h>
 #include <llvm/Transforms/Utils/ValueMapper.h>
-#include <llvmWrapper/Transforms/Utils/Cloning.h>
 #include <llvm/Support/Error.h>
 #include <llvm/Support/MemoryBuffer.h>
 #include <llvm/Bitcode/BitcodeReader.h>
 #include "common/LLVMWarningsPop.hpp"
-#include <unordered_map>
-#include "Probe/Assertion.h"
-#include <BiFManager/BiFManagerHandler.hpp>
 
 using namespace llvm;
 using namespace IGC;
@@ -528,7 +529,7 @@ void BIImport::addOCLObjectCastFunctionDefinitions(llvm::Module &M) {
         F->arg_size() == 1,
         "__builtin_IB_cast_object_to_generic_ptr/__builtin_IB_convert_object_type_to_X takes only one argument!");
 
-    Argument *Arg = F->getArg(0);
+    [[maybe_unused]] Argument *Arg = F->getArg(0);
 
 #if LLVM_VERSION_MAJOR >= 16
     IGC_ASSERT_MESSAGE(!Arg->getType()->isTargetExtTy(), "TargetExtTys must be retyped to pointers at this point!");
@@ -1188,13 +1189,13 @@ bool PreBIImportAnalysis::runOnModule(Module &M) {
           if (LoadInst *load = dyn_cast<LoadInst>(inputV)) {
             Value *ptrV = load->getPointerOperand();
 
-            if (AllocaInst *ptrAlloca = dyn_cast<AllocaInst>(ptrV)) {
+            if (isa<AllocaInst>(ptrV)) {
               Value::use_iterator allocaUse = ptrV->use_begin();
               Value::use_iterator allocaUseEnd = ptrV->use_end();
               StoreInst *store = nullptr;
 
               for (; allocaUse != allocaUseEnd; ++allocaUse) {
-                if (StoreInst *useInst = dyn_cast<StoreInst>(allocaUse->getUser())) {
+                if (isa<StoreInst>(allocaUse->getUser())) {
                   if (store == nullptr) {
                     store = dyn_cast<StoreInst>(allocaUse->getUser());
                   } else {

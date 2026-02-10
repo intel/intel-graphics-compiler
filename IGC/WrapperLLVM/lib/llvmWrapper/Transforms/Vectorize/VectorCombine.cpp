@@ -5,8 +5,8 @@ Copyright (C) 2025 Intel Corporation
 SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
+
 #include "common/LLVMWarningsPush.hpp"
-#include "llvmWrapper/Transforms/Vectorize/VectorCombine.h"
 
 #include "llvm/Transforms/Scalar.h"
 #include "llvm/Transforms/Vectorize/VectorCombine.h"
@@ -30,9 +30,10 @@ SPDX-License-Identifier: MIT
 #include "llvm/Passes/PassBuilder.h"
 #include "llvm/Transforms/Vectorize.h"
 
-#include "llvmWrapper/Transforms/InitializePasses.h"
 #include "common/LLVMWarningsPop.hpp"
 
+#include "llvmWrapper/Transforms/Vectorize/VectorCombine.h"
+#include "llvmWrapper/Transforms/InitializePasses.h"
 #include "Compiler/IGCPassSupport.h"
 
 using namespace llvm;

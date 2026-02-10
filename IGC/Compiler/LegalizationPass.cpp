@@ -12,19 +12,23 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CISACodeGen/helper.h"
 #include "Compiler/IGCPassSupport.h"
 #include "Compiler/MetaDataApi/MetaDataApi.h"
+
 #include "common/LLVMWarningsPush.hpp"
-#include "llvmWrapper/IR/DerivedTypes.h"
-#include "llvmWrapper/IR/IRBuilder.h"
+
 #include "llvm/Support/CommandLine.h"
 #include "llvm/IR/Instructions.h"
 #include "llvm/IR/InstIterator.h"
 #include "llvm/Transforms/Utils/BasicBlockUtils.h"
 #include "llvm/Transforms/Utils/Local.h"
+
+#include "common/LLVMWarningsPop.hpp"
+
+#include "llvmWrapper/IR/DerivedTypes.h"
+#include "llvmWrapper/IR/IRBuilder.h"
 #include "llvmWrapper/IR/InstrTypes.h"
 #include <llvmWrapper/IR/BasicBlock.h>
 #include "llvmWrapper/IR/Instructions.h"
 #include "llvmWrapper/Transforms/Utils/Cloning.h"
-#include "common/LLVMWarningsPop.hpp"
 #include "GenISAIntrinsics/GenIntrinsicInst.h"
 #include "Probe/Assertion.h"
 #include "LLVM3DBuilder/BuiltinsFrontend.hpp"

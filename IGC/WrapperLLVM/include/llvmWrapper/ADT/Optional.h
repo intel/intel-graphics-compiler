@@ -10,7 +10,9 @@ SPDX-License-Identifier: MIT
 #define IGCLLVM_ADT_OPTIONAL_H
 
 #if LLVM_VERSION_MAJOR < 17 || defined(IGC_LLVM_TRUNK_REVISION)
+#include "IGC/common/LLVMWarningsPush.hpp"
 #include <llvm/ADT/Optional.h>
+#include "IGC/common/LLVMWarningsPop.hpp"
 #endif
 #include <optional>
 

@@ -9,9 +9,11 @@ SPDX-License-Identifier: MIT
 #ifndef IGCLLVM_TRANSFORMS_UTILS_BASICBLOCKUTILS_H
 #define IGCLLVM_TRANSFORMS_UTILS_BASICBLOCKUTILS_H
 
+#include "common/LLVMWarningsPush.hpp"
 #include "llvm/Transforms/Utils/BasicBlockUtils.h"
 #include "llvm/IR/BasicBlock.h"
 #include "llvm/IR/Value.h"
+#include "common/LLVMWarningsPop.hpp"
 
 namespace IGCLLVM {
 inline void ReplaceInstWithValue([[maybe_unused]] llvm::BasicBlock &BB, llvm::BasicBlock::iterator &BI,

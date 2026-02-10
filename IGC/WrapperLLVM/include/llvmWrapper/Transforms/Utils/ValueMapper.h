@@ -9,7 +9,9 @@ SPDX-License-Identifier: MIT
 #ifndef IGCLLVM_TRANSFORMS_UTILS_VALUEMAPPER_H
 #define IGCLLVM_TRANSFORMS_UTILS_VALUEMAPPER_H
 
+#include "common/LLVMWarningsPush.hpp"
 #include "llvm/Config/llvm-config.h"
 #include "llvm/Transforms/Utils/ValueMapper.h"
+#include "common/LLVMWarningsPop.hpp"
 
 #endif

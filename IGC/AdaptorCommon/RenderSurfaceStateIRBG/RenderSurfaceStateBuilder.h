@@ -9,10 +9,10 @@ SPDX-License-Identifier: MIT
 #pragma once
 
 #include "common/LLVMWarningsPush.hpp"
-#include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvm/IR/Intrinsics.h"
 #include "llvm/IR/Constants.h"
 #include "common/LLVMWarningsPop.hpp"
+#include "llvmWrapper/IR/DerivedTypes.h"
 
 #include "common/StringMacros.hpp"
 #include "debug/DebugMacros.hpp"

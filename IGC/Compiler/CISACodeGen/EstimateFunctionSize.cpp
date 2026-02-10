@@ -23,9 +23,9 @@ SPDX-License-Identifier: MIT
 #include "llvm/Analysis/ScalarEvolution.h"
 #include "llvm/Analysis/SyntheticCountsUtils.h"
 #include "llvm/Analysis/CallGraph.h"
+#include "common/LLVMWarningsPop.hpp"
 #include "llvmWrapper/IR/BasicBlock.h"
 #include "llvmWrapper/ADT/Optional.h"
-#include "common/LLVMWarningsPop.hpp"
 #include "Probe/Assertion.h"
 #include <deque>
 #include <cfloat>

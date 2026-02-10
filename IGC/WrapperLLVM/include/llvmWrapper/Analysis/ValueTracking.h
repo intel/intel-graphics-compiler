@@ -9,8 +9,10 @@ SPDX-License-Identifier: MIT
 #ifndef IGCLLVM_ANALYSIS_VALUETRACKING_H
 #define IGCLLVM_ANALYSIS_VALUETRACKING_H
 
+#include "IGC/common/LLVMWarningsPush.hpp"
 #include "llvm/Config/llvm-config.h"
 #include <llvm/Analysis/ValueTracking.h>
+#include "IGC/common/LLVMWarningsPop.hpp"
 
 namespace IGCLLVM {
 inline llvm::Value *getUnderlyingObject(llvm::Value *V, const llvm::DataLayout &DL) {

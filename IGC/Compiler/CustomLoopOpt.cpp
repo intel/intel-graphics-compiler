@@ -7,13 +7,13 @@ SPDX-License-Identifier: MIT
 ============================= end_copyright_notice ===========================*/
 
 #include "common/LLVMWarningsPush.hpp"
-#include <llvmWrapper/IR/Constants.h>
-#include <llvmWrapper/IR/DerivedTypes.h>
-#include "llvmWrapper/IR/Function.h"
 #include <llvm/Transforms/Utils/Cloning.h>
 #include <llvm/Transforms/Utils/BasicBlockUtils.h>
 #include <llvm/Transforms/Utils/LoopUtils.h>
 #include "common/LLVMWarningsPop.hpp"
+#include <llvmWrapper/IR/Constants.h>
+#include <llvmWrapper/IR/DerivedTypes.h>
+#include "llvmWrapper/IR/Function.h"
 #include "common/LLVMUtils.h"
 #include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
 #include "Compiler/CISACodeGen/helper.h"
@@ -1901,14 +1901,13 @@ bool LoopAllocaUpperbound::runOnLoop(Loop *L, LPPassManager &LPM) {
     NewInductionPHI->addIncoming(ConstantInt::get(NewAdd->getType(), 0), Incoming);
     NewInductionPHI->addIncoming(NewAdd, Backedge);
   }
-
   // Split the Header into:
-  //    Header
-  //    |     \
-    //    |    IfCondBB
-  //    |      /
-  //    |     /
-  //    ContinueBB
+  //   Header
+  //   |    |
+  //   |   IfCondBB
+  //   |    |
+  //   |    |
+  //   ContinueBB
   IfTerm = SplitBlockAndInsertIfThen(CondPHI, Header->getFirstNonPHIOrDbg(), false);
   BasicBlock *IfCondBB = IfTerm->getParent();
   BasicBlock *ContinueBB = IfCondBB->getNextNode();

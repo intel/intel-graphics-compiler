@@ -15,8 +15,6 @@ See LICENSE.TXT for details.
 
 // clang-format off
 #include "common/LLVMWarningsPush.hpp"
-#include "llvmWrapper/ADT/STLExtras.h"
-#include "llvmWrapper/MC/MCStreamer.h"
 #include "llvm/IR/DataLayout.h"
 #include "llvm/IR/GlobalValue.h"
 #include "llvm/MC/MCAsmBackend.h"
@@ -34,9 +32,11 @@ See LICENSE.TXT for details.
 #include "llvm/MC/MCValue.h"
 #include "llvm/Support/SourceMgr.h"
 #include "llvm/Support/MD5.h"
+#include "common/LLVMWarningsPop.hpp"
+#include "llvmWrapper/ADT/STLExtras.h"
+#include "llvmWrapper/MC/MCStreamer.h"
 #include "llvmWrapper/ADT/Optional.h"
 #include "llvmWrapper/Support/TargetRegistry.h"
-#include "common/LLVMWarningsPop.hpp"
 // clang-format on
 
 #include "StreamEmitter.hpp"

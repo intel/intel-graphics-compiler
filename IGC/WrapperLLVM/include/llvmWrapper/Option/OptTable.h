@@ -9,10 +9,12 @@ SPDX-License-Identifier: MIT
 #ifndef IGCLLVM_OPTION_OPTTABLE_H
 #define IGCLLVM_OPTION_OPTTABLE_H
 
+#include "IGC/common/LLVMWarningsPush.hpp"
 #include "llvm/Config/llvm-config.h"
 #include "llvm/Option/OptTable.h"
 #include "llvm/Support/raw_ostream.h"
 #include <llvm/ADT/ArrayRef.h>
+#include "IGC/common/LLVMWarningsPop.hpp"
 
 namespace IGCLLVM {
 using GenericOptTable =

@@ -10,11 +10,11 @@ SPDX-License-Identifier: MIT
 #include "llvm/IR/Instruction.h"
 #include "llvm/IR/Function.h"
 #include "llvm/IR/Module.h"
-#include "llvmWrapper/IR/DIBuilder.h"
 #include "llvm/IR/DebugInfo.h"
 #include "llvm/IR/DebugLoc.h"
 #include "llvm/IR/DebugInfoMetadata.h"
 #include "common/LLVMWarningsPop.hpp"
+#include "llvmWrapper/IR/DIBuilder.h"
 
 #include "Utils.h"
 

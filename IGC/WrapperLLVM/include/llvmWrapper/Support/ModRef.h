@@ -9,15 +9,17 @@ SPDX-License-Identifier: MIT
 #ifndef IGCLLVM_SUPPORT_MODREF_H
 #define IGCLLVM_SUPPORT_MODREF_H
 
-#include "llvm/Config/llvm-config.h"
-#include "llvm/IR/Attributes.h"
-#include "llvm/IR/LLVMContext.h"
+#include "IGC/common/LLVMWarningsPush.hpp"
 #if LLVM_VERSION_MAJOR >= 17 && !defined(IGC_LLVM_TRUNK_REVISION)
 #include "llvm/IR/AttributeMask.h"
 #endif
 #if LLVM_VERSION_MAJOR >= 16
 #include "llvm/Support/ModRef.h"
 #endif // LLVM_VERSION_MAJOR
+#include "llvm/Config/llvm-config.h"
+#include "llvm/IR/Attributes.h"
+#include "llvm/IR/LLVMContext.h"
+#include "IGC/common/LLVMWarningsPop.hpp"
 
 #include <Probe/Assertion.h>
 #include <optional>

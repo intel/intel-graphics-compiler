@@ -26,12 +26,12 @@ SPDX-License-Identifier: MIT
 
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/Transforms/Utils/BasicBlockUtils.h>
+#include <llvm/IR/Verifier.h>
+#include "common/LLVMWarningsPop.hpp"
 #include <llvmWrapper/ADT/Optional.h>
 #include "llvmWrapper/IR/Argument.h"
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/Support/Alignment.h"
-#include <llvm/IR/Verifier.h>
-#include "common/LLVMWarningsPop.hpp"
 
 #include <optional>
 

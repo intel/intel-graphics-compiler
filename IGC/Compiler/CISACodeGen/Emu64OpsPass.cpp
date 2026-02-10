@@ -15,18 +15,18 @@ SPDX-License-Identifier: MIT
 #include "llvm/IR/Function.h"
 #include "llvm/IR/IRBuilder.h"
 #include "llvm/IR/Instruction.h"
-#include "llvmWrapper/IR/Instructions.h"
 #include "llvm/IR/IntrinsicInst.h"
 #include "llvm/IR/Module.h"
 #include "llvm/IR/Type.h"
 #include "llvm/IR/Value.h"
 #include "llvm/Pass.h"
 #include "llvm/Analysis/TargetFolder.h"
+#include "common/LLVMWarningsPop.hpp"
+#include "llvmWrapper/IR/Instructions.h"
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/IR/Instructions.h"
 #include "llvmWrapper/IR/Intrinsics.h"
 #include "llvmWrapper/Support/Alignment.h"
-#include "common/LLVMWarningsPop.hpp"
 #include "common/LLVMUtils.h"
 #include "common/IGCIRBuilder.h"
 #include "GenISAIntrinsics/GenIntrinsics.h"
@@ -1251,7 +1251,7 @@ bool InstExpander::visitStore(StoreInst &ST) {
 }
 
 bool InstExpander::visitAtomicCmpXchg(AtomicCmpXchgInst &ACXI) {
-  Value *V = ACXI.getCompareOperand();
+  [[maybe_unused]] Value *V = ACXI.getCompareOperand();
   IGC_ASSERT(nullptr != V);
   IGC_ASSERT(nullptr != Emu);
   IGC_ASSERT_MESSAGE(false == Emu->isInt64(V), "TODO: NOT IMPLEMENTED YET!");
@@ -1853,7 +1853,7 @@ bool InstExpander::visitPHI(PHINode &PN) {
   IGC_ASSERT(nullptr != Emu);
   if (!Emu->isInt64(&PN))
     return false;
-  auto [Lo, Hi] = Emu->getExpandedValues(&PN);
+  [[maybe_unused]] auto [Lo, Hi] = Emu->getExpandedValues(&PN);
   IGC_ASSERT(nullptr != Lo);
   IGC_ASSERT(nullptr != Hi);
   return false;

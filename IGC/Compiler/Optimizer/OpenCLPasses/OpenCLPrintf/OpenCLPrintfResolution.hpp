@@ -13,11 +13,10 @@ SPDX-License-Identifier: MIT
 
 #include "common/LLVMWarningsPush.hpp"
 
-#include <llvmWrapper/IR/Module.h>
-
 #include <llvm/Pass.h>
 #include <llvm/IR/InstVisitor.h>
 #include "common/LLVMWarningsPop.hpp"
+#include <llvmWrapper/IR/Module.h>
 
 namespace IGC {
 /// @brief  This structure contains information about a Printf argument.

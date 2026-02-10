@@ -63,11 +63,6 @@ cmp+sel to avoid expensive VxH mov.
 #include "GenISAIntrinsics/GenIntrinsicInst.h"
 #include "common/IGCConstantFolder.h"
 #include "common/LLVMWarningsPush.hpp"
-#include "llvmWrapper/IR/IntrinsicInst.h"
-#include <llvmWrapper/IR/DIBuilder.h>
-#include <llvmWrapper/IR/DerivedTypes.h>
-#include <llvmWrapper/IR/IRBuilder.h>
-#include <llvmWrapper/Analysis/TargetLibraryInfo.h>
 #include <llvm/ADT/Statistic.h>
 #include <llvm/ADT/SetVector.h>
 #include <llvm/Analysis/ConstantFolding.h>
@@ -86,6 +81,11 @@ cmp+sel to avoid expensive VxH mov.
 #include <llvm/Analysis/ValueTracking.h>
 #include <llvm/Support/CommandLine.h>
 #include "common/LLVMWarningsPop.hpp"
+#include "llvmWrapper/IR/IntrinsicInst.h"
+#include <llvmWrapper/IR/DIBuilder.h>
+#include <llvmWrapper/IR/DerivedTypes.h>
+#include <llvmWrapper/IR/IRBuilder.h>
+#include <llvmWrapper/Analysis/TargetLibraryInfo.h>
 #include "common/secure_mem.h"
 #include "Probe/Assertion.h"
 
@@ -815,7 +815,6 @@ void CustomSafeOptPass::visitAllocaInst(AllocaInst &I) {
     for (auto DDI : Dbgs) {
       DILocalVariable *Var = DDI->getVariable();
       DIExpression *OldExpr = DDI->getExpression();
-      auto ExprFragment = OldExpr->getFragmentInfo();
       auto *NewExpr = OldExpr;
       if (auto E = DIExpression::createFragmentExpression(OldExpr, (unsigned)index_lb * typeSize,
                                                           (unsigned)newSize * typeSize)) {
@@ -6924,7 +6923,7 @@ static bool isRematerializable(const Instruction *I) {
       I->isDebugOrPseudoInst())
     return false;
 
-  if (const LoadInst *LI = dyn_cast<LoadInst>(I)) {
+  if (isa<LoadInst>(I)) {
     return false;
   }
 

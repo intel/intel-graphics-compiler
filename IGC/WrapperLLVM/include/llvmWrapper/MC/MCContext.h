@@ -9,8 +9,10 @@ SPDX-License-Identifier: MIT
 #ifndef IGCLLVM_MC_MCCONTEXT_H
 #define IGCLLVM_MC_MCCONTEXT_H
 
+#include "IGC/common/LLVMWarningsPush.hpp"
 #include "llvm/Config/llvm-config.h"
 #include "llvm/MC/MCContext.h"
+#include "IGC/common/LLVMWarningsPop.hpp"
 #include "llvmWrapper/Support/TargetRegistry.h"
 
 namespace IGCLLVM {

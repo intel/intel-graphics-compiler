@@ -10,10 +10,10 @@ SPDX-License-Identifier: MIT
 #include "AdaptorCommon/ImplicitArgs.hpp"
 #include "Compiler/IGCPassSupport.h"
 #include "common/LLVMWarningsPush.hpp"
-#include "llvmWrapper/IR/DerivedTypes.h"
 #include <llvm/IR/Constants.h>
 #include <llvm/IR/Function.h>
 #include "common/LLVMWarningsPop.hpp"
+#include "llvmWrapper/IR/DerivedTypes.h"
 #include "common/IGCIRBuilder.h"
 #include "Compiler/CISACodeGen/helper.h"
 #include "Compiler/CISACodeGen/OpenCLKernelCodeGen.hpp"

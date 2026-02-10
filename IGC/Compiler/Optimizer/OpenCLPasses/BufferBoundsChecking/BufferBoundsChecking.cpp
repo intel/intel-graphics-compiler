@@ -173,7 +173,7 @@ Value *BufferBoundsChecking::createBoundsCheckingCondition(const AccessInfo &acc
 }
 
 Value *BufferBoundsChecking::createLoadStoreReplacement(Instruction *instruction, Instruction *insertBefore) {
-  if (auto load = dyn_cast<LoadInst>(instruction)) {
+  if (isa<LoadInst>(instruction)) {
     return Constant::getNullValue(instruction->getType());
   } else if (auto store = dyn_cast<StoreInst>(instruction)) {
     return new StoreInst(store->getValueOperand(),
@@ -331,7 +331,7 @@ BufferBoundsChecking::AccessInfo BufferBoundsChecking::getAccessInfo(Instruction
       [this](const Argument &arg) { return argumentQualifiesForChecking(&arg); });
 
   Type *type = nullptr;
-  if (auto load = dyn_cast<LoadInst>(instruction)) {
+  if (isa<LoadInst>(instruction)) {
     type = instruction->getType();
   } else if (auto store = dyn_cast<StoreInst>(instruction)) {
     type = store->getValueOperand()->getType();

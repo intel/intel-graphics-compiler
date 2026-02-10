@@ -709,7 +709,7 @@ private:
       if (DTI && DTI->isNoOp()) {
         auto *LastIE = DTI->getLastIE();
         if (!HangingLiveVars.count(LastIE)) {
-          auto *HLV = createHLVForVector(HANGING_NOOP_VECTORS, DTI->getSourceVec());
+          [[maybe_unused]] auto *HLV = createHLVForVector(HANGING_NOOP_VECTORS, DTI->getSourceVec());
           IGC_ASSERT(HangingLiveVars[LastIE] == HLV);
           IGC_ASSERT(HangingLiveVars.count(LastIE));
         }
@@ -725,7 +725,7 @@ private:
       else if (DTI && DTI->isVectorShuffle()) {
         auto *LastEE = DTI->getLastEE();
         if (!HangingLiveVars.count(LastEE)) {
-          auto *HLV = createHLVForVector(HANGING_VECTORS, DTI->getSourceVec());
+          [[maybe_unused]] auto *HLV = createHLVForVector(HANGING_VECTORS, DTI->getSourceVec());
           IGC_ASSERT(HangingLiveVars[LastEE] == HLV);
           IGC_ASSERT(HangingLiveVars.count(LastEE));
         }
@@ -784,7 +784,7 @@ private:
         // The vector is not dead on the last EE, it will die on the last usage of the last EE
         // If the vector has uses apart from the ExtractElement instructions we also add it to the
         // HangingLiveVars
-        auto *EE = cast<ExtractElementInst>(I);
+        [[maybe_unused]] auto *EE = cast<ExtractElementInst>(I);
         if (!HangingLiveVars.count(I)) {
           IGC_ASSERT(V2SP->getSourceVec() == EE->getVectorOperand());
           HangingLiveVarsVec.emplace_back(std::make_unique<HangingLiveVarsInfo>(
@@ -1805,7 +1805,7 @@ private:
       }
 
 
-      return std::move(Checkpoint);
+      return Checkpoint;
     }
 
     bool isComplete() { return ScheduledList.size() == G.InstNodes.size(); }
@@ -1887,7 +1887,7 @@ private:
         }
       }
 
-      return std::move(MaxLiveIntervals);
+      return MaxLiveIntervals;
     }
 
   private:
@@ -2096,7 +2096,7 @@ private:
 
             if (isDPAS(I)) {
 
-              bool OneOpIsDPAS = false;
+              [[maybe_unused]] bool OneOpIsDPAS = false;
               bool FirstOpIsZero = false;
 
               auto *FirstOp = dyn_cast<Constant>(I->getOperand(0));

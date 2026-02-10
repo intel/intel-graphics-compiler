@@ -74,6 +74,7 @@ SPDX-License-Identifier: MIT
 void InitBdwWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_PARAM pWaParam)
 {
     unsigned int ulStepId_BDW, ulStepId_PCH;
+    (void)ulStepId_PCH;
     int platformForIndirectDispatch = SI_WA_NEVER;
 
 #ifdef __KCH
@@ -208,6 +209,7 @@ void InitBdwWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
 void InitBdwHASWaTable(PHW_DEVICE_EXTENSION pKchContext, PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_PARAM pWaParam)
 {
     unsigned int ulStepId_BDW;
+    (void)ulStepId_BDW;
 
     ulStepId_BDW = (1 << pWaParam->usRevId);
 

@@ -6,8 +6,15 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
-#include "Compiler/Optimizer/OpenCLPasses/GEPLoopStrengthReduction/GEPLoopStrengthReduction.hpp"
+#include "common/igc_regkeys.hpp"
+#include "Compiler/CISACodeGen/IGCLivenessAnalysis.h"
+#include "Compiler/CodeGenPublic.h"
 #include "Compiler/IGCPassSupport.h"
+#include "Compiler/Optimizer/OpenCLPasses/GEPLoopStrengthReduction/GEPLoopStrengthReduction.hpp"
+#include "llvmWrapper/IR/Instructions.h"
+#include "llvmWrapper/Transforms/Utils/LoopUtils.h"
+#include "llvmWrapper/Transforms/Utils/ScalarEvolutionExpander.h"
+#include "Probe/Assertion.h"
 
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/Analysis/LoopInfo.h>
@@ -18,15 +25,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/Instructions.h>
 #include "llvm/Support/Debug.h"
 #include <llvm/Transforms/Utils/Local.h>
-#include "llvmWrapper/Transforms/Utils/LoopUtils.h"
-#include "llvmWrapper/Transforms/Utils/ScalarEvolutionExpander.h"
-#include "llvmWrapper/IR/Instructions.h"
 #include "common/LLVMWarningsPop.hpp"
-
-#include "Probe/Assertion.h"
-#include "common/igc_regkeys.hpp"
-#include "Compiler/CISACodeGen/IGCLivenessAnalysis.h"
-#include "Compiler/CodeGenPublic.h"
 
 using namespace llvm;
 using namespace IGC;
@@ -665,7 +664,7 @@ void ReductionCandidateGroup::reduceIndexOnly(IGCLLVM::IRBuilder<> &IRB, SCEVExp
 }
 
 Value *ReductionCandidateGroup::getStepValue(IGCLLVM::IRBuilder<> &IRB, SCEVExpander &E, BasicBlock *BB) {
-  if (auto *S = dyn_cast<SCEVConstant>(Step))
+  if (isa<SCEVConstant>(Step))
     return IRB.getInt64(dyn_cast<SCEVConstant>(Step)->getValue()->getSExtValue());
 
   if (auto *S = dyn_cast<SCEVUnknown>(Step))

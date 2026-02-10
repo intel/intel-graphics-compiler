@@ -13,9 +13,9 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/IR/Module.h>
 #include <llvm/IR/InstIterator.h>
+#include "common/LLVMWarningsPop.hpp"
 #include <llvmWrapper/IR/Intrinsics.h>
 #include <llvmWrapper/IR/DerivedTypes.h>
-#include "common/LLVMWarningsPop.hpp"
 #include "Probe/Assertion.h"
 
 using namespace llvm;

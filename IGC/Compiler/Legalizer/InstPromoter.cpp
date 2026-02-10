@@ -11,11 +11,11 @@ SPDX-License-Identifier: MIT
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "common/LLVMWarningsPush.hpp"
 #include "llvm/Support/Debug.h"
-#include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvm/IR/Dominators.h"
 #include "llvm/Transforms/Utils/Local.h"
 #include <llvm/IR/Intrinsics.h>
 #include "common/LLVMWarningsPop.hpp"
+#include "llvmWrapper/IR/DerivedTypes.h"
 #include "Probe/Assertion.h"
 
 #define DEBUG_TYPE "type-legalizer"
@@ -359,8 +359,8 @@ bool InstPromoter::visitTruncInst(TruncInst &I) {
 
   Type *PromotedTy = TySeq->front();
 
-  unsigned PromotedBitWidth = cast<IntegerType>(PromotedTy->getScalarType())->getBitWidth();
-  unsigned ValBitWidth = cast<IntegerType>(Val->getType()->getScalarType())->getBitWidth();
+  [[maybe_unused]] unsigned PromotedBitWidth = cast<IntegerType>(PromotedTy->getScalarType())->getBitWidth();
+  [[maybe_unused]] unsigned ValBitWidth = cast<IntegerType>(Val->getType()->getScalarType())->getBitWidth();
   IGC_ASSERT(PromotedBitWidth <= ValBitWidth);
 
   Value *PromVal = IRB->CreateTrunc(Val, PromotedTy, Twine(I.getName(), getSuffix()));
@@ -633,9 +633,9 @@ std::pair<Value *, Type *> InstPromoter::preparePromotedIntrinsicInst(IntrinsicI
   IGC_ASSERT(TySeq->size() == 1);
   Type *PromotedTy = TySeq->front();
 
-  unsigned PromotedBitWidth = cast<IntegerType>(PromotedTy->getScalarType())->getBitWidth();
+  [[maybe_unused]] unsigned PromotedBitWidth = cast<IntegerType>(PromotedTy->getScalarType())->getBitWidth();
   for (Value *Val : PromotedArgs) {
-    unsigned ValBitWidth = cast<IntegerType>(Val->getType()->getScalarType())->getBitWidth();
+    [[maybe_unused]] unsigned ValBitWidth = cast<IntegerType>(Val->getType()->getScalarType())->getBitWidth();
     IGC_ASSERT(PromotedBitWidth == ValBitWidth);
   }
 

@@ -31,6 +31,10 @@ SPDX-License-Identifier: MIT
 #include "Compiler/Optimizer/OpenCLPasses/Atomics/ResolveOCLAtomics.hpp"
 #include "Compiler/CustomSafeOptPass.hpp"
 #include "IGC/common/LLVMUtils.h"
+#include "llvmWrapper/Transforms/Scalar/DeadStoreElimination.h"
+#include "llvmWrapper/Transforms/IPO/GlobalDCE.h"
+#include "llvmWrapper/Transforms/Scalar/LoopUnrollPass.h"
+
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/CodeGen/Passes.h>
 #include <llvm/IR/Verifier.h>
@@ -39,10 +43,6 @@ SPDX-License-Identifier: MIT
 #include <llvm/Transforms/Scalar.h>
 #include <llvm/Transforms/Utils.h>
 #include <llvm/Analysis/AliasAnalysis.h>
-#include "llvmWrapper/Transforms/Scalar/DeadStoreElimination.h"
-#include "llvmWrapper/Transforms/IPO/GlobalDCE.h"
-#include "llvmWrapper/Transforms/Scalar/LoopUnrollPass.h"
-
 #include "common/LLVMWarningsPop.hpp"
 
 using namespace llvm;
@@ -122,7 +122,7 @@ static void setupRTMemoryStyle(CodeGenContext *pContext) {
     }
 }
 
-static void setupGlobalDataStyle(CodeGenContext *pContext) {
+[[maybe_unused]] static void setupGlobalDataStyle(CodeGenContext *pContext) {
   auto &rtInfo = pContext->getModuleMetaData()->rtInfo;
 
   if (pContext->platform.hasEfficient64bEnabled()) {

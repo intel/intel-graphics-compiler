@@ -18,8 +18,8 @@ SPDX-License-Identifier: MIT
 #include "llvm/IR/IRBuilder.h"
 #include "llvm/Pass.h"
 #include "llvm/Transforms/Scalar.h"
-#include "llvmWrapper/ADT/Optional.h"
 #include "common/LLVMWarningsPop.hpp"
+#include "llvmWrapper/ADT/Optional.h"
 #include "Probe/Assertion.h"
 #include <optional>
 

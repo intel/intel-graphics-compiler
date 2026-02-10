@@ -19,9 +19,9 @@ SPDX-License-Identifier: MIT
 #include "visa_igc_common_header.h" // for LSC_L1_L3_CC
 
 #include "common/LLVMWarningsPush.hpp" // for suppressing LLVM warnings
-#include <optional>                    // for Optional
 #include "llvm/IR/Instructions.h"      // for llvm::StoreInst, llvm::LoadInst
 #include "common/LLVMWarningsPop.hpp"  // for suppressing LLVM warnings
+#include <optional>                    // for Optional
 
 #include "Compiler/CodeGenPublic.h"
 

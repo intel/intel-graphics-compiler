@@ -13,12 +13,12 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPush.hpp"
 #include "llvm/Config/llvm-config.h"
 #include <llvm/Pass.h>
-#include <llvmWrapper/Analysis/AliasAnalysis.h>
 #include <llvm/Analysis/BasicAliasAnalysis.h>
-#include <llvmWrapper/Analysis/TargetLibraryInfo.h>
-#include "llvmWrapper/Analysis/AliasAnalysis.h"
 #include "llvm/IR/Instruction.h"
 #include "common/LLVMWarningsPop.hpp"
+#include <llvmWrapper/Analysis/AliasAnalysis.h>
+#include <llvmWrapper/Analysis/TargetLibraryInfo.h>
+#include "llvmWrapper/Analysis/AliasAnalysis.h"
 
 namespace IGC {
 class RayTracingAddressSpaceAAResult : public IGCLLVM::AAResultBaseWrapper<RayTracingAddressSpaceAAResult> {

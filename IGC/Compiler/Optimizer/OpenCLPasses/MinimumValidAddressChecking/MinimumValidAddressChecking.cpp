@@ -150,7 +150,7 @@ void MinimumValidAddressChecking::handleLoadStore(Instruction *instruction) {
 }
 
 Value *MinimumValidAddressChecking::createLoadStoreReplacement(Instruction *instruction, Instruction *insertBefore) {
-  if (auto load = dyn_cast<LoadInst>(instruction)) {
+  if (isa<LoadInst>(instruction)) {
     return Constant::getNullValue(instruction->getType());
   } else if (auto store = dyn_cast<StoreInst>(instruction)) {
     return new StoreInst(store->getValueOperand(),

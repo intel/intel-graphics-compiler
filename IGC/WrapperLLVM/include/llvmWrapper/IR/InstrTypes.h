@@ -9,9 +9,11 @@ SPDX-License-Identifier: MIT
 #ifndef IGCLLVM_IR_INSTRTYPES_H
 #define IGCLLVM_IR_INSTRTYPES_H
 
+#include "IGC/common/LLVMWarningsPush.hpp"
 #include "llvm/Config/llvm-config.h"
 #include "llvm/IR/InstrTypes.h"
 #include "llvm/IR/PatternMatch.h"
+#include "IGC/common/LLVMWarningsPop.hpp"
 
 namespace IGCLLVM {
 using TerminatorInst = llvm::Instruction;

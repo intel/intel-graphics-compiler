@@ -12,10 +12,8 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/CFG.h>
 #include <llvm/Pass.h>
 #include <llvm/Transforms/Utils/Local.h>
-#include "llvmWrapper/Analysis/TargetLibraryInfo.h"
-#include "llvmWrapper/Transforms/Utils/LoopUtils.h"
-#include "llvmWrapper/ADT/Optional.h"
 #include "common/LLVMWarningsPop.hpp"
+
 #include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
 #include "Compiler/CISACodeGen/MemOpt2.h"
 #include "Compiler/IGCPassSupport.h"
@@ -23,6 +21,9 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CISACodeGen/AdvMemOpt.h"
 #include "Compiler/CISACodeGen/WIAnalysis.hpp"
 #include "Compiler/CISACodeGen/PrepareLoadsStoresUtils.h"
+#include "llvmWrapper/Analysis/TargetLibraryInfo.h"
+#include "llvmWrapper/Transforms/Utils/LoopUtils.h"
+#include "llvmWrapper/ADT/Optional.h"
 #include "Probe/Assertion.h"
 
 using namespace llvm;

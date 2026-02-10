@@ -12,9 +12,9 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPush.hpp"
 #include "llvm/IR/Instruction.h"
 #include "llvm/IR/Module.h"
-#include "llvmWrapper/IR/DIBuilder.h"
 #include "llvm/IR/DebugInfoMetadata.h"
 #include "common/LLVMWarningsPop.hpp"
+#include "llvmWrapper/IR/DIBuilder.h"
 
 namespace IGC {
 namespace Utils {

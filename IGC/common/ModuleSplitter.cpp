@@ -11,11 +11,11 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/InstIterator.h>
 #include <llvm/Transforms/Utils/Cloning.h>
 #include <llvm/Transforms/IPO.h>
+#include "common/LLVMWarningsPop.hpp"
+
 #include "llvmWrapper/Transforms/IPO/GlobalDCE.h"
 #include "llvmWrapper/Transforms/IPO/StripSymbols.h"
 #include "llvmWrapper/Transforms/IPO/StripDeadPrototypes.h"
-
-#include "common/LLVMWarningsPop.hpp"
 
 #include <common/LLVMUtils.h>
 #include <common/ModuleSplitter.h>

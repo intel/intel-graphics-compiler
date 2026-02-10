@@ -9,14 +9,14 @@ SPDX-License-Identifier: MIT
 #pragma once
 
 #include "common/LLVMWarningsPush.hpp"
-#include "llvmWrapper/IR/DerivedTypes.h"
 #include <llvm/IR/Function.h>
 #include <llvm/IR/InstVisitor.h>
 #include <llvm/IR/Instructions.h>
 #include <llvm/Pass.h>
+#include "common/LLVMWarningsPop.hpp"
+#include "llvmWrapper/IR/DerivedTypes.h"
 #include <llvmWrapper/IR/IRBuilder.h>
 #include <llvmWrapper/IR/Instructions.h>
-#include "common/LLVMWarningsPop.hpp"
 
 namespace IGC {
 class CodeGenContext;

@@ -535,6 +535,7 @@ if(MSVC)
       ALIAS DebugInfoDisabled          DebugInfoFormat REMOVE_GROUP
       ALIAS DebugInfoProgramDatabase   "/Zi"
       ALIAS DisableSpecificWarnings    "/wd4267" "/wd4273" "/wd4091" "/wd4996" "/wd4291"
+      ALIAS DisableSpecificWarningsCpp
       ALIAS ExceptionsDisabled         Exceptions REMOVE_GROUP
       ALIAS ExceptionsEnabled          "/EHsc"
       ALIAS FaviorSize                 "/Os"
@@ -580,7 +581,8 @@ elseif(_igc_compiler_is_gnu)
       ALIAS CompileAsDefault
       ALIAS DebugInfoDisabled          "-g0"
       ALIAS DebugInfoProgramDatabase   "-g"
-      ALIAS DisableSpecificWarnings
+      ALIAS DisableSpecificWarnings    "-Wno-misleading-indentation" "-Wno-parentheses" "-Wno-sizeof-array-div" "-Wno-stringop-truncation" "-Wno-stringop-overflow" "-Wno-char-subscripts"
+      ALIAS DisableSpecificWarningsCpp "-Wno-overloaded-virtual" "-Wno-reorder" "-Wno-nonnull-compare" "-Wno-odr"
       ALIAS ExceptionsDisabled         "-fno-exceptions"
       ALIAS ExceptionsEnabled          "-fexceptions"
       ALIAS FaviorSize                 "-Os"
@@ -638,7 +640,8 @@ elseif(_igc_compiler_is_clang)
       ALIAS CompileAsDefault
       ALIAS DebugInfoDisabled          DebugInfoFormat REMOVE_GROUP
       ALIAS DebugInfoProgramDatabase   "-g"
-      ALIAS DisableSpecificWarnings
+      ALIAS DisableSpecificWarnings    "-Wno-error=unknown-warning-option" "-Wno-nontrivial-memcall"
+      ALIAS DisableSpecificWarningsCpp
       ALIAS ExceptionsDisabled         Exceptions REMOVE_GROUP
       ALIAS ExceptionsEnabled          "-fexceptions"
       ALIAS FaviorSize                 "-Os"
@@ -679,6 +682,7 @@ else()
       ALIAS DebugInfoDisabled
       ALIAS DebugInfoProgramDatabase
       ALIAS DisableSpecificWarnings
+      ALIAS DisableSpecificWarningsCpp
       ALIAS ExceptionsDisabled
       ALIAS ExceptionsEnabled
       ALIAS FaviorSize
@@ -785,31 +789,27 @@ foreach(_compilerFlagName IN ITEMS "CMAKE_CXX_FLAGS" "CMAKE_C_FLAGS")
   # NOTE: Debug info generation is enabled for all build configuration, because it is separate on Windows
   #       and we will use "strip" command on Linux and Android (to separate it).
 
+  igc_config_flag_apply_settings(
+      CompilerOptions
+      "${_compilerFlagName}"
+      ALL_PATTERN ""
+      SET
+        AdditionalOptions
+        CompileAsDefault
+        DisableSpecificWarnings
+        ExceptionsEnabled
+        MultiProcessorCompilation
+        DeadCodeEliminate
+        TreatWarnAsErrorEnabled
+  )
+
   if(IGC_OPTION__UNIVERSAL_DRIVER)
     igc_config_flag_apply_settings(
           CompilerOptions
           "${_compilerFlagName}"
           ALL_PATTERN ""
           SET
-            CompileAsDefault
-            DisableSpecificWarnings
-            ExceptionsEnabled
-            MultiProcessorCompilation
-            DeadCodeEliminate
             CallingConvCdecl
-    )
-  else()
-    igc_config_flag_apply_settings(
-          CompilerOptions
-          "${_compilerFlagName}"
-          ALL_PATTERN ""
-          SET
-            CompileAsDefault
-
-            DisableSpecificWarnings
-            ExceptionsEnabled
-            MultiProcessorCompilation
-            DeadCodeEliminate
     )
   endif()
 
@@ -856,9 +856,7 @@ foreach(_compilerFlagName IN ITEMS "CMAKE_CXX_FLAGS" "CMAKE_C_FLAGS")
         "${_compilerFlagName}"
         ALL_PATTERN ""
          SET
-           AdditionalOptions
            RttiDisabled
-           TreatWarnAsErrorEnabled
     )
   elseif( ANDROID )
     igc_config_flag_apply_settings(
@@ -872,7 +870,6 @@ foreach(_compilerFlagName IN ITEMS "CMAKE_CXX_FLAGS" "CMAKE_C_FLAGS")
           -mstackrealign
           -fms-extensions
           -fvisibility=hidden
-          -Werror
           -Wno-unused-parameter
           -Wno-missing-field-initializers
           -Wwrite-strings
@@ -932,7 +929,6 @@ foreach(_compilerFlagName IN ITEMS "CMAKE_CXX_FLAGS" "CMAKE_C_FLAGS")
             #-march=armv8.2-a+fp+simd+sve2
             -march=armv8-a+fp+simd
             -fms-extensions
-            -Werror
             -Wno-unused-parameter
             -Wno-missing-field-initializers
             -Wwrite-strings
@@ -964,7 +960,6 @@ foreach(_compilerFlagName IN ITEMS "CMAKE_CXX_FLAGS" "CMAKE_C_FLAGS")
             -fmessage-length=0
             -march=rv64gc
             -fms-extensions
-            -Werror
             -Wno-unused-parameter
             -Wno-missing-field-initializers
             -Wwrite-strings
@@ -997,7 +992,6 @@ foreach(_compilerFlagName IN ITEMS "CMAKE_CXX_FLAGS" "CMAKE_C_FLAGS")
             -march=corei7
             -mstackrealign
             -fms-extensions
-            -Werror
             -Wno-unused-parameter
             -Wno-missing-field-initializers
             -Wwrite-strings
@@ -1140,15 +1134,15 @@ if(_igc_compiler_is_gnu_or_clang)
   endif()
 endif()
 
-# Unconditionally disable rtti (C++ only)
+# Unconditionally disable rtti (C++ only) + Apply cpp warning ignores settings
 igc_config_flag_apply_settings(
     CompilerOptions
     CMAKE_CXX_FLAGS
     ALL_PATTERN ""
     SET
        RttiDisabled
+       DisableSpecificWarningsCpp
   )
-
 
 if(_igc_compiler_is_gnu_or_clang)
     igc_config_flag_apply_settings(

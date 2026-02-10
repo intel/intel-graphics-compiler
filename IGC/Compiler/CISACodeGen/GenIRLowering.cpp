@@ -26,10 +26,10 @@ SPDX-License-Identifier: MIT
 #include <llvm/Support/KnownBits.h>
 #include <llvm/Transforms/Utils/ScalarEvolutionExpander.h>
 #include <llvm/Transforms/Utils/Local.h>
+#include "common/LLVMWarningsPop.hpp"
 #include "llvmWrapper/IR/Intrinsics.h"
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/Support/MathExtras.h"
-#include "common/LLVMWarningsPop.hpp"
 #include "GenISAIntrinsics/GenIntrinsics.h"
 #include "common/IGCIRBuilder.h"
 #include "Probe/Assertion.h"

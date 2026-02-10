@@ -21,14 +21,13 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/Module.h>
 #include <llvm/IR/Function.h>
 #include <llvm/Analysis/TargetLibraryInfo.h>
+#include <llvm/Transforms/Utils.h>
+#include "common/LLVMWarningsPop.hpp"
 
 #include <llvmWrapper/Transforms/InstCombine/InstCombineWorklist.h>
 #include <llvmWrapper/Transforms/Scalar/SCCP.h>
 #include "llvmWrapper/Transforms/IPO/GlobalDCE.h"
 #include "llvmWrapper/Transforms/IPO/InlineSimple.h"
-#include <llvm/Transforms/Utils.h>
-
-#include "common/LLVMWarningsPop.hpp"
 
 #include "AdaptorCommon/AddImplicitArgs.hpp"
 #include "AdaptorCommon/FreezeIntDiv.hpp"

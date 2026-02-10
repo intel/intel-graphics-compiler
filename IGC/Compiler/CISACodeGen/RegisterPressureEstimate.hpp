@@ -24,8 +24,8 @@ See LICENSE.TXT for details.
 #include "llvm/Pass.h"
 #include <llvm/IR/InstVisitor.h>
 #include "llvm/Analysis/LoopInfo.h"
-#include <llvmWrapper/IR/DerivedTypes.h>
 #include "common/LLVMWarningsPop.hpp"
+#include <llvmWrapper/IR/DerivedTypes.h>
 #include "Compiler/IGCPassSupport.h"
 #include "Compiler/CISACodeGen/WIAnalysis.hpp"
 #include "Probe/Assertion.h"

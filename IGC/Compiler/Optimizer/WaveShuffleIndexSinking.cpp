@@ -379,7 +379,7 @@ bool WaveShuffleIndexSinkingImpl::splitWaveShuffleIndexes() {
   for (auto &BB : F) {
     for (auto &I : BB) {
       if (auto *waveShuffleInst = dyn_cast<WaveShuffleIndexIntrinsic>(&I)) {
-        if (auto *constantChannel = dyn_cast<ConstantInt>(waveShuffleInst->getChannel())) {
+        if (isa<ConstantInt>(waveShuffleInst->getChannel())) {
           // Do not split WaveShuffleIndex insts that do not have a constant index since they cannot be optimized by
           // this pass anyways
           if (!waveShuffleInst->getUniqueUndroppableUser()) {

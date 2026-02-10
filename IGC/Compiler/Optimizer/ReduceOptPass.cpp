@@ -274,7 +274,7 @@ bool ReduceOptPass::checkCmp(Value *Val) {
     Value *CmpOp0 = Cmp->getOperand(0);
     Value *CmpOp1 = Cmp->getOperand(1);
 
-    Instruction *GetIdInstr = nullptr;
+    [[maybe_unused]] Instruction *GetIdInstr = nullptr;
     ConstantInt *CmpConst = nullptr;
 
     if (isa<ConstantInt>(CmpOp1) && (checkGlobalId(CmpOp0) || checkLocalId(CmpOp0))) {

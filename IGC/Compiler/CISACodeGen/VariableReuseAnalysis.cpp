@@ -12,8 +12,8 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CodeGenPublic.h"
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/Support/Debug.h>
-#include "llvmWrapper/IR/DerivedTypes.h"
 #include "common/LLVMWarningsPop.hpp"
+#include "llvmWrapper/IR/DerivedTypes.h"
 #include <algorithm>
 #include "Probe/Assertion.h"
 
@@ -1452,7 +1452,7 @@ VariableReuseAnalysis::AState VariableReuseAnalysis::getCandidateStateUse(Value 
       default:
         break;
       }
-    } else if (StoreInst *SI = dyn_cast<StoreInst>(Val)) {
+    } else if (isa<StoreInst>(Val)) {
       retSt = AState::TARGET;
     } else if (CallInst *CallI = dyn_cast<CallInst>(Val)) {
       if (CallI->isInlineAsm())
@@ -1482,7 +1482,7 @@ VariableReuseAnalysis::AState VariableReuseAnalysis::getCandidateStateDef(Value 
     default:
       break;
     }
-  } else if (LoadInst *SI = dyn_cast<LoadInst>(Val)) {
+  } else if (isa<LoadInst>(Val)) {
     return AState::TARGET;
   } else if (CallInst *CallI = dyn_cast<CallInst>(Val)) {
     if (CallI->isInlineAsm())
@@ -1496,8 +1496,6 @@ VariableReuseAnalysis::AState VariableReuseAnalysis::getCandidateStateDef(Value 
 // checks if extractMask optim can be applied. And the caller
 // will decide whether to favor extractMask optimization or not.
 bool VariableReuseAnalysis::isExtractMaskCandidate(Value *V) const {
-  auto BIT = [](int n) { return (uint32_t)(1 << n); };
-
   if (!isa<VectorType>(V->getType()))
     return false;
 

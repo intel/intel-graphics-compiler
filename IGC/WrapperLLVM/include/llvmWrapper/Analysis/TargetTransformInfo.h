@@ -9,13 +9,14 @@ SPDX-License-Identifier: MIT
 #ifndef IGCLLVM_ANALYSIS_TARGETTRANSFORMINFO_H
 #define IGCLLVM_ANALYSIS_TARGETTRANSFORMINFO_H
 
+#include "IGC/common/LLVMWarningsPush.hpp"
+#include "llvm/Support/InstructionCost.h"
 #include "llvm/ADT/ArrayRef.h"
 #include "llvm/Analysis/TargetTransformInfo.h"
 #include "llvm/Analysis/TargetTransformInfoImpl.h"
 #include "llvm/IR/User.h"
 #include "llvm/IR/Value.h"
-
-#include "llvm/Support/InstructionCost.h"
+#include "IGC/common/LLVMWarningsPop.hpp"
 
 namespace IGCLLVM {
 template <typename T> class TTIImplCRTPBase : public llvm::TargetTransformInfoImplCRTPBase<T> {

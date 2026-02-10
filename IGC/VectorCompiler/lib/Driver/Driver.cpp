@@ -491,7 +491,7 @@ static void populateCodeGenPassManager(const vc::CompileOptions &Opts,
   auto FileType = IGCLLVM::TargetMachine::CodeGenFileType::CGFT_AssemblyFile;
 
   llvm::raw_null_ostream NOS;
-  bool AddPasses =
+  [[maybe_unused]] bool AddPasses =
       TM.addPassesToEmitFile(PM, NOS, nullptr, FileType, DisableIrVerifier);
   IGC_ASSERT_MESSAGE(!AddPasses, "Bad filetype for vc-codegen");
 }

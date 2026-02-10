@@ -9,8 +9,10 @@ SPDX-License-Identifier: MIT
 #ifndef IGCLLVM_ADT_STRINGREF_H
 #define IGCLLVM_ADT_STRINGREF_H
 
+#include "IGC/common/LLVMWarningsPush.hpp"
 #include "llvm/Config/llvm-config.h"
 #include "llvm/ADT/StringRef.h"
+#include "IGC/common/LLVMWarningsPop.hpp"
 
 namespace IGCLLVM {
 inline bool equals_insensitive(llvm::StringRef LHS, llvm::StringRef RHS) { return LHS.equals_insensitive(RHS); }

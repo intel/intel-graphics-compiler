@@ -9,10 +9,12 @@ SPDX-License-Identifier: MIT
 #ifndef IGCLLVM_TRANSFORMS_VECTORIZE_LEGACY_LOOPVECTORIZE_H
 #define IGCLLVM_TRANSFORMS_VECTORIZE_LEGACY_LOOPVECTORIZE_H
 
+#include "common/LLVMWarningsPush.hpp"
 #include "llvm/IR/LegacyPassManager.h"
 #include "llvm/Pass.h"
 #include "llvm/IR/PassManager.h"
 #include "llvm/Passes/PassBuilder.h"
+#include "common/LLVMWarningsPop.hpp"
 
 using namespace llvm;
 

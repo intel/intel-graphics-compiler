@@ -8,8 +8,8 @@ SPDX-License-Identifier: MIT
 
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/IR/Function.h>
-#include <llvmWrapper/IR/DerivedTypes.h>
 #include "common/LLVMWarningsPop.hpp"
+#include <llvmWrapper/IR/DerivedTypes.h>
 #include "AdaptorCommon/ImplicitArgs.hpp"
 #include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
 #include "Compiler/CISACodeGen/DeSSA.hpp"
@@ -1959,7 +1959,7 @@ CVariable *CShader::GetStructVariable(llvm::Value *v) {
         v = FirstInsertValueInst;
       }
     }
-  } else if (auto *SI = dyn_cast<SelectInst>(v)) {
+  } else if (isa<SelectInst>(v)) {
     if (IGC_IS_FLAG_ENABLED(EnableDeSSA) && m_deSSA) {
       e_alignment pAlign = EALIGN_GRF;
       Value *rVal = m_deSSA->getRootValue(v, &pAlign);
@@ -2725,7 +2725,7 @@ CVariable *CShader::reuseSourceVar(Instruction *UseInst, Instruction *DefInst, e
   }
 
   // Check cast instructions and create an alias if necessary.
-  if (CastInst *CI = dyn_cast<CastInst>(UseInst)) {
+  if ([[maybe_unused]] CastInst *CI = dyn_cast<CastInst>(UseInst)) {
     VISA_Type UseTy = GetType(UseInst->getType());
     if (UseTy == DefVar->GetType()) {
       return DefVar;

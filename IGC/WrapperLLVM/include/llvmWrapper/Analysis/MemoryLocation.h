@@ -9,10 +9,11 @@ SPDX-License-Identifier: MIT
 #ifndef IGCLLVM_ANALYSIS_MEMORYLOCATION_H
 #define IGCLLVM_ANALYSIS_MEMORYLOCATION_H
 
+#include "IGC/common/LLVMWarningsPush.hpp"
+#include "llvm/IR/Instructions.h"
 #include "llvm/Config/llvm-config.h"
 #include "llvm/Analysis/MemoryLocation.h"
-
-#include "llvm/IR/Instructions.h"
+#include "IGC/common/LLVMWarningsPop.hpp"
 
 namespace IGCLLVM {
 

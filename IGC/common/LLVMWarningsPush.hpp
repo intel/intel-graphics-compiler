@@ -43,6 +43,12 @@ SPDX-License-Identifier: MIT
 #if __GNUC__ > 8
 #pragma GCC diagnostic ignored "-Winit-list-lifetime"
 #endif
+#if __GNUC__ >= 15
+#pragma GCC diagnostic ignored "-Wcpp"
+#endif
+#ifdef __clang__
+#pragma GCC diagnostic ignored "-W#warnings"
+#endif
 #endif
 
 #if defined(_WIN32) || defined(_WIN64)

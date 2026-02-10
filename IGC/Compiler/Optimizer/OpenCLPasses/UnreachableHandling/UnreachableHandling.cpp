@@ -11,10 +11,10 @@ SPDX-License-Identifier: MIT
 #include "Compiler/IGCPassSupport.h"
 
 #include "common/LLVMWarningsPush.hpp"
-#include <llvmWrapper/IR/BasicBlock.h>
 #include <llvm/IR/Function.h>
 #include <llvm/IR/Instructions.h>
 #include "common/LLVMWarningsPop.hpp"
+#include <llvmWrapper/IR/BasicBlock.h>
 
 using namespace llvm;
 using namespace IGC;

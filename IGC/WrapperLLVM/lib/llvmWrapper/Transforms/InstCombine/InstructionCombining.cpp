@@ -17,9 +17,9 @@ SPDX-License-Identifier: MIT
 #include "llvm/Transforms/InstCombine/InstCombine.h"
 #include "llvm/Transforms/Utils/BasicBlockUtils.h"
 
+#include "common/LLVMWarningsPop.hpp"
 #include "llvmWrapper/Transforms/InstCombine/InstructionCombining.h"
 #include "llvmWrapper/Transforms/InitializePasses.h"
-#include "common/LLVMWarningsPop.hpp"
 
 #include "Compiler/IGCPassSupport.h"
 

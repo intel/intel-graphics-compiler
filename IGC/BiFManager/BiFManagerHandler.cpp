@@ -23,9 +23,9 @@ SPDX-License-Identifier: MIT
 #include <llvm/Transforms/IPO.h>
 #include <llvm/IR/LegacyPassManager.h>
 #include <llvm/Support/FileSystem.h>
-#include "llvmWrapper/TargetParser/Triple.h"
 #include <llvm/IR/GlobalValue.h>
 #include "common/LLVMWarningsPop.hpp"
+#include "llvmWrapper/TargetParser/Triple.h"
 #include "BiFManagerHandler.hpp"
 
 #include <string>

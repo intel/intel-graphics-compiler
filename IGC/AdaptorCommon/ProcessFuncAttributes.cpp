@@ -20,11 +20,6 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPush.hpp"
 
 #include "llvm/IR/Attributes.h"
-#include <llvmWrapper/IR/Function.h>
-#include <llvmWrapper/IR/Type.h>
-
-#include "llvmWrapper/IR/InstrTypes.h"
-#include "llvmWrapper/IR/Instructions.h"
 
 #include <llvm/Pass.h>
 #include <llvm/IR/Module.h>
@@ -37,6 +32,10 @@ SPDX-License-Identifier: MIT
 #include <llvm/Analysis/CallGraph.h>
 #include "llvm/ADT/SCCIterator.h"
 #include "common/LLVMWarningsPop.hpp"
+#include <llvmWrapper/IR/Function.h>
+#include <llvmWrapper/IR/Type.h>
+#include "llvmWrapper/IR/InstrTypes.h"
+#include "llvmWrapper/IR/Instructions.h"
 #include "common/igc_regkeys.hpp"
 #include <fstream>
 #include <string>

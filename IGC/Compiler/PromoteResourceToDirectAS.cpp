@@ -12,10 +12,10 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/Constants.h>
 #include <llvm/IR/Module.h>
 #include <llvm/IR/Function.h>
+#include "common/LLVMWarningsPop.hpp"
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include <llvmWrapper/IR/Type.h>
 #include <llvmWrapper/Support/Alignment.h>
-#include "common/LLVMWarningsPop.hpp"
 #include "common/IGCIRBuilder.h"
 #include "Compiler/CISACodeGen/helper.h"
 #include "Compiler/CodeGenPublicEnums.h"
@@ -380,7 +380,7 @@ bool PatchInstructionAddressSpace(const std::vector<Value *> &instList, Type *ds
       IGC_ASSERT(incomingVal->getType()->isPointerTy());
 
       std::vector<Value *> tempList;
-      Value *srcPtr = IGC::TracePointerSource(incomingVal, true, false, true, tempList);
+      [[maybe_unused]] Value *srcPtr = IGC::TracePointerSource(incomingVal, true, false, true, tempList);
 
       // We know srcPtr is trace-able, since it's been traced already, we just need to get the
       // list of instructions we need to patch

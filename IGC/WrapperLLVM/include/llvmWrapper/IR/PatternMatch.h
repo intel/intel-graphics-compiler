@@ -9,8 +9,10 @@ SPDX-License-Identifier: MIT
 #ifndef IGCLLVM_IR_PATTERNMATCH_H
 #define IGCLLVM_IR_PATTERNMATCH_H
 
+#include "IGC/common/LLVMWarningsPush.hpp"
 #include "llvm/Config/llvm-config.h"
 #include "llvm/IR/PatternMatch.h"
+#include "IGC/common/LLVMWarningsPop.hpp"
 
 namespace llvm {
 namespace PatternMatch {} // namespace PatternMatch

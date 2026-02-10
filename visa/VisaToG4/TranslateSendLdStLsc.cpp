@@ -1687,7 +1687,7 @@ int IR_Builder::translateLscExtendedCacheCtrlInst(
               ":a64 expects Q/UQ");
 
   int status = VISA_SUCCESS;
-  auto check = [&](bool z, const char *what) {
+  [[maybe_unused]] auto check = [&](bool z, const char *what) {
     if (!z) {
       vISA_ASSERT_INPUT(false, std::string(what));
       status = VISA_FAILURE;

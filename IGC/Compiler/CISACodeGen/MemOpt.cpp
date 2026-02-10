@@ -7,9 +7,6 @@ SPDX-License-Identifier: MIT
 ============================= end_copyright_notice ===========================*/
 
 #include "common/LLVMWarningsPush.hpp"
-#include <llvmWrapper/Analysis/InstructionSimplify.h>
-#include <llvmWrapper/Analysis/TargetLibraryInfo.h>
-#include <llvmWrapper/Analysis/AliasSetTracker.h>
 #include <llvm/Analysis/InstructionSimplify.h>
 #include <llvm/Analysis/ScalarEvolution.h>
 #include <llvm/Analysis/ScalarEvolutionExpressions.h>
@@ -18,17 +15,20 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/Function.h>
 #include <llvm/IR/GetElementPtrTypeIterator.h>
 #include <llvm/IR/GlobalAlias.h>
-#include <llvmWrapper/IR/IRBuilder.h>
 #include <llvm/Pass.h>
-#include <llvmWrapper/Support/Alignment.h>
-#include <llvmWrapper/IR/DerivedTypes.h>
 #include <llvm/Support/Debug.h>
 #include <llvm/Support/DebugCounter.h>
 #include <llvm/Support/raw_ostream.h>
 #include "llvm/Support/CommandLine.h"
 #include <llvm/Transforms/Utils/Local.h>
-#include <optional>
 #include "common/LLVMWarningsPop.hpp"
+#include <llvmWrapper/Analysis/InstructionSimplify.h>
+#include <llvmWrapper/Analysis/TargetLibraryInfo.h>
+#include <llvmWrapper/Analysis/AliasSetTracker.h>
+#include <llvmWrapper/IR/IRBuilder.h>
+#include <llvmWrapper/Support/Alignment.h>
+#include <llvmWrapper/IR/DerivedTypes.h>
+#include <optional>
 #include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
 #include "Compiler/CISACodeGen/OpenCLKernelCodeGen.hpp"
 #include "Compiler/CISACodeGen/SLMConstProp.hpp"
@@ -1455,7 +1455,8 @@ bool MemOpt::mergeStore(AStoreInst &LeadingStore, MemRefListTy::iterator MI, Mem
   // be merged into the "previous" tailing store.
 
   // Two edges of the region where stores are merged into.
-  int64_t LastToLeading = StSize, LastToLeading4Transpose = 0;
+  int64_t LastToLeading = StSize;
+  [[maybe_unused]] int64_t LastToLeading4Transpose = 0;
   int64_t LeadingToFirst = 0;
 
   // List of instructions need dependency check.
@@ -3084,8 +3085,6 @@ void LdStCombine::combineStores() {
 
       // Only original, not-yet-visited store can be candidates.
       const bool isOrigSt = (m_instOrder.size() == 0 || m_instOrder.count(I) > 0);
-      uint32_t eBytes = (uint32_t)m_DL->getTypeStoreSize(eTy);
-      const bool legitSize = isPowerOf2_32(eBytes);
       return (isOrigSt && !isVisited(I) && SI->isSimple());
     }
     return false;
@@ -3700,7 +3699,7 @@ void LdStCombine::AllowDummyLoadCoalescing(const InstAndOffsetPairs &Loads) {
           // Create a dummy merge value:
           Type *Ty = cast<GetElementPtrInst>(Addr)->getResultElementType();
           Value *mergeValue = nullptr;
-          if (IGCLLVM::FixedVectorType *VTy = dyn_cast<IGCLLVM::FixedVectorType>(Ty))
+          if (isa<IGCLLVM::FixedVectorType>(Ty))
             mergeValue = ConstantAggregateZero::get(Ty);
           else
             mergeValue = Constant::getNullValue(Ty);
@@ -4147,7 +4146,7 @@ Value *LdStCombine::gatherCopy(const uint32_t DstEltBytes, int DstNElts, SmallVe
     SmallVector<Value *, 4> &subElts = allEltVals[i];
     int nelts = (int)subElts.size();
     Type *ty = subElts[0]->getType();
-    uint32_t eBytes = (uint32_t)m_DL->getTypeStoreSize(ty->getScalarType());
+    [[maybe_unused]] uint32_t eBytes = (uint32_t)m_DL->getTypeStoreSize(ty->getScalarType());
     if (nelts == 1 && !isLvl2Vecmember(ty)) {
       IGC_ASSERT(eBytes == DstEltBytes);
       StructTys.push_back(ty);
@@ -4178,7 +4177,7 @@ Value *LdStCombine::gatherCopy(const uint32_t DstEltBytes, int DstNElts, SmallVe
     int i = 0;
     for (; i < sz; ++i) {
       SmallVector<Value *, 4> &subElts = allEltVals[i];
-      int nelts = (int)subElts.size();
+      [[maybe_unused]] int nelts = (int)subElts.size();
       IGC_ASSERT(nelts == 1);
       if (!isa<Constant>(subElts[0])) {
         DstEltTy = subElts[0]->getType();
@@ -4189,7 +4188,7 @@ Value *LdStCombine::gatherCopy(const uint32_t DstEltBytes, int DstNElts, SmallVe
     if (DstEltTy != nullptr) {
       for (++i; i < sz; ++i) {
         SmallVector<Value *, 4> &subElts = allEltVals[i];
-        int nelts = (int)subElts.size();
+        [[maybe_unused]] int nelts = (int)subElts.size();
         IGC_ASSERT(nelts == 1);
         Type *ty = subElts[0]->getType();
         const bool isConst = isa<Constant>(subElts[0]);
@@ -4374,7 +4373,7 @@ void LdStCombine::scatterCopy(SmallVector<Value *, 16> &Vals, int LoadedValEByte
   IRBuilder<> irBuilder(InsertBefore);
   Type *LoadedValTy = generateLoadType(Vals, LoadedValEBytes, LoadedValNElts);
   {
-    int newTyBytes = (int)m_DL->getTypeStoreSize(LoadedValTy);
+    [[maybe_unused]] int newTyBytes = (int)m_DL->getTypeStoreSize(LoadedValTy);
     IGC_ASSERT(newTyBytes == (LoadedValNElts * LoadedValEBytes));
   }
   Value *LoadedVal = LoadedVecVal;
@@ -4877,7 +4876,7 @@ void BundleInfo::print(raw_ostream &O, int BundleID) const {
   O << "\n";
 }
 
-void BundleInfo::dump() const { print(dbgs()); }
+[[maybe_unused]] void BundleInfo::dump() const { print(dbgs()); }
 
 namespace IGC {
 
@@ -4898,7 +4897,7 @@ bool isLayoutStructTypeAOS(const StructType *StTy) {
 bool isLayoutStructTypeSOA(const StructType *StTy) { return isLayoutStructType(StTy) && !isLayoutStructTypeAOS(StTy); }
 
 uint64_t bitcastToUI64(Constant *C, const DataLayout *DL) {
-  Type *ty = C->getType();
+  [[maybe_unused]] Type *ty = C->getType();
   IGC_ASSERT(DL->getTypeStoreSizeInBits(ty) <= 64);
   IGC_ASSERT(ty->isStructTy() || (ty->isSingleValueType() && !ty->isVectorTy()));
 

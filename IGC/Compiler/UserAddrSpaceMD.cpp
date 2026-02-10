@@ -56,15 +56,15 @@ LSC_DOC_ADDR_SPACE UserAddrSpaceMD::Get(llvm::Instruction *inst) {
   LSC_DOC_ADDR_SPACE addrSpace = LSC_DOC_ADDR_SPACE::INVALID;
 
   if (inst) {
-    if (auto md_addrspace_org = inst->getMetadata(user_addrspace_priv)) {
+    if ([[maybe_unused]] auto md_addrspace_org = inst->getMetadata(user_addrspace_priv)) {
       addrSpace = LSC_DOC_ADDR_SPACE::PRIVATE;
-    } else if (auto md_addrspace_org = inst->getMetadata(user_addrspace_global)) {
+    } else if ([[maybe_unused]] auto md_addrspace_org = inst->getMetadata(user_addrspace_global)) {
       addrSpace = LSC_DOC_ADDR_SPACE::GLOBAL;
-    } else if (auto md_addrspace_org = inst->getMetadata(user_addrspace_local)) {
+    } else if ([[maybe_unused]] auto md_addrspace_org = inst->getMetadata(user_addrspace_local)) {
       addrSpace = LSC_DOC_ADDR_SPACE::LOCAL;
-    } else if (auto md_addrspace_org = inst->getMetadata(user_addrspace_generic)) {
+    } else if ([[maybe_unused]] auto md_addrspace_org = inst->getMetadata(user_addrspace_generic)) {
       addrSpace = LSC_DOC_ADDR_SPACE::GENERIC;
-    } else if (auto md_addrspace_org = inst->getMetadata(user_addrspace_raystack)) {
+    } else if ([[maybe_unused]] auto md_addrspace_org = inst->getMetadata(user_addrspace_raystack)) {
       addrSpace = LSC_DOC_ADDR_SPACE::RAYSTACK;
     }
   }

@@ -36,7 +36,7 @@ RematChainsAnalysis::RematChainsAnalysis() : FunctionPass(ID) {
 
 static bool hasRematMetadata(llvm::Value *V) {
   if (auto *I = dyn_cast<Instruction>(V)) {
-    if (auto *MD = I->getMetadata("remat")) {
+    if ([[maybe_unused]] auto *MD = I->getMetadata("remat")) {
       return true;
     }
   }

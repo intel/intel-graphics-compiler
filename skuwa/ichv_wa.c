@@ -386,6 +386,7 @@ unsigned short ConvertChvRevId(unsigned short usRevId)
 void InitChvWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_PARAM pWaParam)
 {
     unsigned int ulStepId_CHV, ulStepId_PCH;
+    (void)ulStepId_PCH;
 #ifdef __KCH
     KCHASSERT(NULL != pWaParam);
 #endif
@@ -534,6 +535,7 @@ void InitChvHASWaTable(PHW_DEVICE_EXTENSION pKchContext, PWA_TABLE pWaTable, PSK
 {
     unsigned int ulStepId_CHV, ulStepId_PCH;
     unsigned int ulRegdata = 0;
+    (void)ulRegdata;
 
     ulStepId_CHV = (1 << ConvertChvRevId(pWaParam->usRevId));
     ulStepId_PCH = (1 << ConvertChvRevId(pWaParam->usRevId_PCH));

@@ -52,13 +52,13 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/Value.h>             // for llvm::Value
 #include <llvm/IR/Type.h>              // for llvm::Type
 #include <llvm/IR/DerivedTypes.h>      // for llvm::VectorType
-#include "llvmWrapper/IR/DerivedTypes.h"
 #include <llvm/IR/Constants.h> // for llvm::ConstantInt, llvm::ConstantFP, llvm::ConstantVector, llvm::ConstantDataVector, llvm::UndefValue
 #include <llvm/IR/Instruction.h>  // for llvm::Instruction
 #include <llvm/IR/Instructions.h> // for llvm::StoreInst, llvm::CallInst
-#include <optional>
 #include <llvm/ADT/APInt.h>           // for llvm::APInt, llvm::ArrayRef
 #include "common/LLVMWarningsPop.hpp" // for suppressing LLVM warnings
+#include "llvmWrapper/IR/DerivedTypes.h"
+#include <optional>
 
 #include <climits> // for CHAR_BIT
 #include <cstdint> // for std::uint64_t

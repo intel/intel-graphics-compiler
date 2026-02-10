@@ -19,7 +19,7 @@ std::vector<std::string> SPIRVParser::getEntryPointNames(const StringRef binary)
     return result;
   };
 
-  constexpr uint32_t SPIRVMagicNumber = 0x07230203;
+  [[maybe_unused]] constexpr uint32_t SPIRVMagicNumber = 0x07230203;
   constexpr uint16_t OpEntryPoint = 15;
 
   uint32_t offsetInWords = 0;

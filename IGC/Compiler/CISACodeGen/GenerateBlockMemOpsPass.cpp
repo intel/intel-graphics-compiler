@@ -15,8 +15,8 @@ SPDX-License-Identifier: MIT
 #include <llvm/Transforms/Utils/Cloning.h>
 #include <llvm/IR/Function.h>
 #include "llvm/IR/Verifier.h"
-#include <llvmWrapper/IR/BasicBlock.h>
 #include "common/LLVMWarningsPop.hpp"
+#include <llvmWrapper/IR/BasicBlock.h>
 
 #include "GenerateBlockMemOpsPass.hpp"
 

@@ -29,17 +29,17 @@ SPDX-License-Identifier: MIT
 #include "llvm/Analysis/ScopedNoAliasAA.h"
 #include "llvm/Analysis/TypeBasedAliasAnalysis.h"
 #include "llvm/Analysis/GlobalsModRef.h"
-#include "llvmWrapper/IR/CallSite.h"
 #include "llvm/IR/Module.h"
 #include "llvm/IR/Function.h"
 #include "llvm/IR/Instructions.h"
 #include "llvm/IR/InstVisitor.h"
 #include "llvm/Transforms/IPO.h"
 #include "llvm/Transforms/IPO/Inliner.h"
-#include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvm/IR/DebugInfo.h"
 #include "llvm/IR/DIBuilder.h"
 #include "common/LLVMWarningsPop.hpp"
+#include "llvmWrapper/IR/CallSite.h"
+#include "llvmWrapper/IR/DerivedTypes.h"
 #include "DebugInfo/VISADebugEmitter.hpp"
 #include "llvmWrapper/Transforms/IPO/InlineHelper.h"
 #include <numeric>
@@ -1015,8 +1015,7 @@ void GenXFunctionGroupAnalysis::clear() {
   for (auto I = begin(), E = end(); I != E; ++I)
     delete *I;
   Groups.clear();
-  for (auto FG : IndirectCallGroup)
-    FG = nullptr;
+  IndirectCallGroup.clear();
   M = nullptr;
 }
 

@@ -15,7 +15,6 @@ SPDX-License-Identifier: MIT
 #include "Compiler/IGCPassSupport.h"
 #include "common/LLVMUtils.h"
 #include "common/LLVMWarningsPush.hpp"
-#include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvm/Transforms/Utils/Local.h"
 #include <llvm/IR/DataLayout.h>
 #include <llvm/IR/Instructions.h>
@@ -25,6 +24,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/IRBuilder.h>
 #include <llvm/Support/Debug.h>
 #include "common/LLVMWarningsPop.hpp"
+#include "llvmWrapper/IR/DerivedTypes.h"
 #include "Probe/Assertion.h"
 #include <list>
 #include "llvm/IR/Constants.h"
@@ -427,7 +427,7 @@ void PromoteInt8Type::promoteInstructions() {
   BasicBlock *entryBB = &m_F->getEntryBlock();
   BasicBlock::iterator entryIP = entryBB->getFirstInsertionPt();
 
-  size_t debugCounter = 0;
+  [[maybe_unused]] size_t debugCounter = 0;
   IGC_ASSERT((debugCounter = promoteInsts.size() + 1, 1)); // debug assignment
 
   while (!promoteInsts.empty()) {
@@ -613,7 +613,7 @@ void PromoteInt8Type::promoteInstructions() {
         }
         case Instruction::InsertElement: {
           IGC_ASSERT(nullptr != v1);
-          ValueInfo *vinfo = getValInfo(Inst->getOperand(0));
+          [[maybe_unused]] ValueInfo *vinfo = getValInfo(Inst->getOperand(0));
           IGC_ASSERT_MESSAGE((!vinfo || vinfo->NeedPromote), "IEI's vector operands and dst shall be both promoted!");
           Value *v2 = Inst->getOperand(2);
           newVal = m_builder->CreateInsertElement(getSI16Value(v0), getSI16Value(v1), getUI16Value(v2), "b2s");
@@ -1119,7 +1119,7 @@ void PromoteInt8Type::promoteIntrinsic() {
   }
 }
 
-void PromoteInt8Type::dump() const { print(dbgs()); }
+[[maybe_unused]] void PromoteInt8Type::dump() const { print(dbgs()); }
 
 void PromoteInt8Type::print(raw_ostream &OS, const Module *) const {
   // order the output so it is easier to read

@@ -9,6 +9,11 @@ SPDX-License-Identifier: MIT
 #ifndef IGCLLVM_TRANSFORMS_IPO_INLINEHELPER_H
 #define IGCLLVM_TRANSFORMS_IPO_INLINEHELPER_H
 
+#include "IGC/common/LLVMWarningsPush.hpp"
+#include "llvm/Analysis/BasicAliasAnalysis.h"
+#include "llvm/Analysis/ScopedNoAliasAA.h"
+#include "llvm/Analysis/TypeBasedAliasAnalysis.h"
+#include "llvm/Analysis/GlobalsModRef.h"
 #include "llvm/Analysis/OptimizationRemarkEmitter.h"
 #include "llvm/Analysis/Utils/ImportedFunctionsInliningStatistics.h"
 #include "llvm/IR/Module.h"
@@ -19,12 +24,9 @@ SPDX-License-Identifier: MIT
 #include "llvm/Analysis/CallGraph.h"
 #include "llvm/IR/DebugInfo.h"
 #include "llvm/IR/DIBuilder.h"
+#include "IGC/common/LLVMWarningsPop.hpp"
 #include "llvmWrapper/Analysis/TargetLibraryInfo.h"
 #include "llvmWrapper/IR/CallSite.h"
-#include "llvm/Analysis/BasicAliasAnalysis.h"
-#include "llvm/Analysis/ScopedNoAliasAA.h"
-#include "llvm/Analysis/TypeBasedAliasAnalysis.h"
-#include "llvm/Analysis/GlobalsModRef.h"
 #include <optional>
 
 using namespace llvm;

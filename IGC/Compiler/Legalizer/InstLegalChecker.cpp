@@ -12,8 +12,8 @@ SPDX-License-Identifier: MIT
 #include "llvm/Config/llvm-config.h"
 #include "llvm/Support/Debug.h"
 #include <llvm/IR/Intrinsics.h>
-#include "llvmWrapper/IR/Instructions.h"
 #include "common/LLVMWarningsPop.hpp"
+#include "llvmWrapper/IR/Instructions.h"
 #include "Probe/Assertion.h"
 
 #define DEBUG_TYPE "type-legalizer"

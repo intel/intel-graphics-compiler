@@ -6,22 +6,19 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
-#include "Compiler/Optimizer/OpenCLPasses/TransformUnmaskedFunctionsPass/TransformUnmaskedFunctionsPass.h"
-
-#include "GenISAIntrinsics/GenIntrinsics.h"
-
-#include "Compiler/IGCPassSupport.h"
-#include "Compiler/CodeGenPublic.h"
-#include "Compiler/MetaDataApi/MetaDataApi.h"
 #include "Compiler/CISACodeGen/GenCodeGenModule.h"
+#include "Compiler/CodeGenPublic.h"
+#include "Compiler/IGCPassSupport.h"
+#include "Compiler/MetaDataApi/MetaDataApi.h"
+#include "Compiler/Optimizer/OpenCLPasses/TransformUnmaskedFunctionsPass/TransformUnmaskedFunctionsPass.h"
+#include "llvmWrapper/Transforms/Utils/Cloning.h"
+#include "Probe/Assertion.h"
 
 #include "common/LLVMWarningsPush.hpp"
 #include "llvm/IR/Module.h"
 #include "llvm/IR/Function.h"
 #include "llvm/ADT/SetVector.h"
-#include "llvmWrapper/Transforms/Utils/Cloning.h"
 #include "common/LLVMWarningsPop.hpp"
-#include "Probe/Assertion.h"
 
 using namespace llvm;
 using namespace IGC;
@@ -59,7 +56,7 @@ static void annotateUnmaskedCallSite(CallInst *CI) {
   builder.CreateCall(unmaskedEnd);
 }
 
-static void annotateUnmaskedBasicBlock(BasicBlock *BB) {
+[[maybe_unused]] static void annotateUnmaskedBasicBlock(BasicBlock *BB) {
   IRBuilder<> builder(&*BB->begin());
 
   Module *M = BB->getModule();

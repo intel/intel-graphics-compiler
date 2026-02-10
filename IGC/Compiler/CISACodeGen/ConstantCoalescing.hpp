@@ -17,10 +17,10 @@ SPDX-License-Identifier: MIT
 
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/IR/PassManager.h>
-#include <llvmWrapper/IR/IRBuilder.h>
 #include <llvm/ADT/SmallBitVector.h>
 #include <llvm/Transforms/Utils.h>
 #include "common/LLVMWarningsPop.hpp"
+#include <llvmWrapper/IR/IRBuilder.h>
 #include "common/IGCIRBuilder.h"
 
 #include <map>

@@ -2692,7 +2692,6 @@ int IR_Builder::translateVISASampleInfoUnified(
     0,
     false);
 
-  G4_SrcRegRegion* msgs[2] = { 0, 0 };
   unsigned sizes[2] = { 1, 0 };
 
   G4_Declare *tmpVar = NULL;
@@ -2812,7 +2811,7 @@ int IR_Builder::translateVISASampler3DInstUnified(
   // For all Graphics IP post XE3 will use split send; split send is when the
   // source operands are distributed/split across 2 source operands as opposed
   // to one in prior products
-  bool useSplitSend = useSends();
+  [[maybe_unused]] bool useSplitSend = useSends();
   vISA_ASSERT(useSplitSend == true, "XE3 should use split send");
   // with send simplification, the sampler operation is simplified in the
   // following ways:
@@ -2928,7 +2927,7 @@ int IR_Builder::translateVISALoad3DInstUnified(
 
   bool useHeader = false;
   G4_SrcRegRegion *header = nullptr;
-  bool useSplitSend = useSends();
+  [[maybe_unused]] bool useSplitSend = useSends();
   vISA_ASSERT(useSplitSend, "XE3P should use split send");
 
   const bool FP16Return = dst->getTypeSize() == 2;
@@ -2945,9 +2944,6 @@ int IR_Builder::translateVISALoad3DInstUnified(
 
   G4_ExecSize execSize = toExecSize(executionSize);
   G4_InstOpts instOpt = Get_Gen4_Emask(em, execSize);
-
-  const bool halfReturn = dst->getTypeSize() == 2;
-  const bool halfInput = opndArray[0]->getTypeSize() == 2;
 
   if (!pairedSurface->isNullReg())
     useHeader = true;

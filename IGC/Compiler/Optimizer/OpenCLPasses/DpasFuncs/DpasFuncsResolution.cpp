@@ -14,8 +14,8 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/InstVisitor.h>
 #include <llvm/IR/Function.h>
 #include <llvm/IR/Instructions.h>
-#include "llvmWrapper/IR/DerivedTypes.h"
 #include "common/LLVMWarningsPop.hpp"
+#include "llvmWrapper/IR/DerivedTypes.h"
 #include "Probe/Assertion.h"
 
 using namespace llvm;
@@ -298,10 +298,10 @@ void DpasFuncsResolution::visitCallInst(CallInst &CI) {
   // given platform. If DPAS with the same M, N, K dimensions is executed within a subgroup
   // twice the size of minimum subgroup-size, each work item must contain half of the data
   // compared to the minimum subgroup-size.
-  bool IsDoubleSubgroup = false;
+  [[maybe_unused]] bool IsDoubleSubgroup = false;
   int DstTy, AccTy, PA, PB, SD, RC;
   GenISAIntrinsic::ID iid = GenISAIntrinsic::no_intrinsic;
-  bool doVerify = false;
+  [[maybe_unused]] bool doVerify = false;
 #if defined(_DEBUG)
   doVerify = true;
 #endif

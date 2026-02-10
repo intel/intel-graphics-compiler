@@ -7,8 +7,8 @@ SPDX-License-Identifier: MIT
 ============================= end_copyright_notice ===========================*/
 
 #include "common/LLVMWarningsPush.hpp"
-#include <optional>
 #include "common/LLVMWarningsPop.hpp"
+#include <optional>
 #include "Compiler/CISACodeGen/ComputeShaderBase.hpp"
 #include "Compiler/CISACodeGen/CSWalkOrder.hpp"
 #include <iStdLib/utility.h>
@@ -27,7 +27,7 @@ std::optional<CS_WALK_ORDER> CComputeShaderBase::checkLegalWalkOrder(const std::
 
   const int walkorder_x = WO.dim0;
   const int walkorder_y = WO.dim1;
-  const int walkorder_z = WO.dim2;
+  [[maybe_unused]] const int walkorder_z = WO.dim2;
 
   const uint32_t dim_x = Dims[0];
   const uint32_t dim_y = Dims[1];

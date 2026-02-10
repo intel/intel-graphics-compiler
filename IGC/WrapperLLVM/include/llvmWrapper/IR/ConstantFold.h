@@ -9,11 +9,13 @@ SPDX-License-Identifier: MIT
 #ifndef IGCLLVM_IR_CONSTANT_FOLD_H
 #define IGCLLVM_IR_CONSTANT_FOLD_H
 
-#include "llvm/Config/llvm-config.h"
-#include "llvm/IR/Constants.h"
+#include "IGC/common/LLVMWarningsPush.hpp"
 #if (LLVM_VERSION_MAJOR >= 15)
 #include "llvm/IR/ConstantFold.h"
 #endif
+#include "llvm/Config/llvm-config.h"
+#include "llvm/IR/Constants.h"
+#include "IGC/common/LLVMWarningsPop.hpp"
 
 namespace IGCLLVM {
 inline llvm::Constant *ConstantFoldExtractValueInstruction(llvm::Constant *Agg, llvm::ArrayRef<unsigned> Idxs,

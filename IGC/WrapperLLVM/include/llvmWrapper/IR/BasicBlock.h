@@ -9,8 +9,10 @@ SPDX-License-Identifier: MIT
 #ifndef IGCLLVM_IR_BASICBLOCK_H
 #define IGCLLVM_IR_BASICBLOCK_H
 
+#include "IGC/common/LLVMWarningsPush.hpp"
 #include <llvm/Config/llvm-config.h>
 #include "llvm/IR/BasicBlock.h"
+#include "IGC/common/LLVMWarningsPop.hpp"
 
 namespace IGCLLVM {
 inline llvm::filter_iterator<llvm::BasicBlock::const_iterator,
