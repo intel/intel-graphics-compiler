@@ -239,20 +239,17 @@ std::string DumpName::AbsolutePath(OutputFolderName folder) const {
     }
 
     if (m_hash->nosHash != 0) {
-      ss << "_"
-         << "nos" << std::hex << std::setfill('0') << std::setw(sizeof(m_hash->nosHash) * CHAR_BIT / 4)
+      ss << "_" << "nos" << std::hex << std::setfill('0') << std::setw(sizeof(m_hash->nosHash) * CHAR_BIT / 4)
          << m_hash->nosHash << std::dec << std::setfill(' ');
     }
 
     if (m_hash->psoHash != 0) {
-      ss << "_"
-         << "pso" << std::hex << std::setfill('0') << std::setw(sizeof(m_hash->psoHash) * CHAR_BIT / 4)
+      ss << "_" << "pso" << std::hex << std::setfill('0') << std::setw(sizeof(m_hash->psoHash) * CHAR_BIT / 4)
          << m_hash->psoHash << std::dec << std::setfill(' ');
     }
 
     if (m_hash->perShaderPsoHash != 0) {
-      ss << "_"
-         << "spec" << std::hex << std::setfill('0') << std::setw(sizeof(m_hash->perShaderPsoHash) * CHAR_BIT / 4)
+      ss << "_" << "spec" << std::hex << std::setfill('0') << std::setw(sizeof(m_hash->perShaderPsoHash) * CHAR_BIT / 4)
          << m_hash->perShaderPsoHash << std::dec << std::setfill(' ');
     }
 
@@ -520,12 +517,14 @@ Dump::Dump(DumpName const &dumpName, DumpType type)
 
 void Dump::flush() {
   m_pStringStream->flush();
+  if (m_string.empty()) {
+    return;
+  }
   std::ios_base::openmode mode = std::ios_base::out;
   if (!isText(m_type))
     mode |= std::ios_base::binary;
-  const FILENAME_COLLISION_MODE collisionMode =
-      static_cast<FILENAME_COLLISION_MODE>(IGC_GET_FLAG_VALUE(ShaderDumpCollisionMode));
   if (m_name.allow()) {
+    const auto collisionMode = static_cast<FILENAME_COLLISION_MODE>(IGC_GET_FLAG_VALUE(ShaderDumpCollisionMode));
     if (collisionMode == FILENAME_COLLISION_MODE::OVERRIDE || !std::filesystem::exists(m_name.str())) {
       std::ofstream asmFile(m_name.str(), mode);
       asmFile << m_string;
