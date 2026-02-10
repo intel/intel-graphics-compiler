@@ -677,6 +677,8 @@ DECLARE_IGC_REGKEY(bool, EnableSinkPointerConstAdd, true,
                    "Enable sinking of pointer constant additions closer to their use", false)
 DECLARE_IGC_REGKEY(bool, ForceHoistUDivURem, false,
                    "Always hoist UDiv/URem to common ancestor, even if it results in speculative execution", false)
+DECLARE_IGC_REGKEY(DWORD, FPRangeAnalysisMaxDepth, 8, "Max recursive depth for FP range analysis", false)
+
 DECLARE_IGC_GROUP("Shader debugging")
 DECLARE_IGC_REGKEY(bool, CopyA0ToDBG0, false, " Copy a0 used for extended msg descriptor to dbg0 to help debug", false)
 DECLARE_IGC_REGKEY(bool, CopyMsg0ToDbg0, false, " Copy msg0.2 used for Multi-Q AppQID to dbg0 to help debug", false)
