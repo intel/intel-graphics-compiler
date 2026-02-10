@@ -1422,291 +1422,282 @@ void writeULEB128(std::vector<unsigned char> &vec, uint64_t data) {
   free(buf);
 }
 
-// Find variables for each lexical scope.
-void DwarfDebug::collectVariableInfo(const Function *MF, SmallPtrSet<const MDNode *, 16> &Processed) {
-  // Store pairs of <MDNode*, DILocation*> as we encounter them.
-  // This allows us to emit 1 entry per function.
-  std::vector<std::tuple<MDNode *, DILocation *, DbgVariable *>> addedEntries;
-  std::map<llvm::DIScope *, std::vector<llvm::Instruction *>> instsInScope;
+void DwarfDebug::encodeImm(IGC::DotDebugLocEntry &dotLoc, const PrevLoc &prev, uint32_t &offset, uint32_t pointerSize) {
+  auto op = llvm::dwarf::DW_OP_implicit_value;
+  const unsigned int lebSize = 8;
 
-  TempDotDebugLocEntries.clear();
+  dotLoc.start = prev.start;
+  dotLoc.end = prev.end;
 
-  auto isAdded = [&addedEntries](MDNode *md, DILocation *iat) {
-    for (const auto &item : addedEntries) {
-      if (std::get<0>(item) == md && std::get<1>(item) == iat)
-        return std::get<2>(item);
-    }
-    return (DbgVariable *)nullptr;
-  };
+  write(dotLoc.loc, (uint8_t)op);
+  write(dotLoc.loc, (const unsigned char *)&lebSize, 1);
 
-  using IntervalTy = decltype(DbgDecoder::LiveIntervalGenISA::start);
-  auto findSemiOpenInterval = [this](IntervalTy start, IntervalTy end) -> std::pair<IntervalTy, IntervalTy> {
-    if (start >= end)
-      return {0, 0};
-    const auto &Map = VisaDbgInfo->getVisaToGenLUT();
-    auto LB = Map.lower_bound(start);
-    auto UB = Map.upper_bound(end);
-    if (LB == Map.end() || UB == Map.end())
-      return {0, 0};
+  if (isUnsignedDIType(this, prev.dbgVar->getType())) {
+    uint64_t constValue = prev.imm->getZExtValue();
+    write(dotLoc.loc, (unsigned char *)&constValue, lebSize);
+  } else {
+    int64_t constValue = prev.imm->getSExtValue();
+    write(dotLoc.loc, (unsigned char *)&constValue, lebSize);
+  }
 
-    start = LB->second.front();
-    end = UB->second.front();
-    if (start >= end)
-      return {0, 0};
-    return {start, end};
-  };
+  TempDotDebugLocEntries.push_back(dotLoc);
+  // For DWARF v4 offsets, account for start / end + u16 length + expr bytes
+  offset += pointerSize * 2 + 2 + dotLoc.loc.size();
+}
 
-  auto encodeImm = [&](IGC::DotDebugLocEntry &dotLoc, uint32_t &offset, DotDebugLocEntryVect &TempDotDebugLocEntries,
-                       uint64_t rangeStart, uint64_t rangeEnd, uint32_t pointerSize, DbgVariable *RegVar,
-                       const ConstantInt *pConstInt) {
-    auto op = llvm::dwarf::DW_OP_implicit_value;
-    const unsigned int lebSize = 8;
+void DwarfDebug::encodeReg(IGC::DotDebugLocEntry &dotLoc, const PrevLoc &prev, uint32_t &offset, uint32_t pointerSize) {
+  VISAVariableLocation Loc = prev.Loc;
+  DbgDecoder::LiveIntervalsVISA visaRange = prev.visaRange;
+  DbgDecoder::LiveIntervalsVISA visaRange2nd = prev.visaRange2nd;
 
-    dotLoc.start = rangeStart;
-    dotLoc.end = rangeEnd;
+  // Find all intervals where variable is available in memory due to
+  // caller save sequence
+  auto allCallerSave = m_pModule->getAllCallerSave(*VisaDbgInfo, prev.start, prev.end, visaRange);
 
-    // Store location expression bytes in loc
-    write(dotLoc.loc, (uint8_t)op);
-    write(dotLoc.loc, (const unsigned char *)&lebSize, 1);
-    if (isUnsignedDIType(this, RegVar->getType())) {
-      uint64_t constValue = pConstInt->getZExtValue();
-      write(dotLoc.loc, (unsigned char *)&constValue, lebSize);
-    } else {
-      int64_t constValue = pConstInt->getSExtValue();
-      write(dotLoc.loc, (unsigned char *)&constValue, lebSize);
-    }
+  // For SIMD32, we need two registers (lower and upper channels).
+  std::vector<DbgDecoder::LiveIntervalsVISA> vars = {visaRange};
+  if (Loc.HasLocationSecondReg())
+    vars.push_back(visaRange2nd);
 
-    TempDotDebugLocEntries.push_back(dotLoc);
+  dotLoc.start = prev.start;
+  TempDotDebugLocEntries.push_back(dotLoc);
 
-    // For DWARF v4 offsets, account for start / end + u16 length + expr bytes
-    offset += pointerSize * 2 + 2 + dotLoc.loc.size();
-  };
-
-  auto encodeReg = [&](IGC::DotDebugLocEntry &dotLoc, uint32_t &offset, DotDebugLocEntryVect &TempDotDebugLocEntries,
-                       uint64_t startRange, uint64_t endRange, uint32_t pointerSize, DbgVariable *RegVar,
-                       VISAVariableLocation &Loc, DbgDecoder::LiveIntervalsVISA &visaRange,
-                       DbgDecoder::LiveIntervalsVISA &visaRange2nd) {
-    auto allCallerSave = m_pModule->getAllCallerSave(*VisaDbgInfo, startRange, endRange, visaRange);
-    std::vector<DbgDecoder::LiveIntervalsVISA> vars = {visaRange};
-
-    if (Loc.HasLocationSecondReg())
-      vars.push_back(visaRange2nd); // SIMD32 2nd register
-
-    dotLoc.start = startRange;
-    TempDotDebugLocEntries.push_back(dotLoc);
-
-    for (const auto &it : allCallerSave) {
-      TempDotDebugLocEntries.back().end = std::get<0>(it);
-      auto block = FirstCU->buildGeneral(*RegVar, Loc, &vars,
-                                         nullptr); // No variable DIE
-      std::vector<unsigned char> buffer;
-      if (block)
-        block->EmitToRawBuffer(buffer);
-      write(TempDotDebugLocEntries.back().loc, buffer.data(), buffer.size());
-      offset += pointerSize * 2 + 2 + buffer.size();
-
-      DotDebugLocEntry another(dotLoc.getStart(), dotLoc.getEnd(), dotLoc.getDbgInst(), dotLoc.getVariable());
-      another.start = std::get<0>(it);
-      another.end = std::get<1>(it);
-      TempDotDebugLocEntries.push_back(another);
-      // write actual caller save location expression
-      auto callerSaveVars = vars;
-      callerSaveVars.front().var.physicalType = DbgDecoder::VarAlloc::PhysicalVarType::PhyTypeMemory;
-      callerSaveVars.front().var.mapping.m.isBaseOffBEFP = 0;
-      callerSaveVars.front().var.mapping.m.memoryOffset = std::get<2>(it);
-      block = FirstCU->buildGeneral(*RegVar, Loc, &callerSaveVars,
-                                    nullptr); // No variable DIE
-      buffer.clear();
-      if (block)
-        block->EmitToRawBuffer(buffer);
-      write(TempDotDebugLocEntries.back().loc, buffer.data(), buffer.size());
-      offset += pointerSize * 2 + 2 + buffer.size();
-
-      if (std::get<1>(it) >= endRange)
-        return;
-
-      // start new interval with original location
-      DotDebugLocEntry yetAnother(dotLoc.getStart(), dotLoc.getEnd(), dotLoc.getDbgInst(), dotLoc.getVariable());
-      yetAnother.start = std::get<1>(it);
-      TempDotDebugLocEntries.push_back(yetAnother);
-    }
-
-    TempDotDebugLocEntries.back().end = endRange;
-    auto block = FirstCU->buildGeneral(*RegVar, Loc, &vars, nullptr); // No variable DIE
+  for (const auto &[callerSaveIp, callerRestoreIp, stackOffset] : allCallerSave) {
+    TempDotDebugLocEntries.back().end = callerSaveIp;
+    auto block = FirstCU->buildGeneral(*prev.dbgVar, Loc, &vars);
     std::vector<unsigned char> buffer;
     if (block)
       block->EmitToRawBuffer(buffer);
     write(TempDotDebugLocEntries.back().loc, buffer.data(), buffer.size());
     offset += pointerSize * 2 + 2 + buffer.size();
+
+    DotDebugLocEntry stackEntry(dotLoc.getStart(), dotLoc.getEnd(), dotLoc.getDbgInst(), dotLoc.getVariable());
+    stackEntry.start = callerSaveIp;
+    stackEntry.end = callerRestoreIp;
+    TempDotDebugLocEntries.push_back(stackEntry);
+
+    // write actual caller save location
+    auto callerSaveVars = vars;
+    callerSaveVars.front().var.physicalType = DbgDecoder::VarAlloc::PhysicalVarType::PhyTypeMemory;
+    callerSaveVars.front().var.mapping.m.isBaseOffBEFP = 0;
+    callerSaveVars.front().var.mapping.m.memoryOffset = stackOffset;
+
+    block = FirstCU->buildGeneral(*prev.dbgVar, Loc, &callerSaveVars);
+    buffer.clear();
+    if (block)
+      block->EmitToRawBuffer(buffer);
+    write(TempDotDebugLocEntries.back().loc, buffer.data(), buffer.size());
+    offset += pointerSize * 2 + 2 + buffer.size();
+
+    // If the restore point is at or beyond our range end, we're done
+    if (callerRestoreIp >= prev.end)
+      return;
+
+    // Start a new interval (variable back in register)
+    DotDebugLocEntry postCallEntry(dotLoc.getStart(), dotLoc.getEnd(), dotLoc.getDbgInst(), dotLoc.getVariable());
+    postCallEntry.start = callerRestoreIp;
+    TempDotDebugLocEntries.push_back(postCallEntry);
+  }
+
+  // Finalize the last (or only) interval - variable in its register
+  TempDotDebugLocEntries.back().end = prev.end;
+  auto block = FirstCU->buildGeneral(*prev.dbgVar, Loc, &vars);
+  std::vector<unsigned char> buffer;
+  if (block)
+    block->EmitToRawBuffer(buffer);
+  write(TempDotDebugLocEntries.back().loc, buffer.data(), buffer.size());
+  offset += pointerSize * 2 + 2 + buffer.size();
+}
+
+void DwarfDebug::encodePrevLoc(IGC::DotDebugLocEntry &dotLoc, PrevLoc &prev, uint32_t &offset, uint32_t pointerSize) {
+  if (prev.dbgVar->getDotDebugLocOffset() == DbgVariable::InvalidDotDebugLocOffset) {
+    prev.dbgVar->setDotDebugLocOffset(offset);
+  }
+
+  // This instruction bind shouldn't be done like that.
+  // DbgVariable class is representing the whole variable,
+  // not single dbg intrinsic only. This should be changed when
+  // location building will be possible without DbgVariable
+  // instruction.
+  prev.dbgVar->setDbgInst(prev.pInst);
+
+  if (prev.isImm()) {
+    encodeImm(dotLoc, prev, offset, pointerSize);
+  } else {
+    encodeReg(dotLoc, prev, offset, pointerSize);
+  }
+  prev.setEmpty();
+}
+
+LexicalScope *DwarfDebug::resolveVariableScope(DIVariable *DV, const llvm::DbgVariableIntrinsic *pInst,
+                                               const Function *MF) {
+  LexicalScope *Scope = NULL;
+  if (DV->getTag() == dwarf::DW_TAG_formal_parameter && DV->getScope() && DV->getScope()->getName() == MF->getName()) {
+    Scope = LScopes.getCurrentFunctionScope();
+  } else if (auto IA = pInst->getDebugLoc().getInlinedAt()) {
+    Scope = LScopes.findInlinedScope(cast<DILocalScope>(DV->getScope()), IA);
+  } else {
+    Scope = LScopes.findLexicalScope(cast<DILocalScope>(DV->getScope()));
+  }
+  return Scope;
+}
+
+DIVariable *DwarfDebug::processVariableHistory(const llvm::MDNode *Var,
+                                               MapVector<DbgVariable *, std::vector<DbgVarIPInfo>> &VarLiveRanges,
+                                               const Function *MF) {
+  // History contains relevant DBG_VALUE instructions for Var and instructions
+  // clobbering it.
+  // Variable can end up in one of the following location states:
+  //   1. No history     — no debug intrinsics exist; returns nullptr.
+  //   2. No scope       — history exists but no entry has a valid lexical scope;
+  //                       returns nullptr (variable may become optimized-out).
+  //   3. Inlined in DIE — location is embedded directly in the DIE (no .debug_loc).
+  //   4. IP ranges      — Mapping VariableLiveRanges for .debug_loc emission.
+
+  InstructionsList &History = DbgValues[Var];
+  if (History.empty()) {
+    LLVM_DEBUG(dbgs() << "   user variable has no history, skipped\n");
+    return nullptr;
+  }
+  LLVM_DEBUG(dbgs() << "    variable history size: " << History.size() << "\n");
+
+  // Store pairs of <DILocation, DbgVariable> as we encounter them.
+  // This allows us to emit 1 entry per function.
+  DenseMap<const DILocation *, DbgVariable *> AddedEntries;
+  DIVariable *DV = cast<DIVariable>(const_cast<MDNode *>(Var));
+
+  auto getOrCreateDbgVar = [&](const DbgVariableIntrinsic *pInst, LexicalScope *Scope) -> DbgVariable * {
+    DILocation *IA = pInst->getDebugLoc().getInlinedAt();
+    auto It = AddedEntries.find(IA);
+    if (It != AddedEntries.end())
+      return It->second;
+
+    DbgVariable *AbsVar = findAbstractVariable(DV, pInst->getDebugLoc());
+    DbgVariable *RegVar =
+        createDbgVariable(cast<DILocalVariable>(DV), AbsVar ? AbsVar->getLocation() : nullptr, AbsVar);
+    LLVM_DEBUG(dbgs() << "  regular variable: "; RegVar->dump());
+
+    if (!addCurrentFnArgument(MF, RegVar, Scope))
+      addScopeVariable(Scope, RegVar);
+
+    AddedEntries.insert({IA, RegVar});
+    return RegVar;
   };
 
+  // Following loop iterates over all llvm.dbg.declare and llvm.dbg.value
+  // instances for inlined functions and creates new DbgVariable instances
+  // for each.
+
+  // DbgVariable is created once per variable to be emitted to dwarf.
+  // If a function is inlined x times, there would be x number of DbgVariable
+  // instances.
+  for (size_t Idx = 0; Idx < History.size(); ++Idx) {
+    const llvm::DbgVariableIntrinsic *DbgInst = History[Idx];
+    LexicalScope *Scope = resolveVariableScope(DV, DbgInst, MF);
+
+    // If variable scope is not found then skip this variable.
+    if (!Scope)
+      continue;
+
+    IGC_ASSERT_MESSAGE(IsDebugInst(DbgInst), "History must begin with debug instruction");
+    DbgVariable *RegVar = getOrCreateDbgVar(DbgInst, Scope);
+
+    // Assume that VISA preserves location throughout its lifetime.
+    auto Loc = m_pModule->GetVariableLocation(DbgInst);
+    LLVM_DEBUG(Loc.print(dbgs()));
+
+    // Conditions below decide whether we want to emit location to .debug_loc
+    // or inline it in the DIE. To inline in DIE, we simply set dbg
+    // instruction and return DV. Location list won't be emitted.
+
+    // We emit inlined location for the variable in the following cases:
+    // 1. There is a single llvm.dbg.declare instruction describing memory
+    // location of the variable.
+    // 2. There is a single llvm.dbg.value instruction with immediate value -
+    // we assume that the value of the variable is constant.
+    // We want to support more cases in the future.
+    if (History.size() == 1) {
+      bool CanInline =
+          isa<DbgDeclareInst>(DbgInst) && (DbgInst->getMetadata("StorageOffset") || Loc.HasSurface() || Loc.IsSLM());
+      if (Loc.IsImmediate() || CanInline) {
+        RegVar->setDbgInst(DbgInst);
+        RegVar->setLocationInlined(true);
+        return DV;
+      }
+    }
+
+    if (History.size() > 1 && isa<DbgDeclareInst>(DbgInst)) {
+      LLVM_DEBUG(dbgs() << "Warning: We don't expect many llvm.dbg.declare calls for a single variable.\n");
+    }
+
+    const Instruction *Start = DbgInst;
+    const Instruction *End = Start;
+
+    if (Idx + 1 < History.size()) {
+      // Set end to next instruction in history
+      End = History[Idx + 1];
+    } else if (auto lastIATit = SameIATInsts.find(Start->getDebugLoc().getInlinedAt());
+               lastIATit != SameIATInsts.end()) {
+      // Set end to loc of last instruction in current function (same IAT)
+      End = (*lastIATit).second.back();
+    }
+
+    if (Start == End) {
+      continue;
+    }
+
+    auto GenISARange = m_pModule->getGenISARange(*VisaDbgInfo, {Start, End});
+    for (const auto &[StartIP, EndIP] : GenISARange) {
+      VarLiveRanges[RegVar].emplace_back(StartIP, EndIP, DbgInst);
+    }
+  }
+
+  // If AddedEntries is empty than we didn't found any valid scope for history.
+  return AddedEntries.empty() ? nullptr : DV;
+}
+
+// Find variables for each lexical scope.
+void DwarfDebug::collectVariableInfo(const Function *MF, SmallPtrSet<const MDNode *, 16> &Processed) {
+  TempDotDebugLocEntries.clear();
+  uint32_t pointerSize = m_pModule->getPointerSize();
+
+  // Offset to next location in .debug_loc
   uint32_t offset = 0;
-  unsigned int pointerSize = m_pModule->getPointerSize();
+
   for (const MDNode *Var : UserVariables) {
     if (Processed.count(Var))
       continue;
 
     LLVM_DEBUG(dbgs() << "$$$ processing user variable: [" << cast<DIVariable>(Var)->getName() << "], type("
                       << *cast<DIVariable>(Var)->getType() << ")\n");
-
-    // History contains relevant DBG_VALUE instructions for Var and instructions
-    // clobbering it.
-    InstructionsList &History = DbgValues[Var];
-    if (History.empty()) {
-      LLVM_DEBUG(dbgs() << "   user variable has no history, skipped\n");
+    // Build mapping: DbgVariable -> list of (startIP, endIP, instruction)
+    MapVector<DbgVariable *, std::vector<DbgVarIPInfo>> VarLiveRanges;
+    auto DV = processVariableHistory(Var, VarLiveRanges, MF);
+    if (!DV)
       continue;
-    }
-    LLVM_DEBUG(dbgs() << "    variable history size: " << History.size() << "\n");
 
-    auto origLocSize = TempDotDebugLocEntries.size();
+    Processed.insert(DV);
 
-    // Following loop iterates over all dbg.declare instances
-    // for inlined functions and creates new DbgVariable instances for each.
+    // Continue if location is inlined to DIE or doesn't have any IP ranges.
+    if (VarLiveRanges.empty())
+      continue;
 
-    // DbgVariable is created once per variable to be emitted to dwarf.
-    // If a function is inlined x times, there would be x number of DbgVariable
-    // instances.
-    using DbgVarIPInfo = std::tuple<unsigned int, unsigned int, DbgVariable *, const llvm::DbgVariableIntrinsic *>;
-    // TODO: consider replacing std::list to std::vector
-    std::unordered_map<DbgVariable *, std::list<DbgVarIPInfo>> DbgValuesWithGenIP;
-    for (auto HI = History.begin(), HE = History.end(); HI != HE; HI++) {
-      const auto *H = (*HI);
-      DIVariable *DV = cast<DIVariable>(const_cast<MDNode *>(Var));
+    LLVM_DEBUG(dbgs() << "  number of IP intervals for the usage of "
+                      << "the source variable: " << VarLiveRanges.size() << "\n");
 
-      LexicalScope *Scope = NULL;
-      if (DV->getTag() == dwarf::DW_TAG_formal_parameter && DV->getScope() &&
-          DV->getScope()->getName() == MF->getName()) {
-        Scope = LScopes.getCurrentFunctionScope();
-      } else if (auto IA = H->getDebugLoc().getInlinedAt()) {
-        Scope = LScopes.findInlinedScope(cast<DILocalScope>(DV->getScope()), IA);
-      } else {
-        Scope = LScopes.findLexicalScope(cast<DILocalScope>(DV->getScope()));
-      }
-
-      // If variable scope is not found then skip this variable.
-      if (!Scope)
-        continue;
-
-      Processed.insert(DV);
-      const llvm::DbgVariableIntrinsic *pInst = H; // History.front();
-
-      IGC_ASSERT_MESSAGE(IsDebugInst(pInst), "History must begin with debug instruction");
-      DbgVariable *AbsVar = findAbstractVariable(DV, pInst->getDebugLoc());
-      DbgVariable *RegVar = nullptr;
-
-      auto prevRegVar = isAdded(DV, pInst->getDebugLoc().getInlinedAt());
-
-      if (!prevRegVar) {
-        RegVar = createDbgVariable(cast<DILocalVariable>(DV), AbsVar ? AbsVar->getLocation() : nullptr, AbsVar);
-        LLVM_DEBUG(dbgs() << "  regular variable: "; RegVar->dump());
-
-        if (!addCurrentFnArgument(MF, RegVar, Scope))
-          addScopeVariable(Scope, RegVar);
-
-        addedEntries.push_back(std::make_tuple(DV, pInst->getDebugLoc().getInlinedAt(), RegVar));
-      } else
-        RegVar = prevRegVar;
-
-      // assume that VISA preserves location thoughout its lifetime
-      auto Loc = m_pModule->GetVariableLocation(pInst);
-
-      LLVM_DEBUG(Loc.print(dbgs()));
-
-      // Conditions below decide whether we want to emit location to debug_loc
-      // or inline it in the DIE. To inline in DIE, we simply set dbg
-      // instruction and break. Location list won't be emitted.
-
-      // We emit inlined location for the variable in the following cases:
-      // 1. There is a single llvm.dbg.declare instruction describing memory
-      // location of the variable.
-      // 2. There is a single llvm.dbg.value instruction with immediate value -
-      // we assume that the value of the variable is constant.
-      // We want to support more cases in the future.
-
-      if (History.size() == 1) {
-        if (Loc.IsImmediate() ||
-            (isa<DbgDeclareInst>(pInst) && (pInst->getMetadata("StorageOffset") || Loc.HasSurface() || Loc.IsSLM()))) {
-          RegVar->setDbgInst(pInst);
-          RegVar->setLocationInlined(true);
-          break;
-        }
-      }
-
-      if (History.size() > 1 && isa<DbgDeclareInst>(pInst)) {
-        LLVM_DEBUG(dbgs() << "Warning: We don't expect many llvm.dbg.declare calls for a single variable.\n");
-      }
-
-      const Instruction *start = (*HI);
-      const Instruction *end = start;
-
-      if (HI + 1 != HE)
-        end = HI[1];
-      else if (auto lastIATit = SameIATInsts.find(start->getDebugLoc().getInlinedAt());
-               lastIATit != SameIATInsts.end()) {
-        // Find loc of last instruction in current function (same IAT)
-        end = (*lastIATit).second.back();
-      }
-
-      if (start == end) {
-        continue;
-      }
-
-      auto GenISARange = m_pModule->getGenISARange(*VisaDbgInfo, {start, end});
-      for (const auto &range : GenISARange) {
-        DbgValuesWithGenIP[RegVar].emplace_back(range.first, range.second, RegVar, pInst);
-      }
-    }
-
-    DIVariable *DV = cast<DIVariable>(const_cast<MDNode *>(Var));
-
-    if (!DbgValuesWithGenIP.empty())
-      LLVM_DEBUG(dbgs() << "  number of IP intervals for the usage of "
-                        << "the source variable: " << DbgValuesWithGenIP.size() << "\n");
-
-    // TODO: fixup non-determenistic traversal
-    for (auto &d : DbgValuesWithGenIP) {
-      d.second.sort([](const DbgVarIPInfo &first, const DbgVarIPInfo &second) {
+    for (auto &[RegVar, Ranges] : VarLiveRanges) {
+      std::sort(Ranges.begin(), Ranges.end(), [](const DbgVarIPInfo &first, const DbgVarIPInfo &second) {
         return std::get<0>(first) < std::get<0>(second);
       });
 
-      struct PrevLoc {
-        enum class Type { Empty = 0, Imm = 1, Reg = 2 };
-        Type t = Type::Empty;
-        uint64_t start = 0;
-        uint64_t end = 0;
-        DbgVariable *dbgVar = nullptr;
-        const llvm::DbgVariableIntrinsic *pInst = nullptr;
-        const ConstantInt *imm = nullptr;
+      // Check if we emmited any .debug_loc location for given RegVar
+      auto origLocSize = TempDotDebugLocEntries.size();
 
-        VISAVariableLocation Loc;
-        DbgDecoder::LiveIntervalsVISA visaRange;
-        DbgDecoder::LiveIntervalsVISA visaRange2nd; // In a case of SIMD32
-      };
-
-      PrevLoc p;
-      auto encodePrevLoc = [&](DotDebugLocEntry &dotLoc, DotDebugLocEntryVect &TempDotDebugLocEntries,
-                               uint32_t &offset) {
-        if (p.dbgVar->getDotDebugLocOffset() == DbgVariable::InvalidDotDebugLocOffset) {
-          p.dbgVar->setDotDebugLocOffset(offset);
-        }
-        // This instruction bind shouldn't be done like that.
-        // DbgVariable class is representing the whole variable,
-        // not single dbg intrinsic only. This should be changed when
-        // location building will be possible without DbgVariable
-        // instruction.
-        p.dbgVar->setDbgInst(p.pInst);
-        if (p.t == PrevLoc::Type::Imm) {
-          encodeImm(dotLoc, offset, TempDotDebugLocEntries, p.start, p.end, pointerSize, p.dbgVar, p.imm);
-        } else {
-          encodeReg(dotLoc, offset, TempDotDebugLocEntries, p.start, p.end, pointerSize, p.dbgVar, p.Loc, p.visaRange,
-                    p.visaRange2nd);
-        }
-        p.t = PrevLoc::Type::Empty;
-      };
-      for (auto &range : d.second) {
-        // TODO do we really need this variables in tuple
-        auto [startIp, endIp, RegVar, pInst] = range;
-
+      // PrevLoc acts as a state machine that buffers pending location entries
+      // before emitting them to .debug_loc. This enables merging consecutive
+      // identical locations into a single entry with extended range.
+      PrevLoc prev;
+      for (const auto &[startIp, endIp, pInst] : Ranges) {
         auto CurLoc = m_pModule->GetVariableLocation(pInst);
 
         LLVM_DEBUG(dbgs() << "  Processing Location at IP Range: [0x"; dbgs().write_hex(startIp) << "; " << "0x";
@@ -1717,40 +1708,45 @@ void DwarfDebug::collectVariableInfo(const Function *MF, SmallPtrSet<const MDNod
 
         if (CurLoc.IsImmediate()) {
           const Constant *pConstVal = CurLoc.GetImmediate();
-          if (const ConstantInt *pConstInt = dyn_cast<ConstantInt>(pConstVal)) {
-            // Always emit an 8-byte value
-            uint64_t rangeStart = startIp;
-            uint64_t rangeEnd = endIp;
+          const ConstantInt *pConstInt = dyn_cast<ConstantInt>(pConstVal);
+          if (!pConstInt)
+            continue;
 
-            if (p.t == PrevLoc::Type::Imm && p.end < rangeEnd && p.imm == pConstInt) {
-              // extend
-              p.end = rangeEnd;
-              continue;
-            }
-
-            if (p.end >= rangeEnd)
-              continue;
-
-            if (rangeStart == rangeEnd)
-              continue;
-
-            if (p.t != PrevLoc::Type::Empty) {
-              // Emit previous location to debug_loc
-              encodePrevLoc(dotLoc, TempDotDebugLocEntries, offset);
-            }
-
-            p.t = PrevLoc::Type::Imm;
-            p.start = rangeStart;
-            p.end = rangeEnd;
-            p.imm = pConstInt;
-            p.dbgVar = RegVar;
-            p.pInst = pInst;
+          if (prev.canExtendImm(endIp, pConstInt)) {
+            prev.extendTo(endIp);
+            continue;
           }
+
+          if (prev.end >= endIp || startIp == endIp)
+            continue;
+
+          if (!prev.isEmpty()) {
+            encodePrevLoc(dotLoc, prev, offset, pointerSize);
+          }
+          prev.setImm(startIp, endIp, RegVar, pInst, pConstInt);
         } else if (CurLoc.IsRegister()) {
-          auto regNum = CurLoc.GetRegister();
+          const auto regNum = CurLoc.GetRegister();
           const auto *VarInfo = m_pModule->getVarInfo(*VisaDbgInfo, regNum);
           if (!VarInfo)
             continue;
+
+          using IntervalTy = decltype(DbgDecoder::LiveIntervalGenISA::start);
+          auto findSemiOpenInterval = [this](IntervalTy start, IntervalTy end) -> std::pair<IntervalTy, IntervalTy> {
+            if (start >= end)
+              return {0, 0};
+            const auto &Map = VisaDbgInfo->getVisaToGenLUT();
+            auto LB = Map.lower_bound(start);
+            auto UB = Map.upper_bound(end);
+            if (LB == Map.end() || UB == Map.end())
+              return {0, 0};
+
+            start = LB->second.front();
+            end = UB->second.front();
+            if (start >= end)
+              return {0, 0};
+            return {start, end};
+          };
+
           for (const auto &visaRange : VarInfo->lrs) {
             auto startEnd = findSemiOpenInterval(visaRange.start, visaRange.end);
 
@@ -1762,77 +1758,73 @@ void DwarfDebug::collectVariableInfo(const Function *MF, SmallPtrSet<const MDNod
 
             if (endRange < startIp)
               continue;
+
             if (startRange > endIp)
               continue;
 
-            startRange = std::max(startRange, (uint64_t)startIp);
-            endRange = std::min(endRange, (uint64_t)endIp);
+            startRange = std::max(startRange, startIp);
+            endRange = std::min(endRange, endIp);
 
-            if (p.t == PrevLoc::Type::Reg && p.end < endRange) {
-              if ((p.visaRange.isGRF() && visaRange.isGRF() && p.visaRange.getGRF() == visaRange.getGRF()) ||
-                  (p.visaRange.isSpill() && visaRange.isSpill() &&
-                   p.visaRange.getSpillOffset() == visaRange.getSpillOffset())) {
-                // extend
-                p.end = endRange;
-                continue;
-              }
+            if (prev.canExtendReg(endRange, visaRange)) {
+              prev.extendTo(endRange);
+              continue;
             }
 
-            if (p.end >= endRange)
+            if (prev.end >= endRange || startRange == endRange)
               continue;
 
-            if (startRange == endRange)
-              continue;
-
-            if (p.t != PrevLoc::Type::Empty) {
-              encodePrevLoc(dotLoc, TempDotDebugLocEntries, offset);
+            if (!prev.isEmpty()) {
+              encodePrevLoc(dotLoc, prev, offset, pointerSize);
             }
 
-            p.t = PrevLoc::Type::Reg;
-            p.start = startRange;
-            p.end = endRange;
-            p.dbgVar = RegVar;
-            p.Loc = CurLoc;
-            p.visaRange = visaRange;
+            DbgDecoder::LiveIntervalsVISA visaRange2nd;
             if (CurLoc.HasLocationSecondReg()) {
-              auto regNum2nd = CurLoc.GetSecondReg();
+              const auto regNum2nd = CurLoc.GetSecondReg();
               const auto *VarInfo2nd = m_pModule->getVarInfo(*VisaDbgInfo, regNum2nd);
               if (VarInfo2nd)
-                p.visaRange2nd = (*VarInfo2nd->lrs.rbegin());
+                visaRange2nd = (*VarInfo2nd->lrs.rbegin());
             }
-            p.pInst = pInst;
 
-            LLVM_DEBUG(dbgs() << "  Fix IP Range to: [0x"; dbgs().write_hex(p.start) << "; " << "0x";
-                       dbgs().write_hex(p.end) << ")\n";);
+            prev.setReg(startRange, endRange, RegVar, pInst, CurLoc, visaRange, visaRange2nd);
+
+            LLVM_DEBUG(dbgs() << "  Fix IP Range to: [0x"; dbgs().write_hex(prev.start) << "; " << "0x";
+                       dbgs().write_hex(prev.end) << ")\n";);
           }
         }
       }
 
-      if (p.t != PrevLoc::Type::Empty) {
-        DotDebugLocEntry dotLoc(p.start, p.end, p.pInst, DV);
+      // Last pending location for given RegVar
+      if (!prev.isEmpty()) {
+        DotDebugLocEntry dotLoc(prev.start, prev.end, prev.pInst, DV);
         dotLoc.setOffset(offset);
-        encodePrevLoc(dotLoc, TempDotDebugLocEntries, offset);
+        encodePrevLoc(dotLoc, prev, offset, pointerSize);
       }
 
+      // Empty DotDebugLocEntry works as terminator
       if (TempDotDebugLocEntries.size() > origLocSize) {
         TempDotDebugLocEntries.push_back(DotDebugLocEntry());
         offset += pointerSize * 2;
       }
     }
   }
+  collectOptimizedOut(Processed);
+}
 
-  // Collect info for variables that were optimized out.
-  LexicalScope *FnScope = LScopes.getCurrentFunctionScope();
-  auto Variables = cast<DISubprogram>(FnScope->getScopeNode())->getRetainedNodes();
+void DwarfDebug::collectOptimizedOut(llvm::SmallPtrSet<const llvm::MDNode *, 16> &Processed) {
+  auto *FnScope = LScopes.getCurrentFunctionScope();
+  auto RetainedNodes = cast<DISubprogram>(FnScope->getScopeNode())->getRetainedNodes();
 
-  for (unsigned i = 0, e = Variables.size(); i != e; ++i) {
-    DILocalVariable *DV = cast_or_null<DILocalVariable>(Variables[i]);
+  for (const auto *Var : RetainedNodes) {
+    auto *DV = cast_or_null<DILocalVariable>(Var);
+
+    // Skip if the variable is not DILocalVariable or if we have already processed it.
     if (!DV || !Processed.insert(DV).second)
       continue;
+
     if (LexicalScope *Scope = LScopes.findLexicalScope(DV->getScope())) {
-      auto *Var = createDbgVariable(DV);
-      LLVM_DEBUG(dbgs() << "  optimized-out variable: "; Var->dump());
-      addScopeVariable(Scope, Var);
+      auto *DbgVar = createDbgVariable(DV);
+      LLVM_DEBUG(dbgs() << "  optimized-out variable: "; DbgVar->dump());
+      addScopeVariable(Scope, DbgVar);
     }
   }
 }

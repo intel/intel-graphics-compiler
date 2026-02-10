@@ -2045,7 +2045,7 @@ void CompileUnit::buildLocation(const llvm::Instruction *pDbgInst, DbgVariable &
   else if (Loc.HasSurface() && (DV.getType() && DV.getType()->getTag() == dwarf::DW_TAG_pointer_type))
     locationAT = buildPointer(DV, Loc);
   else
-    locationAT = buildGeneral(DV, Loc, nullptr, VariableDie);
+    locationAT = buildGeneral(DV, Loc, nullptr);
 
   if (locationAT)
     addBlock(VariableDie, dwarf::DW_AT_location, locationAT);
@@ -2468,8 +2468,7 @@ bool CompileUnit::buildValidVar(DbgVariable &var, IGC::DIEBlock *Block, const VI
 }
 
 IGC::DIEBlock *CompileUnit::buildGeneral(DbgVariable &var, const VISAVariableLocation &loc,
-                                         const std::vector<DbgDecoder::LiveIntervalsVISA> *vars,
-                                         IGC::DIE *VariableDie) {
+                                         const std::vector<DbgDecoder::LiveIntervalsVISA> *vars) {
   IGC::DIEBlock *Block = new (DIEValueAllocator) IGC::DIEBlock();
   offsetTaken = 0;
   skipOff = nullptr;

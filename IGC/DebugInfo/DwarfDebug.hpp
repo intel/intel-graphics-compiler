@@ -24,6 +24,7 @@ See LICENSE.TXT for details.
 #include "llvm/ADT/FoldingSet.h"
 #include "llvm/ADT/SmallPtrSet.h"
 #include "llvm/ADT/StringMap.h"
+#include "llvm/ADT/MapVector.h"
 #include "llvm/Config/llvm-config.h"
 #include "llvm/IR/DebugInfo.h"
 #include "llvm/IR/DebugInfoMetadata.h"
@@ -545,8 +546,110 @@ private:
   /// CurrentFnArguments list.
   bool addCurrentFnArgument(const llvm::Function *MF, DbgVariable *Var, ::IGC::LexicalScope *Scope);
 
+  //===----------------------------------------------------------------------===//
+  /// Functions and struct in this section are collectVariableInfo() helpers
+
   /// \brief Populate LexicalScope entries with variables' info.
   void collectVariableInfo(const llvm::Function *MF, llvm::SmallPtrSet<const llvm::MDNode *, 16> &ProcessedVars);
+
+  /// \brief Represents a pending location entry for .debug_loc encoding.
+  /// Used to merge consecutive identical locations before emitting.
+  struct PrevLoc {
+    enum class Type { Empty = 0, Imm = 1, Reg = 2 };
+    Type type = Type::Empty;
+    uint64_t start = 0;
+    uint64_t end = 0;
+    DbgVariable *dbgVar = nullptr;
+    const llvm::DbgVariableIntrinsic *pInst = nullptr;
+    const llvm::ConstantInt *imm = nullptr;
+
+    VISAVariableLocation Loc;
+    DbgDecoder::LiveIntervalsVISA visaRange;
+    DbgDecoder::LiveIntervalsVISA visaRange2nd; // In case of SIMD32
+
+    bool isEmpty() const { return type == Type::Empty; }
+    bool isImm() const { return type == Type::Imm; }
+    bool isReg() const { return type == Type::Reg; }
+
+    void setEmpty() { type = Type::Empty; }
+
+    void setImm(uint64_t s, uint64_t e, DbgVariable *var, const llvm::DbgVariableIntrinsic *inst,
+                const llvm::ConstantInt *val) {
+      type = Type::Imm;
+      start = s;
+      end = e;
+      dbgVar = var;
+      pInst = inst;
+      imm = val;
+    }
+
+    void setReg(uint64_t s, uint64_t e, DbgVariable *var, const llvm::DbgVariableIntrinsic *inst,
+                const VISAVariableLocation &loc, const DbgDecoder::LiveIntervalsVISA &range,
+                const DbgDecoder::LiveIntervalsVISA &range2nd = {}) {
+      type = Type::Reg;
+      start = s;
+      end = e;
+      dbgVar = var;
+      pInst = inst;
+      Loc = loc;
+      visaRange = range;
+      visaRange2nd = range2nd;
+    }
+
+    // Current location is continuation of previous one
+    void extendTo(uint64_t newEnd) { end = newEnd; }
+
+    // Immediate range can be extended, when current entry is an immediate and
+    // new range extends beyond current end, for identical constant value.
+    bool canExtendImm(uint64_t newEnd, const llvm::ConstantInt *val) const {
+      return isImm() && end < newEnd && imm == val;
+    }
+
+    // Register location range can be extended if:
+    // 1. Current entry is register based
+    // 2. The new range extends beyond current end
+    // 3. The variable remains in the same location:
+    //    - Both are in the same GRF register, or
+    //    - Both are spilled with the same offset
+    bool canExtendReg(uint64_t newEnd, const DbgDecoder::LiveIntervalsVISA &range) const {
+      if (!isReg() || end >= newEnd)
+        return false;
+      bool SameGRF = visaRange.isGRF() && range.isGRF() && visaRange.getGRF() == range.getGRF();
+      bool SameSpillOffset =
+          visaRange.isSpill() && range.isSpill() && visaRange.getSpillOffset() == range.getSpillOffset();
+      return SameGRF || SameSpillOffset;
+    }
+  };
+
+  /// \brief Encode an immediate (constant) value location into .debug_loc entry.
+  /// Writes the address range and DWARF expression (DW_OP_implicit_value)
+  void encodeImm(IGC::DotDebugLocEntry &dotLoc, const PrevLoc &prev, uint32_t &offset, uint32_t pointerSize);
+
+  /// \brief Encode a register-based location into .debug_loc entry.
+  /// Writes the address range and DWARF expression describing the variable's
+  /// location in a GRF register. Handles caller-save.
+  void encodeReg(IGC::DotDebugLocEntry &dotLoc, const PrevLoc &prev, uint32_t &offset, uint32_t pointerSize);
+
+  /// \brief Write a PrevLoc location entry to the dotLoc. Dispatches
+  /// to encodeImm or encodeReg based on the location type.
+  void encodePrevLoc(IGC::DotDebugLocEntry &dotLoc, PrevLoc &prev, uint32_t &offset, uint32_t pointerSize);
+
+  /// \brief Determine the lexical scope for a debug variable.
+  ::IGC::LexicalScope *resolveVariableScope(llvm::DIVariable *DV, const llvm::DbgVariableIntrinsic *H,
+                                            const llvm::Function *MF);
+
+  using DbgVarIPInfo = std::tuple<uint64_t, uint64_t, const llvm::DbgVariableIntrinsic *>;
+  /// \brief Process the history of debug values for a single variable.
+  /// Analyzes all debug intrinsics associated with a variable and builds
+  /// a mapping of DbgVariable instances to their GenISA IP.
+  llvm::DIVariable *
+  processVariableHistory(const llvm::MDNode *Var,
+                         llvm::MapVector<DbgVariable *, std::vector<DbgVarIPInfo>> &VariableLiveRanges,
+                         const llvm::Function *MF);
+
+  /// \brief Collect info for variables that were optimized out.
+  void collectOptimizedOut(llvm::SmallPtrSet<const llvm::MDNode *, 16> &Processed);
+  //===----------------------------------------------------------------------===//
 
   /// \brief Ensure that a label will be emitted before MI.
   void requestLabelBeforeInsn(const llvm::Instruction *MI) {

@@ -479,7 +479,7 @@ public:
   // buildSLM - Build expression for location described as offset in SLM memory.
   DIEBlock *buildSLM(const DbgVariable &, const VISAVariableLocation &, IGC::DIE *);
   DIEBlock *buildGeneral(DbgVariable &, const VISAVariableLocation &,
-                         const std::vector<DbgDecoder::LiveIntervalsVISA> *, IGC::DIE *);
+                         const std::vector<DbgDecoder::LiveIntervalsVISA> *);
   unsigned int stackValueOffset = 0;
 
 private:
