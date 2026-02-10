@@ -14,7 +14,7 @@ INLINE INLINE float __attribute__((overloadable)) __spirv_ocl_round( float x )
     float delta = as_float(0x3EFFFFFF); // one bit less than 0.5f
     float nd = x - delta;
     float pd = x + delta;
-    x = ( x < 0 ) ? nd : pd;
+    x = __spirv_SignBitSet(x) ? nd : pd;
     return __spirv_ocl_trunc(x);
 }
 
@@ -27,7 +27,7 @@ INLINE INLINE double __attribute__((overloadable)) __spirv_ocl_round( double x )
     double delta = as_double(0x3FDFFFFFFFFFFFFFl);   // one bit less than 0.5
     double nd = x - delta;
     double pd = x + delta;
-    x = ( x < 0 ) ? nd : pd;
+    x = __spirv_SignBitSet(x) ? nd : pd;
     return __spirv_ocl_trunc(x);
 }
 
