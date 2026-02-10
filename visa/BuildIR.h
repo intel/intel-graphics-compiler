@@ -1551,10 +1551,12 @@ public:
   /// \param aoffimmival      address offset by immediate integer
   /// \param isGather4        flag to denote gather4 operations
   /// \returns pointer to descriptor object (G4_SendgDesc)
-  G4_SendgDesc *
-  createSamplerDesc(MsgOp op, ChannelMask chMask, bool FP16Return, bool FP16Input,
-                    bool pixelNullMask, bool feedbackMessage, uint32_t surfaceImmIndex,
-                    uint32_t samplerImmIndex, int64_t aoffimmiVal, bool isGather4);
+  G4_SendgDesc *createSamplerDesc(MsgOp op, ChannelMask chMask, bool FP16Return,
+                                  bool FP16Input, bool pixelNullMask,
+                                  bool feedbackMessage,
+                                  uint32_t surfaceImmIndex,
+                                  uint32_t samplerImmIndex, int64_t aoffimmiVal,
+                                  bool isGather4);
 
   /// createUntypedCMaskDesc - constructs the descriptor value and creates
   /// unified send descriptor for LSC untyped cmask operations
@@ -2273,25 +2275,26 @@ public:
   int translateVISASampler3DInstUnified(
       VISASampler3DSubOpCode actualop, bool pixelNullMask, bool uniformSampler,
       G4_Predicate *pred, VISA_Exec_Size executionSize, VISA_EMask_Ctrl emask,
-      ChannelMask srcChannel, G4_Operand *aoffimmi, G4_Operand* samplerBase,
-      unsigned int samplerIdx, G4_Operand* surfaceBase, unsigned int surfaceIdx,
-      G4_Operand *pairedSurface, G4_DstRegRegion *dst,
-      unsigned int numParms, G4_SrcRegRegion **params, bool isGather4 = false);
+      ChannelMask srcChannel, G4_Operand *aoffimmi, G4_Operand *samplerBase,
+      unsigned int samplerIdx, G4_Operand *surfaceBase, unsigned int surfaceIdx,
+      G4_Operand *pairedSurface, G4_DstRegRegion *dst, unsigned int numParms,
+      G4_SrcRegRegion **params, bool isGather4 = false);
 
   int translateVISAGather3DInstUnified(
       VISASampler3DSubOpCode actualop, bool pixelNullMask, bool uniformSampler,
       G4_Predicate *pred, VISA_Exec_Size executionSize, VISA_EMask_Ctrl emask,
-      ChannelMask srcChannel, G4_Operand *aoffimmi, G4_Operand* samplerBase,
-      unsigned int samplerIdx, G4_Operand* surfaceBase, unsigned int surfaceIdx,
+      ChannelMask srcChannel, G4_Operand *aoffimmi, G4_Operand *samplerBase,
+      unsigned int samplerIdx, G4_Operand *surfaceBase, unsigned int surfaceIdx,
       G4_Operand *pairedSurface, G4_DstRegRegion *dst, unsigned int numOpnds,
       G4_SrcRegRegion **opndArray);
 
   int translateVISALoad3DInstUnified(
       VISASampler3DSubOpCode actualop, bool pixelNullMask, G4_Predicate *pred,
       VISA_Exec_Size exeuctionSize, VISA_EMask_Ctrl em, ChannelMask channelMask,
-      G4_Operand *aoffimmi, G4_Operand* samplerBase, unsigned int samplerIdx,
-      G4_Operand* surfaceBase, unsigned int surfaceIdx, G4_Operand *pairedSurface,
-      G4_DstRegRegion *dst, uint8_t numOpnds, G4_SrcRegRegion **opndArray);
+      G4_Operand *aoffimmi, G4_Operand *samplerBase, unsigned int samplerIdx,
+      G4_Operand *surfaceBase, unsigned int surfaceIdx,
+      G4_Operand *pairedSurface, G4_DstRegRegion *dst, uint8_t numOpnds,
+      G4_SrcRegRegion **opndArray);
 
   int translateVISALoad3DInst(VISASampler3DSubOpCode actualop,
                               bool pixelNullMask, G4_Predicate *pred,

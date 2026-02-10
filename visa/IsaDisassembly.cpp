@@ -1461,13 +1461,18 @@ static std::string printInstructionMisc(const print_format_provider_t *header,
   return sstr.str();
 }
 
-// For 3D sampler instructions, subOpcode, pixel null mask and CPS LOD
-// compensation enable share the same byte:
-//
-// Bit 0-4: subOpcode
-// Bit   5: pixelNullMask
-// Bit   6: cpsEnable
-//
+// For 3D sampler instructions, subOpcode, pixel null mask, CPS LOD
+// compensation enable, etc. share the same operand:
+// major version >= 4:
+//   Bit 0-7: subOpcode
+//   Bit 8  : pixelNullMask
+//   Bit 9  : cpsEnable
+//   Bit 10 : non-uniform sampler
+// major version < 4:
+//   Bit 0-4: subOpcode
+//   Bit 5  : pixelNullMask
+//   Bit 6  : cpsEnable
+//   Bit 7  : non-uniform sampler
 static VISA3DSamplerOp getSamplerSubOpcode(uint16_t majorV,
                                            const CISA_INST *inst, unsigned i) {
   // The vISA version that widens the opcode field is 4
@@ -1478,7 +1483,9 @@ static VISA3DSamplerOp getSamplerSubOpcode(uint16_t majorV,
   auto val = (majorV >= WIDE_OPCODE_ISA_VER)
                  ? getPrimitiveOperand<uint16_t>(inst, i)
                  : getPrimitiveOperand<uint8_t>(inst, i);
-  return VISA3DSamplerOp::extractSamplerOp(val);
+  return (majorV >= WIDE_OPCODE_ISA_VER)
+             ? VISA3DSamplerOp::extractSamplerOp<uint16_t>(val)
+             : VISA3DSamplerOp::extractSamplerOp<uint8_t>(val);
 }
 
 constexpr const char *mmf_enable_mode[3] = {"VA_MINMAX_ENABLE", "VA_MAX_ENABLE",
@@ -1572,8 +1579,8 @@ printInstructionSampler(const print_format_provider_t *header,
     break;
   }
   case ISA_3D_SAMPLE: {
-    // [(P)] SAMPLE_3d[.pixel_null_mask][.cps][.divS].<channels> (exec_size)
-    //   [(u_aoffimmi, v_aoffimii, r_aoffimmi)] <sampler> <surface>
+    // [(P)] SAMPLE_3d[.pixel_null_mask][.cps][.divS].<channels>
+    //   (exec_size) [(u_aoffimmi, v_aoffimii, r_aoffimmi)] <sampler> <surface>
     //   <dst> <u> <v> <r> <ai>
     // [(P)] SAMPLE_3d[.pixel_null_mask][.cps][.divS].<channels> (exec_size)
     //   [(u_aoffimmi, v_aoffimii, r_aoffimmi)]

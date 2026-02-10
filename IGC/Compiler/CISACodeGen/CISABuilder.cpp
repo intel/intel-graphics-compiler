@@ -2189,20 +2189,19 @@ void CEncoder::Sample(EOPCODE subOpcode, uint writeMask, CVariable *offset, cons
     if (m_program->m_Platform->hasEfficient64bEnabled()) {
       VISA_VectorOpnd *samplerBaseAddrOpnd = GetSourceOperandNoModifier(sampler.m_sampler);
       VISA_VectorOpnd *surfaceBaseAddrOpnd = GetSourceOperandNoModifier(resource.m_resource);
-      status = vKernel->AppendVISA3dSampler(
-          ConvertSubOpcode(subOpcode, zeroLOD),
-          feedbackEnable, // pixel null mask
-          cpsEnable, !nonUniformState, predOpnd, GetAluEMask(dst), visaExecSize(m_encoderState.m_simdSize),
-          ConvertChannelMaskToVisaType(writeMask), aoffimmi, (VISA_StateOpndHandle *)samplerBaseAddrOpnd,
-          sampler.m_SamplerStateIndex, (VISA_StateOpndHandle *)surfaceBaseAddrOpnd, resource.m_SurfaceStateIndex,
-          pairedResourceBSSOOpnd, dstVar, numSources, opndArray);
+      status = vKernel->AppendVISA3dSampler(ConvertSubOpcode(subOpcode, zeroLOD),
+                                            /* pixel null mask */ feedbackEnable, cpsEnable, !nonUniformState,
+                                            predOpnd, GetAluEMask(dst), visaExecSize(m_encoderState.m_simdSize),
+                                            ConvertChannelMaskToVisaType(writeMask), aoffimmi,
+                                            (VISA_StateOpndHandle *)samplerBaseAddrOpnd, sampler.m_SamplerStateIndex,
+                                            (VISA_StateOpndHandle *)surfaceBaseAddrOpnd, resource.m_SurfaceStateIndex,
+                                            pairedResourceBSSOOpnd, dstVar, numSources, opndArray);
     } else {
       VISA_StateOpndHandle *samplerOpnd = GetSamplerOperand(sampler);
       VISA_StateOpndHandle *btiOpnd = GetVISASurfaceOpnd(resource);
       status = vKernel->AppendVISA3dSampler(ConvertSubOpcode(subOpcode, zeroLOD),
-                                            feedbackEnable, // pixel null mask
-                                            cpsEnable, !nonUniformState, predOpnd, GetAluEMask(dst),
-                                            visaExecSize(m_encoderState.m_simdSize),
+                                            /* pixel null mask */ feedbackEnable, cpsEnable, !nonUniformState, predOpnd,
+                                            GetAluEMask(dst), visaExecSize(m_encoderState.m_simdSize),
                                             ConvertChannelMaskToVisaType(writeMask), aoffimmi, samplerOpnd, btiOpnd,
                                             pairedResourceBSSOOpnd, dstVar, numSources, opndArray);
     }
@@ -2338,7 +2337,7 @@ void CEncoder::Gather4Inst(EOPCODE subOpcode, CVariable *offset, const ResourceD
   {
     int status =
         vKernel->AppendVISA3dGather4(ConvertSubOpcode(subOpcode, false),
-                                     feedbackEnable, // pixel null mask
+                                     /* pixel null mask */ feedbackEnable,
                                      predOpnd, GetAluEMask(dst), visaExecSize(m_encoderState.m_simdSize),
                                      ConvertSingleSourceChannel(channel), aoffimmi, samplerOpnd, samplerImmIndex,
                                      surfOpnd, surfaceImmIndex, pairedResourceBSSOOpnd, dstVar, numSources, opndArray);
