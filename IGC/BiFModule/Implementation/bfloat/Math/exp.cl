@@ -11,7 +11,7 @@ SPDX-License-Identifier: MIT
 
 INLINE bfloat __attribute__((overloadable)) __spirv_ocl_exp( bfloat x )
 {
-    return __spirv_ocl_native_exp(x);
+    return (bfloat)__spirv_ocl_exp((float)x);
 }
 
 GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARG_LOOP( exp, bfloat, bfloat, )
