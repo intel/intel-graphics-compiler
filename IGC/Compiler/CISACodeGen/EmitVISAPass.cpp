@@ -10544,40 +10544,6 @@ void EmitPass::emitUAVSerialize() {
   m_encoder->Push();
 }
 
-bool EmitPass::useRasterizerOrderedByteAddressBuffer(GenIntrinsicInst *inst) {
-  if (IGC_GET_FLAG_VALUE(RovOpt) == 0)
-    return false;
-
-  bool isRov = false;
-  std::vector<uint32_t> ROV_RV = m_currShader->m_ModuleMetadata->RasterizerOrderedByteAddressBuffer;
-
-  unsigned calleeArgNo = 0;
-  PushInfo &pushInfo = m_currShader->m_ModuleMetadata->pushInfo;
-
-  Value *src = IGC::TracePointerSource(inst->getOperand(0));
-  if (src) {
-    if (Argument *calleeArg = dyn_cast<Argument>(src)) {
-      calleeArgNo = calleeArg->getArgNo();
-      for (auto index_it = pushInfo.constantReg.begin(); index_it != pushInfo.constantReg.end(); ++index_it) {
-        if (index_it->second == calleeArgNo) {
-          if (std::find(ROV_RV.begin(), ROV_RV.end(), index_it->first) != ROV_RV.end()) {
-            isRov = true;
-            break;
-          }
-        }
-      }
-    }
-  }
-  return isRov;
-}
-
-void EmitPass::setRovCacheCtrl(GenIntrinsicInst *inst) {
-  MDNode *node =
-      MDNode::get(inst->getContext(),
-                  ConstantAsMetadata::get(ConstantInt::get(Type::getInt32Ty(inst->getContext()), LSC_L1UC_L3C_WB)));
-  inst->setMetadata("lsc.cache.ctrl", node);
-}
-
 void EmitPass::emitLoadRawIndexed(LdRawIntrinsic *inst, Value *varOffset, ConstantInt *immScale,
                                   ConstantInt *immOffset) {
   Value *bufPtrv = inst->getResourceValue();
@@ -10585,9 +10551,6 @@ void EmitPass::emitLoadRawIndexed(LdRawIntrinsic *inst, Value *varOffset, Consta
   LSC_DOC_ADDR_SPACE addrSpace = m_pCtx->getUserAddrSpaceMD().Get(inst);
   m_currShader->m_State.isMessageTargetDataCacheDataPort = true;
   if (shouldGenerateLSC(inst)) {
-    if ((IGC_GET_FLAG_VALUE(RovOpt) & 2) && useRasterizerOrderedByteAddressBuffer(inst)) {
-      setRovCacheCtrl(inst);
-    }
     LSC_CACHE_OPTS cacheOpts = translateLSCCacheControlsFromMetadata(inst, true);
     emitLSCVectorLoad(inst, bufPtrv, nullptr, varOffset, immOffset, immScale, cacheOpts, addrSpace, false, false);
     return;
@@ -22398,18 +22361,6 @@ LSC_CACHE_OPTS
 EmitPass::translateLSCCacheControlsFromMetadata(Instruction *inst, bool isLoad, bool isTGM) const {
   LSC_CACHE_OPTS cacheOpts{LSC_CACHING_DEFAULT, LSC_CACHING_DEFAULT};
 
-  if (inst && !m_currShader->m_ModuleMetadata->RasterizerOrderedViews.empty()) {
-    const auto &rasterizerOrderedViews = m_currShader->m_ModuleMetadata->RasterizerOrderedViews;
-    if (rasterizerOrderedViews.find(inst->getOperand(0)->getType()->getPointerAddressSpace()) !=
-        rasterizerOrderedViews.end()) {
-      // Do not cache ROV in non-coherent cache
-      MDNode *node =
-          MDNode::get(inst->getContext(),
-                      ConstantAsMetadata::get(ConstantInt::get(Type::getInt32Ty(inst->getContext()), LSC_L1UC_L3C_WB)));
-      inst->setMetadata("lsc.cache.ctrl", node);
-    }
-  }
-
   if (isTGM) {
     if (m_pCtx->platform.supportsNonDefaultLSCCacheSetting()) {
       if (tryOverrideCacheOpts(cacheOpts, isLoad, isTGM, inst, m_currShader->m_ModuleMetadata->m_CacheControlOption)) {
@@ -24478,8 +24429,6 @@ void EmitPass::emitHDCuncompressedwrite(llvm::GenIntrinsicInst *inst) {
   }
   emitLegacySimdBlockWrite(inst);
 }
-
-bool EmitPass::forceCacheCtrl(llvm::Instruction *inst) { return m_currShader->forceCacheCtrl(inst); }
 
 // This function may be used in earlier passes to determine whether a given
 // instruction will generate an LSC message. If it returns Unknown or False, you

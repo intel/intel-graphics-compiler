@@ -65,6 +65,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CISACodeGen/OpenCLKernelCodeGen.hpp"
 #include "Compiler/CISACodeGen/RayTracingShaderLowering.hpp"
 #include "Compiler/CISACodeGen/RayTracingStatefulPass.h"
+#include "Compiler/CISACodeGen/LSCCacheHintsPass.h"
 #include "Compiler/CISACodeGen/LSCCacheOptimizationPass.h"
 #include "Compiler/CISACodeGen/LSCControlsAnalysisPass.h"
 #include "Compiler/ConvertMSAAPayloadTo16Bit.hpp"
@@ -433,6 +434,9 @@ void AddAnalysisPasses(CodeGenContext &ctx, IGCPassManager &mpm) {
   if (IGC_IS_FLAG_ENABLED(EnableDropTargetBBs)) {
     mpm.add(new DropTargetBBs());
   }
+
+  // Set lsc.cache.ctrl metadata where needed.
+  mpm.add(createLSCCacheHintsPass());
 
 
   mpm.add(createTimeStatsCounterPass(&ctx, TIME_CG_Analysis, STATS_COUNTER_END));

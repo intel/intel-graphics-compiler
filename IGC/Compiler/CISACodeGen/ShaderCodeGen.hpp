@@ -571,7 +571,6 @@ public:
   static Tristate shouldGenerateLSCQuery(const CodeGenContext &Ctx, llvm::Instruction *vectorLdStInst = nullptr,
                                          SIMDMode Mode = SIMDMode::UNKNOWN);
   bool shouldGenerateLSC(llvm::Instruction *vectorLdStInst = nullptr, bool isTGM = false);
-  bool forceCacheCtrl(llvm::Instruction *vectorLdStInst = nullptr);
   uint32_t totalBytesToStoreOrLoad(llvm::Instruction *vectorLdStInst);
 
   void setShaderProgramID(int aID) { m_shaderProgramID = aID; }

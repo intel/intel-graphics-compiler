@@ -3728,25 +3728,6 @@ bool CShader::needsEntryFence() const {
   return false;
 }
 
-bool CShader::forceCacheCtrl(llvm::Instruction *inst) {
-  const auto &list = m_ModuleMetadata->forceLscCacheList;
-  const auto *PtrTy = dyn_cast<PointerType>(inst->getOperand(0)->getType());
-
-  if (PtrTy) {
-    const auto pos = list.find(PtrTy->getAddressSpace());
-
-    if (pos != list.end()) {
-      auto *node =
-          MDNode::get(inst->getContext(),
-                      ConstantAsMetadata::get(ConstantInt::get(Type::getInt32Ty(inst->getContext()), pos->second)));
-      inst->setMetadata("lsc.cache.ctrl", node);
-      return true;
-    }
-  }
-
-  return false;
-}
-
 // This function may be used in earlier passes to determine whether a given
 // instruction will generate an LSC message. If it returns Unknown or False, you
 // should conservatively assume that you don't know what will be generated. If
@@ -3817,9 +3798,8 @@ bool CShader::shouldGenerateLSC(llvm::Instruction *vectorLdStInst, bool isTGM) {
   if (vectorLdStInst && m_ctx->m_DriverInfo.SupportForceRouteAndCache() &&
       (!isTGM || m_ctx->platform.supportsNonDefaultLSCCacheSetting())) {
     // check if umd specified lsc caching mode and set the metadata if needed.
-    if (forceCacheCtrl(vectorLdStInst)) {
-      // if umd force the caching mode, also assume it wants the resource to be
-      // in lsc.
+    if (vectorLdStInst->getMetadata("lsc.cache.ctrl")) {
+      // if umd force the caching mode, also assume it wants the resource to be in lsc.
       return true;
     }
   }

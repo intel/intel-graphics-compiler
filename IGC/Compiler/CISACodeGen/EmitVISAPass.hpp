@@ -355,10 +355,8 @@ public:
   void emitAtomicCounter(llvm::GenIntrinsicInst *pInst);
   void emitFastClear(llvm::LoadInst *inst);
   void emitFastClearSend(llvm::Instruction *pInst);
-  void setRovCacheCtrl(llvm::GenIntrinsicInst *inst);
   std::optional<LSC_CACHE_OPTS> cacheOptionsForConstantBufferLoads(Instruction *inst, LSC_L1_L3_CC Ctrl) const;
   std::optional<LSC_CACHE_OPTS> cacheOptionsForConstantBufferLoads(Instruction *inst) const;
-  bool useRasterizerOrderedByteAddressBuffer(llvm::GenIntrinsicInst *inst);
   void emitUniformAtomicCounter(llvm::GenIntrinsicInst *pInst);
 
   void emitDiscard(llvm::Instruction *inst);
@@ -610,7 +608,6 @@ public:
   static Tristate shouldGenerateLSCQuery(const CodeGenContext &Ctx, llvm::Instruction *vectorLdStInst = nullptr,
                                          SIMDMode Mode = SIMDMode::UNKNOWN);
   bool shouldGenerateLSC(llvm::Instruction *vectorLdStInst = nullptr, bool isTGM = false);
-  bool forceCacheCtrl(llvm::Instruction *vectorLdStInst = nullptr);
   uint32_t totalBytesToStoreOrLoad(llvm::Instruction *vectorLdStInst);
   void emitSrnd(llvm::GenIntrinsicInst *GII);
   void emitDnscl(llvm::GenIntrinsicInst *GII);
