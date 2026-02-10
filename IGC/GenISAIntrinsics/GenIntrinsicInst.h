@@ -871,12 +871,19 @@ public:
     }
     return false;
   }
-
   static inline bool classof(const Value *V) { return isa<GenIntrinsicInst>(V) && classof(cast<GenIntrinsicInst>(V)); }
-  inline Value *getAlignmentValue() const { return getOperand(3); }
-  inline Value *getOffsetValue() const { return getOperand(1); }
-  inline Value *getResourceValue() const { return getOperand(0); }
-  inline Value *getStoreValue() const { return getOperand(2); }
+
+  enum class Argument { ResourceHandle, Offset, Data, Alignment, Count };
+
+  static constexpr unsigned int GetArgumentIndex(Argument arg) { return static_cast<unsigned int>(arg); }
+  inline llvm::Value *GetArgument(Argument arg) const { return getOperand(GetArgumentIndex(arg)); }
+  inline llvm::Use &GetArgumentUse(Argument arg) { return getOperandUse(GetArgumentIndex(arg)); }
+  inline const llvm::Use &GetArgumentUse(Argument arg) const { return getOperandUse(GetArgumentIndex(arg)); }
+
+  inline Value *getAlignmentValue() const { return GetArgument(Argument::Alignment); }
+  inline Value *getOffsetValue() const { return GetArgument(Argument::Offset); }
+  inline Value *getResourceValue() const { return GetArgument(Argument::ResourceHandle); }
+  inline Value *getStoreValue() const { return GetArgument(Argument::Data); }
   inline unsigned int getAlignment() const {
     IGC_ASSERT(isa<ConstantInt>(getAlignmentValue()));
     ConstantInt *val = dyn_cast<ConstantInt>(getAlignmentValue());
@@ -890,10 +897,11 @@ public:
     return isVolatile;
   }
 
-  inline void setOffsetValue(Value *V) { setOperand(1, V); }
+  inline void setOffsetValue(Value *V) { GetArgumentUse(Argument::Offset).set(V); }
+  inline void setStoreValue(Value *V) { GetArgumentUse(Argument::Data).set(V); }
   inline void setAlignment(unsigned int alignment) {
-    Value *newAlignment = ConstantInt::get(getOperand(3)->getType(), alignment);
-    setOperand(3, newAlignment);
+    Value *newAlignment = ConstantInt::get(getAlignmentValue()->getType(), alignment);
+    GetArgumentUse(Argument::Alignment).set(newAlignment);
   }
 };
 
