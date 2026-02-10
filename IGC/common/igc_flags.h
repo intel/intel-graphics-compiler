@@ -1321,7 +1321,7 @@ DECLARE_IGC_REGKEY(bool, ForceXYZworkGroupWalkOrder, true, "Force X/Y/Z WorkGrou
 DECLARE_IGC_REGKEY(
     bool, ValidateSPIRVExtensionSupport, true,
     "When enabled, validate each SPIR-V OpExtension against device support and fail compilation if any are "
-    "unsupported. Disabled by default until the supported extension list in SPIRVExtensions.td is complete.",
+    "unsupported.",
     true)
 
 DECLARE_IGC_GROUP("Performance experiments")
