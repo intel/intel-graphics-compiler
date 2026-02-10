@@ -67,6 +67,9 @@ G4_Declare *SpillManager::createNewTempAddrDeclare(G4_Declare *dcl) {
   G4_Declare *sp = builder.createDeclare(name, G4_ADDRESS, dcl->getNumElems(),
                                          1, // 1 row
                                          Type_UW);
+
+  // When creating temp address variable, same sub align is needed
+  sp->setSubRegAlign(dcl->getSubRegAlign());
   gra.setBBId(sp, bbId);
   // Live range of new temp addrs is short so that there is no point spilling
   // them. indicate this is for newly created addr temp so that RA won't spill
@@ -106,6 +109,11 @@ G4_Declare *SpillManager::createNewTempAddrDeclare(G4_Declare *dcl,
   G4_Declare *sp = builder.createDeclare(name, G4_ADDRESS, num_reg,
                                          1, // 1 row
                                          type);
+  //The address register is in size of W
+  auto subAlign = Get_G4_SubRegAlign_From_Size(
+      num_reg * 2, builder.getPlatform(), builder.getGRFAlign());
+
+  sp->setSubRegAlign(subAlign);
   gra.setBBId(sp, bbId);
   // Live range of new temp addrs is short so that there is no point spilling
   // them. indicate this is for newly created addr temp so that RA won't spill
