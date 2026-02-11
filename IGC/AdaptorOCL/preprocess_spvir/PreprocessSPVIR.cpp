@@ -16,6 +16,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/Demangle/Demangle.h>
 #include <llvm/IR/Mangler.h>
 #include <llvm/Support/Regex.h>
+#include <llvm/IR/InstIterator.h>
 #include "common/LLVMWarningsPop.hpp"
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/IR/Instructions.h"
@@ -183,6 +184,30 @@ static void addNonKernelFuncsArgTypeHints(Module &M) {
 }
 #endif
 
+void PreprocessSPVIR::removePointerAnnotations(Module &M) {
+  for (Function &F : M) {
+    if (F.isDeclaration())
+      continue;
+
+    for (auto &I : llvm::make_early_inc_range(llvm::instructions(F))) {
+      auto *CI = llvm::dyn_cast<llvm::CallInst>(&I);
+      if (!CI)
+        continue;
+      auto *Callee = CI->getCalledFunction();
+      if (!Callee || !Callee->getName().startswith("llvm.ptr.annotation."))
+        continue;
+
+      // @llvm.ptr.annotation returns its first operand (the annotated pointer)
+      // with annotation metadata attached. Replace all uses of the intrinsic
+      // call with the original pointer and remove the call.
+      Value *AnnotatedPtr = CI->getArgOperand(0);
+      CI->replaceAllUsesWith(AnnotatedPtr);
+      CI->eraseFromParent();
+      m_changed = true;
+    }
+  }
+}
+
 static void fixKernelArgBaseTypes(Module &M) {
   LLVMContext &Ctx = M.getContext();
 
@@ -255,6 +280,11 @@ bool PreprocessSPVIR::runOnModule(Module &M) {
   // !kernel_arg_base_type (instead of an actual OpenCL builtin type), this is
   // incorrect and inconsistent with the prior behavior.
   fixKernelArgBaseTypes(M);
+
+  // Currently @llvm.ptr.annotation has no use in igc, but it can lead to
+  // incorrectly generated code when used, since its not supported and
+  // therefore not lowered.
+  removePointerAnnotations(M);
 
 #if LLVM_VERSION_MAJOR >= 16
   // Add SPIR-V builtin type hints as metadata to non-kernel functions. Kernel functions already have metadata type

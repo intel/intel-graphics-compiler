@@ -37,6 +37,7 @@ private:
   bool hasArrayArg(llvm::Function &F);
   void processBuiltinsWithArrayArguments(llvm::Function &F);
   void processBuiltinsWithArrayArguments();
+  void removePointerAnnotations(llvm::Module &M);
   void createCallAndReplace(llvm::CallInst &oldCallInst, llvm::StringRef newFuncName, std::vector<llvm::Value *> &args);
 
   IGCLLVM::Module *m_Module = nullptr;
