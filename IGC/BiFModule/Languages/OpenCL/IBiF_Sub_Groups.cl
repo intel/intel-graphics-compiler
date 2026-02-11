@@ -1101,9 +1101,14 @@ INLINE void OVERLOADABLE FUNC_NAME##_sg32(__global void* base_address, int width
     __internal_##FUNC_NAME##_sg32_cache_controls(base_address, width, height, pitch, coord, (__private void *)destination, LSC_LDCC_DEFAULT); \
 }
 
-// type d8, block width 8, array length 4
-DEFN_INTERNAL_INTEL_SUB_GROUP_2D_BLOCK_READ(intel_sub_group_2d_block_read_8b_16r8x4c,   uchar32,    __builtin_IB_subgroup_block_read_cacheopts_u8_m16k8v4)
+DEFN_INTERNAL_INTEL_SUB_GROUP_2D_BLOCK_READ(intel_sub_group_2d_block_read_8b_8r8x1c,    uchar4,     __builtin_IB_subgroup_block_read_cacheopts_u8_m8k8v1)
 
+DEFN_INTERNAL_INTEL_SUB_GROUP_2D_BLOCK_READ(intel_sub_group_2d_block_read_8b_8r8x2c,    uchar8,     __builtin_IB_subgroup_block_read_cacheopts_u8_m8k8v2)
+
+// type d8, block width 8, array length 4
+DEFN_INTERNAL_INTEL_SUB_GROUP_2D_BLOCK_READ(intel_sub_group_2d_block_read_8b_8r8x4c,    uchar16,    __builtin_IB_subgroup_block_read_cacheopts_u8_m8k8v4)
+DEFN_INTERNAL_INTEL_SUB_GROUP_2D_BLOCK_READ(intel_sub_group_2d_block_read_8b_16r8x4c,   uchar32,    __builtin_IB_subgroup_block_read_cacheopts_u8_m16k8v4)
+DEFN_INTERNAL_INTEL_SUB_GROUP_2D_BLOCK_READ(intel_sub_group_2d_block_read_8b_32r8x4c,   uchar64,    __builtin_IB_subgroup_block_read_cacheopts_u8_m32k8v4)
 // type d8, block width 16, array length 1
 DEFN_INTERNAL_INTEL_SUB_GROUP_2D_BLOCK_READ(intel_sub_group_2d_block_read_8b_1r16x1c,   uchar,      __builtin_IB_subgroup_block_read_cacheopts_u8_m1k16v1)
 DEFN_INTERNAL_INTEL_SUB_GROUP_2D_BLOCK_READ(intel_sub_group_2d_block_read_8b_2r16x1c,   uchar2,     __builtin_IB_subgroup_block_read_cacheopts_u8_m2k16v1)
@@ -1227,11 +1232,14 @@ DEFN_INTERNAL_INTEL_SUB_GROUP_2D_BLOCK_READ(intel_sub_group_2d_block_read_transp
 DEFN_INTERNAL_INTEL_SUB_GROUP_2D_BLOCK_READ(intel_sub_group_2d_block_read_transpose_32b_16r1x1c,  uint,     __builtin_IB_subgroup_block_read_cacheopts_transpose_u32_m16k1)
 DEFN_INTERNAL_INTEL_SUB_GROUP_2D_BLOCK_READ(intel_sub_group_2d_block_read_transpose_32b_16r2x1c,  uint2,    __builtin_IB_subgroup_block_read_cacheopts_transpose_u32_m16k2)
 DEFN_INTERNAL_INTEL_SUB_GROUP_2D_BLOCK_READ(intel_sub_group_2d_block_read_transpose_32b_16r4x1c,  uint4,    __builtin_IB_subgroup_block_read_cacheopts_transpose_u32_m16k4)
+DEFN_INTEL_SUB_GROUP_2D_BLOCK_READ(intel_sub_group_2d_block_read_transpose_32b_16r8x1c,  uint,    uint8,    __builtin_IB_subgroup_block_read_cacheopts_transpose_u32_m16k8)
+
+DEFN_INTERNAL_INTEL_SUB_GROUP_2D_BLOCK_READ(intel_sub_group_2d_block_read_transpose_32b_32r4x1c,  uint8,    __builtin_IB_subgroup_block_read_cacheopts_transpose_u32_m32k4)
+DEFN_INTEL_SUB_GROUP_2D_BLOCK_READ(intel_sub_group_2d_block_read_transpose_32b_32r8x1c,  uint,    uint16,   __builtin_IB_subgroup_block_read_cacheopts_transpose_u32_m32k8)
+
 DEFN_INTERNAL_INTEL_SUB_GROUP_2D_BLOCK_READ(intel_sub_group_2d_block_read_transpose_64b_8r1x1c, ulong,  __builtin_IB_subgroup_block_read_cacheopts_transpose_u64_m8k1)
 DEFN_INTERNAL_INTEL_SUB_GROUP_2D_BLOCK_READ(intel_sub_group_2d_block_read_transpose_64b_8r2x1c, ulong, __builtin_IB_subgroup_block_read_cacheopts_transpose_u64_m8k2)
 DEFN_INTEL_SUB_GROUP_2D_BLOCK_READ(intel_sub_group_2d_block_read_transpose_64b_8r4x1c,   ulong, ulong4, __builtin_IB_subgroup_block_read_cacheopts_transpose_u64_m8k4)
-DEFN_INTEL_SUB_GROUP_2D_BLOCK_READ(intel_sub_group_2d_block_read_transpose_32b_16r8x1c,  uint,    uint8,    __builtin_IB_subgroup_block_read_cacheopts_transpose_u32_m16k8)
-DEFN_INTEL_SUB_GROUP_2D_BLOCK_READ(intel_sub_group_2d_block_read_transpose_32b_32r8x1c,  uint,    uint16,   __builtin_IB_subgroup_block_read_cacheopts_transpose_u32_m32k8)
 
 
 DEFN_INTEL_SUB_GROUP_2D_BLOCK_READ(intel_sub_group_2d_block_read_transpose_32b_16r16x1c, uint,  uint16, __builtin_IB_subgroup_block_read_cacheopts_transpose_u32_k16)
