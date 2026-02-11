@@ -2646,7 +2646,7 @@ HWConformityPro::insertMovAfterAndGetInserted(INST_LIST_ITER it,
                                  : g4::SIMD1);
 
   G4_Type execType = inst->isRawMov() ? dst->getType() : inst->getExecType();
-  if (execType == Type_DF && IS_BTYPE(type)) {
+  if (TypeSize(execType) == 8 && IS_BTYPE(type)) {
     type = (type == Type_UB ? Type_UW : Type_W);
   }
   uint16_t scale = TypeSize(execType) / TypeSize(type);
@@ -2656,6 +2656,7 @@ HWConformityPro::insertMovAfterAndGetInserted(INST_LIST_ITER it,
     if (scale == 0)
       scale = 1;
   }
+  vISA_ASSERT(scale < 8, "invalid horizontal stride");
 
   uint32_t opExecWidthBytes = newExecSize * TypeSize(execType) * scale;
   uint16_t dstWidthBytes = newExecSize * TypeSize(type) * scale;
