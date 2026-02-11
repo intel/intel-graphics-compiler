@@ -60,6 +60,8 @@ public:
   unsigned getPositionInsideBB(llvm::Instruction *Inst);
   void collectPositionInsideBB(llvm::Instruction *Inst);
 
+  bool basicCheck(VecArr &Slice);
+
   // contains information about instruction position inside BB
   // with relation to other instructions
   std::unordered_map<Value *, unsigned> PositionMap;

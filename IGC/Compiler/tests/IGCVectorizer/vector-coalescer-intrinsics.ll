@@ -7,20 +7,18 @@
 ;============================ end_copyright_notice =============================
 
 ; REQUIRES: llvm-16-plus, regkeys
-; RUN: igc_opt -S --opaque-pointers --igc-vector-coalescer --regkey=VectorizerLog=1 --regkey=VectorizerLogToErr=1 -dce < %s 2>&1 | FileCheck %s
+; RUN: igc_opt -S --opaque-pointers --igc-vector-coalescer --regkey=VectorizerLog=1 --regkey=VectorizerLogToErr=1 -dce --instcombine < %s 2>&1 | FileCheck %s
 
 ; CHECK-LABEL: define spir_kernel void @foo
 
-; CHECK:  [[IN_0:%.*]] = shufflevector <8 x float> %tmp, <8 x float> %tmp17, <16 x i32> <i32 0, i32 1, i32 2, i32 3, i32 4, i32 5, i32 6, i32 7, i32 8, i32 9, i32 10, i32 11, i32 12, i32 13, i32 14, i32 15>
-; CHECK:  [[IN_1:%.*]] = shufflevector <8 x float> %tmp34, <8 x float> %tmp38, <16 x i32> <i32 0, i32 1, i32 2, i32 3, i32 4, i32 5, i32 6, i32 7, i32 8, i32 9, i32 10, i32 11, i32 12, i32 13, i32 14, i32 15>
-; CHECK:  [[VECT_0:%.*]] = call <16 x float> @llvm.maxnum.v16f32(<16 x float> [[IN_0]], <16 x float> [[IN_1]])
-; CHECK:  shufflevector <16 x float> [[VECT_0]], <16 x float> undef, <8 x i32> <i32 8, i32 9, i32 10, i32 11, i32 12, i32 13, i32 14, i32 15>
-; CHECK:  shufflevector <16 x float> [[VECT_0]], <16 x float> undef, <8 x i32> <i32 0, i32 1, i32 2, i32 3, i32 4, i32 5, i32 6, i32 7>
-
-; CHECK:  [[IN_2:%.*]] = shufflevector <8 x float> %tmp41, <8 x float> %tmp45, <16 x i32> <i32 0, i32 1, i32 2, i32 3, i32 4, i32 5, i32 6, i32 7, i32 8, i32 9, i32 10, i32 11, i32 12, i32 13, i32 14, i32 15>
-; CHECK:  [[VECT_1:%.*]] = call <16 x float> @llvm.exp2.v16f32(<16 x float> [[IN_2]])
-; CHECK:  shufflevector <16 x float> [[VECT_1]], <16 x float> undef, <8 x i32> <i32 8, i32 9, i32 10, i32 11, i32 12, i32 13, i32 14, i32 15>
-; CHECK:  shufflevector <16 x float> [[VECT_1]], <16 x float> undef, <8 x i32> <i32 0, i32 1, i32 2, i32 3, i32 4, i32 5, i32 6, i32 7>
+; CHECK: [[IN_0:%.*]] = shufflevector <8 x float> %tmp, <8 x float> %tmp17, <16 x i32> <i32 0, i32 1, i32 2, i32 3, i32 4, i32 5, i32 6, i32 7, i32 8, i32 9, i32 10, i32 11, i32 12, i32 13, i32 14, i32 15>
+; CHECK: [[IN_1:%.*]] = shufflevector <8 x float> %tmp34, <8 x float> %tmp38, <16 x i32> <i32 0, i32 1, i32 2, i32 3, i32 4, i32 5, i32 6, i32 7, i32 8, i32 9, i32 10, i32 11, i32 12, i32 13, i32 14, i32 15>
+; CHECK: [[INTR_0:%.*]] = call <16 x float> @llvm.maxnum.v16f32(<16 x float> [[IN_0]], <16 x float> [[IN_1]])
+; CHECK: shufflevector <16 x float> [[INTR_0]], <16 x float> undef, <8 x i32> <i32 8, i32 9, i32 10, i32 11, i32 12, i32 13, i32 14, i32 15>
+; CHECK: shufflevector <16 x float> [[INTR_0]], <16 x float> undef, <8 x i32> <i32 0, i32 1, i32 2, i32 3, i32 4, i32 5, i32 6, i32 7>
+; CHECK: [[IN_2:%.*]] = shufflevector <8 x float> %tmp, <8 x float> %tmp17, <16 x i32> <i32 0, i32 1, i32 2, i32 3, i32 4, i32 5, i32 6, i32 7, i32 8, i32 9, i32 10, i32 11, i32 12, i32 13, i32 14, i32 15>
+; CHECK: [[BIN_0:%.*]] = fsub <16 x float> [[IN_2]], [[INTR_0]]
+; CHECK: call <16 x float> @llvm.exp2.v16f32(<16 x float> [[BIN_0]])
 
 ; Function Attrs: convergent nounwind
 define spir_kernel void @foo() #0 {

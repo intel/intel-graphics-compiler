@@ -9,7 +9,7 @@
 ; REQUIRES: llvm-16-plus, regkeys
 ; RUN: igc_opt -S --opaque-pointers --igc-vector-coalescer --regkey=VectorizerLog=1 --regkey=VectorizerLogToErr=1 -dce < %s 2>&1 | FileCheck %s
 
-; CHECK:  do not merge, vector size not equal
+; CHECK: Not all operations in the slice are identical
 
 ; Function Attrs: convergent nounwind
 define spir_kernel void @foo(<4 x float> %in1, <8 x float> %in2, <4 x float> %in3, <4 x float> %in4) #0 {

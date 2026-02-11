@@ -1459,6 +1459,23 @@ bool IGCVectorizerCommon::checkDependencyAndTryToEliminate(VecArr &Slice, unsign
   return false;
 }
 
+bool IGCVectorizerCommon::basicCheck(VecArr &Slice) {
+
+  Instruction *Compare = Slice[0];
+  for (unsigned int i = 1; i < Slice.size(); ++i) {
+    if (!Compare->isSameOperationAs(Slice[i])) {
+      PRINT_LOG_NL("Not all operations in the slice are identical");
+      return false;
+    }
+    if (Compare->getParent() != Slice[i]->getParent()) {
+      PRINT_LOG_NL("Not all operations in the slice are located in the same BB");
+      return false;
+    }
+  }
+
+  return true;
+}
+
 bool IGCVectorizer::checkSlice(VecArr &Slice, InsertStruct &InSt) {
   if (Slice.size() != getVectorSize(InSt.Final)) {
     PRINT_LOG_NL("vector size isn't equal to the width of the vector tree");
@@ -1472,16 +1489,8 @@ bool IGCVectorizer::checkSlice(VecArr &Slice, InsertStruct &InSt) {
     return false;
   }
 
-  for (unsigned int i = 1; i < Slice.size(); ++i) {
-    if (!Compare->isSameOperationAs(Slice[i])) {
-      PRINT_LOG_NL("Not all operations in the slice are identical");
-      return false;
-    }
-    if (Compare->getParent() != Slice[i]->getParent()) {
-      PRINT_LOG_NL("Not all operations in the slice are located in the same BB");
-      return false;
-    }
-  }
+  if (!basicCheck(Slice))
+    return false;
 
   unsigned DependencyWindowCoefficient = IGC_GET_FLAG_VALUE(VectorizerDepWindowMultiplier);
   // limit the window of potential rescheduling
@@ -1704,6 +1713,8 @@ void IGCVectorCoalescer::mergeHorizontalSlice(VecArr &Slice) {
     PRINT_LOG_NL("Gen Intrinsics are not supported");
   } else if (isIntrinsicSafe(First)) {
     mergeHorizontalSliceIntrinsic(Slice);
+  } else if (isBinarySafe(First)) {
+    mergeHorizontalSliceBinary(Slice);
   }
 }
 
@@ -1784,6 +1795,22 @@ void IGCVectorCoalescer::mergeHorizontalSliceIntrinsic(VecArr &Slice) {
   ShuffleOut(Slice, CreatedInst);
 }
 
+void IGCVectorCoalescer::mergeHorizontalSliceBinary(VecArr &Slice) {
+
+  VecVal Operands;
+  ShuffleIn(Slice, 0, Slice.front()->getNumOperands(), Operands);
+
+  auto BinaryOpcode = llvm::cast<BinaryOperator>(Slice.front())->getOpcode();
+  auto *CreatedInst = BinaryOperator::CreateWithCopiedFlags(BinaryOpcode, Operands[0], Operands[1], Slice.front());
+
+  CreatedInst->setName("coalesced_binary");
+  CreatedInst->setDebugLoc(Slice.front()->getDebugLoc());
+  CreatedInst->insertAfter(Slice.front());
+  PRINT_INST_NL(CreatedInst);
+
+  ShuffleOut(Slice, CreatedInst);
+}
+
 void IGCVectorCoalescer::processMap(std::unordered_map<unsigned int, std::vector<Instruction *>> &MapOfInstructions) {
 
   for (auto &El : MapOfInstructions) {
@@ -1807,17 +1834,9 @@ void IGCVectorCoalescer::processMap(std::unordered_map<unsigned int, std::vector
         continue;
       }
 
-      // Every element is already a vector, we only collect vector types
-      if (Vector[i + 0]->getType() != Vector[i + 1]->getType()) {
-        PRINT_INST_NL(Vector[i + 0]);
-        PRINT_INST_NL(Vector[i + 1]);
-        PRINT_LOG_NL("do not merge, vector size not equal");
-        continue;
-      }
-
       VecArr Slice = {Vector[i + 0], Vector[i + 1]};
       unsigned WindowSize = IGC_GET_FLAG_VALUE(CoalescerDepWindowSize);
-      if (!checkDependencyAndTryToEliminate(Slice, WindowSize)) {
+      if (basicCheck(Slice) && !checkDependencyAndTryToEliminate(Slice, WindowSize)) {
         // if we can merge 2 vectors, we merge them immediately
         // more complicated unifying algorithm is easy, but currently unnecessary
         mergeHorizontalSlice(Slice);
@@ -1865,7 +1884,7 @@ bool IGCVectorCoalescer::runOnFunction(llvm::Function &F) {
       if (isIntrinsicSafe(&Inst)) {
         unsigned int IntrinsicID = cast<IntrinsicInst>(&Inst)->getIntrinsicID();
         MapOfIntrinsics[IntrinsicID].push_back(&Inst);
-      } else if (isBinarySafe(&Inst)) {
+      } else if (IGC_GET_FLAG_VALUE(CoalescerAllowBinary) && isBinarySafe(&Inst)) {
         unsigned int BinaryId = cast<BinaryOperator>(&Inst)->getOpcode();
         MapOfBinary[BinaryId].push_back(&Inst);
       }
