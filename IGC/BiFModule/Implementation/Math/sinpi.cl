@@ -19,21 +19,29 @@ INLINE float __attribute__((overloadable)) __spirv_ocl_sinpi( float x )
 {
     bool useNative = BIF_FLAG_CTRL_GET(FastRelaxedMath) && (!BIF_FLAG_CTRL_GET(APIRS));
 
+    float result;
     if(useNative)
     {
-        return __spirv_ocl_sin(x * M_PI_F);
+        result = __spirv_ocl_sin(x * M_PI_F);
     }
     else
     {
         if(BIF_FLAG_CTRL_GET(UseMathWithLUT))
         {
-            return __ocl_svml_sinpif(x);
+            result = __ocl_svml_sinpif(x);
         }
         else
         {
-            return __ocl_svml_sinpif_noLUT(x);
+            result = __ocl_svml_sinpif_noLUT(x);
         }
     }
+
+    // OpenCL C spec, 7.5.1. Additional Requirements Beyond C99 TC2, requires that:
+    //  - "sinpi(+-0) returns +-0",
+    //  - "sinpi(-n) returns -0 for negative integers n".
+    //  When the result is zero, ensure the sign matches the input.
+    result = (result == 0.0f) ? __spirv_ocl_copysign(0.0f, x) : result;
+    return result;
 }
 
 GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARG_LOOP( sinpi, float, float, f32 )
