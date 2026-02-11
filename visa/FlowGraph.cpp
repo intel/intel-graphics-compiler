@@ -1671,7 +1671,7 @@ void FlowGraph::removeUnreachableBlocks(FuncInfoHashTable &funcInfoHT) {
         [[maybe_unused]] unsigned numErased = funcInfoHT.erase(funcId);
         vASSERT(numErased == 1);
       } else if (bb->getBBType() & G4_BB_CALL_TYPE) {
-        // If call bb is removed, its return BB shuld be removed as well.
+        // If call bb is removed, its return BB should be removed as well.
         G4_BB *retBB = bb->getPhysicalSucc();
         vISA_ASSERT(retBB, "vISA ICE: missing Return BB");
         if (preIDMap.at(retBB) != UINT_MAX) {
@@ -1692,9 +1692,17 @@ void FlowGraph::removeUnreachableBlocks(FuncInfoHashTable &funcInfoHT) {
       }
 
       // Remove successors that become unreachable after BB deletion.
+      // Case 1: Normal successor that has only one incoming edge
+      // Case 2: Loop successor that has two incoming edges (one being the loop
+      // back-edge)
       for (G4_BB *succ : bb->Succs) {
         if (succ->Preds.size() == 1)
           preIDMap[succ] = UINT_MAX;
+        else if (succ->Preds.size() == 2 &&
+                 std::any_of(succ->Preds.begin(), succ->Preds.end(),
+                             [&](G4_BB *pred) { return succ == pred; })) {
+          preIDMap[succ] = UINT_MAX;
+        }
       }
 
       // Now, remove bb.
