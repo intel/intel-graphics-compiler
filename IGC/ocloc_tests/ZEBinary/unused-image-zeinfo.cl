@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
+// REQUIRES: regkeys, mtl-supported
 // UNSUPPORTED: system-windows
 // RUN: ocloc compile -file %s -options "-igc_opts 'DumpZEInfoToConsole=1'" -internal_options "-cl-intel-use-bindless-mode" -device mtl | FileCheck %s
 

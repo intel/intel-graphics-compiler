@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
+// REQUIRES: regkeys, dg2-supported
 // RUN: ocloc compile -file %s -device dg2 -options "-cl-std=CL3.0 -igc_opts 'DumpVISAASMToConsole=1'" -internal_options "-cl-ext=-all,+cl_intel_concurrent_dispatch" | FileCheck %s
 
 // CHECK-LABEL: .kernel "test"
