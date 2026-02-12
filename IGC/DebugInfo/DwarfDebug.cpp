@@ -2825,12 +2825,24 @@ uint32_t DwarfDebug::writeStackcallCIE() {
     writeULEB128(data, RegisterNumbering::IP);
     writeULEB128(data, GetEncodedRegNum<RegisterNumbering::GRFBase>(specialGRF));
   } else {
-    write(data, (uint8_t)llvm::dwarf::DW_CFA_expression);
+    // Set the IP register to point to location of return IP in r127. DW_OP_drop is used because DW_CFA_val_expression
+    // implicitly pushes CFA first, but we don't use its value in this expression. DW_CFA_val_expression is used
+    // because IP is directly stored in the register.
+    write(data, (uint8_t)llvm::dwarf::DW_CFA_val_expression);
     writeULEB128(data, RegisterNumbering::IP);
-    writeULEB128(data, 6);
-    write(data, (uint8_t)llvm::dwarf::DW_OP_const4u);
-    write(data, (uint32_t)getRetIPSubReg() * 4);
-    write(data, (uint8_t)llvm::dwarf::DW_OP_plus);
+
+    data1.clear();
+    write(data1, (uint8_t)llvm::dwarf::DW_OP_drop);
+    write(data1, (uint8_t)llvm::dwarf::DW_OP_const4u);
+    write(data1, (uint32_t)(DWRegEncoded));
+    write(data1, (uint8_t)llvm::dwarf::DW_OP_const2u);
+    write(data1, (uint16_t)(getRetIPSubReg() * 4 * 8));
+    write(data1, (uint8_t)DW_OP_INTEL_regval_bits);
+    write(data1, (uint8_t)64);
+
+    writeULEB128(data, data1.size());
+    for (auto item : data1)
+      write(data, (uint8_t)item);
   }
 
   while ((lenSize + data.size()) % PointerSize != 0)
@@ -3168,19 +3180,8 @@ void DwarfDebug::writeFDEStackCall(VISAModule *m) {
         writeULEB128(cfaOps[item.end + MovGenInstSizeInBytes],
                      GetEncodedRegNum<RegisterNumbering::GRFBase>(specialGRF));
       } else {
-        std::vector<uint8_t> data1;
-        auto DWRegEncoded = GetEncodedRegNum<RegisterNumbering::GRFBase>(specialGRF);
-        write(cfaOps[item.end + MovGenInstSizeInBytes], (uint8_t)llvm::dwarf::DW_CFA_expression);
-        writeULEB128(cfaOps[item.end + MovGenInstSizeInBytes], RegisterNumbering::IP);
-        write(data1, (uint8_t)llvm::dwarf::DW_OP_const4u);
-        write(data1, (uint32_t)(DWRegEncoded));
-        write(data1, (uint8_t)llvm::dwarf::DW_OP_const2u);
-        write(data1, (uint16_t)(getRetIPSubReg() * 4 * 8));
-        write(data1, (uint8_t)DW_OP_INTEL_regval_bits);
-        write(data1, (uint8_t)32);
-        writeULEB128(cfaOps[item.end + MovGenInstSizeInBytes], data1.size());
-        for (auto byte : data1)
-          write(cfaOps[item.end + MovGenInstSizeInBytes], (uint8_t)byte);
+        // DW_CFA_restore restores value of IP register as defined in CIE. This is valid in epilog once we restore r127.
+        write(cfaOps[item.end + MovGenInstSizeInBytes], (uint8_t)(llvm::dwarf::DW_CFA_restore | RegisterNumbering::IP));
       }
     }
   } else {
