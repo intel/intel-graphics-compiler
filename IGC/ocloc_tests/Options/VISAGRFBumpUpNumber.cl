@@ -8,7 +8,7 @@ SPDX-License-Identifier: MIT
 
 // REQUIRES: regkeys
 
-// RUN: ocloc compile -file %s -device dg2 -options "-igc_opts 'DumpVISAASMToConsole=1,VISAGRFBumpUpNumber=2'" | FileCheck %s --check-prefixes=GRFBUMP2
+// RUN: ocloc compile -file %s -device dg2 -options "-igc_opts 'DumpVISAASMToConsole=1'" | FileCheck %s --check-prefixes=GRFBUMP2
 // RUN: ocloc compile -file %s -device dg2 -options "-igc_opts 'DumpVISAASMToConsole=1,VISAGRFBumpUpNumber=3'" | FileCheck %s --check-prefixes=GRFBUMP3
 
 // GRFBUMP2: -GRFBumpUpNumber 2

@@ -3869,6 +3869,9 @@ void CEncoder::InitVISABuilderOptions(TARGET_PLATFORM VISAPlatform, bool canAbor
     SaveOption(vISA_SplitBarrierID1, true);
   }
 
+  if (context->type == ShaderType::OPENCL_SHADER)
+    SaveOption(vISA_GRFBumpUpNumber, (uint32_t)2);
+
   if (IGC_IS_FLAG_SET(VISAGRFBumpUpNumber))
     SaveOption(vISA_GRFBumpUpNumber, IGC_GET_FLAG_VALUE(VISAGRFBumpUpNumber));
 
