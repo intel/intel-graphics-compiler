@@ -47,19 +47,19 @@ entry:
 ; CHECK:    cmp.eq (M1, 16) P6 V0039(0,0)<0;1,0> [[T]](0,0)<1;1,0>
 ; CHECK:    movs (M1_NM, 1) S31(0) V0039(0,0)<0;1,0>
 ; CHECK:    movs (M1_NM, 1) %bss(0) texture(0,0)<0;1,0>
-; CHEKC:    (P6) sample_lz.divS.R (M1, 16)  0x0:uw S31 %bss call_.0 %null.0 V0032.0
+; CHEKC:    (P6) sample_lz.R (M1, 16)  0x0:uw S31 %bss call_.0 %null.0 V0032.0
 ; CHECK:    or (M1_NM, 16) P4 P4 P6
 ; CHECK:    xor (M1_NM, 16) P5 P5 P6
 ; CHECK:    mov (M1_NM, 1) V0034(0,0)<1> P5
 ; CHECK:    movs (M1_NM, 1) S31(0) V0039(0,0)<0;1,0>
 ; CHECK:    movs (M1_NM, 1) %bss(0) texture(0,0)<0;1,0>
-; CHECK:    sample_lz.divS.R (M1, 16)  0x0:uw S31 %bss call_.0 %null.0 V0032.0
+; CHECK:    sample_lz.R (M1, 16)  0x0:uw S31 %bss call_.0 %null.0 V0032.0
 ; CHECK:    movs (M1_NM, 1) S31(0) V0039(0,0)<0;1,0>
 ; CHECK:    movs (M1_NM, 1) %bss(0) texture(0,0)<0;1,0>
-; CHECK:    sample_lz.divS.R (M1, 16)  0x0:uw S31 %bss call_.0 %null.0 V0032.0
+; CHECK:    sample_lz.R (M1, 16)  0x0:uw S31 %bss call_.0 %null.0 V0032.0
 ; CHECK:    movs (M1_NM, 1) S31(0) V0039(0,0)<0;1,0>
 ; CHECK:    movs (M1_NM, 1) %bss(0) texture(0,0)<0;1,0>
-; CHECK:    sample_lz.divS.R (M1, 16)  0x0:uw S31 %bss call_.0 %null.0 V0032.0
+; CHECK:    sample_lz.R (M1, 16)  0x0:uw S31 %bss call_.0 %null.0 V0032.0
 ; CHECK:    (!P4) goto (M1, 16) _test1_001__opt_resource_loop
 
   %out = extractelement <4 x float> %call, i32 0

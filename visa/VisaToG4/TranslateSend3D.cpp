@@ -2654,14 +2654,14 @@ int IR_Builder::translateVISAGather3DInstUnified(
   // gather4 operations are sampler operations where the returned texels are
   // used in bi-linear filtering operation
   return translateVISASampler3DInstUnified(
-      actualop, pixelNullMask, uniformSampler,
-      pred, executionSize, emask, chMask, aoffimmi, samplerBase, samplerIdx,
-      surfaceBase, surfaceIdx, pairedSurface, dst, numOpnds, opndArray, true);
+      actualop, pixelNullMask, uniformSampler, pred, executionSize, emask,
+      chMask, aoffimmi, samplerBase, samplerIdx, surfaceBase, surfaceIdx,
+      pairedSurface, dst, numOpnds, opndArray, true);
 }
 
 int IR_Builder::translateVISASampleInfoUnified(
-    VISA_Exec_Size executionSize, VISA_EMask_Ctrl emask, ChannelMask chMask,
-    G4_Operand *surfaceBase, unsigned int surfaceIdx, G4_DstRegRegion *dst) {
+  VISA_Exec_Size executionSize, VISA_EMask_Ctrl emask, ChannelMask chMask,
+  G4_Operand* surfaceBase, unsigned int surfaceIdx, G4_DstRegRegion* dst) {
 
   TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
 
@@ -2677,15 +2677,22 @@ int IR_Builder::translateVISASampleInfoUnified(
   //  b. compute operand lengths
   //  c. create send instruction
 
-  surfaceBase =
-      maybeAddSurfaceIndexEfficient64b(*this, surfaceBase, surfaceIdx);
+  surfaceBase = maybeAddSurfaceIndexEfficient64b(*this, surfaceBase, surfaceIdx);
 
   // create descriptor
-  auto msgDesc = createSamplerDesc(ConvertSamplerOpToMsgOp(VISA_3D_SAMPLEINFO),
-                                   chMask, false, false, false, false,
-                                   surfaceIdx, 0, 0, false);
+  auto msgDesc = createSamplerDesc(
+    ConvertSamplerOpToMsgOp(VISA_3D_SAMPLEINFO),
+    chMask,
+    false,
+    false,
+    false,
+    false,
+    surfaceIdx,
+    0,
+    0,
+    false);
 
-  unsigned sizes[2] = {1, 0};
+  unsigned sizes[2] = { 1, 0 };
 
   G4_Declare *tmpVar = NULL;
   G4_SrcRegRegion *src0 = NULL;
@@ -2698,17 +2705,24 @@ int IR_Builder::translateVISASampleInfoUnified(
   src0 = createSrc(tmpVar->getRegVar(), 0, 0, getRegionStride1(), Type_UD);
 
   computeOperandLengthsSampler(
-      *this, msgDesc, sizes, execSize, (dst->getTypeSize() == 2),
-      chMask.getNumEnabledChannels(), false, dst->isNullReg());
+    *this, msgDesc, sizes, execSize, (dst->getTypeSize() == 2),
+    chMask.getNumEnabledChannels(), false, dst->isNullReg());
 
   // generate the movs to scalar registers for the surface state and
   // sampler state 64bit addresses
   auto ind0 = setupIndirectDescriptor(surfaceBase);
 
   // create send instruction
-  createSamplerSendgInst(nullptr, // pred
-                         dst, src0, createNullSrc(Type_UD), execSize, msgDesc,
-                         instOpt, ind0, nullptr, false);
+  createSamplerSendgInst(
+    nullptr, // pred
+    dst, src0,
+    createNullSrc(Type_UD),
+    execSize,
+    msgDesc,
+    instOpt,
+    ind0,
+    nullptr,
+    false);
 
   return VISA_SUCCESS;
 }
@@ -2735,9 +2749,17 @@ int IR_Builder::translateVISAResInfoInstUnified(
   surfaceBase = maybeAddSurfaceIndexEfficient64b(*this, surfaceBase, surfaceIdx);
 
   // create descriptor
-  auto msgDesc = createSamplerDesc(ConvertSamplerOpToMsgOp(VISA_3D_RESINFO),
-                                   chMask, false, false, false, false,
-                                   surfaceIdx, 0, 0, false);
+  auto msgDesc = createSamplerDesc(
+    ConvertSamplerOpToMsgOp(VISA_3D_RESINFO),
+    chMask,
+    false,
+    false,
+    false,
+    false,
+    surfaceIdx,
+    0,
+    0,
+    false);
 
   G4_SrcRegRegion* msgs[2] = { 0, 0 };
   unsigned sizes[2] = { 0, 0 };
@@ -2778,7 +2800,7 @@ int IR_Builder::translateVISASampler3DInstUnified(
     VISASampler3DSubOpCode actualop, bool pixelNullMask, bool uniformSampler,
     G4_Predicate *pred, VISA_Exec_Size executionSize, VISA_EMask_Ctrl emask,
     ChannelMask chMask, G4_Operand *aoffimmi, G4_Operand *samplerBase,
-    unsigned int samplerIdx, G4_Operand *surfaceBase, unsigned int surfaceIdx,
+    unsigned int samplerIdx, G4_Operand* surfaceBase, unsigned int surfaceIdx,
     G4_Operand *pairedSurface, G4_DstRegRegion *dst, unsigned int numParms,
     G4_SrcRegRegion **params, bool isGather4) {
   TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
@@ -2801,19 +2823,22 @@ int IR_Builder::translateVISASampler3DInstUnified(
   //  c. create send instruction
 
   const bool FP16Return = dst->getTypeSize() == 2;
-  const bool FP16Input =
-      (numParms > 0) ? params[0]->getType() == Type_HF : false;
+  const bool FP16Input = (numParms > 0) ? params[0]->getType() == Type_HF : false;
 
-  surfaceBase =
-      maybeAddSurfaceIndexEfficient64b(*this, surfaceBase, surfaceIdx);
-  samplerBase =
-      maybeAddSamplerIndexEfficient64b(*this, samplerBase, samplerIdx);
+  surfaceBase = maybeAddSurfaceIndexEfficient64b(*this, surfaceBase, surfaceIdx);
+  samplerBase = maybeAddSamplerIndexEfficient64b(*this, samplerBase, samplerIdx);
 
   // create descriptor
   auto msgDesc = createSamplerDesc(
-      ConvertSamplerOpToMsgOp(actualop), chMask, FP16Return, FP16Input,
-      pixelNullMask, (pairedSurface) ? !pairedSurface->isNullReg() : false,
-      surfaceIdx, samplerIdx, (aoffimmi) ? aoffimmi->asImm()->getInt() : 0,
+      ConvertSamplerOpToMsgOp(actualop),
+      chMask,
+      FP16Return,
+      FP16Input,
+      pixelNullMask,
+      (pairedSurface) ? !pairedSurface->isNullReg() : false,
+      surfaceIdx,
+      samplerIdx,
+      (aoffimmi) ? aoffimmi->asImm()->getInt() : 0,
       isGather4);
 
   bool useHeader = false;
@@ -2838,8 +2863,8 @@ int IR_Builder::translateVISASampler3DInstUnified(
   // Collect header if present.
   if (header) {
     sources[i].opnd = header;
-    // From PVC onwards (including Xe3p), the SIMD width was increased from
-    // SIMD8 to SIMD16.
+    // From PVC onwards (including Xe3p), the SIMD width was increased from SIMD8
+    // to SIMD16.
     // TODO: The non-xe3p code path still has SIMD8, and we should
     // confirm and change it to SIMD16
     sources[i].numElts = g4::SIMD16;
@@ -2877,8 +2902,16 @@ int IR_Builder::translateVISASampler3DInstUnified(
   auto ind1 = setupIndirectDescriptor(samplerBase);
 
   // create send instruction
-  createSamplerSendgInst(pred, dst, msgs[0], msgs[1], execSize, msgDesc,
-                         instOpt, ind0, ind1, false);
+  createSamplerSendgInst(pred,
+                         dst,
+                         msgs[0],
+                         msgs[1],
+                         execSize,
+                         msgDesc,
+                         instOpt,
+                         ind0,
+                         ind1,
+                         false);
 
   return VISA_SUCCESS;
 }
@@ -2900,13 +2933,12 @@ int IR_Builder::translateVISALoad3DInstUnified(
   const bool FP16Return = dst->getTypeSize() == 2;
   const bool FP16Input = opndArray[0]->getTypeSize() == 2;
 
-  surfaceBase =
-      maybeAddSurfaceIndexEfficient64b(*this, surfaceBase, surfaceIdx);
-  samplerBase =
-      maybeAddSamplerIndexEfficient64b(*this, samplerBase, samplerIdx);
+  surfaceBase = maybeAddSurfaceIndexEfficient64b(*this, surfaceBase, surfaceIdx);
+  samplerBase = maybeAddSamplerIndexEfficient64b(*this, samplerBase, samplerIdx);
   // create descriptor
   auto msgDesc = createSamplerDesc(
-      ConvertSamplerOpToMsgOp(actualop), channelMask, FP16Return, FP16Input,
+      ConvertSamplerOpToMsgOp(actualop), channelMask,
+      FP16Return, FP16Input,
       pixelNullMask, !pairedSurface->isNullReg(),
       surfaceIdx, samplerIdx, aoffimmi->asImm()->getInt(), false);
 
@@ -2998,8 +3030,7 @@ int IR_Builder::translateVISASampleCacheFlushInstUnified() {
 
   // create descriptor
   auto msgDesc = createSamplerDesc(MsgOp::SAMPLER_FLUSH, chMask, false, false,
-                                   false, false,
-                                   0, 0, 0, false);
+                                   false, false, 0, 0, 0, false);
 
   // compute operand lengths
   msgDesc->setDstLen(1);

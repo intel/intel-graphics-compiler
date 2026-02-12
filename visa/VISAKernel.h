@@ -984,12 +984,12 @@ public:
 
   VISA_BUILDER_API int
   AppendVISA3dSampler(VISASampler3DSubOpCode subOpcode, bool pixelNullMask,
-                      bool cpsEnable, bool uniformSampler,
-                      VISA_PredOpnd *pred, VISA_EMask_Ctrl emask,
-                      VISA_Exec_Size executionSize, VISAChannelMask srcChannel,
-                      VISA_VectorOpnd *aoffimmi, VISA_StateOpndHandle *sampler,
-                      unsigned int samplerIdx, VISA_StateOpndHandle *surface,
-                      unsigned int surfaceIdx, VISA_RawOpnd *pairedSurface,
+                      bool cpsEnable, bool uniformSampler, VISA_PredOpnd *pred,
+                      VISA_EMask_Ctrl emask, VISA_Exec_Size executionSize,
+                      VISAChannelMask srcChannel, VISA_VectorOpnd *aoffimmi,
+                      VISA_StateOpndHandle *sampler, unsigned int samplerIdx,
+                      VISA_StateOpndHandle *surface, unsigned int surfaceIdx,
+                      VISA_RawOpnd *pairedSurface,
                       VISA_RawOpnd *dst, int numMsgSpecificOpnds,
                       VISA_RawOpnd **opndArray) override;
 
@@ -1022,12 +1022,13 @@ public:
       VISA_RawOpnd **opndArray) override;
 
   VISA_BUILDER_API int AppendVISA3dGather4(
-      VISASampler3DSubOpCode subOpcode, bool pixelNullMask,
-      VISA_PredOpnd *pred, VISA_EMask_Ctrl emask, VISA_Exec_Size executionSize,
+      VISASampler3DSubOpCode subOpcode, bool pixelNullMask, VISA_PredOpnd *pred,
+      VISA_EMask_Ctrl emask, VISA_Exec_Size executionSize,
       VISASourceSingleChannel srcChannel, VISA_VectorOpnd *aoffimmi,
       VISA_StateOpndHandle *sampler, unsigned samplerIndex,
       VISA_StateOpndHandle *surface, unsigned surfaceIndex,
-      VISA_RawOpnd *pairedSurface, VISA_RawOpnd *dst, int numMsgSpecificOpnds,
+      VISA_RawOpnd *pairedSurface,
+      VISA_RawOpnd *dst, int numMsgSpecificOpnds,
       VISA_RawOpnd **opndArray) override;
 
   VISA_BUILDER_API int
@@ -1160,13 +1161,14 @@ public:
 
   int AppendVISA3dSamplerMsgGeneric(
       ISA_Opcode opcode, VISASampler3DSubOpCode subOpcode, bool pixelNullMask,
-      bool cpsEnable, bool uniformSampler,
-      VISA_PredOpnd *pred, VISA_EMask_Ctrl emask, VISA_Exec_Size executionSize,
+      bool cpsEnable, bool uniformSampler, VISA_PredOpnd *pred,
+      VISA_EMask_Ctrl emask, VISA_Exec_Size executionSize,
       ChannelMask srcChannel, VISA_VectorOpnd *aoffimmi,
       VISA_StateOpndHandle *sampler, unsigned int samplerIdx,
       VISA_StateOpndHandle *surface, unsigned int surfaceIdx,
-      VISA_RawOpnd *pairedSurface, VISA_RawOpnd *dst,
-      unsigned int numMsgSpecificOpnds, VISA_RawOpnd **opndArray);
+      VISA_RawOpnd *pairedSurface,
+      VISA_RawOpnd *dst, unsigned int numMsgSpecificOpnds,
+      VISA_RawOpnd **opndArray);
 
   attribute_info_t *allocAttribute(CISA_GEN_VAR *Dcl) {
     return allocAttributeImpl(Dcl, 0);

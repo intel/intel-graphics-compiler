@@ -419,13 +419,16 @@ public:
                                        const char *surface_name, unsigned surfaceIndex,
                                        VISA_opnd *lod, VISA_opnd *dst, int lineNum);
 
-  bool createSample4Instruction(
-      VISA_opnd *pred, VISASampler3DSubOpCode subOpcode, bool pixelNullMask,
-      ChannelMask channels, VISA_EMask_Ctrl emask, unsigned exec_size,
-      VISA_opnd *aoffimmi, const char *sampler_name, unsigned int samplerIndex,
-      const char *surface_name, unsigned int surfaceIndex,
-      VISA_opnd *pairedSurface, VISA_opnd *dst, unsigned int numParameters,
-      VISA_RawOpnd **params, int lineNum);
+  bool createSample4Instruction(VISA_opnd *pred,
+                                VISASampler3DSubOpCode subOpcode,
+                                bool pixelNullMask, ChannelMask channels,
+                                VISA_EMask_Ctrl emask, unsigned exec_size,
+                                VISA_opnd *aoffimmi,
+                                const char *sampler_name,unsigned int samplerIndex,
+                                const char *surface_name, unsigned int surfaceIndex,
+                                VISA_opnd *pairedSurface,
+                                VISA_opnd *dst, unsigned int numParameters,
+                                VISA_RawOpnd **params, int lineNum);
 
   bool create3DLoadInstruction(VISA_opnd *pred,
                                VISASampler3DSubOpCode subOpcode,
@@ -437,14 +440,17 @@ public:
                                VISA_opnd *dst, unsigned int numParameters,
                                VISA_RawOpnd **params, int lineNum);
 
-  bool create3DSampleInstruction(
-      VISA_opnd *pred, VISASampler3DSubOpCode subOpcode, bool pixelNullMask,
-      bool cpsEnable, bool uniformSampler,
-      ChannelMask channels, VISA_EMask_Ctrl emask, unsigned exec_size,
-      VISA_opnd *aoffimmi, const char *sampler_name, unsigned int samplerIdx,
-      const char *surface_name, unsigned int surfaceIdx,
-      VISA_opnd *pairedSurface, VISA_opnd *dst, unsigned int numParameters,
-      VISA_RawOpnd **params, int lineNum);
+  bool create3DSampleInstruction(VISA_opnd *pred,
+                                 VISASampler3DSubOpCode subOpcode,
+                                 bool pixelNullMask, bool cpsEnable,
+                                 bool uniformSampler, ChannelMask channels,
+                                 VISA_EMask_Ctrl emask, unsigned exec_size,
+                                 VISA_opnd *aoffimmi,
+                                 const char *sampler_name, unsigned int samplerIdx,
+                                 const char *surface_name, unsigned int surfaceIdx,
+                                 VISA_opnd *pairedSurface,
+                                 VISA_opnd *dst, unsigned int numParameters,
+                                 VISA_RawOpnd **params, int lineNum);
 
   bool CISA_create_sample_instruction(ISA_Opcode opcode, ChannelMask channel,
                                       int simd_mode, const char *sampler_name,

@@ -889,9 +889,9 @@ public:
 
 struct VISA3DSamplerOp {
   VISASampler3DSubOpCode opcode;
-  bool pixelNullMask = false;
-  bool cpsEnable = false;
-  bool nonUniformSampler = false;
+  bool pixelNullMask;
+  bool cpsEnable;
+  bool nonUniformSampler;
 
   template <class T> static VISA3DSamplerOp extractSamplerOp(T val) {
 
@@ -917,7 +917,7 @@ struct VISA3DSamplerOp {
     op.pixelNullMask = (val & (1 << 8)) != 0;
     op.cpsEnable = (val & (1 << 9)) != 0;
     op.nonUniformSampler = (val & (1 << 10)) != 0;
-    // val & 0b11111111
+    // val & 0b01111111
     op.opcode = static_cast<VISASampler3DSubOpCode>(val & 0xFF);
     return op;
   }

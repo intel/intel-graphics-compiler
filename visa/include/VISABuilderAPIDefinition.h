@@ -1151,19 +1151,18 @@ public:
       bool uniformSampler, VISA_PredOpnd *pred, VISA_EMask_Ctrl emask,
       VISA_Exec_Size executionSize, VISAChannelMask channelMask,
       VISA_VectorOpnd *aoffimmi, VISA_StateOpndHandle *sampler,
-      VISA_StateOpndHandle *surface, VISA_RawOpnd *pairedSurface,
+      VISA_StateOpndHandle *surface,
+      VISA_RawOpnd *pairedSurface,
       VISA_RawOpnd *dst, int numMsgSpecificOpnds, VISA_RawOpnd **opndArray) = 0;
 
-  VISA_BUILDER_API virtual int
-  AppendVISA3dSampler(VISASampler3DSubOpCode subOpcode, bool pixelNullMask,
-                      bool cpsEnable, bool uniformSampler,
-                      VISA_PredOpnd *pred, VISA_EMask_Ctrl emask,
-                      VISA_Exec_Size executionSize, VISAChannelMask channelMask,
-                      VISA_VectorOpnd *aoffimmi, VISA_StateOpndHandle *sampler,
-                      unsigned int samplerIdx, VISA_StateOpndHandle *surface,
-                      unsigned int surfaceIdx, VISA_RawOpnd *pairedSurface,
-                      VISA_RawOpnd *dst, int numMsgSpecificOpnds,
-                      VISA_RawOpnd **opndArray) = 0;
+  VISA_BUILDER_API virtual int AppendVISA3dSampler(
+      VISASampler3DSubOpCode subOpcode, bool pixelNullMask, bool cpsEnable,
+      bool uniformSampler, VISA_PredOpnd *pred, VISA_EMask_Ctrl emask,
+      VISA_Exec_Size executionSize, VISAChannelMask channelMask,
+      VISA_VectorOpnd *aoffimmi, VISA_StateOpndHandle *sampler, unsigned int samplerIdx,
+      VISA_StateOpndHandle *surface, unsigned int surfaceIdx,
+      VISA_RawOpnd *pairedSurface,
+      VISA_RawOpnd *dst, int numMsgSpecificOpnds, VISA_RawOpnd **opndArray) = 0;
 
   /// AppendVISA3dLoad -- create a vISA sampler load message
   /// @subOpcode the sampler op (ld, ld_lz, etc.)
@@ -1222,13 +1221,13 @@ public:
       VISA_RawOpnd *dst, int numMsgSpecificOpnds, VISA_RawOpnd **opndArray) = 0;
 
   VISA_BUILDER_API virtual int AppendVISA3dGather4(
-      VISASampler3DSubOpCode subOpcode, bool pixelNullMask,
-      VISA_PredOpnd *pred, VISA_EMask_Ctrl emask, VISA_Exec_Size executionSize,
+      VISASampler3DSubOpCode subOpcode, bool pixelNullMask, VISA_PredOpnd *pred,
+      VISA_EMask_Ctrl emask, VISA_Exec_Size executionSize,
       VISASourceSingleChannel srcChannel, VISA_VectorOpnd *aoffimmi,
       VISA_StateOpndHandle *sampler, unsigned int samplerIndex,
       VISA_StateOpndHandle *surface, unsigned int surfaceIndex,
-      VISA_RawOpnd *pairedSurface, VISA_RawOpnd *dst, int numMsgSpecificOpnds,
-      VISA_RawOpnd **opndArray) = 0;
+      VISA_RawOpnd *pairedSurface,
+      VISA_RawOpnd *dst, int numMsgSpecificOpnds, VISA_RawOpnd **opndArray) = 0;
 
   VISA_BUILDER_API virtual int
   AppendVISA3dInfo(VISASampler3DSubOpCode subOpcode, VISA_EMask_Ctrl emask,

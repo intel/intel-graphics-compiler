@@ -314,8 +314,7 @@ G4_Operand *IR_Builder::maybeAddSurfaceIndexEfficient64b(
 G4_Operand *IR_Builder::maybeAddSamplerIndexEfficient64b(
   IR_Builder &irb, G4_Operand *sampler, unsigned &samplerIndex)
 {
-  // Valid hardware sampler index range is [0,6]
-  if (samplerIndex < 0x7)
+  if (samplerIndex < 0x8)
     return sampler; // no emulation needed
 
   static const int sizeOfRendersamplerState = 0x40;

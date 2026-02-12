@@ -5457,31 +5457,31 @@ int VISAKernelImpl::AppendVISAMEAVS(
 /************* END APPEND APIS ************************/
 int VISAKernelImpl::AppendVISA3dSamplerMsgGeneric(
     ISA_Opcode opcode, VISASampler3DSubOpCode subOpcode, bool pixelNullMask,
-    bool cpsEnable, bool uniformSampler,
-    VISA_PredOpnd *pred, VISA_EMask_Ctrl emask, VISA_Exec_Size executionSize,
-    ChannelMask srcChannel, VISA_VectorOpnd *aoffimmi,
-    VISA_StateOpndHandle *sampler, unsigned int samplerIdx,
+    bool cpsEnable, bool uniformSampler, VISA_PredOpnd *pred,
+    VISA_EMask_Ctrl emask, VISA_Exec_Size executionSize, ChannelMask srcChannel,
+    VISA_VectorOpnd *aoffimmi, VISA_StateOpndHandle *sampler, unsigned int samplerIdx,
     VISA_StateOpndHandle *surface, unsigned int surfaceIdx,
-    VISA_RawOpnd *pairedSurface, VISA_RawOpnd *dst,
-    unsigned int numMsgSpecificOpnds, VISA_RawOpnd **opndArray) {
+    VISA_RawOpnd *pairedSurface,
+    VISA_RawOpnd *dst, unsigned int numMsgSpecificOpnds,
+    VISA_RawOpnd **opndArray) {
   TIME_SCOPE(VISA_BUILDER_APPEND_INST);
 
   if (m_options->getOption(vISA_enableEfficient64b)) {
     if (surface) {
-      vISA_ASSERT_INPUT(surface->opnd_type == CISA_OPND_VECTOR,
-                        "surface must be vector operand");
+    vISA_ASSERT_INPUT(surface->opnd_type == CISA_OPND_VECTOR,
+                      "surface must be vector operand");
     }
     if (sampler) {
-      vISA_ASSERT_INPUT(sampler->opnd_type == CISA_OPND_VECTOR,
-                        "sampler must be vector operand");
+    vISA_ASSERT_INPUT(sampler->opnd_type == CISA_OPND_VECTOR,
+                      "sampler must be vector operand");
     }
   }
   AppendVISAInstCommon();
 
   int status = VISA_SUCCESS;
   bool isLoad = (subOpcode == VISA_3D_LD_MCS || subOpcode == VISA_3D_LD ||
-                 subOpcode == VISA_3D_LD_L || subOpcode == VISA_3D_LD2DMS_W ||
-                 subOpcode == VISA_3D_LD_LZ);
+                 subOpcode == VISA_3D_LD_L ||
+                 subOpcode == VISA_3D_LD2DMS_W || subOpcode == VISA_3D_LD_LZ);
   bool isSample4 =
       (subOpcode == VISA_3D_GATHER4 || subOpcode == VISA_3D_GATHER4_C ||
        (m_builder->hasGather4PO() && subOpcode == VISA_3D_GATHER4_PO) ||
@@ -5495,7 +5495,8 @@ int VISAKernelImpl::AppendVISA3dSamplerMsgGeneric(
        subOpcode == VISA_3D_GATHER4_PO_PACKED_L_C ||
        subOpcode == VISA_3D_GATHER4_I || subOpcode == VISA_3D_GATHER4_B ||
        subOpcode == VISA_3D_GATHER4_L || subOpcode == VISA_3D_GATHER4_I_C ||
-       subOpcode == VISA_3D_GATHER4_L_C);
+       subOpcode == VISA_3D_GATHER4_L_C
+      );
 
   if (IS_GEN_BOTH_PATH) {
     CreateGenRawSrcOperand(pairedSurface);
@@ -5532,11 +5533,10 @@ int VISAKernelImpl::AppendVISA3dSamplerMsgGeneric(
     } else if (isSample4) {
       if (m_options->getOption(vISA_enableEfficient64b)) {
         status = m_builder->translateVISAGather3DInstUnified(
-            subOpcode, pixelNullMask, uniformSampler,
-            g4Pred, executionSize, emask, srcChannel, aoffimmi->g4opnd,
-            sampler->g4opnd, samplerIdx, surface->g4opnd, surfaceIdx,
-            pairedSurface->g4opnd, dst->g4opnd->asDstRegRegion(),
-            numMsgSpecificOpnds, g4params);
+            subOpcode, pixelNullMask, uniformSampler, g4Pred, executionSize,
+            emask, srcChannel, aoffimmi->g4opnd, sampler->g4opnd, samplerIdx,
+            surface->g4opnd, surfaceIdx, pairedSurface->g4opnd,
+            dst->g4opnd->asDstRegRegion(), numMsgSpecificOpnds, g4params);
       } else {
         status = m_builder->translateVISAGather3dInst(
             subOpcode, pixelNullMask, g4Pred, executionSize, emask, srcChannel,
@@ -5551,11 +5551,10 @@ int VISAKernelImpl::AppendVISA3dSamplerMsgGeneric(
         vISA_ASSERT_INPUT(sampler->opnd_type == CISA_OPND_VECTOR,
                           "sampler must be vector operand");
         status = m_builder->translateVISASampler3DInstUnified(
-            subOpcode, pixelNullMask, uniformSampler,
-            g4Pred, executionSize, emask, srcChannel, aoffimmi->g4opnd,
-            sampler->g4opnd, samplerIdx, surface->g4opnd, surfaceIdx,
-            pairedSurface->g4opnd, dst->g4opnd->asDstRegRegion(),
-            numMsgSpecificOpnds, g4params);
+            subOpcode, pixelNullMask, uniformSampler, g4Pred, executionSize,
+            emask, srcChannel, aoffimmi->g4opnd, sampler->g4opnd, samplerIdx,
+            surface->g4opnd, surfaceIdx, pairedSurface->g4opnd,
+            dst->g4opnd->asDstRegRegion(), numMsgSpecificOpnds, g4params);
       } else {
         status = m_builder->translateVISASampler3DInst(
             subOpcode, pixelNullMask, cpsEnable, uniformSampler, g4Pred,
@@ -5573,24 +5572,12 @@ int VISAKernelImpl::AppendVISA3dSamplerMsgGeneric(
     int num_pred_desc_operands = 0;
     int num_operands = 0;
 
-    int value = 0;
-    const int WIDE_OPCODE_ISA_VER = 4;
-    if (m_major_version >= WIDE_OPCODE_ISA_VER) {
-      // Bit 0-7 : subOp
-      // Bit 8   : pixelNullMask
-      // Bit 9   : cpsEnable
-      // Bit 10  : non-uniform sampler state
-      value = subOpcode + (pixelNullMask ? 1 << 8 : 0) +
-              (cpsEnable ? 1 << 9 : 0) + (!uniformSampler ? 1 << 10 : 0);
-
-    } else {
-      // Bit 0-4: subOpcode
-      // Bit 5  : pixelNullMask
-      // Bit 6  : cpsEnable
-      // Bit 7  : non-uniform sampler
-      value = subOpcode + (pixelNullMask ? 1 << 5 : 0) +
-              (cpsEnable ? 1 << 6 : 0) + (!uniformSampler ? 1 << 7 : 0);
-    }
+    // subOP, pixel null mask and CPS LOD compensation enable.
+    // Bit 0-7 : subOp
+    // Bit 8   : pixelNullMask
+    // Bit 9   : cpsEnable
+    int value =
+        subOpcode + (pixelNullMask ? 1 << 8 : 0) + (cpsEnable ? 1 << 9 : 0);
     ADD_OPND(num_operands, opnd,
              CreateOtherOpndHelper(num_pred_desc_operands, num_operands,
                                    inst_desc, value));
@@ -5671,27 +5658,26 @@ int VISAKernelImpl::AppendVISA3dSampler(
     VISA_StateOpndHandle *surface, VISA_RawOpnd *pairedSurface,
     VISA_RawOpnd *dst, int numMsgSpecificOpnds, VISA_RawOpnd **opndArray) {
   return AppendVISA3dSampler(
-      subOpcode, pixelNullMask, cpsEnable, uniformSampler,
-      pred, emask, executionSize, srcChannel, aoffimmi, sampler, 0, surface, 0,
+      subOpcode, pixelNullMask, cpsEnable, uniformSampler, pred, emask,
+      executionSize, srcChannel, aoffimmi, sampler, 0, surface, 0,
       pairedSurface, dst, numMsgSpecificOpnds, opndArray);
 }
 
 int VISAKernelImpl::AppendVISA3dSampler(
     VISASampler3DSubOpCode subOpcode, bool pixelNullMask, bool cpsEnable,
-    bool uniformSampler,
-    VISA_PredOpnd *pred, VISA_EMask_Ctrl emask, VISA_Exec_Size executionSize,
-    VISAChannelMask srcChannel, VISA_VectorOpnd *aoffimmi,
-    VISA_StateOpndHandle *sampler, unsigned int samplerIdx,
-    VISA_StateOpndHandle *surface, unsigned int surfaceIdx,
-    VISA_RawOpnd *pairedSurface, VISA_RawOpnd *dst, int numMsgSpecificOpnds,
-    VISA_RawOpnd **opndArray) {
+    bool uniformSampler, VISA_PredOpnd *pred, VISA_EMask_Ctrl emask,
+    VISA_Exec_Size executionSize, VISAChannelMask srcChannel,
+    VISA_VectorOpnd *aoffimmi, VISA_StateOpndHandle *sampler,
+    unsigned int samplerIdx, VISA_StateOpndHandle *surface,
+    unsigned int surfaceIdx, VISA_RawOpnd *pairedSurface, VISA_RawOpnd *dst,
+    int numMsgSpecificOpnds, VISA_RawOpnd **opndArray) {
   ISA_Opcode opcode =
       ISA_3D_SAMPLE; // generate Gen IR for opndArray and dst in below func
   return AppendVISA3dSamplerMsgGeneric(
-      opcode, subOpcode, pixelNullMask, cpsEnable, uniformSampler,
-      pred, emask, executionSize, ChannelMask::createFromAPI(srcChannel),
-      aoffimmi, sampler, samplerIdx, surface, surfaceIdx, pairedSurface, dst,
-      numMsgSpecificOpnds, opndArray);
+      opcode, subOpcode, pixelNullMask, cpsEnable, uniformSampler, pred, emask,
+      executionSize, ChannelMask::createFromAPI(srcChannel), aoffimmi, sampler,
+      samplerIdx, surface, surfaceIdx, pairedSurface, dst, numMsgSpecificOpnds,
+      opndArray);
 }
 
 int VISAKernelImpl::AppendVISA3dLoad(
@@ -5717,10 +5703,9 @@ int VISAKernelImpl::AppendVISA3dLoad(
   return AppendVISA3dSamplerMsgGeneric(
       opcode, subOpcode, pixelNullMask,
       /*cpsEnable*/ false,
-      /*uniformSampler*/ true,
-      pred, emask, executionSize, ChannelMask::createFromAPI(srcChannel),
-      aoffimmi, nullptr, 0, surface, surfaceIndex, pairedSurface, dst,
-      numMsgSpecificOpnds, opndArray);
+      /*uniformSampler*/ true, pred, emask, executionSize,
+      ChannelMask::createFromAPI(srcChannel), aoffimmi, nullptr, 0, surface,
+      surfaceIndex, pairedSurface, dst, numMsgSpecificOpnds, opndArray);
 }
 
 int VISAKernelImpl::AppendVISA3dGather4(
@@ -5730,15 +5715,15 @@ int VISAKernelImpl::AppendVISA3dGather4(
     VISA_StateOpndHandle *sampler, VISA_StateOpndHandle *surface,
     VISA_RawOpnd *pairedSurface, VISA_RawOpnd *dst, int numMsgSpecificOpnds,
     VISA_RawOpnd **opndArray) {
-  return AppendVISA3dGather4(subOpcode, pixelNullMask,
-                             pred, emask, executionSize, srcChannel, aoffimmi,
-                             sampler, 0, surface, 0, pairedSurface, dst,
+  return AppendVISA3dGather4(subOpcode, pixelNullMask, pred, emask,
+                             executionSize, srcChannel, aoffimmi, sampler, 0,
+                             surface, 0, pairedSurface, dst,
                              numMsgSpecificOpnds, opndArray);
 }
 
 int VISAKernelImpl::AppendVISA3dGather4(
-    VISASampler3DSubOpCode subOpcode, bool pixelNullMask,
-    VISA_PredOpnd *pred, VISA_EMask_Ctrl emask, VISA_Exec_Size executionSize,
+    VISASampler3DSubOpCode subOpcode, bool pixelNullMask, VISA_PredOpnd *pred,
+    VISA_EMask_Ctrl emask, VISA_Exec_Size executionSize,
     VISASourceSingleChannel srcChannel, VISA_VectorOpnd *aoffimmi,
     VISA_StateOpndHandle *sampler, unsigned int samplerIndex,
     VISA_StateOpndHandle *surface, unsigned int surfaceIndex,
@@ -5748,8 +5733,8 @@ int VISAKernelImpl::AppendVISA3dGather4(
       ISA_3D_GATHER4; // generate Gen IR for opndArray and dst in below func
   return AppendVISA3dSamplerMsgGeneric(
       opcode, subOpcode, pixelNullMask,
-      /*cpsEnable*/ false, /*uniformSampler*/ true,
-      pred, emask, executionSize,
+      /*cpsEnable*/ false,
+      /*uniformSampler*/ true, pred, emask, executionSize,
       ChannelMask::createFromSingleChannel(srcChannel), aoffimmi, sampler,
       samplerIndex, surface, surfaceIndex, pairedSurface, dst,
       numMsgSpecificOpnds, opndArray);

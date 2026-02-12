@@ -2434,7 +2434,7 @@ void vISAVerifier::verifyInstructionSampler(const CISA_INST *inst) {
   case ISA_3D_LOAD:
   case ISA_3D_GATHER4: {
     uint16_t value = getPrimitiveOperand<uint16_t>(inst, i++);
-    bool pixelNullMask = (value & (1 << 8)) != 0;
+    bool pixelNullMask = (value >> 8) != 0;
 
     if (pixelNullMask) {
       REPORT_INSTRUCTION(options, irBuilder->getPlatform() >= GENX_SKL,

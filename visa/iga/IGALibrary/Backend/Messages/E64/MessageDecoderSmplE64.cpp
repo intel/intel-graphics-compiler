@@ -106,13 +106,13 @@ void MessageDecoderSamplerE64::decode() {
            feedback ? "Feedback surface included in header"
                     : "No feedback header");
 
-  decodeSmsIdx();
-  if (result.info.samplerStateIndex > 0 && result.info.samplerStateIndex <= 6)
-    dss << ".smsidx=" << result.info.samplerStateIndex;
-
   decodeSsIdx();
   if (result.info.surfaceStateIndex != 0)
     dss << ".ssidx=" << result.info.surfaceStateIndex;
+
+  decodeSmsIdx();
+  if (result.info.samplerStateIndex != 0)
+    dss << ".smsidx=" << result.info.samplerStateIndex;
 
   decodeUvrOffsets();
   if (!result.syntax.immOffset.empty())

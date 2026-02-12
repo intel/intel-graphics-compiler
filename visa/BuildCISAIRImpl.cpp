@@ -3471,8 +3471,8 @@ bool CISA_IR_Builder::createSample4Instruction(
   VISA_StateOpndHandle *surface = nullptr;
 
   if (m_options.getOption(vISA_enableEfficient64b)) {
-    surface = (VISA_StateOpndHandle *)CISA_create_gen_src_operand(
-        surfaceName, 0, 1, 0, 0, 0, MODIFIER_NONE, lineNum);
+    surface = (VISA_StateOpndHandle*)
+      CISA_create_gen_src_operand(surfaceName, 0, 1, 0, 0, 0, MODIFIER_NONE, lineNum);
   } else
     surface = CISA_get_surface_variable(surfaceName, lineNum);
   if (!surface)
@@ -3480,9 +3480,10 @@ bool CISA_IR_Builder::createSample4Instruction(
 
   VISA_StateOpndHandle *sampler = nullptr;
   if (m_options.getOption(vISA_enableEfficient64b)) {
-    sampler = (VISA_StateOpndHandle *)CISA_create_gen_src_operand(
-        samplerName, 0, 1, 0, 0, 0, MODIFIER_NONE, lineNum);
-  } else
+    sampler = (VISA_StateOpndHandle*)
+      CISA_create_gen_src_operand(samplerName, 0 , 1, 0, 0, 0, MODIFIER_NONE, lineNum);
+  }
+  else
     sampler = CISA_get_sampler_variable(samplerName, lineNum);
   if (!sampler)
     return false; // error already reported
@@ -3495,11 +3496,10 @@ bool CISA_IR_Builder::createSample4Instruction(
     return false;
   }
   int status = m_kernel->AppendVISA3dGather4(
-      subOpcode, pixelNullMask,
-      (VISA_PredOpnd *)pred, emask, executionSize, channel.getSingleChannel(),
-      (VISA_VectorOpnd *)aoffimmi, sampler, samplerIndex, surface, surfaceIndex,
-      (VISA_RawOpnd *)pairedSurface, (VISA_RawOpnd *)dst, numParameters,
-      params);
+      subOpcode, pixelNullMask, (VISA_PredOpnd *)pred, emask, executionSize,
+      channel.getSingleChannel(), (VISA_VectorOpnd *)aoffimmi, sampler,
+      samplerIndex, surface, surfaceIndex, (VISA_RawOpnd *)pairedSurface,
+      (VISA_RawOpnd *)dst, numParameters, params);
   VISA_RESULT_CALL_TO_BOOL(status);
   return true;
 }
@@ -3531,16 +3531,15 @@ bool CISA_IR_Builder::create3DLoadInstruction(
 
 bool CISA_IR_Builder::create3DSampleInstruction(
     VISA_opnd *pred, VISASampler3DSubOpCode subOpcode, bool pixelNullMask,
-    bool cpsEnable, bool uniformSampler,
-    ChannelMask channels, VISA_EMask_Ctrl emask, unsigned exec_size,
-    VISA_opnd *aoffimmi, const char *samplerName, unsigned int samplerIdx,
-    const char *surfaceName, unsigned int surfaceIdx, VISA_opnd *pairedSurface,
-    VISA_opnd *dst, unsigned int numParameters, VISA_RawOpnd **params,
-    int lineNum) {
+    bool cpsEnable, bool uniformSampler, ChannelMask channels,
+    VISA_EMask_Ctrl emask, unsigned exec_size, VISA_opnd *aoffimmi,
+    const char *samplerName, unsigned int samplerIdx, const char *surfaceName,
+    unsigned int surfaceIdx, VISA_opnd *pairedSurface, VISA_opnd *dst,
+    unsigned int numParameters, VISA_RawOpnd **params, int lineNum) {
   VISA_StateOpndHandle *surface = nullptr;
   if (!m_options.getOption(vISA_enableEfficient64b)) {
     vISA_ASSERT_INPUT(samplerIdx == 0 && surfaceIdx == 0,
-                      "sampler and surface index must be 0");
+        "sampler and surface index must be 0");
   }
 
   if (m_options.getOption(vISA_enableEfficient64b)) {
