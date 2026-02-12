@@ -646,18 +646,7 @@ bool BIImport::runOnModule(Module &M) {
           IRBuilder<> builder(CI);
           Value *newV;
           if (funcName.startswith("__builtin_IB_convert_sampler_to_int")) {
-            Type *CIOpTy = CI->getOperand(0)->getType();
-            if (isa<PointerType>(CIOpTy)) {
-              newV = builder.CreatePtrToInt(CI->getOperand(0), CI->getType());
-            }
-            else {
-              CodeGenContext *ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
-
-              bool UseBindlessImage = ctx->getModuleMetaData()->UseBindlessImage;
-              ctx->getModuleMetaData()->UseBindlessImageWithSamplerTracking = UseBindlessImage;
-              // i32 to i64
-              newV = builder.CreateZExt(CI->getOperand(0), CI->getType());
-            }
+            newV = builder.CreatePtrToInt(CI->getOperand(0), CI->getType());
           } else
             newV = builder.CreateBitOrPointerCast(CI->getOperand(0), CI->getType());
           CI->replaceAllUsesWith(newV);

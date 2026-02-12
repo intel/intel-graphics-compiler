@@ -550,17 +550,7 @@ public:
     //@TODO: Remove the part related to bindless once bindless
     //       is fully implemented outside this pass.
     if (modMD->UseBindlessImage) {
-      Value *sampler;
-      if (modMD->UseBindlessImageWithSamplerTracking) {
-        Value *samplerValue = ValueTracker::track(m_pCallInst, 1, m_pMdUtils, m_modMD);
-        int samplerConstantVal = int_cast<int>(cast<ConstantInt>(samplerValue)->getZExtValue());
-
-        // Bindless inline sampler is passed via implicit kernel argument.
-        ImplicitArgs implicitArgs(*m_pFunc, m_pMdUtils);
-        sampler = implicitArgs.getNumberedImplicitArg(*m_pFunc, ImplicitArg::INLINE_SAMPLER, samplerConstantVal);
-      } else {
-        sampler = m_pCallInst->getArgOperand(1);
-      }
+      auto *sampler = m_pCallInst->getArgOperand(1);
 
       // Map the bindless pointer.
       ConstantInt *bindlessIndex = ConstantInt::get(m_pIntType, BINDLESS_BTI);

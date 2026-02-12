@@ -810,7 +810,7 @@ enum class ShaderTypeMD
         ShaderData shaderData;
         URBLayoutInfo URBInfo;
         bool UseBindlessImage = false;
-        bool UseBindlessImageWithSamplerTracking = false;
+
         bool enableRangeReduce = false;
         //when true, compiler enables MatchMad optimization for VS
         bool allowMatchMadOptimizationforVS = false;
