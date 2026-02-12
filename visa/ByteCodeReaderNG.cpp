@@ -1820,10 +1820,10 @@ static void readInstructionSampler(unsigned &bytePos, const char *buf,
     kernelBuilderImpl->CreateVISAStateOperandHandle(
         samplerHnd, container.samplerVarDecls[sampler]);
     kernelBuilderImpl->AppendVISA3dSampler(
-        op.opcode, op.pixelNullMask, op.cpsEnable, !op.nonUniformSampler, pred,
-        emask, esize, ChannelMask::createAPIFromBinary(opcode, channelMask),
-        aoffimmi, samplerHnd, 0, surfaceHnd, 0, pairedSurface, dst, numParams,
-        params);
+        op.opcode, op.pixelNullMask, op.cpsEnable, !op.nonUniformSampler,
+        pred, emask, esize,
+        ChannelMask::createAPIFromBinary(opcode, channelMask), aoffimmi,
+        samplerHnd, 0, surfaceHnd, 0, pairedSurface, dst, numParams, params);
     break;
   }
   case ISA_3D_LOAD: {
@@ -1926,11 +1926,10 @@ static void readInstructionSampler(unsigned &bytePos, const char *buf,
         surfaceHnd, container.surfaceVarDecls[surface]);
     kernelBuilderImpl->CreateVISAStateOperandHandle(
         samplerHnd, container.samplerVarDecls[sampler]);
-    kernelBuilder->AppendVISA3dGather4(op.opcode, op.pixelNullMask, pred, emask,
-                                       esize, (VISASourceSingleChannel)channel,
-                                       aoffimmi, samplerHnd, 0, surfaceHnd, 0,
-                                       pairedSurface,
-                                       dst, numParams, params);
+    kernelBuilder->AppendVISA3dGather4(
+        op.opcode, op.pixelNullMask,
+        pred, emask, esize, (VISASourceSingleChannel)channel, aoffimmi,
+        samplerHnd, 0, surfaceHnd, 0, pairedSurface, dst, numParams, params);
     break;
   }
   case ISA_3D_INFO: {

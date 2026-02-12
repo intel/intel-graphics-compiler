@@ -5990,7 +5990,7 @@
           "static_cast<VISASampler3DSubOpCode>(sub_opc & 0x1f)",
           "sub_opc & (1<<5)",
           "sub_opc & (1<<6)",
-          "false",
+          "true",
           "pred",
           "exec_mask",
           "exec_size",

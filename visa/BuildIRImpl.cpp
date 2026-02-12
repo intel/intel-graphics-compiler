@@ -2917,8 +2917,9 @@ G4_SendgDesc *IR_Builder::createRenderTargetDesc(
 // sampler descriptor construction
 G4_SendgDesc *IR_Builder::createSamplerDesc(
     MsgOp op, ChannelMask chMask, bool FP16Return, bool FP16Input,
-    bool pixelNullMask,bool feedbackMessage, uint32_t surfaceImmIndex,
-    uint32_t samplerImmIndex, int64_t aoffimmiVal, bool isGather4) {
+    bool pixelNullMask, bool feedbackMessage,
+    uint32_t surfaceImmIndex, uint32_t samplerImmIndex, int64_t aoffimmiVal,
+    bool isGather4) {
 
   // This function constructs the descriptor for sampler operations
   //
@@ -2979,11 +2980,17 @@ G4_SendgDesc *IR_Builder::createSamplerDesc(
   // feedback message
   desc |= (uint64_t)feedbackMessage << 21;
 
-  // surface and sampler state index
+  // surface state index
   vISA_ASSERT((surfaceImmIndex & ~0x1F) == 0x0, "surface index too large");
-  vISA_ASSERT((samplerImmIndex & ~0x7) == 0x0, "sampler index too large");
   desc |= (uint64_t)surfaceImmIndex << 22;
-  desc |= (uint64_t)samplerImmIndex << 27;
+
+  // sampler state index:
+  //   SamplerIndexValue: [0-6]
+  {
+    vISA_ASSERT(samplerImmIndex >= 0 && samplerImmIndex <= 6,
+                "invalid sampler index value");
+    desc |= (uint64_t)samplerImmIndex << 27;
+  }
 
   // r,v,u offsets in aoffimmi
   desc |= aoffimmiVal << 30;
