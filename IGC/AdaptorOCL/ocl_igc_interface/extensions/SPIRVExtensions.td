@@ -332,7 +332,7 @@ def SPV_INTEL_subgroup_matrix_multiply_accumulate : Extension<
 def SPV_INTEL_bindless_images : ExperimentalExtension<
   "SPV_INTEL_bindless_images",
   [ Capability<"BindlessImagesINTEL"> ],
-  "https://github.khronos.org/SPIRV-Registry/extensions/INTEL/SPV_INTEL_bindless_images.html",
+  "https://github.com/intel/llvm/blob/sycl/sycl/doc/design/spirv-extensions/SPV_INTEL_bindless_images.asciidoc",
   AllOf<[isCoreChildOf<IGFX_XE_HPG_CORE>, Not<ExactPlatform<IGFX_PVC>>, Not<ExactPlatform<IGFX_CRI>>]>
 >;
 

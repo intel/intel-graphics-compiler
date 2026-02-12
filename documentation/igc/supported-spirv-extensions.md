@@ -138,7 +138,7 @@ This document lists all SPIR-V extensions supported by IGC and their platform re
 
 ## SPV_INTEL_bindless_images
 
-**Specification**: https://github.khronos.org/SPIRV-Registry/extensions/INTEL/SPV_INTEL_bindless_images.html
+**Specification**: https://github.com/intel/llvm/blob/sycl/sycl/doc/design/spirv-extensions/SPV_INTEL_bindless_images.asciidoc
 
 > **Experimentally supported on**: IGFX_XE_HPG_CORE and newer (excluding IGFX_PVC, IGFX_CRI)
 
