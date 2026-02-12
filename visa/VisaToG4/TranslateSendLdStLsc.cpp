@@ -1727,7 +1727,8 @@ int IR_Builder::translateLscTypedInstUnified(
     G4_SrcRegRegion *src0AddrRs, int rOffset,
     G4_SrcRegRegion *src0AddrLODs,
     G4_SrcRegRegion *src1Data, // store data/extra atomic operands
-    G4_SrcRegRegion *src2Data  // icas/fcas only
+    G4_SrcRegRegion *src2Data, // icas/fcas only
+    bool msaa
 ) {
   TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
 
@@ -1858,7 +1859,7 @@ int IR_Builder::translateLscTypedInstUnified(
     msgDesc = createTypedAtomicDesc(
         mop, ConvertLSCDataSize(shape.size),
         AddrSizeType::GLB_STATE_A32, surfaceIndex, uOffset, vOffset, rOffset,
-        ConvertLSCCacheOpts(cacheOpts.l1, cacheOpts.l2, cacheOpts.l3));
+        ConvertLSCCacheOpts(cacheOpts.l1, cacheOpts.l2, cacheOpts.l3), msaa);
   }
 
   // compute operand lengths

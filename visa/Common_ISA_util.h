@@ -225,6 +225,11 @@ inline bool hasOV(LSC_SFID sfid, LSC_OP op) {
   return false;
 }
 
+inline bool hasMSAA(LSC_OP op) {
+  if (op >= LSC_OP::LSC_ATOMIC_IINC && op <= LSC_OP::LSC_ATOMIC_XOR)
+    return true;
+  return false;
+}
 }
 
 #endif /* COMMON_ISA_UTIL_INCLUDED */

@@ -1321,6 +1321,7 @@ type[ ]*=[ ]*(ud|d|uw|w|ub|b|df|f|bool|uq|q|UD|D|UW|W|UB|B|DF|F|Bool|BOOL|UQ|Q|h
 }
 
 ".ov"   {TRACE("** OV"); return OV;}
+".msaa" {TRACE("** MSAA"); return MSAA;}
 flat   {return LSC_AM_FLAT;}
 bti    {return LSC_AM_BTI;}
 ss     {return LSC_AM_SS;}

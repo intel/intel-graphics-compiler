@@ -3485,7 +3485,8 @@ G4_SendgDesc *
 IR_Builder::createTypedAtomicDesc(MsgOp op, DataSize ds,
                                   AddrSizeType as, unsigned surfaceIndex,
                                   int uOffset, int vOffset, int rOffset,
-                                  std::tuple<Caching, Caching, Caching> cacheOpts) {
+                                  std::tuple<Caching, Caching, Caching> cacheOpts,
+                                  bool msaa) {
   // This function constructs the descriptor for typed LSC atomic
   // operations based on the new descriptor format
 

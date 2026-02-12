@@ -898,8 +898,9 @@ public:
       VISA_RawOpnd *Us, int uOffset,
       VISA_RawOpnd *Vs, int vOffset,
       VISA_RawOpnd *Rs, int rOffset,
-      VISA_RawOpnd *LODs,
-      VISA_RawOpnd *src1AtomicOpnd1, VISA_RawOpnd *src2AtomicOpnd2) override;
+      VISA_RawOpnd *coord3,
+      VISA_RawOpnd *src1AtomicOpnd1, VISA_RawOpnd *src2AtomicOpnd2,
+      bool msaa) override;
 
   VISA_BUILDER_API int AppendVISALscTypedInst(
       LSC_OP op, VISA_PredOpnd *pred, VISA_Exec_Size execSize,
@@ -910,8 +911,8 @@ public:
       VISA_RawOpnd *Us, int uOffset,
       VISA_RawOpnd *Vs, int vOffset,
       VISA_RawOpnd *Rs, int rOffset,
-      VISA_RawOpnd *features,
-      VISA_RawOpnd *src1, VISA_RawOpnd *src2) override;
+      VISA_RawOpnd *features, VISA_RawOpnd *src1, VISA_RawOpnd *src2,
+      bool msaa) override;
 
   VISA_BUILDER_API int AppendVISALscFence(LSC_SFID lscSfid,
                                           LSC_FENCE_OP fenceOp,

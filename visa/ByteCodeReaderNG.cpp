@@ -2419,8 +2419,7 @@ static void readInstructionLscTyped(LSC_OP subOpcode, unsigned &bytePos,
       dstData,
       src0AddrsU, uOff,
       src0AddrsV, vOff,
-      src0AddrsR, rOff,
-      src0AddrsLOD, src1Data, src2Data);
+      src0AddrsR, rOff, src0AddrsLOD, src1Data, src2Data, false /*msaa*/);
 }
 static void readInstructionLscFence(unsigned &bytePos, const char *buf,
                                     RoutineContainer &container) {

@@ -3388,6 +3388,12 @@ private:
     //////////////////
     // caching
     formatCachingOpts();
+    // msaa
+    if (hasMSAA(opInfo.op)) {
+      unsigned msaa = getNext<unsigned>();
+      if (msaa)
+        ss << ".msaa";
+    }
 
     // execution size and offset
     ss << " " << printExecutionSize(inst->opcode, inst->execsize, subOp);

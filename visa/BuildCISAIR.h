@@ -680,7 +680,7 @@ public:
       VISA_opnd *src0_Vs, int vOffset,
       VISA_opnd *src0_Rs, int rOffset,
       VISA_opnd *src0_LODs,
-      VISA_opnd *src1_data, VISA_opnd *src2_data,
+      VISA_opnd *src1_data, VISA_opnd *src2_data, bool msaa,
       int lineNum);
   bool CISA_create_lsc_fence(LSC_SFID lscSfid, LSC_FENCE_OP fence,
                              LSC_SCOPE scope, int lineNum);

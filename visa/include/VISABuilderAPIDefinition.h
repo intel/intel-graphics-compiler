@@ -510,7 +510,7 @@ public:
       VISA_RawOpnd *Vs, int vOffset,
       VISA_RawOpnd *Rs, int rOffset,
       VISA_RawOpnd *coord3,
-      VISA_RawOpnd *src1AtomicOpnd1, VISA_RawOpnd *src2AtomicOpnd2) = 0;
+      VISA_RawOpnd *src1AtomicOpnd1, VISA_RawOpnd *src2AtomicOpnd2, bool msaa) = 0;
   VISA_BUILDER_API virtual int AppendVISALscTypedInst(
       LSC_OP subOpcode, VISA_PredOpnd *pred, VISA_Exec_Size execSize,
       VISA_EMask_Ctrl emask, LSC_CACHE_OPTS cacheOpts, LSC_ADDR_TYPE addrType,
@@ -521,7 +521,7 @@ public:
       VISA_RawOpnd *coord1s, int coord1Offset,
       VISA_RawOpnd *coord2s, int coord2Offset,
       VISA_RawOpnd *features,
-      VISA_RawOpnd *src1, VISA_RawOpnd *src2) = 0;
+      VISA_RawOpnd *src1, VISA_RawOpnd *src2, bool msaa) = 0;
   ///////////////////////////////////////////////////////////////////////////
   // LSC fences
   //

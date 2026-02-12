@@ -2290,11 +2290,11 @@ void CEncoder::Info(EOPCODE subOpcode, uint writeMask, const ResourceDescriptor 
     dataShape.order = LSC_DATA_ORDER_NONTRANSPOSE;
     dataShape.elems = LSC_DATA_ELEMS_1; // simd 1
 
-    V(vKernel->AppendVISALscTypedInst(LSC_READ_STATE_INFO, GetFlagOperand(m_encoderState.m_flag), EXEC_SIZE_1,
-                                      ConvertMaskToVisaType(m_encoderState.m_mask, m_encoderState.m_noMask), cache,
-                                      getLSCAddrType(&resource), LSC_ADDR_SIZE_32b, dataShape,
-                                      GetVISALSCSurfaceOpnd(resource.m_surfaceType, resource.m_resource), surfaceIndex,
-                                      dstVar, dummyZero, 0, nullptr, 0, nullptr, 0, nullptr, nullptr, nullptr));
+    V(vKernel->AppendVISALscTypedInst(
+        LSC_READ_STATE_INFO, GetFlagOperand(m_encoderState.m_flag), EXEC_SIZE_1,
+        ConvertMaskToVisaType(m_encoderState.m_mask, m_encoderState.m_noMask), cache, getLSCAddrType(&resource),
+        LSC_ADDR_SIZE_32b, dataShape, GetVISALSCSurfaceOpnd(resource.m_surfaceType, resource.m_resource), surfaceIndex,
+        dstVar, dummyZero, 0, nullptr, 0, nullptr, 0, nullptr, nullptr, nullptr, false /*msaa*/));
   } else {
     V(vKernel->AppendVISA3dInfo(ConvertSubOpcode(subOpcode, false), GetAluEMask(dst), GetAluExecSize(dst),
                                 ConvertChannelMaskToVisaType(writeMask), surfOpnd, surfaceIndex, lodVar, dstVar));
@@ -8105,7 +8105,7 @@ void CEncoder::LSC_TypedReadWrite(LSC_OP subOp, ResourceDescriptor *resource, CV
 
   V(vKernel->AppendVISALscTypedInst(subOp, predOpnd, execSize, mask, cacheOpts, getLSCAddrType(resource), addr_size,
                                     dataShape, globalOffsetOpnd, surfaceIndex, pDst, pUOffset, uOff, pVOffset, vOff,
-                                    pROffset, rOff, pIndex, pSrc, nullptr));
+                                    pROffset, rOff, pIndex, pSrc, nullptr, false /*msaa*/));
 }
 
 void CEncoder::LSC_TypedAtomic(AtomicOp atomic_op, ResourceDescriptor *resource, CVariable *pU, CVariable *pV,
@@ -8140,7 +8140,7 @@ void CEncoder::LSC_TypedAtomic(AtomicOp atomic_op, ResourceDescriptor *resource,
 
   V(vKernel->AppendVISALscTypedAtomic(subOp, predOpnd, execSize, mask, cacheOpts, getLSCAddrType(resource), addr_size,
                                       dataShape, globalOffsetOpnd, surfaceIndex, dstOpnd, pUOpnd, 0, pVOpnd, 0, pROpnd,
-                                      0, nullptr, pSrc0Opnd, pSrc1Opnd));
+                                      0, nullptr, pSrc0Opnd, pSrc1Opnd, false /* msaa */));
 }
 
 void CEncoder::LSC_Typed2dBlock(LSC_OP subOpcode, CVariable *srcDst, e_predefSurface surfaceType, CVariable *buf,

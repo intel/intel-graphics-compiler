@@ -1709,7 +1709,8 @@ public:
                         DataSize ds,
                         AddrSizeType as, unsigned surfaceIndex,
                         int uOffset, int vOffset, int rOffset,
-                        std::tuple<Caching, Caching, Caching> cacheOpts);
+                        std::tuple<Caching, Caching, Caching> cacheOpts,
+                        bool msaa);
 
   G4_InstSend *createLscSendInst(G4_Predicate *pred, G4_DstRegRegion *dst,
                                  G4_SrcRegRegion *src0, G4_SrcRegRegion *src1,
@@ -2622,7 +2623,8 @@ public:
       int vOffset, G4_SrcRegRegion *src0AddrRs, int rOffset,
       G4_SrcRegRegion *src0AddrLODs,
       G4_SrcRegRegion *src1Data, // store data/extra atomic operands
-      G4_SrcRegRegion *src2Data  // icas/fcas only
+      G4_SrcRegRegion *src2Data,  // icas/fcas only
+      bool msaa
   );
 
   LSC_DATA_ELEMS lscGetElementNum(unsigned eNum) const;

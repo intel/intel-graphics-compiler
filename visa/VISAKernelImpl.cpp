@@ -8580,8 +8580,8 @@ VISA_BUILDER_API int VISAKernelImpl::AppendVISALscTypedLoad(
     VISA_RawOpnd *LODs) {
   return AppendVISALscTypedInst(op, pred, execSize, emask, cacheOpts, addrType,
                                 addrSize, data, surface, surfaceIndex, dstData,
-                                Us, uOffset, Vs, vOffset, Rs, rOffset,
-                                LODs, nullptr, nullptr);
+                                Us, uOffset, Vs, vOffset, Rs, rOffset, LODs,
+                                nullptr, nullptr, false /*msaa*/);
 }
 
 VISA_BUILDER_API int VISAKernelImpl::AppendVISALscTypedStore(
@@ -8596,8 +8596,8 @@ VISA_BUILDER_API int VISAKernelImpl::AppendVISALscTypedStore(
     VISA_RawOpnd *src1Data) {
   return AppendVISALscTypedInst(op, pred, execSize, emask, cacheOpts, addrType,
                                 addrSize, data, surface, surfaceIndex, nullptr,
-                                Us, uOffset, Vs, vOffset, Rs, rOffset,
-                                LODs, src1Data, nullptr);
+                                Us, uOffset, Vs, vOffset, Rs, rOffset, LODs,
+                                src1Data, nullptr, false /*msaa*/);
 }
 
 VISA_BUILDER_API int VISAKernelImpl::AppendVISALscTypedAtomic(
@@ -8609,13 +8609,13 @@ VISA_BUILDER_API int VISAKernelImpl::AppendVISALscTypedAtomic(
     VISA_RawOpnd *Us, int uOffset,
     VISA_RawOpnd *Vs, int vOffset,
     VISA_RawOpnd *Rs, int rOffset,
-    VISA_RawOpnd *LODs,
-    VISA_RawOpnd *src1AtomicOpnd1, VISA_RawOpnd *src2AtomicOpnd2) {
+    VISA_RawOpnd *coord3, VISA_RawOpnd *src1AtomicOpnd1,
+    VISA_RawOpnd *src2AtomicOpnd2, bool msaa) {
   return AppendVISALscTypedInst(op, pred, execSize, emask, cacheOpts, addrType,
                                 addrSize, data,
                                 surface, surfaceIndex, dstReadBack,
                                 Us, uOffset, Vs, vOffset, Rs, rOffset,
-                                LODs, src1AtomicOpnd1, src2AtomicOpnd2);
+                                coord3, src1AtomicOpnd1, src2AtomicOpnd2, msaa);
 }
 
 VISA_BUILDER_API int VISAKernelImpl::AppendVISALscTypedInst(
@@ -8628,7 +8628,8 @@ VISA_BUILDER_API int VISAKernelImpl::AppendVISALscTypedInst(
     VISA_RawOpnd *coord1s, int coord1Offset,
     VISA_RawOpnd *coord2s, int coord2Offset,
     VISA_RawOpnd *features,
-    VISA_RawOpnd *src1Data, VISA_RawOpnd *src2Data) {
+    VISA_RawOpnd *src1Data, VISA_RawOpnd *src2Data,
+    bool msaa) {
 
   TIME_SCOPE(VISA_BUILDER_APPEND_INST);
 
@@ -8678,7 +8679,7 @@ VISA_BUILDER_API int VISAKernelImpl::AppendVISALscTypedInst(
         coord1s->g4opnd->asSrcRegRegion(), coord1Offset,
         coord2s->g4opnd->asSrcRegRegion(), coord2Offset,
         features->g4opnd->asSrcRegRegion(),
-        src1Data->g4opnd->asSrcRegRegion(), src2Data->g4opnd->asSrcRegRegion());
+        src1Data->g4opnd->asSrcRegRegion(), src2Data->g4opnd->asSrcRegRegion(), msaa);
   } else {
     status = m_builder->translateLscTypedInst(
         subOpcode, pred ? pred->g4opnd->asPredicate() : nullptr, execSize,
@@ -8704,6 +8705,9 @@ VISA_BUILDER_API int VISAKernelImpl::AppendVISALscTypedInst(
     if (m_options->getOption(vISA_enableEfficient64b))
       ADD_OPND(numOpnds, opnds, CreateOtherOpnd(cacheOpts.l2, ISA_TYPE_UB));
     ADD_OPND(numOpnds, opnds, CreateOtherOpnd(cacheOpts.l3, ISA_TYPE_UB));
+    //
+    if (hasMSAA(subOpcode))
+      ADD_OPND(numOpnds, opnds, CreateOtherOpnd(msaa, ISA_TYPE_BOOL));
     //
     ADD_OPND(numOpnds, opnds, CreateOtherOpnd(addrType, ISA_TYPE_UB));
     ADD_OPND(numOpnds, opnds, CreateOtherOpnd(addrSize, ISA_TYPE_UB));

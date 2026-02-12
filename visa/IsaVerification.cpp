@@ -4494,6 +4494,10 @@ struct LscInstVerifier {
   void verifyTyped() {
     verifyCachingOpts();
 
+    // skip msaa
+    if (hasMSAA(opInfo.op)) {
+      getNext<unsigned>();
+    }
     auto addrType = getNextEnumU8<LSC_ADDR_TYPE>();
     auto addrSize = getNextEnumU8<LSC_ADDR_SIZE>();
     verifyAddrSize(addrSize);

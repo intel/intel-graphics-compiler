@@ -4310,8 +4310,8 @@ bool CISA_IR_Builder::CISA_create_lsc_typed_inst(
     VISA_opnd *coord0s, int coord0Offset,
     VISA_opnd *coord1s, int coord1Offset,
     VISA_opnd *coord2s, int coord2Offset,
-    VISA_opnd *features,
-    VISA_opnd *src1_data, VISA_opnd *src2_data,
+    VISA_opnd *features, VISA_opnd *src1_data,
+    VISA_opnd *src2_data, bool msaa,
     int lineNum) {
   VISA_CALL_TO_BOOL(AppendVISALscTypedInst, opcode,
                     static_cast<VISA_PredOpnd *>(pred), execSize, emask,
@@ -4323,7 +4323,8 @@ bool CISA_IR_Builder::CISA_create_lsc_typed_inst(
                     static_cast<VISA_RawOpnd *>(coord2s), coord2Offset,
                     static_cast<VISA_RawOpnd *>(features),
                     static_cast<VISA_RawOpnd *>(src1_data),
-                    static_cast<VISA_RawOpnd *>(src2_data));
+                    static_cast<VISA_RawOpnd *>(src2_data),
+                    msaa);
   return true;
 }
 

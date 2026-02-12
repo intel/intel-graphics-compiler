@@ -194,6 +194,7 @@ std::vector<attr_gen_struct*> AttrOptVar;
     LSC_CACHE_CTRL_SIZE      lsc_cache_ctrl_size;
     LSC_CACHE_CTRL_OPERATION lsc_cache_ctrl_operation;
     bool                    ov;
+    bool                    msaa;
     LSC_FENCE_OP            lsc_fence_op;
     LSC_SCOPE               lsc_scope;
     LSC_SFID                lsc_sfid;
@@ -635,6 +636,9 @@ std::vector<attr_gen_struct*> AttrOptVar;
 
 %token OV                  // .ov
 %type <ov>                 OVOpt
+
+%token MSAA                // .msaa
+%type <msaa>               MSAAOpt
 
 %type <RawVar>                 LscPayloadReg
 %type <RawVar>                 LscPayloadNonNullReg
@@ -1965,6 +1969,7 @@ LscTypedMSRTLoad:
             $7.regs[3],       // sample index
             nullptr,          // src1 data
             nullptr,          // src2 data
+            false,            // msaa
             CISAlineno);
     }
 
@@ -1998,6 +2003,7 @@ LscTypedMSRTStore:
             $6.regs[3],       // src0-sample-index
             $7.reg,           // src1 data
             nullptr,          // src2 data
+            false,            // msaa
             CISAlineno);
     }
 
@@ -2044,6 +2050,7 @@ LscTypedLoad:
             $7.regs[3],        // src0_lod
             nullptr,           // src1 data
             nullptr,           // src2 data
+            false,             // msaa
             CISAlineno);
     }
 
@@ -2090,6 +2097,7 @@ LscTypedStore:
             $6.regs[3],       // src0_lod
             $7.reg,           // stored data
             nullptr,          // src2
+            false,            // msaa
             CISAlineno);
     }
 
@@ -2105,35 +2113,36 @@ LscTypedStore:
 // SURF:
 //     lsc_atomic_icas.tgm   surf(V10,0x3)[V52,V53,V54,V55]:a32  V60:u32.xz  V61 V70
 LscTypedAtomic:
-//  1          2                    3                     4             5
-    Predicate  LSC_ATOMIC_MNEMONIC  LSC_SFID_TYPED_TOKEN  LscCacheOpts  ExecSize
-//  6               7                              8              9
+//  1          2                    3                     4             5        6
+    Predicate  LSC_ATOMIC_MNEMONIC  LSC_SFID_TYPED_TOKEN  LscCacheOpts  MSAAOpt  ExecSize
+//  7               8                              9              10
     LscDataOperand  LscTypedAddrOperandWithOffsets LscPayloadReg  LscPayloadReg
     {
-        $5.exec_size =
-            lscCheckExecSize(pBuilder, $3, $2, $6.shape.order, $5.exec_size);
+        $6.exec_size =
+            lscCheckExecSize(pBuilder, $3, $2, $7.shape.order, $6.exec_size);
         pBuilder->CISA_create_lsc_typed_inst(
             $1,  // predicate
             $2,  // subop
             $3,  // sfid
             $4,  // caching settings
-            Get_VISA_Exec_Size_From_Raw_Size($5.exec_size),
-            $5.emask,
-            $7.addr.type, // address model
-            $7.addr.size,  // address size
-            $6.shape,    // data type
-            $7.surface,  // surface
-            $7.surfaceIndex, // surface index
-            $6.reg,      // dst data
-            $7.regs[0],  // src0 addrs u
-            $7.uvrOffsets[0], // u offset
-            $7.regs[1],  // src0 addrs v
-            $7.uvrOffsets[1], // v offset
-            $7.regs[2],  // src0 addrs r
-            $7.uvrOffsets[2], // r offset
-            $7.regs[3],  // src0 addrs lod
-            $8,          // src1 data
-            $9,          // src2 data
+            Get_VISA_Exec_Size_From_Raw_Size($6.exec_size),
+            $6.emask,
+            $8.addr.type, // address model
+            $8.addr.size,  // address size
+            $7.shape,    // data type
+            $8.surface,  // surface
+            $8.surfaceIndex, // surface index
+            $7.reg,      // dst data
+            $8.regs[0],  // src0 addrs u
+            $8.uvrOffsets[0], // u offset
+            $8.regs[1],  // src0 addrs v
+            $8.uvrOffsets[1], // v offset
+            $8.regs[2],  // src0 addrs r
+            $8.uvrOffsets[2], // r offset
+            $8.regs[3],  // src0 addrs lod
+            $9,          // src1 data
+            $10,          // src2 data
+            $5,         // msaa
             CISAlineno);
     }
 
@@ -2175,6 +2184,7 @@ LscTypedReadStateInfo:
             nullptr,           // no other coords
             nullptr,           // no src1 data
             nullptr,           // no src2 data
+            false,             // msaa
             CISAlineno);
    }
 
@@ -2198,6 +2208,8 @@ LscCacheOpts:
   | LSC_CACHING_OPT LSC_CACHING_OPT LSC_CACHING_OPT {$$ = pBuilder->CISA_create_caching_opts($1,$2,$3,CISAlineno);}
 
 OVOpt: %empty {$$ = false;} | OV {$$ = true;}
+
+MSAAOpt: %empty {$$ = false;} | MSAA {$$ = true;}
 
 LscUntypedAddrOperand:
 //  1               2      3                  4
