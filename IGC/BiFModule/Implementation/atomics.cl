@@ -857,7 +857,7 @@ half __attribute__((overloadable)) __spirv_AtomicExchange(__generic half* Pointe
 
 short __attribute__((overloadable)) __spirv_AtomicCompareExchange( __private short *Pointer, int Scope, int Equal, int Unequal, short Value, short Comparator)
 {
-    ushort orig = *Pointer;
+    short orig = *Pointer;
     if( orig == Comparator )
     {
         *Pointer = Value;
@@ -904,7 +904,7 @@ short __attribute__((overloadable)) __spirv_AtomicCompareExchange( __generic sho
 
 int __attribute__((overloadable)) __spirv_AtomicCompareExchange( __private int *Pointer, int Scope, int Equal, int Unequal, int Value, int Comparator)
 {
-    uint orig = *Pointer;
+    int orig = *Pointer;
     if( orig == Comparator )
     {
         *Pointer = Value;
@@ -949,7 +949,7 @@ int __attribute__((overloadable)) __spirv_AtomicCompareExchange( __generic int *
 #if defined(cl_khr_int64_base_atomics)
 long __attribute__((overloadable)) __spirv_AtomicCompareExchange( __private long *Pointer, int Scope, int Equal, int Unequal, long Value, long Comparator)
 {
-    ulong orig = *Pointer;
+    long orig = *Pointer;
     if( orig == Comparator )
     {
         *Pointer = Value;
