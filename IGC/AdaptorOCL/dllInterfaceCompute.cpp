@@ -1453,8 +1453,11 @@ bool TranslateBuild(const STB_TranslateInputArgs *pInputArgs, STB_TranslateOutpu
     entryPointsString.resize(entryPointsStringSize);
 
     inputShHash = ShaderHashOCL(reinterpret_cast<const UINT *>(&entryPointsString[0]), entryPointsStringSize / 4);
-  } else
+  } else if (pInputArgs && pInputArgs->KernelFileHash) {
+    inputShHash.asmHash = pInputArgs->KernelFileHash;
+  } else {
     inputShHash = ShaderHashOCL(reinterpret_cast<const UINT *>(pInputArgs->pInput), pInputArgs->InputSize / 4);
+  }
 
   // set g_CurrentShaderHash in igc_regkeys.cpp
   SetCurrentDebugHash(inputShHash);

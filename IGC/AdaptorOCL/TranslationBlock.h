@@ -180,6 +180,8 @@ struct STB_TranslateInputArgs {
   const char **pDirectCallFunctions;
   uint32_t NumDirectCallFunctions;
 
+  uint64_t KernelFileHash; // Optional hash that will be used for shader dumps for given input data.
+
   STB_TranslateInputArgs() {
     pInput = NULL;
     InputSize = 0;
@@ -198,6 +200,7 @@ struct STB_TranslateInputArgs {
     NumVISAAsmsToLink = 0;
     pDirectCallFunctions = NULL;
     NumDirectCallFunctions = 0;
+    KernelFileHash = 0;
   }
 };
 

@@ -1680,16 +1680,21 @@ bool CClangTranslationBlock::Translate(const STB_TranslateInputArgs *pInputArgs,
         pOutputArgs->ErrorString.append("warning: EnableKernelNamesBasedHash flag doesn't affect .cl dump's hash\n");
       }
 
-      // Create hash based on cclang binary output (currently llvm binary; later also spirv).
-      // Hash computed in fcl needs to be same as the one computed in igc.
-      // This is to ensure easy matching .cl files dumped in fcl with .ll/.dat/.asm/... files dumped in igc.
-      QWORD hash = iSTD::Hash(reinterpret_cast<const DWORD *>(pOutputArgs->Output.data()),
-                              (DWORD)(pOutputArgs->Output.size()) / 4);
+      // Use the pre-computed kernel file hash if provided by the caller.
+      // Otherwise, fall back to hashing the cclang binary output to generate
+      // a unique hash for the .cl dump, ensuring easy matching with .ll/.dat/.asm/... files dumped in igc.
+      QWORD hashValue = pInputArgs->KernelFileHash;
+
+      if (hashValue == 0) {
+        hashValue = iSTD::Hash(reinterpret_cast<const DWORD *>(pOutputArgs->Output.data()),
+                               (DWORD)(pOutputArgs->Output.size()) / 4);
+      }
+
+      std::stringstream hs;
+      hs << std::hex << std::setfill('0') << std::setw(sizeof(hashValue) * CHAR_BIT / 4) << hashValue;
 
       ss << pOutputFolder;
-      ss << "OCL_"
-         << "asm" << std::hex << std::setfill('0') << std::setw(sizeof(hash) * CHAR_BIT / 4) << hash << std::dec
-         << std::setfill(' ') << ".cl";
+      ss << "OCL_" << "asm" << hs.str() << ".cl";
 
       FILE *pFile = NULL;
       fopen_s(&pFile, ss.str().c_str(), "wb");

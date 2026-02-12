@@ -79,7 +79,7 @@ CIF_DECLARE_INTERFACE_PIMPL(FclOclTranslationCtx) : CIF::PimplBase {
   OCL_API_CALL OclTranslationOutputBase *Translate(
       CIF::Version_t outVersion, CIF::Builtins::BufferSimple * src, CIF::Builtins::BufferSimple * options,
       CIF::Builtins::BufferSimple * internalOptions, CIF::Builtins::BufferSimple * tracingOptions,
-      uint32_t tracingOptionsCount) {
+      uint32_t tracingOptionsCount, uint64_t kernelFileHash) {
     if ((options != nullptr) && (options->GetSizeRaw() > 0) && (strstr(options->GetMemory<char>(), "-cmc"))) {
       assert(this->outType == CodeType::spirV);
       return TranslateCM(outVersion, src, options, internalOptions, tracingOptions, tracingOptionsCount);
@@ -102,6 +102,7 @@ CIF_DECLARE_INTERFACE_PIMPL(FclOclTranslationCtx) : CIF::PimplBase {
       inputArgs.pTracingOptions = tracingOptions->GetMemoryRawWriteable();
     }
     inputArgs.TracingOptionsCount = tracingOptionsCount;
+    inputArgs.KernelFileHash = kernelFileHash;
 
     TC::STB_TranslateOutputArgs outputArgs;
     bool success = legacyInterface->Translate(&inputArgs, &outputArgs);

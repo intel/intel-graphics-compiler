@@ -99,11 +99,39 @@ protected:
       uint32_t tracingOptionsCount, void *gtPinInput);
 };
 
+// This interface adds "kernelFileHash" argument. If it is set to non-zero value, it will be used as the hash
+// For the input kernel file instead of calculating the hash from the input file content. This is useful for cases when
+// we want to match the input to previous stage of compilation e.g. in FCL library.
+CIF_DEFINE_INTERFACE_VER_WITH_COMPATIBILITY(IgcOclTranslationCtx, 4, 3) {
+  using IgcOclTranslationCtx<3>::TranslateImpl;
+  using IgcOclTranslationCtx<3>::Translate;
+
+  CIF_INHERIT_CONSTRUCTOR();
+
+  template <typename OclTranslationOutputInterface = OclTranslationOutputTagOCL>
+  CIF::RAII::UPtr_t<OclTranslationOutputInterface> Translate(
+      CIF::Builtins::BufferSimple * src, CIF::Builtins::BufferSimple * specConstantsIds,
+      CIF::Builtins::BufferSimple * specConstantsValues, CIF::Builtins::BufferSimple * options,
+      CIF::Builtins::BufferSimple * internalOptions, CIF::Builtins::BufferSimple * tracingOptions,
+      uint32_t tracingOptionsCount, void *gtPinInput, uint64_t kernelFileHash) {
+    auto p = TranslateImpl(OclTranslationOutputInterface::GetVersion(), src, specConstantsIds, specConstantsValues,
+                           options, internalOptions, tracingOptions, tracingOptionsCount, gtPinInput, kernelFileHash);
+    return CIF::RAII::Pack<OclTranslationOutputInterface>(p);
+  }
+
+protected:
+  virtual OclTranslationOutputBase *TranslateImpl(
+      CIF::Version_t outVersion, CIF::Builtins::BufferSimple * src, CIF::Builtins::BufferSimple * specConstantsIds,
+      CIF::Builtins::BufferSimple * specConstantsValues, CIF::Builtins::BufferSimple * options,
+      CIF::Builtins::BufferSimple * internalOptions, CIF::Builtins::BufferSimple * tracingOptions,
+      uint32_t tracingOptionsCount, void *gtPinInput, uint64_t kernelFileHash);
+};
+
 CIF_GENERATE_VERSIONS_LIST_AND_DECLARE_INTERFACE_DEPENDENCIES(IgcOclTranslationCtx, IGC::OclTranslationOutput,
                                                               CIF::Builtins::Buffer);
 CIF_MARK_LATEST_VERSION(IgcOclTranslationCtxLatest, IgcOclTranslationCtx);
-using IgcOclTranslationCtxTagOCL = IgcOclTranslationCtxLatest; // Note : can tag with different version for
-                                                               //        transition periods
+using IgcOclTranslationCtxTagOCL = IgcOclTranslationCtx<3>; // Note : can tag with different version for
+                                                            //        transition periods
 
 } // namespace IGC
 
