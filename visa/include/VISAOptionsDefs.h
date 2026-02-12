@@ -117,6 +117,8 @@ DEF_VISA_OPTION(vISA_EnableAtomicFusion, ET_BOOL, "-enableAtomicFusion", UNUSED,
 DEF_VISA_OPTION(vISA_RemovePartialMovs, ET_BOOL, "-partialMovsProp", UNUSED,
                 false)
 DEF_VISA_OPTION(vISA_LocalCopyProp, ET_BOOL, "-nocopyprop", UNUSED, true)
+DEF_VISA_OPTION(vISA_localCSEForSendPayloadCopy, ET_BOOL, "-localCSEForSendPayload", UNUSED,
+                false)
 DEF_VISA_OPTION(vISA_LocalInstCombine, ET_BOOL, "-noinstcombine", UNUSED, true)
 DEF_VISA_OPTION(vISA_LocalFlagOpt, ET_BOOL, "-noflagopt", UNUSED, true)
 DEF_VISA_OPTION(vISA_LocalMACopt, ET_BOOL, "-nomacopt", UNUSED, true)

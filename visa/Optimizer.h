@@ -110,6 +110,7 @@ class Optimizer {
   void reassociateConst();
   void removePartialMovs();
   void localCopyPropagation();
+  void localCSEForSendPayloadCopy();
   void localInstCombine();
   void optimizeLogicOperation();
   void cselPeepHoleOpt();
@@ -363,6 +364,7 @@ public:
     PI_sendFusion,
     PI_renameRegister,
     PI_localDefHoisting,
+    PI_localCSEForSendPayloadCopy,
     PI_localCopyPropagation,
     PI_localInstCombine,
     PI_removePartialMovs,
