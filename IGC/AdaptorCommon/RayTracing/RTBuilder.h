@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2019-2025 Intel Corporation
+Copyright (C) 2019-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -253,6 +253,7 @@ public:
                                                                     const llvm::Twine &Name = "");
 
   void setDoneBit(StackPointerVal *StackPointer, bool Committed);
+
   Value *alignVal(Value *V, uint64_t Align);
   uint32_t getSyncStackSize();
   uint32_t getNumSyncStackSlots();

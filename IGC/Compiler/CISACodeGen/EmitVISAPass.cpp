@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2025 Intel Corporation
+Copyright (C) 2017-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -5502,6 +5502,7 @@ void EmitPass::emitSimdLaneId(llvm::Instruction *inst) { m_currShader->GetSimdOf
 void EmitPass::emitSimdLaneIdReplicate(llvm::Instruction *inst) {
   m_currShader->GetSimdOffsetBase(m_destination, true);
 }
+
 
 
 void EmitPass::emitSimdSize(llvm::Instruction *inst) {

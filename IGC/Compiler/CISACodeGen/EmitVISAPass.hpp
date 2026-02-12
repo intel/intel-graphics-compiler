@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2023 Intel Corporation
+Copyright (C) 2017-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -257,6 +257,8 @@ public:
   // message emit functions
   void emitSimdLaneId(llvm::Instruction *inst);
   void emitSimdLaneIdReplicate(llvm::Instruction *inst);
+
+
   void emitSimdSize(llvm::Instruction *inst);
   void emitSimdShuffle(llvm::Instruction *inst);
   void emitSimdClusteredBroadcast(llvm::Instruction *inst);

@@ -1,11 +1,16 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2020-2025 Intel Corporation
+Copyright (C) 2020-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 #pragma once
+
+// THIS FILE IS USED BY MDFrameWork AUTOGENERATION WHICH
+// DOES NOT ACCEPT LLVM CODE FORMATTING
+//
+// DOT NOT CHANGE THE FORMATTING!!!
 
 #include <stdint.h>
 
@@ -26,6 +31,7 @@ namespace RTStackFormat
         RESERVED             = 0b0100
     };
 
+
     enum HIT_KIND
     {
         HIT_KIND_TRIANGLE_FRONT_FACE = 254,
@@ -38,4 +44,5 @@ namespace RTStackFormat
     constexpr static uint32_t RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT = 64;
 
     constexpr static uint32_t SHADER_IDENTIFIER_SIZE_IN_BYTES = 32;
+
 }

@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2019-2025 Intel Corporation
+Copyright (C) 2019-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -45,6 +45,8 @@ PUREBUILTIN uint32_t getMaxThreadsPerEU();
 PUREBUILTIN uint16_t createSubgroupId();
 PUREBUILTIN uint32_t createGroupId(uint32_t Dim);
 BUILTIN SWHotZoneAS SWHotZone_v3 *createDummyInstID(SWHotZoneAS SWHotZone_v3 *Ptr);
+
+
 } // namespace bi
 namespace fn {
 BUILTIN uint32_t getPrimitiveIDBIFFunction();
