@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2025 Intel Corporation
+Copyright (C) 2017-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -1731,10 +1731,11 @@ bool CustomSafeOptPass::isEmulatedAdd(BinaryOperator &I) {
         // it to see if it is emulating an add.
         if (ConstantInt *pConstShiftLeft = dyn_cast<ConstantInt>(OrOp0->getOperand(1))) {
           if (ConstantInt *pConstOrVal = dyn_cast<ConstantInt>(I.getOperand(1))) {
-            int const_shift = int_cast<int>(pConstShiftLeft->getZExtValue());
-            int const_or_val = int_cast<int>(pConstOrVal->getSExtValue());
-            if ((1 << const_shift) > abs(const_or_val)) {
-              // The value fits in the shl. So this is an emulated add.
+            unsigned shift = pConstShiftLeft->getZExtValue();
+            IGC_ASSERT(shift < pConstShiftLeft->getType()->getScalarSizeInBits());
+            uint64_t or_val = pConstOrVal->getZExtValue();
+            uint64_t shl_mask = ((uint64_t)-1) << shift;
+            if ((or_val & shl_mask) == 0) {
               return true;
             }
           }
