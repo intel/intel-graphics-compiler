@@ -12,7 +12,6 @@ SPDX-License-Identifier: MIT
 #include "common/Types.hpp"
 #include "inc/common/igfxfmid.h"
 #include "CommonMacros.h"
-#include "iStdLib/utility.h"
 
 /*
 This provides hook to query whether a feature is supported by the runtime we are compiling for
@@ -314,12 +313,6 @@ public:
     return autoGRFSelection || IGC_IS_FLAG_ENABLED(ForceSupportsAutoGRFSelection);
   }
   virtual void setAutoGRFSelection(bool value) { autoGRFSelection = value; }
-  // The size of surface state
-  uint8_t getSurfaceStateSize() const {
-      return surfaceStateSize;
-  }
-  uint8_t getLogSurfaceStateSize() const { return (uint8_t)iSTD::Log2(getSurfaceStateSize()); }
-  void setSurfaceStateSize(uint8_t size) { surfaceStateSize = size; }
   virtual bool UseScratchSpaceForATSPlus() const { return false; }
        /// Enables HWGenerateThreadID from API level. To help debug, we must enable it from both API level AND IGC Core
        /// level.
@@ -418,7 +411,6 @@ public:
 
 protected:
   bool autoGRFSelection = false;
-  uint8_t surfaceStateSize = 64;
 };
 
 } // namespace IGC
