@@ -397,7 +397,14 @@ bool inlineCallsImpl(CallGraphSCC &SCC, CallGraph &CG, std::function<AssumptionC
 
         // If inlining this function gave us any new call sites, throw them
         // onto our worklist to process.  They are useful inline candidates.
-        if (!InlineInfo.InlinedCalls.empty()) {
+#if LLVM_VERSION_MAJOR >= 17
+        CG[Caller]->removeAllCalledFunctions();
+        CG.populateCallGraphNode(CG[Caller]);
+        SmallVector<CallBase *, 8> &NewCallSites = InlineInfo.InlinedCallSites;
+#else
+        SmallVector<WeakTrackingVH, 8> &NewCallSites = InlineInfo.InlinedCalls;
+#endif
+        if (!NewCallSites.empty()) {
           // Create a new inline history entry for this, so that we remember
           // that these new callsites came about due to inlining Callee.
           int NewHistoryID = InlineHistory.size();
@@ -413,11 +420,16 @@ bool inlineCallsImpl(CallGraphSCC &SCC, CallGraph &CG, std::function<AssumptionC
             DbgCallSites.insert(II.first);
 #endif
 
-          for (Value *Ptr : InlineInfo.InlinedCalls) {
-#ifndef NDEBUG
-            assert(DbgCallSites.count(dyn_cast<CallBase>(Ptr)) == 0);
+          for (auto &Ptr : NewCallSites) {
+#if LLVM_VERSION_MAJOR >= 17
+            CallBase *NewCallBase = Ptr;
+#else
+            CallBase *NewCallBase = dyn_cast<CallBase>(Ptr);
 #endif
-            CallSites.push_back(std::make_pair(dyn_cast<CallBase>(Ptr), NewHistoryID));
+#ifndef NDEBUG
+            assert(DbgCallSites.count(NewCallBase) == 0);
+#endif
+            CallSites.push_back(std::make_pair(NewCallBase, NewHistoryID));
           }
         }
       }
