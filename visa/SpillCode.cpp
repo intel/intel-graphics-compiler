@@ -56,7 +56,7 @@ G4_Declare *SpillManager::createNewSpillLocDeclare(G4_Declare *dcl) {
 //
 // replicate dcl for temporary use (loading value from SPILL location)
 //
-G4_Declare *SpillManager::createNewTempAddrDeclare(G4_Declare *dcl) {
+G4_Declare *SpillManager::createNewTempAddrDeclare(G4_Declare *dcl, G4_Declare *replaceDcl) {
   const char *name = builder.getNameString(16, "Temp_ADDR_%d", tempDclId++);
 
   vISA_ASSERT(dcl->getElemType() == Type_UW || dcl->getElemType() == Type_W,
@@ -67,6 +67,9 @@ G4_Declare *SpillManager::createNewTempAddrDeclare(G4_Declare *dcl) {
   G4_Declare *sp = builder.createDeclare(name, G4_ADDRESS, dcl->getNumElems(),
                                          1, // 1 row
                                          Type_UW);
+
+  // When creating temp address variable, same sub align is needed
+  sp->setSubRegAlign(replaceDcl->getSubRegAlign());
   gra.setBBId(sp, bbId);
   // Live range of new temp addrs is short so that there is no point spilling
   // them. indicate this is for newly created addr temp so that RA won't spill
@@ -106,6 +109,11 @@ G4_Declare *SpillManager::createNewTempAddrDeclare(G4_Declare *dcl,
   G4_Declare *sp = builder.createDeclare(name, G4_ADDRESS, num_reg,
                                          1, // 1 row
                                          type);
+  //The address register is in size of W
+  auto subAlign = Get_G4_SubRegAlign_From_Size(
+      num_reg * 2, builder.getPlatform(), builder.getGRFAlign());
+
+  sp->setSubRegAlign(subAlign);
   gra.setBBId(sp, bbId);
   // Live range of new temp addrs is short so that there is no point spilling
   // them. indicate this is for newly created addr temp so that RA won't spill
@@ -262,7 +270,7 @@ void SpillManager::replaceSpilledDst(
       }
 
       if (!match_found) {
-        tmpDcl = createNewTempAddrDeclare(spDcl);
+        tmpDcl = createNewTempAddrDeclare(spDcl, dst->getTopDcl());
         //
         // generate mov Tmp(0,0)<1>  SPILL_LOC_V100(0,0)
         //
