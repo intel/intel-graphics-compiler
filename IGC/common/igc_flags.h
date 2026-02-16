@@ -1104,6 +1104,7 @@ DECLARE_IGC_REGKEY(
     bool, Force32BitIntDivRemEmuSP, false,
     "Force 32-bit Int Div/Rem emulation using fp32, ignored if Force32BitIntDivRemEmu is set and actually used", true)
 DECLARE_IGC_REGKEY(bool, EnableMullh, true, "Enable i32 mul in SAO layout", true)
+DECLARE_IGC_REGKEY(bool, EnableWideMulMad, true, "Enable wide (64-bit) mul and mad instructions", true)
 DECLARE_IGC_REGKEY(bool, EnableNativeFP32LocalAtomicAdd, true, "Enable native fp32 local atomic add", true)
 DECLARE_IGC_REGKEY(bool, EnableNativeTanh, true, "Enable native tanh instruction", true)
 DECLARE_IGC_REGKEY(bool, EnableFP64Dpas, false, "Enable fp64 dpas", true)

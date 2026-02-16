@@ -4278,6 +4278,7 @@ void CEncoder::InitVISABuilderOptions(TARGET_PLATFORM VISAPlatform, bool canAbor
 
   if (context->type == ShaderType::OPENCL_SHADER &&
       m_program->m_Platform->getPlatformInfo().eProductFamily != IGFX_DG2 &&
+      m_program->m_Platform->getPlatformInfo().eProductFamily != IGFX_CRI &&
       (m_program->m_Platform->limitedBCR() || (MaxRegPressure > 0 && MaxRegPressure < RegPressureThreshold))) {
     SaveOption(vISA_enableBCR, true);
     if (m_program->GetParent()->getLLVMFunction()->size() == 1 &&
@@ -4619,6 +4620,9 @@ void CEncoder::InitVISABuilderOptions(TARGET_PLATFORM VISAPlatform, bool canAbor
     SaveOption(vISA_EnableProgrammableOffsetsMessageBitInHeader, true);
   }
 
+  if (IGC_IS_FLAG_ENABLED(EnableWideMulMad)) {
+    SaveOption(vISA_WideMulMadOpsEnable, true);
+  }
   if (m_program->m_Platform->hasEfficient64bEnabled()) {
     SaveOption(vISA_enableEfficient64b, true);
   }
