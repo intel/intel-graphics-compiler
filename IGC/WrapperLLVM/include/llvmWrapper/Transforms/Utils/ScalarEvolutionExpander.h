@@ -17,7 +17,7 @@ SPDX-License-Identifier: MIT
 #include "Probe/Assertion.h"
 
 namespace IGCLLVM {
-bool isSafeToExpand(const llvm::SCEV *S, llvm::ScalarEvolution *SE, llvm::SCEVExpander *SCEVE) {
+inline bool isSafeToExpand(const llvm::SCEV *S, llvm::ScalarEvolution *SE, llvm::SCEVExpander *SCEVE) {
   IGC_ASSERT(SE);
   IGC_ASSERT(SCEVE);
 #if (LLVM_VERSION_MAJOR < 15)
@@ -27,8 +27,8 @@ bool isSafeToExpand(const llvm::SCEV *S, llvm::ScalarEvolution *SE, llvm::SCEVEx
 #endif
 }
 
-bool isSafeToExpandAt(const llvm::SCEV *S, const llvm::Instruction *InsertionPoint, llvm::ScalarEvolution *SE,
-                      llvm::SCEVExpander *SCEVE) {
+inline bool isSafeToExpandAt(const llvm::SCEV *S, const llvm::Instruction *InsertionPoint, llvm::ScalarEvolution *SE,
+                             llvm::SCEVExpander *SCEVE) {
   IGC_ASSERT(SE);
   IGC_ASSERT(SCEVE);
 #if (LLVM_VERSION_MAJOR < 15)

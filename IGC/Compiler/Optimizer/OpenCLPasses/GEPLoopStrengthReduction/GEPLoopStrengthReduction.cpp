@@ -9,6 +9,7 @@ SPDX-License-Identifier: MIT
 #include "common/igc_regkeys.hpp"
 #include "Compiler/CISACodeGen/IGCLivenessAnalysis.h"
 #include "Compiler/CodeGenPublic.h"
+#include "Compiler/Optimizer/OpenCLPasses/SCEVUtils/SCEVUtils.hpp"
 #include "Compiler/IGCPassSupport.h"
 #include "Compiler/Optimizer/OpenCLPasses/GEPLoopStrengthReduction/GEPLoopStrengthReduction.hpp"
 #include "llvmWrapper/IR/Instructions.h"
@@ -270,28 +271,13 @@ public:
   void analyze(SmallVectorImpl<ReductionCandidateGroup> &Result);
 
 private:
-  // Represents deconstructed SCEV expression { start, +, step }.
-  // Start SCEV will be used to calculate base pointer, and Step SCEV
-  // will increase new induction variable on each iteration.
-  struct DeconstructedSCEV {
-    DeconstructedSCEV() : Start(nullptr), Step(nullptr), ConvertedMulExpr(false) {}
+  // Use the common DeconstructedSCEV from SCEVUtils.
+  using DeconstructedSCEV = SCEVUtils::DeconstructedSCEV;
 
-    bool isValid();
-
-    const SCEV *Start;
-    const SCEV *Step;
-
-    // True if input SCEV:
-    //   x * { start, +, step }
-    // Was converted into:
-    //   { x * start, +, x * step }
-    bool ConvertedMulExpr;
-  };
+  bool isValidDeconstructedSCEV(const DeconstructedSCEV &Result);
 
   void analyzeGEP(GetElementPtrInst *GEP);
   bool doInitialValidation(GetElementPtrInst *GEP);
-
-  bool deconstructSCEV(const SCEV *S, DeconstructedSCEV &Result);
 
   DominatorTree &DT;
   Loop &L;
@@ -346,59 +332,6 @@ private:
 
   bool AllowLICM;
 };
-
-// Set of functions/classes helping manipulating SCEV objects.
-namespace SCEVHelper {
-const SCEV *dropExt(const SCEV *S);
-
-bool isValid(const SCEV *S);
-bool isEqual(const SCEV *A, const SCEV *B);
-
-// ScalarEvolution::getAddExpr requires all operands to have the same
-// type. Extend type if required.
-
-// Builds SCEVAddExpr instance. Function ScalarEvolution::getAddExpr requires all
-// operands to have the same type. This class wraps ScalarEvolution::getAddExpr,
-// but extends operands if it is needed to keep them all in one type.
-class SCEVAddBuilder {
-public:
-  SCEVAddBuilder(ScalarEvolution &SE, bool DropExt = false) : SE(SE), DropExt(DropExt) {}
-
-  SCEVAddBuilder &add(const SCEV *S, bool Negative = false);
-
-  SCEVAddBuilder &addNegative(const SCEV *S) { return add(S, true); }
-
-  const SCEV *build();
-
-private:
-  struct Op {
-    Op(const SCEV *S, bool Negative) : S(S), Negative(Negative) {}
-
-    const SCEV *S;
-    bool Negative;
-  };
-
-  ScalarEvolution &SE;
-  SmallVector<Op, 16> Ops;
-  bool DropExt;
-};
-
-// Builds SCEVMulExpr instance. Function ScalarEvolution::getMulExpr requires all
-// operands to have the same type. This class wraps ScalarEvolution::getMulExpr,
-// but extends operands if it is needed to keep them all in one type.
-class SCEVMulBuilder {
-public:
-  SCEVMulBuilder(ScalarEvolution &SE) : SE(SE) {}
-
-  SCEVMulBuilder &add(const SCEV *S);
-
-  const SCEV *build();
-
-private:
-  ScalarEvolution &SE;
-  SmallVector<const SCEV *, 4> Ops;
-};
-}; // namespace SCEVHelper
 
 class GEPLoopStrengthReduction : public llvm::FunctionPass {
 public:
@@ -491,7 +424,7 @@ bool ReductionCandidate::isBetterForReduction(const ReductionCandidate &Other) {
 // to calculate.
 // Returns true if candidate was added to group.
 bool ReductionCandidateGroup::addToGroup(ScalarEvolution &SE, GetElementPtrInst *GEP, const SCEV *S, const SCEV *Step) {
-  if (!SCEVHelper::isEqual(this->Step, Step))
+  if (!SCEVUtils::isEqualSCEV(this->Step, Step))
     return false;
 
   if (Base.GEP->getPointerOperand() != GEP->getPointerOperand())
@@ -510,7 +443,7 @@ bool ReductionCandidateGroup::addToGroup(ScalarEvolution &SE, GetElementPtrInst 
   // Can't use ScalarEvolution::computeConstantDifference, as it only
   // supports SCEVAddExpr with two operands. Calculate difference as:
   //     new candidate's operands + (-1 * base's operands)
-  SCEVHelper::SCEVAddBuilder Builder(SE, true);
+  SCEVUtils::SCEVAddBuilder Builder(SE, true);
   const SCEVConstant *Sum = dyn_cast<SCEVConstant>(Builder.add(S).addNegative(Base.S).build());
   if (!Sum)
     return false;
@@ -877,14 +810,14 @@ void Analyzer::analyzeGEP(GetElementPtrInst *GEP) {
   Value *Index = *(GEP->indices().end() - 1);
 
   const SCEV *S = SE.getSCEV(Index);
-  if (!SCEVHelper::isValid(S))
+  if (!SCEVUtils::isValidSCEV(S))
     return;
 
   Analyzer::DeconstructedSCEV Result;
-  if (!deconstructSCEV(S, Result))
+  if (!SCEVUtils::deconstructSCEV(S, SE, &L, E, Result))
     return;
 
-  if (!Result.isValid())
+  if (!isValidDeconstructedSCEV(Result))
     return;
 
   const SCEV *Start = Result.Start;
@@ -967,152 +900,19 @@ bool Analyzer::doInitialValidation(GetElementPtrInst *GEP) {
   return true;
 }
 
-// Takes SCEV expression returned by ScalarEvolution and deconstructs it into
-// expected format { start, +, step }. Returns false if expressions can't be
-// parsed and reduced.
-bool Analyzer::deconstructSCEV(const SCEV *S, Analyzer::DeconstructedSCEV &Result) {
-  // In case of ext instruction analyze nested content.
-  if (isa<SCEVZeroExtendExpr>(S) || isa<SCEVSignExtendExpr>(S)) {
-    if (!deconstructSCEV(dyn_cast<SCEVCastExpr>(S)->getOperand(), Result))
-      return false;
-
-    if (S->getType() != Result.Start->getType())
-      Result.Start = isa<SCEVSignExtendExpr>(S) ? SE.getSignExtendExpr(Result.Start, S->getType())
-                                                : SE.getZeroExtendExpr(Result.Start, S->getType());
-
-    return IGCLLVM::isSafeToExpandAt(Result.Start, &L.getLoopPreheader()->back(), &SE, &E);
-  }
-
-  // First check if expression can be fully expanded in preheader. If so, no need
-  // to process is further, but instead treat expression as:
-  //   { start, +, 0 }
-  // This will do LICM-like reduction moving GEP to preheader, without adding new
-  // induction variable.
-  if (SE.isLoopInvariant(S, &L)) {
-    Result.Start = S;
-    Result.Step = SE.getConstant(Type::getInt64Ty(L.getHeader()->getContext()), 0);
-    return true;
-  }
-
-  // Expect SCEV expression:
-  //   { start, +, step }
-  // where step is constant
-  if (auto *Add = dyn_cast<SCEVAddRecExpr>(S)) {
-    if (!Add->isAffine())
-      return false;
-
-    if (Add->getNumOperands() != 2)
-      return false;
-
-    // Scalar Evolution can produce SCEVAddRecExpr based on boolean type, for example:
-    //   {(true + (trunc i16 %localIdX to i1)),+,true}
-    // Ignore such expressions.
-    Type *Ty = Add->getStart()->getType();
-    if (Ty->isIntegerTy() && Ty->getScalarSizeInBits() == 1)
-      return false;
-
-    const SCEV *OpStep = Add->getOperand(1);
-
-    // Step must be constant in loop's body.
-    if (!SE.isLoopInvariant(OpStep, &L))
-      return false;
-
-    Result.Start = Add->getStart();
-    Result.Step = OpStep;
-
-    return IGCLLVM::isSafeToExpandAt(Result.Start, &L.getLoopPreheader()->back(), &SE, &E);
-  }
-
-  // If expression is:
-  //   x + { start, +, step }
-  // then change it to:
-  //   { start + x, +, step }
-  //
-  // It is possible that "x" is not constant inside loop, but is recalculated
-  // on every iteration. In this case it is not a valid scenario for reduction
-  // and will be dropped by IGCLLVM::isSafeToExpandAt.
-  if (auto *Add = dyn_cast<SCEVAddExpr>(S)) {
-    // There can be only one expression with step != 0.
-    Result.Step = SE.getConstant(Type::getInt64Ty(L.getHeader()->getContext()), 0);
-
-    SCEVHelper::SCEVAddBuilder Builder(SE);
-
-    for (auto *Op : Add->operands()) {
-      Analyzer::DeconstructedSCEV OpResult;
-
-      if (!deconstructSCEV(Op, OpResult))
-        return false;
-
-      if (!OpResult.Step->isZero()) {
-        if (!Result.Step->isZero())
-          return false; // unsupported expression with multiple steps
-        Result.Step = OpResult.Step;
-      }
-
-      Builder.add(OpResult.Start);
-    }
-
-    Result.Start = Builder.build();
-
-    return IGCLLVM::isSafeToExpandAt(Result.Start, &L.getLoopPreheader()->back(), &SE, &E);
-  }
-
-  // If expression is:
-  //   x * { start, +, step }
-  // then change it to:
-  //   { x * start, +, x * step }
-  //
-  // Warning: GEP's new index will not be a constant integer, but a new SCEV expression.
-  if (auto *Mul = dyn_cast<SCEVMulExpr>(S)) {
-    // SCEVAddRecExpr will be SCEV with step != 0. Any other SCEV is a multiplier.
-    bool FoundAddRec = false;
-    SCEVHelper::SCEVMulBuilder StartBuilder(SE), StepBuilder(SE);
-
-    for (auto *Op : Mul->operands()) {
-      Analyzer::DeconstructedSCEV OpResult;
-      if (!deconstructSCEV(Op, OpResult))
-        return false;
-
-      if (OpResult.Step->isZero()) {
-        StartBuilder.add(OpResult.Start);
-        StepBuilder.add(OpResult.Start);
-      } else {
-        if (FoundAddRec)
-          return false; // unsupported expression with multiple SCEVAddRecExpr
-        FoundAddRec = true;
-
-        StartBuilder.add(OpResult.Start);
-        StepBuilder.add(OpResult.Step);
-      }
-    }
-
-    if (!FoundAddRec)
-      return false;
-
-    Result.Start = StartBuilder.build();
-    Result.Step = StepBuilder.build();
-    Result.ConvertedMulExpr = true;
-
-    if (!SE.isLoopInvariant(Result.Step, &L))
-      return false;
-
-    return IGCLLVM::isSafeToExpandAt(Result.Start, &L.getLoopPreheader()->back(), &SE, &E);
-  }
-
-  return false;
-}
-
-bool Analyzer::DeconstructedSCEV::isValid() {
-  if (!Start || !Step)
+// Validates a deconstructed SCEV expression { start, +, step }.
+// Returns true if the expression is valid for reduction.
+bool Analyzer::isValidDeconstructedSCEV(const DeconstructedSCEV &Result) {
+  if (!Result.isValid())
     return false;
 
   // Validate step.
-  auto Ty = SCEVHelper::dropExt(Step)->getSCEVType();
+  auto Ty = SCEVUtils::dropExt(Result.Step)->getSCEVType();
 
   if (Ty == scConstant)
     return true;
 
-  bool IsMul = Ty == scMulExpr || ConvertedMulExpr;
+  bool IsMul = Ty == scMulExpr || Result.ConvertedMulExpr;
   if (IsMul && IGC_IS_FLAG_ENABLED(EnableGEPLSRMulExpr))
     return true;
 
@@ -1305,148 +1105,6 @@ void Reducer::cleanup(ReductionCandidateGroup &C) {
     RecursivelyDeleteTriviallyDeadInstructions(GEP, nullptr, nullptr,
                                                [&](Value *V) { RPT.trackDeletedInstruction(V); });
   }
-}
-
-// If SCEV is zext/sext, drop extend.
-const SCEV *SCEVHelper::dropExt(const SCEV *S) {
-  do {
-    if (auto *Zext = dyn_cast<SCEVZeroExtendExpr>(S))
-      S = Zext->getOperand();
-    else if (auto *Sext = dyn_cast<SCEVSignExtendExpr>(S))
-      S = Sext->getOperand();
-    else
-      break;
-  } while (true);
-
-  return S;
-}
-
-// Returns true is SCEV expression legal.
-bool SCEVHelper::isValid(const SCEV *S) {
-  if (isa<SCEVCouldNotCompute>(S))
-    return false;
-
-  // Scalar Evolution doesn't have SCEV expression for bitwise-and. Instead,
-  // if possible, SE produces expressions for any integer size, leaving cleanup
-  // to legalization pass. For example this code:
-  //     %1 = shl i64 %0, 32
-  //     %2 = ashr exact i64 %1, 30
-  // produces i34 integer SCEV.
-  //
-  // By default don't allow illegal integer types.
-  if (IGC_IS_FLAG_ENABLED(EnableGEPLSRAnyIntBitWidth))
-    return true;
-
-  std::function<bool(Type *)> IsInvalidInt = [](Type *Ty) {
-    if (!Ty->isIntegerTy())
-      return false;
-
-    auto bits = Ty->getScalarSizeInBits();
-    switch (bits) {
-    case 8:
-    case 16:
-    case 32:
-    case 64:
-      return false;
-    default:
-      return bits > 8;
-    }
-  };
-
-  bool HasInvalidInt = SCEVExprContains(S, [&](const SCEV *S) {
-    if (auto *Cast = dyn_cast<SCEVCastExpr>(S))
-      return IsInvalidInt(Cast->getOperand()->getType()) || IsInvalidInt(Cast->getType());
-    return false;
-  });
-
-  LLVM_DEBUG(if (HasInvalidInt) {
-    dbgs() << "  Dropping SCEV with invalid integer type: ";
-    S->print(dbgs());
-    dbgs() << "\n";
-  });
-
-  return !HasInvalidInt;
-}
-
-bool SCEVHelper::isEqual(const SCEV *A, const SCEV *B) {
-  // Scalar Evolution keeps unique SCEV instances, so we can compare pointers.
-  if (A == B)
-    return true;
-
-  if (A->getSCEVType() != B->getSCEVType())
-    return false;
-
-  switch (A->getSCEVType()) {
-  case scConstant:
-    // Can be different bit width, but same integer value.
-    return cast<SCEVConstant>(A)->getValue()->getZExtValue() == cast<SCEVConstant>(B)->getValue()->getZExtValue();
-  default:
-    return false;
-  }
-}
-
-SCEVHelper::SCEVAddBuilder &SCEVHelper::SCEVAddBuilder::add(const SCEV *S, bool Negative) {
-  IGC_ASSERT(S->getType()->isIntegerTy());
-
-  // strip extend
-  if (DropExt)
-    S = SCEVHelper::dropExt(S);
-
-  if (auto *Expr = dyn_cast<SCEVAddExpr>(S)) {
-    for (auto *Op : Expr->operands())
-      add(Op, Negative);
-    return *this;
-  }
-
-  Ops.emplace_back(S, Negative);
-
-  return *this;
-}
-
-const SCEV *SCEVHelper::SCEVAddBuilder::build() {
-  // ScalarEvolution::getAddExpr requires all operands to have the same
-  // type. First find the widest type.
-  Type *T = nullptr;
-  for (auto *It = Ops.begin(); It != Ops.end(); ++It) {
-    T = T ? SE.getWiderType(T, It->S->getType()) : It->S->getType();
-  }
-
-  // Join list of operands, extending type if required.
-  SmallVector<const SCEV *, 16> FinalOps;
-
-  for (auto *It = Ops.begin(); It != Ops.end(); ++It) {
-    const SCEV *S = It->S;
-    S = S->getType() == T ? S : SE.getSignExtendExpr(S, T);
-    FinalOps.push_back(It->Negative ? SE.getNegativeSCEV(S) : S);
-  }
-
-  return SE.getAddExpr(FinalOps);
-}
-
-SCEVHelper::SCEVMulBuilder &SCEVHelper::SCEVMulBuilder::add(const SCEV *S) {
-  IGC_ASSERT(S->getType()->isIntegerTy());
-
-  Ops.emplace_back(S);
-
-  return *this;
-}
-
-const SCEV *SCEVHelper::SCEVMulBuilder::build() {
-  // ScalarEvolution::getMulExpr requires all operands to have the same
-  // type. First find the widest type.
-  Type *T = nullptr;
-  for (auto S : Ops) {
-    T = T ? SE.getWiderType(T, S->getType()) : S->getType();
-  }
-
-  // Join list of operands, extending type if required.
-  SmallVector<const SCEV *, 4> FinalOps;
-
-  for (auto S : Ops) {
-    FinalOps.push_back(S->getType() == T ? S : SE.getSignExtendExpr(S, T));
-  }
-
-  return SE.getMulExpr(FinalOps);
 }
 
 GEPLoopStrengthReduction::GEPLoopStrengthReduction(bool AllowLICM) : FunctionPass(ID), AllowLICM(AllowLICM) {

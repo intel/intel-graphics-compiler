@@ -46,6 +46,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CISACodeGen/PreRARematFlag.h"
 #include "Compiler/CISACodeGen/PromoteConstantStructs.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/Decompose2DBlockFuncs/Decompose2DBlockFuncs.hpp"
+#include "Compiler/Optimizer/OpenCLPasses/Decompose2DBlockFuncsWithHoisting/Decompose2DBlockFuncsWithHoisting.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/GenericAddressResolution/GASResolving.h"
 #include "Compiler/Optimizer/OpenCLPasses/PrivateMemory/LowerByValAttribute.hpp"
 #include "Compiler/CISACodeGen/Simd32Profitability.hpp"
@@ -216,6 +217,10 @@ const int LOOP_NUM_THRESHOLD = 2000;
 const int LOOP_INST_THRESHOLD = 65000;
 const int INST_THRESHOLD = 80000;
 
+const size_t Legacy2DDecomposeMode = 1;
+const size_t Hoisting2DDecomposeModeBeforeLoadScheduling = 2;
+const size_t Hoisting2DDecomposeModeAfterLoadScheduling = 3;
+
 
 void AddAnalysisPasses(CodeGenContext &ctx, IGCPassManager &mpm) {
   COMPILER_TIME_START(&ctx, TIME_CG_Add_Analysis_Passes);
@@ -257,6 +262,16 @@ void AddAnalysisPasses(CodeGenContext &ctx, IGCPassManager &mpm) {
     mpm.add(new MergeScalarPhisPass());
   }
 
+  // Decompose2DBlockFuncsWithHoistingPass should be after LoopSimplifyPass in order
+  // to be able to hoist CreateAddrPayload and SetAddrPayloadField intrinsics.
+  if (!isOptDisabled &&
+      (IGC_GET_FLAG_VALUE(Decompose2DBlockFuncsMode) == Hoisting2DDecomposeModeBeforeLoadScheduling)) {
+    mpm.add(llvm::createLoopSimplifyPass());
+    mpm.add(createDecompose2DBlockFuncsWithHoistingPass());
+    mpm.add(new Legalizer::PeepholeTypeLegalizer());
+    mpm.add(createDeadCodeEliminationPass());
+  }
+
   // only limited code-sinking to several shader-type
   // vs input has the URB-reuse issue to be resolved.
   // Also need to understand the performance benefit better.
@@ -276,6 +291,15 @@ void AddAnalysisPasses(CodeGenContext &ctx, IGCPassManager &mpm) {
     }
   }
 
+  // Decompose2DBlockFuncsWithHoistingPass should be after LoopSimplifyPass in order
+  // to be able to hoist CreateAddrPayload and SetAddrPayloadField intrinsics.
+  if (!isOptDisabled && (IGC_GET_FLAG_VALUE(Decompose2DBlockFuncsMode) == Hoisting2DDecomposeModeAfterLoadScheduling)) {
+    mpm.add(llvm::createLoopSimplifyPass());
+    mpm.add(createDecompose2DBlockFuncsWithHoistingPass());
+    mpm.add(new Legalizer::PeepholeTypeLegalizer());
+    mpm.add(createDeadCodeEliminationPass());
+  }
+
 
   // Run flag re-materialization if it's beneficial.
   if (ctx.m_DriverInfo.benefitFromPreRARematFlag() && IGC_IS_FLAG_ENABLED(EnablePreRARematFlag)) {
@@ -293,6 +317,7 @@ void AddAnalysisPasses(CodeGenContext &ctx, IGCPassManager &mpm) {
   mpm.add(llvm::createLCSSAPass());
   // Fixup extract value pairs.
   mpm.add(createExtractValuePairFixupPass());
+
 
   if (IGC_IS_FLAG_ENABLED(EnableUnmaskedFunctions) && IGC_IS_FLAG_ENABLED(LateInlineUnmaskedFunc)) {
     mpm.add(new InlineUnmaskedFunctionsPass());
@@ -1459,10 +1484,11 @@ void OptimizeIR(CodeGenContext *const pContext) {
         if (LoopUnrollThreshold > 0 && unroll) {
           mpm.add(IGCLLVM::createLegacyWrappedLoopUnrollPass(2, false, false, -1, -1, -1, -1, -1, -1));
         }
-        // Should be after LICM to accurately reason about which
-        // instructions are loop-dependent or not. Needs to be before
-        // another LICM call which will hoist relevant intrinsics
-        if (IGC_GET_FLAG_VALUE(allowDecompose2DBlockFuncs)) {
+        // Decompose2DBlockFuncs pass should be after LICM to
+        // accurately reason about which instructions are loop-dependent
+        // or not. Needs to be before another LICM call which will hoist
+        // relevant intrinsics
+        if (IGC_GET_FLAG_VALUE(Decompose2DBlockFuncsMode) == Legacy2DDecomposeMode) {
           mpm.add(createDecompose2DBlockFuncsPass());
         }
 

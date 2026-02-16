@@ -672,7 +672,8 @@ $ export IGC_ShaderDumpEnable=1
 | `VectorizerEnablePartialVectorization` | Not fully tested option, allows to substitute scalar part with partially vectorized through extract elements | Available |
 | `VectorizerList` | Vectorize only one seed instruction with the provided number | Available |
 | `VectorizerUniformValueVectorizationEnabled` | Vector Emitter emits vectorized instruction for uniform values | Available |
-| `allowDecompose2DBlockFuncs` | Enable decomposition of 2D block intrinsics in IGC. | Available |
+| `Decompose2DBlockFuncsMode` | Mode for decomposing 2D block functions in IGC, 1 enables legacy pass (Decompose2DBlockFuncs), 2 enables new pass with address payloads hoisting functionality (Decompose2DBlockFuncsWithAddrHoisting) before load scheduling, 2 enables new pass with address payloads hoisting functionality (Decompose2DBlockFuncsWithAddrHoisting) after load scheduling , 0 disables both passes | Available |
+| `AllowPrefetchDecomposeWithHoisting` | Allow compiler to decide to use prefetch in 2D block intrinsics in Decompose2DBlockFuncsWithHoisting pass. | - |
 | `allowImmOff2DBlockFuncs` | Allow compiler to decide to use immediate offsets in 2D block intrinsics in IGC. | - |
 | `allowLICM` | Enable LICM in IGC. | Available |
 ## Performance experiments

@@ -35,6 +35,7 @@ add_subdirectory(KernelArgs)
 add_subdirectory(KernelFunctionCloning)
 add_subdirectory(BufferBoundsChecking)
 add_subdirectory(LSCFuncs)
+add_subdirectory(Decompose2DBlockFuncsWithHoisting)
 add_subdirectory(Decompose2DBlockFuncs)
 add_subdirectory(LocalBuffers)
 add_subdirectory(MinimumValidAddressChecking)
@@ -53,6 +54,7 @@ add_subdirectory(ResolveInlineSamplerForBindless)
 add_subdirectory(ResourceAllocator)
 add_subdirectory(RewriteLocalSize)
 add_subdirectory(ScalarArgAsPointer)
+add_subdirectory(SCEVUtils)
 add_subdirectory(SetFastMathFlags)
 add_subdirectory(Spv2dBlockIOResolution)
 add_subdirectory(SpvPredicatedIOResolution)
@@ -81,6 +83,7 @@ set(IGC_BUILD__SRC__Optimizer_OpenCLPasses_All
     ${IGC_BUILD__SRC__OpenCLPasses_BreakConstantExpr}
     ${IGC_BUILD__SRC__OpenCLPasses_BreakdownIntrinsic}
     ${IGC_BUILD__SRC__OpenCLPasses_CorrectlyRoundedDivSqrt}
+    ${IGC_BUILD__SRC__OpenCLPasses_Decompose2DBlockFuncsWithHoisting}
     ${IGC_BUILD__SRC__OpenCLPasses_Decompose2DBlockFuncs}
     ${IGC_BUILD__SRC__OpenCLPasses_DeviceEnqueueFuncs}
     ${IGC_BUILD__SRC__OpenCLPasses_DisableLoopUnrollOnRetry}
@@ -117,6 +120,7 @@ set(IGC_BUILD__SRC__Optimizer_OpenCLPasses_All
     ${IGC_BUILD__SRC__OpenCLPasses_ResourceAllocator}
     ${IGC_BUILD__SRC__OpenCLPasses_RewriteLocalSize}
     ${IGC_BUILD__SRC__OpenCLPasses_ScalarArgAsPointer}
+    ${IGC_BUILD__SRC__OpenCLPasses_SCEVUtils}
     ${IGC_BUILD__SRC__OpenCLPasses_SetFastMathFlags}
     ${IGC_BUILD__SRC__OpenCLPasses_SplitStructurePhisPass}
     ${IGC_BUILD__SRC__OpenCLPasses_MergeScalarPhisPass}
@@ -152,6 +156,8 @@ set(IGC_BUILD__HDR__Optimizer_OpenCLPasses_All
     ${IGC_BUILD__HDR__OpenCLPasses_BreakdownIntrinsic}
     ${IGC_BUILD__HDR__OpenCLPasses_CorrectlyRoundedDivSqrt}
     ${IGC_BUILD__HDR__OpenCLPasses_DeviceEnqueueFuncs}
+    ${IGC_BUILD__HDR__OpenCLPasses_Decompose2DBlockFuncsWithHoisting}
+    ${IGC_BUILD__HDR__OpenCLPasses_Decompose2DBlockFuncs}
     ${IGC_BUILD__HDR__OpenCLPasses_DisableLoopUnrollOnRetry}
     ${IGC_BUILD__HDR__OpenCLPasses_DpasFuncs}
     ${IGC_BUILD__HDR__OpenCLPasses_BfloatBuiltins}
@@ -186,6 +192,7 @@ set(IGC_BUILD__HDR__Optimizer_OpenCLPasses_All
     ${IGC_BUILD__HDR__OpenCLPasses_ResourceAllocator}
     ${IGC_BUILD__HDR__OpenCLPasses_RewriteLocalSize}
     ${IGC_BUILD__HDR__OpenCLPasses_ScalarArgAsPointer}
+    ${IGC_BUILD__HDR__OpenCLPasses_SCEVUtils}
     ${IGC_BUILD__HDR__OpenCLPasses_SetFastMathFlags}
     ${IGC_BUILD__HDR__OpenCLPasses_SplitStructurePhisPass}
     ${IGC_BUILD__HDR__OpenCLPasses_MergeScalarPhisPass}
@@ -221,6 +228,8 @@ set(IGC_BUILD_Compiler_OpenCLPasses_Groups
     Compiler__OpenCLPasses_BreakConstantExpr
     Compiler__OpenCLPasses_BreakdownIntrinsic
     Compiler__OpenCLPasses_CorrectlyRoundedDivSqrt
+    Compiler__OpenCLPasses_Decompose2DBlockFuncsWithHoisting
+    Compiler__OpenCLPasses_Decompose2DBlockFuncs
     Compiler__OpenCLPasses_DeviceEnqueueFuncs
     Compiler__OpenCLPasses_DisableLoopUnrollOnRetry
     Compiler__OpenCLPasses_DpasFuncs
@@ -256,6 +265,7 @@ set(IGC_BUILD_Compiler_OpenCLPasses_Groups
     Compiler__OpenCLPasses_ResolveInlineSamplerForBindless
     Compiler__OpenCLPasses_RewriteLocalSize
     Compiler__OpenCLPasses_ScalarArgAsPointer
+    Compiler__OpenCLPasses_SCEVUtils
     Compiler__OpenCLPasses_SetFastMathFlags
     Compiler__OpenCLPasses_SplitStructurePhisPass
     Compiler__OpenCLPasses_MergeScalarPhisPass
