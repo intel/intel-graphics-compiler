@@ -230,7 +230,6 @@ Supported <argument_type> of payload_arguments or per_thread_payload_arguments.
 | image_num_mip_levels | | The number of mip-levels |
 | image_channel_data_type | | Image channel data type |
 | image_channel_order | | Image channel order |
-| image_srgb_channel_order | | Image srgb channel order |
 | image_array_size | | Image array size |
 | image_num_samples | | The number of samples |
 | sampler_address | | Sampler descriptor specifying the image addressing mode |

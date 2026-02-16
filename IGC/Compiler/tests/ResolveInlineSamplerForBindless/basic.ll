@@ -32,6 +32,6 @@ declare spir_func void @foo(%spirv.Sampler addrspace(2)*)
 !2 = !{!"function_type", i32 0}
 !3 = !{!"ModuleMD", !7}
 !4 = !{!"implicit_arg_desc", !5}
-!5 = !{i32 32, !6}
+!5 = !{i32 31, !6}
 !6 = !{!"explicit_arg_num", i32 17}
 !7 = !{!"FuncMD"}

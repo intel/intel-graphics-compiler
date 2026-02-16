@@ -268,8 +268,6 @@ KernelArg::ArgType KernelArg::calcArgType(const ImplicitArg &arg) const {
     return KernelArg::ArgType::IMPLICIT_IMAGE_CHANNEL_DATA_TYPE;
   case ImplicitArg::IMAGE_CHANNEL_ORDER:
     return KernelArg::ArgType::IMPLICIT_IMAGE_CHANNEL_ORDER;
-  case ImplicitArg::IMAGE_SRGB_CHANNEL_ORDER:
-    return KernelArg::ArgType::IMPLICIT_IMAGE_SRGB_CHANNEL_ORDER;
   case ImplicitArg::IMAGE_ARRAY_SIZE:
     return KernelArg::ArgType::IMPLICIT_IMAGE_ARRAY_SIZE;
   case ImplicitArg::IMAGE_NUM_SAMPLES:
@@ -649,7 +647,6 @@ KernelArgsOrder::KernelArgsOrder(InputType layout) {
         KernelArg::ArgType::IMPLICIT_IMAGE_NUM_MIP_LEVELS,
         KernelArg::ArgType::IMPLICIT_IMAGE_CHANNEL_DATA_TYPE,
         KernelArg::ArgType::IMPLICIT_IMAGE_CHANNEL_ORDER,
-        KernelArg::ArgType::IMPLICIT_IMAGE_SRGB_CHANNEL_ORDER,
         KernelArg::ArgType::IMPLICIT_IMAGE_ARRAY_SIZE,
         KernelArg::ArgType::IMPLICIT_IMAGE_NUM_SAMPLES,
         KernelArg::ArgType::IMPLICIT_SAMPLER_ADDRESS,
@@ -777,7 +774,6 @@ KernelArgsOrder::KernelArgsOrder(InputType layout) {
         KernelArg::ArgType::IMPLICIT_IMAGE_NUM_MIP_LEVELS,
         KernelArg::ArgType::IMPLICIT_IMAGE_CHANNEL_DATA_TYPE,
         KernelArg::ArgType::IMPLICIT_IMAGE_CHANNEL_ORDER,
-        KernelArg::ArgType::IMPLICIT_IMAGE_SRGB_CHANNEL_ORDER,
         KernelArg::ArgType::IMPLICIT_IMAGE_ARRAY_SIZE,
         KernelArg::ArgType::IMPLICIT_IMAGE_NUM_SAMPLES,
         KernelArg::ArgType::IMPLICIT_SAMPLER_ADDRESS,

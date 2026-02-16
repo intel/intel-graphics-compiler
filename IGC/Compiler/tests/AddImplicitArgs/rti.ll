@@ -53,9 +53,9 @@ declare ptr addrspace(1) @llvm.genx.GenISA.InlinedData(i16)
 !1 = !{!2, !3}
 !2 = !{!"function_type", i32 0}
 !3 = !{!"implicit_arg_desc", !4, !5, !6, !7}
-!4 = !{i32 50}
-!5 = !{i32 51}
-!6 = !{i32 53}
-!7 = !{i32 52}
+!4 = !{i32 49}
+!5 = !{i32 50}
+!6 = !{i32 52}
+!7 = !{i32 51}
 !8 = !{ptr @rti, !1}
 !9 = !{ptr @foo, !1}

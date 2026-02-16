@@ -84,8 +84,6 @@ static const std::vector<ImplicitArg> IMPLICIT_ARGS = {
                 ImplicitArg::ALIGN_DWORD, true),
     ImplicitArg(ImplicitArg::IMAGE_CHANNEL_ORDER, "imageOrder", ImplicitArg::INT, WIAnalysis::UNIFORM_GLOBAL, 1,
                 ImplicitArg::ALIGN_DWORD, true),
-    ImplicitArg(ImplicitArg::IMAGE_SRGB_CHANNEL_ORDER, "imageSrgbOrder", ImplicitArg::INT, WIAnalysis::UNIFORM_GLOBAL,
-                1, ImplicitArg::ALIGN_DWORD, true),
     ImplicitArg(ImplicitArg::IMAGE_ARRAY_SIZE, "imageArrSize", ImplicitArg::INT, WIAnalysis::UNIFORM_GLOBAL, 1,
                 ImplicitArg::ALIGN_DWORD, true),
     ImplicitArg(ImplicitArg::IMAGE_NUM_SAMPLES, "imageNumSamples", ImplicitArg::INT, WIAnalysis::UNIFORM_GLOBAL, 1,

@@ -38,7 +38,6 @@ const llvm::StringRef ImageFuncsAnalysis::GET_IMAGE_DEPTH = "__builtin_IB_get_im
 const llvm::StringRef ImageFuncsAnalysis::GET_IMAGE_NUM_MIP_LEVELS = "__builtin_IB_get_image_num_mip_levels";
 const llvm::StringRef ImageFuncsAnalysis::GET_IMAGE_CHANNEL_DATA_TYPE = "__builtin_IB_get_image_channel_data_type";
 const llvm::StringRef ImageFuncsAnalysis::GET_IMAGE_CHANNEL_ORDER = "__builtin_IB_get_image_channel_order";
-const llvm::StringRef ImageFuncsAnalysis::GET_IMAGE_SRGB_CHANNEL_ORDER = "__builtin_IB_get_image_srgb_channel_order";
 const llvm::StringRef ImageFuncsAnalysis::GET_IMAGE1D_ARRAY_SIZE = "__builtin_IB_get_image1d_array_size";
 const llvm::StringRef ImageFuncsAnalysis::GET_IMAGE2D_ARRAY_SIZE = "__builtin_IB_get_image2d_array_size";
 const llvm::StringRef ImageFuncsAnalysis::GET_IMAGE_NUM_SAMPLES = "__builtin_IB_get_image_num_samples";
@@ -105,8 +104,6 @@ void ImageFuncsAnalysis::visitCallInst(CallInst &CI) {
     imageFunc = &m_argMap[ImplicitArg::IMAGE_CHANNEL_DATA_TYPE];
   } else if (funcName == GET_IMAGE_CHANNEL_ORDER) {
     imageFunc = &m_argMap[ImplicitArg::IMAGE_CHANNEL_ORDER];
-  } else if (funcName == GET_IMAGE_SRGB_CHANNEL_ORDER) {
-    imageFunc = &m_argMap[ImplicitArg::IMAGE_SRGB_CHANNEL_ORDER];
   } else if ((funcName == GET_IMAGE1D_ARRAY_SIZE || funcName == GET_IMAGE2D_ARRAY_SIZE) && !m_useAdvancedBindlessMode) {
     imageFunc = &m_argMap[ImplicitArg::IMAGE_ARRAY_SIZE];
   } else if (funcName == GET_IMAGE_NUM_SAMPLES) {

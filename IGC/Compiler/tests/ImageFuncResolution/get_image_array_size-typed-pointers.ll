@@ -26,7 +26,7 @@ define i32 @foo(i32 %img, i32 %imageArrSize) nounwind {
 !1 = !{!2, !3}
 !2 = !{!"function_type", i32 0}
 !3 = !{!"implicit_arg_desc", !4}
-!4 = !{i32 28, !5}
+!4 = !{i32 27, !5}
 !5 = !{!"explicit_arg_num", i32 0}
 
 ; CHECK:         ret i32 %imageArrSize

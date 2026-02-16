@@ -81,8 +81,6 @@ void ImageFuncResolution::visitCallInst(CallInst &CI) {
     imageRes = getImageChannelDataType(CI);
   } else if (funcName.equals(ImageFuncsAnalysis::GET_IMAGE_CHANNEL_ORDER)) {
     imageRes = getImageChannelOrder(CI);
-  } else if (funcName.equals(ImageFuncsAnalysis::GET_IMAGE_SRGB_CHANNEL_ORDER)) {
-    imageRes = getImplicitImageArg(CI, ImplicitArg::IMAGE_SRGB_CHANNEL_ORDER);
   } else if (funcName.equals(ImageFuncsAnalysis::GET_IMAGE1D_ARRAY_SIZE) ||
              funcName.equals(ImageFuncsAnalysis::GET_IMAGE2D_ARRAY_SIZE)) {
     if (!isImplicitImageArgs) {

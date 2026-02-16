@@ -123,7 +123,6 @@ int    __builtin_IB_get_image_height(long) __attribute__((const));
 int    __builtin_IB_get_image_width(long) __attribute__((const));
 int    __builtin_IB_get_image_depth(long) __attribute__((const));
 int    __builtin_IB_get_image_channel_data_type(long) __attribute__((const));
-int    __builtin_IB_get_image_srgb_channel_order(long) __attribute__((const));
 int    __builtin_IB_get_image_channel_order(long) __attribute__((const));
 int    __builtin_IB_get_image_num_samples(long) __attribute__((const));
 int    __builtin_IB_get_image_num_mip_levels(long) __attribute__((const));

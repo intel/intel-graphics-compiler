@@ -300,7 +300,7 @@ struct zeInfoContainer
     KernelsCostInfoTy kernels_cost_info;
 };
 struct PreDefinedAttrGetter{
-    static zeinfo_str_t getVersionNumber() { return "1.65"; }
+    static zeinfo_str_t getVersionNumber() { return "1.66"; }
 
     enum class ArgThreadSchedulingMode {
         age_based,
@@ -334,7 +334,6 @@ struct PreDefinedAttrGetter{
         image_num_mip_levels,
         image_channel_data_type,
         image_channel_order,
-        image_srgb_channel_order,
         image_array_size,
         image_num_samples,
         sampler_address,
@@ -485,8 +484,6 @@ struct PreDefinedAttrGetter{
             return "image_channel_data_type";
         case ArgType::image_channel_order:
             return "image_channel_order";
-        case ArgType::image_srgb_channel_order:
-            return "image_srgb_channel_order";
         case ArgType::image_array_size:
             return "image_array_size";
         case ArgType::image_num_samples:

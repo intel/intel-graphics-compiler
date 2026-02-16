@@ -884,13 +884,6 @@ bool COpenCLKernel::CreateZEPayloadArguments(IGC::KernelArg *kernelArg, uint pay
     arg.arg_index = kernelArg->getAssociatedArgNo();
     break;
   }
-  case KernelArg::ArgType::IMPLICIT_IMAGE_SRGB_CHANNEL_ORDER: {
-    zebin::zeInfoPayloadArgument &arg = zebin::ZEInfoBuilder::addPayloadArgumentImplicit(
-        m_kernelInfo.m_zePayloadArgs, zebin::PreDefinedAttrGetter::ArgType::image_srgb_channel_order, payloadPosition,
-        kernelArg->getSize());
-    arg.arg_index = kernelArg->getAssociatedArgNo();
-    break;
-  }
   case KernelArg::ArgType::IMPLICIT_IMAGE_ARRAY_SIZE: {
     zebin::zeInfoPayloadArgument &arg = zebin::ZEInfoBuilder::addPayloadArgumentImplicit(
         m_kernelInfo.m_zePayloadArgs, zebin::PreDefinedAttrGetter::ArgType::image_array_size, payloadPosition,

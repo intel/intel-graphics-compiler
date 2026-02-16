@@ -58,8 +58,8 @@ attributes #0 = { convergent nounwind "less-precise-fpmad"="true" }
 !10 = !{!"explicit_arg_num", i32 0}
 !11 = !{i32 15, !12}
 !12 = !{!"explicit_arg_num", i32 1}
-!13 = !{i32 54, !10}
-!14 = !{i32 54, !12}
+!13 = !{i32 53, !10}
+!14 = !{i32 53, !12}
 !15 = !{!"ModuleMD", !17, !90}
 !17 = !{!"compOpt", !48, !49, !57, !58}
 !48 = !{!"HasBufferOffsetArg", i1 true}
