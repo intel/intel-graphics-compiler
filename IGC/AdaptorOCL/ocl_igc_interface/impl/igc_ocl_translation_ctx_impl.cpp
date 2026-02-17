@@ -24,7 +24,7 @@ OclTranslationOutputBase *CIF_GET_INTERFACE_CLASS(IgcOclTranslationCtx, 1)::Tran
   OclTranslationOutputBase *res;
   EX_GUARD_BEGIN
   res = CIF_GET_PIMPL()->Translate(outVersion, src, nullptr, nullptr, options, internalOptions, tracingOptions,
-                                   tracingOptionsCount, nullptr);
+                                   tracingOptionsCount, nullptr, 0);
   EX_GUARD_END
   return res;
 }
@@ -36,7 +36,7 @@ OclTranslationOutputBase *CIF_GET_INTERFACE_CLASS(IgcOclTranslationCtx, 2)::Tran
   OclTranslationOutputBase *res;
   EX_GUARD_BEGIN
   res = CIF_GET_PIMPL()->Translate(outVersion, src, nullptr, nullptr, options, internalOptions, tracingOptions,
-                                   tracingOptionsCount, gtPinInput);
+                                   tracingOptionsCount, gtPinInput, 0);
   EX_GUARD_END
   return res;
 }
@@ -56,7 +56,20 @@ OclTranslationOutputBase *CIF_GET_INTERFACE_CLASS(IgcOclTranslationCtx, 3)::Tran
   OclTranslationOutputBase *res;
   EX_GUARD_BEGIN
   res = CIF_GET_PIMPL()->Translate(outVersion, src, specConstantsIds, specConstantsValues, options, internalOptions,
-                                   tracingOptions, tracingOptionsCount, gtPinInput);
+                                   tracingOptions, tracingOptionsCount, gtPinInput, 0);
+  EX_GUARD_END
+  return res;
+}
+
+OclTranslationOutputBase *CIF_GET_INTERFACE_CLASS(IgcOclTranslationCtx, 4)::TranslateImpl(
+    CIF::Version_t outVersion, CIF::Builtins::BufferSimple *src, CIF::Builtins::BufferSimple *specConstantsIds,
+    CIF::Builtins::BufferSimple *specConstantsValues, CIF::Builtins::BufferSimple *options,
+    CIF::Builtins::BufferSimple *internalOptions, CIF::Builtins::BufferSimple *tracingOptions,
+    uint32_t tracingOptionsCount, void *gtPinInput, uint64_t srcHash) {
+  OclTranslationOutputBase *res;
+  EX_GUARD_BEGIN
+  res = CIF_GET_PIMPL()->Translate(outVersion, src, specConstantsIds, specConstantsValues, options, internalOptions,
+                                   tracingOptions, tracingOptionsCount, gtPinInput, srcHash);
   EX_GUARD_END
   return res;
 }

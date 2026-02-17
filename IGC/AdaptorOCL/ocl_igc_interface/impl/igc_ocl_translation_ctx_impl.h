@@ -187,7 +187,7 @@ CIF_DECLARE_INTERFACE_PIMPL(IgcOclTranslationCtx) : CIF::PimplBase {
       CIF::Version_t outVersion, CIF::Builtins::BufferSimple * src, CIF::Builtins::BufferSimple * specConstantsIds,
       CIF::Builtins::BufferSimple * specConstantsValues, CIF::Builtins::BufferSimple * options,
       CIF::Builtins::BufferSimple * internalOptions, CIF::Builtins::BufferSimple * tracingOptions,
-      uint32_t tracingOptionsCount, void *gtPinInput) const {
+      uint32_t tracingOptionsCount, void *gtPinInput, uint64_t srcHash) const {
     // Create interface for return data
     auto outputInterface =
         CIF::RAII::UPtr(CIF::InterfaceCreator<OclTranslationOutput>::CreateInterfaceVer(outVersion, this->outType));
@@ -229,6 +229,7 @@ CIF_DECLARE_INTERFACE_PIMPL(IgcOclTranslationCtx) : CIF::PimplBase {
       inputArgs.pSpecConstantsValues = specConstantsValues->GetMemory<uint64_t>();
     }
     inputArgs.GTPinInput = gtPinInput;
+    inputArgs.SrcHash = srcHash;
 
     CIF::Sanity::NotNullOrAbort(this->globalState.GetPlatformImpl());
     auto platform = this->globalState.GetPlatformImpl()->p;

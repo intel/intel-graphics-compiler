@@ -185,7 +185,7 @@ OclTranslationOutputBase *CIF_GET_INTERFACE_CLASS(FclOclTranslationCtx, 1)::Tran
     CIF::Builtins::BufferSimple *internalOptions, CIF::Builtins::BufferSimple *tracingOptions,
     uint32_t tracingOptionsCount) {
 
-  return CIF_GET_PIMPL()->Translate(outVersion, src, options, internalOptions, tracingOptions, tracingOptionsCount);
+  return CIF_GET_PIMPL()->Translate(outVersion, src, options, internalOptions, tracingOptions, tracingOptionsCount, 0);
 }
 
 void CIF_GET_INTERFACE_CLASS(FclOclTranslationCtx, 2)::GetFclOptions(CIF::Builtins::BufferSimple *opts) {
@@ -194,6 +194,15 @@ void CIF_GET_INTERFACE_CLASS(FclOclTranslationCtx, 2)::GetFclOptions(CIF::Builti
 
 void CIF_GET_INTERFACE_CLASS(FclOclTranslationCtx, 2)::GetFclInternalOptions(CIF::Builtins::BufferSimple *opts) {
   CIF_GET_PIMPL()->GetFclInternalOptions(opts);
+}
+
+OclTranslationOutputBase *CIF_GET_INTERFACE_CLASS(FclOclTranslationCtx, 3)::TranslateImpl(
+    CIF::Version_t outVersion, CIF::Builtins::BufferSimple *src, CIF::Builtins::BufferSimple *options,
+    CIF::Builtins::BufferSimple *internalOptions, CIF::Builtins::BufferSimple *tracingOptions,
+    uint32_t tracingOptionsCount, uint64_t srcHash) {
+
+  return CIF_GET_PIMPL()->Translate(outVersion, src, options, internalOptions, tracingOptions, tracingOptionsCount,
+                                    srcHash);
 }
 
 std::optional<std::vector<char>> readBinaryFile(const std::string &fileName) {
