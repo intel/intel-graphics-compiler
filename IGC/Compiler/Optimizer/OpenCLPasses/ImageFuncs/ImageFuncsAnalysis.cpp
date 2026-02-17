@@ -44,6 +44,7 @@ const llvm::StringRef ImageFuncsAnalysis::GET_IMAGE2D_ARRAY_SIZE = "__builtin_IB
 const llvm::StringRef ImageFuncsAnalysis::GET_IMAGE_NUM_SAMPLES = "__builtin_IB_get_image_num_samples";
 const llvm::StringRef ImageFuncsAnalysis::GET_SAMPLER_ADDRESS_MODE = "__builtin_IB_get_address_mode";
 const llvm::StringRef ImageFuncsAnalysis::GET_SAMPLER_NORMALIZED_COORDS = "__builtin_IB_is_normalized_coords";
+const llvm::StringRef ImageFuncsAnalysis::GET_SAMPLER_SNAP_WA_REQUIRED = "__builtin_IB_get_snap_wa_reqd";
 
 bool ImageFuncsAnalysis::runOnModule(Module &M) {
   bool changed = false;
@@ -115,6 +116,11 @@ void ImageFuncsAnalysis::visitCallInst(CallInst &CI) {
     imageFunc = &m_argMap[ImplicitArg::SAMPLER_ADDRESS];
   } else if (funcName == GET_SAMPLER_NORMALIZED_COORDS) {
     imageFunc = &m_argMap[ImplicitArg::SAMPLER_NORMALIZED];
+  }
+  // The SNAP_WA is disabled for SPV_INTEL_bindless_images extension.
+  // For further information, refer to the ImageFuncResolution.cpp file.
+  else if (funcName == GET_SAMPLER_SNAP_WA_REQUIRED && !m_useSPVINTELBindlessImages) {
+    imageFunc = &m_argMap[ImplicitArg::SAMPLER_SNAP_WA];
   } else {
     // Non image function, do nothing
     return;
@@ -150,5 +156,6 @@ void ImageFuncsAnalysis::visitCallInst(CallInst &CI) {
   }
 
   // Only these args should be hit by the indirect case
-  IGC_ASSERT(funcName == GET_SAMPLER_ADDRESS_MODE || funcName == GET_SAMPLER_NORMALIZED_COORDS);
+  IGC_ASSERT(funcName == GET_SAMPLER_ADDRESS_MODE || funcName == GET_SAMPLER_NORMALIZED_COORDS ||
+             funcName == GET_SAMPLER_SNAP_WA_REQUIRED);
 }

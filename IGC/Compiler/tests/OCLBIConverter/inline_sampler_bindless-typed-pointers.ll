@@ -41,7 +41,7 @@ declare spir_func <4 x float> @__builtin_IB_OCL_2d_sample_l(i64, i64, <2 x float
 !0 = !{void (%spirv.Image._void_1_0_0_0_0_0_0 addrspace(1)*, i64)* @test, !1}
 !1 = !{!2}
 !2 = !{!"implicit_arg_desc", !3}
-!3 = !{i32 32, !4}
+!3 = !{i32 33, !4}
 !4 = !{!"explicit_arg_num", i32 16}
 !5 = !{!"ModuleMD", !6, !20}
 !6 = !{!"FuncMD", !7, !8}

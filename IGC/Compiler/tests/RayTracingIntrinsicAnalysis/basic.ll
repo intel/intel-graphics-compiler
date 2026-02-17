@@ -54,9 +54,9 @@ declare i32 addrspace(1)* @llvm.genx.GenISA.InlinedData(i16)
 ; CHECK: !1 = !{!2, !3}
 ; CHECK: !2 = !{!"function_type", i32 0}
 ; CHECK: !3 = !{!"implicit_arg_desc", !4, !5, !6, !7}
-; CHECK: !4 = !{i32 50}
-; CHECK: !5 = !{i32 51}
-; CHECK: !6 = !{i32 53}
-; CHECK: !7 = !{i32 52}
+; CHECK: !4 = !{i32 51}
+; CHECK: !5 = !{i32 52}
+; CHECK: !6 = !{i32 54}
+; CHECK: !7 = !{i32 53}
 ; CHECK: !8 = !{void ()* @rti, !1}
 ; CHECK: !9 = !{void ()* @foo, !1}

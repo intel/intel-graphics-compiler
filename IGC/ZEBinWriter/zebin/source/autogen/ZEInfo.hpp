@@ -300,7 +300,7 @@ struct zeInfoContainer
     KernelsCostInfoTy kernels_cost_info;
 };
 struct PreDefinedAttrGetter{
-    static zeinfo_str_t getVersionNumber() { return "1.65"; }
+    static zeinfo_str_t getVersionNumber() { return "1.64"; }
 
     enum class ArgThreadSchedulingMode {
         age_based,

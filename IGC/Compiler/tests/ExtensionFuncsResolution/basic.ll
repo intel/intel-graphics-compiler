@@ -96,23 +96,23 @@ declare spir_func %struct.mce_payload_t* @__builtin_IB_vme_helper_get_as_avc_mce
 !1 = !{!2, !3}
 !2 = !{!"function_type", i32 0}
 !3 = !{!"implicit_arg_desc",  !4}
-!4 = !{i32 33}
+!4 = !{i32 34}
 
 
 !5 = !{void (i32)* @test_vme_subpix, !6}
 !6 = !{!2, !7}
 !7 = !{!"implicit_arg_desc",  !8}
-!8 = !{i32 34}
+!8 = !{i32 35}
 
 !9 = !{void (i32)* @test_vme_sad, !10}
 !10 = !{!2, !11}
 !11 = !{!"implicit_arg_desc",  !12}
-!12 = !{i32 35}
+!12 = !{i32 36}
 
 !13 = !{void (i32)* @test_vme_search, !14}
 !14 = !{!2, !15}
 !15 = !{!"implicit_arg_desc",  !16}
-!16 = !{i32 36}
+!16 = !{i32 37}
 
 !17 = !{void (%struct.mce_payload_t*)* @test_vme_helper, !18}
 !18 = !{!2, !19}

@@ -95,6 +95,8 @@ static const std::vector<ImplicitArg> IMPLICIT_ARGS = {
                 ImplicitArg::ALIGN_DWORD, true),
     ImplicitArg(ImplicitArg::SAMPLER_NORMALIZED, "smpNormalized", ImplicitArg::INT, WIAnalysis::UNIFORM_GLOBAL, 1,
                 ImplicitArg::ALIGN_DWORD, true),
+    ImplicitArg(ImplicitArg::SAMPLER_SNAP_WA, "smpSnapWA", ImplicitArg::INT, WIAnalysis::UNIFORM_GLOBAL, 1,
+                ImplicitArg::ALIGN_DWORD, true),
     ImplicitArg(ImplicitArg::INLINE_SAMPLER, "inlineSampler", ImplicitArg::LONG, WIAnalysis::UNIFORM_GLOBAL, 1,
                 ImplicitArg::ALIGN_QWORD, true),
 

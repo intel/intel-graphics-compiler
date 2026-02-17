@@ -235,7 +235,7 @@ Supported <argument_type> of payload_arguments or per_thread_payload_arguments.
 | image_num_samples | | The number of samples |
 | sampler_address | | Sampler descriptor specifying the image addressing mode |
 | sampler_normalized | | Sampler descriptor specifying whether the coordinates are passed in as normalized or unnormalized values |
-| sampler_snap_wa | | Deprecated - To be removed in the next major version. Sampler descriptor specifying whether snap coordinate workaround is required |
+| sampler_snap_wa | | Sampler descriptor specifying whether snap coordinate workaround is required |
 | inline_sampler | | Implicit argument for OpenCL inline sampler in bindless addressing mode |
 | const_base | | The base address of constant buffer, or the bindless offset of constant buffer if addrmode = "bindless" |
 | global_base | | The base address of global buffer, or the bindless offset of global buffer if addrmode = "bindless" |
