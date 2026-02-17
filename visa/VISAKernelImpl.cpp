@@ -8018,6 +8018,15 @@ int VISAKernelImpl::AppendVISAQwordScatterInst(
   return status;
 }
 
+static void NormalizeLscCacheOptsForUnified(LSC_CACHE_OPT& l2, LSC_CACHE_OPT& l3) {
+  if (l2 == LSC_CACHING_DEFAULT) {
+    l2 = l3;
+    if (l3 != LSC_CACHING_DEFAULT) {
+      l3 = LSC_CACHING_UNCACHED;
+    }
+  }
+}
+
 VISA_BUILDER_API int VISAKernelImpl::AppendVISALscUntypedLoad(
     LSC_OP subOpcode, LSC_SFID sfid, VISA_PredOpnd *pred,
     VISA_Exec_Size execSize, VISA_EMask_Ctrl emask,
@@ -8177,12 +8186,7 @@ VISA_BUILDER_API int VISAKernelImpl::AppendVISALscUntypedInst(
     CreateGenRawSrcOperand(src2Data);
 
     if (m_options->getOption(vISA_enableEfficient64b)) {
-      if (cacheOpts.l2 == LSC_CACHING_DEFAULT) {
-        cacheOpts.l2 = cacheOpts.l3;
-        if (cacheOpts.l3 != LSC_CACHING_DEFAULT) {
-          cacheOpts.l3 = LSC_CACHING_UNCACHED;
-        }
-      }
+      NormalizeLscCacheOptsForUnified(cacheOpts.l2, cacheOpts.l3);
       // call the efficient 64b translate function
       status = m_builder->translateLscUntypedInstUnified(
             subOpcode, lscSfid, pred ? pred->g4opnd->asPredicate() : nullptr,
@@ -8415,6 +8419,7 @@ VISA_BUILDER_API int VISAKernelImpl::AppendVISALscUntypedBlock2DInst(
     G4_Operand *src0AddrSrcRgn = src0AddrPayload->g4opnd;
 
     if (m_options->getOption(vISA_enableEfficient64b)) {
+      NormalizeLscCacheOptsForUnified(cacheOpts.l2, cacheOpts.l3);
       // call the efficient 64b translate function
       status = m_builder->translateLscUntypedBlock2DInstUnified(
           op, LSC_UGM, pred ? pred->g4opnd->asPredicate() : nullptr, execSize,
@@ -8501,6 +8506,7 @@ VISA_BUILDER_API int VISAKernelImpl::AppendVISALscUntypedBlock2DInst(
       src0AddrSrcRgns[i] = src0Addrs[i]->g4opnd;
     }
     if (m_options->getOption(vISA_enableEfficient64b)) {
+      NormalizeLscCacheOptsForUnified(cacheOpts.l2, cacheOpts.l3);
       // call the efficient 64b translate function
       status = m_builder->translateLscUntypedBlock2DInstUnified(
           op, lscSfid, pred ? pred->g4opnd->asPredicate() : nullptr, execSize,
@@ -8664,12 +8670,7 @@ VISA_BUILDER_API int VISAKernelImpl::AppendVISALscTypedInst(
     CreateGenRawSrcOperand(src2Data);
 
   if (m_options->getOption(vISA_enableEfficient64b)) {
-    if (cacheOpts.l2 == LSC_CACHING_DEFAULT) {
-      cacheOpts.l2 = cacheOpts.l3;
-      if (cacheOpts.l3 != LSC_CACHING_DEFAULT) {
-        cacheOpts.l3 = LSC_CACHING_UNCACHED;
-      }
-    }
+    NormalizeLscCacheOptsForUnified(cacheOpts.l2, cacheOpts.l3);
     status = m_builder->translateLscTypedInstUnified(
         subOpcode, pred ? pred->g4opnd->asPredicate() : nullptr, execSize,
         emask, cacheOpts, addrType, addrSize, dataShape,
