@@ -2096,7 +2096,10 @@ bool CodeGenPatternMatch::CanMatchMad(llvm::BinaryOperator &I) const {
     return false;
   }
 
-  if (I.getType()->isIntOrIntVectorTy() && !(m_Platform.doIntegerMad() && m_ctx->m_DriverInfo.EnableIntegerMad())) {
+  bool bothOperandsAreUniform = isUniform(I.getOperand(0)) && isUniform(I.getOperand(1));
+  bool canUseMAD = m_Platform.doIntegerMad(bothOperandsAreUniform) && m_ctx->m_DriverInfo.EnableIntegerMad();
+
+  if (I.getType()->isIntOrIntVectorTy() && !canUseMAD) {
     return false;
   }
 

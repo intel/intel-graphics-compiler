@@ -365,7 +365,10 @@ public:
     return (m_platformInfo.eRenderCoreFamily < IGFX_GEN12_CORE);
   }
 
-  bool doIntegerMad() const {
+  bool doIntegerMad(bool bothOperandsAreUniform = false) const {
+    if (bothOperandsAreUniform && m_platformInfo.eProductFamily == IGFX_METEORLAKE)
+      return false;
+
     return m_platformInfo.eRenderCoreFamily >= IGFX_GEN11_CORE && m_platformInfo.eProductFamily != IGFX_DG1 &&
            IGC_IS_FLAG_ENABLED(EnableIntegerMad);
   }
