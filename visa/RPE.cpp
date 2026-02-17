@@ -36,6 +36,8 @@ void RPE::run() {
 void RPE::runBB(G4_BB *bb) {
   G4_Declare *topdcl = nullptr;
   unsigned int id = 0;
+  TotalGRFAligned = 0;
+  TotalSubGRF = 0;
 
   // Compute reg pressure at BB exit
   regPressureBBExit(bb);
@@ -134,7 +136,7 @@ void RPE::regPressureBBExit(G4_BB *bb) {
         auto dclSize = rootDcl->getByteSize();
         auto alignBytes = static_cast<uint32_t>(rootDcl->getSubRegAlign()) * 2;
         if (dclSize < gra.builder.getGRFSize() && dclSize < alignBytes) {
-          dclSize = std::min(dclSize * 2, alignBytes);
+          dclSize = handleSubGRFPressure(dclSize, alignBytes);
         }
         numScalarBytes += dclSize;
       }
@@ -162,24 +164,23 @@ void RPE::updateLiveness(SparseBitVector &live, uint32_t id, bool val) {
   updateRegisterPressure(change, clean, id);
 }
 
-void RPE::updateRegisterPressure(bool change, bool clean,
-                                 unsigned int id) {
+void RPE::updateRegisterPressure(bool change, bool clean, unsigned int id) {
   if (change) {
     auto dcl = vars[id]->getDeclare();
     if (isSpilled(dcl))
       return;
     if (isStackPseudoVar(dcl))
       return;
-    // For <1 GRF variable we have to take alignment into consideration as well
-    // when computing register pressure. For now we double each <1GRF variable's
-    // size if its alignment also exceeds its size. Alternative is to simply
-    // take the alignment as the size, but it might cause performance
+    // For < 1 GRF variable we have to take alignment into consideration as well
+    // when computing register pressure. For now we double each < 1 GRF
+    // variable's size if its alignment also exceeds its size. Alternative is to
+    // simply take the alignment as the size, but it might cause performance
     // regressions due to being too conservative (i.e., a GRF-aligned variable
     // may share physical GRF with several other
     auto dclSize = dcl->getByteSize();
     auto alignBytes = static_cast<uint32_t>(dcl->getSubRegAlign()) * 2;
     if (dclSize < gra.builder.getGRFSize() && dclSize < alignBytes) {
-      dclSize = std::min(dclSize * 2, alignBytes);
+      dclSize = handleSubGRFPressure(dclSize, alignBytes);
     }
 
     double delta = dclSize < gra.builder.getGRFSize()
@@ -196,6 +197,24 @@ void RPE::updateRegisterPressure(bool change, bool clean,
     }
   }
   maxRP = std::max(maxRP, (uint32_t)regPressure);
+}
+
+unsigned int RPE::handleSubGRFPressure(unsigned int dclSize,
+                                       unsigned int alignBytes) {
+  // If high % of < 1 GRF variables are GRF aligned then we
+  // approximate their contribution to RPE as 1. This is because
+  // we are unlikely to find other < 1 GRF variables that can
+  // fit in free space left behind by GRF aligned < 1 GRF variables.
+  // Currently, we use a constant of 99%. Using too low a value
+  // means we overestimate impact of 1 GRF aligned variables.
+  TotalSubGRF++;
+  if (alignBytes == gra.builder.getGRFSize()) {
+    TotalGRFAligned++;
+  }
+  if (TotalSubGRF > MinNumSubGRFVars &&
+      (float)TotalGRFAligned / (float)TotalSubGRF > LowerThreshold)
+    return gra.builder.getGRFSize();
+  return std::min(dclSize * 2, alignBytes);
 }
 
 void RPE::recomputeMaxRP() {

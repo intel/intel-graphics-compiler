@@ -51,6 +51,20 @@ private:
   // register pressure immediately after coloring (spill
   // iteration).
   std::unordered_set<const G4_Declare *> spilledVars;
+  // Running count # of GRF aligned variables of size < 1 GRF
+  unsigned int TotalGRFAligned = 0;
+  // Running count # of < 1GRF sized variables
+  unsigned int TotalSubGRF = 0;
+  // Minimum number of < 1 GRF variables before we start treating them as
+  // potentially high contributors to register pressure. This is to reduce
+  // noise when when there are few < 1 GRF sized variables.
+  const unsigned int MinNumSubGRFVars = 10;
+  // Ratio of < 1 GRF variables requiring GRF alignment to total
+  // number of < 1 GRF variables. When this ratio crosses LowerThreshold,
+  // we add 1 GRF to estimated register pressure. Otherwise, we add a
+  // smaller number to estimated register pressure consider that other
+  // < 1 GRF variables can fit in the gap.
+  const float LowerThreshold = 0.99f;
 
   void regPressureBBExit(G4_BB *);
   void updateRegisterPressure(bool change, bool clean, unsigned int);
@@ -80,6 +94,9 @@ private:
     }
     return false;
   }
+
+  unsigned int handleSubGRFPressure(unsigned int dclSize,
+                                    unsigned int alignBytes);
 };
 } // namespace vISA
 #endif
