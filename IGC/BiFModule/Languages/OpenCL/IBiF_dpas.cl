@@ -571,6 +571,26 @@ DEFN_INTEL_CVT2CAST( half3_srnd,  half3,  float3,  float3,  ushort3,  short3,  s
 DEFN_INTEL_CVT2CAST( half4_srnd,  half4,  float4,  float4,  ushort4,  short4,  srnd_ftohf_4 )
 DEFN_INTEL_CVT2CAST( half8_srnd,  half8,  float8,  float8,  ushort8,  short8,  srnd_ftohf_8 )
 DEFN_INTEL_CVT2CAST( half16_srnd, half16, float16, float16, ushort16, short16, srnd_ftohf_16 )
+DEFN_INTEL_CVT2CAST( hfloat8_as_uchar_srnd,     uchar,   half,   half,   uchar,   char,   srnd_hftohf8_1 )
+DEFN_INTEL_CVT2CAST( hfloat82_as_uchar2_srnd,   uchar2,  half2,  half2,  uchar2,  char2,  srnd_hftohf8_2 )
+DEFN_INTEL_CVT2CAST( hfloat83_as_uchar3_srnd,   uchar3,  half3,  half3,  uchar3,  char3,  srnd_hftohf8_3 )
+DEFN_INTEL_CVT2CAST( hfloat84_as_uchar4_srnd,   uchar4,  half4,  half4,  uchar4,  char4,  srnd_hftohf8_4 )
+DEFN_INTEL_CVT2CAST( hfloat88_as_uchar8_srnd,   uchar8,  half8,  half8,  uchar8,  char8,  srnd_hftohf8_8 )
+DEFN_INTEL_CVT2CAST( hfloat816_as_uchar16_srnd, uchar16, half16, half16, uchar16, char16, srnd_hftohf8_16 )
+
+DEFN_INTEL_CVT2CAST( as_bfloat16_bfloat8_as_uchar_srnd,       uchar,   ushort,   short,   uchar,   char,   srnd_bftobf8_1 )
+DEFN_INTEL_CVT2CAST( as_bfloat162_bfloat82_as_uchar2_srnd,    uchar2,  ushort2,  short2,  uchar2,  char2,  srnd_bftobf8_2 )
+DEFN_INTEL_CVT2CAST( as_bfloat163_bfloat83_as_uchar3_srnd,    uchar3,  ushort3,  short3,  uchar3,  char3,  srnd_bftobf8_3 )
+DEFN_INTEL_CVT2CAST( as_bfloat164_bfloat84_as_uchar4_srnd,    uchar4,  ushort4,  short4,  uchar4,  char4,  srnd_bftobf8_4 )
+DEFN_INTEL_CVT2CAST( as_bfloat168_bfloat88_as_uchar8_srnd,    uchar8,  ushort8,  short8,  uchar8,  char8,  srnd_bftobf8_8 )
+DEFN_INTEL_CVT2CAST( as_bfloat1616_bfloat816_as_uchar16_srnd, uchar16, ushort16, short16, uchar16, char16, srnd_bftobf8_16 )
+
+DEFN_INTEL_CVT2CAST( as_bfloat16_hfloat8_as_uchar_srnd,       uchar,   ushort,   short,   uchar,   char,   srnd_bftohf8_1 )
+DEFN_INTEL_CVT2CAST( as_bfloat162_hfloat82_as_uchar2_srnd,    uchar2,  ushort2,  short2,  uchar2,  char2,  srnd_bftohf8_2 )
+DEFN_INTEL_CVT2CAST( as_bfloat163_hfloat83_as_uchar3_srnd,    uchar3,  ushort3,  short3,  uchar3,  char3,  srnd_bftohf8_3 )
+DEFN_INTEL_CVT2CAST( as_bfloat164_hfloat84_as_uchar4_srnd,    uchar4,  ushort4,  short4,  uchar4,  char4,  srnd_bftohf8_4 )
+DEFN_INTEL_CVT2CAST( as_bfloat168_hfloat88_as_uchar8_srnd,    uchar8,  ushort8,  short8,  uchar8,  char8,  srnd_bftohf8_8 )
+DEFN_INTEL_CVT2CAST( as_bfloat1616_hfloat816_as_uchar16_srnd, uchar16, ushort16, short16, uchar16, char16, srnd_bftohf8_16 )
 #endif // cl_intel_stochastic_rounding
 
 #endif  // cl_khr_fp16
