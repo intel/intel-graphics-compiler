@@ -3351,11 +3351,12 @@ void HWConformityPro::evenlySplitInst(INST_LIST_ITER iter, G4_BB *bb) {
   }
 
   G4_DstRegRegion *dst = inst->getDst();
-  bool nullDst = dst && inst->hasNULLDst();
 
   // Check src/dst dependency
-  if (!nullDst) {
+  if (dst && !inst->hasNULLDst()) {
     for (int i = 0; i < numSrc; i++) {
+      if (!srcs[i])
+        continue;
       bool useTmp = false;
       G4_CmpRelation rel = dst->compareOperand(srcs[i], builder);
       if (rel != Rel_disjoint) {
@@ -3408,10 +3409,12 @@ void HWConformityPro::evenlySplitInst(INST_LIST_ITER iter, G4_BB *bb) {
   for (int i = 0; i < instExSize; i += currExSize) {
     // create new Oprands.
     G4_DstRegRegion *newDst;
-    if (!nullDst) {
+    if (dst && !inst->hasNULLDst()) {
       newDst = builder.createSubDstOperand(dst, (uint16_t)i, currExSize);
+    } else if (inst->hasNULLDst()) {
+      newDst = builder.duplicateOperand(dst);
     } else {
-      newDst = dst;
+      newDst = nullptr;
     }
     // generate new inst
     G4_INST *newInst;
