@@ -924,10 +924,10 @@ int Optimizer::optimization() {
 
   runPass(PI_cleanupA0Movs);
 
-  runPass(PI_localCSEForSendPayloadCopy);
-
   // remove redundant movs and fold some other patterns
   runPass(PI_localCopyPropagation);
+
+  runPass(PI_localCSEForSendPayloadCopy);
 
   // fold some binary operations
   runPass(PI_localInstCombine);
@@ -2712,6 +2712,9 @@ static bool isAllDefinedByCopy(
 bool canDoCSEForSendPayloadCopies(
     G4_INST *prevInst, G4_INST *succInst,
     std::map<G4_INST *, std::vector<G4_INST *>> &sendPayLoadCopyMap,
+    std::map<G4_INST *, std::vector<G4_INST *>> &sendPayLoadRedefinedCopyMap,
+    std::map<G4_INST *, std::vector<std::pair<G4_INST *, G4_INST *>>>
+        &sendUnRemovedPayLoadCopyMap,
     IR_Builder &builder) {
     // Same SFID
   G4_SendgDesc *prevSendDesc =
@@ -2732,20 +2735,77 @@ bool canDoCSEForSendPayloadCopies(
     return false;
 
   // Same destination offset
+  std::vector < std ::pair<G4_INST *, G4_INST *>> diffCopies;
   for (size_t i = 0; i < sendPayLoadCopyMap[prevInst].size(); i++) {
     G4_Operand *src1 = sendPayLoadCopyMap[prevInst][i]->getSrc(0);
     G4_Operand *src2 = sendPayLoadCopyMap[succInst][i]->getSrc(0);
     G4_Operand *dst1 = sendPayLoadCopyMap[prevInst][i]->getDst();
     G4_Operand *dst2 = sendPayLoadCopyMap[succInst][i]->getDst();
 
-    if (src1->compareOperand(src2, builder) != Rel_eq)
-      return false;
-
     if ((dst1->asDstRegRegion()->getRegOff() !=
             dst2->asDstRegRegion()->getRegOff()) ||
         (dst1->asDstRegRegion()->getSubRegOff() !=
             dst2->asDstRegRegion()->getSubRegOff())) {
       return false;
+    }
+    if (src1->compareOperand(src2, builder) != Rel_eq) {
+      diffCopies.push_back(std::make_pair(sendPayLoadCopyMap[succInst][i],
+                           sendPayLoadCopyMap[prevInst][i]));
+    }
+  }
+
+  // If using sendg, 8 indexes can supported per-mov. So, we use 1/8 as
+  // threshold for mov instruction reduction here.
+  if (!((sendPayLoadCopyMap[prevInst].size() <= 8) &&
+        (sendPayLoadCopyMap[prevInst].size() > 1) &&
+        (diffCopies.size() <= 1)) &&
+      (((float)diffCopies.size() / sendPayLoadCopyMap[prevInst].size()) >
+       0.125)) {
+    return false;
+  }
+
+  if (diffCopies.size()) {
+    auto iter = sendPayLoadRedefinedCopyMap.find(prevInst);
+    bool hasPartialDefined = (iter != sendPayLoadRedefinedCopyMap.end());
+    // If there is un-removed copy instructions in previous send payload
+    // removing, in the following send, the redefine can only happen in the
+    // un-revmoed copy instructions. Otherwise, wrong value will be used in
+    // following send.
+    //
+    // Such as in following sends, if M4 is replaced with M2, the source of
+    // first M4 mov must be kept because of redefine. In this case M2 cannot be
+    // used to replace M8. Because M2(0,0) value is redefined by V0048.
+    //
+    // mov (32)             M2(0,0)<1>:w
+    // V0045(0,0)<1;1,0>:w
+    // mov (32)             M2(1,0)<1>:w  V0046(0,0)<1;1,0>:w
+    // sends.smpl (32)      V0047(0,0):w samplerHeader(0,0) M2(0,0) ...
+    //
+    // mov (32)             M4(0,0)<1>:w  V0048(0,0)<1;1,0>:w
+    // mov (32)             M4(1,0)<1>:w  V0046(0,0)<1;1,0>:w
+    // sends.smpl (32)      V0049(0,0):w samplerHeader(0,0) M4(0,0)
+    //
+    // mov (32)             M8(0,0)<1>:w  V0045(0,0)<1;1,0>:w
+    // mov (32)             M8(1,0)<1>:w  V0050(0,0)<1;1,0>:w
+    // sends.smpl (32)      V0052(0,0):w samplerHeader(0,0) M8(0,0) ...
+    if (hasPartialDefined) {
+      for (auto diffCopy : diffCopies) {
+        auto orgCopy = diffCopy.second;
+        if (std::find((*iter).second.begin(), (*iter).second.end(),
+                      orgCopy) == (*iter).second.end()) {
+          return false;
+        }
+      }
+    }
+    for (auto diffCopy : diffCopies) {
+      auto eraseIter = std::find(sendPayLoadCopyMap[succInst].begin(),
+                    sendPayLoadCopyMap[succInst].end(), diffCopy.first);
+      if (eraseIter != sendPayLoadCopyMap[succInst].end())
+        sendPayLoadCopyMap[succInst].erase(eraseIter);
+      sendUnRemovedPayLoadCopyMap[succInst].push_back(diffCopy);
+      if (!hasPartialDefined) {
+        sendPayLoadRedefinedCopyMap[prevInst].push_back(diffCopy.second);
+      }
     }
   }
 
@@ -2758,6 +2818,9 @@ void Optimizer::localCSEForSendPayloadCopy() {
 
     // The mapping between send and payload copy instructions
     std::map<G4_INST *, std::vector<G4_INST *>> sendPayLoadCopyMap;
+    std::map<G4_INST *, std::vector<std::pair<G4_INST *, G4_INST *>>>
+        sendUnRemovedPayLoadCopyMap;
+    std::map<G4_INST *, std::vector<G4_INST *>> sendPayLoadRedefinedCopyMap;
     // bool, 0: send use instsruction, 1: define copy source instruction
     std::vector<std::pair<G4_INST *, bool>> sendInstList;
     // Declares used for redefine checking
@@ -2810,12 +2873,13 @@ void Optimizer::localCSEForSendPayloadCopy() {
 
       if (inst->def_size() != 1) {
         G4_Operand *src = inst->getSrc(0);
-        if (!src || !src->getTopDcl()) {
+        if (!src || (!src->isImm() && !src->getTopDcl())) {
           ii++;
           continue;
         }
         // The source of mov is not defined once, or is global
-        usedNoneLocalDeclares.push_back(src->getTopDcl()->getRootDeclare());
+        if (!src->isImm())
+          usedNoneLocalDeclares.push_back(src->getTopDcl()->getRootDeclare());
       }
 
       // Push the mov instruction to the map with send as key
@@ -2852,43 +2916,46 @@ void Optimizer::localCSEForSendPayloadCopy() {
     }
 
     // Check if there is common mov instruction can be removed
-    G4_INST *CSECopySendTarget = nullptr;
     std::vector<std::pair<G4_INST *, bool>>::iterator sendIterator =
         sendCopyInstList.begin();
     std::map<G4_INST *, std::vector<G4_INST *>> sendCSECopyMap;
     std::vector<G4_INST *> sendCSECopyInstList;
+    std::vector<G4_INST *> sendsUseOtherCopies;
+    // Scan the ordered send instructions
     while (sendIterator != sendCopyInstList.end()) {
-      G4_INST *sendInst = (*sendIterator).first;
-      // Pick the first send as the candidate for src1 reuse
-      if (CSECopySendTarget == nullptr) {
-        CSECopySendTarget = sendInst;
-        sendIterator++;
-        continue;
-      }
-
       // If find redefine of copy source
+      // FIXME, redefine of which?
       if ((*sendIterator).second) {
-        CSECopySendTarget = nullptr;
         sendIterator++;
         continue;
       }
 
-      // Already use same variable
-      if (sendInst->getSrc(1)->getTopDcl()->getRootDeclare() ==
-          CSECopySendTarget->getSrc(1)->getTopDcl()->getRootDeclare()) {
-        CSECopySendTarget = sendInst;
+      G4_INST *CSECopyReuseTarget = (*sendIterator).first;
+      // Already use the variable of other send
+      if (std::find(sendsUseOtherCopies.begin(), sendsUseOtherCopies.end(),
+                    CSECopyReuseTarget) != sendsUseOtherCopies.end()) {
         sendIterator++;
         continue;
       }
 
-      // Check if all the source opearnds of mov instructions are same
-      if (!canDoCSEForSendPayloadCopies(CSECopySendTarget, sendInst,
-                                        sendPayLoadCopyMap, builder)) {
-        CSECopySendTarget = sendInst;
-      } else {
-        // Add send instruction to the array which can reuse the src1 of target
-        // send
-        sendCSECopyMap[CSECopySendTarget].push_back(sendInst);
+      // Search following sends
+      std::vector<std::pair<G4_INST *, bool>>::iterator searchIterator =
+          sendIterator;
+      searchIterator++;
+      while (searchIterator != sendCopyInstList.end()) {
+        G4_INST *sendInst = (*searchIterator).first;
+        // Check if all the source opearnds of mov instructions are same
+        if (canDoCSEForSendPayloadCopies(
+                CSECopyReuseTarget, sendInst, sendPayLoadCopyMap,
+                sendPayLoadRedefinedCopyMap, sendUnRemovedPayLoadCopyMap,
+                builder)) {
+          // Add send instruction to the array which can reuse the src1 of
+          // target send
+          sendCSECopyMap[CSECopyReuseTarget].push_back(sendInst);
+          sendsUseOtherCopies.push_back(sendInst);
+        }
+
+        searchIterator++;
       }
 
       sendIterator++;
@@ -2903,15 +2970,22 @@ void Optimizer::localCSEForSendPayloadCopy() {
         for (auto copyInst : sendPayLoadCopyMap[sendInst]) {
           bb->remove(copyInst);
         }
-        sendInst->removeDefUse(Opnd_src1);
+
+        // Change dst of un-removed payload copy
+        for (auto copyInst : sendUnRemovedPayLoadCopyMap[sendInst]) {
+          G4_INST *currCopy = copyInst.first;
+          G4_INST *orgCopy = copyInst.second;
+          currCopy->setDest(builder.duplicateOperand(orgCopy->getDst()));
+        }
 
         // Replace the src1 with the src1 of previous send
         G4_Operand *newSrc1 = builder.duplicateOperand(src1);
         sendInst->setSrc(newSrc1, 1);
-        orgInst->copyDef(sendInst, Opnd_src1, Opnd_src1, true);
       }
     }
   }
+  kernel.fg.resetLocalDataFlowData();
+  kernel.fg.localDataFlowAnalysis();
 }
 
 void Optimizer::localCopyPropagation() {
