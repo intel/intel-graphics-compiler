@@ -54,7 +54,7 @@ define spir_kernel void @foo(%spirv.Image addrspace(1)* %_arg_image_, %spirv.Sam
   %1 = load %spirv.Sampler addrspace(2)*, %spirv.Sampler addrspace(2)** %sampler_2_casted, align 8
   %2 = ptrtoint %spirv.Sampler addrspace(2)* %1 to i64
   %3 = trunc i64 %2 to i32
-  call spir_func i32 @__builtin_IB_get_snap_wa_reqd(i32 noundef %3) #2
+  call spir_func i32 @__builtin_IB_get_address_mode(i32 noundef %3) #2
   ret void
 }
 
@@ -62,7 +62,7 @@ define spir_kernel void @foo(%spirv.Image addrspace(1)* %_arg_image_, %spirv.Sam
 declare void @llvm.memcpy.p0i8.p0i8.i64(i8* noalias nocapture writeonly, i8* noalias nocapture readonly, i64, i1 immarg) #1
 
 ; Function Attrs: convergent nounwind readnone willreturn
-declare spir_func i32 @__builtin_IB_get_snap_wa_reqd(i32 noundef) local_unnamed_addr #2
+declare spir_func i32 @__builtin_IB_get_address_mode(i32 noundef) local_unnamed_addr #2
 
 attributes #0 = { convergent nounwind }
 attributes #1 = { argmemonly nofree nounwind willreturn }

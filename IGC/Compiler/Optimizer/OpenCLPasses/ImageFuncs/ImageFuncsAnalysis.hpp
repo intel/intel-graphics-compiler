@@ -78,7 +78,6 @@ public:
   static const llvm::StringRef GET_IMAGE_NUM_SAMPLES;
   static const llvm::StringRef GET_SAMPLER_ADDRESS_MODE;
   static const llvm::StringRef GET_SAMPLER_NORMALIZED_COORDS;
-  static const llvm::StringRef GET_SAMPLER_SNAP_WA_REQUIRED;
 
 private:
   /// @brief Maps each implicit argument type to a set. This set contains
@@ -100,12 +99,6 @@ private:
   //
   //        This distinction arises between standard OpenCL images and bindless images
   //        from the SPV_INTEL_bindless_images extension.
-  //
-  //        For example: the __builtin_IB_get_snap_wa_reqd function is lowered to an
-  //        implicit argument, SAMPLER_SNAP_WA, for standard OpenCL images.
-  //        However, for bindless images from the SPV_INTEL_bindless_images extension,
-  //        the snap_wa is unsupported. Consequently, it is effectively disabled
-  //        by being lowered to a ConstantInt value of 0.
   bool m_useSPVINTELBindlessImages{};
 
   int m_inlineSamplerIndex = 0;

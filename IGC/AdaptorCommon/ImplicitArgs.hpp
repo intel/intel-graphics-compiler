@@ -78,7 +78,6 @@ public:
     IMAGE_NUM_SAMPLES,
     SAMPLER_ADDRESS,
     SAMPLER_NORMALIZED,
-    SAMPLER_SNAP_WA,
     INLINE_SAMPLER,
     IMAGES_END = INLINE_SAMPLER,
 
@@ -212,7 +211,7 @@ public:
   /// @brief  Returns the index of the appropriate implicit image or sampler argument
   ///         based on the given argument type and the associated image argument
   /// @param  argType         The implicit argument type
-  ///                         (height/width/depth for images, normalized/address/snapwa for samplers)
+  ///                         (height/width/depth for images, normalized/address for samplers)
   /// @param  image           The associated image/sampler argument
   /// @return The implicit argument's index for a given argument type
   unsigned int getImageArgIndex(ImplicitArg::ArgType argType, const llvm::Argument *image) const;
@@ -220,7 +219,7 @@ public:
   /// @brief  Returns the index of the appropriate implicit argument
   ///         based on the given argument type and the argument number
   /// @param  argType         The implicit argument type
-  ///                         (height/width/depth for images, normalized/address/snapwa for samplers)
+  ///                         (height/width/depth for images, normalized/address for samplers)
   /// @param  argNum          The explicit argument number of the type
   /// @return The implicit argument's index for a given argument type
   unsigned int getNumberedArgIndex(ImplicitArg::ArgType argType, int argNum) const;
@@ -228,7 +227,7 @@ public:
   /// @brief  Returns if an implicit arg exists for the given explicit argument
   ///         based on the argument type and argument number
   /// @param  argType         The implicit argument type
-  ///                         (height/width/depth for images, normalized/address/snapwa for samplers)
+  ///                         (height/width/depth for images, normalized/address for samplers)
   /// @param  argNum          The explicit argument number of the type
   bool isImplicitArgExistForNumberedArg(ImplicitArg::ArgType argType, int argNum) const;
 

@@ -278,8 +278,6 @@ KernelArg::ArgType KernelArg::calcArgType(const ImplicitArg &arg) const {
     return KernelArg::ArgType::IMPLICIT_SAMPLER_ADDRESS;
   case ImplicitArg::SAMPLER_NORMALIZED:
     return KernelArg::ArgType::IMPLICIT_SAMPLER_NORMALIZED;
-  case ImplicitArg::SAMPLER_SNAP_WA:
-    return KernelArg::ArgType::IMPLICIT_SAMPLER_SNAP_WA;
   case ImplicitArg::INLINE_SAMPLER:
     return KernelArg::ArgType::IMPLICIT_INLINE_SAMPLER;
 
@@ -656,7 +654,6 @@ KernelArgsOrder::KernelArgsOrder(InputType layout) {
         KernelArg::ArgType::IMPLICIT_IMAGE_NUM_SAMPLES,
         KernelArg::ArgType::IMPLICIT_SAMPLER_ADDRESS,
         KernelArg::ArgType::IMPLICIT_SAMPLER_NORMALIZED,
-        KernelArg::ArgType::IMPLICIT_SAMPLER_SNAP_WA,
         KernelArg::ArgType::IMPLICIT_INLINE_SAMPLER,
 
         KernelArg::ArgType::IMPLICIT_VME_MB_BLOCK_TYPE,
@@ -785,7 +782,6 @@ KernelArgsOrder::KernelArgsOrder(InputType layout) {
         KernelArg::ArgType::IMPLICIT_IMAGE_NUM_SAMPLES,
         KernelArg::ArgType::IMPLICIT_SAMPLER_ADDRESS,
         KernelArg::ArgType::IMPLICIT_SAMPLER_NORMALIZED,
-        KernelArg::ArgType::IMPLICIT_SAMPLER_SNAP_WA,
         KernelArg::ArgType::IMPLICIT_INLINE_SAMPLER,
 
         KernelArg::ArgType::IMPLICIT_VME_MB_BLOCK_TYPE,

@@ -96,8 +96,6 @@ void ImageFuncResolution::visitCallInst(CallInst &CI) {
     imageRes = getSamplerAddressMode(CI);
   } else if (funcName.equals(ImageFuncsAnalysis::GET_SAMPLER_NORMALIZED_COORDS)) {
     imageRes = getSamplerNormalizedCoords(CI);
-  } else if (funcName.equals(ImageFuncsAnalysis::GET_SAMPLER_SNAP_WA_REQUIRED)) {
-    imageRes = getSamplerSnapWARequired(CI);
   } else {
     // Non image function, do nothing
     return;
@@ -153,25 +151,6 @@ template <ImplicitArg::ArgType ArgTy> Value *ImageFuncResolution::getSamplerProp
   MetaDataUtils *pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
   ModuleMetaData *modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
 
-  if (ArgTy == ImplicitArg::SAMPLER_SNAP_WA && modMD->extensions.spvINTELBindlessImages) {
-    // The snap_wa workaround is disabled for bindless images from the SPV_INTEL_bindless_images extension.
-    // This is because the current implementation of the workaround requires the sampler to be known at compile-time,
-    // either as an inline sampler or a kernel argument. This allows the UMD to program the
-    // SAMPLER_SNAP_WA implicit argument, which indicates whether the workaround should be enabled.
-    //
-    // For bindless images from SPV_INTEL_bindless_images, image is represented as an i64 handle (bindlessOffset)
-    // provided by the user. The handle is a runtime value and cannot be tracked to a kernel argument at compile-time.
-    // Therefore, implementing snap_wa would require a completely new approach.
-    //
-    // The absence of reported sampling issues with images from SPV_INTEL_bindless_images suggests that snap_wa
-    // might not be necessary. However, further investigation is required.
-       //
-       // If snap_wa is found to be unnecessary, the workaround for OpenCL images can be removed.
-       // Conversely, if hardware constraints necessitate it, the workaround must be enabled for
-       // images from from SPV_INTEL_bindless_images extension.
-    return ConstantInt::get(CI.getType(), 0);
-  }
-
   if (Value *sampler = ValueTracker::track(&CI, 0, pMdUtils, modMD)) {
     auto *arg = dyn_cast<Argument>(sampler);
     bool isImplicitInlineSamplerArg = arg ? m_implicitArgs.isImplicitArg(arg) : false;
@@ -203,15 +182,6 @@ template <ImplicitArg::ArgType ArgTy> Value *ImageFuncResolution::getSamplerProp
               samplerVal = inlineSamplerMD.addressMode;
             } else if constexpr (ArgTy == ImplicitArg::SAMPLER_NORMALIZED) {
               samplerVal = inlineSamplerMD.NormalizedCoords;
-            } else if constexpr (ArgTy == ImplicitArg::SAMPLER_SNAP_WA) {
-              bool anyAddressModeClamp =
-                  inlineSamplerMD.TCXAddressMode == iOpenCL::SAMPLER_TEXTURE_ADDRESS_MODE_BORDER ||
-                  inlineSamplerMD.TCYAddressMode == iOpenCL::SAMPLER_TEXTURE_ADDRESS_MODE_BORDER ||
-                  inlineSamplerMD.TCZAddressMode == iOpenCL::SAMPLER_TEXTURE_ADDRESS_MODE_BORDER;
-              bool anyMapFilterModeNearest = inlineSamplerMD.MagFilterType == iOpenCL::SAMPLER_MAPFILTER_POINT ||
-                                             inlineSamplerMD.MinFilterType == iOpenCL::SAMPLER_MAPFILTER_POINT;
-              bool snapWARequired = anyAddressModeClamp && anyMapFilterModeNearest && !inlineSamplerMD.NormalizedCoords;
-              samplerVal = snapWARequired ? -1 : 0;
             } else {
               llvm_unreachable("unexpected sampler property");
             }
@@ -233,10 +203,6 @@ Value *ImageFuncResolution::getSamplerAddressMode(CallInst &CI) {
 
 Value *ImageFuncResolution::getSamplerNormalizedCoords(CallInst &CI) {
   return getSamplerProperty<ImplicitArg::SAMPLER_NORMALIZED>(CI);
-}
-
-Value *ImageFuncResolution::getSamplerSnapWARequired(CallInst &CI) {
-  return getSamplerProperty<ImplicitArg::SAMPLER_SNAP_WA>(CI);
 }
 
 Argument *ImageFuncResolution::getImplicitImageArg(CallInst &CI, ImplicitArg::ArgType argType) {

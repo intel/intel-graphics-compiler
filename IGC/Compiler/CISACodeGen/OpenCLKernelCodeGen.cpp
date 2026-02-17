@@ -945,13 +945,6 @@ bool COpenCLKernel::CreateZEPayloadArguments(IGC::KernelArg *kernelArg, uint pay
     arg.arg_index = kernelArg->getAssociatedArgNo();
     break;
   }
-  case KernelArg::ArgType::IMPLICIT_SAMPLER_SNAP_WA: {
-    zebin::zeInfoPayloadArgument &arg = zebin::ZEInfoBuilder::addPayloadArgumentImplicit(
-        m_kernelInfo.m_zePayloadArgs, zebin::PreDefinedAttrGetter::ArgType::sampler_snap_wa, payloadPosition,
-        kernelArg->getSize());
-    arg.arg_index = kernelArg->getAssociatedArgNo();
-    break;
-  }
 
   case KernelArg::ArgType::IMPLICIT_INLINE_SAMPLER: {
     uint32_t arg_idx = kernelArg->getAssociatedArgNo();
