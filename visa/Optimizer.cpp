@@ -2721,12 +2721,22 @@ bool canDoCSEForSendPayloadCopies(
       static_cast<G4_SendgDesc *>(prevInst->getMsgDesc());
   G4_SendgDesc *succSendDesc =
       static_cast<G4_SendgDesc *>(succInst->getMsgDesc());
+  if (!prevSendDesc || !succSendDesc)
+    return false;
   if (prevSendDesc->getSFID() != succSendDesc->getSFID())
     return false;
 
+  if (!prevInst->getSrc(1) || !prevInst->getSrc(1)->getTopDcl() ||
+      !succInst->getSrc(1) || !succInst->getSrc(1)->getTopDcl())
+    return false;
   // Same variable size
   if (prevInst->getSrc(1)->getTopDcl()->getByteSize() !=
       succInst->getSrc(1)->getTopDcl()->getByteSize())
+    return false;
+
+  // Same variable already, no need
+  if (prevInst->getSrc(1)->getTopDcl()->getRootDeclare() ==
+      succInst->getSrc(1)->getTopDcl()->getRootDeclare())
     return false;
 
   // Same mov instruction number
@@ -2943,6 +2953,11 @@ void Optimizer::localCSEForSendPayloadCopy() {
           sendIterator;
       searchIterator++;
       while (searchIterator != sendCopyInstList.end()) {
+        // Redefine happens
+        if ((*searchIterator).second) {
+          break;
+        }
+
         G4_INST *sendInst = (*searchIterator).first;
         // Check if all the source opearnds of mov instructions are same
         if (canDoCSEForSendPayloadCopies(
