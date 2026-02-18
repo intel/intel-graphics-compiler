@@ -744,9 +744,11 @@ void KernelDebugInfo::emitRegisterMapping() {
       varMap->virtualType = VARMAP_VREG_FILE_FLAG;
 
       if (!isSpilled) {
-        unsigned int regNum, subRegNum;
-        regNum = dcl->getRegVar()->getPhyReg()->asAreg()->getFlagNum();
-        subRegNum = dcl->getRegVar()->getPhyRegOff();
+        unsigned int regNum = 0, subRegNum = 0;
+        if (dcl->getRegVar()->getPhyReg()) {
+          regNum = dcl->getRegVar()->getPhyReg()->asAreg()->getFlagNum();
+          subRegNum = dcl->getRegVar()->getPhyRegOff();
+        }
         varMap->physicalType = VARMAP_PREG_FILE_FLAG;
         varMap->Mapping.Register.regNum = static_cast<uint16_t>(regNum);
         varMap->Mapping.Register.subRegNum = static_cast<uint16_t>(subRegNum);
