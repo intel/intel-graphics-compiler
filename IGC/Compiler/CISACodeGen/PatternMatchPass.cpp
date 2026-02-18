@@ -1124,144 +1124,153 @@ void CodeGenPatternMatch::visitCallInst(CallInst &I) {
   [[maybe_unused]] bool match = false;
   using namespace GenISAIntrinsic;
   if (GenIntrinsicInst *GII = llvm::dyn_cast<GenIntrinsicInst>(&I)) {
-    if (isSampleLoadGather4InfoInstruction(GII)) {
-      match = MatchSample(*GII);
-    } else {
-      switch (GII->getIntrinsicID()) {
-      case GenISAIntrinsic::GenISA_ROUNDNE:
-      case GenISAIntrinsic::GenISA_imulH:
-      case GenISAIntrinsic::GenISA_umulH:
-      case GenISAIntrinsic::GenISA_uaddc:
-      case GenISAIntrinsic::GenISA_usubb:
-      case GenISAIntrinsic::GenISA_bfrev:
-      case GenISAIntrinsic::GenISA_IEEE_Sqrt:
-      case GenISAIntrinsic::GenISA_IEEE_Divide:
-      case GenISAIntrinsic::GenISA_rsq:
-      case GenISAIntrinsic::GenISA_inv:
-      case GenISAIntrinsic::GenISA_tanh:
-      case GenISAIntrinsic::GenISA_sigm:
-        match = MatchModifier(I);
-        break;
-      case GenISAIntrinsic::GenISA_intatomicraw:
-      case GenISAIntrinsic::GenISA_floatatomicraw:
-      case GenISAIntrinsic::GenISA_icmpxchgatomicraw:
-      case GenISAIntrinsic::GenISA_fcmpxchgatomicraw:
-      case GenISAIntrinsic::GenISA_atomiccounterinc:
-      case GenISAIntrinsic::GenISA_atomiccounterpredec:
-        if (m_Platform.hasEfficient64bEnabled()) {
-          Value *pointerOperand = GII->getArgOperand(0);
-          bool direct = false;
-          unsigned bufId = 0;
-          BufferType bufType = DecodeAS4GFXResource(pointerOperand->getType()->getPointerAddressSpace(), direct, bufId);
-          if (IsBindless(bufType)) {
-            match = MatchLoadStoreAtomicsStatefulEff64(GII);
-            if (match)
-              break;
-          }
-        }
-        [[fallthrough]];
-      case GenISAIntrinsic::GenISA_intatomicrawA64:
-      case GenISAIntrinsic::GenISA_floatatomicrawA64:
-      case GenISAIntrinsic::GenISA_icmpxchgatomicrawA64:
-      case GenISAIntrinsic::GenISA_fcmpxchgatomicrawA64:
-        if (m_Platform.hasEfficient64bEnabled()) {
-          match = MatchLoadStoreAtomicsStatelessUniformBase(I);
-          if (match)
-            break;
-        }
-        if (supportsLSCImmediateGlobalBaseOffset()) {
-          match = MatchImmOffsetLSC(I);
-          if (match)
-            return;
-        }
-        match = MatchSingleInstruction(I);
-        break;
-      case GenISAIntrinsic::GenISA_ldrawvector_indexed:
-      case GenISAIntrinsic::GenISA_ldraw_indexed:
-      case GenISAIntrinsic::GenISA_storerawvector_indexed:
-      case GenISAIntrinsic::GenISA_storeraw_indexed:
-        if (m_Platform.hasEfficient64bEnabled()) {
-          match = MatchLoadStoreAtomicsStatefulEff64(GII);
-          if (match)
-            break;
-        }
-        if (supportsLSCImmediateGlobalBaseOffset()) {
-          match = MatchImmOffsetLSC(I);
-          if (match)
-            break;
-        }
-        match = MatchSingleInstruction(I);
-        break;
-      case GenISAIntrinsic::GenISA_typedread:
-      case GenISAIntrinsic::GenISA_typedwrite:
-      case GenISAIntrinsic::GenISA_typedreadMS:
-      case GenISAIntrinsic::GenISA_typedwriteMS:
-      case GenISAIntrinsic::GenISA_intatomictyped:
-      case GenISAIntrinsic::GenISA_icmpxchgatomictyped:
-      case GenISAIntrinsic::GenISA_floatatomictyped:
-      case GenISAIntrinsic::GenISA_fcmpxchgatomictyped:
-        if (m_Platform.hasEfficient64bEnabled()) {
-          match = MatchSampleLoadStoreAtomicTypedEff64(*GII);
-          if (match)
-            break;
-        } else {
-          match = MatchSingleInstruction(I);
-          if (match)
-            break;
-        }
-      case GenISAIntrinsic::GenISA_GradientX:
-      case GenISAIntrinsic::GenISA_GradientY:
-      case GenISAIntrinsic::GenISA_GradientXfine:
-      case GenISAIntrinsic::GenISA_GradientYfine:
-        match = MatchGradient(*GII);
-        break;
-      case GenISAIntrinsic::GenISA_fsat:
-        match = MatchFloatingPointSatModifier(I);
-        break;
-      case GenISAIntrinsic::GenISA_usat:
-      case GenISAIntrinsic::GenISA_isat:
-        match = MatchIntegerSatModifier(I);
-        break;
-      case GenISAIntrinsic::GenISA_WaveShuffleIndex:
-      case GenISAIntrinsic::GenISA_WaveBroadcast:
-        match = MatchRegisterRegion(*GII) || MatchShuffleBroadCast(*GII) || MatchWaveShuffleIndex(*GII);
-        break;
-      case GenISAIntrinsic::GenISA_WaveBallot:
-      case GenISAIntrinsic::GenISA_WaveInverseBallot:
-      case GenISAIntrinsic::GenISA_WaveClusteredBallot:
-      case GenISAIntrinsic::GenISA_WaveAll:
-      case GenISAIntrinsic::GenISA_WaveClustered:
-      case GenISAIntrinsic::GenISA_WaveInterleave:
-      case GenISAIntrinsic::GenISA_WaveClusteredInterleave:
-      case GenISAIntrinsic::GenISA_WavePrefix:
-      case GenISAIntrinsic::GenISA_WaveClusteredPrefix:
-        match = MatchWaveInstruction(*GII);
-        break;
-      case GenISAIntrinsic::GenISA_simdBlockRead:
-      case GenISAIntrinsic::GenISA_simdBlockWrite:
-        match = MatchBlockReadWritePointer(*GII) || MatchSingleInstruction(*GII);
-        break;
-      case GenISAIntrinsic::GenISA_UnmaskedRegionBegin:
-        match = MatchUnmaskedRegionBoundary(I, true);
-        break;
-      case GenISAIntrinsic::GenISA_UnmaskedRegionEnd:
-        match = MatchUnmaskedRegionBoundary(I, false);
-        break;
-      case GenISAIntrinsic::GenISA_sub_group_dpas:
-      case GenISAIntrinsic::GenISA_dpas:
-        match = MatchDpas(*GII);
-        break;
-      case GenISAIntrinsic::GenISA_dp4a_ss:
-      case GenISAIntrinsic::GenISA_dp4a_su:
-      case GenISAIntrinsic::GenISA_dp4a_us:
-      case GenISAIntrinsic::GenISA_dp4a_uu:
-        match = MatchDp4a(*GII);
-        break;
-      default:
-        match = MatchSingleInstruction(I);
-        // no pattern for the rest of the intrinsics
-        break;
+    switch (GII->getIntrinsicID()) {
+    case GenISAIntrinsic::GenISA_ROUNDNE:
+    case GenISAIntrinsic::GenISA_imulH:
+    case GenISAIntrinsic::GenISA_umulH:
+    case GenISAIntrinsic::GenISA_uaddc:
+    case GenISAIntrinsic::GenISA_usubb:
+    case GenISAIntrinsic::GenISA_bfrev:
+    case GenISAIntrinsic::GenISA_IEEE_Sqrt:
+    case GenISAIntrinsic::GenISA_IEEE_Divide:
+    case GenISAIntrinsic::GenISA_rsq:
+    case GenISAIntrinsic::GenISA_inv:
+    case GenISAIntrinsic::GenISA_tanh:
+    case GenISAIntrinsic::GenISA_sigm:
+      match = MatchModifier(I);
+      break;
+    case GenISAIntrinsic::GenISA_intatomicraw:
+    case GenISAIntrinsic::GenISA_floatatomicraw:
+    case GenISAIntrinsic::GenISA_intatomicrawA64:
+    case GenISAIntrinsic::GenISA_floatatomicrawA64:
+    case GenISAIntrinsic::GenISA_icmpxchgatomicraw:
+    case GenISAIntrinsic::GenISA_fcmpxchgatomicraw:
+    case GenISAIntrinsic::GenISA_icmpxchgatomicrawA64:
+    case GenISAIntrinsic::GenISA_fcmpxchgatomicrawA64:
+    case GenISAIntrinsic::GenISA_dwordatomicstructured:
+    case GenISAIntrinsic::GenISA_floatatomicstructured:
+    case GenISAIntrinsic::GenISA_cmpxchgatomicstructured:
+    case GenISAIntrinsic::GenISA_fcmpxchgatomicstructured:
+    case GenISAIntrinsic::GenISA_intatomictyped:
+    case GenISAIntrinsic::GenISA_icmpxchgatomictyped:
+    case GenISAIntrinsic::GenISA_typedread:
+    case GenISAIntrinsic::GenISA_typedwrite:
+    case GenISAIntrinsic::GenISA_typedreadMS:
+    case GenISAIntrinsic::GenISA_typedwriteMS:
+    case GenISAIntrinsic::GenISA_floatatomictyped:
+    case GenISAIntrinsic::GenISA_fcmpxchgatomictyped:
+    case GenISAIntrinsic::GenISA_ldlptr:
+    case GenISAIntrinsic::GenISA_ldstructured:
+    case GenISAIntrinsic::GenISA_storestructured1:
+    case GenISAIntrinsic::GenISA_storestructured2:
+    case GenISAIntrinsic::GenISA_storestructured3:
+    case GenISAIntrinsic::GenISA_storestructured4:
+    case GenISAIntrinsic::GenISA_atomiccounterinc:
+    case GenISAIntrinsic::GenISA_atomiccounterpredec:
+    case GenISAIntrinsic::GenISA_ldptr:
+      if (m_Platform.hasEfficient64bEnabled()) {
+        match = MatchLoadStoreAtomicsUniformBase(I);
+        if (match)
+          break;
       }
+      if (supportsLSCImmediateGlobalBaseOffset()) {
+        match = MatchImmOffsetLSC(I);
+        if (match)
+          return;
+      }
+      match = MatchSingleInstruction(I);
+      break;
+    case GenISAIntrinsic::GenISA_ldrawvector_indexed:
+    case GenISAIntrinsic::GenISA_ldraw_indexed:
+    case GenISAIntrinsic::GenISA_storerawvector_indexed:
+    case GenISAIntrinsic::GenISA_storeraw_indexed:
+      if (m_Platform.hasEfficient64bEnabled()) {
+        match = MatchLoadStoreStatefulEff64(I);
+        if (match)
+          break;
+      }
+      if (supportsLSCImmediateGlobalBaseOffset()) {
+        match = MatchImmOffsetLSC(I);
+        if (match)
+          return;
+      }
+      match = MatchSingleInstruction(I);
+      break;
+    case GenISAIntrinsic::GenISA_GradientX:
+    case GenISAIntrinsic::GenISA_GradientY:
+    case GenISAIntrinsic::GenISA_GradientXfine:
+    case GenISAIntrinsic::GenISA_GradientYfine:
+      match = MatchGradient(*GII);
+      break;
+    case GenISAIntrinsic::GenISA_sampleptr:
+    case GenISAIntrinsic::GenISA_sampleBptr:
+    case GenISAIntrinsic::GenISA_sampleBCptr:
+    case GenISAIntrinsic::GenISA_sampleCptr:
+    case GenISAIntrinsic::GenISA_gather4Bptr:
+    case GenISAIntrinsic::GenISA_gather4BPOptr:
+    case GenISAIntrinsic::GenISA_gather4Iptr:
+    case GenISAIntrinsic::GenISA_gather4IPOptr:
+    case GenISAIntrinsic::GenISA_gather4ICptr:
+    case GenISAIntrinsic::GenISA_gather4ICPOptr:
+    case GenISAIntrinsic::GenISA_sampleMlodptr:
+    case GenISAIntrinsic::GenISA_sampleCMlodptr:
+    case GenISAIntrinsic::GenISA_sampleBCMlodptr:
+    case GenISAIntrinsic::GenISA_samplePOptr:
+    case GenISAIntrinsic::GenISA_samplePOBptr:
+    case GenISAIntrinsic::GenISA_samplePOCptr:
+    case GenISAIntrinsic::GenISA_gather4POPackedBptr:
+    case GenISAIntrinsic::GenISA_gather4POPackedIptr:
+    case GenISAIntrinsic::GenISA_gather4POPackedICptr:
+    case GenISAIntrinsic::GenISA_lodptr:
+    case GenISAIntrinsic::GenISA_sampleKillPix:
+      match = MatchSampleDerivative(*GII);
+      break;
+    case GenISAIntrinsic::GenISA_fsat:
+      match = MatchFloatingPointSatModifier(I);
+      break;
+    case GenISAIntrinsic::GenISA_usat:
+    case GenISAIntrinsic::GenISA_isat:
+      match = MatchIntegerSatModifier(I);
+      break;
+    case GenISAIntrinsic::GenISA_WaveShuffleIndex:
+    case GenISAIntrinsic::GenISA_WaveBroadcast:
+      match = MatchRegisterRegion(*GII) || MatchShuffleBroadCast(*GII) || MatchWaveShuffleIndex(*GII);
+      break;
+    case GenISAIntrinsic::GenISA_WaveBallot:
+    case GenISAIntrinsic::GenISA_WaveInverseBallot:
+    case GenISAIntrinsic::GenISA_WaveClusteredBallot:
+    case GenISAIntrinsic::GenISA_WaveAll:
+    case GenISAIntrinsic::GenISA_WaveClustered:
+    case GenISAIntrinsic::GenISA_WaveInterleave:
+    case GenISAIntrinsic::GenISA_WaveClusteredInterleave:
+    case GenISAIntrinsic::GenISA_WavePrefix:
+    case GenISAIntrinsic::GenISA_WaveClusteredPrefix:
+      match = MatchWaveInstruction(*GII);
+      break;
+    case GenISAIntrinsic::GenISA_simdBlockRead:
+    case GenISAIntrinsic::GenISA_simdBlockWrite:
+      match = MatchBlockReadWritePointer(*GII) || MatchSingleInstruction(*GII);
+      break;
+    case GenISAIntrinsic::GenISA_UnmaskedRegionBegin:
+      match = MatchUnmaskedRegionBoundary(I, true);
+      break;
+    case GenISAIntrinsic::GenISA_UnmaskedRegionEnd:
+      match = MatchUnmaskedRegionBoundary(I, false);
+      break;
+    case GenISAIntrinsic::GenISA_sub_group_dpas:
+    case GenISAIntrinsic::GenISA_dpas:
+      match = MatchDpas(*GII);
+      break;
+    case GenISAIntrinsic::GenISA_dp4a_ss:
+    case GenISAIntrinsic::GenISA_dp4a_su:
+    case GenISAIntrinsic::GenISA_dp4a_us:
+    case GenISAIntrinsic::GenISA_dp4a_uu:
+      match = MatchDp4a(*GII);
+      break;
+    default:
+      match = MatchSingleInstruction(I);
+      // no pattern for the rest of the intrinsics
+      break;
     }
     IGC_ASSERT_MESSAGE(match, "no pattern found for GenISA intrinsic");
   } else {
@@ -1349,7 +1358,7 @@ void CodeGenPatternMatch::visitIntrinsicInst(llvm::IntrinsicInst &I) {
 void CodeGenPatternMatch::visitStoreInst(StoreInst &I) {
   [[maybe_unused]] bool match = false;
   if (m_Platform.hasEfficient64bEnabled()) {
-    match = MatchLoadStoreAtomicsStatelessUniformBase(I);
+    match = MatchLoadStoreAtomicsUniformBase(I);
     if (match)
       return;
   }
@@ -1365,7 +1374,7 @@ void CodeGenPatternMatch::visitStoreInst(StoreInst &I) {
 void CodeGenPatternMatch::visitLoadInst(LoadInst &I) {
   [[maybe_unused]] bool match = false;
   if (m_Platform.hasEfficient64bEnabled()) {
-    match = MatchLoadStoreAtomicsStatelessUniformBase(I);
+    match = MatchLoadStoreAtomicsUniformBase(I);
     if (match)
       return;
   }
@@ -2851,7 +2860,7 @@ bool CodeGenPatternMatch::MatchImmOffsetLSC(llvm::Instruction &I) {
 // With this pattern applied we can get rid of additional add instruction that sums the
 // uniform base (%testOutputPointer) with offset - derived from %idxprom in above example
 // as well as shl instruction that scaled the pointer to type width in bytes.
-bool CodeGenPatternMatch::MatchLoadStoreAtomicsStatelessUniformBase(llvm::Instruction &I) {
+bool CodeGenPatternMatch::MatchLoadStoreAtomicsUniformBase(llvm::Instruction &I) {
   using namespace llvm;
   using namespace llvm::PatternMatch;
 
@@ -2891,7 +2900,6 @@ bool CodeGenPatternMatch::MatchLoadStoreAtomicsStatelessUniformBase(llvm::Instru
   Value *Offset = nullptr;
   ConstantInt *ImmOffset = nullptr;
   Value *PointerOperand = nullptr;
-  Value *AddressOperand = nullptr;
   ConstantInt *Scale = nullptr;
   Value *NotScaledOffset = nullptr;
   llvm::Align InstAlign = llvm::Align(1);
@@ -2901,24 +2909,8 @@ bool CodeGenPatternMatch::MatchLoadStoreAtomicsStatelessUniformBase(llvm::Instru
 
   if (GenIntrinsicInst *GII = llvm::dyn_cast<GenIntrinsicInst>(&I)) {
     switch (GII->getIntrinsicID()) {
-    case GenISAIntrinsic::GenISA_intatomicraw:
-    case GenISAIntrinsic::GenISA_floatatomicraw:
-    case GenISAIntrinsic::GenISA_icmpxchgatomicraw:
-    case GenISAIntrinsic::GenISA_fcmpxchgatomicraw:
-    case GenISAIntrinsic::GenISA_atomiccounterinc:
-    case GenISAIntrinsic::GenISA_atomiccounterpredec:
-      PointerOperand = GII->getOperand(0);
-      AddressOperand = GII->getOperand(1);
-      // For atomic operations, address needs to be aligned to data size.
-      DataAlign = IGCLLVM::getABITypeAlign(I.getModule()->getDataLayout(), I.getType());
-      InstAlign = DataAlign;
-      DataSizeInBytes = I.getType()->getPrimitiveSizeInBits() / 8;
-      break;
-
     case GenISAIntrinsic::GenISA_intatomicrawA64:
     case GenISAIntrinsic::GenISA_floatatomicrawA64:
-    case GenISAIntrinsic::GenISA_icmpxchgatomicrawA64:
-    case GenISAIntrinsic::GenISA_fcmpxchgatomicrawA64:
       PointerOperand = GII->getOperand(1);
       // For atomic operations, address needs to be aligned to data size.
       DataAlign = IGCLLVM::getABITypeAlign(I.getModule()->getDataLayout(), I.getType());
@@ -2970,13 +2962,10 @@ bool CodeGenPatternMatch::MatchLoadStoreAtomicsStatelessUniformBase(llvm::Instru
     return false;
   auto IntToPtr = cast<IntToPtrInst>(PointerOperand);
 
-  if (!AddressOperand)
-    AddressOperand = IntToPtr->getOperand(0);
-
   auto PatternAdd = m_c_Add(m_Value(Base), m_Value(Offset));
   auto ScalePattern = m_Shl(m_Value(NotScaledOffset), m_ConstantInt(Scale));
 
-  if (!match(AddressOperand, PatternAdd))
+  if (!match(IntToPtr->getOperand(0), PatternAdd))
     return false;
 
   if (isa<ConstantInt>(Base) || isa<ConstantInt>(Offset)) {
@@ -3039,20 +3028,6 @@ bool CodeGenPatternMatch::MatchLoadStoreAtomicsStatelessUniformBase(llvm::Instru
 
     if (disableA32ImmediateGlobalBaseOffset)
       return false;
-
-    if (DataSizeInBytes == 0 || ImmOffset->getSExtValue() % DataSizeInBytes != 0) {
-      // check if immOffset is a multiple of data size
-      return false;
-    }
-
-    // checks if input fits in allocated bits
-    // assumes signed
-    auto fitsIn = [](int what, int bits) { return what >= -(1 << (bits - 1)) && what <= (1 << (bits - 1)) - 1; };
-
-    // 22 bits in the message descriptor for immediate offset
-    if (!fitsIn(static_cast<int>(ImmOffset->getSExtValue() / DataSizeInBytes), 22)) {
-      return false;
-    }
   }
 
   LSCUniformBasePattern *pattern =
@@ -3082,24 +3057,21 @@ bool CodeGenPatternMatch::MatchLoadStoreAtomicsStatelessUniformBase(llvm::Instru
   return true;
 }
 
-std::optional<std::pair<Value *, unsigned>> CodeGenPatternMatch::matchStateIndex(Value *resourcePtr, bool sampler) {
+std::optional<std::pair<Value *, unsigned>> CodeGenPatternMatch::matchSurfaceStateIndex(Value *resourcePtr) {
   if (IGC_IS_FLAG_ENABLED(DisableStatefulFolding))
-    return {};
-  if (resourcePtr == nullptr)
     return {};
   using namespace llvm::PatternMatch;
   Value *TmpBase = nullptr;
   ConstantInt *SurfaceOffset = nullptr;
   if (match(resourcePtr, m_IntToPtr(m_c_Add(m_Value(TmpBase), m_ConstantInt(SurfaceOffset))))) {
-    unsigned SurfaceStateSize = sampler ? m_Platform.GetBindlessSamplerSize() : m_Platform.getSurfaceStateSize();
+    unsigned SurfaceStateSize = m_Platform.getSurfaceStateSize();
     uint64_t Offset = SurfaceOffset->getZExtValue();
     if (Offset % SurfaceStateSize == 0) {
       uint64_t Idx = Offset / SurfaceStateSize;
-      if ((!sampler && TmpBase->getType()->getPrimitiveSizeInBits() == 64 &&
-           // vISA has emulation for larger indices, but let's
-           // just not waste time emulating it.
-           Idx < 32) ||
-          (sampler && Idx < 7)) {
+      if (TmpBase->getType()->getPrimitiveSizeInBits() == 64 &&
+          // vISA has emulation for larger indices, but let's
+          // just not waste time emulating it.
+          Idx < 32) {
         return std::make_pair(TmpBase, unsigned(Idx));
       }
     }
@@ -3107,14 +3079,14 @@ std::optional<std::pair<Value *, unsigned>> CodeGenPatternMatch::matchStateIndex
   return {};
 }
 
-bool CodeGenPatternMatch::MatchLoadStoreAtomicsStatefulEff64(GenIntrinsicInst *I) {
+bool CodeGenPatternMatch::MatchLoadStoreStatefulEff64(Instruction &I) {
   if (IGC_IS_FLAG_ENABLED(DisableStatefulFolding))
     return false;
 
   using namespace llvm::PatternMatch;
 
   struct LSCStatefulPattern : public Pattern {
-    explicit LSCStatefulPattern(GenIntrinsicInst *I, Value *VarOffset, ConstantInt *ImmScale, ConstantInt *ImmOffset)
+    explicit LSCStatefulPattern(Instruction *I, Value *VarOffset, ConstantInt *ImmScale, ConstantInt *ImmOffset)
         : I(I), VarOffset(VarOffset), ImmScale(ImmScale), ImmOffset(ImmOffset) {}
 
     void Emit(EmitPass *pass, const DstModifier & /* modifier */) override {
@@ -3122,17 +3094,13 @@ bool CodeGenPatternMatch::MatchLoadStoreAtomicsStatefulEff64(GenIntrinsicInst *I
         pass->emitLoadRawIndexed(LRI, VarOffset, ImmScale, ImmOffset);
       } else if (auto *SRI = dyn_cast<StoreRawIntrinsic>(I)) {
         pass->emitStoreRawIndexed(SRI, VarOffset, ImmScale, ImmOffset);
-      } else if (auto *ARI = dyn_cast<AtomicRawIntrinsic>(I)) {
-        pass->emitAtomicRaw(ARI, VarOffset, ImmOffset, ImmScale);
-      } else if (auto *ACI = dyn_cast<AtomicCounterIntrinsic>(I)) {
-        pass->emitAtomicCounter(ACI);
       } else {
         IGC_ASSERT_MESSAGE(false, "unmatched pattern");
       }
     }
 
   private:
-    GenIntrinsicInst *I;
+    Instruction *I;
     Value *VarOffset;
     ConstantInt *ImmScale;
     ConstantInt *ImmOffset;
@@ -3148,53 +3116,39 @@ bool CodeGenPatternMatch::MatchLoadStoreAtomicsStatefulEff64(GenIntrinsicInst *I
   Value *Base = nullptr;
   Value *VarOffset = nullptr;
 
-  switch (I->getIntrinsicID()) {
-  case GenISAIntrinsic::GenISA_intatomicraw:
-  case GenISAIntrinsic::GenISA_floatatomicraw:
-  case GenISAIntrinsic::GenISA_icmpxchgatomicraw:
-  case GenISAIntrinsic::GenISA_fcmpxchgatomicraw: {
-    auto *ARI = cast<AtomicRawIntrinsic>(I);
-    Base = ARI->getResourceValue();
-    VarOffset = ARI->getOperand(1);
-    DataTy = ARI->getType();
-    break;
-  }
-  case GenISAIntrinsic::GenISA_atomiccounterinc:
-  case GenISAIntrinsic::GenISA_atomiccounterpredec: {
-    auto *ACI = cast<AtomicCounterIntrinsic>(I);
-    Base = ACI->getResourceValue();
-    VarOffset = ACI->getOperand(1);
-    DataTy = ACI->getType();
-    break;
-  }
-  case GenISAIntrinsic::GenISA_ldraw_indexed:
-  case GenISAIntrinsic::GenISA_ldrawvector_indexed: {
-    auto *LRI = cast<LdRawIntrinsic>(I);
-    Base = LRI->getResourceValue();
-    VarOffset = LRI->getOffsetValue();
-    DataTy = LRI->getType();
-    break;
-  }
-  case GenISAIntrinsic::GenISA_storeraw_indexed:
-  case GenISAIntrinsic::GenISA_storerawvector_indexed: {
-    auto *SRI = cast<StoreRawIntrinsic>(I);
-    Base = SRI->getResourceValue();
-    VarOffset = SRI->getOffsetValue();
-    DataTy = SRI->getStoreValue()->getType();
-    break;
-  }
-  default:
+  if (auto *GII = dyn_cast<GenIntrinsicInst>(&I)) {
+    switch (GII->getIntrinsicID()) {
+    case GenISAIntrinsic::GenISA_ldraw_indexed:
+    case GenISAIntrinsic::GenISA_ldrawvector_indexed: {
+      auto *LRI = cast<LdRawIntrinsic>(GII);
+      Base = LRI->getResourceValue();
+      VarOffset = LRI->getOffsetValue();
+      DataTy = LRI->getType();
+      break;
+    }
+    case GenISAIntrinsic::GenISA_storeraw_indexed:
+    case GenISAIntrinsic::GenISA_storerawvector_indexed: {
+      auto *SRI = cast<StoreRawIntrinsic>(GII);
+      Base = SRI->getResourceValue();
+      VarOffset = SRI->getOffsetValue();
+      DataTy = SRI->getStoreValue()->getType();
+      break;
+    }
+    default:
+      return false;
+    }
+  } else {
+    IGC_ASSERT_MESSAGE(0, "Unexpected instruction!");
     return false;
   }
+
+  if (!DataTy->isSingleValueType())
+    return false;
 
   ConstantInt *Scale = nullptr;
   ConstantInt *ImmOffset = nullptr;
 
-  const DataLayout &DL = I->getModule()->getDataLayout();
-  unsigned DataSizeInBytes = DL.getTypeSizeInBits(DataTy) / 8;
-
-  if (DataTy->isSingleValueType() && I->getIntrinsicID() != GenISAIntrinsic::GenISA_atomiccounterinc &&
-      I->getIntrinsicID() != GenISAIntrinsic::GenISA_atomiccounterpredec) {
+  {
     Value *TmpVarOffset = nullptr;
     if (match(VarOffset, m_c_Add(m_Value(TmpVarOffset), m_ConstantInt(ImmOffset)))) {
       // HW does an early bounds check on TmpVarOffset. Thus, if
@@ -3204,54 +3158,38 @@ bool CodeGenPatternMatch::MatchLoadStoreAtomicsStatefulEff64(GenIntrinsicInst *I
       bool CanFoldImmediate =
           valueIsPositive(TmpVarOffset, m_DL);
 
-      // checks if input fits in allocated bits
-      // assumes signed
-      auto fitsIn = [](int what, int bits) { return what >= -(1 << (bits - 1)) && what <= (1 << (bits - 1)) - 1; };
-      if (ImmOffset->isNegative() || !CanFoldImmediate || (ImmOffset->getSExtValue() % DataSizeInBytes) != 0 ||
-          !fitsIn(static_cast<int>(ImmOffset->getSExtValue() / DataSizeInBytes), 17))
+      if (ImmOffset->isNegative() || !CanFoldImmediate)
         ImmOffset = nullptr;
       else
         VarOffset = TmpVarOffset;
     }
+  }
 
-    if (m_Platform.supportStatefulScaleFolding()) {
-      Value *NotScaledOffset = nullptr;
-      // Check if the offset is scaled.
-      if (match(VarOffset, m_Shl(m_Value(NotScaledOffset), m_ConstantInt(Scale)))) {
-        int64_t ScaleImm = 1ll << Scale->getSExtValue();
-        if (DataSizeInBytes == ScaleImm) {
-          VarOffset = NotScaledOffset;
-          Scale = ConstantInt::get(Scale->getType(), ScaleImm);
-        } else {
-          Scale = nullptr;
-        }
+  if (m_Platform.supportStatefulScaleFolding()) {
+    Value *NotScaledOffset = nullptr;
+    // Check if the offset is scaled.
+    if (match(VarOffset, m_Shl(m_Value(NotScaledOffset), m_ConstantInt(Scale)))) {
+      const DataLayout &DL = I.getModule()->getDataLayout();
+      int64_t ScaleImm = 1ll << Scale->getSExtValue();
+      unsigned DataSizeInBytes = DL.getTypeSizeInBits(DataTy) / 8;
+      if (DataSizeInBytes == ScaleImm) {
+        VarOffset = NotScaledOffset;
+        Scale = ConstantInt::get(Scale->getType(), ScaleImm);
+      } else {
+        Scale = nullptr;
       }
     }
   }
 
-  auto *Pattern = new (m_allocator) LSCStatefulPattern(I, VarOffset, Scale, ImmOffset);
+  auto *Pattern = new (m_allocator) LSCStatefulPattern(&I, VarOffset, Scale, ImmOffset);
 
-  // Try to match surface state index.
-  // If matched, use the base resource for marking source.
-  // This is only for marking source purpose, to avoid emitting redundant add instructions.
-  // Surface state index is not used as param for emit instruction here, it will be matched again in emit pass.
-  // This is required for GetResourceVariable() in emit pass, as it work on original resource pointer.
-  if (auto SurfaceStateIndex = matchStateIndex(Base))
-    MarkAsSource(SurfaceStateIndex->first, IsSourceOfSample(I));
+  if (auto SurfaceStateIndex = matchSurfaceStateIndex(Base))
+    MarkAsSource(SurfaceStateIndex->first, IsSourceOfSample(&I));
   else
-    MarkAsSource(Base, IsSourceOfSample(I));
-  MarkAsSource(VarOffset, IsSourceOfSample(I));
-  if (auto *SRI = dyn_cast<StoreRawIntrinsic>(I))
-    MarkAsSource(SRI->getStoreValue(), IsSourceOfSample(I));
-  else if (auto *ARI = dyn_cast<AtomicRawIntrinsic>(I)) {
-    for (unsigned i = 0; i < ARI->getNumOperands(); ++i) {
-      // Operand 1 ommitted as it was the pointer that we
-      // matched against above.
-      if (ARI->getOperand(i) == ARI->getOperand(1))
-        continue;
-      MarkAsSource(ARI->getOperand(i), IsSourceOfSample(I));
-    }
-  }
+    MarkAsSource(Base, IsSourceOfSample(&I));
+  MarkAsSource(VarOffset, IsSourceOfSample(&I));
+  if (auto *SRI = dyn_cast<StoreRawIntrinsic>(&I))
+    MarkAsSource(SRI->getStoreValue(), IsSourceOfSample(&I));
   AddPattern(Pattern);
   return true;
 }
@@ -5495,164 +5433,9 @@ bool CodeGenPatternMatch::MatchGradient(llvm::GenIntrinsicInst &I) {
   return true;
 }
 
-bool CodeGenPatternMatch::MatchSampleLoadStoreAtomicTypedEff64(llvm::GenIntrinsicInst &I) {
-  if (IGC_IS_FLAG_ENABLED(DisableStatefulFolding))
-    return false;
-
-  using namespace llvm::PatternMatch;
-
-  struct SampleEff64bPattern : public Pattern {
-    explicit SampleEff64bPattern(GenIntrinsicInst *I) : I(I) {}
-
-    void Emit(EmitPass *pass, const DstModifier & /* modifier */) override {
-      if (auto *SI = dyn_cast<SampleIntrinsic>(I)) {
-        pass->emitSampleInstruction(SI);
-      } else if (auto *GI = dyn_cast<SamplerGatherIntrinsic>(I)) {
-        pass->emitGather4Instruction(GI);
-      } else if (auto *II = dyn_cast<InfoIntrinsic>(I)) {
-        pass->emitInfoInstruction(II);
-      } else if (isa<AtomicTypedIntrinsic>(I)) {
-        if (pass->shouldGenerateLSC(I)) {
-          pass->emitLSCAtomicTyped(I);
-        } else
-          pass->emitAtomicTyped(I);
-      } else {
-        switch (I->getIntrinsicID()) {
-        case GenISAIntrinsic::GenISA_ldptr:
-        case GenISAIntrinsic::GenISA_ldlptr:
-          pass->emitLdInstruction(I);
-          break;
-        case GenISAIntrinsic::GenISA_ldmsptr:
-        case GenISAIntrinsic::GenISA_ldmcsptr:
-        case GenISAIntrinsic::GenISA_ldmsptr16bit:
-          pass->emitLdmsInstruction(I);
-          break;
-        case GenISAIntrinsic::GenISA_typedread:
-          if (pass->shouldGenerateLSC(I, true) && IGC_IS_FLAG_DISABLED(DisableLSCForTypedUAV)) {
-            pass->emitLSCTypedRead(I);
-            break;
-          }
-          pass->emitTypedRead(I);
-          break;
-        case GenISAIntrinsic::GenISA_typedwrite:
-          if (pass->shouldGenerateLSC(I, true) && IGC_IS_FLAG_DISABLED(DisableLSCForTypedUAV)) {
-            pass->emitLSCTypedWrite(I);
-            break;
-          }
-          pass->emitTypedWrite(I);
-          break;
-        case GenISAIntrinsic::GenISA_typedreadMS:
-          IGC_ASSERT(pass->shouldGenerateLSC(I));
-          pass->emitLSCTypedRead(I);
-          break;
-        case GenISAIntrinsic::GenISA_typedwriteMS:
-          IGC_ASSERT(pass->shouldGenerateLSC(I));
-          pass->emitLSCTypedWrite(I);
-          break;
-        default:
-          IGC_ASSERT_MESSAGE(false, "unmatched pattern");
-          break;
-        }
-      }
-    }
-
-  private:
-    GenIntrinsicInst *I;
-  };
-
-  Value *texture = nullptr;
-  Value *sampler = nullptr;
-
-  if (auto *SI = dyn_cast<SampleIntrinsic>(&I)) {
-    texture = SI->getTextureValue();
-    sampler = SI->getSamplerValue();
-  } else if (auto *GI = dyn_cast<SamplerGatherIntrinsic>(&I)) {
-    texture = GI->getTextureValue();
-    sampler = GI->getSamplerValue();
-  } else if (auto *II = dyn_cast<InfoIntrinsic>(&I)) {
-    texture = II->getOperand(0);
-  } else if (auto *LI = dyn_cast<SamplerLoadIntrinsic>(&I)) {
-    uint32_t numOperands = LI->getNumOperands();
-    uint32_t textureArgIdx = numOperands - 5;
-    texture = LI->getOperand(textureArgIdx);
-  } else if (auto *ATI = dyn_cast<AtomicTypedIntrinsic>(&I)) {
-    texture = ATI->getResourceValue();
-  } else {
-    texture = I.getOperand(0);
-  }
-
-  // Try to match texture and sampler to state index.
-  // If matched, use the base resource/sampler for marking source.
-  // This is only for marking source purpose, to avoid emitting redundant add instructions.
-  // Sampler/texture index is not used as param for emit instruction here, it will be matched again in emit pass.
-  // This is required for GetResourceVariable() and GetSamplerVariable() in emit pass, as it work on original
-  // texture/sampler pointer.
-  Value *baseTexture = nullptr;
-  Value *baseSampler = nullptr;
-  if (auto surfaceAndIndex = matchStateIndex(texture)) {
-    baseTexture = surfaceAndIndex->first;
-  }
-
-  if (auto samplerAndIndex = matchStateIndex(sampler, true)) {
-    baseSampler = samplerAndIndex->first;
-  }
-
-  auto *Pattern = new (m_allocator) SampleEff64bPattern(&I);
-
-  for (auto &Op : I.operands()) {
-    if (Op == texture) {
-      if (baseTexture) {
-        MarkAsSource(baseTexture, IsSourceOfSample(&I));
-      } else {
-        MarkAsSource(Op, IsSourceOfSample(&I));
-      }
-    } else if (Op == sampler) {
-      if (baseSampler) {
-        MarkAsSource(baseSampler, IsSourceOfSample(&I));
-      } else {
-        MarkAsSource(Op, IsSourceOfSample(&I));
-      }
-    } else {
-      MarkAsSource(Op, IsSourceOfSample(&I));
-    }
-  }
-
-  AddPattern(Pattern);
-  return true;
-}
-
-bool CodeGenPatternMatch::MatchSample(llvm::GenIntrinsicInst &I) {
-  switch (I.getIntrinsicID()) {
-  case GenISAIntrinsic::GenISA_sampleptr:
-  case GenISAIntrinsic::GenISA_sampleBptr:
-  case GenISAIntrinsic::GenISA_sampleBCptr:
-  case GenISAIntrinsic::GenISA_sampleCptr:
-  case GenISAIntrinsic::GenISA_gather4Bptr:
-  case GenISAIntrinsic::GenISA_gather4BPOptr:
-  case GenISAIntrinsic::GenISA_gather4Iptr:
-  case GenISAIntrinsic::GenISA_gather4IPOptr:
-  case GenISAIntrinsic::GenISA_gather4ICptr:
-  case GenISAIntrinsic::GenISA_gather4ICPOptr:
-  case GenISAIntrinsic::GenISA_sampleMlodptr:
-  case GenISAIntrinsic::GenISA_sampleCMlodptr:
-  case GenISAIntrinsic::GenISA_sampleBCMlodptr:
-  case GenISAIntrinsic::GenISA_samplePOptr:
-  case GenISAIntrinsic::GenISA_samplePOBptr:
-  case GenISAIntrinsic::GenISA_samplePOCptr:
-  case GenISAIntrinsic::GenISA_gather4POPackedBptr:
-  case GenISAIntrinsic::GenISA_gather4POPackedIptr:
-  case GenISAIntrinsic::GenISA_gather4POPackedICptr:
-  case GenISAIntrinsic::GenISA_lodptr:
-  case GenISAIntrinsic::GenISA_sampleKillPix:
-    HandleSampleDerivative(I);
-    [[fallthrough]];
-  default:
-    if (m_Platform.hasEfficient64bEnabled()) {
-      return MatchSampleLoadStoreAtomicTypedEff64(I);
-    } else {
-      return MatchSingleInstruction(I);
-    }
-  }
+bool CodeGenPatternMatch::MatchSampleDerivative(llvm::GenIntrinsicInst &I) {
+  HandleSampleDerivative(I);
+  return MatchSingleInstruction(I);
 }
 
 bool CodeGenPatternMatch::MatchDbgInstruction(llvm::DbgInfoIntrinsic &I) {
