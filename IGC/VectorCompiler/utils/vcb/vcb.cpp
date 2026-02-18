@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2022-2024 Intel Corporation
+Copyright (C) 2022-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -16,7 +16,7 @@ SPDX-License-Identifier: MIT
 #include <optional>
 
 #include "llvmWrapper/TargetParser/Triple.h"
-#include <llvm/ADT/None.h>
+#include "llvmWrapper/ADT/None.h"
 #include <llvm/Bitcode/BitcodeWriterPass.h>
 #include <llvm/CodeGen/TargetSubtargetInfo.h>
 #include <llvm/IR/DiagnosticInfo.h>

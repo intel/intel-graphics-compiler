@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2020-2023 Intel Corporation
+Copyright (C) 2020-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -1068,7 +1068,7 @@ public:
     const std::string Prefix(Level * 4, ' ');
     OS << Prefix;
     OS << "VisaMapping for <" << getFunction()->getName() << ">(";
-    for (const auto &Arg : enumerate(getFunction()->args())) {
+    for (auto Arg : enumerate(getFunction()->args())) {
       OS << "a" << Arg.index() << ":";
       auto *Reg = getRegisterForValue(&Arg.value());
       if (Reg)

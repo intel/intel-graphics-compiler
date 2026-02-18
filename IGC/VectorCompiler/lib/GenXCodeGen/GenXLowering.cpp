@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2025 Intel Corporation
+Copyright (C) 2017-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -98,6 +98,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/ADT/SmallSet.h"
 #include "llvm/ADT/Statistic.h"
 #include "llvm/Analysis/CFG.h"
+#include "llvm/Analysis/DomTreeUpdater.h"
 #include "llvm/Analysis/LoopInfo.h"
 #include "llvm/CodeGen/TargetPassConfig.h"
 #include "llvm/IR/Constants.h"
@@ -192,13 +193,14 @@ void DiagnosticInfoLowering::print(DiagnosticPrinter &DP) const {
 // GenXLowering : legalize execution widths and GRF crossing
 class GenXLowering : public FunctionPass {
   DominatorTree *DT = nullptr;
+  DomTreeUpdater *DTU = nullptr;
   const GenXSubtarget *ST = nullptr;
   SmallVector<Instruction *, 8> ToErase;
   const DataLayout *DL = nullptr;
 
 public:
   static char ID;
-  explicit GenXLowering() : FunctionPass(ID), DT(nullptr) {}
+  explicit GenXLowering() : FunctionPass(ID), DT(nullptr), DTU(nullptr) {}
   StringRef getPassName() const override { return "GenX lowering"; }
   void getAnalysisUsage(AnalysisUsage &AU) const override;
   bool runOnFunction(Function &F) override;
@@ -2750,8 +2752,13 @@ bool GenXLowering::lowerBoolScalarSelect(SelectInst *SI) {
   //
   auto *BB1 = SI->getParent();
 
+  DominatorTreeWrapperPass *const DTW =
+      getAnalysisIfAvailable<DominatorTreeWrapperPass>();
+  DTU = new DomTreeUpdater(DTW ? &DTW->getDomTree() : nullptr,
+                           DomTreeUpdater::UpdateStrategy::Lazy);
+
   auto *TermThen =
-      SplitBlockAndInsertIfThen(SI->getCondition(), SI, false, nullptr, DT);
+      SplitBlockAndInsertIfThen(SI->getCondition(), SI, false, nullptr, DTU);
   (cast<BranchInst>(BB1->getTerminator()))->swapSuccessors();
   auto *BB2 = TermThen->getParent();
   auto *BB4 = BB2->getSingleSuccessor();
@@ -5101,7 +5108,7 @@ bool GenXLowering::lowerDpas(CallInst *CI) {
 
   SmallVector<Type *, 6> Types = {Ty};
 
-  for (auto &IdxArg : enumerate(Args))
+  for (auto IdxArg : enumerate(Args))
     if (vc::isOverloadedArg(IID, IdxArg.index()))
       Types.push_back(IdxArg.value()->getType());
 
@@ -5200,7 +5207,7 @@ bool GenXLowering::lowerBDpas(CallInst *CI) {
 
   SmallVector<Type *, 6> Types = {CI->getType()};
 
-  for (auto &IdxArg : enumerate(Args))
+  for (auto IdxArg : enumerate(Args))
     if (vc::isOverloadedArg(IID, IdxArg.index()))
       Types.push_back(IdxArg.value()->getType());
 

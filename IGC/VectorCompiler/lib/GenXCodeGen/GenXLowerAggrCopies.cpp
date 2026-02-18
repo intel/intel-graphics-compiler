@@ -239,7 +239,13 @@ bool GenXLowerAggrCopies::runOnFunction(Function &F) {
       if (doLinearExpand) {
         expandMemMov2VecLoadStore(Memmove);
       } else {
+#if LLVM_VERSION_MAJOR >= 17
+        const TargetTransformInfo &TTI =
+            getAnalysis<TargetTransformInfoWrapperPass>().getTTI(F);
+        expandMemMoveAsLoop(Memmove, TTI);
+#else
         expandMemMoveAsLoop(Memmove);
+#endif
       }
     } else if (MemSetInst *MemSet = dyn_cast<MemSetInst>(MemCall)) {
       if (doLinearExpand) {

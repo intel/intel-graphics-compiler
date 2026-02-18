@@ -482,7 +482,7 @@ Value *GenXBuiltinFunctions::createAtomicLibraryCall(CallInst &II,
 static std::string getMangledTypeStr(Type *Ty) {
   std::string Result;
   if (auto *VTy = dyn_cast_or_null<IGCLLVM::FixedVectorType>(Ty))
-    Result += "v" + utostr(VTy->getNumElements()) +
+    Result += "v" + std::to_string(VTy->getNumElements()) +
               getMangledTypeStr(VTy->getElementType());
   else if (Ty)
     Result += EVT::getEVT(Ty).getEVTString();

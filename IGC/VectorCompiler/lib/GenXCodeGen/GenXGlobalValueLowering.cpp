@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2020-2023 Intel Corporation
+Copyright (C) 2020-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -281,7 +281,7 @@ Instruction *GenXGlobalValueLowering::buildGVReplacement(GlobalValue &GV,
 Value *GenXGlobalValueLowering::buildConstAggrReplacement(
     ConstantAggregate &ConstAggr, IRBuilder<> &Builder, Function &Func) {
   Value *Replacement = UndefValue::get(ConstAggr.getType());
-  for (auto &IndexedOp : enumerate(ConstAggr.operands())) {
+  for (auto IndexedOp : enumerate(ConstAggr.operands())) {
     auto *OpReplacement = buildConstantReplacement(
         *cast<Constant>(IndexedOp.value().get()), Builder, Func);
 

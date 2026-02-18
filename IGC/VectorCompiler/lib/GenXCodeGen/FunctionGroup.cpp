@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2023 Intel Corporation
+Copyright (C) 2017-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -94,7 +94,7 @@ void FunctionGroup::print(raw_ostream &OS) const {
     OS << "  " << F << "\n";
   }
 
-  for (const auto &EnItem : enumerate(Subgroups)) {
+  for (auto EnItem : enumerate(Subgroups)) {
     OS << "--SGR[" << EnItem.index() << "]: ";
     OS << "<" << EnItem.value()->getHead()->getName() << ">\n";
   }
@@ -487,13 +487,13 @@ void FunctionGroupAnalysis::buildGroups() {
 
 void FunctionGroupAnalysis::print(raw_ostream &OS, const Module *) const {
   OS << "Number of Groups = " << Groups.size() << "\n";
-  for (const auto &X : enumerate(Groups)) {
+  for (auto X : enumerate(Groups)) {
     OS << "GR[" << X.index() << "] = <\n";
     X.value()->print(OS);
     OS << ">\n";
   }
   OS << "Number of SubGroups = " << NonMainGroups.size() << "\n";
-  for (const auto &X : enumerate(NonMainGroups)) {
+  for (auto X : enumerate(NonMainGroups)) {
     OS << "SGR[" << X.index() << "] = <\n";
     X.value()->print(OS);
     OS << ">\n";

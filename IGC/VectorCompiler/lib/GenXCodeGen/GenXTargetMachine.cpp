@@ -51,6 +51,7 @@ SPDX-License-Identifier: MIT
 
 #include "llvmWrapper/ADT/Optional.h"
 #include "llvmWrapper/Support/TargetRegistry.h"
+#include "llvmWrapper/Transforms/IPO/GlobalDCE.h"
 #include "llvm/Analysis/BasicAliasAnalysis.h"
 #include "llvm/Analysis/Passes.h"
 #include "llvm/Analysis/TargetTransformInfo.h"
@@ -72,7 +73,9 @@ SPDX-License-Identifier: MIT
 #include "llvm/Transforms/IPO/ForceFunctionAttrs.h"
 #include "llvm/Transforms/IPO/GlobalDCE.h"
 #include "llvm/Transforms/IPO/InferFunctionAttrs.h"
+#if LLVM_VERSION_MAJOR < 16
 #include "llvm/Transforms/IPO/PassManagerBuilder.h"
+#endif
 #include "llvm/Transforms/InstCombine/InstCombine.h"
 #include "llvm/Transforms/Scalar.h"
 #include "llvm/Transforms/Scalar/CorrelatedValuePropagation.h"
@@ -533,7 +536,7 @@ bool GenXTargetMachine::addPassesToEmitFile(
   vc::addPass(PM, createInstructionCombiningPass());
   vc::addPass(PM, createCFGSimplificationPass());
 
-  vc::addPass(PM, createGlobalDCEPass());
+  vc::addPass(PM, IGCLLVM::createLegacyWrappedGlobalDCEPass());
   vc::addPass(PM, createGenXDebugLegalizationPass());
   vc::addPass(PM, createGenXLowerAggrCopiesPass());
   vc::addPass(PM, createInferAddressSpacesPass());
@@ -806,7 +809,7 @@ bool GenXTargetMachine::addPassesToEmitFile(
   /// This is a standard LLVM pass, run at this point in the GenX backend. It
   /// eliminates unreachable internal globals.
   ///
-  vc::addPass(PM, createGlobalDCEPass());
+  vc::addPass(PM, IGCLLVM::createLegacyWrappedGlobalDCEPass());
   vc::addPass(PM, createGenXFloatControlPass());
   /// .. include:: GenXModule.h
   vc::addPass(PM, createGenXModulePass());

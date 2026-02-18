@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2024 Intel Corporation
+Copyright (C) 2017-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -2674,7 +2674,8 @@ void GenXLegalization::fixIllegalPredicates(Function *F) {
           if (RdOffset) {
             unsigned RdMisalignment =
                 0; // it will be assigned inside assertion statament
-            IGC_ASSERT((RdMisalignment = 1U << findFirstSet(RdOffset), 1));
+            IGC_ASSERT(
+                (RdMisalignment = 1U << IGCLLVM::findFirstSet(RdOffset), 1));
             IGC_ASSERT_MESSAGE((RdMisalignment >= 8 ||
                                 (RdMisalignment == 4 && Rd->hasOneUse() &&
                                  cast<Instruction>(Rd->use_begin()->getUser())

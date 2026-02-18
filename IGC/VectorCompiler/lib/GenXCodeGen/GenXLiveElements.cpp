@@ -11,6 +11,7 @@ SPDX-License-Identifier: MIT
 #include "GenXIntrinsics.h"
 #include "GenXRegionUtils.h"
 
+#include "llvm/ADT/StringExtras.h"
 #include "llvm/IR/InstIterator.h"
 #include "llvm/IR/Instructions.h"
 #include "llvm/IR/IntrinsicInst.h"
@@ -70,7 +71,7 @@ void LiveElements::print(raw_ostream &OS) const {
     LiveElemsStr.push_back(std::move(LiveBitsStr));
   }
 
-  OS << '{' << join(LiveElemsStr, ", ") << '}';
+  OS << '{' << llvm::join(LiveElemsStr, ", ") << '}';
 }
 
 #if !defined(NDEBUG) || defined(LLVM_ENABLE_DUMP)

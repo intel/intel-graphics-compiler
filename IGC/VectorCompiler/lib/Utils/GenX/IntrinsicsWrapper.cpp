@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2022-2024 Intel Corporation
+Copyright (C) 2022-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -109,7 +109,7 @@ vc::getAnyDeclarationForArgs(llvm::Module *M, unsigned ID, Type *RetTy,
   if (vc::isOverloadedRet(ID))
     Tys.push_back(RetTy);
 
-  for (auto &ArgIdx : llvm::enumerate(Args))
+  for (auto ArgIdx : llvm::enumerate(Args))
     if (vc::isOverloadedArg(ID, ArgIdx.index()))
       Tys.push_back(ArgIdx.value()->getType());
 

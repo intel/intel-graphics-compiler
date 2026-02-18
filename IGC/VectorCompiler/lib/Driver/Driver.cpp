@@ -24,7 +24,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/GenXIntrinsics/GenXIntrOpts.h"
 #include "llvm/GenXIntrinsics/GenXSPIRVReaderAdaptor.h"
 
-#include <llvm/ADT/None.h>
+#include "llvmWrapper/ADT/None.h"
 #include <llvm/ADT/ScopeExit.h>
 #include <llvm/ADT/SmallString.h>
 #include <llvm/ADT/SmallVector.h>
@@ -40,7 +40,9 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/LLVMContext.h>
 #include <llvm/IR/Verifier.h>
 #include <llvm/IRReader/IRReader.h>
+#if LLVM_VERSION_MAJOR < 17
 #include <llvm/MC/SubtargetFeature.h>
+#endif
 #include <llvm/Option/ArgList.h>
 #include <llvm/Passes/PassBuilder.h>
 #include <llvm/Passes/StandardInstrumentations.h>
@@ -55,7 +57,9 @@ SPDX-License-Identifier: MIT
 #include <llvm/Support/raw_ostream.h>
 #include <llvm/Target/TargetOptions.h>
 #include <llvm/Transforms/IPO.h>
+#if LLVM_VERSION_MAJOR < 16
 #include <llvm/Transforms/IPO/PassManagerBuilder.h>
+#endif
 #include <llvm/Transforms/Scalar.h>
 
 #include "llvmWrapper/IR/LLVMContext.h"

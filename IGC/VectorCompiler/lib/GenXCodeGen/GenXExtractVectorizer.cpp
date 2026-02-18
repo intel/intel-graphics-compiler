@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2023 Intel Corporation
+Copyright (C) 2017-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -354,7 +354,7 @@ void GenXExtractVectorizer::processBucket(BucketInfo &BI) {
   // For each original scalar binary operator or cast, create a rdregion to
   // extract the equivalent scalar from the result of the vectorized binary
   // operator, and use it to replace uses of the original binary operator.
-  for (auto &IndexedExtract : llvm::enumerate(B)) {
+  for (auto IndexedExtract : llvm::enumerate(B)) {
     Region R2(NewInst);
     R2.NumElements = R2.Width = 1;
     R2.Offset = IndexedExtract.index() * R2.ElementBytes;
