@@ -89,7 +89,7 @@ bool ResolveImageImplicitArgsForBindless::runOnModule(Module &M) {
   CodeGenContext *Ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
   if (!Ctx->getModuleMetaData()->UseBindlessImage)
     return false; // Bindless exclusive pass.
-  mPlatform = &Ctx->platform;
+  mDriverInfo = &Ctx->m_DriverInfo;
 
   visit(M);
 
@@ -189,7 +189,7 @@ void ResolveImageImplicitArgsForBindless::visitCallInst(CallInst &CI) {
   // Offset Img arg into ImageImplicitArgs bindless slot:
   Value *Img = CI.getOperand(0);
   Value *ImgToInt = isa<IntegerType>(Img->getType()) ? Img : Builder.CreatePtrToInt(Img, Builder.getInt64Ty());
-  uint64_t SurfaceStateSize = mPlatform->getSurfaceStateSize();
+  uint64_t SurfaceStateSize = mDriverInfo->getSurfaceStateSize();
   auto *StateSizeValue = Builder.getInt64(SurfaceStateSize);
   auto *ImageImplicitArgsOffset = Builder.CreateAdd(ImgToInt, StateSizeValue);
   Value *ImageImplicitArgs =

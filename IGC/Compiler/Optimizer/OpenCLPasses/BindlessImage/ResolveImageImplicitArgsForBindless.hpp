@@ -51,7 +51,7 @@ public:
   bool runOnModule(llvm::Module &M) override;
 
 private:
-  CPlatform const *mPlatform = nullptr;
+  CDriverInfo const *mDriverInfo = nullptr;
   llvm::SmallSetVector<llvm::Instruction *, 16> mInstsToRemove;
 
   bool mChanged = false;
