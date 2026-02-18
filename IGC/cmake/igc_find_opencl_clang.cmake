@@ -183,7 +183,9 @@ elseif(${CCLANG_BUILD_PREBUILDS})
 
   # Check if llvm version for IGC is newer or equal with the clang-tool version
   if(${LLVM_PACKAGE_VERSION} VERSION_GREATER ${CLANG_TOOL_VERSION} OR
-     ${LLVM_PACKAGE_VERSION} EQUAL ${CLANG_TOOL_VERSION})
+     ${LLVM_PACKAGE_VERSION} EQUAL ${CLANG_TOOL_VERSION} OR
+     IGC_BUILD_LLVM_INTERIM)
+
     add_library(opencl-clang-lib SHARED IMPORTED GLOBAL)
 
     if(DEFINED CCLANG_INSTALL_PREBUILDS_DIR)
