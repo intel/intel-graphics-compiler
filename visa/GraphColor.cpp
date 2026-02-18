@@ -12080,7 +12080,10 @@ int GlobalRA::coloringRegAlloc() {
   FINALIZER_INFO *jitInfo = builder.getJitInfo();
 
   incRABookKeeping();
-  while (iterationNo < maxRAIterations) {
+  bool failedToSpill = false;
+  // Stack call doesn't support fail safe RA, so there is no maxRAIterations
+  // restriction for kernel with stack call
+  while ((iterationNo < maxRAIterations) || hasStackCall) {
     jitInfo->statsVerbose.RAIterNum++;
     if (builder.getOption(vISA_DynPerfModel)) {
       perfModel.NumRAIters++;
@@ -12247,7 +12250,8 @@ int GlobalRA::coloringRegAlloc() {
                           spillRegSize, indrSpillRegSize,
                           useScratchMsgForSpill);
       if (!success) {
-        iterationNo = maxRAIterations;
+        failedToSpill = true;
+        // Break out of the while loop
         break;
       }
 #ifndef DLL_MODE
@@ -12325,7 +12329,10 @@ int GlobalRA::coloringRegAlloc() {
   //
   // Report failure to allocate due to excessive register pressure.
   //
-  if (!reserveSpillReg && (iterationNo == maxRAIterations)) {
+  // Failed to spill, or there is no stack call and the loop iterates to
+  // maxRAIterations
+  if (!reserveSpillReg &&
+      (failedToSpill || (!hasStackCall && iterationNo == maxRAIterations))) {
     std::stringstream spilledVars;
     for (auto dcl : kernel.Declares) {
       if (dcl->isSpilled() && dcl->getRegFile() == G4_GRF) {
