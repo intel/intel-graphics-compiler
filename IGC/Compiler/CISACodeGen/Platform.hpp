@@ -431,14 +431,6 @@ public:
 
   bool hasSamplerFeedbackSurface() const { return m_platformInfo.eProductFamily >= IGFX_BMG; }
 
-  unsigned getSurfaceStateSize() const {
-    {
-      return 64;
-    }
-  }
-
-  unsigned int getLogSurfaceSize() const { return (unsigned int)iSTD::Log2(getSurfaceStateSize()); }
-
   // logical subslice id
   bool hasLogicalSSID() const { return isCoreChildOf(IGFX_XE2_HPG_CORE); }
 

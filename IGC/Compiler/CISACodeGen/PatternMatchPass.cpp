@@ -3067,7 +3067,7 @@ std::optional<std::pair<Value *, unsigned>> CodeGenPatternMatch::matchSurfaceSta
   Value *TmpBase = nullptr;
   ConstantInt *SurfaceOffset = nullptr;
   if (match(resourcePtr, m_IntToPtr(m_c_Add(m_Value(TmpBase), m_ConstantInt(SurfaceOffset))))) {
-    unsigned SurfaceStateSize = m_Platform.getSurfaceStateSize();
+    unsigned SurfaceStateSize = m_ctx->m_DriverInfo.getSurfaceStateSize();
     uint64_t Offset = SurfaceOffset->getZExtValue();
     if (Offset % SurfaceStateSize == 0) {
       uint64_t Idx = Offset / SurfaceStateSize;
