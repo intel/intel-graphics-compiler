@@ -17,7 +17,7 @@ SPDX-License-Identifier: MIT
 #elif __GNUC__
 #ifdef __x86_64__
 #define CDECLATTRIBUTE
-#elif defined(__ARM_ARCH)
+#elif defined(__ARM_ARCH) || defined(__riscv)
 #define CDECLATTRIBUTE
 #else
 #define CDECLATTRIBUTE __attribute__((__cdecl__))
