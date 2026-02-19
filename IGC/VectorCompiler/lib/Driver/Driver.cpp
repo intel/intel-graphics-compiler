@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2020-2026 Intel Corporation
+Copyright (C) 2020-2025 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -40,11 +40,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/LLVMContext.h>
 #include <llvm/IR/Verifier.h>
 #include <llvm/IRReader/IRReader.h>
-#if LLVM_VERSION_MAJOR < 17
 #include <llvm/MC/SubtargetFeature.h>
-#else // LLVM_VERSION_MAJOR
-#include <llvm/TargetParser/SubtargetFeature.h>
-#endif // LLVM_VERSION_MAJOR
 #include <llvm/Option/ArgList.h>
 #include <llvm/Passes/PassBuilder.h>
 #include <llvm/Passes/StandardInstrumentations.h>
