@@ -7,11 +7,7 @@
 #============================ end_copyright_notice =============================
 
 # GEDLibrary/GED
-if(WIN32)
-    cmake_minimum_required(VERSION 3.1)
-else()
-    cmake_minimum_required(VERSION 2.8.12)
-endif(WIN32)
+cmake_minimum_required(VERSION 3.10)
 
 project(GEDLibrary)
 
