@@ -188,6 +188,10 @@ class IfConverter {
     if (!getSinglePredecessor(s1, s0))
       return std::make_tuple(nullptr, nullptr, nullptr, nullptr);
 
+    // Not a valid if then else for ifcvt
+    if (s0 == s1 && BB->getPhysicalSucc() == s0)
+      return std::make_tuple(nullptr, nullptr, nullptr, nullptr);
+
     VISA_DEBUG(std::cout << "Found an innermost if-else-fi block at"
                          << " BB" << BB->getId() << " with branches {"
                          << "BB" << s0->getId() << ", BB" << s1->getId()
