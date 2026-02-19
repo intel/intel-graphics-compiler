@@ -7871,10 +7871,15 @@ void CEncoder::LSC_AtomicRaw(AtomicOp atomic_op, CVariable *dst, CVariable *unif
 
   LSC_SFID lscSfid = resource && resource->m_surfaceType == ESURFACE_SLM ? LSC_SLM : LSC_UGM;
 
+
+  bool simdFromOffset =
+      (offset->IsUniform()
+      );
+  SIMDMode simdMode = simdFromOffset ? lanesToSIMDMode(offset->GetNumberElement()) : m_encoderState.m_simdSize;
+
   V(vKernel->AppendVISALscUntypedAtomic(
-      subOp, lscSfid, predOpnd,
-      visaExecSize(offset->IsUniform() ? lanesToSIMDMode(offset->GetNumberElement()) : m_encoderState.m_simdSize),
-      ConvertMaskToVisaType(m_encoderState.m_mask, m_encoderState.m_noMask || offset->IsUniform()), cacheOpts, addr,
+      subOp, lscSfid, predOpnd, visaExecSize(simdMode),
+      ConvertMaskToVisaType(m_encoderState.m_mask, m_encoderState.m_noMask || simdFromOffset), cacheOpts, addr,
       dataShape, globalOffsetOpnd, 0, dstOpnd, src0AddrOpnd, src0Opnd, src1Opnd));
 }
 
