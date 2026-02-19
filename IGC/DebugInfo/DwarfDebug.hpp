@@ -154,6 +154,9 @@ private:
 
   DbgRegisterType RegType = DbgRegisterType::Regular;
 
+  /// All known fragment pieces for this variable
+  mutable llvm::SmallVector<llvm::DIExpression::FragmentInfo, 4> FragmentExprs;
+
 public:
   // AbsVar may be NULL.
   DbgVariable(const llvm::DILocalVariable *V, const llvm::DILocation *IA = nullptr, DbgVariable *AV = nullptr)
@@ -211,6 +214,20 @@ public:
 
   DbgRegisterType getLocationRegisterType() const { return RegType; }
   void setLocationRegisterType(DbgRegisterType RegType) { this->RegType = RegType; }
+
+  /// Record a fragment piece for this variable. Maintains sorted order
+  /// by OffsetInBits
+  void addFragmentExpr(const llvm::DIExpression::FragmentInfo &FI) {
+    auto it = llvm::lower_bound(FragmentExprs, FI,
+                                [](const auto &A, const auto &B) { return A.OffsetInBits < B.OffsetInBits; });
+    if (it == FragmentExprs.end() || it->OffsetInBits != FI.OffsetInBits)
+      FragmentExprs.insert(it, FI);
+  }
+
+  /// Return the sorted list of known fragment pieces.
+  llvm::ArrayRef<llvm::DIExpression::FragmentInfo> getFragmentExprs() const { return FragmentExprs; }
+
+  bool hasFragmentExprs() const { return !FragmentExprs.empty(); }
 
   void emitExpression(CompileUnit *CU, IGC::DIEBlock *Block) const;
 
@@ -554,7 +571,7 @@ private:
 
   /// \brief Represents a pending location entry for .debug_loc encoding.
   /// Used to merge consecutive identical locations before emitting.
-  struct PrevLoc {
+  struct VarLocation {
     enum class Type { Empty = 0, Imm = 1, Reg = 2 };
     Type type = Type::Empty;
     uint64_t start = 0;
@@ -567,25 +584,33 @@ private:
     DbgDecoder::LiveIntervalsVISA visaRange;
     DbgDecoder::LiveIntervalsVISA visaRange2nd; // In case of SIMD32
 
+    std::optional<llvm::DIExpression::FragmentInfo> FragmentInfo;
+
     bool isEmpty() const { return type == Type::Empty; }
     bool isImm() const { return type == Type::Imm; }
     bool isReg() const { return type == Type::Reg; }
+    bool isFragmented() { return FragmentInfo.has_value(); }
 
-    void setEmpty() { type = Type::Empty; }
+    void setEmpty() {
+      type = Type::Empty;
+      FragmentInfo = {};
+    }
 
     void setImm(uint64_t s, uint64_t e, DbgVariable *var, const llvm::DbgVariableIntrinsic *inst,
-                const llvm::ConstantInt *val) {
+                const llvm::ConstantInt *val, std::optional<llvm::DIExpression::FragmentInfo> fragInfo = {}) {
       type = Type::Imm;
       start = s;
       end = e;
       dbgVar = var;
       pInst = inst;
       imm = val;
+      FragmentInfo = fragInfo;
     }
 
     void setReg(uint64_t s, uint64_t e, DbgVariable *var, const llvm::DbgVariableIntrinsic *inst,
                 const VISAVariableLocation &loc, const DbgDecoder::LiveIntervalsVISA &range,
-                const DbgDecoder::LiveIntervalsVISA &range2nd = {}) {
+                const DbgDecoder::LiveIntervalsVISA &range2nd = {},
+                std::optional<llvm::DIExpression::FragmentInfo> fragInfo = {}) {
       type = Type::Reg;
       start = s;
       end = e;
@@ -594,15 +619,18 @@ private:
       Loc = loc;
       visaRange = range;
       visaRange2nd = range2nd;
+      FragmentInfo = fragInfo;
     }
 
     // Current location is continuation of previous one
     void extendTo(uint64_t newEnd) { end = newEnd; }
 
     // Immediate range can be extended, when current entry is an immediate and
-    // new range extends beyond current end, for identical constant value.
-    bool canExtendImm(uint64_t newEnd, const llvm::ConstantInt *val) const {
-      return isImm() && end < newEnd && imm == val;
+    // new range extends beyond current end, for identical constant value
+    // and same fragment.
+    bool canExtendImm(uint64_t newEnd, const llvm::ConstantInt *val,
+                      std::optional<llvm::DIExpression::FragmentInfo> fragInfo = {}) const {
+      return isImm() && end < newEnd && imm == val && FragmentInfo == fragInfo;
     }
 
     // Register location range can be extended if:
@@ -611,8 +639,10 @@ private:
     // 3. The variable remains in the same location:
     //    - Both are in the same GRF register, or
     //    - Both are spilled with the same offset
-    bool canExtendReg(uint64_t newEnd, const DbgDecoder::LiveIntervalsVISA &range) const {
-      if (!isReg() || end >= newEnd)
+    // 4. The fragment identity matches
+    bool canExtendReg(uint64_t newEnd, const DbgDecoder::LiveIntervalsVISA &range,
+                      std::optional<llvm::DIExpression::FragmentInfo> fragInfo = {}) const {
+      if (!isReg() || end >= newEnd || !(FragmentInfo == fragInfo))
         return false;
       bool SameGRF = visaRange.isGRF() && range.isGRF() && visaRange.getGRF() == range.getGRF();
       bool SameSpillOffset =
@@ -623,22 +653,30 @@ private:
 
   /// \brief Encode an immediate (constant) value location into .debug_loc entry.
   /// Writes the address range and DWARF expression (DW_OP_implicit_value)
-  void encodeImm(IGC::DotDebugLocEntry &dotLoc, const PrevLoc &prev, uint32_t &offset, uint32_t pointerSize);
+  void encodeImm(IGC::DotDebugLocEntry &dotLoc, const VarLocation &vl, uint32_t &offset, uint32_t pointerSize);
 
   /// \brief Encode a register-based location into .debug_loc entry.
   /// Writes the address range and DWARF expression describing the variable's
   /// location in a GRF register. Handles caller-save.
-  void encodeReg(IGC::DotDebugLocEntry &dotLoc, const PrevLoc &prev, uint32_t &offset, uint32_t pointerSize);
+  void encodeReg(IGC::DotDebugLocEntry &dotLoc, const VarLocation &vl, uint32_t &offset, uint32_t pointerSize);
 
-  /// \brief Write a PrevLoc location entry to the dotLoc. Dispatches
-  /// to encodeImm or encodeReg based on the location type.
-  void encodePrevLoc(IGC::DotDebugLocEntry &dotLoc, PrevLoc &prev, uint32_t &offset, uint32_t pointerSize);
+  /// \brief Build composite DWARF location expressions for fragmented variables.
+  /// For each IP sub-interval, assembles a single .debug_loc entry describing
+  /// all active fragments.
+  void encodeCompositeExprs(DbgVariable *RegVar, const std::vector<VarLocation> &ResolvedLocations,
+                            llvm::DIVariable *DV, uint32_t &offset, uint32_t pointerSize);
+
+  using DbgVarIPInfo = std::tuple<uint64_t, uint64_t, const llvm::DbgVariableIntrinsic *>;
+  /// \brief Resolve debug variable ranges to merged VarLocation entries.
+  /// Iterates over Ranges, resolves each to a VarLocation (immediate or register),
+  /// and merges consecutive identical locations per-fragment into the output vector.
+  void resolveRangesToVarLocations(DbgVariable *RegVar, const std::vector<DbgVarIPInfo> &Ranges,
+                                   std::vector<VarLocation> &ResolvedLocations);
 
   /// \brief Determine the lexical scope for a debug variable.
   ::IGC::LexicalScope *resolveVariableScope(llvm::DIVariable *DV, const llvm::DbgVariableIntrinsic *H,
                                             const llvm::Function *MF);
 
-  using DbgVarIPInfo = std::tuple<uint64_t, uint64_t, const llvm::DbgVariableIntrinsic *>;
   /// \brief Process the history of debug values for a single variable.
   /// Analyzes all debug intrinsics associated with a variable and builds
   /// a mapping of DbgVariable instances to their GenISA IP.

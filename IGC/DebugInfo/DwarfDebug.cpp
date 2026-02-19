@@ -174,11 +174,12 @@ void DbgVariable::emitExpression(CompileUnit *CU, IGC::DIEBlock *Block) const {
     switch (I->getOp()) {
     case dwarf::DW_OP_LLVM_fragment: {
       BitPieceIndex = Elements.size();
-      uint64_t offset = I->getArg(0);
       uint64_t size = I->getArg(1);
       Elements.push_back(dwarf::DW_OP_bit_piece);
       Elements.push_back(size);
-      Elements.push_back(offset);
+      // Offset 0: the location already describes this fragment directly;
+      // we don't want additional shifting in GRF.
+      Elements.push_back(0);
       continue;
     }
 
@@ -1422,21 +1423,22 @@ void writeULEB128(std::vector<unsigned char> &vec, uint64_t data) {
   free(buf);
 }
 
-void DwarfDebug::encodeImm(IGC::DotDebugLocEntry &dotLoc, const PrevLoc &prev, uint32_t &offset, uint32_t pointerSize) {
+void DwarfDebug::encodeImm(IGC::DotDebugLocEntry &dotLoc, const VarLocation &vl, uint32_t &offset,
+                           uint32_t pointerSize) {
   auto op = llvm::dwarf::DW_OP_implicit_value;
   const unsigned int lebSize = 8;
 
-  dotLoc.start = prev.start;
-  dotLoc.end = prev.end;
+  dotLoc.start = vl.start;
+  dotLoc.end = vl.end;
 
   write(dotLoc.loc, (uint8_t)op);
   write(dotLoc.loc, (const unsigned char *)&lebSize, 1);
 
-  if (isUnsignedDIType(this, prev.dbgVar->getType())) {
-    uint64_t constValue = prev.imm->getZExtValue();
+  if (isUnsignedDIType(this, vl.dbgVar->getType())) {
+    uint64_t constValue = vl.imm->getZExtValue();
     write(dotLoc.loc, (unsigned char *)&constValue, lebSize);
   } else {
-    int64_t constValue = prev.imm->getSExtValue();
+    int64_t constValue = vl.imm->getSExtValue();
     write(dotLoc.loc, (unsigned char *)&constValue, lebSize);
   }
 
@@ -1445,26 +1447,27 @@ void DwarfDebug::encodeImm(IGC::DotDebugLocEntry &dotLoc, const PrevLoc &prev, u
   offset += pointerSize * 2 + 2 + dotLoc.loc.size();
 }
 
-void DwarfDebug::encodeReg(IGC::DotDebugLocEntry &dotLoc, const PrevLoc &prev, uint32_t &offset, uint32_t pointerSize) {
-  VISAVariableLocation Loc = prev.Loc;
-  DbgDecoder::LiveIntervalsVISA visaRange = prev.visaRange;
-  DbgDecoder::LiveIntervalsVISA visaRange2nd = prev.visaRange2nd;
+void DwarfDebug::encodeReg(IGC::DotDebugLocEntry &dotLoc, const VarLocation &vl, uint32_t &offset,
+                           uint32_t pointerSize) {
+  VISAVariableLocation Loc = vl.Loc;
+  DbgDecoder::LiveIntervalsVISA visaRange = vl.visaRange;
+  DbgDecoder::LiveIntervalsVISA visaRange2nd = vl.visaRange2nd;
 
   // Find all intervals where variable is available in memory due to
   // caller save sequence
-  auto allCallerSave = m_pModule->getAllCallerSave(*VisaDbgInfo, prev.start, prev.end, visaRange);
+  auto allCallerSave = m_pModule->getAllCallerSave(*VisaDbgInfo, vl.start, vl.end, visaRange);
 
   // For SIMD32, we need two registers (lower and upper channels).
   std::vector<DbgDecoder::LiveIntervalsVISA> vars = {visaRange};
   if (Loc.HasLocationSecondReg())
     vars.push_back(visaRange2nd);
 
-  dotLoc.start = prev.start;
+  dotLoc.start = vl.start;
   TempDotDebugLocEntries.push_back(dotLoc);
 
   for (const auto &[callerSaveIp, callerRestoreIp, stackOffset] : allCallerSave) {
     TempDotDebugLocEntries.back().end = callerSaveIp;
-    auto block = FirstCU->buildGeneral(*prev.dbgVar, Loc, &vars);
+    auto block = FirstCU->buildGeneral(*vl.dbgVar, Loc, &vars);
     std::vector<unsigned char> buffer;
     if (block)
       block->EmitToRawBuffer(buffer);
@@ -1482,7 +1485,7 @@ void DwarfDebug::encodeReg(IGC::DotDebugLocEntry &dotLoc, const PrevLoc &prev, u
     callerSaveVars.front().var.mapping.m.isBaseOffBEFP = 0;
     callerSaveVars.front().var.mapping.m.memoryOffset = stackOffset;
 
-    block = FirstCU->buildGeneral(*prev.dbgVar, Loc, &callerSaveVars);
+    block = FirstCU->buildGeneral(*vl.dbgVar, Loc, &callerSaveVars);
     buffer.clear();
     if (block)
       block->EmitToRawBuffer(buffer);
@@ -1490,7 +1493,7 @@ void DwarfDebug::encodeReg(IGC::DotDebugLocEntry &dotLoc, const PrevLoc &prev, u
     offset += pointerSize * 2 + 2 + buffer.size();
 
     // If the restore point is at or beyond our range end, we're done
-    if (callerRestoreIp >= prev.end)
+    if (callerRestoreIp >= vl.end)
       return;
 
     // Start a new interval (variable back in register)
@@ -1500,8 +1503,8 @@ void DwarfDebug::encodeReg(IGC::DotDebugLocEntry &dotLoc, const PrevLoc &prev, u
   }
 
   // Finalize the last (or only) interval - variable in its register
-  TempDotDebugLocEntries.back().end = prev.end;
-  auto block = FirstCU->buildGeneral(*prev.dbgVar, Loc, &vars);
+  TempDotDebugLocEntries.back().end = vl.end;
+  auto block = FirstCU->buildGeneral(*vl.dbgVar, Loc, &vars);
   std::vector<unsigned char> buffer;
   if (block)
     block->EmitToRawBuffer(buffer);
@@ -1509,24 +1512,237 @@ void DwarfDebug::encodeReg(IGC::DotDebugLocEntry &dotLoc, const PrevLoc &prev, u
   offset += pointerSize * 2 + 2 + buffer.size();
 }
 
-void DwarfDebug::encodePrevLoc(IGC::DotDebugLocEntry &dotLoc, PrevLoc &prev, uint32_t &offset, uint32_t pointerSize) {
-  if (prev.dbgVar->getDotDebugLocOffset() == DbgVariable::InvalidDotDebugLocOffset) {
-    prev.dbgVar->setDotDebugLocOffset(offset);
+void DwarfDebug::encodeCompositeExprs(DbgVariable *RegVar, const std::vector<VarLocation> &ResolvedLocations,
+                                      DIVariable *DV, uint32_t &offset, uint32_t pointerSize) {
+  // For fragmented variables, multiple fragments of the same source variable
+  // may live simultaneously at any given IP. DWARF requires that a single
+  // .debug_loc entry describe all fragments via a composite location
+
+  // Build sorted IP intervals for resolved fragmented variables
+  std::vector<uint64_t> IpRanges;
+  IpRanges.reserve(ResolvedLocations.size() * 2);
+  for (const auto &vl : ResolvedLocations) {
+    IpRanges.push_back(vl.start);
+    IpRanges.push_back(vl.end);
+  }
+  llvm::sort(IpRanges);
+  IpRanges.erase(std::unique(IpRanges.begin(), IpRanges.end()), IpRanges.end());
+
+  // Set the .debug_loc offset for this variable (once).
+  if (RegVar->getDotDebugLocOffset() == DbgVariable::InvalidDotDebugLocOffset) {
+    RegVar->setDotDebugLocOffset(offset);
   }
 
-  // This instruction bind shouldn't be done like that.
-  // DbgVariable class is representing the whole variable,
-  // not single dbg intrinsic only. This should be changed when
-  // location building will be possible without DbgVariable
-  // instruction.
-  prev.dbgVar->setDbgInst(prev.pInst);
+  for (size_t i = 0; i + 1 < IpRanges.size(); ++i) {
+    uint64_t startIp = IpRanges[i];
+    uint64_t endIp = IpRanges[i + 1];
+    // A fragment is active if its resolved range fully covers given range.
+    std::map<llvm::DIExpression::FragmentInfo, const VarLocation *> ActiveFragsInRange;
+    for (const auto &vl : ResolvedLocations) {
+      bool inRange = vl.start <= startIp && vl.end >= endIp;
+      if (inRange && vl.FragmentInfo)
+        ActiveFragsInRange[*vl.FragmentInfo] = &vl;
+    }
 
-  if (prev.isImm()) {
-    encodeImm(dotLoc, prev, offset, pointerSize);
-  } else {
-    encodeReg(dotLoc, prev, offset, pointerSize);
+    // Build composite DWARF expression for all known fragments.
+    // Fragments are ordered by bit offset (map key ordering).
+    // For each fragment, we have three cases:
+    //
+    // Active Fragment in register:
+    //   - buildGeneral() gives exact register placement of given fragment
+    // Active Fragment immediate:
+    //   - encode DW_OP_implicit_value + DW_OP_bit_piece.
+    // Inactive Fragment:
+    //   - emit bare DW_OP_bit_piece to tell the debugger this piece
+    //     is undefined at this IP range.
+    std::vector<unsigned char> CompositeExpr;
+    const DbgVariableIntrinsic *pInst = nullptr;
+
+    // Emit DW_OP_piece (byte-aligned) or DW_OP_bit_piece to terminate
+    // the current fragment in the composite expression.
+    auto appendPieceOp = [](std::vector<unsigned char> &Expr, uint64_t SizeInBits) {
+      if ((SizeInBits % 8) == 0) {
+        write(Expr, (uint8_t)llvm::dwarf::DW_OP_piece);
+        writeULEB128(Expr, SizeInBits / 8);
+      } else {
+        write(Expr, (uint8_t)llvm::dwarf::DW_OP_bit_piece);
+        writeULEB128(Expr, SizeInBits);
+        writeULEB128(Expr, 0);
+      }
+    };
+
+    for (const auto &Fragment : RegVar->getFragmentExprs()) {
+      auto ActiveFrag = ActiveFragsInRange.find(Fragment);
+      if (ActiveFrag == ActiveFragsInRange.end()) {
+        // Fragment is not active — emit bare piece and continue.
+        LLVM_DEBUG(dbgs() << "  [Frag] Emitting undef piece(" << Fragment.OffsetInBits << "," << Fragment.SizeInBits
+                          << ")\n");
+        appendPieceOp(CompositeExpr, Fragment.SizeInBits);
+        continue;
+      }
+
+      const VarLocation *vl = ActiveFrag->second;
+      if (!pInst)
+        pInst = vl->pInst;
+
+      if (vl->isImm()) {
+        uint64_t fragSizeBytes = (Fragment.SizeInBits + 7) / 8;
+        unsigned int writeBytes = static_cast<unsigned int>(std::min(fragSizeBytes, (uint64_t)8));
+
+        write(CompositeExpr, (uint8_t)llvm::dwarf::DW_OP_implicit_value);
+        writeULEB128(CompositeExpr, writeBytes);
+
+        // DW_OP_implicit_value encodes raw bytes — signedness is described
+        // by DW_AT_type in the variable's DIE.
+        uint64_t constValue = vl->imm->getZExtValue();
+        write(CompositeExpr, (unsigned char *)&constValue, writeBytes);
+        appendPieceOp(CompositeExpr, Fragment.SizeInBits);
+      } else {
+        // TODO: Implement caller-save handling for fragments.
+        // Check for caller-save overlap, emit undef (empty) piece instead of encoding
+        // a potentially wrong register value.
+        DbgDecoder::LiveIntervalsVISA visaRange = vl->visaRange;
+        auto allCallerSave = m_pModule->getAllCallerSave(*VisaDbgInfo, startIp, endIp, visaRange);
+        if (!allCallerSave.empty()) {
+          LLVM_DEBUG(dbgs() << "  [Frag] caller-save overlap, emitting undef piece(" << Fragment.OffsetInBits << ","
+                            << Fragment.SizeInBits << ")\n");
+          appendPieceOp(CompositeExpr, Fragment.SizeInBits);
+          continue;
+        }
+
+        RegVar->setDbgInst(vl->pInst);
+
+        std::vector<DbgDecoder::LiveIntervalsVISA> vars = {visaRange};
+        if (vl->Loc.HasLocationSecondReg())
+          vars.push_back(vl->visaRange2nd);
+
+        auto block = FirstCU->buildGeneral(*RegVar, vl->Loc, &vars);
+        if (block) {
+          std::vector<unsigned char> buffer;
+          block->EmitToRawBuffer(buffer);
+          CompositeExpr.insert(CompositeExpr.end(), buffer.begin(), buffer.end());
+        }
+      }
+    }
+
+    if (CompositeExpr.empty() || !pInst)
+      continue;
+
+    LLVM_DEBUG(dbgs() << "  [Frag] Composite loc [0x"; dbgs().write_hex(startIp) << ",0x";
+               dbgs().write_hex(endIp) << ") " << ActiveFragsInRange.size() << "/" << RegVar->getFragmentExprs().size()
+                                       << " frags active, " << CompositeExpr.size() << " expr bytes\n");
+
+    DotDebugLocEntry dotLoc(startIp, endIp, pInst, DV);
+    dotLoc.setOffset(offset);
+    write(dotLoc.loc, CompositeExpr.data(), static_cast<unsigned int>(CompositeExpr.size()));
+    TempDotDebugLocEntries.push_back(dotLoc);
+    offset += pointerSize * 2 + 2 + dotLoc.loc.size();
   }
-  prev.setEmpty();
+}
+
+void DwarfDebug::resolveRangesToVarLocations(DbgVariable *RegVar, const std::vector<DbgVarIPInfo> &Ranges,
+                                             std::vector<VarLocation> &ResolvedLocations) {
+  using IntervalTy = decltype(DbgDecoder::LiveIntervalGenISA::start);
+  auto findSemiOpenInterval = [this](IntervalTy start, IntervalTy end) -> std::pair<IntervalTy, IntervalTy> {
+    if (start >= end)
+      return {0, 0};
+    const auto &Map = VisaDbgInfo->getVisaToGenLUT();
+    auto LB = Map.lower_bound(start);
+    auto UB = Map.upper_bound(end);
+    if (LB == Map.end() || UB == Map.end())
+      return {0, 0};
+
+    start = LB->second.front();
+    end = UB->second.front();
+    if (start >= end)
+      return {0, 0};
+    return {start, end};
+  };
+
+  // VarLocation acts as a state machine that buffers pending location entries.
+  // This enables merging consecutive identical locations into a single entry
+  // with extended range. Per-fragment tracking handles both simple (nullopt key)
+  // and fragmented (per-fragment keys) variables uniformly.
+  std::map<std::optional<llvm::DIExpression::FragmentInfo>, VarLocation> prevPerFrag;
+
+  for (const auto &[startIp, endIp, pInst] : Ranges) {
+    auto FI = IGCLLVM::makeOptional(pInst->getExpression()->getFragmentInfo());
+
+    auto &prev = prevPerFrag[FI];
+    auto CurLoc = m_pModule->GetVariableLocation(pInst);
+
+    LLVM_DEBUG(dbgs() << "  Processing Location at IP Range: [0x"; dbgs().write_hex(startIp) << "; " << "0x";
+               dbgs().write_hex(endIp) << "]\n"; CurLoc.print(dbgs()););
+
+    if (CurLoc.IsImmediate()) {
+      const Constant *pConstVal = CurLoc.GetImmediate();
+      const ConstantInt *pConstInt = dyn_cast<ConstantInt>(pConstVal);
+      if (!pConstInt)
+        continue;
+
+      if (prev.canExtendImm(endIp, pConstInt, FI)) {
+        prev.extendTo(endIp);
+        continue;
+      }
+
+      if (prev.end >= endIp || startIp == endIp)
+        continue;
+
+      if (!prev.isEmpty())
+        ResolvedLocations.push_back(prev);
+
+      prev.setImm(startIp, endIp, RegVar, pInst, pConstInt, FI);
+    } else if (CurLoc.IsRegister()) {
+      const auto regNum = CurLoc.GetRegister();
+      const auto *VarInfo = m_pModule->getVarInfo(*VisaDbgInfo, regNum);
+      if (!VarInfo)
+        continue;
+
+      for (const auto &visaRange : VarInfo->lrs) {
+        auto startEnd = findSemiOpenInterval(visaRange.start, visaRange.end);
+        uint64_t startRange = startEnd.first;
+        uint64_t endRange = startEnd.second;
+
+        if (startRange == endRange || endRange < startIp || startRange > endIp)
+          continue;
+
+        startRange = std::max(startRange, startIp);
+        endRange = std::min(endRange, endIp);
+
+        if (startRange >= endRange)
+          continue;
+
+        if (prev.canExtendReg(endRange, visaRange, FI)) {
+          prev.extendTo(endRange);
+          continue;
+        }
+
+        if (prev.end >= endRange || startRange == endRange)
+          continue;
+
+        if (!prev.isEmpty())
+          ResolvedLocations.push_back(prev);
+
+        DbgDecoder::LiveIntervalsVISA visaRange2nd;
+        if (CurLoc.HasLocationSecondReg()) {
+          const auto regNum2nd = CurLoc.GetSecondReg();
+          const auto *VarInfo2nd = m_pModule->getVarInfo(*VisaDbgInfo, regNum2nd);
+          if (VarInfo2nd)
+            visaRange2nd = (*VarInfo2nd->lrs.rbegin());
+        }
+
+        prev.setReg(startRange, endRange, RegVar, pInst, CurLoc, visaRange, visaRange2nd, FI);
+
+        LLVM_DEBUG(dbgs() << "  Resolved IP Range: [0x"; dbgs().write_hex(startRange) << ",0x";
+                   dbgs().write_hex(endRange) << ")\n";);
+      }
+    }
+  }
+
+  for (auto &[FI, prev] : prevPerFrag) {
+    if (!prev.isEmpty())
+      ResolvedLocations.push_back(prev);
+  }
 }
 
 LexicalScope *DwarfDebug::resolveVariableScope(DIVariable *DV, const llvm::DbgVariableIntrinsic *pInst,
@@ -1553,7 +1769,6 @@ DIVariable *DwarfDebug::processVariableHistory(const llvm::MDNode *Var,
   //                       returns nullptr (variable may become optimized-out).
   //   3. Inlined in DIE — location is embedded directly in the DIE (no .debug_loc).
   //   4. IP ranges      — Mapping VariableLiveRanges for .debug_loc emission.
-
   InstructionsList &History = DbgValues[Var];
   if (History.empty()) {
     LLVM_DEBUG(dbgs() << "   user variable has no history, skipped\n");
@@ -1626,25 +1841,38 @@ DIVariable *DwarfDebug::processVariableHistory(const llvm::MDNode *Var,
       }
     }
 
-    if (History.size() > 1 && isa<DbgDeclareInst>(DbgInst)) {
-      LLVM_DEBUG(dbgs() << "Warning: We don't expect many llvm.dbg.declare calls for a single variable.\n");
-    }
-
     const Instruction *Start = DbgInst;
     const Instruction *End = Start;
 
-    if (Idx + 1 < History.size()) {
-      // Set end to next instruction in history
-      End = History[Idx + 1];
-    } else if (auto lastIATit = SameIATInsts.find(Start->getDebugLoc().getInlinedAt());
-               lastIATit != SameIATInsts.end()) {
-      // Set end to loc of last instruction in current function (same IAT)
-      End = (*lastIATit).second.back();
+    auto CurrFI = DbgInst->getExpression()->getFragmentInfo();
+    if (CurrFI) {
+      RegVar->addFragmentExpr(*CurrFI);
+    }
+
+    if (History.size() > 1 && isa<DbgDeclareInst>(DbgInst) && !RegVar->hasFragmentExprs()) {
+      LLVM_DEBUG(
+          dbgs() << "Warning: We don't expect many llvm.dbg.declare calls for a single non-fragmented variable.\n");
+    }
+
+    for (size_t J = Idx + 1; J < History.size(); ++J) {
+      // Set end to next instruction in history. For fragmented variables
+      // this needs to be same fragment.
+      auto NextFI = History[J]->getExpression()->getFragmentInfo();
+      if (!NextFI || NextFI == CurrFI) {
+        End = History[J];
+        break;
+      }
     }
 
     if (Start == End) {
-      continue;
+      // Set end to loc of last instruction in current function (same IAT)
+      if (auto lastIATit = SameIATInsts.find(Start->getDebugLoc().getInlinedAt()); lastIATit != SameIATInsts.end()) {
+        End = (*lastIATit).second.back();
+      }
     }
+
+    if (Start == End)
+      continue;
 
     auto GenISARange = m_pModule->getGenISARange(*VisaDbgInfo, {Start, End});
     for (const auto &[StartIP, EndIP] : GenISARange) {
@@ -1682,122 +1910,47 @@ void DwarfDebug::collectVariableInfo(const Function *MF, SmallPtrSet<const MDNod
     if (VarLiveRanges.empty())
       continue;
 
-    LLVM_DEBUG(dbgs() << "  number of IP intervals for the usage of "
-                      << "the source variable: " << VarLiveRanges.size() << "\n");
+    LLVM_DEBUG(dbgs() << "  number of IP intervals for the usage of " << "the source variable: " << VarLiveRanges.size()
+                      << "\n");
 
     for (auto &[RegVar, Ranges] : VarLiveRanges) {
       std::sort(Ranges.begin(), Ranges.end(), [](const DbgVarIPInfo &first, const DbgVarIPInfo &second) {
         return std::get<0>(first) < std::get<0>(second);
       });
 
-      // Check if we emmited any .debug_loc location for given RegVar
+      // Resolve VISA ranges to merged VarLocation entries.
+      std::vector<VarLocation> ResolvedLocations;
+      resolveRangesToVarLocations(RegVar, Ranges, ResolvedLocations);
+      if (ResolvedLocations.empty())
+        continue;
+
+      // Check if we emitted any .debug_loc location for given RegVar
       auto origLocSize = TempDotDebugLocEntries.size();
 
-      // PrevLoc acts as a state machine that buffers pending location entries
-      // before emitting them to .debug_loc. This enables merging consecutive
-      // identical locations into a single entry with extended range.
-      PrevLoc prev;
-      for (const auto &[startIp, endIp, pInst] : Ranges) {
-        auto CurLoc = m_pModule->GetVariableLocation(pInst);
+      if (RegVar->hasFragmentExprs()) {
+        encodeCompositeExprs(RegVar, ResolvedLocations, DV, offset, pointerSize);
+      } else {
+        for (auto &vl : ResolvedLocations) {
+          DotDebugLocEntry dotLoc(vl.start, vl.end, vl.pInst, DV);
+          dotLoc.setOffset(offset);
 
-        LLVM_DEBUG(dbgs() << "  Processing Location at IP Range: [0x"; dbgs().write_hex(startIp) << "; " << "0x";
-                   dbgs().write_hex(endIp) << "]\n"; CurLoc.print(dbgs()););
-
-        DotDebugLocEntry dotLoc(startIp, endIp, pInst, DV);
-        dotLoc.setOffset(offset);
-
-        if (CurLoc.IsImmediate()) {
-          const Constant *pConstVal = CurLoc.GetImmediate();
-          const ConstantInt *pConstInt = dyn_cast<ConstantInt>(pConstVal);
-          if (!pConstInt)
-            continue;
-
-          if (prev.canExtendImm(endIp, pConstInt)) {
-            prev.extendTo(endIp);
-            continue;
+          if (vl.dbgVar->getDotDebugLocOffset() == DbgVariable::InvalidDotDebugLocOffset) {
+            vl.dbgVar->setDotDebugLocOffset(offset);
           }
 
-          if (prev.end >= endIp || startIp == endIp)
-            continue;
+          // This instruction bind shouldn't be done like that.
+          // DbgVariable class is representing the whole variable,
+          // not single dbg intrinsic only. This should be changed when
+          // location building will be possible without DbgVariable
+          // instruction.
+          vl.dbgVar->setDbgInst(vl.pInst);
 
-          if (!prev.isEmpty()) {
-            encodePrevLoc(dotLoc, prev, offset, pointerSize);
-          }
-          prev.setImm(startIp, endIp, RegVar, pInst, pConstInt);
-        } else if (CurLoc.IsRegister()) {
-          const auto regNum = CurLoc.GetRegister();
-          const auto *VarInfo = m_pModule->getVarInfo(*VisaDbgInfo, regNum);
-          if (!VarInfo)
-            continue;
-
-          using IntervalTy = decltype(DbgDecoder::LiveIntervalGenISA::start);
-          auto findSemiOpenInterval = [this](IntervalTy start, IntervalTy end) -> std::pair<IntervalTy, IntervalTy> {
-            if (start >= end)
-              return {0, 0};
-            const auto &Map = VisaDbgInfo->getVisaToGenLUT();
-            auto LB = Map.lower_bound(start);
-            auto UB = Map.upper_bound(end);
-            if (LB == Map.end() || UB == Map.end())
-              return {0, 0};
-
-            start = LB->second.front();
-            end = UB->second.front();
-            if (start >= end)
-              return {0, 0};
-            return {start, end};
-          };
-
-          for (const auto &visaRange : VarInfo->lrs) {
-            auto startEnd = findSemiOpenInterval(visaRange.start, visaRange.end);
-
-            uint64_t startRange = startEnd.first;
-            uint64_t endRange = startEnd.second;
-
-            if (startRange == endRange)
-              continue;
-
-            if (endRange < startIp)
-              continue;
-
-            if (startRange > endIp)
-              continue;
-
-            startRange = std::max(startRange, startIp);
-            endRange = std::min(endRange, endIp);
-
-            if (prev.canExtendReg(endRange, visaRange)) {
-              prev.extendTo(endRange);
-              continue;
-            }
-
-            if (prev.end >= endRange || startRange == endRange)
-              continue;
-
-            if (!prev.isEmpty()) {
-              encodePrevLoc(dotLoc, prev, offset, pointerSize);
-            }
-
-            DbgDecoder::LiveIntervalsVISA visaRange2nd;
-            if (CurLoc.HasLocationSecondReg()) {
-              const auto regNum2nd = CurLoc.GetSecondReg();
-              const auto *VarInfo2nd = m_pModule->getVarInfo(*VisaDbgInfo, regNum2nd);
-              if (VarInfo2nd)
-                visaRange2nd = (*VarInfo2nd->lrs.rbegin());
-            }
-
-            prev.setReg(startRange, endRange, RegVar, pInst, CurLoc, visaRange, visaRange2nd);
-
-            LLVM_DEBUG(dbgs() << "  Fix IP Range to: [0x"; dbgs().write_hex(prev.start) << "; " << "0x";
-                       dbgs().write_hex(prev.end) << ")\n";);
+          if (vl.isImm()) {
+            encodeImm(dotLoc, vl, offset, pointerSize);
+          } else {
+            encodeReg(dotLoc, vl, offset, pointerSize);
           }
         }
-      }
-
-      // Last pending location for given RegVar
-      if (!prev.isEmpty()) {
-        DotDebugLocEntry dotLoc(prev.start, prev.end, prev.pInst, DV);
-        dotLoc.setOffset(offset);
-        encodePrevLoc(dotLoc, prev, offset, pointerSize);
       }
 
       // Empty DotDebugLocEntry works as terminator
@@ -3351,6 +3504,16 @@ void DbgVariable::print(raw_ostream &O, bool NestedAbstract) const {
       O << Prefix << "ValInst: " << *m_pDbgInst << "\n";
   } else
     O << Prefix << "ValInst: " << "none;\n";
+
+  if (hasFragmentExprs()) {
+    O << Prefix << "Fragments (" << FragmentExprs.size() << "): [";
+    for (size_t i = 0; i < FragmentExprs.size(); ++i) {
+      if (i > 0)
+        O << ", ";
+      O << "{offset=" << FragmentExprs[i].OffsetInBits << ", size=" << FragmentExprs[i].SizeInBits << "}";
+    }
+    O << "];\n";
+  }
 
   O << makePrefix(NestedAbstract ? 4 : 0, "") << "}\n";
 }
