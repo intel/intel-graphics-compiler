@@ -4322,7 +4322,7 @@ input_info_t *IR_Builder::getRetIPArg() const {
 
 G4_Predicate_Control
 IR_Builder::vISAPredicateToG4Predicate(VISA_PREDICATE_CONTROL control,
-                                       G4_ExecSize execSize) {
+                                       G4_ExecSize execSize) const {
   switch (control) {
   case PRED_CTRL_NON:
     return PRED_DEFAULT;

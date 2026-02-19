@@ -177,10 +177,42 @@ static void associateOpndWithInst(G4_Operand *opnd, G4_INST *inst) {
   }
 }
 
+// On platforms that support predication with horizontal combination, mask
+// offset should be considered for predicates using non-default predicate
+// control.
+// Currently, predicate operands are created before instruction creation without
+// considering mask offset. Therefore, this function is created to update
+// predicate control and should be invoked before right bound computation is
+// required.
+void G4_INST::updatePredicateCtrl() {
+  uint16_t maskOff = getMaskOffset();
+  if (!predicate || maskOff == 0)
+    return;
+
+  auto ctrl = predicate->getControl();
+  if (ctrl == PRED_DEFAULT || !builder.predCtrlHasWidth())
+    return;
+
+  uint16_t numElems = predicate->getTopDcl()->getNumberFlagElements();
+  G4_ExecSize groupSize(numElems - maskOff);
+  vISA_ASSERT((groupSize > 0) && ((groupSize & (groupSize - 1)) == 0),
+      "group size should be power of 2");
+
+  if (ctrl >= PRED_ANY2H && ctrl <= PRED_ANY32H) {
+    ctrl = builder.vISAPredicateToG4Predicate(PRED_CTRL_ANY, groupSize);
+  } else {
+    vASSERT(ctrl >= PRED_ALL2H && ctrl <= PRED_ALL32H);
+    ctrl = builder.vISAPredicateToG4Predicate(PRED_CTRL_ALL, groupSize);
+  }
+
+  predicate->setControl(ctrl);
+}
+
 void G4_INST::initOperands() {
   resetRightBound(dst);
   for (G4_Operand *src : srcs)
     resetRightBound(src);
+  updatePredicateCtrl();
   computeRightBound(predicate);
   computeRightBound(mod);
 

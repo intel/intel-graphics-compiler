@@ -570,6 +570,7 @@ public:
   void setExecSize(G4_ExecSize s);
 
   void computeARFRightBound();
+  void updatePredicateCtrl();
 
   static bool isMaskOption(G4_InstOption opt) {
     return (opt & InstOpt_QuarterMasks) != 0;
@@ -583,6 +584,7 @@ public:
     if (oldMaskOffset != newMaskOffset) {
       // Change in mask offset requires change in
       // bounds for pred/cond mod/impl acc src/dst
+      updatePredicateCtrl();
       computeARFRightBound();
     }
   }

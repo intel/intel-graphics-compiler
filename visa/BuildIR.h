@@ -648,7 +648,7 @@ public:
 
   G4_Predicate_Control
   vISAPredicateToG4Predicate(VISA_PREDICATE_CONTROL control,
-                             G4_ExecSize execSize);
+                             G4_ExecSize execSize) const;
 
   std::optional<G4_FCALL> getFcallInfo(const G4_INST *inst) const;
   void addFcallInfo(const G4_INST *FcallInst, uint16_t ArgSize,
