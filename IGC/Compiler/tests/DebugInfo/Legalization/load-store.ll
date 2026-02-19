@@ -6,6 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
+; UNSUPPORTED: llvm-17-plus
 ; RUN: igc_opt --typed-pointers --igc-legalization -S < %s | FileCheck %s
 ; ------------------------------------------------
 ; Legalization: load and store patterns

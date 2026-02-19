@@ -9,6 +9,7 @@
 ; Test checks that built-ins like __builtin_IB_get_image_width
 ; are replaced with resinfoptr usage for bindless images
 
+; UNSUPPORTED: llvm-17-plus
 ; RUN: igc_opt --typed-pointers %s -S -o - -igc-conv-ocl-to-common | FileCheck %s
 
 %spirv.Image._void_0_0_1_0_0_0_0 = type opaque

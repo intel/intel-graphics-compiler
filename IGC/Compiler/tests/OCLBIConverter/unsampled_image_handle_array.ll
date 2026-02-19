@@ -8,6 +8,7 @@
 
 ; Check 64-bit integer is loaded from unsampled_image_handle array and then casted to bindless image handle.
 
+; UNSUPPORTED: llvm-17-plus
 ; RUN: igc_opt --typed-pointers -igc-conv-ocl-to-common -S < %s -o - | FileCheck %s
 
 %"struct.sycl::_V1::ext::oneapi::experimental::unsampled_image_handle" = type { i64 }

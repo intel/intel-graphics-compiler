@@ -6,6 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
+; UNSUPPORTED: llvm-17-plus
 ; RUN: igc_opt --typed-pointers --platformdg2 --enable-debugify --igc-emu64ops -S < %s 2>&1 | FileCheck %s
 ; ------------------------------------------------
 ; Emu64Ops

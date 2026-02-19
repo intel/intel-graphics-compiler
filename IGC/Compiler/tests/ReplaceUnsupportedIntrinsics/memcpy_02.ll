@@ -6,6 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
+; UNSUPPORTED: llvm-17-plus
 ; RUN: igc_opt --typed-pointers -igc-replace-unsupported-intrinsics -verify -S %s -o %t
 ; RUN: FileCheck %s < %t
 

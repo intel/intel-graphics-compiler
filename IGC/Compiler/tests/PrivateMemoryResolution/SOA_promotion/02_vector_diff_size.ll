@@ -6,6 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 ; REQUIRES: regkeys
+; UNSUPPORTED: llvm-17-plus
 ; RUN: igc_opt --typed-pointers --regkey EnableSOAPromotionDisablingHeuristic=1 --regkey EnablePrivMemNewSOATranspose=0 --igc-private-mem-resolution --platformtgllp -S %s 2>&1 | FileCheck %s
 
 ; The stored vector has the same baseType but different number of elements as alloca type

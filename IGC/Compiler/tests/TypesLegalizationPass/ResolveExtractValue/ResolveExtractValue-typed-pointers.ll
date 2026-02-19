@@ -7,6 +7,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
+; UNSUPPORTED: llvm-17-plus
 ; RUN: igc_opt --typed-pointers %s -S -o - -types-legalization-pass | FileCheck %s
 
 

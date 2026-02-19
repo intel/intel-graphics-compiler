@@ -6,6 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
+; UNSUPPORTED: llvm-17-plus
 ; RUN: igc_opt --typed-pointers %s -S -o - -igc-generic-address-dynamic-resolution | FileCheck %s
 
 ; This test verifies the case where a function which operates on a generic

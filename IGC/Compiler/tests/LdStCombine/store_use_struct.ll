@@ -7,6 +7,7 @@
 ;============================ end_copyright_notice =============================
 
 ; REQUIRES: regkeys
+; UNSUPPORTED: llvm-17-plus
 ;
 ; RUN:   igc_opt --typed-pointers %s -S -inputocl -igc-ldstcombine -regkey=EnableLdStCombine=1 \
 ; RUN:           -platformbmg \

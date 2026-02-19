@@ -6,6 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
+; UNSUPPORTED: llvm-17-plus
 ; RUN: igc_opt --typed-pointers -igc-advmemopt -S < %s 2>&1 | FileCheck %s
 ; ------------------------------------------------
 ; AdvMemOpt - check that only uniform load will be hoisted

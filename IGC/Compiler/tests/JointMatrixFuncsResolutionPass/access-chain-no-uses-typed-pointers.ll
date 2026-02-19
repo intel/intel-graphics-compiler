@@ -6,6 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 ; REQUIRES: llvm-14-plus
+; UNSUPPORTED: llvm-17-plus
 
 ; RUN: igc_opt -platformpvc --typed-pointers -igc-joint-matrix-resolution -S 2>&1 < %s | FileCheck %s
 ; ------------------------------------------------

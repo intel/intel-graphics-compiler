@@ -7,6 +7,7 @@
 ;============================ end_copyright_notice =============================
 ;
 ; REQUIRES: regkeys
+; UNSUPPORTED: llvm-17-plus
 ; RUN: igc_opt --typed-pointers -igc-joint-matrix-resolution -S --platformpvc 2>&1 < %s \
 ; RUN:   --regkey DisableDuplicateWarnings=0 | FileCheck %s
 ; ------------------------------------------------

@@ -7,6 +7,7 @@
 ;============================ end_copyright_notice =============================
 
 ; REQUIRES: llvm-14-plus
+; UNSUPPORTED: llvm-17-plus
 ; RUN: igc_opt --typed-pointers -igc-builtin-import -disable-verify -S < %s | FileCheck %s
 
 ; CHECK-NOT: call {{.*}} @__builtin_IB_cast_object_to_generic_ptr

@@ -6,6 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 ; REQUIRES: regkeys
+; UNSUPPORTED: llvm-17-plus
 ;
 ; RUN: igc_opt --typed-pointers -regkey TestIGCPreCompiledFunctions=1 --platformdg2 --igc-precompiled-import -S < %s | FileCheck %s
 ; ------------------------------------------------

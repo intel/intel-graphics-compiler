@@ -6,6 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
+; UNSUPPORTED: llvm-17-plus
 ; RUN: igc_opt --typed-pointers %s -S -o - -types-legalization-pass | FileCheck %s
 
 define spir_kernel void @f0([120004 x double] addrspace(1)* addrspace(1)* %arg) {

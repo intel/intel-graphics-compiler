@@ -8,6 +8,7 @@
 ;============================ end_copyright_notice =============================
 ;
 ; REQUIRES: regkeys
+; UNSUPPORTED: llvm-17-plus
 ; RUN: igc_opt --typed-pointers --regkey DumpHasNonKernelArgLdSt=1 --regkey EnableOptionalBufferOffset=1 --regkey EnableSupportBufferOffset=1 -enable-debugify -igc-stateless-to-stateful-resolution -igc-serialize-metadata -S < %s 2>&1 | FileCheck %s
 ; ------------------------------------------------
 ; StatelessToStateful

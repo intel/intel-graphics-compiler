@@ -7,6 +7,7 @@
 ;============================ end_copyright_notice =============================
 
 ; REQUIRES: regkeys
+; UNSUPPORTED: llvm-17-plus
 ;
 ; RUN: igc_opt --typed-pointers --ocl --platformpvc --igc-private-mem-resolution --regkey EnablePrivMemNewSOATranspose=3  -S %s | FileCheck %s
 ;

@@ -16,6 +16,7 @@
 ; Check alwaysinline attribute is added to following functions:
 ; 1. function that is returning an image type and its' users, e.g. _ZN4sycl3_V13ext6oneapi12experimental6detail31convert_handle_to_sampled_imageI14ocl_image3d_roNS3_17spirv_handle_typeEEEDaT0_
 
+; UNSUPPORTED: llvm-17-plus
 ; RUN: igc_opt --typed-pointers -igc-process-func-attributes -S %s -o - | FileCheck %s
 
 ; CHECK: define internal spir_func void @_ZZZ4mainENKUlRN4sycl3_V17handlerEE_clES2_ENKUlNS0_7nd_itemILi3EEEE_clES5_() [[MD0:#[0-9]+]]

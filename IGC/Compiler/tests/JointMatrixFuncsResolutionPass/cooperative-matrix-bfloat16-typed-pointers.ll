@@ -6,6 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
+; UNSUPPORTED: llvm-17-plus
 ; RUN: igc_opt --typed-pointers -S -o - -igc-joint-matrix-resolution --platformpvc 2>&1 < %s | FileCheck %s --implicit-check-not error:
 ; ------------------------------------------------
 ; JointMatrixFuncsResolutionPass

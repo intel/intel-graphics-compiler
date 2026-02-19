@@ -6,6 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
+; UNSUPPORTED: llvm-17-plus
 ; RUN: igc_opt --typed-pointers %s -S -o - -igc-resolve-atomics | FileCheck %s
 
 ; This test verifies the correctness of local spinlock translation. Local spinlock is used by

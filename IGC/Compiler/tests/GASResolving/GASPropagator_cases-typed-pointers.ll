@@ -7,6 +7,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
+; UNSUPPORTED: llvm-17-plus
 ; RUN: igc_opt --typed-pointers -debugify --igc-gas-resolve -S < %s | FileCheck %s
 
 ; We use "-debugify" in order to have some metadata in addrspacecast instruction.

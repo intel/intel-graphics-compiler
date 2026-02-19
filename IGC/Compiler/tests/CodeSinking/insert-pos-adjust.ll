@@ -6,6 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 ; REQUIRES: regkeys
+; UNSUPPORTED: llvm-17-plus
 ; RUN: igc_opt --typed-pointers -igc-hoist-congruent-phi -inputcs --regkey CodeSinkingMinSize=10 -S < %s | FileCheck %s
 ; ------------------------------------------------
 ; CodeSinking

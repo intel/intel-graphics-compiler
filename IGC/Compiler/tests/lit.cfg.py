@@ -61,6 +61,9 @@ if llvm_version >= 15:
 if llvm_version >= 16:
   config.available_features.add('llvm-16-plus')
 
+if llvm_version >= 17:
+  config.available_features.add('llvm-17-plus')
+
 if not config.regkeys_disabled:
   config.available_features.add('regkeys')
 if config.opaque_pointers == '1':

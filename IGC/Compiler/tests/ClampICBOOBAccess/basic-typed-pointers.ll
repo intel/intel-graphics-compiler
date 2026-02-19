@@ -6,6 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
+; UNSUPPORTED: llvm-17-plus
 ; RUN: igc_opt --typed-pointers -ClampICBOOBAccess  -S < %s 2>&1 | FileCheck %s
 
 ; Test checks that ICB index is clamped

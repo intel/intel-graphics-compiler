@@ -6,6 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
+; UNSUPPORTED: llvm-17-plus
 ; RUN: igc_opt --typed-pointers -igc-wi-func-analysis -S < %s | FileCheck %s
 ; ------------------------------------------------
 ; WIFuncsAnalysis

@@ -6,6 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 ; REQUIRES: regkeys
+; UNSUPPORTED: llvm-17-plus
 ;
 ; RUN: igc_opt --typed-pointers -enable-debugify --igc-programscope-constant-resolve -S < %s 2>&1 | FileCheck %s
 ; ------------------------------------------------

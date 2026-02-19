@@ -6,6 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
+; UNSUPPORTED: llvm-17-plus
 ; RUN: igc_opt --typed-pointers %s -S -o - -opt-reduce-pass | FileCheck %s
 
 declare spir_func <3 x i64> @__spirv_BuiltInGlobalSize()

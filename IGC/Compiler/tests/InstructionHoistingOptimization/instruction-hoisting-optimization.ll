@@ -6,6 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 ; REQUIRES: regkeys
+; UNSUPPORTED: llvm-17-plus
 ; RUN: igc_opt -platformbmg --typed-pointers --regkey EnableInstructionHoistingOptimization --igc-instruction-hoisting-optimization -S < %s 2>&1 | FileCheck %s
 ; ------------------------------------------------
 ; EnableInstructionHoistingOptimization:

@@ -1,4 +1,4 @@
-; UNSUPPORTED: system-windows
+; UNSUPPORTED: system-windows, llvm-17-plus
 ; REQUIRES: regkeys
 ; RUN: igc_opt --typed-pointers --igc-pressure-printer -S --disable-output --regkey=RegPressureVerbocity=5 < %s 2>&1 | FileCheck %s
 

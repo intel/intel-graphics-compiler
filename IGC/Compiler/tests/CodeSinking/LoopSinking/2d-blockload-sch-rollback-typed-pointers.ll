@@ -7,6 +7,7 @@
 ;============================ end_copyright_notice =============================
 
 ; REQUIRES: regkeys, llvm-14-plus
+; UNSUPPORTED: llvm-17-plus
 ; RUN: igc_opt --typed-pointers -platformpvc --regkey LoopSinkForceRollback=1 --regkey LoopSinkMinSave=1 --regkey LoopSinkEnable2dBlockReads=1 --regkey LoopSinkEnableLoadsRescheduling=1 --regkey ForceLoopSink=1 --regkey CodeLoopSinkingMinSize=10 --regkey CodeSinkingLoadSchedulingInstr=10 --regkey LoopSinkCoarserLoadsRescheduling=1 --regkey DumpLoopSink=1 --regkey LoopSinkDumpLevel=3 --regkey PrintToConsole=1 --basic-aa --igc-code-loop-sinking -S %s 2>&1 | FileCheck %s
 
 ; 1st example:

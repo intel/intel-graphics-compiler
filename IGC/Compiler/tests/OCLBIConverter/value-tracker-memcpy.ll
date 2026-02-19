@@ -9,6 +9,7 @@
 ; Check if image kernel argument is successfully tracked when it has been stored
 ; in alloca using llvm.memcpy instruction.
 
+; UNSUPPORTED: llvm-17-plus
 ; RUN: igc_opt --typed-pointers -igc-conv-ocl-to-common -S < %s -o - | FileCheck %s
 
 ; CHECK: call void @llvm.genx.GenISA.typedwrite.p131073f32(

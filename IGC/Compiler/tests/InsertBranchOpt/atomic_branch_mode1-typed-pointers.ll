@@ -8,6 +8,7 @@
 ;============================ end_copyright_notice =============================
 
 ; REQUIRES: regkeys
+; UNSUPPORTED: llvm-17-plus
 ; RUN: igc_opt --typed-pointers -igc-InsertBranchOpt -regkey EnableAtomicBranch=1 -S %s | FileCheck %s
 
 define i32 @atomicIadd0Raw(i32 %mem, i32 %val) {

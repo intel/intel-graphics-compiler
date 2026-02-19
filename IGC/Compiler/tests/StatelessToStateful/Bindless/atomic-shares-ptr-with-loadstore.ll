@@ -6,6 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
+; UNSUPPORTED: llvm-17-plus
 ; RUN: igc_opt --typed-pointers %s -S -o - -igc-stateless-to-stateful-resolution --target-addressing-mode bindless | FileCheck %s
 ; ------------------------------------------------
 ; PromoteStatelessToBindless : Test promotion of regular loads and stores when a source pointer is shared with atomic

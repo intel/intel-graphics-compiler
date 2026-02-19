@@ -6,6 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
+; UNSUPPORTED: llvm-17-plus
 ; RUN: igc_opt --typed-pointers -igc-int-type-legalizer -S %s | FileCheck %s
 
 define i64 @src(i32 %in) {

@@ -7,6 +7,7 @@
 ;============================ end_copyright_notice =============================
 
 ; Check that null check is not moved before phi instruction creating invalid IR.
+; UNSUPPORTED: llvm-17-plus
 ; RUN: igc_opt --typed-pointers %s -S -igc-generic-null-ptr-propagation | FileCheck %s
 
 ; CHECK-LABEL: exit:

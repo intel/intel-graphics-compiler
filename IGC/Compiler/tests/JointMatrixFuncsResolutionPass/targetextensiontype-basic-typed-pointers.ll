@@ -7,6 +7,7 @@
 ;============================ end_copyright_notice =============================
 ;
 ; REQUIRES: llvm-16-plus
+; UNSUPPORTED: llvm-17-plus
 ; RUN: igc_opt --typed-pointers -igc-joint-matrix-resolution -S --platformdg2 2>&1 < %s | FileCheck %s
 ; ------------------------------------------------
 ; The purpose of this test is to test target extension types (JointMatrixINTEL and CooperativeMatrixKHR)

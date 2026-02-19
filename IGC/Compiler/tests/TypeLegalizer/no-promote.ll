@@ -6,6 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
+; UNSUPPORTED: llvm-17-plus
 ; RUN: igc_opt --typed-pointers --enable-debugify -igc-type-legalizer -S < %s 2>&1 | FileCheck %s
 
 ; Test checks legal cases for several unsupported instructions and cases that ignore

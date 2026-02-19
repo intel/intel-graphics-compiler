@@ -6,6 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
+; UNSUPPORTED: llvm-17-plus
 ; RUN: igc_opt --typed-pointers --igc-lower-gp-arg -S < %s 2>&1 | FileCheck %s
 
 @a = internal addrspace(3) global i32 0

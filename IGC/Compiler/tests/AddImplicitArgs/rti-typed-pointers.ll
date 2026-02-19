@@ -6,6 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
+; UNSUPPORTED: llvm-17-plus
 ; RUN: igc_opt --typed-pointers -igc-add-implicit-args -S %s -o %t.ll
 ; RUN: FileCheck %s --input-file=%t.ll
 

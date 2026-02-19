@@ -7,6 +7,7 @@
 ;============================ end_copyright_notice =============================
 ;
 ; ------------------------------------------------
+; UNSUPPORTED: llvm-17-plus
 ; RUN: igc_opt --typed-pointers -debugify --igc-gep-lowering -check-debugify -S < %s 2>&1 | FileCheck %s
 ; ------------------------------------------------
 ; GEPLowering

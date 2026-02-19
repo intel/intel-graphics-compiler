@@ -6,6 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
+; UNSUPPORTED: llvm-17-plus
 ; RUN: igc_opt --typed-pointers --igc-const-prop -igc-serialize-metadata -S < %s | FileCheck %s
 ; RUN: igc_opt --typed-pointers --igc-const-prop --override-enable-simplify-gep=1 -igc-serialize-metadata -S < %s | FileCheck %s --check-prefix=OVERRIDE
 ; ------------------------------------------------

@@ -6,6 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
+; UNSUPPORTED: llvm-17-plus
 ; RUN: igc_opt --typed-pointers -debugify -annotate_uniform_allocas -check-debugify -S < %s 2>&1 | FileCheck %s
 ; ------------------------------------------------
 ; AnnotateUniformAllocas

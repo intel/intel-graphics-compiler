@@ -36,6 +36,7 @@
 ; The barrier stops combining from going accross it. As result, two stores are generated.
 
 ; REQUIRES: regkeys
+; UNSUPPORTED: llvm-17-plus
 ;
 ; RUN:   igc_opt --typed-pointers %s -S -inputocl -igc-ldstcombine -regkey=EnableLdStCombine=1 \
 ; RUN:           -platformbmg \

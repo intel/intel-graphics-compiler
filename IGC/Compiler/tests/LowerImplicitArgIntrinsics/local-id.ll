@@ -6,6 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
+; UNSUPPORTED: llvm-17-plus
 ; RUN: igc_opt --typed-pointers -enable-debugify -igc-lower-implicit-arg-intrinsic -S 2>&1 < %s | FileCheck %s
 ; ------------------------------------------------
 ; LowerImplicitArgIntrinsics

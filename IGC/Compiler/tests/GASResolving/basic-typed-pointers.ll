@@ -7,6 +7,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
+; UNSUPPORTED: llvm-17-plus
 ; RUN: igc_opt --typed-pointers --igc-gas-resolve -S < %s | FileCheck %s
 
 ;the pass should remove addrspacecast to addrspace(4) and replace uses with origin type

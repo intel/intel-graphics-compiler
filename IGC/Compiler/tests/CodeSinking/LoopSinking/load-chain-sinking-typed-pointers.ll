@@ -6,6 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 ; REQUIRES: regkeys
+; UNSUPPORTED: llvm-17-plus
 ; RUN: igc_opt --typed-pointers --regkey ForceLoopSink=1 --regkey LoopSinkMinSave=1 --regkey LoopSinkThresholdDelta=10 --regkey CodeLoopSinkingMinSize=10 --regkey PrepopulateLoadChainLoopSink=1 --igc-wi-analysis --basic-aa --igc-code-loop-sinking -S %s | FileCheck %s
 
 ; Check that address computations are considered beneficial and are sinked

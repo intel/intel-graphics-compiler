@@ -6,6 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
+; UNSUPPORTED: llvm-17-plus
 ; RUN: igc_opt --typed-pointers %s -S -o - -igc-constant-coalescing | FileCheck %s
 
 ; The current version of ConstantCoalescing pass doesn't have an ability to optimize

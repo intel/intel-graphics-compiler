@@ -6,6 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 ; REQUIRES: regkeys, llvm-14-plus
+; UNSUPPORTED: llvm-17-plus
 ; RUN: igc_opt --typed-pointers --regkey LoopSinkMinSave=1 --regkey LoopSinkEnable2dBlockReads=1 --regkey ForceLoopSink=1 --regkey CodeLoopSinkingMinSize=10 --regkey LoopSinkDisableRollback=1 --regkey CodeSinkingLoadSchedulingInstr=10 --basic-aa --igc-code-loop-sinking -S %s 2>&1 | FileCheck %s
 
 declare i8* @llvm.genx.GenISA.LSC2DBlockCreateAddrPayload.p0i8(i64, i32, i32, i32, i32, i32, i32, i32, i32) #0

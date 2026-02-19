@@ -6,6 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 ; REQUIRES: regkeys
+; UNSUPPORTED: llvm-17-plus
 ; RUN: igc_opt --typed-pointers --regkey LoopSinkMinSave=1 --regkey ForceLoadsLoopSink=1 --regkey LoopSinkMinSaveUniform=10 --regkey ForceLoopSink=1 --regkey CodeLoopSinkingMinSize=10 --basic-aa --igc-wi-analysis --igc-code-loop-sinking -S %s | FileCheck %s
 ; We set LoopSinkMinSaveUniform=10, but in this test uniform vs non-uniform results in sinking
 define spir_kernel void @foo(float addrspace(1)* %in0, float addrspace(1)* %in1, float addrspace(1)* %out0, i32 %count, i16 %localIdX, i16 %localIdY, i16 %localIdZ) #0 {

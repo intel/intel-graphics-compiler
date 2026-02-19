@@ -7,6 +7,7 @@
 ;============================ end_copyright_notice =============================
 
 ; REQUIRES: regkeys
+; UNSUPPORTED: llvm-17-plus
 ; RUN: igc_opt --typed-pointers --regkey=EnableGEPLSRUnknownConstantStep=1 --regkey=EnableGEPLSRAnyIntBitWidth=0 -debugify --igc-gep-loop-strength-reduction -check-debugify -S < %s 2>&1 | FileCheck %s --check-prefixes=CHECK,CHECK-BLOCK-ILLEGAL
 ; RUN: igc_opt --typed-pointers --regkey=EnableGEPLSRUnknownConstantStep=1 --regkey=EnableGEPLSRAnyIntBitWidth=1 -debugify --igc-gep-loop-strength-reduction -check-debugify -S < %s 2>&1 | FileCheck %s --check-prefixes=CHECK,CHECK-ALLOW-ILLEGAL
 ;

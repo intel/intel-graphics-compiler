@@ -6,6 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
+; UNSUPPORTED: llvm-17-plus
 ; RUN: igc_opt --typed-pointers %s -S -o - --igc-private-mem-resolution --platformdg2 | FileCheck %s
 
 ; The test checks if all instructions are generated in the correct order.

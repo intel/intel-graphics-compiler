@@ -6,6 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
+; UNSUPPORTED: llvm-17-plus
 ; RUN: igc_opt --typed-pointers -igc-resolve-atomics -S < %s | FileCheck %s
 ; ------------------------------------------------
 ; ResolveOCLAtomics : atomics part with 32bit pointers

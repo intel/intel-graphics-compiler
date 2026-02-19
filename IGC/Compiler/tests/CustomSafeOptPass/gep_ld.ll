@@ -6,6 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
+; UNSUPPORTED: llvm-17-plus
 ; RUN: igc_opt --typed-pointers -igc-custom-safe-opt -instcombine -S < %s | FileCheck %s
 ; ------------------------------------------------
 ; CustomSafeOptPass: GEP + load

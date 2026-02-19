@@ -6,6 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
+; UNSUPPORTED: llvm-17-plus
 ; RUN: igc_opt --typed-pointers --igc-lsc-funcs-translation -platformpvc -S  %s | FileCheck %s
 
 ; Check lowering of LSC 2D block messages with address payload

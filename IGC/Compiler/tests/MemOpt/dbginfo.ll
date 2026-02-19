@@ -6,6 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
+; UNSUPPORTED: llvm-17-plus
 ; RUN: igc_opt --typed-pointers %s -S -o - -igc-memopt -instcombine | FileCheck %s
 
 ; This test is checking whether debug calls are correctly omitted in distance counting.

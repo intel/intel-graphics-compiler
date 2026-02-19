@@ -6,6 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
+; UNSUPPORTED: llvm-17-plus
 ; RUN: igc_opt --typed-pointers -debugify --igc-predefined-constant-resolve -check-debugify 2>&1 -S < %s | FileCheck %s
 ; ------------------------------------------------
 ; PredefinedConstantResolving

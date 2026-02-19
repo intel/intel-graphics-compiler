@@ -6,6 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
+; UNSUPPORTED: llvm-17-plus
 ; RUN: igc_opt --typed-pointers -platformpvc -igc-Pre-BIImport-Analysis -igc-serialize-metadata -S < %s | FileCheck %s
 ; ------------------------------------------------
 ; ------------------------------------------------

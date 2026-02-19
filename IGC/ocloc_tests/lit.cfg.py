@@ -94,6 +94,9 @@ if int(config.llvm_version_major) >= 15:
 if int(config.llvm_version_major) >= 16:
   config.available_features.add('llvm-16-plus')
 
+if int(config.llvm_version_major) >= 17:
+  config.available_features.add('llvm-17-plus')
+
 if config.llvm_spirv_enabled:
   config.available_features.add('llvm-spirv')
   llvm_config.add_tool_substitutions([ToolSubst('llvm-spirv', unresolved='fatal')], tool_dirs)

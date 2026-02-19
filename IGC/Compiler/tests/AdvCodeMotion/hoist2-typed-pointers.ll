@@ -6,6 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
+; UNSUPPORTED: llvm-17-plus
 ; RUN: igc_opt --typed-pointers -adv-codemotion-cm=1 -igc-advcodemotion -S < %s | FileCheck %s
 ; ------------------------------------------------
 ; AdvCodeMotion

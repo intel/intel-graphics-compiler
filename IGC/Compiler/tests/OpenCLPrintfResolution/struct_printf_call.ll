@@ -5,6 +5,7 @@
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
+; UNSUPPORTED: llvm-17-plus
 ; RUN: igc_opt --typed-pointers -igc-opencl-printf-resolution -S  < %s | FileCheck %s
 ; ------------------------------------------------
 ; OpenCLPrintfResolution

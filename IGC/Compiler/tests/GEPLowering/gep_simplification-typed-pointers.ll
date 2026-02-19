@@ -9,6 +9,7 @@
 ; ------------------------------------------------
 ;
 ; REQUIRES: regkeys
+; UNSUPPORTED: llvm-17-plus
 ;
 ; RUN: igc_opt --typed-pointers -platformpvc --igc-gep-lowering -regkey=EnableGEPSimplification=1,TestGEPSimplification=1 -S %s  | FileCheck %s
 ; ------------------------------------------------

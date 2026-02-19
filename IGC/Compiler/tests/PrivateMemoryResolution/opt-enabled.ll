@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 ; COM: Depends on other commit with m_instTypes initialization, enable when fixed
-; UNSUPPORTED: system-windows
+; UNSUPPORTED: system-windows, llvm-17-plus
 ;
 ; REQUIRES: regkeys
 ; RUN: igc_opt --typed-pointers --regkey EnablePrivMemNewSOATranspose=0 --igc-private-mem-resolution -S %s | FileCheck %s

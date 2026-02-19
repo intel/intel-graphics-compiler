@@ -7,6 +7,7 @@
 ;============================ end_copyright_notice =============================
 ;
 ; Default test run w/o AddImplicitArgs is for sanity reasons(so module won't break)
+; UNSUPPORTED: llvm-17-plus
 ; RUN: igc_opt --typed-pointers -igc-legalization -S -dce -disable-output < %s
 ;
 ; AddImplicitArgs is expected to be present in pipeline

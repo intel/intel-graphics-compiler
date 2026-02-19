@@ -6,6 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
+; UNSUPPORTED: llvm-17-plus
 ; RUN: igc_opt --typed-pointers -enable-debugify --igc-promote-stateless-to-bindless -S < %s 2>&1 | FileCheck %s
 ; ------------------------------------------------
 ; PromoteStatelessToBindless supports promotion of only two intrinsics: GenISA_simdBlockRead and

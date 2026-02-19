@@ -6,6 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
+; UNSUPPORTED: llvm-17-plus
 ; RUN: igc_opt --typed-pointers -igc-type-legalizer -S < %s | FileCheck %s
 
 ; Test checks illegal integer promotion for stores and loads

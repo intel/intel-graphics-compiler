@@ -7,6 +7,7 @@
 ;============================ end_copyright_notice =============================
 ;
 ; run: igc_opt -debugify --igc-named-barriers-resolution -check-debugify -S < %s 2>&1 | FileCheck %s
+; UNSUPPORTED: llvm-17-plus
 ; RUN: igc_opt --typed-pointers --igc-named-barriers-resolution -S < %s | FileCheck %s
 ; ------------------------------------------------
 ; NamedBarriersResolution

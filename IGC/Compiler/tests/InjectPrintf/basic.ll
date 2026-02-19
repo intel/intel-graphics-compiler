@@ -6,6 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 ; REQUIRES: regkeys
+; UNSUPPORTED: llvm-17-plus
 ;
 ; RUN: igc_opt --typed-pointers -regkey InjectPrintfFlag=1 --inject-printf -S < %s | FileCheck %s --check-prefix=LOADS
 ; RUN: igc_opt --typed-pointers -regkey InjectPrintfFlag=2 --inject-printf -S < %s | FileCheck %s --check-prefix=STORES

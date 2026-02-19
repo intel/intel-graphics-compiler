@@ -8,6 +8,7 @@
 
 ; Check that SYCL bindless image and sampler are passed via kernel arguments.
 
+; UNSUPPORTED: llvm-17-plus
 ; RUN: igc_opt --typed-pointers %s -S -o - -igc-conv-ocl-to-common | FileCheck %s
 
 %"struct.sycl::_V1::ext::oneapi::experimental::sampled_image_handle" = type { i64 }

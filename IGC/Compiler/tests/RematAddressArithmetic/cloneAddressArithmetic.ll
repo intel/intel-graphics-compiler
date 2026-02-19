@@ -7,7 +7,7 @@
 ;============================ end_copyright_notice =============================
 
 ; REQUIRES: regkeys
-; UNSUPPORTED: system-windows
+; UNSUPPORTED: system-windows, llvm-17-plus
 ; RUN: igc_opt --typed-pointers %s -S -o - -igc-clone-address-arithmetic --regkey=RematChainLimit=10 --regkey=RematFlowThreshold=100 --regkey=RematRPELimit=0 --dce | FileCheck %s
 
 define spir_kernel void @main(double addrspace(1)* %base, i64 %offset, i64 %I, i64 %J) {

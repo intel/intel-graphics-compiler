@@ -7,6 +7,7 @@
 ;============================ end_copyright_notice =============================
 
 ; Check that null check is placed closer to use of alloca.
+; UNSUPPORTED: llvm-17-plus
 ; RUN: igc_opt --typed-pointers %s -S -igc-generic-null-ptr-propagation | FileCheck %s
 
 ; CHECK-LABEL: do_work:

@@ -6,6 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
+; UNSUPPORTED: llvm-17-plus
 ; RUN: igc_opt --typed-pointers %s -S -o - -igc-memopt -instcombine | FileCheck %s
 
 define void @f0(i32 %arg1, i32 %arg2, double addrspace(1)* %src, double addrspace(1)* %dst) {

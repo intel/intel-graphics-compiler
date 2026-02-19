@@ -6,6 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 ; REQUIRES: regkeys
+; UNSUPPORTED: llvm-17-plus
 ; RUN: igc_opt --typed-pointers --regkey CodeSinkingLoadSchedulingInstr=10 --regkey LoopSinkMinSave=1 --regkey ForceLoadsLoopSink=1 --regkey ForceLoopSink=1 --regkey CodeLoopSinkingMinSize=10 --basic-aa --igc-code-loop-sinking --verify -S %s | FileCheck %s
 define void @foo(<2 x double> addrspace(3)* %in_out, double addrspace(3)* noalias %in1, i32 %count, i32 %offsetIn0) {
 ; CHECK-LABEL: @foo(

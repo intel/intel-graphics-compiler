@@ -7,6 +7,7 @@
 ;============================ end_copyright_notice =============================
 ;
 ; REQUIRES: debug
+; UNSUPPORTED: llvm-17-plus
 ; RUN: igc_opt --typed-pointers --platformpvc -debug -igc-joint-matrix-resolution -S %s 2>&1 | FileCheck %s
 ; ------------------------------------------------
 ; JointMatrixFuncsResolutionPass
