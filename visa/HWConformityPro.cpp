@@ -2144,8 +2144,12 @@ void HWConformityPro::fixMadw(INST_LIST_ITER it, G4_BB *bb) {
   auto addcInst =
       builder.createBinOp(G4_addc, execSize, dstLo32, src0Add,
                           builder.duplicateOperand(src2), origOptions, false);
-  auto *accDstOpnd =
-      builder.createDst(builder.phyregpool.getAcc0Reg(), 0, 0, 1, tmpType);
+  // If channel offset is greater than or equal to 16, ACC1 will be accessed as
+  // implicit dst, otherwise ACC0 is used
+  G4_VarBase *ACC = inst->getMaskOffset() >= 16
+                        ? builder.phyregpool.getAcc1Reg()
+                        : builder.phyregpool.getAcc0Reg();
+  auto *accDstOpnd = builder.createDst(ACC, 0, 0, 1, tmpType);
   addcInst->setPredicate(builder.duplicateOperand(origPredicate));
   addcInst->setImplAccDst(accDstOpnd);
   addcInst->setOptionOn(InstOpt_AccWrCtrl);
@@ -2186,7 +2190,7 @@ void HWConformityPro::fixMadw(INST_LIST_ITER it, G4_BB *bb) {
       mullhTmpDclHi, execSize == g4::SIMD1 ? builder.getRegionScalar()
                                            : builder.getRegionStride1());
   auto accSrcOpnd =
-      builder.createSrc(builder.phyregpool.getAcc0Reg(), 0, 0,
+      builder.createSrc(ACC, 0, 0,
                         execSize == g4::SIMD1 ? builder.getRegionScalar()
                                               : builder.getRegionStride1(),
                         tmpType);
