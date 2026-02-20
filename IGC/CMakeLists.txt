@@ -24,6 +24,14 @@ set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 # Default languages: C, C++.
 project(IGC)
 
+# Save the user flags and append them at the end so that they take precedence.
+
+set(USER_CXX_FLAGS ${CMAKE_CXX_FLAGS})
+set(CMAKE_CXX_FLAGS "")
+
+set(USER_C_FLAGS ${CMAKE_C_FLAGS})
+set(CMAKE_C_FLAGS "")
+
 if(UNIX)
   include(GNUInstallDirs)
 endif()
@@ -1821,6 +1829,24 @@ if(UNIX)
   target_link_libraries("${IGC_BUILD__PROJ__igc_dll}" PRIVATE -Wl,--version-script="${IGC_BUILD__PROJ_LINKER_SCRIPT_FULL_PATH}")
 
 endif()
+
+function(apply_user_flags FLAG_TYPE)
+  set(USER_FLAGS "USER_${FLAG_TYPE}_FLAGS")
+  if(NOT ${${USER_FLAGS}} STREQUAL "")
+    message("Appending user passed CMAKE_${FLAG_TYPE}_FLAGS: `${${USER_FLAGS}}`")
+    igc_config_flag_apply_settings(
+        CompilerOptions
+        CMAKE_${FLAG_TYPE}_FLAGS
+        ALL_PATTERN ""
+        SET_RAW
+          ${${USER_FLAGS}}
+    )
+  endif()
+endfunction()
+
+# Append the user flags at the very end so they take precedence.
+apply_user_flags(CXX)
+apply_user_flags(C)
 
 if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU" AND
     CMAKE_CXX_COMPILER_VERSION VERSION_LESS 9)
