@@ -1962,7 +1962,13 @@ DECLARE_IGC_REGKEY(bool, AllowConstMadOpMovToReg, false,
                    "vISA for the constant operand due to it not fitting as an imm16 operand. At this point, the "
                    "generated asm likely will fall back onto mul+add for the main case where src1 is the constant",
                    false)
-
+DECLARE_IGC_REGKEY(
+    bool, AllowNonMulMemOpMadChainReassoc, false,
+    "Enable reassociation in fmul+fadd chain to pull last fadd operand to the front even when it is a result of a "
+    "memory operation. This will match one more mad instruction for the group at the expense of shortening the "
+    "dependency distance from a mem load of the fadd operand to the first fmul+fadd in the chain.",
+    false)
+DECLARE_IGC_REGKEY(DWORD, MadChainReassocMaxDepth, 3, "Maximum depth of fmul+fadd tree to do reassociation for", false)
 DECLARE_IGC_GROUP("Generating precompiled headers")
 DECLARE_IGC_REGKEY(bool, ApplyConservativeRastWAHeader, true,
                    "Apply WaConservativeRasterization for the platforms enabled", false)

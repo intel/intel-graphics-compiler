@@ -40,20 +40,18 @@ SPDX-License-Identifier: MIT
 #include "Compiler/IGCPassSupport.h"
 #include "common/debug/Debug.hpp"
 #include "common/igc_regkeys.hpp"
-#include "common/LLVMUtils.h"
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/ADT/Statistic.h>
 #include <llvm/BinaryFormat/Dwarf.h>
 #include <llvm/IR/Constants.h>
 #include <llvm/IR/Instructions.h>
+#include <llvm/IR/InstIterator.h>
 #include <llvm/IR/Intrinsics.h>
 #include <llvm/Transforms/Utils/Cloning.h>
-#include <llvm/Transforms/Utils/Local.h>
 #include <llvm/Pass.h>
 #include <llvm/IR/InstVisitor.h>
 #include <llvm/IR/PatternMatch.h>
-#include <llvm/Analysis/TargetLibraryInfo.h>
-#include <llvm/Analysis/LoopPass.h>
+#include <llvm/Analysis/LoopInfo.h>
 #include "llvm/IR/DebugInfo.h"
 
 #if LLVM_VERSION_MAJOR >= 22
@@ -2206,51 +2204,141 @@ void CustomUnsafeOptPass::visitIntrinsicInst(IntrinsicInst &I) {
   }
 }
 
-// Search for reassociation candidate.
-static bool searchFAdd(Instruction *DefI, Instruction *UseI, unsigned &level) {
-  // Could search further, however we need to rewrite
-  // instructions along the path. So limit this two
-  // levels, which should cover common cases.
-  if (level >= 2)
-    return false;
-  if (DefI->getParent() != UseI->getParent() || !DefI->hasOneUse() || UseI->user_empty())
-    return false;
-  if (UseI->getOpcode() != Instruction::FAdd && UseI->getOpcode() != Instruction::FSub)
-    return false;
+// Helper to get the memory load instruction that a value depends on (or nullptr if none).
+// For FMul instructions, also checks operands one level deep to detect T0 = fmul(load, x) patterns.
+Instruction *CustomUnsafeOptPass::getMemoryLoadSource(Value *V) {
+  if (!V)
+    return nullptr;
 
-  // Swap operands such DefI is always the LHS in UseI.
-  Value *Op = UseI->getOperand(1);
-  bool IsFAdd = UseI->getOpcode() == Instruction::FAdd;
-  if (DefI == Op) {
-    if (IsFAdd) {
-      cast<BinaryOperator>(UseI)->swapOperands();
-      Op = UseI->getOperand(1);
-    } else {
-      return false;
+  auto *I = dyn_cast<Instruction>(V);
+  if (!I)
+    return nullptr;
+
+  if (isa<ExtractElementInst>(I))
+    return getMemoryLoadSource(I->getOperand(0));
+
+  if (isa<LoadInst>(I))
+    return I;
+
+  if (auto *GII = dyn_cast<GenIntrinsicInst>(I)) {
+    GenISAIntrinsic::ID ID = GII->getIntrinsicID();
+    if (ID == GenISAIntrinsic::GenISA_ldraw_indexed || ID == GenISAIntrinsic::GenISA_ldrawvector_indexed)
+      return I;
+  }
+
+  // For FMul, check operands to detect T0 = fmul(load, x) patterns
+  // Only recurse into FMul since that's our MAD candidate pattern
+  if (auto *BinOp = dyn_cast<BinaryOperator>(I)) {
+    if (BinOp->getOpcode() == Instruction::FMul) {
+      if (Instruction *LoadSrc = getMemoryLoadSource(BinOp->getOperand(0)))
+        return LoadSrc;
+      if (Instruction *LoadSrc = getMemoryLoadSource(BinOp->getOperand(1)))
+        return LoadSrc;
     }
   }
 
-  // The rhs is not mul, so could be folded into a mad.
-  auto RHS = dyn_cast<Instruction>(Op);
-  if (RHS && RHS->getOpcode() != Instruction::FMul)
-    return true;
-
-  // For simplicity, only allow the last level to be fsub.
-  if (!IsFAdd)
-    return false;
-
-  return searchFAdd(UseI, UseI->user_back(), ++level);
+  return nullptr;
 }
 
-// Match and re-associate arithmetic computation to emit more
-// mad instructions. E.g.
+// Search for a chain of fadd/fsub instructions where one operand is always a fmul
+// and collect them in order. Return whether a chain was found
+bool CustomUnsafeOptPass::collectMadChain(BinaryOperator *Root, SmallVectorImpl<MadChainNode> &Chain) {
+  Chain.clear();
+
+  // Add root operands as first two chain nodes:
+  // Chain[0]: T0 (A * B) - always positive relative to itself
+  // Chain[1]: T1 (C * D) - subtracted if Root is FSub
+  bool RootIsFSub = Root->getOpcode() == Instruction::FSub;
+  Chain.emplace_back(nullptr, Root->getOperand(0), false, false);   // T0: pseudo-node
+  Chain.emplace_back(Root, Root->getOperand(1), RootIsFSub, false); // T1: with Root instruction
+
+  Instruction *Current = Root;
+  bool Found = false;
+  // +1 to account for the pseudo-node at the start of the chain
+  const unsigned maxChainSize = IGC_GET_FLAG_VALUE(MadChainReassocMaxDepth) + 1;
+  while (Chain.size() < maxChainSize) {
+    // Must have single use to continue the chain
+    if (!Current->hasOneUse())
+      break;
+
+    Instruction *User = dyn_cast<Instruction>(*Current->user_begin());
+    // Ensure single user is in same basic block as root, do not want to reassociate across BBs
+    if (!User || User->getParent() != Root->getParent())
+      break;
+
+    // User must be fadd or fsub
+    auto *BinOp = dyn_cast<BinaryOperator>(User);
+    if (!BinOp || !(BinOp->getOpcode() == Instruction::FAdd || BinOp->getOpcode() == Instruction::FSub) ||
+        !allowUnsafeMathOpt(m_ctx, *BinOp))
+      break;
+
+    // Determine chain position and operation type
+    bool ChainIsOp0 = BinOp->getOperand(0) == Current;
+    bool IsFSub = BinOp->getOpcode() == Instruction::FSub;
+    Value *OtherOp = ChainIsOp0 ? BinOp->getOperand(1) : BinOp->getOperand(0);
+
+    // Store node with current sign (Based on fsub instruction and operand index of OtherOp)
+    // True sign will be computed in backward pass
+    Chain.emplace_back(BinOp, OtherOp, (IsFSub && ChainIsOp0), (IsFSub && !ChainIsOp0));
+
+    // Check if the other operand is a multiply (chain continues) or not (chain ends)
+    auto *OtherInst = dyn_cast<BinaryOperator>(OtherOp);
+    if (OtherInst && OtherInst->getOpcode() == Instruction::FMul) {
+      // If the other operand is a multiply, it must also have fast math flags if we want to continue the chain
+      if (!allowUnsafeMathOpt(m_ctx, *OtherInst)) {
+        // Not a candidate for combining with User to become a mad instruction
+        break;
+      } else {
+        // Otherwise, continue up the chain
+        Current = User;
+      }
+    } else {
+      // If the other operand is NOT a multiply, we found the end of the chain
+      // This is the operand we want to reassociate with the first multiply
+      Found = true;
+      break;
+    }
+  }
+
+  // conditions not satisfied, return false even if partial chain found
+  if (!Found)
+    return false;
+
+  // Backward pass: compute final signs for each operand
+  // Encountering CausesChainNegation=true while iterating in reverse order:
+  // found "OtherOp - Chain" pattern, negate all earlier terms
+  bool NegatePrevOps = false;
+  for (auto ChainBinOp = Chain.rbegin(); ChainBinOp != Chain.rend(); ChainBinOp++) {
+    // Final sign = immediate sign XOR'd with accumulated suffix negations
+    ChainBinOp->IsOtherSubtracted = ChainBinOp->IsOtherSubtracted ^ NegatePrevOps;
+
+    // If this node causes chain negation, flip the signs of earlier nodes
+    if (ChainBinOp->CausesChainNegation)
+      NegatePrevOps = !NegatePrevOps;
+  }
+
+  return true;
+}
+
+// Match and re-associate arithmetic computation to emit one more mad instruction per group.
+// E.g.
+// For a tree of arbitrary depth:
+// t0 = A * B
+// t1 = C * D
+// t2 = E * F
+// ...
+// tN = X * Y
+// OP = {fadd, fsub}
+// sum = t0 OP t1 OP t2 OP ... OP tN OP Candidate
+// where Candidate is not from a multiply, and not the result of a mem op (regkey)
 //
-// a * b + c * d +/- e -> MUL, MAD, ADD
+// Becomes:
+// t0 = A * B
+// ...
+// t0new = t0 OP Candidate   // combines to MAD
+// sum = t0new OP t1 OP t2 OP ... OP tN  // Chain of MADs
 //
-// After reassociation, this becomes
-//
-// a * b +/- e + c * d -> MAD, MAD
-//
+// This only reassociates Candidate to pair with the first multiply (A * B), preserving all other multiply orderings.
 void CustomUnsafeOptPass::reassociateMulAdd(Function &F) {
   if (m_disableReorderingOpt) {
     return;
@@ -2266,85 +2354,150 @@ void CustomUnsafeOptPass::reassociateMulAdd(Function &F) {
   }
 
   using namespace PatternMatch;
+  SmallVector<SmallVector<MadChainNode>> Candidates;
+  for (auto &I : instructions(F)) {
+    BinaryOperator *BinOp = dyn_cast<BinaryOperator>(&I);
+    if (!BinOp || !allowUnsafeMathOpt(m_ctx, *BinOp))
+      continue;
 
-  for (auto &BB : F) {
-    for (auto I = BB.begin(); I != BB.end(); /*Empty*/) {
-      Instruction *Inst = &*I++;
-      BinaryOperator *BinOp = dyn_cast<BinaryOperator>(Inst);
-      if (!BinOp || !allowUnsafeMathOpt(m_ctx, *BinOp))
-        continue;
-      Value *A, *B, *C, *D;
-      // Match Exp = A * B + C * D with a single use so that
-      // it is benefical to fold one FSub/FAdd with A * B.
-      if (match(Inst, m_OneUse(m_FAdd(m_FMul(m_Value(A), m_Value(B)), m_FMul(m_Value(C), m_Value(D)))))) {
-        Instruction *L0 = Inst->user_back();
-        unsigned level = 0;
-        if (searchFAdd(Inst, L0, level)) {
-          Value *T0 = Inst->getOperand(0);
-          Value *T1 = Inst->getOperand(1);
+    // Match Exp = A * B {+|-} C * D with a single use so that
+    // it is beneficial to fold one FSub/FAdd with A * B.
+    if (!match(BinOp, m_OneUse(m_FAdd(m_FMul(m_Value(), m_Value()), m_FMul(m_Value(), m_Value())))) &&
+        !match(BinOp, m_OneUse(m_FSub(m_FMul(m_Value(), m_Value()), m_FMul(m_Value(), m_Value())))))
+      continue;
 
-          // rewrite the expression tree
-          if (level == 0) {
-            // t0 = A * B
-            // t1 = C * D
-            // t2 = t0 + t1  // Inst
-            // t3 = t2 - E   // L0
-            //
-            // as
-            //
-            // t0 = A * B
-            // t1 = C * D
-            // t2 = t0 + t1   // Inst
-            // ...
-            // t2n = t0 - E   // new Inst
-            // t3n = t2n + t1 // new L0
-            // t3  = t2 - E   // L0
-            IRBuilder<> Builder(L0);
-            Builder.setFastMathFlags(L0->getFastMathFlags());
-            Value *E = L0->getOperand(1);
-            auto OpKind = BinaryOperator::BinaryOps(L0->getOpcode());
-            Value *NewInst = Builder.CreateBinOp(OpKind, T0, E, Inst->getName());
-            Value *NewL0 = Builder.CreateFAdd(NewInst, T1, L0->getName());
-            L0->replaceAllUsesWith(NewL0);
-            collectForErase(*L0, 1);
-            m_isChanged = true;
-          } else if (level == 1) {
-            // t0 = A * B
-            // t1 = C * D
-            // t2 = E * F
-            // t3 = t0 + t1 // Inst
-            // t4 = t3 + t2 // L0
-            // t5 = t4 - G  // L1
-            //
-            // as
-            //
-            // t0 = A * B
-            // t1 = C * D
-            // t2 = E * F
-            // t3 = t0 + t1  // Inst
-            // t4 = t3 + t2  // L0
-            // ...
-            // t3n = t0 - G   // NewInst
-            // t4n = t3n + t2 // NewL0
-            // t5n = t4n + t1 // NewL1
-            // t5  = t4 - G   // L1
-            Instruction *L1 = L0->user_back();
-            IRBuilder<> Builder(L1);
-            Builder.setFastMathFlags(L1->getFastMathFlags());
-            Value *T2 = L0->getOperand(1);
-            Value *G = L1->getOperand(1);
+    if (!allowUnsafeMathOpt(m_ctx, *cast<BinaryOperator>(BinOp->getOperand(0))) ||
+        !allowUnsafeMathOpt(m_ctx, *cast<BinaryOperator>(BinOp->getOperand(1))))
+      continue;
 
-            auto OpKind = BinaryOperator::BinaryOps(L1->getOpcode());
-            Value *NewInst = Builder.CreateBinOp(OpKind, T0, G, Inst->getName());
-            Value *NewL0 = Builder.CreateFAdd(NewInst, T2, L0->getName());
-            Value *NewL1 = Builder.CreateFAdd(NewL0, T1, L1->getName());
-            L1->replaceAllUsesWith(NewL1);
-            collectForErase(*L1, 2);
-            m_isChanged = true;
-          }
+    // Collect the chain of fadd/fsub instructions above this root
+    SmallVector<MadChainNode> Chain;
+
+    if (!collectMadChain(BinOp, Chain))
+      continue;
+
+    // Check that the final operand is not from a memory load, unless T0 or T1 depends on the same load
+    // (if T0/T1 also depends on the load, reassociating doesn't increase the critical path)
+    // Since T0 vs T1 choice is arbitrary, we can swap them if T1 matches but T0 doesn't.
+    if (IGC_IS_FLAG_DISABLED(AllowNonMulMemOpMadChainReassoc)) {
+      Instruction *CandidateLoadSrc = getMemoryLoadSource(Chain.back().OtherOperand);
+      if (CandidateLoadSrc) {
+        Instruction *T0LoadSrc = getMemoryLoadSource(Chain[0].OtherOperand);
+        Instruction *T1LoadSrc = getMemoryLoadSource(Chain[1].OtherOperand);
+
+        if (CandidateLoadSrc == T0LoadSrc) {
+          // T0 depends on same load as Candidate, proceed as normal
+        } else if (CandidateLoadSrc == T1LoadSrc) {
+          // T1 depends on same load as Candidate but T0 doesn't - swap T0 and T1
+          // This pairs Candidate with the mul that shares its load dependency
+          std::swap(Chain[0].OtherOperand, Chain[1].OtherOperand);
+          std::swap(Chain[0].IsOtherSubtracted, Chain[1].IsOtherSubtracted);
+        } else {
+          // Neither T0 nor T1 depends on the same load as Candidate, skip
+          continue;
         }
       }
     }
+
+    Candidates.push_back(std::move(Chain));
+  }
+
+  // Build a set of all chain instructions to detect conflicts between chains.
+  // This prevents:
+  // - serialization of parallel mul+add chains
+  // - unwanted deletion when one chain's Candidate is another chain's instruction
+  SmallPtrSet<Instruction *, 32> AllChainInsts;
+  for (const auto &Chain : Candidates) {
+    for (size_t i = 1; i < Chain.size(); ++i) {
+      AllChainInsts.insert(Chain[i].Inst);
+    }
+  }
+
+  // Filter out chains whose FinalNonMulOp (Candidate) is part of another chain
+  SmallVector<SmallVector<MadChainNode>> FilteredCandidates;
+  for (auto &Chain : Candidates) {
+    auto *FinalOp = dyn_cast<Instruction>(Chain.back().OtherOperand);
+    // If the Candidate is an instruction that belongs to any chain, skip this chain to avoid serializing parallel
+    // chains or creating poison values
+    if (FinalOp && AllChainInsts.contains(FinalOp))
+      continue;
+    FilteredCandidates.push_back(std::move(Chain));
+  }
+
+  for (auto &Chain : FilteredCandidates) {
+    // Chain layout:
+    // [0]: T0 pseudo-node (Inst=nullptr, OtherOperand=A*B)
+    // [1]: T1 node (Inst=Root, OtherOperand=C*D)
+    // [2..n-1]: intermediate FMul nodes
+    // [n]: leaf node with Candidate (non-FMul terminator)
+    IGC_ASSERT_MESSAGE(Chain.size() >= 3, "Chain must have T0, T1, and at least one other node");
+
+    Value *T0 = Chain[0].OtherOperand;
+    Value *T1 = Chain[1].OtherOperand;
+    bool T0Neg = Chain[0].IsOtherSubtracted;
+    bool T1Neg = Chain[1].IsOtherSubtracted;
+
+    Value *FinalNonMulOp = Chain.back().OtherOperand;
+    bool FinalNonMulOpNeg = Chain.back().IsOtherSubtracted;
+
+    // Get Root and last instruction in the chain for insertion point
+    Instruction *Root = Chain[1].Inst;
+    Instruction *LastChainInst = Chain.back().Inst;
+    IGC_ASSERT(LastChainInst->getOpcode() == Instruction::FAdd || LastChainInst->getOpcode() == Instruction::FSub);
+
+    IRBuilder<> Builder(LastChainInst);
+    Builder.setFastMathFlags(LastChainInst->getFastMathFlags());
+
+    // Build the new expression tree:
+    // Step 1: Pair T0 with Candidate based on their final signs
+    // | T0Neg | FinalNonMulOpNeg |   Expression    |       IR Operation        |
+    // |-------|------------------|-----------------|---------------------------|
+    // | false | false            | +T0 + Candidate | fadd(T0, Candidate)       |
+    // | false | true             | +T0 - Candidate | fsub(T0, Candidate)       |
+    // | true  | false            | -T0 + Candidate | fsub(Candidate, T0)       |
+    // | true  | true             | -T0 - Candidate | fsub(fneg(Candidate), T0) |
+    Value *NewResult;
+    if (!T0Neg && !FinalNonMulOpNeg) {
+      NewResult = Builder.CreateFAdd(T0, FinalNonMulOp);
+    } else if (!T0Neg && FinalNonMulOpNeg) {
+      NewResult = Builder.CreateFSub(T0, FinalNonMulOp);
+    } else if (T0Neg && !FinalNonMulOpNeg) {
+      NewResult = Builder.CreateFSub(FinalNonMulOp, T0);
+    } else {
+      // T0Neg && FinalNonMulOpNeg: -T0 - FinalNonMulOp = -FinalNonMulOp - T0
+      Value *FNeg = Builder.CreateFNeg(FinalNonMulOp);
+      NewResult = Builder.CreateFSub(FNeg, T0);
+    }
+
+    // Step 2: Add T1 with its correct sign
+    Builder.setFastMathFlags(Root->getFastMathFlags());
+    if (!T1Neg) {
+      NewResult = Builder.CreateFAdd(NewResult, T1, Root->getName());
+    } else {
+      NewResult = Builder.CreateFSub(NewResult, T1, Root->getName());
+    }
+
+    // Step 3: Add back the intermediate multiply operands from the chain
+    // (indices 2 to n-1; skip T0, T1, and leaf)
+    for (size_t i = 2; i < Chain.size() - 1; ++i) {
+      Value *MulOp = Chain[i].OtherOperand;
+      IGC_ASSERT(MulOp && isa<BinaryOperator>(MulOp) && cast<BinaryOperator>(MulOp)->getOpcode() == Instruction::FMul);
+      Builder.setFastMathFlags(Chain[i].Inst->getFastMathFlags());
+      if (!Chain[i].IsOtherSubtracted) {
+        NewResult = Builder.CreateFAdd(NewResult, MulOp, Chain[i].Inst->getName());
+      } else {
+        NewResult = Builder.CreateFSub(NewResult, MulOp, Chain[i].Inst->getName());
+      }
+    }
+
+    // Replace the last chain instruction with our new result
+    LastChainInst->replaceAllUsesWith(NewResult);
+
+    // Collect for erase: skip Chain[0] (pseudo-node with Inst=nullptr)
+    for (size_t i = Chain.size(); i > 1; --i) {
+      collectForErase(*Chain[i - 1].Inst);
+    }
+    m_isChanged = true;
   }
 }
 

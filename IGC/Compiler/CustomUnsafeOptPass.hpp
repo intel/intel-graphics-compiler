@@ -14,8 +14,8 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/Pass.h>
 #include <llvm/IR/InstVisitor.h>
-#include "llvm/ADT/SetVector.h"
-#include <llvm/Analysis/LoopInfo.h>
+#include <llvm/ADT/SetVector.h>
+#include <llvm/ADT/SmallVector.h>
 #include "common/LLVMWarningsPop.hpp"
 
 namespace IGC {
@@ -87,6 +87,23 @@ private:
     return newOp;
   }
 
+  // Structure to represent a node in the fmul+fadd chain
+  struct MadChainNode {
+    llvm::Instruction *Inst = nullptr;   // The fadd/fsub instruction
+    llvm::Value *OtherOperand = nullptr; // The non-chain operand (FMul or final value)
+    bool IsOtherSubtracted = false;      // Final sign: true = subtract OtherOperand
+
+    // True if pattern is "OtherOp - Chain" (flips signs of earlier terms)
+    // Temporary flag used during MadChainNode collection, not used after chain is built.
+    bool CausesChainNegation = false;
+
+    MadChainNode(llvm::Instruction *Inst, llvm::Value *OtherOperand, bool IsOtherSubtracted, bool CausesChainNegation)
+        : Inst(Inst), OtherOperand(OtherOperand), IsOtherSubtracted(IsOtherSubtracted),
+          CausesChainNegation(CausesChainNegation) {}
+  };
+
+  llvm::Instruction *getMemoryLoadSource(llvm::Value *V);
+  bool collectMadChain(llvm::BinaryOperator *Root, llvm::SmallVectorImpl<MadChainNode> &Chain);
   void reassociateMulAdd(llvm::Function &F);
 
   void strengthReducePowOrExpLog(llvm::IntrinsicInst *intrin, llvm::Value *base, llvm::Value *exponent, bool isPow);
