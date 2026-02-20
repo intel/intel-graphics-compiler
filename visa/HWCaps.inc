@@ -585,13 +585,7 @@ bool enableACCBeforRA() const {
 }
 
 bool enablePreSchedACC() const {
-  if (kernel.getInt32KernelAttr(Attributes::ATTR_Target) != VISA_3D) {
-    // Do not run pre-RA scheduler for CM unless user forces it.
-    if (!getOption(vISA_preRA_ScheduleForce))
-      return false;
-  }
-
-  return (getOption(vISA_PreSchedForAcc) && (getPlatform() >= Xe2));
+  return getOption(vISA_PreSchedForAcc);
 }
 
 bool hasDoubleAcc() const { return getOption(vISA_hasDoubleAcc); }

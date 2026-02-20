@@ -3103,8 +3103,6 @@ preRA_ACC_Scheduler::preRA_ACC_Scheduler(G4_Kernel &k)
 preRA_ACC_Scheduler::~preRA_ACC_Scheduler() {}
 
 bool preRA_ACC_Scheduler::run() {
-  AccSubPass accSub(*kernel.fg.builder, kernel);
-
   for (auto bb : kernel.fg) {
     if (bb->size() < SMALL_BLOCK_SIZE || bb->size() > LARGE_BLOCK_SIZE) {
       // Skip small and large blocks.
@@ -3118,7 +3116,6 @@ bool preRA_ACC_Scheduler::run() {
     ddd.buildGraphForACC();
     S.scheduleBlockForACC();
     S.commit();
-    accSub.doAccSub(bb);
   }
 
   return true;

@@ -969,11 +969,11 @@ int Optimizer::optimization() {
   // HW workaround before RA
   runPass(PI_preRA_HWWorkaround);
 
-  if (builder.enableACCBeforRA() && builder.enablePreSchedACC()) {
+  if (builder.enablePreSchedACC()) {
     runPass(PI_ACCSchedule);
   }
 
-  if (builder.enableACCBeforRA() && !builder.enablePreSchedACC()) {
+  if (builder.enableACCBeforRA()) {
     runPass(PI_accSubBeforeRA);
   }
 
