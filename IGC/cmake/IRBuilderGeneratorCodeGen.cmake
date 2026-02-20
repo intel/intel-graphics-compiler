@@ -104,6 +104,8 @@ function(generate_irbuilder_headers)
     if(EXISTS ${CLANG_HEADERS})
         set(NOSTDINC_FLAG "-nostdinc")
         set(CLANG_HEADERS_INCLUDE "-isystem" ${CLANG_HEADERS})
+    else()
+        message(WARNING "[Clang] Can't find clang headers in the specified location: ${CLANG_HEADERS}.")
     endif()
 
     # Common clang options
