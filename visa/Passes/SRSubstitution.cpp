@@ -276,9 +276,8 @@ bool SRSubPassAfterRA::isDefinedMultipleTimes(
     std::vector<std::pair<Gen4_Operand_Number, unsigned>> &notRemoveableMap,
     BitSet &definedGRF) {
   G4_Operand *dst = defInst->getDst();
-  unsigned dstSize = (dst->getLinearizedEnd() - dst->getLinearizedStart() +
-                      builder.getGRFSize() - 1) /
-                     builder.getGRFSize();
+  unsigned dstSize = (dst->getLinearizedEnd() / builder.getGRFSize()) -
+                     (dst->getLinearizedStart() / builder.getGRFSize()) + 1;
 
   // Check if the register is defined in definedGRF, if not set it as defined.
   bool definedAlready = false;
@@ -415,12 +414,6 @@ bool SRSubPassAfterRA::isSRCandidateAfterRA(G4_INST *inst,
     G4_INST *defInst = def.first;
 
     G4_Operand *dst = defInst->getDst();
-    unsigned dstSize = (dst->getLinearizedEnd() - dst->getLinearizedStart() +
-                        builder.getGRFSize() - 1) /
-                       builder.getGRFSize();
-    // The startOffset is the offset to the declare
-    unsigned startOffset = dst->getLeftBound() / builder.getGRFSize();
-
     // Multiple defines are not allowed
     if (isDefinedMultipleTimes(defInst, opndNum, dstSrcRegs, immMovs,
                                notRemoveableMap, definedGRF)) {
@@ -435,6 +428,8 @@ bool SRSubPassAfterRA::isSRCandidateAfterRA(G4_INST *inst,
       continue;
     }
 
+    // The startOffset is the offset to the declare
+    unsigned startOffset = dst->getLeftBound() / builder.getGRFSize();
     // Check if the instruction can be removed
     if (isRemoveAble(defInst)) {
       G4_Operand *src = defInst->getSrc(0);
@@ -463,6 +458,8 @@ bool SRSubPassAfterRA::isSRCandidateAfterRA(G4_INST *inst,
           continue;
         }
       }
+      unsigned dstSize = (dst->getLinearizedEnd() / builder.getGRFSize()) -
+                         (dst->getLinearizedStart() / builder.getGRFSize()) + 1;
       for (unsigned offset = startOffset; offset < (startOffset + dstSize);
            offset++) {
         notRemoveableMap.push_back(std::make_pair(opndNum, offset));
@@ -480,8 +477,14 @@ bool SRSubPassAfterRA::isSRCandidateAfterRA(G4_INST *inst,
     nextIter++;
     bool erased = false;
     for (const auto& notdstSrcReg : notRemoveableMap) {
+      G4_INST *removeInst = (*dstSrcRegsIter).inst;
+      unsigned startGRF =
+          removeInst->getDst()->getLinearizedStart() / builder.getGRFSize();
+      unsigned endGRF =
+          removeInst->getDst()->getLinearizedEnd() / builder.getGRFSize();
       if ((*dstSrcRegsIter).opndNum == notdstSrcReg.first &&
-          (*dstSrcRegsIter).offset == notdstSrcReg.second) {
+          !(notdstSrcReg.second < (*dstSrcRegsIter).offset ||
+          notdstSrcReg.second > (*dstSrcRegsIter).offset + endGRF - startGRF)) {
         dstSrcRegsIter = dstSrcRegs.dstSrcMap.erase(dstSrcRegsIter);
         movInstNum--;
         erased = true;
@@ -508,9 +511,8 @@ bool SRSubPassAfterRA::isSRCandidateAfterRA(G4_INST *inst,
     if (j < (int)dstSrcRegs.dstSrcMap.size() &&
         dstSrcRegs.dstSrcMap[j].opndNum == Opnd_src0) {
       int opndSize =
-          (dstSrcRegs.dstSrcMap[j].opnd->getLinearizedEnd() -
-           dstSrcRegs.dstSrcMap[j].opnd->getLinearizedStart() + GRFSize - 1) /
-          GRFSize;
+          (dstSrcRegs.dstSrcMap[j].opnd->getLinearizedEnd() / GRFSize) -
+          (dstSrcRegs.dstSrcMap[j].opnd->getLinearizedStart() / GRFSize) + 1;
       int opndOffset = dstSrcRegs.dstSrcMap[j].offset;
 
       if ((srcOffset >= opndOffset) && (srcOffset < opndOffset + opndSize)) {
@@ -533,9 +535,8 @@ bool SRSubPassAfterRA::isSRCandidateAfterRA(G4_INST *inst,
       if (j < (int)dstSrcRegs.dstSrcMap.size() &&
           dstSrcRegs.dstSrcMap[j].opndNum == Opnd_src1) {
         int opndSize =
-            (dstSrcRegs.dstSrcMap[j].opnd->getLinearizedEnd() -
-             dstSrcRegs.dstSrcMap[j].opnd->getLinearizedStart() + GRFSize - 1) /
-            GRFSize;
+            (dstSrcRegs.dstSrcMap[j].opnd->getLinearizedEnd() / GRFSize) -
+            (dstSrcRegs.dstSrcMap[j].opnd->getLinearizedStart() / GRFSize) + 1;
         int opndOffset = dstSrcRegs.dstSrcMap[j].offset;
 
         if ((src1ffset >= opndOffset) && (src1ffset < opndOffset + opndSize)) {
@@ -576,9 +577,8 @@ bool SRSubPassAfterRA::checkCandidateForLargeGRF(G4_INST *inst,
     if (j < (int)dstSrcRegs.dstSrcMap.size() &&
         dstSrcRegs.dstSrcMap[j].opndNum == Opnd_src0) {
       int opndSize =
-          (dstSrcRegs.dstSrcMap[j].opnd->getLinearizedEnd() -
-           dstSrcRegs.dstSrcMap[j].opnd->getLinearizedStart() + GRFSize - 1) /
-          GRFSize;
+          (dstSrcRegs.dstSrcMap[j].opnd->getLinearizedEnd() / GRFSize) -
+          (dstSrcRegs.dstSrcMap[j].opnd->getLinearizedStart() / GRFSize) + 1;
       int srcOffset = src0->getLeftBound() / GRFSize + i;
       int opndOffset = dstSrcRegs.dstSrcMap[j].offset;
 
@@ -611,9 +611,8 @@ bool SRSubPassAfterRA::checkCandidateForLargeGRF(G4_INST *inst,
       if (j < (int)dstSrcRegs.dstSrcMap.size() &&
           dstSrcRegs.dstSrcMap[j].opndNum == Opnd_src1) {
         int opndSize =
-            (dstSrcRegs.dstSrcMap[j].opnd->getLinearizedEnd() -
-             dstSrcRegs.dstSrcMap[j].opnd->getLinearizedStart() + GRFSize - 1) /
-            GRFSize;
+            (dstSrcRegs.dstSrcMap[j].opnd->getLinearizedEnd() / GRFSize) -
+            (dstSrcRegs.dstSrcMap[j].opnd->getLinearizedStart() / GRFSize) + 1;
         int srcOffset = src1->getLeftBound() / GRFSize + i;
         int opndOffset = dstSrcRegs.dstSrcMap[j].offset;
 
@@ -719,9 +718,8 @@ bool SRSubPassAfterRA::replaceWithSendiAfterRA(G4_BB *bb,
     if (j < (int)dstSrcRegs.dstSrcMap.size() &&
         dstSrcRegs.dstSrcMap[j].opndNum == Opnd_src0) {
       int opndSize =
-          (dstSrcRegs.dstSrcMap[j].opnd->getLinearizedEnd() -
-           dstSrcRegs.dstSrcMap[j].opnd->getLinearizedStart() + GRFSize - 1) /
-          GRFSize;
+          (dstSrcRegs.dstSrcMap[j].opnd->getLinearizedEnd() / GRFSize) -
+          (dstSrcRegs.dstSrcMap[j].opnd->getLinearizedStart() / GRFSize) + 1;
       int srcOffset = src0->getLeftBound() / GRFSize + i;
       int opndOffset = dstSrcRegs.dstSrcMap[j].offset;
 
@@ -763,9 +761,8 @@ bool SRSubPassAfterRA::replaceWithSendiAfterRA(G4_BB *bb,
       if (j < (int)dstSrcRegs.dstSrcMap.size() &&
           dstSrcRegs.dstSrcMap[j].opndNum == Opnd_src1) {
         int opndSize =
-            (dstSrcRegs.dstSrcMap[j].opnd->getLinearizedEnd() -
-             dstSrcRegs.dstSrcMap[j].opnd->getLinearizedStart() + GRFSize - 1) /
-            GRFSize;
+            (dstSrcRegs.dstSrcMap[j].opnd->getLinearizedEnd() / GRFSize) -
+            (dstSrcRegs.dstSrcMap[j].opnd->getLinearizedStart() / GRFSize) + 1;
         int srcOffset = src1->getLeftBound() / GRFSize + i;
         int opndOffset = dstSrcRegs.dstSrcMap[j].offset;
 
