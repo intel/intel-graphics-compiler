@@ -401,6 +401,10 @@ void AddAnalysisPasses(CodeGenContext &ctx, IGCPassManager &mpm) {
     mpm.add(new StackOverflowDetectionPass(StackOverflowDetectionPass::Mode::RemoveDummyCalls));
   }
 
+  if (ctx.platform.hasEfficient64bEnabled() && IGC_IS_FLAG_ENABLED(EnableSinkPointerConstAdd)) {
+    mpm.add(createSinkPointerConstAddPass());
+  }
+
   //
   // Generally, passes that change IR should be prior to this place!
   //
