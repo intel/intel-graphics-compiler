@@ -54,9 +54,11 @@ static bool ValueOnlyUsedByEEI(Value *V) {
 bool ResourceLoopAnalysis::runOnFunction(Function &F) {
   auto WI = &(getAnalysis<WIAnalysis>());
   CTX = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+  LoopMap.clear();
 
   if (!IGC_IS_FLAG_ENABLED(FuseResourceLoop) || CTX->platform.GetPlatformFamily() < IGFX_XE_HPG_CORE) {
-    return true;
+    // should return false if not supported or no fuse resource loop needed
+    return false;
   }
   for (Function::iterator BI = F.begin(), BE = F.end(); BI != BE; ++BI) {
     BasicBlock *BB = &*BI;
@@ -225,6 +227,7 @@ bool ResourceLoopAnalysis::runOnFunction(Function &F) {
                     .Extension("txt");
     printResourceLoops(Debug::Dump(name, Debug::DumpType::DBG_MSG_TEXT).stream(), &F);
   }
+  // RLA is an analysis pass, it should return false.
   return false;
 }
 
