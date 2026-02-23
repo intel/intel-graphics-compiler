@@ -541,6 +541,7 @@ if(MSVC)
       ALIAS CompileAsCpp               "/TP"
       ALIAS CompileAsDefault           CompileAs REMOVE_GROUP
       ALIAS DebugInfoDisabled          DebugInfoFormat REMOVE_GROUP
+      ALIAS DebugInfoEmbedded          "/Z7"
       ALIAS DebugInfoProgramDatabase   "/Zi"
       ALIAS DisableSpecificWarnings    "/wd4267" "/wd4273" "/wd4091" "/wd4996" "/wd4291"
       ALIAS DisableSpecificWarningsCpp
@@ -588,6 +589,7 @@ elseif(_igc_compiler_is_gnu)
       ALIAS CompileAsCpp
       ALIAS CompileAsDefault
       ALIAS DebugInfoDisabled          "-g0"
+      ALIAS DebugInfoEmbedded          "-g"
       ALIAS DebugInfoProgramDatabase   "-g"
       ALIAS DisableSpecificWarnings    "-Wno-misleading-indentation" "-Wno-parentheses" "-Wno-sizeof-array-div" "-Wno-stringop-truncation" "-Wno-stringop-overflow" "-Wno-char-subscripts"
       ALIAS DisableSpecificWarningsCpp "-Wno-overloaded-virtual" "-Wno-reorder" "-Wno-nonnull-compare" "-Wno-odr"
@@ -647,6 +649,7 @@ elseif(_igc_compiler_is_clang)
       ALIAS CompileAsCpp
       ALIAS CompileAsDefault
       ALIAS DebugInfoDisabled          DebugInfoFormat REMOVE_GROUP
+      ALIAS DebugInfoEmbedded          "-g"
       ALIAS DebugInfoProgramDatabase   "-g"
       ALIAS DisableSpecificWarnings    "-Wno-error=unknown-warning-option" "-Wno-nontrivial-memcall"
       ALIAS DisableSpecificWarningsCpp
@@ -688,6 +691,7 @@ else()
       ALIAS CompileAsCpp
       ALIAS CompileAsDefault
       ALIAS DebugInfoDisabled
+      ALIAS DebugInfoEmbedded
       ALIAS DebugInfoProgramDatabase
       ALIAS DisableSpecificWarnings
       ALIAS DisableSpecificWarningsCpp
@@ -826,7 +830,7 @@ foreach(_compilerFlagName IN ITEMS "CMAKE_CXX_FLAGS" "CMAKE_C_FLAGS")
       "${_compilerFlagName}"
       ALL_PATTERN_NOINHERIT ""
       SET
-        DebugInfoProgramDatabase
+        DebugInfoEmbedded
         OptimizeSize
         RtMultiThreadedStatic
     )
@@ -1735,6 +1739,12 @@ add_library("${IGC_BUILD__PROJ__igc_dll}" SHARED
     ${IGC_BUILD__HDR__IGC__igc_dll}
     ${IGC_BUILD__RES__IGC__igc_dll}
 )
+
+# igc_dll is not part of the PCH reuse system and compiles fewer files directly,
+# so it can safely use /Zi (shared PDB) for smaller .obj files during linking.
+if(MSVC)
+  target_compile_options("${IGC_BUILD__PROJ__igc_dll}" PRIVATE /Zi)
+endif()
 
 target_compile_definitions(${IGC_BUILD__PROJ__igc_dll} PRIVATE VER_ORIGINALNAME="$<TARGET_FILE_NAME:${IGC_BUILD__PROJ__igc_dll}>")
 
