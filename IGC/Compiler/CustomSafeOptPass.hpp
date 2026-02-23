@@ -109,6 +109,7 @@ private:
   bool lower64bto32b(llvm::BinaryOperator &AndInst);
   llvm::Value *analyzeTreeForTrunc64bto32b(const llvm::Use &OperandUse,
                                            llvm::SmallVector<llvm::BinaryOperator *, 8> &OpsToDelete);
+  bool packVecI32ToVecI64(llvm::BinaryOperator &OrInst);
 };
 
 class TrivialUnnecessaryTGMFenceElimination : public llvm::FunctionPass,

@@ -278,6 +278,86 @@ void CustomSafeOptPass::visitAnd(BinaryOperator &I) {
   I.eraseFromParent();
 }
 
+// Pattern match packing of two i32 elements from a vector into a single i64.
+// This optimization converts:
+//   %20 = load <N x i32>, <N x i32> addrspace(2)* %19, align 4  (N can be 2, 4, 6, or 8)
+//   %21 = extractelement <N x i32> %20, i64 0
+//   %22 = extractelement <N x i32> %20, i64 1
+//   %23 = zext i32 %21 to i64
+//   %24 = zext i32 %22 to i64
+//   %25 = shl nuw i64 %24, 32
+//   %ans = or i64 %25, %23
+// Into:
+//   %20 = bitcast <N x i32> %load to <N/2 x i64>
+//   %ans = extractelement <N/2 x i64> %20, i64 0
+//
+// Supports vectors up to <8 x i32> packing into <4 x i64>.
+// Valid element pairs: (0,1), (2,3), (4,5), (6,7) mapping to i64 indices 0, 1, 2, 3.
+bool CustomSafeOptPass::packVecI32ToVecI64(BinaryOperator &OrInst) {
+  using namespace llvm::PatternMatch;
+
+  // Check if this is an i64 OR operation
+  if (!OrInst.getType()->isIntegerTy(64))
+    return false;
+
+  // Match the pattern:
+  // or (shl (zext (extractelement %vec, IdxHi)), 32), (zext (extractelement %vec, IdxLo))
+  Value *VecLo = nullptr;
+  Value *VecHi = nullptr;
+  uint64_t IdxLoVal = 0;
+  uint64_t IdxHiVal = 0;
+
+  auto ExtractLoPattern = m_ExtractElt(m_Value(VecLo), m_ConstantInt(IdxLoVal));
+  auto ExtractHiPattern = m_ExtractElt(m_Value(VecHi), m_ConstantInt(IdxHiVal));
+  auto ZExtLoPattern = m_ZExt(ExtractLoPattern);
+  auto ZExtHiPattern = m_ZExt(ExtractHiPattern);
+  auto ShlPattern = m_Shl(ZExtHiPattern, m_SpecificInt(32));
+  auto FullPattern = m_c_Or(ShlPattern, ZExtLoPattern);
+
+  if (!match(&OrInst, FullPattern))
+    return false;
+
+  // Both extracts must be from the same vector
+  if (VecLo != VecHi)
+    return false;
+
+  // The source must be a vector of i32 elements
+  auto *VecTy = dyn_cast<IGCLLVM::FixedVectorType>(VecLo->getType());
+  if (!VecTy || !VecTy->getElementType()->isIntegerTy(32))
+    return false;
+
+  unsigned NumElements = VecTy->getNumElements();
+  // Support vectors with 2, 4, 6, or 8 i32 elements (must be even for i64 packing)
+  if (NumElements < 2 || NumElements > 8 || (NumElements % 2) != 0)
+    return false;
+
+  // Check for valid element pairs: (0,1), (2,3), (4,5), (6,7)
+  // IdxLo must be even, IdxHi must be IdxLo + 1
+  if ((IdxLoVal % 2) != 0 || IdxHiVal != IdxLoVal + 1)
+    return false;
+
+  // Ensure indices are within bounds
+  if (IdxHiVal >= NumElements)
+    return false;
+
+  // The result index in the packed i64 vector
+  uint64_t ResultIdx = IdxLoVal / 2;
+
+  // Create the optimized code
+  IRBuilder<> Builder(&OrInst);
+
+  // Bitcast the <N x i32> vector to <N/2 x i64>
+  Type *NewVecTy = IGCLLVM::FixedVectorType::get(Builder.getInt64Ty(), NumElements / 2);
+  Value *BitCasted = Builder.CreateBitCast(VecLo, NewVecTy);
+
+  // Extract the appropriate i64 element
+  Value *Result = Builder.CreateExtractElement(BitCasted, Builder.getInt64(ResultIdx));
+
+  // Replace the or instruction
+  OrInst.replaceAllUsesWith(Result);
+  return true;
+}
+
 // Replace sub_group shuffle with index = sub_group_id ^ xor_value,
 // where xor_value is a compile-time constant to intrinsic,
 // which will produce sequence of movs instead of using indirect access
@@ -1924,6 +2004,8 @@ void CustomSafeOptPass::visitBinaryOperator(BinaryOperator &I) {
       matchReverse<unsigned long long>(I);
       break;
     }
+
+    packVecI32ToVecI64(I);
   }
 
   if (I.getType()->isIntegerTy()) {
