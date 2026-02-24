@@ -71,6 +71,14 @@ bool FixSampleDInputsPass::runOnFunction(Function &F) {
           sampleInst->setArgOperand(7, sampleInst->getArgOperand(10));
           sampleInst->setArgOperand(10, zero);
         } else if (sampleInst->getIntrinsicID() == GenISAIntrinsic::GenISA_sampleDCMlodptr) {
+          // HW sample_dc_mlod message does not support
+          // programmable offsets and it is split into 4
+          // sample_po_c messages in EmitPass::emulateSampleD().
+          CodeGenContext *ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+          if (ctx->platform.supportsProgrammableOffsetsSampleBCAndSampleDC() &&
+              (sampleInst->hasDynamicOffsets() || !sampleInst->hasImmediateOffsetsInS3Range())) {
+            continue;
+          }
        // Combine the array index and mlod for 2DArray textures
        // and place it in the mlod_r param for other texture
        // types just copy mlod over to the mlod_r.

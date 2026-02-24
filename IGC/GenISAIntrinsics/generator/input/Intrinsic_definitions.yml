@@ -13036,3 +13036,45 @@ intrinsics:
                 comment: "predicate flag"
         attributes:
             - !AttributeID "NoUnwind"
+    - !<IntrinsicDefinition>
+        name: "GenISA_ExtendedCacheControlRayQuery"
+        comment: "Extended Cache Control"
+        return_definition: !<ReturnDefinition>
+            type_definition: *void
+            comment: ""
+        arguments:
+            - !<ArgumentDefinition>
+                name: Arg0
+                type_definition: *i32
+                comment: "Cache Control Size"
+            - !<ArgumentDefinition>
+                name: Arg1
+                type_definition: *i32
+                comment: "Cache policy"
+            - !<ArgumentDefinition>
+                name: Arg2
+                type_definition: *i8
+                comment: "Cache Control Operation"
+            - !<ArgumentDefinition>
+                name: Arg3
+                type_definition: *any
+                comment: "Stack address base"
+            - !<ArgumentDefinition>
+                name: Arg4
+                type_definition: *i1
+                comment: "Predicate flag"
+        attributes:
+            - !AttributeID "NoUnwind"
+    - !<IntrinsicDefinition>
+        name: "GenISA_PostProcessRayQueryReturn"
+        comment: "Raytracing: Execute post processing on RayQuery Return data"
+        return_definition: !<ReturnDefinition>
+            type_definition: *i32
+            comment: ""
+        arguments:
+            - !<ArgumentDefinition>
+                name: Arg0
+                type_definition: *i32
+                comment: "RayQuery Return data"
+        attributes:
+            - !AttributeID "NoUnwind"

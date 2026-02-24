@@ -103,6 +103,11 @@ void BIFFlagCtrlResolution::FillFlagCtrl() {
   BIF_FLAG_CTRL_SET(HasNativeSigm, PtrCGC->platform.supportsNativeSigmoid());
   BIF_FLAG_CTRL_SET(UseNativeFP32LocalAtomicAdd, PtrCGC->platform.hasFP32LocalAtomicAdd());
   BIF_FLAG_CTRL_SET(HasEfficient64bEnabled, PtrCGC->platform.hasEfficient64bEnabled());
+  BIF_FLAG_CTRL_SET(HasNativeSinCos, PtrCGC->platform.supportsNativeSinCos());
+  BIF_FLAG_CTRL_SET(HasAccurateLog2, PtrCGC->platform.hasAccurateLog2());
+  BIF_FLAG_CTRL_SET(SupportsRayTracingExtendedCacheControl, PtrCGC->platform.supportsRayTracingExtendedCacheControl());
+  BIF_FLAG_CTRL_SET(IsRayQueryReturnOptimizationPackedStatusEnabled,
+                    PtrCGC->platform.isRayQueryReturnOptimizationPackedStatusEnabled());
   BIF_FLAG_CTRL_SET(IsRayQueryReturnOptimizationEnabled, PtrCGC->platform.isRayQueryReturnOptimizationEnabled());
 
   // NOTE: No need to check for UseLegacyBindlessMode,

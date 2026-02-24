@@ -264,7 +264,15 @@ StatusPrivArr2Reg LowerGEPForPrivMem::CheckIfAllocaPromotable(llvm::AllocaInst *
   bool useAssumeUniform = pAlloca->getMetadata("UseAssumeUniform") != nullptr;
   unsigned int allocaSize = extractConstAllocaSize(pAlloca);
   unsigned int allowedAllocaSizeInBytes = MAX_ALLOCA_PROMOTE_GRF_NUM * 4;
-  unsigned int SIMDSize = numLanes(m_ctx->platform.getMinDispatchMode());
+  SIMDMode simdMode = SIMDMode::UNKNOWN;
+  if ((m_ctx->type == ShaderType::VERTEX_SHADER) || (m_ctx->type == ShaderType::HULL_SHADER) ||
+      (m_ctx->type == ShaderType::DOMAIN_SHADER) || (m_ctx->type == ShaderType::GEOMETRY_SHADER)) {
+    simdMode = m_ctx->GetSIMDMode();
+  } else {
+    simdMode = m_ctx->platform.getMinDispatchMode();
+  }
+
+  unsigned int SIMDSize = numLanes(simdMode);
 
   // consider GRF width in alloca register promotion limit
   allowedAllocaSizeInBytes = allowedAllocaSizeInBytes * m_ctx->platform.getGRFSize() / 32;

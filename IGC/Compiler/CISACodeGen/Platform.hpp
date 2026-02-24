@@ -128,6 +128,14 @@ public:
     return isCoreChildOf(IGFX_XE3P_CORE) && IGC_IS_FLAG_DISABLED(DisableSWManagedStack);
   }
 
+  bool forceMaxGrf256() const {
+    switch (m_platformInfo.eRenderCoreFamily) {
+    case IGFX_XE3P_CORE:
+      return true;
+    default:
+      return false;
+    }
+  }
 
   bool hasEngineIDEnabled() const { return isCoreChildOf(IGFX_XE3P_CORE) && IGC_IS_FLAG_DISABLED(DisableEngineID); }
   bool SupportSurfaceInfoMessage() const { return m_platformInfo.eRenderCoreFamily >= IGFX_GEN9_CORE; }
@@ -522,12 +530,9 @@ public:
 
   bool hasScratchSurface() const { return isProductChildOf(IGFX_XE_HP_SDV); }
 
-  bool has16MBPerThreadScratchSpace() const {
-    return isProductChildOf(IGFX_CRI);
-  }
-  bool canCoalesceAtomicWithNoReturn() const {
-    return isProductChildOf(IGFX_CRI);
-  }
+  bool has16MBPerThreadScratchSpace() const { return isProductChildOf(IGFX_NVL); }
+  bool canCoalesceAtomicWithNoReturn() const { return isProductChildOf(IGFX_NVL); }
+  bool canCoalesceAtomicWithReturn() const { return false; }
 
   bool hasAtomicPreDec() const { return !isProductChildOf(IGFX_XE_HP_SDV); }
 
@@ -704,17 +709,52 @@ public:
   // the same approach as OCL - using this function for max supported size and
   // getPreferredRayQuerySIMDSize() for preferred size.
   SIMDMode getMaxRayQuerySIMDSize(ShaderType shaderType) const {
-      if (isCoreChildOf(IGFX_XE_HPG_CORE)) {
-        return SIMDMode::SIMD16;
+    if (isCoreChildOf(IGFX_XE3P_CORE)) {
+      if (hasEfficient64bEnabled() && hasSWManagedStackCountEnabled()) {
+        // SIMD16 should be preferred in async-RT (DZR 1.0) draw calls and CS/PS draw calls with sync-RT (DXR 1.1)
+        // Enabling SIMD32 for shaders with ray queries is possible with control flags.
+        if (shaderType == ShaderType::COMPUTE_SHADER || shaderType == ShaderType::RAYTRACING_SHADER ||
+            shaderType == ShaderType::PIXEL_SHADER) {
+          uint32_t allBitsOn = FLAG_PREFER_SIMD32_COMPUTE_RAY_TRACING_SHADERS_WITH_SYNC_RT_CALLS &
+                               FLAG_PREFER_SIMD32_COMPUTE_RAY_TRACING_SHADERS &
+                               FLAG_PREFER_SIMD32_COMPUTE_SHADERS_WITH_SYNC_RT_CALLS &
+                               FLAG_PREFER_SIMD32_COMPUTE_SHADERS;
+          if (IGC_IS_FLAG_ENABLED(PreferSIMD32ForCompute) &&
+              ((IGC_GET_FLAG_VALUE(PreferSIMD32ForComputeSubset) == FLAG_PREFER_SIMD32_COMPUTE_DEFAULT) ||
+               (IGC_GET_FLAG_VALUE(PreferSIMD32ForComputeSubset) & allBitsOn) ||
+               (shaderType == ShaderType::COMPUTE_SHADER &&
+                (IGC_GET_FLAG_VALUE(PreferSIMD32ForComputeSubset) & FLAG_PREFER_SIMD32_COMPUTE_SHADERS) &&
+                (IGC_GET_FLAG_VALUE(PreferSIMD32ForComputeSubset) &
+                 FLAG_PREFER_SIMD32_COMPUTE_SHADERS_WITH_SYNC_RT_CALLS)) |
+                   (shaderType == ShaderType::RAYTRACING_SHADER &&
+                    (IGC_GET_FLAG_VALUE(PreferSIMD32ForComputeSubset) &
+                     FLAG_PREFER_SIMD32_COMPUTE_RAY_TRACING_SHADERS) &&
+                    (IGC_GET_FLAG_VALUE(PreferSIMD32ForComputeSubset) &
+                     FLAG_PREFER_SIMD32_COMPUTE_RAY_TRACING_SHADERS_WITH_SYNC_RT_CALLS)))) {
+            return SIMDMode::SIMD32;
+          } else {
+            return SIMDMode::SIMD16;
+          }
+        } else {
+          return SIMDMode::SIMD32; // Other than PS,CS,RT
+        }
       } else {
-        IGC_ASSERT_MESSAGE(0, "Unsupported platform!");
-        return SIMDMode::UNKNOWN;
+        return SIMDMode::SIMD16;
       }
+    } else if (isCoreChildOf(IGFX_XE_HPG_CORE)) {
+      return SIMDMode::SIMD16;
+    } else {
+      IGC_ASSERT_MESSAGE(0, "Unsupported platform!");
+      return SIMDMode::UNKNOWN;
+    }
   }
 
   // This returns the current maximum size that we recommend for performance.
   SIMDMode getPreferredRayQuerySIMDSize(ShaderType shaderType) const {
     SIMDMode ret = isCoreChildOf(IGFX_XE_HPC_CORE) ? SIMDMode::SIMD16 : SIMDMode::SIMD8;
+    if (supportsNativeSimd32ForCompute(shaderType, SIMDMode::SIMD32, true)) {
+      ret = SIMDMode::SIMD32;
+    }
 
     IGC_ASSERT_MESSAGE(ret <= getMaxRayQuerySIMDSize(shaderType),
                        "Preferred SIMD size for RayQuery must not be greater than MaxRayQuerySIMDSize!");
@@ -723,6 +763,9 @@ public:
   }
 
   SIMDMode getPreferredRayTracingSIMDSize() const {
+    if (supportsNativeSimd32ForCompute(ShaderType::RAYTRACING_SHADER, SIMDMode::SIMD32, false)) {
+      return SIMDMode::SIMD32;
+    }
     return isCoreChildOf(IGFX_XE_HPC_CORE) ? SIMDMode::SIMD16 : SIMDMode::SIMD8;
   }
 
@@ -958,8 +1001,7 @@ public:
   uint32_t getGRFSize() const { return isCoreChildOf(IGFX_XE_HPC_CORE) ? 64 : 32; }
 
   uint32_t getMaxNumGRF(ShaderType type) const {
-    if (hasEfficient64bEnabled() &&
-        isProductChildOf(IGFX_CRI)) {
+    if (hasEfficient64bEnabled() && isProductChildOf(IGFX_NVL)) {
       return (type == ShaderType::HULL_SHADER) ? 256 : 512;
     } else if (supports512GRFPerThread() && type == ShaderType::OPENCL_SHADER) {
       return 512;
@@ -1230,6 +1272,11 @@ public:
             IGC_IS_FLAG_DISABLED(DisableRayQueryReturnOptimization));
   }
 
+  bool isRayQueryReturnOptimizationPackedStatusEnabled() const {
+    return isProductChildOf(IGFX_NVL) && isRayQueryReturnOptimizationEnabled() &&
+           IGC_IS_FLAG_DISABLED(DisableRayQueryReturnOptimizationPackedStatus);
+  }
+
   // ***** Below go accessor methods for testing WA data from WA_TABLE *****
 
   bool WaDoNotPushConstantsForAllPulledGSTopologies() const {
@@ -1444,18 +1491,59 @@ public:
     return hasEfficient64bEnabled() && (IGC_IS_FLAG_ENABLED(EnableReadStateToA64Read) || m_WaTable.Wa_14025275057);
   }
 
+  bool supportsSimd32ForAllShaders() const {
+    return isCoreChildOf(IGFX_XE3P_CORE);
+  }
+
+  bool supportsNativeSimd32ForCompute(ShaderType type, SIMDMode simdMode, bool hasSyncRTCalls) const {
+    if (supportsSimd32ForAllShaders() && simdMode == SIMDMode::SIMD32) {
+      switch (type) {
+      case ShaderType::RAYTRACING_SHADER:
+      case ShaderType::COMPUTE_SHADER:
+      case ShaderType::OPENCL_SHADER:
+        if (hasSyncRTCalls && (!hasEfficient64bEnabled() || !hasSWManagedStackCountEnabled())) {
+          return false;
+        }
+
+        if (IGC_GET_FLAG_VALUE(PreferSIMD32ForComputeSubset) == FLAG_PREFER_SIMD32_COMPUTE_DEFAULT) {
+          return IGC_IS_FLAG_ENABLED(PreferSIMD32ForCompute);
+        } else if ((type == ShaderType::RAYTRACING_SHADER &&
+                    IGC_GET_FLAG_VALUE(PreferSIMD32ForComputeSubset) & FLAG_PREFER_SIMD32_COMPUTE_RAY_TRACING_SHADERS &&
+                    (IGC_GET_FLAG_VALUE(PreferSIMD32ForComputeSubset) &
+                         FLAG_PREFER_SIMD32_COMPUTE_RAY_TRACING_SHADERS_WITH_SYNC_RT_CALLS ||
+                     !hasSyncRTCalls)) ||
+                   (type == ShaderType::COMPUTE_SHADER &&
+                    IGC_GET_FLAG_VALUE(PreferSIMD32ForComputeSubset) & FLAG_PREFER_SIMD32_COMPUTE_SHADERS &&
+                    (IGC_GET_FLAG_VALUE(PreferSIMD32ForComputeSubset) &
+                         FLAG_PREFER_SIMD32_COMPUTE_SHADERS_WITH_SYNC_RT_CALLS ||
+                     !hasSyncRTCalls)) ||
+                   (type == ShaderType::OPENCL_SHADER &&
+                    IGC_GET_FLAG_VALUE(PreferSIMD32ForComputeSubset) & FLAG_PREFER_SIMD32_COMPUTE_OCL_SHADERS &&
+                    (IGC_GET_FLAG_VALUE(PreferSIMD32ForComputeSubset) &
+                         FLAG_PREFER_SIMD32_COMPUTE_OCL_SHADERS_WITH_SYNC_RT_CALLS ||
+                     !hasSyncRTCalls))) {
+          return IGC_IS_FLAG_ENABLED(PreferSIMD32ForCompute);
+        }
+        return false;
+      default:
+        return false;
+      }
+    }
+    return false;
+  }
+
   bool supportsFp4Int4Upsampling() const { return isCoreChildOf(IGFX_XE3P_CORE); }
 
+  bool supportsRayTracingMotionBlur() const { return isProductChildOf(IGFX_NVL); }
 
   bool supportsRayTracingExtendedCacheControl() const {
-    return isProductChildOf(IGFX_CRI) && hasEfficient64bEnabled() &&
-           IGC_IS_FLAG_DISABLED(DisableRayTracingExtendedCacheControl);
+    return isProductChildOf(IGFX_NVL) && hasEfficient64bEnabled() &&
+           IGC_IS_FLAG_DISABLED(DisableRayTracingExtendedCacheControl) &&
+           IGC_IS_FLAG_DISABLED(DisableRayTracingExtendedCacheControlTierI);
   }
 
 
-  bool supportsOverfetch() const {
-    return isProductChildOf(IGFX_CRI);
-  }
+  bool supportsOverfetch() const { return isProductChildOf(IGFX_NVL); }
 
   bool supportsNativeHyperbolicTan() const { return isCoreChildOf(IGFX_XE3P_CORE); }
 
@@ -1463,13 +1551,18 @@ public:
 
   bool supportsNativeSigmoid() const { return isCoreChildOf(IGFX_XE3P_CORE); }
 
-  bool supportsNativeSinCos() const {
-    return isProductChildOf(IGFX_CRI) && IGC_IS_FLAG_ENABLED(EnableNativeSinCos);
+  bool supportsNativeSinCos() const { return isProductChildOf(IGFX_NVL) && IGC_IS_FLAG_ENABLED(EnableNativeSinCos); }
+
+  bool hasAccurateLog2() const { return isProductChildOf(IGFX_NVL); }
+
+  bool forceZeroTileID() const {
+    return m_platformInfo.eProductFamily == IGFX_NVL &&
+           IGC_IS_FLAG_ENABLED(ForceZeroTileID);
   }
 
-  bool hasAccurateLog2() const {
-    return isProductChildOf(IGFX_CRI);
-  }
+  bool regenerateTileID() const { return IGC_IS_FLAG_ENABLED(RegenerateTileID); }
+
+  bool regenerateEngineID() const { return IGC_IS_FLAG_ENABLED(RegenerateEngineID); }
 
 
   unsigned getRayTracingTileXDim1D() const {
@@ -1499,6 +1592,8 @@ public:
   bool canCachePartialWrites() const { return isCoreChildOf(IGFX_XE2_HPG_CORE); }
 
   bool usesDynamicPolyPackingPolicies() const {
+    if (isCoreChildOf(IGFX_XE3P_CORE))
+      return false;
     return isCoreChildOf(IGFX_XE3_CORE) && IGC_IS_FLAG_DISABLED(DisableDynamicPolyPackingPolicies);
   }
 
@@ -1519,6 +1614,9 @@ public:
   }
 
   uint16_t getNumAddrRegisters() const {
+    if (isCoreChildOf(IGFX_XE3P_CORE)) {
+      return 32;
+    }
     return 16;
   }
 };

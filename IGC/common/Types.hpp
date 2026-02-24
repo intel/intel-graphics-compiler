@@ -23,6 +23,7 @@ SPDX-License-Identifier: MIT
 #include "IGC/common/shaderHash.hpp"
 #include "EmUtils.h"
 
+#include "visa/include/visa_igc_common_header.h"
 namespace USC {
 struct ShaderD3D;
 }
@@ -121,6 +122,15 @@ inline SIMDMode lanesToSIMDMode(unsigned lanes) {
   }
 }
 
+inline uint64_t eccEnumToSize(LSC_CACHE_CTRL_SIZE ctrlSize) {
+  switch (ctrlSize) {
+  case LSC_CACHE_CTRL_SIZE::CCSIZE_64B:
+    return 64;
+  default:
+    IGC_ASSERT_MESSAGE(0, "Unsupported ECC LSC_CACHE_CTRL_SIZE mode.");
+    return 0;
+  }
+}
 enum class ShaderType {
 #include "ShaderTypesIncl.h"
 };

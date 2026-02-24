@@ -90,6 +90,8 @@ public:
   CVariable *PrepareExplicitPayload(CShader *outProgram, CEncoder *encoder, SIMDMode simdMode,
                                     const llvm::DataLayout *pDL, llvm::Instruction *inst, int &payloadOffset);
 
+  CVariable *PrepareExplicitPayloadShuffle(CShader *outProgram, CEncoder *encoder, SIMDMode simdMode,
+                                           const llvm::DataLayout *pDL, llvm::Instruction *inst, bool &isPayloadCommon);
 
   CVariable *PrepareUniformUrbWritePayload(CShader *shader, CEncoder *encoder, llvm::GenIntrinsicInst *inst);
 

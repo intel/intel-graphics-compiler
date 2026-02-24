@@ -98,6 +98,7 @@ public:
   uint64_t GetCallStackHandlerPtr() const;
   uint32_t GetStackSizePerRay() const;
   uint32_t GetNumDSSRTStacks() const;
+  uint32_t GetNumSyncRTStacks() const { return 0; };
   uint32_t GetMaxBVHLevels() const;
   uint64_t GetHitGroupTable() const;
   uint64_t GetMissShaderTable() const;
@@ -271,8 +272,9 @@ struct RayDispatchGlobalData {
         stack_size_info.stackSizePerRay = umd.GetStackSizePerRay();
         num_stacks_info.numRTStacks = umd.GetNumDSSRTStacks();
 
-       // _pad1_mbz higher 16 bits must be zero.
-        num_stacks_info.numRTStacks = (num_stacks_info.numRTStacks & 0x0000FFFF);
+        // Number of sync stacks is at higher 16 bits of
+        // num_stacks_info bitfield.
+        num_stacks_info.numRTStacks = (num_stacks_info.numRTStacks & 0x0000FFFF) | (umd.GetNumSyncRTStacks() << 16);
 
         constexpr uint32_t strideMask = (1 << 13) - 1;
         const uint32_t hgs = umd.GetHitGroupStride() & strideMask;
@@ -296,8 +298,8 @@ struct RayDispatchGlobalData {
       union {
         uint32_t numRTStacks; // number of stacks per DSS
         struct {
-          uint32_t numDSSRTStacks : 16; // number of asynch stacks per DSS
-          uint32_t _pad1_mbz : 16;
+          uint32_t numDSSRTStacks : 16;     // number of asynch stacks per DSS
+          uint32_t syncNumDSSRTStacks : 16; // number of synch stacks per DSS
         };
 
       } num_stacks_info;

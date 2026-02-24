@@ -1777,7 +1777,7 @@ void CEncoder::CarryBorrowArith(ISA_Opcode opcode, CVariable *dst, CVariable *ds
 bool CEncoder::setOverfetch(LSC_DATA_SIZE dsize, LSC_DATA_ELEMS delem, SIMDMode width, LSC_CACHE_OPTS copt) {
   auto context = m_program->GetContext();
 
-  if (!context->platform.supportsOverfetch())
+  if (!context->platform.supportsOverfetch() || context->m_DriverInfo.disableOverfetching())
     return false;
 
   if (copt.l1 != LSC_CACHING_CACHED)
@@ -1998,6 +1998,28 @@ void CEncoder::BTD(BTD_OPCODE opcode, CVariable *globalBufferPointer, CVariable 
   [[maybe_unused]] VISA_RawOpnd *stackIdOpnd = GetRawSource(stackId);
   [[maybe_unused]] VISA_RawOpnd *shaderRecordIdentifierOpnd = GetRawSource(shaderRecordIdentifier);
   [[maybe_unused]] VISA_VectorOpnd *globalBufferPointerOpnd = GetSourceOperandNoModifier(globalBufferPointer);
+}
+
+void CEncoder::ExtendedCacheControl(LSC_CACHE_OPTS cacheControlPolicy, LSC_CACHE_CTRL_OPERATION cacheControlOperation,
+                                    LSC_CACHE_CTRL_SIZE cacheControlSize, CVariable *cacheLineAddresses,
+                                    LSC_DOC_ADDR_SPACE addressSpace) {
+  VISA_PredOpnd *predOpnd = GetFlagOperand(m_encoderState.m_flag);
+  VISA_EMask_Ctrl emask = ConvertMaskToVisaType(m_encoderState.m_mask, false);
+  VISA_Exec_Size executionSize = visaExecSize(m_encoderState.m_simdSize);
+  VISA_RawOpnd *cacheLineAddressesOpnd = GetRawSource(cacheLineAddresses);
+
+  LSC_ADDR address{};
+
+  address.type = LSC_ADDR_TYPE_FLAT;
+  address.immScale = 1;
+  address.immOffset = 0;
+  address.size = LSC_ADDR_SIZE_64b;
+  address.addrSpace = addressSpace;
+
+  V(vKernel->AppendVISALscExtendedCacheCtrlInst(LSC_EXTENDED_CACHE_CTRL,
+                                                LSC_UGM, // Only UGM is supported by LSC_EXTENDED_CACHE_CTRL
+                                                predOpnd, executionSize, emask, cacheControlOperation, cacheControlSize,
+                                                cacheControlPolicy, address, cacheLineAddressesOpnd));
 }
 
 void CEncoder::RenderTargetWrite(CVariable *var[], bool isUndefined[], bool lastRenderTarget, bool isNullRT,
@@ -2715,8 +2737,11 @@ TARGET_PLATFORM GetVISAPlatform(const CPlatform *platform) {
     return Xe3;
     // fall-through
   case IGFX_XE3P_CORE:
-    if (platform->getPlatformInfo().eProductFamily == IGFX_CRI)
+    if (platform->getPlatformInfo().eProductFamily == IGFX_CRI) {
       return Xe3P_CRI;
+    } else if (platform->getPlatformInfo().eProductFamily == IGFX_NVL) {
+      return Xe3P_Graphics;
+    }
   default:
     IGC_ASSERT_MESSAGE(0, "unsupported platform");
     break;
@@ -3381,6 +3406,11 @@ void CEncoder::InitBuildParams(
     params.push_back(param_uptr(_strdup(opt.c_str()), literal_deleter));
   }
 
+  if (context->platform.supportsOverfetch() && context->m_DriverInfo.disableOverfetching()) {
+    // disable overfetching
+    params.push_back(param_uptr("-disableOverfetch", literal_deleter));
+  }
+
        // Ensure VISA_Opts has the same scope as CreateVISABuilder so that valid
        // strings are checked by vISA and freed out of this function.
   if (IGC_IS_FLAG_ENABLED(VISAOptions)) {
@@ -3897,6 +3927,15 @@ void CEncoder::InitVISABuilderOptions(TARGET_PLATFORM VISAPlatform, bool canAbor
       context->m_spillAllowedFor256GRF = Val;
       SaveOption(vISA_SpillAllowed256GRF, Val);
     }
+    if (uint Val = IGC_GET_FLAG_VALUE(ForceGRFModeUp)) {
+      SaveOption(vISA_ForceGRFModeUp, Val);
+    }
+    bool isGeomShader = (context->type == ShaderType::VERTEX_SHADER) || (context->type == ShaderType::HULL_SHADER) ||
+                        (context->type == ShaderType::DOMAIN_SHADER) || (context->type == ShaderType::GEOMETRY_SHADER);
+    uint geomGRFModeUp = IGC_GET_FLAG_VALUE(ForceGeomGRFModeUp);
+    if (isGeomShader && geomGRFModeUp) {
+      SaveOption(vISA_ForceGRFModeUp, geomGRFModeUp);
+    }
   }
   bool r0Reserved = false;
   if ((context->type == ShaderType::OPENCL_SHADER || context->type == ShaderType::COMPUTE_SHADER ||
@@ -4201,6 +4240,13 @@ void CEncoder::InitVISABuilderOptions(TARGET_PLATFORM VISAPlatform, bool canAbor
       // When user hasn't specified number of threads, we can rely on
       // compiler heuristics
       SaveOption(vISA_AutoGRFSelection, true);
+       // Limit to 256 for HS, or non-Eff64b 3D shaders
+       // CS has maxGRF handled by MaxGRFTable and GetUpperBoundGRF()
+      if (context->type == ShaderType::HULL_SHADER ||
+          (context->type != ShaderType::COMPUTE_SHADER && context->platform.supports512GRFPerThread() &&
+           !context->platform.hasEfficient64bEnabled())) {
+        SaveOption(vISA_MaxGRFNum, (uint32_t)256);
+      }
     }
   }
   if (m_program->m_Platform->forceSamplerHeader()) {
@@ -4635,6 +4681,28 @@ void CEncoder::InitVISABuilderOptions(TARGET_PLATFORM VISAPlatform, bool canAbor
     // SLM cases.
     SaveOption(vISA_supportLSCImmScale, (uint32_t)0);
   }
+
+  if (m_program->m_Platform->supportsSimd32ForAllShaders()) {
+    bool isGeomFFShader = (context->type == ShaderType::VERTEX_SHADER) || (context->type == ShaderType::HULL_SHADER) ||
+                          (context->type == ShaderType::DOMAIN_SHADER) ||
+                          (context->type == ShaderType::GEOMETRY_SHADER);
+    uint32_t geomFFSIMDWidthVal = IGC_GET_FLAG_VALUE(ForceGeomFFSIMDWidth);
+
+    if (((context->type == ShaderType::PIXEL_SHADER) && IGC_GET_FLAG_VALUE(EnableSIMD32PackFormat)) ||
+        (isGeomFFShader &&
+         ((geomFFSIMDWidthVal == 32) ||
+          (geomFFSIMDWidthVal == 0 &&
+           context->getModuleMetaData()->compOpt.ForceGeomFFShaderSIMDMode == FLAG_GEOMFF_SIMD_MODE_FORCE_SIMD32))) ||
+        m_program->m_Platform->supportsNativeSimd32ForCompute(context->type, m_program->m_State.m_dispatchSize,
+                                                              context->hasSyncRTCalls())) {
+      if (IGC_IS_FLAG_ENABLED(DisableOptimizeSIMD32)) {
+        SaveOption(vISA_enableOptimizeSIMD32, false);
+      } else {
+        SaveOption(vISA_enableOptimizeSIMD32, true);
+      }
+    }
+  }
+
   if (uint32_t Val = IGC_GET_FLAG_VALUE(EnableScalarPipe)) {
     SaveOption(vISA_ScalarPipe, Val);
   }
@@ -4683,6 +4751,13 @@ void CEncoder::InitVISABuilderOptions(TARGET_PLATFORM VISAPlatform, bool canAbor
   }
   if (context->type == ShaderType::OPENCL_SHADER && IGC_IS_FLAG_ENABLED(EnableKernelCostInfo)) {
     SaveOption(vISA_KernelCostInfo, true);
+  }
+  if (m_program->m_Platform->isCoreChildOf(IGFX_XE3P_CORE)) {
+    auto ShaderTypeBit = (1 << static_cast<unsigned int>(context->type));
+    if ((IGC_GET_FLAG_VALUE(DisableSamplerBackingByLSC) & ShaderTypeBit) ||
+        (context->getModuleMetaData()->compOpt.DisableSamplerBackingByLSC & ShaderTypeBit)) {
+      SaveOption(vISA_enableSamplerLSCCaching, false);
+    }
   }
 } // InitVISABuilderOptions
 
@@ -4841,6 +4916,29 @@ void CEncoder::InitEncoder(bool canAbortOnSpill, bool hasStackCall, bool hasInli
 
   if (lowerBoundGRF > 0 && vbuilder->GetuInt32Option(vISA_MinGRFNum) == 0) {
     SaveOption(vISA_MinGRFNum, lowerBoundGRF);
+  }
+
+  unsigned int userVRTGRFCeiling = 0;
+
+  if (m_program->m_Platform->forceMaxGrf256()) {
+    if (context->m_DriverInfo.allowDefault256GrfSize()) {
+      userVRTGRFCeiling = 256;
+    }
+  }
+
+  // For UMD AIL config specific, such as GRF 512, override the default
+  if (context->getModuleMetaData()->compOpt.ForceVRTGRFCeiling) {
+    userVRTGRFCeiling = context->getModuleMetaData()->compOpt.ForceVRTGRFCeiling;
+  }
+
+  // If regkey is set (> 0), override userVRTGRFCeiling
+  if (auto forcedKeyValue = IGC_GET_FLAG_VALUE(ForceVRTGRFCeiling)) {
+    userVRTGRFCeiling = forcedKeyValue;
+  }
+
+  // choose the minimum of the previously configured upperBoundGRF and the user requested maxGrfLimit
+  if (userVRTGRFCeiling) {
+    upperBoundGRF = upperBoundGRF ? std::min(upperBoundGRF, userVRTGRFCeiling) : userVRTGRFCeiling;
   }
 
   if (upperBoundGRF > 0 && vbuilder->GetuInt32Option(vISA_MaxGRFNum) == 0) {

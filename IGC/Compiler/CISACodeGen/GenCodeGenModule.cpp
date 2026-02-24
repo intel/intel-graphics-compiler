@@ -631,6 +631,21 @@ static inline int getDefaultSIMDSize(CodeGenContext *ctx) {
 
   // By default, use the minimum allowed SIMD for the HW platform
   SIMDMode simdMode = ctx->platform.getMinDispatchMode();
+  if (ctx->platform.supportsSimd32ForAllShaders()) {
+
+    if (ctx->type == ShaderType::VERTEX_SHADER || ctx->type == ShaderType::GEOMETRY_SHADER ||
+        ctx->type == ShaderType::DOMAIN_SHADER || ctx->type == ShaderType::HULL_SHADER) {
+      if (IGC_GET_FLAG_VALUE(ForceGeomFFSIMDWidth) == 32) {
+        simdMode = SIMDMode::SIMD32;
+      } else if (IGC_GET_FLAG_VALUE(ForceGeomFFSIMDWidth) == 16) {
+        simdMode = SIMDMode::SIMD16;
+      } else if (ctx->getModuleMetaData()->compOpt.ForceGeomFFShaderSIMDMode == FLAG_GEOMFF_SIMD_MODE_FORCE_SIMD32) {
+        simdMode = SIMDMode::SIMD32;
+      } else if (ctx->getModuleMetaData()->compOpt.ForceGeomFFShaderSIMDMode == FLAG_GEOMFF_SIMD_MODE_FORCE_SIMD16) {
+        simdMode = SIMDMode::SIMD16;
+      }
+    }
+  }
   int defaultSz = numLanes(simdMode);
 
   if (ctx->getModuleMetaData()->compOpt.IsLibraryCompilation) {

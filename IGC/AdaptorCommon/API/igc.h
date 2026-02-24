@@ -33,6 +33,25 @@ enum {
   FLAG_PS_SIMD_MODE_FORCE_SIMD32 = 4, // Force SIMD32 compilation
 };
 
+enum {
+  // Force VS,GS,HS,DS simd mode
+  FLAG_GEOMFF_SIMD_MODE_DEFAULT = 0,      // default depends on a platform
+  FLAG_GEOMFF_SIMD_MODE_FORCE_SIMD16 = 2, // Force SIMD16 compilation
+  FLAG_GEOMFF_SIMD_MODE_FORCE_SIMD32 = 4, // Force SIMD32 compilation
+};
+
+enum {
+  // PreferSIMD32ForComputeSubset
+  FLAG_PREFER_SIMD32_COMPUTE_DEFAULT =
+      0, // default depends on a platform; all shaders included if PreferSIMD32ForCompute enabled
+  FLAG_PREFER_SIMD32_COMPUTE_RAY_TRACING_SHADERS_WITH_SYNC_RT_CALLS =
+      1 << 0,                                                     // Ray Tracing shaders with sync RT calls not excluded
+  FLAG_PREFER_SIMD32_COMPUTE_RAY_TRACING_SHADERS = 1 << 1,        // Ray Tracing shaders included
+  FLAG_PREFER_SIMD32_COMPUTE_SHADERS_WITH_SYNC_RT_CALLS = 1 << 2, // Compute shaders with sync RT calls not excluded
+  FLAG_PREFER_SIMD32_COMPUTE_SHADERS = 1 << 3,                    // Compute shaders included
+  FLAG_PREFER_SIMD32_COMPUTE_OCL_SHADERS_WITH_SYNC_RT_CALLS = 1 << 4, // OCL shaders with sync RT calls not excluded
+  FLAG_PREFER_SIMD32_COMPUTE_OCL_SHADERS = 1 << 5,                    // OCL shaders included
+};
 
 enum {
   // VISAPreSchedRPThreshold

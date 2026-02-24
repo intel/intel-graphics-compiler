@@ -924,7 +924,10 @@ CVariable *CShader::GetHWTID() {
 }
 
 CVariable *CShader::GetTileID() {
-  if (!m_HW_TileID) {
+  if (m_Platform->forceZeroTileID()) {
+    return ImmToVariable(0x0, ISA_TYPE_UD);
+  }
+  if (!m_HW_TileID || m_Platform->regenerateTileID()) {
     uint32_t bitmask = BITMASK_RANGE(8, 11);
 
     m_HW_TileID = GetNewVariable(1, ISA_TYPE_UD, EALIGN_DWORD, true, 1, "HWTileID");
@@ -942,7 +945,7 @@ CVariable *CShader::GetTileID() {
 CVariable *CShader::GetEngineID() {
   if (!m_Platform->hasEngineIDEnabled())
     return ImmToVariable(0x0, ISA_TYPE_D);
-  if (!m_HW_EngineID) {
+  if (!m_HW_EngineID || m_Platform->regenerateEngineID()) {
     uint32_t bitmask = BITMASK_RANGE(16, 21);
 
     m_HW_EngineID = GetNewVariable(1, ISA_TYPE_UD, EALIGN_DWORD, true, 1, "HWEngineID");

@@ -395,6 +395,7 @@ public:
   virtual bool supportLscSamplerRouting() const { return true; }
   virtual bool supportBarrierControlFlowOptimization() const { return false; }
   virtual bool getLscStoresWithNonDefaultL1CacheControls() const { return true; }
+  virtual bool allowDefault256GrfSize() const { return true; }
 
   // Informs if the UMD understands atomic pull tile walk for raytracing
   virtual bool supportsAtomicPullSWTileWalk() const { return false; }
@@ -404,6 +405,17 @@ public:
   virtual bool allocateIndirectDataPtrUnconditionally() const { return false; }
 
   virtual bool supportsUniformPrivateMemorySpace() const { return false; }
+  virtual bool disableOverfetching() const {
+    const IGC::TriboolFlag enableOverfetching = static_cast<IGC::TriboolFlag>(IGC_GET_FLAG_VALUE(EnableOverfetching));
+    switch (enableOverfetching) {
+    case IGC::TriboolFlag::Disabled:
+      return true;
+    case IGC::TriboolFlag::Enabled:
+    case IGC::TriboolFlag::Default:
+    default:
+      return false;
+    }
+  }
 
 
   virtual bool UseNewTraceRayInlineLoweringInRaytracingShaders() const {

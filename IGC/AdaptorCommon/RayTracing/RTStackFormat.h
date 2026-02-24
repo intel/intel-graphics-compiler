@@ -102,11 +102,13 @@ struct RTGlobalsAndRootSig {
   TypeHoleGlobalRootSig GlobalRootSig;
 };
 
+class CPlatform;
 } // namespace IGC
 
 namespace RTStackFormat {
 
 uint32_t getRTStackHeaderSize(uint32_t MaxBVHLevels);
+uint32_t getsyncNumDSSRTStacks(const IGC::CPlatform &platform);
 
 constexpr static uint32_t MAX_BVH_LEVELS = 2;
 constexpr static uint32_t MEM_STACK_SIZE = 4;

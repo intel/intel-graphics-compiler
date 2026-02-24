@@ -37,6 +37,7 @@ std::map<std::string, std::function<void(ResolveOCLRaytracingBuiltins *, CallIns
     {"__builtin_IB_intel_get_rt_global_buffer",          &ResolveOCLRaytracingBuiltins::handleGetRTGlobalBuffer     },
 // clang-format on
        // clang-format off
+    {"__builtin_IB_post_process_ray_query_return", &ResolveOCLRaytracingBuiltins::handlePostProcessRayQueryReturn},
 
     // Handling for builtins operating on intel_ray_query_t from intel_rt_production extension
       {"__builtin_IB_intel_init_ray_query",                &ResolveOCLRaytracingBuiltins::handleInitRayQuery          },
@@ -455,6 +456,14 @@ void ResolveOCLRaytracingBuiltins::handleQuery(llvm::CallInst &callInst) {
   callInst.eraseFromParent();
 }
 
+void ResolveOCLRaytracingBuiltins::handlePostProcessRayQueryReturn(llvm::CallInst &callInst) {
+  m_builder->SetInsertPoint(&callInst);
+  auto fence = m_builder->CreatePtrToInt(callInst.getOperand(0), m_builder->getInt32Ty());
+  Value *intrinsicCall = getIntrinsicValue(GenISAIntrinsic::GenISA_PostProcessRayQueryReturn, fence);
+  Value *castedIntrinsicCall = m_builder->CreateIntToPtr(intrinsicCall, callInst.getType());
+  callInst.replaceAllUsesWith(castedIntrinsicCall);
+  callInst.eraseFromParent();
+}
 // ---- Helper functions ----
 
 Value *ResolveOCLRaytracingBuiltins::getIntrinsicValue(GenISAIntrinsic::ID intrinsicId, ArrayRef<Value *> args) {

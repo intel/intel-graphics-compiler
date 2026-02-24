@@ -173,6 +173,9 @@ public:
                 STACK_ADDRESS_MODE stackAddressMode, CVariable *payload);
 
   void BTD(BTD_OPCODE opcode, CVariable *globalBufferPointer, CVariable *stackId, CVariable *shaderRecordIdentifier);
+  void ExtendedCacheControl(LSC_CACHE_OPTS cacheControlPolicy, LSC_CACHE_CTRL_OPERATION cacheControlOperation,
+                            LSC_CACHE_CTRL_SIZE cacheControlSize, CVariable *cacheLineAddresses,
+                            LSC_DOC_ADDR_SPACE addressSpace);
   void RenderTargetWrite(CVariable *var[], bool isUndefined[], bool lastRenderTarget, bool isNullRT, bool perSample,
                          bool coarseMode, bool headerMaskFromCe0, CVariable *rtSurfaceStatePointer, int rtIdentifier,
                          CVariable *bindingTableIndex, CVariable *RTIndex, CVariable *source0Alpha, CVariable *oMask,

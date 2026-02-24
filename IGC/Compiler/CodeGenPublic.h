@@ -924,6 +924,8 @@ public:
   BifLLVMModule *m_bifModules = nullptr;
   // If this flag is enabled, STOC level emulation will be added to every AnyHitShader.
   bool m_enableSubTriangleOpacityEmulation = false;
+  // If this flag is enabled, MBlur emulation code will be added to every AnyHitShader.
+  bool m_enableMotionBlurEmulation = false;
   void *gtpin_init = nullptr;
   bool m_hasLegacyDebugInfo = false;
   bool m_hasEmu64BitInsts = false;
@@ -1110,6 +1112,7 @@ public:
   }
 
   bool isSWSubTriangleOpacityCullingEmulationEnabled() const;
+  bool isRayTracingMotionBlurEnabled() const;
 
   enum Action { Set, Clear };
 

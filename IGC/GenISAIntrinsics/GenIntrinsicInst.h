@@ -1259,6 +1259,7 @@ public:
   Value *getComparisonValue() const { return getOperand(17); }
   Value *getInternalRayFlags() const { return getOperand(18); }
   Value *getExtraPipelineFlags() const { return getOperand(19); }
+  Value *getCurrentTime() const { return getOperand(20); }
 };
 
 class CallShaderHLIntrinsic : public ContinuationHLIntrinsic {
@@ -1302,6 +1303,59 @@ public:
   }
 };
 
+class ExtendedCacheControl : public GenIntrinsicInst {
+public:
+  static inline bool classof(const GenIntrinsicInst *I) {
+    GenISAIntrinsic::ID ID = I->getIntrinsicID();
+    return ID == GenISAIntrinsic::GenISA_ExtendedCacheControl;
+  }
+
+  static inline bool classof(const Value *V) { return isa<GenIntrinsicInst>(V) && classof(cast<GenIntrinsicInst>(V)); }
+
+  LSC_CACHE_CTRL_SIZE getCacheControlSize() const {
+    return (LSC_CACHE_CTRL_SIZE)cast<ConstantInt>(getOperand(0))->getZExtValue();
+  }
+  LSC_CACHE_OPT getCacheControlPolicy() const {
+    return (LSC_CACHE_OPT)(cast<ConstantInt>(getOperand(1))->getZExtValue());
+  }
+  LSC_CACHE_CTRL_OPERATION getCacheControlOperation() const {
+    return (LSC_CACHE_CTRL_OPERATION)cast<ConstantInt>(getOperand(2))->getZExtValue();
+  }
+  Value *getCacheLineAddresses() const { return getOperand(3); }
+  Value *getPredicate() const { return getOperand(4); }
+};
+class ExtendedCacheControlRayQuery : public GenIntrinsicInst {
+public:
+  static inline bool classof(const GenIntrinsicInst *I) {
+    GenISAIntrinsic::ID ID = I->getIntrinsicID();
+    return ID == GenISAIntrinsic::GenISA_ExtendedCacheControlRayQuery;
+  }
+
+  static inline bool classof(const Value *V) { return isa<GenIntrinsicInst>(V) && classof(cast<GenIntrinsicInst>(V)); }
+
+  LSC_CACHE_CTRL_SIZE getCacheControlSize() const {
+    return (LSC_CACHE_CTRL_SIZE)cast<ConstantInt>(getOperand(0))->getZExtValue();
+  }
+  LSC_CACHE_OPT getCacheControlPolicy() const {
+    return (LSC_CACHE_OPT)(cast<ConstantInt>(getOperand(1))->getZExtValue());
+  }
+  LSC_CACHE_CTRL_OPERATION getCacheControlOperation() const {
+    return (LSC_CACHE_CTRL_OPERATION)cast<ConstantInt>(getOperand(2))->getZExtValue();
+  }
+  Value *getStackAddressBase() const { return getOperand(3); }
+  Value *getPredicate() const { return getOperand(4); }
+};
+class PostProcessRayQueryReturn : public GenIntrinsicInst {
+public:
+  static inline bool classof(const GenIntrinsicInst *I) {
+    GenISAIntrinsic::ID ID = I->getIntrinsicID();
+    return ID == GenISAIntrinsic::GenISA_PostProcessRayQueryReturn;
+  }
+
+  static inline bool classof(const Value *V) { return isa<GenIntrinsicInst>(V) && classof(cast<GenIntrinsicInst>(V)); }
+
+  Value *getRayQueryReturnValue() const { return getOperand(0); }
+};
 
 class TraceRayIntrinsic : public GenIntrinsicInst {
 public:

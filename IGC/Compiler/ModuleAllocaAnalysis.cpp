@@ -169,6 +169,20 @@ bool ModuleAllocaAnalysis::safeToUseScratchSpace() const {
     auto funcInfoMD = pMdUtils->getFunctionsInfoItem(&F);
     bool isGeometryStageShader = Ctx.type == ShaderType::VERTEX_SHADER || Ctx.type == ShaderType::HULL_SHADER ||
                                  Ctx.type == ShaderType::DOMAIN_SHADER || Ctx.type == ShaderType::GEOMETRY_SHADER;
+    bool isSimd32Mode = false;
+    SIMDMode simdGeometryShaderMode = SIMDMode::UNKNOWN;
+    if (Ctx.platform.supportsSimd32ForAllShaders() && isGeometryStageShader) {
+      if ((Ctx.type == ShaderType::VERTEX_SHADER) || (Ctx.type == ShaderType::HULL_SHADER) ||
+          (Ctx.type == ShaderType::DOMAIN_SHADER) || (Ctx.type == ShaderType::GEOMETRY_SHADER)) {
+        simdGeometryShaderMode = Ctx.GetSIMDMode();
+      } else {
+        IGC_ASSERT_MESSAGE(0, "Incorrect shader type");
+      }
+
+      if (simdGeometryShaderMode == SIMDMode::SIMD32) {
+        isSimd32Mode = true;
+      }
+    }
 
     // FIXME: Below heuristics is not a clean design. Revisit this!
     // Start with simd16 or simd32 correspondingly if MinDispatchMode() is 8 or 16, which allows the medium size of
@@ -176,11 +190,9 @@ bool ModuleAllocaAnalysis::safeToUseScratchSpace() const {
     //  (simd8: largest, simd32, smallest). In doing so, there will be
     //  some space left for spilling in simd8 if spilling happens.
     int32_t simd_size = isGeometryStageShader
-                            ?
-                            numLanes(Ctx.platform.getMinDispatchMode())
-                            :
-                            (Ctx.platform.getMinDispatchMode() == SIMDMode::SIMD8 ? numLanes(SIMDMode::SIMD16)
-                                                                                  : numLanes(SIMDMode::SIMD32));
+                            ? (isSimd32Mode ? numLanes(SIMDMode::SIMD32) : numLanes(Ctx.platform.getMinDispatchMode()))
+                            : (Ctx.platform.getMinDispatchMode() == SIMDMode::SIMD8 ? numLanes(SIMDMode::SIMD16)
+                                                                                    : numLanes(SIMDMode::SIMD32));
     const int32_t subGrpSize = funcInfoMD->getSubGroupSize()->getSIMDSize();
     if (subGrpSize > simd_size)
       simd_size = std::min(subGrpSize, static_cast<int32_t>(numLanes(SIMDMode::SIMD32)));
@@ -193,7 +205,7 @@ bool ModuleAllocaAnalysis::safeToUseScratchSpace() const {
     // if one API doesn't support stateless, we should try to use smallest dispatch mode
     // which can hold more pvt_data to avoid error out.
     if (SeparateSpillAndScratch(&Ctx) && !supportsStatelessSpacePrivateMemory)
-      simd_size = numLanes(Ctx.platform.getMinDispatchMode());
+      simd_size = isSimd32Mode ? numLanes(SIMDMode::SIMD32) : numLanes(Ctx.platform.getMinDispatchMode());
 
     unsigned maxScratchSpaceBytes =
         Ctx.platform.maxPerThreadScratchSpace(Ctx.m_DriverInfo.supports16MBPerThreadScratchSpace());
@@ -209,7 +221,7 @@ bool ModuleAllocaAnalysis::safeToUseScratchSpace() const {
     // later, maybe, we want to change to legacy behavior: SIMD16, to avoid potential spill.
     // but even so, when we support slot0 and slot1, then, we could still use SIMD8.
     if (Ctx.platform.hasScratchSurface() && Ctx.hasSyncRTCalls() && totalPrivateMemPerWI > scratchSpaceLimitPerWI) {
-      simd_size = numLanes(Ctx.platform.getMinDispatchMode());
+      simd_size = isSimd32Mode ? numLanes(SIMDMode::SIMD32) : numLanes(Ctx.platform.getMinDispatchMode());
       scratchSpaceLimitPerWI = maxScratchSpaceBytes / simd_size;
     }
 

@@ -5781,6 +5781,20 @@ void EmitPass::emitSimdShuffle(llvm::Instruction *inst) {
           m_encoder->Push();
         } else // !channelUniform
         {
+          if (addrSize == numLanes(m_currShader->m_SIMDSize)) {
+            if (forcePreventOOB) {
+              m_encoder->SetNoMask();
+            }
+            m_encoder->AddrAdd(pDstArrElm, src, pSrcElm, m_currentBlock);
+            m_encoder->Push();
+            m_encoder->Copy(m_destination, pDstArrElm);
+            m_encoder->Push();
+
+            if (disableHelperLanes) {
+              ResetVMask();
+            }
+            return;
+          }
           m_encoder->SetSimdSize(SIMDMode::SIMD16);
           if (forcePreventOOB) {
             m_encoder->SetNoMask();
@@ -6149,6 +6163,14 @@ void EmitPass::emitSimdShuffleDown(llvm::Instruction *inst) {
     CVariable *pDstArrElm =
         m_currShader->GetNewAddressVariable(m_currShader->m_Platform->getNumAddrRegisters(), m_destination->GetType(),
                                             false, false, m_destination->getName());
+    if (m_currShader->m_Platform->getNumAddrRegisters() == numLanes(m_currShader->m_SIMDSize)) {
+      m_encoder->SetSrcRegion(1, 16, 8, 2);
+      m_encoder->AddrAdd(pDstArrElm, pCombinedData, m_currShader->BitCast(pByteOffset, ISA_TYPE_UW), m_currentBlock);
+      m_encoder->Push();
+      m_encoder->Copy(m_destination, pDstArrElm);
+      m_encoder->Push();
+      return;
+    }
     m_encoder->SetSimdSize(SIMDMode::SIMD16);
     m_encoder->SetSrcRegion(1, 16, 8, 2);
     m_encoder->AddrAdd(pDstArrElm, pCombinedData, m_currShader->BitCast(pByteOffset, ISA_TYPE_UW), m_currentBlock);
@@ -9210,6 +9232,12 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst *inst) {
   case GenISAIntrinsic::GenISA_StackIDRelease:
     emitStackIDRelease(cast<StackIDReleaseIntrinsic>(inst));
     break;
+  case GenISAIntrinsic::GenISA_ExtendedCacheControl:
+    emitExtendedCacheControl(cast<ExtendedCacheControl>(inst));
+    break;
+  case GenISAIntrinsic::GenISA_PostProcessRayQueryReturn:
+    emitPostProcessRayQueryReturn(cast<PostProcessRayQueryReturn>(inst));
+    break;
   case GenISAIntrinsic::GenISA_GetShaderRecordPtr:
     emitGetShaderRecordPtr(cast<GetShaderRecordPtrIntrinsic>(inst));
     break;
@@ -10445,6 +10473,20 @@ void EmitPass::emitExtract(llvm::Instruction *inst) {
       CVariable *indexAlias[2];
 
       uint16_t addrSize = m_currShader->m_Platform->getNumAddrRegisters();
+      if (addrSize == numLanes(m_currShader->m_SIMDSize)) {
+        CVariable *pDstArrElm = m_currShader->GetNewAddressVariable(addrSize, m_destination->GetType(), false,
+                                                                    vector->IsUniform(), m_destination->getName());
+        m_encoder->AddrAdd(pDstArrElm, vector, pOffset3, m_currentBlock);
+        m_encoder->Push();
+
+        // to avoid out-of-bounds indirect access (exceeding the maximum number of
+        // GRFs)
+        m_encoder->SetPredicate(IGC_IS_FLAG_ENABLED(UseVMaskPredicateForIndirectMove) ? GetCombinedVMaskPred()
+                                                                                      : nullptr);
+        m_encoder->Copy(m_destination, pDstArrElm);
+        m_encoder->Push();
+        return;
+      }
       // there are only 16 address registers on PVC, so for SIMD32 VxH we have
       // to split
       for (int i = 0; i < 2; i++) {
@@ -24050,9 +24092,11 @@ void EmitPass::emitRayQueryCheckRelease(GenIntrinsicInst *I, bool RayQueryCheckE
   // Messages to rta unit require 2 sources. But Check/Release
   // messages do not send any data is src1.
   // To handle this, a dummy source is created.
-  CVariable *dummySource = m_currShader->GetNewVariable(
-          getGRFSize() / SIZE_DWORD,
-      ISA_TYPE_UD, EALIGN_GRF, "dummySource");
+  CVariable *dummySource = m_currShader->GetNewVariable(m_currShader->m_Platform->supportRayTracingSIMD32() &&
+                                                                m_currShader->m_SIMDSize == SIMDMode::SIMD32
+                                                            ? numLanes(m_currShader->m_SIMDSize)
+                                                            : getGRFSize() / SIZE_DWORD,
+                                                        ISA_TYPE_UD, EALIGN_GRF, "dummySource");
 
   m_encoder->Lifetime(LIFETIME_START, dummySource);
 
@@ -24091,9 +24135,11 @@ void EmitPass::emitRayQueryCheckReleaseEff64(GenIntrinsicInst *instruction, bool
   // Messages to rta unit require GlobalBufferPointer and Paylod.
   // But Check/Release messages do not send any data.
   // To handle this, a dummy source is created.
-  CVariable *dummySource = m_currShader->GetNewVariable(
-          getGRFSize() / SIZE_DWORD,
-      ISA_TYPE_UD, EALIGN_GRF, "dummySource");
+  CVariable *dummySource = m_currShader->GetNewVariable(m_currShader->m_Platform->supportRayTracingSIMD32() &&
+                                                                m_currShader->m_SIMDSize == SIMDMode::SIMD32
+                                                            ? numLanes(m_currShader->m_SIMDSize)
+                                                            : getGRFSize() / SIZE_DWORD,
+                                                        ISA_TYPE_UD, EALIGN_GRF, "dummySource");
 
   CVariable *payload = nullptr;
 
@@ -24323,6 +24369,67 @@ void EmitPass::emitStackIDRelease(StackIDReleaseIntrinsic *I) {
   }
 
   emitBTD(nullptr, stackID, nullptr, flag, true);
+}
+
+void EmitPass::emitExtendedCacheControl(ExtendedCacheControl *I) {
+  LSC_CACHE_OPT cacheControlPolicyFromInstruction = I->getCacheControlPolicy();
+
+  LSC_CACHE_OPT cachePolicyL2 = LSC_CACHE_OPT::LSC_CACHING_UNCACHED;
+  LSC_CACHE_OPT cachePolicyL3 = LSC_CACHE_OPT::LSC_CACHING_UNCACHED;
+
+  if (IGC_IS_FLAG_SET(RayTracingExtendedCacheControlCachePolicyL2)) {
+    cachePolicyL2 = (LSC_CACHE_OPT)IGC_GET_FLAG_VALUE(RayTracingExtendedCacheControlCachePolicyL2);
+  }
+
+  if (IGC_IS_FLAG_SET(RayTracingExtendedCacheControlCachePolicyL3)) {
+    cachePolicyL3 = (LSC_CACHE_OPT)IGC_GET_FLAG_VALUE(RayTracingExtendedCacheControlCachePolicyL3);
+  }
+
+  // For Tier I only L1 cache policy matters.
+  LSC_CACHE_OPTS cacheControlPolicy(cacheControlPolicyFromInstruction, cachePolicyL2, cachePolicyL3);
+
+  LSC_CACHE_CTRL_OPERATION cacheControlOperation = I->getCacheControlOperation();
+  LSC_CACHE_CTRL_SIZE cacheControlSize = I->getCacheControlSize();
+
+
+  CVariable *cacheLineAddresses = GetSymbol(I->getCacheLineAddresses());
+
+  LSC_DOC_ADDR_SPACE addressSpace = m_pCtx->getUserAddrSpaceMD().Get(I);
+
+  CVariable *flag = nullptr;
+
+  if (auto *CI = dyn_cast<ConstantInt>(I->getPredicate()); !CI || !CI->isAllOnesValue()) {
+    flag = GetSymbol(I->getPredicate());
+  }
+
+
+  cacheLineAddresses = BroadcastIfUniform(cacheLineAddresses);
+
+  m_encoder->SetPredicate(flag);
+
+  m_encoder->ExtendedCacheControl(cacheControlPolicy, cacheControlOperation, cacheControlSize, cacheLineAddresses,
+                                  addressSpace);
+
+  m_encoder->Push();
+}
+
+void EmitPass::emitPostProcessRayQueryReturn(llvm::PostProcessRayQueryReturn *I) {
+  IGC_ASSERT_MESSAGE(m_currShader->m_Platform->isRayQueryReturnOptimizationPackedStatusEnabled(),
+                     "PostProcessRayQueryReturn can be used only if RayQuery "
+                     "return optimization packed status is enabled.");
+
+  IGC_ASSERT_MESSAGE(m_currShader->m_Platform->supportRayTracingSIMD32(),
+                     "PostProcessRayQueryReturn can be used only on platforms "
+                     "with RayTracing in SIMD32 support.");
+
+  CVariable *rayQueryReturnValue = GetSymbol(I->getRayQueryReturnValue());
+
+  const uint16_t numElems = (m_currShader->m_SIMDSize == SIMDMode::SIMD32) ? 32 : 16;
+
+  rayQueryReturnValue = m_currShader->GetNewAlias(rayQueryReturnValue, VISA_Type::ISA_TYPE_UW, 0, numElems);
+
+  m_encoder->Cast(m_destination, rayQueryReturnValue);
+  m_encoder->Push();
 }
 
 void EmitPass::emitGetShaderRecordPtr(GetShaderRecordPtrIntrinsic *I) {

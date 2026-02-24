@@ -129,6 +129,10 @@ public:
   virtual unsigned GetMaxRegForThreadDispatch() const {
     unsigned int startReg = m_VertexElementsStartOffset > 0 ? m_VertexElementsStartOffset / m_Platform->getGRFSize()
                                                             : m_simdProgram.m_startReg;
+    if (m_Platform->supportsSimd32ForAllShaders() && m_SIMDSize == SIMDMode::SIMD32) {
+      // in SIMD32, each vertex element component takes 2 GRFs
+      return startReg + 2 * 8 * GetTotalURBReadLength().Count();
+    }
     return startReg + 8 * GetTotalURBReadLength().Count();
   }
 

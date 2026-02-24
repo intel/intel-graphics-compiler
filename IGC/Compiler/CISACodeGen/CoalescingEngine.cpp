@@ -1060,6 +1060,72 @@ CVariable *CoalescingEngine::PrepareExplicitPayload(CShader *outProgram, CEncode
   return payload;
 }
 
+/// Uses the tuple information provided by coalescing engine in order
+/// to generate optimized sequence of 'movs' for preparing a payload
+/// shuffled for experiments with 2xSIMD16 URB writes.
+CVariable *CoalescingEngine::PrepareExplicitPayloadShuffle(CShader *outProgram, CEncoder *encoder, SIMDMode simdMode,
+                                                           const DataLayout *pDL, llvm::Instruction *inst,
+                                                           bool &isPayloadCommon) {
+  SetCurrentPart(inst, 0);
+  const uint numOperands = m_PayloadMapping.GetNumPayloadElements(inst);
+  const uint grfSize = outProgram->GetContext()->platform.getGRFSize();
+  const uint numSubVarsPerOperand = numLanes(simdMode) / (grfSize / 4);
+  IGC_ASSERT(numSubVarsPerOperand == 1 || numSubVarsPerOperand == 2);
+  CVariable *payload = nullptr;
+
+  payload = outProgram->GetNewVariable(
+      numOperands * numLanes(simdMode), ISA_TYPE_F,
+      outProgram->GetContext()->platform.getGRFSize() == 64 ? EALIGN_32WORD : EALIGN_HWORD, "CEExplicitPayload");
+
+  // Payload is not covered because data needs shuffling.
+  // Insert explicit lifetime start in case some of the operands are undefs
+  // otherwise, VISA will see the variable as not fully initialized and will
+  // extend the lifetime all the way to the beginning of the kernel
+  encoder->Lifetime(VISAVarLifetime::LIFETIME_START, payload);
+
+  // Check if all payload data are uniforms
+  bool allUniform = true;
+  for (uint i = 0; i < numOperands; i++) {
+    Value *val = m_PayloadMapping.GetPayloadElementToValueMapping(inst, i);
+    CVariable *data = outProgram->GetSymbol(val);
+    if (!data->IsUniform()) {
+      allUniform = false;
+      break;
+    }
+  }
+
+  if (allUniform) {
+    for (uint i = 0; i < numOperands; i++) {
+      Value *val = m_PayloadMapping.GetPayloadElementToValueMapping(inst, i);
+      CVariable *data = outProgram->GetSymbol(val);
+      encoder->SetDstSubVar(i /* numSubVarsPerOperand*/);
+      encoder->SetSimdSize(SIMDMode::SIMD16);
+      encoder->SetSrcSubVar(0, 0);
+      encoder->Copy(payload, data);
+      encoder->Push();
+    }
+    isPayloadCommon = true;
+  } else {
+    for (uint i = 0; i < numOperands; i++) {
+      Value *val = m_PayloadMapping.GetPayloadElementToValueMapping(inst, i);
+      CVariable *data = outProgram->GetSymbol(val);
+      encoder->SetDstSubVar(i /* numSubVarsPerOperand*/);
+      encoder->SetSimdSize(SIMDMode::SIMD16);
+      encoder->SetSrcSubVar(0, 0);
+      encoder->Copy(payload, data);
+      encoder->Push();
+      encoder->SetDstSubVar(i + numOperands /* numSubVarsPerOperand*/);
+      encoder->SetSimdSize(SIMDMode::SIMD16);
+      encoder->SetSrcSubVar(0, data->IsUniform() ? 0 : 1);
+      encoder->SetMask(EMASK_H2);
+      encoder->Copy(payload, data);
+      encoder->Push();
+    }
+    isPayloadCommon = false;
+  }
+
+  return payload;
+}
 
 // Prepares payload for the uniform URB Write messages that are used in
 // mesh and task shader stages.
