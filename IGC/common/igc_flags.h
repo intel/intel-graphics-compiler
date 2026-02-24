@@ -328,7 +328,12 @@ DECLARE_IGC_REGKEY(bool, DumpCodeScheduling, false, "Dump code scheduling", true
 DECLARE_IGC_REGKEY(DWORD, CodeSchedulingDumpLevel, 1, "Code scheduling dump verbosity level", true)
 DECLARE_IGC_REGKEY(bool, CodeSchedulingRenameAll, false, "Allow renaming all values for debug purposes", false)
 DECLARE_IGC_REGKEY(debugString, CodeSchedulingConfig, 0,
-                   "Override the default scheduling config. Debug only - no backward compatibility", false)
+                   "Override the default scheduling config. Debug only - no backward compatibility", true)
+
+DECLARE_IGC_REGKEY(DWORD, DumpLatencyHidingEarly, 0,
+                   "Dump latency hiding analysis after code scheduling (1=summary, 2=verbose with IR)", true)
+DECLARE_IGC_REGKEY(DWORD, DumpLatencyHidingFinal, 0,
+                   "Dump latency hiding analysis at end of pipeline (1=summary, 2=verbose with IR)", true)
 
 DECLARE_IGC_REGKEY(bool, EnableLoopHoistConstant, false,
                    "Enables pass to check for specific loop patterns where variables are constant across all but the "

@@ -25,6 +25,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CISACodeGen/HoistCongruentPhi.hpp"
 #include "Compiler/CISACodeGen/CodeScheduling.hpp"
 #include "Compiler/CISACodeGen/CodeSinking.hpp"
+#include "Compiler/CISACodeGen/LatencyHidingAnalysis.hpp"
 #include "Compiler/CISACodeGen/AddressArithmeticSinking.hpp"
 #include "Compiler/CISACodeGen/AtomicOptPass.hpp"
 #include "Compiler/CISACodeGen/BlockMemOpAddrScalarizationPass.hpp"
@@ -289,6 +290,8 @@ void AddAnalysisPasses(CodeGenContext &ctx, IGCPassManager &mpm) {
         mpm.add(new CodeScheduling());
       }
     }
+    if (IGC_GET_FLAG_VALUE(DumpLatencyHidingEarly) > 0)
+      mpm.add(new LatencyHidingAnalysis("afterCS", IGC_GET_FLAG_VALUE(DumpLatencyHidingEarly)));
   }
 
   // Decompose2DBlockFuncsWithHoistingPass should be after LoopSimplifyPass in order
@@ -415,6 +418,8 @@ void AddAnalysisPasses(CodeGenContext &ctx, IGCPassManager &mpm) {
 
   // let CleanPHINode be right before Layout
   mpm.add(createCleanPHINodePass());
+  if (IGC_GET_FLAG_VALUE(DumpLatencyHidingFinal) > 0)
+    mpm.add(new LatencyHidingAnalysis("final", IGC_GET_FLAG_VALUE(DumpLatencyHidingFinal)));
   if (IGC_IS_FLAG_SET(DumpRegPressureEstimate))
     mpm.add(new IGCRegisterPressurePrinter("final"));
 
