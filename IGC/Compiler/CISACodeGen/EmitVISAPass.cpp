@@ -15535,15 +15535,15 @@ void EmitPass::emitThreadGroupBarrier(llvm::Instruction *inst) {
 
   bool canSkipBarrier = false;
   if (IGC_IS_FLAG_DISABLED(DisableBarrierSkipOptimization)) {
-    if (m_currShader->GetShaderType() == ShaderType::OPENCL_SHADER) {
-      Function *F = inst->getParent()->getParent();
-      MetaDataUtils *pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
-      uint32_t threadGroupSize = IGCMetaDataHelper::getThreadGroupSize(*pMdUtils, F);
-      if (threadGroupSize != 0) {
-        constexpr bool hasFusedEU = false;
-        canSkipBarrier = BarrierSkipOptimization::canSkip(threadGroupSize, numLanes(m_SimdMode), hasFusedEU);
+      if (m_currShader->GetShaderType() == ShaderType::OPENCL_SHADER) {
+        Function *F = inst->getParent()->getParent();
+        MetaDataUtils *pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
+        uint32_t threadGroupSize = IGCMetaDataHelper::getThreadGroupSize(*pMdUtils, F);
+        if (threadGroupSize != 0) {
+          constexpr bool hasFusedEU = false;
+          canSkipBarrier = BarrierSkipOptimization::canSkip(threadGroupSize, numLanes(m_SimdMode), hasFusedEU);
+        }
       }
-    }
   }
 
   if (!canSkipBarrier) {
