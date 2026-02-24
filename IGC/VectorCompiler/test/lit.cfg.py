@@ -128,12 +128,7 @@ tools = [ToolSubst('not'),
          ToolSubst('llvm-dwarfdump'),
          ToolSubst('%igc-lld', command=FindTool('ld.lld'))]
 
-if int(config.llvm_version) < 11:
-  config.substitutions.append(('%not_for_vc_diag%', 'not'))
-  config.substitutions.append(('%use_old_pass_manager%', ''))
-else:
-  config.substitutions.append(('%not_for_vc_diag%', 'not --crash'))
-  config.substitutions.append(('%use_old_pass_manager%', '-enable-new-pm=0'))
+config.substitutions.append(('%use_old_pass_manager%', '-enable-new-pm=0'))
 
 if int(config.llvm_version) < 12:
   config.available_features.add('llvm_11_or_less')

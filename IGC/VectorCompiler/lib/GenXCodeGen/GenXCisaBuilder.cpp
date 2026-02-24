@@ -4118,10 +4118,12 @@ void GenXKernelBuilder::buildIntrinsic(CallInst *CI, unsigned IntrinID,
                             uint8_t NumDst, VISA_RawOpnd *Dst, uint8_t NumSrc0,
                             VISA_RawOpnd *Src0, uint8_t NumSrc1,
                             VISA_RawOpnd *Src1) {
-    if (Subtarget->hasEfficient64b())
+    if (Subtarget->hasEfficient64b()) {
       vc::diagnose(
           getContext(), "GenXCisaBuilder",
           "Intrinsic is not supported in efficient 64-bit addressing mode", CI);
+      return;
+    }
 
     const bool IsEOT = Modifier & 2;
     CISA_CALL(Kernel->AppendVISAMiscRawSends(

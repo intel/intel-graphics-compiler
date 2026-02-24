@@ -11,7 +11,7 @@
 ; RUN: %llc_opaque_ptrs %s -march=genx64 -mcpu=Xe3P -mattr=-efficient_64b_enabled -vc-skip-ocl-runtime-info -finalizer-opts='-dumpvisa -dumpcommonisa -isaasmToConsole' -o /dev/null | \
 ; RUN: FileCheck %s
 
-; RUN: %not_for_vc_diag% llc %s -march=genx64 -mcpu=Xe3P -mattr=+efficient_64b_enabled -vc-skip-ocl-runtime-info -finalizer-opts='-dumpvisa -dumpcommonisa -isaasmToConsole' -o /dev/null 2>&1 | \
+; RUN: not llc %s -march=genx64 -mcpu=Xe3P -mattr=+efficient_64b_enabled -vc-skip-ocl-runtime-info -finalizer-opts='-dumpvisa -dumpcommonisa -isaasmToConsole' -o /dev/null 2>&1 | \
 ; RUN: FileCheck --check-prefix=CHECK-SENDG %s
 
 declare <16 x i32> @llvm.genx.r0.v16i32()
