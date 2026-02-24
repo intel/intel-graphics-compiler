@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2025 Intel Corporation
+Copyright (C) 2017-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -127,6 +127,7 @@ void initializeOpenCLPrintfResolutionPass(llvm::PassRegistry &);
 void initializePeepholeTypeLegalizerPass(llvm::PassRegistry &);
 void initializePositionDepAnalysisPass(llvm::PassRegistry &);
 void initializePrepareInlineSamplerForBindlessPass(llvm::PassRegistry &);
+void initializePrintFPRangeAnalysisPass(llvm::PassRegistry &);
 void initializePrivateMemoryResolutionPass(llvm::PassRegistry &);
 void initializePrivateMemoryToSLMPass(llvm::PassRegistry &);
 void initializePrivateMemoryUsageAnalysisPass(llvm::PassRegistry &);
