@@ -58,13 +58,31 @@ bool JumpThreadingPassWrapper::runOnFunction(Function &F) {
 
   // Run the New Pass Manager implementation of the pass.
   JumpThreadingPass Implementation(Threshold);
-  Implementation.run(F, FAM);
-  return true;
+  auto PAs = Implementation.run(F, FAM);
+  return PAs.areAllPreserved() ? false : true;
 }
 
 void JumpThreadingPassWrapper::getAnalysisUsage(AnalysisUsage &AU) const {
   AU.addRequired<DominatorTreeWrapperPass>();
+#if LLVM_VERSION_MAJOR != 16
+  // LLVM 16:
+  // Workaround. Avoid Dom Tree preservation for LLVM 16 when using wrapper.
+
+  // For some reason after running JumpThreadingPass via wrapper
+  // the Dom Tree is not always valid, at least when accessed e.g by Natural Loop Information pass, which results in
+  // segfault.
+
+  // I didn't manage to find any difference when it comes to execution of Jump Threading Pass implementation
+  // and additionally the dumps of Dom Tree seem to be same before and after running the pass on both: wrapper and
+  // non-wrapper versions.
+
+  // This workaround disabled Dom Tree preservation when using wrapper on LLVM 16 where issue exists.
+
+  // LLVM 17 or newer:
+  // I believe on LLVM 17 or newer it should work fine, but at this moment we are unable to evaluate that.
+  // So, if there's JumpThreading and Dom Tree issue on LLVM 17 or newer, then try disabling preservation.
   AU.addPreserved<DominatorTreeWrapperPass>();
+#endif
   AU.addRequired<AAResultsWrapperPass>();
   AU.addRequired<LazyValueInfoWrapperPass>();
   AU.addPreserved<LazyValueInfoWrapperPass>();
@@ -75,7 +93,7 @@ void JumpThreadingPassWrapper::getAnalysisUsage(AnalysisUsage &AU) const {
 
 char JumpThreadingPassWrapper::ID = 0;
 FunctionPass *createLegacyWrappedJumpThreadingPass(int Threshold) {
-#if LLVM_VERSION_MAJOR > 16
+#if LLVM_VERSION_MAJOR >= 16
   return new JumpThreadingPassWrapper(Threshold);
 #else
   return llvm::createJumpThreadingPass(Threshold);
