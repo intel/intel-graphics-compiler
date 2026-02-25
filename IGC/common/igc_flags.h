@@ -55,6 +55,8 @@ DECLARE_IGC_REGKEY(DWORD, CSSIMD32_HighThresholdInstCount, 1000,
 DECLARE_IGC_REGKEY(bool, DisableCSEL, false, "disable csel peep-hole", false)
 DECLARE_IGC_REGKEY(bool, DisableFlagOpt, false, "Disable optimization cmp with logic op", false)
 DECLARE_IGC_REGKEY(bool, DisableIfCvt, false, "Disable ifcvt", false)
+DECLARE_IGC_REGKEY(bool, LocalCSEForSendPayloadCopy, false, "Enable local CSE for the send payload mov intructions",
+                   true)
 DECLARE_IGC_REGKEY(bool, EnableVISANoBXMLEncoder, false, "Enable VISA No-BXML encoder", false)
 DECLARE_IGC_REGKEY(bool, EnableIGAEncoder, false, "Enable VISA IGA encoder", false)
 DECLARE_IGC_REGKEY(bool, EnableVISADumpCommonISA, false, "Enable VISA Dump Common ISA", true)

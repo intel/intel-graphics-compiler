@@ -3952,6 +3952,10 @@ void CEncoder::InitVISABuilderOptions(TARGET_PLATFORM VISAPlatform, bool canAbor
     SaveOption(vISA_ifCvt, false);
   }
 
+  if (IGC_IS_FLAG_ENABLED(LocalCSEForSendPayloadCopy)) {
+    SaveOption(vISA_localCSEForSendPayloadCopy, true);
+  }
+
   if (IGC_IS_FLAG_ENABLED(EnableVISAStructurizer) &&
       (m_program->m_Platform->hasSCF() || IGC_IS_FLAG_ENABLED(ForceVISAStructurizer))) {
     SaveOption(vISA_EnableStructurizer, true);

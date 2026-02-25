@@ -2716,7 +2716,7 @@ bool canDoCSEForSendPayloadCopies(
     std::map<G4_INST *, std::vector<std::pair<G4_INST *, G4_INST *>>>
         &sendUnRemovedPayLoadCopyMap,
     IR_Builder &builder) {
-    // Same SFID
+  // Same SFID
   G4_SendgDesc *prevSendDesc =
       static_cast<G4_SendgDesc *>(prevInst->getMsgDesc());
   G4_SendgDesc *succSendDesc =
