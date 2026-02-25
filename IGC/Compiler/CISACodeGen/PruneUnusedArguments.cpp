@@ -88,7 +88,7 @@ bool PruneUnusedArguments::runOnModule(Module &M) {
       // Update call sites.
       for (auto U : F->users()) {
         CallInst *CI = dyn_cast<CallInst>(U);
-        if (!CI)
+        if (!CI || CI->getCalledFunction() != F)
           continue;
         for (const auto &Item : UnusedArgs) {
           auto Arg = Item.first;
