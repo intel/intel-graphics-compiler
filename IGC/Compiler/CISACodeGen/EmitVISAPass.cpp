@@ -20246,7 +20246,7 @@ bool EmitPass::ResourceLoopHeader(const CVariable *destination, ResourceDescript
   bool uniformResource = resource.m_resource == nullptr || resource.m_resource->IsUniform();
   bool uniformSampler = sampler.m_sampler == nullptr || sampler.m_sampler->IsUniform();
   if (uniformResource && uniformSampler) {
-    IGC_ASSERT(ResourceLoopMarker == 0);
+    IGC_ASSERT(ResourceLoopMarker == 0 || (ResourceLoopMarker & ResourceLoopAnalysis::MarkResourceLoopInside));
     return false;
   }
   // cannot fuse resource loop in simd32 mode when there are
@@ -20333,7 +20333,7 @@ bool EmitPass::ResourceLoopSubIteration(ResourceDescriptor &resource, SamplerDes
   bool uniformResource = resource.m_resource == nullptr || resource.m_resource->IsUniform();
   bool uniformSampler = sampler.m_sampler == nullptr || sampler.m_sampler->IsUniform();
   if (uniformResource && uniformSampler) {
-    IGC_ASSERT(ResourceLoopMarker == 0);
+    IGC_ASSERT(ResourceLoopMarker == 0 || (ResourceLoopMarker & ResourceLoopAnalysis::MarkResourceLoopInside));
     return false;
   }
 
