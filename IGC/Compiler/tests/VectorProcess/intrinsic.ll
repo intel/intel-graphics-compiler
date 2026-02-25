@@ -20,9 +20,9 @@
 define void @test_vectorpro(<2 x i16> addrspace(1)* %src) {
 ; CHECK-LABEL: @test_vectorpro(
 ; CHECK:    [[VPTRCAST:%.*]] = bitcast <2 x i16> addrspace(1)* %src to i32 addrspace(1)*
-; CHECK:    [[TMP1:%.*]] = call i32 @llvm.genx.GenISA.ldrawvector.indexed.i32.p1i32(i32 addrspace(1)* [[VPTRCAST]], i32 4, i32 2, i1 true)
+; CHECK:    [[TMP1:%.*]] = call i32 @llvm.genx.GenISA.ldraw.indexed.i32.p1i32(i32 addrspace(1)* [[VPTRCAST]], i32 4, i32 2, i1 true)
 ; CHECK:    [[VPTRCAST1:%.*]] = bitcast <2 x i16> addrspace(1)* %src to i32 addrspace(1)*
-; CHECK:    call void @llvm.genx.GenISA.storerawvector.indexed.p1i32.i32(i32 addrspace(1)* [[VPTRCAST1]], i32 0, i32 [[TMP1]], i32 2, i1 true)
+; CHECK:    call void @llvm.genx.GenISA.storeraw.indexed.p1i32.i32(i32 addrspace(1)* [[VPTRCAST1]], i32 0, i32 [[TMP1]], i32 2, i1 true)
 ; CHECK:    [[TMP2:%.*]] = bitcast <2 x i16> addrspace(1)* %src to i32 addrspace(1)*
 ; CHECK:    store i32 [[TMP1]], i32 addrspace(1)* [[TMP2]], align 4
 ; CHECK:    [[TMP3:%.*]] = bitcast i32 [[TMP1]] to float

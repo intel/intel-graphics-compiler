@@ -428,7 +428,9 @@ bool VectorProcess::reLayoutLoadStore(Instruction *Inst) {
     Type *types[] = {newVTy, newPtrTy};
 
     Function *F = GenISAIntrinsic::getDeclaration(II->getParent()->getParent()->getParent(),
-                                                  GenISAIntrinsic::GenISA_ldrawvector_indexed, types);
+                                                  newVTy->isVectorTy() ? GenISAIntrinsic::GenISA_ldrawvector_indexed
+                                                                       : GenISAIntrinsic::GenISA_ldraw_indexed,
+                                                  types);
     Value *V = Builder.CreateCall4(F, newPtr, II->getOperand(1), II->getOperand(2), II->getOperand(3));
 
     if (eTy->isPointerTy()) {
@@ -448,7 +450,9 @@ bool VectorProcess::reLayoutLoadStore(Instruction *Inst) {
     Type *types[] = {newPtrTy, newVTy};
 
     Function *F = GenISAIntrinsic::getDeclaration(II->getParent()->getParent()->getParent(),
-                                                  GenISAIntrinsic::GenISA_storerawvector_indexed, types);
+                                                  newVTy->isVectorTy() ? GenISAIntrinsic::GenISA_storerawvector_indexed
+                                                                       : GenISAIntrinsic::GenISA_storeraw_indexed,
+                                                  types);
 
     Value *V;
     if (eTy->isPointerTy()) {

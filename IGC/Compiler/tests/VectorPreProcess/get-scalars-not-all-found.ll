@@ -37,7 +37,7 @@ entry:
 ; CHECK: [[OFF0:%.*]] = add i32 0, [[OFFSET]]
 ; CHECK: call void @llvm.genx.GenISA.storerawvector.indexed.p2490368i8.v4f16(i8 addrspace(2490368)* [[BSO]], i32 [[OFF0]], <4 x half> [[VEC3]], i32 16, i1 false)
 ; CHECK: [[OFF1:%.*]] = add i32 8, [[OFFSET]]
-; CHECK: call void @llvm.genx.GenISA.storerawvector.indexed.p2490368i8.f16(i8 addrspace(2490368)* [[BSO]], i32 [[OFF1]], half [[ELT4]], i32 8, i1 false)
+; CHECK: call void @llvm.genx.GenISA.storeraw.indexed.p2490368i8.f16(i8 addrspace(2490368)* [[BSO]], i32 [[OFF1]], half [[ELT4]], i32 8, i1 false)
 
 
 ; Function Desc: Write a vector to a buffer pointer at byte offset

@@ -183,7 +183,7 @@ private:
         break;
       }
       IGC_ASSERT_MESSAGE(pDest != nullptr, "The type must be defined to determine the function type.");
-      // IGC_ASSERT_MESSAGE(typeDef.VerifyType(pDest), "The type is inconsistent with the definition.");
+      IGC_ASSERT_MESSAGE(typeDef.VerifyType(pDest), "The type is inconsistent with the definition.");
     };
 
     constexpr uint8_t resTypeIndex = 0;

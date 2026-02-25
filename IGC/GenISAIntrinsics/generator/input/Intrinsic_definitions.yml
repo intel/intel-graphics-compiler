@@ -150,12 +150,12 @@ intrinsics:
         name: "GenISA_bftof"
         comment: "Convert bf16 to float"
         return_definition: !<ReturnDefinition>
-            type_definition: *any_float
+            type_definition: *any
             comment: "float result"
         arguments:
             - !<ArgumentDefinition>
                 name: Arg0
-                type_definition: *any_int
+                type_definition: *any
                 comment: "bf16 source"
         attributes:
             - !AttributeID "NoUnwind"
@@ -493,12 +493,12 @@ intrinsics:
         name: "GenISA_ftobf"
         comment: "Convert from float to bf16"
         return_definition: !<ReturnDefinition>
-            type_definition: *any_int
+            type_definition: *any
             comment: "bf16 result"
         arguments:
             - !<ArgumentDefinition>
                 name: Arg0
-                type_definition: *any_float
+                type_definition: *any
                 comment: "float source"
             - !<ArgumentDefinition>
                 name: Arg1
@@ -2478,7 +2478,7 @@ intrinsics:
         name: "GenISA_WaveAll"
         comment: "Accumulate all the active lanes"
         return_definition: !<ReturnDefinition>
-            type_definition: *any_int
+            type_definition: *any
             comment: ""
         arguments:
             - !<ArgumentDefinition>
@@ -2563,7 +2563,7 @@ intrinsics:
             \ such that: clusters are disjoint, size value is of 1 <= 2^p <= maxSubgroupSize,\
             \ p >= 0."
         return_definition: !<ReturnDefinition>
-            type_definition: *any_int
+            type_definition: *any
             comment: "the result for n-th input cluster is replicated to n-th output\
                 \ cluster"
         arguments:
@@ -2595,7 +2595,7 @@ intrinsics:
         comment: "Accumulate together every n-th active lane, where n defines\
             \ interleave step as 1 < 2^p < maxSubgroupSize; p > 0."
         return_definition: !<ReturnDefinition>
-            type_definition: *any_int
+            type_definition: *any
             comment: "return value of n-th bit from the input bitfield Step n is defined\
                 \ as 1 <= 2^n <= maxSubgroupSize, n >= 0."
         arguments:
@@ -2628,7 +2628,7 @@ intrinsics:
             \ into clusters (like WaveClustered), and then does interleave reduction\
             \ (WaveInterleave) on each cluster. The result is undefined in case of non-uniformity."
         return_definition: !<ReturnDefinition>
-            type_definition: *any_int
+            type_definition: *any
             comment: ""
         arguments:
             - !<ArgumentDefinition>
@@ -2684,7 +2684,7 @@ intrinsics:
         name: "GenISA_WavePrefix"
         comment: "Accumulate and keep the intermediate results in each lane"
         return_definition: !<ReturnDefinition>
-            type_definition: *any_int
+            type_definition: *any
             comment: "result"
         arguments:
             - !<ArgumentDefinition>
@@ -2721,7 +2721,7 @@ intrinsics:
             \ Compared to WavePrefix, arguments 'type' and 'mask' are removed, as  they\
             \ are unsupported in current implementation."
         return_definition: !<ReturnDefinition>
-            type_definition: *any_int
+            type_definition: *any
             comment: "result"
         arguments:
             - !<ArgumentDefinition>
@@ -2751,7 +2751,7 @@ intrinsics:
         name: "GenISA_WaveShuffleIndex"
         comment: "Read from a specific lane"
         return_definition: !<ReturnDefinition>
-            type_definition: *any_int
+            type_definition: *any
             comment: "TODO: could be changed to anytype when support has been backported\
                 \ from llvm 3.7"
         arguments:
@@ -2780,7 +2780,7 @@ intrinsics:
         comment: "Broadcasts from specific lane to all lanes. Overlaps with WaveShuffleIndex,\
             \ but guarantees that lane is thread-uniform."
         return_definition: !<ReturnDefinition>
-            type_definition: *any_int
+            type_definition: *any
             comment: "result"
         arguments:
             - !<ArgumentDefinition>
@@ -2808,7 +2808,7 @@ intrinsics:
             \ Works in non-uniform threads, but result is undefined if\
             \ broadcasted lane is inactive."
         return_definition: !<ReturnDefinition>
-            type_definition: *any_int
+            type_definition: *any
             comment: "result"
         arguments:
             - !<ArgumentDefinition>
@@ -3361,7 +3361,7 @@ intrinsics:
         name: "GenISA_launder"
         comment: "Prevent the compiler from seeing where result comes from."
         return_definition: !<ReturnDefinition>
-            type_definition: *any_int
+            type_definition: *any
             comment: "return the argument"
         arguments:
             - !<ArgumentDefinition>
@@ -8150,7 +8150,7 @@ intrinsics:
         name: "GenISA_simdBlockRead"
         comment: ""
         return_definition: !<ReturnDefinition>
-            type_definition: *v_any_
+            type_definition: *any
             comment: ""
         arguments:
             - !<ArgumentDefinition>
@@ -8168,7 +8168,7 @@ intrinsics:
         name: "GenISA_simdBlockReadBindless"
         comment: ""
         return_definition: !<ReturnDefinition>
-            type_definition: *v_any_
+            type_definition: *any
             comment: ""
         arguments:
             - !<ArgumentDefinition>
@@ -8199,7 +8199,7 @@ intrinsics:
                 comment: ""
             - !<ArgumentDefinition>
                 name: Arg1
-                type_definition: *v_any_
+                type_definition: *any
                 comment: ""
         attributes:
             - !AttributeID "Convergent"
@@ -8220,7 +8220,7 @@ intrinsics:
                 comment: ""
             - !<ArgumentDefinition>
                 name: Arg1
-                type_definition: *v_any_
+                type_definition: *any
                 comment: ""
             - !<ArgumentDefinition>
                 name: Arg2
@@ -8304,7 +8304,7 @@ intrinsics:
         name: "GenISA_simdMediaBlockRead"
         comment: ""
         return_definition: !<ReturnDefinition>
-            type_definition: *v_any_
+            type_definition: *any
             comment: ""
         arguments:
             - !<ArgumentDefinition>
@@ -8355,7 +8355,7 @@ intrinsics:
                 comment: ""
             - !<ArgumentDefinition>
                 name: Arg4
-                type_definition: *v_any_
+                type_definition: *any
                 comment: ""
         attributes:
             - !AttributeID "Convergent"
@@ -8516,7 +8516,7 @@ intrinsics:
         name: "GenISA_simdShuffleXor"
         comment: ""
         return_definition: !<ReturnDefinition>
-            type_definition: *any_int
+            type_definition: *any
             comment: "result"
         arguments:
             - !<ArgumentDefinition>
@@ -8767,20 +8767,20 @@ intrinsics:
         name: "GenISA_sub_group_dpas"
         comment: "XeHP SDV: dot product accumulate systolic"
         return_definition: !<ReturnDefinition>
-            type_definition: *v_any_
+            type_definition: *any
             comment: "dst"
         arguments:
             - !<ArgumentDefinition>
                 name: Arg0
-                type_definition: *v_any_
+                type_definition: *any
                 comment: "src0(acc)"
             - !<ArgumentDefinition>
                 name: Arg1
-                type_definition: *v_any_
+                type_definition: *any
                 comment: "src1"
             - !<ArgumentDefinition>
                 name: Arg2
-                type_definition: *v_any_
+                type_definition: *any
                 comment: "src2"
             - !<ArgumentDefinition>
                 name: Arg3
@@ -9765,7 +9765,7 @@ intrinsics:
         name: "GenISA_LSC2DBlockRead"
         comment: "LSC 2d block read"
         return_definition: !<ReturnDefinition>
-            type_definition: *any_int
+            type_definition: *any
             comment: ""
         arguments:
             - !<ArgumentDefinition>
@@ -9885,7 +9885,7 @@ intrinsics:
                 comment: "cache controls options (LSC_CACHE_OPTS)"
             - !<ArgumentDefinition>
                 name: Arg13
-                type_definition: *any_int
+                type_definition: *any
                 comment: "stored value"
         attributes:
             - !AttributeID "NoUnwind"
@@ -10052,7 +10052,7 @@ intrinsics:
         name: "GenISA_LSC2DBlockReadAddrPayload"
         comment: "LSC 2d block read with address payload(AP) as a single arg"
         return_definition: !<ReturnDefinition>
-            type_definition: *any_int
+            type_definition: *any
             comment: ""
         arguments:
             - !<ArgumentDefinition>
@@ -10153,7 +10153,7 @@ intrinsics:
                 comment: "cache controls options (LSC_CACHE_OPTS)"
             - !<ArgumentDefinition>
                 name: Arg10
-                type_definition: *any_int
+                type_definition: *any
                 comment: "value to be stored"
         attributes:
             - !AttributeID "NoUnwind"
@@ -10385,7 +10385,7 @@ intrinsics:
         name: "GenISA_PredicatedLoad"
         comment: "Predicated load instruction"
         return_definition: !<ReturnDefinition>
-            type_definition: *any_int
+            type_definition: *any
             comment: "value loaded"
         arguments:
             - !<ArgumentDefinition>
@@ -10402,7 +10402,7 @@ intrinsics:
                 comment: "predication flag"
             - !<ArgumentDefinition>
                 name: Arg3
-                type_definition: *any_int
+                type_definition: *any
                 comment: "value to use if predicate is false"
         attributes:
             - !AttributeID "NoUnwind"
@@ -10678,7 +10678,7 @@ intrinsics:
                 comment: "address to store to"
             - !<ArgumentDefinition>
                 name: Arg1
-                type_definition: *any_int
+                type_definition: *any
                 comment: "value to be stored"
             - !<ArgumentDefinition>
                 name: Arg2
@@ -10760,12 +10760,12 @@ intrinsics:
         name: "GenISA_bf8tohf"
         comment: "bf8 to half conversion"
         return_definition: !<ReturnDefinition>
-            type_definition: *any_float
+            type_definition: *any
             comment: "half result"
         arguments:
             - !<ArgumentDefinition>
                 name: Arg0
-                type_definition: *any_int
+                type_definition: *any
                 comment: "bf8 source (as char)"
         attributes:
             - !AttributeID "NoUnwind"
@@ -10858,12 +10858,12 @@ intrinsics:
         name: "GenISA_hftobf8"
         comment: "half to bf8 conversion"
         return_definition: !<ReturnDefinition>
-            type_definition: *any_int
+            type_definition: *any
             comment: "bf8 result (as char)"
         arguments:
             - !<ArgumentDefinition>
                 name: Arg0
-                type_definition: *any_float
+                type_definition: *any
                 comment: "half source"
             - !<ArgumentDefinition>
                 name: Arg1
@@ -10883,12 +10883,12 @@ intrinsics:
         name: "GenISA_hftohf8"
         comment: "half to hf8 conversion"
         return_definition: !<ReturnDefinition>
-            type_definition: *any_int
+            type_definition: *any
             comment: "hf8 result (as char)"
         arguments:
             - !<ArgumentDefinition>
                 name: Arg0
-                type_definition: *any_float
+                type_definition: *any
                 comment: "half source"
             - !<ArgumentDefinition>
                 name: Arg1
@@ -10908,12 +10908,12 @@ intrinsics:
         name: "GenISA_hf8tohf"
         comment: "hf8 to half conversion"
         return_definition: !<ReturnDefinition>
-            type_definition: *any_float
+            type_definition: *any
             comment: "half result"
         arguments:
             - !<ArgumentDefinition>
                 name: Arg0
-                type_definition: *any_int
+                type_definition: *any
                 comment: "hf8 source (as char)"
         attributes:
             - !AttributeID "NoUnwind"
@@ -10946,16 +10946,16 @@ intrinsics:
         name: "GenISA_srnd_hftobf8"
         comment: "stochastic rounding:  srnd dst  src0  src1"
         return_definition: !<ReturnDefinition>
-            type_definition: *any_int
+            type_definition: *any
             comment: "dst: bf8. UB"
         arguments:
             - !<ArgumentDefinition>
                 name: Arg0
-                type_definition: *any_float
+                type_definition: *any
                 comment: "src0: HF"
             - !<ArgumentDefinition>
                 name: Arg1
-                type_definition: *any_int
+                type_definition: *any
                 comment: "src1: random number. UB"
             - !<ArgumentDefinition>
                 name: Arg2
@@ -11286,7 +11286,7 @@ intrinsics:
         arguments:
             - !<ArgumentDefinition>
                 name: Arg0
-                type_definition: *any_int
+                type_definition: *any
                 comment: ""
         attributes:
             - !AttributeID "NoDuplicate"
@@ -11306,7 +11306,7 @@ intrinsics:
         arguments:
             - !<ArgumentDefinition>
                 name: Arg0
-                type_definition: *any_int
+                type_definition: *p_any_
                 comment: ""
         attributes:
             - !AttributeID "NoDuplicate"
@@ -11436,7 +11436,7 @@ intrinsics:
         name: "GenISA_FillValue"
         comment: "Raytracing: Fill value from the stack"
         return_definition: !<ReturnDefinition>
-            type_definition: *any_int
+            type_definition: *any
             comment: ""
         arguments:
             - !<ArgumentDefinition>
@@ -11783,7 +11783,7 @@ intrinsics:
         arguments:
             - !<ArgumentDefinition>
                 name: Arg0
-                type_definition: *any_int
+                type_definition: *any
                 comment: ""
             - !<ArgumentDefinition>
                 name: Arg1
@@ -12272,7 +12272,7 @@ intrinsics:
         name: "GenISA_bitcastfromstruct"
         comment: "bitcast from a struct to an int (or int vector), GRF layout related"
         return_definition: !<ReturnDefinition>
-            type_definition: *any_int
+            type_definition: *any
             comment: "result"
         arguments:
             - !<ArgumentDefinition>
@@ -12294,7 +12294,7 @@ intrinsics:
         arguments:
             - !<ArgumentDefinition>
                 name: Arg0
-                type_definition: *any_int
+                type_definition: *any
                 comment: "input"
         attributes:
             - !AttributeID "NoUnwind"
@@ -12358,7 +12358,7 @@ intrinsics:
         arguments:
             - !<ArgumentDefinition>
                 name: Arg0
-                type_definition: *any_int
+                type_definition: *p_any_
                 comment: ""
         attributes:
             - !AttributeID "NoDuplicate"
@@ -12379,12 +12379,12 @@ intrinsics:
             \ input  <2 x i8> = {a, b} \
             \ output <3 x i8> = {a & 15, a >> 4, b & 15}"
         return_definition: !<ReturnDefinition>
-            type_definition: *v_i8_
+            type_definition: *any
             comment: "<2*N x i8> or <2*N-1 x i8>"
         arguments:
             - !<ArgumentDefinition>
                 name: PackedI8Vector
-                type_definition: *v_i8_
+                type_definition: *any
                 comment: "<N x i8>"
             - !<ArgumentDefinition>
                 name: SignExtend
@@ -12407,12 +12407,12 @@ intrinsics:
             \ input  <3 x i8> = {a, b, c} \
             \ output <2 x i8> = {a | (b << 4), c}"
         return_definition: !<ReturnDefinition>
-            type_definition: *v_i8_
+            type_definition: *any
             comment: "<N x i8>"
         arguments:
             - !<ArgumentDefinition>
                 name: PackedI8Vector
-                type_definition: *v_i8_
+                type_definition: *any
                 comment: "<2*N x i8> or <2*N-1 x i8>"
         attributes:
             - !AttributeID "NoUnwind"
@@ -12485,16 +12485,16 @@ intrinsics:
         name: "GenISA_srnd_hftohf8"
         comment: "stochastic rounding:  srnd dst  src0  src1"
         return_definition: !<ReturnDefinition>
-            type_definition: *any_int
+            type_definition: *any
             comment: "dst: hf8. UB"
         arguments:
             - !<ArgumentDefinition>
                 name: Arg0
-                type_definition: *any_float
+                type_definition: *any
                 comment: "src0: HF"
             - !<ArgumentDefinition>
                 name: Arg1
-                type_definition: *any_int
+                type_definition: *any
                 comment: "src1: random number. UB"
             - !<ArgumentDefinition>
                 name: Arg2
@@ -12509,16 +12509,16 @@ intrinsics:
         name: "GenISA_srnd_bftobf8"
         comment: "stochastic rounding:  srnd dst  src0  src1"
         return_definition: !<ReturnDefinition>
-            type_definition: *any_int
+            type_definition: *any
             comment: "dst: bf8. B"
         arguments:
             - !<ArgumentDefinition>
                 name: Arg0
-                type_definition: *any_int
+                type_definition: *any
                 comment: "src0: bf16. BF"
             - !<ArgumentDefinition>
                 name: Arg1
-                type_definition: *any_int
+                type_definition: *any
                 comment: "src1: random number. UB"
             - !<ArgumentDefinition>
                 name: Arg2
@@ -12533,16 +12533,16 @@ intrinsics:
         name: "GenISA_srnd_bftohf8"
         comment: "stochastic rounding:  srnd dst  src0  src1"
         return_definition: !<ReturnDefinition>
-            type_definition: *any_int
+            type_definition: *any
             comment: "dst: hf8. B"
         arguments:
             - !<ArgumentDefinition>
                 name: Arg0
-                type_definition: *any_int
+                type_definition: *any
                 comment: "src0: bf16. BF"
             - !<ArgumentDefinition>
                 name: Arg1
-                type_definition: *any_int
+                type_definition: *any
                 comment: "src1: random number. UB"
             - !<ArgumentDefinition>
                 name: Arg2
@@ -12725,29 +12725,29 @@ intrinsics:
         name: "GenISA_sub_group_bdpas"
         comment: "bdpas (Future - XE3P)"
         return_definition: !<ReturnDefinition>
-            type_definition: *v_any_
+            type_definition: *any
             comment: "dst (type: F,BF,HF)"
         arguments:
             - !<ArgumentDefinition>
                 name: Arg0
-                type_definition: *v_any_
+                type_definition: *any
                 comment: "src0: C matrix (acc), can be null (type: F,BF,HF)"
             - !<ArgumentDefinition>
                 name: Arg1
-                type_definition: *v_any_
+                type_definition: *any
                 comment: "src1: A matrix (type: BF,HF,UD)"
             - !<ArgumentDefinition>
                 name: Arg2
-                type_definition: *v_any_
+                type_definition: *any
                 comment: "src2: B matrix (type: BF,HF,UD)"
             - !<ArgumentDefinition>
                 name: Arg3
-                type_definition: *v_any_
+                type_definition: *any
                 comment: "src3: block scaling for src1 (A matrix), can be null (type:\
                     \ UB)"
             - !<ArgumentDefinition>
                 name: Arg4
-                type_definition: *v_any_
+                type_definition: *any
                 comment: "src4: block scaling for src2 (B matrix), can be null (type:\
                     \ UB)"
             - !<ArgumentDefinition>

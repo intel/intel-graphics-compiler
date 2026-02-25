@@ -165,7 +165,11 @@ public:
       ptr = ldraw->getResourceValue();
       Type *types[2] = {returnType, ptr->getType()};
       Value *args[4] = {ptr, offsetVal, builder.getInt32((uint32_t)alignment), builder.getInt1(isVolatile)};
-      Function *newLdRawFunction = GenISAIntrinsic::getDeclaration(ldraw->getModule(), ldraw->getIntrinsicID(), types);
+      Function *newLdRawFunction =
+          GenISAIntrinsic::getDeclaration(ldraw->getModule(),
+                                          returnType->isVectorTy() ? GenISAIntrinsic::GenISA_ldrawvector_indexed
+                                                                   : GenISAIntrinsic::GenISA_ldraw_indexed,
+                                          types);
       return builder.CreateCall(newLdRawFunction, args);
     }
 
@@ -278,7 +282,10 @@ public:
       Type *types[2] = {ptr->getType(), newType};
       Value *args[5] = {ptr, offset, storedValue, builder.getInt32((uint32_t)alignment), builder.getInt1(isVolatile)};
       Function *newStoreRawFunction =
-          GenISAIntrinsic::getDeclaration(getStoreRaw()->getModule(), getStoreRaw()->getIntrinsicID(), types);
+          GenISAIntrinsic::getDeclaration(getStoreRaw()->getModule(),
+                                          newType->isVectorTy() ? GenISAIntrinsic::GenISA_storerawvector_indexed
+                                                                : GenISAIntrinsic::GenISA_storeraw_indexed,
+                                          types);
       return builder.CreateCall(newStoreRawFunction, args);
     }
 
