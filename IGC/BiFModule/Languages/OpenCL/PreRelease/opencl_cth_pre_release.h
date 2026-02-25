@@ -2999,6 +2999,44 @@ half8 __attribute__((overloadable))
 intel_convert_half8_srnd(float8 source, ushort8 random);
 half16 __attribute__((overloadable))
 intel_convert_half16_srnd(float16 source, ushort16 random);
+uchar __attribute__((overloadable))
+intel_convert_hfloat8_as_uchar_srnd(half source, uchar random);
+uchar2 __attribute__((overloadable))
+intel_convert_hfloat82_as_uchar2_srnd(half2 source, uchar2 random);
+uchar3 __attribute__((overloadable))
+intel_convert_hfloat83_as_uchar3_srnd(half3 source, uchar3 random);
+uchar4 __attribute__((overloadable))
+intel_convert_hfloat84_as_uchar4_srnd(half4 source, uchar4 random);
+uchar8 __attribute__((overloadable))
+intel_convert_hfloat88_as_uchar8_srnd(half8 source, uchar8 random);
+uchar16 __attribute__((overloadable))
+intel_convert_hfloat816_as_uchar16_srnd(half16 source, uchar16 random);
+
+uchar __attribute__((overloadable))
+intel_convert_as_bfloat16_bfloat8_as_uchar_srnd(ushort source, uchar random);
+uchar2 __attribute__((overloadable))
+intel_convert_as_bfloat162_bfloat82_as_uchar2_srnd(ushort2 source, uchar2 random);
+uchar3 __attribute__((overloadable))
+intel_convert_as_bfloat163_bfloat83_as_uchar3_srnd(ushort3 source, uchar3 random);
+uchar4 __attribute__((overloadable))
+intel_convert_as_bfloat164_bfloat84_as_uchar4_srnd(ushort4 source, uchar4 random);
+uchar8 __attribute__((overloadable))
+intel_convert_as_bfloat168_bfloat88_as_uchar8_srnd(ushort8 source, uchar8 random);
+uchar16 __attribute__((overloadable))
+intel_convert_as_bfloat1616_bfloat816_as_uchar16_srnd(ushort16 source, uchar16 random);
+
+uchar __attribute__((overloadable))
+intel_convert_as_bfloat16_hfloat8_as_uchar_srnd(ushort source, uchar random);
+uchar2 __attribute__((overloadable))
+intel_convert_as_bfloat162_hfloat82_as_uchar2_srnd(ushort2 source, uchar2 random);
+uchar3 __attribute__((overloadable))
+intel_convert_as_bfloat163_hfloat83_as_uchar3_srnd(ushort3 source, uchar3 random);
+uchar4 __attribute__((overloadable))
+intel_convert_as_bfloat164_hfloat84_as_uchar4_srnd(ushort4 source, uchar4 random);
+uchar8 __attribute__((overloadable))
+intel_convert_as_bfloat168_hfloat88_as_uchar8_srnd(ushort8 source, uchar8 random);
+uchar16 __attribute__((overloadable))
+intel_convert_as_bfloat1616_hfloat816_as_uchar16_srnd(ushort16 source, uchar16 random);
 #endif // cl_intel_stochastic_rounding
 
 #endif // cl_khr_fp16
