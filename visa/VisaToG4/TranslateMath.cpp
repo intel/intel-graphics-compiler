@@ -58,7 +58,8 @@ static G4_SrcRegRegion *operandToDirectSrcRegRegion(IR_Builder &builder,
                             InstOpt_WriteEnable, true);
         }
       } else {
-        builder.createMovInst(dcl, 0, 0, newSize, nullptr, nullptr, src, true);
+        // Use oldSize as execution size, otherwise src would be OOB accessed
+        builder.createMovInst(dcl, 0, 0, oldSize, nullptr, nullptr, src, true);
       }
       return builder.createSrcRegRegion(dcl, builder.getRegionStride1());
     }
@@ -504,9 +505,27 @@ int IR_Builder::translateVISAArithmeticDoubleInst(
   if (needsSrc0Move) {
     if (opcode == ISA_DIV || opcode == ISA_DIVM) {
       G4_DstRegRegion *t6_dst_src0_opnd = createDstRegRegion(tdst_src0);
-      inst = createMov(
-          G4_ExecSize(element_size), t6_dst_src0_opnd, src0RR, instOpt,
-          true); // mov (element_size) t6_dst_src0_opnd, src0RR {Q1/N1}
+      // We should keep original execution size here, otherwise it may cause OOB
+      // issue when accessing src register or invalid region that vISA can't
+      // handle. For example:
+      // div (2|M16) v9th(0,0)<1> v9th(3,4)<2;2,2> 0xcc0000:df
+      // =>
+      // mov (8|M16) TV2(0,0)<1>:df  v9th(3,4)<2;2,2>:df
+      // div (8|M16) v9th(0,0)<1> TV2(0,0)<1;1,0> 0xcc0000:df
+      // The regioning of v9th(3,4)<2;2,2> in the inserted mov instruction
+      // violates the restriction that elements within a 'Width' cannot cross
+      // register boundaries. To fix such restriction, vISA needs to split it
+      // to 4xSIMD2 instructions. But there is no valid emask can be used if
+      // this instruction is in divergent BB and not all channels are enabled.
+      // So, there is no way for vISA to legalize it.
+      // If keep the original execution size, the regioning of v9th(3,4)<2;2,2>
+      // can be normalized to <2;1,0> in later pass:
+      // mov (2|M16) TV2(0,0)<1>:df  v9th(3,4)<2;2,2>:df
+      // =>
+      // mov (2|M16) TV2(0,0)<1>:df  v9th(3,4)<2;1,0>:df
+
+      // mov (instExecSize) t6_dst_src0_opnd, src0RR {Q1/N1}
+      inst = createMov(instExecSize, t6_dst_src0_opnd, src0RR, instOpt, true);
     }
   }
   bool needsSrc1Move = src1RR->isScalar() ||
@@ -514,9 +533,8 @@ int IR_Builder::translateVISAArithmeticDoubleInst(
                        !tryToAlignOperand(src1RR, getGRFSize());
   if (needsSrc1Move) {
     G4_DstRegRegion *t7_dst_src1_opnd = createDstRegRegion(tdst_src1);
-    inst =
-        createMov(G4_ExecSize(element_size), t7_dst_src1_opnd, src1RR, instOpt,
-                  true); // mov (element_size) t7_dst_src1_opnd, src1RR {Q1/N1}
+    // mov (instExecSize) t7_dst_src1_opnd, src1RR {Q1/N1}
+    inst = createMov(instExecSize, t7_dst_src1_opnd, src1RR, instOpt, true);
   }
 
   bool hasDefaultRoundDenorm = getOption(vISA_hasRNEandDenorm);
@@ -1032,15 +1050,17 @@ int IR_Builder::translateVISAArithmeticSingleDivideIEEEInst(
   if (src0RR->isScalar() || src0RR->getModifier() != Mod_src_undef ||
       !tryToAlignOperand(src0RR, getGRFSize())) {
     G4_DstRegRegion *tmp = createDstRegRegion(t6, 1);
-    inst = createMov(G4_ExecSize(element_size), tmp, src0RR, instOpt,
-                     true); // mov (element_size) t6, src0RR {Q1/H1}
+    // mov (instExecSize) t6, src0RR {Q1/H1}
+    inst = createMov(instExecSize, tmp, src0RR, instOpt,
+                     true);
     src0RR = createSrcRegRegion(t6, getRegionStride1());
   }
   if (src1RR->isScalar() || src1RR->getModifier() != Mod_src_undef ||
       !tryToAlignOperand(src1RR, getGRFSize())) {
     G4_DstRegRegion *tmp = createDstRegRegion(t4, 1);
-    inst = createMov(G4_ExecSize(element_size), tmp, src1RR, instOpt,
-                     true); // mov (element_size) t4, src1RR {Q1/H1}
+    // mov (instExecSize) t4, src1RR {Q1/H1}
+    inst = createMov(instExecSize, tmp, src1RR, instOpt,
+                     true);
     src1RR = createSrcRegRegion(t4, getRegionStride1());
   }
 
@@ -1377,8 +1397,9 @@ int IR_Builder::translateVISAArithmeticSingleSQRTIEEEInst(
       !tryToAlignOperand(src0RR, getGRFSize())) {
     // expand src0 to vector src
     G4_DstRegRegion *t6_dst_src0_opnd = createDstRegRegion(t6, 1);
-    inst = createMov(element_size, t6_dst_src0_opnd, src0RR, instOpt,
-                     true); // mov (element_size) t6, src0RR {Q1/H1}
+    // mov (instExecSize) t6, src0RR {Q1/H1}
+    inst = createMov(instExecSize, t6_dst_src0_opnd, src0RR, instOpt,
+                     true);
 
     src0RR = createSrcRegRegion(t6, getRegionStride1());
   }
@@ -1746,8 +1767,8 @@ int IR_Builder::translateVISAArithmeticDoubleSQRTInst(
   if (IsSrc0Moved) {
     // expand scale src0 to vector src
     dst0 = createDstRegRegion(t6, 1);
-    // mov (element_size) t6_dst_src0_opnd, src0RR {Q1/H1}
-    inst = createMov(element_size, dst0, src0RR, instOpt, true);
+    // mov (instExecSize) t6_dst_src0_opnd, src0RR {Q1/H1}
+    inst = createMov(instExecSize, dst0, src0RR, instOpt, true);
   }
 
   // constants
