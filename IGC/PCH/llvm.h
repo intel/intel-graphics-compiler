@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2023 Intel Corporation
+Copyright (C) 2023-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -135,7 +135,11 @@ SPDX-License-Identifier: MIT
 #include "llvm/MC/MCSymbol.h"
 #include "llvm/MC/MCSymbolELF.h"
 #include "llvm/MC/StringTableBuilder.h"
+#if LLVM_VERSION_MAJOR < 17
 #include "llvm/MC/SubtargetFeature.h"
+#else // LLVM_VERSION_MAJOR
+#include "llvm/TargetParser/SubtargetFeature.h"
+#endif // LLVM_VERSION_MAJOR
 #include "llvm/Object/ELFObjectFile.h"
 #include "llvm/Option/ArgList.h"
 #include "llvm/Option/Option.h"

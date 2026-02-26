@@ -42,7 +42,9 @@ SPDX-License-Identifier: MIT
 #include <llvm/IRReader/IRReader.h>
 #if LLVM_VERSION_MAJOR < 17
 #include <llvm/MC/SubtargetFeature.h>
-#endif
+#else // LLVM_VERSION_MAJOR
+#include <llvm/TargetParser/SubtargetFeature.h>
+#endif // LLVM_VERSION_MAJOR
 #include <llvm/Option/ArgList.h>
 #include <llvm/Passes/PassBuilder.h>
 #include <llvm/Passes/StandardInstrumentations.h>

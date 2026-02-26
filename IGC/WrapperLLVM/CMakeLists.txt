@@ -1,6 +1,6 @@
 #=========================== begin_copyright_notice ============================
 #
-# Copyright (C) 2018-2021 Intel Corporation
+# Copyright (C) 2018-2026 Intel Corporation
 #
 # SPDX-License-Identifier: MIT
 #
@@ -17,6 +17,7 @@ set(IGC_WrapperLLVM_HDR
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/ADT/StringExtras.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/ADT/StringRef.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/Analysis/AliasAnalysis.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/Analysis/AliasAnalysisWrapperPass.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/Analysis/AliasSetTracker.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/Analysis/CallGraph.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/Analysis/InstructionSimplify.h"
@@ -120,6 +121,7 @@ set(IGC_WrapperLLVM_HDR
   )
 
 set(IGC_WrapperLLVM_SRC
+    "${CMAKE_CURRENT_SOURCE_DIR}/lib/llvmWrapper/Analysis/AliasAnalysisWrapperPass.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/lib/llvmWrapper/Analysis/DemandedBits.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/lib/llvmWrapper/Analysis/LoopAccessAnalysis.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/lib/llvmWrapper/Transforms/Scalar/ADCE.cpp"

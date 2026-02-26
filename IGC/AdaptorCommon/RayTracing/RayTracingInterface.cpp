@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2018-2025 Intel Corporation
+Copyright (C) 2018-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -34,6 +34,7 @@ SPDX-License-Identifier: MIT
 #include "llvmWrapper/Transforms/Scalar/DeadStoreElimination.h"
 #include "llvmWrapper/Transforms/IPO/GlobalDCE.h"
 #include "llvmWrapper/Transforms/Scalar/LoopUnrollPass.h"
+#include "llvmWrapper/Analysis/AliasAnalysisWrapperPass.h"
 
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/CodeGen/Passes.h>
