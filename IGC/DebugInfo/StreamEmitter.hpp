@@ -64,7 +64,7 @@ public:
   const Settings &GetEmitterSettings() const { return StreamOptions; };
 
   /// @brief Get pointer size.
-  /// @return pointer size in bits.
+  /// @return pointer size in bytes.
   unsigned int GetPointerSize() const;
 
   /// @brief Get endianness data stored in memory.

@@ -124,7 +124,7 @@ bool ScalarVisaModule::usesSlot1ScratchSpill() const {
   return m_pShader->ProgramOutput()->getScratchSpaceUsageInSlot1();
 }
 
-unsigned ScalarVisaModule::getPointerSize() const { return IGC::getPointerSize((llvm::Module &)(*GetModule())); }
+unsigned ScalarVisaModule::getPointerSize() const { return 8; }
 
 uint64_t ScalarVisaModule::getTypeSizeInBits(Type *Ty) const {
   IGC_ASSERT(getFunction());
