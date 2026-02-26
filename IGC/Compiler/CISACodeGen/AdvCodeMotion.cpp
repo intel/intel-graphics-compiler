@@ -684,7 +684,109 @@ public:
 
 private:
   bool sliceLoop(Loop *L) const;
+  bool sliceBlock(BasicBlock *BB) const;
 };
+
+static bool isDMAD(const Instruction *I) {
+  if (!I || !I->getType()->isDoubleTy())
+    return false;
+
+  const IntrinsicInst *II = dyn_cast<IntrinsicInst>(I);
+  if (II)
+    return II->getIntrinsicID() == Intrinsic::fma;
+
+  switch (I->getOpcode()) {
+  case Instruction::FAdd:
+  case Instruction::FMul:
+    return true;
+  default:
+    break;
+  }
+  return false;
+}
+
+static bool isIMAD(const Instruction *I) {
+  if (!I || !I->getType()->isIntegerTy(32))
+    return false;
+  if (I->getOpcode() == Instruction::Mul) {
+    // If this `mul` is single-used by `add`, it's part of that `imad`.
+    if (!I->hasOneUse())
+      return false;
+    auto *AI = dyn_cast<Instruction>(*I->user_begin());
+    return (AI && AI->getOpcode() == Instruction::Add);
+  }
+  if (I->getOpcode() == Instruction::Add) {
+    // If this `add` has a single-used `mul`, it's part of that `imad`.
+    auto *LHS = dyn_cast<Instruction>(I->getOperand(0));
+    if (LHS && LHS->getOpcode() == Instruction::Mul && LHS->hasOneUse())
+      return true;
+    auto *RHS = dyn_cast<Instruction>(I->getOperand(1));
+    if (RHS && RHS->getOpcode() == Instruction::Mul && RHS->hasOneUse())
+      return true;
+  }
+  return false;
+}
+
+static bool isCandidateMAD(const Instruction *I, const CodeGenContext *CGC) {
+  if (isDMAD(I))
+    return true;
+  // Keep behavior consistent with MadLoopSlice: only touch IMAD on PVC+.
+  return (CGC && CGC->platform.isProductChildOf(IGFX_PVC) && isIMAD(I));
+}
+
+static bool clusterByEquivalenceClasses(ArrayRef<Instruction *> Order, EquivalenceClasses<Instruction *> &ECs,
+                                        DenseMap<Instruction * /*Leader*/, Instruction * /*Pos*/> &Leaders) {
+  bool Changed = false;
+  for (auto RI = Order.rbegin(), RE = Order.rend(); RI != RE; ++RI) {
+    Instruction *I = *RI;
+    auto leader_iterator = ECs.findLeader(I);
+    Instruction *Leader = leader_iterator != ECs.member_end() ? *leader_iterator : nullptr;
+    auto MapIt = Leaders.find(Leader);
+    if (MapIt == Leaders.end())
+      continue;
+    if (MapIt->second) {
+      // Avoid reporting a change for a no-op move.
+      if (I->getNextNode() != MapIt->second) {
+        I->moveBefore(MapIt->second);
+        Changed = true;
+      }
+    }
+    MapIt->second = I;
+  }
+  return Changed;
+}
+
+static bool sliceCandidateRun(BasicBlock *BB, ArrayRef<Instruction *> Run) {
+  if (!BB || Run.size() < 2)
+    return false;
+
+  SmallPtrSet<Instruction *, 32> CandidateInsts;
+  for (Instruction *I : Run)
+    CandidateInsts.insert(I);
+
+  EquivalenceClasses<Instruction *> ECs;
+  for (Instruction *I : Run) {
+    ECs.insert(I);
+    for (Value *O : I->operands()) {
+      Instruction *OI = dyn_cast<Instruction>(O);
+      if (OI && OI->getParent() == BB && CandidateInsts.count(OI))
+        ECs.unionSets(I, OI);
+    }
+  }
+
+  DenseMap<Instruction * /*Leader*/, Instruction * /*Pos*/> Leaders;
+  for (auto I = ECs.begin(), E = ECs.end(); I != E; ++I) {
+    if (!I->isLeader())
+      continue;
+    Instruction *Leader = I->getData();
+    Leaders.insert(std::make_pair(Leader, nullptr));
+  }
+
+  if (Leaders.size() < 2)
+    return false;
+
+  return clusterByEquivalenceClasses(Run, ECs, Leaders);
+}
 
 } // namespace
 
@@ -710,15 +812,23 @@ bool MadLoopSlice::runOnFunction(Function &F) {
 
   LI = &getAnalysis<LoopInfoWrapperPass>().getLoopInfo();
 
+  bool Changed = false;
+
   SmallVector<Loop *, 8> InnermostLoops;
   for (auto I = LI->begin(), E = LI->end(); I != E; ++I)
     for (auto DFI = df_begin(*I), DFE = df_end(*I); DFI != DFE; ++DFI)
       if (IGCLLVM::isInnermost(*DFI))
         InnermostLoops.push_back(*DFI);
 
-  bool Changed = false;
   for (auto *L : InnermostLoops)
     Changed |= sliceLoop(L);
+
+  for (auto &BB : F) {
+    // Only handle acyclic blocks, i.e. blocks not belonging to any loop.
+    if (LI->getLoopFor(&BB) != nullptr)
+      continue;
+    Changed |= sliceBlock(&BB);
+  }
 
   return Changed;
 }
@@ -735,44 +845,6 @@ bool MadLoopSlice::sliceLoop(Loop *L) const {
   BranchInst *BI = dyn_cast_or_null<BranchInst>(BB->getTerminator());
   if (!BI)
     return false;
-
-  auto IsDMAD = [](const Instruction *I) {
-    if (!I->getType()->isDoubleTy())
-      return false;
-    const IntrinsicInst *II = dyn_cast<IntrinsicInst>(I);
-    if (II)
-      return II->getIntrinsicID() == Intrinsic::fma;
-    switch (I->getOpcode()) {
-    case Instruction::FAdd:
-    case Instruction::FMul:
-      return true;
-    default:
-      break;
-    }
-    return false;
-  };
-
-  auto IsIMAD = [](const Instruction *I) {
-    if (!I->getType()->isIntegerTy(32))
-      return false;
-    if (I->getOpcode() == Instruction::Mul) {
-      // If this `mul` is single-used by `add`, it's part of that `imad`.
-      if (!I->hasOneUse())
-        return false;
-      auto *AI = dyn_cast<Instruction>(*I->user_begin());
-      return (AI && AI->getOpcode() == Instruction::Add);
-    }
-    if (I->getOpcode() == Instruction::Add) {
-      // If this `add` has a single-used `mul`, it's part of that `imad`.
-      auto *LHS = dyn_cast<Instruction>(I->getOperand(0));
-      if (LHS && LHS->getOpcode() == Instruction::Mul && LHS->hasOneUse())
-        return true;
-      auto *RHS = dyn_cast<Instruction>(I->getOperand(1));
-      if (RHS && RHS->getOpcode() == Instruction::Mul && RHS->hasOneUse())
-        return true;
-    }
-    return false;
-  };
 
   EquivalenceClasses<Instruction *> ECs;
   for (Instruction &I : *BB) {
@@ -793,7 +865,7 @@ bool MadLoopSlice::sliceLoop(Loop *L) const {
       continue;
     for (auto MI = ECs.member_begin(I), ME = ECs.member_end(); MI != ME; ++MI) {
       // Skip the slicing if there is non-MAD instructions.
-      if (!isa<PHINode>(*MI) && !IsDMAD(*MI) && !(CGC->platform.isProductChildOf(IGFX_PVC) && IsIMAD(*MI)))
+      if (!isa<PHINode>(*MI) && !isCandidateMAD(*MI, CGC))
         return false;
     }
     Leaders.insert(std::make_pair(Leader, nullptr));
@@ -803,25 +875,43 @@ bool MadLoopSlice::sliceLoop(Loop *L) const {
   if (Leaders.size() < 2)
     return false;
 
-  // Traverse the block in the reverse order and slice mads separately.
-  for (auto BI = BB->rbegin(), BE = BB->rend(); BI != BE; /*EMPTY*/) {
-    Instruction *I = &*BI++;
-    if (isa<PHINode>(I))
-      break;
-    if (isa<DbgInfoIntrinsic>(I))
+  SmallVector<Instruction *, 256> Order;
+  for (Instruction &I : *BB) {
+    if (isa<PHINode>(&I) || isa<DbgInfoIntrinsic>(&I) || I.isTerminator())
       continue;
-
-    auto leader_iterator = ECs.findLeader(I);
-    Instruction *Leader = leader_iterator != ECs.member_end() ? *leader_iterator : nullptr;
-    auto MapIt = Leaders.find(Leader);
-    if (MapIt == Leaders.end())
-      continue;
-    if (MapIt->second)
-      I->moveBefore(MapIt->second);
-    MapIt->second = I;
+    Order.push_back(&I);
   }
 
-  return true;
+  return clusterByEquivalenceClasses(Order, ECs, Leaders);
+}
+
+bool MadLoopSlice::sliceBlock(BasicBlock *BB) const {
+  auto *CGC = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+  if (!BB || BB->empty())
+    return false;
+
+  bool Changed = false;
+  SmallVector<Instruction *, 256> Run;
+
+  auto flushRun = [&]() {
+    if (Run.empty())
+      return;
+    Changed |= sliceCandidateRun(BB, Run);
+    Run.clear();
+  };
+
+  // Slice contiguous runs of MAD-like ops (DMAD or PVC+ IMAD) inside an acyclic BB.
+  // This is less restrictive than MadLoopSlice (which requires an all-MAD loop body)
+  // and matches real kernels that have setup code before/after the MAD region.
+  for (Instruction &I : *BB) {
+    if (isCandidateMAD(&I, CGC))
+      Run.push_back(&I);
+    else
+      flushRun();
+  }
+  flushRun();
+
+  return Changed;
 }
 
 FunctionPass *createMadLoopSlicePass() { return new MadLoopSlice(); }

@@ -1246,7 +1246,7 @@ DECLARE_IGC_REGKEY(
 DECLARE_IGC_REGKEY(bool, EnableSamplerSupport, false, "Enables sampler messages generation for PVC.", true)
 DECLARE_IGC_REGKEY(bool, EnableLSC, false, "Enables the new dataport encoding for LSC messages.", true)
 DECLARE_IGC_REGKEY(bool, ForceNoLSC, false, "Disables the new dataport encoding for LSC messages.", true)
-DECLARE_IGC_REGKEY(bool, EnableMadLoopSlice, true, "Enables the slicing of mad loops.", true)
+DECLARE_IGC_REGKEY(bool, EnableMadLoopSlice, true, "Enables slicing of MAD chains in loops and acyclic blocks.", true)
 DECLARE_IGC_REGKEY(bool, EnableGEPSimplification, true, "Enable GEP simplification", true)
 DECLARE_IGC_REGKEY(bool, TestGEPSimplification, false,
                    "[Test] Testing GEP simplification without actually lowering GEP. Used in lit test", false)

@@ -10,20 +10,11 @@
 ; RUN: ocloc compile -llvm_input -file %t.bc -device pvc -options "-igc_opts 'VISAOptions=-asmToConsole'" &> %t_output.ll
 ; RUN: FileCheck --input-file %t_output.ll %s
 
-; ATTENTION: if your change lowers spill size significantly congratulations! just adjust the numbers
-; if it increases, there is a possibility of a degradation
+; ATTENTION: originally this test checked spill size reduction from the retry but now we can compile it without any spills
 
 ; normal version
 ; CHECK://.kernel __omp_offloading_803_4268e__Z23directives_apply_BCs_v4_l362
-; I'm trying to match 5 consecutive numbers starting with 2: 23477 for example, not 234770 and not 2347,
-; lower boundary is set by {4} and upper boundary by matching EOL character {{$}}
-; CHECK://.spill size 5[[A:[0-9]{3}]]{{$}}
-; CHECK: end of thread
-
-; retry version
-; CHECK://.kernel __omp_offloading_803_4268e__Z23directives_apply_BCs_v4_l362
-; CHECK://.spill size 2[[B:[0-9]{3}]]{{$}}
-; CHECK: end of thread
+; CHECK-NOT://.spill size
 
 ; ModuleID = 'reduced.ll'
 source_filename = "reduced.ll"
