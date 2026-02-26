@@ -171,7 +171,7 @@ private:
 
     StringRef TyName = TET->getName();
     unsigned AS = ADDRESS_SPACE_PRIVATE;
-    if (TyName.startswith("spirv.Image"))
+    if (TyName.startswith("spirv.Image") || TyName.startswith("spirv.SampledImage"))
       AS = ADDRESS_SPACE_GLOBAL;
     else if (TyName.startswith("spirv.Sampler"))
       AS = ADDRESS_SPACE_CONSTANT;
