@@ -509,6 +509,12 @@ void InlineRaytracing::LowerIntrinsics(Function &F) {
       IRB.createReadSyncTraceRay(traceRay);
 
       if (m_pCGCtx->platform.isRayQueryReturnOptimizationEnabled()) {
+        if (m_pCGCtx->platform.isRayQueryReturnOptimizationPackedStatusEnabled()) {
+          auto *postProcessRayQueryReturnFn =
+              GenISAIntrinsic::getDeclaration(F.getParent(), GenISAIntrinsic::GenISA_PostProcessRayQueryReturn);
+
+          traceRay = IRB.CreateCall(postProcessRayQueryReturnFn, traceRay);
+        }
 
         // unpack the return value following the
         // RTStackFormat::RayQueryReturnData layout
@@ -739,21 +745,57 @@ void InlineRaytracing::AssignSlots(Function &F, const LivenessDataMap &livenessD
 }
 
 void InlineRaytracing::InsertCacheControl(RTBuilder &IRB, RTBuilder::SyncStackPointerVal *stackPtr) {
-    if (IGC_IS_FLAG_DISABLED(DisableInvalidateRTStackAfterLastRead)) {
-      auto *fn = GenISAIntrinsic::getDeclaration(m_pCGCtx->getModule(), GenISAIntrinsic::GenISA_LSCLoadWithSideEffects,
-                                                 {IRB.getInt32Ty(), stackPtr->getType()});
+  // insert extended cache control
+  if (m_pCGCtx->platform.supportsRayTracingExtendedCacheControl() &&
+      IGC_IS_FLAG_DISABLED(DisableRayTracingSyncExtendedCacheControl)) {
+    auto *IP = &*IRB.GetInsertPoint();
 
-      LSC_L1_L3_CC CacheCtrl = m_pCGCtx->platform.isSupportedLSCCacheControlsEnum(LSC_L1IAR_L3IAR, true)
-                                   ? LSC_L1IAR_L3IAR
-                                   : LSC_L1IAR_WB_L3C_WB;
+    LSC_CACHE_OPT cachePolicy = LSC_CACHE_OPT::LSC_CACHING_CACHED;
 
-      for (uint i = 0; i < IRB.getSyncStackSize() / m_pCGCtx->platform.LSCCachelineSize(); i++) {
-        IRB.CreateCall(fn, {stackPtr, IRB.getInt32(i * m_pCGCtx->platform.LSCCachelineSize()),
-                            IRB.getInt32(LSC_DATA_SIZE_32b), // doesn't matter what we put here because
-                                                             // the entire cacheline is invalidated
-                            IRB.getInt32(LSC_DATA_ELEMS_1), IRB.getInt32(CacheCtrl)});
-      }
+    RTBuilder::InsertPointGuard Guard(IRB);
+
+    IRB.SetInsertPoint(IP);
+
+    if (IGC_IS_FLAG_SET(RayTracingExtendedCacheControlCachePolicySyncStackL1)) {
+      cachePolicy = (LSC_CACHE_OPT)IGC_GET_FLAG_VALUE(RayTracingExtendedCacheControlCachePolicySyncStackL1);
     }
+
+    if ((m_pCGCtx->type == ShaderType::RAYTRACING_SHADER) &&
+        IGC_IS_FLAG_DISABLED(DisableNewRTStackLayoutOptimization)) {
+      // If NewRTStackLayoutOptimization is not disabled create a temporary
+      // ExtendedCacheControlRayQuery intrinsic which will be resolved inside
+      // that optimization. It is necessary, as NewRTStackLayoutOptimization
+      // replaces the syncStack pointer with async one. Moreover it can also
+      // change the stateless access to stateful.
+      IRB.CreateExtendedCacheControlForRayQueryWithStackOptimization(
+          IRB.getTrue(), IRB.getSyncStackPointer(nullptr, RTBuilder::STATELESS), cachePolicy,
+          LSC_CACHE_CTRL_OPERATION::CCOP_DIRTY_RESET, LSC_CACHE_CTRL_SIZE::CCSIZE_64B);
+    } else {
+      // If NewRTStackLayoutOptimization is disabled, simply create final
+      // ECC code for RayQuery with forced stateless stack access.
+      IRB.CreateExtendedCacheControlForRayQuery(IRB.getTrue(), IRB.getSyncStackPointer(nullptr, RTBuilder::STATELESS),
+                                                cachePolicy, LSC_CACHE_CTRL_OPERATION::CCOP_DIRTY_RESET,
+                                                LSC_CACHE_CTRL_SIZE::CCSIZE_64B);
+    }
+
+    // in case CreateExtendedCacheControlForRayQuery does not conserve the
+    // insertion point
+    IRB.SetInsertPoint(IP);
+  } else if (IGC_IS_FLAG_DISABLED(DisableInvalidateRTStackAfterLastRead)) {
+    auto *fn = GenISAIntrinsic::getDeclaration(m_pCGCtx->getModule(), GenISAIntrinsic::GenISA_LSCLoadWithSideEffects,
+                                               {IRB.getInt32Ty(), stackPtr->getType()});
+
+    LSC_L1_L3_CC CacheCtrl = m_pCGCtx->platform.isSupportedLSCCacheControlsEnum(LSC_L1IAR_L3IAR, true)
+                                 ? LSC_L1IAR_L3IAR
+                                 : LSC_L1IAR_WB_L3C_WB;
+
+    for (uint i = 0; i < IRB.getSyncStackSize() / m_pCGCtx->platform.LSCCachelineSize(); i++) {
+      IRB.CreateCall(fn, {stackPtr, IRB.getInt32(i * m_pCGCtx->platform.LSCCachelineSize()),
+                          IRB.getInt32(LSC_DATA_SIZE_32b), // doesn't matter what we put here because
+                                                           // the entire cacheline is invalidated
+                          IRB.getInt32(LSC_DATA_ELEMS_1), IRB.getInt32(CacheCtrl)});
+    }
+  }
 }
 
 void InlineRaytracing::StopAndStartRayquery(RTBuilder &IRB, Instruction *I, Value *rqObject, bool doSpillFill,
@@ -1010,6 +1052,9 @@ bool InlineRaytracing::runOnFunction(Function &F) {
   MMD->FuncMD[&F].rtInfo.numSyncRTStacks = m_numSlotsUsed;
   MMD->rtInfo.numSyncRTStacks = std::max(MMD->rtInfo.numSyncRTStacks, m_numSlotsUsed);
   MMD->FuncMD[&F].hasSyncRTCalls = true;
+  // By default use the Sync stack for RayQuery, RayTracingNewStackLayoutOptimizationPass
+  // will update this metadata field if Async stack is used.
+  MMD->FuncMD[&F].rtInfo.useSyncHWStack = true;
 
   for (auto &fn : m_Functions) {
     IGC_ASSERT_MESSAGE(fn->use_empty(), "Function leaked?");

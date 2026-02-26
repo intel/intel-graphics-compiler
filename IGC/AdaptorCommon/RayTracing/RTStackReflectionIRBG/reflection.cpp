@@ -235,6 +235,14 @@ template <typename GenT> IMPL auto _getRayTMin(RTSAS RTStack2<GenT> *__restrict_
 }
 IMPL_ALL_1ARG(_getRayTMin, StackPtr)
 
+CREATE_PRIVATE auto _getRayComparisonValue_Xe3(RTSAS RTStack2<Xe3> *__restrict__ StackPtr) {
+  return StackPtr->ray0.ComparisonValue;
+}
+
+template <typename RTStackT> IMPL auto _getRayTime(RTSAS RTStack2<RTStackT> *__restrict__ StackPtr) {
+  return StackPtr->ray0.time;
+}
+IMPL_ALL_1ARG_XE3PLUS(_getRayTime, StackPtr)
 
 template <typename GenT>
 IMPL auto _getRayInfo(RTSAS RTStack2<GenT> *__restrict__ StackPtr, uint32_t Idx, uint32_t BvhLevel) {
@@ -311,6 +319,12 @@ template <typename GenT> IMPL uint32_t _getRayMask(RTSAS RTStack2<GenT> *__restr
 }
 IMPL_ALL_1ARG(_getRayMask, StackPtr)
 
+template <typename RTStackT>
+IMPL auto _getGeometrySubType(RTSAS RTStack2<RTStackT> *__restrict__ StackPtr, CallableShaderTypeMD ShaderTy) {
+  // memhit->InstanceLeaf->SubType;
+  return fetchInstanceLeaf(StackPtr, ShaderTy)->part0.subType;
+}
+IMPL_ALL_2ARG_XE3PLUS(_getGeometrySubType, StackPtr, Committed)
 
 template <typename RTStackT>
 IMPL auto _getLeafNodeSubType(RTSAS RTStack2<RTStackT> *__restrict__ StackPtr, bool Committed) {
@@ -1146,6 +1160,152 @@ CREATE_PRIVATE uint32_t _getSyncStackID_Xe3pEff64() {
 }
 
 
+template <typename Type, typename TypeEnum> IMPL bool checkFlagBitSet(Type Flags, TypeEnum FlagBit) {
+  return (Flags & static_cast<Type>(FlagBit)) != 0;
+}
+
+// For bit mask with exactly one bit set, return the bit's position (0-based)
+template <typename Int> IMPL constexpr Int getBitPos(Int mask) { return ((mask > 1) ? 1 + getBitPos(mask >> 1) : 0); }
+static_assert(getBitPos(1) == 0 && getBitPos(2) == 1 && getBitPos(4) == 2 && getBitPos(8) == 3);
+
+// Copy i-th bit of p-bit-wide `in` into j-th bit of q-bit-wide `out`
+template <typename OType, typename OTypeEnum, typename IType, typename ITypeEnum>
+IMPL constexpr OType copyFlagBit(const OType FlagsOut, const OTypeEnum FlagBitOut, const IType FlagsIn,
+                                 const ITypeEnum FlagBitIn) {
+  using Type = uint64_t; // unfortunately, cannot use std::conditional for better type sel
+  const auto bitOut = static_cast<Type>(FlagBitOut);
+  const auto bitIn = static_cast<Type>(FlagBitIn);
+
+  // (out & ~bitOut) | ((in & bitIn) adjusted_to_out_bit_pos)
+  const Type outCleared = FlagsOut & ~(bitOut);
+  Type inMasked = FlagsIn & bitIn;
+
+  // adjust `in`'s bit position to `out`'s bit position
+  const auto bitOutPos = getBitPos(bitOut);
+  const auto bitInPos = getBitPos(bitIn);
+  if (bitOutPos > bitInPos) {
+    inMasked = inMasked << (bitOutPos - bitInPos);
+  } else {
+    inMasked = inMasked >> (bitInPos - bitOutPos);
+  }
+
+  return static_cast<OType>(outCleared | inMasked);
+}
+static_assert(copyFlagBit(unsigned(0b1111), unsigned(0b0010), uint16_t(0b1011), uint16_t(0b0100)) == unsigned(0b1101));
+static_assert(copyFlagBit(uint8_t(0b1011), unsigned(0b0100), uint32_t(0b1001), uint32_t(0b1000)) == unsigned(0b1111));
+
+template <typename RTStackT>
+IMPL void _createRayFlagPropagationMotionBlur(RTSAS RTStackT *__restrict__ StackPtr, uint32_t InstanceFlags) {
+
+  const auto &ray0 = StackPtr->ray0;
+  auto &ray1 = StackPtr->ray1;
+
+  ray1.rayFlags = ray0.rayFlags;
+  ray1.internalRayFlags = ray0.internalRayFlags;
+
+  // if (!ray->Flags.force_opaque && !ray->Flags.force_non_opaque)
+  // {
+  //     ray->Flags.force_opaque = iflags.force_opaque;
+  //     ray->Flags.force_non_opaque = iflags.force_non_opaque;
+  // }
+  if (!checkFlagBitSet(ray0.rayFlags, RTStackFormat::RayFlags_Xe3::FORCE_OPAQUE) &&
+      !checkFlagBitSet(ray0.rayFlags, RTStackFormat::RayFlags_Xe3::FORCE_NON_OPAQUE)) {
+    ray1.rayFlags = copyFlagBit(ray1.rayFlags, RTStackFormat::RayFlags_Xe3::FORCE_OPAQUE, InstanceFlags,
+                                RTStackFormat::InstanceFlags::FORCE_OPAQUE);
+    ray1.rayFlags = copyFlagBit(ray1.rayFlags, RTStackFormat::RayFlags_Xe3::FORCE_NON_OPAQUE, InstanceFlags,
+                                RTStackFormat::InstanceFlags::FORCE_NON_OPAQUE);
+  }
+
+  // ray->InternalFlags.triangle_front_counterclockwise =
+  //     ray->InternalFlags.triangle_front_counterclockwise != iflags.triangle_front_counterclockwise;
+  decltype(ray0.internalRayFlags) ccwFlag =
+      checkFlagBitSet(ray0.internalRayFlags, RTStackFormat::InternalRayFlags::TRIANGLE_FRONT_COUNTERCLOCKWISE) !=
+              checkFlagBitSet(InstanceFlags, RTStackFormat::InstanceFlags::TRIANGLE_FRONT_COUNTERCLOCKWISE)
+          ? ~decltype(ray0.internalRayFlags)(0)
+          : 0;
+  ray1.internalRayFlags =
+      copyFlagBit(ray1.internalRayFlags, RTStackFormat::InternalRayFlags::TRIANGLE_FRONT_COUNTERCLOCKWISE, ccwFlag,
+                  RTStackFormat::InternalRayFlags::TRIANGLE_FRONT_COUNTERCLOCKWISE);
+
+  // if (iflags.triangle_cull_disable)
+  // {
+  //     ray->Flags.cull_back_facing = false;
+  //     ray->Flags.cull_front_facing = false;
+  // }
+  if (checkFlagBitSet(InstanceFlags, RTStackFormat::InstanceFlags::TRIANGLE_CULL_DISABLE)) {
+    decltype(ray1.rayFlags) falseFlag = 0;
+    ray1.rayFlags = copyFlagBit(ray1.rayFlags, RTStackFormat::RayFlags_Xe3::CULL_BACK_FACING_TRIANGLES, falseFlag,
+                                RTStackFormat::RayFlags_Xe3::CULL_BACK_FACING_TRIANGLES);
+    ray1.rayFlags = copyFlagBit(ray1.rayFlags, RTStackFormat::RayFlags_Xe3::CULL_FRONT_FACING_TRIANGLES, falseFlag,
+                                RTStackFormat::RayFlags_Xe3::CULL_FRONT_FACING_TRIANGLES);
+  }
+
+  // if (iflags.force_2state_stoc)
+  //     ray->Flags.force_2state_stoc = true;
+  if (checkFlagBitSet(InstanceFlags, RTStackFormat::InstanceFlags::FORCE_2STATE_STOC)) {
+    decltype(ray1.rayFlags) trueFlag = ~decltype(ray1.rayFlags)(0);
+    ray1.rayFlags = copyFlagBit(ray1.rayFlags, RTStackFormat::RayFlags_Xe3::FORCE_2STATE_STOC, trueFlag,
+                                RTStackFormat::RayFlags_Xe3::FORCE_2STATE_STOC);
+  }
+
+  // if (iflags.disable_stoc)
+  //     ray->InternalFlags.disable_stoc = true;
+  if (checkFlagBitSet(InstanceFlags, RTStackFormat::InstanceFlags::DISABLE_STOC)) {
+    decltype(ray1.internalRayFlags) trueFlag = ~decltype(ray1.internalRayFlags)(0);
+    ray1.internalRayFlags = copyFlagBit(ray1.internalRayFlags, RTStackFormat::InternalRayFlags::DISABLE_STOC, trueFlag,
+                                        RTStackFormat::InternalRayFlags::DISABLE_STOC);
+  }
+}
+
+template <typename RTStackT>
+IMPL void _createForwardRayMotionBlurPrologue(RTSAS RTStackT *__restrict__ StackPtr, uint64_t StartNodePtr,
+                                              _float3 Origin, _float3 Dir, uint32_t InstanceFlags,
+                                              uint32_t HitGroupOffset) {
+  // Based on _createForwardRayPrologue_Xe3()
+  // // initialize bottom-level ray:
+  // bottomRay->Origin = ObjRay;
+  // bottomRay->Dir = objDir;
+  // bottomRay->tnear = ray->tnear;
+  // bottomRay->tfar = ray->tfar;
+  // bottomRay->RayFlags = RayFlags;
+  // bottomRay->InternalRayFlags = InternalRayFlags;
+  // bottomRay->HitGroupIndex = ray.hitGroupIndex + result.HitGroupOffset;
+  // bottomRay->StartNodePtr = result.StartNodePtr;
+  // bottomRay->InstLeafPtr = hit->primLeafPtr;
+
+  auto &ray0 = StackPtr->ray0;
+  auto &ray1 = StackPtr->ray1;
+
+  *((RTSAS _float3 *)&ray1.org) = Origin;
+  *((RTSAS _float3 *)&ray1.dir) = Dir;
+  ray1.tnear = ray0.tnear;
+  ray1.tfar = ray0.tfar;
+  _createRayFlagPropagationMotionBlur(StackPtr, InstanceFlags);
+  ray1.hitGroupIndex = ray0.hitGroupIndex + HitGroupOffset;
+  ray1.rootNodePtr = StartNodePtr;
+  ray1.instLeafPtr = StackPtr->potentialHit.primLeafPtr * LeafSize;
+
+  // remaining bottom-level ray fields are copied from top-level ray
+  ray1.rayMask = ray0.rayMask;
+  ray1.ComparisonValue = ray0.ComparisonValue;
+  ray1.pad1 = ray0.pad1;
+  ray1.missShaderIndex = ray0.missShaderIndex;
+  ray1.shaderIndexMultiplier = ray0.shaderIndexMultiplier;
+  ray1.pad2 = ray0.pad2;
+  ray1.time = ray0.time;
+}
+
+CREATE_PRIVATE void _createForwardRayMotionBlurPrologue_Xe3(RTSAS RTStack2<Xe3> *__restrict__ StackPtr,
+                                                            uint64_t StartNodePtr, _float3 Origin, _float3 Dir,
+                                                            uint32_t InstanceFlags, uint32_t HitGroupOffset) {
+  return _createForwardRayMotionBlurPrologue(StackPtr, StartNodePtr, Origin, Dir, InstanceFlags, HitGroupOffset);
+}
+
+CREATE_PRIVATE void _createForwardRayMotionBlurPrologue_Xe3PEff64(RTSAS RTStack2<Xe3PEff64> *__restrict__ StackPtr,
+                                                                  uint64_t StartNodePtr, _float3 Origin, _float3 Dir,
+                                                                  uint32_t InstanceFlags, uint32_t HitGroupOffset) {
+  return _createForwardRayMotionBlurPrologue(StackPtr, StartNodePtr, Origin, Dir, InstanceFlags, HitGroupOffset);
+}
 
 template <typename GenT>
 IMPL RTSAS void *_getHitAddress(RTSAS RTStack2<GenT> *__restrict__ HWStackPtr, bool Committed) {

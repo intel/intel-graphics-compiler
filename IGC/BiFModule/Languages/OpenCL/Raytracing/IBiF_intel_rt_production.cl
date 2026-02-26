@@ -89,10 +89,13 @@ void __basic_ray_forward(
 typedef enum
 {
     intel_raytracing_ext_flag_ray_query = 1 << 0,   // true if ray queries are supported
+    intel_raytracing_ext_flag_motion_blur = 1 << 1, // true if motion blur is supported
 } intel_raytracing_ext_flag_t;
 
 intel_raytracing_ext_flag_t intel_get_raytracing_ext_flag()
 {
+    if(BIF_FLAG_CTRL_GET(RenderFamily) >= IGFX_XE3P_CORE)
+        return intel_raytracing_ext_flag_ray_query | intel_raytracing_ext_flag_motion_blur;
     return intel_raytracing_ext_flag_ray_query;
 };
 
@@ -206,6 +209,8 @@ void intel_ray_query_start_traversal(intel_ray_query_t rayquery)
     rtfence_t fence = __builtin_IB_intel_dispatch_trace_ray_query(
         dispatchGlobalsPtr, bvh_level, ctrl);
 
+    if (BIF_FLAG_CTRL_GET(IsRayQueryReturnOptimizationPackedStatusEnabled))
+        fence = __builtin_IB_post_process_ray_query_return(fence);
     __builtin_IB_intel_update_ray_query(
         rayquery,
         fence,
@@ -470,10 +475,15 @@ bool intel_is_traversal_done(intel_ray_query_t rayquery)
 
         bool proceedFurther = (fenceInt & 0x1) != 0;
 
+        if (BIF_FLAG_CTRL_GET(SupportsRayTracingExtendedCacheControl) && proceedFurther) {
+            __builtin_IB_intel_set_traversal_done_fail(rayquery);
+        }
 
         return !proceedFurther;
     }
     bool isTraversalDone = MemHit_getDone(get_query_hit(rayquery, intel_hit_type_potential_hit));
+    if (BIF_FLAG_CTRL_GET(SupportsRayTracingExtendedCacheControl) && !isTraversalDone)
+        __builtin_IB_intel_set_traversal_done_fail(rayquery);
     return isTraversalDone;
 }
 
@@ -483,4 +493,129 @@ bool intel_has_committed_hit(intel_ray_query_t rayquery)
     return MemHit_getValid(get_query_hit(rayquery, intel_hit_type_committed_hit));
 }
 
+/////// Motion Blur API
+
+typedef struct // intel_ray_mblur_desc_t
+{
+    intel_float3      origin;
+    intel_float3      direction;
+    float             tmin;
+    float             tmax;
+    uint              mask;
+    intel_ray_flags_t flags;
+    float             time;
+} intel_ray_mblur_desc_t;
+
+typedef private struct intel_ray_query_opaque_t* intel_ray_query_t;
+typedef global struct intel_raytracing_acceleration_structure_opaque_t*
+    intel_raytracing_acceleration_structure_t;
+
+// initialize a ray query
+intel_ray_query_t intel_ray_query_init_mblur(
+    intel_ray_mblur_desc_t ray, intel_raytracing_acceleration_structure_t accel)
+{
+    global HWAccel* hwaccel   = to_global((HWAccel*)accel);
+    rtglobals_t     dispatchGlobalsPtr = (rtglobals_t) __getImplicitDispatchGlobals();
+    global void* rtStack = to_global(__builtin_IB_intel_get_rt_stack(dispatchGlobalsPtr));
+
+    __basic_rtstack_init(rtStack, hwaccel, ray.origin, ray.direction, ray.tmin, ray.tmax, ray.mask, ray.flags);
+    MemRay* memRay = get_rt_stack_ray(rtStack, 0);
+    MemRay_setTime(memRay, ray.time);
+
+    intel_ray_query_t rayquery = __builtin_IB_intel_init_ray_query(
+        NULL,
+        dispatchGlobalsPtr,
+        rtStack,
+        TRACE_RAY_INITIAL,
+        0
+    );
+
+    return rayquery;
+}
+
+// setup for instance traversal using a transformed ray and bottom-level AS
+void intel_ray_query_forward_ray_mblur(
+    intel_ray_query_t                         query,
+    intel_ray_mblur_desc_t                    ray,
+    intel_raytracing_acceleration_structure_t accel)
+{
+    HWAccel* hwaccel = (HWAccel*)accel;
+    global void* rtStack = __builtin_IB_intel_query_rt_stack(query);
+
+    /* init ray */
+    uint bvh_level = __builtin_IB_intel_query_bvh_level(query) + 1;
+
+    __basic_ray_forward(
+        rtStack, hwaccel, bvh_level, ray.origin, ray.direction, ray.tmin, ray.tmax, ray.mask, ray.flags);
+    MemRay* memRay = get_rt_stack_ray(rtStack, bvh_level);
+    MemRay_setTime(memRay, ray.time);
+
+    __builtin_IB_intel_update_ray_query(
+        query,
+        NULL,
+        __builtin_IB_intel_query_rt_globals(query),
+        rtStack,
+        TRACE_RAY_INSTANCE,
+        bvh_level
+    );
+}
+
+float intel_get_ray_time(intel_ray_query_t query, uint bvh_level)
+{
+    global void* rtStack = __builtin_IB_intel_query_rt_stack(query);
+    MemRay* memRay = get_rt_stack_ray(rtStack, bvh_level);
+    return MemRay_getTime(memRay);
+}
+
+inline float3 __interpolateVertex(float3 vertex, float3 vertex_diff, float time)
+{
+    return (float3){ vertex.x + time * vertex_diff.x,
+                     vertex.y + time * vertex_diff.y,
+                     vertex.z + time * vertex_diff.z };
+}
+
+// fetch triangle vertices for a hit:  with motion blur support
+void intel_get_hit_triangle_vertices_mblur(
+    intel_ray_query_t query,
+    intel_float3      verts_out[3],
+    intel_hit_type_t  hit_type,
+    float             time)
+{
+    MemHit*         hit  = get_query_hit(query, hit_type);
+    bool isMotionBlurQuad =
+        MemHit_getLeafType(hit) == NODE_TYPE_QUAD128 &&
+        MemHit_getLeafNodeSubType(hit) >= SUB_TYPE_QUAD_MBLUR;
+
+    if (!isMotionBlurQuad)
+    {
+        intel_get_hit_triangle_vertices(query, verts_out, hit_type);
+        return;
+    }
+
+    const QuadLeaf_MBlur* leaf = (QuadLeaf_MBlur*)MemHit_getPrimLeafPtr(hit);
+
+    unsigned int j0 = 0, j1 = 1, j2 = 2;
+    if (MemHit_getPrimLeafIndex(hit) != 0)
+    {
+        j0 = QuadLeaf_MBlur_getJ0(leaf);
+        j1 = QuadLeaf_MBlur_getJ1(leaf);
+        j2 = QuadLeaf_MBlur_getJ2(leaf);
+    }
+
+    float3 v_j0 = QuadLeaf_MBlur_getVertex(leaf, j0);
+    float3 v_j1 = QuadLeaf_MBlur_getVertex(leaf, j1);
+    float3 v_j2 = QuadLeaf_MBlur_getVertex(leaf, j2);
+
+    float3 v_diff_j0 = QuadLeaf_MBlur_getVertexDiff(leaf, j0);
+    float3 v_diff_j1 = QuadLeaf_MBlur_getVertexDiff(leaf, j1);
+    float3 v_diff_j2 = QuadLeaf_MBlur_getVertexDiff(leaf, j2);
+
+    float3 interpolated_j0 = __interpolateVertex(v_j0, v_diff_j0, time);
+    float3 interpolated_j1 = __interpolateVertex(v_j1, v_diff_j1, time);
+    float3 interpolated_j2 = __interpolateVertex(v_j2, v_diff_j2, time);
+
+    verts_out[0] = (intel_float3){ interpolated_j0.x, interpolated_j0.y, interpolated_j0.z };
+    verts_out[1] = (intel_float3){ interpolated_j1.x, interpolated_j1.y, interpolated_j1.z };
+    verts_out[2] = (intel_float3){ interpolated_j2.x, interpolated_j2.y, interpolated_j2.z };
+}
 #endif // defined(cl_intel_rt_production)

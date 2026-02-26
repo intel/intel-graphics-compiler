@@ -454,6 +454,47 @@ bool DynamicRayManagementPass::TryProceedBasedApproach(Function &F) {
     }
   }
 
+  // We need to insert Extended Cache Control before every RayQuery Release.
+  // Iterate through the list of Check and Release instructions, get only
+  // Release and check whether it's not marked for removal. To do this
+  // get operand 0 and check:
+  // 1. If it is a constant and is not False or
+  // 2. If it is a Value.
+  // At this point, all Release instructions with operand 0 equal False,
+  // are added for the deletion list.
+  if (m_CGCtx->platform.supportsRayTracingExtendedCacheControl() &&
+      IGC_IS_FLAG_DISABLED(DisableRayTracingSyncExtendedCacheControl)) {
+    for (CallInst *rayQueryRelease : CheckReleaseIntrinsics) {
+      ConstantInt *constPredicate = dyn_cast<ConstantInt>(rayQueryRelease->getOperand(0));
+
+      RTBuilder::InsertPointGuard Guard(IRB);
+
+      IRB.SetInsertPoint(rayQueryRelease);
+
+      if (isa<RayQueryReleaseIntrinsic>(rayQueryRelease) && (!constPredicate || (constPredicate == IRB.getTrue()))) {
+        LSC_CACHE_OPT cachePolicy = LSC_CACHE_OPT::LSC_CACHING_CACHED;
+
+        if (IGC_IS_FLAG_SET(RayTracingExtendedCacheControlCachePolicySyncStackL1)) {
+          cachePolicy = (LSC_CACHE_OPT)IGC_GET_FLAG_VALUE(RayTracingExtendedCacheControlCachePolicySyncStackL1);
+        }
+
+        LSC_CACHE_CTRL_SIZE eccChunkSize = LSC_CACHE_CTRL_SIZE::CCSIZE_64B;
+
+
+        if ((m_CGCtx->type == ShaderType::RAYTRACING_SHADER) &&
+            IGC_IS_FLAG_DISABLED(DisableNewRTStackLayoutOptimization)) {
+          IRB.CreateExtendedCacheControlForRayQueryWithStackOptimization(
+              cast<RayQueryReleaseIntrinsic>(rayQueryRelease)->getOperand(0),
+              IRB.getSyncStackPointer(nullptr, RTBuilder::STATELESS), cachePolicy,
+              LSC_CACHE_CTRL_OPERATION::CCOP_DIRTY_RESET, eccChunkSize);
+        } else {
+          IRB.CreateExtendedCacheControlForRayQuery(cast<RayQueryReleaseIntrinsic>(rayQueryRelease)->getOperand(0),
+                                                    IRB.getSyncStackPointer(nullptr, RTBuilder::STATELESS), cachePolicy,
+                                                    LSC_CACHE_CTRL_OPERATION::CCOP_DIRTY_RESET, eccChunkSize);
+        }
+      }
+    }
+  }
 
   llvm::for_each(toErase, [&](auto *I) { I->eraseFromParent(); });
 
@@ -726,6 +767,40 @@ bool DynamicRayManagementPass::AddDynamicRayManagement(Function &F) {
   // RayQueryCheck-Release pair identification.
   RayQueryReleaseIntrinsic *rayQueryRelease = builder.CreateRayQueryReleaseIntrinsic();
 
+  if (m_CGCtx->platform.supportsRayTracingExtendedCacheControl() &&
+      IGC_IS_FLAG_DISABLED(DisableRayTracingSyncExtendedCacheControl)) {
+    LSC_CACHE_OPT cachePolicy = LSC_CACHE_OPT::LSC_CACHING_CACHED;
+
+    if (IGC_IS_FLAG_SET(RayTracingExtendedCacheControlCachePolicySyncStackL1)) {
+      cachePolicy = (LSC_CACHE_OPT)IGC_GET_FLAG_VALUE(RayTracingExtendedCacheControlCachePolicySyncStackL1);
+    }
+
+    LSC_CACHE_CTRL_SIZE eccChunkSize = LSC_CACHE_CTRL_SIZE::CCSIZE_64B;
+
+
+    RTBuilder::InsertPointGuard Guard(builder);
+
+    builder.SetInsertPoint(rayQueryRelease);
+
+    if ((m_CGCtx->type == ShaderType::RAYTRACING_SHADER) && IGC_IS_FLAG_DISABLED(DisableNewRTStackLayoutOptimization)) {
+      // If NewRTStackLayoutOptimization is not disabled create a temporary
+      // ExtendedCacheControlRayQuery intrinsic which will be resolved inside that
+      // optimization. It is necessary, as NewRTStackLayoutOptimization replaces the
+      // syncStack pointer with async one. Moreover it can also change the stateless
+      // access to stateful.
+      builder.CreateExtendedCacheControlForRayQueryWithStackOptimization(
+          cast<RayQueryReleaseIntrinsic>(rayQueryRelease)->getOperand(0),
+          builder.getSyncStackPointer(nullptr, RTBuilder::STATELESS), cachePolicy,
+          LSC_CACHE_CTRL_OPERATION::CCOP_DIRTY_RESET, eccChunkSize);
+    } else {
+      // If NewRTStackLayoutOptimization is disabled, simply create final
+      // ECC code for RayQuery with forced stateless stack access.
+      builder.CreateExtendedCacheControlForRayQuery(cast<RayQueryReleaseIntrinsic>(rayQueryRelease)->getOperand(0),
+                                                    builder.getSyncStackPointer(nullptr, RTBuilder::STATELESS),
+                                                    cachePolicy, LSC_CACHE_CTRL_OPERATION::CCOP_DIRTY_RESET,
+                                                    eccChunkSize);
+    }
+  }
 
   // There is a possibility that the check is no longer post-dominated by the
   // release now (because release insertion logic changes the control flow).

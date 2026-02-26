@@ -2092,6 +2092,19 @@ DECLARE_IGC_REGKEY(DWORD, RayTracingExtendedCacheControlCachePolicyL3, 0,
                    false)
 DECLARE_IGC_REGKEY(bool, DisableRayTracingMotionBlurSWEmulation, false, "Ray Tracing Motion Blur Software Emulation",
                    false)
+DECLARE_IGC_REGKEY(DWORD, RayTracingExtendedCacheControlCachePolicySyncStackL1, 0,
+                   "Sets the L1 cache policy for ExtendedCacheControl called for SyncRayTracing.\
+                                                                                   Possible values:\
+                                                                                   LSC_CACHE_OPT",
+                   false)
+DECLARE_IGC_REGKEY(bool, DisableRayTracingSyncExtendedCacheControl, false,
+                   "Disables clearing dirty bit in LSC for the SyncRayTracing HW stack.", false)
+DECLARE_IGC_REGKEY(bool, DisableRayTracingSyncExtendedCacheControlForPotentialHit, false,
+                   "Disables clearing dirty bit in LSC for the SyncRayTracing for the PotentialHit/ShortStack1/Ray1 "
+                   "part of the HW stack.",
+                   false)
+DECLARE_IGC_REGKEY(bool, DisableRayTracingSyncExtendedCacheControlFence, false,
+                   "Disables adding a fence after the ECC messages for SyncRayTracing HW stack.", false)
 DECLARE_IGC_REGKEY(bool, DisableNewRTStackLayoutOptimization, false,
                    "Ray Tracing New Stack Layout sync/async trace ray message optimization", false)
 DECLARE_IGC_REGKEY(bool, EnableNewBTDIndirect0DescriptorProgramming, true,

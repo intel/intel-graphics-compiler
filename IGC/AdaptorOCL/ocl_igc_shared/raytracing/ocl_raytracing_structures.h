@@ -96,7 +96,8 @@ public:
   uint64_t
       callStackHandlerKSP;  // this is the KSP of the continuation handler that is invoked by BTD when the read KSP is 0
   uint32_t stackSizePerRay; // maximal stack size of a ray in 64 byte blocks
-  uint32_t numDSSRTStacks; // number of stacks per DSS
+  uint32_t numDSSRTStacks : 16;     // number of stacks per DSS (async-RT)
+  uint32_t syncNumDSSRTStacks : 16; // number of stacks per DSS (sync-RT)
   // TODO: update with:
   // uint32_t maxBVHLevels       : 3;      // the maximal number of supported instancing levels, 0->8, 1->1, 2->2, etc.
   // uint32_t hitGroupStride     : 13;    // stride of hit group shader records (16-bytes alignment)

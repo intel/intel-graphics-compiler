@@ -181,6 +181,7 @@ bool TraceRayInlineLoweringPass::LowerAllocateRayQuery(Function &F, unsigned num
     modMD->FuncMD.insert(std::make_pair(&F, funcMd));
   }
   modMD->FuncMD[&F].hasSyncRTCalls = true;
+  modMD->FuncMD[&F].rtInfo.useSyncHWStack = true;
 
   RTBuilder builder(&*F.getEntryBlock().begin(), *m_CGCtx);
   // let's use a very conservative way to shrink SharedMem size for now:

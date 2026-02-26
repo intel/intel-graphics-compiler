@@ -23,6 +23,10 @@ INLINE float __attribute__((overloadable)) __spirv_ocl_log2( float x )
     {
         result = __spirv_ocl_native_log2(x);
     }
+    else if (BIF_FLAG_CTRL_GET(HasAccurateLog2) && (x < 0.5f || x >= 1.5f ))
+    {
+        result = __spirv_ocl_native_log2(x);
+    }
     else
     {
         result = __ocl_svml_log2f(x);

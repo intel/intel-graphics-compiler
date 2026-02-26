@@ -116,8 +116,11 @@ static void setupRTMemoryStyle(CodeGenContext *pContext) {
 
     if (pContext->platform.hasEfficient64bEnabled()) {
       rtInfo.MemStyle = RTMemoryStyle::Xe3PEff64;
-    }
-    else if (pContext->bvhInfo.uses64Bit) {
+    } else if (pContext->platform.isProductChildOf(IGFX_NVL)) {
+      IGC_ASSERT_MESSAGE(pContext->bvhInfo.uses64Bit, "On Xe3p only 64bit RT memory structures are supported.");
+
+      rtInfo.MemStyle = RTMemoryStyle::Xe3;
+    } else if (pContext->bvhInfo.uses64Bit) {
       rtInfo.MemStyle = RTMemoryStyle::Xe3;
     }
 }

@@ -1105,6 +1105,8 @@ rtfence_t __builtin_IB_intel_dispatch_trace_ray_query(
   rtglobals_t rt_dispatch_globals, uint bvh_level, uint traceTayCtrl);
 void __builtin_IB_intel_rt_sync(rtfence_t fence);
 global void* __builtin_IB_intel_get_rt_global_buffer();
+void __builtin_IB_intel_set_traversal_done_fail(intel_ray_query_t rayquery);
+rtfence_t __builtin_IB_post_process_ray_query_return(rtfence_t fence);
 #endif // defined(cl_intel_pvc_rt_validation) || defined(cl_intel_rt_production)
 
 void    __builtin_IB_hdc_uncompressed_write_uchar(__global uchar *buf, uchar val);

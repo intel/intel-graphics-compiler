@@ -14,6 +14,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CodeGenPublicEnums.h"
 #include "Probe/Assertion.h"
 #include "IGC/AdaptorCommon/RayTracing/RTBuilder.h"
+#include <llvm/Transforms/Utils/BasicBlockUtils.h>
 
 using namespace llvm;
 using namespace IGC;
@@ -35,8 +36,9 @@ std::map<std::string, std::function<void(ResolveOCLRaytracingBuiltins *, CallIns
     {"__builtin_IB_intel_dispatch_trace_ray_query",      &ResolveOCLRaytracingBuiltins::handleDispatchTraceRayQuery },
     {"__builtin_IB_intel_rt_sync",                       &ResolveOCLRaytracingBuiltins::handleRTSync                },
     {"__builtin_IB_intel_get_rt_global_buffer",          &ResolveOCLRaytracingBuiltins::handleGetRTGlobalBuffer     },
-// clang-format on
-       // clang-format off
+    // clang-format on
+    {"__builtin_IB_intel_set_traversal_done_fail", &ResolveOCLRaytracingBuiltins::handleTraversalDoneFail},
+    // clang-format off
     {"__builtin_IB_post_process_ray_query_return", &ResolveOCLRaytracingBuiltins::handlePostProcessRayQueryReturn},
 
     // Handling for builtins operating on intel_ray_query_t from intel_rt_production extension
@@ -47,7 +49,7 @@ std::map<std::string, std::function<void(ResolveOCLRaytracingBuiltins *, CallIns
       {"__builtin_IB_intel_query_rt_stack",                &ResolveOCLRaytracingBuiltins::handleQuery                 },
       {"__builtin_IB_intel_query_ctrl",                    &ResolveOCLRaytracingBuiltins::handleQuery                 },
       {"__builtin_IB_intel_query_bvh_level",               &ResolveOCLRaytracingBuiltins::handleQuery                 },
-       // clang-format on
+    // clang-format on
 };
 } // namespace
 
@@ -155,6 +157,18 @@ void ResolveOCLRaytracingBuiltins::defineOpaqueTypes() {
 
   IGC_ASSERT(rtFenceTy && rtGlobalsTy);
 
+  if (m_pCtx->platform.supportsRayTracingExtendedCacheControl()) {
+    SmallVector<Type *, 5> Tys{
+        PointerType::get(rtFenceTy, ADDRESS_SPACE_PRIVATE),
+        PointerType::get(rtGlobalsTy, ADDRESS_SPACE_GLOBAL),
+        PointerType::get(Type::getInt8Ty(C), ADDRESS_SPACE_GLOBAL),
+        Type::getInt32Ty(C),
+        Type::getInt32Ty(C),
+        Type::getInt1Ty(C),
+    };
+    rayQueryTy->setBody(Tys);
+    return;
+  }
 
   SmallVector<Type *, 4> Tys{
       PointerType::get(rtFenceTy, ADDRESS_SPACE_PRIVATE), PointerType::get(rtGlobalsTy, ADDRESS_SPACE_GLOBAL),
@@ -357,6 +371,22 @@ void ResolveOCLRaytracingBuiltins::handleGetRTGlobalBuffer(llvm::CallInst &callI
   callInst.eraseFromParent();
 }
 
+/*
+Handler for
+void __builtin_IB_intel_set_traversal_done_fail(intel_ray_query_t);
+
+Description:
+Sets traversalDoneFail attribute in rayquery to true when using extended cache control.
+*/
+void ResolveOCLRaytracingBuiltins::handleTraversalDoneFail(llvm::CallInst &callInst) {
+  IGC_ASSERT(m_pCtx->platform.supportsRayTracingExtendedCacheControl());
+  Value *rayQuery = callInst.getOperand(0);
+  StructType *rayQueryTy = IGCLLVM::getTypeByName(callInst.getModule(), "struct.intel_ray_query_opaque_t");
+  auto *traversalDoneFailPtr =
+      m_builder->CreateGEP(rayQueryTy, rayQuery, {m_builder->getInt32(0), m_builder->getInt32(5)});
+  m_builder->CreateStore(m_builder->getInt1(true), traversalDoneFailPtr);
+  callInst.eraseFromParent();
+}
 
 /*
 Handler for
@@ -389,6 +419,11 @@ void ResolveOCLRaytracingBuiltins::handleInitRayQuery(llvm::CallInst &callInst) 
   for (unsigned argIndex = 0; argIndex < numArgs; argIndex++)
     storeToAlloca(argIndex);
 
+  if (m_pCtx->platform.supportsRayTracingExtendedCacheControl()) {
+    auto traversalDoneFailPtr =
+        m_builder->CreateGEP(alloca->getAllocatedType(), alloca, {m_builder->getInt32(0), m_builder->getInt32(5)});
+    m_builder->CreateStore(m_builder->getInt1(false), traversalDoneFailPtr);
+  }
 
   callInst.replaceAllUsesWith(alloca);
   callInst.eraseFromParent();
@@ -411,6 +446,33 @@ void ResolveOCLRaytracingBuiltins::handleUpdateRayQuery(llvm::CallInst &callInst
   Value *rayQuery = callInst.getOperand(0);
   StructType *rayQueryTy = IGCLLVM::getTypeByName(callInst.getModule(), "struct.intel_ray_query_opaque_t");
 
+  if (m_pCtx->platform.supportsRayTracingExtendedCacheControl() && isa<ConstantPointerNull>(callInst.getOperand(2))) {
+    LSC_CACHE_CTRL_SIZE cacheCtrlSize = LSC_CACHE_CTRL_SIZE::CCSIZE_64B;
+    Value *traversalDoneFailPtr =
+        m_builder->CreateGEP(rayQueryTy, rayQuery, {m_builder->getInt32(0), m_builder->getInt32(5)});
+    Value *traversalDoneFail = m_builder->CreateLoad(
+        cast<llvm::GetElementPtrInst>(traversalDoneFailPtr)->getResultElementType(), traversalDoneFailPtr);
+    Instruction *thenTerm = nullptr;
+    Instruction *elseTerm = nullptr;
+    // if traversalDoneFail is true reset cache of 0-128 and 512-640 bytes of stack, otherwise reset 0-128 bytes
+    Value *syncStackPtr = m_builder->getSyncStackPointer();
+    SplitBlockAndInsertIfThenElse(traversalDoneFail, &callInst, &thenTerm, &elseTerm);
+    m_builder->SetInsertPoint(thenTerm);
+    m_builder->CreateExtendedCacheControl(m_pCtx->getModule(), m_builder->getTrue(), syncStackPtr, 128,
+                                          LSC_CACHE_OPT::LSC_CACHING_STREAMING,
+                                          LSC_CACHE_CTRL_OPERATION::CCOP_DIRTY_RESET, cacheCtrlSize);
+    Value *syncStack2 = m_builder->CreatePtrToInt(syncStackPtr, m_builder->getInt64Ty());
+    syncStack2 = m_builder->CreateAdd(syncStack2, m_builder->getInt64(512));
+    m_builder->CreateExtendedCacheControl(
+        m_pCtx->getModule(), m_builder->getTrue(), m_builder->CreateIntToPtr(syncStack2, syncStackPtr->getType()), 128,
+        LSC_CACHE_OPT::LSC_CACHING_STREAMING, LSC_CACHE_CTRL_OPERATION::CCOP_DIRTY_RESET, cacheCtrlSize);
+    m_builder->SetInsertPoint(elseTerm);
+    m_builder->CreateExtendedCacheControl(m_pCtx->getModule(), m_builder->getTrue(), syncStackPtr, 128,
+                                          LSC_CACHE_OPT::LSC_CACHING_STREAMING,
+                                          LSC_CACHE_CTRL_OPERATION::CCOP_DIRTY_RESET, cacheCtrlSize);
+    m_builder->SetInsertPoint(&callInst);
+    m_builder->CreateLSCFence(LSC_SFID::LSC_UGM, LSC_SCOPE::LSC_SCOPE_LOCAL, LSC_FENCE_OP::LSC_FENCE_OP_NONE);
+  }
 
   for (unsigned argIndex = 1; argIndex < numArgs; argIndex++) {
     auto *ptr = m_builder->CreateGEP(rayQueryTy, rayQuery, {m_builder->getInt32(0), m_builder->getInt32(argIndex - 1)});

@@ -42,4 +42,5 @@ uint32_t getRTStackHeaderSize(uint32_t MaxBVHLevels) {
   return IGC::Align(Sizes[MaxBVHLevels], IGC::RTStackAlign);
 }
 
+uint32_t getsyncNumDSSRTStacks(const IGC::CPlatform &platform) { return platform.getsyncNumDSSRTStacks(); }
 } // namespace RTStackFormat

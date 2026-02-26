@@ -103,6 +103,8 @@ inline const char *getPlatformStr(PLATFORM Platform, unsigned &RevId) {
     return "ptl";
   case IGFX_NVL_XE3G:
     return "nvl-s";
+  case IGFX_NVL:
+    return "nvl-p";
   default:
     break;
   }

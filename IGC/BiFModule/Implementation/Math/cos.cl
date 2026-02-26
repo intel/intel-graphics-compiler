@@ -22,6 +22,10 @@ static INLINE float __intel_cos_f32( float x, bool doFast )
     {
         return __spirv_ocl_native_cos(x);
     }
+    else if(BIF_FLAG_CTRL_GET(HasNativeSinCos))
+    {
+        return __spirv_ocl_native_cos(x);
+    }
     else
     {
         if(BIF_FLAG_CTRL_GET(UseMathWithLUT))

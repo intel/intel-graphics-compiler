@@ -224,6 +224,11 @@ public:
   Value *getStatelessScratchPtr(void);
   Value *getLeafType(StackPointerVal *StackPointer, Value *CommittedHit);
   Value *getIsFrontFace(StackPointerVal *StackPointer, Value *ShaderTy);
+  Value *getInstanceLeaf(StackPointerVal *StackPointer, IGC::CallableShaderTypeMD ShaderTy);
+  Value *getRayComparisonValue(StackPointerVal *StackPointer);
+  Value *getRayTime(StackPointerVal *StackPointer);
+  // Xe3: memhit->InstanceLeaf->SubType
+  Value *getGeometrySubType(StackPointerVal *StackPointer, IGC::CallableShaderTypeMD ShaderTy);
   // Xe3: memhit->leafNodeSubType
   Value *getLeafNodeSubType(StackPointerVal *StackPointer, Value *CommittedHit);
 
@@ -238,6 +243,19 @@ public:
   SyncStackPointerVal *
   getSyncStackPointer(Value *globalBufferPtr = nullptr,
                       std::optional<RTBuilder::RTMemoryAccessMode> forceRTStackAccessMode = std::nullopt);
+
+  void CreateExtendedCacheControlForRayQueryWithStackOptimization(Value *predicate, StackPointerVal *syncStackAddress,
+                                                                  LSC_CACHE_OPT cachePolicy,
+                                                                  LSC_CACHE_CTRL_OPERATION operation,
+                                                                  LSC_CACHE_CTRL_SIZE ecc_size);
+
+  void CreateExtendedCacheControlForRayQuery(Value *predicate, StackPointerVal *syncStackAddress,
+                                             LSC_CACHE_OPT cachePolicy, LSC_CACHE_CTRL_OPERATION operation,
+                                             LSC_CACHE_CTRL_SIZE ecc_size);
+
+  void CreateExtendedCacheControl(Module *module, Value *predicate, Value *memoryPtr, uint32_t memorySize,
+                                  LSC_CACHE_OPT cachePolicy, LSC_CACHE_CTRL_OPERATION operation,
+                                  LSC_CACHE_CTRL_SIZE ecc_size);
 
   void createReadSyncTraceRay(Value *val);
 

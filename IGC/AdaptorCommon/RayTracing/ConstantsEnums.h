@@ -28,7 +28,11 @@ namespace RTStackFormat
         CLOSEST_HIT          = 0b0001,
         MISS                 = 0b0010,
         INTERSECTION         = 0b0011,
-        RESERVED             = 0b0100
+        INTERNAL_PRIMITIVE_0 = 0b0100,
+        INTERNAL_PRIMITIVE_1 = 0b0101,
+        INTERNAL_PRIMITIVE_2 = 0b0110,
+        INTERNAL_PRIMITIVE_3 = 0b0111,
+        RESERVED             = 0b1000
     };
 
 

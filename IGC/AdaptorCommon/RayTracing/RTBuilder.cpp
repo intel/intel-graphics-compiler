@@ -193,6 +193,105 @@ PreemptionEnableIntrinsic *RTBuilder::CreatePreemptionEnableIntrinsic(Value *Fla
 }
 
 
+void RTBuilder::CreateExtendedCacheControlForRayQuery(Value *predicate, StackPointerVal *syncStackAddress,
+                                                      LSC_CACHE_OPT cachePolicy, LSC_CACHE_CTRL_OPERATION operation,
+                                                      LSC_CACHE_CTRL_SIZE ecc_size) {
+  Module *module = this->GetInsertBlock()->getModule();
+
+  RTBuilder::InsertPointGuard Guard(*this);
+
+  this->CreateExtendedCacheControl(module, predicate, this->getHitAddress(syncStackAddress, true /*Committed*/),
+                                   this->getRTStackSectorSize(RayDispatchGlobalData::StackChunkSize), cachePolicy,
+                                   operation, ecc_size);
+
+  if (IGC_IS_FLAG_DISABLED(DisableRayTracingSyncExtendedCacheControlForPotentialHit)) {
+    this->CreateExtendedCacheControl(module, predicate, this->getHitAddress(syncStackAddress, false /*Potential*/),
+                                     this->getRTStackSectorSize(RayDispatchGlobalData::StackChunkSize), cachePolicy,
+                                     operation, ecc_size);
+  }
+
+  if (IGC_IS_FLAG_DISABLED(DisableRayTracingSyncExtendedCacheControlFence)) {
+    this->CreateLSCFence(LSC_SFID::LSC_UGM, LSC_SCOPE::LSC_SCOPE_LOCAL, LSC_FENCE_OP::LSC_FENCE_OP_NONE);
+  }
+}
+
+void RTBuilder::CreateExtendedCacheControlForRayQueryWithStackOptimization(Value *predicate,
+                                                                           StackPointerVal *syncStackAddress,
+                                                                           LSC_CACHE_OPT cachePolicy,
+                                                                           LSC_CACHE_CTRL_OPERATION operation,
+                                                                           LSC_CACHE_CTRL_SIZE ecc_size) {
+  // In case of using RayTracingNewStackLayoutOptimizationPass this
+  // function is called to insert a place holder for ECC which
+  // will be resolved in RayTracingNewStackLayoutOptimizationPass.
+  Module *module = this->GetInsertBlock()->getModule();
+
+  Function *extendedCacheControlRayQueryCall = GenISAIntrinsic::getDeclaration(
+      module, GenISAIntrinsic::GenISA_ExtendedCacheControlRayQuery, syncStackAddress->getType());
+
+  this->CreateCall5(extendedCacheControlRayQueryCall, this->getInt32(ecc_size), this->getInt32((uint32_t)cachePolicy),
+                    this->getInt8((uint8_t)operation), syncStackAddress, predicate);
+
+  if (IGC_IS_FLAG_DISABLED(DisableRayTracingSyncExtendedCacheControlFence)) {
+    this->CreateLSCFence(LSC_SFID::LSC_UGM, LSC_SCOPE::LSC_SCOPE_LOCAL, LSC_FENCE_OP::LSC_FENCE_OP_NONE);
+  }
+}
+
+// Insert ExtendedCacheControl instruction.
+// Implementation of Tier I which has following limitations:
+// 1. Operates only on LSC.
+// 2. Only 64B size is supported.
+// 3. Only Reset Dirty operation is possible.
+//
+// The function takes a pointer to the memory (memoryPtr)
+// for which Reset Dirty operation will be applied and the
+// the size of the that memory (memorySize).
+// The size has to be an uniform as the data size
+// is programmed in the message descriptor.
+// For this initial implementation it is assumed the
+// size is a constant value.
+// If passing it as a runtime value is required, a runtime
+// loop has to be added to dynamically split calling ExtendedCacheControl
+// for every 64B chunk.
+void RTBuilder::CreateExtendedCacheControl(Module *module, Value *predicate, Value *memoryPtr, uint32_t memorySize,
+                                           LSC_CACHE_OPT cachePolicy, LSC_CACHE_CTRL_OPERATION operation,
+                                           LSC_CACHE_CTRL_SIZE ecc_size) {
+
+  uint64_t ecc_sizeValue = eccEnumToSize(ecc_size);
+
+  if (((memorySize % ecc_sizeValue) != 0) || (memorySize == 0)) {
+    IGC_ASSERT_MESSAGE(
+        0, "CreateExtendedCacheControl: memorySize must be greater than 0 and be a multiple of LSC_CACHE_CTRL_SIZE.");
+    return;
+  }
+
+  // Tier I:
+  // Calculate the size of cache to clear the dirty bit.
+  // It's granularity is 64B.
+  // LSC_CACHE_CTRL_SIZE enum defines the values for the multiples
+  // of 64. To get the proper value divide the size of the memory
+  // by 64. It is assumed the memory size is the multiple of 64 (verified above).
+  uint64_t memorySizeChunks = (uint64_t)memorySize / ecc_sizeValue;
+
+  Type *memoryType = memoryPtr->getType();
+
+  Function *extendedCacheControlCall =
+      GenISAIntrinsic::getDeclaration(module, GenISAIntrinsic::GenISA_ExtendedCacheControl, memoryType);
+
+  memoryPtr = this->CreatePtrToInt(memoryPtr, this->getInt64Ty());
+
+  // Tier I supports only one size: 64B.
+  // Split setting cache operation into 64B chunks.
+  for (uint64_t chunkID = 0; chunkID < memorySizeChunks; ++chunkID) {
+    Value *memoryPtrWithOffset = this->CreateAdd(memoryPtr, this->getInt64(chunkID * ecc_sizeValue));
+
+    memoryPtrWithOffset = this->CreateIntToPtr(memoryPtrWithOffset, memoryType);
+
+    this->CreateCall5(extendedCacheControlCall, this->getInt32(ecc_size), this->getInt32((uint32_t)cachePolicy),
+                      this->getInt8((uint8_t)operation), memoryPtrWithOffset, predicate);
+  }
+}
+
+
 Value *RTBuilder::getGlobalSyncStackID() {
   // global sync stack id = dssIDGlobal * NUM_SIMD_LANES_PER_DSS + SyncStackID
   Value *IDGlobal = this->getGlobalDSSID();
@@ -434,6 +533,11 @@ TraceRayIntrinsic *RTBuilder::createTraceRay(Value *bvhLevel, Value *traceRayCtr
 
   SmallVector<Value *, 4> Args{globalBufferPointer, payload};
 
+  if (isRayQuery) {
+    // May be updated by `RayTracingNewStackLayoutOptimizationPass`
+    uint32_t Mode = static_cast<uint32_t>(STACK_ADDRESS_MODE::DEFAULT_ADDRESSING);
+    Args.push_back(getInt32(Mode)); // StackAddress mode, only for Rayquery
+  }
 
   return cast<TraceRayIntrinsic>(this->CreateCall(traceFn, Args));
 }
@@ -1285,6 +1389,51 @@ Value *RTBuilder::getLeafType(StackPointerVal *StackPointer, Value *CommittedHit
 }
 
 
+Value *RTBuilder::getInstanceLeaf(StackPointerVal *StackPointer, IGC::CallableShaderTypeMD ShaderTy) {
+  switch (getMemoryStyle()) {
+#define STYLE(X)                                                                                                       \
+  case RTMemoryStyle::X:                                                                                               \
+    return _getInstanceLeaf_##X(StackPointer, VAdapt{*this, ShaderTy}, VALUE_NAME("InstanceLeaf"));
+#include "RayTracingMemoryStyle.h"
+#undef STYLE
+  }
+  IGC_ASSERT(0);
+  return {};
+}
+
+Value *RTBuilder::getRayComparisonValue(StackPointerVal *StackPointer) {
+  return _getRayComparisonValue_Xe3(StackPointer, VALUE_NAME("ComparisonValue"));
+}
+
+Value *RTBuilder::getRayTime(StackPointerVal *StackPointer) {
+  switch (getMemoryStyle()) {
+#define STYLE_XE3PLUS(X)                                                                                               \
+  case RTMemoryStyle::X:                                                                                               \
+    return _getRayTime_##X(StackPointer, VALUE_NAME("Time"));
+
+#include "RayTracingMemoryStyleXe3Plus.h"
+#undef STYLE_XE3PLUS
+
+  default:
+    IGC_ASSERT(0);
+    return nullptr;
+  }
+}
+
+Value *RTBuilder::getGeometrySubType(StackPointerVal *StackPointer, IGC::CallableShaderTypeMD ShaderTy) {
+  switch (getMemoryStyle()) {
+#define STYLE_XE3PLUS(X)                                                                                               \
+  case RTMemoryStyle::X:                                                                                               \
+    return _getGeometrySubType_##X(StackPointer, VAdapt{*this, ShaderTy}, VALUE_NAME("MotionBlurGeometrySubType"));
+
+#include "RayTracingMemoryStyleXe3Plus.h"
+#undef STYLE_XE3PLUS
+
+  default:
+    IGC_ASSERT(0);
+    return nullptr;
+  }
+}
 
 Value *RTBuilder::getLeafNodeSubType(StackPointerVal *StackPointer, Value *CommittedHit) {
   switch (getMemoryStyle()) {
@@ -1729,6 +1878,12 @@ void RTBuilder::copyMemHitInProceed(SyncStackPointerVal *HWStackPtr, SyncStackPo
 
 Value *RTBuilder::syncStackToShadowMemory(SyncStackPointerVal *HWStackPtr, SyncStackPointerVal *SMStackPtr,
                                           Value *ProceedReturnVal, Value *ShadowMemRTCtrlPtr) {
+  if (Ctx.platform.isRayQueryReturnOptimizationPackedStatusEnabled()) {
+    Function *postProcessRayQueryReturn = GenISAIntrinsic::getDeclaration(
+        this->GetInsertBlock()->getModule(), GenISAIntrinsic::GenISA_PostProcessRayQueryReturn);
+
+    ProceedReturnVal = this->CreateCall(postProcessRayQueryReturn, ProceedReturnVal);
+  }
 
   switch (getMemoryStyle()) {
 #define STYLE(X)                                                                                                       \

@@ -25,6 +25,11 @@ static INLINE float __intel_sincos_f32_p0f32( float x, __private float* cosval, 
         sin_x = __spirv_ocl_native_sin(x);
         cos_x = __spirv_ocl_native_cos(x);
     }
+    else if(BIF_FLAG_CTRL_GET(HasNativeSinCos))
+    {
+        sin_x = __spirv_ocl_native_sin(x);
+        cos_x = __spirv_ocl_native_cos(x);
+    }
     else  if(BIF_FLAG_CTRL_GET(UseHighAccuracyMath))
     {
         sin_x = __ocl_svml_sincosf_noLUT(x, &cos_x);
