@@ -9,24 +9,15 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPush.hpp"
 
 #include "llvm/Analysis/AliasAnalysis.h"
-#include "llvm/Analysis/AliasSetTracker.h"
 #include "llvm/Analysis/AssumptionCache.h"
-#include "llvm/Analysis/ConstantFolding.h"
+#include "llvm/Analysis/CGSCCPassManager.h"
 #include "llvm/Analysis/LazyBlockFrequencyInfo.h"
-#include "llvm/Analysis/Loads.h"
-#include "llvm/Analysis/LoopInfo.h"
-#include "llvm/Analysis/LoopIterator.h"
-#include "llvm/Analysis/LoopNestAnalysis.h"
 #include "llvm/Analysis/LoopPass.h"
 #include "llvm/Analysis/MemorySSA.h"
-#include "llvm/Analysis/MemorySSAUpdater.h"
-#include "llvm/Analysis/MustExecute.h"
-#include "llvm/Analysis/OptimizationRemarkEmitter.h"
 #include "llvm/Analysis/ScalarEvolution.h"
 #include "llvm/Analysis/TargetLibraryInfo.h"
 #include "llvm/Analysis/TargetTransformInfo.h"
-#include "llvm/Analysis/ValueTracking.h"
-#include "llvm/IR/Function.h"
+#include "llvm/IR/PassInstrumentation.h"
 #include "llvm/IR/PassManager.h"
 #include "llvm/Pass.h"
 #include "llvm/Passes/PassBuilder.h"
@@ -43,6 +34,30 @@ SPDX-License-Identifier: MIT
 #include "Compiler/IGCPassSupport.h"
 
 using namespace llvm;
+#if LLVM_VERSION_MAJOR >= 16
+namespace {
+
+// NPM AA analysis that delegates to the LPM's full AAResults chain
+class LPMAABridge : public AnalysisInfoMixin<LPMAABridge>, public AAResultBase {
+  friend AnalysisInfoMixin<LPMAABridge>;
+  static AnalysisKey Key;
+  AAResults *LPMAResults;
+
+public:
+  using Result = LPMAABridge;
+  explicit LPMAABridge(AAResults *AA) : LPMAResults(AA) {}
+  LPMAABridge(LPMAABridge &&) = default;
+
+  LPMAABridge run(Function &, FunctionAnalysisManager &) { return LPMAABridge(LPMAResults); }
+
+  AliasResult alias(const MemoryLocation &LocA, const MemoryLocation &LocB, AAQueryInfo &, const Instruction *) {
+    return LPMAResults->alias(LocA, LocB);
+  }
+};
+
+AnalysisKey LPMAABridge::Key;
+} // anonymous namespace
+#endif // LLVM_VERSION_MAJOR >= 16
 
 namespace IGCLLVM {
 
@@ -51,28 +66,61 @@ LICMLegacyPassWrapper::LICMLegacyPassWrapper(unsigned LicmMssaOptCap, unsigned L
     : FunctionPass(ID), LicmMssaOptCap(LicmMssaOptCap), LicmMssaNoAccForPromotionCap(LicmMssaNoAccForPromotionCap),
       LicmAllowSpeculation(LicmAllowSpeculation) {
   initializeLICMLegacyPassWrapperPass(*PassRegistry::getPassRegistry());
+}
+#if LLVM_VERSION_MAJOR >= 16
+bool LICMLegacyPassWrapper::runOnFunction(Function &F) {
+  if (skipFunction(F))
+    return false;
+
+  // Inject IGC's AddressSpaceAAResult into the NPM FAM.
+  // PassBuilder only registers standard LLVM AAs. Pre-register
+  // a custom AAManager with the LPM's full chain before registerFunctionAnalyses()
+  // so version wins the registration race.
+  AAResults &LPMAResults = getAnalysis<AAResultsWrapperPass>().getAAResults();
+
+  // Skip non-simplified loops (indirectbr, irreducible CFG).
+  // FunctionToLoopPassAdaptor runs verifyLoop() before each pass, but these
+  // loops would fail the assertion yet be skipped by LICMPass::run() anyway.
+  // Returning false marks them as skipped, suppressing the assertion.
+  PassInstrumentationCallbacks PIC;
+  PIC.registerShouldRunOptionalPassCallback([](StringRef, Any IR) -> bool {
+    const Loop *const *LPtr = any_cast<const Loop *>(&IR);
+    return !LPtr || !*LPtr || (*LPtr)->isLoopSimplifyForm();
+  });
+
+  LoopAnalysisManager LAM;
+  FunctionAnalysisManager FAM;
+  CGSCCAnalysisManager CGAM;
+  ModuleAnalysisManager MAM;
+  PassBuilder PB(nullptr, PipelineTuningOptions(), std::nullopt, &PIC);
+
+  // Pre-register bridge analysis and custom AAManager before
+  // registerFunctionAnalyses().
+  FAM.registerPass([&LPMAResults] { return LPMAABridge(&LPMAResults); });
+  {
+    AAManager CustomAA = PB.buildDefaultAAPipeline();
+    CustomAA.registerFunctionAnalysis<LPMAABridge>();
+    FAM.registerPass([AA = std::move(CustomAA)]() mutable { return std::move(AA); });
+  }
+
   PB.registerModuleAnalyses(MAM);
   PB.registerCGSCCAnalyses(CGAM);
   PB.registerFunctionAnalyses(FAM);
   PB.registerLoopAnalyses(LAM);
   PB.crossRegisterProxies(LAM, FAM, CGAM, MAM);
-}
 
-bool LICMLegacyPassWrapper::runOnFunction(Function &F) {
-  // The legacy pass manager implementation of the pass used to skip some functions. In the new pass manager
-  // implementation this is done globally through the pass manager. Check and skip explicitly here to preserve the old
-  // behavior.
-  if (skipFunction(F))
-    return false;
-
-  // Run the New Pass Manager implementation via the loop-pass adaptor.
-  // Enable MemorySSA so the pass can update it when it performs transformations.
   auto Adaptor = createFunctionToLoopPassAdaptor(
-      LICMPass(LicmMssaOptCap, LicmMssaNoAccForPromotionCap, LicmAllowSpeculation), true);
+      LICMPass(LicmMssaOptCap, LicmMssaNoAccForPromotionCap, LicmAllowSpeculation), /*UseMemorySSA=*/true);
 
   PreservedAnalyses PA = Adaptor.run(F, FAM);
   return !PA.areAllPreserved();
 }
+#else
+bool LICMLegacyPassWrapper::runOnFunction(Function &F) {
+  // LLVM < 16: Not supported.
+  return false;
+}
+#endif // LLVM_VERSION_MAJOR >= 16
 
 void LICMLegacyPassWrapper::getAnalysisUsage(AnalysisUsage &AU) const {
   AU.addPreserved<DominatorTreeWrapperPass>();
@@ -87,8 +135,9 @@ void LICMLegacyPassWrapper::getAnalysisUsage(AnalysisUsage &AU) const {
   AU.addPreserved<LazyBlockFrequencyInfoPass>();
   AU.addPreserved<LazyBranchProbabilityInfoPass>();
 }
+
 char LICMLegacyPassWrapper::ID = 0;
-#if LLVM_VERSION_MAJOR > 16 && !defined(IGC_LLVM_TRUNK_REVISION)
+#if LLVM_VERSION_MAJOR >= 16
 llvm::Pass *createLegacyWrappedLICMPass() { return new LICMLegacyPassWrapper(); }
 llvm::Pass *createLegacyWrappedLICMPass(unsigned LicmMssaOptCap, unsigned LicmMssaNoAccForPromotionCap,
                                         bool LicmAllowSpeculation) {

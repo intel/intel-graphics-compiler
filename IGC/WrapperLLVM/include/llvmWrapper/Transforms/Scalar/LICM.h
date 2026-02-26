@@ -10,11 +10,7 @@ SPDX-License-Identifier: MIT
 #define IGCLLVM_TRANSFORMS_SCALAR_LEGACY_LICM_H
 
 #include "common/LLVMWarningsPush.hpp"
-#include "llvm/Analysis/LoopAnalysisManager.h"
-#include "llvm/IR/LegacyPassManager.h"
-#include "llvm/IR/PassManager.h"
 #include "llvm/Pass.h"
-#include "llvm/Passes/PassBuilder.h"
 #include "common/LLVMWarningsPop.hpp"
 
 using namespace llvm;
@@ -31,11 +27,6 @@ struct LICMLegacyPassWrapper : public FunctionPass {
   llvm::StringRef getPassName() const override { return "LegacyWrappedLICM"; }
 
 private:
-  LoopAnalysisManager LAM;
-  FunctionAnalysisManager FAM;
-  CGSCCAnalysisManager CGAM;
-  ModuleAnalysisManager MAM;
-  PassBuilder PB;
   unsigned LicmMssaOptCap;
   unsigned LicmMssaNoAccForPromotionCap;
   bool LicmAllowSpeculation;
