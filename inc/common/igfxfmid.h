@@ -155,6 +155,7 @@ typedef struct GFX_GMD_ID_DEF
 #define GFX_GMD_ARCH_12                          (12)
 #define GFX_GMD_ARCH_20                          (20)
 #define GFX_GMD_ARCH_30                          (30)
+#define GFX_GMD_ARCH_35                          (35)
 
 #define GFX_GMD_ARCH_12_RELEASE_XE_LP_MD                 (70)
 #define GFX_GMD_ARCH_12_RELEASE_XE_LP_LG                 (71)
@@ -169,6 +170,7 @@ typedef struct GFX_GMD_ID_DEF
 #define GFX_GMD_ARCH_30_RELEASE_XE3_LPG_3003             (3)
 #define GFX_GMD_ARCH_30_RELEASE_XE3_LPG_3004             (4)
 #define GFX_GMD_ARCH_30_RELEASE_XE3_LPG_3005             (5)
+#define GFX_GMD_ARCH_35_RELEASE_XE3P_LPG_3510            (10)
 
 #define GFX_GET_GMD_ARCH_VERSION_RENDER(p)                ((p).sRenderBlockID.GmdID.GMDArch)
 #define GFX_GET_GMD_ARCH_VERSION_DISPLAY(p)               ((p).sDisplayBlockID.GmdID.GMDArch)
@@ -800,6 +802,13 @@ typedef enum __NATIVEGTTYPE
 #define DEV_ID_D742                             0xD742
 #define DEV_ID_D743                             0xD743
 #define DEV_ID_D744                             0xD744
+
+// NVL-P
+#define DEV_ID_D750                             0xD750
+#define DEV_ID_D751                             0xD751
+#define DEV_ID_D752                             0xD752
+#define DEV_ID_D753                             0xD753
+#define DEV_ID_D75F                             0xD75F
 
 #define GFX_IS_DG2_G11_CONFIG(d) ( ( d == DEV_ID_56A5 )             ||   \
                                  ( d == DEV_ID_56A6 )             ||   \

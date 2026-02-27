@@ -149,6 +149,7 @@ void SetWorkaroundTable(SKU_FEATURE_TABLE *pSkuFeatureTable, CPlatform *platform
   case IGFX_PTL:
   case IGFX_NVL_XE3G:
   case IGFX_CRI:
+  case IGFX_NVL:
     /* This is just a place holder the WA application has moved below and changed
     its no longer based on platform */
     break;
@@ -220,6 +221,23 @@ void SetWorkaroundTable(SKU_FEATURE_TABLE *pSkuFeatureTable, CPlatform *platform
       }
       stWaInitParam.usWaIpShift = WA_BIT_GT;
       InitGt_30_00_SwWaTable(&waTable, pSkuFeatureTable, &stWaInitParam);
+      break;
+    }
+    case GFX_GMD_ARCH_35: {
+      stWaInitParam.usWaIpShift = WA_BIT_GT;
+      switch (GFX_GET_GMD_RELEASE_VERSION_RENDER(platform->getPlatformInfo())) {
+      case GFX_GMD_ARCH_35_RELEASE_XE3P_LPG_3510:
+        InitGt_35_10HwWaTable(&waTable, pSkuFeatureTable, &stWaInitParam);
+        break;
+      case 11:
+        break;
+      default:
+        fprintf(stderr, "ERROR! Trying to select a workaround table for an unknown architecture. Aborting.\n");
+        exit(1);
+        break;
+      }
+      stWaInitParam.usWaIpShift = WA_BIT_GT;
+      InitGt_35_00_SwWaTable(&waTable, pSkuFeatureTable, &stWaInitParam);
       break;
     }
     default:

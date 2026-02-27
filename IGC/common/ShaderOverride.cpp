@@ -131,6 +131,12 @@ iga_gen_t GetIGAPlatform(PLATFORM const &platform) {
     break;
   case IGFX_XE3_CORE:
     return IGA_XE3;
+  case IGFX_XE3P_CORE:
+    if (ProductFamily == IGFX_CRI || ProductFamily == IGFX_NVL) {
+      return IGA_XE3P_XPC;
+    }
+    IGC_ASSERT_MESSAGE(0, "unsupported platform");
+    break;
   default:
     IGC_ASSERT_MESSAGE(0, "unsupported platform");
     break;
