@@ -9226,7 +9226,7 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst *inst) {
   case GenISAIntrinsic::GenISA_ReadTraceRaySync:
     emitReadTraceRaySync(inst);
     break;
-  case GenISAIntrinsic::GenISA_BindlessThreadDispatch:
+  case GenISAIntrinsic::GenISA_BindlessThreadDispatch_1_0:
     emitBindlessThreadDispatch(cast<BTDIntrinsic>(inst));
     break;
   case GenISAIntrinsic::GenISA_StackIDRelease:

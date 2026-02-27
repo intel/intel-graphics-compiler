@@ -2562,7 +2562,7 @@ static bool IsAsyncRaytracingOperation(const Instruction *pInst) {
   if (auto *GII = dyn_cast<GenIntrinsicInst>(pInst)) {
     switch (GII->getIntrinsicID()) {
     case GenISAIntrinsic::GenISA_TraceRayAsync:
-    case GenISAIntrinsic::GenISA_BindlessThreadDispatch:
+    case GenISAIntrinsic::GenISA_BindlessThreadDispatch_1_0:
       return true;
     default:
       break;

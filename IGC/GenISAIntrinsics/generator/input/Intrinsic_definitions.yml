@@ -11316,7 +11316,7 @@ intrinsics:
             - !<MemoryRestriction>
                 memory_access: !MemoryAccessType NoModRef
     - !<IntrinsicDefinition>
-        name: "GenISA_BindlessThreadDispatch"
+        name: "GenISA_BindlessThreadDispatch_1_0"
         comment: "Raytracing: codegens to send.btd"
         return_definition: !<ReturnDefinition>
             type_definition: *void

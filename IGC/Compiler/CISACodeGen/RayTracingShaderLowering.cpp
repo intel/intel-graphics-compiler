@@ -269,7 +269,7 @@ bool RayTracingShaderLowering::runOnModule(Module &M) {
                      TRS->getStackAddressingMode() != STACK_ADDRESS_MODE::DEFAULT_ADDRESSING);
         break;
       }
-      case GenISAIntrinsic::GenISA_BindlessThreadDispatch:
+      case GenISAIntrinsic::GenISA_BindlessThreadDispatch_1_0:
         injectFence(RTB, GII, CGCtx->platform.RTFenceWAforBkModeEnabled(), false);
         Changed = true;
         break;

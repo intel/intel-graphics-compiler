@@ -1416,7 +1416,7 @@ public:
   // Methods for support type inquiry through isa, cast, and dyn_cast:
   static inline bool classof(const GenIntrinsicInst *I) {
     GenISAIntrinsic::ID ID = I->getIntrinsicID();
-    return ID == GenISAIntrinsic::GenISA_BindlessThreadDispatch;
+    return ID == GenISAIntrinsic::GenISA_BindlessThreadDispatch_1_0;
   }
 
   static inline bool classof(const Value *V) { return isa<GenIntrinsicInst>(V) && classof(cast<GenIntrinsicInst>(V)); }
