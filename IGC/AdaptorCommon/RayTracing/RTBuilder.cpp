@@ -1762,6 +1762,35 @@ Instruction *RTBuilder::getEntryFirstInsertionPt(Function &F,
   return CurIP;
 }
 
+// Find the Insert point which is placed
+// after all Allocas and after all the Instructions
+// from the optional vector additionalInstructionsToSkip.
+Instruction *RTBuilder::getEntryFirstInsertionPointInBlock(BasicBlock &block,
+                                                           const std::vector<Value *> *additionalInstructionsToSkip) {
+
+  // The insert point will be right after the last alloca
+  // assumes a well-formed block with a terminator at the end
+  auto *curInsertPoint = &*block.begin();
+
+  for (auto &I : block) {
+    bool skipInstruction = false;
+
+    if (additionalInstructionsToSkip != nullptr) {
+      for (const Value *inst : *additionalInstructionsToSkip) {
+        if (inst == &I) {
+          skipInstruction = true;
+          break;
+        }
+      }
+    }
+
+    if (isa<AllocaInst>(&I) || skipInstruction)
+      curInsertPoint = I.getNextNode();
+  }
+
+  return curInsertPoint;
+}
+
 Type *RTBuilder::getInt64PtrTy(unsigned int AddrSpace) const { return Type::getInt64PtrTy(this->Context, AddrSpace); }
 
 Type *RTBuilder::getInt32PtrTy(unsigned int AddrSpace) const { return Type::getInt32PtrTy(this->Context, AddrSpace); }
