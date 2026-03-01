@@ -921,7 +921,7 @@ public:
 };
 
 class CGetImageProperty : public CImagesBI {
-  // Image property that needs to be recieved
+  // Image property that needs to be received
   const ImageProperty m_Prop;
   CGetImageProperty() = delete;
   CGetImageProperty(ParamMap *paramMap, ImageProperty prop) : CImagesBI(paramMap), m_Prop(prop) {}
