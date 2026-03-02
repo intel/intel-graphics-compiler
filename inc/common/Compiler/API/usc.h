@@ -18,7 +18,7 @@ SPDX-License-Identifier: MIT
 #include "../../sku_wa.h"
 #endif
 
-// redefine simple types to avoid dependency on external headers
+// Redefine simple types to avoid dependency on external headers
 #if defined( _WIN32 )
     typedef unsigned long   DWORD;
     typedef unsigned long   ULONG, *PULONG;
