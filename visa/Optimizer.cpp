@@ -2764,13 +2764,13 @@ bool canDoCSEForSendPayloadCopies(
     }
   }
 
-  // More than 1 diff
-  if (diffCopies.size() > 1) {
-    return false;
-  }
-
-  // Same copy number is small
-  if (((float)diffCopies.size() / sendPayLoadCopyMap[prevInst].size()) > 0.15) {
+  // If using sendg, 8 indexes can supported per-mov. So, we use 1/8 as
+  // threshold for mov instruction reduction here.
+  if (!((sendPayLoadCopyMap[prevInst].size() <= 8) &&
+        (sendPayLoadCopyMap[prevInst].size() > 1) &&
+        (diffCopies.size() <= 1)) &&
+      (((float)diffCopies.size() / sendPayLoadCopyMap[prevInst].size()) >
+       0.125)) {
     return false;
   }
 
