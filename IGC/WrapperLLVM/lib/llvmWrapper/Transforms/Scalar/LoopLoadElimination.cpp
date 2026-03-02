@@ -20,7 +20,6 @@ SPDX-License-Identifier: MIT
 
 #include "common/LLVMWarningsPop.hpp"
 
-#include "llvmWrapper/Analysis/LoopAccessAnalysis.h"
 #include "llvmWrapper/Transforms/Scalar/LoopLoadElimination.h"
 #include "llvmWrapper/Transforms/InitializePasses.h"
 #include "Compiler/IGCPassSupport.h"
@@ -75,9 +74,7 @@ using namespace IGCLLVM;
 IGC_INITIALIZE_PASS_BEGIN(LoopLoadEliminationLegacyPassWrapper, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY,
                           PASS_ANALYSIS)
 IGC_INITIALIZE_PASS_DEPENDENCY(LoopInfoWrapperPass)
-#if LLVM_VERSION_MAJOR > 16 && !defined(IGC_LLVM_TRUNK_REVISION)
-IGC_INITIALIZE_PASS_DEPENDENCY(LoopAccessAnalysisLegacyPassWrapper)
-#else
+#if LLVM_VERSION_MAJOR <= 16
 IGC_INITIALIZE_PASS_DEPENDENCY(LoopAccessLegacyAnalysis)
 #endif
 IGC_INITIALIZE_PASS_DEPENDENCY(DominatorTreeWrapperPass)
