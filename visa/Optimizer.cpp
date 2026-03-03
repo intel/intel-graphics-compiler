@@ -2716,6 +2716,14 @@ bool canDoCSEForSendPayloadCopies(
     std::map<G4_INST *, std::vector<std::pair<G4_INST *, G4_INST *>>>
         &sendUnRemovedPayLoadCopyMap,
     IR_Builder &builder) {
+  if (prevInst->getMaskOffset() != succInst->getMaskOffset()) {
+    return false;
+  }
+
+  if (prevInst->getExecSize() != succInst->getExecSize()) {
+    return false;
+  }
+
   // Same SFID
   G4_SendgDesc *prevSendDesc =
       static_cast<G4_SendgDesc *>(prevInst->getMsgDesc());
@@ -2752,6 +2760,16 @@ bool canDoCSEForSendPayloadCopies(
     G4_Operand *dst1 = sendPayLoadCopyMap[prevInst][i]->getDst();
     G4_Operand *dst2 = sendPayLoadCopyMap[succInst][i]->getDst();
 
+    if (sendPayLoadCopyMap[prevInst][i]->getMaskOffset() !=
+        sendPayLoadCopyMap[succInst][i]->getMaskOffset()) {
+      return false;
+    }
+
+    if (sendPayLoadCopyMap[prevInst][i]->getExecSize() !=
+        sendPayLoadCopyMap[succInst][i]->getExecSize()) {
+      return false;
+    }
+
     if ((dst1->asDstRegRegion()->getRegOff() !=
             dst2->asDstRegRegion()->getRegOff()) ||
         (dst1->asDstRegRegion()->getSubRegOff() !=
@@ -2764,13 +2782,13 @@ bool canDoCSEForSendPayloadCopies(
     }
   }
 
-  // If using sendg, 8 indexes can supported per-mov. So, we use 1/8 as
-  // threshold for mov instruction reduction here.
-  if (!((sendPayLoadCopyMap[prevInst].size() <= 8) &&
-        (sendPayLoadCopyMap[prevInst].size() > 1) &&
-        (diffCopies.size() <= 1)) &&
-      (((float)diffCopies.size() / sendPayLoadCopyMap[prevInst].size()) >
-       0.125)) {
+  // More than 1 diff
+  if (diffCopies.size() > 1) {
+    return false;
+  }
+
+  // Too many different copies
+  if (((float)diffCopies.size() / sendPayLoadCopyMap[prevInst].size()) > 0.15) {
     return false;
   }
 
