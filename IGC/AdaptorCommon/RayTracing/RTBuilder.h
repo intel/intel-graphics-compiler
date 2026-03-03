@@ -350,9 +350,6 @@ public:
   static Instruction *getEntryFirstInsertionPt(Function &F,
                                                const std::vector<Value *> *pAdditionalInstructionsToSkip = nullptr);
 
-  static Instruction *getEntryFirstInsertionPointInBlock(BasicBlock &block,
-                                                         const std::vector<Value *> *additionalInstructionsToSkip);
-
   Value *getTraceRayPayload(Value *bvhLevel, Value *traceRayCtrl, bool isRayQuery, const Twine &PayloadName = "");
 
 
