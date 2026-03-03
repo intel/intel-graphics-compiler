@@ -120,16 +120,16 @@ static cl::opt<SIMDMode>
 
 static cl::opt<bool> AbortOnSpill("abort-on-spill", cl::desc("Abort on spill"), cl::init(false), cl::Hidden);
 
-static cl::opt<ShaderDispatchMode>
-    DispatchMode("dispatch-mode", cl::desc("Shader dispatch mode"),
-                 cl::values(clEnumValN(ShaderDispatchMode::NOT_APPLICABLE, "na", "dispatch mode not applicable"),
-                            clEnumValN(ShaderDispatchMode::SINGLE_PATCH, "single", "single-dispatch mode"),
-                            clEnumValN(ShaderDispatchMode::DUAL_PATCH, "dual", "dual-dispatch mode"),
-                            clEnumValN(ShaderDispatchMode::EIGHT_PATCH, "eight", "eight-dispatch mode"),
-                            clEnumValN(ShaderDispatchMode::QUAD_SIMD8_DYNAMIC, "quad-simd8-dynamic",
-                                       "quad-simd8-dynamic-dispatch mode"),
-                            clEnumValN(ShaderDispatchMode::DUAL_SIMD8, "dual-simd8", "dual-simd8-dispatch mode")),
-                 cl::init(ShaderDispatchMode::NOT_APPLICABLE), cl::Hidden);
+static cl::opt<ShaderDispatchMode> DispatchMode(
+    "dispatch-mode", cl::desc("Shader dispatch mode"),
+    cl::values(clEnumValN(ShaderDispatchMode::NOT_APPLICABLE, "na", "dispatch mode not applicable"),
+               clEnumValN(ShaderDispatchMode::SINGLE_PATCH, "single", "single-dispatch mode"),
+               clEnumValN(ShaderDispatchMode::DUAL_PATCH, "dual", "dual-dispatch mode"),
+               clEnumValN(ShaderDispatchMode::EIGHT_PATCH, "eight", "eight-dispatch mode"),
+               clEnumValN(ShaderDispatchMode::QUAD_SIMD8_DYNAMIC, "quad-simd8-dynamic",
+                          "quad-simd8-dynamic-dispatch mode"),
+               clEnumValN(ShaderDispatchMode::DUAL_SIMD8, "dual-simd8", "dual-simd8-dispatch mode")),
+    cl::init(ShaderDispatchMode::NOT_APPLICABLE), cl::Hidden);
 
 #define PASS_FLAG "igc-emit-visa"
 #define PASS_DESC "vISA finalizer invocation"

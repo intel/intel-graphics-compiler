@@ -52,7 +52,7 @@ protected:
 
   CodeGenContext *m_context = nullptr;
   llvm::Function *m_kernel = nullptr;
-  std::array<CShader *, 9> m_SIMDshaders;
+  std::array<CShader *, 10> m_SIMDshaders;
 
 public:
   typedef std::unique_ptr<CShaderProgram> UPtr;
