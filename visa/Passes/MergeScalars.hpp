@@ -33,16 +33,14 @@ struct BUNDLE_INFO {
   int size;
   int sizeLimit;
   G4_BB *bb;
-  INST_LIST_ITER startIter;
-  G4_INST *inst[maxBundleSize];
+  INST_LIST_ITER instList[maxBundleSize];
   OPND_PATTERN dstPattern;
   OPND_PATTERN srcPattern[maxNumSrc];
 
-  BUNDLE_INFO(G4_BB *instBB, INST_LIST_ITER &instPos, int limit)
+  BUNDLE_INFO(G4_BB *instBB, INST_LIST_ITER instPos, int limit)
       : sizeLimit(limit), bb(instBB) {
 
-    inst[0] = *instPos;
-    startIter = instPos;
+    instList[0] = instPos;
     dstPattern = OPND_PATTERN::UNKNOWN;
     for (int i = 0; i < maxNumSrc; i++) {
       srcPattern[i] = OPND_PATTERN::UNKNOWN;
@@ -50,14 +48,19 @@ struct BUNDLE_INFO {
     size = 1;
   }
 
-  void appendInst(G4_INST *lastInst) {
+  G4_INST *getInst(int i) const {
+    vISA_ASSERT(size > i, "empty bundle");
+    return *instList[i];
+  }
+
+  void appendInst(INST_LIST_ITER lastInst) {
     vISA_ASSERT(size < maxBundleSize, "max bundle size exceeded");
-    inst[size++] = lastInst;
+    instList[size++] = lastInst;
   }
 
   void deleteLastInst() {
     vISA_ASSERT(size > 0, "empty bundle");
-    inst[--size] = nullptr;
+    --size;
   }
 
   bool canMergeDst(G4_DstRegRegion *dst,
@@ -71,27 +74,38 @@ struct BUNDLE_INFO {
 
   bool doMerge(IR_Builder &builder,
                std::unordered_set<G4_Declare *> &modifiedDcl,
-               std::vector<G4_Declare *> &newInputs);
+               std::vector<G4_Declare *> &newInputs,
+               bool mergeConsecutiveScalarOnly,
+               std::unordered_set<int> &deleted);
 
   void print(std::ostream &output) const {
     output << "Bundle:\n";
     output << "Dst pattern:\t" << patternNames[dstPattern] << "\n";
     output << "Src Pattern:\t";
-    for (int i = 0; i < inst[0]->getNumSrc(); ++i) {
+    for (int i = 0; i < getInst(0)->getNumSrc(); ++i) {
       output << patternNames[srcPattern[i]] << " ";
     }
     output << "\n";
     for (int i = 0; i < size; ++i) {
-      inst[i]->emit(output);
+      getInst(i)->emit(output);
       output << "\n";
     }
   }
 
   void dump() const { print(std::cerr); }
 
-  void findInstructionToMerge(INST_LIST_ITER &iter,
+  void
+  findConsecutiveInstsToMerge(INST_LIST_ITER iter,
                               std::unordered_set<G4_Declare *> &modifiedDcl,
                               const IR_Builder &builder);
+
+  void findInstructionToMerge(
+      INST_LIST_ITER iter, std::unordered_set<G4_Declare *> &modifiedDcl,
+      bool mergeConsecutiveScalarOnly, const IR_Builder &builder,
+      const std::vector<int> &indirectAccesses,
+      const std::unordered_map<G4_Declare *, std::vector<int>> &readAccesses,
+      const std::unordered_map<G4_Declare *, std::vector<int>> &writeAccesses,
+      const std::unordered_set<int> &deleted);
 
   static bool isMergeCandidate(G4_INST *inst, const IR_Builder &builder,
                                std::unordered_set<G4_Declare *> &modifiedDcl,

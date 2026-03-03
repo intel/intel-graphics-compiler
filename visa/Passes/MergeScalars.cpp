@@ -64,7 +64,9 @@ static G4_Declare *getInputDeclare(IR_Builder &builder,
 //
 bool BUNDLE_INFO::doMerge(IR_Builder &builder,
                           std::unordered_set<G4_Declare *> &modifiedDcl,
-                          std::vector<G4_Declare *> &newInputs) {
+                          std::vector<G4_Declare *> &newInputs,
+                          bool mergeConsecutiveScalarOnly,
+                          std::unordered_set<int> &deleted) {
   if (size == 1) {
     return false;
   }
@@ -75,7 +77,8 @@ bool BUNDLE_INFO::doMerge(IR_Builder &builder,
     deleteLastInst();
   }
 
-  if (!builder.hasAlign1Ternary() && size == 2 && inst[0]->getNumSrc() == 3) {
+  G4_INST *first = getInst(0);
+  if (!builder.hasAlign1Ternary() && size == 2 && first->getNumSrc() == 3) {
     return false;
   }
 
@@ -92,9 +95,9 @@ bool BUNDLE_INFO::doMerge(IR_Builder &builder,
 
   // check if merging is legal
   if (dstPattern == OPND_PATTERN::DISJOINT) {
-    G4_Declare *rootDcl = inst[0]->getDst()->getTopDcl()->getAliasDeclare();
+    G4_Declare *rootDcl = first->getDst()->getTopDcl()->getAliasDeclare();
     for (int instId = 0; instId < size; ++instId) {
-      G4_DstRegRegion *dst = inst[instId]->getDst();
+      G4_DstRegRegion *dst = getInst(instId)->getDst();
       G4_Declare *dcl = dst->getTopDcl();
       if (dcl->getAliasDeclare() != rootDcl) {
         // all dsts in the bundle should have the same base variable (or
@@ -111,11 +114,11 @@ bool BUNDLE_INFO::doMerge(IR_Builder &builder,
       uniqueDeclares.insert(dcl);
     }
   }
-  for (int i = 0; i < inst[0]->getNumSrc(); ++i) {
+  for (int i = 0; i < first->getNumSrc(); ++i) {
     if (srcPattern[i] == OPND_PATTERN::DISJOINT) {
-      G4_Declare *rootDcl = inst[0]->getSrc(i)->getTopDcl()->getAliasDeclare();
+      G4_Declare *rootDcl = first->getSrc(i)->getTopDcl()->getAliasDeclare();
       for (int instId = 0; instId < size; ++instId) {
-        G4_Operand *src = inst[instId]->getSrc(i);
+        G4_Operand *src = getInst(instId)->getSrc(i);
         G4_Declare *dcl = src->getTopDcl();
         if (dcl->getAliasDeclare() != rootDcl) {
           // all srcs in the bundle, if aliased, should have the same alias
@@ -136,7 +139,7 @@ bool BUNDLE_INFO::doMerge(IR_Builder &builder,
   }
 
   G4_ExecSize execSize = (G4_ExecSize)size;
-  G4_INST *newInst = inst[0]; // reuse inst[0] as the new merged inst
+  G4_INST *newInst = first; // reuse inst[0] as the new merged inst
 
   // at this point merge will definitely succeed
   // handle merged dst
@@ -151,7 +154,7 @@ bool BUNDLE_INFO::doMerge(IR_Builder &builder,
       newDcl = builder.createTempVar(execSize, dstType, Eight_Word, "Merged");
     }
     for (int i = 0; i < size; ++i) {
-      G4_Declare *dstDcl = inst[i]->getDst()->getTopDcl();
+      G4_Declare *dstDcl = getInst(i)->getDst()->getTopDcl();
       if (dstDcl->getAliasDeclare() == nullptr) {
         dstDcl->setAliasDeclare(newDcl, i * TypeSize(dstType));
         modifiedDcl.insert(dstDcl);
@@ -197,9 +200,9 @@ bool BUNDLE_INFO::doMerge(IR_Builder &builder,
         newDcl = builder.createTempVar(execSize, srcType, Eight_Word, "Merged");
       }
       for (int j = 0; j < size; ++j) {
-        vISA_ASSERT(inst[j]->getSrc(i)->isSrcRegRegion(),
+        vISA_ASSERT(getInst(j)->getSrc(i)->isSrcRegRegion(),
                     "Src must be a region");
-        G4_SrcRegRegion *src = inst[j]->getSrc(i)->asSrcRegRegion();
+        G4_SrcRegRegion *src = getInst(j)->getSrc(i)->asSrcRegRegion();
         G4_Declare *srcDcl = src->getTopDcl();
         if (srcDcl->getAliasDeclare() == nullptr) {
           srcDcl->setAliasDeclare(newDcl, j * TypeSize(srcType));
@@ -221,7 +224,7 @@ bool BUNDLE_INFO::doMerge(IR_Builder &builder,
         // check if the existing input is good enough
         bool sameInput = true;
         for (int instId = 1; instId < size; ++instId) {
-          auto dcl = inst[instId]->getSrc(i)->getTopDcl()->getRootDeclare();
+          auto dcl = getInst(instId)->getSrc(i)->getTopDcl()->getRootDeclare();
           if (rootDcl != dcl) {
             sameInput = false;
             break;
@@ -285,10 +288,10 @@ bool BUNDLE_INFO::doMerge(IR_Builder &builder,
       // 6. check is the total size of packed data type is less than equal to
       //    largest datatype size (qword).
       for (int j = 0; j < size; j++) {
-        if (!inst[j]->isMov())
+        if (!getInst(j)->isMov())
           return false;
-        if (j > 0 && inst[j - 1]->getDst()->getTopDcl() !=
-                         inst[j]->getDst()->getTopDcl()) {
+        if (j > 0 && getInst(j - 1)->getDst()->getTopDcl() !=
+                         getInst(j)->getDst()->getTopDcl()) {
           return false;
         }
       }
@@ -302,10 +305,10 @@ bool BUNDLE_INFO::doMerge(IR_Builder &builder,
       // shift amount is subregID * type size (bytes) * 8
       uint64_t packedVal = 0;
       for (int j = 0; j < size; j++) {
-        G4_Imm *immValue = inst[j]->getSrc(0)->asImm();
+        G4_Imm *immValue = getInst(j)->getSrc(0)->asImm();
         uint32_t shiftVal = j * newInst->getDst()->getTypeSize() * 8;
         uint64_t val = 0;
-        switch (inst[j]->getDst()->getType()) {
+        switch (getInst(j)->getDst()->getType()) {
         case G4_Type::Type_UD:
         case G4_Type::Type_D:
         case G4_Type::Type_F:
@@ -362,10 +365,12 @@ bool BUNDLE_INFO::doMerge(IR_Builder &builder,
 
   newInst->setExecSize(execSize);
 
-  auto iter = startIter;
-  ++iter;
   for (int i = 1; i < size; ++i) {
-    G4_INST *instToDelete = *iter;
+    G4_INST *instToDelete = getInst(i);
+    if (!mergeConsecutiveScalarOnly) {
+      auto res = deleted.insert(instToDelete->getLocalId());
+      vASSERT(res.second);
+    }
     instToDelete->transferUse(newInst, true);
     for (int srcNum = 0, numSrc = instToDelete->getNumSrc(); srcNum < numSrc;
          ++srcNum) {
@@ -373,7 +378,7 @@ bool BUNDLE_INFO::doMerge(IR_Builder &builder,
       instToDelete->transferDef(newInst, opndPos, opndPos);
     }
 
-    iter = bb->erase(iter);
+    bb->erase(instList[i]);
   }
 
   VISA_DEBUG_VERBOSE({
@@ -623,8 +628,8 @@ bool BUNDLE_INFO::canMergeDst(G4_DstRegRegion *dst,
                               const IR_Builder &builder) {
   // src must be either Imm or SrcRegRegion
 
-  G4_DstRegRegion *firstDst = inst[0]->getDst();
-  G4_DstRegRegion *prevDst = inst[size - 1]->getDst();
+  G4_DstRegRegion *firstDst = getInst(0)->getDst();
+  G4_DstRegRegion *prevDst = getInst(size - 1)->getDst();
   if (prevDst->getType() != dst->getType()) {
     return false;
   }
@@ -675,7 +680,7 @@ bool BUNDLE_INFO::canMergeDst(G4_DstRegRegion *dst,
       }
       // also check to see if dst is the same as any other previous dst
       for (int i = 0; i < size - 1; i++) {
-        G4_INST *bundleInst = inst[i];
+        G4_INST *bundleInst = getInst(i);
         if (dstDcl == bundleInst->getDst()->getTopDcl()) {
           return false;
         }
@@ -692,8 +697,8 @@ bool BUNDLE_INFO::canMergeDst(G4_DstRegRegion *dst,
   // problem is that if src and dst in different instructions refer to the same
   // variable we can't get them to align properly.
   for (int i = 0; i < size; i++) {
-    for (int srcPos = 0; srcPos < inst[i]->getNumSrc(); ++srcPos) {
-      G4_Operand *src = inst[i]->getSrc(srcPos);
+    for (int srcPos = 0; srcPos < getInst(i)->getNumSrc(); ++srcPos) {
+      G4_Operand *src = getInst(i)->getSrc(srcPos);
       // since both are scalar, check is as simple as comparing the dcl
       if (src->getTopDcl() != nullptr && src->getTopDcl() == dst->getTopDcl()) {
         return false;
@@ -726,15 +731,16 @@ bool BUNDLE_INFO::canMergeSource(G4_Operand *src, int srcPos,
     return false;
   }
 
-  if ((inst[0]->isMath() && inst[0]->asMathInst()->isOneSrcMath()) &&
-      srcPos == 1) {
+  G4_INST *first = getInst(0);
+  if ((first->isMath() && first->asMathInst()->isOneSrcMath()) && srcPos == 1) {
     // null source is always legal
     srcPattern[srcPos] = OPND_PATTERN::IDENTICAL;
     return true;
   }
 
-  G4_Operand *firstSrc = inst[0]->getSrc(srcPos);
-  G4_Operand *prevSrc = inst[size - 1]->getSrc(srcPos);
+  G4_Operand *firstSrc = first->getSrc(srcPos);
+  G4_INST *prev = getInst(size - 1);
+  G4_Operand *prevSrc = prev->getSrc(srcPos);
   if (prevSrc->getType() != src->getType()) {
     return false;
   }
@@ -840,7 +846,7 @@ bool BUNDLE_INFO::canMergeSource(G4_Operand *src, int srcPos,
         return false;
       }
 
-      if (inst[0]->getNumSrc() == 3) {
+      if (first->getNumSrc() == 3) {
         // for 3src inst, we can't merge if inst0's src is not oword-aligned
         if ((prevSrcGRFOffset & 0xF) != 0) {
           return false;
@@ -863,7 +869,7 @@ bool BUNDLE_INFO::canMergeSource(G4_Operand *src, int srcPos,
         }
         // also check to see if src is the same as any other previous sources
         for (int i = 0; i < size - 1; i++) {
-          G4_INST *bundleInst = inst[i];
+          G4_INST *bundleInst = getInst(i);
           if (srcDcl == bundleInst->getSrc(srcPos)->getTopDcl()) {
             return false;
           }
@@ -879,7 +885,7 @@ bool BUNDLE_INFO::canMergeSource(G4_Operand *src, int srcPos,
     // we additionally have to check if src has a RAW dependency with one of the
     // previous dst in the bundle
     for (int i = 0; i < size; i++) {
-      G4_DstRegRegion *dst = inst[i]->getDst();
+      G4_DstRegRegion *dst = getInst(i)->getDst();
       // since both are scalar, check is as simple as comparing the dcl
       if (src->getTopDcl() == dst->getTopDcl()) {
         return false;
@@ -912,7 +918,7 @@ bool BUNDLE_INFO::canMergeSource(G4_Operand *src, int srcPos,
 bool BUNDLE_INFO::canMerge(G4_INST *inst,
                            std::unordered_set<G4_Declare *> &modifiedDcl,
                            const IR_Builder &builder) {
-  G4_INST *firstInst = this->inst[0];
+  G4_INST *firstInst = getInst(0);
   if (firstInst->opcode() != inst->opcode()) {
     return false;
   }
@@ -946,16 +952,11 @@ bool BUNDLE_INFO::canMerge(G4_INST *inst,
     }
   }
 
-  // append instruction to bundle
-  appendInst(inst);
   return true;
 }
 
-//
-// iter is advanced to the next instruction not belonging to the handle
-//
-void BUNDLE_INFO::findInstructionToMerge(
-    INST_LIST_ITER &iter, std::unordered_set<G4_Declare *> &modifiedDcl,
+void BUNDLE_INFO::findConsecutiveInstsToMerge(
+    INST_LIST_ITER iter, std::unordered_set<G4_Declare *> &modifiedDcl,
     const IR_Builder &builder) {
 
   for (; iter != bb->end() && this->size < this->sizeLimit; ++iter) {
@@ -965,8 +966,147 @@ void BUNDLE_INFO::findInstructionToMerge(
       break;
     }
 
-    if (!canMerge(nextInst, modifiedDcl, builder)) {
+    if (!canMerge(*iter, modifiedDcl, builder)) {
       break;
     }
+
+    // append instruction to bundle
+    appendInst(iter);
+  }
+}
+
+void BUNDLE_INFO::findInstructionToMerge(
+    INST_LIST_ITER iter, std::unordered_set<G4_Declare *> &modifiedDcl,
+    bool mergeConsecutiveScalarOnly, const IR_Builder &builder,
+    const std::vector<int> &indirectAccesses,
+    const std::unordered_map<G4_Declare *, std::vector<int>> &readAccesses,
+    const std::unordered_map<G4_Declare *, std::vector<int>> &writeAccesses,
+    const std::unordered_set<int> &deleted) {
+
+  if (mergeConsecutiveScalarOnly) {
+    findConsecutiveInstsToMerge(iter, modifiedDcl, builder);
+    return;
+  }
+
+  const int first = getInst(0)->getLocalId();
+  const int last = getInst(size - 1)->getLocalId();
+
+  // Return true if the specified id matches any instruction in the deleted set
+  // or current bundle.
+  auto isDeletedOrInBundle = [&](int id) {
+    if (deleted.count(id))
+      return true;
+
+    for (int i = 0; i < size; ++i) {
+      if (getInst(i)->getLocalId() == id)
+        return true;
+    }
+    return false;
+  };
+
+  // Return true if any indirect access exists between the bundle and the
+  // candidate instruction. Since instructions with indirect access cannot be
+  // merge candidates, there's no need to check the deleted set or current
+  // bundle.
+  auto hasIndirectAccessBetweenBundleAndInst = [&](G4_INST *cand) {
+    int cur = cand->getLocalId();
+    return std::any_of(indirectAccesses.begin(), indirectAccesses.end(),
+                       [&](int id) { return last < id && id < cur; });
+  };
+
+  // Note that for the following dependency checkers, we skip checking deleted
+  // set instructions since they're merged before the current bundle, and also
+  // skip current bundle instructions since they'll be merged to the bundle's
+  // first instruction if successful.
+
+  // Return true if a WAR dependency exists between the bundle and the candidate
+  // instruction.
+  auto hasWARDepBetweenBundleAndInst = [&](G4_INST *cand) {
+    auto *dcl = cand->getDst()->getTopDcl();
+    if (!dcl)
+      return false;
+
+    auto it = readAccesses.find(dcl);
+    if (it == readAccesses.end())
+      return false;
+
+    int cur = cand->getLocalId();
+    return std::any_of(it->second.begin(), it->second.end(), [&](int id) {
+      return first < id && id < cur && !isDeletedOrInBundle(id);
+    });
+  };
+
+  // Return true if a WAW dependency exists between the bundle and the candidate
+  // instruction.
+  auto hasWAWDepBetweenBundleAndInst = [&](G4_INST *cand) {
+    auto *dcl = cand->getDst()->getTopDcl();
+    if (!dcl)
+      return false;
+
+    auto it = writeAccesses.find(dcl);
+    if (it == writeAccesses.end())
+      return false;
+
+    int cur = cand->getLocalId();
+    return std::any_of(it->second.begin(), it->second.end(), [&](int id) {
+      return first < id && id < cur && !isDeletedOrInBundle(id);
+    });
+  };
+
+  // Return true if a RAW dependency exists between the bundle and the candidate
+  // instruction.
+  auto hasRAWDepBetweenBundleAndInst = [&](G4_INST *cand) {
+    for (int i = 0, e = cand->getNumSrc(); i < e; ++i) {
+      auto *src = cand->getSrc(i);
+      if (!src || !src->isSrcRegRegion())
+        continue;
+      auto *dcl = src->getTopDcl();
+      if (!dcl)
+        continue;
+      auto it = writeAccesses.find(dcl);
+      if (it == writeAccesses.end())
+        continue;
+
+      int cur = cand->getLocalId();
+      if (std::any_of(it->second.begin(), it->second.end(), [&](int id) {
+            return first < id && id < cur && !isDeletedOrInBundle(id);
+          })) {
+        return true;
+      }
+    }
+    return false;
+  };
+
+  for (; iter != bb->end() && this->size < this->sizeLimit; ++iter) {
+    G4_INST *nextInst = *iter;
+    // Skip any instruction that cannot be merged.
+    if (!BUNDLE_INFO::isMergeCandidate(nextInst, builder, modifiedDcl,
+                                       !bb->isAllLaneActive()))
+      continue;
+
+    if (!canMerge(*iter, modifiedDcl, builder))
+      continue;
+
+    // Add the instruction to the current bundle when it has no dependencies.
+
+    // Break if any indirect access between the last bundle inst and the
+    // candidate
+    if (hasIndirectAccessBetweenBundleAndInst(nextInst))
+      break;
+
+    // Break if any WAR dependency
+    if (hasWARDepBetweenBundleAndInst(nextInst))
+      break;
+
+    // Break if any WAW dependency
+    if (hasWAWDepBetweenBundleAndInst(nextInst))
+      break;
+
+    // Break if any RAW dependency
+    if (hasRAWDepBetweenBundleAndInst(nextInst))
+      break;
+
+    // append instruction to bundle
+    appendInst(iter);
   }
 }

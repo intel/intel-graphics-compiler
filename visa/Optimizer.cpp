@@ -7260,31 +7260,73 @@ void Optimizer::mergeScalarInst() {
   int numBundles = 0;
   int numDeletedInst = 0;
 
+  bool mergeConsecutiveScalarOnly =
+      builder.getOption(vISA_MergeConsecutiveScalarOnly);
   for (G4_BB *bb : fg) {
-    std::vector<BUNDLE_INFO> bundles;
-    INST_LIST_ITER ii = bb->begin(), iiEnd = bb->end();
-    while (ii != iiEnd) {
-      G4_INST *inst = *ii;
-      auto nextIter = ii;
-      ++nextIter;
-      if (nextIter != iiEnd &&
-          BUNDLE_INFO::isMergeCandidate(inst, builder, modifiedDcl,
-                                        !bb->isAllLaneActive())) {
-        BUNDLE_INFO bundle(bb, ii, bundleSizeLimit);
-        bundle.findInstructionToMerge(nextIter, modifiedDcl, builder);
-        if (bundle.size > 1)
-          bundles.emplace_back(bundle);
-        ii = nextIter;
-      } else {
-        ++ii;
+    // Build local data flow information to enable merging of non-consecutive
+    // independent scalar instructions.
+    std::unordered_map<G4_Declare *, std::vector<int>> readAccesses;
+    std::unordered_map<G4_Declare *, std::vector<int>> writeAccesses;
+    std::vector<int> indirectAccesses;
+    std::unordered_set<int> deleted;
+    if (!mergeConsecutiveScalarOnly) {
+      bb->resetLocalIds();
+      for (G4_INST *inst : *bb) {
+        int id = inst->getLocalId();
+        auto *dst = inst->getDst();
+        if (dst && dst->isIndirect())
+          indirectAccesses.push_back(id);
+        else if (std::any_of(inst->src_begin(), inst->src_end(),
+                             [](G4_Operand *opd) {
+                               return opd && opd->isSrcRegRegion() &&
+                                      opd->asSrcRegRegion()->isIndirect();
+                             })) {
+          indirectAccesses.push_back(id);
+        } else {
+          if (dst) {
+            if (auto *dcl = dst->getTopDcl())
+              writeAccesses[dcl].push_back(id);
+          }
+
+          for (int i = 0, e = inst->getNumSrc(); i < e; ++i) {
+            auto *src = inst->getSrc(i);
+            if (!src)
+              continue;
+            if (auto *dcl = src->getTopDcl())
+              readAccesses[dcl].push_back(id);
+          }
+        }
       }
     }
 
-    for (auto &bundle : bundles) {
-      bool success = bundle.doMerge(builder, modifiedDcl, newInputs);
-      if (success) {
-        numBundles++;
-        numDeletedInst += bundle.size - 1;
+    INST_LIST_ITER ii = bb->begin(), iiEnd = bb->end();
+    while (ii != iiEnd) {
+      G4_INST *inst = *ii;
+      if (BUNDLE_INFO::isMergeCandidate(inst, builder, modifiedDcl,
+                                        !bb->isAllLaneActive())) {
+        BUNDLE_INFO bundle(bb, ii, bundleSizeLimit);
+        bundle.findInstructionToMerge(
+            std::next(ii), modifiedDcl, mergeConsecutiveScalarOnly, builder,
+            indirectAccesses, readAccesses, writeAccesses, deleted);
+        bool res = bundle.doMerge(builder, modifiedDcl, newInputs,
+                                  mergeConsecutiveScalarOnly, deleted);
+        if (res) {
+          numBundles++;
+          numDeletedInst += bundle.size - 1;
+        }
+
+        // Consecutive merging only: always skip entire bundle
+        // 1. Merge fails: advance past last bundle instruction
+        // 2. Merge succeeds: advance past merged instruction (first in bundle)
+        //
+        // Non-consecutive merging: always advance past first bundle instruction
+        // to find more opportunities
+        if (mergeConsecutiveScalarOnly && !res)
+          ii = std::next(bundle.instList[bundle.size - 1]);
+        else
+          ++ii;
+      } else {
+        ++ii;
       }
     }
   }
