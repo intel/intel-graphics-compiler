@@ -59,12 +59,13 @@ public:
 
   std::optional<std::vector<llvm::Instruction *>> canFullyRemat(llvm::Instruction *I, uint32_t Threshold,
                                                                 llvm::ValueToValueMapTy *VM = nullptr) const;
+  bool materializable(const llvm::Instruction &I) const;
+  bool isFreeOperand(const llvm::Value *Op) const;
 
 private:
   bool canFullyRemat(llvm::Instruction *I, std::vector<llvm::Instruction *> &Insts,
                      std::unordered_set<llvm::Instruction *> &Visited, unsigned StartDepth, unsigned Depth,
                      llvm::ValueToValueMapTy *VM) const;
-  bool materializable(const llvm::Instruction &I) const;
   bool isReadOnly(const llvm::Value *Ptr) const;
 
   CodeGenContext &Ctx;

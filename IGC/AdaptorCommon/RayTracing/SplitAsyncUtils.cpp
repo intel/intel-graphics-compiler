@@ -271,6 +271,21 @@ bool RematChecker::materializable(const Instruction &I) const {
   return false;
 }
 
+bool RematChecker::isFreeOperand(const Value *Op) const {
+  if (isa<Constant>(Op))
+    return true;
+
+  auto *Arg = dyn_cast<Argument>(Op);
+  if (!Arg)
+    return false;
+
+  if (Stage != RematStage::MID)
+    return false;
+
+  auto &F = *Arg->getParent();
+  return ArgQuery{F, Ctx}.getPayloadArg(&F) == Arg;
+}
+
 bool RematChecker::canFullyRemat(Instruction *I, std::vector<Instruction *> &Insts,
                                  std::unordered_set<Instruction *> &Visited, unsigned StartDepth, unsigned Depth,
                                  ValueToValueMapTy *VM) const {
@@ -295,13 +310,8 @@ bool RematChecker::canFullyRemat(Instruction *I, std::vector<Instruction *> &Ins
   }
 
   for (auto &Op : I->operands()) {
-    if (isa<Constant>(Op))
+    if (isFreeOperand(Op))
       continue;
-    if (auto *A = dyn_cast<Argument>(Op); A && Stage == RematStage::MID) {
-      auto &F = *I->getFunction();
-      if (ArgQuery{F, Ctx}.getPayloadArg(&F) == A)
-        continue;
-    }
 
     auto *OpI = dyn_cast<Instruction>(Op);
     if (!OpI)
