@@ -72,7 +72,7 @@ void SLPVectorizerPassWrapper::getAnalysisUsage(AnalysisUsage &AU) const {
   AU.addRequired<LoopInfoWrapperPass>();
   AU.addRequired<DominatorTreeWrapperPass>();
   AU.addRequired<OptimizationRemarkEmitterWrapperPass>();
-#if LLVM_VERSION_MAJOR <= 16
+#if LLVM_VERSION_MAJOR <= 16 || defined(IGC_LLVM_TRUNK_REVISION)
   AU.addRequired<DemandedBitsWrapperPass>();
   AU.addRequired<InjectTLIMappingsLegacy>();
 #endif
@@ -100,7 +100,7 @@ IGC_INITIALIZE_PASS_DEPENDENCY(AssumptionCacheTracker)
 IGC_INITIALIZE_PASS_DEPENDENCY(ScalarEvolutionWrapperPass)
 IGC_INITIALIZE_PASS_DEPENDENCY(LoopSimplify)
 IGC_INITIALIZE_PASS_DEPENDENCY(OptimizationRemarkEmitterWrapperPass)
-#if LLVM_VERSION_MAJOR <= 16
+#if LLVM_VERSION_MAJOR <= 16 || defined(IGC_LLVM_TRUNK_REVISION)
 IGC_INITIALIZE_PASS_DEPENDENCY(DemandedBitsWrapperPass)
 IGC_INITIALIZE_PASS_DEPENDENCY(InjectTLIMappingsLegacy)
 #endif

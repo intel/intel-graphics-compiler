@@ -9,7 +9,7 @@ SPDX-License-Identifier: MIT
 #define IGCLLVM_TARGETPARSER_TRIPLE_H
 
 #include "IGC/common/LLVMWarningsPush.hpp"
-#if LLVM_VERSION_MAJOR > 16 && !defined(IGC_LLVM_TRUNK_REVISION)
+#if LLVM_VERSION_MAJOR > 16
 #include <llvm/TargetParser/Triple.h>
 #else
 #include <llvm/ADT/Triple.h>

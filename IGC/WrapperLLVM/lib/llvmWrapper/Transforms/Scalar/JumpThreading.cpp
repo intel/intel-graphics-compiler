@@ -64,7 +64,7 @@ bool JumpThreadingPassWrapper::runOnFunction(Function &F) {
 
 void JumpThreadingPassWrapper::getAnalysisUsage(AnalysisUsage &AU) const {
   AU.addRequired<DominatorTreeWrapperPass>();
-#if LLVM_VERSION_MAJOR != 16
+#if LLVM_VERSION_MAJOR != 16 && !defined(IGC_LLVM_TRUNK_REVISION)
   // LLVM 16:
   // Workaround. Avoid Dom Tree preservation for LLVM 16 when using wrapper.
 

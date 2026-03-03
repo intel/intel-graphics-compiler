@@ -1,0 +1,180 @@
+From d936713ff307c4c5c1b7852758c0a09aff4681cc Mon Sep 17 00:00:00 2001
+From: Nick Desaulniers <ndesaulniers@google.com>
+Date: Fri, 14 Apr 2023 10:24:07 -0700
+Subject: [PATCH 2/8] [StringView] remove dropFront
+
+Towards converting our use of llvm::StringView to std::string_view,
+remove a method that std::string_view doesn't have.
+llvm::StringView::dropFront is semantically similar to
+std::string_view::substr but with the input clamped to the size. No code
+was relying on clamping other than the rust demangler, which I fixed in
+https://reviews.llvm.org/D148272.  Removing this method makes it easier
+to switch over code later.
+
+Reviewed By: MaskRay
+
+Differential Revision: https://reviews.llvm.org/D148348
+---
+ llvm/include/llvm/Demangle/ItaniumDemangle.h | 17 ++++++++---------
+ llvm/include/llvm/Demangle/StringView.h      | 10 ++--------
+ llvm/lib/Demangle/MicrosoftDemangle.cpp      | 12 ++++++------
+ 3 files changed, 16 insertions(+), 23 deletions(-)
+
+diff --git a/llvm/include/llvm/Demangle/ItaniumDemangle.h b/llvm/include/llvm/Demangle/ItaniumDemangle.h
+index 0dd49ea91455..4541c2624bab 100644
+--- a/llvm/include/llvm/Demangle/ItaniumDemangle.h
++++ b/llvm/include/llvm/Demangle/ItaniumDemangle.h
+@@ -1580,7 +1580,7 @@ public:
+     if (isInstantiation()) {
+       // The instantiations are typedefs that drop the "basic_" prefix.
+       assert(SV.startsWith("basic_"));
+-      SV = SV.dropFront(sizeof("basic_") - 1);
++      SV.remove_prefix(sizeof("basic_") - 1);
+     }
+     return SV;
+   }
+@@ -1835,7 +1835,7 @@ public:
+       OB += "0";
+     } else if (Offset[0] == 'n') {
+       OB += "-";
+-      OB += Offset.dropFront();
++      OB += Offset.substr(1);
+     } else {
+       OB += Offset;
+     }
+@@ -2261,7 +2261,7 @@ public:
+     OB.printClose();
+ 
+     if (Integer[0] == 'n')
+-      OB << "-" << Integer.dropFront(1);
++      OB << '-' << Integer.substr(1);
+     else
+       OB << Integer;
+   }
+@@ -2284,10 +2284,9 @@ public:
+       OB.printClose();
+     }
+ 
+-    if (Value[0] == 'n') {
+-      OB += '-';
+-      OB += Value.dropFront(1);
+-    } else
++    if (Value[0] == 'n')
++      OB << '-' << Value.substr(1);
++    else
+       OB += Value;
+ 
+     if (Type.size() <= 3)
+@@ -2629,7 +2628,7 @@ template <typename Derived, typename Alloc> struct AbstractManglingParser {
+       if (Kind < Unnameable) {
+         assert(Res.startsWith("operator") &&
+                "operator name does not start with 'operator'");
+-        Res = Res.dropFront(sizeof("operator") - 1);
++        Res.remove_prefix(sizeof("operator") - 1);
+         Res.consumeFront(' ');
+       }
+       return Res;
+@@ -3703,7 +3702,7 @@ Node *AbstractManglingParser<Derived, Alloc>::parseQualifiedType() {
+ 
+     // extension            ::= U <objc-name> <objc-type>  # objc-type<identifier>
+     if (Qual.startsWith("objcproto")) {
+-      StringView ProtoSourceName = Qual.dropFront(std::strlen("objcproto"));
++      StringView ProtoSourceName = Qual.substr(std::strlen("objcproto"));
+       StringView Proto;
+       {
+         ScopedOverride<const char *> SaveFirst(First, ProtoSourceName.begin()),
+diff --git a/llvm/include/llvm/Demangle/StringView.h b/llvm/include/llvm/Demangle/StringView.h
+index a5d4baeb7a41..51d9e25cd8ab 100644
+--- a/llvm/include/llvm/Demangle/StringView.h
++++ b/llvm/include/llvm/Demangle/StringView.h
+@@ -55,12 +55,6 @@ public:
+     return npos;
+   }
+ 
+-  StringView dropFront(size_t N = 1) const {
+-    if (N >= size())
+-      N = size();
+-    return StringView(First + N, Last);
+-  }
+-
+   void remove_prefix(size_t N) {
+     assert(size() >= N);
+     First += N;
+@@ -88,14 +82,14 @@ public:
+   bool consumeFront(char C) {
+     if (!startsWith(C))
+       return false;
+-    *this = dropFront(1);
++    remove_prefix(1);
+     return true;
+   }
+ 
+   bool consumeFront(StringView S) {
+     if (!startsWith(S))
+       return false;
+-    *this = dropFront(S.size());
++    remove_prefix(S.size());
+     return true;
+   }
+ 
+diff --git a/llvm/lib/Demangle/MicrosoftDemangle.cpp b/llvm/lib/Demangle/MicrosoftDemangle.cpp
+index 284daee88f4b..4230deaeaa96 100644
+--- a/llvm/lib/Demangle/MicrosoftDemangle.cpp
++++ b/llvm/lib/Demangle/MicrosoftDemangle.cpp
+@@ -765,7 +765,7 @@ SymbolNode *Demangler::demangleMD5Name(StringView &MangledName) {
+     return nullptr;
+   }
+   const char *Start = MangledName.begin();
+-  MangledName = MangledName.dropFront(MD5Last + 1);
++  MangledName.remove_prefix(MD5Last + 1);
+ 
+   // There are two additional special cases for MD5 names:
+   // 1. For complete object locators where the object name is long enough
+@@ -902,7 +902,7 @@ std::pair<uint64_t, bool> Demangler::demangleNumber(StringView &MangledName) {
+ 
+   if (startsWithDigit(MangledName)) {
+     uint64_t Ret = MangledName[0] - '0' + 1;
+-    MangledName = MangledName.dropFront(1);
++    MangledName.remove_prefix(1);
+     return {Ret, IsNegative};
+   }
+ 
+@@ -910,7 +910,7 @@ std::pair<uint64_t, bool> Demangler::demangleNumber(StringView &MangledName) {
+   for (size_t i = 0; i < MangledName.size(); ++i) {
+     char C = MangledName[i];
+     if (C == '@') {
+-      MangledName = MangledName.dropFront(i + 1);
++      MangledName.remove_prefix(i + 1);
+       return {Ret, IsNegative};
+     }
+     if ('A' <= C && C <= 'P') {
+@@ -1050,7 +1050,7 @@ uint8_t Demangler::demangleCharLiteral(StringView &MangledName) {
+     // Don't append the null terminator.
+     uint8_t C1 = rebasedHexDigitToNumber(Nibbles[0]);
+     uint8_t C2 = rebasedHexDigitToNumber(Nibbles[1]);
+-    MangledName = MangledName.dropFront(2);
++    MangledName.remove_prefix(2);
+     return (C1 << 4) | C2;
+   }
+ 
+@@ -1310,7 +1310,7 @@ Demangler::demangleStringLiteral(StringView &MangledName) {
+   if (CrcEndPos == StringView::npos)
+     goto StringLiteralError;
+   CRC = MangledName.substr(0, CrcEndPos);
+-  MangledName = MangledName.dropFront(CrcEndPos + 1);
++  MangledName.remove_prefix(CrcEndPos + 1);
+   if (MangledName.empty())
+     goto StringLiteralError;
+ 
+@@ -1391,7 +1391,7 @@ StringView Demangler::demangleSimpleString(StringView &MangledName,
+     if (i == 0)
+       break;
+     S = MangledName.substr(0, i);
+-    MangledName = MangledName.dropFront(i + 1);
++    MangledName.remove_prefix(i + 1);
+ 
+     if (Memorize)
+       memorizeString(S);
+-- 
+2.43.2
+

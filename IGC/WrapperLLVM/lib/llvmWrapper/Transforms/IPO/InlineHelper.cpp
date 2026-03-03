@@ -309,7 +309,7 @@ bool inlineCallsImpl(CallGraphSCC &SCC, CallGraph &CG, std::function<AssumptionC
 
   InlinedArrayAllocasTy InlinedArrayAllocas;
   InlineFunctionInfo InlineInfo(
-#if LLVM_VERSION_MAJOR <= 16 || defined(IGC_LLVM_TRUNK_REVISION)
+#if LLVM_VERSION_MAJOR <= 16
       &CG,
 #endif
       GetAssumptionCache, PSI);
@@ -397,7 +397,7 @@ bool inlineCallsImpl(CallGraphSCC &SCC, CallGraph &CG, std::function<AssumptionC
 
         // If inlining this function gave us any new call sites, throw them
         // onto our worklist to process.  They are useful inline candidates.
-#if LLVM_VERSION_MAJOR >= 17
+#if LLVM_VERSION_MAJOR >= 17 && !defined(IGC_LLVM_TRUNK_REVISION)
         CG[Caller]->removeAllCalledFunctions();
         CG.populateCallGraphNode(CG[Caller]);
         SmallVector<CallBase *, 8> &NewCallSites = InlineInfo.InlinedCallSites;
@@ -421,7 +421,7 @@ bool inlineCallsImpl(CallGraphSCC &SCC, CallGraph &CG, std::function<AssumptionC
 #endif
 
           for (auto &Ptr : NewCallSites) {
-#if LLVM_VERSION_MAJOR >= 17
+#if LLVM_VERSION_MAJOR >= 17 && !defined(IGC_LLVM_TRUNK_REVISION)
             CallBase *NewCallBase = Ptr;
 #else
             CallBase *NewCallBase = dyn_cast<CallBase>(Ptr);

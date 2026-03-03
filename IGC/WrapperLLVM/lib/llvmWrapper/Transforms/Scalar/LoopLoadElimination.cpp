@@ -49,7 +49,7 @@ void LoopLoadEliminationLegacyPassWrapper::getAnalysisUsage(AnalysisUsage &AU) c
   AU.addRequiredID(LoopSimplifyID);
   AU.addRequired<LoopInfoWrapperPass>();
   AU.addPreserved<LoopInfoWrapperPass>();
-#if LLVM_VERSION_MAJOR <= 16
+#if LLVM_VERSION_MAJOR <= 16 || defined(IGC_LLVM_TRUNK_REVISION)
   AU.addRequired<LoopAccessLegacyAnalysis>();
 #endif
   AU.addRequired<ScalarEvolutionWrapperPass>();

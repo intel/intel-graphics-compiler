@@ -1,0 +1,45 @@
+From debc1974cf1dd824c11968ece9e9121d72cd0295 Mon Sep 17 00:00:00 2001
+From: Nick Desaulniers <ndesaulniers@google.com>
+Date: Fri, 14 Apr 2023 09:18:04 -0700
+Subject: [PATCH 5/8] [RustDemangle] remove StringView::dropFront
+
+Toward the goal of replacing llvm::StringView with std::string_view,
+first replacing users of llvm::StringView::dropFront, this case in the
+Rust demangling scheme seemed worth its own commit+review.
+
+Reviewed By: erichkeane, MaskRay
+
+Differential Revision: https://reviews.llvm.org/D148272
+---
+ llvm/lib/Demangle/RustDemangle.cpp | 7 +++----
+ 1 file changed, 3 insertions(+), 4 deletions(-)
+
+diff --git a/llvm/lib/Demangle/RustDemangle.cpp b/llvm/lib/Demangle/RustDemangle.cpp
+index 83bccde3bf5b..f48baaf1d514 100644
+--- a/llvm/lib/Demangle/RustDemangle.cpp
++++ b/llvm/lib/Demangle/RustDemangle.cpp
+@@ -203,8 +203,7 @@ bool Demangler::demangle(StringView Mangled) {
+   }
+   Mangled.remove_prefix(2);
+   size_t Dot = Mangled.find('.');
+-  Input = Mangled.substr(0, Dot);
+-  StringView Suffix = Mangled.dropFront(Dot);
++  Input = Dot == StringView::npos ? Mangled : Mangled.substr(0, Dot);
+ 
+   demanglePath(IsInType::No);
+ 
+@@ -216,9 +215,9 @@ bool Demangler::demangle(StringView Mangled) {
+   if (Position != Input.size())
+     Error = true;
+ 
+-  if (!Suffix.empty()) {
++  if (Dot != StringView::npos) {
+     print(" (");
+-    print(Suffix);
++    print(Mangled.substr(Dot));
+     print(")");
+   }
+ 
+-- 
+2.43.2
+
