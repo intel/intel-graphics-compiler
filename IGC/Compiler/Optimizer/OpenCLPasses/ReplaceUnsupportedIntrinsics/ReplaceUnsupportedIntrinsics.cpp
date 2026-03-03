@@ -19,6 +19,11 @@ SPDX-License-Identifier: MIT
 #include "llvm/IR/Instructions.h"
 #include "llvm/IR/Intrinsics.h"
 #include "llvm/IR/IntrinsicInst.h"
+#include <llvm/ADT/APFloat.h>
+#include <llvm/ADT/APInt.h>
+#include <llvm/ADT/FloatingPointMode.h>
+#include <llvm/IR/Constant.h>
+#include <llvm/IR/Constants.h>
 #include <llvm/IR/InstVisitor.h>
 #include "common/LLVMWarningsPop.hpp"
 #include "llvmWrapper/IR/DerivedTypes.h"
@@ -102,6 +107,9 @@ private:
   void replaceMinMax(IntrinsicInst *I);
   void replaceI1MinMax(IntrinsicInst *I);
   void replaceI64MinMax(IntrinsicInst *I);
+#if LLVM_VERSION_MAJOR >= 15
+  void replaceIsFpClass(IntrinsicInst *I);
+#endif
 
   static const std::map<Intrinsic::ID, MemFuncPtr_t> m_intrinsicToFunc;
 };
@@ -135,7 +143,10 @@ const std::map<Intrinsic::ID, ReplaceUnsupportedIntrinsics::MemFuncPtr_t>
     { Intrinsic::smax,       &ReplaceUnsupportedIntrinsics::replaceMinMax },
     { Intrinsic::smin,       &ReplaceUnsupportedIntrinsics::replaceMinMax },
     { Intrinsic::umax,       &ReplaceUnsupportedIntrinsics::replaceMinMax },
-    { Intrinsic::umin,       &ReplaceUnsupportedIntrinsics::replaceMinMax }
+    { Intrinsic::umin,       &ReplaceUnsupportedIntrinsics::replaceMinMax },
+#if LLVM_VERSION_MAJOR >= 15
+    { Intrinsic::is_fpclass,       &ReplaceUnsupportedIntrinsics::replaceIsFpClass },
+#endif
         // clang-format on
 };
 
@@ -980,6 +991,157 @@ void ReplaceUnsupportedIntrinsics::replaceMinMax(IntrinsicInst *I) {
   if (I->getType()->isIntegerTy(1))
     replaceI1MinMax(I);
 }
+
+#if LLVM_VERSION_MAJOR >= 15
+// Expand to individual tests combined with ORs.
+// Returns the result but without replacing the input instruction.
+// Based on implementations in llvm/lib/CodeGen/SelectionDAG/TargetLowering.cpp and LLVM-SPIRV-Translator
+Value *lowerIsFpClass(IntrinsicInst *Intrinsic) {
+  IGC_ASSERT(Intrinsic->getIntrinsicID() == Intrinsic::is_fpclass);
+
+  Value *InputValue = Intrinsic->getArgOperand(0);
+  Type *InputType = InputValue->getType();
+  Type *ResultType = Intrinsic->getType();
+
+  FPClassTest ClassTest = static_cast<FPClassTest>(cast<ConstantInt>(Intrinsic->getArgOperand(1))->getZExtValue());
+
+  // Handle degenerate cases
+  if (ClassTest == 0)
+    return llvm::Constant::getNullValue(ResultType);
+  if (ClassTest == fcAllFlags)
+    return llvm::Constant::getAllOnesValue(ResultType);
+
+  const uint32_t BitWidth = InputType->getScalarSizeInBits();
+  Type *IntType = IntegerType::getIntNTy(Intrinsic->getContext(), BitWidth);
+  if (InputType->isVectorTy())
+    IntType = FixedVectorType::get(IntType, cast<FixedVectorType>(InputType)->getNumElements());
+
+  const llvm::fltSemantics &FloatSemantics = InputType->getScalarType()->getFltSemantics();
+  const APInt InfinityBits = APFloat::getInf(FloatSemantics).bitcastToAPInt();
+  const APInt MantissaMask = APFloat::getLargest(FloatSemantics).bitcastToAPInt() & ~InfinityBits;
+  const APInt SignBitMask = APInt::getSignMask(BitWidth);
+  const APInt AbsoluteMask = APInt::getSignedMaxValue(BitWidth);
+
+  Value *InfinityInt = llvm::Constant::getIntegerValue(IntType, InfinityBits);
+  Value *InfinityFloat = llvm::ConstantFP::get(InputType, APFloat::getInf(FloatSemantics));
+  Value *ZeroInt = ConstantInt::getNullValue(IntType);
+
+  Value *InputAsInt = nullptr;
+  Value *AbsoluteFloat = nullptr;
+  Value *AbsoluteInt = nullptr;
+  Value *IsNegative = nullptr;
+  Value *IsPositive = nullptr;
+
+  IGCLLVM::IRBuilder<> Builder(Intrinsic);
+
+  auto GetInputAsInt = [&]() -> Value * {
+    if (!InputAsInt)
+      InputAsInt = Builder.CreateBitCast(InputValue, IntType);
+    return InputAsInt;
+  };
+
+  auto GetAbsoluteInt = [&]() -> Value * {
+    if (!AbsoluteInt) {
+      AbsoluteInt = Builder.CreateAnd(GetInputAsInt(), AbsoluteMask);
+    }
+    return AbsoluteInt;
+  };
+
+  auto GetAbsoluteValue = [&]() -> Value * {
+    if (!AbsoluteFloat) {
+      AbsoluteFloat = Builder.CreateBitCast(GetAbsoluteInt(), InputType);
+    }
+    return AbsoluteFloat;
+  };
+
+  auto ApplySignTest = [&](Value *Test, bool TestNegative) -> Value * {
+    if (!IsNegative) {
+      Value *SignBits = Builder.CreateAnd(GetInputAsInt(), SignBitMask);
+      IsNegative = Builder.CreateICmpNE(SignBits, ZeroInt);
+    }
+    if (TestNegative)
+      return Builder.CreateAnd(IsNegative, Test);
+
+    if (!IsPositive)
+      IsPositive = Builder.CreateNot(IsNegative);
+    return Builder.CreateAnd(IsPositive, Test);
+  };
+
+  Value *Result = nullptr;
+  auto AccumulateResult = [&](Value *Test) { Result = Result ? Builder.CreateOr(Result, Test) : Test; };
+
+  auto HandleSignedTest = [&](Value *Test, FPClassTest NegFlag, FPClassTest PosFlag) {
+    bool TestNegative = ClassTest & NegFlag;
+    bool TestPositive = ClassTest & PosFlag;
+
+    if (TestNegative && TestPositive) {
+      AccumulateResult(Test);
+    } else {
+      AccumulateResult(ApplySignTest(Test, TestNegative));
+    }
+  };
+
+  if (ClassTest & fcNan) {
+    // isnan(V) ==> abs(V) > int(inf)
+    // isquiet(V) ==> abs(V) >= (unsigned(Inf) | quiet_bit)
+    bool TestQNaN = ClassTest & fcQNan;
+    bool TestSNaN = ClassTest & fcSNan;
+
+    Value *IsNaN = Builder.CreateICmpUGT(GetAbsoluteInt(), InfinityInt);
+
+    if (TestQNaN && TestSNaN) {
+      AccumulateResult(IsNaN);
+    } else {
+      APInt QNaNBit = APInt::getOneBitSet(BitWidth, MantissaMask.getActiveBits() - 1);
+      Value *QNaNThreshold = llvm::Constant::getIntegerValue(IntType, InfinityBits | QNaNBit);
+      Value *IsQNaN = Builder.CreateICmpUGE(GetAbsoluteInt(), QNaNThreshold);
+
+      if (TestQNaN) {
+        AccumulateResult(IsQNaN);
+      } else {
+        // isSNaN(V) => isnan(V) && !isQNaN(V)
+        Value *IsSNaN = Builder.CreateAnd(IsNaN, Builder.CreateNot(IsQNaN));
+        AccumulateResult(IsSNaN);
+      }
+    }
+  }
+
+  if (ClassTest & fcInf) {
+    Value *IsInfinity = Builder.CreateFCmpOEQ(GetAbsoluteValue(), InfinityFloat);
+    HandleSignedTest(IsInfinity, fcNegInf, fcPosInf);
+  }
+
+  if (ClassTest & fcNormal) {
+    // isnormal(V) ==> (0 < exp < max_exp) ==> (unsigned(exp-1) < (max_exp-1))
+    APInt ExponentLSB = InfinityBits & ~(InfinityBits.shl(1));
+    APInt ExponentLimit = InfinityBits - ExponentLSB;
+    Value *ExponentMinus1 = Builder.CreateSub(GetAbsoluteInt(), ConstantInt::get(IntType, ExponentLSB));
+    Value *IsNormal = Builder.CreateICmpULT(ExponentMinus1, ConstantInt::get(IntType, ExponentLimit));
+    HandleSignedTest(IsNormal, fcNegNormal, fcPosNormal);
+  }
+
+  if (ClassTest & fcSubnormal) {
+    // issubnormal(V) ==> unsigned(abs(V) - 1) < (all mantissa bits set)
+    Value *AbsMinus1 = Builder.CreateSub(GetAbsoluteInt(), ConstantInt::get(IntType, APInt(BitWidth, 1)));
+    Value *IsSubnormal = Builder.CreateICmpULT(AbsMinus1, Constant::getIntegerValue(IntType, MantissaMask));
+    HandleSignedTest(IsSubnormal, fcNegSubnormal, fcPosSubnormal);
+  }
+
+  if (ClassTest & fcZero) {
+    Value *IsZero = Builder.CreateICmpEQ(GetAbsoluteInt(), ZeroInt);
+    HandleSignedTest(IsZero, fcNegZero, fcPosZero);
+  }
+
+  return Result;
+}
+
+void ReplaceUnsupportedIntrinsics::replaceIsFpClass(IntrinsicInst *I) {
+  Value *Res = lowerIsFpClass(I);
+  I->replaceAllUsesWith(Res);
+  I->eraseFromParent();
+}
+#endif
+
 /*
     Replaces i64 calls to llvm.smax, llvm.smin, llvm.umax, llvm.umin to
     icmp + select instructionc that can be emulated.
