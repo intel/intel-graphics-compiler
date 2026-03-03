@@ -1379,6 +1379,8 @@ DECLARE_IGC_REGKEY(bool, DisableOptimizeSIMD32, false, "Disable vISA_enableOptim
 DECLARE_IGC_REGKEY(bool, EnableUrbWriteSplitSIMD32to16Shuffle, true,
                    "Enable 2x SIMD16 d32v8 URB Write messages with shuffle instead of 2x SIMD32 d32v4", true)
 DECLARE_IGC_REGKEY(bool, ForceXYZworkGroupWalkOrder, true, "Force X/Y/Z WorkGroup walk order", true)
+DECLARE_IGC_REGKEY(bool, Enable320and448GRFConfigsWithoutSendG, true,
+                   "Enable vISA_enable320and448Vrt for 320/448GRF VRT configurations.", true)
 DECLARE_IGC_REGKEY(
     bool, ValidateSPIRVExtensionSupport, true,
     "When enabled, validate each SPIR-V OpExtension against device support and fail compilation if any are "

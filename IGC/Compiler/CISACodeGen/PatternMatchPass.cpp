@@ -2951,7 +2951,8 @@ bool CodeGenPatternMatch::MatchLoadStoreAtomicsStatelessUniformBase(llvm::Instru
 
   // Base address must be data element aligned for non-scalar types, except for D16 type.
   bool NeedsToBeDataAligned = !IsScalar;
-  if (DataSizeInBytes == 2 && IsScalar && (m_Platform.GetProductFamily() == IGFX_CRI)) {
+  if (DataSizeInBytes == 2 && IsScalar &&
+      (m_Platform.getWATable().Wa_14024686037 || m_Platform.GetProductFamily() == IGFX_CRI)) {
     NeedsToBeDataAligned = true;
   }
   if (NeedsToBeDataAligned) {

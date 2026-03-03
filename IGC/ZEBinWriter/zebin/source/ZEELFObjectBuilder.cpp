@@ -762,6 +762,8 @@ void ELFWriter::writeHeader() {
   // e_ident[EI_ABIVERSION]
 
   unsigned char ABIVersion = 1;
+  if (m_ObjBuilder.getVISAABIVersion() == 3)
+    ABIVersion = 2;
 
   m_W.OS << char(ABIVersion);
 

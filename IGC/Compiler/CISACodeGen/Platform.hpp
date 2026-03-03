@@ -1224,8 +1224,9 @@ public:
   }
 
   bool needsLocalScopeEvictTGM() const {
-    return
-            true;
+    return isCoreChildOf(IGFX_XE3P_CORE)
+               ? (!m_SkuTable.FtrNondeterministicTGMLoadData || IGC_IS_FLAG_ENABLED(ForceLocalScopeEvictTGM))
+               : true;
   }
 
   bool needWaSamplerNoMask() const { return m_WaTable.Wa_22011157800 && !IGC_IS_FLAG_DISABLED(DiableWaSamplerNoMask); }
@@ -1542,6 +1543,9 @@ public:
            IGC_IS_FLAG_DISABLED(DisableRayTracingExtendedCacheControlTierI);
   }
 
+  bool supports320And448GRFWithoutSendg() const {
+    return m_SkuTable.FtrAdditionalRegPerThreadMode && IGC_IS_FLAG_ENABLED(Enable320and448GRFConfigsWithoutSendG);
+  }
 
   bool supportsOverfetch() const { return isProductChildOf(IGFX_NVL); }
 

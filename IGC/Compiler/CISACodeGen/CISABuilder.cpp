@@ -4249,6 +4249,9 @@ void CEncoder::InitVISABuilderOptions(TARGET_PLATFORM VISAPlatform, bool canAbor
       }
     }
   }
+  if (m_program->m_Platform->supports320And448GRFWithoutSendg()) {
+    SaveOption(vISA_enable320and448Vrt, true);
+  }
   if (m_program->m_Platform->forceSamplerHeader()) {
     SaveOption(vISA_samplerHeaderWA, true);
   }

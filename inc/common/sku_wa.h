@@ -275,6 +275,8 @@ typedef struct _SKU_FEATURE_TABLE
         unsigned int   FtrBoundingBoxOptOGL : 1;
         unsigned int   FtrResourceStreamerEnabled : 1;
         unsigned int   FtrHiZSamplerDisabled : 1;
+        unsigned int   FtrNondeterministicTGMLoadData : 1;
+        unsigned int   FtrAdditionalRegPerThreadMode : 1;
     };
 
 

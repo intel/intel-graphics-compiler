@@ -53,6 +53,8 @@ EI_ABIVERSION: (See Below)
 EI_PAD:     0 (Start of padding bytes of e_ident)
 
 Value of `EI_ABIVERSION` is 1.
+Value of `EI_ABIVERSION` is 2 when object is compiled for Xe3P+ platform and
+without compatibility mode.
 ~~~
 
 **e_machine**
