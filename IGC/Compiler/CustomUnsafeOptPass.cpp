@@ -2251,6 +2251,10 @@ void CustomUnsafeOptPass::reassociateMulAdd(Function &F) {
     return;
   }
 
+  if (!m_ctx->m_DriverInfo.EnableReassociateMulAddChain()) {
+    return;
+  }
+
   auto modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
   if (!modMD->compOpt.MadEnable && !m_ctx->m_DriverInfo.RespectPerInstructionContractFlag()) {
     return;

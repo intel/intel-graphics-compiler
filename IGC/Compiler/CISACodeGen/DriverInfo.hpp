@@ -428,6 +428,8 @@ public:
   }
   virtual bool supportsAtomicIaddToIncDec() const { return true; }
 
+  virtual bool EnableReassociateMulAddChain() const { return true; }
+
 protected:
   bool autoGRFSelection = false;
   uint8_t surfaceStateSize = 64;
