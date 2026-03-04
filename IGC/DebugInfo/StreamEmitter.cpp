@@ -403,7 +403,7 @@ StreamEmitter::~StreamEmitter() {
   delete m_pDataLayout;
 }
 
-unsigned int StreamEmitter::GetPointerSize() const { return 8; }
+unsigned int StreamEmitter::GetPointerSize() const { return DwarfDebug::PointerSize; }
 
 bool StreamEmitter::IsLittleEndian() const { return m_pDataLayout->isLittleEndian(); }
 

@@ -342,7 +342,6 @@ DwarfDebug::DwarfDebug(StreamEmitter *A, VISAModule *M)
       NextStringPoolNumber(0), StringPref("info_string") {
 
   DwarfVersion = getDwarfVersionFromModule(M->GetModule());
-  PointerSize = Asm->GetPointerSize();
   // Currently the maximum version of dwarf that LLVM should emit is 4
   if (DwarfVersion > 4)
     Asm->SetDwarfVersion(DwarfVersion);
@@ -360,6 +359,7 @@ MCSymbol *DwarfDebug::getStringPoolEntry(StringRef Str) {
 }
 void DwarfDebug::registerVISA(IGC::VISAModule *M) {
   IGC_ASSERT(M);
+  IGC_ASSERT_MESSAGE(M->getPointerSize() == DwarfDebug::PointerSize, "only 64-bit platforms supported");
   auto *F = M->getFunction();
   // Sanity check that we have only single module associated
   // with a Function
@@ -974,8 +974,7 @@ void DwarfDebug::ExtractConstantData(const llvm::Constant *ConstVal, DwarfDebug:
   IGC_ASSERT(ConstVal);
 
   if (dyn_cast<ConstantPointerNull>(ConstVal)) {
-    DataLayout DL(GetVISAModule()->GetDataLayout());
-    Result.insert(Result.end(), DL.getPointerSize(), 0);
+    Result.insert(Result.end(), PointerSize, 0);
   } else if (const ConstantDataSequential *cds = dyn_cast<ConstantDataSequential>(ConstVal)) {
     for (unsigned i = 0; i < cds->getNumElements(); i++) {
       ExtractConstantData(cds->getElementAsConstant(i), Result);
@@ -1423,8 +1422,7 @@ void writeULEB128(std::vector<unsigned char> &vec, uint64_t data) {
   free(buf);
 }
 
-void DwarfDebug::encodeImm(IGC::DotDebugLocEntry &dotLoc, const VarLocation &vl, uint32_t &offset,
-                           uint32_t pointerSize) {
+void DwarfDebug::encodeImm(IGC::DotDebugLocEntry &dotLoc, const VarLocation &vl, uint32_t &offset) {
   auto op = llvm::dwarf::DW_OP_implicit_value;
   const unsigned int lebSize = 8;
 
@@ -1444,11 +1442,10 @@ void DwarfDebug::encodeImm(IGC::DotDebugLocEntry &dotLoc, const VarLocation &vl,
 
   TempDotDebugLocEntries.push_back(dotLoc);
   // For DWARF v4 offsets, account for start / end + u16 length + expr bytes
-  offset += pointerSize * 2 + 2 + dotLoc.loc.size();
+  offset += PointerSize * 2 + 2 + dotLoc.loc.size();
 }
 
-void DwarfDebug::encodeReg(IGC::DotDebugLocEntry &dotLoc, const VarLocation &vl, uint32_t &offset,
-                           uint32_t pointerSize) {
+void DwarfDebug::encodeReg(IGC::DotDebugLocEntry &dotLoc, const VarLocation &vl, uint32_t &offset) {
   VISAVariableLocation Loc = vl.Loc;
   DbgDecoder::LiveIntervalsVISA visaRange = vl.visaRange;
   DbgDecoder::LiveIntervalsVISA visaRange2nd = vl.visaRange2nd;
@@ -1472,7 +1469,7 @@ void DwarfDebug::encodeReg(IGC::DotDebugLocEntry &dotLoc, const VarLocation &vl,
     if (block)
       block->EmitToRawBuffer(buffer);
     write(TempDotDebugLocEntries.back().loc, buffer.data(), buffer.size());
-    offset += pointerSize * 2 + 2 + buffer.size();
+    offset += PointerSize * 2 + 2 + buffer.size();
 
     DotDebugLocEntry stackEntry(dotLoc.getStart(), dotLoc.getEnd(), dotLoc.getDbgInst(), dotLoc.getVariable());
     stackEntry.start = callerSaveIp;
@@ -1490,7 +1487,7 @@ void DwarfDebug::encodeReg(IGC::DotDebugLocEntry &dotLoc, const VarLocation &vl,
     if (block)
       block->EmitToRawBuffer(buffer);
     write(TempDotDebugLocEntries.back().loc, buffer.data(), buffer.size());
-    offset += pointerSize * 2 + 2 + buffer.size();
+    offset += PointerSize * 2 + 2 + buffer.size();
 
     // If the restore point is at or beyond our range end, we're done
     if (callerRestoreIp >= vl.end)
@@ -1509,11 +1506,11 @@ void DwarfDebug::encodeReg(IGC::DotDebugLocEntry &dotLoc, const VarLocation &vl,
   if (block)
     block->EmitToRawBuffer(buffer);
   write(TempDotDebugLocEntries.back().loc, buffer.data(), buffer.size());
-  offset += pointerSize * 2 + 2 + buffer.size();
+  offset += PointerSize * 2 + 2 + buffer.size();
 }
 
 void DwarfDebug::encodeCompositeExprs(DbgVariable *RegVar, const std::vector<VarLocation> &ResolvedLocations,
-                                      DIVariable *DV, uint32_t &offset, uint32_t pointerSize) {
+                                      DIVariable *DV, uint32_t &offset) {
   // For fragmented variables, multiple fragments of the same source variable
   // may live simultaneously at any given IP. DWARF requires that a single
   // .debug_loc entry describe all fragments via a composite location
@@ -1636,7 +1633,7 @@ void DwarfDebug::encodeCompositeExprs(DbgVariable *RegVar, const std::vector<Var
     dotLoc.setOffset(offset);
     write(dotLoc.loc, CompositeExpr.data(), static_cast<unsigned int>(CompositeExpr.size()));
     TempDotDebugLocEntries.push_back(dotLoc);
-    offset += pointerSize * 2 + 2 + dotLoc.loc.size();
+    offset += PointerSize * 2 + 2 + dotLoc.loc.size();
   }
 }
 
@@ -1887,7 +1884,6 @@ DIVariable *DwarfDebug::processVariableHistory(const llvm::MDNode *Var,
 // Find variables for each lexical scope.
 void DwarfDebug::collectVariableInfo(const Function *MF, SmallPtrSet<const MDNode *, 16> &Processed) {
   TempDotDebugLocEntries.clear();
-  uint32_t pointerSize = m_pModule->getPointerSize();
 
   // Offset to next location in .debug_loc
   uint32_t offset = 0;
@@ -1928,7 +1924,7 @@ void DwarfDebug::collectVariableInfo(const Function *MF, SmallPtrSet<const MDNod
       auto origLocSize = TempDotDebugLocEntries.size();
 
       if (RegVar->hasFragmentExprs()) {
-        encodeCompositeExprs(RegVar, ResolvedLocations, DV, offset, pointerSize);
+        encodeCompositeExprs(RegVar, ResolvedLocations, DV, offset);
       } else {
         for (auto &vl : ResolvedLocations) {
           DotDebugLocEntry dotLoc(vl.start, vl.end, vl.pInst, DV);
@@ -1946,9 +1942,9 @@ void DwarfDebug::collectVariableInfo(const Function *MF, SmallPtrSet<const MDNod
           vl.dbgVar->setDbgInst(vl.pInst);
 
           if (vl.isImm()) {
-            encodeImm(dotLoc, vl, offset, pointerSize);
+            encodeImm(dotLoc, vl, offset);
           } else {
-            encodeReg(dotLoc, vl, offset, pointerSize);
+            encodeReg(dotLoc, vl, offset);
           }
         }
       }
@@ -1956,7 +1952,7 @@ void DwarfDebug::collectVariableInfo(const Function *MF, SmallPtrSet<const MDNod
       // Empty DotDebugLocEntry works as terminator
       if (TempDotDebugLocEntries.size() > origLocSize) {
         TempDotDebugLocEntries.push_back(DotDebugLocEntry());
-        offset += pointerSize * 2;
+        offset += PointerSize * 2;
       }
     }
   }
@@ -1993,16 +1989,15 @@ std::variant<unsigned int, llvm::MCSymbol *> DwarfDebug::CopyDebugLoc(unsigned i
   // label is returned.
   unsigned int offset = 0, index = 0;
   bool found = false, done = false;
-  unsigned int pointerSize = m_pModule->getPointerSize();
   llvm::MCSymbol *Label = nullptr;
   std::variant<unsigned int, llvm::MCSymbol *> offsetOrLabel;
 
   // Compute offset in DotDebugLocEntries
   for (auto &item : DotDebugLocEntries) {
     if (item.isEmpty())
-      offset += pointerSize * 2;
+      offset += PointerSize * 2;
     else
-      offset += pointerSize * 2 + 2 + item.loc.size();
+      offset += PointerSize * 2 + 2 + item.loc.size();
   }
 
   if (relocationEnabled) {
@@ -2758,14 +2753,13 @@ void DwarfDebug::emitDebugLoc() {
 void DwarfDebug::emitDebugRanges() {
   // Start the dwarf ranges section.
   Asm->SwitchSection(Asm->GetDwarfRangesSection());
-  unsigned char size = (unsigned char)Asm->GetPointerSize();
 
   for (auto &Entry : GenISADebugRangeSymbols) {
     auto Label = Entry.first;
     if (Label)
       Asm->EmitLabel(Label);
     for (auto Data : Entry.second) {
-      Asm->EmitIntValue(Data, size);
+      Asm->EmitIntValue(Data, PointerSize);
     }
   }
 }
@@ -2791,6 +2785,7 @@ void DwarfDebug::encodeScratchAddrSpace(std::vector<uint8_t> &data) {
   write(data, (uint8_t)llvm::dwarf::DW_OP_plus);
 }
 
+// TODO: Use DWARF32 for encoding .debug_frame section
 uint32_t DwarfDebug::writeSubroutineCIE() {
   std::vector<uint8_t> data;
   auto numGRFs = GetVISAModule()->getNumGRFs();
@@ -2870,6 +2865,7 @@ uint32_t DwarfDebug::writeSubroutineCIE() {
   return bytesWritten;
 }
 
+// TODO: Use DWARF32 for encoding .debug_frame section
 uint32_t DwarfDebug::writeStackcallCIE() {
   std::vector<uint8_t> data, data1;
   auto numGRFs = GetVISAModule()->getNumGRFs();
@@ -3021,6 +3017,7 @@ uint32_t DwarfDebug::writeStackcallCIE() {
   return bytesWritten;
 }
 
+// TODO: Use DWARF32 for encoding .debug_frame section
 void DwarfDebug::writeFDESubroutine(VISAModule *m) {
   std::vector<uint8_t> data, data1;
   uint64_t LabelOffset = std::numeric_limits<uint64_t>::max();
@@ -3144,6 +3141,7 @@ void DwarfDebug::writeFDESubroutine(VISAModule *m) {
   }
 }
 
+// TODO: Use DWARF32 for encoding .debug_frame section
 void DwarfDebug::writeFDEStackCall(VISAModule *m) {
   std::vector<uint8_t> data;
   uint64_t loc = 0;

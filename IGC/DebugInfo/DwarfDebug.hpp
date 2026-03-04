@@ -306,6 +306,11 @@ public:
 
 /// \brief Collects and handles llvm::dwarf debug information.
 class DwarfDebug {
+public:
+  // Target pointer size in bytes.
+  static const unsigned PointerSize = 8;
+
+private:
   // Target of Dwarf emission.
   IGC::StreamEmitter *Asm;
   const IGC::DebugEmitterOpts &EmitSettings;
@@ -449,8 +454,6 @@ class DwarfDebug {
   // Version of llvm::dwarf we're emitting.
   unsigned DwarfVersion;
 
-  // Target pointer size in bytes.
-  unsigned PointerSize = 0;
   // A pointer to all units in the section.
   llvm::SmallVector<CompileUnit *, 1> CUs;
 
@@ -467,7 +470,6 @@ class DwarfDebug {
 
   llvm::DenseMap<LexicalScope *, DIE *> AbsLexicalScopeDIEMap;
 
-private:
   // AbsVar may be NULL.
   DbgVariable *createDbgVariable(const llvm::DILocalVariable *V, const llvm::DILocation *IA = nullptr,
                                  DbgVariable *AV = nullptr);
@@ -653,18 +655,18 @@ private:
 
   /// \brief Encode an immediate (constant) value location into .debug_loc entry.
   /// Writes the address range and DWARF expression (DW_OP_implicit_value)
-  void encodeImm(IGC::DotDebugLocEntry &dotLoc, const VarLocation &vl, uint32_t &offset, uint32_t pointerSize);
+  void encodeImm(IGC::DotDebugLocEntry &dotLoc, const VarLocation &vl, uint32_t &offset);
 
   /// \brief Encode a register-based location into .debug_loc entry.
   /// Writes the address range and DWARF expression describing the variable's
   /// location in a GRF register. Handles caller-save.
-  void encodeReg(IGC::DotDebugLocEntry &dotLoc, const VarLocation &vl, uint32_t &offset, uint32_t pointerSize);
+  void encodeReg(IGC::DotDebugLocEntry &dotLoc, const VarLocation &vl, uint32_t &offset);
 
   /// \brief Build composite DWARF location expressions for fragmented variables.
   /// For each IP sub-interval, assembles a single .debug_loc entry describing
   /// all active fragments.
   void encodeCompositeExprs(DbgVariable *RegVar, const std::vector<VarLocation> &ResolvedLocations,
-                            llvm::DIVariable *DV, uint32_t &offset, uint32_t pointerSize);
+                            llvm::DIVariable *DV, uint32_t &offset);
 
   using DbgVarIPInfo = std::tuple<uint64_t, uint64_t, const llvm::DbgVariableIntrinsic *>;
   /// \brief Resolve debug variable ranges to merged VarLocation entries.
