@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2025 Intel Corporation
+Copyright (C) 2017-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -597,6 +597,7 @@ enum class ShaderTypeMD
         unsigned char NumSamples             = 0;
         std::vector<int> blendOptimizationMode;
         std::vector<int> colorOutputMask;
+        std::vector<bool> isBlendEnabled;
 
         bool WaDisableVRS                                           = false;
     };
