@@ -422,6 +422,10 @@ void __global_barrier_nonatomic()
 }
 
 void global_barrier() {
+    if (BIF_FLAG_CTRL_GET(PlatformType) >= IGFX_NVL) {
+        __global_barrier_atomic();
+        return;
+    }
     __global_barrier_nonatomic();
 }
 
