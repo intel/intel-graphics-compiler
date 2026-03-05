@@ -588,7 +588,7 @@ public:
   bool WaEnableLSCBackupMode() const { return (m_WaTable.Wa_14010198302 != 0); }
 
   bool supportQWRotateInstructions() const {
-    return m_platformInfo.eRenderCoreFamily == IGFX_XE_HPC_CORE && IGC_IS_FLAG_ENABLED(EnableQWRotateInstructions);
+    return isProductChildOf(IGFX_PVC) && IGC_IS_FLAG_ENABLED(EnableQWRotateInstructions);
   }
 
   bool isIntegratedGraphics() const {
