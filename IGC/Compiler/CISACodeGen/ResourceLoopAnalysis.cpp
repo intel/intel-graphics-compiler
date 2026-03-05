@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2026 Intel Corporation
+Copyright (C) 2022 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -51,82 +51,23 @@ static bool ValueOnlyUsedByEEI(Value *V) {
   return true;
 }
 
-// Check if two resource values are semantically equivalent,
-// even if they are different SSA values (e.g., after heap offset rewriting).
-static bool isSameResource(Value *A, Value *B) {
-  if (A == B)
-    return true;
-  if (!A || !B)
-    return false;
-
-  // Strip pointer casts and compare underlying values
-  A = A->stripPointerCasts();
-  B = B->stripPointerCasts();
-  if (A == B)
-    return true;
-
-  // Compare inttoptr(add(..., heapBase)) patterns:
-  // If both are inttoptr instructions with the same operand structure,
-  // they refer to the same resource.
-  auto *IA = dyn_cast<IntToPtrInst>(A);
-  auto *IB = dyn_cast<IntToPtrInst>(B);
-  if (IA && IB) {
-    auto *AddA = dyn_cast<BinaryOperator>(IA->getOperand(0));
-    auto *AddB = dyn_cast<BinaryOperator>(IB->getOperand(0));
-    if (AddA && AddB && AddA->getOpcode() == Instruction::Add && AddB->getOpcode() == Instruction::Add) {
-      // add is commutative - normalize: find the shared heap base operand
-      // and compare the resource index operand.
-      Value *ResA = nullptr, *ResB = nullptr;
-      Value *BaseA = nullptr, *BaseB = nullptr;
-
-      // Try to identify which operand is the heap base (shared between both)
-      // and which is the resource index.
-      for (unsigned i = 0; i < 2; ++i) {
-        for (unsigned j = 0; j < 2; ++j) {
-          if (AddA->getOperand(i) == AddB->getOperand(j)) {
-            BaseA = AddA->getOperand(i);
-            BaseB = AddB->getOperand(j);
-            ResA = AddA->getOperand(1 - i);
-            ResB = AddB->getOperand(1 - j);
-            break;
-          }
-        }
-        if (BaseA)
-          break;
-      }
-
-      if (BaseA && ResA && ResB) {
-        // Direct match on the resource index operand
-        if (ResA == ResB)
-          return true;
-        // Compare through ptrtoint wrappers
-        auto *P2IA = dyn_cast<PtrToIntInst>(ResA);
-        auto *P2IB = dyn_cast<PtrToIntInst>(ResB);
-        if (P2IA && P2IB && P2IA->getOperand(0)->stripPointerCasts() == P2IB->getOperand(0)->stripPointerCasts())
-          return true;
-      }
-    }
-  }
-
-  return false;
-}
-
 bool ResourceLoopAnalysis::runOnFunction(Function &F) {
   auto WI = &(getAnalysis<WIAnalysis>());
   CTX = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
   LoopMap.clear();
 
-  if (IGC_IS_FLAG_DISABLED(FuseResourceLoop) || CTX->platform.GetPlatformFamily() < IGFX_XE_HPG_CORE) {
+  if (!IGC_IS_FLAG_ENABLED(FuseResourceLoop) || CTX->platform.GetPlatformFamily() < IGFX_XE_HPG_CORE) {
     // should return false if not supported or no fuse resource loop needed
     return false;
   }
-  for (BasicBlock &BBRef : F) {
-    BasicBlock *BB = &BBRef;
+  for (Function::iterator BI = F.begin(), BE = F.end(); BI != BE; ++BI) {
+    BasicBlock *BB = &*BI;
     // give every instruction a seq-no in order to check the location of uses
     std::map<Instruction *, unsigned> InstOrder;
     unsigned SeqNo = 0;
-    for (auto &Inst : *BB) {
-      InstOrder[&Inst] = SeqNo++;
+    for (BasicBlock::iterator II = BB->begin(), EI = BB->end(); II != EI; ++II) {
+      Instruction *I = &*II;
+      InstOrder[I] = SeqNo++;
     }
     // find and mark resource-loops
     unsigned loopOpTy = 0;
@@ -135,25 +76,6 @@ bool ResourceLoopAnalysis::runOnFunction(Function &F) {
     auto prevMemIter = BB->end();   // last memory-inst in the loop
     SmallPtrSet<Value *, 8> DefSet; // all memory-inst in the loop
     SmallPtrSet<Value *, 8> DefOnly4EEI;
-    auto closeResourceLoop = [&]() {
-      if (prevMemIter != BB->end()) {
-        auto PI = &*prevMemIter;
-        IGC_ASSERT(LoopMap.find(PI) != LoopMap.end());
-        // If this is a single-instruction loop (only Start, no Inside),
-        // remove it rather than wrapping one instruction in a loop.
-        if (DefSet.size() <= 1) {
-          LoopMap.erase(PI);
-        } else {
-          LoopMap[PI] |= MarkResourceLoopEnd;
-        }
-        prevMemIter = BB->end();
-        loopRes = nullptr;
-        loopSamp = nullptr;
-        loopOpTy = 0;
-        DefSet.clear();
-        DefOnly4EEI.clear();
-      }
-    };
     for (BasicBlock::iterator II = BB->begin(), EI = BB->end(); II != EI; ++II) {
       Instruction *I = &*II;
       unsigned curOpTy = 0;
@@ -214,29 +136,25 @@ bool ResourceLoopAnalysis::runOnFunction(Function &F) {
       if ((curRes || curSamp) && curOpTy) {
         // this is a lane-varying-resource-access
         bool LoopEnd = HasDeps;
-        if (!LoopEnd && curOpTy == loopOpTy && isSameResource(curRes, loopRes) &&
-            (curSamp == loopSamp || isSameResource(curSamp, loopSamp))) {
+        if (!LoopEnd && curOpTy == loopOpTy && curRes == loopRes && curSamp == loopSamp) {
           // need to check ALU instruction in between
           // all those instructions should only be used
           // inside the loop
           IGC_ASSERT(prevMemIter != BB->end());
           auto III = prevMemIter;
           ++III;
-          unsigned curInstOrder = InstOrder[I];
           while (!LoopEnd && III != II) {
             auto defInst = &*III;
             if (isa<ExtractElementInst>(defInst) && DefSet.count(defInst)) {
               ++III;
               continue;
             }
-            unsigned defInstOrder = InstOrder[defInst];
             for (auto UI = defInst->user_begin(), UE = defInst->user_end(); !LoopEnd && UI != UE; ++UI) {
               // Determine the block of the use.
               Instruction *useInst = cast<Instruction>(*UI);
-              auto it = InstOrder.find(useInst);
-              if (it == InstOrder.end())
+              if (InstOrder.find(useInst) == InstOrder.end())
                 LoopEnd = true;
-              else if (it->second > curInstOrder || it->second <= defInstOrder)
+              else if (InstOrder[useInst] > InstOrder[I] || InstOrder[useInst] <= InstOrder[defInst])
                 LoopEnd = true;
             }
             ++III;
@@ -272,7 +190,6 @@ bool ResourceLoopAnalysis::runOnFunction(Function &F) {
           loopOpTy = curOpTy;
           prevMemIter = II;
           DefSet.clear();
-          DefOnly4EEI.clear();
           DefSet.insert(I);
         }
       } else {
@@ -287,13 +204,18 @@ bool ResourceLoopAnalysis::runOnFunction(Function &F) {
         else if (I->getType()->getScalarType()->isIntegerTy(1))
           LoopEnds = true; // avoid flag modification
 
-        if (LoopEnds) {
-          closeResourceLoop();
+        if (LoopEnds && prevMemIter != BB->end()) {
+          auto PI = &*prevMemIter;
+          IGC_ASSERT(LoopMap.find(PI) != LoopMap.end());
+          LoopMap[PI] |= MarkResourceLoopEnd;
+          prevMemIter = BB->end();
+          loopRes = nullptr;
+          loopSamp = nullptr;
+          loopOpTy = 0;
+          DefSet.clear();
         }
       }
     }
-    // Close any open resource loop at the end of the basic block
-    closeResourceLoop();
   }
 
   if (IGC_IS_FLAG_ENABLED(DumpResourceLoop)) {
@@ -316,14 +238,7 @@ void ResourceLoopAnalysis::printResourceLoops(raw_ostream &OS, Function *F) cons
       Instruction *I = &*II;
       if (LoopMap.find(I) != LoopMap.end()) {
         unsigned marker = LoopMap.find(I)->second;
-        OS << "  [";
-        if (marker & MarkResourceLoopStart)
-          OS << "S";
-        if (marker & MarkResourceLoopInside)
-          OS << "I";
-        if (marker & MarkResourceLoopEnd)
-          OS << "E";
-        OS << "]  " << *I << "\n";
+        OS << "  [" << marker << "]  " << *I << "\n";
       }
     }
   }

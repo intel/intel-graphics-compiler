@@ -1531,7 +1531,7 @@ DECLARE_IGC_REGKEY(bool, AllowNonLoopConstantPromotion, false,
                    "Allows promotion for constants not in loop (e.g. used once)", false)
 DECLARE_IGC_REGKEY(DWORD, ConstantPromotionSize, 2, "Threshold in number of GRFs", false)
 DECLARE_IGC_REGKEY(DWORD, ConstantPromotionCmpSelSize, 4, "Array size threshold for cmp-sel transform", false)
-DECLARE_IGC_REGKEY(bool, FuseResourceLoop, true, "Enable fusing resource loops", false)
+DECLARE_IGC_REGKEY(bool, FuseResourceLoop, false, "Enable fusing resource loops", false)
 DECLARE_IGC_REGKEY(DWORD, ResourceLoopUnrollIteration, 1,
                    "Unroll resource loop iterations (larger than 1): 1 (default) - no sub-iteration", false)
 DECLARE_IGC_REGKEY(bool, DisableResourceLoopUnrollExclusiveLoad, false,
