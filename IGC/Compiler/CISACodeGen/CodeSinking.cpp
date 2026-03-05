@@ -526,6 +526,13 @@ bool CodeSinking::isSafeToMove(Instruction *inst, bool &reducePressure, bool &ha
     return true;
   }
   if (isSampleInstruction(inst) || isGather4Instruction(inst) || isInfoInstruction(inst) || isLdInstruction(inst)) {
+    if (IGC_IS_FLAG_ENABLED(DisableCodeSinkingLongLatencyInsts)) {
+      // TBD: Support more long latency instructions in the future
+      // Currently, Sample instructions only.
+      if (dyn_cast<SampleIntrinsic>(inst))
+        return false;
+    }
+
     if (!inst->mayReadFromMemory()) {
       hasAliasConcern = false;
       return true;

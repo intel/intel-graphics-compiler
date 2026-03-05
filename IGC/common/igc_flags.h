@@ -238,6 +238,9 @@ DECLARE_IGC_REGKEY(bool, DisableCodeSinking, false,
                    "Setting this to 1/true adds a compiler switch to disable code-sinking", false)
 DECLARE_IGC_REGKEY(bool, DisableCodeSinkingInputVec, false,
                    "Setting this to 1/true disable sinking inputVec inst (test)", false)
+DECLARE_IGC_REGKEY(
+    bool, DisableCodeSinkingLongLatencyInsts, false,
+    "Setting this to 1/true disable sinking long latency instructions. (Currently, Sample instructions only)", false)
 DECLARE_IGC_REGKEY(DWORD, CodeSinkingMinSize, 32, "Don't sink if the number of instructions in the kernel is less",
                    false)
 
