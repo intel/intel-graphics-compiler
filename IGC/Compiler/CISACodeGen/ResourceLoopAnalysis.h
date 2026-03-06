@@ -73,15 +73,28 @@ public:
   ///
   void printResourceLoops(llvm::raw_ostream &OS, llvm::Function *F = nullptr) const;
 
+  /// Return the list of merged (MarkResourceLoopInside) instructions
+  /// for a given loop-start instruction. Returns nullptr if none.
+  const llvm::SmallVector<llvm::Instruction *, 4> *GetMergedInstructions(llvm::Instruction *loopStartInst) const {
+    auto it = MergedInstsMap.find(loopStartInst);
+    if (it == MergedInstsMap.end())
+      return nullptr;
+    return &it->second;
+  }
+
 private:
   CodeGenContext *CTX = nullptr;
   // analysis result
   llvm::DenseMap<llvm::Instruction *, unsigned> LoopMap;
+  llvm::DenseMap<llvm::Instruction *, llvm::SmallVector<llvm::Instruction *, 4>> MergedInstsMap;
   // recording state for loop emission
   ResourceDescriptor resource;
   SamplerDescriptor sampler;
   CVariable *flag = nullptr;
   uint32_t label = 0;
+  unsigned MaxResourceLoopSize = 0;
+  unsigned MaxALUBetweenMemOps = 0;
+  unsigned MinFuseResourceLoopSize = 0;
 };
 
 llvm::FunctionPass *createResourceLoopAnalysisPass();

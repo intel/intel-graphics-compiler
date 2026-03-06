@@ -1623,5 +1623,29 @@ public:
     }
     return 16;
   }
+
+  bool allowFuseResourceLoop(unsigned &MaxResourceLoopSize, unsigned &MaxALUBetweenMemOps,
+                             unsigned &MinFuseResourceLoopSize) const {
+    bool canDo = false;
+
+    if (isCoreChildOf(IGFX_XE_HPG_CORE)) {
+      // Cap the number of memory ops in a single resource loop to
+      // limit register pressure from too many simultaneously live values.
+      MaxResourceLoopSize = IGC_GET_FLAG_VALUE(MaxFuseResourceLoopSize);
+      // The MaxMemOpsInFuseResourceLoop regkey is used here to control the maximum
+      // number of ALU instructions (instruction distance) allowed between memory
+      // operations within a fused resource loop.
+      MaxALUBetweenMemOps = IGC_GET_FLAG_VALUE(MaxMemOpsInFuseResourceLoop);
+      MinFuseResourceLoopSize = IGC_GET_FLAG_VALUE(FuseResourceLoopMinSize);
+
+      if (m_platformInfo.eProductFamily == IGFX_ARROWLAKE) {
+        MaxResourceLoopSize = 1;
+      }
+
+      canDo = true;
+    }
+
+    return canDo;
+  }
 };
 } // namespace IGC

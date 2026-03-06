@@ -1063,6 +1063,7 @@ bool EmitPass::runOnFunction(llvm::Function &F) {
         emitLifetimeStart(m_destination, block.bb, llvmInst, true);
 
         DstModifier init;
+        m_currentEmitInst = I->m_root;
         if (numInstance < 2) {
           m_encoder->SetSecondHalf(false);
           I->m_pattern->Emit(this, init);
@@ -20246,7 +20247,7 @@ bool EmitPass::ResourceLoopHeader(const CVariable *destination, ResourceDescript
   bool uniformResource = resource.m_resource == nullptr || resource.m_resource->IsUniform();
   bool uniformSampler = sampler.m_sampler == nullptr || sampler.m_sampler->IsUniform();
   if (uniformResource && uniformSampler) {
-    IGC_ASSERT(ResourceLoopMarker == 0);
+    IGC_ASSERT(ResourceLoopMarker == 0 || (ResourceLoopMarker & ResourceLoopAnalysis::MarkResourceLoopInside));
     return false;
   }
   // cannot fuse resource loop in simd32 mode when there are
@@ -20266,6 +20267,19 @@ bool EmitPass::ResourceLoopHeader(const CVariable *destination, ResourceDescript
   if (destination && IGC_IS_FLAG_ENABLED(EnableResourceLoopDestLifeTimeStart) &&
       !md->compOpt.DisableResourceLoopDestLifeTimeStart) {
     m_encoder->Lifetime(LIFETIME_START, (CVariable *)destination);
+
+    if (ResourceLoopMarker & ResourceLoopAnalysis::MarkResourceLoopStart) {
+      // Check for follow-up destinations from merged resource loops
+      auto *mergedInsts = m_RLA->GetMergedInstructions(m_currentEmitInst);
+      if (mergedInsts) {
+        for (auto *mergedInst : *mergedInsts) {
+          CVariable *mergedDest = m_currShader->GetSymbol(mergedInst);
+          if (mergedDest && mergedDest != destination) {
+            m_encoder->Lifetime(LIFETIME_START, mergedDest);
+          }
+        }
+      }
+    }
   }
 
   label = m_encoder->GetNewLabelID("_opt_resource_loop");
@@ -20293,7 +20307,7 @@ bool EmitPass::ResourceLoopNeedsLoop(ResourceDescriptor &resource, SamplerDescri
   bool uniformResource = resource.m_resource == nullptr || resource.m_resource->IsUniform();
   bool uniformSampler = sampler.m_sampler == nullptr || sampler.m_sampler->IsUniform();
   if (uniformResource && uniformSampler) {
-    IGC_ASSERT(ResourceLoopMarker == 0);
+    IGC_ASSERT(ResourceLoopMarker == 0 || (ResourceLoopMarker & ResourceLoopAnalysis::MarkResourceLoopInside));
     return false;
   }
 
@@ -20333,7 +20347,7 @@ bool EmitPass::ResourceLoopSubIteration(ResourceDescriptor &resource, SamplerDes
   bool uniformResource = resource.m_resource == nullptr || resource.m_resource->IsUniform();
   bool uniformSampler = sampler.m_sampler == nullptr || sampler.m_sampler->IsUniform();
   if (uniformResource && uniformSampler) {
-    IGC_ASSERT(ResourceLoopMarker == 0);
+    IGC_ASSERT(ResourceLoopMarker == 0 || (ResourceLoopMarker & ResourceLoopAnalysis::MarkResourceLoopInside));
     return false;
   }
 
