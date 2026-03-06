@@ -1140,6 +1140,21 @@ void PushAnalysis::processURBRead(Instruction *inst, bool gsInstancingUsed,
   }
 }
 
+// Returns a descriptive name for a RuntimeValue argument. If the intrinsic
+// already carries a meaningful name (e.g. "ScratchSpacePtr"), strip any LLVM-
+// appended numeric suffix and use that; otherwise fall back to "runtime_value_N".
+static std::string getArgNameForRuntimeValue(GenIntrinsicInst *intrinsic, uint index) {
+  if (intrinsic->hasName()) {
+    // Strip trailing digits that LLVM appends for uniqueness (e.g. "ScratchSpacePtr233" -> "ScratchSpacePtr").
+    llvm::StringRef base = intrinsic->getName();
+    while (!base.empty() && std::isdigit(static_cast<unsigned char>(base.back())))
+      base = base.drop_back();
+    if (!base.empty())
+      return base.str() + "_" + to_string(index);
+  }
+  return std::string("runtime_value_") + to_string(index);
+}
+
 // process runtime value, update PushInfo.constantReg
 void PushAnalysis::processRuntimeValue(GenIntrinsicInst *intrinsic) {
   PushInfo &pushInfo = m_context->getModuleMetaData()->pushInfo;
@@ -1158,7 +1173,7 @@ void PushAnalysis::processRuntimeValue(GenIntrinsicInst *intrinsic) {
       }
       runtimeValue = castInst;
     }
-    arg = addArgumentAndMetadata(runtimeValue->getType(), VALUE_NAME(std::string("runtime_value_") + to_string(index)),
+    arg = addArgumentAndMetadata(runtimeValue->getType(), VALUE_NAME_RI(getArgNameForRuntimeValue(intrinsic, index)),
                                  WIAnalysis::UNIFORM_GLOBAL);
     pushInfo.constantReg[index] = m_argIndex;
 

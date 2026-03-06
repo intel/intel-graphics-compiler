@@ -27,3 +27,16 @@ have to pay the cost of it in the release build.
 #else
 #define VALUE_NAME(STR) ("")
 #endif
+
+/*****************************************************************************\
+MACRO: VALUE_NAME_RI
+Wrapper for LLVM twine names.
+
+Similar to VALUE_NAME, but takes effect in ReleaseInternal builds as well.
+Use sporadically, for values that are important to have in dumps produced outside IGC teams
+\*****************************************************************************/
+#if defined(_DEBUG) || defined(_INTERNAL)
+#define VALUE_NAME_RI(STR) (STR)
+#else
+#define VALUE_NAME_RI(STR) ("")
+#endif
