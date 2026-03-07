@@ -5704,7 +5704,8 @@ void EmitPass::emitSimdShuffle(llvm::Instruction *inst) {
       IGC_ASSERT_MESSAGE(0, "Unexpected data type size.");
     }
 
-    CVariable *simdChannelUW = m_currShader->BitCast(simdChannel, ISA_TYPE_UW);
+    CVariable *simdChannelUW = m_currShader->BitCast(simdChannel, ISA_TYPE_UW); // UW alias of channel, i.e. 0-31
+    CVariable *simdChannelUWorig = simdChannelUW;                               // copy of UW alias of channel
     // With helper lanes active, all instructions are generated with NoMask
     // bit set. Inactive lanes contain garbage data and may cause an
     // out-of-bounds register access.
@@ -5717,16 +5718,25 @@ void EmitPass::emitSimdShuffle(llvm::Instruction *inst) {
     // bounds of register we want. It also is limited to accessing single GRF.
     // For uniform channel which will be simd1 there's probably no gain in movi.
     bool moviPromotionEnabled = IGC_GET_FLAG_VALUE(EnableEmitMoreMoviCases);
-    bool isSingleGrf = data->GetSize() <= (unsigned)getGRFSize();
+    const uint srcGRFSize = (data->GetSize() + getGRFSize() - 1) / getGRFSize();
+    const uint dstGRFSize = (m_destination->GetSize() + getGRFSize() - 1) / getGRFSize();
+    bool isSingleGrf = (srcGRFSize == 1);
     bool platformMoviTypeCheck = m_currShader->m_Platform->allowsMoviForType(data->GetType());
     bool forcePreventOOB = isSingleGrf && moviPromotionEnabled && platformMoviTypeCheck && !channelUniform;
+    // split SIMD32 mov to SIMD16 movs to allow movi promotion
+    bool split2Movi = platformMoviTypeCheck && moviPromotionEnabled && (srcGRFSize == 2) && (dstGRFSize == 2) &&
+                      (m_currShader->m_SIMDSize == SIMDMode::SIMD32);
 
     if (defaultConditions || forcePreventOOB) {
       uint maskOfValidLanes = numLanes(m_currShader->m_State.m_dispatchSize) - 1;
 
       // To support conversion to movi we need to make all calculations (shl, addr_add) of address NoMask.
       // to avoid random data from previous execution in divergent CF.
-      if (forcePreventOOB) {
+      if (split2Movi) {
+        // To fit data into single GRF, we can only handle 16 lanes, 0-15
+        maskOfValidLanes = 15;
+        m_encoder->SetNoMask();
+      } else if (forcePreventOOB) {
         m_encoder->SetNoMask();
       }
 
@@ -5740,26 +5750,36 @@ void EmitPass::emitSimdShuffle(llvm::Instruction *inst) {
       if (bAllowLVNMatchingForAnd) {
         CVariable *tempCopy = m_currShader->GetNewVariable(simdChannel, "SanitizedIndexShuffleTmp");
         m_encoder->And(tempCopy, simdChannel, m_currShader->ImmToVariable(maskOfValidLanes, ISA_TYPE_UW));
-        simdChannelUW = m_currShader->BitCast(tempCopy, ISA_TYPE_UW);
+        simdChannelUW = m_currShader->BitCast(tempCopy, ISA_TYPE_UW); // clamped channel 0-15
       } else {
+        CVariable *tempCopy = m_currShader->GetNewVariable(simdChannel, "SanitizedIndexShuffleTmpWA");
         m_encoder->SetSrcRegion(0, 2, 1, 0);
         m_encoder->SetDstRegion(2);
-        m_encoder->And(simdChannelUW, simdChannelUW, m_currShader->ImmToVariable(maskOfValidLanes, ISA_TYPE_UW));
+        m_encoder->And(tempCopy, simdChannelUW, m_currShader->ImmToVariable(maskOfValidLanes, ISA_TYPE_UW));
+        simdChannelUW = m_currShader->BitCast(tempCopy, ISA_TYPE_UW); // clamped channel 0-15
       }
       m_encoder->Push();
-    }
+    } // if (defaultConditions || forcePreventOOB) {
     CVariable *pSrcElm = m_currShader->GetNewVariable(simdChannel->GetNumberElement(), ISA_TYPE_UW, EALIGN_GRF,
                                                       channelUniform, simdChannel->GetNumberInstance(), "ShuffleTmp");
     if (!channelUniform) {
       m_encoder->SetSrcRegion(0, 16, 8, 2);
     }
-    if (forcePreventOOB) {
+    if (forcePreventOOB || split2Movi) {
       m_encoder->SetNoMask();
     }
     m_encoder->Shl(pSrcElm, simdChannelUW, m_currShader->ImmToVariable(shtAmt, ISA_TYPE_UW));
     m_encoder->Push();
 
     CVariable *src = data;
+    CVariable *lowerLaneFlag = nullptr;
+    if (split2Movi) {
+      lowerLaneFlag =
+          m_currShader->GetNewVariable(numLanes(m_SimdMode), ISA_TYPE_BOOL, EALIGN_BYTE, false, "LowerLane");
+      m_encoder->Cmp(EPREDICATE_LT, lowerLaneFlag, simdChannelUWorig, m_currShader->ImmToVariable(16, ISA_TYPE_UW));
+      m_encoder->Push();
+    }
+
     if (m_currShader->m_numberInstance == 1 && m_currShader->m_SIMDSize == SIMDMode::SIMD32) {
       uint16_t addrSize = channelUniform ? 1 : m_currShader->m_Platform->getNumAddrRegisters();
 
@@ -5782,7 +5802,7 @@ void EmitPass::emitSimdShuffle(llvm::Instruction *inst) {
           m_encoder->Push();
         } else // !channelUniform
         {
-          if (addrSize == numLanes(m_currShader->m_SIMDSize)) {
+          if (!split2Movi && addrSize == numLanes(m_currShader->m_SIMDSize)) {
             if (forcePreventOOB) {
               m_encoder->SetNoMask();
             }
@@ -5795,7 +5815,83 @@ void EmitPass::emitSimdShuffle(llvm::Instruction *inst) {
               ResetVMask();
             }
             return;
-          }
+          } else if (split2Movi) {
+            // split SIMD32 mov to four SIMD16 movs to allow movi promotion
+
+            // Split 2GRF source to two 1GRF aliases
+            CVariable *srcLo = m_currShader->GetNewAlias(data, data->GetType(), 0, 16);
+            CVariable *srcHi = m_currShader->GetNewAlias(data, data->GetType(), getGRFSize(), 16);
+            CVariable *pSrcElmLo = m_currShader->GetNewAlias(pSrcElm, pSrcElm->GetType(), 0, 16);
+            CVariable *pSrcElmHi = m_currShader->GetNewAlias(pSrcElm, pSrcElm->GetType(), pSrcElm->GetSize() / 2, 16);
+
+            // Split 2GRF destination to two 1GRF aliases
+            CVariable *dstLo = m_currShader->GetNewAlias(m_destination, m_destination->GetType(), 0, 16);
+            CVariable *dstHi = m_currShader->GetNewAlias(m_destination, m_destination->GetType(), getGRFSize(), 16);
+
+            // 1. srcLo -> dstLo (for lane < 16)
+            //    addr_add (M1_NM, 16) A0(0)<1> &V0299 ShuffleTmp(0,0)<1;1,0>
+            //    (P2) mov(M1, 16) V0306(0,0)<1> r[A0(0),0]<1,0>:d
+            m_encoder->SetSimdSize(SIMDMode::SIMD16);
+            m_encoder->SetNoMask();
+            m_encoder->AddrAdd(pDstArrElm, srcLo, pSrcElmLo, m_currentBlock);
+            m_encoder->Push();
+
+            m_encoder->SetSimdSize(SIMDMode::SIMD16);
+            m_encoder->SetPredicate(lowerLaneFlag);
+            m_encoder->Copy(dstLo, pDstArrElm);
+            m_encoder->Push();
+
+            // 2. srcLo -> dstHi (for lane < 16)
+            //    addr_add (M5_NM, 16) A0(16)<1> &V0299 ShuffleTmp(0,16)<1;1,0>
+            //    (P2) mov(M5, 16) V0306(1,0)<1> r[A0(0),0]<1,0>:d
+            m_encoder->SetSimdSize(SIMDMode::SIMD16);
+            m_encoder->SetMask(EMASK_H2);
+            m_encoder->SetNoMask();
+            m_encoder->AddrAdd(pDstArrElm, srcLo, pSrcElmHi, m_currentBlock);
+            m_encoder->Push();
+
+            m_encoder->SetSimdSize(SIMDMode::SIMD16);
+            m_encoder->SetMask(EMASK_H2);
+            m_encoder->SetPredicate(lowerLaneFlag);
+            m_encoder->Copy(dstHi, pDstArrElm);
+            m_encoder->Push();
+
+            // 3. srcHi -> dstLo (for lane >= 16)
+            //    addr_add(M1_NM, 16) A0(0)<1> &V0299[64] ShuffleTmp(0,0) <1;1,0 >
+            //    (!P2) mov(M1, 16) V0306(0,0)<1> r[A0(0),0]<1,0>:d
+            m_encoder->SetSimdSize(SIMDMode::SIMD16);
+            m_encoder->SetNoMask();
+            m_encoder->AddrAdd(pDstArrElm, srcHi, pSrcElmLo, m_currentBlock);
+            m_encoder->Push();
+
+            m_encoder->SetSimdSize(SIMDMode::SIMD16);
+            m_encoder->SetPredicate(lowerLaneFlag);
+            m_encoder->SetInversePredicate(true);
+            m_encoder->Copy(dstLo, pDstArrElm);
+            m_encoder->Push();
+
+            // 4. srcHi -> dstHi (for lane >= 16)
+            //    addr_add (M5_NM, 16) A0(16)<1> &V0299[64] ShuffleTmp(0,16)<1;1,0>
+            //    (!P2) mov(M5, 16) V0306(1,0)<1> r[A0(0),0]<1,0>:d
+            m_encoder->SetSimdSize(SIMDMode::SIMD16);
+            m_encoder->SetMask(EMASK_H2);
+            m_encoder->SetNoMask();
+            m_encoder->AddrAdd(pDstArrElm, srcHi, pSrcElmHi, m_currentBlock);
+            m_encoder->Push();
+
+            m_encoder->SetSimdSize(SIMDMode::SIMD16);
+            m_encoder->SetMask(EMASK_H2);
+            m_encoder->SetPredicate(lowerLaneFlag);
+            m_encoder->SetInversePredicate(true);
+            m_encoder->Copy(dstHi, pDstArrElm);
+            m_encoder->Push();
+
+            if (disableHelperLanes) {
+              ResetVMask();
+            }
+            return;
+          } // if (split2Movi)
+
           m_encoder->SetSimdSize(SIMDMode::SIMD16);
           if (forcePreventOOB) {
             m_encoder->SetNoMask();
@@ -5850,13 +5946,13 @@ void EmitPass::emitSimdShuffle(llvm::Instruction *inst) {
             m_encoder->Copy(m_destination, first16LanesResult);
             m_encoder->Push();
           }
-        }
-      }
+        } // !channelUniform
+      } // else if (GII && GII->getIntrinsicID() ....
       if (disableHelperLanes) {
         ResetVMask();
       }
       return;
-    }
+    } // if (m_currShader->m_numberInstance == 1 ....
 
     if (isSimd32) {
       CVariable *contiguousData = nullptr;
