@@ -66,177 +66,30 @@ public:
 
 class VISAELFObjectWriter : public MCELFObjectTargetWriter {
 public:
-  VISAELFObjectWriter(bool is64Bit, uint8_t osABI, uint16_t eMachine, bool hasRelocationAddend)
-      : MCELFObjectTargetWriter(is64Bit, osABI, eMachine, hasRelocationAddend) {}
+  VISAELFObjectWriter(uint8_t osABI, uint16_t eMachine)
+      : MCELFObjectTargetWriter(true /* is64Bit */, osABI, eMachine, true /* hasRelocationAddend */) {}
 
   unsigned getRelocType(MCContext &Ctx, const MCValue &Target, const MCFixup &Fixup, bool IsPCRel) const {
-    MCSymbolRefExpr::VariantKind modifier =
-        Target.isAbsolute() ? MCSymbolRefExpr::VK_None : Target.getSymA()->getKind();
+    IGC_ASSERT_MESSAGE(IsPCRel == false, "expecting non-PC relative reloc type");
     unsigned type = ELF::R_X86_64_NONE;
-    if (is64Bit()) {
-      if (IsPCRel) {
-        switch ((unsigned)Fixup.getKind()) {
-        default:
-          IGC_ASSERT_EXIT_MESSAGE(0, "invalid fixup kind!");
 
-        case FK_Data_8:
-          type = ELF::R_X86_64_PC64;
-          break;
-        case FK_Data_4:
-          type = ELF::R_X86_64_PC32;
-          break;
-        case FK_Data_2:
-          type = ELF::R_X86_64_PC16;
-          break;
-
-        case FK_PCRel_8:
-          IGC_ASSERT(modifier == MCSymbolRefExpr::VK_None);
-          type = ELF::R_X86_64_PC64;
-          break;
-        case FK_PCRel_4:
-          switch (modifier) {
-          default:
-            IGC_ASSERT_EXIT_MESSAGE(0, "Unimplemented");
-          case MCSymbolRefExpr::VK_None:
-            type = ELF::R_X86_64_PC32;
-            break;
-          case MCSymbolRefExpr::VK_PLT:
-            type = ELF::R_X86_64_PLT32;
-            break;
-          case MCSymbolRefExpr::VK_GOTPCREL:
-            type = ELF::R_X86_64_GOTPCREL;
-            break;
-          case MCSymbolRefExpr::VK_GOTTPOFF:
-            type = ELF::R_X86_64_GOTTPOFF;
-            break;
-          case MCSymbolRefExpr::VK_TLSGD:
-            type = ELF::R_X86_64_TLSGD;
-            break;
-          case MCSymbolRefExpr::VK_TLSLD:
-            type = ELF::R_X86_64_TLSLD;
-            break;
-          }
-          break;
-        case FK_PCRel_2:
-          IGC_ASSERT(modifier == MCSymbolRefExpr::VK_None);
-          type = ELF::R_X86_64_PC16;
-          break;
-        case FK_PCRel_1:
-          IGC_ASSERT(modifier == MCSymbolRefExpr::VK_None);
-          type = ELF::R_X86_64_PC8;
-          break;
-        }
-      } else {
-        switch ((unsigned)Fixup.getKind()) {
-        default:
-          IGC_ASSERT_EXIT_MESSAGE(0, "invalid fixup kind!");
-        case FK_Data_8:
-          switch (modifier) {
-          default:
-            IGC_ASSERT_EXIT_MESSAGE(0, "Unimplemented");
-          case MCSymbolRefExpr::VK_None:
-            type = ELF::R_X86_64_64;
-            break;
-          case MCSymbolRefExpr::VK_GOT:
-            type = ELF::R_X86_64_GOT64;
-            break;
-          case MCSymbolRefExpr::VK_GOTOFF:
-            type = ELF::R_X86_64_GOTOFF64;
-            break;
-          case MCSymbolRefExpr::VK_TPOFF:
-            type = ELF::R_X86_64_TPOFF64;
-            break;
-          case MCSymbolRefExpr::VK_DTPOFF:
-            type = ELF::R_X86_64_DTPOFF64;
-            break;
-          }
-          break;
-        case FK_Data_4:
-          type = ELF::R_X86_64_32;
-          break;
-        case FK_Data_2:
-          type = ELF::R_X86_64_16;
-          break;
-        case FK_PCRel_1:
-        case FK_Data_1:
-          type = ELF::R_X86_64_8;
-          break;
-        }
-      }
-    } else {
-      if (IsPCRel) {
-        switch ((unsigned)Fixup.getKind()) {
-        default:
-          IGC_ASSERT_EXIT_MESSAGE(0, "invalid fixup kind!");
-
-        case FK_PCRel_4:
-        case FK_Data_4:
-          switch (modifier) {
-          default:
-            IGC_ASSERT_EXIT_MESSAGE(0, "Unimplemented");
-          case MCSymbolRefExpr::VK_None:
-            type = ELF::R_386_PC32;
-            break;
-          case MCSymbolRefExpr::VK_PLT:
-            type = ELF::R_386_PLT32;
-            break;
-          }
-          break;
-        }
-      } else {
-        switch ((unsigned)Fixup.getKind()) {
-        default:
-          IGC_ASSERT_EXIT_MESSAGE(0, "invalid fixup kind!");
-
-        case FK_PCRel_4:
-        case FK_Data_4:
-          switch (modifier) {
-          default:
-            IGC_ASSERT_EXIT_MESSAGE(0, "Unimplemented");
-          case MCSymbolRefExpr::VK_None:
-            type = ELF::R_386_32;
-            break;
-          case MCSymbolRefExpr::VK_GOT:
-            type = ELF::R_386_GOT32;
-            break;
-          case MCSymbolRefExpr::VK_GOTOFF:
-            type = ELF::R_386_GOTOFF;
-            break;
-          case MCSymbolRefExpr::VK_TLSGD:
-            type = ELF::R_386_TLS_GD;
-            break;
-          case MCSymbolRefExpr::VK_TPOFF:
-            type = ELF::R_386_TLS_LE_32;
-            break;
-          case MCSymbolRefExpr::VK_INDNTPOFF:
-            type = ELF::R_386_TLS_IE;
-            break;
-          case MCSymbolRefExpr::VK_NTPOFF:
-            type = ELF::R_386_TLS_LE;
-            break;
-          case MCSymbolRefExpr::VK_GOTNTPOFF:
-            type = ELF::R_386_TLS_GOTIE;
-            break;
-          case MCSymbolRefExpr::VK_TLSLDM:
-            type = ELF::R_386_TLS_LDM;
-            break;
-          case MCSymbolRefExpr::VK_DTPOFF:
-            type = ELF::R_386_TLS_LDO_32;
-            break;
-          case MCSymbolRefExpr::VK_GOTTPOFF:
-            type = ELF::R_386_TLS_IE_32;
-            break;
-          }
-          break;
-        case FK_Data_2:
-          type = ELF::R_386_16;
-          break;
-        case FK_PCRel_1:
-        case FK_Data_1:
-          type = ELF::R_386_8;
-          break;
-        }
-      }
+    switch ((unsigned)Fixup.getKind()) {
+    default:
+      IGC_ASSERT_EXIT_MESSAGE(0, "invalid fixup kind!");
+    case FK_Data_8:
+      IGC_ASSERT_MESSAGE(Target.isAbsolute() || Target.getSymA()->getKind() == MCSymbolRefExpr::VK_None,
+                         "expecting absolute target reloc");
+      type = ELF::R_X86_64_64;
+      break;
+    case FK_Data_4:
+      type = ELF::R_X86_64_32;
+      break;
+    case FK_Data_2:
+      type = ELF::R_X86_64_16;
+      break;
+    case FK_Data_1:
+      type = ELF::R_X86_64_8;
+      break;
     }
 
     return type;
@@ -245,11 +98,9 @@ public:
 
 class VISAAsmBackend : public MCAsmBackend {
   StringRef m_targetTriple;
-  bool m_is64Bit;
 
 public:
-  VISAAsmBackend(StringRef targetTriple, bool is64Bit)
-      : MCAsmBackend(support::endianness::little), m_targetTriple(targetTriple), m_is64Bit(is64Bit) {}
+  VISAAsmBackend(StringRef targetTriple) : MCAsmBackend(support::endianness::little), m_targetTriple(targetTriple) {}
 
   unsigned getNumFixupKinds() const override { return 0; }
 
@@ -257,20 +108,12 @@ public:
     switch (Kind) {
     default:
       IGC_ASSERT_EXIT_MESSAGE(0, "invalid fixup kind!");
-    case FK_PCRel_1:
-    case FK_SecRel_1:
     case FK_Data_1:
       return 0;
-    case FK_PCRel_2:
-    case FK_SecRel_2:
     case FK_Data_2:
       return 1;
-    case FK_PCRel_4:
-    case FK_SecRel_4:
     case FK_Data_4:
       return 2;
-    case FK_PCRel_8:
-    case FK_SecRel_8:
     case FK_Data_8:
       return 3;
     }
@@ -314,19 +157,6 @@ public:
     return true;
   }
 
-  /// createObjectWriter - Create a new MCObjectWriter instance for use by the
-  /// assembler backend to emit the final object file.
-  std::unique_ptr<MCObjectWriter> createObjectWriter(llvm::raw_pwrite_stream &os) const {
-    Triple triple(m_targetTriple);
-    uint8_t osABI = MCELFObjectTargetWriter::getOSABI(triple.getOS());
-    uint16_t eMachine = m_is64Bit ? ELF::EM_X86_64 : ELF::EM_386;
-    // Only i386 uses Rel instead of RelA.
-    bool hasRelocationAddend = eMachine != ELF::EM_386;
-    std::unique_ptr<MCELFObjectTargetWriter> pMOTW =
-        IGCLLVM::make_unique<VISAELFObjectWriter>(m_is64Bit, osABI, eMachine, hasRelocationAddend);
-    return createELFObjectWriter(std::move(pMOTW), os, /*IsLittleEndian=*/true);
-  }
-
   std::unique_ptr<MCObjectTargetWriter> createObjectTargetWriter() const override {
     // TODO: implement this
     IGC_ASSERT_UNREACHABLE(); // Unimplemented
@@ -368,7 +198,6 @@ StreamEmitter::StreamEmitter(raw_pwrite_stream &outStream, const std::string &da
 
   m_pObjFileInfo->InitMCObjectFileInfo(triple, false, *m_pContext);
 
-  bool is64Bit = GetPointerSize() == 8;
   uint8_t osABI = MCELFObjectTargetWriter::getOSABI(triple.getOS());
   // Earlier eMachine was set to ELF::EM_X86_64 or ELF::EM_386
   // This creates a problem for gdb so it is now set to 182
@@ -378,10 +207,9 @@ StreamEmitter::StreamEmitter(raw_pwrite_stream &outStream, const std::string &da
   uint16_t eMachine = EM_INTEL_GEN;
   if (StreamOptions.EnforceAMD64Machine)
     eMachine = ELF::EM_X86_64;
-  bool hasRelocationAddend = is64Bit;
-  std::unique_ptr<MCAsmBackend> pAsmBackend = IGCLLVM::make_unique<VISAAsmBackend>(GetTargetTriple(), is64Bit);
+  std::unique_ptr<MCAsmBackend> pAsmBackend = IGCLLVM::make_unique<VISAAsmBackend>(GetTargetTriple());
   std::unique_ptr<MCELFObjectTargetWriter> pTargetObjectWriter =
-      IGCLLVM::make_unique<VISAELFObjectWriter>(is64Bit, osABI, eMachine, hasRelocationAddend);
+      IGCLLVM::make_unique<VISAELFObjectWriter>(osABI, eMachine);
   std::unique_ptr<MCObjectWriter> pObjectWriter =
       createELFObjectWriter(std::move(pTargetObjectWriter), outStream, true);
   std::unique_ptr<MCCodeEmitter> pCodeEmitter = IGCLLVM::make_unique<VISAMCCodeEmitter>();
