@@ -17,6 +17,7 @@ SPDX-License-Identifier: MIT
 void InitTglLpHwWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_PARAM pWaParam)
 {
         int iStepId_TGL_LP = (int)pWaParam->usRevId;
+        (void)iStepId_TGL_LP;
 
 
     SI_WA_ENABLE(

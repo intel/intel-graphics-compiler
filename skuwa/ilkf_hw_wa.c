@@ -17,6 +17,7 @@ SPDX-License-Identifier: MIT
 void InitLkfHwWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_PARAM pWaParam)
 {
         int iStepId_LKF = (int)pWaParam->usRevId;
+        (void)iStepId_LKF;
 
 
     SI_WA_ENABLE(

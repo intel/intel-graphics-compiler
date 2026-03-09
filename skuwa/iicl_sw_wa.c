@@ -21,6 +21,7 @@ void InitIclSwWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT
 
 
     int iStepId_ICL = (int)pWaParam->usRevId;
+    (void)iStepId_ICL;
 
 
     SI_WA_ENABLE(

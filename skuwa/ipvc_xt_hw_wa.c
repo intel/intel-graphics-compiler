@@ -19,6 +19,7 @@ void InitPvc_XtHwWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_I
 
 
     int iStepId_PVC_XT_ComputeTile = (int)pWaParam->usRevId & 0b111;
+    (void)iStepId_PVC_XT_ComputeTile;
     int iStepId_PVC_XT_BaseDie = ((int)pWaParam->usRevId & 0b111000) >> 3;
     (void)iStepId_PVC_XT_BaseDie;
 

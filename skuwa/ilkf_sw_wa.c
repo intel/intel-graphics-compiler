@@ -20,6 +20,7 @@ void InitLkfSwWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT
 {
 
     int iStepId_Ilkf = (int)pWaParam->usRevId;
+    (void)iStepId_Ilkf;
     int iPchStepId_Ilkf = (int)pWaParam->usRevId_PCH;
     (void)iPchStepId_Ilkf;
 

@@ -17,6 +17,7 @@ SPDX-License-Identifier: MIT
 void InitAcm_G10HwWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_PARAM pWaParam)
 {
         int iStepId_ACM_G10 = (int)pWaParam->usRevId;
+        (void)iStepId_ACM_G10;
 
 
     SI_WA_ENABLE(

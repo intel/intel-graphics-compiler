@@ -19,6 +19,7 @@ void InitGlvWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
 {
 
     int StepId_GLV = (int)pWaParam->usRevId;
+    (void)StepId_GLV;
 
 
     SI_WA_ENABLE(
