@@ -172,6 +172,25 @@ public:
     }
   }
 
+  inline void Copy(const SProgramOutput &in) {
+    *this = in;
+    if (m_programBin && m_programSize > 0) {
+      void *buffer = IGC::aligned_malloc(m_programSize, 16 /* sizeof(DQWORD) */);
+      memcpy_s(buffer, m_programSize, m_programBin, m_programSize);
+      m_programBin = buffer;
+    }
+    if (m_debugData && m_debugDataSize > 0) {
+      void *buffer = IGC::aligned_malloc(m_debugDataSize, sizeof(void *));
+      memcpy_s(buffer, m_debugDataSize, m_debugData, m_debugDataSize);
+      m_debugData = buffer;
+    }
+    if (m_debugDataGenISA && m_debugDataGenISASize > 0) {
+      void *buffer = IGC::aligned_malloc(m_debugDataGenISASize, sizeof(void *));
+      memcpy_s(buffer, m_debugDataGenISASize, m_debugDataGenISA, m_debugDataGenISASize);
+      m_debugDataGenISA = buffer;
+    }
+  }
+
   void init(bool roundPower2KBytes, unsigned int scratchSpaceSizeLimitT, bool useScratchSpacePrivateMemory,
             bool SepSpillPvtSS, bool SeparateScratchWA) {
     m_roundPower2KBytes = roundPower2KBytes;
@@ -680,7 +699,7 @@ public:
   unsigned GetRetryId() const;
   unsigned GetPerFuncRetryStateId(llvm::Function *F) const;
 
-  void Enable(ShaderType ty = ShaderType::UNKNOWN);
+  virtual void Enable(ShaderType ty = ShaderType::UNKNOWN);
   void Disable(bool DisablePerKernel = false);
 
   void SetSpillSize(unsigned int spillSize);
@@ -690,15 +709,15 @@ public:
   // === Optimization flags for all retry managers===
   bool AllowLICM(llvm::Function *F = nullptr) const;
   bool AllowPromotePrivateMemory(llvm::Function *F = nullptr) const;
-  bool AllowVISAPreRAScheduler(llvm::Function *F = nullptr) const;
+  virtual bool AllowVISAPreRAScheduler(llvm::Function *F = nullptr) const;
   bool AllowCodeSinking(llvm::Function *F = nullptr) const;
   bool AllowAddressArithmeticSinking(llvm::Function *F = nullptr) const;
   bool AllowCloneAddressArithmetic(llvm::Function *F = nullptr) const;
   bool AllowCodeScheduling(llvm::Function *F = nullptr) const;
-  bool AllowSimd32Slicing(llvm::Function *F = nullptr) const;
+  virtual bool AllowSimd32Slicing(llvm::Function *F = nullptr) const;
   bool AllowLargeURBWrite(llvm::Function *F = nullptr) const;
   bool AllowConstantCoalescing(llvm::Function *F = nullptr) const;
-  bool AllowLargeGRF(llvm::Function *F = nullptr) const;
+  virtual bool AllowLargeGRF(llvm::Function *F = nullptr) const;
   bool ForceIndirectCallsInSyncRT() const;
   bool AllowRaytracingSpillCompaction() const;
   bool AllowLoadSinking(llvm::Function *F = nullptr) const;
@@ -793,6 +812,7 @@ private:
 
 };
 
+
 /// This class:
 ///    Add intrinsic cache to LLVM context
 ///    Add llvm metadata cache
@@ -827,6 +847,9 @@ struct RoutingIndex {
   unsigned int routeTo;
   unsigned int lscCacheCtrl;
 };
+
+/// Returns appropriate retry manager based on options.
+std::unique_ptr<RetryManager> createRetryManager(bool perKernel);
 
 class CodeGenContext {
 private:
@@ -1013,7 +1036,7 @@ public:
                  LLVMContextWrapper *LLVMContext = nullptr) ///< LLVM context to use, if null a new one will be
                                                             ///< created
       : type(_type), platform(_platform), btiLayout(_bitLayout), m_DriverInfo(driverInfo), llvmCtxWrapper(LLVMContext),
-        m_retryManager(std::make_unique<RetryManagerVISA>()) {
+        m_retryManager(createRetryManager(type == ShaderType::OPENCL_SHADER)) {
     if (llvmCtxWrapper == nullptr) {
       initLLVMContextWrapper(createResourceDimTypes);
     } else {
@@ -1031,11 +1054,8 @@ public:
     // Per context flag/key adjustment
     setFlagsPerCtx();
 
-    // Set retry behavor for Disable()
-    m_retryManager->perKernel = (type == ShaderType::OPENCL_SHADER);
     m_ForceSIMDRPELimit = IGC_GET_FLAG_VALUE(ForceSIMDRPELimit);
   }
-
   CodeGenContext(CodeGenContext &) = delete;
   CodeGenContext &operator=(CodeGenContext &) = delete;
 

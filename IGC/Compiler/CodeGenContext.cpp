@@ -460,6 +460,17 @@ RetryManagerVISA *CodeGenContext::getRetryManagerVISA() const {
   return retryMgrVISA;
 }
 
+/// Returns appropriate retry manager based on options. Called from CodeGenContext constructor.
+std::unique_ptr<RetryManager> createRetryManager(bool perKernel) {
+  std::unique_ptr<RetryManager> mgr;
+  {
+    mgr = std::make_unique<RetryManagerVISA>();
+  }
+  mgr->perKernel = perKernel;
+  return mgr;
+}
+
+
 void CodeGenContext::clearEntryNames() { this->entry_names.clear(); }
 // Several clients explicitly delete module without resetting module to null.
 // This causes the issue later when the dtor is invoked (trying to delete a

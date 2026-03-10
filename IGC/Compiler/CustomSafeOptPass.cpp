@@ -4779,8 +4779,9 @@ bool IGCIndirectICBPropagaion::runOnFunction(Function &F) {
   bool enableCompression = false;
   CompressionResult compressionResult = {};
 
-  if (ctx->platform.supportsVRT() && ((int)IGC_GET_FLAG_VALUE(MinCompressionThreshold) < 100) &&
-      modMD->immConstant.sizes.size() == 1) {
+  unsigned compressionThreshold = IGC_GET_FLAG_VALUE(MinCompressionThreshold);
+
+  if (ctx->platform.supportsVRT() && ((int)compressionThreshold < 100) && modMD->immConstant.sizes.size() == 1) {
     std::optional<uint32_t> optionalCompressedSize =
         getMaxStorageWhenStoringUniqueValues(modMD->immConstant.data, compressionResult);
     if (optionalCompressedSize.has_value() && optionalCompressedSize.value() > 0 &&
@@ -4788,7 +4789,7 @@ bool IGCIndirectICBPropagaion::runOnFunction(Function &F) {
       auto compressionEfficiency =
           static_cast<double>(modMD->immConstant.data.size() - optionalCompressedSize.value()) * 100.0 /
           modMD->immConstant.data.size();
-      if (compressionEfficiency > IGC_GET_FLAG_VALUE(MinCompressionThreshold)) {
+      if (compressionEfficiency > compressionThreshold) {
         storageNeeded = static_cast<size_t>(optionalCompressedSize.value());
         enableCompression = true;
       }
