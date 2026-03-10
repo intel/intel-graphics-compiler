@@ -211,7 +211,8 @@ private:
   public:
     // Debug print all the options
     void dump(void) const {
-      for (int i = 0; i < static_cast<int>(vISA_NUM_OPTIONS); ++i) {
+      for (int i = vISA_OPTIONS_UNINIT + 1;
+           i < static_cast<int>(vISA_NUM_OPTIONS); ++i) {
         const VISAOptionsLine &line = optionsMap[i];
         std::cerr << std::left << std::setw(34)
                   << options->get_vISAOptionsToStr(static_cast<vISAOptions>(i))
