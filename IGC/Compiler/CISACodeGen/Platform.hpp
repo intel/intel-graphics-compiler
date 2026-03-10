@@ -917,6 +917,7 @@ public:
   bool supportsWriteableMSAATextures() const { return isCoreChildOf(IGFX_XE3_CORE); }
   bool supportsVRT() const { return isCoreChildOf(IGFX_XE3_CORE); }
 
+
   bool supportsOutOfBoundsGrfAccess() const { return !isCoreChildOf(IGFX_XE3_CORE); }
   bool needsOutOfBoundsBuiltinChecks() const {
     return !supportsOutOfBoundsGrfAccess() && IGC_IS_FLAG_ENABLED(EnableOutOfBoundsBuiltinChecks);
