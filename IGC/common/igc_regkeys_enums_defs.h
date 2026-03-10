@@ -153,7 +153,8 @@ SPDX-License-Identifier: MIT
   REMAT_FLAG(REMAT_LOADS, 0x01, "Remat loads")                                                                         \
   REMAT_FLAG(REMAT_STORES, 0x02, "Remat stores")                                                                       \
   REMAT_FLAG(REMAT_ARGS, 0x04, "Remat call arguments")                                                                 \
-  REMAT_FLAG(REMAT_COMPARISONS, 0x08, "Remat comparison instructions")
+  REMAT_FLAG(REMAT_COMPARISONS, 0x08, "Remat comparison instructions")                                                 \
+  REMAT_FLAG(REMAT_DATAFLOW, 0x10, "Remat dataflow instructions")
 #endif // REMAT_FLAG
 
 #ifdef INJECT_PRINTF_OPTION

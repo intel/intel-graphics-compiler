@@ -1705,8 +1705,11 @@ DECLARE_IGC_REGKEY(DWORD, RematFlowThreshold, 10,
                    "Proportion of the whole rematerialization targets to cutoff remat chain", false)
 DECLARE_IGC_REGKEY(DWORD, RematChainLimit, 12,
                    "If number of instructions we've collected is more than this value, we bail on it", false)
-DECLARE_IGC_REGKEY(DWORD, RematRPELimit, 120,
-                   "Cutoff value for register estimator, lower than that, kernel won't be rematted", false)
+DECLARE_IGC_REGKEY(
+    DWORD, RematRPELimit, 93,
+    "Cutoff value for register estimator, lower than that, kernel won't be rematted, stated in percentages", false)
+DECLARE_IGC_REGKEY(bool, RematSingleFlowRematEnabled, true,
+                   "Allow singleFlowRemat stage inside CloneAddressArithmeticPass", false)
 DECLARE_IGC_REGKEY(bool, RematEnable, false, "Enable clone adress arithmetic pass not only on retry", false)
 DECLARE_IGC_REGKEY(bool, RematLog, false, "Dump Remat Log, usefull for analyzing spills as well", false)
 DECLARE_IGC_REGKEY(

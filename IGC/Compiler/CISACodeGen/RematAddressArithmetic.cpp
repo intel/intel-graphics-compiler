@@ -13,6 +13,7 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPush.hpp"
 #include "llvm/Analysis/PostDominators.h"
 #include "llvm/ADT/BreadthFirstIterator.h"
+#include "llvm/Transforms/Utils/Local.h"
 #include "common/LLVMWarningsPop.hpp"
 #include "Compiler/CISACodeGen/IGCLivenessAnalysis.h"
 #include <fstream>
@@ -109,21 +110,27 @@ public:
   IGCLivenessAnalysisRunner *RPE = nullptr;
   GenXFunctionGroupAnalysis *FGA = nullptr;
 
+  unsigned int SIMD = 0;
+  unsigned int MaxPressure = 0;
+  llvm::Function *Func = nullptr;
+
 private:
   IGC::REMAT_OPTIONS m_rematFlags = REMAT_NONE;
   bool greedyRemat(Function &F);
+  bool singleFlowRemat(Function &F);
   bool rematerialize(RematSet &ToProcess, unsigned int FlowThreshold);
   bool isRegPressureLow(Function &F);
   bool skipChain(RematChain &Chain, Instruction *Root);
 
   RematChain collectRematChain(llvm::Instruction *I, unsigned int NumOfUsesLimit);
 
-  unsigned int collectFlow(RematSet &ToProcess, Function &F);
+  unsigned int getFlowThreshold(RematSet &ToProcess, Function &F);
 
   void countUses(Function &);
   void speculateWholeChain(RematSet &ToProcess, unsigned int UsesLimit);
   void collectInstToProcess(RematSet &ToProcess, Function &F);
   void addToSystem(CloneAddressArithmetic::RematSet &Set, llvm::Instruction *I);
+  void computeFlow(RematSet &ToProcess);
   void computeFlow(llvm::Instruction *I);
   void rematWholeChain(llvm::Instruction *I, RematChain &Chain);
   void estimateProfit(RematSet &ToProcess);
@@ -167,6 +174,13 @@ IGC_INITIALIZE_PASS_END(CloneAddressArithmetic, PASS_FLAG_2, PASS_DESC_2, PASS_C
   if (IGC_IS_FLAG_ENABLED(RematLog)) {                                                                                 \
     I->print(OutputLogStream, false);                                                                                  \
     OutputLogStream << "\n";                                                                                           \
+  }
+#define PRINT_DS(Str, DS)                                                                                              \
+  if (IGC_IS_FLAG_ENABLED(RematLog)) {                                                                                 \
+    for (auto DS_EL : DS) {                                                                                            \
+      PRINT_LOG(Str);                                                                                                  \
+      PRINT_INST_NL(DS_EL);                                                                                            \
+    }                                                                                                                  \
   }
 #else
 #define PRINT_LOG(Str)                                                                                                 \
@@ -405,9 +419,11 @@ void CloneAddressArithmetic::rematWholeChain(llvm::Instruction *I, RematChain &C
     Clone->insertBefore(I);
   }
 
-  auto OldOp = dyn_cast<Instruction>(I->getOperand(0));
-  if (OldToNew.count(OldOp))
-    I->setOperand(0, OldToNew[OldOp]);
+  for (unsigned int i = 0; i < I->getNumOperands(); ++i) {
+    auto OldOp = dyn_cast<Instruction>(I->getOperand(i));
+    if (OldToNew.count(OldOp))
+      I->setOperand(i, OldToNew[OldOp]);
+  }
 
   OldToNew.clear();
 }
@@ -480,6 +496,9 @@ bool CloneAddressArithmetic::rematerialize(RematSet &ToProcess, unsigned int Flo
       PRINT_INST_NL(Clone);
       rematWholeChain(Clone, Chain);
     }
+
+    RecursivelyDeleteTriviallyDeadInstructions(El);
+
     PRINT_LOG_NL("");
   }
   return true;
@@ -490,26 +509,33 @@ void CloneAddressArithmetic::estimateProfit(RematSet &ToProcess) {
   if (!DEBUG)
     return;
 
+  const DataLayout &DL = Func->getParent()->getDataLayout();
+
   PRINT_LOG_NL("FINAL: ");
   PRINT_LOG_NL("SIZE: " << Vector.size());
+
+  auto Comp = [](RematPair &A, RematPair &B) { return A.second.size() > B.second.size(); };
+  std::sort(Vector.begin(), Vector.end(), Comp);
+
   for (const auto &el : Vector) {
 
     auto &OriginSet = el.first;
     auto &ValueSet = el.second;
 
     unsigned int SetSize = ValueSet.size();
-    PRINT_LOG_NL("SetSize: " << SetSize);
+    unsigned int RegSize = RPE->bytesToRegisters(RPE->estimateSizeInBytes(OriginSet, *Func, SIMD, &WI->Runner));
+    PRINT_LOG_NL("SetSize: " << SetSize << " Reg_Size: " << RegSize);
+    PRINT_DS("Origin node: ", OriginSet);
 
-    PRINT_LOG_NL("origin nodes:");
-    for (auto originEl : OriginSet) {
-      PRINT_INST_NL(originEl);
-    }
-
-    PRINT_LOG_NL("------");
+    unsigned int WholeRegSize = 0;
     for (auto vecEl : ValueSet) {
-      PRINT_LOG("uses: " << Uses[vecEl] << " ");
+      unsigned int RegSize = RPE->bytesToRegisters(RPE->computeSizeInBytes(vecEl, SIMD, &WI->Runner, DL));
+      WholeRegSize += RegSize;
+      PRINT_LOG("uses: " << Uses[vecEl] << " size: " << RegSize);
       PRINT_INST_NL(vecEl);
     }
+    PRINT_LOG_NL("WholeRegSize: " << WholeRegSize);
+    PRINT_LOG_NL("------");
   }
 
   return;
@@ -542,17 +568,19 @@ void CloneAddressArithmetic::speculateWholeChain(RematSet &ToProcess, unsigned i
 
   estimateProfit(ToProcess);
   PRINT_LOG_NL("end_speculate");
-  Vector.clear();
   return;
 }
 
 bool CloneAddressArithmetic::isRegPressureLow(Function &F) {
 
   RPE = &getAnalysis<IGCLivenessAnalysis>().getLivenessRunner();
-  unsigned int SIMD = numLanes(RPE->bestGuessSIMDSize(&F, FGA));
-  unsigned int PressureLimit = IGC_GET_FLAG_VALUE(RematRPELimit);
-  unsigned int MaxPressure = RPE->getMaxRegCountForFunction(F, SIMD, &WI->Runner);
+  SIMD = numLanes(RPE->bestGuessSIMDSize(&F, FGA));
+  unsigned int GRFSize = CGCtx->getNumGRFPerThread();
+  unsigned int PressureLimit = 0.01f * (float)IGC_GET_FLAG_VALUE(RematRPELimit) * (float)GRFSize;
+  MaxPressure = RPE->getMaxRegCountForFunction(F, SIMD, &WI->Runner);
   bool Result = MaxPressure < PressureLimit;
+  PRINT_LOG_NL("MaxPressure: " << MaxPressure << " PressureLimit: " << PressureLimit);
+  writeLog();
   return Result;
 }
 
@@ -589,6 +617,7 @@ void CloneAddressArithmetic::collectInstToProcess(RematSet &ToProcess, Function 
       bool IsStore = llvm::isa<StoreInst>(I) && m_rematFlags & REMAT_STORES;
       bool IsCall = llvm::isa<CallInst>(I) && m_rematFlags & REMAT_ARGS;
       bool IsCmp = llvm::isa<CmpInst>(I) && m_rematFlags & REMAT_COMPARISONS;
+      bool AllowDataFlowRematerialization = m_rematFlags & REMAT_DATAFLOW;
 
       if (!IsLoad && !IsStore && !IsCall && !IsCmp)
         continue;
@@ -613,20 +642,17 @@ void CloneAddressArithmetic::collectInstToProcess(RematSet &ToProcess, Function 
 
       if (isRematInstruction(V))
         ToProcess.insert(static_cast<Instruction *>(V));
+
+      if (AllowDataFlowRematerialization && IsStore) {
+        llvm::Instruction *Inst = llvm::dyn_cast<llvm::Instruction>(static_cast<StoreInst *>(&I)->getOperand(0));
+        if (Inst && isAddressArithmetic(Inst))
+          ToProcess.insert(static_cast<Instruction *>(Inst));
+      }
     }
   }
 }
 
-unsigned int CloneAddressArithmetic::collectFlow(RematSet &ToProcess, Function &F) {
-
-  unsigned int FlowBudget = 0;
-  for (auto el : ToProcess)
-    FlowBudget += Uses[el];
-
-  PRINT_LOG_NL("FlowBudget: " << FlowBudget);
-  unsigned int Base = IGC_GET_FLAG_VALUE(RematFlowThreshold);
-  float Coefficient = 0.01f * (float)Base;
-  unsigned int Result = (unsigned int)((float)FlowBudget * Coefficient);
+void CloneAddressArithmetic::computeFlow(RematSet &ToProcess) {
 
   for (auto el : ToProcess) {
     PRINT_LOG("Start to compute flow: ");
@@ -640,31 +666,99 @@ unsigned int CloneAddressArithmetic::collectFlow(RematSet &ToProcess, Function &
       PRINT_INST_NL(el.first);
     }
   }
+}
+
+unsigned int CloneAddressArithmetic::getFlowThreshold(RematSet &ToProcess, Function &F) {
+
+  unsigned int FlowBudget = 0;
+  for (auto el : ToProcess)
+    FlowBudget += Uses[el];
+
+  PRINT_LOG_NL("FlowBudget: " << FlowBudget);
+  unsigned int Base = IGC_GET_FLAG_VALUE(RematFlowThreshold);
+  float Coefficient = 0.01f * (float)Base;
+  unsigned int Result = (unsigned int)((float)FlowBudget * Coefficient);
 
   return Result;
 }
 
-bool CloneAddressArithmetic::greedyRemat(Function &F) {
+// this brings instructions that are uniquely used
+// by rematerialization target closer to the use
+// add %3, %2, %1 (this wont be touched it has more than 1 flow -> it's used in more targets that one)
+// add %4, %3, %1 (this instruction will be put closer to the store)
+// add %5, %3, %2 (this as well)
+// ....
+// store %4 -> %ptr0
+// ....
+// store %5 -> %ptr1
+//
+// AFTER:
+// add %3, %2, %1
+// .....
+// add %remat4, %3, %1
+// store %remat4 -> %ptr0
+// ....
+// add %remat5, %3, %2
+// store %remat5 -> %ptr1
+bool CloneAddressArithmetic::singleFlowRemat(Function &F) {
 
+  PRINT_LOG_NL("Single Flow Remat");
   if (isRegPressureLow(F))
     return false;
 
-  initializeLogFile(F);
   countUses(F);
 
   RematSet ToProcess;
   collectInstToProcess(ToProcess, F);
 
-  unsigned int FlowThreshold = collectFlow(ToProcess, F);
+  if (ToProcess.empty())
+    return false;
+
+  computeFlow(ToProcess);
   writeLog();
 
-  speculateWholeChain(ToProcess, FlowThreshold);
+  if (DEBUG) {
+    speculateWholeChain(ToProcess, 1);
+    writeLog();
+  }
+
+  rematerialize(ToProcess, 1);
   writeLog();
+
+  RPE->rerunLivenessAnalysis(F);
+  FlowMap.clear();
+  Vector.clear();
+  return true;
+}
+
+bool CloneAddressArithmetic::greedyRemat(Function &F) {
+
+  PRINT_LOG_NL("Greedy Remat");
+  if (isRegPressureLow(F))
+    return false;
+
+  countUses(F);
+
+  RematSet ToProcess;
+  collectInstToProcess(ToProcess, F);
+
+  if (ToProcess.empty())
+    return false;
+
+  unsigned int FlowThreshold = getFlowThreshold(ToProcess, F);
+  computeFlow(ToProcess);
+  writeLog();
+
+  if (DEBUG) {
+    speculateWholeChain(ToProcess, FlowThreshold);
+    writeLog();
+  }
 
   rematerialize(ToProcess, FlowThreshold);
   writeLog();
 
   FlowMap.clear();
+  Vector.clear();
   return true;
 }
 
@@ -700,11 +794,23 @@ bool CloneAddressArithmetic::runOnFunction(Function &F) {
   if (m_rematFlags == REMAT_NONE)
     return false;
 
+  Func = &F;
   CGCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
   WI = &getAnalysis<WIAnalysis>();
   FGA = getAnalysisIfAvailable<GenXFunctionGroupAnalysis>();
 
+  initializeLogFile(F);
+
+  auto OriginalRematFlags = m_rematFlags;
   bool Modified = false;
+
+  m_rematFlags = static_cast<IGC::REMAT_OPTIONS>(m_rematFlags & ~REMAT_COMPARISONS);
+  Modified |= IGC_IS_FLAG_ENABLED(RematSingleFlowRematEnabled) && singleFlowRemat(F);
+
+  // we only enable DATA_FLOW for first stage and we allow CMP remat back if it was enabled
+  m_rematFlags = OriginalRematFlags;
+  m_rematFlags = static_cast<IGC::REMAT_OPTIONS>(m_rematFlags & ~REMAT_DATAFLOW);
+
   Modified |= greedyRemat(F);
   return Modified;
 }

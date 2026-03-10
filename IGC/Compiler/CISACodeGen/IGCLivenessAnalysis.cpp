@@ -115,7 +115,8 @@ void IGCLivenessAnalysisBase::combineOut(llvm::BasicBlock *BB) {
   }
 }
 
-unsigned int computeSizeInBytes(Value *V, unsigned int SIMD, WIAnalysisRunner *WI, const DataLayout &DL) {
+unsigned int IGCLivenessAnalysisBase::computeSizeInBytes(Value *V, unsigned int SIMD, WIAnalysisRunner *WI,
+                                                         const DataLayout &DL) {
 
   // when we check size of operands, this check is redundant
   // but allows for a nicer code
@@ -268,6 +269,18 @@ void IGCLivenessAnalysisBase::livenessAnalysis(llvm::Function &F, BBSet *StartBB
       for (auto *Pred : predecessors(BB))
         Worklist.push(Pred);
   }
+}
+
+unsigned int IGCLivenessAnalysisBase::estimateSizeInBytes(const llvm::SmallSetVector<llvm::Instruction *, 16> &Set,
+                                                          Function &F, unsigned int SIMD, WIAnalysisRunner *WI) {
+  const DataLayout &DL = F.getParent()->getDataLayout();
+
+  unsigned int Result = 0;
+  for (auto El : Set) {
+    unsigned int SizeInBytes = computeSizeInBytes(El, SIMD, WI, DL);
+    Result += SizeInBytes;
+  }
+  return Result;
 }
 
 unsigned int IGCLivenessAnalysisBase::estimateSizeInBytes(ValueSet &Set, Function &F, unsigned int SIMD,

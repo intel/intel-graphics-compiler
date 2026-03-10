@@ -60,7 +60,10 @@ public:
   DFSet &getOutSet() { return Out; }
   const DFSet &getOutSet() const { return Out; }
 
+  unsigned int computeSizeInBytes(Value *V, unsigned int SIMD, WIAnalysisRunner *WI, const DataLayout &DL);
   unsigned int estimateSizeInBytes(ValueSet &Set, llvm::Function &F, unsigned int SIMD, WIAnalysisRunner *WI = nullptr);
+  unsigned int estimateSizeInBytes(const llvm::SmallSetVector<llvm::Instruction *, 16> &Set, llvm::Function &F,
+                                   unsigned int SIMD, WIAnalysisRunner *WI = nullptr);
   void collectPressureForBB(llvm::BasicBlock &BB, InsideBlockPressureMap &BBListing, unsigned int SIMD,
                             WIAnalysisRunner *WI = nullptr);
 
