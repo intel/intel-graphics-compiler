@@ -339,7 +339,7 @@ private:
   bool checkIfLongLongSupportNeeded(const Instruction *Inst) const;
   void verifyLSCFence(const Instruction *Inst);
   void verifyLSC2D(const Instruction *Inst);
-  void verifyType(const Type *Ty, const Instruction *Inst) const;
+  bool verifyType(const Type *Ty, const Instruction *Inst) const;
   bool checkInst(const Instruction *Inst) const;
   bool processInst(Instruction *Inst);
   bool processBale(Instruction *InsertBefore);
@@ -553,30 +553,34 @@ void GenXLegalization::verifyLSC2D(const Instruction *Inst) {}
 /***********************************************************************
  * verifyType : check if type is ok according to subtarget
  *
- * Fails with fatal error if we have non-supported type
+ * Check if we have non-supported type
  */
-void GenXLegalization::verifyType(const Type *Ty,
+bool GenXLegalization::verifyType(const Type *Ty,
                                   const Instruction *Inst) const {
   if (Ty->isIntegerTy(64) && !ST->hasLongLong() && !ST->emulateLongLong() &&
       checkIfLongLongSupportNeeded(Inst)) {
     auto Target = getAnalysis<TargetPassConfig>()
                       .getTM<GenXTargetMachine>()
                       .getTargetCPU();
-    vc::fatal(Ty->getContext(), *this,
-              "'i64' data type is not supported by this target <" + Target +
-                  ">",
-              Inst);
+    vc::diagnose(Ty->getContext(), "GenXLegalization",
+                 "'i64' data type is not supported by this target <" + Target +
+                     ">",
+                 Inst);
+    return false;
   }
 
   if (Ty->isDoubleTy() && !ST->hasFP64()) {
     auto Target = getAnalysis<TargetPassConfig>()
                       .getTM<GenXTargetMachine>()
                       .getTargetCPU();
-    vc::fatal(Ty->getContext(), *this,
-              "'double' data type is not supported by this target <" + Target +
-                  ">",
-              Inst);
+    vc::diagnose(Ty->getContext(), "GenXLegalization",
+                 "'double' data type is not supported by this target <" +
+                     Target + ">",
+                 Inst);
+    return false;
   }
+
+  return true;
 }
 
 /***********************************************************************
@@ -603,13 +607,13 @@ bool GenXLegalization::checkInst(const Instruction *Inst) const {
   }
 
   // Sanity check for illegal operand type
-  const auto *ScalarType = Inst->getType()->getScalarType();
-  verifyType(ScalarType, Inst);
+  if (!verifyType(Inst->getType()->getScalarType(), Inst))
+    return false;
 
   // Sanity check for illegal operands
   for (auto &&Op : Inst->operands()) {
-    const auto *ScalarOpType = Op->getType()->getScalarType();
-    verifyType(ScalarOpType, Inst);
+    if (!verifyType(Op->getType()->getScalarType(), Inst))
+      return false;
   }
 
   return true;
