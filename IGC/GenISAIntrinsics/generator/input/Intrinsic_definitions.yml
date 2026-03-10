@@ -9735,7 +9735,7 @@ intrinsics:
         comment: "GenISA_staticConstantPatchValue returns a static constant patch\
             \ value as an integer."
         return_definition: !<ReturnDefinition>
-            type_definition: *any_int
+            type_definition: *any
             comment: "symbol value"
         arguments:
             - !<ArgumentDefinition>
