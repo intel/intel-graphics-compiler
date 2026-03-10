@@ -830,7 +830,7 @@ public:
     m_args.push_back(m_pIntZero); // LOD
     prepareImageBTI();
     prepareZeroOffsets();
-    Type *types[] = {IGCLLVM::FixedVectorType::get(m_pFloatType, 4), m_pIntType, m_args[7]->getType()};
+    Type *types[] = {m_pCallInst->getType(), m_pIntType, m_args[4]->getType()};
     replaceGenISACallInst(GenISAIntrinsic::GenISA_ldmcsptr, types);
   }
 };
@@ -875,8 +875,7 @@ public:
     m_args.push_back(m_pIntZero); // LOD
     prepareImageBTI();
     prepareZeroOffsets();
-    replaceGenISACallInst(GenISAIntrinsic::GenISA_ldmsptr,
-                          {IGCLLVM::FixedVectorType::get(m_pIntType, 4), m_args[7]->getType()});
+    replaceGenISACallInst(GenISAIntrinsic::GenISA_ldmsptr, {m_pCallInst->getType(), m_args[7]->getType()});
   }
 };
 
