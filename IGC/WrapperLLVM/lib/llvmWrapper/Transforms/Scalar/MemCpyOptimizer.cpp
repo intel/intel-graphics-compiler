@@ -9,12 +9,15 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPush.hpp"
 
 #include "llvm/Transforms/Scalar/MemCpyOptimizer.h"
+#include "llvm/Analysis/TargetLibraryInfo.h"
 #include "llvm/IR/Function.h"
+#include "llvm/IR/IntrinsicInst.h"
 #include "llvm/IR/PassManager.h"
 #include "llvm/IR/Value.h"
 #include "llvm/Analysis/AssumptionCache.h"
 #include "llvm/Analysis/GlobalsModRef.h"
 #include "llvm/Analysis/MemorySSAUpdater.h"
+#include "llvm/Support/Alignment.h"
 #include "llvm/Transforms/Scalar.h"
 
 #include "common/LLVMWarningsPop.hpp"
@@ -30,6 +33,13 @@ namespace IGCLLVM {
 
 MemCpyOptLegacyPassWrapper::MemCpyOptLegacyPassWrapper() : FunctionPass(ID) {
   initializeMemCpyOptLegacyPassWrapperPass(*PassRegistry::getPassRegistry());
+}
+
+void MemCpyOptLegacyPassWrapper::initializeAnalysisManagers() {
+  TargetLibraryInfoImpl TLII;
+  TLII.disableAllFunctions();
+  FAM.registerPass([TLII = std::move(TLII)]() mutable { return TargetLibraryAnalysis(std::move(TLII)); });
+
   PB.registerLoopAnalyses(LAM);
   PB.registerFunctionAnalyses(FAM);
   PB.registerCGSCCAnalyses(CGAM);
@@ -41,9 +51,11 @@ bool MemCpyOptLegacyPassWrapper::runOnFunction(Function &F) {
   if (skipFunction(F))
     return false;
 
+  initializeAnalysisManagers();
   // Run the New Pass Manager implementation of the pass.
   MemCpyOptPass Implementation;
   Implementation.run(F, FAM);
+
   return true;
 }
 
