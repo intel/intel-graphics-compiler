@@ -1,0 +1,458 @@
+/*========================== begin_copyright_notice ============================
+
+Copyright (C) 2024 Intel Corporation
+
+SPDX-License-Identifier: MIT
+
+============================= end_copyright_notice ===========================*/
+
+/*========================== begin_copyright_notice ============================
+
+Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
+See https://llvm.org/LICENSE.txt for license information.
+SPDX-License-Identifier: Apache-2.0 with LLVM-exception
+
+============================= end_copyright_notice ===========================*/
+
+From 1041a9642ba035fd2685f925911d705e8edf5bb0 Mon Sep 17 00:00:00 2001
+From: Andrew Savonichev <andrew.savonichev@gmail.com>
+Date: Wed, 27 Apr 2022 19:36:54 +0300
+Subject: [PATCH] [lit] Support %if ... %else syntax for RUN lines
+
+This syntax allows to modify RUN lines based on features
+available. For example:
+
+    RUN: ... | FileCheck %s --check-prefix=%if windows %{CHECK-W%} %else %{CHECK-NON-W%}
+    CHECK-W: ...
+    CHECK-NON-W: ...
+
+The whole command can be put under %if ... %else:
+
+    RUN: %if tool_available %{ %tool %} %else %{ true %}
+
+or:
+
+    RUN: %if tool_available %{ %tool %}
+
+If tool_available feature is missing, we'll have an empty command in
+this RUN line.  LIT used to emit an error for empty commands, but now
+it treats such commands as nop in all cases.
+
+Multi-line expressions are also supported:
+
+    RUN: %if tool_available %{ \
+    RUN:   %tool               \
+    RUN: %} %else %{           \
+    RUN:   true                \
+    RUN: %}
+
+Background and motivation:
+D121727 [NVPTX] Integrate ptxas to LIT tests
+https://reviews.llvm.org/D121727
+
+Differential Revision: https://reviews.llvm.org/D122569
+---
+ llvm/docs/TestingGuide.rst                    |   7 +
+ llvm/utils/lit/lit/TestRunner.py              | 127 ++++++++++++++++--
+ .../lit/tests/Inputs/shtest-if-else/lit.cfg   |   8 ++
+ .../tests/Inputs/shtest-if-else/test-neg1.txt |   3 +
+ .../tests/Inputs/shtest-if-else/test-neg2.txt |   3 +
+ .../tests/Inputs/shtest-if-else/test-neg3.txt |   3 +
+ .../tests/Inputs/shtest-if-else/test-neg4.txt |   3 +
+ .../lit/tests/Inputs/shtest-if-else/test.txt  |  92 +++++++++++++
+ llvm/utils/lit/tests/shtest-if-else.py        |  14 ++
+ 9 files changed, 250 insertions(+), 10 deletions(-)
+ create mode 100644 llvm/utils/lit/tests/Inputs/shtest-if-else/lit.cfg
+ create mode 100644 llvm/utils/lit/tests/Inputs/shtest-if-else/test-neg1.txt
+ create mode 100644 llvm/utils/lit/tests/Inputs/shtest-if-else/test-neg2.txt
+ create mode 100644 llvm/utils/lit/tests/Inputs/shtest-if-else/test-neg3.txt
+ create mode 100644 llvm/utils/lit/tests/Inputs/shtest-if-else/test-neg4.txt
+ create mode 100644 llvm/utils/lit/tests/Inputs/shtest-if-else/test.txt
+ create mode 100644 llvm/utils/lit/tests/shtest-if-else.py
+
+diff --git a/llvm/docs/TestingGuide.rst b/llvm/docs/TestingGuide.rst
+index 04d9ccc5ba98f..4bbc0972cdafb 100644
+--- a/llvm/docs/TestingGuide.rst
++++ b/llvm/docs/TestingGuide.rst
+@@ -612,6 +612,13 @@ RUN lines:
+ 
+    Example: ``Windows %errc_ENOENT: no such file or directory``
+ 
++``%if feature %{<if branch>%} %else %{<else branch>%}``
++
++ Conditional substitution: if ``feature`` is available it expands to
++ ``<if branch>``, otherwise it expands to ``<else branch>``.
++ ``%else %{<else branch>%}`` is optional and treated like ``%else %{%}``
++ if not present.
++
+ **LLVM-specific substitutions:**
+ 
+ ``%shlibext``
+diff --git a/llvm/utils/lit/lit/TestRunner.py b/llvm/utils/lit/lit/TestRunner.py
+index d3e655a324e42..de711b4eec2ae 100644
+--- a/llvm/utils/lit/lit/TestRunner.py
++++ b/llvm/utils/lit/lit/TestRunner.py
+@@ -48,7 +48,10 @@ def __init__(self, command, message):
+ # This regex captures ARG.  ARG must not contain a right parenthesis, which
+ # terminates %dbg.  ARG must not contain quotes, in which ARG might be enclosed
+ # during expansion.
+-kPdbgRegex = '%dbg\\(([^)\'"]*)\\)'
++#
++# COMMAND that follows %dbg(ARG) is also captured. COMMAND can be
++# empty as a result of conditinal substitution.
++kPdbgRegex = '%dbg\\(([^)\'"]*)\\)(.*)'
+ 
+ class ShellEnvironment(object):
+ 
+@@ -899,7 +902,11 @@ def _executeShCmd(cmd, shenv, results, timeoutHelper):
+ def executeScriptInternal(test, litConfig, tmpBase, commands, cwd):
+     cmds = []
+     for i, ln in enumerate(commands):
+-        ln = commands[i] = re.sub(kPdbgRegex, ": '\\1'; ", ln)
++        match = re.match(kPdbgRegex, ln)
++        if match:
++            command = match.group(2)
++            ln = commands[i] = \
++                match.expand(": '\\1'; \\2" if command else ": '\\1'")
+         try:
+             cmds.append(ShUtil.ShParser(ln, litConfig.isWindows,
+                                         test.config.pipefail).parse())
+@@ -987,7 +994,12 @@ def executeScript(test, litConfig, tmpBase, commands, cwd):
+     f = open(script, mode, **open_kwargs)
+     if isWin32CMDEXE:
+         for i, ln in enumerate(commands):
+-            commands[i] = re.sub(kPdbgRegex, "echo '\\1' > nul && ", ln)
++            match = re.match(kPdbgRegex, ln)
++            if match:
++                command = match.group(2)
++                commands[i] = \
++                    match.expand("echo '\\1' > nul && " if command
++                                 else "echo '\\1' > nul")
+         if litConfig.echo_all_commands:
+             f.write('@echo on\n')
+         else:
+@@ -995,7 +1007,11 @@ def executeScript(test, litConfig, tmpBase, commands, cwd):
+         f.write('\n@if %ERRORLEVEL% NEQ 0 EXIT\n'.join(commands))
+     else:
+         for i, ln in enumerate(commands):
+-            commands[i] = re.sub(kPdbgRegex, ": '\\1'; ", ln)
++            match = re.match(kPdbgRegex, ln)
++            if match:
++                command = match.group(2)
++                commands[i] = match.expand(": '\\1'; \\2" if command
++                                           else ": '\\1'")
+         if test.config.pipefail:
+             f.write(b'set -o pipefail;' if mode == 'wb' else 'set -o pipefail;')
+         if litConfig.echo_all_commands:
+@@ -1179,7 +1195,8 @@ def memoized(x):
+ def _caching_re_compile(r):
+     return re.compile(r)
+ 
+-def applySubstitutions(script, substitutions, recursion_limit=None):
++def applySubstitutions(script, substitutions, conditions={},
++                       recursion_limit=None):
+     """
+     Apply substitutions to the script.  Allow full regular expression syntax.
+     Replace each matching occurrence of regular expression pattern a with
+@@ -1193,14 +1210,103 @@ def applySubstitutions(script, substitutions, recursion_limit=None):
+     """
+ 
+     # We use #_MARKER_# to hide %% while we do the other substitutions.
+-    def escape(ln):
++    def escapePercents(ln):
+         return _caching_re_compile('%%').sub('#_MARKER_#', ln)
+ 
+-    def unescape(ln):
++    def unescapePercents(ln):
+         return _caching_re_compile('#_MARKER_#').sub('%', ln)
+ 
++    def substituteIfElse(ln):
++        # early exit to avoid wasting time on lines without
++        # conditional substitutions
++        if ln.find('%if ') == -1:
++            return ln
++
++        def tryParseIfCond(ln):
++            # space is important to not conflict with other (possible)
++            # substitutions
++            if not ln.startswith('%if '):
++                return None, ln
++            ln = ln[4:]
++
++            # stop at '%{'
++            match = _caching_re_compile('%{').search(ln)
++            if not match:
++                raise ValueError("'%{' is missing for %if substitution")
++            cond = ln[:match.start()]
++
++            # eat '%{' as well
++            ln = ln[match.end():]
++            return cond, ln
++
++        def tryParseElse(ln):
++            match = _caching_re_compile('^\s*%else\s*(%{)?').search(ln)
++            if not match:
++                return False, ln
++            if not match.group(1):
++                raise ValueError("'%{' is missing for %else substitution")
++            return True, ln[match.end():]
++
++        def tryParseEnd(ln):
++            if ln.startswith('%}'):
++                return True, ln[2:]
++            return False, ln
++
++        def parseText(ln, isNested):
++            # parse everything until %if, or %} if we're parsing a
++            # nested expression.
++            match = _caching_re_compile(
++                '(.*?)(?:%if|%})' if isNested else '(.*?)(?:%if)').search(ln)
++            if not match:
++                # there is no terminating pattern, so treat the whole
++                # line as text
++                return ln, ''
++            text_end = match.end(1)
++            return ln[:text_end], ln[text_end:]
++
++        def parseRecursive(ln, isNested):
++            result = ''
++            while len(ln):
++                if isNested:
++                    found_end, _ = tryParseEnd(ln)
++                    if found_end:
++                        break
++
++                # %if cond %{ branch_if %} %else %{ branch_else %}
++                cond, ln = tryParseIfCond(ln)
++                if cond:
++                    branch_if, ln = parseRecursive(ln, isNested=True)
++                    found_end, ln = tryParseEnd(ln)
++                    if not found_end:
++                        raise ValueError("'%}' is missing for %if substitution")
++
++                    branch_else = ''
++                    found_else, ln = tryParseElse(ln)
++                    if found_else:
++                        branch_else, ln = parseRecursive(ln, isNested=True)
++                        found_end, ln = tryParseEnd(ln)
++                        if not found_end:
++                            raise ValueError("'%}' is missing for %else substitution")
++
++                    if BooleanExpression.evaluate(cond, conditions):
++                        result += branch_if
++                    else:
++                        result += branch_else
++                    continue
++
++                # The rest is handled as plain text.
++                text, ln = parseText(ln, isNested)
++                result += text
++
++            return result, ln
++
++        result, ln = parseRecursive(ln, isNested=False)
++        assert len(ln) == 0
++        return result
++
+     def processLine(ln):
+         # Apply substitutions
++        ln = substituteIfElse(escapePercents(ln))
+         for a,b in substitutions:
+             if kIsWindows:
+                 b = b.replace("\\","\\\\")
+@@ -1211,7 +1317,7 @@ def processLine(ln):
+             # short-lived, since the set of substitutions is fairly small, and
+             # since thrashing has such bad consequences, not bounding the cache
+             # seems reasonable.
+-            ln = _caching_re_compile(a).sub(str(b), escape(ln))
++            ln = _caching_re_compile(a).sub(str(b), escapePercents(ln))
+ 
+         # Strip the trailing newline and any extra whitespace.
+         return ln.strip()
+@@ -1235,7 +1341,7 @@ def processLineToFixedPoint(ln):
+ 
+     process = processLine if recursion_limit is None else processLineToFixedPoint
+     
+-    return [unescape(process(ln)) for ln in script]
++    return [unescapePercents(process(ln)) for ln in script]
+ 
+ 
+ class ParserKind(object):
+@@ -1610,7 +1716,8 @@ def executeShTest(test, litConfig, useExternalSh,
+     substitutions = list(extra_substitutions)
+     substitutions += getDefaultSubstitutions(test, tmpDir, tmpBase,
+                                              normalize_slashes=useExternalSh)
+-    script = applySubstitutions(script, substitutions,
++    conditions = { feature: True for feature in test.config.available_features }
++    script = applySubstitutions(script, substitutions, conditions,
+                                 recursion_limit=test.config.recursiveExpansionLimit)
+ 
+     return _runShTest(test, litConfig, useExternalSh, script, tmpBase)
+diff --git a/llvm/utils/lit/tests/Inputs/shtest-if-else/lit.cfg b/llvm/utils/lit/tests/Inputs/shtest-if-else/lit.cfg
+new file mode 100644
+index 0000000000000..b2243df51c20c
+--- /dev/null
++++ b/llvm/utils/lit/tests/Inputs/shtest-if-else/lit.cfg
+@@ -0,0 +1,8 @@
++import lit.formats
++config.name = 'shtest-if-else'
++config.test_format = lit.formats.ShTest()
++config.test_source_root = None
++config.test_exec_root = None
++config.suffixes = ['.txt']
++config.available_features.add('feature')
++config.substitutions.append(('%{sub}', 'ok'))
+diff --git a/llvm/utils/lit/tests/Inputs/shtest-if-else/test-neg1.txt b/llvm/utils/lit/tests/Inputs/shtest-if-else/test-neg1.txt
+new file mode 100644
+index 0000000000000..ce748526979bb
+--- /dev/null
++++ b/llvm/utils/lit/tests/Inputs/shtest-if-else/test-neg1.txt
+@@ -0,0 +1,3 @@
++# CHECK: ValueError: '%{' is missing for %if substitution
++#
++# RUN: %if feature echo "test-1"
+diff --git a/llvm/utils/lit/tests/Inputs/shtest-if-else/test-neg2.txt b/llvm/utils/lit/tests/Inputs/shtest-if-else/test-neg2.txt
+new file mode 100644
+index 0000000000000..ae7ad887a06fb
+--- /dev/null
++++ b/llvm/utils/lit/tests/Inputs/shtest-if-else/test-neg2.txt
+@@ -0,0 +1,3 @@
++# CHECK: ValueError: '%}' is missing for %if substitution
++#
++# RUN: %if feature %{ echo
+diff --git a/llvm/utils/lit/tests/Inputs/shtest-if-else/test-neg3.txt b/llvm/utils/lit/tests/Inputs/shtest-if-else/test-neg3.txt
+new file mode 100644
+index 0000000000000..ed6594c238276
+--- /dev/null
++++ b/llvm/utils/lit/tests/Inputs/shtest-if-else/test-neg3.txt
+@@ -0,0 +1,3 @@
++# CHECK: ValueError: '%{' is missing for %else substitution
++#
++# RUN: %if feature %{ echo %} %else fail
+diff --git a/llvm/utils/lit/tests/Inputs/shtest-if-else/test-neg4.txt b/llvm/utils/lit/tests/Inputs/shtest-if-else/test-neg4.txt
+new file mode 100644
+index 0000000000000..0ee85f2df2ed2
+--- /dev/null
++++ b/llvm/utils/lit/tests/Inputs/shtest-if-else/test-neg4.txt
+@@ -0,0 +1,3 @@
++# CHECK: ValueError: '%}' is missing for %else substitution
++#
++# RUN: %if feature %{ echo %} %else %{ fail
+diff --git a/llvm/utils/lit/tests/Inputs/shtest-if-else/test.txt b/llvm/utils/lit/tests/Inputs/shtest-if-else/test.txt
+new file mode 100644
+index 0000000000000..805a74de3a7ee
+--- /dev/null
++++ b/llvm/utils/lit/tests/Inputs/shtest-if-else/test.txt
+@@ -0,0 +1,92 @@
++# CHECK: -- Testing:{{.*}}
++# CHECK-NEXT: PASS: shtest-if-else :: test.txt (1 of 1)
++# CHECK-NEXT: Script:
++# CHECK-NEXT: --
++
++# RUN: %if feature %{ echo "test-1" %}
++# CHECK-NEXT: {{^.*'RUN}}: at line [[#@LINE-1]]'; echo "test-1"
++
++# If %else is not present it is treated like %else %{%}. Empty commands
++# are ignored.
++#
++# RUN: %if nofeature %{ echo "fail" %}
++# CHECK-NEXT: {{^.*'RUN}}: at line [[#@LINE-1]]'
++# CHECK-NOT: fail
++
++# RUN: %if nofeature %{ echo "fail" %} %else %{ echo "test-2" %}
++# CHECK-NEXT: {{^.*'RUN}}: at line [[#@LINE-1]]'; echo "test-2"
++
++# Spaces inside curly braces are not ignored
++#
++# RUN: echo test-%if feature %{ 3 %} %else %{ fail %}-test
++# RUN: echo test-%if feature %{ 4 4 %} %else %{ fail %}-test
++# RUN: echo test-%if nofeature %{ fail %} %else %{ 5 5 %}-test
++# CHECK-NEXT: {{^.*'RUN}}: at line [[#@LINE-3]]'; echo test- 3 -test
++# CHECK-NEXT: {{^.*'RUN}}: at line [[#@LINE-3]]'; echo test- 4 4 -test
++# CHECK-NEXT: {{^.*'RUN}}: at line [[#@LINE-3]]'; echo test- 5 5 -test
++
++# Escape line breaks for multi-line expressions
++#
++# RUN: %if feature  \
++# RUN:   %{ echo     \
++# RUN:     "test-5" \
++# RUN:   %}
++# CHECK-NEXT: {{^.*'RUN}}: at line [[#@LINE-4]]'; echo "test-5"
++
++# RUN: %if nofeature       \
++# RUN:   %{ echo "fail" %}   \
++# RUN: %else               \
++# RUN:   %{ echo "test-6" %}
++# CHECK-NEXT: {{^.*'RUN}}: at line [[#@LINE-4]]'; echo "test-6"
++
++# RUN: echo "test%if feature %{%} %else %{%}-7"
++# CHECK-NEXT: {{^.*'RUN}}: at line [[#@LINE-1]]'; echo "test-7"
++
++# Escape %if. Without %if..%else context '%{' and '%}' are treated
++# literally.
++#
++# RUN: echo %%if feature %{ echo "test-8" %}
++# CHECK-NEXT: {{^.*'RUN}}: at line [[#@LINE-1]]'; echo %if feature %{ echo "test-8" %}
++
++# Nested expressions are supported:
++#
++# RUN: echo %if feature %{ %if feature %{ %if nofeature %{"fail"%} %else %{"test-9"%} %} %}
++# CHECK-NEXT: {{^.*'RUN}}: at line [[#@LINE-1]]'; echo "test-9"
++
++# Binary expression evaluation and regex match can be used as
++# conditions.
++#
++# RUN: echo %if feature && !nofeature %{ "test-10" %}
++# RUN: echo %if feature && nofeature %{ "fail" %} %else %{ "test-11" %}
++# RUN: echo %if {{fea.+}} %{ "test-12" %} %else %{ "fail" %}
++# CHECK-NEXT: {{^.*'RUN}}: at line [[#@LINE-3]]'; echo "test-10"
++# CHECK-NEXT: {{^.*'RUN}}: at line [[#@LINE-3]]'; echo "test-11"
++# CHECK-NEXT: {{^.*'RUN}}: at line [[#@LINE-3]]'; echo "test-12"
++
++# Spaces between %if and %else are ignored. If there is no %else -
++# space after %if %{...%} is not ignored.
++#
++# RUN: echo XX %if feature %{YY%} ZZ
++# RUN: echo AA %if feature %{BB%} %else %{CC%} DD
++# RUN: echo AA %if nofeature %{BB%} %else %{CC%} DD
++# CHECK-NEXT: {{^.*'RUN}}: at line [[#@LINE-3]]'; echo XX YY ZZ
++# CHECK-NEXT: {{^.*'RUN}}: at line [[#@LINE-3]]'; echo AA BB DD
++# CHECK-NEXT: {{^.*'RUN}}: at line [[#@LINE-3]]'; echo AA CC DD
++
++# '{' and '}' can be used without escaping
++#
++# RUN: %if feature %{echo {}%}
++# CHECK-NEXT: {{^.*'RUN}}: at line [[#@LINE-1]]'; echo {}
++
++# Spaces are not required
++#
++# RUN: echo %if feature%{"ok"%}%else%{"fail"%}
++# CHECK-NEXT: {{^.*'RUN}}: at line [[#@LINE-1]]'; echo "ok"
++
++# Substitutions with braces are handled correctly
++#
++# RUN: echo %{sub} %if feature%{test-%{sub}%}%else%{"fail"%}
++# CHECK-NEXT: {{^.*'RUN}}: at line [[#@LINE-1]]'; echo ok test-ok
++
++# CHECK-NEXT: --
++# CHECK-NEXT: Exit Code: 0
+diff --git a/llvm/utils/lit/tests/shtest-if-else.py b/llvm/utils/lit/tests/shtest-if-else.py
+new file mode 100644
+index 0000000000000..aaf94a6e24372
+--- /dev/null
++++ b/llvm/utils/lit/tests/shtest-if-else.py
+@@ -0,0 +1,14 @@
++# RUN: %{lit} -v --show-all %{inputs}/shtest-if-else/test.txt \
++# RUN:    | FileCheck %{inputs}/shtest-if-else/test.txt --match-full-lines
++
++# RUN: not %{lit} -v --show-all %{inputs}/shtest-if-else/test-neg1.txt 2>&1 \
++# RUN:    | FileCheck %{inputs}/shtest-if-else/test-neg1.txt
++
++# RUN: not %{lit} -v --show-all %{inputs}/shtest-if-else/test-neg2.txt 2>&1 \
++# RUN:    | FileCheck %{inputs}/shtest-if-else/test-neg2.txt
++
++# RUN: not %{lit} -v --show-all %{inputs}/shtest-if-else/test-neg3.txt 2>&1 \
++# RUN:    | FileCheck %{inputs}/shtest-if-else/test-neg3.txt
++
++# RUN: not %{lit} -v --show-all %{inputs}/shtest-if-else/test-neg4.txt 2>&1 \
++# RUN:    | FileCheck %{inputs}/shtest-if-else/test-neg4.txt
