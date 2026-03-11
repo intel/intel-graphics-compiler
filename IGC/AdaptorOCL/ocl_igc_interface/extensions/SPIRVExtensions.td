@@ -329,6 +329,24 @@ def SPV_INTEL_subgroup_matrix_multiply_accumulate : Extension<
   AllOf<[isCoreChildOf<IGFX_XE_HPG_CORE>, Not<ExactPlatform<IGFX_METEORLAKE>>, Not<ExactPlatform<IGFX_ARROWLAKE>>]>
 >;
 
+def SPV_INTEL_subgroup_matrix_multiply_accumulate_float4 : ExperimentalExtension<
+  "SPV_INTEL_subgroup_matrix_multiply_accumulate_float4",
+  [ Capability<"MatrixAPackedFloat4E2M1INTEL">,
+    Capability<"MatrixBPackedFloat4E2M1INTEL"> ],
+  "https://github.com/intel/llvm/blob/sycl/sycl/doc/design/spirv-extensions/SPV_INTEL_subgroup_matrix_multiply_accumulate_float4.asciidoc",
+  isCoreChildOf<IGFX_XE3P_CORE>
+>;
+
+def SPV_INTEL_subgroup_matrix_multiply_accumulate_float8 : ExperimentalExtension<
+  "SPV_INTEL_subgroup_matrix_multiply_accumulate_float8",
+  [ Capability<"MatrixAPackedFloat8E4M3INTEL">,
+    Capability<"MatrixBPackedFloat8E4M3INTEL">,
+    Capability<"MatrixAPackedFloat8E5M2INTEL">,
+    Capability<"MatrixBPackedFloat8E5M2INTEL"> ],
+  "https://github.com/intel/llvm/blob/sycl/sycl/doc/design/spirv-extensions/SPV_INTEL_subgroup_matrix_multiply_accumulate_float8.asciidoc",
+  isCoreChildOf<IGFX_XE3P_CORE>
+>;
+
 def SPV_INTEL_bindless_images : ExperimentalExtension<
   "SPV_INTEL_bindless_images",
   [ Capability<"BindlessImagesINTEL"> ],
@@ -430,7 +448,7 @@ def SPV_KHR_bfloat16 : ExperimentalExtension<
 
 def SPV_INTEL_subgroup_scaled_matrix_multiply_accumulate : ExperimentalExtension<
   "SPV_INTEL_subgroup_scaled_matrix_multiply_accumulate",
-  [ Capability<"Subgroup​Scaled​Matrix​Multiply​Accumulate​INTEL"> ],
+  [ Capability<"SubgroupScaledMatrixMultiplyAccumulateINTEL"> ],
   "https://github.com/intel/llvm/pull/20656",
   isCoreChildOf<IGFX_XE3P_CORE>
 >;
