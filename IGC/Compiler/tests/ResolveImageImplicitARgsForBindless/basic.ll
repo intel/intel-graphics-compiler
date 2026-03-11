@@ -125,5 +125,7 @@ declare spir_func i32 @__builtin_IB_get_image_num_samples(i64 noundef) local_unn
 
 !IGCMetadata = !{!0}
 
-!0 = !{!"ModuleMD", !1}
+!0 = !{!"ModuleMD", !1, !2}
 !1 = !{!"UseBindlessImage", i1 true}
+!2 = !{!"extensions", !3}
+!3 = !{!"spvINTELBindlessImages", i1 true}

@@ -87,7 +87,7 @@ bool ResolveImageImplicitArgsForBindless::runOnModule(Module &M) {
   mChanged = false;
 
   CodeGenContext *Ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
-  if (!Ctx->getModuleMetaData()->UseBindlessImage)
+  if (!Ctx->getModuleMetaData()->extensions.spvINTELBindlessImages)
     return false; // Bindless exclusive pass.
   mDriverInfo = &Ctx->m_DriverInfo;
 
