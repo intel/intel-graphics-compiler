@@ -50,7 +50,7 @@ int IR_Builder::translateVISAQWGatherInst(
 
   unsigned exSize = Get_VISA_Exec_Size(execSize);
   G4_ExecSize instExSize = G4_ExecSize(Get_VISA_Exec_Size(instExecSize));
-  unsigned int instOpt = Get_Gen4_Emask(eMask, instExSize);
+  unsigned int instOpt = Get_Gen4_Emask(eMask, instExSize, hasNibCtrl());
   uint32_t messageLength = (exSize / 8);
   uint32_t responseLength =
       Get_Common_ISA_SVM_Block_Num(numBlocks) * 2 * (exSize / 8);
@@ -77,7 +77,7 @@ int IR_Builder::translateVISAQWScatterInst(
 
   G4_ExecSize exSize = toExecSize(execSize);
   G4_ExecSize instExSize = toExecSize(instExecSize);
-  unsigned int instOpt = Get_Gen4_Emask(eMask, instExSize);
+  unsigned int instOpt = Get_Gen4_Emask(eMask, instExSize, hasNibCtrl());
   bool useSplitSend = useSends();
 
   PayloadSource sources[2]; // Maximal 2 sources, offsets + src
@@ -466,7 +466,7 @@ int IR_Builder::translateVISAGatherInst(
   }
 
   G4_ExecSize exsize = G4_ExecSize(Get_VISA_Exec_Size(executionSize));
-  unsigned int instOpt = Get_Gen4_Emask(emask, exsize);
+  unsigned int instOpt = Get_Gen4_Emask(emask, exsize, hasNibCtrl());
   bool headerLess = isMessageHeaderOptional(surface, gOffOpnd);
   // Element size in gather/scatter message. Initially, we assume it's the
   // same as the request.
@@ -676,7 +676,7 @@ int IR_Builder::translateVISAScatterInst(
   TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
 
   G4_ExecSize exsize = G4_ExecSize(Get_VISA_Exec_Size(executionSize));
-  G4_InstOpts instOpt = Get_Gen4_Emask(emask, exsize);
+  G4_InstOpts instOpt = Get_Gen4_Emask(emask, exsize, hasNibCtrl());
   G4_Predicate *pred = NULL;
   // Element size in gather/scatter message. Initially, we assume it's the same
   // as the request.
@@ -868,7 +868,7 @@ int IR_Builder::translateVISAGather4Inst(
   TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
 
   G4_ExecSize exsize = G4_ExecSize(Get_VISA_Exec_Size(executionSize));
-  G4_InstOpts instOpt = Get_Gen4_Emask(emask, exsize);
+  G4_InstOpts instOpt = Get_Gen4_Emask(emask, exsize, hasNibCtrl());
   unsigned int num_channel = chMask.getNumEnabledChannels();
 
   uint8_t numElt = mapExecSizeToNumElts[executionSize];
@@ -1027,7 +1027,7 @@ int IR_Builder::translateVISAScatter4Inst(
   TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
 
   G4_ExecSize exsize = G4_ExecSize(Get_VISA_Exec_Size(executionSize));
-  G4_InstOpts instOpt = Get_Gen4_Emask(emask, exsize);
+  G4_InstOpts instOpt = Get_Gen4_Emask(emask, exsize, hasNibCtrl());
 
   unsigned int num_channel = chMask.getNumEnabledChannels();
 
@@ -1244,7 +1244,7 @@ int IR_Builder::translateVISADwordAtomicInst(
   G4_ExecSize exSize = toExecSize(execSize);
   // can be 1 for scalar atomics
   G4_ExecSize instExSize = toExecSize(instExecSize);
-  G4_InstOpts instOpt = Get_Gen4_Emask(eMask, instExSize);
+  G4_InstOpts instOpt = Get_Gen4_Emask(eMask, instExSize, hasNibCtrl());
   unsigned subOpc = Get_Atomic_Op(atomicOp);
 
   bool useSplitSend = useSends();
@@ -1403,7 +1403,7 @@ int IR_Builder::translateVISAGather4TypedInst(
 
   G4_ExecSize exSize = executionSize == EXEC_SIZE_16 ? g4::SIMD16 : g4::SIMD8;
   vISA_ASSERT_INPUT((exSize == 8 || hasSIMD16TypedRW()), "only simd8 is supported");
-  G4_InstOpts instOpt = Get_Gen4_Emask(emask, exSize);
+  G4_InstOpts instOpt = Get_Gen4_Emask(emask, exSize, hasNibCtrl());
   int numEnabledChannels = chMask.getNumEnabledChannels();
 
   bool useSplitSend = useSends();
@@ -1474,7 +1474,7 @@ int IR_Builder::translateVISAScatter4TypedInst(
   G4_ExecSize exSize = executionSize == EXEC_SIZE_16 ? g4::SIMD16 : g4::SIMD8;
   vISA_ASSERT_INPUT((exSize == g4::SIMD8 || hasSIMD16TypedRW()),
          "only simd8 is supported");
-  G4_InstOpts instOpt = Get_Gen4_Emask(emask, exSize);
+  G4_InstOpts instOpt = Get_Gen4_Emask(emask, exSize, hasNibCtrl());
   int numEnabledChannels = chMask.getNumEnabledChannels();
 
   bool useSplitSend = useSends();
@@ -1559,7 +1559,7 @@ int IR_Builder::translateVISATypedAtomicInst(
 
   G4_ExecSize exSize{Get_VISA_Exec_Size(execSize)};
   G4_ExecSize instExSize{Get_VISA_Exec_Size(instExecSize)};
-  G4_InstOpts instOpt = Get_Gen4_Emask(emask, instExSize);
+  G4_InstOpts instOpt = Get_Gen4_Emask(emask, instExSize, hasNibCtrl());
 
   if (atomicOp == ATOMIC_CMPXCHG) {
     // we have to swap src0 and src1 since vISA has them in different order from
@@ -1689,7 +1689,7 @@ int IR_Builder::translateGather4Inst(
 
   G4_ExecSize exSize = toExecSize(execSize);
   G4_ExecSize instExSize = toExecSize(instExecSize);
-  unsigned instOpt = Get_Gen4_Emask(eMask, exSize);
+  unsigned instOpt = Get_Gen4_Emask(eMask, exSize, hasNibCtrl());
 
   bool useSplitSend = useSends();
   bool useHeader =
@@ -1775,7 +1775,7 @@ int IR_Builder::translateScatter4Inst(
 
   G4_ExecSize exSize = toExecSize(execSize);
   G4_ExecSize instExSize = toExecSize(instExecSize);
-  unsigned instOpt = Get_Gen4_Emask(eMask, exSize);
+  unsigned instOpt = Get_Gen4_Emask(eMask, exSize, hasNibCtrl());
 
   bool useSplitSend = useSends();
   bool useHeader =
@@ -1923,7 +1923,7 @@ int IR_Builder::translateByteGatherInst(
 
   G4_ExecSize exSize{Get_VISA_Exec_Size(execSize)};
   G4_ExecSize instExSize{Get_VISA_Exec_Size(instExecSize)};
-  G4_InstOpts instOpt = Get_Gen4_Emask(eMask, instExSize);
+  G4_InstOpts instOpt = Get_Gen4_Emask(eMask, instExSize, hasNibCtrl());
   unsigned numBatch = GetNumBatch(SVM_BLOCK_TYPE_BYTE, numBlocks);
 
   bool isSLM = IsSLMSurface(surface);
@@ -2014,7 +2014,7 @@ int IR_Builder::translateByteScatterInst(
 
   G4_ExecSize exSize{Get_VISA_Exec_Size(execSize)};
   G4_ExecSize instExSize{Get_VISA_Exec_Size(instExecSize)};
-  G4_InstOpts instOpt = Get_Gen4_Emask(eMask, exSize);
+  G4_InstOpts instOpt = Get_Gen4_Emask(eMask, exSize, hasNibCtrl());
   unsigned numBatch = GetNumBatch(SVM_BLOCK_TYPE_BYTE, numBlocks);
 
   bool isSLM = IsSLMSurface(surface);
@@ -2302,7 +2302,7 @@ int IR_Builder::translateVISASVMScatterReadInst(
 
   G4_ExecSize exSize{Get_VISA_Exec_Size(execSize)};
   G4_ExecSize instExSize{Get_VISA_Exec_Size(instExecSize)};
-  G4_InstOpts instOpt = Get_Gen4_Emask(eMask, instExSize);
+  G4_InstOpts instOpt = Get_Gen4_Emask(eMask, instExSize, hasNibCtrl());
 
   uint32_t messageLength = (8 * exSize) / getGRFSize();
   uint32_t numDWperLane = 0;
@@ -2370,7 +2370,7 @@ int IR_Builder::translateVISASVMScatterWriteInst(
 
   G4_ExecSize exSize{Get_VISA_Exec_Size(execSize)};
   G4_ExecSize instExSize{Get_VISA_Exec_Size(instExecSize)};
-  G4_InstOpts instOpt = Get_Gen4_Emask(eMask, instExSize);
+  G4_InstOpts instOpt = Get_Gen4_Emask(eMask, instExSize, hasNibCtrl());
 
   bool useSplitSend = useSends();
 
@@ -2480,7 +2480,7 @@ int IR_Builder::translateVISASVMAtomicInst(
 
   G4_ExecSize exSize{Get_VISA_Exec_Size(execSize)};
   G4_ExecSize instExSize{Get_VISA_Exec_Size(instExecSize)};
-  G4_InstOpts instOpt = Get_Gen4_Emask(emask, instExSize);
+  G4_InstOpts instOpt = Get_Gen4_Emask(emask, instExSize, hasNibCtrl());
 
   if (atomicOp == ATOMIC_CMPXCHG) {
     // we have to swap src0 and src1 since vISA has them in different order from
@@ -2603,7 +2603,7 @@ int IR_Builder::translateSVMGather4Inst(VISA_Exec_Size execSize,
               "Only support SIMD8 or SIMD16!");
 
   G4_ExecSize exSize{Get_VISA_Exec_Size(execSize)};
-  G4_InstOpts instOpt = Get_Gen4_Emask(eMask, exSize);
+  G4_InstOpts instOpt = Get_Gen4_Emask(eMask, exSize, hasNibCtrl());
 
   bool useSplitSend = useSends();
 
@@ -2663,7 +2663,7 @@ int IR_Builder::translateSVMScatter4Inst(VISA_Exec_Size execSize,
               "Only support SIMD8 or SIMD16!");
 
   G4_ExecSize exSize{Get_VISA_Exec_Size(execSize)};
-  G4_InstOpts instOpt = Get_Gen4_Emask(eMask, exSize);
+  G4_InstOpts instOpt = Get_Gen4_Emask(eMask, exSize, hasNibCtrl());
   bool useSplitSend = useSends();
 
   // In case non-zero global offset is specified, we need to recalculate

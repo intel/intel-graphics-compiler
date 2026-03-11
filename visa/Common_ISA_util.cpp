@@ -7,13 +7,13 @@ SPDX-License-Identifier: MIT
 ============================= end_copyright_notice ===========================*/
 
 #include "Common_ISA_util.h"
+#include "Assertions.h"
 #include "Common_ISA_framework.h"
 #include "G4_Opcode.h"
 #include "PreDefinedVars.h"
+#include "visa_igc_common_header.h"
 #include <sstream>
 #include <string.h>
-#include "visa_igc_common_header.h"
-#include "Assertions.h"
 
 using namespace vISA;
 
@@ -459,8 +459,7 @@ bool hasPredicate(ISA_Opcode op) {
             op == ISA_3D_GATHER4 || op == ISA_3D_RT_WRITE ||
             op == ISA_3D_URB_WRITE || op == ISA_3D_TYPED_ATOMIC ||
             op == ISA_QW_GATHER || op == ISA_QW_SCATTER
-            || op == ISA_RAW_SENDG
-    );
+            || op == ISA_RAW_SENDG);
   case ISA_Inst_Flow:
     return !(op == ISA_SUBROUTINE || op == ISA_LABEL || op == ISA_SWITCHJMP);
   case ISA_Inst_LSC:
@@ -526,7 +525,7 @@ bool hasLabelSrc(ISA_Opcode op) {
     if (op == ISA_RET || op == ISA_FRET || op == ISA_IFCALL || op == ISA_FADDR)
       return false;
     else //(op == ISA_SUBROUTINE || op == ISA_LABEL || op == ISA_JMP || op ==
-         //ISA_CALL || op == ISA_FCALL)
+         // ISA_CALL || op == ISA_FCALL)
       return true;
   } else if (op == ISA_GOTO)
     return true;
@@ -545,7 +544,8 @@ unsigned Get_Common_ISA_SVM_Block_Num(VISA_SVM_Block_Num num) {
   case SVM_BLOCK_NUM_8:
     return 8;
   default:
-    vISA_ASSERT_UNREACHABLE("Illegal SVM block number (should be 1, 2, 4, or 8).");
+    vISA_ASSERT_UNREACHABLE(
+        "Illegal SVM block number (should be 1, 2, 4, or 8).");
   }
   return 0;
 }
@@ -858,13 +858,14 @@ VISA_EMask_Ctrl Get_Next_EMask(VISA_EMask_Ctrl currEMask,
   return vISA_NUM_EMASK;
 }
 
-G4_InstOpts Get_Gen4_Emask(VISA_EMask_Ctrl cisa_emask, G4_ExecSize exec_size) {
+G4_InstOpts Get_Gen4_Emask(VISA_EMask_Ctrl cisa_emask, G4_ExecSize exec_size,
+                           bool hasNibCtrl) {
 
   switch (exec_size.value) {
   case 32:
     switch (cisa_emask) {
     case vISA_EMASK_M1:
-      return InstOpt_NoOpt;
+      return InstOpt_M0;
     case vISA_EMASK_M5:
       return InstOpt_M16;
     case vISA_EMASK_M1_NM:
@@ -917,6 +918,17 @@ G4_InstOpts Get_Gen4_Emask(VISA_EMask_Ctrl cisa_emask, G4_ExecSize exec_size) {
   default:
     // size 4, 2, 1
     {
+      // M2/M4/M6/M8 (and NM variants) produce nib offsets (4,12,20,28) that
+      // require nibCtrl support. Assert early if the platform lacks it.
+      vISA_ASSERT(hasNibCtrl || (cisa_emask != vISA_EMASK_M2 &&
+                                 cisa_emask != vISA_EMASK_M4 &&
+                                 cisa_emask != vISA_EMASK_M6 &&
+                                 cisa_emask != vISA_EMASK_M8 &&
+                                 cisa_emask != vISA_EMASK_M2_NM &&
+                                 cisa_emask != vISA_EMASK_M4_NM &&
+                                 cisa_emask != vISA_EMASK_M6_NM &&
+                                 cisa_emask != vISA_EMASK_M8_NM),
+                  "nibCtrl emask not supported on this platform");
       switch (cisa_emask) {
       case vISA_EMASK_M1:
         return InstOpt_M0;
@@ -962,7 +974,8 @@ unsigned Get_Atomic_Op(VISAAtomicOps op) {
 
   switch (op) {
   default:
-    vISA_ASSERT_UNREACHABLE("CISA error: Invalid vISA atomic op for DWord atomic write.");
+    vISA_ASSERT_UNREACHABLE(
+        "CISA error: Invalid vISA atomic op for DWord atomic write.");
     break;
   case ATOMIC_ADD:
     return GEN_ATOMIC_ADD;
@@ -1163,7 +1176,8 @@ int vector_opnd::getSizeInBinary() const {
     break;
   }
   default: {
-    vISA_ASSERT_UNREACHABLE("Invalid Vector Operand Class. Size cannot be determined.");
+    vISA_ASSERT_UNREACHABLE(
+        "Invalid Vector Operand Class. Size cannot be determined.");
     break;
   }
   }
@@ -1306,7 +1320,7 @@ VISA_Exec_Size Get_VISA_Exec_Size_From_Raw_Size(unsigned int size) {
     return EXEC_SIZE_32;
   default:
     vISA_ASSERT(false,
-                 "illegal common ISA execsize (should be 1, 2, 4, 8, 16, 32).");
+                "illegal common ISA execsize (should be 1, 2, 4, 8, 16, 32).");
     return EXEC_SIZE_ILLEGAL;
   }
 }
@@ -1403,15 +1417,13 @@ VISA_Type getVectorOperandType(const print_format_provider_t *header,
 
 const raw_opnd &getRawOperand(const CISA_INST *inst, unsigned i) {
   vISA_ASSERT(inst, "Argument Exception: argument inst is NULL.");
-  vISA_ASSERT(inst->opnd_num > i,
-               "No such operand, i, for instruction inst.");
+  vISA_ASSERT(inst->opnd_num > i, "No such operand, i, for instruction inst.");
   return inst->opnd_array[i]->_opnd.r_opnd;
 }
 
 bool isNullRawOperand(const CISA_INST *inst, unsigned i) {
   vISA_ASSERT(inst, "Argument Exception: argument inst is NULL.");
-  vISA_ASSERT(inst->opnd_num > i,
-               "No such operand, i, for instruction inst.");
+  vISA_ASSERT(inst->opnd_num > i, "No such operand, i, for instruction inst.");
   return inst->opnd_array[i]->_opnd.r_opnd.index == 0;
 }
 
@@ -1421,15 +1433,13 @@ bool isNotNullRawOperand(const CISA_INST *inst, unsigned i) {
 
 const vector_opnd &getVectorOperand(const CISA_INST *inst, unsigned i) {
   vISA_ASSERT(inst, "Argument Exception: argument inst is NULL.");
-  vISA_ASSERT(inst->opnd_num > i,
-               "No such operand, i, for instruction inst.");
+  vISA_ASSERT(inst->opnd_num > i, "No such operand, i, for instruction inst.");
   return inst->opnd_array[i]->_opnd.v_opnd;
 }
 
 CISA_opnd_type getOperandType(const CISA_INST *inst, unsigned i) {
   vISA_ASSERT(inst, "Argument Exception: argument inst is NULL.");
-  vISA_ASSERT(inst->opnd_num > i,
-               "No such operand, i, for instruction inst.");
+  vISA_ASSERT(inst->opnd_num > i, "No such operand, i, for instruction inst.");
   return inst->opnd_array[i]->opnd_type;
 }
 
@@ -1644,7 +1654,7 @@ LSC_CACHE_OPTS convertLSCLoadStoreCacheControlEnum(LSC_L1_L3_CC L1L3cc,
   return cacheOpts;
 }
 
-std::tuple<Caching,Caching,Caching> vISA::ToLdCaching(LSC_L1_L3_CC x) {
+std::tuple<Caching, Caching, Caching> vISA::ToLdCaching(LSC_L1_L3_CC x) {
   // Todo: Need to add encodings for all combination
   switch (x) {
   case LSC_L1DEF_L3DEF:
@@ -1663,11 +1673,12 @@ std::tuple<Caching,Caching,Caching> vISA::ToLdCaching(LSC_L1_L3_CC x) {
     return std::make_tuple(Caching::ST, Caching::CA, Caching::UC);
   case LSC_L1IAR_L3IAR:
     return std::make_tuple(Caching::RI, Caching::RI, Caching::RI);
-  default: break;
+  default:
+    break;
   }
   return std::make_tuple(Caching::INVALID, Caching::INVALID, Caching::INVALID);
 }
-std::tuple<Caching,Caching,Caching> vISA::ToStCaching(LSC_L1_L3_CC x) {
+std::tuple<Caching, Caching, Caching> vISA::ToStCaching(LSC_L1_L3_CC x) {
   // Todo: Need to add encodings for all combination
   switch (x) {
   case LSC_L1DEF_L3DEF:
@@ -1684,7 +1695,8 @@ std::tuple<Caching,Caching,Caching> vISA::ToStCaching(LSC_L1_L3_CC x) {
     return std::make_tuple(Caching::ST, Caching::WB, Caching::UC);
   case LSC_L1IAR_WB_L3C_WB:
     return std::make_tuple(Caching::WB, Caching::WB, Caching::UC);
-  default: break;
+  default:
+    break;
   }
   return std::make_tuple(Caching::INVALID, Caching::INVALID, Caching::INVALID);
 }

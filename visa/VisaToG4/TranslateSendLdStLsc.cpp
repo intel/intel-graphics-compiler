@@ -404,7 +404,7 @@ int IR_Builder::translateLscUntypedInst(
                     IS_DTYPE(src0Addr->getType()), ":a32* expects D/UD");
 
   const G4_ExecSize execSize = toExecSize(visaExecSize);
-  const G4_InstOpts instOpt = Get_Gen4_Emask(execCtrl, execSize);
+  const G4_InstOpts instOpt = Get_Gen4_Emask(execCtrl, execSize, hasNibCtrl());
 
   const uint32_t BYTES_PER_REG = getGRFSize();
 
@@ -808,7 +808,7 @@ int IR_Builder::translateLscUntypedInstUnified(
 
 
   const G4_ExecSize execSize = toExecSize(visaExecSize);
-  const G4_InstOpts instOpt = Get_Gen4_Emask(execCtrl, execSize);
+  const G4_InstOpts instOpt = Get_Gen4_Emask(execCtrl, execSize, hasNibCtrl());
 
   const uint32_t BYTES_PER_REG = getGRFSize();
 
@@ -1010,7 +1010,7 @@ int IR_Builder::translateLscUntypedBlock2DInstUnified(
   vISA_ASSERT_INPUT(opInfo.isBlock2D(), "not an LSC block2d op");
 
   const G4_ExecSize execSize = toExecSize(visaExecSize);
-  const G4_InstOpts instOpt = Get_Gen4_Emask(emask, execSize);
+  const G4_InstOpts instOpt = Get_Gen4_Emask(emask, execSize, hasNibCtrl());
 
   // block2d immediate offsets that don't fit in 12b (signed) must be
   // emulated in the payload creation
@@ -1104,7 +1104,7 @@ int IR_Builder::translateLscUntypedBlock2DInstUnified(
   vISA_ASSERT_INPUT(opInfo.isBlock2D(), "not an LSC block2d op");
 
   const G4_ExecSize execSize = toExecSize(visaExecSize);
-  const G4_InstOpts instOpt = Get_Gen4_Emask(emask, execSize);
+  const G4_InstOpts instOpt = Get_Gen4_Emask(emask, execSize, hasNibCtrl());
 
   // block2d immediate offsets that don't fit in 12b (signed) must be
   // emulated in the payload creation
@@ -1213,7 +1213,7 @@ int IR_Builder::translateLscUntypedBlock2DInst(
   vISA_ASSERT_INPUT(opInfo.isBlock2D(), "not an LSC block2d op");
 
   const G4_ExecSize execSize = toExecSize(visaExecSize);
-  const G4_InstOpts instOpt = Get_Gen4_Emask(emask, execSize);
+  const G4_InstOpts instOpt = Get_Gen4_Emask(emask, execSize, hasNibCtrl());
 
   int emuImmOffX = 0, emuImmOffY = 0;
   auto immOffNeedsEmu = [&](int off) {
@@ -1375,7 +1375,7 @@ int IR_Builder::translateLscUntypedBlock2DInst(
   vISA_ASSERT_INPUT(opInfo.isBlock2D(), "not an LSC block2d op");
 
   const G4_ExecSize execSize = toExecSize(visaExecSize);
-  const G4_InstOpts instOpt = Get_Gen4_Emask(emask, execSize);
+  const G4_InstOpts instOpt = Get_Gen4_Emask(emask, execSize, hasNibCtrl());
 
   int emuImmOffX = 0, emuImmOffY = 0;
   auto immOffNeedsEmu = [&](int off) {
@@ -1535,7 +1535,7 @@ int IR_Builder::translateLscTypedInst(
   const uint32_t BYTES_PER_GRF = getGRFSize();
 
   const G4_ExecSize execSize = toExecSize(execSizeEnum);
-  const G4_InstOpts instOpt = Get_Gen4_Emask(emask, execSize);
+  const G4_InstOpts instOpt = Get_Gen4_Emask(emask, execSize, hasNibCtrl());
 
   const auto opInfo = LscOpInfoGet(op);
 
@@ -1695,7 +1695,7 @@ int IR_Builder::translateLscExtendedCacheCtrlInst(
   };
 
   const G4_ExecSize execSize = toExecSize(visaExecSize);
-  const G4_InstOpts instOpt = Get_Gen4_Emask(execCtrl, execSize);
+  const G4_InstOpts instOpt = Get_Gen4_Emask(execCtrl, execSize, hasNibCtrl());
 
   // three steps:
   // 1. create the message descriptor
@@ -1741,7 +1741,7 @@ int IR_Builder::translateLscTypedInstUnified(
   const uint32_t BYTES_PER_GRF = getGRFSize();
 
   const G4_ExecSize execSize = toExecSize(execSizeEnum);
-  const G4_InstOpts instOpt = Get_Gen4_Emask(emask, execSize);
+  const G4_InstOpts instOpt = Get_Gen4_Emask(emask, execSize, hasNibCtrl());
 
   const auto opInfo = LscOpInfoGet(op);
 
@@ -2155,13 +2155,13 @@ IR_Builder::lscBuildStridedPayload(G4_Predicate *pred,
         createDst(addrTmpDeclUq->getRegVar(), 0, 0, 1, Type_UQ);
     createInst(pred, G4_mov, nullptr, g4::NOSAT, g4::SIMD1, payloadDstAddrUq,
                src0AddrBase, nullptr,
-               Get_Gen4_Emask(vISA_EMASK_M1_NM, g4::SIMD1), true);
+               Get_Gen4_Emask(vISA_EMASK_M1_NM, g4::SIMD1, hasNibCtrl()), true);
   } else {
     G4_DstRegRegion *payloadDstAddrUd =
         createDst(addrTmpDeclUd->getRegVar(), 0, 0, 1, Type_UD);
     createInst(pred, G4_mov, nullptr, g4::NOSAT, g4::SIMD1, payloadDstAddrUd,
                src0AddrBase, nullptr,
-               Get_Gen4_Emask(vISA_EMASK_M1_NM, g4::SIMD1), true);
+               Get_Gen4_Emask(vISA_EMASK_M1_NM, g4::SIMD1, hasNibCtrl()), true);
   }
   //
   G4_DstRegRegion *payloadDstPitch =
@@ -2174,7 +2174,7 @@ IR_Builder::lscBuildStridedPayload(G4_Predicate *pred,
   }
   createInst(pred, G4_mov, 0, g4::NOSAT, g4::SIMD1, payloadDstPitch,
              src0AddrStride, nullptr,
-             Get_Gen4_Emask(vISA_EMASK_M1_NM, g4::SIMD1), true);
+             Get_Gen4_Emask(vISA_EMASK_M1_NM, g4::SIMD1, hasNibCtrl()), true);
   //
   return createSrc(addrTmpDeclUd->getRegVar(), 0, 0, getRegionScalar(),
                    Type_UD);
@@ -2221,14 +2221,14 @@ IR_Builder::lscBuildBlock2DPayload(LSC_DATA_SHAPE_BLOCK2D dataShape2D,
     G4_DstRegRegion *payloadDstAddr_0_Q =
         createDst(addrTmpDeclUq->getRegVar(), 0, dstSubReg, 1, Type_UQ);
     createInst(pred, G4_mov, nullptr, g4::NOSAT, g4::SIMD1, payloadDstAddr_0_Q,
-               src, nullptr, Get_Gen4_Emask(vISA_EMASK_M1_NM, g4::SIMD1), true);
+               src, nullptr, Get_Gen4_Emask(vISA_EMASK_M1_NM, g4::SIMD1, hasNibCtrl()), true);
   };
   auto movUD = [&](int dstSubReg, G4_Operand *src, const char *comm) {
     G4_DstRegRegion *payloadDst =
         createDst(addrTmpDeclUd->getRegVar(), 0, dstSubReg, 1, Type_UD);
     auto *i = createInst(pred, G4_mov, nullptr, g4::NOSAT, g4::SIMD1, payloadDst,
                          src, nullptr,
-                         Get_Gen4_Emask(vISA_EMASK_M1_NM, g4::SIMD1), true);
+                         Get_Gen4_Emask(vISA_EMASK_M1_NM, g4::SIMD1, hasNibCtrl()), true);
     if (comm)
       i->addComment(comm);
   };
@@ -2243,7 +2243,7 @@ IR_Builder::lscBuildBlock2DPayload(LSC_DATA_SHAPE_BLOCK2D dataShape2D,
     auto *i = createInst(pred, G4_add, nullptr, g4::NOSAT, g4::SIMD1,
                          payloadDst, src,
                          createImmWithLowerType(addend, Type_D),
-                         Get_Gen4_Emask(vISA_EMASK_M1_NM, g4::SIMD1), true);
+                         Get_Gen4_Emask(vISA_EMASK_M1_NM, g4::SIMD1, hasNibCtrl()), true);
     if (comm)
       i->addComment(comm);
   };
@@ -2481,7 +2481,7 @@ G4_SrcRegRegion *IR_Builder::lscMulAdd(G4_Predicate *pred, G4_ExecSize execSize,
     G4_Operand *mulImmOp = createImm(mulImm16, Type_W);
     createInst(pred, G4_mad, nullptr, false, execSize,
     dstRgn, addImmOpnd, srcRgn, mulImmOp,
-    Get_Gen4_Emask(execCtrl, execSize));
+    Get_Gen4_Emask(execCtrl, execSize, hasNibCtrl()));
     //
     return result;
     }
@@ -2531,7 +2531,7 @@ G4_SrcRegRegion *IR_Builder::lscMul(G4_Predicate *pred, G4_ExecSize execSize,
       }
       G4_INST *scaleInst =
           createBinOp(opcode, execSize, dst, srcMul, srcImm,
-                      Get_Gen4_Emask(execCtrl, execSize), true);
+                      Get_Gen4_Emask(execCtrl, execSize, hasNibCtrl()), true);
       scaleInst->setPredicate(pred);
       return createSrc(scaledAddrDcl->getRegVar(), 0, 0, getRegionStride1(),
                        Type_UD);
@@ -2589,7 +2589,7 @@ G4_SrcRegRegion *IR_Builder::lscAdd(G4_Predicate *pred, G4_ExecSize execSize,
       execSize == g4::SIMD1 ? getRegionScalar() : getRegionStride1();
   G4_Operand *immOp = createImmWithLowerType(addImm64, srcType);
   createInst(duplicateOperand(pred), G4_add, nullptr, g4::NOSAT, execSize, dst,
-             src0, immOp, Get_Gen4_Emask(execCtrl, execSize), true);
+             src0, immOp, Get_Gen4_Emask(execCtrl, execSize, hasNibCtrl()), true);
 
   return createSrc(result->getRegVar(), 0, 0, srcRgn, srcType);
 }
@@ -2615,7 +2615,7 @@ G4_SrcRegRegion *IR_Builder::lscAdd64AosNative(G4_Predicate *pred,
                "offset too big");
   G4_Imm *srcImm = createImm((int32_t)addImm64, Type_D);
   createInst(duplicateOperand(pred), G4_add, nullptr, g4::NOSAT, execSize, dst,
-             srcReg64, srcImm, Get_Gen4_Emask(execCtrl, execSize), true);
+             srcReg64, srcImm, Get_Gen4_Emask(execCtrl, execSize, hasNibCtrl()), true);
 
   return createSrc(result->getRegVar(), 0, 0, srcRgn1, srcReg64->getType());
 }
@@ -2681,7 +2681,7 @@ G4_SrcRegRegion *IR_Builder::lscAdd64AosEmu(G4_Predicate *pred,
     G4_INST *addLoInst = createInst(
         duplicateOperand(pred), G4_addc, nullptr, g4::NOSAT, passExecSize,
         dstAddcLo, srcAddcLo, srcImmLo32,
-        Get_Gen4_Emask(vISA_EMASK_M1_NM, passExecSize) | InstOpt_AccWrCtrl,
+        Get_Gen4_Emask(vISA_EMASK_M1_NM, passExecSize, hasNibCtrl()) | InstOpt_AccWrCtrl,
         true);
     G4_DstRegRegion *dstAcc0 =
         createDst(phyregpool.getAcc0Reg(), 0, 0, 1, Type_UD);
@@ -2696,11 +2696,11 @@ G4_SrcRegRegion *IR_Builder::lscAdd64AosEmu(G4_Predicate *pred,
     if (srcImmHi32) {
       createInst(duplicateOperand(pred), G4_add3, nullptr, g4::NOSAT,
                  passExecSize, dstAddHi, srcAcc0, srcAddHi, srcImmHi32,
-                 Get_Gen4_Emask(vISA_EMASK_M1_NM, passExecSize), true);
+                 Get_Gen4_Emask(vISA_EMASK_M1_NM, passExecSize, hasNibCtrl()), true);
     } else {
       createInst(duplicateOperand(pred), G4_add, nullptr, g4::NOSAT,
                  passExecSize, dstAddHi, srcAcc0, srcAddHi,
-                 Get_Gen4_Emask(vISA_EMASK_M1_NM, passExecSize), true);
+                 Get_Gen4_Emask(vISA_EMASK_M1_NM, passExecSize, hasNibCtrl()), true);
     }
     //
     G4_DstRegRegion *resultLo =
@@ -2709,7 +2709,7 @@ G4_SrcRegRegion *IR_Builder::lscAdd64AosEmu(G4_Predicate *pred,
         createSrc(TMP_LO32->getRegVar(), 0, 0, srcRgn1, Type_UD);
     createInst(duplicateOperand(pred), G4_mov, nullptr, g4::NOSAT, passExecSize,
                resultLo, tmpLoSrc, nullptr,
-               Get_Gen4_Emask(passExecCtrl, passExecSize), true);
+               Get_Gen4_Emask(passExecCtrl, passExecSize, hasNibCtrl()), true);
     //
     G4_DstRegRegion *resultHi =
         createDst(result->getRegVar(), 2 * pass, 1, dstRgnHz2, Type_UD);
@@ -2717,7 +2717,7 @@ G4_SrcRegRegion *IR_Builder::lscAdd64AosEmu(G4_Predicate *pred,
         createSrc(TMP_HI32->getRegVar(), 0, 0, srcRgn1, Type_UD);
     createInst(duplicateOperand(pred), G4_mov, nullptr, g4::NOSAT, passExecSize,
                resultHi, tmpHiSrc, nullptr,
-               Get_Gen4_Emask(passExecCtrl, passExecSize), true);
+               Get_Gen4_Emask(passExecCtrl, passExecSize, hasNibCtrl()), true);
     //
     passExecCtrl = Get_Next_EMask(passExecCtrl, passExecSize);
   }
@@ -2761,7 +2761,7 @@ G4_SrcRegRegion *IR_Builder::lscMul64Aos(G4_Predicate *pred,
             createDst(scaledAddrDcl->getRegVar(), 2 * pass, 0, 1, Type_UQ);
 
         createBinOp(duplicateOperand(pred), G4_shl, passExecSize, dst, srcShl,
-                    srcImm16D, Get_Gen4_Emask(execCtrl, passExecSize), true);
+                    srcImm16D, Get_Gen4_Emask(execCtrl, passExecSize, hasNibCtrl()), true);
       }
     } else if (hasWideMulMadOpsEnabled()) {
       // wide mul/mad support is enabled on XE3P
@@ -2775,7 +2775,7 @@ G4_SrcRegRegion *IR_Builder::lscMul64Aos(G4_Predicate *pred,
                   getRegionStride1(), Type_UD);
 
       createBinOp(duplicateOperand(pred), G4_mul, execSize, scaledAddr, srcMul,
-                  srcImm16D, Get_Gen4_Emask(execCtrl, execSize), true);
+                  srcImm16D, Get_Gen4_Emask(execCtrl, execSize, hasNibCtrl()), true);
 
     } else {
       // this is the sequence to generate when scaling a 64bit address by an imm
@@ -2820,7 +2820,7 @@ G4_SrcRegRegion *IR_Builder::lscMul64Aos(G4_Predicate *pred,
                       getRegionStride1(), Type_UD);
         G4_INST *mulInst = createBinOp(
             duplicateOperand(pred), G4_mul, passExecSize, acc0, srcMul,
-            srcImm16W, Get_Gen4_Emask(vISA_EMASK_M1_NM, passExecSize), true);
+            srcImm16W, Get_Gen4_Emask(vISA_EMASK_M1_NM, passExecSize, hasNibCtrl()), true);
 
         // mach
         G4_SrcRegRegion *srcMach =
@@ -2832,7 +2832,7 @@ G4_SrcRegRegion *IR_Builder::lscMul64Aos(G4_Predicate *pred,
         G4_INST *machInst = createInst(
             duplicateOperand(pred), G4_mach, nullptr, g4::NOSAT, passExecSize,
             tmpDst, srcMach, srcImm16D,
-            Get_Gen4_Emask(vISA_EMASK_M1_NM, passExecSize) | InstOpt_AccWrCtrl,
+            Get_Gen4_Emask(vISA_EMASK_M1_NM, passExecSize, hasNibCtrl()) | InstOpt_AccWrCtrl,
             true);
 
         // set mach properties regarding acc
@@ -2861,10 +2861,10 @@ G4_SrcRegRegion *IR_Builder::lscMul64Aos(G4_Predicate *pred,
                     getRegionStride1(), Type_UD);
 
       createBinOp(duplicateOperand(pred), G4_mul, execSize, tmpDst, srcMul2,
-                  srcImm16W, Get_Gen4_Emask(execCtrl, execSize), true);
+                  srcImm16W, Get_Gen4_Emask(execCtrl, execSize, hasNibCtrl()), true);
 
       createBinOp(duplicateOperand(pred), G4_mul, execSize, scaledAddrLo,
-                  srcMul1, srcImm16W, Get_Gen4_Emask(execCtrl, execSize), true);
+                  srcMul1, srcImm16W, Get_Gen4_Emask(execCtrl, execSize, hasNibCtrl()), true);
 
       // add
       G4_SrcRegRegion *srcAdd1 =
@@ -2873,7 +2873,7 @@ G4_SrcRegRegion *IR_Builder::lscMul64Aos(G4_Predicate *pred,
           createSrc(tmpDstDcl1->getRegVar(), 0, 0, getRegionStride1(), Type_D);
 
       createBinOp(duplicateOperand(pred), G4_add, execSize, scaledAddrHi,
-                  srcAdd1, srcAdd2, Get_Gen4_Emask(execCtrl, execSize), true);
+                  srcAdd1, srcAdd2, Get_Gen4_Emask(execCtrl, execSize, hasNibCtrl()), true);
     }
     return createSrc(scaledAddrDcl->getRegVar(), 0, 0, getRegionStride1(),
                      Type_UQ);
@@ -2935,7 +2935,7 @@ int IR_Builder::translateLscTypedBlock2DInst(
   vISA_ASSERT_INPUT(opInfo.isBlock2D(), "not an LSC block2d op");
 
   const G4_ExecSize execSize = g4::SIMD1;
-  const G4_InstOpts instOpt = Get_Gen4_Emask(vISA_EMASK_M1_NM, g4::SIMD1);
+  const G4_InstOpts instOpt = Get_Gen4_Emask(vISA_EMASK_M1_NM, g4::SIMD1, hasNibCtrl());
 
   G4_SrcRegRegion *src0Addr =
       lscBuildTypedBlock2DPayload(dataShape2D, xOffset, yOffset,
@@ -3057,7 +3057,7 @@ G4_SrcRegRegion *IR_Builder::lscBuildTypedBlock2DPayload(
     auto *inst =
         createInst(nullptr, G4_add, nullptr, g4::NOSAT, g4::SIMD1, payloadDst,
                    src, createImmWithLowerType(addend, Type_D),
-                   Get_Gen4_Emask(vISA_EMASK_M1_NM, g4::SIMD1), true);
+                   Get_Gen4_Emask(vISA_EMASK_M1_NM, g4::SIMD1, hasNibCtrl()), true);
     if (comm)
       inst->addComment(comm);
   };
@@ -3097,7 +3097,7 @@ int IR_Builder::translateLscUntypedAppendCounterAtomicInst(
   };
 
   const G4_ExecSize execSize = toExecSize(visaExecSize);
-  const G4_InstOpts instOpt = Get_Gen4_Emask(execCtrl, execSize);
+  const G4_InstOpts instOpt = Get_Gen4_Emask(execCtrl, execSize, hasNibCtrl());
 
   const uint32_t BYTES_PER_REG = getGRFSize();
 
@@ -3179,7 +3179,7 @@ G4_SrcRegRegion *IR_Builder::emulateImmOffsetBlock2D(G4_Predicate *pred,
   createInst(pred, G4_mov, nullptr, g4::NOSAT, G4_ExecSize(numElt),
              createDst(addrTmpDecl->getRegVar(), 0, 0, 1, Type_D),
              duplicateOperand(addrPayload), nullptr,
-             Get_Gen4_Emask(vISA_EMASK_M1_NM, G4_ExecSize(numElt)), true);
+             Get_Gen4_Emask(vISA_EMASK_M1_NM, G4_ExecSize(numElt), hasNibCtrl()), true);
 
   auto addD = [&](int subReg, int imm, const char *comm) {
     G4_DstRegRegion *payloadDst =
@@ -3188,7 +3188,7 @@ G4_SrcRegRegion *IR_Builder::emulateImmOffsetBlock2D(G4_Predicate *pred,
                                             getRegionScalar(), Type_D);
     auto *i = createInst(pred, G4_add, nullptr, g4::NOSAT, g4::SIMD1,
                          payloadDst, payloadSrc, createImm(imm, Type_D),
-                         Get_Gen4_Emask(vISA_EMASK_M1_NM, g4::SIMD1), true);
+                         Get_Gen4_Emask(vISA_EMASK_M1_NM, g4::SIMD1, hasNibCtrl()), true);
     if (comm)
       i->addComment(comm);
   };

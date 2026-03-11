@@ -408,7 +408,7 @@ G4_SrcRegRegion *IR_Builder::coalescePayload(
             std::min(srcSize, getNativeExecSize() * (laneSize == 8 ? 1u : 2u))};
         for (unsigned i = 0; i < numMoves; i++) {
           auto rowOffset = i * 2;
-          unsigned int instOpt = Get_Gen4_Emask(moveMask, MAX_SIMD);
+          unsigned int instOpt = Get_Gen4_Emask(moveMask, MAX_SIMD, hasNibCtrl());
           G4_DstRegRegion *dstRegion = createDst(payloadDeclUD->getRegVar(),
                                                  row + rowOffset, 0, 1, type);
           G4_SrcRegRegion *srcRegion = createSrc(src->getTopDcl()->getRegVar(),

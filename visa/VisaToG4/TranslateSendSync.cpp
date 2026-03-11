@@ -107,8 +107,8 @@ static G4_INST *translateFenceUnified(IR_Builder &irb, G4_Predicate *pred,
       src0,                       // src0 legacy barrier requires r0 (r0.2)
       irb.createNullSrc(Type_UD), // src1
       g4::SIMD1,                  // exec size
-      sendDesc, Get_Gen4_Emask(vISA_EMASK_M1_NM, g4::SIMD1),
-      nullptr);              // no surface state or a64 base
+      sendDesc, Get_Gen4_Emask(vISA_EMASK_M1_NM, g4::SIMD1, irb.hasNibCtrl()),
+      nullptr); // no surface state or a64 base
   return inst;
 }
 
@@ -159,7 +159,7 @@ G4_INST *IR_Builder::translateLscFence(G4_Predicate *pred, SFID sfid,
   const int src1Len = 0; // no data needed in src1
 
   const G4_ExecSize execSize = g4::SIMD1;
-  const G4_InstOpts instOpt = Get_Gen4_Emask(vISA_EMASK_M1_NM, execSize);
+  const G4_InstOpts instOpt = Get_Gen4_Emask(vISA_EMASK_M1_NM, execSize, hasNibCtrl());
 
   ///////////////////////////////////////////////////////////////////////////
   uint32_t desc = 0, exDesc = 0;
@@ -328,7 +328,8 @@ static void generateNamedBarrier(int &status, IR_Builder &irb,
         irb.createNullDst(Type_UD),                             // dst
         irb.createSrcRegRegion(header, irb.getRegionStride1()), // src0
         irb.createNullSrc(Type_UD),                             // src1
-        g4::SIMD1, sendDesc, Get_Gen4_Emask(vISA_EMASK_M1_NM, g4::SIMD1),
+        g4::SIMD1, sendDesc,
+        Get_Gen4_Emask(vISA_EMASK_M1_NM, g4::SIMD1, irb.hasNibCtrl()),
         nullptr // no ind0
     );
     (void)inst; // createLscSendgInst appends by default
@@ -370,7 +371,7 @@ static void appendDefaultBarrierUnified(IR_Builder &irb, G4_Predicate *prd) {
       src0,                       // src0 (legacy barrier needs r0 copy)
       irb.createNullSrc(Type_UD), // src1
       g4::SIMD1,                  // exec size
-      sendDesc, Get_Gen4_Emask(vISA_EMASK_M1_NM, g4::SIMD1),
+      sendDesc, Get_Gen4_Emask(vISA_EMASK_M1_NM, g4::SIMD1, irb.hasNibCtrl()),
       nullptr); // no surface state or a64 base
   (void)inst;
 }
@@ -436,7 +437,7 @@ void IR_Builder::generateSingleBarrier(G4_Predicate *prd, uint32_t id) {
       irb.createNullDst(Type_UD),                             // dst
       irb.createSrcRegRegion(header, irb.getRegionStride1()), // src0
       irb.createNullSrc(Type_UD),                             // src1
-      g4::SIMD1, sendDesc, Get_Gen4_Emask(vISA_EMASK_M1_NM, g4::SIMD1),
+      g4::SIMD1, sendDesc, Get_Gen4_Emask(vISA_EMASK_M1_NM, g4::SIMD1, hasNibCtrl()),
       nullptr // no ind0
     );
     (void)inst; // createLscSendgInst appends by default
@@ -935,7 +936,7 @@ G4_INST *IR_Builder::translateEot(G4_Predicate *prd) {
       src0,                   // src0 (requires r0 for num threads-per-TG)
       createNullSrc(Type_UD), // src1
       g4::SIMD1,              // exec size
-      sendDesc, Get_Gen4_Emask(vISA_EMASK_M1_NM, g4::SIMD1),
+      sendDesc, Get_Gen4_Emask(vISA_EMASK_M1_NM, g4::SIMD1, hasNibCtrl()),
       nullptr,
       false); // no surface state or a64 base
   inst->setEOT();

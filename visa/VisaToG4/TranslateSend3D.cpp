@@ -195,7 +195,7 @@ int IR_Builder::translateVISASampleInfoInst(VISA_Exec_Size executionSize,
   TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
 
   G4_ExecSize execSize{Get_VISA_Exec_Size(executionSize)};
-  G4_InstOpts instOpt = Get_Gen4_Emask(emask, execSize);
+  G4_InstOpts instOpt = Get_Gen4_Emask(emask, execSize, hasNibCtrl());
   VISAChannelMask channels = chMask.getAPI();
   bool useFakeHeader =
       (getPlatform() < GENX_SKL) ? false : (channels == CHANNEL_MASK_R);
@@ -291,7 +291,7 @@ int IR_Builder::translateVISAResInfoInst(
   TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
 
   G4_ExecSize execSize{Get_VISA_Exec_Size(executionSize)};
-  G4_InstOpts instOpt = Get_Gen4_Emask(emask, execSize);
+  G4_InstOpts instOpt = Get_Gen4_Emask(emask, execSize, hasNibCtrl());
   // For SKL if channels are continuous don't need header
 
   VISAChannelMask channels = chMask.getAPI();
@@ -435,7 +435,7 @@ int IR_Builder::translateVISAURBWrite3DInst(
   TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
 
   G4_ExecSize execSize{Get_VISA_Exec_Size(executionSize)};
-  G4_InstOpts instOpt = Get_Gen4_Emask(emask, execSize);
+  G4_InstOpts instOpt = Get_Gen4_Emask(emask, execSize, hasNibCtrl());
 
   if (numOut == 0) {
     vISA_ASSERT_INPUT(vertexData->isNullReg(),
@@ -618,7 +618,7 @@ int IR_Builder::translateVISARTWrite3DInst(
   TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
 
   G4_ExecSize execSize = toExecSize(executionSize);
-  G4_InstOpts instOpt = Get_Gen4_Emask(emask, execSize);
+  G4_InstOpts instOpt = Get_Gen4_Emask(emask, execSize, hasNibCtrl());
   bool useHeader = false;
 
   uint8_t varOffset = 0;
@@ -1707,7 +1707,7 @@ int IR_Builder::translateVISARTWrite3DInstUnified(
   TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
 
   G4_ExecSize execSize = toExecSize(executionSize);
-  G4_InstOpts instOpt = Get_Gen4_Emask(emask, execSize);
+  G4_InstOpts instOpt = Get_Gen4_Emask(emask, execSize, hasNibCtrl());
 
   // four steps
   // 1. create src0 payload
@@ -2069,7 +2069,7 @@ int IR_Builder::splitSampleInst(
                   createSrcRegRegion(header, getRegionStride1()), true);
   }
 
-  G4_InstOpts instOpt = Get_Gen4_Emask(emask, execSize);
+  G4_InstOpts instOpt = Get_Gen4_Emask(emask, execSize, hasNibCtrl());
   for (unsigned paramCounter = 0; paramCounter < numParms; ++paramCounter) {
     temp = params[paramCounter];
     uint32_t MovInstOpt = InstOpt_WriteEnable;
@@ -2164,7 +2164,7 @@ int IR_Builder::splitSampleInst(
   }
   // update emask
   emask = Get_Next_EMask(emask, execSize);
-  G4_InstOpts instOpt2 = Get_Gen4_Emask(emask, execSize);
+  G4_InstOpts instOpt2 = Get_Gen4_Emask(emask, execSize, hasNibCtrl());
 
   auto dupPredicate = [this](G4_Predicate *pred) {
     G4_Predicate *pred2 = nullptr;
@@ -2488,7 +2488,7 @@ int IR_Builder::translateVISASampler3DInst(
   TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
 
   G4_ExecSize execSize = toExecSize(executionSize);
-  G4_InstOpts instOpt = Get_Gen4_Emask(emask, execSize);
+  G4_InstOpts instOpt = Get_Gen4_Emask(emask, execSize, hasNibCtrl());
 
   // First setup message header and message payload
 
@@ -2666,7 +2666,7 @@ int IR_Builder::translateVISASampleInfoUnified(
   TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
 
   G4_ExecSize execSize = toExecSize(executionSize);
-  G4_InstOpts instOpt = Get_Gen4_Emask(emask, execSize);
+  G4_InstOpts instOpt = Get_Gen4_Emask(emask, execSize, hasNibCtrl());
 
   // with send simplification, the sampler operation is simplified in the
   // following ways:
@@ -2721,7 +2721,7 @@ int IR_Builder::translateVISAResInfoInstUnified(
   TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
 
   G4_ExecSize execSize = toExecSize(executionSize);
-  G4_InstOpts instOpt = Get_Gen4_Emask(emask, execSize);
+  G4_InstOpts instOpt = Get_Gen4_Emask(emask, execSize, hasNibCtrl());
 
   // with send simplification, the sampler operation is simplified in the
   // following ways:
@@ -2784,7 +2784,7 @@ int IR_Builder::translateVISASampler3DInstUnified(
   TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
 
   G4_ExecSize execSize = toExecSize(executionSize);
-  G4_InstOpts instOpt = Get_Gen4_Emask(emask, execSize);
+  G4_InstOpts instOpt = Get_Gen4_Emask(emask, execSize, hasNibCtrl());
 
   // For all Graphics IP post XE3 will use split send; split send is when the
   // source operands are distributed/split across 2 source operands as opposed
@@ -2911,7 +2911,7 @@ int IR_Builder::translateVISALoad3DInstUnified(
       surfaceIdx, samplerIdx, aoffimmi->asImm()->getInt(), false);
 
   G4_ExecSize execSize = toExecSize(executionSize);
-  G4_InstOpts instOpt = Get_Gen4_Emask(em, execSize);
+  G4_InstOpts instOpt = Get_Gen4_Emask(em, execSize, hasNibCtrl());
 
   if (!pairedSurface->isNullReg())
     useHeader = true;
@@ -3024,7 +3024,7 @@ int IR_Builder::translateVISALoad3DInst(
   useHeader = samplerCachingInHeader();
 
   G4_ExecSize execSize = toExecSize(executionSize);
-  G4_InstOpts instOpt = Get_Gen4_Emask(em, execSize);
+  G4_InstOpts instOpt = Get_Gen4_Emask(em, execSize, hasNibCtrl());
 
   const bool halfReturn = dst->getTypeSize() == 2;
   const bool halfInput = opndArray[0]->getTypeSize() == 2;
@@ -3140,7 +3140,7 @@ int IR_Builder::translateVISAGather3dInst(
   useHeader = samplerCachingInHeader();
 
   G4_ExecSize execSize = toExecSize(executionSize);
-  G4_InstOpts instOpt = Get_Gen4_Emask(em, execSize);
+  G4_InstOpts instOpt = Get_Gen4_Emask(em, execSize, hasNibCtrl());
 
   const bool FP16Return = dst->getTypeSize() == 2;
   const bool FP16Input = opndArray[0]->getType() == Type_HF;

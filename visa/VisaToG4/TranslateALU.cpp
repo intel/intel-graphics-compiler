@@ -17,7 +17,7 @@ int IR_Builder::translateVISAAddrInst(
   TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
 
   G4_ExecSize exsize = toExecSize(executionSize);
-  G4_InstOpts instOpt = Get_Gen4_Emask(emask, exsize);
+  G4_InstOpts instOpt = Get_Gen4_Emask(emask, exsize, hasNibCtrl());
 
   if (src1Opnd && src0Opnd->isAddrExp() && src1Opnd->isImm()) {
     src0Opnd->asAddrExp()->setOffset(src0Opnd->asAddrExp()->getOffset() +
@@ -44,7 +44,7 @@ int IR_Builder::translateVISAArithmeticInst(
 
   unsigned int instOpt = 0;
   G4_ExecSize exsize = toExecSize(executionSize);
-  instOpt |= Get_Gen4_Emask(emask, exsize);
+  instOpt |= Get_Gen4_Emask(emask, exsize, hasNibCtrl());
 
   if (IsMathInst(opcode)) {
     if (src1Opnd == NULL) {
@@ -157,7 +157,7 @@ int IR_Builder::translateVISADpasInst(VISA_Exec_Size executionSize,
   TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
 
   G4_ExecSize exsize = toExecSize(executionSize);
-  G4_InstOpts instOpt = Get_Gen4_Emask(emask, exsize);
+  G4_InstOpts instOpt = Get_Gen4_Emask(emask, exsize, hasNibCtrl());
   if (hasBFDstforDPAS() && A == GenPrecision::BF16) {
     // PVC allows BF dst and src0, and they are W/UW when coming into vISA,
     // so we fix the type here
@@ -199,7 +199,7 @@ int IR_Builder::translateVISABfnInst(
 
   unsigned int instOpt = 0;
   G4_ExecSize exsize = toExecSize(executionSize);
-  instOpt |= Get_Gen4_Emask(emask, exsize);
+  instOpt |= Get_Gen4_Emask(emask, exsize, hasNibCtrl());
 
   createBfnInst(booleanFuncCtrl, predOpnd, condMod, saturate, exsize, dstOpnd,
                 src0Opnd, src1Opnd, src2Opnd, instOpt, true);
@@ -227,7 +227,7 @@ int IR_Builder::translateVISACompareInst(
 
   G4_CondMod *condMod = NULL;
   G4_ExecSize exsize = toExecSize(execsize);
-  G4_InstOpts inst_opt = Get_Gen4_Emask(emask, exsize);
+  G4_InstOpts inst_opt = Get_Gen4_Emask(emask, exsize, hasNibCtrl());
   const char *varName = getNameString(50, "PTemp_%" PRIu64, kernel.Declares.size());
 
   uint8_t numWords = (exsize + 15) / 16;
@@ -256,7 +256,7 @@ int IR_Builder::translateVISACompareInst(
   TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
 
   G4_ExecSize exsize = toExecSize(execsize);
-  G4_InstOpts inst_opt = Get_Gen4_Emask(emask, exsize);
+  G4_InstOpts inst_opt = Get_Gen4_Emask(emask, exsize, hasNibCtrl());
   // If it's mix mode HF,F, it will be split down the road anyway, so behavior
   // doesn't change.
   G4_Type src0Type = src0Opnd->getType();
@@ -293,7 +293,7 @@ int IR_Builder::translateVISALogicInst(
   TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
 
   G4_ExecSize exsize = toExecSize(executionSize);
-  G4_InstOpts inst_opt = Get_Gen4_Emask(emask, exsize);
+  G4_InstOpts inst_opt = Get_Gen4_Emask(emask, exsize, hasNibCtrl());
   G4_Operand *g4Srcs[] = {src0, src1, src2, src3};
 
   G4_opcode g4_op = GetGenOpcodeFromVISAOpcode(opcode);
@@ -380,7 +380,7 @@ int IR_Builder::translateVISADataMovementInst(
   TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
 
   G4_ExecSize exsize = toExecSize(executionSize);
-  G4_InstOpts inst_opt = Get_Gen4_Emask(emask, exsize);
+  G4_InstOpts inst_opt = Get_Gen4_Emask(emask, exsize, hasNibCtrl());
   G4_CondMod *condMod = NULL;
 
   if (opcode == ISA_MOVS) {
@@ -470,7 +470,7 @@ int IR_Builder::translateVISAShflIdx4Inst(
   TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
 
   G4_ExecSize exsize = toExecSize(executionSize);
-  G4_InstOpts inst_opt = Get_Gen4_Emask(emask, exsize);
+  G4_InstOpts inst_opt = Get_Gen4_Emask(emask, exsize, hasNibCtrl());
 
   createIntrinsicInst(pred_opnd, Intrinsic::ShflIdx4, exsize, dst, src0, src1,
                       nullptr, inst_opt, true /*addToInstList*/);
@@ -485,7 +485,7 @@ int IR_Builder::translateVISALfsrInst(G4_Predicate *pred_opnd,
   TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
 
   G4_ExecSize exsize = toExecSize(executionSize);
-  G4_InstOpts inst_opt = Get_Gen4_Emask(emask, exsize);
+  G4_InstOpts inst_opt = Get_Gen4_Emask(emask, exsize, hasNibCtrl());
 
   createLfsrInst(pred_opnd, exsize, dst, src0, src1, funcCtrl, inst_opt,
                  true /*addToInstList*/);
@@ -501,7 +501,7 @@ int IR_Builder::translateVISADnsclInst(G4_Predicate *pred_opnd,
   TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
 
   G4_ExecSize exsize = toExecSize(executionSize);
-  G4_InstOpts inst_opt = Get_Gen4_Emask(emask, exsize);
+  G4_InstOpts inst_opt = Get_Gen4_Emask(emask, exsize, hasNibCtrl());
 
   createDnsclInst(pred_opnd, exsize, dst, src0, src1, src2, type, mode, rndMode,
                  inst_opt, true /*addToInstList*/);

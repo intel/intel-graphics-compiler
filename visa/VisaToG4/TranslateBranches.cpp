@@ -83,7 +83,7 @@ int IR_Builder::translateVISACFCallInst(VISA_Exec_Size execsize,
     execSize = g4::SIMD2;
   }
 
-  G4_InstOpts instOpts = Get_Gen4_Emask(emask, execSize);
+  G4_InstOpts instOpts = Get_Gen4_Emask(emask, execSize, hasNibCtrl());
   createInst(predOpnd, callOpToUse, nullptr, g4::NOSAT, execSize, dstOpndToUse,
              srcLabel, nullptr, instOpts, true);
 
@@ -223,7 +223,7 @@ int IR_Builder::translateVISACFFretInst(VISA_Exec_Size executionSize,
   TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
 
   G4_ExecSize exsize = toExecSize(executionSize);
-  G4_InstOpts instOpts = Get_Gen4_Emask(emask, exsize);
+  G4_InstOpts instOpts = Get_Gen4_Emask(emask, exsize, hasNibCtrl());
 
   kernel.fg.setIsStackCallFunc();
 
@@ -240,7 +240,7 @@ int IR_Builder::translateVISACFRetInst(VISA_Exec_Size executionSize,
   TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
 
   G4_ExecSize exsize = toExecSize(executionSize);
-  G4_InstOpts instOpts = Get_Gen4_Emask(emask, exsize);
+  G4_InstOpts instOpts = Get_Gen4_Emask(emask, exsize, hasNibCtrl());
 
   if (getFCPatchInfo()->getIsCallableKernel()) {
     if (tmpFCRet == nullptr) {
@@ -269,7 +269,7 @@ int IR_Builder::translateVISAGotoInst(G4_Predicate *predOpnd,
   TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
 
   G4_ExecSize exsize = toExecSize(executionSize);
-  G4_InstOpts instOpts = Get_Gen4_Emask(emask, exsize);
+  G4_InstOpts instOpts = Get_Gen4_Emask(emask, exsize, hasNibCtrl());
 
   auto cfInst = createInst(predOpnd, G4_goto, nullptr, g4::NOSAT, exsize,
                            nullptr, nullptr, nullptr, instOpts, true);

@@ -19,7 +19,7 @@ int IR_Builder::translateVISARawSendInst(
   TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
 
   G4_ExecSize exsize = G4_ExecSize(Get_VISA_Exec_Size(executionSize));
-  G4_InstOpts inst_opt = Get_Gen4_Emask(emask, exsize);
+  G4_InstOpts inst_opt = Get_Gen4_Emask(emask, exsize, hasNibCtrl());
 
   if (msgDescOpnd->isSrcRegRegion()) {
     // mov (1) a0.0<1>:ud src<0;1,0>:ud {NoMask}
@@ -65,7 +65,7 @@ int IR_Builder::translateVISARawSendsInst(
   TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
 
   G4_ExecSize exsize = G4_ExecSize(Get_VISA_Exec_Size(executionSize));
-  const G4_InstOpts inst_opt = Get_Gen4_Emask(emask, exsize);
+  const G4_InstOpts inst_opt = Get_Gen4_Emask(emask, exsize, hasNibCtrl());
 
   if (msgDescOpnd->isSrcRegRegion()) {
     // mov (1) a0.0<1>:ud src<0;1,0>:ud {NoMask}
@@ -158,7 +158,7 @@ int IR_Builder::translateVISARawSendgInst(
 
   SFID sfid = intToSFID(sfidBits, getPlatform());
   G4_ExecSize exsize = G4_ExecSize(Get_VISA_Exec_Size(esize));
-  G4_InstOpts instOpts = Get_Gen4_Emask(emask, exsize);
+  G4_InstOpts instOpts = Get_Gen4_Emask(emask, exsize, hasNibCtrl());
 
   // (W) mov (1) s0.#<1>:uq   (GRF|IMM)
   // (W) mov (1) s0.#<1>:uq   (GRF|IMM)

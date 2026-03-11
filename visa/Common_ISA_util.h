@@ -48,7 +48,8 @@ unsigned Round_Up_Pow2(unsigned n);
 unsigned Round_Down_Pow2(unsigned n);
 G4_opcode Get_Pseudo_Opcode(ISA_Opcode op);
 VISA_EMask_Ctrl Get_Next_EMask(VISA_EMask_Ctrl currEMask, G4_ExecSize execSize);
-G4_InstOpts Get_Gen4_Emask(VISA_EMask_Ctrl cisa_emask, G4_ExecSize exec_size);
+G4_InstOpts Get_Gen4_Emask(VISA_EMask_Ctrl cisa_emask, G4_ExecSize exec_size,
+                           bool hasNibCtrl = true);
 unsigned Get_Atomic_Op(VISAAtomicOps op);
 uint16_t Get_VISA_Type_Size(VISA_Type type);
 Common_ISA_Region_Val Get_CISA_Region_Val(short val);
@@ -102,11 +103,10 @@ VISA_Type getVectorOperandType(const print_format_provider_t *header,
 template <typename T> T getPrimitiveOperand(const CISA_INST *inst, unsigned i) {
   vISA_ASSERT(inst, "Argument Exception: argument inst is NULL.");
   vISA_ASSERT(inst->opnd_array, "Operand array is NULL");
-  vISA_ASSERT(inst->opnd_num > i,
-               "No such operand, i, for instruction inst.");
+  vISA_ASSERT(inst->opnd_num > i, "No such operand, i, for instruction inst.");
   vISA_ASSERT((T)inst->opnd_array[i]->_opnd.other_opnd ==
-                   inst->opnd_array[i]->_opnd.other_opnd,
-               "Mismatched value.");
+                  inst->opnd_array[i]->_opnd.other_opnd,
+              "Mismatched value.");
   return (T)inst->opnd_array[i]->_opnd.other_opnd;
 }
 
@@ -209,9 +209,9 @@ LSC_CACHE_OPTS convertLSCLoadStoreCacheControlEnum(LSC_L1_L3_CC L1L3cc,
                                                    bool isLoad);
 
 namespace vISA {
-std::tuple<Caching,Caching,Caching> ToLdCaching(LSC_L1_L3_CC);
-std::tuple<Caching,Caching,Caching> ToStCaching(LSC_L1_L3_CC);
-std::tuple<Caching,Caching,Caching> ToAtCaching(LSC_L1_L3_CC);
+std::tuple<Caching, Caching, Caching> ToLdCaching(LSC_L1_L3_CC);
+std::tuple<Caching, Caching, Caching> ToStCaching(LSC_L1_L3_CC);
+std::tuple<Caching, Caching, Caching> ToAtCaching(LSC_L1_L3_CC);
 
 // Utility function for allocating memory for finalizer output (e.g., kernel
 // binary, debug info), which may have longer lifetime than the vISA builder.
@@ -230,6 +230,6 @@ inline bool hasMSAA(LSC_OP op) {
     return true;
   return false;
 }
-}
+} // namespace vISA
 
 #endif /* COMMON_ISA_UTIL_INCLUDED */
