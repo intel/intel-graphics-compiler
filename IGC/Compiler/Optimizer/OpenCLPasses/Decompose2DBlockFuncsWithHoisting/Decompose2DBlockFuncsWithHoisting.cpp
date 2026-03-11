@@ -429,8 +429,6 @@ void Decompose2DBlockFuncsWithHoisting::collectPayloads(GenIntrinsicInst &GII, I
   if (FirstVariantLoopIdx == -1) {
     Preheader = ParentLoops[ParentLoops.size() - 1]->getLoopPreheader();
     FirstVariantLoopIdx = ParentLoops.size() - 1;
-  } else {
-    Preheader = ParentLoops[FirstVariantLoopIdx - 1]->getLoopPreheader();
   }
 
   if (!Preheader) {

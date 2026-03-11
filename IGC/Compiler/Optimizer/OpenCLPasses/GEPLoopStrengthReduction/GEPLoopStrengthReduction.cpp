@@ -598,7 +598,7 @@ void ReductionCandidateGroup::reduceIndexOnly(IGCLLVM::IRBuilder<> &IRB, SCEVExp
 
 Value *ReductionCandidateGroup::getStepValue(IGCLLVM::IRBuilder<> &IRB, SCEVExpander &E, BasicBlock *BB) {
   if (isa<SCEVConstant>(Step))
-    return IRB.getInt64(dyn_cast<SCEVConstant>(Step)->getValue()->getSExtValue());
+    return IRB.getInt64(cast<SCEVConstant>(Step)->getValue()->getSExtValue());
 
   if (auto *S = dyn_cast<SCEVUnknown>(Step))
     return S->getValue();
