@@ -23083,7 +23083,14 @@ void EmitPass::emitLscIntrinsicPrefetch(llvm::GenIntrinsicInst *inst) {
   PointerType *ptrType = cast<PointerType>(Ptr->getType());
 
   ResourceDescriptor resource = GetResourceVariable(Ptr);
-  CVariable *offset = GetSymbol(Ptr);
+  CVariable *offset = m_currShader->ImmToVariable(0, ISA_TYPE_UD);
+  if (resource.m_surfaceType == ESURFACE_BINDLESS) {
+    if (!isa<ConstantInt>(inst->getOperand(1))) {
+      offset = GetSymbol(inst->getOperand(1));
+    }
+  } else {
+    offset = GetSymbol(Ptr);
+  }
   offset = ReAlignUniformVariable(offset, EALIGN_GRF);
   bool useA32 = !isA64Ptr(ptrType, m_currShader->GetContext());
   LSC_ADDR_SIZE addrSize = useA32 ? LSC_ADDR_SIZE_32b : LSC_ADDR_SIZE_64b;
@@ -23098,7 +23105,8 @@ void EmitPass::emitLscIntrinsicPrefetch(llvm::GenIntrinsicInst *inst) {
 
   auto dataSize = (LSC_DATA_SIZE)cast<ConstantInt>(inst->getOperand(2))->getZExtValue();
   auto dataElems = (LSC_DATA_ELEMS)cast<ConstantInt>(inst->getOperand(3))->getZExtValue();
-  int immOffset = int_cast<int>(cast<ConstantInt>(inst->getOperand(1))->getSExtValue());
+  int immOffset =
+      isa<ConstantInt>(inst->getOperand(1)) ? int_cast<int>(cast<ConstantInt>(inst->getOperand(1))->getSExtValue()) : 0;
 
   LSC_CACHE_OPTS cacheOpts = translateLSCCacheControlsFromValue(inst->getOperand(4), true);
 
