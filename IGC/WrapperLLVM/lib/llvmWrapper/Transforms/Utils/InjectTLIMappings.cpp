@@ -51,7 +51,7 @@ void InjectTLIMappingsLegacyPassWrapper::getAnalysisUsage(AnalysisUsage &AU) con
   AU.addPreserved<TargetLibraryInfoWrapperPass>();
   AU.addPreserved<ScalarEvolutionWrapperPass>();
   AU.addPreserved<AAResultsWrapperPass>();
-#if LLVM_VERSION_MAJOR <= 16 || defined(IGC_LLVM_TRUNK_REVISION)
+#if LLVM_VERSION_MAJOR <= 16
   AU.addPreserved<LoopAccessLegacyAnalysis>();
   AU.addPreserved<DemandedBitsWrapperPass>();
 #endif

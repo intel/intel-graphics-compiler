@@ -69,7 +69,7 @@ void LoopVectorizeLegacyPassWrapper::getAnalysisUsage(AnalysisUsage &AU) const {
   AU.addRequired<TargetTransformInfoWrapperPass>();
   AU.addRequired<OptimizationRemarkEmitterWrapperPass>();
   AU.addRequired<ProfileSummaryInfoWrapperPass>();
-#if LLVM_VERSION_MAJOR <= 16 || defined(IGC_LLVM_TRUNK_REVISION)
+#if LLVM_VERSION_MAJOR <= 16
   AU.addRequired<LoopAccessLegacyAnalysis>();
   AU.addRequired<DemandedBitsWrapperPass>();
   AU.addRequired<InjectTLIMappingsLegacy>();
@@ -99,7 +99,7 @@ IGC_INITIALIZE_PASS_DEPENDENCY(ScalarEvolutionWrapperPass)
 IGC_INITIALIZE_PASS_DEPENDENCY(LoopInfoWrapperPass)
 IGC_INITIALIZE_PASS_DEPENDENCY(OptimizationRemarkEmitterWrapperPass)
 IGC_INITIALIZE_PASS_DEPENDENCY(ProfileSummaryInfoWrapperPass)
-#if LLVM_VERSION_MAJOR <= 16 || defined(IGC_LLVM_TRUNK_REVISION)
+#if LLVM_VERSION_MAJOR <= 16
 IGC_INITIALIZE_PASS_DEPENDENCY(DemandedBitsWrapperPass)
 IGC_INITIALIZE_PASS_DEPENDENCY(LoopAccessLegacyAnalysis)
 #endif

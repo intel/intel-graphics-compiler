@@ -50,7 +50,7 @@ bool BDCELegacyPassWrapper::runOnFunction(Function &F) {
 
 void BDCELegacyPassWrapper::getAnalysisUsage(AnalysisUsage &AU) const {
   AU.setPreservesCFG();
-#if LLVM_VERSION_MAJOR <= 16 || defined(IGC_LLVM_TRUNK_REVISION)
+#if LLVM_VERSION_MAJOR <= 16
   AU.addRequired<DemandedBitsWrapperPass>();
 #endif
   AU.addPreserved<GlobalsAAWrapperPass>();
@@ -67,7 +67,7 @@ using namespace IGCLLVM;
 #define PASS_CFG_ONLY false
 #define PASS_ANALYSIS false
 IGC_INITIALIZE_PASS_BEGIN(BDCELegacyPassWrapper, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
-#if LLVM_VERSION_MAJOR <= 16 || defined(IGC_LLVM_TRUNK_REVISION)
+#if LLVM_VERSION_MAJOR <= 16
 IGC_INITIALIZE_PASS_DEPENDENCY(DemandedBitsWrapperPass)
 #endif
 IGC_INITIALIZE_PASS_END(BDCELegacyPassWrapper, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
