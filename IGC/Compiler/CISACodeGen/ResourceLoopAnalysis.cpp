@@ -13,6 +13,7 @@ SPDX-License-Identifier: MIT
 
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/IR/InstIterator.h>
+#include <llvm/IR/Instructions.h>
 #include <llvm/Support/Debug.h>
 #include "common/LLVMWarningsPop.hpp"
 #include "llvmWrapper/IR/DerivedTypes.h"
@@ -289,6 +290,30 @@ bool ResourceLoopAnalysis::runOnFunction(Function &F) {
           }
           if (!LoopEnd && aluInstCount > MaxALUBetweenMemOps) {
             LoopEnd = true;
+          }
+          // Check for interleaved EEI+ALU pattern between sends that causes
+          // excessive register pressure. The pattern is:
+          //   %load = loads(...)
+          //   %eei  = extractelement %load,...  <== EEI from DefSet
+          //   %alu  = add/mul/...               <== non-EEI ALU after EEI
+          // When an EEI appears between sends followed by additional ALU,
+          // both the full vector result and extracted scalar remain live
+          // across the ALU and subsequent sends, increasing register pressure.
+          if (!LoopEnd && !DefOnly4EEI.empty()) {
+            auto scanIter = prevMemIter;
+            ++scanIter;
+            bool sawEEI = false;
+            while (!LoopEnd && scanIter != II) {
+              auto *scanInst = &*scanIter;
+              if (isa<ExtractElementInst>(scanInst) && DefSet.count(scanInst)) {
+                sawEEI = true;
+              } else if (sawEEI) {
+                // Non-EEI instruction after an in-loop EEI between sends:
+                // this creates the interleaved pattern that inflates liveness.
+                LoopEnd = true;
+              }
+              ++scanIter;
+            }
           }
         } else {
           LoopEnd = true; // mismatch resource/sampler/op-type
