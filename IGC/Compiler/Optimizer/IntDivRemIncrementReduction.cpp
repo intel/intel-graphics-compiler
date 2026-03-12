@@ -179,7 +179,7 @@ void DivRemPair::simplifySimple(APInt offset, DivRemPair *chainPrevDivRemPair) {
   if (offset.isStrictlyPositive()) {
     // Positive offset, non-branching optimization (OFFSET <= divisor)
     // %quo is either:
-    //  1. %prevQuo if (%prevRem + OFFSET)  %sameDivisor
+    //  1. %prevQuo if %prevRem + OFFSET does not add up %sameDivisor
     //  2. %prevQuo + 1 if %prevRem + OFFSET does add up to %sameDivisor
     // %rem is either:
     //  1. %prevRem + 1 if %prevRem + 1 does not add up to %sameDivisor
@@ -225,6 +225,13 @@ void DivRemPair::simplify(const DivRemGroup *chainPrevDivRemGroup, const DivRemG
   auto *groupPrevDivRem = idx == 0 ? nullptr : divRemGroup->DivRems[idx - 1].get();
   IGC_ASSERT(!offset.isZero());
   IGC_ASSERT(chainPrevDivRem && chainPrevDivRem->getDivisor() == getDivisor()); // Required
+
+  // If groupPrevDivRem exists but wasn't simplified (newDiv is null), we cannot proceed with
+  // nested optimization since we don't have DivIsChangingTest from it.
+  if (groupPrevDivRem && !groupPrevDivRem->newDiv) {
+    // Previous DivRemPair in group was not simplified, cannot proceed with nested optimization.
+    return;
+  }
 
   // Insert point for simple optimization described below
   if (groupPrevDivRem && !groupPrevDivRem->isSimple()) {
@@ -573,10 +580,13 @@ bool IntDivRemIncrementReductionImpl::run(Function &F) {
   // if InstVisitor was used
   SmallVector<Instruction *> InstWorklist;
   for (inst_iterator it = inst_begin(&F), eit = inst_end(&F); it != eit; it++) {
-    // TODO: Handle sdiv and srem, but it may not be easy to reason the simplified form compared to udiv/urem
+    // TODO: Can try handling sdiv and srem, but it may not be easy to reason the simplified form compared to udiv/urem
     //       since negative divisors and negative dividends need to be handled
-    if (it->getOpcode() == Instruction::UDiv) {
+    if (it->getOpcode() == Instruction::UDiv && !it->isExact()) {
       // Use UDiv as start of group, find matching URem later
+      // Skip exact udivs: the paired urem has no exact semantics, so handling exact udivs correctly requires complex
+      // logic to ensure the remainder is computed correctly even when the quotient returns poison. Simpler to exclude
+      // them from this optimization.
       InstWorklist.push_back(&*it);
     }
   }
@@ -608,7 +618,8 @@ bool IntDivRemIncrementReductionImpl::run(Function &F) {
       Instruction *candidate = nullptr;
       for (auto *user : divIt->users()) {
         if (auto *inst = dyn_cast<Instruction>(user)) {
-          if (inst->getOpcode() == Instruction::UDiv && inst->getOperand(0) == divIt) {
+          // Skip exact divs for the same reason as above
+          if (inst->getOpcode() == Instruction::UDiv && inst->getOperand(0) == divIt && !inst->isExact()) {
             // Note: Currently does not factor in tree structures in DivRemGroups
             // DivRemPairs in DivRemGroups grouped to a DivRemChain may not be currently maximally optimizable if tree
             // structures exist
