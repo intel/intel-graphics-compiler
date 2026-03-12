@@ -14,7 +14,7 @@
 declare void @use_4scalars(float, float, float, float)
 declare <4 x float> @update_vec4float(<4 x float>)
 
-; Test phi vectorization in case incoming values ​​are mixed.
+; Test phi vectorization in case incoming values are mixed.
 
 ; CHECK-LABEL: define void @f0
 ; CHECK: entry:

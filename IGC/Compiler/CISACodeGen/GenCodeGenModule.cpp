@@ -1292,7 +1292,7 @@ void SubroutineInliner::visitMemCpyInst(MemCpyInst &I) {
 // Problems arises when the pointer operant (or more precisely its address space) is replaced:
 // 1. In GetElementPtrInst, the resulting pointer of this instruction is in a different address space.
 //    On the other hand, a load instruction that uses the returned GetElementPtrInst pointer still operates on the old
-//    address space. By which we are referring to the wrong area of ​​memory. The resolution for this problem is to
+//    address space. By which we are referring to the wrong area of memory. The resolution for this problem is to
 //    create new load instruction.
 // 2. In MemCpyInst, specifically generated for structs used in loops, where two allocas of the same struct type are
 // created used
