@@ -6,11 +6,11 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
-// REQUIRES: regkeys, pvc-supported, tgllp-supported
+// REQUIRES: regkeys
 
-// RUN: ocloc compile -file %s -options " -igc_opts 'PrintToConsole=1 PrintMDBeforeModule=1 PrintAfter=BIFFlagCtrlResolution'" -device tgllp 2>&1 | FileCheck %s --check-prefix=CHECK-BASE
-// RUN: ocloc compile -file %s -options " -cl-fast-relaxed-math -igc_opts 'PrintToConsole=1 PrintMDBeforeModule=1 PrintAfter=BIFFlagCtrlResolution'" -device tgllp 2>&1 | FileCheck %s --check-prefix=CHECK-FastRelaxedMath
-// RUN: ocloc compile -file %s -options " -igc_opts 'PrintToConsole=1 PrintMDBeforeModule=1 PrintAfter=BIFFlagCtrlResolution'" -device pvc 2>&1 | FileCheck %s --check-prefix=CHECK-HasHWLocalThreadID
+// RUN: %if tgllp-supported %{ ocloc compile -file %s -options " -igc_opts 'PrintToConsole=1 PrintMDBeforeModule=1 PrintAfter=BIFFlagCtrlResolution'" -device tgllp 2>&1 | FileCheck %s --check-prefix=CHECK-BASE %}
+// RUN: %if tgllp-supported %{ ocloc compile -file %s -options " -cl-fast-relaxed-math -igc_opts 'PrintToConsole=1 PrintMDBeforeModule=1 PrintAfter=BIFFlagCtrlResolution'" -device tgllp 2>&1 | FileCheck %s --check-prefix=CHECK-FastRelaxedMath %}
+// RUN: %if pvc-supported %{ ocloc compile -file %s -options " -igc_opts 'PrintToConsole=1 PrintMDBeforeModule=1 PrintAfter=BIFFlagCtrlResolution'" -device pvc 2>&1 | FileCheck %s --check-prefix=CHECK-HasHWLocalThreadID %}
 
 // Check for the flag FastRelaxedMath
 // Check in base run if we have setup to false FastRelaxedMath flag

@@ -137,7 +137,7 @@ macro(igc_find_external_lit)
   list(APPEND paths_to_lit ${LLVM_SOURCE_DIR}/utils/lit)
   find_file(LLVM_EXTERNAL_LIT
     NAMES llvm-lit llvm-lit.py lit.py lit
-    PATHS ${paths_to_lit}
+    HINTS ${paths_to_lit}
     DOC "Path to lit utility"
     )
 

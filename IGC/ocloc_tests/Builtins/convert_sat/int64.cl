@@ -5,18 +5,18 @@ Copyright (C) 2023 Intel Corporation
 SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
-// REQUIRES: regkeys, pvc-supported, dg2-supported, llvm-16-plus
+// REQUIRES: regkeys, llvm-16-plus
 
 // Partial i64 emulation
-// RUN: ocloc compile -file %s -device pvc \
+// RUN: %if pvc-supported %{ ocloc compile -file %s -device pvc \
 // RUN: -options "-I %S -cl-std=CL3.0 -igc_opts 'EnableOpaquePointersBackend=1 PrintToConsole=1 PrintBefore=EmitPass'" \
-// RUN: -out_dir /dev/null 2>&1 | FileCheck --enable-var-scope %s --check-prefixes=CHECK,CHECK-PARTIAL-EMU
+// RUN: -out_dir /dev/null 2>&1 | FileCheck --enable-var-scope %s --check-prefixes=CHECK,CHECK-PARTIAL-EMU %}
 
 // In full i64 emu, fp32/64 ftoi casts involve complex emulation sequences
 // that we shouldn't really be testing here. Disable those tests via additional FE macro
-// RUN: ocloc compile -file %s -device dg2 \
+// RUN: %if dg2-supported %{ ocloc compile -file %s -device dg2 \
 // RUN: -options "-I %S -cl-std=CL3.0 -igc_opts 'EnableOpaquePointersBackend=1 PrintToConsole=1 PrintBefore=EmitPass' -DCHECK_HALF_ONLY" \
-// RUN: -out_dir /dev/null 2>&1 | FileCheck --enable-var-scope %s --check-prefixes=CHECK,CHECK-FULL-EMU
+// RUN: -out_dir /dev/null 2>&1 | FileCheck --enable-var-scope %s --check-prefixes=CHECK,CHECK-FULL-EMU %}
 
 #include "test_convert_sat_helper.h"
 
