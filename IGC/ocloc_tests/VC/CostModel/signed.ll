@@ -9,12 +9,12 @@
 ; REQUIRES: regkeys, pvc-supported, llvm-14-plus
 
 ; LLVM with opaque pointers:
-; RUN: llvm-as -opaque-pointers=1 %s -o %t.bc
+; RUN: llvm-as %OPAQUE_PTR_FLAG% %s -o %t.bc
 ; RUN: ocloc -device pvc -llvm_input -options "-vc-codegen -ze-collect-cost-info -igc_opts 'EnableOpaquePointersBackend=1, ShaderDumpEnable=1, DumpToCustomDir=%t'" -output_no_suffix -file %t.bc
 ; RUN: cat %t/*.zeinfo | FileCheck %s
 
 ; LLVM with typed pointers:
-; RUN: llvm-as -opaque-pointers=0 %s -o %t.bc
+; RUN: llvm-as %TYPED_PTR_FLAG% %s -o %t.bc
 ; RUN: ocloc -device pvc -llvm_input -options "-vc-codegen -ze-collect-cost-info -igc_opts 'ShaderDumpEnable=1, DumpToCustomDir=%t'" -output_no_suffix -file %t.bc
 ; RUN: cat %t/*.zeinfo | FileCheck %s
 

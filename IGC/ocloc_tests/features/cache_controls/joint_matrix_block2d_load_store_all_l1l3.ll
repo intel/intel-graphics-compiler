@@ -10,15 +10,15 @@
 ; REQUIRES: llvm-spirv, regkeys, pvc-supported, llvm-16-plus
 
 ; LLVM with opaque pointers:
-; RUN: llvm-as -opaque-pointers=1 %s -o %t.bc
-; RUN: llvm-spirv %t.bc -opaque-pointers=1 --spirv-ext=+SPV_INTEL_cache_controls,+SPV_INTEL_joint_matrix -o %t.spv
+; RUN: llvm-as %OPAQUE_PTR_FLAG% %s -o %t.bc
+; RUN: llvm-spirv %t.bc %OPAQUE_PTR_FLAG% --spirv-ext=+SPV_INTEL_cache_controls,+SPV_INTEL_joint_matrix -o %t.spv
 ; RUN: ocloc compile -spirv_input -file %t.spv -device pvc -options " -igc_opts 'EnableOpaquePointersBackend=1,DumpVISAASMToConsole=1'" 2>&1 | FileCheck %s --check-prefixes=CHECK,CHECK-PVC
 ; REQUIRES: xe2-hpg-supported
 ; RUN: ocloc compile -spirv_input -file %t.spv -device xe2-hpg -options " -igc_opts 'EnableOpaquePointersBackend=1,DumpVISAASMToConsole=1'" 2>&1 | FileCheck %s --check-prefixes=CHECK,CHECK-BMG
 
 ; LLVM with typed pointers/default pointer typing:
-; RUN: llvm-as -opaque-pointers=0 %s -o %t.bc
-; RUN: llvm-spirv %t.bc -opaque-pointers=0 --spirv-ext=+SPV_INTEL_cache_controls,+SPV_INTEL_joint_matrix -o %t.spv
+; RUN: llvm-as %TYPED_PTR_FLAG% %s -o %t.bc
+; RUN: llvm-spirv %t.bc %TYPED_PTR_FLAG% --spirv-ext=+SPV_INTEL_cache_controls,+SPV_INTEL_joint_matrix -o %t.spv
 ; RUN: ocloc compile -spirv_input -file %t.spv -device pvc -options " -igc_opts 'DumpVISAASMToConsole=1'" 2>&1 | FileCheck %s --check-prefixes=CHECK,CHECK-PVC
 ; REQUIRES: xe2-hpg-supported
 ; RUN: ocloc compile -spirv_input -file %t.spv -device xe2-hpg -options " -igc_opts 'DumpVISAASMToConsole=1'" 2>&1 | FileCheck %s --check-prefixes=CHECK,CHECK-BMG

@@ -10,7 +10,7 @@
 
 ; Check that no inline prevents function inlining.
 
-; RUN: llvm-as -opaque-pointers=0 %s -o %t.bc
+; RUN: llvm-as %TYPED_PTR_FLAG% %s -o %t.bc
 ; RUN: ocloc compile -llvm_input -file %t.bc -options "-igc_opts 'DisableInlining=1, PrintToConsole=1, PrintBefore=EmitPass'" -device pvc 2>&1 | FileCheck %s
 
 ; CHECK-LABEL: @testKernel(

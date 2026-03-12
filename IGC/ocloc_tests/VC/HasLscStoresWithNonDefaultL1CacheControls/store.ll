@@ -7,7 +7,7 @@
 ;============================ end_copyright_notice =============================
 ;
 ; REQUIRES: regkeys, ptl-supported
-; RUN: llvm-as %s -opaque-pointers=0 -o %t.bc
+; RUN: llvm-as %s %TYPED_PTR_FLAG% -o %t.bc
 ; RUN: ocloc -device ptl -llvm_input -internal_options "-vc-report-lsc-stores-with-non-default-l1-cache-controls" -options "-vc-codegen -igc_opts 'ShaderDumpEnable=1, DumpToCustomDir=%t_opt'" -output_no_suffix -file %t.bc -output %t_opt
 ; RUN: ocloc -device ptl -llvm_input -options "-vc-codegen -igc_opts 'ShaderDumpEnable=1, DumpToCustomDir=%t_no_opt'" -output_no_suffix -file %t.bc -output %t_no_opt
 ; RUN: FileCheck %s --check-prefixes CHECK,OPT-SET --input-file %t_opt/*.zeinfo

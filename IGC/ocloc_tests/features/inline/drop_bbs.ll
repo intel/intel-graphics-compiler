@@ -11,7 +11,7 @@
 
 ; Check that specifed BB is removed from the function.
 
-; RUN: llvm-as -opaque-pointers=0 %s -o %t.bc
+; RUN: llvm-as %TYPED_PTR_FLAG% %s -o %t.bc
 ; RUN: echo "call1bb" > %T/testKernel.txt
 ; RUN: ocloc compile -llvm_input -file %t.bc -options "-igc_opts 'DisableInlining=1, DisableRecompilation=1, EnableDropTargetBBs=1, DropTargetBBListPath=%T, VerboseDropTargetBBs=1, PrintToConsole=1, PrintBefore=EmitPass'" -device pvc 2>&1 | FileCheck %s
 

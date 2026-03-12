@@ -47,8 +47,8 @@
 ; REQUIRES: llvm-spirv, regkeys, dg2-supported, llvm-16-plus
 
 ; LLVM with opaque pointers:
-; RUN: llvm-as -opaque-pointers=1 %s -o %t.bc
-; RUN: llvm-spirv %t.bc -opaque-pointers=1 --spirv-ext=+SPV_INTEL_subgroups -o %t.spv
+; RUN: llvm-as %OPAQUE_PTR_FLAG% %s -o %t.bc
+; RUN: llvm-spirv %t.bc %OPAQUE_PTR_FLAG% --spirv-ext=+SPV_INTEL_subgroups -o %t.spv
 ; RUN: ocloc compile -spirv_input -file %t.spv -device dg2 -options " -igc_opts 'EnableOpaquePointersBackend=1,ShaderDumpTranslationOnly=1'" 2>&1 | FileCheck %s --check-prefixes=CHECK-LLVM
 
 target datalayout = "e-i64:64-v16:16-v24:32-v32:32-v48:64-v96:128-v192:256-v256:256-v512:512-v1024:1024"

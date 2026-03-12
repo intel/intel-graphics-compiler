@@ -7,7 +7,7 @@
 ;============================ end_copyright_notice =============================
 ;
 ; REQUIRES: regkeys, bmg-supported
-; RUN: llvm-as %s -opaque-pointers=0 -o %t.bc
+; RUN: llvm-as %s %TYPED_PTR_FLAG% -o %t.bc
 ; RUN: ocloc -device bmg -llvm_input -options "-ze-exp-register-file-size=64 -vc-codegen -igc_opts 'ShaderDumpEnable=1, DumpToCustomDir=%t_opt_64'" -output_no_suffix -file %t.bc -output %t_opt_64
 ; RUN: FileCheck %s --check-prefixes CHECK,CHECK-128 --input-file %t_opt_64/*.zeinfo
 ; RUN: ocloc -device bmg -llvm_input -options "-ze-exp-register-file-size=128 -vc-codegen -igc_opts 'ShaderDumpEnable=1, DumpToCustomDir=%t_opt_128'" -output_no_suffix -file %t.bc -output %t_opt_128

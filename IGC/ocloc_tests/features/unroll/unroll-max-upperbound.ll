@@ -8,8 +8,8 @@
 
 ; REQUIRES: llvm-spirv, regkeys, mtl-supported, llvm-16-plus
 
-; RUN: llvm-as -opaque-pointers=1 %s -o %t.bc
-; RUN: llvm-spirv -opaque-pointers=1 %t.bc -o %t.spv
+; RUN: llvm-as %OPAQUE_PTR_FLAG% %s -o %t.bc
+; RUN: llvm-spirv %OPAQUE_PTR_FLAG% %t.bc -o %t.spv
 ; RUN: ocloc compile -spirv_input -file %t.spv -device mtl -options " -igc_opts 'EnableOpaquePointersBackend=1,PrintToConsole=1,PrintAfter=Splitstructurephis'" 2>&1 | FileCheck %s
 
 ; This test checks that 2 inner loops with are fully unrolled by 12 and SROA applied to both allocas

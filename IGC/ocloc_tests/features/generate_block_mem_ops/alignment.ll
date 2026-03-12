@@ -9,11 +9,11 @@
 ; REQUIRES: regkeys, pvc-supported, llvm-14-plus
 
 ; LLVM with opaque pointers:
-; RUN: llvm-as -opaque-pointers=1 %s -o %t.bc
+; RUN: llvm-as %OPAQUE_PTR_FLAG% %s -o %t.bc
 ; RUN: ocloc compile -llvm_input -file %t.bc -device pvc -options "-igc_opts 'EnableOpaquePointersBackend=1, DisableRecompilation=1 DumpASMToConsole=1''" 2>&1 | FileCheck %s --check-prefixes=CHECK
 
 ; LLVM with typed pointers:
-; RUN: llvm-as -opaque-pointers=0 %s -o %t.bc
+; RUN: llvm-as %TYPED_PTR_FLAG% %s -o %t.bc
 ; RUN: ocloc compile -llvm_input -file %t.bc -device pvc -options "-igc_opts 'DisableRecompilation=1 DumpASMToConsole=1''" 2>&1 | FileCheck %s --check-prefixes=CHECK
 
 ; CHECK: (W)     load.ugm.d32x32t.a64 (1|M0)

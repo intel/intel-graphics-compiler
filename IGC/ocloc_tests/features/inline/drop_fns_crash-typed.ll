@@ -10,7 +10,7 @@
 
 ; Check that function body is correctly emptied and replaced with store to null address.
 
-; RUN: llvm-as -opaque-pointers=0 %s -o %t.bc
+; RUN: llvm-as %TYPED_PTR_FLAG% %s -o %t.bc
 ; RUN: echo "testInlineFn2" > %T/testKernel.txt
 ; RUN: ocloc compile -llvm_input -file %t.bc -options "-igc_opts 'DisableInlining=1, EnableDropTargetFunctions=1, VerboseDropTargetFunctions=1, CrashOnDroppedFnAccess=1, DropTargetFnListPath=%T, PrintToConsole=1, PrintBefore=EmitPass'" -device pvc > %t.output 2>&1
 ; RUN: cat %t.output | FileCheck %s --check-prefix=FUN1

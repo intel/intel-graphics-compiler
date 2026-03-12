@@ -9,8 +9,8 @@
 ; REQUIRES: llvm-spirv, regkeys, dg2-supported, llvm-16-plus
 
 ; LLVM with opaque pointers:
-; RUN: llvm-as -opaque-pointers=1 %s -o %t.bc
-; RUN: llvm-spirv -opaque-pointers=1 %t.bc --spirv-ext=+SPV_INTEL_bindless_images -o %t.spv
+; RUN: llvm-as %OPAQUE_PTR_FLAG% %s -o %t.bc
+; RUN: llvm-spirv %OPAQUE_PTR_FLAG% %t.bc --spirv-ext=+SPV_INTEL_bindless_images -o %t.spv
 ; RUN: ocloc compile -spirv_input -file %t.spv -device dg2 -options " -igc_opts 'EnableOpaquePointersBackend=1 PrintToConsole=1 PrintAfter=igc-spir-metadata-translation'" 2>&1 | FileCheck %s
 
 ; CHECK: !{!"spvINTELBindlessImages", i1 true}

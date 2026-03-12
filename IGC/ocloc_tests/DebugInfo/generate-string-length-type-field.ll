@@ -13,7 +13,7 @@
 
 ; REQUIRES: regkeys, oneapi-readelf, llvm-14-plus, dg2-supported
 
-; RUN: llvm-as -opaque-pointers=0 %s -o %t
+; RUN: llvm-as %TYPED_PTR_FLAG% %s -o %t
 ; RUN: ocloc compile -llvm_input -file %t -device dg2 -options "-g -cl-opt-disable -igc_opts 'ElfDumpEnable=1, DumpUseShorterName=0, DebugDumpNamePrefix=%t_'"
 ; RUN: oneapi-readelf --debug-dump %t_OCL_simd8_foo.elf | FileCheck %s
 

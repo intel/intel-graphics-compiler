@@ -97,6 +97,15 @@ if int(config.llvm_version_major) >= 16:
 if int(config.llvm_version_major) >= 17:
   config.available_features.add('llvm-17-plus')
 
+# On LLVM 17 tools like llvm-as do not have "opaque-pointers" flag, so in order to keep tests working on all LLVMs
+# on 17 tools we just provide empty string
+if int(config.llvm_version_major) >= 17:
+  config.substitutions.append(('%OPAQUE_PTR_FLAG%', ''))
+  config.substitutions.append(('%TYPED_PTR_FLAG%', ''))
+else:
+  config.substitutions.append(('%OPAQUE_PTR_FLAG%', '-opaque-pointers=1'))
+  config.substitutions.append(('%TYPED_PTR_FLAG%', '-opaque-pointers=0'))
+
 if config.llvm_spirv_enabled:
   config.available_features.add('llvm-spirv')
   llvm_config.add_tool_substitutions([ToolSubst('llvm-spirv', unresolved='fatal')], tool_dirs)

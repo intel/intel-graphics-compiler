@@ -10,15 +10,15 @@
 ; UNSUPPORTED: sys32
 
 ; LLVM with opaque pointers:
-; RUN: llvm-as -opaque-pointers=1 %s -o %t.bc
+; RUN: llvm-as %OPAQUE_PTR_FLAG% %s -o %t.bc
 ; COM: Replace SPV_INTEL_subgroups with SPV_INTEL_subgroup_buffer_prefetch once support for prefetches is implemented in the KHR Translator
-; RUN: llvm-spirv %t.bc -opaque-pointers=1 --spirv-ext=+SPV_INTEL_subgroups,+SPV_INTEL_cache_controls -o %t.spv
+; RUN: llvm-spirv %t.bc %OPAQUE_PTR_FLAG% --spirv-ext=+SPV_INTEL_subgroups,+SPV_INTEL_cache_controls -o %t.spv
 ; RUN: ocloc compile -spirv_input -file %t.spv -device pvc -options " -igc_opts 'EnableOpaquePointersBackend=1, DumpVISAASMToConsole=1'" 2>&1 | FileCheck %s
 
 ; LLVM with typed pointers/default pointer typing:
-; RUN: llvm-as -opaque-pointers=0 %s -o %t.bc
+; RUN: llvm-as %TYPED_PTR_FLAG% %s -o %t.bc
 ; COM: Replace SPV_INTEL_subgroups with SPV_INTEL_subgroup_buffer_prefetch once support for prefetches is implemented in the KHR Translator
-; RUN: llvm-spirv %t.bc -opaque-pointers=0 --spirv-ext=+SPV_INTEL_subgroups,+SPV_INTEL_cache_controls -o %t.spv
+; RUN: llvm-spirv %t.bc %TYPED_PTR_FLAG% --spirv-ext=+SPV_INTEL_subgroups,+SPV_INTEL_cache_controls -o %t.spv
 ; RUN: ocloc compile -spirv_input -file %t.spv -device pvc -options " -igc_opts 'DumpVISAASMToConsole=1'" 2>&1 | FileCheck %s
 
 

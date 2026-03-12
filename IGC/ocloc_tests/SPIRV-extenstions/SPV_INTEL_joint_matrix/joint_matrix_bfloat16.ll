@@ -4,8 +4,8 @@
 ; TODO: This test should be adjusted to run with opaque pointers
 
 ; LLVM with typed pointers:
-; RUN: llvm-as -opaque-pointers=0 %s -o %t.bc
-; RUN: llvm-spirv %t.bc -opaque-pointers=0 --spirv-ext=+SPV_INTEL_bfloat16_conversion,+SPV_INTEL_joint_matrix -o %t.spv
+; RUN: llvm-as %TYPED_PTR_FLAG% %s -o %t.bc
+; RUN: llvm-spirv %t.bc %TYPED_PTR_FLAG% --spirv-ext=+SPV_INTEL_bfloat16_conversion,+SPV_INTEL_joint_matrix -o %t.spv
 ; RUN: ocloc compile -spirv_input -file %t.spv -device dg2 -options " -igc_opts 'EnableOpaquePointersBackend=0, ShaderDumpTranslationOnly=1'" 2>&1 | FileCheck %s --check-prefixes=CHECK-LLVM
 
 ; CHECK-LLVM: %spirv.JointMatrixINTEL._short_8_16_0_3

@@ -9,11 +9,11 @@
 ; REQUIRES: pvc-supported, regkeys, llvm-14-plus
 
 ; LLVM with opaque pointers:
-; RUN: llvm-as -opaque-pointers=1 %s -o %t.bc
+; RUN: llvm-as %OPAQUE_PTR_FLAG% %s -o %t.bc
 ; RUN: ocloc compile -llvm_input -file %t.bc -device pvc -options "-cl-intel-enable-auto-large-GRF-mode -igc_opts 'DumpVISAASMToConsole=1,DisableCodeScheduling=1,EnableOpaquePointersBackend=1'" 2>&1 | FileCheck %s --check-prefixes=CHECK-VISAASM
 
 ; LLVM with typed pointers:
-; RUN: llvm-as -opaque-pointers=0 %s -o %t.bc
+; RUN: llvm-as %TYPED_PTR_FLAG% %s -o %t.bc
 ; RUN: ocloc compile -llvm_input -file %t.bc -device pvc -options "-cl-intel-enable-auto-large-GRF-mode -igc_opts 'DumpVISAASMToConsole=1,DisableCodeScheduling=1'" 2>&1 | FileCheck %s --check-prefixes=CHECK-VISAASM
 
 target triple = "spir64-unknown-unknown"

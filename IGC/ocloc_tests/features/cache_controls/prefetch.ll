@@ -9,8 +9,8 @@
 ; REQUIRES: llvm-spirv, regkeys, pvc-supported, llvm-16-plus, opaque-pointers
 
 ; LLVM with opaque pointers:
-; RUN: llvm-as -opaque-pointers=1 %s -o %t.bc
-; RUN: llvm-spirv %t.bc -opaque-pointers=1 --spirv-ext=+SPV_INTEL_cache_controls -o %t.spv
+; RUN: llvm-as %OPAQUE_PTR_FLAG% %s -o %t.bc
+; RUN: llvm-spirv %t.bc %OPAQUE_PTR_FLAG% --spirv-ext=+SPV_INTEL_cache_controls -o %t.spv
 ; RUN: ocloc compile -spirv_input -file %t.spv -device pvc -options " -igc_opts 'EnableOpaquePointersBackend=1, PrintToConsole=1, PrintAfter=Layout'" 2>&1 | FileCheck %s
 
 ; LSC prefetch args:

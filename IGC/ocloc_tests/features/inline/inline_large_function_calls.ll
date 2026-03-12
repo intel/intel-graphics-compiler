@@ -10,7 +10,7 @@
 
 ; Check that mutually exclusive calls to large functions can be merged to a single call so that they can be inlined.
 
-; RUN: llvm-as -opaque-pointers=0 %s -o %t.bc
+; RUN: llvm-as %TYPED_PTR_FLAG% %s -o %t.bc
 ; RUN: ocloc compile -llvm_input -file %t.bc -options "-igc_opts 'EnableLargeFunctionCallMerging=1, DisableRecompilation=1, SubroutineThreshold=50, SubroutineInlinerThreshold=10, KernelTotalSizeThreshold=50, PrintToConsole=1, PrintBefore=EmitPass'" -device pvc 2>&1 | FileCheck %s
 
 ; CHECK-LABEL: @_ZTS28Kernel_B_Supposed_2B_Inlined(

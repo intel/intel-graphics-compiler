@@ -4,8 +4,8 @@
 ; TODO: This test fails on LLVM 16 with opaque pointers, but passes with typed pointers. Once the necessary fixes are made, remove llvm-15-or-older from the list above. llvm-15-or-older was added to the list above to prevent non-zero return from llvm-lit on LLVM 16 build with typed pointers forced.
 
 ; LLVM with typed pointers/default pointer typing:
-; RUN: llvm-as -opaque-pointers=0 %s -o %t.bc
-; RUN: llvm-spirv %t.bc -opaque-pointers=0 --spirv-ext=+SPV_INTEL_blocking_pipes,+SPV_INTEL_arbitrary_precision_integers -o %t.spv
+; RUN: llvm-as %TYPED_PTR_FLAG% %s -o %t.bc
+; RUN: llvm-spirv %t.bc %TYPED_PTR_FLAG% --spirv-ext=+SPV_INTEL_blocking_pipes,+SPV_INTEL_arbitrary_precision_integers -o %t.spv
 ; RUN: ocloc compile -spirv_input -file %t.spv -device dg2 -options " -igc_opts 'EnableOpaquePointersBackend=0, ShaderDumpTranslationOnly=1'" 2>&1 | FileCheck %s --check-prefixes=CHECK-LLVM
 
 ; ModuleID = 'test/CodeGenOpenCL/pipe_builtin.cl'

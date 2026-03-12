@@ -7,7 +7,7 @@
 ;============================ end_copyright_notice =============================
 
 ; REQUIRES: regkeys, pvc-supported, llvm-14-plus
-; RUN: llvm-as -opaque-pointers=1 %s -o %t.bc
+; RUN: llvm-as %OPAQUE_PTR_FLAG% %s -o %t.bc
 ; RUN: ocloc compile -file %t.bc -llvm_input -options "-igc_opts 'EnableOpaquePointersBackend=1,VISAOptions=-asmToConsole'" -device pvc | FileCheck %s --check-prefix=CHECK
 
 ; simple kernel with a large number of multiply-add
