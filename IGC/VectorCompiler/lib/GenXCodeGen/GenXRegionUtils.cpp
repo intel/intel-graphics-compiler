@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2025 Intel Corporation
+Copyright (C) 2017-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -346,7 +346,8 @@ unsigned genx::getLegalRegionSizeForTarget(const GenXSubtarget &ST,
   IGC_ASSERT_EXIT(GRFByteSize > 0);
   unsigned LogGRFWidth = genx::log2(GRFByteSize);
   unsigned NumGRF = 2;
-  if (ST.hasEfficientSIMD32() && R.Width == 32u && R.ElementBytes == 8u)
+  if (ST.hasEfficientSIMD32() && R.Width == 32u && R.ElementBytes == 8u &&
+      R.Offset % GRFByteSize == 0 && !R.Indirect)
     NumGRF = 4;
 
   if ((!R.Stride || exactLog2(R.Stride) >= 0) &&
