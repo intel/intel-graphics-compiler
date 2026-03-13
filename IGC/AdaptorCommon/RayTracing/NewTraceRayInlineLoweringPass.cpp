@@ -12,6 +12,7 @@ SPDX-License-Identifier: MIT
 #include "IGC/common/LLVMUtils.h"
 #include "NewTraceRayInlineLoweringPass.h"
 
+#include "llvmWrapper/IR/Instructions.h"
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/ADT/STLExtras.h>
 #include <llvm/ADT/DenseMapInfo.h>
@@ -98,7 +99,7 @@ bool InlineRaytracing::LowerAllocations(Function &F) {
   for (auto *I : AllocateRQInstructions) {
     // we are using value remapper so we can't explicitly erase the instruction
     // mark it as read only so it gets removed due to no uses
-    cast<CallInst>(I)->addFnAttr(llvm::Attribute::ReadOnly);
+    IGCLLVM::setOnlyReadsMemory(*I);
 
     IRB.SetInsertPoint(F.getEntryBlock().getFirstNonPHI());
     Value *rqObject = nullptr;
