@@ -1633,7 +1633,10 @@ void Legalization::visitIntrinsicInst(llvm::IntrinsicInst &I) {
       break;
     }
 
-    int BitWidth = I.getType()->getIntegerBitWidth();
+    Type *OpType = I.getType();
+    Type *ScalarType = OpType->getScalarType();
+    int BitWidth = ScalarType->getIntegerBitWidth();
+
     auto OverFlowIntrin =
         Builder.CreateIntrinsic(OverflowIntrinID, {I.getArgOperand(0)->getType(), I.getArgOperand(1)->getType()},
                                 {I.getArgOperand(0), I.getArgOperand(1)});
@@ -1643,22 +1646,28 @@ void Legalization::visitIntrinsicInst(llvm::IntrinsicInst &I) {
     Value *Boundary = nullptr;
     switch (I.getIntrinsicID()) {
     case Intrinsic::usub_sat:
-      Boundary = Builder.getInt(APInt::getMinValue(BitWidth));
+      Boundary = Constant::getIntegerValue(OpType, APInt::getMinValue(BitWidth));
       break;
     case Intrinsic::ssub_sat: {
-      Value *isMaxOrMinOverflow = Builder.CreateICmpSLT(Builder.getIntN(BitWidth, 0), I.getArgOperand(1));
+      Value *Zero = Constant::getNullValue(I.getArgOperand(1)->getType());
+      Value *isMaxOrMinOverflow = Builder.CreateICmpSLT(Zero, I.getArgOperand(1));
       APInt MinVal = APInt::getSignedMinValue(BitWidth);
       APInt MaxVal = APInt::getSignedMaxValue(BitWidth);
-      Boundary = Builder.CreateSelect(isMaxOrMinOverflow, Builder.getInt(MinVal), Builder.getInt(MaxVal));
+      Value *MinBoundary = Constant::getIntegerValue(OpType, MinVal);
+      Value *MaxBoundary = Constant::getIntegerValue(OpType, MaxVal);
+      Boundary = Builder.CreateSelect(isMaxOrMinOverflow, MinBoundary, MaxBoundary);
     } break;
     case Intrinsic::uadd_sat:
-      Boundary = Builder.getInt(APInt::getMaxValue(BitWidth));
+      Boundary = Constant::getIntegerValue(OpType, APInt::getMaxValue(BitWidth));
       break;
     case Intrinsic::sadd_sat: {
-      Value *isMaxOrMinOverflow = Builder.CreateICmpSLT(Builder.getIntN(BitWidth, 0), I.getArgOperand(1));
+      Value *Zero = Constant::getNullValue(I.getArgOperand(1)->getType());
+      Value *isMaxOrMinOverflow = Builder.CreateICmpSLT(Zero, I.getArgOperand(1));
       APInt MinVal = APInt::getSignedMinValue(BitWidth);
       APInt MaxVal = APInt::getSignedMaxValue(BitWidth);
-      Boundary = Builder.CreateSelect(isMaxOrMinOverflow, Builder.getInt(MaxVal), Builder.getInt(MinVal));
+      Value *MaxBoundary = Constant::getIntegerValue(OpType, MaxVal);
+      Value *MinBoundary = Constant::getIntegerValue(OpType, MinVal);
+      Boundary = Builder.CreateSelect(isMaxOrMinOverflow, MaxBoundary, MinBoundary);
     } break;
     default:
       IGC_ASSERT_MESSAGE(0, "Incorrect intrinsic");
@@ -1714,15 +1723,17 @@ void Legalization::visitIntrinsicInst(llvm::IntrinsicInst &I) {
       negOpt->setDebugLoc(I.getDebugLoc());
       Instruction *andOpt = BinaryOperator::CreateAnd(negOpt, res_xor_usrc0, "", &I);
       andOpt->setDebugLoc(I.getDebugLoc());
-      auto zero = ConstantInt::get(src0->getType(), 0, true);
+      Type *SrcScalarType = src0->getType()->getScalarType();
+      const unsigned ScalarBitWidth = SrcScalarType->getIntegerBitWidth();
+      auto zero = Constant::getNullValue(src0->getType());
       // Signed a - b overflows if the sign of a and -b are the same, but diffrent from the result
       // Signed a + b overflows if the sign of a and b are the same, but diffrent from the result
-      if (src0->getType()->getIntegerBitWidth() == 8 && !m_ctx->platform.supportByteALUOperation()) {
+      if (ScalarBitWidth == 8 && !m_ctx->platform.supportByteALUOperation()) {
         // The promotion char->short is breaking the current logic for overflow algorithm.
         // For ex. in PVC we are losing the sign bit here, if we are operating on signed char.
         // In first half of the short (the original char) we still have the correct sign bit -
         // so we are checking if original char has sign bit light-on.
-        auto charSignBit = ConstantInt::get(Builder.getInt8Ty(), 1 << 7, true);
+        auto charSignBit = Constant::getIntegerValue(src0->getType(), APInt(8, 1 << 7));
         andOpt = BinaryOperator::CreateAnd(andOpt, charSignBit, "", &I);
         andOpt->setDebugLoc(I.getDebugLoc());
         isOverflow = CmpInst::Create(Instruction::ICmp, CmpInst::ICMP_NE, andOpt, zero, "", &I);
