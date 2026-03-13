@@ -14,7 +14,8 @@ See LICENSE.TXT for details.
 ============================= end_copyright_notice ===========================*/
 
 ///////////////////////////////////////////////////////////////////////////////
-// This file is based on llvm-3.4\lib\CodeGen\AsmPrinter\DwarfDebug.h
+// This file is based on llvm-3.4\lib\CodeGen\AsmPrinter\DwarfDebug.h and
+// \lib\CodeGen\AsmPrinter\AddressPool.h
 ///////////////////////////////////////////////////////////////////////////////
 #pragma once
 
@@ -75,6 +76,30 @@ class DIEBlock;
 class DIEEntry;
 class DwarfDebug;
 class VISADebugInfo;
+
+/// \brief Collection of addresses for this unit and assorted labels.
+/// A Symbol->index mapping used by indirect references for DWARF v5 .debug_addr
+/// section.
+class AddressPool {
+  llvm::DenseMap<const llvm::MCSymbol *, unsigned> Pool;
+
+public:
+  // Returns the index into the address pool with the given symbol.
+  unsigned getIndex(const llvm::MCSymbol *Sym);
+
+  void emit(IGC::StreamEmitter &Asm, unsigned DwarfVersion);
+
+  bool isEmpty() { return Pool.empty(); }
+
+  llvm::MCSymbol *getLabel() { return AddressTableBaseSym; }
+  void setLabel(llvm::MCSymbol *Sym) { AddressTableBaseSym = Sym; }
+
+private:
+  llvm::MCSymbol *emitHeader(IGC::StreamEmitter &Asm, unsigned DwarfVersion);
+
+  // Symbol designates the start of the contribution to the address table.
+  llvm::MCSymbol *AddressTableBaseSym = nullptr;
+};
 
 /// \brief This struct describes location entries emitted in the .debug_loc
 /// section.
@@ -422,6 +447,9 @@ private:
   // body.
   llvm::DebugLoc PrologEndLoc;
 
+  // Address pool for DWARF v5 .debug_addr section.
+  AddressPool AddrPool;
+
   // Section Symbols: these are assembler temporary labels that are emitted at
   // the beginning of each supported llvm::dwarf section.  These are used to
   // form section offsets and are created by EmitSectionLabels.
@@ -437,6 +465,34 @@ private:
   llvm::MCSymbol *FunctionEndSym = nullptr;
   llvm::MCSymbol *ModuleBeginSym = nullptr;
   llvm::MCSymbol *ModuleEndSym = nullptr;
+
+  // DWARF v5 section base symbols
+  llvm::MCSymbol *LoclistsTableBaseSym = nullptr;
+  llvm::MCSymbol *RnglistsTableBaseSym = nullptr;
+
+  // DWARF v5 section symbols
+  llvm::MCSymbol *emitListsTableHeaderStart();
+
+  llvm::MCSymbol *emitLoclistsTableHeader();
+  llvm::MCSymbol *emitRnglistsTableHeader();
+
+  llvm::MCSymbol *getLoclistsTableBaseSym();
+  llvm::MCSymbol *getRnglistsTableBaseSym();
+
+  // DWARF v5 offsets table base symbol to index mapping
+  llvm::DenseMap<const llvm::MCSymbol *, uint32_t> LoclistSymbolToIndex;
+  llvm::DenseMap<const llvm::MCSymbol *, uint32_t> RnglistSymbolToIndex;
+
+  // Lazily adds DW_AT_loclists_base / DW_AT_rnglists_base to the CU DIE
+  // on first use.
+  void ensureLoclistsBaseAttribute(CompileUnit *CU);
+  void ensureRnglistsBaseAttribute(CompileUnit *CU);
+
+  // Registers a location / range list label, ensures corresponding base
+  // attribute is present on the CU DIE, and returns the index in the offset
+  // table.
+  uint32_t registerLoclistSymbol(const llvm::MCSymbol *Sym, CompileUnit *CU);
+  uint32_t registerRnglistSymbol(const llvm::MCSymbol *Sym, CompileUnit *CU);
 
   // As an optimization, there is no need to emit an entry in the directory
   // table for the same directory as DW_AT_comp_dir.
@@ -533,11 +589,20 @@ private:
   /// \brief Emit visible names into a debug str section.
   void emitDebugStr();
 
-  /// \brief Emit visible names into a debug loc section.
+  /// \brief Emit location entries for variables in DWARF v4.
+  void emitLocEntries();
+
+  /// \brief Emit location entries for variables in DWARF v5.
+  void emitLoclistEntries();
+
+  /// \brief Emit visible names into a debug loc / loclists section.
   void emitDebugLoc();
 
-  /// \brief Emit visible names into a debug ranges section.
+  /// \brief Emit visible names into a debug ranges / rnglists section.
   void emitDebugRanges();
+
+  /// \brief Emit visible names into a debug addr section (DWARF v5).
+  void emitDebugAddr();
 
   /// \brief Emit visible names into a debug macinfo section.
   void emitDebugMacInfo();
@@ -735,8 +800,7 @@ public:
   void insertDIE(const llvm::MDNode *TypeMD, DIE *Die) { MDTypeNodeToDieMap.insert(std::make_pair(TypeMD, Die)); }
   DIE *getDIE(const llvm::MDNode *TypeMD) { return MDTypeNodeToDieMap.lookup(TypeMD); }
 
-  /// \brief Emit all Dwarf sections that should come prior to the
-  /// content.
+  /// \brief Emit all Dwarf sections that should come prior to the content.
   void beginModule();
 
   /// \brief Emit all Dwarf sections that should come after the content.
@@ -773,6 +837,12 @@ public:
 
   /// Returns the Dwarf Version.
   unsigned getDwarfVersion() const { return DwarfVersion; }
+
+  /// Returns the index into the address pool for the given symbol.
+  unsigned getAddressPoolIndex(const llvm::MCSymbol *Sym) { return AddrPool.getIndex(Sym); }
+
+  // Lazily adds DW_AT_addr_base to the CU DIE on first use.
+  void ensureAddrBaseAttribute(CompileUnit *CU);
 
   /// Find the MDNode for the given reference.
   template <typename T> inline T *resolve(T *Ref) const { return Ref; }
@@ -868,9 +938,12 @@ public:
 
   void setVisaDbgInfo(const IGC::VISAObjectDebugInfo &VDI) { VisaDbgInfo = &VDI; }
 
-  // Wrapper functions for CopyDebugLoc to provide type-safe access
-  llvm::MCSymbol *CopyDebugLoc(unsigned int offset);
-  unsigned int CopyDebugLocNoReloc(unsigned int offset);
+  using DebugLocRef = std::variant<unsigned int, llvm::MCSymbol *>;
+
+  // Returns a DebugLocRef for the .debug_loc(lists) section:
+  // - DWARF v4: relocation label or raw offset
+  // - DWARF v5: index into loclist section
+  DebugLocRef CopyDebugLoc(unsigned int offset, bool relocationEnabled, CompileUnit *CU = nullptr);
 
   const VISAModule *GetVISAModule() const { return m_pModule; }
 
@@ -908,9 +981,6 @@ public:
   }
 
 private:
-  // Internal implementation function that returns a variant
-  std::variant<unsigned int, llvm::MCSymbol *> CopyDebugLoc(unsigned int offset, bool relocationEnabled);
-
   void encodeRange(CompileUnit *TheCU, DIE *ScopeDIE, const llvm::SmallVectorImpl<InsnRange> *Ranges);
   void encodeScratchAddrSpace(std::vector<uint8_t> &data);
   uint32_t writeSubroutineCIE();

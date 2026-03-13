@@ -14,7 +14,8 @@ See LICENSE.TXT for details.
 ============================= end_copyright_notice ===========================*/
 
 ///////////////////////////////////////////////////////////////////////////////
-// This file is based on llvm-3.4\lib\CodeGen\AsmPrinter\DwarfDebug.cpp
+// This file is based on llvm-3.4\lib\CodeGen\AsmPrinter\DwarfDebug.cpp and
+// \lib\CodeGen\AsmPrinter\AddressPool.cpp
 ///////////////////////////////////////////////////////////////////////////////
 
 // clang-format off
@@ -486,9 +487,20 @@ DIE *DwarfDebug::updateSubprogramScopeDIE(CompileUnit *SPCU, DISubprogram *SP) {
 
   if (EmitSettings.EnableRelocation) {
     auto Id = m_pModule->GetFuncId();
-    SPCU->addLabelAddress(SPDie, dwarf::DW_AT_low_pc, Asm->GetTempSymbol("func_begin", Id));
-    SPCU->addLabelAddress(SPDie, dwarf::DW_AT_high_pc, Asm->GetTempSymbol("func_end", Id));
+    auto LowLabel = Asm->GetTempSymbol("func_begin", Id);
+    auto HighLabel = Asm->GetTempSymbol("func_end", Id);
+    SPCU->addLabelAddress(SPDie, dwarf::DW_AT_low_pc, LowLabel);
+
+    if (DwarfVersion >= 5) {
+      // DWARF v5: high_pc as size delta (no relocation needed)
+      SPCU->addDelta(SPDie, dwarf::DW_AT_high_pc, dwarf::DW_FORM_data4, HighLabel, LowLabel);
+    } else {
+      // DWARF v4: high_pc as relocated address
+      SPCU->addLabelAddress(SPDie, dwarf::DW_AT_high_pc, HighLabel);
+    }
+
   } else {
+    // DWARF v4 with relocation disabled
     SPCU->addUInt(SPDie, dwarf::DW_AT_low_pc, dwarf::DW_FORM_addr, lowPc);
     SPCU->addUInt(SPDie, dwarf::DW_AT_high_pc, dwarf::DW_FORM_addr, highPc);
   }
@@ -597,6 +609,7 @@ void DwarfDebug::encodeRange(CompileUnit *TheCU, DIE *ScopeDIE, const llvm::Smal
   }
 
   m_pModule->coalesceRanges(AllGenISARanges);
+  bool UseDwarf5 = DwarfVersion >= 5;
 
   if (AllGenISARanges.size() == 1) {
     // Emit low_pc/high_pc inlined in DIE
@@ -604,18 +617,37 @@ void DwarfDebug::encodeRange(CompileUnit *TheCU, DIE *ScopeDIE, const llvm::Smal
       auto StartLabel = GetLabelBeforeIp(AllGenISARanges.front().first);
       auto EndLabel = GetLabelBeforeIp(AllGenISARanges.front().second);
       TheCU->addLabelAddress(ScopeDIE, dwarf::DW_AT_low_pc, StartLabel);
-      TheCU->addLabelAddress(ScopeDIE, dwarf::DW_AT_high_pc, EndLabel);
+
+      if (UseDwarf5) {
+        // DWARF v5: high_pc as size delta (no relocation needed)
+        TheCU->addDelta(ScopeDIE, dwarf::DW_AT_high_pc, dwarf::DW_FORM_data4, EndLabel, StartLabel);
+      } else {
+        // DWARF v4: high_pc as relocated address
+        TheCU->addLabelAddress(ScopeDIE, dwarf::DW_AT_high_pc, EndLabel);
+      }
+
     } else {
+      // DWARF v4 with relocation disabled
       TheCU->addUInt(ScopeDIE, dwarf::DW_AT_low_pc, dwarf::DW_FORM_addr, AllGenISARanges.front().first);
       TheCU->addUInt(ScopeDIE, dwarf::DW_AT_high_pc, dwarf::DW_FORM_addr, AllGenISARanges.front().second);
     }
   } else if (AllGenISARanges.size() > 1) {
-    // Emit to debug_ranges
+    // Emit to .debug_ranges or .debug_rnglists
     llvm::MCSymbol *NewLabel = nullptr;
     if (EmitSettings.EnableRelocation) {
       NewLabel = Asm->CreateTempSymbol();
-      TheCU->addLabelLoc(ScopeDIE, dwarf::DW_AT_ranges, NewLabel);
+
+      if (UseDwarf5) {
+        // DWARF v5: index into .debug_rnglists
+        auto Index = registerRnglistSymbol(NewLabel, TheCU);
+        TheCU->addUInt(ScopeDIE, dwarf::DW_AT_ranges, dwarf::DW_FORM_rnglistx, Index);
+      } else {
+        // DWARF v4: offset in .debug_ranges
+        TheCU->addLabelLoc(ScopeDIE, dwarf::DW_AT_ranges, NewLabel);
+      }
+
     } else {
+      // DWARF v4 with offset in .debug_ranges, no relocation
       auto GetDebugRangeSize = [&]() {
         size_t TotalSize = 0;
         for (auto &Entry : GenISADebugRangeSymbols) {
@@ -886,10 +918,19 @@ CompileUnit *DwarfDebug::constructCompileUnit(DICompileUnit *DIUnit) {
 
   if (EmitSettings.EnableRelocation) {
     NewCU->addLabelAddress(Die, dwarf::DW_AT_low_pc, ModuleBeginSym);
-    NewCU->addLabelAddress(Die, dwarf::DW_AT_high_pc, ModuleEndSym);
+
+    if (DwarfVersion >= 5) {
+      // DWARF v5: high_pc as size delta (no relocation needed)
+      NewCU->addDelta(Die, dwarf::DW_AT_high_pc, dwarf::DW_FORM_data4, ModuleEndSym, ModuleBeginSym);
+    } else {
+      // DWARF v4: high_pc as relocated address
+      NewCU->addLabelAddress(Die, dwarf::DW_AT_high_pc, ModuleEndSym);
+    }
 
     NewCU->addLabelLoc(Die, dwarf::DW_AT_stmt_list, DwarfLineSectionSym);
+
   } else {
+    // DWARF v4 with relocation disabled
     auto highPC = m_pModule->getUnpaddedProgramSize();
     NewCU->addUInt(Die, dwarf::DW_AT_low_pc, dwarf::DW_FORM_addr, 0);
     NewCU->addUInt(Die, dwarf::DW_AT_high_pc, std::optional<dwarf::Form>(), highPC);
@@ -1339,11 +1380,14 @@ void DwarfDebug::endModule() {
   // Corresponding abbreviations into a abbrev section.
   emitAbbreviations();
 
-  // Emit info into a debug loc section.
+  // Emit info into a debug loc / loclists section.
   emitDebugLoc();
 
-  // Emit info into a debug ranges section.
+  // Emit info into a debug ranges / rnglists section.
   emitDebugRanges();
+
+  // Emit into a debug addr section (DWARF v5).
+  emitDebugAddr();
 
   // Emit info into a debug macinfo section.
   emitDebugMacInfo();
@@ -1978,19 +2022,22 @@ void DwarfDebug::collectOptimizedOut(llvm::SmallPtrSet<const llvm::MDNode *, 16>
   }
 }
 
-// Returns either the offset (unsigned int) in the .debug_loc section or a relocation label (llvm::MCSymbol*)
-// depending on whether relocation is enabled. Copies debug location entries from temporary storage to the final list.
-std::variant<unsigned int, llvm::MCSymbol *> DwarfDebug::CopyDebugLoc(unsigned int o, bool relocationEnabled) {
+// Returns a DebugLocRef for the .debug_loc(lists) section:
+// - DWARF v4: relocation label or raw offset
+// - DWARF v5: index into loclist section
+// Copies debug location entries from temporary storage to the final list.
+IGC::DwarfDebug::DebugLocRef DwarfDebug::CopyDebugLoc(unsigned int o, bool relocationEnabled, CompileUnit *CU) {
   // TempDotLocEntries has all entries discovered in collectVariableInfo.
   // But some of those entries may not get emitted. This function
   // is invoked when writing out DIE. At this time, it can be decided
-  // whether debug_range for a variable will be emitted to debug_ranges.
+  // whether range list for a variable will be emitted to .debug_loc(lists).
   // If yes, it is copied over to DotDebugLocEntries and new offset or
   // label is returned.
+
   unsigned int offset = 0, index = 0;
   bool found = false, done = false;
   llvm::MCSymbol *Label = nullptr;
-  std::variant<unsigned int, llvm::MCSymbol *> offsetOrLabel;
+  DebugLocRef LocRef;
 
   // Compute offset in DotDebugLocEntries
   for (auto &item : DotDebugLocEntries) {
@@ -2000,16 +2047,20 @@ std::variant<unsigned int, llvm::MCSymbol *> DwarfDebug::CopyDebugLoc(unsigned i
       offset += PointerSize * 2 + 2 + item.loc.size();
   }
 
-  if (relocationEnabled) {
-    Label = Asm->GetTempSymbol("debug_loc", offset);
-    offsetOrLabel = Label;
-  } else {
-    offsetOrLabel = offset;
-  }
-
   while (!done && index < TempDotDebugLocEntries.size()) {
     if (!found && TempDotDebugLocEntries[index].getOffset() == o) {
       found = true;
+
+      if (DwarfVersion >= 5) {
+        Label = Asm->GetTempSymbol("debug_loclists", offset);
+        LocRef = registerLoclistSymbol(Label, CU);
+      } else if (relocationEnabled) {
+        Label = Asm->GetTempSymbol("debug_loc", offset);
+        LocRef = Label;
+      } else {
+        LocRef = offset;
+      }
+
     } else if (!found) {
       index++;
       continue;
@@ -2019,7 +2070,7 @@ std::variant<unsigned int, llvm::MCSymbol *> DwarfDebug::CopyDebugLoc(unsigned i
       // Append data to DotLocEntries
       auto &Entry = TempDotDebugLocEntries[index];
 
-      if (relocationEnabled) {
+      if (DwarfVersion >= 5 || relocationEnabled) {
         Entry.setSymbol(Label);
         Label = nullptr;
       }
@@ -2032,15 +2083,8 @@ std::variant<unsigned int, llvm::MCSymbol *> DwarfDebug::CopyDebugLoc(unsigned i
     index++;
   }
 
-  return offsetOrLabel;
-}
-
-llvm::MCSymbol *DwarfDebug::CopyDebugLoc(unsigned int offset) {
-  return std::get<llvm::MCSymbol *>(CopyDebugLoc(offset, true));
-}
-
-unsigned int DwarfDebug::CopyDebugLocNoReloc(unsigned int offset) {
-  return std::get<unsigned int>(CopyDebugLoc(offset, false));
+  IGC_ASSERT_MESSAGE(found, "DebugLoc entry not found");
+  return LocRef;
 }
 
 // Process beginning of an instruction.
@@ -2381,6 +2425,10 @@ void DwarfDebug::endFunction(const Function *MF) {
     LLVM_DEBUG(dbgs() << "[DwarfDebug] constructing FnScope ---\n");
     constructScopeDIE(TheCU, FnScope);
     LLVM_DEBUG(dbgs() << "[DwarfDebug] FnScope constructed ***\n");
+
+    if (DwarfVersion >= 5 && !AddrPool.isEmpty()) {
+      ensureAddrBaseAttribute(TheCU);
+    }
   }
 
   Asm->SwitchSection(Asm->GetDwarfFrameSection());
@@ -2521,6 +2569,18 @@ void DwarfDebug::computeSizeAndOffsets() {
   }
 }
 
+llvm::MCSymbol *DwarfDebug::getLoclistsTableBaseSym() {
+  if (!LoclistsTableBaseSym)
+    LoclistsTableBaseSym = Asm->CreateTempSymbol("loclists_table_base_entries");
+  return LoclistsTableBaseSym;
+}
+
+llvm::MCSymbol *DwarfDebug::getRnglistsTableBaseSym() {
+  if (!RnglistsTableBaseSym)
+    RnglistsTableBaseSym = Asm->CreateTempSymbol("rnglists_table_base_entries");
+  return RnglistsTableBaseSym;
+}
+
 // Switch to the specified MCSection and emit an assembler
 // temporary label to it if SymbolStem is specified.
 static MCSymbol *emitSectionSym(StreamEmitter *Asm, const MCSection *Section, const char *SymbolStem = 0) {
@@ -2550,13 +2610,62 @@ void DwarfDebug::emitSectionLabels() {
 
   DwarfStrSectionSym = emitSectionSym(Asm, Asm->GetDwarfStrSection(), "info_string");
 
-  DwarfDebugRangeSectionSym = emitSectionSym(Asm, Asm->GetDwarfRangesSection(), "debug_range");
-
-  DwarfDebugLocSectionSym = emitSectionSym(Asm, Asm->GetDwarfLocSection(), "section_debug_loc");
+  if (DwarfVersion >= 5) {
+    emitSectionSym(Asm, Asm->GetDwarfAddrSection(), "debug_addr");
+  } else {
+    DwarfDebugRangeSectionSym = emitSectionSym(Asm, Asm->GetDwarfRangesSection(), "debug_range");
+    DwarfDebugLocSectionSym = emitSectionSym(Asm, Asm->GetDwarfLocSection(), "section_debug_loc");
+  }
 
   emitSectionSym(Asm, Asm->GetDataSection());
 
   TextSectionSym = emitSectionSym(Asm, Asm->GetTextSection(), "text_begin");
+}
+
+unsigned AddressPool::getIndex(const MCSymbol *Sym) {
+  auto IterBool = Pool.try_emplace(Sym, Pool.size());
+  return IterBool.first->second;
+}
+
+MCSymbol *AddressPool::emitHeader(StreamEmitter &Asm, unsigned DwarfVersion) {
+  auto AddrSize = Asm.GetPointerSize();
+
+  MCSymbol *EndLabel = Asm.EmitDwarfUnitLength(".debug_addr", "Length of contribution");
+
+  // Dwarf version
+  Asm.EmitInt16(DwarfVersion);
+
+  // Address size
+  Asm.EmitInt8(AddrSize);
+
+  // Segment selector size
+  Asm.EmitInt8(0);
+
+  return EndLabel;
+}
+
+void AddressPool::emit(StreamEmitter &Asm, unsigned DwarfVersion) {
+  // Start the dwarf addr section.
+  Asm.SwitchSection(Asm.GetDwarfAddrSection());
+
+  MCSymbol *EndLabel = emitHeader(Asm, DwarfVersion);
+
+  // Define the symbol that marks the start of the contribution.
+  // It is referenced via DW_AT_addr_base.
+  Asm.EmitLabel(AddressTableBaseSym);
+
+  // Order the address pool entries by ID
+  SmallVector<const MCSymbol *, 64> Entries(Pool.size());
+
+  for (const auto &I : Pool)
+    Entries[I.second] = I.first;
+
+  for (const MCSymbol *Entry : Entries) {
+    IGC_ASSERT(Entry);
+    Asm.EmitSymbolValue(Entry, Asm.GetPointerSize());
+  }
+
+  Asm.EmitLabel(EndLabel);
 }
 
 // Emit visible names into a debug str section.
@@ -2716,11 +2825,65 @@ void DwarfDebug::emitAbbreviations() {
   }
 }
 
-// Emit locations into the debug loc section.
-void DwarfDebug::emitDebugLoc() {
-  if (DotDebugLocEntries.empty())
-    return;
+llvm::MCSymbol *DwarfDebug::emitListsTableHeaderStart() {
+  llvm::MCSymbol *Start = Asm->CreateTempSymbol("debug_list_header_start");
+  llvm::MCSymbol *End = Asm->CreateTempSymbol("debug_list_header_end");
 
+  // Length (DWARF32: 4-byte offset)
+  Asm->EmitLabelDifference(End, Start, 4);
+
+  Asm->EmitLabel(Start);
+
+  // Version
+  Asm->EmitInt16(DwarfVersion);
+
+  // Address size
+  Asm->EmitInt8(PointerSize);
+
+  // Segment selector size
+  Asm->EmitInt8(0);
+
+  return End;
+}
+
+llvm::MCSymbol *DwarfDebug::emitLoclistsTableHeader() {
+  // Emit the common header (version, address size, segment selector size)
+  llvm::MCSymbol *TableEnd = emitListsTableHeaderStart();
+
+  // Emit the number of offset entries in the table
+  Asm->EmitInt32(LoclistSymbolToIndex.size());
+
+  // Create and emit the table base symbol that all offsets will be relative to
+  llvm::MCSymbol *TableBaseSym = getLoclistsTableBaseSym();
+  Asm->EmitLabel(TableBaseSym);
+
+  // Emit offset entries in index order
+  std::vector<const llvm::MCSymbol *> LocEntries(LoclistSymbolToIndex.size());
+  for (auto &I : LoclistSymbolToIndex)
+    LocEntries[I.second] = I.first;
+  for (auto *Sym : LocEntries)
+    Asm->EmitLabelDifference(Sym, TableBaseSym, 4);
+
+  return TableEnd;
+}
+
+void DwarfDebug::ensureLoclistsBaseAttribute(CompileUnit *CU) {
+  if (CU->getCUDie()->findAttribute(dwarf::DW_AT_loclists_base))
+    return;
+  CU->addLabel(CU->getCUDie(), dwarf::DW_AT_loclists_base, dwarf::DW_FORM_sec_offset, getLoclistsTableBaseSym());
+}
+
+uint32_t DwarfDebug::registerLoclistSymbol(const llvm::MCSymbol *Sym, CompileUnit *CU) {
+  IGC_ASSERT_MESSAGE(LoclistSymbolToIndex.find(Sym) == LoclistSymbolToIndex.end(), "Loclist symbol already registered");
+
+  ensureLoclistsBaseAttribute(CU);
+
+  auto Index = (LoclistSymbolToIndex.size());
+  LoclistSymbolToIndex.insert({Sym, Index});
+  return Index;
+}
+
+void DwarfDebug::emitLocEntries() {
   Asm->SwitchSection(Asm->GetDwarfLocSection());
 
   for (const DotDebugLocEntry &Entry : DotDebugLocEntries) {
@@ -2745,23 +2908,167 @@ void DwarfDebug::emitDebugLoc() {
         Asm->EmitInt8(Entry.loc[i]);
     }
   }
+}
+
+void DwarfDebug::emitLoclistEntries() {
+  Asm->SwitchSection(Asm->GetDwarfLoclistsSection());
+
+  llvm::MCSymbol *TableEnd = emitLoclistsTableHeader();
+
+  for (unsigned i = 0, e = DotDebugLocEntries.size(); i < e;) {
+    if (DotDebugLocEntries[i].isEmpty()) {
+      i++;
+      continue;
+    }
+
+    // Find the head of the new list - first entry or entry after
+    // an empty sentinel
+    if (i == 0 || DotDebugLocEntries[i - 1].isEmpty()) {
+      auto Label = DotDebugLocEntries[i].getSymbol();
+      Asm->EmitLabel(Label);
+    }
+
+    // Emit starting and ending offsets relative to base address,
+    // which defaults to the base address of the compilation unit
+    // (DWARF v5 2.6.2)
+    while (i < e && !DotDebugLocEntries[i].isEmpty()) {
+      const DotDebugLocEntry &E = DotDebugLocEntries[i];
+
+      Asm->EmitInt8(dwarf::DW_LLE_offset_pair);
+      Asm->EmitULEB128(E.start);
+      Asm->EmitULEB128(E.end);
+
+      // Emit expression bytes
+      Asm->EmitULEB128(E.loc.size());
+      for (size_t b = 0; b < E.loc.size(); b++)
+        Asm->EmitInt8(E.loc[b]);
+
+      i++;
+    }
+
+    // Terminate list
+    Asm->EmitInt8(dwarf::DW_LLE_end_of_list);
+  }
+
+  Asm->EmitLabel(TableEnd);
+}
+
+// Emit locations into the debug loc section.
+void DwarfDebug::emitDebugLoc() {
+
+  if (DotDebugLocEntries.empty())
+    return;
+
+  if (DwarfVersion >= 5)
+    emitLoclistEntries();
+  else
+    emitLocEntries();
 
   DotDebugLocEntries.clear();
 }
 
-// Emit visible names into a debug ranges section.
+llvm::MCSymbol *DwarfDebug::emitRnglistsTableHeader() {
+  // Emit the common header (version, address size, segment selector size)
+  llvm::MCSymbol *TableEnd = emitListsTableHeaderStart();
+
+  // Emit the number of offset entries in the table
+  Asm->EmitInt32(RnglistSymbolToIndex.size());
+
+  // Create and emit the table base symbol that all offsets will be relative to
+  llvm::MCSymbol *TableBaseSym = getRnglistsTableBaseSym();
+  Asm->EmitLabel(TableBaseSym);
+
+  // Emit offset entries in index order
+  std::vector<const llvm::MCSymbol *> RngEntries(RnglistSymbolToIndex.size());
+  for (auto &I : RnglistSymbolToIndex)
+    RngEntries[I.second] = I.first;
+  for (auto *Sym : RngEntries)
+    Asm->EmitLabelDifference(Sym, TableBaseSym, 4);
+
+  return TableEnd;
+}
+
+void DwarfDebug::ensureRnglistsBaseAttribute(CompileUnit *CU) {
+  if (CU->getCUDie()->findAttribute(dwarf::DW_AT_rnglists_base))
+    return;
+  CU->addLabel(CU->getCUDie(), dwarf::DW_AT_rnglists_base, dwarf::DW_FORM_sec_offset, getRnglistsTableBaseSym());
+}
+
+uint32_t DwarfDebug::registerRnglistSymbol(const llvm::MCSymbol *Sym, CompileUnit *CU) {
+  IGC_ASSERT_MESSAGE(RnglistSymbolToIndex.find(Sym) == RnglistSymbolToIndex.end(), "Rnglist symbol already registered");
+
+  ensureRnglistsBaseAttribute(CU);
+
+  auto Index = (RnglistSymbolToIndex.size());
+  RnglistSymbolToIndex.insert({Sym, Index});
+  return Index;
+}
+
+// Emit visible names into a debug ranges / rnglists section.
 void DwarfDebug::emitDebugRanges() {
-  // Start the dwarf ranges section.
-  Asm->SwitchSection(Asm->GetDwarfRangesSection());
+  if (GenISADebugRangeSymbols.empty())
+    return;
+
+  bool UseDwarf5 = DwarfVersion >= 5;
+  Asm->SwitchSection(UseDwarf5 ? Asm->GetDwarfRnglistsSection() : Asm->GetDwarfRangesSection());
+
+  llvm::MCSymbol *TableEnd = nullptr;
+  if (UseDwarf5)
+    TableEnd = emitRnglistsTableHeader();
+
+  unsigned char size = (unsigned char)PointerSize;
 
   for (auto &Entry : GenISADebugRangeSymbols) {
     auto Label = Entry.first;
+
     if (Label)
       Asm->EmitLabel(Label);
-    for (auto Data : Entry.second) {
-      Asm->EmitIntValue(Data, PointerSize);
+
+    if (UseDwarf5) {
+      for (size_t i = 0; i < Entry.second.size() - 1; i += 2) {
+        unsigned startAddr = Entry.second[i];
+        unsigned endAddr = Entry.second[i + 1];
+
+        // End of range list
+        if (startAddr == 0 && endAddr == 0)
+          break;
+
+        // Emit starting and ending offsets relative to base address,
+        // which defaults to the base address of the compilation unit
+        // (DWARF v5 2.17.3)
+        Asm->EmitInt8(dwarf::DW_RLE_offset_pair);
+        Asm->EmitULEB128(startAddr);
+        Asm->EmitULEB128(endAddr);
+      }
+
+      // End the list
+      Asm->EmitInt8(dwarf::DW_RLE_end_of_list);
+    } else {
+      // DWARF v4
+      for (auto Data : Entry.second) {
+        Asm->EmitIntValue(Data, size);
+      }
     }
   }
+
+  if (TableEnd)
+    Asm->EmitLabel(TableEnd);
+}
+
+// Emit visible names into a debug addr section (DWARF v5).
+void DwarfDebug::emitDebugAddr() {
+  if (DwarfVersion < 5 || !AddrPool.getLabel())
+    return;
+
+  AddrPool.emit(*Asm, DwarfVersion);
+}
+
+void DwarfDebug::ensureAddrBaseAttribute(CompileUnit *CU) {
+  if (CU->getCUDie()->findAttribute(dwarf::DW_AT_addr_base))
+    return;
+  if (!AddrPool.getLabel())
+    AddrPool.setLabel(Asm->CreateTempSymbol("addr_table_base"));
+  CU->addLabelLoc(CU->getCUDie(), dwarf::DW_AT_addr_base, AddrPool.getLabel());
 }
 
 // Emit visible names into a debug macinfo section.

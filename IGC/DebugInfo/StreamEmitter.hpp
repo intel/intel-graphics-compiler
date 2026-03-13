@@ -83,6 +83,11 @@ public:
   const llvm::MCSection *GetDwarfStrSection() const;
   const llvm::MCSection *GetDwarfFrameSection() const;
 
+  /// @brief DWARF v5 section getter methods
+  const llvm::MCSection *GetDwarfAddrSection() const;
+  const llvm::MCSection *GetDwarfLoclistsSection() const;
+  const llvm::MCSection *GetDwarfRnglistsSection() const;
+
   /// @brief Set the current section where code is being emitted to.
   /// @param pSection section to switch to
   /// @param pSubsection subsiction to switch to (optional)
@@ -108,6 +113,8 @@ public:
   /// @brief Return an assembler temporary label with the specified stem.
   /// @return Machine Code symbol
   llvm::MCSymbol *CreateTempSymbol() const;
+
+  llvm::MCSymbol *CreateTempSymbol(const llvm::Twine &Name) const;
 
   /// @brief Dwarf CU getter & setter
   unsigned GetDwarfCompileUnitID() const;
@@ -184,6 +191,9 @@ public:
   ///        SectionLabel is a temporary label emitted at the start of the
   ///        section that pLabel lives in.
   void EmitSectionOffset(const llvm::MCSymbol *pLabel, const llvm::MCSymbol *pSectionLabel) const;
+
+  /// @brief Emit a unit length field.
+  llvm::MCSymbol *EmitDwarfUnitLength(const llvm::Twine &Prefix, const llvm::Twine &Comment) const;
 
   /// @brief Emit dwarf register operation.
   void EmitDwarfRegOp(unsigned reg, unsigned offset = 0, bool indirect = 0) const;

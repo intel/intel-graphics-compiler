@@ -301,17 +301,26 @@ void CompileUnit::addLabel(IGC::DIEBlock *Die, dwarf::Form Form, const MCSymbol 
 }
 
 /// addLabelAddress - Add a dwarf label attribute data and value using
-/// DW_FORM_addr or DW_FORM_GNU_addr_index.
+/// DW_FORM_addr, DW_FORM_GNU_addr_index or DW_FORM_addrx.
 ///
 void CompileUnit::addLabelAddress(DIE *Die, dwarf::Attribute Attribute, MCSymbol *Label) {
   if (Label) {
     DD->addArangeLabel(SymbolCU(this, Label));
-  }
 
-  if (Label != NULL) {
-    DIEValue *Value = new (DIEValueAllocator) DIELabel(Label);
-    Die->addValue(Attribute, dwarf::DW_FORM_addr, Value);
+    if (DD->getDwarfVersion() >= 5) {
+      // DWARF v5: emit index into .debug_addr pool
+      DD->ensureAddrBaseAttribute(this);
+      unsigned idx = DD->getAddressPoolIndex(Label);
+      DIEValue *Value = new (DIEValueAllocator) DIEInteger(idx);
+      Die->addValue(Attribute, dwarf::DW_FORM_addrx, Value);
+    } else {
+      // DWARF v4: emit relocated address directly
+      DIEValue *Value = new (DIEValueAllocator) DIELabel(Label);
+      Die->addValue(Attribute, dwarf::DW_FORM_addr, Value);
+    }
+
   } else {
+    // Label is nullptr when relocation is disabled
     DIEValue *Value = new (DIEValueAllocator) DIEInteger(0);
     Die->addValue(Attribute, dwarf::DW_FORM_addr, Value);
   }
@@ -1985,15 +1994,21 @@ void CompileUnit::applyVariableAttributes(DbgVariable &DV, DIE *VariableDie, boo
   auto Offset = DV.getDotDebugLocOffset();
   if (Offset != DbgVariable::InvalidDotDebugLocOffset) {
     // Copy over references ranges to DotLocDebugEntries
-    if (EmitSettings.EnableRelocation) {
+    if (DD->getDwarfVersion() >= 5) {
+      auto LocRef = DD->CopyDebugLoc(Offset, true, this);
+      auto &LoclistIndex = std::get<unsigned int>(LocRef);
+      addUInt(VariableDie, dwarf::DW_AT_location, dwarf::DW_FORM_loclistx, LoclistIndex);
+    } else if (EmitSettings.EnableRelocation) {
       // Retrieve correct location value based on Offset.
       // Then attach label corresponding to this offset
       // to DW_AT_location attribute.
-      auto LocLabel = DD->CopyDebugLoc(Offset);
+      auto LocRef = DD->CopyDebugLoc(Offset, true);
+      auto &LocLabel = std::get<llvm::MCSymbol *>(LocRef);
       addLabelLoc(VariableDie, dwarf::DW_AT_location, LocLabel);
     } else {
-      Offset = DD->CopyDebugLocNoReloc(Offset);
-      addUInt(VariableDie, dwarf::DW_AT_location, dwarf::DW_FORM_sec_offset, Offset);
+      auto LocRef = DD->CopyDebugLoc(Offset, false);
+      auto &LocOffset = std::get<unsigned int>(LocRef);
+      addUInt(VariableDie, dwarf::DW_AT_location, dwarf::DW_FORM_sec_offset, LocOffset);
     }
 
     DV.setDIE(VariableDie);

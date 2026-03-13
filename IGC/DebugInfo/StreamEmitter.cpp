@@ -258,6 +258,16 @@ const MCSection *StreamEmitter::GetDwarfStrSection() const { return GetObjFileLo
 
 const MCSection *StreamEmitter::GetDwarfFrameSection() const { return GetObjFileLowering().getDwarfFrameSection(); }
 
+const MCSection *StreamEmitter::GetDwarfAddrSection() const { return GetObjFileLowering().getDwarfAddrSection(); }
+
+const MCSection *StreamEmitter::GetDwarfLoclistsSection() const {
+  return GetObjFileLowering().getDwarfLoclistsSection();
+}
+
+const MCSection *StreamEmitter::GetDwarfRnglistsSection() const {
+  return GetObjFileLowering().getDwarfRnglistsSection();
+}
+
 void StreamEmitter::SwitchSection(const MCSection *pSection, const MCExpr *pSubsection) const {
   IGCLLVM::switchSection(m_pMCStreamer, const_cast<MCSection *>(pSection), pSubsection);
 }
@@ -282,6 +292,8 @@ MCSymbol *StreamEmitter::GetTempSymbol(StringRef name) const {
 }
 
 MCSymbol *StreamEmitter::CreateTempSymbol() const { return m_pContext->createTempSymbol(); }
+
+MCSymbol *StreamEmitter::CreateTempSymbol(const Twine &Name) const { return m_pContext->createTempSymbol(Name, true); }
 
 unsigned StreamEmitter::GetDwarfCompileUnitID() const { return m_pContext->getDwarfCompileUnitID(); }
 
@@ -411,6 +423,10 @@ void StreamEmitter::EmitSectionOffset(const MCSymbol *pLabel, const MCSymbol *pS
 
   // Otherwise, emit it as a label difference from the start of the section.
   EmitLabelDifference(pLabel, pSectionLabel, 4);
+}
+
+MCSymbol *StreamEmitter::EmitDwarfUnitLength(const Twine &Prefix, const Twine &Comment) const {
+  return m_pMCStreamer->emitDwarfUnitLength(Prefix, Comment);
 }
 
 void StreamEmitter::EmitDwarfRegOp(unsigned reg, unsigned offset, bool indirect) const {

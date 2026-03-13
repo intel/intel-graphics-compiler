@@ -210,7 +210,7 @@ public:
   void addLabel(DIEBlock *Die, llvm::dwarf::Form Form, const llvm::MCSymbol *Label);
 
   /// addLabelAddress - Add a dwarf label attribute data and value using
-  /// either DW_FORM_addr or DW_FORM_GNU_addr_index.
+  /// either DW_FORM_addr, DW_FORM_GNU_addr_index or DW_FORM_addrx.
   ///
   void addLabelAddress(DIE *Die, llvm::dwarf::Attribute Attribute, llvm::MCSymbol *Label);
 
