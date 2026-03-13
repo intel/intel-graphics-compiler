@@ -62,39 +62,25 @@ any_map = \
 
 vararg_val = "<29>"
 
-# FIXME: Once multiple attribute entries per intrinsic are supported within
-# 'createAttributeTable()', drop this translation table as well as the caller function,
-# turning to explicit specification of "NoUnwind" in the intrinsic definitions.
-attribute_map = {
-    "None":                set(["NoUnwind"]),
-    "NoReturn":            set(["NoUnwind","NoReturn"]),
-    "NoDuplicate":         set(["NoUnwind","NoDuplicate"]),
-    "Convergent":          set(["NoUnwind","Convergent"]),
-    "SideEffects":         set(["NoUnwind"]),
-    "NoWillReturn":        set(["NoUnwind"]),
+# Recognized LLVM Attribute::AttrKind names for function attributes.
+recognized_fn_attributes = {
+    "NoUnwind", "NoReturn", "NoDuplicate", "Convergent",
+    "WillReturn", "Speculatable", "NoFree", "NoSync",
+    "NoRecurse", "MustProgress",
 }
 
-def getAttributeList(Attrs):
-    """
-    Takes a list of attribute names, calculates the union,
-    and returns a list of the the given attributes
-    """
-    s = reduce(lambda acc, v: attribute_map[v] | acc, Attrs, set())
-    return ['Attribute::'+x for x in sorted(s)]
-
-def getAttributeListWithWillReturn(Attrs):
-    """
-    Like getAttributeList, but adds WillReturn unless explicitly disabled
-    by NoWillReturn or NoReturn.
-    """
-    s = reduce(lambda acc, v: attribute_map[v] | acc, Attrs, set())
-    attr = []
-    is_return = "NoWillReturn" not in Attrs
-    for x in sorted(s):
-        attr.append('AB.addAttribute(Attribute::' + x + ')')
-        if x == "NoReturn": is_return = False
-    if is_return: attr.append('AB.addAttribute(Attribute::WillReturn)')
-    return attr
+def validate_attributes(attrs, intrinsic_name):
+    """Validate that 'attributes' is a list of recognized AttrKind strings."""
+    if not isinstance(attrs, list):
+        raise ValueError(
+            "Intrinsic '{}': 'attributes' must be a list, got {}: {!r}".format(
+                intrinsic_name, type(attrs).__name__, attrs))
+    for attr in attrs:
+        if attr not in recognized_fn_attributes:
+            raise ValueError(
+                "Intrinsic '{}': unrecognized attribute '{}'. "
+                "Recognized: {}".format(
+                    intrinsic_name, attr, sorted(recognized_fn_attributes)))
 
 Intrinsics = dict()
 parse = sys.argv
@@ -383,32 +369,66 @@ def createTypeTable():
 
 def createAttributeTable():
     f = open(outputFile,"a")
-    # FIXME: Re-implement without the restriction on the number of explicit attrkind
-    # specifications per intrinsic. Nothing blocks us from creating an in-scope 'static'
-    # map of ArrayRef<AttrKind> per intrinsic ID. AttrBuilder / AttributeList classes
-    # provide enough capabilities for convenient LLVMContext-ualization of that array,
-    # and subsequent addition of memory attribute(s).
+
+    # Validate all attribute entries and collect unique combinations.
+    unique_attr_combos = []   # list of sorted tuples
+    combo_index_map = {}      # sorted tuple -> index in unique_attr_combos
+    per_intrinsic_idx = []    # per-intrinsic index into unique_attr_combos
+
+    for i in range(len(ID_array)):
+        name = ID_array[i]
+        attrs = Intrinsics[name]['attributes']
+        validate_attributes(attrs, name)
+        key = tuple(sorted(attrs))
+        if key not in combo_index_map:
+            combo_index_map[key] = len(unique_attr_combos)
+            unique_attr_combos.append(key)
+        per_intrinsic_idx.append(combo_index_map[key])
+
+    # Determine which combos contain WillReturn (needs #if guard).
+    has_will_return = ["WillReturn" in combo for combo in unique_attr_combos]
+
+    # Emit static AttrKind arrays, one per unique combination.
     f.write("// Add parameter attributes that are not common to all intrinsics.\n"
             "#ifdef GET_INTRINSIC_ATTRIBUTES\n"
-            "AttributeList InternalIntrinsic::getAttributes(LLVMContext &C, InternalIntrinsic::ID id) {\n"
-            "  static const uint8_t IntrinsicsToAttributesMap[] = {\n")
-    attribute_Array = []
+            "AttributeList InternalIntrinsic::getAttributes(LLVMContext &C, InternalIntrinsic::ID id) {\n")
+
+    for idx, combo in enumerate(unique_attr_combos):
+        if has_will_return[idx]:
+            # Split into non-WillReturn attrs and the WillReturn attr.
+            base_attrs = [a for a in combo if a != "WillReturn"]
+            f.write("  static const Attribute::AttrKind AttrKinds_{idx}[] = {{\n"
+                    "#if LLVM_VERSION_MAJOR >= 16\n"
+                    "    {all_attrs}\n"
+                    "#else\n"
+                    "    {base_attrs}\n"
+                    "#endif\n"
+                    "  }};\n".format(
+                        idx=idx,
+                        all_attrs=', '.join('Attribute::' + a for a in combo),
+                        base_attrs=', '.join('Attribute::' + a for a in base_attrs)))
+        else:
+            f.write("  static const Attribute::AttrKind AttrKinds_{idx}[] = {{\n"
+                    "    {attrs}\n"
+                    "  }};\n".format(
+                        idx=idx,
+                        attrs=', '.join('Attribute::' + a for a in combo)))
+
+    # Emit per-intrinsic span table.
+    f.write("\n  struct AttrKindSpan {\n"
+            "    const Attribute::AttrKind *Data;\n"
+            "    size_t Size;\n"
+            "  };\n"
+            "  static const AttrKindSpan AttrsPerIntrinsic[] = {\n")
     for i in range(len(ID_array)):
-        found = False
-        intrinsic_attribute = Intrinsics[ID_array[i]]['attributes'] #This is the location of that attribute
-        for j in range(len(attribute_Array)):
-            if intrinsic_attribute == attribute_Array[j]:
-                found = True
-                f.write("    " + str(j+1) + ", // llvm.vc.internal." + ID_array[i].replace("_",".") + "\n")
-                break
-        if not found:
-            f.write("    " + str(len(attribute_Array)+1) + ", // llvm.vc.internal." + ID_array[i].replace("_",".") + "\n")
-            attribute_Array.append(intrinsic_attribute)
+        idx = per_intrinsic_idx[i]
+        f.write("    {{AttrKinds_{idx}, sizeof(AttrKinds_{idx}) / sizeof(AttrKinds_{idx}[0])}}"
+                ", // llvm.vc.internal.{name}\n".format(
+                    idx=idx, name=ID_array[i].replace("_",".")))
     f.write("  };\n\n")
 
     f.write("  using MemoryEffectsTy = IGCLLVM::MemoryEffects;\n"
             "  static const MemoryEffectsTy MemoryFXPerIntrinsicMap[] = {\n")
-    # Iterate over intrinsic definitions
     for i in range(len(ID_array)):
         memory_effects_entry = Intrinsics[ID_array[i]].get('memory_effects')
         if not memory_effects_entry:
@@ -429,33 +449,18 @@ def createAttributeTable():
 
     f.write("  unsigned AttrIdx = id - 1 - InternalIntrinsic::not_internal_intrinsic;\n"
             "  #ifndef NDEBUG\n"
-            "  const size_t AttrMapNum = sizeof(IntrinsicsToAttributesMap)/sizeof(IntrinsicsToAttributesMap[0]);\n"
+            "  const size_t AttrMapNum = sizeof(AttrsPerIntrinsic) / sizeof(AttrsPerIntrinsic[0]);\n"
             "  IGC_ASSERT(AttrIdx < AttrMapNum && \"invalid attribute index\");\n"
             "  #endif // NDEBUG\n")
 
     f.write("  AttrBuilder AB(C);\n"
             "  if (id != 0) {\n"
-            "    switch(IntrinsicsToAttributesMap[AttrIdx]) {\n"
-            "    default: IGC_ASSERT_EXIT_MESSAGE(0, \"Invalid attribute number\");\n")
+            "    const auto &Span = AttrsPerIntrinsic[AttrIdx];\n"
+            "    for (size_t I = 0; I < Span.Size; ++I)\n"
+            "      AB.addAttribute(Span.Data[I]);\n"
+            "  }\n")
 
-    for i in range(len(attribute_Array)): #Building case statements
-        Attrs = getAttributeList([x.strip() for x in attribute_Array[i].split(',')])
-        AttrsWithWillReturn = getAttributeListWithWillReturn([x.strip() for x in attribute_Array[i].split(',')])
-        f.write("""    case {num}: {{
-      #if LLVM_VERSION_MAJOR >= 16
-      {attrs_will};
-      #else
-      const Attribute::AttrKind Attrs[] = {{{attrs}}};
-      for (auto Kind : Attrs) {{
-        AB.addAttribute(Kind);
-      }}
-      #endif
-      break;
-      }}\n""".format(num=i+1, attrs_will='; '.join(AttrsWithWillReturn), attrs=','.join(Attrs)))
-
-    f.write("    }\n"
-            "  }\n"
-            "  MemoryEffectsTy ME = MemoryFXPerIntrinsicMap[AttrIdx];\n"
+    f.write("  MemoryEffectsTy ME = MemoryFXPerIntrinsicMap[AttrIdx];\n"
             "  AB.merge(ME.getAsAttrBuilder(C));\n"
             "  return AttributeList::get(C, AttributeList::FunctionIndex, AB);\n"
             "}\n"
