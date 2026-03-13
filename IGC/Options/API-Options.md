@@ -1,7 +1,7 @@
 <!--
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2025 Intel Corporation
+Copyright (C) 2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -12,14 +12,9 @@ This is an auto-generated list of options gathered from [ApiOptions.td](https://
 The "Kind" column describes the type of Option as defined in [OptParser.td](https://github.com/llvm-mirror/llvm/blob/master/include/llvm/Option/OptParser.td#L24-L50) refer to it for further information.
 
 ## Table of contents
-- [IGC API Options list](#igc-api-options-list)
-  - [Table of contents](#table-of-contents)
-  - [Legend](#legend)
-  - [Option Lists](#option-lists)
-    - [IGCApiOption](#igcapioption)
-    - [IgcmcApiOption](#igcmcapioption)
-    - [VCApiOption](#vcapioption)
-    - [References](#references)
+1. [IGCApiOption](#igcapioption)
+2. [IgcmcApiOption](#igcmcapioption)
+3. [VCApiOption](#vcapioption)
 
 ## Legend
 The `cl-` and `ze-` prefixes correspond to OpenCL and Level Zero specific options. For more in-depth information regarding OpenCL options consult the OpenCL documentation[\[1\]](#references).
@@ -91,10 +86,12 @@ The `cl-` and `ze-` prefixes correspond to OpenCL and Level Zero specific option
 |`-Xfinalizer`| Pass <arg> to the visa finalizer | `KIND_SEPARATE` |
 |`-[cl-\|ze-]128-GRF-per-thread`|  | `KIND_FLAG` |
 |`-[cl-\|ze-]256-GRF-per-thread`|  | `KIND_FLAG` |
+|`-[cl-\|ze-]512-GRF-per-thread`|  | `KIND_FLAG` |
 |`-[cl-\|ze-]exp-register-file-size=`| Alias for -ze-exp-register-file-size | `KIND_JOINED` |
 |`-[cl-\|ze-]gtpin-scratch-area-size=`| Alias for -ze-gtpin-scratch-area-size | `KIND_JOINED` |
 |`-<cl-\|ze->intel-128-GRF-per-thread`|  | `KIND_FLAG` |
 |`-<cl-\|ze->intel-256-GRF-per-thread`|  | `KIND_FLAG` |
+|`-<cl-\|ze->intel-512-GRF-per-thread`|  | `KIND_FLAG` |
 |`-<cl-\|ze->intel-collect-cost-info`| Find argument symbols, calculate loop count and loop cost expressions | `KIND_FLAG` |
 |`-<cl-\|ze->intel-disable-compaction`| Disable compaction pass in finalizer. This pass is used to decide whether to use a compacted, i.e. shorter encoding of machine instructions wherever ISA allows. | `KIND_FLAG` |
 |`-<cl-\|ze->intel-emit-lib-compile-errors`|  | `KIND_FLAG` |
@@ -131,6 +128,7 @@ The `cl-` and `ze-` prefixes correspond to OpenCL and Level Zero specific option
 |`-[cl-\|ze-]library-compile-simd=`| Select SIMD size for library compilations [8\|16\|32] | `KIND_JOINED` |
 |`-ze-opt-128-GRF-per-thread`|  | `KIND_FLAG` |
 |`-ze-opt-256-GRF-per-thread`|  | `KIND_FLAG` |
+|`-ze-opt-512-GRF-per-thread`|  | `KIND_FLAG` |
 |`-ze-opt-collect-cost-info`| Find argument symbols, calculate loop count and loop cost expressions | `KIND_FLAG` |
 |`-ze-opt-disable-compaction`| Disable compaction pass in finalizer. This pass is used to decide whether to use a compacted, i.e. shorter encoding of machine instructions wherever ISA allows. | `KIND_FLAG` |
 |`-ze-opt-emit-lib-compile-errors`|  | `KIND_FLAG` |

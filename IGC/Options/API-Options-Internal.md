@@ -1,7 +1,7 @@
 <!--
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2025 Intel Corporation
+Copyright (C) 2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -27,6 +27,7 @@ The `cl-` and `ze-` prefixes correspond to OpenCL and Level Zero specific option
 | Name | Description | Kind |
 |:---- | :---- | :----: |
 |`-D`| Manually define macros. | `KIND_JOINED_OR_SEPARATE` |
+|`-[cl-\|ze-]64bit-addressing`| Enables efficient 64-bit addressing | `KIND_FLAG` |
 |`-[cl-\|ze-]buffer-bounds-checking`| Enable buffer bounds checking | `KIND_FLAG` |
 |`-[cl-\|ze-]buffer-offset-arg-required`| Tell IGC to always use buffer offset. It is valid only if -intel-has-buffer-offset-arg is present. | `KIND_FLAG` |
 |`-[cl-\|ze-]compile-one-at-time`| Enables llvm::module splitting to compile only one kernel at a time. | `KIND_FLAG` |
@@ -57,7 +58,7 @@ The `cl-` and `ze-` prefixes correspond to OpenCL and Level Zero specific option
 |`-[cl-\|ze-]include-sip-csr`|  | `KIND_FLAG` |
 |`-[cl-\|ze-]include-sip-kernel-debug`|  | `KIND_FLAG` |
 |`-[cl-\|ze-]include-sip-kernel-local-debug`|  | `KIND_FLAG` |
-|`-<cl-\|ze->intel-include-sip-csr`|  | `KIND_FLAG` |
+|`-<cl-\|ze->intel-kernel-debug-enable`|  | `KIND_FLAG` |
 |`-[cl-\|ze-]kernel-debug-enable`|  | `KIND_FLAG` |
 |`-[cl-\|ze-]ldstcombine`|  | `KIND_SEPARATE` |
 |`-[cl-\|ze-]ldstcombine_max-loadbytes`|  | `KIND_SEPARATE` |
@@ -87,9 +88,12 @@ The `cl-` and `ze-` prefixes correspond to OpenCL and Level Zero specific option
 |`-cl-oversion=`|  | `KIND_JOINED` |
 |`-[cl-\|ze-]128-GRF-per-thread`|  | `KIND_FLAG` |
 |`-[cl-\|ze-]256-GRF-per-thread`|  | `KIND_FLAG` |
+|`-[cl-\|ze-]512-GRF-per-thread`|  | `KIND_FLAG` |
 |`-[cl-\|ze-]exp-register-file-size=`| Alias for -ze-exp-register-file-size. | `KIND_JOINED` |
 |`-<cl-\|ze->intel-128-GRF-per-thread`|  | `KIND_FLAG` |
 |`-<cl-\|ze->intel-256-GRF-per-thread`|  | `KIND_FLAG` |
+|`-<cl-\|ze->intel-512-GRF-per-thread`|  | `KIND_FLAG` |
+|`-<cl-\|ze->intel-64bit-addressing`| Enables efficient 64-bit addressing | `KIND_FLAG` |
 |`-<cl-\|ze->intel-buffer-bounds-checking`| Enable buffer bounds checking | `KIND_FLAG` |
 |`-<cl-\|ze->intel-buffer-offset-arg-required`| Tell IGC to always use buffer offset. It is valid only if -intel-has-buffer-offset-arg is present. | `KIND_FLAG` |
 |`-<cl-\|ze->intel-compile-one-at-time`| Enables llvm::module splitting to compile only one kernel at a time. | `KIND_FLAG` |
@@ -117,9 +121,9 @@ The `cl-` and `ze-` prefixes correspond to OpenCL and Level Zero specific option
 |`-<cl-\|ze->intel-has-positive-pointer-offset`| For any load and store (aka message) whose address = *ptrArg + offset*, where *ptrArg* is a kernel pointer argument, offset is assumed to be non-negative if this flag is present. | `KIND_FLAG` |
 |`-<cl-\|ze->intel-high-accuracy-nolut-math`| Enbales experimental high accuracy implementations of transcendentals. | `KIND_FLAG` |
 |`-<cl-\|ze->intel-ignoreBFRounding`| Folds BF operands into mul/add/cmp operations. | `KIND_FLAG` |
+|`-<cl-\|ze->intel-include-sip-csr`|  | `KIND_FLAG` |
 |`-<cl-\|ze->intel-include-sip-kernel-debug`|  | `KIND_FLAG` |
 |`-<cl-\|ze->intel-include-sip-kernel-local-debug`|  | `KIND_FLAG` |
-|`-<cl-\|ze->intel-kernel-debug-enable`|  | `KIND_FLAG` |
 |`-<cl-\|ze->intel-ldstcombine`|  | `KIND_SEPARATE` |
 |`-<cl-\|ze->intel-ldstcombine-max-loadbytes=`|  | `KIND_JOINED` |
 |`-<cl-\|ze->intel-ldstcombine-max-storebytes=`|  | `KIND_JOINED` |
@@ -153,6 +157,8 @@ The `cl-` and `ze-` prefixes correspond to OpenCL and Level Zero specific option
 |`-[cl-\|ze-]load-cache-default=`|  | `KIND_JOINED` |
 |`-ze-opt-128-GRF-per-thread`|  | `KIND_FLAG` |
 |`-ze-opt-256-GRF-per-thread`|  | `KIND_FLAG` |
+|`-ze-opt-512-GRF-per-thread`|  | `KIND_FLAG` |
+|`-ze-opt-64bit-addressing`| Enables efficient 64-bit addressing | `KIND_FLAG` |
 |`-ze-opt-buffer-bounds-checking`| Enable buffer bounds checking | `KIND_FLAG` |
 |`-ze-opt-buffer-offset-arg-required`| Tell IGC to always use buffer offset. It is valid only if -intel-has-buffer-offset-arg is present. | `KIND_FLAG` |
 |`-ze-opt-compile-one-at-time`| Enables llvm::module splitting to compile only one kernel at a time. | `KIND_FLAG` |
@@ -219,6 +225,7 @@ The `cl-` and `ze-` prefixes correspond to OpenCL and Level Zero specific option
 |:---- | :---- | :----: |
 |`-binary-format`| Set in which format should be generated binary; values: 'cm' or 'ze' | `KIND_SEPARATE` |
 |`-binary-format=`| Alias for -binary-format <value> | `KIND_JOINED` |
+|`-[cl-\|ze-]64bit-addressing`| Enables efficient 64-bit addressing | `KIND_FLAG` |
 |`-[cl-\|ze-]buffer-bounds-checking`| Enable buffer bounds checking | `KIND_FLAG` |
 |`-[cl-\|ze-]disable-sendwarwa`| Disable SendWAR WA PVC platform only | `KIND_FLAG` |
 |`-[cl-\|ze-]emit-zebin-visa-sections`| Add vISA asm as sections in ZeBin | `KIND_FLAG` |
@@ -252,12 +259,14 @@ The `cl-` and `ze-` prefixes correspond to OpenCL and Level Zero specific option
 |`-vc-loop-unroll-threshold`| Loop unroll threshold for VC | `KIND_SEPARATE` |
 |`-vc-loop-unroll-threshold=`| Alias for -vc-loop-unroll-threshold <value> | `KIND_JOINED` |
 |`-vc-report-lsc-stores-with-non-default-l1-cache-controls`| Ignore loop unroll threshold on pragma for VC | `KIND_FLAG` |
+|`-<cl-\|ze->intel-64bit-addressing`| Enables efficient 64-bit addressing | `KIND_FLAG` |
 |`-<cl-\|ze->intel-buffer-bounds-checking`| Enable buffer bounds checking | `KIND_FLAG` |
 |`-<cl-\|ze->intel-disable-sendwarwa`| Disable SendWAR WA PVC platform only | `KIND_FLAG` |
 |`-<cl-\|ze->intel-emit-zebin-visa-sections`| Add vISA asm as sections in ZeBin | `KIND_FLAG` |
 |`-<cl-\|ze->intel-minimum-valid-address-checking`| Set minimal valid address | `KIND_SEPARATE` |
 |`-<cl-\|ze->intel-use-bindless-buffers`| Use bindless mode for buffers | `KIND_FLAG` |
 |`-<cl-\|ze->intel-use-bindless-images`| Use bindless mode for images | `KIND_FLAG` |
+|`-ze-opt-64bit-addressing`| Enables efficient 64-bit addressing | `KIND_FLAG` |
 |`-ze-opt-buffer-bounds-checking`| Enable buffer bounds checking | `KIND_FLAG` |
 |`-ze-opt-disable-sendwarwa`| Disable SendWAR WA PVC platform only | `KIND_FLAG` |
 |`-ze-opt-emit-zebin-visa-sections`| Add vISA asm as sections in ZeBin | `KIND_FLAG` |
