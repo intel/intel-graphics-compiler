@@ -21,7 +21,9 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/IR/Instructions.h>
 #include <llvm/IR/CFG.h>
+#include <llvm/IR/Dominators.h>
 #include <llvm/Transforms/Utils/BasicBlockUtils.h>
+#include <llvm/Analysis/LoopInfo.h>
 #include "common/LLVMWarningsPop.hpp"
 
 #include <optional>
@@ -34,8 +36,13 @@ using namespace IGC;
   if (m_pStream) {                                                                                                     \
     X;                                                                                                                 \
   }
+#define REMAT_DIAG_SET_REASON(R)                                                                                       \
+  if (m_pStream) {                                                                                                     \
+    (*m_UniqueReasonMap)[m_RootInstruction] = R;                                                                       \
+  }
 #else
 #define REMAT_DIAG(X)
+#define REMAT_DIAG_SET_REASON(X)
 #endif
 
 static void rewritePHIs(BasicBlock &BB) {
@@ -193,12 +200,23 @@ void rewriteMaterializableInstructions(const SmallVector<Spill, 8> &Spills) {
 RematChecker::RematChecker(CodeGenContext &Ctx, RematStage Stage) : Ctx(Ctx), Stage(Stage) {
 #if defined(_DEBUG) || defined(_INTERNAL)
   m_pStream = nullptr;
+  m_RootInstruction = nullptr;
+#endif
+}
+
+RematChecker::RematChecker(CodeGenContext &Ctx, RematStage Stage, llvm::DominatorTree *DT, llvm::LoopInfo *LI)
+    : Ctx(Ctx), Stage(Stage), DT(DT), LI(LI) {
+#if defined(_DEBUG) || defined(_INTERNAL)
+  m_pStream = nullptr;
+  m_RootInstruction = nullptr;
 #endif
 }
 
 #if defined(_DEBUG) || defined(_INTERNAL)
-RematChecker::RematChecker(CodeGenContext &Ctx, RematStage Stage, llvm::raw_ostream *Stream)
-    : Ctx(Ctx), Stage(Stage), m_pStream(Stream) {}
+RematChecker::RematChecker(CodeGenContext &Ctx, RematStage Stage, llvm::DominatorTree *DT, llvm::LoopInfo *LI,
+                           llvm::raw_ostream *Stream)
+    : Ctx(Ctx), Stage(Stage), m_UniqueReasonMap(std::make_unique<RejectionReasonMapType>()), DT(DT), LI(LI),
+      m_pStream(Stream) {}
 #endif
 
 bool RematChecker::isReadOnly(const Value *Ptr) const {
@@ -219,11 +237,95 @@ bool RematChecker::materializable(const Instruction &I) const {
     return true;
   }
 
+  if (auto *PHI = dyn_cast<PHINode>(&I)) {
+
+    if (!LI) {
+      REMAT_DIAG(*m_pStream << "false: [PHI join node. no loop info, assuming conditional PHI, rejecting]\n");
+      REMAT_DIAG_SET_REASON(RejectionReason::COND_PHI);
+      return false;
+    }
+
+    if (PHI->getNumOperands() == 1)
+      return true;
+
+    // Now we know we have two or more operands.
+    const BasicBlock *BB = PHI->getParent();
+    Loop *LP = LI ? LI->getLoopFor(BB) : nullptr;
+
+    /// Distinguish the case:  1) where PHI is enclosed in a loop, 2) PHI is not enclosed in a loop
+    if (LP) {
+      /// 1) PHI is enclosed in a loop
+      if (!LP->getLoopLatch()) {
+        REMAT_DIAG(*m_pStream
+                   << "false: [PHI join node. in a loop, but not latch info, assuming conditional PHI, rejecting]\n");
+        REMAT_DIAG_SET_REASON(RejectionReason::COND_PHI);
+        return false; // But we can't get a latch, so cannot further analyze. Be conservative then.
+      }
+
+      /// PHI node is in a loop, but need to distinguish two important cases:
+      ///
+      /// 1.1) PHI has a loop dependency (at least one of the arguments is loop carried)
+      ///
+      /// BB.pre.header :
+      /// v_init <- ...
+      /// BB.loop.header :
+      /// dest = PHI (BB.pre.header:v_init, BB.latch: v_loop_defined)
+      /// ...
+      /// v_loop_defined <- ...
+      /// ...
+      /// BB.latch:
+      ///   goto BB.loop.header
+      /// loop END
+      ///
+      ///
+      /// need to check whether it is loop carried:
+      if (PHI->getIncomingBlock(0) == LP->getLoopLatch() || PHI->getIncomingBlock(1) == LP->getLoopLatch()) {
+        REMAT_DIAG(*m_pStream << "false: [loop header PHI, defining loop carried dependency]\n");
+        REMAT_DIAG_SET_REASON(RejectionReason::LOOP_PHI);
+        return false;
+      } else {
+        /// 1.2) PHI is enclosed in a loop, but it's source values are fully defined within a single loop
+        /// iteration (i.e. no loop carried definitions)
+        /// One potential scenario is the following (BB.if.header, BB.then and BB.else fully enclosed in a loop).
+        /// BB.pre.header :
+        /// ...
+        /// BB.loop.header :
+        /// ...
+        /// BB.if.header:
+        /// BB.then:
+        /// v1 <- ...
+        /// BB.else:
+        /// v2 <- ...
+        /// endif
+        ///
+        /// dest = PHI (BB.then:v1, BB.else: v2)
+        /// ...
+        /// ...
+        /// BB.latch:
+        ///   goto BB.loop.header
+        /// loop END
+        ///
+        REMAT_DIAG(*m_pStream << "false: [PHI join node. acyclical control-flow within loop, rejecting]\n");
+        REMAT_DIAG_SET_REASON(RejectionReason::COND_PHI);
+        return false; // no dominator tree, so no analysis performed, assume false
+      }
+
+    } else {
+      /// Case 2) : PHI is not enclosed in a loop. We are outside a loop. PHI sources form control flow DAG.
+      REMAT_DIAG(*m_pStream << "false: [PHI join node. acyclical control-flow, rejecting]\n");
+      REMAT_DIAG_SET_REASON(RejectionReason::COND_PHI);
+      return false; // we are not in a loop
+    }
+  } // end processing PHI node
+
   if (auto *LI = dyn_cast<LoadInst>(&I)) {
-    REMAT_DIAG(*m_pStream << ((LI->getPointerAddressSpace() == ADDRESS_SPACE_CONSTANT)
-                                  ? "true: [LOAD with constant address space]\n"
-                                  : "false: [LOAD address space not satisfying]\n"));
-    return (LI->getPointerAddressSpace() == ADDRESS_SPACE_CONSTANT);
+    bool Satisfies = LI->getPointerAddressSpace() == ADDRESS_SPACE_CONSTANT;
+
+    REMAT_DIAG(*m_pStream << (Satisfies ? "true: [LOAD with constant address space]\n"
+                                        : "false: [LOAD address space not satisfying]\n"));
+
+    REMAT_DIAG_SET_REASON(Satisfies ? RejectionReason::ACCEPTED : RejectionReason::LOAD);
+    return Satisfies;
   }
 
   if (auto *GII = dyn_cast<GenIntrinsicInst>(&I)) {
@@ -242,13 +344,16 @@ bool RematChecker::materializable(const Instruction &I) const {
       REMAT_DIAG(*m_pStream << (isReadOnly(cast<LdRawIntrinsic>(GII)->getResourceValue())
                                     ? "true: [ldraw with read-only buffer]\n"
                                     : "false: [ldraw not read-only]\n"));
+      REMAT_DIAG_SET_REASON(isReadOnly(cast<LdRawIntrinsic>(GII)->getResourceValue()) ? RejectionReason::ACCEPTED
+                                                                                      : RejectionReason::LDRAW);
       return isReadOnly(cast<LdRawIntrinsic>(GII)->getResourceValue());
     case GenISAIntrinsic::GenISA_ldptr:
     case GenISAIntrinsic::GenISA_ldlptr:
       REMAT_DIAG(*m_pStream << "true: [ldptr or ldlptr]\n");
       return true;
     default:
-      REMAT_DIAG(*m_pStream << "false: [non-supported GenISA intrinsic - missed opportunity?]\n");
+      REMAT_DIAG(*m_pStream << "false: [non-supported GenISA intrinsic - which?]\n");
+      REMAT_DIAG_SET_REASON(RejectionReason::GEN_INTRINSIC);
       return false;
     }
   }
@@ -267,7 +372,14 @@ bool RematChecker::materializable(const Instruction &I) const {
     }
   }
 
+  if (auto *II = dyn_cast<AllocaInst>(&I)) {
+    REMAT_DIAG(*m_pStream << "false: [alloca]\n");
+    REMAT_DIAG_SET_REASON(RejectionReason::ALLOCA);
+    return false;
+  }
+
   REMAT_DIAG(*m_pStream << "false: [non-supported case: missed opportunity?]\n");
+  REMAT_DIAG_SET_REASON(RejectionReason::OTHER);
   return false;
 }
 
@@ -305,7 +417,9 @@ bool RematChecker::canFullyRemat(Instruction *I, std::vector<Instruction *> &Ins
     REMAT_DIAG(*m_pStream << "\n"
                           << std::string(StartDepth - Depth, ' ')
                           << (Depth == 0 ? "Depth exhausted." : "materializable false"));
-
+    if (Depth == 0) {
+      REMAT_DIAG_SET_REASON(RejectionReason::EXHAUSTED);
+    }
     return false;
   }
 
@@ -329,6 +443,9 @@ std::optional<std::vector<Instruction *>> RematChecker::canFullyRemat(Instructio
                                                                       ValueToValueMapTy *VM) const {
   std::vector<Instruction *> Insts;
   std::unordered_set<Instruction *> Visited;
+#if defined(_DEBUG) || defined(_INTERNAL)
+  m_RootInstruction = I;
+#endif
   if (!canFullyRemat(I, Insts, Visited, Threshold, Threshold, VM))
     return std::nullopt;
 
