@@ -437,6 +437,34 @@ This document lists all SPIR-V extensions supported by IGC and their platform re
 
 ---
 
+## SPV_INTEL_subgroup_matrix_multiply_accumulate_float4
+
+**Specification**: https://github.com/intel/llvm/blob/sycl/sycl/doc/design/spirv-extensions/SPV_INTEL_subgroup_matrix_multiply_accumulate_float4.asciidoc
+
+> **Experimentally supported on**: IGFX_XE3P_CORE and newer
+
+**Capabilities**:
+
+- **MatrixAPackedFloat4E2M1INTEL**
+- **MatrixBPackedFloat4E2M1INTEL**
+
+---
+
+## SPV_INTEL_subgroup_matrix_multiply_accumulate_float8
+
+**Specification**: https://github.com/intel/llvm/blob/sycl/sycl/doc/design/spirv-extensions/SPV_INTEL_subgroup_matrix_multiply_accumulate_float8.asciidoc
+
+> **Experimentally supported on**: IGFX_XE3P_CORE and newer
+
+**Capabilities**:
+
+- **MatrixAPackedFloat8E4M3INTEL**
+- **MatrixBPackedFloat8E4M3INTEL**
+- **MatrixAPackedFloat8E5M2INTEL**
+- **MatrixBPackedFloat8E5M2INTEL**
+
+---
+
 ## SPV_INTEL_subgroup_scaled_matrix_multiply_accumulate
 
 **Specification**: https://github.com/intel/llvm/pull/20656
@@ -445,7 +473,7 @@ This document lists all SPIR-V extensions supported by IGC and their platform re
 
 **Capabilities**:
 
-- **Subgroup​Scaled​Matrix​Multiply​Accumulate​INTEL**
+- **SubgroupScaledMatrixMultiplyAccumulateINTEL**
 
 ---
 
