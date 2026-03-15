@@ -2408,7 +2408,7 @@ void CEncoder::AddrAdd(CVariable *dst, CVariable *src0, CVariable *src1, uint cu
     VISA_VectorOpnd *dstOpnd = nullptr;
     const DWORD zero = 0;
     V(vKernel->CreateVISAImmediate(srcOpnd, &zero, ISA_TYPE_UW));
-    V(vKernel->CreateVISAAddressDstOperand(dstOpnd, dst->visaAddrVariable, m_encoderState.m_dstOperand.subReg));
+    V(vKernel->CreateVISAAddressDstOperand(dstOpnd, dst->visaAddrVariable, 0));
     V(vKernel->AppendVISADataMovementInst(ISA_MOV, nullptr, false, GetAluEMask(dst),
                                           visaExecSize(m_encoderState.m_simdSize), dstOpnd, srcOpnd));
     m_encoderState.m_noMask = false;
@@ -2423,7 +2423,7 @@ void CEncoder::AddrAdd(CVariable *dst, CVariable *src0, CVariable *src1, uint cu
   VISA_VectorOpnd *pSrc0Addr = nullptr;
   V(vKernel->CreateVISAAddressOfOperand(pSrc0Addr, GetVISAVariable(src0), src0->GetAliasOffset()));
   VISA_VectorOpnd *pVectorOpnd = nullptr;
-  V(vKernel->CreateVISAAddressDstOperand(pVectorOpnd, dst->visaAddrVariable, m_encoderState.m_dstOperand.subReg));
+  V(vKernel->CreateVISAAddressDstOperand(pVectorOpnd, dst->visaAddrVariable, 0));
 
   V(vKernel->AppendVISAAddrAddInst(GetAluEMask(dst), visaExecSize(m_encoderState.m_simdSize), pVectorOpnd, pSrc0Addr,
                                    pSrc1Opnd));

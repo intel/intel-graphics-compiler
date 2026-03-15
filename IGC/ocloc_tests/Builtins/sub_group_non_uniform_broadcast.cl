@@ -9,7 +9,7 @@ SPDX-License-Identifier: MIT
 // UNSUPPORTED: sys32
 // REQUIRES: regkeys, pvc-supported
 
-// RUN: ocloc compile -file %s -device pvc -options "-igc_opts 'DumpVISAASMToConsole=1,EnableEmitMoreMoviCases=0'" | FileCheck %s
+// RUN: ocloc compile -file %s -device pvc -options "-igc_opts 'DumpVISAASMToConsole=1'" | FileCheck %s
 
 __attribute__((intel_reqd_sub_group_size(16)))
 kernel void test_sub_group_non_uniform_broadcast_non_immediate_sub_group_local_id_simd16(global int* in, global int* ids, global int* out) {

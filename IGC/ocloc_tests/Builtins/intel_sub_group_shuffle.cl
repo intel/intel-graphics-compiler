@@ -9,7 +9,7 @@ SPDX-License-Identifier: MIT
 // UNSUPPORTED: sys32
 // REQUIRES: regkeys, pvc-supported
 
-// RUN: ocloc compile -file %s -device pvc -options "-igc_opts 'DumpVISAASMToConsole=1,EnableEmitMoreMoviCases=0'" | FileCheck %s
+// RUN: ocloc compile -file %s -device pvc -options "-igc_opts 'DumpVISAASMToConsole=1'" | FileCheck %s
 
 // CHECK-LABEL: .kernel "test_intel_sub_group_shuffle_immediate_index_simd32"
 __attribute__((intel_reqd_sub_group_size(32)))

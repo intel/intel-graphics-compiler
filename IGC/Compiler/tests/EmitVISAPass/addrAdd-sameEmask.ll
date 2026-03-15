@@ -7,8 +7,8 @@
 ;============================ end_copyright_notice =============================
 ; REQUIRES: regkeys
 ; platformNvl
-; RUN: igc_opt -platformbmg -igc-emit-visa %s -inputcs -simd-mode 32 -regkey DumpVISAASMToConsole=1,DebugSoftwareNeedsA0Reset=1,EnableEmitMoreMoviCases=0 | FileCheck %s --check-prefix=CHECK-BMG
-; RUN: igc_opt -platformNvl -igc-emit-visa %s -inputcs -simd-mode 32 -regkey DumpVISAASMToConsole=1,DebugSoftwareNeedsA0Reset=1,EnableEmitMoreMoviCases=0 | FileCheck %s --check-prefix=CHECK-NVL
+; RUN: igc_opt -platformbmg -igc-emit-visa %s -inputcs -simd-mode 32 -regkey DumpVISAASMToConsole=1,DebugSoftwareNeedsA0Reset=1 | FileCheck %s --check-prefix=CHECK-BMG
+; RUN: igc_opt -platformNvl -igc-emit-visa %s -inputcs -simd-mode 32 -regkey DumpVISAASMToConsole=1,DebugSoftwareNeedsA0Reset=1 | FileCheck %s --check-prefix=CHECK-NVL
 
 ; ------------------------------------------------
 ; EmitVISAPass - Testing addr_add instruction generation
