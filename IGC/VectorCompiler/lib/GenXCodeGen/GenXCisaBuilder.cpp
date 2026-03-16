@@ -1978,8 +1978,9 @@ void GenXKernelBuilder::buildConvert(CallInst *CI, BaleInfo BI, unsigned Mod,
   // Destination is address register.
   int ExecSize = 1;
   if (VectorType *VT = dyn_cast<VectorType>(CI->getType())) {
-    vc::fatal(getContext(), "GenXCisaBuilder",
-              "vector of addresses not implemented", CI);
+    vc::diagnose(getContext(), "GenXCisaBuilder",
+                 "vector of addresses not implemented", CI);
+    return;
   }
 
   auto ISAExecSize = static_cast<VISA_Exec_Size>(genx::log2(ExecSize));
@@ -3885,8 +3886,9 @@ void GenXKernelBuilder::buildIntrinsic(CallInst *CI, unsigned IntrinID,
       VT = cast<VectorType>(CI->getArgOperand(CI->arg_size() - 1)->getType());
       break;
     default:
-      vc::fatal(getContext(), "GenXCisaBuilder",
-                "Unsupported typed 2D operation", CI);
+      vc::diagnose(getContext(), "GenXCisaBuilder",
+                   "Unsupported typed 2D operation", CI);
+      return;
     }
 
     auto *ElementType = VT->getElementType();

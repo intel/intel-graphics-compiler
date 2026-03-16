@@ -109,14 +109,18 @@ ModulePass *llvm::createGenXSLMResolution() {
 static void lowerSlmInit(Instruction &I) {
   auto *BB = I.getParent();
   auto *F = BB->getParent();
-  if (!vc::isKernel(F))
-    vc::fatal(I.getContext(), "GenXSLMResolution",
-              "SLM init call is supported only in kernels", &I);
+  if (!vc::isKernel(F)) {
+    vc::diagnose(I.getContext(), "GenXSLMResolution",
+                 "SLM init call is supported only in kernels", &I);
+    return;
+  }
 
   auto *V = dyn_cast<ConstantInt>(I.getOperand(0));
-  if (!V)
-    vc::fatal(I.getContext(), "GenXSLMResolution",
-              "Cannot reserve non-constant amount of SLM", &I);
+  if (!V) {
+    vc::diagnose(I.getContext(), "GenXSLMResolution",
+                 "Cannot reserve non-constant amount of SLM", &I);
+    return;
+  }
 
   unsigned SLMSize = V->getValue().getZExtValue();
   vc::KernelMetadata MD{F};

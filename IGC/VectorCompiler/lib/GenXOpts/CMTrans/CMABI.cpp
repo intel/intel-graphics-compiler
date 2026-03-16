@@ -1119,10 +1119,11 @@ void CMABIBase<CallGraphImpl>::diagnoseOverlappingArgs(CallInst *CI) {
           if (Reported.insert(std::pair<unsigned, unsigned>(ArgIdx1, ArgIdx2))
                   .second) {
             // Not already reported.
-            vc::fatal(Inst->getContext(), "CMABI",
-                      "by reference arguments " + Twine(ArgIdx1) + " and " +
-                          Twine(ArgIdx2) + " overlap",
-                      CI);
+            vc::diagnose(Inst->getContext(), "CMABI",
+                         "by reference arguments " + Twine(ArgIdx1) + " and " +
+                             Twine(ArgIdx2) + " overlap",
+                         CI);
+            return;
           }
         }
         (*Entry)[i] = std::max((*Entry)[i], (*VectorToMerge)[i]);

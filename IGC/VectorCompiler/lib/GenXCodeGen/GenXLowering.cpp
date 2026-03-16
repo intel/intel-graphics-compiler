@@ -2118,10 +2118,9 @@ bool GenXLowering::processInst(Instruction *Inst) {
       return lowerSqrt(CI);
     case Intrinsic::sadd_sat:
     case Intrinsic::ssub_sat:
-      vc::fatal(Inst->getContext(), "GenXLowering",
-                "Sorry not implemented: GenX backend cannot handle this "
-                "intrinsic yet",
-                Inst);
+      Inst->getContext().emitError(
+          Inst,
+          "GenX backend cannot handle sadd_sat and ssub_sat intrinsics yet");
       break;
     case Intrinsic::uadd_sat:
       return lowerUAddWithSat(CI);
@@ -4913,8 +4912,8 @@ bool GenXLowering::lowerMathIntrinsic(CallInst *CI, GenXIntrinsic::ID GenXID,
   auto *ResScalarTy = ResTy->getScalarType();
   if (!ResScalarTy->isFloatTy() &&
       !(IsHalfAllowed && ResScalarTy->isHalfTy())) {
-    vc::fatal(CI->getContext(), "GenXLowering",
-              "Sorry there is only f16 and f32 native instruction", CI);
+    vc::diagnose(CI->getContext(), "GenXLowering",
+                 "Sorry there is only f16 and f32 native instruction", CI);
     return false;
   }
   auto *Decl = GenXIntrinsic::getGenXDeclaration(CI->getModule(), GenXID,
@@ -4929,9 +4928,11 @@ bool GenXLowering::lowerMathIntrinsic(CallInst *CI, GenXIntrinsic::ID GenXID,
 
 bool GenXLowering::lowerFastMathIntrinsic(CallInst *CI,
                                           GenXIntrinsic::ID GenXID) {
-  if (!CI->hasApproxFunc())
-    vc::fatal(CI->getContext(), "GenXLowering",
-              "Sorry there is only low precision native instruction", CI);
+  if (!CI->hasApproxFunc()) {
+    vc::diagnose(CI->getContext(), "GenXLowering",
+                 "Sorry there is only low precision native instruction", CI);
+    return false;
+  }
   return lowerMathIntrinsic(CI, GenXID, /*IsHalfAllowed=*/true);
 }
 

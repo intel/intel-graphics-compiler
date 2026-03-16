@@ -285,9 +285,11 @@ bool GenXPrintfPhiClonning::runOnModule(Module &M) {
         auto *Phi = getFirstPhi(C->getOperand(0));
         if (!Phi)
           continue;
-        if (cast<PHINode>(Phi)->getParent() != C->getParent())
-          vc::fatal(Phi->getContext(), "GenXPrintfPhiClonning",
-                    "Def-chain for printf is too long", Phi);
+        if (cast<PHINode>(Phi)->getParent() != C->getParent()) {
+          vc::diagnose(Phi->getContext(), "GenXPrintfPhiClonning",
+                       "Def-chain for printf is too long", Phi);
+          return false;
+        }
         // Check current BB does not added
         if (llvm::any_of(ClonningCandidates, [&](auto &Pair) {
               return C->getParent() == Pair.first->getParent();

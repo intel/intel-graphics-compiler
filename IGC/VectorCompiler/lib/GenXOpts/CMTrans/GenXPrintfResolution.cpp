@@ -379,9 +379,11 @@ void GenXPrintfResolution::handlePrintfCall(CallInst &OrigPrintf) {
   fixFormatStringOperand(OrigPrintf);
   auto [FmtStrSize, ArgsInfo] =
       analyzeFormatString(*OrigPrintf.getArgOperand(0));
-  if (ArgsInfo.size() != IGCLLVM::getNumArgOperands(&OrigPrintf) - 1)
-    vc::fatal(OrigPrintf.getContext(), "GenXPrintfResolution",
-              "printf format string and arguments don't correspond");
+  if (ArgsInfo.size() != IGCLLVM::getNumArgOperands(&OrigPrintf) - 1) {
+    vc::diagnose(OrigPrintf.getContext(), "GenXPrintfResolution",
+                 "printf format string and arguments don't correspond");
+    return;
+  }
 
   markPrintfStrings(OrigPrintf, ArgsInfo);
 

@@ -202,8 +202,8 @@ bool GenXTypeLegalization::runOnFunction(Function &F) {
 }
 
 Value *GenXTypeLegalization::visitInstruction(Instruction &I) {
-  vc::fatal(I.getContext(), "GenXTypeLegalization",
-            "Unimplemented legalization.", &I);
+  vc::diagnose(I.getContext(), "GenXTypeLegalization",
+               "Unimplemented legalization.", &I);
   return nullptr;
 }
 
@@ -261,8 +261,8 @@ Value *GenXTypeLegalization::visitCastInst(CastInst &I) {
   IGCLLVM::IRBuilder<> Builder{&I};
   switch (I.getOpcode()) {
   default:
-    vc::fatal(I.getContext(), "GenXTypeLegalization", "Unhandled cast opcode.",
-              &I);
+    vc::diagnose(I.getContext(), "GenXTypeLegalization",
+                 "Unhandled cast opcode.", &I);
     return nullptr;
   case Instruction::ZExt:
     IGC_ASSERT(SrcBitWidth <= DstBitWidth);
