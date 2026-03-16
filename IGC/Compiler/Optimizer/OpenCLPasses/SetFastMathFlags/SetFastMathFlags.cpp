@@ -13,6 +13,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/InstIterator.h>
 #include <llvm/IR/IntrinsicInst.h>
 #include "common/LLVMWarningsPop.hpp"
+#include "llvm/Demangle/Demangle.h"
 
 using namespace llvm;
 using namespace IGC;
@@ -28,6 +29,10 @@ IGC_INITIALIZE_PASS_DEPENDENCY(MetaDataUtilsWrapper)
 IGC_INITIALIZE_PASS_END(SetFastMathFlags, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
 char SetFastMathFlags::ID = 0;
+
+// Function where we intentionally skip fast math optimizations
+static const std::array UnoptimizedFuncNames = {"__ocl_svml_cos", "__ocl_svml_sin", "__spirv_ocl_exp",
+                                                "__spirv_ocl_native_exp", "__spirv_ocl_erf"};
 
 SetFastMathFlags::SetFastMathFlags() : ModulePass(ID) {
   m_Mask.setFast();
@@ -103,10 +108,26 @@ bool SetFastMathFlags::setFlags(Function &F, FastMathFlags fmfs) {
   }
 
   StringRef fName = F.getName();
-  if (fName.equals("__ocl_svml_cos") || fName.equals("__ocl_svml_sin") || fName.contains("__spirv_ocl_exp") ||
-      fName.contains("__spirv_ocl_native_exp")) {
-    return false;
+  bool isUnoptimizedFunc = false;
+  for (const auto &funcName : UnoptimizedFuncNames) {
+    if (fName.contains(funcName)) {
+      std::string MangledNameForDemangling = fName.str();
+      std::string DemangledName = demangle(MangledNameForDemangling);
+
+      size_t OpenParen = DemangledName.find('(');
+      if (OpenParen != std::string::npos) {
+        DemangledName = DemangledName.substr(0, OpenParen);
+      }
+
+      StringRef DemangledNameRef = DemangledName;
+      if (DemangledNameRef.equals(funcName)) {
+        isUnoptimizedFunc = true;
+        break;
+      }
+    }
   }
+  if (isUnoptimizedFunc)
+    return false;
 
   bool changed = false;
   for (inst_iterator i = inst_begin(&F), e = inst_end(&F); i != e; ++i) {
