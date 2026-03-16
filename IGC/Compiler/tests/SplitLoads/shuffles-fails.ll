@@ -28,19 +28,19 @@ define spir_kernel void @basic_shuffles_fail_1(i64 %ptr) {
   ; Undefs in range:
 ; MINSPLIT-LABEL: @basic_shuffles_fail_1(
 ; MINSPLIT-NEXT:    [[VEC1:%.*]] = call <16 x i32> @llvm.genx.GenISA.LSC2DBlockRead.v16i32(i64 [[PTR:%.*]], i32 127, i32 63, i32 127, i32 0, i32 0, i32 32, i32 16, i32 16, i32 1, i1 false, i1 false, i32 0)
-; MINSPLIT-NEXT:    [[PICK1:%.*]] = shufflevector <16 x i32> [[VEC1]], <16 x i32> undef, <4 x i32> <i32 undef, i32 1, i32 2, i32 3>
+; MINSPLIT-NEXT:    [[PICK1:%.*]] = shufflevector <16 x i32> [[VEC1]], <16 x i32> undef, <4 x i32> <i32 {{(undef|poison)}}, i32 1, i32 2, i32 3>
 ; MINSPLIT-NEXT:    call void @fun_v4i32(<4 x i32> [[PICK1]])
 ; MINSPLIT-NEXT:    [[VEC2:%.*]] = call <16 x i32> @llvm.genx.GenISA.LSC2DBlockRead.v16i32(i64 [[PTR]], i32 127, i32 63, i32 127, i32 0, i32 0, i32 32, i32 16, i32 16, i32 1, i1 false, i1 false, i32 0)
-; MINSPLIT-NEXT:    [[PICK2_1:%.*]] = shufflevector <16 x i32> [[VEC2]], <16 x i32> undef, <4 x i32> <i32 0, i32 undef, i32 1, i32 2>
+; MINSPLIT-NEXT:    [[PICK2_1:%.*]] = shufflevector <16 x i32> [[VEC2]], <16 x i32> undef, <4 x i32> <i32 0, i32 {{(undef|poison)}}, i32 1, i32 2>
 ; MINSPLIT-NEXT:    call void @fun_v4i32(<4 x i32> [[PICK2_1]])
 ; MINSPLIT-NEXT:    ret void
 ;
 ; SPLIT8-LABEL: @basic_shuffles_fail_1(
 ; SPLIT8-NEXT:    [[VEC1:%.*]] = call <16 x i32> @llvm.genx.GenISA.LSC2DBlockRead.v16i32(i64 [[PTR:%.*]], i32 127, i32 63, i32 127, i32 0, i32 0, i32 32, i32 16, i32 16, i32 1, i1 false, i1 false, i32 0)
-; SPLIT8-NEXT:    [[PICK1:%.*]] = shufflevector <16 x i32> [[VEC1]], <16 x i32> undef, <4 x i32> <i32 undef, i32 1, i32 2, i32 3>
+; SPLIT8-NEXT:    [[PICK1:%.*]] = shufflevector <16 x i32> [[VEC1]], <16 x i32> undef, <4 x i32> <i32 {{(undef|poison)}}, i32 1, i32 2, i32 3>
 ; SPLIT8-NEXT:    call void @fun_v4i32(<4 x i32> [[PICK1]])
 ; SPLIT8-NEXT:    [[VEC2:%.*]] = call <16 x i32> @llvm.genx.GenISA.LSC2DBlockRead.v16i32(i64 [[PTR]], i32 127, i32 63, i32 127, i32 0, i32 0, i32 32, i32 16, i32 16, i32 1, i1 false, i1 false, i32 0)
-; SPLIT8-NEXT:    [[PICK2_1:%.*]] = shufflevector <16 x i32> [[VEC2]], <16 x i32> undef, <4 x i32> <i32 0, i32 undef, i32 1, i32 2>
+; SPLIT8-NEXT:    [[PICK2_1:%.*]] = shufflevector <16 x i32> [[VEC2]], <16 x i32> undef, <4 x i32> <i32 0, i32 {{(undef|poison)}}, i32 1, i32 2>
 ; SPLIT8-NEXT:    call void @fun_v4i32(<4 x i32> [[PICK2_1]])
 ; SPLIT8-NEXT:    ret void
 ;

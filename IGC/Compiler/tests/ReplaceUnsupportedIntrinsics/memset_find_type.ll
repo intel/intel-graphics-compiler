@@ -29,7 +29,7 @@ define void @kernel_global() {
 entry:
 ; CHECK-LABEL: define void @kernel_global
 ; CHECK: store <8 x i32> zeroinitializer, ptr addrspace(3) [[GV:@.*]], align 32
-; CHECK: store <8 x i32> zeroinitializer, ptr addrspace(3) getelementptr inbounds (<8 x i32>, ptr addrspace(3) [[GV]], i32 1), align 32
+; CHECK: store <8 x i32> zeroinitializer, ptr addrspace(3) getelementptr{{( inbounds)?}} (<8 x i32>, ptr addrspace(3) [[GV]], i32 1), align 32
 ; CHECK: store <8 x i32> zeroinitializer, ptr addrspace(3) getelementptr (<8 x i32>, ptr addrspace(3) [[GV]], i32 2), align 32
 ; CHECK: store <8 x i32> zeroinitializer, ptr addrspace(3) getelementptr (<8 x i32>, ptr addrspace(3) [[GV]], i32 3), align 32
 ; CHECK: store <8 x i32> zeroinitializer, ptr addrspace(3) getelementptr (<8 x i32>, ptr addrspace(3) [[GV]], i32 4), align 32
