@@ -337,10 +337,6 @@ bool useMultiThreadLatency() const {
   return getOptions()->getOption(vISA_useMultiThreadedLatencies);
 }
 
-bool updatedMultiThreadLatencyHeuristic() const {
-  return getPlatform() >= Xe_ARL;
-}
-
 bool useIGAEncoder() const {
   return getOption(vISA_IGAEncoder) ||
          getPlatformGeneration() >= PlatformGen::XE;
