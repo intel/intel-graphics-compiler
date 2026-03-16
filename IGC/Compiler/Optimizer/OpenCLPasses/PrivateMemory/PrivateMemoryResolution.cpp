@@ -409,6 +409,24 @@ bool PrivateMemoryResolution::runOnModule(llvm::Module &M) {
     m_pMdUtils->save(M.getContext());
   }
 
+  // Clean up lifetime start/end intrinsics
+  if (changed) {
+    for (auto &F : M) {
+      for (auto &I : make_early_inc_range(instructions(F))) {
+        if (auto *II = dyn_cast<IntrinsicInst>(&I)) {
+          if (II->getIntrinsicID() != Intrinsic::lifetime_start && II->getIntrinsicID() != Intrinsic::lifetime_end) {
+            continue;
+          }
+          auto *PtrInst = dyn_cast<Instruction>(II->getArgOperand(1));
+          if (isa_and_nonnull<AllocaInst>(PtrInst)) {
+            continue;
+          }
+          II->eraseFromParent();
+        }
+      }
+    }
+  }
+
   return changed;
 }
 

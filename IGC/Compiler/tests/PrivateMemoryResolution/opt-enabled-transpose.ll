@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2023 Intel Corporation
+; Copyright (C) 2026 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -18,7 +18,6 @@
 ; Transpose version
 ; Also checks:
 ; * Load/store to private memory handling
-; * Corresponding lifetime marks handling
 
 define spir_kernel void @test_pmem(<8 x i32> addrspace(1)* %dst, <8 x i32> addrspace(1)* %src, <8 x i32> %r0, <8 x i32> %payloadHeader, i8* %privateBase, i32 %bufferOffset, i32 %bufferOffset1) #0 {
 ;
@@ -35,7 +34,6 @@ define spir_kernel void @test_pmem(<8 x i32> addrspace(1)* %dst, <8 x i32> addrs
 ; CHECK:    [[DST_ADDR_SIMDBUFOFF:%.*]] = add i32 [[DST_ADDR_BUFFEROFFSET]], [[PERLANEOFFSET3]]
 ; CHECK:    [[DST_ADDR_BASEOFFSET:%.*]] = add {{.*}} i32 [[PRIVATEBASE1]], [[DST_ADDR_SIMDBUFOFF]]
 ; CHECK:    [[DST_ADDR_PRIVATEBUFFERPTR:%.*]] = inttoptr i32 [[DST_ADDR_BASEOFFSET]] to <8 x i32> addrspace(1)**
-; CHECK:    call void @llvm.lifetime.start.p0p1v8i32(i64 4, <8 x i32> addrspace(1)** [[DST_ADDR_PRIVATEBUFFERPTR]])
 ; CHECK:    [[AA_SECTIONOFFSET:%.*]] = mul i32 [[SIMDSIZE]], 0
 ; CHECK:    [[AA_BUFFEROFFSET:%.*]] = add i32 0, [[AA_SECTIONOFFSET]]
 ; CHECK:    [[PERLANEOFFSET:%.*]] = mul i32 [[SIMDLANEID]], 32
@@ -78,7 +76,6 @@ define spir_kernel void @test_pmem(<8 x i32> addrspace(1)* %dst, <8 x i32> addrs
 ; CHECK:    [[TMP16:%.*]] = add i32 [[BB_THREADOFFSET]], [[TMP15]]
 ; CHECK:    [[TMP17:%.*]] = inttoptr i32 [[TMP16]] to <8 x i32>*
 ; CHECK:    store <8 x i32> [[TMP10]], <8 x i32>* [[TMP17]], align 4
-; CHECK:    call void @llvm.lifetime.end.p0p1v8i32(i64 4, <8 x i32> addrspace(1)** [[DST_ADDR_PRIVATEBUFFERPTR]])
 ; CHECK:    [[TMP18:%.*]] = inttoptr i32 [[TMP2]] to <8 x i32>*
 ; CHECK:    [[TMP19:%.*]] = load <8 x i32>, <8 x i32>* [[TMP18]], align 4
 ; CHECK:    [[TMP20:%.*]] = inttoptr i32 [[TMP13]] to <8 x i32>*
