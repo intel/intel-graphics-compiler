@@ -960,6 +960,10 @@ bool modelSendSrcReadLatency () const {
   return getOption(vISA_schedWithSendSrcReadCycle);
 }
 
+bool useRevisedSchedulingHeuristic() const {
+  return (getOption(vISA_useRevisedSchedulingHeuristic) || getPlatform() >= Xe3P_Graphics);
+}
+
 bool hasReadSuppressionOrSharedLocalMemoryWAs() const {
   return true;
 }
