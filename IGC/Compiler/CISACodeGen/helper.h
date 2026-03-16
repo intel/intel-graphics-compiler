@@ -231,6 +231,7 @@ bool IsBitCastForLifetimeMark(const llvm::Value *V);
 
 ERoundingMode GetRoundingMode_FPCvtInt(ModuleMetaData *modMD, llvm::Instruction *pInst);
 ERoundingMode GetRoundingMode_FP(ModuleMetaData *modMD, llvm::Instruction *inst);
+ERoundingMode TranslateConstrainedRoundingMode(llvm::ConstrainedFPIntrinsic *CII);
 
 // Return true if inst needs specific rounding mode; false otherwise.
 bool setsRMExplicitly(llvm::Instruction *inst);

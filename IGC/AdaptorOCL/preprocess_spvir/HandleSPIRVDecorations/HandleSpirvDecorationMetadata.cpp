@@ -10,6 +10,7 @@ SPDX-License-Identifier: MIT
 #include "AdaptorOCL/Utils/CacheControlsHelper.h"
 #include "Compiler/IGCPassSupport.h"
 #include "Compiler/CISACodeGen/OpenCLKernelCodeGen.hpp"
+#include "GenISAIntrinsics/GenIntrinsicInst.h"
 
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/IR/Module.h>
@@ -21,6 +22,8 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPop.hpp"
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/IR/Instructions.h"
+
+#include "spirv/unified1/spirv.hpp"
 
 #include <regex>
 
@@ -127,6 +130,24 @@ void HandleSpirvDecorationMetadata::handleHostAccessIntel(GlobalVariable &global
 
   m_changed = true;
   m_Metadata->capabilities.globalVariableDecorationsINTEL = true;
+}
+
+void HandleSpirvDecorationMetadata::visitBinaryOperator(BinaryOperator &I) {
+  if (I.getOpcode() != Instruction::FDiv)
+    return;
+
+  auto SpirvDecorations = parseSPIRVDecorationsFromMD(&I);
+  for (auto &[DecorationId, MDNodes] : SpirvDecorations) {
+    switch (DecorationId) {
+    case spv::DecorationFPRoundingMode: {
+      handleFPRoundingMode(I, MDNodes);
+      // FDiV is replaced and should no longer be operated on
+      return;
+    }
+    default:
+      continue;
+    }
+  }
 }
 
 void HandleSpirvDecorationMetadata::visitLoadInst(LoadInst &I) {
@@ -302,6 +323,7 @@ void HandleSpirvDecorationMetadata::visitCallInst(CallInst &I) {
   static const Regex pattern1DBlockPrefetch("_Z[0-9]+__spirv_SubgroupBlockPrefetchINTEL");
   static const Regex patternPredicatedReadSPV("_Z[0-9]+__spirv_PredicatedLoadINTEL.+");
   static const Regex patternPredicatedWriteSPV("_Z[0-9]+__spirv_PredicatedStoreINTEL.+");
+  static const Regex patternSpirvSqrt("_Z[0-9]+__spirv_ocl_sqrt(f|d|Dh)");
 
   SmallVector<StringRef, 4> Matches;
   StringRef FuncName = F->getName();
@@ -324,6 +346,8 @@ void HandleSpirvDecorationMetadata::visitCallInst(CallInst &I) {
     visitPredicatedLoadInst(I);
   } else if (patternPredicatedWriteSPV.match(FuncName)) {
     visitPredicatedStoreInst(I);
+  } else if (patternSpirvSqrt.match(FuncName)) {
+    visitSpirvSqrtCallInst(I);
   }
 }
 
@@ -603,4 +627,114 @@ void HandleSpirvDecorationMetadata::handleCacheControlINTELForOCL1DBlockPrefetch
   // Cleanup unused function if all calls have been replaced with the internal version
   if (F->getNumUses() == 0)
     m_BuiltinsToRemove.insert(F);
+}
+
+void HandleSpirvDecorationMetadata::visitSpirvSqrtCallInst(CallInst &I) {
+  auto SpirvDecorations = parseSPIRVDecorationsFromMD(&I);
+  for (auto &[DecorationId, MDNodes] : SpirvDecorations) {
+    switch (DecorationId) {
+    case spv::DecorationFPRoundingMode: {
+      handleFPRoundingMode(I, MDNodes);
+      // call is replaced and should no longer be operated on
+      return;
+    }
+    default:
+      continue;
+    }
+  }
+}
+
+void HandleSpirvDecorationMetadata::handleFPRoundingMode(Instruction &I, SmallPtrSetImpl<MDNode *> &MDNodes) {
+  IGC_ASSERT_MESSAGE(MDNodes.size() == 1, "Only one FPRoundingMode decoration can be applied to a single instruction!");
+
+  MDNode *Node = *MDNodes.begin();
+  // Decoration node layout: operand(0) = decoration ID (39), operand(1) = rounding mode value
+  IGC_ASSERT(Node->getNumOperands() >= 2);
+
+  auto *RoundingModeMD = dyn_cast<ValueAsMetadata>(Node->getOperand(1));
+  IGC_ASSERT(RoundingModeMD);
+  auto *RoundingModeCI = dyn_cast<ConstantInt>(RoundingModeMD->getValue());
+  IGC_ASSERT(RoundingModeCI);
+
+  uint64_t RoundingMode = RoundingModeCI->getZExtValue();
+
+  // SPIR-V FPRoundingMode values:
+  // 0 = RTE (Round to Nearest Even)
+  // 1 = RTZ (Round toward Zero)
+  // 2 = RTP (Round toward Positive infinity)
+  // 3 = RTN (Round toward Negative infinity)
+  IGC_ASSERT_MESSAGE(RoundingMode <= 3, "Invalid FPRoundingMode value!");
+
+  // Convert SPIR-V FPRoundingMode to internal ERoundingMode:
+  // internal: 0=ROUND_TO_NEAREST_EVEN, 1=ROUND_TO_POSITIVE, 2=ROUND_TO_NEGATIVE, 3=ROUND_TO_ZERO
+  constexpr uint64_t SpirvToInternal[] = {0, 3, 1, 2};
+  uint64_t InternalRM = SpirvToInternal[RoundingMode];
+
+  Type *OpType = I.getType();
+
+  // Only fp16, fp32, and fp64 are supported
+  if (!OpType->isHalfTy() && !OpType->isFloatTy() && !OpType->isDoubleTy())
+    return;
+
+  // For half types, emulate: fpext to float -> compute in RNE -> ftof back to half
+  bool IsHalf = OpType->isHalfTy();
+  Type *ComputeType = IsHalf ? Type::getFloatTy(I.getContext()) : OpType;
+  uint64_t ComputeRM = IsHalf ? 0 /* RNE */ : InternalRM;
+
+  IGCLLVM::IRBuilder<> Builder(&I);
+
+  GenISAIntrinsic::ID IntrinsicId;
+  SmallVector<Value *, 3> Args;
+  std::string Name;
+  if (auto *BinOp = dyn_cast<BinaryOperator>(&I)) {
+    // FDiv -> GenISA_IEEE_Divide_rm
+    IntrinsicId = GenISAIntrinsic::GenISA_IEEE_Divide_rm;
+    Value *Op0 = BinOp->getOperand(0);
+    Value *Op1 = BinOp->getOperand(1);
+    Args.push_back(IsHalf ? Builder.CreateFPExt(Op0, ComputeType) : Op0);
+    Args.push_back(IsHalf ? Builder.CreateFPExt(Op1, ComputeType) : Op1);
+    Name = "div_rm";
+  } else if (auto *CI = dyn_cast<CallInst>(&I)) {
+    // sqrt -> GenISA_IEEE_Sqrt_rm
+    IntrinsicId = GenISAIntrinsic::GenISA_IEEE_Sqrt_rm;
+    Value *Op0 = CI->getArgOperand(0);
+    Args.push_back(IsHalf ? Builder.CreateFPExt(Op0, ComputeType) : Op0);
+    Name = "sqrt_rm";
+  } else {
+    return;
+  }
+
+  Args.push_back(ConstantInt::get(Type::getInt32Ty(I.getContext()), ComputeRM));
+
+  Function *IntrinsicFunc = GenISAIntrinsic::getDeclaration(m_Module, IntrinsicId, ComputeType);
+  auto *NewCall = CallInst::Create(IntrinsicFunc, Args, Name, &I);
+  NewCall->copyFastMathFlags(&I);
+  NewCall->setDebugLoc(I.getDebugLoc());
+
+  // For half: truncate float result back to half with the desired rounding mode
+  Value *Result = NewCall;
+  if (IsHalf) {
+    constexpr GenISAIntrinsic::ID SpirvRMToFtof[] = {
+        GenISAIntrinsic::GenISA_ftof_rte, // 0 = RTE
+        GenISAIntrinsic::GenISA_ftof_rtz, // 1 = RTZ
+        GenISAIntrinsic::GenISA_ftof_rtp, // 2 = RTP
+        GenISAIntrinsic::GenISA_ftof_rtn  // 3 = RTN
+    };
+    Type *OverloadTypes[] = {OpType, ComputeType};
+    Function *FtofFunc = GenISAIntrinsic::getDeclaration(m_Module, SpirvRMToFtof[RoundingMode], OverloadTypes);
+    Result = CallInst::Create(FtofFunc, {NewCall}, "ftof_rm", &I);
+    cast<Instruction>(Result)->setDebugLoc(I.getDebugLoc());
+  }
+
+  // Save original function before erasing the instruction
+  Function *OrigFunc = nullptr;
+  if (auto *CI = dyn_cast<CallInst>(&I))
+    OrigFunc = CI->getCalledFunction();
+
+  I.replaceAllUsesWith(Result);
+  I.eraseFromParent();
+  m_changed = true;
+
+  if (OrigFunc && OrigFunc->getNumUses() == 0)
+    m_BuiltinsToRemove.insert(OrigFunc);
 }

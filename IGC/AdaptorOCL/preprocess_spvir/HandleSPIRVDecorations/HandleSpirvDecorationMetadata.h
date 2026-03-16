@@ -41,6 +41,7 @@ public:
   void visitLoadInst(llvm::LoadInst &I);
   void visitStoreInst(llvm::StoreInst &I);
   void visitCallInst(llvm::CallInst &I);
+  void visitBinaryOperator(llvm::BinaryOperator &I);
   void visit2DBlockReadCallInst(llvm::CallInst &I, llvm::StringRef unmangledName);
   void visit2DBlockWriteCallInst(llvm::CallInst &I, llvm::StringRef unmangledName);
   void visitPrefetchCallInst(llvm::CallInst &I);
@@ -50,6 +51,7 @@ public:
   void visitOCL1DBlockPrefetchCallInst(llvm::CallInst &I, llvm::SmallVectorImpl<llvm::StringRef> &Matches);
   void visitPredicatedLoadInst(llvm::CallInst &I);
   void visitPredicatedStoreInst(llvm::CallInst &I);
+  void visitSpirvSqrtCallInst(llvm::CallInst &I);
 
 private:
   llvm::Module *m_Module = nullptr;
@@ -72,6 +74,7 @@ private:
   void handleCacheControlINTELFor1DBlockIO(llvm::CallInst &I, llvm::SmallPtrSetImpl<llvm::MDNode *> &MDNodes);
   void handleCacheControlINTELForOCL1DBlockPrefetch(llvm::CallInst &I, llvm::SmallPtrSetImpl<llvm::MDNode *> &MDNodes,
                                                     llvm::SmallVectorImpl<llvm::StringRef> &Matches);
+  void handleFPRoundingMode(llvm::Instruction &I, llvm::SmallPtrSetImpl<llvm::MDNode *> &MDNodes);
 
   llvm::Type *getArgumentType(std::string demangledName, size_t argNo, llvm::LLVMContext &ctx);
 };

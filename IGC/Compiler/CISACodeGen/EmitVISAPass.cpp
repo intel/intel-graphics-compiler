@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 ============================= end_copyright_notice ===========================*/
 
 #include "IGC/common/StringMacros.hpp"
+#include <llvm/IR/Intrinsics.h>
 #include "EmitVISAPass.hpp"
 #include "OpenCLKernelCodeGen.hpp"
 #include "Compiler/CodeGenPublic.h"
@@ -9387,6 +9388,10 @@ void EmitPass::EmitIntrinsicMessage(llvm::IntrinsicInst *inst) {
     emitSmin(inst);
     break;
 
+  case Intrinsic::experimental_constrained_fdiv:
+  case Intrinsic::experimental_constrained_sqrt:
+    emitFPOWithNonDefaultRoundingMode(inst);
+    break;
   default:
     inst->print(IGC::Debug::ods());
     IGC_ASSERT_MESSAGE(0, "unknown intrinsic");
@@ -16131,49 +16136,65 @@ void EmitPass::emitfitof(llvm::GenIntrinsicInst *inst) {
 }
 
 // Emit FP Operations (FPO) using a non-default rounding mode
-void EmitPass::emitFPOWithNonDefaultRoundingMode(llvm::GenIntrinsicInst *inst) {
-  IGC_ASSERT_MESSAGE(IGCLLVM::getNumArgOperands(inst) >= 1, "ICE: incorrect gen intrinsic");
+void EmitPass::emitFPOWithNonDefaultRoundingMode(llvm::CallInst *inst) {
 
-  GenISAIntrinsic::ID GID = inst->getIntrinsicID();
-  CVariable *src0 = GetSymbol(inst->getOperand(0));
+  auto getSelectedOp = [this](llvm::CallInst *CI, auto... Idx) {
+    return std::tuple{GetSymbol(CI->getArgOperand(Idx))...};
+  };
 
-  CVariable *src1 = (inst->getNumOperands() > 1) ? GetSymbol(inst->getOperand(1)) : nullptr;
+  // GenISA intrinsics and LLVM intrinsics use different ID spaces.
+  // Try GenISA first; if it's not a GenISA intrinsic, use the LLVM intrinsic ID.
+  uint32_t GID;
+  if (auto *GII = dyn_cast<GenIntrinsicInst>(inst))
+    GID = static_cast<uint32_t>(GII->getIntrinsicID());
+  else
+    GID = static_cast<uint32_t>(inst->getIntrinsicID());
   CVariable *dst = m_destination;
 
   SetRoundingMode_FP(GetRoundingMode_FP(m_pCtx->getModuleMetaData(), inst));
 
   switch (GID) {
   default:
-    IGC_ASSERT_MESSAGE(0, "ICE: unexpected Gen Intrinsic");
+    IGC_ASSERT_MESSAGE(0, "ICE: unexpected Intrinsic");
     break;
   case GenISAIntrinsic::GenISA_mul_rtz:
   case GenISAIntrinsic::GenISA_mul_rte:
   case GenISAIntrinsic::GenISA_mul_rtp:
-  case GenISAIntrinsic::GenISA_mul_rtn:
-    m_encoder->Mul(dst, src0, src1);
+  case GenISAIntrinsic::GenISA_mul_rtn: {
+    auto [A, B] = getSelectedOp(inst, 0, 1);
+    m_encoder->Mul(dst, A, B);
     m_encoder->Push();
     break;
+  }
   case GenISAIntrinsic::GenISA_add_rtz:
   case GenISAIntrinsic::GenISA_add_rte:
   case GenISAIntrinsic::GenISA_add_rtp:
-  case GenISAIntrinsic::GenISA_add_rtn:
-    m_encoder->Add(dst, src0, src1);
+  case GenISAIntrinsic::GenISA_add_rtn: {
+    auto [A, B] = getSelectedOp(inst, 0, 1);
+    m_encoder->Add(dst, A, B);
     m_encoder->Push();
     break;
-  case GenISAIntrinsic::GenISA_IEEE_Divide_rm:
-    m_encoder->IEEEDivide(dst, src0, src1);
+  }
+  case Intrinsic::experimental_constrained_fdiv:
+  case GenISAIntrinsic::GenISA_IEEE_Divide_rm: {
+    auto [A, B] = getSelectedOp(inst, 0, 1);
+    m_encoder->IEEEDivide(dst, A, B);
     m_encoder->Push();
     break;
+  }
   case GenISAIntrinsic::GenISA_IEEE_Sqrt_rm:
-    m_encoder->IEEESqrt(dst, src0);
+  case Intrinsic::experimental_constrained_sqrt: {
+    auto [A] = getSelectedOp(inst, 0);
+    m_encoder->IEEESqrt(dst, A);
     m_encoder->Push();
     break;
+  }
   case GenISAIntrinsic::GenISA_fma_rtz:
   case GenISAIntrinsic::GenISA_fma_rte:
   case GenISAIntrinsic::GenISA_fma_rtp:
   case GenISAIntrinsic::GenISA_fma_rtn: {
-    CVariable *src2 = GetSymbol(inst->getOperand(2));
-    m_encoder->Mad(dst, src0, src1, src2);
+    auto [A, B, C] = getSelectedOp(inst, 0, 1, 2);
+    m_encoder->Mad(dst, A, B, C);
     m_encoder->Push();
     break;
   }

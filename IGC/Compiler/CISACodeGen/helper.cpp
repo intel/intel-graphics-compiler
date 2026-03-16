@@ -15,6 +15,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/Config/llvm-config.h"
 #include "llvm/IR/GetElementPtrTypeIterator.h"
 #include <llvm/IR/InstIterator.h>
+#include <llvm/IR/Intrinsics.h>
 #include <llvm/Support/KnownBits.h>
 #include <llvm/Transforms/Utils/Local.h>
 #include "llvm/Analysis/ValueTracking.h"
@@ -1848,6 +1849,25 @@ ERoundingMode GetRoundingMode_FPCvtInt(ModuleMetaData *modMD, Instruction *pInst
   return ERoundingMode::ROUND_TO_ANY;
 }
 
+ERoundingMode TranslateConstrainedRoundingMode(llvm::ConstrainedFPIntrinsic *CII) {
+  auto Rounding = CII->getRoundingMode();
+  if (!Rounding)
+    return ERoundingMode::ROUND_TO_ANY;
+
+  switch (*Rounding) {
+  case llvm::RoundingMode::NearestTiesToEven:
+    return ERoundingMode::ROUND_TO_NEAREST_EVEN;
+  case llvm::RoundingMode::TowardZero:
+    return ERoundingMode::ROUND_TO_ZERO;
+  case llvm::RoundingMode::TowardPositive:
+    return ERoundingMode::ROUND_TO_POSITIVE;
+  case llvm::RoundingMode::TowardNegative:
+    return ERoundingMode::ROUND_TO_NEGATIVE;
+  default:
+    return ERoundingMode::ROUND_TO_ANY;
+  }
+}
+
 ERoundingMode GetRoundingMode_FP(ModuleMetaData *modMD, Instruction *inst) {
   // Float rounding mode
   ERoundingMode RM = static_cast<ERoundingMode>(modMD->compOpt.FloatRoundingMode);
@@ -1910,12 +1930,22 @@ ERoundingMode GetRoundingMode_FP(ModuleMetaData *modMD, Instruction *inst) {
       break;
     }
   }
+
+  if (llvm::ConstrainedFPIntrinsic *CII = dyn_cast<llvm::ConstrainedFPIntrinsic>(inst)) {
+    switch (CII->getIntrinsicID()) {
+    case llvm::Intrinsic::experimental_constrained_fdiv:
+    case llvm::Intrinsic::experimental_constrained_sqrt:
+      RM = TranslateConstrainedRoundingMode(CII);
+      break;
+    default:
+      break;
+    }
+  }
+
   return RM;
 }
 
 // Return true if inst needs specific rounding mode; false otherwise.
-//
-// Currently, only gen intrinsic needs rounding mode other than the default.
 bool setsRMExplicitly(Instruction *inst) {
   if (GenIntrinsicInst *GII = dyn_cast<GenIntrinsicInst>(inst)) {
     switch (GII->getIntrinsicID()) {
@@ -1939,6 +1969,15 @@ bool setsRMExplicitly(Instruction *inst) {
     case GenISAIntrinsic::GenISA_hftobf8:
     case GenISAIntrinsic::GenISA_IEEE_Divide_rm:
     case GenISAIntrinsic::GenISA_IEEE_Sqrt_rm:
+      return true;
+    default:
+      break;
+    }
+  }
+  if (auto *CII = dyn_cast<llvm::ConstrainedFPIntrinsic>(inst)) {
+    switch (CII->getIntrinsicID()) {
+    case llvm::Intrinsic::experimental_constrained_fdiv:
+    case llvm::Intrinsic::experimental_constrained_sqrt:
       return true;
     default:
       break;

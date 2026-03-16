@@ -188,5 +188,3 @@ double __builtin_spirv_divide_cr_f64_f64( double a,
 }
 
 #endif //defined(cl_khr_fp64)
-
-

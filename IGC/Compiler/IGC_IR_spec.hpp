@@ -105,6 +105,8 @@ IGC_IR_LLVM_INTRINSIC(umin)
 IGC_IR_LLVM_INTRINSIC(is_fpclass)
 #endif
 IGC_IR_LLVM_INTRINSIC(experimental_noalias_scope_decl)
+IGC_IR_LLVM_INTRINSIC(experimental_constrained_fdiv)
+IGC_IR_LLVM_INTRINSIC(experimental_constrained_sqrt)
 
 // LLVM instructions allowed in IGC IR
 //------------------------------------

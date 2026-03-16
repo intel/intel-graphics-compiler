@@ -10,6 +10,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CodeGenContextWrapper.hpp"
 #include "Compiler/CodeGenPublic.h"
 #include "Compiler/IGCPassSupport.h"
+#include "GenISAIntrinsics/GenIntrinsics.h"
 #include "common/igc_regkeys.hpp"
 
 #include "common/LLVMWarningsPush.hpp"
@@ -107,6 +108,7 @@ private:
   void replaceMinMax(IntrinsicInst *I);
   void replaceI1MinMax(IntrinsicInst *I);
   void replaceI64MinMax(IntrinsicInst *I);
+  void replaceHalvesDivsSqrts(IntrinsicInst *I);
 #if LLVM_VERSION_MAJOR >= 15
   void replaceIsFpClass(IntrinsicInst *I);
 #endif
@@ -129,23 +131,25 @@ char ReplaceUnsupportedIntrinsics::ID = 0;
 const std::map<Intrinsic::ID, ReplaceUnsupportedIntrinsics::MemFuncPtr_t>
     ReplaceUnsupportedIntrinsics::m_intrinsicToFunc = {
         // clang-format off
-    { Intrinsic::fshl,       &ReplaceUnsupportedIntrinsics::replaceFunnelShift },
-    { Intrinsic::fshr,       &ReplaceUnsupportedIntrinsics::replaceFunnelShift },
-    { Intrinsic::memcpy,     &ReplaceUnsupportedIntrinsics::replaceMemcpy },
-    { Intrinsic::memset,     &ReplaceUnsupportedIntrinsics::replaceMemset },
-    { Intrinsic::memmove,    &ReplaceUnsupportedIntrinsics::replaceMemMove },
-    { Intrinsic::expect,     &ReplaceUnsupportedIntrinsics::replaceExpect },
-    { Intrinsic::lround,     &ReplaceUnsupportedIntrinsics::replaceLRound },
-    { Intrinsic::llround,    &ReplaceUnsupportedIntrinsics::replaceLRound },
-    { Intrinsic::lrint,      &ReplaceUnsupportedIntrinsics::replaceLRint },
-    { Intrinsic::llrint,     &ReplaceUnsupportedIntrinsics::replaceLRint },
-    { Intrinsic::ctlz,       &ReplaceUnsupportedIntrinsics::replaceCountTheLeadingZeros },
-    { Intrinsic::smax,       &ReplaceUnsupportedIntrinsics::replaceMinMax },
-    { Intrinsic::smin,       &ReplaceUnsupportedIntrinsics::replaceMinMax },
-    { Intrinsic::umax,       &ReplaceUnsupportedIntrinsics::replaceMinMax },
-    { Intrinsic::umin,       &ReplaceUnsupportedIntrinsics::replaceMinMax },
+    { Intrinsic::fshl,                          &ReplaceUnsupportedIntrinsics::replaceFunnelShift },
+    { Intrinsic::fshr,                          &ReplaceUnsupportedIntrinsics::replaceFunnelShift },
+    { Intrinsic::memcpy,                        &ReplaceUnsupportedIntrinsics::replaceMemcpy },
+    { Intrinsic::memset,                        &ReplaceUnsupportedIntrinsics::replaceMemset },
+    { Intrinsic::memmove,                       &ReplaceUnsupportedIntrinsics::replaceMemMove },
+    { Intrinsic::expect,                        &ReplaceUnsupportedIntrinsics::replaceExpect },
+    { Intrinsic::lround,                        &ReplaceUnsupportedIntrinsics::replaceLRound },
+    { Intrinsic::llround,                       &ReplaceUnsupportedIntrinsics::replaceLRound },
+    { Intrinsic::lrint,                         &ReplaceUnsupportedIntrinsics::replaceLRint },
+    { Intrinsic::llrint,                        &ReplaceUnsupportedIntrinsics::replaceLRint },
+    { Intrinsic::ctlz,                          &ReplaceUnsupportedIntrinsics::replaceCountTheLeadingZeros },
+    { Intrinsic::smax,                          &ReplaceUnsupportedIntrinsics::replaceMinMax },
+    { Intrinsic::smin,                          &ReplaceUnsupportedIntrinsics::replaceMinMax },
+    { Intrinsic::umax,                          &ReplaceUnsupportedIntrinsics::replaceMinMax },
+    { Intrinsic::umin,                          &ReplaceUnsupportedIntrinsics::replaceMinMax },
+    { Intrinsic::experimental_constrained_fdiv, &ReplaceUnsupportedIntrinsics::replaceHalvesDivsSqrts},
+    { Intrinsic::experimental_constrained_sqrt, &ReplaceUnsupportedIntrinsics::replaceHalvesDivsSqrts},
 #if LLVM_VERSION_MAJOR >= 15
-    { Intrinsic::is_fpclass,       &ReplaceUnsupportedIntrinsics::replaceIsFpClass },
+    { Intrinsic::is_fpclass,                    &ReplaceUnsupportedIntrinsics::replaceIsFpClass },
 #endif
         // clang-format on
 };
@@ -1170,6 +1174,97 @@ void ReplaceUnsupportedIntrinsics::replaceI1MinMax(IntrinsicInst *I) {
     I->replaceAllUsesWith(Builder.CreateOr(LHS, RHS));
   else // Intrinsic::smin || Intrinsic::umin
     I->replaceAllUsesWith(Builder.CreateAnd(LHS, RHS));
+}
+
+/*
+  Replaces half-precision llvm.experimental.constrained.fdiv and
+  llvm.experimental.constrained.sqrt intrinsics by promoting operands to float,
+  performing the operation in float with RNE rounding via GenISA intrinsics,
+  and converting the result back to half with the original rounding mode
+  using GenISA_ftof_rt{e,z,p,n}.
+
+  E.g. for fdiv:
+  %r = call half @llvm.experimental.constrained.fdiv.f16(half %a, half %b,
+           metadata !"round.upward", metadata !"fpexcept.strict")
+  =>
+  %a.ext = fpext half %a to float
+  %b.ext = fpext half %b to float
+  %div = call float @llvm.genx.GenISA.IEEE.Divide.rm(float %a.ext, float %b.ext, i32 0)
+  %r = call half @llvm.genx.GenISA.ftof.rtp.f16.f32(float %div)
+
+  E.g. for sqrt:
+  %r = call half @llvm.experimental.constrained.sqrt.f16(half %a,
+           metadata !"round.upward", metadata !"fpexcept.strict")
+  =>
+  %a.ext = fpext half %a to float
+  %sqrt = call float @llvm.genx.GenISA.IEEE.Sqrt.rm(float %a.ext, i32 0)
+  %r = call half @llvm.genx.GenISA.ftof.rtp.f16.f32(float %sqrt)
+*/
+void ReplaceUnsupportedIntrinsics::replaceHalvesDivsSqrts(IntrinsicInst *I) {
+  auto *CFP = cast<ConstrainedFPIntrinsic>(I);
+  Type *OrigTy = I->getType();
+
+  // Only replace half-precision operations.
+  if (!OrigTy->getScalarType()->isHalfTy())
+    return;
+
+  Intrinsic::ID IID = I->getIntrinsicID();
+  IGC_ASSERT(IID == Intrinsic::experimental_constrained_fdiv || IID == Intrinsic::experimental_constrained_sqrt);
+
+  Type *FloatTy = Type::getFloatTy(I->getContext());
+  Module *M = I->getModule();
+
+  // Map LLVM constrained rounding mode to GenISA ftof intrinsic.
+  auto OrigRounding = CFP->getRoundingMode();
+  GenISAIntrinsic::ID FtofID = GenISAIntrinsic::GenISA_ftof_rte; // default RNE
+  if (OrigRounding) {
+    switch (*OrigRounding) {
+    case RoundingMode::NearestTiesToEven:
+      FtofID = GenISAIntrinsic::GenISA_ftof_rte;
+      break;
+    case RoundingMode::TowardZero:
+      FtofID = GenISAIntrinsic::GenISA_ftof_rtz;
+      break;
+    case RoundingMode::TowardPositive:
+      FtofID = GenISAIntrinsic::GenISA_ftof_rtp;
+      break;
+    case RoundingMode::TowardNegative:
+      FtofID = GenISAIntrinsic::GenISA_ftof_rtn;
+      break;
+    default:
+      FtofID = GenISAIntrinsic::GenISA_ftof_rte;
+      break;
+    }
+  }
+
+  // RNE rounding mode value for GenISA_IEEE_Divide_rm / GenISA_IEEE_Sqrt_rm.
+  Value *RNE =
+      ConstantInt::get(Type::getInt32Ty(I->getContext()), static_cast<uint32_t>(ERoundingMode::ROUND_TO_NEAREST_EVEN));
+
+  IGCLLVM::IRBuilder<> Builder(I);
+  Value *ComputeResult = nullptr;
+
+  if (IID == Intrinsic::experimental_constrained_fdiv) {
+    Value *LHS = Builder.CreateFPExt(I->getArgOperand(0), FloatTy, "fdiv.lhs.ext");
+    Value *RHS = Builder.CreateFPExt(I->getArgOperand(1), FloatTy, "fdiv.rhs.ext");
+
+    Function *DivFn = GenISAIntrinsic::getDeclaration(M, GenISAIntrinsic::GenISA_IEEE_Divide_rm, {FloatTy});
+    ComputeResult = Builder.CreateCall(DivFn, {LHS, RHS, RNE}, "div_rm");
+  } else {
+    Value *Op = Builder.CreateFPExt(I->getArgOperand(0), FloatTy, "fsqrt.op.ext");
+
+    Function *SqrtFn = GenISAIntrinsic::getDeclaration(M, GenISAIntrinsic::GenISA_IEEE_Sqrt_rm, {FloatTy});
+    ComputeResult = Builder.CreateCall(SqrtFn, {Op, RNE}, "sqrt_rm");
+  }
+
+  // Truncate float result back to half with the original rounding mode.
+  Type *OverloadTypes[] = {OrigTy, FloatTy};
+  Function *FtofFn = GenISAIntrinsic::getDeclaration(M, FtofID, OverloadTypes);
+  Value *Result = Builder.CreateCall(FtofFn, {ComputeResult}, "ftof_rm");
+  cast<Instruction>(Result)->setDebugLoc(I->getDebugLoc());
+
+  I->replaceAllUsesWith(Result);
+  I->eraseFromParent();
 }
 
 /*

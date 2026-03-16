@@ -1032,16 +1032,16 @@ intrinsics:
         name: "GenISA_IEEE_Divide_rm"
         comment: "Correctly Rounded divide instrinsic with specified rounding mode -> produces ISA_DIVM"
         return_definition: !<ReturnDefinition>
-            type_definition: *f32
+            type_definition: *any_float
             comment: "output"
         arguments:
             - !<ArgumentDefinition>
                 name: Arg0
-                type_definition: *f32
+                type_definition: *ref_0_
                 comment: "src0"
             - !<ArgumentDefinition>
                 name: Arg1
-                type_definition: *f32
+                type_definition: *ref_0_
                 comment: "src1"
             - !<ArgumentDefinition>
                 name: Arg2
@@ -1074,12 +1074,12 @@ intrinsics:
         name: "GenISA_IEEE_Sqrt_rm"
         comment: "Correctly Rounded sqrt instrinsic with round to nearest even -> produces ISA_SQRTM"
         return_definition: !<ReturnDefinition>
-            type_definition: *f32
+            type_definition: *any_float
             comment: "output"
         arguments:
             - !<ArgumentDefinition>
                 name: Arg0
-                type_definition: *f32
+                type_definition: *ref_0_
                 comment: "src0"
             - !<ArgumentDefinition>
                 name: Arg1
