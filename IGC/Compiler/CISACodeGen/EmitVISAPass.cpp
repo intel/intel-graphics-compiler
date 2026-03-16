@@ -3169,6 +3169,169 @@ void EmitPass::EmitMulPair(GenIntrinsicInst *GII, const SSource Sources[4], cons
   m_encoder->Push();
 }
 
+void EmitPass::EmitMulPairToI64(GenIntrinsicInst *GII, const SSource Sources[4], const DstModifier &DstMod) {
+  // Pack mul_pair lo/hi results directly into an i64 variable using stride-2
+  // regioning, avoiding intermediate mov instructions from
+  // extractvalue → insertelement → bitcast.
+  CVariable *dst = m_destination; // type Q (i64)
+
+  CVariable *L0 = GetSrcVariable(Sources[0]);
+  CVariable *H0 = GetSrcVariable(Sources[1]);
+  CVariable *L1 = GetSrcVariable(Sources[2]);
+  CVariable *H1 = GetSrcVariable(Sources[3]);
+
+  // Use UD for Lo operands.
+  if (L0->GetType() != ISA_TYPE_UD)
+    L0 = m_currShader->BitCast(L0, ISA_TYPE_UD);
+  if (L1->GetType() != ISA_TYPE_UD)
+    L1 = m_currShader->BitCast(L1, ISA_TYPE_UD);
+
+  CVariable *dstAsUD = m_currShader->BitCast(dst, ISA_TYPE_UD);
+  CVariable *dstAsD = m_currShader->BitCast(dst, ISA_TYPE_D);
+  unsigned numElements = dst->GetNumberElement();
+  uint16_t numInstances = dst->GetNumberInstance();
+
+  // Stride-2 destination on UD spans numElements*2 dwords. If that exceeds
+  // 2 GRFs, split each stride-2 instruction into two halves.
+  bool needsSplit = !dst->IsUniform() && (numElements * 2 * SIZE_DWORD > m_currShader->getGRFSize() * 2);
+  SIMDMode halfMode = SIMDMode::SIMD16;
+  int halfSize = 16;
+  if (needsSplit) {
+    halfMode = (m_currShader->m_SIMDSize == SIMDMode::SIMD32 && m_currShader->getGRFSize() == 64) ? SIMDMode::SIMD16
+                                                                                                  : SIMDMode::SIMD8;
+    halfSize = halfMode == SIMDMode::SIMD16 ? 16 : 8;
+  }
+
+  // Temporary for hi part accumulation.
+  CVariable *dstHiTmp = m_currShader->GetNewVariable(numElements, ISA_TYPE_D, EALIGN_GRF, dst->IsUniform(),
+                                                     numInstances, CName(dst->getName(), "int64Hi"));
+
+  if (m_currShader->m_Platform->noNativeDwordMulSupport()) {
+    // Use madw for platforms without native DW-DW multiply.
+    auto numDWPerGRF = getGRFSize() / SIZE_DWORD;
+    auto alignedElements = iSTD::Align(numElements, numDWPerGRF);
+    CVariable *dstTmp = m_currShader->GetNewVariable(alignedElements * 2, ISA_TYPE_UD, EALIGN_GRF, dst->IsUniform(),
+                                                     numInstances, CName(dst->getName(), "int64Tmp"));
+    CVariable *zero = m_currShader->ImmToVariable(0, ISA_TYPE_UD);
+    SetSourceModifiers(0, Sources[0]);
+    SetSourceModifiers(1, Sources[2]);
+    m_encoder->Madw(dstTmp, L0, L1, zero);
+
+    // E (low) → stride-2 even dwords of i64 alias
+    if (needsSplit) {
+      // First half
+      m_encoder->SetSrcRegion(0, 1, 1, 0);
+      m_encoder->SetDstRegion(2);
+      m_encoder->SetSimdSize(halfMode);
+      m_encoder->SetMask(halfMode == SIMDMode::SIMD16 ? EMASK_H1 : EMASK_Q1);
+      m_encoder->Copy(dstAsUD, dstTmp);
+      m_encoder->Push();
+      // Second half
+      m_encoder->SetSrcSubReg(0, halfSize);
+      m_encoder->SetSrcRegion(0, 1, 1, 0);
+      m_encoder->SetDstRegion(2);
+      m_encoder->SetDstSubReg(2 * halfSize);
+      m_encoder->SetSimdSize(halfMode);
+      m_encoder->SetMask(halfMode == SIMDMode::SIMD16 ? EMASK_H2 : EMASK_Q2);
+      m_encoder->Copy(dstAsUD, dstTmp);
+      m_encoder->Push();
+    } else {
+      m_encoder->SetSrcRegion(0, 1, 1, 0);
+      m_encoder->SetDstRegion(2);
+      m_encoder->Copy(dstAsUD, dstTmp);
+      m_encoder->Push();
+    }
+
+    // Cr (high) → dstHiTmp
+    uint regOffset =
+        (uint)std::ceil((float)(alignedElements * CEncoder::GetCISADataTypeSize(ISA_TYPE_UD)) / getGRFSize());
+    m_encoder->SetSrcSubVar(0, regOffset);
+    m_encoder->SetSrcRegion(0, 1, 1, 0);
+    m_encoder->Copy(dstHiTmp, dstTmp);
+    m_encoder->Push();
+  } else {
+    // E = A * B → stride-2 even dwords of i64 alias
+    if (needsSplit) {
+      // First half
+      SetSourceModifiers(0, Sources[0]);
+      SetSourceModifiers(1, Sources[2]);
+      m_encoder->SetDstRegion(2);
+      m_encoder->SetSimdSize(halfMode);
+      m_encoder->SetMask(halfMode == SIMDMode::SIMD16 ? EMASK_H1 : EMASK_Q1);
+      m_encoder->Mul(dstAsUD, L0, L1);
+      m_encoder->Push();
+      // Second half
+      SetSourceModifiers(0, Sources[0]);
+      SetSourceModifiers(1, Sources[2]);
+      if (!L0->IsUniform())
+        m_encoder->SetSrcSubReg(0, halfSize);
+      if (!L1->IsUniform())
+        m_encoder->SetSrcSubReg(1, halfSize);
+      m_encoder->SetDstRegion(2);
+      m_encoder->SetDstSubReg(2 * halfSize);
+      m_encoder->SetSimdSize(halfMode);
+      m_encoder->SetMask(halfMode == SIMDMode::SIMD16 ? EMASK_H2 : EMASK_Q2);
+      m_encoder->Mul(dstAsUD, L0, L1);
+      m_encoder->Push();
+    } else {
+      SetSourceModifiers(0, Sources[0]);
+      SetSourceModifiers(1, Sources[2]);
+      m_encoder->SetDstRegion(2);
+      m_encoder->Mul(dstAsUD, L0, L1);
+      m_encoder->Push();
+    }
+
+    // Cr = carry(A * B)
+    SetSourceModifiers(0, Sources[0]);
+    SetSourceModifiers(1, Sources[2]);
+    m_encoder->MulH(dstHiTmp, L0, L1);
+    m_encoder->Push();
+  }
+
+  // F = A * D
+  CVariable *T0 = m_currShader->GetNewVariable(numElements, ISA_TYPE_D, EALIGN_GRF, dst->IsUniform(), numInstances,
+                                               CName(dst->getName(), "int64HiLH"));
+  SetSourceModifiers(0, Sources[0]);
+  SetSourceModifiers(1, Sources[3]);
+  m_encoder->Mul(T0, L0, H1);
+  m_encoder->Push();
+
+  // dstHigh = Cr + F
+  m_encoder->Add(dstHiTmp, dstHiTmp, T0);
+  m_encoder->Push();
+
+  // G = B * C
+  SetSourceModifiers(0, Sources[2]);
+  SetSourceModifiers(1, Sources[1]);
+  m_encoder->Mul(T0, L1, H0);
+  m_encoder->Push();
+
+  // dstHigh = Cr + F + G → stride-2 odd dwords of i64 alias
+  if (needsSplit) {
+    // First half
+    m_encoder->SetDstRegion(2);
+    m_encoder->SetDstSubReg(1);
+    m_encoder->SetSimdSize(halfMode);
+    m_encoder->SetMask(halfMode == SIMDMode::SIMD16 ? EMASK_H1 : EMASK_Q1);
+    m_encoder->Add(dstAsD, dstHiTmp, T0);
+    m_encoder->Push();
+    // Second half
+    m_encoder->SetSrcSubReg(0, halfSize);
+    m_encoder->SetSrcSubReg(1, halfSize);
+    m_encoder->SetDstRegion(2);
+    m_encoder->SetDstSubReg(2 * halfSize + 1);
+    m_encoder->SetSimdSize(halfMode);
+    m_encoder->SetMask(halfMode == SIMDMode::SIMD16 ? EMASK_H2 : EMASK_Q2);
+    m_encoder->Add(dstAsD, dstHiTmp, T0);
+    m_encoder->Push();
+  } else {
+    m_encoder->SetDstRegion(2);
+    m_encoder->SetDstSubReg(1);
+    m_encoder->Add(dstAsD, dstHiTmp, T0);
+    m_encoder->Push();
+  }
+}
+
 void EmitPass::EmitPtrToPair(GenIntrinsicInst *GII, const SSource Sources[1], const DstModifier &DstMod) {
   auto [L, H] = getPairOutput(GII);
   CVariable *Lo = L ? GetSymbol(L) : nullptr;

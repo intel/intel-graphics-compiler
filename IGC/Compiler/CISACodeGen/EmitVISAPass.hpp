@@ -164,6 +164,7 @@ public:
   void EmitAddPair(llvm::GenIntrinsicInst *GII, const SSource Sources[4], const DstModifier &DstMod);
   void EmitSubPair(llvm::GenIntrinsicInst *GII, const SSource Sources[4], const DstModifier &DstMod);
   void EmitMulPair(llvm::GenIntrinsicInst *GII, const SSource Sources[4], const DstModifier &DstMod);
+  void EmitMulPairToI64(llvm::GenIntrinsicInst *GII, const SSource Sources[4], const DstModifier &DstMod);
   void EmitPtrToPair(llvm::GenIntrinsicInst *GII, const SSource Sources[1], const DstModifier &DstMod);
   void EmitInlineAsm(llvm::CallInst *inst);
   void EmitInitializePHI(llvm::PHINode *phi);

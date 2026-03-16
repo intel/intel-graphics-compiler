@@ -1476,6 +1476,9 @@ void CodeGenPatternMatch::visitBitCastInst(BitCastInst &I) {
       }
     }
   }
+  if (matchMulPairToI64(I))
+    return;
+
   [[maybe_unused]] bool match = false;
   match = MatchRepack4i8(I) || MatchPack4i8(I) || MatchSingleInstruction(I);
   IGC_ASSERT_MESSAGE(match, "Unsupported BitCast instruction");
@@ -1592,6 +1595,50 @@ bool CodeGenPatternMatch::matchSubPair(ExtractValueInst *Ex) {
   else
     MI->second.second = Ex;
 
+  return true;
+}
+
+bool CodeGenPatternMatch::matchMulPairToI64(BitCastInst &I) {
+  using namespace llvm::PatternMatch;
+
+  // Match: bitcast <2 x i32> (insertelement(insertelement(undef,
+  //   extractvalue(mul_pair, 0), 0), extractvalue(mul_pair, 1), 1)) to i64
+  // This pattern packs the mul_pair lo/hi results directly into an i64
+  // variable using stride-2 regioning, avoiding intermediate mov instructions.
+  if (!I.getType()->isIntegerTy(64))
+    return false;
+
+  Value *MulPairLo = nullptr;
+  Value *MulPairHi = nullptr;
+  // Match the nested insertelement/extractvalue structure:
+  //   bitcast(insertelement(insertelement(undef, ev0, 0), ev1, 1))
+  // where ev0 = extractvalue(X, 0), ev1 = extractvalue(Y, 1)
+  if (!match(I.getOperand(0),
+             m_OneUse(m_InsertElt(
+                 m_OneUse(m_InsertElt(m_Undef(), m_OneUse(m_ExtractValue<0>(m_Value(MulPairLo))), m_SpecificInt(0))),
+                 m_OneUse(m_ExtractValue<1>(m_Value(MulPairHi))), m_SpecificInt(1)))))
+    return false;
+
+  // Both extractvalue instructions must reference the same mul_pair intrinsic.
+  if (MulPairLo != MulPairHi)
+    return false;
+  auto *GII = dyn_cast<GenIntrinsicInst>(MulPairLo);
+  if (!GII || GII->getIntrinsicID() != GenISAIntrinsic::GenISA_mul_pair)
+    return false;
+
+  struct MulPairToI64Pattern : public Pattern {
+    GenIntrinsicInst *GII;
+    SSource Sources[4]; // L0, H0, L1, H1
+    virtual void Emit(EmitPass *Pass, const DstModifier &DstMod) { Pass->EmitMulPairToI64(GII, Sources, DstMod); }
+  };
+
+  MulPairToI64Pattern *Pat = new (m_allocator) MulPairToI64Pattern();
+  Pat->GII = GII;
+  Pat->Sources[0] = GetSource(GII->getOperand(0), false, false, IsSourceOfSample(&I));
+  Pat->Sources[1] = GetSource(GII->getOperand(1), false, false, IsSourceOfSample(&I));
+  Pat->Sources[2] = GetSource(GII->getOperand(2), false, false, IsSourceOfSample(&I));
+  Pat->Sources[3] = GetSource(GII->getOperand(3), false, false, IsSourceOfSample(&I));
+  AddPattern(Pat);
   return true;
 }
 

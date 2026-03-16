@@ -235,6 +235,7 @@ public:
   bool matchAddPair(llvm::ExtractValueInst *);
   bool matchSubPair(llvm::ExtractValueInst *);
   bool matchMulPair(llvm::ExtractValueInst *);
+  bool matchMulPairToI64(llvm::BitCastInst &I);
   bool matchPtrToPair(llvm::ExtractValueInst *);
 
   bool MatchUnmaskedRegionBoundary(llvm::Instruction &I, bool start);
