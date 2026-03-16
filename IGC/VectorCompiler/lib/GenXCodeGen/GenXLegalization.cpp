@@ -1145,9 +1145,9 @@ unsigned GenXLegalization::splitDeadElements(unsigned Width,
   auto *V = getExecWidthValue();
   auto *ElemTy = V->getType()->getScalarType();
   // The most math instructions require exec size to be 8 or 16 in case of half
-  // float. And some of them require it even for other float types. Even if we
-  // reduce the width here, it will be very likely set back to the 'native'
-  // width by finalizer
+  // float. And some of them require it even for other float types.
+  // Even if we reduce the width here, it will be very likely set back to the
+  // 'native' width by finalizer
   if (ElemTy->isHalfTy())
     return Width;
   if (ElemTy->isFloatTy()) {
