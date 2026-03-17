@@ -260,12 +260,13 @@ void PeepholeTypeLegalizer::legalizeExtractElement(Instruction &I) {
   ExtractElementInst *extract = cast<ExtractElementInst>(&I);
 
   unsigned elementWidth = extract->getType()->getScalarSizeInBits();
-  if (!isLegalInteger(elementWidth) && extract->getType()->isIntOrIntVectorTy()) {
-    unsigned numElements =
-        (unsigned)cast<IGCLLVM::FixedVectorType>(extract->getOperand(0)->getType())->getNumElements();
-    unsigned quotient = 0, promoteToInt = 0;
+  unsigned numElements = (unsigned)cast<IGCLLVM::FixedVectorType>(extract->getOperand(0)->getType())->getNumElements();
+  unsigned quotient = 0, promoteToInt = 0;
+  if (elementWidth > 0)
     promoteInt(elementWidth, quotient, promoteToInt, DL->getLargestLegalIntTypeSizeInBits());
 
+  if (!isLegalInteger(elementWidth) && elementWidth > 0 && elementWidth == quotient * promoteToInt &&
+      extract->getType()->isIntOrIntVectorTy()) {
     m_builder->SetInsertPoint(&I);
 
     // Bitcast the illegal vector type to legal type
