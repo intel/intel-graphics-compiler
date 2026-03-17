@@ -96,6 +96,7 @@ void MappingTraits<zeInfoExecutionEnv>::mapping(IO& io, zeInfoExecutionEnv& info
     io.mapOptional("generate_local_id", info.generate_local_id, false);
     io.mapOptional("has_lsc_stores_with_non_default_l1_cache_controls", info.has_lsc_stores_with_non_default_l1_cache_controls, false);
     io.mapOptional("require_iab", info.require_iab, false);
+    io.mapOptional("has_bindless_image_read", info.has_bindless_image_read, false);
 }
 void MappingTraits<zeInfoPayloadArgument>::mapping(IO& io, zeInfoPayloadArgument& info)
 {

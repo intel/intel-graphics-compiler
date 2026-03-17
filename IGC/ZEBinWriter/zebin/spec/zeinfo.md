@@ -150,7 +150,7 @@ If an attribute is **Required**, it must be present in execution_env. If it's **
 | thread_scheduling_mode | <thread_scheduling_mode> | Optional | | Suggested thread arbitration policy. |
 | work_group_walk_order_dimensions | int32x3 | Optional | [0, 1, 2] | The value of this key is a sequence of three int32. Valid values are x: [0, 0, 0] , xy: [0, 1, 0], xyz: [0, 1, 2], yx: [1, 0, 0], zyx: [2, 1, 0] |
 | eu_thread_count | int32 | Optional | 0 | Number of threads per EU. If not specified, the information can be derived from grf_count. |
-| has_sample | bool | Optional | false | |
+| has_sample | bool | Optional | false | Indicates whether morton ordering can be used |
 | has_rtcalls | bool | Optional | false | |
 | quantum_size | int32 | Optional | 0 | The required quantum size. When set, quantum dispatch is enabled and set to the provided quantum size. |
 | quantum_walk_order | int32 | Optional | 0 | The required walk order of quantum. |
@@ -158,6 +158,7 @@ If an attribute is **Required**, it must be present in execution_env. If it's **
 | generate_local_id | bool | Optional | false | Flag of HW local ID capable info in cross-thread-payload. |
 | has_lsc_stores_with_non_default_l1_cache_controls | bool | Optional | false | Flag of HasLscStoresWithNonDefaultL1CacheControls to determine if the resource barriers should flush UAV coherency. |
 | require_iab | bool | Optional | false | When set to false, implicit arg buffer is not used by the program. So runtime may decide to not program the buffer. However, if debugger connects, the runtime would have to program implicit arg buffer. This flag may be false only when has_stack_calls is also false. It is an error to explicitly set this flag to false when has_stack_calls is true. When set to true, runtime must allocate implicit arg buffer. |
+| has_bindless_image_read | bool | Optional | false | true if module uses SPV_INTEL_bindless_images and contains an image read. |
 <!--- ExecutionEnv -->
 
 ### Supported thread scheduling mode:
