@@ -1164,6 +1164,8 @@ DECLARE_IGC_REGKEY(bool, ForceSPDivEmulation, false, "Force SP Div emulation for
 DECLARE_IGC_REGKEY(
     DWORD, ForceI64DivRemEmu, 0,
     "Forces specific int64 div/rem emulation: 0 = platform default, 1 = int based, 2 = SP based, 3 = DP based", false)
+DECLARE_IGC_REGKEY(bool, EnableEmuFolding, true, "Enable emulation folding optimizations", false)
+DECLARE_IGC_REGKEY(bool, EnableAggresiveEmuFolding, false, "Enable aggressive folding optimizations", false)
 DECLARE_IGC_REGKEY(bool, EnableGen11TwoStackTSG, false, "Enable Two stack TSG gen11 feature", false)
 DECLARE_IGC_REGKEY(bool, Enable16BitLDMCS, true, "Enable 16-bit ld_mcs on supported platforms", true)
 DECLARE_IGC_REGKEY(bool, EnableDualSIMD8, true, "enable dual SIMD8 on supported platforms", true)

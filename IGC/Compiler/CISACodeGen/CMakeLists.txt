@@ -155,6 +155,7 @@ set(IGC_BUILD__HDR__CISACodeGen_Common
     "${CMAKE_CURRENT_SOURCE_DIR}/DpasScan.hpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/DriverInfo.hpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/EmitVISAPass.hpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/Emu64FoldToI32Utils.hpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/Emu64OpsPass.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/EvaluateFreeze.hpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/EstimateFunctionSize.h"

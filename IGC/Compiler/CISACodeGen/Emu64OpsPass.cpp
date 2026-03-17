@@ -35,6 +35,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/IGCPassSupport.h"
 #include "Compiler/MetaDataUtilsWrapper.h"
 #include "Compiler/CISACodeGen/Emu64OpsPass.h"
+#include "Compiler/CISACodeGen/Emu64FoldToI32Utils.hpp"
 #include "Probe/Assertion.h"
 
 using namespace llvm;
@@ -701,6 +702,14 @@ bool InstExpander::visitAdd(BinaryOperator &BinOp) {
   auto [L0, H0] = Emu->getExpandedValues(BinOp.getOperand(0));
   auto [L1, H1] = Emu->getExpandedValues(BinOp.getOperand(1));
 
+  if (canFoldAddToI32(L0, H0, L1, H1, *Emu->DL)) {
+    IGC_ASSERT(nullptr != IRB);
+    Value *Lo = IRB->CreateAdd(L0, L1, "", BinOp.hasNoUnsignedWrap());
+    Value *Hi = IRB->getInt32(0);
+    Emu->setExpandedValues(&BinOp, Lo, Hi);
+    return true;
+  }
+
   GenISAIntrinsic::ID GIID = GenISAIntrinsic::GenISA_add_pair;
   Function *IFunc = GenISAIntrinsic::getDeclaration(Emu->getModule(), GIID);
   IGC_ASSERT(nullptr != IRB);
@@ -725,6 +734,14 @@ bool InstExpander::visitSub(BinaryOperator &BinOp) {
   auto [L0, H0] = Emu->getExpandedValues(BinOp.getOperand(0));
   auto [L1, H1] = Emu->getExpandedValues(BinOp.getOperand(1));
 
+  if (canFoldSubToI32(BinOp, H0, H1, *Emu->DL)) {
+    IGC_ASSERT(nullptr != IRB);
+    Value *Lo = IRB->CreateSub(L0, L1, "", BinOp.hasNoUnsignedWrap());
+    Value *Hi = IRB->getInt32(0);
+    Emu->setExpandedValues(&BinOp, Lo, Hi);
+    return true;
+  }
+
   GenISAIntrinsic::ID GIID = GenISAIntrinsic::GenISA_sub_pair;
   Function *IFunc = GenISAIntrinsic::getDeclaration(Emu->getModule(), GIID);
   IGC_ASSERT(nullptr != IRB);
@@ -743,6 +760,14 @@ bool InstExpander::visitMul(BinaryOperator &BinOp) {
 
   auto [L0, H0] = Emu->getExpandedValues(BinOp.getOperand(0));
   auto [L1, H1] = Emu->getExpandedValues(BinOp.getOperand(1));
+
+  if (canFoldMulToI32(L0, H0, L1, H1, *Emu->DL)) {
+    IGC_ASSERT(nullptr != IRB);
+    Value *Lo = IRB->CreateMul(L0, L1, "", BinOp.hasNoUnsignedWrap());
+    Value *Hi = IRB->getInt32(0);
+    Emu->setExpandedValues(&BinOp, Lo, Hi);
+    return true;
+  }
 
   GenISAIntrinsic::ID GIID = GenISAIntrinsic::GenISA_mul_pair;
   Function *IFunc = GenISAIntrinsic::getDeclaration(Emu->getModule(), GIID);
