@@ -4782,34 +4782,45 @@ bool IR_Builder::canPromoteToMovi(G4_INST *inst) {
   bool emitMoreMoviCases = getOption(vISA_emitMoreMoviCases);
 
   bool isMovOpcode = inst->opcode() == G4_mov;
+  if (!isMovOpcode)
+    return false;
+
   bool isValidExecSize =
       (inst->getExecSize() == g4::SIMD8) ||
       (emitMoreMoviCases && (inst->getExecSize() <= g4::SIMD16));
+  if (!isValidExecSize)
+    return false;
+
   bool isRawMov = inst->isRawMov();
+  if (!isRawMov)
+    return false;
 
   bool hasDst = inst->getDst() != nullptr;
   bool isNotCrossGRFDst =
       hasDst && !inst->getDst()->asDstRegRegion()->isCrossGRFDst(*this);
+  if (!isNotCrossGRFDst)
+    return false;
 
   bool hasSrc0 = inst->getSrc(0) != nullptr;
   bool isSrcRegRegion = hasSrc0 && inst->getSrc(0)->isSrcRegRegion();
   bool isIndirectSrc =
       isSrcRegRegion && inst->getSrc(0)->asSrcRegRegion()->isIndirect();
+  if (!isIndirectSrc)
+    return false;
+
   bool isRegionWH =
       isIndirectSrc &&
       inst->getSrc(0)->asSrcRegRegion()->getRegion()->isRegionWH();
   bool isWidthOne =
       isRegionWH && inst->getSrc(0)->asSrcRegRegion()->getRegion()->width == 1;
+  if (!isWidthOne)
+    return false;
 
-  bool isTypeSizeMatch = hasDst && hasSrc0 &&
-                         (inst->getSrc(0)->getTypeSize() ==
+  bool isTypeSizeMatch = (inst->getSrc(0)->getTypeSize() ==
                           (inst->getDst()->getTypeSize() *
                            inst->getDst()->asDstRegRegion()->getHorzStride()));
-
-  // Combine all checks
-  bool canConvertMovToMovi = isMovOpcode && isValidExecSize && isRawMov &&
-                             isNotCrossGRFDst && isIndirectSrc && isWidthOne &&
-                             isTypeSizeMatch;
+  // If any of previous checks fails, this function returns false already
+  bool canConvertMovToMovi = isTypeSizeMatch;
 
   if (getPlatform() >= Xe_PVC) {
     canConvertMovToMovi = canConvertMovToMovi &&
@@ -4860,11 +4871,21 @@ bool IR_Builder::canPromoteToMovi(G4_INST *inst) {
     return true;
   }
 
+  // When doing GetNewAlias, Dcl always returns the original declare, not alias
+  // declare. As the alternative, we will check src and dst size to make sure
+  // they both can fit in single GRF, then we can guarantee the address
+  // calculated by LEA can fit in single GRF, even if it's not the original
+  // declare.
+  bool isDclSingleGRF =
+      Dcl->getRootDeclare()->getByteSize() <= numEltPerGRF<Type_UB>();
+  unsigned DstSizeInBytes = inst->getExecSize() * inst->getDst()->getTypeSize();
+  bool isSrcDstSingleGRF = (SrcSizeInBytes <= numEltPerGRF<Type_UB>() &&
+                            DstSizeInBytes <= numEltPerGRF<Type_UB>());
+
   // Op0's root declare size can make sure if all channels of indirect
   // access fall into 1 GRF
   bool isCandidateForSingleGRFPattern =
-      emitMoreMoviCases &&
-      Dcl->getRootDeclare()->getByteSize() <= numEltPerGRF<Type_UB>() &&
+      emitMoreMoviCases && (isDclSingleGRF || isSrcDstSingleGRF) &&
       (Offset % SrcSizeInBytes) == 0 &&
       (!Op1->isImm() || Op1->getType() == Type_UV) && LEA->isWriteEnableInst();
 
@@ -4899,12 +4920,40 @@ bool IR_Builder::canPromoteToMovi(G4_INST *inst) {
 
   // verify execsizes
   bool areExecSizesEqual = inst->getExecSize() == LEA->getExecSize() &&
-                           inst->getExecSize() == maybeAnd->getExecSize() &&
-                           inst->getExecSize() == maybeShlOrMul->getExecSize();
+                           inst->getExecSize() <= maybeAnd->getExecSize() &&
+                           inst->getExecSize() <= maybeShlOrMul->getExecSize();
 
   if (!areExecSizesEqual) {
     return false;
   }
+
+  // If it is predicated, check if it matches the cmp from split2Movi in emitSimdShuffle()
+  //        cmp.lt (M1, 32) P2 V0305(0,0)<1;1,0> 0x10:ud
+  //        addr_add(M1_NM, 16) A0(0)<1> &V0299 ShuffleTmp(0,0)< 1;1,0>
+  //   (P2) mov(M1, 16) V0306(0,0)<1> r[A0(0),0]<1,0>:d
+  G4_Predicate *pred = inst->getPredicate();
+  if (pred) {
+    G4_INST *cmp = getSingleDefInst(inst, Opnd_pred);
+
+    // Require the defining instruction to be the expected cmp for split2Movi
+    if (!cmp || cmp->opcode() != G4_cmp) {
+      return false;
+    }
+
+    G4_CondMod *condMod = cmp->getCondMod();
+    // Check same flag register as the predicate and the expected condition
+    if (!condMod || condMod->getBase() != pred->getBase() ||
+        condMod->getSubRegOff() != pred->getSubRegOff() ||
+        condMod->getMod() != Mod_l) {
+      return false;
+    }
+
+    // Require immediate 0x10 as the compare's second source
+    G4_Operand *cmpImm = cmp->getSrc(1);
+    if (!cmpImm || !cmpImm->isImm() || cmpImm->asImm()->getInt() != 0x10) {
+      return false;
+    }
+  } // if (pred)
 
   // check whether the address calculated is guaranteed to fit single GRF
   // since we support both shl and mul, need to handle them both
