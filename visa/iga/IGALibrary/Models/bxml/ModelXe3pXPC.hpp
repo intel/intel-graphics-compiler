@@ -107,7 +107,7 @@ static const iga::OpSpec MODEL_XE3P_XPC_OPSPECS[unsigned(Op::TOTAL_OPS) + 1] {
       // F,HF <- F,HF,UB
       {TYPE(Type::F)|TYPE(Type::HF),TYPE(Type::F)|TYPE(Type::HF)|TYPE(Type::UB)}
     },
-    OpSpec::Attr::NONE
+    OpSpec::Attr::SUPPORTS_PREDICATION
   },
   {Op::BFE /* Op::8 */, Platform::XE3P_XPC, 0x78,
     "bfe",
@@ -299,7 +299,7 @@ static const iga::OpSpec MODEL_XE3P_XPC_OPSPECS[unsigned(Op::TOTAL_OPS) + 1] {
       // F <- F,TF32
       {TYPE(Type::F),TYPE(Type::F)|TYPE(Type::TF32)}
     },
-    OpSpec::Attr::NONE
+    OpSpec::Attr::SUPPORTS_PREDICATION
   },
   {Op::INVALID, Platform::XE3P_XPC, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, },
   {Op::INVALID, Platform::XE3P_XPC, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, },
