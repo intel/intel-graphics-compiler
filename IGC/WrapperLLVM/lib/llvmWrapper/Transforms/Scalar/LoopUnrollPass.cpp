@@ -77,6 +77,12 @@ bool LoopUnrollLegacyPassWrapper::runOnFunction(Function &F) {
 
   LoopUnrollPass Implementation(unrollOpts);
   Implementation.run(F, FAM);
+
+  // The new-PM LoopUnrollPass updated the DomTree inside the private FAM,
+  // but the legacy PM's DominatorTreeWrapperPass still holds a stale copy.
+  // Recalculate it so downstream legacy PM passes see a valid DomTree.
+  getAnalysis<DominatorTreeWrapperPass>().getDomTree().recalculate(F);
+
   return true;
 }
 
@@ -85,6 +91,11 @@ void LoopUnrollLegacyPassWrapper::getAnalysisUsage(AnalysisUsage &AU) const {
   AU.addRequired<TargetTransformInfoWrapperPass>();
   AU.addRequired<ScalarEvolutionWrapperPass>();
   AU.addPreserved<ScalarEvolutionWrapperPass>();
+  // This calls addRequired/addPreserved for DominatorTreeWrapperPass,
+  // LoopInfoWrapperPass, LoopSimplify, and LCSSA — matching what the
+  // original LLVM legacy LoopUnroll pass declared.
+  // We can safely preserve DomTree because runOnFunction() recalculates
+  // the legacy PM's DomTree after the new-PM LoopUnrollPass modifies it.
   getLoopAnalysisUsage(AU);
 }
 
