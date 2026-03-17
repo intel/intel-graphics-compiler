@@ -137,6 +137,12 @@ DEFINE_OTHER_OP(ATOMIC_ACSUB, "atomic_acsub", "atomic counter subtract",
 DEFINE_OTHER_OP(ATOMIC_ACSTORE, "atomic_acstore", "atomic counter store",
                 iga::SendOpDefinition::Attr::GROUP_ATOMIC |
                     iga::SendOpDefinition::Attr::ATOMIC_BINARY)
+DEFINE_ATOMIC_BINARY_OP(ATOMIC_BFADD, "atomic_bfadd", "atomic bfloat add")
+DEFINE_ATOMIC_BINARY_OP(ATOMIC_BFSUB, "atomic_bfsub", "atomic bfloat subtract")
+DEFINE_ATOMIC_BINARY_OP(ATOMIC_BFMIN, "atomic_bfmin", "atomic bfloat minimum")
+DEFINE_ATOMIC_BINARY_OP(ATOMIC_BFMAX, "atomic_bfmax", "atomic bfloat maximum")
+DEFINE_ATOMIC_TERNARY_OP(ATOMIC_BFCAS, "atomic_bfcas",
+                         "atomic bfloat compare and swap")
 //
 DEFINE_OTHER_OP(READ_STATE, "read_state", "read surface state", ATTRS_NONE)
 //

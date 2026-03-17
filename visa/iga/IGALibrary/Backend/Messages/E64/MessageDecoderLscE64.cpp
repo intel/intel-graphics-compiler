@@ -101,6 +101,20 @@ static constexpr LscOpDesc LSC_DP_OPCODE[]{
               "DP_FENCE", "71917"},
     // 0x20 STORE_UNCOMPRESSED_CMASK [REMOVED]
     //
+    LscOpDesc{0x21, SendOp::ATOMIC_BFADD, "atomic_bfadd", "atomic bfloat add",
+              "DP_ATOMIC_BFADD", "71928"},
+    LscOpDesc{0x22, SendOp::ATOMIC_BFSUB, "atomic_bfsub",
+              "atomic bfloat subtract",
+              "DP_ATOMIC_BFSUB", "71932"},
+    LscOpDesc{0x23, SendOp::ATOMIC_BFMIN, "atomic_bfmin",
+              "atomic bfloat minimum",
+              "DP_ATOMIC_BFMIN", "71931"},
+    LscOpDesc{0x24, SendOp::ATOMIC_BFMAX, "atomic_bfmax",
+              "atomic bfloat maximum",
+              "DP_ATOMIC_BFMAX", "71930"},
+    LscOpDesc{0x25, SendOp::ATOMIC_BFCAS, "atomic_bfcas",
+              "atomic bfloat compare and swap",
+              "DP_ATOMIC_BFCMPXCHG", "71929"},
 
     LscOpDesc{0x28, SendOp::ATOMIC_ACADD, "atomic_acadd",
               "atomic append counter add",
