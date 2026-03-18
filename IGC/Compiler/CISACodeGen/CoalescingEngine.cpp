@@ -103,9 +103,6 @@ bool CoalescingEngine::runOnFunction(Function &MF) {
   m_CodeGenContext = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
   m_Platform = m_CodeGenContext->platform;
   m_PayloadMapping = PayloadMapping(m_CodeGenContext);
-  if (IGC_IS_FLAG_ENABLED(DisablePayloadCoalescing) || m_ModuleMetadata->compOpt.WaDisablePayloadCoalescing) {
-    return false;
-  }
   if (!isEntryFunc(pMdUtils, &MF)) {
     return false;
   }
@@ -118,6 +115,9 @@ bool CoalescingEngine::runOnFunction(Function &MF) {
     m_DeSSA = &getAnalysis<DeSSA>();
   } else {
     m_DeSSA = nullptr;
+  }
+  if (IGC_IS_FLAG_ENABLED(DisablePayloadCoalescing) || m_ModuleMetadata->compOpt.WaDisablePayloadCoalescing) {
+    return false;
   }
 
   for (Function::iterator I = MF.begin(), E = MF.end(); I != E; ++I) {
