@@ -1535,12 +1535,13 @@ Value *RTBuilder::getGlobalBufferPtr(IGC::ADDRESS_SPACE Addrspace) {
 }
 
 Value *RTBuilder::getGlobalBufferPtrForSlot(IGC::ADDRESS_SPACE Addrspace, Value *slot) {
-  auto *pFunc =
-      GenISAIntrinsic::getDeclaration(Ctx.getModule(), GenISAIntrinsic::GenISA_RuntimeValue,
-                                      getRayDispatchGlobalDataPtrTy(*Ctx.getModule(), ADDRESS_SPACE_CONSTANT));
-
-  auto *mainGlobalBufferPtr = CreateCall(pFunc, getInt32(Ctx.getModuleMetaData()->pushInfo.inlineRTGlobalPtrOffset),
-                                         VALUE_NAME("globalBufferPtrFromRuntimeValue"));
+  auto *rtPtrTy = getRayDispatchGlobalDataPtrTy(*Ctx.getModule(), ADDRESS_SPACE_CONSTANT);
+  Value *mainGlobalBufferPtr = nullptr;
+  {
+    auto *pFunc = GenISAIntrinsic::getDeclaration(Ctx.getModule(), GenISAIntrinsic::GenISA_RuntimeValue, rtPtrTy);
+    mainGlobalBufferPtr = CreateCall(pFunc, getInt32(Ctx.getModuleMetaData()->pushInfo.inlineRTGlobalPtrOffset),
+                                     VALUE_NAME("globalBufferPtrFromRuntimeValue"));
+  }
 
   auto *offset = CreateMul(slot, getInt32(IGC::Align(sizeof(RayDispatchGlobalData), IGC::RTGlobalsAlign)));
 
