@@ -719,6 +719,13 @@ bool IGCVectorizer::handleSelectInstruction(VecArr &Slice) {
       return false;
   }
 
+  CmpInst *FC = llvm::dyn_cast<CmpInst>(Cmp);
+  // we support selects only with CMP as predicte
+  // because currently we can't initialize vector of predicates
+  // from inserts
+  if (FC && FC->getPredicate() == CmpInst::FCMP_ONE)
+    return true;
+
   PRINT_DS("Operands: ", Operands);
   Instruction *InsertPoint = getInsertPointForCreatedInstruction(Operands, Slice);
 
@@ -818,6 +825,16 @@ bool IGCVectorizer::handleCMPInstruction(VecArr &Slice) {
     return true;
 
   Instruction *First = Slice.front();
+  CmpInst *FC = llvm::cast<CmpInst>(First);
+
+  // FCMP_ONE compares are broken down later in the pipeline
+  // and products of transformation are not supported
+  // in vector form
+  if (FC->getPredicate() == CmpInst::FCMP_ONE) {
+    PRINT_LOG_NL("FCMP ONE is not supported by vector emitter");
+    return true;
+  }
+
   Value *PrevVectorization = nullptr;
   if (checkPrevVectorization(Slice, PrevVectorization))
     return true;
