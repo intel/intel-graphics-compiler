@@ -12,6 +12,7 @@ SPDX-License-Identifier: MIT
 //===----------------------------------------------------------------------===//
 #include "vc/Utils/GenX/BreakConst.h"
 
+#include "IGC/common/LLVMWarningsPush.hpp"
 #include <llvm/ADT/PostOrderIterator.h>
 #include <llvm/IR/Constants.h>
 #include <llvm/IR/Dominators.h>
@@ -23,6 +24,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/Metadata.h>
 #include <llvm/IR/Module.h>
 #include <llvm/Support/Casting.h>
+#include "IGC/common/LLVMWarningsPop.hpp"
 
 #include "Probe/Assertion.h"
 #include "llvmWrapper/IR/DerivedTypes.h"

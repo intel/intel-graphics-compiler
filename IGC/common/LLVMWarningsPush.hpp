@@ -45,6 +45,7 @@ SPDX-License-Identifier: MIT
 #endif
 #if __GNUC__ >= 15
 #pragma GCC diagnostic ignored "-Wcpp"
+#pragma GCC diagnostic ignored "-Wfree-nonheap-object"
 #endif
 #ifdef __clang__
 #pragma GCC diagnostic ignored "-W#warnings"
