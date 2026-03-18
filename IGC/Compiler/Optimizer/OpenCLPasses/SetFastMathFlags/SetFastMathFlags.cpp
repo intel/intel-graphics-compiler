@@ -68,10 +68,14 @@ bool SetFastMathFlags::runOnModule(Module &M) {
       changed |= setFlags(F, fmfs);
       continue;
     }
-    // Unsafe math implies no signed zeros.
-    if ((modMD.compOpt.NoSignedZeros || modMD.compOpt.UnsafeMathOptimizations) &&
-        (hasFnAttributeSet(F, "no-signed-zeros-fp-math"))) {
-      fmfs.setNoSignedZeros();
+    // Unsafe math implies everything besides finite-math (ninf and nnan)
+    if ((modMD.compOpt.UnsafeMathOptimizations)) {
+      if (hasFnAttributeSet(F, "no-signed-zeros-fp-math"))
+        fmfs.setNoSignedZeros();
+      fmfs.setAllowContract();
+      fmfs.setAllowReassoc();
+      fmfs.setAllowReciprocal();
+      fmfs.setApproxFunc();
     }
     // Finite math implies no infs and nans.
     if (modMD.compOpt.FiniteMathOnly) {
@@ -81,6 +85,9 @@ bool SetFastMathFlags::runOnModule(Module &M) {
       if (hasFnAttributeSet(F, "no-nans-fp-math")) {
         fmfs.setNoNaNs();
       }
+    }
+    if (modMD.compOpt.NoSignedZeros && hasFnAttributeSet(F, "no-signed-zeros-fp-math")) {
+      fmfs.setNoSignedZeros();
     }
     fmfs &= m_Mask;
     changed |= setFlags(F, fmfs);

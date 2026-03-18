@@ -11,7 +11,7 @@
 
 define void @sample_test(float %x, float %y, float addrspace(1)* nocapture %res) nounwind {
 entry:
-  %sub = fsub float %x, %x
+  %sub = fsub fast float %x, %x
   store float %sub, float addrspace(1)* %res
   ret void
 }
