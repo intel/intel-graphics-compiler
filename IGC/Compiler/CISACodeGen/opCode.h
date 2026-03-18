@@ -410,5 +410,7 @@ DECLARE_OPCODE(GenISA_UnmaskedRegionBegin, GenISAIntrinsic, llvm_unmaskedBegin, 
                false, false)
 DECLARE_OPCODE(GenISA_UnmaskedRegionEnd, GenISAIntrinsic, llvm_unmaskedEnd, false, false, false, false, false, false,
                false)
+DECLARE_OPCODE(GenISA_WideSMulHi, GenISAIntrinsic, llvm_wideSMulHi, false, false, false, false, false, false, false)
+DECLARE_OPCODE(GenISA_WideUMulHi, GenISAIntrinsic, llvm_wideUMulHi, false, false, false, false, false, false, false)
 DECLARE_OPCODE(GenISA_tanh, GenISAIntrinsic, llvm_tanh, false, false, false, false, true, false, false)
 DECLARE_OPCODE(GenISA_sigm, GenISAIntrinsic, llvm_sigm, false, false, false, false, true, false, false)

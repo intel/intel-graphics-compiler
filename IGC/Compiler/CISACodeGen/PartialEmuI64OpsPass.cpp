@@ -170,6 +170,7 @@ private:
   bool populatePHIs(Function &F);
   bool removeDeadInsts();
   bool hasNoInt64HWSupport(Instruction *instr);
+  bool useMulEmu(Instruction *instr);
 };
 
 class InstExpander : public InstVisitor<InstExpander, bool> {
@@ -633,6 +634,15 @@ ValuePair InstExpander::getExpandedValues(Value *V) {
       }
       break;
     case llvm::Instruction::Mul:
+      if (Emu->CGC->platform.hasWideMulMad()) {
+        if (Emu->valueNotStored(V)) {
+          Value *_V = IRB->CreateBitCast(instrOp, Emu->getV2Int32Ty());
+          L = IRB->CreateExtractElement(_V, IRB->getInt32(0));
+          H = IRB->CreateExtractElement(_V, IRB->getInt32(1));
+          insertNewPair = true;
+        }
+      }
+      break;
     case llvm::Instruction::Xor:
     case llvm::Instruction::And:
     case llvm::Instruction::Or:
@@ -717,16 +727,39 @@ void InstExpander::convert2xi32OutputBackToi64(Instruction &instr, Value *Lo, Va
 
 bool PartialEmuI64Ops::hasNoInt64HWSupport(Instruction *instr) {
   if (
-  // list of the instructions without Int64 HW support on PVC-B0+
-  // TODO: On platforms where 64-bit OR is supported, skip the preprocess step to convert OR to ADD
-      (instr->getOpcode() == llvm::Instruction::Mul)
-      || (instr->getOpcode() == llvm::Instruction::Add && !CGC->platform.hasInt64Add()) ||
+      // list of the instructions without Int64 HW support on PVC-B0+
+      // TODO: On platforms where 64-bit OR is supported, skip the preprocess step to convert OR to ADD
+      (instr->getOpcode() == llvm::Instruction::Mul && useMulEmu(instr)) ||
+      (instr->getOpcode() == llvm::Instruction::Add && !CGC->platform.hasInt64Add()) ||
       (instr->getOpcode() == llvm::Instruction::Sub && !CGC->platform.hasInt64Add()) ||
       (instr->getOpcode() == llvm::Instruction::Xor) || (instr->getOpcode() == llvm::Instruction::And) ||
       (instr->getOpcode() == llvm::Instruction::Or) || (instr->getOpcode() == llvm::Instruction::ICmp) ||
       (instr->getOpcode() == llvm::Instruction::Select))
     return true;
   return false;
+}
+bool PartialEmuI64Ops::useMulEmu(Instruction *instr) {
+  if (CGC->platform.hasWideMulMad()) {
+    if (CGC->platform.hasMullh()) {
+      // Emulated mul based on GenISAIntrinsic::GenISA_mul_pair uses
+      // mullh to calculate result in SOA layout. If result is used
+      // only as vec <2xi32>, it might be more beneficial to continue
+      // and use mullh instruction instead of wide mul instruction with
+      // AOS layout.
+      for (auto *user : instr->users()) {
+        auto *BCI = dyn_cast<BitCastInst>(user);
+        if (!BCI)
+          return false;
+
+        auto *VTy = dyn_cast<IGCLLVM::FixedVectorType>(BCI->getType());
+        if (!VTy || VTy->getNumElements() != 2 || !VTy->getElementType()->isIntegerTy(32))
+          return false;
+      }
+    } else {
+      return false;
+    }
+  }
+  return true;
 }
 
 bool PartialEmuI64Ops::expandInsts(Function &F) {
@@ -827,6 +860,8 @@ bool InstExpander::visitSub(BinaryOperator &BinOp) {
 bool InstExpander::visitMul(BinaryOperator &BinOp) {
   IGC_ASSERT(nullptr != Emu);
   if (!Emu->isInt64(&BinOp))
+    return false;
+  if (!Emu->useMulEmu(&BinOp))
     return false;
 
   setCurrentInstruction(&BinOp);

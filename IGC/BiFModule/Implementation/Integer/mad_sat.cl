@@ -491,6 +491,27 @@ long __attribute__((overloadable)) __spirv_ocl_s_mad_sat( long a,
                                             long b,
                                             long c )
 {
+    if(BIF_FLAG_CTRL_GET(HasWideMulMad))
+    {
+        long hi = __builtin_IB_mul_hi(a, b);
+        ulong ulo = a * b;
+        long  slo = a * b;
+        /* Big overflow of more than 2 bits, add can't fix this */
+        if (((a < 0) == (b < 0)) && hi != 0)
+            return LONG_MAX;
+        /* Low overflow in mul and c not neg enough to correct it */
+        if (hi == 0 && ulo >= LONG_MAX && (c > 0 || (ulo + c) > LONG_MAX))
+            return LONG_MAX;
+        /* Big overflow of more than 2 bits, add can't fix this */
+        if (((a < 0) != (b < 0)) && hi != -1)
+            return LONG_MIN;
+        /* Low overflow in mul and c not pos enough to correct it */
+        if (hi == -1 && ulo <= ((ulong)LONG_MAX + 1UL) && (c < 0 || c < (LONG_MAX - ulo)))
+            return LONG_MIN;
+        /* We have checked all conditions, any overflow in addition returns
+         * the correct value */
+        return ulo + c;
+    }
     return libclc_mad_sat(a, b, c);
 }
 
@@ -577,6 +598,15 @@ ulong __attribute__((overloadable)) __spirv_ocl_u_mad_sat( ulong a,
                                              ulong b,
                                              ulong c )
 {
+    if(BIF_FLAG_CTRL_GET(HasWideMulMad))
+    {
+        ulong lo;
+        ulong hi;
+        hi = __builtin_IB_umul_hi(a, b);
+        lo = a * b;
+        return (hi == 0) ? __spirv_ocl_u_add_sat(lo, c) :
+        ULONG_MAX;
+    }
     ulong lo;
     ulong hi;
     hi = ___intc_umul_hilo(a, b, &lo);

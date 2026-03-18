@@ -1890,6 +1890,8 @@ CBuiltinsResolver::CBuiltinsResolver(CImagesBI::ParamMap *paramMap, CImagesBI::I
   m_CommandMap["__builtin_IB_dp4a_uu"] = CSimpleIntrinMapping::create(GenISAIntrinsic::GenISA_dp4a_uu, false);
   m_CommandMap["__builtin_IB_dp4a_su"] = CSimpleIntrinMapping::create(GenISAIntrinsic::GenISA_dp4a_su, false);
   m_CommandMap["__builtin_IB_dp4a_us"] = CSimpleIntrinMapping::create(GenISAIntrinsic::GenISA_dp4a_us, false);
+  m_CommandMap["__builtin_IB_mul_hi"] = CSimpleIntrinMapping::create(GenISAIntrinsic::GenISA_WideSMulHi, false);
+  m_CommandMap["__builtin_IB_umul_hi"] = CSimpleIntrinMapping::create(GenISAIntrinsic::GenISA_WideUMulHi, false);
   m_CommandMap["__builtin_IB_tanhf"] = CSimpleIntrinMapping::create(GenISAIntrinsic::GenISA_tanh, true);
   m_CommandMap["__builtin_IB_sigmf"] = CSimpleIntrinMapping::create(GenISAIntrinsic::GenISA_sigm, true);
   m_CommandMap["__builtin_IB_tanhh"] = CSimpleIntrinMapping::create(GenISAIntrinsic::GenISA_tanh, true);

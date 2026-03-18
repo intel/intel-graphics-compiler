@@ -1111,6 +1111,8 @@ rtfence_t __builtin_IB_post_process_ray_query_return(rtfence_t fence);
 #endif // defined(cl_intel_pvc_rt_validation) || defined(cl_intel_rt_production)
 
 void    __builtin_IB_hdc_uncompressed_write_uchar(__global uchar *buf, uchar val);
+long __builtin_IB_mul_hi(long sourceA, long sourceB);
+ulong __builtin_IB_umul_hi(ulong sourceA, ulong sourceB);
 float __builtin_IB_tanhf(float x);
 float __builtin_IB_sigmf(float x);
 half  __builtin_IB_tanhh(half x);

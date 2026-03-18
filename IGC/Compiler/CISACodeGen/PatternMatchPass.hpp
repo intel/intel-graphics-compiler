@@ -237,6 +237,7 @@ public:
   bool matchMulPair(llvm::ExtractValueInst *);
   bool matchMulPairToI64(llvm::BitCastInst &I);
   bool matchPtrToPair(llvm::ExtractValueInst *);
+  bool matchWideMul64Pair(llvm::Instruction &I);
 
   bool MatchUnmaskedRegionBoundary(llvm::Instruction &I, bool start);
 
@@ -296,6 +297,8 @@ public:
   typedef std::pair<llvm::ExtractValueInst *, llvm::ExtractValueInst *> PairOutputTy;
   typedef llvm::DenseMap<llvm::Value *, PairOutputTy> PairOutputMapTy;
   PairOutputMapTy PairOutputMap;
+  typedef llvm::DenseMap<llvm::GenIntrinsicInst *, llvm::Instruction *> WidePairMapTy;
+  WidePairMapTy WidePairMap;
 
   llvm::Instruction *m_root;
   Pattern *m_currentPattern;

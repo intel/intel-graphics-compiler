@@ -687,6 +687,10 @@ public:
   bool hasBFTFDenormMode() const {
     return isCoreChildOf(IGFX_XE2_HPG_CORE);
   }
+  bool hasWideMulMad() const {
+    return isCoreChildOf(IGFX_XE3P_CORE) &&
+           IGC_IS_FLAG_ENABLED(EnableWideMulMad);
+  }
   bool hasMullh() const { return isCoreChildOf(IGFX_XE3P_CORE) && IGC_IS_FLAG_ENABLED(EnableMullh); }
 
   bool WaPredicatedStackIDRelease() const {

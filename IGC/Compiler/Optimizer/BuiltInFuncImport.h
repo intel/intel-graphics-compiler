@@ -117,6 +117,19 @@ public:
   static const llvm::StringRef OCL_GET_SUBGROUP_ID;
   static const llvm::StringRef OCL_SUBGROUP_BLOCK_PREFIX;
   static const llvm::StringRef OCL_SUBGROUP_IMAGE_BLOCK_PREFIX;
+  static const llvm::StringRef OCL_S_MUL_HI_PREFIX;
+  static const llvm::StringRef OCL_U_MUL_HI_PREFIX;
+  static const llvm::StringRef OCL_S_MAD_SAT_PREFIX;
+  static const llvm::StringRef OCL_U_MAD_SAT_PREFIX;
+  static const llvm::StringRef OCL_S_MAD_HI_PREFIX;
+  static const llvm::StringRef OCL_U_MAD_HI_PREFIX;
+  static const llvm::StringRef OCL_SPIRV_PREFIX;
+  static const llvm::StringRef OCL_I64_SUFFIX;
+  static const llvm::StringRef OCL_V2I64_SUFFIX;
+  static const llvm::StringRef OCL_V3I64_SUFFIX;
+  static const llvm::StringRef OCL_V4I64_SUFFIX;
+  static const llvm::StringRef OCL_V8I64_SUFFIX;
+  static const llvm::StringRef OCL_V16I64_SUFFIX;
 };
 
 } // namespace IGC

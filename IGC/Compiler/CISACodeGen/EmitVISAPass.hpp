@@ -123,6 +123,10 @@ public:
               const SSource bfnSources[3], const DstModifier &modifier);
 
   enum class ResultScope { Low = 0b01, Hi = 0b10, All = 0b11 };
+  void emitWideMul(Instruction *inst, const SSource *Sources, ResultScope mulResultScope, bool forceUnsigned,
+                   Instruction *instHi = nullptr);
+  void emitWideMulSequence(CVariable *dst, CVariable *L0, CVariable *L1, CVariable *H0, CVariable *H1,
+                           ResultScope mulResultScope, CVariable *dstHi, SIMDMode simdMode, bool noMask) const;
   bool canUseMul64SOA() const;
   void emitMul64SOA(CVariable *DstL, CVariable *DstH, CVariable *L0, CVariable *L1, CVariable *H0, CVariable *H1,
                     std::optional<SIMDMode> Mode = std::nullopt, bool NoMask = false,

@@ -13078,3 +13078,43 @@ intrinsics:
                 comment: "RayQuery Return data"
         attributes:
             - !AttributeID "NoUnwind"
+    - !<IntrinsicDefinition>
+        name: "GenISA_WideSMulHi"
+        comment: "Perform 64bx64b wide signed multiplication and return hi 64b result"
+        return_definition: !<ReturnDefinition>
+            type_definition: *i64
+            comment: ""
+        arguments:
+            - !<ArgumentDefinition>
+                name: Arg0
+                type_definition: *i64
+                comment: ""
+            - !<ArgumentDefinition>
+                name: Arg1
+                type_definition: *i64
+                comment: ""
+        attributes:
+            - !AttributeID "NoUnwind"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
+    - !<IntrinsicDefinition>
+        name: "GenISA_WideUMulHi"
+        comment: "Perform 64bx64b wide unsigned multiplication and return hi 64b result"
+        return_definition: !<ReturnDefinition>
+            type_definition: *i64
+            comment: ""
+        arguments:
+            - !<ArgumentDefinition>
+                name: Arg0
+                type_definition: *i64
+                comment: ""
+            - !<ArgumentDefinition>
+                name: Arg1
+                type_definition: *i64
+                comment: ""
+        attributes:
+            - !AttributeID "NoUnwind"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef

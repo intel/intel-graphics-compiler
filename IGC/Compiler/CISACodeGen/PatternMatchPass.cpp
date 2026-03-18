@@ -1064,8 +1064,7 @@ void CodeGenPatternMatch::visitBinaryOperator(llvm::BinaryOperator &I) {
     match = MatchIMad(I) || MatchAdd3(I) || MatchAbsNeg(I) || MatchMulAdd16(I) || MatchModifier(I);
     break;
   case Instruction::Mul:
-    match = MatchFullMul32(I) ||
-            MatchMulAdd16(I) || MatchModifier(I);
+    match = matchWideMul64Pair(I) || MatchFullMul32(I) || MatchMulAdd16(I) || MatchModifier(I);
     break;
   case Instruction::Add:
     match = MatchIMad(I) || MatchAdd3(I) || MatchMulAdd16(I) || MatchModifier(I);
@@ -1141,6 +1140,10 @@ void CodeGenPatternMatch::visitCallInst(CallInst &I) {
       case GenISAIntrinsic::GenISA_tanh:
       case GenISAIntrinsic::GenISA_sigm:
         match = MatchModifier(I);
+        break;
+      case GenISAIntrinsic::GenISA_WideSMulHi:
+      case GenISAIntrinsic::GenISA_WideUMulHi:
+        match = matchWideMul64Pair(*GII) || MatchSingleInstruction(*GII);
         break;
       case GenISAIntrinsic::GenISA_intatomicraw:
       case GenISAIntrinsic::GenISA_floatatomicraw:
@@ -1728,6 +1731,100 @@ bool CodeGenPatternMatch::matchPtrToPair(ExtractValueInst *Ex) {
 
   return true;
 }
+bool CodeGenPatternMatch::matchWideMul64Pair(Instruction &I) {
+  if (!m_Platform.hasWideMulMad()) {
+    return false;
+  }
+
+  EOPCODE opCode = GetOpCode(&I);
+  if (opCode != llvm_mul && opCode != llvm_wideUMulHi && opCode != llvm_wideSMulHi) {
+    return false;
+  }
+
+  struct WideMulPattern : public Pattern {
+    SSource sources[2];
+    Instruction *mul64Lo;
+    GenIntrinsicInst *mul64Hi;
+    bool isUnsigned;
+    virtual void Emit(EmitPass *Pass, const DstModifier &DstMod) {
+      Pass->emitWideMul(mul64Lo, sources, EmitPass::ResultScope::All, isUnsigned, mul64Hi);
+    }
+  };
+
+  struct WideMulSubPattern : public Pattern {
+    virtual void Emit(EmitPass *Pass, const DstModifier &Mod) {
+      // DO NOTHING. Dummy pattern.
+    }
+  };
+
+  // Matching 64bit dst instructions only.
+  Type *Ty = I.getType();
+  if (!(Ty->isIntegerTy(64)))
+    return false;
+
+  Value *src0 = I.getOperand(0);
+  Value *src1 = I.getOperand(1);
+
+  for (User *user : src0->users()) {
+    Instruction *anotherInst = dyn_cast<Instruction>(user);
+    if (!anotherInst)
+      continue;
+    EOPCODE anotherInstOpCode = GetOpCode(anotherInst);
+    if ((anotherInstOpCode != llvm_mul && anotherInstOpCode != llvm_wideUMulHi &&
+         anotherInstOpCode != llvm_wideSMulHi) ||
+        anotherInst->getNumOperands() < 2 || src0 != anotherInst->getOperand(0) || src1 != anotherInst->getOperand(1)) {
+      continue;
+    }
+
+    GenIntrinsicInst *wideInstHi = nullptr;
+    Instruction *wideInstLo = nullptr;
+    EOPCODE opCodeHi, opCodeLo;
+    switch (opCode) {
+    case llvm_mul:
+      wideInstHi = dyn_cast<GenIntrinsicInst>(anotherInst);
+      opCodeHi = anotherInstOpCode;
+      wideInstLo = &I;
+      opCodeLo = opCode;
+      break;
+    case llvm_wideUMulHi:
+    case llvm_wideSMulHi:
+      wideInstHi = dyn_cast<GenIntrinsicInst>(&I);
+      opCodeHi = opCode;
+      wideInstLo = anotherInst;
+      opCodeLo = anotherInstOpCode;
+      break;
+    default:
+      IGC_ASSERT(0);
+      return false;
+    }
+
+    if (opCodeLo != llvm_mul || (opCodeHi != llvm_wideSMulHi && opCodeHi != llvm_wideUMulHi)) {
+      continue;
+    }
+    if (!wideInstHi) {
+      IGC_ASSERT(0);
+      continue;
+    }
+
+    auto [MI, New] = WidePairMap.insert(std::make_pair(wideInstHi, wideInstLo));
+    if (New) {
+      WideMulPattern *pattern = new (m_allocator) WideMulPattern();
+      pattern->isUnsigned = (opCodeHi == llvm_wideUMulHi);
+      pattern->mul64Lo = wideInstLo;
+      pattern->mul64Hi = wideInstHi;
+      pattern->sources[0] = GetSource(src0, false, false, IsSourceOfSample(&I));
+      pattern->sources[1] = GetSource(src1, false, false, IsSourceOfSample(&I));
+      AddPattern(pattern);
+      return true;
+    } else {
+      WideMulSubPattern *pattern = new (m_allocator) WideMulSubPattern();
+      AddPattern(pattern);
+      return true;
+    }
+  }
+
+  return false;
+}
 
 bool CodeGenPatternMatch::MatchAbsNeg(llvm::Instruction &I) {
   struct MovModifierPattern : public Pattern {
@@ -2258,6 +2355,11 @@ bool CodeGenPatternMatch::IsMulCandidateForIMad(llvm::BinaryOperator *Mul, llvm:
   if (!m_PosDep->PositionDependsOnInst(Mul) && NeedInstruction(*Mul))
     return false;
 
+  // This condition prevents creating mad instruction when mul instruction is 64-bit wide operation.
+  // We should use WideMulSequence for this case to emit sequence of mul+mad instructions
+  if ((Mul->getType()->isIntegerTy(64)) && m_Platform.hasWideMulMad()) {
+    return false;
+  }
 
   auto isValueNumBitsWide = [](Value *V, unsigned bitWidth) {
     // Look through casts because LLVM cannot represent mixed type mul and add that may match a mad instruction
@@ -2300,8 +2402,7 @@ bool CodeGenPatternMatch::IsMulCandidateForIMad(llvm::BinaryOperator *Mul, llvm:
 
   auto *otherOp = (I->getOperand(0) == Mul) ? I->getOperand(1) : I->getOperand(0);
   // Mad instruction does not support qword type for add/sub operand
-  if (isValueNumBitsWide(otherOp, 64)
-  ) {
+  if (isValueNumBitsWide(otherOp, 64) && !m_Platform.hasWideMulMad()) {
     return false;
   }
   return true;
@@ -2496,8 +2597,8 @@ bool CodeGenPatternMatch::MatchIMad(llvm::BinaryOperator &I) {
               oprdInfo[2].src = ConstantInt::get(CI->getType(), -val);
               oprdInfo[2].isSigned = false;
             } else {
-              if (val > (int64_t)(INT32_MAX) + 1
-              ) {
+              if (val > (int64_t)(INT32_MAX) + 1 && !m_Platform.hasWideMulMad() ||
+                  (uint64_t)val > (uint64_t)(INT64_MAX) + 1) {
                 // negating will overflow
                 return false;
               } else if (val > (int64_t)(INT16_MAX) + 1) {
@@ -2529,8 +2630,8 @@ bool CodeGenPatternMatch::MatchIMad(llvm::BinaryOperator &I) {
               oprdInfo[0].src = ConstantInt::get(CI->getType(), -val);
               oprdInfo[0].isSigned = false;
             } else {
-              if (val > (int64_t)(INT32_MAX) + 1
-              ) {
+              if (val > (int64_t)(INT32_MAX) + 1 && !m_Platform.hasWideMulMad() ||
+                  (uint64_t)val > (uint64_t)(INT64_MAX) + 1) {
                 // negating will overflow
                 return false;
               } else if (val > (int64_t)(INT16_MAX) + 1) {
@@ -2578,6 +2679,8 @@ bool CodeGenPatternMatch::MatchIMad(llvm::BinaryOperator &I) {
       // Mad instruction does not support dword * dword, no operands were able to get reduced.
       if (mul->getType()->isIntegerTy(32) && !oprdInfo[0].isCandidate() &&
           !oprdInfo[1].isCandidate()
+          /* Unless supported platform is performing dword * dword + {dword or qword} = qword */
+          && !m_Platform.hasWideMulMad()
           /* Simplified regioning, dword * dword allowed */
           && !m_Platform.isCoreChildOf(IGFX_XE3P_CORE)) {
         return false;

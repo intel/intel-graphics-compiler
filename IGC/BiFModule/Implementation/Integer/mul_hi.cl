@@ -492,6 +492,10 @@ INLINE
 long __attribute__((overloadable)) __spirv_ocl_s_mul_hi( long x,
                                        long y )
 {
+    if(BIF_FLAG_CTRL_GET(HasWideMulMad))
+    {
+        return __builtin_IB_mul_hi(x, y);
+    }
     ulong temp;
     return ___intc_mul_hilo(x, y, &temp);
 }
@@ -573,6 +577,10 @@ INLINE
 ulong __attribute__((overloadable)) __spirv_ocl_u_mul_hi( ulong x,
                                         ulong y )
 {
+    if(BIF_FLAG_CTRL_GET(HasWideMulMad))
+    {
+        return __builtin_IB_umul_hi(x, y);
+    }
     ulong temp;
     return ___intc_umul_hilo(x, y, &temp);
 }

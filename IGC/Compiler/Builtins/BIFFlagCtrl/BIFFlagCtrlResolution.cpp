@@ -99,6 +99,7 @@ void BIFFlagCtrlResolution::FillFlagCtrl() {
   }
 
   BIF_FLAG_CTRL_SET(UseOOBChecks, PtrCGC->platform.needsOutOfBoundsBuiltinChecks());
+  BIF_FLAG_CTRL_SET(HasWideMulMad, PtrCGC->platform.hasWideMulMad());
   BIF_FLAG_CTRL_SET(HasNativeTanh, PtrCGC->platform.supportsNativeTanh());
   BIF_FLAG_CTRL_SET(HasNativeSigm, PtrCGC->platform.supportsNativeSigmoid());
   BIF_FLAG_CTRL_SET(UseNativeFP32LocalAtomicAdd, PtrCGC->platform.hasFP32LocalAtomicAdd());

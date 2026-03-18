@@ -4311,6 +4311,10 @@ void EmitPass::Mul64(CVariable *dst, CVariable *src[2], SIMDMode simdMode, bool 
     }
   }
 
+  if (m_currShader->m_Platform->hasWideMulMad()) {
+    emitWideMulSequence(dst, srcLo[0], srcLo[1], srcHi[0], srcHi[1], mulResultScope, outDstHi, simdMode, noMask);
+    return;
+  }
   if (mulResultScope == ResultScope::Low && canUseMul64SOA()) {
     CVariable *dstLo =
         m_currShader->GetNewVariable(numLanes(simdMode), ISA_TYPE_UD, m_destination->GetAlign(), dst->IsUniform(),
@@ -9427,6 +9431,12 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst *inst) {
   case GenISAIntrinsic::GenISA_IEEE_Divide_rm:
   case GenISAIntrinsic::GenISA_IEEE_Sqrt_rm:
     emitFPOWithNonDefaultRoundingMode(inst);
+    break;
+  case GenISAIntrinsic::GenISA_WideSMulHi:
+    emitWideMul(inst, nullptr, ResultScope::Hi, false);
+    break;
+  case GenISAIntrinsic::GenISA_WideUMulHi:
+    emitWideMul(inst, nullptr, ResultScope::Hi, true);
     break;
   case GenISAIntrinsic::GenISA_ShflIdx4:
   case GenISAIntrinsic::GenISA_ShflIdx4Vec:
@@ -24772,6 +24782,152 @@ void EmitPass::emitCastSelect(CVariable *flag, CVariable *dst, CVariable *src0, 
   m_encoder->Cast(dst, tmpDst);
 }
 
+void EmitPass::emitWideMulSequence(CVariable *dst, CVariable *L0, CVariable *L1, CVariable *H0, CVariable *H1,
+                                   ResultScope mulResultScope, CVariable *dstHi, SIMDMode simdMode, bool noMask) const {
+
+  auto EncoderInit = [this, simdMode, noMask]() {
+    m_encoder->SetSimdSize(simdMode);
+    if (noMask)
+      m_encoder->SetNoMask();
+  };
+
+  // The signedness of the hi-part type should be the same as that
+  // of the original destination type.
+  VISA_Type hiType;
+  if (dst->GetType() == ISA_TYPE_Q)
+    hiType = ISA_TYPE_Q;
+  else
+    hiType = ISA_TYPE_UQ;
+
+  CVariable *dstWideHi, *dstWideLo, *dstWideTmp0, *dstWideTmp1;
+
+  dstWideHi = m_currShader->GetNewVariable(dst->GetNumberElement(), hiType, m_destination->GetAlign(), dst->IsUniform(),
+                                           CName(m_destination->getName(), "wideHi"));
+  dstWideLo = m_currShader->GetNewVariable(dst->GetNumberElement(), ISA_TYPE_UQ, m_destination->GetAlign(),
+                                           dst->IsUniform(), CName(m_destination->getName(), "wideLo"));
+  dstWideTmp0 = m_currShader->GetNewVariable(dst->GetNumberElement(), hiType, m_destination->GetAlign(),
+                                             dst->IsUniform(), CName(m_destination->getName(), "wideTmp0"));
+  dstWideTmp1 = m_currShader->GetNewVariable(dst->GetNumberElement(), hiType, m_destination->GetAlign(),
+                                             dst->IsUniform(), CName(m_destination->getName(), "wideTmp1"));
+
+  // RLT supports mad and mul with qw dst operand type
+  // this results in shorter sequence of mul and mad instructions for
+  // carrying out 64b x 64b multiply
+  // Algorithm described in HSD-14014417654
+
+  // each 64b operand is decomposed into 2 32b operands as shown below
+  // X = AB -- (hi[0], lo[0])
+  // Y = CD -- (hi[1], lo[1])
+  // Sequence of mul and mad opertions to compute X * Y
+  // note that destination operands are qword
+  // 1. E = B * D
+  // 2. F = Hi dword of E + A * D
+  // 3. G = Hi dword of F + A * C
+  // 4. H = Lo dword of F + B * C
+  // 5. Move Lo dword of H into hi dword of E
+  // 6. I = G + hi dword of H
+  // final result = Hi 64 bits in I and lo 64bits in E
+
+  // 1. E:qw = B:dw * D:dw
+  EncoderInit();
+  m_encoder->Mul(dstWideLo, L0, L1);
+  m_encoder->Push();
+
+  // 2. F:qw = Hi dword of E:dw + A:dw * D:dw
+  // Cast to UD to extract hi dword
+  EncoderInit();
+  CVariable *loAsUD = m_currShader->BitCast(dstWideLo, ISA_TYPE_UD);
+  m_encoder->SetSrcRegion(2, 2, 1, 0);
+  // set col offset to extract hi dword
+  m_encoder->SetSrcSubReg(2, 1);
+  m_encoder->Mad(dstWideTmp0, H0, L1, loAsUD);
+  m_encoder->Push();
+
+  // 3. H:qw = Lo dword of F + B * C
+  EncoderInit();
+  CVariable *tmp0AsUD = m_currShader->BitCast(dstWideTmp0, ISA_TYPE_UD);
+  m_encoder->SetSrcRegion(2, 2, 1, 0);
+  m_encoder->Mad(dstWideTmp1, L0, H1, tmp0AsUD);
+  m_encoder->Push();
+
+  // 4. move lo dword of H into hi dword of E
+  EncoderInit();
+  CVariable *tmp1AsUD = m_currShader->BitCast(dstWideTmp1, ISA_TYPE_UD);
+  m_encoder->SetDstSubReg(1);
+  m_encoder->SetSrcRegion(0, 2, 1, 0);
+  m_encoder->SetDstRegion(2);
+  m_encoder->Copy(loAsUD, tmp1AsUD);
+  m_encoder->Push();
+
+  if (mulResultScope == ResultScope::Hi || mulResultScope == ResultScope::All) {
+    // 5. G:qw = Hi dword of F + A * C
+    EncoderInit();
+    CVariable *tmp0 = m_currShader->BitCast(dstWideTmp0, (hiType == ISA_TYPE_Q) ? ISA_TYPE_D : ISA_TYPE_UD);
+    m_encoder->SetSrcRegion(2, 2, 1, 0);
+    m_encoder->SetSrcSubReg(2, 1);
+    m_encoder->Mad(dstWideHi, H0, H1, tmp0);
+    m_encoder->Push();
+
+    // 6. G:qw = G:qw + hi dword of H
+    EncoderInit();
+    CVariable *tmp1 = m_currShader->BitCast(dstWideTmp1, (hiType == ISA_TYPE_Q) ? ISA_TYPE_D : ISA_TYPE_UD);
+    m_encoder->SetSrcRegion(1, 2, 1, 0);
+    m_encoder->SetSrcSubReg(1, 1);
+    m_encoder->Add(dstWideHi, dstWideHi, tmp1);
+    m_encoder->Push();
+  }
+
+  // final 128bit product result is in G (hi 64 bits) and E (lo 64 bits)
+  // pack the result
+  // Used for the final movs of result
+  if (mulResultScope == ResultScope::Hi) {
+    EncoderInit();
+    m_encoder->Copy(dst, dstWideHi);
+    m_encoder->Push();
+  }
+  if (mulResultScope == ResultScope::Low || mulResultScope == ResultScope::All) {
+    EncoderInit();
+    m_encoder->Copy(dst, dstWideLo);
+    m_encoder->Push();
+  }
+
+  // handle returning of hi part of 128-bit result for ResultScope::All
+  if (dstHi && mulResultScope == ResultScope::All) {
+    EncoderInit();
+    m_encoder->Copy(dstHi, dstWideHi);
+    m_encoder->Push();
+  }
+}
+
+void EmitPass::emitWideMul(Instruction *inst, const SSource *Sources, ResultScope mulResultScope, bool forceUnsigned,
+                           Instruction *instHi) {
+  if (false == m_currShader->m_Platform->hasWideMulMad()) {
+    IGC_ASSERT(0);
+  }
+
+  CVariable *src[2];
+  if (!Sources) {
+    src[0] = GetSymbol(inst->getOperand(0));
+    src[1] = GetSymbol(inst->getOperand(1));
+  } else {
+    src[0] = GetSrcVariable(Sources[0]);
+    src[1] = GetSrcVariable(Sources[1]);
+  }
+  CVariable *dst = m_currShader->GetSymbol(inst);
+  CVariable *dstHi = nullptr;
+  if (instHi) {
+    IGC_ASSERT(mulResultScope == ResultScope::All);
+    dstHi = m_currShader->GetSymbol(instHi);
+    IGC_ASSERT(dst == m_destination || dstHi == m_destination);
+    if (forceUnsigned && dstHi->GetType() == ISA_TYPE_Q) {
+      dstHi = m_currShader->BitCast(dstHi, ISA_TYPE_UQ);
+    }
+  }
+  if (mulResultScope == ResultScope::Hi && forceUnsigned && dst->GetType() == ISA_TYPE_Q) {
+    dst = m_currShader->BitCast(dst, ISA_TYPE_UQ);
+  }
+  Mul64(dst, src, m_currShader->m_SIMDSize, false, mulResultScope, dstHi);
+}
 bool EmitPass::canUseMul64SOA() const {
   // At the moement Xe3P doesn't support mullh in SIMD32 mode. Mul64 can be
   // implemented with two mullh SIMD16 calls, but result data will be split into
