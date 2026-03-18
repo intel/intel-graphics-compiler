@@ -1104,34 +1104,60 @@ class GraphColor {
     if (lr1Align < 4 && lr2Align < 4)
       return edgeWeightGRF(lr1Align == 2, lr2Align == 2, lr1_nreg, lr2_nreg);
 
+    auto roundUpToMultipleOf4 = [](unsigned int N) {
+      return ((N + 3) / 4) * 4;
+    };
+
     if (lr2Align == 4) {
       if (lr1Align < 2)
         return lr1_nreg + lr2_nreg - 1;
       if (lr1Align == 2) {
+        // lr1 size is even:
+        // if (lr2_nreg % 2 == 0) -- lr2 size is even
+        // return lr2_nreg + lr1_nreg - 1;
+        // if (lr2_nreg % 2 == 1) -- lr2 size is odd
+        // return lr2_nreg + lr1_nreg;
+
+        // lr1 size is odd:
         // if (lr2_nreg % 2 == 0) -- lr2 size is even
         // return lr2_nreg + lr1_nreg;
         // if (lr2_nreg % 2 == 1) -- lr2 size is odd
         // return lr2_nreg + lr1_nreg + 1;
 
-        return lr1_nreg + lr2_nreg + (lr2_nreg % 2);
+        unsigned int sum = lr1_nreg + lr2_nreg;
+        if (lr1_nreg % 2 == 0 && lr2_nreg % 2 == 0)
+          return sum - 1;
+        else if (lr1_nreg % 2 == 1 && lr2_nreg % 2 == 1)
+          return sum + 1;
+        return sum;
       } else if (lr1Align == 4) {
-        if (lr2_nreg % 4 == 0)
-          // lr2 size is multiple of 4
-          return lr1_nreg + lr2_nreg;
+        // lr2 is aligned to 4GRF boundary.
+        // Number of GRFs unavailable at end depends on size of lr2.
+        // If lr2 size % 4 == N, then (4 - N) GRFs at the top are unavailable.
+        // This is basically lr2 size rounded up to 4.
+        //
+        // On LHS, lr1_nreg rounded up to 4 - 1 are unavailable for assignment.
 
-        // if lr2_nreg % 4 == 1 --  lr2 size is 1 + (4*n)
-        // return lr1_nreg + lr2_nreg + 3;
-        // if lr2_nreg % 2 == 0 -- lr2 size is 2 + (4*n)
-        // return lr2_nreg + lr1_nreg + 2;
-        // if lr2_nreg % 4 == 3 -- lr2 size is 3 + (4*n)
-        // return lr2_nreg + lr1_nreg + 1;
-
-        return lr1_nreg + lr2_nreg + 4 - (lr2_nreg % 4);
+        return roundUpToMultipleOf4(lr1_nreg) + roundUpToMultipleOf4(lr2_nreg) -
+               1;
       }
     }
 
-    vISA_ASSERT(lr1Align == 4, "unexpected condition");
-    return edgeWeightWith4GRF(lr2Align, lr1Align, lr2_nreg, lr1_nreg);
+    vISA_ASSERT(
+        lr1Align == 4 && lr2Align <= 2,
+        "expecting lr1 to be 4GRF aligned and lr2 to be <= 2GRF aligned");
+
+    // lr2 has no/Even alignment, lr1 is 4GRF aligned.
+    // When assigning lr1, worst case, we block lr2_nreg extended
+    // to next 4GRF aligned slot on RHS. For eg, if lr2_nreg == 1
+    // and if it was assigned to r12, we block r13-r15 on RHS.
+    //
+    // Worst case RHS wastage = lr2_nreg + 3
+    //
+    // Worst case LHS wastage = lr1_nreg - 1 + 3. For eg,
+    // lr2 is assigned r11 and lr1_nreg == 4. Then we block
+    // r8-r10 on LHS.
+    return lr2_nreg + 3 + lr1_nreg - 1 + 3;
   }
 
   void inline relax(LiveRange *lr1, unsigned int w) {
