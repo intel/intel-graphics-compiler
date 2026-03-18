@@ -112,6 +112,9 @@ void HWConformityPro::fixSpecificInstRestricts(G4_BB *bb) {
 
     if (opcode == G4_add)
       fixAdd(it, bb);
+
+    if (opcode == G4_movi)
+      fixMovi(it, bb);
   }
 }
 
@@ -2782,8 +2785,6 @@ void HWConformityPro::fixIndiret(G4_BB *bb) {
 
     fixVxHVx1Indirect(it, bb);
 
-    fixIndirectMoviSimd16ToSimd8(it, bb);
-
     // This function should be called after fixVxHVx1Indirect() as
     // fixVxHVx1Indirect may cause the ImmAddrOffset OOB issue.
     fixImmAddrOffsetOOB(it, bb);
@@ -2890,13 +2891,15 @@ void HWConformityPro::fixImmAddrOffsetOOB(INST_LIST_ITER it, G4_BB *bb) {
   }
 }
 /*
- * This function evenly splits movi from simd16 to simd8.
+ * This function fixes restrictions of movi instruction
  */
-void HWConformityPro::fixIndirectMoviSimd16ToSimd8(INST_LIST_ITER i,
+void HWConformityPro::fixMovi(INST_LIST_ITER i,
                                                    G4_BB *bb) {
   G4_INST *inst = *i;
   if (inst->opcode() != G4_movi)
     return;
+
+  // movi inst only supports SIMD8
   if (inst->getExecSize() == g4::SIMD16) {
     // split the instruction
     evenlySplitInst(i, bb);

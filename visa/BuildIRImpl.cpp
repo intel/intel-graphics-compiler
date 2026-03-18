@@ -4662,6 +4662,8 @@ void IR_Builder::doSimplification(G4_INST *inst) {
     vISA_ASSERT(Dcl->getRegFile() == G4_ADDRESS,
                 "Address variable is required.");
     Dcl->setSubRegAlign(Eight_Word);
+
+    return;
   }
 
   auto isInteger = [](G4_Operand *opnd, int64_t val) {
@@ -4768,7 +4770,7 @@ G4_INST * IR_Builder::getSingleDefInst(G4_INST *UI, Gen4_Operand_Number OpndNum)
 
 bool IR_Builder::canPromoteToMovi(G4_INST *inst) {
   // Perform 'mov' to 'movi' transform when it's a 'mov' of
-  // - simd8
+  // - simd8 or simd16(with vISA_emitMoreMoviCases enabled)
   // - it's a raw mov
   // - dst is within a single GRF.
   // - src uses VxH indirect access.
@@ -4781,33 +4783,37 @@ bool IR_Builder::canPromoteToMovi(G4_INST *inst) {
 
   bool emitMoreMoviCases = getOption(vISA_emitMoreMoviCases);
 
+  // Check opcode
   bool isMovOpcode = inst->opcode() == G4_mov;
   if (!isMovOpcode)
     return false;
 
+  // Check execution size
   bool isValidExecSize =
       (inst->getExecSize() == g4::SIMD8) ||
       (emitMoreMoviCases && (inst->getExecSize() <= g4::SIMD16));
   if (!isValidExecSize)
     return false;
 
+  // Check it's a raw mov without modifier.
   bool isRawMov = inst->isRawMov();
   if (!isRawMov)
     return false;
 
+  // Check dst is within a single GRF.
   bool hasDst = inst->getDst() != nullptr;
   bool isNotCrossGRFDst =
       hasDst && !inst->getDst()->asDstRegRegion()->isCrossGRFDst(*this);
   if (!isNotCrossGRFDst)
     return false;
 
+  // Check src is indirect with VxH region.
   bool hasSrc0 = inst->getSrc(0) != nullptr;
   bool isSrcRegRegion = hasSrc0 && inst->getSrc(0)->isSrcRegRegion();
   bool isIndirectSrc =
       isSrcRegRegion && inst->getSrc(0)->asSrcRegRegion()->isIndirect();
   if (!isIndirectSrc)
     return false;
-
   bool isRegionWH =
       isIndirectSrc &&
       inst->getSrc(0)->asSrcRegRegion()->getRegion()->isRegionWH();
@@ -4816,146 +4822,157 @@ bool IR_Builder::canPromoteToMovi(G4_INST *inst) {
   if (!isWidthOne)
     return false;
 
-  bool isTypeSizeMatch = (inst->getSrc(0)->getTypeSize() ==
+  // Check address register
+  //   - SIMD8: address register must be a0.0 or a0.8
+  // TODO: relax the address register check here, and fix the invalid address
+  // register in later passes. But it may introduce extra mov instruction which
+  // may impact performance. Or we can force RA to allocate a0.0 for src0
+  // operand.
+  int16_t subRegOff = inst->getSrc(0)->asSrcRegRegion()->getSubRegOff();
+  if (subRegOff != 0 && !(subRegOff == 8 && inst->getExecSize() == g4::SIMD8))
+    return false;
+
+  // Check dst stride in bytes matches source element size in bytes.
+  bool isTypeSizeMatch = hasDst && hasSrc0 &&
+                         (inst->getSrc(0)->getTypeSize() ==
                           (inst->getDst()->getTypeSize() *
                            inst->getDst()->asDstRegRegion()->getHorzStride()));
-  // If any of previous checks fails, this function returns false already
-  bool canConvertMovToMovi = isTypeSizeMatch;
+  if (!isTypeSizeMatch)
+    return false;
 
+  // For PVC+, only allow mov to movi promotion for dword types
   if (getPlatform() >= Xe_PVC) {
-    canConvertMovToMovi = canConvertMovToMovi &&
-                          IS_DTYPE(inst->getDst()->getType()) &&
-                          IS_DTYPE(inst->getSrc(0)->getType());
+    bool validType = IS_DTYPE(inst->getDst()->getType()) &&
+                     IS_DTYPE(inst->getSrc(0)->getType());
+    if (!validType) {
+      return false;
+    }
   }
 
-  if (!canConvertMovToMovi) {
+  // Check the pattern of LEA feeding the mov
+  G4_INST *AddrAddInst = getSingleDefInst(inst, Opnd_src0);
+  if (!(AddrAddInst && AddrAddInst->opcode() == G4_add &&
+        AddrAddInst->getExecSize() == inst->getExecSize()))
     return false;
-  }
 
-  // Convert 'mov' to 'movi' if the following conditions are met.
-
-  unsigned SrcSizeInBytes =
-      inst->getExecSize() * inst->getSrc(0)->getTypeSize();
-
-  if (!(emitMoreMoviCases || SrcSizeInBytes == numEltPerGRF<Type_UB>() / 2 ||
-        SrcSizeInBytes == numEltPerGRF<Type_UB>())) {
-    return false;
-  }
-
-  G4_INST *LEA = getSingleDefInst(inst, Opnd_src0);
-  if (!(LEA && LEA->opcode() == G4_add &&
-        LEA->getExecSize() == inst->getExecSize())) {
-    return false;
-  }
-
-  G4_Operand *Op0 = LEA->getSrc(0);
-  G4_Operand *Op1 = LEA->getSrc(1);
+  G4_Operand *AddrAddSrc0 = AddrAddInst->getSrc(0);
+  G4_Operand *AddrAddSrc1 = AddrAddInst->getSrc(1);
   G4_Declare *Dcl = nullptr;
   int Offset = 0;
-  if (Op0->isAddrExp()) {
-    G4_AddrExp *AE = Op0->asAddrExp();
+  if (AddrAddSrc0->isAddrExp()) {
+    G4_AddrExp *AE = AddrAddSrc0->asAddrExp();
     Dcl = AE->getRegVar()->getDeclare();
     Offset = AE->getOffset();
   }
 
-  if (!Dcl) {
+  unsigned SrcSizeInBytes =
+      inst->getExecSize() * inst->getSrc(0)->getTypeSize();
+  if (!Dcl || Offset % SrcSizeInBytes != 0)
     return false;
-  }
 
-  // Immediate in 'uv' ensures each element is a
-  // byte-offset within half-GRF.
-  bool isAlignedImmediateUV = (Offset % SrcSizeInBytes) == 0 && Op1->isImm() &&
-                              Op1->getType() == Type_UV;
+  // GRF size in bytes
+  unsigned int GrfSizeInBytes = numEltPerGRF<Type_UB>();
 
-  if (isAlignedImmediateUV) {
+  // Promote to movi if the offsets are immediate.
+  // Immediate in :uv ensures each element is a byte-offset with range [0,15]
+  // which is within half-GRF if GRF size is 32 or within quarter-GRF if GRF
+  // size is 64.
+  // Address can only either point to the start or middle of a GRF. Together
+  // with the immediate offset, the src can be guaranteed to be within 1 GRF.
+  if (AddrAddSrc1->isImm() && AddrAddSrc1->getType() == Type_UV &&
+      (SrcSizeInBytes == GrfSizeInBytes / 2 ||
+       SrcSizeInBytes == GrfSizeInBytes))
     return true;
-  }
 
-  // When doing GetNewAlias, Dcl always returns the original declare, not alias
-  // declare. As the alternative, we will check src and dst size to make sure
-  // they both can fit in single GRF, then we can guarantee the address
-  // calculated by LEA can fit in single GRF, even if it's not the original
-  // declare.
-  bool isDclSingleGRF =
-      Dcl->getRootDeclare()->getByteSize() <= numEltPerGRF<Type_UB>();
-  unsigned DstSizeInBytes = inst->getExecSize() * inst->getDst()->getTypeSize();
-  bool isSrcDstSingleGRF = (SrcSizeInBytes <= numEltPerGRF<Type_UB>() &&
-                            DstSizeInBytes <= numEltPerGRF<Type_UB>());
-
-  // Op0's root declare size can make sure if all channels of indirect
-  // access fall into 1 GRF
-  bool isCandidateForSingleGRFPattern =
-      emitMoreMoviCases && (isDclSingleGRF || isSrcDstSingleGRF) &&
-      (Offset % SrcSizeInBytes) == 0 &&
-      (!Op1->isImm() || Op1->getType() == Type_UV) && LEA->isWriteEnableInst();
-
-  if (!isCandidateForSingleGRFPattern) {
+  // Handle the cases that the offsets is in register.
+  if (!emitMoreMoviCases)
     return false;
-  }
-  // check if we match sanitized pattern:
-  // (W) and (16)             V1579(0,0)<2>:uw  V1579(0,0)<2;1,0>:uw  0xf:uw
-  // (W) shl (16)             ShuffleTmp_157(0,0)<1>:uw V1579(0,0)<2;1,0>:uw 0x1:uw
-  // (W) add (16)             A158(0,0)<1>:uw  &V3130+0 ShuffleTmp_157(0,0)<1;1,0>:uw
-  //     mov (16)             V3154(0,0)<1>:w  r[A158(0,0), 0]<1,0>:w
 
-  auto maybeShlOrMul = getSingleDefInst(LEA, Opnd_src1);
+  // Check pattern matches the sanitized code pattern we expect. The pattern is
+  // generated by the sanitizer and is guaranteed to calculate the address
+  // within single GRF.
+
+  // clang-format off
+  // If the declare size is 2 GRFs, check below pattern:
+  //   (W)     and (32)  SanitizedIndexShuffleTmp(0,0)<1>:d  V0308(0,0)<1;1,0>:d  0xf:uw
+  //   (W)     shl (32)  ShuffleTmp(0,0)<1>:uw  SanitizedIndexShuffleTmp(0,0)<2;1,0>:uw  0x2:uw
+  //           cmp (32)  (lt)P2.0 null<1>:d  V0308(0,0)<1;1,0>:d  0x10:uw
+  //   (W)     add (16)  A0(0,0)<1>:uw &V0302+0  ShuffleTmp(0,0)<1;1,0>:uw
+  //   (P2.0)  mov (16)  V0309(0,0)<1>:d  r[A0(0,0), 0]<1,0>:d
+  // or
+  //   (W)     add (16)  A1(0,0)<1>:uw  &V0302+0  ShuffleTmp(0,16)<1;1,0>:uw
+  //   (P2.0)  mov (16|M16)  V0309(1,0)<1>:d  r[A1(0,0), 0]<1,0>:d
+  // or
+  //   (W)     add (16)  A2(0,0)<1>:uw  &V0302+64  ShuffleTmp(0,0)<1;1,0>:uw
+  //   (!P2.0) mov (16)  V0309(0,0)<1>:d  r[A2(0,0), 0]<1,0>:d
+  // or
+  //   (W)     add (16)  A3(0,0)<1>:uw  &V0302+64  ShuffleTmp(0,16)<1;1,0>:uw
+  //   (!P2.0) mov (16|M16)  V0309(1,0)<1>:d  r[A3(0,0), 0]<1,0>:d
+  //
+  // If the declare size is smaller than or equal to 1 GRF, check below pattern:
+  //   (W) and (16) V1579(0,0)<2>:uw  V1579(0,0)<2;1,0>:uw  0xf:uw
+  //   (W) shl (16) ShuffleTmp_157(0,0)<1>:uw V1579(0,0)<2;1,0>:uw 0x1:uw
+  //   (W) add (16) A158(0,0)<1>:uw  &V3130+0 ShuffleTmp_157(0,0)<1;1,0>:uw
+  //       mov (16) V3154(0,0)<1>:w  r[A158(0,0), 0]<1,0>:w
+  // clang-format on
+
+  // Check declare size. We only handle the cases when the declare size is
+  // smaller than or equal to 2 GRFs since larger declare size requires more
+  // complex pattern matching.
+  if (Dcl->getRootDeclare()->getByteSize() > 2 * GrfSizeInBytes)
+    return false;
+
+  // If the declare size is 2 GRFs, we expect to see the cmp instruction
+  // comparing the index with 0x10 to make sure the address calculated is within
+  // single GRF.
+  if (Dcl->getRootDeclare()->getByteSize() == 2 * GrfSizeInBytes) {
+    G4_Predicate *Pred = inst->getPredicate();
+    G4_INST *CmpInst = getSingleDefInst(inst, Opnd_pred);
+    if (!(Pred && CmpInst && CmpInst->opcode() == G4_cmp))
+      return false;
+
+    G4_CondMod *CondMod = CmpInst->getCondMod();
+
+    // Check same flag register of CondMod as the predicate
+    if (!(CondMod && CondMod->getBase() == Pred->getBase() &&
+          CondMod->getSubRegOff() == Pred->getSubRegOff() &&
+          CondMod->getMod() == Mod_l))
+      return false;
+
+    // Check compare immediate is 0x10
+    G4_Operand *CmpImm = CmpInst->getSrc(1);
+    if (!(CmpImm && CmpImm->isImm() && CmpImm->asImm()->getInt() == 0x10))
+      return false;
+  }
+
+  // Check AddrAddInst is write-enable and has same execution size as mov
+  // instruction.
+  if (!(AddrAddInst->isWriteEnableInst() &&
+        inst->getExecSize() == AddrAddInst->getExecSize()))
+    return false;
+
+  // Check shl/mul instruction feeding the AddrAddInst. This instruction is used
+  // to calculate the index in the address operand and.
+  auto maybeShlOrMul = getSingleDefInst(AddrAddInst, Opnd_src1);
   bool isMaybeShlOrMul = maybeShlOrMul &&
                          (maybeShlOrMul->opcode() == G4_shl ||
                           maybeShlOrMul->opcode() == G4_mul) &&
                          maybeShlOrMul->getSrc(1)->isImm() &&
                          maybeShlOrMul->isWriteEnableInst();
-
-  if (!isMaybeShlOrMul) {
+  if (!(isMaybeShlOrMul && inst->getExecSize() <= maybeShlOrMul->getExecSize()))
     return false;
-  }
 
+  // Check and instruction feeding the shl/mul instruction. This and instruction
+  // is used to sanitize the index to make sure the address calculated is within
+  // single GRF.
   auto maybeAnd = getSingleDefInst(maybeShlOrMul, Opnd_src0);
   bool isNoMaskAndWithImm = maybeAnd && maybeAnd->opcode() == G4_and &&
                             maybeAnd->isWriteEnableInst() &&
                             maybeAnd->getSrc(1)->isImm();
-
-  if (!isNoMaskAndWithImm) {
+  if (!(isNoMaskAndWithImm && inst->getExecSize() <= maybeAnd->getExecSize()))
     return false;
-  }
 
-  // verify execsizes
-  bool areExecSizesEqual = inst->getExecSize() == LEA->getExecSize() &&
-                           inst->getExecSize() <= maybeAnd->getExecSize() &&
-                           inst->getExecSize() <= maybeShlOrMul->getExecSize();
-
-  if (!areExecSizesEqual) {
-    return false;
-  }
-
-  // If it is predicated, check if it matches the cmp from split2Movi in emitSimdShuffle()
-  //        cmp.lt (M1, 32) P2 V0305(0,0)<1;1,0> 0x10:ud
-  //        addr_add(M1_NM, 16) A0(0)<1> &V0299 ShuffleTmp(0,0)< 1;1,0>
-  //   (P2) mov(M1, 16) V0306(0,0)<1> r[A0(0),0]<1,0>:d
-  G4_Predicate *pred = inst->getPredicate();
-  if (pred) {
-    G4_INST *cmp = getSingleDefInst(inst, Opnd_pred);
-
-    // Require the defining instruction to be the expected cmp for split2Movi
-    if (!cmp || cmp->opcode() != G4_cmp) {
-      return false;
-    }
-
-    G4_CondMod *condMod = cmp->getCondMod();
-    // Check same flag register as the predicate and the expected condition
-    if (!condMod || condMod->getBase() != pred->getBase() ||
-        condMod->getSubRegOff() != pred->getSubRegOff() ||
-        condMod->getMod() != Mod_l) {
-      return false;
-    }
-
-    // Require immediate 0x10 as the compare's second source
-    G4_Operand *cmpImm = cmp->getSrc(1);
-    if (!cmpImm || !cmpImm->isImm() || cmpImm->asImm()->getInt() != 0x10) {
-      return false;
-    }
-  } // if (pred)
-
-  // check whether the address calculated is guaranteed to fit single GRF
+  // Check whether the address calculated is guaranteed to fit single GRF
   // since we support both shl and mul, need to handle them both
   int64_t indexSize = 0;
   int64_t andImm = maybeAnd->getSrc(1)->asImm()->getInt();
@@ -4977,7 +4994,7 @@ bool IR_Builder::canPromoteToMovi(G4_INST *inst) {
   // element within GRF.
   // With "less or equal" it would address second GRF.
   bool isSanitizedSingleGRFIndexing =
-      andImmIsPowOf2Min1 && (indexSize < numEltPerGRF<Type_UB>());
+      andImmIsPowOf2Min1 && (indexSize < GrfSizeInBytes);
 
   return isSanitizedSingleGRFIndexing;
 }

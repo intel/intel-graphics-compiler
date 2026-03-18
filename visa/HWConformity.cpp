@@ -1973,14 +1973,14 @@ bool HWConformity::fixIndirectSrcForCompressedInst(INST_LIST_ITER i, G4_BB *bb) 
 }
 
 /*
- * This function evenly splits movi from simd16 to simd8.
+ * This function fixes restrictions of movi instruction
  */
-bool HWConformity::fixIndirectMoviSimd16ToSimd8(INST_LIST_ITER i, G4_BB *bb) {
+bool HWConformity::fixMovi(INST_LIST_ITER i, G4_BB *bb) {
   G4_INST *inst = *i;
   if (inst->opcode() != G4_movi)
     return false;
   if (inst->getExecSize() == g4::SIMD16) {
-    // split the instruction
+    // split the instruction as only SIMD8 is allowed
     evenlySplitInst(i, bb);
   }
   return true;
@@ -5941,7 +5941,7 @@ void HWConformity::conformBB(G4_BB *bb) {
 
     fixIndirectSrcForCompressedInst(i, bb);
 
-    fixIndirectMoviSimd16ToSimd8(i, bb);
+    fixMovi(i, bb);
 
 #ifdef _DEBUG
     verifyG4Kernel(kernel, Optimizer::PI_HWConformityChk, false);

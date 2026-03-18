@@ -96,7 +96,7 @@ private:
 
   void fix1x1Indirect(INST_LIST_ITER it, G4_BB *bb);
 
-  void fixIndirectMoviSimd16ToSimd8(INST_LIST_ITER it, G4_BB *bb);
+  void fixMovi(INST_LIST_ITER it, G4_BB *bb);
 
   void fixImmAddrOffsetOOB(INST_LIST_ITER it, G4_BB *bb);
 

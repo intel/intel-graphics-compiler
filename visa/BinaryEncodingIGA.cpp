@@ -1668,9 +1668,8 @@ void BinaryEncodingIGA::translateInstructionSrcs(G4_INST *inst,
     // modeled as unary instruction, setting src1 to null for
     // platforms >= CNL.
 
-    // The byte/word level cross bar is removed from PVC+ so the movi cannot
-    // work for less than DW types.
-    iga::Type ty = platform >= Xe_PVC ? Type::UD : Type::UB;
+    // Dst/Src0/Src1 should have same datatype.
+    iga::Type ty = getIGAType(inst->getSrc(0)->getType(), platform);
     RegRef regTemp(0, 0);
     Region rgnTemp = Region::SRC110;
     igaInst->setDirectSource(SourceIndex::SRC1, SrcModifier::NONE,
