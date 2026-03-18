@@ -809,13 +809,10 @@ bool RTGlobalsPointerLoweringPass::runOnFunction(Function &F) {
 
   for (auto *GBP : globalBuffPtrs) {
     builder.SetInsertPoint(GBP);
+    Function *pFunc =
+        GenISAIntrinsic::getDeclaration(F.getParent(), GenISAIntrinsic::GenISA_RuntimeValue, GBP->getType());
 
-    Value *rtGlobalsPtr = nullptr;
-    {
-      Function *pFunc =
-          GenISAIntrinsic::getDeclaration(F.getParent(), GenISAIntrinsic::GenISA_RuntimeValue, GBP->getType());
-      rtGlobalsPtr = builder.CreateCall(pFunc, builder.getInt32(modMD->pushInfo.inlineRTGlobalPtrOffset));
-    }
+    Value *rtGlobalsPtr = builder.CreateCall(pFunc, builder.getInt32(modMD->pushInfo.inlineRTGlobalPtrOffset));
     rtGlobalsPtr->takeName(GBP);
 
     Value *rtGlobalsPtrSplit = rtGlobalsPtr;
