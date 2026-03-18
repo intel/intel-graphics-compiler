@@ -3103,6 +3103,9 @@ uint32_t DwarfDebug::writeSubroutineCIE() {
     writeULEB128(data, srcReg);
   };
 
+  CIESubroutineLabel = Asm->CreateTempSymbol();
+  Asm->EmitLabel(CIESubroutineLabel);
+
   // Emit CIE
   // The size of the length field plus the value of length must be an integral
   // multiple of the address size.
@@ -3188,6 +3191,9 @@ uint32_t DwarfDebug::writeStackcallCIE() {
     write(data, (uint8_t)llvm::dwarf::DW_CFA_same_value);
     writeULEB128(data, srcReg);
   };
+
+  CIEStackcallLabel = Asm->CreateTempSymbol();
+  Asm->EmitLabel(CIEStackcallLabel);
 
   // Emit CIE
   // The size of the length field plus the value of length must be an integral
@@ -3351,7 +3357,13 @@ void DwarfDebug::writeFDESubroutine(VISAModule *m) {
     lenSize = 12;
 
   // CIE_ptr (4/8 bytes)
-  write(data, PointerSize == 4 ? (uint32_t)offsetCIESubroutine : (uint64_t)offsetCIESubroutine);
+  // For 64-bit, CIE_ptr is emitted as a relocatable label reference
+  // directly to the stream (not in data vector).
+  uint32_t ciePtrSize = 0;
+  if (PointerSize == 4)
+    write(data, (uint32_t)offsetCIESubroutine);
+  else
+    ciePtrSize = 8;
 
   uint64_t genOffStart = this->lowPc;
   uint64_t genOffEnd = this->highPc;
@@ -3420,14 +3432,18 @@ void DwarfDebug::writeFDESubroutine(VISAModule *m) {
   for (auto item : data1)
     write(data, (uint8_t)item);
 
-  while ((lenSize + data.size()) % PointerSize != 0)
+  while ((lenSize + ciePtrSize + data.size()) % PointerSize != 0)
     // Insert DW_CFA_nop
     write(data, (uint8_t)llvm::dwarf::DW_CFA_nop);
 
   // Emit length with marker 0xffffffff for 8-byte ptr
   if (PointerSize == 8)
     Asm->EmitInt32(0xffffffff);
-  Asm->EmitIntValue(data.size(), PointerSize);
+  Asm->EmitIntValue(ciePtrSize + data.size(), PointerSize);
+
+  // Emit CIE_ptr as relocatable label reference (64-bit only)
+  if (ciePtrSize)
+    Asm->EmitLabelReference(CIESubroutineLabel, ciePtrSize);
 
   if (EmitSettings.EnableRelocation) {
     uint32_t ByteOffset = 0;
@@ -3559,7 +3575,13 @@ void DwarfDebug::writeFDEStackCall(VISAModule *m) {
     lenSize = 12;
 
   // CIE_ptr (4/8 bytes)
-  write(data, PointerSize == 4 ? (uint32_t)offsetCIEStackCall : (uint64_t)offsetCIEStackCall);
+  // For 64-bit, CIE_ptr is emitted as a relocatable label reference
+  // directly to the stream (not in data vector).
+  uint32_t ciePtrSize = 0;
+  if (PointerSize == 4)
+    write(data, (uint32_t)offsetCIEStackCall);
+  else
+    ciePtrSize = 8;
 
   // initial location
   auto genOffStart = DbgInfo.getRelocOffset();
@@ -3703,14 +3725,18 @@ void DwarfDebug::writeFDEStackCall(VISAModule *m) {
   }
 
   // initial instructions (array of ubyte)
-  while ((lenSize + data.size()) % PointerSize != 0)
+  while ((lenSize + ciePtrSize + data.size()) % PointerSize != 0)
     // Insert DW_CFA_nop
     write(data, (uint8_t)llvm::dwarf::DW_CFA_nop);
 
   // Emit length with marker 0xffffffff for 8-byte ptr
   if (PointerSize == 8)
     Asm->EmitInt32(0xffffffff);
-  Asm->EmitIntValue(data.size(), PointerSize);
+  Asm->EmitIntValue(ciePtrSize + data.size(), PointerSize);
+
+  // Emit CIE_ptr as relocatable label reference (64-bit only)
+  if (ciePtrSize)
+    Asm->EmitLabelReference(CIEStackcallLabel, ciePtrSize);
 
   if (EmitSettings.EnableRelocation) {
     uint32_t ByteOffset = 0;

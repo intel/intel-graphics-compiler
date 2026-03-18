@@ -443,6 +443,10 @@ private:
   llvm::DebugLoc PrevInstLoc;
   llvm::MCSymbol *PrevLabel;
 
+  // Relocation for CIE start
+  llvm::MCSymbol *CIESubroutineLabel;
+  llvm::MCSymbol *CIEStackcallLabel;
+
   // This location indicates end of function prologue and beginning of function
   // body.
   llvm::DebugLoc PrologEndLoc;

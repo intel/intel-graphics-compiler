@@ -27,7 +27,7 @@
 ; RUN: oneapi-readelf -a dbginfo_%basename_t_linked.elf | FileCheck %s --check-prefix=CHECK_READELF
 
 ; CHECK_READELF: Relocation section '.rela.debug_info' at offset 0x{{[0-9a-f]+}} contains {{[0-9]+}} entries
-; CHECK_READELF: Relocation section '.rela.debug_frame' at offset 0x{{[0-9a-f]+}} contains 4 entries
+; CHECK_READELF: Relocation section '.rela.debug_frame' at offset 0x{{[0-9a-f]+}} contains 8 entries
 ; CHECK_READELF: Relocation section '.rela.debug_line' at offset 0x{{[0-9a-f]+}} contains 2 entries
 ; CHECK_READELF-NEXT: Offset
 ; CHECK_READELF-NEXT: .text.K1
