@@ -158,14 +158,6 @@ public:
   void EmitIntegerTruncWithSat(bool isSignedDst, bool isSignedSrc, const SSource &source, const DstModifier &dstMod);
   void EmitPack4i8(const std::array<EOPCODE, 4> &opcodes, const std::array<SSource, 4> &sources0,
                    const std::array<SSource, 4> &sources1, const std::array<bool, 4> isSat, const DstModifier &dstMod);
-  void EmitBitwiseI64Halves(e_opcode opCode, const SSource sources[2], uint32_t extractIdx, const bool isI64Half[2],
-                            const DstModifier &dstMod);
-  void EmitPackI64(const SSource sources[4], const bool isI64Half[4], const uint32_t extractIdx[4],
-                   const e_opcode foldedOp[2], const DstModifier &dstMod);
-  void EmitPackI64Not(const SSource sources[2], const bool isI64Half[2], const uint32_t extractIdx[2],
-                      const DstModifier &dstMod);
-  void EmitPackBfnI64(const SSource sources[6], const bool isI64Half[6], const uint32_t extractIdx[6],
-                      const uint8_t booleanFuncCtrl[2], const DstModifier &dstMod);
   void EmitUnpack4i8(const SSource &source, uint32_t index, bool isUnsigned, const DstModifier &dstMod);
   void EmitRepack4i8(const std::array<SSource, 4> &sources, const std::array<uint32_t, 4> &mappings,
                      const DstModifier &dstMod);
