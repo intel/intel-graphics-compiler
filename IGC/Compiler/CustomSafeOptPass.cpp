@@ -3194,6 +3194,35 @@ void GenSpecificPattern::visitShl(BinaryOperator &I) {
 
   if (match(&I, pattern1) && I.getType()->isIntegerTy(64)) {
     createBitcastExtractInsertPattern(I, nullptr, I.getOperand(0), 0, 0);
+    return;
+  }
+
+  // From:
+  //   %r1 = shl %x, C1
+  //   %r2 = and %r1, MASK      (MASK is constant, single-use AND)
+  //   %r3 = shl %r2, C2        (current instruction)
+  // To:
+  //   %new = shl %x, C1+C2
+  //   %r3  = and %new, MASK << C2
+  //
+  // Merges two adjacent shifts separated by a constant mask.
+  // Conservatively requires C1+C2 < bitwidth to make sure to avoid poison.
+  {
+    Value *X = nullptr;
+    uint64_t C1 = 0, C2 = 0;
+    const APInt *MaskAP = nullptr;
+    auto ShlAndShlPat =
+        m_Shl(m_OneUse(m_And(m_Shl(m_Value(X), m_ConstantInt(C1)), m_APInt(MaskAP))), m_ConstantInt(C2));
+    if (match(&I, ShlAndShlPat)) {
+      unsigned BitWidth = I.getType()->getIntegerBitWidth();
+      if (C1 + C2 < BitWidth) {
+        IRBuilder<> builder(&I);
+        Value *NewShl = builder.CreateShl(X, C1 + C2);
+        Value *NewAnd = builder.CreateAnd(NewShl, MaskAP->shl(C2));
+        I.replaceAllUsesWith(NewAnd);
+        I.eraseFromParent();
+      }
+    }
   }
 }
 
