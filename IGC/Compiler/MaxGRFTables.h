@@ -11,6 +11,10 @@ SPDX-License-Identifier: MIT
 #include "../common/Types.hpp"
 #include "CISACodeGen/Platform.hpp"
 
+#if LLVM_VERSION_MAJOR >= 22
+#include "llvm/ADT/ArrayRef.h"
+#endif
+
 #include <stdint.h>
 #include <vector>
 

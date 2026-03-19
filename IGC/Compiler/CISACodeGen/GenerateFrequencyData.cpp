@@ -11,6 +11,10 @@ SPDX-License-Identifier: MIT
 #include "common/igc_regkeys.hpp"
 #include "Probe/Assertion.h"
 
+#if LLVM_VERSION_MAJOR >= 22
+#include "llvm/Analysis/CallGraph.h"
+#endif
+
 #include <llvm/IR/Module.h>
 #include <llvm/IR/Function.h>
 #include <llvm/IR/Instructions.h>

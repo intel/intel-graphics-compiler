@@ -155,6 +155,11 @@ SPDX-License-Identifier: MIT
 #include <llvm/Transforms/Scalar/GVN.h>
 #include <llvm/IR/Function.h>
 #include <llvm/Analysis/ScopedNoAliasAA.h>
+
+#if LLVM_VERSION_MAJOR >= 22
+#include <llvm/TargetParser/Triple.h>
+#endif
+
 #include <llvm/Analysis/TargetLibraryInfo.h>
 #include <llvm/Support/ErrorHandling.h>
 #include <llvm/Transforms/IPO/FunctionAttrs.h>

@@ -12,6 +12,9 @@ SPDX-License-Identifier: MIT
 
 #include "common/LLVMWarningsPush.hpp"
 #include "llvm/IR/IRBuilder.h"
+#if LLVM_VERSION_MAJOR >= 22
+#include "llvm/IR/Module.h"
+#endif
 #include "common/LLVMWarningsPop.hpp"
 
 using namespace IGC;

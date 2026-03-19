@@ -29,7 +29,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/Support/Program.h>
 #include <llvm/Support/DynamicLibrary.h>
 #include <llvm/Support/StringSaver.h>
-#include <llvm/Support/Host.h>
+#include "llvmWrapper/Support/Host.h"
 #include "IGC/common/LLVMWarningsPop.hpp"
 
 #include <optional>

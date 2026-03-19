@@ -23,8 +23,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/Transforms/Scalar/LoopUnrollPass.h"
 #include "llvm/Transforms/Scalar/GVN.h"
 #include "llvm/Analysis/GlobalsModRef.h"
-#include "llvm/Transforms/Vectorize.h"
-
+#include "llvmWrapper/Transforms/Vectorize/Vectorize.h"
 #include "common/LLVMWarningsPop.hpp"
 
 #include "llvmWrapper/Transforms/IPO/LegacyPassManagerBuilder.h"

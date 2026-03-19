@@ -55,6 +55,11 @@ SPDX-License-Identifier: MIT
 #include <llvm/Analysis/TargetLibraryInfo.h>
 #include <llvm/Analysis/LoopPass.h>
 #include "llvm/IR/DebugInfo.h"
+
+#if LLVM_VERSION_MAJOR >= 22
+#include "llvm/IR/DebugProgramInstruction.h"
+#endif
+
 #include "common/LLVMWarningsPop.hpp"
 #include "llvmWrapper/IR/IntrinsicInst.h"
 #include "llvmWrapper/IR/Function.h"

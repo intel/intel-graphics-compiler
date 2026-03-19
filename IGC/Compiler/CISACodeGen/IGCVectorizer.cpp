@@ -8,6 +8,9 @@ SPDX-License-Identifier: MIT
 
 #include "IGCVectorizer.h"
 #include "llvmWrapper/IR/DerivedTypes.h"
+#if LLVM_VERSION_MAJOR >= 22
+#include <queue>
+#endif
 #include <algorithm>
 
 //

@@ -19,6 +19,10 @@ SPDX-License-Identifier: MIT
 #include <llvmWrapper/Transforms/Utils/Cloning.h>
 #include <unordered_map>
 
+#if LLVM_VERSION_MAJOR >= 22
+#include <cmath>
+#endif
+
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/IR/Function.h>
 #include <llvm/IR/Module.h>

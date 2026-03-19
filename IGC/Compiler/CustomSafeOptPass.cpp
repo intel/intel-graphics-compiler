@@ -75,6 +75,11 @@ cmp+sel to avoid expensive VxH mov.
 #include <llvm/IR/Instructions.h>
 #include <llvm/IR/Intrinsics.h>
 #include <llvm/IR/InstIterator.h>
+
+#if LLVM_VERSION_MAJOR >= 22
+#include "llvm/IR/PatternMatch.h"
+#endif
+
 #include <llvm/Transforms/Utils/Local.h>
 #include <llvm/Transforms/Utils/BasicBlockUtils.h>
 #include <llvm/Transforms/Utils/ValueMapper.h>

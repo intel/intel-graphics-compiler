@@ -23,6 +23,11 @@ SPDX-License-Identifier: MIT
 #include "llvm/IR/Instructions.h"
 #include "llvm/IR/IRBuilder.h"
 #include "llvm/Pass.h"
+
+#if LLVM_VERSION_MAJOR >= 22
+#include "llvm/IR/Module.h"
+#endif
+
 #include "llvm/Transforms/Utils/BasicBlockUtils.h"
 #include "llvm/Support/Debug.h"
 #include "common/LLVMWarningsPop.hpp"

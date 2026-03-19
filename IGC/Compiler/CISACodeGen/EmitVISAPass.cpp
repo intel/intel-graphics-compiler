@@ -47,6 +47,10 @@ SPDX-License-Identifier: MIT
 #include "Probe/Assertion.h"
 #include "Compiler/CISACodeGen/LoopCountAnalysis.hpp"
 
+#if LLVM_VERSION_MAJOR >= 22
+#include <algorithm>
+#endif
+
 #include <fstream>
 
 using namespace llvm;

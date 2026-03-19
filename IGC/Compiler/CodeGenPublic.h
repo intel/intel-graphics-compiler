@@ -46,6 +46,11 @@ SPDX-License-Identifier: MIT
 #include "llvm/IR/ValueMap.h"
 #include <llvm/Support/ToolOutputFile.h>
 #include "llvm/IR/AssemblyAnnotationWriter.h"
+
+#if LLVM_VERSION_MAJOR >= 22
+#include "llvm/IR/LLVMRemarkStreamer.h"
+#endif
+
 #include "common/LLVMWarningsPop.hpp"
 #include <optional>
 #include "CodeGenPublicEnums.h"
