@@ -18,7 +18,10 @@ SPDX-License-Identifier: MIT
 #include "llvm/Analysis/LoopInfo.h"
 #include "llvm/IR/CFG.h"
 #include "llvm/IR/Dominators.h"
+#include "llvm/Support/Debug.h"
 #include "common/LLVMWarningsPop.hpp"
+
+#define DEBUG_TYPE "igc-add-required-memory-fences"
 
 using namespace llvm;
 
@@ -161,7 +164,11 @@ bool AddRequiredMemoryFences::runOnFunction(Function &F) {
     }
     if (!unfenced.empty()) {
       // Lambda finds a common post-dominator block for a set of basic blocks.
-      auto FindPostDominator = [&PDT](const auto &blocks) {
+      // Returns nullptr if blocks is empty or no common dominator exists.
+      auto FindPostDominator = [&PDT](const auto &blocks) -> BasicBlock * {
+        if (blocks.empty()) {
+          return nullptr;
+        }
         auto it = blocks.begin();
         BasicBlock *postDomBB = *it++;
         for (; it != blocks.end() && postDomBB != nullptr; ++it) {
@@ -170,6 +177,9 @@ bool AddRequiredMemoryFences::runOnFunction(Function &F) {
         return postDomBB;
       };
       BasicBlock *postDomBB = FindPostDominator(unfenced);
+      LLVM_DEBUG(dbgs() << "AddRequiredMemoryFences: " << unfenced.size()
+                        << " unfenced SLM store block(s) in function "
+                        << F.getName() << "\n");
       if (postDomBB != nullptr) {
         Loop *L = LI->getLoopFor(postDomBB);
         if (L) {
@@ -178,7 +188,14 @@ bool AddRequiredMemoryFences::runOnFunction(Function &F) {
           }
           SmallVector<BasicBlock *, 4> exitBlocks;
           L->getUniqueExitBlocks(exitBlocks);
-          postDomBB = FindPostDominator(exitBlocks);
+          LLVM_DEBUG(dbgs() << "AddRequiredMemoryFences: outermost loop has "
+                            << exitBlocks.size() << " unique exit block(s)\n");
+          if (!exitBlocks.empty()) {
+            postDomBB = FindPostDominator(exitBlocks);
+          }
+          // If the loop has no exit blocks (infinite loop / unreachable exits),
+          // keep the postDomBB from above — placing the fence at the
+          // post-dominator of the unfenced stores is still correct.
         }
       }
       if (postDomBB == nullptr) {
@@ -187,6 +204,8 @@ bool AddRequiredMemoryFences::runOnFunction(Function &F) {
         postDomBB = rootBB;
       }
       IGC_ASSERT(postDomBB);
+      LLVM_DEBUG(dbgs() << "AddRequiredMemoryFences: inserting SLM fence in BB "
+                        << postDomBB->getName() << "\n");
       IGCIRBuilder<> IRB(postDomBB->getTerminator());
       Function *fenceFuncPtr = GenISAIntrinsic::getDeclaration(F.getParent(), GenISAIntrinsic::GenISA_LSCFence);
       Value *args[] = {IRB.getInt32(LSC_SLM), IRB.getInt32(LSC_SCOPE_GROUP), IRB.getInt32(LSC_FENCE_OP_NONE)};
