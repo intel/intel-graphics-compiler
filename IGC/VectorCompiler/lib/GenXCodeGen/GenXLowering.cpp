@@ -224,6 +224,7 @@ private:
   Value *scaleInsertExtractElementIndex(Value *IdxVal, Type *ElTy,
                                         Instruction *InsertBefore);
   bool lowerTrunc(Instruction *Inst);
+  bool lowerTruncatingAddrSpaceCast(AddrSpaceCastInst *ASC);
   bool lowerCast(Instruction *Inst);
   bool lowerBoolScalarSelect(SelectInst *SI);
   bool lowerBoolVectorSelect(SelectInst *SI);
@@ -1979,6 +1980,12 @@ bool GenXLowering::processInst(Instruction *Inst) {
     return lowerExtractElement(Inst);
   if (isa<TruncInst>(Inst))
     return lowerTrunc(Inst);
+  if (auto *ASC = dyn_cast<AddrSpaceCastInst>(Inst)) {
+    unsigned SrcPtrSize = DL->getPointerSizeInBits(ASC->getSrcAddressSpace());
+    unsigned DstPtrSize = DL->getPointerSizeInBits(ASC->getDestAddressSpace());
+    if (SrcPtrSize > DstPtrSize)
+      return lowerTruncatingAddrSpaceCast(ASC);
+  }
   if (isa<CastInst>(Inst))
     return lowerCast(Inst);
   if (auto SI = dyn_cast<SelectInst>(Inst)) {
@@ -2662,6 +2669,42 @@ bool GenXLowering::lowerTrunc(Instruction *Inst) {
   // Change uses and mark the old inst for erasing.
   Inst->replaceAllUsesWith(NewInst);
   ToErase.push_back(Inst);
+  return true;
+}
+
+/***********************************************************************
+ * lowerTruncatingAddrSpaceCast : lower a size-reducing AddrSpaceCastInst
+ *
+ * Return:  whether any change was made, and thus the current instruction
+ *          is now marked for erasing
+ *
+ * A truncating addrspacecast (e.g. 64-bit generic to 32-bit local) is lowered
+ * to ptrtoint + trunc + inttoptr. The trunc is then handled by lowerTrunc
+ * (converting it to bitcast + rdregion with stride), allowing GenXLegalization
+ * to split it into legal-width chunks that respect GRF boundary constraints.
+ */
+bool GenXLowering::lowerTruncatingAddrSpaceCast(AddrSpaceCastInst *ASC) {
+  Value *Src = ASC->getOperand(0);
+  Type *SrcTy = Src->getType();
+  Type *DstTy = ASC->getType();
+  unsigned SrcPtrSize = DL->getPointerSizeInBits(ASC->getSrcAddressSpace());
+  unsigned DstPtrSize = DL->getPointerSizeInBits(ASC->getDestAddressSpace());
+
+  Type *SrcIntTy = Type::getIntNTy(ASC->getContext(), SrcPtrSize);
+  Type *DstIntTy = Type::getIntNTy(ASC->getContext(), DstPtrSize);
+  if (auto *VT = dyn_cast<IGCLLVM::FixedVectorType>(SrcTy)) {
+    unsigned N = VT->getNumElements();
+    SrcIntTy = IGCLLVM::FixedVectorType::get(SrcIntTy, N);
+    DstIntTy = IGCLLVM::FixedVectorType::get(DstIntTy, N);
+  }
+
+  IRBuilder<> Builder(ASC);
+  Value *IntVal = Builder.CreatePtrToInt(Src, SrcIntTy);
+  Value *Truncated = Builder.CreateTrunc(IntVal, DstIntTy);
+  Value *Result = Builder.CreateIntToPtr(Truncated, DstTy);
+
+  ASC->replaceAllUsesWith(Result);
+  ToErase.push_back(ASC);
   return true;
 }
 
