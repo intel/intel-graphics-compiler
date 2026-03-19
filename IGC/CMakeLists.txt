@@ -631,6 +631,14 @@ elseif(_igc_compiler_is_gnu)
       )
   endif()
 elseif(_igc_compiler_is_clang)
+
+  # -Wnontrivial-memcall is available from Clang 20; On earlier versions it just adds unknown-warnings messages.
+  if(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL 20)
+    set(_igc_clang_nontrivial_memcall "-Wno-nontrivial-memcall")
+  else()
+    set(_igc_clang_nontrivial_memcall "")
+  endif()
+
   igc_flag_register_settings(
       CompilerOptions
 
@@ -651,7 +659,7 @@ elseif(_igc_compiler_is_clang)
       ALIAS DebugInfoDisabled          DebugInfoFormat REMOVE_GROUP
       ALIAS DebugInfoEmbedded          "-g"
       ALIAS DebugInfoProgramDatabase   "-g"
-      ALIAS DisableSpecificWarnings    "-Wno-error=unknown-warning-option" "-Wno-nontrivial-memcall"
+      ALIAS DisableSpecificWarnings    "-Wno-error=unknown-warning-option" ${_igc_clang_nontrivial_memcall}
       ALIAS DisableSpecificWarningsCpp
       ALIAS ExceptionsDisabled         Exceptions REMOVE_GROUP
       ALIAS ExceptionsEnabled          "-fexceptions"
