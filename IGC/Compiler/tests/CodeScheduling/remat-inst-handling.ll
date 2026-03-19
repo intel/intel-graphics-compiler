@@ -9,7 +9,8 @@
 ; REQUIRES: regkeys
 ; RUN: igc_opt --opaque-pointers --regkey DisableCodeScheduling=0 \
 ; RUN:          --regkey EnableCodeSchedulingIfNoSpills=1 --regkey CodeSchedulingGreedyRPHigherRPCommit=1 \
-; RUN:         --regkey PrintToConsole=1 --regkey DumpCodeScheduling=1 --igc-code-scheduling \
+; RUN:         --regkey PrintToConsole=1 --regkey DumpCodeScheduling=1 \
+; RUN:         --igc-restore-genisa-intrinsics --igc-code-scheduling \
 ; RUN:         --regkey CodeSchedulingRPThreshold=-512 --regkey CodeSchedulingForceRPOnly=1 \
 ; RUN:         -S %s 2>&1 | FileCheck %s
 
@@ -46,8 +47,8 @@ define spir_kernel void @test_remat(ptr addrspace(1) %A, i32 %x) {
 ; CHECK:         call void @llvm.genx.GenISA.memoryfence(i1 true, i1 false, i1 false, i1 false, i1 false, i1 false, i1 false, i1 false, i32 0)
 ; CHECK:         call void @llvm.genx.GenISA.threadgroupbarrier()
 
-; Checking that DPAS goes right after the barrier helps us to ensure the scheduling applied
-; CHECK:         [[DPAS2:%.*]] = call <8 x float> @llvm.genx.GenISA.sub.group.dpas.v8f32.v8f32.v8i16.v8i32(<8 x float> zeroinitializer, <8 x i16> undef, <8 x i32> undef, i32 1, i32 1, i32 1, i32 1, i1 false)
+; Checking that spoiler goes right after the barrier helps us to ensure the scheduling applied
+; CHECK:         call void @spoiler()
 
 ; CHECK:         [[REMAT4_1:%.*]] = or i32 [[X]], 10, !remat !0
 ; CHECK:         [[REMAT4_2:%.*]] = shl nuw nsw i32 [[REMAT4_1]], 6, !remat !0
@@ -94,7 +95,9 @@ bb1:
   %remat4_3 = or i32 %remat4_2, 16, !remat !0
   %remat4_4 = shl nuw nsw i32 %remat4_3, 1, !remat !0
   %cloned4 = inttoptr i32 %remat4_4 to <1 x i16> addrspace(3)*
+  call void @spoiler()
   %load_4 = load <1 x i16>, <1 x i16> addrspace(3)* %cloned4, align 2
+
 
   %dpas2 = call <8 x float> @llvm.genx.GenISA.sub.group.dpas.v8f32.v8f32.v8i16.v8i32(
   <8 x float> zeroinitializer, <8 x i16> undef, <8 x i32> undef,
@@ -161,12 +164,18 @@ bb1:
   ret void
 }
 
+declare void @spoiler()
 
+; Function Attrs: convergent nounwind willreturn readnone
+declare <8 x float> @llvm.genx.GenISA.sub.group.dpas.v8f32.v8f32.v8i16.v8i32(<8 x float>, <8 x i16>, <8 x i32>, i32, i32, i32, i32, i1) #0
 
-declare <8 x float> @llvm.genx.GenISA.sub.group.dpas.v8f32.v8f32.v8i16.v8i32(
-  <8 x float>, <8 x i16>, <8 x i32>, i32, i32, i32, i32, i1)
+; Function Attrs: convergent nounwind
+declare void @llvm.genx.GenISA.memoryfence(i1, i1, i1, i1, i1, i1, i1, i1, i32) #1
 
-declare void @llvm.genx.GenISA.memoryfence(i1, i1, i1, i1, i1, i1, i1, i1, i32)
-declare void @llvm.genx.GenISA.threadgroupbarrier()
+; Function Attrs: convergent nounwind
+declare void @llvm.genx.GenISA.threadgroupbarrier() #1
+
+attributes #0 = { convergent nounwind willreturn readnone }
+attributes #1 = { convergent nounwind }
 
 !0 = !{!"remat"}
