@@ -1,0 +1,64 @@
+/*========================== begin_copyright_notice ============================
+
+Copyright (C) 2026 Intel Corporation
+
+SPDX-License-Identifier: MIT
+
+============================= end_copyright_notice ===========================*/
+
+/*========================== begin_copyright_notice ============================
+
+Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
+See https://llvm.org/LICENSE.txt for license information.
+SPDX-License-Identifier: Apache-2.0 with LLVM-exception
+
+============================= end_copyright_notice ===========================*/
+
+This PR restores GEP reassociate for loop invariance behaviour which was removed in this commit
+https://github.com/llvm/llvm-project/commit/2ec1d0f427c7822540352c0c14d057e7bfe4f77b
+It serves more as a workaround since it should be done in LICM, but for some reason isn't.
+
+diff --git a/llvm/lib/Transforms/InstCombine/InstructionCombining.cpp b/llvm/lib/Transforms/InstCombine/InstructionCombining.cpp
+index 767b7c7de..0995dd836 100644
+--- a/llvm/lib/Transforms/InstCombine/InstructionCombining.cpp
++++ b/llvm/lib/Transforms/InstCombine/InstructionCombining.cpp
+@@ -1918,6 +1918,39 @@ Instruction *InstCombinerImpl::visitGEPOfGEP(GetElementPtrInst &GEP,
+   if (!shouldMergeGEPs(*cast<GEPOperator>(&GEP), *Src))
+     return nullptr;
+ 
++  if (Src->getResultElementType() == GEP.getSourceElementType() &&
++      Src->getNumOperands() == 2 && GEP.getNumOperands() == 2 &&
++      Src->hasOneUse()) {
++    Value *GO1 = GEP.getOperand(1);
++    Value *SO1 = Src->getOperand(1);
++
++    if (LI) {
++      // Try to reassociate loop invariant GEP chains to enable LICM.
++      if (Loop *L = LI->getLoopFor(GEP.getParent())) {
++        // Reassociate the two GEPs if SO1 is variant in the loop and GO1 is
++        // invariant: this breaks the dependence between GEPs and allows LICM
++        // to hoist the invariant part out of the loop.
++        if (L->isLoopInvariant(GO1) && !L->isLoopInvariant(SO1)) {
++          // The swapped GEPs are inbounds if both original GEPs are inbounds
++          // and the sign of the offsets is the same. For simplicity, only
++          // handle both offsets being non-negative.
++          bool IsInBounds = Src->isInBounds() && GEP.isInBounds() &&
++                            isKnownNonNegative(SO1, DL, 0, &AC, &GEP, &DT) &&
++                            isKnownNonNegative(GO1, DL, 0, &AC, &GEP, &DT);
++          // Put NewSrc at same location as %src.
++          Builder.SetInsertPoint(cast<Instruction>(Src));
++          Value *NewSrc = Builder.CreateGEP(GEP.getSourceElementType(),
++                                            Src->getPointerOperand(), GO1,
++                                            Src->getName(), IsInBounds);
++          GetElementPtrInst *NewGEP = GetElementPtrInst::Create(
++              GEP.getSourceElementType(), NewSrc, {SO1});
++          NewGEP->setIsInBounds(IsInBounds);
++          return NewGEP;
++        }
++      }
++    }
++  }
++
+   // For constant GEPs, use a more general offset-based folding approach.
+   Type *PtrTy = Src->getType()->getScalarType();
+   if (GEP.hasAllConstantIndices() &&
