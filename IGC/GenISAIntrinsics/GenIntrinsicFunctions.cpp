@@ -147,7 +147,8 @@ private:
       pFunc = llvm::cast<llvm::Function>(bco->getOperand(0));
     }
 
-    IGC_ASSERT_MESSAGE(pFunc, "getOrInsertFunction probably returned constant expression!");
+    IGC_ASSERT_MESSAGE(pFunc, "%s: getOrInsertFunction probably returned constant expression!",
+                       IntrinsicDefinitionT::scFunctionRootName);
     // Since Function::isIntrinsic() will return true due to llvm.* prefix,
     // Module::getOrInsertFunction fails to add the attributes.
     // explicitly adding the attribute to handle this problem.
@@ -163,14 +164,14 @@ private:
     std::array<llvm::Type *, numArguments + 1> types{};
 
     uint8_t overloadedTypeIndex = 0;
-    auto RetrieveType = [&overloadedTypeIndex, &ctx, &types, &overloadedTypes](uint8_t index,
-                                                                               const TypeDescription &typeDef) {
+    auto RetrieveType = [&](uint8_t index, const TypeDescription &typeDef) {
       llvm::Type *&pDest = types[index];
       switch (typeDef.m_ID) {
       case TypeID::ArgumentReference: {
         uint8_t argIndex = typeDef.m_Reference.m_Index;
         IGC_ASSERT_MESSAGE(argIndex < overloadedTypes.size(),
-                           "Argument reference index must point out one of the overloaded types");
+                           "%s[%d]: Argument reference index (%d) must point out one of the overloaded types",
+                           IntrinsicDefinitionT::scFunctionRootName, index, argIndex);
         pDest = overloadedTypes[argIndex];
         break;
       }
@@ -182,8 +183,20 @@ private:
         }
         break;
       }
-      IGC_ASSERT_MESSAGE(pDest != nullptr, "The type must be defined to determine the function type.");
-      IGC_ASSERT_MESSAGE(typeDef.VerifyType(pDest), "The type is inconsistent with the definition.");
+      IGC_ASSERT_MESSAGE(pDest != nullptr, "%s[%d]: The type must be defined to determine the function type.",
+                         IntrinsicDefinitionT::scFunctionRootName, index);
+      IGC_ASSERT_MESSAGE(typeDef.VerifyType(pDest), "%s[%d]: The type ({%s}) is inconsistent with the definition.",
+                         IntrinsicDefinitionT::scFunctionRootName, index,
+                         [&]() {
+                           if (pDest) {
+                             std::string S;
+                             llvm::raw_string_ostream OS(S);
+                             pDest->print(OS);
+                             return OS.str();
+                           }
+                           return std::string("null");
+                         }()
+                             .c_str());
     };
 
     constexpr uint8_t resTypeIndex = 0;

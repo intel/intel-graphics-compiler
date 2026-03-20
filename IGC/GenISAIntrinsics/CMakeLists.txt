@@ -100,6 +100,10 @@ set(IGC_BUILD__HDR__GenISAIntrinsics
     "${CMAKE_CURRENT_SOURCE_DIR}/LlvmTypesMapping.h"
   )
 
+if(MSVC)
+  set_source_files_properties("${CMAKE_CURRENT_SOURCE_DIR}/GenIntrinsicFunctions.cpp" PROPERTIES COMPILE_FLAGS /bigobj)
+endif()
+
 add_library("${IGC_BUILD__PROJ__GenISAIntrinsics}" STATIC
     ${IGC_BUILD__SRC__GenISAIntrinsics}
     ${IGC_BUILD__HDR__GenISAIntrinsics}
