@@ -119,6 +119,7 @@ int    __builtin_IB_get_address_mode(long) __attribute__((const));
 int    __builtin_IB_is_normalized_coords(long) __attribute__((const));
 int    __builtin_IB_get_image1d_array_size(long) __attribute__((const));
 int    __builtin_IB_get_image2d_array_size(long) __attribute__((const));
+int    __builtin_IB_get_snap_wa_reqd(long) __attribute__((const));
 int    __builtin_IB_get_image_height(long) __attribute__((const));
 int    __builtin_IB_get_image_width(long) __attribute__((const));
 int    __builtin_IB_get_image_depth(long) __attribute__((const));
