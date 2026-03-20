@@ -12,7 +12,7 @@
 ; UNSUPPORTED: sys32
 ; REQUIRES: regkeys, oneapi-readelf, dg2-supported, llvm-14-plus
 
-; RUN: llvm-as -opaque-pointers=1 %s -o %t
+; RUN: llvm-as %OPAQUE_PTR_FLAG% %s -o %t
 ; RUN: ocloc compile -llvm_input -file %t -device dg2 -options "-g -cl-opt-disable -igc_opts 'EnableOpaquePointersBackend=1, ElfDumpEnable=1, DumpUseShorterName=0, DebugDumpNamePrefix=%t_'"
 ; RUN: oneapi-readelf -w -r -W %t_OCL_simd32_foo.elf &> %t_readelf.dwarf
 ; RUN: FileCheck %s --input-file=%t_readelf.dwarf

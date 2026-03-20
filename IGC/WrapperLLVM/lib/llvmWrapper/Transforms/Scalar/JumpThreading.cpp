@@ -64,8 +64,7 @@ bool JumpThreadingPassWrapper::runOnFunction(Function &F) {
 
 void JumpThreadingPassWrapper::getAnalysisUsage(AnalysisUsage &AU) const {
   AU.addRequired<DominatorTreeWrapperPass>();
-#if LLVM_VERSION_MAJOR != 16 && !defined(IGC_LLVM_TRUNK_REVISION)
-  // LLVM 16:
+#if LLVM_VERSION_MAJOR < 16 && !defined(IGC_LLVM_TRUNK_REVISION)
   // Workaround. Avoid Dom Tree preservation for LLVM 16 when using wrapper.
 
   // For some reason after running JumpThreadingPass via wrapper
@@ -77,10 +76,6 @@ void JumpThreadingPassWrapper::getAnalysisUsage(AnalysisUsage &AU) const {
   // non-wrapper versions.
 
   // This workaround disabled Dom Tree preservation when using wrapper on LLVM 16 where issue exists.
-
-  // LLVM 17 or newer:
-  // I believe on LLVM 17 or newer it should work fine, but at this moment we are unable to evaluate that.
-  // So, if there's JumpThreading and Dom Tree issue on LLVM 17 or newer, then try disabling preservation.
   AU.addPreserved<DominatorTreeWrapperPass>();
 #endif
   AU.addRequired<AAResultsWrapperPass>();

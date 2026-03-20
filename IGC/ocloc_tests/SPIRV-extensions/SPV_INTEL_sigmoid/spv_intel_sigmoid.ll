@@ -8,9 +8,9 @@
 
 ; REQUIRES: llvm-spirv, cri-supported, llvm-16-plus
 
-; RUN: llvm-as %s -opaque-pointers -o %t.bc
-; RUN: llvm-spirv %t.bc -o %t.spv --opaque-pointers --spirv-ext=+SPV_INTEL_sigmoid,+SPV_KHR_bfloat16,+SPV_INTEL_bfloat16_arithmetic
-; RUN: llvm-spirv %t.spv -o %t.spt --opaque-pointers --to-text
+; RUN: llvm-as %s %OPAQUE_PTR_FLAG% -o %t.bc
+; RUN: llvm-spirv %t.bc -o %t.spv %OPAQUE_PTR_FLAG% --spirv-ext=+SPV_INTEL_sigmoid,+SPV_KHR_bfloat16,+SPV_INTEL_bfloat16_arithmetic
+; RUN: llvm-spirv %t.spv -o %t.spt %OPAQUE_PTR_FLAG% --to-text
 ; RUN: FileCheck < %t.spt %s --check-prefix=CHECK-SPIRV
 ; RUN: ocloc -device cri -spirv_input -file %t.spv -options " -igc_opts 'VISAOptions=-asmToConsole'" 2>&1 | FileCheck %s --check-prefixes=CHECK-ASM
 

@@ -97,6 +97,9 @@ if int(config.llvm_version_major) >= 16:
 if int(config.llvm_version_major) >= 17:
   config.available_features.add('llvm-17-plus')
 
+if int(config.llvm_version_major) < 17:
+  config.available_features.add('llvm-below-17')
+
 # On LLVM 17 tools like llvm-as do not have "opaque-pointers" flag, so in order to keep tests working on all LLVMs
 # on 17 tools we just provide empty string
 if int(config.llvm_version_major) >= 17:
