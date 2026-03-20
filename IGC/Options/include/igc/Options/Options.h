@@ -1,6 +1,15 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2020-2021 Intel Corporation
+Copyright (C) 2026 Intel Corporation
+
+This software and the related documents are Intel copyrighted materials,
+and your use of them is governed by the express license under which they were
+provided to you ("License"). Unless the License provides otherwise,
+you may not use, modify, copy, publish, distribute, disclose or transmit this
+software or the related documents without Intel's prior written permission.
+
+This software and the related documents are provided as is, with no express or
+implied warranties, other than those that are expressly stated in the License.
 
 SPDX-License-Identifier: MIT
 
@@ -30,7 +39,14 @@ enum Flags {
 namespace api {
 enum ID {
   OPT_INVALID = 0,
+#if LLVM_VERSION_MAJOR >= 22
+#define OPTION(PREFIX, NAME, ID, KIND, GROUP, ALIAS, ALIASARGS, FLAGS, VISIBILITY, PARAM, HELPTEXT,                    \
+               HELPTEXTSFORVARIANTS, METAVAR, VALUES, SUBCOMMANDIDS_OFFSET)                                            \
+  OPT_##ID,
+#else
 #define OPTION(PREFIX, NAME, ID, KIND, GROUP, ALIAS, ALIASARGS, FLAGS, PARAM, HELPTEXT, METAVAR, VALUES) OPT_##ID,
+#endif
+
 #include "igc/Options/ApiOptions.inc"
   LastOption
 #undef OPTION
@@ -40,7 +56,14 @@ enum ID {
 namespace internal {
 enum ID {
   OPT_INVALID = 0,
+#if LLVM_VERSION_MAJOR >= 22
+#define OPTION(PREFIX, NAME, ID, KIND, GROUP, ALIAS, ALIASARGS, FLAGS, VISIBILITY, PARAM, HELPTEXT,                    \
+               HELPTEXTSFORVARIANTS, METAVAR, VALUES, SUBCOMMANDIDS_OFFSET)                                            \
+  OPT_##ID,
+#else
 #define OPTION(PREFIX, NAME, ID, KIND, GROUP, ALIAS, ALIASARGS, FLAGS, PARAM, HELPTEXT, METAVAR, VALUES) OPT_##ID,
+#endif
+
 #include "igc/Options/InternalOptions.inc"
   LastOption
 #undef OPTION
