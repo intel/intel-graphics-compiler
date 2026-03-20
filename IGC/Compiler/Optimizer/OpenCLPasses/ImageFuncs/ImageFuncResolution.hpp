@@ -120,6 +120,13 @@ private:
   ///         a ConstantInt or an Argument
   llvm::Value *getSamplerNormalizedCoords(llvm::CallInst &CI);
 
+  /// @brief  Resolves the pseudo-builtin get_sampler_snap_wa_reqd(sampler_t).
+  ///         Adds the approtiate sequence of code before the given call isntruction
+  /// @param  CI The call instruction.
+  /// @return A value representing whether the snap workaround is required for the sample
+  ///         which may either be a ConstantInt or an Argument
+  llvm::Value *getSamplerSnapWARequired(llvm::CallInst &CI);
+
   /// @brief  Returns the appropriate implicit argument of the function
   ///         containing the given call instruction, based on the given implicit image
   ///         argument type
