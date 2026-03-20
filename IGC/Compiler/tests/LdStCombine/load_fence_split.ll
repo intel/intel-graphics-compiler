@@ -57,7 +57,7 @@ entry:
   %idxprom2 = sext i32 %add to i64
   %arrayidx3 = getelementptr inbounds i8, i8 addrspace(1)* %s, i64 %idxprom2
   %1 = load i8, i8 addrspace(1)* %arrayidx3, align 1
-  call void @llvm.genx.GenISA.memoryfence(i1 true, i1 false, i1 false, i1 false, i1 false, i1 true, i1 false, i1 false)
+  call void @llvm.genx.GenISA.memoryfence(i1 true, i1 false, i1 false, i1 false, i1 false, i1 true, i1 false, i1 false, i32 0)
   call void @llvm.genx.GenISA.threadgroupbarrier()
   %add5 = or i32 %mul, 2
   %idxprom6 = sext i32 %add5 to i64
@@ -79,7 +79,7 @@ entry:
 }
 
 ; Function Attrs: convergent nounwind
-declare void @llvm.genx.GenISA.memoryfence(i1, i1, i1, i1, i1, i1, i1, i1) #1
+declare void @llvm.genx.GenISA.memoryfence(i1, i1, i1, i1, i1, i1, i1, i1, i32) #1
 
 ; Function Attrs: convergent nounwind
 declare void @llvm.genx.GenISA.threadgroupbarrier() #1

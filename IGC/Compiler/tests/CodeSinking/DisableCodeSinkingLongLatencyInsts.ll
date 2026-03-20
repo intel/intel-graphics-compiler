@@ -12,15 +12,15 @@
 ; When the flag is enabled (1), long latency instructions like sample instructions should NOT be sunk to successor blocks.
 ; When the flag is disabled (default, 0), long latency instructions like sample instructions CAN be sunk.
 ;
-; RUN: igc_opt --igc-code-sinking -S -inputps --regkey DisableCodeSinkingLongLatencyInsts=0,CodeSinkingMinSize=0 < %s 2>&1 | FileCheck %s --check-prefix=CHECK-SINK
-; RUN: igc_opt --igc-code-sinking -S -inputps --regkey DisableCodeSinkingLongLatencyInsts=1,CodeSinkingMinSize=0 < %s 2>&1 | FileCheck %s --check-prefix=CHECK-NO-SINK
+; RUN: igc_opt --igc-restore-genisa-intrinsics --igc-code-sinking -S -inputps --regkey DisableCodeSinkingLongLatencyInsts=0,CodeSinkingMinSize=0 < %s 2>&1 | FileCheck %s --check-prefix=CHECK-SINK
+; RUN: igc_opt -igc-restore-genisa-intrinsics --igc-code-sinking -S -inputps --regkey DisableCodeSinkingLongLatencyInsts=1,CodeSinkingMinSize=0 < %s 2>&1 | FileCheck %s --check-prefix=CHECK-NO-SINK
 
 ;
 ;;;;;; Test with Sample instruction sinking behavior based on DisableCodeSinkingLongLatencyInsts flag
 ;
 
 ; Function Attrs: nounwind readnone willreturn
-declare <4 x float> @llvm.genx.GenISA.sampleLptr.v4f32.f32.p196608i8.p524293i8(float, float, float, float, float, i8 addrspace(196608)*, i8 addrspace(524293)*, i32, i32, i32) #1
+declare <4 x float> @llvm.genx.GenISA.sampleLptr.v4f32.f32.p196608i8.p524293i8.p0i8(float, float, float, float, float, i8 addrspace(196608)*, i8 addrspace(524293)*, i8*, i32, i32, i32)
 
 ;
 ; CHECK-SINK-LABEL: @test_sample_sinking(
@@ -42,7 +42,7 @@ declare <4 x float> @llvm.genx.GenISA.sampleLptr.v4f32.f32.p196608i8.p524293i8(f
 ;
 define void @test_sample_sinking(i8 addrspace(196608)* %tex, i8 addrspace(524293)* %samp, float %coord, i1 %cond, float addrspace(1)* %out) {
 entry:
-  %sample_result = call <4 x float> @llvm.genx.GenISA.sampleLptr.v4f32.f32.p196608i8.p524293i8(float 0.0, float %coord, float %coord, float 0.0, float 0.0, i8 addrspace(196608)* %tex, i8 addrspace(524293)* %samp, i32 0, i32 0, i32 0)
+  %sample_result = call <4 x float> @llvm.genx.GenISA.sampleLptr.v4f32.f32.p196608i8.p524293i8.p0i8(float 0.0, float %coord, float %coord, float 0.0, float 0.0, i8 addrspace(196608)* %tex, i8 addrspace(524293)* %samp, i8* null, i32 0, i32 0, i32 0)
   br i1 %cond, label %then, label %else
 
 then:

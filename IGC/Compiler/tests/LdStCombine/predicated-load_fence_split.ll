@@ -26,7 +26,7 @@
  ; CHECK: ret void
 
  ; Function Attrs: convergent nounwind
-define spir_kernel void @test_fence(i32 addrspace(1)* %d, i8 addrspace(1)* %s, <8 x i32> %r0, <8 x i32> %payloadHeader, <3 x i32> %enqueuedLocalSize, i16 %localIdX, i16 %localIdY, i16 %localIdZ) #0 {
+define spir_kernel void @test_fence(i32 addrspace(1)* %d, ptr addrspace(1) %s, <8 x i32> %r0, <8 x i32> %payloadHeader, <3 x i32> %enqueuedLocalSize, i16 %localIdX, i16 %localIdY, i16 %localIdZ) #0 {
 entry:
   %payloadHeader.scalar = extractelement <8 x i32> %payloadHeader, i32 0
   %enqueuedLocalSize.scalar = extractelement <3 x i32> %enqueuedLocalSize, i32 0
@@ -37,22 +37,22 @@ entry:
   %add4.i.i.i = add i32 %add.i.i.i, %payloadHeader.scalar
   %mul = shl nsw i32 %add4.i.i.i, 2
   %idxprom = sext i32 %mul to i64
-  %arrayidx = getelementptr inbounds i8, i8 addrspace(1)* %s, i64 %idxprom
-  %0 = call i8 @llvm.genx.GenISA.PredicatedLoad.i8.p1i8.i8(i8 addrspace(1)* %arrayidx, i64 1, i1 true, i8 2)
+  %arrayidx = getelementptr inbounds i8, ptr addrspace(1) %s, i64 %idxprom
+  %0 = call i8 @llvm.genx.GenISA.PredicatedLoad.i8.p1.i8(ptr addrspace(1) %arrayidx, i64 1, i1 true, i8 2)
   %add = or i32 %mul, 1
   %idxprom2 = sext i32 %add to i64
-  %arrayidx3 = getelementptr inbounds i8, i8 addrspace(1)* %s, i64 %idxprom2
-  %1 = call i8 @llvm.genx.GenISA.PredicatedLoad.i8.p1i8.i8(i8 addrspace(1)* %arrayidx3, i64 1, i1 true, i8 3)
-  call void @llvm.genx.GenISA.memoryfence(i1 true, i1 false, i1 false, i1 false, i1 false, i1 true, i1 false, i1 false)
+  %arrayidx3 = getelementptr inbounds i8, ptr addrspace(1) %s, i64 %idxprom2
+  %1 = call i8 @llvm.genx.GenISA.PredicatedLoad.i8.p1.i8(ptr addrspace(1) %arrayidx3, i64 1, i1 true, i8 3)
+  call void @llvm.genx.GenISA.memoryfence(i1 true, i1 false, i1 false, i1 false, i1 false, i1 true, i1 false, i1 false, i32 0)
   call void @llvm.genx.GenISA.threadgroupbarrier()
   %add5 = or i32 %mul, 2
   %idxprom6 = sext i32 %add5 to i64
-  %arrayidx7 = getelementptr inbounds i8, i8 addrspace(1)* %s, i64 %idxprom6
-  %2 = call i8 @llvm.genx.GenISA.PredicatedLoad.i8.p1i8.i8(i8 addrspace(1)* %arrayidx7, i64 1, i1 true, i8 4)
+  %arrayidx7 = getelementptr inbounds i8, ptr addrspace(1) %s, i64 %idxprom6
+  %2 = call i8 @llvm.genx.GenISA.PredicatedLoad.i8.p1.i8(ptr addrspace(1) %arrayidx7, i64 1, i1 true, i8 4)
   %add9 = or i32 %mul, 3
   %idxprom10 = sext i32 %add9 to i64
-  %arrayidx11 = getelementptr inbounds i8, i8 addrspace(1)* %s, i64 %idxprom10
-  %3 = call i8 @llvm.genx.GenISA.PredicatedLoad.i8.p1i8.i8(i8 addrspace(1)* %arrayidx11, i64 1, i1 true, i8 5)
+  %arrayidx11 = getelementptr inbounds i8, ptr addrspace(1) %s, i64 %idxprom10
+  %3 = call i8 @llvm.genx.GenISA.PredicatedLoad.i8.p1.i8(ptr addrspace(1) %arrayidx11, i64 1, i1 true, i8 5)
   %vecinit14.assembled.vect = insertelement <4 x i8> undef, i8 %0, i32 0
   %vecinit14.assembled.vect33 = insertelement <4 x i8> %vecinit14.assembled.vect, i8 %1, i32 1
   %vecinit14.assembled.vect34 = insertelement <4 x i8> %vecinit14.assembled.vect33, i8 %2, i32 2
@@ -65,13 +65,13 @@ entry:
 }
 
 ; Function Attrs: convergent nounwind
-declare void @llvm.genx.GenISA.memoryfence(i1, i1, i1, i1, i1, i1, i1, i1) #1
+declare void @llvm.genx.GenISA.memoryfence(i1, i1, i1, i1, i1, i1, i1, i1, i32) #1
 
 ; Function Attrs: convergent nounwind
 declare void @llvm.genx.GenISA.threadgroupbarrier() #1
 
 ; Function Attrs: nounwind readonly
-declare i8 @llvm.genx.GenISA.PredicatedLoad.i8.p1i8.i8(i8 addrspace(1)*, i64, i1, i8) #2
+declare i8 @llvm.genx.GenISA.PredicatedLoad.i8.p1.i8(ptr addrspace(1), i64, i1, i8) #2
 
 attributes #0 = { convergent nounwind "less-precise-fpmad"="true" }
 attributes #1 = { convergent nounwind }

@@ -44,11 +44,11 @@ bb16:                                             ; preds = %bb16, %bb
   %tmp31 = insertelement <8 x float> %tmp30, float 0.000000e+00, i32 7
   %tmp32 = call <8 x float> @llvm.maxnum.v8f32(<8 x float> zeroinitializer, <8 x float> %tmp31)
   %tmp33 = call <8 x float> @llvm.maxnum.v8f32(<8 x float> %tmp32, <8 x float> zeroinitializer)
-  %tmp34 = call <8 x float> @llvm.genx.GenISA.WaveAll.v8f32(<8 x float> %tmp33, i8 12, i32 0)
+  %tmp34 = call <8 x float> @llvm.genx.GenISA.WaveAll.v8f32(<8 x float> %tmp33, i8 12, i1 true, i32 0)
   %tmp35 = call <8 x float> @llvm.maxnum.v8f32(<8 x float> %tmp, <8 x float> %tmp34)
   %tmp36 = insertelement <8 x float> zeroinitializer, float %tmp27, i32 7
   %tmp37 = call <8 x float> @llvm.maxnum.v8f32(<8 x float> zeroinitializer, <8 x float> %tmp36)
-  %tmp38 = call <8 x float> @llvm.genx.GenISA.WaveAll.v8f32(<8 x float> %tmp37, i8 12, i32 0)
+  %tmp38 = call <8 x float> @llvm.genx.GenISA.WaveAll.v8f32(<8 x float> %tmp37, i8 12, i1 true, i32 0)
   %tmp39 = call <8 x float> @llvm.maxnum.v8f32(<8 x float> %tmp17, <8 x float> %tmp38)
   %tmp40 = select <8 x i1> zeroinitializer, <8 x float> zeroinitializer, <8 x float> %tmp35
   %tmp41 = fsub <8 x float> %tmp, %tmp40
@@ -65,7 +65,7 @@ bb16:                                             ; preds = %bb16, %bb
   br label %bb16
 
 bb52:                                             ; No predecessors!
-  %tmp53 = call <8 x float> @llvm.genx.GenISA.WaveAll.v8f32(<8 x float> zeroinitializer, i8 12, i32 0)
+  %tmp53 = call <8 x float> @llvm.genx.GenISA.WaveAll.v8f32(<8 x float> zeroinitializer, i8 12, i1 true, i32 0)
   %tmp54 = call <8 x float> @llvm.maxnum.v8f32(<8 x float> %tmp35, <8 x float> %tmp53)
   %tmp55 = fsub <8 x float> zeroinitializer, zeroinitializer
   %tmp56 = call <8 x float> @llvm.exp2.v8f32(<8 x float> %tmp55)
@@ -77,13 +77,13 @@ bb52:                                             ; No predecessors!
 declare float @llvm.fma.f32(float, float, float) #1
 
 ; Function Attrs: convergent nounwind memory(inaccessiblemem: readwrite)
-declare float @llvm.genx.GenISA.WaveAll.f32(float, i8, i32) #2
+declare float @llvm.genx.GenISA.WaveAll.f32(float, i8, i1, i32) #2
 
 ; Function Attrs: convergent nounwind willreturn memory(none)
 declare <8 x float> @llvm.genx.GenISA.sub.group.dpas.v8f32.v8f32.v8i16.v8i32(<8 x float>, <8 x i16>, <8 x i32>, i32, i32, i32, i32, i1) #3
 
 ; Function Attrs: nounwind memory(readwrite)
-declare void @llvm.genx.GenISA.LSC2DBlockPrefetch.isVoid(i64, i32, i32, i32, i32, i32, i32, i32, i32, i32, i1, i1, i32) #4
+declare void @llvm.genx.GenISA.LSC2DBlockPrefetch(i64, i32, i32, i32, i32, i32, i32, i32, i32, i32, i1, i1, i32)
 
 ; Function Attrs: nocallback nofree nosync nounwind speculatable willreturn memory(none)
 declare i32 @llvm.umin.i32(i32, i32) #1
@@ -107,7 +107,7 @@ declare <32 x i16> @llvm.genx.GenISA.LSC2DBlockReadAddrPayload.v32i16.p0(ptr, i3
 declare <8 x float> @llvm.maxnum.v8f32(<8 x float>, <8 x float>) #1
 
 ; Function Attrs: convergent nounwind memory(inaccessiblemem: readwrite)
-declare <8 x float> @llvm.genx.GenISA.WaveAll.v8f32(<8 x float>, i8, i32) #2
+declare <8 x float> @llvm.genx.GenISA.WaveAll.v8f32(<8 x float>, i8, i1, i32) #2
 
 ; Function Attrs: nocallback nofree nosync nounwind speculatable willreturn memory(none)
 declare <8 x float> @llvm.exp2.v8f32(<8 x float>) #1

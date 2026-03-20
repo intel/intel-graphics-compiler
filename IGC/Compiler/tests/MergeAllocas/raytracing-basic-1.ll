@@ -17,14 +17,14 @@ define void @test() #0 {
 ; CHECK: alloca float
 ; CHECK: alloca float
   %load1 = load float, ptr %alloca1
-  call void @llvm.genx.GenISA.TraceRayAsyncHL()
+  call void @llvm.genx.GenISA.TraceRayAsyncHL(i32 0, ptr null, ptr null, i32 0, i32 0, i32 0, i32 0, i32 0, float 0.0, float 0.0, float 0.0, float 0.0, float 0.0, float 0.0, float 0.0, float 0.0, ptr null, i32 0, i32 0, i32 0, float 0.0)
   %load2 = load float, ptr %alloca2
   ret void
 }
 
 attributes #0 = { nounwind readnone }
 
-declare void @llvm.genx.GenISA.TraceRayAsyncHL()
+declare void @llvm.genx.GenISA.TraceRayAsyncHL(i32, ptr, ptr, i32, i32, i32, i32, i32, float, float, float, float, float, float, float, float, ptr, i32, i32, i32, float)
 
 
 !llvm.ident = !{!0, !0, !0, !0}

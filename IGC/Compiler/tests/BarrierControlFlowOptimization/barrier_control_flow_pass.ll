@@ -91,7 +91,7 @@ define void @test_no_redundant_barrier() {
 ; CHECK: [[TMP10:%.*]] = and i32 3, 31
 ; CHECK: [[TMP11:%.*]] = shl nuw i32 1, [[TMP10]]
 ; CHECK: [[TMP12:%.*]] = inttoptr i32 16 to ptr addrspace(3)
-; CHECK: [[TMP13:%.*]] = call i32 @llvm.genx.GenISA.intatomicrawA64.i32.p3i32.p3i32(ptr addrspace(3) [[TMP12]], ptr addrspace(3) [[TMP12]], i32 [[TMP11]], i32 9)
+; CHECK: [[TMP13:%.*]] = call i32 @llvm.genx.GenISA.intatomicrawA64.i32.p3.p3(ptr addrspace(3) [[TMP12]], ptr addrspace(3) [[TMP12]], i32 [[TMP11]], i32 9)
 ; CHECK-DAG: br
 ; CHECK-NOT: call void @llvm.genx.GenISA.threadgroupbarrier()
 ; CHECK-DAG: br
@@ -110,7 +110,7 @@ define void @test_no_redundant_barrier() {
   %2 = and i32 3, 31
   %3 = shl nuw i32 1, %2
   %4 = inttoptr i32 16 to i32 addrspace(3)*
-  %5 = call i32 @llvm.genx.GenISA.intatomicrawA64.i32.p3i32.p3i32(i32 addrspace(3)* %4, i32 addrspace(3)* %4, i32 %3, i32 9)
+  %5 = call i32 @llvm.genx.GenISA.intatomicrawA64.i32.p3.p3(i32 addrspace(3)* %4, i32 addrspace(3)* %4, i32 %3, i32 9)
   br label %6
 
 6:
@@ -125,7 +125,7 @@ define void @test_no_redundant_barrier() {
 
 declare void @llvm.genx.GenISA.LSCFence(i32, i32, i32)
 declare void @llvm.genx.GenISA.threadgroupbarrier()
-declare i32 @llvm.genx.GenISA.intatomicrawA64.i32.p3i32.p3i32(i32 addrspace(3)*, i32 addrspace(3)*, i32, i32)
+declare i32 @llvm.genx.GenISA.intatomicrawA64.i32.p3.p3(i32 addrspace(3)*, i32 addrspace(3)*, i32, i32)
 
 !507 = !{!508, !508, i64 0}
 !508 = !{!"int", !509, i64 0}

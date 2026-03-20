@@ -17,20 +17,20 @@
 
 declare i32 @llvm.genx.GenISA.LSCLoad.i32.p1i32(i32 addrspace(1)*, i32, i32, i32, i32)
 declare void @llvm.genx.GenISA.LSCStore.p1i32.i32(i32 addrspace(1)*, i32, i32, i32, i32, i32)
-declare i32 @llvm.genx.GenISA.intatomicraw.i32.p1i32.i32(i32 addrspace(1)*, i32, i32, i32)
+declare i32 @llvm.genx.GenISA.intatomicraw.i32.p1i32(i32 addrspace(1)*, i32, i32, i32)
 
 
 define spir_kernel void @test_func(i32 addrspace(1)* %s1, i32 addrspace(1)* %s2) {
 ; CHECK-LABEL: @test_func(
 ; CHECK-NEXT:  entry:
 ; CHECK-NEXT:    [[TMP0:%.*]] = call i32 @llvm.genx.GenISA.LSCLoad.i32.p1i32(i32 addrspace(1)* [[S2:%.*]], i32 0, i32 3, i32 1, i32 2)
-; CHECK-NEXT:    [[TMP1:%.*]] = call i32 @llvm.genx.GenISA.intatomicraw.i32.p1i32.i32(i32 addrspace(1)* [[S1:%.*]], i32 0, i32 [[TMP0]], i32 0)
+; CHECK-NEXT:    [[TMP1:%.*]] = call i32 @llvm.genx.GenISA.intatomicraw.i32.p1i32(i32 addrspace(1)* [[S1:%.*]], i32 0, i32 [[TMP0]], i32 0)
 ; CHECK-NEXT:    call void @llvm.genx.GenISA.LSCStore.p1i32.i32(i32 addrspace(1)* [[S2]], i32 0, i32 [[TMP1]], i32 3, i32 1, i32 2)
 ; CHECK-NEXT:    ret void
 ;
 entry:
   %0 = call i32 @llvm.genx.GenISA.LSCLoad.i32.p1i32(i32 addrspace(1)* %s2, i32 0, i32 3, i32 1, i32 2)
-  %1 = call i32 @llvm.genx.GenISA.intatomicraw.i32.p1i32.i32(i32 addrspace(1)* %s1, i32 0, i32 %0, i32 0)
+  %1 = call i32 @llvm.genx.GenISA.intatomicraw.i32.p1i32(i32 addrspace(1)* %s1, i32 0, i32 %0, i32 0)
   call void @llvm.genx.GenISA.LSCStore.p1i32.i32(i32 addrspace(1)* %s2, i32 0, i32 %1, i32 3, i32 1, i32 2)
   ret void
 }

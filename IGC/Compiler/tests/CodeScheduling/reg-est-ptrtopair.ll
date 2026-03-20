@@ -49,8 +49,8 @@ entry:
   %addr_as4 = ptrtoint i8 addrspace(4)* %ptr_as4 to i64
 
 ; Convert to pointer pair
-; CHECK: {{\([0-9]+,[ ]*0[ ]*\) OG:[ A-Z]*}} [[PTR_PAIR:%.*]] = call { i32, i32 } @llvm.genx.GenISA.ptr.to.pair.p4i8(ptr addrspace(4) [[PTR_AS4]])
-  %ptr_pair = call { i32, i32 } @llvm.genx.GenISA.ptr.to.pair.p4i8(i8 addrspace(4)* %ptr_as4)
+; CHECK: {{\([0-9]+,[ ]*0[ ]*\) OG:[ A-Z]*}} [[PTR_PAIR:%.*]] = call { i32, i32 } @llvm.genx.GenISA.ptr.to.pair.p4(ptr addrspace(4) [[PTR_AS4]])
+  %ptr_pair = call { i32, i32 } @llvm.genx.GenISA.ptr.to.pair.p4(i8 addrspace(4)* %ptr_as4)
 
 ; Currently it's estimated as +64 -64: essentially correct, but
 ; may be not perfect for the instruction choosing heuristics
@@ -99,7 +99,7 @@ declare <8 x float> @llvm.genx.GenISA.sub.group.dpas.v8f32.v8f32.v8i16.v8i32(
   <8 x float>, <8 x i16>, <8 x i32>, i32, i32, i32, i32, i1) #1
 
 declare <8 x i16> @llvm.genx.GenISA.LSC2DBlockRead.v8i16(i64, i32, i32, i32, i32, i32, i32, i32, i32, i32, i1, i1, i32) #1
-declare { i32, i32 } @llvm.genx.GenISA.ptr.to.pair.p4i8(i8 addrspace(4)*) #3
+declare { i32, i32 } @llvm.genx.GenISA.ptr.to.pair.p4(i8 addrspace(4)*) #3
 
 attributes #0 = { convergent nounwind }
 attributes #1 = { convergent nounwind readnone willreturn }

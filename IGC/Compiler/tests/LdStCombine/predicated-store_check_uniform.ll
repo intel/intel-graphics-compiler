@@ -23,8 +23,8 @@
  ; CHECK-LABEL: target triple
  ; CHECK-NOT: %__StructSOALayout_ = type <{ i32, float }>
  ; CHECK-LABEL: define spir_kernel void @test_uniformness
- ; CHECK: call void @llvm.genx.GenISA.PredicatedStore.p1i32.i32(ptr addrspace(1) %{{.*}}, i32
- ; CHECK: call void @llvm.genx.GenISA.PredicatedStore.p1f32.f32(ptr addrspace(1) %{{.*}}, float
+ ; CHECK: call void @llvm.genx.GenISA.PredicatedStore.p1.i32(ptr addrspace(1) %{{.*}}, i32
+ ; CHECK: call void @llvm.genx.GenISA.PredicatedStore.p1.f32(ptr addrspace(1) %{{.*}}, float
  ; CHECK: ret void
 
 
@@ -38,15 +38,15 @@ entry:
   %ival = load i32, i32 addrspace(1)* %ss, align 4
   %arrayidx1 = getelementptr inbounds float, float addrspace(1)* %sf, i64 %conv.i.i
   %fval = load float, float addrspace(1)* %arrayidx1, align 4
-  call void @llvm.genx.GenISA.PredicatedStore.p1i32.i32(i32 addrspace(1)* %d, i32 %ival, i64 4, i1 true)
+  call void @llvm.genx.GenISA.PredicatedStore.p1.i32(i32 addrspace(1)* %d, i32 %ival, i64 4, i1 true)
   %df = bitcast i32 addrspace(1)* %d to float addrspace(1)*
   %arrayidx3 = getelementptr float, float addrspace(1)* %df, i64 1
-  call void @llvm.genx.GenISA.PredicatedStore.p1f32.f32(float addrspace(1)* %arrayidx3, float %fval, i64 4, i1 true)
+  call void @llvm.genx.GenISA.PredicatedStore.p1.f32(float addrspace(1)* %arrayidx3, float %fval, i64 4, i1 true)
   ret void
 }
 
-declare void @llvm.genx.GenISA.PredicatedStore.p1i32.i32(i32 addrspace(1)*, i32, i64, i1)
-declare void @llvm.genx.GenISA.PredicatedStore.p1f32.f32(float addrspace(1)*, float, i64, i1)
+declare void @llvm.genx.GenISA.PredicatedStore.p1.i32(i32 addrspace(1)*, i32, i64, i1)
+declare void @llvm.genx.GenISA.PredicatedStore.p1.f32(float addrspace(1)*, float, i64, i1)
 
 !IGCMetadata = !{!0}
 !igc.functions = !{!347}

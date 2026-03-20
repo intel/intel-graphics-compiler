@@ -28,37 +28,37 @@ entry:
   call void @use(half %res_default)
 ; CHECK-NEXT: call void @use(half [[RES_DEFAULT]])
 
-  %res_rte = call half @llvm.genx.GenISA.ftof.rte(double %in)
+  %res_rte = call half @llvm.genx.GenISA.ftof.rte.f16.f64(double %in)
 ; POS-CASE-RTE-CHECK-NEXT: [[RES_RTE:%res_rte]] = call {{.*}} half @__precompiled_convert_f64_to_f16_rte(double %in)
-; NEG-CASE-RTE-CHECK-NEXT: [[RES_RTE:%res_rte]] = call half @llvm.genx.GenISA.ftof.rte(double %in)
+; NEG-CASE-RTE-CHECK-NEXT: [[RES_RTE:%res_rte]] = call half @llvm.genx.GenISA.ftof.rte.f16.f64(double %in)
   call void @use(half %res_rte)
 ; CHECK-NEXT: call void @use(half [[RES_RTE]])
 
-  %res_rtz = call half @llvm.genx.GenISA.ftof.rtz(double %in)
+  %res_rtz = call half @llvm.genx.GenISA.ftof.rtz.f16.f64(double %in)
 ; POS-CASE-CHECK-NEXT: [[RES_RTZ:%res_rtz]] = call {{.*}} half @__precompiled_convert_f64_to_f16_rtz(double %in)
-; NEG-CASE-CHECK-NEXT: [[RES_RTZ:%res_rtz]] = call half @llvm.genx.GenISA.ftof.rtz(double %in)
+; NEG-CASE-CHECK-NEXT: [[RES_RTZ:%res_rtz]] = call half @llvm.genx.GenISA.ftof.rtz.f16.f64(double %in)
   call void @use(half %res_rtz)
 ; CHECK-NEXT: call void @use(half [[RES_RTZ]])
 
-  %res_rtn = call half @llvm.genx.GenISA.ftof.rtn(double %in)
+  %res_rtn = call half @llvm.genx.GenISA.ftof.rtn.f16.f64(double %in)
 ; POS-CASE-CHECK-NEXT: [[RES_RTN:%res_rtn]] = call {{.*}} half @__precompiled_convert_f64_to_f16_rtn(double %in)
-; NEG-CASE-CHECK-NEXT: [[RES_RTN:%res_rtn]] = call half @llvm.genx.GenISA.ftof.rtn(double %in)
+; NEG-CASE-CHECK-NEXT: [[RES_RTN:%res_rtn]] = call half @llvm.genx.GenISA.ftof.rtn.f16.f64(double %in)
   call void @use(half %res_rtn)
 ; CHECK-NEXT: call void @use(half [[RES_RTN]])
 
-  %res_rtp = call half @llvm.genx.GenISA.ftof.rtp(double %in)
+  %res_rtp = call half @llvm.genx.GenISA.ftof.rtp.f16.f64(double %in)
 ; POS-CASE-CHECK-NEXT: [[RES_RTP:%res_rtp]] = call {{.*}} half @__precompiled_convert_f64_to_f16_rtp(double %in)
-; NEG-CASE-CHECK-NEXT: [[RES_RTP:%res_rtp]] = call half @llvm.genx.GenISA.ftof.rtp(double %in)
+; NEG-CASE-CHECK-NEXT: [[RES_RTP:%res_rtp]] = call half @llvm.genx.GenISA.ftof.rtp.f16.f64(double %in)
   call void @use(half %res_rtp)
 ; CHECK-NEXT: call void @use(half [[RES_RTP]])
 
   ret void
 }
 
-declare half @llvm.genx.GenISA.ftof.rte(double)
-declare half @llvm.genx.GenISA.ftof.rtz(double)
-declare half @llvm.genx.GenISA.ftof.rtp(double)
-declare half @llvm.genx.GenISA.ftof.rtn(double)
+declare half @llvm.genx.GenISA.ftof.rte.f16.f64(double)
+declare half @llvm.genx.GenISA.ftof.rtz.f16.f64(double)
+declare half @llvm.genx.GenISA.ftof.rtp.f16.f64(double)
+declare half @llvm.genx.GenISA.ftof.rtn.f16.f64(double)
 declare void @use(half)
 
 !IGCMetadata = !{!0}

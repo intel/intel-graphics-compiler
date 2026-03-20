@@ -21,22 +21,22 @@ define spir_kernel void @no_dependence_on_rm(double %src1, double %src2, double 
 entry:
 ; CHECK-LABEL: entry:
 ; CHECK:         %tmp1 = load i32, i32 addrspace(1)* %other
-; CHECK:         %fma.rtz.1.result = call double @llvm.genx.GenISA.fma.rtz.f64.f64.f64.f64(double %src1, double %src2, double %src3)
+; CHECK:         %fma.rtz.1.result = call double @llvm.genx.GenISA.fma.rtz.f64(double %src1, double %src2, double %src3)
 ; CHECK:         %tmp2 = add i32 %tmp1, 1
-; CHECK:         %fma.rtz.2.result = call double @llvm.genx.GenISA.fma.rtz.f64.f64.f64.f64(double %src3, double %src2, double %src1)
+; CHECK:         %fma.rtz.2.result = call double @llvm.genx.GenISA.fma.rtz.f64(double %src3, double %src2, double %src1)
 ; CHECK:         %tmp3 = add i32 %tmp2, 1
-; CHECK:         %fma.rtz.3.result = call double @llvm.genx.GenISA.fma.rtz.f64.f64.f64.f64(double %src1, double %src3, double %src2)
+; CHECK:         %fma.rtz.3.result = call double @llvm.genx.GenISA.fma.rtz.f64(double %src1, double %src3, double %src2)
 ; CHECK:         %result1 = fadd double %fma.rtz.1.result, %fma.rtz.2.result
 ; CHECK:         %result2 = fadd double %result1, %fma.rtz.3.result
 ; CHECK:         store double %result2, double addrspace(1)* %dst
 ; CHECK:         store i32 %tmp3, i32 addrspace(1)* %other
 ; CHECK:         ret void
   %tmp1 = load i32, i32 addrspace(1)* %other
-  %fma.rtz.1.result = call double @llvm.genx.GenISA.fma.rtz.f64.f64.f64.f64(double %src1, double %src2, double %src3)
+  %fma.rtz.1.result = call double @llvm.genx.GenISA.fma.rtz.f64(double %src1, double %src2, double %src3)
   %tmp2 = add i32 %tmp1, 1
-  %fma.rtz.2.result = call double @llvm.genx.GenISA.fma.rtz.f64.f64.f64.f64(double %src3, double %src2, double %src1)
+  %fma.rtz.2.result = call double @llvm.genx.GenISA.fma.rtz.f64(double %src3, double %src2, double %src1)
   %tmp3 = add i32 %tmp2, 1
-  %fma.rtz.3.result = call double @llvm.genx.GenISA.fma.rtz.f64.f64.f64.f64(double %src1, double %src3, double %src2)
+  %fma.rtz.3.result = call double @llvm.genx.GenISA.fma.rtz.f64(double %src1, double %src3, double %src2)
   %result1 = fadd double %fma.rtz.1.result, %fma.rtz.2.result
   %result2 = fadd double %result1, %fma.rtz.3.result
   store double %result2, double addrspace(1)* %dst
@@ -58,10 +58,10 @@ entry:
 ; CHECK:         %tmp.i32.2 = add i32 %tmp.i32.1, 1
 ; CHECK:         %tmp.double.3 = fadd double %tmp.double.2, %src3
 ; CHECK:         %tmp.double.4 = fadd double %tmp.double.3, %src3
-; CHECK:         %fma.rtz.1.result = call double @llvm.genx.GenISA.fma.rtz.f64.f64.f64.f64(double %src1, double %src2, double %src3)
-; CHECK:         %fma.rtz.2.result = call double @llvm.genx.GenISA.fma.rtz.f64.f64.f64.f64(double %src3, double %src2, double %src1)
+; CHECK:         %fma.rtz.1.result = call double @llvm.genx.GenISA.fma.rtz.f64(double %src1, double %src2, double %src3)
+; CHECK:         %fma.rtz.2.result = call double @llvm.genx.GenISA.fma.rtz.f64(double %src3, double %src2, double %src1)
 ; CHECK:         %tmp.i32.3 = add i32 %tmp.i32.2, 1
-; CHECK:         %fma.rtz.3.result = call double @llvm.genx.GenISA.fma.rtz.f64.f64.f64.f64(double %src1, double %src3, double %src2)
+; CHECK:         %fma.rtz.3.result = call double @llvm.genx.GenISA.fma.rtz.f64(double %src1, double %src3, double %src2)
 ; CHECK:         %result1 = fadd double %fma.rtz.1.result, %fma.rtz.2.result
 ; CHECK:         %result2 = fadd double %result1, %fma.rtz.3.result
 ; CHECK:         %result3 = fadd double %result2, %tmp.double.4
@@ -69,17 +69,17 @@ entry:
 ; CHECK:         store i32 %tmp.i32.3, i32 addrspace(1)* %other
 ; CHECK:         ret void
   %tmp.i32.1 = load i32, i32 addrspace(1)* %other
-  %fma.rtz.1.result = call double @llvm.genx.GenISA.fma.rtz.f64.f64.f64.f64(double %src1, double %src2, double %src3)
+  %fma.rtz.1.result = call double @llvm.genx.GenISA.fma.rtz.f64(double %src1, double %src2, double %src3)
   %tmp.double.1 = fadd double %src1, %src2
   %tmp.double.2 = fadd double %tmp.double.1, %src3
   %tmp.i32.2 = add i32 %tmp.i32.1, 1
-  %fma.rtz.2.result = call double @llvm.genx.GenISA.fma.rtz.f64.f64.f64.f64(double %src3, double %src2, double %src1)
+  %fma.rtz.2.result = call double @llvm.genx.GenISA.fma.rtz.f64(double %src3, double %src2, double %src1)
   %tmp.double.3 = fadd double %tmp.double.2, %src3
   %tmp.double.4 = fadd double %tmp.double.3, %src3
 ; COM: Can insert after this fadd above.
 ; COM: i32 instruction below doesn't impact RM switching.
   %tmp.i32.3 = add i32 %tmp.i32.2, 1
-  %fma.rtz.3.result = call double @llvm.genx.GenISA.fma.rtz.f64.f64.f64.f64(double %src1, double %src3, double %src2)
+  %fma.rtz.3.result = call double @llvm.genx.GenISA.fma.rtz.f64(double %src1, double %src3, double %src2)
   %result1 = fadd double %fma.rtz.1.result, %fma.rtz.2.result
   %result2 = fadd double %result1, %fma.rtz.3.result
   %result3 = fadd double %result2, %tmp.double.4
@@ -103,13 +103,13 @@ entry:
 ; CHECK:         %fma.rtz.2.arg = fsub double %src2, %src3
 ; CHECK:         %fma.rtz.3.arg = fsub double %src1, %src2
 ; COM: Next all FMAs and users ignoring RM.
-; CHECK:         %fma.rtz.1.result = call double @llvm.genx.GenISA.fma.rtz.f64.f64.f64.f64(double %src1, double %src2, double %fma.rtz.1.arg)
+; CHECK:         %fma.rtz.1.result = call double @llvm.genx.GenISA.fma.rtz.f64(double %src1, double %src2, double %fma.rtz.1.arg)
 ; CHECK:         %tmp11 = fcmp oeq double %src1, %fma.rtz.1.result
 ; CHECK:         %tmp12 = fcmp oeq double %src2, %fma.rtz.1.result
-; CHECK:         %fma.rtz.2.result = call double @llvm.genx.GenISA.fma.rtz.f64.f64.f64.f64(double %src1, double %src2, double %fma.rtz.2.arg)
+; CHECK:         %fma.rtz.2.result = call double @llvm.genx.GenISA.fma.rtz.f64(double %src1, double %src2, double %fma.rtz.2.arg)
 ; CHECK:         %tmp21 = fcmp oeq double %src1, %fma.rtz.2.result
 ; CHECK:         %tmp22 = fcmp oeq double %src2, %fma.rtz.2.result
-; CHECK:         %fma.rtz.3.result = call double @llvm.genx.GenISA.fma.rtz.f64.f64.f64.f64(double %src1, double %src2, double %fma.rtz.3.arg)
+; CHECK:         %fma.rtz.3.result = call double @llvm.genx.GenISA.fma.rtz.f64(double %src1, double %src2, double %fma.rtz.3.arg)
 ; COM: Finally the unmodified rest.
 ; CHECK:         %result1 = fadd double %fma.rtz.1.result, %fma.rtz.2.result
 ; CHECK:         %result2 = fadd double %result1, %fma.rtz.3.result
@@ -117,21 +117,21 @@ entry:
 ; CHECK:         ret void
 
   %fma.rtz.1.arg = fsub double %src1, %src3
-  %fma.rtz.1.result = call double @llvm.genx.GenISA.fma.rtz.f64.f64.f64.f64(double %src1, double %src2, double %fma.rtz.1.arg)
+  %fma.rtz.1.result = call double @llvm.genx.GenISA.fma.rtz.f64(double %src1, double %src2, double %fma.rtz.1.arg)
 
 ; COM: Depends on result of first FMA, but ignores RM.
   %tmp11 = fcmp oeq double %src1, %fma.rtz.1.result
   %tmp12 = fcmp oeq double %src2, %fma.rtz.1.result
 
   %fma.rtz.2.arg = fsub double %src2, %src3
-  %fma.rtz.2.result = call double @llvm.genx.GenISA.fma.rtz.f64.f64.f64.f64(double %src1, double %src2, double %fma.rtz.2.arg)
+  %fma.rtz.2.result = call double @llvm.genx.GenISA.fma.rtz.f64(double %src1, double %src2, double %fma.rtz.2.arg)
 
 ; COM: Depends on result of second FMA, but ignores RM.
   %tmp21 = fcmp oeq double %src1, %fma.rtz.2.result
   %tmp22 = fcmp oeq double %src2, %fma.rtz.2.result
 
   %fma.rtz.3.arg = fsub double %src1, %src2
-  %fma.rtz.3.result = call double @llvm.genx.GenISA.fma.rtz.f64.f64.f64.f64(double %src1, double %src2, double %fma.rtz.3.arg)
+  %fma.rtz.3.result = call double @llvm.genx.GenISA.fma.rtz.f64(double %src1, double %src2, double %fma.rtz.3.arg)
 
   %result1 = fadd double %fma.rtz.1.result, %fma.rtz.2.result
   %result2 = fadd double %result1, %fma.rtz.3.result
@@ -154,9 +154,9 @@ entry:
 ; CHECK:         %fma.rtz.2.arg = fsub double %src2, %src3
 ; CHECK:         %fma.rtz.3.arg = fsub double %src1, %src2
 ; COM: Next all FMAs grouped together.
-; CHECK:         %fma.rtz.1.result = call double @llvm.genx.GenISA.fma.rtz.f64.f64.f64.f64(double %src1, double %src2, double %fma.rtz.1.arg)
-; CHECK:         %fma.rtz.2.result = call double @llvm.genx.GenISA.fma.rtz.f64.f64.f64.f64(double %src1, double %src2, double %fma.rtz.2.arg)
-; CHECK:         %fma.rtz.3.result = call double @llvm.genx.GenISA.fma.rtz.f64.f64.f64.f64(double %src1, double %src2, double %fma.rtz.3.arg)
+; CHECK:         %fma.rtz.1.result = call double @llvm.genx.GenISA.fma.rtz.f64(double %src1, double %src2, double %fma.rtz.1.arg)
+; CHECK:         %fma.rtz.2.result = call double @llvm.genx.GenISA.fma.rtz.f64(double %src1, double %src2, double %fma.rtz.2.arg)
+; CHECK:         %fma.rtz.3.result = call double @llvm.genx.GenISA.fma.rtz.f64(double %src1, double %src2, double %fma.rtz.3.arg)
 ; COM: Then all uses of FMAs' results that could be moved.
 ; CHECK:         %tmp11 = fadd double %src1, %fma.rtz.1.result
 ; CHECK:         %tmp12 = fadd double %src2, %tmp11
@@ -170,7 +170,7 @@ entry:
 ; CHECK:         ret void
 
   %fma.rtz.1.arg = fsub double %src1, %src3
-  %fma.rtz.1.result = call double @llvm.genx.GenISA.fma.rtz.f64.f64.f64.f64(double %src1, double %src2, double %fma.rtz.1.arg)
+  %fma.rtz.1.result = call double @llvm.genx.GenISA.fma.rtz.f64(double %src1, double %src2, double %fma.rtz.1.arg)
 
 ; COM: Depends on result of first FMA, but can be moved after third FMA.
   %tmp11 = fadd double %src1, %fma.rtz.1.result
@@ -178,14 +178,14 @@ entry:
   %tmp13 = fadd double %fma.rtz.1.result, %tmp12
 
   %fma.rtz.2.arg = fsub double %src2, %src3
-  %fma.rtz.2.result = call double @llvm.genx.GenISA.fma.rtz.f64.f64.f64.f64(double %src1, double %src2, double %fma.rtz.2.arg)
+  %fma.rtz.2.result = call double @llvm.genx.GenISA.fma.rtz.f64(double %src1, double %src2, double %fma.rtz.2.arg)
 
 ; COM: Depends on result of second FMA, but can be moved after third FMA.
   %tmp21 = fadd double %src1, %fma.rtz.2.result
   %tmp22 = fadd double %fma.rtz.1.result, %tmp21
 
   %fma.rtz.3.arg = fsub double %src1, %src2
-  %fma.rtz.3.result = call double @llvm.genx.GenISA.fma.rtz.f64.f64.f64.f64(double %src1, double %src2, double %fma.rtz.3.arg)
+  %fma.rtz.3.result = call double @llvm.genx.GenISA.fma.rtz.f64(double %src1, double %src2, double %fma.rtz.3.arg)
 ; COM: Users will be moved here.
 
   %result1 = fadd double %fma.rtz.1.result, %fma.rtz.2.result
@@ -206,24 +206,24 @@ entry:
 ; CHECK:         %fma.rtz.1.arg = fsub double %src1, %src3
 ; CHECK:         %fma.rtz.2.arg = fsub double %src1, %src3
 ; CHECK:         %fma.rtz.3.arg = fsub double %src1, %src3
-; CHECK:         %fma.rtz.1.result = call double @llvm.genx.GenISA.fma.rtz.f64.f64.f64.f64(double %src1, double %src2, double %fma.rtz.1.arg)
-; CHECK:         %fma.rtz.2.result = call double @llvm.genx.GenISA.fma.rtz.f64.f64.f64.f64(double %src1, double %fma.rtz.1.result, double %fma.rtz.2.arg)
-; CHECK:         %fma.rtz.3.result = call double @llvm.genx.GenISA.fma.rtz.f64.f64.f64.f64(double %src1, double %fma.rtz.2.result, double %fma.rtz.3.arg)
+; CHECK:         %fma.rtz.1.result = call double @llvm.genx.GenISA.fma.rtz.f64(double %src1, double %src2, double %fma.rtz.1.arg)
+; CHECK:         %fma.rtz.2.result = call double @llvm.genx.GenISA.fma.rtz.f64(double %src1, double %fma.rtz.1.result, double %fma.rtz.2.arg)
+; CHECK:         %fma.rtz.3.result = call double @llvm.genx.GenISA.fma.rtz.f64(double %src1, double %fma.rtz.2.result, double %fma.rtz.3.arg)
 ; CHECK:         %tmp.rtz.1 = fadd double %src1, %fma.rtz.1.result
 ; CHECK:         %tmp.rtz.2 = fadd double %src1, %fma.rtz.2.result
 ; CHECK:         %tmp.rtz.3 = fadd double %src1, %fma.rtz.3.result
 ; CHECK:         ret void
 
   %fma.rtz.1.arg = fsub double %src1, %src3
-  %fma.rtz.1.result = call double @llvm.genx.GenISA.fma.rtz.f64.f64.f64.f64(double %src1, double %src2, double %fma.rtz.1.arg)
+  %fma.rtz.1.result = call double @llvm.genx.GenISA.fma.rtz.f64(double %src1, double %src2, double %fma.rtz.1.arg)
   %tmp.rtz.1 = fadd double %src1, %fma.rtz.1.result
 
   %fma.rtz.2.arg = fsub double %src1, %src3
-  %fma.rtz.2.result = call double @llvm.genx.GenISA.fma.rtz.f64.f64.f64.f64(double %src1, double %fma.rtz.1.result, double %fma.rtz.2.arg)
+  %fma.rtz.2.result = call double @llvm.genx.GenISA.fma.rtz.f64(double %src1, double %fma.rtz.1.result, double %fma.rtz.2.arg)
   %tmp.rtz.2 = fadd double %src1, %fma.rtz.2.result
 
   %fma.rtz.3.arg = fsub double %src1, %src3
-  %fma.rtz.3.result = call double @llvm.genx.GenISA.fma.rtz.f64.f64.f64.f64(double %src1, double %fma.rtz.2.result, double %fma.rtz.3.arg)
+  %fma.rtz.3.result = call double @llvm.genx.GenISA.fma.rtz.f64(double %src1, double %fma.rtz.2.result, double %fma.rtz.3.arg)
   %tmp.rtz.3 = fadd double %src1, %fma.rtz.3.result
 
   ret void
@@ -263,14 +263,14 @@ entry:
 ; COM: Second FMA can't be moved, as it results is used to calculate arg for third FMA.
 ; CHECK:         %fma.rtz.1.arg = fsub double %src1, %src3
 ; CHECK:         %fma.rtz.2.arg = fsub double %src2, %src3
-; CHECK:         %fma.rtz.2.result = call double @llvm.genx.GenISA.fma.rtz.f64.f64.f64.f64(double %src1, double %src2, double %fma.rtz.2.arg)
+; CHECK:         %fma.rtz.2.result = call double @llvm.genx.GenISA.fma.rtz.f64(double %src1, double %src2, double %fma.rtz.2.arg)
 ; CHECK:         %tmp2 = fadd double %src1, %fma.rtz.2.result
 ; CHECK:         %fma.rtz.3.arg = fsub double %src1, %src2
 ; CHECK:         %fma.rtz.4.arg = fsub double %src2, %src3
 ; COM: Grouped FMAs.
-; CHECK:         %fma.rtz.1.result = call double @llvm.genx.GenISA.fma.rtz.f64.f64.f64.f64(double %src1, double %src2, double %fma.rtz.1.arg)
-; CHECK:         %fma.rtz.3.result = call double @llvm.genx.GenISA.fma.rtz.f64.f64.f64.f64(double %src1, double %tmp2, double %fma.rtz.3.arg)
-; CHECK:         %fma.rtz.4.result = call double @llvm.genx.GenISA.fma.rtz.f64.f64.f64.f64(double %src1, double %src2, double %fma.rtz.4.arg)
+; CHECK:         %fma.rtz.1.result = call double @llvm.genx.GenISA.fma.rtz.f64(double %src1, double %src2, double %fma.rtz.1.arg)
+; CHECK:         %fma.rtz.3.result = call double @llvm.genx.GenISA.fma.rtz.f64(double %src1, double %tmp2, double %fma.rtz.3.arg)
+; CHECK:         %fma.rtz.4.result = call double @llvm.genx.GenISA.fma.rtz.f64(double %src1, double %src2, double %fma.rtz.4.arg)
 ; COM: Other moved uses.
 ; CHECK:         %tmp1 = fadd double %src1, %fma.rtz.1.result
 ; CHECK:         %tmp3 = fadd double %src1, %fma.rtz.3.result
@@ -278,20 +278,20 @@ entry:
 ; CHECK:         ret void
 
   %fma.rtz.1.arg = fsub double %src1, %src3
-  %fma.rtz.1.result = call double @llvm.genx.GenISA.fma.rtz.f64.f64.f64.f64(double %src1, double %src2, double %fma.rtz.1.arg)
+  %fma.rtz.1.result = call double @llvm.genx.GenISA.fma.rtz.f64(double %src1, double %src2, double %fma.rtz.1.arg)
 
   %tmp1 = fadd double %src1, %fma.rtz.1.result
   %fma.rtz.2.arg = fsub double %src2, %src3
-  %fma.rtz.2.result = call double @llvm.genx.GenISA.fma.rtz.f64.f64.f64.f64(double %src1, double %src2, double %fma.rtz.2.arg)
+  %fma.rtz.2.result = call double @llvm.genx.GenISA.fma.rtz.f64(double %src1, double %src2, double %fma.rtz.2.arg)
 
 ; COM: Result of second FMA is used to calculate arg for third FMA. Because of this dependency, instructions can't be moved.
   %tmp2 = fadd double %src1, %fma.rtz.2.result
   %fma.rtz.3.arg = fsub double %src1, %src2
-  %fma.rtz.3.result = call double @llvm.genx.GenISA.fma.rtz.f64.f64.f64.f64(double %src1, double %tmp2, double %fma.rtz.3.arg)
+  %fma.rtz.3.result = call double @llvm.genx.GenISA.fma.rtz.f64(double %src1, double %tmp2, double %fma.rtz.3.arg)
 
   %tmp3 = fadd double %src1, %fma.rtz.3.result
   %fma.rtz.4.arg = fsub double %src2, %src3
-  %fma.rtz.4.result = call double @llvm.genx.GenISA.fma.rtz.f64.f64.f64.f64(double %src1, double %src2, double %fma.rtz.4.arg)
+  %fma.rtz.4.result = call double @llvm.genx.GenISA.fma.rtz.f64(double %src1, double %src2, double %fma.rtz.4.arg)
 
   %tmp4 = fadd double %src1, %fma.rtz.4.result
 
@@ -347,38 +347,38 @@ entry:
 ; CHECK-LABEL: entry:
 ; CHECK:         %fma.rtz.1.arg = fsub double %src1, %src3
 ; COM: FMA RTZ are untouched.
-; CHECK:         %fma.rtz.1.result = call double @llvm.genx.GenISA.fma.rtz.f64.f64.f64.f64(double %src1, double %src2, double %fma.rtz.1.arg)
+; CHECK:         %fma.rtz.1.result = call double @llvm.genx.GenISA.fma.rtz.f64(double %src1, double %src2, double %fma.rtz.1.arg)
 ; CHECK:         %tmp.rtz.1 = fadd double %src1, %fma.rtz.1.result
 ; CHECK:         %fma.rtp.1.arg = fsub double %src1, %src3
 ; CHECK:         %fma.rtz.2.arg = fsub double %src1, %src3
-; CHECK:         %fma.rtz.2.result = call double @llvm.genx.GenISA.fma.rtz.f64.f64.f64.f64(double %src1, double %src2, double %fma.rtz.2.arg)
+; CHECK:         %fma.rtz.2.result = call double @llvm.genx.GenISA.fma.rtz.f64(double %src1, double %src2, double %fma.rtz.2.arg)
 ; CHECK:         %tmp.rtz.2 = fadd double %src1, %fma.rtz.2.result
 ; CHECK:         %fma.rtp.2.arg = fsub double %src1, %src3
 ; COM: FMA RTP are grouped.
-; CHECK:         %fma.rtp.1.result = call double @llvm.genx.GenISA.fma.rtp.f64.f64.f64.f64(double %src1, double %src2, double %fma.rtp.1.arg)
-; CHECK:         %fma.rtp.2.result = call double @llvm.genx.GenISA.fma.rtp.f64.f64.f64.f64(double %src1, double %src2, double %fma.rtp.2.arg)
+; CHECK:         %fma.rtp.1.result = call double @llvm.genx.GenISA.fma.rtp.f64(double %src1, double %src2, double %fma.rtp.1.arg)
+; CHECK:         %fma.rtp.2.result = call double @llvm.genx.GenISA.fma.rtp.f64(double %src1, double %src2, double %fma.rtp.2.arg)
 ; CHECK:         %tmp.rtp.1 = fadd double %src1, %fma.rtp.1.result
 ; CHECK:         %tmp.rtp.2 = fadd double %src1, %fma.rtp.2.result
 ; CHECK:         ret void
 
 ; COM: First RTZ FMA
   %fma.rtz.1.arg = fsub double %src1, %src3
-  %fma.rtz.1.result = call double @llvm.genx.GenISA.fma.rtz.f64.f64.f64.f64(double %src1, double %src2, double %fma.rtz.1.arg)
+  %fma.rtz.1.result = call double @llvm.genx.GenISA.fma.rtz.f64(double %src1, double %src2, double %fma.rtz.1.arg)
   %tmp.rtz.1 = fadd double %src1, %fma.rtz.1.result
 
 ; COM: First RTP FMA
   %fma.rtp.1.arg = fsub double %src1, %src3
-  %fma.rtp.1.result = call double @llvm.genx.GenISA.fma.rtp.f64.f64.f64.f64(double %src1, double %src2, double %fma.rtp.1.arg)
+  %fma.rtp.1.result = call double @llvm.genx.GenISA.fma.rtp.f64(double %src1, double %src2, double %fma.rtp.1.arg)
   %tmp.rtp.1 = fadd double %src1, %fma.rtp.1.result
 
 ; COM: Second RTZ FMA
   %fma.rtz.2.arg = fsub double %src1, %src3
-  %fma.rtz.2.result = call double @llvm.genx.GenISA.fma.rtz.f64.f64.f64.f64(double %src1, double %src2, double %fma.rtz.2.arg)
+  %fma.rtz.2.result = call double @llvm.genx.GenISA.fma.rtz.f64(double %src1, double %src2, double %fma.rtz.2.arg)
   %tmp.rtz.2 = fadd double %src1, %fma.rtz.2.result
 
 ; COM: Second RTP FMA
   %fma.rtp.2.arg = fsub double %src1, %src3
-  %fma.rtp.2.result = call double @llvm.genx.GenISA.fma.rtp.f64.f64.f64.f64(double %src1, double %src2, double %fma.rtp.2.arg)
+  %fma.rtp.2.result = call double @llvm.genx.GenISA.fma.rtp.f64(double %src1, double %src2, double %fma.rtp.2.arg)
   %tmp.rtp.2 = fadd double %src1, %fma.rtp.2.result
 
   ret void
@@ -389,7 +389,7 @@ define spir_kernel void @max_distance_threshold_with_insert_point(double %src1, 
 entry:
 ; CHECK-LABEL: entry:
 ; CHECK:         %fma.rtz.1.arg = fsub double %src1, %src3
-; CHECK:         %fma.rtz.1.result = call double @llvm.genx.GenISA.fma.rtz.f64.f64.f64.f64(double %src1, double %src2, double %fma.rtz.1.arg)
+; CHECK:         %fma.rtz.1.result = call double @llvm.genx.GenISA.fma.rtz.f64(double %src1, double %src2, double %fma.rtz.1.arg)
 ; CHECK:         %tmp.rtz.1 = fadd double %src1, %fma.rtz.1.result
 ; CHECK:         %tmp.rtz.2 = fadd double %src1, %tmp.rtz.1
 ; CHECK:         %tmp.rtz.3 = fadd double %src1, %tmp.rtz.2
@@ -412,11 +412,11 @@ entry:
 ; CHECK:         %tmp.rtz.20 = fadd double %src1, %tmp.rtz.19
 ; CHECK:         %tmp.rtz.21 = fadd double %src1, %tmp.rtz.20
 ; CHECK:         %fma.rtz.2.arg = fsub double %src1, %src3
-; CHECK:         %fma.rtz.2.result = call double @llvm.genx.GenISA.fma.rtz.f64.f64.f64.f64(double %src1, double %src2, double %fma.rtz.2.arg)
+; CHECK:         %fma.rtz.2.result = call double @llvm.genx.GenISA.fma.rtz.f64(double %src1, double %src2, double %fma.rtz.2.arg)
 ; CHECK:         ret void
 
   %fma.rtz.1.arg = fsub double %src1, %src3
-  %fma.rtz.1.result = call double @llvm.genx.GenISA.fma.rtz.f64.f64.f64.f64(double %src1, double %src2, double %fma.rtz.1.arg)
+  %fma.rtz.1.result = call double @llvm.genx.GenISA.fma.rtz.f64(double %src1, double %src2, double %fma.rtz.1.arg)
   %tmp.rtz.1 = fadd double %src1, %fma.rtz.1.result
   %tmp.rtz.2 = fadd double %src1, %tmp.rtz.1
   %tmp.rtz.3 = fadd double %src1, %tmp.rtz.2
@@ -440,7 +440,7 @@ entry:
   %tmp.rtz.21 = fadd double %src1, %tmp.rtz.20
 
   %fma.rtz.2.arg = fsub double %src1, %src3
-  %fma.rtz.2.result = call double @llvm.genx.GenISA.fma.rtz.f64.f64.f64.f64(double %src1, double %src2, double %fma.rtz.2.arg)
+  %fma.rtz.2.result = call double @llvm.genx.GenISA.fma.rtz.f64(double %src1, double %src2, double %fma.rtz.2.arg)
 
   ret void
 }
@@ -450,7 +450,7 @@ define spir_kernel void @max_distance_threshold_without_insert_point(double %src
 entry:
 ; CHECK-LABEL: entry:
 ; CHECK:         %fma.rtz.1.arg = fsub double %src1, %src3
-; CHECK:         %fma.rtz.1.result = call double @llvm.genx.GenISA.fma.rtz.f64.f64.f64.f64(double %src1, double %src2, double %fma.rtz.1.arg)
+; CHECK:         %fma.rtz.1.result = call double @llvm.genx.GenISA.fma.rtz.f64(double %src1, double %src2, double %fma.rtz.1.arg)
 ; CHECK:         %tmp.rtz.1 = fadd double %src1, %fma.rtz.1.result
 ; CHECK:         %tmp.rtz.2 = fadd double %src1, %tmp.rtz.1
 ; CHECK:         %tmp.rtz.3 = fadd double %src1, %tmp.rtz.2
@@ -472,11 +472,11 @@ entry:
 ; CHECK:         %tmp.rtz.19 = fadd double %src1, %tmp.rtz.18
 ; CHECK:         %tmp.rtz.20 = fadd double %src1, %tmp.rtz.19
 ; CHECK:         %tmp.rtz.21 = fadd double %src1, %tmp.rtz.20
-; CHECK:         %fma.rtz.2.result = call double @llvm.genx.GenISA.fma.rtz.f64.f64.f64.f64(double %src1, double %src2, double %src3)
+; CHECK:         %fma.rtz.2.result = call double @llvm.genx.GenISA.fma.rtz.f64(double %src1, double %src2, double %src3)
 ; CHECK:         ret void
 
   %fma.rtz.1.arg = fsub double %src1, %src3
-  %fma.rtz.1.result = call double @llvm.genx.GenISA.fma.rtz.f64.f64.f64.f64(double %src1, double %src2, double %fma.rtz.1.arg)
+  %fma.rtz.1.result = call double @llvm.genx.GenISA.fma.rtz.f64(double %src1, double %src2, double %fma.rtz.1.arg)
   %tmp.rtz.1 = fadd double %src1, %fma.rtz.1.result
   %tmp.rtz.2 = fadd double %src1, %tmp.rtz.1
   %tmp.rtz.3 = fadd double %src1, %tmp.rtz.2
@@ -499,7 +499,7 @@ entry:
   %tmp.rtz.20 = fadd double %src1, %tmp.rtz.19
   %tmp.rtz.21 = fadd double %src1, %tmp.rtz.20
 
-  %fma.rtz.2.result = call double @llvm.genx.GenISA.fma.rtz.f64.f64.f64.f64(double %src1, double %src2, double %src3)
+  %fma.rtz.2.result = call double @llvm.genx.GenISA.fma.rtz.f64(double %src1, double %src2, double %src3)
 
   ret void
 }
@@ -514,8 +514,8 @@ entry:
 ; CHECK:         %fma.rtz.1.arg = fsub double %src1, %src3
 ; CHECK:         %fma.rtz.2.arg = fsub double %src1, %src2
 ; COM: Next all FMAs grouped together.
-; CHECK:         %fma.rtz.1.result = call double @llvm.genx.GenISA.fma.rtz.f64.f64.f64.f64(double %src1, double %src2, double %fma.rtz.1.arg)
-; CHECK:         %fma.rtz.2.result = call double @llvm.genx.GenISA.fma.rtz.f64.f64.f64.f64(double %src1, double %src2, double %fma.rtz.2.arg)
+; CHECK:         %fma.rtz.1.result = call double @llvm.genx.GenISA.fma.rtz.f64(double %src1, double %src2, double %fma.rtz.1.arg)
+; CHECK:         %fma.rtz.2.result = call double @llvm.genx.GenISA.fma.rtz.f64(double %src1, double %src2, double %fma.rtz.2.arg)
 ; COM: Then all uses of FMAs' results that could be moved.
 ; CHECK:         %tmp11 = fadd double %src1, %fma.rtz.1.result
 ; CHECK:         %tmp12 = fadd double %src2, %tmp11
@@ -532,7 +532,7 @@ l1:
   %phi = phi double [ %src3, %entry ], [ %tmp13, %l1 ]
 
   %fma.rtz.1.arg = fsub double %src1, %src3
-  %fma.rtz.1.result = call double @llvm.genx.GenISA.fma.rtz.f64.f64.f64.f64(double %src1, double %src2, double %fma.rtz.1.arg)
+  %fma.rtz.1.result = call double @llvm.genx.GenISA.fma.rtz.f64(double %src1, double %src2, double %fma.rtz.1.arg)
 
 ; COM: Depends on result of first FMA, but can be moved after third FMA.
   %tmp11 = fadd double %src1, %fma.rtz.1.result
@@ -541,7 +541,7 @@ l1:
   %tmp14 = fcmp oeq double %tmp13, 5.0
 
   %fma.rtz.2.arg = fsub double %src1, %src2
-  %fma.rtz.2.result = call double @llvm.genx.GenISA.fma.rtz.f64.f64.f64.f64(double %src1, double %src2, double %fma.rtz.2.arg)
+  %fma.rtz.2.result = call double @llvm.genx.GenISA.fma.rtz.f64(double %src1, double %src2, double %fma.rtz.2.arg)
 ; COM: Users will be moved here.
 
   br i1 %tmp14, label %l1, label %l2
@@ -557,29 +557,29 @@ define spir_kernel void @side_effect(double %src1, double %src2, double %src3, d
 entry:
 ; CHECK-LABEL: entry:
 ; CHECK:         %fma.rtz.1.arg = fsub double %src1, %src3
-; CHECK:         %fma.rtz.1.result = call double @llvm.genx.GenISA.fma.rtz.f64.f64.f64.f64(double %src1, double %src2, double %fma.rtz.1.arg)
+; CHECK:         %fma.rtz.1.result = call double @llvm.genx.GenISA.fma.rtz.f64(double %src1, double %src2, double %fma.rtz.1.arg)
 ; CHECK:         %tmp.rtz.1 = fadd double %src1, %fma.rtz.1.result
 ; CHECK:         store double %tmp.rtz.1, double addrspace(1)* %dst
 ; CHECK:         %fma.rtz.2.arg = fsub double %src1, %src3
-; CHECK:         %fma.rtz.2.result = call double @llvm.genx.GenISA.fma.rtz.f64.f64.f64.f64(double %src1, double %src2, double %fma.rtz.2.arg)
+; CHECK:         %fma.rtz.2.result = call double @llvm.genx.GenISA.fma.rtz.f64(double %src1, double %src2, double %fma.rtz.2.arg)
 ; CHECK:         ret void
 
   %fma.rtz.1.arg = fsub double %src1, %src3
-  %fma.rtz.1.result = call double @llvm.genx.GenISA.fma.rtz.f64.f64.f64.f64(double %src1, double %src2, double %fma.rtz.1.arg)
+  %fma.rtz.1.result = call double @llvm.genx.GenISA.fma.rtz.f64(double %src1, double %src2, double %fma.rtz.1.arg)
   %tmp.rtz.1 = fadd double %src1, %fma.rtz.1.result
 
   store double %tmp.rtz.1, double addrspace(1)* %dst
 
   %fma.rtz.2.arg = fsub double %src1, %src3
-  %fma.rtz.2.result = call double @llvm.genx.GenISA.fma.rtz.f64.f64.f64.f64(double %src1, double %src2, double %fma.rtz.2.arg)
+  %fma.rtz.2.result = call double @llvm.genx.GenISA.fma.rtz.f64(double %src1, double %src2, double %fma.rtz.2.arg)
 
   ret void
 }
 
 declare float @llvm.genx.GenISA.uitof.rtz.f32.i32(i32)
 
-declare double @llvm.genx.GenISA.fma.rtz.f64.f64.f64.f64(double, double, double)
-declare double @llvm.genx.GenISA.fma.rtp.f64.f64.f64.f64(double, double, double)
+declare double @llvm.genx.GenISA.fma.rtz.f64(double, double, double)
+declare double @llvm.genx.GenISA.fma.rtp.f64(double, double, double)
 
 !igc.functions = !{!0, !1, !2, !3, !4, !5, !6, !7, !8, !9, !10, !11, !12}
 

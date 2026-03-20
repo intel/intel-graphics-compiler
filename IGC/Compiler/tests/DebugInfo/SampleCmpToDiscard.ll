@@ -35,7 +35,7 @@
 ; CHECK: call void @llvm.genx.GenISA.RTWrite.f32(float [[F4_V]]{{.*}} !dbg [[RT_LOC:![0-9]*]]
 
 define void @test_samplecmp(float %src1, float %src2, float %src3) !dbg !6 {
-  %1 = call <4 x float> @llvm.genx.GenISA.sampleBCptr.v4f32.f32.p196609i8.p524293i8(float %src1, float 0.000000e+00, float %src2, float %src3, float 0.000000e+00, float 0.000000e+00, i8 addrspace(196609)* null, i8 addrspace(524293)* inttoptr (i64 5 to i8 addrspace(524293)*), i32 0, i32 0, i32 0), !dbg !16
+  %1 = call <4 x float> @llvm.genx.GenISA.sampleBCptr.v4f32.f32.p196609.p524293.p0(float %src1, float 0.000000e+00, float %src2, float %src3, float 0.000000e+00, float 0.000000e+00, ptr addrspace(196609) null, ptr addrspace(524293) inttoptr (i64 5 to ptr addrspace(524293)), ptr null, i32 0, i32 0, i32 0), !dbg !16
   call void @llvm.dbg.value(metadata <4 x float> %1, metadata !9, metadata !DIExpression()), !dbg !16
   %2 = extractelement <4 x float> %1, i32 0, !dbg !17
   call void @llvm.dbg.value(metadata float %2, metadata !11, metadata !DIExpression()), !dbg !17
@@ -65,7 +65,7 @@ define void @test_samplecmp(float %src1, float %src2, float %src3) !dbg !6 {
 
 declare void @llvm.genx.GenISA.RTWrite.f32(float, float, i1, float, float, float, float, float, float, i32, i32, i1, i1, i1, i1, i32)
 
-declare <4 x float> @llvm.genx.GenISA.sampleBCptr.v4f32.f32.p196609i8.p524293i8(float, float, float, float, float, float, i8 addrspace(196609)*, i8 addrspace(524293)*, i32, i32, i32)
+declare <4 x float> @llvm.genx.GenISA.sampleBCptr.v4f32.f32.p196609.p524293.p0(float, float, float, float, float, float, ptr addrspace(196609), ptr addrspace(524293), ptr, i32, i32, i32)
 
 ; Function Attrs: nounwind readnone speculatable
 declare void @llvm.dbg.value(metadata, metadata, metadata) #0

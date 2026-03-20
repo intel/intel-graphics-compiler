@@ -15,13 +15,13 @@
 
 define spir_kernel void @test(i64 %a, i64 %b, i64 %c) #0 {
 entry:
-  %0 = call <8 x i32> @llvm.genx.GenISA.LSC2DBlockRead.v8i32(i64 %a, i32 8191, i32 7, i32 8191, i32 0, i32 0, i32 32, i32 16, i32 8, i32 1, i1 false, i1 false)
-  call void @llvm.genx.GenISA.LSC2DBlockWrite.v8i32(i64 %b, i32 8191, i32 7, i32 8191, i32 0, i32 0, i32 32, i32 16, i32 8, i32 1, i1 false, i1 false, <8 x i32> %0)
+  %0 = call <8 x i32> @llvm.genx.GenISA.LSC2DBlockRead.v8i32(i64 %a, i32 8191, i32 7, i32 8191, i32 0, i32 0, i32 32, i32 16, i32 8, i32 1, i1 false, i1 false, i32 0)
+  call void @llvm.genx.GenISA.LSC2DBlockWrite.v8i32(i64 %b, i32 8191, i32 7, i32 8191, i32 0, i32 0, i32 32, i32 16, i32 8, i32 1, i1 false, i1 false, i32 0, <8 x i32> %0)
   ret void
 }
 
-declare <8 x i32> @llvm.genx.GenISA.LSC2DBlockRead.v8i32(i64, i32, i32, i32, i32, i32, i32, i32, i32, i32, i1, i1) #1
-declare void @llvm.genx.GenISA.LSC2DBlockWrite.v8i32(i64, i32, i32, i32, i32, i32, i32, i32, i32, i32, i1, i1, <8 x i32>) #1
+declare <8 x i32> @llvm.genx.GenISA.LSC2DBlockRead.v8i32(i64, i32, i32, i32, i32, i32, i32, i32, i32, i32, i1, i1, i32) #1
+declare void @llvm.genx.GenISA.LSC2DBlockWrite.v8i32(i64, i32, i32, i32, i32, i32, i32, i32, i32, i32, i1, i1, i32, <8 x i32>) #1
 
 attributes #1 = { nounwind }
 

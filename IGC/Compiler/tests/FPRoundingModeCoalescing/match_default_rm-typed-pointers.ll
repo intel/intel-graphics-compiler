@@ -17,25 +17,25 @@ define spir_kernel void @test(double %src1, double %src2, double %src3, double a
 entry:
 ; CHECK-LABEL: entry:
 ; CHECK:         %fma.rtz.1.arg = fsub double %src1, %src3
-; CHECK:         %fma.rtz.1.result = call double @llvm.genx.GenISA.fma.rtz.f64.f64.f64.f64(double %src1, double %src2, double %fma.rtz.1.arg)
+; CHECK:         %fma.rtz.1.result = call double @llvm.genx.GenISA.fma.rtz.f64(double %src1, double %src2, double %fma.rtz.1.arg)
 ; CHECK:         %tmp.rtz.1 = fadd double %src1, %fma.rtz.1.result
 ; CHECK:         %fma.rtz.2.arg = fsub double %src1, %src3
-; CHECK:         %fma.rtz.2.result = call double @llvm.genx.GenISA.fma.rtz.f64.f64.f64.f64(double %src1, double %fma.rtz.1.result, double %fma.rtz.2.arg)
+; CHECK:         %fma.rtz.2.result = call double @llvm.genx.GenISA.fma.rtz.f64(double %src1, double %fma.rtz.1.result, double %fma.rtz.2.arg)
 ; CHECK:         %tmp.rtz.2 = fadd double %src1, %fma.rtz.2.result
 ; CHECK:         ret void
 
   %fma.rtz.1.arg = fsub double %src1, %src3
-  %fma.rtz.1.result = call double @llvm.genx.GenISA.fma.rtz.f64.f64.f64.f64(double %src1, double %src2, double %fma.rtz.1.arg)
+  %fma.rtz.1.result = call double @llvm.genx.GenISA.fma.rtz.f64(double %src1, double %src2, double %fma.rtz.1.arg)
   %tmp.rtz.1 = fadd double %src1, %fma.rtz.1.result
 
   %fma.rtz.2.arg = fsub double %src1, %src3
-  %fma.rtz.2.result = call double @llvm.genx.GenISA.fma.rtz.f64.f64.f64.f64(double %src1, double %fma.rtz.1.result, double %fma.rtz.2.arg)
+  %fma.rtz.2.result = call double @llvm.genx.GenISA.fma.rtz.f64(double %src1, double %fma.rtz.1.result, double %fma.rtz.2.arg)
   %tmp.rtz.2 = fadd double %src1, %fma.rtz.2.result
 
   ret void
 }
 
-declare double @llvm.genx.GenISA.fma.rtz.f64.f64.f64.f64(double, double, double)
+declare double @llvm.genx.GenISA.fma.rtz.f64(double, double, double)
 
 !igc.functions = !{!0}
 !IGCMetadata = !{!200}

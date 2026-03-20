@@ -20,7 +20,7 @@ define void @test_roundtrip_elimination(i32 %lo, i32 %hi) {
 ;
 ; The pair.to.ptr and addrspacecast remain (they may be used elsewhere or will be
 ; eliminated by DCE)
-; CHECK: call ptr addrspace(1) @llvm.genx.GenISA.pair.to.ptr.p1.i32(i32 %lo, i32 %hi)
+; CHECK: call ptr addrspace(1) @llvm.genx.GenISA.pair.to.ptr.p1(i32 %lo, i32 %hi)
 ; CHECK: addrspacecast
 
 ; Reuse the original %lo directly, no ptr.to.pair call
@@ -31,7 +31,7 @@ define void @test_roundtrip_elimination(i32 %lo, i32 %hi) {
 entry:
   ; Start with lo and hi values
   ; Convert to pointer representation
-  %ptr = call ptr addrspace(1) @llvm.genx.GenISA.pair.to.ptr.p1.i32(i32 %lo, i32 %hi)
+  %ptr = call ptr addrspace(1) @llvm.genx.GenISA.pair.to.ptr.p1(i32 %lo, i32 %hi)
 
   ; Cast to different address space
   %cast = addrspacecast ptr addrspace(1) %ptr to ptr addrspace(3)
@@ -51,7 +51,7 @@ entry:
   ret void
 }
 
-declare ptr addrspace(1) @llvm.genx.GenISA.pair.to.ptr.p1.i32(i32, i32)
+declare ptr addrspace(1) @llvm.genx.GenISA.pair.to.ptr.p1(i32, i32)
 declare void @use.i32.i32(i32, i32)
 
 !igc.functions = !{!0}

@@ -15,7 +15,7 @@
 
 ; CHECK-LABEL: @test_ptrtoint
 ; CHECK:  [[TMP1:%[A-z0-9]*]] = inttoptr i32 %offset1 to ptr addrspace(2490368)
-; CHECK:  [[TMP2:%[A-z0-9]*]] = call ptr addrspace(1) @llvm.genx.GenISA.ldraw.indexed.p1.p2490368p1(ptr addrspace(2490368) [[TMP1]], i32 %offset2, i32 8, i1 false)
+; CHECK:  [[TMP2:%[A-z0-9]*]] = call ptr addrspace(1) @llvm.genx.GenISA.ldraw.indexed.p1.p2490368(ptr addrspace(2490368) [[TMP1]], i32 %offset2, i32 8, i1 false)
 ; CHECK:  [[TMP3:%[A-z0-9]*]] = call { i32, i32 } @llvm.genx.GenISA.ptr.to.pair.p1(ptr addrspace(1) [[TMP2]])
 ; CHECK:  [[TMP4:%[A-z0-9]*]] = extractvalue { i32, i32 } [[TMP3]], 0
 ; CHECK:  [[TMP5:%[A-z0-9]*]] = extractvalue { i32, i32 } [[TMP3]], 1
@@ -25,13 +25,13 @@
 
 define void @test_ptrtoint(i32 %offset1, i32 %offset2) {
   %1 = inttoptr i32 %offset1 to ptr addrspace(2490368)
-  %2 = call ptr addrspace(1) @llvm.genx.GenISA.ldraw.indexed.p1.p2490368p1(ptr addrspace(2490368) %1, i32 %offset2, i32 8, i1 false)
+  %2 = call ptr addrspace(1) @llvm.genx.GenISA.ldraw.indexed.p1.p2490368(ptr addrspace(2490368) %1, i32 %offset2, i32 8, i1 false)
   %3 = ptrtoint ptr addrspace(1) %2 to i64
   call void @use.i64(i64 %3)
   ret void
 }
 
-declare ptr addrspace(1) @llvm.genx.GenISA.ldraw.indexed.p1.p2490368p1(ptr addrspace(2490368), i32, i32, i1) #0
+declare ptr addrspace(1) @llvm.genx.GenISA.ldraw.indexed.p1.p2490368(ptr addrspace(2490368), i32, i32, i1) #0
 
 declare void @use.i64(i64)
 

@@ -80,7 +80,7 @@ entry:
   store i8 4, i8 addrspace(3)* %4, align 2
   %5 = getelementptr inbounds %struct.st_t, %struct.st_t addrspace(3)* @test_fence_st.x, i64 0, i32 3
   store i8 8, i8 addrspace(3)* %5, align 1
-  call void @llvm.genx.GenISA.memoryfence(i1 true, i1 false, i1 false, i1 false, i1 false, i1 false, i1 false, i1 false)
+  call void @llvm.genx.GenISA.memoryfence(i1 true, i1 false, i1 false, i1 false, i1 false, i1 false, i1 false, i1 false, i32 0)
   call void @llvm.genx.GenISA.threadgroupbarrier()
   %6 = getelementptr inbounds %struct.st_t, %struct.st_t addrspace(3)* @test_fence_st.x, i64 0, i32 4
   store i32 1052672, i32 addrspace(3)* %6, align 4
@@ -99,7 +99,7 @@ entry:
 }
 
 ; Function Attrs: convergent nounwind
-declare void @llvm.genx.GenISA.memoryfence(i1, i1, i1, i1, i1, i1, i1, i1)
+declare void @llvm.genx.GenISA.memoryfence(i1, i1, i1, i1, i1, i1, i1, i1, i32)
 
 ; Function Attrs: convergent nounwind
 declare void @llvm.genx.GenISA.threadgroupbarrier()

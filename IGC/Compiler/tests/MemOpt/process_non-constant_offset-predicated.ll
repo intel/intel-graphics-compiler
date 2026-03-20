@@ -34,7 +34,7 @@ entry:
   %sext1 = sext i32 %sub1 to i64
   %gep1 = getelementptr float, ptr addrspace(4) %srcptr, i64 %sext1
   %gepaddr1 = addrspacecast ptr addrspace(4) %gep1 to ptr addrspace(1)
-  %ld1 = call float @llvm.genx.GenISA.PredicatedLoad.f32.p1f32.f32(ptr addrspace(1) %gepaddr1, i64 4, i1 true, float 1.0)
+  %ld1 = call float @llvm.genx.GenISA.PredicatedLoad.f32.p1.f32(ptr addrspace(1) %gepaddr1, i64 4, i1 true, float 1.0)
   %add2 = add nsw i32 %val1, 2
   %sub2 = sub nsw i32 %add2, %val2
   %sext2 = sext i32 %sub2 to i64
@@ -46,25 +46,25 @@ entry:
   %sext3 = sext i32 %sub3 to i64
   %gep3 = getelementptr float, ptr addrspace(4) %srcptr, i64 %sext3
   %gepaddr3 = addrspacecast ptr addrspace(4) %gep3 to ptr addrspace(1)
-  %ld3 = call float @llvm.genx.GenISA.PredicatedLoad.f32.p1f32.f32(ptr addrspace(1) %gepaddr3, i64 4, i1 true, float 3.0)
+  %ld3 = call float @llvm.genx.GenISA.PredicatedLoad.f32.p1.f32(ptr addrspace(1) %gepaddr3, i64 4, i1 true, float 3.0)
   %add4 = add nsw i32 %val3, 1
   %sub4 = sub nsw i32 %add4, %val2
   %sext4 = sext i32 %sub4 to i64
   %gep4 = getelementptr float, ptr addrspace(4) %dstptr, i64 %sext4
   %gepaddr4 = addrspacecast ptr addrspace(4) %gep4 to ptr addrspace(1)
-  call void @llvm.genx.GenISA.PredicatedStore.p1f32.f32(ptr addrspace(1) %gepaddr4, float %ld1, i64 4, i1 true)
+  call void @llvm.genx.GenISA.PredicatedStore.p1.f32(ptr addrspace(1) %gepaddr4, float %ld1, i64 4, i1 true)
   %add5 = add nsw i32 %val3, 2
   %sub5 = sub nsw i32 %add5, %val2
   %sext5 = sext i32 %sub5 to i64
   %gep5 = getelementptr float, ptr addrspace(4) %dstptr, i64 %sext5
   %gepaddr5 = addrspacecast ptr addrspace(4) %gep5 to ptr addrspace(1)
-  call void @llvm.genx.GenISA.PredicatedStore.p1f32.f32(float addrspace(1)* %gepaddr5, float %ld2, i64 4, i1 true)
+  call void @llvm.genx.GenISA.PredicatedStore.p1.f32(float addrspace(1)* %gepaddr5, float %ld2, i64 4, i1 true)
   %add6 = add nsw i32 %val3, 3
   %sub6 = sub nsw i32 %add6, %val2
   %sext6 = sext i32 %sub6 to i64
   %gep6 = getelementptr float, ptr addrspace(4) %dstptr, i64 %sext6
   %gepaddr6 = addrspacecast ptr addrspace(4) %gep6 to ptr addrspace(1)
-  call void @llvm.genx.GenISA.PredicatedStore.p1f32.f32(ptr addrspace(1) %gepaddr6, float %ld3, i64 4, i1 true)
+  call void @llvm.genx.GenISA.PredicatedStore.p1.f32(ptr addrspace(1) %gepaddr6, float %ld3, i64 4, i1 true)
   ret void
 }
 
@@ -93,37 +93,37 @@ entry:
   %sext1 = sext i32 %sub1 to i64
   %gep1 = getelementptr float, ptr addrspace(4) %srcptr, i64 %sext1
   %gepaddr1 = addrspacecast ptr addrspace(4) %gep1 to ptr addrspace(1)
-  %ld1 = call float @llvm.genx.GenISA.PredicatedLoad.f32.p1f32.f32(ptr addrspace(1) %gepaddr1, i64 4, i1 true, float 1.0)
+  %ld1 = call float @llvm.genx.GenISA.PredicatedLoad.f32.p1.f32(ptr addrspace(1) %gepaddr1, i64 4, i1 true, float 1.0)
   %add2 = add nsw i32 %val1, 2
   %sub2 = sub nsw i32 %val2, %add2
   %sext2 = sext i32 %sub2 to i64
   %gep2 = getelementptr float, ptr addrspace(4) %srcptr, i64 %sext2
   %gepaddr2 = addrspacecast ptr addrspace(4) %gep2 to ptr addrspace(1)
-  %ld2 = call float @llvm.genx.GenISA.PredicatedLoad.f32.p1f32.f32(ptr addrspace(1) %gepaddr2, i64 4, i1 true, float 2.0)
+  %ld2 = call float @llvm.genx.GenISA.PredicatedLoad.f32.p1.f32(ptr addrspace(1) %gepaddr2, i64 4, i1 true, float 2.0)
   %add3 = add nsw i32 %val1, 3
   %sub3 = sub nsw i32 %val2, %add3
   %sext3 = sext i32 %sub3 to i64
   %gep3 = getelementptr float, ptr addrspace(4) %srcptr, i64 %sext3
   %gepaddr3 = addrspacecast ptr addrspace(4) %gep3 to ptr addrspace(1)
-  %ld3 = call float @llvm.genx.GenISA.PredicatedLoad.f32.p1f32.f32(ptr addrspace(1) %gepaddr3, i64 4, i1 true, float 3.0)
+  %ld3 = call float @llvm.genx.GenISA.PredicatedLoad.f32.p1.f32(ptr addrspace(1) %gepaddr3, i64 4, i1 true, float 3.0)
   %add4 = add nsw i32 %val3, 1
   %sub4 = sub nsw i32 %val2, %add4
   %sext4 = sext i32 %sub4 to i64
   %gep4 = getelementptr float, ptr addrspace(4) %dstptr, i64 %sext4
   %gepaddr4 = addrspacecast ptr addrspace(4) %gep4 to ptr addrspace(1)
-  call void @llvm.genx.GenISA.PredicatedStore.p1f32.f32(ptr addrspace(1) %gepaddr4, float %ld1, i64 4, i1 true)
+  call void @llvm.genx.GenISA.PredicatedStore.p1.f32(ptr addrspace(1) %gepaddr4, float %ld1, i64 4, i1 true)
   %add5 = add nsw i32 %val3, 2
   %sub5 = sub nsw i32 %val2, %add5
   %sext5 = sext i32 %sub5 to i64
   %gep5 = getelementptr float, ptr addrspace(4) %dstptr, i64 %sext5
   %gepaddr5 = addrspacecast ptr addrspace(4) %gep5 to ptr addrspace(1)
-  call void @llvm.genx.GenISA.PredicatedStore.p1f32.f32(ptr addrspace(1) %gepaddr5, float %ld2, i64 4, i1 true)
+  call void @llvm.genx.GenISA.PredicatedStore.p1.f32(ptr addrspace(1) %gepaddr5, float %ld2, i64 4, i1 true)
   %add6 = add nsw i32 %val3, 3
   %sub6 = sub nsw i32 %val2, %add6
   %sext6 = sext i32 %sub6 to i64
   %gep6 = getelementptr float, ptr addrspace(4) %dstptr, i64 %sext6
   %gepaddr6 = addrspacecast ptr addrspace(4) %gep6 to ptr addrspace(1)
-  call void @llvm.genx.GenISA.PredicatedStore.p1f32.f32(ptr addrspace(1) %gepaddr6, float %ld3, i64 4, i1 true)
+  call void @llvm.genx.GenISA.PredicatedStore.p1.f32(ptr addrspace(1) %gepaddr6, float %ld3, i64 4, i1 true)
   ret void
 }
 
@@ -152,37 +152,37 @@ entry:
   %sext1 = sext i32 %add1 to i64
   %gep1 = getelementptr float, ptr addrspace(4) %srcptr, i64 %sext1
   %gepaddr1 = addrspacecast ptr addrspace(4) %gep1 to ptr addrspace(1)
-  %ld1 = call float @llvm.genx.GenISA.PredicatedLoad.f32.p1f32.f32(ptr addrspace(1) %gepaddr1, i64 4, i1 true, float 1.0)
+  %ld1 = call float @llvm.genx.GenISA.PredicatedLoad.f32.p1.f32(ptr addrspace(1) %gepaddr1, i64 4, i1 true, float 1.0)
   %sub2 = sub nsw i32 %val1, 2
   %add2 = add nsw i32 %sub2, %val2
   %sext2 = sext i32 %add2 to i64
   %gep2 = getelementptr float, ptr addrspace(4) %srcptr, i64 %sext2
   %gepaddr2 = addrspacecast ptr addrspace(4) %gep2 to ptr addrspace(1)
-  %ld2 = call float @llvm.genx.GenISA.PredicatedLoad.f32.p1f32.f32(ptr addrspace(1) %gepaddr2, i64 4, i1 true, float 2.0)
+  %ld2 = call float @llvm.genx.GenISA.PredicatedLoad.f32.p1.f32(ptr addrspace(1) %gepaddr2, i64 4, i1 true, float 2.0)
   %sub3 = sub nsw i32 %val1, 3
   %add3 = add nsw i32 %sub3, %val2
   %sext3 = sext i32 %add3 to i64
   %gep3 = getelementptr float, ptr addrspace(4) %srcptr, i64 %sext3
   %gepaddr3 = addrspacecast ptr addrspace(4) %gep3 to ptr addrspace(1)
-  %ld3 = call float @llvm.genx.GenISA.PredicatedLoad.f32.p1f32.f32(ptr addrspace(1) %gepaddr3, i64 4, i1 true, float 3.0)
+  %ld3 = call float @llvm.genx.GenISA.PredicatedLoad.f32.p1.f32(ptr addrspace(1) %gepaddr3, i64 4, i1 true, float 3.0)
   %sub4 = sub nsw i32 %val3, 1
   %add4 = add nsw i32 %sub4, %val2
   %sext4 = sext i32 %add4 to i64
   %gep4 = getelementptr float, ptr addrspace(4) %dstptr, i64 %sext4
   %gepaddr4 = addrspacecast ptr addrspace(4) %gep4 to ptr addrspace(1)
-  call void @llvm.genx.GenISA.PredicatedStore.p1f32.f32(ptr addrspace(1) %gepaddr4, float %ld1, i64 4, i1 true)
+  call void @llvm.genx.GenISA.PredicatedStore.p1.f32(ptr addrspace(1) %gepaddr4, float %ld1, i64 4, i1 true)
   %sub5 = sub nsw i32 %val3, 2
   %add5 = add nsw i32 %sub5, %val2
   %sext5 = sext i32 %add5 to i64
   %gep5 = getelementptr float, ptr addrspace(4) %dstptr, i64 %sext5
   %gepaddr5 = addrspacecast ptr addrspace(4) %gep5 to ptr addrspace(1)
-  call void @llvm.genx.GenISA.PredicatedStore.p1f32.f32(ptr addrspace(1) %gepaddr5, float %ld2, i64 4, i1 true)
+  call void @llvm.genx.GenISA.PredicatedStore.p1.f32(ptr addrspace(1) %gepaddr5, float %ld2, i64 4, i1 true)
   %sub6 = sub nsw i32 %val3, 3
   %add6 = add nsw i32 %sub6, %val2
   %sext6 = sext i32 %add6 to i64
   %gep6 = getelementptr float, ptr addrspace(4) %dstptr, i64 %sext6
   %gepaddr6 = addrspacecast ptr addrspace(4) %gep6 to ptr addrspace(1)
-  call void @llvm.genx.GenISA.PredicatedStore.p1f32.f32(ptr addrspace(1) %gepaddr6, float %ld3, i64 4, i1 true)
+  call void @llvm.genx.GenISA.PredicatedStore.p1.f32(ptr addrspace(1) %gepaddr6, float %ld3, i64 4, i1 true)
   ret void
 }
 
@@ -213,7 +213,7 @@ entry:
   %sext1 = sext i32 %sub1 to i64
   %gep1 = getelementptr float, ptr addrspace(4) %srcptr, i64 %sext1
   %gepaddr1 = addrspacecast ptr addrspace(4) %gep1 to ptr addrspace(1)
-  %ld1 = call float @llvm.genx.GenISA.PredicatedLoad.f32.p1f32.f32(ptr addrspace(1) %gepaddr1, i64 4, i1 true, float 1.000000e+00)
+  %ld1 = call float @llvm.genx.GenISA.PredicatedLoad.f32.p1.f32(ptr addrspace(1) %gepaddr1, i64 4, i1 true, float 1.000000e+00)
   %add2 = add nsw i32 %val1, -2
   %sub2 = sub nsw i32 %add2, %val2
   %sext2 = sext i32 %sub2 to i64
@@ -225,25 +225,25 @@ entry:
   %sext3 = sext i32 %sub3 to i64
   %gep3 = getelementptr float, ptr addrspace(4) %srcptr, i64 %sext3
   %gepaddr3 = addrspacecast ptr addrspace(4) %gep3 to ptr addrspace(1)
-  %ld3 = call float @llvm.genx.GenISA.PredicatedLoad.f32.p1f32.f32(ptr addrspace(1) %gepaddr3, i64 4, i1 true, float 3.000000e+00)
+  %ld3 = call float @llvm.genx.GenISA.PredicatedLoad.f32.p1.f32(ptr addrspace(1) %gepaddr3, i64 4, i1 true, float 3.000000e+00)
   %add4 = add nsw i32 %val3, -4
   %sub4 = sub nsw i32 %add4, %val2
   %sext4 = sext i32 %sub4 to i64
   %gep4 = getelementptr float, ptr addrspace(4) %dstptr, i64 %sext4
   %gepaddr4 = addrspacecast ptr addrspace(4) %gep4 to ptr addrspace(1)
-  call void @llvm.genx.GenISA.PredicatedStore.p1f32.f32(ptr addrspace(1) %gepaddr4, float %ld1, i64 4, i1 true)
+  call void @llvm.genx.GenISA.PredicatedStore.p1.f32(ptr addrspace(1) %gepaddr4, float %ld1, i64 4, i1 true)
   %add5 = add nsw i32 %val3, -5
   %sub5 = sub nsw i32 %add5, %val2
   %sext5 = sext i32 %sub5 to i64
   %gep5 = getelementptr float, ptr addrspace(4) %dstptr, i64 %sext5
   %gepaddr5 = addrspacecast ptr addrspace(4) %gep5 to ptr addrspace(1)
-  call void @llvm.genx.GenISA.PredicatedStore.p1f32.f32(float addrspace(1)* %gepaddr5, float %ld2, i64 4, i1 true)
+  call void @llvm.genx.GenISA.PredicatedStore.p1.f32(float addrspace(1)* %gepaddr5, float %ld2, i64 4, i1 true)
   %add6 = add nsw i32 %val3, -6
   %sub6 = sub nsw i32 %add6, %val2
   %sext6 = sext i32 %sub6 to i64
   %gep6 = getelementptr float, ptr addrspace(4) %dstptr, i64 %sext6
   %gepaddr6 = addrspacecast ptr addrspace(4) %gep6 to ptr addrspace(1)
-  call void @llvm.genx.GenISA.PredicatedStore.p1f32.f32(ptr addrspace(1) %gepaddr6, float %ld3, i64 4, i1 true)
+  call void @llvm.genx.GenISA.PredicatedStore.p1.f32(ptr addrspace(1) %gepaddr6, float %ld3, i64 4, i1 true)
   ret void
 }
 
@@ -274,7 +274,7 @@ entry:
   %sext1 = sext i32 %sub1 to i64
   %gep1 = getelementptr float, ptr addrspace(4) %srcptr, i64 %sext1
   %gepaddr1 = addrspacecast ptr addrspace(4) %gep1 to ptr addrspace(1)
-  %ld1 = call float @llvm.genx.GenISA.PredicatedLoad.f32.p1f32.f32(ptr addrspace(1) %gepaddr1, i64 4, i1 true, float 1.000000e+00)
+  %ld1 = call float @llvm.genx.GenISA.PredicatedLoad.f32.p1.f32(ptr addrspace(1) %gepaddr1, i64 4, i1 true, float 1.000000e+00)
   %add2 = add nsw i32 -2, %val1
   %sub2 = sub nsw i32 %val2, %add2
   %sext2 = sext i32 %sub2 to i64
@@ -286,25 +286,25 @@ entry:
   %sext3 = sext i32 %sub3 to i64
   %gep3 = getelementptr float, ptr addrspace(4) %srcptr, i64 %sext3
   %gepaddr3 = addrspacecast ptr addrspace(4) %gep3 to ptr addrspace(1)
-  %ld3 = call float @llvm.genx.GenISA.PredicatedLoad.f32.p1f32.f32(ptr addrspace(1) %gepaddr3, i64 4, i1 true, float 3.000000e+00)
+  %ld3 = call float @llvm.genx.GenISA.PredicatedLoad.f32.p1.f32(ptr addrspace(1) %gepaddr3, i64 4, i1 true, float 3.000000e+00)
   %add4 = add nsw i32 -4, %val3
   %sub4 = sub nsw i32 %val2, %add4
   %sext4 = sext i32 %sub4 to i64
   %gep4 = getelementptr float, ptr addrspace(4) %dstptr, i64 %sext4
   %gepaddr4 = addrspacecast ptr addrspace(4) %gep4 to ptr addrspace(1)
-  call void @llvm.genx.GenISA.PredicatedStore.p1f32.f32(ptr addrspace(1) %gepaddr4, float %ld1, i64 4, i1 true)
+  call void @llvm.genx.GenISA.PredicatedStore.p1.f32(ptr addrspace(1) %gepaddr4, float %ld1, i64 4, i1 true)
   %add5 = add nsw i32 -5, %val3
   %sub5 = sub nsw i32 %val2, %add5
   %sext5 = sext i32 %sub5 to i64
   %gep5 = getelementptr float, ptr addrspace(4) %dstptr, i64 %sext5
   %gepaddr5 = addrspacecast ptr addrspace(4) %gep5 to ptr addrspace(1)
-  call void @llvm.genx.GenISA.PredicatedStore.p1f32.f32(float addrspace(1)* %gepaddr5, float %ld2, i64 4, i1 true)
+  call void @llvm.genx.GenISA.PredicatedStore.p1.f32(float addrspace(1)* %gepaddr5, float %ld2, i64 4, i1 true)
   %add6 = add nsw i32 -6, %val3
   %sub6 = sub nsw i32 %val2, %add6
   %sext6 = sext i32 %sub6 to i64
   %gep6 = getelementptr float, ptr addrspace(4) %dstptr, i64 %sext6
   %gepaddr6 = addrspacecast ptr addrspace(4) %gep6 to ptr addrspace(1)
-  call void @llvm.genx.GenISA.PredicatedStore.p1f32.f32(ptr addrspace(1) %gepaddr6, float %ld3, i64 4, i1 true)
+  call void @llvm.genx.GenISA.PredicatedStore.p1.f32(ptr addrspace(1) %gepaddr6, float %ld3, i64 4, i1 true)
   ret void
 }
 
@@ -321,48 +321,48 @@ entry:
   %sext1 = sext i32 %sub1 to i64
   %gep1 = getelementptr float, ptr addrspace(4) %srcptr, i64 %sext1
   %gepaddr1 = addrspacecast ptr addrspace(4) %gep1 to ptr addrspace(1)
-  %ld1 = call float @llvm.genx.GenISA.PredicatedLoad.f32.p1f32.f32(ptr addrspace(1) %gepaddr1, i64 4, i1 true, float 1.0)
+  %ld1 = call float @llvm.genx.GenISA.PredicatedLoad.f32.p1.f32(ptr addrspace(1) %gepaddr1, i64 4, i1 true, float 1.0)
   %add2 = add i32 %val1, 2
   %sub2 = sub i32 %add2, %val2
   %sext2 = sext i32 %sub2 to i64
   %gep2 = getelementptr float, ptr addrspace(4) %srcptr, i64 %sext2
   %gepaddr2 = addrspacecast ptr addrspace(4) %gep2 to ptr addrspace(1)
-  %ld2 = call float @llvm.genx.GenISA.PredicatedLoad.f32.p1f32.f32(ptr addrspace(1) %gepaddr2, i64 4, i1 true, float 2.0)
+  %ld2 = call float @llvm.genx.GenISA.PredicatedLoad.f32.p1.f32(ptr addrspace(1) %gepaddr2, i64 4, i1 true, float 2.0)
   %add3 = add i32 %val1, 3
   %sub3 = sub i32 %add3, %val2
   %sext3 = sext i32 %sub3 to i64
   %gep3 = getelementptr float, ptr addrspace(4) %srcptr, i64 %sext3
   %gepaddr3 = addrspacecast ptr addrspace(4) %gep3 to ptr addrspace(1)
-  %ld3 = call float @llvm.genx.GenISA.PredicatedLoad.f32.p1f32.f32(ptr addrspace(1) %gepaddr3, i64 4, i1 true, float 3.0)
+  %ld3 = call float @llvm.genx.GenISA.PredicatedLoad.f32.p1.f32(ptr addrspace(1) %gepaddr3, i64 4, i1 true, float 3.0)
   %add4 = add i32 %val3, 1
   %sub4 = sub i32 %add4, %val2
   %sext4 = sext i32 %sub4 to i64
   %gep4 = getelementptr float, ptr addrspace(4) %dstptr, i64 %sext4
   %gepaddr4 = addrspacecast ptr addrspace(4) %gep4 to ptr addrspace(1)
-  call void @llvm.genx.GenISA.PredicatedStore.p1f32.f32(ptr addrspace(1) %gepaddr4, float %ld1, i64 4, i1 true)
+  call void @llvm.genx.GenISA.PredicatedStore.p1.f32(ptr addrspace(1) %gepaddr4, float %ld1, i64 4, i1 true)
   %add5 = add i32 %val3, 2
   %sub5 = sub i32 %add5, %val2
   %sext5 = sext i32 %sub5 to i64
   %gep5 = getelementptr float, ptr addrspace(4) %dstptr, i64 %sext5
   %gepaddr5 = addrspacecast ptr addrspace(4) %gep5 to ptr addrspace(1)
-  call void @llvm.genx.GenISA.PredicatedStore.p1f32.f32(ptr addrspace(1) %gepaddr5, float %ld2, i64 4, i1 true)
+  call void @llvm.genx.GenISA.PredicatedStore.p1.f32(ptr addrspace(1) %gepaddr5, float %ld2, i64 4, i1 true)
   %add6 = add i32 %val3, 3
   %sub6 = sub i32 %add6, %val2
   %sext6 = sext i32 %sub6 to i64
   %gep6 = getelementptr float, ptr addrspace(4) %dstptr, i64 %sext6
   %gepaddr6 = addrspacecast ptr addrspace(4) %gep6 to ptr addrspace(1)
-  call void @llvm.genx.GenISA.PredicatedStore.p1f32.f32(ptr addrspace(1) %gepaddr6, float %ld3, i64 4, i1 true)
+  call void @llvm.genx.GenISA.PredicatedStore.p1.f32(ptr addrspace(1) %gepaddr6, float %ld3, i64 4, i1 true)
   ret void
 }
 
 ; Don't optimize loads/stores if constant offset can't be derived.
 ; CHECK-LABEL: define void @f6
-; CHECK: %ld1 = call float @llvm.genx.GenISA.PredicatedLoad.f32.p1f32.f32(ptr addrspace(1) %gepaddr1, i64 4, i1 true, float 1.000000e+00)
-; CHECK: %ld2 = call float @llvm.genx.GenISA.PredicatedLoad.f32.p1f32.f32(ptr addrspace(1) %gepaddr2, i64 4, i1 true, float 2.000000e+00)
-; CHECK: %ld3 = call float @llvm.genx.GenISA.PredicatedLoad.f32.p1f32.f32(ptr addrspace(1) %gepaddr3, i64 4, i1 true, float 3.000000e+00)
-; CHECK: call void @llvm.genx.GenISA.PredicatedStore.p1f32.f32(ptr addrspace(1) %gepaddr4, float %ld1, i64 4, i1 true)
-; CHECK: call void @llvm.genx.GenISA.PredicatedStore.p1f32.f32(ptr addrspace(1) %gepaddr5, float %ld2, i64 4, i1 true)
-; CHECK: call void @llvm.genx.GenISA.PredicatedStore.p1f32.f32(ptr addrspace(1) %gepaddr6, float %ld3, i64 4, i1 true)
+; CHECK: %ld1 = call float @llvm.genx.GenISA.PredicatedLoad.f32.p1.f32(ptr addrspace(1) %gepaddr1, i64 4, i1 true, float 1.000000e+00)
+; CHECK: %ld2 = call float @llvm.genx.GenISA.PredicatedLoad.f32.p1.f32(ptr addrspace(1) %gepaddr2, i64 4, i1 true, float 2.000000e+00)
+; CHECK: %ld3 = call float @llvm.genx.GenISA.PredicatedLoad.f32.p1.f32(ptr addrspace(1) %gepaddr3, i64 4, i1 true, float 3.000000e+00)
+; CHECK: call void @llvm.genx.GenISA.PredicatedStore.p1.f32(ptr addrspace(1) %gepaddr4, float %ld1, i64 4, i1 true)
+; CHECK: call void @llvm.genx.GenISA.PredicatedStore.p1.f32(ptr addrspace(1) %gepaddr5, float %ld2, i64 4, i1 true)
+; CHECK: call void @llvm.genx.GenISA.PredicatedStore.p1.f32(ptr addrspace(1) %gepaddr6, float %ld3, i64 4, i1 true)
 ; CHECK: ret void
 ;
 define void @f6(i64 %dst, i64 %src, i32 %val1, i32 %val2, i32 %val3, i32 %val4, i32 %val5, i32 %val6) {
@@ -374,48 +374,48 @@ entry:
   %sext1 = sext i32 %sub1 to i64
   %gep1 = getelementptr float, ptr addrspace(4) %srcptr, i64 %sext1
   %gepaddr1 = addrspacecast ptr addrspace(4) %gep1 to ptr addrspace(1)
-  %ld1 = call float @llvm.genx.GenISA.PredicatedLoad.f32.p1f32.f32(ptr addrspace(1) %gepaddr1, i64 4, i1 true, float 1.000000e+00)
+  %ld1 = call float @llvm.genx.GenISA.PredicatedLoad.f32.p1.f32(ptr addrspace(1) %gepaddr1, i64 4, i1 true, float 1.000000e+00)
   %add2 = add nsw i32 %val5, 80
   %sub2 = sub nsw i32 %add2, %val2
   %sext2 = sext i32 %sub2 to i64
   %gep2 = getelementptr float, ptr addrspace(4) %srcptr, i64 %sext2
   %gepaddr2 = addrspacecast ptr addrspace(4) %gep2 to ptr addrspace(1)
-  %ld2 = call float @llvm.genx.GenISA.PredicatedLoad.f32.p1f32.f32(ptr addrspace(1) %gepaddr2, i64 4, i1 true, float 2.000000e+00)
+  %ld2 = call float @llvm.genx.GenISA.PredicatedLoad.f32.p1.f32(ptr addrspace(1) %gepaddr2, i64 4, i1 true, float 2.000000e+00)
   %add3 = add nsw i32 %val6, 80
   %sub3 = sub nsw i32 %add3, %val2
   %sext3 = sext i32 %sub3 to i64
   %gep3 = getelementptr float, ptr addrspace(4) %srcptr, i64 %sext3
   %gepaddr3 = addrspacecast ptr addrspace(4) %gep3 to ptr addrspace(1)
-  %ld3 = call float @llvm.genx.GenISA.PredicatedLoad.f32.p1f32.f32(ptr addrspace(1) %gepaddr3, i64 4, i1 true, float 3.000000e+00)
+  %ld3 = call float @llvm.genx.GenISA.PredicatedLoad.f32.p1.f32(ptr addrspace(1) %gepaddr3, i64 4, i1 true, float 3.000000e+00)
   %add4 = add nsw i32 %val4, 80
   %sub4 = sub nsw i32 %add4, %val2
   %sext4 = sext i32 %sub4 to i64
   %gep4 = getelementptr float, ptr addrspace(4) %dstptr, i64 %sext4
   %gepaddr4 = addrspacecast ptr addrspace(4) %gep4 to ptr addrspace(1)
-  call void @llvm.genx.GenISA.PredicatedStore.p1f32.f32(ptr addrspace(1) %gepaddr4, float %ld1, i64 4, i1 true)
+  call void @llvm.genx.GenISA.PredicatedStore.p1.f32(ptr addrspace(1) %gepaddr4, float %ld1, i64 4, i1 true)
   %add5 = add nsw i32 %val5, 80
   %sub5 = sub nsw i32 %add5, %val2
   %sext5 = sext i32 %sub5 to i64
   %gep5 = getelementptr float, ptr addrspace(4) %dstptr, i64 %sext5
   %gepaddr5 = addrspacecast ptr addrspace(4) %gep5 to ptr addrspace(1)
-  call void @llvm.genx.GenISA.PredicatedStore.p1f32.f32(ptr addrspace(1) %gepaddr5, float %ld2, i64 4, i1 true)
+  call void @llvm.genx.GenISA.PredicatedStore.p1.f32(ptr addrspace(1) %gepaddr5, float %ld2, i64 4, i1 true)
   %add6 = add nsw i32 %val6, 80
   %sub6 = sub nsw i32 %add6, %val2
   %sext6 = sext i32 %sub6 to i64
   %gep6 = getelementptr float, ptr addrspace(4) %dstptr, i64 %sext6
   %gepaddr6 = addrspacecast ptr addrspace(4) %gep6 to ptr addrspace(1)
-  call void @llvm.genx.GenISA.PredicatedStore.p1f32.f32(ptr addrspace(1) %gepaddr6, float %ld3, i64 4, i1 true)
+  call void @llvm.genx.GenISA.PredicatedStore.p1.f32(ptr addrspace(1) %gepaddr6, float %ld3, i64 4, i1 true)
   ret void
 }
 
 ; Don't optimize loads/stores if constant offset can't be derived.
 ; CHECK-LABEL: define void @f7
-; CHECK: %ld1 = call float @llvm.genx.GenISA.PredicatedLoad.f32.p1f32.f32(ptr addrspace(1) %gepaddr1, i64 4, i1 true, float 1.000000e+00)
-; CHECK: %ld2 = call float @llvm.genx.GenISA.PredicatedLoad.f32.p1f32.f32(ptr addrspace(1) %gepaddr2, i64 4, i1 true, float 2.000000e+00)
-; CHECK: %ld3 = call float @llvm.genx.GenISA.PredicatedLoad.f32.p1f32.f32(ptr addrspace(1) %gepaddr3, i64 4, i1 true, float 3.000000e+00)
-; CHECK: call void @llvm.genx.GenISA.PredicatedStore.p1f32.f32(ptr addrspace(1) %gepaddr4, float %ld1, i64 4, i1 true)
-; CHECK: call void @llvm.genx.GenISA.PredicatedStore.p1f32.f32(ptr addrspace(1) %gepaddr5, float %ld2, i64 4, i1 true)
-; CHECK: call void @llvm.genx.GenISA.PredicatedStore.p1f32.f32(ptr addrspace(1) %gepaddr6, float %ld3, i64 4, i1 true)
+; CHECK: %ld1 = call float @llvm.genx.GenISA.PredicatedLoad.f32.p1.f32(ptr addrspace(1) %gepaddr1, i64 4, i1 true, float 1.000000e+00)
+; CHECK: %ld2 = call float @llvm.genx.GenISA.PredicatedLoad.f32.p1.f32(ptr addrspace(1) %gepaddr2, i64 4, i1 true, float 2.000000e+00)
+; CHECK: %ld3 = call float @llvm.genx.GenISA.PredicatedLoad.f32.p1.f32(ptr addrspace(1) %gepaddr3, i64 4, i1 true, float 3.000000e+00)
+; CHECK: call void @llvm.genx.GenISA.PredicatedStore.p1.f32(ptr addrspace(1) %gepaddr4, float %ld1, i64 4, i1 true)
+; CHECK: call void @llvm.genx.GenISA.PredicatedStore.p1.f32(ptr addrspace(1) %gepaddr5, float %ld2, i64 4, i1 true)
+; CHECK: call void @llvm.genx.GenISA.PredicatedStore.p1.f32(ptr addrspace(1) %gepaddr6, float %ld3, i64 4, i1 true)
 ; CHECK: ret void
 ;
 define void @f7(i64 %dst, i64 %src, i32 %val1, i32 %val2, i32 %val3, i32 %val4, i32 %val5, i32 %val6) {
@@ -427,46 +427,46 @@ entry:
   %sext1 = sext i32 %sub1 to i64
   %gep1 = getelementptr float, ptr addrspace(4) %srcptr, i64 %sext1
   %gepaddr1 = addrspacecast ptr addrspace(4) %gep1 to ptr addrspace(1)
-  %ld1 = call float @llvm.genx.GenISA.PredicatedLoad.f32.p1f32.f32(ptr addrspace(1) %gepaddr1, i64 4, i1 true, float 1.000000e+00)
+  %ld1 = call float @llvm.genx.GenISA.PredicatedLoad.f32.p1.f32(ptr addrspace(1) %gepaddr1, i64 4, i1 true, float 1.000000e+00)
   %add2 = add nsw i32 %val5, %val1
   %sub2 = sub nsw i32 %add2, %val2
   %sext2 = sext i32 %sub2 to i64
   %gep2 = getelementptr float, ptr addrspace(4) %srcptr, i64 %sext2
   %gepaddr2 = addrspacecast ptr addrspace(4) %gep2 to ptr addrspace(1)
-  %ld2 = call float @llvm.genx.GenISA.PredicatedLoad.f32.p1f32.f32(ptr addrspace(1) %gepaddr2, i64 4, i1 true, float 2.000000e+00)
+  %ld2 = call float @llvm.genx.GenISA.PredicatedLoad.f32.p1.f32(ptr addrspace(1) %gepaddr2, i64 4, i1 true, float 2.000000e+00)
   %add3 = add nsw i32 %val6, %val1
   %sub3 = sub nsw i32 %add3, %val2
   %sext3 = sext i32 %sub3 to i64
   %gep3 = getelementptr float, ptr addrspace(4) %srcptr, i64 %sext3
   %gepaddr3 = addrspacecast ptr addrspace(4) %gep3 to ptr addrspace(1)
-  %ld3 = call float @llvm.genx.GenISA.PredicatedLoad.f32.p1f32.f32(ptr addrspace(1) %gepaddr3, i64 4, i1 true, float 3.000000e+00)
+  %ld3 = call float @llvm.genx.GenISA.PredicatedLoad.f32.p1.f32(ptr addrspace(1) %gepaddr3, i64 4, i1 true, float 3.000000e+00)
   %add4 = add nsw i32 %val4, %val3
   %sub4 = sub nsw i32 %add4, %val2
   %sext4 = sext i32 %sub4 to i64
   %gep4 = getelementptr float, ptr addrspace(4) %dstptr, i64 %sext4
   %gepaddr4 = addrspacecast ptr addrspace(4) %gep4 to ptr addrspace(1)
-  call void @llvm.genx.GenISA.PredicatedStore.p1f32.f32(ptr addrspace(1) %gepaddr4, float %ld1, i64 4, i1 true)
+  call void @llvm.genx.GenISA.PredicatedStore.p1.f32(ptr addrspace(1) %gepaddr4, float %ld1, i64 4, i1 true)
   %add5 = add nsw i32 %val5, %val3
   %sub5 = sub nsw i32 %add5, %val2
   %sext5 = sext i32 %sub5 to i64
   %gep5 = getelementptr float, ptr addrspace(4) %dstptr, i64 %sext5
   %gepaddr5 = addrspacecast ptr addrspace(4) %gep5 to ptr addrspace(1)
-  call void @llvm.genx.GenISA.PredicatedStore.p1f32.f32(ptr addrspace(1) %gepaddr5, float %ld2, i64 4, i1 true)
+  call void @llvm.genx.GenISA.PredicatedStore.p1.f32(ptr addrspace(1) %gepaddr5, float %ld2, i64 4, i1 true)
   %add6 = add nsw i32 %val6, %val3
   %sub6 = sub nsw i32 %add6, %val2
   %sext6 = sext i32 %sub6 to i64
   %gep6 = getelementptr float, ptr addrspace(4) %dstptr, i64 %sext6
   %gepaddr6 = addrspacecast ptr addrspace(4) %gep6 to ptr addrspace(1)
-  call void @llvm.genx.GenISA.PredicatedStore.p1f32.f32(ptr addrspace(1) %gepaddr6, float %ld3, i64 4, i1 true)
+  call void @llvm.genx.GenISA.PredicatedStore.p1.f32(ptr addrspace(1) %gepaddr6, float %ld3, i64 4, i1 true)
   ret void
 }
 
 ; Function Attrs: nounwind readonly
-declare float @llvm.genx.GenISA.PredicatedLoad.f32.p1f32.f32(ptr addrspace(1), i64, i1, float) #0
+declare float @llvm.genx.GenISA.PredicatedLoad.f32.p1.f32(ptr addrspace(1), i64, i1, float) #0
 ; Function Attrs: nounwind readonly
 declare float @llvm.genx.GenISA.PredicatedLoad.f32.p0f32.f32(float addrspace(1)*, i64, i1, float) #0
 
-declare void @llvm.genx.GenISA.PredicatedStore.p1f32.f32(ptr addrspace(1), float, i64, i1)
+declare void @llvm.genx.GenISA.PredicatedStore.p1.f32(ptr addrspace(1), float, i64, i1)
 
 attributes #0 = { nounwind readonly }
 

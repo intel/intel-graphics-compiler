@@ -9,9 +9,9 @@
 ; REQUIRES: llvm-14-plus
 ; RUN: igc_opt --opaque-pointers -decompose-2d-block-funcs-with-hoisting -dce -platformbmg -S < %s 2>&1 | FileCheck %s
 
-declare void @llvm.genx.GenISA.LSC2DBlockPrefetch.p0(i64, i32, i32, i32, i32, i32, i32, i32, i32, i32, i1, i1, i32)
-declare <16 x i32> @llvm.genx.GenISA.LSC2DBlockRead.p0(i64, i32, i32, i32, i32, i32, i32, i32, i32, i32, i1, i1, i32)
-declare void @llvm.genx.GenISA.LSC2DBlockWrite.p0(i64, i32, i32, i32, i32, i32, i32, i32, i32, i32, i1, i1, i32, <8 x i32>)
+declare void @llvm.genx.GenISA.LSC2DBlockPrefetch(i64, i32, i32, i32, i32, i32, i32, i32, i32, i32, i1, i1, i32)
+declare <16 x i32> @llvm.genx.GenISA.LSC2DBlockRead.v16i32(i64, i32, i32, i32, i32, i32, i32, i32, i32, i32, i1, i1, i32)
+declare void @llvm.genx.GenISA.LSC2DBlockWrite.v8i32(i64, i32, i32, i32, i32, i32, i32, i32, i32, i32, i1, i1, i32, <8 x i32>)
 
 ; CHECK-LABEL: entry:
 ; CHECK: [[PAYLOAD:%.+]] = call ptr @llvm.genx.GenISA.LSC2DBlockCreateAddrPayload.p0(i64 %off, i32 %width, i32 %height, i32 %pitch, i32 0, i32 0, i32 %tileWidth, i32 %tileHeight, i32 %vNumBlocks)
@@ -30,9 +30,9 @@ body:
   %phi_node1 = phi i32 [ %offsetX, %entry ], [ %phi_offsetX, %body ]
   %phi_node2 = phi i32 [ %offsetY, %entry ], [ %phi_offsetY, %body ]
   %Nm1 = phi i32 [ %N, %entry ], [ %Nm1, %body ]
-  %0 = call <16 x i32> @llvm.genx.GenISA.LSC2DBlockRead.p0(i64 %off, i32 %width, i32 %height, i32 %pitch, i32 %phi_node1, i32 %phi_node2, i32 %elemSize, i32 %tileWidth, i32 %tileHeight, i32 %vNumBlocks, i1 false, i1 true, i32 11)
-  %1 = call <16 x i32> @llvm.genx.GenISA.LSC2DBlockRead.p0(i64 %off, i32 %width, i32 %height, i32 %pitch, i32 %phi_node1, i32 %phi_node2, i32 %elemSize, i32 %tileWidth, i32 %tileHeight, i32 %vNumBlocks, i1 false, i1 true, i32 11)
-  %2 = call <16 x i32> @llvm.genx.GenISA.LSC2DBlockRead.p0(i64 %off, i32 %width, i32 %height, i32 %pitch, i32 %phi_node1, i32 %phi_node2, i32 %elemSize, i32 %tileWidth, i32 %tileHeight, i32 %vNumBlocks, i1 false, i1 true, i32 11)
+  %0 = call <16 x i32> @llvm.genx.GenISA.LSC2DBlockRead.v16i32(i64 %off, i32 %width, i32 %height, i32 %pitch, i32 %phi_node1, i32 %phi_node2, i32 %elemSize, i32 %tileWidth, i32 %tileHeight, i32 %vNumBlocks, i1 false, i1 true, i32 11)
+  %1 = call <16 x i32> @llvm.genx.GenISA.LSC2DBlockRead.v16i32(i64 %off, i32 %width, i32 %height, i32 %pitch, i32 %phi_node1, i32 %phi_node2, i32 %elemSize, i32 %tileWidth, i32 %tileHeight, i32 %vNumBlocks, i1 false, i1 true, i32 11)
+  %2 = call <16 x i32> @llvm.genx.GenISA.LSC2DBlockRead.v16i32(i64 %off, i32 %width, i32 %height, i32 %pitch, i32 %phi_node1, i32 %phi_node2, i32 %elemSize, i32 %tileWidth, i32 %tileHeight, i32 %vNumBlocks, i1 false, i1 true, i32 11)
   %phi_offsetX = add i32 %phi_node1, 32
   %phi_offsetY = add i32 %phi_node2, 64
   %success = icmp eq i32 %Nm1, 0
@@ -64,9 +64,9 @@ body:
   %phi_node2_shifted1 = add i32 %phi_node2, 22
   %phi_node1_shifted2 = add i32 %phi_node1, 33
   %phi_node2_shifted2 = add i32 %phi_node2, 44
-  %0 = call <16 x i32> @llvm.genx.GenISA.LSC2DBlockRead.p0(i64 %off, i32 %width, i32 %height, i32 %pitch, i32 %phi_node1, i32 %phi_node2, i32 %elemSize, i32 %tileWidth, i32 %tileHeight, i32 %vNumBlocks, i1 false, i1 true, i32 11)
-  %1 = call <16 x i32> @llvm.genx.GenISA.LSC2DBlockRead.p0(i64 %off, i32 %width, i32 %height, i32 %pitch, i32 %phi_node1_shifted1, i32 %phi_node2_shifted1, i32 %elemSize, i32 %tileWidth, i32 %tileHeight, i32 %vNumBlocks, i1 false, i1 true, i32 11)
-  %2 = call <16 x i32> @llvm.genx.GenISA.LSC2DBlockRead.p0(i64 %off, i32 %width, i32 %height, i32 %pitch, i32 %phi_node1_shifted2, i32 %phi_node2_shifted2, i32 %elemSize, i32 %tileWidth, i32 %tileHeight, i32 %vNumBlocks, i1 false, i1 true, i32 11)
+  %0 = call <16 x i32> @llvm.genx.GenISA.LSC2DBlockRead.v16i32(i64 %off, i32 %width, i32 %height, i32 %pitch, i32 %phi_node1, i32 %phi_node2, i32 %elemSize, i32 %tileWidth, i32 %tileHeight, i32 %vNumBlocks, i1 false, i1 true, i32 11)
+  %1 = call <16 x i32> @llvm.genx.GenISA.LSC2DBlockRead.v16i32(i64 %off, i32 %width, i32 %height, i32 %pitch, i32 %phi_node1_shifted1, i32 %phi_node2_shifted1, i32 %elemSize, i32 %tileWidth, i32 %tileHeight, i32 %vNumBlocks, i1 false, i1 true, i32 11)
+  %2 = call <16 x i32> @llvm.genx.GenISA.LSC2DBlockRead.v16i32(i64 %off, i32 %width, i32 %height, i32 %pitch, i32 %phi_node1_shifted2, i32 %phi_node2_shifted2, i32 %elemSize, i32 %tileWidth, i32 %tileHeight, i32 %vNumBlocks, i1 false, i1 true, i32 11)
   %phi_offsetX = add i32 %phi_node1, 32
   %phi_offsetY = add i32 %phi_node2, 64
   %success = icmp eq i32 %Nm1, 0
@@ -95,8 +95,8 @@ body:
   %phi_node1 = phi i32 [ %offsetX, %entry ], [ %phi_offsetX, %body ]
   %phi_node2 = phi i32 [ %offsetY, %entry ], [ %phi_offsetY, %body ]
   %Nm1 = phi i32 [ %N, %entry ], [ %Nm1, %body ]
-  call void @llvm.genx.GenISA.LSC2DBlockWrite.p0(i64 %off, i32 %width, i32 %height, i32 %pitch, i32 %phi_node1, i32 %phi_node2, i32 %elemSize, i32 %tileWidth, i32 %tileHeight, i32 %vNumBlocks, i1 false, i1 true, i32 11, <8 x i32> %val1)
-  call void @llvm.genx.GenISA.LSC2DBlockWrite.p0(i64 %off, i32 %width, i32 %height, i32 %pitch, i32 %phi_node1, i32 %phi_node2, i32 %elemSize, i32 %tileWidth, i32 %tileHeight, i32 %vNumBlocks, i1 false, i1 true, i32 11, <8 x i32> %val2)
+  call void @llvm.genx.GenISA.LSC2DBlockWrite.v8i32(i64 %off, i32 %width, i32 %height, i32 %pitch, i32 %phi_node1, i32 %phi_node2, i32 %elemSize, i32 %tileWidth, i32 %tileHeight, i32 %vNumBlocks, i1 false, i1 true, i32 11, <8 x i32> %val1)
+  call void @llvm.genx.GenISA.LSC2DBlockWrite.v8i32(i64 %off, i32 %width, i32 %height, i32 %pitch, i32 %phi_node1, i32 %phi_node2, i32 %elemSize, i32 %tileWidth, i32 %tileHeight, i32 %vNumBlocks, i1 false, i1 true, i32 11, <8 x i32> %val2)
   %phi_offsetX = add i32 %phi_node1, 32
   %phi_offsetY = add i32 %phi_node2, 64
   %success = icmp eq i32 %Nm1, 0
@@ -126,9 +126,9 @@ body:
   %phi_x = phi i32 [ %offsetX, %entry ], [ %phi_x_next, %body ]
   %phi_y = phi i32 [ %offsetY, %entry ], [ %phi_y_next, %body ]
   %Nm1 = phi i32 [ %N, %entry ], [ %Nm1, %body ]
-  %0 = call <16 x i32> @llvm.genx.GenISA.LSC2DBlockRead.p0(i64 %off, i32 %width, i32 %height, i32 %pitch, i32 %phi_x, i32 %phi_y, i32 %elemSize, i32 %tileWidth, i32 %tileHeight, i32 %vNumBlocks, i1 false, i1 true, i32 11)
-  %1 = call <16 x i32> @llvm.genx.GenISA.LSC2DBlockRead.p0(i64 %off, i32 %width, i32 %height, i32 %pitch, i32 %phi_x, i32 %phi_y, i32 %elemSize, i32 %tileWidth, i32 %tileHeight, i32 %vNumBlocks, i1 false, i1 true, i32 11)
-  call void @llvm.genx.GenISA.LSC2DBlockWrite.p0(i64 %off, i32 %width, i32 %height, i32 %pitch, i32 %phi_x, i32 %phi_y, i32 %elemSize, i32 %tileWidth, i32 %tileHeight, i32 %vNumBlocks, i1 false, i1 true, i32 11, <8 x i32> %val)
+  %0 = call <16 x i32> @llvm.genx.GenISA.LSC2DBlockRead.v16i32(i64 %off, i32 %width, i32 %height, i32 %pitch, i32 %phi_x, i32 %phi_y, i32 %elemSize, i32 %tileWidth, i32 %tileHeight, i32 %vNumBlocks, i1 false, i1 true, i32 11)
+  %1 = call <16 x i32> @llvm.genx.GenISA.LSC2DBlockRead.v16i32(i64 %off, i32 %width, i32 %height, i32 %pitch, i32 %phi_x, i32 %phi_y, i32 %elemSize, i32 %tileWidth, i32 %tileHeight, i32 %vNumBlocks, i1 false, i1 true, i32 11)
+  call void @llvm.genx.GenISA.LSC2DBlockWrite.v8i32(i64 %off, i32 %width, i32 %height, i32 %pitch, i32 %phi_x, i32 %phi_y, i32 %elemSize, i32 %tileWidth, i32 %tileHeight, i32 %vNumBlocks, i1 false, i1 true, i32 11, <8 x i32> %val)
   %phi_x_next = add i32 %phi_x, 64
   %phi_y_next = add i32 %phi_y, 32
   %success = icmp eq i32 %Nm1, 0
@@ -157,9 +157,9 @@ entry:
 body:
   %phi_x = phi i32 [ %offsetX, %entry ], [ %phi_x_next, %body ]
   %Nm1 = phi i32 [ %N, %entry ], [ %Nm1, %body ]
-  %0 = call <16 x i32> @llvm.genx.GenISA.LSC2DBlockRead.p0(i64 %off, i32 %width, i32 %height, i32 %pitch, i32 %phi_x, i32 %offsetY, i32 %elemSize, i32 %tileWidth, i32 %tileHeight, i32 %vNumBlocks, i1 false, i1 true, i32 11)
-  %1 = call <16 x i32> @llvm.genx.GenISA.LSC2DBlockRead.p0(i64 %off, i32 %width, i32 %height, i32 %pitch, i32 %phi_x, i32 %offsetY, i32 %elemSize, i32 %tileWidth, i32 %tileHeight, i32 %vNumBlocks, i1 false, i1 true, i32 11)
-  %2 = call <16 x i32> @llvm.genx.GenISA.LSC2DBlockRead.p0(i64 %off, i32 %width, i32 %height, i32 %pitch, i32 %phi_x, i32 %offsetY, i32 %elemSize, i32 %tileWidth, i32 %tileHeight, i32 %vNumBlocks, i1 false, i1 true, i32 11)
+  %0 = call <16 x i32> @llvm.genx.GenISA.LSC2DBlockRead.v16i32(i64 %off, i32 %width, i32 %height, i32 %pitch, i32 %phi_x, i32 %offsetY, i32 %elemSize, i32 %tileWidth, i32 %tileHeight, i32 %vNumBlocks, i1 false, i1 true, i32 11)
+  %1 = call <16 x i32> @llvm.genx.GenISA.LSC2DBlockRead.v16i32(i64 %off, i32 %width, i32 %height, i32 %pitch, i32 %phi_x, i32 %offsetY, i32 %elemSize, i32 %tileWidth, i32 %tileHeight, i32 %vNumBlocks, i1 false, i1 true, i32 11)
+  %2 = call <16 x i32> @llvm.genx.GenISA.LSC2DBlockRead.v16i32(i64 %off, i32 %width, i32 %height, i32 %pitch, i32 %phi_x, i32 %offsetY, i32 %elemSize, i32 %tileWidth, i32 %tileHeight, i32 %vNumBlocks, i1 false, i1 true, i32 11)
   %phi_x_next = add i32 %phi_x, 32
   %success = icmp eq i32 %Nm1, 0
   br i1 %success, label %body, label %exit
@@ -187,9 +187,9 @@ entry:
 body:
   %phi_y = phi i32 [ %offsetY, %entry ], [ %phi_y_next, %body ]
   %Nm1 = phi i32 [ %N, %entry ], [ %Nm1, %body ]
-  %0 = call <16 x i32> @llvm.genx.GenISA.LSC2DBlockRead.p0(i64 %off, i32 %width, i32 %height, i32 %pitch, i32 %offsetX, i32 %phi_y, i32 %elemSize, i32 %tileWidth, i32 %tileHeight, i32 %vNumBlocks, i1 false, i1 true, i32 11)
-  %1 = call <16 x i32> @llvm.genx.GenISA.LSC2DBlockRead.p0(i64 %off, i32 %width, i32 %height, i32 %pitch, i32 %offsetX, i32 %phi_y, i32 %elemSize, i32 %tileWidth, i32 %tileHeight, i32 %vNumBlocks, i1 false, i1 true, i32 11)
-  %2 = call <16 x i32> @llvm.genx.GenISA.LSC2DBlockRead.p0(i64 %off, i32 %width, i32 %height, i32 %pitch, i32 %offsetX, i32 %phi_y, i32 %elemSize, i32 %tileWidth, i32 %tileHeight, i32 %vNumBlocks, i1 false, i1 true, i32 11)
+  %0 = call <16 x i32> @llvm.genx.GenISA.LSC2DBlockRead.v16i32(i64 %off, i32 %width, i32 %height, i32 %pitch, i32 %offsetX, i32 %phi_y, i32 %elemSize, i32 %tileWidth, i32 %tileHeight, i32 %vNumBlocks, i1 false, i1 true, i32 11)
+  %1 = call <16 x i32> @llvm.genx.GenISA.LSC2DBlockRead.v16i32(i64 %off, i32 %width, i32 %height, i32 %pitch, i32 %offsetX, i32 %phi_y, i32 %elemSize, i32 %tileWidth, i32 %tileHeight, i32 %vNumBlocks, i1 false, i1 true, i32 11)
+  %2 = call <16 x i32> @llvm.genx.GenISA.LSC2DBlockRead.v16i32(i64 %off, i32 %width, i32 %height, i32 %pitch, i32 %offsetX, i32 %phi_y, i32 %elemSize, i32 %tileWidth, i32 %tileHeight, i32 %vNumBlocks, i1 false, i1 true, i32 11)
   %phi_y_next = add i32 %phi_y, 16
   %success = icmp eq i32 %Nm1, 0
   br i1 %success, label %body, label %exit
@@ -222,9 +222,9 @@ body:
   %offsetY1 = add i32 %phi_y, 8
   %offsetX2 = add i32 %phi_x, 32
   %offsetY2 = add i32 %phi_y, 16
-  call void @llvm.genx.GenISA.LSC2DBlockWrite.p0(i64 %off, i32 %width, i32 %height, i32 %pitch, i32 %phi_x, i32 %phi_y, i32 %elemSize, i32 %tileWidth, i32 %tileHeight, i32 %vNumBlocks, i1 false, i1 true, i32 11, <8 x i32> %val1)
-  call void @llvm.genx.GenISA.LSC2DBlockWrite.p0(i64 %off, i32 %width, i32 %height, i32 %pitch, i32 %offsetX1, i32 %offsetY1, i32 %elemSize, i32 %tileWidth, i32 %tileHeight, i32 %vNumBlocks, i1 false, i1 true, i32 11, <8 x i32> %val2)
-  call void @llvm.genx.GenISA.LSC2DBlockWrite.p0(i64 %off, i32 %width, i32 %height, i32 %pitch, i32 %offsetX2, i32 %offsetY2, i32 %elemSize, i32 %tileWidth, i32 %tileHeight, i32 %vNumBlocks, i1 false, i1 true, i32 11, <8 x i32> %val3)
+  call void @llvm.genx.GenISA.LSC2DBlockWrite.v8i32(i64 %off, i32 %width, i32 %height, i32 %pitch, i32 %phi_x, i32 %phi_y, i32 %elemSize, i32 %tileWidth, i32 %tileHeight, i32 %vNumBlocks, i1 false, i1 true, i32 11, <8 x i32> %val1)
+  call void @llvm.genx.GenISA.LSC2DBlockWrite.v8i32(i64 %off, i32 %width, i32 %height, i32 %pitch, i32 %offsetX1, i32 %offsetY1, i32 %elemSize, i32 %tileWidth, i32 %tileHeight, i32 %vNumBlocks, i1 false, i1 true, i32 11, <8 x i32> %val2)
+  call void @llvm.genx.GenISA.LSC2DBlockWrite.v8i32(i64 %off, i32 %width, i32 %height, i32 %pitch, i32 %offsetX2, i32 %offsetY2, i32 %elemSize, i32 %tileWidth, i32 %tileHeight, i32 %vNumBlocks, i1 false, i1 true, i32 11, <8 x i32> %val3)
   %phi_x_next = add i32 %phi_x, 64
   %phi_y_next = add i32 %phi_y, 32
   %success = icmp eq i32 %Nm1, 0
@@ -258,10 +258,10 @@ body:
   %offsetX_w1 = add i32 %phi_x, 32
   %offsetX_r2 = add i32 %phi_x, 64
   %offsetX_w2 = add i32 %phi_x, 96
-  %0 = call <16 x i32> @llvm.genx.GenISA.LSC2DBlockRead.p0(i64 %off, i32 %width, i32 %height, i32 %pitch, i32 %phi_x, i32 %phi_y, i32 %elemSize, i32 %tileWidth, i32 %tileHeight, i32 %vNumBlocks, i1 false, i1 true, i32 11)
-  call void @llvm.genx.GenISA.LSC2DBlockWrite.p0(i64 %off, i32 %width, i32 %height, i32 %pitch, i32 %offsetX_w1, i32 %phi_y, i32 %elemSize, i32 %tileWidth, i32 %tileHeight, i32 %vNumBlocks, i1 false, i1 true, i32 11, <8 x i32> %val1)
-  %1 = call <16 x i32> @llvm.genx.GenISA.LSC2DBlockRead.p0(i64 %off, i32 %width, i32 %height, i32 %pitch, i32 %offsetX_r2, i32 %phi_y, i32 %elemSize, i32 %tileWidth, i32 %tileHeight, i32 %vNumBlocks, i1 false, i1 true, i32 11)
-  call void @llvm.genx.GenISA.LSC2DBlockWrite.p0(i64 %off, i32 %width, i32 %height, i32 %pitch, i32 %offsetX_w2, i32 %phi_y, i32 %elemSize, i32 %tileWidth, i32 %tileHeight, i32 %vNumBlocks, i1 false, i1 true, i32 11, <8 x i32> %val2)
+  %0 = call <16 x i32> @llvm.genx.GenISA.LSC2DBlockRead.v16i32(i64 %off, i32 %width, i32 %height, i32 %pitch, i32 %phi_x, i32 %phi_y, i32 %elemSize, i32 %tileWidth, i32 %tileHeight, i32 %vNumBlocks, i1 false, i1 true, i32 11)
+  call void @llvm.genx.GenISA.LSC2DBlockWrite.v8i32(i64 %off, i32 %width, i32 %height, i32 %pitch, i32 %offsetX_w1, i32 %phi_y, i32 %elemSize, i32 %tileWidth, i32 %tileHeight, i32 %vNumBlocks, i1 false, i1 true, i32 11, <8 x i32> %val1)
+  %1 = call <16 x i32> @llvm.genx.GenISA.LSC2DBlockRead.v16i32(i64 %off, i32 %width, i32 %height, i32 %pitch, i32 %offsetX_r2, i32 %phi_y, i32 %elemSize, i32 %tileWidth, i32 %tileHeight, i32 %vNumBlocks, i1 false, i1 true, i32 11)
+  call void @llvm.genx.GenISA.LSC2DBlockWrite.v8i32(i64 %off, i32 %width, i32 %height, i32 %pitch, i32 %offsetX_w2, i32 %phi_y, i32 %elemSize, i32 %tileWidth, i32 %tileHeight, i32 %vNumBlocks, i1 false, i1 true, i32 11, <8 x i32> %val2)
   %phi_x_next = add i32 %phi_x, 128
   %phi_y_next = add i32 %phi_y, 16
   %success = icmp eq i32 %Nm1, 0
@@ -295,10 +295,10 @@ body:
   ; Load 4 tiles in a 2x2 pattern
   %tile_x1 = add i32 %tile_x, 16
   %tile_y1 = add i32 %tile_y, 16
-  %0 = call <16 x i32> @llvm.genx.GenISA.LSC2DBlockRead.p0(i64 %off, i32 %width, i32 %height, i32 %pitch, i32 %tile_x, i32 %tile_y, i32 %elemSize, i32 %tileWidth, i32 %tileHeight, i32 %vNumBlocks, i1 false, i1 true, i32 11)
-  %1 = call <16 x i32> @llvm.genx.GenISA.LSC2DBlockRead.p0(i64 %off, i32 %width, i32 %height, i32 %pitch, i32 %tile_x1, i32 %tile_y, i32 %elemSize, i32 %tileWidth, i32 %tileHeight, i32 %vNumBlocks, i1 false, i1 true, i32 11)
-  %2 = call <16 x i32> @llvm.genx.GenISA.LSC2DBlockRead.p0(i64 %off, i32 %width, i32 %height, i32 %pitch, i32 %tile_x, i32 %tile_y1, i32 %elemSize, i32 %tileWidth, i32 %tileHeight, i32 %vNumBlocks, i1 false, i1 true, i32 11)
-  %3 = call <16 x i32> @llvm.genx.GenISA.LSC2DBlockRead.p0(i64 %off, i32 %width, i32 %height, i32 %pitch, i32 %tile_x1, i32 %tile_y1, i32 %elemSize, i32 %tileWidth, i32 %tileHeight, i32 %vNumBlocks, i1 false, i1 true, i32 11)
+  %0 = call <16 x i32> @llvm.genx.GenISA.LSC2DBlockRead.v16i32(i64 %off, i32 %width, i32 %height, i32 %pitch, i32 %tile_x, i32 %tile_y, i32 %elemSize, i32 %tileWidth, i32 %tileHeight, i32 %vNumBlocks, i1 false, i1 true, i32 11)
+  %1 = call <16 x i32> @llvm.genx.GenISA.LSC2DBlockRead.v16i32(i64 %off, i32 %width, i32 %height, i32 %pitch, i32 %tile_x1, i32 %tile_y, i32 %elemSize, i32 %tileWidth, i32 %tileHeight, i32 %vNumBlocks, i1 false, i1 true, i32 11)
+  %2 = call <16 x i32> @llvm.genx.GenISA.LSC2DBlockRead.v16i32(i64 %off, i32 %width, i32 %height, i32 %pitch, i32 %tile_x, i32 %tile_y1, i32 %elemSize, i32 %tileWidth, i32 %tileHeight, i32 %vNumBlocks, i1 false, i1 true, i32 11)
+  %3 = call <16 x i32> @llvm.genx.GenISA.LSC2DBlockRead.v16i32(i64 %off, i32 %width, i32 %height, i32 %pitch, i32 %tile_x1, i32 %tile_y1, i32 %elemSize, i32 %tileWidth, i32 %tileHeight, i32 %vNumBlocks, i1 false, i1 true, i32 11)
   %tile_x_next = add i32 %tile_x, 32
   %tile_y_next = add i32 %tile_y, 32
   %success = icmp eq i32 %Nm1, 0
@@ -324,7 +324,7 @@ entry:
 body:
   %phi_width = phi i32 [ %width, %entry ], [ %phi_width_next, %body ]
   %Nm1 = phi i32 [ %N, %entry ], [ %Nm1, %body ]
-  %0 = call <16 x i32> @llvm.genx.GenISA.LSC2DBlockRead.p0(i64 %off, i32 %phi_width, i32 %height, i32 %pitch, i32 %offsetX, i32 %offsetY, i32 %elemSize, i32 %tileWidth, i32 %tileHeight, i32 %vNumBlocks, i1 false, i1 true, i32 11)
+  %0 = call <16 x i32> @llvm.genx.GenISA.LSC2DBlockRead.v16i32(i64 %off, i32 %phi_width, i32 %height, i32 %pitch, i32 %offsetX, i32 %offsetY, i32 %elemSize, i32 %tileWidth, i32 %tileHeight, i32 %vNumBlocks, i1 false, i1 true, i32 11)
   %phi_width_next = add i32 %phi_width, 8
   %success = icmp eq i32 %Nm1, 0
   br i1 %success, label %body, label %exit
@@ -349,7 +349,7 @@ entry:
 body:
   %phi_height = phi i32 [ %height, %entry ], [ %phi_height_next, %body ]
   %Nm1 = phi i32 [ %N, %entry ], [ %Nm1, %body ]
-  %0 = call <16 x i32> @llvm.genx.GenISA.LSC2DBlockRead.p0(i64 %off, i32 %width, i32 %phi_height, i32 %pitch, i32 %offsetX, i32 %offsetY, i32 %elemSize, i32 %tileWidth, i32 %tileHeight, i32 %vNumBlocks, i1 false, i1 true, i32 11)
+  %0 = call <16 x i32> @llvm.genx.GenISA.LSC2DBlockRead.v16i32(i64 %off, i32 %width, i32 %phi_height, i32 %pitch, i32 %offsetX, i32 %offsetY, i32 %elemSize, i32 %tileWidth, i32 %tileHeight, i32 %vNumBlocks, i1 false, i1 true, i32 11)
   %phi_height_next = add i32 %phi_height, 4
   %success = icmp eq i32 %Nm1, 0
   br i1 %success, label %body, label %exit
@@ -374,7 +374,7 @@ entry:
 body:
   %phi_pitch = phi i32 [ %pitch, %entry ], [ %phi_pitch_next, %body ]
   %Nm1 = phi i32 [ %N, %entry ], [ %Nm1, %body ]
-  %0 = call <16 x i32> @llvm.genx.GenISA.LSC2DBlockRead.p0(i64 %off, i32 %width, i32 %height, i32 %phi_pitch, i32 %offsetX, i32 %offsetY, i32 %elemSize, i32 %tileWidth, i32 %tileHeight, i32 %vNumBlocks, i1 false, i1 true, i32 11)
+  %0 = call <16 x i32> @llvm.genx.GenISA.LSC2DBlockRead.v16i32(i64 %off, i32 %width, i32 %height, i32 %phi_pitch, i32 %offsetX, i32 %offsetY, i32 %elemSize, i32 %tileWidth, i32 %tileHeight, i32 %vNumBlocks, i1 false, i1 true, i32 11)
   %phi_pitch_next = add i32 %phi_pitch, 16
   %success = icmp eq i32 %Nm1, 0
   br i1 %success, label %body, label %exit
@@ -388,7 +388,7 @@ exit:
 ; CHECK-LABEL: define spir_kernel void @test_no_setfield_base_variant
 ; CHECK-NOT: LSC2DBlockCreateAddrPayload
 ; CHECK-NOT: LSC2DBlockSetAddrPayloadField
-; CHECK: call <16 x i32> @llvm.genx.GenISA.LSC2DBlockRead.p0(i64 %phi_base,
+; CHECK: call <16 x i32> @llvm.genx.GenISA.LSC2DBlockRead.v16i32(i64 %phi_base,
 
 define spir_kernel void @test_no_setfield_base_variant(i32 %N, i64 %off, i32 %width, i32 %height, i32 %pitch, i32 %offsetX, i32 %offsetY, i32 %elemSize, i32 %tileWidth, i32 %tileHeight, i32 %vNumBlocks) {
 entry:
@@ -397,7 +397,7 @@ entry:
 body:
   %phi_base = phi i64 [ %off, %entry ], [ %phi_base_next, %body ]
   %Nm1 = phi i32 [ %N, %entry ], [ %Nm1, %body ]
-  %0 = call <16 x i32> @llvm.genx.GenISA.LSC2DBlockRead.p0(i64 %phi_base, i32 %width, i32 %height, i32 %pitch, i32 %offsetX, i32 %offsetY, i32 %elemSize, i32 %tileWidth, i32 %tileHeight, i32 %vNumBlocks, i1 false, i1 true, i32 11)
+  %0 = call <16 x i32> @llvm.genx.GenISA.LSC2DBlockRead.v16i32(i64 %phi_base, i32 %width, i32 %height, i32 %pitch, i32 %offsetX, i32 %offsetY, i32 %elemSize, i32 %tileWidth, i32 %tileHeight, i32 %vNumBlocks, i1 false, i1 true, i32 11)
   %phi_base_next = add i64 %phi_base, 1024
   %success = icmp eq i32 %Nm1, 0
   br i1 %success, label %body, label %exit
@@ -411,7 +411,7 @@ exit:
 ; CHECK-LABEL: define spir_kernel void @test_no_setfield_tilewidth_variant
 ; CHECK-NOT: LSC2DBlockCreateAddrPayload
 ; CHECK-NOT: LSC2DBlockSetAddrPayloadField
-; CHECK: call <16 x i32> @llvm.genx.GenISA.LSC2DBlockRead.p0(i64 %off, i32 %width, i32 %height, i32 %pitch, i32 %offsetX, i32 %offsetY, i32 %elemSize, i32 %phi_tileWidth,
+; CHECK: call <16 x i32> @llvm.genx.GenISA.LSC2DBlockRead.v16i32(i64 %off, i32 %width, i32 %height, i32 %pitch, i32 %offsetX, i32 %offsetY, i32 %elemSize, i32 %phi_tileWidth,
 
 define spir_kernel void @test_no_setfield_tilewidth_variant(i32 %N, i64 %off, i32 %width, i32 %height, i32 %pitch, i32 %offsetX, i32 %offsetY, i32 %elemSize, i32 %tileWidth, i32 %tileHeight, i32 %vNumBlocks) {
 entry:
@@ -420,7 +420,7 @@ entry:
 body:
   %phi_tileWidth = phi i32 [ %tileWidth, %entry ], [ %phi_tileWidth_next, %body ]
   %Nm1 = phi i32 [ %N, %entry ], [ %Nm1, %body ]
-  %0 = call <16 x i32> @llvm.genx.GenISA.LSC2DBlockRead.p0(i64 %off, i32 %width, i32 %height, i32 %pitch, i32 %offsetX, i32 %offsetY, i32 %elemSize, i32 %phi_tileWidth, i32 %tileHeight, i32 %vNumBlocks, i1 false, i1 true, i32 11)
+  %0 = call <16 x i32> @llvm.genx.GenISA.LSC2DBlockRead.v16i32(i64 %off, i32 %width, i32 %height, i32 %pitch, i32 %offsetX, i32 %offsetY, i32 %elemSize, i32 %phi_tileWidth, i32 %tileHeight, i32 %vNumBlocks, i1 false, i1 true, i32 11)
   %phi_tileWidth_next = add i32 %phi_tileWidth, 1
   %success = icmp eq i32 %Nm1, 0
   br i1 %success, label %body, label %exit
@@ -434,7 +434,7 @@ exit:
 ; CHECK-LABEL: define spir_kernel void @test_no_setfield_tileheight_variant
 ; CHECK-NOT: LSC2DBlockCreateAddrPayload
 ; CHECK-NOT: LSC2DBlockSetAddrPayloadField
-; CHECK: call <16 x i32> @llvm.genx.GenISA.LSC2DBlockRead.p0(i64 %off, i32 %width, i32 %height, i32 %pitch, i32 %offsetX, i32 %offsetY, i32 %elemSize, i32 %tileWidth, i32 %phi_tileHeight,
+; CHECK: call <16 x i32> @llvm.genx.GenISA.LSC2DBlockRead.v16i32(i64 %off, i32 %width, i32 %height, i32 %pitch, i32 %offsetX, i32 %offsetY, i32 %elemSize, i32 %tileWidth, i32 %phi_tileHeight,
 
 define spir_kernel void @test_no_setfield_tileheight_variant(i32 %N, i64 %off, i32 %width, i32 %height, i32 %pitch, i32 %offsetX, i32 %offsetY, i32 %elemSize, i32 %tileWidth, i32 %tileHeight, i32 %vNumBlocks) {
 entry:
@@ -443,7 +443,7 @@ entry:
 body:
   %phi_tileHeight = phi i32 [ %tileHeight, %entry ], [ %phi_tileHeight_next, %body ]
   %Nm1 = phi i32 [ %N, %entry ], [ %Nm1, %body ]
-  %0 = call <16 x i32> @llvm.genx.GenISA.LSC2DBlockRead.p0(i64 %off, i32 %width, i32 %height, i32 %pitch, i32 %offsetX, i32 %offsetY, i32 %elemSize, i32 %tileWidth, i32 %phi_tileHeight, i32 %vNumBlocks, i1 false, i1 true, i32 11)
+  %0 = call <16 x i32> @llvm.genx.GenISA.LSC2DBlockRead.v16i32(i64 %off, i32 %width, i32 %height, i32 %pitch, i32 %offsetX, i32 %offsetY, i32 %elemSize, i32 %tileWidth, i32 %phi_tileHeight, i32 %vNumBlocks, i1 false, i1 true, i32 11)
   %phi_tileHeight_next = add i32 %phi_tileHeight, 1
   %success = icmp eq i32 %Nm1, 0
   br i1 %success, label %body, label %exit
@@ -457,7 +457,7 @@ exit:
 ; CHECK-LABEL: define spir_kernel void @test_no_setfield_vnumblocks_variant
 ; CHECK-NOT: LSC2DBlockCreateAddrPayload
 ; CHECK-NOT: LSC2DBlockSetAddrPayloadField
-; CHECK: call <16 x i32> @llvm.genx.GenISA.LSC2DBlockRead.p0(i64 %off, i32 %width, i32 %height, i32 %pitch, i32 %offsetX, i32 %offsetY, i32 %elemSize, i32 %tileWidth, i32 %tileHeight, i32 %phi_vNumBlocks,
+; CHECK: call <16 x i32> @llvm.genx.GenISA.LSC2DBlockRead.v16i32(i64 %off, i32 %width, i32 %height, i32 %pitch, i32 %offsetX, i32 %offsetY, i32 %elemSize, i32 %tileWidth, i32 %tileHeight, i32 %phi_vNumBlocks,
 
 define spir_kernel void @test_no_setfield_vnumblocks_variant(i32 %N, i64 %off, i32 %width, i32 %height, i32 %pitch, i32 %offsetX, i32 %offsetY, i32 %elemSize, i32 %tileWidth, i32 %tileHeight, i32 %vNumBlocks) {
 entry:
@@ -466,7 +466,7 @@ entry:
 body:
   %phi_vNumBlocks = phi i32 [ %vNumBlocks, %entry ], [ %phi_vNumBlocks_next, %body ]
   %Nm1 = phi i32 [ %N, %entry ], [ %Nm1, %body ]
-  %0 = call <16 x i32> @llvm.genx.GenISA.LSC2DBlockRead.p0(i64 %off, i32 %width, i32 %height, i32 %pitch, i32 %offsetX, i32 %offsetY, i32 %elemSize, i32 %tileWidth, i32 %tileHeight, i32 %phi_vNumBlocks, i1 false, i1 true, i32 11)
+  %0 = call <16 x i32> @llvm.genx.GenISA.LSC2DBlockRead.v16i32(i64 %off, i32 %width, i32 %height, i32 %pitch, i32 %offsetX, i32 %offsetY, i32 %elemSize, i32 %tileWidth, i32 %tileHeight, i32 %phi_vNumBlocks, i1 false, i1 true, i32 11)
   %phi_vNumBlocks_next = add i32 %phi_vNumBlocks, 1
   %success = icmp eq i32 %Nm1, 0
   br i1 %success, label %body, label %exit

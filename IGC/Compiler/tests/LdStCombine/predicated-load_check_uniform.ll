@@ -22,8 +22,8 @@
 ; CHECK-LABEL: target triple
 ; CHECK-NOT: %__StructSOALayout_ = type <{ i32, float }>
 ; CHECK-LABEL: define spir_kernel void @test_uniformness
-; CHECK: call i32 @llvm.genx.GenISA.PredicatedLoad.i32.p1i32.i32(ptr addrspace(1) %{{.*}}, i32
-; CHECK: call float @llvm.genx.GenISA.PredicatedLoad.f32.p1f32.f32(ptr addrspace(1) %{{.*}}, float
+; CHECK: call i32 @llvm.genx.GenISA.PredicatedLoad.i32.p1.i32(ptr addrspace(1) %{{.*}}, i32
+; CHECK: call float @llvm.genx.GenISA.PredicatedLoad.f32.p1.f32(ptr addrspace(1) %{{.*}}, float
 ; CHECK: ret void
 
 
@@ -37,16 +37,16 @@ entry:
   %ival = load i32, i32 addrspace(1)* %ss, align 4
   %arrayidx1 = getelementptr inbounds float, float addrspace(1)* %sf, i64 %conv.i.i
   %fval = load float, float addrspace(1)* %arrayidx1, align 4
-  %v1 = call i32 @llvm.genx.GenISA.PredicatedLoad.i32.p1i32.i32(i32 addrspace(1)* %d, i64 4, i1 true, i32 %ival)
+  %v1 = call i32 @llvm.genx.GenISA.PredicatedLoad.i32.p1.i32(i32 addrspace(1)* %d, i64 4, i1 true, i32 %ival)
   %df = bitcast i32 addrspace(1)* %d to float addrspace(1)*
   %arrayidx3 = getelementptr float, float addrspace(1)* %df, i64 1
-  %v2 = call float @llvm.genx.GenISA.PredicatedLoad.f32.p1f32.f32(float addrspace(1)* %arrayidx3, i64 4, i1 true, float %fval)
+  %v2 = call float @llvm.genx.GenISA.PredicatedLoad.f32.p1.f32(float addrspace(1)* %arrayidx3, i64 4, i1 true, float %fval)
   ret void
 }
 
 ; Function Attrs: nounwind readonly
-declare i32 @llvm.genx.GenISA.PredicatedLoad.i32.p1i32.i32(i32 addrspace(1)*, i64, i1, i32) #0
-declare float @llvm.genx.GenISA.PredicatedLoad.f32.p1f32.f32(float addrspace(1)*, i64, i1, float) #0
+declare i32 @llvm.genx.GenISA.PredicatedLoad.i32.p1.i32(i32 addrspace(1)*, i64, i1, i32) #0
+declare float @llvm.genx.GenISA.PredicatedLoad.f32.p1.f32(float addrspace(1)*, i64, i1, float) #0
 
 attributes #0 = { nounwind readonly }
 

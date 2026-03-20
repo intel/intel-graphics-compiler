@@ -17,7 +17,7 @@ define void @test_error(i32* %src, i32* %dst, <32 x double> %src3, <32 x i64> %s
 entry:
   %0 = load i32, i32* %src, align 4
   %1 = load i32, i32* %dst, align 4
-  %2 = call i32 @llvm.genx.GenISA.dp4a.ss(i32 4, i32 %0, i32 %1)
+  %2 = call i32 @llvm.genx.GenISA.dp4a.ss(i32 4, i32 %0, i32 %1, i1 false)
   store i32 %2, i32* %dst, align 4
   %3 = fptoui <32 x double> %src3 to <32 x i64>
   %4 = add <32 x i64> %3, %src4
@@ -25,7 +25,7 @@ entry:
   ret void
 }
 
-declare i32 @llvm.genx.GenISA.dp4a.ss(i32, i32, i32)
+declare i32 @llvm.genx.GenISA.dp4a.ss(i32, i32, i32, i1)
 
 !igc.functions = !{!0}
 !IGCMetadata = !{!4}

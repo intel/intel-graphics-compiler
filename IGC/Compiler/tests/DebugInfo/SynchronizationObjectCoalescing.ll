@@ -27,7 +27,7 @@
 
 define void @test1(float addrspace(3)* %src1, float addrspace(3)* %src2) !dbg !6 {
   store float 5.000000e-01, float addrspace(3)* %src1, align 4, !dbg !11
-  call void @llvm.genx.GenISA.memoryfence(i1 true, i1 false, i1 false, i1 false, i1 false, i1 false, i1 false), !dbg !12
+  call void @llvm.genx.GenISA.memoryfence(i1 true, i1 false, i1 false, i1 false, i1 false, i1 false, i1 false, i1 false, i32 0), !dbg !12
   call void @llvm.genx.GenISA.threadgroupbarrier(), !dbg !13
   %1 = load float, float addrspace(3)* %src2, align 4, !dbg !14
   call void @llvm.dbg.value(metadata float %1, metadata !9, metadata !DIExpression()), !dbg !14
@@ -44,7 +44,7 @@ define void @test1(float addrspace(3)* %src1, float addrspace(3)* %src2) !dbg !6
 define void @test2(float addrspace(3)* %src1, float addrspace(3)* %src2) !dbg !16 {
   %1 = load float, float addrspace(3)* %src2, align 4, !dbg !19
   call void @llvm.dbg.value(metadata float %1, metadata !18, metadata !DIExpression()), !dbg !19
-  call void @llvm.genx.GenISA.memoryfence(i1 true, i1 false, i1 false, i1 false, i1 false, i1 false, i1 false), !dbg !20
+  call void @llvm.genx.GenISA.memoryfence(i1 true, i1 false, i1 false, i1 false, i1 false, i1 false, i1 false, i1 false, i32 0), !dbg !20
   call void @llvm.genx.GenISA.threadgroupbarrier(), !dbg !21
   store float 5.000000e-01, float addrspace(3)* %src1, align 4, !dbg !22
   ret void, !dbg !23
@@ -58,7 +58,7 @@ define void @test2(float addrspace(3)* %src1, float addrspace(3)* %src2) !dbg !1
 
 define void @test3(float addrspace(3)* %src1, float addrspace(3)* %src2) !dbg !24 {
   store float 5.000000e-01, float addrspace(3)* %src1, align 4, !dbg !25
-  call void @llvm.genx.GenISA.memoryfence(i1 true, i1 false, i1 false, i1 false, i1 false, i1 false, i1 false), !dbg !26
+  call void @llvm.genx.GenISA.memoryfence(i1 true, i1 false, i1 false, i1 false, i1 false, i1 false, i1 false, i1 false, i32 0), !dbg !26
   call void @llvm.genx.GenISA.threadgroupbarrier(), !dbg !27
   store float 5.000000e-01, float addrspace(3)* %src2, align 4, !dbg !28
   ret void, !dbg !29
@@ -73,7 +73,7 @@ define void @test3(float addrspace(3)* %src1, float addrspace(3)* %src2) !dbg !2
 define void @test4(float addrspace(3)* %src1, float addrspace(3)* %src2) !dbg !30 {
   %1 = load float, float addrspace(3)* %src2, align 4, !dbg !34
   call void @llvm.dbg.value(metadata float %1, metadata !32, metadata !DIExpression()), !dbg !34
-  call void @llvm.genx.GenISA.memoryfence(i1 true, i1 false, i1 false, i1 false, i1 false, i1 false, i1 false), !dbg !35
+  call void @llvm.genx.GenISA.memoryfence(i1 true, i1 false, i1 false, i1 false, i1 false, i1 false, i1 false, i1 false, i32 0), !dbg !35
   call void @llvm.genx.GenISA.threadgroupbarrier(), !dbg !36
   %2 = load float, float addrspace(3)* %src1, align 4, !dbg !37
   call void @llvm.dbg.value(metadata float %2, metadata !33, metadata !DIExpression()), !dbg !37
@@ -85,7 +85,7 @@ define void @test4(float addrspace(3)* %src1, float addrspace(3)* %src2) !dbg !3
 
 define void @test5(float addrspace(3)* %src1, float addrspace(3)* %src2) !dbg !39 {
   store float 5.000000e-01, float addrspace(3)* %src1, align 4, !dbg !40
-  call void @llvm.genx.GenISA.memoryfence(i1 true, i1 false, i1 false, i1 false, i1 false, i1 false, i1 false), !dbg !41
+  call void @llvm.genx.GenISA.memoryfence(i1 true, i1 false, i1 false, i1 false, i1 false, i1 false, i1 false, i1 false, i32 0), !dbg !41
   call void @llvm.genx.GenISA.threadgroupbarrier(), !dbg !42
   ret void, !dbg !43
 }
@@ -94,14 +94,14 @@ define void @test5(float addrspace(3)* %src1, float addrspace(3)* %src2) !dbg !3
 ; CHECK: store float {{.*}}, !dbg [[STR6_LOC:![0-9]*]]
 
 define void @test6(float addrspace(3)* %src1, float addrspace(3)* %src2) !dbg !44 {
-  call void @llvm.genx.GenISA.memoryfence(i1 true, i1 false, i1 false, i1 false, i1 false, i1 false, i1 false), !dbg !45
+  call void @llvm.genx.GenISA.memoryfence(i1 true, i1 false, i1 false, i1 false, i1 false, i1 false, i1 false, i1 false, i32 0), !dbg !45
   call void @llvm.genx.GenISA.threadgroupbarrier(), !dbg !46
   store float 5.000000e-01, float addrspace(3)* %src2, align 4, !dbg !47
   ret void, !dbg !48
 }
 
 define void @test7(float addrspace(3)* %src1, float addrspace(3)* %src2) !dbg !49 {
-  call void @llvm.genx.GenISA.memoryfence(i1 true, i1 false, i1 false, i1 false, i1 false, i1 false, i1 false), !dbg !50
+  call void @llvm.genx.GenISA.memoryfence(i1 true, i1 false, i1 false, i1 false, i1 false, i1 false, i1 false, i1 false, i32 0), !dbg !50
   call void @llvm.genx.GenISA.threadgroupbarrier(), !dbg !51
   ret void, !dbg !52
 }
@@ -141,7 +141,7 @@ define void @test7(float addrspace(3)* %src1, float addrspace(3)* %src2) !dbg !4
 ; CHECK-DAG: [[STR6_LOC]] = !DILocation(line: 27, column: 1, scope: [[SCOPE6]])
 
 
-declare void @llvm.genx.GenISA.memoryfence(i1, i1, i1, i1, i1, i1, i1)
+declare void @llvm.genx.GenISA.memoryfence(i1, i1, i1, i1, i1, i1, i1, i1, i32)
 
 declare void @llvm.genx.GenISA.threadgroupbarrier()
 

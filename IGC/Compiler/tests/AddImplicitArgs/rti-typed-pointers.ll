@@ -35,7 +35,8 @@ define spir_func void @rti() {
   %1 = call i8 addrspace(1)* @llvm.genx.GenISA.GlobalBufferPointer()
   %2 = call i32 addrspace(1)* @llvm.genx.GenISA.LocalBufferPointer()
   %3 = call i16 @llvm.genx.GenISA.AsyncStackID()
-  %4 = call i32 addrspace(1)* @llvm.genx.GenISA.InlinedData(i16 %3)
+  %stackid_ext = zext i16 %3 to i32
+  %4 = call i32 addrspace(1)* @llvm.genx.GenISA.InlinedData(i32 %stackid_ext)
   ret void
 }
 
@@ -45,7 +46,7 @@ declare i32 addrspace(1)* @llvm.genx.GenISA.LocalBufferPointer()
 
 declare i16 @llvm.genx.GenISA.AsyncStackID()
 
-declare i32 addrspace(1)* @llvm.genx.GenISA.InlinedData(i16)
+declare i32 addrspace(1)* @llvm.genx.GenISA.InlinedData(i32)
 
 !igc.functions = !{!0, !8, !9}
 

@@ -39,7 +39,7 @@ define <4 x float> @f1(i32 %src) {
 entry:
   %0 = inttoptr i32 %src to ptr addrspace(2490373)
   %1 = call fast float @llvm.genx.GenISA.ldraw.indexed.f32.p2490373(ptr addrspace(2490373) %0, i32 %src, i32 4, i1 false)
-  call void @llvm.genx.GenISA.storeraw.indexed.p2490368.f32(ptr addrspace(2490373) %0, i32 %src, float 0x0, i32 4, i1 false)
+  call void @llvm.genx.GenISA.storeraw.indexed.p2490373.f32(ptr addrspace(2490373) %0, i32 %src, float 0x0, i32 4, i1 false)
   %2 = add i32 %src, 4
   %3 = call fast float @llvm.genx.GenISA.ldraw.indexed.f32.p2490373(ptr addrspace(2490373) %0, i32 %2, i32 4, i1 false)
   %4 = add i32 %src, 32
@@ -56,7 +56,7 @@ entry:
  ; CHECK-LABEL: define <4 x float> @f1
  ; CHECK: %1 = call <1 x float> @llvm.genx.GenISA.ldrawvector.indexed.v1f32.p2490373(ptr addrspace(2490373) %0, i32 %src, i32 4, i1 false)
  ; CHECK: %2 = extractelement <1 x float> %1, {{i[0-9]+}} 0
- ; CHECK: call void @llvm.genx.GenISA.storeraw.indexed.p2490368.f32(ptr addrspace(2490373) %0, i32 %src, float 0.000000e+00, i32 4, i1 false)
+ ; CHECK: call void @llvm.genx.GenISA.storeraw.indexed.p2490373.f32(ptr addrspace(2490373) %0, i32 %src, float 0.000000e+00, i32 4, i1 false)
  ; CHECK: %3 = add i32 %src, 4
  ; CHECK: %4 = call <16 x float> @llvm.genx.GenISA.ldrawvector.indexed.v16f32.p2490373(ptr addrspace(2490373) %0, i32 %3, i32 4, i1 false)
  ; CHECK: %5 = extractelement <16 x float> %4, {{i[0-9]+}} 11
@@ -74,7 +74,7 @@ entry:
   %1 = call fast float @llvm.genx.GenISA.ldraw.indexed.f32.p2490373(ptr addrspace(2490373) %0, i32 %src, i32 4, i1 false)
   br label %storeBB
 storeBB:
-  call void @llvm.genx.GenISA.storeraw.indexed.p2490368.f32(ptr addrspace(2490373) %0, i32 %src, float 0x0, i32 4, i1 false)
+  call void @llvm.genx.GenISA.storeraw.indexed.p2490373.f32(ptr addrspace(2490373) %0, i32 %src, float 0x0, i32 4, i1 false)
   br label %exitBB
 exitBB:
   %2 = add i32 %src, 4
@@ -95,7 +95,7 @@ exitBB:
  ; CHECK: %2 = extractelement <1 x float> %1, {{i[0-9]+}} 0
  ; CHECK:  br label %storeBB
  ; CHECK-LABEL: storeBB:
- ; CHECK: call void @llvm.genx.GenISA.storeraw.indexed.p2490368.f32(ptr addrspace(2490373) %0, i32 %src, float 0.000000e+00, i32 4, i1 false)
+ ; CHECK: call void @llvm.genx.GenISA.storeraw.indexed.p2490373.f32(ptr addrspace(2490373) %0, i32 %src, float 0.000000e+00, i32 4, i1 false)
  ; CHECK: br label %exitBB
  ; CHECK-LABEL: exitBB:
  ; CHECK: %3 = add i32 %src, 4
@@ -114,7 +114,7 @@ exitBB:
 declare float @llvm.genx.GenISA.ldraw.indexed.f32.p2490373(ptr addrspace(2490373), i32, i32, i1) argmemonly nounwind readonly willreturn
 
 ; Function Attrs: argmemonly nounwind writeonly
-declare void @llvm.genx.GenISA.storeraw.indexed.p2490368.f32(ptr addrspace(2490373), i32, float, i32, i1) argmemonly nounwind writeonly
+declare void @llvm.genx.GenISA.storeraw.indexed.p2490373.f32(ptr addrspace(2490373), i32, float, i32, i1) argmemonly nounwind writeonly
 
 
 !igc.functions = !{!0, !3, !4}

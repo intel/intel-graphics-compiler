@@ -94,7 +94,7 @@ bb22:                                             ; preds = %bb22, %bb21
   %tmp79 = insertelement <8 x float> %tmp78, float %tmp71, i32 6
   %tmp80 = insertelement <8 x float> %tmp79, float %tmp72, i32 7
   %tmp81 = call <8 x float> @llvm.maxnum.v8f32(<8 x float> %tmp64, <8 x float> %tmp80)
-  %tmp82 = call <8 x float> @llvm.genx.GenISA.WaveAll.v8f32(<8 x float> %tmp81, i8 12, i32 0)
+  %tmp82 = call <8 x float> @llvm.genx.GenISA.WaveAll.v8f32(<8 x float> %tmp81, i8 12, i1 true, i32 0)
   %tmp83 = call <8 x float> @llvm.maxnum.v8f32(<8 x float> %tmp23, <8 x float> %tmp82)
   br label %bb22
 }
@@ -105,7 +105,7 @@ declare i32 @llvm.umin.i32(i32, i32) #0
 ; Function Attrs: nocallback nofree nosync nounwind speculatable willreturn memory(none)
 declare <8 x float> @llvm.maxnum.v8f32(<8 x float>, <8 x float>) #0
 
-declare <8 x float> @llvm.genx.GenISA.WaveAll.v8f32(<8 x float>, i8, i32)
+declare <8 x float> @llvm.genx.GenISA.WaveAll.v8f32(<8 x float>, i8, i1, i32)
 
 attributes #0 = { nocallback nofree nosync nounwind speculatable willreturn memory(none) }
 

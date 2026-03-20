@@ -19,11 +19,11 @@ define spir_kernel void @foo(<8 x float> %0, <8 x float> %1, <8 x float> %2, <8 
 
 ; CHECK-LABEL: @foo(
 
-; CHECK:         [[BLOCK2D_ADDRPAYLOAD1062:%.*]] = call ptr @llvm.genx.GenISA.LSC2DBlockCreateAddrPayload.p0i32(i64 0, i32 0, i32 0, i32 0, i32 0, i32 0, i32 0, i32 0, i32 0)
+; CHECK:         [[BLOCK2D_ADDRPAYLOAD1062:%.*]] = call ptr @llvm.genx.GenISA.LSC2DBlockCreateAddrPayload.p0(i64 0, i32 0, i32 0, i32 0, i32 0, i32 0, i32 0, i32 0, i32 0)
 ; CHECK:         br label [[DOT_CRIT_EDGE:%.*]]
 
 ; CHECK:       ._crit_edge:
-; CHECK:         [[BLOCK2D_READADDRPAYLOAD1065:%.*]] = call <16 x i32> @llvm.genx.GenISA.LSC2DBlockReadAddrPayload.v16i32.p0i32(ptr [[BLOCK2D_ADDRPAYLOAD1062]], i32 0, i32 0, i32 0, i32 0, i32 0, i32 0, i1 false, i1 false, i32 0)
+; CHECK:         [[BLOCK2D_READADDRPAYLOAD1065:%.*]] = call <16 x i32> @llvm.genx.GenISA.LSC2DBlockReadAddrPayload.v16i32.p0(ptr [[BLOCK2D_ADDRPAYLOAD1062]], i32 0, i32 0, i32 0, i32 0, i32 0, i32 0, i1 false, i1 false, i32 0)
 
 ; CHECK:         [[TMP12:%.*]] = extractelement <16 x i32> [[BLOCK2D_READADDRPAYLOAD1065]], i32 0
 ; CHECK:         [[TMP13:%.*]] = insertelement <8 x i32> undef, i32 [[TMP12]], i32 0
@@ -72,7 +72,7 @@ define spir_kernel void @foo(<8 x float> %0, <8 x float> %1, <8 x float> %2, <8 
 ; CHECK:         br
 ;
 precompiled_s32divrem.exit1167:
-  %Block2D_AddrPayload1062 = call i32* @llvm.genx.GenISA.LSC2DBlockCreateAddrPayload.p0i32(i64 0, i32 0, i32 0, i32 0, i32 0, i32 0, i32 0, i32 0, i32 0)
+  %Block2D_AddrPayload1062 = call i32* @llvm.genx.GenISA.LSC2DBlockCreateAddrPayload.p0(i64 0, i32 0, i32 0, i32 0, i32 0, i32 0, i32 0, i32 0, i32 0)
   br label %._crit_edge
 
 ._crit_edge:                                      ; preds = %._crit_edge.._crit_edge_crit_edge, %precompiled_s32divrem.exit1167
@@ -82,7 +82,7 @@ precompiled_s32divrem.exit1167:
   %9 = insertelement <8 x i16> zeroinitializer, i16 0, i32 0
   %10 = insertelement <8 x i32> zeroinitializer, i32 0, i32 0
   %11 = insertelement <8 x i32> zeroinitializer, i32 0, i32 0
-  %Block2D_ReadAddrPayload1065 = call <16 x i32> @llvm.genx.GenISA.LSC2DBlockReadAddrPayload.v16i32.p0i32(ptr %Block2D_AddrPayload1062, i32 0, i32 0, i32 0, i32 0, i32 0, i32 0, i1 false, i1 false, i32 0)
+  %Block2D_ReadAddrPayload1065 = call <16 x i32> @llvm.genx.GenISA.LSC2DBlockReadAddrPayload.v16i32.p0(ptr %Block2D_AddrPayload1062, i32 0, i32 0, i32 0, i32 0, i32 0, i32 0, i1 false, i1 false, i32 0)
   %12 = extractelement <16 x i32> %Block2D_ReadAddrPayload1065, i32 0
   %13 = insertelement <8 x i32> undef, i32 %12, i32 0
   %14 = extractelement <16 x i32> %Block2D_ReadAddrPayload1065, i32 2
@@ -135,11 +135,11 @@ precompiled_s32divrem.exit1167:
 
 declare <8 x float> @llvm.genx.GenISA.sub.group.dpas.v8f32.v8f32.v8i16.v8i32(<8 x float>, <8 x i16>, <8 x i32>, i32, i32, i32, i32, i1)
 
-declare ptr @llvm.genx.GenISA.LSC2DBlockCreateAddrPayload.p0i32(i64, i32, i32, i32, i32, i32, i32, i32, i32)
+declare ptr @llvm.genx.GenISA.LSC2DBlockCreateAddrPayload.p0(i64, i32, i32, i32, i32, i32, i32, i32, i32)
 
-declare void @llvm.genx.GenISA.LSC2DBlockSetAddrPayloadField.p0i32.i32(ptr, i32, i32, i1)
+declare void @llvm.genx.GenISA.LSC2DBlockSetAddrPayloadField.p0.i32(ptr, i32, i32, i1)
 
-declare <16 x i32> @llvm.genx.GenISA.LSC2DBlockReadAddrPayload.v16i32.p0i32(ptr, i32, i32, i32, i32, i32, i32, i1, i1, i32)
+declare <16 x i32> @llvm.genx.GenISA.LSC2DBlockReadAddrPayload.v16i32.p0(ptr, i32, i32, i32, i32, i32, i32, i1, i1, i32)
 
 attributes #0 = { nofree nosync nounwind readnone speculatable willreturn }
 

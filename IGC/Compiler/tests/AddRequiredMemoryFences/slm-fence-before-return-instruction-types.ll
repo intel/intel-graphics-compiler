@@ -39,12 +39,12 @@ Label-0:
 define void @f3(ptr addrspace(3) %address) {
 Label-0:
   store i32 0, ptr addrspace(3) %address
-  call void @llvm.genx.GenISA.memoryfence(i1 true, i1 false, i1 false, i1 false, i1 false, i1 false, i1 false)
+  call void @llvm.genx.GenISA.memoryfence(i1 true, i1 false, i1 false, i1 false, i1 false, i1 false, i1 false, i1 false, i32 0)
   ret void
 }
 ; CHECK-LABEL: define void @f3
 ; CHECK:      store i32 0, ptr addrspace(3) %address
-; CHECK-NEXT: call void @llvm.genx.GenISA.memoryfence(i1 true, i1 false, i1 false, i1 false, i1 false, i1 false, i1 false)
+; CHECK-NEXT: call void @llvm.genx.GenISA.memoryfence(i1 true, i1 false, i1 false, i1 false, i1 false, i1 false, i1 false, i1 false, i32 0)
 ; CHECK-NOT:  call void @llvm.genx.GenISA.LSCFence({{.*}})
 ; CHECK:      ret void
 
@@ -74,7 +74,7 @@ Label-0:
 
 ; Function Attrs: convergent nounwind
 declare void @llvm.genx.GenISA.LSCFence(i32, i32, i32) #2
-declare void @llvm.genx.GenISA.memoryfence(i1, i1, i1, i1, i1, i1, i1) #2
+declare void @llvm.genx.GenISA.memoryfence(i1, i1, i1, i1, i1, i1, i1, i1, i32) #2
 ; Function Attrs: argmemonly nounwind
 declare i32 @llvm.genx.GenISA.intatomicraw.i32.p3(ptr addrspace(3), i32, i32, i32) #3
 

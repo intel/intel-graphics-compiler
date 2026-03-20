@@ -48,11 +48,11 @@ entry:
 ; CHECK: call void @llvm.genx.GenISA.PredicatedStore.p1.v4i32(ptr addrspace(1) %{{.*}}, <4 x i32> [[TMP3]], i64 8, i1 true)
 
   %arrayidx5 = getelementptr inbounds <2 x i32>, <2 x i32> addrspace(1)* %d, i64 %idx0
-  call void @llvm.genx.GenISA.PredicatedStore.p1v2i32.v2i32(<2 x i32> addrspace(1)* %arrayidx5, <2 x i32> %vecinit1.assembled.vect36, i64 8, i1 true)
+  call void @llvm.genx.GenISA.PredicatedStore.p1.v2i32(<2 x i32> addrspace(1)* %arrayidx5, <2 x i32> %vecinit1.assembled.vect36, i64 8, i1 true)
   %add = add nsw i32 %add4.i.i.i, 1
   %idx1 = sext i32 %add to i64
   %arrayidx6 = getelementptr inbounds <2 x i32>, <2 x i32> addrspace(1)* %d, i64 %idx1
-  call void @llvm.genx.GenISA.PredicatedStore.p1v2i32.v2i32(<2 x i32> addrspace(1)* %arrayidx6, <2 x i32> %vecinit4.assembled.vect37, i64 8, i1 true)
+  call void @llvm.genx.GenISA.PredicatedStore.p1.v2i32(<2 x i32> addrspace(1)* %arrayidx6, <2 x i32> %vecinit4.assembled.vect37, i64 8, i1 true)
 
 ; case for zext, merge two <2 x i32> stores into one <4 x i32> store
 
@@ -64,28 +64,28 @@ entry:
   %add.1 = add i32 %add4.i.i.i, 10
   %idx0.1 = zext i32 %add.1 to i64
   %arrayidx5.1 = getelementptr inbounds <2 x i32>, <2 x i32> addrspace(1)* %d, i64 %idx0.1
-  call void @llvm.genx.GenISA.PredicatedStore.p1v2i32.v2i32(<2 x i32> addrspace(1)* %arrayidx5.1, <2 x i32> %vecinit1.assembled.vect36, i64 8, i1 true)
+  call void @llvm.genx.GenISA.PredicatedStore.p1.v2i32(<2 x i32> addrspace(1)* %arrayidx5.1, <2 x i32> %vecinit1.assembled.vect36, i64 8, i1 true)
   %add.1.1 = add nsw i32 %add.1, 1
   %idx1.1 = zext i32 %add.1.1 to i64
   %arrayidx6.1 = getelementptr inbounds <2 x i32>, <2 x i32> addrspace(1)* %d, i64 %idx1.1
-  call void @llvm.genx.GenISA.PredicatedStore.p1v2i32.v2i32(<2 x i32> addrspace(1)* %arrayidx6.1, <2 x i32> %vecinit4.assembled.vect37, i64 8, i1 true)
+  call void @llvm.genx.GenISA.PredicatedStore.p1.v2i32(<2 x i32> addrspace(1)* %arrayidx6.1, <2 x i32> %vecinit4.assembled.vect37, i64 8, i1 true)
 
 ; case for zext+sext, unsafe to merge, keep two <2 x i32> stores
 
-; CHECK: call void @llvm.genx.GenISA.PredicatedStore.p1v2i32.v2i32(ptr addrspace(1) %{{.*}}, <2 x i32>
-; CHECK: call void @llvm.genx.GenISA.PredicatedStore.p1v2i32.v2i32(ptr addrspace(1) %{{.*}}, <2 x i32>
+; CHECK: call void @llvm.genx.GenISA.PredicatedStore.p1.v2i32(ptr addrspace(1) %{{.*}}, <2 x i32>
+; CHECK: call void @llvm.genx.GenISA.PredicatedStore.p1.v2i32(ptr addrspace(1) %{{.*}}, <2 x i32>
 ; CHECK: ret void
 
   %add.2 = add i32 %add4.i.i.i, 20
   %idx0.2 = zext i32 %add.2 to i64
   %arrayidx5.2 = getelementptr inbounds <2 x i32>, <2 x i32> addrspace(1)* %d, i64 %idx0.2
-  call void @llvm.genx.GenISA.PredicatedStore.p1v2i32.v2i32(<2 x i32> addrspace(1)* %arrayidx5.2, <2 x i32> %vecinit1.assembled.vect36, i64 8, i1 true)
+  call void @llvm.genx.GenISA.PredicatedStore.p1.v2i32(<2 x i32> addrspace(1)* %arrayidx5.2, <2 x i32> %vecinit1.assembled.vect36, i64 8, i1 true)
   %add.2.1 = add nsw i32 %add.1, 1
   %idx1.2 = sext i32 %add.2.1 to i64
   %arrayidx6.2 = getelementptr inbounds <2 x i32>, <2 x i32> addrspace(1)* %d, i64 %idx1.2
-  call void @llvm.genx.GenISA.PredicatedStore.p1v2i32.v2i32(<2 x i32> addrspace(1)* %arrayidx6.2, <2 x i32> %vecinit4.assembled.vect37, i64 8, i1 true)
+  call void @llvm.genx.GenISA.PredicatedStore.p1.v2i32(<2 x i32> addrspace(1)* %arrayidx6.2, <2 x i32> %vecinit4.assembled.vect37, i64 8, i1 true)
 
   ret void
 }
 
-declare void @llvm.genx.GenISA.PredicatedStore.p1v2i32.v2i32(<2 x i32> addrspace(1)*, <2 x i32>, i64, i1)
+declare void @llvm.genx.GenISA.PredicatedStore.p1.v2i32(<2 x i32> addrspace(1)*, <2 x i32>, i64, i1)
