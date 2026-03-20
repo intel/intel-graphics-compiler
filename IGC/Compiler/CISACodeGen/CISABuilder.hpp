@@ -37,12 +37,14 @@ struct SModifier {
   e_modifier mod;
   e_instance instance;
   bool specialRegion;
+  uint16_t addrImmOffset;
   void init() {
     mod = EMOD_NONE;
     subVar = 0;
     subReg = 0;
     instance = EINSTANCE_UNSPECIFIED;
     specialRegion = false;
+    addrImmOffset = 0;
   }
 };
 
@@ -392,6 +394,7 @@ public:
   void SetPredicateMode(e_predMode mode);
   void SetSrcRegion(uint srcNum, uint vStride, uint width, uint hStride, e_instance instance = EINSTANCE_UNSPECIFIED);
   void SetDstRegion(uint hStride);
+  void SetSrcAddrImmOffset(uint srcNum, uint immOffset);
   inline void SetNoMask();
   inline void SetMask(e_mask mask);
   inline void SetSimdSize(SIMDMode size);

@@ -665,6 +665,10 @@ void CEncoder::SetDstRegion(uint hStride) {
   m_encoderState.m_dstOperand.specialRegion = (hStride != 1);
 }
 
+void CEncoder::SetSrcAddrImmOffset(uint srcNum, uint immOffset) {
+  m_encoderState.m_srcOperand[srcNum].addrImmOffset = int_cast<uint16_t>(immOffset);
+}
+
 uint64_t GetSignBit(VISA_Type type) {
   switch (type) {
   case ISA_TYPE_Q:
@@ -792,7 +796,7 @@ VISA_VectorOpnd *CEncoder::GetSourceOperand(CVariable *var, const SModifier &mod
         // NB: this requires that all subregisters of a0 are properly
         // set up, including per-lane subreg offsets.
         V(vKernel->CreateVISAIndirectOperandVxH(operand, var->visaAddrVariable, ConvertModifierToVisaType(mod.mod),
-                                                mod.subReg, 0, var->GetType()));
+                                                mod.subReg, mod.addrImmOffset, var->GetType()));
       }
     }
   }

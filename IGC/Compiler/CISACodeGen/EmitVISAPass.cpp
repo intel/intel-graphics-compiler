@@ -6483,7 +6483,7 @@ void EmitPass::emitSimdShuffle(llvm::Instruction *inst) {
 
             // Split 2GRF source to two 1GRF aliases
             CVariable *srcLo = m_currShader->GetNewAlias(data, data->GetType(), 0, 16);
-            CVariable *srcHi = m_currShader->GetNewAlias(data, data->GetType(), getGRFSize(), 16);
+            // SrcHi is not used directly, as we use AddrImmOffset
             CVariable *pSrcElmLo = m_currShader->GetNewAlias(pSrcElm, pSrcElm->GetType(), 0, 16);
             CVariable *pSrcElmHi = m_currShader->GetNewAlias(pSrcElm, pSrcElm->GetType(), pSrcElm->GetSize() / 2, 16);
 
@@ -6504,7 +6504,17 @@ void EmitPass::emitSimdShuffle(llvm::Instruction *inst) {
             m_encoder->Copy(dstLo, pDstArrElm);
             m_encoder->Push();
 
-            // 2. srcLo -> dstHi (for lane < 16)
+            // 2. srcHi -> dstLo  (for lane < 16)
+            //    (!P2) mov(M1, 16) V0306(0,0)<1> r[A0(0), 64]<1,0>:d // offset from srcHi encoded in AddrImm
+
+            m_encoder->SetSimdSize(SIMDMode::SIMD16);
+            m_encoder->SetPredicate(lowerLaneFlag);
+            m_encoder->SetInversePredicate(true);
+            m_encoder->SetSrcAddrImmOffset(0, getGRFSize());
+            m_encoder->Copy(dstLo, pDstArrElm);
+            m_encoder->Push();
+
+            // 3. srcLo -> dstHi (for lane >= 16)
             //    addr_add (M5_NM, 16) A0(16)<1> &V0299 ShuffleTmp(0,16)<1;1,0>
             //    (P2) mov(M5, 16) V0306(1,0)<1> r[A0(0),0]<1,0>:d
             m_encoder->SetSimdSize(SIMDMode::SIMD16);
@@ -6519,33 +6529,13 @@ void EmitPass::emitSimdShuffle(llvm::Instruction *inst) {
             m_encoder->Copy(dstHi, pDstArrElm);
             m_encoder->Push();
 
-            // 3. srcHi -> dstLo (for lane >= 16)
-            //    addr_add(M1_NM, 16) A0(0)<1> &V0299[64] ShuffleTmp(0,0) <1;1,0 >
-            //    (!P2) mov(M1, 16) V0306(0,0)<1> r[A0(0),0]<1,0>:d
-            m_encoder->SetSimdSize(SIMDMode::SIMD16);
-            m_encoder->SetNoMask();
-            m_encoder->AddrAdd(pDstArrElm, srcHi, pSrcElmLo, m_currentBlock);
-            m_encoder->Push();
-
-            m_encoder->SetSimdSize(SIMDMode::SIMD16);
-            m_encoder->SetPredicate(lowerLaneFlag);
-            m_encoder->SetInversePredicate(true);
-            m_encoder->Copy(dstLo, pDstArrElm);
-            m_encoder->Push();
-
             // 4. srcHi -> dstHi (for lane >= 16)
-            //    addr_add (M5_NM, 16) A0(16)<1> &V0299[64] ShuffleTmp(0,16)<1;1,0>
-            //    (!P2) mov(M5, 16) V0306(1,0)<1> r[A0(0),0]<1,0>:d
-            m_encoder->SetSimdSize(SIMDMode::SIMD16);
-            m_encoder->SetMask(EMASK_H2);
-            m_encoder->SetNoMask();
-            m_encoder->AddrAdd(pDstArrElm, srcHi, pSrcElmHi, m_currentBlock);
-            m_encoder->Push();
-
+            //    (!P2) mov(M5, 16) V0306(1,0)<1> r[A0(0), 64]<1,0>:d // offset from srcHi encoded in AddrImm
             m_encoder->SetSimdSize(SIMDMode::SIMD16);
             m_encoder->SetMask(EMASK_H2);
             m_encoder->SetPredicate(lowerLaneFlag);
             m_encoder->SetInversePredicate(true);
+            m_encoder->SetSrcAddrImmOffset(0, getGRFSize());
             m_encoder->Copy(dstHi, pDstArrElm);
             m_encoder->Push();
 
