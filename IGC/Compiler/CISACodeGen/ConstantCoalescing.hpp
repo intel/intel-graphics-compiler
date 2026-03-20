@@ -16,6 +16,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/MetaDataApi/MetaDataApi.h"
 
 #include "common/LLVMWarningsPush.hpp"
+#include <llvm/ADT/MapVector.h>
 #include <llvm/IR/PassManager.h>
 #include <llvm/ADT/SmallBitVector.h>
 #include <llvm/Transforms/Utils.h>
@@ -215,7 +216,7 @@ private:
   llvm::Function *curFunc;
   // Helper map that tracks already processed or created base offsets.
   // The map holds `add` instructions with their arguments as the key.
-  std::map<std::pair<llvm::Value *, llvm::Value *>, llvm::Instruction *> m_BaseOffsets;
+  llvm::MapVector<std::pair<llvm::Value *, llvm::Value *>, llvm::Instruction *> m_BaseOffsets;
   // agent to modify the llvm-ir
   IRBuilderWrapper *irBuilder;
   // maintain the uniformness info

@@ -127,6 +127,17 @@ void ConstantCoalescing::ProcessFunction(Function *function) {
       indcb_gathers.pop_back();
       delete top_chunk;
     }
+    // Remove all base offsets that do not dominate the current block, i.e., remove values
+    // that were added to the map when processing dominance tree side branches before
+    // the depth-first search backtracked.
+    while (!m_BaseOffsets.empty()) {
+      auto &lastEntry = m_BaseOffsets.back();
+      Instruction *baseOffset = lastEntry.second;
+      if (dom_tree.dominates(baseOffset->getParent(), cur_blk))
+        break;
+      m_BaseOffsets.pop_back();
+    }
+
     // scan and rewrite cb-load in this block
     ProcessBlock(cur_blk, dircb_owloads, indcb_owloads, indcb_gathers);
     CleanupExtract(cur_blk);
@@ -1166,7 +1177,7 @@ Value *ConstantCoalescing::SimpleBaseOffset(Value *elt_idxv, uint &offset, Exten
     // Bail if no constant offset was found or extension kinds don't match.
     if ((offset0 == 0 && offset1 == 0) || extension1 != extension2) {
       // Check for previously created add instruction with these operands.
-      auto [it, inserted] = m_BaseOffsets.try_emplace(MakeSortedPair(src0, src1), expr);
+      auto [it, inserted] = m_BaseOffsets.insert({MakeSortedPair(src0, src1), expr});
       return it->second;
     }
     IGC_ASSERT(base0 != src0 || base1 != src1);
