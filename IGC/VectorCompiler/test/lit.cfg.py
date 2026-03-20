@@ -1,6 +1,6 @@
 # ========================== begin_copyright_notice ============================
 #
-# Copyright (C) 2020-2025 Intel Corporation
+# Copyright (C) 2020-2026 Intel Corporation
 #
 # SPDX-License-Identifier: MIT
 #
@@ -73,54 +73,100 @@ extra_args_default = vc_extra_args_legacy_pm+[config.opaque_pointers_default_arg
 extra_args_typed_new_pm = vc_extra_args_new_pm+[config.opaque_pointers_disable_opt]
 extra_args_opaque_new_pm = vc_extra_args_new_pm+[config.opaque_pointers_enable_opt]
 
-if int(config.llvm_version) >= 16:
+if int(config.llvm_version) >= 17:
   command_opt_legacy = ': ||'
-  command_opt_new_pm = FindTool('opt')
+  command_opt_new_pm_typed = ': ||'
+  command_opt_new_pm_opaque = FindTool('opt')
   command_not_legacy = ': ||'
-  command_not_new_pm = FindTool('not')
+  command_not_new_pm_typed = ': ||'
+  command_not_new_pm_opaque = FindTool('not')
+  command_opt_typed = ': ||'
+  command_opt_opaque = FindTool('opt')
+  command_not_typed = ': ||'
+  command_not_opaque = FindTool('not')
+  command_llc_typed = ': ||'
+  command_llc_opaque = FindTool('llc')
+elif int(config.llvm_version) == 16:
+  command_opt_legacy = ': ||'
+  command_opt_new_pm_typed = FindTool('opt')
+  command_opt_new_pm_opaque = FindTool('opt')
+  command_not_legacy = ': ||'
+  command_not_new_pm_typed = FindTool('not')
+  command_not_new_pm_opaque = FindTool('not')
+  command_opt_typed = FindTool('opt')
+  command_opt_opaque = FindTool('opt')
+  command_not_typed = FindTool('not')
+  command_not_opaque = FindTool('not')
+  command_llc_typed = FindTool('llc')
+  command_llc_opaque = FindTool('llc')
 else:
   command_opt_legacy = FindTool('opt')
-  command_opt_new_pm = ': ||'
+  command_opt_new_pm_typed = ': ||'
+  command_opt_new_pm_opaque = ': ||'
   command_not_legacy = FindTool('not')
-  command_not_new_pm = ': ||'
-
-command_opt = FindTool('opt')
+  command_not_new_pm_typed = ': ||'
+  command_not_new_pm_opaque = ': ||'
+  command_opt_typed = FindTool('opt')
+  command_opt_opaque = FindTool('opt')
+  command_not_typed = FindTool('not')
+  command_not_opaque = FindTool('not')
+  command_llc_typed = FindTool('llc')
+  command_llc_opaque = FindTool('llc')
 
 if int(config.llvm_version) >= 16:
-    command_opt_default = command_opt_new_pm
+    command_opt_default = command_opt_new_pm_opaque
 else:
     command_opt_default = command_opt_legacy
 
 # Use one of the %opt version explicitly to override the default setting in the
 # course of LITs' migration to opaque pointers.
 
-opt_tool_typed_ptrs = ToolSubst('%opt_typed_ptrs', extra_args=extra_args_typed_legacy, command=command_opt)
-opt_tool_opaque_ptrs = ToolSubst('%opt_opaque_ptrs', extra_args=extra_args_opaque_legacy, command=command_opt)
+opt_tool_typed_ptrs = ToolSubst('%opt_typed_ptrs', extra_args=extra_args_typed_legacy, command=command_opt_typed)
+opt_tool_opaque_ptrs = ToolSubst('%opt_opaque_ptrs', extra_args=extra_args_opaque_legacy, command=command_opt_opaque)
 
 opt_tool_legacy_typed = ToolSubst('%opt_legacy_typed', extra_args=extra_args_typed_legacy, command=command_opt_legacy)
 opt_tool_legacy_opaque = ToolSubst('%opt_legacy_opaque', extra_args=extra_args_opaque_legacy, command=command_opt_legacy)
 
-opt_tool_new_pm_typed = ToolSubst('%opt_new_pm_typed', extra_args=extra_args_typed_new_pm, command=command_opt_new_pm)
-opt_tool_new_pm_opaque = ToolSubst('%opt_new_pm_opaque', extra_args=extra_args_opaque_new_pm, command=command_opt_new_pm)
+opt_tool_new_pm_typed = ToolSubst('%opt_new_pm_typed', extra_args=extra_args_typed_new_pm, command=command_opt_new_pm_typed)
+opt_tool_new_pm_opaque = ToolSubst('%opt_new_pm_opaque', extra_args=extra_args_opaque_new_pm, command=command_opt_new_pm_opaque)
 
-opt_tool_not_legacy = ToolSubst('%not_legacy', command=command_not_legacy)
-opt_tool_not_new_pm = ToolSubst('%not_new_pm', command=command_not_new_pm)
+def _flatten_tool_subst(ts):
+    if isinstance(ts.command, FindTool):
+        cmd = lit.util.which(ts.command.name, os.pathsep.join(tool_dirs))
+        if cmd is None:
+            cmd = ts.command.name
+    else:
+        cmd = str(ts.command)
+    return [cmd] + (ts.extra_args or [])
 
-llc_tool_typed_ptrs = ToolSubst('%llc_typed_ptrs', extra_args=extra_args_typed_legacy, command=FindTool('llc'))
-llc_tool_opaque_ptrs = ToolSubst('%llc_opaque_ptrs', extra_args=extra_args_opaque_legacy, command=FindTool('llc'))
+not_opt_tool_typed_ptrs = ToolSubst('%not_opt_typed_ptrs', extra_args=_flatten_tool_subst(opt_tool_typed_ptrs), command=command_not_typed)
+not_opt_tool_opaque_ptrs = ToolSubst('%not_opt_opaque_ptrs', extra_args=_flatten_tool_subst(opt_tool_opaque_ptrs), command=command_not_opaque)
+
+not_opt_tool_legacy_typed = ToolSubst('%not_opt_legacy_typed', extra_args=_flatten_tool_subst(opt_tool_legacy_typed), command=command_not_legacy)
+not_opt_tool_legacy_opaque = ToolSubst('%not_opt_legacy_opaque', extra_args=_flatten_tool_subst(opt_tool_legacy_opaque), command=command_not_legacy)
+
+not_opt_tool_new_pm_typed = ToolSubst('%not_opt_new_pm_typed', extra_args=_flatten_tool_subst(opt_tool_new_pm_typed), command=command_not_new_pm_typed)
+not_opt_tool_new_pm_opaque = ToolSubst('%not_opt_new_pm_opaque', extra_args=_flatten_tool_subst(opt_tool_new_pm_opaque), command=command_not_new_pm_opaque)
+
+llc_tool_typed_ptrs = ToolSubst('%llc_typed_ptrs', extra_args=extra_args_typed_legacy, command=command_llc_typed)
+llc_tool_opaque_ptrs = ToolSubst('%llc_opaque_ptrs', extra_args=extra_args_opaque_legacy, command=command_llc_opaque)
 
 opt_tool_old_pm = ToolSubst('%opt', extra_args=extra_args_default, command=command_opt_default)
 
 tools = [ToolSubst('not'),
          opt_tool_old_pm,
-         opt_tool_not_legacy,
-         opt_tool_not_new_pm,
          opt_tool_typed_ptrs,
          opt_tool_opaque_ptrs,
          opt_tool_legacy_opaque,
          opt_tool_legacy_typed,
          opt_tool_new_pm_opaque,
          opt_tool_new_pm_typed,
+         not_opt_tool_typed_ptrs,
+         not_opt_tool_opaque_ptrs,
+         not_opt_tool_legacy_opaque,
+         not_opt_tool_legacy_typed,
+         not_opt_tool_new_pm_opaque,
+         not_opt_tool_new_pm_typed,
          llc_tool_typed_ptrs,
          llc_tool_opaque_ptrs,
          ToolSubst('llc', extra_args=vc_extra_args_legacy_pm+[config.opaque_pointers_default_arg_opt]),
@@ -128,7 +174,10 @@ tools = [ToolSubst('not'),
          ToolSubst('llvm-dwarfdump'),
          ToolSubst('%igc-lld', command=FindTool('ld.lld'))]
 
-config.substitutions.append(('%use_old_pass_manager%', '-enable-new-pm=0'))
+if int(config.llvm_version) >= 17:
+  config.substitutions.append(('%use_old_pass_manager%', '-bugpoint-enable-legacy-pm'))
+else:
+  config.substitutions.append(('%use_old_pass_manager%', '-enable-new-pm=0'))
 
 if int(config.llvm_version) < 12:
   config.available_features.add('llvm_11_or_less')

@@ -21,7 +21,7 @@
 ; CHECK: void @test_packetize{{.*}} !dbg [[SCOPE:![0-9]*]]
 ; CHECK: [[VAL1_V:%[A-z0-9.]*]] = {{.*}}, !dbg [[VAL1_LOC:![0-9]*]]
 ; CHECK: call void @llvm.dbg.declare({{.*}} [[VAL1_V]], metadata [[VAL1_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL1_LOC]]
-; CHECK: call void @llvm.dbg.addr({{.*}} [[VAL1_V]], metadata [[VAL1_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL1_LOC]]
+; CHECK: call void @llvm.dbg.{{addr|value}}({{.*}} [[VAL1_V]], metadata [[VAL1_MD]], metadata !DIExpression({{.*}})), !dbg [[VAL1_LOC]]
 ; CHECK: [[VAL2_V:%[A-z0-9.]*]] = call <8 x float> @llvm.sqrt.v8f32(<8 x float> [[VAL1_V]])
 
 

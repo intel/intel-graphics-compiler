@@ -17,13 +17,13 @@
 
 ; RUN: llvm-dwarfdump -debug-line dbginfo_%basename_t_test_kernel_dwarf.elf | FileCheck %s
 
-; CHECK: Address Line Column File ISA Discriminator Flags
-; CHECK:           42      0    1   0           0   is_stmt
-; CHECK-NEXT:       1     18    1   0           0   is_stmt
-; CHECK-NEXT:     666     10    1   0           0   is_stmt
-; CHECK-NEXT:     777     20    1   0           0   is_stmt
-; CHECK-NEXT:     555     30    1   0           0   is_stmt
-; CHECK-NEXT:    9999     40    1   0           0   is_stmt
+; CHECK: Address Line Column File ISA Discriminator {{(OpIndex )?}}Flags
+; CHECK:           42      0    1   0           0{{( *0)?}}  is_stmt
+; CHECK-NEXT:       1     18    1   0           0{{( *0)?}}  is_stmt
+; CHECK-NEXT:     666     10    1   0           0{{( *0)?}}  is_stmt
+; CHECK-NEXT:     777     20    1   0           0{{( *0)?}}  is_stmt
+; CHECK-NEXT:     555     30    1   0           0{{( *0)?}}  is_stmt
+; CHECK-NEXT:    9999     40    1   0           0{{( *0)?}}  is_stmt
 
 ; ModuleID = 'Deserialized SPIRV Module'
 target datalayout = "e-p:64:64-i64:64-n8:16:32"

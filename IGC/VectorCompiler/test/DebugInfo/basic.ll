@@ -32,7 +32,7 @@
 ; CHECK: total_length: 0x[[#]]
 ; CHECK: version: 4
 ; CHECK: file_names{{\[}} [[#]]{{]}}:
-; CHECK: Address Line Column File ISA Discriminator Flags
+; CHECK: Address Line Column File ISA Discriminator {{(OpIndex )?}}Flags
 
 ; ModuleID = 'Deserialized SPIRV Module'
 target datalayout = "e-p:64:64-i64:64-n8:16:32"

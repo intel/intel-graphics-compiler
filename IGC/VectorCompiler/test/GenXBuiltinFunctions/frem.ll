@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2024-2025 Intel Corporation
+; Copyright (C) 2024-2026 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -10,7 +10,7 @@
 ; RUN: -mcpu=XeLPG -vc-builtins-bif-path=%VC_BIF_XeLPG% -S %s 2>&1 | FileCheck %s
 
 ; RUN: %opt %use_old_pass_manager% -GenXBuiltinFunctions -march=genx64 -mtriple=spir64-unknown-unknown \
-; RUN: -mcpu=XeHPC -vc-builtins-bif-path=%VC_BIF_XeHPC% -S %s 2>&1 | FileCheck %s --check-prefix=CHECK-FDIV
+; RUN: -mcpu=XeHPC -vc-builtins-bif-path=%VC_BIF_XeHPC% -S %s 2>&1 | FileCheck %s --check-prefix=CHECK-FDIV --allow-deprecated-dag-overlap
 
 ; CHECK-NOT: WARNING
 

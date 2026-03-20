@@ -6,8 +6,8 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: not %opt_typed_ptrs %use_old_pass_manager% -GenXPropagateSurfaceState -march=genx64 -mcpu=Xe3PLPG -mattr=+efficient_64b_enabled -mtriple=spir64-unknown-unknown  -S < %s 2>&1 | FileCheck %s
-; RUN: not %opt_opaque_ptrs %use_old_pass_manager% -GenXPropagateSurfaceState -march=genx64 -mcpu=Xe3PLPG -mattr=+efficient_64b_enabled -mtriple=spir64-unknown-unknown  -S < %s 2>&1 | FileCheck %s
+; RUN: %not_opt_typed_ptrs %use_old_pass_manager% -GenXPropagateSurfaceState -march=genx64 -mcpu=Xe3PLPG -mattr=+efficient_64b_enabled -mtriple=spir64-unknown-unknown  -S < %s 2>&1 | FileCheck %s
+; RUN: %not_opt_opaque_ptrs %use_old_pass_manager% -GenXPropagateSurfaceState -march=genx64 -mcpu=Xe3PLPG -mattr=+efficient_64b_enabled -mtriple=spir64-unknown-unknown  -S < %s 2>&1 | FileCheck %s
 
 ; CHECK: GenXPropagateSurfaceState: BTI argument is not expected
 

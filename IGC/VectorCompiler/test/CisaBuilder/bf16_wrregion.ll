@@ -15,8 +15,10 @@
 
 ; COM: ;;;;;;;;;; CHECKERS ;;;;;;;;;;
 
-; CHECK-DAG: .decl  [[DST:V[^ ]+]] v_type=G type=w num_elts=16
-; CHECK: mov (M1, 8) [[DST]](0,0)<2> V{{[0-9]+}}(0,0)<1;1,0>
+; On LLVM-16, wrregion produces a stride-2 mov into a 16-element word variable.
+; On LLVM-17, bf16 alias variables are used with identity moves instead.
+; CHECK-DAG: .decl [[V1:V[^ ]+]] v_type=G type={{w|bf}} num_elts={{16|8}}
+; CHECK: mov (M1, 8) {{V[0-9]+}}(0,0)<{{[12]}}> {{V[0-9]+}}(0,0)<{{[0-9;,]+}}>
 
 ; COM: ;;;;;;;;;; KERNEL ;;;;;;;;;;
 
