@@ -10649,7 +10649,7 @@ intrinsics:
                 comment: "immediate offset (in bytes)"
             - !<ArgumentDefinition>
                 name: Arg2
-                type_definition: *any_int
+                type_definition: *any
                 comment: "value to be stored"
             - !<ArgumentDefinition>
                 name: Arg3
