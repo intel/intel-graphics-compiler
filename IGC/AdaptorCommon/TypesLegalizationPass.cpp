@@ -251,7 +251,7 @@ Value *TypesLegalizationPass::ResolveValue(Instruction *ip, Value *val, SmallVec
   } else if (ExtractValueInst *ev = dyn_cast<ExtractValueInst>(val)) {
     auto evi = ev->getIndices();
     SmallVector<unsigned, 8> newIndices(evi.begin(), evi.end());
-    newIndices.append(&indices.front(), &indices.back());
+    newIndices.append(indices);
 
     return ResolveValue(ev, ev->getAggregateOperand(), newIndices);
   } else if (auto *II = dyn_cast<IntrinsicInst>(val)) {
