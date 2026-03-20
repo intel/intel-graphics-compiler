@@ -28,6 +28,7 @@ SPDX-License-Identifier: MIT
 #include "llvmWrapper/IR/Instructions.h"
 #include "GenISAIntrinsics/GenIntrinsics.h"
 #include "CommonMacros.h"
+#include "Compiler/CodeGenPublicEnums.h"
 
 // This Builder class provides definitions for functions calls that were once available till LLVM version 3.6.0
 //===--------------------------------------------------------------------===
