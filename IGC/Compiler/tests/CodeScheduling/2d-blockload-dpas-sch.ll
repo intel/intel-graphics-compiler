@@ -225,9 +225,9 @@ define spir_kernel void @with_barrier(ptr addrspace(1) %_arg_A, ptr addrspace(1)
 ; CHECK:         call void @llvm.genx.GenISA.threadgroupbarrier()
 ; CHECK:         call void @llvm.genx.GenISA.LSC2DBlockSetAddrPayloadField.p0.i32(ptr [[BLOCK2D_ADDRPAYLOAD_B]], i32 5, i32 [[QOT793]], i1 false)
 ; CHECK:         call void @llvm.genx.GenISA.LSC2DBlockSetAddrPayloadField.p0.i32(ptr [[BLOCK2D_ADDRPAYLOAD_B]], i32 6, i32 [[CONV2_I_3]], i1 false)
+; CHECK:         [[BLOCK2D_READADDRPAYLOAD4:%.*]] = call <8 x i32> @llvm.genx.GenISA.LSC2DBlockReadAddrPayload.v8i32.p0(ptr [[BLOCK2D_ADDRPAYLOAD_B]], i32 0, i32 0, i32 32, i32 16, i32 8, i32 1, i1 false, i1 false, i32 0)
 ; CHECK:         [[DPAS_2_1:%.*]] = call <8 x float> @llvm.genx.GenISA.sub.group.dpas.v8f32.v8f32.v8i16.v8i32(<8 x float> zeroinitializer, <8 x i16> [[NEWVEC7]], <8 x i32> [[BLOCK2D_READADDRPAYLOAD1]], i32 11, i32 11, i32 8, i32 8, i1 false)
 ; CHECK:         [[DPAS_2_2:%.*]] = call <8 x float> @llvm.genx.GenISA.sub.group.dpas.v8f32.v8f32.v8i16.v8i32(<8 x float> [[DPAS_2_1]], <8 x i16> [[NEWVEC7]], <8 x i32> [[BLOCK2D_READADDRPAYLOAD3]], i32 11, i32 11, i32 8, i32 8, i1 false)
-; CHECK:         [[BLOCK2D_READADDRPAYLOAD4:%.*]] = call <8 x i32> @llvm.genx.GenISA.LSC2DBlockReadAddrPayload.v8i32.p0(ptr [[BLOCK2D_ADDRPAYLOAD_B]], i32 0, i32 0, i32 32, i32 16, i32 8, i32 1, i1 false, i1 false, i32 0)
 ; CHECK:         [[TMP6:%.*]] = shl nuw nsw i32 undef, 1
 ; CHECK:         [[X7:%.*]] = shl nuw nsw i32 undef, 1
 ; CHECK:         br label [[FOR_BODY19_I]]

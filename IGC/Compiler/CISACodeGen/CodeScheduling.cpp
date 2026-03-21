@@ -55,19 +55,6 @@ static bool is2dBlockRead(Instruction *I) {
   return false;
 }
 
-static bool is2dBlockPrefetch(Instruction *I) {
-  if (GenIntrinsicInst *Intr = dyn_cast<GenIntrinsicInst>(I)) {
-    switch (Intr->getIntrinsicID()) {
-    case GenISAIntrinsic::GenISA_LSC2DBlockPrefetch:
-    case GenISAIntrinsic::GenISA_LSC2DBlockPrefetchAddrPayload:
-      return true;
-    default:
-      break;
-    }
-  }
-  return false;
-}
-
 static bool isDPAS(Value *V) {
   GenIntrinsicInst *Intr = dyn_cast<GenIntrinsicInst>(V);
   if (!Intr)
@@ -175,8 +162,6 @@ public:
 
   int get(Option key) { return OptionValues[key]; }
 
-  void set(Option key, int value) { OptionValues[key] = value; }
-
   std::string toString() {
     std::string Str;
     for (const auto &Option : OptionValues) {
@@ -264,8 +249,6 @@ public:
 
     CurrentNumOf2dLoads = RPT.CurrentNumOf2dLoads;
     TotalNumOf2dLoads = RPT.TotalNumOf2dLoads;
-    InitialPressureInRegisters = RPT.InitialPressureInRegisters;
-    LargeLoadDensityMargin = RPT.LargeLoadDensityMargin;
 
     // deepcopy HangingLiveVarsVec and HangingLiveVars
     HangingLiveVarsVec.clear();
@@ -384,111 +367,39 @@ public:
     CurrentPressure =
         static_cast<int32_t>(RPE->estimateSizeInBytes(BBCurrent, *F, SIMD, WI)) + ReservedRegisters * RegisterSize;
     PrintDump("Initial CurrentPressure: " << CurrentPressure << "\n");
-    InitialPressureInRegisters = static_cast<int32_t>(RPE->bytesToRegisters(CurrentPressure));
-    PrintDump("Initial CurrentPressure in registers: " << InitialPressureInRegisters << "\n\n");
+    int32_t CurrentPressureInRegisters = static_cast<int32_t>(RPE->bytesToRegisters(CurrentPressure));
+    PrintDump("Initial CurrentPressure in registers: " << CurrentPressureInRegisters << "\n\n");
 
     CurrentNumOf2dLoads = 0;
     TotalNumOf2dLoads = std::count_if(BB->begin(), BB->end(), [](Instruction &I) { return is2dBlockRead(&I); });
-
-    // Compute load-density-based RA fragmentation margin
-    int OverheadPerLoad = C->get(SchedulingConfig::Option::LargeLoadFragOverheadPerLoad);
-    int FragDivisor = C->get(SchedulingConfig::Option::LargeLoadFragDivisor);
-    LargeLoadDensityMargin =
-        (OverheadPerLoad > 0 && FragDivisor > 0) ? (TotalNumOf2dLoads * OverheadPerLoad / FragDivisor) : 0;
   }
-
-  // Returns the static fragmentation adjustment for a large 2D block read,
-  // or 0 if the instruction does not qualify.
-  int getStaticFragAdjustment(Instruction *I) {
-    if (!I || !is2dBlockRead(I) || (getNumGRF() < C->get(SchedulingConfig::Option::FragmentationAdjustmentsMinGRF)))
-      return 0;
-    if (C->get(SchedulingConfig::Option::IgnoreFragmentationForLastLoad) &&
-        (CurrentNumOf2dLoads >= (TotalNumOf2dLoads - 1)))
-      return 0;
-    auto *VectorType = dyn_cast<IGCLLVM::FixedVectorType>(I->getType());
-    if (!VectorType)
-      return 0;
-    if (static_cast<int>(VectorType->getNumElements()) <
-        adjustElementsFromSIMDSize(C->get(SchedulingConfig::Option::LargeLoadSizeForFragmentationAdjustment)))
-      return 0;
-    return C->get(SchedulingConfig::Option::RPMarginIncreaseForFragmentationAdjustment);
-  }
-
-  // Returns additional RP margin when initial BB pressure is high,
-  // compensating for cross-BB live-range overhead (e.g. in loop bodies).
-  int getHighInitialPressureMargin() {
-    int Margin = C->get(SchedulingConfig::Option::HighInitialPressureRPMargin);
-    if (Margin <= 0)
-      return 0;
-    int Threshold = C->get(SchedulingConfig::Option::HighInitialPressureThreshold);
-    if (InitialPressureInRegisters > Threshold)
-      return Margin;
-    return 0;
-  }
-
-  // Returns RA fragmentation margin based on the number of 2D block reads
-  // in the BB. Each block read needs contiguous register allocation which
-  // causes fragmentation waste invisible to the IR-level RP estimator.
-  int getLargeLoadDensityMargin() { return LargeLoadDensityMargin; }
 
   bool isRegpressureLow(Instruction *I = nullptr) {
     return compareRPWithThreshold<false>(C->get(SchedulingConfig::Option::LowRPThresholdDelta), I);
   }
 
-  // RP decision scheme (both return: currentPressure > numGRF - adjustment):
-  //
-  //   isRegpressureHigh (MW -> RP transition):
-  //     adjustment = GreedyRPThresholdDelta + CodeSchedulingRPMargin
-  //                + highInitialPressureMargin
-  //                + [if initialRP >= minInitialRP]: staticFragAdj + densityMargin
-  //
-  //   isRegpressureCritical (per-load decisions in RP mode):
-  //     adjustment = CodeSchedulingRPMargin + staticFragAdj
-  //                + highInitialPressureMargin
-  //                + [if applyDensityToCritical OR initialRP < maxInitialRP]:
-  //                    densityMargin
-  //
-  // The IR-level RP estimate underestimates actual VISA/RA demand because
-  // 2D block reads produce large vectors whose shuffle intermediates and
-  // contiguous-allocation fragmentation are invisible at IR level
-  // The adjustments compensate for this:
-  //  - staticFragAdj:    per-load overhead for alignment gaps
-  //  - densityMargin:    scales with block-read count (cumulative fragmentation)
-  //  - initialPressureM: cross-BB live-range overhead in loop bodies
-  //
-  // High uses a larger base (GreedyRPThresholdDelta ~20 GRF), but it
-  // gates large-load adjustments on initial pressure because on
-  // low-initial-RP BBs these margins are too aggressive and cause false MW
-  // rejections. Critical uses a tight base (~5 GRF) and always applies
-  // staticFragAdj to prevent late-schedule spill overshoots once already in
-  // RP mode.
   bool isRegpressureHigh(Instruction *I = nullptr) {
-    int HighRPAdjustment = C->get(SchedulingConfig::Option::GreedyRPThresholdDelta) +
-                           static_cast<int>(IGC_GET_FLAG_VALUE(CodeSchedulingRPMargin));
-
-    // Gate large-load adjustments (density margin + static frag) on initial BB pressure
-    int MinInitialRP = C->get(SchedulingConfig::Option::LargeLoadHighRPAdjustmentsMinInitialRP);
-    bool ApplyLargeLoadAdj = (MinInitialRP == 0) || (InitialPressureInRegisters >= MinInitialRP);
-
-    if (ApplyLargeLoadAdj && C->get(SchedulingConfig::Option::ApplyStaticFragAdjustmentToHighRP)) {
-      HighRPAdjustment += getStaticFragAdjustment(I);
-    }
-
-    HighRPAdjustment += getHighInitialPressureMargin();
-    if (ApplyLargeLoadAdj)
-      HighRPAdjustment += getLargeLoadDensityMargin();
-    return compareRPWithThreshold<true>(HighRPAdjustment, I);
+    return compareRPWithThreshold<true>(C->get(SchedulingConfig::Option::GreedyRPThresholdDelta) +
+                                            static_cast<int>(IGC_GET_FLAG_VALUE(CodeSchedulingRPMargin)),
+                                        I);
   }
 
   bool isRegpressureCritical(Instruction *I = nullptr) {
-    int TotalAdjustment = static_cast<int>(IGC_GET_FLAG_VALUE(CodeSchedulingRPMargin)) + getStaticFragAdjustment(I) +
-                          getHighInitialPressureMargin();
-    int MaxInitialRP = C->get(SchedulingConfig::Option::LargeLoadDensityMarginCriticalMaxInitialRP);
-    bool ApplyDensityToCritical = C->get(SchedulingConfig::Option::LargeLoadDensityMarginApplyToCritical) ||
-                                  (MaxInitialRP != 0 && InitialPressureInRegisters < MaxInitialRP);
-    if (ApplyDensityToCritical)
-      TotalAdjustment += getLargeLoadDensityMargin();
-    return compareRPWithThreshold<true>(TotalAdjustment, I);
+    int AdjustmentForFragmentation = 0;
+    if (I && is2dBlockRead(I) && (getNumGRF() >= C->get(SchedulingConfig::Option::FragmentationAdjustmentsMinGRF))) {
+      if (!C->get(SchedulingConfig::Option::IgnoreFragmentationForLastLoad) ||
+          (CurrentNumOf2dLoads < (TotalNumOf2dLoads - 1))) {
+        auto *VectorType = dyn_cast<IGCLLVM::FixedVectorType>(I->getType());
+        if (VectorType) {
+          if (static_cast<int>(VectorType->getNumElements()) >=
+              adjustElementsFromSIMDSize(C->get(SchedulingConfig::Option::LargeLoadSizeForFragmentationAdjustment))) {
+            AdjustmentForFragmentation = C->get(SchedulingConfig::Option::RPMarginIncreaseForFragmentationAdjustment);
+          }
+        }
+      }
+    }
+    return compareRPWithThreshold<true>(
+        static_cast<int>(IGC_GET_FLAG_VALUE(CodeSchedulingRPMargin)) + AdjustmentForFragmentation, I);
   }
 
   template <bool checkIfHigher> bool compareRPWithThreshold(int Threshold, Instruction *I = nullptr) {
@@ -584,9 +495,6 @@ public:
     return Value;
   }
 
-  int32_t getSIMD() const { return SIMD; }
-  int32_t bytesToRegisters(int32_t Bytes) const { return static_cast<int32_t>(RPE->bytesToRegisters(Bytes)); }
-
 private:
   BasicBlock *BB;
   Function *F;
@@ -606,11 +514,6 @@ private:
 
   int32_t TotalNumOf2dLoads = 0;
   int32_t CurrentNumOf2dLoads = 0;
-
-  // Initial BB pressure for cross-BB overhead detection
-  int32_t InitialPressureInRegisters = 0;
-  // Load-density-based RA fragmentation margin
-  int32_t LargeLoadDensityMargin = 0;
 
   ValueSet BBIn;
   ValueSet BBOut;
@@ -1446,18 +1349,6 @@ private:
     }
   };
 
-  // DPAS chain analysis structures for phase-aware scheduling
-  struct DPASChainInfo {
-    Instruction *Head = nullptr;
-    int GroupIdx = -1; // Index into DPASChainGroups, -1 if solo
-  };
-
-  struct DPASChainGroup {
-    SmallVector<int, 8> ChainIndices; // Indices into DPASChains
-    int HeadRPBytes = 0;              // Estimated RP cost to fire all heads (bytes)
-    bool AllHeadsScheduled = false;
-  };
-
   // The DepGraph builds in the constructor
   // Then its fields can be used directly
   class DepGraph {
@@ -1465,11 +1356,6 @@ private:
     InstToNodeMap InstToNode;
     InstNodeList InstNodes;
     DepEdgeList DepEdges;
-
-    // DPAS chain analysis data
-    SmallVector<DPASChainInfo, 8> DPASChains;
-    SmallVector<DPASChainGroup, 4> DPASChainGroups;
-    DenseMap<Instruction *, int> DPASToChainIdx; // Inst → index into DPASChains
 
     DepGraph() {}
 
@@ -1491,126 +1377,6 @@ private:
 
         InstNodes.emplace_back(&I, N++);
         InstToNode[&I] = &InstNodes.back();
-      }
-
-      // Precompute DPAS-related info for load ordering improvements
-      int MaxDPASPosition = 0;
-      DenseMap<Instruction *, int> LoadDPASConsumerCount;
-
-      for (auto &Node : InstNodes) {
-        if (isDPAS(Node.I))
-          MaxDPASPosition = std::max(MaxDPASPosition, static_cast<int>(Node.OriginalPosition));
-      }
-
-      for (auto &Node : InstNodes) {
-        if (!is2dBlockRead(Node.I))
-          continue;
-
-        DenseSet<Instruction *> DPASConsumers;
-        DenseSet<Value *> Visited;
-        std::function<void(Value *)> CollectDPASConsumers = [&](Value *V) {
-          if (!Visited.insert(V).second)
-            return;
-          for (auto *U : V->users()) {
-            auto *UI = dyn_cast<Instruction>(U);
-            if (!UI || UI->getParent() != BB)
-              continue;
-            if (isDPAS(UI)) {
-              DPASConsumers.insert(UI);
-            } else {
-              auto *DV = VSA->getDestVector(UI);
-              if (DV && DV->isVectorShuffle())
-                CollectDPASConsumers(DV->getLastIE());
-            }
-          }
-        };
-        CollectDPASConsumers(Node.I);
-        LoadDPASConsumerCount[Node.I] = static_cast<int>(DPASConsumers.size());
-      }
-
-      // Phase-aware scheduling: detect DPAS accumulation chains and group them
-      // Step 1: Find chain heads (DPAS with zeroinitializer/undef/non-DPAS first operand)
-      for (auto &Node : InstNodes) {
-        if (!isDPAS(Node.I))
-          continue;
-
-        Value *FirstOp = Node.I->getOperand(0);
-        auto *FirstOpI = dyn_cast<Instruction>(FirstOp);
-        bool IsHead = isa<UndefValue>(FirstOp) || isa<ConstantAggregateZero>(FirstOp) || !FirstOpI ||
-                      !isDPAS(FirstOpI) || FirstOpI->getParent() != BB;
-
-        if (IsHead) {
-          int ChainIdx = static_cast<int>(DPASChains.size());
-          DPASChains.emplace_back();
-          DPASChains.back().Head = Node.I;
-          DPASChains.back().GroupIdx = -1;
-          DPASToChainIdx[Node.I] = ChainIdx;
-        }
-      }
-
-      // Step 2: Group chains that share operands (transitive closure)
-      {
-        int NextGroupId = 0;
-        for (size_t i = 0; i < DPASChains.size(); i++) {
-          for (size_t j = i + 1; j < DPASChains.size(); j++) {
-            bool SharesOperand = false;
-            for (unsigned op = 1; op < DPASChains[i].Head->getNumOperands() && !SharesOperand; op++) {
-              for (unsigned op2 = 1; op2 < DPASChains[j].Head->getNumOperands(); op2++) {
-                if (DPASChains[i].Head->getOperand(op) == DPASChains[j].Head->getOperand(op2)) {
-                  SharesOperand = true;
-                  break;
-                }
-              }
-            }
-            if (!SharesOperand)
-              continue;
-
-            int GidI = DPASChains[i].GroupIdx;
-            int GidJ = DPASChains[j].GroupIdx;
-            if (GidI < 0 && GidJ < 0) {
-              int NewGid = NextGroupId++;
-              DPASChains[i].GroupIdx = NewGid;
-              DPASChains[j].GroupIdx = NewGid;
-            } else if (GidI >= 0 && GidJ < 0) {
-              DPASChains[j].GroupIdx = GidI;
-            } else if (GidJ >= 0 && GidI < 0) {
-              DPASChains[i].GroupIdx = GidJ;
-            } else if (GidI != GidJ) {
-              for (auto &Ch : DPASChains)
-                if (Ch.GroupIdx == GidJ)
-                  Ch.GroupIdx = GidI;
-            }
-          }
-        }
-
-        // Step 3: Build group structures
-        DenseMap<int, int> GroupIdToIdx;
-        for (int ci = 0; ci < static_cast<int>(DPASChains.size()); ci++) {
-          auto &Chain = DPASChains[ci];
-          if (Chain.GroupIdx < 0)
-            continue;
-          auto It = GroupIdToIdx.find(Chain.GroupIdx);
-          if (It == GroupIdToIdx.end()) {
-            GroupIdToIdx[Chain.GroupIdx] = static_cast<int>(DPASChainGroups.size());
-            DPASChainGroups.emplace_back();
-          }
-          int GrpIdx = GroupIdToIdx[Chain.GroupIdx];
-          DPASChainGroups[GrpIdx].ChainIndices.push_back(ci);
-          Chain.GroupIdx = GrpIdx; // Normalize to array index
-        }
-
-        // Estimate RP cost to fire all heads in each group
-        for (auto &Group : DPASChainGroups) {
-          int TotalHeadRP = 0;
-          for (int ci : Group.ChainIndices) {
-            auto *VT = dyn_cast<IGCLLVM::FixedVectorType>(DPASChains[ci].Head->getType());
-            if (VT) {
-              int ElemBytes = VT->getElementType()->getPrimitiveSizeInBits() / 8;
-              TotalHeadRP += static_cast<int>(VT->getNumElements()) * ElemBytes;
-            }
-          }
-          Group.HeadRPBytes = TotalHeadRP;
-        }
       }
 
       auto addEdge = [&](Instruction *Src, Instruction *Dst, int Weight = WEIGHT_NOT_SPECIFIED,
@@ -1679,29 +1445,8 @@ private:
           case GenISAIntrinsic::GenISA_LSC2DBlockReadAddrPayload: {
             int AdditionalWeight =
                 C[Option::LoadSizeAdditionalWeight] * C[Option::LoadSizeWeightFactor] * getLoadSize(Intr);
-            int BaseWeight = (HighRP ? C[Option::Weight2dBlockReadDstDepHighRP] : C[Option::Weight2dBlockReadDstDep]) +
-                             AdditionalWeight;
-
-            // Loads feeding earlier DPASes get higher weight.
-            // No-op VS chains are already resolved by the caller (Dst is
-            // the DPAS, not the shuffle), so this covers both direct and
-            // no-op-VS-mediated load -> DPAS edges.
-            if (C[Option::WeightLoadDPASPositionBonus] > 0 && Dst && isDPAS(Dst)) {
-              auto It = InstToNode.find(Dst);
-              if (It != InstToNode.end()) {
-                int PositionBonus = std::max(0, MaxDPASPosition - static_cast<int>(It->second->OriginalPosition));
-                BaseWeight += PositionBonus * C[Option::WeightLoadDPASPositionBonus];
-              }
-            }
-
-            // Shared loads (feeding multiple DPASes) get additional weight
-            if (C[Option::WeightSharedLoadBonus] > 0) {
-              auto It = LoadDPASConsumerCount.find(Src);
-              if (It != LoadDPASConsumerCount.end() && It->second > 1)
-                BaseWeight += C[Option::WeightSharedLoadBonus];
-            }
-
-            return BaseWeight;
+            return (HighRP ? C[Option::Weight2dBlockReadDstDepHighRP] : C[Option::Weight2dBlockReadDstDep]) +
+                   AdditionalWeight;
           }
           case GenISAIntrinsic::GenISA_WaveAll:
             return HighRP ? C[Option::WeightWaveAllDstDepHighRP] : C[Option::WeightWaveAllDstDep];
@@ -1981,10 +1726,7 @@ private:
     Schedule(const Schedule &S)
         : LogStream(S.LogStream), RT(S.RT), // RT is copyable
           BB(S.BB), C(S.C), CTX(S.CTX), VSA(S.VSA), RCA(S.RCA), Handicapped(S.Handicapped), GreedyRP(S.GreedyRP),
-          GreedyMW(S.GreedyMW), RegpressureWasCritical(S.RegpressureWasCritical),
-          AllInstructionsScheduledByRP(S.AllInstructionsScheduledByRP), MaxRegpressure(S.MaxRegpressure),
-          RefLiveIntervals(S.RefLiveIntervals), ScheduledInstructions(S.ScheduledInstructions),
-          ActiveLargeLoad(S.ActiveLargeLoad) {
+          GreedyMW(S.GreedyMW), RegpressureWasCritical(S.RegpressureWasCritical), RefLiveIntervals(S.RefLiveIntervals) {
       G.InstNodes.reserve(S.G.InstNodes.size());
       G.DepEdges.reserve(S.G.DepEdges.size());
 
@@ -2018,11 +1760,6 @@ private:
         ScheduledList.push_back(NodeMap[Node]);
       }
 
-      // Copy chain analysis data (references Instruction* which is stable across copies)
-      G.DPASChains = S.G.DPASChains;
-      G.DPASChainGroups = S.G.DPASChainGroups;
-      G.DPASToChainIdx = S.G.DPASToChainIdx;
-
       IGC_ASSERT(VSA->getDestVector(BB->getTerminator()) == nullptr);
     }
 
@@ -2048,19 +1785,10 @@ private:
       Handicapped.erase(Node->I);
 
       ScheduledList.push_back(Node);
-      ScheduledInstructions.insert(Node->I);
       RT.update(Node->I);
       MaxRegpressure = std::max(MaxRegpressure, RT.getCurrentPressure());
       if (RT.isRegpressureCritical()) {
         RegpressureWasCritical = true;
-      }
-
-      // Track large loads to limit the number of large loads in flight
-      if (C[Option::LimitActiveLargeLoads] > 0 && is2dBlockRead(Node->I)) {
-        int ThresholdBytes = C[Option::LimitActiveLargeLoads] * 4; // i32 element size in bytes
-        if (getLoadSizeInBytes(Node->I) >= ThresholdBytes) {
-          ActiveLargeLoad = Node->I;
-        }
       }
 
       std::vector<DepEdge *> ToErase;
@@ -2188,21 +1916,6 @@ private:
 
     DenseMap<Instruction *, int32_t> RefLiveIntervals;
 
-    // Phase-aware scheduling state
-    DenseSet<Instruction *> ScheduledInstructions;
-    Instruction *ActiveLargeLoad = nullptr;
-
-    // Helper: compute load's register footprint in bytes
-    int getLoadSizeInBytes(Instruction *I) const {
-      auto *VT = dyn_cast<IGCLLVM::FixedVectorType>(I->getType());
-      if (!VT)
-        return 0;
-      int NumElements = static_cast<int>(VT->getNumElements());
-      int ElemBytes = VT->getElementType()->getPrimitiveSizeInBits() / 8;
-      int SIMDMultiplier = (RT.getSIMD() == 32) ? 2 : 1;
-      return NumElements * ElemBytes * SIMDMultiplier;
-    }
-
     // Returns the chosen instruction and if it's possible to clone the schedule
     std::tuple<InstructionNode *, bool> chooseReadyInstruction() {
       auto getLowestRegpressureNodes = [&](InstNodePtrList &Nodes) -> InstNodePtrList & {
@@ -2253,6 +1966,40 @@ private:
         return Nodes;
       };
 
+      auto getFirstNode = [&](InstNodePtrList &Nodes) {
+        IGC_ASSERT(Nodes.size() > 0);
+        if (Nodes.size() == 1) {
+          return Nodes.front();
+        }
+        // return the node with the lowest OriginalPosition
+        auto FirstNode = Nodes.front();
+        for (InstructionNode *Node : Nodes) {
+          if (Node->OriginalPosition < FirstNode->OriginalPosition) {
+            FirstNode = Node;
+          }
+        }
+        return FirstNode;
+      };
+
+      auto getLargeBlockLoadsIfExist = [&](InstNodePtrList &Nodes) -> InstNodePtrList & {
+        InstNodePtrList LargeBlockLoads;
+        for (InstructionNode *Node : Nodes) {
+          if (is2dBlockRead(Node->I)) {
+            auto *VectorType = dyn_cast<IGCLLVM::FixedVectorType>(Node->I->getType());
+            if (VectorType) {
+              if ((C[Option::PrioritizeLargeBlockLoadsInRP] > 0) &&
+                  (static_cast<int>(VectorType->getNumElements()) >= C[Option::PrioritizeLargeBlockLoadsInRP])) {
+                LargeBlockLoads.push_back(Node);
+              }
+            }
+          }
+        }
+        if (LargeBlockLoads.size() > 0) {
+          Nodes = std::move(LargeBlockLoads);
+        }
+        return Nodes;
+      };
+
       auto getRealOpThroughVS = [&](Instruction *I) -> Instruction * {
         Instruction *OpI = dyn_cast<Instruction>(RT.getRealOp(I));
         if (!OpI) {
@@ -2288,31 +2035,6 @@ private:
         return Uses;
       };
 
-      // Earliest OriginalPosition among same-BB DPAS consumers of I
-      // (looking through vector shuffles). Returns INT_MAX if none.
-      auto getEarliestDPASConsumerPos = [&](Instruction *I) -> int {
-        int Earliest = INT_MAX;
-        for (auto *U : getRealUsesThroughVS(I)) {
-          auto *UI = dyn_cast<Instruction>(U);
-          if (!UI || UI->getParent() != BB || !isDPAS(UI))
-            continue;
-          auto *DNode = G.InstToNode[UI];
-          if (DNode)
-            Earliest = std::min(Earliest, static_cast<int>(DNode->OriginalPosition));
-        }
-        return Earliest;
-      };
-
-      // Count same-BB DPAS consumers of I (looking through vector shuffles).
-      auto countDPASConsumers = [&](Instruction *I) -> int {
-        int Count = 0;
-        for (auto *U : getRealUsesThroughVS(I)) {
-          if (auto *UI = dyn_cast<Instruction>(U); UI && UI->getParent() == BB && isDPAS(UI))
-            Count++;
-        }
-        return Count;
-      };
-
       std::function<llvm::DenseSet<Value *>(Instruction *)> getRealUsesThroughRematChains;
       getRealUsesThroughRematChains = [&](Instruction *I) -> llvm::DenseSet<Value *> {
         llvm::DenseSet<Value *> Uses;
@@ -2335,97 +2057,6 @@ private:
 
         collectUses(I);
         return Uses;
-      };
-
-      // When breaking ties among 2D block reads, prefer loads that feed
-      // earlier DPAS instructions (by consumer OriginalPosition), then
-      // shared loads (more consumers) over unique loads, then
-      // OriginalPosition as the final fallback.  For non-loads and for
-      // load-vs-non-load comparison, use OriginalPosition to preserve
-      // the original scheduling order.
-      auto tiebreakByDPASConsumer = [&](InstNodePtrList &Nodes) -> InstructionNode * {
-        InstructionNode *BestLoad = nullptr;
-        int BestLoadDPASPos = INT_MAX;
-        int BestLoadConsumers = 0;
-        InstructionNode *BestNonLoad = nullptr;
-
-        for (InstructionNode *Node : Nodes) {
-          if (is2dBlockRead(Node->I)) {
-            int EarliestDPAS = getEarliestDPASConsumerPos(Node->I);
-            int Consumers = countDPASConsumers(Node->I);
-
-            bool IsBetter = !BestLoad;
-            if (!IsBetter) {
-              if (EarliestDPAS < BestLoadDPASPos)
-                IsBetter = true;
-              else if (EarliestDPAS == BestLoadDPASPos && Consumers > BestLoadConsumers)
-                IsBetter = true;
-              else if (EarliestDPAS == BestLoadDPASPos && Consumers == BestLoadConsumers &&
-                       Node->OriginalPosition < BestLoad->OriginalPosition)
-                IsBetter = true;
-            }
-
-            if (IsBetter) {
-              BestLoad = Node;
-              BestLoadDPASPos = EarliestDPAS;
-              BestLoadConsumers = Consumers;
-            }
-          } else {
-            if (!BestNonLoad || Node->OriginalPosition < BestNonLoad->OriginalPosition)
-              BestNonLoad = Node;
-          }
-        }
-
-        if (BestLoad && BestNonLoad)
-          return BestLoad->OriginalPosition <= BestNonLoad->OriginalPosition ? BestLoad : BestNonLoad;
-        return BestLoad ? BestLoad : BestNonLoad;
-      };
-
-      auto getFirstNode = [&](InstNodePtrList &Nodes) {
-        IGC_ASSERT(Nodes.size() > 0);
-        if (Nodes.size() == 1) {
-          return Nodes.front();
-        }
-
-        if (C[Option::TiebreakByDPASConsumerPosition]) {
-          bool HasBlockReads = false;
-          for (auto *Node : Nodes) {
-            if (is2dBlockRead(Node->I)) {
-              HasBlockReads = true;
-              break;
-            }
-          }
-          if (HasBlockReads)
-            return tiebreakByDPASConsumer(Nodes);
-        }
-
-        // Default: return the node with the lowest OriginalPosition
-        auto FirstNode = Nodes.front();
-        for (InstructionNode *Node : Nodes) {
-          if (Node->OriginalPosition < FirstNode->OriginalPosition) {
-            FirstNode = Node;
-          }
-        }
-        return FirstNode;
-      };
-
-      auto getLargeBlockLoadsIfExist = [&](InstNodePtrList &Nodes) -> InstNodePtrList & {
-        InstNodePtrList LargeBlockLoads;
-        for (InstructionNode *Node : Nodes) {
-          if (is2dBlockRead(Node->I)) {
-            auto *VectorType = dyn_cast<IGCLLVM::FixedVectorType>(Node->I->getType());
-            if (VectorType) {
-              if ((C[Option::PrioritizeLargeBlockLoadsInRP] > 0) &&
-                  (static_cast<int>(VectorType->getNumElements()) >= C[Option::PrioritizeLargeBlockLoadsInRP])) {
-                LargeBlockLoads.push_back(Node);
-              }
-            }
-          }
-        }
-        if (LargeBlockLoads.size() > 0) {
-          Nodes = std::move(LargeBlockLoads);
-        }
-        return Nodes;
       };
 
       auto getLoadsThatUnlockDPASes = [&](InstNodePtrList &Nodes, uint MaxLoadSize) -> InstNodePtrList & {
@@ -2498,34 +2129,6 @@ private:
               }
             }
           }
-        }
-
-        // Among loads that unlock DPASes, prefer those unlocking the
-        // earliest DPAS (by OriginalPosition)
-        if (C[Option::PreferEarliestDPASInUnlock]) {
-          auto FocusOnEarliestDPAS = [&](InstNodePtrList &Loads) {
-            if (Loads.size() <= 1)
-              return;
-
-            int EarliestDPAS = INT_MAX;
-            for (auto *Node : Loads)
-              EarliestDPAS = std::min(EarliestDPAS, getEarliestDPASConsumerPos(Node->I));
-
-            if (EarliestDPAS == INT_MAX)
-              return;
-
-            InstNodePtrList Focused;
-            for (auto *Node : Loads) {
-              if (getEarliestDPASConsumerPos(Node->I) == EarliestDPAS)
-                Focused.push_back(Node);
-            }
-
-            if (!Focused.empty())
-              Loads = std::move(Focused);
-          };
-
-          FocusOnEarliestDPAS(LoadsThatUnlockDPASes);
-          FocusOnEarliestDPAS(LoadsThatUnlockDPASesNoRPIncreasing);
         }
 
         if (LoadsThatUnlockDPASesNoRPIncreasing.size() > 0) {
@@ -2665,249 +2268,51 @@ private:
       };
 
       auto focusLoadsOnOneDPAS = [&](InstNodePtrList &Nodes) -> InstNodePtrList & {
-        // Focus loads on one DPAS: choose the DPAS user with the lowest
-        // OriginalPosition and filter out loads feeding later DPASes. This
-        // avoids scheduling many small loads first while all DPASes wait
-        // for a load that comes last. Among loads feeding the same earliest
-        // DPAS, shared loads (multiple consumers) are preferred.
-        if (Nodes.size() <= 1) {
+        // If all Nodes are 2d block loads, choose the dpas user with the lowest initial number and filter out
+        // all the remaining loads. This is needed to avoid a situation when we schedule a lot of small loads first,
+        // but all the DPASes wait for some load that is in the end
+        if (Nodes.size() == 1) {
           return Nodes;
         }
 
-        // Separate loads from non-loads
-        InstNodePtrList LoadNodes, NonLoadNodes;
-        for (auto *Node : Nodes) {
-          if (is2dBlockRead(Node->I))
-            LoadNodes.push_back(Node);
-          else
-            NonLoadNodes.push_back(Node);
-        }
+        InstNodePtrList NonFilteredNodes;
+        if (std::all_of(Nodes.begin(), Nodes.end(), [&](InstructionNode *Node) { return is2dBlockRead(Node->I); })) {
 
-        if (LoadNodes.size() <= 1) {
-          return Nodes;
-        }
-
-        // Find the earliest DPAS consumer position across all load nodes
-        int FirstDPASPos = INT_MAX;
-        for (InstructionNode *Node : LoadNodes)
-          FirstDPASPos = std::min(FirstDPASPos, getEarliestDPASConsumerPos(Node->I));
-
-        if (FirstDPASPos == INT_MAX)
-          return Nodes;
-
-        // Keep only loads that feed the earliest DPAS
-        InstNodePtrList FocusedLoads;
-        for (InstructionNode *Node : LoadNodes) {
-          if (getEarliestDPASConsumerPos(Node->I) == FirstDPASPos)
-            FocusedLoads.push_back(Node);
-        }
-
-        if (FocusedLoads.empty()) {
-          return Nodes;
-        }
-
-        // Among loads feeding the earliest DPAS, put shared loads
-        // (multiple DPAS consumers) before unique loads (single consumer)
-        if (FocusedLoads.size() > 1) {
-          std::stable_partition(FocusedLoads.begin(), FocusedLoads.end(),
-                                [&](InstructionNode *Node) { return countDPASConsumers(Node->I) > 1; });
-        }
-
-        // Recombine focused loads + non-loads
-        Nodes.clear();
-        Nodes.insert(Nodes.end(), FocusedLoads.begin(), FocusedLoads.end());
-        Nodes.insert(Nodes.end(), NonLoadNodes.begin(), NonLoadNodes.end());
-
-        return Nodes;
-      };
-
-      // Defer loads whose DPAS consumer is far (by OriginalPosition) from
-      // the nearest DPAS consumer among all currently-ready loads.
-      // This prevents issuing loads for a distant phase when loads for the current phase are also ready.
-      auto deferDistantLoads = [&](InstNodePtrList &Nodes) -> InstNodePtrList & {
-        if (Nodes.size() <= 1)
-          return Nodes;
-
-        int EarliestConsumerPos = INT_MAX;
-        for (auto *Node : Nodes) {
-          if (is2dBlockRead(Node->I))
-            EarliestConsumerPos = std::min(EarliestConsumerPos, getEarliestDPASConsumerPos(Node->I));
-        }
-
-        if (EarliestConsumerPos == INT_MAX)
-          return Nodes;
-
-        int Threshold = C[Option::DeferDistantLoadsThreshold];
-        InstNodePtrList NearNodes;
-        for (auto *Node : Nodes) {
-          if (!is2dBlockRead(Node->I)) {
-            NearNodes.push_back(Node);
-            continue;
-          }
-
-          int MyEarliestConsumer = getEarliestDPASConsumerPos(Node->I);
-          if (MyEarliestConsumer - EarliestConsumerPos <= Threshold)
-            NearNodes.push_back(Node);
-        }
-
-        if (!NearNodes.empty())
-          Nodes = std::move(NearNodes);
-        return Nodes;
-      };
-
-      // Fire all DPAS chain group heads in a group together. Chains
-      // sharing an operand form a group; their heads must be scheduled
-      // close together so both chains free the shared operand around the same time
-      // and hide latency because they are usually independent except for the shared operand.
-      //
-      //   K_shared = load(...)          // feeds both chains
-      //   chain0_head = dpas(0, K_shared, Q0)   // head of chain 0
-      //   chain1_head = dpas(0, K_shared, Q1)   // head of chain 1  <- fire right after
-      //   chain0_step1 = dpas(chain0_head, ...)  // both chains interleave
-      //   chain1_step1 = dpas(chain1_head, ...)
-      //
-      // Reactive mode: after scheduling one head, boost remaining group
-      // heads. Proactive mode (MW only): fire heads when RP is close to
-      // the threshold and scheduling the next load would cross it.
-      auto fireChainGroupHeads = [&](InstNodePtrList &Nodes) -> InstNodePtrList & {
-        if (G.DPASChainGroups.empty())
-          return Nodes;
-
-        // Reactive: if we just scheduled a chain head, boost remaining heads
-        if (!ScheduledList.empty()) {
-          auto *LastI = ScheduledList.back()->I;
-          auto It = G.DPASToChainIdx.find(LastI);
-          if (It != G.DPASToChainIdx.end()) {
-            auto &LastChain = G.DPASChains[It->second];
-            if (LastChain.Head == LastI && LastChain.GroupIdx >= 0) {
-              auto &Group = G.DPASChainGroups[LastChain.GroupIdx];
-              if (!Group.AllHeadsScheduled) {
-                int MaxBoost = C[Option::FireChainGroupHeadsMaxBoostHeads];
-                InstNodePtrList GroupHeads;
-                bool AllScheduled = true;
-                for (int CI : Group.ChainIndices) {
-                  auto &Chain = G.DPASChains[CI];
-                  if (!ScheduledInstructions.count(Chain.Head)) {
-                    AllScheduled = false;
-                    if (MaxBoost > 0 && static_cast<int>(GroupHeads.size()) >= MaxBoost)
-                      continue;
-                    for (auto *Node : Nodes) {
-                      if (Node->I == Chain.Head) {
-                        GroupHeads.push_back(Node);
-                        break;
-                      }
-                    }
-                  }
-                }
-                Group.AllHeadsScheduled = AllScheduled;
-                if (!GroupHeads.empty()) {
-                  Nodes = std::move(GroupHeads);
-                  return Nodes;
-                }
-              }
-            }
-          }
-        }
-
-        // Proactive (MW mode): fire heads when RP approaching threshold
-        if (!(RT.isRegpressureHigh() || GreedyRP)) {
-          for (auto &Group : G.DPASChainGroups) {
-            if (Group.AllHeadsScheduled)
-              continue;
-
-            int UnfiredHeadRP = 0;
-            int UnfiredHeadCount = 0;
-            InstNodePtrList ReadyHeads;
-            for (int CI : Group.ChainIndices) {
-              auto &Chain = G.DPASChains[CI];
-              if (!ScheduledInstructions.count(Chain.Head)) {
-                UnfiredHeadRP += Group.HeadRPBytes / static_cast<int>(Group.ChainIndices.size());
-                UnfiredHeadCount++;
-                for (auto *Node : Nodes) {
-                  if (Node->I == Chain.Head) {
-                    ReadyHeads.push_back(Node);
-                    break;
-                  }
-                }
-              }
-            }
-
-            if (ReadyHeads.empty() || UnfiredHeadCount == 0)
-              continue;
-
-            int CurrentRP = RT.getCurrentPressure();
-            int HeadRPInGRF = RT.bytesToRegisters(UnfiredHeadRP);
-            int RPThreshold = RT.getNumGRF() - C[Option::GreedyRPThresholdDelta];
-            int MinLoadRP = RT.bytesToRegisters(C[Option::FireChainGroupHeadsMinLoadBytes]);
-
-            if (CurrentRP + HeadRPInGRF < RPThreshold && CurrentRP + HeadRPInGRF + MinLoadRP >= RPThreshold) {
-              Nodes = std::move(ReadyHeads);
-              return Nodes;
-            }
-          }
-        }
-
-        return Nodes;
-      };
-
-      // Limit one large load active at a time
-      auto limitLargeLoads = [&](InstNodePtrList &Nodes) -> InstNodePtrList & {
-        int ThresholdBytes = C[Option::LimitActiveLargeLoads] * 4; // i32 element size in bytes
-
-        if (ActiveLargeLoad) {
-          bool ConsumerScheduled = false;
-          for (auto *U : getRealUsesThroughVS(ActiveLargeLoad)) {
-            auto *I = dyn_cast<Instruction>(U);
-            if (I && isDPAS(I) && ScheduledInstructions.count(I)) {
-              ConsumerScheduled = true;
-              break;
-            }
-          }
-
-          if (!ConsumerScheduled) {
-            InstNodePtrList Filtered;
-            for (auto *Node : Nodes) {
-              if (is2dBlockRead(Node->I) && Node->I != ActiveLargeLoad &&
-                  getLoadSizeInBytes(Node->I) >= ThresholdBytes) {
+          // Get the first DPAS user
+          InstructionNode *FirstDPASUser = nullptr;
+          for (InstructionNode *Node : Nodes) {
+            for (auto *U : getRealUsesThroughVS(Node->I)) {
+              auto *I = dyn_cast<Instruction>(U);
+              if (!I) {
                 continue;
               }
-              Filtered.push_back(Node);
+
+              if (isDPAS(I)) {
+                if (I->getParent() != BB) {
+                  continue;
+                }
+
+                auto *DPASNode = G.InstToNode[I];
+                if (!DPASNode) {
+                  continue;
+                }
+
+                if (!FirstDPASUser || (DPASNode->OriginalPosition < FirstDPASUser->OriginalPosition)) {
+                  FirstDPASUser = DPASNode;
+
+                  NonFilteredNodes = {Node};
+                } else if (DPASNode == FirstDPASUser) {
+                  NonFilteredNodes.push_back(Node);
+                }
+              }
             }
-            if (!Filtered.empty())
-              Nodes = std::move(Filtered);
-          } else {
-            ActiveLargeLoad = nullptr;
+          }
+
+          if (NonFilteredNodes.size() > 0) {
+            Nodes = std::move(NonFilteredNodes);
           }
         }
-        return Nodes;
-      };
 
-      // When both prefetches and data loads are ready, always prefer the
-      // data loads regardless of MW comparison. This prevents next-iteration
-      // prefetches from displacing current-iteration critical loads.
-      auto prioritizeDataLoadsOverPrefetches = [&](InstNodePtrList &Nodes) -> InstNodePtrList & {
-        if (Nodes.size() <= 1)
-          return Nodes;
-
-        bool HasPrefetch = false;
-        bool HasDataLoad = false;
-        for (InstructionNode *Node : Nodes) {
-          if (is2dBlockPrefetch(Node->I))
-            HasPrefetch = true;
-          else if (is2dBlockRead(Node->I))
-            HasDataLoad = true;
-        }
-
-        if (!HasPrefetch || !HasDataLoad)
-          return Nodes;
-
-        InstNodePtrList NonPrefetchNodes;
-        for (InstructionNode *Node : Nodes) {
-          if (!is2dBlockPrefetch(Node->I))
-            NonPrefetchNodes.push_back(Node);
-        }
-        if (!NonPrefetchNodes.empty())
-          Nodes = std::move(NonPrefetchNodes);
         return Nodes;
       };
 
@@ -3091,20 +2496,6 @@ private:
 
           // Choose the Node with the highest MaxWeight, if several, choose the one with the lowest
           // regpressure, if several, choose the one with the least OriginalPosition
-
-          if (C[Option::DeferDistantLoads]) {
-            FilteredReadyList = deferDistantLoads(FilteredReadyList);
-          }
-          if (C[Option::FireChainGroupHeads]) {
-            FilteredReadyList = fireChainGroupHeads(FilteredReadyList);
-          }
-          if (C[Option::LimitActiveLargeLoads]) {
-            FilteredReadyList = limitLargeLoads(FilteredReadyList);
-          }
-          if (C[Option::PrioritizeDataLoadsOverPrefetches]) {
-            FilteredReadyList = prioritizeDataLoadsOverPrefetches(FilteredReadyList);
-          }
-
           FilteredReadyList = getMaxWeightNodes(FilteredReadyList);
           FilteredReadyList = getLowestRegpressureNodes(FilteredReadyList);
           if (C[Option::FocusLoadsOnOneDPAS]) {
@@ -3137,9 +2528,6 @@ private:
             // schedule DPAS earlier
             FilteredReadyList = getDPASIfExist(FilteredReadyList, false);
           }
-          if (C[Option::FireChainGroupHeads]) {
-            FilteredReadyList = fireChainGroupHeads(FilteredReadyList);
-          }
           if (C[Option::PrioritizeLoadsThatUnlockDPASesHighRP]) {
             // Experimental heuristic: prioritize loads that unlock
             // DPASes
@@ -3147,14 +2535,8 @@ private:
                 FilteredReadyList,
                 RT.adjustElementsFromSIMDSize(C[Option::PrioritizeLoadsThatUnlockDPASesHighRP_MaxLoadSize]));
           }
-          if (C[Option::LimitActiveLargeLoads]) {
-            FilteredReadyList = limitLargeLoads(FilteredReadyList);
-          }
           if (C[Option::PrioritizePopulatingOneVectorHighRP]) {
             FilteredReadyList = filterOutNotUnblockingExistingVectorInst(FilteredReadyList);
-          }
-          if (C[Option::PrioritizeDataLoadsOverPrefetches]) {
-            FilteredReadyList = prioritizeDataLoadsOverPrefetches(FilteredReadyList);
           }
 
           FilteredReadyList = getLowestRegpressureNodes(FilteredReadyList);
@@ -3222,16 +2604,6 @@ bool CodeScheduling::runOnFunction(Function &F) {
     return false;
 
   SchedulingConfig Config;
-
-  // Temporary:
-  // Disable chain group head firing for legacy decompose (mode=1) unless
-  // the user explicitly overrides via CodeSchedulingConfig.  Chain heads
-  // help with newdecompose (mode=2) where loads remain as large 2D block
-  // reads, but hurt with olddecompose where loads are pre-decomposed and
-  // the scheduler's has lower flexibility to rearrange the loads.
-  if (!IGC_IS_FLAG_SET(CodeSchedulingConfig) && IGC_GET_FLAG_VALUE(Decompose2DBlockFuncsMode) != 2) {
-    Config.set(SchedulingConfig::Option::FireChainGroupHeads, 0);
-  }
 
   if (IGC_IS_FLAG_ENABLED(DumpCodeScheduling)) {
     auto printGlobalSettings = [](llvm::raw_ostream &LogStream) {
