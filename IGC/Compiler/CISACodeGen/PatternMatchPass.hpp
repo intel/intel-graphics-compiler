@@ -180,6 +180,7 @@ public:
   bool MatchLrp(llvm::BinaryOperator &I);
   bool MatchCmpSext(llvm::Instruction &I);
   bool MatchUnpack4i8(llvm::Instruction &I);
+  bool MatchZExtByteLoad(llvm::Instruction &I);
   bool MatchPack4i8(llvm::Instruction &I);
   bool MatchRepack4i8(llvm::BitCastInst &I);
   bool MatchBinaryUnpack4i8(llvm::Instruction &I);

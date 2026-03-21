@@ -924,7 +924,7 @@ void CodeGenPatternMatch::visitCastInst(llvm::CastInst &I) {
   if (I.getOpcode() == Instruction::SExt) {
     match = MatchUnpack4i8(I) || MatchCmpSext(I) || MatchModifier(I);
   } else if (I.getOpcode() == Instruction::ZExt) {
-    match = MatchUnpack4i8(I) || MatchModifier(I);
+    match = MatchUnpack4i8(I) || MatchZExtByteLoad(I) || MatchModifier(I);
   } else if (I.getOpcode() == Instruction::SIToFP) {
     match = MatchSIToFPZExt(cast<SIToFPInst>(&I)) || MatchModifier(I);
   } else if (I.getOpcode() == Instruction::Trunc) {
@@ -3703,6 +3703,50 @@ bool CodeGenPatternMatch::MatchUnpack4i8(Instruction &I) {
       pattern->source = GetSource(bitcast->getOperand(0), false, false, IsSourceOfSample(&I));
       pattern->index = index;
       pattern->isUnsigned = isa<ZExtInst>(&I);
+      AddPattern(pattern);
+      return true;
+    }
+  }
+  return false;
+}
+
+// Matches the following sequences:
+//  %val = load i8, ptr addrspace(N) %ptr
+//  %dst = zext i8 %val to i32
+// or:
+//  %val = load i16, ptr addrspace(N) %ptr
+//  %dst = zext i16 %val to i32
+// When an LSC sub-dword load (d8u32 / d16u32) is used, the load result is
+// already zero-extended to 32 bits in vISA. This pattern allows the zext to
+// directly use the dword-typed load result, eliminating intermediate movs.
+bool CodeGenPatternMatch::MatchZExtByteLoad(Instruction &I) {
+  struct ZExtByteLoadPattern : public Pattern {
+    llvm::LoadInst *loadInst;
+    llvm::Instruction *zextInst;
+    virtual void Emit(EmitPass *pass, const DstModifier &modifier) {
+      pass->EmitZExtByteLoad(loadInst, zextInst, modifier);
+    }
+  };
+  // LSC d8u32/d16u32 sub-dword loads with zero-extension to dword are
+  // only available on Xe2+ platforms.
+  if (!m_Platform.isCoreChildOf(IGFX_XE2_HPG_CORE))
+    return false;
+  if (I.getType()->isIntegerTy(32) && isa<ZExtInst>(&I)) {
+    auto *load = dyn_cast<LoadInst>(I.getOperand(0));
+    if (load && (load->getType()->isIntegerTy(8) || load->getType()->isIntegerTy(16))) {
+      // Only match when load, zext, and all zext users are in the same BB.
+      BasicBlock *BB = I.getParent();
+      if (load->getParent() != BB)
+        return false;
+      for (auto *U : I.users()) {
+        if (auto *UI = dyn_cast<Instruction>(U))
+          if (UI->getParent() != BB)
+            return false;
+      }
+      ZExtByteLoadPattern *pattern = new (m_allocator) ZExtByteLoadPattern();
+      pattern->loadInst = load;
+      pattern->zextInst = &I;
+      MarkAsSource(load, IsSourceOfSample(&I));
       AddPattern(pattern);
       return true;
     }

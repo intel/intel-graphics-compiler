@@ -932,6 +932,7 @@ bool EmitPass::runOnFunction(llvm::Function &F) {
   m_pDebugEmitter->EndEncodingMark();
 
   phiMovToBB.clear();
+  m_SubDWLoadWideDst.clear();
   unsigned int lineNo = 0;
   bool disableSlicing =
       IGC_IS_FLAG_ENABLED(DisableSIMD32Slicing) ||
@@ -2683,6 +2684,42 @@ void EmitPass::EmitUnpack4i8(const SSource &source, uint32_t index, bool isUnsig
   }
   m_encoder->Cast(dst, src);
   m_encoder->Push();
+}
+
+// When the source of a zext i8→i32 (or i16→i32) is a sub-dword load, the LSC
+// d8u32 / d16u32 load already produces a dword-typed zero-extended result.
+// This function remaps the zext's symbol to the load's dword gatherDst,
+// eliminating the byte/word-extraction and cast movs entirely.
+void EmitPass::EmitZExtByteLoad(llvm::LoadInst *loadInst, llvm::Instruction *zextInst, const DstModifier &dstMod) {
+  CVariable *loadDest = GetSymbol(loadInst);
+  auto it = m_SubDWLoadWideDst.find(loadDest);
+  if (it != m_SubDWLoadWideDst.end() && loadInst->getParent() == zextInst->getParent()) {
+    CVariable *gatherDst = it->second.first;
+    // Pre-allocate CVariables for all non-void users of the zext before
+    // remapping it. Without this, lazy GetSymbol() for downstream values
+    // (e.g., an add destination) may follow DeSSA congruence chains or
+    // variable-reuse paths through the now-remapped zext and resolve to
+    // gatherDst, causing them to overwrite the load's gatherDst.
+    // Only touch users the pattern matcher has marked as needed — calling
+    // GetSymbol on unneeded instructions hits an assertion in CShader.
+    for (auto *U : zextInst->users()) {
+      if (auto *UI = dyn_cast<llvm::Instruction>(U)) {
+        if (!UI->getType()->isVoidTy() && m_pattern->NeedInstruction(*UI)) {
+          GetSymbol(UI);
+        }
+      }
+    }
+    // Remap the zext instruction to directly use the dword gatherDst.
+    // This eliminates the intermediate copy entirely.
+    m_currShader->UpdateSymbolMap(zextInst, gatherDst);
+    m_destination = gatherDst;
+  } else {
+    // Fallback: gatherDst not available (cross-BB load, mergeVal, or map miss)
+    CVariable *src = m_currShader->BitCast(loadDest, GetUnsignedType(loadDest->GetType()));
+    m_encoder->SetDstModifier(dstMod);
+    m_encoder->Cast(m_destination, src);
+    m_encoder->Push();
+  }
 }
 
 // Emits 8-bit integer move operations that repack 4 i8 values from a packed
@@ -18325,6 +18362,18 @@ void EmitPass::emitLSCVectorLoad_subDW(LSC_CACHE_OPTS CacheOpts, bool UseA32, Re
     m_encoder->Push();
   }
 
+  // Record the dword-typed gatherDst for sub-dword loads (d8u32 / d16u32)
+  // so that EmitZExtByteLoad can use the already zero-extended result
+  // directly, avoiding intermediate byte/word-extraction and cast movs.
+  // Only on Xe2+: pre-Xe2 LSC sub-dword loads may not guarantee the
+  // dword zero-extension behavior this optimization relies on.
+  // Skip when mergeVal is present: the merge copy only initializes the low
+  // byte/word of each dword lane via a strided alias, leaving upper bits
+  // uninitialized for false-predicate lanes. Consumers must read from the
+  // narrow Dest (which extracts just the valid sub-dword) in this case.
+  if (m_currShader->m_Platform->isCoreChildOf(IGFX_XE2_HPG_CORE) && !mergeVal)
+    m_SubDWLoadWideDst[Dest] = {gatherDst, m_currentEmitInst->getParent()};
+
   SamplerDescriptor sampler;
   ResourceLoop(Resource, sampler,
                [&](CVariable *flag, CVariable *&destination, ResourceDescriptor resource, bool needloop) {
@@ -18350,6 +18399,50 @@ void EmitPass::emitLSCVectorLoad_subDW(LSC_CACHE_OPTS CacheOpts, bool UseA32, Re
                              LSC_DATA_ORDER_NONTRANSPOSE, ImmOffset, ImmScale, AddrSpace);
                  m_encoder->Push();
                });
+
+  // If every user of this sub-dword load is a zext-to-i32 or a sub-dword
+  // store, the narrow Dest is never read:
+  //   - EmitZExtByteLoad remaps zext users to gatherDst directly
+  //   - emitLSCVectorStore_subDW looks up m_SubDWLoadWideDst for store users
+  // Skip the copy to avoid emitting a dead mov.
+  // This optimization is only safe on Xe2+ where the supporting infrastructure
+  // (m_SubDWLoadWideDst map and MatchZExtByteLoad) is available.
+  if (m_currShader->m_Platform->isCoreChildOf(IGFX_XE2_HPG_CORE) && !mergeVal) {
+    if (auto *LI = dyn_cast<LoadInst>(m_currentEmitInst)) {
+      llvm::BasicBlock *loadBB = LI->getParent();
+      bool canSkipCopy = !LI->user_empty();
+      for (auto *U : LI->users()) {
+        // Only consider users in the same BB; cross-BB users need Dest.
+        auto *UI = dyn_cast<Instruction>(U);
+        if (!UI || UI->getParent() != loadBB) {
+          canSkipCopy = false;
+          break;
+        }
+        if (isa<ZExtInst>(U) && U->getType()->isIntegerTy(32)) {
+          // Mirror MatchZExtByteLoad's constraint: all users of the zext
+          // must also be in loadBB, otherwise MatchModifier handles it
+          // and reads from the narrow Dest.
+          bool zextUsersLocal = true;
+          for (auto *ZU : U->users()) {
+            if (auto *ZUI = dyn_cast<Instruction>(ZU)) {
+              if (ZUI->getParent() != loadBB) {
+                zextUsersLocal = false;
+                break;
+              }
+            }
+          }
+          if (zextUsersLocal)
+            continue;
+        }
+        if (auto *SI = dyn_cast<StoreInst>(U); SI && SI->getValueOperand() == LI)
+          continue;
+        canSkipCopy = false;
+        break;
+      }
+      if (canSkipCopy)
+        return;
+    }
+  }
 
   // Copy from gatherDst to original destination
   uint32_t vStride = doUniformLoad ? 0 : ((EltBytes == 1) ? 4 : 2);
@@ -18727,6 +18820,18 @@ void EmitPass::emitLSCVectorStore_subDW(LSC_CACHE_OPTS CacheOpts, bool UseA32, R
   e_alignment dataAlign = ((4 * width) <= (uint32_t)getGRFSize()) ? EALIGN_GRF : EALIGN_2GRF;
   CVariable *eOffset = Offset;
   CVariable *stVar = StoreVar;
+
+  // When the store value comes from a sub-dword load (d8u32 / d16u32),
+  // the load's dword-typed gatherDst already holds the value zero-extended
+  // in each lane. Use it directly as the store payload, avoiding the
+  // byte/word-extraction + BroadcastAndExtend/ExtendVariable movs.
+  // Skip for predicated stores: UniformCopy uses indirect addressing whose
+  // byte-offset arithmetic depends on the original variable's element size.
+  auto it = m_SubDWLoadWideDst.find(stVar);
+  if (!predicate && it != m_SubDWLoadWideDst.end() && it->second.second == m_currentEmitInst->getParent()) {
+    stVar = it->second.first;
+  }
+
   bool dstUniform = eOffset->IsUniform();
   bool srcUniform = stVar->IsUniform();
 

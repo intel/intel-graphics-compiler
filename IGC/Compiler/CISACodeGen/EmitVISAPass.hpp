@@ -171,6 +171,7 @@ public:
   void EmitPackBfnI64(const SSource sources[6], const bool isI64Half[6], const uint32_t extractIdx[6],
                       const uint8_t booleanFuncCtrl[2], const DstModifier &dstMod);
   void EmitUnpack4i8(const SSource &source, uint32_t index, bool isUnsigned, const DstModifier &dstMod);
+  void EmitZExtByteLoad(llvm::LoadInst *loadInst, llvm::Instruction *zextInst, const DstModifier &dstMod);
   void EmitRepack4i8(const std::array<SSource, 4> &sources, const std::array<uint32_t, 4> &mappings,
                      const DstModifier &dstMod);
   void EmitAddPair(llvm::GenIntrinsicInst *GII, const SSource Sources[4], const DstModifier &DstMod);
@@ -914,6 +915,14 @@ private:
   uint m_labelForDMaskJmp = 0;
 
   llvm::DenseMap<llvm::Instruction *, bool> instrMap;
+
+  // Map from sub-dword load destination (byte/word-typed) to the dword-typed
+  // LSC gatherDst variable (d8u32/d16u32) and the load's BasicBlock.
+  // Used by EmitZExtByteLoad and emitLSCVectorStore_subDW to read the
+  // already zero-extended dword result directly.  The BasicBlock is
+  // stored so consumers can verify the use is in the same block as the
+  // load (the gatherDst temporary is only valid within that block).
+  llvm::DenseMap<CVariable *, std::pair<CVariable *, llvm::BasicBlock *>> m_SubDWLoadWideDst;
 
   // caching the number of instances for the current inst.
   int16_t m_currInstNumInstances = -1;
