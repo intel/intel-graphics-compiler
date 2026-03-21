@@ -154,6 +154,56 @@ void OpenCLPrintfResolution::visitCallInst(CallInst &callInst) {
   }
 }
 
+std::string OpenCLPrintfResolution::getEscapedString(const ConstantDataSequential *pCDS) {
+  std::string Name;
+  // This is to avoid unnecessary characters that exceed the char range
+  for (unsigned i = 0, len = pCDS->getNumElements() - 1; i != len; i++) {
+    if (isa<ConstantInt>(pCDS->getElementAsConstant(i))) {
+      if ((cast<ConstantInt>(pCDS->getElementAsConstant(i))->getZExtValue()) > 127) {
+        Name = "";
+        return Name;
+      }
+      unsigned char C = (char)cast<ConstantInt>(pCDS->getElementAsConstant(i))->getZExtValue();
+
+      if (isprint(C) && (C != '\\') && (C != '"')) {
+        Name.push_back(C);
+      } else {
+        Name.push_back('\\');
+        switch (C) {
+        case '\a':
+          Name.push_back('a');
+          break;
+        case '\b':
+          Name.push_back('b');
+          break;
+        case '\f':
+          Name.push_back('f');
+          break;
+        case '\n':
+          Name.push_back('n');
+          break;
+        case '\r':
+          Name.push_back('r');
+          break;
+        case '\t':
+          Name.push_back('t');
+          break;
+        case '\v':
+          Name.push_back('v');
+          break;
+        default:
+          Name.push_back(C);
+          break;
+        }
+      }
+    } else {
+      Name = "";
+      return Name;
+    }
+  }
+  return Name;
+}
+
 Value *OpenCLPrintfResolution::processPrintfString(Value *arg, Function &F) {
   GlobalVariable *formatString = nullptr;
 
@@ -164,7 +214,37 @@ Value *OpenCLPrintfResolution::processPrintfString(Value *arg, Function &F) {
       return ConstantInt::get(m_int32Type, -1);
     }
 
-    return arg;
+    if (m_CGContext->type == ShaderType::OPENCL_SHADER) {
+      return arg;
+    }
+
+    ConstantDataArray *formatStringConst = dyn_cast<ConstantDataArray>(formatString->getInitializer());
+    std::string escaped_string = formatStringConst ? getEscapedString(formatStringConst) : "";
+
+    // preventing MD enries duplication
+    if (m_MapStringStringIndex.find(escaped_string) != m_MapStringStringIndex.end()) {
+      return ConstantInt::get(m_int32Type, m_MapStringStringIndex[escaped_string]);
+    }
+
+
+    // Add new metadata node and put the printf string into it.
+    // The first element of metadata node is the string index,
+    // the second element is the string itself.
+    NamedMDNode *namedMDNode = m_module->getOrInsertNamedMetadata(getPrintfStringsMDNodeName(F));
+    SmallVector<Metadata *, 2> args;
+    Metadata *stringIndexVal = ConstantAsMetadata::get(ConstantInt::get(m_int32Type, m_stringIndex));
+
+    MDString *final_string = MDString::get(*m_context, escaped_string);
+
+    args.push_back(stringIndexVal);
+    args.push_back(final_string);
+
+    MDNode *itemMDNode = MDNode::get(*m_context, args);
+    namedMDNode->addOperand(itemMDNode);
+
+    m_MapStringStringIndex[escaped_string] = m_stringIndex;
+
+    return ConstantInt::get(m_int32Type, m_stringIndex++);
   } else if (CastInst *castInst = dyn_cast<CastInst>(arg)) {
     return processPrintfString(castInst->getOperand(0), F);
   } else if (GetElementPtrInst *getElemPtrInst = dyn_cast<GetElementPtrInst>(arg)) {
@@ -445,7 +525,7 @@ void OpenCLPrintfResolution::expandPrintfCall(CallInst &printfCall, Function &F)
     writeOffsetPtr = generateCastToPtr(argDesc, writeOffset, bblockTrue);
     writeOffsetPtr->setDebugLoc(m_DL);
 
-    if (dataType == SHADER_PRINTF_STRING_LITERAL) {
+    if (dataType == SHADER_PRINTF_STRING_LITERAL && m_CGContext->type == ShaderType::OPENCL_SHADER) {
       printfArg = CastInst::Create(Instruction::CastOps::PtrToInt, argDesc->value, Type::getInt64Ty(*m_context), "",
                                    bblockTrue);
     }
@@ -640,7 +720,7 @@ unsigned int OpenCLPrintfResolution::getArgTypeSize(IGC::SHADER_PRINTF_TYPE argT
 
   case IGC::SHADER_PRINTF_STRING_LITERAL: {
     // The size of the format string address
-    return 8;
+    return (m_CGContext->type == ShaderType::OPENCL_SHADER) ? 8 : 4;
   }
 
   default:
@@ -746,7 +826,10 @@ Instruction *OpenCLPrintfResolution::generateCastToPtr(SPrintfArgDescriptor *arg
   }
 
   case IGC::SHADER_PRINTF_STRING_LITERAL: {
-    castedType = Type::getInt64PtrTy(*m_context, ADDRESS_SPACE_GLOBAL);
+    if (m_CGContext->type == ShaderType::OPENCL_SHADER)
+      castedType = Type::getInt64PtrTy(*m_context, ADDRESS_SPACE_GLOBAL);
+    else
+      castedType = Type::getInt32PtrTy(*m_context, ADDRESS_SPACE_GLOBAL);
     break;
   }
   case IGC::SHADER_PRINTF_POINTER:

@@ -67,6 +67,10 @@ private:
   // to keep the kernel implicit arguments created for printf.
   std::string getPrintfStringsMDNodeName(llvm::Function &F);
 
+  // Function that takes care of chararcters that are not able to be printed
+  // like \n, \r, \t,.......
+  std::string getEscapedString(const llvm::ConstantDataSequential *pCDS);
+
   // If printfArg is string, adds the string into metadata.
   // Returns the string index if the argument is string, and -1 otherwise.
   llvm::Value *processPrintfString(llvm::Value *arg, llvm::Function &F);
