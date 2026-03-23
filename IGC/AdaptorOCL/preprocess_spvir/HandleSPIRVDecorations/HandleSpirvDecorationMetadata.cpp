@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2023 Intel Corporation
+Copyright (C) 2023-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -556,7 +556,7 @@ void HandleSpirvDecorationMetadata::handleCacheControlINTELFor1DBlockIO(CallInst
 void HandleSpirvDecorationMetadata::handleCacheControlINTELForOCL1DBlockPrefetch(CallInst &I,
                                                                                  SmallPtrSetImpl<MDNode *> &MDNodes,
                                                                                  SmallVectorImpl<StringRef> &Matches) {
-  IGC_ASSERT(Matches[1].startswith("intel_sub_group_block_prefetch"));
+  IGC_ASSERT(IGCLLVM::starts_with(Matches[1], "intel_sub_group_block_prefetch"));
 
   CacheControlFromMDNodes cacheControl = resolveCacheControlFromMDNodes<LoadCacheControl>(m_pCtx, MDNodes);
   if (cacheControl.isEmpty)
@@ -575,13 +575,13 @@ void HandleSpirvDecorationMetadata::handleCacheControlINTELForOCL1DBlockPrefetch
              numElementsToPrefetch == 8 || numElementsToPrefetch == 16);
 
   uint32_t typeSizeInBytes = 0;
-  if (Matches[2].equals("uc"))
+  if (Matches[2] == "uc")
     typeSizeInBytes = 1;
-  else if (Matches[2].equals("us"))
+  else if (Matches[2] == "us")
     typeSizeInBytes = 2;
-  else if (Matches[2].equals("ui"))
+  else if (Matches[2] == "ui")
     typeSizeInBytes = 4;
-  else if (Matches[2].equals("ul"))
+  else if (Matches[2] == "ul")
     typeSizeInBytes = 8;
   else
     IGC_ASSERT(0 && "Unsupported type prefetch!");

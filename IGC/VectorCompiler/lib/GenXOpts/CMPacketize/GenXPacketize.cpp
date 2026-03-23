@@ -21,6 +21,7 @@ SPDX-License-Identifier: MIT
 #include "PacketBuilder.h"
 
 #include <llvmWrapper/IR/BasicBlock.h>
+#include "llvmWrapper/ADT/StringRef.h"
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/IR/Instructions.h"
 #include "llvmWrapper/IR/Type.h"
@@ -1718,22 +1719,22 @@ void GenXPacketize::fixupLLVMIntrinsics(Function &F) {
         auto *CI = cast<CallInst>(&I);
         auto *F = CI->getCalledFunction();
         if (F) {
-          if (F->getName().startswith("sqrt")) {
+          if (IGCLLVM::starts_with(F->getName(), "sqrt")) {
             B->IRB->SetInsertPoint(&I);
             auto *pSqrt = B->VSQRTPS(CI->getOperand(0));
             CI->replaceAllUsesWith(pSqrt);
             RemoveSet.insert(CI);
-          } else if (F->getName().startswith("fabs")) {
+          } else if (IGCLLVM::starts_with(F->getName(), "fabs")) {
             B->IRB->SetInsertPoint(&I);
             auto *pFabs = B->FABS(CI->getOperand(0));
             CI->replaceAllUsesWith(pFabs);
             RemoveSet.insert(CI);
-          } else if (F->getName().startswith("exp2")) {
+          } else if (IGCLLVM::starts_with(F->getName(), "exp2")) {
             B->IRB->SetInsertPoint(&I);
             auto *pExp2 = B->EXP2(CI->getOperand(0));
             CI->replaceAllUsesWith(pExp2);
             RemoveSet.insert(CI);
-          } else if (F->getName().equals("ldexpf")) {
+          } else if (F->getName() == "ldexpf") {
             B->IRB->SetInsertPoint(&I);
             auto *pArg = CI->getOperand(0);
             auto *pExp = CI->getOperand(1);

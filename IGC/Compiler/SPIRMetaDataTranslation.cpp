@@ -115,7 +115,7 @@ bool SPIRMetaDataTranslation::runOnModule(Module &M) {
       // check compiler options
       for (auto i = spirMDUtils.getCompilerOptionsItem(0)->begin(), e = spirMDUtils.getCompilerOptionsItem(0)->end();
            i != e; ++i) {
-        if (StringRef(*i).startswith("-cl-std=CL") && i->length() >= 13) {
+        if (IGCLLVM::starts_with(StringRef(*i), "-cl-std=CL") && i->length() >= 13) {
           oclMajor = i->at(10) - '0';
           oclMinor = i->at(12) - '0';
           break;

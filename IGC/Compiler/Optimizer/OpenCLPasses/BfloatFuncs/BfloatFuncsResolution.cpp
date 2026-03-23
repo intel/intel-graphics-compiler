@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2024 Intel Corporation
+Copyright (C) 2024-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -63,7 +63,7 @@ void BfloatFuncsResolution::visitCallInst(CallInst &CI) {
   std::string DNameStr = llvm::demangle(CI.getCalledFunction()->getName().str());
   StringRef DName(DNameStr);
 
-  if (!DName.startswith("__builtin_bf16"))
+  if (!IGCLLVM::starts_with(DName, "__builtin_bf16"))
     return;
 
   m_builder->SetInsertPoint(&CI);

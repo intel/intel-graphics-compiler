@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2023 Intel Corporation
+Copyright (C) 2017-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -139,7 +139,7 @@ void ExtensionArgAnalysis::visitCallInst(llvm::CallInst &CI) {
 
   StringRef name = F->getName();
 
-  if (name.startswith("__builtin_IB_media_block_") || name == "__builtin_IB_media_block_rectangle_read") {
+  if (IGCLLVM::starts_with(name, "__builtin_IB_media_block_") || name == "__builtin_IB_media_block_rectangle_read") {
     SetExtension(0, ResourceExtensionTypeEnum::MediaResourceBlockType, m_MediaBlockArgs);
   } else if (name == "__builtin_IB_vme_send_fbr" || name == "__builtin_IB_vme_send_ime") {
     SetExtension(3, ResourceExtensionTypeEnum::MediaResourceType, m_MediaArgs);
@@ -150,7 +150,7 @@ void ExtensionArgAnalysis::visitCallInst(llvm::CallInst &CI) {
     SetExtension(4, ResourceExtensionTypeEnum::MediaResourceType, m_MediaArgs);
     SetExtension(5, ResourceExtensionTypeEnum::MediaResourceType, m_MediaArgs);
     CheckandSetSIMD16();
-  } else if (name.startswith("__builtin_IB_vme_send_ime_new") || name == "__builtin_IB_vme_send_sic_new" ||
+  } else if (IGCLLVM::starts_with(name, "__builtin_IB_vme_send_ime_new") || name == "__builtin_IB_vme_send_sic_new" ||
              name == "__builtin_IB_vme_send_fbr_new") {
     // Handle image args.
     SetExtension(1, ResourceExtensionTypeEnum::MediaResourceType, m_MediaArgs);
@@ -183,7 +183,7 @@ bool ExtensionArgAnalysis::runOnFunction(Function &F) {
   m_extensionType = ResourceExtensionTypeEnum::NonExtensionType;
 
   for (int func = VA_FUNCTION_ERODE; func < NUM_VA_FUNCTIONS; ++func) {
-    if (funcName.equals(VA_FUNCTION_STRINGS[func])) {
+    if (funcName == (VA_FUNCTION_STRINGS[func])) {
       // First function arg is the src image, second is the sampler,
       // and third arg is output buffer (ignored by this analysis).
       auto arg = F.arg_begin();

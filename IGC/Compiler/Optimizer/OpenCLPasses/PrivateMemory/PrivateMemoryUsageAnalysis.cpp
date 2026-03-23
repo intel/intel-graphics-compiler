@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -172,7 +172,7 @@ void PrivateMemoryUsageAnalysis::visitCallInst(llvm::CallInst &CI) {
   // Check if a sqrtd builtin is called to enable privMem
   if (m_hasDPDivSqrtEmu && CI.hasName()) {
     Function *calledFunc = CI.getCalledFunction();
-    if (calledFunc && calledFunc->getName().startswith("__builtin_IB_native_sqrtd")) {
+    if (calledFunc && IGCLLVM::starts_with(calledFunc->getName(), "__builtin_IB_native_sqrtd")) {
       m_hasPrivateMem = true;
     }
   }

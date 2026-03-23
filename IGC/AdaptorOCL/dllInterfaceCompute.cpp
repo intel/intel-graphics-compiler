@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2023 Intel Corporation
+Copyright (C) 2017-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -17,6 +17,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/IR/DiagnosticPrinter.h"
 #include "common/LLVMWarningsPop.hpp"
 #include "llvmWrapper/ADT/Optional.h"
+#include "llvmWrapper/IR/Module.h"
 
 #include <cstring>
 #include <string>
@@ -811,7 +812,7 @@ bool ParseInput(llvm::Module *&pKernelModule, const STB_TranslateInputArgs *pInp
 
   // IGC does not handle legacy ocl binary for now (legacy ocl binary
   // is the binary that contains text LLVM IR (2.7 or 3.0).
-  if (!strInput.startswith("BC")) {
+  if (!IGCLLVM::starts_with(strInput, "BC")) {
     bool isLLVM27IR = false, isLLVM30IR = false;
 
     if (strInput.find("triple = \"GHAL3D") != llvm::StringRef::npos) {
@@ -1257,7 +1258,7 @@ bool TranslateBuildSPMD(const STB_TranslateInputArgs *pInputArgs, STB_TranslateO
       oclContext.getModuleMetaData()->csInfo.forcedSIMDSize |= IGC_GET_FLAG_VALUE(ForceOCLSIMDWidth);
 
       try {
-        if (llvm::StringRef(oclContext.getModule()->getTargetTriple()).startswith("spir")) {
+        if (IGCLLVM::starts_with(llvm::StringRef(IGCLLVM::getTargetTriple(*oclContext.getModule())), "spir")) {
           IGC::UnifyIRSPIR(&oclContext);
         } else // not SPIR
         {

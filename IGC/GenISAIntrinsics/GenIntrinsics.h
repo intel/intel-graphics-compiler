@@ -12,6 +12,7 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPush.hpp"
 #include "llvm/IR/Function.h"
 #include "common/LLVMWarningsPop.hpp"
+#include "llvmWrapper/ADT/StringRef.h"
 
 #include <string>
 #include <vector>
@@ -57,7 +58,7 @@ Function *getDeclaration(Module *M, ID id, ArrayRef<Type *> OverloadedTys = {},
 
 // Override of isIntrinsic method defined in Function.h
 inline const char *getGenIntrinsicPrefix() { return "llvm.genx."; }
-inline bool isIntrinsic(const Function *CF) { return (CF->getName().startswith(getGenIntrinsicPrefix())); }
+inline bool isIntrinsic(const Function *CF) { return (IGCLLVM::starts_with(CF->getName(), getGenIntrinsicPrefix())); }
 ID getIntrinsicID(const Function *F, bool useContextWrapper = true);
 
 } // namespace GenISAIntrinsic

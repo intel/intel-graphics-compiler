@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2021 Intel Corporation
+Copyright (C) 2021-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -18,6 +18,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/Support/Regex.h>
 #include <llvm/IR/InstIterator.h>
 #include "common/LLVMWarningsPop.hpp"
+#include "llvmWrapper/ADT/StringRef.h"
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/IR/Instructions.h"
 #include "common/BuiltinTypes.h"
@@ -194,7 +195,7 @@ void PreprocessSPVIR::removePointerAnnotations(Module &M) {
       if (!CI)
         continue;
       auto *Callee = CI->getCalledFunction();
-      if (!Callee || !Callee->getName().startswith("llvm.ptr.annotation."))
+      if (!Callee || !IGCLLVM::starts_with(Callee->getName(), "llvm.ptr.annotation."))
         continue;
 
       // @llvm.ptr.annotation returns its first operand (the annotated pointer)
@@ -248,7 +249,7 @@ static void fixKernelArgBaseTypes(Module &M) {
       StringRef Ty = TyStr->getString();
       StringRef Base = BaseStr->getString();
 
-      if (Ty.endswith("_t") && Ty != Base) {
+      if (IGCLLVM::ends_with(Ty, "_t") && Ty != Base) {
         NeedPatch = true;
         NewBase.push_back(MDString::get(Ctx, Ty));
       } else {

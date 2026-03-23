@@ -10,7 +10,6 @@ SPDX-License-Identifier: MIT
 #if defined(IGC_DEBUG_VARIABLES)
 
 #include "common/LLVMWarningsPush.hpp"
-#include <llvm/ADT/StringRef.h>
 #include <llvm/ADT/StringSwitch.h>
 #include <llvm/Support/CommandLine.h>
 #include "common/LLVMWarningsPop.hpp"
@@ -18,6 +17,7 @@ SPDX-License-Identifier: MIT
 #include "secure_mem.h"
 #include "secure_string.h"
 #include "AdaptorCommon/customApi.hpp"
+#include "llvmWrapper/ADT/StringRef.h"
 
 #if defined(_WIN64) || defined(_WIN32)
 #include <devguid.h>  // for GUID_DEVCLASS_DISPLAY
@@ -628,7 +628,7 @@ static void ParseHashRange(llvm::StringRef line, std::vector<HashRange> &ranges)
   if (!Result)
     return;
   auto parseAsInt = [](StringRef S) {
-    unsigned Radix = S.startswith("0x") ? 0 : 16;
+    unsigned Radix = IGCLLVM::starts_with(S, "0x") ? 0 : 16;
     uint64_t Result;
     [[maybe_unused]] bool Err = S.getAsInteger(Radix, Result);
     IGC_ASSERT(!Err);

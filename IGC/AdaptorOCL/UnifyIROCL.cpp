@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2025 Intel Corporation
+Copyright (C) 2017-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -160,7 +160,7 @@ int getOCLMajorVersion(const SPIRMD::SpirMetaDataUtils &spirMDUtils) {
       // check compiler options
       for (auto i = spirMDUtils.getCompilerOptionsItem(0)->begin(), e = spirMDUtils.getCompilerOptionsItem(0)->end();
            i != e; ++i) {
-        if (StringRef(*i).startswith("-cl-std=CL") && i->length() >= 13) {
+        if (IGCLLVM::starts_with(StringRef(*i), "-cl-std=CL") && i->length() >= 13) {
           oclMajor = i->at(10) - '0';
           oclMinor = i->at(12) - '0';
           break;

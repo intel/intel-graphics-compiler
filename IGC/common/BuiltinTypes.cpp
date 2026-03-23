@@ -21,6 +21,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/Support/Casting.h>
 #include <llvm/Transforms/Utils/Cloning.h>
 #include "common/LLVMWarningsPop.hpp"
+#include "llvmWrapper/ADT/StringRef.h"
 #include "llvmWrapper/IR/Type.h"
 
 #include "Compiler/CodeGenPublicEnums.h"
@@ -46,9 +47,10 @@ bool isImageBuiltinType(const Type *BuiltinTy) {
     BuiltinName.split(Buffer, ".");
     if (Buffer.size() < 2)
       return false;
-    bool IsOpenCLImage = Buffer[0].equals("opencl") && Buffer[1].startswith("image") && Buffer[1].endswith("_t");
-    bool IsSPIRVImage =
-        Buffer[0].equals("spirv") && (Buffer[1].startswith("Image") || Buffer[1].startswith("SampledImage"));
+    bool IsOpenCLImage =
+        Buffer[0] == "opencl" && IGCLLVM::starts_with(Buffer[1], "image") && IGCLLVM::ends_with(Buffer[1], "_t");
+    bool IsSPIRVImage = Buffer[0] == "spirv" &&
+                        (IGCLLVM::starts_with(Buffer[1], "Image") || IGCLLVM::starts_with(Buffer[1], "SampledImage"));
 
     if (IsOpenCLImage || IsSPIRVImage)
       return true;
@@ -70,7 +72,8 @@ static bool isNonOpenCLBuiltinType(const Type *Ty) {
     return false;
 
   StringRef Name = TET->getTargetExtName();
-  return Name.starts_with("spirv.CooperativeMatrixKHR") || Name.starts_with("spirv.JointMatrixINTEL");
+  return IGCLLVM::starts_with(Name, "spirv.CooperativeMatrixKHR") ||
+         IGCLLVM::starts_with(Name, "spirv.JointMatrixINTEL");
 }
 
 static bool isOpenCLTargetExtType(const Type *Ty) { return isTargetExtTy(Ty) && !isNonOpenCLBuiltinType(Ty); }
@@ -171,9 +174,9 @@ private:
 
     StringRef TyName = TET->getName();
     unsigned AS = ADDRESS_SPACE_PRIVATE;
-    if (TyName.startswith("spirv.Image") || TyName.startswith("spirv.SampledImage"))
+    if (IGCLLVM::starts_with(TyName, "spirv.Image") || IGCLLVM::starts_with(TyName, "spirv.SampledImage"))
       AS = ADDRESS_SPACE_GLOBAL;
-    else if (TyName.startswith("spirv.Sampler"))
+    else if (IGCLLVM::starts_with(TyName, "spirv.Sampler"))
       AS = ADDRESS_SPACE_CONSTANT;
 
     return PointerType::get(Ctx, AS);

@@ -82,10 +82,11 @@ static bool ExistUndefinedReferencesInModule(Module &module, CodeGenContext *CGC
   for (auto &F : module) {
     if (F.isDeclaration() && !F.isIntrinsic() && !GenISAIntrinsic::isIntrinsic(&F) && F.hasNUsesOrMore(1)) {
       StringRef funcName = F.getName();
-      if (!funcName.startswith("__builtin_IB") && funcName != "printf" &&
-          !Regex("^_Z[0-9]+__builtin_bf16").match(funcName) && !funcName.startswith("__igcbuiltin_") &&
-          !funcName.startswith("__translate_sampler_initializer") && !funcName.startswith("_Z20__spirv_SampledImage") &&
-          !funcName.startswith("_Z21__spirv_VmeImageINTEL") &&
+      if (!IGCLLVM::starts_with(funcName, "__builtin_IB") && funcName != "printf" &&
+          !Regex("^_Z[0-9]+__builtin_bf16").match(funcName) && !IGCLLVM::starts_with(funcName, "__igcbuiltin_") &&
+          !IGCLLVM::starts_with(funcName, "__translate_sampler_initializer") &&
+          !IGCLLVM::starts_with(funcName, "_Z20__spirv_SampledImage") &&
+          !IGCLLVM::starts_with(funcName, "_Z21__spirv_VmeImageINTEL") &&
           funcName != BufferBoundsCheckingPatcher::BUFFER_SIZE_PLACEHOLDER_FUNCTION_NAME &&
           !F.hasFnAttribute("referenced-indirectly")) {
         ReportUndefinedReference(CGC, funcName, &F);

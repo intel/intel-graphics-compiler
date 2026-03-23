@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2025 Intel Corporation
+Copyright (C) 2017-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -14,6 +14,7 @@ SPDX-License-Identifier: MIT
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/IR/IRBuilder.h"
 #include "llvmWrapper/IR/Instructions.h"
+#include "llvmWrapper/IR/Module.h"
 #include "AdaptorCommon/ImplicitArgs.hpp"
 #include "LLVM3DBuilder/BuiltinsFrontend.hpp"
 #include "Probe/Assertion.h"
@@ -118,8 +119,8 @@ void CImagesBI::prepareCoords(Dimension Dim, Value *Coord, Value *Zero) {
 
 void CImagesBI::CreateInlineSamplerAnnotations(Module *M, InlineSamplersMD &inlineSamplerMD, int samplerValue) {
   inlineSamplerMD.m_Value = samplerValue;
-  if (llvm::StringRef(M->getTargetTriple()).startswith("igil") ||
-      llvm::StringRef(M->getTargetTriple()).startswith("gpu_64")) {
+  if (IGCLLVM::starts_with(llvm::StringRef(IGCLLVM::getTargetTriple(*M)), "igil") ||
+      IGCLLVM::starts_with(llvm::StringRef(IGCLLVM::getTargetTriple(*M)), "gpu_64")) {
     inlineSamplerMD.addressMode = samplerValue & LEGACY_SAMPLER_ADDRESS_MASK;
     switch (samplerValue & LEGACY_SAMPLER_ADDRESS_MASK) {
     case LEGACY_CLK_ADDRESS_NONE:
@@ -181,7 +182,7 @@ void CImagesBI::CreateInlineSamplerAnnotations(Module *M, InlineSamplersMD &inli
     inlineSamplerMD.BorderColorG = (0.0f);
     inlineSamplerMD.BorderColorB = (0.0f);
     inlineSamplerMD.BorderColorA = (0.0f);
-  } else if (llvm::StringRef(M->getTargetTriple()).startswith("spir")) {
+  } else if (IGCLLVM::starts_with(llvm::StringRef(IGCLLVM::getTargetTriple(*M)), "spir")) {
     switch (samplerValue & SPIR_SAMPLER_ADDRESS_MASK) {
     case SPIR_CLK_ADDRESS_NONE:
       inlineSamplerMD.TCXAddressMode = (iOpenCL::SAMPLER_TEXTURE_ADDRESS_MODE_CLAMP);

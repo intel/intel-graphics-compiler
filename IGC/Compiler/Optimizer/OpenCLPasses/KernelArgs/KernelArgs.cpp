@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -142,7 +142,7 @@ KernelArg::ArgType KernelArg::calcArgType(const Argument *arg, const StringRef t
     case ADDRESS_SPACE_PRIVATE: {
 
       Type *type = arg->getType();
-      if (typeStr.equals("queue_t") || typeStr.equals("spirv.Queue")) {
+      if (typeStr == "queue_t" || typeStr == "spirv.Queue") {
         return KernelArg::ArgType::PTR_DEVICE_QUEUE;
       } else if (arg->hasByValAttr() && type->isPointerTy() && arg->getParamByValType()->isStructTy()) {
         // Pass by value structs will show up as private pointer
@@ -339,13 +339,13 @@ KernelArg::ArgType KernelArg::calcArgType(const ImplicitArg &arg) const {
 }
 
 KernelArg::AccessQual KernelArg::calcAccessQual(const Argument *arg, const StringRef qualStr) const {
-  if (qualStr.equals("read_write"))
+  if (qualStr == ("read_write"))
     return READ_WRITE;
 
-  if (qualStr.startswith("read"))
+  if (IGCLLVM::starts_with(qualStr, "read"))
     return READ_ONLY;
 
-  if (qualStr.startswith("write"))
+  if (IGCLLVM::starts_with(qualStr, "write"))
     return WRITE_ONLY;
 
   return NONE;
@@ -406,7 +406,7 @@ unsigned int KernelArg::getLocationCount() const { return m_locationCount; }
 unsigned int KernelArg::getLocationIndex() const { return m_locationIndex; }
 
 bool KernelArg::isImage(const Argument *arg, const StringRef typeStr, ArgType &imageArgType) {
-  if (!typeStr.startswith("image") && !typeStr.startswith("bindless"))
+  if (!IGCLLVM::starts_with(typeStr, "image") && !IGCLLVM::starts_with(typeStr, "bindless"))
     return false;
 
   // Get the original OpenCL type from the metadata and check if it's an image
@@ -414,62 +414,62 @@ bool KernelArg::isImage(const Argument *arg, const StringRef typeStr, ArgType &i
   // Accept those too.
   std::vector<std::string> accessQual{"_t", "_ro_t", "_wo_t", "_rw_t"};
   for (auto &postfix : accessQual) {
-    if (typeStr.equals("image1d" + postfix)) {
+    if (typeStr == ("image1d" + postfix)) {
       imageArgType = ArgType::IMAGE_1D;
       return true;
     }
 
-    if (typeStr.equals("image1d_buffer" + postfix)) {
+    if (typeStr == ("image1d_buffer" + postfix)) {
       imageArgType = ArgType::IMAGE_1D_BUFFER;
       return true;
     }
 
-    if (typeStr.equals("image2d" + postfix)) {
+    if (typeStr == ("image2d" + postfix)) {
       imageArgType = ArgType::IMAGE_2D;
       return true;
     }
 
-    if (typeStr.equals("image2d_depth" + postfix)) {
+    if (typeStr == ("image2d_depth" + postfix)) {
       imageArgType = ArgType::IMAGE_2D_DEPTH;
       return true;
     }
 
-    if (typeStr.equals("image2d_msaa" + postfix)) {
+    if (typeStr == ("image2d_msaa" + postfix)) {
       imageArgType = ArgType::IMAGE_2D_MSAA;
       return true;
     }
 
-    if (typeStr.equals("image2d_msaa_depth" + postfix)) {
+    if (typeStr == ("image2d_msaa_depth" + postfix)) {
       imageArgType = ArgType::IMAGE_2D_MSAA_DEPTH;
       return true;
     }
 
-    if (typeStr.equals("image3d" + postfix)) {
+    if (typeStr == ("image3d" + postfix)) {
       imageArgType = ArgType::IMAGE_3D;
       return true;
     }
 
-    if (typeStr.equals("image1d_array" + postfix)) {
+    if (typeStr == ("image1d_array" + postfix)) {
       imageArgType = ArgType::IMAGE_1D_ARRAY;
       return true;
     }
 
-    if (typeStr.equals("image2d_array" + postfix)) {
+    if (typeStr == ("image2d_array" + postfix)) {
       imageArgType = ArgType::IMAGE_2D_ARRAY;
       return true;
     }
 
-    if (typeStr.equals("image2d_array_depth" + postfix)) {
+    if (typeStr == ("image2d_array_depth" + postfix)) {
       imageArgType = ArgType::IMAGE_2D_DEPTH_ARRAY;
       return true;
     }
 
-    if (typeStr.equals("image2d_array_msaa" + postfix)) {
+    if (typeStr == ("image2d_array_msaa" + postfix)) {
       imageArgType = ArgType::IMAGE_2D_MSAA_ARRAY;
       return true;
     }
 
-    if (typeStr.equals("image2d_array_msaa_depth" + postfix)) {
+    if (typeStr == ("image2d_array_msaa_depth" + postfix)) {
       imageArgType = ArgType::IMAGE_2D_MSAA_DEPTH_ARRAY;
       return true;
     }
@@ -477,82 +477,82 @@ bool KernelArg::isImage(const Argument *arg, const StringRef typeStr, ArgType &i
 
   // See if these are address space decoded args.
   // Get the original OpenCL type from the metadata and check if it's an image
-  if (typeStr.equals("bindless_image1d_t")) {
+  if (typeStr == "bindless_image1d_t") {
     imageArgType = ArgType::BINDLESS_IMAGE_1D;
     return true;
   }
 
-  if (typeStr.equals("bindless_image1d_buffer_t")) {
+  if (typeStr == "bindless_image1d_buffer_t") {
     imageArgType = ArgType::BINDLESS_IMAGE_1D_BUFFER;
     return true;
   }
 
-  if (typeStr.equals("bindless_image2d_t")) {
+  if (typeStr == "bindless_image2d_t") {
     imageArgType = ArgType::BINDLESS_IMAGE_2D;
     return true;
   }
 
-  if (typeStr.equals("bindless_image2d_depth_t")) {
+  if (typeStr == "bindless_image2d_depth_t") {
     imageArgType = ArgType::BINDLESS_IMAGE_2D_DEPTH;
     return true;
   }
 
-  if (typeStr.equals("bindless_image2d_msaa_t")) {
+  if (typeStr == "bindless_image2d_msaa_t") {
     imageArgType = ArgType::BINDLESS_IMAGE_2D_MSAA;
     return true;
   }
 
-  if (typeStr.equals("bindless_image2d_msaa_depth_t")) {
+  if (typeStr == "bindless_image2d_msaa_depth_t") {
     imageArgType = ArgType::BINDLESS_IMAGE_2D_MSAA_DEPTH;
     return true;
   }
 
-  if (typeStr.equals("bindless_image3d_t")) {
+  if (typeStr == "bindless_image3d_t") {
     imageArgType = ArgType::BINDLESS_IMAGE_3D;
     return true;
   }
 
-  if (typeStr.equals("bindless_image_cube_array_t")) {
+  if (typeStr == "bindless_image_cube_array_t") {
     imageArgType = ArgType::BINDLESS_IMAGE_CUBE_ARRAY;
     return true;
   }
 
-  if (typeStr.equals("bindless_image_cube_t")) {
+  if (typeStr == "bindless_image_cube_t") {
     imageArgType = ArgType::BINDLESS_IMAGE_CUBE;
     return true;
   }
 
-  if (typeStr.equals("bindless_image1d_array_t")) {
+  if (typeStr == "bindless_image1d_array_t") {
     imageArgType = ArgType::BINDLESS_IMAGE_1D_ARRAY;
     return true;
   }
 
-  if (typeStr.equals("bindless_image2d_array_t")) {
+  if (typeStr == "bindless_image2d_array_t") {
     imageArgType = ArgType::BINDLESS_IMAGE_2D_ARRAY;
     return true;
   }
 
-  if (typeStr.equals("bindless_image2d_array_depth_t")) {
+  if (typeStr == "bindless_image2d_array_depth_t") {
     imageArgType = ArgType::BINDLESS_IMAGE_2D_DEPTH_ARRAY;
     return true;
   }
 
-  if (typeStr.equals("bindless_image2d_array_msaa_t")) {
+  if (typeStr == "bindless_image2d_array_msaa_t") {
     imageArgType = ArgType::BINDLESS_IMAGE_2D_MSAA_ARRAY;
     return true;
   }
 
-  if (typeStr.equals("bindless_image2d_array_msaa_depth_t")) {
+  if (typeStr == "bindless_image2d_array_msaa_depth_t") {
     imageArgType = ArgType::BINDLESS_IMAGE_2D_MSAA_DEPTH_ARRAY;
     return true;
   }
 
-  if (typeStr.equals("bindless_image_cube_array_depth_t")) {
+  if (typeStr == "bindless_image_cube_array_depth_t") {
     imageArgType = ArgType::BINDLESS_IMAGE_CUBE_DEPTH_ARRAY;
     return true;
   }
 
-  if (typeStr.equals("bindless_image_cube_depth_t")) {
+  if (typeStr == "bindless_image_cube_depth_t") {
     imageArgType = ArgType::BINDLESS_IMAGE_CUBE_DEPTH;
     return true;
   }
@@ -562,11 +562,11 @@ bool KernelArg::isImage(const Argument *arg, const StringRef typeStr, ArgType &i
 
 bool KernelArg::isSampler(const Argument *arg, const StringRef typeStr) {
   // Get the original OpenCL type from the metadata and check if it's a sampler
-  return (typeStr.equals("sampler_t"));
+  return (typeStr == "sampler_t");
 }
 
 bool KernelArg::isBindlessSampler(const Argument *arg, const StringRef typeStr) {
-  return (typeStr.equals("bindless_sampler_t"));
+  return (typeStr == "bindless_sampler_t");
 }
 
 bool KernelArg::isArgPtrType() {

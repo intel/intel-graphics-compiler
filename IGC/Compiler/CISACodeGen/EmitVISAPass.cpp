@@ -1004,7 +1004,7 @@ bool EmitPass::runOnFunction(llvm::Function &F) {
         unsigned int curLineNumber = llvmInst->getDebugLoc().getLine();
         auto &&srcFile = llvmInst->getDebugLoc()->getScope()->getFilename();
         auto &&srcDir = llvmInst->getDebugLoc()->getScope()->getDirectory();
-        if (!curSrcFile.equals(srcFile) || !curSrcDir.equals(srcDir)) {
+        if (curSrcFile != srcFile || curSrcDir != srcDir) {
           curSrcFile = srcFile;
           curSrcDir = srcDir;
           m_pDebugEmitter->BeginEncodingMark();
@@ -9687,16 +9687,16 @@ bool EmitPass::validateInlineAsmConstraints(llvm::CallInst *inst, SmallVector<St
   // lambda for checking constraint types
   auto CheckConstraintTypes = [this](StringRef str, CVariable *cv = nullptr) {
     unsigned matchVal;
-    if (str.equals("=rw")) {
+    if (str == ("=rw")) {
       return true;
-    } else if (str.equals("rw")) {
+    } else if (str == ("rw")) {
       return true;
     } else if (str.getAsInteger(10, matchVal) == 0) {
       // Also allows matching input reg to output reg
       return true;
-    } else if (str.equals("i") || str.equals("P")) {
+    } else if (str == ("i") || str == ("P")) {
       return cv && cv->IsImmediate();
-    } else if (str.equals("rw.u")) {
+    } else if (str == ("rw.u")) {
       return cv && cv->IsUniform();
     } else {
       IGC_ASSERT_MESSAGE(0, "Unsupported constraint type!");
@@ -9714,7 +9714,7 @@ bool EmitPass::validateInlineAsmConstraints(llvm::CallInst *inst, SmallVector<St
   // Check the output constraint tokens
   for (; index < constraints.size(); index++) {
     StringRef &str = constraints[index];
-    if (str.startswith("=")) {
+    if (IGCLLVM::starts_with(str, "=")) {
       success &= CheckConstraintTypes(str);
     } else {
       break;
@@ -9811,12 +9811,12 @@ void EmitPass::EmitInlineAsm(llvm::CallInst *inst) {
 
     // All uniform variables must be broadcasted if 'rw' constraint was
     // specified
-    if (opVar->IsUniform() && constraint.equals("rw")) {
+    if (opVar->IsUniform() && constraint == ("rw")) {
       opnds[i] = BroadcastIfUniform(opVar);
     }
     // Special handling if LLVM replaces a variable with an immediate, we need
     // to insert an extra move
-    else if (opVar->IsImmediate() && !constraint.equals("i") && !constraint.equals("P")) {
+    else if (opVar->IsImmediate() && constraint != "i" && constraint != "P") {
       CVariable *tempMov = m_currShader->GetNewVariable(1, opVar->GetType(), EALIGN_GRF, true, opVar->getName());
       m_encoder->Copy(tempMov, opVar);
       m_encoder->Push();
@@ -9883,7 +9883,7 @@ void EmitPass::EmitInlineAsm(llvm::CallInst *inst) {
       return;
     }
     string varName;
-    if (constraints[val].equals("P"))
+    if (constraints[val] == ("P"))
       varName = std::to_string(opnds[val]->GetImmediateValue());
     else if (opnds[val])
       varName = m_encoder->GetVariableName(opnds[val]);
@@ -23901,14 +23901,17 @@ void EmitPass::emitLSCFence(llvm::GenIntrinsicInst *inst) {
 unsigned short getLSCAtomicBitWidth(llvm::GenIntrinsicInst *inst) {
   llvm::StringRef name = inst->getCalledFunction()->getName();
   unsigned short bitwidth = 0;
-  if (name.startswith("llvm.genx.GenISA.LSCAtomicInts.i64") || name.startswith("llvm.genx.GenISA.LSCAtomicInts.u64") ||
-      name.startswith("llvm.genx.GenISA.LSCAtomicFP64"))
+  if (IGCLLVM::starts_with(name, "llvm.genx.GenISA.LSCAtomicInts.i64") ||
+      IGCLLVM::starts_with(name, "llvm.genx.GenISA.LSCAtomicInts.u64") ||
+      IGCLLVM::starts_with(name, "llvm.genx.GenISA.LSCAtomicFP64"))
     bitwidth = 64;
-  else if (name.startswith("llvm.genx.GenISA.LSCAtomicInts.i32") ||
-           name.startswith("llvm.genx.GenISA.LSCAtomicInts.u32") || name.startswith("llvm.genx.GenISA.LSCAtomicFP32"))
+  else if (IGCLLVM::starts_with(name, "llvm.genx.GenISA.LSCAtomicInts.i32") ||
+           IGCLLVM::starts_with(name, "llvm.genx.GenISA.LSCAtomicInts.u32") ||
+           IGCLLVM::starts_with(name, "llvm.genx.GenISA.LSCAtomicFP32"))
     bitwidth = 32;
-  else if (name.startswith("llvm.genx.GenISA.LSCAtomicInts.i16") ||
-           name.startswith("llvm.genx.GenISA.LSCAtomicInts.u16") || (name.startswith("llvm.genx.GenISA.LSCAtomicBF16")))
+  else if (IGCLLVM::starts_with(name, "llvm.genx.GenISA.LSCAtomicInts.i16") ||
+           IGCLLVM::starts_with(name, "llvm.genx.GenISA.LSCAtomicInts.u16") ||
+           (IGCLLVM::starts_with(name, "llvm.genx.GenISA.LSCAtomicBF16")))
     bitwidth = 16;
   else
     IGC_ASSERT_MESSAGE(0, "Intrinsic support is not implemented.");
@@ -25496,7 +25499,8 @@ Function *EmitPass::findStackOverflowDetectionFunction(Function *ParentFunction,
     auto FG = m_FGA->getGroup(ParentFunction);
     // Function subgroup can contain clones of the subroutine.
     for (auto F : *FG) {
-      if (F->getName().startswith(FunctionName) && m_FGA->getSubGroupMap(ParentFunction) == m_FGA->getSubGroupMap(F)) {
+      if (IGCLLVM::starts_with(F->getName(), FunctionName) &&
+          m_FGA->getSubGroupMap(ParentFunction) == m_FGA->getSubGroupMap(F)) {
         StackOverflowFunction = F;
         break;
       }

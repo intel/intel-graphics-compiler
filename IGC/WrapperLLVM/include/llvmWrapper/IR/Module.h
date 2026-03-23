@@ -42,6 +42,14 @@ public:
 inline llvm::StructType *getTypeByName(llvm::Module &M, llvm::StringRef Name) {
   return llvm::StructType::getTypeByName(M.getContext(), Name);
 }
+
+inline std::string getTargetTriple(const llvm::Module &M) {
+#if LLVM_VERSION_MAJOR >= 22
+  return M.getTargetTriple().str();
+#else
+  return M.getTargetTriple();
+#endif
+}
 } // namespace IGCLLVM
 
 #endif

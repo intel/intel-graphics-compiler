@@ -151,7 +151,7 @@ static Triple overrideTripleWithVC(StringRef TripleStr) {
   Triple T{TripleStr};
   // Normalize triple.
   bool Is32Bit = T.isArch32Bit();
-  if (TripleStr.startswith("genx32"))
+  if (IGCLLVM::starts_with(TripleStr, "genx32"))
     Is32Bit = true;
   return Triple{Is32Bit ? "genx32-unknown-unknown" : "genx64-unknown-unknown"};
 }

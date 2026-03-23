@@ -42,6 +42,7 @@ See LICENSE.TXT for details.
 #include "llvm/Support/MD5.h"
 #include "common/LLVMWarningsPop.hpp"
 #include "llvmWrapper/ADT/StringExtras.h"
+#include "llvmWrapper/ADT/StringRef.h"
 // clang-format on
 
 #include <llvmWrapper/ADT/Optional.h>
@@ -897,7 +898,7 @@ CompileUnit *DwarfDebug::constructCompileUnit(DICompileUnit *DIUnit) {
 
   auto producer = DIUnit->getProducer();
   auto strProducer = producer.str();
-  if (producer.startswith("clang version")) {
+  if (IGCLLVM::starts_with(producer, "clang version")) {
     auto pos = strProducer.find("(");
     strProducer = strProducer.substr(0, pos);
     producer = strProducer.data();

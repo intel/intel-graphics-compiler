@@ -265,21 +265,21 @@ void BIConvert::runOnModule(Module &M) {
           ListDelete.push_back(InstCall);
         }
         // other cases
-        else if (CalleeName.startswith("__builtin_IB_itof")) {
+        else if (IGCLLVM::starts_with(CalleeName, "__builtin_IB_itof")) {
           Instruction *Replace = SIToFPInst::Create(
               Instruction::SIToFP, InstCall->getArgOperand(0),
               callee->getReturnType(), InstCall->getName(), InstCall);
           Replace->setDebugLoc(InstCall->getDebugLoc());
           InstCall->replaceAllUsesWith(Replace);
           ListDelete.push_back(InstCall);
-        } else if (CalleeName.startswith("__builtin_IB_uitof")) {
+        } else if (IGCLLVM::starts_with(CalleeName, "__builtin_IB_uitof")) {
           Instruction *Replace = UIToFPInst::Create(
               Instruction::UIToFP, InstCall->getArgOperand(0),
               callee->getReturnType(), InstCall->getName(), InstCall);
           Replace->setDebugLoc(InstCall->getDebugLoc());
           InstCall->replaceAllUsesWith(Replace);
           ListDelete.push_back(InstCall);
-        } else if (CalleeName.startswith("__builtin_IB_mul_rtz")) {
+        } else if (IGCLLVM::starts_with(CalleeName, "__builtin_IB_mul_rtz")) {
           Instruction *Mul = BinaryOperator::Create(
               Instruction::FMul, InstCall->getArgOperand(0),
               InstCall->getArgOperand(1), InstCall->getName(), InstCall);
@@ -297,7 +297,7 @@ void BIConvert::runOnModule(Module &M) {
           IntrinCall->setDebugLoc(InstCall->getDebugLoc());
           InstCall->replaceAllUsesWith(IntrinCall);
           ListDelete.push_back(InstCall);
-        } else if (CalleeName.startswith("__builtin_IB_add_rtz")) {
+        } else if (IGCLLVM::starts_with(CalleeName, "__builtin_IB_add_rtz")) {
           Instruction *Add = BinaryOperator::Create(
               Instruction::FAdd, InstCall->getArgOperand(0),
               InstCall->getArgOperand(1), InstCall->getName(), InstCall);

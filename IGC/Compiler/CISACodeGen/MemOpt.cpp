@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2023 Intel Corporation
+Copyright (C) 2017-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -4881,14 +4881,15 @@ bool isLayoutStructType(const StructType *StTy) {
   if (!StTy || StTy->isLiteral() || !StTy->hasName() || !StTy->isPacked())
     return false;
   StringRef stId = StTy->getName();
-  return (stId.startswith(getStructNameForSOALayout()) || stId.startswith(getStructNameForAOSLayout()));
+  return (IGCLLVM::starts_with(stId, getStructNameForSOALayout()) ||
+          IGCLLVM::starts_with(stId, getStructNameForAOSLayout()));
 }
 
 bool isLayoutStructTypeAOS(const StructType *StTy) {
   if (!StTy || StTy->isLiteral() || !StTy->hasName() || !StTy->isPacked())
     return false;
   StringRef stId = StTy->getName();
-  return stId.startswith(getStructNameForAOSLayout());
+  return IGCLLVM::starts_with(stId, getStructNameForAOSLayout());
 }
 
 bool isLayoutStructTypeSOA(const StructType *StTy) { return isLayoutStructType(StTy) && !isLayoutStructTypeAOS(StTy); }

@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -17,8 +17,9 @@ SPDX-License-Identifier: MIT
 #include "3d/common/iStdLib/File.h"
 #include "OCLFE/igd_fcl_mcl/headers/clang_tb.h"
 
+#include "llvmWrapper/ADT/StringRef.h"
+#include "llvmWrapper/ADT/Optional.h"
 #include "llvmWrapper/TargetParser/Triple.h"
-#include <llvmWrapper/ADT/Optional.h>
 
 #include "IGC/common/LLVMWarningsPush.hpp"
 #include <llvm/ADT/STLExtras.h>
@@ -318,7 +319,7 @@ static bool processCmSrcOptions(llvm::SmallVectorImpl<const char *> &userArgs, s
   optname += "=";
   toErase = std::find_if(userArgs.begin(), userArgs.end(), [&optname](const auto &Item) {
     llvm::StringRef S = Item;
-    return S.startswith(optname);
+    return IGCLLVM::starts_with(S, optname);
   });
   if (toErase != userArgs.end()) {
     inputFile = *toErase;

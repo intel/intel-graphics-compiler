@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -15,6 +15,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/Instructions.h>
 #include <llvm/IR/IRBuilder.h>
 #include "common/LLVMWarningsPop.hpp"
+#include "llvmWrapper/ADT/StringRef.h"
 
 using namespace llvm;
 using namespace IGC;
@@ -68,13 +69,13 @@ bool CorrectlyRoundedDivSqrt::runOnModule(Module &M) {
 
 bool CorrectlyRoundedDivSqrt::processDeclaration(Function &F) {
   StringRef name = F.getName();
-  if (name.startswith("_Z4sqrt")) {
+  if (IGCLLVM::starts_with(name, "_Z4sqrt")) {
     std::string newName = name.str();
     newName[2] = '7';
     newName.insert(7, "_cr");
     F.setName(newName);
     return true;
-  } else if (name.startswith("_Z16__spirv_ocl_sqrt")) {
+  } else if (IGCLLVM::starts_with(name, "_Z16__spirv_ocl_sqrt")) {
     std::string newName = name.str();
     newName[3] = '9';
     newName.insert(20, "_cr");

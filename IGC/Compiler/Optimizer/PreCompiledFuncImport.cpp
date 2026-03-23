@@ -579,23 +579,23 @@ bool PreCompiledFuncImport::runOnModule(Module &M) {
         for (auto &I : BB) {
           if (CallInst *CI = dyn_cast<CallInst>(&I)) {
             if (Function *calledFunc = CI->getCalledFunction()) {
-              if (calledFunc->getName().startswith("GenISA_fma_rtz")) {
+              if (IGCLLVM::starts_with(calledFunc->getName(), "GenISA_fma_rtz")) {
                 createIntrinsicCall(CI, GenISAIntrinsic::GenISA_fma_rtz);
-              } else if (calledFunc->getName().startswith("GenISA_fma_rtp")) {
+              } else if (IGCLLVM::starts_with(calledFunc->getName(), "GenISA_fma_rtp")) {
                 createIntrinsicCall(CI, GenISAIntrinsic::GenISA_fma_rtp);
-              } else if (calledFunc->getName().startswith("GenISA_fma_rtn")) {
+              } else if (IGCLLVM::starts_with(calledFunc->getName(), "GenISA_fma_rtn")) {
                 createIntrinsicCall(CI, GenISAIntrinsic::GenISA_fma_rtn);
-              } else if (calledFunc->getName().startswith("GenISA_add_rte")) {
+              } else if (IGCLLVM::starts_with(calledFunc->getName(), "GenISA_add_rte")) {
                 createIntrinsicCall(CI, GenISAIntrinsic::GenISA_add_rte);
-              } else if (calledFunc->getName().startswith("GenISA_add_rtz")) {
+              } else if (IGCLLVM::starts_with(calledFunc->getName(), "GenISA_add_rtz")) {
                 createIntrinsicCall(CI, GenISAIntrinsic::GenISA_add_rtz);
-              } else if (calledFunc->getName().startswith("GenISA_add_rtn")) {
+              } else if (IGCLLVM::starts_with(calledFunc->getName(), "GenISA_add_rtn")) {
                 createIntrinsicCall(CI, GenISAIntrinsic::GenISA_add_rtn);
-              } else if (calledFunc->getName().startswith("GenISA_add_rtp")) {
+              } else if (IGCLLVM::starts_with(calledFunc->getName(), "GenISA_add_rtp")) {
                 createIntrinsicCall(CI, GenISAIntrinsic::GenISA_add_rtp);
-              } else if (calledFunc->getName().startswith("GenISA_mul_rtz")) {
+              } else if (IGCLLVM::starts_with(calledFunc->getName(), "GenISA_mul_rtz")) {
                 createIntrinsicCall(CI, GenISAIntrinsic::GenISA_mul_rtz);
-              } else if (calledFunc->getName().startswith("GenISA_uitof_rtz")) {
+              } else if (IGCLLVM::starts_with(calledFunc->getName(), "GenISA_uitof_rtz")) {
                 createIntrinsicCall(CI, GenISAIntrinsic::GenISA_uitof_rtz);
               }
             }
@@ -800,23 +800,21 @@ PreCompiledFuncImport::ImportedFunction::ImportedFunction(Function *F)
   // Get type of imported function.
   StringRef name = F->getName();
 
-  if (name.equals("__igcbuiltin_dp_div_nomadm_ieee") || name.equals("__igcbuiltin_dp_div_nomadm_fast") ||
-      name.equals("__igcbuiltin_dp_sqrt_nomadm_ieee") || name.equals("__igcbuiltin_dp_sqrt_nomadm_fast")) {
+  if (name == "__igcbuiltin_dp_div_nomadm_ieee" || name == "__igcbuiltin_dp_div_nomadm_fast" ||
+      name == "__igcbuiltin_dp_sqrt_nomadm_ieee" || name == "__igcbuiltin_dp_sqrt_nomadm_fast") {
     type = EmuType::FASTDP;
-  } else if (name.equals("__igcbuiltin_dp_add") || name.equals("__igcbuiltin_dp_sub") ||
-             name.equals("__igcbuiltin_dp_fma") || name.equals("__igcbuiltin_dp_mul") ||
-             name.equals("__igcbuiltin_dp_div") || name.equals("__igcbuiltin_dp_cmp") ||
-             name.equals("__igcbuiltin_dp_to_int32") || name.equals("__igcbuiltin_dp_to_uint32") ||
-             name.equals("__igcbuiltin_int32_to_dp") || name.equals("__igcbuiltin_uint32_to_dp") ||
-             name.equals("__igcbuiltin_dp_to_sp") || name.equals("__igcbuiltin_sp_to_dp") ||
-             name.equals("__igcbuiltin_dp_sqrt")) {
+  } else if (name == "__igcbuiltin_dp_add" || name == "__igcbuiltin_dp_sub" || name == "__igcbuiltin_dp_fma" ||
+             name == "__igcbuiltin_dp_mul" || name == "__igcbuiltin_dp_div" || name == "__igcbuiltin_dp_cmp" ||
+             name == "__igcbuiltin_dp_to_int32" || name == "__igcbuiltin_dp_to_uint32" ||
+             name == "__igcbuiltin_int32_to_dp" || name == "__igcbuiltin_uint32_to_dp" ||
+             name == "__igcbuiltin_dp_to_sp" || name == "__igcbuiltin_sp_to_dp" || name == "__igcbuiltin_dp_sqrt") {
     // If true, it is a slow version of DP emu functions. Those functions
     // are the original ones for just passing conformance, not for perf.
     type = EmuType::SLOWDP;
   } else {
     for (int i = 0; i < NUM_FUNCTIONS && type == EmuType::OTHER; ++i) {
       for (int j = 0; j < NUM_TYPES && type == EmuType::OTHER; ++j) {
-        if (name.equals(m_Int64SpDivRemFunctionNames[i][j]) || name.equals(m_Int64DpDivRemFunctionNames[i][j])) {
+        if (name == m_Int64SpDivRemFunctionNames[i][j] || name == m_Int64DpDivRemFunctionNames[i][j]) {
           type = EmuType::INT64;
         }
       }
@@ -1800,7 +1798,7 @@ void PreCompiledFuncImport::visitCallInst(llvm::CallInst &I) {
       StringRef fName = func->getName();
       for (int FID = 0; FID < NUM_FUNCTION_IDS; ++FID) {
         const PreCompiledFuncInfo &finfo = m_functionInfos[FID];
-        if (fName.equals(finfo.FuncName)) {
+        if (fName == (finfo.FuncName)) {
           m_libModuleToBeImported[finfo.LibModID] = true;
           m_changed = true;
 

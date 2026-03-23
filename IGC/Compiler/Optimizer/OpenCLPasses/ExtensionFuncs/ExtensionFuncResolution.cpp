@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2022 Intel Corporation
+Copyright (C) 2017-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -51,15 +51,15 @@ void ExtensionFuncsResolution::visitCallInst(CallInst &CI) {
   Function &F = *(CI.getParent()->getParent());
 
   ImplicitArg::ArgType argType;
-  if (funcName.equals(ExtensionFuncsAnalysis::VME_MB_BLOCK_TYPE)) {
+  if (funcName == (ExtensionFuncsAnalysis::VME_MB_BLOCK_TYPE)) {
     argType = ImplicitArg::VME_MB_BLOCK_TYPE;
-  } else if (funcName.equals(ExtensionFuncsAnalysis::VME_SUBPIXEL_MODE)) {
+  } else if (funcName == (ExtensionFuncsAnalysis::VME_SUBPIXEL_MODE)) {
     argType = ImplicitArg::VME_SUBPIXEL_MODE;
-  } else if (funcName.equals(ExtensionFuncsAnalysis::VME_SAD_ADJUST_MODE)) {
+  } else if (funcName == (ExtensionFuncsAnalysis::VME_SAD_ADJUST_MODE)) {
     argType = ImplicitArg::VME_SAD_ADJUST_MODE;
-  } else if (funcName.equals(ExtensionFuncsAnalysis::VME_SEARCH_PATH_TYPE)) {
+  } else if (funcName == (ExtensionFuncsAnalysis::VME_SEARCH_PATH_TYPE)) {
     argType = ImplicitArg::VME_SEARCH_PATH_TYPE;
-  } else if (funcName.startswith(ExtensionFuncsAnalysis::VME_HELPER_GET_HANDLE)) {
+  } else if (IGCLLVM::starts_with(funcName, ExtensionFuncsAnalysis::VME_HELPER_GET_HANDLE)) {
     // Load from the opaque vme pointer and return the a vector with values.
     IGC_ASSERT(IGCLLVM::getNumArgOperands(&CI) == 1);
     IGCLLVM::IRBuilder<> builder(&CI);
@@ -71,7 +71,7 @@ void ExtensionFuncsResolution::visitCallInst(CallInst &CI) {
     CI.replaceAllUsesWith(ret);
     CI.eraseFromParent();
     return;
-  } else if (funcName.startswith(ExtensionFuncsAnalysis::VME_HELPER_GET_AS)) {
+  } else if (IGCLLVM::starts_with(funcName, ExtensionFuncsAnalysis::VME_HELPER_GET_AS)) {
     // Store the VME values and return an opaque vme pointer.
     IGC_ASSERT(IGCLLVM::getNumArgOperands(&CI) == 1);
     IGCLLVM::IRBuilder<> builder(&*CI.getParent()->getParent()->begin()->getFirstInsertionPt());

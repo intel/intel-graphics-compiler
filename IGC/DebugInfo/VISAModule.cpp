@@ -22,6 +22,7 @@ See LICENSE.TXT for details.
 #include "llvm/IR/IntrinsicInst.h"
 #include "llvm/IR/Module.h"
 #include "common/LLVMWarningsPop.hpp"
+#include "llvmWrapper/ADT/StringRef.h"
 // clang-format on
 
 #include "VISAModule.hpp"
@@ -485,7 +486,7 @@ const DbgDecoder::VarInfo *VISAModule::getVarInfo(const VISAObjectDebugInfo &VDI
     for (const auto &VarInfo : VDI.getVISAVariables()) {
       StringRef Name = VarInfo.name;
       // TODO: what to do with variables starting with "T"?
-      if (Name.startswith("V")) {
+      if (IGCLLVM::starts_with(Name, "V")) {
         Name = Name.drop_front();
         unsigned RegNum = 0;
         if (!Name.getAsInteger(10, RegNum))

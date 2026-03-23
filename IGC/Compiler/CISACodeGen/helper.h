@@ -29,6 +29,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/Analysis/PostDominators.h>
 #include "common/LLVMWarningsPop.hpp"
 #include <llvmWrapper/IR/IRBuilder.h>
+#include "llvmWrapper/ADT/StringRef.h"
 #include "GenISAIntrinsics/GenIntrinsics.h"
 #include "GenISAIntrinsics/GenIntrinsicInst.h"
 #include "Compiler/CodeGenPublicEnums.h"
@@ -259,7 +260,7 @@ inline llvm::Function *getIntelSymbolTableVoidProgram(llvm::Module *pM, int Simd
 // Note, the module can contain multiple dummy kernels to support SIMD variants.
 // This function returns true if the current function is any of those variant kernels.
 inline bool isIntelSymbolTableVoidProgram(llvm::Function *pF) {
-  return (pF && pF->getName().startswith(INTEL_SYMBOL_TABLE_VOID_PROGRAM));
+  return (pF && IGCLLVM::starts_with(pF->getName(), INTEL_SYMBOL_TABLE_VOID_PROGRAM));
 }
 
 int getFunctionControl(const CodeGenContext *pContext);

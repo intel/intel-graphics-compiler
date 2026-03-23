@@ -17,6 +17,22 @@ SPDX-License-Identifier: MIT
 namespace IGCLLVM {
 inline bool equals_insensitive(llvm::StringRef LHS, llvm::StringRef RHS) { return LHS.equals_insensitive(RHS); }
 
+inline bool starts_with(llvm::StringRef LHS, llvm::StringRef RHS) {
+#if LLVM_VERSION_MAJOR >= 22
+  return LHS.starts_with(RHS);
+#else
+  return LHS.startswith(RHS);
+#endif
+}
+
+inline bool ends_with(llvm::StringRef LHS, llvm::StringRef RHS) {
+#if LLVM_VERSION_MAJOR >= 22
+  return LHS.ends_with(RHS);
+#else
+  return LHS.endswith(RHS);
+#endif
+}
+
 inline bool ends_with_insensitive(llvm::StringRef LHS, llvm::StringRef RHS) {
 #if LLVM_VERSION_MAJOR > 16 && !defined(IGC_LLVM_TRUNK_REVISION)
   return LHS.ends_with_insensitive(RHS);

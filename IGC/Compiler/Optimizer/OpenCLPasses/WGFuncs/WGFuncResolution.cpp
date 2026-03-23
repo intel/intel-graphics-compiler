@@ -47,7 +47,7 @@ void WGFuncResolution::visitCallInst(CallInst &callInst) {
     return;
   }
   StringRef funcName = pCalledFunc->getName();
-  if (funcName.startswith("__builtin_IB_work_group_any")) {
+  if (IGCLLVM::starts_with(funcName, "__builtin_IB_work_group_any")) {
     SmallVector<Value *, 1> args;
 
     args.push_back(callInst.getOperand(0));

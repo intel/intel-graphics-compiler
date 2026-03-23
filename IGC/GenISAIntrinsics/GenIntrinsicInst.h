@@ -49,6 +49,7 @@ See LICENSE.TXT for details.
 #include "llvmWrapper/IR/Instructions.h"
 #include "llvmWrapper/Support/Alignment.h"
 #include "llvmWrapper/IR/Type.h"
+#include "llvmWrapper/ADT/StringRef.h"
 #include "usc_gen7_types.h"
 #include "visa/include/visa_igc_common_header.h"
 
@@ -84,7 +85,7 @@ public:
   // Methods for support type inquiry through isa, cast, and dyn_cast:
   static inline bool classof(const CallInst *I) {
     if (const Function *CF = I->getCalledFunction()) {
-      return (CF->getName().startswith(GenISAIntrinsic::getGenIntrinsicPrefix()));
+      return (IGCLLVM::starts_with(CF->getName(), GenISAIntrinsic::getGenIntrinsicPrefix()));
     }
     return false;
   }

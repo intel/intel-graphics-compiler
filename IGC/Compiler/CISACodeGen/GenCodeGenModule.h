@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2023 Intel Corporation
+Copyright (C) 2017-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -14,6 +14,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/Analysis/CallGraph.h"
 #include "common/LLVMWarningsPop.hpp"
 #include "common/Types.hpp"
+#include "llvmWrapper/ADT/StringRef.h"
 #include "Probe/Assertion.h"
 
 namespace IGC {
@@ -129,7 +130,8 @@ public:
   /// \brief Only one function in this group ignoring stack overflow detection methods
   bool isSingleIgnoringStackOverflowDetection() const {
     auto isNotStackOverflowDetection = [](const llvm::Function *F) {
-      return !F->getName().startswith("__stackoverflow_detection") && !F->getName().startswith("__stackoverflow_init");
+      return !IGCLLVM::starts_with(F->getName(), "__stackoverflow_detection") &&
+             !IGCLLVM::starts_with(F->getName(), "__stackoverflow_init");
     };
     return (Functions.size() == 1 &&
             std::count_if(Functions.front()->begin(), Functions.front()->end(), isNotStackOverflowDetection) == 1);

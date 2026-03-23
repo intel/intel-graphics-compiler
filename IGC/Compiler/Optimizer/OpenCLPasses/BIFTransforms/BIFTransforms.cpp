@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -16,6 +16,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/IR/Function.h"
 #include "llvm/ADT/StringRef.h"
 #include "common/LLVMWarningsPop.hpp"
+#include "llvmWrapper/ADT/StringRef.h"
 
 using namespace llvm;
 
@@ -72,17 +73,17 @@ bool BIFTransforms::replaceBIF(Function &F) {
 
   bool changed = false;
   StringRef name = F.getName();
-  if (name.startswith("_Z6length")) { // length --> fast_length
+  if (IGCLLVM::starts_with(name, "_Z6length")) { // length --> fast_length
     std::string newName("_Z11fast_length");
     newName.append(name.data() + 9);
     F.setName(newName);
     changed = true;
-  } else if (name.startswith("_Z9normalize")) { // normalize --> fast_normalize
+  } else if (IGCLLVM::starts_with(name, "_Z9normalize")) { // normalize --> fast_normalize
     std::string newName("_Z14fast_normalize");
     newName.append(name.data() + 12);
     F.setName(newName);
     changed = true;
-  } else if (name.startswith("_Z8distance")) { // distance --> fast_distance
+  } else if (IGCLLVM::starts_with(name, "_Z8distance")) { // distance --> fast_distance
     std::string newName("_Z13fast_distance");
     newName.append(name.data() + 11);
     F.setName(newName);

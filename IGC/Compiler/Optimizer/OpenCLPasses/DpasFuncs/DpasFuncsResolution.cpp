@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2018-2021 Intel Corporation
+Copyright (C) 2018-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -307,26 +307,26 @@ void DpasFuncsResolution::visitCallInst(CallInst &CI) {
 #endif
   if (m_pCtx->platform.hasExecSize16DPAS()) {
     // PVC
-    if (funcName.startswith(DpasFuncsResolution::SG_PREFIX_IDPAS16)) {
+    if (IGCLLVM::starts_with(funcName, DpasFuncsResolution::SG_PREFIX_IDPAS16)) {
       const int SG_PREFIX_LEN = DpasFuncsResolution::SG_PREFIX_IDPAS16.size();
       IsIDpas = true;
       if (!demangleSuffix(funcName, SG_PREFIX_LEN, false, IsIDpas, DstTy, AccTy, PA, PB, SD, RC, nullptr))
         return;
       iid = GenISAIntrinsic::GenISA_sub_group_dpas;
-    } else if (funcName.startswith(DpasFuncsResolution::SG_PREFIX_IDPAS32N16)) {
+    } else if (IGCLLVM::starts_with(funcName, DpasFuncsResolution::SG_PREFIX_IDPAS32N16)) {
       const int SG_PREFIX_LEN = DpasFuncsResolution::SG_PREFIX_IDPAS32N16.size();
       IsIDpas = true;
       IsDoubleSubgroup = true;
       if (!demangleSuffix(funcName, SG_PREFIX_LEN, false, IsIDpas, DstTy, AccTy, PA, PB, SD, RC, nullptr))
         return;
       iid = GenISAIntrinsic::GenISA_sub_group_dpas;
-    } else if (funcName.startswith(DpasFuncsResolution::SG_PREFIX_FDPAS16)) {
+    } else if (IGCLLVM::starts_with(funcName, DpasFuncsResolution::SG_PREFIX_FDPAS16)) {
       const int SG_PREFIX_LEN = DpasFuncsResolution::SG_PREFIX_FDPAS16.size();
       IsIDpas = false;
       if (!demangleSuffix(funcName, SG_PREFIX_LEN, true, IsIDpas, DstTy, AccTy, PA, PB, SD, RC, nullptr))
         return;
       iid = GenISAIntrinsic::GenISA_sub_group_dpas;
-    } else if (funcName.startswith(DpasFuncsResolution::SG_PREFIX_FDPAS32N16)) {
+    } else if (IGCLLVM::starts_with(funcName, DpasFuncsResolution::SG_PREFIX_FDPAS32N16)) {
       const int SG_PREFIX_LEN = DpasFuncsResolution::SG_PREFIX_FDPAS32N16.size();
       IsIDpas = false;
       IsDoubleSubgroup = true;
@@ -338,39 +338,39 @@ void DpasFuncsResolution::visitCallInst(CallInst &CI) {
       return;
     }
   } else {
-    if (funcName.startswith(DpasFuncsResolution::SG_PREFIX_IDPAS)) {
+    if (IGCLLVM::starts_with(funcName, DpasFuncsResolution::SG_PREFIX_IDPAS)) {
       const int SG_PREFIX_LEN = DpasFuncsResolution::SG_PREFIX_IDPAS.size();
       IsIDpas = true;
       if (!demangleSuffix(funcName, SG_PREFIX_LEN, false, IsIDpas, DstTy, AccTy, PA, PB, SD, RC, &IsDpasw))
         return;
       iid = GenISAIntrinsic::GenISA_sub_group_dpas;
-    } else if (funcName.startswith(DpasFuncsResolution::SG_PREFIX_FDPAS)) {
+    } else if (IGCLLVM::starts_with(funcName, DpasFuncsResolution::SG_PREFIX_FDPAS)) {
       const int SG_PREFIX_LEN = DpasFuncsResolution::SG_PREFIX_FDPAS.size();
       IsIDpas = false;
       if (!demangleSuffix(funcName, SG_PREFIX_LEN, false, IsIDpas, DstTy, AccTy, PA, PB, SD, RC, &IsDpasw))
         return;
       iid = GenISAIntrinsic::GenISA_sub_group_dpas;
-    } else if (funcName.startswith(DpasFuncsResolution::WI_PREFIX_IDPAS)) {
+    } else if (IGCLLVM::starts_with(funcName, DpasFuncsResolution::WI_PREFIX_IDPAS)) {
       const int WI_PREFIX_LEN = DpasFuncsResolution::WI_PREFIX_IDPAS.size();
       IsIDpas = true;
       if (!demangleSuffix(funcName, WI_PREFIX_LEN, false, IsIDpas, DstTy, AccTy, PA, PB, SD, RC, &IsDpasw))
         return;
       iid = GenISAIntrinsic::GenISA_dpas;
-    } else if (funcName.startswith(DpasFuncsResolution::WI_PREFIX_FDPAS)) {
+    } else if (IGCLLVM::starts_with(funcName, DpasFuncsResolution::WI_PREFIX_FDPAS)) {
       const int WI_PREFIX_LEN = DpasFuncsResolution::WI_PREFIX_FDPAS.size();
       IsIDpas = false;
       if (!demangleSuffix(funcName, WI_PREFIX_LEN, false, IsIDpas, DstTy, AccTy, PA, PB, SD, RC, &IsDpasw))
         return;
       iid = GenISAIntrinsic::GenISA_dpas;
-    } else if (funcName.startswith(DpasFuncsResolution::SG_PREFIX_HFDPAS) ||
-               funcName.startswith(DpasFuncsResolution::SG_PREFIX_BFDPAS)) {
+    } else if (IGCLLVM::starts_with(funcName, DpasFuncsResolution::SG_PREFIX_HFDPAS) ||
+               IGCLLVM::starts_with(funcName, DpasFuncsResolution::SG_PREFIX_BFDPAS)) {
       const int SG_PREFIX_HF_LEN = DpasFuncsResolution::SG_PREFIX_HFDPAS.size();
       IsIDpas = false;
       if (!demangleSuffix(funcName, SG_PREFIX_HF_LEN, false, IsIDpas, DstTy, AccTy, PA, PB, SD, RC, &IsDpasw))
         return;
       iid = GenISAIntrinsic::GenISA_sub_group_dpas;
-    } else if (funcName.startswith(DpasFuncsResolution::WI_PREFIX_HFDPAS) ||
-               funcName.startswith(DpasFuncsResolution::WI_PREFIX_BFDPAS)) {
+    } else if (IGCLLVM::starts_with(funcName, DpasFuncsResolution::WI_PREFIX_HFDPAS) ||
+               IGCLLVM::starts_with(funcName, DpasFuncsResolution::WI_PREFIX_BFDPAS)) {
       const int WI_PREFIX_HF_LEN = DpasFuncsResolution::WI_PREFIX_HFDPAS.size();
       IsIDpas = false;
       if (!demangleSuffix(funcName, WI_PREFIX_HF_LEN, false, IsIDpas, DstTy, AccTy, PA, PB, SD, RC, &IsDpasw))
@@ -548,7 +548,7 @@ bool DpasFuncsResolution::processCvt(CallInst &CI) {
   GenISAIntrinsic::ID iid;
   Value *args[3];
   uint32_t argslen;
-  if (funcName.startswith("__builtin_IB_ftobf_")) {
+  if (IGCLLVM::starts_with(funcName, "__builtin_IB_ftobf_")) {
     if (!demangleFCvtSuffix(funcName, (int)sizeof("__builtin_IB_ftobf_") - 1, &FP_RM, &VecLen, nullptr))
       return false;
 
@@ -556,7 +556,7 @@ bool DpasFuncsResolution::processCvt(CallInst &CI) {
     args[0] = CI.getArgOperand(0);            // value to be converted
     args[1] = ConstantInt::get(intTy, FP_RM); // rounding mode
     argslen = 2;
-  } else if (funcName.startswith("__builtin_IB_bftof_")) {
+  } else if (IGCLLVM::starts_with(funcName, "__builtin_IB_bftof_")) {
     // It is a precise conversion, no RM needed!
     // Note that sizeof() includes the ending '\0', so need to do -1!
     if (!demangleFCvtSuffix(funcName, (int)sizeof("__builtin_IB_bftof_") - 1, nullptr, &VecLen, nullptr))
@@ -565,7 +565,7 @@ bool DpasFuncsResolution::processCvt(CallInst &CI) {
     iid = GenISAIntrinsic::GenISA_bftof;
     args[0] = CI.getArgOperand(0);
     argslen = 1;
-  } else if (funcName.startswith("__builtin_IB_2fto2bf_")) {
+  } else if (IGCLLVM::starts_with(funcName, "__builtin_IB_2fto2bf_")) {
     if (!demangleFCvtSuffix(funcName, (int)sizeof("__builtin_IB_2fto2bf_") - 1, &FP_RM, &VecLen, nullptr))
       return false;
 
@@ -574,7 +574,7 @@ bool DpasFuncsResolution::processCvt(CallInst &CI) {
     args[1] = CI.getArgOperand(1);            // value to be converted
     args[2] = ConstantInt::get(intTy, FP_RM); // rounding mode
     argslen = 3;
-  } else if (funcName.startswith("__builtin_IB_hftobf8_")) {
+  } else if (IGCLLVM::starts_with(funcName, "__builtin_IB_hftobf8_")) {
     int sz = (int)sizeof("__builtin_IB_hftobf8_");
     if (!demangleFCvtSuffix(funcName, sz - 1, nullptr, &VecLen, &isSat))
       return false;
@@ -584,7 +584,7 @@ bool DpasFuncsResolution::processCvt(CallInst &CI) {
     args[1] = ConstantInt::get(intTy, FP_RM);  // rounding mode
     args[2] = ConstantInt::get(boolTy, isSat); // saturation
     argslen = 3;
-  } else if (funcName.startswith("__builtin_IB_bf8tohf_")) {
+  } else if (IGCLLVM::starts_with(funcName, "__builtin_IB_bf8tohf_")) {
     int sz = (int)sizeof("__builtin_IB_bf8tohf_");
     // It is a precise conversion, no RM needed!
     // Note that sizeof() includes the ending '\0', so need to do -1!
@@ -594,7 +594,7 @@ bool DpasFuncsResolution::processCvt(CallInst &CI) {
     iid = GenISAIntrinsic::GenISA_bf8tohf;
     args[0] = CI.getArgOperand(0);
     argslen = 1;
-  } else if (funcName.startswith("__builtin_IB_hftohf8_")) {
+  } else if (IGCLLVM::starts_with(funcName, "__builtin_IB_hftohf8_")) {
     int sz = (int)sizeof("__builtin_IB_hftohf8_");
     if (!demangleFCvtSuffix(funcName, sz - 1, nullptr, &VecLen, &isSat))
       return false;
@@ -604,7 +604,7 @@ bool DpasFuncsResolution::processCvt(CallInst &CI) {
     args[1] = ConstantInt::get(intTy, FP_RM);  // rounding mode
     args[2] = ConstantInt::get(boolTy, isSat); // saturation
     argslen = 3;
-  } else if (funcName.startswith("__builtin_IB_hf8tohf_")) {
+  } else if (IGCLLVM::starts_with(funcName, "__builtin_IB_hf8tohf_")) {
     int sz = (int)sizeof("__builtin_IB_hf8tohf_");
     // It is a precise conversion, no RM needed!
     // Note that sizeof() includes the ending '\0', so need to do -1!
@@ -614,7 +614,7 @@ bool DpasFuncsResolution::processCvt(CallInst &CI) {
     iid = GenISAIntrinsic::GenISA_hf8tohf;
     args[0] = CI.getArgOperand(0);
     argslen = 1;
-  } else if (funcName.startswith("__builtin_IB_ftotf32_")) {
+  } else if (IGCLLVM::starts_with(funcName, "__builtin_IB_ftotf32_")) {
     if (!demangleFCvtSuffix(funcName, (int)sizeof("__builtin_IB_ftotf32_") - 1, nullptr, &VecLen, nullptr))
       return false;
 
@@ -880,7 +880,8 @@ bool DpasFuncsResolution::processBdpas(CallInst &CI) {
   Type *IntTy = Type::getInt32Ty(Ctx);
 
   int DstTy, AccTy, PA, PB, SD, RC;
-  if (!m_pCtx->platform.hasExecSize16DPAS() || !FuncName.startswith(DpasFuncsResolution::SG_PREFIX_BDPAS16)) {
+  if (!m_pCtx->platform.hasExecSize16DPAS() ||
+      !IGCLLVM::starts_with(FuncName, DpasFuncsResolution::SG_PREFIX_BDPAS16)) {
     return false;
   }
 

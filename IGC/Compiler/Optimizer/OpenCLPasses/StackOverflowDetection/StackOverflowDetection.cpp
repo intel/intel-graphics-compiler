@@ -46,8 +46,8 @@ bool StackOverflowDetectionPass::removeDummyCalls(Module &M) {
           Function *callFunction = callI->getCalledFunction();
           if (callFunction) {
             auto callFunctionName = callFunction->getName();
-            if (callFunctionName.startswith(STACK_OVERFLOW_INIT_BUILTIN_NAME) ||
-                callFunctionName.startswith(STACK_OVERFLOW_DETECTION_BUILTIN_NAME)) {
+            if (IGCLLVM::starts_with(callFunctionName, STACK_OVERFLOW_INIT_BUILTIN_NAME) ||
+                IGCLLVM::starts_with(callFunctionName, STACK_OVERFLOW_DETECTION_BUILTIN_NAME)) {
               ToDeleteInstructions.push_back(&I);
             }
           }

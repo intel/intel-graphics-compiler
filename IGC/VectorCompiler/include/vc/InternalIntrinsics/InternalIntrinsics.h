@@ -24,6 +24,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/Intrinsics.h>
 
 #include "llvm/GenXIntrinsics/GenXIntrinsics.h"
+#include "llvmWrapper/ADT/StringRef.h"
 
 #include "Probe/Assertion.h"
 #include <optional>
@@ -70,7 +71,7 @@ inline bool isInternalIntrinsic(unsigned ID) {
 /// getInternalIntrinsicID() returns InternalIntrinsic::not_internal_intrinsic!
 inline bool isInternalIntrinsic(const llvm::Function *CF) {
   IGC_ASSERT(CF);
-  return CF->getName().startswith(getInternalIntrinsicPrefix());
+  return IGCLLVM::starts_with(CF->getName(), getInternalIntrinsicPrefix());
 }
 
 inline bool isInternalIntrinsic(const llvm::Value *V) {

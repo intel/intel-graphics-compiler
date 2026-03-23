@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2022-2025 Intel Corporation
+Copyright (C) 2022-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -520,7 +520,7 @@ Function *PromoteSubByte::promoteFunction(Function *function) {
   }
 
 #if !defined(WDDM_ANDROID_IGC)
-  if (BiFManager::BiFManagerHandler::IsBiF(function) || function->getName().startswith("__builtin_IB_") ||
+  if (BiFManager::BiFManagerHandler::IsBiF(function) || IGCLLVM::starts_with(function->getName(), "__builtin_IB_") ||
       function->getName() == "intel_sub_group_ballot" ||
       function->getName().contains("intel_is_device_barrier_valid")) {
     return function;

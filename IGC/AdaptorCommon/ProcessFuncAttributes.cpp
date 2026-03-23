@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2023 Intel Corporation
+Copyright (C) 2017-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -292,7 +292,8 @@ static bool deduceIfUsesImageParams(Function *F, ModuleMetaData *ModMD) {
   // is not possible with opaque pointers and in this case the parameter types must be deduced based on the mangled
   // function name.
   auto IsSyclImageAccessor = [](StringRef Name) {
-    return Name.startswith("_Z") && Name.contains("sycl") && Name.contains("accessor") && Name.contains("image");
+    return IGCLLVM::starts_with(Name, "_Z") && Name.contains("sycl") && Name.contains("accessor") &&
+           Name.contains("image");
   };
 
   if (IsSyclImageAccessor(F->getName()))
@@ -519,9 +520,9 @@ bool ProcessFuncAttributes::runOnModule(Module &M) {
     // Check all "ExternalLinkage" functions. Func declarations = Import, Func definition = Export
     if (F->hasExternalLinkage() && F->getCallingConv() == CallingConv::SPIR_FUNC) {
       // builtins should not be externally linked, they will always be resolved by IGC
-      return !(F->hasFnAttribute("OclBuiltin") || F->getName().startswith("__builtin_") ||
-               F->getName().startswith("__igcbuiltin_") || F->getName().startswith("llvm.") ||
-               F->getName().equals("printf") || Regex("^_Z[0-9]+__builtin_bf16").match(F->getName()) ||
+      return !(F->hasFnAttribute("OclBuiltin") || IGCLLVM::starts_with(F->getName(), "__builtin_") ||
+               IGCLLVM::starts_with(F->getName(), "__igcbuiltin_") || IGCLLVM::starts_with(F->getName(), "llvm.") ||
+               F->getName() == ("printf") || Regex("^_Z[0-9]+__builtin_bf16").match(F->getName()) ||
                Regex("^_Z[0-9]+__spirv_").match(F->getName()) || Regex("^_Z[0-9]+__builtin_spirv").match(F->getName()));
     }
     return false;
@@ -529,7 +530,7 @@ bool ProcessFuncAttributes::runOnModule(Module &M) {
 
   // If a builtin func is a FP64 one with the given prefix, return true.
   auto IsBuiltinFP64WithPrefix = [](Function *F, const std::string &Prefix) {
-    if (F->getName().startswith(Prefix)) {
+    if (IGCLLVM::starts_with(F->getName(), Prefix)) {
       if (F->getReturnType()->isDoubleTy() ||
           (F->getReturnType()->isVectorTy() && F->getReturnType()->getContainedType(0)->isDoubleTy())) {
         auto functionName = F->getName();
@@ -710,7 +711,7 @@ bool ProcessFuncAttributes::runOnModule(Module &M) {
     bool defaultStackCall = IGC_IS_FLAG_ENABLED(EnableStackCallFuncCall);
 
     // Add always attribute if function is a builtin
-    if (F->hasFnAttribute("OclBuiltin") || F->getName().startswith("__builtin_spirv_")) {
+    if (F->hasFnAttribute("OclBuiltin") || IGCLLVM::starts_with(F->getName(), "__builtin_spirv_")) {
       // OptNone builtins are special versions of builtins assuring that all
       // theirs parameters are constant values.
       if (isOptNoneBuiltin(F->getName())) {
@@ -910,18 +911,18 @@ bool ProcessFuncAttributes::runOnModule(Module &M) {
           StringRef sline(line);
 
           // Ignore empty, whitespace lines, or is comment
-          if (sline.trim().empty() || sline.startswith("//"))
+          if (sline.trim().empty() || IGCLLVM::starts_with(sline, "//"))
             continue;
 
-          if (sline.equals("FLAG_FCALL_DEFAULT:"))
+          if (sline == ("FLAG_FCALL_DEFAULT:"))
             FunctionControlMode = FLAG_FCALL_DEFAULT;
-          else if (sline.equals("FLAG_FCALL_FORCE_INLINE:"))
+          else if (sline == ("FLAG_FCALL_FORCE_INLINE:"))
             FunctionControlMode = FLAG_FCALL_FORCE_INLINE;
-          else if (sline.equals("FLAG_FCALL_FORCE_SUBROUTINE:"))
+          else if (sline == ("FLAG_FCALL_FORCE_SUBROUTINE:"))
             FunctionControlMode = FLAG_FCALL_FORCE_SUBROUTINE;
-          else if (sline.equals("FLAG_FCALL_FORCE_STACKCALL:"))
+          else if (sline == ("FLAG_FCALL_FORCE_STACKCALL:"))
             FunctionControlMode = FLAG_FCALL_FORCE_STACKCALL;
-          else if (sline.equals("FLAG_FCALL_FORCE_INDIRECTCALL:"))
+          else if (sline == ("FLAG_FCALL_FORCE_INDIRECTCALL:"))
             FunctionControlMode = FLAG_FCALL_FORCE_INDIRECTCALL;
 
           else if (Function *F = M.getFunction(line)) {

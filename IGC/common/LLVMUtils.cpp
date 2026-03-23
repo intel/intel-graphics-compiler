@@ -701,8 +701,9 @@ bool IGCPassManager::isPrintAfter(Pass *P) {
 
 void IGCPassManager::addPrintPass(Pass *P, bool isBefore) {
   auto passName = P->getPassName();
-  std::string fullPassName = m_name + (isBefore ? "_before_" : "_after_") +
-                             (passName.startswith("Unnamed pass") ? "UnnamedPass" : cleanPassName(passName.str()));
+  std::string fullPassName =
+      m_name + (isBefore ? "_before_" : "_after_") +
+      (IGCLLVM::starts_with(passName, "Unnamed pass") ? "UnnamedPass" : cleanPassName(passName.str()));
 
   auto name = IGC::Debug::DumpName(IGC::Debug::GetShaderOutputName())
                   .ShaderName(m_pContext->shaderName)
@@ -757,10 +758,10 @@ void DumpLLVMIR(IGC::CodeGenContext *pContext, const char *dumpName) {
       for (auto &F : module->getFunctionList())
         for (BasicBlock &BB : F) {
           for (Instruction &I : BB)
-            if (I.getName().startswith("x"))
+            if (IGCLLVM::starts_with(I.getName(), "x"))
               I.setName("_x");
 
-          if (BB.getName().startswith("bb"))
+          if (IGCLLVM::starts_with(BB.getName(), "bb"))
             BB.setName("_bb");
         }
       // Now we rewrite the variables using a counter
@@ -769,12 +770,12 @@ void DumpLLVMIR(IGC::CodeGenContext *pContext, const char *dumpName) {
       for (auto &F : module->getFunctionList())
         for (BasicBlock &BB : F) {
           for (Instruction &I : BB) {
-            if ((!I.hasName() && !I.getType()->isVoidTy()) || I.getName().startswith("_x")) {
+            if ((!I.hasName() && !I.getType()->isVoidTy()) || IGCLLVM::starts_with(I.getName(), "_x")) {
               I.setName("x" + std::to_string(counter++));
             }
           }
 
-          if (!BB.hasName() || BB.getName().startswith("_bb"))
+          if (!BB.hasName() || IGCLLVM::starts_with(BB.getName(), "_bb"))
             BB.setName("bb" + std::to_string(bb_counter++));
         }
     }
