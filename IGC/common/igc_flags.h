@@ -1080,7 +1080,7 @@ DECLARE_IGC_REGKEY(bool, HoistPSConstBufferValues, true,
                    "Hoists up down converts for contant buffer accesses, so they an be vectorized more easily.", false)
 DECLARE_IGC_REGKEY(bool, EnableSingleVertexDispatch, false, "Vertex Shader Single Patch Dispatch Regkey", false)
 DECLARE_IGC_REGKEY(bool, allowLICM, true, "Enable LICM in IGC.", true)
-DECLARE_IGC_REGKEY(DWORD, Decompose2DBlockFuncsMode, 1,
+DECLARE_IGC_REGKEY(DWORD, Decompose2DBlockFuncsMode, 2,
                    "Mode for decomposing 2D block functions in IGC, 1 enables legacy pass (Decompose2DBlockFuncs), "
                    "2 enables new pass with address payloads hoisting functionality before load scheduling, "
                    "3 enables new pass with address payloads hoisting functionality after load scheduling, "
@@ -1094,7 +1094,7 @@ DECLARE_IGC_REGKEY(bool, AllowImmOff2DBlockFuncsAddrHoisting, true,
                    "Decompose2DBlockFuncsWithHoisting pass.",
                    false)
 DECLARE_IGC_REGKEY(
-    bool, AllowPrefetchDecomposeWithHoisting, true,
+    bool, AllowPrefetchDecomposeWithHoisting, false,
     "Allow compiler to decide to use prefetch in 2D block intrinsics in Decompose2DBlockFuncsWithHoisting pass.", true)
 DECLARE_IGC_REGKEY(DWORD, CSSpillThresholdSLM, 0, "Spill Threshold for CS SIMD16 with SLM", false)
 DECLARE_IGC_REGKEY(DWORD, CSSpillThresholdNoSLM, 5, "Spill Threshold for CS SIMD16 without SLM", false)

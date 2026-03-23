@@ -425,11 +425,8 @@ void Decompose2DBlockFuncsWithHoisting::collectPayloads(GenIntrinsicInst &GII, I
     return;
   }
 
-  BasicBlock *Preheader = nullptr;
-  if (FirstVariantLoopIdx == -1) {
-    Preheader = ParentLoops[ParentLoops.size() - 1]->getLoopPreheader();
-    FirstVariantLoopIdx = ParentLoops.size() - 1;
-  }
+  // Always hoist to the innermost loop's preheader only.
+  BasicBlock *Preheader = InnermostLoop->getLoopPreheader();
 
   if (!Preheader) {
     return;
