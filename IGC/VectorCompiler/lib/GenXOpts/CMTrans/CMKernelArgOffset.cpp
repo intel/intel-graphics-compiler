@@ -86,6 +86,7 @@ SPDX-License-Identifier: MIT
 
 #include "llvmWrapper/IR/Type.h"
 #include "llvmWrapper/Support/Alignment.h"
+#include "llvmWrapper/IR/IRBuilder.h"
 
 #include "vc/GenXOpts/GenXOpts.h"
 #include "vc/Utils/GenX/KernelInfo.h"
@@ -261,8 +262,8 @@ void CMKernelArgOffset::resolveByValArgs(Function *F) const {
         Builder.CreateAlloca(F->getParamByValType(Arg.getArgNo()), nullptr,
                              Arg.getName() + ".linearization");
 
-    Value *BaseAsI8Ptr = Builder.CreateBitCast(Base, Builder.getInt8PtrTy(),
-                                               Base->getName() + ".i8");
+    Value *BaseAsI8Ptr = Builder.CreateBitCast(
+        Base, IGCLLVM::getPtrTy(Builder, 0), Base->getName() + ".i8");
     for (const auto &Info : KM->arg_lin(&Arg)) {
       Value *StoreAddrUntyped =
           Builder.CreateGEP(Builder.getInt8Ty(), BaseAsI8Ptr, Info.Offset);

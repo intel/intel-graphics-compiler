@@ -33,6 +33,7 @@ SPDX-License-Identifier: MIT
 #endif
 
 #include "common/LLVMWarningsPop.hpp"
+#include "llvmWrapper/IR/IRBuilder.h"
 
 using namespace llvm;
 using namespace IGC;
@@ -151,8 +152,8 @@ static void ReplaceAllocas(const MergeAllocas::AllocaInfo &MergableAlloca, Funct
       if (subAlloca->offset != 0) {
         // We can re-use same bitcast
         if (topAllocaBitcast == nullptr) {
-          topAllocaBitcast = cast<Instruction>(
-              Builder.CreateBitCast(topAlloca, Builder.getInt8PtrTy(topAlloca->getType()->getPointerAddressSpace())));
+          topAllocaBitcast = cast<Instruction>(Builder.CreateBitCast(
+              topAlloca, IGCLLVM::getPtrTy(Builder, topAlloca->getType()->getPointerAddressSpace())));
         }
         auto *Offset = Builder.getInt32(subAlloca->offset);
         auto *GEP = Builder.CreateGEP(Builder.getInt8Ty(), topAllocaBitcast, Offset);

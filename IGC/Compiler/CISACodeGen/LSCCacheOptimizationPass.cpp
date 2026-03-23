@@ -53,10 +53,11 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/Type.h>              // for llvm::Type
 #include <llvm/IR/DerivedTypes.h>      // for llvm::VectorType
 #include <llvm/IR/Constants.h> // for llvm::ConstantInt, llvm::ConstantFP, llvm::ConstantVector, llvm::ConstantDataVector, llvm::UndefValue
-#include <llvm/IR/Instruction.h>  // for llvm::Instruction
-#include <llvm/IR/Instructions.h> // for llvm::StoreInst, llvm::CallInst
+#include <llvm/IR/Instruction.h>      // for llvm::Instruction
+#include <llvm/IR/Instructions.h>     // for llvm::StoreInst, llvm::CallInst
 #include <llvm/ADT/APInt.h>           // for llvm::APInt, llvm::ArrayRef
 #include "common/LLVMWarningsPop.hpp" // for suppressing LLVM warnings
+#include "llvmWrapper/IR/IRBuilder.h" // for LLVM-version portable getPtrTy()
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include <optional>
 
@@ -294,7 +295,7 @@ void LSCCacheOptimizationPass::visitStoreInst(StoreInst &storeInst) {
 
     /* First do the GGRR 32 wide store */
     // %0 = bitcast <>* %baseAddress to i8*
-    auto *bitcast1 = builder.CreateBitCast(initial_pointer, builder.getInt8PtrTy(addrspace));
+    auto *bitcast1 = builder.CreateBitCast(initial_pointer, IGCLLVM::getPtrTy(builder, addrspace));
     // %1 = getelementptr i8, i8* %0, i64 -offset
     auto *left_green_address = builder.CreateGEP(builder.getInt8Ty(), bitcast1, builder.getInt64(-1 * offset));
     // %2 = bitcast i8* %1 to <num_green_blocks_left x iN>*
@@ -369,7 +370,7 @@ void LSCCacheOptimizationPass::visitStoreInst(StoreInst &storeInst) {
       uint64_t num_blue_blocks = data_size / element_size;
 
       // %0 = bitcast <>* %baseAddress to i8*
-      auto *bitcast1 = builder.CreateBitCast(initial_pointer, builder.getInt8PtrTy(addrspace));
+      auto *bitcast1 = builder.CreateBitCast(initial_pointer, IGCLLVM::getPtrTy(builder, addrspace));
       // %1 = getelementptr i8, i8* %0, i64 data_size
       auto *green_address = builder.CreateGEP(builder.getInt8Ty(), bitcast1, builder.getInt64(data_size));
       // %2 = bitcast i8* %1 to <num_green_blocks x iN>*
@@ -407,7 +408,7 @@ void LSCCacheOptimizationPass::visitStoreInst(StoreInst &storeInst) {
       uint64_t num_blue_blocks = data_size / element_size;
 
       // %0 = bitcast <>* %baseAddress to i8*
-      auto *bitcast1 = builder.CreateBitCast(initial_pointer, builder.getInt8PtrTy(addrspace));
+      auto *bitcast1 = builder.CreateBitCast(initial_pointer, IGCLLVM::getPtrTy(builder, addrspace));
       // %1 = getelementptr i8, i8* %0, i64 -offset
       auto *green_address = builder.CreateGEP(builder.getInt8Ty(), bitcast1, builder.getInt64(-1 * offset));
       // %2 = bitcast i8* %1 to <num_green_blocks x iN>*
@@ -443,7 +444,7 @@ void LSCCacheOptimizationPass::visitStoreInst(StoreInst &storeInst) {
       uint64_t num_total_blocks = right_boundary / element_size;
 
       // %0 = bitcast <>* %baseAddress to i8*
-      auto *bitcast1 = builder.CreateBitCast(initial_pointer, builder.getInt8PtrTy(addrspace));
+      auto *bitcast1 = builder.CreateBitCast(initial_pointer, IGCLLVM::getPtrTy(builder, addrspace));
       // %1 = getelementptr i8, i8* %0, i64 -offset
       auto *starting_address = builder.CreateGEP(builder.getInt8Ty(), bitcast1, builder.getInt64(-1 * offset));
       // %2 = bitcast i8* %1 to <num_total_blocks x iN>*
@@ -493,7 +494,7 @@ bool LSCCacheOptimizationPass::create_48_wide_store(Function& function)
                     uint64_t num_red_blocks = 8;  // in dwords
                     Type* element_type = builder.getInt32Ty();
                     // %0 = bitcast <>* %baseAddress to i8*
-                    auto* bitcast1 = builder.CreateBitCast(intrinsic_call, builder.getInt8PtrTy(addrspace));
+                    auto* bitcast1 = builder.CreateBitCast(intrinsic_call, IGCLLVM::getPtrTy(builder, addrspace));
                     // %1 = getelementptr i8, i8* %0, i64 offset
                     auto* red_address = builder.CreateGEP(builder.getInt8Ty(), bitcast1, builder.getInt64(offset));
                     // %2 = bitcast i8* %1 to <num_red_blocks x iN>*

@@ -31,6 +31,7 @@ SPDX-License-Identifier: MIT
 #include <llvmWrapper/ADT/Optional.h>
 #include "llvmWrapper/IR/Argument.h"
 #include "llvmWrapper/IR/DerivedTypes.h"
+#include "llvmWrapper/IR/IRBuilder.h"
 #include "llvmWrapper/Support/Alignment.h"
 
 #include <optional>

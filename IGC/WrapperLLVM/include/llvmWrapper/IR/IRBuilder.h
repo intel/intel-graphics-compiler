@@ -208,6 +208,17 @@ public:
   }
 };
 
+/// Version portable pointer type accessor. With older LLVM versions opaque pointer support
+/// was optional and getInt8PtrTy() was the typed pointer stand in. With newer LLVM versions
+/// typed pointers were removed and getPtrTy() is the only API.
+inline llvm::PointerType *getPtrTy(llvm::IRBuilderBase &Builder, unsigned AddrSpace = 0) {
+#if LLVM_VERSION_MAJOR >= 22
+  return Builder.getPtrTy(AddrSpace);
+#else
+  return Builder.getInt8PtrTy(AddrSpace);
+#endif
+}
+
 } // namespace IGCLLVM
 
 #endif

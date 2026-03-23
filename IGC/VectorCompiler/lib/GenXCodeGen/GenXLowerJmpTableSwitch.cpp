@@ -35,6 +35,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/Pass.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/Debug.h"
+#include "llvmWrapper/IR/IRBuilder.h"
 
 #include "vc/InternalIntrinsics/InternalIntrinsics.h"
 
@@ -200,7 +201,7 @@ bool GenXLowerJmpTableSwitch::processSwitchCandidates(
     // NumCases times to create internal_jump_table decl.
     std::vector<Type *> InTys(NumCases + 2, BAs[0]->getType());
     // Return type
-    InTys[0] = Builder.getInt8PtrTy();
+    InTys[0] = IGCLLVM::getPtrTy(Builder, 0);
     // Index in jump table. Only this arg will be really needed.
     InTys[1] = JTIdx->getType();
     Function *JTDecl = vc::InternalIntrinsic::getInternalDeclaration(
