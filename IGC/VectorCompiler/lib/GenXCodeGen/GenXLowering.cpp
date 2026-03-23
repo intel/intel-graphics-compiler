@@ -108,7 +108,11 @@ SPDX-License-Identifier: MIT
 #include "llvm/IR/DiagnosticPrinter.h"
 #include "llvm/IR/Dominators.h"
 #include "llvm/IR/Function.h"
+#if LLVM_VERSION_MAJOR >= 15
+#include "llvm/ADT/FloatingPointMode.h"
+#endif
 #include "llvm/IR/IRBuilder.h"
+#include "llvm/IR/IntrinsicInst.h"
 #include "llvm/IR/Intrinsics.h"
 #include "llvm/IR/Module.h"
 #include "llvm/Pass.h"
@@ -285,6 +289,9 @@ private:
   bool lowerReduction(CallInst *CI, Intrinsic::ID);
 
   bool lowerCopySign(CallInst *CI);
+#if LLVM_VERSION_MAJOR >= 15
+  bool lowerIsFpClass(CallInst *CI);
+#endif
 
   bool generatePredicatedWrrForNewLoad(CallInst *CI);
 };
@@ -2185,6 +2192,10 @@ bool GenXLowering::processInst(Instruction *Inst) {
       return lowerReduction(CI, Intrinsic::minnum);
     case Intrinsic::copysign:
       return lowerCopySign(CI);
+#if LLVM_VERSION_MAJOR >= 15
+    case Intrinsic::is_fpclass:
+      return lowerIsFpClass(CI);
+#endif
     case GenXIntrinsic::genx_get_hwid:
       return lowerHardwareThreadID(CI);
     case vc::InternalIntrinsic::logical_thread_id:
@@ -5706,3 +5717,127 @@ bool GenXLowering::widenByteOp(Instruction *Inst) {
   ToErase.push_back(Inst);
   return true;
 }
+
+#if LLVM_VERSION_MAJOR >= 15
+/***********************************************************************
+ * lowerIsFpClass : lower llvm.is.fpclass intrinsic call.
+ *
+ * The llvm.is.fpclass intrinsic is not supported natively by vISA, so we
+ * expand it into integer bit manipulation following the approach from
+ * LegalizerHelper::lowerISFPCLASS.
+ */
+bool GenXLowering::lowerIsFpClass(CallInst *CI) {
+  auto *II = cast<IntrinsicInst>(CI);
+  Value *Src = II->getArgOperand(0);
+  Type *SrcTy = Src->getType();
+  Type *DstTy = II->getType(); // i1 or <N x i1>
+  unsigned BitWidth = SrcTy->getScalarSizeInBits();
+  uint64_t Mask = cast<ConstantInt>(II->getArgOperand(1))->getZExtValue();
+
+  IRBuilder<> Builder(II);
+
+  // Handle degenerate cases.
+  if (Mask == 0) {
+    CI->replaceAllUsesWith(Constant::getNullValue(DstTy));
+    ToErase.push_back(CI);
+    return true;
+  }
+  if ((Mask & fcAllFlags) == fcAllFlags) {
+    CI->replaceAllUsesWith(Constant::getAllOnesValue(DstTy));
+    ToErase.push_back(CI);
+    return true;
+  }
+
+  Type *IntTy = IntegerType::getIntNTy(CI->getContext(), BitWidth);
+  if (auto *VTy = dyn_cast<IGCLLVM::FixedVectorType>(SrcTy))
+    IntTy = IGCLLVM::FixedVectorType::get(IntTy, VTy->getNumElements());
+
+  const fltSemantics &Semantics = SrcTy->getScalarType()->getFltSemantics();
+  APInt Inf = APFloat::getInf(Semantics).bitcastToAPInt();
+  APInt AllOneMantissa = APFloat::getLargest(Semantics).bitcastToAPInt() & ~Inf;
+  APInt QNaNBitMask =
+      APInt::getOneBitSet(BitWidth, AllOneMantissa.getActiveBits() - 1);
+  APInt SignBit = APInt::getSignMask(BitWidth);
+  APInt AbsMask = APInt::getSignedMaxValue(BitWidth);
+
+  Value *InfC = ConstantInt::get(IntTy, Inf);
+  Value *ZeroC = ConstantInt::getNullValue(IntTy);
+  Value *AsInt = Builder.CreateBitCast(Src, IntTy);
+  Value *Abs = Builder.CreateAnd(AsInt, ConstantInt::get(IntTy, AbsMask));
+
+  Value *Sign = Builder.CreateICmpNE(
+      Builder.CreateAnd(AsInt, ConstantInt::get(IntTy, SignBit)), ZeroC);
+  Value *NotSign = Builder.CreateNot(Sign);
+
+  Value *Res = ConstantInt::getNullValue(DstTy);
+
+  auto AppendToRes = [&](Value *V) { Res = Builder.CreateOr(Res, V); };
+
+  auto HandleSignedTest = [&](Value *Test, FPClassTest NegFlag,
+                              FPClassTest PosFlag) {
+    bool TestNeg = Mask & NegFlag;
+    bool TestPos = Mask & PosFlag;
+    if (TestNeg && TestPos) {
+      AppendToRes(Test);
+    } else if (TestNeg) {
+      AppendToRes(Builder.CreateAnd(Test, Sign));
+    } else {
+      AppendToRes(Builder.CreateAnd(Test, NotSign));
+    }
+  };
+
+  // --- NaN ---
+  if (unsigned PartialCheck = Mask & fcNan) {
+    Value *IsNaN = Builder.CreateICmpUGT(Abs, InfC);
+    if (PartialCheck == fcNan) {
+      AppendToRes(IsNaN);
+    } else {
+      Value *InfWithQNaN = ConstantInt::get(IntTy, Inf | QNaNBitMask);
+      Value *IsQNaN = Builder.CreateICmpUGE(Abs, InfWithQNaN);
+      if (PartialCheck == fcQNan) {
+        AppendToRes(IsQNaN);
+      } else { // fcSNan
+        AppendToRes(Builder.CreateAnd(IsNaN, Builder.CreateNot(IsQNaN)));
+      }
+    }
+  }
+
+  // --- Inf ---
+  if (unsigned PartialCheck = Mask & fcInf) {
+    Value *IsInf = Builder.CreateICmpEQ(Abs, InfC);
+    HandleSignedTest(IsInf, fcNegInf, fcPosInf);
+  }
+
+  // --- Normal ---
+  if (unsigned PartialCheck = Mask & fcNormal) {
+    // isnormal(V) ==> (0 < exp < max_exp) ==> (unsigned(exp-1) < (max_exp-1))
+    APInt ExpLSB = Inf & ~(Inf.shl(1));
+    APInt MaxExpMinusOne = Inf - ExpLSB;
+    Value *ExpMinusOne =
+        Builder.CreateSub(Abs, ConstantInt::get(IntTy, ExpLSB));
+    Value *IsNormal = Builder.CreateICmpULT(
+        ExpMinusOne, ConstantInt::get(IntTy, MaxExpMinusOne));
+    HandleSignedTest(IsNormal, fcNegNormal, fcPosNormal);
+  }
+
+  // --- Subnormal ---
+  if (unsigned PartialCheck = Mask & fcSubnormal) {
+    // issubnormal(V) ==> unsigned(abs(V) - 1) < (all mantissa bits set)
+    Value *AbsMinusOne =
+        Builder.CreateSub(Abs, ConstantInt::get(IntTy, APInt(BitWidth, 1)));
+    Value *IsSubnormal = Builder.CreateICmpULT(
+        AbsMinusOne, ConstantInt::get(IntTy, AllOneMantissa));
+    HandleSignedTest(IsSubnormal, fcNegSubnormal, fcPosSubnormal);
+  }
+
+  // --- Zero ---
+  if (unsigned PartialCheck = Mask & fcZero) {
+    Value *IsZero = Builder.CreateICmpEQ(Abs, ZeroC);
+    HandleSignedTest(IsZero, fcNegZero, fcPosZero);
+  }
+
+  CI->replaceAllUsesWith(Res);
+  ToErase.push_back(CI);
+  return true;
+}
+#endif // LLVM_VERSION_MAJOR >= 15

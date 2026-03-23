@@ -184,6 +184,9 @@ if int(config.llvm_version) < 12:
 else:
   config.available_features.add('llvm_12_or_greater')
 
+if int(config.llvm_version) >= 15:
+  config.available_features.add('llvm_15_or_greater')
+
 if int(config.llvm_version) >= 16:
   config.available_features.add('llvm_16_or_greater')
 
