@@ -452,6 +452,8 @@ void ConstantCoalescing::ProcessBlock(BasicBlock *blk, std::vector<BufChunk *> &
         Value *elt_idxv = cast<Instruction>(elt_ptrv)->getOperand(0);
         ConstantInt *offsetConstant = dyn_cast<ConstantInt>(elt_idxv);
         if (offsetConstant) { // direct access
+          if (offsetConstant->getZExtValue() > UINT32_MAX)
+            continue;
           uint offsetInBytes = (uint)offsetConstant->getZExtValue();
           // TODO: Disabling constant coalescing when we see that the offset to the constant buffer is negtive
           // As we handle all negative offsets as uint and some arithmetic operations do not work well. Needs more
@@ -1144,6 +1146,10 @@ Value *ConstantCoalescing::SimpleBaseOffset(Value *elt_idxv, uint &offset, Exten
       //    %537 = add i32 %535, 16
       uint offset1 = 0;
       Value *base = SimpleBaseOffset(src0, offset1, Extension);
+      if (csrc1->getZExtValue() > UINT32_MAX) {
+        offset = 0;
+        return elt_idxv;
+      }
       offset = offset1 + static_cast<uint>(csrc1->getZExtValue());
       return base;
     }
@@ -1198,6 +1204,10 @@ Value *ConstantCoalescing::SimpleBaseOffset(Value *elt_idxv, uint &offset, Exten
     Instruction *or_inst0 = dyn_cast<Instruction>(src0);
     ConstantInt *or_csrc1 = dyn_cast<ConstantInt>(src1);
     if (or_inst0 && or_csrc1) {
+      if (or_csrc1->getZExtValue() > UINT32_MAX) {
+        offset = 0;
+        return elt_idxv;
+      }
       uint or_offset = int_cast<uint>(or_csrc1->getZExtValue());
 
       Instruction *inst0 = or_inst0;
@@ -1304,6 +1314,8 @@ bool ConstantCoalescing::DecomposePtrExp(Value *ptr_val, Value *&buf_idxv, Value
         // %src0 = ptrtoint %x
         buf_idxv = src0;
         if (auto *elt_idx = dyn_cast<ConstantInt>(src1)) { // direct access
+          if (elt_idx->getZExtValue() > UINT32_MAX)
+            return false;
           offset = (uint)elt_idx->getZExtValue();
           elt_idxv = nullptr;
         } else {
@@ -1313,6 +1325,8 @@ bool ConstantCoalescing::DecomposePtrExp(Value *ptr_val, Value *&buf_idxv, Value
       } else if (isa<PtrToIntInst>(src1)) {
         buf_idxv = src1;
         if (auto *elt_idx = dyn_cast<ConstantInt>(src0)) { // direct access
+          if (elt_idx->getZExtValue() > UINT32_MAX)
+            return false;
           offset = (uint)elt_idx->getZExtValue();
           elt_idxv = nullptr;
         } else {
@@ -1320,11 +1334,15 @@ bool ConstantCoalescing::DecomposePtrExp(Value *ptr_val, Value *&buf_idxv, Value
         }
         return true;
       } else if (auto *elt_idx = dyn_cast<ConstantInt>(src1)) {
+        if (elt_idx->getZExtValue() > UINT32_MAX)
+          return false;
         offset = (uint)elt_idx->getZExtValue();
         elt_idxv = nullptr;
         buf_idxv = src0;
         return true;
       } else if (auto *elt_idx = dyn_cast<ConstantInt>(src0)) {
+        if (elt_idx->getZExtValue() > UINT32_MAX)
+          return false;
         offset = (uint)elt_idx->getZExtValue();
         elt_idxv = nullptr;
         buf_idxv = src1;
