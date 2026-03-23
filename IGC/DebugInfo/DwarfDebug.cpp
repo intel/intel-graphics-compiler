@@ -1765,7 +1765,7 @@ void DwarfDebug::resolveRangesToVarLocations(DbgVariable *RegVar, const std::vec
         if (!prev.isEmpty())
           ResolvedLocations.push_back(prev);
 
-        DbgDecoder::LiveIntervalsVISA visaRange2nd;
+        DbgDecoder::LiveIntervalsVISA visaRange2nd{};
         if (CurLoc.HasLocationSecondReg()) {
           const auto regNum2nd = CurLoc.GetSecondReg();
           const auto *VarInfo2nd = m_pModule->getVarInfo(*VisaDbgInfo, regNum2nd);

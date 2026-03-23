@@ -7804,7 +7804,7 @@ bool G4_INST::canSrcBeAccBeforeHWConform(Gen4_Operand_Number opndNum) const {
         return false;
       }
     }
-    if (builder.removedAccRestrictionsAsGRF() && dst) {
+    if (builder.removedAccRestrictionsAsGRF()) {
       if (dst->getType() == Type_BF || dst->getType() == Type_HF ||
           IS_BTYPE(dst->getType())) {
         if (src->getType() != dst->getType() &&

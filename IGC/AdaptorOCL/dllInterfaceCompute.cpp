@@ -1454,7 +1454,7 @@ bool TranslateBuild(const STB_TranslateInputArgs *pInputArgs, STB_TranslateOutpu
     entryPointsString.resize(entryPointsStringSize);
 
     inputShHash = ShaderHashOCL(reinterpret_cast<const UINT *>(&entryPointsString[0]), entryPointsStringSize / 4);
-  } else if (pInputArgs && pInputArgs->SrcHash) {
+  } else if (pInputArgs->SrcHash) {
     inputShHash.asmHash = pInputArgs->SrcHash;
   } else {
     inputShHash = ShaderHashOCL(reinterpret_cast<const UINT *>(pInputArgs->pInput), pInputArgs->InputSize / 4);

@@ -36,9 +36,11 @@ MemCpyOptLegacyPassWrapper::MemCpyOptLegacyPassWrapper() : FunctionPass(ID) {
 }
 
 void MemCpyOptLegacyPassWrapper::initializeAnalysisManagers() {
-  TargetLibraryInfoImpl TLII;
-  TLII.disableAllFunctions();
-  FAM.registerPass([TLII = std::move(TLII)]() mutable { return TargetLibraryAnalysis(std::move(TLII)); });
+  FAM.registerPass([]() {
+    auto TLII = TargetLibraryInfoImpl{};
+    TLII.disableAllFunctions();
+    return TargetLibraryAnalysis(TLII);
+  });
 
   PB.registerLoopAnalyses(LAM);
   PB.registerFunctionAnalyses(FAM);

@@ -441,11 +441,11 @@ private:
   // Previous instruction's location information. This is used to determine
   // label location to indicate scope boundries in llvm::dwarf debug info.
   llvm::DebugLoc PrevInstLoc;
-  llvm::MCSymbol *PrevLabel;
+  llvm::MCSymbol *PrevLabel = nullptr;
 
   // Relocation for CIE start
-  llvm::MCSymbol *CIESubroutineLabel;
-  llvm::MCSymbol *CIEStackcallLabel;
+  llvm::MCSymbol *CIESubroutineLabel = nullptr;
+  llvm::MCSymbol *CIEStackcallLabel = nullptr;
 
   // This location indicates end of function prologue and beginning of function
   // body.

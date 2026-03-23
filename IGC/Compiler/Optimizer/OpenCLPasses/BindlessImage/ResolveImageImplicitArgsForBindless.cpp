@@ -10,15 +10,13 @@ SPDX-License-Identifier: MIT
 
 #include "Compiler/IGCPassSupport.h"
 #include "Compiler/CISACodeGen/messageEncoding.hpp"
-#include "Compiler/CISACodeGen/Platform.hpp"
-#include "GenIntrinsicEnum.h"
 #include "LLVMWarningsPush.hpp"
 #include <llvm/ADT/StringRef.h>
 #include <llvm/IR/Constants.h>
 #include <llvm/IR/DerivedTypes.h>
 #include <llvm/IR/IRBuilder.h>
 #include "LLVMWarningsPop.hpp"
-#include <cstdint>
+#include <map>
 
 using namespace IGC;
 using namespace llvm;
@@ -40,23 +38,9 @@ ResolveImageImplicitArgsForBindless::ResolveImageImplicitArgsForBindless() : Mod
 }
 
 namespace {
-enum ImageImplicitArg {
-  IMAGE_ARGS_START = 0,
-  IMAGE_WIDTH = IMAGE_ARGS_START,
-  IMAGE_HEIGHT,
-  IMAGE_DEPTH,
-  IMAGE_NUM_MIP_LEVELS,
-  IMAGE_CHANNEL_DATA_TYPE,
-  IMAGE_CHANNEL_ORDER,
-  IMAGE_ARRAY_SIZE,
-  IMAGE_NUM_SAMPLES,
-  IMAGE_ARGS_END = IMAGE_NUM_SAMPLES,
-  IMAGE_ARGS_COUNT
-};
-
-struct BuiltinToArgMapType {
-  const char *name;
-  ImageImplicitArg arg;
+struct ImageImplicitArgInfo {
+  uint32_t OffsetInStruct;
+  uint32_t AlignmentInBytes;
 };
 
 // Struct layout as defined in NEO runtime under the same name:
@@ -81,6 +65,18 @@ struct ImageImplicitArgs {
   uint64_t flagHeight;
   uint64_t flatPitch;
 };
+
+std::map<StringRef, ImageImplicitArgInfo> BuiltinToArgMap = {
+    {"__builtin_IB_get_image_width", {offsetof(ImageImplicitArgs, imageWidth), 8}},
+    {"__builtin_IB_get_image_height", {offsetof(ImageImplicitArgs, imageHeight), 8}},
+    {"__builtin_IB_get_image_depth", {offsetof(ImageImplicitArgs, imageDepth), 8}},
+    {"__builtin_IB_get_image_num_mip_levels", {offsetof(ImageImplicitArgs, numMipLevels), 4}},
+    {"__builtin_IB_get_image_channel_data_type", {offsetof(ImageImplicitArgs, channelType), 4}},
+    {"__builtin_IB_get_image_channel_order", {offsetof(ImageImplicitArgs, channelOrder), 4}},
+    {"__builtin_IB_get_image1d_array_size", {offsetof(ImageImplicitArgs, imageArraySize), 8}},
+    {"__builtin_IB_get_image2d_array_size", {offsetof(ImageImplicitArgs, imageArraySize), 8}},
+    {"__builtin_IB_get_image_num_samples", {offsetof(ImageImplicitArgs, numSamples), 4}},
+};
 } // namespace
 
 bool ResolveImageImplicitArgsForBindless::runOnModule(Module &M) {
@@ -102,93 +98,26 @@ bool ResolveImageImplicitArgsForBindless::runOnModule(Module &M) {
 }
 
 void ResolveImageImplicitArgsForBindless::visitCallInst(CallInst &CI) {
-  constexpr BuiltinToArgMapType BuiltinToArgMap[] = {
-      {"__builtin_IB_get_image_width", IMAGE_WIDTH},
-      {"__builtin_IB_get_image_height", IMAGE_HEIGHT},
-      {"__builtin_IB_get_image_depth", IMAGE_DEPTH},
-      {"__builtin_IB_get_image_num_mip_levels", IMAGE_NUM_MIP_LEVELS},
-      {"__builtin_IB_get_image_channel_data_type", IMAGE_CHANNEL_DATA_TYPE},
-      {"__builtin_IB_get_image_channel_order", IMAGE_CHANNEL_ORDER},
-      {"__builtin_IB_get_image1d_array_size", IMAGE_ARRAY_SIZE},
-      {"__builtin_IB_get_image2d_array_size", IMAGE_ARRAY_SIZE},
-      {"__builtin_IB_get_image_num_samples", IMAGE_NUM_SAMPLES},
-  };
-
   auto *CalledFunction = CI.getCalledFunction();
   if (!CalledFunction)
     return;
 
-  auto FuncName = CalledFunction->getName().str();
-  ImageImplicitArg ImplicitArg = IMAGE_ARGS_COUNT;
-  for (const auto &Builtin : BuiltinToArgMap) {
-    if (FuncName == Builtin.name) {
-      ImplicitArg = Builtin.arg;
-      break;
-    }
-  }
-
-  if (ImplicitArg == IMAGE_ARGS_COUNT)
-    return; // Not an image implicit arg builtin, ignore.
-
-  uint64_t ArgOffsetInStruct = 0;
-  switch (ImplicitArg) {
-  case IMAGE_WIDTH:
-    ArgOffsetInStruct = offsetof(ImageImplicitArgs, imageWidth);
-    break;
-  case IMAGE_HEIGHT:
-    ArgOffsetInStruct = offsetof(ImageImplicitArgs, imageHeight);
-    break;
-  case IMAGE_DEPTH:
-    ArgOffsetInStruct = offsetof(ImageImplicitArgs, imageDepth);
-    break;
-  case IMAGE_ARRAY_SIZE:
-    ArgOffsetInStruct = offsetof(ImageImplicitArgs, imageArraySize);
-    break;
-  case IMAGE_NUM_SAMPLES:
-    ArgOffsetInStruct = offsetof(ImageImplicitArgs, numSamples);
-    break;
-  case IMAGE_CHANNEL_DATA_TYPE:
-    ArgOffsetInStruct = offsetof(ImageImplicitArgs, channelType);
-    break;
-  case IMAGE_CHANNEL_ORDER:
-    ArgOffsetInStruct = offsetof(ImageImplicitArgs, channelOrder);
-    break;
-  case IMAGE_NUM_MIP_LEVELS:
-    ArgOffsetInStruct = offsetof(ImageImplicitArgs, numMipLevels);
-    break;
-  default:
+  auto FuncName = CalledFunction->getName();
+  if (!BuiltinToArgMap.count(FuncName))
     return;
-  }
 
-  uint64_t AlignmentInBytes;
-  switch (ImplicitArg) {
-  case IMAGE_WIDTH:
-  case IMAGE_HEIGHT:
-  case IMAGE_DEPTH:
-  case IMAGE_ARRAY_SIZE:
-    AlignmentInBytes = 8;
-    break;
-  case IMAGE_NUM_SAMPLES:
-  case IMAGE_CHANNEL_DATA_TYPE:
-  case IMAGE_CHANNEL_ORDER:
-  case IMAGE_NUM_MIP_LEVELS:
-    AlignmentInBytes = 4;
-    break;
-  default:
-    return;
-  }
+  auto [ArgOffsetInStruct, AlignmentInBytes] = BuiltinToArgMap.at(FuncName);
 
-  const auto IntType = Type::getInt32Ty(CI.getContext());
-  const auto FloatType = Type::getFloatTy(CI.getContext());
+  Module *M = CI.getParent()->getParent()->getParent();
   auto Builder = IRBuilder<>(&CI);
 
-  ConstantInt *BindlessIndex = ConstantInt::get(IntType, BINDLESS_BTI);
+  ConstantInt *BindlessIndex = Builder.getInt32(BINDLESS_BTI);
   uint32_t AddrSpace = EncodeAS4GFXResource(*BindlessIndex, BufferType::BINDLESS);
-  Type *BindlessOffsetPtrTy = llvm::PointerType::get(FloatType, AddrSpace);
+  Type *BindlessOffsetPtrTy = PointerType::get(M->getContext(), AddrSpace);
 
-  // Offset Img arg into ImageImplicitArgs bindless slot:
   Value *Img = CI.getOperand(0);
-  Value *ImgToInt = isa<IntegerType>(Img->getType()) ? Img : Builder.CreatePtrToInt(Img, Builder.getInt64Ty());
+  Value *ImgToInt = isa<IntegerType>(Img->getType()) ? Builder.CreateZExtOrTrunc(Img, Builder.getInt64Ty())
+                                                     : Builder.CreatePtrToInt(Img, Builder.getInt64Ty());
   uint64_t SurfaceStateSize = mDriverInfo->getSurfaceStateSize();
   auto *StateSizeValue = Builder.getInt64(SurfaceStateSize);
   auto *ImageImplicitArgsOffset = Builder.CreateAdd(ImgToInt, StateSizeValue);
@@ -196,9 +125,8 @@ void ResolveImageImplicitArgsForBindless::visitCallInst(CallInst &CI) {
       Builder.CreateBitOrPointerCast(ImageImplicitArgsOffset, BindlessOffsetPtrTy, "imageImplicitArgs");
 
   // Create ldraw decl:
-  Module *Module = CI.getParent()->getParent()->getParent();
   Type *const Tys[] = {CI.getType(), ImageImplicitArgs->getType()};
-  auto *Callee = GenISAIntrinsic::getDeclaration(Module, GenISAIntrinsic::GenISA_ldraw_indexed, Tys);
+  auto *Callee = GenISAIntrinsic::getDeclaration(M, GenISAIntrinsic::GenISA_ldraw_indexed, Tys);
 
   // Create ldraw call:
   Value *const Args[] = {ImageImplicitArgs, Builder.getInt32(ArgOffsetInStruct), Builder.getInt32(AlignmentInBytes),
