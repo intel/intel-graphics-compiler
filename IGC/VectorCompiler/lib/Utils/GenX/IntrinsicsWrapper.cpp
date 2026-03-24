@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 ============================= end_copyright_notice ===========================*/
 
 #include "vc/Utils/GenX/IntrinsicsWrapper.h"
+#include "llvmWrapper/IR/Intrinsics.h"
 
 using namespace llvm;
 
@@ -91,7 +92,8 @@ Function *vc::getAnyDeclaration(Module *M, unsigned ID, ArrayRef<Type *> Tys) {
   if (InternalIntrinsic::isInternalNonTrivialIntrinsic(ID))
     return InternalIntrinsic::getInternalDeclaration(
         M, static_cast<vc::InternalIntrinsic::ID>(ID), Tys);
-  return Intrinsic::getDeclaration(M, static_cast<Intrinsic::ID>(ID), Tys);
+  return IGCLLVM::getOrInsertDeclaration(M, static_cast<Intrinsic::ID>(ID),
+                                         Tys);
 }
 
 std::string vc::getAnyName(unsigned Id, ArrayRef<Type *> Tys) {

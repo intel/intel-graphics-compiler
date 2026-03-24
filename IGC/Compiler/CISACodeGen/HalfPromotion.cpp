@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -23,6 +23,7 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/IR/Function.h>
 #include "common/LLVMWarningsPop.hpp"
+#include "llvmWrapper/IR/Intrinsics.h"
 
 using namespace llvm;
 using namespace IGC;
@@ -60,7 +61,7 @@ void IGC::HalfPromotion::handleLLVMIntrinsic(llvm::IntrinsicInst &I) {
     llvm::IGCIRBuilder<> builder(&I);
     std::vector<llvm::Value *> arguments;
 
-    Function *pNewFunc = Intrinsic::getDeclaration(M, I.getIntrinsicID(), builder.getFloatTy());
+    Function *pNewFunc = IGCLLVM::getOrInsertDeclaration(M, I.getIntrinsicID(), builder.getFloatTy());
 
     for (unsigned i = 0; i < IGCLLVM::getNumArgOperands(&I); ++i) {
       if (I.getOperand(i)->getType()->isHalfTy()) {

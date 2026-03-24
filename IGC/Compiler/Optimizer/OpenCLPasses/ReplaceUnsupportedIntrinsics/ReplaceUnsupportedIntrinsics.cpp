@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2024 Intel Corporation
+Copyright (C) 2017-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -28,6 +28,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/InstVisitor.h>
 #include "common/LLVMWarningsPop.hpp"
 #include "llvmWrapper/IR/DerivedTypes.h"
+#include "llvmWrapper/IR/Intrinsics.h"
 #include "llvmWrapper/IR/Instructions.h"
 #include "llvmWrapper/IR/IRBuilder.h"
 #include "llvmWrapper/Support/Alignment.h"
@@ -169,7 +170,7 @@ MemCpyInst *ReplaceUnsupportedIntrinsics::MemMoveToMemCpy(MemMoveInst *MM) {
 
   Type *Tys[] = {Dst->getType(), Src->getType(), Size->getType()};
   auto *M = MM->getParent()->getParent()->getParent();
-  auto TheFn = Intrinsic::getDeclaration(M, Intrinsic::memcpy, Tys);
+  auto TheFn = IGCLLVM::getOrInsertDeclaration(M, Intrinsic::memcpy, Tys);
 
   return cast<MemCpyInst>(MemCpyInst::Create(TheFn, args));
 }

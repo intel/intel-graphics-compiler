@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2018-2025 Intel Corporation
+Copyright (C) 2018-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -20,9 +20,10 @@ SPDX-License-Identifier: MIT
 
 #include "PacketBuilder.h"
 
-#include <llvmWrapper/IR/BasicBlock.h>
+#include "llvmWrapper/IR/BasicBlock.h"
 #include "llvmWrapper/ADT/StringRef.h"
 #include "llvmWrapper/IR/DerivedTypes.h"
+#include "llvmWrapper/IR/Intrinsics.h"
 #include "llvmWrapper/IR/Instructions.h"
 #include "llvmWrapper/IR/Type.h"
 #include "llvmWrapper/Support/Alignment.h"
@@ -737,8 +738,8 @@ Function *GenXPacketize::getVectorIntrinsic(Module *M, unsigned ID,
   if (GenXIntrinsic::isGenXIntrinsic(ID))
     return GenXIntrinsic::getGenXDeclaration(
         M, static_cast<GenXIntrinsic::ID>(ID), ArgTy);
-  return Intrinsic::getDeclaration(M, static_cast<Intrinsic::ID>(ID),
-                                   {ArgTy[0]});
+  return IGCLLVM::getOrInsertDeclaration(M, static_cast<Intrinsic::ID>(ID),
+                                         llvm::ArrayRef<Type *>{ArgTy[0]});
 }
 
 //////////////////////////////////////////////////////////////////////////

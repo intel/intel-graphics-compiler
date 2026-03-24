@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2024 Intel Corporation
+Copyright (C) 2017-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -25,6 +25,7 @@ SPDX-License-Identifier: MIT
 
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/IR/IRBuilder.h"
+#include "llvmWrapper/IR/Intrinsics.h"
 #include "llvmWrapper/IR/InstrTypes.h"
 #include <llvmWrapper/IR/BasicBlock.h>
 #include "llvmWrapper/IR/Instructions.h"
@@ -259,7 +260,7 @@ void Legalization::visitBinaryOperator(llvm::BinaryOperator &I) {
   if (I.getOpcode() == Instruction::FRem && (I.getType()->isFloatTy() || I.getType()->isHalfTy())) {
     bool hasFP16Floor = !m_ctx->platform.supportFP16Rounding();
     Type *floorType = hasFP16Floor ? I.getType() : m_builder->getFloatTy();
-    Function *floorFunc = Intrinsic::getDeclaration(m_ctx->getModule(), Intrinsic::floor, floorType);
+    Function *floorFunc = IGCLLVM::getOrInsertDeclaration(m_ctx->getModule(), Intrinsic::floor, floorType);
     m_builder->SetInsertPoint(&I);
     Value *a = I.getOperand(0);
     Value *b = I.getOperand(1);
@@ -1847,7 +1848,7 @@ void Legalization::visitIntrinsicInst(llvm::IntrinsicInst &I) {
       // demote back.
       Value *Val = Builder.CreateFPExt(I.getOperand(0), Builder.getFloatTy());
       Value *Callee =
-          Intrinsic::getDeclaration(I.getParent()->getParent()->getParent(), intrinsicID, Builder.getFloatTy());
+          IGCLLVM::getOrInsertDeclaration(I.getParent()->getParent()->getParent(), intrinsicID, Builder.getFloatTy());
       Val = Builder.CreateCall(Callee, ArrayRef<Value *>(Val));
       Val = Builder.CreateFPTrunc(Val, I.getType());
       I.replaceAllUsesWith(Val);

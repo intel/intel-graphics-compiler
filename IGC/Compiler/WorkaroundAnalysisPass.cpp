@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -16,7 +16,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/ADT/SmallVector.h>
 #include "common/LLVMWarningsPop.hpp"
 #include "llvmWrapper/IR/DerivedTypes.h"
-#include <llvmWrapper/IR/Intrinsics.h>
+#include "llvmWrapper/IR/Intrinsics.h"
 #include "Compiler/CISACodeGen/helper.h"
 #include "Compiler/CodeGenPublicEnums.h"
 #include "Compiler/CodeGenPublic.h"
@@ -589,7 +589,7 @@ void WAFMinFMax::visitCallInst(CallInst &I) {
           m_builder->SetInsertPoint(&I);
 
           IGCLLVM::Intrinsic IID = Intrinsic::minnum;
-          Function *IFunc = Intrinsic::getDeclaration(I.getParent()->getParent()->getParent(), IID, I.getType());
+          Function *IFunc = IGCLLVM::getOrInsertDeclaration(I.getParent()->getParent()->getParent(), IID, I.getType());
           Value *QNaN = getQNaN(I.getType());
 
           Value *src0 = I.getOperand(0);

@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2021-2024 Intel Corporation
+Copyright (C) 2021-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -19,7 +19,8 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/Module.h>
 #include <llvm/Support/Debug.h>
 
-#include <llvmWrapper/IR/DerivedTypes.h>
+#include "llvmWrapper/IR/DerivedTypes.h"
+#include "llvmWrapper/IR/Intrinsics.h"
 #include <optional>
 #include "Probe/Assertion.h"
 
@@ -176,7 +177,8 @@ vc::DIBuilder::createDbgDeclare(Value &Address, DILocalVariable &LocalVar,
       MetadataAsValue::get(Ctx, ValueAsMetadata::get(&Address)),
       MetadataAsValue::get(Ctx, &LocalVar), MetadataAsValue::get(Ctx, &Expr)};
 
-  auto *DbgDeclareFn = Intrinsic::getDeclaration(&M, Intrinsic::dbg_declare);
+  auto *DbgDeclareFn =
+      IGCLLVM::getOrInsertDeclaration(&M, Intrinsic::dbg_declare);
   IRBuilder<> Builder(&InsertPt);
   Builder.SetCurrentDebugLocation(&Loc);
   auto *DeclareInst = Builder.CreateCall(DbgDeclareFn, DeclareArgs);

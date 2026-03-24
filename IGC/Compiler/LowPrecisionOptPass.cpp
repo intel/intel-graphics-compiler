@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -13,6 +13,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/IGCPassSupport.h"
 
 #include "llvmWrapper/IR/DerivedTypes.h"
+#include "llvmWrapper/IR/Intrinsics.h"
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/IR/Instructions.h>
 #include "common/LLVMWarningsPop.hpp"
@@ -322,7 +323,7 @@ void LowPrecisionOpt::visitIntrinsicInst(llvm::IntrinsicInst &I) {
 
   if (!func_llvm_floor_f32)
     func_llvm_floor_f32 =
-        llvm::Intrinsic::getDeclaration(m_currFunction->getParent(), Intrinsic::floor, m_builder->getFloatTy());
+        IGCLLVM::getOrInsertDeclaration(m_currFunction->getParent(), Intrinsic::floor, m_builder->getFloatTy());
 
   auto floor32 = m_builder->CreateCall(func_llvm_floor_f32, src);
 #if VALUE_NAME_ENABLE

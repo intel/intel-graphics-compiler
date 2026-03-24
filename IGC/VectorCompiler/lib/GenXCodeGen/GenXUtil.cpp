@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2024 Intel Corporation
+Copyright (C) 2017-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -41,6 +41,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/Support/Debug.h"
 
 #include "llvmWrapper/IR/DerivedTypes.h"
+#include "llvmWrapper/IR/Intrinsics.h"
 #include "llvmWrapper/IR/InstrTypes.h"
 #include "llvmWrapper/IR/Instructions.h"
 #include "llvmWrapper/IR/Value.h"
@@ -129,7 +130,7 @@ CallInst *genx::createAddAddr(Value *Lhs, Value *Rhs, const Twine &Name,
 CallInst *genx::createUnifiedRet(Type *Ty, const Twine &Name, Module *M) {
   IGC_ASSERT_MESSAGE(Ty, "wrong argument");
   IGC_ASSERT_MESSAGE(M, "wrong argument");
-  auto G = Intrinsic::getDeclaration(M, Intrinsic::ssa_copy, Ty);
+  auto G = IGCLLVM::getOrInsertDeclaration(M, Intrinsic::ssa_copy, Ty);
   return CallInst::Create(G, UndefValue::get(Ty), Name + ".unifiedret",
                           static_cast<Instruction *>(nullptr));
 }

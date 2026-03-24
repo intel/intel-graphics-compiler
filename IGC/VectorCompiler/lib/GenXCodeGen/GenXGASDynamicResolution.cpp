@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2022-2024 Intel Corporation
+Copyright (C) 2022-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -35,6 +35,7 @@ SPDX-License-Identifier: MIT
 #include "vc/Utils/General/Types.h"
 
 #include "llvmWrapper/IR/Constants.h"
+#include "llvmWrapper/IR/Intrinsics.h"
 #include "llvmWrapper/IR/IRBuilder.h"
 #include "llvmWrapper/Support/Alignment.h"
 
@@ -183,9 +184,9 @@ static void createScatterWithNewAS(IntrinsicInst &OldScatter,
     Mask = IRB.CreateAnd(UpdateMask, Mask);
   PtrOp = createASCast(IRB, PtrOp, NewAS);
 
-  auto Func = Intrinsic::getDeclaration(OldScatter.getModule(),
-                                        Intrinsic::masked_scatter,
-                                        {Val->getType(), PtrOp->getType()});
+  auto Func = IGCLLVM::getOrInsertDeclaration(
+      OldScatter.getModule(), Intrinsic::masked_scatter,
+      llvm::ArrayRef<Type *>{Val->getType(), PtrOp->getType()});
   IRB.CreateCall(Func, {Val, PtrOp, Align, Mask});
 }
 
@@ -203,9 +204,9 @@ static IntrinsicInst *createGatherWithNewAS(IntrinsicInst &OldGather,
     Mask = IRB.CreateAnd(UpdateMask, Mask);
   PtrOp = createASCast(IRB, PtrOp, NewAS);
 
-  auto Func =
-      Intrinsic::getDeclaration(OldGather.getModule(), Intrinsic::masked_gather,
-                                {OldGather.getType(), PtrOp->getType()});
+  auto Func = IGCLLVM::getOrInsertDeclaration(
+      OldGather.getModule(), Intrinsic::masked_gather,
+      llvm::ArrayRef<Type *>{OldGather.getType(), PtrOp->getType()});
   return cast<IntrinsicInst>(
       IRB.CreateCall(Func, {PtrOp, Align, Mask, Passthru}, Name));
 }

@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2019-2024 Intel Corporation
+Copyright (C) 2019-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -45,6 +45,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/Transforms/Utils/Cloning.h>
 #include <llvm/Transforms/Utils/ValueMapper.h>
 
+#include "llvmWrapper/IR/Intrinsics.h"
 #include "llvmWrapper/IR/Instructions.h"
 #include "llvmWrapper/Transforms/Utils/Cloning.h"
 
@@ -185,8 +186,8 @@ static Function *getOneMapIntrinsicDeclaration(CallInst &CI, const unsigned IID,
     return vc::getGenXDeclarationForIdFromArgs(
         CI.getType(), CI.args(), static_cast<GenXIntrinsic::ID>(IID), M);
 
-  return Intrinsic::getDeclaration(&M, static_cast<Intrinsic::ID>(IID),
-                                   {CI.getType()});
+  return IGCLLVM::getOrInsertDeclaration(&M, static_cast<Intrinsic::ID>(IID),
+                                         llvm::ArrayRef<Type *>{CI.getType()});
 }
 
 void BIConvert::runOnModule(Module &M) {

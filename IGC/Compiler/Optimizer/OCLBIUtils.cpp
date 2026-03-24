@@ -13,6 +13,7 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPop.hpp"
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/IR/IRBuilder.h"
+#include "llvmWrapper/IR/Intrinsics.h"
 #include "llvmWrapper/IR/Instructions.h"
 #include "llvmWrapper/IR/Module.h"
 #include "AdaptorCommon/ImplicitArgs.hpp"
@@ -49,7 +50,7 @@ Function *CCommand::getFunctionDeclaration(GenISAIntrinsic::ID id, ArrayRef<Type
 }
 
 Function *CCommand::getFunctionDeclaration(IGCLLVM::Intrinsic id, ArrayRef<Type *> Tys) {
-  return Intrinsic::getDeclaration(m_pFunc->getParent(), id, Tys);
+  return IGCLLVM::getOrInsertDeclaration(m_pFunc->getParent(), id, Tys);
 }
 
 void CCommand::replaceCallInst(IGCLLVM::Intrinsic intrinsicName, ArrayRef<Type *> Tys) {

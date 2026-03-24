@@ -1,11 +1,12 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2024 Intel Corporation
+Copyright (C) 2017-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 #include "GASPropagator.h"
+#include "llvmWrapper/IR/Intrinsics.h"
 #include "llvmWrapper/IR/DerivedTypes.h"
 
 using namespace IGC;
@@ -313,9 +314,9 @@ static bool handleMemTransferInst(MemTransferInst &I) {
   IGC_ASSERT(nullptr != I.getParent()->getParent());
   Module *M = I.getParent()->getParent()->getParent();
   if (isa<MemCpyInst>(I))
-    Fn = Intrinsic::getDeclaration(M, Intrinsic::memcpy, Tys);
+    Fn = IGCLLVM::getOrInsertDeclaration(M, Intrinsic::memcpy, Tys);
   else if (isa<MemMoveInst>(I))
-    Fn = Intrinsic::getDeclaration(M, Intrinsic::memmove, Tys);
+    Fn = IGCLLVM::getOrInsertDeclaration(M, Intrinsic::memmove, Tys);
   else
     IGC_ASSERT_EXIT_MESSAGE(0, "unsupported memory intrinsic");
 
@@ -345,7 +346,7 @@ bool GASPropagator::visitMemSetInst(MemSetInst &I) {
   Type *OrigDstTy = OrigDst->getType();
 
   Type *Tys[] = {OrigDstTy, I.getArgOperand(2)->getType()};
-  Function *Fn = Intrinsic::getDeclaration(I.getParent()->getParent()->getParent(), Intrinsic::memset, Tys);
+  Function *Fn = IGCLLVM::getOrInsertDeclaration(I.getParent()->getParent()->getParent(), Intrinsic::memset, Tys);
 
   I.setCalledFunction(Fn);
   DstUse->set(OrigDst);

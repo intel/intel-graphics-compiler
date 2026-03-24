@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2025 Intel Corporation
+Copyright (C) 2017-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -24,6 +24,7 @@ SPDX-License-Identifier: MIT
 #include "llvmWrapper/Analysis/CallGraph.h"
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/IR/Function.h"
+#include "llvmWrapper/IR/Intrinsics.h"
 #include "llvmWrapper/IR/Instructions.h"
 #include "llvmWrapper/Support/Alignment.h"
 #include "llvmWrapper/Support/MathExtras.h"
@@ -549,8 +550,8 @@ bool CMABIBase<CallGraphImpl>::runOnCallGraphImpl(CallGraphImpl &SCC) {
       Arg.replaceAllUsesWith(Alloca);
       auto *DstTy = PointerType::get(Int8Ty, vc::AddrSpace::Private);
       auto *SrcTy = PointerType::get(Int8Ty, PtrTy->getPointerAddressSpace());
-      auto *Decl = Intrinsic::getDeclaration(M, Intrinsic::memcpy,
-                                             {DstTy, SrcTy, Int64Ty});
+      auto *Decl = IGCLLVM::getOrInsertDeclaration(
+          M, Intrinsic::memcpy, llvm::ArrayRef<Type *>{DstTy, SrcTy, Int64Ty});
       auto *Dst = new BitCastInst(Alloca, DstTy, "", InsertBefore);
       auto *Src = new BitCastInst(&Arg, SrcTy, "", InsertBefore);
       auto *Size = ConstantInt::get(

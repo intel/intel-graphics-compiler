@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -14,6 +14,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/Support/MemoryBuffer.h>
 #include "common/LLVMWarningsPop.hpp"
 #include "llvmWrapper/IR/DerivedTypes.h"
+#include "llvmWrapper/IR/Intrinsics.h"
 #include "common/debug/Dump.hpp"
 #include "common/secure_mem.h"
 #include "Compiler/GenUpdateCB.h"
@@ -203,58 +204,58 @@ void GenUpdateCB::InsertInstTree(Instruction *inst, Instruction *pos) {
   if (CallInst *callI = dyn_cast<CallInst>(Clone)) {
     switch (GetOpCode(callI)) {
     case llvm_log:
-      pfunc = llvm::Intrinsic::getDeclaration(
+      pfunc = IGCLLVM::getOrInsertDeclaration(
           m_ConstantBufferReplaceShaderPatterns, Intrinsic::log2,
           llvm::ArrayRef<llvm::Type *>(Type::getFloatTy(m_ConstantBufferReplaceShaderPatterns->getContext())));
       break;
     case llvm_sqrt:
-      pfunc = llvm::Intrinsic::getDeclaration(
+      pfunc = IGCLLVM::getOrInsertDeclaration(
           m_ConstantBufferReplaceShaderPatterns, Intrinsic::sqrt,
           llvm::ArrayRef<llvm::Type *>(Type::getFloatTy(m_ConstantBufferReplaceShaderPatterns->getContext())));
       break;
     case llvm_pow:
-      pfunc = llvm::Intrinsic::getDeclaration(
+      pfunc = IGCLLVM::getOrInsertDeclaration(
           m_ConstantBufferReplaceShaderPatterns, Intrinsic::pow,
           llvm::ArrayRef<llvm::Type *>(Type::getFloatTy(m_ConstantBufferReplaceShaderPatterns->getContext())));
       break;
     case llvm_cos:
-      pfunc = llvm::Intrinsic::getDeclaration(
+      pfunc = IGCLLVM::getOrInsertDeclaration(
           m_ConstantBufferReplaceShaderPatterns, Intrinsic::cos,
           llvm::ArrayRef<llvm::Type *>(Type::getFloatTy(m_ConstantBufferReplaceShaderPatterns->getContext())));
       break;
     case llvm_sin:
-      pfunc = llvm::Intrinsic::getDeclaration(
+      pfunc = IGCLLVM::getOrInsertDeclaration(
           m_ConstantBufferReplaceShaderPatterns, Intrinsic::sin,
           llvm::ArrayRef<llvm::Type *>(Type::getFloatTy(m_ConstantBufferReplaceShaderPatterns->getContext())));
       break;
     case llvm_exp:
-      pfunc = llvm::Intrinsic::getDeclaration(
+      pfunc = IGCLLVM::getOrInsertDeclaration(
           m_ConstantBufferReplaceShaderPatterns, Intrinsic::exp2,
           llvm::ArrayRef<llvm::Type *>(Type::getFloatTy(m_ConstantBufferReplaceShaderPatterns->getContext())));
       break;
 
     case llvm_floor:
-      pfunc = llvm::Intrinsic::getDeclaration(
+      pfunc = IGCLLVM::getOrInsertDeclaration(
           m_ConstantBufferReplaceShaderPatterns, Intrinsic::floor,
           llvm::ArrayRef<llvm::Type *>(Type::getFloatTy(m_ConstantBufferReplaceShaderPatterns->getContext())));
       break;
     case llvm_ceil:
-      pfunc = llvm::Intrinsic::getDeclaration(
+      pfunc = IGCLLVM::getOrInsertDeclaration(
           m_ConstantBufferReplaceShaderPatterns, Intrinsic::ceil,
           llvm::ArrayRef<llvm::Type *>(Type::getFloatTy(m_ConstantBufferReplaceShaderPatterns->getContext())));
       break;
     case llvm_fabs:
-      pfunc = llvm::Intrinsic::getDeclaration(
+      pfunc = IGCLLVM::getOrInsertDeclaration(
           m_ConstantBufferReplaceShaderPatterns, Intrinsic::fabs,
           llvm::ArrayRef<llvm::Type *>(Type::getFloatTy(m_ConstantBufferReplaceShaderPatterns->getContext())));
       break;
     case llvm_max:
-      pfunc = llvm::Intrinsic::getDeclaration(
+      pfunc = IGCLLVM::getOrInsertDeclaration(
           m_ConstantBufferReplaceShaderPatterns, Intrinsic::maxnum,
           llvm::ArrayRef<llvm::Type *>(Type::getFloatTy(m_ConstantBufferReplaceShaderPatterns->getContext())));
       break;
     case llvm_min:
-      pfunc = llvm::Intrinsic::getDeclaration(
+      pfunc = IGCLLVM::getOrInsertDeclaration(
           m_ConstantBufferReplaceShaderPatterns, Intrinsic::minnum,
           llvm::ArrayRef<llvm::Type *>(Type::getFloatTy(m_ConstantBufferReplaceShaderPatterns->getContext())));
       break;

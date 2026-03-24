@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2024 Intel Corporation
+Copyright (C) 2017-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -11,9 +11,10 @@ SPDX-License-Identifier: MIT
 #include <llvm/Transforms/Utils/BasicBlockUtils.h>
 #include <llvm/Transforms/Utils/LoopUtils.h>
 #include "common/LLVMWarningsPop.hpp"
-#include <llvmWrapper/IR/Constants.h>
-#include <llvmWrapper/IR/DerivedTypes.h>
+#include "llvmWrapper/IR/Constants.h"
+#include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/IR/Function.h"
+#include "llvmWrapper/IR/Intrinsics.h"
 #include "common/LLVMUtils.h"
 #include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
 #include "Compiler/CISACodeGen/helper.h"
@@ -313,9 +314,9 @@ void CustomLoopVersioning::hoistSeg2Invariant(Loop *loop, Instruction *fmul, Val
       irb.setFastMathFlags(fmul_log2->getFastMathFlags());
 
       Function *flog =
-          Intrinsic::getDeclaration(m_function->getParent(), llvm::Intrinsic::log2, intrin_log2->getType());
+          IGCLLVM::getOrInsertDeclaration(m_function->getParent(), llvm::Intrinsic::log2, intrin_log2->getType());
       Function *fexp =
-          Intrinsic::getDeclaration(m_function->getParent(), llvm::Intrinsic::exp2, intrin_log2->getType());
+          IGCLLVM::getOrInsertDeclaration(m_function->getParent(), llvm::Intrinsic::exp2, intrin_log2->getType());
       Value *v = irb.CreateCall(flog, cbLoad);
       v = irb.CreateFMul(fmul_log2_opnd, v);
       v = irb.CreateCall(fexp, v);

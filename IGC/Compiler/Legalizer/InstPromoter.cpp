@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2025 Intel Corporation
+Copyright (C) 2017-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -8,6 +8,7 @@ SPDX-License-Identifier: MIT
 
 #include "TypeLegalizer.h"
 #include "InstPromoter.h"
+#include "llvmWrapper/IR/Intrinsics.h"
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "common/LLVMWarningsPush.hpp"
 #include "llvm/Support/Debug.h"
@@ -15,7 +16,6 @@ SPDX-License-Identifier: MIT
 #include "llvm/Transforms/Utils/Local.h"
 #include <llvm/IR/Intrinsics.h>
 #include "common/LLVMWarningsPop.hpp"
-#include "llvmWrapper/IR/DerivedTypes.h"
 #include "Probe/Assertion.h"
 
 #define DEBUG_TYPE "type-legalizer"
@@ -639,7 +639,7 @@ std::pair<Value *, Type *> InstPromoter::preparePromotedIntrinsicInst(IntrinsicI
     IGC_ASSERT(PromotedBitWidth == ValBitWidth);
   }
 
-  Function *Func = Intrinsic::getDeclaration(I.getModule(), I.getIntrinsicID(), PromotedTy);
+  Function *Func = IGCLLVM::getOrInsertDeclaration(I.getModule(), I.getIntrinsicID(), PromotedTy);
   return {IRB->CreateCall(Func, PromotedArgs), PromotedTy};
 }
 

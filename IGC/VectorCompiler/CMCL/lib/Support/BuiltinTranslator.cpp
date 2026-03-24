@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2021-2024 Intel Corporation
+Copyright (C) 2021-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -26,6 +26,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/Support/ErrorHandling.h>
 
 #include "llvmWrapper/IR/DerivedTypes.h"
+#include "llvmWrapper/IR/Intrinsics.h"
 #include "llvmWrapper/IR/IRBuilder.h"
 #include "llvmWrapper/IR/Type.h"
 
@@ -164,7 +165,7 @@ Function *getAnyDeclarationForIdFromArgs(Type &RetTy, Range &&Args, unsigned Id,
   if (Intrinsic::isOverloaded(IID))
     Types.push_back(&RetTy);
 
-  return Intrinsic::getDeclaration(&M, IID, Types);
+  return IGCLLVM::getOrInsertDeclaration(&M, IID, Types);
 }
 
 static bool isCMCLBuiltin(const Function &F) {
@@ -325,7 +326,8 @@ static Value &createLLVMIntrinsic(const std::vector<Value *> &Operands,
   auto IID = static_cast<Intrinsic::ID>(IntrinsicForBuiltin[BiID]);
   assert(IID != Intrinsic::not_intrinsic && "Expected LLVM intrinsic");
   Module *M = IRB.GetInsertBlock()->getModule();
-  auto *Decl = Intrinsic::getDeclaration(M, IID, {&RetTy});
+  auto *Decl =
+      IGCLLVM::getOrInsertDeclaration(M, IID, llvm::ArrayRef<Type *>{&RetTy});
   return *IRB.CreateCall(Decl, Operands);
 }
 

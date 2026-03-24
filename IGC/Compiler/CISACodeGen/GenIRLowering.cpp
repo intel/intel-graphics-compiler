@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -1128,7 +1128,7 @@ bool GenIRLowering::combineSelectInst(SelectInst *Sel, BasicBlock::iterator &BBI
   }
 
   IGCLLVM::Intrinsic IID = IsMax ? Intrinsic::maxnum : Intrinsic::minnum;
-  Function *IFunc = Intrinsic::getDeclaration(Sel->getParent()->getParent()->getParent(), IID, LHS->getType());
+  Function *IFunc = IGCLLVM::getOrInsertDeclaration(Sel->getParent()->getParent()->getParent(), IID, LHS->getType());
 
   Instruction *I = Builder->CreateCall2(IFunc, LHS, RHS);
   BBI = BasicBlock::iterator(I); // Don't move to the next one. We still need combine for saturation.

@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2025 Intel Corporation
+Copyright (C) 2017-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -17,6 +17,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/IR/Module.h"
 #include "common/LLVMWarningsPop.hpp"
 #include "llvmWrapper/IR/DerivedTypes.h"
+#include "llvmWrapper/IR/Intrinsics.h"
 #include "llvmWrapper/IR/Instructions.h"
 #include "common/igc_regkeys.hpp"
 #include "common/Types.hpp"
@@ -872,8 +873,9 @@ void ScalarizeFunction::ScalarizeIntrinsic(IntrinsicInst &II) {
     for (unsigned j = 0; j < NumOperands; j++)
       ScalarOperands[j] = Operands[j][i];
 
-    auto *ScalarIntr = CallInst::Create(Intrinsic::getDeclaration(II.getModule(), II.getIntrinsicID(), {ScalarType}),
-                                        ScalarOperands, II.getName() + ".scalar", &II);
+    auto *ScalarIntr =
+        CallInst::Create(IGCLLVM::getOrInsertDeclaration(II.getModule(), II.getIntrinsicID(), ScalarType),
+                         ScalarOperands, II.getName() + ".scalar", &II);
     ScalarIntr->copyMetadata(II);
     NewScalarizedInsts[i] = ScalarIntr;
   }

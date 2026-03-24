@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2025 Intel Corporation
+Copyright (C) 2017-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -78,6 +78,7 @@ SPDX-License-Identifier: MIT
 #include "llvmWrapper/ADT/APInt.h"
 #include "llvmWrapper/IR/Constants.h"
 #include "llvmWrapper/IR/DerivedTypes.h"
+#include "llvmWrapper/IR/Intrinsics.h"
 #include "llvmWrapper/IR/Instructions.h"
 #include "llvmWrapper/Support/TypeSize.h"
 #include "llvmWrapper/Transforms/Utils/BasicBlockUtils.h"
@@ -1579,8 +1580,9 @@ bool FmaMatcher::emit() {
   if (NegSrcIndex >= 0)
     Srcs[NegSrcIndex] = Builder.CreateFNeg(Srcs[NegSrcIndex]);
 
-  auto *Func = Intrinsic::getDeclaration(AddSub->getModule(), Intrinsic::fma,
-                                         {AddSub->getType()});
+  auto *Func = IGCLLVM::getOrInsertDeclaration(
+      AddSub->getModule(), Intrinsic::fma,
+      llvm::ArrayRef<Type *>{AddSub->getType()});
   auto *Fma = Builder.CreateCall(Func, Srcs);
   AddSub->replaceAllUsesWith(Fma);
   return true;

@@ -32,6 +32,7 @@ SPDX-License-Identifier: MIT
 #include "llvmWrapper/IR/Argument.h"
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/IR/IRBuilder.h"
+#include "llvmWrapper/IR/Intrinsics.h"
 #include "llvmWrapper/Support/Alignment.h"
 
 #include <optional>
@@ -1837,12 +1838,12 @@ GenIntrinsicInst *RTBuilder::createDummyInstID(Value *pSrcVal) {
 }
 
 CallInst *RTBuilder::ctlz(Value *V) {
-  auto *Ctlz = Intrinsic::getDeclaration(GetInsertBlock()->getModule(), Intrinsic::ctlz, V->getType());
+  auto *Ctlz = IGCLLVM::getOrInsertDeclaration(GetInsertBlock()->getModule(), Intrinsic::ctlz, V->getType());
   return CreateCall2(Ctlz, V, getFalse(), VALUE_NAME("lzd"));
 }
 
 CallInst *RTBuilder::cttz(Value *V) {
-  auto *Cttz = Intrinsic::getDeclaration(GetInsertBlock()->getModule(), Intrinsic::cttz, V->getType());
+  auto *Cttz = IGCLLVM::getOrInsertDeclaration(GetInsertBlock()->getModule(), Intrinsic::cttz, V->getType());
   return CreateCall2(Cttz, V, getFalse(), VALUE_NAME("cttz"));
 }
 

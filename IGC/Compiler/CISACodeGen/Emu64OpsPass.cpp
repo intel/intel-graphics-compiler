@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2024 Intel Corporation
+Copyright (C) 2017-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -22,6 +22,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/Pass.h"
 #include "llvm/Analysis/TargetFolder.h"
 #include "common/LLVMWarningsPop.hpp"
+#include "llvmWrapper/IR/Intrinsics.h"
 #include "llvmWrapper/IR/Instructions.h"
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/IR/Instructions.h"
@@ -1352,9 +1353,9 @@ bool InstExpander::visitFPToUI(FPToUIInst &F2U) {
   }
 
   IID = Intrinsic::trunc;
-  Function *Trunc = Intrinsic::getDeclaration(Emu->getModule(), IID, SrcTy);
+  Function *Trunc = IGCLLVM::getOrInsertDeclaration(Emu->getModule(), IID, SrcTy);
   IID = Intrinsic::fma;
-  Function *Fma = Intrinsic::getDeclaration(Emu->getModule(), IID, SrcTy);
+  Function *Fma = IGCLLVM::getOrInsertDeclaration(Emu->getModule(), IID, SrcTy);
 
   Value *FC0 = ConstantFP::get(SrcTy, ldexp(1., -32));
   Value *FC1 = ConstantFP::get(SrcTy, ldexp(-1., 32));
@@ -1407,11 +1408,11 @@ bool InstExpander::visitFPToSI(FPToSIInst &F2S) {
   Sign = IRB->CreateAShr(Sign, 31);
 
   IID = Intrinsic::fabs;
-  Function *FAbs = Intrinsic::getDeclaration(Emu->getModule(), IID, SrcTy);
+  Function *FAbs = IGCLLVM::getOrInsertDeclaration(Emu->getModule(), IID, SrcTy);
   IID = Intrinsic::trunc;
-  Function *Trunc = Intrinsic::getDeclaration(Emu->getModule(), IID, SrcTy);
+  Function *Trunc = IGCLLVM::getOrInsertDeclaration(Emu->getModule(), IID, SrcTy);
   IID = Intrinsic::fma;
-  Function *Fma = Intrinsic::getDeclaration(Emu->getModule(), IID, SrcTy);
+  Function *Fma = IGCLLVM::getOrInsertDeclaration(Emu->getModule(), IID, SrcTy);
 
   Value *FC0 = ConstantFP::get(SrcTy, ldexp(1., -32));
   Value *FC1 = ConstantFP::get(SrcTy, ldexp(-1., 32));
@@ -1450,7 +1451,7 @@ Value *InstExpander::convertUIToFP32(Type *DstTy, Value *Lo, Value *Hi, Instruct
 
   IGCLLVM::Intrinsic IID;
   IID = Intrinsic::ctlz;
-  Function *Lzd = Intrinsic::getDeclaration(Emu->getModule(), IID, Lo->getType());
+  Function *Lzd = IGCLLVM::getOrInsertDeclaration(Emu->getModule(), IID, Lo->getType());
 
   Value *ShAmt = IRB->CreateCall2(Lzd, Hi, IRB->getFalse());
   // Check ShAmt == 32
@@ -1572,7 +1573,7 @@ bool InstExpander::visitUIToFP(UIToFPInst &U2F) {
 
   if (DstTy->isDoubleTy()) {
     IGCLLVM::Intrinsic IID = Intrinsic::fma;
-    Function *Fma = Intrinsic::getDeclaration(Emu->getModule(), IID, DstTy);
+    Function *Fma = IGCLLVM::getOrInsertDeclaration(Emu->getModule(), IID, DstTy);
     Value *FC0 = ConstantFP::get(DstTy, ldexp(1., 32));
     Value *LoF = IRB->CreateUIToFP(Lo, DstTy);
     Value *HiF = IRB->CreateUIToFP(Hi, DstTy);
@@ -1619,7 +1620,7 @@ bool InstExpander::visitSIToFP(SIToFPInst &S2F) {
 
   if (DstTy->isDoubleTy()) {
     IGCLLVM::Intrinsic IID = Intrinsic::fma;
-    Function *Fma = Intrinsic::getDeclaration(Emu->getModule(), IID, DstTy);
+    Function *Fma = IGCLLVM::getOrInsertDeclaration(Emu->getModule(), IID, DstTy);
     Value *FC0 = ConstantFP::get(DstTy, ldexp(1., 32));
     Value *LoF = IRB->CreateUIToFP(Lo, DstTy);
     Value *HiF = IRB->CreateSIToFP(Hi, DstTy);

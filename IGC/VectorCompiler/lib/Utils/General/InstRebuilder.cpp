@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2021-2024 Intel Corporation
+Copyright (C) 2021-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -11,6 +11,7 @@ SPDX-License-Identifier: MIT
 
 #include "Probe/Assertion.h"
 #include "llvmWrapper/Support/Alignment.h"
+#include "llvmWrapper/IR/Intrinsics.h"
 #include "llvmWrapper/IR/Type.h"
 
 #include <llvm/ADT/ArrayRef.h>
@@ -148,8 +149,8 @@ public:
     auto *RetTy =
         getIntrinsicRetTypeBasedOnArgs(IID, ArgTys, OrigIntrinsic.getContext());
     auto OverloadedTys = getIntrinsicOverloadedTypes(IID, RetTy, ArgTys);
-    auto *Decl = Intrinsic::getDeclaration(OrigIntrinsic.getModule(), IID,
-                                           OverloadedTys);
+    auto *Decl = IGCLLVM::getOrInsertDeclaration(OrigIntrinsic.getModule(), IID,
+                                                 OverloadedTys);
     return cast<IntrinsicInst>(CallInst::Create(Decl, NewOperands));
   }
 

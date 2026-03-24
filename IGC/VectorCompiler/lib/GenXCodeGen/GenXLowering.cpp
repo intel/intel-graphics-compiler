@@ -122,6 +122,7 @@ SPDX-License-Identifier: MIT
 
 #include "llvmWrapper/IR/Constants.h"
 #include "llvmWrapper/IR/DerivedTypes.h"
+#include "llvmWrapper/IR/Intrinsics.h"
 #include "llvmWrapper/IR/Instructions.h"
 #include "llvmWrapper/Support/TypeSize.h"
 #include "llvmWrapper/Support/MathExtras.h"
@@ -4721,8 +4722,8 @@ bool GenXLowering::lowerFunnelShift(CallInst *CI, unsigned IntrinsicID) {
 
 bool GenXLowering::lowerFMulAdd(CallInst *CI) {
   IGC_ASSERT(CI);
-  auto *Decl = Intrinsic::getDeclaration(CI->getModule(), Intrinsic::fma,
-                                         {CI->getType()});
+  auto *Decl = IGCLLVM::getOrInsertDeclaration(
+      CI->getModule(), Intrinsic::fma, llvm::ArrayRef<Type *>{CI->getType()});
   SmallVector<Value *, 3> Args{CI->args()};
   auto *FMA = CallInst::Create(Decl, Args, CI->getName(), CI);
   FMA->setDebugLoc(CI->getDebugLoc());
@@ -4736,8 +4737,8 @@ bool GenXLowering::lowerPowI(CallInst *CI) {
   IGC_ASSERT(CI);
   IRBuilder<> IRB{CI};
   auto *CITy = CI->getType();
-  auto *Decl =
-      Intrinsic::getDeclaration(CI->getModule(), Intrinsic::pow, {CITy});
+  auto *Decl = IGCLLVM::getOrInsertDeclaration(CI->getModule(), Intrinsic::pow,
+                                               llvm::ArrayRef<Type *>{CITy});
   auto *Operand = CI->getOperand(1);
   // For pow @llvm.powi.v*.i*(< x > , i32 ) cases
   if (auto *CIVTy = dyn_cast<IGCLLVM::FixedVectorType>(CITy);
