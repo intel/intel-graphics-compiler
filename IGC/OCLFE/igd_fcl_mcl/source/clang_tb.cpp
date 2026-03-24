@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2023 Intel Corporation
+Copyright (C) 2017-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -978,7 +978,7 @@ std::string GetCDefinesForEnableList(llvm::StringRef enableListStr, unsigned int
   ExtensionsRequiringManualFeatureMacros enabledExtensions;
   for (auto ext : v) {
     if (ext.consume_front("+")) {
-      if (ext.equals("cl_intel_device_side_avc_motion_estimation")) {
+      if (ext == "cl_intel_device_side_avc_motion_estimation") {
         // If the user provided -cl-std option we need to add the define only if it's 1.2 and above.
         // This is because clang will not allow declarations of extension's functions which use avc types otherwise.
         if (!(oclStd >= 120 || oclStd == 0))
@@ -986,13 +986,13 @@ std::string GetCDefinesForEnableList(llvm::StringRef enableListStr, unsigned int
       }
 
       // Only collect extensions needed for manual feature macro generation
-      if (ext.equals("cl_khr_integer_dot_product")) {
+      if (ext == "cl_khr_integer_dot_product") {
         enabledExtensions.integerDotProduct = true;
-      } else if (ext.equals("cl_ext_float_atomics")) {
+      } else if (ext == "cl_ext_float_atomics") {
         enabledExtensions.extFloatAtomics = true;
-      } else if (ext.equals("cl_khr_fp16")) {
+      } else if (ext == "cl_khr_fp16") {
         enabledExtensions.fp16 = true;
-      } else if (ext.equals("cl_khr_fp64")) {
+      } else if (ext == "cl_khr_fp64") {
         enabledExtensions.fp64 = true;
       }
 

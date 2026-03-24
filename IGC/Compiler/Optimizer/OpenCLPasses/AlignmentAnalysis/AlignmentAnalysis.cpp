@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2024 Intel Corporation
+Copyright (C) 2017-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -77,7 +77,7 @@ void AlignmentAnalysis::setArgumentAlignmentBasedOnOptionalMetadata(Function &F)
         continue;
       }
 
-      if (!Op->getString().endswith("*")) {
+      if (!IGCLLVM::ends_with(Op->getString(), "*")) {
         // If the metadata string does not end with '*', skip this argument.
         // This can be e.g. a struct pointer passed byval.
         // DPC++ does not add "*" in this case and we will not be able to
