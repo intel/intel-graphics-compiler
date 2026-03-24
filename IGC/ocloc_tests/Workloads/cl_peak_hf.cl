@@ -8,31 +8,38 @@ SPDX-License-Identifier: MIT
 
 // UNSUPPORTED: system-windows
 // REQUIRES: regkeys
-// RUN: %if cri-supported %{ ocloc compile -file %s -options "-igc_opts 'VISAOptions=-asmToConsole'" -device cri | FileCheck %s --check-prefix=CHECK %}
-// RUN: %if pvc-supported %{ ocloc compile -file %s -options "-igc_opts 'VISAOptions=-asmToConsole'" -device pvc | FileCheck %s --check-prefixes=CHECK,CHECK-PVC %}
+// RUN: %if cri-supported %{ ocloc compile -file %s -options "-igc_opts 'VISAOptions=-asmToConsole'" -options -cl-mad-enable -device cri | FileCheck %s --check-prefix=CHECK %}
+// RUN: %if pvc-supported %{ ocloc compile -file %s -options "-igc_opts 'VISAOptions=-asmToConsole'" -options -cl-mad-enable -device pvc | FileCheck %s --check-prefixes=CHECK,CHECK-BCR %}
+// RUN: %if ptl-supported %{ ocloc compile -file %s -options "-igc_opts 'VISAOptions=-asmToConsole'" -options -cl-mad-enable -device ptl | FileCheck %s --check-prefixes=CHECK,CHECK-BCR %}
 
 // cl_peak, compute_hp_vN kernels
-// This test checks that loops are fully unrolled and there are less than 200 BankConflicts on each kernel
+// This test checks that loops are fully unrolled and there are less than 50 BankConflicts on each kernel
 
 // CHECK-LABEL: .kernel compute_hp_v1
+// CHECK-COUNT-2048: mad ({{[0-9]+}}|M0) {{.*}}:hf
 // CHECK-NOT: .spill size
 // CHECK-NOT: jmpi
-// CHECK-PVC: .BankConflicts: {{([0-9]|[1-9][0-9]|1[0-9][0-9])$}}
+// CHECK-BCR: .BankConflicts: {{([0-9]|[1-4][0-9])$}}
 // CHECK-LABEL: .kernel compute_hp_v2
+// CHECK-COUNT-2048: mad ({{[0-9]+}}|M0) {{.*}}:hf
 // CHECK-NOT: .spill size
 // CHECK-NOT: jmpi
-// CHECK-PVC: .BankConflicts: {{([0-9]|[1-9][0-9]|1[0-9][0-9])$}}
+// CHECK-BCR: .BankConflicts: {{([0-9]|[1-4][0-9])$}}
 // CHECK-LABEL: .kernel compute_hp_v4
+// CHECK-COUNT-2048: mad ({{[0-9]+}}|M0) {{.*}}:hf
 // CHECK-NOT: .spill size
 // CHECK-NOT: jmpi
-// CHECK-PVC: .BankConflicts: {{([0-9]|[1-9][0-9]|1[0-9][0-9])$}}
+// CHECK-BCR: .BankConflicts: {{([0-9]|[1-4][0-9])$}}
 // CHECK-LABEL: .kernel compute_hp_v8
+// CHECK-COUNT-2048: mad ({{[0-9]+}}|M0) {{.*}}:hf
 // CHECK-NOT: .spill size
 // CHECK-NOT: jmpi
-// CHECK-PVC: .BankConflicts: {{([0-9]|[1-9][0-9]|1[0-9][0-9])$}}
+// CHECK-BCR: .BankConflicts: {{([0-9]|[1-4][0-9])$}}
 // CHECK-LABEL: .kernel compute_hp_v16
+// CHECK-COUNT-2048: mad ({{[0-9]+}}|M0) {{.*}}:hf
 // CHECK-NOT: .spill size
 // CHECK-NOT: jmpi
+// CHECK-BCR: .BankConflicts: {{([0-9]|[1-4][0-9])$}}
 
 #if defined(cl_khr_fp16)
 #pragma OPENCL EXTENSION cl_khr_fp16 : enable
