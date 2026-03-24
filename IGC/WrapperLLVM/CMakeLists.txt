@@ -61,6 +61,7 @@ set(IGC_WrapperLLVM_HDR
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/Support/MathExtras.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/Support/Regex.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/Support/Host.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/Support/BlockFrequency.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/Support/SystemUtils.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/Support/TargetRegistry.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/Support/TypeSize.h"

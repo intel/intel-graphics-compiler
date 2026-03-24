@@ -21,6 +21,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/InstVisitor.h>
 
 #include "llvmWrapper/ADT/Optional.h"
+#include "llvmWrapper/Support/BlockFrequency.h"
 
 #include <llvm/Analysis/BlockFrequencyInfo.h>
 #include <llvm/Analysis/BranchProbabilityInfo.h>
@@ -99,7 +100,7 @@ void GenerateFrequencyData::runStaticAnalysis() {
     if (F.empty() || F_freqs.find(&F) == F_freqs.end())
       continue;
     auto &BFI = getAnalysis<BlockFrequencyInfoWrapperPass>(F).getBFI();
-    Scaled64 EntryFreq(BFI.getEntryFreq(), 0);
+    Scaled64 EntryFreq(IGCLLVM::getFrequency(BFI.getEntryFreq()), 0);
 
     if ((IGC_GET_FLAG_VALUE(PrintStaticProfileGuidedSpillCostAnalysis) & PGSS_IGC_DUMP_BLK) != 0)
       dbgs() << "Function frequency of " << F.getName().str() << ": " << F_freqs[&F].toString() << "\n";
@@ -143,7 +144,7 @@ void GenerateFrequencyData::updateStaticFuncFreq(DenseMap<Function *, ScaledNumb
     uint64_t InitialCount = InitialSyntheticCount;
     if (!F.empty()) {
       auto &BFI = getAnalysis<BlockFrequencyInfoWrapperPass>(F).getBFI();
-      entryFreqs[&F] = Scaled64(BFI.getEntryFreq(), 0);
+      entryFreqs[&F] = Scaled64(IGCLLVM::getFrequency(BFI.getEntryFreq()), 0);
       for (auto &B : F)
         blockFreqs[&B] = Scaled64(BFI.getBlockFreq(&B).getFrequency(), 0);
     }

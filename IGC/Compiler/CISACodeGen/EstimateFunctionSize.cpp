@@ -26,6 +26,7 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPop.hpp"
 #include "llvmWrapper/IR/BasicBlock.h"
 #include "llvmWrapper/ADT/Optional.h"
+#include "llvmWrapper/Support/BlockFrequency.h"
 #include "Probe/Assertion.h"
 #include <deque>
 #include <cfloat>
@@ -678,7 +679,7 @@ void EstimateFunctionSize::runStaticAnalysis() {
       continue;
     auto &BFI = getAnalysis<BlockFrequencyInfoWrapperPass>(F).getBFI();
     FunctionNode *Node = get<FunctionNode>(&F);
-    Node->setEntryFrequency(BFI.getEntryFreq(), 0);
+    Node->setEntryFrequency(IGCLLVM::getFrequency(BFI.getEntryFreq()), 0);
 
     for (auto &B : F)
       Node->blockFreqs[&B] = Scaled64(BFI.getBlockFreq(&B).getFrequency(), 0);
