@@ -6,11 +6,11 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; REQUIRES: cri-supported, llvm-spirv, llvm-below-17
+; REQUIRES: cri-supported, llvm-spirv
 
 ; RUN: llvm-as %s -o %t.bc
 ; RUN: llvm-spirv %t.bc --spirv-ext=+SPV_KHR_bfloat16,+SPV_INTEL_bfloat16_arithmetic -o %t.spv
-; RUN: ocloc compile -spirv_input -file %t.spv -device cri -options "-igc_opts 'DumpVISAASMToConsole=1,AddVISADumpDeclarationsToEnd=1,ForceOCLSIMDWidth=16' -cl-intel-library-compilation" | FileCheck %s
+; RUN: ocloc compile -spirv_input -file %t.spv -device cri -options "-igc_opts 'DumpVISAASMToConsole=1,AddVISADumpDeclarationsToEnd=1,ForceOCLSIMDWidth=16' -cl-intel-library-compilation" | FileCheck %s --check-prefixes=CHECK,%LLVM_DEPENDENT_CHECK_PREFIX%
 ; COM: Execute ocloc second time, this time without DumpVISAASMToConsole flag, to ensure that E2E compilation does not crash.
 ; RUN: ocloc compile -spirv_input -file %t.spv -device cri -options "-igc_opts 'ForceOCLSIMDWidth=16' -cl-intel-library-compilation"
 
@@ -52,10 +52,27 @@ define spir_func i1 @OpIsFinite(bfloat %data1) {
 
 ; CHECK-LABEL: .function "OpIsNormal
 define spir_func i1 @OpIsNormal(bfloat %data1) {
-  ; CHECK: cmp.ge (M1, 16) {{.*}} [[SRC:.*]](0,0)<1;1,0> 0x800000:f
-  ; CHECK: cmp.lt (M1, 16) {{.*}} [[SRC]](0,0)<1;1,0> 0x7f800000:f
-  ; CHECK: and (M1, 16) {{.*}} {{P[0-9]+}} {{P[0-9]+}}
-  ; CHECK-DAG: .decl [[SRC]] v_type=G type=bf
+  ; CHECK-LLVM-14: cmp.ge (M1, 16) {{.*}} [[SRC:.*]](0,0)<1;1,0> 0x800000:f
+  ; CHECK-LLVM-14: cmp.lt (M1, 16) {{.*}} [[SRC]](0,0)<1;1,0> 0x7f800000:f
+  ; CHECK-LLVM-14: and (M1, 16) {{.*}} {{P[0-9]+}} {{P[0-9]+}}
+  ; CHECK-LLVM-14-DAG: .decl [[SRC]] v_type=G type=bf
+
+  ; CHECK-LLVM-15: cmp.ge (M1, 16) {{.*}} [[SRC:.*]](0,0)<1;1,0> 0x800000:f
+  ; CHECK-LLVM-15: cmp.lt (M1, 16) {{.*}} [[SRC]](0,0)<1;1,0> 0x7f800000:f
+  ; CHECK-LLVM-15: and (M1, 16) {{.*}} {{P[0-9]+}} {{P[0-9]+}}
+  ; CHECK-LLVM-15-DAG: .decl [[SRC]] v_type=G type=bf
+
+  ; CHECK-LLVM-16: cmp.ge (M1, 16) {{.*}} [[SRC:.*]](0,0)<1;1,0> 0x800000:f
+  ; CHECK-LLVM-16: cmp.lt (M1, 16) {{.*}} [[SRC]](0,0)<1;1,0> 0x7f800000:f
+  ; CHECK-LLVM-16: and (M1, 16) {{.*}} {{P[0-9]+}} {{P[0-9]+}}
+  ; CHECK-LLVM-16-DAG: .decl [[SRC]] v_type=G type=bf
+
+  ; CHECK-LLVM-17: add (M1, 16) [[ADD:.*]](0,0)<1> [[ADD]](0,0)<1;1,0> 0xffffff80:w
+  ; CHECK-LLVM-17: cmp.lt (M1, 16) [[FIRST:.*]](0,0)<1> [[SECOND:.*]](0,0)<1;1,0> 0x7f00:uw
+  ; CHECK-LLVM-17: bfn.xd8 (M1, 16) [[THIRD:.*]](0,0)<1> [[FOURTH:.*]](0,0)<1;1,0> 0xffffffff:w 0x0:w
+  ; CHECK-LLVM-17: mov (M1, 16) [[SIXTH:.*]](0,0)<1> (-)[[THIRD]](0,0)<1;1,0>
+  ; CHECK-LLVM-17-DAG: .decl [[SECOND]] v_type=G type=uw
+
   %result = call spir_func i1 @_Z16__spirv_IsNormalDF16b(bfloat %data1)
   ret i1 %result
 }
