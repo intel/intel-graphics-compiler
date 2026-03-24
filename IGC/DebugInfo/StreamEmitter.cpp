@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2023 Intel Corporation
+Copyright (C) 2017-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -36,6 +36,7 @@ See LICENSE.TXT for details.
 #include "llvmWrapper/ADT/STLExtras.h"
 #include "llvmWrapper/MC/MCStreamer.h"
 #include "llvmWrapper/ADT/Optional.h"
+#include "llvmWrapper/Support/Endian.h"
 #include "llvmWrapper/Support/TargetRegistry.h"
 // clang-format on
 
@@ -100,7 +101,7 @@ class VISAAsmBackend : public MCAsmBackend {
   StringRef m_targetTriple;
 
 public:
-  VISAAsmBackend(StringRef targetTriple) : MCAsmBackend(support::endianness::little), m_targetTriple(targetTriple) {}
+  VISAAsmBackend(StringRef targetTriple) : MCAsmBackend(IGCLLVM::endianness::little), m_targetTriple(targetTriple) {}
 
   unsigned getNumFixupKinds() const override { return 0; }
 

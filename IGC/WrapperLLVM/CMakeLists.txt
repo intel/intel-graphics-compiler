@@ -56,6 +56,7 @@ set(IGC_WrapperLLVM_HDR
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/IR/Value.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/Option/OptTable.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/Support/Alignment.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/Support/Endian.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/Support/FileSystem.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/Support/ModRef.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/Support/MathExtras.h"

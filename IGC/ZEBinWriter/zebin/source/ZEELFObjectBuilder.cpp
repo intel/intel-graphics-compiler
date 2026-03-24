@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2020-2023 Intel Corporation
+Copyright (C) 2020-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -23,6 +23,8 @@ SPDX-License-Identifier: MIT
 #ifndef ZEBinStandAloneBuild
 #include "common/LLVMWarningsPop.hpp"
 #endif
+
+#include "llvmWrapper/Support/Endian.h"
 
 #include <tuple>
 #include "Probe/Assertion.h"
@@ -816,7 +818,7 @@ uint16_t ELFWriter::numOfSections() {
 }
 
 ELFWriter::ELFWriter(llvm::raw_pwrite_stream &OS, ZEELFObjectBuilder &objBuilder)
-    : m_W(OS, llvm::support::little), m_ObjBuilder(objBuilder) {}
+    : m_W(OS, IGCLLVM::endianness::little), m_ObjBuilder(objBuilder) {}
 
 uint64_t ELFWriter::write() {
   uint64_t start = m_W.OS.tell();
