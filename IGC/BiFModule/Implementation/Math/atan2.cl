@@ -60,7 +60,7 @@ float __attribute__((overloadable)) __spirv_ocl_atan2( float y, float x )
         if( __intel_relaxed_isnan(x) |
             __intel_relaxed_isnan(y) )
         {
-            result = __spirv_ocl_nan(0);
+            result = __spirv_ocl_nan((uint)0);
         }
         else
         {
@@ -120,7 +120,7 @@ INLINE half __attribute__((overloadable)) __spirv_ocl_atan2( half y, half x )
     if( __intel_relaxed_isnan((float)x) |
         __intel_relaxed_isnan((float)y) )
     {
-        result = __spirv_ocl_nan(0);
+        result = __spirv_ocl_nan((ushort)0);
     }
     else
     {

@@ -21,7 +21,7 @@ float __attribute__((overloadable)) __spirv_ocl_remquo( float         xx,
         yy == 0.0f )
     {
         *quo = 0;
-        result = __spirv_ocl_nan(0);
+        result = __spirv_ocl_nan((uint)0);
     }
     else if( __intel_relaxed_isinf(yy) | (xx == 0.0f) )
     {
@@ -317,7 +317,7 @@ float __attribute__((overloadable)) __spirv_ocl_remquo( float          xx,
         yy == 0.0f )
     {
         *quo = 0;
-        result = __spirv_ocl_nan(0);
+        result = __spirv_ocl_nan((uint)0);
     }
     else if( __intel_relaxed_isinf(yy) | (xx == 0.0f) )
     {
@@ -613,7 +613,7 @@ float __attribute__((overloadable)) __spirv_ocl_remquo( float        xx,
         yy == 0.0f )
     {
         *quo = 0;
-        result = __spirv_ocl_nan(0);
+        result = __spirv_ocl_nan((uint)0);
     }
     else if( __intel_relaxed_isinf(yy) | (xx == 0.0f) )
     {
@@ -911,7 +911,7 @@ INLINE float __attribute__((overloadable)) __spirv_ocl_remquo( float          xx
         yy == 0.0f )
     {
         *quo = 0;
-        result = __spirv_ocl_nan(0);
+        result = __spirv_ocl_nan((uint)0);
     }
     else if( __intel_relaxed_isinf(yy) | (xx == 0.0f) )
     {
@@ -2069,7 +2069,7 @@ double __attribute__((overloadable)) __spirv_ocl_remquo( double        xx,
         yy == 0.0 )
     {
         *quo = 0;
-        result = __spirv_ocl_nan(0);
+        result = __spirv_ocl_nan((ulong)0);
     }
     else if( __intel_relaxed_isinf(yy) | (xx == 0.0) )
     {
@@ -2365,7 +2365,7 @@ double __attribute__((overloadable)) __spirv_ocl_remquo( double         xx,
         yy == 0.0 )
     {
         *quo = 0;
-        result = __spirv_ocl_nan(0);
+        result = __spirv_ocl_nan((ulong)0);
     }
     else if( __intel_relaxed_isinf(yy) | (xx == 0.0) )
     {
@@ -2661,7 +2661,7 @@ double __attribute__((overloadable)) __spirv_ocl_remquo( double       xx,
         yy == 0.0 )
     {
         *quo = 0;
-        result = __spirv_ocl_nan(0);
+        result = __spirv_ocl_nan((ulong)0);
     }
     else if( __intel_relaxed_isinf(yy) | (xx == 0.0) )
     {
@@ -2959,7 +2959,7 @@ double __attribute__((overloadable)) __spirv_ocl_remquo( double         xx,
         yy == 0.0 )
     {
         *quo = 0;
-        result = __spirv_ocl_nan(0);
+        result = __spirv_ocl_nan((ulong)0);
     }
     else if( __intel_relaxed_isinf(yy) | (xx == 0.0) )
     {

@@ -27,7 +27,7 @@ float __attribute__((overloadable)) __spirv_ocl_acosh( float x )
         // have to handle this case.
         if( x < 1.0f )
         {
-            result = __spirv_ocl_nan(0);
+            result = __spirv_ocl_nan((uint)0);
         }
         // Conformance test also checks for this "overflow" case, but
         // I don't think we should have to handle it.

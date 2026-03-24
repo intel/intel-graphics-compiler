@@ -19,7 +19,7 @@ float __attribute__((overloadable)) __spirv_ocl_logb( float x )
     }
     else if( __intel_relaxed_isnan( x ) )
     {
-        result = __spirv_ocl_nan(0);
+        result = __spirv_ocl_nan((uint)0);
     }
     else if( __intel_relaxed_isinf( x ) )
     {
@@ -52,7 +52,7 @@ double __attribute__((overloadable)) __spirv_ocl_logb( double x )
     }
     else if( __spirv_IsNan( x ) )
     {
-        result = __spirv_ocl_nan(0);
+        result = __spirv_ocl_nan((ulong)0);
     }
     else if( __spirv_IsInf( x ) )
     {

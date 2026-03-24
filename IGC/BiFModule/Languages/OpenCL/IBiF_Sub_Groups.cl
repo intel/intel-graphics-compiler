@@ -298,14 +298,14 @@ GENERATE_VECTOR_FUNCTIONS_2ARGS_VS( intel_sub_group_shuffle, uchar, uchar, uint 
 #define  DEFN_SUB_GROUP_BROADCAST(TYPE, SPV_TYPE, TYPE_ABBR)                                                         \
 INLINE TYPE OVERLOADABLE  sub_group_broadcast( TYPE x, uint sub_group_local_id )                                     \
 {                                                                                                                    \
-    int3 local_id = (int3)(sub_group_local_id,0,0);                                                                  \
+    uint3 local_id = (uint3)(sub_group_local_id,0,0);                                                                \
     return as_##TYPE(__spirv_GroupBroadcast(Subgroup,as_##SPV_TYPE(x),local_id)); \
 }
 
 #define  DEFN_INTEL_SUB_GROUP_BROADCAST(TYPE, SPV_TYPE, TYPE_ABBR)                                        \
 INLINE TYPE OVERLOADABLE  intel_sub_group_broadcast( TYPE x, uint sub_group_local_id )                    \
 {                                                                                                         \
-    int3 local_id = (int3)(sub_group_local_id,0,0);                                                       \
+    uint3 local_id = (uint3)(sub_group_local_id,0,0);                                                     \
     return __spirv_GroupBroadcast(Subgroup,as_##SPV_TYPE(x),local_id); \
 }
 

@@ -69,6 +69,7 @@ OVERLOADABLE int __intel_relaxed_isnan(bfloat x );
 #include "Math/mad.cl"
 #include "Math/maxmag.cl"
 #include "Math/minmag.cl"
+#include "Math/nan.cl"
 #include "Math/nextafter.cl"
 #include "Math/pow.cl"
 #include "Math/pown.cl"

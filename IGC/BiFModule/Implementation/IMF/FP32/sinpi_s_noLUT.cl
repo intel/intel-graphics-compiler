@@ -42,7 +42,7 @@ static float __ocl_svml_sinpif_noLUT( float a )
     sP = sP * sR2;
     result = __spirv_ocl_fma( sP, sR, sR );
 
-    float n = __spirv_ocl_nan(0);
+    float n = __spirv_ocl_nan((uint)0);
     result = __intel_relaxed_isinf( sAbsX ) ? n : result;
 
     return result;

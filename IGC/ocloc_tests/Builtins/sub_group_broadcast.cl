@@ -6,6 +6,9 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
+// TODO: Re-enable when Khronos SPIRV-LLVM Translator is updated in manifests for opensource build
+// REQUIRES: spirv-llvm-translator-updated
+
 // UNSUPPORTED: sys32
 // REQUIRES: regkeys, pvc-supported
 

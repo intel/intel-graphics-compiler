@@ -94,14 +94,14 @@ VSTORE_HALF_R_DEF(addressSpace, ASNUM, MANGSIZE, SIZETYPE, MANGSRC, srcType)
 
 #if defined(cl_khr_fp64)
 #define VSTORE_HALF_ALL_TYPES(addressSpace, ASNUM)              \
-VSTORE_HALF_BOTH(addressSpace, ASNUM, i64, long, f32, float)    \
-VSTORE_HALF_BOTH(addressSpace, ASNUM, i64, long, f64, double)   \
-VSTORE_HALF_BOTH(addressSpace, ASNUM, i32, int,  f32, float)    \
-VSTORE_HALF_BOTH(addressSpace, ASNUM, i32, int,  f64, double)
+VSTORE_HALF_BOTH(addressSpace, ASNUM, i64, ulong, f32, float)    \
+VSTORE_HALF_BOTH(addressSpace, ASNUM, i64, ulong, f64, double)   \
+VSTORE_HALF_BOTH(addressSpace, ASNUM, i32, uint,  f32, float)    \
+VSTORE_HALF_BOTH(addressSpace, ASNUM, i32, uint,  f64, double)
 #else
 #define VSTORE_HALF_ALL_TYPES(addressSpace, ASNUM)              \
-VSTORE_HALF_BOTH(addressSpace, ASNUM, i64, long, f32, float)    \
-VSTORE_HALF_BOTH(addressSpace, ASNUM, i32, int,  f32, float)
+VSTORE_HALF_BOTH(addressSpace, ASNUM, i64, ulong, f32, float)    \
+VSTORE_HALF_BOTH(addressSpace, ASNUM, i32, uint,  f32, float)
 #endif
 
 VSTORE_HALF_ALL_TYPES(private, 0)
@@ -140,38 +140,38 @@ VSTORE_HALFN_R_DEF(addressSpace, ASNUM, MANGSIZE, SIZETYPE, MANGSRC, srcType, nu
 
 #if defined(cl_khr_fp64)
 #define VSTORE_HALFN_ALL_TYPES(addressSpace, ASNUM)                 \
-VSTORE_HALFN_BOTH(addressSpace, ASNUM, i64, long, f32, float,  2)   \
-VSTORE_HALFN_BOTH(addressSpace, ASNUM, i64, long, f32, float,  3)   \
-VSTORE_HALFN_BOTH(addressSpace, ASNUM, i64, long, f32, float,  4)   \
-VSTORE_HALFN_BOTH(addressSpace, ASNUM, i64, long, f32, float,  8)   \
-VSTORE_HALFN_BOTH(addressSpace, ASNUM, i64, long, f32, float,  16)  \
-VSTORE_HALFN_BOTH(addressSpace, ASNUM, i64, long, f64, double, 2)   \
-VSTORE_HALFN_BOTH(addressSpace, ASNUM, i64, long, f64, double, 3)   \
-VSTORE_HALFN_BOTH(addressSpace, ASNUM, i64, long, f64, double, 4)   \
-VSTORE_HALFN_BOTH(addressSpace, ASNUM, i64, long, f64, double, 8)   \
-VSTORE_HALFN_BOTH(addressSpace, ASNUM, i64, long, f64, double, 16)  \
-VSTORE_HALFN_BOTH(addressSpace, ASNUM, i32, int,  f32, float,  2)   \
-VSTORE_HALFN_BOTH(addressSpace, ASNUM, i32, int,  f32, float,  3)   \
-VSTORE_HALFN_BOTH(addressSpace, ASNUM, i32, int,  f32, float,  4)   \
-VSTORE_HALFN_BOTH(addressSpace, ASNUM, i32, int,  f32, float,  8)   \
-VSTORE_HALFN_BOTH(addressSpace, ASNUM, i32, int,  f32, float,  16)  \
-VSTORE_HALFN_BOTH(addressSpace, ASNUM, i32, int,  f64, double, 2)   \
-VSTORE_HALFN_BOTH(addressSpace, ASNUM, i32, int,  f64, double, 3)   \
-VSTORE_HALFN_BOTH(addressSpace, ASNUM, i32, int,  f64, double, 4)   \
-VSTORE_HALFN_BOTH(addressSpace, ASNUM, i32, int,  f64, double, 8)   \
-VSTORE_HALFN_BOTH(addressSpace, ASNUM, i32, int,  f64, double, 16)
+VSTORE_HALFN_BOTH(addressSpace, ASNUM, i64, ulong, f32, float,  2)   \
+VSTORE_HALFN_BOTH(addressSpace, ASNUM, i64, ulong, f32, float,  3)   \
+VSTORE_HALFN_BOTH(addressSpace, ASNUM, i64, ulong, f32, float,  4)   \
+VSTORE_HALFN_BOTH(addressSpace, ASNUM, i64, ulong, f32, float,  8)   \
+VSTORE_HALFN_BOTH(addressSpace, ASNUM, i64, ulong, f32, float,  16)  \
+VSTORE_HALFN_BOTH(addressSpace, ASNUM, i64, ulong, f64, double, 2)   \
+VSTORE_HALFN_BOTH(addressSpace, ASNUM, i64, ulong, f64, double, 3)   \
+VSTORE_HALFN_BOTH(addressSpace, ASNUM, i64, ulong, f64, double, 4)   \
+VSTORE_HALFN_BOTH(addressSpace, ASNUM, i64, ulong, f64, double, 8)   \
+VSTORE_HALFN_BOTH(addressSpace, ASNUM, i64, ulong, f64, double, 16)  \
+VSTORE_HALFN_BOTH(addressSpace, ASNUM, i32, uint,  f32, float,  2)   \
+VSTORE_HALFN_BOTH(addressSpace, ASNUM, i32, uint,  f32, float,  3)   \
+VSTORE_HALFN_BOTH(addressSpace, ASNUM, i32, uint,  f32, float,  4)   \
+VSTORE_HALFN_BOTH(addressSpace, ASNUM, i32, uint,  f32, float,  8)   \
+VSTORE_HALFN_BOTH(addressSpace, ASNUM, i32, uint,  f32, float,  16)  \
+VSTORE_HALFN_BOTH(addressSpace, ASNUM, i32, uint,  f64, double, 2)   \
+VSTORE_HALFN_BOTH(addressSpace, ASNUM, i32, uint,  f64, double, 3)   \
+VSTORE_HALFN_BOTH(addressSpace, ASNUM, i32, uint,  f64, double, 4)   \
+VSTORE_HALFN_BOTH(addressSpace, ASNUM, i32, uint,  f64, double, 8)   \
+VSTORE_HALFN_BOTH(addressSpace, ASNUM, i32, uint,  f64, double, 16)
 #else
 #define VSTORE_HALFN_ALL_TYPES(addressSpace, ASNUM)                 \
-VSTORE_HALFN_BOTH(addressSpace, ASNUM, i64, long, f32, float, 2)    \
-VSTORE_HALFN_BOTH(addressSpace, ASNUM, i64, long, f32, float, 3)    \
-VSTORE_HALFN_BOTH(addressSpace, ASNUM, i64, long, f32, float, 4)    \
-VSTORE_HALFN_BOTH(addressSpace, ASNUM, i64, long, f32, float, 8)    \
-VSTORE_HALFN_BOTH(addressSpace, ASNUM, i64, long, f32, float, 16)   \
-VSTORE_HALFN_BOTH(addressSpace, ASNUM, i32, int,  f32, float, 2)    \
-VSTORE_HALFN_BOTH(addressSpace, ASNUM, i32, int,  f32, float, 3)    \
-VSTORE_HALFN_BOTH(addressSpace, ASNUM, i32, int,  f32, float, 4)    \
-VSTORE_HALFN_BOTH(addressSpace, ASNUM, i32, int,  f32, float, 8)    \
-VSTORE_HALFN_BOTH(addressSpace, ASNUM, i32, int,  f32, float, 16)
+VSTORE_HALFN_BOTH(addressSpace, ASNUM, i64, ulong, f32, float, 2)    \
+VSTORE_HALFN_BOTH(addressSpace, ASNUM, i64, ulong, f32, float, 3)    \
+VSTORE_HALFN_BOTH(addressSpace, ASNUM, i64, ulong, f32, float, 4)    \
+VSTORE_HALFN_BOTH(addressSpace, ASNUM, i64, ulong, f32, float, 8)    \
+VSTORE_HALFN_BOTH(addressSpace, ASNUM, i64, ulong, f32, float, 16)   \
+VSTORE_HALFN_BOTH(addressSpace, ASNUM, i32, uint,  f32, float, 2)    \
+VSTORE_HALFN_BOTH(addressSpace, ASNUM, i32, uint,  f32, float, 3)    \
+VSTORE_HALFN_BOTH(addressSpace, ASNUM, i32, uint,  f32, float, 4)    \
+VSTORE_HALFN_BOTH(addressSpace, ASNUM, i32, uint,  f32, float, 8)    \
+VSTORE_HALFN_BOTH(addressSpace, ASNUM, i32, uint,  f32, float, 16)
 #endif //defined(cl_khr_fp64)
 
 VSTORE_HALFN_ALL_TYPES(private, 0)
@@ -210,38 +210,38 @@ VSTOREA_HALFN_R_DEF(addressSpace, ASNUM, MANGSIZE, SIZETYPE, MANGSRC, srcType, s
 
 #if defined(cl_khr_fp64)
 #define VSTOREA_HALFN_ALL_TYPES(addressSpace, ASNUM)                      \
-VSTOREA_HALFN_BOTH(addressSpace, ASNUM, i64, long, f32, float,  2,  2)    \
-VSTOREA_HALFN_BOTH(addressSpace, ASNUM, i64, long, f32, float,  4,  3)    \
-VSTOREA_HALFN_BOTH(addressSpace, ASNUM, i64, long, f32, float,  4,  4)    \
-VSTOREA_HALFN_BOTH(addressSpace, ASNUM, i64, long, f32, float,  8,  8)    \
-VSTOREA_HALFN_BOTH(addressSpace, ASNUM, i64, long, f32, float,  16, 16)   \
-VSTOREA_HALFN_BOTH(addressSpace, ASNUM, i64, long, f64, double, 2,  2)    \
-VSTOREA_HALFN_BOTH(addressSpace, ASNUM, i64, long, f64, double, 4,  3)    \
-VSTOREA_HALFN_BOTH(addressSpace, ASNUM, i64, long, f64, double, 4,  4)    \
-VSTOREA_HALFN_BOTH(addressSpace, ASNUM, i64, long, f64, double, 8,  8)    \
-VSTOREA_HALFN_BOTH(addressSpace, ASNUM, i64, long, f64, double, 16, 16)   \
-VSTOREA_HALFN_BOTH(addressSpace, ASNUM, i32, int,  f32, float,  2,  2)    \
-VSTOREA_HALFN_BOTH(addressSpace, ASNUM, i32, int,  f32, float,  4,  3)    \
-VSTOREA_HALFN_BOTH(addressSpace, ASNUM, i32, int,  f32, float,  4,  4)    \
-VSTOREA_HALFN_BOTH(addressSpace, ASNUM, i32, int,  f32, float,  8,  8)    \
-VSTOREA_HALFN_BOTH(addressSpace, ASNUM, i32, int,  f32, float,  16, 16)   \
-VSTOREA_HALFN_BOTH(addressSpace, ASNUM, i32, int,  f64, double, 2,  2)    \
-VSTOREA_HALFN_BOTH(addressSpace, ASNUM, i32, int,  f64, double, 4,  3)    \
-VSTOREA_HALFN_BOTH(addressSpace, ASNUM, i32, int,  f64, double, 4,  4)    \
-VSTOREA_HALFN_BOTH(addressSpace, ASNUM, i32, int,  f64, double, 8,  8)    \
-VSTOREA_HALFN_BOTH(addressSpace, ASNUM, i32, int,  f64, double, 16, 16)
+VSTOREA_HALFN_BOTH(addressSpace, ASNUM, i64, ulong, f32, float,  2,  2)    \
+VSTOREA_HALFN_BOTH(addressSpace, ASNUM, i64, ulong, f32, float,  4,  3)    \
+VSTOREA_HALFN_BOTH(addressSpace, ASNUM, i64, ulong, f32, float,  4,  4)    \
+VSTOREA_HALFN_BOTH(addressSpace, ASNUM, i64, ulong, f32, float,  8,  8)    \
+VSTOREA_HALFN_BOTH(addressSpace, ASNUM, i64, ulong, f32, float,  16, 16)   \
+VSTOREA_HALFN_BOTH(addressSpace, ASNUM, i64, ulong, f64, double, 2,  2)    \
+VSTOREA_HALFN_BOTH(addressSpace, ASNUM, i64, ulong, f64, double, 4,  3)    \
+VSTOREA_HALFN_BOTH(addressSpace, ASNUM, i64, ulong, f64, double, 4,  4)    \
+VSTOREA_HALFN_BOTH(addressSpace, ASNUM, i64, ulong, f64, double, 8,  8)    \
+VSTOREA_HALFN_BOTH(addressSpace, ASNUM, i64, ulong, f64, double, 16, 16)   \
+VSTOREA_HALFN_BOTH(addressSpace, ASNUM, i32, uint,  f32, float,  2,  2)    \
+VSTOREA_HALFN_BOTH(addressSpace, ASNUM, i32, uint,  f32, float,  4,  3)    \
+VSTOREA_HALFN_BOTH(addressSpace, ASNUM, i32, uint,  f32, float,  4,  4)    \
+VSTOREA_HALFN_BOTH(addressSpace, ASNUM, i32, uint,  f32, float,  8,  8)    \
+VSTOREA_HALFN_BOTH(addressSpace, ASNUM, i32, uint,  f32, float,  16, 16)   \
+VSTOREA_HALFN_BOTH(addressSpace, ASNUM, i32, uint,  f64, double, 2,  2)    \
+VSTOREA_HALFN_BOTH(addressSpace, ASNUM, i32, uint,  f64, double, 4,  3)    \
+VSTOREA_HALFN_BOTH(addressSpace, ASNUM, i32, uint,  f64, double, 4,  4)    \
+VSTOREA_HALFN_BOTH(addressSpace, ASNUM, i32, uint,  f64, double, 8,  8)    \
+VSTOREA_HALFN_BOTH(addressSpace, ASNUM, i32, uint,  f64, double, 16, 16)
 #else
 #define VSTOREA_HALFN_ALL_TYPES(addressSpace, ASNUM)                      \
-VSTOREA_HALFN_BOTH(addressSpace, ASNUM, i64, long, f32, float, 2,  2)     \
-VSTOREA_HALFN_BOTH(addressSpace, ASNUM, i64, long, f32, float, 4,  3)     \
-VSTOREA_HALFN_BOTH(addressSpace, ASNUM, i64, long, f32, float, 4,  4)     \
-VSTOREA_HALFN_BOTH(addressSpace, ASNUM, i64, long, f32, float, 8,  8)     \
-VSTOREA_HALFN_BOTH(addressSpace, ASNUM, i64, long, f32, float, 16, 16)    \
-VSTOREA_HALFN_BOTH(addressSpace, ASNUM, i32, int,  f32, float, 2,  2)     \
-VSTOREA_HALFN_BOTH(addressSpace, ASNUM, i32, int,  f32, float, 4,  3)     \
-VSTOREA_HALFN_BOTH(addressSpace, ASNUM, i32, int,  f32, float, 4,  4)     \
-VSTOREA_HALFN_BOTH(addressSpace, ASNUM, i32, int,  f32, float, 8,  8)     \
-VSTOREA_HALFN_BOTH(addressSpace, ASNUM, i32, int,  f32, float, 16, 16)
+VSTOREA_HALFN_BOTH(addressSpace, ASNUM, i64, ulong, f32, float, 2,  2)     \
+VSTOREA_HALFN_BOTH(addressSpace, ASNUM, i64, ulong, f32, float, 4,  3)     \
+VSTOREA_HALFN_BOTH(addressSpace, ASNUM, i64, ulong, f32, float, 4,  4)     \
+VSTOREA_HALFN_BOTH(addressSpace, ASNUM, i64, ulong, f32, float, 8,  8)     \
+VSTOREA_HALFN_BOTH(addressSpace, ASNUM, i64, ulong, f32, float, 16, 16)    \
+VSTOREA_HALFN_BOTH(addressSpace, ASNUM, i32, uint,  f32, float, 2,  2)     \
+VSTOREA_HALFN_BOTH(addressSpace, ASNUM, i32, uint,  f32, float, 4,  3)     \
+VSTOREA_HALFN_BOTH(addressSpace, ASNUM, i32, uint,  f32, float, 4,  4)     \
+VSTOREA_HALFN_BOTH(addressSpace, ASNUM, i32, uint,  f32, float, 8,  8)     \
+VSTOREA_HALFN_BOTH(addressSpace, ASNUM, i32, uint,  f32, float, 16, 16)
 #endif //defined(cl_khr_fp64)
 
 VSTOREA_HALFN_ALL_TYPES(private, 0)

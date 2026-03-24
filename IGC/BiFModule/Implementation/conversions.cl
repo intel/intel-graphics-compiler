@@ -3520,7 +3520,7 @@ INLINE global  void* __attribute__((overloadable)) __spirv_GenericCastToPtrExpli
     return NULL;
 }
 
-INLINE uint __attribute__((overloadable)) __spirv_GenericPtrMemSemantics(generic char *Pointer)
+INLINE uint __attribute__((overloadable)) __spirv_GenericPtrMemSemantics(const generic char *Pointer)
 {
     if (__spirv_GenericCastToPtrExplicit_ToLocal(Pointer, StorageWorkgroup) != NULL)
     {

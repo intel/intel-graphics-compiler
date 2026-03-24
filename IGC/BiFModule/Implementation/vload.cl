@@ -23,20 +23,20 @@ static OVERLOADABLE float __intel_spirv_half2float(short h)
 
 GENERATE_VECTOR_FUNCTIONS_1ARG_NO_MANG(__intel_spirv_half2float, float, short)
 
-VLOADN_TYPE(char,   i8)
-VLOADN_TYPE(short,  i16)
-VLOADN_TYPE(int,    i32)
-VLOADN_TYPE(long,   i64)
-VLOADN_TYPE(half,   f16)
-VLOADN_TYPE(float,  f32)
+VLOADN_TYPE(char, char)
+VLOADN_TYPE(short, short)
+VLOADN_TYPE(int, int)
+VLOADN_TYPE(long, long)
+VLOADN_TYPE(half, half)
+VLOADN_TYPE(float, float)
 #if defined(cl_khr_fp64)
-VLOADN_TYPE(double, f64)
+VLOADN_TYPE(double, double)
 #endif
 
 // "When extended by the cl_khr_fp16 extension, the generic type gentypen is extended to include half"
 #define VLOADN_SCALAR_HALF_DEF(addressSpace, offsetType, mangle)                                 \
-INLINE half __attribute__((overloadable)) __spirv_ocl_vloadn_Rhalf(               \
-    offsetType offset, addressSpace half * p, int n) {                                           \
+INLINE half __attribute__((overloadable)) __spirv_ocl_vloadn_Rhalf(                              \
+    offsetType offset, const addressSpace half * p, int n) {                                     \
   const addressSpace half *pOffset = p + offset;                                                 \
   half ret;                                                                                      \
   __builtin_IB_memcpy_##addressSpace##_to_private(                                               \
@@ -45,8 +45,8 @@ INLINE half __attribute__((overloadable)) __spirv_ocl_vloadn_Rhalf(             
 }
 
 #define VLOADN_SCALAR_HALF_AS(addressSpace, mang)            \
-VLOADN_SCALAR_HALF_DEF(addressSpace, long, i64_##mang##f16)  \
-VLOADN_SCALAR_HALF_DEF(addressSpace, int,  i32_##mang##f16)  \
+VLOADN_SCALAR_HALF_DEF(addressSpace, ulong, i64_##mang##f16)  \
+VLOADN_SCALAR_HALF_DEF(addressSpace, uint,  i32_##mang##f16)  \
 
 VLOADN_SCALAR_HALF_AS(private,  p0)
 VLOADN_SCALAR_HALF_AS(global,   p1)
@@ -61,14 +61,14 @@ VLOADN_SCALAR_HALF_AS(generic,  p4)
 // "Reads a half value from the address computed as (p + (offset)) and converts it to a float result value."
 //*****************************************************************************/
 
-#define VLOAD_HALF(addressSpace, ASNUM)                                                                                \
-INLINE float __attribute__((overloadable)) __spirv_ocl_vload_half_Rfloat(long offset,                \
-                                                                                           addressSpace half *p) {     \
-    return __intel_spirv_half2float(as_short(*(p + offset)));                                                          \
-}                                                                                                                      \
-INLINE float __attribute__((overloadable)) __spirv_ocl_vload_half_Rfloat(int offset,                 \
-                                                                                           addressSpace half *p) {     \
-    return __intel_spirv_half2float(as_short(*(p + offset)));                                                          \
+#define VLOAD_HALF(addressSpace, ASNUM)                                                                                    \
+INLINE float __attribute__((overloadable)) __spirv_ocl_vload_half_Rfloat(ulong offset,                                     \
+                                                                                           const addressSpace half *p) {   \
+    return __intel_spirv_half2float(as_short(*(p + offset)));                                                              \
+}                                                                                                                          \
+INLINE float __attribute__((overloadable)) __spirv_ocl_vload_half_Rfloat(uint offset,                                      \
+                                                                                           const addressSpace half *p) {   \
+    return __intel_spirv_half2float(as_short(*(p + offset)));                                                              \
 }
 
 VLOAD_HALF(__private,  0)
@@ -87,21 +87,21 @@ VLOAD_HALF(__generic,  4)
 
 #define VLOAD_HALFX_DEF(addressSpace, ASNUM, MANGSIZE, SIZETYPE, numElements)                                                  \
 INLINE float##numElements __attribute__((overloadable)) __spirv_ocl_vload_halfn_Rfloat##numElements                            \
-    (SIZETYPE offset, addressSpace half * p, int n) {                                                                          \
-    return __intel_spirv_half2float(__spirv_ocl_vloadn_Rshort##numElements(offset, (addressSpace short *)p, numElements));     \
+    (SIZETYPE offset, const addressSpace half * p, int n) {                                                                    \
+    return __intel_spirv_half2float(__spirv_ocl_vloadn_Rshort##numElements(offset, (const addressSpace short *)p, numElements));     \
 }
 
 #define VLOAD_HALFX_AS(addressSpace, ASNUM)           \
-VLOAD_HALFX_DEF(addressSpace, ASNUM, i64, long, 2)    \
-VLOAD_HALFX_DEF(addressSpace, ASNUM, i64, long, 3)    \
-VLOAD_HALFX_DEF(addressSpace, ASNUM, i64, long, 4)    \
-VLOAD_HALFX_DEF(addressSpace, ASNUM, i64, long, 8)    \
-VLOAD_HALFX_DEF(addressSpace, ASNUM, i64, long, 16)   \
-VLOAD_HALFX_DEF(addressSpace, ASNUM, i32, int,  2)    \
-VLOAD_HALFX_DEF(addressSpace, ASNUM, i32, int,  3)    \
-VLOAD_HALFX_DEF(addressSpace, ASNUM, i32, int,  4)    \
-VLOAD_HALFX_DEF(addressSpace, ASNUM, i32, int,  8)    \
-VLOAD_HALFX_DEF(addressSpace, ASNUM, i32, int,  16)
+VLOAD_HALFX_DEF(addressSpace, ASNUM, i64, ulong, 2)    \
+VLOAD_HALFX_DEF(addressSpace, ASNUM, i64, ulong, 3)    \
+VLOAD_HALFX_DEF(addressSpace, ASNUM, i64, ulong, 4)    \
+VLOAD_HALFX_DEF(addressSpace, ASNUM, i64, ulong, 8)    \
+VLOAD_HALFX_DEF(addressSpace, ASNUM, i64, ulong, 16)   \
+VLOAD_HALFX_DEF(addressSpace, ASNUM, i32, uint,  2)    \
+VLOAD_HALFX_DEF(addressSpace, ASNUM, i32, uint,  3)    \
+VLOAD_HALFX_DEF(addressSpace, ASNUM, i32, uint,  4)    \
+VLOAD_HALFX_DEF(addressSpace, ASNUM, i32, uint,  8)    \
+VLOAD_HALFX_DEF(addressSpace, ASNUM, i32, uint,  16)
 
 VLOAD_HALFX_AS(__private,  0)
 VLOAD_HALFX_AS(__global,   1)
@@ -117,25 +117,25 @@ VLOAD_HALFX_AS(__generic,  4)
 //*****************************************************************************/
 
 #define VLOADA_HALFX_DEF(addressSpace, ASNUM, MANGSIZE, SIZETYPE, step, numElements)                              \
-INLINE float##numElements __attribute__((overloadable)) __spirv_ocl_vloada_halfn_Rfloat##numElements                  \
-    (SIZETYPE offset, addressSpace half * p, int n) {                                                             \
+INLINE float##numElements __attribute__((overloadable)) __spirv_ocl_vloada_halfn_Rfloat##numElements              \
+    (SIZETYPE offset, const addressSpace half * p, int n) {                                                       \
     const addressSpace short##numElements *pHalf = (const addressSpace short##numElements *)(p + offset * step);  \
     return __intel_spirv_half2float(*pHalf);                                                                      \
 }
 
 #define VLOADA_HALFX_AS(addressSpace, ASNUM)              \
-VLOADA_HALFX_DEF(addressSpace, ASNUM, i64, long, 1,  )    \
-VLOADA_HALFX_DEF(addressSpace, ASNUM, i64, long, 2,  2)   \
-VLOADA_HALFX_DEF(addressSpace, ASNUM, i64, long, 4,  3)   \
-VLOADA_HALFX_DEF(addressSpace, ASNUM, i64, long, 4,  4)   \
-VLOADA_HALFX_DEF(addressSpace, ASNUM, i64, long, 8,  8)   \
-VLOADA_HALFX_DEF(addressSpace, ASNUM, i64, long, 16, 16)  \
-VLOADA_HALFX_DEF(addressSpace, ASNUM, i32, int,  1,  )    \
-VLOADA_HALFX_DEF(addressSpace, ASNUM, i32, int,  2,  2)   \
-VLOADA_HALFX_DEF(addressSpace, ASNUM, i32, int,  4,  3)   \
-VLOADA_HALFX_DEF(addressSpace, ASNUM, i32, int,  4,  4)   \
-VLOADA_HALFX_DEF(addressSpace, ASNUM, i32, int,  8,  8)   \
-VLOADA_HALFX_DEF(addressSpace, ASNUM, i32, int,  16, 16)
+VLOADA_HALFX_DEF(addressSpace, ASNUM, i64, ulong, 1,  )    \
+VLOADA_HALFX_DEF(addressSpace, ASNUM, i64, ulong, 2,  2)   \
+VLOADA_HALFX_DEF(addressSpace, ASNUM, i64, ulong, 4,  3)   \
+VLOADA_HALFX_DEF(addressSpace, ASNUM, i64, ulong, 4,  4)   \
+VLOADA_HALFX_DEF(addressSpace, ASNUM, i64, ulong, 8,  8)   \
+VLOADA_HALFX_DEF(addressSpace, ASNUM, i64, ulong, 16, 16)  \
+VLOADA_HALFX_DEF(addressSpace, ASNUM, i32, uint,  1,  )    \
+VLOADA_HALFX_DEF(addressSpace, ASNUM, i32, uint,  2,  2)   \
+VLOADA_HALFX_DEF(addressSpace, ASNUM, i32, uint,  4,  3)   \
+VLOADA_HALFX_DEF(addressSpace, ASNUM, i32, uint,  4,  4)   \
+VLOADA_HALFX_DEF(addressSpace, ASNUM, i32, uint,  8,  8)   \
+VLOADA_HALFX_DEF(addressSpace, ASNUM, i32, uint,  16, 16)
 
 VLOADA_HALFX_AS(__private,  0)
 VLOADA_HALFX_AS(__global,   1)

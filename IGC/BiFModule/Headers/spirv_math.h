@@ -2460,26 +2460,26 @@ __spirv_ocl_modf(double16 x, __generic double16* iptr);
 #endif // __OPENCL_C_VERSION__ >= CL_VERSION_2_0
 #endif // defined(cl_khr_fp64)
 
-float __attribute__((overloadable))   __spirv_ocl_nan(int nancode);
-float2 __attribute__((overloadable))  __spirv_ocl_nan(int2 x);
-float3 __attribute__((overloadable))  __spirv_ocl_nan(int3 x);
-float4 __attribute__((overloadable))  __spirv_ocl_nan(int4 x);
-float8 __attribute__((overloadable))  __spirv_ocl_nan(int8 x);
-float16 __attribute__((overloadable)) __spirv_ocl_nan(int16 x);
+float __attribute__((overloadable))   __spirv_ocl_nan(uint nancode);
+float2 __attribute__((overloadable))  __spirv_ocl_nan(uint2 x);
+float3 __attribute__((overloadable))  __spirv_ocl_nan(uint3 x);
+float4 __attribute__((overloadable))  __spirv_ocl_nan(uint4 x);
+float8 __attribute__((overloadable))  __spirv_ocl_nan(uint8 x);
+float16 __attribute__((overloadable)) __spirv_ocl_nan(uint16 x);
 #if defined(cl_khr_fp64)
-double __attribute__((overloadable))   __spirv_ocl_nan(long nancode);
-double2 __attribute__((overloadable))  __spirv_ocl_nan(long2 x);
-double3 __attribute__((overloadable))  __spirv_ocl_nan(long3 x);
-double4 __attribute__((overloadable))  __spirv_ocl_nan(long4 x);
-double8 __attribute__((overloadable))  __spirv_ocl_nan(long8 x);
-double16 __attribute__((overloadable)) __spirv_ocl_nan(long16 x);
+double __attribute__((overloadable))   __spirv_ocl_nan(ulong nancode);
+double2 __attribute__((overloadable))  __spirv_ocl_nan(ulong2 x);
+double3 __attribute__((overloadable))  __spirv_ocl_nan(ulong3 x);
+double4 __attribute__((overloadable))  __spirv_ocl_nan(ulong4 x);
+double8 __attribute__((overloadable))  __spirv_ocl_nan(ulong8 x);
+double16 __attribute__((overloadable)) __spirv_ocl_nan(ulong16 x);
 #endif // defined(cl_khr_fp64)
-half __attribute__((overloadable))   __spirv_ocl_nan(short nancode);
-half2 __attribute__((overloadable))  __spirv_ocl_nan(short2 x);
-half3 __attribute__((overloadable))  __spirv_ocl_nan(short3 x);
-half4 __attribute__((overloadable))  __spirv_ocl_nan(short4 x);
-half8 __attribute__((overloadable))  __spirv_ocl_nan(short8 x);
-half16 __attribute__((overloadable)) __spirv_ocl_nan(short16 x);
+half __attribute__((overloadable))   __spirv_ocl_nan(ushort nancode);
+half2 __attribute__((overloadable))  __spirv_ocl_nan(ushort2 x);
+half3 __attribute__((overloadable))  __spirv_ocl_nan(ushort3 x);
+half4 __attribute__((overloadable))  __spirv_ocl_nan(ushort4 x);
+half8 __attribute__((overloadable))  __spirv_ocl_nan(ushort8 x);
+half16 __attribute__((overloadable)) __spirv_ocl_nan(ushort16 x);
 
 float __attribute__((overloadable))   __spirv_ocl_nextafter(float x, float y);
 float2 __attribute__((overloadable))  __spirv_ocl_nextafter(float2 x, float2 y);

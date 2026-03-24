@@ -11,7 +11,7 @@ SPDX-License-Identifier: MIT
 
 INLINE float OVERLOADABLE nan( uint nancode )
 {
-    return __spirv_ocl_nan( as_int(nancode) );
+    return __spirv_ocl_nan( nancode );
 }
 
 GENERATE_VECTOR_FUNCTIONS_1ARG( nan, float, uint )
@@ -20,7 +20,7 @@ GENERATE_VECTOR_FUNCTIONS_1ARG( nan, float, uint )
 
 INLINE double OVERLOADABLE nan( ulong nancode )
 {
-    return __spirv_ocl_nan( as_long(nancode) );
+    return __spirv_ocl_nan( nancode );
 }
 
 GENERATE_VECTOR_FUNCTIONS_1ARG( nan, double, ulong )

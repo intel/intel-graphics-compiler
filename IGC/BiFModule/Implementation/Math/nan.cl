@@ -9,39 +9,31 @@ SPDX-License-Identifier: MIT
 #include "../include/BiF_Definitions.cl"
 #include "../../Headers/spirv.h"
 
-INLINE float __attribute__((overloadable)) __spirv_ocl_nan( int nancode )
+INLINE float __attribute__((overloadable)) __spirv_ocl_nan( uint nancode )
 {
     return as_float( FLOAT_QUIET_NAN );
 }
 
-GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARGS( nan, float, int, i32 )
+GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARGS( nan, float, uint, i32 )
 
 #if defined(cl_khr_fp64)
 
-INLINE double __attribute__((overloadable)) __spirv_ocl_nan( long nancode )
+INLINE double __attribute__((overloadable)) __spirv_ocl_nan( ulong nancode )
 {
     return as_double( DOUBLE_QUIET_NAN );
 }
 
-GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARGS( nan, double, long, i64 )
+GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARGS( nan, double, ulong, i64 )
 
 #endif // defined(cl_khr_fp64)
 
 #if defined(cl_khr_fp16)
 
-INLINE half __attribute__((overloadable)) __spirv_ocl_nan( short nancode )
+INLINE half __attribute__((overloadable)) __spirv_ocl_nan( ushort nancode )
 {
     return as_half( HALF_QUIET_NAN );
 }
 
-GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARGS( nan, half, short, i16 )
+GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARGS( nan, half, ushort, i16 )
 
 #endif // defined(cl_khr_fp16)
-
-// Not implemented until SPIRV-LLVM Translator support generation of __spirv_ocl_nan_Rbfloat
-//INLINE bfloat __attribute__((overloadable)) __spirv_ocl_nan( short nancode )
-//{
-//    return as_bfloat( BFLOAT_QUIET_NAN );
-//}
-//
-//GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARGS( nan, bfloat, bfloat, )

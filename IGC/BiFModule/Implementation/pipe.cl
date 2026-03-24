@@ -613,7 +613,7 @@ uint __attribute__((overloadable)) __spirv_GetMaxPipePackets( __spirv_Pipe_wo Pi
 
 static uint __intel_pipe_broadcast(uint val)
 {
-  return __spirv_GroupBroadcast(Workgroup, as_int(val), 0);
+  return __spirv_GroupBroadcast(Workgroup, as_int(val), (uint)0);
 }
 
 __spirv_ReserveId __attribute__((overloadable)) __spirv_GroupReserveReadPipePackets( int Execution, __spirv_Pipe_ro Pipe, int NumPackets, int PacketSize/*, int PacketAlignment */)
@@ -627,7 +627,7 @@ __spirv_ReserveId __attribute__((overloadable)) __spirv_GroupReserveReadPipePack
             rid = __spirv_ReserveReadPipePackets( Pipe, NumPackets, PacketSize/*, PacketAlignment */);
         }
 
-        __spirv_ReserveId result = stor(__spirv_GroupBroadcast(Subgroup, as_int(rtos(rid)), 0));
+        __spirv_ReserveId result = stor(__spirv_GroupBroadcast(Subgroup, as_int(rtos(rid)), (uint)0));
         return result;
     }
     else
@@ -654,7 +654,7 @@ __spirv_ReserveId __attribute__((overloadable)) __spirv_GroupReserveWritePipePac
             rid = __spirv_ReserveWritePipePackets( Pipe, NumPackets, PacketSize/*, PacketAlignment */);
         }
 
-        __spirv_ReserveId result = stor(__spirv_GroupBroadcast(Subgroup, as_int(rtos(rid)), 0));
+        __spirv_ReserveId result = stor(__spirv_GroupBroadcast(Subgroup, as_int(rtos(rid)), (uint)0));
         return result;
     }
     else

@@ -31,9 +31,7 @@ bfloat __attribute__((overloadable)) __spirv_ocl_nextafter( bfloat x, bfloat y )
     result = (tcix == tciy) ? y : result;
 
     {
-        // Use __spirv_ocl_nan once it's implemented for bfloat
-        //bfloat n = __spirv_ocl_nan(0);
-        bfloat n = as_bfloat( BFLOAT_QUIET_NAN );
+        bfloat n = __spirv_ocl_nan_RDF16b(0);
         int test = __spirv_IsNan(x) | __spirv_IsNan(y);
         result = test ? n : result;
     }

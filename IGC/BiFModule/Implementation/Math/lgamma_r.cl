@@ -124,7 +124,7 @@ INLINE float __attribute__((overloadable)) __spirv_ocl_lgamma_r( float          
     float   r;
     if( __intel_relaxed_isnan(x) )
     {
-        r = __spirv_ocl_nan(0);
+        r = __spirv_ocl_nan((uint)0);
         s = 0;
     }
     else

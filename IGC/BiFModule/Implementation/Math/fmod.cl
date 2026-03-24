@@ -135,7 +135,7 @@ static float __intel_fmod_f32_f32( float xx, float yy, bool doFast )
         __intel_relaxed_isinf(xx) |
         yy == 0.0f)
     {
-        result = __spirv_ocl_nan(0);
+        result = __spirv_ocl_nan((uint)0);
     }
     else if( __intel_relaxed_isinf(yy) |
              (xx == 0.0f) )
@@ -211,7 +211,7 @@ double __attribute__((overloadable)) __spirv_ocl_fmod( double xx, double yy )
         __spirv_IsInf(xx) |
         yy == 0.0)
     {
-        result = __spirv_ocl_nan(0);
+        result = __spirv_ocl_nan((ulong)0);
     }
     else if( __spirv_IsInf(yy) |
              (xx == 0.0) )

@@ -6,13 +6,23 @@
 ;
 ;============================ end_copyright_notice =============================
 
+; TODO: Re-enable when Khronos SPIRV-LLVM Translator is updated in manifests for opensource build
+; REQUIRES: spirv-llvm-translator-updated
+
 ; REQUIRES: cri-supported, llvm-spirv
 
-; RUN: llvm-as %s -o %t.bc
-; RUN: llvm-spirv %t.bc --spirv-ext=+SPV_KHR_bfloat16,+SPV_INTEL_bfloat16_arithmetic -o %t.spv
-; RUN: ocloc compile -spirv_input -file %t.spv -device cri -options "-igc_opts 'DumpVISAASMToConsole=1,AddVISADumpDeclarationsToEnd=1,ForceOCLSIMDWidth=16' -cl-intel-library-compilation" | FileCheck %s
+; RUN: llvm-as %TYPED_PTR_FLAG% %s -o %t.bc
+; RUN: llvm-spirv %t.bc %TYPED_PTR_FLAG% --spirv-ext=+SPV_KHR_bfloat16,+SPV_INTEL_bfloat16_arithmetic -o %t.spv
+
+; LLVM with opaque pointers:
+; RUN: %if llvm-16-plus %{ocloc compile -spirv_input -file %t.spv -device cri -options "-igc_opts 'EnableOpaquePointersBackend=1,DumpVISAASMToConsole=1,AddVISADumpDeclarationsToEnd=1,ForceOCLSIMDWidth=16' -cl-intel-library-compilation" | FileCheck %s %}
 ; COM: Execute ocloc second time, this time without DumpVISAASMToConsole flag, to ensure that E2E compilation does not crash.
-; RUN: ocloc compile -spirv_input -file %t.spv -device cri -options "-igc_opts 'ForceOCLSIMDWidth=16' -cl-intel-library-compilation"
+; RUN: %if llvm-16-plus %{ocloc compile -spirv_input -file %t.spv -device cri -options "-igc_opts 'EnableOpaquePointersBackend=1,ForceOCLSIMDWidth=16' -cl-intel-library-compilation" %}
+
+; LLVM with typed pointers:
+; RUN: ocloc compile -spirv_input -file %t.spv -device cri -options "-igc_opts 'EnableOpaquePointersBackend=0,DumpVISAASMToConsole=1,AddVISADumpDeclarationsToEnd=1,ForceOCLSIMDWidth=16' -cl-intel-library-compilation" | FileCheck %s
+; COM: Execute ocloc second time, this time without DumpVISAASMToConsole flag, to ensure that E2E compilation does not crash.
+; RUN: ocloc compile -spirv_input -file %t.spv -device cri -options "-igc_opts 'EnableOpaquePointersBackend=0,ForceOCLSIMDWidth=16' -cl-intel-library-compilation"
 
 target datalayout = "e-i64:64-v16:16-v24:32-v32:32-v48:64-v96:128-v192:256-v256:256-v512:512-v1024:1024"
 target triple = "spir64-unknown-unknown"
@@ -353,11 +363,13 @@ define spir_func bfloat @test_spirv_ocl_native_tan(bfloat %data1, bfloat %data2,
   ret bfloat %result
 }
 
-; Not implemented until SPIRV-LLVM Translator support generation of __spirv_ocl_nan_Rbfloat
-;define spir_func bfloat @test_spirv_ocl_nan(i16 %data1) {
-;  %result = call spir_func bfloat @_Z15__spirv_ocl_nans(i16 %data1)
-;  ret bfloat %result
-;}
+; CHECK-LABEL: .function "test_spirv_ocl_nan
+define spir_func bfloat @test_spirv_ocl_nan(i16 %data1) {
+  ; CHECK: mov (M1, 16) [[DST:.*]](0,0)<1> 0x7fff0000:f
+  ; CHECK-DAG: .decl [[DST]] v_type=G type=bf
+  %result = call spir_func bfloat @_Z23__spirv_ocl_nan__RDF16bt(i16 %data1)
+  ret bfloat %result
+}
 
 ; CHECK-LABEL: .function "test_spirv_ocl_nextafter
 define spir_func bfloat @test_spirv_ocl_nextafter(bfloat %data1, bfloat %data2, bfloat %data3) {
@@ -453,67 +465,99 @@ define spir_func bfloat @test_spirv_ocl_bitselect(bfloat %data1, bfloat %data2, 
   ret bfloat %result
 }
 
-; Tests for vloadn/vstoren builtins for bfloat are commented out until SPIRV-LLVM Translator supports them properly.
+; CHECK-LABEL: .function "test_spirv_ocl_vload2
+define spir_func <2 x bfloat> @test_spirv_ocl_vload2(i64 %offset, bfloat addrspace(1)* %ptr) {
+  ; CHECK: lsc_load.ugm (M1, 16)  {{.*}}:d32
+  %result = call spir_func <2 x bfloat> @_Z27__spirv_ocl_vloadn__RDF16b2lPU3AS1DF16bi(i64 %offset, bfloat addrspace(1)* %ptr, i32 2)
+  ret <2 x bfloat> %result
+}
 
-; COM: ; CHECK-LABEL: .function "test_spirv_ocl_vload2
-; COM: define spir_func <2 x bfloat> @test_spirv_ocl_vload2(i64 %offset, bfloat addrspace(1)* %ptr) {
-; COM:   %result = call spir_func <2 x bfloat> @_Z27__spirv_ocl_vloadn_Rbfloat2lPU3AS1DF16bi(i64 %offset, bfloat addrspace(1)* %ptr, i32 2)
-; COM:   ret <2 x bfloat> %result
-; COM: }
-; COM:
-; COM: ; CHECK-LABEL: .function "test_spirv_ocl_vload3
-; COM: define spir_func <3 x bfloat> @test_spirv_ocl_vload3(i64 %offset, bfloat addrspace(1)* %ptr) {
-; COM:   %result = call spir_func <3 x bfloat> @_Z27__spirv_ocl_vloadn_Rbfloat3lPU3AS1DF16bi(i64 %offset, bfloat addrspace(1)* %ptr, i32 3)
-; COM:   ret <3 x bfloat> %result
-; COM: }
-; COM:
-; COM: ; CHECK-LABEL: .function "test_spirv_ocl_vload4
-; COM: define spir_func <4 x bfloat> @test_spirv_ocl_vload4(i64 %offset, bfloat addrspace(1)* %ptr) {
-; COM:   %result = call spir_func <4 x bfloat> @_Z27__spirv_ocl_vloadn_Rbfloat4lPU3AS1DF16bi(i64 %offset, bfloat addrspace(1)* %ptr, i32 4)
-; COM:   ret <4 x bfloat> %result
-; COM: }
-; COM:
-; COM: ; CHECK-LABEL: .function "test_spirv_ocl_vload8
-; COM: define spir_func <8 x bfloat> @test_spirv_ocl_vload8(i64 %offset, bfloat addrspace(1)* %ptr) {
-; COM:   %result = call spir_func <8 x bfloat> @_Z27__spirv_ocl_vloadn_Rbfloat8lPU3AS1DF16bi(i64 %offset, bfloat addrspace(1)* %ptr, i32 8)
-; COM:   ret <8 x bfloat> %result
-; COM: }
-; COM:
-; COM: ; CHECK-LABEL: .function "test_spirv_ocl_vload16
-; COM: define spir_func <16 x bfloat> @test_spirv_ocl_vload16(i64 %offset, bfloat addrspace(1)* %ptr) {
-; COM:   %result = call spir_func <16 x bfloat> @_Z28__spirv_ocl_vloadn_Rbfloat16lPU3AS1DF16bi(i64 %offset, bfloat addrspace(1)* %ptr, i32 16)
-; COM:   ret <16 x bfloat> %result
-; COM: }
-; COM:
-; COM: ; CHECK-LABEL: .function "test_spirv_ocl_vstore2
-; COM: define spir_func void @test_spirv_ocl_vstore2(<2 x bfloat> %data, i64 %offset, bfloat addrspace(1)* %ptr) {
-; COM:   call spir_func void @_Z19__spirv_ocl_vstorenDv2_DF16blPU3AS1DF16b(<2 x bfloat> %data, i64 %offset, bfloat addrspace(1)* %ptr)
-; COM:   ret void
-; COM: }
-; COM:
-; COM: ; CHECK-LABEL: .function "test_spirv_ocl_vstore3
-; COM: define spir_func void @test_spirv_ocl_vstore3(<3 x bfloat> %data, i64 %offset, bfloat addrspace(1)* %ptr) {
-; COM:   call spir_func void @_Z19__spirv_ocl_vstorenDv3_DF16blPU3AS1DF16b(<3 x bfloat> %data, i64 %offset, bfloat addrspace(1)* %ptr)
-; COM:   ret void
-; COM: }
-; COM:
-; COM: ; CHECK-LABEL: .function "test_spirv_ocl_vstore4
-; COM: define spir_func void @test_spirv_ocl_vstore4(<4 x bfloat> %data, i64 %offset, bfloat addrspace(1)* %ptr) {
-; COM:   call spir_func void @_Z19__spirv_ocl_vstorenDv4_DF16blPU3AS1DF16b(<4 x bfloat> %data, i64 %offset, bfloat addrspace(1)* %ptr)
-; COM:   ret void
-; COM: }
-; COM:
-; COM: ; CHECK-LABEL: .function "test_spirv_ocl_vstore8
-; COM: define spir_func void @test_spirv_ocl_vstore8(<8 x bfloat> %data, i64 %offset, bfloat addrspace(1)* %ptr) {
-; COM:   call spir_func void @_Z19__spirv_ocl_vstorenDv8_DF16blPU3AS1DF16b(<8 x bfloat> %data, i64 %offset, bfloat addrspace(1)* %ptr)
-; COM:   ret void
-; COM: }
-; COM:
-; COM: ; CHECK-LABEL: .function "test_spirv_ocl_vstore16
-; COM: define spir_func void @test_spirv_ocl_vstore16(<16 x bfloat> %data, i64 %offset, bfloat addrspace(1)* %ptr) {
-; COM:   call spir_func void @_Z19__spirv_ocl_vstorenDv16_DF16blPU3AS1DF16b(<16 x bfloat> %data, i64 %offset, bfloat addrspace(1)* %ptr)
-; COM:   ret void
-; COM: }
+; CHECK-LABEL: .function "test_spirv_ocl_vload3
+define spir_func <3 x bfloat> @test_spirv_ocl_vload3(i64 %offset, bfloat addrspace(1)* %ptr) {
+  ; CHECK: lsc_load.ugm (M1, 16)  {{.*}}:d32
+  ; CHECK: lsc_load.ugm (M1, 16)  {{.*}}:d16u32
+  %result = call spir_func <3 x bfloat> @_Z27__spirv_ocl_vloadn__RDF16b3lPU3AS1DF16bi(i64 %offset, bfloat addrspace(1)* %ptr, i32 3)
+  ret <3 x bfloat> %result
+}
+
+; CHECK-LABEL: .function "test_spirv_ocl_vload4
+define spir_func <4 x bfloat> @test_spirv_ocl_vload4(i64 %offset, bfloat addrspace(1)* %ptr) {
+  ; CHECK: lsc_load.ugm (M1, 16)  {{.*}}:d32
+  ; CHECK: lsc_load.ugm (M1, 16)  {{.*}}:d32
+  %result = call spir_func <4 x bfloat> @_Z27__spirv_ocl_vloadn__RDF16b4lPU3AS1DF16bi(i64 %offset, bfloat addrspace(1)* %ptr, i32 4)
+  ret <4 x bfloat> %result
+}
+
+; CHECK-LABEL: .function "test_spirv_ocl_vload8
+define spir_func <8 x bfloat> @test_spirv_ocl_vload8(i64 %offset, bfloat addrspace(1)* %ptr) {
+  ; CHECK: lsc_load.ugm (M1, 16)  {{.*}}:d32
+  ; CHECK: lsc_load.ugm (M1, 16)  {{.*}}:d32
+  ; CHECK: lsc_load.ugm (M1, 16)  {{.*}}:d32
+  ; CHECK: lsc_load.ugm (M1, 16)  {{.*}}:d32
+  %result = call spir_func <8 x bfloat> @_Z27__spirv_ocl_vloadn__RDF16b8lPU3AS1DF16bi(i64 %offset, bfloat addrspace(1)* %ptr, i32 8)
+  ret <8 x bfloat> %result
+}
+
+; CHECK-LABEL: .function "test_spirv_ocl_vload16
+define spir_func <16 x bfloat> @test_spirv_ocl_vload16(i64 %offset, bfloat addrspace(1)* %ptr) {
+  ; CHECK: lsc_load.ugm (M1, 16)  {{.*}}:d32
+  ; CHECK: lsc_load.ugm (M1, 16)  {{.*}}:d32
+  ; CHECK: lsc_load.ugm (M1, 16)  {{.*}}:d32
+  ; CHECK: lsc_load.ugm (M1, 16)  {{.*}}:d32
+  ; CHECK: lsc_load.ugm (M1, 16)  {{.*}}:d32
+  ; CHECK: lsc_load.ugm (M1, 16)  {{.*}}:d32
+  ; CHECK: lsc_load.ugm (M1, 16)  {{.*}}:d32
+  ; CHECK: lsc_load.ugm (M1, 16)  {{.*}}:d32
+  %result = call spir_func <16 x bfloat> @_Z28__spirv_ocl_vloadn__RDF16b16lPU3AS1DF16bi(i64 %offset, bfloat addrspace(1)* %ptr, i32 16)
+  ret <16 x bfloat> %result
+}
+
+; CHECK-LABEL: .function "test_spirv_ocl_vstore2
+define spir_func void @test_spirv_ocl_vstore2(<2 x bfloat> %data, i64 %offset, bfloat addrspace(1)* %ptr) {
+  ; CHECK: lsc_store.ugm (M1, 16)  {{.*}}  {{.*}}:d32
+  call spir_func void @_Z19__spirv_ocl_vstorenDv2_DF16blPU3AS1DF16b(<2 x bfloat> %data, i64 %offset, bfloat addrspace(1)* %ptr)
+  ret void
+}
+
+; CHECK-LABEL: .function "test_spirv_ocl_vstore3
+define spir_func void @test_spirv_ocl_vstore3(<3 x bfloat> %data, i64 %offset, bfloat addrspace(1)* %ptr) {
+  ; CHECK: lsc_store.ugm (M1, 16)  {{.*}}  {{.*}}:d32
+  ; CHECK: lsc_store.ugm (M1, 16)  {{.*}}  {{.*}}:d16u32
+  call spir_func void @_Z19__spirv_ocl_vstorenDv3_DF16blPU3AS1DF16b(<3 x bfloat> %data, i64 %offset, bfloat addrspace(1)* %ptr)
+  ret void
+}
+
+; CHECK-LABEL: .function "test_spirv_ocl_vstore4
+define spir_func void @test_spirv_ocl_vstore4(<4 x bfloat> %data, i64 %offset, bfloat addrspace(1)* %ptr) {
+  ; CHECK: lsc_store.ugm (M1, 16)  {{.*}}  {{.*}}:d32
+  ; CHECK: lsc_store.ugm (M1, 16)  {{.*}}  {{.*}}:d32
+  call spir_func void @_Z19__spirv_ocl_vstorenDv4_DF16blPU3AS1DF16b(<4 x bfloat> %data, i64 %offset, bfloat addrspace(1)* %ptr)
+  ret void
+}
+
+; CHECK-LABEL: .function "test_spirv_ocl_vstore8
+define spir_func void @test_spirv_ocl_vstore8(<8 x bfloat> %data, i64 %offset, bfloat addrspace(1)* %ptr) {
+  ; CHECK: lsc_store.ugm (M1, 16)  {{.*}}  {{.*}}:d32
+  ; CHECK: lsc_store.ugm (M1, 16)  {{.*}}  {{.*}}:d32
+  ; CHECK: lsc_store.ugm (M1, 16)  {{.*}}  {{.*}}:d32
+  ; CHECK: lsc_store.ugm (M1, 16)  {{.*}}  {{.*}}:d32
+  call spir_func void @_Z19__spirv_ocl_vstorenDv8_DF16blPU3AS1DF16b(<8 x bfloat> %data, i64 %offset, bfloat addrspace(1)* %ptr)
+  ret void
+}
+
+; CHECK-LABEL: .function "test_spirv_ocl_vstore16
+define spir_func void @test_spirv_ocl_vstore16(<16 x bfloat> %data, i64 %offset, bfloat addrspace(1)* %ptr) {
+  ; CHECK: lsc_store.ugm (M1, 16)  {{.*}}  {{.*}}:d32
+  ; CHECK: lsc_store.ugm (M1, 16)  {{.*}}  {{.*}}:d32
+  ; CHECK: lsc_store.ugm (M1, 16)  {{.*}}  {{.*}}:d32
+  ; CHECK: lsc_store.ugm (M1, 16)  {{.*}}  {{.*}}:d32
+  ; CHECK: lsc_store.ugm (M1, 16)  {{.*}}  {{.*}}:d32
+  ; CHECK: lsc_store.ugm (M1, 16)  {{.*}}  {{.*}}:d32
+  ; CHECK: lsc_store.ugm (M1, 16)  {{.*}}  {{.*}}:d32
+  ; CHECK: lsc_store.ugm (M1, 16)  {{.*}}  {{.*}}:d32
+  call spir_func void @_Z19__spirv_ocl_vstorenDv16_DF16blPU3AS1DF16b(<16 x bfloat> %data, i64 %offset, bfloat addrspace(1)* %ptr)
+  ret void
+}
 
 ; 2.1. Math extended instructions:
 declare spir_func bfloat @_Z16__spirv_ocl_ceilDF16b(bfloat)
@@ -547,7 +591,7 @@ declare spir_func bfloat @_Z24__spirv_ocl_native_rsqrtDF16b(bfloat)
 declare spir_func bfloat @_Z22__spirv_ocl_native_sinDF16b(bfloat)
 declare spir_func bfloat @_Z23__spirv_ocl_native_sqrtDF16b(bfloat)
 declare spir_func bfloat @_Z22__spirv_ocl_native_tanDF16b(bfloat)
-;declare spir_func bfloat @_Z15__spirv_ocl_nans(i16)
+declare spir_func bfloat @_Z23__spirv_ocl_nan__RDF16bt(i16)
 declare spir_func bfloat @_Z21__spirv_ocl_nextafterDF16bDF16b(bfloat, bfloat)
 declare spir_func bfloat @_Z15__spirv_ocl_fmaDF16bDF16bDF16b(bfloat, bfloat, bfloat)
 
@@ -564,11 +608,11 @@ declare spir_func bfloat @_Z18__spirv_ocl_selectDF16bDF16bs(bfloat, bfloat, i16)
 declare spir_func bfloat @_Z21__spirv_ocl_bitselectDF16bDF16bDF16b(bfloat, bfloat, bfloat)
 
 ; 2.6. Vector Data Load/Store Instructions:
-declare spir_func <2 x bfloat> @_Z27__spirv_ocl_vloadn_Rbfloat2lPU3AS1DF16bi(i64, bfloat addrspace(1)*, i32)
-declare spir_func <3 x bfloat> @_Z27__spirv_ocl_vloadn_Rbfloat3lPU3AS1DF16bi(i64, bfloat addrspace(1)*, i32)
-declare spir_func <4 x bfloat> @_Z27__spirv_ocl_vloadn_Rbfloat4lPU3AS1DF16bi(i64, bfloat addrspace(1)*, i32)
-declare spir_func <8 x bfloat> @_Z27__spirv_ocl_vloadn_Rbfloat8lPU3AS1DF16bi(i64, bfloat addrspace(1)*, i32)
-declare spir_func <16 x bfloat> @_Z28__spirv_ocl_vloadn_Rbfloat16lPU3AS1DF16bi(i64, bfloat addrspace(1)*, i32)
+declare spir_func <2 x bfloat> @_Z27__spirv_ocl_vloadn__RDF16b2lPU3AS1DF16bi(i64, bfloat addrspace(1)*, i32)
+declare spir_func <3 x bfloat> @_Z27__spirv_ocl_vloadn__RDF16b3lPU3AS1DF16bi(i64, bfloat addrspace(1)*, i32)
+declare spir_func <4 x bfloat> @_Z27__spirv_ocl_vloadn__RDF16b4lPU3AS1DF16bi(i64, bfloat addrspace(1)*, i32)
+declare spir_func <8 x bfloat> @_Z27__spirv_ocl_vloadn__RDF16b8lPU3AS1DF16bi(i64, bfloat addrspace(1)*, i32)
+declare spir_func <16 x bfloat> @_Z28__spirv_ocl_vloadn__RDF16b16lPU3AS1DF16bi(i64, bfloat addrspace(1)*, i32)
 
 declare spir_func void @_Z19__spirv_ocl_vstorenDv2_DF16blPU3AS1DF16b(<2 x bfloat>, i64, bfloat addrspace(1)*)
 declare spir_func void @_Z19__spirv_ocl_vstorenDv3_DF16blPU3AS1DF16b(<3 x bfloat>, i64, bfloat addrspace(1)*)

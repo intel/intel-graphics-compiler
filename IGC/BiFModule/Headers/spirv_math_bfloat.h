@@ -445,6 +445,14 @@ bfloat4 __attribute__((overloadable))  __spirv_ocl_minmag(bfloat4 x, bfloat4 y);
 bfloat8 __attribute__((overloadable))  __spirv_ocl_minmag(bfloat8 x, bfloat8 y);
 bfloat16 __attribute__((overloadable)) __spirv_ocl_minmag(bfloat16 x, bfloat16 y);
 
+// Math - nan
+bfloat __attribute__((overloadable))   __spirv_ocl_nan_RDF16b(ushort nancode);
+bfloat2 __attribute__((overloadable))  __spirv_ocl_nan_RDF16b2(ushort2 x);
+bfloat3 __attribute__((overloadable))  __spirv_ocl_nan_RDF16b3(ushort3 x);
+bfloat4 __attribute__((overloadable))  __spirv_ocl_nan_RDF16b4(ushort4 x);
+bfloat8 __attribute__((overloadable))  __spirv_ocl_nan_RDF16b8(ushort8 x);
+bfloat16 __attribute__((overloadable)) __spirv_ocl_nan_RDF16b16(ushort16 x);
+
 // Math - nextafter
 bfloat __attribute__((overloadable))   __spirv_ocl_nextafter(bfloat x, bfloat y);
 bfloat2 __attribute__((overloadable))  __spirv_ocl_nextafter(bfloat2 x, bfloat2 y);

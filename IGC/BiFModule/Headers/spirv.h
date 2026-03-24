@@ -4201,7 +4201,8 @@ local void *__attribute__((overloadable))
 __spirv_GenericCastToPtrExplicit_ToLocal(generic char *Pointer, int Storage);
 global void *__attribute__((overloadable))
 __spirv_GenericCastToPtrExplicit_ToGlobal(generic char *Pointer, int Storage);
-uint __attribute__((overloadable)) __spirv_GenericPtrMemSemantics(generic char *Pointer);
+uint __attribute__((overloadable))
+__spirv_GenericPtrMemSemantics(const generic char *Pointer);
 #endif // __OPENCL_C_VERSION__ >= CL_VERSION_2_0
 
 // Arithmetic Instructions
@@ -5583,1182 +5584,1182 @@ void __builtin_spirv_OpMemoryNamedBarrierWrapperOCL_p3__namedBarrier_i32_i32(
 // TODO: Do we want to split out size_t into i64 and i32 as we've done here?
 
 __spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
-    int           Execution,
-    global char  *Destination,
-    local char   *Source,
-    long          NumElements,
-    long          Stride,
-    __spirv_Event Event);
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
-    int           Execution,
-    global char  *Destination,
-    local char   *Source,
-    int           NumElements,
-    int           Stride,
-    __spirv_Event Event);
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
-    int           Execution,
-    global short *Destination,
-    local short  *Source,
-    long          NumElements,
-    long          Stride,
-    __spirv_Event Event);
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
-    int           Execution,
-    global short *Destination,
-    local short  *Source,
-    int           NumElements,
-    int           Stride,
-    __spirv_Event Event);
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
-    int           Execution,
-    global int   *Destination,
-    local int    *Source,
-    long          NumElements,
-    long          Stride,
-    __spirv_Event Event);
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
-    int           Execution,
-    global int   *Destination,
-    local int    *Source,
-    int           NumElements,
-    int           Stride,
-    __spirv_Event Event);
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
-    int           Execution,
-    global long  *Destination,
-    local long   *Source,
-    long          NumElements,
-    long          Stride,
-    __spirv_Event Event);
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
-    int           Execution,
-    global long  *Destination,
-    local long   *Source,
-    int           NumElements,
-    int           Stride,
-    __spirv_Event Event);
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
-    int           Execution,
-    global half  *Destination,
-    local half   *Source,
-    long          NumElements,
-    long          Stride,
-    __spirv_Event Event);
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
-    int           Execution,
-    global half  *Destination,
-    local half   *Source,
-    int           NumElements,
-    int           Stride,
-    __spirv_Event Event);
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
-    int           Execution,
-    global float *Destination,
-    local float  *Source,
-    long          NumElements,
-    long          Stride,
-    __spirv_Event Event);
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
-    int           Execution,
-    global float *Destination,
-    local float  *Source,
-    int           NumElements,
-    int           Stride,
-    __spirv_Event Event);
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
-    int           Execution,
-    global char2 *Destination,
-    local char2  *Source,
-    long          NumElements,
-    long          Stride,
-    __spirv_Event Event);
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
-    int           Execution,
-    global char2 *Destination,
-    local char2  *Source,
-    int           NumElements,
-    int           Stride,
-    __spirv_Event Event);
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
-    int           Execution,
-    global char3 *Destination,
-    local char3  *Source,
-    long          NumElements,
-    long          Stride,
-    __spirv_Event Event);
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
-    int           Execution,
-    global char3 *Destination,
-    local char3  *Source,
-    int           NumElements,
-    int           Stride,
-    __spirv_Event Event);
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
-    int           Execution,
-    global char4 *Destination,
-    local char4  *Source,
-    long          NumElements,
-    long          Stride,
-    __spirv_Event Event);
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
-    int           Execution,
-    global char4 *Destination,
-    local char4  *Source,
-    int           NumElements,
-    int           Stride,
-    __spirv_Event Event);
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
-    int           Execution,
-    global char8 *Destination,
-    local char8  *Source,
-    long          NumElements,
-    long          Stride,
-    __spirv_Event Event);
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
-    int           Execution,
-    global char8 *Destination,
-    local char8  *Source,
-    int           NumElements,
-    int           Stride,
-    __spirv_Event Event);
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
-    int            Execution,
-    global char16 *Destination,
-    local char16  *Source,
-    long           NumElements,
-    long           Stride,
-    __spirv_Event  Event);
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
-    int            Execution,
-    global char16 *Destination,
-    local char16  *Source,
-    int            NumElements,
-    int            Stride,
-    __spirv_Event  Event);
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
-    int            Execution,
-    global short2 *Destination,
-    local short2  *Source,
-    long           NumElements,
-    long           Stride,
-    __spirv_Event  Event);
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
-    int            Execution,
-    global short2 *Destination,
-    local short2  *Source,
-    int            NumElements,
-    int            Stride,
-    __spirv_Event  Event);
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
-    int            Execution,
-    global short3 *Destination,
-    local short3  *Source,
-    long           NumElements,
-    long           Stride,
-    __spirv_Event  Event);
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
-    int            Execution,
-    global short3 *Destination,
-    local short3  *Source,
-    int            NumElements,
-    int            Stride,
-    __spirv_Event  Event);
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
-    int            Execution,
-    global short4 *Destination,
-    local short4  *Source,
-    long           NumElements,
-    long           Stride,
-    __spirv_Event  Event);
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
-    int            Execution,
-    global short4 *Destination,
-    local short4  *Source,
-    int            NumElements,
-    int            Stride,
-    __spirv_Event  Event);
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
-    int            Execution,
-    global short8 *Destination,
-    local short8  *Source,
-    long           NumElements,
-    long           Stride,
-    __spirv_Event  Event);
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
-    int            Execution,
-    global short8 *Destination,
-    local short8  *Source,
-    int            NumElements,
-    int            Stride,
-    __spirv_Event  Event);
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
-    int             Execution,
-    global short16 *Destination,
-    local short16  *Source,
-    long            NumElements,
-    long            Stride,
-    __spirv_Event   Event);
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
-    int             Execution,
-    global short16 *Destination,
-    local short16  *Source,
-    int             NumElements,
-    int             Stride,
-    __spirv_Event   Event);
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
-    int           Execution,
-    global int2  *Destination,
-    local int2   *Source,
-    long          NumElements,
-    long          Stride,
-    __spirv_Event Event);
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
-    int           Execution,
-    global int2  *Destination,
-    local int2   *Source,
-    int           NumElements,
-    int           Stride,
-    __spirv_Event Event);
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
-    int           Execution,
-    global int3  *Destination,
-    local int3   *Source,
-    long          NumElements,
-    long          Stride,
-    __spirv_Event Event);
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
-    int           Execution,
-    global int3  *Destination,
-    local int3   *Source,
-    int           NumElements,
-    int           Stride,
-    __spirv_Event Event);
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
-    int           Execution,
-    global int4  *Destination,
-    local int4   *Source,
-    long          NumElements,
-    long          Stride,
-    __spirv_Event Event);
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
-    int           Execution,
-    global int4  *Destination,
-    local int4   *Source,
-    int           NumElements,
-    int           Stride,
-    __spirv_Event Event);
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
-    int           Execution,
-    global int8  *Destination,
-    local int8   *Source,
-    long          NumElements,
-    long          Stride,
-    __spirv_Event Event);
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
-    int           Execution,
-    global int8  *Destination,
-    local int8   *Source,
-    int           NumElements,
-    int           Stride,
-    __spirv_Event Event);
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
-    int           Execution,
-    global int16 *Destination,
-    local int16  *Source,
-    long          NumElements,
-    long          Stride,
-    __spirv_Event Event);
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
-    int           Execution,
-    global int16 *Destination,
-    local int16  *Source,
-    int           NumElements,
-    int           Stride,
-    __spirv_Event Event);
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
-    int           Execution,
-    global long2 *Destination,
-    local long2  *Source,
-    long          NumElements,
-    long          Stride,
-    __spirv_Event Event);
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
-    int           Execution,
-    global long2 *Destination,
-    local long2  *Source,
-    int           NumElements,
-    int           Stride,
-    __spirv_Event Event);
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
-    int           Execution,
-    global long3 *Destination,
-    local long3  *Source,
-    long          NumElements,
-    long          Stride,
-    __spirv_Event Event);
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
-    int           Execution,
-    global long3 *Destination,
-    local long3  *Source,
-    int           NumElements,
-    int           Stride,
-    __spirv_Event Event);
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
-    int           Execution,
-    global long4 *Destination,
-    local long4  *Source,
-    long          NumElements,
-    long          Stride,
-    __spirv_Event Event);
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
-    int           Execution,
-    global long4 *Destination,
-    local long4  *Source,
-    int           NumElements,
-    int           Stride,
-    __spirv_Event Event);
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
-    int           Execution,
-    global long8 *Destination,
-    local long8  *Source,
-    long          NumElements,
-    long          Stride,
-    __spirv_Event Event);
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
-    int           Execution,
-    global long8 *Destination,
-    local long8  *Source,
-    int           NumElements,
-    int           Stride,
-    __spirv_Event Event);
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
-    int            Execution,
-    global long16 *Destination,
-    local long16  *Source,
-    long           NumElements,
-    long           Stride,
-    __spirv_Event  Event);
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
-    int            Execution,
-    global long16 *Destination,
-    local long16  *Source,
-    int            NumElements,
-    int            Stride,
-    __spirv_Event  Event);
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
-    int           Execution,
-    global half2 *Destination,
-    local half2  *Source,
-    long          NumElements,
-    long          Stride,
-    __spirv_Event Event);
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
-    int           Execution,
-    global half2 *Destination,
-    local half2  *Source,
-    int           NumElements,
-    int           Stride,
-    __spirv_Event Event);
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
-    int           Execution,
-    global half3 *Destination,
-    local half3  *Source,
-    long          NumElements,
-    long          Stride,
-    __spirv_Event Event);
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
-    int           Execution,
-    global half3 *Destination,
-    local half3  *Source,
-    int           NumElements,
-    int           Stride,
-    __spirv_Event Event);
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
-    int           Execution,
-    global half4 *Destination,
-    local half4  *Source,
-    long          NumElements,
-    long          Stride,
-    __spirv_Event Event);
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
-    int           Execution,
-    global half4 *Destination,
-    local half4  *Source,
-    int           NumElements,
-    int           Stride,
-    __spirv_Event Event);
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
-    int           Execution,
-    global half8 *Destination,
-    local half8  *Source,
-    long          NumElements,
-    long          Stride,
-    __spirv_Event Event);
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
-    int           Execution,
-    global half8 *Destination,
-    local half8  *Source,
-    int           NumElements,
-    int           Stride,
-    __spirv_Event Event);
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
-    int            Execution,
-    global half16 *Destination,
-    local half16  *Source,
-    long           NumElements,
-    long           Stride,
-    __spirv_Event  Event);
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
-    int            Execution,
-    global half16 *Destination,
-    local half16  *Source,
-    int            NumElements,
-    int            Stride,
-    __spirv_Event  Event);
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
-    int            Execution,
-    global float2 *Destination,
-    local float2  *Source,
-    long           NumElements,
-    long           Stride,
-    __spirv_Event  Event);
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
-    int            Execution,
-    global float2 *Destination,
-    local float2  *Source,
-    int            NumElements,
-    int            Stride,
-    __spirv_Event  Event);
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
-    int            Execution,
-    global float3 *Destination,
-    local float3  *Source,
-    long           NumElements,
-    long           Stride,
-    __spirv_Event  Event);
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
-    int            Execution,
-    global float3 *Destination,
-    local float3  *Source,
-    int            NumElements,
-    int            Stride,
-    __spirv_Event  Event);
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
-    int            Execution,
-    global float4 *Destination,
-    local float4  *Source,
-    long           NumElements,
-    long           Stride,
-    __spirv_Event  Event);
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
-    int            Execution,
-    global float4 *Destination,
-    local float4  *Source,
-    int            NumElements,
-    int            Stride,
-    __spirv_Event  Event);
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
-    int            Execution,
-    global float8 *Destination,
-    local float8  *Source,
-    long           NumElements,
-    long           Stride,
-    __spirv_Event  Event);
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
-    int            Execution,
-    global float8 *Destination,
-    local float8  *Source,
-    int            NumElements,
-    int            Stride,
-    __spirv_Event  Event);
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
-    int             Execution,
-    global float16 *Destination,
-    local float16  *Source,
-    long            NumElements,
-    long            Stride,
-    __spirv_Event   Event);
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
-    int             Execution,
-    global float16 *Destination,
-    local float16  *Source,
-    int             NumElements,
-    int             Stride,
-    __spirv_Event   Event);
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
-    int           Execution,
-    local char   *Destination,
-    global char  *Source,
-    long          NumElements,
-    long          Stride,
-    __spirv_Event Event);
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
-    int           Execution,
-    local char   *Destination,
-    global char  *Source,
-    int           NumElements,
-    int           Stride,
-    __spirv_Event Event);
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
-    int           Execution,
-    local short  *Destination,
-    global short *Source,
-    long          NumElements,
-    long          Stride,
-    __spirv_Event Event);
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
-    int           Execution,
-    local short  *Destination,
-    global short *Source,
-    int           NumElements,
-    int           Stride,
-    __spirv_Event Event);
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
-    int           Execution,
-    local int    *Destination,
-    global int   *Source,
-    long          NumElements,
-    long          Stride,
-    __spirv_Event Event);
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
-    int           Execution,
-    local int    *Destination,
-    global int   *Source,
-    int           NumElements,
-    int           Stride,
-    __spirv_Event Event);
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
-    int           Execution,
-    local long   *Destination,
-    global long  *Source,
-    long          NumElements,
-    long          Stride,
-    __spirv_Event Event);
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
-    int           Execution,
-    local long   *Destination,
-    global long  *Source,
-    int           NumElements,
-    int           Stride,
-    __spirv_Event Event);
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
-    int           Execution,
-    local half   *Destination,
-    global half  *Source,
-    long          NumElements,
-    long          Stride,
-    __spirv_Event Event);
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
-    int           Execution,
-    local half   *Destination,
-    global half  *Source,
-    int           NumElements,
-    int           Stride,
-    __spirv_Event Event);
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
-    int           Execution,
-    local float  *Destination,
-    global float *Source,
-    long          NumElements,
-    long          Stride,
-    __spirv_Event Event);
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
-    int           Execution,
-    local char2  *Destination,
-    global char2 *Source,
-    long          NumElements,
-    long          Stride,
-    __spirv_Event Event);
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
-    int           Execution,
-    local char2  *Destination,
-    global char2 *Source,
-    int           NumElements,
-    int           Stride,
-    __spirv_Event Event);
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
-    int           Execution,
-    local char3  *Destination,
-    global char3 *Source,
-    long          NumElements,
-    long          Stride,
-    __spirv_Event Event);
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
-    int           Execution,
-    local char3  *Destination,
-    global char3 *Source,
-    int           NumElements,
-    int           Stride,
-    __spirv_Event Event);
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
-    int           Execution,
-    local char4  *Destination,
-    global char4 *Source,
-    long          NumElements,
-    long          Stride,
-    __spirv_Event Event);
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
-    int           Execution,
-    local char4  *Destination,
-    global char4 *Source,
-    int           NumElements,
-    int           Stride,
-    __spirv_Event Event);
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
-    int           Execution,
-    local char8  *Destination,
-    global char8 *Source,
-    long          NumElements,
-    long          Stride,
-    __spirv_Event Event);
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
-    int           Execution,
-    local char8  *Destination,
-    global char8 *Source,
-    int           NumElements,
-    int           Stride,
-    __spirv_Event Event);
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
-    int            Execution,
-    local char16  *Destination,
-    global char16 *Source,
-    long           NumElements,
-    long           Stride,
-    __spirv_Event  Event);
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
-    int            Execution,
-    local char16  *Destination,
-    global char16 *Source,
-    int            NumElements,
-    int            Stride,
-    __spirv_Event  Event);
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
-    int            Execution,
-    local short2  *Destination,
-    global short2 *Source,
-    long           NumElements,
-    long           Stride,
-    __spirv_Event  Event);
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
-    int            Execution,
-    local short2  *Destination,
-    global short2 *Source,
-    int            NumElements,
-    int            Stride,
-    __spirv_Event  Event);
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
-    int            Execution,
-    local short3  *Destination,
-    global short3 *Source,
-    long           NumElements,
-    long           Stride,
-    __spirv_Event  Event);
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
-    int            Execution,
-    local short3  *Destination,
-    global short3 *Source,
-    int            NumElements,
-    int            Stride,
-    __spirv_Event  Event);
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
-    int            Execution,
-    local short4  *Destination,
-    global short4 *Source,
-    long           NumElements,
-    long           Stride,
-    __spirv_Event  Event);
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
-    int            Execution,
-    local short4  *Destination,
-    global short4 *Source,
-    int            NumElements,
-    int            Stride,
-    __spirv_Event  Event);
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
-    int            Execution,
-    local short8  *Destination,
-    global short8 *Source,
-    long           NumElements,
-    long           Stride,
-    __spirv_Event  Event);
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
-    int            Execution,
-    local short8  *Destination,
-    global short8 *Source,
-    int            NumElements,
-    int            Stride,
-    __spirv_Event  Event);
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
-    int             Execution,
-    local short16  *Destination,
-    global short16 *Source,
-    long            NumElements,
-    long            Stride,
-    __spirv_Event   Event);
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
-    int             Execution,
-    local short16  *Destination,
-    global short16 *Source,
-    int             NumElements,
-    int             Stride,
-    __spirv_Event   Event);
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
-    int           Execution,
-    local int2   *Destination,
-    global int2  *Source,
-    long          NumElements,
-    long          Stride,
-    __spirv_Event Event);
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
-    int           Execution,
-    local int2   *Destination,
-    global int2  *Source,
-    int           NumElements,
-    int           Stride,
-    __spirv_Event Event);
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
-    int           Execution,
-    local int3   *Destination,
-    global int3  *Source,
-    long          NumElements,
-    long          Stride,
-    __spirv_Event Event);
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
-    int           Execution,
-    local int3   *Destination,
-    global int3  *Source,
-    int           NumElements,
-    int           Stride,
-    __spirv_Event Event);
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
-    int           Execution,
-    local int4   *Destination,
-    global int4  *Source,
-    long          NumElements,
-    long          Stride,
-    __spirv_Event Event);
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
-    int           Execution,
-    local int4   *Destination,
-    global int4  *Source,
-    int           NumElements,
-    int           Stride,
-    __spirv_Event Event);
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
-    int           Execution,
-    local int8   *Destination,
-    global int8  *Source,
-    long          NumElements,
-    long          Stride,
-    __spirv_Event Event);
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
-    int           Execution,
-    local int8   *Destination,
-    global int8  *Source,
-    int           NumElements,
-    int           Stride,
-    __spirv_Event Event);
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
-    int           Execution,
-    local int16  *Destination,
-    global int16 *Source,
-    long          NumElements,
-    long          Stride,
-    __spirv_Event Event);
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
-    int           Execution,
-    local int16  *Destination,
-    global int16 *Source,
-    int           NumElements,
-    int           Stride,
-    __spirv_Event Event);
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
-    int           Execution,
-    local long2  *Destination,
-    global long2 *Source,
-    long          NumElements,
-    long          Stride,
-    __spirv_Event Event);
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
-    int           Execution,
-    local long2  *Destination,
-    global long2 *Source,
-    int           NumElements,
-    int           Stride,
-    __spirv_Event Event);
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
-    int           Execution,
-    local long3  *Destination,
-    global long3 *Source,
-    long          NumElements,
-    long          Stride,
-    __spirv_Event Event);
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
-    int           Execution,
-    local long3  *Destination,
-    global long3 *Source,
-    int           NumElements,
-    int           Stride,
-    __spirv_Event Event);
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
-    int           Execution,
-    local long4  *Destination,
-    global long4 *Source,
-    long          NumElements,
-    long          Stride,
-    __spirv_Event Event);
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
-    int           Execution,
-    local long4  *Destination,
-    global long4 *Source,
-    int           NumElements,
-    int           Stride,
-    __spirv_Event Event);
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
-    int           Execution,
-    local long8  *Destination,
-    global long8 *Source,
-    long          NumElements,
-    long          Stride,
-    __spirv_Event Event);
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
-    int           Execution,
-    local long8  *Destination,
-    global long8 *Source,
-    int           NumElements,
-    int           Stride,
-    __spirv_Event Event);
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
-    int            Execution,
-    local long16  *Destination,
-    global long16 *Source,
-    long           NumElements,
-    long           Stride,
-    __spirv_Event  Event);
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
-    int            Execution,
-    local long16  *Destination,
-    global long16 *Source,
-    int            NumElements,
-    int            Stride,
-    __spirv_Event  Event);
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
-    int           Execution,
-    local half2  *Destination,
-    global half2 *Source,
-    long          NumElements,
-    long          Stride,
-    __spirv_Event Event);
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
-    int           Execution,
-    local half2  *Destination,
-    global half2 *Source,
-    int           NumElements,
-    int           Stride,
-    __spirv_Event Event);
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
-    int           Execution,
-    local half3  *Destination,
-    global half3 *Source,
-    long          NumElements,
-    long          Stride,
-    __spirv_Event Event);
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
-    int           Execution,
-    local half3  *Destination,
-    global half3 *Source,
-    int           NumElements,
-    int           Stride,
-    __spirv_Event Event);
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
-    int           Execution,
-    local half4  *Destination,
-    global half4 *Source,
-    long          NumElements,
-    long          Stride,
-    __spirv_Event Event);
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
-    int           Execution,
-    local half4  *Destination,
-    global half4 *Source,
-    int           NumElements,
-    int           Stride,
-    __spirv_Event Event);
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
-    int           Execution,
-    local half8  *Destination,
-    global half8 *Source,
-    long          NumElements,
-    long          Stride,
-    __spirv_Event Event);
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
-    int           Execution,
-    local half8  *Destination,
-    global half8 *Source,
-    int           NumElements,
-    int           Stride,
-    __spirv_Event Event);
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
-    int            Execution,
-    local half16  *Destination,
-    global half16 *Source,
-    long           NumElements,
-    long           Stride,
-    __spirv_Event  Event);
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
-    int            Execution,
-    local half16  *Destination,
-    global half16 *Source,
-    int            NumElements,
-    int            Stride,
-    __spirv_Event  Event);
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
-    int            Execution,
-    local float2  *Destination,
-    global float2 *Source,
-    long           NumElements,
-    long           Stride,
-    __spirv_Event  Event);
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
-    int            Execution,
-    local float2  *Destination,
-    global float2 *Source,
-    int            NumElements,
-    int            Stride,
-    __spirv_Event  Event);
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
-    int            Execution,
-    local float3  *Destination,
-    global float3 *Source,
-    long           NumElements,
-    long           Stride,
-    __spirv_Event  Event);
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
-    int            Execution,
-    local float3  *Destination,
-    global float3 *Source,
-    int            NumElements,
-    int            Stride,
-    __spirv_Event  Event);
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
-    int            Execution,
-    local float4  *Destination,
-    global float4 *Source,
-    long           NumElements,
-    long           Stride,
-    __spirv_Event  Event);
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
-    int            Execution,
-    local float4  *Destination,
-    global float4 *Source,
-    int            NumElements,
-    int            Stride,
-    __spirv_Event  Event);
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
-    int            Execution,
-    local float8  *Destination,
-    global float8 *Source,
-    long           NumElements,
-    long           Stride,
-    __spirv_Event  Event);
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
-    int            Execution,
-    local float8  *Destination,
-    global float8 *Source,
-    int            NumElements,
-    int            Stride,
-    __spirv_Event  Event);
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
-    int             Execution,
-    local float16  *Destination,
-    global float16 *Source,
-    long            NumElements,
-    long            Stride,
-    __spirv_Event   Event);
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
-    int             Execution,
-    local float16  *Destination,
-    global float16 *Source,
-    int             NumElements,
-    int             Stride,
-    __spirv_Event   Event);
-__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
-    int           Execution,
-    local float  *Destination,
-    global float *Source,
-    int           NumElements,
-    int           Stride,
-    __spirv_Event Event);
+    int               Execution,
+    global char      *Destination,
+    const local char *Source,
+    ulong             NumElements,
+    ulong             Stride,
+    __spirv_Event     Event);
+__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
+    int               Execution,
+    global char      *Destination,
+    const local char *Source,
+    uint              NumElements,
+    uint              Stride,
+    __spirv_Event     Event);
+__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
+    int                Execution,
+    global short      *Destination,
+    const local short *Source,
+    ulong              NumElements,
+    ulong              Stride,
+    __spirv_Event      Event);
+__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
+    int                Execution,
+    global short      *Destination,
+    const local short *Source,
+    uint               NumElements,
+    uint               Stride,
+    __spirv_Event      Event);
+__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
+    int              Execution,
+    global int      *Destination,
+    const local int *Source,
+    ulong            NumElements,
+    ulong            Stride,
+    __spirv_Event    Event);
+__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
+    int              Execution,
+    global int      *Destination,
+    const local int *Source,
+    uint             NumElements,
+    uint             Stride,
+    __spirv_Event    Event);
+__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
+    int               Execution,
+    global long      *Destination,
+    const local long *Source,
+    ulong             NumElements,
+    ulong             Stride,
+    __spirv_Event     Event);
+__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
+    int               Execution,
+    global long      *Destination,
+    const local long *Source,
+    uint              NumElements,
+    uint              Stride,
+    __spirv_Event     Event);
+__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
+    int               Execution,
+    global half      *Destination,
+    const local half *Source,
+    ulong             NumElements,
+    ulong             Stride,
+    __spirv_Event     Event);
+__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
+    int               Execution,
+    global half      *Destination,
+    const local half *Source,
+    uint              NumElements,
+    uint              Stride,
+    __spirv_Event     Event);
+__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
+    int                Execution,
+    global float      *Destination,
+    const local float *Source,
+    ulong              NumElements,
+    ulong              Stride,
+    __spirv_Event      Event);
+__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
+    int                Execution,
+    global float      *Destination,
+    const local float *Source,
+    uint               NumElements,
+    uint               Stride,
+    __spirv_Event      Event);
+__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
+    int                Execution,
+    global char2      *Destination,
+    const local char2 *Source,
+    ulong              NumElements,
+    ulong              Stride,
+    __spirv_Event      Event);
+__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
+    int                Execution,
+    global char2      *Destination,
+    const local char2 *Source,
+    uint               NumElements,
+    uint               Stride,
+    __spirv_Event      Event);
+__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
+    int                Execution,
+    global char3      *Destination,
+    const local char3 *Source,
+    ulong              NumElements,
+    ulong              Stride,
+    __spirv_Event      Event);
+__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
+    int                Execution,
+    global char3      *Destination,
+    const local char3 *Source,
+    uint               NumElements,
+    uint               Stride,
+    __spirv_Event      Event);
+__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
+    int                Execution,
+    global char4      *Destination,
+    const local char4 *Source,
+    ulong              NumElements,
+    ulong              Stride,
+    __spirv_Event      Event);
+__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
+    int                Execution,
+    global char4      *Destination,
+    const local char4 *Source,
+    uint               NumElements,
+    uint               Stride,
+    __spirv_Event      Event);
+__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
+    int                Execution,
+    global char8      *Destination,
+    const local char8 *Source,
+    ulong              NumElements,
+    ulong              Stride,
+    __spirv_Event      Event);
+__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
+    int                Execution,
+    global char8      *Destination,
+    const local char8 *Source,
+    uint               NumElements,
+    uint               Stride,
+    __spirv_Event      Event);
+__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
+    int                 Execution,
+    global char16      *Destination,
+    const local char16 *Source,
+    ulong               NumElements,
+    ulong               Stride,
+    __spirv_Event       Event);
+__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
+    int                 Execution,
+    global char16      *Destination,
+    const local char16 *Source,
+    uint                NumElements,
+    uint                Stride,
+    __spirv_Event       Event);
+__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
+    int                 Execution,
+    global short2      *Destination,
+    const local short2 *Source,
+    ulong               NumElements,
+    ulong               Stride,
+    __spirv_Event       Event);
+__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
+    int                 Execution,
+    global short2      *Destination,
+    const local short2 *Source,
+    uint                NumElements,
+    uint                Stride,
+    __spirv_Event       Event);
+__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
+    int                 Execution,
+    global short3      *Destination,
+    const local short3 *Source,
+    ulong               NumElements,
+    ulong               Stride,
+    __spirv_Event       Event);
+__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
+    int                 Execution,
+    global short3      *Destination,
+    const local short3 *Source,
+    uint                NumElements,
+    uint                Stride,
+    __spirv_Event       Event);
+__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
+    int                 Execution,
+    global short4      *Destination,
+    const local short4 *Source,
+    ulong               NumElements,
+    ulong               Stride,
+    __spirv_Event       Event);
+__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
+    int                 Execution,
+    global short4      *Destination,
+    const local short4 *Source,
+    uint                NumElements,
+    uint                Stride,
+    __spirv_Event       Event);
+__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
+    int                 Execution,
+    global short8      *Destination,
+    const local short8 *Source,
+    ulong               NumElements,
+    ulong               Stride,
+    __spirv_Event       Event);
+__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
+    int                 Execution,
+    global short8      *Destination,
+    const local short8 *Source,
+    uint                NumElements,
+    uint                Stride,
+    __spirv_Event       Event);
+__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
+    int                  Execution,
+    global short16      *Destination,
+    const local short16 *Source,
+    ulong                NumElements,
+    ulong                Stride,
+    __spirv_Event        Event);
+__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
+    int                  Execution,
+    global short16      *Destination,
+    const local short16 *Source,
+    uint                 NumElements,
+    uint                 Stride,
+    __spirv_Event        Event);
+__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
+    int               Execution,
+    global int2      *Destination,
+    const local int2 *Source,
+    ulong             NumElements,
+    ulong             Stride,
+    __spirv_Event     Event);
+__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
+    int               Execution,
+    global int2      *Destination,
+    const local int2 *Source,
+    uint              NumElements,
+    uint              Stride,
+    __spirv_Event     Event);
+__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
+    int               Execution,
+    global int3      *Destination,
+    const local int3 *Source,
+    ulong             NumElements,
+    ulong             Stride,
+    __spirv_Event     Event);
+__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
+    int               Execution,
+    global int3      *Destination,
+    const local int3 *Source,
+    uint              NumElements,
+    uint              Stride,
+    __spirv_Event     Event);
+__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
+    int               Execution,
+    global int4      *Destination,
+    const local int4 *Source,
+    ulong             NumElements,
+    ulong             Stride,
+    __spirv_Event     Event);
+__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
+    int               Execution,
+    global int4      *Destination,
+    const local int4 *Source,
+    uint              NumElements,
+    uint              Stride,
+    __spirv_Event     Event);
+__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
+    int               Execution,
+    global int8      *Destination,
+    const local int8 *Source,
+    ulong             NumElements,
+    ulong             Stride,
+    __spirv_Event     Event);
+__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
+    int               Execution,
+    global int8      *Destination,
+    const local int8 *Source,
+    uint              NumElements,
+    uint              Stride,
+    __spirv_Event     Event);
+__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
+    int                Execution,
+    global int16      *Destination,
+    const local int16 *Source,
+    ulong              NumElements,
+    ulong              Stride,
+    __spirv_Event      Event);
+__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
+    int                Execution,
+    global int16      *Destination,
+    const local int16 *Source,
+    uint               NumElements,
+    uint               Stride,
+    __spirv_Event      Event);
+__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
+    int                Execution,
+    global long2      *Destination,
+    const local long2 *Source,
+    ulong              NumElements,
+    ulong              Stride,
+    __spirv_Event      Event);
+__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
+    int                Execution,
+    global long2      *Destination,
+    const local long2 *Source,
+    uint               NumElements,
+    uint               Stride,
+    __spirv_Event      Event);
+__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
+    int                Execution,
+    global long3      *Destination,
+    const local long3 *Source,
+    ulong              NumElements,
+    ulong              Stride,
+    __spirv_Event      Event);
+__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
+    int                Execution,
+    global long3      *Destination,
+    const local long3 *Source,
+    uint               NumElements,
+    uint               Stride,
+    __spirv_Event      Event);
+__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
+    int                Execution,
+    global long4      *Destination,
+    const local long4 *Source,
+    ulong              NumElements,
+    ulong              Stride,
+    __spirv_Event      Event);
+__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
+    int                Execution,
+    global long4      *Destination,
+    const local long4 *Source,
+    uint               NumElements,
+    uint               Stride,
+    __spirv_Event      Event);
+__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
+    int                Execution,
+    global long8      *Destination,
+    const local long8 *Source,
+    ulong              NumElements,
+    ulong              Stride,
+    __spirv_Event      Event);
+__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
+    int                Execution,
+    global long8      *Destination,
+    const local long8 *Source,
+    uint               NumElements,
+    uint               Stride,
+    __spirv_Event      Event);
+__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
+    int                 Execution,
+    global long16      *Destination,
+    const local long16 *Source,
+    ulong               NumElements,
+    ulong               Stride,
+    __spirv_Event       Event);
+__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
+    int                 Execution,
+    global long16      *Destination,
+    const local long16 *Source,
+    uint                NumElements,
+    uint                Stride,
+    __spirv_Event       Event);
+__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
+    int                Execution,
+    global half2      *Destination,
+    const local half2 *Source,
+    ulong              NumElements,
+    ulong              Stride,
+    __spirv_Event      Event);
+__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
+    int                Execution,
+    global half2      *Destination,
+    const local half2 *Source,
+    uint               NumElements,
+    uint               Stride,
+    __spirv_Event      Event);
+__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
+    int                Execution,
+    global half3      *Destination,
+    const local half3 *Source,
+    ulong              NumElements,
+    ulong              Stride,
+    __spirv_Event      Event);
+__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
+    int                Execution,
+    global half3      *Destination,
+    const local half3 *Source,
+    uint               NumElements,
+    uint               Stride,
+    __spirv_Event      Event);
+__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
+    int                Execution,
+    global half4      *Destination,
+    const local half4 *Source,
+    ulong              NumElements,
+    ulong              Stride,
+    __spirv_Event      Event);
+__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
+    int                Execution,
+    global half4      *Destination,
+    const local half4 *Source,
+    uint               NumElements,
+    uint               Stride,
+    __spirv_Event      Event);
+__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
+    int                Execution,
+    global half8      *Destination,
+    const local half8 *Source,
+    ulong              NumElements,
+    ulong              Stride,
+    __spirv_Event      Event);
+__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
+    int                Execution,
+    global half8      *Destination,
+    const local half8 *Source,
+    uint               NumElements,
+    uint               Stride,
+    __spirv_Event      Event);
+__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
+    int                 Execution,
+    global half16      *Destination,
+    const local half16 *Source,
+    ulong               NumElements,
+    ulong               Stride,
+    __spirv_Event       Event);
+__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
+    int                 Execution,
+    global half16      *Destination,
+    const local half16 *Source,
+    uint                NumElements,
+    uint                Stride,
+    __spirv_Event       Event);
+__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
+    int                 Execution,
+    global float2      *Destination,
+    const local float2 *Source,
+    ulong               NumElements,
+    ulong               Stride,
+    __spirv_Event       Event);
+__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
+    int                 Execution,
+    global float2      *Destination,
+    const local float2 *Source,
+    uint                NumElements,
+    uint                Stride,
+    __spirv_Event       Event);
+__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
+    int                 Execution,
+    global float3      *Destination,
+    const local float3 *Source,
+    ulong               NumElements,
+    ulong               Stride,
+    __spirv_Event       Event);
+__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
+    int                 Execution,
+    global float3      *Destination,
+    const local float3 *Source,
+    uint                NumElements,
+    uint                Stride,
+    __spirv_Event       Event);
+__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
+    int                 Execution,
+    global float4      *Destination,
+    const local float4 *Source,
+    ulong               NumElements,
+    ulong               Stride,
+    __spirv_Event       Event);
+__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
+    int                 Execution,
+    global float4      *Destination,
+    const local float4 *Source,
+    uint                NumElements,
+    uint                Stride,
+    __spirv_Event       Event);
+__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
+    int                 Execution,
+    global float8      *Destination,
+    const local float8 *Source,
+    ulong               NumElements,
+    ulong               Stride,
+    __spirv_Event       Event);
+__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
+    int                 Execution,
+    global float8      *Destination,
+    const local float8 *Source,
+    uint                NumElements,
+    uint                Stride,
+    __spirv_Event       Event);
+__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
+    int                  Execution,
+    global float16      *Destination,
+    const local float16 *Source,
+    ulong                NumElements,
+    ulong                Stride,
+    __spirv_Event        Event);
+__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
+    int                  Execution,
+    global float16      *Destination,
+    const local float16 *Source,
+    uint                 NumElements,
+    uint                 Stride,
+    __spirv_Event        Event);
+__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
+    int                Execution,
+    local char        *Destination,
+    const global char *Source,
+    ulong              NumElements,
+    ulong              Stride,
+    __spirv_Event      Event);
+__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
+    int                Execution,
+    local char        *Destination,
+    const global char *Source,
+    uint               NumElements,
+    uint               Stride,
+    __spirv_Event      Event);
+__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
+    int                 Execution,
+    local short        *Destination,
+    const global short *Source,
+    ulong               NumElements,
+    ulong               Stride,
+    __spirv_Event       Event);
+__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
+    int                 Execution,
+    local short        *Destination,
+    const global short *Source,
+    uint                NumElements,
+    uint                Stride,
+    __spirv_Event       Event);
+__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
+    int               Execution,
+    local int        *Destination,
+    const global int *Source,
+    ulong             NumElements,
+    ulong             Stride,
+    __spirv_Event     Event);
+__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
+    int               Execution,
+    local int        *Destination,
+    const global int *Source,
+    uint              NumElements,
+    uint              Stride,
+    __spirv_Event     Event);
+__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
+    int                Execution,
+    local long        *Destination,
+    const global long *Source,
+    ulong              NumElements,
+    ulong              Stride,
+    __spirv_Event      Event);
+__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
+    int                Execution,
+    local long        *Destination,
+    const global long *Source,
+    uint               NumElements,
+    uint               Stride,
+    __spirv_Event      Event);
+__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
+    int                Execution,
+    local half        *Destination,
+    const global half *Source,
+    ulong              NumElements,
+    ulong              Stride,
+    __spirv_Event      Event);
+__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
+    int                Execution,
+    local half        *Destination,
+    const global half *Source,
+    uint               NumElements,
+    uint               Stride,
+    __spirv_Event      Event);
+__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
+    int                 Execution,
+    local float        *Destination,
+    const global float *Source,
+    ulong               NumElements,
+    ulong               Stride,
+    __spirv_Event       Event);
+__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
+    int                 Execution,
+    local char2        *Destination,
+    const global char2 *Source,
+    ulong               NumElements,
+    ulong               Stride,
+    __spirv_Event       Event);
+__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
+    int                 Execution,
+    local char2        *Destination,
+    const global char2 *Source,
+    uint                NumElements,
+    uint                Stride,
+    __spirv_Event       Event);
+__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
+    int                 Execution,
+    local char3        *Destination,
+    const global char3 *Source,
+    ulong               NumElements,
+    ulong               Stride,
+    __spirv_Event       Event);
+__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
+    int                 Execution,
+    local char3        *Destination,
+    const global char3 *Source,
+    uint                NumElements,
+    uint                Stride,
+    __spirv_Event       Event);
+__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
+    int                 Execution,
+    local char4        *Destination,
+    const global char4 *Source,
+    ulong               NumElements,
+    ulong               Stride,
+    __spirv_Event       Event);
+__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
+    int                 Execution,
+    local char4        *Destination,
+    const global char4 *Source,
+    uint                NumElements,
+    uint                Stride,
+    __spirv_Event       Event);
+__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
+    int                 Execution,
+    local char8        *Destination,
+    const global char8 *Source,
+    ulong               NumElements,
+    ulong               Stride,
+    __spirv_Event       Event);
+__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
+    int                 Execution,
+    local char8        *Destination,
+    const global char8 *Source,
+    uint                NumElements,
+    uint                Stride,
+    __spirv_Event       Event);
+__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
+    int                  Execution,
+    local char16        *Destination,
+    const global char16 *Source,
+    ulong                NumElements,
+    ulong                Stride,
+    __spirv_Event        Event);
+__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
+    int                  Execution,
+    local char16        *Destination,
+    const global char16 *Source,
+    uint                 NumElements,
+    uint                 Stride,
+    __spirv_Event        Event);
+__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
+    int                  Execution,
+    local short2        *Destination,
+    const global short2 *Source,
+    ulong                NumElements,
+    ulong                Stride,
+    __spirv_Event        Event);
+__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
+    int                  Execution,
+    local short2        *Destination,
+    const global short2 *Source,
+    uint                 NumElements,
+    uint                 Stride,
+    __spirv_Event        Event);
+__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
+    int                  Execution,
+    local short3        *Destination,
+    const global short3 *Source,
+    ulong                NumElements,
+    ulong                Stride,
+    __spirv_Event        Event);
+__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
+    int                  Execution,
+    local short3        *Destination,
+    const global short3 *Source,
+    uint                 NumElements,
+    uint                 Stride,
+    __spirv_Event        Event);
+__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
+    int                  Execution,
+    local short4        *Destination,
+    const global short4 *Source,
+    ulong                NumElements,
+    ulong                Stride,
+    __spirv_Event        Event);
+__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
+    int                  Execution,
+    local short4        *Destination,
+    const global short4 *Source,
+    uint                 NumElements,
+    uint                 Stride,
+    __spirv_Event        Event);
+__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
+    int                  Execution,
+    local short8        *Destination,
+    const global short8 *Source,
+    ulong                NumElements,
+    ulong                Stride,
+    __spirv_Event        Event);
+__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
+    int                  Execution,
+    local short8        *Destination,
+    const global short8 *Source,
+    uint                 NumElements,
+    uint                 Stride,
+    __spirv_Event        Event);
+__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
+    int                   Execution,
+    local short16        *Destination,
+    const global short16 *Source,
+    ulong                 NumElements,
+    ulong                 Stride,
+    __spirv_Event         Event);
+__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
+    int                   Execution,
+    local short16        *Destination,
+    const global short16 *Source,
+    uint                  NumElements,
+    uint                  Stride,
+    __spirv_Event         Event);
+__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
+    int                Execution,
+    local int2        *Destination,
+    const global int2 *Source,
+    ulong              NumElements,
+    ulong              Stride,
+    __spirv_Event      Event);
+__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
+    int                Execution,
+    local int2        *Destination,
+    const global int2 *Source,
+    uint               NumElements,
+    uint               Stride,
+    __spirv_Event      Event);
+__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
+    int                Execution,
+    local int3        *Destination,
+    const global int3 *Source,
+    ulong              NumElements,
+    ulong              Stride,
+    __spirv_Event      Event);
+__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
+    int                Execution,
+    local int3        *Destination,
+    const global int3 *Source,
+    uint               NumElements,
+    uint               Stride,
+    __spirv_Event      Event);
+__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
+    int                Execution,
+    local int4        *Destination,
+    const global int4 *Source,
+    ulong              NumElements,
+    ulong              Stride,
+    __spirv_Event      Event);
+__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
+    int                Execution,
+    local int4        *Destination,
+    const global int4 *Source,
+    uint               NumElements,
+    uint               Stride,
+    __spirv_Event      Event);
+__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
+    int                Execution,
+    local int8        *Destination,
+    const global int8 *Source,
+    ulong              NumElements,
+    ulong              Stride,
+    __spirv_Event      Event);
+__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
+    int                Execution,
+    local int8        *Destination,
+    const global int8 *Source,
+    uint               NumElements,
+    uint               Stride,
+    __spirv_Event      Event);
+__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
+    int                 Execution,
+    local int16        *Destination,
+    const global int16 *Source,
+    ulong               NumElements,
+    ulong               Stride,
+    __spirv_Event       Event);
+__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
+    int                 Execution,
+    local int16        *Destination,
+    const global int16 *Source,
+    uint                NumElements,
+    uint                Stride,
+    __spirv_Event       Event);
+__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
+    int                 Execution,
+    local long2        *Destination,
+    const global long2 *Source,
+    ulong               NumElements,
+    ulong               Stride,
+    __spirv_Event       Event);
+__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
+    int                 Execution,
+    local long2        *Destination,
+    const global long2 *Source,
+    uint                NumElements,
+    uint                Stride,
+    __spirv_Event       Event);
+__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
+    int                 Execution,
+    local long3        *Destination,
+    const global long3 *Source,
+    ulong               NumElements,
+    ulong               Stride,
+    __spirv_Event       Event);
+__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
+    int                 Execution,
+    local long3        *Destination,
+    const global long3 *Source,
+    uint                NumElements,
+    uint                Stride,
+    __spirv_Event       Event);
+__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
+    int                 Execution,
+    local long4        *Destination,
+    const global long4 *Source,
+    ulong               NumElements,
+    ulong               Stride,
+    __spirv_Event       Event);
+__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
+    int                 Execution,
+    local long4        *Destination,
+    const global long4 *Source,
+    uint                NumElements,
+    uint                Stride,
+    __spirv_Event       Event);
+__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
+    int                 Execution,
+    local long8        *Destination,
+    const global long8 *Source,
+    ulong               NumElements,
+    ulong               Stride,
+    __spirv_Event       Event);
+__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
+    int                 Execution,
+    local long8        *Destination,
+    const global long8 *Source,
+    uint                NumElements,
+    uint                Stride,
+    __spirv_Event       Event);
+__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
+    int                  Execution,
+    local long16        *Destination,
+    const global long16 *Source,
+    ulong                NumElements,
+    ulong                Stride,
+    __spirv_Event        Event);
+__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
+    int                  Execution,
+    local long16        *Destination,
+    const global long16 *Source,
+    uint                 NumElements,
+    uint                 Stride,
+    __spirv_Event        Event);
+__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
+    int                 Execution,
+    local half2        *Destination,
+    const global half2 *Source,
+    ulong               NumElements,
+    ulong               Stride,
+    __spirv_Event       Event);
+__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
+    int                 Execution,
+    local half2        *Destination,
+    const global half2 *Source,
+    uint                NumElements,
+    uint                Stride,
+    __spirv_Event       Event);
+__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
+    int                 Execution,
+    local half3        *Destination,
+    const global half3 *Source,
+    ulong               NumElements,
+    ulong               Stride,
+    __spirv_Event       Event);
+__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
+    int                 Execution,
+    local half3        *Destination,
+    const global half3 *Source,
+    uint                NumElements,
+    uint                Stride,
+    __spirv_Event       Event);
+__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
+    int                 Execution,
+    local half4        *Destination,
+    const global half4 *Source,
+    ulong               NumElements,
+    ulong               Stride,
+    __spirv_Event       Event);
+__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
+    int                 Execution,
+    local half4        *Destination,
+    const global half4 *Source,
+    uint                NumElements,
+    uint                Stride,
+    __spirv_Event       Event);
+__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
+    int                 Execution,
+    local half8        *Destination,
+    const global half8 *Source,
+    ulong               NumElements,
+    ulong               Stride,
+    __spirv_Event       Event);
+__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
+    int                 Execution,
+    local half8        *Destination,
+    const global half8 *Source,
+    uint                NumElements,
+    uint                Stride,
+    __spirv_Event       Event);
+__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
+    int                  Execution,
+    local half16        *Destination,
+    const global half16 *Source,
+    ulong                NumElements,
+    ulong                Stride,
+    __spirv_Event        Event);
+__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
+    int                  Execution,
+    local half16        *Destination,
+    const global half16 *Source,
+    uint                 NumElements,
+    uint                 Stride,
+    __spirv_Event        Event);
+__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
+    int                  Execution,
+    local float2        *Destination,
+    const global float2 *Source,
+    ulong                NumElements,
+    ulong                Stride,
+    __spirv_Event        Event);
+__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
+    int                  Execution,
+    local float2        *Destination,
+    const global float2 *Source,
+    uint                 NumElements,
+    uint                 Stride,
+    __spirv_Event        Event);
+__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
+    int                  Execution,
+    local float3        *Destination,
+    const global float3 *Source,
+    ulong                NumElements,
+    ulong                Stride,
+    __spirv_Event        Event);
+__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
+    int                  Execution,
+    local float3        *Destination,
+    const global float3 *Source,
+    uint                 NumElements,
+    uint                 Stride,
+    __spirv_Event        Event);
+__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
+    int                  Execution,
+    local float4        *Destination,
+    const global float4 *Source,
+    ulong                NumElements,
+    ulong                Stride,
+    __spirv_Event        Event);
+__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
+    int                  Execution,
+    local float4        *Destination,
+    const global float4 *Source,
+    uint                 NumElements,
+    uint                 Stride,
+    __spirv_Event        Event);
+__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
+    int                  Execution,
+    local float8        *Destination,
+    const global float8 *Source,
+    ulong                NumElements,
+    ulong                Stride,
+    __spirv_Event        Event);
+__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
+    int                  Execution,
+    local float8        *Destination,
+    const global float8 *Source,
+    uint                 NumElements,
+    uint                 Stride,
+    __spirv_Event        Event);
+__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
+    int                   Execution,
+    local float16        *Destination,
+    const global float16 *Source,
+    ulong                 NumElements,
+    ulong                 Stride,
+    __spirv_Event         Event);
+__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
+    int                   Execution,
+    local float16        *Destination,
+    const global float16 *Source,
+    uint                  NumElements,
+    uint                  Stride,
+    __spirv_Event         Event);
+__spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
+    int                 Execution,
+    local float        *Destination,
+    const global float *Source,
+    uint                NumElements,
+    uint                Stride,
+    __spirv_Event       Event);
 #if defined(cl_khr_fp64)
 __spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
-    int            Execution,
-    global double *Destination,
-    local double  *Source,
-    long           NumElements,
-    long           Stride,
-    __spirv_Event  Event);
+    int                 Execution,
+    global double      *Destination,
+    const local double *Source,
+    ulong               NumElements,
+    ulong               Stride,
+    __spirv_Event       Event);
 __spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
-    int            Execution,
-    global double *Destination,
-    local double  *Source,
-    int            NumElements,
-    int            Stride,
-    __spirv_Event  Event);
+    int                 Execution,
+    global double      *Destination,
+    const local double *Source,
+    uint                NumElements,
+    uint                Stride,
+    __spirv_Event       Event);
 __spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
-    int             Execution,
-    global double2 *Destination,
-    local double2  *Source,
-    long            NumElements,
-    long            Stride,
-    __spirv_Event   Event);
+    int                  Execution,
+    global double2      *Destination,
+    const local double2 *Source,
+    ulong                NumElements,
+    ulong                Stride,
+    __spirv_Event        Event);
 __spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
-    int             Execution,
-    global double2 *Destination,
-    local double2  *Source,
-    int             NumElements,
-    int             Stride,
-    __spirv_Event   Event);
+    int                  Execution,
+    global double2      *Destination,
+    const local double2 *Source,
+    uint                 NumElements,
+    uint                 Stride,
+    __spirv_Event        Event);
 __spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
-    int             Execution,
-    global double3 *Destination,
-    local double3  *Source,
-    long            NumElements,
-    long            Stride,
-    __spirv_Event   Event);
+    int                  Execution,
+    global double3      *Destination,
+    const local double3 *Source,
+    ulong                NumElements,
+    ulong                Stride,
+    __spirv_Event        Event);
 __spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
-    int             Execution,
-    global double3 *Destination,
-    local double3  *Source,
-    int             NumElements,
-    int             Stride,
-    __spirv_Event   Event);
+    int                  Execution,
+    global double3      *Destination,
+    const local double3 *Source,
+    uint                 NumElements,
+    uint                 Stride,
+    __spirv_Event        Event);
 __spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
-    int             Execution,
-    global double4 *Destination,
-    local double4  *Source,
-    long            NumElements,
-    long            Stride,
-    __spirv_Event   Event);
+    int                  Execution,
+    global double4      *Destination,
+    const local double4 *Source,
+    ulong                NumElements,
+    ulong                Stride,
+    __spirv_Event        Event);
 __spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
-    int             Execution,
-    global double4 *Destination,
-    local double4  *Source,
-    int             NumElements,
-    int             Stride,
-    __spirv_Event   Event);
+    int                  Execution,
+    global double4      *Destination,
+    const local double4 *Source,
+    uint                 NumElements,
+    uint                 Stride,
+    __spirv_Event        Event);
 __spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
-    int             Execution,
-    global double8 *Destination,
-    local double8  *Source,
-    long            NumElements,
-    long            Stride,
-    __spirv_Event   Event);
+    int                  Execution,
+    global double8      *Destination,
+    const local double8 *Source,
+    ulong                NumElements,
+    ulong                Stride,
+    __spirv_Event        Event);
 __spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
-    int             Execution,
-    global double8 *Destination,
-    local double8  *Source,
-    int             NumElements,
-    int             Stride,
-    __spirv_Event   Event);
+    int                  Execution,
+    global double8      *Destination,
+    const local double8 *Source,
+    uint                 NumElements,
+    uint                 Stride,
+    __spirv_Event        Event);
 __spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
-    int              Execution,
-    global double16 *Destination,
-    local double16  *Source,
-    long             NumElements,
-    long             Stride,
-    __spirv_Event    Event);
+    int                   Execution,
+    global double16      *Destination,
+    const local double16 *Source,
+    ulong                 NumElements,
+    ulong                 Stride,
+    __spirv_Event         Event);
 __spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
-    int              Execution,
-    global double16 *Destination,
-    local double16  *Source,
-    int              NumElements,
-    int              Stride,
-    __spirv_Event    Event);
+    int                   Execution,
+    global double16      *Destination,
+    const local double16 *Source,
+    uint                  NumElements,
+    uint                  Stride,
+    __spirv_Event         Event);
 __spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
-    int            Execution,
-    local double  *Destination,
-    global double *Source,
-    long           NumElements,
-    long           Stride,
-    __spirv_Event  Event);
+    int                  Execution,
+    local double        *Destination,
+    const global double *Source,
+    ulong                NumElements,
+    ulong                Stride,
+    __spirv_Event        Event);
 __spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
-    int            Execution,
-    local double  *Destination,
-    global double *Source,
-    int            NumElements,
-    int            Stride,
-    __spirv_Event  Event);
+    int                  Execution,
+    local double        *Destination,
+    const global double *Source,
+    uint                 NumElements,
+    uint                 Stride,
+    __spirv_Event        Event);
 __spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
-    int             Execution,
-    local double2  *Destination,
-    global double2 *Source,
-    long            NumElements,
-    long            Stride,
-    __spirv_Event   Event);
+    int                   Execution,
+    local double2        *Destination,
+    const global double2 *Source,
+    ulong                 NumElements,
+    ulong                 Stride,
+    __spirv_Event         Event);
 __spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
-    int             Execution,
-    local double2  *Destination,
-    global double2 *Source,
-    int             NumElements,
-    int             Stride,
-    __spirv_Event   Event);
+    int                   Execution,
+    local double2        *Destination,
+    const global double2 *Source,
+    uint                  NumElements,
+    uint                  Stride,
+    __spirv_Event         Event);
 __spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
-    int             Execution,
-    local double3  *Destination,
-    global double3 *Source,
-    long            NumElements,
-    long            Stride,
-    __spirv_Event   Event);
+    int                   Execution,
+    local double3        *Destination,
+    const global double3 *Source,
+    ulong                 NumElements,
+    ulong                 Stride,
+    __spirv_Event         Event);
 __spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
-    int             Execution,
-    local double3  *Destination,
-    global double3 *Source,
-    int             NumElements,
-    int             Stride,
-    __spirv_Event   Event);
+    int                   Execution,
+    local double3        *Destination,
+    const global double3 *Source,
+    uint                  NumElements,
+    uint                  Stride,
+    __spirv_Event         Event);
 __spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
-    int             Execution,
-    local double4  *Destination,
-    global double4 *Source,
-    long            NumElements,
-    long            Stride,
-    __spirv_Event   Event);
+    int                   Execution,
+    local double4        *Destination,
+    const global double4 *Source,
+    ulong                 NumElements,
+    ulong                 Stride,
+    __spirv_Event         Event);
 __spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
-    int             Execution,
-    local double4  *Destination,
-    global double4 *Source,
-    int             NumElements,
-    int             Stride,
-    __spirv_Event   Event);
+    int                   Execution,
+    local double4        *Destination,
+    const global double4 *Source,
+    uint                  NumElements,
+    uint                  Stride,
+    __spirv_Event         Event);
 __spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
-    int             Execution,
-    local double8  *Destination,
-    global double8 *Source,
-    long            NumElements,
-    long            Stride,
-    __spirv_Event   Event);
+    int                   Execution,
+    local double8        *Destination,
+    const global double8 *Source,
+    ulong                 NumElements,
+    ulong                 Stride,
+    __spirv_Event         Event);
 __spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
-    int             Execution,
-    local double8  *Destination,
-    global double8 *Source,
-    int             NumElements,
-    int             Stride,
-    __spirv_Event   Event);
+    int                   Execution,
+    local double8        *Destination,
+    const global double8 *Source,
+    uint                  NumElements,
+    uint                  Stride,
+    __spirv_Event         Event);
 __spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
-    int              Execution,
-    local double16  *Destination,
-    global double16 *Source,
-    long             NumElements,
-    long             Stride,
-    __spirv_Event    Event);
+    int                    Execution,
+    local double16        *Destination,
+    const global double16 *Source,
+    ulong                  NumElements,
+    ulong                  Stride,
+    __spirv_Event          Event);
 __spirv_Event __attribute__((overloadable)) __spirv_GroupAsyncCopy(
-    int              Execution,
-    local double16  *Destination,
-    global double16 *Source,
-    int              NumElements,
-    int              Stride,
-    __spirv_Event    Event);
+    int                    Execution,
+    local double16        *Destination,
+    const global double16 *Source,
+    uint                   NumElements,
+    uint                   Stride,
+    __spirv_Event          Event);
 #endif // defined(cl_khr_fp64)
 
 void __attribute__((overloadable))
@@ -6798,17 +6799,17 @@ bool __attribute__((overloadable)) __spirv_GroupAll(int Execution, bool Predicat
 bool __attribute__((overloadable)) __spirv_GroupAny(int Execution, bool Predicate);
 #define DECL_SUB_GROUP_BROADCAST_BASE(TYPE, TYPE_ABBR)         \
     TYPE __attribute__((overloadable)) __spirv_GroupBroadcast( \
-        int Execution, TYPE Value, int3 LocalId);              \
+        int Execution, TYPE Value, uint3 LocalId);             \
     TYPE __attribute__((overloadable)) __spirv_GroupBroadcast( \
-        int Execution, TYPE Value, long3 LocalId);             \
+        int Execution, TYPE Value, ulong3 LocalId);            \
     TYPE __attribute__((overloadable)) __spirv_GroupBroadcast( \
-        int Execution, TYPE Value, int2 LocalId);              \
+        int Execution, TYPE Value, uint2 LocalId);             \
     TYPE __attribute__((overloadable)) __spirv_GroupBroadcast( \
-        int Execution, TYPE Value, long2 LocalId);             \
+        int Execution, TYPE Value, ulong2 LocalId);            \
     TYPE __attribute__((overloadable)) __spirv_GroupBroadcast( \
-        int Execution, TYPE Value, int LocalId);               \
+        int Execution, TYPE Value, uint LocalId);              \
     TYPE __attribute__((overloadable)) __spirv_GroupBroadcast( \
-        int Execution, TYPE Value, long LocalId);
+        int Execution, TYPE Value, ulong LocalId);
 
 char __attribute__((overloadable))
 __spirv_SubgroupShuffleINTEL(char Data, uint InvocationId);
@@ -7388,261 +7389,278 @@ void __attribute__((overloadable)) __spirv_GroupCommitWritePipe(
 
 #include "spirv_math.h"
 
-char2 __attribute__((overloadable))   __spirv_ocl_shuffle(char2 v, char2 m);
-char2 __attribute__((overloadable))   __spirv_ocl_shuffle(char4 v, char2 m);
-char2 __attribute__((overloadable))   __spirv_ocl_shuffle(char8 v, char2 m);
-char2 __attribute__((overloadable))   __spirv_ocl_shuffle(char16 v, char2 m);
-char4 __attribute__((overloadable))   __spirv_ocl_shuffle(char2 v, char4 m);
-char4 __attribute__((overloadable))   __spirv_ocl_shuffle(char4 v, char4 m);
-char4 __attribute__((overloadable))   __spirv_ocl_shuffle(char8 v, char4 m);
-char4 __attribute__((overloadable))   __spirv_ocl_shuffle(char16 v, char4 m);
-char8 __attribute__((overloadable))   __spirv_ocl_shuffle(char2 v, char8 m);
-char8 __attribute__((overloadable))   __spirv_ocl_shuffle(char4 v, char8 m);
-char8 __attribute__((overloadable))   __spirv_ocl_shuffle(char8 v, char8 m);
-char8 __attribute__((overloadable))   __spirv_ocl_shuffle(char16 v, char8 m);
-char16 __attribute__((overloadable))  __spirv_ocl_shuffle(char2 v, char16 m);
-char16 __attribute__((overloadable))  __spirv_ocl_shuffle(char4 v, char16 m);
-char16 __attribute__((overloadable))  __spirv_ocl_shuffle(char8 v, char16 m);
-char16 __attribute__((overloadable))  __spirv_ocl_shuffle(char16 v, char16 m);
-short2 __attribute__((overloadable))  __spirv_ocl_shuffle(short2 v, short2 m);
-short2 __attribute__((overloadable))  __spirv_ocl_shuffle(short4 v, short2 m);
-short2 __attribute__((overloadable))  __spirv_ocl_shuffle(short8 v, short2 m);
-short2 __attribute__((overloadable))  __spirv_ocl_shuffle(short16 v, short2 m);
-short4 __attribute__((overloadable))  __spirv_ocl_shuffle(short2 v, short4 m);
-short4 __attribute__((overloadable))  __spirv_ocl_shuffle(short4 v, short4 m);
-short4 __attribute__((overloadable))  __spirv_ocl_shuffle(short8 v, short4 m);
-short4 __attribute__((overloadable))  __spirv_ocl_shuffle(short16 v, short4 m);
-short8 __attribute__((overloadable))  __spirv_ocl_shuffle(short2 v, short8 m);
-short8 __attribute__((overloadable))  __spirv_ocl_shuffle(short4 v, short8 m);
-short8 __attribute__((overloadable))  __spirv_ocl_shuffle(short8 v, short8 m);
-short8 __attribute__((overloadable))  __spirv_ocl_shuffle(short16 v, short8 m);
-short16 __attribute__((overloadable)) __spirv_ocl_shuffle(short2 v, short16 m);
-short16 __attribute__((overloadable)) __spirv_ocl_shuffle(short4 v, short16 m);
-short16 __attribute__((overloadable)) __spirv_ocl_shuffle(short8 v, short16 m);
-short16 __attribute__((overloadable)) __spirv_ocl_shuffle(short16 v, short16 m);
-int2 __attribute__((overloadable))    __spirv_ocl_shuffle(int2 v, int2 m);
-int2 __attribute__((overloadable))    __spirv_ocl_shuffle(int4 v, int2 m);
-int2 __attribute__((overloadable))    __spirv_ocl_shuffle(int8 v, int2 m);
-int2 __attribute__((overloadable))    __spirv_ocl_shuffle(int16 v, int2 m);
-int4 __attribute__((overloadable))    __spirv_ocl_shuffle(int2 v, int4 m);
-int4 __attribute__((overloadable))    __spirv_ocl_shuffle(int4 v, int4 m);
-int4 __attribute__((overloadable))    __spirv_ocl_shuffle(int8 v, int4 m);
-int4 __attribute__((overloadable))    __spirv_ocl_shuffle(int16 v, int4 m);
-int8 __attribute__((overloadable))    __spirv_ocl_shuffle(int2 v, int8 m);
-int8 __attribute__((overloadable))    __spirv_ocl_shuffle(int4 v, int8 m);
-int8 __attribute__((overloadable))    __spirv_ocl_shuffle(int8 v, int8 m);
-int8 __attribute__((overloadable))    __spirv_ocl_shuffle(int16 v, int8 m);
-int16 __attribute__((overloadable))   __spirv_ocl_shuffle(int2 v, int16 m);
-int16 __attribute__((overloadable))   __spirv_ocl_shuffle(int4 v, int16 m);
-int16 __attribute__((overloadable))   __spirv_ocl_shuffle(int8 v, int16 m);
-int16 __attribute__((overloadable))   __spirv_ocl_shuffle(int16 v, int16 m);
-long2 __attribute__((overloadable))   __spirv_ocl_shuffle(long2 v, long2 m);
-long2 __attribute__((overloadable))   __spirv_ocl_shuffle(long4 v, long2 m);
-long2 __attribute__((overloadable))   __spirv_ocl_shuffle(long8 v, long2 m);
-long2 __attribute__((overloadable))   __spirv_ocl_shuffle(long16 v, long2 m);
-long4 __attribute__((overloadable))   __spirv_ocl_shuffle(long2 v, long4 m);
-long4 __attribute__((overloadable))   __spirv_ocl_shuffle(long4 v, long4 m);
-long4 __attribute__((overloadable))   __spirv_ocl_shuffle(long8 v, long4 m);
-long4 __attribute__((overloadable))   __spirv_ocl_shuffle(long16 v, long4 m);
-long8 __attribute__((overloadable))   __spirv_ocl_shuffle(long2 v, long8 m);
-long8 __attribute__((overloadable))   __spirv_ocl_shuffle(long4 v, long8 m);
-long8 __attribute__((overloadable))   __spirv_ocl_shuffle(long8 v, long8 m);
-long8 __attribute__((overloadable))   __spirv_ocl_shuffle(long16 v, long8 m);
-long16 __attribute__((overloadable))  __spirv_ocl_shuffle(long2 v, long16 m);
-long16 __attribute__((overloadable))  __spirv_ocl_shuffle(long4 v, long16 m);
-long16 __attribute__((overloadable))  __spirv_ocl_shuffle(long8 v, long16 m);
-long16 __attribute__((overloadable))  __spirv_ocl_shuffle(long16 v, long16 m);
-float2 __attribute__((overloadable))  __spirv_ocl_shuffle(float2 v, int2 m);
-float2 __attribute__((overloadable))  __spirv_ocl_shuffle(float4 v, int2 m);
-float2 __attribute__((overloadable))  __spirv_ocl_shuffle(float8 v, int2 m);
-float2 __attribute__((overloadable))  __spirv_ocl_shuffle(float16 v, int2 m);
-float4 __attribute__((overloadable))  __spirv_ocl_shuffle(float2 v, int4 m);
-float4 __attribute__((overloadable))  __spirv_ocl_shuffle(float4 v, int4 m);
-float4 __attribute__((overloadable))  __spirv_ocl_shuffle(float8 v, int4 m);
-float4 __attribute__((overloadable))  __spirv_ocl_shuffle(float16 v, int4 m);
-float8 __attribute__((overloadable))  __spirv_ocl_shuffle(float2 v, int8 m);
-float8 __attribute__((overloadable))  __spirv_ocl_shuffle(float4 v, int8 m);
-float8 __attribute__((overloadable))  __spirv_ocl_shuffle(float8 v, int8 m);
-float8 __attribute__((overloadable))  __spirv_ocl_shuffle(float16 v, int8 m);
-float16 __attribute__((overloadable)) __spirv_ocl_shuffle(float2 v, int16 m);
-float16 __attribute__((overloadable)) __spirv_ocl_shuffle(float4 v, int16 m);
-float16 __attribute__((overloadable)) __spirv_ocl_shuffle(float8 v, int16 m);
-float16 __attribute__((overloadable)) __spirv_ocl_shuffle(float16 v, int16 m);
+char2 __attribute__((overloadable))   __spirv_ocl_shuffle(char2 v, uchar2 m);
+char2 __attribute__((overloadable))   __spirv_ocl_shuffle(char4 v, uchar2 m);
+char2 __attribute__((overloadable))   __spirv_ocl_shuffle(char8 v, uchar2 m);
+char2 __attribute__((overloadable))   __spirv_ocl_shuffle(char16 v, uchar2 m);
+char4 __attribute__((overloadable))   __spirv_ocl_shuffle(char2 v, uchar4 m);
+char4 __attribute__((overloadable))   __spirv_ocl_shuffle(char4 v, uchar4 m);
+char4 __attribute__((overloadable))   __spirv_ocl_shuffle(char8 v, uchar4 m);
+char4 __attribute__((overloadable))   __spirv_ocl_shuffle(char16 v, uchar4 m);
+char8 __attribute__((overloadable))   __spirv_ocl_shuffle(char2 v, uchar8 m);
+char8 __attribute__((overloadable))   __spirv_ocl_shuffle(char4 v, uchar8 m);
+char8 __attribute__((overloadable))   __spirv_ocl_shuffle(char8 v, uchar8 m);
+char8 __attribute__((overloadable))   __spirv_ocl_shuffle(char16 v, uchar8 m);
+char16 __attribute__((overloadable))  __spirv_ocl_shuffle(char2 v, uchar16 m);
+char16 __attribute__((overloadable))  __spirv_ocl_shuffle(char4 v, uchar16 m);
+char16 __attribute__((overloadable))  __spirv_ocl_shuffle(char8 v, uchar16 m);
+char16 __attribute__((overloadable))  __spirv_ocl_shuffle(char16 v, uchar16 m);
+short2 __attribute__((overloadable))  __spirv_ocl_shuffle(short2 v, ushort2 m);
+short2 __attribute__((overloadable))  __spirv_ocl_shuffle(short4 v, ushort2 m);
+short2 __attribute__((overloadable))  __spirv_ocl_shuffle(short8 v, ushort2 m);
+short2 __attribute__((overloadable))  __spirv_ocl_shuffle(short16 v, ushort2 m);
+short4 __attribute__((overloadable))  __spirv_ocl_shuffle(short2 v, ushort4 m);
+short4 __attribute__((overloadable))  __spirv_ocl_shuffle(short4 v, ushort4 m);
+short4 __attribute__((overloadable))  __spirv_ocl_shuffle(short8 v, ushort4 m);
+short4 __attribute__((overloadable))  __spirv_ocl_shuffle(short16 v, ushort4 m);
+short8 __attribute__((overloadable))  __spirv_ocl_shuffle(short2 v, ushort8 m);
+short8 __attribute__((overloadable))  __spirv_ocl_shuffle(short4 v, ushort8 m);
+short8 __attribute__((overloadable))  __spirv_ocl_shuffle(short8 v, ushort8 m);
+short8 __attribute__((overloadable))  __spirv_ocl_shuffle(short16 v, ushort8 m);
+short16 __attribute__((overloadable)) __spirv_ocl_shuffle(short2 v, ushort16 m);
+short16 __attribute__((overloadable)) __spirv_ocl_shuffle(short4 v, ushort16 m);
+short16 __attribute__((overloadable)) __spirv_ocl_shuffle(short8 v, ushort16 m);
+short16 __attribute__((overloadable)) __spirv_ocl_shuffle(short16 v, ushort16 m);
+int2 __attribute__((overloadable))    __spirv_ocl_shuffle(int2 v, uint2 m);
+int2 __attribute__((overloadable))    __spirv_ocl_shuffle(int4 v, uint2 m);
+int2 __attribute__((overloadable))    __spirv_ocl_shuffle(int8 v, uint2 m);
+int2 __attribute__((overloadable))    __spirv_ocl_shuffle(int16 v, uint2 m);
+int4 __attribute__((overloadable))    __spirv_ocl_shuffle(int2 v, uint4 m);
+int4 __attribute__((overloadable))    __spirv_ocl_shuffle(int4 v, uint4 m);
+int4 __attribute__((overloadable))    __spirv_ocl_shuffle(int8 v, uint4 m);
+int4 __attribute__((overloadable))    __spirv_ocl_shuffle(int16 v, uint4 m);
+int8 __attribute__((overloadable))    __spirv_ocl_shuffle(int2 v, uint8 m);
+int8 __attribute__((overloadable))    __spirv_ocl_shuffle(int4 v, uint8 m);
+int8 __attribute__((overloadable))    __spirv_ocl_shuffle(int8 v, uint8 m);
+int8 __attribute__((overloadable))    __spirv_ocl_shuffle(int16 v, uint8 m);
+int16 __attribute__((overloadable))   __spirv_ocl_shuffle(int2 v, uint16 m);
+int16 __attribute__((overloadable))   __spirv_ocl_shuffle(int4 v, uint16 m);
+int16 __attribute__((overloadable))   __spirv_ocl_shuffle(int8 v, uint16 m);
+int16 __attribute__((overloadable))   __spirv_ocl_shuffle(int16 v, uint16 m);
+long2 __attribute__((overloadable))   __spirv_ocl_shuffle(long2 v, ulong2 m);
+long2 __attribute__((overloadable))   __spirv_ocl_shuffle(long4 v, ulong2 m);
+long2 __attribute__((overloadable))   __spirv_ocl_shuffle(long8 v, ulong2 m);
+long2 __attribute__((overloadable))   __spirv_ocl_shuffle(long16 v, ulong2 m);
+long4 __attribute__((overloadable))   __spirv_ocl_shuffle(long2 v, ulong4 m);
+long4 __attribute__((overloadable))   __spirv_ocl_shuffle(long4 v, ulong4 m);
+long4 __attribute__((overloadable))   __spirv_ocl_shuffle(long8 v, ulong4 m);
+long4 __attribute__((overloadable))   __spirv_ocl_shuffle(long16 v, ulong4 m);
+long8 __attribute__((overloadable))   __spirv_ocl_shuffle(long2 v, ulong8 m);
+long8 __attribute__((overloadable))   __spirv_ocl_shuffle(long4 v, ulong8 m);
+long8 __attribute__((overloadable))   __spirv_ocl_shuffle(long8 v, ulong8 m);
+long8 __attribute__((overloadable))   __spirv_ocl_shuffle(long16 v, ulong8 m);
+long16 __attribute__((overloadable))  __spirv_ocl_shuffle(long2 v, ulong16 m);
+long16 __attribute__((overloadable))  __spirv_ocl_shuffle(long4 v, ulong16 m);
+long16 __attribute__((overloadable))  __spirv_ocl_shuffle(long8 v, ulong16 m);
+long16 __attribute__((overloadable))  __spirv_ocl_shuffle(long16 v, ulong16 m);
+float2 __attribute__((overloadable))  __spirv_ocl_shuffle(float2 v, uint2 m);
+float2 __attribute__((overloadable))  __spirv_ocl_shuffle(float4 v, uint2 m);
+float2 __attribute__((overloadable))  __spirv_ocl_shuffle(float8 v, uint2 m);
+float2 __attribute__((overloadable))  __spirv_ocl_shuffle(float16 v, uint2 m);
+float4 __attribute__((overloadable))  __spirv_ocl_shuffle(float2 v, uint4 m);
+float4 __attribute__((overloadable))  __spirv_ocl_shuffle(float4 v, uint4 m);
+float4 __attribute__((overloadable))  __spirv_ocl_shuffle(float8 v, uint4 m);
+float4 __attribute__((overloadable))  __spirv_ocl_shuffle(float16 v, uint4 m);
+float8 __attribute__((overloadable))  __spirv_ocl_shuffle(float2 v, uint8 m);
+float8 __attribute__((overloadable))  __spirv_ocl_shuffle(float4 v, uint8 m);
+float8 __attribute__((overloadable))  __spirv_ocl_shuffle(float8 v, uint8 m);
+float8 __attribute__((overloadable))  __spirv_ocl_shuffle(float16 v, uint8 m);
+float16 __attribute__((overloadable)) __spirv_ocl_shuffle(float2 v, uint16 m);
+float16 __attribute__((overloadable)) __spirv_ocl_shuffle(float4 v, uint16 m);
+float16 __attribute__((overloadable)) __spirv_ocl_shuffle(float8 v, uint16 m);
+float16 __attribute__((overloadable)) __spirv_ocl_shuffle(float16 v, uint16 m);
 
-char2 __attribute__((overloadable))  __spirv_ocl_shuffle2(char2 v0, char2 v1, char2 m);
-char2 __attribute__((overloadable))  __spirv_ocl_shuffle2(char4 v0, char4 v1, char2 m);
-char2 __attribute__((overloadable))  __spirv_ocl_shuffle2(char8 v0, char8 v1, char2 m);
-char2 __attribute__((overloadable))  __spirv_ocl_shuffle2(char16 v0, char16 v1, char2 m);
-char4 __attribute__((overloadable))  __spirv_ocl_shuffle2(char2 v0, char2 v1, char4 m);
-char4 __attribute__((overloadable))  __spirv_ocl_shuffle2(char4 v0, char4 v1, char4 m);
-char4 __attribute__((overloadable))  __spirv_ocl_shuffle2(char8 v0, char8 v1, char4 m);
-char4 __attribute__((overloadable))  __spirv_ocl_shuffle2(char16 v0, char16 v1, char4 m);
-char8 __attribute__((overloadable))  __spirv_ocl_shuffle2(char2 v0, char2 v1, char8 m);
-char8 __attribute__((overloadable))  __spirv_ocl_shuffle2(char4 v0, char4 v1, char8 m);
-char8 __attribute__((overloadable))  __spirv_ocl_shuffle2(char8 v0, char8 v1, char8 m);
-char8 __attribute__((overloadable))  __spirv_ocl_shuffle2(char16 v0, char16 v1, char8 m);
-char16 __attribute__((overloadable)) __spirv_ocl_shuffle2(char2 v0, char2 v1, char16 m);
-char16 __attribute__((overloadable)) __spirv_ocl_shuffle2(char4 v0, char4 v1, char16 m);
-char16 __attribute__((overloadable)) __spirv_ocl_shuffle2(char8 v0, char8 v1, char16 m);
-char16 __attribute__((overloadable)) __spirv_ocl_shuffle2(char16 v0, char16 v1, char16 m);
-short2 __attribute__((overloadable)) __spirv_ocl_shuffle2(short2 v0, short2 v1, short2 m);
-short2 __attribute__((overloadable)) __spirv_ocl_shuffle2(short4 v0, short4 v1, short2 m);
-short2 __attribute__((overloadable)) __spirv_ocl_shuffle2(short8 v0, short8 v1, short2 m);
+char2 __attribute__((overloadable))  __spirv_ocl_shuffle2(char2 v0, char2 v1, uchar2 m);
+char2 __attribute__((overloadable))  __spirv_ocl_shuffle2(char4 v0, char4 v1, uchar2 m);
+char2 __attribute__((overloadable))  __spirv_ocl_shuffle2(char8 v0, char8 v1, uchar2 m);
+char2 __attribute__((overloadable))  __spirv_ocl_shuffle2(char16 v0, char16 v1, uchar2 m);
+char4 __attribute__((overloadable))  __spirv_ocl_shuffle2(char2 v0, char2 v1, uchar4 m);
+char4 __attribute__((overloadable))  __spirv_ocl_shuffle2(char4 v0, char4 v1, uchar4 m);
+char4 __attribute__((overloadable))  __spirv_ocl_shuffle2(char8 v0, char8 v1, uchar4 m);
+char4 __attribute__((overloadable))  __spirv_ocl_shuffle2(char16 v0, char16 v1, uchar4 m);
+char8 __attribute__((overloadable))  __spirv_ocl_shuffle2(char2 v0, char2 v1, uchar8 m);
+char8 __attribute__((overloadable))  __spirv_ocl_shuffle2(char4 v0, char4 v1, uchar8 m);
+char8 __attribute__((overloadable))  __spirv_ocl_shuffle2(char8 v0, char8 v1, uchar8 m);
+char8 __attribute__((overloadable))  __spirv_ocl_shuffle2(char16 v0, char16 v1, uchar8 m);
+char16 __attribute__((overloadable)) __spirv_ocl_shuffle2(char2 v0, char2 v1, uchar16 m);
+char16 __attribute__((overloadable)) __spirv_ocl_shuffle2(char4 v0, char4 v1, uchar16 m);
+char16 __attribute__((overloadable)) __spirv_ocl_shuffle2(char8 v0, char8 v1, uchar16 m);
+char16 __attribute__((overloadable))
+__spirv_ocl_shuffle2(char16 v0, char16 v1, uchar16 m);
 short2 __attribute__((overloadable))
-__spirv_ocl_shuffle2(short16 v0, short16 v1, short2 m);
-short4 __attribute__((overloadable)) __spirv_ocl_shuffle2(short2 v0, short2 v1, short4 m);
-short4 __attribute__((overloadable)) __spirv_ocl_shuffle2(short4 v0, short4 v1, short4 m);
-short4 __attribute__((overloadable)) __spirv_ocl_shuffle2(short8 v0, short8 v1, short4 m);
+__spirv_ocl_shuffle2(short2 v0, short2 v1, ushort2 m);
+short2 __attribute__((overloadable))
+__spirv_ocl_shuffle2(short4 v0, short4 v1, ushort2 m);
+short2 __attribute__((overloadable))
+__spirv_ocl_shuffle2(short8 v0, short8 v1, ushort2 m);
+short2 __attribute__((overloadable))
+__spirv_ocl_shuffle2(short16 v0, short16 v1, ushort2 m);
 short4 __attribute__((overloadable))
-__spirv_ocl_shuffle2(short16 v0, short16 v1, short4 m);
-short8 __attribute__((overloadable)) __spirv_ocl_shuffle2(short2 v0, short2 v1, short8 m);
-short8 __attribute__((overloadable)) __spirv_ocl_shuffle2(short4 v0, short4 v1, short8 m);
-short8 __attribute__((overloadable)) __spirv_ocl_shuffle2(short8 v0, short8 v1, short8 m);
+__spirv_ocl_shuffle2(short2 v0, short2 v1, ushort4 m);
+short4 __attribute__((overloadable))
+__spirv_ocl_shuffle2(short4 v0, short4 v1, ushort4 m);
+short4 __attribute__((overloadable))
+__spirv_ocl_shuffle2(short8 v0, short8 v1, ushort4 m);
+short4 __attribute__((overloadable))
+__spirv_ocl_shuffle2(short16 v0, short16 v1, ushort4 m);
 short8 __attribute__((overloadable))
-__spirv_ocl_shuffle2(short16 v0, short16 v1, short8 m);
+__spirv_ocl_shuffle2(short2 v0, short2 v1, ushort8 m);
+short8 __attribute__((overloadable))
+__spirv_ocl_shuffle2(short4 v0, short4 v1, ushort8 m);
+short8 __attribute__((overloadable))
+__spirv_ocl_shuffle2(short8 v0, short8 v1, ushort8 m);
+short8 __attribute__((overloadable))
+__spirv_ocl_shuffle2(short16 v0, short16 v1, ushort8 m);
 short16 __attribute__((overloadable))
-__spirv_ocl_shuffle2(short2 v0, short2 v1, short16 m);
+__spirv_ocl_shuffle2(short2 v0, short2 v1, ushort16 m);
 short16 __attribute__((overloadable))
-__spirv_ocl_shuffle2(short4 v0, short4 v1, short16 m);
+__spirv_ocl_shuffle2(short4 v0, short4 v1, ushort16 m);
 short16 __attribute__((overloadable))
-__spirv_ocl_shuffle2(short8 v0, short8 v1, short16 m);
+__spirv_ocl_shuffle2(short8 v0, short8 v1, ushort16 m);
 short16 __attribute__((overloadable))
-__spirv_ocl_shuffle2(short16 v0, short16 v1, short16 m);
-int2 __attribute__((overloadable))   __spirv_ocl_shuffle2(int2 v0, int2 v1, int2 m);
-int2 __attribute__((overloadable))   __spirv_ocl_shuffle2(int4 v0, int4 v1, int2 m);
-int2 __attribute__((overloadable))   __spirv_ocl_shuffle2(int8 v0, int8 v1, int2 m);
-int2 __attribute__((overloadable))   __spirv_ocl_shuffle2(int16 v0, int16 v1, int2 m);
-int4 __attribute__((overloadable))   __spirv_ocl_shuffle2(int2 v0, int2 v1, int4 m);
-int4 __attribute__((overloadable))   __spirv_ocl_shuffle2(int4 v0, int4 v1, int4 m);
-int4 __attribute__((overloadable))   __spirv_ocl_shuffle2(int8 v0, int8 v1, int4 m);
-int4 __attribute__((overloadable))   __spirv_ocl_shuffle2(int16 v0, int16 v1, int4 m);
-int8 __attribute__((overloadable))   __spirv_ocl_shuffle2(int2 v0, int2 v1, int8 m);
-int8 __attribute__((overloadable))   __spirv_ocl_shuffle2(int4 v0, int4 v1, int8 m);
-int8 __attribute__((overloadable))   __spirv_ocl_shuffle2(int8 v0, int8 v1, int8 m);
-int8 __attribute__((overloadable))   __spirv_ocl_shuffle2(int16 v0, int16 v1, int8 m);
-int16 __attribute__((overloadable))  __spirv_ocl_shuffle2(int2 v0, int2 v1, int16 m);
-int16 __attribute__((overloadable))  __spirv_ocl_shuffle2(int4 v0, int4 v1, int16 m);
-int16 __attribute__((overloadable))  __spirv_ocl_shuffle2(int8 v0, int8 v1, int16 m);
-int16 __attribute__((overloadable))  __spirv_ocl_shuffle2(int16 v0, int16 v1, int16 m);
-long2 __attribute__((overloadable))  __spirv_ocl_shuffle2(long2 v0, long2 v1, long2 m);
-long2 __attribute__((overloadable))  __spirv_ocl_shuffle2(long4 v0, long4 v1, long2 m);
-long2 __attribute__((overloadable))  __spirv_ocl_shuffle2(long8 v0, long8 v1, long2 m);
-long2 __attribute__((overloadable))  __spirv_ocl_shuffle2(long16 v0, long16 v1, long2 m);
-long4 __attribute__((overloadable))  __spirv_ocl_shuffle2(long2 v0, long2 v1, long4 m);
-long4 __attribute__((overloadable))  __spirv_ocl_shuffle2(long4 v0, long4 v1, long4 m);
-long4 __attribute__((overloadable))  __spirv_ocl_shuffle2(long8 v0, long8 v1, long4 m);
-long4 __attribute__((overloadable))  __spirv_ocl_shuffle2(long16 v0, long16 v1, long4 m);
-long8 __attribute__((overloadable))  __spirv_ocl_shuffle2(long2 v0, long2 v1, long8 m);
-long8 __attribute__((overloadable))  __spirv_ocl_shuffle2(long4 v0, long4 v1, long8 m);
-long8 __attribute__((overloadable))  __spirv_ocl_shuffle2(long8 v0, long8 v1, long8 m);
-long8 __attribute__((overloadable))  __spirv_ocl_shuffle2(long16 v0, long16 v1, long8 m);
-long16 __attribute__((overloadable)) __spirv_ocl_shuffle2(long2 v0, long2 v1, long16 m);
-long16 __attribute__((overloadable)) __spirv_ocl_shuffle2(long4 v0, long4 v1, long16 m);
-long16 __attribute__((overloadable)) __spirv_ocl_shuffle2(long8 v0, long8 v1, long16 m);
-long16 __attribute__((overloadable)) __spirv_ocl_shuffle2(long16 v0, long16 v1, long16 m);
-float2 __attribute__((overloadable)) __spirv_ocl_shuffle2(float2 v0, float2 v1, int2 m);
-float2 __attribute__((overloadable)) __spirv_ocl_shuffle2(float4 v0, float4 v1, int2 m);
-float2 __attribute__((overloadable)) __spirv_ocl_shuffle2(float8 v0, float8 v1, int2 m);
-float2 __attribute__((overloadable)) __spirv_ocl_shuffle2(float16 v0, float16 v1, int2 m);
-float4 __attribute__((overloadable)) __spirv_ocl_shuffle2(float2 v0, float2 v1, int4 m);
-float4 __attribute__((overloadable)) __spirv_ocl_shuffle2(float4 v0, float4 v1, int4 m);
-float4 __attribute__((overloadable)) __spirv_ocl_shuffle2(float8 v0, float8 v1, int4 m);
-float4 __attribute__((overloadable)) __spirv_ocl_shuffle2(float16 v0, float16 v1, int4 m);
-float8 __attribute__((overloadable)) __spirv_ocl_shuffle2(float2 v0, float2 v1, int8 m);
-float8 __attribute__((overloadable)) __spirv_ocl_shuffle2(float4 v0, float4 v1, int8 m);
-float8 __attribute__((overloadable)) __spirv_ocl_shuffle2(float8 v0, float8 v1, int8 m);
-float8 __attribute__((overloadable)) __spirv_ocl_shuffle2(float16 v0, float16 v1, int8 m);
-float16 __attribute__((overloadable)) __spirv_ocl_shuffle2(float2 v0, float2 v1, int16 m);
-float16 __attribute__((overloadable)) __spirv_ocl_shuffle2(float4 v0, float4 v1, int16 m);
-float16 __attribute__((overloadable)) __spirv_ocl_shuffle2(float8 v0, float8 v1, int16 m);
+__spirv_ocl_shuffle2(short16 v0, short16 v1, ushort16 m);
+int2 __attribute__((overloadable))   __spirv_ocl_shuffle2(int2 v0, int2 v1, uint2 m);
+int2 __attribute__((overloadable))   __spirv_ocl_shuffle2(int4 v0, int4 v1, uint2 m);
+int2 __attribute__((overloadable))   __spirv_ocl_shuffle2(int8 v0, int8 v1, uint2 m);
+int2 __attribute__((overloadable))   __spirv_ocl_shuffle2(int16 v0, int16 v1, uint2 m);
+int4 __attribute__((overloadable))   __spirv_ocl_shuffle2(int2 v0, int2 v1, uint4 m);
+int4 __attribute__((overloadable))   __spirv_ocl_shuffle2(int4 v0, int4 v1, uint4 m);
+int4 __attribute__((overloadable))   __spirv_ocl_shuffle2(int8 v0, int8 v1, uint4 m);
+int4 __attribute__((overloadable))   __spirv_ocl_shuffle2(int16 v0, int16 v1, uint4 m);
+int8 __attribute__((overloadable))   __spirv_ocl_shuffle2(int2 v0, int2 v1, uint8 m);
+int8 __attribute__((overloadable))   __spirv_ocl_shuffle2(int4 v0, int4 v1, uint8 m);
+int8 __attribute__((overloadable))   __spirv_ocl_shuffle2(int8 v0, int8 v1, uint8 m);
+int8 __attribute__((overloadable))   __spirv_ocl_shuffle2(int16 v0, int16 v1, uint8 m);
+int16 __attribute__((overloadable))  __spirv_ocl_shuffle2(int2 v0, int2 v1, uint16 m);
+int16 __attribute__((overloadable))  __spirv_ocl_shuffle2(int4 v0, int4 v1, uint16 m);
+int16 __attribute__((overloadable))  __spirv_ocl_shuffle2(int8 v0, int8 v1, uint16 m);
+int16 __attribute__((overloadable))  __spirv_ocl_shuffle2(int16 v0, int16 v1, uint16 m);
+long2 __attribute__((overloadable))  __spirv_ocl_shuffle2(long2 v0, long2 v1, ulong2 m);
+long2 __attribute__((overloadable))  __spirv_ocl_shuffle2(long4 v0, long4 v1, ulong2 m);
+long2 __attribute__((overloadable))  __spirv_ocl_shuffle2(long8 v0, long8 v1, ulong2 m);
+long2 __attribute__((overloadable))  __spirv_ocl_shuffle2(long16 v0, long16 v1, ulong2 m);
+long4 __attribute__((overloadable))  __spirv_ocl_shuffle2(long2 v0, long2 v1, ulong4 m);
+long4 __attribute__((overloadable))  __spirv_ocl_shuffle2(long4 v0, long4 v1, ulong4 m);
+long4 __attribute__((overloadable))  __spirv_ocl_shuffle2(long8 v0, long8 v1, ulong4 m);
+long4 __attribute__((overloadable))  __spirv_ocl_shuffle2(long16 v0, long16 v1, ulong4 m);
+long8 __attribute__((overloadable))  __spirv_ocl_shuffle2(long2 v0, long2 v1, ulong8 m);
+long8 __attribute__((overloadable))  __spirv_ocl_shuffle2(long4 v0, long4 v1, ulong8 m);
+long8 __attribute__((overloadable))  __spirv_ocl_shuffle2(long8 v0, long8 v1, ulong8 m);
+long8 __attribute__((overloadable))  __spirv_ocl_shuffle2(long16 v0, long16 v1, ulong8 m);
+long16 __attribute__((overloadable)) __spirv_ocl_shuffle2(long2 v0, long2 v1, ulong16 m);
+long16 __attribute__((overloadable)) __spirv_ocl_shuffle2(long4 v0, long4 v1, ulong16 m);
+long16 __attribute__((overloadable)) __spirv_ocl_shuffle2(long8 v0, long8 v1, ulong16 m);
+long16 __attribute__((overloadable))
+__spirv_ocl_shuffle2(long16 v0, long16 v1, ulong16 m);
+float2 __attribute__((overloadable)) __spirv_ocl_shuffle2(float2 v0, float2 v1, uint2 m);
+float2 __attribute__((overloadable)) __spirv_ocl_shuffle2(float4 v0, float4 v1, uint2 m);
+float2 __attribute__((overloadable)) __spirv_ocl_shuffle2(float8 v0, float8 v1, uint2 m);
+float2 __attribute__((overloadable))
+__spirv_ocl_shuffle2(float16 v0, float16 v1, uint2 m);
+float4 __attribute__((overloadable)) __spirv_ocl_shuffle2(float2 v0, float2 v1, uint4 m);
+float4 __attribute__((overloadable)) __spirv_ocl_shuffle2(float4 v0, float4 v1, uint4 m);
+float4 __attribute__((overloadable)) __spirv_ocl_shuffle2(float8 v0, float8 v1, uint4 m);
+float4 __attribute__((overloadable))
+__spirv_ocl_shuffle2(float16 v0, float16 v1, uint4 m);
+float8 __attribute__((overloadable)) __spirv_ocl_shuffle2(float2 v0, float2 v1, uint8 m);
+float8 __attribute__((overloadable)) __spirv_ocl_shuffle2(float4 v0, float4 v1, uint8 m);
+float8 __attribute__((overloadable)) __spirv_ocl_shuffle2(float8 v0, float8 v1, uint8 m);
+float8 __attribute__((overloadable))
+__spirv_ocl_shuffle2(float16 v0, float16 v1, uint8 m);
 float16 __attribute__((overloadable))
-__spirv_ocl_shuffle2(float16 v0, float16 v1, int16 m);
+__spirv_ocl_shuffle2(float2 v0, float2 v1, uint16 m);
+float16 __attribute__((overloadable))
+__spirv_ocl_shuffle2(float4 v0, float4 v1, uint16 m);
+float16 __attribute__((overloadable))
+__spirv_ocl_shuffle2(float8 v0, float8 v1, uint16 m);
+float16 __attribute__((overloadable))
+__spirv_ocl_shuffle2(float16 v0, float16 v1, uint16 m);
 
-half2 __attribute__((overloadable))  __spirv_ocl_shuffle(half2 v, short2 m);
-half2 __attribute__((overloadable))  __spirv_ocl_shuffle(half4 v, short2 m);
-half2 __attribute__((overloadable))  __spirv_ocl_shuffle(half8 v, short2 m);
-half2 __attribute__((overloadable))  __spirv_ocl_shuffle(half16 v, short2 m);
-half4 __attribute__((overloadable))  __spirv_ocl_shuffle(half2 v, short4 m);
-half4 __attribute__((overloadable))  __spirv_ocl_shuffle(half4 v, short4 m);
-half4 __attribute__((overloadable))  __spirv_ocl_shuffle(half8 v, short4 m);
-half4 __attribute__((overloadable))  __spirv_ocl_shuffle(half16 v, short4 m);
-half8 __attribute__((overloadable))  __spirv_ocl_shuffle(half2 v, short8 m);
-half8 __attribute__((overloadable))  __spirv_ocl_shuffle(half4 v, short8 m);
-half8 __attribute__((overloadable))  __spirv_ocl_shuffle(half8 v, short8 m);
-half8 __attribute__((overloadable))  __spirv_ocl_shuffle(half16 v, short8 m);
-half16 __attribute__((overloadable)) __spirv_ocl_shuffle(half2 v, short16 m);
-half16 __attribute__((overloadable)) __spirv_ocl_shuffle(half4 v, short16 m);
-half16 __attribute__((overloadable)) __spirv_ocl_shuffle(half8 v, short16 m);
-half16 __attribute__((overloadable)) __spirv_ocl_shuffle(half16 v, short16 m);
+half2 __attribute__((overloadable))  __spirv_ocl_shuffle(half2 v, ushort2 m);
+half2 __attribute__((overloadable))  __spirv_ocl_shuffle(half4 v, ushort2 m);
+half2 __attribute__((overloadable))  __spirv_ocl_shuffle(half8 v, ushort2 m);
+half2 __attribute__((overloadable))  __spirv_ocl_shuffle(half16 v, ushort2 m);
+half4 __attribute__((overloadable))  __spirv_ocl_shuffle(half2 v, ushort4 m);
+half4 __attribute__((overloadable))  __spirv_ocl_shuffle(half4 v, ushort4 m);
+half4 __attribute__((overloadable))  __spirv_ocl_shuffle(half8 v, ushort4 m);
+half4 __attribute__((overloadable))  __spirv_ocl_shuffle(half16 v, ushort4 m);
+half8 __attribute__((overloadable))  __spirv_ocl_shuffle(half2 v, ushort8 m);
+half8 __attribute__((overloadable))  __spirv_ocl_shuffle(half4 v, ushort8 m);
+half8 __attribute__((overloadable))  __spirv_ocl_shuffle(half8 v, ushort8 m);
+half8 __attribute__((overloadable))  __spirv_ocl_shuffle(half16 v, ushort8 m);
+half16 __attribute__((overloadable)) __spirv_ocl_shuffle(half2 v, ushort16 m);
+half16 __attribute__((overloadable)) __spirv_ocl_shuffle(half4 v, ushort16 m);
+half16 __attribute__((overloadable)) __spirv_ocl_shuffle(half8 v, ushort16 m);
+half16 __attribute__((overloadable)) __spirv_ocl_shuffle(half16 v, ushort16 m);
 
-half2 __attribute__((overloadable))  __spirv_ocl_shuffle2(half2 v0, half2 v1, short2 m);
-half2 __attribute__((overloadable))  __spirv_ocl_shuffle2(half4 v0, half4 v1, short2 m);
-half2 __attribute__((overloadable))  __spirv_ocl_shuffle2(half8 v0, half8 v1, short2 m);
-half2 __attribute__((overloadable))  __spirv_ocl_shuffle2(half16 v0, half16 v1, short2 m);
-half4 __attribute__((overloadable))  __spirv_ocl_shuffle2(half2 v0, half2 v1, short4 m);
-half4 __attribute__((overloadable))  __spirv_ocl_shuffle2(half4 v0, half4 v1, short4 m);
-half4 __attribute__((overloadable))  __spirv_ocl_shuffle2(half8 v0, half8 v1, short4 m);
-half4 __attribute__((overloadable))  __spirv_ocl_shuffle2(half16 v0, half16 v1, short4 m);
-half8 __attribute__((overloadable))  __spirv_ocl_shuffle2(half2 v0, half2 v1, short8 m);
-half8 __attribute__((overloadable))  __spirv_ocl_shuffle2(half4 v0, half4 v1, short8 m);
-half8 __attribute__((overloadable))  __spirv_ocl_shuffle2(half8 v0, half8 v1, short8 m);
-half8 __attribute__((overloadable))  __spirv_ocl_shuffle2(half16 v0, half16 v1, short8 m);
-half16 __attribute__((overloadable)) __spirv_ocl_shuffle2(half2 v0, half2 v1, short16 m);
-half16 __attribute__((overloadable)) __spirv_ocl_shuffle2(half4 v0, half4 v1, short16 m);
-half16 __attribute__((overloadable)) __spirv_ocl_shuffle2(half8 v0, half8 v1, short16 m);
+half2 __attribute__((overloadable)) __spirv_ocl_shuffle2(half2 v0, half2 v1, ushort2 m);
+half2 __attribute__((overloadable)) __spirv_ocl_shuffle2(half4 v0, half4 v1, ushort2 m);
+half2 __attribute__((overloadable)) __spirv_ocl_shuffle2(half8 v0, half8 v1, ushort2 m);
+half2 __attribute__((overloadable)) __spirv_ocl_shuffle2(half16 v0, half16 v1, ushort2 m);
+half4 __attribute__((overloadable)) __spirv_ocl_shuffle2(half2 v0, half2 v1, ushort4 m);
+half4 __attribute__((overloadable)) __spirv_ocl_shuffle2(half4 v0, half4 v1, ushort4 m);
+half4 __attribute__((overloadable)) __spirv_ocl_shuffle2(half8 v0, half8 v1, ushort4 m);
+half4 __attribute__((overloadable)) __spirv_ocl_shuffle2(half16 v0, half16 v1, ushort4 m);
+half8 __attribute__((overloadable)) __spirv_ocl_shuffle2(half2 v0, half2 v1, ushort8 m);
+half8 __attribute__((overloadable)) __spirv_ocl_shuffle2(half4 v0, half4 v1, ushort8 m);
+half8 __attribute__((overloadable)) __spirv_ocl_shuffle2(half8 v0, half8 v1, ushort8 m);
+half8 __attribute__((overloadable)) __spirv_ocl_shuffle2(half16 v0, half16 v1, ushort8 m);
+half16 __attribute__((overloadable)) __spirv_ocl_shuffle2(half2 v0, half2 v1, ushort16 m);
+half16 __attribute__((overloadable)) __spirv_ocl_shuffle2(half4 v0, half4 v1, ushort16 m);
+half16 __attribute__((overloadable)) __spirv_ocl_shuffle2(half8 v0, half8 v1, ushort16 m);
 half16 __attribute__((overloadable))
-__spirv_ocl_shuffle2(half16 v0, half16 v1, short16 m);
+__spirv_ocl_shuffle2(half16 v0, half16 v1, ushort16 m);
 
 #if defined(cl_khr_fp64)
-double2 __attribute__((overloadable))  __spirv_ocl_shuffle(double2 v, long2 m);
-double2 __attribute__((overloadable))  __spirv_ocl_shuffle(double4 v, long2 m);
-double2 __attribute__((overloadable))  __spirv_ocl_shuffle(double8 v, long2 m);
-double2 __attribute__((overloadable))  __spirv_ocl_shuffle(double16 v, long2 m);
-double4 __attribute__((overloadable))  __spirv_ocl_shuffle(double2 v, long4 m);
-double4 __attribute__((overloadable))  __spirv_ocl_shuffle(double4 v, long4 m);
-double4 __attribute__((overloadable))  __spirv_ocl_shuffle(double8 v, long4 m);
-double4 __attribute__((overloadable))  __spirv_ocl_shuffle(double16 v, long4 m);
-double8 __attribute__((overloadable))  __spirv_ocl_shuffle(double2 v, long8 m);
-double8 __attribute__((overloadable))  __spirv_ocl_shuffle(double4 v, long8 m);
-double8 __attribute__((overloadable))  __spirv_ocl_shuffle(double8 v, long8 m);
-double8 __attribute__((overloadable))  __spirv_ocl_shuffle(double16 v, long8 m);
-double16 __attribute__((overloadable)) __spirv_ocl_shuffle(double2 v, long16 m);
-double16 __attribute__((overloadable)) __spirv_ocl_shuffle(double4 v, long16 m);
-double16 __attribute__((overloadable)) __spirv_ocl_shuffle(double8 v, long16 m);
-double16 __attribute__((overloadable)) __spirv_ocl_shuffle(double16 v, long16 m);
+double2 __attribute__((overloadable))  __spirv_ocl_shuffle(double2 v, ulong2 m);
+double2 __attribute__((overloadable))  __spirv_ocl_shuffle(double4 v, ulong2 m);
+double2 __attribute__((overloadable))  __spirv_ocl_shuffle(double8 v, ulong2 m);
+double2 __attribute__((overloadable))  __spirv_ocl_shuffle(double16 v, ulong2 m);
+double4 __attribute__((overloadable))  __spirv_ocl_shuffle(double2 v, ulong4 m);
+double4 __attribute__((overloadable))  __spirv_ocl_shuffle(double4 v, ulong4 m);
+double4 __attribute__((overloadable))  __spirv_ocl_shuffle(double8 v, ulong4 m);
+double4 __attribute__((overloadable))  __spirv_ocl_shuffle(double16 v, ulong4 m);
+double8 __attribute__((overloadable))  __spirv_ocl_shuffle(double2 v, ulong8 m);
+double8 __attribute__((overloadable))  __spirv_ocl_shuffle(double4 v, ulong8 m);
+double8 __attribute__((overloadable))  __spirv_ocl_shuffle(double8 v, ulong8 m);
+double8 __attribute__((overloadable))  __spirv_ocl_shuffle(double16 v, ulong8 m);
+double16 __attribute__((overloadable)) __spirv_ocl_shuffle(double2 v, ulong16 m);
+double16 __attribute__((overloadable)) __spirv_ocl_shuffle(double4 v, ulong16 m);
+double16 __attribute__((overloadable)) __spirv_ocl_shuffle(double8 v, ulong16 m);
+double16 __attribute__((overloadable)) __spirv_ocl_shuffle(double16 v, ulong16 m);
 
 double2 __attribute__((overloadable))
-__spirv_ocl_shuffle2(double2 v0, double2 v1, long2 m);
+__spirv_ocl_shuffle2(double2 v0, double2 v1, ulong2 m);
 double2 __attribute__((overloadable))
-__spirv_ocl_shuffle2(double4 v0, double4 v1, long2 m);
+__spirv_ocl_shuffle2(double4 v0, double4 v1, ulong2 m);
 double2 __attribute__((overloadable))
-__spirv_ocl_shuffle2(double8 v0, double8 v1, long2 m);
+__spirv_ocl_shuffle2(double8 v0, double8 v1, ulong2 m);
 double2 __attribute__((overloadable))
-__spirv_ocl_shuffle2(double16 v0, double16 v1, long2 m);
+__spirv_ocl_shuffle2(double16 v0, double16 v1, ulong2 m);
 double4 __attribute__((overloadable))
-__spirv_ocl_shuffle2(double2 v0, double2 v1, long4 m);
+__spirv_ocl_shuffle2(double2 v0, double2 v1, ulong4 m);
 double4 __attribute__((overloadable))
-__spirv_ocl_shuffle2(double4 v0, double4 v1, long4 m);
+__spirv_ocl_shuffle2(double4 v0, double4 v1, ulong4 m);
 double4 __attribute__((overloadable))
-__spirv_ocl_shuffle2(double8 v0, double8 v1, long4 m);
+__spirv_ocl_shuffle2(double8 v0, double8 v1, ulong4 m);
 double4 __attribute__((overloadable))
-__spirv_ocl_shuffle2(double16 v0, double16 v1, long4 m);
+__spirv_ocl_shuffle2(double16 v0, double16 v1, ulong4 m);
 double8 __attribute__((overloadable))
-__spirv_ocl_shuffle2(double2 v0, double2 v1, long8 m);
+__spirv_ocl_shuffle2(double2 v0, double2 v1, ulong8 m);
 double8 __attribute__((overloadable))
-__spirv_ocl_shuffle2(double4 v0, double4 v1, long8 m);
+__spirv_ocl_shuffle2(double4 v0, double4 v1, ulong8 m);
 double8 __attribute__((overloadable))
-__spirv_ocl_shuffle2(double8 v0, double8 v1, long8 m);
+__spirv_ocl_shuffle2(double8 v0, double8 v1, ulong8 m);
 double8 __attribute__((overloadable))
-__spirv_ocl_shuffle2(double16 v0, double16 v1, long8 m);
+__spirv_ocl_shuffle2(double16 v0, double16 v1, ulong8 m);
 double16 __attribute__((overloadable))
-__spirv_ocl_shuffle2(double2 v0, double2 v1, long16 m);
+__spirv_ocl_shuffle2(double2 v0, double2 v1, ulong16 m);
 double16 __attribute__((overloadable))
-__spirv_ocl_shuffle2(double4 v0, double4 v1, long16 m);
+__spirv_ocl_shuffle2(double4 v0, double4 v1, ulong16 m);
 double16 __attribute__((overloadable))
-__spirv_ocl_shuffle2(double8 v0, double8 v1, long16 m);
+__spirv_ocl_shuffle2(double8 v0, double8 v1, ulong16 m);
 double16 __attribute__((overloadable))
-__spirv_ocl_shuffle2(double16 v0, double16 v1, long16 m);
+__spirv_ocl_shuffle2(double16 v0, double16 v1, ulong16 m);
 #endif // defined(cl_khr_fp64)
 
 char __attribute__((overloadable))     __spirv_ocl_s_min(char x, char y);

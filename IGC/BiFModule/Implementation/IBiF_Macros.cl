@@ -330,6 +330,58 @@ SPDX-License-Identifier: MIT
 #define GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARGS( __func, __rettype, __argtype, __abbrargtype )           \
     GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARGS_EXPLICIT( __func, __func, __rettype, __argtype, __abbrargtype )
 
+// Same as above, but for builtins with return type mangling in the name,
+#define GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_1ARGS_RMANGLED(__func, __rettype, __argtype,                   \
+                                                           __abbrargtype, __rmangling)                     \
+    __rettype##2 __attribute__((overloadable))                                                             \
+        __spirv_ocl_##__func##_R##_rmangling##2(__argtype##2 x) {                                          \
+        return (__rettype##2)(__spirv_ocl_##__func##_R##__rmangling(x.s0),                                 \
+                              __spirv_ocl_##__func##_R##__rmangling(x.s1));                                \
+    }                                                                                                      \
+    __rettype##3 __attribute__((overloadable))                                                             \
+        __spirv_ocl_##__func##_R##_rmangling##3(__argtype##3 x) {                                          \
+        return (__rettype##3)(__spirv_ocl_##__func##_R##__rmangling(x.s0),                                 \
+                              __spirv_ocl_##__func##_R##__rmangling(x.s1),                                 \
+                              __spirv_ocl_##__func##_R##__rmangling(x.s2));                                \
+    }                                                                                                      \
+    __rettype##4 __attribute__((overloadable))                                                             \
+        __spirv_ocl_##__func##_R##_rmangling##4(__argtype##4 x) {                                          \
+        return (__rettype##4)(__spirv_ocl_##__func##_R##__rmangling(x.s0),                                 \
+                              __spirv_ocl_##__func##_R##__rmangling(x.s1),                                 \
+                              __spirv_ocl_##__func##_R##__rmangling(x.s2),                                 \
+                              __spirv_ocl_##__func##_R##__rmangling(x.s3));                                \
+    }                                                                                                      \
+    __rettype##8 __attribute__((overloadable))                                                             \
+        __spirv_ocl_##__func##_R##_rmangling##8(__argtype##8 x) {                                          \
+        return (__rettype##8)(__spirv_ocl_##__func##_R##__rmangling(x.s0),                                 \
+                              __spirv_ocl_##__func##_R##__rmangling(x.s1),                                 \
+                              __spirv_ocl_##__func##_R##__rmangling(x.s2),                                 \
+                              __spirv_ocl_##__func##_R##__rmangling(x.s3),                                 \
+                              __spirv_ocl_##__func##_R##__rmangling(x.s4),                                 \
+                              __spirv_ocl_##__func##_R##__rmangling(x.s5),                                 \
+                              __spirv_ocl_##__func##_R##__rmangling(x.s6),                                 \
+                              __spirv_ocl_##__func##_R##__rmangling(x.s7));                                \
+    }                                                                                                      \
+    __rettype##16 __attribute__((overloadable))                                                            \
+        __spirv_ocl_##__func##_R##_rmangling##16(__argtype##16 x) {                                        \
+        return (__rettype##16)(__spirv_ocl_##__func##_R##__rmangling(x.s0),                                \
+                               __spirv_ocl_##__func##_R##__rmangling(x.s1),                                \
+                               __spirv_ocl_##__func##_R##__rmangling(x.s2),                                \
+                               __spirv_ocl_##__func##_R##__rmangling(x.s3),                                \
+                               __spirv_ocl_##__func##_R##__rmangling(x.s4),                                \
+                               __spirv_ocl_##__func##_R##__rmangling(x.s5),                                \
+                               __spirv_ocl_##__func##_R##__rmangling(x.s6),                                \
+                               __spirv_ocl_##__func##_R##__rmangling(x.s7),                                \
+                               __spirv_ocl_##__func##_R##__rmangling(x.s8),                                \
+                               __spirv_ocl_##__func##_R##__rmangling(x.s9),                                \
+                               __spirv_ocl_##__func##_R##__rmangling(x.sa),                                \
+                               __spirv_ocl_##__func##_R##__rmangling(x.sb),                                \
+                               __spirv_ocl_##__func##_R##__rmangling(x.sc),                                \
+                               __spirv_ocl_##__func##_R##__rmangling(x.sd),                                \
+                               __spirv_ocl_##__func##_R##__rmangling(x.se),                                \
+                               __spirv_ocl_##__func##_R##__rmangling(x.sf));                               \
+    }
+
 // Use this macro if the scalar function is big.
 // TODO: get rid of this #else case when the legalizer can
 // fix up illegal types that GVN generates.

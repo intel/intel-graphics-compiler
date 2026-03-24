@@ -12,7 +12,7 @@ SPDX-License-Identifier: MIT
 INLINE float __attribute__((overloadable)) __spirv_ocl_fdim( float x, float y )
 {
     float r = x - y;
-    float n = __spirv_ocl_nan(0);
+    float n = __spirv_ocl_nan((uint)0);
     int i = __intel_relaxed_isnan(x) | __intel_relaxed_isnan(y);
     r = x > y ? r : 0.0f;
     r = i ? n : r;
@@ -26,7 +26,7 @@ GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_2ARGS( fdim, float, float, f32 )
 INLINE double __attribute__((overloadable)) __spirv_ocl_fdim( double x, double y )
 {
     double r = x - y;
-    double n = __spirv_ocl_nan(0);
+    double n = __spirv_ocl_nan((ulong)0);
     int i = __intel_relaxed_isnan(x) | __intel_relaxed_isnan(y);
     r = x > y ? r : 0.0f;
     r = i ? n : r;
@@ -42,7 +42,7 @@ GENERATE_SPIRV_OCL_VECTOR_FUNCTIONS_2ARGS( fdim, double, double, f64 )
 INLINE half __attribute__((overloadable)) __spirv_ocl_fdim( half x, half y )
 {
     half r = x - y;
-    half n = __spirv_ocl_nan(0);
+    half n = __spirv_ocl_nan((ushort)0);
     int i = __intel_relaxed_isnan(x) | __intel_relaxed_isnan(y);
     r = x > y ? r : 0.0f;
     r = i ? n : r;

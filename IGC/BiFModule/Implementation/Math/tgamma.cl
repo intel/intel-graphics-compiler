@@ -50,7 +50,7 @@ float __attribute__((overloadable)) __spirv_ocl_tgamma( float x )
 #else // USE_IMF_TGAMMA_IMPL
     float ret;
     if ( (x < 0.0f) & (x == __spirv_ocl_floor(x))) {
-        ret = __spirv_ocl_nan(0)
+        ret = __spirv_ocl_nan((uint)0)
     } else {
         float y = 1.0f - x;
         float z = ( x < 0.5f ) ? y : x;

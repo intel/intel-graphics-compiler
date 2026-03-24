@@ -28,7 +28,7 @@ float __attribute__((overloadable)) __spirv_ocl_hypot( float x, float y )
     else if( __intel_relaxed_isnan( x ) |
              __intel_relaxed_isnan( y ) )
     {
-        result = __spirv_ocl_nan(0);
+        result = __spirv_ocl_nan((uint)0);
     }
     else
     {
@@ -83,7 +83,7 @@ double __attribute__((overloadable)) __spirv_ocl_hypot( double x, double y )
     }
     else if( __spirv_IsNan( minc ) )
     {
-        result = __spirv_ocl_nan(0);
+        result = __spirv_ocl_nan((ulong)0);
     }
     else
     {

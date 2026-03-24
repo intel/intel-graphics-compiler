@@ -1,3 +1,6 @@
+; TODO: Re-enable when Khronos SPIRV-LLVM Translator is updated in manifests for opensource build
+; REQUIRES: spirv-llvm-translator-updated
+
 ; REQUIRES: regkeys, spirv-as, dg2-supported
 ; RUN: spirv-as --target-env spv1.0 -o %t.spv %s
 ; RUN: ocloc compile -spirv_input -file %t.spv -device dg2 -options " -igc_opts 'ShaderDumpTranslationOnly=1'" 2>&1 | FileCheck %s
@@ -5,11 +8,11 @@
 
 ; CHECK-LABEL: spir_kernel void @test
 
-; CHECK: call spir_func void @{{[0-9A-z_]+}}vstorea_halfnDv2_fiPU3AS1Dh(
-; CHECK: call spir_func void @{{[0-9A-z_]+}}vstorea_halfnDv3_fiPU3AS1Dh(
-; CHECK: call spir_func void @{{[0-9A-z_]+}}vstorea_halfnDv4_fiPU3AS1Dh(
-; CHECK: call spir_func void @{{[0-9A-z_]+}}vstorea_halfnDv8_fiPU3AS1Dh(
-; CHECK: call spir_func void @{{[0-9A-z_]+}}vstorea_halfnDv16_fiPU3AS1Dh(
+; CHECK: call spir_func void @{{[0-9A-z_]+}}vstorea_halfnDv2_fjPU3AS1Dh(
+; CHECK: call spir_func void @{{[0-9A-z_]+}}vstorea_halfnDv3_fjPU3AS1Dh(
+; CHECK: call spir_func void @{{[0-9A-z_]+}}vstorea_halfnDv4_fjPU3AS1Dh(
+; CHECK: call spir_func void @{{[0-9A-z_]+}}vstorea_halfnDv8_fjPU3AS1Dh(
+; CHECK: call spir_func void @{{[0-9A-z_]+}}vstorea_halfnDv16_fjPU3AS1Dh(
 
 ; CHECK-LLVM15PLUS: call spir_func void @_Z13vstorea_half2Dv2_fjPU3AS1Dh(
 ; CHECK-LLVM15PLUS: call spir_func void @_Z13vstorea_half3Dv3_fjPU3AS1Dh(
@@ -19,11 +22,11 @@
 
 ; CHECK-LABEL: spir_kernel void @testRTE
 
-; CHECK: call spir_func void @{{[0-9A-z_]+}}vstorea_halfn_rDv2_fiPU3AS1Dhi(
-; CHECK: call spir_func void @{{[0-9A-z_]+}}vstorea_halfn_rDv3_fiPU3AS1Dhi(
-; CHECK: call spir_func void @{{[0-9A-z_]+}}vstorea_halfn_rDv4_fiPU3AS1Dhi(
-; CHECK: call spir_func void @{{[0-9A-z_]+}}vstorea_halfn_rDv8_fiPU3AS1Dhi(
-; CHECK: call spir_func void @{{[0-9A-z_]+}}vstorea_halfn_rDv16_fiPU3AS1Dhi(
+; CHECK: call spir_func void @{{[0-9A-z_]+}}vstorea_halfn_rDv2_fjPU3AS1Dhi(
+; CHECK: call spir_func void @{{[0-9A-z_]+}}vstorea_halfn_rDv3_fjPU3AS1Dhi(
+; CHECK: call spir_func void @{{[0-9A-z_]+}}vstorea_halfn_rDv4_fjPU3AS1Dhi(
+; CHECK: call spir_func void @{{[0-9A-z_]+}}vstorea_halfn_rDv8_fjPU3AS1Dhi(
+; CHECK: call spir_func void @{{[0-9A-z_]+}}vstorea_halfn_rDv16_fjPU3AS1Dhi(
 
 ; CHECK-LLVM15PLUS: call spir_func void @_Z17vstorea_half2_rteDv2_fjPU3AS1Dh(
 ; CHECK-LLVM15PLUS: call spir_func void @_Z17vstorea_half3_rteDv3_fjPU3AS1Dh(
@@ -33,11 +36,11 @@
 
 ; CHECK-LABEL: spir_kernel void @testRTZ
 
-; CHECK: call spir_func void @{{[0-9A-z_]+}}vstorea_halfn_rDv2_fiPU3AS1Dhi(
-; CHECK: call spir_func void @{{[0-9A-z_]+}}vstorea_halfn_rDv3_fiPU3AS1Dhi(
-; CHECK: call spir_func void @{{[0-9A-z_]+}}vstorea_halfn_rDv4_fiPU3AS1Dhi(
-; CHECK: call spir_func void @{{[0-9A-z_]+}}vstorea_halfn_rDv8_fiPU3AS1Dhi(
-; CHECK: call spir_func void @{{[0-9A-z_]+}}vstorea_halfn_rDv16_fiPU3AS1Dhi(
+; CHECK: call spir_func void @{{[0-9A-z_]+}}vstorea_halfn_rDv2_fjPU3AS1Dhi(
+; CHECK: call spir_func void @{{[0-9A-z_]+}}vstorea_halfn_rDv3_fjPU3AS1Dhi(
+; CHECK: call spir_func void @{{[0-9A-z_]+}}vstorea_halfn_rDv4_fjPU3AS1Dhi(
+; CHECK: call spir_func void @{{[0-9A-z_]+}}vstorea_halfn_rDv8_fjPU3AS1Dhi(
+; CHECK: call spir_func void @{{[0-9A-z_]+}}vstorea_halfn_rDv16_fjPU3AS1Dhi(
 
 ; CHECK-LLVM15PLUS: call spir_func void @_Z17vstorea_half2_rtzDv2_fjPU3AS1Dh(
 ; CHECK-LLVM15PLUS: call spir_func void @_Z17vstorea_half3_rtzDv3_fjPU3AS1Dh(
@@ -47,11 +50,11 @@
 
 ; CHECK-LABEL: spir_kernel void @testRTP
 
-; CHECK: call spir_func void @{{[0-9A-z_]+}}vstorea_halfn_rDv2_fiPU3AS1Dhi(
-; CHECK: call spir_func void @{{[0-9A-z_]+}}vstorea_halfn_rDv3_fiPU3AS1Dhi(
-; CHECK: call spir_func void @{{[0-9A-z_]+}}vstorea_halfn_rDv4_fiPU3AS1Dhi(
-; CHECK: call spir_func void @{{[0-9A-z_]+}}vstorea_halfn_rDv8_fiPU3AS1Dhi(
-; CHECK: call spir_func void @{{[0-9A-z_]+}}vstorea_halfn_rDv16_fiPU3AS1Dhi(
+; CHECK: call spir_func void @{{[0-9A-z_]+}}vstorea_halfn_rDv2_fjPU3AS1Dhi(
+; CHECK: call spir_func void @{{[0-9A-z_]+}}vstorea_halfn_rDv3_fjPU3AS1Dhi(
+; CHECK: call spir_func void @{{[0-9A-z_]+}}vstorea_halfn_rDv4_fjPU3AS1Dhi(
+; CHECK: call spir_func void @{{[0-9A-z_]+}}vstorea_halfn_rDv8_fjPU3AS1Dhi(
+; CHECK: call spir_func void @{{[0-9A-z_]+}}vstorea_halfn_rDv16_fjPU3AS1Dhi(
 
 ; CHECK-LLVM15PLUS: call spir_func void @_Z17vstorea_half2_rtpDv2_fjPU3AS1Dh(
 ; CHECK-LLVM15PLUS: call spir_func void @_Z17vstorea_half3_rtpDv3_fjPU3AS1Dh(
@@ -61,11 +64,11 @@
 
 ; CHECK-LABEL: spir_kernel void @testRTN
 
-; CHECK: call spir_func void @{{[0-9A-z_]+}}vstorea_halfn_rDv2_fiPU3AS1Dhi(
-; CHECK: call spir_func void @{{[0-9A-z_]+}}vstorea_halfn_rDv3_fiPU3AS1Dhi(
-; CHECK: call spir_func void @{{[0-9A-z_]+}}vstorea_halfn_rDv4_fiPU3AS1Dhi(
-; CHECK: call spir_func void @{{[0-9A-z_]+}}vstorea_halfn_rDv8_fiPU3AS1Dhi(
-; CHECK: call spir_func void @{{[0-9A-z_]+}}vstorea_halfn_rDv16_fiPU3AS1Dhi(
+; CHECK: call spir_func void @{{[0-9A-z_]+}}vstorea_halfn_rDv2_fjPU3AS1Dhi(
+; CHECK: call spir_func void @{{[0-9A-z_]+}}vstorea_halfn_rDv3_fjPU3AS1Dhi(
+; CHECK: call spir_func void @{{[0-9A-z_]+}}vstorea_halfn_rDv4_fjPU3AS1Dhi(
+; CHECK: call spir_func void @{{[0-9A-z_]+}}vstorea_halfn_rDv8_fjPU3AS1Dhi(
+; CHECK: call spir_func void @{{[0-9A-z_]+}}vstorea_halfn_rDv16_fjPU3AS1Dhi(
 
 ; CHECK-LLVM15PLUS: call spir_func void @_Z17vstorea_half2_rtnDv2_fjPU3AS1Dh(
 ; CHECK-LLVM15PLUS: call spir_func void @_Z17vstorea_half3_rtnDv3_fjPU3AS1Dh(

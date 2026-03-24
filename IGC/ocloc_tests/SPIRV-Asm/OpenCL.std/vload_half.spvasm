@@ -1,3 +1,6 @@
+; TODO: Re-enable when Khronos SPIRV-LLVM Translator is updated in manifests for opensource build
+; REQUIRES: spirv-llvm-translator-updated
+
 ; REQUIRES: regkeys, spirv-as, dg2-supported
 ; RUN: spirv-as --target-env spv1.0 -o %t.spv %s
 ; RUN: ocloc compile -spirv_input -file %t.spv -device dg2 -options " -igc_opts 'ShaderDumpTranslationOnly=1'" 2>&1 | FileCheck %s
@@ -5,22 +8,22 @@
 
 ; CHECK-LABEL: spir_kernel void @test
 
-; CHECK: call spir_func float @{{[0-9A-z_]+}}vload_half_RfloatiPU3AS1Dh(
-; CHECK: call spir_func float @{{[0-9A-z_]+}}vload_half_RfloatiPU3AS1Dh(
-; CHECK: call spir_func float @{{[0-9A-z_]+}}vload_half_RfloatiPU3AS1Dh(
-; CHECK: call spir_func float @{{[0-9A-z_]+}}vload_half_RfloatiPU3AS1Dh(
-; CHECK: call spir_func float @{{[0-9A-z_]+}}vload_half_RfloatiPU3AS3Dh(
-; CHECK: call spir_func float @{{[0-9A-z_]+}}vload_half_RfloatiPU3AS3Dh(
-; CHECK: call spir_func float @{{[0-9A-z_]+}}vload_half_RfloatiPU3AS3Dh(
-; CHECK: call spir_func float @{{[0-9A-z_]+}}vload_half_RfloatiPU3AS3Dh(
-; CHECK: call spir_func float @{{[0-9A-z_]+}}vload_half_RfloatiPU3AS2Dh(
-; CHECK: call spir_func float @{{[0-9A-z_]+}}vload_half_RfloatiPU3AS2Dh(
-; CHECK: call spir_func float @{{[0-9A-z_]+}}vload_half_RfloatiPU3AS2Dh(
-; CHECK: call spir_func float @{{[0-9A-z_]+}}vload_half_RfloatiPU3AS2Dh(
-; CHECK: call spir_func float @{{[0-9A-z_]+}}vload_half_RfloatiPDh(
-; CHECK: call spir_func float @{{[0-9A-z_]+}}vload_half_RfloatiPDh(
-; CHECK: call spir_func float @{{[0-9A-z_]+}}vload_half_RfloatiPDh(
-; CHECK: call spir_func float @{{[0-9A-z_]+}}vload_half_RfloatiPDh(
+; CHECK: call spir_func float @{{[0-9A-z_]+}}vload_half_RfloatjPU3AS1KDh(
+; CHECK: call spir_func float @{{[0-9A-z_]+}}vload_half_RfloatjPU3AS1KDh(
+; CHECK: call spir_func float @{{[0-9A-z_]+}}vload_half_RfloatjPU3AS1KDh(
+; CHECK: call spir_func float @{{[0-9A-z_]+}}vload_half_RfloatjPU3AS1KDh(
+; CHECK: call spir_func float @{{[0-9A-z_]+}}vload_half_RfloatjPU3AS3KDh(
+; CHECK: call spir_func float @{{[0-9A-z_]+}}vload_half_RfloatjPU3AS3KDh(
+; CHECK: call spir_func float @{{[0-9A-z_]+}}vload_half_RfloatjPU3AS3KDh(
+; CHECK: call spir_func float @{{[0-9A-z_]+}}vload_half_RfloatjPU3AS3KDh(
+; CHECK: call spir_func float @{{[0-9A-z_]+}}vload_half_RfloatjPU3AS2KDh(
+; CHECK: call spir_func float @{{[0-9A-z_]+}}vload_half_RfloatjPU3AS2KDh(
+; CHECK: call spir_func float @{{[0-9A-z_]+}}vload_half_RfloatjPU3AS2KDh(
+; CHECK: call spir_func float @{{[0-9A-z_]+}}vload_half_RfloatjPU3AS2KDh(
+; CHECK: call spir_func float @{{[0-9A-z_]+}}vload_half_RfloatjPKDh(
+; CHECK: call spir_func float @{{[0-9A-z_]+}}vload_half_RfloatjPKDh(
+; CHECK: call spir_func float @{{[0-9A-z_]+}}vload_half_RfloatjPKDh(
+; CHECK: call spir_func float @{{[0-9A-z_]+}}vload_half_RfloatjPKDh(
 
 ; CHECK-LLVM15PLUS: call spir_func float @_Z10vload_halfjPU3AS1KDh
 ; CHECK-LLVM15PLUS: call spir_func float @_Z10vload_halfjPU3AS1KDh

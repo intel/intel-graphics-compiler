@@ -14,46 +14,46 @@ SPDX-License-Identifier: MIT
 // "Reads n components from the address computed as (p + (offset * n)) and creates a vector result value from the n components."
 //*****************************************************************************/
 
-#define VLOADN_DEF(addressSpace, scalarType, numElements, offsetType, mangle)        \
-    INLINE                            scalarType##numElements                        \
-        __attribute__((overloadable)) __spirv_ocl_vloadn_R##scalarType##numElements( \
-            offsetType offset, addressSpace scalarType *p, int n)                    \
-    {                                                                                \
-        const addressSpace scalarType *pOffset = p + offset * numElements;           \
-        scalarType##numElements        ret;                                          \
-        __builtin_IB_memcpy_##addressSpace##_to_private(                             \
-            (private uchar *)&ret,                                                   \
-            (addressSpace uchar *)pOffset,                                           \
-            sizeof(scalarType) * numElements,                                        \
-            sizeof(scalarType));                                                     \
-        return ret;                                                                  \
+#define VLOADN_DEF(addressSpace, scalarType, numElements, offsetType, rmangling)    \
+    INLINE                            scalarType##numElements                       \
+        __attribute__((overloadable)) __spirv_ocl_vloadn_R##rmangling##numElements( \
+            offsetType offset, const addressSpace scalarType *p, int n)             \
+    {                                                                               \
+        const addressSpace scalarType *pOffset = p + offset * numElements;          \
+        scalarType##numElements        ret;                                         \
+        __builtin_IB_memcpy_##addressSpace##_to_private(                            \
+            (private uchar *)&ret,                                                  \
+            (addressSpace uchar *)pOffset,                                          \
+            sizeof(scalarType) * numElements,                                       \
+            sizeof(scalarType));                                                    \
+        return ret;                                                                 \
     }
 
-#define VLOADN_AS(addressSpace, scalarType, mang)              \
-    VLOADN_DEF(addressSpace, scalarType, 2, long, i64_##mang)  \
-    VLOADN_DEF(addressSpace, scalarType, 2, int, i32_##mang)   \
-    VLOADN_DEF(addressSpace, scalarType, 3, long, i64_##mang)  \
-    VLOADN_DEF(addressSpace, scalarType, 3, int, i32_##mang)   \
-    VLOADN_DEF(addressSpace, scalarType, 4, long, i64_##mang)  \
-    VLOADN_DEF(addressSpace, scalarType, 4, int, i32_##mang)   \
-    VLOADN_DEF(addressSpace, scalarType, 8, long, i64_##mang)  \
-    VLOADN_DEF(addressSpace, scalarType, 8, int, i32_##mang)   \
-    VLOADN_DEF(addressSpace, scalarType, 16, long, i64_##mang) \
-    VLOADN_DEF(addressSpace, scalarType, 16, int, i32_##mang)
+#define VLOADN_AS(addressSpace, scalarType, rmangling)         \
+    VLOADN_DEF(addressSpace, scalarType, 2, ulong, rmangling)  \
+    VLOADN_DEF(addressSpace, scalarType, 2, uint, rmangling)   \
+    VLOADN_DEF(addressSpace, scalarType, 3, ulong, rmangling)  \
+    VLOADN_DEF(addressSpace, scalarType, 3, uint, rmangling)   \
+    VLOADN_DEF(addressSpace, scalarType, 4, ulong, rmangling)  \
+    VLOADN_DEF(addressSpace, scalarType, 4, uint, rmangling)   \
+    VLOADN_DEF(addressSpace, scalarType, 8, ulong, rmangling)  \
+    VLOADN_DEF(addressSpace, scalarType, 8, uint, rmangling)   \
+    VLOADN_DEF(addressSpace, scalarType, 16, ulong, rmangling) \
+    VLOADN_DEF(addressSpace, scalarType, 16, uint, rmangling)
 
 #if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
-#define VLOADN_TYPE(TYPE, TYPEMANG)         \
-    VLOADN_AS(global, TYPE, p1##TYPEMANG)   \
-    VLOADN_AS(constant, TYPE, p2##TYPEMANG) \
-    VLOADN_AS(local, TYPE, p3##TYPEMANG)    \
-    VLOADN_AS(private, TYPE, p0##TYPEMANG)  \
-    VLOADN_AS(generic, TYPE, p4##TYPEMANG)
+#define VLOADN_TYPE(TYPE, RMANGLING)     \
+    VLOADN_AS(global, TYPE, RMANGLING)   \
+    VLOADN_AS(constant, TYPE, RMANGLING) \
+    VLOADN_AS(local, TYPE, RMANGLING)    \
+    VLOADN_AS(private, TYPE, RMANGLING)  \
+    VLOADN_AS(generic, TYPE, RMANGLING)
 #else
-#define VLOADN_TYPE(TYPE, TYPEMANG)         \
-    VLOADN_AS(global, TYPE, p1##TYPEMANG)   \
-    VLOADN_AS(constant, TYPE, p2##TYPEMANG) \
-    VLOADN_AS(local, TYPE, p3##TYPEMANG)    \
-    VLOADN_AS(private, TYPE, p0##TYPEMANG)
+#define VLOADN_TYPE(TYPE, RMANGLING)     \
+    VLOADN_AS(global, TYPE, RMANGLING)   \
+    VLOADN_AS(constant, TYPE, RMANGLING) \
+    VLOADN_AS(local, TYPE, RMANGLING)    \
+    VLOADN_AS(private, TYPE, RMANGLING)
 #endif // __OPENCL_C_VERSION__ >= CL_VERSION_2_0
 
 //*****************************************************************************/
@@ -75,17 +75,17 @@ SPDX-License-Identifier: MIT
             sizeof(scalarType));                                                     \
     }
 
-#define VSTOREN_AS(addressSpace, scalarType, typemang, mang)                    \
-    VSTOREN_DEF(addressSpace, scalarType, 2, long, v2##typemang##_i64_##mang)   \
-    VSTOREN_DEF(addressSpace, scalarType, 2, int, v2##typemang##_i32_##mang)    \
-    VSTOREN_DEF(addressSpace, scalarType, 3, long, v3##typemang##_i64_##mang)   \
-    VSTOREN_DEF(addressSpace, scalarType, 3, int, v3##typemang##_i32_##mang)    \
-    VSTOREN_DEF(addressSpace, scalarType, 4, long, v4##typemang##_i64_##mang)   \
-    VSTOREN_DEF(addressSpace, scalarType, 4, int, v4##typemang##_i32_##mang)    \
-    VSTOREN_DEF(addressSpace, scalarType, 8, long, v8##typemang##_i64_##mang)   \
-    VSTOREN_DEF(addressSpace, scalarType, 8, int, v8##typemang##_i32_##mang)    \
-    VSTOREN_DEF(addressSpace, scalarType, 16, long, v16##typemang##_i64_##mang) \
-    VSTOREN_DEF(addressSpace, scalarType, 16, int, v16##typemang##_i32_##mang)
+#define VSTOREN_AS(addressSpace, scalarType, typemang, mang)                     \
+    VSTOREN_DEF(addressSpace, scalarType, 2, ulong, v2##typemang##_i64_##mang)   \
+    VSTOREN_DEF(addressSpace, scalarType, 2, uint, v2##typemang##_i32_##mang)    \
+    VSTOREN_DEF(addressSpace, scalarType, 3, ulong, v3##typemang##_i64_##mang)   \
+    VSTOREN_DEF(addressSpace, scalarType, 3, uint, v3##typemang##_i32_##mang)    \
+    VSTOREN_DEF(addressSpace, scalarType, 4, ulong, v4##typemang##_i64_##mang)   \
+    VSTOREN_DEF(addressSpace, scalarType, 4, uint, v4##typemang##_i32_##mang)    \
+    VSTOREN_DEF(addressSpace, scalarType, 8, ulong, v8##typemang##_i64_##mang)   \
+    VSTOREN_DEF(addressSpace, scalarType, 8, uint, v8##typemang##_i32_##mang)    \
+    VSTOREN_DEF(addressSpace, scalarType, 16, ulong, v16##typemang##_i64_##mang) \
+    VSTOREN_DEF(addressSpace, scalarType, 16, uint, v16##typemang##_i32_##mang)
 
 #if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
 #define VSTOREN_TYPE(TYPE, TYPEMANG)                  \

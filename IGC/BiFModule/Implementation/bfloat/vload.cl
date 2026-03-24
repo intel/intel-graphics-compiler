@@ -8,4 +8,4 @@ SPDX-License-Identifier: MIT
 
 #include "include/vload_vstore_impl.h"
 
-VLOADN_TYPE(bfloat, )
+VLOADN_TYPE(bfloat, DF16b)
