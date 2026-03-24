@@ -31,6 +31,10 @@ set(IGC_OPTION__LLVM_PREFERRED_VERSION ${DEFAULT_IGC_LLVM_VERSION} CACHE STRING 
 set(IGC_LLVM_WORKSPACE ${CMAKE_CURRENT_BINARY_DIR}/llvm-deps-${IGC_OPTION__LLVM_PREFERRED_VERSION})
 set(IGC_LLVM_WORKSPACE_SRC ${IGC_LLVM_WORKSPACE}/src)
 
+if(IGC_OPTION__LLVM_PREFERRED_VERSION VERSION_GREATER_EQUAL 22)
+  include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../llvm-project/third-party/siphash/include)
+endif()
+
 # Get useful macros for llvm hooks.
 include(llvm_utils)
 
