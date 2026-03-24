@@ -56,12 +56,15 @@ int InsertS0Movs::returnS0QWSubReg(int64_t hash) {
 
 bool InsertS0Movs::eraseEntryByRegOperand(int64_t hash) {
   auto entry = getEntryByRegOperand(hash);
-
-  if (entry != regS0Vec.cend()) {
+  bool hasErase = false;
+  // The dst size may cover multiple s0 sub registers, so remove until all
+  // covered ones are elimiated
+  while (entry != regS0Vec.cend()) {
+    hasErase = true;
     regS0Vec.erase(entry);
-    return true;
+    entry = getEntryByRegOperand(hash);
   }
-  return false;
+  return hasErase;
 }
 
 bool InsertS0Movs::eraseEntryByS0Operand(int s0QW) {
