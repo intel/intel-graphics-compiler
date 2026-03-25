@@ -7,7 +7,7 @@
 ;============================ end_copyright_notice =============================
 
 ; REQUIRES: regkeys, llvm-14-plus
-; RUN: igc_opt --opaque-pointers -platformpvc --regkey LoopSinkMinSave=1 --regkey LoopSinkAvoidSplittingDPAS=0 --regkey LoopSinkEnable2dBlockReads=1 --regkey LoopSinkEnableLoadsRescheduling=1 --regkey ForceLoopSink=1 --regkey CodeLoopSinkingMinSize=10 --regkey CodeSinkingLoadSchedulingInstr=1 --regkey LoopSinkCoarserLoadsRescheduling=0 --regkey LoopSinkEnableVectorShuffle=1 --basic-aa --igc-code-loop-sinking -S %s 2>&1 | FileCheck %s
+; RUN: igc_opt --igc-restore-genisa-intrinsics --opaque-pointers -platformpvc --regkey LoopSinkMinSave=1 --regkey LoopSinkAvoidSplittingDPAS=0 --regkey LoopSinkEnable2dBlockReads=1 --regkey LoopSinkEnableLoadsRescheduling=1 --regkey ForceLoopSink=1 --regkey CodeLoopSinkingMinSize=10 --regkey CodeSinkingLoadSchedulingInstr=1 --regkey LoopSinkCoarserLoadsRescheduling=0 --regkey LoopSinkEnableVectorShuffle=1 --basic-aa --igc-code-loop-sinking -S %s 2>&1 | FileCheck %s
 
 define spir_kernel void @foo(ptr addrspace(1) %_arg_A, ptr addrspace(1) %_arg_B, i16 %localIdY) {
 ; Check that the order of the first loads and SetField calls is not changed after rollback
@@ -23,7 +23,8 @@ define spir_kernel void @foo(ptr addrspace(1) %_arg_A, ptr addrspace(1) %_arg_B,
 
 ; Ensure that the load + vector shuffle pattern is scheduled exactly before the DPAS that uses its result
 
-; CHECK:              [[SCHED_BLOCK2D_READADDRPAYLOAD105:%.*]] = call <8 x i16> @llvm.genx.GenISA.LSC2DBlockReadAddrPayload.v8i16.p0(ptr [[BLOCK2D_ADDRPAYLOAD:%.*]], i32 0, i32 0, i32 16, i32 16, i32 8, i32 1, i1 false, i1 false, i32 0)
+; CHECK:              [[SCHED_BLOCK2D_READADDRPAYLOAD107:%.*]] = call <8 x i16> @llvm.genx.GenISA.LSC2DBlockReadAddrPayload.v8i16.p0(ptr [[BLOCK2D_ADDRPAYLOAD:%.*]], i32 0, i32 0, i32 16, i32 16, i32 8, i32 1, i1 false, i1 false, i32 0)
+; CHECK:              [[SCHED_BLOCK2D_READADDRPAYLOAD105:%.*]] = call <8 x i16> @llvm.genx.GenISA.LSC2DBlockReadAddrPayload.v8i16.p0(ptr [[BLOCK2D_ADDRPAYLOAD]], i32 0, i32 0, i32 16, i32 16, i32 8, i32 1, i1 false, i1 false, i32 0)
 ; CHECK-NEXT:         [[SCHED_EE1:%.*]] = extractelement <8 x i16> [[SCHED_BLOCK2D_READADDRPAYLOAD105]], i32 0
 ; CHECK-NEXT:         [[SCHED_NEWVEC:%.*]] = insertelement <8 x i16> undef, i16 [[SCHED_EE1]], i32 7
 ; CHECK-NEXT:         [[SCHED_EE2:%.*]] = extractelement <8 x i16> [[SCHED_BLOCK2D_READADDRPAYLOAD105]], i32 1
@@ -43,7 +44,7 @@ define spir_kernel void @foo(ptr addrspace(1) %_arg_A, ptr addrspace(1) %_arg_B,
 ; CHECK-NEXT:         [[DPAS_143:%.*]] = call <8 x float> @llvm.genx.GenISA.sub.group.dpas.v8f32.v8f32.v8i16.v8i32(<8 x float> zeroinitializer, <8 x i16> [[SCHED_NEWVEC7]], <8 x i32> [[SCHED_BLOCK2D_READADDRPAYLOAD111]], i32 11, i32 11, i32 8, i32 8, i1 false)
 ; CHECK-NEXT:         [[DPAS_1_1:%.*]] = call <8 x float> @llvm.genx.GenISA.sub.group.dpas.v8f32.v8f32.v8i16.v8i32(<8 x float> zeroinitializer, <8 x i16> [[SCHED_NEWVEC7]], <8 x i32> [[SCHED_BLOCK2D_READADDRPAYLOAD113]], i32 11, i32 11, i32 8, i32 8, i1 false)
 ; CHECK-NEXT:         [[DPAS_2_1:%.*]] = call <8 x float> @llvm.genx.GenISA.sub.group.dpas.v8f32.v8f32.v8i16.v8i32(<8 x float> zeroinitializer, <8 x i16> [[SCHED_NEWVEC7]], <8 x i32> [[SCHED_BLOCK2D_READADDRPAYLOAD115]], i32 11, i32 11, i32 8, i32 8, i1 false)
-; CHECK-NEXT:         [[DPAS_3_1:%.*]] = call <8 x float> @llvm.genx.GenISA.sub.group.dpas.v8f32.v8f32.v8i16.v8i32(<8 x float> zeroinitializer, <8 x i16> [[SCHED_NEWVEC7]], <8 x i32> [[SCHED_BLOCK2D_READADDRPAYLOAD117]], i32 11, i32 11, i32 8, i32 8, i1 false)
+; CHECK:              [[DPAS_3_1:%.*]] = call <8 x float> @llvm.genx.GenISA.sub.group.dpas.v8f32.v8f32.v8i16.v8i32(<8 x float> zeroinitializer, <8 x i16> [[SCHED_NEWVEC7]], <8 x i32> [[SCHED_BLOCK2D_READADDRPAYLOAD117]], i32 11, i32 11, i32 8, i32 8, i1 false)
 
 __igcbuiltin_u64_udiv_dp.exit:
   %mul56.i = shl i32 0, 8

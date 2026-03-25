@@ -17,7 +17,7 @@
 @ThreadGroupSize_Y = constant i32 1
 @ThreadGroupSize_Z = constant i32 1
 
-%__2D_DIM_Resource = type opaque
+%__2D_DIM_Resource.0 = type opaque
 
 define spir_kernel void @test1(<64 x i32> %src, float addrspace(1)* %dst) {
 ; CHECK-LL-LABEL: @test1(
@@ -33,28 +33,28 @@ define spir_kernel void @test1(<64 x i32> %src, float addrspace(1)* %dst) {
 ; CHECK-LL-NEXT:    [[TMP2:%.*]] = call i32 @llvm.genx.GenISA.firstbitLo(i32 [[TMP1]])
 ; CHECK-LL-NEXT:    [[FIRSTACTIVESAMPLER6:%.*]] = call <4 x float> addrspace(2752518)* @llvm.genx.GenISA.WaveShuffleIndex.p2752518v4f32(<4 x float> addrspace(2752518)* [[NONUNIFORMSAMPLER]], i32 [[TMP2]], i32 0)
 ; CHECK-LL-NEXT:    [[TMP3:%.*]] = icmp eq <4 x float> addrspace(2752518)* [[NONUNIFORMSAMPLER]], [[FIRSTACTIVESAMPLER6]]
-; CHECK-LL-NEXT:    [[TMP4:%.*]] = tail call fast <4 x float> @llvm.genx.GenISA.sampleLptr.v4f32.f32.p2621443__2D_DIM_Resource.p2621443__2D_DIM_Resource.p2752518v4f32(float 0.000000e+00, float 0.000000e+00, float 0.000000e+00, float 0.000000e+00, float 0.000000e+00, %__2D_DIM_Resource.0 addrspace(2621450)* undef, %__2D_DIM_Resource.0 addrspace(2621450)* [[NONUNIFORMTEXTURE]], <4 x float> addrspace(2752518)* [[FIRSTACTIVESAMPLER6]], i32 0, i32 0, i32 0)
+; CHECK-LL-NEXT:    [[TMP4:%.*]] = tail call fast <4 x float> @llvm.genx.GenISA.sampleLptr.v4f32.f32.p2621450__2D_DIM_Resource.0.p2621450__2D_DIM_Resource.0.p2752518v4f32(float 0.000000e+00, float 0.000000e+00, float 0.000000e+00, float 0.000000e+00, float 0.000000e+00, %__2D_DIM_Resource.0 addrspace(2621450)* undef, %__2D_DIM_Resource.0 addrspace(2621450)* [[NONUNIFORMTEXTURE]], <4 x float> addrspace(2752518)* [[FIRSTACTIVESAMPLER6]], i32 0, i32 0, i32 0)
 ; CHECK-LL-NEXT:    br i1 [[TMP3]], label [[UNROLL_MERGE:%.*]], label [[PARTIAL_CHECK3:%.*]]
 ; CHECK-LL:       partial_check3:
 ; CHECK-LL-NEXT:    [[TMP5:%.*]] = call i32 @llvm.genx.GenISA.WaveBallot(i1 true, i32 0)
 ; CHECK-LL-NEXT:    [[TMP6:%.*]] = call i32 @llvm.genx.GenISA.firstbitLo(i32 [[TMP5]])
 ; CHECK-LL-NEXT:    [[FIRSTACTIVESAMPLER4:%.*]] = call <4 x float> addrspace(2752518)* @llvm.genx.GenISA.WaveShuffleIndex.p2752518v4f32(<4 x float> addrspace(2752518)* [[NONUNIFORMSAMPLER]], i32 [[TMP6]], i32 0)
 ; CHECK-LL-NEXT:    [[TMP7:%.*]] = icmp eq <4 x float> addrspace(2752518)* [[NONUNIFORMSAMPLER]], [[FIRSTACTIVESAMPLER4]]
-; CHECK-LL-NEXT:    [[TMP8:%.*]] = tail call fast <4 x float> @llvm.genx.GenISA.sampleLptr.v4f32.f32.p2621443__2D_DIM_Resource.p2621443__2D_DIM_Resource.p2752518v4f32(float 0.000000e+00, float 0.000000e+00, float 0.000000e+00, float 0.000000e+00, float 0.000000e+00, %__2D_DIM_Resource.0 addrspace(2621450)* undef, %__2D_DIM_Resource.0 addrspace(2621450)* [[NONUNIFORMTEXTURE]], <4 x float> addrspace(2752518)* [[FIRSTACTIVESAMPLER4]], i32 0, i32 0, i32 0)
+; CHECK-LL-NEXT:    [[TMP8:%.*]] = tail call fast <4 x float> @llvm.genx.GenISA.sampleLptr.v4f32.f32.p2621450__2D_DIM_Resource.0.p2621450__2D_DIM_Resource.0.p2752518v4f32(float 0.000000e+00, float 0.000000e+00, float 0.000000e+00, float 0.000000e+00, float 0.000000e+00, %__2D_DIM_Resource.0 addrspace(2621450)* undef, %__2D_DIM_Resource.0 addrspace(2621450)* [[NONUNIFORMTEXTURE]], <4 x float> addrspace(2752518)* [[FIRSTACTIVESAMPLER4]], i32 0, i32 0, i32 0)
 ; CHECK-LL-NEXT:    br i1 [[TMP7]], label [[UNROLL_MERGE:%.*]], label [[PARTIAL_CHECK1:%.*]]
 ; CHECK-LL:       partial_check1:
 ; CHECK-LL-NEXT:    [[TMP9:%.*]] = call i32 @llvm.genx.GenISA.WaveBallot(i1 true, i32 0)
 ; CHECK-LL-NEXT:    [[TMP10:%.*]] = call i32 @llvm.genx.GenISA.firstbitLo(i32 [[TMP9]])
 ; CHECK-LL-NEXT:    [[FIRSTACTIVESAMPLER2:%.*]] = call <4 x float> addrspace(2752518)* @llvm.genx.GenISA.WaveShuffleIndex.p2752518v4f32(<4 x float> addrspace(2752518)* [[NONUNIFORMSAMPLER]], i32 [[TMP10]], i32 0)
 ; CHECK-LL-NEXT:    [[TMP11:%.*]] = icmp eq <4 x float> addrspace(2752518)* [[NONUNIFORMSAMPLER]], [[FIRSTACTIVESAMPLER2]]
-; CHECK-LL-NEXT:    [[TMP12:%.*]] = tail call fast <4 x float> @llvm.genx.GenISA.sampleLptr.v4f32.f32.p2621443__2D_DIM_Resource.p2621443__2D_DIM_Resource.p2752518v4f32(float 0.000000e+00, float 0.000000e+00, float 0.000000e+00, float 0.000000e+00, float 0.000000e+00, %__2D_DIM_Resource.0 addrspace(2621450)* undef, %__2D_DIM_Resource.0 addrspace(2621450)* [[NONUNIFORMTEXTURE]], <4 x float> addrspace(2752518)* [[FIRSTACTIVESAMPLER2]], i32 0, i32 0, i32 0)
+; CHECK-LL-NEXT:    [[TMP12:%.*]] = tail call fast <4 x float> @llvm.genx.GenISA.sampleLptr.v4f32.f32.p2621450__2D_DIM_Resource.0.p2621450__2D_DIM_Resource.0.p2752518v4f32(float 0.000000e+00, float 0.000000e+00, float 0.000000e+00, float 0.000000e+00, float 0.000000e+00, %__2D_DIM_Resource.0 addrspace(2621450)* undef, %__2D_DIM_Resource.0 addrspace(2621450)* [[NONUNIFORMTEXTURE]], <4 x float> addrspace(2752518)* [[FIRSTACTIVESAMPLER2]], i32 0, i32 0, i32 0)
 ; CHECK-LL-NEXT:    br i1 [[TMP11]], label [[UNROLL_MERGE:%.*]], label [[PARTIAL_CHECK:%.*]]
 ; CHECK-LL:       partial_check:
 ; CHECK-LL-NEXT:    [[TMP13:%.*]] = call i32 @llvm.genx.GenISA.WaveBallot(i1 true, i32 0)
 ; CHECK-LL-NEXT:    [[TMP14:%.*]] = call i32 @llvm.genx.GenISA.firstbitLo(i32 [[TMP13]])
 ; CHECK-LL-NEXT:    [[FIRSTACTIVESAMPLER:%.*]] = call <4 x float> addrspace(2752518)* @llvm.genx.GenISA.WaveShuffleIndex.p2752518v4f32(<4 x float> addrspace(2752518)* [[NONUNIFORMSAMPLER]], i32 [[TMP14]], i32 0)
 ; CHECK-LL-NEXT:    [[TMP15:%.*]] = icmp eq <4 x float> addrspace(2752518)* [[NONUNIFORMSAMPLER]], [[FIRSTACTIVESAMPLER]]
-; CHECK-LL-NEXT:    [[TMP16:%.*]] = tail call fast <4 x float> @llvm.genx.GenISA.sampleLptr.v4f32.f32.p2621443__2D_DIM_Resource.p2621443__2D_DIM_Resource.p2752518v4f32(float 0.000000e+00, float 0.000000e+00, float 0.000000e+00, float 0.000000e+00, float 0.000000e+00, %__2D_DIM_Resource.0 addrspace(2621450)* undef, %__2D_DIM_Resource.0 addrspace(2621450)* [[NONUNIFORMTEXTURE]], <4 x float> addrspace(2752518)* [[FIRSTACTIVESAMPLER]], i32 0, i32 0, i32 0)
+; CHECK-LL-NEXT:    [[TMP16:%.*]] = tail call fast <4 x float> @llvm.genx.GenISA.sampleLptr.v4f32.f32.p2621450__2D_DIM_Resource.0.p2621450__2D_DIM_Resource.0.p2752518v4f32(float 0.000000e+00, float 0.000000e+00, float 0.000000e+00, float 0.000000e+00, float 0.000000e+00, %__2D_DIM_Resource.0 addrspace(2621450)* undef, %__2D_DIM_Resource.0 addrspace(2621450)* [[NONUNIFORMTEXTURE]], <4 x float> addrspace(2752518)* [[FIRSTACTIVESAMPLER]], i32 0, i32 0, i32 0)
 ; CHECK-LL-NEXT:    br i1 [[TMP15]], label [[UNROLL_MERGE]], label [[LATCH:%.*]]
 ; CHECK-LL:       latch:
 ; CHECK-LL-NEXT:    br label [[PARTIAL_CHECK5]]
@@ -149,16 +149,16 @@ define spir_kernel void @test1(<64 x i32> %src, float addrspace(1)* %dst) {
 
   %svn1 = extractelement <64 x i32> %src, i32 40
   %texture = add i32 %svn1, 1280
-  %NonUniformTexture = inttoptr i32 %texture to %__2D_DIM_Resource addrspace(2621450)*
+  %NonUniformTexture = inttoptr i32 %texture to %__2D_DIM_Resource.0 addrspace(2621450)*
 
-  %call = tail call fast <4 x float> @llvm.genx.GenISA.sampleLptr.v4f32.f32.p2621443__2D_DIM_Resource.p2621443__2D_DIM_Resource.p2752518v4f32(float 0.000000e+00, float 0.000000e+00, float 0.000000e+00, float 0.000000e+00, float 0.000000e+00, %__2D_DIM_Resource addrspace(2621450)* undef, %__2D_DIM_Resource addrspace(2621450)* %NonUniformTexture, <4 x float> addrspace(2752518)* %NonUniformSampler, i32 0, i32 0, i32 0)
+  %call = tail call fast <4 x float> @llvm.genx.GenISA.sampleLptr.v4f32.f32.p2621450__2D_DIM_Resource.0.p2621450__2D_DIM_Resource.0.p2752518v4f32(float 0.000000e+00, float 0.000000e+00, float 0.000000e+00, float 0.000000e+00, float 0.000000e+00, %__2D_DIM_Resource.0 addrspace(2621450)* undef, %__2D_DIM_Resource.0 addrspace(2621450)* %NonUniformTexture, <4 x float> addrspace(2752518)* %NonUniformSampler, i32 0, i32 0, i32 0)
 
   %out = extractelement <4 x float> %call, i32 0
   store float %out, float addrspace(1)* %dst, align 4
   ret void
 }
 
-declare <4 x float> @llvm.genx.GenISA.sampleLptr.v4f32.f32.p2621443__2D_DIM_Resource.p2621443__2D_DIM_Resource.p2752518v4f32(float, float, float, float, float, %__2D_DIM_Resource addrspace(2621450)*, %__2D_DIM_Resource addrspace(2621450)*, <4 x float> addrspace(2752518)*, i32, i32, i32) #4
+declare <4 x float> @llvm.genx.GenISA.sampleLptr.v4f32.f32.p2621450__2D_DIM_Resource.0.p2621450__2D_DIM_Resource.0.p2752518v4f32(float, float, float, float, float, %__2D_DIM_Resource.0 addrspace(2621450)*, %__2D_DIM_Resource.0 addrspace(2621450)*, <4 x float> addrspace(2752518)*, i32, i32, i32) #4
 
 declare i16 @llvm.genx.GenISA.DCL.SystemValue.i16(i32) #1
 declare i32 @llvm.genx.GenISA.WaveShuffleIndex.i32(i32, i32, i32) #6

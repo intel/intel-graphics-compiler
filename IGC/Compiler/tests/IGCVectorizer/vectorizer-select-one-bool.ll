@@ -79,6 +79,7 @@ bb2:                                              ; preds = %bb2, %bb
   %tmp56 = insertelement <8 x float> %tmp55, float %tmp48, i64 6
   %tmp57 = insertelement <8 x float> %tmp56, float %tmp49, i64 7
   %tmp58 = call <8 x float> @llvm.genx.GenISA.sub.group.dpas.v8f32.v8f32.v8i16.v8i32(<8 x float> %tmp57, <8 x i16> zeroinitializer, <8 x i32> zeroinitializer, i32 0, i32 0, i32 0, i32 0, i1 false)
+  call void @llvm.genx.GenISA.LSC2DBlockWrite.v8f32(i64 0, i32 0, i32 0, i32 0, i32 0, i32 0, i32 0, i32 0, i32 0, i32 0, i1 false, i1 false, i32 0, <8 x float> %tmp58)
   br i1 false, label %bb59, label %bb2
 
 bb59:                                             ; preds = %bb2
@@ -135,6 +136,9 @@ declare <8 x float> @llvm.genx.GenISA.sub.group.dpas.v8f32.v8f32.v8i16.v8i32(<8 
 
 ; Function Attrs: nounwind
 declare void @llvm.genx.GenISA.LSC2DBlockWrite.v8i16(i64, i32, i32, i32, i32, i32, i32, i32, i32, i32, i1, i1, i32, <8 x i16>) #2
+
+; Function Attrs: nounwind
+declare void @llvm.genx.GenISA.LSC2DBlockWrite.v8f32(i64, i32, i32, i32, i32, i32, i32, i32, i32, i32, i1, i1, i32, <8 x float>) #2
 
 ; Function Attrs: nocallback nofree nosync nounwind readnone speculatable willreturn
 declare float @llvm.maxnum.f32(float, float) #3

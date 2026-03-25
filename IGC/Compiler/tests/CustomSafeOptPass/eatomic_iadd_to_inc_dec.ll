@@ -38,17 +38,17 @@ define void @main(<8 x i32> %r0) {
 ; CHECK-NEXT:  [[TMP6:%.*]] = shl i32 [[GROUPX]], 5
 ; CHECK-NEXT:  [[LOCALIDX:%.*]] = call i32 @llvm.genx.GenISA.DCL.SystemValue.i32(i32 17)
 ; CHECK-NEXT:  [[THREADIDX:%.*]] = add i32 [[TMP6]], [[LOCALIDX]]
-; CHECK-NEXT:  [[TMP7:%.*]] = call i32 @llvm.genx.GenISA.intatomictyped.i32.p2490368__Buffer_Typed_DIM_Resource(ptr addrspace(2490368) [[U01]], i32 [[THREADIDX]], i32 undef, i32 undef, i32 poison, i32 2)
-; CHECK-NEXT:  [[TMP8:%.*]] = call i32 @llvm.genx.GenISA.intatomictyped.i32.p2490368__Buffer_Typed_DIM_Resource(ptr addrspace(2490368) [[U01]], i32 [[THREADIDX]], i32 undef, i32 undef, i32 poison, i32 3)
+; CHECK-NEXT:  [[TMP7:%.*]] = call i32 @llvm.genx.GenISA.intatomictyped.i32.p2490368(ptr addrspace(2490368) [[U01]], i32 [[THREADIDX]], i32 undef, i32 undef, i32 poison, i32 2)
+; CHECK-NEXT:  [[TMP8:%.*]] = call i32 @llvm.genx.GenISA.intatomictyped.i32.p2490368(ptr addrspace(2490368) [[U01]], i32 [[THREADIDX]], i32 undef, i32 undef, i32 poison, i32 3)
 ; CHECK-NEXT:  [[TMP9:%.*]] = shl i32 [[THREADIDX]], 2
-; CHECK-NEXT:  [[TMP10:%.*]] = call i32 @llvm.genx.GenISA.intatomicraw.i32.p2490369v4f32(ptr addrspace(2490369) [[U0]], i32 [[TMP9]], i32 poison, i32 2)
-; CHECK-NEXT:  [[TMP11:%.*]] = call i32 @llvm.genx.GenISA.intatomicraw.i32.p2490369v4f32(ptr addrspace(2490369) [[U0]], i32 [[TMP9]], i32 poison, i32 3)
+; CHECK-NEXT:  [[TMP10:%.*]] = call i32 @llvm.genx.GenISA.intatomicraw.i32.p2490369(ptr addrspace(2490369) [[U0]], i32 [[TMP9]], i32 poison, i32 2)
+; CHECK-NEXT:  [[TMP11:%.*]] = call i32 @llvm.genx.GenISA.intatomicraw.i32.p2490369(ptr addrspace(2490369) [[U0]], i32 [[TMP9]], i32 poison, i32 3)
 ; CHECK-NEXT:  [[TMP12:%.*]] = getelementptr [32 x i32], ptr addrspace(3) null, i32 0, i32 [[THREADIDX]]
-; CHECK-NEXT:  [[TMP13:%.*]] = call i32 @llvm.genx.GenISA.intatomicrawA64.i32.p3i32.p3i32(ptr addrspace(3) [[TMP12]], ptr addrspace(3) [[TMP12]], i32 poison, i32 2)
-; CHECK-NEXT:  [[TMP14:%.*]] = call i32 @llvm.genx.GenISA.intatomicrawA64.i32.p3i32.p3i32(ptr addrspace(3) [[TMP12]], ptr addrspace(3) [[TMP12]], i32 poison, i32 3)
+; CHECK-NEXT:  [[TMP13:%.*]] = call i32 @llvm.genx.GenISA.intatomicrawA64.i32.p3.p3(ptr addrspace(3) [[TMP12]], ptr addrspace(3) [[TMP12]], i32 poison, i32 2)
+; CHECK-NEXT:  [[TMP14:%.*]] = call i32 @llvm.genx.GenISA.intatomicrawA64.i32.p3.p3(ptr addrspace(3) [[TMP12]], ptr addrspace(3) [[TMP12]], i32 poison, i32 3)
 ; CHECK-NEXT:  [[TMP15:%.*]] = load i32, ptr addrspace(3) [[TMP12]], align 4, !tbaa !18
 ; CHECK-NEXT:  [[TMP16:%.*]] = insertelement <1 x i32> undef, i32 [[TMP15]], i64 0
-; CHECK-NEXT:  call void @llvm.genx.GenISA.storerawvector.indexed.p2490369v4f32.v1i32(ptr addrspace(2490369) [[U0]], i32 0, <1 x i32> [[TMP16]], i32 4, i1 false)
+; CHECK-NEXT:  call void @llvm.genx.GenISA.storerawvector.indexed.p2490369.v1i32(ptr addrspace(2490369) [[U0]], i32 0, <1 x i32> [[TMP16]], i32 4, i1 false)
 ; CHECK-NEXT:  ret void
 ;
   %1 = call fast float @llvm.genx.GenISA.DCL.SystemValue.f32(i32 14)
@@ -62,27 +62,27 @@ define void @main(<8 x i32> %r0) {
   %6 = shl i32 %GroupID_X, 5
   %LocalID_X = call i32 @llvm.genx.GenISA.DCL.SystemValue.i32(i32 17)
   %ThreadID_X = add i32 %6, %LocalID_X
-  %7 = call i32 @llvm.genx.GenISA.intatomictyped.i32.p2490368__Buffer_Typed_DIM_Resource(%__Buffer_Typed_DIM_Resource addrspace(2490368)* %u01, i32 %ThreadID_X, i32 undef, i32 undef, i32 1, i32 0)
-  %8 = call i32 @llvm.genx.GenISA.intatomictyped.i32.p2490368__Buffer_Typed_DIM_Resource(%__Buffer_Typed_DIM_Resource addrspace(2490368)* %u01, i32 %ThreadID_X, i32 undef, i32 undef, i32 -1, i32 0)
+  %7 = call i32 @llvm.genx.GenISA.intatomictyped.i32.p2490368(%__Buffer_Typed_DIM_Resource addrspace(2490368)* %u01, i32 %ThreadID_X, i32 undef, i32 undef, i32 1, i32 0)
+  %8 = call i32 @llvm.genx.GenISA.intatomictyped.i32.p2490368(%__Buffer_Typed_DIM_Resource addrspace(2490368)* %u01, i32 %ThreadID_X, i32 undef, i32 undef, i32 -1, i32 0)
   %9 = shl i32 %ThreadID_X, 2
-  %10 = call i32 @llvm.genx.GenISA.intatomicraw.i32.p2490369v4f32(<4 x float> addrspace(2490369)* %u0, i32 %9, i32 1, i32 0)
-  %11 = call i32 @llvm.genx.GenISA.intatomicraw.i32.p2490369v4f32(<4 x float> addrspace(2490369)* %u0, i32 %9, i32 -1, i32 0)
+  %10 = call i32 @llvm.genx.GenISA.intatomicraw.i32.p2490369(<4 x float> addrspace(2490369)* %u0, i32 %9, i32 1, i32 0)
+  %11 = call i32 @llvm.genx.GenISA.intatomicraw.i32.p2490369(<4 x float> addrspace(2490369)* %u0, i32 %9, i32 -1, i32 0)
   %12 = getelementptr [32 x i32], [32 x i32] addrspace(3)* null, i32 0, i32 %ThreadID_X
-  %13 = call i32 @llvm.genx.GenISA.intatomicrawA64.i32.p3i32.p3i32(i32 addrspace(3)* %12, i32 addrspace(3)* %12, i32 1, i32 0)
-  %14 = call i32 @llvm.genx.GenISA.intatomicrawA64.i32.p3i32.p3i32(i32 addrspace(3)* %12, i32 addrspace(3)* %12, i32 -1, i32 0)
+  %13 = call i32 @llvm.genx.GenISA.intatomicrawA64.i32.p3.p3(i32 addrspace(3)* %12, i32 addrspace(3)* %12, i32 1, i32 0)
+  %14 = call i32 @llvm.genx.GenISA.intatomicrawA64.i32.p3.p3(i32 addrspace(3)* %12, i32 addrspace(3)* %12, i32 -1, i32 0)
   %15 = load i32, i32 addrspace(3)* %12, align 4, !tbaa !18
   %16 = insertelement <1 x i32> undef, i32 %15, i64 0
-  call void @llvm.genx.GenISA.storerawvector.indexed.p2490369v4f32.v1i32(<4 x float> addrspace(2490369)* %u0, i32 0, <1 x i32> %16, i32 4, i1 false)
+  call void @llvm.genx.GenISA.storerawvector.indexed.p2490369.v1i32(<4 x float> addrspace(2490369)* %u0, i32 0, <1 x i32> %16, i32 4, i1 false)
   ret void
 }
 
 declare i32 @llvm.genx.GenISA.RuntimeValue.i32(i32)
-declare i32 @llvm.genx.GenISA.intatomicrawA64.i32.p3i32.p3i32(i32 addrspace(3)*, i32 addrspace(3)*, i32, i32)
+declare i32 @llvm.genx.GenISA.intatomicrawA64.i32.p3.p3(i32 addrspace(3)*, i32 addrspace(3)*, i32, i32)
 declare float @llvm.genx.GenISA.DCL.SystemValue.f32(i32)
 declare i32 @llvm.genx.GenISA.DCL.SystemValue.i32(i32)
-declare i32 @llvm.genx.GenISA.intatomictyped.i32.p2490368__Buffer_Typed_DIM_Resource(%__Buffer_Typed_DIM_Resource addrspace(2490368)*, i32, i32, i32, i32, i32)
-declare i32 @llvm.genx.GenISA.intatomicraw.i32.p2490369v4f32(<4 x float> addrspace(2490369)*, i32, i32, i32)
-declare void @llvm.genx.GenISA.storerawvector.indexed.p2490369v4f32.v1i32(<4 x float> addrspace(2490369)*, i32, <1 x i32>, i32, i1)
+declare i32 @llvm.genx.GenISA.intatomictyped.i32.p2490368(%__Buffer_Typed_DIM_Resource addrspace(2490368)*, i32, i32, i32, i32, i32)
+declare i32 @llvm.genx.GenISA.intatomicraw.i32.p2490369(<4 x float> addrspace(2490369)*, i32, i32, i32)
+declare void @llvm.genx.GenISA.storerawvector.indexed.p2490369.v1i32(<4 x float> addrspace(2490369)*, i32, <1 x i32>, i32, i1)
 
 !llvm.ident = !{!0}
 !dx.version = !{!1}

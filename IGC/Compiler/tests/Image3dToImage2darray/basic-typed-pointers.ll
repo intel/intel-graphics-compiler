@@ -18,22 +18,22 @@
 
 define void @test_i3dto2da(i8* %a) {
 ; CHECK-LABEL: @test_i3dto2da(
-; CHECK:    [[TMP1:%.*]] = call <16 x i32> @llvm.genx.GenISA.ldptr.16i32(i32 1, i32 2, i32 3, i32 4, i8* [[A:%.*]], i8* [[A]], i32 0, i32 1, i32 2)
+; CHECK:    [[TMP1:%.*]] = call <16 x i32> @llvm.genx.GenISA.ldptr.v16i32.p0i8.p0i8(i32 1, i32 2, i32 3, i32 4, i8* [[A:%.*]], i8* [[A]], i32 0, i32 1, i32 2)
 ; CHECK:    call void @use.v16i32(<16 x i32> [[TMP1]])
 ; CHECK:    ret void
 ;
-  %1 = call <16 x i32> @llvm.genx.GenISA.ldptr.16i32(i32 1, i32 2, i32 3, i32 4, i8* %a, i8* %a, i32 0, i32 1, i32 2)
+  %1 = call <16 x i32> @llvm.genx.GenISA.ldptr.v16i32.p0i8.p0i8(i32 1, i32 2, i32 3, i32 4, i8* %a, i8* %a, i32 0, i32 1, i32 2)
   call void @use.v16i32(<16 x i32> %1)
   ret void
 }
 
 define void @test_i3dto2da_f32(float* %a, i32* %b) {
 ; CHECK-LABEL: @test_i3dto2da_f32(
-; CHECK:    [[TMP1:%.*]] = call <4 x float> @llvm.genx.GenISA.sampleLptr.v4f32.f32.f32.i32(float 1.000000e+00, float 2.000000e+00, float 3.000000e+00, float 4.500000e+00, float 5.000000e+00, float* [[A:%.*]], i32* [[B:%.*]], i32 1, i32 2, i32 3)
+; CHECK:    [[TMP1:%.*]] = call <4 x float> @llvm.genx.GenISA.sampleLptr.v4f32.f32.p0f32.p0f32.p0i32(float 1.000000e+00, float 2.000000e+00, float 3.000000e+00, float 4.500000e+00, float 5.000000e+00, float* null, float* [[A:%.*]], i32* [[B:%.*]], i32 1, i32 2, i32 3)
 ; CHECK:    call void @use.v4f32(<4 x float> [[TMP1]])
 ; CHECK:    ret void
 ;
-  %1 = call <4 x float> @llvm.genx.GenISA.sampleLptr.v4f32.f32.f32.i32(float 1.000000e+00, float 2.000000e+00, float 3.000000e+00, float 4.500000e+00, float 5.000000e+00, float* %a, i32* %b, i32 1, i32 2, i32 3)
+  %1 = call <4 x float> @llvm.genx.GenISA.sampleLptr.v4f32.f32.p0f32.p0f32.p0i32(float 1.000000e+00, float 2.000000e+00, float 3.000000e+00, float 4.500000e+00, float 5.000000e+00, float* null, float* %a, i32* %b, i32 1, i32 2, i32 3)
   call void @use.v4f32(<4 x float> %1)
   ret void
 }
@@ -61,11 +61,9 @@ declare void @use.v16i32(<16 x i32>)
 
 declare void @use.v4f32(<4 x float>)
 
-declare <16 x i32> @llvm.genx.GenISA.ldptr.16i32.const(i32, i32, i32, i32, i8, i8, i32, i32, i32)
+declare <16 x i32> @llvm.genx.GenISA.ldptr.v16i32.p0i8.p0i8(i32, i32, i32, i32, i8*, i8*, i32, i32, i32)
 
-declare <16 x i32> @llvm.genx.GenISA.ldptr.16i32(i32, i32, i32, i32, i8*, i8*, i32, i32, i32)
-
-declare <4 x float> @llvm.genx.GenISA.sampleLptr.v4f32.f32.f32.i32(float, float, float, float, float, float*, i32*, i32, i32, i32)
+declare <4 x float> @llvm.genx.GenISA.sampleLptr.v4f32.f32.p0f32.p0f32.p0i32(float, float, float, float, float, float*, float*, i32*, i32, i32, i32)
 
 !igc.functions = !{!0, !4}
 !IGCMetadata = !{!5}

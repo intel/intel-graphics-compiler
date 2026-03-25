@@ -20,27 +20,29 @@
 define spir_kernel void @test_rti(i32 %src, i8 addrspace(1)* %globalPointer, i8 addrspace(1)* %localPointer, i16 %stackID, <2 x i8 addrspace(1)*> %inlinedData) {
 ; CHECK-LABEL: @test_rti(
 ; CHECK:    [[TMP1:%.*]] = bitcast i8 addrspace(1)* [[LOCALPOINTER:%.*]] to i32 addrspace(1)*
-; CHECK:    [[TMP2:%.*]] = extractelement <2 x i8 addrspace(1)*> [[INLINEDDATA:%.*]], i16 [[STACKID:%.*]]
+; CHECK:    [[STACKID_EXT:%.*]] = zext i16 [[STACKID:%.*]] to i32
+; CHECK:    [[TMP2:%.*]] = extractelement <2 x i8 addrspace(1)*> [[INLINEDDATA:%.*]], i32 [[STACKID_EXT]]
 ; CHECK:    [[TMP3:%.*]] = bitcast i8 addrspace(1)* [[TMP2]] to i32 addrspace(1)*
 ; CHECK:    store i8 13, i8 addrspace(1)* [[GLOBALPOINTER:%.*]], align 1
 ; CHECK:    store i32 [[SRC:%.*]], i32 addrspace(1)* [[TMP1]], align 4
 ; CHECK:    store i32 [[SRC]], i32 addrspace(1)* [[TMP3]], align 4
 ; CHECK:    ret void
 ;
-  %1 = call i8 addrspace(1)* @llvm.genx.GenISA.GlobalBufferPointer()
-  %2 = call i32 addrspace(1)* @llvm.genx.GenISA.LocalBufferPointer()
+  %1 = call i8 addrspace(1)* @llvm.genx.GenISA.GlobalBufferPointer.p1i8()
+  %2 = call i32 addrspace(1)* @llvm.genx.GenISA.LocalBufferPointer.p1i32()
   %3 = call i16 @llvm.genx.GenISA.AsyncStackID()
-  %4 = call i32 addrspace(1)* @llvm.genx.GenISA.InlinedData(i16 %3)
+  %stackid_ext = zext i16 %3 to i32
+  %4 = call i32 addrspace(1)* @llvm.genx.GenISA.InlinedData.p1i32(i32 %stackid_ext)
   store i8 13, i8 addrspace(1)* %1, align 1
   store i32 %src, i32 addrspace(1)* %2, align 4
   store i32 %src, i32 addrspace(1)* %4, align 4
   ret void
 }
 
-declare i8 addrspace(1)* @llvm.genx.GenISA.GlobalBufferPointer()
-declare i32 addrspace(1)* @llvm.genx.GenISA.LocalBufferPointer()
+declare i8 addrspace(1)* @llvm.genx.GenISA.GlobalBufferPointer.p1i8()
+declare i32 addrspace(1)* @llvm.genx.GenISA.LocalBufferPointer.p1i32()
 declare i16 @llvm.genx.GenISA.AsyncStackID()
-declare i32 addrspace(1)* @llvm.genx.GenISA.InlinedData(i16)
+declare i32 addrspace(1)* @llvm.genx.GenISA.InlinedData.p1i32(i32)
 
 !igc.functions = !{!0}
 

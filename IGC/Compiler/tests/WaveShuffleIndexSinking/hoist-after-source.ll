@@ -12,10 +12,10 @@
 ; If shuffle's source is defined in the same basic block as the one selected
 ; for hoisting, hoisted instruction should be placed after the source.
 
-define void @_ZTS10sycl_subgrIJZ4mainE18KernelName_TovsKTkZ5checkIS0_lEvRN4sycl3_V15queueEmmE25KernelName_cNsJzXxSBQfEKYEE(i32 %a, i32 %b) {
+define i32 @_ZTS10sycl_subgrIJZ4mainE18KernelName_TovsKTkZ5checkIS0_lEvRN4sycl3_V15queueEmmE25KernelName_cNsJzXxSBQfEKYEE(i32 %a, i32 %b) {
 ; CHECK-LABEL: entry:
 ; CHECK-NEXT:   %c = add i32 %a, %b
-; CHECK-NEXT:   call i32 @llvm.genx.GenISA.WaveShuffleIndex.i32(i32 %c, i32 0, i32 0)
+; CHECK-NEXT:   [[HOISTED:%.*]] = call i32 @llvm.genx.GenISA.WaveShuffleIndex.i32(i32 %c, i32 0, i32 0)
 ; CHECK-NEXT:   %cond = icmp eq i32 %a, 0
 ; CHECK-NEXT:   br i1 %cond, label %bb.true, label %bb.false
 entry:
@@ -36,9 +36,11 @@ bb.false:
   br label %bb.exit
 
 ; CHECK-LABEL: bb.exit:
-; CHECK-NEXT:    ret void
+; CHECK-NEXT:    [[RET:%.*]] = phi i32 [ [[HOISTED]], %bb.true ], [ [[HOISTED]], %bb.false ]
+; CHECK-NEXT:    ret i32 [[RET]]
 bb.exit:
-  ret void
+  %ret = phi i32 [ %bar, %bb.true ], [ %foo, %bb.false ]
+  ret i32 %ret
 }
 
 declare i32 @llvm.genx.GenISA.WaveShuffleIndex.i32(i32, i32, i32)

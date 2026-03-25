@@ -14,7 +14,7 @@
 
 define spir_kernel void @test_earlyout(<4 x float>* %src1, i32* %src2) {
 ; CHECK-LABEL: @test_earlyout(
-; CHECK:    [[TMP1:%[A-z0-9]*]] = call <4 x float> @llvm.genx.GenISA.sampleptr.v4f32.f32.f32.i32(float 1.000000e+00, float 2.000000e+00, float 3.000000e+00, float 4.000000e+00, float 5.000000e+00, float 6.000000e+00, float* null, i32* null, i32 1, i32 2, i32 3)
+; CHECK:    [[TMP1:%[A-z0-9]*]] = call <4 x float> @llvm.genx.GenISA.sampleptr.v4f32.f32.p0f32.p0f32.p0i32(float 1.000000e+00, float 2.000000e+00, float 3.000000e+00, float 4.000000e+00, float 5.000000e+00, float* null, float* null, i32* null, i32 1, i32 2, i32 3)
 ; CHECK:    [[TMP2:%[A-z0-9]*]] = extractelement <4 x float> [[TMP1]], i32 0
 ; CHECK:    [[TMP3:%[A-z0-9]*]] = fcmp oeq float [[TMP2]], 0.000000e+00
 ; CHECK:    br i1 [[TMP3]], label %[[EO_IF:[A-z0-9]*]], label %[[EO_ELSE:[A-z0-9]*]]
@@ -31,7 +31,7 @@ define spir_kernel void @test_earlyout(<4 x float>* %src1, i32* %src2) {
 ; CHECK:    call void @llvm.genx.GenISA.OUTPUT.f32(float 0.000000e+00, float 0.000000e+00, float 0.000000e+00, float [[TMP2]], i32 1, i32 2, i32 15)
 ; CHECK:    ret void
 ;
-  %1 = call <4 x float> @llvm.genx.GenISA.sampleptr.v4f32.f32.f32.i32(float 1.0, float 2.0, float 3.0, float 4.0, float 5.0, float 6.0, float* null, i32* null, i32 1, i32 2, i32 3)
+  %1 = call <4 x float> @llvm.genx.GenISA.sampleptr.v4f32.f32.p0f32.p0f32.p0i32(float 1.0, float 2.0, float 3.0, float 4.0, float 5.0, float* null, float* null, i32* null, i32 1, i32 2, i32 3)
   %2 = extractelement <4 x float> %1, i32 0
   %3 = fmul float %2, 1.0
   %4 = fmul float %2, 1.0
@@ -90,4 +90,4 @@ define spir_kernel void @test_earlyout(<4 x float>* %src1, i32* %src2) {
 }
 
 declare void @llvm.genx.GenISA.OUTPUT.f32(float, float, float, float, i32, i32, i32)
-declare <4 x float> @llvm.genx.GenISA.sampleptr.v4f32.f32.f32.i32(float, float, float, float, float, float, float*, i32*, i32, i32, i32)
+declare <4 x float> @llvm.genx.GenISA.sampleptr.v4f32.f32.p0f32.p0f32.p0i32(float, float, float, float, float, float*, float*, i32*, i32, i32, i32)

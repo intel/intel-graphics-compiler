@@ -7,7 +7,7 @@
 ;============================ end_copyright_notice =============================
 
 ; REQUIRES: regkeys
-; RUN: igc_opt --igc-vectorizer -S -dce --regkey=VectorizerLog=1 --regkey=VectorizerLogToErr=1 < %s 2>&1 | FileCheck %s
+; RUN: igc_opt --igc-restore-genisa-intrinsics --igc-vectorizer -S -dce --regkey=VectorizerLog=1 --regkey=VectorizerLogToErr=1 < %s 2>&1 | FileCheck %s
 
 define spir_kernel void @quux() {
 ; CHECK: SIMD Size: 32
@@ -20,13 +20,11 @@ define spir_kernel void @quux() {
 ; CHECK:       bb60:
 ; CHECK-NEXT:    br label [[BB88:%.*]]
 ; CHECK:       bb88:
-; CHECK-NEXT:    [[VECTORIZED_PHI:%.*]] = phi <8 x float> [ zeroinitializer, [[BB60:%.*]] ], [ [[TMP113:%.*]], [[BB88]] ]
-; CHECK-NEXT:    [[TMP112:%.*]] = call <8 x float> @llvm.genx.GenISA.sub.group.dpas.v8f32.v8f32.v8i16.v8i32(<8 x float> [[VECTORIZED_PHI]], <8 x i16> zeroinitializer, <8 x i32> zeroinitializer, i32 0, i32 0, i32 0, i32 0, i1 false)
-; CHECK-NEXT:    [[TMP113]] = call <8 x float> @llvm.genx.GenISA.sub.group.dpas.v8f32.v8f32.v8i16.v8i32(<8 x float> zeroinitializer, <8 x i16> zeroinitializer, <8 x i32> zeroinitializer, i32 0, i32 0, i32 0, i32 0, i1 false)
+; CHECK-NEXT:    [[TMP113:%.*]] = call <8 x float> @llvm.genx.GenISA.sub.group.dpas.v8f32.v8f32.v8i16.v8i32(<8 x float> zeroinitializer, <8 x i16> zeroinitializer, <8 x i32> zeroinitializer, i32 0, i32 0, i32 0, i32 0, i1 false)
 ; CHECK-NEXT:    br i1 false, label [[BB88]], label [[BB123]]
 ; CHECK:       bb123:
-; CHECK-NEXT:    [[VECTORIZED_PHI1:%.*]] = phi <8 x float> [ zeroinitializer, [[BB43:%.*]] ], [ [[TMP113]], [[BB88]] ]
-; CHECK-NEXT:    [[TMP151:%.*]] = bitcast <8 x float> [[VECTORIZED_PHI1]] to <8 x i32>
+; CHECK-NEXT:    [[VECTORIZED_PHI8:%.*]] = phi <8 x float> [ zeroinitializer, [[BB43:%.*]] ], [ [[TMP113]], [[BB88]] ]
+; CHECK-NEXT:    [[TMP151:%.*]] = bitcast <8 x float> [[VECTORIZED_PHI8]] to <8 x i32>
 ; CHECK-NEXT:    call void @llvm.genx.GenISA.LSC2DBlockWrite.v8i32(i64 0, i32 0, i32 0, i32 0, i32 0, i32 0, i32 0, i32 0, i32 0, i32 0, i1 false, i1 false, i32 0, <8 x i32> [[TMP151]])
 ; CHECK-NEXT:    ret void
 ;

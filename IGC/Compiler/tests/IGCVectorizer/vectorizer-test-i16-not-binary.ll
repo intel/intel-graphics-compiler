@@ -73,8 +73,8 @@ define spir_kernel void @quux() {
   %30 = insertelement <8 x i16> %29, i16 %22, i64 5
   %31 = insertelement <8 x i16> %30, i16 %23, i64 6
   %32 = insertelement <8 x i16> %31, i16 %24, i64 7
-  %33 = call <8 x i16> @llvm.genx.GenISA.sub.group.dpas.v8f32.v8f32.v8i16.v8i16(<8 x i16> %32, <8 x i16> zeroinitializer, <8 x i16> zeroinitializer, i16 0, i16 0, i16 0, i16 0, i1 false)
-  %34 = call <8 x i16> @llvm.genx.GenISA.sub.group.dpas.v8f32.v8f32.v8i16.v8i16(<8 x i16> %33, <8 x i16> zeroinitializer, <8 x i16> zeroinitializer, i16 0, i16 0, i16 0, i16 0, i1 false)
+  %33 = call <8 x i16> @llvm.genx.GenISA.sub.group.dpas.v8i16.v8i16.v8i16.v8i16(<8 x i16> %32, <8 x i16> zeroinitializer, <8 x i16> zeroinitializer, i32 0, i32 0, i32 0, i32 0, i1 false)
+  %34 = call <8 x i16> @llvm.genx.GenISA.sub.group.dpas.v8i16.v8i16.v8i16.v8i16(<8 x i16> %33, <8 x i16> zeroinitializer, <8 x i16> zeroinitializer, i32 0, i32 0, i32 0, i32 0, i1 false)
   %35 = extractelement <8 x i16> %34, i64 0
   %36 = extractelement <8 x i16> %34, i64 1
   %37 = extractelement <8 x i16> %34, i64 2
@@ -87,7 +87,7 @@ define spir_kernel void @quux() {
 }
 
 ; Function Attrs: convergent nounwind readnone willreturn
-declare <8 x i16> @llvm.genx.GenISA.sub.group.dpas.v8f32.v8f32.v8i16.v8i16(<8 x i16>, <8 x i16>, <8 x i16>, i16, i16, i16, i16, i1) #1
+declare <8 x i16> @llvm.genx.GenISA.sub.group.dpas.v8i16.v8i16.v8i16.v8i16(<8 x i16>, <8 x i16>, <8 x i16>, i32, i32, i32, i32, i1) #1
 
 ; Function Attrs: nofree nosync nounwind readnone speculatable willreturn
 declare i16 @llvm.exp2.i16(i16) #2

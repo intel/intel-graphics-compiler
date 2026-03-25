@@ -13,12 +13,12 @@
 ; ------------------------------------------------
 
 declare void @llvm.genx.GenISA.OUTPUT.f32(float, float, float, float, i32, i32, i32)
-declare < 2 x float > @llvm.genx.GenISA.sampleKillPix.2f32.f32(float, float, float, float addrspace(1)*, float addrspace(1)*, i32, i32, i32)
+declare <2 x float> @llvm.genx.GenISA.sampleKillPix.v2f32.f32.p1f32.p1f32(float, float, float, float addrspace(1)*, float addrspace(1)*, i32, i32, i32)
 
 define spir_kernel void @test_func(float addrspace(1)* %idx, float addrspace(1)* %smp) {
 ; CHECK-LABEL: @test_func(
 ; CHECK-NEXT:  entry:
-; CHECK-NEXT:    [[TMP0:%.*]] = call <2 x float> @llvm.genx.GenISA.sampleKillPix.2f32.f32(float 1.000000e+00, float 1.000000e+00, float 1.000000e+00, float addrspace(1)* [[IDX:%.*]], float addrspace(1)* [[SMP:%.*]], i32 0, i32 0, i32 0)
+; CHECK-NEXT:    [[TMP0:%.*]] = call <2 x float> @llvm.genx.GenISA.sampleKillPix.v2f32.f32.p1f32.p1f32(float 1.000000e+00, float 1.000000e+00, float 1.000000e+00, float addrspace(1)* [[IDX:%.*]], float addrspace(1)* [[SMP:%.*]], i32 0, i32 0, i32 0)
 ; CHECK-NEXT:    [[TMP1:%.*]] = extractelement <2 x float> [[TMP0]], i32 0
 ; CHECK-NEXT:    [[TMP2:%.*]] = fmul float 1.000000e+00, [[TMP1]]
 ; CHECK-NEXT:    [[TMP3:%.*]] = fcmp oeq float [[TMP2]], 1.000000e+00
@@ -29,7 +29,7 @@ define spir_kernel void @test_func(float addrspace(1)* %idx, float addrspace(1)*
 ; CHECK-NEXT:    ret void
 ;
 entry:
-  %0 = call < 2 x float > @llvm.genx.GenISA.sampleKillPix.2f32.f32(float 1.0, float 1.0, float 1.0, float addrspace(1)* %idx, float addrspace(1)* %smp, i32 0, i32 0, i32 0)
+  %0 = call <2 x float> @llvm.genx.GenISA.sampleKillPix.v2f32.f32.p1f32.p1f32(float 1.0, float 1.0, float 1.0, float addrspace(1)* %idx, float addrspace(1)* %smp, i32 0, i32 0, i32 0)
   %1 = extractelement < 2 x float > %0, i32 0
 
   %2 = fmul float 1.0, %1

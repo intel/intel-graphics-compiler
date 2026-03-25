@@ -18,22 +18,22 @@ define spir_kernel void @test_kernel(ptr addrspace(1) %input, ptr addrspace(1) %
 entry:
   %0 = inttoptr i32 %bindlessOffset to ptr addrspace(2490368)
 ; CHECK: call <3 x i64> @llvm.genx.GenISA.ldrawvector.indexed.v3i64.p2490368(ptr addrspace(2490368) %0, i32 0, i32 32, i1 false)
-  %1 = call i64 @llvm.genx.GenISA.ldrawvector.indexed.i64.p2490368(ptr addrspace(2490368) %0, i32 0, i32 32, i1 false)
-  %2 = call i64 @llvm.genx.GenISA.ldrawvector.indexed.i64.p2490368(ptr addrspace(2490368) %0, i32 8, i32 8, i1 false)
-  %3 = call i64 @llvm.genx.GenISA.ldrawvector.indexed.i64.p2490368(ptr addrspace(2490368) %0, i32 16, i32 16, i1 false)
+  %1 = call i64 @llvm.genx.GenISA.ldraw.indexed.i64.p2490368(ptr addrspace(2490368) %0, i32 0, i32 32, i1 false)
+  %2 = call i64 @llvm.genx.GenISA.ldraw.indexed.i64.p2490368(ptr addrspace(2490368) %0, i32 8, i32 8, i1 false)
+  %3 = call i64 @llvm.genx.GenISA.ldraw.indexed.i64.p2490368(ptr addrspace(2490368) %0, i32 16, i32 16, i1 false)
   %4 = inttoptr i32 %bindlessOffset2 to ptr addrspace(2490368)
-  call void @llvm.genx.GenISA.storerawvector.indexed.p2490368.i64(ptr addrspace(2490368) %4, i32 0, i64 %1, i32 32, i1 false)
-  call void @llvm.genx.GenISA.storerawvector.indexed.p2490368.i64(ptr addrspace(2490368) %4, i32 8, i64 %2, i32 8, i1 false)
-  call void @llvm.genx.GenISA.storerawvector.indexed.p2490368.i64(ptr addrspace(2490368) %4, i32 16, i64 %3, i32 16, i1 false)
-  call void @llvm.genx.GenISA.storerawvector.indexed.p2490368.i64(ptr addrspace(2490368) %4, i32 24, i64 undef, i32 8, i1 false)
+  call void @llvm.genx.GenISA.storeraw.indexed.p2490368.i64(ptr addrspace(2490368) %4, i32 0, i64 %1, i32 32, i1 false)
+  call void @llvm.genx.GenISA.storeraw.indexed.p2490368.i64(ptr addrspace(2490368) %4, i32 8, i64 %2, i32 8, i1 false)
+  call void @llvm.genx.GenISA.storeraw.indexed.p2490368.i64(ptr addrspace(2490368) %4, i32 16, i64 %3, i32 16, i1 false)
+  call void @llvm.genx.GenISA.storeraw.indexed.p2490368.i64(ptr addrspace(2490368) %4, i32 24, i64 undef, i32 8, i1 false)
   ret void
 }
 
 ; Function Attrs: argmemonly nounwind readonly
-declare i64 @llvm.genx.GenISA.ldrawvector.indexed.i64.p2490368(ptr addrspace(2490368), i32, i32, i1) #0
+declare i64 @llvm.genx.GenISA.ldraw.indexed.i64.p2490368(ptr addrspace(2490368), i32, i32, i1) #0
 
 ; Function Attrs: argmemonly nounwind writeonly
-declare void @llvm.genx.GenISA.storerawvector.indexed.p2490368.i64(ptr addrspace(2490368), i32, i64, i32, i1) #1
+declare void @llvm.genx.GenISA.storeraw.indexed.p2490368.i64(ptr addrspace(2490368), i32, i64, i32, i1) #1
 
 attributes #0 = { argmemonly nounwind readonly }
 attributes #1 = { argmemonly nounwind writeonly }

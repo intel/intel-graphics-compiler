@@ -55,13 +55,15 @@ define spir_kernel void @quux() {
   %25 = insertelement <8 x half> %24, half %17, i64 6
   %26 = insertelement <8 x half> %25, half %18, i64 7
   %27 = bitcast <8 x half> %26 to <8 x i16>
-  %28 = call <8 x float> @llvm.genx.GenISA.sub.group.dpas.v8f32.v8f32.v8i16.v8i32(<8 x float> zeroinitializer, <8 x i16> %27, <8 x i32> zeroinitializer, i32 0, i32 0, i32 0, i32 0, i1 false)
+  call void @llvm.genx.GenISA.LSC2DBlockWrite.v8i16(i64 0, i32 0, i32 0, i32 0, i32 0, i32 0, i32 0, i32 0, i32 0, i32 0, i1 false, i1 false, i32 0, <8 x i16> %27)
   br label %._crit_edge333
 }
 
 declare float @llvm.genx.GenISA.WaveAll.f32(float, i8, i1, i32)
 
 declare <8 x float> @llvm.genx.GenISA.sub.group.dpas.v8f32.v8f32.v8i16.v8i32(<8 x float>, <8 x i16>, <8 x i32>, i32, i32, i32, i32, i1)
+
+declare void @llvm.genx.GenISA.LSC2DBlockWrite.v8i16(i64, i32, i32, i32, i32, i32, i32, i32, i32, i32, i1, i1, i32, <8 x i16>)
 
 
 attributes #0 = { convergent nounwind }

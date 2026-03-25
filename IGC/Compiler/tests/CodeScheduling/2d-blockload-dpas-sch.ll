@@ -15,14 +15,14 @@
 ;   - the debug info is preserved
 
 ; no-debug run
-; RUN: igc_opt --opaque-pointers -platformpvc --regkey DisableLoopSink=1 --regkey DisableCodeScheduling=0 \
+; RUN: igc_opt --igc-restore-genisa-intrinsics --opaque-pointers -platformpvc --regkey DisableLoopSink=1 --regkey DisableCodeScheduling=0 \
 ; RUN:         --regkey CodeSchedulingForceMWOnly=1 --regkey EnableCodeSchedulingIfNoSpills=1 \
 ; RUN:         --regkey CodeSchedulingRPThreshold=-512 \
 ; RUN:         --igc-code-scheduling --verify \
 ; RUN:         -S %s &> %t.no_debug.ll
 
 ; no-debug run duplicate to check determinism
-; RUN: igc_opt --opaque-pointers -platformpvc --regkey DisableLoopSink=1 --regkey DisableCodeScheduling=0 \
+; RUN: igc_opt --igc-restore-genisa-intrinsics --opaque-pointers -platformpvc --regkey DisableLoopSink=1 --regkey DisableCodeScheduling=0 \
 ; RUN:         --regkey CodeSchedulingForceMWOnly=1 --regkey EnableCodeSchedulingIfNoSpills=1 \
 ; RUN:         --regkey CodeSchedulingRPThreshold=-512 \
 ; RUN:         --igc-code-scheduling --verify \
@@ -32,7 +32,7 @@
 ; RUN: diff %t.no_debug.ll %t.no_debug.2.ll
 
 ; debug run + check the debugify check pass
-; RUN: igc_opt --opaque-pointers -platformpvc --regkey DisableLoopSink=1 --regkey DisableCodeScheduling=0 \
+; RUN: igc_opt --igc-restore-genisa-intrinsics --opaque-pointers -platformpvc --regkey DisableLoopSink=1 --regkey DisableCodeScheduling=0 \
 ; RUN:         --regkey CodeSchedulingForceMWOnly=1 --regkey EnableCodeSchedulingIfNoSpills=1 \
 ; RUN:         --regkey CodeSchedulingRPThreshold=-512 \
 ; RUN:         --debugify --igc-code-scheduling --verify --check-debugify \
@@ -218,16 +218,16 @@ define spir_kernel void @with_barrier(ptr addrspace(1) %_arg_A, ptr addrspace(1)
 ; CHECK:         [[EE8:%.*]] = extractelement <8 x i16> [[BLOCK2D_READADDRPAYLOAD2]], i32 7
 ; CHECK:         [[NEWVEC7:%.*]] = insertelement <8 x i16> [[NEWVEC6]], i16 [[EE8]], i32 0
 ; CHECK:         [[BLOCK2D_READADDRPAYLOAD3:%.*]] = call <8 x i32> @llvm.genx.GenISA.LSC2DBlockReadAddrPayload.v8i32.p0(ptr [[BLOCK2D_ADDRPAYLOAD_B]], i32 0, i32 0, i32 32, i32 16, i32 8, i32 1, i1 false, i1 false, i32 0)
-; CHECK:         [[DPAS_1_1:%.*]] = call <8 x float> @llvm.genx.GenISA.sub.group.dpas.v8f32.v8f32.v8i16.v8i32(<8 x float> zeroinitializer, <8 x i16> [[NEWVEC7]], <8 x i32> [[BLOCK2D_READADDRPAYLOAD1]], i32 11, i32 11, i32 8, i32 8, i1 false)
-; CHECK:         [[DPAS_1_2:%.*]] = call <8 x float> @llvm.genx.GenISA.sub.group.dpas.v8f32.v8f32.v8i16.v8i32(<8 x float> [[DPAS_1_1]], <8 x i16> [[NEWVEC7]], <8 x i32> [[BLOCK2D_READADDRPAYLOAD3]], i32 11, i32 11, i32 8, i32 8, i1 false)
 ; CHECK:         call void @foo()
 ; CHECK:         call void @llvm.genx.GenISA.LSCFence(i32 0, i32 1, i32 0)
 ; CHECK:         call void @llvm.genx.GenISA.threadgroupbarrier()
 ; CHECK:         call void @llvm.genx.GenISA.LSC2DBlockSetAddrPayloadField.p0.i32(ptr [[BLOCK2D_ADDRPAYLOAD_B]], i32 5, i32 [[QOT793]], i1 false)
 ; CHECK:         call void @llvm.genx.GenISA.LSC2DBlockSetAddrPayloadField.p0.i32(ptr [[BLOCK2D_ADDRPAYLOAD_B]], i32 6, i32 [[CONV2_I_3]], i1 false)
-; CHECK:         [[DPAS_2_1:%.*]] = call <8 x float> @llvm.genx.GenISA.sub.group.dpas.v8f32.v8f32.v8i16.v8i32(<8 x float> zeroinitializer, <8 x i16> [[NEWVEC7]], <8 x i32> [[BLOCK2D_READADDRPAYLOAD1]], i32 11, i32 11, i32 8, i32 8, i1 false)
-; CHECK:         [[DPAS_2_2:%.*]] = call <8 x float> @llvm.genx.GenISA.sub.group.dpas.v8f32.v8f32.v8i16.v8i32(<8 x float> [[DPAS_2_1]], <8 x i16> [[NEWVEC7]], <8 x i32> [[BLOCK2D_READADDRPAYLOAD3]], i32 11, i32 11, i32 8, i32 8, i1 false)
 ; CHECK:         [[BLOCK2D_READADDRPAYLOAD4:%.*]] = call <8 x i32> @llvm.genx.GenISA.LSC2DBlockReadAddrPayload.v8i32.p0(ptr [[BLOCK2D_ADDRPAYLOAD_B]], i32 0, i32 0, i32 32, i32 16, i32 8, i32 1, i1 false, i1 false, i32 0)
+; CHECK:         [[DPAS_1_1:%.*]] = call <8 x float> @llvm.genx.GenISA.sub.group.dpas.v8f32.v8f32.v8i16.v8i32(<8 x float> zeroinitializer, <8 x i16> [[NEWVEC7]], <8 x i32> [[BLOCK2D_READADDRPAYLOAD1]], i32 11, i32 11, i32 8, i32 8, i1 false)
+; CHECK:         [[DPAS_2_1:%.*]] = call <8 x float> @llvm.genx.GenISA.sub.group.dpas.v8f32.v8f32.v8i16.v8i32(<8 x float> zeroinitializer, <8 x i16> [[NEWVEC7]], <8 x i32> [[BLOCK2D_READADDRPAYLOAD1]], i32 11, i32 11, i32 8, i32 8, i1 false)
+; CHECK:         [[DPAS_1_2:%.*]] = call <8 x float> @llvm.genx.GenISA.sub.group.dpas.v8f32.v8f32.v8i16.v8i32(<8 x float> [[DPAS_1_1]], <8 x i16> [[NEWVEC7]], <8 x i32> [[BLOCK2D_READADDRPAYLOAD3]], i32 11, i32 11, i32 8, i32 8, i1 false)
+; CHECK:         [[DPAS_2_2:%.*]] = call <8 x float> @llvm.genx.GenISA.sub.group.dpas.v8f32.v8f32.v8i16.v8i32(<8 x float> [[DPAS_2_1]], <8 x i16> [[NEWVEC7]], <8 x i32> [[BLOCK2D_READADDRPAYLOAD3]], i32 11, i32 11, i32 8, i32 8, i1 false)
 ; CHECK:         [[TMP6:%.*]] = shl nuw nsw i32 undef, 1
 ; CHECK:         [[X7:%.*]] = shl nuw nsw i32 undef, 1
 ; CHECK:         br label [[FOR_BODY19_I]]

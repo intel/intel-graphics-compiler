@@ -33,7 +33,7 @@ entry:
   %11 = insertelement <5 x ptr addrspace(1)> %10, ptr addrspace(1) %7, i32 3
   %12 = inttoptr i32 %src to ptr addrspace(2490368)
   %13 = add i32 %2, 32
-  %14 = call ptr addrspace(1) @llvm.genx.GenISA.ldrawvector.indexed.p1.p2490368(ptr addrspace(2490368) %12, i32 %13, i32 8, i1 false)
+  %14 = call ptr addrspace(1) @llvm.genx.GenISA.ldraw.indexed.p1.p2490368(ptr addrspace(2490368) %12, i32 %13, i32 8, i1 false)
   %15 = insertelement <5 x ptr addrspace(1)> %10, ptr addrspace(1) %14, i32 5
   ret <5 x ptr addrspace(1)> %15
 }
@@ -41,10 +41,10 @@ entry:
 ; CHECK-LABEL: <5 x ptr addrspace(1)> @f0(i32 %src)
 ; CHECK: call <2 x ptr addrspace(1)> @llvm.genx.GenISA.ldrawvector.indexed.v2p1.p2490368(ptr addrspace(2490368) %0, i32 %src, i32 8, i1 false)
 ; CHECK: call <2 x ptr addrspace(1)> @llvm.genx.GenISA.ldrawvector.indexed.v2p1.p2490368(ptr addrspace(2490368) %0, i32 %2, i32 8, i1 false)
-; CHECK: call ptr addrspace(1) @llvm.genx.GenISA.ldrawvector.indexed.p1.p2490368(ptr addrspace(2490368) %12, i32 %13, i32 8, i1 false)
+; CHECK: call ptr addrspace(1) @llvm.genx.GenISA.ldraw.indexed.p1.p2490368(ptr addrspace(2490368) %12, i32 %13, i32 8, i1 false)
 
 declare <2 x ptr addrspace(1)> @llvm.genx.GenISA.ldrawvector.indexed.v2p1.p2490368(ptr addrspace(2490368), i32, i32, i1)
-declare ptr addrspace(1) @llvm.genx.GenISA.ldrawvector.indexed.p1.p2490368(ptr addrspace(2490368), i32, i32, i1)
+declare ptr addrspace(1) @llvm.genx.GenISA.ldraw.indexed.p1.p2490368(ptr addrspace(2490368), i32, i32, i1)
 
 !igc.functions = !{!0}
 
