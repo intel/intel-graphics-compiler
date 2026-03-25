@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -57,44 +57,44 @@ void ImageFuncResolution::visitCallInst(CallInst &CI) {
   // Add appropriate sequence and image dimension func
   StringRef funcName = CI.getCalledFunction()->getName();
 
-  if (funcName.equals(ImageFuncsAnalysis::GET_IMAGE_HEIGHT)) {
+  if (funcName == ImageFuncsAnalysis::GET_IMAGE_HEIGHT) {
     if (!isImplicitImageArgs) {
       IGC_ASSERT_MESSAGE(false, "Getting Image Height from implicit args is supported only in bindful mode");
       return;
     }
     imageRes = getImageHeight(CI);
-  } else if (funcName.equals(ImageFuncsAnalysis::GET_IMAGE_WIDTH)) {
+  } else if (funcName == ImageFuncsAnalysis::GET_IMAGE_WIDTH) {
     if (!isImplicitImageArgs) {
       IGC_ASSERT_MESSAGE(false, "Getting Image Width from implicit args is supported only in bindful mode");
       return;
     }
     imageRes = getImageWidth(CI);
-  } else if (funcName.equals(ImageFuncsAnalysis::GET_IMAGE_DEPTH)) {
+  } else if (funcName == ImageFuncsAnalysis::GET_IMAGE_DEPTH) {
     if (!isImplicitImageArgs) {
       IGC_ASSERT_MESSAGE(false, "Getting Image Depth from implicit args is supported only in bindful mode");
       return;
     }
     imageRes = getImageDepth(CI);
-  } else if (funcName.equals(ImageFuncsAnalysis::GET_IMAGE_NUM_MIP_LEVELS)) {
+  } else if (funcName == ImageFuncsAnalysis::GET_IMAGE_NUM_MIP_LEVELS) {
     imageRes = getImageNumMipLevels(CI);
-  } else if (funcName.equals(ImageFuncsAnalysis::GET_IMAGE_CHANNEL_DATA_TYPE)) {
+  } else if (funcName == ImageFuncsAnalysis::GET_IMAGE_CHANNEL_DATA_TYPE) {
     imageRes = getImageChannelDataType(CI);
-  } else if (funcName.equals(ImageFuncsAnalysis::GET_IMAGE_CHANNEL_ORDER)) {
+  } else if (funcName == ImageFuncsAnalysis::GET_IMAGE_CHANNEL_ORDER) {
     imageRes = getImageChannelOrder(CI);
-  } else if (funcName.equals(ImageFuncsAnalysis::GET_IMAGE1D_ARRAY_SIZE) ||
-             funcName.equals(ImageFuncsAnalysis::GET_IMAGE2D_ARRAY_SIZE)) {
+  } else if (funcName == ImageFuncsAnalysis::GET_IMAGE1D_ARRAY_SIZE ||
+             funcName == ImageFuncsAnalysis::GET_IMAGE2D_ARRAY_SIZE) {
     if (!isImplicitImageArgs) {
       IGC_ASSERT_MESSAGE(false, "Getting Image Array Size from implicit args is supported only in bindful mode");
       return;
     }
     imageRes = getImageArraySize(CI);
-  } else if (funcName.equals(ImageFuncsAnalysis::GET_IMAGE_NUM_SAMPLES)) {
+  } else if (funcName == ImageFuncsAnalysis::GET_IMAGE_NUM_SAMPLES) {
     imageRes = getImageNumSamples(CI);
-  } else if (funcName.equals(ImageFuncsAnalysis::GET_SAMPLER_ADDRESS_MODE)) {
+  } else if (funcName == ImageFuncsAnalysis::GET_SAMPLER_ADDRESS_MODE) {
     imageRes = getSamplerAddressMode(CI);
-  } else if (funcName.equals(ImageFuncsAnalysis::GET_SAMPLER_NORMALIZED_COORDS)) {
+  } else if (funcName == ImageFuncsAnalysis::GET_SAMPLER_NORMALIZED_COORDS) {
     imageRes = getSamplerNormalizedCoords(CI);
-  } else if (funcName.equals(ImageFuncsAnalysis::GET_SAMPLER_SNAP_WA_REQUIRED)) {
+  } else if (funcName == ImageFuncsAnalysis::GET_SAMPLER_SNAP_WA_REQUIRED) {
     imageRes = getSamplerSnapWARequired(CI);
   } else {
     // Non image function, do nothing

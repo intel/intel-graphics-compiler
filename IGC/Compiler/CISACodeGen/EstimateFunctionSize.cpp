@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -552,37 +552,37 @@ void EstimateFunctionSize::clear() {
 bool EstimateFunctionSize::matchImplicitArg(CallInst &CI) {
   bool matched = false;
   StringRef funcName = CI.getCalledFunction()->getName();
-  if (funcName.equals(GET_LOCAL_ID_X) || funcName.equals(GET_LOCAL_ID_Y) || funcName.equals(GET_LOCAL_ID_Z)) {
+  if (funcName == GET_LOCAL_ID_X || funcName == GET_LOCAL_ID_Y || funcName == GET_LOCAL_ID_Z) {
     matched = true;
-  } else if (funcName.equals(GET_GROUP_ID)) {
+  } else if (funcName == GET_GROUP_ID) {
     matched = true;
-  } else if (funcName.equals(GET_LOCAL_THREAD_ID)) {
+  } else if (funcName == GET_LOCAL_THREAD_ID) {
     matched = true;
-  } else if (funcName.equals(GET_GLOBAL_OFFSET)) {
+  } else if (funcName == GET_GLOBAL_OFFSET) {
     matched = true;
-  } else if (funcName.equals(GET_GLOBAL_SIZE)) {
+  } else if (funcName == GET_GLOBAL_SIZE) {
     matched = true;
-  } else if (funcName.equals(GET_LOCAL_SIZE)) {
+  } else if (funcName == GET_LOCAL_SIZE) {
     matched = true;
-  } else if (funcName.equals(GET_WORK_DIM)) {
+  } else if (funcName == GET_WORK_DIM) {
     matched = true;
-  } else if (funcName.equals(GET_NUM_GROUPS)) {
+  } else if (funcName == GET_NUM_GROUPS) {
     matched = true;
-  } else if (funcName.equals(GET_ENQUEUED_LOCAL_SIZE)) {
+  } else if (funcName == GET_ENQUEUED_LOCAL_SIZE) {
     matched = true;
-  } else if (funcName.equals(GET_STAGE_IN_GRID_ORIGIN)) {
+  } else if (funcName == GET_STAGE_IN_GRID_ORIGIN) {
     matched = true;
-  } else if (funcName.equals(GET_STAGE_IN_GRID_SIZE)) {
+  } else if (funcName == GET_STAGE_IN_GRID_SIZE) {
     matched = true;
-  } else if (funcName.equals(GET_SYNC_BUFFER)) {
+  } else if (funcName == GET_SYNC_BUFFER) {
     matched = true;
-  } else if (funcName.equals(GET_ASSERT_BUFFER)) {
+  } else if (funcName == GET_ASSERT_BUFFER) {
     matched = true;
-  } else if (funcName.equals(GET_REGION_GROUP_SIZE)) {
+  } else if (funcName == GET_REGION_GROUP_SIZE) {
     matched = true;
-  } else if (funcName.equals(GET_REGION_GROUP_WG_COUNT)) {
+  } else if (funcName == GET_REGION_GROUP_WG_COUNT) {
     matched = true;
-  } else if (funcName.equals(GET_REGION_GROUP_BARRIER_BUFFER)) {
+  } else if (funcName == GET_REGION_GROUP_BARRIER_BUFFER) {
     matched = true;
   }
 
