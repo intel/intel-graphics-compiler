@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -35,7 +35,7 @@ using namespace IGC;
 
 namespace llvm {
 
-bool GenIntrinsicsTTIImpl::isLoweredToCall(const Function *F) {
+bool GenIntrinsicsTTIImpl::isLoweredToCall(const Function *F) const {
   if (GenISAIntrinsic::isIntrinsic(F))
     return false;
   return BaseT::isLoweredToCall(F);
@@ -45,7 +45,7 @@ bool GenIntrinsicsTTIImpl::isLoweredToCall(const Function *F) {
 // instructions. Set this to false unless IGC legalization can fix them.
 bool GenIntrinsicsTTIImpl::shouldBuildLookupTables() { return false; }
 
-bool GenIntrinsicsTTIImpl::enablePromoteLoopUnrollwithAlloca() {
+bool GenIntrinsicsTTIImpl::enablePromoteLoopUnrollwithAlloca() const {
   const IGC::TriboolFlag RK_PromoteLoopUnrollwithAlloca =
       static_cast<TriboolFlag>(IGC_GET_FLAG_VALUE(ForcePromoteLoopUnrollwithAlloca));
   switch (RK_PromoteLoopUnrollwithAlloca) {
@@ -181,6 +181,14 @@ bool GenIntrinsicsTTIImpl::isGEPLoopConstDerived(GetElementPtrInst *GEP, const L
   SCEVTraversal<CheckConstDerived> ST(CCD);
   ST.visitAll(SGEPMinusPointerBase);
   return (CCD.isConstDerived && CCD.AddRecFound);
+}
+
+static TargetTransformInfo createTargetTransformInfo(const GenIntrinsicsTTIImpl &TTIImpl) {
+#if LLVM_VERSION_MAJOR >= 22
+  return TargetTransformInfo(std::make_unique<GenIntrinsicsTTIImpl>(TTIImpl));
+#else
+  return TargetTransformInfo(TTIImpl);
+#endif
 }
 
 void GenIntrinsicsTTIImpl::getUnrollingPreferences(Loop *L, ScalarEvolution &SE, TTI::UnrollingPreferences &UP,
@@ -427,7 +435,8 @@ void GenIntrinsicsTTIImpl::getUnrollingPreferences(Loop *L, ScalarEvolution &SE,
 
       SmallPtrSet<const Value *, 32> EphValues;
       CodeMetrics Metrics;
-      Metrics.analyzeBasicBlock(BB, *this, EphValues);
+      TargetTransformInfo TTI = createTargetTransformInfo(*this);
+      Metrics.analyzeBasicBlock(BB, TTI, EphValues);
       if (Metrics.NumInsts < 50) {
         for (auto I = BB->begin(), E = BB->end(); I != E; ++I) {
           CallInst *Call = dyn_cast<CallInst>(I);
@@ -631,7 +640,7 @@ void GenIntrinsicsTTIImpl::getUnrollingPreferences(Loop *L, ScalarEvolution &SE,
     for (unsigned i = 0; i < LoopID->getNumOperands(); ++i) {
       if (MDNode *MD = llvm::dyn_cast<MDNode>(LoopID->getOperand(i))) {
         if (MDString *S = llvm::dyn_cast<MDString>(MD->getOperand(0))) {
-          if (maxIterMetadataNames.equals(S->getString())) {
+          if (maxIterMetadataNames == S->getString()) {
             UP.MaxCount = static_cast<unsigned>(mdconst::extract<ConstantInt>(MD->getOperand(1))->getZExtValue());
           }
         }
@@ -651,7 +660,7 @@ void GenIntrinsicsTTIImpl::getPeelingPreferences(Loop *L, ScalarEvolution &SE,
     for (unsigned i = 0; i < LoopID->getNumOperands(); ++i) {
       if (MDNode *MD = llvm::dyn_cast<MDNode>(LoopID->getOperand(i))) {
         if (MDString *S = llvm::dyn_cast<MDString>(MD->getOperand(0))) {
-          if (peelCountMetadataNames.equals(S->getString())) {
+          if (peelCountMetadataNames == S->getString()) {
             PP.AllowPeeling = true;
             PP.PeelCount = static_cast<unsigned>(mdconst::extract<ConstantInt>(MD->getOperand(1))->getZExtValue());
           }
@@ -672,19 +681,19 @@ bool GenIntrinsicsTTIImpl::isProfitableToHoist(Instruction *I) {
 
 // TODO: Upon the complete removal of pre-LLVM 14 conditions, move to 'getInstructionCost' per LLVM 16 API
 llvm::InstructionCost GenIntrinsicsTTIImpl::getUserCost(const User *U, ArrayRef<const Value *> Operands,
-                                                        TTI::TargetCostKind CostKind) {
+                                                        TTI::TargetCostKind CostKind) const {
   return GenIntrinsicsTTIImpl::internalCalculateCost(U, Operands, CostKind);
 }
 
 #if LLVM_VERSION_MAJOR >= 16
 llvm::InstructionCost GenIntrinsicsTTIImpl::getInstructionCost(const User *U, ArrayRef<const Value *> Operands,
-                                                               TTI::TargetCostKind CostKind) {
+                                                               TTI::TargetCostKind CostKind) const {
   return GenIntrinsicsTTIImpl::internalCalculateCost(U, Operands, CostKind);
 }
 #endif
 
 llvm::InstructionCost GenIntrinsicsTTIImpl::internalCalculateCost(const User *U, ArrayRef<const Value *> Operands,
-                                                                  TTI::TargetCostKind CostKind) {
+                                                                  TTI::TargetCostKind CostKind) const {
   // The extra cost of speculative execution for math intrinsics
   if (auto *II = dyn_cast_or_null<IntrinsicInst>(U)) {
     if (Intrinsic::ID IID = II->getIntrinsicID()) {
@@ -735,10 +744,11 @@ llvm::InstructionCost GenIntrinsicsTTIImpl::internalCalculateCost(const User *U,
 }
 
 // Strip from LLVM::LoopUnrollPass::ApproximateLoopSize
-unsigned getLoopSize(const Loop *L, const TargetTransformInfo &TTI) {
+unsigned getLoopSize(const Loop *L, const GenIntrinsicsTTIImpl &TTIImpl) {
   SmallPtrSet<const Value *, 32> EphValues;
 
   CodeMetrics Metrics;
+  TargetTransformInfo TTI = createTargetTransformInfo(TTIImpl);
   for (BasicBlock *BB : L->blocks())
     Metrics.analyzeBasicBlock(BB, TTI, EphValues);
 
@@ -746,7 +756,11 @@ unsigned getLoopSize(const Loop *L, const TargetTransformInfo &TTI) {
   LoopSize = Metrics.NumInsts;
 
   LoopSize = (LoopSize > 3 /*BEInsns + 1*/) ? LoopSize : 3;
+#if LLVM_VERSION_MAJOR >= 22
+  return static_cast<unsigned>(LoopSize.getValue());
+#else
   return *LoopSize.getValue();
+#endif
 }
 
 } // namespace llvm

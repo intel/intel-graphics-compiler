@@ -26,11 +26,13 @@ private:
 public:
   TTIImplCRTPBase(const llvm::DataLayout &DL) : CRTPBaseT(DL) {}
   llvm::InstructionCost getInstructionCost(const llvm::User *U, llvm::ArrayRef<const llvm::Value *> Operands,
-                                           llvm::TargetTransformInfo::TargetCostKind CostKind) {
-#if LLVM_VERSION_MAJOR >= 16
+                                           llvm::TargetTransformInfo::TargetCostKind CostKind) const {
+#if LLVM_VERSION_MAJOR >= 22
     return CRTPBaseT::getInstructionCost(U, Operands, CostKind);
+#elif LLVM_VERSION_MAJOR >= 16
+    return const_cast<TTIImplCRTPBase<T> *>(this)->CRTPBaseT::getInstructionCost(U, Operands, CostKind);
 #else  // LLVM_VERSION_MAJOR
-    return CRTPBaseT::getUserCost(U, Operands, CostKind);
+    return const_cast<TTIImplCRTPBase<T> *>(this)->CRTPBaseT::getUserCost(U, Operands, CostKind);
 #endif // LLVM_VERSION_MAJOR
   }
 };

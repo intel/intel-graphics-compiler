@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -32,9 +32,9 @@ public:
   DenseMap<Value *, bool> isGEPLoopInduction;
 
   bool shouldBuildLookupTables();
-  bool enablePromoteLoopUnrollwithAlloca();
+  bool enablePromoteLoopUnrollwithAlloca() const;
 
-  bool isLoweredToCall(const Function *F);
+  bool isLoweredToCall(const Function *F) const;
 
   void *getAdjustedAnalysisPointer(const void *ID);
 
@@ -52,16 +52,17 @@ public:
 
   bool isProfitableToHoist(Instruction *I);
 
-  llvm::InstructionCost getUserCost(const User *U, ArrayRef<const Value *> Operands, TTI::TargetCostKind CostKind);
+  llvm::InstructionCost getUserCost(const User *U, ArrayRef<const Value *> Operands,
+                                    TTI::TargetCostKind CostKind) const;
 
   llvm::InstructionCost getInstructionCost(const User *U, ArrayRef<const Value *> Operands,
-                                           TTI::TargetCostKind CostKind);
+                                           TTI::TargetCostKind CostKind) const;
 
 private:
   llvm::InstructionCost internalCalculateCost(const User *U, ArrayRef<const Value *> Operands,
-                                              TTI::TargetCostKind CostKind);
+                                              TTI::TargetCostKind CostKind) const;
 };
 
-unsigned getLoopSize(const Loop *L, const TargetTransformInfo &TTI);
+unsigned getLoopSize(const Loop *L, const GenIntrinsicsTTIImpl &TTIImpl);
 
 } // namespace llvm
