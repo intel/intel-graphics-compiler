@@ -39,19 +39,19 @@ define spir_kernel void @test_custom(float %a, float addrspace(65549)* %b) !dbg 
 entry:
   %0 = load float, float addrspace(65549)* %b, !dbg !20
   call void @llvm.dbg.value(metadata float %0, metadata !12, metadata !DIExpression()), !dbg !20
-  %1 = fmul fast float %0, 1.000000e+00, !dbg !21
+  %1 = fmul float %0, 1.000000e+00, !dbg !21
   call void @llvm.dbg.value(metadata float %1, metadata !14, metadata !DIExpression()), !dbg !21
-  %2 = fmul fast float %1, -1.0, !dbg !22
+  %2 = fmul float %1, -1.0, !dbg !22
   call void @llvm.dbg.value(metadata float %2, metadata !15, metadata !DIExpression()), !dbg !22
   store float %2, float addrspace(65549)* %b, !dbg !23
-  %3 = fsub fast float 1.000000e+00, %a, !dbg !24
+  %3 = fsub float 1.000000e+00, %a, !dbg !24
   call void @llvm.dbg.value(metadata float %3, metadata !16, metadata !DIExpression()), !dbg !24
-  %4 = fmul fast float %3, %0, !dbg !25
+  %4 = fmul float %3, %0, !dbg !25
   call void @llvm.dbg.value(metadata float %4, metadata !17, metadata !DIExpression()), !dbg !25
   store float %4, float addrspace(65549)* %b, !dbg !26
-  %5 = fadd fast float %0, 1.350000e+01, !dbg !27
+  %5 = fadd float %0, 1.350000e+01, !dbg !27
   call void @llvm.dbg.value(metadata float %5, metadata !18, metadata !DIExpression()), !dbg !27
-  %6 = fmul fast float %5, 2.130000e+02, !dbg !28
+  %6 = fmul float %5, 2.130000e+02, !dbg !28
   call void @llvm.dbg.value(metadata float %6, metadata !19, metadata !DIExpression()), !dbg !28
   store float %6, float addrspace(65549)* %b, !dbg !29
   ret void, !dbg !30

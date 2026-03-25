@@ -23,8 +23,8 @@
 ; CHECK: void @llvm.dbg.value(metadata float 0.0{{.*}}, metadata [[VAL2_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL2_LOC:![0-9]*]]
 ; CHECK: void @llvm.dbg.value(metadata float %a, metadata [[VAL3_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL3_LOC:![0-9]*]]
 ; CHECK: store float %a,{{.*}}, !dbg [[STORE1_LOC:![0-9]*]]
-; CHECK: [[TEMP_V:%[A-z0-9]*]] = fsub fast float 0{{.*}}, !dbg [[VAL5_LOC:![0-9]*]]
-; CHECK: [[VAL5_V:%[A-z0-9]*]] = fmul fast float [[TEMP_V]],{{.*}}, !dbg [[VAL5_LOC]]
+; CHECK: [[TEMP_V:%[A-z0-9]*]] = fsub float 0{{.*}}, !dbg [[VAL5_LOC:![0-9]*]]
+; CHECK: [[VAL5_V:%[A-z0-9]*]] = fmul float [[TEMP_V]],{{.*}}, !dbg [[VAL5_LOC]]
 ; CHECK: void @llvm.dbg.value(metadata float [[VAL5_V]], metadata [[VAL4_MD:![0-9]*]], metadata !DIExpression({{.*}}{{DW_OP_neg|(DW_OP_constu, 0, DW_OP_swap, DW_OP_minus)}}{{.*}})), !dbg [[VAL4_LOC:![0-9]*]]
 ; CHECK: void @llvm.dbg.value(metadata float [[VAL5_V]], metadata [[VAL5_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL5_LOC:![0-9]*]]
 ; CHECK: store float [[VAL5_V]]{{.*}}, !dbg [[STORE2_LOC:![0-9]*]]
@@ -39,24 +39,24 @@ define spir_kernel void @test_custom(float %a, float addrspace(65549)* %b) !dbg 
 entry:
   %0 = load float, float addrspace(65549)* %b, !dbg !22
   call void @llvm.dbg.value(metadata float %0, metadata !12, metadata !DIExpression()), !dbg !22
-  %1 = fsub fast float %0, %0, !dbg !23
+  %1 = fsub float %0, %0, !dbg !23
   call void @llvm.dbg.value(metadata float %1, metadata !14, metadata !DIExpression()), !dbg !23
-  %2 = fsub fast float %a, %1, !dbg !24
+  %2 = fsub float %a, %1, !dbg !24
   call void @llvm.dbg.value(metadata float %2, metadata !15, metadata !DIExpression()), !dbg !24
   store float %2, float addrspace(65549)* %b, !dbg !25
-  %3 = fmul fast float %0, %a, !dbg !26
+  %3 = fmul float %0, %a, !dbg !26
   call void @llvm.dbg.value(metadata float %3, metadata !16, metadata !DIExpression()), !dbg !26
-  %4 = fsub fast float %1, %3, !dbg !27
+  %4 = fsub float %1, %3, !dbg !27
   call void @llvm.dbg.value(metadata float %4, metadata !17, metadata !DIExpression()), !dbg !27
   store float %4, float addrspace(65549)* %b, !dbg !28
-  %5 = fsub fast float %0, 1.350000e+01, !dbg !29
+  %5 = fsub float %0, 1.350000e+01, !dbg !29
   call void @llvm.dbg.value(metadata float %5, metadata !18, metadata !DIExpression()), !dbg !29
-  %6 = fsub fast float %5, 3.130000e+02, !dbg !30
+  %6 = fsub float %5, 3.130000e+02, !dbg !30
   call void @llvm.dbg.value(metadata float %6, metadata !19, metadata !DIExpression()), !dbg !30
   store float %6, float addrspace(65549)* %b, !dbg !31
-  %7 = fadd fast float %0, %a, !dbg !32
+  %7 = fadd float %0, %a, !dbg !32
   call void @llvm.dbg.value(metadata float %7, metadata !20, metadata !DIExpression()), !dbg !32
-  %8 = fsub fast float %7, %a, !dbg !33
+  %8 = fsub float %7, %a, !dbg !33
   call void @llvm.dbg.value(metadata float %8, metadata !21, metadata !DIExpression()), !dbg !33
   store float %8, float addrspace(65549)* %b, !dbg !34
   ret void, !dbg !35
