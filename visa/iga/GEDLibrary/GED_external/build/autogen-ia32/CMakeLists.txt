@@ -10,12 +10,12 @@
 set(GED_autogenia32_cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_api.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_collectors_tables.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/ged_encoding_masks_tables.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/ged_enum_tables.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/ged_enum_interpreters.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_compaction_tables.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_decoding_tables.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/ged_encoding_masks_tables.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_enumerations.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/ged_enum_interpreters.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/ged_enum_tables.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_fragments.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_ins_field.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_mapping_fragments.cpp
@@ -43,11 +43,20 @@ set(GED_autogenia32_cpp
 )
 # GED_external/build/autogen-ia32
 set(GED_autogenia32_h
-  ${CMAKE_CURRENT_SOURCE_DIR}/ged_decoding_tables.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/ged_collectors_tables.h
   ${CMAKE_CURRENT_SOURCE_DIR}/ged.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/ged_collectors_tables.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/ged_compaction_tables.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/ged_decoding_tables.h
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_encoding_masks_tables.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/ged_enumerations.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/ged_enumerations_internal.h
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_enum_interpreters.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/ged_enum_tables.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/ged_fragments.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/ged_ins_field.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/ged_ins_field_internal.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/ged_mapping_fragments.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/ged_mapping_tables.h
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_model_10.h
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_model_11.h
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_model_7.h
@@ -59,21 +68,12 @@ set(GED_autogenia32_h
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_model_tgl.h
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_model_xe2.h
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_model_xe3.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/ged_model_xe3p_cri.h
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_model_xe_hp.h
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_model_xe_hpc.h
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_model_xe_hpc_a.h
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_model_xe_hpg.h
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_model_xe_lpg_md.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/ged_compaction_tables.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/ged_enum_tables.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/ged_enumerations.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/ged_enumerations_internal.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/ged_fragments.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/ged_ins_field.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/ged_ins_field_internal.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/ged_mapping_fragments.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/ged_mapping_tables.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/ged_model_xe3p_cri.h
   ${CMAKE_CURRENT_SOURCE_DIR}/ged_restrictions.h
   PARENT_SCOPE
 )

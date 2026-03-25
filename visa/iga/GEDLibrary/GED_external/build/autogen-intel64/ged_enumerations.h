@@ -644,6 +644,7 @@ typedef enum
     GED_OPCODE_dnscl,   ///< XE3P.CRI
     GED_OPCODE_bdpas,   ///< XE3P.CRI
     GED_OPCODE_mullh,   ///< XE3P.CRI
+    GED_OPCODE_qmad,    ///< XE3P.CRI
     GED_OPCODE_f32to16, ///< 7, 7.5
     GED_OPCODE_f16to32, ///< 7, 7.5
     GED_OPCODE_dim,     ///< 7.5

@@ -1510,6 +1510,25 @@ const GED_DATA_TYPE* DataTypeTable39[16] =
 {
     &DataTypeVar4, // 0
     &DataTypeVar2, // 1
+    &DataTypeVar0, // 2
+    &DataTypeVar8, // 3
+    &DataTypeVar5, // 4
+    &DataTypeVar3, // 5
+    &DataTypeVar1, // 6
+    &DataTypeVar9, // 7
+    &DataTypeVar17, // 8
+    &DataTypeVar10, // 9
+    &DataTypeVar7, // 10
+    &DataTypeVar6, // 11
+    &DataTypeVar19, // 12
+    &DataTypeVar15, // 13
+    &DataTypeVar18, // 14
+    &DataTypeVar13 // 15
+}; // DataTypeTable39[]
+const GED_DATA_TYPE* DataTypeTable40[16] =
+{
+    &DataTypeVar4, // 0
+    &DataTypeVar2, // 1
     NULL, // 2
     NULL, // 3
     NULL, // 4
@@ -1524,8 +1543,8 @@ const GED_DATA_TYPE* DataTypeTable39[16] =
     NULL, // 13
     NULL, // 14
     NULL // 15
-}; // DataTypeTable39[]
-const GED_DATA_TYPE* DataTypeTable40[8] =
+}; // DataTypeTable40[]
+const GED_DATA_TYPE* DataTypeTable41[8] =
 {
     &DataTypeVar17, // 0
     &DataTypeVar10, // 1
@@ -1535,8 +1554,19 @@ const GED_DATA_TYPE* DataTypeTable40[8] =
     &DataTypeVar15, // 5
     NULL, // 6
     NULL // 7
-}; // DataTypeTable40[]
-const GED_DATA_TYPE* DataTypeTable41[8] =
+}; // DataTypeTable41[]
+const GED_DATA_TYPE* DataTypeTable42[8] =
+{
+    NULL, // 0
+    NULL, // 1
+    &DataTypeVar7, // 2
+    NULL, // 3
+    NULL, // 4
+    NULL, // 5
+    NULL, // 6
+    NULL // 7
+}; // DataTypeTable42[]
+const GED_DATA_TYPE* DataTypeTable43[8] =
 {
     &DataTypeVar0, // 0
     &DataTypeVar1, // 1
@@ -1546,8 +1576,8 @@ const GED_DATA_TYPE* DataTypeTable41[8] =
     &DataTypeVar5, // 5
     &DataTypeVar6, // 6
     &DataTypeVar7 // 7
-}; // DataTypeTable41[]
-const GED_DATA_TYPE* DataTypeTable42[8] =
+}; // DataTypeTable43[]
+const GED_DATA_TYPE* DataTypeTable44[8] =
 {
     &DataTypeVar0, // 0
     NULL, // 1
@@ -1557,8 +1587,8 @@ const GED_DATA_TYPE* DataTypeTable42[8] =
     NULL, // 5
     NULL, // 6
     NULL // 7
-}; // DataTypeTable42[]
-const GED_DATA_TYPE* DataTypeTable43[8] =
+}; // DataTypeTable44[]
+const GED_DATA_TYPE* DataTypeTable45[8] =
 {
     NULL, // 0
     &DataTypeVar1, // 1
@@ -1568,8 +1598,8 @@ const GED_DATA_TYPE* DataTypeTable43[8] =
     NULL, // 5
     NULL, // 6
     NULL // 7
-}; // DataTypeTable43[]
-const GED_DATA_TYPE* DataTypeTable44[8] =
+}; // DataTypeTable45[]
+const GED_DATA_TYPE* DataTypeTable46[8] =
 {
     &DataTypeVar0, // 0
     &DataTypeVar1, // 1
@@ -1579,14 +1609,14 @@ const GED_DATA_TYPE* DataTypeTable44[8] =
     &DataTypeVar12, // 5
     &DataTypeVar13, // 6
     &DataTypeVar7 // 7
-}; // DataTypeTable44[]
-const GED_DATA_TYPE* DataTypeTable45[4] =
+}; // DataTypeTable46[]
+const GED_DATA_TYPE* DataTypeTable47[4] =
 {
     &DataTypeVar7, // 0
     &DataTypeVar1, // 1
     &DataTypeVar0, // 2
     &DataTypeVar6 // 3
-}; // DataTypeTable45[]
+}; // DataTypeTable47[]
 static GED_DEBUG_CTRL DebugCtrlVar0 = (GED_DEBUG_CTRL)0;
 static GED_DEBUG_CTRL DebugCtrlVar1 = (GED_DEBUG_CTRL)1;
 const GED_DEBUG_CTRL* DebugCtrlTable0[2] =
@@ -3310,6 +3340,7 @@ static GED_OPCODE OpcodeVar89 = (GED_OPCODE)89;
 static GED_OPCODE OpcodeVar90 = (GED_OPCODE)90;
 static GED_OPCODE OpcodeVar91 = (GED_OPCODE)91;
 static GED_OPCODE OpcodeVar92 = (GED_OPCODE)92;
+static GED_OPCODE OpcodeVar93 = (GED_OPCODE)93;
 const GED_OPCODE* OpcodeTable0[128] =
 {
     &OpcodeVar0, // 0
@@ -4607,7 +4638,7 @@ const GED_OPCODE* OpcodeTable9[128] =
     &OpcodeVar14, // 113
     &OpcodeVar15, // 114
     NULL, // 115
-    NULL, // 116
+    &OpcodeVar90, // 116
     NULL, // 117
     NULL, // 118
     &OpcodeVar16, // 119
@@ -4641,8 +4672,8 @@ const GED_OPCODE* OpcodeTable10[128] =
     &OpcodeVar13, // 16
     &OpcodeVar14, // 17
     &OpcodeVar15, // 18
-    &OpcodeVar90, // 19
-    &OpcodeVar91, // 20
+    &OpcodeVar91, // 19
+    &OpcodeVar92, // 20
     NULL, // 21
     NULL, // 22
     &OpcodeVar16, // 23
@@ -4763,7 +4794,7 @@ const GED_OPCODE* OpcodeTable11[128] =
     &OpcodeVar8, // 7
     &OpcodeVar9, // 8
     &OpcodeVar10, // 9
-    &OpcodeVar92, // 10
+    &OpcodeVar93, // 10
     NULL, // 11
     &OpcodeVar12, // 12
     NULL, // 13
@@ -4772,8 +4803,8 @@ const GED_OPCODE* OpcodeTable11[128] =
     &OpcodeVar13, // 16
     &OpcodeVar14, // 17
     &OpcodeVar15, // 18
-    &OpcodeVar90, // 19
-    &OpcodeVar91, // 20
+    &OpcodeVar91, // 19
+    &OpcodeVar92, // 20
     NULL, // 21
     NULL, // 22
     &OpcodeVar16, // 23
