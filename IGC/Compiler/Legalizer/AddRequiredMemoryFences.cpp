@@ -178,7 +178,14 @@ bool AddRequiredMemoryFences::runOnFunction(Function &F) {
           }
           SmallVector<BasicBlock *, 4> exitBlocks;
           L->getUniqueExitBlocks(exitBlocks);
-          postDomBB = FindPostDominator(exitBlocks);
+          if (!exitBlocks.empty()) {
+            postDomBB = FindPostDominator(exitBlocks);
+          } else {
+            // Infinite loop may not have an exit block
+            SmallVector<BasicBlock *, 4> latches;
+            L->getLoopLatches(latches);
+            postDomBB = FindPostDominator(latches);
+          }
         }
       }
       if (postDomBB == nullptr) {
