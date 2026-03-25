@@ -34,7 +34,7 @@ inline bool ends_with(llvm::StringRef LHS, llvm::StringRef RHS) {
 }
 
 inline bool ends_with_insensitive(llvm::StringRef LHS, llvm::StringRef RHS) {
-#if LLVM_VERSION_MAJOR > 16 && !defined(IGC_LLVM_TRUNK_REVISION)
+#if LLVM_VERSION_MAJOR > 16
   return LHS.ends_with_insensitive(RHS);
 #else
   return LHS.endswith_insensitive(RHS);

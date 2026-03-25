@@ -1109,7 +1109,7 @@ void GenXFunctionGroupAnalysis::dump() { print(llvm::errs()); }
 using InlinedArrayAllocasTy = DenseMap<ArrayType *, std::vector<AllocaInst *>>;
 namespace {
 
-#if LLVM_VERSION_MAJOR > 16 && !defined(IGC_LLVM_TRUNK_REVISION)
+#if LLVM_VERSION_MAJOR > 16
 AAResults createLegacyPMAAResults(Pass &P, Function &F, BasicAAResult &BAR) {
   AAResults AAR(P.getAnalysis<TargetLibraryInfoWrapperPass>().getTLI());
   AAR.addAAResult(BAR);

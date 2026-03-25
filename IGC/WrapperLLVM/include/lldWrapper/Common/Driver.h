@@ -18,7 +18,7 @@ SPDX-License-Identifier: MIT
 #include "lld/Common/Driver.h"
 #include "lld/Common/CommonLinkerContext.h"
 
-#if LLVM_VERSION_MAJOR >= 17 && !defined(IGC_LLVM_TRUNK_REVISION)
+#if LLVM_VERSION_MAJOR >= 17
 LLD_HAS_DRIVER(elf)
 #endif
 
