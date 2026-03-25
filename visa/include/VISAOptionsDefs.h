@@ -567,8 +567,6 @@ DEF_VISA_OPTION(vISA_ScheduleACCDep, ET_BOOL, "-scheduleACCDep",
                 false)
 DEF_VISA_OPTION(vISA_schedWithSendSrcReadCycle, ET_BOOL_TRUE,
                 "-schedWithSendSrcReadCycle", UNUSED, false)
-DEF_VISA_OPTION(vISA_useRevisedSchedulingHeuristic, ET_BOOL_TRUE,
-                "-useRevisedSchedulingHeuristic", UNUSED, false)
 DEF_VISA_OPTION(vISA_ScheduleFor2xDpas, ET_BOOL_TRUE, "-scheduleFor2xDpas",
                 UNUSED, false)
 DEF_VISA_OPTION(vISA_DumpSendDepLatency, ET_INT32, "-dumpSendDepLatency",
