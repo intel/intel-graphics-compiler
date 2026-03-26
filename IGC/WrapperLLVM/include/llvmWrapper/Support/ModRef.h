@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2024 Intel Corporation
+Copyright (C) 2024-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -19,6 +19,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/Config/llvm-config.h"
 #include "llvm/IR/Attributes.h"
 #include "llvm/IR/LLVMContext.h"
+#include "llvm/ADT/BitmaskEnum.h"
 #include "IGC/common/LLVMWarningsPop.hpp"
 
 #include <Probe/Assertion.h>
@@ -26,6 +27,21 @@ SPDX-License-Identifier: MIT
 #include <vector>
 
 namespace IGCLLVM {
+#if LLVM_VERSION_MAJOR >= 22
+using CaptureComponents = llvm::CaptureComponents;
+#else  // LLVM_VERSION_MAJOR
+/// Below is a mere copy of llvm::CaptureComponents
+enum class CaptureComponents : uint8_t {
+  None = 0,
+  AddressIsNull = (1 << 0),
+  Address = (1 << 1) | AddressIsNull,
+  ReadProvenance = (1 << 2),
+  Provenance = (1 << 3) | ReadProvenance,
+  All = Address | Provenance,
+  LLVM_MARK_AS_BITMASK_ENUM(Provenance),
+};
+#endif // LLVM_VERSION_MAJOR
+
 #if LLVM_VERSION_MAJOR >= 16
 using ModRefInfo = llvm::ModRefInfo;
 #else  // LLVM_VERSION_MAJOR

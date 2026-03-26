@@ -9,6 +9,8 @@ SPDX-License-Identifier: MIT
 #include <type_traits>
 #include <stdint.h>
 
+#include "llvmWrapper/Support/ModRef.h"
+
 #include "common/LLVMWarningsPush.hpp"
 #include "llvm/ADT/ArrayRef.h"
 #include "llvm/IR/Attributes.h"
@@ -296,11 +298,22 @@ struct TypeDescription {
 };
 
 struct ArgumentDescription {
-  constexpr ArgumentDescription(const TypeDescription &type, llvm::Attribute::AttrKind attrKind = llvm::Attribute::None)
-      : m_Type(type), m_AttrKind(attrKind) {}
+  constexpr ArgumentDescription(const TypeDescription &type)
+      : m_Type(type), m_AttrKind(llvm::Attribute::None), m_Capture(std::nullopt) {}
+
+  constexpr ArgumentDescription(const TypeDescription &type, llvm::Attribute::AttrKind attrKind)
+      : m_Type(type), m_AttrKind(attrKind), m_Capture(std::nullopt) {}
+
+  constexpr ArgumentDescription(const TypeDescription &type, std::optional<IGCLLVM::CaptureComponents> captureComponent)
+      : m_Type(type), m_AttrKind(llvm::Attribute::None), m_Capture(captureComponent) {}
+
+  constexpr ArgumentDescription(const TypeDescription &type, llvm::Attribute::AttrKind attrKind,
+                                std::optional<IGCLLVM::CaptureComponents> captureComponent)
+      : m_Type(type), m_AttrKind(attrKind), m_Capture(captureComponent) {}
 
   const TypeDescription &m_Type;
   llvm::Attribute::AttrKind m_AttrKind;
+  std::optional<IGCLLVM::CaptureComponents> m_Capture;
 };
 
 constexpr bool IsOverloadable(const TypeDescription &type) { return type.IsOverloadable(); }

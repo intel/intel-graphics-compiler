@@ -131,6 +131,11 @@ class IntrinsicFormatter:
             if arg.type_definition.ID != TypeID.Pointer:
                 sys.exit(1)
             output += ", {}".format(cls.get_attribute_entry(arg.param_attr, is_last=True))
+
+        # list of valid captures is defined in ModRef.h
+        if arg.capture != None and arg.capture in ["None"]:
+            output += ", {}".format(cls.get_capture_entry(arg.capture, is_last=True))
+
         output = "ArgumentDescription({})".format(output)
         if not is_last:
             output = "{},".format(output)
@@ -153,6 +158,13 @@ class IntrinsicFormatter:
     @staticmethod
     def get_attribute_entry(attribute, is_last):
         output = 'llvm::Attribute::{}'.format(attribute)
+        if not is_last:
+            output = "{},".format(output)
+        return output
+
+    @staticmethod
+    def get_capture_entry(capture_value, is_last):
+        output = "IGCLLVM::CaptureComponents::{}".format(capture_value)
         if not is_last:
             output = "{},".format(output)
         return output

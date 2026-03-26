@@ -491,10 +491,11 @@ class ArgumentDefinition(SafeYAMLObject):
         arg_dict = loader.construct_mapping(node, deep=True)
         return cls(**arg_dict)
 
-    def __init__(self, name : str, type_definition : TypeDefinition, comment : str, param_attr : ParamAttributeID = None):
+    def __init__(self, name : str, type_definition : TypeDefinition, comment : str, param_attr : ParamAttributeID = None, capture : str = "undefined"):
         self.name = name
         self.type_definition = type_definition
         self.comment = QuotedString(comment)
+        self.capture = QuotedString(capture)
         if param_attr:
             self.param_attr = param_attr
 
@@ -502,6 +503,7 @@ class ArgumentDefinition(SafeYAMLObject):
         repr_str = "name=%r" % (self.name)
         repr_str += ", type_definition=%r" % (self.type_definition)
         repr_str += ", comment=%r" % (self.comment)
+        repr_str += ", capture=%r" % (self.capture)
         if hasattr(self, 'param_attr'):
             repr_str += ", param_attr=%r" % str(self.param_attr)
         return "%s(%r)" % (
@@ -511,7 +513,8 @@ class ArgumentDefinition(SafeYAMLObject):
         res =  {
             "name": self.name,
             "type_definition": self.type_definition.to_dict(),
-            "comment": self.comment
+            "comment": self.comment,
+            "capture": self.capture
         }
         if hasattr(self, 'param_attr'):
             res["param_attr"] = str(self.param_attr)
@@ -520,7 +523,7 @@ class ArgumentDefinition(SafeYAMLObject):
     @staticmethod
     def from_dict(json_dct : dict):
         type_definition = TypeDefinition.from_dict(json_dct['type_definition'])
-        return ArgumentDefinition(json_dct['name'], type_definition, json_dct['comment'], json_dct['param_attr'])
+        return ArgumentDefinition(json_dct['name'], type_definition, json_dct['comment'], json_dct.get('param_attr'), json_dct.get('capture', 'undefined'))
 
 class MemoryRestriction(SafeYAMLObject):
 

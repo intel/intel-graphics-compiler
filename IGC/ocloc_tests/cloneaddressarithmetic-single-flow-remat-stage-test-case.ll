@@ -1,5 +1,5 @@
 ; REQUIRES: regkeys, llvm-16-plus
-; RUN: llvm-as --opaque-pointers < %s -o %t.bc
+; RUN: llvm-as %OPAQUE_PTR_FLAG% < %s -o %t.bc
 
 ; RUN: ocloc compile -llvm_input -file %t.bc -device bmg -options " -igc_opts 'RematSingleFlowRematEnabled=0, DumpASMToConsole=1, EnableOpaquePointersBackend=1, PrintToConsole=1, ' -cl-intel-256-GRF-per-thread" &> %t_output.ll
 ; RUN: echo "NEXT STAGE!!!!!" >> %t_output.ll
