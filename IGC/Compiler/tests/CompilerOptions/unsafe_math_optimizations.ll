@@ -20,11 +20,11 @@ define void @testunsafe1(float %a, float %b) {
 }
 
 ; CHECK: testunsafe1
-; CHECK: fadd nsz
-; CHECK: fsub nsz
-; CHECK: fmul nsz
-; CHECK: fdiv nsz
-; CHECK: frem nsz
+; CHECK: fadd reassoc nsz arcp contract afn
+; CHECK: fsub reassoc nsz arcp contract afn
+; CHECK: fmul reassoc nsz arcp contract afn
+; CHECK: fdiv reassoc nsz arcp contract afn
+; CHECK: frem reassoc nsz arcp contract afn
 
 define void @testunsafe2(float %a, float %b) {
   %1 = fadd arcp float %a, %b
@@ -35,11 +35,11 @@ define void @testunsafe2(float %a, float %b) {
   ret void
 }
 ; CHECK: testunsafe2
-; CHECK: fadd nsz arcp
-; CHECK: fsub nsz arcp
-; CHECK: fmul nsz arcp
-; CHECK: fdiv nsz arcp
-; CHECK: frem nsz arcp
+; CHECK: fadd reassoc nsz arcp contract afn
+; CHECK: fsub reassoc nsz arcp contract afn
+; CHECK: fmul reassoc nsz arcp contract afn
+; CHECK: fdiv reassoc nsz arcp contract afn
+; CHECK: frem reassoc nsz arcp contract afn
 
 define void @testunsafe3(float %a, float %b) {
   %1 = fadd ninf float %a, %b
@@ -51,11 +51,11 @@ define void @testunsafe3(float %a, float %b) {
 }
 
 ; CHECK: testunsafe3
-; CHECK: fadd ninf nsz
-; CHECK: fsub ninf nsz
-; CHECK: fmul ninf nsz
-; CHECK: fdiv ninf nsz
-; CHECK: frem ninf nsz
+; CHECK: fadd reassoc ninf nsz arcp contract afn
+; CHECK: fsub reassoc ninf nsz arcp contract afn
+; CHECK: fmul reassoc ninf nsz arcp contract afn
+; CHECK: fdiv reassoc ninf nsz arcp contract afn
+; CHECK: frem reassoc ninf nsz arcp contract afn
 
 !IGCMetadata = !{!0}
 

@@ -13,7 +13,7 @@
 ; 0 + x = x
 define float @test1(float %x) #0 {
 entry:
-  %0 = fadd float 0.000000e+00, %x
+  %0 = fadd fast float 0.000000e+00, %x
   ret float %0
 }
 
@@ -24,7 +24,7 @@ entry:
 ; x + 0 = x
 define float @test2(float %x) #0 {
 entry:
-  %0 = fadd float %x, 0.000000e+00
+  %0 = fadd fast float %x, 0.000000e+00
   ret float %0
 }
 
