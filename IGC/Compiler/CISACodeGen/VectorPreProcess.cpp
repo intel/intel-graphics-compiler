@@ -108,33 +108,33 @@ class AbstractLoadInst {
 public:
   Instruction *getInst() const { return m_inst; }
   alignment_t getAlignment() const {
-    if (isa<LoadInst>(m_inst))
-      return IGCLLVM::getAlignmentValue(getLoad());
-    if (isa<LdRawIntrinsic>(m_inst))
-      return getLdRaw()->getAlignment();
+    if (auto *LI = dyn_cast<LoadInst>(m_inst))
+      return IGCLLVM::getAlignmentValue(LI);
+    if (auto *LR = dyn_cast<LdRawIntrinsic>(m_inst))
+      return LR->getAlignment();
     return getPredicatedLoad()->getAlignment();
   }
   void setAlignment(alignment_t alignment) {
-    if (isa<LoadInst>(m_inst)) {
-      getLoad()->setAlignment(IGCLLVM::getCorrectAlign(alignment));
-    } else if (isa<LdRawIntrinsic>(m_inst)) {
-      getLdRaw()->setAlignment(alignment);
+    if (auto *LI = dyn_cast<LoadInst>(m_inst)) {
+      LI->setAlignment(IGCLLVM::getCorrectAlign(alignment));
+    } else if (auto *LR = dyn_cast<LdRawIntrinsic>(m_inst)) {
+      LR->setAlignment(alignment);
     } else {
       getPredicatedLoad()->setAlignment(alignment);
     }
   }
   Value *getPointerOperand() const {
-    if (isa<LoadInst>(m_inst))
-      return getLoad()->getPointerOperand();
-    if (isa<LdRawIntrinsic>(m_inst))
-      return getLdRaw()->getResourceValue();
+    if (auto *LI = dyn_cast<LoadInst>(m_inst))
+      return LI->getPointerOperand();
+    if (auto *LR = dyn_cast<LdRawIntrinsic>(m_inst))
+      return LR->getResourceValue();
     return getPredicatedLoad()->getPointerOperand();
   }
   bool getIsVolatile() const {
-    if (isa<LoadInst>(m_inst))
-      return getLoad()->isVolatile();
-    if (isa<LdRawIntrinsic>(m_inst))
-      return getLdRaw()->isVolatile();
+    if (auto *LI = dyn_cast<LoadInst>(m_inst))
+      return LI->isVolatile();
+    if (auto *LR = dyn_cast<LdRawIntrinsic>(m_inst))
+      return LR->isVolatile();
     return getPredicatedLoad()->isVolatile();
   }
   unsigned getPointerAddressSpace() const { return getPointerOperand()->getType()->getPointerAddressSpace(); }
@@ -231,38 +231,38 @@ class AbstractStoreInst {
 public:
   Instruction *getInst() const { return m_inst; }
   alignment_t getAlignment() const {
-    if (isa<StoreInst>(m_inst))
-      return IGCLLVM::getAlignmentValue(getStore());
-    if (isa<StoreRawIntrinsic>(m_inst))
-      return getStoreRaw()->getAlignment();
+    if (auto *SI = dyn_cast<StoreInst>(m_inst))
+      return IGCLLVM::getAlignmentValue(SI);
+    if (auto *SR = dyn_cast<StoreRawIntrinsic>(m_inst))
+      return SR->getAlignment();
     return getPredicatedStore()->getAlignment();
   }
   void setAlignment(alignment_t alignment) {
-    if (isa<StoreInst>(m_inst)) {
-      getStore()->setAlignment(IGCLLVM::getCorrectAlign(alignment));
-    } else if (isa<PredicatedStoreIntrinsic>(m_inst)) {
-      getPredicatedStore()->setAlignment(alignment);
+    if (auto *SI = dyn_cast<StoreInst>(m_inst)) {
+      SI->setAlignment(IGCLLVM::getCorrectAlign(alignment));
+    } else if (auto *PS = dyn_cast<PredicatedStoreIntrinsic>(m_inst)) {
+      PS->setAlignment(alignment);
     }
   }
   Value *getValueOperand() const {
-    if (isa<StoreInst>(m_inst))
-      return getStore()->getValueOperand();
-    if (isa<StoreRawIntrinsic>(m_inst))
-      return getStoreRaw()->getArgOperand(2);
+    if (auto *SI = dyn_cast<StoreInst>(m_inst))
+      return SI->getValueOperand();
+    if (auto *SR = dyn_cast<StoreRawIntrinsic>(m_inst))
+      return SR->getArgOperand(2);
     return getPredicatedStore()->getValueOperand();
   }
   Value *getPointerOperand() const {
-    if (isa<StoreInst>(m_inst))
-      return getStore()->getPointerOperand();
-    if (isa<StoreRawIntrinsic>(m_inst))
-      return getStoreRaw()->getArgOperand(0);
+    if (auto *SI = dyn_cast<StoreInst>(m_inst))
+      return SI->getPointerOperand();
+    if (auto *SR = dyn_cast<StoreRawIntrinsic>(m_inst))
+      return SR->getArgOperand(0);
     return getPredicatedStore()->getPointerOperand();
   }
   bool getIsVolatile() const {
-    if (isa<StoreInst>(m_inst))
-      return getStore()->isVolatile();
-    if (isa<PredicatedLoadIntrinsic>(m_inst))
-      return getPredicatedStore()->isVolatile();
+    if (auto *SI = dyn_cast<StoreInst>(m_inst))
+      return SI->isVolatile();
+    if (auto *PS = dyn_cast<PredicatedStoreIntrinsic>(m_inst))
+      return PS->isVolatile();
     return false;
   }
   unsigned getPointerAddressSpace() const { return getPointerOperand()->getType()->getPointerAddressSpace(); }
@@ -378,6 +378,8 @@ private:
   // Return true if V is only used by ExtractElement with const index.
   bool isValueUsedOnlyByEEI(Value *V, ExtractElementInst **EEInsts);
 
+  // Widen sub-dword vector loads to i32 elements when total size is DW-multiple.
+  Instruction *widenSubDWordLoadToI32(Instruction *Inst);
   // Split load/store that cannot be re-layout or is too big.
   uint32_t getSplitByteSize(Instruction *I, WIAnalysisRunner &WI) const;
   bool splitLoadStore(Instruction *Inst, V2SMap &vecToSubVec, WIAnalysisRunner &WI);
@@ -959,6 +961,63 @@ bool VectorPreProcess::splitLoad(AbstractLoadInst &ALI, V2SMap &vecToSubVec, WIA
   // unnecesary insert/extract instructions.
   m_Temps.push_back(LI);
   return true;
+}
+
+// Widen a sub-dword vector load to i32 elements when total size is a
+// multiple of 4 bytes and the element count is not power-of-2.
+// For example, <6 x half> (12 bytes) -> <3 x i32>, which then routes
+// through the existing vector3 path as a single load instead of being
+// split into <4 x half> + <2 x half> (2 loads).
+// Returns the new load instruction, or nullptr if no widening was done.
+Instruction *VectorPreProcess::widenSubDWordLoadToI32(Instruction *Inst) {
+  auto ALI = AbstractLoadInst::get(Inst, *m_DL);
+  if (!ALI)
+    return nullptr; // Not a load (stores are intentionally excluded)
+
+  FixedVectorType *VTy = dyn_cast<FixedVectorType>(Inst->getType());
+  if (!VTy)
+    return nullptr;
+
+  Type *ETy = VTy->getElementType();
+  uint32_t ebytes = int_cast<uint32_t>(m_DL->getTypeSizeInBits(ETy) / 8);
+  if (ebytes >= 4)
+    return nullptr; // Already dword or larger
+
+  uint32_t nelts = int_cast<uint32_t>(VTy->getNumElements());
+  uint32_t totalBytes = nelts * ebytes;
+  if (totalBytes < 4 || totalBytes % 4 != 0)
+    return nullptr; // Not a DW-multiple
+
+  if (isPowerOf2_32(nelts))
+    return nullptr; // Power-of-2 element counts are already handled well
+
+  alignment_t alignment = ALI->getAlignment();
+  if (alignment < 4)
+    return nullptr; // Insufficient alignment for i32 load
+
+  uint32_t newNElts = totalBytes / 4;
+  Type *i32Ty = Type::getInt32Ty(*m_C);
+  Type *newTy = (newNElts == 1) ? i32Ty : static_cast<Type *>(FixedVectorType::get(i32Ty, newNElts));
+
+  // For predicated loads, bitcast the merge value to the new type.
+  Value *mergeValue = nullptr;
+  if (auto *PLI = dyn_cast<PredicatedLoadIntrinsic>(Inst)) {
+    IGCLLVM::IRBuilder<> builder(Inst);
+    mergeValue = builder.CreateBitCast(PLI->getMergeValue(), newTy);
+  }
+
+  Instruction *newLI = ALI->Create(newTy, mergeValue);
+  newLI->copyMetadata(*Inst);
+  newLI->setDebugLoc(Inst->getDebugLoc());
+
+  // Bitcast result back to original type for users.
+  IGCLLVM::IRBuilder<> postBuilder(Inst);
+  postBuilder.SetInsertPoint(newLI->getParent(), std::next(newLI->getIterator()));
+  Value *bc = postBuilder.CreateBitCast(newLI, VTy);
+
+  Inst->replaceAllUsesWith(bc);
+  Inst->eraseFromParent();
+  return newLI;
 }
 
 bool VectorPreProcess::splitLoadStore(Instruction *Inst, V2SMap &vecToSubVec, WIAnalysisRunner &WI) {
@@ -1713,7 +1772,13 @@ bool VectorPreProcess::runOnFunction(Function &F) {
       WI.run();
 
       for (uint32_t i = 0; i < m_WorkList.size(); ++i) {
-        if (splitLoadStore(m_WorkList[i], vecToSubVec, WI)) {
+        Instruction *Inst = m_WorkList[i];
+        if (Instruction *Widened = widenSubDWordLoadToI32(Inst)) {
+          m_WorkList[i] = Widened;
+          Inst = Widened;
+          changed = true;
+        }
+        if (splitLoadStore(Inst, vecToSubVec, WI)) {
           changed = true;
         }
       }
