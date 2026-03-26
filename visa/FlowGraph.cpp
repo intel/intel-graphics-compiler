@@ -1638,6 +1638,36 @@ void FlowGraph::recomputePreId(BBIDMap &IDMap) {
   // assign DFS based pre/rpost ids to all blocks in the main program
   //
   doDFS(getEntryBB(), preId, IDMap);
+
+  // Detect unreachable CALL-RETURN loops. After normalizing subroutines into
+  // CALL/RETURN/INIT/EXIT blocks, EXIT->RETURN edges can make a CALL block
+  // appear reachable via DFS even when the only path into the CALL is through
+  // its own RETURN block (a cycle with no external entry). Propagate
+  // unreachability until fixpoint to handle chains of such loops.
+  bool changed = true;
+  while (changed) {
+    changed = false;
+    for (G4_BB *bb : BBs) {
+      if (IDMap.at(bb) == UINT_MAX)
+        continue;
+      if (!(bb->getBBType() & G4_BB_CALL_TYPE))
+        continue;
+      G4_BB *retBB = bb->getPhysicalSucc();
+      if (!retBB || bb->Preds.empty())
+        continue;
+      // The CALL block is unreachable if every predecessor is either
+      // already unreachable or is its own RETURN block (circular path).
+      bool unreachable =
+          std::all_of(bb->Preds.begin(), bb->Preds.end(), [&](G4_BB *pred) {
+            return pred == retBB || IDMap.at(pred) == UINT_MAX;
+          });
+      if (unreachable) {
+        IDMap[bb] = UINT_MAX;
+        IDMap[retBB] = UINT_MAX;
+        changed = true;
+      }
+    }
+  }
 }
 
 //
