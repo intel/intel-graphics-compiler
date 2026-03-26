@@ -20900,6 +20900,7 @@ bool EmitPass::ResourceLoopSubIteration(ResourceDescriptor &resource, SamplerDes
     samplerFlag = m_currShader->GetNewVariable(numLanes(m_SimdMode), ISA_TYPE_BOOL, EALIGN_BYTE, CName::NONE);
     uniformSampler.m_samplerType = sampler.m_samplerType;
     uniformSampler.m_sampler = UniformCopy(sampler.m_sampler, offset);
+    uniformSampler.m_SamplerStateIndex = sampler.m_SamplerStateIndex;
     if (sampler.m_sampler->isQType()) {
       CVariable *samplerDW = m_currShader->GetNewAlias(sampler.m_sampler, ISA_TYPE_UD, 0, 2);
       CVariable *uniformSamplerDW = m_currShader->GetNewAlias(uniformSampler.m_sampler, ISA_TYPE_UD, 0, 2);
