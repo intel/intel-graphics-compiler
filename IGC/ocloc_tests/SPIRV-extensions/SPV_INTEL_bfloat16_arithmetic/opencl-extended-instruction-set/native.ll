@@ -6,9 +6,6 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; TODO: Re-enable when Khronos SPIRV-LLVM Translator is updated in manifests for opensource build
-; REQUIRES: spirv-llvm-translator-updated
-
 ; REQUIRES: cri-supported, llvm-spirv
 
 ; RUN: llvm-as %TYPED_PTR_FLAG% %s -o %t.bc
