@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2025 Intel Corporation
+Copyright (C) 2017-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -603,14 +603,15 @@ static const iga::OpSpec MODEL_XE_HPC_OPSPECS[unsigned(Op::TOTAL_OPS) + 1] {
     OpSpec::Attr::IS_BITWISE|OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SRCMODS
   },
   {Op::INVALID, Platform::XE_HPC, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, },
-  {Op::RET /* Op::63 */, Platform::XE_HPC, 0x2D,
+  {Op::INVALID, Platform::XE_HPC, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, },
+  {Op::RET /* Op::64 */, Platform::XE_HPC, 0x2D,
     "ret",
     "Return",
     OpSpec::Format::JUMP_UNARY_REG,
     {}, // no type mappings
     OpSpec::Attr::SUPPORTS_PREDICATION
   },
-  {Op::RNDD /* Op::64 */, Platform::XE_HPC, 0x45,
+  {Op::RNDD /* Op::65 */, Platform::XE_HPC, 0x45,
     "rndd",
     "Round Down",
     OpSpec::Format::BASIC_UNARY_REGIMM,
@@ -620,7 +621,7 @@ static const iga::OpSpec MODEL_XE_HPC_OPSPECS[unsigned(Op::TOTAL_OPS) + 1] {
     },
     OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SATURATION|OpSpec::Attr::SUPPORTS_SRCMODS
   },
-  {Op::RNDE /* Op::65 */, Platform::XE_HPC, 0x46,
+  {Op::RNDE /* Op::66 */, Platform::XE_HPC, 0x46,
     "rnde",
     "Round to Nearest or Even",
     OpSpec::Format::BASIC_UNARY_REGIMM,
@@ -630,7 +631,7 @@ static const iga::OpSpec MODEL_XE_HPC_OPSPECS[unsigned(Op::TOTAL_OPS) + 1] {
     },
     OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SATURATION|OpSpec::Attr::SUPPORTS_SRCMODS
   },
-  {Op::RNDU /* Op::66 */, Platform::XE_HPC, 0x44,
+  {Op::RNDU /* Op::67 */, Platform::XE_HPC, 0x44,
     "rndu",
     "Round Up",
     OpSpec::Format::BASIC_UNARY_REGIMM,
@@ -640,7 +641,7 @@ static const iga::OpSpec MODEL_XE_HPC_OPSPECS[unsigned(Op::TOTAL_OPS) + 1] {
     },
     OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SATURATION|OpSpec::Attr::SUPPORTS_SRCMODS
   },
-  {Op::RNDZ /* Op::67 */, Platform::XE_HPC, 0x47,
+  {Op::RNDZ /* Op::68 */, Platform::XE_HPC, 0x47,
     "rndz",
     "Round to Zero",
     OpSpec::Format::BASIC_UNARY_REGIMM,
@@ -650,7 +651,7 @@ static const iga::OpSpec MODEL_XE_HPC_OPSPECS[unsigned(Op::TOTAL_OPS) + 1] {
     },
     OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SATURATION|OpSpec::Attr::SUPPORTS_SRCMODS
   },
-  {Op::ROL /* Op::68 */, Platform::XE_HPC, 0x6F,
+  {Op::ROL /* Op::69 */, Platform::XE_HPC, 0x6F,
     "rol",
     "Rotate Left",
     OpSpec::Format::BASIC_BINARY_REG_REGIMM,
@@ -662,7 +663,7 @@ static const iga::OpSpec MODEL_XE_HPC_OPSPECS[unsigned(Op::TOTAL_OPS) + 1] {
     },
     OpSpec::Attr::IS_BITWISE|OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER
   },
-  {Op::ROR /* Op::69 */, Platform::XE_HPC, 0x6E,
+  {Op::ROR /* Op::70 */, Platform::XE_HPC, 0x6E,
     "ror",
     "Rotate Right",
     OpSpec::Format::BASIC_BINARY_REG_REGIMM,
@@ -677,7 +678,7 @@ static const iga::OpSpec MODEL_XE_HPC_OPSPECS[unsigned(Op::TOTAL_OPS) + 1] {
   {Op::INVALID, Platform::XE_HPC, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, },
   {Op::INVALID, Platform::XE_HPC, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, },
   {Op::INVALID, Platform::XE_HPC, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, },
-  {Op::SEL /* Op::73 */, Platform::XE_HPC, 0x62,
+  {Op::SEL /* Op::74 */, Platform::XE_HPC, 0x62,
     "sel",
     "Select",
     OpSpec::Format::BASIC_BINARY_REG_REGIMM,
@@ -697,14 +698,14 @@ static const iga::OpSpec MODEL_XE_HPC_OPSPECS[unsigned(Op::TOTAL_OPS) + 1] {
     },
     OpSpec::Attr::IS_SELECT|OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SATURATION|OpSpec::Attr::SUPPORTS_SRCMODS
   },
-  {Op::SEND /* Op::74 */, Platform::XE_HPC, 0x31,
+  {Op::SEND /* Op::75 */, Platform::XE_HPC, 0x31,
     "send",
     "Send Message",
     OpSpec::Format::SEND_BINARY,
     {}, // no type mappings
     OpSpec::Attr::SUPPORTS_PREDICATION
   },
-  {Op::SENDC /* Op::75 */, Platform::XE_HPC, 0x32,
+  {Op::SENDC /* Op::76 */, Platform::XE_HPC, 0x32,
     "sendc",
     "Send Message Conditional",
     OpSpec::Format::SEND_BINARY,
@@ -718,7 +719,7 @@ static const iga::OpSpec MODEL_XE_HPC_OPSPECS[unsigned(Op::TOTAL_OPS) + 1] {
   {Op::INVALID, Platform::XE_HPC, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, },
   {Op::INVALID, Platform::XE_HPC, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, },
   {Op::INVALID, Platform::XE_HPC, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, },
-  {Op::SHL /* Op::83 */, Platform::XE_HPC, 0x69,
+  {Op::SHL /* Op::84 */, Platform::XE_HPC, 0x69,
     "shl",
     "Shift Left",
     OpSpec::Format::BASIC_BINARY_REG_REGIMM,
@@ -732,7 +733,7 @@ static const iga::OpSpec MODEL_XE_HPC_OPSPECS[unsigned(Op::TOTAL_OPS) + 1] {
     },
     OpSpec::Attr::IS_BITWISE|OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SATURATION|OpSpec::Attr::SUPPORTS_SRCMODS
   },
-  {Op::SHR /* Op::84 */, Platform::XE_HPC, 0x68,
+  {Op::SHR /* Op::85 */, Platform::XE_HPC, 0x68,
     "shr",
     "Shift Right",
     OpSpec::Format::BASIC_BINARY_REG_REGIMM,
@@ -747,7 +748,7 @@ static const iga::OpSpec MODEL_XE_HPC_OPSPECS[unsigned(Op::TOTAL_OPS) + 1] {
     OpSpec::Attr::IS_BITWISE|OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SATURATION|OpSpec::Attr::SUPPORTS_SRCMODS
   },
   {Op::INVALID, Platform::XE_HPC, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, },
-  {Op::SRND /* Op::86 */, Platform::XE_HPC, 0x54,
+  {Op::SRND /* Op::87 */, Platform::XE_HPC, 0x54,
     "srnd",
     "StochasticRounding",
     OpSpec::Format::BASIC_BINARY_REG_REGIMM,
@@ -759,7 +760,7 @@ static const iga::OpSpec MODEL_XE_HPC_OPSPECS[unsigned(Op::TOTAL_OPS) + 1] {
     },
     OpSpec::Attr::SUPPORTS_SATURATION
   },
-  {Op::SUBB /* Op::87 */, Platform::XE_HPC, 0x4F,
+  {Op::SUBB /* Op::88 */, Platform::XE_HPC, 0x4F,
     "subb",
     "Subtraction with Borrow",
     OpSpec::Format::BASIC_BINARY_REG_REGIMM,
@@ -769,7 +770,7 @@ static const iga::OpSpec MODEL_XE_HPC_OPSPECS[unsigned(Op::TOTAL_OPS) + 1] {
     },
     OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SATURATION
   },
-  {Op::SYNC /* Op::88 */, Platform::XE_HPC, 0x01,
+  {Op::SYNC /* Op::89 */, Platform::XE_HPC, 0x01,
     "sync",
     "Synchronize",
     OpSpec::Format::SYNC_UNARY,
@@ -781,14 +782,14 @@ static const iga::OpSpec MODEL_XE_HPC_OPSPECS[unsigned(Op::TOTAL_OPS) + 1] {
   },
   {Op::INVALID, Platform::XE_HPC, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, },
   {Op::INVALID, Platform::XE_HPC, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, },
-  {Op::WHILE /* Op::91 */, Platform::XE_HPC, 0x27,
+  {Op::WHILE /* Op::92 */, Platform::XE_HPC, 0x27,
     "while",
     "While",
     OpSpec::Format::JUMP_UNARY_IMM,
     {}, // no type mappings
     OpSpec::Attr::SUPPORTS_PREDICATION
   },
-  {Op::XOR /* Op::92 */, Platform::XE_HPC, 0x67,
+  {Op::XOR /* Op::93 */, Platform::XE_HPC, 0x67,
     "xor",
     "Logic Xor",
     OpSpec::Format::BASIC_BINARY_REG_REGIMM,
