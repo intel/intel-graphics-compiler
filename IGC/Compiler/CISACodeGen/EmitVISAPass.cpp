@@ -18827,9 +18827,14 @@ void EmitPass::emitLSCVectorStore_subDW(LSC_CACHE_OPTS CacheOpts, bool UseA32, R
   // byte/word-extraction + BroadcastAndExtend/ExtendVariable movs.
   // Skip for predicated stores: UniformCopy uses indirect addressing whose
   // byte-offset arithmetic depends on the original variable's element size.
+  // Also verify the LLVM IR value operand is actually a LoadInst: DeSSA
+  // coalescing can map different IR values (e.g., an fmul result and a load)
+  // to the same CVariable, causing a false hit in the map.
   auto it = m_SubDWLoadWideDst.find(stVar);
   if (!predicate && it != m_SubDWLoadWideDst.end() && it->second.second == m_currentEmitInst->getParent()) {
-    stVar = it->second.first;
+    if (auto *SI = dyn_cast<StoreInst>(m_currentEmitInst); SI && isa<LoadInst>(SI->getValueOperand())) {
+      stVar = it->second.first;
+    }
   }
 
   bool dstUniform = eOffset->IsUniform();
