@@ -52,6 +52,10 @@ DEBUG_COUNTER(MergeLoadCounter, "memopt-merge-load", "Controls count of merged l
 
 DEBUG_COUNTER(MergeStoreCounter, "memopt-merge-store", "Controls count of merged stores");
 
+// Max vector element count for small-vector-to-scalar promotion during
+// mixed-size load/store merging. E.g., <2 x half> can merge with i32 loads.
+static constexpr unsigned MaxSmallVecMergeElts = 2;
+
 namespace {
 // This pass merge consecutive loads/stores within a BB when it's safe:
 // - Two loads (one of them is denoted as the leading load if it happens
@@ -145,6 +149,25 @@ private:
     return DL->getTypeStoreSize(A) == DL->getTypeStoreSize(B);
   }
 
+  bool isPromotableSmallVec(Type *Ty, unsigned TargetScalarBytes) const {
+    auto *FVTy = dyn_cast<IGCLLVM::FixedVectorType>(Ty);
+    if (!FVTy)
+      return false;
+    if (FVTy->getElementType()->isPointerTy())
+      return false;
+    unsigned N = FVTy->getNumElements();
+    return N >= 2 && N <= MaxSmallVecMergeElts && DL->getTypeStoreSize(Ty) == TargetScalarBytes;
+  }
+
+  unsigned getMergedNumElements(Type *Ty, unsigned MergedScalarSize) {
+    unsigned ScalarSize = unsigned(DL->getTypeStoreSize(Ty->getScalarType()));
+    if (ScalarSize == MergedScalarSize)
+      return getNumElements(Ty);
+    if (unsigned(DL->getTypeStoreSize(Ty)) == MergedScalarSize)
+      return 1;
+    return 0;
+  }
+
   Value *createBitOrPointerCast(Value *V, Type *DestTy, IGCIRBuilder<> &Builder) {
     if (V->getType() == DestTy)
       return V;
@@ -205,9 +228,17 @@ private:
         return nullptr;
 
       Value *MergeValue = PLI->getMergeValue();
-      unsigned MergeValNumElements = getNumElements(MergeValue->getType());
+      Type *MergeValueTy = MergeValue->getType();
+      unsigned MergeValNumElements = getNumElements(MergeValueTy);
       Type *MergeValScalarTy = MergeValTy->getScalarType();
       Pos = unsigned((std::get<1>(I) - FirstOffset) / LdScalarSize);
+
+      if (isPromotableSmallVec(MergeValueTy, LdScalarSize)) {
+        IGC_ASSERT_MESSAGE(Pos < NumElts, "Index is larger than the number of elements, we cannot update merge value.");
+        Value *Cast = Builder.CreateBitCast(MergeValue, MergeValScalarTy);
+        NewMergeValue = Builder.CreateInsertElement(NewMergeValue, Cast, Builder.getInt32(Pos));
+        continue;
+      }
 
       if (MergeValNumElements == 1) {
         IGC_ASSERT_MESSAGE(Pos < NumElts, "Index is larger than the number of elements, we cannot update merge value.");
@@ -277,7 +308,7 @@ private:
   bool
   checkAlignmentBeforeMerge(const AccessInstruction &inst,
                             SmallVector<std::tuple<Instruction *, int64_t, MemRefListTy::iterator>, 8> &AccessIntrs,
-                            unsigned &NumElts) {
+                            unsigned &NumElts, unsigned MergedScalarSize = 0) {
     auto alignment = inst.getAlignmentValue();
     if (alignment == 0) {
       // SROA LLVM pass may sometimes set a load/store alignment to 0. It happens when
@@ -321,7 +352,10 @@ private:
 
       // Need to subtract the last offset by the first offset and add one to
       // get the new size of the vector
-      NumElts = unsigned(mergedSize / scalarTypeSizeInBytes);
+      unsigned effScalarSize = MergedScalarSize ? MergedScalarSize : scalarTypeSizeInBytes;
+      if (mergedSize % effScalarSize != 0)
+        return false;
+      NumElts = unsigned(mergedSize / effScalarSize);
     }
     return true;
   }
@@ -1057,20 +1091,27 @@ bool MemOpt::mergeLoad(ALoadInst &LeadingLoad, MemRefListTy::iterator aMI, MemRe
   unsigned TypeSizeInBits = unsigned(DL->getTypeSizeInBits(LeadingLoadScalarType));
   if (!ProfitVectorLengths.count(TypeSizeInBits))
     return false;
-  SmallVector<unsigned, 8> profitVec;
   // FIXME: Enable for OCL shader only as other clients have regressions but
   // there's no way to trace down.
   bool isUniformLoad = (CGC->type == ShaderType::OPENCL_SHADER) && (WI->isUniform(LeadingLoad.inst()));
-  if (isUniformLoad) {
-    unsigned C = IGC_GET_FLAG_VALUE(UniformMemOpt4OW);
-    C = (C == 1) ? 512 : 256;
-    C /= TypeSizeInBits;
-    for (; C >= 2; --C)
-      profitVec.push_back(C);
-  } else {
-    SmallVector<unsigned, 4> &Vec = ProfitVectorLengths[TypeSizeInBits];
-    profitVec.append(Vec.begin(), Vec.end());
-  }
+
+  // Build the profitable-vector-length list for a given scalar bit width.
+  auto buildProfitVec = [&](unsigned Bits, SmallVectorImpl<unsigned> &Out) {
+    Out.clear();
+    if (isUniformLoad) {
+      unsigned C = IGC_GET_FLAG_VALUE(UniformMemOpt4OW);
+      C = (C == 1) ? 512 : 256;
+      C /= Bits;
+      for (; C >= 2; --C)
+        Out.push_back(C);
+    } else {
+      auto &Vec = ProfitVectorLengths[Bits];
+      Out.append(Vec.begin(), Vec.end());
+    }
+  };
+
+  SmallVector<unsigned, 8> profitVec;
+  buildProfitVec(TypeSizeInBits, profitVec);
 
   unsigned LdSize = unsigned(DL->getTypeStoreSize(LeadingLoadType));
   unsigned LdScalarSize = unsigned(DL->getTypeStoreSize(LeadingLoadScalarType));
@@ -1162,9 +1203,49 @@ bool MemOpt::mergeLoad(ALoadInst &LeadingLoad, MemRefListTy::iterator aMI, MemRe
 
     Type *NextLoadType = NextLoad->getType();
 
-    // Skip if they have different sizes.
-    if (!hasSameSize(NextLoadType->getScalarType(), LeadingLoadScalarType))
-      continue;
+    // Skip if they have different sizes, unless mixed-size merging applies.
+    Type *NextLoadScalarType = NextLoadType->getScalarType();
+    unsigned NextLoadScalarSize = unsigned(DL->getTypeStoreSize(NextLoadScalarType));
+
+    // Compute promoted state in temporaries; only commit after the
+    // candidate passes all remaining checks and is accepted.
+    bool pendingPromotion = false;
+    Type *promotedScalarType = nullptr;
+    unsigned promotedScalarSize = 0;
+    SmallVector<unsigned, 8> promotedProfitVec;
+
+    if (!hasSameSize(NextLoadScalarType, LeadingLoadScalarType)) {
+      // Case A: candidate is a small vec fitting one merged element
+      //   e.g., NextLoad is <2 x half>, merged scalar type is i32
+      bool canMergeSmallVec = !LeadingLoadScalarType->isPointerTy() && isPromotableSmallVec(NextLoadType, LdScalarSize);
+
+      // Case B: leading load is the only entry so far and is a small vec
+      //   that can be promoted to the candidate's larger scalar type.
+      //   e.g., LeadingLoad is <2 x half>, NextLoad is i32
+      bool canPromote = false;
+      if (!canMergeSmallVec && LoadsToMerge.size() == 1 && !NextLoadScalarType->isPointerTy()) {
+        canPromote = isPromotableSmallVec(LeadingLoadType, NextLoadScalarSize);
+      }
+
+      if (!canMergeSmallVec && !canPromote)
+        continue;
+
+      if (canPromote) {
+        IGC_ASSERT(DL->getTypeStoreSize(LeadingLoadType) == NextLoadScalarSize);
+
+        unsigned NewBits = unsigned(DL->getTypeSizeInBits(NextLoadScalarType));
+        if (!ProfitVectorLengths.count(NewBits))
+          continue;
+
+        buildProfitVec(NewBits, promotedProfitVec);
+        if (1 > promotedProfitVec[0]) // 1 element (promoted leading) must fit
+          continue;
+
+        pendingPromotion = true;
+        promotedScalarType = NextLoadScalarType;
+        promotedScalarSize = NextLoadScalarSize;
+      }
+    }
 
     const SCEV *NextPtr = SE->getSCEV(NextLoad->getPointerOperand());
     if (isa<SCEVCouldNotCompute>(NextPtr))
@@ -1202,19 +1283,21 @@ bool MemOpt::mergeLoad(ALoadInst &LeadingLoad, MemRefListTy::iterator aMI, MemRe
     if (Off == 0 && LdSize == NextLoadSize)
       break;
 
+    unsigned effLdScalarSize = pendingPromotion ? promotedScalarSize : LdScalarSize;
     int64_t newHighestOffset = std::max(Off + NextLoadSize, HighestOffset);
     int64_t newLowestOffset = std::min(Off, LowestOffset);
-    uint64_t newNumElts = uint64_t((newHighestOffset - newLowestOffset) / LdScalarSize);
+    uint64_t newNumElts = uint64_t((newHighestOffset - newLowestOffset) / effLdScalarSize);
 
     // Ensure that the total size read evenly divides the element type.
     // For example, we could have a packed struct <{i64, i32, i64}> that
     // would compute a size of 20 but, without this guard, would set
     // 'NumElts' to 2 as if the i32 wasn't present.
-    if (uint64_t(newHighestOffset - newLowestOffset) % LdScalarSize != 0)
+    if (uint64_t(newHighestOffset - newLowestOffset) % effLdScalarSize != 0)
       continue;
 
     // Bail out if the resulting vector load is already not profitable.
-    if (newNumElts > profitVec[0])
+    auto &effProfitVec = pendingPromotion ? promotedProfitVec : profitVec;
+    if (newNumElts > effProfitVec[0])
       continue;
 
     HighestOffset = newHighestOffset;
@@ -1229,6 +1312,13 @@ bool MemOpt::mergeLoad(ALoadInst &LeadingLoad, MemRefListTy::iterator aMI, MemRe
     // currently found.
     if (!isSafeToMergeLoad(NextLoad.value(), CheckList))
       break;
+
+    // Candidate accepted — commit promotion state if pending.
+    if (pendingPromotion) {
+      LeadingLoadScalarType = promotedScalarType;
+      LdScalarSize = promotedScalarSize;
+      profitVec = std::move(promotedProfitVec);
+    }
 
     LoadsToMerge.push_back(std::make_tuple(NextLoad->inst(), Off, MI));
   }
@@ -1263,7 +1353,7 @@ bool MemOpt::mergeLoad(ALoadInst &LeadingLoad, MemRefListTy::iterator aMI, MemRe
     // Try remove loads to be merged.
     while (NumElts > MaxElts && s != 1) {
       Type *Ty = std::get<0>(LoadsToMerge[--s])->getType();
-      NumElts -= getNumElements(Ty);
+      NumElts -= getMergedNumElements(Ty, LdScalarSize);
     }
   }
 
@@ -1279,7 +1369,7 @@ bool MemOpt::mergeLoad(ALoadInst &LeadingLoad, MemRefListTy::iterator aMI, MemRe
   IGC_ASSERT_MESSAGE(FirstOffset <= 0, "The 1st load should be either the leading load or load with smaller offset!");
 
   // Next we need to check alignment
-  if (!checkAlignmentBeforeMerge(FirstLoad, LoadsToMerge, NumElts))
+  if (!checkAlignmentBeforeMerge(FirstLoad, LoadsToMerge, NumElts, LdScalarSize))
     return false;
 
   if (!DebugCounter::shouldExecute(MergeLoadCounter))
@@ -1330,7 +1420,7 @@ bool MemOpt::mergeLoad(ALoadInst &LeadingLoad, MemRefListTy::iterator aMI, MemRe
   for (auto &I : LoadsToMerge) {
     Type *Ty = std::get<0>(I)->getType();
     Type *ScalarTy = Ty->getScalarType();
-    IGC_ASSERT(hasSameSize(ScalarTy, LeadingLoadScalarType));
+    IGC_ASSERT(hasSameSize(ScalarTy, LeadingLoadScalarType) || DL->getTypeStoreSize(Ty) == LdScalarSize);
 
     mdLoadInv = std::get<0>(I)->getMetadata(LLVMContext::MD_invariant_load);
     if (!mdLoadInv) {
@@ -1341,7 +1431,15 @@ bool MemOpt::mergeLoad(ALoadInst &LeadingLoad, MemRefListTy::iterator aMI, MemRe
 
     Pos = unsigned((std::get<1>(I) - FirstOffset) / LdScalarSize);
 
-    if (Ty->isVectorTy()) {
+    bool isPromotedSmallVec = isPromotableSmallVec(Ty, LdScalarSize);
+
+    if (isPromotedSmallVec) {
+      if (Pos >= NumElts)
+        continue;
+      Value *Ex = Builder.CreateExtractElement(NewLoad, Builder.getInt32(Pos));
+      Value *Val = Builder.CreateBitCast(Ex, Ty);
+      std::get<0>(I)->replaceAllUsesWith(Val);
+    } else if (Ty->isVectorTy()) {
       if (Pos + cast<IGCLLVM::FixedVectorType>(Ty)->getNumElements() > NumElts) {
         // This implies we're trying to extract an element from our new load
         // with an index > the size of the new load.  If this happens,
@@ -1421,10 +1519,12 @@ bool MemOpt::mergeStore(AStoreInst &LeadingStore, MemRefListTy::iterator MI, Mem
   Type *LeadingStoreType = LeadingStoreVal->getType();
   Type *LeadingStoreScalarType = LeadingStoreType->getScalarType();
   unsigned StSize = unsigned(DL->getTypeStoreSize(LeadingStoreType));
+  unsigned StScalarSize = unsigned(DL->getTypeStoreSize(LeadingStoreScalarType));
   unsigned typeSizeInBits = unsigned(DL->getTypeSizeInBits(LeadingStoreScalarType));
   if (!ProfitVectorLengths.count(typeSizeInBits))
     return false;
-  SmallVector<unsigned, 4> &profitVec = ProfitVectorLengths[typeSizeInBits];
+  SmallVector<unsigned, 8> profitVec(ProfitVectorLengths[typeSizeInBits].begin(),
+                                     ProfitVectorLengths[typeSizeInBits].end());
 
   NumElts += getNumElements(LeadingStoreType);
   if (NumElts >= profitVec[0])
@@ -1497,9 +1597,48 @@ bool MemOpt::mergeStore(AStoreInst &LeadingStore, MemRefListTy::iterator MI, Mem
     Value *NextStoreVal = NextStore->getValueOperand();
     Type *NextStoreType = NextStoreVal->getType();
 
-    // Skip if they have different sizes.
-    if (!hasSameSize(NextStoreType->getScalarType(), LeadingStoreScalarType))
-      continue;
+    // Skip if they have different sizes, unless mixed-size merging applies.
+    Type *NextStoreScalarType = NextStoreType->getScalarType();
+    unsigned NextStoreScalarSize = unsigned(DL->getTypeStoreSize(NextStoreScalarType));
+
+    // Compute promoted state in temporaries; only commit after the
+    // candidate passes all remaining checks and is accepted.
+    bool pendingPromotion = false;
+    Type *promotedScalarType = nullptr;
+    unsigned promotedScalarSize = 0;
+    SmallVector<unsigned, 8> promotedProfitVec;
+
+    if (!hasSameSize(NextStoreScalarType, LeadingStoreScalarType)) {
+      bool canMergeSmallVec =
+          !LeadingStoreScalarType->isPointerTy() && isPromotableSmallVec(NextStoreType, StScalarSize);
+
+      bool canPromote = false;
+      if (!canMergeSmallVec && StoresToMerge.size() == 1 && !NextStoreScalarType->isPointerTy()) {
+        canPromote = isPromotableSmallVec(LeadingStoreType, NextStoreScalarSize);
+      }
+
+      if (!canMergeSmallVec && !canPromote)
+        continue;
+
+      if (canPromote) {
+        IGC_ASSERT(DL->getTypeStoreSize(LeadingStoreType) == NextStoreScalarSize);
+
+        unsigned NewBits = unsigned(DL->getTypeSizeInBits(NextStoreScalarType));
+        if (!ProfitVectorLengths.count(NewBits))
+          continue;
+
+        auto &Vec = ProfitVectorLengths[NewBits];
+        promotedProfitVec.append(Vec.begin(), Vec.end());
+        if (1 > promotedProfitVec[0]) // 1 element (promoted leading) must fit
+          continue;
+
+        pendingPromotion = true;
+        promotedScalarType = NextStoreScalarType;
+        promotedScalarSize = NextStoreScalarSize;
+      }
+    }
+
+    unsigned effStScalarSize = pendingPromotion ? promotedScalarSize : StScalarSize;
 
     const SCEV *NextPtr = SE->getSCEV(NextStore->getPointerOperand());
     if (isa<SCEVCouldNotCompute>(NextPtr))
@@ -1531,9 +1670,11 @@ bool MemOpt::mergeStore(AStoreInst &LeadingStore, MemRefListTy::iterator MI, Mem
       // Check it's consecutive to the current stores to be merged.
       continue;
 
-    NumElts += getNumElements(NextStoreType);
+    unsigned newNumElts = pendingPromotion ? getMergedNumElements(LeadingStoreType, effStScalarSize) : NumElts;
+    newNumElts += getMergedNumElements(NextStoreType, effStScalarSize);
     // Bail out if the resulting vector store is already not profitable.
-    if (NumElts > profitVec[0])
+    auto &effProfitVec = pendingPromotion ? promotedProfitVec : profitVec;
+    if (newNumElts > effProfitVec[0])
       break;
 
     // This store is to be merged. Remove it from check list.
@@ -1543,6 +1684,15 @@ bool MemOpt::mergeStore(AStoreInst &LeadingStore, MemRefListTy::iterator MI, Mem
     // currently found.
     if (!isSafeToMergeStores(StoresToMerge, CheckList))
       break;
+
+    NumElts = newNumElts;
+
+    // Candidate accepted — commit promotion state if pending.
+    if (pendingPromotion) {
+      LeadingStoreScalarType = promotedScalarType;
+      StScalarSize = promotedScalarSize;
+      profitVec = std::move(promotedProfitVec);
+    }
 
     // Clear check list.
     CheckList.clear();
@@ -1572,7 +1722,7 @@ bool MemOpt::mergeStore(AStoreInst &LeadingStore, MemRefListTy::iterator MI, Mem
   NumElts = 0;
   for (auto &I : StoresToMerge) {
     Type *Ty = AStoreInst::get(std::get<0>(I))->getValueOperand()->getType();
-    NumElts += getNumElements(Ty);
+    NumElts += getMergedNumElements(Ty, StScalarSize);
   }
 
   IGC_ASSERT_MESSAGE(1 < NumElts, "It's expected to merge into at least 2-element vector!");
@@ -1586,7 +1736,7 @@ bool MemOpt::mergeStore(AStoreInst &LeadingStore, MemRefListTy::iterator MI, Mem
     // Try remove stores to be merged.
     while (NumElts > MaxElts && s != 1) {
       Type *Ty = AStoreInst::get(std::get<0>(StoresToMerge[--s]))->getValueOperand()->getType();
-      NumElts -= getNumElements(Ty);
+      NumElts -= getMergedNumElements(Ty, StScalarSize);
     }
   }
 
@@ -1604,7 +1754,7 @@ bool MemOpt::mergeStore(AStoreInst &LeadingStore, MemRefListTy::iterator MI, Mem
   AStoreInst FirstStore = AStoreInst::get(std::get<0>(StoresToMerge.front())).value();
 
   // Next we need to check alignment
-  if (!checkAlignmentBeforeMerge(FirstStore, StoresToMerge, NumElts))
+  if (!checkAlignmentBeforeMerge(FirstStore, StoresToMerge, NumElts, StScalarSize))
     return false;
 
   Type *NewStoreType = IGCLLVM::FixedVectorType::get(LeadingStoreScalarType, NumElts);
@@ -1620,11 +1770,16 @@ bool MemOpt::mergeStore(AStoreInst &LeadingStore, MemRefListTy::iterator MI, Mem
     Value *Val = AStoreInst::get(std::get<0>(I))->getValueOperand();
     Type *Ty = Val->getType();
     Type *ScalarTy = Ty->getScalarType();
-    IGC_ASSERT(hasSameSize(ScalarTy, LeadingStoreScalarType));
+    IGC_ASSERT(hasSameSize(ScalarTy, LeadingStoreScalarType) || DL->getTypeStoreSize(Ty) == StScalarSize);
 
     NonTempMD = MDNode::concatenate(std::get<0>(I)->getMetadata("nontemporal"), NonTempMD);
 
-    if (Ty->isVectorTy()) {
+    bool isPromotedSmallVec = isPromotableSmallVec(Ty, StScalarSize);
+
+    if (isPromotedSmallVec) {
+      Value *Cast = Builder.CreateBitCast(Val, LeadingStoreScalarType);
+      NewStoreVal = Builder.CreateInsertElement(NewStoreVal, Cast, Builder.getInt32(Pos++));
+    } else if (Ty->isVectorTy()) {
       for (unsigned i = 0, e = (unsigned)cast<IGCLLVM::FixedVectorType>(Ty)->getNumElements(); i != e; ++i) {
         Value *Ex = Builder.CreateExtractElement(Val, Builder.getInt32(i));
         Ex = createBitOrPointerCast(Ex, LeadingStoreScalarType, Builder);
