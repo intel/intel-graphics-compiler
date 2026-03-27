@@ -31,16 +31,6 @@ set(IGC_OPTION__LLVM_PREFERRED_VERSION ${DEFAULT_IGC_LLVM_VERSION} CACHE STRING 
 set(IGC_LLVM_WORKSPACE ${CMAKE_CURRENT_BINARY_DIR}/llvm-deps-${IGC_OPTION__LLVM_PREFERRED_VERSION})
 set(IGC_LLVM_WORKSPACE_SRC ${IGC_LLVM_WORKSPACE}/src)
 
-if(IGC_OPTION__LLVM_PREFERRED_VERSION VERSION_GREATER_EQUAL 22)
-  set(DEFAULT_SIPHASH_PATH ${CMAKE_CURRENT_SOURCE_DIR}/../../llvm-project/third-party/siphash/include)
-  set(VERSIONED_SIPHASH_PATH ${CMAKE_CURRENT_SOURCE_DIR}/../../llvm-project_${IGC_OPTION__LLVM_PREFERRED_VERSION}/third-party/siphash/include)
-  if(EXISTS ${DEFAULT_SIPHASH_PATH})
-    include_directories(${DEFAULT_SIPHASH_PATH})
-  else()
-    include_directories(${VERSIONED_SIPHASH_PATH})
-  endif()
-endif()
-
 # Get useful macros for llvm hooks.
 include(llvm_utils)
 

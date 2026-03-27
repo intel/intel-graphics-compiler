@@ -41,6 +41,19 @@ else()
   set(IGC_LLVM_SOURCE_DIR ${IGC_OPTION__LLVM_SOURCES_DIR}/llvm)
 endif()
 
+# In LLVM 22+ siphash was added as a third-party dependency at the monorepo root.
+# Include it directly from the source tree so no copying to the build dir is needed.
+if(IGC_OPTION__LLVM_PREFERRED_VERSION VERSION_GREATER_EQUAL 22)
+  if(DEFINED IGC_OPTION__LLVM_SOURCES_DIR)
+    get_filename_component(_siphash_base "${IGC_OPTION__LLVM_SOURCES_DIR}" ABSOLUTE BASE_DIR "${CMAKE_BINARY_DIR}")
+    include_directories(${_siphash_base}/third-party/siphash/include)
+  elseif(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/../../llvm-project/third-party/siphash/include)
+    include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../llvm-project/third-party/siphash/include)
+  else()
+    include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../llvm-project_${IGC_OPTION__LLVM_PREFERRED_VERSION}/third-party/siphash/include)
+  endif()
+endif()
+
 if(CMAKE_CONFIGURATION_TYPES)
     # Multi-configuration generator.
     set(CMAKE_CONFIGURATION_TYPES "Debug" "Release")
