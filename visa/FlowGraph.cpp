@@ -1639,31 +1639,80 @@ void FlowGraph::recomputePreId(BBIDMap &IDMap) {
   //
   doDFS(getEntryBB(), preId, IDMap);
 
-  // Detect unreachable CALL-RETURN loops. After normalizing subroutines into
-  // CALL/RETURN/INIT/EXIT blocks, EXIT->RETURN edges can make a CALL block
-  // appear reachable via DFS even when the only path into the CALL is through
-  // its own RETURN block (a cycle with no external entry). Propagate
-  // unreachability until fixpoint to handle chains of such loops.
+  // Detect unreachable CALL-RETURN loops, including chains of multiple CALL
+  // blocks. After subroutine normalization, EXIT->RETURN edges can make CALL
+  // blocks appear reachable via DFS even when they form cycles with no
+  // external entry point.
+  //
+  // Starting from each candidate CALL block, build a cluster by following
+  // predecessor edges backward. Two kinds of predecessor are acceptable:
+  //   - RETURN blocks whose paired CALL block is already unreachable or in
+  //     the cluster (EXIT->RETURN edges are only valid when the paired CALL
+  //     actually executes, so an unreachable CALL makes its RETURN block
+  //     acceptable regardless of EXIT's own reachability).
+  //   - Any other reachable predecessor block, as long as it is not the
+  //     entry block (Preds.empty()), which is added to the cluster and
+  //     explored transitively (handles intermediate blocks between two
+  //     consecutive CALL blocks that belong to the unreachable chain).
+  // If the cluster closes with no external entry, all members and their
+  // paired RETURN blocks are marked unreachable. Iterate to fixpoint.
   bool changed = true;
   while (changed) {
     changed = false;
-    for (G4_BB *bb : BBs) {
-      if (IDMap.at(bb) == UINT_MAX)
+    for (G4_BB *startBB : BBs) {
+      if (IDMap.at(startBB) == UINT_MAX)
         continue;
-      if (!(bb->getBBType() & G4_BB_CALL_TYPE))
+      if (!(startBB->getBBType() & G4_BB_CALL_TYPE))
         continue;
-      G4_BB *retBB = bb->getPhysicalSucc();
-      if (!retBB || bb->Preds.empty())
+      // A CALL block with no predecessors is the entry point
+      if (startBB->Preds.empty())
         continue;
-      // The CALL block is unreachable if every predecessor is either
-      // already unreachable or is its own RETURN block (circular path).
-      bool unreachable =
-          std::all_of(bb->Preds.begin(), bb->Preds.end(), [&](G4_BB *pred) {
-            return pred == retBB || IDMap.at(pred) == UINT_MAX;
-          });
+
+      std::unordered_set<G4_BB *> cluster;
+      std::vector<G4_BB *> worklist;
+      worklist.push_back(startBB);
+      cluster.insert(startBB);
+      bool unreachable = true;
+
+      while (!worklist.empty() && unreachable) {
+        G4_BB *cb = worklist.back();
+        worklist.pop_back();
+        for (G4_BB *pred : cb->Preds) {
+          // Check the Call block of Return
+          if (pred->getBBType() & G4_BB_RETURN_TYPE) {
+            G4_BB *callBB = pred->getPhysicalPred();
+            vISA_ASSERT(callBB && (callBB->getBBType() & G4_BB_CALL_TYPE),
+                        "vISA ICE: missing Call BB");
+            pred = callBB;
+          }
+
+          // Skip if pred is unreachable or is in cluster already
+          if (IDMap.at(pred) == UINT_MAX || cluster.count(pred))
+            continue;
+
+          // Reachable if any pred is in the entry
+          if (pred->Preds.empty()) {
+            unreachable = false;
+            break;
+          }
+
+          // Keep processing pred
+          cluster.insert(pred);
+          worklist.push_back(pred);
+        }
+      }
+
       if (unreachable) {
-        IDMap[bb] = UINT_MAX;
-        IDMap[retBB] = UINT_MAX;
+        for (G4_BB *cb : cluster) {
+          IDMap[cb] = UINT_MAX;
+          // Only mark the paired RETURN block for CALL-type members.
+          if (cb->getBBType() & G4_BB_CALL_TYPE) {
+            G4_BB *retBB = cb->getPhysicalSucc();
+            vISA_ASSERT(retBB && (retBB->getBBType() & G4_BB_RETURN_TYPE),
+                        "vISA ICE: missing Return BB");
+            IDMap[retBB] = UINT_MAX;
+          }
+        }
         changed = true;
       }
     }
