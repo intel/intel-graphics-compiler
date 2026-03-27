@@ -299,7 +299,7 @@ DECLARE_IGC_REGKEY(bool, LoopSinkEnableLateRescheduling, false,
 DECLARE_IGC_REGKEY(bool, LoopSinkSkipDPASMacro, false, "If a dpas macro sequence is present, skip load sinking", true)
 
 // Load Splitting
-DECLARE_IGC_REGKEY(bool, LS_enableLoadSplitting, true, "Enable load splitting pass.", true)
+DECLARE_IGC_REGKEY(bool, LS_enableLoadSplitting, false, "Enable load splitting pass.", true)
 DECLARE_IGC_REGKEY(bool, LS_ignoreSplitThreshold, false,
                    "If true, the pass splits loads regardless of the register pressure.", true)
 DECLARE_IGC_REGKEY(DWORD, LS_minSplitSize_GRF, 1, "Minimal split size in GRFs.", true)
