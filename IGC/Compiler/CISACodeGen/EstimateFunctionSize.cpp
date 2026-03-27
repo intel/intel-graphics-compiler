@@ -97,9 +97,12 @@ EstimateFunctionSize::EstimateFunctionSize(AnalysisLevel AL, bool EnableStaticPr
   ForceInlineStackCallWithImplArg = IGC_IS_FLAG_ENABLED(ForceInlineStackCallWithImplArg);
   ControlInlineImplicitArgs = IGC_IS_FLAG_ENABLED(ControlInlineImplicitArgs);
   SubroutineThreshold = IGC_GET_FLAG_VALUE(SubroutineThreshold);
-  LargeKernelThresholdMultiplier = IGC_GET_FLAG_VALUE(LargeKernelThresholdMultiplier);
   KernelTotalSizeThreshold = IGC_GET_FLAG_VALUE(KernelTotalSizeThreshold);
   ExpandedUnitSizeThreshold = IGC_GET_FLAG_VALUE(ExpandedUnitSizeThreshold);
+
+  LargeKernelThresholdMultiplier = IGC_GET_FLAG_VALUE(LargeKernelThresholdMultiplier);
+  LargeKernelSmallFunctionLimit = IGC_GET_FLAG_VALUE(LargeKernelSmallFunctionLimit);
+
   if (EnableStaticProfileGuidedTrimming) {
     StaticProfileGuidedTrimming = true;
     EnableLeafCollapsing = true;
@@ -1548,8 +1551,11 @@ void EstimateFunctionSize::getFunctionsToTrim(llvm::Function *root, llvm::SmallV
       Node->dumpFuncInfo(0x4, "Good to trim (Big enough > " + std::to_string(tinySizeThreshold) + ")");
       break;
     case FT_TOO_TINY:
-      // Small functions will be trimmed in special case if kernel still far exceeds threshold
-      tiny_fn_trimming_pool.push_back(Node);
+      // Small functions will be trimmed in special case if kernel still far exceeds threshold.
+      // We allow inlining of very small functions as they are more costly not no inline.
+      if (Node->InitialSize > LargeKernelSmallFunctionLimit) {
+        tiny_fn_trimming_pool.push_back(Node);
+      }
       Node->dumpFuncInfo(0x4, "Can't trim (Too tiny < " + std::to_string(tinySizeThreshold) + ")");
       break;
     case FT_HIGHER_WEIGHT:

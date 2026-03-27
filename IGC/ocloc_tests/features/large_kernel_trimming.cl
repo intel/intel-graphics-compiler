@@ -9,7 +9,7 @@ SPDX-License-Identifier: MIT
 // REQUIRES: regkeys, dg2-supported
 
 // Test checks that in case, kernel is above the large kernel kernel threshold small functions will be trimmed as well.
-// RUN: ocloc compile -file %s -device dg2 -options "-igc_opts 'SubroutineThreshold=1,KernelTotalSizeThreshold=1,ControlInlineTinySize=15,PrintControlKernelTotalSize=15'" 2>&1 | FileCheck %s
+// RUN: ocloc compile -file %s -device dg2 -options "-igc_opts 'SubroutineThreshold=1,KernelTotalSizeThreshold=1,ControlInlineTinySize=15,PrintControlKernelTotalSize=15, LargeKernelSmallFunctionLimit=1'" 2>&1 | FileCheck %s
 
 // CHECK: is much larger than threshold, trimming small functions as well.
 // CHECK: Trim the function, bar2

@@ -174,8 +174,11 @@ private:
   bool ControlInlineImplicitArgs;
   unsigned SubroutineThreshold;
   unsigned KernelTotalSizeThreshold;
-  unsigned LargeKernelThresholdMultiplier;
   unsigned ExpandedUnitSizeThreshold;
+
+  // Flags for large kernel handling
+  unsigned LargeKernelSmallFunctionLimit;
+  unsigned LargeKernelThresholdMultiplier;
 };
 
 llvm::ModulePass *createEstimateFunctionSizePass();
