@@ -557,6 +557,15 @@ bool SOALayoutChecker::visitBitCastInst(BitCastInst &BI) {
       return false;
     }
     return checkUsers(BI);
+  } else if (baseT->getScalarSizeInBits() != 0 && !baseT->isAggregateType() && !sourceType->isAggregateType() &&
+             pDL->getTypeStoreSizeInBits(baseT) == pDL->getTypeStoreSizeInBits(sourceType)) {
+    // Total store sizes match — this is a reinterpretation (e.g., <2 x half> vs i32).
+    // Mirror the newAlgoControl > 1 vector guard from the scalar-match branch.
+    if (newAlgoControl > 1 && baseT->isVectorTy()) {
+      return false;
+    }
+    isVectorSOA = false;
+    return checkUsers(BI);
   }
 
   // Not a candidate.
@@ -568,6 +577,22 @@ bool SOALayoutChecker::visitGetElementPtrInst(GetElementPtrInst &GEP) { return c
 bool SOALayoutChecker::visitIntrinsicInst(IntrinsicInst &II) {
   llvm::Intrinsic::ID IID = II.getIntrinsicID();
   return IID == llvm::Intrinsic::lifetime_start || IID == llvm::Intrinsic::lifetime_end;
+}
+
+/// Can the user type be treated as a same-footprint reinterpretation of
+/// the alloca element?  Returns true only for int/fp scalars or
+/// fixed-vectors-of-int/fp whose store size equals \p allocaStoreBits.
+static bool isSameSizeReinterpret(Type *UserTy, unsigned allocaStoreBits, const DataLayout &DL) {
+  if (UserTy->isAggregateType())
+    return false;
+  if (UserTy->isPointerTy())
+    return false;
+  if (UserTy->isVectorTy()) {
+    auto *FVTy = dyn_cast<IGCLLVM::FixedVectorType>(UserTy);
+    if (!FVTy || FVTy->getElementType()->isPointerTy())
+      return false;
+  }
+  return (unsigned)DL.getTypeStoreSizeInBits(UserTy) == allocaStoreBits;
 }
 
 // Detect size mismatches between an alloca's element and the corresponding load/store element (directly or via a GEP).
@@ -699,8 +724,21 @@ bool IGC::SOALayoutChecker::MismatchDetected(Instruction &I) {
   if (auto *pgep = dyn_cast<GetElementPtrInst>(parentLevelInst)) {
     auto pgepTySize = pgep->getResultElementType()->getScalarSizeInBits();
     if (pgepTySize != vecTySize) {
-      pInfo->canUseSOALayout = false;
-      return true;
+      // Allow reinterpretation when total store sizes match, but only for the
+      // LowerGEP register-promotion path whose lowering (loadEltsFromVecAlloca /
+      // storeEltsToVecAlloca) handles cross-type bitcasts.  The legacy
+      // TransposeHelperPrivateMem used by PrivateMemoryResolution asserts that
+      // scalar lane size == element size, so we must not relax there.
+      bool allowed = false;
+      if (MismatchDetectionStrategy == DefaultLowerGEPStrategy) {
+        auto DL = I.getParent()->getModule()->getDataLayout();
+        unsigned pgepStoreBits = (unsigned)DL.getTypeStoreSizeInBits(pgep->getResultElementType());
+        allowed = isSameSizeReinterpret(pUserTy, pgepStoreBits, DL);
+      }
+      if (!allowed) {
+        pInfo->canUseSOALayout = false;
+        return true;
+      }
     }
 
     if (MismatchDetectionStrategy == UseScratchSpacePrivateMemoryOrUseStatelessStrategy) {
@@ -710,8 +748,20 @@ bool IGC::SOALayoutChecker::MismatchDetected(Instruction &I) {
       }
     }
   } else if (vecTySize != allocaSize) {
-    pInfo->canUseSOALayout = false;
-    return true;
+    // Allow reinterpretation when total store size matches alloca element size,
+    // but only for the LowerGEP register-promotion path (same rationale as the
+    // GEP branch above — the legacy PrivateMemoryResolution transpose helper
+    // cannot handle cross-type lane reinterpretation).
+    bool allowed = false;
+    if (MismatchDetectionStrategy == DefaultLowerGEPStrategy) {
+      auto DL = I.getParent()->getModule()->getDataLayout();
+      unsigned allocaStoreBits = (unsigned)DL.getTypeStoreSizeInBits(allocaEltTy);
+      allowed = isSameSizeReinterpret(pUserTy, allocaStoreBits, DL);
+    }
+    if (!allowed) {
+      pInfo->canUseSOALayout = false;
+      return true;
+    }
   }
 
   return false;
