@@ -365,8 +365,10 @@ bool RematChecker::materializable(const Instruction &I) const {
     case Intrinsic::maxnum:
     case Intrinsic::fabs:
     case Intrinsic::sqrt:
+    case Intrinsic::pow:
       return true;
     default:
+      REMAT_DIAG_SET_REASON(RejectionReason::LLVM_INTRINSIC);
       REMAT_DIAG(*m_pStream << "false: [non-satisfying LLVM intrinsic]\n");
       return false;
     }
