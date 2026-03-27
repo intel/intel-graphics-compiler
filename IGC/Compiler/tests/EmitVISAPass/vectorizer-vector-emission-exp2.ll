@@ -36,6 +36,8 @@ define spir_kernel void @_attn_fwd(half addrspace(1)* %0, half addrspace(1)* %1,
   %vectorized_cast = fptrunc <8 x float> %vectorized_intrinsic to <8 x half>
   %9 = bitcast <8 x half> %vectorized_cast to <8 x i16>
   %10 = call <8 x float> @llvm.genx.GenISA.sub.group.dpas.v8f32.v8f32.v8i16.v8i32(<8 x float> zeroinitializer, <8 x i16> %9, <8 x i32> zeroinitializer, i32 0, i32 0, i32 0, i32 0, i1 false)
+  %el = extractelement <8 x float> %10, i32 0
+  store float %el, float addrspace(1)* %5
   br label %._crit_edge
 }
 

@@ -28,7 +28,7 @@ entry:
 ; CHECK-FRL0:      _test_ldraw_fusion_004__opt_resource_loop:
 ; CHECK-FRL0:      _test_ldraw_fusion_005__opt_resource_loop:
 ; CHECK-FRL0:      _test_ldraw_fusion_006__opt_resource_loop:
-; CHECK-FRL0:      (P6) lsc_load.ugm (M1, 16)  V0077:d32  bss(V0082)[V0074]:a32
+; CHECK-FRL0:      (P6) lsc_load.ugm (M1, 16)  V0083:d32  bss(V0088)[V0080]:a32
 ; CHECK-FRL0-NEXT: (!P6) goto (M1, 16) _test_ldraw_fusion_006__opt_resource_loop
 ; CHECK-FRL0:      _test_ldraw_fusion_007__opt_resource_loop:
 ; CHECK-FRL0:      _test_ldraw_fusion_008__opt_resource_loop:
@@ -42,13 +42,13 @@ entry:
 ; CHECK-FRL1:      _test_ldraw_fusion_002:
 ; CHECK-FRL1:      _test_ldraw_fusion_004__opt_resource_loop:
 ; CHECK-FRL1:      _test_ldraw_fusion_005__opt_resource_loop:
-; CHECK-FRL1:      lifetime.start V0077
-; CHECK-FRL1-NEXT: lifetime.start V0078
+; CHECK-FRL1:      lifetime.start V0083
+; CHECK-FRL1-NEXT: lifetime.start V0084
 ; CHECK-FRL1:      _test_ldraw_fusion_006__opt_resource_loop:
-; CHECK-FRL1:      (P6) lsc_load.ugm (M1, 16)  V0077:d32  bss(V0083)[V0074]:a32                 /// $67
-; CHECK-FRL1-NEXT: or (M1, 16) V0084(0,0)<1> V0074(0,0)<1;1,0> 0x4:d                            /// $68
-; CHECK-FRL1-NEXT: (P6) lsc_load.ugm (M1, 16)  V0078:d32  bss(V0083)[V0084]:a32                 /// $69
-; CHECK-FRL1-NEXT: (!P6) goto (M1, 16) _test_ldraw_fusion_006__opt_resource_loop                /// $70
+; CHECK-FRL1:      (P6) lsc_load.ugm (M1, 16)  V0083:d32  bss(V0089)[V0080]:a32                 /// $72
+; CHECK-FRL1-NEXT: or (M1, 16) V0090(0,0)<1> V0080(0,0)<1;1,0> 0x4:d                            /// $73
+; CHECK-FRL1-NEXT: (P6) lsc_load.ugm (M1, 16)  V0084:d32  bss(V0089)[V0090]:a32                 /// $74
+; CHECK-FRL1-NEXT: (!P6) goto (M1, 16) _test_ldraw_fusion_006__opt_resource_loop                /// $75
 ; CHECK-FRL1:      _test_ldraw_fusion_007__opt_resource_loop:
 ; CHECK-FRL1:      _test_ldraw_fusion_008__opt_resource_loop:
 ; CHECK-FRL1-NOT:  _test_ldraw_fusion_009__opt_resource_loop:
@@ -129,6 +129,14 @@ entry:
   %61 = and i32 %60, 2
 
   %sum0 = add i32 %60, %61
+  %bc42 = bitcast float %42 to i32
+  %bc57 = bitcast float %57 to i32
+  %chain0 = add i32 %sum0, %49
+  %chain1 = add i32 %chain0, %51
+  %chain2 = add i32 %chain1, %bc42
+  %chain3 = add i32 %chain2, %bc57
+  %sink_ptr = inttoptr i32 %chain3 to i32*
+  store i32 %chain3, i32* %sink_ptr
   br label %62
 
 62:

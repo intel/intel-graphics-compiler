@@ -94,6 +94,17 @@ entry:
   %mergeV6 = add i32 %predicate, 5
   %res5 = call i32 @llvm.genx.GenISA.PredicatedLoad.i32.p1.i32(ptr addrspace(1) %in2, i64 2, i1 %p, i32 %mergeV6)
 
+  %res0_el = extractelement <6 x i32> %res0, i32 0
+  %res3_el = extractelement <6 x i32> %res3, i32 0
+  %res1_trunc = trunc i64 %res1 to i32
+  %res2_el = extractelement <2 x i64> %res2, i32 0
+  %res2_trunc = trunc i64 %res2_el to i32
+  %t0 = add i32 %res0_el, %res3_el
+  %t1 = add i32 %t0, %res1_trunc
+  %t2 = add i32 %t1, %res2_trunc
+  %t3 = add i32 %t2, %res4
+  %t4 = add i32 %t3, %res5
+  store i32 %t4, ptr addrspace(1) %in2
   ret void
 }
 

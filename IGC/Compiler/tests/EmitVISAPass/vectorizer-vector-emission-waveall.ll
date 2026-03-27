@@ -46,6 +46,9 @@ define spir_kernel void @foo() {
   %vectorized_cast = fptrunc <8 x float> %vectorized_intrinsic2 to <8 x half>
   %tmp9 = bitcast <8 x half> %vectorized_cast to <8 x i16>
   %tmp10 = call <8 x float> @llvm.genx.GenISA.sub.group.dpas.v8f32.v8f32.v8i16.v8i32(<8 x float> zeroinitializer, <8 x i16> %tmp9, <8 x i32> zeroinitializer, i32 0, i32 0, i32 0, i32 0, i1 false)
+  %tmp10_el = extractelement <8 x float> %tmp10, i32 0
+  %sink = inttoptr i64 0 to float*
+  store float %tmp10_el, float* %sink
   br label %._crit_edge
 }
 
