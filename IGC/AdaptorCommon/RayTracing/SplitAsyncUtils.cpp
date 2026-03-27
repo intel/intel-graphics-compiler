@@ -400,6 +400,10 @@ bool RematChecker::isFreeOperand(const Value *Op) const {
   return ArgQuery{F, Ctx}.getPayloadArg(&F) == Arg;
 }
 
+static bool isFreeInst(const Instruction *I) {
+  return isa<ExtractElementInst>(I) || isa<BitCastInst>(I) || isa<IntToPtrInst>(I);
+}
+
 bool RematChecker::canFullyRemat(Instruction *I, std::vector<Instruction *> &Insts,
                                  std::unordered_set<Instruction *> &Visited, unsigned StartDepth, unsigned Depth,
                                  ValueToValueMapTy *VM) const {
@@ -432,8 +436,8 @@ bool RematChecker::canFullyRemat(Instruction *I, std::vector<Instruction *> &Ins
     auto *OpI = dyn_cast<Instruction>(Op);
     if (!OpI)
       return false;
-
-    if (!canFullyRemat(OpI, Insts, Visited, StartDepth, Depth - 1, VM))
+    unsigned NextDepth = isFreeInst(I) ? Depth : Depth - 1;
+    if (!canFullyRemat(OpI, Insts, Visited, StartDepth, NextDepth, VM))
       return false;
   }
 
