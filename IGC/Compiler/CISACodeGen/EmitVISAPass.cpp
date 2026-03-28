@@ -2694,32 +2694,48 @@ void EmitPass::EmitZExtByteLoad(llvm::LoadInst *loadInst, llvm::Instruction *zex
   CVariable *loadDest = GetSymbol(loadInst);
   auto it = m_SubDWLoadWideDst.find(loadDest);
   if (it != m_SubDWLoadWideDst.end() && loadInst->getParent() == zextInst->getParent()) {
-    CVariable *gatherDst = it->second.first;
-    // Pre-allocate CVariables for all non-void users of the zext before
-    // remapping it. Without this, lazy GetSymbol() for downstream values
-    // (e.g., an add destination) may follow DeSSA congruence chains or
-    // variable-reuse paths through the now-remapped zext and resolve to
-    // gatherDst, causing them to overwrite the load's gatherDst.
-    // Only touch users the pattern matcher has marked as needed — calling
-    // GetSymbol on unneeded instructions hits an assertion in CShader.
+    // Skip the gatherDst remap when a zext user is an InsertElementInst
+    // that won't emit a scalar copy: HasBecomeNoop (VRA aliased the scalar
+    // into the vector slot, EmitNoModifier skips it) or
+    // CanTreatScalarSourceAsAlias (emitInsert returns early).
+    // UpdateSymbolMap would break the VRA alias, dropping the loaded value.
+    bool hasIEIAliasUser = false;
     for (auto *U : zextInst->users()) {
-      if (auto *UI = dyn_cast<llvm::Instruction>(U)) {
-        if (!UI->getType()->isVoidTy() && m_pattern->NeedInstruction(*UI)) {
-          GetSymbol(UI);
+      if (auto *IEI = dyn_cast<llvm::InsertElementInst>(U)) {
+        if (m_currShader->HasBecomeNoop(IEI) || m_currShader->CanTreatScalarSourceAsAlias(IEI)) {
+          hasIEIAliasUser = true;
+          break;
         }
       }
     }
-    // Remap the zext instruction to directly use the dword gatherDst.
-    // This eliminates the intermediate copy entirely.
-    m_currShader->UpdateSymbolMap(zextInst, gatherDst);
-    m_destination = gatherDst;
-  } else {
-    // Fallback: gatherDst not available (cross-BB load, mergeVal, or map miss)
-    CVariable *src = m_currShader->BitCast(loadDest, GetUnsignedType(loadDest->GetType()));
-    m_encoder->SetDstModifier(dstMod);
-    m_encoder->Cast(m_destination, src);
-    m_encoder->Push();
+    if (!hasIEIAliasUser) {
+      CVariable *gatherDst = it->second.first;
+      // Pre-allocate CVariables for non-alias zext users before the remap so
+      // they get their own destinations and don't accidentally resolve to
+      // gatherDst via DeSSA. Skip BitCastInst: bitcasts alias the zext and
+      // must resolve to gatherDst after UpdateSymbolMap; pre-allocating them
+      // would cache a stale CVariable, leaving the store/URBWrite reading an
+      // uninitialized register. Only touch pattern-matched (needed) users.
+      for (auto *U : zextInst->users()) {
+        if (auto *UI = dyn_cast<llvm::Instruction>(U)) {
+          if (!UI->getType()->isVoidTy() && m_pattern->NeedInstruction(*UI) && !isa<llvm::BitCastInst>(UI)) {
+            GetSymbol(UI);
+          }
+        }
+      }
+      // Remap the zext instruction to directly use the dword gatherDst.
+      // This eliminates the intermediate copy entirely.
+      m_currShader->UpdateSymbolMap(zextInst, gatherDst);
+      m_destination = gatherDst;
+      return;
+    }
   }
+  // Fallback: gatherDst not available (cross-BB load, mergeVal, map miss,
+  // or IEI-alias user that would be broken by the remap).
+  CVariable *src = m_currShader->BitCast(loadDest, GetUnsignedType(loadDest->GetType()));
+  m_encoder->SetDstModifier(dstMod);
+  m_encoder->Cast(m_destination, src);
+  m_encoder->Push();
 }
 
 // Emits 8-bit integer move operations that repack 4 i8 values from a packed
@@ -18419,15 +18435,22 @@ void EmitPass::emitLSCVectorLoad_subDW(LSC_CACHE_OPTS CacheOpts, bool UseA32, Re
           break;
         }
         if (isa<ZExtInst>(U) && U->getType()->isIntegerTy(32)) {
-          // Mirror MatchZExtByteLoad's constraint: all users of the zext
-          // must also be in loadBB, otherwise MatchModifier handles it
-          // and reads from the narrow Dest.
+          // All zext users must be in loadBB (else MatchModifier reads Dest).
+          // Also bail if a zext user is a noop IEI (HasBecomeNoop or
+          // CanTreatScalarSourceAsAlias): EmitZExtByteLoad falls back to
+          // Cast in that case and reads from Dest, so Dest must be written.
           bool zextUsersLocal = true;
           for (auto *ZU : U->users()) {
             if (auto *ZUI = dyn_cast<Instruction>(ZU)) {
               if (ZUI->getParent() != loadBB) {
                 zextUsersLocal = false;
                 break;
+              }
+              if (auto *IEI = dyn_cast<InsertElementInst>(ZUI)) {
+                if (m_currShader->HasBecomeNoop(IEI) || m_currShader->CanTreatScalarSourceAsAlias(IEI)) {
+                  zextUsersLocal = false;
+                  break;
+                }
               }
             }
           }

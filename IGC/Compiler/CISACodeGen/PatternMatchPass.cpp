@@ -2723,24 +2723,41 @@ bool CodeGenPatternMatch::MatchIMad(llvm::BinaryOperator &I) {
 
       bool addToConstantPool = false;
       for (int i = 0; i < 3; ++i) {
-        pattern->sources[i] = GetSource(oprdInfo[i].src, oprdInfo[i].mod, false, IsSourceOfSample(&I));
+        // ZExt from a sub-dword LoadInst: use originalSrc (ZExtInst) so MarkAsSource
+        // keeps ZExtByteLoadPattern active; otherwise the dead-copy skip in
+        // emitLSCVectorLoad_subDW leaves Dest:UW uninitialized.
+        // ZExt from non-load (e.g. extractelement): use src (the i16 extractelement)
+        // directly. Using the ZExtInst here causes GetSrcVariable to alias its dword
+        // CVariable as UW, producing a 64-element UW alias of a 32-element dword var.
+        // A mad (M1,32) reading 32 elements from that alias covers only lanes 0-15.
+        // SExt: use src (i16/i8 load) directly; originalSrc (sext) maps to a dword
+        // CVariable whose stride-1 word alias reads wrong lanes on SIMD32.
+        bool useOriginalSrc = oprdInfo[i].isUpcastSrc && !oprdInfo[i].isSigned && !oprdInfo[i].needsRegioning &&
+                              isa<LoadInst>(oprdInfo[i].src);
+        llvm::Value *srcVal = useOriginalSrc ? oprdInfo[i].originalSrc : oprdInfo[i].src;
+        pattern->sources[i] = GetSource(srcVal, oprdInfo[i].mod, false, IsSourceOfSample(&I));
         if (oprdInfo[i].isCandidate()) {
           SSource &thisSrc = pattern->sources[i];
 
-          // for now, Use W/UW only if region_set is false or the src is scalar
-          if (!thisSrc.region_set || (thisSrc.region[0] == 0 && thisSrc.region[1] == 1 && thisSrc.region[2] == 0)) {
-            // Note that SSource's type, if set by GetSource(), should be 32bit type. It's safe to override it with
-            // either UW or W. But for SSource's offset, need to re-calculate in term of 16bit, not 32bit.
-            thisSrc.type = oprdInfo[i].isSigned ? ISA_TYPE_W : ISA_TYPE_UW;
-            if (oprdInfo[i].needsRegioning) {
-              thisSrc.elementOffset = (2 * thisSrc.elementOffset) + (oprdInfo[i].useLower ? 0 : 1);
+          // useOriginalSrc: GetSource(ZExtInst) returns gatherDst (UD, N elts)
+          // which already holds zero-extended i16 values. No ISA_TYPE_UW override
+          // or special regioning needed; leave the UD type intact.
+          if (!useOriginalSrc) {
+            // for now, Use W/UW only if region_set is false or the src is scalar
+            if (!thisSrc.region_set || (thisSrc.region[0] == 0 && thisSrc.region[1] == 1 && thisSrc.region[2] == 0)) {
+              // Note that SSource's type, if set by GetSource(), should be 32bit type. It's safe to override it with
+              // either UW or W. But for SSource's offset, need to re-calculate in term of 16bit, not 32bit.
+              thisSrc.type = oprdInfo[i].isSigned ? ISA_TYPE_W : ISA_TYPE_UW;
+              if (oprdInfo[i].needsRegioning) {
+                thisSrc.elementOffset = (2 * thisSrc.elementOffset) + (oprdInfo[i].useLower ? 0 : 1);
+              }
             }
-          }
-          if (oprdInfo[i].needsRegioning && !isUniform(oprdInfo[i].src)) {
-            thisSrc.region_set = true;
-            thisSrc.region[0] = 16;
-            thisSrc.region[1] = 8;
-            thisSrc.region[2] = 2;
+            if (oprdInfo[i].needsRegioning && !isUniform(oprdInfo[i].src)) {
+              thisSrc.region_set = true;
+              thisSrc.region[0] = 16;
+              thisSrc.region[1] = 8;
+              thisSrc.region[2] = 2;
+            }
           }
         }
 
