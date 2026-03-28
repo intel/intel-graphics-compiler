@@ -1523,7 +1523,7 @@ const GED_DATA_TYPE* DataTypeTable39[16] =
     &DataTypeVar19, // 12
     &DataTypeVar15, // 13
     &DataTypeVar18, // 14
-    &DataTypeVar11 // 15
+    &DataTypeVar13 // 15
 }; // DataTypeTable39[]
 const GED_DATA_TYPE* DataTypeTable40[16] =
 {
