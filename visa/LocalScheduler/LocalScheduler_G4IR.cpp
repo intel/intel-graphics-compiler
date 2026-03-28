@@ -19,7 +19,6 @@ SPDX-License-Identifier: MIT
 #include <queue>
 #include <sstream>
 #include <vector>
-#include <cmath>
 
 using namespace vISA;
 
@@ -3432,11 +3431,7 @@ uint32_t DDD::getEdgeLatency(Node *node, DepType depT) const {
   uint32_t latency = getEdgeLatency_old(node, depT);
   if (useMTLatencies) {
     float scale = float(HWthreadsPerEU) / getBuilder()->getCoIssueUints();
-    if (getBuilder()->useRevisedSchedulingHeuristic()) {
-      latency = static_cast<int>(std::ceil(latency / scale));
-    } else {
-      latency = int(latency / scale);
-    }
+    latency = int(latency / scale);
   }
   return latency;
 }
