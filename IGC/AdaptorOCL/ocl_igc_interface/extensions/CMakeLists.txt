@@ -33,7 +33,6 @@ if(NOT DEFINED OUT_DOC_FILE)
     set(OUT_DOC_FILE ${CMAKE_SOURCE_DIR}/documentation/igc/${DOC_FILENAME}.md)
 endif()
 
-set(TABLEGEN_OUTPUT)
 set(LLVM_TARGET_DEFINITIONS SPIRVExtensions.td)
 set(IGCC_LIB_INTERFACES_DOCS_TABLEGEN_EXE "${IGCC_LIB_INTERFACES_TABLEGEN_EXE}")
 tablegen(IGCC_LIB_INTERFACES_DOCS ${DOC_FILENAME}.md -gen-igcc-spirv-extensions-docs)
@@ -60,7 +59,6 @@ add_dependencies(SPIRVExtensionsDocsGen ${DOC_FILENAME}DocGen)
 #=============================================================================
 
 # Generate C++ header for SPIR-V extensions
-set(TABLEGEN_OUTPUT)
 set(LLVM_TARGET_DEFINITIONS ${SPIRV_TD_INPUT_FILE})
 set(IGCC_LIB_INTERFACES_CPP_TABLEGEN_EXE "${IGCC_LIB_INTERFACES_TABLEGEN_EXE}")
 tablegen(IGCC_LIB_INTERFACES_CPP ${CPP_HEADER_FILENAME}.h -gen-igcc-spirv-extension-support-header)
