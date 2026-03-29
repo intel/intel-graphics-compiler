@@ -704,12 +704,11 @@ public:
   unsigned GetRetryId() const;
   unsigned GetPerFuncRetryStateId(llvm::Function *F) const;
 
-  void Enable(ShaderType ty = ShaderType::UNKNOWN);
+  virtual void Enable(ShaderType ty = ShaderType::UNKNOWN);
   void Disable(bool DisablePerKernel = false);
 
   void SetSpillSize(unsigned int spillSize);
   unsigned int GetLastSpillSize() const;
-  void SetGRFSize(unsigned int grfTotal) { lastGRFSize = grfTotal; }
   void ClearSpillParams();
 
   // === Optimization flags for all retry managers===
@@ -725,15 +724,8 @@ public:
   bool AllowConstantCoalescing(llvm::Function *F = nullptr) const;
   virtual bool AllowLargeGRF(llvm::Function *F = nullptr) const;
   bool ForceIndirectCallsInSyncRT() const;
-  virtual bool AllowRaytracingSpillCompaction() const;
+  bool AllowRaytracingSpillCompaction() const;
   bool AllowLoadSinking(llvm::Function *F = nullptr) const;
-
-  /// Returns true if the current aggregate group spill (current) is within the
-  /// acceptable fraction (threshold) of the previously cached aggregate (prev).
-  /// threshold = IGC_GET_FLAG_VALUE(RetryRTFunctionGroupFillThreshold) / 100.0f
-  static bool ShouldAcceptGroupBySpillSize(uint32_t current, uint32_t prev, float threshold) {
-    return float(current) <= float(prev) * threshold;
-  }
 
   // === Abstract interface for derived classes ===
   // These must be implemented by backend-specific derived classes
@@ -766,7 +758,6 @@ protected:
   // shader type for shader specific opt
   ShaderType shaderType = ShaderType::UNKNOWN;
   unsigned lastSpillSize = 0;
-  unsigned lastGRFSize = 0; // Peak GRF allocation from last compilation
   explicit RetryManager(RetryManagerKind KindIn);
 
 private:
