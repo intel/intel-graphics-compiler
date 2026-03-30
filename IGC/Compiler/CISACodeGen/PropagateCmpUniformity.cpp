@@ -28,6 +28,7 @@ using namespace IGC;
 IGC_INITIALIZE_PASS_BEGIN(PropagateCmpUniformity, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 IGC_INITIALIZE_PASS_DEPENDENCY(WIAnalysis)
 IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
+IGC_INITIALIZE_PASS_DEPENDENCY(DominatorTreeWrapperPass)
 IGC_INITIALIZE_PASS_END(PropagateCmpUniformity, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
 char PropagateCmpUniformity::ID = 0;
@@ -125,7 +126,7 @@ bool PropagateCmpUniformity::getUniformNonUniformPair(Value *op0, Value *op1, Va
   }
 }
 
-bool PropagateCmpUniformity::canReplaceUse(Use &U, BasicBlock *trueBranch, BasicBlock *cmpBB, DominatorTree &DT) {
+bool PropagateCmpUniformity::canReplaceUse(Use &U, BasicBlock *trueBranchBB, BasicBlock *cmpBB, DominatorTree &DT) {
   User *user = U.getUser();
   BasicBlock *useBB = nullptr;
   BasicBlock *incomingBB = nullptr;
@@ -133,24 +134,6 @@ bool PropagateCmpUniformity::canReplaceUse(Use &U, BasicBlock *trueBranch, Basic
   if (PHINode *phi = dyn_cast<PHINode>(user)) {
     useBB = phi->getParent();
     incomingBB = phi->getIncomingBlock(U);
-
-    // Special case: PHI in trueBranch with incoming edge directly from cmpBB.
-    // Equality holds on the cmpBB trueBranch edge, so replacing the incoming
-    // nonUniform value with uniform is valid — but only when falseBranch (the
-    // other successor of cmpBB) is NOT a direct predecessor of trueBranch.
-    // If falseBranch also feeds trueBranch, CFGSimplification may later merge
-    // an empty falseBranch into cmpBB, producing two incoming edges from the
-    // same block and collapsing the PHI incorrectly (e.g. to a zero constant).
-    if (incomingBB == cmpBB && useBB == trueBranch) {
-      BranchInst *cmpBr = cast<BranchInst>(cmpBB->getTerminator());
-      BasicBlock *falseBranch =
-          (cmpBr->getSuccessor(0) == trueBranch) ? cmpBr->getSuccessor(1) : cmpBr->getSuccessor(0);
-      for (BasicBlock *pred : predecessors(trueBranch))
-        if (pred == falseBranch)
-          return false;
-      return true;
-    }
-
   } else if (Instruction *inst = dyn_cast<Instruction>(user)) {
     useBB = inst->getParent();
     incomingBB = useBB;
@@ -158,17 +141,56 @@ bool PropagateCmpUniformity::canReplaceUse(Use &U, BasicBlock *trueBranch, Basic
     return false;
   }
 
-  // trueBranch must have cmpBB as its only predecessor. If trueBranch is a
-  // join point with multiple predecessors, it is reachable without going
-  // through the equality-proven edge, so the equality may not hold on all
-  // paths to the use even if trueBranch dominates it.
-  if (trueBranch->getSinglePredecessor() != cmpBB)
+  // Compute falseBranchBB once for PHI uses; nullptr for non-PHI.
+  BasicBlock *falseBranchBB = nullptr;
+  if (isa<PHINode>(user)) {
+    BranchInst *cmpBr = cast<BranchInst>(cmpBB->getTerminator());
+    falseBranchBB = (cmpBr->getSuccessor(0) == trueBranchBB) ? cmpBr->getSuccessor(1) : cmpBr->getSuccessor(0);
+  }
+
+  // Special case: PHI in trueBranchBB with incoming edge directly from cmpBB.
+  // Equality holds on cmpBB->trueBranchBB, so the replacement is valid — unless
+  // falseBranchBB can also reach trueBranchBB, either directly or via intermediate
+  // blocks (e.g. created by JumpThreading). In that case a later CFGSimplification
+  // would collapse the intermediate blocks back and corrupt the PHI.
+  if (incomingBB == cmpBB && useBB == trueBranchBB) {
+    // Sub-case: cmpBB's two successors are the same block (both edges to trueBranchBB).
+    if (falseBranchBB == trueBranchBB)
+      return false;
+    // Sub-case: falseBranchBB is a direct predecessor of trueBranchBB.
+    for (BasicBlock *pred : predecessors(trueBranchBB))
+      if (pred == falseBranchBB)
+        return false;
+    // Sub-case: falseBranchBB reaches trueBranchBB via intermediate blocks that are
+    // dominated by cmpBB (i.e. they lie on the false-branch path). After a later
+    // CFGSimplification those intermediates would be merged away, corrupting the PHI.
+    for (BasicBlock *pred : predecessors(trueBranchBB))
+      if (pred != cmpBB && DT.dominates(cmpBB, pred))
+        return false;
+    return true;
+  }
+
+  // trueBranchBB must have cmpBB as its only predecessor; otherwise equality may
+  // not hold on all paths to the use.
+  if (trueBranchBB->getSinglePredecessor() != cmpBB)
     return false;
 
-  // Only replace if trueBranch dominates the use's incoming BB.
+  // For PHI uses: reject if falseBranchBB or cmpBB is also a direct predecessor
+  // of useBB. CFGSimplification would later collapse those edges back to cmpBB,
+  // overwriting the non-equality incoming value with the uniform constant.
+  // (The cmpBB check covers the case where an earlier CFGSimplification pass
+  // already merged trueBranchBB away, leaving cmpBB with a direct false edge to
+  // useBB where the equality guarantee does not hold.)
+  if (falseBranchBB) {
+    for (BasicBlock *pred : predecessors(useBB))
+      if (pred == falseBranchBB || pred == cmpBB)
+        return false;
+  }
+
+  // Only replace if trueBranchBB dominates the use's incomingBB.
   // Together with the single-predecessor check above, this guarantees every
-  // path to the use went through the equality-proven cmpBB→trueBranch edge.
-  return DT.dominates(trueBranch, incomingBB);
+  // path to the use went through the equality-proven cmpBB->trueBranchBB edge.
+  return DT.dominates(trueBranchBB, incomingBB);
 }
 
 bool PropagateCmpUniformity::replaceNonUniformWithUniform(CmpInst *cmp, Value *nonUniform, Value *uniform,

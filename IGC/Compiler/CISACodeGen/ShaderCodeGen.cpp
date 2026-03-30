@@ -1614,7 +1614,10 @@ void OptimizeIR(CodeGenContext *const pContext) {
         mpm.add(llvm::createJumpThreadingPass(false, BBDuplicateThreshold));
 #endif // LLVM_VERSION_MAJOR
       }
-      if (IGC_IS_FLAG_ENABLED(EnablePropagateCmpUniformity)) {
+      // RT shaders have many short equality branches (dispatch patterns)
+      // where live range extension costs outweigh scalarization benefits at SIMD8,
+      // and FunctionMultiversioning is disabled for RT (no compounding benefit).
+      if (IGC_IS_FLAG_ENABLED(EnablePropagateCmpUniformity) && pContext->type != ShaderType::RAYTRACING_SHADER) {
         mpm.add(createPropagateCmpUniformityPass());
       }
       mpm.add(llvm::createCFGSimplificationPass());

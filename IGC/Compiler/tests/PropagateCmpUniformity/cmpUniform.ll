@@ -478,15 +478,113 @@ exit:
   ret void
 }
 
+; ============================================================================
+; Test 15: falseBranch is also a direct predecessor of the PHI's parent block
+;          (useBB) — no replacement allowed.
+;
+; CFG produced by SROA when a dead ternary alloca is promoted:
+;
+;   cmpBB: fcmp oeq %val, 0.0
+;     - ternary.true  (trueBranch, empty: br endBB)
+;     - ternary.false (falseBranch, empty: br endBB)
+;                          |
+;                          V
+;                        endBB: phi [%val, ternary.true], [%val, ternary.false]
+;
+; Must NOT replace %val in the [%val, %ternary.true] incoming because
+; falseBranch is also a direct predecessor of endBB (useBB).  If it did,
+; CFGSimplification would later remove both empty blocks, collapsing the
+; two incoming edges back to cmpBB and discarding the ternary.false value,
+; turning the PHI into the constant 0.0.  This caused incorrect rendering in
+; a GS shader where the diagonal faceNormal components were zeroed out.
+; ============================================================================
+; CHECK-LABEL: @test_falsebranch_also_pred_of_usebb(
+define spir_kernel void @test_falsebranch_also_pred_of_usebb(ptr addrspace(1) %out) {
+entry:
+  %tid = call i32 @llvm.genx.GenISA.DCL.SystemValue.i32(i32 17)
+  %val = uitofp i32 %tid to float
+  %cmp = fcmp oeq float %val, 0.000000e+00
+  br i1 %cmp, label %ternary.true, label %ternary.false
+
+ternary.true:
+  br label %endBB
+
+ternary.false:
+  br label %endBB
+
+endBB:
+  ; falseBranch (%ternary.false) is a direct predecessor of endBB, so
+  ; the [%val, %ternary.true] arm must not be replaced with 0.0.
+; CHECK-LABEL: endBB:
+; CHECK: %phi_val = phi float [ %val, %ternary.true ], [ %val, %ternary.false ]
+  %phi_val = phi float [ %val, %ternary.true ], [ %val, %ternary.false ]
+  store float %phi_val, ptr addrspace(1) %out, align 4
+  ret void
+}
+
+; ============================================================================
+; Test 16: falseBranch reaches trueBranchBB (useBB) via an intermediate block
+;          that is dominated by cmpBB — no replacement allowed.
+;
+; This models the CFG produced by JumpThreading when it threads the true path of
+; a ternary-style conditional directly to the downstream join block (endBB),
+; while the false path still goes through intermediate blocks:
+;
+;   cmpBB: fcmp oeq %val, 0.0
+;     true  ------------------------------> endBB
+;     false --> ternary.false --> ternary.end --> endBB
+;
+; PCU's Check 1 fires: incomingBB==cmpBB and useBB==trueBranchBB==endBB.
+; The direct-predecessor guard (sub-case A, Test 15) does not help because
+; ternary.false is NOT a direct predecessor of endBB.  The new guard catches
+; it: ternary.end is a predecessor of endBB, is not cmpBB, and IS dominated
+; by cmpBB — indicating it lies on the false-branch path.
+;
+; Must NOT replace %val in [%val, %entry] because ternary.end reaches endBB
+; without the equality guarantee, so after CFGSimplification collapses
+; ternary.false->ternary.end the PHI would incorrectly receive the constant 0.0.
+; This was the root cause of a GS shader rendering bug (IGC-13513) where the
+; diagonal faceNormal component was zeroed out.
+; ============================================================================
+; CHECK-LABEL: @test_indirect_falsebranch(
+define spir_kernel void @test_indirect_falsebranch(ptr addrspace(1) %out) {
+entry:
+  %tid = call i32 @llvm.genx.GenISA.DCL.SystemValue.i32(i32 17)
+  %val = uitofp i32 %tid to float
+  %cmp = fcmp oeq float %val, 0.000000e+00
+  ; True edge goes directly to endBB (as if JumpThreading threaded ternary.true away).
+  ; False edge goes to ternary.false, which eventually also reaches endBB.
+  br i1 %cmp, label %endBB, label %ternary.false
+
+ternary.false:
+  ; Intermediate block dominated by entry (=cmpBB); no equality guarantee here.
+  br label %ternary.end
+
+ternary.end:
+  ; Also dominated by entry (=cmpBB); direct predecessor of endBB.
+  br label %endBB
+
+endBB:
+  ; [%val, %entry]    — incoming from cmpBB on the true (equality) edge.
+  ; [%val, %ternary.end] — incoming from the false-path intermediate block.
+  ; The [%val, %entry] arm must NOT be replaced with 0.0: ternary.end reaches
+  ; here without equality being guaranteed.
+; CHECK-LABEL: endBB:
+; CHECK: %phi_val = phi float [ %val, %entry ], [ %val, %ternary.end ]
+  %phi_val = phi float [ %val, %entry ], [ %val, %ternary.end ]
+  store float %phi_val, ptr addrspace(1) %out, align 4
+  ret void
+}
+
 declare i32 @llvm.genx.GenISA.DCL.SystemValue.i32(i32) #0
 
 attributes #0 = { nounwind readnone }
 
 !IGCMetadata = !{!2}
-!igc.functions = !{!13, !22, !32, !42, !52, !62, !72, !82, !92, !102, !112, !122, !132, !142}
+!igc.functions = !{!13, !22, !32, !42, !52, !62, !72, !82, !92, !102, !112, !122, !132, !142, !152, !162}
 
 !2 = !{!"ModuleMD", !3}
-!3 = !{!"FuncMD", !4, !5, !20, !21, !30, !31, !40, !41, !50, !51, !60, !61, !70, !71, !80, !81, !90, !91, !100, !101, !110, !111, !120, !121, !130, !131, !140, !141}
+!3 = !{!"FuncMD", !4, !5, !20, !21, !30, !31, !40, !41, !50, !51, !60, !61, !70, !71, !80, !81, !90, !91, !100, !101, !110, !111, !120, !121, !130, !131, !140, !141, !150, !151, !160, !161}
 
 ; Shared metadata nodes reused by all kernels
 !6  = !{!"localOffsets"}
@@ -568,4 +666,14 @@ attributes #0 = { nounwind readnone }
 !140 = !{!"FuncMDMap[13]", ptr @test_multi_cmpbb_truebb}
 !141 = !{!"FuncMDValue[13]", !6, !7, !11, !12}
 !142 = !{ptr @test_multi_cmpbb_truebb, !14}
+
+; test_falsebranch_also_pred_of_usebb
+!150 = !{!"FuncMDMap[14]", ptr @test_falsebranch_also_pred_of_usebb}
+!151 = !{!"FuncMDValue[14]", !6, !7, !11, !12}
+!152 = !{ptr @test_falsebranch_also_pred_of_usebb, !14}
+
+; test_indirect_falsebranch
+!160 = !{!"FuncMDMap[15]", ptr @test_indirect_falsebranch}
+!161 = !{!"FuncMDValue[15]", !6, !7, !11, !12}
+!162 = !{ptr @test_indirect_falsebranch, !14}
 
