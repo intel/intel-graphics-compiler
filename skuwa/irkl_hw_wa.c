@@ -17,7 +17,6 @@ SPDX-License-Identifier: MIT
 void InitRklHwWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_PARAM pWaParam)
 {
         int iStepId_RKL = (int)pWaParam->usRevId;
-        (void)iStepId_RKL;
 
 
     SI_WA_ENABLE(

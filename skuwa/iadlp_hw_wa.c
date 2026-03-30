@@ -17,7 +17,6 @@ SPDX-License-Identifier: MIT
 void InitAdlpHwWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_PARAM pWaParam)
 {
         int iStepId_ADLP = (int)pWaParam->usRevId;
-        (void)iStepId_ADLP;
 
 
     SI_WA_ENABLE(

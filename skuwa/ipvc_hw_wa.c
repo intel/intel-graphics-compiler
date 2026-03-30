@@ -20,7 +20,6 @@ void InitPvcHwWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT
     (void)iStepId_PVC_CT;
     int iStepId_PVC_BD = ( (int)pWaParam->usRevId & 0b111000 ) >> 3;
     (void)iStepId_PVC_BD;
-
     if (pWaParam->usDeviceID >= 0x0BE5)
     {
 

@@ -64,6 +64,7 @@ SPDX-License-Identifier: MIT
 #define SIWA_FROM_BDW_J0    SIWA_FROM_AA
 #define SIWA_AFTER_BDW_J0   SIWA_AFTER_AA
 
+
 #define SIWA_ONLY_PCH_BDW_A0      SIWA_ONLY_A0
 #define SIWA_FROM_PCH_BDW_A0      SIWA_FROM_A0
 #define SIWA_UNTIL_PCH_BDW_A0     SIWA_UNTIL_A0
@@ -74,6 +75,7 @@ void InitBdwWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
 {
     unsigned int ulStepId_BDW, ulStepId_PCH;
     (void)ulStepId_PCH;
+    (void)ulStepId_BDW;
     int platformForIndirectDispatch = SI_WA_NEVER;
 
 #ifdef __KCH
@@ -90,6 +92,7 @@ void InitBdwWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
         "No HWSightingLink provided",
         PLATFORM_ALL,
         SIWA_FOREVER);
+
 
     if (pSkuTable->FtrGT3)
     {
@@ -208,7 +211,6 @@ void InitBdwHASWaTable(PHW_DEVICE_EXTENSION pKchContext, PWA_TABLE pWaTable, PSK
 {
     unsigned int ulStepId_BDW;
     (void)ulStepId_BDW;
-
     ulStepId_BDW = (1 << pWaParam->usRevId);
 
 
