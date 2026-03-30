@@ -423,13 +423,10 @@ bool IGCVectorizer::handlePHI(VecArr &Slice) {
       Operands.push_back(Vectorized);
     } else if (IsInstOperand) {
       PRINT_LOG_NL("Created Vector: ");
-      Instruction *InsertPoint = BB->getTerminator();
-      if (ScalarPhi->getParent() == BB) {
-        InsertPoint = getInsertPointForVector(ForVector)->getNextNonDebugInstruction();
-        if (!InsertPoint)
-          return false;
-      }
-      auto CreatedVec = createVector(ForVector, InsertPoint);
+      Instruction *InsertPoint = getInsertPointForVector(ForVector);
+      if (!InsertPoint)
+        return false;
+      auto CreatedVec = createVector(ForVector, InsertPoint->getNextNonDebugInstruction());
       PRINT_INST_NL(CreatedVec);
       Operands.push_back(CreatedVec);
     } else {
@@ -486,8 +483,10 @@ Instruction *IGCVectorizer::getInsertPointForVector(VecArr &Arr) {
 
   Instruction *Cmp = Arr.front();
   for (auto &El : Arr)
-    if (El->getParent() != Cmp->getParent())
+    if (El->getParent() != Cmp->getParent()) {
+      PRINT_LOG_NL("Cant find insert point for vector, different basic blocks!");
       return nullptr;
+    }
 
   Instruction *InsertPoint = getMaxPoint(Arr);
   // if insert point is PHI, shift it to the first nonPHI to be safe
