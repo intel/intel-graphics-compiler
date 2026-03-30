@@ -1881,6 +1881,21 @@ void CompileUnit::constructArrayTypeDIE(DIE &Buffer, DICompositeType *CTy) {
     DwarfExpr.addExpression(Expr);
     addBlock(&Buffer, dwarf::DW_AT_associated, DwarfExpr.finalize());
   }
+
+  // Add DW_AT_allocated attr to DWARF. This is needed for the dynamically-allocatable
+  // array that is allocated at runtime. When a debugger inspects a variable with that,
+  // it can recognize that array is live (the debuuger can show its contents) or not.
+  if (DIVariable *Var = CTy->getAllocated()) {
+    if (auto *VarDIE = getDIE(Var))
+      addDIEEntry(&Buffer, dwarf::DW_AT_allocated, VarDIE);
+  } else if (DIExpression *Expr = CTy->getAllocatedExp()) {
+    DIEBlock *Loc = new (DIEValueAllocator) DIEBlock;
+    DIEDwarfExpression DwarfExpr(*Asm, getCU(), *Loc);
+    // DwarfExpr.setMemoryLocationKind();
+    DwarfExpr.addExpression(Expr);
+    addBlock(&Buffer, dwarf::DW_AT_allocated, DwarfExpr.finalize());
+  }
+
   // Emit the element type.
   addType(&Buffer, resolve(CTy->getBaseType()));
 
