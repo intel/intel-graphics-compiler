@@ -1977,6 +1977,11 @@ DECLARE_IGC_REGKEY(bool, DisableCanonizationWA, false,
 DECLARE_IGC_REGKEY(bool, DisableEarlyRemat, false, "Disable quick remats to avoid some spills", true)
 DECLARE_IGC_REGKEY(bool, DisableLateRemat, false, "Disable quick remats to avoid some spills", true)
 DECLARE_IGC_REGKEY(DWORD, RematThreshold, 6, "Tunes how aggresively we should remat values into continuations", true)
+DECLARE_IGC_REGKEY(DWORD, SmallLiveVarsSetThreshold, 20,
+                   "The maximal number of crossing variables to consider this shader to have a small live var set.",
+                   true)
+DECLARE_IGC_REGKEY(DWORD, RematThresholdBump, 20,
+                   "The value to bump remat threshold to in the case of small live var sets.", true)
 DECLARE_IGC_REGKEY(bool, DisableCompactifySpills, false, "Just emit spill/fill at the point of def/use", true)
 DECLARE_IGC_REGKEY(bool, AllowSpillCompactionOnRetry, false, "Allow spill compaction on retry - may increase spills",
                    true)
