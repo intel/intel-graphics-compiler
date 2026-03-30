@@ -27,7 +27,7 @@ be documented properly in version.md.
 | .debug_* | the debug information (if required) | SHT_PROGBITS |
 | .ze_info | the metadata section for runtime information | SHT_ZEBIN_ZEINFO |
 | .gtpin_info.{*kernel_name*\|*function_name*} | the metadata section for gtpin information (if any) | SHT_ZEBIN_GTPIN_INFO |
-| .misc.{*misc_name*} | the miscellaneous data for multiple purposes. For example, the section _.misc.buildOptions_ contains the build options used for compiling this binary.  | SHT_ZEBIN_MISC |
+| .misc.{*misc_name*} | the miscellaneous data for multiple purposes. See [Misc Sections](#misc-sections) for details.  | SHT_ZEBIN_MISC |
 | .note.intelgt.compat | the compatibility notes for runtime information | SHT_NOTE |
 | .strtab | the string table for section/symbol names | SHT_STRTAB |
 
@@ -92,6 +92,24 @@ enum SHT_ZEBIN : uint32_t
     SHT_ZEBIN_MISC       = 0xff000014  // .misc section
 }
 ~~~
+
+## Misc Sections
+
+Sections of type `SHT_ZEBIN_MISC` use the naming convention `.misc.{name}` and
+carry data for multiple purposes, such as recompilation of the binary.
+
+The following misc sections are currently defined:
+
+| Section name | Description | Data format |
+| ------ | ------ | ------ |
+| .misc.buildOptions | The build options string used to compile this binary. | String |
+| .misc.specConstantsIds | The SPIR-V specialization constant IDs that were applied at compile time. | Array of `uint32_t` |
+| .misc.specConstantsValues | The specialization constant values corresponding to the IDs in _.misc.specConstantsIds_. The i-th value corresponds to the i-th ID. | Array of `uint64_t` |
+
+The two spec-constant sections are always emitted as a pair (both present or
+both absent). They share the same element count: the number of entries equals
+`section_size(.misc.specConstantsIds) / sizeof(uint32_t)`, which must equal
+`section_size(.misc.specConstantsValues) / sizeof(uint64_t)`.
 
 **sh_link and and sh_info Interpretation**
 

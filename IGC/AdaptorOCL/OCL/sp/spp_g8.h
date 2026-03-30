@@ -76,7 +76,8 @@ public:
   /// if spv and spvSize are given, a .spv section will be created in the output ZEBinary
   bool GetZEBinary(llvm::raw_pwrite_stream &programBinary, unsigned pointerSizeInBytes, const char *spv,
                    uint32_t spvSize, const char *metrics, uint32_t metricsSize, const char *buildOptions,
-                   uint32_t buildOptionsSize);
+                   uint32_t buildOptionsSize, const uint32_t *specConstantsIds, const uint64_t *specConstantsValues,
+                   uint32_t specConstantsSize);
 
   // Used to track the kernel info from CodeGen
   std::vector<IGC::CShaderProgram::UPtr> m_ShaderProgramList;

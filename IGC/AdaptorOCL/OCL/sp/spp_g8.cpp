@@ -147,13 +147,16 @@ bool CGen8OpenCLProgramBase::dumpElfKernelMapFile(IGC::CodeGenContext *Ctx) {
 
 bool CGen8OpenCLProgram::GetZEBinary(llvm::raw_pwrite_stream &programBinary, unsigned pointerSizeInBytes,
                                      const char *spv, uint32_t spvSize, const char *metrics, uint32_t metricsSize,
-                                     const char *buildOptions, uint32_t buildOptionsSize) {
+                                     const char *buildOptions, uint32_t buildOptionsSize,
+                                     const uint32_t *specConstantsIds, const uint64_t *specConstantsValues,
+                                     uint32_t specConstantsSize) {
   std::vector<std::unique_ptr<llvm::MemoryBuffer>> elfStorage;
   bool elfTmpFilesError = false; // error creating temp files
   bool retValue = true;
 
   ZEBinaryBuilder zebuilder(m_Platform, pointerSizeInBytes == 8, m_Context.m_programInfo, (const uint8_t *)spv, spvSize,
-                            (const uint8_t *)metrics, metricsSize, (const uint8_t *)buildOptions, buildOptionsSize);
+                            (const uint8_t *)metrics, metricsSize, (const uint8_t *)buildOptions, buildOptionsSize,
+                            specConstantsIds, specConstantsValues, specConstantsSize);
   zebuilder.setProductFamily(m_Platform.eProductFamily);
   zebuilder.setGfxCoreFamily(m_Platform.eRenderCoreFamily);
   zebuilder.setVISAABIVersion(m_Context.platform.getVISAABIVersion());

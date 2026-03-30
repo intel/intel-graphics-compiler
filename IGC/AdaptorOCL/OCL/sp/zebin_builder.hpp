@@ -50,7 +50,8 @@ public:
   // is also be parsed from SOpenCLProgramInfo in the constructor
   ZEBinaryBuilder(const PLATFORM plat, bool is64BitPointer, const IGC::SOpenCLProgramInfo &programInfo,
                   const uint8_t *spvData, uint32_t spvSize, const uint8_t *metricsData, uint32_t metricsSize,
-                  const uint8_t *buildOptions, uint32_t buildOptionsSize);
+                  const uint8_t *buildOptions, uint32_t buildOptionsSize, const uint32_t *specConstantsIds,
+                  const uint64_t *specConstantsValues, uint32_t specConstantsSize);
 
   // Set the ProductFamily as the specified value.
   void setProductFamily(PRODUCT_FAMILY value);

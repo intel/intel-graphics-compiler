@@ -1393,7 +1393,8 @@ bool TranslateBuildSPMD(const STB_TranslateInputArgs *pInputArgs, STB_TranslateO
   unsigned PtrSzInBits = oclContext.getModule()->getDataLayout().getPointerSizeInBits();
   unsigned int pointerSizeInBytes = (PtrSzInBits == 64) ? 8 : 4;
   oclContext.m_programOutput.GetZEBinary(llvm_os, pointerSizeInBytes, spv_data, spv_size, metricData, metricDataSize,
-                                         pInputArgs->pOptions, pInputArgs->OptionsSize);
+                                         pInputArgs->pOptions, pInputArgs->OptionsSize, pInputArgs->pSpecConstantsIds,
+                                         pInputArgs->pSpecConstantsValues, pInputArgs->SpecConstantsSize);
 
   if (IGC_IS_FLAG_ENABLED(ShaderDumpEnable))
     dumpOCLProgramBinary(oclContext, pOutputArgs->Output.data(), pOutputArgs->Output.size());

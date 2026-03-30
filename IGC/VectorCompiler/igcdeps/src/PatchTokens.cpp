@@ -151,9 +151,9 @@ void CGen8CMProgram::GetZEBinary(llvm::raw_pwrite_stream &programBinary,
   const uint8_t *OptsData = reinterpret_cast<const uint8_t *>(ApiOpts.data());
   size_t OptsSize = ApiOpts.size();
 
-  iOpenCL::ZEBinaryBuilder zebuilder(m_Platform, pointerSizeInBytes == 8,
-                                     *m_programInfo, SpirvData, SpirvSize,
-                                     nullptr, 0, OptsData, OptsSize);
+  iOpenCL::ZEBinaryBuilder zebuilder(
+      m_Platform, pointerSizeInBytes == 8, *m_programInfo, SpirvData, SpirvSize,
+      nullptr, 0, OptsData, OptsSize, nullptr, nullptr, 0);
   zebuilder.setGfxCoreFamily(m_Platform.eRenderCoreFamily);
   zebuilder.setGmdID(m_Platform.sRenderBlockID);
 
