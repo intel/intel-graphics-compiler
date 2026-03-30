@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2022 Intel Corporation
+Copyright (C) 2017-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -61,6 +61,10 @@ typedef size_t uintptr_t;
 #if defined(cl_khr_fp64)
 #define FP_FAST_FMA
 #endif
+
+#ifdef cl_khr_kernel_clock
+#pragma OPENCL EXTENSION cl_khr_kernel_clock : enable
+#endif // cl_khr_kernel_clock
 
 #if __OPENCL_C_VERSION__ != CL_VERSION_3_0
 #ifndef __opencl_c_images
@@ -8668,3 +8672,25 @@ bool intel_is_traversal_done(intel_ray_query_t query);
 // either invoke miss or closest hit shader
 bool intel_has_committed_hit(intel_ray_query_t query);
 #endif // cl_intel_rt_production
+
+#if defined(cl_khr_kernel_clock)
+
+#if defined(__opencl_c_kernel_clock_scope_device)
+// Clock functions - device scope
+ulong __attribute__((overloadable)) clock_read_device(void);
+uint2 __attribute__((overloadable)) clock_read_hilo_device(void);
+#endif // __opencl_c_kernel_clock_scope_device
+
+#if defined(__opencl_c_kernel_clock_scope_work_group)
+// Clock functions - work group scope
+ulong __attribute__((overloadable)) clock_read_work_group(void);
+uint2 __attribute__((overloadable)) clock_read_hilo_work_group(void);
+#endif // __opencl_c_kernel_clock_scope_work_group
+
+#if defined(__opencl_c_kernel_clock_scope_sub_group)
+// Clock functions - sub group scope
+ulong __attribute__((overloadable)) clock_read_sub_group(void);
+uint2 __attribute__((overloadable)) clock_read_hilo_sub_group(void);
+#endif // __opencl_c_kernel_clock_scope_sub_group
+
+#endif // cl_khr_kernel_clock

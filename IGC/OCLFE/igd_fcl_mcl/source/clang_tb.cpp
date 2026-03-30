@@ -858,7 +858,15 @@ std::string GetSubstring(const std::string &str, const std::string &prefix) {
 
   while ((start_pos = str.find(prefix, end_pos)) != std::string::npos) {
     end_pos = str.find(' ', start_pos);
+    if (end_pos == std::string::npos) {
+      returnString += str.substr(start_pos);
+      break;
+    }
     returnString += str.substr(start_pos, end_pos - start_pos) + " ";
+  }
+
+  if (!returnString.empty() && returnString.back() == ' ') {
+    returnString.pop_back();
   }
 
   return returnString;
@@ -907,6 +915,7 @@ struct ExtensionsRequiringManualFeatureMacros {
   // Extensions that generate their own feature macros
   bool integerDotProduct = false; // cl_khr_integer_dot_product
   bool extFloatAtomics = false;   // cl_ext_float_atomics
+  bool kernelClock = false;       // cl_khr_kernel_clock
 
   // Dependency flags - control which macros are enabled
   bool fp16 = false; // cl_khr_fp16 (dependency for atomic macros)
@@ -949,6 +958,13 @@ std::string GetFeatureMacrosForExtensions(const ExtensionsRequiringManualFeature
     featureMacros += " -D__opencl_c_ext_fp32_local_atomic_min_max";
   }
 
+  // Kernel clock macros
+  if (enabledExtensions.kernelClock) {
+    featureMacros += " -D__opencl_c_kernel_clock_scope_device";
+    featureMacros += " -D__opencl_c_kernel_clock_scope_work_group";
+    featureMacros += " -D__opencl_c_kernel_clock_scope_sub_group";
+  }
+
   return featureMacros;
 }
 
@@ -978,6 +994,7 @@ std::string GetCDefinesForEnableList(llvm::StringRef enableListStr, unsigned int
   ExtensionsRequiringManualFeatureMacros enabledExtensions;
   for (auto ext : v) {
     if (ext.consume_front("+")) {
+      ext = ext.trim();
       if (ext == "cl_intel_device_side_avc_motion_estimation") {
         // If the user provided -cl-std option we need to add the define only if it's 1.2 and above.
         // This is because clang will not allow declarations of extension's functions which use avc types otherwise.
@@ -994,6 +1011,8 @@ std::string GetCDefinesForEnableList(llvm::StringRef enableListStr, unsigned int
         enabledExtensions.fp16 = true;
       } else if (ext == "cl_khr_fp64") {
         enabledExtensions.fp64 = true;
+      } else if (ext.equals("cl_khr_kernel_clock")) {
+        enabledExtensions.kernelClock = true;
       }
 
       definesStr.append(" -D").append(ext.str());

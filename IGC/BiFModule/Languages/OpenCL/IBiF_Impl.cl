@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2025 Intel Corporation
+Copyright (C) 2017-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -384,6 +384,60 @@ uint __get_pipe_max_packets_wo(write_only pipe int pipe_, uint bytes, uint align
 }
 
 #endif // __OPENCL_C_VERSION__ >= CL_VERSION_2_0
+
+//*****************************************************************************
+// Clock functions
+//*****************************************************************************
+
+
+#ifdef cl_khr_kernel_clock
+
+// Device scope
+#ifdef __opencl_c_kernel_clock_scope_device
+__attribute__((always_inline))
+ulong OVERLOADABLE clock_read_device(void)
+{
+    return __spirv_ReadClockKHR_Rulong(Device);
+}
+
+__attribute__((always_inline))
+uint2 OVERLOADABLE clock_read_hilo_device(void)
+{
+    return __spirv_ReadClockKHR_Ruint2(Device);
+}
+#endif // __opencl_c_kernel_clock_scope_device
+
+// Workgroup scope
+#ifdef __opencl_c_kernel_clock_scope_work_group
+__attribute__((always_inline))
+ulong OVERLOADABLE clock_read_work_group(void)
+{
+    return __spirv_ReadClockKHR_Rulong(Workgroup);
+}
+
+__attribute__((always_inline))
+uint2 OVERLOADABLE clock_read_hilo_work_group(void)
+{
+    return __spirv_ReadClockKHR_Ruint2(Workgroup);
+}
+#endif // __opencl_c_kernel_clock_scope_work_group
+
+// Subgroup scope
+#ifdef __opencl_c_kernel_clock_scope_sub_group
+__attribute__((always_inline))
+ulong OVERLOADABLE clock_read_sub_group(void)
+{
+    return __spirv_ReadClockKHR_Rulong(Subgroup);
+}
+
+__attribute__((always_inline))
+uint2 OVERLOADABLE clock_read_hilo_sub_group(void)
+{
+    return __spirv_ReadClockKHR_Ruint2(Subgroup);
+}
+#endif // __opencl_c_kernel_clock_scope_sub_group
+
+#endif // cl_khr_kernel_clock
 
 // Internal Debug Built-Ins (TODO: implement for IGC?)
 
