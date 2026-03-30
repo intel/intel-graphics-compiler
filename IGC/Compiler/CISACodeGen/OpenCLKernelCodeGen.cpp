@@ -1547,6 +1547,10 @@ bool COpenCLKernel::isUnusedArg(KernelArg &arg) const {
       arg.getArgType() == KernelArg::ArgType::IMPLICIT_BUFFER_SIZE)
     return true;
 
+  // Remove private base if private memory is not used.
+  if (arg.getArgType() == KernelArg::ArgType::IMPLICIT_PRIVATE_BASE)
+    return m_perWIStatelessPrivateMemSize == 0;
+
   // When removing unused implicit arguments, assume subroutine calls use implicit arguments.
   if (!AllowRemovingUnusedImplicitArguments(m_Context) || HasSubroutines())
     return false;
