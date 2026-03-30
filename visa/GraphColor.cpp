@@ -13175,7 +13175,11 @@ void GlobalRA::fixSrc0IndirFcall() {
             kernel.stackCall.subRegs.Ret_IP * TypeSize(Type_UD) / src0TypeSize);
         auto dst = kernel.fg.builder->createDst(tmpDcl->getRegVar(),
                                                 src0Rgn->getType());
-        auto src = kernel.fg.builder->duplicateOperand(src0Rgn);
+        auto src = kernel.fg.builder->createSrcRegRegion(
+            src0Rgn->getModifier(), src0Rgn->getRegAccess(),
+            src0Rgn->getBase(), src0Rgn->getRegOff(),
+            src0Rgn->getSubRegOff(), kernel.fg.builder->getRegionScalar(),
+            src0Rgn->getType());
         auto copy = kernel.fg.builder->createMov(g4::SIMD1, dst, src,
                                                  InstOpt_WriteEnable, false);
         auto iter = std::find_if(bb->begin(), bb->end(),
