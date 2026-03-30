@@ -8,7 +8,7 @@
 
 ; REQUIRES: regkeys, llvm-16-plus
 
-; RUN: not --crash igc_opt -S -opaque-pointers -dce -platformpvc -igc-emit-visa --regkey=EnableAssertEvaluation=1 --regkey=EnableAssertProgramTermination=0 --regkey=EnableLogAssertToStderr=1 --regkey=EnableStandardAssert=1 -simd-mode 32 < %s &> %t_output.ll
+; RUN: not --crash igc_opt -S -opaque-pointers -dce -platformpvc -igc-emit-visa --regkey=EnableSimdCoalescing=0 --regkey=EnableAssertEvaluation=1 --regkey=EnableAssertProgramTermination=0 --regkey=EnableLogAssertToStderr=1 --regkey=EnableStandardAssert=1 -simd-mode 32 < %s &> %t_output.ll
 ; RUN: FileCheck --input-file %t_output.ll %s
 
 ; Checks that the assertion fails.

@@ -946,6 +946,7 @@ public:
   // For IR dump after pass
   unsigned m_numPasses = 0;
   bool m_threadCombiningOptDone = false;
+  bool m_simdCoalescingDone = false;
 
   void *m_ConstantBufferReplaceShaderPatterns = nullptr;
   uint m_ConstantBufferReplaceShaderPatternsSize = 0;
