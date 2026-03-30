@@ -42,6 +42,7 @@ set(IGC_WrapperLLVM_HDR
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/IR/DIBuilder.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/IR/Function.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/IR/BasicBlock.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/IR/Attributes.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/IR/InstrTypes.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/IR/Instructions.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/IR/IntrinsicInst.h"

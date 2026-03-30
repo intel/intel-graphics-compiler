@@ -491,11 +491,11 @@ class ArgumentDefinition(SafeYAMLObject):
         arg_dict = loader.construct_mapping(node, deep=True)
         return cls(**arg_dict)
 
-    def __init__(self, name : str, type_definition : TypeDefinition, comment : str, param_attr : ParamAttributeID = None, capture : str = "undefined"):
+    def __init__(self, name : str, type_definition : TypeDefinition, comment : str, param_attr : ParamAttributeID = None, capture : str = None):
         self.name = name
         self.type_definition = type_definition
         self.comment = QuotedString(comment)
-        self.capture = QuotedString(capture)
+        self.capture = QuotedString(capture) if capture is not None else None
         if param_attr:
             self.param_attr = param_attr
 
@@ -523,7 +523,7 @@ class ArgumentDefinition(SafeYAMLObject):
     @staticmethod
     def from_dict(json_dct : dict):
         type_definition = TypeDefinition.from_dict(json_dct['type_definition'])
-        return ArgumentDefinition(json_dct['name'], type_definition, json_dct['comment'], json_dct.get('param_attr'), json_dct.get('capture', 'undefined'))
+        return ArgumentDefinition(json_dct['name'], type_definition, json_dct['comment'], json_dct.get('param_attr'), json_dct.get('capture'))
 
 class MemoryRestriction(SafeYAMLObject):
 

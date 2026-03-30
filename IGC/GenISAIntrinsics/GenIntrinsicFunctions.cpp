@@ -14,6 +14,7 @@ SPDX-License-Identifier: MIT
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/IR/Type.h"
 #include "llvmWrapper/IR/Module.h"
+#include "llvmWrapper/IR/Attributes.h"
 
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/IR/Type.h>
@@ -236,17 +237,7 @@ private:
     auto RetrieveParamAttr = [&overloadedTypeIndex, &ctx, &overloadedPointeeTys,
                               &mainAttrList](uint8_t index, const ArgumentDescription &arg) {
       if (arg.m_Capture.has_value()) {
-#if LLVM_VERSION_MAJOR >= 22
-        mainAttrList = mainAttrList.addParamAttribute(
-            ctx, {index}, llvm::Attribute::getWithCaptureInfo(ctx, llvm::CaptureInfo(arg.m_Capture.value())));
-#else
-        if (arg.m_Capture.value() == IGCLLVM::CaptureComponents::None)
-          mainAttrList =
-              mainAttrList.addParamAttribute(ctx, {index}, llvm::Attribute::get(ctx, llvm::Attribute::NoCapture));
-        else
-          IGC_ASSERT_EXIT_MESSAGE(
-              false, "We only support llvm::Attribute::NoCapture/llvm::CaptureComponents::None on LLVMs below 22.");
-#endif
+        IGCLLVM::addCapture(mainAttrList, ctx, index, arg.m_Capture.value());
       }
 
       if (arg.m_AttrKind == llvm::Attribute::None) {

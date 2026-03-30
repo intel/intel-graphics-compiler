@@ -24,6 +24,7 @@ class IntrinsicLookupTableEntry:
 
 class IntrinsicFormatter:
     use_comments = False
+    llvm_major_version = 0
 
     @staticmethod
     def get_lookup_table(intrinsic_definitions : List[IntrinsicDefinition]):
@@ -133,8 +134,18 @@ class IntrinsicFormatter:
             output += ", {}".format(cls.get_attribute_entry(arg.param_attr, is_last=True))
 
         # list of valid captures is defined in ModRef.h
-        if arg.capture != None and arg.capture in ["None"]:
-            output += ", {}".format(cls.get_capture_entry(arg.capture, is_last=True))
+        if arg.capture != None:
+            validCaptureValues = []
+
+            if IntrinsicFormatter.llvm_major_version >= 22:
+                validCaptureValues = ["None", "AddressIsNull", "Address", "ReadProvenance", "Provenance", "All"]
+            else:
+                validCaptureValues = ["None"]
+
+            if arg.capture in validCaptureValues:
+                output += ", {}".format(cls.get_capture_entry(arg.capture, is_last=True))
+            else:
+                raise Exception("[ERROR] Invalid capture value '{}'. Available capture value(s): {}. Below LLVM 22 only 'None' is available.".format(arg.capture, validCaptureValues))
 
         output = "ArgumentDescription({})".format(output)
         if not is_last:
@@ -200,7 +211,13 @@ class IntrinsicFormatter:
         prefix = 'llvm.genx.GenISA.'
         return prefix
 
-def generate_intrinsic_defintion_files(intrinsic_definitions : List[IntrinsicDefinition], output_directory : str, use_comments):
+def parse_llvm_version(llvm_full_version):
+    if ("." in llvm_full_version):
+        return tuple(map(int, llvm_full_version.split(".")))
+    else:
+        raise Exception("[ERROR] Invalid LLVM version provided '{}'. Expected something like '16.0.6'.".format(llvm_full_version))
+
+def generate_intrinsic_defintion_files(intrinsic_definitions : List[IntrinsicDefinition], output_directory : str, use_comments, llvm_major_version : int):
     intrinsic_ids = set()
     unique_intrinsic_definitions = []
     for intrinsic_def in intrinsic_definitions:
@@ -228,7 +245,7 @@ def generate_intrinsic_defintion_files(intrinsic_definitions : List[IntrinsicDef
                         lookup=template_lookup)
     output_file_path = os.path.join(
         output_directory, from_template_name_to_destination_name(template.filename))
-    write_to_file_using_template(output_file_path, template, intrinsic_definitions=intrinsic_definitions)
+    write_to_file_using_template(output_file_path, template, intrinsic_definitions=intrinsic_definitions, llvm_major_version = llvm_major_version)
 
     template = Template(filename=r'templates/GenIntrinsicDefinition.cpp.mako',
                         lookup=template_lookup)
@@ -250,8 +267,14 @@ if __name__ == '__main__':
         parser.add_argument("--output", help="the directory for the files with intrinsic definitions",
                         type=dir_path)
         parser.add_argument("--use_comments", action='store_true')
+        parser.add_argument("--llvm_version", help="the LLVM version to use", type=str, required=True)
 
         args = parser.parse_args(args[1:])
+
+        print("[INFO] IntrinsicGenerator.py LLVM FULL VERSION: '{}'".format(args.llvm_version))
+        LLVM_MAJOR_VERSION = parse_llvm_version(llvm_full_version=args.llvm_version)[0]
+        print("[INFO] IntrinsicGenerator.py LLVM MAJOR VERSION: '{}'".format(LLVM_MAJOR_VERSION))
+
         intrinsic_definitions = []
         for el in args.inputs:
             json_ext = '.json'
@@ -273,6 +296,6 @@ if __name__ == '__main__':
                         print("Error on loading data from: {}\n{}".format(el, err))
 
         if len(intrinsic_definitions) > 0:
-            generate_intrinsic_defintion_files(intrinsic_definitions, args.output, args.use_comments)
+            generate_intrinsic_defintion_files(intrinsic_definitions, args.output, args.use_comments, LLVM_MAJOR_VERSION)
 
     main(sys.argv)

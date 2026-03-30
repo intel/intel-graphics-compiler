@@ -31,6 +31,9 @@ struct IntrinsicDefinition;
 <%!
 from Intrinsic_generator import IntrinsicFormatter
 %>\
+<%
+IntrinsicFormatter.llvm_major_version=llvm_major_version
+%>\
 % for el in intrinsic_definitions:
 template<>
 class IntrinsicDefinition<llvm::GenISAIntrinsic::ID::${el.name}>
