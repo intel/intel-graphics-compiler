@@ -1078,7 +1078,7 @@ AVS_(4|8|16)x(4|8) {
 
 
 
-type[ ]*=[ ]*(ud|d|uw|w|ub|b|df|f|bool|uq|q|UD|D|UW|W|UB|B|DF|F|Bool|BOOL|UQ|Q|hf|HF|bf|BF) {
+type[ ]*=[ ]*(ud|d|uw|w|ub|b|df|f|bool|uq|q|UD|D|UW|W|UB|B|DF|F|Bool|BOOL|UQ|Q|hf|HF|bf|BF|uv|UV) {
         TRACE("** TYPE");
         CISAlval.type = str2type(yytext, yyleng);
         return DECL_DATA_TYPE;
@@ -1164,7 +1164,7 @@ type[ ]*=[ ]*(ud|d|uw|w|ub|b|df|f|bool|uq|q|UD|D|UW|W|UB|B|DF|F|Bool|BOOL|UQ|Q|h
         return ITYPE;
     }
 
-:(v|vf|V|VF|uv)  {
+:(v|vf|V|VF|uv|UV)  {
         TRACE("** VTYPE");
         CISAlval.type = str2type(yytext, yyleng);
         return VTYPE;

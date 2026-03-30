@@ -349,10 +349,10 @@ void vISAVerifier::verifyVariableDecl(unsigned declID) {
                 declID + numPreDefinedVars, var->name_index, declError.c_str());
 
   switch (var->getType()) {
+  case ISA_TYPE_UV:
   case ISA_TYPE_V:
   case ISA_TYPE_VF:
   case ISA_TYPE_BOOL:
-  case ISA_TYPE_UV:
     REPORT_HEADER(options, false, "V%d's type(%s) is not legal: %s", declID,
                   CISATypeTable[var->getType()].typeName, declError.c_str());
     return;
