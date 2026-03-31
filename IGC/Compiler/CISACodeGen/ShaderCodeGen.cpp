@@ -1279,7 +1279,7 @@ void OptimizeIR(CodeGenContext *const pContext) {
     mpm.add(new llvm::TargetLibraryInfoWrapperPass(TLI));
     initializeWIAnalysisPass(*PassRegistry::getPassRegistry());
 
-    if (IGC_IS_FLAG_ENABLED(EnableSinkPointerConstAdd)) {
+    if (pContext->platform.hasEfficient64bEnabled() && IGC_IS_FLAG_ENABLED(EnableSinkPointerConstAdd)) {
       mpm.add(createSinkPointerConstAddPass());
     }
 
