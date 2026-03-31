@@ -89,7 +89,22 @@ function(generate_irbuilder_headers)
         set(WARNING_SETTINGS -pedantic -Wall -Werror)
     endif()
 
-    set(CLANG_HEADERS ${IGC_BUILD__GFX_DEV_SRC_DIR}/external/llvm/releases/${IGC_BUILD__CLANG_VERSION}/clang/lib/Headers)
+    string(REGEX REPLACE "\\..*$" "" CLANG_VERSION_MAJOR "${IGC_BUILD__CLANG_VERSION}")
+    set(CLANG_HEADERS "")
+    foreach(_candidate
+            "${IGC_BUILD__GFX_DEV_SRC_DIR}/external/llvm/releases/${CLANG_VERSION_MAJOR}/clang/lib/Headers"
+            "${IGC_BUILD__GFX_DEV_SRC_DIR}/external/llvm/releases/${CLANG_VERSION_MAJOR}.0.0/clang/lib/Headers"
+            "${IGC_BUILD__GFX_DEV_SRC_DIR}/external/llvm/releases/${IGC_BUILD__CLANG_VERSION}/clang/lib/Headers"
+            "${IGC_SOURCE_DIR}/external/llvm/releases/${CLANG_VERSION_MAJOR}/clang/lib/Headers"
+            "${IGC_SOURCE_DIR}/external/llvm/releases/${CLANG_VERSION_MAJOR}.0.0/clang/lib/Headers"
+            "${IGC_SOURCE_DIR}/external/llvm/releases/${IGC_BUILD__CLANG_VERSION}/clang/lib/Headers"
+    )
+        message(STATUS "[Clang] Probing clang headers: ${_candidate}")
+        if(NOT CLANG_HEADERS AND EXISTS "${_candidate}")
+            set(CLANG_HEADERS "${_candidate}")
+        endif()
+    endforeach()
+    message(STATUS "[Clang] Using clang headers: ${CLANG_HEADERS}")
 
     # select opaque vs typed pointers mode
     if(IGC_OPTION__API_ENABLE_OPAQUE_POINTERS OR (NOT LLVM_VERSION_MAJOR GREATER 14 OR LLVM_VERSION_MAJOR GREATER 16))
