@@ -17,3 +17,5 @@ llvm::ModulePass *createProcessFuncAttributesPass();
 llvm::ModulePass *createProcessBuiltinMetaDataPass();
 
 llvm::ModulePass *createInsertDummyKernelForSymbolTablePass();
+
+llvm::ModulePass *createCleanupIndirectlyReferencedFunctionsPass();

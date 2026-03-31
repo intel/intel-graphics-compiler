@@ -135,6 +135,7 @@ void initializePrivateMemoryUsageAnalysisPass(llvm::PassRegistry &);
 void initializeProcessFuncAttributesPass(llvm::PassRegistry &);
 void initializeProcessBuiltinMetaDataPass(llvm::PassRegistry &);
 void initializeInsertDummyKernelForSymbolTablePass(llvm::PassRegistry &);
+void initializeCleanupIndirectlyReferencedFunctionsPass(llvm::PassRegistry &);
 void initializeProgramScopeConstantAnalysisPass(llvm::PassRegistry &);
 void initializeProgramScopeConstantResolutionPass(llvm::PassRegistry &);
 void initializePromoteResourceToDirectASPass(llvm::PassRegistry &);

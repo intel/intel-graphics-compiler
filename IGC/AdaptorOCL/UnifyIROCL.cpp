@@ -414,6 +414,14 @@ static void CommonOCLBasedPasses(OpenCLProgramContext *pContext) {
     // The inliner sometimes fails to delete unused functions, this cleans up the remaining mess.
     mpm.add(IGCLLVM::createLegacyWrappedGlobalDCEPass());
 
+    // After inlining, some functions that were originally called indirectly
+    // (address-taken) may now only have direct callers or be completely dead.
+    // Strip the stale "referenced-indirectly"/"visaStackCall" attributes and
+    // restore internal linkage so DCE / PurgeMetaDataUtils can remove them.
+    mpm.add(createCleanupIndirectlyReferencedFunctionsPass());
+
+    mpm.add(IGCLLVM::createLegacyWrappedGlobalDCEPass());
+
     // Check after GlobalDCE in case of doubles in dead functions
     mpm.add(new ErrorCheck());
 

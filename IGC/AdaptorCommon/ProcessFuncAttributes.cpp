@@ -1014,6 +1014,125 @@ bool ProcessFuncAttributes::runOnModule(Module &M) {
 //
 // ProcessBuiltinMetaData
 //
+
+//
+// CleanupIndirectlyReferencedFunctions
+//
+// Removes stale "referenced-indirectly" and "visaStackCall" attributes from
+// functions whose address is no longer taken after inlining. When all uses of
+// such a function become direct calls (or the function becomes dead), it no
+// longer needs to be compiled as an indirect/stack-call function, and it can
+// be changed back to internal linkage so that dead-code elimination can remove
+// it entirely.
+//
+// This pass should run after the inliner in the unification
+// pipeline, but before GenCodeGenModule which consumes these attributes.
+//
+
+namespace {
+
+class CleanupIndirectlyReferencedFunctions : public ModulePass {
+public:
+  static char ID;
+  void getAnalysisUsage(llvm::AnalysisUsage &AU) const override {
+    AU.setPreservesCFG();
+    AU.addRequired<MetaDataUtilsWrapper>();
+    AU.addRequired<CodeGenContextWrapper>();
+  }
+
+  CleanupIndirectlyReferencedFunctions();
+  ~CleanupIndirectlyReferencedFunctions() {}
+
+  bool runOnModule(Module &M) override;
+
+  llvm::StringRef getPassName() const override { return "CleanupIndirectlyReferencedFunctions"; }
+};
+
+} // namespace
+
+#define PASS_FLAG_CIRF "igc-cleanup-indirectly-referenced-functions"
+#define PASS_DESCRIPTION_CIRF "Remove stale referenced-indirectly attributes after inlining"
+#define PASS_CFG_ONLY_CIRF false
+#define PASS_ANALYSIS_CIRF false
+IGC_INITIALIZE_PASS_BEGIN(CleanupIndirectlyReferencedFunctions, PASS_FLAG_CIRF, PASS_DESCRIPTION_CIRF,
+                          PASS_CFG_ONLY_CIRF, PASS_ANALYSIS_CIRF)
+IGC_INITIALIZE_PASS_DEPENDENCY(MetaDataUtilsWrapper)
+IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
+IGC_INITIALIZE_PASS_END(CleanupIndirectlyReferencedFunctions, PASS_FLAG_CIRF, PASS_DESCRIPTION_CIRF, PASS_CFG_ONLY_CIRF,
+                        PASS_ANALYSIS_CIRF)
+
+char CleanupIndirectlyReferencedFunctions::ID = 0;
+
+CleanupIndirectlyReferencedFunctions::CleanupIndirectlyReferencedFunctions() : ModulePass(ID) {
+  initializeCleanupIndirectlyReferencedFunctionsPass(*PassRegistry::getPassRegistry());
+}
+
+ModulePass *createCleanupIndirectlyReferencedFunctionsPass() { return new CleanupIndirectlyReferencedFunctions(); }
+
+bool CleanupIndirectlyReferencedFunctions::runOnModule(Module &M) {
+  auto &mdUW = getAnalysis<MetaDataUtilsWrapper>();
+  auto *modMD = mdUW.getModuleMetaData();
+  auto *pCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+
+  // If user forces a specific FunctionControl mode we leave attributes as is.
+  if (getFunctionControl(pCtx) != FLAG_FCALL_DEFAULT) {
+    return false;
+  }
+
+  // Collect pointers used only in @llvm.global.annotations so we can ignore
+  // them when deciding whether a function's address is truly taken.
+  DenseSet<const Value *> GlobalAnnotationsPtr;
+  collectGlobalAnnotationsPointers(M, GlobalAnnotationsPtr);
+
+  bool Modified = false;
+
+  for (auto &F : M) {
+    if (F.isDeclaration()) {
+      continue;
+    }
+    if (!F.hasFnAttribute("referenced-indirectly")) {
+      continue;
+    }
+    // In library compilation mode, functions that need external linking for
+    // import/export must keep their attributes even if unused locally.
+    if (modMD->compOpt.IsLibraryCompilation && F.hasExternalLinkage() && F.getCallingConv() == CallingConv::SPIR_FUNC) {
+      continue;
+    }
+
+    bool IsStillIndirect = false;
+    for (auto *U : F.users()) {
+      // Skip entries that come from @llvm.global.annotations.
+      if (GlobalAnnotationsPtr.count(U)) {
+        continue;
+      }
+
+      if (auto *CI = dyn_cast<CallInst>(U)) {
+        if (IGCLLVM::getCalledValue(CI) == &F) {
+          continue; // direct call – does not require indirect dispatch
+        }
+      }
+
+      // Any other use (store, bitcast outside annotation, etc.) means the
+      // function address is genuinely taken.
+      IsStillIndirect = true;
+      break;
+    }
+
+    if (!IsStillIndirect) {
+      F.removeFnAttr("referenced-indirectly");
+      F.removeFnAttr("visaStackCall");
+      // Restore internal linkage so GlobalDCE / PurgeMetaDataUtils can
+      // remove the function body if it becomes dead.
+      if (F.getLinkage() == GlobalValue::ExternalLinkage) {
+        F.setLinkage(GlobalValue::InternalLinkage);
+      }
+      Modified = true;
+    }
+  }
+
+  return Modified;
+}
+
 namespace {
 
 class ProcessBuiltinMetaData : public ModulePass {
