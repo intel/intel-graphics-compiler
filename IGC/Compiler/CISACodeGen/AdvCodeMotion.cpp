@@ -904,6 +904,8 @@ bool MadLoopSlice::sliceBlock(BasicBlock *BB) const {
   // This is less restrictive than MadLoopSlice (which requires an all-MAD loop body)
   // and matches real kernels that have setup code before/after the MAD region.
   for (Instruction &I : *BB) {
+    if (isa<PHINode>(&I) || isa<DbgInfoIntrinsic>(&I) || I.isTerminator())
+      continue;
     if (isCandidateMAD(&I, CGC))
       Run.push_back(&I);
     else
