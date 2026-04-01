@@ -676,10 +676,6 @@ Constant *PromoteSubByte::promoteConstant(Constant *constant) {
     auto newType = getOrCreatePromotedType(constantArray->getType());
     return ConstantArray::get(cast<ArrayType>(newType), values);
   } else if (auto constantStruct = dyn_cast<ConstantStruct>(constant)) {
-    if (!typeNeedsPromotion(constantStruct->getType())) {
-      return constant;
-    }
-
     SmallVector<Constant *, 8> values;
     for (unsigned i = 0; i < constantStruct->getType()->getNumElements(); ++i) {
       values.push_back(promoteConstant(constantStruct->getAggregateElement(i)));
@@ -694,6 +690,8 @@ Constant *PromoteSubByte::promoteConstant(Constant *constant) {
                                    constantExpr->getType());
     }
     return constantExpr;
+  } else if (auto constantFunction = dyn_cast<Function>(constant)) {
+    return cast<Constant>(getOrCreatePromotedValue(constantFunction));
   }
 
   return constant;
