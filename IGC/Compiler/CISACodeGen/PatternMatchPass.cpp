@@ -1629,6 +1629,10 @@ bool CodeGenPatternMatch::matchMulPairToI64(BitCastInst &I) {
   if (!GII || GII->getIntrinsicID() != GenISAIntrinsic::GenISA_mul_pair)
     return false;
 
+  // All matched instructions must be in the same basic block.
+  if (GII->getParent() != I.getParent())
+    return false;
+
   struct MulPairToI64Pattern : public Pattern {
     GenIntrinsicInst *GII;
     SSource Sources[4]; // L0, H0, L1, H1
