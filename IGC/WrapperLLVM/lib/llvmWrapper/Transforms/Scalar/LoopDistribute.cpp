@@ -60,7 +60,7 @@ void LoopDistributeLegacyPassWrapper::getAnalysisUsage(AnalysisUsage &AU) const 
   AU.addRequired<ScalarEvolutionWrapperPass>();
   AU.addRequired<LoopInfoWrapperPass>();
   AU.addPreserved<LoopInfoWrapperPass>();
-#if LLVM_VERSION_MAJOR <= 16 || defined(IGC_LLVM_TRUNK_REVISION)
+#if LLVM_VERSION_MAJOR <= 16
   AU.addRequired<LoopAccessLegacyAnalysis>();
 #endif
   AU.addRequired<DominatorTreeWrapperPass>();
@@ -81,7 +81,7 @@ using namespace IGCLLVM;
 #define PASS_ANALYSIS false
 IGC_INITIALIZE_PASS_BEGIN(LoopDistributeLegacyPassWrapper, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 IGC_INITIALIZE_PASS_DEPENDENCY(LoopInfoWrapperPass)
-#if LLVM_VERSION_MAJOR <= 16 || defined(IGC_LLVM_TRUNK_REVISION)
+#if LLVM_VERSION_MAJOR <= 16
 IGC_INITIALIZE_PASS_DEPENDENCY(LoopAccessLegacyAnalysis)
 #endif
 IGC_INITIALIZE_PASS_DEPENDENCY(DominatorTreeWrapperPass)
