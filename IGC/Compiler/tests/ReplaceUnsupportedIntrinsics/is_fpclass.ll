@@ -346,6 +346,39 @@ define i1 @test_class_neginf_posnormal_negsubnormal_poszero_snan_f64(double %arg
   ret i1 %val
 }
 
+; check for neg inf, pos normal, neg subnormal pos zero and snan scalar bfloat
+define i1 @test_class_neginf_posnormal_negsubnormal_poszero_snan_bf16(bfloat %arg) {
+; CHECK-LABEL: @test_class_neginf_posnormal_negsubnormal_poszero_snan_bf16(
+; CHECK-NEXT:    [[TMP1:%.*]] = bitcast bfloat [[ARG:%.*]] to i16
+; CHECK-NEXT:    [[TMP2:%.*]] = and i16 [[TMP1]], 32767
+; CHECK-NEXT:    [[TMP3:%.*]] = icmp ugt i16 [[TMP2]], 32640
+; CHECK-NEXT:    [[TMP4:%.*]] = icmp uge i16 [[TMP2]], 32704
+; CHECK-NEXT:    [[TMP5:%.*]] = xor i1 [[TMP4]], true
+; CHECK-NEXT:    [[TMP6:%.*]] = and i1 [[TMP3]], [[TMP5]]
+; CHECK-NEXT:    [[TMP7:%.*]] = bitcast i16 [[TMP2]] to bfloat
+; CHECK-NEXT:    [[TMP8:%.*]] = fcmp oeq bfloat [[TMP7]], 0xR7F80
+; CHECK-NEXT:    [[TMP9:%.*]] = and i16 [[TMP1]], -32768
+; CHECK-NEXT:    [[TMP10:%.*]] = icmp ne i16 [[TMP9]], 0
+; CHECK-NEXT:    [[TMP11:%.*]] = and i1 [[TMP10]], [[TMP8]]
+; CHECK-NEXT:    [[TMP12:%.*]] = or i1 [[TMP6]], [[TMP11]]
+; CHECK-NEXT:    [[TMP13:%.*]] = sub i16 [[TMP2]], 128
+; CHECK-NEXT:    [[TMP14:%.*]] = icmp ult i16 [[TMP13]], 32512
+; CHECK-NEXT:    [[TMP15:%.*]] = xor i1 [[TMP10]], true
+; CHECK-NEXT:    [[TMP16:%.*]] = and i1 [[TMP15]], [[TMP14]]
+; CHECK-NEXT:    [[TMP17:%.*]] = or i1 [[TMP12]], [[TMP16]]
+; CHECK-NEXT:    [[TMP18:%.*]] = sub i16 [[TMP2]], 1
+; CHECK-NEXT:    [[TMP19:%.*]] = icmp ult i16 [[TMP18]], 127
+; CHECK-NEXT:    [[TMP20:%.*]] = and i1 [[TMP10]], [[TMP19]]
+; CHECK-NEXT:    [[TMP21:%.*]] = or i1 [[TMP17]], [[TMP20]]
+; CHECK-NEXT:    [[TMP22:%.*]] = icmp eq i16 [[TMP2]], 0
+; CHECK-NEXT:    [[TMP23:%.*]] = and i1 [[TMP15]], [[TMP22]]
+; CHECK-NEXT:    [[TMP24:%.*]] = or i1 [[TMP21]], [[TMP23]]
+; CHECK-NEXT:    ret i1 [[TMP24]]
+;
+  %val = call i1 @llvm.is.fpclass.bf16(bfloat %arg, i32 341)
+  ret i1 %val
+}
+
 ; check for neg inf, pos normal, neg subnormal pos zero and snan vector
 define <2 x i1> @test_class_neginf_posnormal_negsubnormal_poszero_snan_v2f16(<2 x half> %arg) {
 ; CHECK-LABEL: @test_class_neginf_posnormal_negsubnormal_poszero_snan_v2f16(
@@ -403,6 +436,8 @@ define i1 @test_class_inverted_is_not_nan_f32(float %x) {
 declare i1 @llvm.is.fpclass.f32(float, i32 immarg)
 
 declare i1 @llvm.is.fpclass.f64(double, i32 immarg)
+
+declare i1 @llvm.is.fpclass.bf16(bfloat, i32 immarg)
 
 declare <2 x i1> @llvm.is.fpclass.v2f32(<2 x float>, i32 immarg)
 
