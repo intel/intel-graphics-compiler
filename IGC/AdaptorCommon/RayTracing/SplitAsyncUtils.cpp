@@ -400,9 +400,8 @@ bool RematChecker::isFreeOperand(const Value *Op) const {
   return ArgQuery{F, Ctx}.getPayloadArg(&F) == Arg;
 }
 
-static bool isFreeInst(const Instruction *I) {
-  return isa<ExtractElementInst>(I) || isa<BitCastInst>(I) || isa<IntToPtrInst>(I);
-}
+/// For now, no instruction has free cost.
+static bool isFreeInst(const Instruction *I) { return false; }
 
 bool RematChecker::canFullyRemat(Instruction *I, std::vector<Instruction *> &Insts,
                                  std::unordered_set<Instruction *> &Visited, unsigned StartDepth, unsigned Depth,
