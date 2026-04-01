@@ -60,6 +60,7 @@ class TypeID(Enum):
     Pointer = 5
     Any = 6
     Reference = 7
+    TypeList = 8
 
     def __str__(self):
         return self.name
@@ -70,7 +71,7 @@ class TypeID(Enum):
             if key == value:
                 return val
         else:
-            raise ValueError("{value} is not present in {cls.__name__}")
+            raise ValueError(f"{value} is not present in {cls.__name__}")
 
 def TypeID_representer(dumper, data):
     return dumper.represent_scalar(u'!TypeID', u'%s' % str(data), style='"')
@@ -82,6 +83,68 @@ def TypeID_constructor(loader, node):
     return TypeID.from_str(value)
 
 yaml.SafeLoader.add_constructor(u'!TypeID', TypeID_constructor)
+
+class ReferenceExtractionType(Enum):
+    NoExtraction = 0
+    VectorElement = 1
+    PointerElement = 2
+
+    def __str__(self):
+        return self.name
+
+    def __repr__(self):
+        return '%s("%s")' % (self.__class__.__name__, self)
+
+    @classmethod
+    def from_str(cls, value : str):
+        for key, val in cls.__members__.items():
+            if key == value:
+                return val
+        else:
+            raise ValueError(f"{value} is not present in {cls.__name__}")
+
+def ReferenceExtractionType_representer(dumper, data):
+    return dumper.represent_scalar(u'!ReferenceExtractionType', u'%s' % str(data), style='"')
+
+yaml.add_representer(ReferenceExtractionType, ReferenceExtractionType_representer)
+
+def ReferenceExtractionType_constructor(loader, node):
+    value = loader.construct_scalar(node)
+    return ReferenceExtractionType.from_str(value)
+
+yaml.SafeLoader.add_constructor(u'!ReferenceExtractionType', ReferenceExtractionType_constructor)
+
+class PropertyExtractionKind(Enum):
+    """Mirrors IGC::PropertyExtractionKind from LlvmTypesMapping.h.
+    Used in ValueBound property-ref dicts to specify which scalar property
+    to extract from a referenced argument's type."""
+    VectorNumElements = 0
+    IntegerBitWidth = 1
+
+    def __str__(self):
+        return self.name
+
+    def __repr__(self):
+        return '%s("%s")' % (self.__class__.__name__, self)
+
+    @classmethod
+    def from_str(cls, value : str):
+        for key, val in cls.__members__.items():
+            if key == value:
+                return val
+        else:
+            raise ValueError(f"{value} is not present in {cls.__name__}")
+
+def PropertyExtractionKind_representer(dumper, data):
+    return dumper.represent_scalar(u'!PropertyExtractionKind', u'%s' % str(data), style='"')
+
+yaml.add_representer(PropertyExtractionKind, PropertyExtractionKind_representer)
+
+def PropertyExtractionKind_constructor(loader, node):
+    value = loader.construct_scalar(node)
+    return PropertyExtractionKind.from_str(value)
+
+yaml.SafeLoader.add_constructor(u'!PropertyExtractionKind', PropertyExtractionKind_constructor)
 
 class AddressSpace(Enum):
     Undefined = 0
@@ -106,7 +169,7 @@ class AddressSpace(Enum):
             if key == value:
                 return val
         else:
-            raise ValueError("{value} is not present in {cls.__name__}")
+            raise ValueError(f"{value} is not present in {cls.__name__}")
 
 def AddressSpace_representer(dumper, data):
     return dumper.represent_scalar(u'!AddressSpace', u'%s' % str(data), style='"')
@@ -138,7 +201,7 @@ class AttributeID(Enum):
             if key == value:
                 return val
         else:
-            raise ValueError("{value} is not present in {cls.__name__}")
+            raise ValueError(f"{value} is not present in {cls.__name__}")
 
 def AttributeID_representer(dumper, data):
     return dumper.represent_scalar(u'!AttributeID', u'%s' % str(data), style='"')
@@ -169,7 +232,7 @@ class ParamAttributeID(Enum):
             if key == value:
                 return val
         else:
-            raise ValueError("{value} is not present in {cls.__name__}")
+            raise ValueError(f"{value} is not present in {cls.__name__}")
 
 def ParamAttributeID_representer(dumper, data):
     return dumper.represent_scalar(u'!ParamAttributeID', u'%s' % str(data), style='"')
@@ -200,7 +263,7 @@ class MemoryLocation(Enum):
             if key == value:
                 return val
         else:
-            raise ValueError("{value} is not present in {cls.__name__}")
+            raise ValueError(f"{value} is not present in {cls.__name__}")
 
 def MemoryLocation_representer(dumper, data):
     return dumper.represent_scalar(u'!MemoryLocation', u'%s' % str(data), style='"')
@@ -236,7 +299,7 @@ class MemoryAccessType(Enum):
             if key == value:
                 return val
         else:
-            raise ValueError("{value} is not present in {cls.__name__}")
+            raise ValueError(f"{value} is not present in {cls.__name__}")
 
 def MemoryAccessType_representer(dumper, data):
     return dumper.represent_scalar(u'!MemoryAccessType', u'%s' % str(data), style='"')
@@ -252,12 +315,246 @@ yaml.SafeLoader.add_constructor(u'!MemoryAccessType', MemoryAccessType_construct
 class SafeYAMLObject(yaml.YAMLObject):
     yaml_loader = yaml.SafeLoader
 
+class ValueBound(SafeYAMLObject):
+    """Mirrors IGC::ValueBound from LlvmTypesMapping.h.
+    A single bound value: either a literal uint32_t or a property extracted
+    from the type of another argument/return.
+    Literal 0 means 'unbounded' when used as a range bound.
+
+    The 'index' field uses the same indexing as the intrinsic's type array:
+      index 0  = return type
+      index 1+ = argument types (argument N has index N+1)
+
+    YAML forms:
+      - literal int:   5
+      - property ref:  !<ValueBound> { index: 1, extraction: !PropertyExtractionKind "VectorNumElements" }
+    """
+    yaml_tag = u'ValueBound'
+
+    @classmethod
+    def from_yaml(cls, loader, node):
+        d = loader.construct_mapping(node, deep=True)
+        return cls(**d)
+
+    def __init__(self, value : int = None,
+                 index : int = None,
+                 extraction : PropertyExtractionKind = None):
+        if index is not None and extraction is not None:
+            # Property reference
+            self.kind = 'property_ref'
+            self.index = index
+            self.extraction = extraction
+        else:
+            # Literal (0 = unbounded)
+            self.kind = 'literal'
+            self.value = value if value is not None else 0
+
+    @property
+    def is_literal(self):
+        return self.kind == 'literal'
+
+    @property
+    def is_ref(self):
+        return self.kind == 'property_ref'
+
+    @property
+    def is_unbounded(self):
+        return self.is_literal and self.value == 0
+
+    def __eq__(self, other):
+        if not isinstance(other, ValueBound):
+            return NotImplemented
+        if self.kind != other.kind:
+            return False
+        if self.is_literal:
+            return self.value == other.value
+        if self.is_ref:
+            return self.index == other.index and self.extraction == other.extraction
+        return False
+
+    def __lt__(self, other):
+        if not isinstance(other, ValueBound):
+            return NotImplemented
+        kind_order = {'literal': 0, 'property_ref': 1}
+        if self.kind != other.kind:
+            return kind_order[self.kind] < kind_order[other.kind]
+        if self.is_literal:
+            return self.value < other.value
+        if self.is_ref:
+            if self.index != other.index:
+                return self.index < other.index
+            return self.extraction.value < other.extraction.value
+        return False
+
+    def __hash__(self):
+        if self.is_literal:
+            return hash(('literal', self.value))
+        if self.is_ref:
+            return hash(('property_ref', self.index, self.extraction))
+        return 0
+
+    def __repr__(self):
+        if self.is_literal:
+            return "ValueBound(value=%r)" % self.value
+        if self.is_ref:
+            return "ValueBound(index=%r, extraction=%r)" % (self.index, self.extraction)
+        return "ValueBound()"
+
+    def to_dict(self):
+        if self.is_literal:
+            return self.value
+        if self.is_ref:
+            return {"index": self.index, "extraction": str(self.extraction)}
+        return 0
+
+    @staticmethod
+    def from_raw(raw):
+        """Construct from a raw YAML value (int, dict, or ValueBound)."""
+        if isinstance(raw, int):
+            return ValueBound(value=raw)
+        if isinstance(raw, ValueBound):
+            return raw
+        if isinstance(raw, dict):
+            extraction = raw.get('extraction')
+            if isinstance(extraction, str):
+                extraction = PropertyExtractionKind.from_str(extraction)
+            return ValueBound(index=raw['index'], extraction=extraction)
+        raise TypeError("Cannot construct ValueBound from %r" % raw)
+
+def ValueBound_representer(dumper, data):
+    if data.is_literal:
+        return dumper.represent_int(data.value)
+    if data.is_ref:
+        return dumper.represent_mapping(ValueBound.yaml_tag, {
+            'index': data.index,
+            'extraction': data.extraction
+        })
+    return dumper.represent_int(0)
+
+yaml.add_representer(ValueBound, ValueBound_representer)
+
+class ValueConstraint(SafeYAMLObject):
+    """Mirrors IGC::ValueConstraint from LlvmTypesMapping.h.
+    Describes an accepted range for a type property.
+      - Both bounds literal-0  -> unconstrained (any value).
+      - low == high (literal, != 0) -> exact match.
+      - Otherwise -> range [low, high] (0 = open on that side).
+
+    YAML forms:
+      - exact int:        4    (shorthand for exact match)
+      - exact ref:        !<ValueConstraint> { exact: !<ValueBound> {...} }
+      - range:            !<ValueConstraint> { low: ..., high: ... }
+      - unconstrained:    0    (shorthand)
+    """
+    yaml_tag = u'ValueConstraint'
+
+    @classmethod
+    def from_yaml(cls, loader, node):
+        d = loader.construct_mapping(node, deep=True)
+        return cls(**d)
+
+    def __init__(self, low = None, high = None, exact = None):
+        if exact is not None:
+            b = ValueBound.from_raw(exact)
+            self.low = b
+            self.high = b
+        else:
+            self.low = ValueBound.from_raw(low) if low is not None else ValueBound(value=0)
+            self.high = ValueBound.from_raw(high) if high is not None else ValueBound(value=0)
+
+    @property
+    def is_exact(self):
+        return (self.low.is_literal and self.high.is_literal and
+                self.low.value != 0 and self.low.value == self.high.value)
+
+    @property
+    def is_any(self):
+        return self.low.is_unbounded and self.high.is_unbounded
+
+    @property
+    def is_range(self):
+        return not self.is_exact and not self.is_any
+
+    def __eq__(self, other):
+        if not isinstance(other, ValueConstraint):
+            return NotImplemented
+        return self.low == other.low and self.high == other.high
+
+    def __lt__(self, other):
+        if not isinstance(other, ValueConstraint):
+            return NotImplemented
+        if self.low != other.low:
+            return self.low < other.low
+        return self.high < other.high
+
+    def __hash__(self):
+        return hash((self.low, self.high))
+
+    def __repr__(self):
+        if self.is_exact:
+            return "ValueConstraint(exact=%r)" % self.low
+        return "ValueConstraint(low=%r, high=%r)" % (self.low, self.high)
+
+    def to_dict(self):
+        if self.is_exact:
+            return self.low.to_dict()
+        return {"low": self.low.to_dict(), "high": self.high.to_dict()}
+
+    @staticmethod
+    def from_raw(raw):
+        """Construct from a raw YAML value (int, list, dict, ValueBound, or ValueConstraint)."""
+        if isinstance(raw, ValueConstraint):
+            return raw
+        if isinstance(raw, int):
+            return ValueConstraint(exact=raw)
+        if isinstance(raw, list):
+            # [low, high]
+            return ValueConstraint(low=raw[0], high=raw[1])
+        if isinstance(raw, dict):
+            if 'exact' in raw:
+                return ValueConstraint(exact=raw['exact'])
+            if 'low' in raw or 'high' in raw:
+                return ValueConstraint(low=raw.get('low', 0), high=raw.get('high', 0))
+            # Single property ref dict -> exact match on a property ref
+            return ValueConstraint(exact=raw)
+        raise TypeError("Cannot construct ValueConstraint from %r" % raw)
+
+def _normalize_constraint_key(value):
+    """Convert a constraint value (int, list, dict, ValueBound, or
+    ValueConstraint) into a canonical, comparable and hashable form.
+
+    Ordering among different kinds:
+        int (kind 0)  <  list (kind 1)  <  dict (kind 2)
+        <  ValueBound (kind 4)  <  ValueConstraint (kind 5)
+
+    Within the same kind the natural ordering applies.
+    """
+    if isinstance(value, ValueConstraint):
+        return (5, hash(value))
+    if isinstance(value, ValueBound):
+        return (4, hash(value))
+    if isinstance(value, int):
+        return (0, value)
+    elif isinstance(value, list):
+        return (1, tuple(
+            _normalize_constraint_key(v) if not isinstance(v, int) else (0, v)
+            for v in value
+        ))
+    elif isinstance(value, dict):
+        return (2, tuple(sorted(
+            (k, _normalize_constraint_key(v) if not isinstance(v, (int, str)) else v)
+            for k, v in value.items()
+        )))
+    # Fallback: wrap in a string representation so we never crash.
+    return (3, str(value))
+
 class TypeDefinition(SafeYAMLObject):
     yaml_tag = u'TypeDefinition'
 
-    def __init__(self, typeID : TypeID, bit_width : int  = 0, num_elements : int = 0,
+    def __init__(self, typeID : TypeID, bit_width : int  = 0, num_elements = 0,
                 address_space : AddressSpace = AddressSpace.Undefined, internal_type = None,
-                index : int = 0, internal_types = None):
+                index : int = 0, internal_types = None,
+                extraction : ReferenceExtractionType = ReferenceExtractionType.NoExtraction):
         self.ID = typeID
         if self.ID == TypeID.Integer:
             self.bit_width = bit_width
@@ -266,6 +563,10 @@ class TypeDefinition(SafeYAMLObject):
         elif self.ID == TypeID.Any:
             self.default_type = internal_type
         elif self.ID == TypeID.Vector:
+            # num_elements can be:
+            #   int          - exact literal (0 = any)
+            #   [low, high]  - range (each side: int or {"arg_index":N, "extraction":...})
+            #   dict         - property ref {"arg_index":N, "extraction":...}
             self.num_elements = num_elements
             self.element_type = internal_type
         elif self.ID == TypeID.Pointer:
@@ -275,6 +576,9 @@ class TypeDefinition(SafeYAMLObject):
             self.member_types = internal_types
         elif self.ID == TypeID.Reference:
             self.index = index
+            self.extraction = extraction
+        elif self.ID == TypeID.TypeList:
+            self.type_list = internal_types if internal_types else []
 
     def __str__(self):
         if self.ID == TypeID.Integer:
@@ -317,7 +621,11 @@ class TypeDefinition(SafeYAMLObject):
             else:
                 return "any_struct"
         elif self.ID == TypeID.Reference:
+            if self.extraction != ReferenceExtractionType.NoExtraction:
+                return "ref_{}_{}_".format(self.index, self.extraction)
             return "ref_{}_".format(self.index)
+        elif self.ID == TypeID.TypeList:
+            return "tl_{}_".format('__'.join([str(t) for t in self.type_list]))
         return "void"
 
     def __repr__(self):
@@ -340,27 +648,33 @@ class TypeDefinition(SafeYAMLObject):
             return "%s(ID=%r, member_types=%r)" % (
                 self.__class__.__name__, self.ID, self.member_types)
         elif self.ID == TypeID.Reference:
-            return "%s(ID=%r, index=%r)" % (
-                self.__class__.__name__, self.ID, self.index)
+            return "%s(ID=%r, index=%r, extraction=%r)" % (
+                self.__class__.__name__, self.ID, self.index, self.extraction)
+        elif self.ID == TypeID.TypeList:
+            return "%s(ID=%r, type_list=%r)" % (
+                self.__class__.__name__, self.ID, self.type_list)
         return "%s(ID=%r)" % (
             self.__class__.__name__, self.ID)
 
     def __eq__(self, other):
         if isinstance(other, TypeDefinition) and self.ID == other.ID:
             if self.ID == TypeID.Integer:
-                return self.bit_width == other.bit_width
+                return _normalize_constraint_key(self.bit_width) == _normalize_constraint_key(other.bit_width)
             elif self.ID == TypeID.Float:
-                return self.bit_width == other.bit_width
+                return _normalize_constraint_key(self.bit_width) == _normalize_constraint_key(other.bit_width)
             elif self.ID == TypeID.Any:
                 return self.default_type == other.default_type
             elif self.ID == TypeID.Vector:
-                return self.num_elements == other.num_elements and self.element_type == other.element_type
+                return (_normalize_constraint_key(self.num_elements) == _normalize_constraint_key(other.num_elements) and
+                        self.element_type == other.element_type)
             elif self.ID == TypeID.Pointer:
                 return self.address_space == other.address_space and self.pointed_type == other.pointed_type
             elif self.ID == TypeID.Struct:
                 return tuple(self.member_types) ==  tuple(other.member_types)
             elif self.ID == TypeID.Reference:
-                return self.index == other.index
+                return self.index == other.index and self.extraction == other.extraction
+            elif self.ID == TypeID.TypeList:
+                return tuple(self.type_list) == tuple(other.type_list)
             return True
         else:
             return False
@@ -368,15 +682,17 @@ class TypeDefinition(SafeYAMLObject):
     def __lt__(self, other):
         if isinstance(other, TypeDefinition) and self.ID == other.ID:
             if self.ID == TypeID.Integer:
-                return self.bit_width < other.bit_width
+                return _normalize_constraint_key(self.bit_width) < _normalize_constraint_key(other.bit_width)
             elif self.ID == TypeID.Float:
-                return self.bit_width < other.bit_width
+                return _normalize_constraint_key(self.bit_width) < _normalize_constraint_key(other.bit_width)
             elif self.ID == TypeID.Any:
                 if self.default_type and other.default_type:
                     return self.default_type < other.default_type
                 return not self.default_type
             elif self.ID == TypeID.Vector:
-                return self.element_type < other.element_type if self.element_type != other.element_type else self.num_elements < other.num_elements
+                if self.element_type != other.element_type:
+                    return self.element_type < other.element_type
+                return _normalize_constraint_key(self.num_elements) < _normalize_constraint_key(other.num_elements)
             elif self.ID == TypeID.Pointer:
                 return int(self.address_space) < int(other.address_space) if int(self.address_space) != int(other.address_space) else self.pointed_type < other.pointed_type
             elif self.ID == TypeID.Struct:
@@ -386,7 +702,15 @@ class TypeDefinition(SafeYAMLObject):
                 else:
                    return len(self.member_types) < len(other.member_types)
             elif self.ID == TypeID.Reference:
-                return self.index < other.index
+                if self.index != other.index:
+                    return self.index < other.index
+                return self.extraction.value < other.extraction.value
+            elif self.ID == TypeID.TypeList:
+                if len(self.type_list) == len(other.type_list):
+                    for i in range(len(self.type_list)):
+                        if self.type_list[i] != other.type_list[i]:
+                            return self.type_list[i] < other.type_list[i]
+                return len(self.type_list) < len(other.type_list)
             return True
         else:
             return self.ID.value < other.ID.value
@@ -396,19 +720,21 @@ class TypeDefinition(SafeYAMLObject):
 
     def __hash__(self):
         if self.ID == TypeID.Integer:
-            return hash((self.ID, self.bit_width))
+            return hash((self.ID, _normalize_constraint_key(self.bit_width)))
         elif self.ID == TypeID.Float:
-            return hash((self.ID, self.bit_width))
+            return hash((self.ID, _normalize_constraint_key(self.bit_width)))
         elif self.ID == TypeID.Any:
             return hash((self.ID, self.default_type))
         elif self.ID == TypeID.Vector:
-            return hash((self.ID, self.num_elements, self.element_type))
+            return hash((self.ID, _normalize_constraint_key(self.num_elements), self.element_type))
         elif self.ID == TypeID.Pointer:
             return hash((self.ID, self.address_space, self.pointed_type))
         elif self.ID == TypeID.Struct:
             return hash((self.ID,  tuple(self.member_types)))
         elif self.ID == TypeID.Reference:
-            return hash((self.ID, self.index))
+            return hash((self.ID, self.index, self.extraction))
+        elif self.ID == TypeID.TypeList:
+            return hash((self.ID, tuple(self.type_list)))
         elif self.ID == TypeID.Void:
             return hash((self.ID))
         else:
@@ -446,7 +772,8 @@ class TypeDefinition(SafeYAMLObject):
         elif self.ID == TypeID.Reference:
             res = {
                 "ID":  str(self.ID),
-                "index": self.index
+                "index": self.index,
+                "extraction": str(self.extraction)
             }
         elif self.ID == TypeID.Void:
             res = {
@@ -456,6 +783,11 @@ class TypeDefinition(SafeYAMLObject):
             res = {
                 "ID":  str(self.ID),
                 "default_type": self.default_type.to_dict() if self.default_type != None else None
+            }
+        elif self.ID == TypeID.TypeList:
+            res = {
+                "ID":  str(self.ID),
+                "type_list": [ el.to_dict() for el in self.type_list ]
             }
         return res
 
@@ -468,7 +800,8 @@ class TypeDefinition(SafeYAMLObject):
             return TypeDefinition(ID, bit_width=json_dct['bit_width'])
         elif ID == TypeID.Vector:
             internal_type = TypeDefinition.from_dict(json_dct['element_type'])
-            return TypeDefinition(ID, num_elements=json_dct['num_elements'], internal_type=internal_type)
+            num_elements = json_dct.get('num_elements', 0)
+            return TypeDefinition(ID, num_elements=num_elements, internal_type=internal_type)
         elif ID == TypeID.Pointer:
             internal_type = TypeDefinition.from_dict(json_dct['pointed_type'])
             address_space = AddressSpace.from_str(json_dct['address_space'])
@@ -477,10 +810,16 @@ class TypeDefinition(SafeYAMLObject):
             member_types = [TypeDefinition.from_dict(el) for el in json_dct['member_types']]
             return TypeDefinition(ID, internal_types=member_types)
         elif ID == TypeID.Reference:
-            return TypeDefinition(ID, index=json_dct['index'])
+            extraction = ReferenceExtractionType.NoExtraction
+            if 'extraction' in json_dct:
+                extraction = ReferenceExtractionType.from_str(json_dct['extraction'])
+            return TypeDefinition(ID, index=json_dct['index'], extraction=extraction)
         elif ID == TypeID.Any:
             internal_type = TypeDefinition.from_dict(json_dct['default_type']) if json_dct['default_type'] else None
             return TypeDefinition(ID, internal_type=internal_type)
+        elif ID == TypeID.TypeList:
+            type_list = [TypeDefinition.from_dict(el) for el in json_dct['type_list']]
+            return TypeDefinition(ID, internal_types=type_list)
 
 class ArgumentDefinition(SafeYAMLObject):
 
@@ -491,9 +830,12 @@ class ArgumentDefinition(SafeYAMLObject):
         arg_dict = loader.construct_mapping(node, deep=True)
         return cls(**arg_dict)
 
-    def __init__(self, name : str, type_definition : TypeDefinition, comment : str, param_attr : ParamAttributeID = None, capture : str = None):
+    def __init__(self, name : str, type_definition, comment : str, param_attr : ParamAttributeID = None, capture : str = None):
         self.name = name
-        self.type_definition = type_definition
+        if isinstance(type_definition, list):
+            self.type_definition = TypeDefinition(TypeID.TypeList, internal_types=type_definition)
+        else:
+            self.type_definition = type_definition
         self.comment = QuotedString(comment)
         self.capture = QuotedString(capture) if capture is not None else None
         if param_attr:
@@ -548,10 +890,10 @@ class MemoryRestriction(SafeYAMLObject):
 
     def to_dict(self):
         res = {
-            "memory_access": memory_access.__str__()
+            "memory_access": self.memory_access.__str__()
         }
-        if memory_location != None:
-            res["memory_location"] = memory_location.__str__()
+        if self.memory_location != None:
+            res["memory_location"] = self.memory_location.__str__()
         return res
 
     @staticmethod
@@ -572,8 +914,11 @@ class ReturnDefinition(SafeYAMLObject):
         arg_dict = loader.construct_mapping(node, deep=True)
         return cls(**arg_dict)
 
-    def __init__(self, type_definition : TypeDefinition, comment : str):
-        self.type_definition = type_definition
+    def __init__(self, type_definition, comment : str):
+        if isinstance(type_definition, list):
+            self.type_definition = TypeDefinition(TypeID.TypeList, internal_types=type_definition)
+        else:
+            self.type_definition = type_definition
         self.comment = QuotedString(comment)
 
     def __repr__(self):
@@ -678,7 +1023,7 @@ class PrimitiveArgumentDefinition(SafeYAMLObject):
             self.__class__.__name__, self.name, self.comment)
 
     def to_dict(self):
-        res =  {
+        res = {
             "name": self.name.to_dict(),
             "comment": self.comment.to_dict()
         }
@@ -735,8 +1080,8 @@ class InternalGrammar(SafeYAMLObject):
 
     def to_dict(self):
         res = {
-            "types": [ el.to_dict()for el in self.types ],
-            "intrinsics": [ el.to_dict()for el in self.intrinsics ]
+            "types": [ el.to_dict() for el in self.types ],
+            "intrinsics": [ el.to_dict() for el in self.intrinsics ]
         }
         return res
 

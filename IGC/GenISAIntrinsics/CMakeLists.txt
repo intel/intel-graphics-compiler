@@ -14,13 +14,11 @@ set(IGC_BUILD__PROJ_LABEL__GenISAIntrinsics "${IGC_BUILD__PROJ__GenISAIntrinsics
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}")
 
 set(IGC_BUILD__GenISAIntrinsics_GENERATOR_INPUT_FILES
-    "${CMAKE_CURRENT_SOURCE_DIR}/Intrinsic_definitions.py"
     "${CMAKE_CURRENT_SOURCE_DIR}/generator/input/Intrinsic_definitions.yml"
     )
 
 set(IGC_BUILD__GenISAIntrinsics_GENERATOR_SCRIPTS
     "${CMAKE_CURRENT_SOURCE_DIR}/generator/Intrinsic_definition_objects.py"
-    "${CMAKE_CURRENT_SOURCE_DIR}/generator/Intrinsic_definition_translation.py"
     "${CMAKE_CURRENT_SOURCE_DIR}/generator/Intrinsic_generator.py"
     "${CMAKE_CURRENT_SOURCE_DIR}/generator/Intrinsic_utils.py"
     )

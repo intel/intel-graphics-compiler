@@ -14,8 +14,6 @@ from Intrinsic_definition_objects import *
 from Intrinsic_utils import *
 from itertools import takewhile
 
-from Intrinsic_definition_translation import generate_intrinsic_definitions_from_modules
-
 class IntrinsicLookupTableEntry:
     def __init__(self, id : str, lookup_name : str, common_prefix_len : int):
         self.id = id
@@ -78,24 +76,102 @@ class IntrinsicFormatter:
         return name
 
     @staticmethod
+    def _format_bound(bound):
+        """Format a single ValueBound for C++ codegen.
+        bound can be:
+          - int            -> LiteralBoundHolderT<N>
+          - ValueBound     -> dispatches on kind (literal / property_ref)
+          - dict with 'index' and 'extraction' -> PropertyRefBoundHolderT<idx, PropertyExtractionKind::...>
+        """
+        if isinstance(bound, ValueBound):
+            if bound.is_ref:
+                return "PropertyRefBoundHolderT<{}, PropertyExtractionKind::{}>".format(
+                    bound.index, bound.extraction)
+            return "LiteralBoundHolderT<{}>".format(bound.value)
+        if isinstance(bound, dict):
+            return "PropertyRefBoundHolderT<{}, PropertyExtractionKind::{}>".format(
+                bound['index'], bound['extraction'])
+        return "LiteralBoundHolderT<{}>".format(bound)
+
+    @staticmethod
+    def _format_constraint(num_elements):
+        """Format a ValueConstraint holder for C++ codegen.
+        num_elements can be:
+          - int              -> exact literal (0 = any); returns None so caller uses short form
+          - list [lo, hi]    -> range
+          - dict             -> exact property ref
+          - ValueConstraint  -> dispatches on kind
+        """
+        if isinstance(num_elements, ValueConstraint):
+            if num_elements.is_any:
+                return None
+            if num_elements.is_exact and num_elements.low.is_literal:
+                return None  # caller will use the short-form literal path
+            if num_elements.low == num_elements.high:
+                # Exact match on a property ref
+                return "ExactConstraintHolderT<{}>".format(
+                    IntrinsicFormatter._format_bound(num_elements.low))
+            return "RangeConstraintHolderT<{}, {}>".format(
+                IntrinsicFormatter._format_bound(num_elements.low),
+                IntrinsicFormatter._format_bound(num_elements.high))
+        if isinstance(num_elements, list):
+            lo = IntrinsicFormatter._format_bound(num_elements[0])
+            hi = IntrinsicFormatter._format_bound(num_elements[1])
+            if isinstance(lo, int) and isinstance(hi, int):
+                return None
+            return "RangeConstraintHolderT<{}, {}>".format(lo, hi)
+        if isinstance(num_elements, dict):
+            return "ExactConstraintHolderT<{}>".format(
+                IntrinsicFormatter._format_bound(num_elements))
+        return None
+
+    @staticmethod
     def get_type_definition(type_def):
         output = "Unknown"
         if type_def == None:
             output = "EmptyTypeHolderT"
         elif type_def.ID == TypeID.Integer:
-            output = "IntegerTypeHolderT<{}>".format(type_def.bit_width)
+            nb = type_def.bit_width
+            constraint = IntrinsicFormatter._format_constraint(nb)
+            if constraint is not None:
+                output = "IntegerTypeConstrainedHolderT<{}>".format(constraint)
+            elif isinstance(nb, ValueConstraint):
+                # ValueConstraint that resolved to exact literal or any
+                if nb.is_exact:
+                    output = "IntegerTypeHolderT<{}>".format(nb.low.value)
+                else:
+                    output = "IntegerTypeHolderT<0>"
+            elif isinstance(nb, list):
+                output = "IntegerTypeHolderT<{}, {}>".format(nb[0], nb[1])
+            elif isinstance(nb, int) and nb > 0:
+                output = "IntegerTypeHolderT<{}>".format(nb)
+            else:
+                output = "IntegerTypeHolderT<0>"
         elif type_def.ID == TypeID.Float:
             output = "FloatTypeHolderT<{}>".format(type_def.bit_width)
         elif type_def.ID == TypeID.Vector:
             assert(type_def.element_type)
             element_type_name = IntrinsicFormatter.get_type_definition(type_def.element_type)
-            if type_def.num_elements > 0:
-                output = "VectorTypeHolderT<{}, {}>".format(
-                    element_type_name,
-                    type_def.num_elements)
+            ne = type_def.num_elements
+            constraint = IntrinsicFormatter._format_constraint(ne)
+            if constraint is not None:
+                # Complex constraint (range or property ref) - use VectorTypeConstrainedHolderT
+                output = "VectorTypeConstrainedHolderT<{}, {}>".format(
+                    element_type_name, constraint)
+            elif isinstance(ne, ValueConstraint):
+                # ValueConstraint that resolved to exact literal or any
+                if ne.is_exact:
+                    output = "VectorTypeHolderT<{}, {}>".format(element_type_name, ne.low.value)
+                else:
+                    output = "VectorTypeHolderT<{}>".format(element_type_name)
+            elif isinstance(ne, list):
+                output = "VectorTypeHolderT<{}, {}, {}>".format(element_type_name, ne[0], ne[1])
+            elif isinstance(ne, int) and ne > 0:
+                # Exact literal - use short form VectorTypeHolderT<T, N>
+                output = "VectorTypeHolderT<{}, {}>".format(element_type_name, ne)
             else:
-                output = "VectorTypeHolderT<{}>".format(
-                    element_type_name)
+                # Any (0)
+                output = "VectorTypeHolderT<{}>".format(element_type_name)
         elif type_def.ID == TypeID.Pointer:
             assert(type_def.pointed_type)
             assert(type_def.address_space)
@@ -109,10 +185,14 @@ class IntrinsicFormatter:
                 output = "PointerTypeHolderT<{}>".format(
                     pointed_type_name)
         elif type_def.ID == TypeID.Struct:
-            output = "StructTypeHolderT<MemberTypeListHolderT<{}>>".format(
+            output = "StructTypeHolderT<{}>".format(
                 ", ".join([ "{}".format(IntrinsicFormatter.get_type_definition(member_type)) for member_type in type_def.member_types ]))
         elif type_def.ID == TypeID.Reference:
-            output = "ReferenceTypeHolderT<{}>".format(type_def.index)
+            extraction = type_def.extraction if hasattr(type_def, 'extraction') else ReferenceExtractionType.NoExtraction
+            if extraction != ReferenceExtractionType.NoExtraction:
+                output = "ReferenceTypeHolderT<{}, ReferenceExtractionType::{}>".format(type_def.index, extraction)
+            else:
+                output = "ReferenceTypeHolderT<{}>".format(type_def.index)
         elif type_def.ID == TypeID.Void:
             output = "EmptyTypeHolderT"
         elif type_def.ID == TypeID.Any:
@@ -121,6 +201,11 @@ class IntrinsicFormatter:
                 output = "AnyTypeHolderT<{}>".format(default_type_name)
             else:
                 output = "AnyTypeHolderT<>"
+        elif type_def.ID == TypeID.TypeList:
+            entries = []
+            for t in type_def.type_list:
+                entries.append(IntrinsicFormatter.get_type_definition(t))
+            output = "TypeListTypeHolderT<{}>".format(", ".join(entries))
         return output
 
     @classmethod
@@ -278,7 +363,6 @@ if __name__ == '__main__':
         intrinsic_definitions = []
         for el in args.inputs:
             json_ext = '.json'
-            py_ext = '.py'
             file_ext = Path(el).suffix
             if file_ext == json_ext:
                 with open(el) as f:
@@ -286,8 +370,6 @@ if __name__ == '__main__':
                         intrinsic_definitions.extend(InternalGrammar.from_dict(json.load(f)).intrinsics)
                     except Exception as err:
                         print("Error on loading data from: {}\n{}".format(el, err))
-            elif file_ext == py_ext:
-                intrinsic_definitions.extend(generate_intrinsic_definitions_from_modules(el))
             else:
                 with open(el) as f:
                     try:

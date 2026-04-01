@@ -31,9 +31,20 @@ types:
     - &any_float !<TypeDefinition>
         ID: !TypeID "Float"
         bit_width: 0
+    - &f16 !<TypeDefinition>
+        ID: !TypeID "Float"
+        bit_width: 16
     - &f32 !<TypeDefinition>
         ID: !TypeID "Float"
         bit_width: 32
+    - &v_i8_ !<TypeDefinition>
+        ID: !TypeID "Vector"
+        num_elements: 0
+        element_type: *i8
+    - &v_i16_ !<TypeDefinition>
+        ID: !TypeID "Vector"
+        num_elements: 0
+        element_type: *i16
     - &v4_i16_ !<TypeDefinition>
         ID: !TypeID "Vector"
         num_elements: 4
@@ -50,6 +61,14 @@ types:
         ID: !TypeID "Vector"
         num_elements: 16
         element_type: *i32
+    - &v_f16_ !<TypeDefinition>
+        ID: !TypeID "Vector"
+        num_elements: 0
+        element_type: *f16
+    - &v_f32_ !<TypeDefinition>
+        ID: !TypeID "Vector"
+        num_elements: 0
+        element_type: *f32
     - &v2_f32_ !<TypeDefinition>
         ID: !TypeID "Vector"
         num_elements: 2
@@ -90,10 +109,6 @@ types:
         ID: !TypeID "Vector"
         num_elements: 0
         element_type: *any
-    - &v_i8_ !<TypeDefinition>
-        ID: !TypeID "Vector"
-        num_elements: 0
-        element_type: *i8
     - &p_any_ !<TypeDefinition>
         ID: !TypeID "Pointer"
         address_space: !AddressSpace "Undefined"
@@ -107,6 +122,26 @@ types:
     - &ref_1_ !<TypeDefinition>
         ID: !TypeID "Reference"
         index: 1
+    - &tl_f16__v_f16_ !<TypeDefinition>
+        ID: !TypeID "TypeList"
+        type_list:
+            - *f16
+            - *v_f16_
+    - &tl_f32__v_f32_ !<TypeDefinition>
+        ID: !TypeID "TypeList"
+        type_list:
+            - *f32
+            - *v_f32_
+    - &tl_i16__v_i16_ !<TypeDefinition>
+        ID: !TypeID "TypeList"
+        type_list:
+            - *i16
+            - *v_i16_
+    - &tl_i8__v_i8_ !<TypeDefinition>
+        ID: !TypeID "TypeList"
+        type_list:
+            - *i8
+            - *v_i8_
 intrinsics:
     - !<IntrinsicDefinition>
         name: "GenISA_2fto2bf"
@@ -10883,12 +10918,12 @@ intrinsics:
         name: "GenISA_hftohf8"
         comment: "half to hf8 conversion"
         return_definition: !<ReturnDefinition>
-            type_definition: *any
+            type_definition: *tl_i8__v_i8_
             comment: "hf8 result (as char)"
         arguments:
             - !<ArgumentDefinition>
                 name: Arg0
-                type_definition: *any
+                type_definition: *tl_f16__v_f16_
                 comment: "half source"
             - !<ArgumentDefinition>
                 name: Arg1
@@ -10908,12 +10943,12 @@ intrinsics:
         name: "GenISA_hf8tohf"
         comment: "hf8 to half conversion"
         return_definition: !<ReturnDefinition>
-            type_definition: *any
+            type_definition: *tl_f16__v_f16_
             comment: "half result"
         arguments:
             - !<ArgumentDefinition>
                 name: Arg0
-                type_definition: *any
+                type_definition: *tl_i8__v_i8_
                 comment: "hf8 source (as char)"
         attributes:
             - !AttributeID "NoUnwind"

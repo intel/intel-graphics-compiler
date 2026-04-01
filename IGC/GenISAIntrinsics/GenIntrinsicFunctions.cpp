@@ -26,6 +26,110 @@ SPDX-License-Identifier: MIT
 
 namespace IGC {
 
+namespace {
+
+#ifndef NDEBUG
+
+/// Extract a scalar property from a resolved LLVM type.
+uint32_t ResolveProperty(llvm::Type *pType, PropertyExtractionKind extraction) {
+  switch (extraction) {
+  case PropertyExtractionKind::VectorNumElements:
+    IGC_ASSERT_MESSAGE(pType && pType->isVectorTy(), "VectorNumElements requires a vector type");
+    return llvm::cast<IGCLLVM::FixedVectorType>(pType)->getNumElements();
+  case PropertyExtractionKind::IntegerBitWidth:
+    IGC_ASSERT_MESSAGE(pType && pType->isIntegerTy(), "IntegerBitWidth requires an integer type");
+    return pType->getIntegerBitWidth();
+  }
+  return 0;
+}
+
+/// Resolve a ValueBound to a concrete uint32_t given the resolved types array.
+/// Returns 0 for unbounded literals.
+uint32_t ResolveBound(const ValueBound &bound, const llvm::ArrayRef<llvm::Type *> resolvedTypes) {
+  if (bound.IsLiteral())
+    return bound.m_Value;
+  IGC_ASSERT_MESSAGE(bound.m_Ref.m_Index < resolvedTypes.size(), "PropertyRef index out of range");
+  return ResolveProperty(resolvedTypes[bound.m_Ref.m_Index], bound.m_Ref.m_Extraction);
+}
+
+/// Check that actualValue satisfies the constraint, resolving any PropertyRef
+/// bounds against resolvedTypes. Returns true if valid.
+bool VerifyConstraint(uint32_t actualValue, const ValueConstraint &constraint,
+                      const llvm::ArrayRef<llvm::Type *> resolvedTypes) {
+  // Only verify constraints that contain at least one PropertyRef bound;
+  // literal-only constraints are already handled by VerifyType().
+  if (!constraint.m_Low.IsRef() && !constraint.m_High.IsRef())
+    return true;
+
+  uint32_t low = ResolveBound(constraint.m_Low, resolvedTypes);
+  uint32_t high = ResolveBound(constraint.m_High, resolvedTypes);
+
+  if (low != 0 && actualValue < low)
+    return false;
+  if (high != 0 && actualValue > high)
+    return false;
+  return true;
+}
+
+/// Verify cross-argument constraints for a single resolved type against its
+/// TypeDescription. Only checks constraints involving PropertyRef bounds.
+void VerifyCrossArgConstraints([[maybe_unused]] uint8_t index, const TypeDescription &typeDef, llvm::Type *pType,
+                               const llvm::ArrayRef<llvm::Type *> resolvedTypes, const char *funcName) {
+  if (!pType)
+    return;
+
+  switch (typeDef.m_ID) {
+  case TypeID::Vector: {
+    const ValueConstraint &numElem = typeDef.m_Vector.m_NumElements;
+    if (numElem.m_Low.IsRef() || numElem.m_High.IsRef()) {
+      IGC_ASSERT_MESSAGE(pType->isVectorTy(), "%s[%d]: Expected vector type for cross-arg constraint", funcName, index);
+      uint32_t actualCount = llvm::cast<IGCLLVM::FixedVectorType>(pType)->getNumElements();
+      IGC_ASSERT_MESSAGE(VerifyConstraint(actualCount, numElem, resolvedTypes),
+                         "%s[%d]: Vector element count (%u) violates cross-argument constraint", funcName, index,
+                         actualCount);
+    }
+    // Verify element type against the inner type description
+    if (pType->isVectorTy()) {
+      llvm::Type *elemTy = llvm::cast<llvm::VectorType>(pType)->getElementType();
+      const TypeDescription &innerType = typeDef.m_Vector.m_Type;
+      if (innerType.m_ID == TypeID::Integer) {
+        const ValueConstraint &bw = innerType.m_Integer.m_BitWidth;
+        if (bw.m_Low.IsRef() || bw.m_High.IsRef()) {
+          IGC_ASSERT_MESSAGE(elemTy->isIntegerTy(),
+                             "%s[%d]: Vector element must be integer for "
+                             "bit-width cross-arg constraint",
+                             funcName, index);
+          uint32_t actualBits = elemTy->getIntegerBitWidth();
+          IGC_ASSERT_MESSAGE(VerifyConstraint(actualBits, bw, resolvedTypes),
+                             "%s[%d]: Vector element bit-width (%u) violates cross-argument "
+                             "constraint",
+                             funcName, index, actualBits);
+        }
+      }
+    }
+    break;
+  }
+  case TypeID::Integer: {
+    const ValueConstraint &bw = typeDef.m_Integer.m_BitWidth;
+    if (bw.m_Low.IsRef() || bw.m_High.IsRef()) {
+      IGC_ASSERT_MESSAGE(pType->isIntegerTy(), "%s[%d]: Expected integer type for cross-arg constraint", funcName,
+                         index);
+      uint32_t actualBits = pType->getIntegerBitWidth();
+      IGC_ASSERT_MESSAGE(VerifyConstraint(actualBits, bw, resolvedTypes),
+                         "%s[%d]: Integer bit-width (%u) violates cross-argument constraint", funcName, index,
+                         actualBits);
+    }
+    break;
+  }
+  default:
+    break;
+  }
+}
+
+#endif // NDEBUG
+
+} // unnamed namespace
+
 constexpr uint32_t scBeginIntrinsicIndex = static_cast<uint32_t>(llvm::GenISAIntrinsic::ID::no_intrinsic) + 1;
 constexpr uint32_t scNumIntrinsics =
     static_cast<uint32_t>(llvm::GenISAIntrinsic::ID::num_genisa_intrinsics) - scBeginIntrinsicIndex;
@@ -164,62 +268,50 @@ private:
     constexpr uint8_t numArguments = static_cast<uint8_t>(Argument::Count);
     std::array<llvm::Type *, numArguments + 1> types{};
 
-    uint8_t overloadedTypeIndex = 0;
-    auto RetrieveType = [&](uint8_t index, const TypeDescription &typeDef) {
-      llvm::Type *&pDest = types[index];
-      switch (typeDef.m_ID) {
-      case TypeID::ArgumentReference: {
-        uint8_t argIndex = typeDef.m_Reference.m_Index;
-        IGC_ASSERT_MESSAGE(argIndex < overloadedTypes.size(),
-                           "%s[%d]: Argument reference index (%d) must point out one of the overloaded types",
-                           IntrinsicDefinitionT::scFunctionRootName, index, argIndex);
-        pDest = overloadedTypes[argIndex];
-        break;
-      }
-      default:
-        if (overloadedTypeIndex < overloadedTypes.size() && typeDef.IsOverloadable()) {
-          pDest = overloadedTypes[overloadedTypeIndex++];
-        } else {
-          pDest = typeDef.GetType(ctx);
-        }
-        break;
-      }
-      IGC_ASSERT_MESSAGE(pDest != nullptr, "%s[%d]: The type must be defined to determine the function type.",
-                         IntrinsicDefinitionT::scFunctionRootName, index);
-      IGC_ASSERT_MESSAGE(typeDef.VerifyType(pDest), "%s[%d]: The type ({%s}) is inconsistent with the definition.",
-                         IntrinsicDefinitionT::scFunctionRootName, index,
-                         [&]() {
-                           if (pDest) {
-                             std::string S;
-                             llvm::raw_string_ostream OS(S);
-                             pDest->print(OS);
-                             return OS.str();
-                           }
-                           return std::string("null");
-                         }()
-                             .c_str());
-    };
+    TypeResolutionContext resCtx(overloadedTypes);
 
-    constexpr uint8_t resTypeIndex = 0;
-    RetrieveType(resTypeIndex, IntrinsicDefinitionT::scResTypes);
+    // Resolve return type.
+    types[0] = IntrinsicDefinitionT::scResTypes.GetType(ctx, resCtx);
+    IGC_ASSERT_MESSAGE(types[0] != nullptr, "%s[0]: The type must be defined to determine the function type.",
+                       IntrinsicDefinitionT::scFunctionRootName);
+    IGC_ASSERT_MESSAGE(IntrinsicDefinitionT::scResTypes.VerifyType(types[0]),
+                       "%s[0]: The type is inconsistent with the definition.",
+                       IntrinsicDefinitionT::scFunctionRootName);
 
+    // Resolve argument types.
     if constexpr (numArguments > 0) {
       for (uint8_t i = 0; i < numArguments; i++) {
-        RetrieveType(i + 1, IntrinsicDefinitionT::scArguments[i].m_Type);
+        types[i + 1] = IntrinsicDefinitionT::scArguments[i].m_Type.GetType(ctx, resCtx);
+        IGC_ASSERT_MESSAGE(types[i + 1] != nullptr, "%s[%d]: The type must be defined to determine the function type.",
+                           IntrinsicDefinitionT::scFunctionRootName, i + 1);
+        IGC_ASSERT_MESSAGE(IntrinsicDefinitionT::scArguments[i].m_Type.VerifyType(types[i + 1]),
+                           "%s[%d]: The type is inconsistent with the definition.",
+                           IntrinsicDefinitionT::scFunctionRootName, i + 1);
       }
     }
-    // IGC_ASSERT(overloadedTypeIndex == overloadedTypes.size());
 
-    llvm::Type **pBegin = types.data() + 1;
-    size_t size = types.size() - 1;
-    llvm::Type *resultTy = types[0];
-    llvm::SmallVector<llvm::Type *, 8> argTys(pBegin, pBegin + size);
-    if (!argTys.empty() && argTys.back()->isVoidTy()) {
-      argTys.pop_back();
-      // Disable this path because of GenISA_UnmaskedRegionBegin and GenISA_UnmaskedRegionEnd
-      // return llvm::FunctionType::get(resultTy, argTys, true);
+#ifndef NDEBUG
+    // Phase 2: Cross-argument verification for PropertyRef constraints.
+    {
+      uint32_t resTypeIdx = 0; // Return type is always at index 0
+      VerifyCrossArgConstraints(resTypeIdx, IntrinsicDefinitionT::scResTypes, types[resTypeIdx], overloadedTypes,
+                                IntrinsicDefinitionT::scFunctionRootName);
+      if constexpr (numArguments > 0) {
+        for (uint8_t i = 0; i < numArguments; i++) {
+          VerifyCrossArgConstraints(i + 1, IntrinsicDefinitionT::scArguments[i].m_Type, types[i + 1], overloadedTypes,
+                                    IntrinsicDefinitionT::scFunctionRootName);
+        }
+      }
     }
-    return llvm::FunctionType::get(resultTy, argTys, false);
+#endif // NDEBUG
+
+    llvm::Type *resultTy = types.front();
+    auto argBeg = types.data() + 1;
+    bool isVararg = std::next(types.begin()) != types.end() && types.back()->isVoidTy();
+    uint32_t numArgs = isVararg ? static_cast<uint32_t>(types.size() - 2) : static_cast<uint32_t>(types.size() - 1);
+    llvm::ArrayRef<llvm::Type *> argTys(argBeg, numArgs);
+    // Disable this path because of GenISA_UnmaskedRegionBegin and GenISA_UnmaskedRegionEnd
+    return llvm::FunctionType::get(resultTy, argTys, false /*isVararg*/);
   }
 
   static llvm::AttributeList GetAttributeList(llvm::Module &M,
