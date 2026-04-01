@@ -887,6 +887,10 @@ void PreCompiledFuncImport::visitBinaryOperator(BinaryOperator &I) {
   if (I.getOperand(0)->getType()->isIntOrIntVectorTy()) {
     unsigned int integerBitWidth = I.getOperand(0)->getType()->getScalarType()->getIntegerBitWidth();
 
+    // Optimize udiv/urem with power-of-2 constant divisors before any emulation path.
+    if (tryOptimizeUDivURemPow2(I))
+      return;
+
     if (integerBitWidth == 64) {
       if (isI64DivRem()) {
         switch (I.getOpcode()) {
@@ -1084,6 +1088,33 @@ void PreCompiledFuncImport::processInt32Divide(BinaryOperator &inst, Int32Emulat
     inst.eraseFromParent();
   }
   m_changed = true;
+}
+
+// For udiv/urem with a power-of-2 constant divisor, emit a shift or mask directly.
+// Returns true and erases the instruction if optimized; returns false otherwise.
+bool PreCompiledFuncImport::tryOptimizeUDivURemPow2(BinaryOperator &I) {
+  if ((I.getOpcode() != Instruction::UDiv) && (I.getOpcode() != Instruction::URem))
+    return false;
+
+  auto *C = dyn_cast<ConstantInt>(I.getOperand(1));
+  if (!C || !C->getValue().isPowerOf2())
+    return false;
+
+  IGCLLVM::IRBuilder<> IRB(&I);
+  Value *Result;
+  if (I.getOpcode() == Instruction::UDiv) {
+    // udiv x, 2^n  =>  lshr x, n
+    Value *Shift = ConstantInt::get(I.getType(), C->getValue().exactLogBase2());
+    Result = IRB.CreateLShr(I.getOperand(0), Shift);
+  } else {
+    // urem x, 2^n  =>  and x, 2^n-1
+    Value *Mask = ConstantInt::get(I.getType(), C->getValue() - 1);
+    Result = IRB.CreateAnd(I.getOperand(0), Mask);
+  }
+  I.replaceAllUsesWith(Result);
+  I.eraseFromParent();
+  m_changed = true;
+  return true;
 }
 
 // 64 bit emulation for divide

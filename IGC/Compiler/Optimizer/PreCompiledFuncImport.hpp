@@ -183,6 +183,7 @@ private:
                              LibraryModules &module);
   llvm::BinaryOperator *upcastTo32Bit(llvm::BinaryOperator *I);
   void processInt32Divide(llvm::BinaryOperator &inst, Int32EmulatedFunctions function);
+  bool tryOptimizeUDivURemPow2(llvm::BinaryOperator &I);
 
   void processFPBinaryOperator(llvm::Instruction &I, FunctionIDs FID);
   llvm::Function *getOrCreateFunction(FunctionIDs FID);
