@@ -7,7 +7,7 @@ SPDX-License-Identifier: MIT
 ============================= end_copyright_notice ==========================-->
 
 # ZEBIN Version
-Version 1.67
+Version 1.68
 =======
 
 ## Versioning
@@ -16,6 +16,7 @@ Format: \<_Major number_\>.\<_Minor number_\>
 - Minor number: Increase when backward-compatible features are added. For example, add new attributes.
 
 ## Change Note
+- **Version 1.68**: Add .misc.specConstantsIds and .misc.specConstantsValues sections for embedding SPIR-V specialization constants.
 - **Version 1.67**: Add has_bindless_image_read zeinfo field.
 - **Version 1.66**: Remove image_srgb_channel_order arg.
 - **Version 1.65**: Deprecate sampler_snap_wa arg.
