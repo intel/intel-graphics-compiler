@@ -16186,9 +16186,18 @@ void EmitPass::emitMemoryFence(llvm::Instruction *inst) {
     }
     // Do L1 evict only when default L1 cache policy is write-back.
     if (L1_Evict && m_pCtx->type == ShaderType::OPENCL_SHADER) {
-      auto CLCtx = static_cast<const OpenCLProgramContext *>(m_pCtx);
-      if (CLCtx->m_InternalOptions.StoreCacheDefault != -1)
-        L1_Evict = static_cast<LSC_L1_L3_CC>(CLCtx->m_InternalOptions.StoreCacheDefault) == LSC_L1IAR_WB_L3C_WB;
+      int StoreCacheDefault = m_pCtx->getModuleMetaData()->compOpt.StoreCacheDefault;
+      if (StoreCacheDefault != -1) {
+        LSC_L1_L3_CC L1L3Val = static_cast<LSC_L1_L3_CC>(StoreCacheDefault);
+        bool HasNewCacheEncoding = m_pCtx->platform.hasNewLSCCacheEncoding();
+        if (HasNewCacheEncoding && L1L3Val > LSC_L1_L3_CC::LSC_CC_INVALID) {
+          LSC_STCC_L1_L2_L3 L1L2L3Val = static_cast<LSC_STCC_L1_L2_L3>(L1L3Val);
+          L1_Evict = L1L2L3Val == LSC_STCC_L1WB_L2UC_L3UC || L1L2L3Val == LSC_STCC_L1WB_L2WB_L3UC ||
+                     L1L2L3Val == LSC_STCC_L1WB_L2UC_L3WB;
+        } else {
+          L1_Evict = L1L3Val == LSC_L1IAR_WB_L3C_WB;
+        }
+      }
     }
     // Change the scope from `GPU` or wider to `Tile` on single-tile platforms
     // to avoid L3 flush on DG2 and MTL and ARL.
