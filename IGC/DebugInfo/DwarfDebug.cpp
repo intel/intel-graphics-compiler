@@ -1270,10 +1270,10 @@ void DwarfDebug::collectDeadVariables() {
       constructSubprogramDIE(SPCU, SP);
       DIE *SPDIE = SPCU->getDIE(SP);
       for (unsigned vi = 0, ve = Variables.size(); vi != ve; ++vi) {
-        DIVariable *DV = cast<DIVariable>(Variables[i]);
-        if (!isa<DILocalVariable>(DV))
+        auto *DV = dyn_cast<DILocalVariable>(Variables[vi]);
+        if (!DV)
           continue;
-        DbgVariable NewVar(cast<DILocalVariable>(DV));
+        DbgVariable NewVar(DV);
         DIE *VariableDIE = SPCU->constructVariableDIE(NewVar, false);
         if (SPCU->getDIE(const_cast<DILocalVariable *>(NewVar.getVariable()))) {
           SPCU->applyVariableAttributes(NewVar, VariableDIE, false);
@@ -2009,9 +2009,9 @@ void DwarfDebug::collectOptimizedOut(llvm::SmallPtrSet<const llvm::MDNode *, 16>
   auto RetainedNodes = cast<DISubprogram>(FnScope->getScopeNode())->getRetainedNodes();
 
   for (const auto *Var : RetainedNodes) {
-    auto *DV = cast_or_null<DILocalVariable>(Var);
+    auto *DV = dyn_cast<DILocalVariable>(Var);
 
-    // Skip if the variable is not DILocalVariable or if we have already processed it.
+    // Skip if the retained node is not a local variable or if we have already processed it.
     if (!DV || !Processed.insert(DV).second)
       continue;
 
@@ -2402,7 +2402,7 @@ void DwarfDebug::endFunction(const Function *MF) {
         // Collect info for variables that were optimized out.
         auto Variables = SP->getRetainedNodes();
         for (unsigned i = 0, e = Variables.size(); i != e; ++i) {
-          DILocalVariable *DV = cast_or_null<DILocalVariable>(Variables[i]);
+          auto *DV = dyn_cast<DILocalVariable>(Variables[i]);
           if (!DV || !ProcessedVars.insert(DV).second)
             continue;
           // Check that DbgVariable for DV wasn't created earlier, when
