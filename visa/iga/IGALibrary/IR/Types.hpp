@@ -135,6 +135,9 @@ TypeSizeShiftsOffsetToSubreg(Type type) {
   case Type::D:
   case Type::F:
   case Type::NF: // NF regions the same as F
+  // packed vector types are 32-bit in the register file
+  case Type::UV:
+  case Type::V:
     shr = 2;
     break;
   case Type::UQ:
