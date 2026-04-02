@@ -7,7 +7,7 @@
 ;============================ end_copyright_notice =============================
 
 ; REQUIRES: llvm-14-plus
-; RUN: igc_opt --opaque-pointers %s -S -o - -ocl -inputocl -platformdg2 -igc-constant-coalescing | FileCheck %s
+; RUN: igc_opt --opaque-pointers %s -S -o - -ocl -platformdg2 -igc-constant-coalescing | FileCheck %s
 
 ; This test verifies bindless, scalar, uniform loads merging on OpenCL path.
 

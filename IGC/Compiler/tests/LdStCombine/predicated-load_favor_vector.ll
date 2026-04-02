@@ -12,7 +12,7 @@
 
 ; REQUIRES: llvm-14-plus, regkeys
 
-; RUN: igc_opt --opaque-pointers -S -inputocl -igc-ldstcombine -regkey=EnableLdStCombine=5 -platformbmg %s \
+; RUN: igc_opt --opaque-pointers -S -igc-ldstcombine -regkey=EnableLdStCombine=5 -platformbmg %s \
 ; RUN: | FileCheck %s
 
 

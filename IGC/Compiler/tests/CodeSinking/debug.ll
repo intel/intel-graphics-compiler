@@ -7,7 +7,7 @@
 ;============================ end_copyright_notice =============================
 ;
 ; REQUIRES: llvm-14-plus
-; RUN: igc_opt --opaque-pointers --debugify -igc-code-sinking -inputcs -S < %s | FileCheck %s
+; RUN: igc_opt --opaque-pointers --debugify -igc-code-sinking -S < %s | FileCheck %s
 ; ------------------------------------------------
 ; CodeSinking
 ; ------------------------------------------------

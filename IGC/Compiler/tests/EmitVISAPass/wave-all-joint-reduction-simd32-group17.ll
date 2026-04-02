@@ -7,7 +7,7 @@
 ;============================ end_copyright_notice =============================
 ; REQUIRES: regkeys
 ;
-; RUN: igc_opt -platformbmg -igc-emit-visa %s -inputcs -simd-mode 32 -regkey DumpVISAASMToConsole | FileCheck %s
+; RUN: igc_opt -platformbmg -igc-emit-visa %s -simd-mode 32 -regkey DumpVISAASMToConsole | FileCheck %s
 ; ------------------------------------------------
 ; EmitVISAPass: Compare group of 17 WaveAll reductions participating in a joint reduction tree to a single WaveAll reduction
 ;               Joint reduction emits 75 instructions in total after EmitVISAPass

@@ -7,7 +7,7 @@
 ;============================ end_copyright_notice =============================
 
 ; UNSUPPORTED: llvm-17-plus
-; RUN: igc_opt --typed-pointers %s -S -o - -ocl -inputocl -platformdg2 -igc-vectorpreprocess | FileCheck %s
+; RUN: igc_opt --typed-pointers %s -S -o - -ocl -platformdg2 -igc-vectorpreprocess | FileCheck %s
 
 ; Test finding vector elements in insertelement instructions used to construct the vector.
 ; Test that the last inserted value is used.

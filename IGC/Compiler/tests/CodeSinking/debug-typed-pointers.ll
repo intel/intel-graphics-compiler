@@ -7,7 +7,7 @@
 ;============================ end_copyright_notice =============================
 ;
 ; UNSUPPORTED: llvm-17-plus
-; RUN: igc_opt --typed-pointers --debugify -igc-code-sinking -inputcs -S < %s | FileCheck %s
+; RUN: igc_opt --typed-pointers --debugify -igc-code-sinking -S < %s | FileCheck %s
 ; ------------------------------------------------
 ; CodeSinking
 ; ------------------------------------------------

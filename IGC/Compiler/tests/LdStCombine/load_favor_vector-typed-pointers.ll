@@ -12,7 +12,7 @@
 
 ; REQUIRES: regkeys
 
-; RUN: igc_opt -S -inputocl -igc-ldstcombine -regkey=EnableLdStCombine=5 -platformbmg %s \
+; RUN: igc_opt -S -igc-ldstcombine -regkey=EnableLdStCombine=5 -platformbmg %s \
 ; RUN: | FileCheck %s
 
 

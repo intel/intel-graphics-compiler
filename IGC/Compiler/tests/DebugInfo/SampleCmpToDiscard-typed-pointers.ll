@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: igc_opt --igc-discard-samplecmp -inputps -S < %s | FileCheck %s
+; RUN: igc_opt --igc-discard-samplecmp -S < %s | FileCheck %s
 ; ------------------------------------------------
 ; SampleCmpToDiscard
 ; ------------------------------------------------

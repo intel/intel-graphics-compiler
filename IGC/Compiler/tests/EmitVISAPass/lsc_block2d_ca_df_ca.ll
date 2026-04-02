@@ -12,7 +12,7 @@
 
 ; REQUIRES: llvm-16-plus, regkeys
 
-; RUN: igc_opt --opaque-pointers --CheckInstrTypes --igc-update-instrtypes-on-run -inputocl --neo \
+; RUN: igc_opt --opaque-pointers --CheckInstrTypes --igc-update-instrtypes-on-run --neo \
 ; RUN:         -platformCri -igc-emit-visa -regkey DumpVISAASMToConsole,EnableEfficient64b -simd-mode 16 %s \
 ; RUN: | FileCheck %s
 

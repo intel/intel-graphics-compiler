@@ -8,7 +8,7 @@
 ;
 ; REQUIRES: llvm-14-plus, regkeys
 ;
-; RUN: igc_opt -opaque-pointers -platformPtl -igc-emit-visa -simd-mode 32 -inputocl -regkey DumpVISAASMToConsole -S %s | FileCheck %s
+; RUN: igc_opt -opaque-pointers -platformPtl -igc-emit-visa -simd-mode 32 -regkey DumpVISAASMToConsole -S %s | FileCheck %s
 ;
 ; Verify that when a byte load's only uses are zext-to-i32 and byte
 ; stores, the dead byte-extraction mov (stride <4;1,0>) is eliminated.

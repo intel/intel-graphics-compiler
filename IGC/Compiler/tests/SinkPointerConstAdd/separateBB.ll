@@ -7,7 +7,7 @@
 ;============================ end_copyright_notice =============================
 ;
 ; REQUIRES: llvm-14-plus
-; RUN: igc_opt --opaque-pointers -platformbmg -inputvs --igc-sink-ptr-const-add -S < %s | FileCheck %s
+; RUN: igc_opt --opaque-pointers -platformbmg --igc-sink-ptr-const-add -S < %s | FileCheck %s
 ; ------------------------------------------------
 ; SinkPointerConstAdd
 ; ------------------------------------------------

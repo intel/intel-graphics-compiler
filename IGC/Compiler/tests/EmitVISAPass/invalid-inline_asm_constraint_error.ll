@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: igc_opt --CheckInstrTypes --igc-update-instrtypes-on-run -inputocl --neo -platformpvc -igc-emit-visa -simd-mode 16 %s 2>&1 | FileCheck %s
+; RUN: igc_opt --CheckInstrTypes --igc-update-instrtypes-on-run --neo -platformpvc -igc-emit-visa -simd-mode 16 %s 2>&1 | FileCheck %s
 
 ; CHECK: Constraints for inline assembly cannot be validated
 define spir_kernel void @test() {

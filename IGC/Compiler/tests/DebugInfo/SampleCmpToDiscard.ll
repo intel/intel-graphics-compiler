@@ -8,7 +8,7 @@
 
 
 ; REQUIRES: llvm-14-plus
-; RUN: igc_opt --opaque-pointers --igc-discard-samplecmp -inputps -S < %s | FileCheck %s
+; RUN: igc_opt --opaque-pointers --igc-discard-samplecmp -S < %s | FileCheck %s
 ; ------------------------------------------------
 ; SampleCmpToDiscard
 ; ------------------------------------------------

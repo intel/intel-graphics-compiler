@@ -7,7 +7,7 @@
 ;============================ end_copyright_notice =============================
 ; REQUIRES: regkeys
 ;
-; RUN: igc_opt -platformbmg -igc-emit-visa %s -dx12 -inputcs -regkey DumpVISAASMToConsole | FileCheck %s
+; RUN: igc_opt -platformbmg -igc-emit-visa %s -dx12 -regkey DumpVISAASMToConsole | FileCheck %s
 ; ------------------------------------------------
 ; EmitVISAPass
 ; ------------------------------------------------

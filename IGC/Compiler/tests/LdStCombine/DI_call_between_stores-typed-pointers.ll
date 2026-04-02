@@ -12,7 +12,7 @@
 ; REQUIRES: regkeys
 ; UNSUPPORTED: llvm-17-plus
 ;
-; RUN:   igc_opt --typed-pointers %s -S -inputocl -igc-ldstcombine -regkey=EnableLdStCombine=1 \
+; RUN:   igc_opt --typed-pointers %s -S -igc-ldstcombine -regkey=EnableLdStCombine=1 \
 ; RUN:           -platformbmg \
 ; RUN: | FileCheck %s
 
