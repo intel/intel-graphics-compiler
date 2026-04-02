@@ -17,6 +17,9 @@
 ; CHECK-NOT: WARNING
 ; CHECK: CheckModuleDebugify: PASS
 
+; Add proper datalayout so that the i64 are aligned to 8 bytes as the host to not trigger Raytracing data types sizeof mismatch assertions.
+target datalayout = "e-i64:64-v16:16-v24:32-v32:32-v48:64-v96:128-v192:256-v256:256-v512:512-v1024:1024"
+
 %struct.rtglobals_t = type opaque
 %struct.rtfence_t = type opaque
 
