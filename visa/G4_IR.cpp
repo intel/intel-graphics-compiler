@@ -4572,8 +4572,10 @@ void G4_SrcRegRegion::emit(std::ostream &output) {
       output << "<" << desc->horzStride << ">";
     } else {
       if (align1ternary) {
-        // format is <V;H> with W derived from V and H
-        output << "<" << desc->vertStride << ";" << desc->horzStride << ">";
+        {
+          // format is <V;H> with W derived from V and H
+          output << "<" << desc->vertStride << ";" << desc->horzStride << ">";
+        }
       } else {
         output << "<" << desc->vertStride << ";" << desc->width << ","
                << desc->horzStride << ">";
