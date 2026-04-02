@@ -270,7 +270,7 @@ void PromoteSubByte::cleanUp(Module &module) {
 // Checking if type needs promotion
 //
 //------------------------------------------------------------------------------
-bool PromoteSubByte::typeNeedsPromotion(Type *type, DenseSet<Type *> visitedTypes) {
+bool PromoteSubByte::typeNeedsPromotion(Type *type, DenseSet<Type *> &visitedTypes) {
   if (!type || visitedTypes.count(type)) {
     return false;
   }

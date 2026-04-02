@@ -59,7 +59,11 @@ private:
   void cleanUp(llvm::Module &module);
 
   // Checking if type needs promotion
-  bool typeNeedsPromotion(llvm::Type *type, llvm::DenseSet<llvm::Type *> visitedTypes = {});
+  bool typeNeedsPromotion(llvm::Type *type) {
+    llvm::DenseSet<llvm::Type *> visitedTypes;
+    return typeNeedsPromotion(type, visitedTypes);
+  }
+  bool typeNeedsPromotion(llvm::Type *type, llvm::DenseSet<llvm::Type *> &visitedTypes);
 
   // Promoting types
   llvm::DenseMap<llvm::Type *, llvm::Type *> promotedTypesCache;
