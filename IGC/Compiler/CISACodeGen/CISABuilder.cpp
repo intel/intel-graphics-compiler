@@ -4339,6 +4339,13 @@ void CEncoder::InitVISABuilderOptions(TARGET_PLATFORM VISAPlatform, bool canAbor
       if (context->supportsVRT() && m_program->m_Platform->getPlatformInfo().eProductFamily == IGFX_PTL)
         SaveOption(vISA_bumpGRFForForceBCR, true);
     }
+    // For OCL shader with very low register pressure, it is safe to enable vISA_bumpGRFForForceBCR on platform with VRT
+    // support.
+    if (MaxRegPressure > 0 && MaxRegPressure < 32 && context->supportsVRT() &&
+        m_program->m_Platform->getPlatformInfo().eProductFamily == IGFX_PTL) {
+      SaveOption(vISA_forceBCR, true);
+      SaveOption(vISA_bumpGRFForForceBCR, true);
+    }
   }
   if (context->type == ShaderType::OPENCL_SHADER && m_program->m_Platform->supportDpasInstruction()) {
     // 3: Enable bundle conflict reduction for all instructions.
