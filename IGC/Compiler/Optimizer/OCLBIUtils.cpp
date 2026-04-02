@@ -9,6 +9,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/Optimizer/OCLBIUtils.h"
 #include "Compiler/CISACodeGen/helper.h"
 #include "Compiler/MetaDataApi/MetaDataApi.h"
+#include "GenIntrinsicEnum.h"
 #include "common/LLVMWarningsPush.hpp"
 #include "common/LLVMWarningsPop.hpp"
 #include "llvmWrapper/IR/DerivedTypes.h"
@@ -68,6 +69,20 @@ void CCommand::replaceCallInst(IGCLLVM::Intrinsic intrinsicName, ArrayRef<Type *
 }
 
 void CCommand::replaceGenISACallInst(GenISAIntrinsic::ID intrinsicName, ArrayRef<Type *> Tys) {
+  switch (intrinsicName) {
+  default:
+    break;
+  case GenISAIntrinsic::GenISA_sampleLptr:
+  case GenISAIntrinsic::GenISA_sampleDptr:
+  case GenISAIntrinsic::GenISA_ldmcsptr:
+  case GenISAIntrinsic::GenISA_ldmsptr:
+  case GenISAIntrinsic::GenISA_ldptr: {
+    // @TODO(SPV_INTEL_bindless_images): This logic should be moved to a pass that
+    //                                   handles bindless images once it's created.
+    auto *ModMD = m_pCodeGenContext->getModuleMetaData();
+    ModMD->HasBindlessImageRead = ModMD->extensions.spvINTELBindlessImages;
+  } break;
+  }
   Function *func = getFunctionDeclaration(intrinsicName, Tys);
   Instruction *newCall = CallInst::Create(func, m_args, m_pCallInst->getName(), m_pCallInst);
   newCall->setDebugLoc(m_DL);
@@ -524,6 +539,12 @@ void CImagesBI::prepareTypedReadArgs() {
 }
 
 void CImagesBI::replaceGenISATypedRead() {
+  {
+    // @TODO(SPV_INTEL_bindless_images): This logic should be moved to a pass that
+    //                                   handles bindless images once it's created.
+    auto *ModMD = m_pCodeGenContext->getModuleMetaData();
+    ModMD->HasBindlessImageRead = ModMD->extensions.spvINTELBindlessImages;
+  }
   GenISAIntrinsic::ID intrinsicName = GenISAIntrinsic::GenISA_typedread;
   Type *Tys[] = {m_args[0]->getType()};
 
@@ -832,7 +853,7 @@ public:
     m_args.push_back(m_pIntZero); // LOD
     prepareImageBTI();
     prepareZeroOffsets();
-    Type *types[] = {IGCLLVM::FixedVectorType::get(m_pFloatType, 4), m_pIntType, m_args[7]->getType()};
+    Type *types[] = {m_pCallInst->getType(), m_pIntType, m_args[4]->getType()};
     replaceGenISACallInst(GenISAIntrinsic::GenISA_ldmcsptr, types);
   }
 };
@@ -877,8 +898,7 @@ public:
     m_args.push_back(m_pIntZero); // LOD
     prepareImageBTI();
     prepareZeroOffsets();
-    replaceGenISACallInst(GenISAIntrinsic::GenISA_ldmsptr,
-                          {IGCLLVM::FixedVectorType::get(m_pIntType, 4), m_args[7]->getType()});
+    replaceGenISACallInst(GenISAIntrinsic::GenISA_ldmsptr, {m_pCallInst->getType(), m_args[7]->getType()});
   }
 };
 
@@ -898,8 +918,7 @@ public:
     m_args.push_back(m_pIntZero); // LOD
     prepareImageBTI();
     prepareZeroOffsets();
-    replaceGenISACallInst(GenISAIntrinsic::GenISA_ldmsptr,
-                          {IGCLLVM::FixedVectorType::get(m_pIntType, 4), m_args[7]->getType()});
+    replaceGenISACallInst(GenISAIntrinsic::GenISA_ldmsptr, {m_pCallInst->getType(), m_args[7]->getType()});
   }
 };
 

@@ -99,6 +99,7 @@ struct ExecutionEnvironment {
   DWORD PerThreadSpillMemoryUsage = 0;
   DWORD PerThreadPrivateMemoryUsage = 0;
   bool HasLscStoresWithNonDefaultL1CacheControls = false;
+  bool HasBindlessImageRead = false;
 };
 
 } // namespace iOpenCL

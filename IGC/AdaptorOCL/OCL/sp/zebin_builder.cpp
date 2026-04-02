@@ -516,6 +516,7 @@ void ZEBinaryBuilder::addKernelExecEnv(const SOpenCLKernelInfo &annotations, zeI
   env.eu_thread_count = annotations.m_executionEnvironment.numThreads;
   env.has_sample = annotations.m_executionEnvironment.HasSample;
   env.has_rtcalls = annotations.m_executionEnvironment.HasRTCalls;
+  env.has_bindless_image_read = annotations.m_executionEnvironment.HasBindlessImageRead;
 }
 
 void ZEBinaryBuilder::addFunctionExecEnv(const SOpenCLKernelInfo &annotations,

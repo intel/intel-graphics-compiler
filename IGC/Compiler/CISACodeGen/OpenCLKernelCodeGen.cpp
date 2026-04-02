@@ -1870,6 +1870,7 @@ void COpenCLKernel::FillKernel(SIMDMode simdMode) {
     m_kernelInfo.m_executionEnvironment.CompiledSIMDSize = subGroupSize->getSIMDSize();
   }
 
+  auto *ModMD = m_Context->getModuleMetaData();
   auto &FuncMap = m_Context->getModuleMetaData()->FuncMD;
   auto FuncIter = FuncMap.find(entry);
   if (FuncIter != FuncMap.end()) {
@@ -1893,6 +1894,7 @@ void COpenCLKernel::FillKernel(SIMDMode simdMode) {
     m_kernelInfo.m_executionEnvironment.RequireSyncBuffer = funcMD.requireSyncBuffer;
     m_kernelInfo.m_executionEnvironment.HasIndirectCalls = funcMD.hasIndirectCalls;
   }
+  m_kernelInfo.m_executionEnvironment.HasBindlessImageRead = ModMD->HasBindlessImageRead;
 
   m_kernelInfo.m_executionEnvironment.HasGlobalAtomics = GetHasGlobalAtomics();
   m_kernelInfo.m_threadPayload.OffsetToSkipPerThreadDataLoad = ProgramOutput()->m_offsetToSkipPerThreadDataLoad;
