@@ -1377,8 +1377,6 @@ void BinaryEncodingIGA::Encode() {
     bool autoCompact = kernel.getOption(vISA_Compaction);
     if (platform == Xe_PVC)
       autoCompact = false; // PVC-A0 compaction is off (IGA only does B0+)
-    if (platform > Xe3 && kernel.getNumRegTotal() > 256)
-      autoCompact = false;
 
     KernelEncoder encoder(IGAKernel, autoCompact);
     encoder.setSWSBEncodingMode(swsbEncodeMode);
