@@ -112,7 +112,7 @@ private:
 
   void fixAddcSubb(INST_LIST_ITER it, G4_BB *bb);
 
-  void fixVectImm(INST_LIST_ITER it, G4_BB *bb);
+  void fixVectSrc(INST_LIST_ITER it, G4_BB *bb);
 
   void fixImm64(INST_LIST_ITER it, G4_BB *bb);
 

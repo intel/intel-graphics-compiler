@@ -156,8 +156,8 @@ void HWConformityPro::fixRegRegionRestricts(G4_BB *bb) {
     // Fix imm of src operand for 2 sources instructions
     fix2SrcInstImm(it, bb);
 
-    // Fix vector immediate source operand
-    fixVectImm(it, bb);
+    // Fix vector type of source operand
+    fixVectSrc(it, bb);
 
     // fix register region restrictions for math pipeline
     if (inst->isMath()) {
@@ -3629,15 +3629,15 @@ void HWConformityPro::fixAddcSubb(INST_LIST_ITER it, G4_BB *bb) {
 //    mov (8) r6.0<1>:uw 0xfdb97531:uv
 //    mov (8) r5.0<2>:uw r6.0<1;1,0>:uw
 // 3, non-word type src is not allowed to co-exist with :v src.
-void HWConformityPro::fixVectImm(INST_LIST_ITER it, G4_BB *bb) {
+void HWConformityPro::fixVectSrc(INST_LIST_ITER it, G4_BB *bb) {
   G4_INST *inst = *it;
 
-  bool hasVectImm = false;
+  bool hasVectSrcOpnd = false;
   bool incompatibleSrcTypeFound = false;
   for (int i = 0, numSrc = inst->getNumSrc(); i < numSrc; ++i) {
     G4_Operand *src = inst->getSrc(i);
     if (src->isVectImm()) {
-      hasVectImm = true;
+      hasVectSrcOpnd = true;
     } else {
       // Make sure other src operands are of word type only as this is a HW
       // requirement
@@ -3646,7 +3646,7 @@ void HWConformityPro::fixVectImm(INST_LIST_ITER it, G4_BB *bb) {
     }
   }
 
-  if (!hasVectImm)
+  if (!hasVectSrcOpnd)
     return;
 
   auto dst = inst->getDst();

@@ -785,9 +785,8 @@ void G4Verifier::verifyOpnd(G4_Operand *opnd, G4_INST *inst) {
         }
       }
 
-      // if src0 is V/UV/VF imm, dst must be 16 byte aligned.
-      if (inst->opcode() == G4_mov && inst->getSrc(0)->isImm() &&
-          IS_VTYPE(inst->getSrc(0)->getType())) {
+      // if src0 is V/UV/VF type, dst must be 16 byte aligned.
+      if (inst->opcode() == G4_mov && IS_VTYPE(inst->getSrc(0)->getType())) {
         auto dst = inst->getDst();
         // should we assert if dst is not phyReg assigned?
         if (dst) {
@@ -795,7 +794,7 @@ void G4Verifier::verifyOpnd(G4_Operand *opnd, G4_INST *inst) {
                                dst->getBase()->asRegVar()->isPhyRegAssigned();
           if (dstIsAssigned && dst->getLinearizedStart() % 16 != 0) {
             vISA_ASSERT(false,
-                        "destination of move instruction with V/UV/VF imm is "
+                        "destination of move instruction with V/UV/VF type is "
                         "not 16-byte aligned");
           }
         }
