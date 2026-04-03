@@ -730,8 +730,8 @@ static bool isIMAD(const Instruction *I) {
 static bool isCandidateMAD(const Instruction *I, const CodeGenContext *CGC) {
   if (isDMAD(I))
     return true;
-  // Keep behavior consistent with MadLoopSlice: only touch IMAD on PVC+.
-  return (CGC && CGC->platform.isProductChildOf(IGFX_PVC) && isIMAD(I));
+  // Keep behavior consistent with MadLoopSlice: only touch IMAD on XE3P+.
+  return (CGC && CGC->platform.isCoreChildOf(IGFX_XE3P_CORE) && isIMAD(I));
 }
 
 static bool clusterByEquivalenceClasses(ArrayRef<Instruction *> Order, EquivalenceClasses<Instruction *> &ECs,
@@ -900,7 +900,7 @@ bool MadLoopSlice::sliceBlock(BasicBlock *BB) const {
     Run.clear();
   };
 
-  // Slice contiguous runs of MAD-like ops (DMAD or PVC+ IMAD) inside an acyclic BB.
+  // Slice contiguous runs of MAD-like ops (DMAD or XE3P+ IMAD) inside an acyclic BB.
   // This is less restrictive than MadLoopSlice (which requires an all-MAD loop body)
   // and matches real kernels that have setup code before/after the MAD region.
   for (Instruction &I : *BB) {

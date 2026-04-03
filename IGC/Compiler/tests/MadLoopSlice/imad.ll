@@ -8,7 +8,7 @@
 
 
 ; REQUIRES: llvm-14-plus
-; RUN: igc_opt --platformpvc --opaque-pointers -igc-madloopslice -S < %s | FileCheck %s
+; RUN: igc_opt --platformCri --opaque-pointers -igc-madloopslice -S < %s | FileCheck %s
 ; ------------------------------------------------
 ; MadLoopSlice (block slicing)
 ; ------------------------------------------------
