@@ -173,6 +173,18 @@ make check-ocloc -j`nproc`
 
 Also note that these tests require **Debug** IGC build.
 
+#### Additional notes on igc_opt and IGC LIT tests
+
+`igc_opt` is based on LLVM 14 `opt` and allows running IGC compiler passes directly on LLVM IR.
+It is useful for debugging individual passes, writing focused regression tests, and experimenting
+with compiler transformations.
+
+`IGC_OPTION__BUILD_IGC_OPT` controls whether `igc_opt` is built. It is `OFF` by default.
+
+`IGC_OPTION__ENABLE_LIT_TESTS` controls whether the IGC LIT test suite (located in
+`IGC/Compiler/tests/`) is configured, enabling the `check-igc` build target. It is `OFF` by
+default and requires `igc_opt` to be built.
+
 ***
 
 ## LLVM/LLD/Clang version information

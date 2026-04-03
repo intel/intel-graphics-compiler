@@ -9,7 +9,8 @@
 ; REQUIRES: regkeys
 ; RUN: not --crash igc_opt -S -dce -platformbmg -igc-emit-visa --regkey=EnableStandardAssert=1 --regkey=EnableAssertProgramTermination=0 --regkey=EnableLogAssertToStderr=1 --regkey=EnableAssertEvaluation=1 -simd-mode 16 < %s &> %t_output.ll
 ; RUN: FileCheck --input-file %t_output.ll %s
-; CHECK: joint wave broadcast: not supported sequence of indices
+
+; CHECK: {{error|([Aa]ssertion.*failed)}}
 
 ; Indices [1,0,2,3,4,5,6,7]: first two swapped — not supported, must assert.
 

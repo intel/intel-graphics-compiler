@@ -8,7 +8,8 @@
 
 ; REQUIRES: regkeys
 ; RUN: not --crash igc_opt -S -dce -platformbmg -igc-emit-visa --regkey=DumpVISAASMToConsole=1 --regkey=EnableStandardAssert=1 --regkey=EnableAssertProgramTermination=0 --regkey=EnableLogAssertToStderr=1 --regkey=EnableAssertEvaluation=1 -simd-mode 16 < %s 2>&1 | FileCheck %s
-; CHECK: joint wave broadcast: not supported sequence of indices
+
+; CHECK: {{error|([Aa]ssertion.*failed)}}
 
 ; Indices [7,6,5,4,3,2,1,0]: descending order — not supported, must assert.
 

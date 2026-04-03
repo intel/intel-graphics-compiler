@@ -10,7 +10,7 @@
 ;
 ; Test: Four uniform i32 shls coalesced into a single <4 x i32> shl.
 ;
-; RUN: igc_opt --opaque-pointers -inputcs -platformPtl --igc-simple-alu-vectorizer -S < %s | FileCheck %s
+; RUN: igc_opt --opaque-pointers -platformPtl --igc-simple-alu-vectorizer -S < %s | FileCheck %s
 ;
 ; CHECK: %valu = shl <4 x i32> %{{[0-9]+}}, %{{[0-9]+}}, !igc.simple.alu.vectorized !3
 ; CHECK-NOT: %r0 = shl i32

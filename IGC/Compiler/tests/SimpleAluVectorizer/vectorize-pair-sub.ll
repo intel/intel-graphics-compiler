@@ -12,7 +12,7 @@
 ; single vector sub. Both subs use the same pair of runtime-value operands
 ; so each operand slot is AllSame (pack cost 0), making coalescing profitable.
 ;
-; RUN: igc_opt --opaque-pointers -platformPtl -inputcs --igc-simple-alu-vectorizer -S < %s | FileCheck %s
+; RUN: igc_opt --opaque-pointers -platformPtl --igc-simple-alu-vectorizer -S < %s | FileCheck %s
 ;
 ; CHECK: %valu = sub <2 x i32> %{{[0-9]+}}, %{{[0-9]+}}, !igc.simple.alu.vectorized !3
 ; CHECK: extractelement <2 x i32> %valu, i32 0

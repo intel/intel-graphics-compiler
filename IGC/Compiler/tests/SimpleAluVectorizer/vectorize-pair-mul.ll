@@ -12,7 +12,7 @@
 ; single vector mul. Both muls use Arguments so each operand slot is
 ; free (pack cost 0), making coalescing profitable.
 ;
-; RUN: igc_opt --opaque-pointers -platformPtl -inputcs --igc-simple-alu-vectorizer -S < %s | FileCheck %s
+; RUN: igc_opt --opaque-pointers -platformPtl --igc-simple-alu-vectorizer -S < %s | FileCheck %s
 ;
 ; CHECK: %valu = mul <2 x i32> %{{[0-9]+}}, %{{[0-9]+}}, !igc.simple.alu.vectorized !3
 ; CHECK: extractelement <2 x i32> %valu, i32 0

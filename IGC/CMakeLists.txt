@@ -1,6 +1,6 @@
 #=========================== begin_copyright_notice ============================
 #
-# Copyright (C) 2017-2024 Intel Corporation
+# Copyright (C) 2017-2026 Intel Corporation
 #
 # SPDX-License-Identifier: MIT
 #
@@ -325,6 +325,9 @@ set(IGC_OPTION__IST_IGCC_ONLY ON CACHE BOOL
 
 if(NOT DEFINED IGC_OPTION__BUILD_IGC_OPT)
     set(IGC_OPTION__BUILD_IGC_OPT OFF)
+    if($ENV{ENABLE_IGC_OPT})
+        set(IGC_OPTION__BUILD_IGC_OPT ON)
+    endif()
 endif()
 
 igc_arch_get_cpu(_cpuSuffix)
