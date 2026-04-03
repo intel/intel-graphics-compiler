@@ -7,7 +7,7 @@
 ;============================ end_copyright_notice =============================
 
 ; REQUIRES: regkeys, llvm-16-plus
-; RUN: igc_opt -S  --igc-vectorizer -dce --regkey=VectorizerAllowUniformSelect=1 --regkey=VectorizerAllowUniformCMP=1 --regkey=VectorizerDepWindowMultiplier=6 --regkey=VectorizerAllowSamePredSelect=1 --regkey=VectorizerLog=1 --regkey=VectorizerLogToErr=1 < %s 2>&1 | FileCheck %s
+; RUN: igc_opt --opaque-pointers -S  --igc-vectorizer -dce --regkey=VectorizerAllowUniformSelect=1 --regkey=VectorizerAllowUniformCMP=1 --regkey=VectorizerDepWindowMultiplier=6 --regkey=VectorizerAllowSamePredSelect=1 --regkey=VectorizerLog=1 --regkey=VectorizerLogToErr=1 < %s 2>&1 | FileCheck %s
 
 ; CHECK: FCMP ONE is not supported by vector emitter
 ; CHECK: %vectorized_select = select i1 false, <8 x float> {{.*}}, <8 x float> {{.*}}
