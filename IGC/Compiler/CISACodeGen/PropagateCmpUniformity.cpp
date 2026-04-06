@@ -134,6 +134,15 @@ bool PropagateCmpUniformity::canReplaceUse(Use &U, BasicBlock *trueBranchBB, Bas
   if (PHINode *phi = dyn_cast<PHINode>(user)) {
     useBB = phi->getParent();
     incomingBB = phi->getIncomingBlock(U);
+    // If the replacement won't make the PHI uniform because other incoming
+    // values remain non-uniform, skip: we would only introduce a SIMD
+    // broadcast on the replaced path without gaining uniformity.
+    for (unsigned i = 0, e = phi->getNumIncomingValues(); i < e; ++i) {
+      if (&phi->getOperandUse(i) == &U)
+        continue;
+      if (!m_WI->isUniform(phi->getIncomingValue(i)))
+        return false;
+    }
   } else if (Instruction *inst = dyn_cast<Instruction>(user)) {
     useBB = inst->getParent();
     incomingBB = useBB;
