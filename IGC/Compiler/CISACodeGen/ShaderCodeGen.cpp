@@ -830,8 +830,6 @@ void AddLegalizationPasses(CodeGenContext &ctx, IGCPassManager &mpm, PSSignature
     mpm.add(new HandleLoadStoreInstructions());
   }
 
-  mpm.add(createVectorBitCastOptPass());
-
   // Split big vector & 3-element load/store, etc.
   mpm.add(createVectorPreProcessPass());
 
@@ -1356,7 +1354,6 @@ void OptimizeIR(CodeGenContext *const pContext) {
     mpm.add(new BreakConstantExpr());
     mpm.add(new IGCConstProp());
     GFX_ONLY_PASS { mpm.add(createTranslateToProgrammableOffsetsPass()); }
-    mpm.add(createVectorBitCastOptPass());
 
     mpm.add(new CustomSafeOptPass());
     if (!pContext->m_DriverInfo.WADisableCustomPass()) {
