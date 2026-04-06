@@ -771,6 +771,8 @@ void CodeGenContext::resetOnRetry(bool isSubmodule) {
 
   m_tempCount = 0;
 
+  m_CurSimdMode = SIMDMode::UNKNOWN; // reset the m_CurSimdMode before Retry.
+
   if (isSubmodule)
     return;
 

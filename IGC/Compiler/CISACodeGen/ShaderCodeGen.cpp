@@ -117,6 +117,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/MetaDataApi/PurgeMetaDataUtils.hpp"
 #include "Compiler/HandleLoadStoreInstructions.hpp"
 #include "Compiler/CustomSafeOptPass.hpp"
+#include "Compiler/CISACodeGen/LowerSIMDSize.h"
 #include "Compiler/CustomUnsafeOptPass.hpp"
 #include "Compiler/CustomLoopOpt.hpp"
 #include "Compiler/GenUpdateCB.h"
@@ -524,6 +525,8 @@ void AddLegalizationPasses(CodeGenContext &ctx, IGCPassManager &mpm, PSSignature
   mpm.add(new MetaDataUtilsWrapper(pMdUtils, ctx.getModuleMetaData()));
   // Add CodeGen Context Wrapper immutable pass
   mpm.add(new CodeGenContextWrapper(&ctx));
+  // If IGC allows, lower GenISA_simdSize() to a constant once the SIMD mode is known.
+  mpm.add(createLowerSIMDSizePass());
   // Add alias analysis pass
   mpm.add(createAddressSpaceAAWrapperPass());
 
@@ -1127,6 +1130,23 @@ void AddCodeGenPasses(CodeGenContext &ctx, CShaderProgram::KernelShaderMap &shad
                       SIMDMode simdMode, bool canAbortOnSpill, ShaderDispatchMode shaderMode, PSSignature *pSignature) {
   // Generate CISA
   COMPILER_TIME_START(&ctx, TIME_CG_Add_CodeGen_Passes);
+  // LowerSIMDSize (added in AddLegalizationPasses) lowers GenISA_simdSize() to a constant early for more optimizations.
+  // That lower is only correct when every EmitVISAPass in the PassManager targets the same SIMD mode.
+  //
+  // Track whether that condition holds in this function:
+  //   - First call:
+  //       change from UNKNOWN to the simd mode.
+  //   - Second+ call, same simd mode:
+  //       no change.
+  //   - Second+ call, different simd mode:
+  //       freeze at SIMDMode::END.
+  //
+  //   Once frozen at SIMDMode::END, further calls are ignored.
+  if (ctx.m_CurSimdMode == SIMDMode::UNKNOWN) {
+    ctx.m_CurSimdMode = simdMode;
+  } else if (ctx.m_CurSimdMode != simdMode) {
+    ctx.m_CurSimdMode = SIMDMode::END;
+  }
   Passes.add(new EmitPass(shaders, simdMode, canAbortOnSpill, shaderMode, pSignature));
   COMPILER_TIME_END(&ctx, TIME_CG_Add_CodeGen_Passes);
 }

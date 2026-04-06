@@ -1199,6 +1199,8 @@ public:
 
   SIMDMode GetSIMDMode() const;
 
+  SIMDMode m_CurSimdMode = SIMDMode::UNKNOWN;
+
   virtual std::optional<SIMDMode> knownSIMDSize() const { return std::nullopt; }
 
   // This can be paired with `EncodeAS4GFXResource()` to get a unique

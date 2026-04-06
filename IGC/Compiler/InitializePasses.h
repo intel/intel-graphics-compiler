@@ -118,6 +118,7 @@ void initializeLogicalAndToBranchPass(llvm::PassRegistry &);
 void initializeLowerByValAttributePass(llvm::PassRegistry &);
 void initializeLowerGEPForPrivMemPass(llvm::PassRegistry &);
 void initializeLowerImplicitArgIntrinsicsPass(llvm::PassRegistry &);
+void initializeLowerSIMDSizePass(llvm::PassRegistry &);
 void initializeLowPrecisionOptPass(llvm::PassRegistry &);
 void initializeMarkReadOnlyLoadPass(llvm::PassRegistry &);
 void initializeMetaDataUtilsWrapperInitializerPass(llvm::PassRegistry &);
