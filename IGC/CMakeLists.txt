@@ -1639,7 +1639,13 @@ if(IGC_BUILD__VC_ENABLED)
   if(IGC_BUILD__CMLIT_ENABLE)
     # Path to llvm-opt and llvm lib built with LLVM_LINK_LLVM_DYLIB option
     # Required to load vc-be plugin in opt
-    set(IGC_BUILD__CMOPT_DEFAULT_DIR ${IGC_BUILD__GFX_DEV_SRC_DIR}/../cmc/cm-opt/llvm-${LLVM_VERSION_MAJOR})
+    string(TOLOWER "${OS_NAME}" OS_NAME_LOWER_CASE)
+    if(DEFINED ENV{OS_NAME_ARCH})
+      string(TOLOWER "$ENV{OS_NAME_ARCH}" OS_NAME_ARCH_LOWER_CASE)
+    else()
+      set(OS_NAME_ARCH_LOWER_CASE "linux")
+    endif()
+    set(IGC_BUILD__CMOPT_DEFAULT_DIR ${IGC_BUILD__GFX_DEV_SRC_DIR}/../cmc/cm-opt/llvm-${LLVM_VERSION_MAJOR}/${OS_NAME_ARCH_LOWER_CASE}/${OS_NAME_LOWER_CASE}/${OS_VERSION_NUMBER})
     set(IGC_BUILD__CMOPT_DIR ${IGC_BUILD__CMOPT_DEFAULT_DIR} CACHE PATH
         "Path to opt utility for VC lit testing")
     message(STATUS "VC LIT tests enabled. Opt in ${IGC_BUILD__CMOPT_DIR}")
