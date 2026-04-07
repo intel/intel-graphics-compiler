@@ -91,6 +91,7 @@ void initializeNanHandlingPass(llvm::PassRegistry &);
 void initializeFixResourcePtrPass(llvm::PassRegistry &);
 void initializeFlattenSmallSwitchPass(llvm::PassRegistry &);
 void initializeSplitIndirectEEtoSelPass(llvm::PassRegistry &);
+void initializeExpandNonUniformInsertElementPass(llvm::PassRegistry &);
 void initializePropagateCmpUniformityPass(llvm::PassRegistry &);
 void initializeGenXFunctionGroupAnalysisPass(llvm::PassRegistry &);
 void initializeGenXCodeGenModulePass(llvm::PassRegistry &);

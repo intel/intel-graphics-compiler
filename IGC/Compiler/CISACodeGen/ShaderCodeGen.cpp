@@ -782,6 +782,10 @@ void AddLegalizationPasses(CodeGenContext &ctx, IGCPassManager &mpm, PSSignature
     mpm.add(createIGCInstructionCombiningPass());
   }
 
+  if (IGC_GET_FLAG_VALUE(ExpandNonUniformInsertElementThreshold) > 0) {
+    mpm.add(createExpandNonUniformInsertElementPass());
+  }
+
   // SplitIndirectEEtoSel depends on simplified element index calculation
   // thus it needs to be put after IGCInstructionCombining
   // However, having IGCInstructionCombining before MemOpt causes perf regression,

@@ -58,6 +58,7 @@ cmp+sel to avoid expensive VxH mov.
 #include "Compiler/CustomSafeOptPass.hpp"
 #include "Compiler/CodeGenPublicEnums.h"
 #include "Compiler/CISACodeGen/helper.h"
+#include "Compiler/CISACodeGen/WIAnalysis.hpp"
 #include "Compiler/IGCPassSupport.h"
 #include "GenISAIntrinsics/GenIntrinsics.h"
 #include "GenISAIntrinsics/GenIntrinsicInst.h"
@@ -5931,6 +5932,199 @@ void SplitIndirectEEtoSel::visitExtractElementInst(llvm::ExtractElementInst &I) 
 
 IGC_INITIALIZE_PASS_BEGIN(SplitIndirectEEtoSel, "SplitIndirectEEtoSel", "SplitIndirectEEtoSel", false, false)
 IGC_INITIALIZE_PASS_END(SplitIndirectEEtoSel, "SplitIndirectEEtoSel", "SplitIndirectEEtoSel", false, false)
+
+/*======================== ExpandNonUniformInsertElement =============================
+// Transforms:
+//   %r = insertelement <N x T> %vec, T %val, iM %dyn_idx
+//
+// Into:
+//   %ext.0   = extractelement <N x T> %vec, iM 0
+//   ...
+//   %ext.N-1 = extractelement <N x T> %vec, iM N-1
+//
+//   %cmp.0   = icmp eq iM %dyn_idx, 0
+//   ...
+//   %cmp.N-1 = icmp eq iM %dyn_idx, N-1
+//
+//   %sel.0   = select i1 %cmp.0,   T %val, T %ext.0
+//   ...
+//   %sel.N-1 = select i1 %cmp.N-1, T %val, T %ext.N-1
+//
+//   %ins.0   = insertelement <N x T> undef,   T %sel.0,   iM 0
+//   %ins.1   = insertelement <N x T> %ins.0,  T %sel.1,   iM 1
+//   ...
+//   %r       = insertelement <N x T> %ins.N-2,T %sel.N-1, iM N-1
+===========================================================================*/
+namespace {
+class ExpandNonUniformInsertElement : public FunctionPass {
+public:
+  static char ID;
+  ExpandNonUniformInsertElement() : FunctionPass(ID) {
+    initializeExpandNonUniformInsertElementPass(*PassRegistry::getPassRegistry());
+  }
+  llvm::StringRef getPassName() const override { return "ExpandNonUniformInsertElement"; }
+  bool runOnFunction(Function &F) override;
+  virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override { AU.addRequired<WIAnalysis>(); }
+
+private:
+  bool binOpExpansion(InsertElementInst *IE);
+  bool expandNonUniformInsertElement(InsertElementInst *IE);
+};
+} // namespace
+
+char ExpandNonUniformInsertElement::ID = 0;
+FunctionPass *IGC::createExpandNonUniformInsertElementPass() { return new ExpandNonUniformInsertElement(); }
+
+bool ExpandNonUniformInsertElement::runOnFunction(Function &F) {
+  const unsigned MAX_N = IGC_GET_FLAG_VALUE(ExpandNonUniformInsertElementThreshold);
+
+  bool Changed = false;
+  SmallVector<InsertElementInst *, 16> Worklist;
+  WIAnalysis &WI = getAnalysis<WIAnalysis>();
+  for (BasicBlock &BB : F) {
+    for (Instruction &I : BB) {
+      if (auto *IE = dyn_cast<InsertElementInst>(&I)) {
+        auto *VecTy = dyn_cast<FixedVectorType>(IE->getType());
+        if (!VecTy || VecTy->getNumElements() > MAX_N)
+          continue;
+        if (isa<ConstantInt>(IE->getOperand(2)) || WI.isUniform(IE->getOperand(2)))
+          continue;
+
+        Worklist.push_back(IE);
+      }
+    }
+  }
+
+  for (InsertElementInst *IE : Worklist) {
+    bool edited = binOpExpansion(IE);
+    if (!edited)
+      edited = expandNonUniformInsertElement(IE);
+    Changed |= edited;
+  }
+
+  return Changed;
+}
+
+static Constant *getIdentity(Instruction::BinaryOps Op, Type *Ty) {
+  if (Ty->isHalfTy() || Ty->isBFloatTy() || Ty->isFloatTy() || Ty->isDoubleTy()) {
+    switch (Op) {
+    case Instruction::FAdd:
+    case Instruction::FSub:
+      return ConstantFP::get(Ty, 0.0f);
+    case Instruction::FMul:
+      return ConstantFP::get(Ty, 1.0f);
+    default:
+      return nullptr;
+    }
+  } else if (Ty->isIntegerTy()) {
+    switch (Op) {
+    case Instruction::Or:
+    case Instruction::Sub:
+    case Instruction::Add:
+    case Instruction::Xor:
+    case Instruction::LShr:
+    case Instruction::AShr:
+    case Instruction::Shl:
+      return ConstantInt::get(Ty, 0);
+    case Instruction::And:
+      return ConstantInt::getAllOnesValue(Ty);
+    case Instruction::Mul:
+      return ConstantInt::get(Ty, 1);
+    default:
+      return nullptr;
+    }
+  }
+  return nullptr;
+}
+
+// Transforms:
+//   %e  = extractelement <N x T> %vec, i32 %idx
+//   %r  = binop T %val, %e
+//   %v2 = insertelement <N x T> %vec, T %r, i32 %idx
+//
+// Into (for each lane i = 0..N-1):
+//   %ei   = extractelement <N x T> %vec,  i32 i
+//   %cmpi = icmp eq i32 %idx, i
+//   %seli = select i1 %cmpi, T %val, T <identity>   ; identity: OR/ADD/XOR-> 0, AND-> -1, MUL-> 1
+//   %opi  = binop T %ei, %seli                       ; op order matches original
+//   %vi   = insertelement <N x T> %v_{i-1}, T %opi, i32 i
+bool ExpandNonUniformInsertElement::binOpExpansion(InsertElementInst *IE) {
+  auto *Bo = dyn_cast<BinaryOperator>(IE->getOperand(1));
+  if (!Bo || !Bo->hasOneUse())
+    return false;
+
+  auto *VTy = dyn_cast<FixedVectorType>(IE->getOperand(0)->getType());
+  Value *Vec = IE->getOperand(0), *Idx = IE->getOperand(2);
+  Constant *Id = getIdentity(Bo->getOpcode(), VTy->getElementType());
+  if (!Id)
+    return false;
+
+  Value *Other = nullptr;
+  ExtractElementInst *Ext = nullptr;
+  for (int eeIdx = 0; eeIdx < 2; eeIdx++) {
+    auto *E = dyn_cast<ExtractElementInst>(Bo->getOperand(eeIdx));
+    if (E && E->hasOneUse() && E->getVectorOperand() == Vec && E->getIndexOperand() == Idx) {
+      // Noncommutative ops like "fsub %extract, %val" are fine to replace %val with 0, but with "fsub %val, %extract"
+      // we can't replace %val with a constant (no left identity, would need to be 2 * %extract in this example)
+      if (!Bo->isCommutative() && eeIdx == 1)
+        return false;
+
+      Ext = E;
+      Other = Bo->getOperand(1 - eeIdx);
+      break;
+    }
+  }
+  if (!Ext)
+    return false;
+
+  IRBuilder<> B(IE);
+  Value *Cur = Vec;
+  for (unsigned i = 0; i < VTy->getNumElements(); i++) {
+    auto *Ci = ConstantInt::get(Idx->getType(), i);
+    Value *Ei = B.CreateExtractElement(Vec, Ci);
+    Value *Cmpi = B.CreateICmpEQ(Idx, Ci);
+    Value *Seli = B.CreateSelect(Cmpi, Other, Id);
+    Value *Opi = B.CreateBinOp(Bo->getOpcode(), Ei, Seli);
+    if (isa<FPMathOperator>(Opi)) {
+      cast<Instruction>(Opi)->setFastMathFlags(Bo->getFastMathFlags());
+    }
+    Cur = B.CreateInsertElement(Cur, Opi, Ci);
+  }
+  IE->replaceAllUsesWith(Cur);
+  IE->eraseFromParent();
+  Bo->eraseFromParent();
+  Ext->eraseFromParent();
+
+  return true;
+}
+
+bool ExpandNonUniformInsertElement::expandNonUniformInsertElement(InsertElementInst *IE) {
+  Value *IdxOp = IE->getOperand(2);
+  auto *VecTy = dyn_cast<FixedVectorType>(IE->getType());
+  const unsigned N = VecTy->getNumElements();
+
+  IRBuilder<> B(IE);
+  Value *Vec = IE->getOperand(0);
+  Value *Val = IE->getOperand(1);
+
+  Value *Chain = Vec;
+  for (unsigned i = 0; i < N; ++i) {
+    auto *ConstI = ConstantInt::get(IdxOp->getType(), i);
+    Value *OldElem = B.CreateExtractElement(Vec, ConstI);
+    Value *Cmp = B.CreateICmpEQ(IdxOp, ConstI);
+    Value *Sel = B.CreateSelect(Cmp, Val, OldElem);
+    Chain = B.CreateInsertElement(Chain, Sel, ConstI);
+  }
+
+  IE->replaceAllUsesWith(Chain);
+  IE->eraseFromParent();
+  return true;
+}
+
+IGC_INITIALIZE_PASS_BEGIN(ExpandNonUniformInsertElement, "ExpandNonUniformInsertElement",
+                          "ExpandNonUniformInsertElement", false, false)
+IGC_INITIALIZE_PASS_END(ExpandNonUniformInsertElement, "ExpandNonUniformInsertElement", "ExpandNonUniformInsertElement",
+                        false, false)
 
 ////////////////////////////////////////////////////////////////////////
 // LogicalAndToBranch trying to find logical AND like below:

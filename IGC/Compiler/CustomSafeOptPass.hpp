@@ -218,6 +218,7 @@ llvm::FunctionPass *createGenStrengthReductionPass();
 llvm::FunctionPass *createNanHandlingPass();
 llvm::FunctionPass *createFlattenSmallSwitchPass();
 llvm::FunctionPass *createSplitIndirectEEtoSelPass();
+llvm::FunctionPass *createExpandNonUniformInsertElementPass();
 llvm::FunctionPass *createClampICBOOBAccess();
 llvm::FunctionPass *createIGCIndirectICBPropagaionPass();
 llvm::FunctionPass *createBlendToDiscardPass();
