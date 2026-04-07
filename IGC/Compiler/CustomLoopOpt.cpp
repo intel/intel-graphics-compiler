@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 ============================= end_copyright_notice ===========================*/
 
 #include "common/LLVMWarningsPush.hpp"
+#include <llvm/ADT/DenseMap.h>
 #include <llvm/Transforms/Utils/Cloning.h>
 #include <llvm/Transforms/Utils/BasicBlockUtils.h>
 #include <llvm/Transforms/Utils/LoopUtils.h>
@@ -1033,6 +1034,7 @@ public:
   bool runOnFunction(Function &F);
   bool LoopHasLoadFromLocalAddressSpace(const Loop &L);
   bool LoopDependsOnSIMDLaneId(const Loop &L);
+  bool LoopHasInvariantSwitchDispatch(const Loop &L);
   bool AddLICMDisableMedatadaToSpecificLoop(Loop &L);
 
   llvm::StringRef getPassName() const { return "IGC special cases disable LICM"; }
@@ -1084,13 +1086,47 @@ bool SpecialCasesDisableLICM::runOnFunction(llvm::Function &F) {
   if (!Changed) {
     LI = getLoopInfo();
 
-    for (auto *L : *LI) {
-      if (LoopHasLoadFromLocalAddressSpace(*L) && LoopDependsOnSIMDLaneId(*L))
+    for (auto *L : LI->getLoopsInPreorder()) {
+      if ((LoopHasLoadFromLocalAddressSpace(*L) && LoopDependsOnSIMDLaneId(*L)) || LoopHasInvariantSwitchDispatch(*L)) {
         Changed |= AddLICMDisableMedatadaToSpecificLoop(*L);
+      }
     }
   }
 
   return Changed;
+}
+
+bool SpecialCasesDisableLICM::LoopHasInvariantSwitchDispatch(const Loop &L) {
+  // Switches are lowered to a BST of icmp+br before this pass runs.
+  // When the dispatch value is loop-invariant, LICM hoists each arm's
+  // independent computations to the preheader.
+  constexpr unsigned MIN_DISPATCH_BRANCHES = 15;
+  llvm::DenseMap<Value *, size_t> InvariantBranchCounts;
+  for (BasicBlock *BB : L.blocks()) {
+    if (BB->size() != 2) {
+      continue;
+    }
+    auto *BI = dyn_cast<BranchInst>(BB->getTerminator());
+    if (!BI || !BI->isConditional()) {
+      continue;
+    }
+    auto *Cmp = dyn_cast<ICmpInst>(BI->getCondition());
+    if (!Cmp) {
+      continue;
+    }
+    Value *LHS = Cmp->getOperand(0);
+    Value *RHS = Cmp->getOperand(1);
+
+    if (!isa<ConstantInt>(RHS)) {
+      std::swap(LHS, RHS);
+    }
+
+    if (!isa<ConstantInt>(RHS) || !L.isLoopInvariant(LHS)) {
+      continue;
+    }
+    ++InvariantBranchCounts[LHS];
+  }
+  return llvm::any_of(InvariantBranchCounts, [](const auto &Entry) { return Entry.second >= MIN_DISPATCH_BRANCHES; });
 }
 
 bool SpecialCasesDisableLICM::LoopHasLoadFromLocalAddressSpace(const Loop &L) {
