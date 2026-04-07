@@ -4781,6 +4781,7 @@ bool IR_Builder::canPromoteToMovi(G4_INST *inst) {
 
   // - both src and dst are dword data type for PVC+ platforms:
 
+  // For the case that offsets to base address are in register
   bool emitMoreMoviCases = getOption(vISA_emitMoreMoviCases);
 
   // Check opcode
@@ -4789,9 +4790,11 @@ bool IR_Builder::canPromoteToMovi(G4_INST *inst) {
     return false;
 
   // Check execution size
-  bool isValidExecSize =
-      (inst->getExecSize() == g4::SIMD8) ||
-      (emitMoreMoviCases && (inst->getExecSize() <= g4::SIMD16));
+  // Only SIMD8 is allowed if offsets to base address are vect immediate values.
+  // SIMD8/SIMD16 are allowed if offsets to base address are in register.
+  auto execSize = inst->getExecSize();
+  bool isValidExecSize = (execSize == g4::SIMD8) ||
+                         (emitMoreMoviCases && (execSize <= g4::SIMD16));
   if (!isValidExecSize)
     return false;
 
@@ -4802,9 +4805,12 @@ bool IR_Builder::canPromoteToMovi(G4_INST *inst) {
 
   // Check dst is within a single GRF.
   bool hasDst = inst->getDst() != nullptr;
-  bool isNotCrossGRFDst =
-      hasDst && !inst->getDst()->asDstRegRegion()->isCrossGRFDst(*this);
-  if (!isNotCrossGRFDst)
+  bool dstNotCrossGRFBoundary;
+  {
+    dstNotCrossGRFBoundary =
+        hasDst && !inst->getDst()->asDstRegRegion()->isCrossGRFDst(*this);
+  }
+  if (!dstNotCrossGRFBoundary)
     return false;
 
   // Check src is indirect with VxH region.
@@ -4829,7 +4835,7 @@ bool IR_Builder::canPromoteToMovi(G4_INST *inst) {
   // may impact performance. Or we can force RA to allocate a0.0 for src0
   // operand.
   int16_t subRegOff = inst->getSrc(0)->asSrcRegRegion()->getSubRegOff();
-  if (subRegOff != 0 && !(subRegOff == 8 && inst->getExecSize() == g4::SIMD8))
+  if (subRegOff != 0 && !(subRegOff == 8 && execSize == g4::SIMD8))
     return false;
 
   // Check dst stride in bytes matches source element size in bytes.
@@ -4852,7 +4858,7 @@ bool IR_Builder::canPromoteToMovi(G4_INST *inst) {
   // Check the pattern of LEA feeding the mov
   G4_INST *AddrAddInst = getSingleDefInst(inst, Opnd_src0);
   if (!(AddrAddInst && AddrAddInst->opcode() == G4_add &&
-        AddrAddInst->getExecSize() == inst->getExecSize()))
+        AddrAddInst->getExecSize() == execSize))
     return false;
 
   G4_Operand *AddrAddSrc0 = AddrAddInst->getSrc(0);
@@ -4865,8 +4871,7 @@ bool IR_Builder::canPromoteToMovi(G4_INST *inst) {
     Offset = AE->getOffset();
   }
 
-  unsigned SrcSizeInBytes =
-      inst->getExecSize() * inst->getSrc(0)->getTypeSize();
+  unsigned SrcSizeInBytes = execSize * inst->getSrc(0)->getTypeSize();
   if (!Dcl || Offset % SrcSizeInBytes != 0)
     return false;
 
@@ -4926,29 +4931,31 @@ bool IR_Builder::canPromoteToMovi(G4_INST *inst) {
   // comparing the index with 0x10 to make sure the address calculated is within
   // single GRF.
   if (Dcl->getRootDeclare()->getByteSize() == 2 * GrfSizeInBytes) {
-    G4_Predicate *Pred = inst->getPredicate();
-    G4_INST *CmpInst = getSingleDefInst(inst, Opnd_pred);
-    if (!(Pred && CmpInst && CmpInst->opcode() == G4_cmp))
-      return false;
+    {
+      G4_Predicate *Pred = inst->getPredicate();
+      G4_INST *CmpInst = getSingleDefInst(inst, Opnd_pred);
+      if (!(Pred && CmpInst && CmpInst->opcode() == G4_cmp))
+        return false;
 
-    G4_CondMod *CondMod = CmpInst->getCondMod();
+      G4_CondMod *CondMod = CmpInst->getCondMod();
 
-    // Check same flag register of CondMod as the predicate
-    if (!(CondMod && CondMod->getBase() == Pred->getBase() &&
-          CondMod->getSubRegOff() == Pred->getSubRegOff() &&
-          CondMod->getMod() == Mod_l))
-      return false;
+      // Check same flag register of CondMod as the predicate
+      if (!(CondMod && CondMod->getBase() == Pred->getBase() &&
+            CondMod->getSubRegOff() == Pred->getSubRegOff() &&
+            CondMod->getMod() == Mod_l))
+        return false;
 
-    // Check compare immediate is 0x10
-    G4_Operand *CmpImm = CmpInst->getSrc(1);
-    if (!(CmpImm && CmpImm->isImm() && CmpImm->asImm()->getInt() == 0x10))
-      return false;
+      // Check compare immediate is 0x10
+      G4_Operand *CmpImm = CmpInst->getSrc(1);
+      if (!(CmpImm && CmpImm->isImm() && CmpImm->asImm()->getInt() == 0x10))
+        return false;
+    }
   }
 
   // Check AddrAddInst is write-enable and has same execution size as mov
   // instruction.
   if (!(AddrAddInst->isWriteEnableInst() &&
-        inst->getExecSize() == AddrAddInst->getExecSize()))
+        execSize == AddrAddInst->getExecSize()))
     return false;
 
   // Check shl/mul instruction feeding the AddrAddInst. This instruction is used
@@ -4959,7 +4966,7 @@ bool IR_Builder::canPromoteToMovi(G4_INST *inst) {
                           maybeShlOrMul->opcode() == G4_mul) &&
                          maybeShlOrMul->getSrc(1)->isImm() &&
                          maybeShlOrMul->isWriteEnableInst();
-  if (!(isMaybeShlOrMul && inst->getExecSize() <= maybeShlOrMul->getExecSize()))
+  if (!(isMaybeShlOrMul && execSize <= maybeShlOrMul->getExecSize()))
     return false;
 
   // Check and instruction feeding the shl/mul instruction. This and instruction
@@ -4969,7 +4976,7 @@ bool IR_Builder::canPromoteToMovi(G4_INST *inst) {
   bool isNoMaskAndWithImm = maybeAnd && maybeAnd->opcode() == G4_and &&
                             maybeAnd->isWriteEnableInst() &&
                             maybeAnd->getSrc(1)->isImm();
-  if (!(isNoMaskAndWithImm && inst->getExecSize() <= maybeAnd->getExecSize()))
+  if (!(isNoMaskAndWithImm && execSize <= maybeAnd->getExecSize()))
     return false;
 
   // Check whether the address calculated is guaranteed to fit single GRF
@@ -4993,8 +5000,9 @@ bool IR_Builder::canPromoteToMovi(G4_INST *inst) {
   // in pow2()-1 form which means that highest addressable index is last
   // element within GRF.
   // With "less or equal" it would address second GRF.
+  unsigned maxIndexSize = GrfSizeInBytes;
   bool isSanitizedSingleGRFIndexing =
-      andImmIsPowOf2Min1 && (indexSize < GrfSizeInBytes);
+      andImmIsPowOf2Min1 && (indexSize < maxIndexSize);
 
   return isSanitizedSingleGRFIndexing;
 }
