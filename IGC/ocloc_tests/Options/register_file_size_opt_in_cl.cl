@@ -14,8 +14,11 @@ SPDX-License-Identifier: MIT
 
 // RUN: ocloc compile -file %s -device pvc -options " -ze-exp-register-file-size 128 -igc_opts 'DumpVISAASMToConsole=1'" 2>&1 | FileCheck %s --check-prefixes=CHECK128
 
+// RUN: ocloc compile -file %s -device pvc -options " -cl-intel-128-GRF-per-thread -igc_opts 'DumpVISAASMToConsole=1'" 2>&1 | FileCheck %s --check-prefixes=CHECK128V2
+
 // CHECK64: //Build option: {{.*}} -TotalGRFNum 64
 // CHECK128: //Build option: {{.*}} -TotalGRFNum 128
+// CHECK128V2: //Build option: {{.*}} -TotalGRFNum 128
 
 __kernel void foo(int a, int b, __global int *res)
 {

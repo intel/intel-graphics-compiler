@@ -1235,6 +1235,8 @@ int BuildOptionsAreValid(const std::string &options, std::string &exceptString) 
               (strcmp(pParam, "-cl-intel-no-prera-scheduling") == 0) || // temporary options
               (strcmp(pParam, "-igc_opts") == 0) ||                     // temporary options
               (strcmp(pParam, "-cl-intel-gtpin-rera") == 0) ||          // temporary options
+              (strcmp(pParam, "-cl-intel-128-GRF-per-thread") == 0) ||  // temporary options
+              (strcmp(pParam, "-ze-opt-128-GRF-per-thread") == 0) ||    // temporary options
               (strcmp(pParam, "-cl-intel-256-GRF-per-thread") == 0) ||  // temporary options
               (strcmp(pParam, "-ze-opt-256-GRF-per-thread") == 0) ||    // temporary options
               (strcmp(pParam, "-cl-intel-512-GRF-per-thread") == 0) ||  // temporary options
