@@ -28,10 +28,12 @@
 ; CHECK32: [[SHL63:%[a-zA-Z0-9]+]] = shl i64 %or, 63
 ; CHECK32: [[LSHR1:%[a-zA-Z0-9]+]] = lshr i64 %or, 1
 ; CHECK32: [[ROTL63:%[a-zA-Z0-9]+]] = or i64 [[SHL63]], [[LSHR1]]
+; CHECK32: [[SEL1:%[a-zA-Z0-9]+]] = select i1 false, i64 %or, i64 [[ROTL63]]
 ; CHECK32: [[SHL8:%[a-zA-Z0-9]+]] = shl i64 %or, 8
 ; CHECK32: [[LSHR56:%[a-zA-Z0-9]+]] = lshr i64 %or, 56
 ; CHECK32: [[ROTR56:%[a-zA-Z0-9]+]] = or i64 [[SHL8]], [[LSHR56]]
-; CHECK32: add i64 [[ROTL63]], [[ROTR56]]
+; CHECK32: [[SEL2:%[a-zA-Z0-9]+]] = select i1 false, i64 %or, i64 [[ROTR56]]
+; CHECK32: add i64 [[SEL1]], [[SEL2]]
 
 define i64 @test_rotate64(i32 %a, i32 %hi32, i32 %lo32, i32 %d) {
 entry:

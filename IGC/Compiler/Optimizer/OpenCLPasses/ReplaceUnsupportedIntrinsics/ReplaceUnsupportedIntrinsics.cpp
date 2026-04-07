@@ -907,13 +907,18 @@ void ReplaceUnsupportedIntrinsics::replaceFunnelShift(IntrinsicInst *I) {
     mask = ConstantVector::getSplat(IGCLLVM::getElementCount((uint32_t)IVT->getNumElements()), cast<Constant>(mask));
   }
   auto shiftModulo = Builder.CreateAnd(I->getArgOperand(2), mask);
+  Value *isZeroShift = Builder.CreateICmpEQ(shiftModulo, Constant::getNullValue(shiftModulo->getType()));
   auto negativeShift = Builder.CreateSub(numBits, shiftModulo);
   if (I->getIntrinsicID() == Intrinsic::fshr) {
     std::swap(shiftModulo, negativeShift);
   }
   auto upperShifted = Builder.CreateShl(I->getArgOperand(0), shiftModulo);
   auto lowerShifted = Builder.CreateLShr(I->getArgOperand(1), negativeShift);
-  auto result = Builder.CreateOr(upperShifted, lowerShifted);
+  Value *shiftedResult = Builder.CreateOr(upperShifted, lowerShifted);
+
+  bool isFshl = (I->getIntrinsicID() == Intrinsic::fshl);
+  Value *zeroShiftResult = isFshl ? I->getArgOperand(0) : I->getArgOperand(1);
+  Value *result = Builder.CreateSelect(isZeroShift, zeroShiftResult, shiftedResult);
 
   I->replaceAllUsesWith(result);
   I->eraseFromParent();
