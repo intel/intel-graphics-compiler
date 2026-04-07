@@ -32,7 +32,31 @@ typedef llvm::SmallPtrSet<llvm::BasicBlock *, 32> BBSet;
 typedef std::unordered_map<llvm::BasicBlock *, ValueSet> DFSet;
 typedef std::unordered_map<llvm::BasicBlock *, ValueSet> PhiSet;
 typedef std::unordered_map<llvm::BasicBlock *, PhiSet> InPhiSet;
-typedef std::unordered_map<llvm::Value *, unsigned int> InsideBlockPressureMap;
+
+struct PressurePair {
+  unsigned int Uniform = 0;
+  unsigned int NonUniform = 0;
+
+  bool operator<(const PressurePair &rhs) const {
+    return (this->Uniform + this->NonUniform) < (rhs.Uniform + rhs.NonUniform);
+  }
+
+  operator unsigned int() const { return Uniform + NonUniform; }
+
+  PressurePair &operator+=(const PressurePair &rhs) {
+    this->Uniform += rhs.Uniform;
+    this->NonUniform += rhs.NonUniform;
+    return *this;
+  }
+
+  PressurePair &operator-=(const PressurePair &rhs) {
+    this->Uniform -= rhs.Uniform;
+    this->NonUniform -= rhs.NonUniform;
+    return *this;
+  }
+};
+
+typedef std::unordered_map<llvm::Value *, PressurePair> InsideBlockPressureMap;
 
 class IGCLivenessAnalysisBase {
 public:
@@ -60,14 +84,22 @@ public:
   DFSet &getOutSet() { return Out; }
   const DFSet &getOutSet() const { return Out; }
 
-  unsigned int computeSizeInBytes(Value *V, unsigned int SIMD, WIAnalysisRunner *WI, const DataLayout &DL);
-  unsigned int estimateSizeInBytes(ValueSet &Set, llvm::Function &F, unsigned int SIMD, WIAnalysisRunner *WI = nullptr);
-  unsigned int estimateSizeInBytes(const llvm::SmallSetVector<llvm::Instruction *, 16> &Set, llvm::Function &F,
+  PressurePair computeSizeInBytes(Value *V, unsigned int SIMD, WIAnalysisRunner *WI, const DataLayout &DL);
+  PressurePair estimateSizeInBytes(ValueSet &Set, llvm::Function &F, unsigned int SIMD, WIAnalysisRunner *WI = nullptr);
+  PressurePair estimateSizeInBytes(const llvm::SmallSetVector<llvm::Instruction *, 16> &Set, llvm::Function &F,
                                    unsigned int SIMD, WIAnalysisRunner *WI = nullptr);
   void collectPressureForBB(llvm::BasicBlock &BB, InsideBlockPressureMap &BBListing, unsigned int SIMD,
                             WIAnalysisRunner *WI = nullptr);
 
   SIMDMode bestGuessSIMDSize(Function *F = nullptr, GenXFunctionGroupAnalysis *FGA = nullptr);
+
+  PressurePair bytesToRegisters(PressurePair Pair) {
+    PressurePair Result = {};
+    unsigned int RegisterSizeInBytes = registerSizeInBytes();
+    Result.Uniform = (Pair.Uniform + RegisterSizeInBytes - 1) / RegisterSizeInBytes;
+    Result.NonUniform = (Pair.NonUniform + RegisterSizeInBytes - 1) / RegisterSizeInBytes;
+    return Result;
+  }
 
   unsigned int bytesToRegisters(unsigned int Bytes) {
     unsigned int RegisterSizeInBytes = registerSizeInBytes();
@@ -79,7 +111,7 @@ public:
   void mergeSets(ValueSet *OutSet, llvm::BasicBlock *Succ);
   void combineOut(llvm::BasicBlock *BB);
   void addToPhiSet(llvm::PHINode *Phi, PhiSet *InPhiSet);
-  unsigned int addOperandsToSet(llvm::Instruction *Inst, ValueSet &Set, unsigned int SIMD, WIAnalysisRunner *WI,
+  PressurePair addOperandsToSet(llvm::Instruction *Inst, ValueSet &Set, unsigned int SIMD, WIAnalysisRunner *WI,
                                 const DataLayout &DL);
   void addNonLocalOperandsToSet(llvm::Instruction *Inst, ValueSet &Set);
   void processBlock(llvm::BasicBlock *BB, ValueSet &Set, PhiSet *PhiSet);
@@ -119,20 +151,49 @@ public:
     return Result;
   }
 
+  PressurePair getMaxPressurePairForBB(llvm::BasicBlock &BB, unsigned int SIMD, WIAnalysisRunner *WI = nullptr) {
+    InsideBlockPressureMap PressureMap;
+    collectPressureForBB(BB, PressureMap, SIMD, WI);
+
+    PressurePair MaxSizeInBytes = {};
+    for (const auto &Pair : PressureMap) {
+
+      MaxSizeInBytes = std::max(MaxSizeInBytes, Pair.second);
+    }
+    return MaxSizeInBytes;
+  }
+
   unsigned int getMaxRegCountForBB(llvm::BasicBlock &BB, unsigned int SIMD, WIAnalysisRunner *WI = nullptr) {
     InsideBlockPressureMap PressureMap;
     collectPressureForBB(BB, PressureMap, SIMD, WI);
 
-    unsigned int MaxSizeInBytes = 0;
+    PressurePair MaxSizeInBytes = {};
     for (const auto &Pair : PressureMap) {
+
       MaxSizeInBytes = std::max(MaxSizeInBytes, Pair.second);
     }
     return bytesToRegisters(MaxSizeInBytes);
   }
 
+  PressurePair getMaxPressurePairForFunction(llvm::Function &F, unsigned int SIMD, WIAnalysisRunner *WI = nullptr) {
+    PressurePair Max = {};
+    for (BasicBlock &BB : F) {
+      Max = std::max(getMaxPressurePairForBB(BB, SIMD, WI), Max);
+    }
+    return Max;
+  }
+
   // be aware, for now, it doesn't count properly nested functions, and their
   // register pressure
   unsigned int getMaxRegCountForFunction(llvm::Function &F, unsigned int SIMD, WIAnalysisRunner *WI = nullptr) {
+    unsigned int Max = 0;
+    for (BasicBlock &BB : F) {
+      Max = std::max(getMaxRegCountForBB(BB, SIMD, WI), Max);
+    }
+    return Max;
+  }
+
+  unsigned int getMaxForFunction(llvm::Function &F, unsigned int SIMD, WIAnalysisRunner *WI = nullptr) {
     unsigned int Max = 0;
     for (BasicBlock &BB : F) {
       Max = std::max(getMaxRegCountForBB(BB, SIMD, WI), Max);
@@ -287,6 +348,7 @@ class IGCRegisterPressurePrinter : public llvm::FunctionPass {
   // 3 -> print with ssa value names DEF, KILL, IN, OUT
   unsigned int PrinterType = IGC_GET_FLAG_VALUE(RegPressureVerbocity);
   // maximum potential calling context pressure of a function
+  PressurePair MaxPressurePair = {};
   unsigned int ExternalPressure = 0;
   unsigned int MaxPressureInFunction = 0;
 

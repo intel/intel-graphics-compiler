@@ -115,37 +115,36 @@ void IGCLivenessAnalysisBase::combineOut(llvm::BasicBlock *BB) {
   }
 }
 
-unsigned int IGCLivenessAnalysisBase::computeSizeInBytes(Value *V, unsigned int SIMD, WIAnalysisRunner *WI,
+PressurePair IGCLivenessAnalysisBase::computeSizeInBytes(Value *V, unsigned int SIMD, WIAnalysisRunner *WI,
                                                          const DataLayout &DL) {
-
   // when we check size of operands, this check is redundant
   // but allows for a nicer code
   bool NoRetVal = V->getType()->isVoidTy();
   if (NoRetVal)
-    return 0;
+    return {};
 
   auto Type = V->getType();
   unsigned int TypeSizeInBits = (unsigned int)DL.getTypeSizeInBits(Type);
-  unsigned int Multiplier = SIMD;
+
   if (WI && WI->isUniform(V))
-    Multiplier = 1;
-  unsigned int SizeInBytes = TypeSizeInBits * Multiplier / 8;
-  return SizeInBytes;
+    return {TypeSizeInBits / 8, 0};
+
+  return {0, TypeSizeInBits * SIMD / 8};
 }
 
-unsigned int IGCLivenessAnalysisBase::addOperandsToSet(llvm::Instruction *Inst, ValueSet &Set, unsigned int SIMD,
+PressurePair IGCLivenessAnalysisBase::addOperandsToSet(llvm::Instruction *Inst, ValueSet &Set, unsigned int SIMD,
                                                        WIAnalysisRunner *WI, const DataLayout &DL) {
 
   // we do not process PHI's there
   auto Phi = llvm::dyn_cast<llvm::PHINode>(Inst);
   if (Phi)
-    return 0;
+    return {};
 
   // do not process debug instructions and lifetimehints in any way
   if (Inst->isDebugOrPseudoInst() || Inst->isLifetimeStartOrEnd())
-    return 0;
+    return {};
 
-  unsigned int ResultSizeInBytes = 0;
+  PressurePair ResultSizeInBytes = {};
 
   for (auto &Op : Inst->operands()) {
     llvm::Value *V = Op.get();
@@ -158,7 +157,7 @@ unsigned int IGCLivenessAnalysisBase::addOperandsToSet(llvm::Instruction *Inst, 
     if (!(llvm::isa<llvm::Instruction>(V) || llvm::isa<llvm::Argument>(V)))
       continue;
 
-    unsigned int SizeOfOperand = computeSizeInBytes(V, SIMD, WI, DL);
+    PressurePair SizeOfOperand = computeSizeInBytes(V, SIMD, WI, DL);
     if (!Set.count(V))
       ResultSizeInBytes += SizeOfOperand;
 
@@ -271,25 +270,25 @@ void IGCLivenessAnalysisBase::livenessAnalysis(llvm::Function &F, BBSet *StartBB
   }
 }
 
-unsigned int IGCLivenessAnalysisBase::estimateSizeInBytes(const llvm::SmallSetVector<llvm::Instruction *, 16> &Set,
+PressurePair IGCLivenessAnalysisBase::estimateSizeInBytes(const llvm::SmallSetVector<llvm::Instruction *, 16> &Set,
                                                           Function &F, unsigned int SIMD, WIAnalysisRunner *WI) {
   const DataLayout &DL = F.getParent()->getDataLayout();
 
-  unsigned int Result = 0;
+  PressurePair Result = {};
   for (auto El : Set) {
-    unsigned int SizeInBytes = computeSizeInBytes(El, SIMD, WI, DL);
+    PressurePair SizeInBytes = computeSizeInBytes(El, SIMD, WI, DL);
     Result += SizeInBytes;
   }
   return Result;
 }
 
-unsigned int IGCLivenessAnalysisBase::estimateSizeInBytes(ValueSet &Set, Function &F, unsigned int SIMD,
+PressurePair IGCLivenessAnalysisBase::estimateSizeInBytes(ValueSet &Set, Function &F, unsigned int SIMD,
                                                           WIAnalysisRunner *WI) {
   const DataLayout &DL = F.getParent()->getDataLayout();
 
-  unsigned int Result = 0;
+  PressurePair Result = {};
   for (auto El : Set) {
-    unsigned int SizeInBytes = computeSizeInBytes(El, SIMD, WI, DL);
+    PressurePair SizeInBytes = computeSizeInBytes(El, SIMD, WI, DL);
     Result += SizeInBytes;
   }
   return Result;
@@ -303,13 +302,13 @@ void IGCLivenessAnalysisBase::collectPressureForBB(llvm::BasicBlock &BB, InsideB
   // this should be a copy
   ValueSet BBSet = BBOut;
 
-  unsigned int SizeInBytes = estimateSizeInBytes(BBSet, *BB.getParent(), SIMD, WI);
+  PressurePair SizeInBytes = estimateSizeInBytes(BBSet, *BB.getParent(), SIMD, WI);
 
   for (auto RI = BB.rbegin(), RE = BB.rend(); RI != RE; ++RI) {
 
     llvm::Instruction *Inst = &(*RI);
 
-    unsigned int SizeUpdate = 0;
+    PressurePair SizeUpdate = {};
     SizeUpdate = addOperandsToSet(Inst, BBSet, SIMD, WI, DL);
 
     BBListing[Inst] = SizeInBytes;
@@ -317,7 +316,7 @@ void IGCLivenessAnalysisBase::collectPressureForBB(llvm::BasicBlock &BB, InsideB
 
     if (!BBSet.count(Inst))
       continue;
-    unsigned int InstSizeInBytes = computeSizeInBytes(Inst, SIMD, WI, DL);
+    PressurePair InstSizeInBytes = computeSizeInBytes(Inst, SIMD, WI, DL);
     SizeInBytes -= InstSizeInBytes;
     BBSet.erase(Inst);
   }
@@ -371,9 +370,15 @@ void IGCRegisterPressurePrinter::printIntraBlock(llvm::BasicBlock &BB, std::stri
     } else {
       Output += "N: ";
     }
-    unsigned int SizeInBytes = BBListing[Inst];
+    PressurePair SizeInBytes = BBListing[Inst];
     unsigned int AmountOfRegistersRoundUp = RPE->bytesToRegisters(SizeInBytes);
+    PressurePair PairInRegisters = RPE->bytesToRegisters(SizeInBytes);
     MaxPressureInFunction = std::max(MaxPressureInFunction, AmountOfRegistersRoundUp);
+    MaxPressurePair = std::max(MaxPressurePair, PairInRegisters);
+
+    if (PrinterType > 5)
+      Output += "UP: " + std::to_string(PairInRegisters.Uniform) +
+                " NP: " + std::to_string(PairInRegisters.NonUniform) + " \t";
     Output += std::to_string(SizeInBytes) + " (" + std::to_string(AmountOfRegistersRoundUp) + ")" + "    \t";
     printInstruction(Inst, Output);
   }
@@ -443,6 +448,8 @@ void IGCRegisterPressurePrinter::dumpRegPressure(llvm::Function &F, unsigned int
 
     OutputFile << "==============================================" << "\n";
     OutputFile << "MaxPressure In Function: " << MaxPressureInFunction + ExternalPressure << "\n";
+    OutputFile << "MaxUniformPressure In Function Isolated: " << MaxPressurePair.Uniform << "\n";
+    OutputFile << "MaxNonUniformPressure In Function Isolated: " << MaxPressurePair.NonUniform << "\n";
     OutputFile << "MaxPressure In Function Isolated: " << MaxPressureInFunction << "\n";
 
     OutputFile.close();
@@ -573,6 +580,7 @@ bool IGCRegisterPressurePrinter::runOnFunction(llvm::Function &F) {
   WI = &getAnalysis<WIAnalysis>();
   CGCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
   MaxPressureInFunction = 0;
+  MaxPressurePair = {};
   FGA = getAnalysisIfAvailable<GenXFunctionGroupAnalysis>();
 
   unsigned int SIMD = numLanes(RPE->bestGuessSIMDSize(&F, FGA));
@@ -592,6 +600,10 @@ bool IGCRegisterPressurePrinter::runOnFunction(llvm::Function &F) {
     Output += "\n";
     Output += "==============================================\n";
     Output += "MaxPressure In Function: " + F.getName().str() + " --> " + std::to_string(MaxPressureInFunction) + "\n";
+    Output += "Max Uniform Pressure In Function: " + F.getName().str() + " --> " +
+              std::to_string(MaxPressurePair.Uniform) + "\n";
+    Output += "Max NonUniform Pressure In Function: " + F.getName().str() + " --> " +
+              std::to_string(MaxPressurePair.NonUniform) + "\n";
     PRINT(Output);
     Output.clear();
   }
