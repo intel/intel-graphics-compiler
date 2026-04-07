@@ -190,6 +190,26 @@ bool ProgramScopeConstantResolution::runOnModule(Module &M) {
       Value *bc = funcToVarSet[userFunc][pGlobalVar];
       IGC_ASSERT_MESSAGE(bc != nullptr, "Program Scope buffer handling is broken!");
 
+      // Create a new GEP with the correct base pointer and
+      // propagate the address space to all users.
+      if (auto *GEP = dyn_cast<GetElementPtrInst>(user)) {
+        if (GEP->getPointerOperand() == pGlobalVar) {
+          SmallVector<Value *, 4> Indices(GEP->indices());
+          auto *NewGEP = GetElementPtrInst::Create(GEP->getSourceElementType(), bc, Indices, GEP->getName(), GEP);
+          NewGEP->setIsInBounds(GEP->isInBounds());
+          NewGEP->setDebugLoc(GEP->getDebugLoc());
+          // Cannot use replaceAllUsesWith because the old GEP result type
+          // (ptr addrspace(0)) differs from the new one (ptr addrspace(2)).
+          // Update each user individually.
+          while (!GEP->use_empty()) {
+            Use &U = *GEP->use_begin();
+            U.set(NewGEP);
+          }
+          GEP->eraseFromParent();
+          continue;
+        }
+      }
+
       // And actually use the bitcast.
       user->replaceUsesOfWith(pGlobalVar, bc);
     }
