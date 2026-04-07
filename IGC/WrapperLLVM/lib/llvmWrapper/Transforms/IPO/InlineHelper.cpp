@@ -410,7 +410,6 @@ bool inlineCallsImpl(CallGraphSCC &SCC, CallGraph &CG, std::function<AssumptionC
           int NewHistoryID = InlineHistory.size();
           InlineHistory.push_back(std::make_pair(Callee, InlineHistoryID));
 
-#ifndef NDEBUG
           // Make sure no dupplicates in the inline candidates. This could
           // happen when a callsite is simpilfied to reusing the return value
           // of another callsite during function cloning, thus the other
@@ -418,7 +417,6 @@ bool inlineCallsImpl(CallGraphSCC &SCC, CallGraph &CG, std::function<AssumptionC
           DenseSet<CallBase *> DbgCallSites;
           for (auto &II : CallSites)
             DbgCallSites.insert(II.first);
-#endif
 
           for (auto &Ptr : NewCallSites) {
 #if LLVM_VERSION_MAJOR >= 17
@@ -426,10 +424,8 @@ bool inlineCallsImpl(CallGraphSCC &SCC, CallGraph &CG, std::function<AssumptionC
 #else
             CallBase *NewCallBase = dyn_cast<CallBase>(Ptr);
 #endif
-#ifndef NDEBUG
-            assert(DbgCallSites.count(NewCallBase) == 0);
-#endif
-            CallSites.push_back(std::make_pair(NewCallBase, NewHistoryID));
+            if (DbgCallSites.count(NewCallBase) == 0)
+              CallSites.push_back(std::make_pair(NewCallBase, NewHistoryID));
           }
         }
       }
