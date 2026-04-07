@@ -3210,7 +3210,7 @@ bool CodeGenPatternMatch::MatchLoadStoreAtomicsStatelessUniformBase(llvm::Instru
 
   if (ImmOffset) {
     bool disableA32ImmediateGlobalBaseOffset =
-        !isA64AddressingModel && !valueIsPositive(Base, m_DL) && IGC_GET_FLAG_VALUE(LscImmOffsMatch) < 3;
+        !isA64AddressingModel && !valueIsPositive(Offset, m_DL) && IGC_GET_FLAG_VALUE(LscImmOffsMatch) < 3;
 
     if (disableA32ImmediateGlobalBaseOffset)
       return false;
