@@ -1892,11 +1892,12 @@ G4_INST *IR_Builder::createDpasInst(G4_opcode opc, G4_ExecSize execSize,
                                     G4_Operand *src3, G4_Operand *src4,
                                     G4_InstOpts options, GenPrecision A,
                                     GenPrecision W, uint8_t D, uint8_t C,
-                                    bool addToInstList) {
+                                    bool addToInstList, G4_Predicate *pred) {
   vASSERT(!src3 || opc == G4_bdpas);
   vASSERT(!src4 || opc == G4_bdpas);
   G4_INST *i = new (mem) G4_InstDpas(*this, opc, execSize, dst, src0, src1,
-                                     src2, src3, src4, options, A, W, D, C);
+                                     src2, src3, src4, options, A, W, D, C,
+                                     pred);
 
   if (addToInstList) {
     i->setVISAId(curCISAOffset);

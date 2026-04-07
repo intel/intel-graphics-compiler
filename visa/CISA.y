@@ -1135,25 +1135,25 @@ ArithInstruction_4OPND:
      }
 
 BdpasInstruction:
-    // 1         2         3           4          5          6          7                 8
-    BDPAS_OP ExecSize  RawOperand  RawOperand RawOperand RawOperand VecSrcOpndSimple  VecSrcOpndSimple
+    // 1        2         3         4           5          6          7          8                 9
+    Predicate BDPAS_OP ExecSize  RawOperand  RawOperand RawOperand RawOperand VecSrcOpndSimple  VecSrcOpndSimple
     {
-        MUST_HOLD($2.exec_size == 16, "The execution size must be 16");
-        MUST_HOLD($1.depth == 8 && $1.count == 8, "SD and RC of bdpas must be 8");
+        MUST_HOLD($3.exec_size == 16, "The execution size must be 16");
+        MUST_HOLD($2.depth == 8 && $2.count == 8, "SD and RC of bdpas must be 8");
         pBuilder->CISA_create_bdpas_instruction(
-            $1.opcode, $2.emask, $2.exec_size,
-            $3, $4, $5, $6, $7.cisa_gen_opnd, $8.cisa_gen_opnd,
-            $1.src2Precision, $1.src1Precision, $1.depth, $1.count, CISAlineno);
+            $2.opcode, $3.emask, $3.exec_size,
+            $1, $4, $5, $6, $7, $8.cisa_gen_opnd, $9.cisa_gen_opnd,
+            $2.src2Precision, $2.src1Precision, $2.depth, $2.count, CISAlineno);
     }
 
 DpasInstruction:
-    // 1       2          3           4           5            6
-    DPAS_OP ExecSize  RawOperand  RawOperand  RawOperand VecSrcOpndSimple
+    // 1        2       3          4           5           6            7
+    Predicate DPAS_OP ExecSize  RawOperand  RawOperand  RawOperand VecSrcOpndSimple
     {
         pBuilder->CISA_create_dpas_instruction(
-            $1.opcode, $2.emask, $2.exec_size,
-            $3, $4, $5, $6.cisa_gen_opnd,
-            $1.src2Precision, $1.src1Precision, $1.depth, $1.count, CISAlineno);
+            $2.opcode, $3.emask, $3.exec_size,
+            $1, $4, $5, $6, $7.cisa_gen_opnd,
+            $2.src2Precision, $2.src1Precision, $2.depth, $2.count, CISAlineno);
     }
 
 BfnInstruction:

@@ -1376,6 +1376,7 @@ static std::string printInstructionMisc(const print_format_provider_t *header,
     uint8_t D, C;
     UI32ToDpasInfo(dpasOpnd->_opnd.other_opnd, A, W, D, C);
 
+    sstr << printPredicate(inst->opcode, inst->pred);
     sstr << ISA_Inst_Table[opcode].str << "." << toString(W) << "."
          << toString(A) << "." << (int)D << "." << (int)C;
 
@@ -1401,6 +1402,7 @@ static std::string printInstructionMisc(const print_format_provider_t *header,
     uint8_t D, C;
     UI32ToDpasInfo(dpasOpnd->_opnd.other_opnd, A, W, D, C);
 
+    sstr << printPredicate(inst->opcode, inst->pred);
     sstr << ISA_Inst_Table[opcode].str << "." << toString(W) << "."
          << toString(A) << "." << (int)D << "." << (int)C;
 

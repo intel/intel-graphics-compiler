@@ -1541,7 +1541,7 @@ void vISAVerifier::verifyInstructionMisc(const CISA_INST *inst) {
       return (Ty == ISA_TYPE_UD || Ty == ISA_TYPE_D || Ty == ISA_TYPE_F ||
               isHFOrBF);
     };
-       // No predicate
+    // No predicate
     REPORT_INSTRUCTION(options, inst->pred.isNullPred(),
                        "%s inst does not support predicate",
                        ISA_Inst_Table[opcode].str);

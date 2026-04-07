@@ -1875,7 +1875,8 @@ public:
                           G4_Operand *src1, G4_Operand *src2,
                           G4_Operand *src3, G4_Operand *src4,
                           G4_InstOpts options, GenPrecision A, GenPrecision W,
-                          uint8_t D, uint8_t C, bool addToInstList);
+                          uint8_t D, uint8_t C, bool addToInstList,
+                          G4_Predicate *pred = nullptr);
 
   G4_INST *createInternalDpasInst(G4_opcode opc, G4_ExecSize execSize,
                                   G4_DstRegRegion *dst, G4_Operand *src0,
@@ -1937,7 +1938,8 @@ public:
                             G4_SrcRegRegion *src2Opnd,
                             G4_SrcRegRegion *src3Opnd,
                             G4_SrcRegRegion *src4Opnd, GenPrecision A,
-                            GenPrecision W, uint8_t D, uint8_t C);
+                            GenPrecision W, uint8_t D, uint8_t C,
+                            G4_Predicate *pred = nullptr);
   int translateVISABfnInst(uint8_t booleanFuncCtrl,
                            VISA_Exec_Size executionSize, VISA_EMask_Ctrl emask,
                            G4_Predicate *predOpnd, G4_Sat saturate,

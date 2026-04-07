@@ -1455,6 +1455,8 @@ static void readInstructionMisc(unsigned &bytePos, const char *buf,
     VISA_Exec_Size esize = EXEC_SIZE_ILLEGAL;
     readExecSizeNG(bytePos, buf, esize, emask, container);
 
+    VISA_PredOpnd *pred = readPredicateOperandNG(bytePos, buf, container);
+
     VISA_RawOpnd *dst = readRawOperandNG(bytePos, buf, container);
     VISA_RawOpnd *src0 = readRawOperandNG(bytePos, buf, container);
     VISA_RawOpnd *src1 = readRawOperandNG(bytePos, buf, container);
@@ -1473,8 +1475,8 @@ static void readInstructionMisc(unsigned &bytePos, const char *buf,
     uint32_t dpasOtherOpnd = readOtherOperandNG(bytePos, buf, visatype);
     UI32ToDpasInfo(dpasOtherOpnd, A, W, D, C);
 
-    kernelBuilder->AppendVISADpasInst(opcode, emask, esize, dst, src0, src1,
-                                      src2, A, W, D, C);
+    kernelBuilder->AppendVISADpasInst(opcode, pred, emask, esize, dst, src0,
+                                      src1, src2, A, W, D, C);
     break;
   }
   case ISA_LIFETIME: {

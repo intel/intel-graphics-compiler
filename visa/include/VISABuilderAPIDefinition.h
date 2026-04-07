@@ -350,14 +350,16 @@ public:
       VISA_PredVar *predDst, VISA_VectorOpnd *src0, VISA_VectorOpnd *src1) = 0;
 
   /// AppendVISADpasInst -- append a DPAS instruction to this kernel.
-  ///    op (execSize) dst src0 src1 src2
+  ///    [pred] op (execSize) dst src0 src1 src2
   /// Precision, depth, repeat count are constant and considered as fields
   /// of the inst (not operands.). Note that src0 could be null operand.
+  /// pred is optional.
   VISA_BUILDER_API virtual int
-  AppendVISADpasInst(ISA_Opcode opcode, VISA_EMask_Ctrl emask,
-                     VISA_Exec_Size executionSize, VISA_RawOpnd *tmpDst,
-                     VISA_RawOpnd *src0, VISA_RawOpnd *src1,
-                     VISA_VectorOpnd *src2, GenPrecision A, GenPrecision W,
+  AppendVISADpasInst(ISA_Opcode opcode, VISA_PredOpnd *pred,
+                     VISA_EMask_Ctrl emask, VISA_Exec_Size executionSize,
+                     VISA_RawOpnd *tmpDst, VISA_RawOpnd *src0,
+                     VISA_RawOpnd *src1, VISA_VectorOpnd *src2,
+                     GenPrecision A, GenPrecision W,
                      uint8_t D, uint8_t C) = 0;
 
   /// AppendVISABfnInst -- append a BFN instruction to this kernel.
@@ -386,18 +388,19 @@ public:
 
 
   /// AppendVISABdpasInst -- append a BDPAS instruction to this kernel.
-  ///    op (execSize) dst src0 src1 src2 src3 src4
+  ///    [pred] op (execSize) dst src0 src1 src2 src3 src4
   /// Precision, depth, repeat count are constants and considered as fields of
   /// the inst (not operands.). The executionSize must be 16, systolic depth
   /// must be 8 and repeat count must be 8. Src0, Src3, and Src4 could be
-  /// specified as null operand.
+  /// specified as null operand. pred is optional.
   VISA_BUILDER_API virtual int
-  AppendVISABdpasInst(ISA_Opcode opcode, VISA_EMask_Ctrl emask,
-                      VISA_Exec_Size executionSize, VISA_RawOpnd *dst,
-                      VISA_RawOpnd *src0, VISA_RawOpnd *src1,
-                      VISA_RawOpnd *src2, VISA_VectorOpnd *src3,
-                      VISA_VectorOpnd *src4, GenPrecision A,
-                      GenPrecision W, uint8_t D, uint8_t C) = 0;
+  AppendVISABdpasInst(ISA_Opcode opcode, VISA_PredOpnd *pred,
+                      VISA_EMask_Ctrl emask, VISA_Exec_Size executionSize,
+                      VISA_RawOpnd *dst, VISA_RawOpnd *src0,
+                      VISA_RawOpnd *src1, VISA_RawOpnd *src2,
+                      VISA_VectorOpnd *src3, VISA_VectorOpnd *src4,
+                      GenPrecision A, GenPrecision W,
+                      uint8_t D, uint8_t C) = 0;
   ///////////////////////////////////////////////////////////////////////////
   // LSC untyped operations
   //

@@ -804,16 +804,16 @@ public:
                                           VISA_VectorOpnd *varId) override;
 
   VISA_BUILDER_API int AppendVISADpasInst(
-      ISA_Opcode opcode, VISA_EMask_Ctrl emask, VISA_Exec_Size executionSize,
-      VISA_RawOpnd *tmpDst, VISA_RawOpnd *src0, VISA_RawOpnd *src1,
-      VISA_VectorOpnd *src2, GenPrecision src2Precision,
+      ISA_Opcode opcode, VISA_PredOpnd *pred, VISA_EMask_Ctrl emask,
+      VISA_Exec_Size executionSize, VISA_RawOpnd *tmpDst, VISA_RawOpnd *src0,
+      VISA_RawOpnd *src1, VISA_VectorOpnd *src2, GenPrecision src2Precision,
       GenPrecision src1Precision, uint8_t Depth, uint8_t Count) override;
   VISA_BUILDER_API int AppendVISABdpasInst(
-      ISA_Opcode opcode, VISA_EMask_Ctrl emask, VISA_Exec_Size executionSize,
-      VISA_RawOpnd *dst, VISA_RawOpnd *src0, VISA_RawOpnd *src1,
-      VISA_RawOpnd *src2, VISA_VectorOpnd *src3, VISA_VectorOpnd *src4,
-      GenPrecision src2Precision, GenPrecision src1Precision, uint8_t Depth,
-      uint8_t Count) override;
+      ISA_Opcode opcode, VISA_PredOpnd *pred, VISA_EMask_Ctrl emask,
+      VISA_Exec_Size executionSize, VISA_RawOpnd *dst, VISA_RawOpnd *src0,
+      VISA_RawOpnd *src1, VISA_RawOpnd *src2, VISA_VectorOpnd *src3,
+      VISA_VectorOpnd *src4, GenPrecision src2Precision,
+      GenPrecision src1Precision, uint8_t Depth, uint8_t Count) override;
 
   VISA_BUILDER_API int
   AppendVISABfnInst(uint8_t booleanFuncCtrl, VISA_PredOpnd *pred, bool satMode,
@@ -1337,7 +1337,8 @@ private:
       ISA_Opcode opcode, VISA_EMask_Ctrl emask, VISA_Exec_Size executionSize,
       VISA_RawOpnd *tmpDst, VISA_RawOpnd *src0, VISA_RawOpnd *src1,
       VISA_VectorOpnd *src2, VISA_VectorOpnd *src3, GenPrecision src2Precision,
-      GenPrecision src1Precision, uint8_t Depth, uint8_t Count);
+      GenPrecision src1Precision, uint8_t Depth, uint8_t Count,
+      VISA_PredOpnd *pred = nullptr);
 
   void createBindlessSampler();
 

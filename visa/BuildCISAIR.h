@@ -616,18 +616,18 @@ public:
   LSC_CACHE_OPTS CISA_create_caching_opts(LSC_CACHE_OPT l1, LSC_CACHE_OPT l2,
                                           LSC_CACHE_OPT l3, int lineNum);
   bool CISA_create_dpas_instruction(ISA_Opcode opcode, VISA_EMask_Ctrl emask,
-                                    unsigned exec_size, VISA_opnd *dst_cisa,
-                                    VISA_opnd *src0_cisa, VISA_opnd *src1_cisa,
-                                    VISA_opnd *src2_cisa, GenPrecision A,
-                                    GenPrecision W, uint8_t D, uint8_t C,
-                                    int lineNum);
+                                    unsigned exec_size, VISA_opnd *pred_cisa,
+                                    VISA_opnd *dst_cisa, VISA_opnd *src0_cisa,
+                                    VISA_opnd *src1_cisa, VISA_opnd *src2_cisa,
+                                    GenPrecision A, GenPrecision W, uint8_t D,
+                                    uint8_t C, int lineNum);
   bool CISA_create_bdpas_instruction(ISA_Opcode opcode, VISA_EMask_Ctrl emask,
-                                     unsigned exec_size, VISA_opnd *dst_cisa,
-                                     VISA_opnd *src0_cisa, VISA_opnd *src1_cisa,
-                                     VISA_opnd *src2_cisa, VISA_opnd *src3_cisa,
-                                     VISA_opnd *src4_cisa, GenPrecision A,
-                                     GenPrecision W, uint8_t D, uint8_t C,
-                                     int lineNum);
+                                     unsigned exec_size, VISA_opnd *pred_cisa,
+                                     VISA_opnd *dst_cisa, VISA_opnd *src0_cisa,
+                                     VISA_opnd *src1_cisa, VISA_opnd *src2_cisa,
+                                     VISA_opnd *src3_cisa, VISA_opnd *src4_cisa,
+                                     GenPrecision A, GenPrecision W, uint8_t D,
+                                     uint8_t C, int lineNum);
 
   bool CISA_create_bfn_instruction(VISA_opnd *pred, uint8_t func_ctrl, bool sat,
                                    VISA_EMask_Ctrl emask, unsigned exec_size,

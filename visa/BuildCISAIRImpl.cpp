@@ -4148,29 +4148,30 @@ std::stringstream &IR_Builder::criticalMsgStream() {
 
 bool CISA_IR_Builder::CISA_create_dpas_instruction(
     ISA_Opcode opcode, VISA_EMask_Ctrl emask, unsigned exec_size,
-    VISA_opnd *dst_cisa, VISA_opnd *src0_cisa, VISA_opnd *src1_cisa,
-    VISA_opnd *src2_cisa, GenPrecision A, GenPrecision W, uint8_t D, uint8_t C,
-    int lineNum) {
+    VISA_opnd *pred_cisa, VISA_opnd *dst_cisa, VISA_opnd *src0_cisa,
+    VISA_opnd *src1_cisa, VISA_opnd *src2_cisa, GenPrecision A, GenPrecision W,
+    uint8_t D, uint8_t C, int lineNum) {
   // rcount !
   VISA_Exec_Size executionSize = Get_VISA_Exec_Size_From_Raw_Size(exec_size);
-  VISA_CALL_TO_BOOL(AppendVISADpasInst, opcode, emask, executionSize,
-                    (VISA_RawOpnd *)dst_cisa, (VISA_RawOpnd *)src0_cisa,
-                    (VISA_RawOpnd *)src1_cisa, (VISA_VectorOpnd *)src2_cisa, A,
-                    W, D, C);
+  VISA_CALL_TO_BOOL(AppendVISADpasInst, opcode, (VISA_PredOpnd *)pred_cisa,
+                    emask, executionSize, (VISA_RawOpnd *)dst_cisa,
+                    (VISA_RawOpnd *)src0_cisa, (VISA_RawOpnd *)src1_cisa,
+                    (VISA_VectorOpnd *)src2_cisa, A, W, D, C);
   return true;
 }
 
 bool CISA_IR_Builder::CISA_create_bdpas_instruction(
     ISA_Opcode opcode, VISA_EMask_Ctrl emask, unsigned exec_size,
-    VISA_opnd *dst_cisa, VISA_opnd *src0_cisa, VISA_opnd *src1_cisa,
-    VISA_opnd *src2_cisa, VISA_opnd *src3_cisa, VISA_opnd *src4_cisa,
-    GenPrecision A, GenPrecision W, uint8_t D, uint8_t C, int lineNum) {
+    VISA_opnd *pred_cisa, VISA_opnd *dst_cisa, VISA_opnd *src0_cisa,
+    VISA_opnd *src1_cisa, VISA_opnd *src2_cisa, VISA_opnd *src3_cisa,
+    VISA_opnd *src4_cisa, GenPrecision A, GenPrecision W, uint8_t D, uint8_t C,
+    int lineNum) {
   VISA_Exec_Size executionSize = Get_VISA_Exec_Size_From_Raw_Size(exec_size);
-  VISA_CALL_TO_BOOL(AppendVISABdpasInst, opcode, emask, executionSize,
-                    (VISA_RawOpnd *)dst_cisa, (VISA_RawOpnd *)src0_cisa,
-                    (VISA_RawOpnd *)src1_cisa, (VISA_RawOpnd *)src2_cisa,
-                    (VISA_VectorOpnd *)src3_cisa, (VISA_VectorOpnd *)src4_cisa,
-                    A, W, D, C);
+  VISA_CALL_TO_BOOL(AppendVISABdpasInst, opcode, (VISA_PredOpnd *)pred_cisa,
+                    emask, executionSize, (VISA_RawOpnd *)dst_cisa,
+                    (VISA_RawOpnd *)src0_cisa, (VISA_RawOpnd *)src1_cisa,
+                    (VISA_RawOpnd *)src2_cisa, (VISA_VectorOpnd *)src3_cisa,
+                    (VISA_VectorOpnd *)src4_cisa, A, W, D, C);
   return true;
 }
 

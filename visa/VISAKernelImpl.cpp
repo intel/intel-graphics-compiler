@@ -7663,8 +7663,10 @@ int VISAKernelImpl::AppendVISADpasInstCommon(
     ISA_Opcode opcode, VISA_EMask_Ctrl emask, VISA_Exec_Size executionSize,
     VISA_RawOpnd *tmpDst, VISA_RawOpnd *src0, VISA_RawOpnd *src1,
     VISA_VectorOpnd *src2, VISA_VectorOpnd *src3, GenPrecision src2Precision,
-    GenPrecision src1Precision, uint8_t Depth, uint8_t Count) {
+    GenPrecision src1Precision, uint8_t Depth, uint8_t Count,
+    VISA_PredOpnd *pred) {
   TIME_SCOPE(VISA_BUILDER_APPEND_INST);
+  vISA_ASSERT_INPUT(pred == nullptr, "DPAS may not have predicate");
 
   AppendVISAInstCommon();
 
@@ -7722,6 +7724,8 @@ int VISAKernelImpl::AppendVISADpasInstCommon(
     }
 
 
+    G4_Predicate *g4Pred =
+        (pred != nullptr) ? pred->g4opnd->asPredicate() : nullptr;
     CreateGenRawDstOperand(tmpDst);
     CreateGenRawSrcOperand(src0);
     CreateGenRawSrcOperand(src1);
@@ -7730,7 +7734,7 @@ int VISAKernelImpl::AppendVISADpasInstCommon(
         tmpDst->g4opnd->asDstRegRegion(), src0->g4opnd->asSrcRegRegion(),
         src1->g4opnd->asSrcRegRegion(), src2->g4opnd->asSrcRegRegion(),
         src3 ? src3->g4opnd->asSrcRegRegion() : nullptr, nullptr, src2Precision,
-        src1Precision, Depth, Count);
+        src1Precision, Depth, Count, g4Pred);
   }
   if (IS_VISA_BOTH_PATH) {
     int num_pred_desc_operands =
@@ -7764,8 +7768,10 @@ int VISAKernelImpl::AppendVISADpasInstCommon(
 
     unsigned char size = executionSize;
     size += (emask << 4);
-    inst->createCisaInstruction(opcode, size, 0, PredicateOpnd::getNullPred(),
-                                opnd, num_operands, inst_desc);
+    PredicateOpnd predOpnd =
+        (pred != nullptr) ? pred->convertToPred() : PredicateOpnd::getNullPred();
+    inst->createCisaInstruction(opcode, size, 0, predOpnd, opnd, num_operands,
+                                inst_desc);
     addInstructionToEnd(inst);
   }
 
@@ -7773,21 +7779,21 @@ int VISAKernelImpl::AppendVISADpasInstCommon(
 }
 
 int VISAKernelImpl::AppendVISADpasInst(
-    ISA_Opcode opcode, VISA_EMask_Ctrl emask, VISA_Exec_Size executionSize,
-    VISA_RawOpnd *tmpDst, VISA_RawOpnd *src0, VISA_RawOpnd *src1,
-    VISA_VectorOpnd *src2, GenPrecision src2Precision,
+    ISA_Opcode opcode, VISA_PredOpnd *pred, VISA_EMask_Ctrl emask,
+    VISA_Exec_Size executionSize, VISA_RawOpnd *tmpDst, VISA_RawOpnd *src0,
+    VISA_RawOpnd *src1, VISA_VectorOpnd *src2, GenPrecision src2Precision,
     GenPrecision src1Precision, uint8_t Depth, uint8_t Count) {
   return AppendVISADpasInstCommon(opcode, emask, executionSize, tmpDst, src0,
                                   src1, src2, nullptr, src2Precision,
-                                  src1Precision, Depth, Count);
+                                  src1Precision, Depth, Count, pred);
 }
 
 int VISAKernelImpl::AppendVISABdpasInst(
-    ISA_Opcode opcode, VISA_EMask_Ctrl emask, VISA_Exec_Size executionSize,
-    VISA_RawOpnd *dst, VISA_RawOpnd *src0, VISA_RawOpnd *src1,
-    VISA_RawOpnd *src2, VISA_VectorOpnd *src3, VISA_VectorOpnd *src4,
-    GenPrecision src2Precision, GenPrecision src1Precision, uint8_t Depth,
-    uint8_t Count) {
+    ISA_Opcode opcode, VISA_PredOpnd *pred, VISA_EMask_Ctrl emask,
+    VISA_Exec_Size executionSize, VISA_RawOpnd *dst, VISA_RawOpnd *src0,
+    VISA_RawOpnd *src1, VISA_RawOpnd *src2, VISA_VectorOpnd *src3,
+    VISA_VectorOpnd *src4, GenPrecision src2Precision,
+    GenPrecision src1Precision, uint8_t Depth, uint8_t Count) {
   TIME_SCOPE(VISA_BUILDER_APPEND_INST);
 
   int status = VISA_SUCCESS;
@@ -7797,6 +7803,7 @@ int VISAKernelImpl::AppendVISABdpasInst(
       "exec size of bdpas must be 16");
   vISA_ASSERT_INPUT(Depth == 8, "depth of bdpas must be 8!");
   vISA_ASSERT_INPUT(Count == 8, "repeat count of bdpas must be 8!");
+  vISA_ASSERT_INPUT(pred == nullptr, "BDPAS may not have predicate");
   AppendVISAInstCommon();
 
   if (IS_GEN_BOTH_PATH) {
@@ -7814,6 +7821,9 @@ int VISAKernelImpl::AppendVISABdpasInst(
     var_info_t *src2Dcl = &src1->decl->genVar;
     setAlignIfLarger(src2Dcl, getCISAAlign(irb.getGRFSize()), irb);
 
+    G4_Predicate *g4Pred =
+        (pred != nullptr) ? pred->g4opnd->asPredicate() : nullptr;
+
     CreateGenRawDstOperand(dst);
     CreateGenRawSrcOperand(src0);
     CreateGenRawSrcOperand(src1);
@@ -7823,7 +7833,7 @@ int VISAKernelImpl::AppendVISABdpasInst(
         src0->g4opnd->asSrcRegRegion(), src1->g4opnd->asSrcRegRegion(),
         src2->g4opnd->asSrcRegRegion(), src3->g4opnd->asSrcRegRegion(),
         src4->g4opnd->asSrcRegRegion(), src2Precision, src1Precision, Depth,
-        Count);
+        Count, g4Pred);
   }
   if (IS_VISA_BOTH_PATH) {
     // accounting for exec_size and pred_id in descriptor
@@ -7853,8 +7863,10 @@ int VISAKernelImpl::AppendVISABdpasInst(
 
     unsigned char size = executionSize;
     size += (emask << 4);
-    inst->createCisaInstruction(opcode, size, 0, PredicateOpnd::getNullPred(),
-                                opnd, num_operands, inst_desc);
+    PredicateOpnd predOpnd =
+        (pred != nullptr) ? pred->convertToPred() : PredicateOpnd::getNullPred();
+    inst->createCisaInstruction(opcode, size, 0, predOpnd, opnd, num_operands,
+                                inst_desc);
     addInstructionToEnd(inst);
   }
   return status;

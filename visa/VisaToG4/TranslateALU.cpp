@@ -153,7 +153,8 @@ int IR_Builder::translateVISADpasInst(VISA_Exec_Size executionSize,
                                       G4_SrcRegRegion *src2Opnd,
                                       G4_SrcRegRegion *src3Opnd,
                                       G4_SrcRegRegion *src4Opnd, GenPrecision A,
-                                      GenPrecision W, uint8_t D, uint8_t C) {
+                                      GenPrecision W, uint8_t D, uint8_t C,
+                                      G4_Predicate *pred) {
   TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
 
   G4_ExecSize exsize = toExecSize(executionSize);
@@ -185,7 +186,7 @@ int IR_Builder::translateVISADpasInst(VISA_Exec_Size executionSize,
       src4Opnd->setType(*this, Type_UB);
   }
   createDpasInst(opc, exsize, dstOpnd, src0Opnd, src1Opnd, src2Opnd, src3Opnd,
-                 src4Opnd, instOpt, A, W, D, C, true);
+                 src4Opnd, instOpt, A, W, D, C, true, pred);
 
   return VISA_SUCCESS;
 }

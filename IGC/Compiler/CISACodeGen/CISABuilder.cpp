@@ -7228,8 +7228,9 @@ void CEncoder::bdpas(CVariable *Dst, CVariable *Acc, CVariable *B, PrecisionType
       VISA_VectorOpnd *srcOpnd3 = GetSourceOperand(scalingPartsB[partIndex], noMod);
       VISA_VectorOpnd *srcOpnd4 = GetSourceOperand(scalingPartsA[partIndex], noMod);
 
-      V(vKernel->AppendVISABdpasInst(ISA_BDPAS, splitExecMask, toExecSize, dstOpnd, srcOpnd0, srcOpnd1, srcOpnd2,
-                                     srcOpnd3, srcOpnd4, src2Precision, src1Precision, systolicDepth, repeatCount));
+      V(vKernel->AppendVISABdpasInst(ISA_BDPAS, nullptr, splitExecMask, toExecSize, dstOpnd, srcOpnd0, srcOpnd1,
+                                     srcOpnd2, srcOpnd3, srcOpnd4, src2Precision, src1Precision, systolicDepth,
+                                     repeatCount));
     }
     uint32_t dstOfstBytes = m_encoderState.m_dstOperand.subVar * getGRFSize() + Dst->GetAliasOffset();
     MergePayloadToHigherSIMD(partsDst[0], partsDst[1], repeatCount, Dst, dstOfstBytes, visaNumLanes(fromExecSize));
@@ -7254,8 +7255,8 @@ void CEncoder::bdpas(CVariable *Dst, CVariable *Acc, CVariable *B, PrecisionType
     VISA_VectorOpnd *srcOpnd3 = GetSourceOperand(BScaling, noMod);
     VISA_VectorOpnd *srcOpnd4 = GetSourceOperand(AScaling, noMod);
 
-    V(vKernel->AppendVISABdpasInst(ISA_BDPAS, execMask, execSize, dstOpnd, srcOpnd0, srcOpnd1, srcOpnd2, srcOpnd3,
-                                   srcOpnd4, src2Precision, src1Precision, systolicDepth, repeatCount));
+    V(vKernel->AppendVISABdpasInst(ISA_BDPAS, nullptr, execMask, execSize, dstOpnd, srcOpnd0, srcOpnd1, srcOpnd2,
+                                   srcOpnd3, srcOpnd4, src2Precision, src1Precision, systolicDepth, repeatCount));
   }
 }
 
@@ -7333,8 +7334,8 @@ void CEncoder::dpas(CVariable *dst, CVariable *input, CVariable *weight, Precisi
       VISA_RawOpnd *srcOpnd1 = GetRawSource(thePart == 0 ? weight0 : weight1);
       VISA_VectorOpnd *srcOpnd2 = GetSourceOperand(activation, noMod);
       V(vKernel->AppendVISADpasInst(
-          IsDpasw ? ISA_DPASW : ISA_DPAS, SplitEMask(fromExecSize, toExecSize, thePart, execMask), toExecSize, dstOpnd,
-          srcOpnd0, srcOpnd1, srcOpnd2, src2Precision, src1Precision, systolicDepth, repeatCount));
+          IsDpasw ? ISA_DPASW : ISA_DPAS, nullptr, SplitEMask(fromExecSize, toExecSize, thePart, execMask), toExecSize,
+          dstOpnd, srcOpnd0, srcOpnd1, srcOpnd2, src2Precision, src1Precision, systolicDepth, repeatCount));
     }
     uint32_t dstOfstBytes = m_encoderState.m_dstOperand.subVar * getGRFSize() + dst->GetAliasOffset();
     MergePayloadToHigherSIMD(dst0, dst1, repeatCount, dst, dstOfstBytes, visaNumLanes(fromExecSize));
@@ -7343,8 +7344,8 @@ void CEncoder::dpas(CVariable *dst, CVariable *input, CVariable *weight, Precisi
     VISA_RawOpnd *srcOpnd0 = GetRawSource(input);
     VISA_RawOpnd *srcOpnd1 = GetRawSource(weight);
     VISA_VectorOpnd *srcOpnd2 = GetSourceOperand(activation, noMod);
-    V(vKernel->AppendVISADpasInst(IsDpasw ? ISA_DPASW : ISA_DPAS, execMask, execSize, dstOpnd, srcOpnd0, srcOpnd1,
-                                  srcOpnd2, src2Precision, src1Precision, systolicDepth, repeatCount));
+    V(vKernel->AppendVISADpasInst(IsDpasw ? ISA_DPASW : ISA_DPAS, nullptr, execMask, execSize, dstOpnd, srcOpnd0,
+                                  srcOpnd1, srcOpnd2, src2Precision, src1Precision, systolicDepth, repeatCount));
   }
 }
 

@@ -1004,11 +1004,17 @@ void G4Verifier::verifyDpas(G4_INST *inst) {
   // Verify region and size of each operands
   G4_InstDpas *dpasInst = inst->asDpasInst();
 
-  if (dpasInst->getPredicate() || dpasInst->getCondMod()) {
-    DEBUG_VERBOSE("should not have predicate nor condMod");
+  if (dpasInst->getPredicate()) {
+    DEBUG_VERBOSE("should not have predicate");
     inst->emit(std::cerr);
     DEBUG_VERBOSE("\n");
-    vISA_ASSERT(false, "may not have predicate/condMod");
+    vISA_ASSERT(false, "DPAS may not have predicate");
+  }
+  if (dpasInst->getCondMod()) {
+    DEBUG_VERBOSE("should not have condMod");
+    inst->emit(std::cerr);
+    DEBUG_VERBOSE("\n");
+    vISA_ASSERT(false, "DPAS may not have condMod");
   }
   if (dpasInst->isInt() && (kernel.fg.builder->hasSimplifiedRegions() ||
       kernel.fg.builder->getOption(vISA_GAReArchBugFix))) {

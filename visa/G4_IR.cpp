@@ -8353,15 +8353,17 @@ G4_INST *G4_InstDpas::cloneInst(const IR_Builder *b) {
   if (!b)
     b = &builder;
   auto nonConstBuilder = const_cast<IR_Builder *>(b);
+  auto pred = nonConstBuilder->duplicateOperand(getPredicate());
   auto dst = nonConstBuilder->duplicateOperand(getDst());
   auto src0 = nonConstBuilder->duplicateOperand(getSrc(0));
   auto src1 = nonConstBuilder->duplicateOperand(getSrc(1));
   auto src2 = nonConstBuilder->duplicateOperand(getSrc(2));
   auto src3 = nonConstBuilder->duplicateOperand(getSrc(3));
   auto src4 = nonConstBuilder->duplicateOperand(getSrc(4));
-  return nonConstBuilder->createInternalDpasInst(
-      op, getExecSize(), dst, src0, src1, src2, option, getSrc2Precision(),
-      getSrc1Precision(), getSystolicDepth(), getRepeatCount(), src3, src4);
+  return nonConstBuilder->createDpasInst(
+      op, getExecSize(), dst, src0, src1, src2, src3, src4, option,
+      getSrc2Precision(), getSrc1Precision(), getSystolicDepth(),
+      getRepeatCount(), false, pred);
 }
 
 bool G4_InstDpas::isInt() const {

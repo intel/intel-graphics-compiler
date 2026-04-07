@@ -1103,8 +1103,9 @@ public:
   G4_InstDpas(const IR_Builder &builder, G4_opcode o, G4_ExecSize size,
               G4_DstRegRegion *d, G4_Operand *s0, G4_Operand *s1,
               G4_Operand *s2, G4_Operand *s3, G4_Operand *s4, G4_InstOpts opt,
-              GenPrecision a, GenPrecision w, uint8_t sd, uint8_t rc)
-      : G4_INST(builder, nullptr, o, nullptr, g4::NOSAT, size, d, s0, s1, s2,
+              GenPrecision a, GenPrecision w, uint8_t sd, uint8_t rc,
+              G4_Predicate *pred = nullptr)
+      : G4_INST(builder, pred, o, nullptr, g4::NOSAT, size, d, s0, s1, s2,
                 s3, s4, opt),
         Src1Precision(w), Src2Precision(a), SystolicDepth(sd), RepeatCount(rc) {
   }
