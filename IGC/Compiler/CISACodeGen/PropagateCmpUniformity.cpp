@@ -93,6 +93,11 @@ bool PropagateCmpUniformity::getEqualityBranches(CmpInst *cmp, BranchInst *br, B
       return true;
     }
   } else if (auto *fcmp = dyn_cast<FCmpInst>(cmp)) {
+    // Replacing nonUniform with a zero constant would corrupt sign-bit
+    // operations. Skip the optimization whenever the uniform operand is +/-0.0.
+    if (auto *cfp = dyn_cast<ConstantFP>(uniform))
+      if (cfp->isZero())
+        return false;
     auto pred = fcmp->getPredicate();
     if (pred == FCmpInst::FCMP_OEQ || pred == FCmpInst::FCMP_UEQ) {
       trueBranch = br->getSuccessor(0);
