@@ -12,6 +12,7 @@ SPDX-License-Identifier: MIT
 #include "Probe/Assertion.h"
 #include "IGC/common/LLVMWarningsPush.hpp"
 #include "llvm/Config/llvm-config.h"
+#include "llvm/Support/Casting.h"
 #include "llvm/IR/DerivedTypes.h"
 #include "llvm/IR/Module.h"
 #include "IGC/common/LLVMWarningsPop.hpp"
@@ -63,6 +64,12 @@ inline bool isOpaque(const llvm::PointerType *PT) {
 #else
   return true;
 #endif
+}
+
+inline bool isOpaquePointerTy(const llvm::Type *Type) {
+  if (auto *PTy = llvm::dyn_cast<llvm::PointerType>(Type))
+    return isOpaque(PTy);
+  return false;
 }
 
 } // namespace IGCLLVM

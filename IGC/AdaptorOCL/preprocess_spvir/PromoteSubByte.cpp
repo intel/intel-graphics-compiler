@@ -11,6 +11,7 @@ SPDX-License-Identifier: MIT
 #include "GenISAIntrinsics/GenIntrinsicInst.h"
 #include "PreprocessSPVIR.h"
 #include "BiFManager/BiFManagerHandler.hpp"
+#include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/IR/Type.h"
 #include "llvmWrapper/Support/Alignment.h"
 #include "llvmWrapper/Transforms/Utils/Cloning.h"
@@ -729,7 +730,12 @@ Value *PromoteSubByte::promoteBitCast(BitCastInst *bitcast) {
   }
 
   auto newType = getOrCreatePromotedType(bitcast->getDestTy());
+
   if (bitcast->getSrcTy() == newType) {
+    // For opaque pointers bitcasts, the types will be identical (both `ptr`).
+    // In that case, we don't need the bitcast, but we can't just return the raw operand either.
+    if (IGCLLVM::isOpaquePointerTy(newType))
+      return getOrCreatePromotedValue(bitcast->getOperand(0));
     return bitcast->getOperand(0);
   }
 
