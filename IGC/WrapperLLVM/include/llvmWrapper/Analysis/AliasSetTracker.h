@@ -31,7 +31,7 @@ BatchAAResults createAAresults(llvm::AliasAnalysis *AA) {
 }
 } // end namespace AliasAnalysis
 
-llvm::AliasSetTracker createAliasSetTracker(AliasAnalysis::BatchAAResults AARes) {
+llvm::AliasSetTracker createAliasSetTracker(AliasAnalysis::BatchAAResults &AARes) {
 #if LLVM_VERSION_MAJOR < 16
   return llvm::AliasSetTracker(*AARes);
 #else
