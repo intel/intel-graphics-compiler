@@ -62,6 +62,7 @@ cmp+sel to avoid expensive VxH mov.
 #include "GenISAIntrinsics/GenIntrinsics.h"
 #include "GenISAIntrinsics/GenIntrinsicInst.h"
 #include "common/IGCConstantFolder.h"
+#include "common/debug/DebugMacros.hpp"
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/ADT/Statistic.h>
 #include <llvm/ADT/SetVector.h>
@@ -6329,7 +6330,6 @@ public:
   StringRef getPassName() const override { return "MergeMemFromBranchOpt"; }
 
   bool runOnFunction(Function &F) override;
-  virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override { AU.setPreservesCFG(); }
 
   void visitCallInst(llvm::CallInst &C);
   void visitTypedWrite(llvm::CallInst *inst);
@@ -6409,20 +6409,61 @@ void MergeMemFromBranchOpt::visitTypedWrite(llvm::CallInst *inst) {
         }
       }
 
-      // if there are more predecessor than the ones with urb partial write,
-      // skip the optimization as it might increase the number of times it needs to do the urb write.
-      if (!succBB->hasNPredecessors(callSet.size()) || callSet.size() < 2)
+      if (callSet.size() < 2)
         return;
+
+      // If succBB has predecessors that don't have a matching typedwrite,
+      // create an intermediate block so we only merge the typedwrite paths.
+      BasicBlock *mergeBB = succBB;
+      if (!succBB->hasNPredecessors(callSet.size())) {
+        mergeBB = BasicBlock::Create(succBB->getContext(), VALUE_NAME(succBB->getName() + ".mergemem"),
+                                     succBB->getParent(), succBB);
+        BranchInst::Create(succBB, mergeBB);
+
+        // Collect the set of blocks being redirected.
+        SmallPtrSet<BasicBlock *, 4> redirectedBlocks;
+        for (auto *CI : callSet)
+          redirectedBlocks.insert(CI->getParent());
+
+        // Update PHI nodes in succBB: for each PHI, create a
+        // corresponding PHI in mergeBB for the redirected predecessors,
+        // then replace their entries with a single entry from mergeBB.
+        for (auto &I : *succBB) {
+          auto *PN = dyn_cast<PHINode>(&I);
+          if (!PN)
+            break;
+
+          PHINode *newPN =
+              PHINode::Create(PN->getType(), callSet.size(), VALUE_NAME(PN->getName() + ".mm"), &mergeBB->front());
+
+          for (auto *CI : callSet) {
+            BasicBlock *pred = CI->getParent();
+            newPN->addIncoming(PN->getIncomingValueForBlock(pred), pred);
+          }
+
+          // Remove the redirected entries from the original PHI and
+          // add a single entry from mergeBB.
+          for (auto *pred : redirectedBlocks)
+            PN->removeIncomingValue(pred, /*DeletePHIIfEmpty=*/false);
+          PN->addIncoming(newPN, mergeBB);
+        }
+
+        // Redirect the typedwrite predecessors to the new merge block.
+        for (auto *CI : callSet) {
+          auto *br = CI->getParent()->getTerminator();
+          br->replaceUsesOfWith(succBB, mergeBB);
+        }
+      }
 
       // start the conversion
       changed = 1;
 
       // create phi nodes for the data used by typedwrite
-      PHINode *p8 = PHINode::Create(inst->getOperand(8)->getType(), callSet.size(), "", &(succBB->front()));
-      PHINode *p7 = PHINode::Create(inst->getOperand(7)->getType(), callSet.size(), "", &(succBB->front()));
-      PHINode *p6 = PHINode::Create(inst->getOperand(6)->getType(), callSet.size(), "", &(succBB->front()));
-      PHINode *p5 = PHINode::Create(inst->getOperand(5)->getType(), callSet.size(), "", &(succBB->front()));
-      PHINode *itp = PHINode::Create(inst->getOperand(0)->getType(), callSet.size(), "", &(succBB->front()));
+      PHINode *p8 = PHINode::Create(inst->getOperand(8)->getType(), callSet.size(), "", &(mergeBB->front()));
+      PHINode *p7 = PHINode::Create(inst->getOperand(7)->getType(), callSet.size(), "", &(mergeBB->front()));
+      PHINode *p6 = PHINode::Create(inst->getOperand(6)->getType(), callSet.size(), "", &(mergeBB->front()));
+      PHINode *p5 = PHINode::Create(inst->getOperand(5)->getType(), callSet.size(), "", &(mergeBB->front()));
+      PHINode *itp = PHINode::Create(inst->getOperand(0)->getType(), callSet.size(), "", &(mergeBB->front()));
       for (unsigned int i = 0; i < callSet.size(); i++) {
         itp->addIncoming(callSet[i]->getOperand(0), callSet[i]->getParent());
         p5->addIncoming(callSet[i]->getOperand(5), callSet[i]->getParent());
@@ -6431,9 +6472,9 @@ void MergeMemFromBranchOpt::visitTypedWrite(llvm::CallInst *inst) {
         p8->addIncoming(callSet[i]->getOperand(8), callSet[i]->getParent());
       }
 
-      // move the first typedwrite instruction into succBB
+      // move the first typedwrite instruction into mergeBB
       inst->removeFromParent();
-      inst->insertBefore(&*succBB->getFirstInsertionPt());
+      inst->insertBefore(&*mergeBB->getFirstInsertionPt());
 
       // set the inst srcs to results from phi nodes above
       inst->setOperand(0, itp);

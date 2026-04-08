@@ -168,6 +168,7 @@ void initializeSetFastMathFlagsPass(llvm::PassRegistry &);
 void initializeSinkPointerConstAddPassPass(llvm::PassRegistry &);
 void initializeSPIRMetaDataTranslationPass(llvm::PassRegistry &);
 void initializeSplitStructurePhisPassPass(llvm::PassRegistry &);
+void initializeMergeMemFromBranchOptPass(llvm::PassRegistry &);
 void initializeMergeScalarPhisPassPass(llvm::PassRegistry &);
 void initializeSpv2dBlockIOResolutionPass(llvm::PassRegistry &);
 void initializeSpvPredicatedIOResolutionPass(llvm::PassRegistry &);
