@@ -397,6 +397,8 @@ DEF_VISA_OPTION(vISA_DelayLocalDeclareSplitInGlobalRA, ET_BOOL, "-delayLocalSpli
                 UNUSED, false)
 DEF_VISA_OPTION(vISA_DisableSpillCoalescing, ET_BOOL, "-nospillcleanup", UNUSED,
                 false)
+DEF_VISA_OPTION(vISA_GRFPostRASpillCodeCleanup, ET_BOOL_TRUE, "-postRAspillCleanup",
+                UNUSED, false)
 DEF_VISA_OPTION(vISA_GlobalSendVarSplit, ET_BOOL, "-globalSendVarSplit", UNUSED,
                 false)
 DEF_VISA_OPTION(vISA_NoRemat, ET_BOOL, "-noremat", UNUSED, false)

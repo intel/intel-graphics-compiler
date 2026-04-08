@@ -270,6 +270,7 @@ set(GenX_Common_Sources_External_Other
   SplitAlignedScalars.cpp
   SpillCleanup.cpp
   SpillCode.cpp
+  SpillFillPropagation.cpp
   SpillManagerGMRF.cpp
   SWWA.cpp
   TranslationInterface.cpp
@@ -370,6 +371,7 @@ set(GenX_Common_Headers
   SCCAnalysis.h
   SpillCleanup.h
   SpillCode.h
+  SpillFillPropagation.h
   SpillManagerGMRF.h
   SplitAlignedScalars.h
   VISAKernel.h

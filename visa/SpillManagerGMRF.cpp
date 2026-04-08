@@ -13,6 +13,7 @@ SPDX-License-Identifier: MIT
 #include "G4_IR.hpp"
 #include "GraphColor.h"
 #include "PointsToAnalysis.h"
+#include "SpillFillPropagation.h"
 
 #include <cmath>
 #include <unordered_set>
@@ -5967,6 +5968,14 @@ void GlobalRA::expandSpillFillIntrinsicsXE3P(unsigned int spillSizeInBytes) {
     expandSpillIntrinsic(bb);
     expandFillIntrinsic(bb);
   }
+}
+
+void GlobalRA::spillFillPropagation() {
+  if (useLscForScatterSpill)
+    return;
+
+  SpillFillPropagation sfp(kernel, builder, *this);
+  sfp.run();
 }
 
 void GlobalRA::expandSpillFillIntrinsics(unsigned int spillSizeInBytes) {

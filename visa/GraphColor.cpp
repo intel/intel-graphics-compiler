@@ -21,6 +21,7 @@ SPDX-License-Identifier: MIT
 #include "SCCAnalysis.h"
 #include "SpillCleanup.h"
 #include "SpillCode.h"
+#include "SpillFillPropagation.h"
 #include "SplitAlignedScalars.h"
 #include "Timer.h"
 
@@ -12289,9 +12290,21 @@ int GlobalRA::coloringRegAlloc() {
         regChart->dumpRegChart(std::cerr, {}, 0);
       }
 
+      if (kernel.getOption(vISA_GRFPostRASpillCodeCleanup)) {
+        spillFillPropagation();
+      }
+
+      kernel.dumpToFile("after.spillFillPropagation");
+#ifndef DLL_MODE
+      if (stopAfter("spillFillPropagation")) {
+        return VISA_EARLY_EXIT;
+      }
+#endif // DLL_MODE
+
       if (builder.getOption(vISA_DynPerfModel)) {
         perfModel.run();
       }
+
       expandSpillFillIntrinsics(nextSpillOffset);
 
       VISA_DEBUG_VERBOSE(detectUndefinedUses(liveAnalysis, kernel));
