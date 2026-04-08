@@ -113,7 +113,7 @@ void ResolveImageImplicitArgsForBindless::visitCallInst(CallInst &CI) {
 
   ConstantInt *BindlessIndex = Builder.getInt32(BINDLESS_BTI);
   uint32_t AddrSpace = EncodeAS4GFXResource(*BindlessIndex, BufferType::BINDLESS);
-  Type *BindlessOffsetPtrTy = PointerType::get(M->getContext(), AddrSpace);
+  Type *BindlessOffsetPtrTy = PointerType::get(Builder.getInt8Ty(), AddrSpace);
 
   Value *Img = CI.getOperand(0);
   Value *ImgToInt = isa<IntegerType>(Img->getType()) ? Builder.CreateZExtOrTrunc(Img, Builder.getInt64Ty())
