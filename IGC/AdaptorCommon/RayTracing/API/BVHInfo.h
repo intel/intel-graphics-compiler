@@ -9,6 +9,7 @@ SPDX-License-Identifier: MIT
 #pragma once
 
 #include <stdint.h>
+#include <type_traits>
 
 namespace IGC {
 struct BVHInfo {
@@ -16,10 +17,10 @@ struct BVHInfo {
        // 1) No load of the offset is required (since we have it right here)
        // 2) A branch is not needed to guard the load if the bvh ptr is null
        // 3) The removed branch will enable better vectorization in many cases
-  bool hasFixedOffset = false;
   size_t offset = 0;
+  uint32_t hasFixedOffset = 0;
+  uint32_t uses64Bit = 0;
 
-  bool uses64Bit = false;
   inline bool operator==(const BVHInfo &RHS) const {
     return (uses64Bit == RHS.uses64Bit && hasFixedOffset == RHS.hasFixedOffset && offset == RHS.offset);
   }
