@@ -135,7 +135,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/MC/MCSymbol.h"
 #include "llvm/MC/MCSymbolELF.h"
 #include "llvm/MC/StringTableBuilder.h"
-#if LLVM_VERSION_MAJOR < 17 || defined(IGC_LLVM_TRUNK_REVISION)
+#if LLVM_VERSION_MAJOR < 17
 #include "llvm/MC/SubtargetFeature.h"
 #else // LLVM_VERSION_MAJOR
 #include "llvm/TargetParser/SubtargetFeature.h"

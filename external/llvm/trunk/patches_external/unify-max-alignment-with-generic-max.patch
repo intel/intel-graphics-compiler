@@ -29,15 +29,12 @@ else.
 
 While I'm here, also add a verifier check for the ByValOrByRefSize.
 ---
- llvm/include/llvm/CodeGen/TargetCallingConv.h |  8 ++--
- llvm/lib/IR/Verifier.cpp                      | 38 +++++++++++--------
- llvm/test/Verifier/param-align.ll             | 14 +++----
- llvm/test/Verifier/param-attr-align.ll        |  4 +-
- llvm/test/Verifier/param-ret-align.ll         | 12 +++---
- 5 files changed, 42 insertions(+), 34 deletions(-)
+ llvm/include/llvm/CodeGen/TargetCallingConv.h |  8 ++---
+ llvm/lib/IR/Verifier.cpp                      | 34 +++++++++++--------
+ 2 files changed, 23 insertions(+), 19 deletions(-)
 
 diff --git a/llvm/include/llvm/CodeGen/TargetCallingConv.h b/llvm/include/llvm/CodeGen/TargetCallingConv.h
-index 1333f2d98..1ae1688c6 100644
+index 89ea9bcb2a40..70a2d8e5faaf 100644
 --- a/llvm/include/llvm/CodeGen/TargetCallingConv.h
 +++ b/llvm/include/llvm/CodeGen/TargetCallingConv.h
 @@ -45,9 +45,9 @@ namespace ISD {
@@ -63,10 +60,10 @@ index 1333f2d98..1ae1688c6 100644
  
      bool isZExt() const { return IsZExt; }
 diff --git a/llvm/lib/IR/Verifier.cpp b/llvm/lib/IR/Verifier.cpp
-index 2d62d31cf..5a82f1202 100644
+index 1408ce293ca6..2370bfd0a2be 100644
 --- a/llvm/lib/IR/Verifier.cpp
 +++ b/llvm/lib/IR/Verifier.cpp
-@@ -279,13 +279,6 @@ namespace {
+@@ -291,13 +291,6 @@ namespace {
  
  class Verifier : public InstVisitor<Verifier>, VerifierSupport {
    friend class InstVisitor<Verifier>;
@@ -80,10 +77,10 @@ index 2d62d31cf..5a82f1202 100644
    DominatorTree DT;
  
    /// When verifying a basic block, keep track of all of the
-@@ -1870,31 +1863,43 @@ void Verifier::verifyParameterAttrs(AttributeSet Attrs, Type *Ty,
+@@ -1939,31 +1932,43 @@ void Verifier::verifyParameterAttrs(AttributeSet Attrs, Type *Ty,
    }
  
-   if (PointerType *PTy = dyn_cast<PointerType>(Ty)) {
+   if (isa<PointerType>(Ty)) {
 +    if (Attrs.hasAttribute(Attribute::Alignment)) {
 +      Align AttrAlign = Attrs.getAlignment().valueOrOne();
 +      Check(AttrAlign.value() <= Value::MaximumAlignment,
@@ -128,17 +125,9 @@ index 2d62d31cf..5a82f1202 100644
 +            (1ULL << 32),
 +        "huge 'preallocated' arguments are unsupported", V);
      }
-     if (!PTy->isOpaque()) {
-       if (!isa<PointerType>(PTy->getNonOpaquePointerElementType()))
-@@ -3237,12 +3242,15 @@ void Verifier::visitCallBase(CallBase &Call) {
-     Check(Callee->getValueType() == FTy,
-           "Intrinsic called with incompatible signature", Call);
+   }
  
-+  // Disallow passing/returning values with alignment higher than we can
-+  // represent.
-+  // FIXME: Consider making DataLayout cap the alignment, so this isn't
-+  // necessary.
-   auto VerifyTypeAlign = [&](Type *Ty, const Twine &Message) {
+@@ -3424,8 +3429,7 @@ void Verifier::visitCallBase(CallBase &Call) {
      if (!Ty->isSized())
        return;
      Align ABIAlign = DL.getABITypeAlign(Ty);
@@ -147,4 +136,8 @@ index 2d62d31cf..5a82f1202 100644
 +    Check(ABIAlign.value() <= Value::MaximumAlignment,
            "Incorrect alignment of " + Message + " to called function!", Call);
    };
- 
+
+
+--
+2.43.0
+
