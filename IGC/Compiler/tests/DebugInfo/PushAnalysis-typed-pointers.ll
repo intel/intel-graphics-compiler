@@ -6,6 +6,8 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
+; FIXME: make this test work without shader type
+; REQUIRES: shader-types
 ; RUN: igc_opt --igc-push-analysis --inputds --igc-collect-domain-shader-properties -S < %s | FileCheck %s
 ; ------------------------------------------------
 ; PushAnalysis

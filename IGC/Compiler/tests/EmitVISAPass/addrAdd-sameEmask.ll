@@ -5,7 +5,8 @@
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
-; REQUIRES: regkeys
+; FIXME: make this test work without shader type
+; REQUIRES: regkeys, shader-types
 ; platformNvl
 ; RUN: igc_opt -platformbmg -igc-emit-visa %s -inputcs -simd-mode 32 -regkey DumpVISAASMToConsole=1,DebugSoftwareNeedsA0Reset=1,EnableEmitMoreMoviCases=0 | FileCheck %s --check-prefix=CHECK-BMG
 ; RUN: igc_opt -platformNvl -igc-emit-visa %s -inputcs -simd-mode 32 -regkey DumpVISAASMToConsole=1,DebugSoftwareNeedsA0Reset=1,EnableEmitMoreMoviCases=0 | FileCheck %s --check-prefix=CHECK-NVL

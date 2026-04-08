@@ -5,7 +5,8 @@
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
-; REQUIRES: regkeys
+; FIXME: make this test work without shader type
+; REQUIRES: regkeys, shader-types
 ;
 ; RUN: igc_opt -platformdg2 -igc-emit-visa %s -inputcs -simd-mode 32 -regkey DumpVISAASMToConsole | FileCheck %s
 ; ------------------------------------------------

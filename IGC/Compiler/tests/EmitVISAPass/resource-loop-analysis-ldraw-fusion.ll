@@ -9,7 +9,8 @@
 ; Test that ResourceLoopAnalysis fuses consecutive ldraw_indexed calls
 ; that use the same non-uniform resource into a single resource loop.
 ;
-; REQUIRES: llvm-14-plus, regkeys
+; FIXME: make this test work without shader type
+; REQUIRES: llvm-14-plus, regkeys, shader-types
 ; UNSUPPORTED: llvm-17-plus
 
 ; RUN: igc_opt --typed-pointers -platformPtl -simd-mode 16 -inputcs -igc-emit-visa -regkey DumpVISAASMToConsole,FuseResourceLoop=0 -S %s 2>&1 | FileCheck %s --check-prefix=CHECK-FRL0

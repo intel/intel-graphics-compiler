@@ -1,3 +1,5 @@
+; FIXME: make this test work without shader type
+; REQUIRES: shader-types
 ; REQUIRES: llvm-14-plus
 ; RUN: igc_opt --opaque-pointers -igc-low-precision-opt -inputps -S < %s | FileCheck %s
 ; ------------------------------------------------

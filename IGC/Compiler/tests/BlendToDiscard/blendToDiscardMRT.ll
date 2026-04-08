@@ -6,6 +6,8 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
+; FIXME: make this test work without shader type
+; REQUIRES: shader-types
 ; UNSUPPORTED: llvm-17-plus
 ; RUN: igc_opt --typed-pointers --inputps --platformskl --BlendToDiscard -igc-serialize-metadata -S < %s | FileCheck %s
 ; ------------------------------------------------

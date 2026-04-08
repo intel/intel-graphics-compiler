@@ -6,6 +6,8 @@
 ;
 ;============================ end_copyright_notice =============================
 
+; FIXME: make this test work without shader type
+; REQUIRES: shader-types
 ; RUN: igc_opt -igc-early-out-patterns-pass -S -inputcs < %s | FileCheck %s
 ; ------------------------------------------------
 ; EarlyOutPatterns

@@ -6,6 +6,8 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
+; FIXME: make this test work without shader type
+; REQUIRES: shader-types
 ; UNSUPPORTED: llvm-17-plus
 ; RUN: igc_opt --typed-pointers -igc-early-out-patterns-pass -S -inputcs < %s | FileCheck %s
 ; ------------------------------------------------

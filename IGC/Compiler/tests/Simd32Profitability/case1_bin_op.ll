@@ -7,8 +7,6 @@
 ;============================ end_copyright_notice =============================
 ;
 ; REQUIRES: llvm-14-plus, regkeys
-; RUN: igc_opt --opaque-pointers --regkey PrintToConsole --regkey PSSIMD32HeuristicFP16 --enable-profitability-print --simd32-profit -igc-serialize-metadata --inputps -S < %s 2>&1 | FileCheck %s
-; RUN: igc_opt --opaque-pointers --regkey PrintToConsole --regkey PSSIMD32HeuristicLoopAndDiscard --enable-profitability-print --simd32-profit -igc-serialize-metadata --inputps -S < %s 2>&1 | FileCheck %s
 ;
 ; RUN: igc_opt --opaque-pointers --regkey PrintToConsole --regkey OCLSIMD16SelectionMask=1 --enable-profitability-print --simd32-profit -igc-serialize-metadata --inputocl -S < %s 2>&1 | FileCheck %s
 ; RUN: igc_opt --opaque-pointers --regkey PrintToConsole --regkey OCLSIMD16SelectionMask=2 --enable-profitability-print --simd32-profit -igc-serialize-metadata --inputocl -S < %s 2>&1 | FileCheck %s

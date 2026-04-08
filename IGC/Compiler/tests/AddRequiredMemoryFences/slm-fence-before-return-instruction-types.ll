@@ -7,7 +7,8 @@
 ;============================ end_copyright_notice =============================
 
 
-; REQUIRES: llvm-14-plus
+; FIXME: make this test work without shader type
+; REQUIRES: llvm-14-plus, shader-types
 ; RUN: igc_opt --opaque-pointers %s -S --platformdg2 --inputcs --igc-add-required-memory-fences | FileCheck %s
 
 ; Test that pass added an SLM fence after the store.

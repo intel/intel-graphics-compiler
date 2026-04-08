@@ -6,7 +6,8 @@
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
-; REQUIRES: llvm-14-plus, regkeys
+; FIXME: make this test work without shader type
+; REQUIRES: llvm-14-plus, regkeys, shader-types
 ; RUN: igc_opt --typed-pointers -platformbmg -igc-emit-visa -simd-mode 16 -inputrt -regkey ResourceLoopUnrollIteration=4,FuseResourceLoop=0,DumpVISAASMToConsole -S < %s | FileCheck %s
 ;
 ; Test checks how we emit ResourceLoop

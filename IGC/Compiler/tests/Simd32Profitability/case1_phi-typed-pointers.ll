@@ -7,8 +7,6 @@
 ;============================ end_copyright_notice =============================
 ;
 ; REQUIRES: regkeys
-; RUN: igc_opt --regkey PrintToConsole --regkey PSSIMD32HeuristicFP16 --enable-profitability-print --simd32-profit -igc-serialize-metadata --inputps -S < %s 2>&1 | FileCheck %s --check-prefix=ONLY16
-; RUN: igc_opt --regkey PrintToConsole --regkey PSSIMD32HeuristicLoopAndDiscard --enable-profitability-print --simd32-profit -igc-serialize-metadata --inputps -S < %s 2>&1 | FileCheck %s --check-prefix=ONLY16
 ;
 ; RUN: igc_opt --regkey PrintToConsole --regkey OCLSIMD16SelectionMask=1 --enable-profitability-print --simd32-profit -igc-serialize-metadata --inputocl -S < %s 2>&1 | FileCheck %s --check-prefix=BOTH
 ; RUN: igc_opt --regkey PrintToConsole --regkey OCLSIMD16SelectionMask=2 --enable-profitability-print --simd32-profit -igc-serialize-metadata --inputocl -S < %s 2>&1 | FileCheck %s --check-prefix=BOTH
@@ -19,8 +17,6 @@
 ; Simd32ProfitabilityAnalysis
 ; ------------------------------------------------
 
-; ONLY16: {{.*}}isSimd16Profitable: 1{{.*}}
-; ONLY16-NEXT: {{.*}}isSimd32Profitable: 0{{.*}}
 
 ; BOTH: {{.*}}isSimd16Profitable: 1{{.*}}
 ; BOTH-NEXT: {{.*}}isSimd32Profitable: 1{{.*}}

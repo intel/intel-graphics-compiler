@@ -6,7 +6,8 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; REQUIRES: regkeys
+; FIXME: make this test work without shader type
+; REQUIRES: regkeys, shader-types
 ; UNSUPPORTED: llvm-17-plus
 ; RUN: igc_opt --typed-pointers %s -S -o - --inputcs --regkey OverrideCsWalkOrderEnable=1,OverrideCsWalkOrder=0,OverrideCsTileLayoutEnable=1,OverrideCsTileLayout=0 -igc-constant-coalescing | FileCheck %s
 

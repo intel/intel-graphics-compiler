@@ -1,3 +1,5 @@
+; FIXME: make this test work without shader type
+; REQUIRES: shader-types
 ; UNSUPPORTED: llvm-17-plus
 ; RUN: igc_opt --typed-pointers -igc-low-precision-opt -inputps -S < %s | FileCheck %s
 ; ------------------------------------------------

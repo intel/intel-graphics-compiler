@@ -6,7 +6,8 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; REQUIRES: llvm-14-plus
+; FIXME: make this test work without shader type
+; REQUIRES: llvm-14-plus, shader-types
 ; RUN: igc_opt --opaque-pointers -igc-early-out-patterns-pass -S -inputps < %s | FileCheck %s
 ; ------------------------------------------------
 ; EarlyOutPatterns

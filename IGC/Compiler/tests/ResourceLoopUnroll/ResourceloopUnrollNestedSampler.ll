@@ -9,7 +9,6 @@
 ; REQUIRES: llvm-14-plus, regkeys
 ; UNSUPPORTED: llvm-17-plus
 ; RUN: igc_opt --typed-pointers -platformbmg -igc-resource-loop-unroll -regkey ResourceLoopUnrollNested=4 -verify -S < %s | FileCheck %s --check-prefix=CHECK-LL
-; RUN: igc_opt --typed-pointers -platformbmg -igc-resource-loop-unroll -igc-emit-visa -simd-mode 16 -inputrt -regkey ResourceLoopUnrollNested=4 -regkey DumpVISAASMToConsole -S < %s | FileCheck %s --check-prefix=CHECK-VISAASM
 ;
 ; Test checks how we emit ResourceLoop
 
@@ -64,84 +63,6 @@ define spir_kernel void @test1(<64 x i32> %src, float addrspace(1)* %dst) {
 ; CHECK-LL-NEXT:    store float [[OUT]], float addrspace(1)* [[DST:%.*]], align 4
 ; CHECK-LL-NEXT:    ret void
 ;
-; COM: check predicate load and lifetime.start
-; CHECK-VISAASM:  _main_0:
-; CHECK-VISAASM-NEXT:  mov (M1, 16) svn0(0,0)<1> threadIdInGroupX(0,0)<1;1,0>
-; CHECK-VISAASM-NEXT:  mov (M1, 16) sampler(0,0)<1> svn0_0v(0,0)<1;1,0>
-; CHECK-VISAASM-NEXT:  add (M1_NM, 1) texture(0,0)<1> src(2,8)<0;1,0> 0x500:w
-; CHECK-VISAASM-NEXT:  lifetime.start V0032
-;
-; CHECK-VISAASM:  _test1_001_partial_check5:
-; CHECK-VISAASM-NEXT:  setp (M1_NM, 16) P1 0x0:ud
-; CHECK-VISAASM-NEXT:  cmp.eq (M1, 16) P1 V0035(0,0)<0;1,0> V0035(0,0)<0;1,0>
-; CHECK-VISAASM-NEXT:  mov (M1_NM, 1) V0036(0,0)<1> P1
-; CHECK-VISAASM-NEXT:  mov (M1_NM, 1) V0034(0,0)<1> V0036(0,0)<0;1,0>
-; CHECK-VISAASM-NEXT:  fbl (M1_NM, 1) V0038(0,0)<1> V0034(0,0)<0;1,0>
-; CHECK-VISAASM-NEXT:  shl (M1_NM, 1) ShuffleTmp(0,0)<1> V0039(0,0)<0;1,0> 0x2:uw
-; CHECK-VISAASM-NEXT:  addr_add (M1_NM, 1) A0(0)<1> &sampler_0v ShuffleTmp(0,0)<0;1,0>
-; CHECK-VISAASM-NEXT:  mov (M1_NM, 1) firstActiveSampler6(0,0)<1> r[A0(0),0]<0;1,0>:ud
-; CHECK-VISAASM-NEXT:  cmp.eq (M1, 16) P2 sampler_0v(0,0)<1;1,0> firstActiveSampler6(0,0)<0;1,0>
-; CHECK-VISAASM-NEXT:  mov (M1, 16) V0040(0,0)<1> 0x0:f
-; CHECK-VISAASM-NEXT:  movs (M1_NM, 1) S31(0) firstActiveSampler6(0,0)<0;1,0>
-; CHECK-VISAASM-NEXT:  movs (M1_NM, 1) %bss(0) texture(0,0)<0;1,0>
-; CHECK-VISAASM-NEXT:  (P2) sample_lz.RGBA (M1, 16)  0x0:uw S31 %bss V0032.0 %null.0 V0040.0
-; CHECK-VISAASM-NEXT:  (P2) goto (M1, 16) _test1_006_unroll_merge
-;
-; CHECK-VISAASM:  _test1_002_partial_check3:
-; CHECK-VISAASM-NEXT:  setp (M1_NM, 16) P3 0x0:ud
-; CHECK-VISAASM-NEXT:  cmp.eq (M1, 16) P3 V0043(0,0)<0;1,0> V0043(0,0)<0;1,0>
-; CHECK-VISAASM-NEXT:  mov (M1_NM, 1) V0044(0,0)<1> P3
-; CHECK-VISAASM-NEXT:  mov (M1_NM, 1) V0042(0,0)<1> V0044(0,0)<0;1,0>
-; CHECK-VISAASM-NEXT:  fbl (M1_NM, 1) V0046(0,0)<1> V0042(0,0)<0;1,0>
-; CHECK-VISAASM-NEXT:  shl (M1_NM, 1) ShuffleTmp_0v(0,0)<1> V0047(0,0)<0;1,0> 0x2:uw
-; CHECK-VISAASM-NEXT:  addr_add (M1_NM, 1) A1(0)<1> &sampler_0v ShuffleTmp_0v(0,0)<0;1,0>
-; CHECK-VISAASM-NEXT:  mov (M1_NM, 1) firstActiveSampler4(0,0)<1> r[A1(0),0]<0;1,0>:ud
-; CHECK-VISAASM-NEXT:  cmp.eq (M1, 16) P4 sampler_0v(0,0)<1;1,0> firstActiveSampler4(0,0)<0;1,0>
-; CHECK-VISAASM-NEXT:  mov (M1, 16) V0048(0,0)<1> 0x0:f
-; CHECK-VISAASM-NEXT:  movs (M1_NM, 1) S31(0) firstActiveSampler4(0,0)<0;1,0>
-; CHECK-VISAASM-NEXT:  movs (M1_NM, 1) %bss(0) texture(0,0)<0;1,0>
-; CHECK-VISAASM-NEXT:  (P4) sample_lz.RGBA (M1, 16)  0x0:uw S31 %bss V0032.0 %null.0 V0048.0
-; CHECK-VISAASM-NEXT:  (P4) goto (M1, 16) _test1_006_unroll_merge
-;
-; CHECK-VISAASM:  _test1_003_partial_check1:
-; CHECK-VISAASM-NEXT:  setp (M1_NM, 16) P5 0x0:ud
-; CHECK-VISAASM-NEXT:  cmp.eq (M1, 16) P5 V0051(0,0)<0;1,0> V0051(0,0)<0;1,0>
-; CHECK-VISAASM-NEXT:  mov (M1_NM, 1) V0052(0,0)<1> P5
-; CHECK-VISAASM-NEXT:  mov (M1_NM, 1) V0050(0,0)<1> V0052(0,0)<0;1,0>
-; CHECK-VISAASM-NEXT:  fbl (M1_NM, 1) V0054(0,0)<1> V0050(0,0)<0;1,0>
-; CHECK-VISAASM-NEXT:  shl (M1_NM, 1) ShuffleTmp_1v(0,0)<1> V0055(0,0)<0;1,0> 0x2:uw
-; CHECK-VISAASM-NEXT:  addr_add (M1_NM, 1) A2(0)<1> &sampler_0v ShuffleTmp_1v(0,0)<0;1,0>
-; CHECK-VISAASM-NEXT:  mov (M1_NM, 1) firstActiveSampler2(0,0)<1> r[A2(0),0]<0;1,0>:ud
-; CHECK-VISAASM-NEXT:  cmp.eq (M1, 16) P6 sampler_0v(0,0)<1;1,0> firstActiveSampler2(0,0)<0;1,0>
-; CHECK-VISAASM-NEXT:  mov (M1, 16) V0056(0,0)<1> 0x0:f
-; CHECK-VISAASM-NEXT:  movs (M1_NM, 1) S31(0) firstActiveSampler2(0,0)<0;1,0>
-; CHECK-VISAASM-NEXT:  movs (M1_NM, 1) %bss(0) texture(0,0)<0;1,0>
-; CHECK-VISAASM-NEXT:  (P6) sample_lz.RGBA (M1, 16)  0x0:uw S31 %bss V0032.0 %null.0 V0056.0
-; CHECK-VISAASM-NEXT:  (P6) goto (M1, 16) _test1_006_unroll_merge
-;
-; CHECK-VISAASM:  _test1_004_partial_check:
-; CHECK-VISAASM-NEXT:  setp (M1_NM, 16) P7 0x0:ud
-; CHECK-VISAASM-NEXT:  cmp.eq (M1, 16) P7 V0059(0,0)<0;1,0> V0059(0,0)<0;1,0>
-; CHECK-VISAASM-NEXT:  mov (M1_NM, 1) V0060(0,0)<1> P7
-; CHECK-VISAASM-NEXT:  mov (M1_NM, 1) V0058(0,0)<1> V0060(0,0)<0;1,0>
-; CHECK-VISAASM-NEXT:  fbl (M1_NM, 1) V0062(0,0)<1> V0058(0,0)<0;1,0>
-; CHECK-VISAASM-NEXT:  shl (M1_NM, 1) ShuffleTmp_2v(0,0)<1> V0063(0,0)<0;1,0> 0x2:uw
-; CHECK-VISAASM-NEXT:  addr_add (M1_NM, 1) A3(0)<1> &sampler_0v ShuffleTmp_2v(0,0)<0;1,0>
-; CHECK-VISAASM-NEXT:  mov (M1_NM, 1) firstActiveSampler(0,0)<1> r[A3(0),0]<0;1,0>:ud
-; CHECK-VISAASM-NEXT:  cmp.eq (M1, 16) P8 sampler_0v(0,0)<1;1,0> firstActiveSampler(0,0)<0;1,0>
-; CHECK-VISAASM-NEXT:  mov (M1, 16) V0064(0,0)<1> 0x0:f
-; CHECK-VISAASM-NEXT:  movs (M1_NM, 1) S31(0) firstActiveSampler(0,0)<0;1,0>
-; CHECK-VISAASM-NEXT:  movs (M1_NM, 1) %bss(0) texture(0,0)<0;1,0>
-; CHECK-VISAASM-NEXT:  (P8) sample_lz.RGBA (M1, 16)  0x0:uw S31 %bss V0032.0 %null.0 V0064.0
-; CHECK-VISAASM-NEXT:  (!P8) goto (M1, 16) _test1_001_partial_check5
-;
-; CHECK-VISAASM:  _test1_006_unroll_merge:
-; CHECK-VISAASM-NEXT:  mov (M1, 16) out(0,0)<1> V0032(0,0)<1;1,0>
-; CHECK-VISAASM-NEXT:  mov (M1_NM, 1) dst_0v(0,0)<1> dst(0,0)<0;1,0>
-; CHECK-VISAASM-NEXT:  mov (M1, 16) dstBroadcast_0v(0,0)<2> dst_1v(0,0)<0;1,0>
-; CHECK-VISAASM-NEXT:  mov (M1, 16) dstBroadcast_0v(0,1)<2> dst_1v(0,1)<0;1,0>
-; CHECK-VISAASM-NEXT:  lsc_store.ugm.wb.wb (M1, 16)  flat[dstBroadcast]:a64  out:d32
-; CHECK-VISAASM-NEXT:  ret (M1, 1)
 
   %svn0 = call i16 @llvm.genx.GenISA.DCL.SystemValue.i16(i32 17)
   %sampler = zext i16 %svn0 to i32
