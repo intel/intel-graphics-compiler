@@ -97,9 +97,13 @@ bool ConvertUserSemanticDecoratorOnFunctions::runOnModule(Module &M) {
 
     auto annotation = cast<ConstantDataArray>(annotation_gv->getInitializer())->getAsCString();
 
-    auto &funcInfo = MD->FuncMD[annotated_function];
-    funcInfo.UserAnnotations.emplace_back(annotation.data());
-    convertAnnotationsToAttributes(annotated_function, funcInfo.UserAnnotations);
+    auto funcInfoIt = MD->FuncMD.find(annotated_function);
+    if (funcInfoIt != MD->FuncMD.end()) {
+      funcInfoIt->second.UserAnnotations.emplace_back(annotation.data());
+      convertAnnotationsToAttributes(annotated_function, funcInfoIt->second.UserAnnotations);
+    } else {
+      convertAnnotationsToAttributes(annotated_function, {annotation.data()});
+    }
   }
 
   IGC::serialize(*MD, &M);
