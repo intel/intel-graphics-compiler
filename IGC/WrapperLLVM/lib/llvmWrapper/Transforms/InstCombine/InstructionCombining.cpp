@@ -65,7 +65,7 @@ void InstructionCombiningPassWrapper::getAnalysisUsage(AnalysisUsage &AU) const 
 
 char InstructionCombiningPassWrapper::ID = 0;
 FunctionPass *createWrappedInstructionCombiningPass() {
-#if LLVM_VERSION_MAJOR > 16 && !defined(IGC_LLVM_TRUNK_REVISION)
+#if LLVM_VERSION_MAJOR > 16
   return new InstructionCombiningPassWrapper();
 #else
   return llvm::createInstructionCombiningPass();
