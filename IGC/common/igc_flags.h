@@ -702,8 +702,6 @@ DECLARE_IGC_REGKEY(bool, EnableSinkPointerConstAdd, true,
 DECLARE_IGC_REGKEY(bool, ForceHoistUDivURem, false,
                    "Always hoist UDiv/URem to common ancestor, even if it results in speculative execution", false)
 DECLARE_IGC_REGKEY(DWORD, FPRangeAnalysisMaxDepth, 64, "Max recursive depth for FP range analysis", false)
-DECLARE_IGC_REGKEY(bool, EnableSimdCoalescing, true,
-                   "Flag to enable Coalesce SIMD1/SIMD2 uniform operations into wider SIMD", false)
 
 DECLARE_IGC_GROUP("Shader debugging")
 DECLARE_IGC_REGKEY(bool, CopyA0ToDBG0, false, " Copy a0 used for extended msg descriptor to dbg0 to help debug", false)
