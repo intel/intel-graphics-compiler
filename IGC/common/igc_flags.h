@@ -556,7 +556,7 @@ DECLARE_IGC_REGKEY(bool, EnableCustomLoopVersioning, true, "Enable IGC to do cus
 DECLARE_IGC_REGKEY(bool, DisableMCSOpt, false, "Disable IGC to run MCS optimization", false)
 DECLARE_IGC_REGKEY(bool, MCSOptTwoStagesMode, false, "MCSOptimization gather all candidates than process", false)
 DECLARE_IGC_REGKEY(bool, DisableGatingSimilarSamples, false, "Disable Gating of similar sample instructions", false)
-DECLARE_IGC_REGKEY(bool, EnableSoftwareStencil, false, "Enable software stencil for PS.", false)
+
 DECLARE_IGC_REGKEY(bool, EnableInterpreterPatternMatching, false,
                    "Enable Interpreter pattern matching and force retry if the pattern was found.", false)
 DECLARE_IGC_REGKEY(bool, EnableSumFractions, false, "Enable SumFractions optimization in CustomUnsafeOptPass.", false)
@@ -1622,7 +1622,7 @@ DECLARE_IGC_REGKEY(bool, DisableDynamicPolyPackingPolicies, true,
 DECLARE_IGC_REGKEY(bool, RequestStage2, true, "Enable staged compilation via requesting stage 2", false)
 DECLARE_IGC_REGKEY(bool, LTOForStage1Compilation, true, "LTO for stage 1 compilation", false)
 DECLARE_IGC_REGKEY(bool, PSOForStage1Compilation, true, "PSO for stage 1 compilation", false)
-DECLARE_IGC_REGKEY(bool, SWStencilForStage1Compilation, true, "SWStencil for stage 1 compilation", false)
+
 DECLARE_IGC_REGKEY(bool, EnableTrackPtr, false, "Track Staging Context alloc/dealloc", false)
 DECLARE_IGC_REGKEY(bool, ExtraRetrySIMD16, false, "Enable extra simd16 with retry for STAGE1_BEST_PREF", false)
 DECLARE_IGC_REGKEY(bool, SaveRestoreIR, true, "Save/Restore IR for staged compilation to avoid duplicated compilations",
