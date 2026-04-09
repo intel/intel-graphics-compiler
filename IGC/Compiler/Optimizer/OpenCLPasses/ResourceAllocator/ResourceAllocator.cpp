@@ -57,6 +57,8 @@ bool ResourceAllocator::runOnModule(Module &M) {
   MetaDataUtils *pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
   // FunctionsInfo contains kernels only.
   for (auto i = pMdUtils->begin_FunctionsInfo(), e = pMdUtils->end_FunctionsInfo(); i != e; ++i) {
+    if (i->first->isDeclaration())
+      continue;
     runOnFunction(*(i->first));
   }
 
