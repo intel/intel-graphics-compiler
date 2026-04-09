@@ -5863,7 +5863,7 @@ void EmitPass::emitLdInstruction(llvm::Instruction *inst) {
   ResourceDescriptor pairedResource =
       samplerLoadIntrinsic->hasPairedTextureArg() &&
               llvm::isa<llvm::UndefValue>(samplerLoadIntrinsic->getPairedTextureValue()) == false
-          ? GetResourceVariable(samplerLoadIntrinsic->getPairedTextureValue())
+          ? GetResourceVariable(samplerLoadIntrinsic->getPairedTextureValue(), /*skipStatefulFolding=*/true)
           : ResourceDescriptor();
 
   CVariable *offset = ComputeSampleIntOffset(inst, offsetSourceIndex);
@@ -8431,7 +8431,7 @@ void EmitPass::emitSampleInstruction(SampleIntrinsic *inst) {
   [[maybe_unused]] bool isEval = isUsedOnlyByEval(inst);
   ResourceDescriptor pairedResource =
       inst->hasPairedTextureArg() && llvm::isa<llvm::UndefValue>(inst->getPairedTextureValue()) == false
-          ? GetResourceVariable(inst->getPairedTextureValue())
+          ? GetResourceVariable(inst->getPairedTextureValue(), /*skipStatefulFolding=*/true)
           : ResourceDescriptor();
 
 
@@ -8786,9 +8786,10 @@ void EmitPass::emitGather4Instruction(SamplerGatherIntrinsic *inst) {
   ResourceDescriptor resource = GetResourceVariable(textureValue);
 
   [[maybe_unused]] bool isEval = isUsedOnlyByEval(inst);
-  ResourceDescriptor pairedResource = llvm::isa<llvm::UndefValue>(inst->getPairedTextureValue()) == false
-                                          ? GetResourceVariable(inst->getPairedTextureValue())
-                                          : ResourceDescriptor();
+  ResourceDescriptor pairedResource =
+      llvm::isa<llvm::UndefValue>(inst->getPairedTextureValue()) == false
+          ? GetResourceVariable(inst->getPairedTextureValue(), /*skipStatefulFolding=*/true)
+          : ResourceDescriptor();
 
   SamplerDescriptor sampler;
   Value *samplerValue = inst->getSamplerValue();
@@ -20697,7 +20698,7 @@ void EmitPass::emitGetBufferPtr(GenIntrinsicInst *inst) {
   m_currShader->SetBindingTableEntryCountAndBitmap(directIdx, bufType, 0, bti);
 }
 
-ResourceDescriptor EmitPass::GetResourceVariable(Value *resourcePtr) {
+ResourceDescriptor EmitPass::GetResourceVariable(Value *resourcePtr, bool skipStatefulFolding) {
   ResourceDescriptor resource;
   BufferType bufType = BUFFER_TYPE_UNKNOWN;
   uint as = 0;
@@ -20721,7 +20722,7 @@ ResourceDescriptor EmitPass::GetResourceVariable(Value *resourcePtr) {
     if (IsBindless(bufType) || (bufType == RENDER_TARGET && m_currShader->m_Platform->hasEfficient64bEnabled()) ||
         !directIndexing) {
       auto SetResource = [&](Value *resourcePtr) {
-        if (m_currShader->m_Platform->hasEfficient64bEnabled()) {
+        if (!skipStatefulFolding && m_currShader->m_Platform->hasEfficient64bEnabled()) {
           if (auto SurfaceStateIndex = m_pattern->matchStateIndex(resourcePtr)) {
             resource.m_resource = GetSymbol(SurfaceStateIndex->first);
             resource.m_SurfaceStateIndex = SurfaceStateIndex->second;
