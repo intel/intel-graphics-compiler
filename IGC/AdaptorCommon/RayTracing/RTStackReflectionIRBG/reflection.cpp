@@ -235,9 +235,10 @@ template <typename GenT> IMPL auto _getRayTMin(RTSAS RTStack2<GenT> *__restrict_
 }
 IMPL_ALL_1ARG(_getRayTMin, StackPtr)
 
-CREATE_PRIVATE auto _getRayComparisonValue_Xe3(RTSAS RTStack2<Xe3> *__restrict__ StackPtr) {
+template <typename RTStackT> IMPL auto _getRayComparisonValue(RTSAS RTStack2<RTStackT> *__restrict__ StackPtr) {
   return StackPtr->ray0.ComparisonValue;
 }
+IMPL_ALL_1ARG_XE3PLUS(_getRayComparisonValue, StackPtr)
 
 template <typename RTStackT> IMPL auto _getRayTime(RTSAS RTStack2<RTStackT> *__restrict__ StackPtr) {
   return StackPtr->ray0.time;
