@@ -1651,5 +1651,38 @@ public:
 
     return canDo;
   }
+
+  // Returns the default SIMD mode for geometry front-end shaders (VS, HS, DS, GS)
+  // based on the platform, debug registry overrides, and metadata settings.
+  SIMDMode getGeomFFDefaultSIMDMode(uint32_t forceGeomFFShaderSIMDMode = 0) const {
+    SIMDMode simdMode = SIMDMode::UNKNOWN;
+
+    // Step 1: get platform-dependent default mode.
+    {
+      simdMode = getMinDispatchMode();
+    }
+
+    // Step 2: Override with a debug registry value.
+    // The IGC ForceGeomFFSIMDWidth flag has a higher priority than an API parameter.
+    uint32_t igcFlagSIMDSize = IGC_GET_FLAG_VALUE(ForceGeomFFSIMDWidth);
+
+    if (supportsSimd32ForAllShaders() && (igcFlagSIMDSize == 32)) {
+      simdMode = SIMDMode::SIMD32;
+    } else if (isCoreChildOf(IGFX_XE_HPC_CORE) && (igcFlagSIMDSize == 16)) {
+      simdMode = SIMDMode::SIMD16;
+    } else if (igcFlagSIMDSize == 8) {
+      simdMode = SIMDMode::SIMD8;
+    } else {
+      // Step 3: If not overwritten with debug registry value then override with metadata settings.
+      if (supportsSimd32ForAllShaders() && (forceGeomFFShaderSIMDMode == FLAG_GEOMFF_SIMD_MODE_FORCE_SIMD32)) {
+        simdMode = SIMDMode::SIMD32;
+      } else if (isCoreChildOf(IGFX_XE_HPC_CORE) && (forceGeomFFShaderSIMDMode == FLAG_GEOMFF_SIMD_MODE_FORCE_SIMD16)) {
+        simdMode = SIMDMode::SIMD16;
+      }
+    }
+
+    return simdMode;
+  }
+
 };
 } // namespace IGC

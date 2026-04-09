@@ -889,30 +889,7 @@ SIMDMode CodeGenContext::GetSIMDMode() const {
                   (type == ShaderType::DOMAIN_SHADER) || (type == ShaderType::GEOMETRY_SHADER);
 
   if (isGeomFF) {
-    // Step 1: get platform-dependent default mode.
-    {
-      simdMode = platform.getMinDispatchMode();
-    }
-    // Step 2: Override with a debug registry value
-    // The IGC ForceGeomFFSIMDWidth flag has a higher priority than an API parameter.
-    uint32_t igcFlagSIMDSize = IGC_GET_FLAG_VALUE(ForceGeomFFSIMDWidth);
-
-    if (platform.supportsSimd32ForAllShaders() && (igcFlagSIMDSize == 32)) {
-      simdMode = SIMDMode::SIMD32;
-    } else if (platform.isCoreChildOf(IGFX_XE_HPC_CORE) && (igcFlagSIMDSize == 16)) {
-      simdMode = SIMDMode::SIMD16;
-    } else if (igcFlagSIMDSize == 8) {
-      simdMode = SIMDMode::SIMD8;
-    } else {
-      // Step 3: If not overwritten with debug registry value then override with metadata settings.
-      if (platform.supportsSimd32ForAllShaders() &&
-          (getModuleMetaData()->compOpt.ForceGeomFFShaderSIMDMode == FLAG_GEOMFF_SIMD_MODE_FORCE_SIMD32)) {
-        simdMode = SIMDMode::SIMD32;
-      } else if (platform.isCoreChildOf(IGFX_XE_HPC_CORE) &&
-                 (getModuleMetaData()->compOpt.ForceGeomFFShaderSIMDMode == FLAG_GEOMFF_SIMD_MODE_FORCE_SIMD16)) {
-        simdMode = SIMDMode::SIMD16;
-      }
-    }
+    simdMode = platform.getGeomFFDefaultSIMDMode(getModuleMetaData()->compOpt.ForceGeomFFShaderSIMDMode);
   } else {
     IGC_ASSERT_MESSAGE(0, "Incorrect shader type");
   }
