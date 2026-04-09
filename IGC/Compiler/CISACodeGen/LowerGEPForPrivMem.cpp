@@ -601,46 +601,38 @@ bool IGC::SOALayoutChecker::MismatchDetected(Instruction &I) {
   Type *allocaTy = allocaRef.getAllocatedType();
 
   auto extractArrayOrVecEleType = [](Type *collectionType) -> Type * {
-    if (auto *arrTy = dyn_cast<ArrayType>(collectionType))
-      return arrTy->getElementType();
-    else if (auto *vec = dyn_cast<IGCLLVM::FixedVectorType>(collectionType))
-      return vec->getElementType();
-
-    return nullptr;
+    Type *result = collectionType;
+    while (true) {
+      if (auto *arrTy = dyn_cast<ArrayType>(result))
+        result = arrTy->getElementType();
+      else if (auto *vec = dyn_cast<IGCLLVM::FixedVectorType>(result))
+        result = vec->getElementType();
+      else
+        break;
+    }
+    return result;
   };
 
   // Compute allocaEltTy early because we might need it to check for non-promoted type GEPs
   Type *allocaEltTy = extractArrayOrVecEleType(allocaTy);
-  if (!allocaEltTy)
-    allocaEltTy = allocaTy;
-
   while (auto *structTy = dyn_cast<StructType>(allocaEltTy)) {
-    if (structTy->getNumElements() == 1) {
-      auto el = *structTy->element_begin();
+    if (structTy->getNumElements() != 1)
+      break;
 
-      if (el->isStructTy()) {
-        allocaEltTy = el;
-        continue;
-      }
-
-      if (el->isVectorTy() || el->isArrayTy()) {
-        allocaEltTy = extractArrayOrVecEleType(el);
-        break;
-      }
-    }
-
-    break;
+    allocaEltTy = extractArrayOrVecEleType(*structTy->element_begin());
   }
 
   IGC_ASSERT(allocaEltTy);
   if (!allocaEltTy)
     return false;
 
+  uint64_t allocaEltBitsSize = pDL->getTypeStoreSizeInBits(allocaEltTy);
+  IGC_ASSERT(allocaEltBitsSize > 0);
+
   // Check for byte-level access patterns. This detects memcpy-like patterns where an alloca with multi-byte elements
   // (e.g., [4 x float]) is accessed through i8 GEPs, which the promotion transformation cannot handle correctly.
-  if (allocaEltTy && !allocaEltTy->isIntegerTy(8)) {
-    uint64_t allocaEltSize = pDL->getTypeStoreSizeInBits(allocaEltTy);
-    if (allocaEltSize > 8) {
+  if (!allocaEltTy->isIntegerTy(8)) {
+    if (allocaEltBitsSize > 8) {
       SmallVector<Value *, 16> worklist;
       SmallPtrSet<Value *, 16> visited;
 
@@ -685,15 +677,12 @@ bool IGC::SOALayoutChecker::MismatchDetected(Instruction &I) {
   // reconstruct sub‑element (inter-lane or unaligned) accesses. Using it would risk incorrect indexing. The new
   // byte-precise algorithm could handle this, but while it is disabled we treat such dynamic non-promoted type GEPs as
   // a mismatch and leave them untouched.
-  if (allocaEltTy) {
-    for (User *U : allocaRef.users()) {
-      if (auto *GEP = dyn_cast<GetElementPtrInst>(U)) {
-        auto allocaSize = allocaEltTy->getScalarSizeInBits();
-        auto gepSize = GEP->getSourceElementType()->getScalarSizeInBits();
-        if (allocaSize != gepSize && GEP->getNumOperands() > 1 && !isa<ConstantInt>(GEP->getOperand(1))) {
-          pInfo->canUseSOALayout = false;
-          return true;
-        }
+  for (User *U : allocaRef.users()) {
+    if (auto *GEP = dyn_cast<GetElementPtrInst>(U)) {
+      auto gepBitsSize = pDL->getTypeStoreSizeInBits(GEP->getSourceElementType());
+      if (allocaEltBitsSize != gepBitsSize && GEP->getNumOperands() > 1 && !isa<ConstantInt>(GEP->getOperand(1))) {
+        pInfo->canUseSOALayout = false;
+        return true;
       }
     }
   }
@@ -706,18 +695,14 @@ bool IGC::SOALayoutChecker::MismatchDetected(Instruction &I) {
   else
     return false;
 
-  auto allocaSize = 0u;
-  if (auto *structTy = dyn_cast<StructType>(allocaEltTy)) {
-    auto DL = I.getParent()->getModule()->getDataLayout();
-    auto structLayout = DL.getStructLayout(structTy);
-    allocaSize = structLayout->getSizeInBits();
-  } else if (auto *collectionType = extractArrayOrVecEleType(allocaEltTy)) {
-    allocaSize = collectionType->getScalarSizeInBits();
-  } else {
-    allocaSize = allocaEltTy->getScalarSizeInBits();
+  // Aggregate (struct/array) loads and stores cannot be lowered by the promotion
+  // paths (loadEltsFromVecAlloca / storeEltsToVecAlloca use bitcast which is
+  // invalid for aggregate types). Reject them explicitly.
+  if (pUserTy->isAggregateType()) {
+    pInfo->canUseSOALayout = false;
+    return true;
   }
 
-  IGC_ASSERT(allocaSize > 0);
   auto vecTySize = pUserTy->getScalarSizeInBits();
 
   // if it's a GEP, we're actually interested in it's element type
@@ -731,9 +716,8 @@ bool IGC::SOALayoutChecker::MismatchDetected(Instruction &I) {
       // scalar lane size == element size, so we must not relax there.
       bool allowed = false;
       if (MismatchDetectionStrategy == DefaultLowerGEPStrategy) {
-        auto DL = I.getParent()->getModule()->getDataLayout();
-        unsigned pgepStoreBits = (unsigned)DL.getTypeStoreSizeInBits(pgep->getResultElementType());
-        allowed = isSameSizeReinterpret(pUserTy, pgepStoreBits, DL);
+        unsigned pgepStoreBits = (unsigned)pDL->getTypeStoreSizeInBits(pgep->getResultElementType());
+        allowed = isSameSizeReinterpret(pUserTy, pgepStoreBits, *pDL);
       }
       if (!allowed) {
         pInfo->canUseSOALayout = false;
@@ -742,21 +726,20 @@ bool IGC::SOALayoutChecker::MismatchDetected(Instruction &I) {
     }
 
     if (MismatchDetectionStrategy == UseScratchSpacePrivateMemoryOrUseStatelessStrategy) {
-      if (pgepTySize != allocaSize) {
+      if (pgepTySize != allocaEltBitsSize) {
         pInfo->canUseSOALayout = false;
         return true;
       }
     }
-  } else if (vecTySize != allocaSize) {
+  } else if (vecTySize != allocaEltBitsSize) {
     // Allow reinterpretation when total store size matches alloca element size,
     // but only for the LowerGEP register-promotion path (same rationale as the
     // GEP branch above — the legacy PrivateMemoryResolution transpose helper
     // cannot handle cross-type lane reinterpretation).
     bool allowed = false;
     if (MismatchDetectionStrategy == DefaultLowerGEPStrategy) {
-      auto DL = I.getParent()->getModule()->getDataLayout();
-      unsigned allocaStoreBits = (unsigned)DL.getTypeStoreSizeInBits(allocaEltTy);
-      allowed = isSameSizeReinterpret(pUserTy, allocaStoreBits, DL);
+      unsigned allocaStoreBits = (unsigned)pDL->getTypeStoreSizeInBits(allocaEltTy);
+      allowed = isSameSizeReinterpret(pUserTy, allocaStoreBits, *pDL);
     }
     if (!allowed) {
       pInfo->canUseSOALayout = false;
