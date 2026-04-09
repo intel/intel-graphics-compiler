@@ -947,23 +947,8 @@ void ReplaceUnsupportedIntrinsics::replaceLRound(IntrinsicInst *I) {
   IGC_ASSERT(srcType->isFloatTy() || srcType->isDoubleTy());
   IGC_ASSERT(dstType->isIntegerTy());
   IGCLLVM::IRBuilder<> Builder(I);
-  Value *zero = ConstantFP::get(srcType, 0.0f);
-  Value *cmp = Builder.CreateFCmpOGE(inVal, zero);
-  Value *val05 = nullptr;
-  Value *valm05 = nullptr;
-  if (srcType->isFloatTy() && m_Ctx->platform.hasNoFP64Inst()) {
-    val05 = ConstantFP::get(Builder.getFloatTy(), 0.5f);
-    valm05 = ConstantFP::get(Builder.getFloatTy(), -0.5f);
-  } else {
-    val05 = ConstantFP::get(Builder.getDoubleTy(), 0.5);
-    valm05 = ConstantFP::get(Builder.getDoubleTy(), -0.5);
-  }
-  Value *cond = Builder.CreateSelect(cmp, val05, valm05);
-  if (srcType->isFloatTy() && !(m_Ctx->platform.hasNoFP64Inst())) {
-    inVal = Builder.CreateFPExt(inVal, Builder.getDoubleTy());
-  }
-  Value *add = Builder.CreateFAdd(inVal, cond);
-  Value *conv = Builder.CreateFPToSI(add, dstType);
+  Value *rounded = Builder.CreateUnaryIntrinsic(Intrinsic::round, inVal);
+  Value *conv = Builder.CreateFPToSI(rounded, dstType);
   I->replaceAllUsesWith(conv);
   I->eraseFromParent();
 }
