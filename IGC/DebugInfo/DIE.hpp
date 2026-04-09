@@ -81,12 +81,19 @@ public:
   constexpr static unsigned int F0Base = 288;
   constexpr static unsigned int Acc0Base = 304;
   constexpr static unsigned int Mme0Base = 335;
+  constexpr static unsigned int GRFExt = 350;
 };
 
 // Use following templated method to get encoded register number
 // for regx and bregx operations. For eg, if GRF to encode in regx is
 // 10 then invoke method as GetEncodedRegNum<RegisterNumbering::GRFBase>(10).
-template <unsigned int EncodeBase> unsigned int GetEncodedRegNum(unsigned int i) { return (EncodeBase + i); }
+template <unsigned int EncodeBase> unsigned int GetEncodedRegNum(unsigned int i) {
+  // for 512 GRF size we should encode register numbers 256-511 as 350-605
+  if (EncodeBase == RegisterNumbering::GRFBase && i > 255) {
+    return (RegisterNumbering::GRFExt + (i - 256));
+  }
+  return (EncodeBase + i);
+}
 
 class StreamEmitter;
 
