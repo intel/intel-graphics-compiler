@@ -3973,8 +3973,7 @@ void Optimizer::HWWorkaround() {
         continue;
       }
 
-      if (VISA_WA_CHECK(builder.getPWaTable(), Wa_22013880840) &&
-          builder.getOption(vISA_ALTMode) == true && inst->opcode() == G4_sel &&
+      if (builder.getOption(vISA_ALTMode) == true && inst->opcode() == G4_sel &&
           inst->getPredicate() != nullptr && inst->getCondMod() == nullptr &&
           inst->getDst() && IS_TYPE_FLOAT_ALL(inst->getDst()->getType())) {
         auto pred = inst->getPredicate();
