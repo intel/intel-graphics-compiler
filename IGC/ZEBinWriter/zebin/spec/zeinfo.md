@@ -45,7 +45,20 @@ could be used to describe a dynamic sized int32 array.
 | global_host_access_table | HostAccessesTy | Optional | vector |
 | kernels_misc_info | KernelsMiscInfoTy | Optional | vector. Other miscellaneous kernel information which is required by certain API requesters, but is not necessary for kernel execution. |
 | kernels_cost_info | KernelsCostInfoTy | Optional | vector. kernel cost information which is experimental and required by certain API requesters, but is not necessary for kernel execution. |
+| l1_cache_policy | <l1_cache_policy> | Optional | L1 caching policy used. See Supported L1 caching policy below for valid modes. |
 <!--- Container --->
+
+### Supported L1 caching policy:
+Supported <l1_cache_policy> of Container.
+
+| L1 Cache Policy | Description |
+| ----- | ----- |
+| wbp | Write bypass mode |
+| uc | Uncacheable mode |
+| wb | Write-back mode |
+| wt | Write-through mode |
+| ws | Write-streaming mode |
+<!--- <l1_cache_policy> ArgL1CachePolicy -->
 
 # Kernel Attributes
 | Attribute | Type | Required/Optional | Description |

@@ -291,7 +291,7 @@ struct zeInfoContainer
 {
     bool operator==(const zeInfoContainer& other) const
     {
-        return version == other.version && kernels == other.kernels && functions == other.functions && global_host_access_table == other.global_host_access_table && kernels_misc_info == other.kernels_misc_info && kernels_cost_info == other.kernels_cost_info;
+        return version == other.version && kernels == other.kernels && functions == other.functions && global_host_access_table == other.global_host_access_table && kernels_misc_info == other.kernels_misc_info && kernels_cost_info == other.kernels_cost_info && l1_cache_policy == other.l1_cache_policy;
     }
     zeinfo_str_t version;
     KernelsTy kernels;
@@ -299,10 +299,18 @@ struct zeInfoContainer
     HostAccessesTy global_host_access_table;
     KernelsMiscInfoTy kernels_misc_info;
     KernelsCostInfoTy kernels_cost_info;
+    zeinfo_str_t l1_cache_policy;
 };
 struct PreDefinedAttrGetter{
-    static zeinfo_str_t getVersionNumber() { return "1.68"; }
+    static zeinfo_str_t getVersionNumber() { return "1.69"; }
 
+    enum class ArgL1CachePolicy {
+        wbp,
+        uc,
+        wb,
+        wt,
+        ws
+    };
     enum class ArgThreadSchedulingMode {
         age_based,
         round_robin,
@@ -418,6 +426,23 @@ struct PreDefinedAttrGetter{
         nearest,
         linear
     };
+    static zeinfo_str_t get(ArgL1CachePolicy val) {
+        switch(val) {
+        case ArgL1CachePolicy::wbp:
+            return "wbp";
+        case ArgL1CachePolicy::uc:
+            return "uc";
+        case ArgL1CachePolicy::wb:
+            return "wb";
+        case ArgL1CachePolicy::wt:
+            return "wt";
+        case ArgL1CachePolicy::ws:
+            return "ws";
+        default:
+            break;
+        }
+        return "";
+    }
     static zeinfo_str_t get(ArgThreadSchedulingMode val) {
         switch(val) {
         case ArgThreadSchedulingMode::age_based:
