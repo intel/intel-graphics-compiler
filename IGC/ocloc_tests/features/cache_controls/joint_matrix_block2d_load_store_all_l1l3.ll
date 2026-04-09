@@ -25,9 +25,8 @@
 
 target triple = "spir64-unknown-unknown"
 
-%spirv.JointMatrixINTEL._float_8_16_3_3_2 = type opaque
-declare spir_func %spirv.JointMatrixINTEL._float_8_16_3_3_2 addrspace(1)* @_Z80__spirv_JointMatrixLoadINTEL_RPU3AS142__spirv_JointMatrixINTEL__float_8_16_3_3_2PU3AS4fliii(float addrspace(1)*, i64, i32, i32, i32) #0
-declare spir_func void @_Z29__spirv_JointMatrixStoreINTELPU3AS1fPU3AS142__spirv_JointMatrixINTEL__float_8_16_3_3_2liii(float addrspace(1)*, %spirv.JointMatrixINTEL._float_8_16_3_3_2 addrspace(1)*, i64, i32, i32, i32) #0
+declare spir_func target("spirv.JointMatrixINTEL", float, 8, 16, 3, 3, 2) @_Z28__spirv_JointMatrixLoadINTELIfLm8ELm16ELN5__spv9MatrixUseE2ELNS0_12MatrixLayoutE3ELNS0_5Scope4FlagE3EEPNS0_24__spirv_JointMatrixINTELIT_XT0_EXT1_EXT3_EXT4_EXT2_EEEPS6_mS2_S4_i(float addrspace(1)*, i64, i32, i32, i32) #0
+declare spir_func void @_Z29__spirv_JointMatrixStoreINTELIfLm8ELm16ELN5__spv9MatrixUseE2ELNS0_12MatrixLayoutE3ELNS0_5Scope4FlagE3EEvPT_PNS0_24__spirv_JointMatrixINTELIS5_XT0_EXT1_EXT3_EXT4_EXT2_EEEmS2_S4_i(float addrspace(1)*, target("spirv.JointMatrixINTEL", float, 8, 16, 3, 3, 2), i64, i32, i32, i32) #0
 
 
 ; CHECK: .kernel "TestLoad_L1_Uncached__L3_Uncached"
@@ -36,9 +35,9 @@ declare spir_func void @_Z29__spirv_JointMatrixStoreINTELPU3AS1fPU3AS142__spirv_
 define spir_kernel void @TestLoad_L1_Uncached__L3_Uncached(float addrspace(1)* %src, float addrspace(1)* %dst) {
 entry:
 %decoratedsrc = getelementptr inbounds float, float addrspace(1)* %src, i64 0, !spirv.Decorations !0
-%0 =  call spir_func %spirv.JointMatrixINTEL._float_8_16_3_3_2 addrspace(1)* @_Z80__spirv_JointMatrixLoadINTEL_RPU3AS142__spirv_JointMatrixINTEL__float_8_16_3_3_2PU3AS4fliii(float addrspace(1)* %decoratedsrc, i64 64, i32 0, i32 3, i32 0) #0
+%0 =  call spir_func target("spirv.JointMatrixINTEL", float, 8, 16, 3, 3, 2) @_Z28__spirv_JointMatrixLoadINTELIfLm8ELm16ELN5__spv9MatrixUseE2ELNS0_12MatrixLayoutE3ELNS0_5Scope4FlagE3EEPNS0_24__spirv_JointMatrixINTELIT_XT0_EXT1_EXT3_EXT4_EXT2_EEEPS6_mS2_S4_i(float addrspace(1)* %decoratedsrc, i64 64, i32 0, i32 3, i32 0) #0
 %decorateddst = getelementptr inbounds float, float addrspace(1)* %dst, i64 0
-call spir_func void @_Z29__spirv_JointMatrixStoreINTELPU3AS1fPU3AS142__spirv_JointMatrixINTEL__float_8_16_3_3_2liii(float addrspace(1)* %decorateddst, %spirv.JointMatrixINTEL._float_8_16_3_3_2 addrspace(1)* %0, i64 64, i32 0, i32 3, i32 0) #0
+call spir_func void @_Z29__spirv_JointMatrixStoreINTELIfLm8ELm16ELN5__spv9MatrixUseE2ELNS0_12MatrixLayoutE3ELNS0_5Scope4FlagE3EEvPT_PNS0_24__spirv_JointMatrixINTELIS5_XT0_EXT1_EXT3_EXT4_EXT2_EEEmS2_S4_i(float addrspace(1)* %decorateddst, target("spirv.JointMatrixINTEL", float, 8, 16, 3, 3, 2) %0, i64 64, i32 0, i32 3, i32 0) #0
 ret void
 }
 !0 = !{!1, !2}
@@ -52,9 +51,9 @@ ret void
 define spir_kernel void @TestLoad_L1_Uncached__L3_Cached(float addrspace(1)* %src, float addrspace(1)* %dst) {
 entry:
 %decoratedsrc = getelementptr inbounds float, float addrspace(1)* %src, i64 0, !spirv.Decorations !10
-%0 =  call spir_func %spirv.JointMatrixINTEL._float_8_16_3_3_2 addrspace(1)* @_Z80__spirv_JointMatrixLoadINTEL_RPU3AS142__spirv_JointMatrixINTEL__float_8_16_3_3_2PU3AS4fliii(float addrspace(1)* %decoratedsrc, i64 64, i32 0, i32 3, i32 0) #0
+%0 =  call spir_func target("spirv.JointMatrixINTEL", float, 8, 16, 3, 3, 2) @_Z28__spirv_JointMatrixLoadINTELIfLm8ELm16ELN5__spv9MatrixUseE2ELNS0_12MatrixLayoutE3ELNS0_5Scope4FlagE3EEPNS0_24__spirv_JointMatrixINTELIT_XT0_EXT1_EXT3_EXT4_EXT2_EEEPS6_mS2_S4_i(float addrspace(1)* %decoratedsrc, i64 64, i32 0, i32 3, i32 0) #0
 %decorateddst = getelementptr inbounds float, float addrspace(1)* %dst, i64 0
-call spir_func void @_Z29__spirv_JointMatrixStoreINTELPU3AS1fPU3AS142__spirv_JointMatrixINTEL__float_8_16_3_3_2liii(float addrspace(1)* %decorateddst, %spirv.JointMatrixINTEL._float_8_16_3_3_2 addrspace(1)* %0, i64 64, i32 0, i32 3, i32 0) #0
+call spir_func void @_Z29__spirv_JointMatrixStoreINTELIfLm8ELm16ELN5__spv9MatrixUseE2ELNS0_12MatrixLayoutE3ELNS0_5Scope4FlagE3EEvPT_PNS0_24__spirv_JointMatrixINTELIS5_XT0_EXT1_EXT3_EXT4_EXT2_EEEmS2_S4_i(float addrspace(1)* %decorateddst, target("spirv.JointMatrixINTEL", float, 8, 16, 3, 3, 2) %0, i64 64, i32 0, i32 3, i32 0) #0
 ret void
 }
 !10 = !{!11, !12}
@@ -68,9 +67,9 @@ ret void
 define spir_kernel void @TestLoad_L1_Cached__L3_Uncached(float addrspace(1)* %src, float addrspace(1)* %dst) {
 entry:
 %decoratedsrc = getelementptr inbounds float, float addrspace(1)* %src, i64 0, !spirv.Decorations !20
-%0 =  call spir_func %spirv.JointMatrixINTEL._float_8_16_3_3_2 addrspace(1)* @_Z80__spirv_JointMatrixLoadINTEL_RPU3AS142__spirv_JointMatrixINTEL__float_8_16_3_3_2PU3AS4fliii(float addrspace(1)* %decoratedsrc, i64 64, i32 0, i32 3, i32 0) #0
+%0 =  call spir_func target("spirv.JointMatrixINTEL", float, 8, 16, 3, 3, 2) @_Z28__spirv_JointMatrixLoadINTELIfLm8ELm16ELN5__spv9MatrixUseE2ELNS0_12MatrixLayoutE3ELNS0_5Scope4FlagE3EEPNS0_24__spirv_JointMatrixINTELIT_XT0_EXT1_EXT3_EXT4_EXT2_EEEPS6_mS2_S4_i(float addrspace(1)* %decoratedsrc, i64 64, i32 0, i32 3, i32 0) #0
 %decorateddst = getelementptr inbounds float, float addrspace(1)* %dst, i64 0
-call spir_func void @_Z29__spirv_JointMatrixStoreINTELPU3AS1fPU3AS142__spirv_JointMatrixINTEL__float_8_16_3_3_2liii(float addrspace(1)* %decorateddst, %spirv.JointMatrixINTEL._float_8_16_3_3_2 addrspace(1)* %0, i64 64, i32 0, i32 3, i32 0) #0
+call spir_func void @_Z29__spirv_JointMatrixStoreINTELIfLm8ELm16ELN5__spv9MatrixUseE2ELNS0_12MatrixLayoutE3ELNS0_5Scope4FlagE3EEvPT_PNS0_24__spirv_JointMatrixINTELIS5_XT0_EXT1_EXT3_EXT4_EXT2_EEEmS2_S4_i(float addrspace(1)* %decorateddst, target("spirv.JointMatrixINTEL", float, 8, 16, 3, 3, 2) %0, i64 64, i32 0, i32 3, i32 0) #0
 ret void
 }
 !20 = !{!21, !22}
@@ -84,9 +83,9 @@ ret void
 define spir_kernel void @TestLoad_L1_Cached__L3_Cached(float addrspace(1)* %src, float addrspace(1)* %dst) {
 entry:
 %decoratedsrc = getelementptr inbounds float, float addrspace(1)* %src, i64 0, !spirv.Decorations !30
-%0 =  call spir_func %spirv.JointMatrixINTEL._float_8_16_3_3_2 addrspace(1)* @_Z80__spirv_JointMatrixLoadINTEL_RPU3AS142__spirv_JointMatrixINTEL__float_8_16_3_3_2PU3AS4fliii(float addrspace(1)* %decoratedsrc, i64 64, i32 0, i32 3, i32 0) #0
+%0 =  call spir_func target("spirv.JointMatrixINTEL", float, 8, 16, 3, 3, 2) @_Z28__spirv_JointMatrixLoadINTELIfLm8ELm16ELN5__spv9MatrixUseE2ELNS0_12MatrixLayoutE3ELNS0_5Scope4FlagE3EEPNS0_24__spirv_JointMatrixINTELIT_XT0_EXT1_EXT3_EXT4_EXT2_EEEPS6_mS2_S4_i(float addrspace(1)* %decoratedsrc, i64 64, i32 0, i32 3, i32 0) #0
 %decorateddst = getelementptr inbounds float, float addrspace(1)* %dst, i64 0
-call spir_func void @_Z29__spirv_JointMatrixStoreINTELPU3AS1fPU3AS142__spirv_JointMatrixINTEL__float_8_16_3_3_2liii(float addrspace(1)* %decorateddst, %spirv.JointMatrixINTEL._float_8_16_3_3_2 addrspace(1)* %0, i64 64, i32 0, i32 3, i32 0) #0
+call spir_func void @_Z29__spirv_JointMatrixStoreINTELIfLm8ELm16ELN5__spv9MatrixUseE2ELNS0_12MatrixLayoutE3ELNS0_5Scope4FlagE3EEvPT_PNS0_24__spirv_JointMatrixINTELIS5_XT0_EXT1_EXT3_EXT4_EXT2_EEEmS2_S4_i(float addrspace(1)* %decorateddst, target("spirv.JointMatrixINTEL", float, 8, 16, 3, 3, 2) %0, i64 64, i32 0, i32 3, i32 0) #0
 ret void
 }
 !30 = !{!31, !32}
@@ -100,9 +99,9 @@ ret void
 define spir_kernel void @TestLoad_L1_Streaming__L3_Uncached(float addrspace(1)* %src, float addrspace(1)* %dst) {
 entry:
 %decoratedsrc = getelementptr inbounds float, float addrspace(1)* %src, i64 0, !spirv.Decorations !40
-%0 =  call spir_func %spirv.JointMatrixINTEL._float_8_16_3_3_2 addrspace(1)* @_Z80__spirv_JointMatrixLoadINTEL_RPU3AS142__spirv_JointMatrixINTEL__float_8_16_3_3_2PU3AS4fliii(float addrspace(1)* %decoratedsrc, i64 64, i32 0, i32 3, i32 0) #0
+%0 =  call spir_func target("spirv.JointMatrixINTEL", float, 8, 16, 3, 3, 2) @_Z28__spirv_JointMatrixLoadINTELIfLm8ELm16ELN5__spv9MatrixUseE2ELNS0_12MatrixLayoutE3ELNS0_5Scope4FlagE3EEPNS0_24__spirv_JointMatrixINTELIT_XT0_EXT1_EXT3_EXT4_EXT2_EEEPS6_mS2_S4_i(float addrspace(1)* %decoratedsrc, i64 64, i32 0, i32 3, i32 0) #0
 %decorateddst = getelementptr inbounds float, float addrspace(1)* %dst, i64 0
-call spir_func void @_Z29__spirv_JointMatrixStoreINTELPU3AS1fPU3AS142__spirv_JointMatrixINTEL__float_8_16_3_3_2liii(float addrspace(1)* %decorateddst, %spirv.JointMatrixINTEL._float_8_16_3_3_2 addrspace(1)* %0, i64 64, i32 0, i32 3, i32 0) #0
+call spir_func void @_Z29__spirv_JointMatrixStoreINTELIfLm8ELm16ELN5__spv9MatrixUseE2ELNS0_12MatrixLayoutE3ELNS0_5Scope4FlagE3EEvPT_PNS0_24__spirv_JointMatrixINTELIS5_XT0_EXT1_EXT3_EXT4_EXT2_EEEmS2_S4_i(float addrspace(1)* %decorateddst, target("spirv.JointMatrixINTEL", float, 8, 16, 3, 3, 2) %0, i64 64, i32 0, i32 3, i32 0) #0
 ret void
 }
 !40 = !{!41, !42}
@@ -116,9 +115,9 @@ ret void
 define spir_kernel void @TestLoad_L1_Streaming__L3_Cached(float addrspace(1)* %src, float addrspace(1)* %dst) {
 entry:
 %decoratedsrc = getelementptr inbounds float, float addrspace(1)* %src, i64 0, !spirv.Decorations !50
-%0 =  call spir_func %spirv.JointMatrixINTEL._float_8_16_3_3_2 addrspace(1)* @_Z80__spirv_JointMatrixLoadINTEL_RPU3AS142__spirv_JointMatrixINTEL__float_8_16_3_3_2PU3AS4fliii(float addrspace(1)* %decoratedsrc, i64 64, i32 0, i32 3, i32 0) #0
+%0 =  call spir_func target("spirv.JointMatrixINTEL", float, 8, 16, 3, 3, 2) @_Z28__spirv_JointMatrixLoadINTELIfLm8ELm16ELN5__spv9MatrixUseE2ELNS0_12MatrixLayoutE3ELNS0_5Scope4FlagE3EEPNS0_24__spirv_JointMatrixINTELIT_XT0_EXT1_EXT3_EXT4_EXT2_EEEPS6_mS2_S4_i(float addrspace(1)* %decoratedsrc, i64 64, i32 0, i32 3, i32 0) #0
 %decorateddst = getelementptr inbounds float, float addrspace(1)* %dst, i64 0
-call spir_func void @_Z29__spirv_JointMatrixStoreINTELPU3AS1fPU3AS142__spirv_JointMatrixINTEL__float_8_16_3_3_2liii(float addrspace(1)* %decorateddst, %spirv.JointMatrixINTEL._float_8_16_3_3_2 addrspace(1)* %0, i64 64, i32 0, i32 3, i32 0) #0
+call spir_func void @_Z29__spirv_JointMatrixStoreINTELIfLm8ELm16ELN5__spv9MatrixUseE2ELNS0_12MatrixLayoutE3ELNS0_5Scope4FlagE3EEvPT_PNS0_24__spirv_JointMatrixINTELIS5_XT0_EXT1_EXT3_EXT4_EXT2_EEEmS2_S4_i(float addrspace(1)* %decorateddst, target("spirv.JointMatrixINTEL", float, 8, 16, 3, 3, 2) %0, i64 64, i32 0, i32 3, i32 0) #0
 ret void
 }
 !50 = !{!51, !52}
@@ -132,9 +131,9 @@ ret void
 define spir_kernel void @TestLoad_L1_InvalidateAfterRead__L3_Cached(float addrspace(1)* %src, float addrspace(1)* %dst) {
 entry:
 %decoratedsrc = getelementptr inbounds float, float addrspace(1)* %src, i64 0, !spirv.Decorations !60
-%0 =  call spir_func %spirv.JointMatrixINTEL._float_8_16_3_3_2 addrspace(1)* @_Z80__spirv_JointMatrixLoadINTEL_RPU3AS142__spirv_JointMatrixINTEL__float_8_16_3_3_2PU3AS4fliii(float addrspace(1)* %decoratedsrc, i64 64, i32 0, i32 3, i32 0) #0
+%0 =  call spir_func target("spirv.JointMatrixINTEL", float, 8, 16, 3, 3, 2) @_Z28__spirv_JointMatrixLoadINTELIfLm8ELm16ELN5__spv9MatrixUseE2ELNS0_12MatrixLayoutE3ELNS0_5Scope4FlagE3EEPNS0_24__spirv_JointMatrixINTELIT_XT0_EXT1_EXT3_EXT4_EXT2_EEEPS6_mS2_S4_i(float addrspace(1)* %decoratedsrc, i64 64, i32 0, i32 3, i32 0) #0
 %decorateddst = getelementptr inbounds float, float addrspace(1)* %dst, i64 0
-call spir_func void @_Z29__spirv_JointMatrixStoreINTELPU3AS1fPU3AS142__spirv_JointMatrixINTEL__float_8_16_3_3_2liii(float addrspace(1)* %decorateddst, %spirv.JointMatrixINTEL._float_8_16_3_3_2 addrspace(1)* %0, i64 64, i32 0, i32 3, i32 0) #0
+call spir_func void @_Z29__spirv_JointMatrixStoreINTELIfLm8ELm16ELN5__spv9MatrixUseE2ELNS0_12MatrixLayoutE3ELNS0_5Scope4FlagE3EEvPT_PNS0_24__spirv_JointMatrixINTELIS5_XT0_EXT1_EXT3_EXT4_EXT2_EEEmS2_S4_i(float addrspace(1)* %decorateddst, target("spirv.JointMatrixINTEL", float, 8, 16, 3, 3, 2) %0, i64 64, i32 0, i32 3, i32 0) #0
 ret void
 }
 !60 = !{!61, !62}
@@ -149,9 +148,9 @@ ret void
 define spir_kernel void @TestLoad_L1_Uncached__L3_ConstCached(float addrspace(1)* %src, float addrspace(1)* %dst) {
 entry:
 %decoratedsrc = getelementptr inbounds float, float addrspace(1)* %src, i64 0, !spirv.Decorations !70
-%0 =  call spir_func %spirv.JointMatrixINTEL._float_8_16_3_3_2 addrspace(1)* @_Z80__spirv_JointMatrixLoadINTEL_RPU3AS142__spirv_JointMatrixINTEL__float_8_16_3_3_2PU3AS4fliii(float addrspace(1)* %decoratedsrc, i64 64, i32 0, i32 3, i32 0) #0
+%0 =  call spir_func target("spirv.JointMatrixINTEL", float, 8, 16, 3, 3, 2) @_Z28__spirv_JointMatrixLoadINTELIfLm8ELm16ELN5__spv9MatrixUseE2ELNS0_12MatrixLayoutE3ELNS0_5Scope4FlagE3EEPNS0_24__spirv_JointMatrixINTELIT_XT0_EXT1_EXT3_EXT4_EXT2_EEEPS6_mS2_S4_i(float addrspace(1)* %decoratedsrc, i64 64, i32 0, i32 3, i32 0) #0
 %decorateddst = getelementptr inbounds float, float addrspace(1)* %dst, i64 0
-call spir_func void @_Z29__spirv_JointMatrixStoreINTELPU3AS1fPU3AS142__spirv_JointMatrixINTEL__float_8_16_3_3_2liii(float addrspace(1)* %decorateddst, %spirv.JointMatrixINTEL._float_8_16_3_3_2 addrspace(1)* %0, i64 64, i32 0, i32 3, i32 0) #0
+call spir_func void @_Z29__spirv_JointMatrixStoreINTELIfLm8ELm16ELN5__spv9MatrixUseE2ELNS0_12MatrixLayoutE3ELNS0_5Scope4FlagE3EEvPT_PNS0_24__spirv_JointMatrixINTELIS5_XT0_EXT1_EXT3_EXT4_EXT2_EEEmS2_S4_i(float addrspace(1)* %decorateddst, target("spirv.JointMatrixINTEL", float, 8, 16, 3, 3, 2) %0, i64 64, i32 0, i32 3, i32 0) #0
 ret void
 }
 !70 = !{!71, !72}
@@ -166,9 +165,9 @@ ret void
 define spir_kernel void @TestLoad_L1_Cached__L3_ConstCached(float addrspace(1)* %src, float addrspace(1)* %dst) {
 entry:
 %decoratedsrc = getelementptr inbounds float, float addrspace(1)* %src, i64 0, !spirv.Decorations !80
-%0 =  call spir_func %spirv.JointMatrixINTEL._float_8_16_3_3_2 addrspace(1)* @_Z80__spirv_JointMatrixLoadINTEL_RPU3AS142__spirv_JointMatrixINTEL__float_8_16_3_3_2PU3AS4fliii(float addrspace(1)* %decoratedsrc, i64 64, i32 0, i32 3, i32 0) #0
+%0 =  call spir_func target("spirv.JointMatrixINTEL", float, 8, 16, 3, 3, 2) @_Z28__spirv_JointMatrixLoadINTELIfLm8ELm16ELN5__spv9MatrixUseE2ELNS0_12MatrixLayoutE3ELNS0_5Scope4FlagE3EEPNS0_24__spirv_JointMatrixINTELIT_XT0_EXT1_EXT3_EXT4_EXT2_EEEPS6_mS2_S4_i(float addrspace(1)* %decoratedsrc, i64 64, i32 0, i32 3, i32 0) #0
 %decorateddst = getelementptr inbounds float, float addrspace(1)* %dst, i64 0
-call spir_func void @_Z29__spirv_JointMatrixStoreINTELPU3AS1fPU3AS142__spirv_JointMatrixINTEL__float_8_16_3_3_2liii(float addrspace(1)* %decorateddst, %spirv.JointMatrixINTEL._float_8_16_3_3_2 addrspace(1)* %0, i64 64, i32 0, i32 3, i32 0) #0
+call spir_func void @_Z29__spirv_JointMatrixStoreINTELIfLm8ELm16ELN5__spv9MatrixUseE2ELNS0_12MatrixLayoutE3ELNS0_5Scope4FlagE3EEvPT_PNS0_24__spirv_JointMatrixINTELIS5_XT0_EXT1_EXT3_EXT4_EXT2_EEEmS2_S4_i(float addrspace(1)* %decorateddst, target("spirv.JointMatrixINTEL", float, 8, 16, 3, 3, 2) %0, i64 64, i32 0, i32 3, i32 0) #0
 ret void
 }
 !80 = !{!81, !82}
@@ -183,9 +182,9 @@ ret void
 define spir_kernel void @TestLoad_L1_InvalidateAfterRead__L3_InvalidateAfterRead(float addrspace(1)* %src, float addrspace(1)* %dst) {
 entry:
 %decoratedsrc = getelementptr inbounds float, float addrspace(1)* %src, i64 0, !spirv.Decorations !90
-%0 =  call spir_func %spirv.JointMatrixINTEL._float_8_16_3_3_2 addrspace(1)* @_Z80__spirv_JointMatrixLoadINTEL_RPU3AS142__spirv_JointMatrixINTEL__float_8_16_3_3_2PU3AS4fliii(float addrspace(1)* %decoratedsrc, i64 64, i32 0, i32 3, i32 0) #0
+%0 =  call spir_func target("spirv.JointMatrixINTEL", float, 8, 16, 3, 3, 2) @_Z28__spirv_JointMatrixLoadINTELIfLm8ELm16ELN5__spv9MatrixUseE2ELNS0_12MatrixLayoutE3ELNS0_5Scope4FlagE3EEPNS0_24__spirv_JointMatrixINTELIT_XT0_EXT1_EXT3_EXT4_EXT2_EEEPS6_mS2_S4_i(float addrspace(1)* %decoratedsrc, i64 64, i32 0, i32 3, i32 0) #0
 %decorateddst = getelementptr inbounds float, float addrspace(1)* %dst, i64 0
-call spir_func void @_Z29__spirv_JointMatrixStoreINTELPU3AS1fPU3AS142__spirv_JointMatrixINTEL__float_8_16_3_3_2liii(float addrspace(1)* %decorateddst, %spirv.JointMatrixINTEL._float_8_16_3_3_2 addrspace(1)* %0, i64 64, i32 0, i32 3, i32 0) #0
+call spir_func void @_Z29__spirv_JointMatrixStoreINTELIfLm8ELm16ELN5__spv9MatrixUseE2ELNS0_12MatrixLayoutE3ELNS0_5Scope4FlagE3EEvPT_PNS0_24__spirv_JointMatrixINTELIS5_XT0_EXT1_EXT3_EXT4_EXT2_EEEmS2_S4_i(float addrspace(1)* %decorateddst, target("spirv.JointMatrixINTEL", float, 8, 16, 3, 3, 2) %0, i64 64, i32 0, i32 3, i32 0) #0
 ret void
 }
 !90 = !{!91, !92}
@@ -199,9 +198,9 @@ ret void
 define spir_kernel void @TestStore_L1_Uncached__L3_Uncached(float addrspace(1)* %src, float addrspace(1)* %dst) {
 entry:
 %decoratedsrc = getelementptr inbounds float, float addrspace(1)* %src, i64 0
-%0 =  call spir_func %spirv.JointMatrixINTEL._float_8_16_3_3_2 addrspace(1)* @_Z80__spirv_JointMatrixLoadINTEL_RPU3AS142__spirv_JointMatrixINTEL__float_8_16_3_3_2PU3AS4fliii(float addrspace(1)* %decoratedsrc, i64 64, i32 0, i32 3, i32 0) #0
+%0 =  call spir_func target("spirv.JointMatrixINTEL", float, 8, 16, 3, 3, 2) @_Z28__spirv_JointMatrixLoadINTELIfLm8ELm16ELN5__spv9MatrixUseE2ELNS0_12MatrixLayoutE3ELNS0_5Scope4FlagE3EEPNS0_24__spirv_JointMatrixINTELIT_XT0_EXT1_EXT3_EXT4_EXT2_EEEPS6_mS2_S4_i(float addrspace(1)* %decoratedsrc, i64 64, i32 0, i32 3, i32 0) #0
 %decorateddst = getelementptr inbounds float, float addrspace(1)* %dst, i64 0, !spirv.Decorations !100
-call spir_func void @_Z29__spirv_JointMatrixStoreINTELPU3AS1fPU3AS142__spirv_JointMatrixINTEL__float_8_16_3_3_2liii(float addrspace(1)* %decorateddst, %spirv.JointMatrixINTEL._float_8_16_3_3_2 addrspace(1)* %0, i64 64, i32 0, i32 3, i32 0) #0
+call spir_func void @_Z29__spirv_JointMatrixStoreINTELIfLm8ELm16ELN5__spv9MatrixUseE2ELNS0_12MatrixLayoutE3ELNS0_5Scope4FlagE3EEvPT_PNS0_24__spirv_JointMatrixINTELIS5_XT0_EXT1_EXT3_EXT4_EXT2_EEEmS2_S4_i(float addrspace(1)* %decorateddst, target("spirv.JointMatrixINTEL", float, 8, 16, 3, 3, 2) %0, i64 64, i32 0, i32 3, i32 0) #0
 ret void
 }
 !100 = !{!101, !102}
@@ -215,9 +214,9 @@ ret void
 define spir_kernel void @TestStore_L1_Uncached__L3_WriteBack(float addrspace(1)* %src, float addrspace(1)* %dst) {
 entry:
 %decoratedsrc = getelementptr inbounds float, float addrspace(1)* %src, i64 0
-%0 =  call spir_func %spirv.JointMatrixINTEL._float_8_16_3_3_2 addrspace(1)* @_Z80__spirv_JointMatrixLoadINTEL_RPU3AS142__spirv_JointMatrixINTEL__float_8_16_3_3_2PU3AS4fliii(float addrspace(1)* %decoratedsrc, i64 64, i32 0, i32 3, i32 0) #0
+%0 =  call spir_func target("spirv.JointMatrixINTEL", float, 8, 16, 3, 3, 2) @_Z28__spirv_JointMatrixLoadINTELIfLm8ELm16ELN5__spv9MatrixUseE2ELNS0_12MatrixLayoutE3ELNS0_5Scope4FlagE3EEPNS0_24__spirv_JointMatrixINTELIT_XT0_EXT1_EXT3_EXT4_EXT2_EEEPS6_mS2_S4_i(float addrspace(1)* %decoratedsrc, i64 64, i32 0, i32 3, i32 0) #0
 %decorateddst = getelementptr inbounds float, float addrspace(1)* %dst, i64 0, !spirv.Decorations !110
-call spir_func void @_Z29__spirv_JointMatrixStoreINTELPU3AS1fPU3AS142__spirv_JointMatrixINTEL__float_8_16_3_3_2liii(float addrspace(1)* %decorateddst, %spirv.JointMatrixINTEL._float_8_16_3_3_2 addrspace(1)* %0, i64 64, i32 0, i32 3, i32 0) #0
+call spir_func void @_Z29__spirv_JointMatrixStoreINTELIfLm8ELm16ELN5__spv9MatrixUseE2ELNS0_12MatrixLayoutE3ELNS0_5Scope4FlagE3EEvPT_PNS0_24__spirv_JointMatrixINTELIS5_XT0_EXT1_EXT3_EXT4_EXT2_EEEmS2_S4_i(float addrspace(1)* %decorateddst, target("spirv.JointMatrixINTEL", float, 8, 16, 3, 3, 2) %0, i64 64, i32 0, i32 3, i32 0) #0
 ret void
 }
 !110 = !{!111, !112}
@@ -231,9 +230,9 @@ ret void
 define spir_kernel void @TestStore_L1_WriteThrough__L3_Uncached(float addrspace(1)* %src, float addrspace(1)* %dst) {
 entry:
 %decoratedsrc = getelementptr inbounds float, float addrspace(1)* %src, i64 0
-%0 =  call spir_func %spirv.JointMatrixINTEL._float_8_16_3_3_2 addrspace(1)* @_Z80__spirv_JointMatrixLoadINTEL_RPU3AS142__spirv_JointMatrixINTEL__float_8_16_3_3_2PU3AS4fliii(float addrspace(1)* %decoratedsrc, i64 64, i32 0, i32 3, i32 0) #0
+%0 =  call spir_func target("spirv.JointMatrixINTEL", float, 8, 16, 3, 3, 2) @_Z28__spirv_JointMatrixLoadINTELIfLm8ELm16ELN5__spv9MatrixUseE2ELNS0_12MatrixLayoutE3ELNS0_5Scope4FlagE3EEPNS0_24__spirv_JointMatrixINTELIT_XT0_EXT1_EXT3_EXT4_EXT2_EEEPS6_mS2_S4_i(float addrspace(1)* %decoratedsrc, i64 64, i32 0, i32 3, i32 0) #0
 %decorateddst = getelementptr inbounds float, float addrspace(1)* %dst, i64 0, !spirv.Decorations !120
-call spir_func void @_Z29__spirv_JointMatrixStoreINTELPU3AS1fPU3AS142__spirv_JointMatrixINTEL__float_8_16_3_3_2liii(float addrspace(1)* %decorateddst, %spirv.JointMatrixINTEL._float_8_16_3_3_2 addrspace(1)* %0, i64 64, i32 0, i32 3, i32 0) #0
+call spir_func void @_Z29__spirv_JointMatrixStoreINTELIfLm8ELm16ELN5__spv9MatrixUseE2ELNS0_12MatrixLayoutE3ELNS0_5Scope4FlagE3EEvPT_PNS0_24__spirv_JointMatrixINTELIS5_XT0_EXT1_EXT3_EXT4_EXT2_EEEmS2_S4_i(float addrspace(1)* %decorateddst, target("spirv.JointMatrixINTEL", float, 8, 16, 3, 3, 2) %0, i64 64, i32 0, i32 3, i32 0) #0
 ret void
 }
 !120 = !{!121, !122}
@@ -247,9 +246,9 @@ ret void
 define spir_kernel void @TestStore_L1_WriteThrough__L3_WriteBack(float addrspace(1)* %src, float addrspace(1)* %dst) {
 entry:
 %decoratedsrc = getelementptr inbounds float, float addrspace(1)* %src, i64 0
-%0 =  call spir_func %spirv.JointMatrixINTEL._float_8_16_3_3_2 addrspace(1)* @_Z80__spirv_JointMatrixLoadINTEL_RPU3AS142__spirv_JointMatrixINTEL__float_8_16_3_3_2PU3AS4fliii(float addrspace(1)* %decoratedsrc, i64 64, i32 0, i32 3, i32 0) #0
+%0 =  call spir_func target("spirv.JointMatrixINTEL", float, 8, 16, 3, 3, 2) @_Z28__spirv_JointMatrixLoadINTELIfLm8ELm16ELN5__spv9MatrixUseE2ELNS0_12MatrixLayoutE3ELNS0_5Scope4FlagE3EEPNS0_24__spirv_JointMatrixINTELIT_XT0_EXT1_EXT3_EXT4_EXT2_EEEPS6_mS2_S4_i(float addrspace(1)* %decoratedsrc, i64 64, i32 0, i32 3, i32 0) #0
 %decorateddst = getelementptr inbounds float, float addrspace(1)* %dst, i64 0, !spirv.Decorations !130
-call spir_func void @_Z29__spirv_JointMatrixStoreINTELPU3AS1fPU3AS142__spirv_JointMatrixINTEL__float_8_16_3_3_2liii(float addrspace(1)* %decorateddst, %spirv.JointMatrixINTEL._float_8_16_3_3_2 addrspace(1)* %0, i64 64, i32 0, i32 3, i32 0) #0
+call spir_func void @_Z29__spirv_JointMatrixStoreINTELIfLm8ELm16ELN5__spv9MatrixUseE2ELNS0_12MatrixLayoutE3ELNS0_5Scope4FlagE3EEvPT_PNS0_24__spirv_JointMatrixINTELIS5_XT0_EXT1_EXT3_EXT4_EXT2_EEEmS2_S4_i(float addrspace(1)* %decorateddst, target("spirv.JointMatrixINTEL", float, 8, 16, 3, 3, 2) %0, i64 64, i32 0, i32 3, i32 0) #0
 ret void
 }
 !130 = !{!131, !132}
@@ -263,9 +262,9 @@ ret void
 define spir_kernel void @TestStore_L1_Streaming__L3_Uncached(float addrspace(1)* %src, float addrspace(1)* %dst) {
 entry:
 %decoratedsrc = getelementptr inbounds float, float addrspace(1)* %src, i64 0
-%0 =  call spir_func %spirv.JointMatrixINTEL._float_8_16_3_3_2 addrspace(1)* @_Z80__spirv_JointMatrixLoadINTEL_RPU3AS142__spirv_JointMatrixINTEL__float_8_16_3_3_2PU3AS4fliii(float addrspace(1)* %decoratedsrc, i64 64, i32 0, i32 3, i32 0) #0
+%0 =  call spir_func target("spirv.JointMatrixINTEL", float, 8, 16, 3, 3, 2) @_Z28__spirv_JointMatrixLoadINTELIfLm8ELm16ELN5__spv9MatrixUseE2ELNS0_12MatrixLayoutE3ELNS0_5Scope4FlagE3EEPNS0_24__spirv_JointMatrixINTELIT_XT0_EXT1_EXT3_EXT4_EXT2_EEEPS6_mS2_S4_i(float addrspace(1)* %decoratedsrc, i64 64, i32 0, i32 3, i32 0) #0
 %decorateddst = getelementptr inbounds float, float addrspace(1)* %dst, i64 0, !spirv.Decorations !140
-call spir_func void @_Z29__spirv_JointMatrixStoreINTELPU3AS1fPU3AS142__spirv_JointMatrixINTEL__float_8_16_3_3_2liii(float addrspace(1)* %decorateddst, %spirv.JointMatrixINTEL._float_8_16_3_3_2 addrspace(1)* %0, i64 64, i32 0, i32 3, i32 0) #0
+call spir_func void @_Z29__spirv_JointMatrixStoreINTELIfLm8ELm16ELN5__spv9MatrixUseE2ELNS0_12MatrixLayoutE3ELNS0_5Scope4FlagE3EEvPT_PNS0_24__spirv_JointMatrixINTELIS5_XT0_EXT1_EXT3_EXT4_EXT2_EEEmS2_S4_i(float addrspace(1)* %decorateddst, target("spirv.JointMatrixINTEL", float, 8, 16, 3, 3, 2) %0, i64 64, i32 0, i32 3, i32 0) #0
 ret void
 }
 !140 = !{!141, !142}
@@ -279,9 +278,9 @@ ret void
 define spir_kernel void @TestStore_L1_Streaming__L3_WriteBack(float addrspace(1)* %src, float addrspace(1)* %dst) {
 entry:
 %decoratedsrc = getelementptr inbounds float, float addrspace(1)* %src, i64 0
-%0 =  call spir_func %spirv.JointMatrixINTEL._float_8_16_3_3_2 addrspace(1)* @_Z80__spirv_JointMatrixLoadINTEL_RPU3AS142__spirv_JointMatrixINTEL__float_8_16_3_3_2PU3AS4fliii(float addrspace(1)* %decoratedsrc, i64 64, i32 0, i32 3, i32 0) #0
+%0 =  call spir_func target("spirv.JointMatrixINTEL", float, 8, 16, 3, 3, 2) @_Z28__spirv_JointMatrixLoadINTELIfLm8ELm16ELN5__spv9MatrixUseE2ELNS0_12MatrixLayoutE3ELNS0_5Scope4FlagE3EEPNS0_24__spirv_JointMatrixINTELIT_XT0_EXT1_EXT3_EXT4_EXT2_EEEPS6_mS2_S4_i(float addrspace(1)* %decoratedsrc, i64 64, i32 0, i32 3, i32 0) #0
 %decorateddst = getelementptr inbounds float, float addrspace(1)* %dst, i64 0, !spirv.Decorations !150
-call spir_func void @_Z29__spirv_JointMatrixStoreINTELPU3AS1fPU3AS142__spirv_JointMatrixINTEL__float_8_16_3_3_2liii(float addrspace(1)* %decorateddst, %spirv.JointMatrixINTEL._float_8_16_3_3_2 addrspace(1)* %0, i64 64, i32 0, i32 3, i32 0) #0
+call spir_func void @_Z29__spirv_JointMatrixStoreINTELIfLm8ELm16ELN5__spv9MatrixUseE2ELNS0_12MatrixLayoutE3ELNS0_5Scope4FlagE3EEvPT_PNS0_24__spirv_JointMatrixINTELIS5_XT0_EXT1_EXT3_EXT4_EXT2_EEEmS2_S4_i(float addrspace(1)* %decorateddst, target("spirv.JointMatrixINTEL", float, 8, 16, 3, 3, 2) %0, i64 64, i32 0, i32 3, i32 0) #0
 ret void
 }
 !150 = !{!151, !152}
@@ -295,11 +294,13 @@ ret void
 define spir_kernel void @TestStore_L1_WriteBack__L3_WriteBack(float addrspace(1)* %src, float addrspace(1)* %dst) {
 entry:
 %decoratedsrc = getelementptr inbounds float, float addrspace(1)* %src, i64 0
-%0 =  call spir_func %spirv.JointMatrixINTEL._float_8_16_3_3_2 addrspace(1)* @_Z80__spirv_JointMatrixLoadINTEL_RPU3AS142__spirv_JointMatrixINTEL__float_8_16_3_3_2PU3AS4fliii(float addrspace(1)* %decoratedsrc, i64 64, i32 0, i32 3, i32 0) #0
+%0 =  call spir_func target("spirv.JointMatrixINTEL", float, 8, 16, 3, 3, 2) @_Z28__spirv_JointMatrixLoadINTELIfLm8ELm16ELN5__spv9MatrixUseE2ELNS0_12MatrixLayoutE3ELNS0_5Scope4FlagE3EEPNS0_24__spirv_JointMatrixINTELIT_XT0_EXT1_EXT3_EXT4_EXT2_EEEPS6_mS2_S4_i(float addrspace(1)* %decoratedsrc, i64 64, i32 0, i32 3, i32 0) #0
 %decorateddst = getelementptr inbounds float, float addrspace(1)* %dst, i64 0, !spirv.Decorations !160
-call spir_func void @_Z29__spirv_JointMatrixStoreINTELPU3AS1fPU3AS142__spirv_JointMatrixINTEL__float_8_16_3_3_2liii(float addrspace(1)* %decorateddst, %spirv.JointMatrixINTEL._float_8_16_3_3_2 addrspace(1)* %0, i64 64, i32 0, i32 3, i32 0) #0
+call spir_func void @_Z29__spirv_JointMatrixStoreINTELIfLm8ELm16ELN5__spv9MatrixUseE2ELNS0_12MatrixLayoutE3ELNS0_5Scope4FlagE3EEvPT_PNS0_24__spirv_JointMatrixINTELIS5_XT0_EXT1_EXT3_EXT4_EXT2_EEEmS2_S4_i(float addrspace(1)* %decorateddst, target("spirv.JointMatrixINTEL", float, 8, 16, 3, 3, 2) %0, i64 64, i32 0, i32 3, i32 0) #0
 ret void
 }
 !160 = !{!161, !162}
 !161 = !{i32 6443, i32 0, i32 2}  ; {CacheControlStoreINTEL, CacheLevel=0, WriteBack}
 !162 = !{i32 6443, i32 1, i32 2}  ; {CacheControlStoreINTEL, CacheLevel=1, WriteBack}
+
+attributes #0 = { convergent }
