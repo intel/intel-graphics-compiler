@@ -1,3 +1,11 @@
+/*========================== begin_copyright_notice ============================
+
+Copyright (C) 2017-2026 Intel Corporation
+
+SPDX-License-Identifier: MIT
+
+============================= end_copyright_notice ===========================*/
+
 #ifndef SPILL_FILL_PROPAGATION_H
 #define SPILL_FILL_PROPAGATION_H
 
