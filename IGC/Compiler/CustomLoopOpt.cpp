@@ -1102,6 +1102,7 @@ bool SpecialCasesDisableLICM::LoopHasInvariantSwitchDispatch(const Loop &L) {
   // independent computations to the preheader.
   constexpr unsigned MIN_DISPATCH_BRANCHES = 15;
   llvm::DenseMap<Value *, size_t> InvariantBranchCounts;
+  llvm::SmallVector<ICmpInst *, 16> SeenICMP;
   for (BasicBlock *BB : L.blocks()) {
     if (BB->size() != 2) {
       continue;
@@ -1111,9 +1112,11 @@ bool SpecialCasesDisableLICM::LoopHasInvariantSwitchDispatch(const Loop &L) {
       continue;
     }
     auto *Cmp = dyn_cast<ICmpInst>(BI->getCondition());
-    if (!Cmp) {
+    if (!Cmp || Cmp->getParent() != BB ||
+        llvm::any_of(SeenICMP, [Cmp](const ICmpInst *I) { return I->isIdenticalTo(Cmp); })) {
       continue;
     }
+    SeenICMP.push_back(Cmp);
     Value *LHS = Cmp->getOperand(0);
     Value *RHS = Cmp->getOperand(1);
 
