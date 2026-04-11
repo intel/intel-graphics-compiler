@@ -1,17 +1,13 @@
 #=========================== begin_copyright_notice ============================
 #
-# Copyright (C) 2017-2021 Intel Corporation
+# Copyright (C) 2017-2026 Intel Corporation
 #
 # SPDX-License-Identifier: MIT
 #
 #============================ end_copyright_notice =============================
 
 # GEDLibrary/GED
-if(WIN32)
-    cmake_minimum_required(VERSION 3.1)
-else()
-    cmake_minimum_required(VERSION 2.8.12)
-endif(WIN32)
+cmake_minimum_required(VERSION 3.11)
 
 project(GEDLibrary)
 

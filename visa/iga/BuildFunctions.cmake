@@ -1,6 +1,6 @@
 #=========================== begin_copyright_notice ============================
 #
-# Copyright (C) 2017-2021 Intel Corporation
+# Copyright (C) 2017-2026 Intel Corporation
 #
 # SPDX-License-Identifier: MIT
 #
@@ -175,20 +175,17 @@ function ( setup_executable target src_list exclude_all actual_name)
     add_executable(${target} ${src_list})
   endif()
 
-  # Set the output directory for the release pdb file
+  # Set the output directory and name for the release PDB file
   if (WIN32)
-    # Disable CMP0026 warning for using LOCATION
-    cmake_policy(SET CMP0026 OLD)
-    get_property(output_fq_file TARGET ${target} PROPERTY LOCATION_RELEASE)
-    get_filename_component(output_dir ${output_fq_file} DIRECTORY)
     if ( ${actual_name} STREQUAL "None" )
-      get_filename_component(output_name_we ${output_fq_file} NAME_WE)
-    else ( ${actual_name} STREQUAL "None" )
-      set(output_name_we ${actual_name})
+      set(pdb_name ${target})
+    else ()
+      set(pdb_name ${actual_name})
       set_target_properties( ${target} PROPERTIES OUTPUT_NAME ${actual_name} )
-    endif( ${actual_name} STREQUAL "None" )
-    set_target_properties( ${target} PROPERTIES COMPILE_PDB_OUTPUT_DIRECTORY_RELEASE ${output_dir})
-    set_target_properties( ${target} PROPERTIES COMPILE_PDB_NAME_RELEASE ${output_name_we})
+    endif()
+    set_target_properties( ${target} PROPERTIES
+      COMPILE_PDB_OUTPUT_DIRECTORY_RELEASE $<TARGET_FILE_DIR:${target}>
+      COMPILE_PDB_NAME_RELEASE ${pdb_name})
   endif (WIN32)
 endfunction( setup_executable )
 
@@ -201,19 +198,16 @@ function ( setup_library target src_list shared actual_name)
     add_library(${target} ${src_list})
   endif ( ${shared} )
 
-  # Set the output directory for the release pdb file
+  # Set the output directory and name for the release PDB file
   if (WIN32)
-    # Disable CMP0026 warning for using LOCATION
-    cmake_policy(SET CMP0026 OLD)
-    get_property(output_fq_file TARGET ${target} PROPERTY LOCATION_RELEASE)
-    get_filename_component(output_dir ${output_fq_file} DIRECTORY)
     if ( ${actual_name} STREQUAL "None" )
-      get_filename_component(output_name_we ${output_fq_file} NAME_WE)
-    else ( ${actual_name} STREQUAL "None" )
-      set(output_name_we ${actual_name})
+      set(pdb_name ${target})
+    else ()
+      set(pdb_name ${actual_name})
       set_target_properties( ${target} PROPERTIES OUTPUT_NAME ${actual_name} )
-    endif( ${actual_name} STREQUAL "None" )
-    set_target_properties( ${target} PROPERTIES COMPILE_PDB_OUTPUT_DIRECTORY_RELEASE ${output_dir})
-    set_target_properties( ${target} PROPERTIES COMPILE_PDB_NAME_RELEASE ${output_name_we})
+    endif()
+    set_target_properties( ${target} PROPERTIES
+      COMPILE_PDB_OUTPUT_DIRECTORY_RELEASE $<TARGET_FILE_DIR:${target}>
+      COMPILE_PDB_NAME_RELEASE ${pdb_name})
   endif (WIN32)
 endfunction( setup_library )

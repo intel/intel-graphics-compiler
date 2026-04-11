@@ -1,6 +1,6 @@
 #=========================== begin_copyright_notice ============================
 #
-# Copyright (C) 2017-2021 Intel Corporation
+# Copyright (C) 2017-2026 Intel Corporation
 #
 # SPDX-License-Identifier: MIT
 #
@@ -70,19 +70,7 @@ function ( setup_executable target src_list exclude_all actual_name)
     add_executable(${target} ${src_list})
   endif()
 
-  # Set the output directory for the release pdb file
-  if (WIN32)
-    # Disable CMP0026 warning for using LOCATION
-    cmake_policy(SET CMP0026 OLD)
-    get_property(output_fq_file TARGET ${target} PROPERTY LOCATION_RELEASE)
-    get_filename_component(output_dir ${output_fq_file} DIRECTORY)
-    if ( ${actual_name} STREQUAL "None" )
-      get_filename_component(output_name_we ${output_fq_file} NAME_WE)
-    else ( ${actual_name} STREQUAL "None" )
-      set(output_name_we ${actual_name})
-      set_target_properties( ${target} PROPERTIES OUTPUT_NAME ${actual_name} )
-    endif( ${actual_name} STREQUAL "None" )
-  else ()
+  if ( NOT (${actual_name} STREQUAL "None") )
     set_target_properties( ${target} PROPERTIES OUTPUT_NAME ${actual_name} )
   endif()
 endfunction( setup_executable )
