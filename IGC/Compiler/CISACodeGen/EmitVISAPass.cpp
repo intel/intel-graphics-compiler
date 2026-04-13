@@ -15292,14 +15292,11 @@ bool EmitPass::IsUniformAtomic(llvm::Instruction *pInst) {
       llvm::Value *pllV = pInst->getOperand(2);
       llvm::Value *pllR = pInst->getOperand(3);
 
-      CVariable *pDstBuffer = GetSymbol(pllbuffer);
-      CVariable *pU = GetSymbol(pllU);
-      CVariable *pV = GetSymbol(pllV);
-      CVariable *pR = GetSymbol(pllR);
-
-      // mostly care for pU nonzero, rest undef; but other's are good as well
-      if (pDstBuffer->IsUniform() && (pU->IsUniform() || pU->IsUndef()) && (pV->IsUniform() || pV->IsUndef()) &&
-          (pR->IsUniform() || pR->IsUndef())) {
+      // Use GetIsUniform (WI analysis) instead of GetSymbol()->IsUniform()
+      // to avoid asserting on instructions consumed by Efficient64b folding.
+      if (m_currShader->GetIsUniform(pllbuffer) && (m_currShader->GetIsUniform(pllU) || isa<UndefValue>(pllU)) &&
+          (m_currShader->GetIsUniform(pllV) || isa<UndefValue>(pllV)) &&
+          (m_currShader->GetIsUniform(pllR) || isa<UndefValue>(pllR))) {
         AtomicOp atomic_op = static_cast<AtomicOp>(llvm::cast<llvm::ConstantInt>(pInst->getOperand(5))->getZExtValue());
 
         bool isAddAtomic = atomic_op == EATOMIC_IADD || atomic_op == EATOMIC_INC || atomic_op == EATOMIC_SUB ||
