@@ -640,12 +640,6 @@ SPDX-License-Identifier: MIT
         WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_UNKNOWN)
 
         WA_DECLARE(
-        Wa_22013880840,
-        "Workaround",
-        WA_BUG_TYPE_CORRUPTION,
-        WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_UNKNOWN)
-
-        WA_DECLARE(
         Wa_22014559856,
         "Workaround",
         WA_BUG_TYPE_CORRUPTION,
