@@ -3519,11 +3519,39 @@ void HWConformityPro::fix2SrcInstImm(INST_LIST_ITER it, G4_BB *bb) {
   auto src0 = inst->getSrc(0);
   auto src1 = inst->getSrc(1);
 
+  // Returns true if 'imm' carries a floating-point NaN payload.
+  // HW selects the resulting NaN payload by operand priority (Src0 > Src1 >
+  // Src2).  A float NaN immediate at src0 must NOT be swapped to src1 because
+  // that would change the payload when both operands produce NaN.
+  auto isFPNaNImm = [](const G4_Imm *imm) -> bool {
+    int64_t bits = imm->getImm();
+    switch (imm->getType()) {
+    case Type_HF:
+      return (bits & 0x7FFF) > 0x7C00; // exp=all-1s, mantissa!=0
+    case Type_BF:
+      return (bits & 0x7FFF) > 0x7F80; // exp=all-1s, mantissa!=0
+    case Type_F:
+      return (bits & 0x7FFFFFFF) > 0x7F800000;
+    case Type_DF:
+    case Type_NF:
+      return ((uint64_t)bits & 0x7FFFFFFFFFFFFFFFull) > 0x7FF0000000000000ull;
+    default:
+      return false;
+    }
+  };
+
   // Src0 can not be imm for binary instructions
   if (src0 && (src0->isImm() || src0->isAddrExp())) {
     if (INST_COMMUTATIVE(inst->opcode()) && !src1->isImm()) {
-      // swap src0 and src1
-      inst->swapSrc(0, 1);
+      if (src0->isImm() && isFPNaNImm(src0->asImm())) {
+        // Swapping a float NaN from src0 to src1 would change the NaN
+        // payload (HW priority: Src0 > Src1 > Src2). Materialise instead.
+        replaceSrc(it, bb, 0, G4_Operand::GetNonVectorImmType(src0->getType()),
+                   /*tmpStride*/ 0, Any);
+      } else {
+        // swap src0 and src1
+        inst->swapSrc(0, 1);
+      }
     } else if (inst->opcode() == G4_sel && !src1->isImm()) {
       /*
        * A select operation isn't commutative, but we may commute the

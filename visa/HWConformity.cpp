@@ -902,6 +902,27 @@ void HWConformity::fixImmAndARFSrc(INST_LIST_ITER it, G4_BB *bb) {
   src1 = inst->getSrc(1);
   src2 = inst->getSrc(2);
 
+  // Returns true if 'imm' carries a floating-point NaN payload.
+  // HW selects the resulting NaN payload by operand priority (Src0 > Src1 >
+  // Src2).  A float NaN immediate at src0 must NOT be swapped to src1 because
+  // that would change the payload when both operands produce NaN.
+  auto isFPNaNImm = [](const G4_Imm *imm) -> bool {
+    int64_t bits = imm->getImm();
+    switch (imm->getType()) {
+    case Type_HF:
+      return (bits & 0x7FFF) > 0x7C00; // exp=all-1s, mantissa!=0
+    case Type_BF:
+      return (bits & 0x7FFF) > 0x7F80; // exp=all-1s, mantissa!=0
+    case Type_F:
+      return (bits & 0x7FFFFFFF) > 0x7F800000;
+    case Type_DF:
+    case Type_NF:
+      return ((uint64_t)bits & 0x7FFFFFFFFFFFFFFFull) > 0x7FF0000000000000ull;
+    default:
+      return false;
+    }
+  };
+
   /* Check for usage of two constants in binary operations */
   if (src0 && (src0->isImm() || src0->isAddrExp()) && inst->getNumSrc() == 2) {
     if (INST_COMMUTATIVE(inst->opcode()) && !src1->isImm()) {
@@ -916,15 +937,27 @@ void HWConformity::fixImmAndARFSrc(INST_LIST_ITER it, G4_BB *bb) {
 
           G4_Operand *newSrc0 = insertMovBefore(it, 0, tmpType, bb);
           inst->setSrc(newSrc0, 0);
+        } else if (src0->isImm() && isFPNaNImm(src0->asImm())) {
+          // Swapping a float NaN from src0 to src1 would change the NaN
+          // payload (HW priority: Src0 > Src1 > Src2). Materialise instead.
+          G4_Type ty = G4_Operand::GetNonVectorImmType(src0->getType());
+          inst->setSrc(insertMovBefore(it, 0, ty, bb), 0);
         } else {
           // swap operands
           inst->swapSrc(0, 1);
           inst->swapDefUse();
         }
       } else {
-        // swap operands
-        inst->swapSrc(0, 1);
-        inst->swapDefUse();
+        if (src0->isImm() && isFPNaNImm(src0->asImm())) {
+          // Swapping a float NaN from src0 to src1 would change the NaN
+          // payload (HW priority: Src0 > Src1 > Src2). Materialise instead.
+          G4_Type ty = G4_Operand::GetNonVectorImmType(src0->getType());
+          inst->setSrc(insertMovBefore(it, 0, ty, bb), 0);
+        } else {
+          // swap operands
+          inst->swapSrc(0, 1);
+          inst->swapDefUse();
+        }
       }
     }
     /*
