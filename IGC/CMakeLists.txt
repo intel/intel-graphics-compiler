@@ -24,13 +24,12 @@ set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 # Default languages: C, C++.
 project(IGC)
 
-# Save the user flags and append them at the end so that they take precedence.
-
+# Save the user flags and re-append them at the end so that they take
+# precedence over IGC-set flags. We intentionally keep CMAKE_*_FLAGS
+# intact (rather than clearing them) so that user flags like -fsanitize=*
+# remain visible to all subprojects from the start of configuration.
 set(USER_CXX_FLAGS ${CMAKE_CXX_FLAGS})
-set(CMAKE_CXX_FLAGS "")
-
 set(USER_C_FLAGS ${CMAKE_C_FLAGS})
-set(CMAKE_C_FLAGS "")
 
 if(UNIX)
   include(GNUInstallDirs)

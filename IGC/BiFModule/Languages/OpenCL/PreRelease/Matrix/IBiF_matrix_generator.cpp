@@ -1117,9 +1117,6 @@ static string DefineSmallStorePermuteRows(MatrixSpec spec, bool blockOpt, int ro
   return s;
 }
 
-// Define small store with checked variant.
-static string DefineSmallStoreAndChecked(MatrixSpec spec, bool blockOpt) { return DefineSmallStore(spec, blockOpt); }
-
 //
 // Small load function creators
 //

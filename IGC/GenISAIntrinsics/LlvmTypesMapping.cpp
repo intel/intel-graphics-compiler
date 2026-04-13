@@ -44,8 +44,8 @@ static uint32_t ResolveBound(const ValueBound &bound, llvm::ArrayRef<llvm::Type 
 static uint32_t ResolveConstraintExact(const ValueConstraint &vc, llvm::ArrayRef<llvm::Type *> resolvedTypes) {
   if (vc.IsExact())
     return vc.GetExact();
-  uint32_t low = ResolveBound(vc.m_Low, resolvedTypes);
-  uint32_t high = ResolveBound(vc.m_High, resolvedTypes);
+  [[maybe_unused]] uint32_t low = ResolveBound(vc.m_Low, resolvedTypes);
+  [[maybe_unused]] uint32_t high = ResolveBound(vc.m_High, resolvedTypes);
   IGC_ASSERT_MESSAGE(low == high && low != 0,
                      "GetType requires constraint bounds to resolve to the same non-zero value");
   return low;

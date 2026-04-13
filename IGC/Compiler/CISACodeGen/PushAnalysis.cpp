@@ -1143,6 +1143,7 @@ void PushAnalysis::processURBRead(Instruction *inst, bool gsInstancingUsed,
 // Returns a descriptive name for a RuntimeValue argument. If the intrinsic
 // already carries a meaningful name (e.g. "ScratchSpacePtr"), strip any LLVM-
 // appended numeric suffix and use that; otherwise fall back to "runtime_value_N".
+[[maybe_unused]]
 static std::string getArgNameForRuntimeValue(GenIntrinsicInst *intrinsic, uint index) {
   if (intrinsic->hasName()) {
     // Strip trailing digits that LLVM appends for uniqueness (e.g. "ScratchSpacePtr233" -> "ScratchSpacePtr").

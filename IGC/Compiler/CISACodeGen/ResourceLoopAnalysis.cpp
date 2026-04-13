@@ -78,7 +78,7 @@ static bool isSameResource(Value *A, Value *B) {
       // add is commutative - normalize: find the shared heap base operand
       // and compare the resource index operand.
       Value *ResA = nullptr, *ResB = nullptr;
-      Value *BaseA = nullptr, *BaseB = nullptr;
+      Value *BaseA = nullptr;
 
       // Try to identify which operand is the heap base (shared between both)
       // and which is the resource index.
@@ -86,7 +86,6 @@ static bool isSameResource(Value *A, Value *B) {
         for (unsigned j = 0; j < 2; ++j) {
           if (AddA->getOperand(i) == AddB->getOperand(j)) {
             BaseA = AddA->getOperand(i);
-            BaseB = AddB->getOperand(j);
             ResA = AddA->getOperand(1 - i);
             ResB = AddB->getOperand(1 - j);
             break;

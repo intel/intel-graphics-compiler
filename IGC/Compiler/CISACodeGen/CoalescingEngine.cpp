@@ -967,7 +967,7 @@ CVariable *CoalescingEngine::PrepareExplicitPayload(CShader *outProgram, CEncode
   SetCurrentPart(inst, 0);
   const uint numOperands = m_PayloadMapping.GetNumPayloadElements(inst);
   const uint grfSize = outProgram->GetContext()->platform.getGRFSize();
-  const uint numSubVarsPerOperand = numLanes(simdMode) / (grfSize / 4);
+  [[maybe_unused]] const uint numSubVarsPerOperand = numLanes(simdMode) / (grfSize / 4);
   IGC_ASSERT(numSubVarsPerOperand == 1 || numSubVarsPerOperand == 2);
   CoalescingEngine::CCTuple *ccTuple = nullptr;
   int payloadToCCTupleRelativeOffset = 0;
@@ -1069,7 +1069,7 @@ CVariable *CoalescingEngine::PrepareExplicitPayloadShuffle(CShader *outProgram, 
   SetCurrentPart(inst, 0);
   const uint numOperands = m_PayloadMapping.GetNumPayloadElements(inst);
   const uint grfSize = outProgram->GetContext()->platform.getGRFSize();
-  const uint numSubVarsPerOperand = numLanes(simdMode) / (grfSize / 4);
+  [[maybe_unused]] const uint numSubVarsPerOperand = numLanes(simdMode) / (grfSize / 4);
   IGC_ASSERT(numSubVarsPerOperand == 1 || numSubVarsPerOperand == 2);
   CVariable *payload = nullptr;
 

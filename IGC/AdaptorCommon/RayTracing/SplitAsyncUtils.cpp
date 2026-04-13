@@ -374,7 +374,7 @@ bool RematChecker::materializable(const Instruction &I) const {
     }
   }
 
-  if (auto *II = dyn_cast<AllocaInst>(&I)) {
+  if (isa<AllocaInst>(&I)) {
     REMAT_DIAG(*m_pStream << "false: [alloca]\n");
     REMAT_DIAG_SET_REASON(RejectionReason::ALLOCA);
     return false;

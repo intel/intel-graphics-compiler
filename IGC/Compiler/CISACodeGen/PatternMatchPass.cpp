@@ -6152,7 +6152,7 @@ bool CodeGenPatternMatch::MatchSampleLoadStoreAtomicTypedEff64(llvm::GenIntrinsi
         pass->emitGather4Instruction(GI);
       } else if (auto *II = dyn_cast<InfoIntrinsic>(I)) {
         pass->emitInfoInstruction(II);
-      } else if (auto *ATI = dyn_cast<AtomicTypedIntrinsic>(I)) {
+      } else if (isa<AtomicTypedIntrinsic>(I)) {
         if (pass->shouldGenerateLSC(I)) {
           pass->emitLSCAtomicTyped(I);
         } else

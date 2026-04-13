@@ -942,7 +942,7 @@ void ReplaceUnsupportedIntrinsics::replaceLRound(IntrinsicInst *I) {
   IGC_ASSERT(I->getIntrinsicID() == Intrinsic::lround || I->getIntrinsicID() == Intrinsic::llround);
   Value *inVal = I->getArgOperand(0);
   Type *dstType = I->getType();
-  Type *srcType = inVal->getType();
+  [[maybe_unused]] Type *srcType = inVal->getType();
   IGC_ASSERT(!(srcType->isVectorTy() || dstType->isVectorTy()));
   IGC_ASSERT(srcType->isFloatTy() || srcType->isDoubleTy());
   IGC_ASSERT(dstType->isIntegerTy());
