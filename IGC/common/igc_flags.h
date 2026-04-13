@@ -1496,7 +1496,7 @@ DECLARE_IGC_REGKEY(bool, LoopCountAwareTrimming, false,
                    "Take loop count into account in measuring the function size for trimming", true)
 DECLARE_IGC_REGKEY(DWORD, MaxUnrollCountForFunctionSizeAnalysis, 16,
                    "The maximum number of loop unrolling assumed in function size analaysis", true)
-DECLARE_IGC_REGKEY(bool, ControlInlineImplicitArgs, true, "Avoid trimming functions with implicit args", true)
+DECLARE_IGC_REGKEY(bool, ControlInlineImplicitArgs, false, "Avoid trimming functions with implicit args", true)
 DECLARE_IGC_REGKEY(DWORD, ControlInlineTinySize, 200, "Tiny function size for controlling kernel total size", true)
 DECLARE_IGC_REGKEY(DWORD, ControlInlineTinySizeForSPGT, 300, "Tiny function size for controlling kernel total size",
                    true)
