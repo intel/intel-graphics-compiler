@@ -109,11 +109,12 @@ void LSCCacheHints::SetupLscCacheCtrl(const ModuleMetaData *ModMD, llvm::Instruc
       const unsigned int AddrSpace = Op->getType()->getPointerAddressSpace();
       if (RasterizerOrderedViews.find(AddrSpace) != RasterizerOrderedViews.end()) {
         SetInstructionCacheHint(I, LSC_L1UC_L3C_WB, "accessing ROV");
+        return;
       } else if (!ForceLscCacheList.empty()) {
         for (auto &l : ForceLscCacheList) {
           if (l.first == AddrSpace) {
             SetInstructionCacheHint(I, l.second, "addrspace matching ForceLscCacheList");
-            break;
+            return;
           }
         }
       } else if (AddrSpace == ADDRESS_SPACE_PRIVATE || AddrSpace == ADDRESS_SPACE_CONSTANT) {
