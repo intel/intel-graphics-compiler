@@ -43,7 +43,7 @@ public:
 private:
   DominatorTree *dt = nullptr;
   CodeGenContext *m_ctx = nullptr;
-  SmallPtrSet<AddrSpaceCastInst *, 8> toVisit;
+  SmallVector<AddrSpaceCastInst *> toVisit;
 };
 } // namespace
 
@@ -143,7 +143,7 @@ void GenericNullPtrPropagation::visitAddrSpaceCastInst(AddrSpaceCastInst &I) {
        (I.getSrcAddressSpace() == ADDRESS_SPACE_PRIVATE && m_ctx->mustDistinguishBetweenPrivateAndGlobalPtr())) &&
       I.getDestAddressSpace() == ADDRESS_SPACE_GENERIC) {
 
-    toVisit.insert(&I);
+    toVisit.push_back(&I);
     return;
   }
 }
