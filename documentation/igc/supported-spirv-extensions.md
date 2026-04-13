@@ -116,6 +116,8 @@ This document lists all SPIR-V extensions supported by IGC and their platform re
 
 **Specification**: https://github.com/intel/llvm/blob/sycl/sycl/doc/design/spirv-extensions/SPV_INTEL_bfloat16_arithmetic.asciidoc
 
+> **Supported on**: IGFX_XE3P_CORE and newer
+
 > **Experimentally supported on**: IGFX_XE_HPG_CORE and newer (excluding IGFX_METEORLAKE)
 
 **Capabilities**:

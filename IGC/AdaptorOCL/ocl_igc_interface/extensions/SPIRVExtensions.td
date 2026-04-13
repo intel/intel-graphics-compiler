@@ -378,15 +378,20 @@ def SPV_EXT_shader_atomic_float_min_max : Extension<
   InheritFromCapabilities
 >;
 
-def SPV_INTEL_bfloat16_arithmetic : ExperimentalExtension<
+def SPV_INTEL_bfloat16_arithmetic : Extension<
   "SPV_INTEL_bfloat16_arithmetic",
   [ Capability<"BFloat16ArithmeticINTEL"> ],
   "https://github.com/intel/llvm/blob/sycl/sycl/doc/design/spirv-extensions/SPV_INTEL_bfloat16_arithmetic.asciidoc",
-  // isCoreChildOf<IGFX_XE3P_CORE>
-  // This extension has been mainly implemented for XE3P, but there are existing LIT tests for some functionality from
-  // this extension for PVC and DG2. We may consider supporting those platforms fully in the future. Since the support
-  // for this extension is still experimental, we define support for broader set of platforms for now to avoid fails
-  // on existing PVC and DG2 tests.
+  isCoreChildOf<IGFX_XE3P_CORE>
+>;
+
+def SPV_INTEL_bfloat16_arithmetic_experimental : ExperimentalExtension<
+  "SPV_INTEL_bfloat16_arithmetic",
+  [ Capability<"BFloat16ArithmeticINTEL"> ],
+  "https://github.com/intel/llvm/blob/sycl/sycl/doc/design/spirv-extensions/SPV_INTEL_bfloat16_arithmetic.asciidoc",
+  // XE3P platforms are officially supported via the Extension definition above. This ExperimentalExtension covers
+  // older platforms (XE_HPG_CORE and newer, excluding METEORLAKE) to maintain compatibility with existing LIT tests
+  // for PVC and DG2. We may consider promoting those platforms to full support in the future.
   AllOf<[isCoreChildOf<IGFX_XE_HPG_CORE>, Not<ExactPlatform<IGFX_METEORLAKE>>]>
 >;
 
