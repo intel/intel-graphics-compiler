@@ -7,7 +7,7 @@
 ;============================ end_copyright_notice =============================
 
 ; REQUIRES: regkeys
-; RUN: igc_opt --igc-restore-genisa-intrinsics --igc-vectorizer -S -dce --regkey=VectorizerLog=1 --regkey=VectorizerLogToErr=1 < %s 2>&1 | FileCheck %s
+; RUN: igc_opt --igc-vectorizer -S -dce --regkey=VectorizerLog=1 --regkey=VectorizerLogToErr=1 < %s 2>&1 | FileCheck %s
 
 define spir_kernel void @quux() {
 ; CHECK: SIMD Size: 32

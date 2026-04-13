@@ -15,14 +15,14 @@
 ;   - the debug info is preserved
 
 ; no-debug run
-; RUN: igc_opt --igc-restore-genisa-intrinsics --opaque-pointers -platformpvc --regkey DisableLoopSink=1 --regkey DisableCodeScheduling=0 \
+; RUN: igc_opt --opaque-pointers -platformpvc --regkey DisableLoopSink=1 --regkey DisableCodeScheduling=0 \
 ; RUN:         --regkey CodeSchedulingForceMWOnly=1 --regkey EnableCodeSchedulingIfNoSpills=1 \
 ; RUN:         --regkey CodeSchedulingRPThreshold=-512 \
 ; RUN:         --igc-code-scheduling --verify \
 ; RUN:         -S %s &> %t.no_debug.ll
 
 ; no-debug run duplicate to check determinism
-; RUN: igc_opt --igc-restore-genisa-intrinsics --opaque-pointers -platformpvc --regkey DisableLoopSink=1 --regkey DisableCodeScheduling=0 \
+; RUN: igc_opt --opaque-pointers -platformpvc --regkey DisableLoopSink=1 --regkey DisableCodeScheduling=0 \
 ; RUN:         --regkey CodeSchedulingForceMWOnly=1 --regkey EnableCodeSchedulingIfNoSpills=1 \
 ; RUN:         --regkey CodeSchedulingRPThreshold=-512 \
 ; RUN:         --igc-code-scheduling --verify \
@@ -32,7 +32,7 @@
 ; RUN: diff %t.no_debug.ll %t.no_debug.2.ll
 
 ; debug run + check the debugify check pass
-; RUN: igc_opt --igc-restore-genisa-intrinsics --opaque-pointers -platformpvc --regkey DisableLoopSink=1 --regkey DisableCodeScheduling=0 \
+; RUN: igc_opt --opaque-pointers -platformpvc --regkey DisableLoopSink=1 --regkey DisableCodeScheduling=0 \
 ; RUN:         --regkey CodeSchedulingForceMWOnly=1 --regkey EnableCodeSchedulingIfNoSpills=1 \
 ; RUN:         --regkey CodeSchedulingRPThreshold=-512 \
 ; RUN:         --debugify --igc-code-scheduling --verify --check-debugify \

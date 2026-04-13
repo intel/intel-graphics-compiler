@@ -1,4 +1,4 @@
-; RUN: igc_opt --igc-restore-genisa-intrinsics --igc-vectorizer -S -dce < %s 2>&1 | FileCheck %s
+; RUN: igc_opt --igc-vectorizer -S -dce < %s 2>&1 | FileCheck %s
 
 define spir_kernel void @quux() {
 ; CHECK-LABEL: @quux(

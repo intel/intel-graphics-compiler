@@ -12,8 +12,8 @@
 ; When the flag is enabled (1), long latency instructions like sample instructions should NOT be sunk to successor blocks.
 ; When the flag is disabled (default, 0), long latency instructions like sample instructions CAN be sunk.
 ;
-; RUN: igc_opt --igc-restore-genisa-intrinsics --igc-code-sinking -S --regkey DisableCodeSinkingLongLatencyInsts=0,CodeSinkingMinSize=0 < %s 2>&1 | FileCheck %s --check-prefix=CHECK-SINK
-; RUN: igc_opt -igc-restore-genisa-intrinsics --igc-code-sinking -S --regkey DisableCodeSinkingLongLatencyInsts=1,CodeSinkingMinSize=0 < %s 2>&1 | FileCheck %s --check-prefix=CHECK-NO-SINK
+; RUN: igc_opt --igc-code-sinking -S --regkey DisableCodeSinkingLongLatencyInsts=0,CodeSinkingMinSize=0 < %s 2>&1 | FileCheck %s --check-prefix=CHECK-SINK
+; RUN: igc_opt --igc-code-sinking -S --regkey DisableCodeSinkingLongLatencyInsts=1,CodeSinkingMinSize=0 < %s 2>&1 | FileCheck %s --check-prefix=CHECK-NO-SINK
 
 ;
 ;;;;;; Test with Sample instruction sinking behavior based on DisableCodeSinkingLongLatencyInsts flag

@@ -23,7 +23,7 @@
 ; CHECK-NEXT:    [[P6:%.*]] = phi float
 ; CHECK-NEXT:    [[P7:%.*]] = phi float
 ; CHECK-NEXT:    [[P8:%.*]] = phi float
-; CHECK-NEXT:    call void @llvm.genx.GenISA.typedwrite.p10903552(ptr addrspace(10903552) [[P0]], i32 %idx0, i32 %idx1, i32 0, i32 0, float [[P5]], float [[P6]], float [[P7]], float [[P8]])
+; CHECK-NEXT:    call void @llvm.genx.GenISA.typedwrite.p10903552__2D_DIM_Resource(ptr addrspace(10903552) [[P0]], i32 %idx0, i32 %idx1, i32 0, i32 0, float [[P5]], float [[P6]], float [[P7]], float [[P8]])
 ; CHECK-NEXT:    ret void
 
 define void @test_merge_typedwrite_basic(i32 %res_handle, i32 %idx0, i32 %idx1, i1 %cond, float %val0, float %val1) {

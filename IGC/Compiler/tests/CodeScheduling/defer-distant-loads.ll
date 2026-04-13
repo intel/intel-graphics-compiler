@@ -27,7 +27,7 @@
 ; RUN: igc_opt --opaque-pointers -platformpvc --regkey DisableLoopSink=1 --regkey DisableCodeScheduling=0 \
 ; RUN:         --regkey CodeSchedulingForceMWOnly=1 --regkey EnableCodeSchedulingIfNoSpills=1 \
 ; RUN:         --regkey CodeSchedulingRPThreshold=-512 \
-; RUN:         --igc-restore-genisa-intrinsics --igc-code-scheduling -S %s &> %t.ll
+; RUN:         --igc-code-scheduling -S %s &> %t.ll
 ; RUN: FileCheck %s --input-file=%t.ll
 
 

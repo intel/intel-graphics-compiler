@@ -10,7 +10,7 @@
 ; RUN: igc_opt --opaque-pointers --regkey DisableCodeScheduling=0 \
 ; RUN:          --regkey EnableCodeSchedulingIfNoSpills=1 --regkey CodeSchedulingGreedyRPHigherRPCommit=1 \
 ; RUN:         --regkey PrintToConsole=1 --regkey DumpCodeScheduling=1 \
-; RUN:         --igc-restore-genisa-intrinsics --igc-code-scheduling \
+; RUN:         --igc-code-scheduling \
 ; RUN:         --regkey CodeSchedulingRPThreshold=-512 --regkey CodeSchedulingForceRPOnly=1 \
 ; RUN:         -S %s 2>&1 | FileCheck %s
 

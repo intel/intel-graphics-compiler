@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: igc_opt --opaque-pointers -igc-restore-genisa-intrinsics -S %s | FileCheck %s
+; RUN: igc_opt --opaque-pointers -S %s | FileCheck %s
 
 ; The purpose of this test is to check whether Gen Intrinsics module handles the new way of defining captures (in .yml files) correctly
 
