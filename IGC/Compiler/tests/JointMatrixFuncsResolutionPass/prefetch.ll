@@ -41,3 +41,28 @@ define spir_kernel void @test2(ptr addrspace(4) align 2 %A) {
 
 ; Function Attrs: nounwind
 declare spir_func void @"_Z38__spirv_CooperativeMatrixPrefetchINTELPU3AS438class.sycl::_V1::ext::oneapi::bfloat16iiiil"(ptr addrspace(4) %0, i32 %1, i32 %2, i32 %3, i32 %4, i64 %5) #0
+
+; Test prefetch with array element type [2 x i8] (total 16 bits)
+; CHECK:     call void @__builtin_spriv_OpJointMatrixPrefetchINTEL_SG16_8x16_i16(ptr addrspace(4) %add.ptr3
+
+define spir_kernel void @test_array_i8(ptr addrspace(1) align 2 %A, i64 %idx) {
+  entry:
+    %0 = addrspacecast ptr addrspace(1) %A to ptr addrspace(4)
+    %add.ptr3 = getelementptr inbounds [2 x i8], ptr addrspace(4) %0, i64 %idx
+    call spir_func void @"_Z38__spirv_CooperativeMatrixPrefetchINTELPU3AS4A2_aiiiil"(ptr addrspace(4) %add.ptr3, i32 8, i32 16, i32 0, i32 0, i64 32) #0
+    ret void
+}
+
+; Test prefetch with array element type [2 x half] (total 32 bits)
+; CHECK:     call void @__builtin_spriv_OpJointMatrixPrefetchINTEL_SG16_8x16_i32(ptr addrspace(4) %add.ptr4
+
+define spir_kernel void @test_array_half(ptr addrspace(1) align 4 %A, i64 %idx) {
+  entry:
+    %0 = addrspacecast ptr addrspace(1) %A to ptr addrspace(4)
+    %add.ptr4 = getelementptr inbounds [2 x half], ptr addrspace(4) %0, i64 %idx
+    call spir_func void @"_Z38__spirv_CooperativeMatrixPrefetchINTELPU3AS4A2_Dhiiiil"(ptr addrspace(4) %add.ptr4, i32 8, i32 16, i32 0, i32 0, i64 32) #0
+    ret void
+}
+
+declare spir_func void @"_Z38__spirv_CooperativeMatrixPrefetchINTELPU3AS4A2_aiiiil"(ptr addrspace(4) %0, i32 %1, i32 %2, i32 %3, i32 %4, i64 %5) #0
+declare spir_func void @"_Z38__spirv_CooperativeMatrixPrefetchINTELPU3AS4A2_Dhiiiil"(ptr addrspace(4) %0, i32 %1, i32 %2, i32 %3, i32 %4, i64 %5) #0

@@ -1505,7 +1505,11 @@ Instruction *JointMatrixFuncsResolutionPass::ResolvePrefetch(CallInst *CI) {
     }
   }
 
-  if (ptrElemType->isHalfTy()) {
+  if (ArrayType *arrayTy = dyn_cast<ArrayType>(ptrElemType)) {
+    const DataLayout &DL = CI->getModule()->getDataLayout();
+    desc.bitWidth = DL.getTypeSizeInBits(arrayTy);
+    desc.isFloating = true;
+  } else if (ptrElemType->isHalfTy()) {
     desc.bitWidth = 16;
     desc.isFloating = true;
   } else if (ptrElemType->isFloatTy()) {
@@ -1516,15 +1520,16 @@ Instruction *JointMatrixFuncsResolutionPass::ResolvePrefetch(CallInst *CI) {
     desc.isFloating = true;
   } else if (ptrElemType->isIntegerTy()) {
     desc.bitWidth = cast<IntegerType>(ptrElemType)->getBitWidth();
-
-    if (!ValidateIntegerBitWidth(desc.bitWidth)) {
-      std::string msg = "Unexpected Matrix integer size: '" + std::to_string(desc.bitWidth) + "'.";
-      LLVM_DEBUG(dbgs() << msg << "\n");
-      m_Ctx->EmitError(msg.c_str(), ptrVal);
-      return nullptr;
-    }
   } else {
     m_Ctx->EmitError("Failed to resolve matrix prefetch pointer type", ptrVal);
+    return nullptr;
+  }
+
+  if (!ValidateIntegerBitWidth(desc.bitWidth)) {
+    std::string msg =
+        "Unexpected matrix element bit size: '" + std::to_string(desc.bitWidth) + "' found when resolving prefetch.";
+    m_Ctx->EmitError(msg.c_str(), ptrVal);
+    return nullptr;
   }
 
   LLVMContext &ctx = CI->getContext();
