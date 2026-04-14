@@ -1722,8 +1722,9 @@ DECLARE_IGC_REGKEY(
     "Cutoff value for register estimator, lower than that, kernel won't be rematted, stated in percentages", false)
 DECLARE_IGC_REGKEY(bool, RematSingleFlowRematEnabled, true,
                    "Allow singleFlowRemat stage inside CloneAddressArithmeticPass", false)
-DECLARE_IGC_REGKEY(bool, RematEnable, false, "Enable clone adress arithmetic pass not only on retry", false)
-DECLARE_IGC_REGKEY(bool, RematLog, false, "Dump Remat Log, usefull for analyzing spills as well", false)
+DECLARE_IGC_REGKEY(bool, RematEnable, false, "Enable clone address arithmetic pass not only on retry", false)
+DECLARE_IGC_REGKEY(bool, RematLog, false, "Dump Remat Log, useful for analyzing spills as well", false)
+DECLARE_IGC_REGKEY(bool, RematLogToErr, false, "Dump Remat Log, useful for analyzing spills as well", false)
 DECLARE_IGC_REGKEY(
     bool, RematSameBBScope, false,
     "Confine rematerialization only to variables within the same BB, we won't pull down values from predeccors", false)

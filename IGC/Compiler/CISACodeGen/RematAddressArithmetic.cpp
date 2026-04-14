@@ -506,9 +506,6 @@ bool CloneAddressArithmetic::rematerialize(RematSet &ToProcess, unsigned int Flo
 
 void CloneAddressArithmetic::estimateProfit(RematSet &ToProcess) {
 
-  if (!DEBUG)
-    return;
-
   const DataLayout &DL = Func->getParent()->getDataLayout();
 
   PRINT_LOG_NL("FINAL: ");
@@ -523,18 +520,28 @@ void CloneAddressArithmetic::estimateProfit(RematSet &ToProcess) {
     auto &ValueSet = el.second;
 
     unsigned int SetSize = ValueSet.size();
-    unsigned int RegSize = RPE->bytesToRegisters(RPE->estimateSizeInBytes(OriginSet, *Func, SIMD, &WI->Runner));
-    PRINT_LOG_NL("SetSize: " << SetSize << " Reg_Size: " << RegSize);
+    unsigned int OriginSetSize = OriginSet.size();
+    unsigned int OriginRegSize = RPE->bytesToRegisters(RPE->estimateSizeInBytes(OriginSet, *Func, SIMD, &WI->Runner));
     PRINT_DS("Origin node: ", OriginSet);
 
-    unsigned int WholeRegSize = 0;
+    unsigned int ValueRegSize = RPE->bytesToRegisters(RPE->estimateSizeInBytes(ValueSet, *Func, SIMD, &WI->Runner));
     for (auto vecEl : ValueSet) {
       unsigned int RegSize = RPE->bytesToRegisters(RPE->computeSizeInBytes(vecEl, SIMD, &WI->Runner, DL));
-      WholeRegSize += RegSize;
       PRINT_LOG("uses: " << Uses[vecEl] << " size: " << RegSize);
       PRINT_INST_NL(vecEl);
     }
-    PRINT_LOG_NL("WholeRegSize: " << WholeRegSize);
+    PRINT_LOG_NL("ValueSetSize: " << SetSize << " ValueSet Reg_Size: " << ValueRegSize);
+    PRINT_LOG_NL("OriginSetSize: " << OriginSetSize << " OriginSet Reg_Size: " << OriginRegSize);
+
+    // if origin values (values that are going to be used to recompute) weigh more
+    // than what we're rematting we should not
+    // check cloneAddressArithmetic-not-profitable.ll test for reference
+    if (ValueRegSize < OriginRegSize) {
+      PRINT_LOG_NL("Not profitable");
+      for (auto vecEl : ValueSet)
+        if (ToProcess.count(vecEl))
+          ToProcess.remove(vecEl);
+    }
     PRINT_LOG_NL("------");
   }
 
@@ -717,10 +724,8 @@ bool CloneAddressArithmetic::singleFlowRemat(Function &F) {
   computeFlow(ToProcess);
   writeLog();
 
-  if (DEBUG) {
-    speculateWholeChain(ToProcess, 1);
-    writeLog();
-  }
+  speculateWholeChain(ToProcess, 1);
+  writeLog();
 
   rematerialize(ToProcess, 1);
   writeLog();
@@ -764,8 +769,11 @@ bool CloneAddressArithmetic::greedyRemat(Function &F) {
 
 void CloneAddressArithmetic::writeLog() {
 
-  if (IGC_IS_FLAG_ENABLED(RematLog) && OutputLogFile->is_open())
+  if (IGC_IS_FLAG_ENABLED(RematLog) && IGC_IS_FLAG_DISABLED(RematLogToErr) && OutputLogFile->is_open())
     *OutputLogFile << OutputLogStream.str();
+
+  if (IGC_IS_FLAG_ENABLED(RematLog) && IGC_IS_FLAG_ENABLED(RematLogToErr))
+    llvm::errs() << OutputLogStream.str();
 
   OutputLogStream.str().clear();
 }
