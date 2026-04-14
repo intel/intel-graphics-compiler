@@ -1564,8 +1564,8 @@ public:
   bool hasAccurateLog2() const { return isProductChildOf(IGFX_NVL); }
 
   bool forceZeroTileID() const {
-    return m_platformInfo.eProductFamily == IGFX_NVL &&
-           IGC_IS_FLAG_ENABLED(ForceZeroTileID);
+    bool supported = IGC_IS_FLAG_ENABLED(ForceZeroTileID) && isCoreChildOf(IGFX_XE3P_CORE);
+    return supported;
   }
 
   bool regenerateTileID() const { return IGC_IS_FLAG_ENABLED(RegenerateTileID); }
