@@ -172,11 +172,9 @@ bool SRSubPassAfterRA::isRemoveAble(G4_INST *i) {
   }
 
   // It's not global define
-  if (!(builder.getIsKernel() && kernel.fg.getNumBB() == 1)) {
-    if (kernel.fg.globalOpndHT.isOpndGlobal(dstRgn) &&
-        !dstRgn->getTopDcl()->getIsBBLocal()) {
-      return false;
-    }
+  if (kernel.fg.globalOpndHT.isOpndGlobal(dstRgn) &&
+      !dstRgn->getTopDcl()->getIsBBLocal()) {
+    return false;
   }
 
   // In some platforms, mov is not removeable if the src register > r255
