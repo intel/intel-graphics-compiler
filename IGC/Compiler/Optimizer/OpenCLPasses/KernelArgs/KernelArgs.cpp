@@ -171,6 +171,8 @@ KernelArg::ArgType KernelArg::calcArgType(const Argument *arg, const StringRef t
       return KernelArg::ArgType::PTR_CONSTANT;
     case ADDRESS_SPACE_LOCAL:
       return KernelArg::ArgType::PTR_LOCAL;
+    case ADDRESS_SPACE_CODE_SECTION:
+      return KernelArg::ArgType::CONSTANT_REG;
 
     default:
 #if 0

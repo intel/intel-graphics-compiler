@@ -1,0 +1,22 @@
+; Verify that a kernel with an OpTypePointer CodeSectionINTEL parameter compiles successfully.
+
+; REQUIRES: spirv-as, dg2-supported
+
+; RUN: spirv-as --target-env spv1.0 -o %t.spv %s
+; RUN: ocloc compile -spirv_input -file %t.spv -device dg2 2>&1 | FileCheck %s
+
+; CHECK: Build succeeded.
+
+               OpCapability Addresses
+               OpCapability Kernel
+               OpMemoryModel Physical32 OpenCL
+               OpEntryPoint Kernel %1 "test_code_section"
+       %void = OpTypeVoid
+        %int = OpTypeInt 32 0
+          %3 = OpTypePointer CodeSectionINTEL %int
+          %4 = OpTypeFunction %void %3
+          %1 = OpFunction %void None %4
+          %2 = OpFunctionParameter %3
+          %5 = OpLabel
+               OpReturn
+               OpFunctionEnd

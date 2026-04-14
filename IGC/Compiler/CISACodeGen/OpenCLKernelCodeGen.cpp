@@ -433,6 +433,8 @@ std::string COpenCLKernel::getKernelArgAddressQualifier(const FunctionMetaData &
     return "__local";
   case ADDRESS_SPACE_PRIVATE:
     return "__private";
+  case ADDRESS_SPACE_CODE_SECTION:
+    return "__private";
   default:
     m_Context->EmitError("Generic pointers are not allowed as kernel argument storage class!", nullptr);
     IGC_ASSERT_MESSAGE(0, "Unexpected address space");
