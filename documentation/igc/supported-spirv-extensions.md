@@ -391,6 +391,18 @@ This document lists all SPIR-V extensions supported by IGC and their platform re
 
 ---
 
+## SPV_INTEL_rounded_divide_sqrt
+
+**Specification**: TBD
+
+> **Experimentally supported on**: IGFX_XE_HP_CORE and newer
+
+**Capabilities**:
+
+- **RoundedDivideSqrtINTEL**
+
+---
+
 ## SPV_INTEL_sigmoid
 
 **Specification**: https://github.com/intel/llvm/blob/sycl/sycl/doc/design/spirv-extensions/SPV_INTEL_sigmoid.asciidoc

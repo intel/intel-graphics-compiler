@@ -464,4 +464,11 @@ def SPV_INTEL_device_barrier : ExperimentalExtension<
   "https://github.com/intel/llvm/pull/12092"
 >;
 
+def SPV_INTEL_rounded_divide_sqrt : ExperimentalExtension<
+  "SPV_INTEL_rounded_divide_sqrt",
+  [ Capability<"RoundedDivideSqrtINTEL"> ],
+  "TBD",
+  isCoreChildOf<IGFX_XE_HP_CORE>
+>;
+
 // ----------------------------------------------
