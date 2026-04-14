@@ -146,8 +146,8 @@ bool SpillFillPropagation::replaceFillWithMovs(
     G4_DstRegRegion *dst = builder.createDst(
         dstTopDcl->getRegVar(), (short)(dstRegOff + i), 0, 1, type);
 
-    const char *name =
-        builder.getNameString(32, "SFProp_%d", kernel.Declares.size());
+    const char *name = builder.getNameString(
+        32, "SFProp_%d", static_cast<int>(kernel.Declares.size()));
     G4_Declare *srcDcl = builder.createDeclare(
         name, G4_GRF, kernel.numEltPerGRF<Type_UD>(), rowsThisMov, Type_UD);
     srcDcl->getRegVar()->setPhyReg(builder.phyregpool.getGreg(srcGRFs[i]), 0);
@@ -210,8 +210,8 @@ bool SpillFillPropagation::replaceFillWithMovsAfter(
     G4_DstRegRegion *dst = builder.createDst(
         pf.dstTopDcl->getRegVar(), (short)(pf.dstRegOff + i), 0, 1, type);
 
-    const char *name =
-        builder.getNameString(32, "SFProp_%d", kernel.Declares.size());
+    const char *name = builder.getNameString(
+        32, "SFProp_%d", static_cast<int>(kernel.Declares.size()));
     G4_Declare *srcDcl = builder.createDeclare(
         name, G4_GRF, kernel.numEltPerGRF<Type_UD>(), rowsThisMov, Type_UD);
     srcDcl->getRegVar()->setPhyReg(builder.phyregpool.getGreg(srcGRFs[i]), 0);
@@ -314,6 +314,7 @@ void SpillFillPropagation::processBBForward(G4_BB *bb) {
         std::vector<unsigned> srcGRFs;
         if (canReplaceFill(fill, srcGRFs) &&
             replaceFillWithMovs(bb, it, fill, srcGRFs)) {
+          invalidateClobberedEntries(inst);
           for (unsigned i = 0; i < numRows; ++i)
             addEntry(offset + i, dstStartGRF + i);
           // it already advanced by erase
