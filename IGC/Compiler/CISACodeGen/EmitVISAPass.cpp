@@ -15127,6 +15127,14 @@ void EmitPass::emitScalarAtomics(llvm::Instruction *pInst, ResourceDescriptor &r
   if (returnsImmValue) {
     unsigned int counter = m_currShader->m_numberInstance;
     IGC_ASSERT_MESSAGE(op == EOPCODE_ADD, "we can only get the return value for add right now");
+    // For BF atomics, m_destination and pSrc are W-typed (from LLVM's i16
+    // representation of bfloat), but the add must operate in BF domain.
+    CVariable *addDst = m_destination;
+    CVariable *addSrc = pSrc;
+    if (type == ISA_TYPE_BF) {
+      addDst = m_currShader->BitCast(m_destination, ISA_TYPE_BF);
+      addSrc = m_currShader->BitCast(pSrc, ISA_TYPE_BF);
+    }
     for (unsigned int i = 0; i < counter; ++i) {
       m_encoder->SetNoMask();
       m_encoder->Add(pSrcsArr[i], pSrcsArr[i], pReturnVal);
@@ -15138,7 +15146,7 @@ void EmitPass::emitScalarAtomics(llvm::Instruction *pInst, ResourceDescriptor &r
       }
 
       m_encoder->SetSecondHalf(i == 1);
-      m_encoder->Add(m_destination, pSrcsArr[i], pSrc);
+      m_encoder->Add(addDst, pSrcsArr[i], addSrc);
       m_encoder->Push();
     }
   }
