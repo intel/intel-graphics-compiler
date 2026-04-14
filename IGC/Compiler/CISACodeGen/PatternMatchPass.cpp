@@ -6328,6 +6328,10 @@ bool CodeGenPatternMatch::MatchAvg(llvm::Instruction &I) {
   IGC_ASSERT(I.getOpcode() == Instruction::SDiv || I.getOpcode() == Instruction::UDiv ||
              I.getOpcode() == Instruction::AShr);
 
+  // HW avg instruction only supports types up to 32 bits (B/UB/W/UW/D/UD).
+  if (I.getType()->getScalarSizeInBits() > 32)
+    return false;
+
   // We expect 2 for "div" and 1 for "right shift".
   int expectedVal = (I.getOpcode() == Instruction::SDiv ? 2 : 1);
   Value *opnd1 = I.getOperand(1); // Divisor or shift factor.
