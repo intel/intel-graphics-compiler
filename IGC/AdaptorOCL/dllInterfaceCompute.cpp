@@ -1344,10 +1344,15 @@ bool TranslateBuildSPMD(const STB_TranslateInputArgs *pInputArgs, STB_TranslateO
         for (auto it = pKernelModule->getFunctionList().begin(), ie = pKernelModule->getFunctionList().end();
              it != ie;) {
           Function *pFunc = &*(it++);
-          // Only retry compilation on kernels that need it
+          // Only retry compilation on kernels that need it.
+          // Skip erasure if the kernel is still referenced (e.g., called as a
+          // device function by another kernel that will be recompiled).
+          // Quoting from the OpenCL C spec: "It is just a regular function call if a __kernel function is called by
+          // another kernel function."
           if (pFunc->getCallingConv() == llvm::CallingConv::SPIR_KERNEL &&
               oclContext.m_retryManager->kernelSet.find(pFunc->getName().str()) ==
-                  oclContext.m_retryManager->kernelSet.end()) {
+                  oclContext.m_retryManager->kernelSet.end() &&
+              pFunc->use_empty()) {
             pFunc->eraseFromParent();
             // TODO: Consider running a proper cleanup of
             // !opencl.kernels metadata entries here instead of
