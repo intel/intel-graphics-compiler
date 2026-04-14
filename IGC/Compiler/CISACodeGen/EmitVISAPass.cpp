@@ -13182,7 +13182,7 @@ CVariable *EmitPass::GetHalfExecutionMask() {
     currBlock->m_activeMask = flag;
   }
 
-  VISA_Type maskType = m_currShader->m_State.m_dispatchSize > SIMDMode::SIMD16 ? ISA_TYPE_UD : ISA_TYPE_UW;
+  VISA_Type maskType = GetFlagVarType();
   CVariable *eMask = CastFlagToVariable(currBlock->m_activeMask);
 
   // for SIMD32, clear out the other half
@@ -13198,10 +13198,15 @@ CVariable *EmitPass::GetHalfExecutionMask() {
   return eMask;
 }
 
+VISA_Type EmitPass::GetFlagVarType() const {
+  VISA_Type maskType = m_currShader->m_State.m_dispatchSize > SIMDMode::SIMD16 ? ISA_TYPE_UD : ISA_TYPE_UW;
+  return maskType;
+}
+
 // Cast flag to variable
 CVariable *EmitPass::CastFlagToVariable(CVariable *flag) {
   IGC_ASSERT_MESSAGE(flag->GetType() == ISA_TYPE_BOOL, "Expecting a bool type variable");
-  VISA_Type maskType = m_currShader->m_State.m_dispatchSize > SIMDMode::SIMD16 ? ISA_TYPE_UD : ISA_TYPE_UW;
+  VISA_Type maskType = GetFlagVarType();
   CVariable *eMask = m_currShader->GetNewVariable(1, maskType, EALIGN_DWORD, true, CName::NONE);
   m_encoder->SetNoMask();
   m_encoder->Cast(eMask, flag);

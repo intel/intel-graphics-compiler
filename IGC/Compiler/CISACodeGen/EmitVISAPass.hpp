@@ -715,6 +715,7 @@ public:
   // the number of lanes of the entire dispatch. It is read only as it is cached for reuse.
   CVariable *GetNumActiveLanes();
 
+  VISA_Type GetFlagVarType() const;
   CVariable *CastFlagToVariable(CVariable *flag);
   CVariable *GetExecutionMask();
   CVariable *GetExecutionMask(CVariable *&vecMaskVar);
