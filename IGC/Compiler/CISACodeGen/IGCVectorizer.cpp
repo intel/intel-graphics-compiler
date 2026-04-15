@@ -200,9 +200,12 @@ void IGCVectorizer::findInsertElementsInDataFlow(llvm::Instruction *I, VecArr &C
   }
 }
 
+// returns very bin number in case of error
 unsigned int getConstantValueAsInt(Value *I) {
   ConstantInt *Value = dyn_cast<ConstantInt>(I);
   IGC_ASSERT_MESSAGE(Value, "IGCVectorizer: trying to get an index from value that is not constant int");
+  if (!Value)
+    return -1;
   unsigned int Result = Value->getSExtValue();
   return Result;
 }
@@ -1540,23 +1543,34 @@ void IGCVectorizer::collectInstructionToProcess(VecArr &ToProcess, Function &F) 
   for (BasicBlock &BB : F) {
     for (auto &I : BB) {
 
-      GenIntrinsicInst *GenI = llvm::dyn_cast<GenIntrinsicInst>(&I);
-      bool Pass = filterInstruction(GenI);
-      if (!Pass)
-        continue;
+      if (IGC_IS_FLAG_ENABLED(VectorizerInsertElAsSeed)) {
+        auto *InsertEl = llvm::dyn_cast<InsertElementInst>(&I);
+        if (!InsertEl)
+          continue;
+        auto *InsertionIndex = InsertEl->getOperand(2);
+        unsigned int Index = getConstantValueAsInt(InsertionIndex);
+        if ((Index + 1) == getVectorSize(InsertEl))
+          ToProcess.push_back(InsertEl);
+      } else {
 
-      for (unsigned int I = 0; I < GenI->getNumOperands(); ++I) {
-        Instruction *Op = llvm::dyn_cast<Instruction>(GenI->getOperand(I));
-        if (!Op)
+        GenIntrinsicInst *GenI = llvm::dyn_cast<GenIntrinsicInst>(&I);
+        bool Pass = filterInstruction(GenI);
+        if (!Pass)
           continue;
-        if (!Op->getType()->isVectorTy())
-          continue;
-        if (!hasPotentialToBeVectorized(Op))
-          continue;
-        // we collect only vector type arguments to check
-        // maybe they were combined from scalar values
-        // and could be vectorized
-        ToProcess.push_back(Op);
+
+        for (unsigned int I = 0; I < GenI->getNumOperands(); ++I) {
+          Instruction *Op = llvm::dyn_cast<Instruction>(GenI->getOperand(I));
+          if (!Op)
+            continue;
+          if (!Op->getType()->isVectorTy())
+            continue;
+          if (!hasPotentialToBeVectorized(Op))
+            continue;
+          // we collect only vector type arguments to check
+          // maybe they were combined from scalar values
+          // and could be vectorized
+          ToProcess.push_back(Op);
+        }
       }
     }
   }
