@@ -46,7 +46,7 @@ struct BufChunk {
   llvm::Value *baseIdxV;      // base-address index when it is indirect
   uint addrSpace;             // resource address space when it is direct
   uint elementSize;           // size in bytes of the basic data element
-  uint chunkStart;            // offset of the first data element in chunk in units of elementSize
+  uint64_t chunkStart;        // offset of the first data element in chunk in units of elementSize
   uint chunkSize;             // chunk size in elements
   llvm::Instruction *chunkIO; // coalesced load
   uint loadOrder;             // direct CB used order.
@@ -233,35 +233,35 @@ private:
   /// check if two access have the same buffer-base
   static bool CompareBufferBase(const llvm::Value *bufIdxV1, uint bufid1, const llvm::Value *bufIdxV2, uint bufid2);
   /// find element base and element imm-offset
-  llvm::Value *SimpleBaseOffset(llvm::Value *elt_idxv, uint &offset, ExtensionKind &Extension);
+  llvm::Value *SimpleBaseOffset(llvm::Value *elt_idxv, uint64_t &offset, ExtensionKind &Extension);
   /// finds the minimum power-of-2 alignment for an offset in buffer
   uint GetOffsetAlignment(Value *val, PHINode *currPhi) const;
   /// used along ocl path, based upon int2ptr
-  bool DecomposePtrExp(llvm::Value *ptr_val, llvm::Value *&buf_idxv, llvm::Value *&elt_idxv, uint &eltid,
+  bool DecomposePtrExp(llvm::Value *ptr_val, llvm::Value *&buf_idxv, llvm::Value *&elt_idxv, uint64_t &eltid,
                        ExtensionKind &Extension);
   static uint CheckVectorElementUses(const llvm::Instruction *load);
   void AdjustChunk(BufChunk *cov_chunk, uint start_adj, uint size_adj, const ExtensionKind &Extension);
   void EnlargeChunk(BufChunk *cov_chunk, uint size_adj);
   void MoveExtracts(BufChunk *cov_chunk, llvm::Instruction *load, uint start_adj);
   llvm::Value *FormChunkAddress(BufChunk *chunk, const ExtensionKind &Extension);
-  void CombineTwoLoads(BufChunk *cov_chunk, llvm::Instruction *load, uint eltid, uint numelt,
+  void CombineTwoLoads(BufChunk *cov_chunk, llvm::Instruction *load, uint64_t eltid, uint numelt,
                        const ExtensionKind &Extension);
-  llvm::Instruction *CreateChunkLoad(llvm::Instruction *load, BufChunk *chunk, uint eltid, alignment_t alignment,
+  llvm::Instruction *CreateChunkLoad(llvm::Instruction *load, BufChunk *chunk, uint64_t eltid, alignment_t alignment,
                                      const ExtensionKind &Extension);
   llvm::Instruction *AddChunkExtract(llvm::Instruction *load, uint offset);
-  llvm::Instruction *FindOrAddChunkExtract(BufChunk *cov_chunk, uint eltid);
-  llvm::Instruction *EnlargeChunkAddExtract(BufChunk *cov_chunk, uint size_adj, uint eltid);
-  llvm::Instruction *AdjustChunkAddExtract(BufChunk *cov_chunk, uint start_adj, uint size_adj, uint eltid,
+  llvm::Instruction *FindOrAddChunkExtract(BufChunk *cov_chunk, uint64_t eltid);
+  llvm::Instruction *EnlargeChunkAddExtract(BufChunk *cov_chunk, uint size_adj, uint64_t eltid);
+  llvm::Instruction *AdjustChunkAddExtract(BufChunk *cov_chunk, uint start_adj, uint size_adj, uint64_t eltid,
                                            const ExtensionKind &Extension);
   llvm::Instruction *CreateSamplerLoad(llvm::Value *index, llvm::Value *resourcePtr, uint addrSpace);
-  void ReplaceLoadWithSamplerLoad(Instruction *loadToReplace, Instruction *ldData, uint offsetInBytes);
+  void ReplaceLoadWithSamplerLoad(Instruction *loadToReplace, Instruction *ldData, uint64_t offsetInBytes);
   void MergeUniformLoad(llvm::Instruction *load, llvm::Value *bufIdxV, uint addrSpace, llvm::Value *eltIdxV,
-                        uint offsetInBytes, uint maxEltPlus, const ExtensionKind &Extension,
+                        uint64_t offsetInBytes, uint maxEltPlus, const ExtensionKind &Extension,
                         std::vector<BufChunk *> &chunk_vec);
   void MergeScatterLoad(llvm::Instruction *load, llvm::Value *bufIdxV, uint bufid, llvm::Value *eltIdxV,
-                        uint offsetInBytes, uint maxEltPlus, const ExtensionKind &Extension,
+                        uint64_t offsetInBytes, uint maxEltPlus, const ExtensionKind &Extension,
                         std::vector<BufChunk *> &chunk_vec);
-  void ScatterToSampler(llvm::Instruction *load, llvm::Value *bufIdxV, uint bufid, llvm::Value *eltIdxV, uint eltid,
+  void ScatterToSampler(llvm::Instruction *load, llvm::Value *bufIdxV, uint bufid, llvm::Value *eltIdxV, uint64_t eltid,
                         std::vector<BufChunk *> &chunk_vec);
 
   bool CleanupExtract(llvm::BasicBlock *bb);
