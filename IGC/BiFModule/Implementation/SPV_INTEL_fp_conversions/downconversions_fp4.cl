@@ -197,3 +197,77 @@ uchar8 __attribute__((overloadable)) __builtin_spirv_ConvertBF16ToInt4INTEL(shor
   uint2 result_uint2 = (uint2)(part0 | part1, part2 | part3);
   return as_uchar8(result_uint2);
 }
+
+// ClampConvert wrappers
+uchar __attribute__((overloadable)) __builtin_spirv_ClampConvertFP16ToE2M1INTEL(half a) {
+  return __builtin_spirv_ConvertFP16ToE2M1INTEL(a);
+}
+uchar1 __attribute__((overloadable)) __builtin_spirv_ClampConvertFP16ToE2M1INTEL(half2 a) {
+  return __builtin_spirv_ConvertFP16ToE2M1INTEL(a);
+}
+uchar2 __attribute__((overloadable)) __builtin_spirv_ClampConvertFP16ToE2M1INTEL(half3 a) {
+  return __builtin_spirv_ConvertFP16ToE2M1INTEL(a);
+}
+uchar2 __attribute__((overloadable)) __builtin_spirv_ClampConvertFP16ToE2M1INTEL(half4 a) {
+  return __builtin_spirv_ConvertFP16ToE2M1INTEL(a);
+}
+uchar4 __attribute__((overloadable)) __builtin_spirv_ClampConvertFP16ToE2M1INTEL(half8 a) {
+  return __builtin_spirv_ConvertFP16ToE2M1INTEL(a);
+}
+uchar8 __attribute__((overloadable)) __builtin_spirv_ClampConvertFP16ToE2M1INTEL(half16 a) {
+  return __builtin_spirv_ConvertFP16ToE2M1INTEL(a);
+}
+uchar __attribute__((overloadable)) __builtin_spirv_ClampConvertFP16ToInt4INTEL(half a) {
+  return __builtin_spirv_ConvertFP16ToInt4INTEL(a);
+}
+uchar1 __attribute__((overloadable)) __builtin_spirv_ClampConvertFP16ToInt4INTEL(half2 a) {
+  return __builtin_spirv_ConvertFP16ToInt4INTEL(a);
+}
+uchar2 __attribute__((overloadable)) __builtin_spirv_ClampConvertFP16ToInt4INTEL(half3 a) {
+  return __builtin_spirv_ConvertFP16ToInt4INTEL(a);
+}
+uchar2 __attribute__((overloadable)) __builtin_spirv_ClampConvertFP16ToInt4INTEL(half4 a) {
+  return __builtin_spirv_ConvertFP16ToInt4INTEL(a);
+}
+uchar4 __attribute__((overloadable)) __builtin_spirv_ClampConvertFP16ToInt4INTEL(half8 a) {
+  return __builtin_spirv_ConvertFP16ToInt4INTEL(a);
+}
+uchar8 __attribute__((overloadable)) __builtin_spirv_ClampConvertFP16ToInt4INTEL(half16 a) {
+  return __builtin_spirv_ConvertFP16ToInt4INTEL(a);
+}
+uchar __attribute__((overloadable)) __builtin_spirv_ClampConvertBF16ToE2M1INTEL(short a) {
+  return __builtin_spirv_ConvertBF16ToE2M1INTEL(a);
+}
+uchar1 __attribute__((overloadable)) __builtin_spirv_ClampConvertBF16ToE2M1INTEL(short2 a) {
+  return __builtin_spirv_ConvertBF16ToE2M1INTEL(a);
+}
+uchar2 __attribute__((overloadable)) __builtin_spirv_ClampConvertBF16ToE2M1INTEL(short3 a) {
+  return __builtin_spirv_ConvertBF16ToE2M1INTEL(a);
+}
+uchar2 __attribute__((overloadable)) __builtin_spirv_ClampConvertBF16ToE2M1INTEL(short4 a) {
+  return __builtin_spirv_ConvertBF16ToE2M1INTEL(a);
+}
+uchar4 __attribute__((overloadable)) __builtin_spirv_ClampConvertBF16ToE2M1INTEL(short8 a) {
+  return __builtin_spirv_ConvertBF16ToE2M1INTEL(a);
+}
+uchar8 __attribute__((overloadable)) __builtin_spirv_ClampConvertBF16ToE2M1INTEL(short16 a) {
+  return __builtin_spirv_ConvertBF16ToE2M1INTEL(a);
+}
+uchar __attribute__((overloadable)) __builtin_spirv_ClampConvertBF16ToInt4INTEL(short a) {
+  return __builtin_spirv_ConvertBF16ToInt4INTEL(a);
+}
+uchar1 __attribute__((overloadable)) __builtin_spirv_ClampConvertBF16ToInt4INTEL(short2 a) {
+  return __builtin_spirv_ConvertBF16ToInt4INTEL(a);
+}
+uchar2 __attribute__((overloadable)) __builtin_spirv_ClampConvertBF16ToInt4INTEL(short3 a) {
+  return __builtin_spirv_ConvertBF16ToInt4INTEL(a);
+}
+uchar2 __attribute__((overloadable)) __builtin_spirv_ClampConvertBF16ToInt4INTEL(short4 a) {
+  return __builtin_spirv_ConvertBF16ToInt4INTEL(a);
+}
+uchar4 __attribute__((overloadable)) __builtin_spirv_ClampConvertBF16ToInt4INTEL(short8 a) {
+  return __builtin_spirv_ConvertBF16ToInt4INTEL(a);
+}
+uchar8 __attribute__((overloadable)) __builtin_spirv_ClampConvertBF16ToInt4INTEL(short16 a) {
+  return __builtin_spirv_ConvertBF16ToInt4INTEL(a);
+}

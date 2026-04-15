@@ -15,14 +15,14 @@ target triple = "spir64-unknown-unknown"
 declare spir_func i64 @_Z33__spirv_BuiltInGlobalInvocationIdi(i32)
 
 ; CHECK-LABEL: define spir_kernel void @test_cast_to_v2bfloat
-declare spir_func <2 x bfloat> @_Z38__builtin_spirv_ConvertE5M2ToBF16INTELDv2_c(<2 x i8>)
+declare spir_func <2 x bfloat> @_Z36__builtin_spirv_ConvertE5M2ToBF16EXTDv2_c(<2 x i8>)
 define spir_kernel void @test_cast_to_v2bfloat(ptr addrspace(1) %inbuf, ptr addrspace(1) %outbuf) {
 entry:
   %globalId = call spir_func i64 @_Z33__spirv_BuiltInGlobalInvocationIdi(i32 0)
   %loadIdx = getelementptr inbounds <2 x i8>, ptr addrspace(1) %inbuf, i64 %globalId
   %loaded = load <2 x i8>, ptr addrspace(1) %loadIdx, align 2
-  %call1 = call spir_func <2 x bfloat> @_Z38__builtin_spirv_ConvertE5M2ToBF16INTELDv2_c(<2 x i8> %loaded)
-  ; CHECK: %[[OUTPUT:[A-z0-9]*]] = call <2 x i16> @_Z38__builtin_spirv_ConvertE5M2ToBF16INTELDv2_c(<2 x i8> %loaded)
+  %call1 = call spir_func <2 x bfloat> @_Z36__builtin_spirv_ConvertE5M2ToBF16EXTDv2_c(<2 x i8> %loaded)
+  ; CHECK: %[[OUTPUT:[A-z0-9]*]] = call <2 x i16> @_Z36__builtin_spirv_ConvertE5M2ToBF16EXTDv2_c(<2 x i8> %loaded)
   ; CHECK: %[[OUTPUT_CASTED:[A-z0-9]*]] = bitcast <2 x i16> %[[OUTPUT]] to <2 x bfloat>
   %storeIdx = getelementptr inbounds <2 x bfloat>, ptr addrspace(1) %outbuf, i64 %globalId
   store <2 x bfloat> %call1, ptr addrspace(1) %storeIdx, align 4
@@ -30,17 +30,17 @@ entry:
 }
 
 ; CHECK-LABEL: define spir_kernel void @test_cast_to_bfloat
-declare spir_func bfloat @_Z38__builtin_spirv_ConvertE5M2ToBF16INTELc(i8)
+declare spir_func bfloat @_Z36__builtin_spirv_ConvertE5M2ToBF16EXTc(i8)
 define spir_kernel void @test_cast_to_bfloat(ptr addrspace(1) %inbuf, ptr addrspace(1) %outbuf) {
 entry:
   %globalId = call spir_func i64 @_Z33__spirv_BuiltInGlobalInvocationIdi(i32 0)
   %loadIdx = getelementptr inbounds i8, ptr addrspace(1) %inbuf, i64 %globalId
   %loaded = load i8, ptr addrspace(1) %loadIdx, align 2
-  %call1 = call spir_func bfloat @_Z38__builtin_spirv_ConvertE5M2ToBF16INTELc(i8 %loaded)
-  %call2 = call spir_func bfloat @_Z38__builtin_spirv_ConvertE5M2ToBF16INTELc(i8 %loaded)
-  ; CHECK: %[[OUTPUT1:[A-z0-9]*]] = call i16 @_Z38__builtin_spirv_ConvertE5M2ToBF16INTELc(i8 %loaded)
+  %call1 = call spir_func bfloat @_Z36__builtin_spirv_ConvertE5M2ToBF16EXTc(i8 %loaded)
+  %call2 = call spir_func bfloat @_Z36__builtin_spirv_ConvertE5M2ToBF16EXTc(i8 %loaded)
+  ; CHECK: %[[OUTPUT1:[A-z0-9]*]] = call i16 @_Z36__builtin_spirv_ConvertE5M2ToBF16EXTc(i8 %loaded)
   ; CHECK: %[[OUTPUT1_CASTED:[A-z0-9]*]] = bitcast i16 %[[OUTPUT1]] to bfloat
-  ; CHECK: %[[OUTPUT2:[A-z0-9]*]] = call i16 @_Z38__builtin_spirv_ConvertE5M2ToBF16INTELc(i8 %loaded)
+  ; CHECK: %[[OUTPUT2:[A-z0-9]*]] = call i16 @_Z36__builtin_spirv_ConvertE5M2ToBF16EXTc(i8 %loaded)
   ; CHECK: %[[OUTPUT2_CASTED:[A-z0-9]*]] = bitcast i16 %[[OUTPUT2]] to bfloat
   %storeIdx1 = getelementptr inbounds bfloat, ptr addrspace(1) %outbuf, i64 %globalId
   %storeIdx2 = getelementptr inbounds bfloat, ptr addrspace(1) %storeIdx1, i64 1024

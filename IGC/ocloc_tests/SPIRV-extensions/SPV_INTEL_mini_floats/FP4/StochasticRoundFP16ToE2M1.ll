@@ -11,6 +11,11 @@
 ; RUN: llvm-spirv %t.bc -o %t.spv --spirv-ext=+SPV_INTEL_float4,+SPV_INTEL_int4,+SPV_INTEL_fp_conversions
 ; RUN: ocloc compile -spirv_input -file %t.spv -device cri -options "-igc_opts 'ForceOCLSIMDWidth=32,DumpVISAASMToConsole=1,AddVISADumpDeclarationsToEnd=1'" | FileCheck %s
 
+; Test if conversion opcodes are present in spirv disassembly
+; RUN: llvm-spirv --to-text %t.spv -o %t.spt
+; RUN: cat %t.spt | FileCheck %s -check-prefix=CHECK-SPV
+; CHECK-SPV: StochasticRoundFToFINTEL
+
 target datalayout = "e-p:64:64:64-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64-f32:32:32-f64:64:64-v16:16:16-v24:32:32-v32:32:32-v48:64:64-v64:64:64-v96:128:128-v128:128:128-v192:256:256-v256:256:256-v512:512:512-v1024:1024:1024"
 target triple = "spir64-unknown-unknown"
 
@@ -126,8 +131,8 @@ define spir_kernel void @FP16_to_E2M1_vector8(<8 x half> addrspace(1)* %input, i
 ; CHECK: dnscl.hftoe2m1.mode0.srnd (M1, 32) [[DST0:[A-z0-9]*]].0 [[INPUT:[A-z0-9]*]].0 [[INPUT]].256 [[RAND0]].0
 ; CHECK: dnscl.hftoe2m1.mode2.srnd (M1, 32) [[DST1:[A-z0-9]*]].0 [[INPUT]].128 [[INPUT]].384 [[RAND1]].0
 ; CHECK-NOT: dnscl.hftoe2m1
-; CHECK-DAG: // .decl [[RAND1]] v_type=G type=ud num_elts=32
 ; CHECK-DAG: // .decl [[RAND0]] v_type=G type=ud num_elts=32
+; CHECK-DAG: // .decl [[RAND1]] v_type=G type=ud num_elts=32
 ; CHECK-DAG: // .decl [[INPUT]] v_type=G type=ud num_elts=128
 ; CHECK-DAG: // .decl [[DST0]] v_type=G type=ud num_elts=32
 ; CHECK-DAG: // .decl [[DST1]] v_type=G type=ud num_elts=32
@@ -157,13 +162,15 @@ define spir_kernel void @FP16_to_E2M1_vector16(<16 x half> addrspace(1)* %input,
 ; CHECK: dnscl.hftoe2m1.mode0.srnd (M1, 32) [[DST2:[A-z0-9]*]].0 [[INPUT]].512 [[INPUT]].768 [[RAND2]].0
 ; CHECK: dnscl.hftoe2m1.mode2.srnd (M1, 32) [[DST3:[A-z0-9]*]].0 [[INPUT]].640 [[INPUT]].896 [[RAND3]].0
 ; CHECK-NOT: dnscl.hftoe2m1
-; CHECK-DAG: // .decl [[RAND3]] v_type=G type=ud num_elts=32
-; CHECK-DAG: // .decl [[RAND2]] v_type=G type=ud num_elts=32
-; CHECK-DAG: // .decl [[RAND1]] v_type=G type=ud num_elts=32
 ; CHECK-DAG: // .decl [[RAND0]] v_type=G type=ud num_elts=32
+; CHECK-DAG: // .decl [[RAND1]] v_type=G type=ud num_elts=32
+; CHECK-DAG: // .decl [[RAND2]] v_type=G type=ud num_elts=32
+; CHECK-DAG: // .decl [[RAND3]] v_type=G type=ud num_elts=32
 ; CHECK-DAG: // .decl [[INPUT]] v_type=G type=ud num_elts=256
 ; CHECK-DAG: // .decl [[DST0]] v_type=G type=ud num_elts=32
 ; CHECK-DAG: // .decl [[DST1]] v_type=G type=ud num_elts=32
+; CHECK-DAG: // .decl [[DST2]] v_type=G type=ud num_elts=32
+; CHECK-DAG: // .decl [[DST3]] v_type=G type=ud num_elts=32
   %gid = call spir_func i64 @_Z33__spirv_BuiltInGlobalInvocationIdi(i32 0)
   %inputAddr = getelementptr <16 x half>, <16 x half> addrspace(1)* %input, i64 %gid
   %seedAddr = getelementptr i32, i32 addrspace(1)* %seed, i64 %gid
@@ -188,7 +195,6 @@ define spir_kernel void @FP16_to_E2M1_ptr_scalar(half addrspace(1)* %input, i32 
 ; CHECK-NOT: lfsr.b8v4
 ; CHECK-DAG: dnscl.hftoe2m1.mode0.srnd (M1, 32) [[DST:[A-z0-9]*]].0 [[INPUT0:[A-z0-9]*]].0 [[INPUT1:[A-z0-9]*]].0 [[RAND]].0
 ; CHECK-DAG: mov (M1, 32) [[INPUT1]](0,0)<1> 0x0:ud
-; CHECK-DAG: // .decl [[RAND]] v_type=G type=ud num_elts=32
 ; CHECK-DAG: // .decl [[INPUT0]] v_type=G type=ud num_elts=32
 ; CHECK-DAG: // .decl [[INPUT1]] v_type=G type=ud num_elts=32
 ; CHECK-DAG: // .decl [[DST]] v_type=G type=ud num_elts=32
@@ -218,7 +224,6 @@ define spir_kernel void @FP16_to_E2M1_ptr_vector2(<2 x half> addrspace(1)* %inpu
 ; CHECK-NOT: lfsr.b8v4
 ; CHECK-DAG: dnscl.hftoe2m1.mode0.srnd (M1, 32) [[DST:[A-z0-9]*]].0 [[INPUT0:[A-z0-9]*]].0 [[INPUT1:[A-z0-9]*]].0 [[RAND]].0
 ; CHECK-DAG: mov (M1, 32) [[INPUT1]](0,0)<1> 0x0:ud
-; CHECK-DAG: // .decl [[RAND]] v_type=G type=ud num_elts=32
 ; CHECK-DAG: // .decl [[INPUT0]] v_type=G type=ud num_elts=32
 ; CHECK-DAG: // .decl [[INPUT1]] v_type=G type=ud num_elts=32
 ; CHECK-DAG: // .decl [[DST]] v_type=G type=ud num_elts=32
@@ -246,7 +251,6 @@ define spir_kernel void @FP16_to_E2M1_ptr_vector3(<3 x half> addrspace(1)* %inpu
 ; CHECK-NOT: lfsr.b8v4
 ; CHECK: dnscl.hftoe2m1.mode0.srnd (M1, 32) [[DST:[A-z0-9]*]].0 [[INPUT0:[A-z0-9]*]].0 [[INPUT1:[A-z0-9]*]].0 [[RAND]].0
 ; CHECK-NOT: dnscl.hftoe2m1
-; CHECK-DAG: // .decl [[RAND]] v_type=G type=ud num_elts=32
 ; CHECK-DAG: // .decl [[INPUT0]] v_type=G type=ud num_elts=32
 ; CHECK-DAG: // .decl [[INPUT1]] v_type=G type=ud num_elts=32
 ; CHECK-DAG: // .decl [[DST]] v_type=G type=ud num_elts=32
@@ -275,7 +279,6 @@ define spir_kernel void @FP16_to_E2M1_ptr_vector4(<4 x half> addrspace(1)* %inpu
 ; CHECK-NOT: lfsr.b8v4
 ; CHECK: dnscl.hftoe2m1.mode0.srnd (M1, 32) [[DST:[A-z0-9]*]].0 [[INPUT:[A-z0-9]*]].0 [[INPUT]].128 [[RAND]].0
 ; CHECK-NOT: dnscl.hftoe2m1
-; CHECK-DAG: // .decl [[RAND]] v_type=G type=ud num_elts=32
 ; CHECK-DAG: // .decl [[INPUT]] v_type=G type=ud num_elts=64
 ; CHECK-DAG: // .decl [[DST]] v_type=G type=ud num_elts=32
   %seedMem = alloca i32, align 4
@@ -304,8 +307,6 @@ define spir_kernel void @FP16_to_E2M1_ptr_vector8(<8 x half> addrspace(1)* %inpu
 ; CHECK: dnscl.hftoe2m1.mode0.srnd (M1, 32) [[DST0:[A-z0-9]*]].0 [[INPUT:[A-z0-9]*]].0 [[INPUT]].256 [[RAND0]].0
 ; CHECK: dnscl.hftoe2m1.mode2.srnd (M1, 32) [[DST1:[A-z0-9]*]].0 [[INPUT]].128 [[INPUT]].384 [[RAND1]].0
 ; CHECK-NOT: dnscl.hftoe2m1
-; CHECK-DAG: // .decl [[RAND1]] v_type=G type=ud num_elts=32
-; CHECK-DAG: // .decl [[RAND0]] v_type=G type=ud num_elts=32
 ; CHECK-DAG: // .decl [[INPUT]] v_type=G type=ud num_elts=128
 ; CHECK-DAG: // .decl [[DST0]] v_type=G type=ud num_elts=32
 ; CHECK-DAG: // .decl [[DST1]] v_type=G type=ud num_elts=32
@@ -339,13 +340,15 @@ define spir_kernel void @FP16_to_E2M1_ptr_vector16(<16 x half> addrspace(1)* %in
 ; CHECK: dnscl.hftoe2m1.mode0.srnd (M1, 32) [[DST2:[A-z0-9]*]].0 [[INPUT]].512 [[INPUT]].768 [[RAND2]].0
 ; CHECK: dnscl.hftoe2m1.mode2.srnd (M1, 32) [[DST3:[A-z0-9]*]].0 [[INPUT]].640 [[INPUT]].896 [[RAND3]].0
 ; CHECK-NOT: dnscl.hftoe2m1
-; CHECK-DAG: // .decl [[RAND3]] v_type=G type=ud num_elts=32
-; CHECK-DAG: // .decl [[RAND2]] v_type=G type=ud num_elts=32
-; CHECK-DAG: // .decl [[RAND1]] v_type=G type=ud num_elts=32
 ; CHECK-DAG: // .decl [[RAND0]] v_type=G type=ud num_elts=32
+; CHECK-DAG: // .decl [[RAND1]] v_type=G type=ud num_elts=32
+; CHECK-DAG: // .decl [[RAND2]] v_type=G type=ud num_elts=32
+; CHECK-DAG: // .decl [[RAND3]] v_type=G type=ud num_elts=32
 ; CHECK-DAG: // .decl [[INPUT]] v_type=G type=ud num_elts=256
 ; CHECK-DAG: // .decl [[DST0]] v_type=G type=ud num_elts=32
 ; CHECK-DAG: // .decl [[DST1]] v_type=G type=ud num_elts=32
+; CHECK-DAG: // .decl [[DST2]] v_type=G type=ud num_elts=32
+; CHECK-DAG: // .decl [[DST3]] v_type=G type=ud num_elts=32
   %seedMem = alloca i32, align 4
 
   %gid = call spir_func i64 @_Z33__spirv_BuiltInGlobalInvocationIdi(i32 0)

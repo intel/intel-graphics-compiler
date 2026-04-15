@@ -40,17 +40,18 @@ static const std::array FuncNames = {"__builtin_spirv_ClampConvertBF16ToE4M3INTE
                                      "__builtin_spirv_ClampStochasticRoundBF16ToE5M2INTEL",
                                      "__builtin_spirv_ClampStochasticRoundBF16ToInt4INTEL",
                                      "__builtin_spirv_ConvertBF16ToE2M1INTEL",
-                                     "__builtin_spirv_ConvertBF16ToE4M3INTEL",
-                                     "__builtin_spirv_ConvertBF16ToE5M2INTEL",
+                                     "__builtin_spirv_ConvertBF16ToE4M3EXT",
+                                     "__builtin_spirv_ConvertBF16ToE5M2EXT",
                                      "__builtin_spirv_ConvertBF16ToInt4INTEL",
                                      "__builtin_spirv_ConvertE2M1ToBF16INTEL",
-                                     "__builtin_spirv_ConvertE4M3ToBF16INTEL",
-                                     "__builtin_spirv_ConvertE5M2ToBF16INTEL",
+                                     "__builtin_spirv_ConvertE4M3ToBF16EXT",
+                                     "__builtin_spirv_ConvertE5M2ToBF16EXT",
                                      "__builtin_spirv_ConvertInt4ToBF16INTEL",
+                                     "__builtin_spirv_ClampConvertBF16ToE2M1INTEL",
+                                     "__builtin_spirv_ClampConvertBF16ToInt4INTEL",
                                      "__builtin_spirv_StochasticRoundBF16ToE2M1INTEL",
                                      "__builtin_spirv_StochasticRoundBF16ToE4M3INTEL",
                                      "__builtin_spirv_StochasticRoundBF16ToE5M2INTEL",
-                                     "__builtin_spirv_StochasticRoundBF16ToInt4INTEL",
                                      "__spirv_FSigmoidINTEL"};
 
 bool BfloatBuiltinsResolution::runOnFunction(Function &F) {

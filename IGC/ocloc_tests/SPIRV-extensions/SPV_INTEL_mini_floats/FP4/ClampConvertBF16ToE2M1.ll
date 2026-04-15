@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2025 Intel Corporation
+; Copyright (C) 2026 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -8,13 +8,13 @@
 
 ; REQUIRES: llvm-spirv, cri-supported
 ; RUN: llvm-as %s -o %t.bc
-; RUN: llvm-spirv %t.bc -o %t.spv --spirv-ext=+SPV_INTEL_float4,+SPV_KHR_bfloat16,+SPV_INTEL_int4
+; RUN: llvm-spirv %t.bc -o %t.spv --spirv-ext=+SPV_INTEL_float4,+SPV_KHR_bfloat16,+SPV_INTEL_int4,+SPV_INTEL_fp_conversions
 ; RUN: ocloc compile -spirv_input -file %t.spv -device cri -options "-igc_opts 'ForceOCLSIMDWidth=32,DumpVISAASMToConsole=1,AddVISADumpDeclarationsToEnd=1'" | FileCheck %s
 
 ; Test if conversion opcodes are present in spirv disassembly
 ; RUN: llvm-spirv --to-text %t.spv -o %t.spt
 ; RUN: cat %t.spt | FileCheck %s -check-prefix=CHECK-SPV
-; CHECK-SPV: FConvert
+; CHECK-SPV: ClampConvertFToFINTEL
 
 target datalayout = "e-p:64:64:64-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64-f32:32:32-f64:64:64-v16:16:16-v24:32:32-v32:32:32-v48:64:64-v64:64:64-v96:128:128-v128:128:128-v192:256:256-v256:256:256-v512:512:512-v1024:1024:1024"
 target triple = "spir64-unknown-unknown"
@@ -33,14 +33,14 @@ define spir_kernel void @BF16_to_E2M1_scalar(bfloat addrspace(1)* %input, <2 x i
   %outputAddr = getelementptr <2 x i4>, <2 x i4> addrspace(1)* %output, i64 %gid
 
   %inputVal = load bfloat, bfloat addrspace(1)* %inputAddr, align 2
-  %conv = call i4 @_Z38__builtin_spirv_ConvertBF16ToE2M1INTELDF16b(bfloat %inputVal)
+  %conv = call i4 @_Z43__builtin_spirv_ClampConvertBF16ToE2M1INTELDF16b(bfloat %inputVal)
   %v1 = insertelement <2 x i4> undef, i4 %conv, i32 0
   %v2 = insertelement <2 x i4> %v1, i4 0, i32 1
 
   store <2 x i4> %v2, <2 x i4> addrspace(1)* %outputAddr, align 1
   ret void
 }
-declare dso_local spir_func i4 @_Z38__builtin_spirv_ConvertBF16ToE2M1INTELDF16b(bfloat)
+declare dso_local spir_func i4 @_Z43__builtin_spirv_ClampConvertBF16ToE2M1INTELDF16b(bfloat)
 
 define spir_kernel void @BF16_to_E2M1_vector2(<2 x bfloat> addrspace(1)* %input, <2 x i4> addrspace(1)* %output) {
 ; CHECK-LABEL: .kernel "BF16_to_E2M1_vector2"
@@ -54,12 +54,12 @@ define spir_kernel void @BF16_to_E2M1_vector2(<2 x bfloat> addrspace(1)* %input,
   %outputAddr = getelementptr <2 x i4>, <2 x i4> addrspace(1)* %output, i64 %gid
 
   %inputVal = load <2 x bfloat>, <2 x bfloat> addrspace(1)* %inputAddr, align 4
-  %conv = call <2 x i4> @_Z38__builtin_spirv_ConvertBF16ToE2M1INTELDv2_DF16b(<2 x bfloat> %inputVal)
+  %conv = call <2 x i4> @_Z43__builtin_spirv_ClampConvertBF16ToE2M1INTELDv2_DF16b(<2 x bfloat> %inputVal)
 
   store <2 x i4> %conv, <2 x i4> addrspace(1)* %outputAddr, align 1
   ret void
 }
-declare dso_local spir_func <2 x i4> @_Z38__builtin_spirv_ConvertBF16ToE2M1INTELDv2_DF16b(<2 x bfloat>)
+declare dso_local spir_func <2 x i4> @_Z43__builtin_spirv_ClampConvertBF16ToE2M1INTELDv2_DF16b(<2 x bfloat>)
 
 define spir_kernel void @BF16_to_E2M1_vector3(<3 x bfloat> addrspace(1)* %input, <4 x i4> addrspace(1)* %output) {
 ; CHECK-LABEL: .kernel "BF16_to_E2M1_vector3"
@@ -73,13 +73,13 @@ define spir_kernel void @BF16_to_E2M1_vector3(<3 x bfloat> addrspace(1)* %input,
   %outputAddr = getelementptr <4 x i4>, <4 x i4> addrspace(1)* %output, i64 %gid
 
   %inputVal = load <3 x bfloat>, <3 x bfloat> addrspace(1)* %inputAddr, align 8
-  %conv = call <3 x i4> @_Z38__builtin_spirv_ConvertBF16ToE2M1INTELDv3_DF16b(<3 x bfloat> %inputVal)
+  %conv = call <3 x i4> @_Z43__builtin_spirv_ClampConvertBF16ToE2M1INTELDv3_DF16b(<3 x bfloat> %inputVal)
   %conv4 = shufflevector <3 x i4> %conv, <3 x i4> undef, <4 x i32> <i32 0, i32 1, i32 2, i32 undef>
 
   store <4 x i4> %conv4, <4 x i4> addrspace(1)* %outputAddr, align 2
   ret void
 }
-declare dso_local spir_func <3 x i4> @_Z38__builtin_spirv_ConvertBF16ToE2M1INTELDv3_DF16b(<3 x bfloat>)
+declare dso_local spir_func <3 x i4> @_Z43__builtin_spirv_ClampConvertBF16ToE2M1INTELDv3_DF16b(<3 x bfloat>)
 
 define spir_kernel void @BF16_to_E2M1_vector4(<4 x bfloat> addrspace(1)* %input, <4 x i4> addrspace(1)* %output) {
 ; CHECK-LABEL: .kernel "BF16_to_E2M1_vector4"
@@ -92,12 +92,12 @@ define spir_kernel void @BF16_to_E2M1_vector4(<4 x bfloat> addrspace(1)* %input,
   %outputAddr = getelementptr <4 x i4>, <4 x i4> addrspace(1)* %output, i64 %gid
 
   %inputVal = load <4 x bfloat>, <4 x bfloat> addrspace(1)* %inputAddr, align 8
-  %conv = call <4 x i4> @_Z38__builtin_spirv_ConvertBF16ToE2M1INTELDv4_DF16b(<4 x bfloat> %inputVal)
+  %conv = call <4 x i4> @_Z43__builtin_spirv_ClampConvertBF16ToE2M1INTELDv4_DF16b(<4 x bfloat> %inputVal)
 
   store <4 x i4> %conv, <4 x i4> addrspace(1)* %outputAddr, align 2
   ret void
 }
-declare dso_local spir_func <4 x i4> @_Z38__builtin_spirv_ConvertBF16ToE2M1INTELDv4_DF16b(<4 x bfloat>)
+declare dso_local spir_func <4 x i4> @_Z43__builtin_spirv_ClampConvertBF16ToE2M1INTELDv4_DF16b(<4 x bfloat>)
 
 define spir_kernel void @BF16_to_E2M1_vector8(<8 x bfloat> addrspace(1)* %input, <8 x i4> addrspace(1)* %output) {
 ; CHECK-LABEL: .kernel "BF16_to_E2M1_vector8"
@@ -112,12 +112,12 @@ define spir_kernel void @BF16_to_E2M1_vector8(<8 x bfloat> addrspace(1)* %input,
   %outputAddr = getelementptr <8 x i4>, <8 x i4> addrspace(1)* %output, i64 %gid
 
   %inputVal = load <8 x bfloat>, <8 x bfloat> addrspace(1)* %inputAddr, align 16
-  %conv = call <8 x i4> @_Z38__builtin_spirv_ConvertBF16ToE2M1INTELDv8_DF16b(<8 x bfloat> %inputVal)
+  %conv = call <8 x i4> @_Z43__builtin_spirv_ClampConvertBF16ToE2M1INTELDv8_DF16b(<8 x bfloat> %inputVal)
 
   store <8 x i4> %conv, <8 x i4> addrspace(1)* %outputAddr, align 4
   ret void
 }
-declare dso_local spir_func <8 x i4> @_Z38__builtin_spirv_ConvertBF16ToE2M1INTELDv8_DF16b(<8 x bfloat>)
+declare dso_local spir_func <8 x i4> @_Z43__builtin_spirv_ClampConvertBF16ToE2M1INTELDv8_DF16b(<8 x bfloat>)
 
 define spir_kernel void @BF16_to_E2M1_vector16(<16 x bfloat> addrspace(1)* %input, <16 x i4> addrspace(1)* %output) {
 ; CHECK-LABEL: .kernel "BF16_to_E2M1_vector16"
@@ -136,9 +136,9 @@ define spir_kernel void @BF16_to_E2M1_vector16(<16 x bfloat> addrspace(1)* %inpu
   %outputAddr = getelementptr <16 x i4>, <16 x i4> addrspace(1)* %output, i64 %gid
 
   %inputVal = load <16 x bfloat>, <16 x bfloat> addrspace(1)* %inputAddr, align 32
-  %conv = call <16 x i4> @_Z38__builtin_spirv_ConvertBF16ToE2M1INTELDv16_DF16b(<16 x bfloat> %inputVal)
+  %conv = call <16 x i4> @_Z43__builtin_spirv_ClampConvertBF16ToE2M1INTELDv16_DF16b(<16 x bfloat> %inputVal)
 
   store <16 x i4> %conv, <16 x i4> addrspace(1)* %outputAddr, align 8
   ret void
 }
-declare dso_local spir_func <16 x i4> @_Z38__builtin_spirv_ConvertBF16ToE2M1INTELDv16_DF16b(<16 x bfloat>)
+declare dso_local spir_func <16 x i4> @_Z43__builtin_spirv_ClampConvertBF16ToE2M1INTELDv16_DF16b(<16 x bfloat>)

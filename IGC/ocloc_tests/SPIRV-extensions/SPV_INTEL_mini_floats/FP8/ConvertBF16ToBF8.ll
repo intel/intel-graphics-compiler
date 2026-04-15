@@ -16,6 +16,11 @@
 ; RUN: llvm-spirv %t.bc --spirv-ext=+SPV_INTEL_fp_conversions,+SPV_KHR_bfloat16,+SPV_EXT_float8 -o %t.spv
 ; RUN: ocloc compile -spirv_input -file %t.spv -device cri -options "-igc_opts 'DumpVISAASMToConsole=1'" 2>&1 | FileCheck %s
 
+; Test if conversion opcodes are present in spirv disassembly
+; RUN: llvm-spirv --to-text %t.spv -o %t.spt
+; RUN: cat %t.spt | FileCheck %s -check-prefix=CHECK-SPV
+; CHECK-SPV: FConvert
+
 target datalayout = "e-p:64:64:64-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64-f32:32:32-f64:64:64-v16:16:16-v24:32:32-v32:32:32-v48:64:64-v64:64:64-v96:128:128-v128:128:128-v192:256:256-v256:256:256-v512:512:512-v1024:1024:1024"
 target triple = "spir64-unknown-unknown"
 declare spir_func i64 @_Z33__spirv_BuiltInGlobalInvocationIdi(i32)
@@ -28,13 +33,13 @@ declare spir_func i64 @_Z33__spirv_BuiltInGlobalInvocationIdi(i32)
 ; CHECK-DAG: .decl [[IN]] v_type=G type=bf num_elts=32
 ; CHECK-DAG: .decl [[OUT_HF]] v_type=G type=hf num_elts=32
 ; CHECK-DAG: .decl [[OUT_E5M2]] v_type=G type=ub num_elts=32
-declare spir_func signext i8 @_Z38__builtin_spirv_ConvertBF16ToE5M2INTELDF16b(bfloat)
+declare spir_func signext i8 @_Z36__builtin_spirv_ConvertBF16ToE5M2EXTDF16b(bfloat)
 define spir_kernel void @Test_ConvertBF16ToE5M2(bfloat addrspace(1)* %inbuf, i8 addrspace(1)* %outbuf) {
 entry:
   %call = call spir_func i64 @_Z33__spirv_BuiltInGlobalInvocationIdi(i32 0)
   %arrayidx = getelementptr inbounds bfloat, bfloat addrspace(1)* %inbuf, i64 %call
   %loaded = load bfloat, bfloat addrspace(1)* %arrayidx, align 2
-  %call1 = call spir_func signext i8 @_Z38__builtin_spirv_ConvertBF16ToE5M2INTELDF16b(bfloat %loaded)
+  %call1 = call spir_func signext i8 @_Z36__builtin_spirv_ConvertBF16ToE5M2EXTDF16b(bfloat %loaded)
   %arrayidx3 = getelementptr inbounds i8, i8 addrspace(1)* %outbuf, i64 %call
   store i8 %call1, i8 addrspace(1)* %arrayidx3, align 1
   ret void
@@ -59,13 +64,13 @@ entry:
 ; CHECK-DAG: .decl [[OUT_HF_1]] v_type=G type=hf num_elts=32
 ; CHECK-DAG: .decl [[OUT_VEC_HF]] v_type=G type=hf num_elts=64
 ; CHECK-DAG: .decl [[OUT_E5M2]] v_type=G type=ub num_elts=64
-declare spir_func <2 x i8> @_Z38__builtin_spirv_ConvertBF16ToE5M2INTELDv2_DF16b(<2 x bfloat>)
+declare spir_func <2 x i8> @_Z36__builtin_spirv_ConvertBF16ToE5M2EXTDv2_DF16b(<2 x bfloat>)
 define spir_kernel void @Test2_ConvertBF16ToE5M2(<2 x bfloat> addrspace(1)* %inbuf, <2 x i8> addrspace(1)* %outbuf) {
 entry:
   %call = call spir_func i64 @_Z33__spirv_BuiltInGlobalInvocationIdi(i32 0)
   %arrayidx = getelementptr inbounds <2 x bfloat>, <2 x bfloat> addrspace(1)* %inbuf, i64 %call
   %loaded = load <2 x bfloat>, <2 x bfloat> addrspace(1)* %arrayidx, align 4
-  %call1 = call spir_func <2 x i8> @_Z38__builtin_spirv_ConvertBF16ToE5M2INTELDv2_DF16b(<2 x bfloat> %loaded)
+  %call1 = call spir_func <2 x i8> @_Z36__builtin_spirv_ConvertBF16ToE5M2EXTDv2_DF16b(<2 x bfloat> %loaded)
   %arrayidx3 = getelementptr inbounds <2 x i8>, <2 x i8> addrspace(1)* %outbuf, i64 %call
   store <2 x i8> %call1, <2 x i8> addrspace(1)* %arrayidx3, align 2
   ret void
@@ -95,13 +100,13 @@ entry:
 ; CHECK-DAG: .decl [[OUT_HF_2]] v_type=G type=hf num_elts=32
 ; CHECK-DAG: .decl [[OUT_VEC_HF]] v_type=G type=hf num_elts=96
 ; CHECK-DAG: .decl [[OUT_E5M2]] v_type=G type=ub num_elts=96
-declare spir_func <3 x i8> @_Z38__builtin_spirv_ConvertBF16ToE5M2INTELDv3_DF16b(<3 x bfloat>)
+declare spir_func <3 x i8> @_Z36__builtin_spirv_ConvertBF16ToE5M2EXTDv3_DF16b(<3 x bfloat>)
 define spir_kernel void @Test3_ConvertBF16ToE5M2(<3 x bfloat> addrspace(1)* %inbuf, <3 x i8> addrspace(1)* %outbuf) {
 entry:
   %call = call spir_func i64 @_Z33__spirv_BuiltInGlobalInvocationIdi(i32 0)
   %arrayidx = getelementptr inbounds <3 x bfloat>, <3 x bfloat> addrspace(1)* %inbuf, i64 %call
   %loaded = load <3 x bfloat>, <3 x bfloat> addrspace(1)* %arrayidx, align 8
-  %call1 = call spir_func <3 x i8> @_Z38__builtin_spirv_ConvertBF16ToE5M2INTELDv3_DF16b(<3 x bfloat> %loaded)
+  %call1 = call spir_func <3 x i8> @_Z36__builtin_spirv_ConvertBF16ToE5M2EXTDv3_DF16b(<3 x bfloat> %loaded)
   %arrayidx3 = getelementptr inbounds <3 x i8>, <3 x i8> addrspace(1)* %outbuf, i64 %call
   store <3 x i8> %call1, <3 x i8> addrspace(1)* %arrayidx3, align 4
   ret void
@@ -136,13 +141,13 @@ entry:
 ; CHECK-DAG: .decl [[OUT_HF_3]] v_type=G type=hf num_elts=32
 ; CHECK-DAG: .decl [[OUT_VEC_HF]] v_type=G type=hf num_elts=128
 ; CHECK-DAG: .decl [[OUT_E5M2]] v_type=G type=ub num_elts=128
-declare spir_func <4 x i8> @_Z38__builtin_spirv_ConvertBF16ToE5M2INTELDv4_DF16b(<4 x bfloat>)
+declare spir_func <4 x i8> @_Z36__builtin_spirv_ConvertBF16ToE5M2EXTDv4_DF16b(<4 x bfloat>)
 define spir_kernel void @Test4_ConvertBF16ToE5M2(<4 x bfloat> addrspace(1)* %inbuf, <4 x i8> addrspace(1)* %outbuf) {
 entry:
   %call = call spir_func i64 @_Z33__spirv_BuiltInGlobalInvocationIdi(i32 0)
   %arrayidx = getelementptr inbounds <4 x bfloat>, <4 x bfloat> addrspace(1)* %inbuf, i64 %call
   %loaded = load <4 x bfloat>, <4 x bfloat> addrspace(1)* %arrayidx, align 8
-  %call1 = call spir_func <4 x i8> @_Z38__builtin_spirv_ConvertBF16ToE5M2INTELDv4_DF16b(<4 x bfloat> %loaded)
+  %call1 = call spir_func <4 x i8> @_Z36__builtin_spirv_ConvertBF16ToE5M2EXTDv4_DF16b(<4 x bfloat> %loaded)
   %arrayidx3 = getelementptr inbounds <4 x i8>, <4 x i8> addrspace(1)* %outbuf, i64 %call
   store <4 x i8> %call1, <4 x i8> addrspace(1)* %arrayidx3, align 4
   ret void
@@ -197,13 +202,13 @@ entry:
 ; CHECK-DAG: .decl [[OUT_HF_7]] v_type=G type=hf num_elts=32
 ; CHECK-DAG: .decl [[OUT_VEC_HF]] v_type=G type=hf num_elts=256
 ; CHECK-DAG: .decl [[OUT_E5M2]] v_type=G type=ub num_elts=256
-declare spir_func <8 x i8> @_Z38__builtin_spirv_ConvertBF16ToE5M2INTELDv8_DF16b(<8 x bfloat>)
+declare spir_func <8 x i8> @_Z36__builtin_spirv_ConvertBF16ToE5M2EXTDv8_DF16b(<8 x bfloat>)
 define spir_kernel void @Test8_ConvertBF16ToE5M2(<8 x bfloat> addrspace(1)* %inbuf, <8 x i8> addrspace(1)* %outbuf) {
 entry:
   %call = call spir_func i64 @_Z33__spirv_BuiltInGlobalInvocationIdi(i32 0)
   %arrayidx = getelementptr inbounds <8 x bfloat>, <8 x bfloat> addrspace(1)* %inbuf, i64 %call
   %loaded = load <8 x bfloat>, <8 x bfloat> addrspace(1)* %arrayidx, align 16
-  %call1 = call spir_func <8 x i8> @_Z38__builtin_spirv_ConvertBF16ToE5M2INTELDv8_DF16b(<8 x bfloat> %loaded)
+  %call1 = call spir_func <8 x i8> @_Z36__builtin_spirv_ConvertBF16ToE5M2EXTDv8_DF16b(<8 x bfloat> %loaded)
   %arrayidx3 = getelementptr inbounds <8 x i8>, <8 x i8> addrspace(1)* %outbuf, i64 %call
   store <8 x i8> %call1, <8 x i8> addrspace(1)* %arrayidx3, align 8
   ret void
@@ -298,13 +303,13 @@ entry:
 ; CHECK-DAG: .decl [[OUT_HF_15]] v_type=G type=hf num_elts=32
 ; CHECK-DAG: .decl [[OUT_VEC_HF]] v_type=G type=hf num_elts=512
 ; CHECK-DAG: .decl [[OUT_E5M2]] v_type=G type=ub num_elts=512
-declare spir_func <16 x i8> @_Z38__builtin_spirv_ConvertBF16ToE5M2INTELDv16_DF16b(<16 x bfloat>)
+declare spir_func <16 x i8> @_Z36__builtin_spirv_ConvertBF16ToE5M2EXTDv16_DF16b(<16 x bfloat>)
 define spir_kernel void @Test16_ConvertBF16ToE5M2(<16 x bfloat> addrspace(1)* %inbuf, <16 x i8> addrspace(1)* %outbuf) {
 entry:
   %call = call spir_func i64 @_Z33__spirv_BuiltInGlobalInvocationIdi(i32 0)
   %arrayidx = getelementptr inbounds <16 x bfloat>, <16 x bfloat> addrspace(1)* %inbuf, i64 %call
   %loaded = load <16 x bfloat>, <16 x bfloat> addrspace(1)* %arrayidx, align 32
-  %call1 = call spir_func <16 x i8> @_Z38__builtin_spirv_ConvertBF16ToE5M2INTELDv16_DF16b(<16 x bfloat> %loaded)
+  %call1 = call spir_func <16 x i8> @_Z36__builtin_spirv_ConvertBF16ToE5M2EXTDv16_DF16b(<16 x bfloat> %loaded)
   %arrayidx3 = getelementptr inbounds <16 x i8>, <16 x i8> addrspace(1)* %outbuf, i64 %call
   store <16 x i8> %call1, <16 x i8> addrspace(1)* %arrayidx3, align 16
   ret void
