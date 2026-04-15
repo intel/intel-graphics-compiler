@@ -7061,6 +7061,9 @@ void GraphColor::determineColorOrdering() {
   //This will not change the order unless SPGSS is turned on
   builder.getFreqInfoManager().sortBasedOnFreq(sorted);
 
+  bool isStackCall = kernel.fg.getIsStackCallFunc();
+  bool allowRRInFF = kernel.getOption(vISA_GCRRInFF);
+
   for (unsigned i = 0; i < numUnassignedVar; i++) {
     LiveRange *lr = sorted[i];
     unsigned availColor = numColor;
@@ -7069,9 +7072,11 @@ void GraphColor::determineColorOrdering() {
     if (lr->getDegree() + lr->getNumRegNeeded() <= availColor) {
       unconstrainedWorklist.push_back(lr);
       lr->setActive(false);
-      if (lr->getRegKind() == G4_GRF) {
+      if (!isStackCall && allowRRInFF && (lr->getRegKind() & G4_GRF)) {
         // Mark current lr as unconstrained, which means RR algorithm can always
-        // be applied to the variable.
+        // be applied to the variable. We should not apply this for stackcall
+        // functions because if we do RR, we may end up using GRFs from callee
+        // saved partition, requiring save/restore.
         lr->setUnconstrained(true);
       }
     } else {
@@ -7325,12 +7330,7 @@ bool GraphColor::assignColors(ColorHeuristic colorHeuristicGRF,
       }
 
       if (kernel.getOption(vISA_GCRRInFF)) {
-        if (lr->getRegKind() != G4_GRF) {
-          // None GRF assignment, keep single FF or RR algorithm
-          if (heuristic == FIRST_FIT) {
-            parms.setStartGRF(0);
-          }
-        } else if (heuristic == FIRST_FIT && !lr->getIsUnconstrained()) {
+        if (heuristic == FIRST_FIT && !lr->getIsUnconstrained()) {
           // GRF assignment, start GRF is always 0 if first fit algorithm is
           // used and the variable is constrainted
           parms.setStartGRF(0);

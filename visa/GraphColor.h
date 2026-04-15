@@ -285,6 +285,7 @@ public:
   void setCallerSaveBias(bool v) { callerSaveBias = v; }
   bool getCallerSaveBias() const { return callerSaveBias; }
 
+  // FIXME: Are these relevant when builder.hasEOTGRFBinding() == false?
   void setEOTSrc() { isEOTSrc = true; }
   bool getEOTSrc() const { return isEOTSrc; }
 

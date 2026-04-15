@@ -155,7 +155,8 @@ class PhyRegUsage {
 
   PhyReg findGRFSubReg(const BitSet *forbidden, bool callerSaveBias,
                        bool callerSaverBias, BankAlign align,
-                       G4_SubReg_Align subAlign, unsigned nwords);
+                       G4_SubReg_Align subAlign, unsigned nwords,
+                       bool isUnconstrained);
 
   void findGRFSubRegFromRegs(int startReg, int endReg, int step, PhyReg *phyReg,
                              G4_SubReg_Align subAlign, unsigned nwords,
