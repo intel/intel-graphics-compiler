@@ -18,14 +18,14 @@
 
 ; CHECK-LABEL: @mad_builtin_half_float(
 ; CHECK-NEXT:    [[TMP1:%.*]] = alloca <16 x float>
-; CHECK-NEXT:    [[TMP2:%.*]] = alloca <32 x i16>
+; CHECK-NEXT:    [[TMP2:%.*]] = alloca <16 x i32>
 ; CHECK-NEXT:    [[TMP3:%.*]] = alloca <8 x i32>
 ; CHECK-NEXT:    [[TMP4:%.*]] = alloca <16 x float>
 ; CHECK-NEXT:    [[TMP5:%.*]] = alloca <16 x float>
-; CHECK-NEXT:    store <32 x i16>{{.*}} <32 x i16>* [[TMP2]]
+; CHECK-NEXT:    store <16 x i32>{{.*}} <16 x i32>* [[TMP2]]
 ; CHECK-NEXT:    store <8 x i32>{{.*}} <8 x i32>* [[TMP3]]
 ; CHECK-NEXT:    store <16 x float> zeroinitializer, <16 x float>* [[TMP4]]
-; CHECK-NEXT:    [[TMP6:%.*]] = bitcast <32 x i16>* [[TMP2]] to i8*
+; CHECK-NEXT:    [[TMP6:%.*]] = bitcast <16 x i32>* [[TMP2]] to i8*
 ; CHECK-NEXT:    [[TMP7:%.*]] = bitcast <8 x i32>* [[TMP3]] to i8*
 ; CHECK-NEXT:    [[TMP8:%.*]] = bitcast <16 x float>* [[TMP4]] to i8*
 ; CHECK-NEXT:    [[TMP9:%.*]] = bitcast <16 x float>* [[TMP5]] to i8*

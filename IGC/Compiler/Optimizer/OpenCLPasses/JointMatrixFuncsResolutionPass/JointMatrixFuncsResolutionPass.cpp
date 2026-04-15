@@ -77,6 +77,8 @@ static const char *CooperativeMatrixStorePrefx = "CooperativeMatrixStoreKHR";
 static const char *CooperativeMatrixMadPrefx = "CooperativeMatrixMulAddKHR";
 static const char *CooperativeMatrixLengthPrefx = "CooperativeMatrixLengthKHR";
 static const char *CooperativeMatrixGetElementCoordPrefx = "CooperativeMatrixGetElementCoordINTEL";
+static const char *CooperativeMatrixTestDumpLoadPrefx = "CooperativeMatrixTestDumpLoad";
+static const char *CooperativeMatrixTestDumpStorePrefx = "CooperativeMatrixTestDumpStore";
 static const char *AccessChainPrefx = "__spirv_AccessChain";
 
 // We need module pass, since:
@@ -1398,6 +1400,11 @@ Type *JointMatrixFuncsResolutionPass::ResolveType(Type *inputType, JointMatrixTy
       baseType = Type::getInt16Ty(ctx);
       desc.contribBitWidth = 16;
     }
+    // contribBitWidth can't be smaller than bitWidth
+    if (desc.contribBitWidth < desc.bitWidth) {
+      desc.contribBitWidth = desc.bitWidth;
+      baseType = Type::getIntNTy(ctx, desc.contribBitWidth);
+    }
     // At this point only Accumulator can be RowMajor
     // in ParseMatrixTypeName layout is set based on use
   } else if (desc.layout == LayoutRowMajor) {
@@ -1704,6 +1711,122 @@ template <bool IsJointMatrix, bool IsChecked> Instruction *JointMatrixFuncsResol
     Args = {ptrVal, src, strideVal, cacheOpt};
   }
   Instruction *newCall = CallInst::Create(M->getOrInsertFunction(funcName, funcType), Args, "", CI);
+  newCall->setDebugLoc(CI->getDebugLoc());
+  return newCall;
+}
+
+Instruction *JointMatrixFuncsResolutionPass::ResolveTestDumpLoad(CallInst *CI) {
+  LLVM_DEBUG(dbgs() << "   -- RESOLVE TEST DUMP LOAD: " << *CI << "\n");
+
+  // Operand 0: pointer to source memory
+  // Operand 1: stride (in number of elements)
+  Value *ptrVal = CI->getArgOperand(0);
+  Value *strideVal = CI->getArgOperand(1);
+
+  JointMatrixTypeDescription desc;
+  Type *matTy = ResolveType(CI->getType(), &desc);
+
+  LLVMContext &ctx = CI->getContext();
+  Type *retTy = Type::getVoidTy(ctx);
+  Type *arrayTy = Type::getInt8PtrTy(ctx, ADDRESS_SPACE_PRIVATE);
+
+  Module *M = CI->getParent()->getModule();
+
+  InstsToErase.insert(CI);
+
+  // Create alloca in the entry node of the function
+  IRBuilder<> builder(&*CI->getFunction()->getEntryBlock().getFirstInsertionPt());
+  builder.SetCurrentDebugLocation(CI->getDebugLoc());
+  Value *sliceArray = builder.CreateAlloca(matTy, ADDRESS_SPACE_PRIVATE);
+
+  builder.SetInsertPoint(CI);
+  Value *dst = builder.CreateBitCast(sliceArray, arrayTy);
+
+  // Cast pointer to generic address space so a single BIF works for global/local/generic.
+  Type *genericPtrTy = Type::getInt8PtrTy(ctx, ADDRESS_SPACE_GENERIC);
+  Value *memPtr = ptrVal;
+  if (ptrVal->getType()->getPointerAddressSpace() != ADDRESS_SPACE_GENERIC) {
+    memPtr = builder.CreateAddrSpaceCast(ptrVal, genericPtrTy);
+  }
+
+  // Calculate contribution-level parameters for row-major dump.
+  unsigned wiRows = getNumRowsPerWI(&desc);
+  unsigned contribCols = desc.columns * desc.bitWidth / desc.contribBitWidth;
+  unsigned contribBytes = desc.contribBitWidth / 8;
+  unsigned elemBytes = desc.bitWidth / 8;
+  Value *wiRowsVal = builder.getInt32(wiRows);
+  Value *contribColsVal = builder.getInt32(contribCols);
+  Value *contribBytesVal = builder.getInt32(contribBytes);
+  Value *elemBytesVal = builder.getInt32(elemBytes);
+
+  std::string bifName = "__builtin_spriv_OpCooperativeMatrixTestDumpLoadINTEL";
+  Type *i32Ty = Type::getInt32Ty(ctx);
+  FunctionType *funcType = FunctionType::get(retTy, {arrayTy, genericPtrTy, i32Ty, i32Ty, i32Ty, i32Ty, i32Ty}, false);
+  Instruction *newCall =
+      builder.CreateCall(M->getOrInsertFunction(bifName, funcType),
+                         {dst, memPtr, wiRowsVal, contribColsVal, contribBytesVal, strideVal, elemBytesVal});
+  newCall->setDebugLoc(CI->getDebugLoc());
+
+  newCall = builder.CreateLoad(matTy, sliceArray);
+  return newCall;
+}
+
+Instruction *JointMatrixFuncsResolutionPass::ResolveTestDumpStore(CallInst *CI) {
+  LLVM_DEBUG(dbgs() << "   -- RESOLVE TEST DUMP STORE: " << *CI << "\n");
+
+  // Operand 0: pointer to destination memory
+  // Operand 1: matrix value
+  // Operand 2: stride (in number of elements)
+  Value *ptrVal = CI->getArgOperand(0);
+  Value *matrixVal = CI->getArgOperand(1);
+  Value *strideVal = CI->getArgOperand(2);
+
+  JointMatrixTypeDescription desc;
+  Type *matTy = ResolveType(matrixVal->getType(), &desc);
+  (void)matTy;
+
+  LLVMContext &ctx = CI->getContext();
+  Type *arrayTy = Type::getInt8PtrTy(ctx, ADDRESS_SPACE_PRIVATE);
+
+  Module *M = CI->getParent()->getModule();
+
+  Value *matVal = Resolve(matrixVal);
+
+  InstsToErase.insert(CI);
+
+  // Create alloca in the entry node of the function
+  IRBuilder<> builder(&*CI->getFunction()->getEntryBlock().getFirstInsertionPt());
+  builder.SetCurrentDebugLocation(CI->getDebugLoc());
+  Value *sliceArray = builder.CreateAlloca(matVal->getType(), ADDRESS_SPACE_PRIVATE);
+
+  builder.SetInsertPoint(CI);
+  builder.CreateStore(matVal, sliceArray);
+  Value *src = builder.CreateBitCast(sliceArray, arrayTy);
+
+  // Cast pointer to generic address space so a single BIF works for global/local/generic.
+  Type *genericPtrTy = Type::getInt8PtrTy(ctx, ADDRESS_SPACE_GENERIC);
+  Value *memPtr = ptrVal;
+  if (ptrVal->getType()->getPointerAddressSpace() != ADDRESS_SPACE_GENERIC) {
+    memPtr = builder.CreateAddrSpaceCast(ptrVal, genericPtrTy);
+  }
+
+  // Calculate contribution-level parameters for row-major dump.
+  unsigned wiRows = getNumRowsPerWI(&desc);
+  unsigned contribCols = desc.columns * desc.bitWidth / desc.contribBitWidth;
+  unsigned contribBytes = desc.contribBitWidth / 8;
+  unsigned elemBytes = desc.bitWidth / 8;
+  Value *wiRowsVal = builder.getInt32(wiRows);
+  Value *contribColsVal = builder.getInt32(contribCols);
+  Value *contribBytesVal = builder.getInt32(contribBytes);
+  Value *elemBytesVal = builder.getInt32(elemBytes);
+
+  std::string bifName = "__builtin_spriv_OpCooperativeMatrixTestDumpStoreINTEL";
+  Type *i32Ty = Type::getInt32Ty(ctx);
+  FunctionType *funcType =
+      FunctionType::get(Type::getVoidTy(ctx), {genericPtrTy, arrayTy, i32Ty, i32Ty, i32Ty, i32Ty, i32Ty}, false);
+  Instruction *newCall =
+      CallInst::Create(M->getOrInsertFunction(bifName, funcType),
+                       {memPtr, src, wiRowsVal, contribColsVal, contribBytesVal, strideVal, elemBytesVal}, "", CI);
   newCall->setDebugLoc(CI->getDebugLoc());
   return newCall;
 }
@@ -2544,6 +2667,12 @@ Value *JointMatrixFuncsResolutionPass::ResolveCall(CallInst *CI) {
   } else if (funcName.contains(JointMatrixGetCoordPrefx) || funcName.contains(CooperativeMatrixGetElementCoordPrefx)) {
     InsertPlaceholder(CI);
     NewValue = ResolveGetCoord(CI);
+  } else if (funcName.contains(CooperativeMatrixTestDumpLoadPrefx)) {
+    InsertPlaceholder(CI);
+    NewValue = ResolveTestDumpLoad(CI);
+  } else if (funcName.contains(CooperativeMatrixTestDumpStorePrefx)) {
+    InsertPlaceholder(CI);
+    NewValue = ResolveTestDumpStore(CI);
   }
 
   CacheResolvedValue(CI, NewValue);

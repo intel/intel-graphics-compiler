@@ -14,11 +14,11 @@
 
 ; CHECK-LABEL: @mad_builtin_half_float(
 ; CHECK-NEXT:    [[TMP1:%.*]] = alloca <16 x float>
-; CHECK-NEXT:    [[TMP2:%.*]] = alloca <32 x i16>
+; CHECK-NEXT:    [[TMP2:%.*]] = alloca <16 x i32>
 ; CHECK-NEXT:    [[TMP3:%.*]] = alloca <8 x i32>
 ; CHECK-NEXT:    [[TMP4:%.*]] = alloca <16 x float>
 ; CHECK-NEXT:    [[TMP5:%.*]] = alloca <16 x float>
-; CHECK-NEXT:    store <32 x i16>{{.*}} ptr [[TMP2]]
+; CHECK-NEXT:    store <16 x i32>{{.*}} ptr [[TMP2]]
 ; CHECK-NEXT:    store <8 x i32>{{.*}} ptr [[TMP3]]
 ; CHECK-NEXT:    store <16 x float> zeroinitializer, ptr [[TMP4]]
 ; CHECK-NEXT:    call void @__builtin_spriv_OpJointMatrixMadINTEL_16x16x16_i32_fp16_fp32_fp32(ptr [[TMP2]], ptr [[TMP3]], ptr [[TMP4]], ptr [[TMP5]])

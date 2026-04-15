@@ -54,6 +54,8 @@ private:
   llvm::Instruction *ResolvePrefetch(llvm::CallInst *CI);
   template <bool IsJointMatrix, bool isChecked> llvm::Instruction *ResolveLoad(llvm::CallInst *CI);
   template <bool IsJointMatrix, bool IsChecked> llvm::Instruction *ResolveStore(llvm::CallInst *CI);
+  llvm::Instruction *ResolveTestDumpLoad(llvm::CallInst *CI);
+  llvm::Instruction *ResolveTestDumpStore(llvm::CallInst *CI);
   llvm::Instruction *ResolveMad(llvm::CallInst *CI, unsigned OperationType);
   int getSliceSize(const JointMatrixTypeDescription *desc);
   llvm::Value *ResolveFill(llvm::CallInst *CI);

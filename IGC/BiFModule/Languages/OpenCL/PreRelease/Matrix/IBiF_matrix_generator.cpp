@@ -25,6 +25,7 @@ static constexpr int SUB_GROUP_8 = 8;
 static constexpr int SUB_GROUP_16 = 16;
 static constexpr int SUB_GROUP_32 = 32;
 static constexpr int MAX_ROW_BITS_2D_BLOCK_LOAD = 8 * 64;
+static constexpr int MAX_ROW_BITS_2D_BLOCK_STORE = 8 * 64;
 static unordered_set<string> CreatedFuncsSet;
 static string CreatedFuncsWarningLog;
 
@@ -293,6 +294,86 @@ static string GetMatrixFunctionName(MatrixSpec spec, AddrSpace addr, bool isChec
 
   s += "_v8i8_pi32_i32";
   return s;
+}
+
+// For stores, the order may differ from what MatrixSpec calculates for loads.
+// Loads use VNNI transforms when loading from row-major memory into VNNI-packed slices.
+// Stores already have the data in the slice format, so the order depends on how
+// the slice data maps to the destination memory layout.
+static OrderType GetStoreOrder(MatrixSpec spec) {
+  switch (spec.Layout) {
+  case Layout_PackedA_RowMajor:
+  case Layout_PackedB_PackedB:
+  case Layout_Accumulator_RowMajor:
+    return Order_RowMajor;
+  case Layout_PackedA_ColumnMajor:
+  case Layout_PackedB_ColumnMajor:
+  case Layout_Accumulator_ColumnMajor:
+    return Order_ColMajor;
+  case Layout_PackedB_RowMajor:
+    // For sub-32-bit types (VnniFactor > 1), we need VNNI_TX scalar store
+    // to unpack 32-bit contrib elements into separate element-sized rows.
+    // For 32-bit and larger types (VnniFactor==1), writing contrib elements
+    // in row-major order naturally produces the correct memory layout.
+    if (spec.VnniFactor > 1)
+      return Order_Vnni;
+    return Order_RowMajor;
+  }
+  assert(false && "Unknown Layout in GetStoreOrder");
+  return Order_RowMajor;
+}
+
+static string GetStoreMatrixFunctionName(MatrixSpec spec, AddrSpace addr, bool isChecked) {
+  string s;
+
+  if (isChecked)
+    s += "__builtin_spriv_OpJointMatrixStoreCheckedINTEL_";
+  else
+    s += "__builtin_spriv_OpJointMatrixStoreINTEL_";
+
+  s += ToString(spec.Layout);
+
+  if (spec.DpasSubGroupSize > SUB_GROUP_8)
+    s += "_SG" + to_string(spec.DpasSubGroupSize);
+
+  s += "_" + to_string(spec.VnniedRows) + "x" + to_string(spec.VnniedCols);
+  s += "_i" + to_string(spec.BitWidth);
+  s += "_" + to_string(spec.WiRows);
+
+  if (!isChecked)
+    s += "_" + ToString(addr);
+
+  s += "_pi64_v8i8";
+  return s;
+}
+
+// Returns the CeilPow2-aligned vector size for a given WI_rows count.
+// WI_rows 3 rounds to 4, 5-7 round to 8, etc.
+static int GetAlignedVecSize(int wiRows) { return CeilPow2(wiRows); }
+
+// Returns the OUT_STORE_VEC type suffix for block writes.
+// For stores, 3 maps to 4 (pad with 0), 5-7 map to 8.
+// This matches OUT_STORE_VEC macros from IBiF_matrix.cl.
+static int GetStoreVecSize(int wiRows) {
+  if (wiRows == 3)
+    return 4;
+  if (wiRows >= 5 && wiRows <= 7)
+    return 8;
+  return wiRows; // 1, 2, 4, 8, 16, 32 stay as-is
+}
+
+// Returns the write function suffix count (e.g., write2, write4, write8).
+// Mirrors DEFINE_BLOCK_RW_NAME macros for write.
+static int GetBlockWriteCount(int wiRows) {
+  if (wiRows == 1)
+    return 1; // no count suffix
+  if (wiRows == 2)
+    return 2;
+  if (wiRows == 3)
+    return 4;
+  if (wiRows == 4)
+    return 4;
+  return 8; // 5-8 round to 8
 }
 
 static bool CheckIfFunctionNameIsUnique(const string &funcName) {
@@ -622,13 +703,27 @@ static string ImplementSmallLoadScalar(MatrixSpec spec, AddrSpace addr) {
 
   if (spec.Order == Order_Vnni) {
     s += "AddrSpace ElemType *src = (AddrSpace ElemType *)mem;\n";
-    s += "for (int i = 0; i < " + to_string(spec.Rows) + "; i++) {\n";
+
+    int numSubGroups = spec.SubGroupSize / spec.VnniedCols;
+    if (numSubGroups < 1)
+      numSubGroups = 1;
+
+    if (numSubGroups > 1) {
+      s += "int col = slid % " + to_string(spec.VnniedCols) + ";\n";
+      s += "int sg = slid / " + to_string(spec.VnniedCols) + ";\n";
+    }
+
+    s += "for (int i = 0; i < " + to_string(spec.WiRows) + "; i++) {\n";
 
     int iterationCount = BITS_32 / spec.BitWidth;
     assert(iterationCount >= 1);
     for (int iter = 0; iter < iterationCount; iter++) {
-      s += "ElemType rowIterIndex = src[(IterCount * i + IterIndex) * stride + "
-           "slid];\n";
+      if (numSubGroups > 1)
+        s += "ElemType rowIterIndex = src[(IterCount * (i * " + to_string(numSubGroups) +
+             " + sg) + IterIndex) * stride + col];\n";
+      else
+        s += "ElemType rowIterIndex = src[(IterCount * i + IterIndex) * stride + "
+             "slid];\n";
       s = Replace(s, "IterIndex", to_string(iter));
     }
 
@@ -680,6 +775,350 @@ static string ImplementSmallLoadScalar(MatrixSpec spec, AddrSpace addr) {
   s = Replace(s, "Rows", to_string(spec.Rows));
   return s;
 }
+
+//
+// Small store implementations
+//
+
+// Block 2D store - only available for SG16 configurations.
+// Mirrors IMPLEMENT_BLOCK2D_STORE_SG16 from IBiF_matrix.cl.
+static string ImplementSmallStore2DBlock(MatrixSpec spec, bool isChecked) {
+  OrderType storeOrder = GetStoreOrder(spec);
+
+  // Block 2D store is only available for SG16 and RowMajor order.
+  // Unlike 2D block reads which support _transpose and _transform (VNNI) modes,
+  // 2D block writes only support plain row-major. There is no hardware 2D block
+  // write with VNNI un-transform. The checked API only exposes 2D block operations,
+  // so no checked store is generated for Order_Vnni configurations
+  // (PackedB_RowMajor with sub-32-bit types like i8 or i16).
+  if (spec.DpasSubGroupSize < SUB_GROUP_16)
+    return "";
+  if (storeOrder != Order_RowMajor)
+    return "";
+  // For non-checked stores, WiRows < Rows means the block2D path would be dead code.
+  // For checked stores, block2D is always used (it provides bounds checking).
+  if (!isChecked && spec.WiRows < spec.Rows)
+    return "";
+  if (!(spec.Rows == 1 || spec.Rows == 2 || spec.Rows == 4 || spec.Rows == 8 || spec.Rows == 16))
+    return "";
+
+  int contribK = spec.Cols / (spec.ContribBitWidth / spec.BitWidth);
+
+  // blockWidth * data size should not exceed 512B for untyped block 2D stores
+  int blockRowSizeInBits = contribK * spec.ContribBitWidth;
+  if (blockRowSizeInBits > MAX_ROW_BITS_2D_BLOCK_STORE)
+    return "";
+
+  int alignedWiRows = GetAlignedVecSize(spec.WiRows);
+  string valType = GetUnsignedType(spec.ContribBitWidth) + ToStringAbove1(alignedWiRows);
+
+  string blockFunc = "__builtin_IB_subgroup_block_write_flat_cacheopts"
+                     "_u" +
+                     to_string(spec.ContribBitWidth) + "_wi" + to_string(spec.WiRows) + "_m" + to_string(spec.Rows) +
+                     "k" + to_string(contribK) + "v1";
+
+  string s;
+  if (isChecked) {
+    s += "long offset = as_long(mem);\n";
+    s += "int width_size = ElemBytes * width - 1;\n";
+    s += "int pitch = ElemBytes * stride - 1;\n";
+    s += "int height_size = height - 1;\n";
+    s += "int pack_factor = ContribBytes / ElemBytes;\n";
+    s += "int2 coords = (int2)(x / pack_factor, y);\n";
+    s += "void BlockFunc(long, int, int, int, int2, ValType, int);\n";
+    s += "ValType val = *(ValType *)src;\n";
+    s += "BlockFunc(offset, width_size, height_size, pitch, coords, val, cacheOpt);\n";
+    s += "return;\n";
+  } else {
+    s += "if (BIF_FLAG_CTRL_GET(JointMatrixLoadStoreOpt) >= BLOCK2D_IMPL) {\n";
+    s += "long offset = as_long(mem);\n";
+    s += "long baseoffset = offset & (~0x3f);\n";
+    s += "int width = ElemBytes * stride - 1;\n";
+    s += "int pitch = width;\n";
+    s += "int height = " + to_string(spec.Rows) + " - 1;\n";
+    s += "long x = (offset - baseoffset) / ContribBytes;\n";
+    s += "int2 coords = (int2)(x, 0);\n";
+    s += "void BlockFunc(long, int, int, int, int2, ValType, int);\n";
+    s += "ValType val = *(ValType *)src;\n";
+    s += "BlockFunc(baseoffset, width, height, pitch, coords, val, cacheOpt);\n";
+    s += "return;\n";
+    s += "}\n";
+  }
+
+  s = Replace(s, "ValType", valType);
+  s = Replace(s, "BlockFunc", blockFunc);
+  s = Replace(s, "ElemBytes", to_string(Bytes(spec.BitWidth)));
+  s = Replace(s, "ContribBytes", to_string(Bytes(spec.ContribBitWidth)));
+  return s;
+}
+
+// Vector continuous store - single block write for whole slice.
+// Mirrors DEFINE_STORE_VECTORS_IMPL (VECTOR_CONT_IMPL part) from IBiF_matrix.cl.
+static string ImplementSmallStoreVectorContinuous(MatrixSpec spec, AddrSpace addr) {
+  OrderType storeOrder = GetStoreOrder(spec);
+  if (spec.WiRows < spec.Rows || ((spec.WiRows % spec.Rows) != 0))
+    return "";
+  if (storeOrder != Order_RowMajor)
+    return "";
+  if (!(spec.Rows == 1 || spec.Rows == 2 || spec.Rows == 4 || spec.Rows == 8))
+    return "";
+
+  string s;
+  bool skipStrideCheck = ((spec.WiRows > spec.Rows) && ((spec.WiRows % spec.Rows) == 0));
+  s += "if (BIF_FLAG_CTRL_GET(JointMatrixLoadStoreOpt) >= VECTOR_CONT_IMPL";
+  if (!skipStrideCheck)
+    s += " && stride == " + to_string(spec.Cols);
+  s += ") {\n";
+
+  // Read value from src
+  string contribUType = GetUnsignedType(spec.ContribBitWidth);
+  string readType = contribUType + ToStringAbove1(spec.WiRows);
+  s += "ReadType vec = *(__private ReadType *)src;\n";
+
+  // Declare and call the write function
+  int writeCount = GetBlockWriteCount(spec.WiRows);
+  string writeFunc =
+      "intel_sub_group_block_write" + GetVectorLoadSuffix(spec.ContribBitWidth) + ToStringAbove1(writeCount);
+  int storeVecSize = GetStoreVecSize(spec.WiRows);
+  string storeVecType = contribUType + ToStringAbove1(storeVecSize);
+  s += "void OVERLOADABLE WriteFunc(MemType *, StoreVecType);\n";
+
+  // VEC_TO_VEC_STORE conversion for special sizes
+  string vecConvert;
+  if (spec.WiRows == 3)
+    vecConvert = "(" + contribUType + "4)(vec.s0, vec.s1, vec.s2, 0)";
+  else if (spec.WiRows == 1)
+    vecConvert = "(" + contribUType + ")(vec)";
+  else
+    vecConvert = "vec";
+  s += "WriteFunc((MemType *)mem, " + vecConvert + ");\n";
+
+  s += "return;\n";
+  s += "}\n";
+
+  s = Replace(s, "ReadType", readType);
+  s = Replace(s, "WriteFunc", writeFunc);
+  s = Replace(s, "StoreVecType", storeVecType);
+  s = Replace(s, "MemType", "__" + ToString(addr) + " " + contribUType);
+  return s;
+}
+
+// Vector store - block write per row of the slice.
+// Mirrors DEFINE_STORE_VECTORS_IMPL (VECTOR_IMPL part) from IBiF_matrix.cl.
+// block_opt: when false, this implementation is skipped entirely (should be deleted in the future).
+static string ImplementSmallStoreVector(MatrixSpec spec, AddrSpace addr, bool blockOpt) {
+  if (!blockOpt)
+    return "";
+
+  OrderType storeOrder = GetStoreOrder(spec);
+  if (spec.WiRows < spec.Rows || ((spec.WiRows % spec.Rows) != 0))
+    return "";
+  if (storeOrder != Order_RowMajor)
+    return "";
+  if (spec.Rows == 1 && spec.SubGroupSize == SUB_GROUP_32)
+    return "";
+
+  string s;
+  s += "if (BIF_FLAG_CTRL_GET(JointMatrixLoadStoreOpt) >= VECTOR_IMPL) {\n";
+
+  string contribUType = GetUnsignedType(spec.ContribBitWidth);
+  int packFactor = spec.ContribBitWidth / spec.BitWidth;
+  s += "MemType *ptr = (MemType *)mem;\n";
+  s += "int pack_factor = " + to_string(packFactor) + ";\n";
+  s += "stride = stride / pack_factor;\n";
+
+  int ratio = spec.WiRows / spec.Rows;
+  if (ratio != 1)
+    s += "int ratio = " + to_string(ratio) + ";\n";
+
+  string writeFunc = "intel_sub_group_block_write" + GetVectorLoadSuffix(spec.ContribBitWidth);
+  s += "for (int i = 0; i < " + to_string(spec.WiRows) + "; i++)\n";
+  if (ratio != 1)
+    s += "  " + writeFunc +
+         "(ptr + (i/ratio)*stride + (i%ratio)*sg_size, "
+         "((__private ContribUType *)src)[i]);\n";
+  else
+    s += "  " + writeFunc +
+         "(ptr + i*stride, "
+         "((__private ContribUType *)src)[i]);\n";
+
+  s += "return;\n";
+  s += "}\n";
+
+  s = Replace(s, "MemType", "__" + ToString(addr) + " " + contribUType);
+  s = Replace(s, "ContribUType", contribUType);
+  return s;
+}
+
+// Scalar store - element-by-element store using sub_group_local_id.
+// Mirrors DEFINE_STORE_SCALAR_IMPL from IBiF_matrix.cl.
+static string ImplementSmallStoreScalar(MatrixSpec spec, AddrSpace addr) {
+  OrderType storeOrder = GetStoreOrder(spec);
+  string s;
+  s += "int slid = get_sub_group_local_id();\n";
+
+  int packFactor = spec.ContribBitWidth / spec.BitWidth;
+  assert(packFactor > 0);
+  int sgCols = spec.Cols / packFactor;
+  int skipFactor = spec.SubGroupSize / sgCols;
+
+  string elemType = GetUnsignedType(spec.BitWidth);
+  string contribType = GetUnsignedType(spec.ContribBitWidth);
+  // Remove the 'u' prefix for signed types used in the .cl
+  string signedContribType = contribType.substr(1); // "short", "int", "long"
+
+  // Special case: PackedA_ColumnMajor i8 with contrib i16
+  if (spec.Layout == Layout_PackedA_ColumnMajor && spec.BitWidth == BITS_8 && spec.ContribBitWidth == BITS_16) {
+    int elemNum = (spec.Rows * spec.Cols) / spec.SubGroupSize;
+    s += "int pack_factor = " + to_string(packFactor) + ";\n";
+    s += "int elem_num = " + to_string(elemNum) + ";\n";
+    s += "for (int i = 0; i < elem_num; i++)\n";
+    s += "  mem[(i % pack_factor) * stride + ((slid * pack_factor) % " + to_string(spec.Cols) +
+         ") * stride + (i / pack_factor) * " + to_string(skipFactor) + " + (slid * pack_factor) / " +
+         to_string(spec.Cols) + "] = src[i];\n";
+    return s;
+  }
+
+  // Un-VNNI store: reinterpret VNNI-packed int32 contrib elements as individual
+  // element-size values and write each to its correct row-major position.
+  if (storeOrder == Order_Vnni) {
+    string signedElemType = elemType.substr(1); // "short" for i16
+    s += ToString(addr) + " " + signedElemType + " *ptr = (" + ToString(addr) + " " + signedElemType + " *)mem;\n";
+    s += "__private " + signedElemType + " *slice = (__private " + signedElemType + " *)src;\n";
+
+    int numSubGroups = spec.SubGroupSize / spec.VnniedCols;
+    if (numSubGroups < 1)
+      numSubGroups = 1;
+
+    if (numSubGroups > 1) {
+      int elemsPerWi = spec.WiRows * spec.VnniFactor;
+      s += "int col = slid % " + to_string(spec.VnniedCols) + ";\n";
+      s += "int sg = slid / " + to_string(spec.VnniedCols) + ";\n";
+      s += "for (int j = 0; j < " + to_string(elemsPerWi) + "; j++) {\n";
+      s += "  int row = " + to_string(spec.VnniFactor) + " * ((j / " + to_string(spec.VnniFactor) + ") * " +
+           to_string(numSubGroups) + " + sg) + j % " + to_string(spec.VnniFactor) + ";\n";
+      s += "  ptr[row * stride + col] = slice[j];\n";
+      s += "}\n";
+    } else {
+      s += "for (int i = 0; i < " + to_string(spec.VnniedRows) + "; i++)\n";
+      s += "  ptr[i * stride + slid] = slice[i];\n";
+    }
+    return s;
+  }
+
+  s += ToString(addr) + " " + "SignedContribType *ptr = (" + ToString(addr) + " " + "SignedContribType *)mem;\n";
+  s += "stride = stride / " + to_string(packFactor) + ";\n";
+  s += "__private SignedContribType *slice = (__private SignedContribType *)src;\n";
+
+  if (spec.SubGroupSize >= sgCols) {
+    s += "for (int i = 0; i < " + to_string(spec.WiRows) + "; i++) {\n";
+    s += "  if ((i*" + to_string(skipFactor) + " + slid/" + to_string(sgCols) + ") < " + to_string(spec.Rows) + ")\n";
+
+    if (storeOrder == Order_RowMajor)
+      s += "    ptr[(slid/" + to_string(sgCols) + " + i*" + to_string(skipFactor) + ")*stride + (slid%" +
+           to_string(sgCols) + ")] = slice[i];\n";
+    else if (storeOrder == Order_ColMajor)
+      s += "    ptr[(slid/" + to_string(sgCols) + " + i*" + to_string(skipFactor) + ") + (slid%" + to_string(sgCols) +
+           ")*stride] = slice[i];\n";
+
+    s += "  else\n";
+    s += "    continue;\n";
+    s += "}\n";
+    s += "return;\n";
+  } else {
+    int ratio = spec.WiRows / spec.Rows;
+    s += "for (int i = 0; i < " + to_string(spec.WiRows) + "; i++)\n";
+    s += "  ptr[(i/" + to_string(ratio) + ")*stride + (i%" + to_string(ratio) + ")*" + to_string(spec.SubGroupSize) +
+         " + slid] = slice[i];\n";
+  }
+
+  s = Replace(s, "SignedContribType", signedContribType);
+  return s;
+}
+
+//
+// Small store function creators
+//
+
+// Define non-checked API store for a single address space.
+// block_opt: controls whether VECTOR_IMPL path is generated (should be deleted in the future).
+static string DefineSmallStoreForAddressSpace(MatrixSpec spec, AddrSpace addr, bool blockOpt) {
+  string funcName = GetStoreMatrixFunctionName(spec, addr, false);
+  if (!CheckIfFunctionNameIsUnique(funcName))
+    return "";
+
+  string s;
+  s += "INLINE void " + funcName;
+  s += "(char *mem, __private char *src, long stride, int cacheOpt) {\n";
+  s += "int sg_size = get_sub_group_size();\n";
+
+  if (addr == AddrSpace_Generic) {
+    s += "__builtin_assume((__global char*)mem != 0);\n";
+    s += "int memIsGlobal = (0 != __spirv_GenericCastToPtrExplicit_ToGlobal("
+         "__builtin_astype((mem), __generic char*), "
+         "StorageWorkgroup));\n";
+
+    s += "if (memIsGlobal) {\n";
+    s += ImplementSmallStore2DBlock(spec, false);
+    s += ImplementSmallStoreVectorContinuous(spec, AddrSpace_Global);
+    s += ImplementSmallStoreVector(spec, AddrSpace_Global, blockOpt);
+
+    s += "} else { /* mem is local */\n";
+    s += ImplementSmallStoreVectorContinuous(spec, AddrSpace_Local);
+    s += ImplementSmallStoreVector(spec, AddrSpace_Local, blockOpt);
+    s += "}\n";
+  } else if (addr == AddrSpace_Local) {
+    s += ImplementSmallStoreVectorContinuous(spec, addr);
+    s += ImplementSmallStoreVector(spec, addr, blockOpt);
+  } else // Global
+  {
+    s += ImplementSmallStore2DBlock(spec, false);
+    s += ImplementSmallStoreVectorContinuous(spec, addr);
+    s += ImplementSmallStoreVector(spec, addr, blockOpt);
+  }
+
+  s += ImplementSmallStoreScalar(spec, addr);
+  s += "}\n\n";
+  return s;
+}
+
+// Define small store for 3 address spaces and a checked store (if possible).
+// block_opt: controls whether VECTOR_IMPL path is generated (should be deleted in the future).
+static string DefineSmallStore(MatrixSpec spec, bool blockOpt) {
+  string s;
+  s += DefineSmallStoreForAddressSpace(spec, AddrSpace_Generic, blockOpt);
+  s += DefineSmallStoreForAddressSpace(spec, AddrSpace_Local, blockOpt);
+  s += DefineSmallStoreForAddressSpace(spec, AddrSpace_Global, blockOpt);
+
+  // Implement checked API small store.
+  // Checked stores only use block 2D writes. Only available for SG16.
+  string checkedBlockImpl = ImplementSmallStore2DBlock(spec, true);
+  if (checkedBlockImpl.size()) {
+    string funcName = GetStoreMatrixFunctionName(spec, AddrSpace_Global, true);
+    if (CheckIfFunctionNameIsUnique(funcName)) {
+      s += "INLINE void " + funcName;
+      s += "(char *mem, __private char *src, int y, int x, int height, int width, "
+           "long stride, int cacheOpt) {\n";
+      s += checkedBlockImpl;
+      s += "}\n\n";
+    }
+  }
+
+  return s;
+}
+
+// Define small stores (3 address spaces + checked) for all row permutations.
+// block_opt: controls whether VECTOR_IMPL path is generated (should be deleted in the future).
+static string DefineSmallStorePermuteRows(MatrixSpec spec, bool blockOpt, int rows_start = 1, int rows_end = 8) {
+  string s;
+  for (int rows = rows_end; rows >= rows_start; rows--) {
+    s += DefineSmallStore(MatrixSpec(spec.SubGroupSize, spec.Layout, rows, spec.Cols, spec.BitWidth), blockOpt);
+  }
+  return s;
+}
+
+// Define small store with checked variant.
+static string DefineSmallStoreAndChecked(MatrixSpec spec, bool blockOpt) { return DefineSmallStore(spec, blockOpt); }
 
 //
 // Small load function creators
@@ -777,18 +1216,30 @@ static string ImplementLargeLoadVectorContinuous(MatrixSpec spec, AddrSpace addr
     /* Optimization for big shapes 1d load, where number of columns is multiple of sub-group size
     specifically, for sub group size 16 and number of columns 64, we can load 4 elements in one instruction */
     if (spec.Layout == Layout_Accumulator_RowMajor || spec.Layout == Layout_PackedB_PackedB) {
+      // Select types and intrinsics based on ContribBitWidth:
+      // BITS_32 uses uint4/block_read4, BITS_16 uses ushort4/block_read_us4.
+      // This mirrors the store VEC_CONT path which already adapts correctly.
+      string contribType = GetUnsignedType(spec.ContribBitWidth);
+      string readFunc =
+          (spec.ContribBitWidth == BITS_32) ? "intel_sub_group_block_read4" : "intel_sub_group_block_read_us4";
+      string vecType = (spec.ContribBitWidth == BITS_32) ? "uint4" : "ushort4";
+
       s += "for (int i = 0; i < Rows; i++) {\n";
-      s += "  uint4 row = intel_sub_group_block_read4((AddrSpace uint *)(mem + i * "
+      s += "  VecType row = ReadFunc((AddrSpace ContribType *)(mem + i * "
            "stride * ElemByteWidth));\n";
-      s += "  *((__private uint *)(dst +  i           * ContribByteWidth)) = "
+      s += "  *((__private ContribType *)(dst +  i           * ContribByteWidth)) = "
            "row.x;\n";
-      s += "  *((__private uint *)(dst + (i + Rows  ) * ContribByteWidth)) = "
+      s += "  *((__private ContribType *)(dst + (i + Rows  ) * ContribByteWidth)) = "
            "row.y;\n";
-      s += "  *((__private uint *)(dst + (i + Rows*2) * ContribByteWidth)) = "
+      s += "  *((__private ContribType *)(dst + (i + Rows*2) * ContribByteWidth)) = "
            "row.z;\n";
-      s += "  *((__private uint *)(dst + (i + Rows*3) * ContribByteWidth)) = "
+      s += "  *((__private ContribType *)(dst + (i + Rows*3) * ContribByteWidth)) = "
            "row.w;\n";
       s += "}\n";
+
+      s = Replace(s, "ContribType", contribType);
+      s = Replace(s, "VecType", vecType);
+      s = Replace(s, "ReadFunc", readFunc);
     } else {
       s += "for (int i = 0; i < Rows; i++) {\n";
       s += "  ushort4 row0 = intel_sub_group_block_read_us4((AddrSpace uint *)(mem "
@@ -1020,7 +1471,11 @@ static string DefineLargeLoadForAddressSpace(MatrixSpec spec, AddrSpace addr, in
 // Define large load for 3 address spaces and a checked large load.
 static string DefineLargeLoad(MatrixSpec spec) {
   int numLoads = 4;
-  if (spec.ContribBitWidth == BITS_16)
+  // PackedA i16 uses numLoads=2 so that sub-loads produce contiguous dpas-friendly
+  // data layout.  Accumulator i16 must use numLoads=4 because its 32x32 sub-load
+  // reads 32 columns per sub-group, which would cause column overlap with only 2
+  // sub-loads and a 16-column offset.
+  if (spec.ContribBitWidth == BITS_16 && spec.Layout == Layout_PackedA_RowMajor)
     numLoads = 2;
 
   string s;
@@ -1076,7 +1531,7 @@ static string DefineSpecialLarge1x64AddrSpace(MatrixSpec spec, AddrSpace addr) {
                        "if(BIF_FLAG_CTRL_GET(JointMatrixLoadStoreOpt) >= VECTOR_IMPL) {\n"
                        "  __private ElemType *wi_contrib = (__private ElemType *)dst;\n"
                        "  for (int i = 0; i < 4; i++)\n"
-                       "    wi_contrib[i] = VecFunc((__global ElemType *)mem + i*16);\n"
+                       "    wi_contrib[i] = VecFunc((AddrSpace ElemType *)mem + i*16);\n"
                        "  return;\n"
                        "}\n";
 
@@ -1153,21 +1608,25 @@ static string DefineSpecialLarge1x64(MatrixSpec spec) {
       s += "(__private char *dst, char *mem, int y, int x, int height, int width, "
            "long stride, int cacheOpt) {\n";
       // load 1x64 as 4 loads 1x16
-      s += "__private char *dst0 = dst + 0 * 1 * sizeof(int);\n"
-           "__private char *dst1 = dst + 1 * 1 * sizeof(int);\n"
-           "__private char *dst2 = dst + 2 * 1 * sizeof(int);\n"
-           "__private char *dst3 = dst + 3 * 1 * sizeof(int);\n"
+      s += "__private char *dst0 = dst + 0 * 1 * ElemBytes;\n"
+           "__private char *dst1 = dst + 1 * 1 * ElemBytes;\n"
+           "__private char *dst2 = dst + 2 * 1 * ElemBytes;\n"
+           "__private char *dst3 = dst + 3 * 1 * ElemBytes;\n"
            "__builtin_spriv_OpJointMatrixLoadCheckedINTEL_Accumulator_RowMajor_"
-           "SG16_1x16_i32_1_v8i8_pi32_i32(dst0, mem, y, x + 0 * 16, height, width, "
+           "SG16_1x16_iElemBits_1_v8i8_pi32_i32(dst0, mem, y, x + 0 * 16, height, "
+           "width, "
            "stride, cacheOpt);\n"
            "__builtin_spriv_OpJointMatrixLoadCheckedINTEL_Accumulator_RowMajor_"
-           "SG16_1x16_i32_1_v8i8_pi32_i32(dst1, mem, y, x + 1 * 16, height, width, "
+           "SG16_1x16_iElemBits_1_v8i8_pi32_i32(dst1, mem, y, x + 1 * 16, height, "
+           "width, "
            "stride, cacheOpt);\n"
            "__builtin_spriv_OpJointMatrixLoadCheckedINTEL_Accumulator_RowMajor_"
-           "SG16_1x16_i32_1_v8i8_pi32_i32(dst2, mem, y, x + 2 * 16, height, width, "
+           "SG16_1x16_iElemBits_1_v8i8_pi32_i32(dst2, mem, y, x + 2 * 16, height, "
+           "width, "
            "stride, cacheOpt);\n"
            "__builtin_spriv_OpJointMatrixLoadCheckedINTEL_Accumulator_RowMajor_"
-           "SG16_1x16_i32_1_v8i8_pi32_i32(dst3, mem, y, x + 3 * 16, height, width, "
+           "SG16_1x16_iElemBits_1_v8i8_pi32_i32(dst3, mem, y, x + 3 * 16, height, "
+           "width, "
            "stride, cacheOpt);\n";
       s += "}\n\n";
     }
@@ -1283,6 +1742,7 @@ static string DefineAllSmallLoads() {
 
   // Accumulator, i16
   s += DefineSmallLoad(MatrixSpec(SUB_GROUP_16, Layout_Accumulator_RowMajor, 16, 16, BITS_16));
+  s += DefineSmallLoad(MatrixSpec(SUB_GROUP_16, Layout_Accumulator_RowMajor, 32, 16, BITS_16));
   s += DefineSmallLoad(MatrixSpec(SUB_GROUP_16, Layout_Accumulator_RowMajor, 32, 32, BITS_16));
 
   // Accumulator, i32:
@@ -1335,12 +1795,662 @@ static string DefineAllLargeLoads() {
 }
 
 //
+// Listings of store functions
+//
+static string DefineAllSmallStores() {
+  string s;
+
+  /* PackedA store i8 */
+  s += DefineSmallStorePermuteRows(MatrixSpec(SUB_GROUP_8, Layout_PackedA_RowMajor, 8, 32, BITS_8), false);
+
+  /* PackedA store i16 */
+  s += DefineSmallStorePermuteRows(MatrixSpec(SUB_GROUP_8, Layout_PackedA_RowMajor, 8, 16, BITS_16), false);
+
+  /* PackedA store i8 SG16 */
+  s += DefineSmallStorePermuteRows(MatrixSpec(SUB_GROUP_16, Layout_PackedA_RowMajor, 8, 32, BITS_8), false);
+
+  /* PackedA store i8 SG16 Col Major */
+  s += DefineSmallStore(MatrixSpec(SUB_GROUP_16, Layout_PackedA_ColumnMajor, 8, 32, BITS_8), true);
+
+  /* PackedA store i8 SG16 for subgroup 32 */
+  s += DefineSmallStorePermuteRows(MatrixSpec(SUB_GROUP_32, Layout_PackedA_RowMajor, 8, 32, BITS_8), false, 2, 8);
+
+  /* PackedA store i8 SG16 Col Major for sg 32 */
+  s += DefineSmallStore(MatrixSpec(SUB_GROUP_32, Layout_PackedA_ColumnMajor, 8, 32, BITS_8), true);
+
+  /* PackedA store i16 SG16 */
+  s += DefineSmallStorePermuteRows(MatrixSpec(SUB_GROUP_16, Layout_PackedA_RowMajor, 8, 16, BITS_16), false);
+
+  s += DefineSmallStore(MatrixSpec(SUB_GROUP_16, Layout_PackedA_RowMajor, 1, 32, BITS_16), true);
+
+  /* PackedA store i16 SG16 Col Major */
+  s += DefineSmallStore(MatrixSpec(SUB_GROUP_16, Layout_PackedA_ColumnMajor, 8, 16, BITS_16), true);
+
+  /* PackedA store i16 SG16 Col Major for sg size 32 */
+  s += DefineSmallStore(MatrixSpec(SUB_GROUP_32, Layout_PackedA_ColumnMajor, 8, 16, BITS_16), true);
+
+  /* PackedA store i16 SG16 for sub group size 32 */
+  s += DefineSmallStorePermuteRows(MatrixSpec(SUB_GROUP_32, Layout_PackedA_RowMajor, 8, 16, BITS_16), false, 2, 8);
+
+  /* A store tf32 SG16 */
+  s += DefineSmallStore(MatrixSpec(SUB_GROUP_16, Layout_PackedA_RowMajor, 8, 8, BITS_32), false);
+
+  /* A store tf32 SG16 for sub group size 32 */
+  s += DefineSmallStore(MatrixSpec(SUB_GROUP_32, Layout_PackedA_RowMajor, 8, 8, BITS_32), false);
+
+  /* PackedB store i16 */
+  s += DefineSmallStore(MatrixSpec(SUB_GROUP_8, Layout_PackedB_ColumnMajor, 8, 16, BITS_16), false);
+  s += DefineSmallStore(MatrixSpec(SUB_GROUP_8, Layout_PackedB_PackedB, 8, 16, BITS_16), true);
+  s += DefineSmallStore(MatrixSpec(SUB_GROUP_8, Layout_PackedB_RowMajor, 8, 16, BITS_16), true);
+
+  /* PackedB store i16 SG16 */
+  s += DefineSmallStore(MatrixSpec(SUB_GROUP_16, Layout_PackedB_ColumnMajor, 8, 32, BITS_16), false);
+  s += DefineSmallStore(MatrixSpec(SUB_GROUP_16, Layout_PackedB_PackedB, 8, 32, BITS_16), true);
+  s += DefineSmallStore(MatrixSpec(SUB_GROUP_16, Layout_PackedB_RowMajor, 8, 32, BITS_16), true);
+
+  /* PackedB store i16 SG16 for subgroup 32 */
+  s += DefineSmallStore(MatrixSpec(SUB_GROUP_32, Layout_PackedB_ColumnMajor, 8, 32, BITS_16), false);
+  s += DefineSmallStore(MatrixSpec(SUB_GROUP_32, Layout_PackedB_PackedB, 8, 32, BITS_16), true);
+  s += DefineSmallStore(MatrixSpec(SUB_GROUP_32, Layout_PackedB_RowMajor, 8, 32, BITS_16), true);
+
+  /* PackedB store i8 */
+  s += DefineSmallStore(MatrixSpec(SUB_GROUP_8, Layout_PackedB_ColumnMajor, 8, 32, BITS_8), false);
+  s += DefineSmallStore(MatrixSpec(SUB_GROUP_8, Layout_PackedB_PackedB, 8, 32, BITS_8), false);
+
+  /* PackedB store i8 SG16 */
+  s += DefineSmallStore(MatrixSpec(SUB_GROUP_16, Layout_PackedB_ColumnMajor, 8, 64, BITS_8), false);
+  s += DefineSmallStore(MatrixSpec(SUB_GROUP_16, Layout_PackedB_PackedB, 8, 64, BITS_8), false);
+  s += DefineSmallStore(MatrixSpec(SUB_GROUP_16, Layout_PackedB_RowMajor, 8, 64, BITS_8), false);
+
+  /* PackedB store i8 SG16 for subgroup 32 */
+  s += DefineSmallStore(MatrixSpec(SUB_GROUP_32, Layout_PackedB_ColumnMajor, 8, 64, BITS_8), false);
+  s += DefineSmallStore(MatrixSpec(SUB_GROUP_32, Layout_PackedB_PackedB, 8, 64, BITS_8), true);
+  s += DefineSmallStore(MatrixSpec(SUB_GROUP_32, Layout_PackedB_RowMajor, 8, 64, BITS_8), false);
+
+  /* B store tf32 SG16 */
+  s += DefineSmallStore(MatrixSpec(SUB_GROUP_16, Layout_PackedB_RowMajor, 8, 16, BITS_32), true);
+
+  /* B store tf32 SG16 for sub group size 32 */
+  s += DefineSmallStore(MatrixSpec(SUB_GROUP_32, Layout_PackedB_RowMajor, 8, 16, BITS_32), true);
+
+  /* Acc i32 */
+  s += DefineSmallStorePermuteRows(MatrixSpec(SUB_GROUP_8, Layout_Accumulator_RowMajor, 8, 8, BITS_32), true);
+
+  /* Accumulator store i32 SG8 with transpose */
+  s += DefineSmallStorePermuteRows(MatrixSpec(SUB_GROUP_8, Layout_Accumulator_ColumnMajor, 8, 8, BITS_32), true);
+
+  /* Acc i32 SG16 */
+  s += DefineSmallStorePermuteRows(MatrixSpec(SUB_GROUP_16, Layout_Accumulator_RowMajor, 8, 16, BITS_32), true);
+
+  /* Accumulator store i32 SG16 with transpose */
+  s += DefineSmallStorePermuteRows(MatrixSpec(SUB_GROUP_16, Layout_Accumulator_ColumnMajor, 8, 16, BITS_32), true);
+
+  /* Acc i32 SG16 for subgroup 32 */
+  s += DefineSmallStorePermuteRows(MatrixSpec(SUB_GROUP_32, Layout_Accumulator_RowMajor, 8, 16, BITS_32), true, 2, 8);
+
+  /* Accumulator store i32 SG16 for subgroup 32 with transpose */
+  s +=
+      DefineSmallStorePermuteRows(MatrixSpec(SUB_GROUP_32, Layout_Accumulator_ColumnMajor, 8, 16, BITS_32), true, 2, 8);
+
+  /* Double stores 4x8x16 SG16 */
+  s += DefineSmallStore(MatrixSpec(SUB_GROUP_16, Layout_PackedA_RowMajor, 4, 8, BITS_64), true);
+  s += DefineSmallStore(MatrixSpec(SUB_GROUP_16, Layout_PackedB_RowMajor, 8, 16, BITS_64), true);
+  s += DefineSmallStore(MatrixSpec(SUB_GROUP_16, Layout_Accumulator_RowMajor, 4, 16, BITS_64), true);
+
+  /* Double stores 4x8x16 SG32 */
+  s += DefineSmallStore(MatrixSpec(SUB_GROUP_32, Layout_PackedA_RowMajor, 4, 8, BITS_64), true);
+  s += DefineSmallStore(MatrixSpec(SUB_GROUP_32, Layout_PackedB_RowMajor, 8, 16, BITS_64), true);
+  s += DefineSmallStore(MatrixSpec(SUB_GROUP_32, Layout_Accumulator_RowMajor, 4, 16, BITS_64), true);
+
+  /* sub group size 32 for big combinations is not optimized yet */
+  s += DefineSmallStore(MatrixSpec(SUB_GROUP_32, Layout_PackedA_RowMajor, 16, 16, BITS_16), false);
+  s += DefineSmallStore(MatrixSpec(SUB_GROUP_32, Layout_Accumulator_RowMajor, 16, 16, BITS_32), false);
+
+  /* Accumulator i16 - SG16 */
+  s += DefineSmallStore(MatrixSpec(SUB_GROUP_16, Layout_Accumulator_RowMajor, 16, 16, BITS_16), false);
+  s += DefineSmallStore(MatrixSpec(SUB_GROUP_16, Layout_Accumulator_RowMajor, 8, 16, BITS_16), false);
+  s += DefineSmallStore(MatrixSpec(SUB_GROUP_16, Layout_Accumulator_RowMajor, 1, 16, BITS_16), false);
+
+  return s;
+}
+
+//
+// Large store implementations
+//
+
+// ImplementLargeStoreVectorContinuous - 1D vectorized store for large shapes.
+// Mirrors DEFINE_STORE_LARGE_IMPL_N_OPT_VEC_CONT_IMPL macros from IBiF_matrix.cl.
+static string ImplementLargeStoreVectorContinuous(MatrixSpec spec, AddrSpace addr, int numStores) {
+  string s;
+  bool isPackedBRowMajor = (spec.Layout == Layout_PackedB_RowMajor);
+
+  if (numStores == 8 && spec.Layout == Layout_PackedA_RowMajor) {
+    // PackedA 32x32 with 8 stores: 2 contrib elements per row using block_write_us2
+    s += "for (int i = 0; i < Rows; i++) {\n";
+    s += "  ushort src0 = *((ushort*)(src + i * ContribByteWidth));\n";
+    s += "  ushort src1 = *((ushort*)(src + (Rows + i) * ContribByteWidth));\n";
+    s += "  ushort2 row = (ushort2)(src0, src1);\n";
+    s += "  intel_sub_group_block_write_us2((AddrSpace ushort *)(mem + i * stride * "
+         "ElemByteWidth), row);\n";
+    s += "}\n";
+  } else if (numStores >= 4) {
+    if (spec.Layout == Layout_Accumulator_RowMajor || spec.Layout == Layout_PackedB_PackedB) {
+      string contribType = GetUnsignedType(spec.ContribBitWidth);
+      string writeFunc =
+          (spec.ContribBitWidth == BITS_32) ? "intel_sub_group_block_write4" : "intel_sub_group_block_write_us4";
+      string vecType = (spec.ContribBitWidth == BITS_32) ? "uint4" : "ushort4";
+
+      s += "for (int i = 0; i < Rows; i++) {\n";
+      s += "  ContribType src0 = *((ContribType*)(src +  i          * "
+           "ContribByteWidth));\n";
+      s += "  ContribType src1 = *((ContribType*)(src + (i + Rows)     * "
+           "ContribByteWidth));\n";
+      s += "  ContribType src2 = *((ContribType*)(src + (i + Rows * 2) * "
+           "ContribByteWidth));\n";
+      s += "  ContribType src3 = *((ContribType*)(src + (i + Rows * 3) * "
+           "ContribByteWidth));\n";
+      s += "  VecType row = (VecType)(src0, src1, src2, src3);\n";
+      s += "  WriteFunc((AddrSpace ContribType *)(mem + i * stride * "
+           "ElemByteWidth), row);\n";
+      s += "}\n";
+
+      s = Replace(s, "ContribType", contribType);
+      s = Replace(s, "VecType", vecType);
+      s = Replace(s, "WriteFunc", writeFunc);
+    } else if (isPackedBRowMajor) {
+      // PackedB_RowMajor: de-VNNI and write 2 rows per iteration
+      s += "for (int i = 0; i < Rows; i++) {\n";
+      s += "  uint src0 = *((uint*)(src +  i          * ContribByteWidth));\n";
+      s += "  uint src1 = *((uint*)(src + (i + Rows)     * ContribByteWidth));\n";
+      s += "  uint src2 = *((uint*)(src + (i + Rows * 2) * ContribByteWidth));\n";
+      s += "  uint src3 = *((uint*)(src + (i + Rows * 3) * ContribByteWidth));\n";
+      s += "  ushort2 src0us2 = as_ushort2(src0);\n";
+      s += "  ushort2 src1us2 = as_ushort2(src1);\n";
+      s += "  ushort2 src2us2 = as_ushort2(src2);\n";
+      s += "  ushort2 src3us2 = as_ushort2(src3);\n";
+      s += "  ushort4 row0 = (ushort4)(src0us2.x, src1us2.x, src2us2.x, "
+           "src3us2.x);\n";
+      s += "  ushort4 row1 = (ushort4)(src0us2.y, src1us2.y, src2us2.y, "
+           "src3us2.y);\n";
+      s += "  intel_sub_group_block_write_us4((AddrSpace ushort *)(mem + (2*i  "
+           ") * stride * ElemByteWidth), row0);\n";
+      s += "  intel_sub_group_block_write_us4((AddrSpace ushort *)(mem + "
+           "(2*i+1) * stride * ElemByteWidth), row1);\n";
+      s += "}\n";
+    }
+  }
+
+  if (!s.size())
+    return "";
+
+  // For PackedB_RowMajor, the VEC_CONT path is used even at higher optimization
+  // levels (> VECTOR_CONT_IMPL) because block2D doesn't support transpose/transform.
+  if (isPackedBRowMajor)
+    s = "if (BIF_FLAG_CTRL_GET(JointMatrixLoadStoreOpt) >= VECTOR_CONT_IMPL) {\n" + s + "return;\n}\n";
+  else
+    s = "if (BIF_FLAG_CTRL_GET(JointMatrixLoadStoreOpt) == VECTOR_CONT_IMPL) {\n" + s + "return;\n}\n";
+
+  s = Replace(s, "Rows", to_string(spec.Rows));
+  s = Replace(s, "AddrSpace", "__" + ToString(addr));
+  s = Replace(s, "ElemByteWidth", to_string(Bytes(spec.BitWidth)));
+  s = Replace(s, "ContribByteWidth", to_string(Bytes(spec.ContribBitWidth)));
+  return s;
+}
+
+// ImplementLargeStoreBase - default implementation that splits into smaller sub-stores.
+// Mirrors DEFINE_STORE_LARGE_IMPL_N macros from IBiF_matrix.cl.
+static string ImplementLargeStoreBase(MatrixSpec spec, AddrSpace addr, int numStores, bool isChecked) {
+  int wiRowsPerStore = spec.WiRows / numStores;
+
+  struct StridesResult {
+    int row, col;
+  };
+
+  // Compute strides based on layout and number of stores.
+  // These match ROW_STRIDE_<layout>_<N> and COLUMN_STRIDE_<layout>_<N>
+  // macros from IBiF_matrix.cl.
+  StridesResult strides = {spec.Rows, spec.Cols};
+  switch (numStores) {
+  case 2:
+    if (spec.Layout == Layout_PackedA_RowMajor || spec.Layout == Layout_Accumulator_RowMajor)
+      strides.row /= 2;
+    break;
+  case 4:
+    if (spec.Layout == Layout_PackedA_RowMajor)
+      strides.row /= 4;
+    else
+      strides.col /= 4;
+    break;
+  case 8:
+    if (spec.Layout == Layout_PackedA_RowMajor) {
+      strides.row /= 4;
+      strides.col /= 2;
+    } else {
+      strides.row /= 2;
+      strides.col /= 4;
+    }
+    break;
+  case 16:
+    strides.row /= 4;
+    strides.col /= 4;
+    break;
+  }
+
+  // MEM_OFFSET4 - memory offset for 4-store sub-store index.
+  // Mirrors MEM_OFFSET4_<layout> macros from IBiF_matrix.cl.
+  auto GetMemOffset4 = [&](int i) -> string {
+    // PackedA: COLMAJ(RS, CS, S=4) - 4 row blocks
+    if (spec.Layout == Layout_PackedA_RowMajor)
+      return "(" + to_string(i % 4) + "*" + to_string(strides.row) + "*stride + " + to_string(i / 4) + "*" +
+             to_string(strides.col) + ")";
+
+    // PackedB_PackedB/Accumulator: ROWMAJ(RS, CS, S=4) - 4 col blocks
+    // PackedB_RowMajor: ROWMAJ(RS, CS/2, S=4) - 4 col blocks with halved CS
+    int colStride = strides.col;
+    if (spec.Layout == Layout_PackedB_RowMajor)
+      colStride /= 2;
+    return "(" + to_string(i / 4) + "*" + to_string(strides.row) + "*stride + " + to_string(i % 4) + "*" +
+           to_string(colStride) + ")";
+  };
+
+  string s;
+  if (isChecked) {
+    bool isPackedA = (spec.Layout == Layout_PackedA_RowMajor);
+
+    if (numStores == 2) {
+      s += "__private char *c0 = src;\n";
+      s += "__private char *c1 = src + WiRowsPerStore * ContribByteWidth;\n";
+      s += "StoreFunc(mem, c0, y + 0 * " + to_string(strides.row) + ", x, height, width, stride, cacheOpt);\n";
+      s += "StoreFunc(mem, c1, y + 1 * " + to_string(strides.row) + ", x, height, width, stride, cacheOpt);\n";
+    } else if (numStores == 4) {
+      for (int i = 0; i < 4; i++)
+        s +=
+            "__private char *c" + to_string(i) + " = src + " + to_string(i) + " * WiRowsPerStore * ContribByteWidth;\n";
+
+      if (isPackedA) {
+        for (int i = 0; i < 4; i++)
+          s += "StoreFunc(mem, c" + to_string(i) + ", y + " + to_string(i) + " * " + to_string(strides.row) +
+               ", x, height, width, stride, cacheOpt);\n";
+      } else {
+        int colStride = strides.col;
+        if (spec.Layout == Layout_PackedB_RowMajor)
+          colStride /= 2;
+        for (int i = 0; i < 4; i++)
+          s += "StoreFunc(mem, c" + to_string(i) + ", y, x + " + to_string(i) + " * " + to_string(colStride) +
+               ", height, width, stride, cacheOpt);\n";
+      }
+    } else if (numStores == 8) {
+      int VF = (spec.Layout == Layout_PackedB_RowMajor) ? 2 : 1;
+
+      s += "for (int i = 0; i < 8; i++) {\n";
+      s += "__private char *c = src + i * WiRowsPerStore * ContribByteWidth;\n";
+
+      if (isPackedA)
+        s += "StoreFunc(mem, c, y + (i % 4) * " + to_string(strides.row) + ", x + (i / 4) * " + to_string(strides.col) +
+             ", height, width, stride, cacheOpt);\n";
+      else
+        s += "StoreFunc(mem, c, y + (i % 2) * " + to_string(strides.row) + " * " + to_string(VF) + ", x + (i / 2) * " +
+             to_string(strides.col / VF) + ", height, width, stride, cacheOpt);\n";
+
+      s += "}\n";
+    } else if (numStores == 16) {
+      for (int i = 0; i < 16; i++)
+        s +=
+            "__private char *c" + to_string(i) + " = src + " + to_string(i) + " * WiRowsPerStore * ContribByteWidth;\n";
+
+      for (int i = 0; i < 16; i++)
+        s += "StoreFunc(mem, c" + to_string(i) + ", y + " + to_string(i % 4) + " * " + to_string(strides.row) +
+             ", x + " + to_string(i / 4) + " * " + to_string(strides.col) + ", height, width, stride, cacheOpt);\n";
+    }
+  } else {
+    if (numStores == 2) {
+      s += "__private char *c0 = src;\n";
+      s += "__private char *c1 = src + WiRowsPerStore * ContribByteWidth;\n";
+      s += "char *mem0 = mem;\n";
+      s += "char *mem1 = mem + " + to_string(strides.row) + " * stride * ElemByteWidth;\n";
+      s += "StoreFunc(mem0, c0, stride, cacheOpt);\n";
+      s += "StoreFunc(mem1, c1, stride, cacheOpt);\n";
+      s += "return;\n";
+    } else if (numStores == 4) {
+      for (int i = 0; i < 4; i++)
+        s +=
+            "__private char *c" + to_string(i) + " = src + " + to_string(i) + " * WiRowsPerStore * ContribByteWidth;\n";
+
+      s += "char *mem0 = mem;\n";
+      for (int i = 1; i < 4; i++)
+        s += "char *mem" + to_string(i) + " = mem + " + GetMemOffset4(i) + " * ElemByteWidth;\n";
+
+      for (int i = 0; i < 4; i++)
+        s += "StoreFunc(mem" + to_string(i) + ", c" + to_string(i) + ", stride, cacheOpt);\n";
+
+      s += "return;\n";
+    } else if (numStores == 8) {
+      // MEM_OFFSET8 patterns from IBiF_matrix.cl differ by layout.
+      s += "for (int i = 0; i < 8; i++) {\n";
+      s += "__private char *c = src + i * WiRowsPerStore * ContribByteWidth;\n";
+
+      if (spec.Layout == Layout_PackedA_RowMajor) {
+        // COLMAJ(RS, CS, S=4): 4-row x 2-col grid
+        s += "char *mem_w_offset = mem + ((i % 4)*" + to_string(strides.row) + "*stride + (i / 4)*" +
+             to_string(strides.col) + ") * ElemByteWidth;\n";
+      } else if (spec.Layout == Layout_PackedB_PackedB) {
+        // COLMAJ(RS, CS, S=2): 2-row x 4-col grid
+        s += "char *mem_w_offset = mem + ((i % 2)*" + to_string(strides.row) + "*stride + (i / 2)*" +
+             to_string(strides.col) + ") * ElemByteWidth;\n";
+      } else if (spec.Layout == Layout_PackedB_RowMajor) {
+        // COLMAJ(RS*2, CS/2, S=2): 2-row x 4-col grid, adjusted strides
+        s += "char *mem_w_offset = mem + ((i % 2)*" + to_string(strides.row * 2) + "*stride + (i / 2)*" +
+             to_string(strides.col / 2) + ") * ElemByteWidth;\n";
+      }
+
+      s += "StoreFunc(mem_w_offset, c, stride, cacheOpt);\n";
+      s += "}\n";
+      s += "return;\n";
+    } else if (numStores == 16) {
+      // 16 sub-stores: 4x4 column-major grid (Accumulator_RowMajor only).
+      // Mirrors DEFINE_STORE_LARGE_IMPL_16 from IBiF_matrix.cl.
+      for (int i = 0; i < 16; i++)
+        s +=
+            "__private char *c" + to_string(i) + " = src + " + to_string(i) + " * WiRowsPerStore * ContribByteWidth;\n";
+
+      s += "char *mem0 = mem;\n";
+      for (int i = 1; i < 16; i++)
+        s += "char *mem" + to_string(i) + " = mem + " + to_string(i / 4) + " * " + to_string(strides.col) +
+             " * ElemByteWidth + " + to_string(i % 4) + " * " + to_string(strides.row) + " * stride * ElemByteWidth;\n";
+
+      for (int i = 0; i < 16; i++)
+        s += "StoreFunc(mem" + to_string(i) + ", c" + to_string(i) + ", stride, cacheOpt);\n";
+
+      s += "return;\n";
+    }
+  }
+
+  // Replace template strings.
+  MatrixSpec subMatrixSpec(spec.SubGroupSize, spec.Layout, strides.row, strides.col, spec.BitWidth);
+  string storeFunc = GetStoreMatrixFunctionName(subMatrixSpec, addr, isChecked);
+
+  s = Replace(s, "StoreFunc", storeFunc);
+  s = Replace(s, "ElemByteWidth", "ElemBytes");
+  s = Replace(s, "ElemBytes", to_string(Bytes(spec.BitWidth)));
+  s = Replace(s, "ContribByteWidth", to_string(Bytes(spec.ContribBitWidth)));
+  s = Replace(s, "WiRowsPerStore", to_string(wiRowsPerStore));
+  return s;
+}
+
+//
+// Large store function creators
+//
+
+// Define non-checked large store for a single address space.
+static string DefineLargeStoreForAddressSpace(MatrixSpec spec, AddrSpace addr, int numStores) {
+  string funcName = GetStoreMatrixFunctionName(spec, addr, false);
+  if (!CheckIfFunctionNameIsUnique(funcName))
+    return "";
+
+  string s;
+  s += "INLINE void " + funcName;
+  s += "(char *mem, __private char *src, long stride, int cacheOpt) {\n";
+
+  if (addr == AddrSpace_Generic) {
+    s += "__builtin_assume((__global char*)mem != 0);\n";
+    s += "int memIsGlobal = (0 != __spirv_GenericCastToPtrExplicit_ToGlobal("
+         "__builtin_astype((mem), __generic char*), "
+         "StorageWorkgroup));\n";
+
+    s += "if (memIsGlobal) {\n";
+    s += ImplementLargeStoreVectorContinuous(spec, AddrSpace_Global, numStores);
+    s += ImplementLargeStoreBase(spec, AddrSpace_Global, numStores, false);
+
+    s += "} else { /* mem is local */\n";
+    s += ImplementLargeStoreVectorContinuous(spec, AddrSpace_Local, numStores);
+    s += ImplementLargeStoreBase(spec, AddrSpace_Local, numStores, false);
+    s += "}\n";
+  } else {
+    s += ImplementLargeStoreVectorContinuous(spec, addr, numStores);
+    s += ImplementLargeStoreBase(spec, addr, numStores, false);
+  }
+
+  s += "}\n";
+  return s;
+}
+
+// Define large store for 3 address spaces and a checked large store.
+static string DefineLargeStore(MatrixSpec spec) {
+  int numStores = spec.WiRows / 8;
+
+  string s;
+  s += DefineLargeStoreForAddressSpace(spec, AddrSpace_Generic, numStores);
+  s += DefineLargeStoreForAddressSpace(spec, AddrSpace_Local, numStores);
+  s += DefineLargeStoreForAddressSpace(spec, AddrSpace_Global, numStores);
+
+  // Implement checked API large store.
+  if (spec.DpasSubGroupSize >= SUB_GROUP_16) {
+    string funcName = GetStoreMatrixFunctionName(spec, AddrSpace_Global, true);
+    if (CheckIfFunctionNameIsUnique(funcName)) {
+      s += "INLINE void " + funcName;
+      s += "(char *mem, __private char *src, int y, int x, int height, int width, "
+           "long stride, int cacheOpt) {\n";
+      s += ImplementLargeStoreBase(spec, AddrSpace_Global, numStores, true);
+      s += "}\n\n";
+    }
+  }
+
+  return s;
+}
+
+// Define large store with checked variant only (no non-checked address space variants).
+static string DefineLargeStoreCheckedOnly(MatrixSpec spec) {
+  int numStores = spec.WiRows / 8;
+
+  string s;
+  s += DefineLargeStoreForAddressSpace(spec, AddrSpace_Generic, numStores);
+  s += DefineLargeStoreForAddressSpace(spec, AddrSpace_Local, numStores);
+  s += DefineLargeStoreForAddressSpace(spec, AddrSpace_Global, numStores);
+
+  return s;
+}
+
+//
+// Special large store function creators (1x64)
+//
+static string DefineSpecialLarge1x64StoreAddrSpace(MatrixSpec spec, AddrSpace addr) {
+  string funcName = GetStoreMatrixFunctionName(spec, addr, false);
+  if (!CheckIfFunctionNameIsUnique(funcName))
+    return "";
+
+  string implBlock2D;
+  {
+    implBlock2D += "if (BIF_FLAG_CTRL_GET(JointMatrixLoadStoreOpt) >= BLOCK2D_IMPL) {\n";
+    implBlock2D += "  long offset = as_long(mem);\n";
+    implBlock2D += "  long baseoffset = offset & (~0x3f);\n";
+    implBlock2D += "  int width;\n";
+    implBlock2D += "  int height;\n";
+
+    if (spec.BitWidth == BITS_32) {
+      implBlock2D += "  width = ElemBytes * 16 - 1;\n"
+                     "  height = 4 - 1;\n";
+    } else {
+      implBlock2D += "  width = ElemBytes * 32 - 1;\n"
+                     "  height = 2 - 1;\n";
+    }
+
+    implBlock2D += "  int pitch = width;\n";
+    implBlock2D += "  long x = (offset - baseoffset) / ElemBytes;\n";
+    implBlock2D += "  int2 coords = (int2)(x, 0);\n";
+    implBlock2D += "  ElemType4 val = *(ElemType4 *)src;\n";
+
+    if (spec.BitWidth == BITS_32) {
+      implBlock2D += "  void BlockWriteFunc(long, int, int, int, int2, ElemType4, int);\n";
+      implBlock2D += "  BlockWriteFunc(baseoffset, width, height, pitch, coords, val, "
+                     "cacheOpt);\n";
+    } else {
+      implBlock2D += "  void BlockWriteFunc(long, int, int, int, int2, ElemType4, int);\n";
+      implBlock2D += "  BlockWriteFunc(baseoffset, width, height, pitch, coords, val, "
+                     "cacheOpt);\n";
+    }
+
+    implBlock2D += "  return;\n";
+    implBlock2D += "}\n";
+  }
+
+  string implVectors = "if(BIF_FLAG_CTRL_GET(JointMatrixLoadStoreOpt) >= VECTOR_CONT_IMPL) {\n"
+                       "  ElemType4 c = *(ElemType4 *) src;\n"
+                       "  VecFunc4((AddrSpace ElemType *)mem, c);\n"
+                       "  return;\n"
+                       "}\n"
+                       "if(BIF_FLAG_CTRL_GET(JointMatrixLoadStoreOpt) >= VECTOR_IMPL) {\n"
+                       "  AddrSpace ElemType *ptr = (AddrSpace ElemType *)mem;\n"
+                       "  for (int i = 0; i < 4; i++)\n"
+                       "    VecFunc(ptr + i*16, ((__private ElemType *)src)[i]);\n"
+                       "  return;\n"
+                       "}\n";
+
+  string implScalar = "ElemType *ptr = (ElemType *)mem;\n"
+                      "int slid = get_sub_group_local_id();\n"
+                      "__private ElemType *slice = (__private ElemType *)src;\n"
+                      "for (int i = 0; i < 4; i++)\n"
+                      "  ptr[i*16 + slid] = slice[i];\n";
+
+  string s;
+  s += "INLINE void " + funcName;
+  s += "(char *mem, __private char *src, long stride, int cacheOpt) {\n";
+
+  if (addr == AddrSpace_Generic) {
+    s += "__builtin_assume((__global char*)mem != 0);\n";
+    s += "int memIsGlobal = (0 != __spirv_GenericCastToPtrExplicit_ToGlobal"
+         "(__builtin_astype((mem), __generic char*), "
+         "StorageWorkgroup));\n";
+    s += "if (memIsGlobal) {\n";
+    s += implBlock2D;
+    s += implVectors;
+    s += implScalar;
+    s = Replace(s, "AddrSpace", "__" + ToString(AddrSpace_Global));
+    s += "} else { /* mem is local */\n";
+    s += implVectors;
+    s += implScalar;
+    s = Replace(s, "AddrSpace", "__" + ToString(AddrSpace_Local));
+    s += "}\n";
+  } else if (addr == AddrSpace_Global) {
+    s += implBlock2D;
+    s += implVectors;
+    s += implScalar;
+  } else {
+    s += implVectors;
+    s += implScalar;
+  }
+
+  s += "}\n\n";
+
+  string vecFunc4 = (spec.BitWidth == BITS_32) ? "intel_sub_group_block_write4" : "intel_sub_group_block_write_us4";
+  string vecFunc = (spec.BitWidth == BITS_32) ? "intel_sub_group_block_write" : "intel_sub_group_block_write_us";
+
+  if (spec.BitWidth == BITS_32) {
+    string blockWriteFunc = "__builtin_IB_subgroup_block_write_flat_u" + to_string(spec.BitWidth) + "_wi" +
+                            to_string(spec.WiRows) + "_m4k16v1";
+    s = Replace(s, "BlockWriteFunc", blockWriteFunc);
+  } else {
+    string blockWriteFunc = "__builtin_IB_subgroup_block_write_flat_u" + to_string(spec.BitWidth) + "_wi" +
+                            to_string(spec.WiRows) + "_m2k32v1";
+    s = Replace(s, "BlockWriteFunc", blockWriteFunc);
+  }
+
+  s = Replace(s, "VecFunc4", vecFunc4);
+  s = Replace(s, "VecFunc", vecFunc);
+  s = Replace(s, "AddrSpace", "__" + ToString(addr));
+  s = Replace(s, "ElemBytes", to_string(Bytes(spec.BitWidth)));
+  s = Replace(s, "ElemType", GetUnsignedType(spec.BitWidth));
+  s = Replace(s, "WiRows", to_string(spec.WiRows));
+  return s;
+}
+
+static string DefineSpecialLarge1x64Store(MatrixSpec spec) {
+  string s;
+  s += DefineSpecialLarge1x64StoreAddrSpace(spec, AddrSpace_Generic);
+  s += DefineSpecialLarge1x64StoreAddrSpace(spec, AddrSpace_Local);
+  s += DefineSpecialLarge1x64StoreAddrSpace(spec, AddrSpace_Global);
+
+  // Checked API special large store - uses 4 sub-stores of 1x16
+  {
+    string funcName = GetStoreMatrixFunctionName(spec, AddrSpace_Global, true);
+    if (CheckIfFunctionNameIsUnique(funcName)) {
+      s += "INLINE void " + funcName;
+      s += "(char *mem, __private char *src, int y, int x, int height, int width, "
+           "long stride, int cacheOpt) {\n";
+      // store 1x64 as 4 stores 1x16
+      string subStoreName = "__builtin_spriv_OpJointMatrixStoreCheckedINTEL_Accumulator_RowMajor_"
+                            "SG16_1x16_i" +
+                            to_string(spec.BitWidth) + "_1_pi64_v8i8";
+      s += "__private char *c0 = src + 0 * 1 * sizeof(" + GetUnsignedType(spec.BitWidth) + ");\n";
+      s += "__private char *c1 = src + 1 * 1 * sizeof(" + GetUnsignedType(spec.BitWidth) + ");\n";
+      s += "__private char *c2 = src + 2 * 1 * sizeof(" + GetUnsignedType(spec.BitWidth) + ");\n";
+      s += "__private char *c3 = src + 3 * 1 * sizeof(" + GetUnsignedType(spec.BitWidth) + ");\n";
+      s += subStoreName + "(mem, c0, y, x + 0 * 16, height, width, stride, cacheOpt);\n";
+      s += subStoreName + "(mem, c1, y, x + 1 * 16, height, width, stride, cacheOpt);\n";
+      s += subStoreName + "(mem, c2, y, x + 2 * 16, height, width, stride, cacheOpt);\n";
+      s += subStoreName + "(mem, c3, y, x + 3 * 16, height, width, stride, cacheOpt);\n";
+      s += "}\n\n";
+    }
+  }
+
+  return s;
+}
+
+//
+// Listings of large store functions
+//
+static string DefineAllLargeStores() {
+  string s;
+
+  /* PackedA i16 */
+  s += DefineLargeStoreCheckedOnly(MatrixSpec(SUB_GROUP_8, Layout_PackedA_RowMajor, 32, 16, BITS_16));
+
+  /* PackedA i16 SG16 */
+  s += DefineLargeStore(MatrixSpec(SUB_GROUP_16, Layout_PackedA_RowMajor, 16, 16, BITS_16));
+  s += DefineLargeStore(MatrixSpec(SUB_GROUP_16, Layout_PackedA_RowMajor, 32, 16, BITS_16));
+  s += DefineLargeStore(MatrixSpec(SUB_GROUP_16, Layout_PackedA_RowMajor, 32, 32, BITS_16));
+
+  /* PackedB i16 */
+  s += DefineLargeStoreCheckedOnly(MatrixSpec(SUB_GROUP_8, Layout_PackedB_PackedB, 8, 64, BITS_16));
+  s += DefineLargeStoreCheckedOnly(MatrixSpec(SUB_GROUP_8, Layout_PackedB_RowMajor, 8, 64, BITS_16));
+
+  /* PackedB i16 SG16 */
+  s += DefineLargeStore(MatrixSpec(SUB_GROUP_16, Layout_PackedB_PackedB, 8, 128, BITS_16));
+  s += DefineLargeStoreCheckedOnly(MatrixSpec(SUB_GROUP_16, Layout_PackedB_RowMajor, 8, 128, BITS_16));
+  s += DefineLargeStore(MatrixSpec(SUB_GROUP_16, Layout_PackedB_PackedB, 16, 128, BITS_16));
+  s += DefineLargeStoreCheckedOnly(MatrixSpec(SUB_GROUP_16, Layout_PackedB_RowMajor, 16, 128, BITS_16));
+
+  /* Accumulator i32 */
+  s += DefineLargeStoreCheckedOnly(MatrixSpec(SUB_GROUP_8, Layout_Accumulator_RowMajor, 32, 32, BITS_32));
+
+  /* Accumulator i32 SG16 */
+  s += DefineLargeStore(MatrixSpec(SUB_GROUP_16, Layout_Accumulator_RowMajor, 16, 16, BITS_32));
+  s += DefineLargeStore(MatrixSpec(SUB_GROUP_16, Layout_Accumulator_RowMajor, 32, 64, BITS_32));
+
+  /* Accumulator i16 SG16 */
+  s += DefineLargeStore(MatrixSpec(SUB_GROUP_16, Layout_Accumulator_RowMajor, 32, 64, BITS_16));
+
+  //
+  // Special large stores (1x64)
+  //
+
+  // Accumulator, i32 - 1x64
+  s += DefineSpecialLarge1x64Store(MatrixSpec(SUB_GROUP_16, Layout_Accumulator_RowMajor, 1, 64, BITS_32));
+
+  // Accumulator, i16 - 1x64
+  s += DefineSpecialLarge1x64Store(MatrixSpec(SUB_GROUP_16, Layout_Accumulator_RowMajor, 1, 64, BITS_16));
+
+  return s;
+}
+
+//
 // main function prepares outputString and saves it to file
 //
 int main(int argc, char **argv) {
   string outputString = FileHeader();
   outputString += DefineAllSmallLoads();
   outputString += DefineAllLargeLoads();
+  outputString += DefineAllSmallStores();
+  outputString += DefineAllLargeStores();
   outputString += CreatedFuncsWarningLog;
 
   const char *outputPath = "IBiF_matrix_generated.h";

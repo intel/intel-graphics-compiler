@@ -35,6 +35,7 @@ SPDX-License-Identifier: MIT
 // Intel Joint Matrix load/store functions
 //*****************************************************************************/
 #include "Matrix/IBiF_matrix.cl"
+#include "IBiF_matrix_generated.h"
 
 //*****************************************************************************/
 // DPAS Functions - Extension

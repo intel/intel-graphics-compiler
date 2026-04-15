@@ -42,42 +42,44 @@ entry:
   call void @__builtin_spriv_OpJointMatrixLoadINTEL_PackedB_RowMajor_SG16_32x64_i16_64_global_v8i8_pi32_i32(i8* %b, i8 addrspace(1)* %src_b, i64 64, i32 0)
 
   %c = bitcast { <64 x i16>, <64 x i16> }* %mc32x64 to i8*
-; CHECK-VISAASM: lsc_load_block2d.ugm (M1, 1)  V{{[0-9]+}}:d16.32x32nn  flat[V{{[0-9]+}},0x7F,0x1F,0x7F,V{{[0-9]+}},0x0]
-; CHECK-VISAASM: lsc_load_block2d.ugm (M1, 1)  V{{[0-9]+}}:d16.32x32nn  flat[V{{[0-9]+}},0x7F,0x1F,0x7F,V{{[0-9]+}},0x0]
+; CHECK-VISAASM: lsc_load_block2d.ugm (M1, 1)  V{{[0-9]+}}:d16.16x32nn  flat[V{{[0-9]+}},0x7F,0x1F,0x7F,V{{[0-9]+}},0x0]
+; CHECK-VISAASM: lsc_load_block2d.ugm (M1, 1)  V{{[0-9]+}}:d16.16x32nn  flat[V{{[0-9]+}},0x7F,0x1F,0x7F,V{{[0-9]+}},0x0]
+; CHECK-VISAASM: lsc_load_block2d.ugm (M1, 1)  V{{[0-9]+}}:d16.16x32nn  flat[V{{[0-9]+}},0x7F,0x1F,0x7F,V{{[0-9]+}},0x0]
+; CHECK-VISAASM: lsc_load_block2d.ugm (M1, 1)  V{{[0-9]+}}:d16.16x32nn  flat[V{{[0-9]+}},0x7F,0x1F,0x7F,V{{[0-9]+}},0x0]
   call void @__builtin_spriv_OpJointMatrixLoadINTEL_Accumulator_RowMajor_SG16_32x64_i16_128_global_v8i8_pi32_i32(i8* %c, i16 addrspace(1)* %src_c, i64 64, i32 0)
 
   %d = bitcast { <64 x i16>, <64 x i16> }* %md16x64 to i8*
 ; CHECK-VISAASM: dpas.bf.bf.8.8 (M1, 16) {{[A-z0-9_]*}}.0 V{{[0-9]+}}.0 V{{[0-9]+}}.0 V{{[0-9]+}}(0,0)
 ; CHECK-VISAASM: dpas.bf.bf.8.8 (M1, 16) {{[A-z0-9_]*}}.0 {{[A-z0-9_]*}}.0 V{{[0-9]+}}.512 V{{[0-9]+}}(0,0)
-; CHECK-VISAASM: dpas.bf.bf.8.8 (M1, 16) {{[A-z0-9_]*}}.0 V{{[0-9]+}}.1024 V{{[0-9]+}}.0 V{{[0-9]+}}(0,0)
+; CHECK-VISAASM: dpas.bf.bf.8.8 (M1, 16) {{[A-z0-9_]*}}.0 V{{[0-9]+}}.0 V{{[0-9]+}}.0 V{{[0-9]+}}(0,0)
 ; CHECK-VISAASM: dpas.bf.bf.8.8 (M1, 16) {{[A-z0-9_]*}}.0 {{[A-z0-9_]*}}.0 V{{[0-9]+}}.512 V{{[0-9]+}}(0,0)
 ; CHECK-VISAASM: dpas.bf.bf.8.8 (M1, 16) {{[A-z0-9_]*}}.0 V{{[0-9]+}}.0 V{{[0-9]+}}.0 V{{[0-9]+}}(0,0)
 ; CHECK-VISAASM: dpas.bf.bf.8.8 (M1, 16) {{[A-z0-9_]*}}.0 {{[A-z0-9_]*}}.0 V{{[0-9]+}}.512 V{{[0-9]+}}(0,0)
-; CHECK-VISAASM: dpas.bf.bf.8.8 (M1, 16) {{[A-z0-9_]*}}.0 V{{[0-9]+}}.1024 V{{[0-9]+}}.0 V{{[0-9]+}}(0,0)
+; CHECK-VISAASM: dpas.bf.bf.8.8 (M1, 16) {{[A-z0-9_]*}}.0 V{{[0-9]+}}.0 V{{[0-9]+}}.0 V{{[0-9]+}}(0,0)
 ; CHECK-VISAASM: dpas.bf.bf.8.8 (M1, 16) {{[A-z0-9_]*}}.0 {{[A-z0-9_]*}}.0 V{{[0-9]+}}.512 V{{[0-9]+}}(0,0)
 ; CHECK-VISAASM: dpas.bf.bf.8.8 (M1, 16) {{[A-z0-9_]*}}.0 V{{[0-9]+}}.256 V{{[0-9]+}}.0 V{{[0-9]+}}(4,0)
 ; CHECK-VISAASM: dpas.bf.bf.8.8 (M1, 16) {{[A-z0-9_]*}}.0 {{[A-z0-9_]*}}.0 V{{[0-9]+}}.512 V{{[0-9]+}}(4,0)
-; CHECK-VISAASM: dpas.bf.bf.8.8 (M1, 16) {{[A-z0-9_]*}}.0 V{{[0-9]+}}.1280 V{{[0-9]+}}.0 V{{[0-9]+}}(4,0)
+; CHECK-VISAASM: dpas.bf.bf.8.8 (M1, 16) {{[A-z0-9_]*}}.0 V{{[0-9]+}}.256 V{{[0-9]+}}.0 V{{[0-9]+}}(4,0)
 ; CHECK-VISAASM: dpas.bf.bf.8.8 (M1, 16) {{[A-z0-9_]*}}.0 {{[A-z0-9_]*}}.0 V{{[0-9]+}}.512 V{{[0-9]+}}(4,0)
 ; CHECK-VISAASM: dpas.bf.bf.8.8 (M1, 16) {{[A-z0-9_]*}}.0 V{{[0-9]+}}.256 V{{[0-9]+}}.0 V{{[0-9]+}}(4,0)
 ; CHECK-VISAASM: dpas.bf.bf.8.8 (M1, 16) {{[A-z0-9_]*}}.0 {{[A-z0-9_]*}}.0 V{{[0-9]+}}.512 V{{[0-9]+}}(4,0)
-; CHECK-VISAASM: dpas.bf.bf.8.8 (M1, 16) {{[A-z0-9_]*}}.0 V{{[0-9]+}}.1280 V{{[0-9]+}}.0 V{{[0-9]+}}(4,0)
+; CHECK-VISAASM: dpas.bf.bf.8.8 (M1, 16) {{[A-z0-9_]*}}.0 V{{[0-9]+}}.256 V{{[0-9]+}}.0 V{{[0-9]+}}(4,0)
 ; CHECK-VISAASM: dpas.bf.bf.8.8 (M1, 16) {{[A-z0-9_]*}}.0 {{[A-z0-9_]*}}.0 V{{[0-9]+}}.512 V{{[0-9]+}}(4,0)
 ; CHECK-VISAASM: dpas.bf.bf.8.8 (M1, 16) {{[A-z0-9_]*}}.0 V{{[0-9]+}}.512 V{{[0-9]+}}.0 V{{[0-9]+}}(8,0)
 ; CHECK-VISAASM: dpas.bf.bf.8.8 (M1, 16) {{[A-z0-9_]*}}.0 {{[A-z0-9_]*}}.0 V{{[0-9]+}}.512 V{{[0-9]+}}(8,0)
-; CHECK-VISAASM: dpas.bf.bf.8.8 (M1, 16) {{[A-z0-9_]*}}.0 V{{[0-9]+}}.1536 V{{[0-9]+}}.0 V{{[0-9]+}}(8,0)
+; CHECK-VISAASM: dpas.bf.bf.8.8 (M1, 16) {{[A-z0-9_]*}}.0 V{{[0-9]+}}.512 V{{[0-9]+}}.0 V{{[0-9]+}}(8,0)
 ; CHECK-VISAASM: dpas.bf.bf.8.8 (M1, 16) {{[A-z0-9_]*}}.0 {{[A-z0-9_]*}}.0 V{{[0-9]+}}.512 V{{[0-9]+}}(8,0)
 ; CHECK-VISAASM: dpas.bf.bf.8.8 (M1, 16) {{[A-z0-9_]*}}.0 V{{[0-9]+}}.512 V{{[0-9]+}}.0 V{{[0-9]+}}(8,0)
 ; CHECK-VISAASM: dpas.bf.bf.8.8 (M1, 16) {{[A-z0-9_]*}}.0 {{[A-z0-9_]*}}.0 V{{[0-9]+}}.512 V{{[0-9]+}}(8,0)
-; CHECK-VISAASM: dpas.bf.bf.8.8 (M1, 16) {{[A-z0-9_]*}}.0 V{{[0-9]+}}.1536 V{{[0-9]+}}.0 V{{[0-9]+}}(8,0)
+; CHECK-VISAASM: dpas.bf.bf.8.8 (M1, 16) {{[A-z0-9_]*}}.0 V{{[0-9]+}}.512 V{{[0-9]+}}.0 V{{[0-9]+}}(8,0)
 ; CHECK-VISAASM: dpas.bf.bf.8.8 (M1, 16) {{[A-z0-9_]*}}.0 {{[A-z0-9_]*}}.0 V{{[0-9]+}}.512 V{{[0-9]+}}(8,0)
 ; CHECK-VISAASM: dpas.bf.bf.8.8 (M1, 16) {{[A-z0-9_]*}}.0 V{{[0-9]+}}.768 V{{[0-9]+}}.0 V{{[0-9]+}}(12,0)
 ; CHECK-VISAASM: dpas.bf.bf.8.8 (M1, 16) {{[A-z0-9_]*}}.0 {{[A-z0-9_]*}}.0 V{{[0-9]+}}.512 V{{[0-9]+}}(12,0)
-; CHECK-VISAASM: dpas.bf.bf.8.8 (M1, 16) {{[A-z0-9_]*}}.0 V{{[0-9]+}}.1792 V{{[0-9]+}}.0 V{{[0-9]+}}(12,0)
+; CHECK-VISAASM: dpas.bf.bf.8.8 (M1, 16) {{[A-z0-9_]*}}.0 V{{[0-9]+}}.768 V{{[0-9]+}}.0 V{{[0-9]+}}(12,0)
 ; CHECK-VISAASM: dpas.bf.bf.8.8 (M1, 16) {{[A-z0-9_]*}}.0 {{[A-z0-9_]*}}.0 V{{[0-9]+}}.512 V{{[0-9]+}}(12,0)
 ; CHECK-VISAASM: dpas.bf.bf.8.8 (M1, 16) {{[A-z0-9_]*}}.0 V{{[0-9]+}}.768 V{{[0-9]+}}.0 V{{[0-9]+}}(12,0)
 ; CHECK-VISAASM: dpas.bf.bf.8.8 (M1, 16) {{[A-z0-9_]*}}.0 {{[A-z0-9_]*}}.0 V{{[0-9]+}}.512 V{{[0-9]+}}(12,0)
-; CHECK-VISAASM: dpas.bf.bf.8.8 (M1, 16) {{[A-z0-9_]*}}.0 V{{[0-9]+}}.1792 V{{[0-9]+}}.0 V{{[0-9]+}}(12,0)
+; CHECK-VISAASM: dpas.bf.bf.8.8 (M1, 16) {{[A-z0-9_]*}}.0 V{{[0-9]+}}.768 V{{[0-9]+}}.0 V{{[0-9]+}}(12,0)
 ; CHECK-VISAASM: dpas.bf.bf.8.8 (M1, 16) {{[A-z0-9_]*}}.0 {{[A-z0-9_]*}}.0 V{{[0-9]+}}.512 V{{[0-9]+}}(12,0)
   call void @__builtin_spriv_OpJointMatrixMadINTEL_32x64x32_bf16_bf16_bf16_bf16(i8* %a, i8* %b, i8* %c, i8* %d)
 
