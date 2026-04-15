@@ -191,7 +191,8 @@ bool doFlagLVN() const {
 }
 
 bool doRoundRobinScalarAlloc() const {
-  return getPlatform() >= Xe3P_Graphics && getOption(vISA_allocateS0RoundRobin);
+  bool allowXe3 = getPlatform() >= Xe3 && getOption(vISA_allowXe3ScalarRR);
+  return (getPlatform() >= Xe3P_Graphics || allowXe3) && getOption(vISA_allocateS0RoundRobin);
 }
 
 bool doS0SubBeforeScheduling() const {
