@@ -2187,6 +2187,7 @@ bool SymbolicPointer::getConstantOffset(SymbolicPointer &Other, int64_t &Off) {
 //   %177 = sub nsw i32 %176, %const_reg_dword18
 bool SymbolicPointer::checkTerms(const Term *T, const Term *OtherT, int64_t &Off) const {
   bool IsPositive = true;
+  bool EarlyExit = false;
   size_t OpNum = 0;
 
   // Check that the instructions are add or sub with nsw flag.
@@ -2207,7 +2208,7 @@ bool SymbolicPointer::checkTerms(const Term *T, const Term *OtherT, int64_t &Off
       return true;
 
     if (Inst0->getOperand(0) == Inst1->getOperand(0) && Inst0->getOperand(1) == Inst1->getOperand(1)) {
-      OpNum = 3;
+      EarlyExit = true;
       return false;
     }
 
@@ -2231,13 +2232,14 @@ bool SymbolicPointer::checkTerms(const Term *T, const Term *OtherT, int64_t &Off
   auto *OtherInst = dyn_cast<BinaryOperator>(OtherT->Idx.getPointer());
   if (checkInstructions(Inst, OtherInst))
     return true;
+  if (EarlyExit)
+    return false;
 
   auto InstOp0 = dyn_cast<BinaryOperator>(Inst->getOperand(OpNum));
   auto OtherInstOp0 = dyn_cast<BinaryOperator>(OtherInst->getOperand(OpNum));
   if (checkInstructions(InstOp0, OtherInstOp0))
     return true;
-
-  if (OpNum == 3)
+  if (EarlyExit)
     return false;
 
   auto ConstInt = dyn_cast<ConstantInt>(InstOp0->getOperand(OpNum));
