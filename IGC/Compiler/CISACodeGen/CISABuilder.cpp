@@ -6345,10 +6345,12 @@ void CEncoder::Copy(CVariable *dst, CVariable *src) {
   // undef value are not copied
   if (!src->IsUndef() || IGC_IS_FLAG_ENABLED(InitializeUndefValueEnable)) {
     CVariable *rawDst = dst;
-    IGC_ASSERT(GetCISADataTypeSize(src->GetType()) == GetCISADataTypeSize(dst->GetType()));
     bool isVecImm = src->IsImmediate() &&
                     (src->GetType() == ISA_TYPE_UV || src->GetType() == ISA_TYPE_V || src->GetType() == ISA_TYPE_VF);
-    if (src->GetType() != dst->GetType() && !isVecImm) {
+    bool isVecReg = false;
+    bool isVecType = isVecImm || isVecReg;
+    IGC_ASSERT(GetCISADataTypeSize(src->GetType()) == GetCISADataTypeSize(dst->GetType()) || isVecType);
+    if (src->GetType() != dst->GetType() && !isVecType) {
       rawDst = m_program->BitCast(dst, src->GetType());
     }
     DataMov(ISA_MOV, rawDst, src);

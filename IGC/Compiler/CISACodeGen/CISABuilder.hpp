@@ -835,6 +835,7 @@ inline void CEncoder::Mad(CVariable *dst, CVariable *src0, CVariable *src1, CVar
   Arithmetic(ISA_MAD, dst, src0, src1, src2);
 }
 
+
 inline void CEncoder::Lrp(CVariable *dst, CVariable *src0, CVariable *src1, CVariable *src2) {
   Arithmetic(ISA_LRP, dst, src0, src1, src2);
 }
