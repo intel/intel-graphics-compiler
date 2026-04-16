@@ -287,7 +287,6 @@ $ export IGC_ShaderDumpEnable=1
 | `EnableSelectCSWalkOrderPass` | Enable SelectCSWalkOrderPass at the earlier stage than PreCompile time | - |
 | `EnableSimplePushSizeBasedOpimization` | Enable the simplepush optimization to do push based on size | - |
 | `EnableSimplifyGEP` | Enable IGC to simplify indices expr of GEP. | - |
-
 | `EnableSplitIndirectEEtoSel` | Enable the split indirect extractelement to icmp+sel pass | - |
 | `EnableSplitUnalignedVector` | Enable Splitting of unaligned vectors for loads and stores | - |
 | `EnableStatefulAtomic` | Enable promoting stateless atomic to stateful atomic. | - |
@@ -885,7 +884,6 @@ $ export IGC_ShaderDumpEnable=1
 | `RetryRevertExcessiveSpillingKernelCoefficient` | Sets the coefficient for Retry Manager to know whether we should revert back to a previously compiled kernel | - |
 | `RetryRevertExcessiveSpillingKernelThreshold` | Sets the threshold for Retry Manager to know which kernel is considered as Excessive Spilling and                   applies different set of rules | - |
 | `SSOShifter` | Adjust ScratchSurfaceOffset with shl(hwtid, shifter). 0 menas disabling padding | - |
-
 | `SaveRestoreIR` | Save/Restore IR for staged compilation to avoid duplicated compilations | - |
 | `ScalarAliasBBSizeThreshold` | Max size of BB for which scalar aliasing will apply. Scalar aliasing will skip for BBs beyond this threshold | Available |
 | `SelectiveFastRA` | Apply fast RA with spills selectively using heuristics | Available |
