@@ -3684,6 +3684,55 @@ extern uint32_t GED_CALLCONV GED_GetSrc1ScalarReg(ged_ins_t* ins, GED_RETURN_VAL
 extern GED_RETURN_VALUE GED_CALLCONV GED_SetSrc1ScalarReg(ged_ins_t* ins, const uint32_t value);
 
 /*!
+ * Get the value of the DstDataType2 field in the given instruction. The function returns an enumeration value. To obtain the enum
+ * entry's string representation, use @ref GED_GetDataType2String. See @ref GED_INS_FIELD_DstDataType2 for the field's description.
+ *
+ * @param[in]       ins    Pointer to the decoded instruction object.
+ * @param[out]      result If non-null, the function stores the @ref GED_RETURN_VALUE result indicating success or the specific error
+ *                         which caused the failure.
+ *
+ * @return      DstDataType2's enumeration if the field is valid, GED_DATA_TYPE2_INVALID otherwise.
+ *
+ * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
+ */
+extern GED_DATA_TYPE2 GED_CALLCONV GED_GetDstDataType2(ged_ins_t* ins, GED_RETURN_VALUE* result);
+
+/*!
+ * Set the value of the DstDataType2 field in the given instruction. See @ref GED_INS_FIELD_DstDataType2 for the field's description.
+ *
+ * @param[in,out]   ins    Pointer to the instruction object for encoding.
+ * @param[in]       value  The value to encode.
+ *
+ * @return      GED_RETURN_VALUE indicating success or encoding error.
+ */
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetDstDataType2(ged_ins_t* ins, const GED_DATA_TYPE2 value);
+
+/*!
+ * Get the value of the Src0DataType2 field in the given instruction. The function returns an enumeration value. To obtain the enum
+ * entry's string representation, use @ref GED_GetDataType2String. See @ref GED_INS_FIELD_Src0DataType2 for the field's description.
+ *
+ * @param[in]       ins    Pointer to the decoded instruction object.
+ * @param[out]      result If non-null, the function stores the @ref GED_RETURN_VALUE result indicating success or the specific error
+ *                         which caused the failure.
+ *
+ * @return      Src0DataType2's enumeration if the field is valid, GED_DATA_TYPE2_INVALID otherwise.
+ *
+ * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
+ */
+extern GED_DATA_TYPE2 GED_CALLCONV GED_GetSrc0DataType2(ged_ins_t* ins, GED_RETURN_VALUE* result);
+
+/*!
+ * Set the value of the Src0DataType2 field in the given instruction. See @ref GED_INS_FIELD_Src0DataType2 for the field's
+ * description.
+ *
+ * @param[in,out]   ins    Pointer to the instruction object for encoding.
+ * @param[in]       value  The value to encode.
+ *
+ * @return      GED_RETURN_VALUE indicating success or encoding error.
+ */
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetSrc0DataType2(ged_ins_t* ins, const GED_DATA_TYPE2 value);
+
+/*!
  * Get the value of the Src2RegNum8 field in the given instruction. See @ref GED_INS_FIELD_Src2RegNum8 for the field's description.
  *
  * @param[in]       ins    Pointer to the decoded instruction object.
@@ -3780,22 +3829,22 @@ extern GED_ROUNDING_MODE GED_CALLCONV GED_GetRoundingMode(ged_ins_t* ins, GED_RE
 extern GED_RETURN_VALUE GED_CALLCONV GED_SetRoundingMode(ged_ins_t* ins, const GED_ROUNDING_MODE value);
 
 /*!
- * Get the value of the ConvSrcDataType field in the given instruction. The function returns an enumeration value. To obtain the enum
- * entry's string representation, use @ref GED_GetConvSrcDatatypeString. See @ref GED_INS_FIELD_ConvSrcDataType for the field's
+ * Get the value of the ConvSrcDataType2 field in the given instruction. The function returns an enumeration value. To obtain the enum
+ * entry's string representation, use @ref GED_GetConvSrcDatatype2String. See @ref GED_INS_FIELD_ConvSrcDataType2 for the field's
  * description.
  *
  * @param[in]       ins    Pointer to the decoded instruction object.
  * @param[out]      result If non-null, the function stores the @ref GED_RETURN_VALUE result indicating success or the specific error
  *                         which caused the failure.
  *
- * @return      ConvSrcDataType's enumeration if the field is valid, GED_CONV_SRC_DATATYPE_INVALID otherwise.
+ * @return      ConvSrcDataType2's enumeration if the field is valid, GED_CONV_SRC_DATATYPE2_INVALID otherwise.
  *
  * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
  */
-extern GED_CONV_SRC_DATATYPE GED_CALLCONV GED_GetConvSrcDataType(ged_ins_t* ins, GED_RETURN_VALUE* result);
+extern GED_CONV_SRC_DATATYPE2 GED_CALLCONV GED_GetConvSrcDataType2(ged_ins_t* ins, GED_RETURN_VALUE* result);
 
 /*!
- * Set the value of the ConvSrcDataType field in the given instruction. See @ref GED_INS_FIELD_ConvSrcDataType for the field's
+ * Set the value of the ConvSrcDataType2 field in the given instruction. See @ref GED_INS_FIELD_ConvSrcDataType2 for the field's
  * description.
  *
  * @param[in,out]   ins    Pointer to the instruction object for encoding.
@@ -3803,7 +3852,7 @@ extern GED_CONV_SRC_DATATYPE GED_CALLCONV GED_GetConvSrcDataType(ged_ins_t* ins,
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV GED_SetConvSrcDataType(ged_ins_t* ins, const GED_CONV_SRC_DATATYPE value);
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetConvSrcDataType2(ged_ins_t* ins, const GED_CONV_SRC_DATATYPE2 value);
 
 /*!
  * Get the value of the ConvDstDataType field in the given instruction. The function returns an enumeration value. To obtain the enum
@@ -4106,24 +4155,22 @@ extern uint32_t GED_CALLCONV GED_GetSrc3RegNum(ged_ins_t* ins, GED_RETURN_VALUE*
 extern GED_RETURN_VALUE GED_CALLCONV GED_SetSrc3RegNum(ged_ins_t* ins, const uint32_t value);
 
 /*!
- * Get the value of the SystolicDepthBlkScl field in the given instruction. See @ref GED_INS_FIELD_SystolicDepthBlkScl for the field's
+ * Get the value of the Src3Src4DataType field in the given instruction. The function returns an enumeration value. To obtain the enum
+ * entry's string representation, use @ref GED_GetDataTypeScaleString. See @ref GED_INS_FIELD_Src3Src4DataType for the field's
  * description.
  *
  * @param[in]       ins    Pointer to the decoded instruction object.
  * @param[out]      result If non-null, the function stores the @ref GED_RETURN_VALUE result indicating success or the specific error
  *                         which caused the failure.
  *
- * @return      The requested value upon success. If the encoded value is not valid, i.e. does not map to any valid enumerated value
- *              for this instruction, the (invalid) encoded value is returned. If the field is not valid for the instruction, the
- *              uint32_t equivalent of -1 is returned. If -1 is a valid value for this field, it is important to check the
- *              GED_RETURN_VALUE result.
+ * @return      Src3Src4DataType's enumeration if the field is valid, GED_DATA_TYPE_SCALE_INVALID otherwise.
  *
  * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
  */
-extern uint32_t GED_CALLCONV GED_GetSystolicDepthBlkScl(ged_ins_t* ins, GED_RETURN_VALUE* result);
+extern GED_DATA_TYPE_SCALE GED_CALLCONV GED_GetSrc3Src4DataType(ged_ins_t* ins, GED_RETURN_VALUE* result);
 
 /*!
- * Set the value of the SystolicDepthBlkScl field in the given instruction. See @ref GED_INS_FIELD_SystolicDepthBlkScl for the field's
+ * Set the value of the Src3Src4DataType field in the given instruction. See @ref GED_INS_FIELD_Src3Src4DataType for the field's
  * description.
  *
  * @param[in,out]   ins    Pointer to the instruction object for encoding.
@@ -4131,7 +4178,7 @@ extern uint32_t GED_CALLCONV GED_GetSystolicDepthBlkScl(ged_ins_t* ins, GED_RETU
  *
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
-extern GED_RETURN_VALUE GED_CALLCONV GED_SetSystolicDepthBlkScl(ged_ins_t* ins, const uint32_t value);
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetSrc3Src4DataType(ged_ins_t* ins, const GED_DATA_TYPE_SCALE value);
 
 /*!
  * Get the value of the Src4SubRegNum field in the given instruction. See @ref GED_INS_FIELD_Src4SubRegNum for the field's
@@ -4298,7 +4345,7 @@ extern GED_RETURN_VALUE GED_CALLCONV GED_SetIndexedSrcAddrImm(ged_ins_t* ins, co
  *                         which caused the failure.
  * @param[in]       index  The index (number) of the source operand.
  *
- * @return      Src3RegFile's enumeration if the field is valid, GED_REG_FILE_INVALID otherwise.
+ * @return      Src3Src4DataType's enumeration if the field is valid, GED_DATA_TYPE_SCALE_INVALID otherwise.
  *
  * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
  */
@@ -4381,7 +4428,7 @@ extern GED_RETURN_VALUE GED_CALLCONV GED_SetIndexedSrcChanSel(ged_ins_t* ins, co
  *                         which caused the failure.
  * @param[in]       index  The index (number) of the source operand.
  *
- * @return      Src3RegFile's enumeration if the field is valid, GED_REG_FILE_INVALID otherwise.
+ * @return      Src3Src4DataType's enumeration if the field is valid, GED_DATA_TYPE_SCALE_INVALID otherwise.
  *
  * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
  */
@@ -4398,6 +4445,33 @@ extern GED_DATA_TYPE GED_CALLCONV GED_GetIndexedSrcDataType(ged_ins_t* ins, GED_
  * @return      GED_RETURN_VALUE indicating success or encoding error.
  */
 extern GED_RETURN_VALUE GED_CALLCONV GED_SetIndexedSrcDataType(ged_ins_t* ins, const GED_DATA_TYPE value, const uint8_t index);
+
+/*!
+ * Get the value of the DataType2 field which corresponds to an indexed Src operand in the given instruction. See @ref
+ * GED_INS_FIELD_Src0DataType2 for the fields' description.
+ *
+ * @param[in]       ins    Pointer to the decoded instruction object.
+ * @param[out]      result If non-null, the function stores the @ref GED_RETURN_VALUE result indicating success or the specific error
+ *                         which caused the failure.
+ * @param[in]       index  The index (number) of the source operand.
+ *
+ * @return      Src3Src4DataType's enumeration if the field is valid, GED_DATA_TYPE_SCALE_INVALID otherwise.
+ *
+ * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
+ */
+extern GED_DATA_TYPE2 GED_CALLCONV GED_GetIndexedSrcDataType2(ged_ins_t* ins, GED_RETURN_VALUE* result, const uint8_t index);
+
+/*!
+ * Set the value of the DataType2 field which corresponds to an indexed Src operand in the given instruction. See @ref
+ * GED_INS_FIELD_Src0DataType2 for the fields' description.
+ *
+ * @param[in,out]   ins    Pointer to the instruction object for encoding.
+ * @param[in]       value  The value to encode.
+ * @param[in]       index  The index (number) of the source operand.
+ *
+ * @return      GED_RETURN_VALUE indicating success or encoding error.
+ */
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetIndexedSrcDataType2(ged_ins_t* ins, const GED_DATA_TYPE2 value, const uint8_t index);
 
 /*!
  * Get the value of the HorzStride field which corresponds to an indexed Src operand in the given instruction. See @ref
@@ -4523,7 +4597,7 @@ extern GED_RETURN_VALUE GED_CALLCONV GED_SetIndexedIndMsgDescIsPresent(ged_ins_t
  *                         which caused the failure.
  * @param[in]       index  The index (number) of the source operand.
  *
- * @return      Src3RegFile's enumeration if the field is valid, GED_REG_FILE_INVALID otherwise.
+ * @return      Src3Src4DataType's enumeration if the field is valid, GED_DATA_TYPE_SCALE_INVALID otherwise.
  *
  * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
  */
@@ -4553,7 +4627,7 @@ extern GED_RETURN_VALUE GED_CALLCONV GED_SetIndexedSrcMathMacroExt(ged_ins_t* in
  *                         which caused the failure.
  * @param[in]       index  The index (number) of the source operand.
  *
- * @return      Src3RegFile's enumeration if the field is valid, GED_REG_FILE_INVALID otherwise.
+ * @return      Src3Src4DataType's enumeration if the field is valid, GED_DATA_TYPE_SCALE_INVALID otherwise.
  *
  * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
  */
@@ -4611,7 +4685,7 @@ extern GED_RETURN_VALUE GED_CALLCONV GED_SetIndexedSrcRegNum(ged_ins_t* ins, con
  *                         which caused the failure.
  * @param[in]       index  The index (number) of the source operand.
  *
- * @return      Src3RegFile's enumeration if the field is valid, GED_REG_FILE_INVALID otherwise.
+ * @return      Src3Src4DataType's enumeration if the field is valid, GED_DATA_TYPE_SCALE_INVALID otherwise.
  *
  * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
  */
@@ -4638,7 +4712,7 @@ extern GED_RETURN_VALUE GED_CALLCONV GED_SetIndexedSrcRepCtrl(ged_ins_t* ins, co
  *                         which caused the failure.
  * @param[in]       index  The index (number) of the source operand.
  *
- * @return      Src3RegFile's enumeration if the field is valid, GED_REG_FILE_INVALID otherwise.
+ * @return      Src3Src4DataType's enumeration if the field is valid, GED_DATA_TYPE_SCALE_INVALID otherwise.
  *
  * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
  */
@@ -6289,6 +6363,16 @@ extern const char* GED_CALLCONV GED_GetConvDstDatatypeString(GED_CONV_DST_DATATY
 extern const char* GED_CALLCONV GED_GetConvSrcDatatypeString(GED_CONV_SRC_DATATYPE ConvSrcDatatypeValue);
 
 /*!
+ * Get the string representation for the given GED_CONV_SRC_DATATYPE2 enumerator. The function returns a NULL pointer for
+ * GED_CONV_SRC_DATATYPE2_INVALID.
+ *
+ * @param[in]       ConvSrcDatatype2Value  The given GED_CONV_SRC_DATATYPE2 enumerator.
+ *
+ * @return      The requested string.
+ */
+extern const char* GED_CALLCONV GED_GetConvSrcDatatype2String(GED_CONV_SRC_DATATYPE2 ConvSrcDatatype2Value);
+
+/*!
  * Get the string representation for the given GED_DATA_TYPE enumerator. The function returns a NULL pointer for
  * GED_DATA_TYPE_INVALID.
  *
@@ -6297,6 +6381,26 @@ extern const char* GED_CALLCONV GED_GetConvSrcDatatypeString(GED_CONV_SRC_DATATY
  * @return      The requested string.
  */
 extern const char* GED_CALLCONV GED_GetDataTypeString(GED_DATA_TYPE DataTypeValue);
+
+/*!
+ * Get the string representation for the given GED_DATA_TYPE2 enumerator. The function returns a NULL pointer for
+ * GED_DATA_TYPE2_INVALID.
+ *
+ * @param[in]       DataType2Value The given GED_DATA_TYPE2 enumerator.
+ *
+ * @return      The requested string.
+ */
+extern const char* GED_CALLCONV GED_GetDataType2String(GED_DATA_TYPE2 DataType2Value);
+
+/*!
+ * Get the string representation for the given GED_DATA_TYPE_SCALE enumerator. The function returns a NULL pointer for
+ * GED_DATA_TYPE_SCALE_INVALID.
+ *
+ * @param[in]       DataTypeScaleValue The given GED_DATA_TYPE_SCALE enumerator.
+ *
+ * @return      The requested string.
+ */
+extern const char* GED_CALLCONV GED_GetDataTypeScaleString(GED_DATA_TYPE_SCALE DataTypeScaleValue);
 
 /*!
  * Get the string representation for the given GED_DEBUG_CTRL enumerator. The function returns a NULL pointer for

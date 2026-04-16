@@ -1029,6 +1029,28 @@ static inline GED_CONV_SRC_DATATYPE lowerConvSrcDataType(ConvSrcDataType ty) {
   }
 }
 
+static inline GED_DATA_TYPE_SCALE lowerSrc3Src4DataType(Type ty) {
+  switch (ty) {
+  case Type::UB:
+    return GED_DATA_TYPE_SCALE::GED_DATA_TYPE_SCALE_UB;
+  default:
+    return GED_DATA_TYPE_SCALE::GED_DATA_TYPE_SCALE_INVALID;
+  }
+}
+
+static inline GED_CONV_SRC_DATATYPE2 lowerConvSrcDataType2(ConvSrcDataType ty) {
+  switch (ty) {
+  case ConvSrcDataType::HF:
+    return GED_CONV_SRC_DATATYPE2::GED_CONV_SRC_DATATYPE2_HF;
+  case ConvSrcDataType::BF:
+    return GED_CONV_SRC_DATATYPE2::GED_CONV_SRC_DATATYPE2_BF;
+  case ConvSrcDataType::F32:
+    return GED_CONV_SRC_DATATYPE2::GED_CONV_SRC_DATATYPE2_F32;
+  default:
+    return GED_CONV_SRC_DATATYPE2::GED_CONV_SRC_DATATYPE2_INVALID;
+  }
+}
+
 static inline GED_CONV_DST_DATATYPE lowerConvDstDataType(ConvDstDataType ty) {
   switch (ty) {
   case ConvDstDataType::E2M1:

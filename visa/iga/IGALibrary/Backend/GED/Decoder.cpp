@@ -234,7 +234,11 @@ Subfunction Decoder::decodeSubfunction(bool &valid) {
     break;
   }
   case Op::DNSCL: {
-    GED_DECODE(ConvSrcDataType, GED_CONV_SRC_DATATYPE, srcTy, ConvSrcDataType);
+    ConvSrcDataType srcTy = ConvSrcDataType::INVALID;
+    if (platform() == Platform::XE3P_XPC) {
+      // XE3P.CRI GED field name: ConvSrcDataType2
+      GED_DECODE_TO(ConvSrcDataType2, translate, srcTy);
+    }
     GED_DECODE(ConvDstDataType, GED_CONV_DST_DATATYPE, dstTy, ConvDstDataType);
     GED_DECODE(DnsclMode, GED_DNSCL_MODE, dmode, DnsclMode);
     GED_DECODE(RoundingMode, GED_ROUNDING_MODE, rmode, RoundingMode);
@@ -269,9 +273,10 @@ Subfunction Decoder::decodeSubfunction(bool &valid) {
     // in bdpas, repeat count is set to 8; no repeat count field
     // GED splits this field up; we fuse it as a single subfunction
     uint32_t systolicDepth;
-    // Note that bdpas's enum class for systolic depth is different from dpas'.
-    // Hence GED has different API name (GED_SetSystolicDepthBlkScl).
-    GED_DECODE_RAW_TO_SRC(systolicDepth, uint32_t, SystolicDepthBlkScl);
+    if (platform() == Platform::XE3P_XPC) {
+      // XE3P.CRI: Systolic depth is implicitly fixed at 8
+      systolicDepth = 8;
+    }
     const uint32_t repeatCount = 8;
     sf = GetDpasFC(systolicDepth, repeatCount);
     break;
@@ -718,9 +723,16 @@ void Decoder::decodeBDPASScalingSource(Instruction *inst) {
 
   Region dftRgn =
       os.implicitSrcRegion((int)S, inst->getExecSize(), isMacro());
-  // src3 and src4 are restricted to UB data types
+  // XE3P.CRI Src3Src4DataType field:
+  // decode once from SRC3 (SRC4 shares the same field).
+  // Other platforms fixed src3 and src4 type to UB.
+  Type scalingType = Type::UB;
+  if (platform() == Platform::XE3P_XPC && S == SourceIndex::SRC3) {
+    GED_DECODE_RAW(GED_DATA_TYPE_SCALE, gedScale, Src3Src4DataType);
+    scalingType = translateSrc3Src4DataType(gedScale);
+  }
   inst->setDirectSource(S, SrcModifier::NONE, regName, regRef, dftRgn,
-                        Type::UB);
+                        scalingType);
 }
 
 template <SourceIndex S>

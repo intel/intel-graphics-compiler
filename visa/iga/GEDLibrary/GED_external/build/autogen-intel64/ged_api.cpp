@@ -50,23 +50,23 @@ SPDX-License-Identifier: MIT
 #ifndef GED_MODELS_ARRAY_HIDDEN
 ModelData ModelsArray[17] =
 {
-    { GED_MODEL_NS_NONE::Opcodes, GED_MODEL_NAME_STRING("none"), 160, (const ged_field_enum_table_t)OpcodeTable0, 0, NULL, 3, EnumInterpretersTable0, 0, NULL }, // 0
-    { GED_MODEL_NS_7::Opcodes, GED_MODEL_NAME_STRING("7"), 160, (const ged_field_enum_table_t)OpcodeTable10, 29, PositionInterpreterTable0, 3, EnumInterpretersTable1, 0, NULL }, // 1
-    { GED_MODEL_NS_7_5::Opcodes, GED_MODEL_NAME_STRING("7.5"), 160, (const ged_field_enum_table_t)OpcodeTable11, 30, PositionInterpreterTable1, 3, EnumInterpretersTable1, 0, NULL }, // 2
-    { GED_MODEL_NS_8::Opcodes, GED_MODEL_NAME_STRING("8"), 160, (const ged_field_enum_table_t)OpcodeTable12, 33, PositionInterpreterTable2, 3, EnumInterpretersTable2, 0, NULL }, // 3
-    { GED_MODEL_NS_8_1::Opcodes, GED_MODEL_NAME_STRING("8.1"), 160, (const ged_field_enum_table_t)OpcodeTable12, 33, PositionInterpreterTable2, 3, EnumInterpretersTable2, 0, NULL }, // 4
-    { GED_MODEL_NS_9::Opcodes, GED_MODEL_NAME_STRING("9"), 160, (const ged_field_enum_table_t)OpcodeTable1, 35, PositionInterpreterTable3, 3, EnumInterpretersTable2, 0, NULL }, // 5
-    { GED_MODEL_NS_10::Opcodes, GED_MODEL_NAME_STRING("10"), 160, (const ged_field_enum_table_t)OpcodeTable1, 35, PositionInterpreterTable4, 3, EnumInterpretersTable2, 0, NULL }, // 6
-    { GED_MODEL_NS_11::Opcodes, GED_MODEL_NAME_STRING("11"), 160, (const ged_field_enum_table_t)OpcodeTable2, 35, PositionInterpreterTable5, 3, EnumInterpretersTable3, 0, NULL }, // 7
-    { GED_MODEL_NS_TGL::Opcodes, GED_MODEL_NAME_STRING("tgl"), 160, (const ged_field_enum_table_t)OpcodeTable3, 36, PositionInterpreterTable6, 3, EnumInterpretersTable4, 0, NULL }, // 8
-    { GED_MODEL_NS_XE_HP::Opcodes, GED_MODEL_NAME_STRING("xe.hp"), 160, (const ged_field_enum_table_t)OpcodeTable4, 35, PositionInterpreterTable7, 3, EnumInterpretersTable5, 0, NULL }, // 9
-    { GED_MODEL_NS_XE_HPG::Opcodes, GED_MODEL_NAME_STRING("xe.hpg"), 160, (const ged_field_enum_table_t)OpcodeTable4, 45, PositionInterpreterTable8, 3, EnumInterpretersTable5, 0, NULL }, // 10
-    { GED_MODEL_NS_XE_HPC_A::Opcodes, GED_MODEL_NAME_STRING("xe.hpc.a"), 160, (const ged_field_enum_table_t)OpcodeTable5, 45, PositionInterpreterTable9, 3, EnumInterpretersTable6, 0, NULL }, // 11
-    { GED_MODEL_NS_XE_HPC::Opcodes, GED_MODEL_NAME_STRING("xe.hpc"), 160, (const ged_field_enum_table_t)OpcodeTable6, 45, PositionInterpreterTable9, 3, EnumInterpretersTable7, 0, NULL }, // 12
-    { GED_MODEL_NS_XE_LPG_MD::Opcodes, GED_MODEL_NAME_STRING("xe.lpg.md"), 160, (const ged_field_enum_table_t)OpcodeTable7, 45, PositionInterpreterTable8, 3, EnumInterpretersTable5, 0, NULL }, // 13
-    { GED_MODEL_NS_XE2::Opcodes, GED_MODEL_NAME_STRING("xe2"), 160, (const ged_field_enum_table_t)OpcodeTable6, 51, PositionInterpreterTable10, 3, EnumInterpretersTable7, 0, NULL }, // 14
-    { GED_MODEL_NS_XE3::Opcodes, GED_MODEL_NAME_STRING("xe3"), 160, (const ged_field_enum_table_t)OpcodeTable8, 50, PositionInterpreterTable11, 3, EnumInterpretersTable0, 0, NULL }, // 15
-    { GED_MODEL_NS_XE3P_CRI::Opcodes, GED_MODEL_NAME_STRING("xe3p.cri"), 160, (const ged_field_enum_table_t)OpcodeTable9, 2, PositionInterpreterTable12, 3, EnumInterpretersTable0, 0, NULL } // 16
+    { GED_MODEL_NS_NONE::Opcodes, GED_MODEL_NAME_STRING("none"), 162, (const ged_field_enum_table_t)OpcodeTable0, 0, NULL, 3, EnumInterpretersTable0, 0, NULL }, // 0
+    { GED_MODEL_NS_7::Opcodes, GED_MODEL_NAME_STRING("7"), 162, (const ged_field_enum_table_t)OpcodeTable10, 29, PositionInterpreterTable0, 3, EnumInterpretersTable1, 0, NULL }, // 1
+    { GED_MODEL_NS_7_5::Opcodes, GED_MODEL_NAME_STRING("7.5"), 162, (const ged_field_enum_table_t)OpcodeTable11, 30, PositionInterpreterTable1, 3, EnumInterpretersTable1, 0, NULL }, // 2
+    { GED_MODEL_NS_8::Opcodes, GED_MODEL_NAME_STRING("8"), 162, (const ged_field_enum_table_t)OpcodeTable12, 33, PositionInterpreterTable2, 3, EnumInterpretersTable2, 0, NULL }, // 3
+    { GED_MODEL_NS_8_1::Opcodes, GED_MODEL_NAME_STRING("8.1"), 162, (const ged_field_enum_table_t)OpcodeTable12, 33, PositionInterpreterTable2, 3, EnumInterpretersTable2, 0, NULL }, // 4
+    { GED_MODEL_NS_9::Opcodes, GED_MODEL_NAME_STRING("9"), 162, (const ged_field_enum_table_t)OpcodeTable1, 35, PositionInterpreterTable3, 3, EnumInterpretersTable2, 0, NULL }, // 5
+    { GED_MODEL_NS_10::Opcodes, GED_MODEL_NAME_STRING("10"), 162, (const ged_field_enum_table_t)OpcodeTable1, 35, PositionInterpreterTable4, 3, EnumInterpretersTable2, 0, NULL }, // 6
+    { GED_MODEL_NS_11::Opcodes, GED_MODEL_NAME_STRING("11"), 162, (const ged_field_enum_table_t)OpcodeTable2, 35, PositionInterpreterTable5, 3, EnumInterpretersTable3, 0, NULL }, // 7
+    { GED_MODEL_NS_TGL::Opcodes, GED_MODEL_NAME_STRING("tgl"), 162, (const ged_field_enum_table_t)OpcodeTable3, 36, PositionInterpreterTable6, 3, EnumInterpretersTable4, 0, NULL }, // 8
+    { GED_MODEL_NS_XE_HP::Opcodes, GED_MODEL_NAME_STRING("xe.hp"), 162, (const ged_field_enum_table_t)OpcodeTable4, 35, PositionInterpreterTable7, 3, EnumInterpretersTable5, 0, NULL }, // 9
+    { GED_MODEL_NS_XE_HPG::Opcodes, GED_MODEL_NAME_STRING("xe.hpg"), 162, (const ged_field_enum_table_t)OpcodeTable4, 45, PositionInterpreterTable8, 3, EnumInterpretersTable5, 0, NULL }, // 10
+    { GED_MODEL_NS_XE_HPC_A::Opcodes, GED_MODEL_NAME_STRING("xe.hpc.a"), 162, (const ged_field_enum_table_t)OpcodeTable5, 45, PositionInterpreterTable9, 3, EnumInterpretersTable6, 0, NULL }, // 11
+    { GED_MODEL_NS_XE_HPC::Opcodes, GED_MODEL_NAME_STRING("xe.hpc"), 162, (const ged_field_enum_table_t)OpcodeTable6, 45, PositionInterpreterTable9, 3, EnumInterpretersTable7, 0, NULL }, // 12
+    { GED_MODEL_NS_XE_LPG_MD::Opcodes, GED_MODEL_NAME_STRING("xe.lpg.md"), 162, (const ged_field_enum_table_t)OpcodeTable7, 45, PositionInterpreterTable8, 3, EnumInterpretersTable5, 0, NULL }, // 13
+    { GED_MODEL_NS_XE2::Opcodes, GED_MODEL_NAME_STRING("xe2"), 162, (const ged_field_enum_table_t)OpcodeTable6, 51, PositionInterpreterTable10, 3, EnumInterpretersTable7, 0, NULL }, // 14
+    { GED_MODEL_NS_XE3::Opcodes, GED_MODEL_NAME_STRING("xe3"), 162, (const ged_field_enum_table_t)OpcodeTable8, 50, PositionInterpreterTable11, 3, EnumInterpretersTable0, 0, NULL }, // 15
+    { GED_MODEL_NS_XE3P_CRI::Opcodes, GED_MODEL_NAME_STRING("xe3p.cri"), 162, (const ged_field_enum_table_t)OpcodeTable9, 2, PositionInterpreterTable12, 3, EnumInterpretersTable0, 0, NULL } // 16
 }; // ModelsArray[]
 #endif // GED_MODELS_ARRAY_HIDDEN
 const unsigned int numOfSupportedModels = 17;
@@ -1587,6 +1587,28 @@ GED_RETURN_VALUE GED_SetSrc1ScalarReg(ged_ins_t* ins, const uint32_t value)
 {
     return reinterpret_cast<GEDIns*>(ins)->SetUnsignedField(GED_INS_FIELD_Src1ScalarReg, value);
 }
+GED_DATA_TYPE2 GED_GetDstDataType2(ged_ins_t* ins, GED_RETURN_VALUE* result)
+{
+    GED_RETURN_VALUE localResult = GED_RETURN_VALUE_INVALID_FIELD;
+    if (NULL == result) result = &localResult;
+    const uint32_t value = reinterpret_cast<GEDIns*>(ins)->GetUnsignedField(GED_INS_FIELD_DstDataType2, *result);
+    return (GED_RETURN_VALUE_SUCCESS == *result) ? (GED_DATA_TYPE2)value : GED_DATA_TYPE2_INVALID;
+}
+GED_RETURN_VALUE GED_SetDstDataType2(ged_ins_t* ins, const GED_DATA_TYPE2 value)
+{
+    return reinterpret_cast<GEDIns*>(ins)->SetUnsignedField(GED_INS_FIELD_DstDataType2, (const uint32_t)value);
+}
+GED_DATA_TYPE2 GED_GetSrc0DataType2(ged_ins_t* ins, GED_RETURN_VALUE* result)
+{
+    GED_RETURN_VALUE localResult = GED_RETURN_VALUE_INVALID_FIELD;
+    if (NULL == result) result = &localResult;
+    const uint32_t value = reinterpret_cast<GEDIns*>(ins)->GetUnsignedField(GED_INS_FIELD_Src0DataType2, *result);
+    return (GED_RETURN_VALUE_SUCCESS == *result) ? (GED_DATA_TYPE2)value : GED_DATA_TYPE2_INVALID;
+}
+GED_RETURN_VALUE GED_SetSrc0DataType2(ged_ins_t* ins, const GED_DATA_TYPE2 value)
+{
+    return reinterpret_cast<GEDIns*>(ins)->SetUnsignedField(GED_INS_FIELD_Src0DataType2, (const uint32_t)value);
+}
 uint32_t GED_GetSrc2RegNum8(ged_ins_t* ins, GED_RETURN_VALUE* result)
 {
     GED_RETURN_VALUE localResult = GED_RETURN_VALUE_INVALID_FIELD;
@@ -1629,16 +1651,16 @@ GED_RETURN_VALUE GED_SetRoundingMode(ged_ins_t* ins, const GED_ROUNDING_MODE val
 {
     return reinterpret_cast<GEDIns*>(ins)->SetUnsignedField(GED_INS_FIELD_RoundingMode, (const uint32_t)value);
 }
-GED_CONV_SRC_DATATYPE GED_GetConvSrcDataType(ged_ins_t* ins, GED_RETURN_VALUE* result)
+GED_CONV_SRC_DATATYPE2 GED_GetConvSrcDataType2(ged_ins_t* ins, GED_RETURN_VALUE* result)
 {
     GED_RETURN_VALUE localResult = GED_RETURN_VALUE_INVALID_FIELD;
     if (NULL == result) result = &localResult;
-    const uint32_t value = reinterpret_cast<GEDIns*>(ins)->GetUnsignedField(GED_INS_FIELD_ConvSrcDataType, *result);
-    return (GED_RETURN_VALUE_SUCCESS == *result) ? (GED_CONV_SRC_DATATYPE)value : GED_CONV_SRC_DATATYPE_INVALID;
+    const uint32_t value = reinterpret_cast<GEDIns*>(ins)->GetUnsignedField(GED_INS_FIELD_ConvSrcDataType2, *result);
+    return (GED_RETURN_VALUE_SUCCESS == *result) ? (GED_CONV_SRC_DATATYPE2)value : GED_CONV_SRC_DATATYPE2_INVALID;
 }
-GED_RETURN_VALUE GED_SetConvSrcDataType(ged_ins_t* ins, const GED_CONV_SRC_DATATYPE value)
+GED_RETURN_VALUE GED_SetConvSrcDataType2(ged_ins_t* ins, const GED_CONV_SRC_DATATYPE2 value)
 {
-    return reinterpret_cast<GEDIns*>(ins)->SetUnsignedField(GED_INS_FIELD_ConvSrcDataType, (const uint32_t)value);
+    return reinterpret_cast<GEDIns*>(ins)->SetUnsignedField(GED_INS_FIELD_ConvSrcDataType2, (const uint32_t)value);
 }
 GED_CONV_DST_DATATYPE GED_GetConvDstDataType(ged_ins_t* ins, GED_RETURN_VALUE* result)
 {
@@ -1763,15 +1785,16 @@ GED_RETURN_VALUE GED_SetSrc3RegNum(ged_ins_t* ins, const uint32_t value)
 {
     return reinterpret_cast<GEDIns*>(ins)->SetUnsignedField(GED_INS_FIELD_Src3RegNum, value);
 }
-uint32_t GED_GetSystolicDepthBlkScl(ged_ins_t* ins, GED_RETURN_VALUE* result)
+GED_DATA_TYPE_SCALE GED_GetSrc3Src4DataType(ged_ins_t* ins, GED_RETURN_VALUE* result)
 {
     GED_RETURN_VALUE localResult = GED_RETURN_VALUE_INVALID_FIELD;
     if (NULL == result) result = &localResult;
-    return reinterpret_cast<GEDIns*>(ins)->GetUnsignedField(GED_INS_FIELD_SystolicDepthBlkScl, *result);
+    const uint32_t value = reinterpret_cast<GEDIns*>(ins)->GetUnsignedField(GED_INS_FIELD_Src3Src4DataType, *result);
+    return (GED_RETURN_VALUE_SUCCESS == *result) ? (GED_DATA_TYPE_SCALE)value : GED_DATA_TYPE_SCALE_INVALID;
 }
-GED_RETURN_VALUE GED_SetSystolicDepthBlkScl(ged_ins_t* ins, const uint32_t value)
+GED_RETURN_VALUE GED_SetSrc3Src4DataType(ged_ins_t* ins, const GED_DATA_TYPE_SCALE value)
 {
-    return reinterpret_cast<GEDIns*>(ins)->SetUnsignedField(GED_INS_FIELD_SystolicDepthBlkScl, value);
+    return reinterpret_cast<GEDIns*>(ins)->SetUnsignedField(GED_INS_FIELD_Src3Src4DataType, (const uint32_t)value);
 }
 uint32_t GED_GetSrc4SubRegNum(ged_ins_t* ins, GED_RETURN_VALUE* result)
 {
@@ -1895,6 +1918,17 @@ GED_RETURN_VALUE GED_SetIndexedSrcDataType(ged_ins_t* ins, const GED_DATA_TYPE v
     if (0 == index) return GED_SetSrc0DataType(ins, value);
     if (1 == index) return GED_SetSrc1DataType(ins, value);
     if (2 == index) return GED_SetSrc2DataType(ins, value);
+    return GED_RETURN_VALUE_INVALID_OPERAND;
+}
+GED_DATA_TYPE2 GED_GetIndexedSrcDataType2(ged_ins_t* ins, GED_RETURN_VALUE* result, const uint8_t index)
+{
+    if (0 == index) return GED_GetSrc0DataType2(ins, result);
+    if (NULL != result) *result = GED_RETURN_VALUE_INVALID_OPERAND;
+    return GED_DATA_TYPE2_INVALID;
+}
+GED_RETURN_VALUE GED_SetIndexedSrcDataType2(ged_ins_t* ins, const GED_DATA_TYPE2 value, const uint8_t index)
+{
+    if (0 == index) return GED_SetSrc0DataType2(ins, value);
     return GED_RETURN_VALUE_INVALID_OPERAND;
 }
 uint32_t GED_GetIndexedSrcHorzStride(ged_ins_t* ins, GED_RETURN_VALUE* result, const uint8_t index)
@@ -2759,6 +2793,14 @@ const char* GED_GetConvSrcDatatypeString(GED_CONV_SRC_DATATYPE ConvSrcDatatypeVa
 }
 #endif // GED_CONV_SRC_DATATYPE_HIDDEN
 
+#ifndef GED_CONV_SRC_DATATYPE2_HIDDEN
+const char* GED_GetConvSrcDatatype2String(GED_CONV_SRC_DATATYPE2 ConvSrcDatatype2Value)
+{
+    return ConvSrcDatatype2Enumeration[ConvSrcDatatype2Value];
+
+}
+#endif // GED_CONV_SRC_DATATYPE2_HIDDEN
+
 #ifndef GED_DATA_TYPE_HIDDEN
 const char* GED_GetDataTypeString(GED_DATA_TYPE DataTypeValue)
 {
@@ -2766,6 +2808,22 @@ const char* GED_GetDataTypeString(GED_DATA_TYPE DataTypeValue)
 
 }
 #endif // GED_DATA_TYPE_HIDDEN
+
+#ifndef GED_DATA_TYPE2_HIDDEN
+const char* GED_GetDataType2String(GED_DATA_TYPE2 DataType2Value)
+{
+    return DataType2Enumeration[DataType2Value];
+
+}
+#endif // GED_DATA_TYPE2_HIDDEN
+
+#ifndef GED_DATA_TYPE_SCALE_HIDDEN
+const char* GED_GetDataTypeScaleString(GED_DATA_TYPE_SCALE DataTypeScaleValue)
+{
+    return DataTypeScaleEnumeration[DataTypeScaleValue];
+
+}
+#endif // GED_DATA_TYPE_SCALE_HIDDEN
 
 #ifndef GED_DEBUG_CTRL_HIDDEN
 const char* GED_GetDebugCtrlString(GED_DEBUG_CTRL DebugCtrlValue)

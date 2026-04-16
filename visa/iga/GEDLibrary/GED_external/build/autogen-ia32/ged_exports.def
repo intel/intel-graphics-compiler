@@ -298,6 +298,10 @@ EXPORTS
   GED_SetSrc1RegNum8
   GED_GetSrc1ScalarReg
   GED_SetSrc1ScalarReg
+  GED_GetDstDataType2
+  GED_SetDstDataType2
+  GED_GetSrc0DataType2
+  GED_SetSrc0DataType2
   GED_GetSrc2RegNum8
   GED_SetSrc2RegNum8
   GED_GetFwdCtrl
@@ -306,8 +310,8 @@ EXPORTS
   GED_SetDnsclMode
   GED_GetRoundingMode
   GED_SetRoundingMode
-  GED_GetConvSrcDataType
-  GED_SetConvSrcDataType
+  GED_GetConvSrcDataType2
+  GED_SetConvSrcDataType2
   GED_GetConvDstDataType
   GED_SetConvDstDataType
   GED_GetSendSwitchCtrl
@@ -332,8 +336,8 @@ EXPORTS
   GED_SetSrc4RegNum
   GED_GetSrc3RegNum
   GED_SetSrc3RegNum
-  GED_GetSystolicDepthBlkScl
-  GED_SetSystolicDepthBlkScl
+  GED_GetSrc3Src4DataType
+  GED_SetSrc3Src4DataType
   GED_GetSrc4SubRegNum
   GED_SetSrc4SubRegNum
   GED_GetSrc3SubRegNum
@@ -354,6 +358,8 @@ EXPORTS
   GED_SetIndexedSrcChanSel
   GED_GetIndexedSrcDataType
   GED_SetIndexedSrcDataType
+  GED_GetIndexedSrcDataType2
+  GED_SetIndexedSrcDataType2
   GED_GetIndexedSrcHorzStride
   GED_SetIndexedSrcHorzStride
   GED_GetIndexedSrcIndex
@@ -496,7 +502,10 @@ EXPORTS
   GED_GetCondModifierString
   GED_GetConvDstDatatypeString
   GED_GetConvSrcDatatypeString
+  GED_GetConvSrcDatatype2String
   GED_GetDataTypeString
+  GED_GetDataType2String
+  GED_GetDataTypeScaleString
   GED_GetDebugCtrlString
   GED_GetDepCtrlString
   GED_GetDnsclModeString

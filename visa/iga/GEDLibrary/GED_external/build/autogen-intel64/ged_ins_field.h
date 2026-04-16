@@ -1582,6 +1582,20 @@ typedef enum
      *
      * @par     Models:     XE3P.CRI
      */
+    GED_INS_FIELD_DstDataType2,
+
+    /*!
+     *
+     *
+     * @par     Models:     XE3P.CRI
+     */
+    GED_INS_FIELD_Src0DataType2,
+
+    /*!
+     *
+     *
+     * @par     Models:     XE3P.CRI
+     */
     GED_INS_FIELD_Src2RegNum8,
 
     /*!
@@ -1610,7 +1624,7 @@ typedef enum
      *
      * @par     Models:     XE3P.CRI
      */
-    GED_INS_FIELD_ConvSrcDataType,
+    GED_INS_FIELD_ConvSrcDataType2,
 
     /*!
      *
@@ -1701,7 +1715,7 @@ typedef enum
      *
      * @par     Models:     XE3P.CRI
      */
-    GED_INS_FIELD_SystolicDepthBlkScl,
+    GED_INS_FIELD_Src3Src4DataType,
 
     /*!
      *

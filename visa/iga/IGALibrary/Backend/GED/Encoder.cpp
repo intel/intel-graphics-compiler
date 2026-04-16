@@ -285,11 +285,8 @@ void Encoder::encodeFC(const Instruction &i) {
     auto sdepth = GetDpasSystolicDepth(sf);
     auto rc = GetDpasRepeatCount(sf);
     if (os.is(Op::BDPAS)) {
-      // in bdpas, repeat count is fixed to 8
-      // there is no instruction encoding bits for repeat count
-      // Note that bdpas's enum class for systolic depth is different from
-      // dpas'. Hence GED has different API name (GED_GetSystolicDepthBlkScl).
-      GED_ENCODE(SystolicDepthBlkScl, sdepth);
+      // in bdpas, repeat count is fixed to 8; no encoding bits for it.
+      ;
     } else {
     GED_ENCODE(SystolicDepth, sdepth);
     GED_ENCODE(RepeatCount, rc);
@@ -311,7 +308,10 @@ void Encoder::encodeFC(const Instruction &i) {
     GED_ENCODE(LfsrFC, fc);
   } else if (os.is(Op::DNSCL)) {
     auto fc = i.getDnsclFc();
-    GED_ENCODE(ConvSrcDataType, lowerConvSrcDataType(fc.convSrcTy));
+    // XE3P.CRI renamed the GED field to ConvSrcDataType2
+    if (platform() == Platform::XE3P_XPC) {
+      GED_ENCODE(ConvSrcDataType2, lowerConvSrcDataType2(fc.convSrcTy));
+    }
     GED_ENCODE(ConvDstDataType, lowerConvDstDataType(fc.convDstTy));
     GED_ENCODE(DnsclMode, lowerDnsclMode(fc.dnsclMode));
     GED_ENCODE(RoundingMode, lowerRoundingMode(fc.roundingMode));
@@ -557,6 +557,9 @@ void Encoder::encodeQuinarySource(const Instruction &inst) {
     GED_ENCODE(Src2Precision, lowerSubBytePrecision(srcType));
   } else if (S == SourceIndex::SRC3) {
     encodeSrcSubRegNum<S>(getSubRegOff());
+    if (platform() == Platform::XE3P_XPC) {
+      GED_ENCODE(Src3Src4DataType, lowerSrc3Src4DataType(srcType));
+    }
   } else if (S == SourceIndex::SRC4) {
     encodeSrcSubRegNum<S>(getSubRegOff());
   }

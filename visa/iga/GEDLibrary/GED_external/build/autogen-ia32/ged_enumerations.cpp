@@ -179,6 +179,16 @@ const char* ConvSrcDatatypeEnumeration[3] =
 }; // ConvSrcDatatypeEnumeration[]
 #endif // GED_CONV_SRC_DATATYPE_HIDDEN
 
+#ifndef GED_CONV_SRC_DATATYPE2_HIDDEN
+const char* ConvSrcDatatype2Enumeration[4] =
+{
+    "HF", // 0
+    "BF", // 1
+    "F32", // 2
+    NULL // 3
+}; // ConvSrcDatatype2Enumeration[]
+#endif // GED_CONV_SRC_DATATYPE2_HIDDEN
+
 #ifndef GED_DATA_TYPE_HIDDEN
 const char* DataTypeEnumeration[21] =
 {
@@ -205,6 +215,40 @@ const char* DataTypeEnumeration[21] =
     NULL // 20
 }; // DataTypeEnumeration[]
 #endif // GED_DATA_TYPE_HIDDEN
+
+#ifndef GED_DATA_TYPE2_HIDDEN
+const char* DataType2Enumeration[18] =
+{
+    "ub", // 0
+    "uw", // 1
+    "ud", // 2
+    "uq", // 3
+    "b", // 4
+    "w", // 5
+    "d", // 6
+    "q", // 7
+    "bf8", // 8
+    "hf", // 9
+    "f", // 10
+    "df", // 11
+    "hf8", // 12
+    "bf", // 13
+    "tf32", // 14
+    "uv", // 15
+    "ue5m3", // 16
+    NULL // 17
+}; // DataType2Enumeration[]
+#endif // GED_DATA_TYPE2_HIDDEN
+
+#ifndef GED_DATA_TYPE_SCALE_HIDDEN
+const char* DataTypeScaleEnumeration[4] =
+{
+    "UB", // 0
+    "UE5M3", // 1
+    "UE4M3", // 2
+    NULL // 3
+}; // DataTypeScaleEnumeration[]
+#endif // GED_DATA_TYPE_SCALE_HIDDEN
 
 #ifndef GED_DEBUG_CTRL_HIDDEN
 const char* DebugCtrlEnumeration[3] =

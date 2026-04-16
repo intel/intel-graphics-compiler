@@ -253,13 +253,15 @@ static const std::array<ConvDstDataType, 3>
 enum class ConvSrcDataType {
   INVALID = -1,
   HF,
-  BF
+  BF,
+  F32 // Same as F type
 };
 
-static const std::array<ConvSrcDataType, 2>
+static const std::array<ConvSrcDataType, 3>
   ALL_ConvSrcDataType {
     ConvSrcDataType::HF,
     ConvSrcDataType::BF,
+    ConvSrcDataType::F32,
   };
 
 enum class RoundingMode {

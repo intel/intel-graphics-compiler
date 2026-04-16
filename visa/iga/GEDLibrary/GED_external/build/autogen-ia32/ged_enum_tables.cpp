@@ -887,6 +887,16 @@ const GED_CONV_SRC_DATATYPE* ConvSrcDatatypeTable0[2] =
     &ConvSrcDatatypeVar0, // 0
     &ConvSrcDatatypeVar1 // 1
 }; // ConvSrcDatatypeTable0[]
+static GED_CONV_SRC_DATATYPE2 ConvSrcDatatype2Var0 = (GED_CONV_SRC_DATATYPE2)0;
+static GED_CONV_SRC_DATATYPE2 ConvSrcDatatype2Var1 = (GED_CONV_SRC_DATATYPE2)1;
+static GED_CONV_SRC_DATATYPE2 ConvSrcDatatype2Var2 = (GED_CONV_SRC_DATATYPE2)2;
+const GED_CONV_SRC_DATATYPE2* ConvSrcDatatype2Table0[4] =
+{
+    &ConvSrcDatatype2Var0, // 0
+    &ConvSrcDatatype2Var1, // 1
+    &ConvSrcDatatype2Var2, // 2
+    NULL // 3
+}; // ConvSrcDatatype2Table0[]
 static GED_DATA_TYPE DataTypeVar0 = (GED_DATA_TYPE)0;
 static GED_DATA_TYPE DataTypeVar1 = (GED_DATA_TYPE)1;
 static GED_DATA_TYPE DataTypeVar2 = (GED_DATA_TYPE)2;
@@ -1617,6 +1627,68 @@ const GED_DATA_TYPE* DataTypeTable47[4] =
     &DataTypeVar0, // 2
     &DataTypeVar6 // 3
 }; // DataTypeTable47[]
+static GED_DATA_TYPE2 DataType2Var0 = (GED_DATA_TYPE2)0;
+static GED_DATA_TYPE2 DataType2Var1 = (GED_DATA_TYPE2)1;
+static GED_DATA_TYPE2 DataType2Var2 = (GED_DATA_TYPE2)2;
+static GED_DATA_TYPE2 DataType2Var3 = (GED_DATA_TYPE2)3;
+static GED_DATA_TYPE2 DataType2Var4 = (GED_DATA_TYPE2)4;
+static GED_DATA_TYPE2 DataType2Var5 = (GED_DATA_TYPE2)5;
+static GED_DATA_TYPE2 DataType2Var6 = (GED_DATA_TYPE2)6;
+static GED_DATA_TYPE2 DataType2Var7 = (GED_DATA_TYPE2)7;
+static GED_DATA_TYPE2 DataType2Var8 = (GED_DATA_TYPE2)8;
+static GED_DATA_TYPE2 DataType2Var9 = (GED_DATA_TYPE2)9;
+static GED_DATA_TYPE2 DataType2Var10 = (GED_DATA_TYPE2)10;
+static GED_DATA_TYPE2 DataType2Var11 = (GED_DATA_TYPE2)11;
+static GED_DATA_TYPE2 DataType2Var12 = (GED_DATA_TYPE2)12;
+static GED_DATA_TYPE2 DataType2Var13 = (GED_DATA_TYPE2)13;
+static GED_DATA_TYPE2 DataType2Var14 = (GED_DATA_TYPE2)14;
+static GED_DATA_TYPE2 DataType2Var15 = (GED_DATA_TYPE2)15;
+static GED_DATA_TYPE2 DataType2Var16 = (GED_DATA_TYPE2)16;
+const GED_DATA_TYPE2* DataType2Table0[32] =
+{
+    &DataType2Var0, // 0
+    &DataType2Var1, // 1
+    &DataType2Var2, // 2
+    &DataType2Var3, // 3
+    &DataType2Var4, // 4
+    &DataType2Var5, // 5
+    &DataType2Var6, // 6
+    &DataType2Var7, // 7
+    &DataType2Var8, // 8
+    &DataType2Var9, // 9
+    &DataType2Var10, // 10
+    &DataType2Var11, // 11
+    &DataType2Var12, // 12
+    &DataType2Var13, // 13
+    &DataType2Var14, // 14
+    &DataType2Var15, // 15
+    &DataType2Var16, // 16
+    NULL, // 17
+    NULL, // 18
+    NULL, // 19
+    NULL, // 20
+    NULL, // 21
+    NULL, // 22
+    NULL, // 23
+    NULL, // 24
+    NULL, // 25
+    NULL, // 26
+    NULL, // 27
+    NULL, // 28
+    NULL, // 29
+    NULL, // 30
+    NULL // 31
+}; // DataType2Table0[]
+static GED_DATA_TYPE_SCALE DataTypeScaleVar0 = (GED_DATA_TYPE_SCALE)0;
+static GED_DATA_TYPE_SCALE DataTypeScaleVar1 = (GED_DATA_TYPE_SCALE)1;
+static GED_DATA_TYPE_SCALE DataTypeScaleVar2 = (GED_DATA_TYPE_SCALE)2;
+const GED_DATA_TYPE_SCALE* DataTypeScaleTable0[4] =
+{
+    NULL, // 0
+    &DataTypeScaleVar2, // 1
+    &DataTypeScaleVar1, // 2
+    &DataTypeScaleVar0 // 3
+}; // DataTypeScaleTable0[]
 static GED_DEBUG_CTRL DebugCtrlVar0 = (GED_DEBUG_CTRL)0;
 static GED_DEBUG_CTRL DebugCtrlVar1 = (GED_DEBUG_CTRL)1;
 const GED_DEBUG_CTRL* DebugCtrlTable0[2] =

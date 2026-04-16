@@ -143,6 +143,13 @@ typedef enum
 } GED_CONV_SRC_DATATYPE;
 typedef enum
 {
+    GED_CONV_SRC_DATATYPE2_HF,      ///< XE3P.CRI
+    GED_CONV_SRC_DATATYPE2_BF,      ///< XE3P.CRI
+    GED_CONV_SRC_DATATYPE2_F32,     ///< XE3P.CRI
+    GED_CONV_SRC_DATATYPE2_INVALID
+} GED_CONV_SRC_DATATYPE2;
+typedef enum
+{
     GED_DATA_TYPE_ud,      ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3, XE3P.CRI, 7, 7.5, 8, 8.1, 9
     GED_DATA_TYPE_d,       ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3, XE3P.CRI, 7, 7.5, 8, 8.1, 9
     GED_DATA_TYPE_uw,      ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3, XE3P.CRI, 7, 7.5, 8, 8.1, 9
@@ -165,6 +172,34 @@ typedef enum
     GED_DATA_TYPE_hf8,     ///< XE3, XE3P.CRI
     GED_DATA_TYPE_INVALID
 } GED_DATA_TYPE;
+typedef enum
+{
+    GED_DATA_TYPE2_ub,      ///< XE3P.CRI
+    GED_DATA_TYPE2_uw,      ///< XE3P.CRI
+    GED_DATA_TYPE2_ud,      ///< XE3P.CRI
+    GED_DATA_TYPE2_uq,      ///< XE3P.CRI
+    GED_DATA_TYPE2_b,       ///< XE3P.CRI
+    GED_DATA_TYPE2_w,       ///< XE3P.CRI
+    GED_DATA_TYPE2_d,       ///< XE3P.CRI
+    GED_DATA_TYPE2_q,       ///< XE3P.CRI
+    GED_DATA_TYPE2_bf8,     ///< XE3P.CRI
+    GED_DATA_TYPE2_hf,      ///< XE3P.CRI
+    GED_DATA_TYPE2_f,       ///< XE3P.CRI
+    GED_DATA_TYPE2_df,      ///< XE3P.CRI
+    GED_DATA_TYPE2_hf8,     ///< XE3P.CRI
+    GED_DATA_TYPE2_bf,      ///< XE3P.CRI
+    GED_DATA_TYPE2_tf32,    ///< XE3P.CRI
+    GED_DATA_TYPE2_uv,      ///< XE3P.CRI
+    GED_DATA_TYPE2_ue5m3,   ///< XE3P.CRI
+    GED_DATA_TYPE2_INVALID
+} GED_DATA_TYPE2;
+typedef enum
+{
+    GED_DATA_TYPE_SCALE_UB,      ///< XE3P.CRI
+    GED_DATA_TYPE_SCALE_UE5M3,   ///< XE3P.CRI
+    GED_DATA_TYPE_SCALE_UE4M3,   ///< XE3P.CRI
+    GED_DATA_TYPE_SCALE_INVALID
+} GED_DATA_TYPE_SCALE;
 typedef enum
 {
     GED_DEBUG_CTRL_Normal,     ///< 10, 11, TGL, XE.HP, XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3, XE3P.CRI, 7, 7.5, 8, 8.1, 9

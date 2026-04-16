@@ -309,6 +309,8 @@ std::string iga::ToSyntax(ConvSrcDataType op) {
     return "hf";
   case ConvSrcDataType::BF:
     return "bf";
+  case ConvSrcDataType::F32:
+    return "f";
   default:
     return fmtHex(static_cast<uint32_t>(op)) + "?";
   }
