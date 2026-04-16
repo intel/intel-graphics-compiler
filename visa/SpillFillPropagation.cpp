@@ -28,20 +28,8 @@ void SpillFillPropagation::clearTable() {
 // first (used when a spill overwrites the scratch content).
 void SpillFillPropagation::addEntry(unsigned scratchOffset, unsigned grfNum,
                                     bool clearOld) {
-  if (clearOld) {
-    auto offIt = offsetToGRFs.find(scratchOffset);
-    if (offIt != offsetToGRFs.end()) {
-      for (unsigned oldGRF : offIt->second) {
-        auto grfIt = grfToOffsets.find(oldGRF);
-        if (grfIt != grfToOffsets.end()) {
-          grfIt->second.erase(scratchOffset);
-          if (grfIt->second.empty())
-            grfToOffsets.erase(grfIt);
-        }
-      }
-      offsetToGRFs.erase(offIt);
-    }
-  }
+  if (clearOld)
+    invalidateOffset(scratchOffset);
   offsetToGRFs[scratchOffset].insert(grfNum);
   grfToOffsets[grfNum].insert(scratchOffset);
 }
@@ -59,6 +47,22 @@ void SpillFillPropagation::invalidateGRF(unsigned grfNum) {
       }
     }
     grfToOffsets.erase(it);
+  }
+}
+
+// Remove all physical GRFs mapping to given offset
+void vISA::SpillFillPropagation::invalidateOffset(unsigned offset) {
+  auto it = offsetToGRFs.find(offset);
+  if (it != offsetToGRFs.end()) {
+    for (unsigned grf : it->second) {
+      auto grfIt = grfToOffsets.find(grf);
+      if (grfIt != grfToOffsets.end()) {
+        grfIt->second.erase(offset);
+        if (grfIt->second.empty())
+          grfToOffsets.erase(grfIt);
+      }
+    }
+    offsetToGRFs.erase(it);
   }
 }
 
@@ -242,14 +246,25 @@ bool SpillFillPropagation::replaceFillWithMovsAfter(
   return true;
 }
 
+bool SpillFillPropagation::hasAssignedGRF(G4_Declare *topdcl) const {
+  if (!topdcl->useGRF())
+    return false;
+  auto *phyReg = topdcl->getRegVar()->getPhyReg();
+  if (!phyReg)
+    return false;
+  if (!phyReg->isGreg())
+    return false;
+  return true;
+}
+
 // Invalidate offset-to-GRF entries for any GRF written by inst's destination.
 void SpillFillPropagation::invalidateClobberedEntries(G4_INST *inst) {
   G4_DstRegRegion *dst = inst->getDst();
   if (!dst || dst->isNullReg())
     return;
 
-  if (dst->getBase() && dst->getBase()->isRegVar() &&
-      dst->getTopDcl() && (dst->getTopDcl()->getRegFile() & G4_GRF)) {
+  if (dst->getBase() && dst->getBase()->isRegVar() && dst->getTopDcl() &&
+      hasAssignedGRF(dst->getTopDcl())) {
     auto [startGRF, endGRF] = getGRFRange(dst);
     for (unsigned g = startGRF; g <= endGRF; ++g)
       invalidateGRF(g);
@@ -291,14 +306,19 @@ void SpillFillPropagation::processBBForward(G4_BB *bb) {
 
     if (inst->isSpillIntrinsic()) {
       auto *spill = inst->asSpillIntrinsic();
+      unsigned offset = spill->getOffset();
+      unsigned numRows = spill->getNumRows();
       // Only track WriteEnable, non-scatter spills.
       if (!spill->isScatterSpill() && inst->isWriteEnableInst()) {
-        unsigned offset = spill->getOffset();
-        unsigned numRows = spill->getNumRows();
         auto [payloadStartGRF, payloadEndGRF] =
             getGRFRange(spill->getPayload());
         for (unsigned i = 0; i < numRows; ++i)
           addEntry(offset + i, payloadStartGRF + i, /*clearOld=*/true);
+      } else {
+        // Scatter spill or non-WriteEnable: invalidate any GRF mapping to
+        // these offsets since we cannot propagate through them.
+        for (unsigned int i = offset; i != (offset + numRows); ++i)
+          invalidateOffset(i);
       }
       ++it;
       continue;
@@ -388,6 +408,35 @@ static void invalidatePendingFills(
   }
 }
 
+// Invalidate pending fills whose dst GRF range overlaps the dst of inst (WAW).
+void SpillFillPropagation::invalidateDst(
+    G4_INST *inst, std::unordered_map<unsigned, PendingFill> &pendingFills) {
+  if (pendingFills.empty())
+    return;
+  G4_DstRegRegion *dst = inst->getDst();
+  if (dst && !dst->isNullReg() && dst->getBase() &&
+      dst->getBase()->isRegVar() && dst->getTopDcl() &&
+      hasAssignedGRF(dst->getTopDcl())) {
+    auto [startGRF, endGRF] = getGRFRange(dst);
+    invalidatePendingFills(pendingFills, startGRF, endGRF);
+  }
+}
+
+// Invalidate pending fills whose dst GRF range overlaps any src of inst (WAR).
+void SpillFillPropagation::invalidateSrcs(
+    G4_INST *inst, std::unordered_map<unsigned, PendingFill> &pendingFills) {
+  if (pendingFills.empty())
+    return;
+  for (int i = 0, numSrc = inst->getNumSrc(); i < numSrc; ++i) {
+    G4_Operand *src = inst->getSrc(i);
+    if (src && src->isSrcRegRegion() && src->getTopDcl() &&
+        hasAssignedGRF(src->getTopDcl())) {
+      auto [startGRF, endGRF] = getGRFRange(src);
+      invalidatePendingFills(pendingFills, startGRF, endGRF);
+    }
+  }
+}
+
 // Backward (bottom-up) pass: collect pending fills and match them against
 // earlier spills/fills that produce the same scratch data, inserting movs
 // right after the source instruction.
@@ -472,19 +521,21 @@ void SpillFillPropagation::processBBBackward(G4_BB *bb) {
                                           fillNumRows, fill->getVISAId(),
                                           dstTopDcl, dstRegOff,
                                           fillDstStart, fillDstEnd};
+        invalidateSrcs(inst, pendingFills);
         continue;
       }
       // Invalidate pending fills with overlapping dst GRFs (WAW).
       invalidatePendingFills(pendingFills, fillDstStart, fillDstEnd);
+      invalidateSrcs(inst, pendingFills);
       continue;
     }
 
     // Spill: try to satisfy pending fills, then invalidate for RAW.
     if (inst->isSpillIntrinsic()) {
       auto *spill = inst->asSpillIntrinsic();
+      unsigned spillOffset = spill->getOffset();
+      unsigned spillNumRows = spill->getNumRows();
       if (!spill->isScatterSpill() && inst->isWriteEnableInst()) {
-        unsigned spillOffset = spill->getOffset();
-        unsigned spillNumRows = spill->getNumRows();
         auto [payloadStart, payloadEnd] = getGRFRange(spill->getPayload());
 
         // Try to match pending fills whose rows are all still present.
@@ -533,6 +584,18 @@ void SpillFillPropagation::processBBBackward(G4_BB *bb) {
         // Invalidate pending fills whose dst overlaps spill payload (RAW).
         invalidatePendingFills(pendingFills, payloadStart, payloadEnd);
       }
+      // Invalidate any pending fills for offsets that are stored by the spill.
+      // Remove all rows of each affected pending fill.
+      for (unsigned i = spillOffset; i != (spillOffset + spillNumRows); ++i) {
+        auto it = pendingFills.find(i);
+        if (it != pendingFills.end()) {
+          unsigned pfOffset = it->second.scratchOffset;
+          unsigned pfRows = it->second.numRows;
+          for (unsigned j = 0; j < pfRows; ++j)
+            pendingFills.erase(pfOffset + j);
+        }
+      }
+      invalidateSrcs(inst, pendingFills);
       continue;
     }
 
@@ -543,22 +606,8 @@ void SpillFillPropagation::processBBBackward(G4_BB *bb) {
     }
 
     // Generic instruction: invalidate for WAW (dst) and RAW (srcs).
-    G4_DstRegRegion *dst = inst->getDst();
-    if (dst && !dst->isNullReg() && dst->getBase() &&
-        dst->getBase()->isRegVar() && dst->getTopDcl() &&
-        (dst->getTopDcl()->getRegFile() & G4_GRF)) {
-      auto [startGRF, endGRF] = getGRFRange(dst);
-      invalidatePendingFills(pendingFills, startGRF, endGRF);
-    }
-
-    for (int i = 0, numSrc = inst->getNumSrc(); i < numSrc; ++i) {
-      G4_Operand *src = inst->getSrc(i);
-      if (src && src->isSrcRegRegion() && src->getTopDcl() &&
-          (src->getTopDcl()->getRegFile() & G4_GRF)) {
-        auto [startGRF, endGRF] = getGRFRange(src);
-        invalidatePendingFills(pendingFills, startGRF, endGRF);
-      }
-    }
+    invalidateDst(inst, pendingFills);
+    invalidateSrcs(inst, pendingFills);
   }
 }
 

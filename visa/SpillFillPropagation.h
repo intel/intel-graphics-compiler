@@ -54,17 +54,25 @@ class SpillFillPropagation {
   void addEntry(unsigned scratchOffset, unsigned grfNum,
                 bool clearOld = false);
   void invalidateGRF(unsigned grfNum);
+  void invalidateOffset(unsigned offset);
   std::pair<unsigned, unsigned> getGRFRange(G4_Operand *opnd);
   bool canReplaceFill(G4_FillIntrinsic *fill, std::vector<unsigned> &srcGRFs);
   bool replaceFillWithMovs(G4_BB *bb, INST_LIST_ITER &it,
                            G4_FillIntrinsic *fill,
                            const std::vector<unsigned> &srcGRFs);
   void invalidateClobberedEntries(G4_INST *inst);
+  void invalidateDst(
+      G4_INST *inst,
+      std::unordered_map<unsigned, PendingFill> &pendingFills);
+  void invalidateSrcs(
+      G4_INST *inst,
+      std::unordered_map<unsigned, PendingFill> &pendingFills);
   void processBBForward(G4_BB *bb);
   void processBBBackward(G4_BB *bb);
   bool replaceFillWithMovsAfter(G4_BB *bb, INST_LIST_RITER &rit,
                                 const PendingFill &pf,
                                 const std::vector<unsigned> &srcGRFs);
+  bool hasAssignedGRF(G4_Declare *topdcl) const;
 
 public:
   SpillFillPropagation(G4_Kernel &k, IR_Builder &b, GlobalRA &g);
