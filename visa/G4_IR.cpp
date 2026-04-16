@@ -196,7 +196,7 @@ void G4_INST::updatePredicateCtrl() {
   uint16_t numElems = predicate->getTopDcl()->getNumberFlagElements();
   G4_ExecSize groupSize(numElems - maskOff);
   vISA_ASSERT((groupSize > 0) && ((groupSize & (groupSize - 1)) == 0),
-      "group size should be power of 2");
+              "group size should be power of 2");
 
   if (ctrl >= PRED_ANY2H && ctrl <= PRED_ANY32H) {
     ctrl = builder.vISAPredicateToG4Predicate(PRED_CTRL_ANY, groupSize);
@@ -229,9 +229,8 @@ G4_INST::G4_INST(const IR_Builder &irb, G4_Predicate *prd, G4_opcode o,
                  G4_InstOpts opt)
     : op(o), dst(d), predicate(prd), mod(m), option(opt),
       useInstList(irb.getAllocator()), defInstList(irb.getAllocator()),
-       dead(false), evenlySplitInst(false),
-      doPostRA(false), canBeAcc(false), doNotDelete(false), execSize(size),
-      builder(irb) {
+      dead(false), evenlySplitInst(false), doPostRA(false), canBeAcc(false),
+      doNotDelete(false), execSize(size), builder(irb) {
   // FIXME: Currently srcs would be initialized with a list that has max
   // allowed size in ctor. Probably should initialize srcs with the actual
   // required srcs of the inst instead.
@@ -246,9 +245,8 @@ G4_INST::G4_INST(const IR_Builder &irb, G4_Predicate *prd, G4_opcode o,
                  G4_Operand *s4, G4_InstOpts opt)
     : op(o), dst(d), predicate(prd), mod(m), option(opt),
       useInstList(irb.getAllocator()), defInstList(irb.getAllocator()),
-      dead(false), evenlySplitInst(false),
-      doPostRA(false), canBeAcc(false), doNotDelete(false), execSize(size),
-      builder(irb) {
+      dead(false), evenlySplitInst(false), doPostRA(false), canBeAcc(false),
+      doNotDelete(false), execSize(size), builder(irb) {
   vISA_ASSERT(isDpas(), "Currently only dpas variants support 5 srcs");
   srcs = {s0, s1, s2, s3, s4};
   sat = s ? true : false;
@@ -262,9 +260,8 @@ G4_INST::G4_INST(const IR_Builder &irb, G4_Predicate *prd, G4_opcode o,
                  G4_InstOpts opt)
     : op(o), dst(d), predicate(prd), mod(m), option(opt),
       useInstList(irb.getAllocator()), defInstList(irb.getAllocator()),
-      dead(false), evenlySplitInst(false),
-      doPostRA(false), canBeAcc(false), doNotDelete(false), execSize(size),
-      builder(irb) {
+      dead(false), evenlySplitInst(false), doPostRA(false), canBeAcc(false),
+      doNotDelete(false), execSize(size), builder(irb) {
   srcs = {s0, s1, s2, s3, s4, s5, s6, s7};
   sat = s ? true : false;
   initOperands();
@@ -301,11 +298,11 @@ G4_InstSend::G4_InstSend(const IR_Builder &builder, G4_Predicate *prd,
 }
 
 G4_InstSend::G4_InstSend(const IR_Builder &builder, G4_Predicate *prd,
-                        G4_opcode o, G4_ExecSize execSize,
-                        G4_DstRegRegion *dst,
-                        G4_SrcRegRegion *src0, G4_SrcRegRegion *src1,
-                        G4_SrcRegRegion *src2ind0, G4_SrcRegRegion *src3ind1,
-                        G4_InstOpts opt, G4_SendgDesc *md)
+                         G4_opcode o, G4_ExecSize execSize,
+                         G4_DstRegRegion *dst, G4_SrcRegRegion *src0,
+                         G4_SrcRegRegion *src1, G4_SrcRegRegion *src2ind0,
+                         G4_SrcRegRegion *src3ind1, G4_InstOpts opt,
+                         G4_SendgDesc *md)
     : G4_INST(builder, prd, o, nullptr, g4::NOSAT, execSize, dst, src0, src1,
               src2ind0, opt),
       msgDesc(md) {
@@ -374,9 +371,8 @@ uint8_t G4_INST::getExecTypeSizeXe3p() const {
   uint8_t exChannelWidth = (uint8_t)TypeSize(getExecType());
   if (getDst()->getTypeSize() > exChannelWidth)
     exChannelWidth = (uint8_t)getDst()->getTypeSize();
-  if (isMath() &&
-      !(asMathInst()->getMathCtrl() == MATH_INVM ||
-        asMathInst()->getMathCtrl() == MATH_RSQRTM))
+  if (isMath() && !(asMathInst()->getMathCtrl() == MATH_INVM ||
+                    asMathInst()->getMathCtrl() == MATH_RSQRTM))
     exChannelWidth = 4;
   return exChannelWidth;
 }
@@ -1038,7 +1034,7 @@ bool G4_INST::isLongPipeInstructionXe() const {
   return false;
 }
 
-bool G4_INST::isFloatInIntegerPipe() const{
+bool G4_INST::isFloatInIntegerPipe() const {
   if (opcode() != G4_mov && opcode() != G4_srnd && opcode() != G4_fcvt) {
     return false;
   }
@@ -1052,7 +1048,7 @@ bool G4_INST::isFloatInIntegerPipe() const{
     }
     if (dst->getType() == Type_HF) {
       if (src->getType() == Type_UB || // Type_UB: BF8
-          src->getType() == Type_B){ // Type_B: HF8
+          src->getType() == Type_B) {  // Type_B: HF8
         return true;
       }
     }
@@ -1088,7 +1084,7 @@ bool G4_INST::isFloatInIntegerPipe() const{
     }
   }
 
-  if (opcode() == G4_srnd) { //srnd only support hf->bf8 and f->hf
+  if (opcode() == G4_srnd) { // srnd only support hf->bf8 and f->hf
     return true;
   }
 
@@ -2231,6 +2227,13 @@ bool G4_INST::canPropagateTo(G4_INST *useInst, Gen4_Operand_Number opndNum,
     }
   }
 
+  // GRF sources with :v/:uv type are only valid for mov with SIMD8.
+  // Do not propagate them into other instructions or non-SIMD8 mov.
+  if (src->isSrcRegRegion() && IS_VINTTYPE(srcType) &&
+      (useInst->opcode() != G4_mov || useInst->getExecSize() != g4::SIMD8)) {
+    return false;
+  }
+
   // FIXME: to add specific checks for other instructions.
   G4_opcode useInst_op = useInst->opcode();
 
@@ -2957,8 +2960,8 @@ bool G4_INST::isWARdep(G4_INST *inst) {
 
   auto implAccDst = getImplAccDst();
   if (implAccDst) {
-    if (implicitSrc0 && implicitSrc0->compareOperand(
-                            implAccDst, getBuilder()) != Rel_disjoint)
+    if (implicitSrc0 &&
+        implicitSrc0->compareOperand(implAccDst, getBuilder()) != Rel_disjoint)
       return true;
 
     if (std::any_of(inst->src_begin(), inst->src_end(), [&](G4_Operand *src) {
@@ -3052,7 +3055,8 @@ bool G4_INST::isRAWdep(G4_INST *inst) {
 
     if (std::any_of(src_begin(), src_end(), [&](G4_Operand *src) {
           return src && src->isAccReg() &&
-              src->compareOperand(implicitDst0, getBuilder()) != Rel_disjoint;
+                 src->compareOperand(implicitDst0, getBuilder()) !=
+                     Rel_disjoint;
         }))
       return true;
   }
@@ -3230,8 +3234,8 @@ bool G4_INST::isPartialWriteForSpill(bool inSIMDCF,
       return true;
     }
 
-    //For DPAS, always Nomask
-    //For send, !isWriteEnableInst in if covers the case with Nomask.
+    // For DPAS, always Nomask
+    // For send, !isWriteEnableInst in if covers the case with Nomask.
     if (isSend() || isDpas()) {
       return true;
     }
@@ -3270,9 +3274,7 @@ bool G4_INST::isAccDstInst() const {
   return false;
 }
 
-bool G4_INST::isAddrAdd() const {
-  return op == G4_add && srcs[1]->isAddrExp();
-}
+bool G4_INST::isAddrAdd() const { return op == G4_add && srcs[1]->isAddrExp(); }
 
 bool G4_INST::isMovAddr() const {
   if (srcs[0] != NULL)
@@ -3355,8 +3357,7 @@ static void emitPredWrEn(std::ostream &output, G4_INST &inst) {
 
 static void emitExecSize(std::ostream &output, const G4_INST &inst) {
   auto execSize = static_cast<int>(inst.getExecSize());
-  if (inst.opcode() != G4_nop &&
-      inst.opcode() != G4_thryld &&
+  if (inst.opcode() != G4_nop && inst.opcode() != G4_thryld &&
       inst.opcode() != G4_wait) {
     output << '(';
     if (execSize == UNDEFINED_EXEC_SIZE) {
@@ -3372,29 +3373,48 @@ static void emitExecSize(std::ostream &output, const G4_INST &inst) {
   }
 }
 
-static const char *SFIDToString(vISA::SFID sfid)
-{
+static const char *SFIDToString(vISA::SFID sfid) {
   switch (sfid) {
-  case SFID::NULL_SFID: return ".null";
-  case SFID::SAMPLER:   return ".smpl";
-  case SFID::GATEWAY:   return ".gtwy";
-  case SFID::DP_DC2:    return ".dc2";
-  case SFID::DP_RC:     return ".rc";
-  case SFID::URB:       return ".urb";
-  case SFID::SPAWNER:   return ".ts";
-  case SFID::VME:       return ".vme";
-  case SFID::DP_CC:     return ".dcro";
-  case SFID::DP_DC0:    return ".dc0";
-  case SFID::DP_PI:     return ".pi";
-  case SFID::DP_DC1:    return ".dc1";
-  case SFID::CRE:       return ".cre";
-  case SFID::BTD:       return ".btd";
-  case SFID::RTHW:      return ".rta";
-  case SFID::TGM:       return ".tgm";
-  case SFID::SLM:       return ".slm";
-  case SFID::UGM:       return ".ugm";
-  case SFID::UGML:      return ".ugml";
-  default: break;
+  case SFID::NULL_SFID:
+    return ".null";
+  case SFID::SAMPLER:
+    return ".smpl";
+  case SFID::GATEWAY:
+    return ".gtwy";
+  case SFID::DP_DC2:
+    return ".dc2";
+  case SFID::DP_RC:
+    return ".rc";
+  case SFID::URB:
+    return ".urb";
+  case SFID::SPAWNER:
+    return ".ts";
+  case SFID::VME:
+    return ".vme";
+  case SFID::DP_CC:
+    return ".dcro";
+  case SFID::DP_DC0:
+    return ".dc0";
+  case SFID::DP_PI:
+    return ".pi";
+  case SFID::DP_DC1:
+    return ".dc1";
+  case SFID::CRE:
+    return ".cre";
+  case SFID::BTD:
+    return ".btd";
+  case SFID::RTHW:
+    return ".rta";
+  case SFID::TGM:
+    return ".tgm";
+  case SFID::SLM:
+    return ".slm";
+  case SFID::UGM:
+    return ".ugm";
+  case SFID::UGML:
+    return ".ugml";
+  default:
+    break;
   }
   return ".???";
 }
@@ -3622,7 +3642,7 @@ void G4_INST::emit_options(std::ostream &output) const {
   case SB_SET:
     break;
   case SBID_CNTR:
-    tks1 =".INC";
+    tks1 = ".INC";
     break;
   case NoACCSBSet:
     tks1 = "NoACC";
@@ -3646,8 +3666,7 @@ void G4_INST::emit_options(std::ostream &output) const {
   if (tkType != TOKEN_NONE) {
     if (tkType != NoACCSBSet) {
       tks << '$' << (int)id << tks1;
-    }
-    else if (tks1.size()) {
+    } else if (tks1.size()) {
       tks << tks1;
     }
     emitOption(tks.str());
@@ -3919,7 +3938,6 @@ bool G4_InstSend::isDirectSplittableSend() const {
   return false;
 }
 
-
 //
 // emit send instruction with symbolic/physical register operand depending on
 // the operand check
@@ -3936,16 +3954,15 @@ void G4_InstSend::emit_send(std::ostream &output) {
     dst->asDstRegRegion()->emitRegVarOff(output);
   }
 
-  auto emitBareSrc =
-    [&](G4_Operand* src) {
-      if (src->isSrcRegRegion()) {
-        // only output reg var & reg off; don't output region desc and type
-        src->asSrcRegRegion()->emitRegVarOff(output);
-      } else { // BAD IR; let's see it
-        src->emit(output);
-        output << "?";
-      }
-    };
+  auto emitBareSrc = [&](G4_Operand *src) {
+    if (src->isSrcRegRegion()) {
+      // only output reg var & reg off; don't output region desc and type
+      src->asSrcRegRegion()->emitRegVarOff(output);
+    } else { // BAD IR; let's see it
+      src->emit(output);
+      output << "?";
+    }
+  };
 
   int nSrcs = getNumSrcPayloads();
   if (isSendg())
@@ -3980,7 +3997,7 @@ void G4_InstSend::emit_send(std::ostream &output) {
         output << ":" << TypeSymbol(ind->getType());
       } else if (ind->isImm()) {
         ind->emit(output);
-      } else {  // BAD IR; let's see it
+      } else { // BAD IR; let's see it
         ind->emit(output);
         output << "?";
         output << ":" << TypeSymbol(ind->getType());
@@ -4288,8 +4305,7 @@ uint8_t G4_SrcRegRegion::getMaxExecSize(const IR_Builder &builder, int pos,
   // conservative.
   // Here we assume that no cross width if row size is larger than width
   // mul (16) V112(0,0)<1>:f V111(0,0)<16;16,1>:f r1.0<1;4,0>:f
-  if (!alignToRow && desc->vertStride != 0 &&
-      desc->horzStride != 0) {
+  if (!alignToRow && desc->vertStride != 0 && desc->horzStride != 0) {
     wd = vs =
         (uint16_t)roundDownPow2((pos / desc->width + 1) * desc->width - pos);
 
@@ -4378,11 +4394,10 @@ uint8_t G4_SrcRegRegion::getMaxExecSize(const IR_Builder &builder, int pos,
         // if number of element in first GRF is not power of 2, or
         // subregister offset of two GRFs are different and not contiguous(too
         // conservative?)
-        if (pow2Val != maxSize ||
-            (!(alignToRow && maxSize <= desc->width) &&
-             newLB % builder.numEltPerGRF<Type_UB>() !=
-                 (getLeftBound() + currPos) %
-                     builder.numEltPerGRF<Type_UB>())) {
+        if (pow2Val != maxSize || (!(alignToRow && maxSize <= desc->width) &&
+                                   newLB % builder.numEltPerGRF<Type_UB>() !=
+                                       (getLeftBound() + currPos) %
+                                           builder.numEltPerGRF<Type_UB>())) {
           maxSize = pow2Val;
           if (wd == 0) {
             wd = pow2Val;
@@ -5231,8 +5246,7 @@ static bool regionHasFixedSubreg(const IR_Builder &builder, G4_Operand *opnd,
     return true;
   }
 
-  if (!base->isRegVar() ||
-      !base->asRegVar()->getDeclare()->useGRF()) {
+  if (!base->isRegVar() || !base->asRegVar()->getDeclare()->useGRF()) {
     return false;
   }
 
@@ -5588,15 +5602,14 @@ void G4_Declare::emit(std::ostream &output) const {
     const char *maybeForced = isForceSpilled() ? "force " : "";
     if (spillDCL) {
       // flag/addr spill
-      output << " (" << maybeForced <<
-          "spilled -> " << spillDCL->getName() << ")";
+      output << " (" << maybeForced << "spilled -> " << spillDCL->getName()
+             << ")";
     } else {
       // GRF spill
       auto GRFOffset = getRegVar()->getDisp() / GRFByteSize;
       if (!AliasDCL) {
-        output << " (" << maybeForced <<
-            "spilled -> Scratch[" << GRFOffset << "x"
-               << (int)GRFByteSize << "])";
+        output << " (" << maybeForced << "spilled -> Scratch[" << GRFOffset
+               << "x" << (int)GRFByteSize << "])";
       } else {
         output << " (" << maybeForced << "spilled)";
       }
@@ -6079,19 +6092,18 @@ void G4_Reloc_Imm::emit(std::ostream &output) {
       if (std::isprint(*sym))
         output << *sym;
       else
-        output <<
-          "\\x" <<
-          "0123456789ABCDEF"[(*sym >> 4) & 0xF] <<
-          "0123456789ABCDEF"[(*sym >> 0) & 0xF];
+        output << "\\x"
+               << "0123456789ABCDEF"[(*sym >> 4) & 0xF]
+               << "0123456789ABCDEF"[(*sym >> 0) & 0xF];
     }
   }
   output << "\"";
   if (getImm() != 0) {
-    output << "," <<
-      (TypeSize(type) == 8 ? fmtHex(getImm()) : fmtHex((uint32_t)getImm()));
+    output << ","
+           << (TypeSize(type) == 8 ? fmtHex(getImm())
+                                   : fmtHex((uint32_t)getImm()));
   }
   output << ")";
-
 
   if (Type_UNDEF != type) {
     output << ':' << TypeSymbol(type);
@@ -6555,7 +6567,8 @@ bool G4_SrcRegRegion::isFlatRegRegion(
     uint8_t exChannelWidth,
     std::function<bool(uint8_t dstStrideInBytes, uint8_t dstSubRegOffInBytes,
                        uint8_t srcStrideInBytes, uint8_t srcSubRegOffInBytes,
-                       uint8_t exChannelWidth)> checkFlatRegRegionFunc) {
+                       uint8_t exChannelWidth)>
+        checkFlatRegRegionFunc) {
   auto dst = inst->getDst();
   uint32_t dstSubRegOff = 0, srcSubRegOff = 0;
   bool dstHasFixedSubregOffset = false;
@@ -6578,8 +6591,8 @@ bool G4_SrcRegRegion::isFlatRegRegion(
     getRegion()->isSingleStride(inst->getExecSize(), srcStride);
     uint8_t srcStrideInBytes = (uint8_t)(srcStride * getTypeSize());
     return checkFlatRegRegionFunc(dstStrideInBytes, (uint8_t)dstSubRegOff,
-                                    srcStrideInBytes,
-                                    (uint8_t)srcSubRegOff, exChannelWidth);
+                                  srcStrideInBytes, (uint8_t)srcSubRegOff,
+                                  exChannelWidth);
   }
   return false;
 }
@@ -6660,7 +6673,7 @@ void G4_INST::computeLeftBoundForImplAcc(G4_Operand *opnd) {
 
     if ((IS_WTYPE(extype) || IS_DTYPE(extype)) &&
         !(builder.hasSimplifiedRegions() ||
-        builder.getOption(vISA_GAReArchBugFix))) {
+          builder.getOption(vISA_GAReArchBugFix))) {
       // This condition is a result of HW Conformity requirement
       // that for exec type = D/DW, only acc0 is used even when
       // qtr control is set to Q2/H2
@@ -6832,7 +6845,7 @@ void G4_INST::computeRightBound(G4_Operand *opnd) {
           // it's always aligned to the destination register regardless off
           // mask offset.
           !(builder.hasSimplifiedRegions() ||
-          builder.getOption(vISA_GAReArchBugFix)) &&
+            builder.getOption(vISA_GAReArchBugFix)) &&
           ((opnd == getImplAccSrc()) || (opnd == getImplAccDst()))) {
         // for ARF (flag, acc) we have to adjust its bound based on the emask
         // We have to reset LB since the original instruction may have a non
@@ -6966,8 +6979,7 @@ void G4_Operand::dump() const {
 }
 
 bool G4_Operand::isPhysicallyAllocatedRegVar(bool includeAccRegSel) const {
-  if (includeAccRegSel &&
-      accRegSel != G4_AccRegSel::ACC_UNDEFINED &&
+  if (includeAccRegSel && accRegSel != G4_AccRegSel::ACC_UNDEFINED &&
       accRegSel != G4_AccRegSel::NOACC)
     return true;
   if (base) {
@@ -7280,7 +7292,8 @@ void G4_SrcRegRegion::rewriteContiguousRegion(IR_Builder &builder,
   }
 
   // Find a width that does not cross GRF from <8;8,1>, <4;4,1>, to <2;2,1>
-  auto getWidth = [this, endOffset, subRegOffset, &builder](unsigned offset, unsigned eltSize) -> unsigned {
+  auto getWidth = [this, endOffset, subRegOffset,
+                   &builder](unsigned offset, unsigned eltSize) -> unsigned {
     unsigned Widths[] = {8, 4, 2};
     for (auto w : Widths) {
       if (w > inst->getExecSize())
@@ -7492,7 +7505,7 @@ bool G4_INST::isSupportedAccDstType() const {
 bool G4_INST::canDstBeAcc() const {
 
   auto cross2GRFDst = [this](G4_DstRegRegion *dst) {
-    if (dst->isNullReg() || dst->isIndirect()) { //No acc
+    if (dst->isNullReg() || dst->isIndirect()) { // No acc
       return true;
     }
     if (dst->getSubRegOff() * dst->getTypeSize() + dst->getLinearizedEnd() -
@@ -7671,7 +7684,8 @@ bool G4_INST::canDstBeAcc() const {
   case G4_fcvt:
     return builder.removedAccRestrictionsAsGRF();
   case G4_math:
-    return builder.removedAccRestrictionsAsGRF() && !builder.hasACCRestrictionsForCdyn();
+    return builder.removedAccRestrictionsAsGRF() &&
+           !builder.hasACCRestrictionsForCdyn();
   default:
     return false;
   }
@@ -7701,7 +7715,8 @@ bool G4_INST::canSrcBeAccBeforeHWConform(Gen4_Operand_Number opndNum) const {
   }
 
   G4_SrcRegRegion *src = getSrc(srcId)->asSrcRegRegion();
-  if (!builder.removedAccRestrictionsAsGRF() && srcId == 1 && src->hasModifier()) {
+  if (!builder.removedAccRestrictionsAsGRF() && srcId == 1 &&
+      src->hasModifier()) {
     // some platforms allow float src1 acc modifiers,
     // while some don't allow src1 acc modifier at all.
     if (!IS_TYPE_FLOAT_ALL(src->getType()) ||
@@ -7810,8 +7825,8 @@ bool G4_INST::canSrcBeAccBeforeHWConform(Gen4_Operand_Number opndNum) const {
       if (dst->getType() == Type_BF || dst->getType() == Type_HF ||
           IS_BTYPE(dst->getType())) {
         if (src->getType() != dst->getType() &&
-          dst->getTypeSize() < src->getTypeSize() &&
-          dst->getHorzStride() == 1) {
+            dst->getTypeSize() < src->getTypeSize() &&
+            dst->getHorzStride() == 1) {
           return false;
         }
       }
@@ -7900,16 +7915,16 @@ bool G4_INST::canSrcBeAccAfterHWConform(Gen4_Operand_Number opndNum) const {
       } else {
         // If the destination offset is not GRF aligned, such as has sub
         // register offset, the src cannot be replaced with ACC
-        if (builder.enableACCBeforRA() &&
-            !builder.enablePreSchedACC() && builder.supports4GRFAlign()) {
+        if (builder.enableACCBeforRA() && !builder.enablePreSchedACC() &&
+            builder.supports4GRFAlign()) {
           // Before RA, align may affect the RA result, so don't do
           // alignment, just check if it's aligned
           if (!builder.isGRFDstAligned(dst,
-                                    getBuilder().numEltPerGRF<Type_UB>())) {
+                                       getBuilder().numEltPerGRF<Type_UB>())) {
             return false;
           }
-        } else if (!builder.tryToAlignOperand(dst,
-                                       getBuilder().numEltPerGRF<Type_UB>())) {
+        } else if (!builder.tryToAlignOperand(
+                       dst, getBuilder().numEltPerGRF<Type_UB>())) {
           return false;
         }
       }
@@ -8015,8 +8030,7 @@ bool G4_INST::canInstBeAcc(GlobalOpndHashTable *ght) {
 
     int srcId = useInst->getSrcNum(opndNum);
     G4_Operand *src = useInst->getSrc(srcId);
-    if ((dst->getType() != src->getType()) ||
-        ght->isOpndGlobal(src) ||
+    if ((dst->getType() != src->getType()) || ght->isOpndGlobal(src) ||
         dst->compareOperand(src, getBuilder()) != Rel_eq) {
       return false;
     }
@@ -8093,10 +8107,9 @@ G4_INST *G4_InstSend::cloneInst(const IR_Builder *b) {
     auto ind0 = nonConstBuilder->duplicateOperand(getSrc(2))->asSrcRegRegion();
     auto ind1 = nonConstBuilder->duplicateOperand(getSrc(3))->asSrcRegRegion();
     newInst = nonConstBuilder->createSendgInst(
-      prd, op, execSize,
-      dst, src0, src1, ind0, ind1, (G4_SendgDesc *)msgDesc, getOption(), false);
-  } else
-  if (isSplitSend()) {
+        prd, op, execSize, dst, src0, src1, ind0, ind1, (G4_SendgDesc *)msgDesc,
+        getOption(), false);
+  } else if (isSplitSend()) {
     // desc -> src2, extDesc -> src3
     auto src1 = nonConstBuilder->duplicateOperand(getSrc(1))->asSrcRegRegion();
     auto desc = nonConstBuilder->duplicateOperand(getSrc(2));
@@ -8136,21 +8149,22 @@ G4_INST *G4_InstIntrinsic::cloneInst(const IR_Builder *b) {
   auto src5 = nonConstBuilder->duplicateOperand(getSrc(5));
   auto src6 = nonConstBuilder->duplicateOperand(getSrc(6));
   auto src7 = nonConstBuilder->duplicateOperand(getSrc(7));
-  return nonConstBuilder->createIntrinsicAddrMovInst(getIntrinsicId(), dst,
-      src0, src1, src2, src3, src4, src5, src6, src7, false);
+  return nonConstBuilder->createIntrinsicAddrMovInst(
+      getIntrinsicId(), dst, src0, src1, src2, src3, src4, src5, src6, src7,
+      false);
 }
 
 unsigned G4_InstIntrinsic::getDstByteSize() const {
   vASSERT(getNumDst() == 1 && getDst());
   switch (intrinsicId) {
-    case Intrinsic::NamedBarrierWA:
-    case Intrinsic::BarrierWA:
-    case Intrinsic::IEEEExceptionTrap:
-      vASSERT(getDst()->getTopDcl());
-      return getDst()->getTopDcl()->getByteSize();
-    default:
-      vISA_ASSERT(false, "Unhandled intrinsic type");
-      return 0;
+  case Intrinsic::NamedBarrierWA:
+  case Intrinsic::BarrierWA:
+  case Intrinsic::IEEEExceptionTrap:
+    vASSERT(getDst()->getTopDcl());
+    return getDst()->getTopDcl()->getByteSize();
+  default:
+    vISA_ASSERT(false, "Unhandled intrinsic type");
+    return 0;
   }
 }
 
@@ -8171,8 +8185,7 @@ void G4_InstIntrinsic::computeRightBound(G4_Operand *opnd) {
   case Intrinsic::PseudoAddrMovW:
     if (opnd != getDst()) { // Source operand only, dst operand will be handled
                             // as normal dst
-      opnd->setLeftBound(opnd->left_bound +
-                         opnd->asAddrExp()->getOffset());
+      opnd->setLeftBound(opnd->left_bound + opnd->asAddrExp()->getOffset());
       opnd->setRightBound(opnd->left_bound + builder.numEltPerGRF<Type_UB>() -
                           1);
       opnd->setBitVecFromSize(builder.numEltPerGRF<Type_UB>(), getBuilder());
@@ -8459,9 +8472,8 @@ void G4_InstDpas::computeRightBound(G4_Operand *opnd) {
       }
       computeDpasOperandBound(opnd, opnd->left_bound,
                               opnd->left_bound + bytes - 1);
-    }
-    else if (opcode() == G4_bdpas && opnd && !opnd->isNullReg() &&
-        (opnd == srcs[3] || opnd == srcs[4])) {
+    } else if (opcode() == G4_bdpas && opnd && !opnd->isNullReg() &&
+               (opnd == srcs[3] || opnd == srcs[4])) {
       unsigned K = D * getOpsPerChan();
       unsigned bytes = 0;
       if (K <= 32) {
@@ -8517,8 +8529,7 @@ bool G4_InstDpas::checksFwdTypes(const G4_InstDpas &next) const {
   // bdpas: FWD sequences will support BF16 and F as forwarding datatypes.
   // dpas: src0, dst types are fp32 or int32 (type size is 32b), or bf16
   if (builder.allowsMixedDstAndSrc0TypesInMacro() &&
-      isDstAndSrc0MixOfBF16AndFP32() &&
-      next.isDstAndSrc0MixOfBF16AndFP32())
+      isDstAndSrc0MixOfBF16AndFP32() && next.isDstAndSrc0MixOfBF16AndFP32())
     return getDst()->getType() == next.getSrc(0)->getType();
 
   // FIXME: Remove this handling for bdpas after we can allow mixed dst and src0
@@ -8543,8 +8554,7 @@ bool G4_InstDpas::checksMacroTypes(const G4_InstDpas &next) const {
     // Except for src0 and dst which can accept having a mix of bf16 and fp32
     // data types.
     if (!builder.allowsMixedDstAndSrc0TypesInMacro() ||
-        !isDstAndSrc0MixOfBF16AndFP32() ||
-        !next.isDstAndSrc0MixOfBF16AndFP32())
+        !isDstAndSrc0MixOfBF16AndFP32() || !next.isDstAndSrc0MixOfBF16AndFP32())
       return false;
   }
 
