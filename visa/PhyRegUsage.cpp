@@ -215,8 +215,8 @@ bool PhyRegUsage::findContiguousGRF(bool availRegs[], const BitSet *forbidden,
       findContiguousNoWrapGRF(availRegs, forbidden, occupiedBundles, align,
                               numRegNeeded, startPosRunOne, endPosRunOne, idx);
 
-  if (startPosRunOne > 0 && !found &&
-      (!isEOTSrc || !builder.hasEOTGRFBinding()) && !forceCalleeSaveOnly) {
+  if (startPosRunOne > 0 && found == false && !isEOTSrc &&
+      !forceCalleeSaveOnly) {
     unsigned startPosRunTwo = 0;
     unsigned endPosRunTwo = startPos + numRegNeeded;
     endPosRunTwo = std::min(endPosRunTwo, maxRegs);
@@ -723,10 +723,12 @@ PhyRegUsage::findGRFSubRegFromBanks(G4_Declare *dcl, const BitSet *forbidden,
 PhyRegUsage::PhyReg
 PhyRegUsage::findGRFSubReg(const BitSet *forbidden, bool calleeSaveBias,
                            bool callerSaveBias, BankAlign align,
-                           G4_SubReg_Align subAlign, unsigned nwords,
-                           bool isUnconstrained) {
+                           G4_SubReg_Align subAlign, unsigned nwords) {
   int startReg = 0, endReg = totalGRFNum;
   PhyReg phyReg = {-1, -1};
+  if (builder.getOption(vISA_GCRRInFF)) {
+    startReg = AS.startGRFReg;
+  }
 
   if (calleeSaveBias) {
     startReg = builder.kernel.stackCall.calleeSaveStart();
@@ -735,9 +737,8 @@ PhyRegUsage::findGRFSubReg(const BitSet *forbidden, bool calleeSaveBias,
   }
   int step = align == BankAlign::Even ? 2 : 1;
 
-  auto findSubGRFAlloc = [step, forbidden, this, subAlign, nwords,
-                          isUnconstrained](unsigned int startReg,
-                                           unsigned int endReg) {
+  auto findSubGRFAlloc = [step, forbidden, this, subAlign,
+                          nwords](unsigned int startReg, unsigned int endReg) {
     PhyReg phyReg = {-1, -1};
     for (auto idx = startReg; idx < endReg; idx += step) {
       // forbidden GRF is not an allocation candidate
@@ -777,8 +778,8 @@ PhyRegUsage::findGRFSubReg(const BitSet *forbidden, bool calleeSaveBias,
   }
 
   // Find sub-GRF allocation throughout GRF file
-  if (isUnconstrained) {
-    phyReg = findSubGRFAlloc(AS.startGRFReg, totalGRFNum);
+  if (builder.getOption(vISA_GCRRInFF)) {
+    phyReg = findSubGRFAlloc(startReg, totalGRFNum);
     if (phyReg.subreg == -1) {
       phyReg = findSubGRFAlloc(0, AS.startGRFReg);
     }
@@ -915,8 +916,7 @@ bool PhyRegUsage::assignRegs(bool highInternalConflict, LiveRange *varBasis,
       PhyRegUsage::PhyReg phyReg = findGRFSubReg(
           forbidden, varBasis->getCalleeSaveBias(),
           varBasis->getCallerSaveBias(), getAlignToUse(align, bankAlign),
-          subAlign, numAllocUnit(decl->getNumElems(), decl->getElemType()),
-          varBasis->getIsUnconstrained());
+          subAlign, numAllocUnit(decl->getNumElems(), decl->getElemType()));
       if (phyReg.reg != -1) {
         // based on type, adjust sub reg off accordingly
         // word: stay the same, dword: *2, byte: /2
@@ -971,30 +971,11 @@ bool PhyRegUsage::assignRegs(bool highInternalConflict, LiveRange *varBasis,
 
       bool forceCalleeSaveAlloc = builder.kernel.fg.isPseudoVCEDcl(decl);
       unsigned short occupiedBundles = getOccupiedBundle(decl);
-      int GRFForFF = AS.startGRFReg;
-      // FIXME: We pass varBasis()->getEOTSrc() here. Instead we should
-      // pass varBasis->getEOTSrc() && builder.hasEOTGRFBinding() to avoid
-      // unnecessary checks inside the method.
       bool success = findContiguousGRF(
           FPR.availableGregs, forbidden, occupiedBundles,
           getAlignToUse(align, bankAlign), decl->getNumRows(), endGRFReg,
           AS.startGRFReg, i, forceCalleeSaveAlloc, varBasis->getEOTSrc());
-      // If range is unconstrained and yet assignment fails, it might be
-      // because of bank alignment, so attempt reassignment without bank
-      // alignment. Not honoring bank alignment might generate faster code
-      // than spilling.
-      if (!success && colorHeuristic == FIRST_FIT &&
-          varBasis->getIsUnconstrained() && bankAlign > align) {
-        success = findContiguousGRF(
-            FPR.availableGregs, forbidden, occupiedBundles,
-            getAlignToUse(align, align), decl->getNumRows(), endGRFReg,
-            AS.startGRFReg, i, forceCalleeSaveAlloc, varBasis->getEOTSrc());
-      }
       if (!success && occupiedBundles) {
-        // FIXME: We should restore startGRFReg if varBasis->getEOTSrc() &&
-        // builder.hasEOTGRFBinding().
-        if (colorHeuristic == FIRST_FIT && !varBasis->getIsUnconstrained())
-          AS.startGRFReg = GRFForFF;
         success = findContiguousGRF(
             FPR.availableGregs, forbidden, 0,
             getAlignToUse(align, bankAlign), decl->getNumRows(), endGRFReg,

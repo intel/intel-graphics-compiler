@@ -488,7 +488,7 @@ DEF_VISA_OPTION(vISA_FailSafeRALimit, ET_INT32, "-failSafeRALimit", UNUSED, 3)
 DEF_VISA_OPTION(vISA_DenseMatrixLimit, ET_INT32, "-denseMatrixLimit", UNUSED,
                 0x800)
 DEF_VISA_OPTION(vISA_FillConstOpt, ET_BOOL, "-nofillconstopt", UNUSED, true)
-DEF_VISA_OPTION(vISA_GCRRInFF, ET_BOOL_TRUE, "-GCRRinFF", UNUSED, true)
+DEF_VISA_OPTION(vISA_GCRRInFF, ET_BOOL, "-GCRRinFF", UNUSED, false)
 DEF_VISA_OPTION(vISA_IncrementalRA, ET_INT32, "-incrementalra",
                 "USAGE: -incrementalra <0|1|2> where 0 is disabled, 1 is enabled, 2 is enabled with verification", 0)
 DEF_VISA_OPTION(vISA_SplitAlignedScalarMinDist, ET_INT32,
