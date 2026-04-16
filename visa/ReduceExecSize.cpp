@@ -86,11 +86,10 @@ bool HWConformity::fixDstAlignmentWithVectorImm(INST_LIST_ITER iter,
     if (!builder.hasPackedRestrictedFloatVector())
       vISA_ASSERT(ty != Type_VF,
                   ":vf datatype is not supported on this platform");
-    G4_Type moveTy = (ty == Type_V)    ? Type_W
-                     : (ty == Type_UV) ? Type_UW
-                                       : Type_F;
-    if (!dstAligned || (builder.getPlatform() >= Xe2 &&
-                        IS_TYPE_FLOAT_ALL(reg->getType()))) {
+    G4_Type moveTy =
+        (ty == Type_V) ? Type_W : (ty == Type_UV) ? Type_UW : Type_F;
+    if (!dstAligned ||
+        (builder.getPlatform() >= Xe2 && IS_TYPE_FLOAT_ALL(reg->getType()))) {
       inst->setSrc(insertMovBefore(iter, k, moveTy, bb), k);
       changed = true;
     } else if (hsInBytes != TypeSize(moveTy)) {
@@ -419,7 +418,7 @@ bool HWConformity::reduceExecSize(INST_LIST_ITER iter, G4_BB *bb) {
                     [[maybe_unused]] bool alignTmpDst =
                         builder.tryToAlignOperand(newDst, dstOffset, 16);
                     vISA_ASSERT(alignTmpDst,
-                                 "must be able to oword align tmp dst");
+                                "must be able to oword align tmp dst");
                     inst->setDest(newDst);
                     return true;
                   }
@@ -632,7 +631,7 @@ bool HWConformity::reduceExecSize(INST_LIST_ITER iter, G4_BB *bb) {
   }
 
   vISA_ASSERT((inst->opcode() != G4_smov),
-               "Error in splitting smov instruction");
+              "Error in splitting smov instruction");
 
   // split instruction like:
   // mad (8) V24(2,0)<2> V20(2,0)<16;8,2> V20(2,0)<16;8,2> V23(2,0)<16;8,2>
@@ -1011,7 +1010,7 @@ void HWConformity::splitInstruction(INST_LIST_ITER iter, G4_BB *bb,
     }
 
     vISA_ASSERT(currExSize != 0,
-                 "illegal execution size in instruction splitting");
+                "illegal execution size in instruction splitting");
     // create new Oprands. Acc should not be split since we generate it in
     // jitter and can control this.
     G4_DstRegRegion *newDst =
@@ -1222,7 +1221,7 @@ bool HWConformity::evenlySplitInst(INST_LIST_ITER iter, G4_BB *bb,
           // no need to split, but need to duplicate
           newInst->setSrc(builder.duplicateOperand(srcs[j]), j);
         } else if (op == G4_movi) {
-          // we create temp region which is in VxH format
+       // we create temp region which is in VxH format
           RegionDesc VxHregionDesc = RegionDesc(UNDEFINED_SHORT, 1, 0);
 
           auto tempRegion = G4_SrcRegRegion(*srcs[j]->asSrcRegRegion());
@@ -1259,10 +1258,10 @@ bool HWConformity::evenlySplitInst(INST_LIST_ITER iter, G4_BB *bb,
       G4_InstOption newMask =
           G4_INST::offsetToMask(currExSize, newMaskOffset, nibOk);
       if (newMask == InstOpt_NoOpt) {
-        [[maybe_unused]] bool useMask = inst->getPredicate() || inst->getCondModBase() ||
-                       (!bb->isAllLaneActive() && !inst->isWriteEnableInst());
-        vISA_ASSERT(!useMask,
-                     "no legal emask found for the split instruction");
+        [[maybe_unused]] bool useMask =
+            inst->getPredicate() || inst->getCondModBase() ||
+            (!bb->isAllLaneActive() && !inst->isWriteEnableInst());
+        vISA_ASSERT(!useMask, "no legal emask found for the split instruction");
       } else {
         newInst->setMaskOption(newMask);
       }
@@ -1321,6 +1320,15 @@ bool HWConformity::checkSrcDstOverlap(INST_LIST_ITER iter, G4_BB *bb,
         }
       }
       if (useTmp) {
+        if (inst->opcode() == G4_movi) {
+          // movi requires an indirect src operand. Inserting mov on src
+          // would strip the indirect addressing and break the instruction.
+          // Instead, redirect the dst to a tmp and insert "mov real_dst, tmp"
+          // after the movi to eliminate the overlap.
+          insertMovAfter(iter, inst->getDst()->getHorzStride(), bb);
+          hasOverlap = true;
+          break;
+        }
         // insert mov
         inst->setSrc(
             insertMovBefore(iter, i,
