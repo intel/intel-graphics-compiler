@@ -466,6 +466,7 @@ struct SKernelProgram {
   bool m_RequestStage2 = false;
 
   uint numSyncRTStacks = 0;
+  bool hasSliceLayoutDependency = false;
 };
 
 /// Gen10+, corresponds to 3DSTATE_VF_SGVS_2 as described below

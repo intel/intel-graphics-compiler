@@ -793,6 +793,7 @@ enum class ShaderTypeMD
         TaskShaderInfo taskInfo;
         uint32_t NBarrierCnt = 0;
         RayTraceModuleInfo rtInfo;
+        bool hasSliceLayoutDependency = false;
         uint32_t CurUniqueIndirectIdx = DefaultIndirectIdx;
         std::map<uint32_t, std::array<uint32_t, 8>> inlineDynTextures;
         std::vector<InlineResInfo> inlineResInfoData;

@@ -706,6 +706,7 @@ void RTBuilder::setDoneBit(RTBuilder::StackPointerVal *StackPointer, bool Commit
 uint32_t RTBuilder::getSyncStackSize() { return Ctx.getModuleMetaData()->rtInfo.RayQueryAllocSizeInBytes; }
 
 uint32_t RTBuilder::getNumSyncStackSlots() {
+  Ctx.getModuleMetaData()->hasSliceLayoutDependency = true;
   return MaxDualSubSlicesSupported * Ctx.platform.getRTStackDSSMultiplier();
 }
 
