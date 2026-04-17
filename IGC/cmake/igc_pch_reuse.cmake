@@ -18,7 +18,7 @@ message(STATUS "Using precompiled headers")
     GenISAIntrinsics#8
     GenX_IR         #9
     GenXDebugInfo   #10
-    ${IGC_BUILD__PROJ__igc_lib} #11
+    ${IGC_BUILD__PROJ__igc_objs} #11
     BiFManager #12
   )
 

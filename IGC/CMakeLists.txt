@@ -1751,19 +1751,53 @@ set(IGC_BUILD__HDR__IGC__igc_lib
     ${IGC_BUILD__HDR__IGC__igc_dll}
 )
 
-# Main library targets (library names).
-add_library("${IGC_BUILD__PROJ__igc_dll}" SHARED
+# Shared OBJECT library: compile each shared source ONCE and link the
+# resulting object files into both igc_dll (SHARED) and igc_lib (STATIC).
+# Before this refactor igc_dll and igc_lib each had the full source list
+# and every .cpp was compiled twice on every incremental build (and the
+# igc_lib -> wg_bif_import -> AdaptorDX -> igc_dll cascade re-fired even
+# for a single-file touch). With the OBJECT library split, changing one
+# source compiles it once -- both main targets just re-link.
+set(IGC_BUILD__PROJ__igc_objs "${IGC_BUILD__PROJ__igc_dll}_objs")
+add_library("${IGC_BUILD__PROJ__igc_objs}" OBJECT
     ${IGC_BUILD__SRC__IGC__igc_dll}
     ${IGC_BUILD__HDR__IGC__igc_dll}
+)
+set_target_properties("${IGC_BUILD__PROJ__igc_objs}" PROPERTIES FOLDER "Libraries")
+
+# Use /Zi on the shared compile -- smaller .obj at the cost of a shared PDB.
+if(MSVC)
+  target_compile_options("${IGC_BUILD__PROJ__igc_objs}" PRIVATE /Zi)
+endif()
+
+# Propagate compile-time settings from INTERFACE/PUBLIC libraries that
+# provide generated or external headers via their include-directory
+# properties. igc_dll no longer compiles sources directly, so anything
+# that previously relied on target_link_libraries(igc_dll ...) to inherit
+# INTERFACE_INCLUDE_DIRECTORIES must also be applied here.
+
+# Vector Compiler headers. VCIGCDeps carries PUBLIC include directories
+# that contain vc/igcdeps/TranslationInterface.h, needed by
+# dllInterfaceCompute.cpp on Windows.
+if(IGC_BUILD__VC_ENABLED)
+  target_link_libraries("${IGC_BUILD__PROJ__igc_objs}" PRIVATE ${IGC_BUILD__PROJ_VC_LIBS_TO_LINK})
+endif()
+
+# Build-order dependencies for generated headers.
+add_dependencies("${IGC_BUILD__PROJ__igc_objs}" RTStackReflectionIRBG)
+add_dependencies("${IGC_BUILD__PROJ__igc_objs}" RenderSurfaceStateIRBG)
+
+# Main library targets: they consume the shared .obj set via
+# $<TARGET_OBJECTS:...> and only differ by output type + resources.
+# NOTE: ${IGC_BUILD__HDR__IGC__igc_dll} is intentionally NOT passed here
+# (see the igc_objs add_library above -- it contains .cpp files that
+# would cause LNK2005 if compiled twice).
+add_library("${IGC_BUILD__PROJ__igc_dll}" SHARED
+    $<TARGET_OBJECTS:${IGC_BUILD__PROJ__igc_objs}>
     ${IGC_BUILD__RES__IGC__igc_dll}
 )
 
-# igc_dll is not part of the PCH reuse system and compiles fewer files directly,
-# so it can safely use /Zi (shared PDB) for smaller .obj files during linking.
-if(MSVC)
-  target_compile_options("${IGC_BUILD__PROJ__igc_dll}" PRIVATE /Zi)
-endif()
-
+# Resource define for the .rc compile (per-target, not a C++ define).
 target_compile_definitions(${IGC_BUILD__PROJ__igc_dll} PRIVATE VER_ORIGINALNAME="$<TARGET_FILE_NAME:${IGC_BUILD__PROJ__igc_dll}>")
 
 
@@ -1847,10 +1881,18 @@ if(UNIX)
       set(IGC_BUILD__PROJ_VULKAN_FE_LIBRARY_NAME "$<TARGET_FILE:${IGC_BUILD__PROJ__VulkanFrontend}>")
   endif()
 
+  # The script scans the .o files for non-hidden global symbols and writes them
+  # into igc_symbols.ld, which is then fed to the linker via --version-script.
+  # Before the OBJECT-library refactor, igc_dll compiled its own sources and
+  # $<TARGET_OBJECTS:igc_dll> resolved to those .o files. Now all sources
+  # are compiled by igc_objs (the OBJECT library) and $<TARGET_OBJECTS:igc_dll>
+  # expands to an EMPTY list on Linux (igc_dll only carries .rc resources on
+  # Windows) -- which produced an empty version script and a libigc.so with
+  # no exported symbols. Switch the scan to igc_objs's output.
   add_custom_command(
       TARGET "${IGC_BUILD__PROJ__igc_dll}"
       PRE_LINK
-      COMMAND ${IGC_BUILD__PROJ_SYMBOL_SCRIPT_COPY_PATH} ${IGC_BUILD__PROJ_LINKER_SCRIPT_NAME} ${IGC_BUILD__PROJ_BIF_LIBRARY_NAME} ${IGC_BUILD__PROJ_DX10_LIBRARY_NAME} ${IGC_BUILD__PROJ_DXIL_LIBRARY_NAME} ${IGC_BUILD__PROJ_VULKAN_FE_LIBRARY_NAME} $<TARGET_OBJECTS:${IGC_BUILD__PROJ__igc_dll}> --
+      COMMAND ${IGC_BUILD__PROJ_SYMBOL_SCRIPT_COPY_PATH} ${IGC_BUILD__PROJ_LINKER_SCRIPT_NAME} ${IGC_BUILD__PROJ_BIF_LIBRARY_NAME} ${IGC_BUILD__PROJ_DX10_LIBRARY_NAME} ${IGC_BUILD__PROJ_DXIL_LIBRARY_NAME} ${IGC_BUILD__PROJ_VULKAN_FE_LIBRARY_NAME} $<TARGET_OBJECTS:${IGC_BUILD__PROJ__igc_objs}> --
       COMMAND_EXPAND_LISTS
       COMMENT "Creating linker script for custom symbol exporting"
   )
@@ -1884,6 +1926,10 @@ if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU" AND
 endif()
 
 if(IGC_OPTION__LINK_KHRONOS_SPIRV_TRANSLATOR)
+  # Also link LLVMSPIRVLib to igc_objs so its INTERFACE_INCLUDE_DIRECTORIES
+  # (notably the path for LLVMSPIRVOpts.h) reach the shared compile step.
+  # igc_dll no longer compiles sources directly.
+  target_link_libraries("${IGC_BUILD__PROJ__igc_objs}" PRIVATE LLVMSPIRVLib)
   target_link_libraries("${IGC_BUILD__PROJ__igc_dll}" PRIVATE LLVMSPIRVLib)
 endif()
 
@@ -1921,6 +1967,15 @@ endif()
 
 #Set Universal properties if this is universal build
 if(MSVC AND IGC_OPTION__UNIVERSAL_DRIVER)
+    # Apply Universal/WDK settings to the OBJECT library FIRST so that the
+    # shared compile uses the right toolset/include paths. igc_dll and
+    # igc_lib get them for their link step via the same macros below.
+    bs_set_wdk(${IGC_BUILD__PROJ__igc_objs})
+    set_target_properties(${IGC_BUILD__PROJ__igc_objs} PROPERTIES VS_PLATFORM_TOOLSET WindowsApplicationForDrivers10.0)
+    set_target_properties(${IGC_BUILD__PROJ__igc_objs} PROPERTIES VS_GLOBAL_DriverTargetPlatform Universal)
+    set_target_properties(${IGC_BUILD__PROJ__igc_objs} PROPERTIES VS_TARGET_PLATFORM_VERSION "")
+    windows_libs_props_universal(${IGC_BUILD__PROJ__igc_objs})
+
     bs_set_wdk(${IGC_BUILD__PROJ__igc_dll})
     set_target_properties(${IGC_BUILD__PROJ__igc_dll} PROPERTIES VS_PLATFORM_TOOLSET WindowsApplicationForDrivers10.0)
     set_target_properties(${IGC_BUILD__PROJ__igc_dll} PROPERTIES VS_GLOBAL_DriverTargetPlatform Universal)
@@ -1938,9 +1993,12 @@ if(IGC_OPTION__BUILD_IGC_OPT OR IGC_OPTION__INCLUDE_IGC_COMPILER_TOOLS)
   #       Use igc_rc_get_resource() with resource identifier like IGC__igc_lib
   #       Also use IGC_BUILD__LINK_LINE__igc_lib variable to get target_link_libraries()'s line which
   #       links igc_lib correctly (with correct resolve of circular dependencies).
+  # igc_lib reuses the OBJECT library's pre-compiled .obj set. See the
+  # comment on add_library(..._objs OBJECT) above for why.
+  # NOTE: ${IGC_BUILD__HDR__IGC__igc_lib} is intentionally omitted -- see
+  # the equivalent note at the igc_dll add_library call above.
   add_library("${IGC_BUILD__PROJ__igc_lib}" STATIC
-      ${IGC_BUILD__SRC__IGC__igc_lib}
-      ${IGC_BUILD__HDR__IGC__igc_lib}
+      $<TARGET_OBJECTS:${IGC_BUILD__PROJ__igc_objs}>
     )
   set_target_properties("${IGC_BUILD__PROJ__igc_lib}" PROPERTIES FOLDER "Libraries")
 
