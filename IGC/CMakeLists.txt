@@ -2253,8 +2253,9 @@ endif()
 if(MSVC AND IGC_OPTION__BUILD_IGC_OPT)
   add_custom_command( TARGET ${IGC_BUILD__PROJ__igc_dll}
     POST_BUILD
-    COMMAND "${CMAKE_COMMAND}" -E copy "$<TARGET_FILE:${IGC_BUILD__PROJ__igc_dll}>" "$<TARGET_FILE_DIR:${IGC_BUILD__PROJ__igc_opt}>"
-    COMMAND "${CMAKE_COMMAND}" -E copy "$<TARGET_PDB_FILE:${IGC_BUILD__PROJ__igc_dll}>" "$<TARGET_FILE_DIR:${IGC_BUILD__PROJ__igc_opt}>"
+    COMMAND "${CMAKE_COMMAND}" -E make_directory "${IGC_BUILD__TOOLS_OUTPUT_DIR}/$<CONFIG>"
+    COMMAND "${CMAKE_COMMAND}" -E copy "$<TARGET_FILE:${IGC_BUILD__PROJ__igc_dll}>" "${IGC_BUILD__TOOLS_OUTPUT_DIR}/$<CONFIG>"
+    COMMAND "${CMAKE_COMMAND}" -E copy "$<TARGET_PDB_FILE:${IGC_BUILD__PROJ__igc_dll}>" "${IGC_BUILD__TOOLS_OUTPUT_DIR}/$<CONFIG>"
     )
 endif()
 
