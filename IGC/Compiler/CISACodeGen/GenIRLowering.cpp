@@ -818,19 +818,33 @@ bool GEPLowering::lowerGetElementPtrInst(GetElementPtrInst *GEP) {
   if (pointerMathSizeInBits == 64 && GEP->isInBounds()) {
     if (!modMD->compOpt.GreaterThan4GBBufferRequired) {
       bool gepProducesPositivePointer = true;
-
+      bool canOverflow32BitScale = false;
       // prove that the offset from the base pointer will be positive.  if we cannot
       // prove that all parameters to GEP increase the address of the final calculation
       // we can't fall back to 32bit math
-      for (auto U = GEP->idx_begin(), E = GEP->idx_end(); U != E; ++U) {
+      gep_type_iterator GTI = gep_type_begin(GEP);
+      for (auto U = GEP->idx_begin(), E = GEP->idx_end(); U != E; ++U, ++GTI) {
         Value *Idx = U->get();
 
         if (Idx != GEP->getPointerOperand()) {
           gepProducesPositivePointer &= valueIsPositive(Idx, DL);
         }
+
+        Type *Ty = GTI.getIndexedType();
+        if (!Ty)
+          continue;
+        uint64_t ElementSize = DL->getTypeAllocSize(Ty);
+        if (ElementSize <= 1) // Skip if not upscaled by size.
+          continue;
+
+        if (const ConstantInt *CI = dyn_cast<ConstantInt>(Idx)) {
+          canOverflow32BitScale |= (CI->getZExtValue() * ElementSize) > 0xFFFFFFFFULL;
+        } else {
+          canOverflow32BitScale |= true;
+        }
       }
 
-      if (gepProducesPositivePointer) {
+      if (gepProducesPositivePointer && !canOverflow32BitScale) {
         pointerMathSizeInBits = 32;
         reducePointerArith = true;
       }
