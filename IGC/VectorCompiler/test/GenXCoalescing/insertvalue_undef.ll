@@ -67,8 +67,8 @@ declare !genx_intrinsic_id !11 void @llvm.genx.unmask.end(i32) #4
 ; Function Attrs: nounwind writeonly
 declare !genx_intrinsic_id !12 i32 @llvm.genx.unmask.begin() #4
 
-attributes #0 = { "CMStackCall" "target-cpu"="Gen9" "target-features"="+ocl_runtime" }
-attributes #1 = { noinline "target-cpu"="Gen9" "target-features"="+ocl_runtime" }
+attributes #0 = { "CMStackCall" "target-cpu"="Xe2" "target-features"="+ocl_runtime" }
+attributes #1 = { noinline "target-cpu"="Xe2" "target-features"="+ocl_runtime" }
 attributes #2 = { nounwind readonly }
 attributes #3 = { nounwind readnone }
 attributes #4 = { nounwind writeonly }

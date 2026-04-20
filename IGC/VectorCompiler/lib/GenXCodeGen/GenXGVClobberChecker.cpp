@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2023-2024 Intel Corporation
+Copyright (C) 2023-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -84,7 +84,7 @@ SPDX-License-Identifier: MIT
 //         -GenXGVClobberChecker \
 //         -march=genx64 \
 //         -mtriple=spir64-unknown-unknown \
-//         -mcpu=Gen9 \
+//         -mcpu=XeHPG \
 //         -disable-output \
 //         -S \
 //         <YOUR_LLVM_IR_DUMP.ll>

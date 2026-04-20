@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2025 Intel Corporation
+Copyright (C) 2017-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -50,12 +50,7 @@ class TargetMachine;
 class GenXSubtarget final : public GenXGenSubtargetInfo {
 public:
   enum GenXTargetId {
-    Gen8,
-    Gen9,
-    Gen9LP,
-    Gen11,
     XeLP,
-    XeHP,
     XeHPG,
     XeLPG,
     XeLPGPlus,
@@ -222,9 +217,6 @@ private:
 
   /// True if subtarget supports SAD and SADA2 instructions
   bool HasSad2 = false;
-
-  /// True if subtarget supports OWord SLM read/write messages
-  bool HasSLMOWord = false;
 
   /// True if subtarget supports SIMD32 MAD instruction
   bool HasMadSimd32 = false;
@@ -475,8 +467,6 @@ public:
   bool hasL3FlushOnGPUScopeInvalidate() const {
     return HasL3FlushOnGPUScopeInvalidate;
   }
-
-  bool hasSLMOWord() const { return HasSLMOWord; }
 
   bool hasMadSimd32() const { return HasMadSimd32; }
 

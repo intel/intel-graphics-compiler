@@ -57,8 +57,8 @@ static cl::opt<std::string> FeaturesStr("feature",
                                         cl::init("+ocl_runtime"));
 
 static cl::opt<std::string>
-    PlatformString("cpu", cl::desc("platform for compilation (default: Gen9)"),
-                   cl::value_desc("platform"), cl::init("Gen9"));
+    PlatformString("cpu", cl::desc("platform for compilation (default: Xe2)"),
+                   cl::value_desc("platform"), cl::init("Xe2"));
 
 static cl::opt<std::string> OutputFilename("o",
                                            cl::desc("Override output filename"),

@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2024 Intel Corporation
+Copyright (C) 2017-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -238,10 +238,6 @@ def FeatureHasSad2 : SubtargetFeature<"feature_has_sad2",
                                       "HasSad2", "true",
                                       "Target supports sad2/sad2a instructions">;
 
-def FeatureHasOWordSLM : SubtargetFeature<"feature_has_slm_oword",
-                                          "HasSLMOWord", "true",
-                                          "Target supports OWord block SLM messages">;
-
 def FeatureHasMadSimd32 : SubtargetFeature<"feature_has_mad_simd32",
                                            "HasMadSimd32", "true",
                                            "Target supports SIMD32 mad instruction">;
@@ -302,95 +298,12 @@ class Proc<string Name, list<SubtargetFeature> Features>
 
 def : Proc<"generic", []>;
 
-def : Proc<"Gen8", [
-  FeatureFP64,
-  FeatureHWTIDFromPredef,
-  FeatureHas7ThreadsPerEU,
-  FeatureHasMediaWalker,
-  FeatureHasPackedFloat,
-  FeatureHasSad2,
-  FeatureHasSampler,
-  FeatureIEEEDivSqrt,
-  FeatureInstrAdd64,
-  FeatureIntDivRem32,
-  FeatureLongLong,
-  FeatureMultiIndirectByteRegioning,
-  FeatureSLM64K,
-  FeatureSwitchjmp,
-  FeatureWaNoA32ByteScatter,
-]>;
-
-def : Proc<"Gen9", [
-  FeatureFP64,
-  FeatureHWTIDFromPredef,
-  FeatureHas7ThreadsPerEU,
-  FeatureHasMediaWalker,
-  FeatureHasPackedFloat,
-  FeatureHasSad2,
-  FeatureHasSampler,
-  FeatureIEEEDivSqrt,
-  FeatureIndirectByteGRFCrossing,
-  FeatureIndirectGRFCrossing,
-  FeatureInstrAdd64,
-  FeatureIntDivRem32,
-  FeatureLongLong,
-  FeatureMultiIndirectByteRegioning,
-  FeaturePreemption,
-  FeatureSLM64K,
-  FeatureSwitchjmp,
-  FeatureUseMulDDQ,
-  FeatureWaNoA32ByteScatter,
-]>;
-
-def : Proc<"Gen9LP", [
-  FeatureFP64,
-  FeatureHWTIDFromPredef,
-  FeatureHas7ThreadsPerEU,
-  FeatureHasMediaWalker,
-  FeatureHasPackedFloat,
-  FeatureHasSad2,
-  FeatureHasSampler,
-  FeatureIndirectByteGRFCrossing,
-  FeatureIndirectGRFCrossing,
-  FeatureInstrAdd64,
-  FeatureIntDivRem32,
-  FeatureLongLong,
-  FeatureMultiIndirectByteRegioning,
-  FeaturePreemption,
-  FeatureSLM64K,
-  FeatureSwitchjmp,
-  FeatureUseMulDDQ,
-  FeatureWaNoA32ByteScatter,
-]>;
-
-
-def : Proc<"Gen11", [
-  FeatureHWTIDFromPredef,
-  FeatureHas7ThreadsPerEU,
-  FeatureHasMadSimd32,
-  FeatureHasMediaWalker,
-  FeatureHasOWordSLM,
-  FeatureHasPackedFloat,
-  FeatureHasSampler,
-  FeatureIEEEDivSqrt,
-  FeatureIndirectByteGRFCrossing,
-  FeatureIndirectGRFCrossing,
-  FeatureInstrBitRotate,
-  FeatureIntDivRem32,
-  FeatureLongLongEmulation,
-  FeatureMultiIndirectByteRegioning,
-  FeaturePreemption,
-  FeatureSLM64K,
-  FeatureSwitchjmp,
-]>;
-
 def : Proc<"XeLP", [
   FeatureFusedEU,
   FeatureHWTIDFromPredef,
   FeatureHas7ThreadsPerEU,
   FeatureHasMadSimd32,
   FeatureHasMediaWalker,
-  FeatureHasOWordSLM,
   FeatureHasPackedFloat,
   FeatureHasSampler,
   FeatureIndirectByteGRFCrossing,
@@ -404,28 +317,6 @@ def : Proc<"XeLP", [
   FeatureWAFusedEUNoMask,
 ]>;
 
-def : Proc<"XeHP", [
-  FeatureFP64,
-  FeatureFusedEU,
-  FeatureHas8ThreadsPerEU,
-  FeatureHasAdd3,
-  FeatureHasBfn,
-  FeatureHasLargeGRF,
-  FeatureHasMadSimd32,
-  FeatureHasOWordSLM,
-  FeatureHasPackedFloat,
-  FeatureHasSampler,
-  FeatureIEEEDivSqrt,
-  FeatureIndirectByteGRFCrossing,
-  FeatureIndirectGRFCrossing,
-  FeatureInstrAdd64,
-  FeatureInstrBitRotate,
-  FeatureLongLong,
-  FeatureMultiIndirectByteRegioning,
-  FeatureSLM128K,
-  FeatureThreadPayloadInMemory,
-]>;
-
 def : Proc<"XeHPG", [
   FeatureFusedEU,
   FeatureHas8ThreadsPerEU,
@@ -434,7 +325,6 @@ def : Proc<"XeHPG", [
   FeatureHasLSC,
   FeatureHasLargeGRF,
   FeatureHasMadSimd32,
-  FeatureHasOWordSLM,
   FeatureHasPackedFloat,
   FeatureHasSampler,
   FeatureIndirectByteGRFCrossing,
@@ -456,7 +346,6 @@ def : Proc<"XeLPG", [
   FeatureHasLSC,
   FeatureHasLargeGRF,
   FeatureHasMadSimd32,
-  FeatureHasOWordSLM,
   FeatureHasPackedFloat,
   FeatureHasSampler,
   FeatureIndirectByteGRFCrossing,
@@ -478,7 +367,6 @@ def : Proc<"XeLPGPlus", [
   FeatureHasLSC,
   FeatureHasLargeGRF,
   FeatureHasMadSimd32,
-  FeatureHasOWordSLM,
   FeatureHasPackedFloat,
   FeatureHasSampler,
   FeatureIndirectByteGRFCrossing,
@@ -500,7 +388,6 @@ def : Proc<"XeHPC", [
   FeatureHasLargeGRF,
   FeatureHasMadSimd32,
   FeatureHasNamedBarriers,
-  FeatureHasOWordSLM,
   FeatureHasPackedFloat,
   FeatureIEEEDivSqrt,
   FeatureIndirectGRFCrossing,
@@ -526,7 +413,6 @@ def : Proc<"XeHPCVG", [
   FeatureHasLargeGRF,
   FeatureHasMadSimd32,
   FeatureHasNamedBarriers,
-  FeatureHasOWordSLM,
   FeatureHasPackedFloat,
   FeatureIEEEDivSqrt,
   FeatureIndirectGRFCrossing,
@@ -554,7 +440,6 @@ def : Proc<"Xe2", [
   FeatureHasLargeGRF,
   FeatureHasMadSimd32,
   FeatureHasNamedBarriers,
-  FeatureHasOWordSLM,
   FeatureHasSampler,
   FeatureIEEEDivSqrt,
   FeatureIndirectGRFCrossing,
@@ -586,7 +471,6 @@ def : Proc<"Xe3", [
   FeatureHasLargeGRF,
   FeatureHasMadSimd32,
   FeatureHasNamedBarriers,
-  FeatureHasOWordSLM,
   FeatureHasSampler,
   FeatureHasVRT,
   FeatureIEEEDivSqrt,
@@ -623,7 +507,6 @@ def : Proc<"Xe3P", [
   FeatureHasMxfp,
   FeatureHasNamedBarriers,
   FeatureHasNativeBFloat16,
-  FeatureHasOWordSLM,
   FeatureHasVRT,
   FeatureIEEEDivSqrt,
   FeatureIndirectGRFCrossing,
@@ -665,7 +548,6 @@ def : Proc<"Xe3PLPG", [
   FeatureHasMxfp,
   FeatureHasNamedBarriers,
   FeatureHasNativeBFloat16,
-  FeatureHasOWordSLM,
   FeatureHasSampler,
   FeatureHasVRT,
   FeatureIEEEDivSqrt,

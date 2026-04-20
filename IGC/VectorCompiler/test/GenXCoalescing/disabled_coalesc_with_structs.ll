@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2021-2025 Intel Corporation
+; Copyright (C) 2021-2026 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -86,9 +86,9 @@ declare <16 x i16> @llvm.genx.rdregioni.v16i16.v32i16.i16(<32 x i16>, i32, i32, 
 ; Function Attrs: nounwind readnone
 declare { <16 x i8>, <16 x i8>, <16 x i8> } @llvm.ssa.copy.sl_v16i8v16i8v16i8s({ <16 x i8>, <16 x i8>, <16 x i8> } returned) #2
 
-attributes #0 = { "target-cpu"="Gen9" }
-attributes #1 = { "CMGenxMain" "target-cpu"="Gen9" }
-attributes #2 = { nounwind readnone "target-cpu"="Gen9" }
+attributes #0 = { "target-cpu"="Xe2" }
+attributes #1 = { "CMGenxMain" "target-cpu"="Xe2" }
+attributes #2 = { nounwind readnone "target-cpu"="Xe2" }
 
 !genx.kernels = !{!0, !5}
 !genx.kernel.internal = !{!10, !15}

@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2020-2025 Intel Corporation
+Copyright (C) 2020-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -67,8 +67,8 @@ static VcPayloadInfo tryExtractPayload(const char *Input, size_t InputSize) {
   //    Source/IGC/AdaptorOCL/ocl_igc_interface/impl/fcl_ocl_translation_ctx_impl.cpp
 
   // Check for availability of "-vc-payload" marker at the end.
-  const char *PayloadMarker = "-vc-payload";
-  const size_t PayloadMarkerSize = strlen(PayloadMarker);
+  static constexpr char PayloadMarker[] = "-vc-payload";
+  const size_t PayloadMarkerSize = sizeof(PayloadMarker) - 1;
   // Make sure that we also have a room for 2 i64 size items.
   if (InputSize < (PayloadMarkerSize + 2 * sizeof(uint64_t)))
     return {};
@@ -138,20 +138,9 @@ getPlatformName(const PLATFORM &Platform) {
   unsigned RevId = Platform.usRevId;
 
   switch (Core) {
-  case IGFX_GEN8_CORE:
-    return {"Gen8", RevId};
-  case IGFX_GEN9_CORE:
-    if (Product == IGFX_BROXTON || Product == IGFX_GEMINILAKE)
-      return {"Gen9LP", RevId};
-    return {"Gen9", RevId};
-  case IGFX_GEN11_CORE:
-  case IGFX_GEN11LP_CORE:
-    return {"Gen11", RevId};
   case IGFX_GEN12_CORE:
   case IGFX_GEN12LP_CORE:
     return {"XeLP", RevId};
-  case IGFX_XE_HP_CORE:
-    return {"XeHP", RevId};
   case IGFX_XE_HPG_CORE:
     if (Product == IGFX_DG2)
       return {"XeHPG", RevId};

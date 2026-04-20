@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2022-2025 Intel Corporation
+; Copyright (C) 2022-2026 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -114,8 +114,8 @@ declare { <32 x i1>, i1 } @llvm.genx.simdcf.join.v32i1.v32i1(<32 x i1>, <32 x i1
 ; Function Attrs: nounwind readnone speculatable
 declare void @llvm.dbg.value(metadata, metadata, metadata) #2
 
-attributes #0 = { "CMGenxMain" "target-cpu"="Gen9" }
-attributes #1 = { "target-cpu"="Gen9" }
+attributes #0 = { "CMGenxMain" "target-cpu"="Xe2" }
+attributes #1 = { "target-cpu"="Xe2" }
 attributes #2 = { nounwind readnone speculatable }
 
 !llvm.debugify = !{!0, !1, !2, !3}

@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2025 Intel Corporation
+Copyright (C) 2017-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -57,12 +57,7 @@ void GenXSubtarget::initSubtargetFeatures(StringRef CPU, StringRef FS) {
     StackSurf = PreDefined_Surface::PREDEFINED_SURFACE_STACK;
 
   TargetId = llvm::StringSwitch<GenXTargetId>(CPU)
-                 .Case("Gen8", Gen8)
-                 .Case("Gen9", Gen9)
-                 .Case("Gen9LP", Gen9LP)
-                 .Case("Gen11", Gen11)
                  .Case("XeLP", XeLP)
-                 .Case("XeHP", XeHP)
                  .Case("XeHPG", XeHPG)
                  .Case("XeLPG", XeLPG)
                  .Case("XeLPGPlus", XeLPGPlus)
@@ -95,7 +90,6 @@ uint32_t GenXSubtarget::getMaxThreadsNumPerSubDevice() const {
   switch (TargetId) {
   default:
     break;
-  case XeHP:
   case XeHPG:
   case XeLPG:
   case XeLPGPlus:
@@ -117,7 +111,6 @@ uint32_t GenXSubtarget::getMaxThreadsNumPerSubDevice() const {
 ArrayRef<std::pair<int, int>> GenXSubtarget::getThreadIdReservedBits() const {
   // HWTID is calculated using a concatenation of TID:EUID:SubSliceID:SliceID
   switch (TargetId) {
-  case GenXSubtarget::XeHP:
   case GenXSubtarget::XeHPG:
   case GenXSubtarget::XeLPG:
   case GenXSubtarget::XeLPGPlus: {
@@ -191,7 +184,6 @@ ArrayRef<std::pair<int, int>> GenXSubtarget::getSubsliceIdBits() const {
 
   // Return slice id and subslice id to concatenate them
   switch (TargetId) {
-  case GenXSubtarget::XeHP:
   case GenXSubtarget::XeHPG:
   case GenXSubtarget::XeLPG:
   case GenXSubtarget::XeLPGPlus: {
@@ -215,7 +207,6 @@ ArrayRef<std::pair<int, int>> GenXSubtarget::getSubsliceIdBits() const {
 
 ArrayRef<std::pair<int, int>> GenXSubtarget::getEUIdBits() const {
   switch (TargetId) {
-  case GenXSubtarget::XeHP:
   case GenXSubtarget::XeHPG:
   case GenXSubtarget::XeLPG:
   case GenXSubtarget::XeLPGPlus: {
@@ -263,18 +254,8 @@ ArrayRef<std::pair<int, int>> GenXSubtarget::getThreadIdBits() const {
 
 TARGET_PLATFORM GenXSubtarget::getVisaPlatform() const {
   switch (TargetId) {
-  case Gen8:
-    return TARGET_PLATFORM::GENX_BDW;
-  case Gen9:
-    return TARGET_PLATFORM::GENX_SKL;
-  case Gen9LP:
-    return TARGET_PLATFORM::GENX_BXT;
-  case Gen11:
-    return TARGET_PLATFORM::GENX_ICLLP;
   case XeLP:
     return TARGET_PLATFORM::GENX_TGLLP;
-  case XeHP:
-    return TARGET_PLATFORM::Xe_XeHPSDV;
   case XeHPG:
     return TARGET_PLATFORM::Xe_DG2;
   case XeLPG:
@@ -322,7 +303,6 @@ bool GenXSubtarget::isInternalIntrinsicSupported(unsigned ID) const {
 
 ArrayRef<unsigned> GenXSubtarget::getSupportedGRFSizes() const {
   switch (TargetId) {
-  case GenXSubtarget::XeHP:
   case GenXSubtarget::XeHPG:
   case GenXSubtarget::XeLPG:
   case GenXSubtarget::XeLPGPlus:

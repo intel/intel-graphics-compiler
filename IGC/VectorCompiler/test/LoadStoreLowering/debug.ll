@@ -1,15 +1,15 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2022-2024 Intel Corporation
+; Copyright (C) 2022-2026 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 ;
-; RUN: %opt_typed_ptrs %use_old_pass_manager% -GenXLoadStoreLowering -enable-ldst-lowering=true -mattr=+ocl_runtime -march=genx64 -mtriple=spir64-unknown-unknown  -mcpu=Gen9 -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-TYPED-PTRS
-; RUN: %opt_opaque_ptrs %use_old_pass_manager% -GenXLoadStoreLowering -enable-ldst-lowering=true -mattr=+ocl_runtime -march=genx64 -mtriple=spir64-unknown-unknown  -mcpu=Gen9 -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE-PTRS
-; RUN: %opt_typed_ptrs %use_old_pass_manager% -GenXLoadStoreLowering -enable-ldst-lowering=true -mattr=+ocl_runtime -march=genx64 -mtriple=spir64-unknown-unknown  -mcpu=Gen9 -S < %s | FileCheck %s --check-prefix=STRICT
-; RUN: %opt_opaque_ptrs %use_old_pass_manager% -GenXLoadStoreLowering -enable-ldst-lowering=true -mattr=+ocl_runtime -march=genx64 -mtriple=spir64-unknown-unknown  -mcpu=Gen9 -S < %s | FileCheck %s --check-prefix=STRICT
+; RUN: %opt_typed_ptrs %use_old_pass_manager% -GenXLoadStoreLowering -enable-ldst-lowering=true -mattr=+ocl_runtime -march=genx64 -mtriple=spir64-unknown-unknown  -mcpu=XeLP -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-TYPED-PTRS
+; RUN: %opt_opaque_ptrs %use_old_pass_manager% -GenXLoadStoreLowering -enable-ldst-lowering=true -mattr=+ocl_runtime -march=genx64 -mtriple=spir64-unknown-unknown  -mcpu=XeLP -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE-PTRS
+; RUN: %opt_typed_ptrs %use_old_pass_manager% -GenXLoadStoreLowering -enable-ldst-lowering=true -mattr=+ocl_runtime -march=genx64 -mtriple=spir64-unknown-unknown  -mcpu=XeLP -S < %s | FileCheck %s --check-prefix=STRICT
+; RUN: %opt_opaque_ptrs %use_old_pass_manager% -GenXLoadStoreLowering -enable-ldst-lowering=true -mattr=+ocl_runtime -march=genx64 -mtriple=spir64-unknown-unknown  -mcpu=XeLP -S < %s | FileCheck %s --check-prefix=STRICT
 ; ------------------------------------------------
 ; GenXLoadStoreLowering
 ; ------------------------------------------------

@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2021-2025 Intel Corporation
+; Copyright (C) 2021-2026 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -172,8 +172,8 @@ define internal spir_func void @internal_grp_cnt() #0 {
   ret void
 }
 
-attributes #0 = { "target-cpu"="Gen9" }
-attributes #1 = { "RequiresImplArgsBuffer" "target-cpu"="Gen9" }
+attributes #0 = { "target-cpu"="Xe2" }
+attributes #1 = { "RequiresImplArgsBuffer" "target-cpu"="Xe2" }
 
 !genx.kernels = !{!1}
 !genx.kernel.internal = !{!3}

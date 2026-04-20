@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: %opt %use_old_pass_manager% -GenXPostLegalization -march=genx64 -mcpu=XeLPG -mtriple=spir64 -S < %s | FileCheck %s --check-prefix=Gen9
+; RUN: %opt %use_old_pass_manager% -GenXPostLegalization -march=genx64 -mcpu=XeLPG -mtriple=spir64 -S < %s | FileCheck %s --check-prefix=XeLPG
 ; RUN: %opt %use_old_pass_manager% -GenXPostLegalization -march=genx64 -mcpu=Xe2 -mtriple=spir64 -S < %s | FileCheck %s --check-prefix=Xe2
 
 target datalayout = "e-p:64:64-i64:64-n8:16:32"
@@ -16,8 +16,8 @@ define void @test(<4 x float> %bti) {
   ret void
 }
 
-; Gen9-LABEL: @test
-; Gen9-NEXT: [[DIV:%[^ ]+]] = fdiv <4 x float> %bti, <float 1.000000e+00, float 2.000000e+00, float 3.000000e+00, float 4.000000e+00>
+; XeLPG-LABEL: @test
+; XeLPG-NEXT: [[DIV:%[^ ]+]] = fdiv <4 x float> %bti, <float 1.000000e+00, float 2.000000e+00, float 3.000000e+00, float 4.000000e+00>
 
 ; Xe2-LABEL: @test
 ; Xe2-NEXT: [[CST0:%[^ ]+]] = call <1 x float> @llvm.genx.constantf.v1f32(<1 x float> <float 4.000000e+00>)

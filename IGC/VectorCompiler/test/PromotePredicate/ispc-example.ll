@@ -1,15 +1,15 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2022-2024 Intel Corporation
+; Copyright (C) 2022-2026 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 
 ; RUN: %opt_typed_ptrs %use_old_pass_manager% -GenXPromotePredicate -march=genx64 -mtriple=spir64-unknown-unknown \
-; RUN: -mcpu=Gen9 -logical-ops-threshold=2 -S < %s | FileCheck %s
+; RUN: -mcpu=XeLP -logical-ops-threshold=2 -S < %s | FileCheck --check-prefix=FUSED %s
 ; RUN: %opt_opaque_ptrs %use_old_pass_manager% -GenXPromotePredicate -march=genx64 -mtriple=spir64-unknown-unknown \
-; RUN: -mcpu=Gen9 -logical-ops-threshold=2 -S < %s | FileCheck %s
+; RUN: -mcpu=XeLP -logical-ops-threshold=2 -S < %s | FileCheck --check-prefix=FUSED %s
 
 ; RUN: %opt_typed_ptrs %use_old_pass_manager% -GenXPromotePredicate -march=genx64 -mtriple=spir64-unknown-unknown \
 ; RUN: -mcpu=XeHPG -logical-ops-threshold=2 -S < %s | FileCheck --check-prefix=FUSED %s

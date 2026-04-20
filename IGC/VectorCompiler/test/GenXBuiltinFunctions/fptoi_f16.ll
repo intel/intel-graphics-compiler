@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2021-2025 Intel Corporation
+; Copyright (C) 2021-2026 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -10,9 +10,9 @@
 ; RUN: -GenXBuiltinFunctions -march=genx64 -mtriple=spir64-unknown-unknown \
 ; RUN: -mcpu=XeLP -S < %s | FileCheck %s
 
-; RUN: %opt %use_old_pass_manager% -vc-builtins-bif-path=%VC_BIF_Gen9% \
+; RUN: %opt %use_old_pass_manager% -vc-builtins-bif-path=%VC_BIF_XeHPC% \
 ; RUN: -GenXBuiltinFunctions -march=genx64 -mtriple=spir64-unknown-unknown \
-; RUN: -mcpu=Gen9 -S < %s | FileCheck %s --check-prefix=CHECK-NOEMU
+; RUN: -mcpu=XeHPC -S < %s | FileCheck %s --check-prefix=CHECK-NOEMU
 
 ; CHECK: @test_vector
 ; CHECK-NEXT: [[FP1:%[^ ]+]] = uitofp <16 x i32>   %r to <16 x half>

@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2021-2025 Intel Corporation
+; Copyright (C) 2021-2026 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -51,9 +51,9 @@ declare <1 x %struct.bar addrspace(4)*> @llvm.genx.rdregioni.v1p4class.p(<1 x %s
 ; Function Attrs: readnone
 declare %struct.hoge addrspace(4)* @llvm.genx.rdregioni.p4class.a(<1 x %struct.hoge addrspace(4)*>, i32, i32, i32, i16, i32) #2
 
-attributes #0 = { "target-cpu"="Gen9" "target-features"="+ocl_runtime" }
-attributes #1 = { nounwind "target-cpu"="Gen9" "target-features"="+ocl_runtime" }
-attributes #2 = { readnone "target-cpu"="Gen9" "target-features"="+ocl_runtime" }
+attributes #0 = { "target-cpu"="Xe2" "target-features"="+ocl_runtime" }
+attributes #1 = { nounwind "target-cpu"="Xe2" "target-features"="+ocl_runtime" }
+attributes #2 = { readnone "target-cpu"="Xe2" "target-features"="+ocl_runtime" }
 
 !genx.kernel.internal = !{!0}
 

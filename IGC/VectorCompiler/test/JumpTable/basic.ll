@@ -1,15 +1,15 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2020-2024 Intel Corporation
+; Copyright (C) 2020-2026 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 
 ; RUN: %opt_typed_ptrs %use_old_pass_manager% -GenXLowerJmpTableSwitch -march=genx64 -mtriple=spir64-unknown-unknown \
-; RUN: -mcpu=Gen9 -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-TYPED-PTRS
+; RUN: -mcpu=XeHPC -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-TYPED-PTRS
 ; RUN: %opt_opaque_ptrs %use_old_pass_manager% -GenXLowerJmpTableSwitch -march=genx64 -mtriple=spir64-unknown-unknown \
-; RUN: -mcpu=Gen9 -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE-PTRS
+; RUN: -mcpu=XeHPC -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE-PTRS
 
 ; CHECK: [[JTCOND:%.new.jt.cond]] = sub i32 %2, 1
 ; CHECK-NEXT: [[JTDEFAULT:%.jt.default]] = icmp ule i32 [[JTCOND]], 4

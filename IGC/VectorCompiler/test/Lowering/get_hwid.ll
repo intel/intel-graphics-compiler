@@ -8,31 +8,23 @@
 
 ; COM: This test checks lowering of hwtid intrinsic.
 ; COM: Currently there are these ways to generate HWTID:
-; COM:  - Predefined variable (CHECK-PREDEF): all before XeHP
-; COM:  - XeHP-like concatenation (CHECK-XeHP): XeHP+ excluding XeHPC
+; COM:  - Predefined variable (CHECK-PREDEF): all before XeHPG
+; COM:  - XeHPG-like concatenation (CHECK-XeHPG): XeHPG+ excluding XeHPC
 ; COM:  - XeHPC-like concatenation (CHECK-XeHPC): XeHPC
 ; COM:  - Xe2-like concatenation (CHECK-Xe2): Xe2
 ; COM:  - Xe3-like concatenation (CHECK-Xe3): Xe3
 ; COM:  - Xe3P-like concatenation (CHECK-Xe3P): Xe3P
 ; COM:  - Xe3-like concatenation (CHECK-Xe3): Xe3PLPG
 
-; RUN: %opt %use_old_pass_manager% -GenXLowering -march=genx64 -mcpu=Gen9 -mtriple=spir64-unknown-unknown -S < %s | \
-; RUN: FileCheck %s --check-prefixes=CHECK-PREDEF,CHECK
-
-; RUN: %opt %use_old_pass_manager% -GenXLowering -march=genx64 -mcpu=Gen11 -mtriple=spir64-unknown-unknown -S < %s | \
-; RUN: FileCheck %s --check-prefixes=CHECK-PREDEF,CHECK
-
 ; RUN: %opt %use_old_pass_manager% -GenXLowering -march=genx64 -mcpu=XeLP -mtriple=spir64-unknown-unknown -S < %s | \
 ; RUN: FileCheck %s --check-prefixes=CHECK-PREDEF,CHECK
 
-; RUN: %opt %use_old_pass_manager% -GenXLowering -march=genx64 -mcpu=XeHP -mtriple=spir64-unknown-unknown -S < %s | \
-; RUN: FileCheck %s --check-prefixes=CHECK-XeHP,CHECK
 ; RUN: %opt %use_old_pass_manager% -GenXLowering -march=genx64 -mcpu=XeHPG -mtriple=spir64-unknown-unknown -S < %s | \
-; RUN: FileCheck %s --check-prefixes=CHECK-XeHP,CHECK
+; RUN: FileCheck %s --check-prefixes=CHECK-XeHPG,CHECK
 ; RUN: %opt %use_old_pass_manager% -GenXLowering -march=genx64 -mcpu=XeLPG -mtriple=spir64-unknown-unknown -S < %s | \
-; RUN: FileCheck %s --check-prefixes=CHECK-XeHP,CHECK
+; RUN: FileCheck %s --check-prefixes=CHECK-XeHPG,CHECK
 ; RUN: %opt %use_old_pass_manager% -GenXLowering -march=genx64 -mcpu=XeLPGPlus -mtriple=spir64-unknown-unknown -S < %s | \
-; RUN: FileCheck %s --check-prefixes=CHECK-XeHP,CHECK
+; RUN: FileCheck %s --check-prefixes=CHECK-XeHPG,CHECK
 
 ; RUN: %opt %use_old_pass_manager% -GenXLowering -march=genx64 -mcpu=XeHPC -mtriple=spir64-unknown-unknown -S < %s | \
 ; RUN: FileCheck %s --check-prefixes=CHECK-XeHPC,CHECK
@@ -52,17 +44,17 @@
 ; CHECK-PREDEF: [[RES:%[^ ]+]] = call i32 @llvm.genx.read.predef.reg.i32.i32(i32 12, i32 undef)
 ; CHECK-PREDEF: ret i32 [[RES]]
 
-; CHECK-XeHP: [[PREDEF:%[^ ]+]] = call i32 @llvm.genx.read.predef.reg.i32.i32(i32 13, i32 undef)
-; CHECK-XeHP: [[SHIFT1:%[^ ]+]] = lshr i32 [[PREDEF]], 1
-; CHECK-XeHP: [[AND1:%[^ ]+]] = and i32 [[PREDEF]], 63
-; CHECK-XeHP: [[ANDNOT1:%[^ ]+]] = and i32 [[SHIFT1]], -64
-; CHECK-XeHP: [[OR1:%[^ ]+]] = or i32 [[ANDNOT1]], [[AND1]]
-; CHECK-XeHP: [[SHIFT2:%[^ ]+]] = lshr i32 [[OR1]], 1
-; CHECK-XeHP: [[AND2:%[^ ]+]] = and i32 [[OR1]], 7
-; CHECK-XeHP: [[ANDNOT2:%[^ ]+]] = and i32 [[SHIFT2]], -8
-; CHECK-XeHP: [[OR2:%[^ ]+]] = or i32 [[ANDNOT2]], [[AND2]]
-; CHECK-XeHP: [[RES:%[^ ]+]] = and i32 [[OR2]], 4095
-; CHECK-XeHP: ret i32 [[RES]]
+; CHECK-XeHPG: [[PREDEF:%[^ ]+]] = call i32 @llvm.genx.read.predef.reg.i32.i32(i32 13, i32 undef)
+; CHECK-XeHPG: [[SHIFT1:%[^ ]+]] = lshr i32 [[PREDEF]], 1
+; CHECK-XeHPG: [[AND1:%[^ ]+]] = and i32 [[PREDEF]], 63
+; CHECK-XeHPG: [[ANDNOT1:%[^ ]+]] = and i32 [[SHIFT1]], -64
+; CHECK-XeHPG: [[OR1:%[^ ]+]] = or i32 [[ANDNOT1]], [[AND1]]
+; CHECK-XeHPG: [[SHIFT2:%[^ ]+]] = lshr i32 [[OR1]], 1
+; CHECK-XeHPG: [[AND2:%[^ ]+]] = and i32 [[OR1]], 7
+; CHECK-XeHPG: [[ANDNOT2:%[^ ]+]] = and i32 [[SHIFT2]], -8
+; CHECK-XeHPG: [[OR2:%[^ ]+]] = or i32 [[ANDNOT2]], [[AND2]]
+; CHECK-XeHPG: [[RES:%[^ ]+]] = and i32 [[OR2]], 4095
+; CHECK-XeHPG: ret i32 [[RES]]
 
 ; CHECK-XeHPC: [[PREDEF:%[^ ]+]] = call i32 @llvm.genx.read.predef.reg.i32.i32(i32 13, i32 undef)
 ; CHECK-XeHPC: [[SHIFT1:%[^ ]+]] = lshr i32 [[PREDEF]], 2

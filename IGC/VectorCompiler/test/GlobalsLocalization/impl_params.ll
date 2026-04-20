@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2021-2025 Intel Corporation
+; Copyright (C) 2021-2026 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -104,7 +104,7 @@ define internal spir_func void @indir_func_common() #0 {
   ret void
 }
 
-attributes #0 = { "target-cpu"="Gen9" }
+attributes #0 = { "target-cpu"="Xe2" }
 
 !genx.kernels = !{!0, !3}
 !genx.kernel.internal = !{!5, !6}

@@ -1,15 +1,15 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2023-2025 Intel Corporation
+; Copyright (C) 2023-2026 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: %opt_typed_ptrs %use_old_pass_manager% -enable-debugify -GenXLoadStoreLowering -march=genx64 -mcpu=Gen9 -mtriple=spir64-unknown-unknown -enable-ldst-lowering=true -mattr=+ocl_runtime -S < %s 2>&1 | FileCheck %s
-; RUN: %opt_opaque_ptrs %use_old_pass_manager% -enable-debugify -GenXLoadStoreLowering -march=genx64 -mcpu=Gen9 -mtriple=spir64-unknown-unknown -enable-ldst-lowering=true -mattr=+ocl_runtime -S < %s 2>&1 | FileCheck %s
-; RUN: %opt_typed_ptrs %use_old_pass_manager% -enable-debugify -GenXLoadStoreLowering -march=genx64 -mcpu=Gen11 -mtriple=spir64-unknown-unknown -enable-ldst-lowering=true -mattr=+ocl_runtime -S < %s 2>&1 | FileCheck --check-prefix=CHECK-SLM-BLOCK %s
-; RUN: %opt_opaque_ptrs %use_old_pass_manager% -enable-debugify -GenXLoadStoreLowering -march=genx64 -mcpu=Gen11 -mtriple=spir64-unknown-unknown -enable-ldst-lowering=true -mattr=+ocl_runtime -S < %s 2>&1 | FileCheck --check-prefix=CHECK-SLM-BLOCK %s
+; RUN: %opt_typed_ptrs %use_old_pass_manager% -enable-debugify -GenXLoadStoreLowering -march=genx64 -mcpu=XeLP -mtriple=spir64-unknown-unknown -enable-ldst-lowering=true -mattr=+ocl_runtime -S < %s 2>&1 | FileCheck %s
+; RUN: %opt_opaque_ptrs %use_old_pass_manager% -enable-debugify -GenXLoadStoreLowering -march=genx64 -mcpu=XeLP -mtriple=spir64-unknown-unknown -enable-ldst-lowering=true -mattr=+ocl_runtime -S < %s 2>&1 | FileCheck %s
+; RUN: %opt_typed_ptrs %use_old_pass_manager% -enable-debugify -GenXLoadStoreLowering -march=genx64 -mcpu=XeLP -mtriple=spir64-unknown-unknown -enable-ldst-lowering=true -mattr=+ocl_runtime -S < %s 2>&1 | FileCheck --check-prefix=CHECK-SLM-BLOCK %s
+; RUN: %opt_opaque_ptrs %use_old_pass_manager% -enable-debugify -GenXLoadStoreLowering -march=genx64 -mcpu=XeLP -mtriple=spir64-unknown-unknown -enable-ldst-lowering=true -mattr=+ocl_runtime -S < %s 2>&1 | FileCheck --check-prefix=CHECK-SLM-BLOCK %s
 ; RUN: %opt_typed_ptrs %use_old_pass_manager% -enable-debugify -GenXLoadStoreLowering -march=genx64 -mcpu=XeHPC -mtriple=spir64-unknown-unknown -enable-ldst-lowering=true -mattr=+ocl_runtime -S < %s 2>&1 | FileCheck --check-prefix=CHECK-LSC %s
 ; RUN: %opt_opaque_ptrs %use_old_pass_manager% -enable-debugify -GenXLoadStoreLowering -march=genx64 -mcpu=XeHPC -mtriple=spir64-unknown-unknown -enable-ldst-lowering=true -mattr=+ocl_runtime -S < %s 2>&1 | FileCheck --check-prefix=CHECK-LSC %s
 ;
@@ -167,7 +167,14 @@ define void @replace_load_i64_block_owalign(<16 x i64> addrspace(3)* %pi64) {
 }
 
 define void @replace_load_i8_block_1023bytes(<1023 x i8> addrspace(3)* %pi8) {
-  ; CHECK: call <1023 x i32> @llvm.genx.gather.scaled.v1023i32.v1023i1.v1023i32
+  ; CHECK-LABEL: define void @replace_load_i8_block_1023bytes(
+  ; CHECK: %[[BASE:[^ ]+]] = ptrtoint {{.*}} %pi8 to i32
+  ; CHECK: %[[ADDR0:[^ ]+]] = lshr i32 %[[BASE]], 4
+  ; CHECK: call <128 x i8> @llvm.genx.oword.ld.v128i8(i32 0, i32 254, i32 %[[ADDR0]])
+  ; CHECK: call <64 x i8> @llvm.genx.oword.ld.v64i8(i32 0, i32 254, i32 %{{[^)]+}})
+  ; CHECK: call <32 x i8> @llvm.genx.oword.ld.v32i8(i32 0, i32 254, i32 %{{[^)]+}})
+  ; CHECK: call <16 x i8> @llvm.genx.oword.ld.v16i8(i32 0, i32 254, i32 %{{[^)]+}})
+  ; CHECK: call <15 x i32> @llvm.genx.gather.scaled.v15i32.v15i1.v15i32(<15 x i1> <i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true>, i32 0, i16 0, i32 254, i32 %[[BASE]], <15 x i32> <i32 1008, i32 1009, i32 1010, i32 1011, i32 1012, i32 1013, i32 1014, i32 1015, i32 1016, i32 1017, i32 1018, i32 1019, i32 1020, i32 1021, i32 1022>, <15 x i32> undef)
 
   ; CHECK-SLM-BLOCK: %[[ADDR0:[^ ]+]] = lshr i32 %[[BASE:[^,]+]], 4
   ; CHECK-SLM-BLOCK: call <128 x i8> @llvm.genx.oword.ld.v128i8(i32 0, i32 254, i32 %[[ADDR0]])
