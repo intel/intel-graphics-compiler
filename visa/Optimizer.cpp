@@ -8022,12 +8022,13 @@ void MadSequenceInfo::processCandidates() {
 // Do any kind of proprocessing in this basic block to help MAC transformation.
 // Returns false if we can easily detect this optimization is not possible.
 // Otherwise, returns true.
-static bool preprocessMadInBlock(IR_Builder &builder, G4_BB *bb) {
+static bool preprocessMadInBlock(IR_Builder &builder, G4_BB *bb,
+                                  const GlobalOpndHashTable &globalOpndHT) {
   bool hasMad = false;
   for (auto inst : *bb) {
     if (isMad(inst)) {
       hasMad = true;
-      HWConformity::tryEliminateMadSrcModifier(builder, inst);
+      HWConformity::tryEliminateMadSrcModifier(builder, inst, globalOpndHT);
     }
   }
 
@@ -8062,7 +8063,7 @@ void Optimizer::lowerMadSequence() {
   for (G4_BB *bb : fg) {
     // Preprocess this basic block. If no mad sequence found then skip to
     // the next basic block right away.
-    if (!preprocessMadInBlock(builder, bb))
+    if (!preprocessMadInBlock(builder, bb, fg.globalOpndHT))
       continue;
 
     // Object to gather information for ACC optimization.

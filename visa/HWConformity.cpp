@@ -4352,7 +4352,8 @@ static void tryTransferSrcModifier(IR_Builder &builder, G4_INST *def,
 // Try to move source modifiers on MAD's src2 into its defintion. This allows
 // pseudo_mad ops to be translated into mac ops.
 void HWConformity::tryEliminateMadSrcModifier(IR_Builder &builder,
-                                              G4_INST *inst) {
+                                              G4_INST *inst,
+                                              const GlobalOpndHashTable &globalOpndHT) {
   vISA_ASSERT(inst->opcode() == G4_pseudo_mad, "not a speudo-mad");
 
   // For pseudo_mad, src2 is the major source operand to be examined later.
@@ -4368,6 +4369,13 @@ void HWConformity::tryEliminateMadSrcModifier(IR_Builder &builder,
 
   // Only when src2 has a single definition.
   if (G4_INST *def = inst->getSingleDef(Opnd_src2, true)) {
+    // The def-use chain tracked in useInstList is local (intra-BB) only.
+    // Cross-BB uses are tracked solely in globalOpndHT.  If the def's
+    // destination is a global operand, hasOneUse() inside
+    // tryTransferSrcModifier will under-count uses and the NEG absorption
+    // would corrupt values in other BBs.  Skip the optimisation in that case.
+    if (def->getDst() && globalOpndHT.isOpndGlobal(def->getDst()))
+      return;
     tryTransferSrcModifier(builder, def, src2);
   }
 }
@@ -4653,7 +4661,7 @@ void HWConformity::fixMADInst(G4_BB *bb) {
       continue;
     }
 
-    tryEliminateMadSrcModifier(builder, inst);
+    tryEliminateMadSrcModifier(builder, inst, kernel.fg.globalOpndHT);
 
     G4_DstRegRegion *dst = inst->getDst();
     uint32_t exec_size = inst->getExecSize();

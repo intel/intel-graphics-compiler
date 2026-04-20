@@ -258,7 +258,8 @@ protected:
 public:
   HWConformity(IR_Builder &b, G4_Kernel &k) : builder(b), kernel(k) {}
   void chkHWConformity();
-  static void tryEliminateMadSrcModifier(IR_Builder &builder, G4_INST *inst);
+  static void tryEliminateMadSrcModifier(IR_Builder &builder, G4_INST *inst,
+                                         const GlobalOpndHashTable &globalOpndHT);
   bool checkDPASSrcDstOverlap(INST_LIST_ITER iter, G4_BB *bb);
   G4_INST *evenlySplitDPAS8x8Inst(INST_LIST_ITER iter, G4_BB *bb);
   void DPASWA(G4_BB *bb, DPASSrc2RSCache *src2GRFCache);
