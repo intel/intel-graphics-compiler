@@ -1622,8 +1622,7 @@ IGC::DIE *CompileUnit::getOrCreateGlobalVariableDIE(DIGlobalVariable *GV, ArrayR
       addType(VariableDIE, GTy);
 
     // Add scoping info.
-    if (!GV->isLocalToUnit())
-      addFlag(VariableDIE, dwarf::DW_AT_external);
+    addFlag(VariableDIE, dwarf::DW_AT_external);
 
     // Add line number info.
     addSourceLine(VariableDIE, GV);
@@ -1637,6 +1636,15 @@ IGC::DIE *CompileUnit::getOrCreateGlobalVariableDIE(DIGlobalVariable *GV, ArrayR
 
   if (MDTuple *TP = GV->getTemplateParams())
     addTemplateParams(*VariableDIE, DINodeArray(TP));
+
+  // Emit DW_AT_linkage_name when symbol name differs from source code name
+  for (const auto &GE : GlobalExprs) {
+    if (!GE.Var || !GE.Var->hasName())
+      continue;
+    if (GE.Var->getName() != GV->getDisplayName())
+      addString(VariableDIE, dwarf::DW_AT_linkage_name, GE.Var->getName());
+    break;
+  }
 
   // TODO: Add location and relocation entry to Global Variable
   // addLocationAttribute(VariableDIE, GV, GlobalExprs);
