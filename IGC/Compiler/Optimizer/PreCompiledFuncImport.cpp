@@ -1050,7 +1050,7 @@ void PreCompiledFuncImport::processInt32Divide(BinaryOperator &inst, Int32Emulat
 
     func = Function::Create(FuncIntrType, GlobalValue::ExternalLinkage, funcName, m_pModule);
   }
-  func->addRetAttr(llvm::Attribute::AlwaysInline);
+  func->addFnAttr(llvm::Attribute::AlwaysInline);
 
   // Create a call to emulation function
   Value *args[3];
