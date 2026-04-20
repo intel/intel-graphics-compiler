@@ -1038,6 +1038,28 @@ static inline GED_DATA_TYPE_SCALE lowerSrc3Src4DataType(Type ty) {
   }
 }
 
+static inline GED_DATA_TYPE2 lowerDataType2(Type opndType) {
+  switch (opndType) {
+  case Type::UB:    return GED_DATA_TYPE2_ub;
+  case Type::UW:    return GED_DATA_TYPE2_uw;
+  case Type::UD:    return GED_DATA_TYPE2_ud;
+  case Type::UQ:    return GED_DATA_TYPE2_uq;
+  case Type::B:     return GED_DATA_TYPE2_b;
+  case Type::W:     return GED_DATA_TYPE2_w;
+  case Type::D:     return GED_DATA_TYPE2_d;
+  case Type::Q:     return GED_DATA_TYPE2_q;
+  case Type::BF8:   return GED_DATA_TYPE2_bf8;
+  case Type::HF:    return GED_DATA_TYPE2_hf;
+  case Type::F:     return GED_DATA_TYPE2_f;
+  case Type::DF:    return GED_DATA_TYPE2_df;
+  case Type::HF8:   return GED_DATA_TYPE2_hf8;
+  case Type::BF:    return GED_DATA_TYPE2_bf;
+  case Type::TF32:  return GED_DATA_TYPE2_tf32;
+  case Type::UV:    return GED_DATA_TYPE2_uv;
+  default:          return GED_DATA_TYPE2_INVALID;
+  }
+}
+
 static inline GED_CONV_SRC_DATATYPE2 lowerConvSrcDataType2(ConvSrcDataType ty) {
   switch (ty) {
   case ConvSrcDataType::HF:

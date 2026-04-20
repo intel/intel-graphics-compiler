@@ -329,6 +329,16 @@ protected:
   template <SourceIndex S> GED_SRC_MOD decodeSrcSrcMod();
 
   template <SourceIndex S> Type decodeSrcType() {
+    if (S == SourceIndex::SRC0 && platform() == Platform::XE3P_XPC &&
+        m_opSpec->op == Op::MOV) {
+      // GED Src0DataType2 is only valid for register sources on mov; immediate
+      // sources still use the regular Src0DataType field
+      GED_DECODE_RAW(uint32_t, isImm, Src0IsImm);
+      if (!isImm) {
+        GED_DECODE_RAW(GED_DATA_TYPE2, t2, Src0DataType2);
+        return translate(t2);
+      }
+    }
     return translate(decodeSrcDataType<S>());
   }
 

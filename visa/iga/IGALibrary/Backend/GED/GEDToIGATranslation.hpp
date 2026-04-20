@@ -900,6 +900,28 @@ static inline Type translateSrc3Src4DataType(GED_DATA_TYPE_SCALE scale) {
   }
 }
 
+static inline Type translate(GED_DATA_TYPE2 type) {
+  switch (type) {
+  case GED_DATA_TYPE2_ub:    return Type::UB;
+  case GED_DATA_TYPE2_uw:    return Type::UW;
+  case GED_DATA_TYPE2_ud:    return Type::UD;
+  case GED_DATA_TYPE2_uq:    return Type::UQ;
+  case GED_DATA_TYPE2_b:     return Type::B;
+  case GED_DATA_TYPE2_w:     return Type::W;
+  case GED_DATA_TYPE2_d:     return Type::D;
+  case GED_DATA_TYPE2_q:     return Type::Q;
+  case GED_DATA_TYPE2_bf8:   return Type::BF8;
+  case GED_DATA_TYPE2_hf:    return Type::HF;
+  case GED_DATA_TYPE2_f:     return Type::F;
+  case GED_DATA_TYPE2_df:    return Type::DF;
+  case GED_DATA_TYPE2_hf8:   return Type::HF8;
+  case GED_DATA_TYPE2_bf:    return Type::BF;
+  case GED_DATA_TYPE2_tf32:  return Type::TF32;
+  case GED_DATA_TYPE2_uv:    return Type::UV;
+  default:                   return Type::INVALID;
+  }
+}
+
 // XE3P.CRI uses a different GED field (ConvSrcDataType2) with an additional F32 entry
 static inline ConvSrcDataType translate(GED_CONV_SRC_DATATYPE2 ty) {
   switch (ty) {

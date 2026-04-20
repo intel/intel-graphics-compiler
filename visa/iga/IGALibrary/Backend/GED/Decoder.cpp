@@ -631,7 +631,15 @@ void Decoder::decodeBasicDestinationAlign1(Instruction *inst) {
     }
   }
 
-  GED_DECODE(Type, GED_DATA_TYPE, type, DstDataType);
+  Type type;
+  if (platform() == Platform::XE3P_XPC && m_opSpec->op == Op::MOV) {
+    // GED DstDataType2 is only valid for MOV
+    GED_DECODE_RAW(GED_DATA_TYPE2, t2, DstDataType2);
+    type = translate(t2);
+  } else {
+    GED_DECODE(Type, GED_DATA_TYPE, t1, DstDataType);
+    type = t1;
+  }
 
   switch (addrMode) {
   case GED_ADDR_MODE_Direct: {
@@ -724,10 +732,11 @@ void Decoder::decodeBDPASScalingSource(Instruction *inst) {
   Region dftRgn =
       os.implicitSrcRegion((int)S, inst->getExecSize(), isMacro());
   // XE3P.CRI Src3Src4DataType field:
-  // decode once from SRC3 (SRC4 shares the same field).
-  // Other platforms fixed src3 and src4 type to UB.
+  // Both SRC3 and SRC4 use the same field; read it for both.
+  // Other platforms fix src3 and src4 type to UB.
   Type scalingType = Type::UB;
-  if (platform() == Platform::XE3P_XPC && S == SourceIndex::SRC3) {
+  if (platform() == Platform::XE3P_XPC &&
+      (S == SourceIndex::SRC3 || S == SourceIndex::SRC4)) {
     GED_DECODE_RAW(GED_DATA_TYPE_SCALE, gedScale, Src3Src4DataType);
     scalingType = translateSrc3Src4DataType(gedScale);
   }

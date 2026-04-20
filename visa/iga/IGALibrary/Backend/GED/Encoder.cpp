@@ -1296,7 +1296,12 @@ void Encoder::encodeBasicDestination(const Instruction &inst,
   case Operand::Kind::DIRECT:
   case Operand::Kind::MACRO:
     GED_ENCODE(DstAddrMode, GED_ADDR_MODE_Direct);
-    GED_ENCODE(DstDataType, lowerDataType(dst.getType()));
+    if (platform() == Platform::XE3P_XPC && inst.getOp() == Op::MOV) {
+      // GED DstDataType2 is only valid for MOV
+      GED_ENCODE(DstDataType2, lowerDataType2(dst.getType()));
+    } else {
+      GED_ENCODE(DstDataType, lowerDataType(dst.getType()));
+    }
     if (inst.getOpSpec().supportsSaturation()) {
       GED_ENCODE(Saturate, lowerSaturate(dst.getDstModifier()));
     }
@@ -1447,7 +1452,14 @@ void Encoder::encodeBasicSource(const Instruction &inst,
     break;
   }
 
-  encodeSrcType<S>(src.getType());
+  if (S == SourceIndex::SRC0 && platform() == Platform::XE3P_XPC &&
+      inst.getOp() == Op::MOV &&
+      src.getKind() != Operand::Kind::IMMEDIATE) {
+    // GED Src0DataType2 is only valid for MOV and for register sources
+    GED_ENCODE(Src0DataType2, lowerDataType2(src.getType()));
+  } else {
+    encodeSrcType<S>(src.getType());
+  }
 
   switch (src.getKind()) {
   case Operand::Kind::DIRECT:

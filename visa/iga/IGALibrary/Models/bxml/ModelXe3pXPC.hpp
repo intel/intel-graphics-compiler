@@ -108,8 +108,6 @@ static const iga::OpSpec MODEL_XE3P_XPC_OPSPECS[unsigned(Op::TOTAL_OPS) + 1] {
       {TYPE(Type::F)|TYPE(Type::HF),TYPE(Type::F)|TYPE(Type::HF)|TYPE(Type::UB)},
       // F,BF <- F,BF,E2M1,UB
       {TYPE(Type::F)|TYPE(Type::BF),TYPE(Type::F)|TYPE(Type::BF)|TYPE(Type::E2M1)|TYPE(Type::UB)},
-      // F,BF <- F,BF,E2M1,UB
-      {TYPE(Type::F)|TYPE(Type::BF),TYPE(Type::F)|TYPE(Type::BF)|TYPE(Type::E2M1)|TYPE(Type::UB)}
     },
     OpSpec::Attr::SUPPORTS_PREDICATION
   },
