@@ -1611,6 +1611,10 @@ bool CodeGenPatternMatch::matchMulPairToI64(BitCastInst &I) {
   if (!I.getType()->isIntegerTy(64))
     return false;
 
+  // We do not handle uniform case here
+  if (isUniform(&I))
+    return false;
+
   Value *MulPairLo = nullptr;
   Value *MulPairHi = nullptr;
   // Match the nested insertelement/extractvalue structure:
