@@ -2369,28 +2369,34 @@ void Interference::buildInterferenceWithinBB(G4_BB *bb, SparseBitVector &live) {
     }
 
     if (inst->opcode() == G4_pseudo_fcall) {
-      if (liveAnalysis->livenessClass(G4_GRF)) {
-        auto fcall = kernel.fg.builder->getFcallInfo(bb->back());
-        G4_Declare *arg = kernel.fg.builder->getStackCallArg();
-        G4_Declare *ret = kernel.fg.builder->getStackCallRet();
-        vISA_ASSERT(fcall != std::nullopt, "fcall info not found");
-        uint16_t retSize = fcall->getRetSize();
-        uint16_t argSize = fcall->getArgSize();
-        if (ret && retSize > 0 && ret->getRegVar()) {
-          buildInterferenceForFcall(bb, live, inst, i, ret->getRegVar());
+      auto fcall = kernel.fg.builder->getFcallInfo(bb->back());
+      // Non-returning fcalls have no pseudo VCA/A0/Flag declares (they're
+      // skipped in FlowGraph's caller-save setup) and no return/arg area
+      // meaningful to the caller. Skip interference accounting for them.
+      const bool isNoReturn = fcall && fcall->isNoReturn();
+      if (!isNoReturn) {
+        if (liveAnalysis->livenessClass(G4_GRF)) {
+          G4_Declare *arg = kernel.fg.builder->getStackCallArg();
+          G4_Declare *ret = kernel.fg.builder->getStackCallRet();
+          vISA_ASSERT(fcall != std::nullopt, "fcall info not found");
+          uint16_t retSize = fcall->getRetSize();
+          uint16_t argSize = fcall->getArgSize();
+          if (ret && retSize > 0 && ret->getRegVar()) {
+            buildInterferenceForFcall(bb, live, inst, i, ret->getRegVar());
+          }
+          if (arg && argSize > 0 && arg->getRegVar()) {
+            auto id = arg->getRegVar()->getId();
+            updateLiveness(live, id, true);
+          }
+        } else if (liveAnalysis->livenessClass(G4_ADDRESS)) {
+          // assume callee will use A0
+          auto A0Dcl = kernel.fg.fcallToPseudoDclMap[inst->asCFInst()].A0;
+          buildInterferenceWithLive(live, A0Dcl->getRegVar()->getId());
+        } else if (liveAnalysis->livenessClass(G4_FLAG)) {
+          // assume callee will use both F0 and F1
+          auto flagDcl = kernel.fg.fcallToPseudoDclMap[inst->asCFInst()].Flag;
+          buildInterferenceWithLive(live, flagDcl->getRegVar()->getId());
         }
-        if (arg && argSize > 0 && arg->getRegVar()) {
-          auto id = arg->getRegVar()->getId();
-          updateLiveness(live, id, true);
-        }
-      } else if (liveAnalysis->livenessClass(G4_ADDRESS)) {
-        // assume callee will use A0
-        auto A0Dcl = kernel.fg.fcallToPseudoDclMap[inst->asCFInst()].A0;
-        buildInterferenceWithLive(live, A0Dcl->getRegVar()->getId());
-      } else if (liveAnalysis->livenessClass(G4_FLAG)) {
-        // assume callee will use both F0 and F1
-        auto flagDcl = kernel.fg.fcallToPseudoDclMap[inst->asCFInst()].Flag;
-        buildInterferenceWithLive(live, flagDcl->getRegVar()->getId());
       }
     }
 
@@ -8337,6 +8343,10 @@ void GlobalRA::stackCallProlog() {
       // After Bar() return, we should re-compute r126.0
       for (auto bb : kernel.fg) {
         if (bb->isEndWithFCall()) {
+          // Non-returning fcalls have no successor block to re-compute in.
+          auto fcallInfo = builder.getFcallInfo(bb->back());
+          if (fcallInfo && fcallInfo->isNoReturn())
+            continue;
           G4_BB *succ = bb->Succs.front();
           insertIt =
               std::find_if(succ->begin(), succ->end(),
@@ -8750,6 +8760,11 @@ void GraphColor::getCallerSaveRegisters() {
   for (BB_LIST_ITER it = builder.kernel.fg.begin();
        it != builder.kernel.fg.end(); ++it) {
     if ((*it)->isEndWithFCall()) {
+      // Non-returning fcalls have no pseudo VCA declare and need no
+      // caller-save bookkeeping.
+      auto fcallInfo = builder.kernel.fg.builder->getFcallInfo((*it)->back());
+      if (fcallInfo && fcallInfo->isNoReturn())
+        continue;
       //
       // Determine the caller-save registers per call site.
       //
@@ -8818,6 +8833,11 @@ void GlobalRA::addCallerSaveRestoreCode() {
 
   for (G4_BB *bb : builder.kernel.fg) {
     if (bb->isEndWithFCall()) {
+      // Non-returning fcalls have no successor block and no caller-save
+      // bookkeeping to emit.
+      auto fcallInfo = builder.getFcallInfo(bb->back());
+      if (fcallInfo && fcallInfo->isNoReturn())
+        continue;
       //
       // Determine the caller-save registers per call site.
       //
@@ -9166,6 +9186,10 @@ void GraphColor::addA0SaveRestoreCode() {
   int count = 0;
   for (auto bb : builder.kernel.fg) {
     if (bb->isEndWithFCall()) {
+      // Non-returning fcalls have no successor and no pseudo A0 declare.
+      auto fcallInfo = builder.getFcallInfo(bb->back());
+      if (fcallInfo && fcallInfo->isNoReturn())
+        continue;
       G4_BB *succ = bb->Succs.front();
       auto fcallInst = bb->back()->asCFInst();
       G4_RegVar *assocPseudoA0 =
@@ -9238,6 +9262,11 @@ void GraphColor::addFlagSaveRestoreCode() {
 
   for (auto bb : builder.kernel.fg) {
     if (bb->isEndWithFCall()) {
+      // Non-returning fcalls have no successor and no caller-save pseudo
+      // declares. Skip flag save/restore entirely.
+      auto fcallInfo = builder.getFcallInfo(bb->back());
+      if (fcallInfo && fcallInfo->isNoReturn())
+        continue;
       G4_BB *succ = bb->Succs.front();
       auto fcallInst = bb->back()->asCFInst();
       G4_RegVar *assocPseudoFlag =
@@ -9494,6 +9523,11 @@ void GlobalRA::addCallerSavePseudoCode() {
 
   for (G4_BB *bb : builder.kernel.fg) {
     if (bb->isEndWithFCall()) {
+      auto fcallInfo = builder.getFcallInfo(bb->back());
+      // Non-returning fcalls never return, so no caller save/restore is
+      // needed — the callee terminates the thread.
+      if (fcallInfo && fcallInfo->isNoReturn())
+        continue;
       // GRF caller save/restore
       auto fcallInst = bb->back()->asCFInst();
       G4_Declare *pseudoVCADcl =

@@ -277,7 +277,8 @@ public:
   void SubroutineCall(CVariable *flag, llvm::Function *F);
   void SubroutineRet(CVariable *flag, llvm::Function *F);
   void StackCall(CVariable *flag, llvm::Function *F, unsigned char argSize, unsigned char retSize);
-  void IndirectStackCall(CVariable *flag, CVariable *funcPtr, unsigned char argSize, unsigned char retSize);
+  void IndirectStackCall(CVariable *flag, CVariable *funcPtr, unsigned char argSize, unsigned char retSize,
+                         bool isNoReturn = false);
   void StackRet(CVariable *flag);
   void Loc(unsigned int line);
   void File(std::string &s);

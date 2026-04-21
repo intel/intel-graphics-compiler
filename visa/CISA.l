@@ -1478,6 +1478,12 @@ surf   {return LSC_AM_SURF;}
         return UNIFORM;
     }
 
+".noreturn" {
+        TRACE("** NORETURN");
+        CISAlval.string = strdup(yytext);
+        return NORETURN;
+    }
+
 
 
 

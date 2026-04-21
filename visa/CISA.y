@@ -420,6 +420,7 @@ std::vector<attr_gen_struct*> AttrOptVar;
 
 
 %token                     UNIFORM
+%token                     NORETURN
 %token <string>            RTWRITE_OPTION
 %token <media_mode>        MEDIA_MODE
 %token <oword_mod>         OWORD_MODIFIER
@@ -2658,15 +2659,29 @@ BranchInstruction: Predicate BRANCH_OP ExecSize IdentOrStringLit
     | Predicate IFCALL ExecSize VecSrcOperand_G_I_IMM DEC_LIT DEC_LIT
     {
         pBuilder->CISA_create_ifcall_instruction(
-        $1, $3.emask, $3.exec_size, false,
+        $1, $3.emask, $3.exec_size, false, false,
         $4.cisa_gen_opnd, (unsigned)$5, (unsigned)$6, CISAlineno);
     }
     // 1          2       3       4           5                  6       7
     | Predicate IFCALL UNIFORM ExecSize VecSrcOperand_G_I_IMM DEC_LIT DEC_LIT
     {
         pBuilder->CISA_create_ifcall_instruction(
-        $1, $4.emask, $4.exec_size, true,
+        $1, $4.emask, $4.exec_size, true, false,
         $5.cisa_gen_opnd, (unsigned)$6, (unsigned)$7, CISAlineno);
+    }
+    // 1          2       3        4          5                  6       7
+    | Predicate IFCALL NORETURN ExecSize VecSrcOperand_G_I_IMM DEC_LIT DEC_LIT
+    {
+        pBuilder->CISA_create_ifcall_instruction(
+        $1, $4.emask, $4.exec_size, false, true,
+        $5.cisa_gen_opnd, (unsigned)$6, (unsigned)$7, CISAlineno);
+    }
+    // 1          2       3       4         5          6                  7       8
+    | Predicate IFCALL UNIFORM NORETURN ExecSize VecSrcOperand_G_I_IMM DEC_LIT DEC_LIT
+    {
+        pBuilder->CISA_create_ifcall_instruction(
+        $1, $5.emask, $5.exec_size, true, true,
+        $6.cisa_gen_opnd, (unsigned)$7, (unsigned)$8, CISAlineno);
     }
     // 1      2                3
     | FADDR  IdentOrStringLit VecDstOperand_G_I

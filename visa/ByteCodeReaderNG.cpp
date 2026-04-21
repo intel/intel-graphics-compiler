@@ -1202,13 +1202,17 @@ static void readInstructionControlFlow(unsigned &bytePos, const char *buf,
                               ? readPredicateOperandNG(bytePos, buf, container)
                               : nullptr;
 
-    bool isUniform = false;
+    // Modifier flags packed into a single byte:
+    //   bit 0 = uniform, bit 1 = noreturn.
+    auto modifierFlags = readPrimitiveOperandNG<uint8_t>(bytePos, buf);
+    bool isUniform = (modifierFlags & 0x1) != 0;
+    bool isNoReturn = (modifierFlags & 0x2) != 0;
     VISA_VectorOpnd *funcAddr =
         readVectorOperandNG(bytePos, buf, container, false);
     uint8_t argSize = readPrimitiveOperandNG<uint8_t>(bytePos, buf);
     uint8_t retSize = readPrimitiveOperandNG<uint8_t>(bytePos, buf);
     kernelBuilder->AppendVISACFIndirectFuncCallInst(
-        pred, emask, esize, isUniform, funcAddr, argSize, retSize);
+        pred, emask, esize, isUniform, funcAddr, argSize, retSize, isNoReturn);
     return;
   }
   case ISA_FADDR: {

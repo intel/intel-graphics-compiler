@@ -3480,7 +3480,7 @@ int VISAKernelImpl::AppendVISACFFunctionCallInst(
 int VISAKernelImpl::AppendVISACFIndirectFuncCallInst(
     VISA_PredOpnd *pred, VISA_EMask_Ctrl emask, VISA_Exec_Size executionSize,
     bool isUniform, VISA_VectorOpnd *funcAddr, uint8_t argSize,
-    uint8_t returnSize) {
+    uint8_t returnSize, bool isNoReturn) {
   TIME_SCOPE(VISA_BUILDER_APPEND_INST);
 
   AppendVISAInstCommon();
@@ -3490,7 +3490,8 @@ int VISAKernelImpl::AppendVISACFIndirectFuncCallInst(
     G4_Predicate *g4Pred = pred ? pred->g4opnd->asPredicate() : nullptr;
     status = m_builder->translateVISACFIFCallInst(executionSize, emask, g4Pred,
                                                   isUniform, funcAddr->g4opnd,
-                                                  argSize, returnSize);
+                                                  argSize, returnSize,
+                                                  isNoReturn);
   }
   if (IS_VISA_BOTH_PATH) {
     VISA_INST_Desc *inst_desc = &CISA_INST_table[ISA_IFCALL];
@@ -3499,9 +3500,14 @@ int VISAKernelImpl::AppendVISACFIndirectFuncCallInst(
     GET_NUM_PRED_DESC_OPNDS(num_pred_desc_operands, inst_desc);
     int num_operands = 0;
 
+    // Pack the ifcall modifier flags into the "isUniform" byte:
+    //   bit 0 = uniform, bit 1 = noreturn.
+    // Reader/printer masks the bits back out.
+    unsigned char modifierFlags =
+        (isUniform ? 0x1u : 0x0u) | (isNoReturn ? 0x2u : 0x0u);
     ADD_OPND(num_operands, opnd,
              CreateOtherOpndHelper(num_pred_desc_operands, num_operands,
-                                   inst_desc, isUniform));
+                                   inst_desc, modifierFlags));
 
     opnd[num_operands] = funcAddr;
     ++num_operands;

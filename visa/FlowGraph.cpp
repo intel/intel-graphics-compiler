@@ -583,6 +583,9 @@ void FlowGraph::normalizeFlowGraph() {
     G4_BB *bb = *it;
 
     if (bb->isEndWithFCall()) {
+      // Non-returning fcalls have no successor — nothing to normalize.
+      if (bb->Succs.empty())
+        continue;
       G4_BB *retBB = bb->Succs.front();
       if (retBB->Preds.size() > 1) {
 
@@ -773,7 +776,13 @@ void FlowGraph::constructFlowGraph(INST_LIST &instlist) {
           }
         } else if (i->opcode() == G4_pseudo_fcall ||
                    i->opcode() == G4_pseudo_fc_call) {
-          addPredSuccEdges(curr_BB, next_BB);
+          // Non-returning indirect calls (callee terminates the thread) have
+          // no fall-through successor. Skip adding the edge so downstream
+          // analyses don't consider caller-saved registers live across the
+          // call and the RA doesn't emit save/restore around it.
+          auto fcall = builder->getFcallInfo(i);
+          if (!(fcall && fcall->isNoReturn()))
+            addPredSuccEdges(curr_BB, next_BB);
         } else if (i->opcode() == G4_pseudo_fret ||
                    i->opcode() == G4_pseudo_fc_ret) {
           if (i->getPredicate()) {
@@ -3799,6 +3808,10 @@ void FlowGraph::addSaveRestorePseudoDeclares(IR_Builder &builder) {
   INST_LIST callSites;
   for (auto bb : builder.kernel.fg) {
     if (bb->isEndWithFCall()) {
+      // Non-returning fcalls don't need caller-save storage — skip.
+      auto fcallInfo = builder.getFcallInfo(bb->back());
+      if (fcallInfo && fcallInfo->isNoReturn())
+        continue;
       callSites.push_back(bb->back());
     }
   }

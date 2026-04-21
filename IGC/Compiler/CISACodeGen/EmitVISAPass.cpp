@@ -11936,12 +11936,13 @@ void EmitPass::emitStackCall(llvm::CallInst *inst) {
 
     IGC_ASSERT_MESSAGE(inst->getType()->isVoidTy(), "Call that does not return can't return a value");
     IGC_ASSERT_MESSAGE(IGCLLVM::getNumArgOperands(inst) == 0, "Arguments for non-returning call are not implemented");
+    IGC_ASSERT_MESSAGE(isIndirectFCall, "Non-returning stack calls are only supported through the indirect path");
 
     auto *funcAddr = GetSymbol(IGCLLVM::getCalledValue(inst));
     if (!m_currShader->m_Platform->hasEfficient64bEnabled())
       funcAddr = TruncatePointer(funcAddr);
     IGC_ASSERT_MESSAGE(funcAddr->IsUniform(), "Function address must be uniform for non-returning stack call");
-    m_encoder->IndirectStackCall(nullptr, funcAddr, 0, 0);
+    m_encoder->IndirectStackCall(nullptr, funcAddr, 0, 0, /*isNoReturn=*/true);
     m_encoder->Push();
 
     return;

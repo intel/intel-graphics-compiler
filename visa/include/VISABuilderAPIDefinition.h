@@ -695,7 +695,7 @@ public:
   VISA_BUILDER_API virtual int AppendVISACFIndirectFuncCallInst(
       VISA_PredOpnd *pred, VISA_EMask_Ctrl emask, VISA_Exec_Size executionSize,
       bool isUniform, VISA_VectorOpnd *funcAddr, unsigned char argSize,
-      unsigned char returnSize) = 0;
+      unsigned char returnSize, bool isNoReturn = false) = 0;
 
   /// AppendVISACFFuncAddrInst -- stores the address of a symbol <symbolName>
   /// into <dst> faddr symbolName dst symbolName is the unique string to

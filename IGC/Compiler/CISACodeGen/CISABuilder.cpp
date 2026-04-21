@@ -394,7 +394,8 @@ void CEncoder::StackCall(CVariable *flag, llvm::Function *F, unsigned char argSi
   V(vKernel->AppendVISACFFunctionCallInst(predOpnd, emask, execSize, F->getName().data(), argSize, retSize));
 }
 
-void CEncoder::IndirectStackCall(CVariable *flag, CVariable *funcPtr, unsigned char argSize, unsigned char retSize) {
+void CEncoder::IndirectStackCall(CVariable *flag, CVariable *funcPtr, unsigned char argSize, unsigned char retSize,
+                                 bool isNoReturn) {
   m_encoderState.m_flag.var = flag;
   VISA_PredOpnd *predOpnd = GetFlagOperand(m_encoderState.m_flag);
   // control flow instructions cannot be broken down into lower SIMD
@@ -403,7 +404,7 @@ void CEncoder::IndirectStackCall(CVariable *flag, CVariable *funcPtr, unsigned c
   VISA_VectorOpnd *funcAddrOpnd = GetSourceOperandNoModifier(funcPtr);
   V(vKernel->AppendVISACFIndirectFuncCallInst(predOpnd, emask, execSize,
                                               IGC_IS_FLAG_ENABLED(EnableCallUniform) ? funcPtr->IsUniform() : false,
-                                              funcAddrOpnd, argSize, retSize));
+                                              funcAddrOpnd, argSize, retSize, isNoReturn));
 }
 
 void CEncoder::SubroutineRet(CVariable *flag, llvm::Function *F) {
@@ -3411,8 +3412,8 @@ void CEncoder::InitBuildParams(
     params.push_back(param_uptr("-disableOverfetch", literal_deleter));
   }
 
-       // Ensure VISA_Opts has the same scope as CreateVISABuilder so that valid
-       // strings are checked by vISA and freed out of this function.
+  // Ensure VISA_Opts has the same scope as CreateVISABuilder so that valid
+  // strings are checked by vISA and freed out of this function.
   if (IGC_IS_FLAG_ENABLED(VISAOptions)) {
     std::vector<std::string> VISA_Opts;
     const char *DELIMITERS = " \t\n\v\f\r,="; // isspace(c), and comma/equal for igcstandalone

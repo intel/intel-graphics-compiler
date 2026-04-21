@@ -3722,7 +3722,7 @@ bool CISA_IR_Builder::CISA_create_fcall_instruction(
 
 bool CISA_IR_Builder::CISA_create_ifcall_instruction(
     VISA_opnd *pred_opnd, VISA_EMask_Ctrl emask, unsigned exec_size,
-    bool isUniform, VISA_opnd *funcAddr, unsigned arg_size,
+    bool isUniform, bool isNoReturn, VISA_opnd *funcAddr, unsigned arg_size,
     unsigned return_size,
     int lineNum) // last index
 {
@@ -3730,7 +3730,7 @@ bool CISA_IR_Builder::CISA_create_ifcall_instruction(
   VISA_CALL_TO_BOOL(AppendVISACFIndirectFuncCallInst,
                     (VISA_PredOpnd *)pred_opnd, emask, executionSize, isUniform,
                     (VISA_VectorOpnd *)funcAddr, (uint8_t)arg_size,
-                    (uint8_t)return_size);
+                    (uint8_t)return_size, isNoReturn);
   return true;
 }
 

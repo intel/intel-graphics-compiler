@@ -494,7 +494,8 @@ public:
 
   bool CISA_create_ifcall_instruction(VISA_opnd *pred_opnd,
                                       VISA_EMask_Ctrl emask, unsigned exec_size,
-                                      bool isUniform, VISA_opnd *funcAddr,
+                                      bool isUniform, bool isNoReturn,
+                                      VISA_opnd *funcAddr,
                                       unsigned arg_size, unsigned return_size,
                                       int lineNum);
 

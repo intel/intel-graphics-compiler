@@ -499,7 +499,8 @@ public:
   AppendVISACFIndirectFuncCallInst(VISA_PredOpnd *pred, VISA_EMask_Ctrl emask,
                                    VISA_Exec_Size executionSize, bool isUniform,
                                    VISA_VectorOpnd *funcAddr, uint8_t argSize,
-                                   uint8_t returnSize) override;
+                                   uint8_t returnSize,
+                                   bool isNoReturn = false) override;
 
   VISA_BUILDER_API int AppendVISACFSymbolInst(const std::string& symbolName,
                                               VISA_VectorOpnd *dst) override;

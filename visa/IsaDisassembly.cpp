@@ -1030,10 +1030,13 @@ printInstructionControlFlow(const print_format_provider_t *header,
       break;
     }
     case ISA_IFCALL: {
-      /// isUniform
-      auto isUniform = getPrimitiveOperand<unsigned>(inst, i++);
-      if (isUniform)
+      /// Modifier flags packed into the "isUniform" byte:
+      ///   bit 0 = uniform, bit 1 = noreturn (callee terminates the thread).
+      auto modifierFlags = getPrimitiveOperand<unsigned>(inst, i++);
+      if (modifierFlags & 0x1)
         sstr << ".uniform";
+      if (modifierFlags & 0x2)
+        sstr << ".noreturn";
       sstr << " " << printExecutionSize(inst->opcode, inst->execsize);
       sstr << printOperand(header, inst, i++, opt);
       /// arg size

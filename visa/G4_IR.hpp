@@ -102,15 +102,21 @@ class G4_FCALL {
   uint16_t argSize;
   uint16_t retSize;
   bool uniform = false;
+  // Non-returning indirect call: callee terminates the thread instead of
+  // returning to the caller.
+  bool noReturn = false;
 
 public:
   G4_FCALL() = delete;
-  G4_FCALL(uint16_t argVarSz, uint16_t retVarSz, bool isUniform)
-      : argSize(argVarSz), retSize(retVarSz), uniform(isUniform) {}
+  G4_FCALL(uint16_t argVarSz, uint16_t retVarSz, bool isUniform,
+           bool isNoReturn = false)
+      : argSize(argVarSz), retSize(retVarSz), uniform(isUniform),
+        noReturn(isNoReturn) {}
 
   uint16_t getArgSize() const { return argSize; }
   uint16_t getRetSize() const { return retSize; }
   bool isUniform() const { return uniform; }
+  bool isNoReturn() const { return noReturn; }
 };
 
 // Forward references for classes used by G4_INST.

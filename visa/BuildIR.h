@@ -652,8 +652,10 @@ public:
 
   std::optional<G4_FCALL> getFcallInfo(const G4_INST *inst) const;
   void addFcallInfo(const G4_INST *FcallInst, uint16_t ArgSize,
-                    uint16_t RetSize, bool isUniform) {
-    m_fcallInfo.emplace(FcallInst, G4_FCALL(ArgSize, RetSize, isUniform));
+                    uint16_t RetSize, bool isUniform,
+                    bool isNoReturn = false) {
+    m_fcallInfo.emplace(
+        FcallInst, G4_FCALL(ArgSize, RetSize, isUniform, isNoReturn));
   }
 
   // If this is true (detected in TranslateInterface.cpp), we need a sampler
@@ -2008,7 +2010,8 @@ public:
   int translateVISACFIFCallInst(VISA_Exec_Size execsize, VISA_EMask_Ctrl emask,
                                 G4_Predicate *predOpnd, bool isUniform,
                                 G4_Operand *funcAddr, uint8_t argSize,
-                                uint8_t returnSize);
+                                uint8_t returnSize,
+                                bool isNoReturn = false);
 
   int translateVISACFSymbolInst(const std::string &symbolName,
                                 G4_DstRegRegion *dst);
