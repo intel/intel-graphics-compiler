@@ -385,8 +385,6 @@ bool CGen8OpenCLProgram::GetZEBinary(llvm::raw_pwrite_stream &programBinary, uns
             elfTmpFilesError = true; // Handle this error also below
           }
         } else {
-          linkErr.str(); // Flush contents to the associated string
-          linkOut.str(); // Flush contents to the associated string
           linkErrStr.append(linkOutStr);
           if (!linkErrStr.empty()) {
             if (ctx) {
