@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2025 Intel Corporation
+Copyright (C) 2025-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -130,7 +130,10 @@ void AllocationLivenessAnalyzer::implementCallSpecificBehavior(CallInst *callI, 
                                                                SetVector<Instruction *> &allUsers,
                                                                SetVector<Instruction *> &lifetimeLeakingUsers) {
 
-  if (!callI->doesNotCapture(use->getOperandNo()))
+  // Only check doesNotCapture for valid data operands (args + bundle operands).
+  // If the use is the callee operand (e.g. indirect call via function pointer),
+  // calling through a pointer does not capture it.
+  if (callI->isDataOperand(use) && !callI->doesNotCapture(use->getOperandNo()))
     lifetimeLeakingUsers.insert(callI);
 
   if (callI->getType()->isPointerTy()) {
