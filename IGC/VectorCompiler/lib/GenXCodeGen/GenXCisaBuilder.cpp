@@ -5028,11 +5028,8 @@ void GenXKernelBuilder::buildPrintIndex(CallInst *CI, unsigned IntrinID,
 
 void GenXKernelBuilder::deduceRegion(Region *R, bool IsDest,
                                      unsigned MaxWidth) {
-  IGC_ASSERT(Subtarget);
-  if (!IsDest && !R->is2D() && R->Indirect &&
-      Subtarget->hasIndirectGRFCrossing()) {
-    // For a source 1D indirect region that might possibly cross a GRF
-    // (because we are on SKL+ so a single GRF crossing is allowed), make it
+  if (!IsDest && !R->is2D() && R->Indirect) {
+    // For a source 1D indirect region that might possibly cross a GRF, make it
     // Nx1 instead of 1xN to avoid crossing a GRF within a row.
     R->VStride = R->Stride;
     R->Width = 1;

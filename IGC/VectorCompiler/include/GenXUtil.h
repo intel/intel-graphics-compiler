@@ -655,8 +655,7 @@ const CallInst *checkFunctionCall(const Value *V, const Function *F);
 CallInst *checkFunctionCall(Value *V, const Function *F);
 
 // Get possible number of GRFs for indirect region
-unsigned getNumGRFsPerIndirectForRegion(const genx::Region &R,
-                                        const GenXSubtarget *ST, bool Allow2D);
+unsigned getNumGRFsPerIndirectForRegion(const genx::Region &R, bool Allow2D);
 // to control behavior of emulateI64Operation function
 enum class EmulationFlag {
   RAUW,

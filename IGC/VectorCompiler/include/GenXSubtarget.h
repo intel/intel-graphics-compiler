@@ -88,17 +88,11 @@ private:
   // FDivFSqrt64Emu - True if subtarget requires partial fp64 emulation
   bool FDivFSqrt64Emu = false;
 
-  // DisableJmpi - True if jmpi is disabled.
-  bool DisableJmpi = false;
-
   // DisableVectorDecomposition - True if vector decomposition is disabled.
   bool DisableVectorDecomposition = false;
 
   // DisableJumpTables - True if switch to jump tables lowering is disabled.
   bool DisableJumpTables = false;
-
-  // Only generate warning when callable is used in the middle of the kernel
-  bool WarnCallable = false;
 
   // Size of one general register in bytes.
   unsigned GRFByteSize = 32;
@@ -214,21 +208,6 @@ private:
 
   /// True if subtarget supports BFN instruction
   bool HasBfn = false;
-
-  /// True if subtarget supports SAD and SADA2 instructions
-  bool HasSad2 = false;
-
-  /// True if subtarget supports SIMD32 MAD instruction
-  bool HasMadSimd32 = false;
-
-  /// True if subtarget requires A32 byte scatter emulation
-  bool HasWaNoA32ByteScatter = false;
-
-  /// True if subtarget supports indirect cross-grf access
-  bool HasIndirectGRFCrossing = false;
-
-  /// True if subtarget supports indirect cross-grf byte access
-  bool HasIndirectByteGRFCrossing = false;
 
   /// True if subtarget supports named barriers
   bool HasNamedBarriers = false;
@@ -388,15 +367,6 @@ public:
   /// instruction
   bool useMadDDQ() const { return UseMadDDQ; }
 
-  /// * disableJmpi - true if jmpi is disabled.
-  bool disableJmpi() const { return DisableJmpi; }
-
-  /// * WaNoA32ByteScatteredStatelessMessages - true if there is no A32 byte
-  ///   scatter stateless message.
-  bool WaNoA32ByteScatteredStatelessMessages() const {
-    return HasWaNoA32ByteScatter;
-  }
-
   /// * disableVectorDecomposition - true if vector decomposition is disabled.
   bool disableVectorDecomposition() const { return DisableVectorDecomposition; }
 
@@ -418,18 +388,6 @@ public:
   /// * has integer div/rem instruction
   bool hasIntDivRem32() const { return HasIntDivRem32; }
 
-  /// * warnCallable() - true if compiler only generate warning for
-  ///   callable in the middle
-  bool warnCallable() const { return WarnCallable; }
-
-  /// * hasIndirectGRFCrossing - true if target supports an indirect region
-  ///   crossing one GRF boundary
-  bool hasIndirectGRFCrossing() const { return HasIndirectGRFCrossing; }
-
-  /// * hasIndirectByteGRFCrossing - true if target supports an indirect region
-  ///   crossing one GRF boundary with byte type
-  bool hasIndirectByteGRFCrossing() const { return HasIndirectByteGRFCrossing; }
-
   /// * hasMultiIndirectByteRegioning - true if target supports an multi
   /// indirect regions with byte type
   bool hasMultiIndirectByteRegioning() const {
@@ -444,9 +402,6 @@ public:
   }
 
   bool hasThreadPayloadInMemory() const { return HasThreadPayloadInMemory; }
-
-  /// * hasSad2Support - returns true if sad2/sada2 are supported by target
-  bool hasSad2Support() const { return HasSad2; }
 
   bool hasBitRotate() const { return HasBitRotate; }
   bool has64BitRotate() const { return Has64BitRotate; }
@@ -467,8 +422,6 @@ public:
   bool hasL3FlushOnGPUScopeInvalidate() const {
     return HasL3FlushOnGPUScopeInvalidate;
   }
-
-  bool hasMadSimd32() const { return HasMadSimd32; }
 
   bool hasLargeGRF() const { return HasLargeGRF; }
 

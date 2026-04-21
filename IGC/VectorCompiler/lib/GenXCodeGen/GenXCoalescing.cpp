@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2024 Intel Corporation
+Copyright (C) 2017-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -1664,10 +1664,9 @@ void GenXCoalescing::coalesceCallables() {
     // Check if next node is correct return insn
     if (!Ret || !isa<ReturnInst>(Ret)) {
       // getRetVal could not determine what happens to this return value.
-      DiagnosticSeverity DS_Type = ST->warnCallable() ? DS_Warning : DS_Error;
       vc::diagnose(CI->getContext(), "GenXCoalescing",
                    "Callable Call must be right before function return",
-                   DS_Type, vc::WarningName::Generic, CI);
+                   DS_Error, vc::WarningName::Generic, CI);
     }
     Function *F = CI->getFunction();
     IGC_ASSERT(vc::isKernel(F));

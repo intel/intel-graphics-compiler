@@ -429,7 +429,7 @@ unsigned genx::getLegalRegionSizeForTarget(const GenXSubtarget &ST,
         // into Nx1 instead of 1xN).  We use Allow2D as a proxy for "is source
         // operand".
         unsigned GRFsPerIndirect =
-            genx::getNumGRFsPerIndirectForRegion(R, &ST, Allow2D);
+            genx::getNumGRFsPerIndirectForRegion(R, Allow2D);
         unsigned Last = (R.NumElements / R.Width - 1) * R.VStride +
                         (R.Width - 1) * R.Stride;
         unsigned Max = InputNumElements - Last - 1 + RealIdx;

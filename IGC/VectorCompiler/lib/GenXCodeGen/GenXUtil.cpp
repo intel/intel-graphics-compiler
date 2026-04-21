@@ -2107,8 +2107,7 @@ unsigned genx::getExecSizeAllowedBits(const Instruction *Inst,
   case GenXIntrinsic::genx_usmad_sat:
   case GenXIntrinsic::genx_uumad_sat:
   case Intrinsic::fma:
-    // Do not emit simd32 mad for pre-ICLLP.
-    return ST->hasMadSimd32() ? 0x3f : 0x1f;
+    return 0x3f;
   default:
     return vc::isAnyNonTrivialIntrinsic(ID)
                ? GenXIntrinsicInfo(ID).getExecSizeAllowedBits()
@@ -2288,14 +2287,9 @@ CallInst *genx::checkFunctionCall(Value *V, const Function *F) {
 }
 
 unsigned genx::getNumGRFsPerIndirectForRegion(const genx::Region &R,
-                                              const GenXSubtarget *ST,
                                               bool Allow2D) {
   IGC_ASSERT_MESSAGE(R.Indirect, "Indirect region expected");
-  IGC_ASSERT(ST);
-  if (ST->hasIndirectGRFCrossing() &&
-      (R.ElementBytes != genx::ByteBytes || ST->hasIndirectByteGRFCrossing()) &&
-      // SKL+. See if we can allow GRF crossing.
-      (Allow2D || !R.is2D())) {
+  if (R.ElementBytes != genx::ByteBytes && (Allow2D || !R.is2D())) {
     return 2;
   }
   return 1;

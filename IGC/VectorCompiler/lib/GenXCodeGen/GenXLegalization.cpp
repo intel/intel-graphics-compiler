@@ -630,24 +630,6 @@ bool GenXLegalization::processInst(Instruction *Inst) {
   if (!checkInst(Inst))
     return false;
   LLVM_DEBUG(dbgs() << "processInst: " << *Inst << "\n");
-  if (!ST->hasSad2Support()) {
-    switch (GenXIntrinsic::getGenXIntrinsicID(Inst)) {
-    case GenXIntrinsic::genx_ssad2:
-    case GenXIntrinsic::genx_sssad2add:
-    case GenXIntrinsic::genx_sssad2add_sat:
-    case GenXIntrinsic::genx_susad2add:
-    case GenXIntrinsic::genx_susad2add_sat:
-    case GenXIntrinsic::genx_usad2:
-    case GenXIntrinsic::genx_ussad2add:
-    case GenXIntrinsic::genx_ussad2add_sat:
-    case GenXIntrinsic::genx_uusad2add:
-    case GenXIntrinsic::genx_uusad2add_sat:
-      vc::diagnose(Inst->getContext(), "GenXLegalization",
-                   "sad2 and sada2 are not supported by this target", Inst);
-    default:
-      break;
-    }
-  }
 
   if (GenXIntrinsic::isLSC(Inst)) {
     if (GenXIntrinsic::isLSCFence(Inst)) {
@@ -2240,8 +2222,7 @@ GenXLegalization::convertToMultiIndirect(Instruction *Inst, Value *LastJoinVal,
   const DebugLoc &DL = Inst->getDebugLoc();
 
   // scalar indirect index
-  if (R->Stride == 1 && !R->is2D() && !isa<VectorType>(Indirect->getType()) &&
-      ST->hasIndirectGRFCrossing()) {
+  if (R->Stride == 1 && !R->is2D() && !isa<VectorType>(Indirect->getType())) {
     Instruction *NewInst =
         R->createRdRegion(LastJoinVal, Inst->getName(), InsertBefore, DL);
     return NewInst;

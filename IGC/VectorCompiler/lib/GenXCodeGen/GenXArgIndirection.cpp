@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2023 Intel Corporation
+Copyright (C) 2017-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -1142,14 +1142,6 @@ bool GenXArgIndirection::checkIndirectBale(Bale *B, LiveRange *ArgLR,
   if (MainInst) {
     // Check for things about the main instruction that stop us indexing
     // operand(s) or result in this bale.
-    if (MainInst->Inst->getType()->getPrimitiveSizeInBits() / genx::ByteBits >
-            ST->getGRFByteSize() &&
-        !ST->hasIndirectGRFCrossing()) {
-      // An execution size bigger than 1 GRF disqualifies the main
-      // instruction on <= BDW.
-      LLVM_DEBUG(dbgs() << "execution size bigger than GRF\n");
-      return false;
-    }
     unsigned IID = vc::getAnyIntrinsicID(MainInst->Inst);
     if (vc::isAnyNonTrivialIntrinsic(IID)) {
       auto IntrInfo = GenXIntrinsicInfo(IID);
