@@ -28,7 +28,7 @@ class G4_Declare;
 #define COMMON_ISA_MAGIC_NUM 0x41534943
 
 #define COMMON_ISA_MAJOR_VER 4
-#define COMMON_ISA_MINOR_VER 1
+#define COMMON_ISA_MINOR_VER 2
 
 #define COMMON_ISA_MAX_NUM_SAMPLERS 32
 
@@ -138,7 +138,8 @@ struct attribute_info_t {
 
 struct var_info_t {
   uint32_t name_index;
-  unsigned char bit_properties;
+  uint8_t var_visa_type;
+  uint8_t var_align;
   unsigned short num_elements;
   uint32_t alias_index;
   unsigned short alias_offset;
@@ -149,10 +150,10 @@ struct var_info_t {
   vISA::G4_Declare *dcl; // ToDo: remove this, vISA variables should not have
                          // access to internal Gen declares
 
-  VISA_Type getType() const { return (VISA_Type)(bit_properties & 0xF); }
+  VISA_Type getType() const { return (VISA_Type)var_visa_type; }
 
   VISA_Align getAlignment() const {
-    VISA_Align alignment = (VISA_Align)((bit_properties >> 4) & 0xF);
+    VISA_Align alignment = (VISA_Align)var_align;
     vASSERT(alignment <= ALIGN_TOTAL_NUM);
 
     return alignment;

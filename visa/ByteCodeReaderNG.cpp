@@ -2704,8 +2704,15 @@ static void readRoutineNG(unsigned &bytePos, const char *buf,
     unsigned declID = i;
     readVarBytes(majorVersion, minorVersion,
                  header.variables[declID].name_index, bytePos, buf);
-    READ_CISA_FIELD(header.variables[declID].bit_properties, uint8_t, bytePos,
-                    buf);
+    vISA_ASSERT(getVersionAsInt(majorVersion, minorVersion) <
+                    getVersionAsInt(4, 2),
+                "CISA version >= 4.2 binary format not supported");
+    {
+      uint8_t bit_properties;
+      READ_CISA_FIELD(bit_properties, uint8_t, bytePos, buf);
+      header.variables[declID].var_visa_type = bit_properties & 0xF;
+      header.variables[declID].var_align = (bit_properties >> 4) & 0xF;
+    }
     READ_CISA_FIELD(header.variables[declID].num_elements, uint16_t, bytePos,
                     buf);
     readVarBytes(majorVersion, minorVersion,
@@ -2729,8 +2736,8 @@ static void readRoutineNG(unsigned &bytePos, const char *buf,
     /// VISA Builder Call
     var_info_t *var = &header.variables[declID];
     VISA_GenVar *decl = NULL;
-    VISA_Type varType = (VISA_Type)((var->bit_properties) & 0xF);
-    VISA_Align varAlign = (VISA_Align)((var->bit_properties >> 4) & 0xF);
+    VISA_Type varType = (VISA_Type)var->var_visa_type;
+    VISA_Align varAlign = (VISA_Align)var->var_align;
     [[maybe_unused]] uint8_t aliasScopeSpecifier =
         header.variables[declID].alias_scope_specifier;
     [[maybe_unused]] int status = VISA_SUCCESS;

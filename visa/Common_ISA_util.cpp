@@ -1071,7 +1071,9 @@ int var_info_t::getSizeInBinary() const {
   attribute_info[attribute_count];
   }
   */
-  int size = sizeof(name_index) + sizeof(bit_properties) +
+  // Valid for CISA version prior to 4.2 where type and align are packed
+  // into a single byte (bit_properties).
+  int size = sizeof(name_index) + sizeof(uint8_t) /* packed type+align */ +
              sizeof(num_elements) + sizeof(alias_index) + sizeof(alias_offset) +
              sizeof(alias_scope_specifier) + sizeof(attribute_count);
 

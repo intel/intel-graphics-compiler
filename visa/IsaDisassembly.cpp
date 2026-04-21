@@ -535,7 +535,7 @@ std::string printVariableDecl(const print_format_provider_t *header,
   std::stringstream sstr;
 
   const var_info_t *var = header->getVar(declID);
-  VISA_Type isa_type = (VISA_Type)((var->bit_properties) & 0xF);
+  VISA_Type isa_type = var->getType();
   VISA_Align align = var->getAlignment();
   G4_Declare *aliasDcl = var->dcl->getRootDeclare();
 

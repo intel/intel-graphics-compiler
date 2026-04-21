@@ -1086,8 +1086,8 @@ int VISAKernelImpl::CreateVISAGenVar(VISA_GenVar *&decl, const char *varName,
 
   m_GenVarToNameMap[decl] = varName;
 
-  info->bit_properties = (uint8_t)dataType;
-  info->bit_properties += varAlign << 4;
+  info->var_visa_type = (uint8_t)dataType;
+  info->var_align = (uint8_t)varAlign;
 
   info->num_elements = (uint16_t)numberElements;
   info->alias_offset = 0;
@@ -7655,7 +7655,7 @@ static void setAlignIfLarger(
   VISA_Align oldA = varinfo->getAlignment();
   unsigned grfSize = irb.getGRFSize();
   if (getAlignInBytes(A, grfSize) > getAlignInBytes(oldA, grfSize)) {
-    varinfo->bit_properties = ((varinfo->bit_properties & ~0xF0) | (A << 4));
+    varinfo->var_align = (uint8_t)A;
   }
 }
 
