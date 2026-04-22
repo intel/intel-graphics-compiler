@@ -102,14 +102,19 @@ private:
       // platforms, it must calculated before finding the index of the
       // SubSlice.
 
-      IGC_ASSERT(NumDSSPerSlice <= GT_MAX_SUBSLICE_PER_SLICE);
+      // Find the highest enabled SubSlice index by scanning SliceInfo.
+      // NumDSSPerSlice may exceed GT_MAX_SUBSLICE_PER_SLICE when the
+      // Linux KMD flattens the topology into a single virtual slice.
+      // Cap the loop bound to the array size, the fallback below
+      // handles the flat-topology case (all SliceInfo[].Enabled == false).
+      unsigned int ssLoopBound = std::min(NumDSSPerSlice, (uint32_t)GT_MAX_SUBSLICE_PER_SLICE);
 
       for (unsigned int sliceID = 0; sliceID < GT_MAX_SLICE; ++sliceID) {
         if (SysInfo.SliceInfo[sliceID].Enabled) {
           // SubSliceInfo size is GT_MAX_SUBSLICE_PER_SLICE, but
           // actual number, calculated for given platform, of SubSlices is used
           // to iterate only through SubSlices present on the platform.
-          for (unsigned int ssID = 0; ssID < NumDSSPerSlice; ++ssID) {
+          for (unsigned int ssID = 0; ssID < ssLoopBound; ++ssID) {
             if (SysInfo.SliceInfo[sliceID].SubSliceInfo[ssID].Enabled) {
               MaxDualSubSlicesSupported = std::max(MaxDualSubSlicesSupported, (sliceID * NumDSSPerSlice) + ssID + 1);
             }
@@ -143,14 +148,18 @@ private:
       // platforms, it must calculated before finding the index of the
       // DualSubSlice.
 
-      IGC_ASSERT(NumDSSPerSlice <= GT_MAX_DUALSUBSLICE_PER_SLICE);
+      // NumDSSPerSlice may exceed GT_MAX_DUALSUBSLICE_PER_SLICE when the
+      // Linux KMD flattens the topology into a single virtual slice.
+      // Cap the loop bound to the array size, the fallback below
+      // handles the flat-topology case (all SliceInfo[].Enabled == false).
+      unsigned int dssLoopBound = std::min(NumDSSPerSlice, (uint32_t)GT_MAX_DUALSUBSLICE_PER_SLICE);
 
       for (unsigned int sliceID = 0; sliceID < GT_MAX_SLICE; ++sliceID) {
         if (SysInfo.SliceInfo[sliceID].Enabled) {
           // DSSInfo size is GT_MAX_DUALSUBSLICE_PER_SLICE, but
           // actual number, calculated for given platform, of DualSubSlices is used
           // to iterate only through DualSubSlices present on the platform.
-          for (unsigned int dssID = 0; dssID < NumDSSPerSlice; ++dssID) {
+          for (unsigned int dssID = 0; dssID < dssLoopBound; ++dssID) {
             if (SysInfo.SliceInfo[sliceID].DSSInfo[dssID].Enabled) {
               MaxDualSubSlicesSupported = std::max(MaxDualSubSlicesSupported, (sliceID * NumDSSPerSlice) + dssID + 1);
             }
