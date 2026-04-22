@@ -1528,12 +1528,14 @@ enum COMMITTED_STATUS : uint32_t { COMMITTED_NOTHING, COMMITTED_TRIANGLE_HIT, CO
 enum CANDIDATE_TYPE : uint32_t { CANDIDATE_NON_OPAQUE_TRIANGLE, CANDIDATE_PROCEDURAL_PRIMITIVE };
 
 struct RayQueryReturnData {
-  enum class Bits : uint8_t {
+  enum class Bits {
     proceed_further = 1,
     committedStatus = 2,
     candidateType = 1,
     reserved = 28,
   };
+
+  enum class Field : uint8_t { proceed_further, committedStatus, candidateType, reserved, count };
 
   // This union is defined for futures use.
   // It will replace writing the RayQuery Return Value

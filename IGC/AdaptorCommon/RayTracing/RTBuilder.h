@@ -320,6 +320,9 @@ public:
   Value *getWorldToObj(StackPointerVal *perLaneStackPtr, uint32_t dim, Value *ShaderTy, Instruction *I = nullptr,
                        bool checkInstanceLeafPtr = false);
 
+  Value *extractReturnField(Value *TraceRayRet, StackPointerVal *perLaneStackPtr,
+                            RTStackFormat::RayQueryReturnData::Field Kind);
+
 
   static void setInvariantLoad(LoadInst *LI);
   CallInst *CreateLSCFence(LSC_SFID SFID, LSC_SCOPE Scope, LSC_FENCE_OP FenceOp);

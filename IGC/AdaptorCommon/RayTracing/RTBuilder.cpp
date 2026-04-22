@@ -36,6 +36,11 @@ SPDX-License-Identifier: MIT
 #include "llvmWrapper/Support/Alignment.h"
 
 #include <optional>
+#include <array>
+#include <numeric>
+#include <algorithm>
+#include <concepts>
+#include <iterator>
 
 
 using namespace llvm;
