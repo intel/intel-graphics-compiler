@@ -21,10 +21,10 @@ SPDX-License-Identifier: MIT
 // CHECK-NVLP: .kernel_attr SimdSize=32
 
 // RUN: %if ptl-h-supported %{ not ocloc compile -file %s -options "-cl-std=CL3.0 -igc_opts 'ForceOCLSIMDWidth=32'" -internal_options "-cl-ext=-all,+cl_intel_rt_production" -device ptl-h 2>&1 | FileCheck %s --check-prefix CHECK-PTLH %}
-// CHECK-PTLH: error: Failed to compile the forced SIMD size of 32
+// CHECK-PTLH: error: in kernel 'test': Failed to compile the forced SIMD size of 32
 
 // RUN: %if dg2-supported %{ not ocloc compile -file %s -options "-cl-std=CL3.0 -igc_opts 'ForceOCLSIMDWidth=32'" -internal_options "-cl-ext=-all,+cl_intel_rt_production" -device dg2 2>&1 | FileCheck %s --check-prefix CHECK-DG2 %}
-// CHECK-DG2: error: Failed to compile the forced SIMD size of 32
+// CHECK-DG2: error: in kernel 'test': Failed to compile the forced SIMD size of 32
 
 __attribute__((intel_reqd_sub_group_size(32)))
 kernel void test()

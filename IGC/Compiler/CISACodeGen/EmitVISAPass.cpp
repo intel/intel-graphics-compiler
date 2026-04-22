@@ -18419,7 +18419,7 @@ void EmitPass::emitLSCVectorLoad_subDW(LSC_CACHE_OPTS CacheOpts, bool UseA32, Re
                    finalPredicate = IGC_IS_FLAG_ENABLED(UseVMaskPredicateForLoads) ? GetCombinedVMaskPred(flag) : flag;
 
                  if (inputPredicate && finalPredicate) {
-                   m_pCtx->EmitError("Predicated load is not expected.", nullptr);
+                   m_pCtx->EmitError("Predicated load is not expected.", NoIRContext);
                    IGC_ASSERT_MESSAGE(false, "Not expected scenario. Predicated load should not be used.");
                    m_encoder->And(finalPredicate, finalPredicate, inputPredicate);
                    m_encoder->Push();
@@ -18935,7 +18935,7 @@ void EmitPass::emitLSCVectorStore_subDW(LSC_CACHE_OPTS CacheOpts, bool UseA32, R
                    // PredicatedStore. Hence, these predicates should never be used
                    // together.
                    if (!doUniformStore && flag != nullptr) {
-                     m_pCtx->EmitError("Predicated store is not expected.", nullptr);
+                     m_pCtx->EmitError("Predicated store is not expected.", NoIRContext);
                      IGC_ASSERT_MESSAGE(false, "Unexpected scenario: resource loop with predicated store!");
                    }
                    m_encoder->SetPredicate(predicateVar);
@@ -19201,7 +19201,7 @@ void EmitPass::emitLSCVectorStore(Value *Ptr, Value *uniformBase, Value *varOffs
                      // PredicatedStore. Hence, these predicates should never be used
                      // together.
                      if (flag != nullptr) {
-                       m_pCtx->EmitError("Predicated store is not expected.", nullptr);
+                       m_pCtx->EmitError("Predicated store is not expected.", NoIRContext);
                        IGC_ASSERT_MESSAGE(false, "Unexpected scenario: resource loop with predicated store!");
                      }
                      m_encoder->SetPredicate(GetSymbol(predicate));

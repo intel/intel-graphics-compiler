@@ -757,7 +757,7 @@ void WIAnalysisRunner::calculate_dep(const Value *val) {
             "Detected llvm.genx.GenISA.WaveBroadcast with potentially non-uniform LocalID in kernel " +
             m_func->getName().str() +
             "; such operation doesn't meet specification of OpGroupBroadcast and can lead to unexpected results.";
-        m_CGCtx->EmitWarning(msg.c_str());
+        m_CGCtx->EmitWarning(msg.c_str(), inst);
       }
 #endif // DEBUG
     }

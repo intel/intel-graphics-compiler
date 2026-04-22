@@ -20,8 +20,7 @@ SPDX-License-Identifier: MIT
 
 // CHECK-VISA: .kernel_attr SimdSize=32
 // CHECK-NOT: {{^}}{{[_A-z0-9]*}}_CallWA_BigB0:{{$}}
-// CHECK: warning: EU fusion is disabled, it does not work on the current platform if SIMD32 mode specified by intel_reqd_sub_group_size(32)
-// CHECK-NEXT: in kernel: 'test_simple'
+// CHECK: warning: in kernel 'test_simple': EU fusion is disabled, it does not work on the current platform if SIMD32 mode specified by intel_reqd_sub_group_size(32)
 
 int fact(int n) {
     return n < 2 ? 1 : n * fact(n - 1);

@@ -16,7 +16,7 @@
 ; CHECK-NOT://.spill size
 ; CHECK: end of thread
 
-; CHECK: warning: [RetryManager] Start recompilation of the kernel
+; CHECK: warning: in kernel '{{.*}}FastGroupRadixSort{{.*}}': [RetryManager] Start recompilation of the kernel
 
 ; ModuleID = 'reduced.ll'
 source_filename = "reduced.ll"

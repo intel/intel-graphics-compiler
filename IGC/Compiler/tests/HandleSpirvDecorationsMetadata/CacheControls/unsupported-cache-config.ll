@@ -27,7 +27,7 @@ target triple = "spir64-unknown-unknown"
 define spir_func void @test(i32 addrspace(1)* %buffer) {
 entry:
   %arrayidx0 = getelementptr inbounds i32, i32 addrspace(1)* %buffer, i64 1, !spirv.Decorations !7
-  ; CHECK: warning: Unsupported cache controls configuration requested. Applying default configuration.
+  ; CHECK: warning: in function 'test' called indirectly: Unsupported cache controls configuration requested. Applying default configuration.
   %l0 = load i32, i32 addrspace(1)* %arrayidx0, align 4
 
   ret void

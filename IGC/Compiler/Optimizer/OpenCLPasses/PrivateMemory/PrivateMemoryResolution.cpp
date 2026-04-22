@@ -75,7 +75,7 @@ private:
     unsigned int operandIndex;
   };
 
-  void expandPrivateMemoryForVla(uint32_t &maxPrivateMem);
+  void expandPrivateMemoryForVla(uint32_t &maxPrivateMem, llvm::Function *pKernel);
   static bool testTransposedMemory(const Type *pTmpType, const Type *const pTypeOfAccessedObject,
                                    uint64_t tmpAllocaSize, const uint64_t bufferSizeLimit);
 
@@ -183,7 +183,7 @@ void PrivateMemoryResolution::getAnalysisUsage(llvm::AnalysisUsage &AU) const {
   AU.addRequired<ModuleAllocaAnalysis>();
 }
 
-void PrivateMemoryResolution::expandPrivateMemoryForVla(uint32_t &maxPrivateMem) {
+void PrivateMemoryResolution::expandPrivateMemoryForVla(uint32_t &maxPrivateMem, llvm::Function *pKernel) {
   // Add another 4KB if there are VLAs
   maxPrivateMem += 4096;
   std::string maxPrivateMemValue = std::to_string(maxPrivateMem);
@@ -197,7 +197,7 @@ void PrivateMemoryResolution::expandPrivateMemoryForVla(uint32_t &maxPrivateMem)
       "https://github.com/intel/intel-graphics-compiler/tree/master/documentation/igc/StackOverflowDetection/"
       "StackOverflowDetection.md";
 
-  getAnalysis<CodeGenContextWrapper>().getCodeGenContext()->EmitWarning(fullWarningMessage.c_str());
+  getAnalysis<CodeGenContextWrapper>().getCodeGenContext()->EmitWarning(fullWarningMessage.c_str(), pKernel);
 }
 
 bool PrivateMemoryResolution::runOnModule(llvm::Module &M) {
@@ -265,7 +265,7 @@ bool PrivateMemoryResolution::runOnModule(llvm::Module &M) {
         // If this is the case, still increase the private mem allocation to account for VLA.
         if (!FGA && hasVLA) {
           uint32_t maxPrivateMem = funcMD->second.privateMemoryPerWI;
-          expandPrivateMemoryForVla(maxPrivateMem);
+          expandPrivateMemoryForVla(maxPrivateMem, m_currFunction);
 
           maxPrivateMem = std::max(maxPrivateMem, Ctx.getPrivateMemoryMinimalSizePerThread());
           maxPrivateMem = std::max(maxPrivateMem, (uint32_t)(IGC_GET_FLAG_VALUE(ForcePerThreadPrivateMemorySize)));
@@ -381,7 +381,7 @@ bool PrivateMemoryResolution::runOnModule(llvm::Module &M) {
             "https://github.com/intel/intel-graphics-compiler/tree/master/documentation/igc/StackOverflowDetection/"
             "StackOverflowDetection.md";
 
-        getAnalysis<CodeGenContextWrapper>().getCodeGenContext()->EmitWarning(fullWarningMessage.c_str());
+        getAnalysis<CodeGenContextWrapper>().getCodeGenContext()->EmitWarning(fullWarningMessage.c_str(), pKernel);
       }
       if (((FG->hasIndirectCall() && FG->hasPartialCallGraph()) || FG->hasRecursion()) &&
           Ctx.type != ShaderType::RAYTRACING_SHADER) {
@@ -389,7 +389,7 @@ bool PrivateMemoryResolution::runOnModule(llvm::Module &M) {
         maxPrivateMem += (4 * 1024);
       }
       if (FG->hasVariableLengthAlloca() && Ctx.type != ShaderType::RAYTRACING_SHADER) {
-        expandPrivateMemoryForVla(maxPrivateMem);
+        expandPrivateMemoryForVla(maxPrivateMem, pKernel);
       }
       maxPrivateMem = std::max(maxPrivateMem, Ctx.getPrivateMemoryMinimalSizePerThread());
       maxPrivateMem = std::max(maxPrivateMem, (uint32_t)(IGC_GET_FLAG_VALUE(ForcePerThreadPrivateMemorySize)));

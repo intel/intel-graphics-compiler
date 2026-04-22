@@ -308,17 +308,17 @@ int32_t JointMatrixFuncsResolutionPass::DefineKernelSIMDSize() {
       return 32;
     std::string msg = "Sub group sizes supported by Joint Matrix for this platform are disabled by flags or "
                       "non-supported sub group size forced.";
-    m_Ctx->EmitError(msg.c_str(), nullptr);
+    m_Ctx->EmitError(msg.c_str(), NoIRContext);
     return 0;
   }
   if (IGC_IS_FLAG_ENABLED(EnableOCLSIMD32) && IGC_IS_FLAG_ENABLED(ForceCSSIMD32)) {
     std::string msg = "Sub group size 32 forced by flags but not supported by Joint Matrix on this platform.";
-    m_Ctx->EmitError(msg.c_str(), nullptr);
+    m_Ctx->EmitError(msg.c_str(), NoIRContext);
     return 0;
   }
   if (IGC_IS_FLAG_ENABLED(EnableOCLSIMD16) && IGC_IS_FLAG_ENABLED(ForceCSSIMD16)) {
     std::string msg = "Sub group size 16 forced by flags but not supported by Joint Matrix on this platform.";
-    m_Ctx->EmitError(msg.c_str(), nullptr);
+    m_Ctx->EmitError(msg.c_str(), NoIRContext);
     return 0;
   }
   return 8;
@@ -353,7 +353,7 @@ void JointMatrixFuncsResolutionPass::ResolveSIMDSize(Function *F) {
     // if forced and not ok for platform exit with error
     std::string msg = "Sub group size " + std::to_string(forcedSIMDSize) +
                       " is forced by flags but not supported by Joint Matrix on this platform.";
-    m_Ctx->EmitError(msg.c_str(), nullptr);
+    m_Ctx->EmitError(msg.c_str(), NoIRContext);
     return;
   }
 
@@ -373,7 +373,7 @@ void JointMatrixFuncsResolutionPass::ResolveSIMDSize(Function *F) {
         // if set on entry function level and not ok for this platform exit with error
         std::string msg = "Sub group size " + std::to_string(kernelSIMDSize) +
                           " is forced by attribute but not supported by Joint Matrix on this platform.";
-        m_Ctx->EmitError(msg.c_str(), nullptr);
+        m_Ctx->EmitError(msg.c_str(), NoIRContext);
         return;
       }
     }
@@ -967,7 +967,7 @@ bool JointMatrixFuncsResolutionPass::parseMatrixTypeNameLegacy(const Type *opaqu
   } else {
     std::string msg = "Unexpected Joint Matrix type name: '" + name.str() + "', unknown layout.";
     LLVM_DEBUG(dbgs() << msg << "\n");
-    m_Ctx->EmitError(msg.c_str(), nullptr);
+    m_Ctx->EmitError(msg.c_str(), NoIRContext);
     return false;
   }
   offset -= 1; /* Go back to the end of prefix. */
@@ -1017,7 +1017,7 @@ bool JointMatrixFuncsResolutionPass::ParseMatrixTypeName(Type *opaqueType, Joint
   if (!IsJointMatrix && !name.consume_front(coopMatrixPrefix)) {
     std::string msg = "Unexpected Matrix type name: '" + name.str() + "', unknown prefix.";
     LLVM_DEBUG(dbgs() << msg << "\n");
-    m_Ctx->EmitError(msg.c_str(), nullptr);
+    m_Ctx->EmitError(msg.c_str(), NoIRContext);
     return false;
   }
 
@@ -1049,7 +1049,7 @@ bool IGC::JointMatrixFuncsResolutionPass::ParseMatrixTypeNameExtTypeDetails(
   if (!targetTy) {
     std::string msg = "Unexpected Matrix type. Expected TargetExt";
     LLVM_DEBUG(dbgs() << msg << "\n");
-    m_Ctx->EmitError(msg.c_str(), nullptr);
+    m_Ctx->EmitError(msg.c_str(), NoIRContext);
     return false;
   }
 
@@ -1063,7 +1063,7 @@ bool IGC::JointMatrixFuncsResolutionPass::ParseMatrixTypeNameExtTypeDetails(
         ". Full Name: '" + GetMatrixTypeName(opaqueType).str() + "'.";
 
     LLVM_DEBUG(dbgs() << msg << "\n");
-    m_Ctx->EmitError(msg.c_str(), nullptr);
+    m_Ctx->EmitError(msg.c_str(), NoIRContext);
     return false;
   }
 
@@ -1075,7 +1075,7 @@ bool IGC::JointMatrixFuncsResolutionPass::ParseMatrixTypeNameExtTypeDetails(
     if (!ValidateIntegerBitWidth(outDescription->bitWidth)) {
       std::string msg = "Unexpected Matrix integer size: '" + std::to_string(outDescription->bitWidth) + "'.";
       LLVM_DEBUG(dbgs() << msg << "\n");
-      m_Ctx->EmitError(msg.c_str(), nullptr);
+      m_Ctx->EmitError(msg.c_str(), NoIRContext);
       return false;
     }
 
@@ -1093,7 +1093,7 @@ bool IGC::JointMatrixFuncsResolutionPass::ParseMatrixTypeNameExtTypeDetails(
     std::string msg =
         "Unexpected Matrix type name: '" + GetMatrixTypeName(opaqueType).str() + "', unknown element type.";
     LLVM_DEBUG(dbgs() << msg << "\n");
-    m_Ctx->EmitError(msg.c_str(), nullptr);
+    m_Ctx->EmitError(msg.c_str(), NoIRContext);
     return false;
   }
 
@@ -1117,7 +1117,7 @@ bool IGC::JointMatrixFuncsResolutionPass::ParseMatrixTypeNameExtTypeDetails(
                         "Full Name: '" +
                         GetMatrixTypeName(opaqueType).str() + "'.";
       LLVM_DEBUG(dbgs() << msg << "\n");
-      m_Ctx->EmitError(msg.c_str(), nullptr);
+      m_Ctx->EmitError(msg.c_str(), NoIRContext);
       return false;
     }
   } else {
@@ -1151,7 +1151,7 @@ bool IGC::JointMatrixFuncsResolutionPass::ParseMatrixTypeNameExtTypeDetails(
                         "Full Name: '" +
                         GetMatrixTypeName(opaqueType).str() + "'.";
       LLVM_DEBUG(dbgs() << msg << "\n");
-      m_Ctx->EmitError(msg.c_str(), nullptr);
+      m_Ctx->EmitError(msg.c_str(), NoIRContext);
       return false;
     }
   }
@@ -1192,7 +1192,7 @@ bool JointMatrixFuncsResolutionPass::ParseMatrixTypeNameNonExtTypeDetails(Type *
     std::string msg =
         "Unexpected Matrix type name: '" + GetMatrixTypeName(opaqueType).str() + "', unknown element type.";
     LLVM_DEBUG(dbgs() << msg << "\n");
-    m_Ctx->EmitError(msg.c_str(), nullptr);
+    m_Ctx->EmitError(msg.c_str(), NoIRContext);
     return false;
   }
 
@@ -1257,7 +1257,7 @@ bool JointMatrixFuncsResolutionPass::SetLayoutFromUse(IGC::JointMatrixTypeDescri
   } else {
     std::string msg = "Unexpected Matrix 'use' value: '" + std::to_string(outDescription->use) + "'. Unknown use type.";
     LLVM_DEBUG(dbgs() << msg << "\n");
-    m_Ctx->EmitError(msg.c_str(), nullptr);
+    m_Ctx->EmitError(msg.c_str(), NoIRContext);
     return false;
   }
 
@@ -1463,7 +1463,8 @@ template <typename T> static int resolveCacheControlDecorations(CodeGenContext *
     if (DecorationId == getDecorationIdCacheControl<T>()) {
       CacheControlFromMDNodes controls = resolveCacheControlFromMDNodes<T>(ctx, MDNodes);
       if (controls.isInvalid)
-        ctx->EmitWarning("Unsupported cache controls configuration requested. Applying default configuration.");
+        ctx->EmitWarning("Unsupported cache controls configuration requested. Applying default configuration.",
+                         pointerValue);
       return controls.value;
     }
   }

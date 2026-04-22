@@ -66,7 +66,7 @@ public:
 
     if ((m_InternalOptions.Intel512GRFPerThread || m_Options.Intel512GRFPerThread) &&
         !platform.supports512GRFPerThread()) {
-      EmitError("512-grf-per-thread option is not supported on this platform", nullptr);
+      EmitError("512-grf-per-thread option is not supported on this platform", NoIRContext);
     }
   }
 

@@ -706,39 +706,48 @@ static std::string demangleFuncName(const std::string &rawName) {
 }
 
 void CodeGenContext::EmitMessage(std::ostream &OS, const char *messagestr, const llvm::Value *context) const {
-  OS << messagestr;
-  // Try to get debug location to print out the relevant info.
-  if (const llvm::Instruction *I = llvm::dyn_cast_or_null<llvm::Instruction>(context)) {
-    if (const llvm::DILocation *DL = I->getDebugLoc()) {
-      OS << "\nin file: " << DL->getFilename().str() << ":" << DL->getLine() << "\n";
+  // Determine IR context: related function and (for non-kernel functions)
+  // calling kernels. This is computed first so the context can be printed
+  // as a prefix before the message text (clang-style).
+  const llvm::Function *relatedFunc = getRelatedFunction(context);
+
+  llvm::SmallPtrSet<const llvm::Function *, 16> callingKernels;
+  if (relatedFunc && !isEntryPoint(this, relatedFunc)) {
+    llvm::SmallPtrSet<const llvm::Function *, 32> visited;
+    findCallingKernels(this, relatedFunc, callingKernels, visited);
+  }
+
+  // Print context prefix: kernel/function attribution before the message.
+  if (relatedFunc) {
+    if (isEntryPoint(this, relatedFunc)) {
+      OS << "in kernel '" << demangleFuncName(std::string(relatedFunc->getName())) << "': ";
+    } else {
+      OS << "in function '" << demangleFuncName(std::string(relatedFunc->getName())) << "'";
+      if (callingKernels.size() == 1) {
+        OS << " called by kernel '" << demangleFuncName(std::string((*callingKernels.begin())->getName())) << "'";
+      } else if (callingKernels.size() > 1) {
+        OS << " called by kernels: ";
+        bool first = true;
+        for (const llvm::Function *kernel : callingKernels) {
+          if (!first)
+            OS << ", ";
+          OS << "'" << demangleFuncName(std::string(kernel->getName())) << "'";
+          first = false;
+        }
+      } else {
+        OS << " called indirectly";
+      }
+      OS << ": ";
     }
   }
-  // Try to find function related to given context
-  // to print more informative error message.
-  if (const llvm::Function *F = getRelatedFunction(context)) {
-    // If the function is a kernel just print the kernel name.
-    if (isEntryPoint(this, F)) {
-      OS << "\nin kernel: '" << demangleFuncName(std::string(F->getName())) << "'";
-      // If the function is not a kernel try to print all kernels that
-      // might be using this function.
-    } else {
-      llvm::SmallPtrSet<const llvm::Function *, 16> kernels;
-      llvm::SmallPtrSet<const llvm::Function *, 32> visited;
-      findCallingKernels(this, F, kernels, visited);
 
-      const size_t kernelsCount = kernels.size();
-      OS << "\nin function: '" << demangleFuncName(std::string(F->getName())) << "' ";
-      if (kernelsCount == 0) {
-        OS << "called indirectly by at least one of the kernels.\n";
-      } else if (kernelsCount == 1) {
-        const llvm::Function *kernel = *kernels.begin();
-        OS << "called by kernel: '" << demangleFuncName(std::string(kernel->getName())) << "'\n";
-      } else {
-        OS << "called by kernels:\n";
-        for (const llvm::Function *kernel : kernels) {
-          OS << "  - '" << demangleFuncName(std::string(kernel->getName())) << "'\n";
-        }
-      }
+  // Print the message text.
+  OS << messagestr;
+
+  // Append source location inline (parenthesized, same line).
+  if (const llvm::Instruction *I = llvm::dyn_cast_or_null<llvm::Instruction>(context)) {
+    if (const llvm::DILocation *DL = I->getDebugLoc()) {
+      OS << " (in file: " << DL->getFilename().str() << ":" << DL->getLine() << ")";
     }
   }
 }
@@ -747,6 +756,11 @@ void CodeGenContext::EmitError(const char *errorstr, const llvm::Value *context)
   this->oclErrorMessage << "\nerror: ";
   EmitMessage(this->oclErrorMessage, errorstr, context);
   this->oclErrorMessage << "\nerror: backend compiler failed build.\n";
+}
+
+void CodeGenContext::EmitError(const char *errorstr, NoIRContext_t) {
+  const llvm::Value *noCtx = nullptr;
+  EmitError(errorstr, noCtx);
 }
 
 void CodeGenContext::EmitWarning(const char *warningstr, const llvm::Value *context) {
@@ -763,6 +777,11 @@ void CodeGenContext::EmitWarning(const char *warningstr, const llvm::Value *cont
   this->oclWarningMessage << "\nwarning: ";
   EmitMessage(this->oclWarningMessage, warningstr, context);
   this->oclWarningMessage << "\n";
+}
+
+void CodeGenContext::EmitWarning(const char *warningstr, NoIRContext_t) {
+  const llvm::Value *noCtx = nullptr;
+  EmitWarning(warningstr, noCtx);
 }
 
 CompOptions &CodeGenContext::getCompilerOption() { return getModuleMetaData()->compOpt; }

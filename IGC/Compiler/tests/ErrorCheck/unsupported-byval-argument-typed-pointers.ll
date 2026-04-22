@@ -11,7 +11,7 @@
 ; ErrorCheck
 ; ------------------------------------------------
 
-; CHECK: error: ByVal argument with addrspace different than Generic/Private is not supported.
+; CHECK: error: in function 'test' called indirectly: ByVal argument with addrspace different than Generic/Private is not supported.
 
 define void @test(i32 addrspace(3)* byval (i32) %p1) {
   ret void

@@ -238,7 +238,8 @@ void ErrorCheck::handleFP64EmulationMode(llvm::Instruction &I) {
     Function *F = I.getParent()->getParent();
     F->addFnAttr("uses-fp64-math");
     ctx->EmitWarning("Double arithmetic operation is not supported on this platform with FP64 conversion emulation "
-                     "mode (poison FP64 kernels is enabled).");
+                     "mode (poison FP64 kernels is enabled).",
+                     &I);
   }
 
   // emit warning when used two options: for FP64 conv emu and for FP64 full emu,
@@ -246,7 +247,8 @@ void ErrorCheck::handleFP64EmulationMode(llvm::Instruction &I) {
   if (ctx->m_hasDPEmu && ctx->m_hasDPConvEmu) {
     ctx->EmitWarning(
         "Used two options for FP64 emulation: for FP64 conversion emu (-cl/-ze-fp64-gen-conv-emu) and FP64 full emu "
-        "(-cl/-ze-fp64-gen-emu). The FP64 conversion emu flag will be ignored by the compiler.");
+        "(-cl/-ze-fp64-gen-emu). The FP64 conversion emu flag will be ignored by the compiler.",
+        &I);
   }
 
   // Add "uses-fp64-math" attr for functions when poison fp64 kernels is required

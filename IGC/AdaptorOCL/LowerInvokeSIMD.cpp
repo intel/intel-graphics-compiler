@@ -84,7 +84,8 @@ void LowerInvokeSIMD::visitCallInst(CallInst &CI) {
 
     if (OCLCtx->m_DirectCallFunctions.count(Callee->getName().str()) == 0) {
       OCLCtx->EmitWarning("It seems that definition is not provided for invoke_simd target. "
-                          "Link-time optimizations will not be triggered.");
+                          "Link-time optimizations will not be triggered.",
+                          &CI);
       forceBinaryLinking = true;
     }
 

@@ -17,8 +17,8 @@
 %spirv.JointMatrixINTEL._char_8_32_0_3_0 = type opaque
 %spirv.JointMatrixINTEL._char_32_16_0_3_1 = type opaque
 
-; CHECK-PVC-VG: error: OpJointMatrixMadINTEL/OpCooperativeMatrixMulAddKHR is not supported on this platform!
-; CHECK-PVC-NOT: error: OpJointMatrixMadINTEL/OpCooperativeMatrixMulAddKHR is not supported on this platform!
+; CHECK-PVC-VG: error: in kernel 'load_store_legacy_error': OpJointMatrixMadINTEL/OpCooperativeMatrixMulAddKHR is not supported on this platform!
+; CHECK-PVC-NOT: error: in kernel 'load_store_legacy_error': OpJointMatrixMadINTEL/OpCooperativeMatrixMulAddKHR is not supported on this platform!
 
 define spir_kernel void @load_store_legacy_error(i8 addrspace(1)* %src, i64 %stride, i32 addrspace(1)* %dst) {
   %1 = call spir_func %spirv.JointMatrixINTEL._int_8_16_3_3_2 addrspace(1)* @_Z26__spirv_CompositeConstructi(i32 0)
@@ -36,7 +36,14 @@ declare spir_func %spirv.JointMatrixINTEL._int_8_16_3_3_2 addrspace(1)* @_Z27__s
 declare spir_func void @_Z29__spirv_JointMatrixStoreINTELPU3AS1iPU3AS140__spirv_JointMatrixINTEL__int_8_16_3_3_2liii(i32 addrspace(1)*, %spirv.JointMatrixINTEL._int_8_16_3_3_2 addrspace(1)*, i64, i32, i32, i32)
 
 !igc.functions = !{!0}
+!IGCMetadata = !{!4}
 !0 = !{void (i8 addrspace(1)*, i64, i32 addrspace(1)*)* @load_store_legacy_error, !1}
 !1 = !{!2, !3}
 !2 = !{!"function_type", i32 0}
 !3 = !{!"sub_group_size", i32 16}
+!4 = !{!"ModuleMD", !5}
+!5 = !{!"FuncMD", !6, !7}
+!6 = distinct !{!"FuncMDMap[0]", void (i8 addrspace(1)*, i64, i32 addrspace(1)*)* @load_store_legacy_error}
+!7 = !{!"FuncMDValue[0]", !8, !9}
+!8 = !{!"funcArgs"}
+!9 = !{!"functionType", !"KernelFunction"}

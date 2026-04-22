@@ -127,7 +127,7 @@ bool GenericAddressDynamicResolution::runOnFunction(Function &F) {
     warningInfo << " occurrences of additional control flow due to presence of generic address space operations\n";
     warningInfo << "in function " << F.getName().str();
     warningInfo << " (Enable PrintVerboseGenericControlFlowLog flag to acquire detailed log. Requires debuginfo!)";
-    getAnalysis<CodeGenContextWrapper>().getCodeGenContext()->EmitWarning(warningInfo.str().c_str());
+    getAnalysis<CodeGenContextWrapper>().getCodeGenContext()->EmitWarning(warningInfo.str().c_str(), &F);
   }
 
   if (modified) {
@@ -197,7 +197,7 @@ void GenericAddressDynamicResolution::emitVerboseWarning(Instruction &I) {
   if (!debugInfoFound)
     warningInfo << "\nVerbose log requires debuginfo!";
 
-  getAnalysis<CodeGenContextWrapper>().getCodeGenContext()->EmitWarning(warningInfo.str().c_str());
+  getAnalysis<CodeGenContextWrapper>().getCodeGenContext()->EmitWarning(warningInfo.str().c_str(), &I);
 }
 
 void GenericAddressDynamicResolution::resolveGAS(Instruction &I, Value *pointerOperand) {

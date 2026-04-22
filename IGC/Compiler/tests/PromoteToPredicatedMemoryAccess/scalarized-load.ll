@@ -276,4 +276,4 @@ exit:
   ret <4 x float> %res3
 }
 
-; CHECK: warning: Index 4 is >= vector size 4
+; CHECK: warning: in function 'test8' called indirectly: Index 4 is >= vector size 4

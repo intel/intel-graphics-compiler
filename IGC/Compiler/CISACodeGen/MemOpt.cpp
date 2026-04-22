@@ -318,7 +318,8 @@ private:
       // from the leading load/store. It results in creating memory instruction with
       // different type, without alignment set, therefore the information about the
       // correct alignment gets lost.
-      CGC->EmitWarning("MemOpt expects alignment to be always explicitly set for the leading instruction!");
+      CGC->EmitWarning("MemOpt expects alignment to be always explicitly set for the leading instruction!",
+                       inst.inst());
     }
 
     if (alignment < 4 && !WI->isUniform(inst.inst())) {

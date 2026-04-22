@@ -59,7 +59,8 @@ CacheControlFromMDNodes Spv2dBlockIOResolution::resolveCacheControlDecorations(V
     if (DecorationId == getDecorationIdCacheControl<CCT>()) {
       CacheControlFromMDNodes controls = resolveCacheControlFromMDNodes<CCT>(m_Ctx, MDNodes);
       if (controls.isInvalid) {
-        m_Ctx->EmitWarning("Unsupported cache controls configuration requested. Applying default configuration.");
+        m_Ctx->EmitWarning("Unsupported cache controls configuration requested. Applying default configuration.",
+                           pointerValue);
         controls.value = 0;
       }
       return controls;

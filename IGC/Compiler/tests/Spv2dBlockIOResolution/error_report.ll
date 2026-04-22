@@ -11,10 +11,10 @@
 ; Spv2dBlockIOResolutionPass - check errors emitting
 ; ------------------------------------------------
 
-; CHECK: error: Expected Element Size to be constant instruction in __spirv_Subgroup2DBlock operation
-; CHECK: error: Expected Block Width to be constant instruction in __spirv_Subgroup2DBlock operation
-; CHECK: error: Expected Block Height to be constant instruction in __spirv_Subgroup2DBlock operation
-; CHECK: error: Expected Block Count to be constant instruction in __spirv_Subgroup2DBlock operation
+; CHECK: error: in kernel 'test': Expected Element Size to be constant instruction in __spirv_Subgroup2DBlock operation
+; CHECK: error: in kernel 'test': Expected Block Width to be constant instruction in __spirv_Subgroup2DBlock operation
+; CHECK: error: in kernel 'test': Expected Block Height to be constant instruction in __spirv_Subgroup2DBlock operation
+; CHECK: error: in kernel 'test': Expected Block Count to be constant instruction in __spirv_Subgroup2DBlock operation
 
 target triple = "spir64-unknown-unknown"
 declare spir_func void @_Z32__spirv_Subgroup2DBlockLoadINTELiiiiPU3AS1KviiiDv2_iPv(i32, i32, i32, i32, i8 addrspace(1)*, i32, i32, i32, <2 x i32>, i8*)
@@ -29,7 +29,14 @@ entry:
 }
 
 !igc.functions = !{!0}
+!IGCMetadata = !{!4}
 !0 = !{void (i8 addrspace(1)*, <2 x i32>, i8*, i32)* @test, !1}
 !1 = !{!2, !3}
 !2 = !{!"function_type", i32 0}
 !3 = !{!"sub_group_size", i32 16}
+!4 = !{!"ModuleMD", !5}
+!5 = !{!"FuncMD", !6, !7}
+!6 = distinct !{!"FuncMDMap[0]", void (i8 addrspace(1)*, <2 x i32>, i8*, i32)* @test}
+!7 = !{!"FuncMDValue[0]", !8, !9}
+!8 = !{!"funcArgs"}
+!9 = !{!"functionType", !"KernelFunction"}

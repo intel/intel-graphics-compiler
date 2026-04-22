@@ -1580,13 +1580,13 @@ uint CShader::GetNbElementAndMask(llvm::Value *value, uint32_t &mask) {
       // Width is padded to the next power-of-2 value
       uint32_t blkWidthCeil = (uint32_t)PowerOf2Ceil(blkWidth);
       if (blkWidthCeil != blkWidth) {
-        m_ctx->EmitWarning("Block2D: block width not power of 2, zero padded.");
+        m_ctx->EmitWarning("Block2D: block width not power of 2, zero padded.", inst);
       }
       uint32_t blkHeightCeil = blkHeight;
       if (isTranspose) {
         blkHeightCeil = (uint32_t)PowerOf2Ceil(blkHeight);
         if (blkHeightCeil != blkHeight) {
-          m_ctx->EmitWarning("Block2D: transpose block height not power of 2, zero padded.");
+          m_ctx->EmitWarning("Block2D: transpose block height not power of 2, zero padded.", inst);
         }
       }
       if (isVnni) {
@@ -1596,14 +1596,15 @@ uint CShader::GetNbElementAndMask(llvm::Value *value, uint32_t &mask) {
         blkHeightCeil = (uint32_t)divideCeil(blkHeightCeil, N) * N;
         if (blkHeightCeil != origVal) {
           m_ctx->EmitWarning("Block2D: transform block height not multiple "
-                             "of N (32/eltBits), zero padded.");
+                             "of N (32/eltBits), zero padded.",
+                             inst);
         }
       }
       uint32_t blkBits = blkWidthCeil * blkHeightCeil * eltBits;
       uint32_t numGRFsPerBlk = (uint32_t)divideCeil(blkBits, getGRFSize() * 8);
       uint32_t blkBitsCeil = getGRFSize() * 8 * numGRFsPerBlk;
       if (blkBitsCeil != blkBits) {
-        m_ctx->EmitWarning("Block2D: block size not multiple of GRF size, zero padded.");
+        m_ctx->EmitWarning("Block2D: block size not multiple of GRF size, zero padded.", inst);
       }
       uint32_t numGRFs = numGRFsPerBlk * numBlks;
       VISA_Type visaTy = GetType(inst->getType());

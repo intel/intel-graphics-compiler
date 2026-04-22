@@ -17,7 +17,7 @@
 ; CHECK-NOT: __builtin_IB_get_image_width
 ; CHECK-NOT: __builtin_IB_get_image_height
 ; CHECK: ret void
-; CHECK: error: Double type is not supported on this platform.
+; CHECK: error: in function 'test_error' called indirectly: Double type is not supported on this platform.
 
 %spirv.Image._void_1_0_0_0_0_0_0 = type opaque
 

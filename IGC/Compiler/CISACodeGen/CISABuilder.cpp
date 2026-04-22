@@ -2183,7 +2183,7 @@ void CEncoder::Sample(EOPCODE subOpcode, uint writeMask, CVariable *offset, cons
 
   if (!m_program->m_Platform->hasSamplerSupport()) {
     CodeGenContext *context = m_program->GetContext();
-    context->EmitError("sampler messages not supported on this platform", nullptr);
+    context->EmitError("sampler messages not supported on this platform", NoIRContext);
     return;
   }
 
@@ -2238,7 +2238,7 @@ void CEncoder::Load(EOPCODE subOpcode, uint writeMask, CVariable *offset, const 
                     SmallVector<CVariable *, 4> &payload, bool zeroLOD, bool feedbackEnable) {
   if (!m_program->m_Platform->hasSamplerSupport()) {
     CodeGenContext *context = m_program->GetContext();
-    context->EmitError("sampler messages not supported on this platform", nullptr);
+    context->EmitError("sampler messages not supported on this platform", NoIRContext);
     return;
   }
 
@@ -2330,7 +2330,7 @@ void CEncoder::Gather4Inst(EOPCODE subOpcode, CVariable *offset, const ResourceD
 
   if (!m_program->m_Platform->hasSamplerSupport()) {
     CodeGenContext *context = m_program->GetContext();
-    context->EmitError("sampler messages not supported on this platform", nullptr);
+    context->EmitError("sampler messages not supported on this platform", NoIRContext);
     return;
   }
 
@@ -4217,19 +4217,20 @@ void CEncoder::InitVISABuilderOptions(TARGET_PLATFORM VISAPlatform, bool canAbor
           ((ClContext->getNumThreadsPerEU() == 4 && ClContext->getExpGRFSize() == 128) ||
            (ClContext->getNumThreadsPerEU() == 8 && ClContext->getExpGRFSize() == 256))) {
         context->EmitWarning("Mismatch between the GRF and number of threads "
-                             "in compiler option");
+                             "in compiler option",
+                             m_program->entry);
       }
 
       // Mismatch between number of threads and regular GRF size (per kernel)
       if (m_program->IsRegularGRFRequested() && m_program->getAnnotatedNumThreads() > 0 &&
           m_program->getAnnotatedNumThreads() != 8) {
-        context->EmitWarning("Mismatch between the regular GRF and annotated number of threads");
+        context->EmitWarning("Mismatch between the regular GRF and annotated number of threads", m_program->entry);
       }
 
       // Mismatch between number of threads and large GRF size (per kernel)
       if (m_program->IsLargeGRFRequested() && m_program->getAnnotatedNumThreads() > 0 &&
           m_program->getAnnotatedNumThreads() != 4) {
-        context->EmitWarning("Mismatch between the large GRF and annotated number of threads");
+        context->EmitWarning("Mismatch between the large GRF and annotated number of threads", m_program->entry);
       }
     }
   } else { // Other shader types
@@ -5684,7 +5685,7 @@ VISAKernel *CEncoder::shaderOverrideVISASecondPassOrInlineAsm(bool visaAsmOverri
       raw_string_ostream S(output);
       S << "parsing vISA inline assembly failed:\n" << vAsmTextBuilder->GetCriticalMsg();
       S.flush();
-      context->EmitError(output.c_str(), nullptr);
+      context->EmitError(output.c_str(), NoIRContext);
       vISAAsmParseError = true;
     }
   }
@@ -6311,15 +6312,7 @@ void CEncoder::SetKernelRetryState(CodeGenContext *context, vISA::FINALIZER_INFO
     //     in prev. code for some odd reason; keeping consistent)
     //   - not using stack calls or the dummy function pointer program
     std::stringstream ss;
-    ss << "kernel ";
-    const auto name = m_program->entry->getName();
-    if (!name.empty()) {
-      ss << name.str() << " ";
-    } else {
-      ss << "?";
-    }
-
-    ss << " compiled SIMD"
+    ss << "compiled SIMD"
        << (m_program->m_State.m_dispatchSize == SIMDMode::SIMD32   ? 32
            : m_program->m_State.m_dispatchSize == SIMDMode::SIMD16 ? 16
                                                                    : 8);
@@ -6327,7 +6320,7 @@ void CEncoder::SetKernelRetryState(CodeGenContext *context, vISA::FINALIZER_INFO
     auto spilledRegs = std::max<unsigned>(1, (jitInfo->stats.spillMemUsed + getGRFSize() - 1) / getGRFSize());
     ss << " and spilled around " << spilledRegs;
 
-    context->EmitWarning(ss.str().c_str());
+    context->EmitWarning(ss.str().c_str(), m_program->entry);
   }
 }
 
@@ -7104,12 +7097,12 @@ void CEncoder::bdpas(CVariable *Dst, CVariable *Acc, CVariable *B, PrecisionType
 
   if (!m_program->GetContext()->platform.hasFP64DPAS() &&
       (APrecision == PrecisionType::DF || BPrecision == PrecisionType::DF)) {
-    m_program->GetContext()->EmitError("FP64 Dpas instruction is not supported on this device!", nullptr);
+    m_program->GetContext()->EmitError("FP64 Dpas instruction is not supported on this device!", NoIRContext);
     return;
   }
   if (!m_program->GetContext()->platform.hasFP4DPAS() &&
       (APrecision == PrecisionType::E2M1 || BPrecision == PrecisionType::E2M1)) {
-    m_program->GetContext()->EmitError("FP4 Dpas instruction is not supported on this device!", nullptr);
+    m_program->GetContext()->EmitError("FP4 Dpas instruction is not supported on this device!", NoIRContext);
     return;
   }
 
@@ -7269,12 +7262,12 @@ void CEncoder::dpas(CVariable *dst, CVariable *input, CVariable *weight, Precisi
 
   if (!m_program->GetContext()->platform.hasFP64DPAS() &&
       (weight_precision == PrecisionType::DF || activation_precision == PrecisionType::DF)) {
-    m_program->GetContext()->EmitError("FP64 Dpas instruction is not supported on this device!", nullptr);
+    m_program->GetContext()->EmitError("FP64 Dpas instruction is not supported on this device!", NoIRContext);
     return;
   }
   if (!m_program->GetContext()->platform.hasFP4DPAS() &&
       (weight_precision == PrecisionType::E2M1 || activation_precision == PrecisionType::E2M1)) {
-    m_program->GetContext()->EmitError("FP4 Dpas instruction is not supported on this device!", nullptr);
+    m_program->GetContext()->EmitError("FP4 Dpas instruction is not supported on this device!", NoIRContext);
     return;
   }
 

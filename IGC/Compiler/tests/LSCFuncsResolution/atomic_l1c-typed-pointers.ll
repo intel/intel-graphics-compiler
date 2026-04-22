@@ -27,13 +27,20 @@ define spir_kernel void @test_lsc(i32* %base) {
   ret void
 }
 
-; CHECK: error: line 1: __builtin_IB_lsc_atomic_inc_global_uint: atomic must not use caching on L1
+; CHECK: error: in kernel 'test_lsc': line 1: __builtin_IB_lsc_atomic_inc_global_uint: atomic must not use caching on L1
 
 declare i32 @__builtin_IB_lsc_atomic_inc_global_uint(i32*, i32, i32)
 
 !igc.functions = !{!0}
+!IGCMetadata = !{!4}
 
 !0 = !{void (i32*)* @test_lsc, !1}
 !1 = !{!2, !3}
 !2 = !{!"function_type", i32 0}
 !3 = !{!"sub_group_size", i32 16}
+!4 = !{!"ModuleMD", !5}
+!5 = !{!"FuncMD", !6, !7}
+!6 = distinct !{!"FuncMDMap[0]", void (i32*)* @test_lsc}
+!7 = !{!"FuncMDValue[0]", !8, !9}
+!8 = !{!"funcArgs"}
+!9 = !{!"functionType", !"KernelFunction"}

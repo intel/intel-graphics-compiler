@@ -12,7 +12,7 @@
 ; ErrorCheck
 ; ------------------------------------------------
 
-; CHECK: error: Total size of kernel arguments exceeds limit! Total arguments size: 2824, limit: 1
+; CHECK: error: in kernel 'test_error': Total size of kernel arguments exceeds limit! Total arguments size: 2824, limit: 1
 
 define void @test_error(i32 %src, i32 %dst, <32 x double> %src3, <32 x i64> %src4, <32 x i64> %dst2, <256 x i64> %src5) {
 entry:

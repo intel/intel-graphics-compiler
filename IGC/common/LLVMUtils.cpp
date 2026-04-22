@@ -797,7 +797,8 @@ void DumpLLVMIR(IGC::CodeGenContext *pContext, const char *dumpName) {
       if (strcmp(dumpName, "codegen") == 0 || pContext->m_retryManager->GetRetryId() != 0) {
         pContext->EmitWarning(std::string("Override shader attempt detected for an unsupported dump: " + fileName +
                                           ". Skipping override.")
-                                  .c_str());
+                                  .c_str(),
+                              NoIRContext);
         return;
       }
       errs() << "Override shader: " << fileName << "\n";

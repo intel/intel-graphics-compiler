@@ -26,7 +26,7 @@ SPDX-License-Identifier: MIT
 // necessary because creating a kernel that naturally exceeds real hardware
 // capabilities would take too long to compile for a LIT test.
 
-// CHECK: error: total scratch space exceeds HW supported limit for kernel this_is_kernel: {{.*}} bytes (max permitted PTSS 1024 bytes)
+// CHECK: error: in kernel 'this_is_kernel': total scratch space exceeds HW supported limit: {{.*}} bytes (max permitted PTSS 1024 bytes)
 
 #define SIZE 16
 #define NO_TAIL()

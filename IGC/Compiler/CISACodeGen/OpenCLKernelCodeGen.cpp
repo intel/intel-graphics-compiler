@@ -171,7 +171,7 @@ void OpenCLProgramContext::failOnSpills() {
       if (hasSpills(output->m_scratchSpaceUsedBySpills, output->m_numGRFTotal) &&
           std::find(annotatnions.begin(), annotatnions.end(), "igc-do-not-spill") != annotatnions.end()) {
         std::string msg = "Spills detected in kernel: " + shader->m_kernelInfo.m_kernelName;
-        EmitError(msg.c_str(), nullptr);
+        EmitError(msg.c_str(), shader->entry);
       }
     }
   }
@@ -436,7 +436,7 @@ std::string COpenCLKernel::getKernelArgAddressQualifier(const FunctionMetaData &
   case ADDRESS_SPACE_CODE_SECTION:
     return "__private";
   default:
-    m_Context->EmitError("Generic pointers are not allowed as kernel argument storage class!", nullptr);
+    m_Context->EmitError("Generic pointers are not allowed as kernel argument storage class!", NoIRContext);
     IGC_ASSERT_MESSAGE(0, "Unexpected address space");
     break;
   }
@@ -2380,7 +2380,7 @@ void CodeGen(OpenCLProgramContext *ctx) {
           ctx->platform, (USC::SYSTEM_THREAD_MODE)systemThreadMode, ctx->m_programOutput.m_pSystemThreadKernelOutput);
 
       if (!success) {
-        ctx->EmitError("System thread kernel could not be created!", nullptr);
+        ctx->EmitError("System thread kernel could not be created!", NoIRContext);
       }
     }
   }
@@ -2444,16 +2444,15 @@ void CodeGen(OpenCLProgramContext *ctx) {
           if (ctx->m_ForceSIMDRPELimit != 0 && !reqdSubGroupSize) {
             ctx->m_ForceSIMDRPELimit = 0;
             ctx->m_retryManager->kernelSet.insert(shader->entry->getName().str());
-            ctx->EmitWarning("we couldn't compile without exceeding max permitted PTSS, drop SIMD \n", nullptr);
+            ctx->EmitWarning("we couldn't compile without exceeding max permitted PTSS, drop SIMD \n", shader->entry);
             ctx->m_retryManager->DecreaseState();
           } else {
             std::string errorMsg = "total scratch space exceeds HW "
-                                   "supported limit for kernel " +
-                                   shader->entry->getName().str() + ": " + std::to_string(getScratchUse(shader, ctx)) +
-                                   " bytes (max permitted PTSS " +
+                                   "supported limit: " +
+                                   std::to_string(getScratchUse(shader, ctx)) + " bytes (max permitted PTSS " +
                                    std::to_string(shader->ProgramOutput()->m_scratchSpaceSizeLimit) + " bytes)";
 
-            ctx->EmitError(errorMsg.c_str(), nullptr);
+            ctx->EmitError(errorMsg.c_str(), shader->entry);
           }
         }
       }

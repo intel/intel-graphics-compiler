@@ -18,10 +18,10 @@ SPDX-License-Identifier: MIT
 //     PTL-H:    maximum SIMD size supported is 16, preferred is 16
 
 // RUN: %if nvl-p-b0-supported %{ not ocloc compile -file %s -options "-cl-std=CL3.0" -internal_options "-cl-ext=-all,+cl_intel_rt_production" -device nvl-p-b0 2>&1 | FileCheck %s --check-prefix CHECK-NVLP %}
-// CHECK-NVLP: error: Kernel compiled with required subgroup size 8, which is unsupported on this platform
+// CHECK-NVLP: error: in kernel 'test': Kernel compiled with required subgroup size 8, which is unsupported on this platform
 
 // RUN: %if ptl-h-supported %{ not ocloc compile -file %s -options "-cl-std=CL3.0" -internal_options "-cl-ext=-all,+cl_intel_rt_production" -device ptl-h 2>&1 | FileCheck %s --check-prefix CHECK-PTLH %}
-// CHECK-PTLH: error: Kernel compiled with required subgroup size 8, which is unsupported on this platform
+// CHECK-PTLH: error: in kernel 'test': Kernel compiled with required subgroup size 8, which is unsupported on this platform
 
 // RUN: %if dg2-supported %{ ocloc compile -file %s -options "-cl-std=CL3.0 -igc_opts 'DumpVISAASMToConsole=1'" -internal_options "-cl-ext=-all,+cl_intel_rt_production" -device dg2 2>&1 | FileCheck %s --check-prefix CHECK-DG2 %}
 // CHECK-DG2: .kernel_attr SimdSize=8

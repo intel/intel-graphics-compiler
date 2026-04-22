@@ -536,7 +536,7 @@ bool SubGroupReductionPattern::isSupportedWaveClusteredInterleave(ShufflePattern
        << "; SubGroupSize=" << SubGroupSize << "; ClusterSize=" << ClusterSize << "; InterleaveStep=" << InterleaveStep
        << "; Type=";
     Pattern.Steps.front().Op->getType()->print(OS);
-    CGC->EmitWarning(OS.str().c_str());
+    CGC->EmitWarning(OS.str().c_str(), Pattern.Steps.front().Op);
   }
 
   return Valid;

@@ -15,7 +15,7 @@
 
 ; Test expects EnableDPEmulation and ForceDPEmulation with false default value
 
-; CHECK: error: Double type is not supported on this platform.
+; CHECK: error: in function 'test_error' called indirectly: Double type is not supported on this platform.
 
 define void @test_error(double %src) {
   %1 = fadd double %src, %src

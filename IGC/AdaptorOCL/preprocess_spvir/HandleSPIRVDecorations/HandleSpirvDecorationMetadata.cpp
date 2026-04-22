@@ -358,7 +358,7 @@ void HandleSpirvDecorationMetadata::handleCacheControlINTEL(Instruction &I, Smal
   if (cacheControl.isEmpty)
     return;
   if (cacheControl.isInvalid) {
-    m_pCtx->EmitWarning("Unsupported cache controls configuration requested. Applying default configuration.");
+    m_pCtx->EmitWarning("Unsupported cache controls configuration requested. Applying default configuration.", &I);
     return;
   }
 
@@ -376,7 +376,7 @@ void HandleSpirvDecorationMetadata::handleCacheControlINTELFor2DBlockIO(CallInst
   if (cacheControl.isEmpty)
     return;
   if (cacheControl.isInvalid) {
-    m_pCtx->EmitWarning("Unsupported cache controls configuration requested. Applying default configuration.");
+    m_pCtx->EmitWarning("Unsupported cache controls configuration requested. Applying default configuration.", &I);
     return;
   }
 
@@ -410,7 +410,7 @@ void HandleSpirvDecorationMetadata::handleCacheControlINTELForPrefetch(llvm::Cal
   if (cacheControl.isEmpty)
     return;
   if (cacheControl.isInvalid) {
-    m_pCtx->EmitWarning("Unsupported cache controls configuration requested. Applying default configuration.");
+    m_pCtx->EmitWarning("Unsupported cache controls configuration requested. Applying default configuration.", &I);
     return;
   }
 
@@ -446,7 +446,7 @@ void HandleSpirvDecorationMetadata::handleCacheControlINTELForPrefetch(llvm::Cal
   auto config = supportedLoadConfigs.find(static_cast<LSC_L1_L3_CC>(cacheControl.value));
   if (m_pCtx->platform.getPlatformInfo().eProductFamily == IGFX_PVC && config != supportedLoadConfigs.end() &&
       config->second.L1 == LoadCacheControl::Cached) {
-    m_pCtx->EmitWarning("Prefetch to L1 is unsupported on this platform.");
+    m_pCtx->EmitWarning("Prefetch to L1 is unsupported on this platform.", &I);
     args.push_back(ConstantInt::get(Type::getInt32Ty(I.getContext()),
                                     mapToLSCCacheControl(LoadCacheControl::Uncached, config->second.L3)));
   } else {
@@ -479,7 +479,7 @@ void HandleSpirvDecorationMetadata::handleCacheControlINTELFor1DBlockIO(CallInst
   if (cacheControl.isEmpty)
     return;
   if (cacheControl.isInvalid) {
-    m_pCtx->EmitWarning("Unsupported cache controls configuration requested. Applying default configuration.");
+    m_pCtx->EmitWarning("Unsupported cache controls configuration requested. Applying default configuration.", &I);
     return;
   }
 
@@ -562,7 +562,7 @@ void HandleSpirvDecorationMetadata::handleCacheControlINTELForOCL1DBlockPrefetch
   if (cacheControl.isEmpty)
     return;
   if (cacheControl.isInvalid) {
-    m_pCtx->EmitWarning("Unsupported cache controls configuration requested. Applying default configuration.");
+    m_pCtx->EmitWarning("Unsupported cache controls configuration requested. Applying default configuration.", &I);
     return;
   }
 

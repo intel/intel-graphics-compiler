@@ -106,7 +106,7 @@ bool PoisonFP64Kernels::doFinalization(CallGraph &CG) {
   bool modified = false;
   for (Function *F : reverse(fp64FunctionsOrder)) {
     std::string msg = "Removing unsupported FP64 function: '" + F->getName().str() + "'";
-    CGC->EmitWarning(msg.c_str());
+    CGC->EmitWarning(msg.c_str(), F);
 
     if (isEntryFunc(MDUtils, F)) {
       poisonKernel(F);

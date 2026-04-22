@@ -89,6 +89,13 @@ static const std::string AllowSimd32Slicing = "IGC-AllowSimd32Slicing";
 } // namespace IGCOpts
 
 namespace IGC {
+
+/// Tag type used with EmitWarning/EmitError to explicitly indicate
+/// that no IR context (kernel/function/instruction) is available.
+/// Prefer passing a real llvm::Value* when one is in scope.
+struct NoIRContext_t {};
+inline constexpr NoIRContext_t NoIRContext{};
+
 struct BifLLVMModule;
 class CodeGenContext;
 
@@ -1109,7 +1116,11 @@ public:
   void clearMD();
   void EmitMessage(std::ostream &OS, const char *errorstr, const llvm::Value *context) const;
   void EmitError(const char *errorstr, const llvm::Value *context);
-  void EmitWarning(const char *warningstr, const llvm::Value *context = nullptr);
+  void EmitError(const char *errorstr, NoIRContext_t);
+  void EmitError(const char *errorstr, std::nullptr_t) = delete;
+  void EmitWarning(const char *warningstr, const llvm::Value *context);
+  void EmitWarning(const char *warningstr, NoIRContext_t);
+  void EmitWarning(const char *warningstr, std::nullptr_t) = delete;
   inline bool HasError() const { return !this->oclErrorMessage.str().empty(); }
   inline bool HasWarning() const { return !this->oclWarningMessage.str().empty(); }
   inline const std::string GetWarning() { return this->oclWarningMessage.str(); }

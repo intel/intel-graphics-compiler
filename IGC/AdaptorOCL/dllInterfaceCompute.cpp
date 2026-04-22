@@ -1163,7 +1163,7 @@ bool TranslateBuildSPMD(const STB_TranslateInputArgs *pInputArgs, STB_TranslateO
     std::string errorMsg = "SIMD size of " + std::to_string(IGC_GET_FLAG_VALUE(ForceOCLSIMDWidth)) +
                            " has been forced when SIMD size of at least " + std::to_string(numLanes(MinDispatchMode)) +
                            " is required on this platform";
-    oclContext.EmitError(errorMsg.c_str(), nullptr);
+    oclContext.EmitError(errorMsg.c_str(), NoIRContext);
     SetOutputMessage(oclContext.GetError(), *pOutputArgs);
     return false;
   }

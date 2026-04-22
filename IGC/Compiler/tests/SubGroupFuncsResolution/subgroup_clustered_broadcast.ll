@@ -79,15 +79,13 @@ define double @test_clustered_broadcast_double(double %src) {
 }
 
 define float @test_clustered_broadcast_invalid_cluster_size(float %src, i32 %arg) {
-; CHECK:    error: cluster_size argument in clustered_broadcast must be constant.
-; CHECK:    in function: 'test_clustered_broadcast_invalid_cluster_size'
+; CHECK:    error: in function 'test_clustered_broadcast_invalid_cluster_size' called indirectly: cluster_size argument in clustered_broadcast must be constant.
   %1 = call spir_func float @__builtin_IB_simd_clustered_broadcast_f(float %src, i32 %arg, i32 5)
   ret float %1
 }
 
 define float @test_clustered_broadcast_invalid_cluster_lane(float %src, i32 %arg) {
-; CHECK:    error: in_cluster_lane argument in clustered_broadcast must be constant.
-; CHECK:    in function: 'test_clustered_broadcast_invalid_cluster_lane'
+; CHECK:    error: in function 'test_clustered_broadcast_invalid_cluster_lane' called indirectly: in_cluster_lane argument in clustered_broadcast must be constant.
   %1 = call spir_func float @__builtin_IB_simd_clustered_broadcast_f(float %src, i32 8, i32 %arg)
   ret float %1
 }

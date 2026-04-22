@@ -8,7 +8,7 @@ SPDX-License-Identifier: MIT
 // REQUIRES: dg2-supported, llvm-15-or-older
 // RUN: ocloc compile -file %s -device dg2 -options "-cl-std=CL2.0" 2>&1 | FileCheck %s
 
-// CHECK: warning: Possible null pointer dereference! Atomic instruction operates on a nullptr.
+// CHECK: warning: {{.*}} Possible null pointer dereference! Atomic instruction operates on a nullptr.
 
 void func(generic int* generic_ptr)
 {

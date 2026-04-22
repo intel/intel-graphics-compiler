@@ -25,7 +25,7 @@ entry:
   %tmp = add i64  %ibase, %lid
 ;
 ; case 0 u32_m1k8v2
-; CHECK:  warning: Block2D: block size not multiple of GRF size, zero padded
+; CHECK:  warning: in kernel 'test_2dblock_read_zero_padding': Block2D: block size not multiple of GRF size, zero padded
 ;
   %res0 = call <2 x i32> @llvm.genx.GenISA.LSC2DBlockRead.v2i32(i64 %base, i32 %widthm1, i32 %heightm1, i32 %pitchm1, i32 %x, i32 %y, i32 32, i32 8, i32 1, i32 2, i1 false, i1 false, i32 0)
   %tmp0 = add i64 %tmp, 16
@@ -34,7 +34,7 @@ entry:
 
 ;
 ; case 1 u32_m7k2 transpose
-; CHECK:  warning: Block2D: transpose block height not power of 2, zero padded
+; CHECK:  warning: in kernel 'test_2dblock_read_zero_padding': Block2D: transpose block height not power of 2, zero padded
 ;
   %res1 = call i32 @llvm.genx.GenISA.LSC2DBlockRead.i32(i64 %base, i32 %widthm1, i32 %heightm1, i32 %pitchm1, i32 %x, i32 %y, i32 32, i32 2, i32 7, i32 1, i1 true, i1 false, i32 0)
   %tmp1 = add i64 %tmp, 128
@@ -43,7 +43,7 @@ entry:
 
 ;
 ; case 2 u8_m29k2 vnni transform
-; CHECK: warning: Block2D: transform block height not multiple of N (32/eltBits), zero padded.
+; CHECK: warning: in kernel 'test_2dblock_read_zero_padding': Block2D: transform block height not multiple of N (32/eltBits), zero padded.
 ;
   %res2 = call <2 x i16> @llvm.genx.GenISA.LSC2DBlockRead.v2i16(i64 %base, i32 %widthm1, i32 %heightm1, i32 %pitchm1, i32 %x, i32 %y, i32 8, i32 2, i32 29, i32 1, i1 false, i1 true, i32 0)
   %tmp2 = add i64 %tmp, 512
