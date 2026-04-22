@@ -50,8 +50,10 @@ SPDX-License-Identifier: MIT
 #include "common/SIPKernels/wmtp/XE3P_wmtp_legacy.h"
 #include "common/SIPKernels/wmtp/XE2_config_128.h"
 #include "common/SIPKernels/wmtp/XE2_config_160.h"
-#include "common/SIPKernels/wmtp/XE3PV2_wmtp_e64.h"
-#include "common/SIPKernels/wmtp/XE3PV2_wmtp_legacy.h"
+#include "common/SIPKernels/wmtp/XE3PLPG_wmtp_e64.h"
+#include "common/SIPKernels/wmtp/XE3PLPG_wmtp_legacy.h"
+#include "common/SIPKernels/Xe3PLPGSIPDebug64b_config1.h"
+#include "common/SIPKernels/Xe3PLPGSIPDebug64b_config2.h"
 
 using namespace llvm;
 using namespace USC;
@@ -580,15 +582,15 @@ struct StateSaveAreaHeaderV4 Xe3PSIP_WMTP_E64_CSRDebugBindlessDebugHeader = {
     XE3P_CSR_DEBUG_BINDLESS_XE3P_WMTP_DATA_SIZE                              // total_wmtp_data_size
 };
 
-// wmtp XE3PV2 SIP (NVL)
-struct StateSaveAreaHeaderV4 Xe3PV2SIP_WMTP_Legacy_CSRDebugBindlessDebugHeader = {
+// wmtp XE3PLPG SIP (NVL)
+struct StateSaveAreaHeaderV4 Xe3PLPGSIP_WMTP_Legacy_CSRDebugBindlessDebugHeader = {
     {"tssarea", 0, {4, 0, 0}, sizeof(StateSaveAreaHeaderV4) / 8, {0, 0, 0}}, // versionHeader
-    XE3PV2_CSR_DEBUG_BINDLESS_WMTP_DATA_SIZE                                 // total_wmtp_data_size
+    XE3PLPG_CSR_DEBUG_BINDLESS_WMTP_DATA_SIZE                                // total_wmtp_data_size
 };
 
-struct StateSaveAreaHeaderV4 Xe3PV2SIP_WMTP_E64_CSRDebugBindlessDebugHeader = {
+struct StateSaveAreaHeaderV4 Xe3PLPGSIP_WMTP_E64_CSRDebugBindlessDebugHeader = {
     {"tssarea", 0, {4, 0, 0}, sizeof(StateSaveAreaHeaderV4) / 8, {0, 0, 0}}, // versionHeader
-    XE3PV2_CSR_DEBUG_BINDLESS_WMTP_DATA_SIZE                                 // total_wmtp_data_size
+    XE3PLPG_CSR_DEBUG_BINDLESS_WMTP_DATA_SIZE                                // total_wmtp_data_size
 };
 
 
@@ -1660,6 +1662,9 @@ void populateSIPKernelInfo(
       SIPKernelInfo[XE3P_DEBUG_BINDLESS_LEGACY] =
           std::make_tuple((void *)&Xe3PSIPDebugLegacy_config2, (int)sizeof(Xe3PSIPDebugLegacy_config2),
                           (void *)&Xe3PDebugHeaderV3_Legacy, (int)sizeof(Xe3PDebugHeaderV3_Legacy));
+      SIPKernelInfo[XE3PLPG_DEBUG_E64] =
+          std::make_tuple((void *)&Xe3PLPGSIPDebug64b_config2, (int)sizeof(Xe3PLPGSIPDebug64b_config2),
+                          (void *)&Xe3PDebugHeaderV3, (int)sizeof(Xe3PDebugHeaderV3));
     } else // Assuming 8 threads per eu
     {
       SIPKernelInfo[XE3P_DEBUG_E64] =
@@ -1669,6 +1674,9 @@ void populateSIPKernelInfo(
       SIPKernelInfo[XE3P_DEBUG_BINDLESS_LEGACY] =
           std::make_tuple((void *)&Xe3PSIPDebugLegacy_config1, (int)sizeof(Xe3PSIPDebugLegacy_config1),
                           (void *)&Xe3PDebugHeaderV3_Legacy, (int)sizeof(Xe3PDebugHeaderV3_Legacy));
+      SIPKernelInfo[XE3PLPG_DEBUG_E64] =
+          std::make_tuple((void *)&Xe3PLPGSIPDebug64b_config1, (int)sizeof(Xe3PLPGSIPDebug64b_config1),
+                          (void *)&Xe3PDebugHeaderV3, (int)sizeof(Xe3PDebugHeaderV3));
     }
   }
   { // WMTP SIP
@@ -1686,15 +1694,16 @@ void populateSIPKernelInfo(
 
   { // WMTP SIP
     // E64 wmtp NVL SIP
-    SIPKernelInfo[XE3PV2_CSR_DEBUG_E64] = std::make_tuple((void *)&XE3PV2_wmtp_e64, (int)sizeof(XE3PV2_wmtp_e64),
-                                                          (void *)&Xe3PV2SIP_WMTP_E64_CSRDebugBindlessDebugHeader,
-                                                          (int)sizeof(Xe3PV2SIP_WMTP_E64_CSRDebugBindlessDebugHeader));
+    SIPKernelInfo[XE3PLPG_CSR_DEBUG_E64] =
+        std::make_tuple((void *)&XE3PLPG_wmtp_e64, (int)sizeof(XE3PLPG_wmtp_e64),
+                        (void *)&Xe3PLPGSIP_WMTP_E64_CSRDebugBindlessDebugHeader,
+                        (int)sizeof(Xe3PLPGSIP_WMTP_E64_CSRDebugBindlessDebugHeader));
 
     // Legacy wmtp NVL SIP
-    SIPKernelInfo[XE3PV2_CSR_DEBUG_LEGACY] =
-        std::make_tuple((void *)&XE3PV2_wmtp_legacy, (int)sizeof(XE3PV2_wmtp_legacy),
-                        (void *)&Xe3PV2SIP_WMTP_Legacy_CSRDebugBindlessDebugHeader,
-                        (int)sizeof(Xe3PV2SIP_WMTP_Legacy_CSRDebugBindlessDebugHeader));
+    SIPKernelInfo[XE3PLPG_CSR_DEBUG_LEGACY] =
+        std::make_tuple((void *)&XE3PLPG_wmtp_legacy, (int)sizeof(XE3PLPG_wmtp_legacy),
+                        (void *)&Xe3PLPGSIP_WMTP_Legacy_CSRDebugBindlessDebugHeader,
+                        (int)sizeof(Xe3PLPGSIP_WMTP_Legacy_CSRDebugBindlessDebugHeader));
   }
 
 
@@ -1883,6 +1892,9 @@ CGenSystemInstructionKernelProgram *CGenSystemInstructionKernelProgram::Create(c
       case IGFX_CRI:
         SIPIndex = XE3P_DEBUG_E64;
         break;
+      case IGFX_NVL:
+        SIPIndex = XE3PLPG_DEBUG_E64;
+        break;
       default:
         IGC_ASSERT(false);
         break;
@@ -1891,9 +1903,16 @@ CGenSystemInstructionKernelProgram *CGenSystemInstructionKernelProgram::Create(c
       switch (platform.getPlatformInfo().eProductFamily) {
       case IGFX_CRI:
         if (!bindlessMode) {
-          SIPIndex = XE3PV2_CSR_DEBUG_E64;
+          SIPIndex = XE3PLPG_CSR_DEBUG_E64;
         } else {
-          SIPIndex = XE3PV2_CSR_DEBUG_LEGACY;
+          SIPIndex = XE3PLPG_CSR_DEBUG_LEGACY;
+        }
+        break;
+      case IGFX_NVL:
+        if (!bindlessMode) {
+          SIPIndex = XE3PLPG_CSR_DEBUG_E64;
+        } else {
+          SIPIndex = XE3PLPG_CSR_DEBUG_LEGACY;
         }
         break;
       default:
