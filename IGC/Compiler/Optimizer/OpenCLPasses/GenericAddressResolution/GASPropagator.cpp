@@ -353,6 +353,39 @@ bool GASPropagator::visitMemSetInst(MemSetInst &I) {
   return true;
 }
 
+bool GASPropagator::handlePredicatedMemoryIntrinsic(CallInst &I, PointerType *SrcPtrTy) {
+  Function *Callee = I.getCalledFunction();
+  GenISAIntrinsic::ID IID = GenISAIntrinsic::getIntrinsicID(Callee);
+
+  if (IID != GenISAIntrinsic::GenISA_PredicatedLoad && IID != GenISAIntrinsic::GenISA_PredicatedStore)
+    return false;
+
+  if (TheUse->getOperandNo() != 0)
+    return false;
+
+  Type *RetTy = I.getType();
+  SmallVector<Type *, 4> NewOverloadedTys;
+
+  if (IID == GenISAIntrinsic::GenISA_PredicatedLoad) {
+    NewOverloadedTys.push_back(RetTy);
+    NewOverloadedTys.push_back(SrcPtrTy);
+    NewOverloadedTys.push_back(RetTy);
+  } else {
+    Type *ValTy = I.getArgOperand(1)->getType();
+    NewOverloadedTys.push_back(SrcPtrTy);
+    NewOverloadedTys.push_back(ValTy);
+  }
+
+  Module *M = I.getParent()->getParent()->getParent();
+  Function *NewFn = GenISAIntrinsic::getDeclaration(M, IID, NewOverloadedTys);
+  if (!NewFn)
+    return false;
+
+  I.setCalledFunction(NewFn);
+  TheUse->set(TheVal);
+  return true;
+}
+
 bool GASPropagator::visitCallInst(CallInst &I) {
   Function *Callee = I.getCalledFunction();
 
@@ -427,6 +460,9 @@ bool GASPropagator::visitCallInst(CallInst &I) {
 
     return true;
   }
+
+  if (GenISAIntrinsic::isIntrinsic(Callee))
+    return handlePredicatedMemoryIntrinsic(I, SrcPtrTy);
 
   return false;
 }
