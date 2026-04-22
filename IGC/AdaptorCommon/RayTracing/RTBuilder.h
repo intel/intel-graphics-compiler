@@ -8,19 +8,17 @@ SPDX-License-Identifier: MIT
 
 #pragma once
 
+#include "Compiler/CodeGenPublic.h"
+#include "Compiler/CodeGenPublicEnums.h"
 #include "RTStackFormat.h"
 #include "RTStackReflectionIRBG/RTStackReflectionBuilder.h"
 #include "RenderSurfaceStateIRBG/RenderSurfaceStateBuilder.h"
 #include "common/IGCIRBuilder.h"
-#include "Compiler/CodeGenPublicEnums.h"
-#include "Compiler/CodeGenPublic.h"
-#include "visa_igc_common_header.h"
-#include "common/LLVMWarningsPush.hpp"
-#include "common/LLVMWarningsPop.hpp"
+#include "Probe/Assertion.h"
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/IR/Module.h"
+#include "visa_igc_common_header.h"
 #include <optional>
-#include "Probe/Assertion.h"
 
 
 namespace llvm {
@@ -362,7 +360,11 @@ public:
   static Instruction *getEntryFirstInsertionPointInBlock(BasicBlock &block,
                                                          const std::vector<Value *> *additionalInstructionsToSkip);
 
-  Value *getTraceRayPayload(Value *bvhLevel, Value *traceRayCtrl, bool isRayQuery, const Twine &PayloadName = "");
+  enum class TraceRayMode {
+    SyncRayQuery,
+    AsyncKernelSpawnable
+  };
+  Value *getTraceRayPayload(Value *bvhLevel, Value *traceRayCtrl, TraceRayMode mode, const Twine &PayloadName = "");
 
 
 
@@ -377,7 +379,7 @@ public:
   Value *getSyncRTStackSize();
 
 private:
-  TraceRayIntrinsic *createTraceRay(Value *bvhLevel, Value *traceRayCtrl, bool isRayQuery,
+  TraceRayIntrinsic *createTraceRay(Value *bvhLevel, Value *traceRayCtrl, TraceRayMode mode,
                                     Value *globalBufferPointer = nullptr, const Twine &PayloadName = "");
 
   Value *canonizePointer(Value *Ptr);
@@ -440,8 +442,8 @@ public:
   Value *syncStackToShadowMemory(SyncStackPointerVal *HWStackPtr, SyncStackPointerVal *SMStackPtr,
                                  Value *ProceedReturnVal, Value *ShadowMemRTCtrlPtr);
 
-  Value *getCommittedStatus(SyncStackPointerVal *SMStackPtr);
-  Value *getCandidateType(SyncStackPointerVal *SMStackPtr);
+  Value *getCommittedStatus(StackPointerVal *SMStackPtr);
+  Value *getCandidateType(StackPointerVal *SMStackPtr);
 
   void commitProceduralPrimitiveHit(SyncStackPointerVal *SMStackPtr, Value *THit);
 

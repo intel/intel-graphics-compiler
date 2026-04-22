@@ -520,24 +520,26 @@ RTBuilder::getSyncStackPointer(Value *globalBufferPtr,
 }
 
 
-TraceRayIntrinsic *RTBuilder::createTraceRay(Value *bvhLevel, Value *traceRayCtrl, bool isRayQuery,
+TraceRayIntrinsic *RTBuilder::createTraceRay(Value *bvhLevel, Value *traceRayCtrl, TraceRayMode mode,
                                              Value *globalBufferPointer, const Twine &PayloadName) {
   Module *module = this->GetInsertBlock()->getModule();
 
   if (!globalBufferPointer)
     globalBufferPointer = this->getGlobalBufferPtr();
 
-  GenISAIntrinsic::ID ID = isRayQuery ? GenISAIntrinsic::GenISA_TraceRaySync : GenISAIntrinsic::GenISA_TraceRayAsync;
+  GenISAIntrinsic::ID ID = mode == TraceRayMode::AsyncKernelSpawnable ? GenISAIntrinsic::GenISA_TraceRayAsync
+                                                                      : GenISAIntrinsic::GenISA_TraceRaySync;
 
   Function *traceFn = GenISAIntrinsic::getDeclaration(module, ID, globalBufferPointer->getType());
 
-  Value *payload = getTraceRayPayload(bvhLevel, traceRayCtrl, isRayQuery, PayloadName);
+  Value *payload = getTraceRayPayload(bvhLevel, traceRayCtrl, mode, PayloadName);
 
   SmallVector<Value *, 4> Args{globalBufferPointer, payload};
 
-  if (isRayQuery) {
+  if (mode != TraceRayMode::AsyncKernelSpawnable) {
     // May be updated by `RayTracingNewStackLayoutOptimizationPass`
     uint32_t Mode = static_cast<uint32_t>(STACK_ADDRESS_MODE::DEFAULT_ADDRESSING);
+
     Args.push_back(getInt32(Mode)); // StackAddress mode, only for Rayquery
   }
 
@@ -553,15 +555,15 @@ void RTBuilder::createReadSyncTraceRay(Value *val) {
 
 TraceRaySyncIntrinsic *RTBuilder::createSyncTraceRay(Value *bvhLevel, Value *traceRayCtrl, Value *globalBufferPointer,
                                                      const Twine &PayloadName) {
-  return cast<TraceRaySyncIntrinsic>(createTraceRay(bvhLevel, this->CreateZExt(traceRayCtrl, this->getInt32Ty()), true,
-                                                    globalBufferPointer, PayloadName));
+  return cast<TraceRaySyncIntrinsic>(createTraceRay(bvhLevel, this->CreateZExt(traceRayCtrl, this->getInt32Ty()),
+                                                    TraceRayMode::SyncRayQuery, globalBufferPointer, PayloadName));
 }
 
 TraceRaySyncIntrinsic *RTBuilder::createSyncTraceRay(uint32_t bvhLevel, Value *traceRayCtrl, Value *globalBufferPointer,
                                                      const Twine &PayloadName) {
   return cast<TraceRaySyncIntrinsic>(createTraceRay(this->getInt32(bvhLevel),
-                                                    this->CreateZExt(traceRayCtrl, this->getInt32Ty()), true,
-                                                    globalBufferPointer, PayloadName));
+                                                    this->CreateZExt(traceRayCtrl, this->getInt32Ty()),
+                                                    TraceRayMode::SyncRayQuery, globalBufferPointer, PayloadName));
 }
 
 
@@ -1140,10 +1142,11 @@ Value *RTBuilder::TransformWorldToObject(RTBuilder::StackPointerVal *perLaneStac
 }
 
 
-Value *RTBuilder::getTraceRayPayload(Value *bvhLevel, Value *traceRayCtrl, bool isRayQuery, const Twine &PayloadName) {
+Value *RTBuilder::getTraceRayPayload(Value *bvhLevel, Value *traceRayCtrl, TraceRayMode mode,
+                                     const Twine &PayloadName) {
   Value *stackId = nullptr;
 
-  if (isRayQuery) {
+  if (mode == RTBuilder::TraceRayMode::SyncRayQuery) {
     // For RayQuery - set stack ID to zero since hardware will not use this field
     stackId = getInt32(0);
     if (Ctx.platform.hasEfficient64bEnabled()) {
@@ -1941,7 +1944,7 @@ Value *RTBuilder::syncStackToShadowMemory(SyncStackPointerVal *HWStackPtr, SyncS
   return {};
 }
 
-Value *RTBuilder::getCommittedStatus(SyncStackPointerVal *SMStackPtr) {
+Value *RTBuilder::getCommittedStatus(StackPointerVal *SMStackPtr) {
   switch (getMemoryStyle()) {
 #define STYLE(X)                                                                                                       \
   case RTMemoryStyle::X:                                                                                               \
@@ -1954,7 +1957,7 @@ Value *RTBuilder::getCommittedStatus(SyncStackPointerVal *SMStackPtr) {
   return {};
 }
 
-Value *RTBuilder::getCandidateType(SyncStackPointerVal *SMStackPtr) {
+Value *RTBuilder::getCandidateType(StackPointerVal *SMStackPtr) {
   switch (getMemoryStyle()) {
 #define STYLE(X)                                                                                                       \
   case RTMemoryStyle::X:                                                                                               \
