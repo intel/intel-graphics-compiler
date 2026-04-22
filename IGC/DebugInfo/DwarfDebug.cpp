@@ -1269,6 +1269,7 @@ void DwarfDebug::collectDeadVariables() {
       // subprogram DIEs.
       constructSubprogramDIE(SPCU, SP);
       DIE *SPDIE = SPCU->getDIE(SP);
+      IGC_ASSERT_MESSAGE(SPDIE, "Unable to find subprogram DIE!");
       for (unsigned vi = 0, ve = Variables.size(); vi != ve; ++vi) {
         auto *DV = dyn_cast<DILocalVariable>(Variables[vi]);
         if (!DV)

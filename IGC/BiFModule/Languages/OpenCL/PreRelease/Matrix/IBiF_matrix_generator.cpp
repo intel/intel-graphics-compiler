@@ -2275,17 +2275,8 @@ static string DefineSpecialLarge1x64StoreAddrSpace(MatrixSpec spec, AddrSpace ad
     implBlock2D += "  long x = (offset - baseoffset) / ElemBytes;\n";
     implBlock2D += "  int2 coords = (int2)(x, 0);\n";
     implBlock2D += "  ElemType4 val = *(ElemType4 *)src;\n";
-
-    if (spec.BitWidth == BITS_32) {
-      implBlock2D += "  void BlockWriteFunc(long, int, int, int, int2, ElemType4, int);\n";
-      implBlock2D += "  BlockWriteFunc(baseoffset, width, height, pitch, coords, val, "
-                     "cacheOpt);\n";
-    } else {
-      implBlock2D += "  void BlockWriteFunc(long, int, int, int, int2, ElemType4, int);\n";
-      implBlock2D += "  BlockWriteFunc(baseoffset, width, height, pitch, coords, val, "
-                     "cacheOpt);\n";
-    }
-
+    implBlock2D += "  void BlockWriteFunc(long, int, int, int, int2, ElemType4, int);\n";
+    implBlock2D += "  BlockWriteFunc(baseoffset, width, height, pitch, coords, val, cacheOpt);\n";
     implBlock2D += "  return;\n";
     implBlock2D += "}\n";
   }

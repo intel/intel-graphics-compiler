@@ -622,10 +622,6 @@ bool IGC::SOALayoutChecker::MismatchDetected(Instruction &I) {
     allocaEltTy = extractArrayOrVecEleType(*structTy->element_begin());
   }
 
-  IGC_ASSERT(allocaEltTy);
-  if (!allocaEltTy)
-    return false;
-
   uint64_t allocaEltBitsSize = pDL->getTypeStoreSizeInBits(allocaEltTy);
   IGC_ASSERT(allocaEltBitsSize > 0);
 

@@ -272,11 +272,13 @@ Subfunction Decoder::decodeSubfunction(bool &valid) {
   {
     // in bdpas, repeat count is set to 8; no repeat count field
     // GED splits this field up; we fuse it as a single subfunction
-    uint32_t systolicDepth;
+    uint32_t systolicDepth = 0;
     if (platform() == Platform::XE3P_XPC) {
       // XE3P.CRI: Systolic depth is implicitly fixed at 8
       systolicDepth = 8;
     }
+    IGA_ASSERT(systolicDepth != 0, "Unsupported platform");
+
     const uint32_t repeatCount = 8;
     sf = GetDpasFC(systolicDepth, repeatCount);
     break;

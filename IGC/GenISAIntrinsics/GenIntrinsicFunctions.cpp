@@ -307,7 +307,7 @@ private:
 
     llvm::Type *resultTy = types.front();
     auto argBeg = types.data() + 1;
-    bool isVararg = std::next(types.begin()) != types.end() && types.back()->isVoidTy();
+    bool isVararg = types.size() > 1 && types.back()->isVoidTy();
     uint32_t numArgs = isVararg ? static_cast<uint32_t>(types.size() - 2) : static_cast<uint32_t>(types.size() - 1);
     llvm::ArrayRef<llvm::Type *> argTys(argBeg, numArgs);
     // Disable this path because of GenISA_UnmaskedRegionBegin and GenISA_UnmaskedRegionEnd
