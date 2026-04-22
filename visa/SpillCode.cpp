@@ -358,7 +358,7 @@ void SpillManager::replaceSpilledSrc(
       // create declare for temp addr live range
       //
 
-      uint16_t num_reg = 1;
+      uint16_t num_reg = spDcl->getNumElems() - ss->getSubRegOff();
       // if access is VxH copy number of addresses based on execution size of
       // instruction
       if (ss->getRegion()->isRegionWH()) {
