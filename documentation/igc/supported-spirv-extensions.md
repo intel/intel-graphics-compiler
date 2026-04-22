@@ -6,7 +6,7 @@ This document lists all SPIR-V extensions supported by IGC and their platform re
 
 **Specification**: https://github.khronos.org/SPIRV-Registry/extensions/EXT/SPV_EXT_float8.html
 
-> **Experimentally supported on**: IGFX_XE3P_CORE and newer
+> **Experimentally supported on**: XE3P+ (NVL, CRI)
 
 **Capabilities**:
 
@@ -31,7 +31,7 @@ This document lists all SPIR-V extensions supported by IGC and their platform re
 
 **Specification**: https://github.khronos.org/SPIRV-Registry/extensions/EXT/SPV_EXT_shader_atomic_float16_add.html
 
-> **Supported on**: IGFX_XE3P_CORE and newer
+> **Supported on**: XE3P+ (NVL, CRI)
 
 **Capabilities**:
 
@@ -48,7 +48,7 @@ This document lists all SPIR-V extensions supported by IGC and their platform re
 - **AtomicFloat32AddEXT**
   > **Supported On**: All platforms
 - **AtomicFloat64AddEXT**
-  > **Supported On**: IGFX_METEORLAKE and newer
+  > **Supported On**: METEORLAKE+ (METEORLAKE, ARROWLAKE, BMG, LUNARLAKE, PTL, NVL_XE3G, NVL, CRI)
 
 ---
 
@@ -59,11 +59,11 @@ This document lists all SPIR-V extensions supported by IGC and their platform re
 **Capabilities**:
 
 - **AtomicFloat16MinMaxEXT**
-  > **Supported On**: IGFX_XE3P_CORE and newer
+  > **Supported On**: XE3P+ (NVL, CRI)
 - **AtomicFloat32MinMaxEXT**
   > **Supported On**: All platforms
 - **AtomicFloat64MinMaxEXT**
-  > **Supported On**: IGFX_METEORLAKE and newer
+  > **Supported On**: METEORLAKE+ (METEORLAKE, ARROWLAKE, BMG, LUNARLAKE, PTL, NVL_XE3G, NVL, CRI)
 
 ---
 
@@ -74,15 +74,15 @@ This document lists all SPIR-V extensions supported by IGC and their platform re
 **Capabilities**:
 
 - **AtomicInt16CompareExchangeINTEL**
-  > **Experimentally supported on**: IGFX_XE3P_CORE and newer
+  > **Experimentally supported on**: XE3P+ (NVL, CRI)
 - **Int16AtomicsINTEL**
   > **Experimentally supported on**: Not supported
 - **AtomicBFloat16LoadStoreINTEL**
-  > **Experimentally supported on**: IGFX_XE3P_CORE and newer
+  > **Experimentally supported on**: XE3P+ (NVL, CRI)
 - **AtomicBFloat16AddINTEL**
-  > **Experimentally supported on**: IGFX_XE3P_CORE and newer
+  > **Experimentally supported on**: XE3P+ (NVL, CRI)
 - **AtomicBFloat16MinMaxINTEL**
-  > **Experimentally supported on**: IGFX_XE3P_CORE and newer
+  > **Experimentally supported on**: XE3P+ (NVL, CRI)
 
 ---
 
@@ -90,7 +90,7 @@ This document lists all SPIR-V extensions supported by IGC and their platform re
 
 **Specification**: https://github.com/KhronosGroup/SPIRV-Registry/blob/main/extensions/INTEL/SPV_INTEL_2d_block_io.asciidoc
 
-> **Supported on**: IGFX_XE_HPC_CORE and newer
+> **Supported on**: XE_HPC+ (PVC, BMG, LUNARLAKE, PTL, NVL_XE3G, NVL, CRI)
 
 **Capabilities**:
 
@@ -116,9 +116,9 @@ This document lists all SPIR-V extensions supported by IGC and their platform re
 
 **Specification**: https://github.com/intel/llvm/blob/sycl/sycl/doc/design/spirv-extensions/SPV_INTEL_bfloat16_arithmetic.asciidoc
 
-> **Supported on**: IGFX_XE3P_CORE and newer
+> **Supported on**: XE3P+ (NVL, CRI)
 
-> **Experimentally supported on**: IGFX_XE_HPG_CORE and newer (excluding IGFX_METEORLAKE)
+> **Additionally experimentally supported on**: DG2, PVC, ARROWLAKE, BMG, LUNARLAKE, PTL, NVL_XE3G
 
 **Capabilities**:
 
@@ -130,7 +130,7 @@ This document lists all SPIR-V extensions supported by IGC and their platform re
 
 **Specification**: https://github.khronos.org/SPIRV-Registry/extensions/INTEL/SPV_INTEL_bfloat16_conversion.html
 
-> **Supported on**: IGFX_XE_HPG_CORE and newer (excluding IGFX_METEORLAKE)
+> **Supported on**: XE_HPG+ except METEORLAKE (DG2, PVC, ARROWLAKE, BMG, LUNARLAKE, PTL, NVL_XE3G, NVL, CRI)
 
 **Capabilities**:
 
@@ -142,7 +142,7 @@ This document lists all SPIR-V extensions supported by IGC and their platform re
 
 **Specification**: https://github.com/intel/llvm/blob/sycl/sycl/doc/design/spirv-extensions/SPV_INTEL_bindless_images.asciidoc
 
-> **Experimentally supported on**: IGFX_XE_HPG_CORE and newer (excluding IGFX_PVC, IGFX_CRI)
+> **Experimentally supported on**: XE_HPG+ except PVC, CRI (DG2, METEORLAKE, ARROWLAKE, BMG, LUNARLAKE, PTL, NVL_XE3G, NVL)
 
 **Capabilities**:
 
@@ -190,7 +190,7 @@ This document lists all SPIR-V extensions supported by IGC and their platform re
 
 **Specification**: https://github.com/intel/llvm/pull/20467
 
-> **Experimentally supported on**: IGFX_XE3P_CORE and newer
+> **Experimentally supported on**: XE3P+ (NVL, CRI)
 
 **Capabilities**:
 
@@ -203,7 +203,7 @@ This document lists all SPIR-V extensions supported by IGC and their platform re
 
 **Specification**: https://github.com/intel/llvm/pull/20467
 
-> **Experimentally supported on**: IGFX_XE3P_CORE and newer
+> **Experimentally supported on**: XE3P+ (NVL, CRI)
 
 **Capabilities**:
 
@@ -291,7 +291,7 @@ This document lists all SPIR-V extensions supported by IGC and their platform re
 **Capabilities**:
 
 - **Int4TypeINTEL**
-  > **Experimentally supported on**: IGFX_XE3P_CORE and newer
+  > **Experimentally supported on**: XE3P+ (NVL, CRI)
 - **Int4CooperativeMatrixINTEL**
   > **Experimentally supported on**: Not supported
 
@@ -304,15 +304,15 @@ This document lists all SPIR-V extensions supported by IGC and their platform re
 **Capabilities**:
 
 - **PackedCooperativeMatrixINTEL**
-  > **Experimentally supported on**: IGFX_XE_HPG_CORE and newer
+  > **Experimentally supported on**: XE_HPG+ (DG2, PVC, METEORLAKE, ARROWLAKE, BMG, LUNARLAKE, PTL, NVL_XE3G, NVL, CRI)
 - **CooperativeMatrixInvocationInstructionsINTEL**
-  > **Experimentally supported on**: IGFX_XE_HPG_CORE and newer
+  > **Experimentally supported on**: XE_HPG+ (DG2, PVC, METEORLAKE, ARROWLAKE, BMG, LUNARLAKE, PTL, NVL_XE3G, NVL, CRI)
 - **CooperativeMatrixTF32ComponentTypeINTEL**
-  > **Experimentally supported on**: IGFX_XE_HPC_CORE and newer
+  > **Experimentally supported on**: XE_HPC+ (PVC, BMG, LUNARLAKE, PTL, NVL_XE3G, NVL, CRI)
 - **CooperativeMatrixBFloat16ComponentTypeINTEL**
-  > **Experimentally supported on**: IGFX_XE_HPG_CORE and newer
+  > **Experimentally supported on**: XE_HPG+ (DG2, PVC, METEORLAKE, ARROWLAKE, BMG, LUNARLAKE, PTL, NVL_XE3G, NVL, CRI)
 - **CooperativeMatrixPrefetchINTEL**
-  > **Experimentally supported on**: IGFX_XE_HPC_CORE and newer
+  > **Experimentally supported on**: XE_HPC+ (PVC, BMG, LUNARLAKE, PTL, NVL_XE3G, NVL, CRI)
 
 ---
 
@@ -347,7 +347,7 @@ This document lists all SPIR-V extensions supported by IGC and their platform re
 
 **Specification**: https://github.khronos.org/SPIRV-Registry/extensions/INTEL/SPV_INTEL_media_block_io.html
 
-> **Supported on**: IGFX_GEN12LP_CORE, IGFX_XE_HPG_CORE
+> **Supported on**: GEN12LP_CORE, XE_HPG_CORE
 
 **Capabilities**:
 
@@ -395,7 +395,7 @@ This document lists all SPIR-V extensions supported by IGC and their platform re
 
 **Specification**: TBD
 
-> **Experimentally supported on**: IGFX_XE_HP_CORE and newer
+> **Experimentally supported on**: XE_HP+ (XE_HP_SDV, DG2, PVC, METEORLAKE, ARROWLAKE, BMG, LUNARLAKE, PTL, NVL_XE3G, NVL, CRI)
 
 **Capabilities**:
 
@@ -443,7 +443,7 @@ This document lists all SPIR-V extensions supported by IGC and their platform re
 
 **Specification**: https://github.khronos.org/SPIRV-Registry/extensions/INTEL/SPV_INTEL_subgroup_matrix_multiply_accumulate.html
 
-> **Supported on**: IGFX_XE_HPG_CORE and newer (excluding IGFX_METEORLAKE, IGFX_ARROWLAKE)
+> **Supported on**: XE_HPG+ except METEORLAKE, ARROWLAKE (DG2, PVC, BMG, LUNARLAKE, PTL, NVL_XE3G, NVL, CRI)
 
 **Capabilities**:
 
@@ -455,7 +455,7 @@ This document lists all SPIR-V extensions supported by IGC and their platform re
 
 **Specification**: https://github.com/intel/llvm/blob/sycl/sycl/doc/design/spirv-extensions/SPV_INTEL_subgroup_matrix_multiply_accumulate_float4.asciidoc
 
-> **Experimentally supported on**: IGFX_XE3P_CORE and newer
+> **Experimentally supported on**: XE3P+ (NVL, CRI)
 
 **Capabilities**:
 
@@ -468,7 +468,7 @@ This document lists all SPIR-V extensions supported by IGC and their platform re
 
 **Specification**: https://github.com/intel/llvm/blob/sycl/sycl/doc/design/spirv-extensions/SPV_INTEL_subgroup_matrix_multiply_accumulate_float8.asciidoc
 
-> **Experimentally supported on**: IGFX_XE3P_CORE and newer
+> **Experimentally supported on**: XE3P+ (NVL, CRI)
 
 **Capabilities**:
 
@@ -483,7 +483,7 @@ This document lists all SPIR-V extensions supported by IGC and their platform re
 
 **Specification**: https://github.com/intel/llvm/pull/20656
 
-> **Experimentally supported on**: IGFX_XE3P_CORE and newer
+> **Experimentally supported on**: XE3P+ (NVL, CRI)
 
 **Capabilities**:
 
@@ -509,7 +509,7 @@ This document lists all SPIR-V extensions supported by IGC and their platform re
 
 **Specification**: https://github.khronos.org/SPIRV-Registry/extensions/INTEL/SPV_INTEL_tensor_float32_conversion.html
 
-> **Supported on**: IGFX_XE_HPC_CORE and newer
+> **Supported on**: XE_HPC+ (PVC, BMG, LUNARLAKE, PTL, NVL_XE3G, NVL, CRI)
 
 **Capabilities**:
 
@@ -559,7 +559,7 @@ This document lists all SPIR-V extensions supported by IGC and their platform re
 
 **Specification**: https://github.khronos.org/SPIRV-Registry/extensions/KHR/SPV_KHR_bfloat16.html
 
-> **Experimentally supported on**: IGFX_XE_HPG_CORE and newer (excluding IGFX_METEORLAKE)
+> **Experimentally supported on**: XE_HPG+ except METEORLAKE (DG2, PVC, ARROWLAKE, BMG, LUNARLAKE, PTL, NVL_XE3G, NVL, CRI)
 
 **Capabilities**:
 
@@ -585,7 +585,7 @@ This document lists all SPIR-V extensions supported by IGC and their platform re
 
 **Specification**: https://github.khronos.org/SPIRV-Registry/extensions/KHR/SPV_KHR_cooperative_matrix.html
 
-> **Experimentally supported on**: IGFX_XE_HPG_CORE and newer
+> **Experimentally supported on**: XE_HPG+ (DG2, PVC, METEORLAKE, ARROWLAKE, BMG, LUNARLAKE, PTL, NVL_XE3G, NVL, CRI)
 
 **Capabilities**:
 

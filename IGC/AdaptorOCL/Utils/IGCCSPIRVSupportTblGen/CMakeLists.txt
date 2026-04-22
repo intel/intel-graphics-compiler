@@ -19,6 +19,12 @@ set(LLVM_LINK_COMPONENTS
 
 llvm_update_compile_flags(igcc-spirv-support-tblgen)
 
+# The markdown emitter pulls in inc/common/igfxfmid.h for PRODUCT_FAMILY /
+# GFXCORE_FAMILY enums.
+target_include_directories(igcc-spirv-support-tblgen PRIVATE
+  ${IGC_BUILD__GFX_DEV_SRC_DIR}
+)
+
 # Always link static TableGen explicitly — never rely on libLLVM.so here
 # TableGen is never part of libLLVM.so (ref: llvm-project/llvm/tools/llvm-shlib/CMakeLists.txt)
 target_link_libraries(igcc-spirv-support-tblgen PRIVATE

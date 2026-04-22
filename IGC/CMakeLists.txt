@@ -1785,6 +1785,7 @@ endif()
 # Build-order dependencies for generated headers.
 add_dependencies("${IGC_BUILD__PROJ__igc_objs}" RTStackReflectionIRBG)
 add_dependencies("${IGC_BUILD__PROJ__igc_objs}" RenderSurfaceStateIRBG)
+add_dependencies("${IGC_BUILD__PROJ__igc_objs}" SPIRVExtensionsSupportGen)
 
 # Main library targets: they consume the shared .obj set via
 # $<TARGET_OBJECTS:...> and only differ by output type + resources.
