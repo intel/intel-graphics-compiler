@@ -28,6 +28,7 @@ SPDX-License-Identifier: MIT
 using namespace IGC;
 using namespace llvm;
 
+
 namespace llvm {
 template <> struct DenseMapInfo<IGC::AllocationLivenessAnalyzer::LivenessData::Edge> {
   using Edge = IGC::AllocationLivenessAnalyzer::LivenessData::Edge;
@@ -473,10 +474,9 @@ void InlineRaytracing::LowerIntrinsics(Function &F) {
       IRB.SetInsertPoint(IP);
 
       {
-        // make sure the done bit is set to 0
-        // if we start the traversal and the done bit is set to 1, HW will just
-        // return
-        // we conditionally set valid hit to 1 as well, see comment in
+        // Set the done bit to 1 on the potential hit before re-entering traversal.
+        // The HW will clear the done bit when it finds a new intersection.
+        // We conditionally set the valid bit to 1 as well, see comment in
         // CommitProceduralPrimitiveHit case
         auto *cond = IRB.CreateICmpEQ(data.CommittedDataLocation, IRB.getInt32(CommittedDataLocation::PotentialHit));
 
@@ -499,7 +499,6 @@ void InlineRaytracing::LowerIntrinsics(Function &F) {
       auto *bvhLevel = IRB.CreatePHI(IRB.getInt32Ty(), 2, VALUE_NAME("BVHLevel"));
 
       EmitPreTraceRayFence(IRB, rqObject);
-
 
       auto *globalBufferPtr = getGlobalBufferPtr(IRB, rqObject);
       CallInst *traceRay = IRB.createSyncTraceRay(bvhLevel, traceRayCtrl, globalBufferPtr);

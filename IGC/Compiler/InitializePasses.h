@@ -190,6 +190,7 @@ void initializeLSCFuncsResolutionPass(llvm::PassRegistry &);
 void initializeConvertMSAAPayloadTo16BitPass(llvm::PassRegistry &);
 void initializeInterfaceOptimizationPass(llvm::PassRegistry &);
 void initializeMSAAInsertDiscardPass(llvm::PassRegistry &);
+void initializeInlineRaytracingPass(llvm::PassRegistry &);
 void initializeResolveOCLRaytracingBuiltinsPass(llvm::PassRegistry &);
 void initializeRayTracingIntrinsicLoweringPassPass(llvm::PassRegistry &);
 void initializePromoteToScratchPassPass(llvm::PassRegistry &);
