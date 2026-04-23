@@ -545,7 +545,7 @@ DECLARE_IGC_REGKEY(bool, EnableSplitIndirectEEtoSel, true, "Enable the split ind
                    false)
 DECLARE_IGC_REGKEY(DWORD, SplitIndirectEEtoSelThreshold, 8, "Split indirect extractelement cost threshold", false)
 DECLARE_IGC_REGKEY(
-    DWORD, ExpandNonUniformInsertElementThreshold, 0,
+    DWORD, ExpandNonUniformInsertElementThreshold, 8,
     "Convert non-uniform insertelement instructions for fixed arrays of size less than or equal to this threshold",
     false)
 DECLARE_IGC_REGKEY(DWORD, EnablePropagateCmpUniformity, 1,
