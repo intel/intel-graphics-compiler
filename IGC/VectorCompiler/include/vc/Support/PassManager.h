@@ -11,6 +11,12 @@ SPDX-License-Identifier: MIT
 
 #include <llvm/IR/LegacyPassManager.h>
 
+#if LLVM_VERSION_MAJOR >= 16
+namespace llvm {
+class PassInstrumentationCallbacks;
+}
+#endif
+
 //
 // A simple wrapper over a legacy PassManager.
 // Extends the default implementation by providing extra hooks that allow
@@ -29,6 +35,13 @@ struct PassManager : public llvm::legacy::PassManager {
 // Set -vc-choose-pass-manager-override to false to inject those passes inside
 // this function and disable inside vc::PassManager::add.
 void addPass(llvm::legacy::PassManagerBase &PM, llvm::Pass *P);
+
+#if LLVM_VERSION_MAJOR >= 16
+// Registers PassInstrumentationCallbacks to dump IR before/after passes
+// in the new pass manager, controlled by -vc-dump-ir-before-pass and
+// -vc-dump-ir-after-pass options.
+void registerNewPMIRDumpCallbacks(llvm::PassInstrumentationCallbacks &PIC);
+#endif
 } // namespace vc
 
 #endif // VC_SUPPORT_PASSMANAGER_H

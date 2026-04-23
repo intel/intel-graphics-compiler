@@ -436,11 +436,11 @@ static void optimizeIR(const vc::CompileOptions &Opts,
   llvm::ModuleAnalysisManager MAM;
 
   PassInstrumentationCallbacks PIC;
-  // TODO: support 'print-after-all'
   PrintPassOptions PrintPassOpts;
   StandardInstrumentations SI(M.getContext(), false /*DebugLogging*/,
                               false /*VerifyEachPass*/, PrintPassOpts);
   SI.registerCallbacks(PIC);
+  vc::registerNewPMIRDumpCallbacks(PIC);
 
   llvm::PipelineTuningOptions PipelineTuneOpts;
   // Disable vectorization.

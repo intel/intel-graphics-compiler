@@ -17,6 +17,9 @@ SPDX-License-Identifier: MIT
 #include <llvm/Analysis/RegionPass.h>
 #include <llvm/IR/IRPrintingPasses.h>
 #include <llvm/IR/LegacyPassManager.h>
+#if LLVM_VERSION_MAJOR >= 16
+#include <llvm/IR/PassInstrumentation.h>
+#endif
 #include <llvm/IR/Verifier.h>
 #include <llvm/Support/CommandLine.h>
 #include <llvm/Support/Mutex.h>
@@ -347,3 +350,52 @@ void vc::addPass(legacy::PassManagerBase &PM, Pass *P) {
     return Adder(PM, *P);
   addPassImpl(PM, *P, Adder);
 }
+
+#if LLVM_VERSION_MAJOR >= 16
+static const Module *unwrapModuleFromAny(Any IR) {
+  if (const auto **M = any_cast<const Module *>(&IR))
+    return *M;
+  if (const auto **F = any_cast<const Function *>(&IR))
+    return (*F)->getParent();
+  return nullptr;
+}
+
+void vc::registerNewPMIRDumpCallbacks(PassInstrumentationCallbacks &PIC) {
+  if (ExtraIRDumpBeforePass::option.empty() &&
+      ExtraIRDumpAfterPass::option.empty())
+    return;
+
+  if (!ExtraIRDumpBeforePass::option.empty()) {
+    PIC.registerBeforeNonSkippedPassCallback([](StringRef PassID, Any IR) {
+      auto res = ExtraIRDumpBeforePass::option.getValue().includes(PassID);
+      if (!res.first)
+        return;
+      const Module *M = unwrapModuleFromAny(IR);
+      if (!M)
+        return;
+      auto &OS =
+          getOutputStreamForIRDump(IRDumpType::Before, PassID, res.second);
+      OS << getIRDumpBanner(PassID, PassID, res.second, IRDumpType::Before)
+         << "\n";
+      M->print(OS, nullptr);
+    });
+  }
+
+  if (!ExtraIRDumpAfterPass::option.empty()) {
+    PIC.registerAfterPassCallback(
+        [](StringRef PassID, Any IR, const PreservedAnalyses &) {
+          auto res = ExtraIRDumpAfterPass::option.getValue().includes(PassID);
+          if (!res.first)
+            return;
+          const Module *M = unwrapModuleFromAny(IR);
+          if (!M)
+            return;
+          auto &OS =
+              getOutputStreamForIRDump(IRDumpType::After, PassID, res.second);
+          OS << getIRDumpBanner(PassID, PassID, res.second, IRDumpType::After)
+             << "\n";
+          M->print(OS, nullptr);
+        });
+  }
+}
+#endif // LLVM_VERSION_MAJOR >= 16
