@@ -550,7 +550,6 @@ $ export IGC_ShaderDumpEnable=1
 | `EnableAdvCodeMotion` | Enable advanced code motion | - |
 | `EnableAdvMemOpt` | Enable advanced memory optimization | - |
 | `EnableAdvRuntimeUnroll` | Enable advanced runtime unroll | - |
-| `EnableCPSMSAAOMaskWA` | Enable WA which forces rt writes to happen at pixel rate when cps, msaa, and omask are present. | Available |
 | `EnableCPSOmaskWA` | Enable workaround for oMask with CPS | - |
 | `EnableConstIntDivReduction` | Enables strength reduction on integer division/remainder with constant divisors/moduli | Available |
 | `EnableDG2LSCSIMD8WA` | Enables WA for DG2 LSC simd8 d32-v8/d64-v3/d64-v4. [temp, should be replaced with WA id | - |
