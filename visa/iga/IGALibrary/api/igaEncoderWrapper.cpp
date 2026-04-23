@@ -16,6 +16,7 @@ iga_status_t KernelEncoder::encode(std::ostream &errStr) {
 
   ErrorHandler errHandler;
   EncoderOpts enc_opt(m_autoCompact, true);
+  enc_opt.compactRestrict = m_compactRestrict;
   enc_opt.autoDepSet = m_enableAutoDeps;
   enc_opt.swsbEncodeMode = m_swsbEncodeMode;
 
