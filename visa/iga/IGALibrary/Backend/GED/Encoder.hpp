@@ -156,6 +156,7 @@ private:
   void encodeBlock(Kernel &k, Block *blk);
   void encodeInstruction(Instruction &inst);
   void patchJumpOffsets();
+  void compactRestrictPrepass(const BlockList &blockList);
 
   ///////////////////////////////////////////////////////////////////////
   // BASIC INSTRUCTIONS

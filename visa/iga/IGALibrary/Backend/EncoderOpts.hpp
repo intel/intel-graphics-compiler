@@ -19,6 +19,10 @@ struct EncoderOpts {
   bool autoDepSet = false;
   bool autoSBIDCounter = false;
   bool forceNoCompact = false;
+  // When autoCompact is set, avoid encoding a non-compacted (128b) instruction
+  // that straddles a 64-byte cacheline boundary. This option takes effect when
+  // autoCompact is true.
+  bool compactRestrict = false;
   // Specify the swsb encoding mode. If not specified, the encoding mode will
   // be derived from platform by SWSB::getEncodeMode
   SWSB_ENCODE_MODE swsbEncodeMode = SWSB_ENCODE_MODE::SWSBInvalidMode;

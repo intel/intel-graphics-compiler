@@ -20,6 +20,7 @@ class KernelEncoder {
   uint32_t m_binarySize = 0;
   iga::Kernel *m_kernel = nullptr;
   bool m_autoCompact = false;
+  bool m_compactRestrict = false;
   // enable IGA swsb set
   bool m_enableAutoDeps = false;
   // swsb encoding mode
@@ -59,6 +60,12 @@ public:
   // enable IGA swsb set. When enabled, the original swsb in the input
   // instructions will be obsoleted
   void enableIGAAutoDeps(bool enable = true) { m_enableAutoDeps = enable; }
+
+  // Avoid encoding a non-compacted (128b) instruction that straddles a
+  // 64-byte cacheline boundary.  Takes effect only when autoCompact is set.
+  void enableCompactRestrict(bool enable = true) {
+    m_compactRestrict = enable;
+  }
 
 };
 

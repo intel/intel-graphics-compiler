@@ -108,7 +108,17 @@ void Encoder::encodeKernel(Kernel &k, MemManager &mem, void *&bits,
       return;
     }
 
-    for (auto blk : k.getBlockList()) {
+    const BlockList &blockList = k.getBlockList();
+
+    // compactRestrict prepass: decide which instructions to uncompact to
+    // satisfy the compact-restriction requirement: no 16B instruction may
+    // straddle a 64B cacheline boundary.
+    if (m_opts.compactRestrict && m_opts.autoCompact)
+      compactRestrictPrepass(blockList);
+    if (hasFatalError())
+      return;
+
+    for (Block *blk : blockList) {
       START_ENCODER_TIMER();
       encodeBlock(k, blk);
       STOP_ENCODER_TIMER();
@@ -133,6 +143,106 @@ void Encoder::encodeKernel(Kernel &k, MemManager &mem, void *&bits,
     // error is already reported
   }
 #endif
+}
+
+// compactRestrictPrepass — dry-run pass that decides which instructions to
+// force to native (16b) form before any bytes are written to the output buffer.
+//
+// Each instruction is encoded into m_gedInst and probed with
+// GED_EncodeIns(COMPACT) to determine compactability.  A simulated PC tracks
+// the hypothetical output size.  Whenever a 16b instruction would straddle a
+// 64B cacheline boundary, the prepass searches backward for the most recent
+// compact instruction and marks it {NoCompact}.  The simulated PC is adjusted
+// by +8 to account for the growth.  Because the real encoding pass will
+// re-derive all GED fields from the IGA instruction object and call
+// GED_EncodeIns(NATIVE) directly, there is no compact→native decode round-trip
+// and no platform-specific uncompaction safety check is needed.
+void Encoder::compactRestrictPrepass(const BlockList &blockList) {
+  // Nothing will be compacted, skip this pass
+  if(m_opts.forceNoCompact)
+    return;
+  // This function is called only when autoCompact is enabled
+  assert(m_opts.autoCompact);
+
+  // Per-instruction compactability record, built in forward order.
+  struct Entry {
+    Instruction *inst;
+    bool couldCompact; // the instruction is compactable
+  };
+  std::vector<Entry> history;
+  history.reserve(128);
+
+  // Scratch buffer for the compact-probe encode
+  uint8_t scratchBuf[UNCOMPACTED_SIZE];
+
+  int32_t simPc = 0; // simulated output PC, tracks hypothetical instruction positions
+
+  for (const Block *blk : blockList) {
+    for (Instruction *inst : blk->getInstList()) {
+      // Simulate CACHELINEALIGN nop insertion (same condition as encodeBlock).
+      if (inst->hasInstOpt(InstOpt::CACHELINEALIGN)) {
+        while (simPc / 64 != (simPc + 31) / 64)
+          simPc += UNCOMPACTED_SIZE;
+      }
+
+      // Instructions that are always native: inline binary, or already
+      // user-annotated {NoCompact}.
+      bool alwaysNative = inst->isInlineBinaryInstruction() ||
+                          inst->hasInstOpt(InstOpt::NOCOMPACT);
+
+      bool couldCompact = false;
+
+      if (!alwaysNative) {
+        // Populate m_gedInst by encoding the instruction fields.
+        // This does NOT write to m_instBuf; any m_needToPatch entries
+        // pushed inside encodeInstruction are immediately discarded.
+        size_t savedNTP = m_needToPatch.size();
+        setCurrInst(inst);
+        encodeInstruction(*inst);
+        if (m_needToPatch.size() > savedNTP)
+          m_needToPatch.erase(m_needToPatch.begin() + savedNTP,
+                              m_needToPatch.end());
+        if (hasFatalError())
+          return;
+
+        // Probe compact encoding; only the return value matters.
+        if (GED_EncodeIns(&m_gedInst, GED_INS_TYPE_COMPACT, scratchBuf) ==
+            GED_RETURN_VALUE_SUCCESS) {
+          couldCompact = true;
+        }
+      }
+
+      int32_t size = couldCompact ? COMPACTED_SIZE : UNCOMPACTED_SIZE;
+
+      // Apply compactRestrict: a 16b instruction that would straddle a 64B
+      // cacheline boundary (only possible at simPc % 64 == 56) requires one
+      // preceding compact candidate to be forced native.  The candidate's
+      // growth from 8 to 16 bytes advances the simulated PC by 8, which moves
+      // the crossing instruction to the start of the next cacheline.
+      if (size == UNCOMPACTED_SIZE &&
+          simPc / 64 != (simPc + UNCOMPACTED_SIZE - 1) / 64) {
+        bool resolved = false;
+        for (int j = static_cast<int>(history.size()) - 1; j >= 0; j--) {
+          Entry &cand = history[j];
+          if (cand.couldCompact && !cand.inst->hasInstOpt(InstOpt::NOCOMPACT)) {
+            cand.inst->addInstOpt(InstOpt::NOCOMPACT);
+            cand.inst->removeInstOpt(InstOpt::COMPACTED);
+            simPc += COMPACTED_SIZE; // candidate grew from 8→16 bytes
+            IGA_ASSERT(simPc / 64 == (simPc + UNCOMPACTED_SIZE - 1) / 64,
+                       "compactRestrict prepass: CL crossing not resolved");
+            resolved = true;
+            break;
+          }
+        }
+        IGA_ASSERT(resolved,
+                   "compactRestrict prepass: no compact candidate found to "
+                   "resolve CL crossing");
+      }
+
+      history.push_back({inst, couldCompact});
+      simPc += size;
+    }
+  }
 }
 
 void Encoder::encodeInlineBinaryInst(Instruction &inst) {
