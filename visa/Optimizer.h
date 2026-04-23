@@ -254,6 +254,15 @@ private:
   void addFFIDProlog();
   void addEmaskSetupProlog();
   void insertFenceBeforeEOT();
+  void insertPageFaultWA();
+  void insertPageFaultWAforLSC(G4_BB *bb, INST_LIST_ITER it);
+  void insertPageFaultWAforHDC(G4_BB *bb, INST_LIST_ITER it);
+  // Compute the response-GRF count for a no-return LSC atomic.
+  unsigned getLscUntypedAtomicRspLen(G4_ExecSize execSize,
+                                     const G4_SendDescRaw *msgDesc) const;
+  // Get response GRF count for HDC (DC1) atomics
+  unsigned getHdcAtomicRspLen(G4_ExecSize execSize,
+                              const G4_SendDescRaw *msgDesc) const;
   void insertScratchReadBeforeEOT();
   void resetA0();
   void setA0toTdrForSendc();
@@ -405,6 +414,7 @@ public:
     PI_addFFIDProlog,
     PI_addEmaskSetupProlog,
     PI_insertFenceBeforeEOT,
+    PI_insertPageFaultWA,
     PI_insertScratchReadBeforeEOT,
     PI_mapOrphans,
     PI_legalizeType,
