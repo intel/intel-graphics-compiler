@@ -381,9 +381,16 @@ bool inlineCallsImpl(CallGraphSCC &SCC, CallGraph &CG, std::function<AssumptionC
         // Attempt to inline the function.
         using namespace ore;
 
+#if LLVM_VERSION_MAJOR >= 17
+        CallGraphNode *CallerNode = CG[Caller];
+        CallerNode->removeCallEdgeFor(CB);
+#endif
         InlineResult IR = inlineCallIfPossible(CB, InlineInfo, InlinedArrayAllocas, InlineHistoryID, InsertLifetime,
                                                AARGetter, ImportedFunctionsStats);
         if (!IR.isSuccess()) {
+#if LLVM_VERSION_MAJOR >= 17
+          CallerNode->addCalledFunction(&CB, CG.getOrInsertFunction(Callee));
+#endif
           setInlineRemark(CB, std::string(IR.getFailureReason()) + "; " + inlineCostStr(*OIC));
           ORE.emit([&]() {
             return llvm::OptimizationRemarkMissed(DEBUG_TYPE, "NotInlined", DLoc, Block)
@@ -398,8 +405,14 @@ bool inlineCallsImpl(CallGraphSCC &SCC, CallGraph &CG, std::function<AssumptionC
         // If inlining this function gave us any new call sites, throw them
         // onto our worklist to process.  They are useful inline candidates.
 #if LLVM_VERSION_MAJOR >= 17
-        CG[Caller]->removeAllCalledFunctions();
-        CG.populateCallGraphNode(CG[Caller]);
+        for (CallBase *NewCB : InlineInfo.InlinedCallSites) {
+          Function *NewCallee = NewCB->getCalledFunction();
+          if (NewCallee && !NewCallee->isIntrinsic())
+            CallerNode->addCalledFunction(NewCB, CG.getOrInsertFunction(NewCallee));
+          else if (!NewCallee)
+            CallerNode->addCalledFunction(NewCB, CG.getCallsExternalNode());
+        }
+
         SmallVector<CallBase *, 8> &NewCallSites = InlineInfo.InlinedCallSites;
 #else
         SmallVector<WeakTrackingVH, 8> &NewCallSites = InlineInfo.InlinedCalls;
