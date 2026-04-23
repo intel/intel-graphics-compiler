@@ -660,9 +660,15 @@ void HWConformityPro::fixRegRegionIntPipe(INST_LIST_ITER it, G4_BB *bb) {
       // If dst is NULL reg, we can adjust dst stride to save potential mov
       uint16_t srcStrideInBytes = getSrcStrideInBytes(srcRR);
       if (srcStrideInBytes > dstStrideInBytes) {
-        inst->getDst()->setHorzStride(srcStrideInBytes /
-                                      inst->getDst()->getTypeSize());
-        break;
+        uint16_t newHorzStride =
+            srcStrideInBytes / inst->getDst()->getTypeSize();
+        // Only update if the resulting hstride is legal (GEN ISA: 0, 1, 2, 4).
+        // If it would exceed 4, leave dst unchanged and let the source be fixed
+        // via replaceSrcWithRawMov in the second loop below.
+        if (newHorzStride <= 4) {
+          inst->getDst()->setHorzStride(newHorzStride);
+          break;
+        }
       }
     } else {
       // Later when fixing src to be aligned with dst, it may cause invalid
