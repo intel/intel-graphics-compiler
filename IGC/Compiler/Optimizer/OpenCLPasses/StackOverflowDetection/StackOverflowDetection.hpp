@@ -49,6 +49,8 @@ public:
   bool removeDummyCalls(llvm::Module &M);
   bool removeCallsAndFunctionsIfNoStackCallsOrVLA(llvm::Module &M, IGCMD::MetaDataUtils *pMdUtils,
                                                   ModuleMetaData *pModMD);
+
+  bool attachDebugInfo(llvm::Module &M);
 };
 
 } // namespace IGC

@@ -13,9 +13,13 @@ SPDX-License-Identifier: MIT
 #include "Compiler/MetaDataApi/IGCMetaDataHelper.h"
 
 #include "common/LLVMWarningsPush.hpp"
+#include "llvm/IR/InstIterator.h"
 #include <llvm/IR/Module.h>
 #include <llvm/IR/Instructions.h>
+#include <llvm/IR/DIBuilder.h>
+#include <llvm/IR/DebugInfoMetadata.h>
 #include "common/LLVMWarningsPop.hpp"
+#include "llvmWrapper/ADT/StringRef.h"
 using namespace llvm;
 using namespace IGC;
 
@@ -129,6 +133,13 @@ bool StackOverflowDetectionPass::runOnModule(Module &M) {
       CodeGenContext *pContext = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
       pMdUtils->save(*pContext->getLLVMContext());
     }
+
+    // Attach debug info to stack overflow detection functions so gdb-oneapi
+    // can identify the reason for the software exception
+    if (mode == Mode::RemoveDummyCalls) {
+      changed |= attachDebugInfo(M);
+    }
+
     return changed;
   }
 
@@ -158,5 +169,88 @@ bool StackOverflowDetectionPass::runOnModule(Module &M) {
       changed = true;
     }
   }
+
+  return changed;
+}
+
+bool StackOverflowDetectionPass::attachDebugInfo(Module &M) {
+  // Check if the module has debug info. If not, there's nothing to attach to.
+  if (M.debug_compile_units().begin() == M.debug_compile_units().end())
+    return false;
+
+  DICompileUnit *CU = *M.debug_compile_units().begin();
+  if (!CU)
+    return false;
+
+  bool changed = false;
+
+  StringRef BuiltinNameRef(STACK_OVERFLOW_DETECTION_BUILTIN_NAME);
+
+  // Check if cloned variants (e.g. _GenXClone) exist. If they do, only
+  // attach debug info to the clones — they are the functions that actually
+  // get compiled as vISA subroutines and receive address ranges in DWARF.
+  // Attaching to the original would create an orphaned DW_TAG_subprogram
+  // without address information.
+  bool HasClone = false;
+  for (const Function &F : M) {
+    if (IGCLLVM::starts_with(F.getName(), BuiltinNameRef) && F.getName() != BuiltinNameRef && !F.isDeclaration()) {
+      HasClone = true;
+      break;
+    }
+  }
+
+  for (Function &F : M) {
+    if (!IGCLLVM::starts_with(F.getName(), BuiltinNameRef))
+      continue;
+    if (F.isDeclaration())
+      continue;
+
+    // If clones exist, strip the DISubprogram from the original function.
+    // The original was given a DISubprogram speculatively in Initialize mode
+    // (before cloning), but the clone is the function that actually gets
+    // compiled as a vISA subroutine. Keeping the original's DISubprogram
+    // would create an orphaned DW_TAG_subprogram without address ranges.
+    if (HasClone && F.getName() == BuiltinNameRef) {
+      if (F.getSubprogram()) {
+        F.setSubprogram(nullptr);
+        changed = true;
+      }
+      continue;
+    }
+
+    // Skip if the function already has debug info attached.
+    if (F.getSubprogram())
+      continue;
+
+    // Create a DISubroutineType for a void() function.
+    DISubroutineType *SubroutineType = DISubroutineType::get(M.getContext(), DINode::FlagZero, 0, DITypeRefArray());
+
+    // Create a DISubprogram with the debugger-visible name.
+    // Using FlagArtificial to indicate this is compiler-generated.
+    DISubprogram *SP = DISubprogram::getDistinct(M.getContext(),
+                                                 /*Scope=*/CU,
+                                                 /*Name=*/BuiltinNameRef,
+                                                 /*LinkageName=*/F.getName(),
+                                                 /*File=*/CU->getFile(),
+                                                 /*Line=*/0,
+                                                 /*Type=*/SubroutineType,
+                                                 /*ScopeLine=*/0,
+                                                 /*ContainingType=*/nullptr,
+                                                 /*VirtualIndex=*/0,
+                                                 /*ThisAdjustment=*/0,
+                                                 /*Flags=*/DINode::FlagArtificial,
+                                                 /*SPFlags=*/DISubprogram::SPFlagDefinition,
+                                                 /*Unit=*/CU);
+
+    F.setSubprogram(SP);
+
+    DebugLoc DL = DILocation::get(M.getContext(), 0, 0, SP);
+    if (auto *EntryI = &*inst_begin(F)) {
+      EntryI->setDebugLoc(DL);
+    }
+
+    changed = true;
+  }
+
   return changed;
 }
