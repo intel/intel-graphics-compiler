@@ -75,33 +75,18 @@ public:
   WA_TABLE const &getWATable() const { return m_WaTable; }
   SKU_FEATURE_TABLE const &getSkuTable() const { return m_SkuTable; }
 
-  bool hasPackedVertexAttr() const { return m_platformInfo.eRenderCoreFamily >= IGFX_GEN9_CORE; }
-  bool hasScaledMessage() const { return m_platformInfo.eRenderCoreFamily >= IGFX_GEN9_CORE; }
   bool has8ByteA64ByteScatteredMessage() const { return m_platformInfo.eRenderCoreFamily == IGFX_GEN8_CORE; }
   bool hasQWGatherScatterBTSMessage() const { return m_platformInfo.eRenderCoreFamily >= IGFX_XE_HP_SDV; }
 
   bool hasPredicatedBarriers() const { return m_platformInfo.eRenderCoreFamily >= IGFX_GEN9_CORE; }
   bool hasIEEEMinmaxBit() const { return m_platformInfo.eRenderCoreFamily >= IGFX_GEN9_CORE; }
   bool hasL1ReadOnlyCache() const { return m_platformInfo.eRenderCoreFamily >= IGFX_GEN10_CORE; }
-  // Gen10+ HW supports adding vertex start to vertex ID
-  bool hasVertexOffsetEnable() const { return m_platformInfo.eRenderCoreFamily >= IGFX_GEN10_CORE; }
 
-  // Gen10+ HW supports sending base instance, base vertex and draw index with
-  // VF, this is programmed using 3DSTATE_VF_SGVS2 command.
-  bool hasSGVS2Command() const { return m_platformInfo.eRenderCoreFamily >= IGFX_GEN10_CORE; }
 
-  // Sampler supports normalization of coordinates during sampling from
-  // rectangle textures.
-  bool supportsCoordinateNormalizationForRectangleTextures() const {
-    return m_platformInfo.eRenderCoreFamily >= IGFX_GEN10_CORE;
-  }
 
   /// On some platforms ld sources order is: u lod v r
   bool hasOldLdOrder() const { return m_platformInfo.eRenderCoreFamily <= IGFX_GEN8_CORE; }
   bool supportSampleAndLd_lz() const { return m_platformInfo.eRenderCoreFamily >= IGFX_GEN9_CORE; }
-  bool supportSamplerToRT() const {
-    return (m_platformInfo.eProductFamily == IGFX_CHERRYVIEW) || (m_platformInfo.eRenderCoreFamily == IGFX_GEN9_CORE);
-  }
   bool supportFP16() const {
     return (m_platformInfo.eRenderCoreFamily >= IGFX_GEN9_CORE) ||
            ((m_platformInfo.eRenderCoreFamily == IGFX_GEN8_CORE) && (m_platformInfo.eProductFamily == IGFX_CHERRYVIEW));
@@ -110,13 +95,7 @@ public:
   bool supportSamplerFp16Input() const { return m_platformInfo.eRenderCoreFamily >= IGFX_GEN10_CORE; }
   bool supportPooledEU() const { return m_SkuTable.FtrPooledEuEnabled != 0; }
   bool supportSplitSend() const { return m_platformInfo.eRenderCoreFamily >= IGFX_GEN9_CORE; }
-  bool supportSendInstShootdown() const { return m_platformInfo.eRenderCoreFamily >= IGFX_GEN10_CORE; }
-  bool supportHSEightPatchDispatch() const { return m_platformInfo.eRenderCoreFamily >= IGFX_GEN9_CORE; }
-  bool supportSingleInstanceVertexShader() const { return m_platformInfo.eRenderCoreFamily >= IGFX_GEN10_CORE; }
-  bool supportDSDualPatchDispatch() const { return m_platformInfo.eRenderCoreFamily >= IGFX_GEN9_CORE; }
-  bool needsHSBarrierIDWorkaround() const { return m_platformInfo.eRenderCoreFamily <= IGFX_GEN10_CORE; }
   bool supportBindless() const { return m_platformInfo.eRenderCoreFamily >= IGFX_GEN9_CORE; }
-  bool supportsBindlessSamplers() const { return m_platformInfo.eRenderCoreFamily >= IGFX_GEN10_CORE; }
   bool supportsHDCLegacyDCROMessage() const { return m_platformInfo.eRenderCoreFamily <= IGFX_XE_HPC_CORE; }
 
   bool hasEfficient64bEnabled() const {
@@ -143,10 +122,7 @@ public:
   bool localMemFenceSupress() const {
     return m_platformInfo.eRenderCoreFamily <= IGFX_GEN9_CORE || IGC_IS_FLAG_ENABLED(DisbleLocalFences);
   }
-  bool psSimd32SkipStallHeuristic() const { return m_caps.KernelHwCaps.EUThreadsPerEU == 6; }
-  bool enablePSsimd32() const { return m_platformInfo.eRenderCoreFamily >= IGFX_GEN9_CORE; }
 
-  bool supportSimd32PerPixelPSWithNumSamples16() const { return isCoreChildOf(IGFX_XE2_HPG_CORE); }
 
   bool canSupportWMTPWithoutBTD() const {
     // Returns true if the platform has the capability of supporting
@@ -188,7 +164,6 @@ public:
 
   bool supportDisableMidThreadPreemptionSwitch() const { return m_platformInfo.eRenderCoreFamily >= IGFX_GEN10_CORE; }
 
-  bool supportMSAARateInPayload() const { return m_platformInfo.eRenderCoreFamily >= IGFX_GEN10_CORE; }
 
   bool support16BitImmSrcForMad() const { return (m_platformInfo.eRenderCoreFamily >= IGFX_GEN10_CORE); }
 
@@ -248,25 +223,11 @@ public:
 
   GT_SYSTEM_INFO GetGTSystemInfo() const { return m_GTSystemInfo; }
 
-  unsigned int getMaxPixelShaderThreads() const {
-    return m_platformInfo.eRenderCoreFamily >= IGFX_GEN9_CORE ? m_caps.PixelShaderThreadsWindowerRange - 1
-                                                              : m_caps.PixelShaderThreadsWindowerRange - 2;
-  }
   bool supportGPGPUMidThreadPreemption() const {
     return m_platformInfo.eRenderCoreFamily >= IGFX_GEN9_CORE && m_platformInfo.eRenderCoreFamily <= IGFX_GEN11LP_CORE;
   }
-  bool supportFtrWddm2Svm() const { return m_SkuTable.FtrWddm2Svm != 0; }
-  bool supportStructuredAsRaw() const { return m_platformInfo.eRenderCoreFamily >= IGFX_GEN9_CORE; }
   bool supportSamplerCacheResinfo() const { return m_platformInfo.eRenderCoreFamily == IGFX_GEN8_CORE; }
 
-  unsigned int getMaxVertexShaderThreads(const bool isPositionOnlyShader) const {
-    const unsigned int maxVertexShaderThreads =
-        isPositionOnlyShader ? m_caps.VertexShaderThreadsPosh : m_caps.VertexShaderThreads;
-    return maxVertexShaderThreads - 1;
-  }
-  unsigned int getMaxGeometryShaderThreads() const { return m_caps.GeometryShaderThreads - 1; }
-  unsigned int getMaxHullShaderThreads() const { return m_caps.HullShaderThreads - 1; }
-  unsigned int getMaxDomainShaderThreads() const { return m_caps.DomainShaderThreads - 1; }
   unsigned int getMaxGPGPUShaderThreads() const { return m_caps.MediaShaderThreads - 1; }
   unsigned int getKernelPointerAlignSize() const { return m_caps.KernelHwCaps.KernelPointerAlignSize; }
   unsigned int getSharedLocalMemoryBlockSize() const { return m_caps.SharedLocalMemoryBlockSize; }
@@ -280,26 +241,11 @@ public:
     return m_caps.KernelHwCaps.EUCountPerPoolMax * m_caps.KernelHwCaps.EUThreadsPerEU;
   }
   unsigned int getMaxSimdSize() const { return 32; }
-  unsigned int getBarrierCountBits(unsigned int count) const {
-    // Returns barrier count field + enable for barrier message
-    if (m_platformInfo.eRenderCoreFamily <= IGFX_GEN10_CORE) {
-      // up to Gen9 barrier count is in bits 14:9, enable is bit 15
-      return (count << 9) | (1 << 15);
-    } else {
-      // for Gen10+ barrier count is in bits 14:8, enable is bit 15
-      return (count << 8) | (1 << 15);
-    }
-  }
 
-  bool supportsDrawParametersSGVs() const {
-    // Gen10+, 3DSTATE_VF_SGVS_2
-    return m_platformInfo.eRenderCoreFamily >= IGFX_GEN10_CORE;
-  }
 
   bool hasPSDBottleneck() const { return m_platformInfo.eRenderCoreFamily >= IGFX_GEN11_CORE; }
 
   bool supportsHardwareResourceStreamer() const { return m_platformInfo.eRenderCoreFamily < IGFX_GEN11_CORE; }
-  bool AOComputeShadersSIMD32Mode() const { return (m_platformInfo.eRenderCoreFamily >= IGFX_GEN11_CORE); }
   unsigned int getHullShaderThreadInstanceIdBitFieldPosition() const {
     // HS thread receives instance ID in R0.2 bits 22:16 for Gen10+ and bits 23:17 for older Gens
     return (m_platformInfo.eRenderCoreFamily >= IGFX_GEN11_CORE) ? 16 : 17;
@@ -320,10 +266,6 @@ public:
     return (m_platformInfo.eRenderCoreFamily >= IGFX_GEN11_CORE);
   }
   bool enableBlendToDiscardAndFill() const { return (m_platformInfo.eRenderCoreFamily < IGFX_GEN11_CORE); }
-  bool HSUsesHWBarriers() const {
-    // HS HW barriers work correctly since ICL platform.
-    return (m_platformInfo.eRenderCoreFamily >= IGFX_GEN11_CORE);
-  }
 
   bool NeedResetA0forVxHA0() const {
     return (m_platformInfo.eRenderCoreFamily >= IGFX_GEN11_CORE && !isCoreChildOf(IGFX_XE3_CORE));
@@ -531,7 +473,6 @@ public:
 
   bool has16MBPerThreadScratchSpace() const { return isProductChildOf(IGFX_NVL); }
   bool canCoalesceAtomicWithNoReturn() const { return isProductChildOf(IGFX_NVL); }
-  bool canCoalesceAtomicWithReturn() const { return false; }
 
   bool hasAtomicPreDec() const { return !isProductChildOf(IGFX_XE_HP_SDV); }
 
@@ -690,9 +631,6 @@ public:
   }
   bool hasMullh() const { return isCoreChildOf(IGFX_XE3P_CORE) && IGC_IS_FLAG_ENABLED(EnableMullh); }
 
-  bool WaPredicatedStackIDRelease() const {
-    return m_WaTable.Wa_22014559856 && IGC_IS_FLAG_DISABLED(DisablePredicatedStackIDRelease);
-  }
 
   // This function was originally intended to return the MAXIMUM SIMD size supported by hardware
   // for shaders with ray queries. It is used by CompileSIMDSizeInCommon as an API-agnostic filter
@@ -1150,15 +1088,6 @@ public:
             IGC_IS_FLAG_ENABLED(ForceSupportsStaticRegSharing));
   }
 
-  bool DSPrimitiveIDPayloadPhaseCanBeSkipped() const {
-    bool isFromFamilyWhereSkippable =
-        m_platformInfo.eProductFamily == IGFX_ALDERLAKE_S || m_platformInfo.eProductFamily == IGFX_ALDERLAKE_P ||
-        m_platformInfo.eProductFamily == IGFX_ALDERLAKE_N || m_platformInfo.eProductFamily == IGFX_TIGERLAKE_LP ||
-        m_platformInfo.eProductFamily == IGFX_ROCKETLAKE || m_platformInfo.eProductFamily == IGFX_DG1;
-    return (IGC_IS_FLAG_ENABLED(EnablePostCullPatchFIFOLP) && m_platformInfo.eRenderCoreFamily >= IGFX_GEN12_CORE &&
-            isFromFamilyWhereSkippable) ||
-           (IGC_IS_FLAG_ENABLED(EnablePostCullPatchFIFOHP) && isProductChildOf(IGFX_XE_HP_SDV));
-  }
 
   bool emulateByteScraterMsgForSS() const {
     return IGC_IS_FLAG_ENABLED(EnableUntypedSurfRWofSS) && isProductChildOf(IGFX_XE_HP_SDV) && !hasLSC();
@@ -1323,22 +1252,14 @@ public:
 
   bool WaReturnZeroforRTReadOutsidePrimitive() const { return m_WaTable.WaReturnZeroforRTReadOutsidePrimitive != 0; }
 
-  bool WaFixInnerCoverageWithSampleMask() const { return m_WaTable.Wa_220856683 != 0; }
-
-  bool WaOverwriteFFID() const { return m_WaTable.Wa_1409460247 != 0; }
 
   bool WaDisableStaticRegSharing() const { return m_WaTable.Wa_14012688715 != 0; }
 
-  bool WaDisablePrimitiveReplicationWithCPS() const {
-    return m_WaTable.Wa_18013852970 != 0;
-  }
 
   bool supportSystemFence() const {
     return hasLSC() && m_platformInfo.eProductFamily != IGFX_DG2 && m_platformInfo.eProductFamily != IGFX_METEORLAKE &&
            m_platformInfo.eProductFamily != IGFX_ARROWLAKE;
   }
-
-  bool WaGeoShaderURBAllocReduction() const { return m_WaTable.Wa_18012660806 != 0; }
 
   bool WaDisableSendSrcDstOverlap() const {
     return (!IGC_IS_FLAG_ENABLED(DisableSendSrcDstOverlapWA)) &&
