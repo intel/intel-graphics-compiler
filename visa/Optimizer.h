@@ -10,8 +10,11 @@ SPDX-License-Identifier: MIT
 #define __OPTIMIZER_H__
 
 #include "BuildIR.h"
+// clang-format off
+// EmuInt64Add.h derives from HWConformity; order matters.
 #include "HWConformity.h"
 #include "EmuInt64Add.h"
+// clang-format on
 #include "LocalScheduler/LocalScheduler_G4IR.h"
 #include "LocalScheduler/SWSB_G4IR.h"
 #include <optional>
@@ -44,9 +47,9 @@ public:
   G4_INST *send = nullptr;   // the reference send
   G4_INST *a0Dot0 = nullptr; // def of a0.0
   G4_INST *m = nullptr;      // def of m
-  G4_INST *mDot0= nullptr;   // def of m.0: X
-  G4_INST *mDot1= nullptr;   // def of m.1: Y
-  G4_INST *mDot2= nullptr;   // def of m.2: size
+  G4_INST *mDot0 = nullptr;  // def of m.0: X
+  G4_INST *mDot1 = nullptr;  // def of m.1: Y
+  G4_INST *mDot2 = nullptr;  // def of m.2: size
 
   INST_LIST_ITER a0Dot0_it;
   INST_LIST_ITER m_it;
@@ -261,6 +264,15 @@ private:
   void addFFIDProlog();
   void addEmaskSetupProlog();
   void insertFenceBeforeEOT();
+  void insertPageFaultWA();
+  void insertPageFaultWAforLSC(G4_BB *bb, INST_LIST_ITER it);
+  void insertPageFaultWAforHDC(G4_BB *bb, INST_LIST_ITER it);
+  // Compute the response-GRF count for a no-return LSC atomic.
+  unsigned getLscUntypedAtomicRspLen(G4_ExecSize execSize,
+                                     const G4_SendDescRaw *msgDesc) const;
+  // Get response GRF count for HDC (DC1) atomics
+  unsigned getHdcAtomicRspLen(G4_ExecSize execSize,
+                              const G4_SendDescRaw *msgDesc) const;
   void insertScratchReadBeforeEOT();
   void resetA0();
   void setA0toTdrForSendc();
@@ -420,6 +432,7 @@ public:
     PI_addFFIDProlog,
     PI_addEmaskSetupProlog,
     PI_insertFenceBeforeEOT,
+    PI_insertPageFaultWA,
     PI_insertScratchReadBeforeEOT,
     PI_mapOrphans,
     PI_legalizeType,
@@ -475,8 +488,8 @@ public:
 #endif // DLL_MODE
     initOptimizations();
   }
-  Optimizer(const Optimizer&) = delete;
-  Optimizer& operator=(const Optimizer&) = delete;
+  Optimizer(const Optimizer &) = delete;
+  Optimizer &operator=(const Optimizer &) = delete;
   ~Optimizer() {
     // Normally, noMask Info will be freed in postRA workaround.
     // But in case RA fails, postRA will not be invoked. Thus, need

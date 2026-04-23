@@ -706,6 +706,9 @@ public:
   bool trySetLscImmOff(int off, const char **whyFailed,
                        G4_SendDescRaw *rawDesc = nullptr) const;
 
+  // Returns the number of data-payload GRFs for a write message.
+  unsigned getWriteDataLenRegs() const;
+
   // query methods common for all raw sends
   uint16_t ResponseLength() const;
   uint16_t MessageLength() const { return desc.layout.msgLength; }

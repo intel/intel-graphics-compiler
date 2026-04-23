@@ -884,11 +884,15 @@ bool needBothAcc(G4_Operand *opnd) const {
   }
 }
 
+// Enable the WAs controlled by this option by default on debug mode (-O0)
+// for PVC platform
 bool needBarrierWA() const {
   return (getOption(vISA_enableBarrierWA) &&
-      (getPlatform() == Xe_XeHPSDV || getPlatform() == Xe_PVC ||
-      getPlatform() == Xe_PVCXT || getPlatform() == Xe_DG2 ||
-      getPlatform() == Xe_MTL));
+          (getPlatform() == Xe_XeHPSDV || getPlatform() == Xe_PVC ||
+           getPlatform() == Xe_PVCXT || getPlatform() == Xe_DG2 ||
+           getPlatform() == Xe_MTL)) ||
+         (getOption(vISA_Debug) &&
+          (getPlatform() == Xe_PVCXT || getPlatform() == Xe_PVC));
 }
 
 bool hasSelWDstDwExecTypeAlignIssue() const {

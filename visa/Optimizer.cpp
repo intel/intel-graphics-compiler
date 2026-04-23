@@ -16,15 +16,15 @@ SPDX-License-Identifier: MIT
 #include "DebugInfo.h"
 #include "FlowGraph.h"
 #include "Passes/AccSubstitution.hpp"
-#include "PointsToAnalysis.h"
-#include "Passes/SRSubstitution.hpp"
+#include "Passes/InsertS0Movs.hpp"
+#include "Passes/InsertThryld.hpp"
 #include "Passes/InstCombine.hpp"
 #include "Passes/LVN.hpp"
 #include "Passes/MergeScalars.hpp"
+#include "Passes/SRSubstitution.hpp"
 #include "Passes/SendFusion.hpp"
 #include "Passes/StaticProfiling.hpp"
-#include "Passes/InsertS0Movs.hpp"
-#include "Passes/InsertThryld.hpp"
+#include "PointsToAnalysis.h"
 
 // clang-format off
 #include "common/LLVMWarningsPush.hpp"
@@ -149,7 +149,8 @@ void Optimizer::forceAssignRegs() {
   llvm::SmallVector<llvm::StringRef, 4> assignments;
   line.split(assignments, ',');
   std::map<std::string /*decl name or id*/,
-           std::pair<int /*reg*/, int /*subreg*/>> forceAssign;
+           std::pair<int /*reg*/, int /*subreg*/>>
+      forceAssign;
   for (llvm::StringRef assignment : assignments) {
     llvm::StringRef decl, reg, subreg;
     std::tie(decl, reg) = assignment.split(':');
@@ -172,9 +173,9 @@ void Optimizer::forceAssignRegs() {
     std::tie(reg, subreg) = it->second;
     dcl->getRegVar()->setPhyReg(builder.phyregpool.getGreg(reg), subreg);
     VISA_DEBUG({
-        std::cerr << "Force assigning Decl : " << it->first
-                  << " to r" << reg << "." << subreg << "\n";
-        dcl->dump();
+      std::cerr << "Force assigning Decl : " << it->first << " to r" << reg
+                << "." << subreg << "\n";
+      dcl->dump();
     });
   }
 }
@@ -183,7 +184,7 @@ void Optimizer::forceSpillVars() {
   const char *rawStr =
       builder.getOptions()->getOptionCstr(vISA_ForceSpillVariables);
   if (!rawStr)
-     return;
+    return;
 
   llvm::StringRef line(rawStr);
   llvm::SmallVector<llvm::StringRef, 4> vars;
@@ -405,7 +406,7 @@ void Optimizer::insertHashMovs() {
         // the value would still be used to emit the extra hash.
         if (builder.getOptions()->isOptionSetByUser(vISA_HashVal1)) {
           uint64_t hashVal1 =
-            builder.getOptions()->getuInt64Option(vISA_HashVal1);
+              builder.getOptions()->getuInt64Option(vISA_HashVal1);
           insertHashMovInsts(hashVal1);
         } else if (kernel.getKernelType() == VISA_CM) {
           insertHashMovInsts(kernel.getFunctionId());
@@ -647,7 +648,7 @@ void Optimizer::runPass(PassIndex Index) {
 }
 
 void Optimizer::initOptimizations() {
-#define OPT_INITIALIZE_PASS(Name, Option, Timer)                                   \
+#define OPT_INITIALIZE_PASS(Name, Option, Timer)                               \
   Passes[PI_##Name] = PassInfo(&Optimizer::Name, "" #Name, Option, Timer)
 
   // To initialize a pass, the member function name is the first argument.
@@ -660,36 +661,46 @@ void Optimizer::initOptimizations() {
   // is necessary, then TIMER_NUM_TIMERS can be used.
   //
   OPT_INITIALIZE_PASS(cleanMessageHeader, vISA_LocalCleanMessageHeader,
-                  TimerID::OPTIMIZER);
-  OPT_INITIALIZE_PASS(forceNoMaskOnM0, vISA_forceNoMaskOnM0, TimerID::OPTIMIZER);
+                      TimerID::OPTIMIZER);
+  OPT_INITIALIZE_PASS(forceNoMaskOnM0, vISA_forceNoMaskOnM0,
+                      TimerID::OPTIMIZER);
   OPT_INITIALIZE_PASS(sendFusion, vISA_EnableSendFusion, TimerID::OPTIMIZER);
-  OPT_INITIALIZE_PASS(renameRegister, vISA_LocalRenameRegister, TimerID::OPTIMIZER);
+  OPT_INITIALIZE_PASS(renameRegister, vISA_LocalRenameRegister,
+                      TimerID::OPTIMIZER);
   OPT_INITIALIZE_PASS(localDefHoisting, vISA_LocalDefHoist, TimerID::OPTIMIZER);
   OPT_INITIALIZE_PASS(localCSEForSendPayloadCopy,
-                      vISA_localCSEForSendPayloadCopy,
+                      vISA_localCSEForSendPayloadCopy, TimerID::OPTIMIZER);
+  OPT_INITIALIZE_PASS(localCopyPropagation, vISA_LocalCopyProp,
                       TimerID::OPTIMIZER);
-  OPT_INITIALIZE_PASS(localCopyPropagation, vISA_LocalCopyProp, TimerID::OPTIMIZER);
-  OPT_INITIALIZE_PASS(localInstCombine, vISA_LocalInstCombine, TimerID::OPTIMIZER);
+  OPT_INITIALIZE_PASS(localInstCombine, vISA_LocalInstCombine,
+                      TimerID::OPTIMIZER);
   OPT_INITIALIZE_PASS(removePartialMovs, vISA_RemovePartialMovs,
-                  TimerID::OPTIMIZER);
+                      TimerID::OPTIMIZER);
   OPT_INITIALIZE_PASS(cselPeepHoleOpt, vISA_enableCSEL, TimerID::OPTIMIZER);
   OPT_INITIALIZE_PASS(optimizeLogicOperation, vISA_EnableAlways,
-                  TimerID::OPTIMIZER);
-  OPT_INITIALIZE_PASS(EmulateInt64Add, vISA_EnableAlways, TimerID::HW_CONFORMITY);
-  OPT_INITIALIZE_PASS(HWConformityChk, vISA_EnableAlways, TimerID::HW_CONFORMITY);
+                      TimerID::OPTIMIZER);
+  OPT_INITIALIZE_PASS(EmulateInt64Add, vISA_EnableAlways,
+                      TimerID::HW_CONFORMITY);
+  OPT_INITIALIZE_PASS(HWConformityChk, vISA_EnableAlways,
+                      TimerID::HW_CONFORMITY);
   OPT_INITIALIZE_PASS(preRA_Schedule, vISA_preRA_Schedule,
-                  TimerID::PRERA_SCHEDULING);
-  OPT_INITIALIZE_PASS(preRA_HWWorkaround, vISA_EnableAlways, TimerID::MISC_OPTS);
+                      TimerID::PRERA_SCHEDULING);
+  OPT_INITIALIZE_PASS(preRA_HWWorkaround, vISA_EnableAlways,
+                      TimerID::MISC_OPTS);
   OPT_INITIALIZE_PASS(preRegAlloc, vISA_EnableAlways, TimerID::MISC_OPTS);
   OPT_INITIALIZE_PASS(regAlloc, vISA_EnableAlways, TimerID::TOTAL_RA);
   OPT_INITIALIZE_PASS(removeLifetimeOps, vISA_EnableAlways, TimerID::MISC_OPTS);
-  OPT_INITIALIZE_PASS(postRA_HWWorkaround, vISA_EnableAlways, TimerID::MISC_OPTS);
-  OPT_INITIALIZE_PASS(removeRedundMov, vISA_removeRedundMov, TimerID::MISC_OPTS);
+  OPT_INITIALIZE_PASS(postRA_HWWorkaround, vISA_EnableAlways,
+                      TimerID::MISC_OPTS);
+  OPT_INITIALIZE_PASS(removeRedundMov, vISA_removeRedundMov,
+                      TimerID::MISC_OPTS);
   OPT_INITIALIZE_PASS(removeEmptyBlocks, vISA_EnableAlways, TimerID::MISC_OPTS);
-  OPT_INITIALIZE_PASS(insertFallThroughJump, vISA_EnableAlways, TimerID::MISC_OPTS);
+  OPT_INITIALIZE_PASS(insertFallThroughJump, vISA_EnableAlways,
+                      TimerID::MISC_OPTS);
   OPT_INITIALIZE_PASS(reassignBlockIDs, vISA_EnableAlways, TimerID::MISC_OPTS);
   OPT_INITIALIZE_PASS(evalAddrExp, vISA_EnableAlways, TimerID::MISC_OPTS);
-  OPT_INITIALIZE_PASS(FoldAddrImmediate, vISA_FoldAddrImmed, TimerID::MISC_OPTS);
+  OPT_INITIALIZE_PASS(FoldAddrImmediate, vISA_FoldAddrImmed,
+                      TimerID::MISC_OPTS);
   OPT_INITIALIZE_PASS(fixSamplerCacheBitInHeader, vISA_EnableAlways,
                       TimerID::MISC_OPTS);
   OPT_INITIALIZE_PASS(insertThryld, vISA_EnableAlways, TimerID::MISC_OPTS);
@@ -698,15 +709,15 @@ void Optimizer::initOptimizations() {
                       TimerID::MISC_OPTS);
   OPT_INITIALIZE_PASS(localSchedule, vISA_LocalScheduling, TimerID::SCHEDULING);
   OPT_INITIALIZE_PASS(HWWorkaround, vISA_EnableAlways, TimerID::MISC_OPTS);
-  OPT_INITIALIZE_PASS(fixEndIfWhileLabels, vISA_EnableAlways, TimerID::NUM_TIMERS);
+  OPT_INITIALIZE_PASS(fixEndIfWhileLabels, vISA_EnableAlways,
+                      TimerID::NUM_TIMERS);
   OPT_INITIALIZE_PASS(HWDebug, vISA_EnableAlways, TimerID::NUM_TIMERS);
   OPT_INITIALIZE_PASS(insertDummyMovForHWRSWA, vISA_InsertDummyMovForHWRSWA,
-                  TimerID::NUM_TIMERS);
-  OPT_INITIALIZE_PASS(insertDummyCompactInst, vISA_InsertDummyCompactInst,
-                  TimerID::NUM_TIMERS);
-  OPT_INITIALIZE_PASS(swapSrc1Src2OfMadForCompaction,
-                      vISA_SwapSrc1Src2OfMadForCompaction,
                       TimerID::NUM_TIMERS);
+  OPT_INITIALIZE_PASS(insertDummyCompactInst, vISA_InsertDummyCompactInst,
+                      TimerID::NUM_TIMERS);
+  OPT_INITIALIZE_PASS(swapSrc1Src2OfMadForCompaction,
+                      vISA_SwapSrc1Src2OfMadForCompaction, TimerID::NUM_TIMERS);
   OPT_INITIALIZE_PASS(mergeScalarInst, vISA_MergeScalar, TimerID::OPTIMIZER);
   OPT_INITIALIZE_PASS(lowerMadSequence, vISA_EnableMACOpt, TimerID::OPTIMIZER);
   OPT_INITIALIZE_PASS(LVN, vISA_LVN, TimerID::OPTIMIZER);
@@ -717,42 +728,46 @@ void Optimizer::initOptimizations() {
   OPT_INITIALIZE_PASS(createR0Copy, vISA_EnableAlways, TimerID::MISC_OPTS);
   OPT_INITIALIZE_PASS(initializePayload, vISA_InitPayload, TimerID::NUM_TIMERS);
   OPT_INITIALIZE_PASS(cleanupBindless, vISA_enableCleanupBindless,
-                  TimerID::OPTIMIZER);
+                      TimerID::OPTIMIZER);
   OPT_INITIALIZE_PASS(cleanupA0Movs, vISA_enableCleanupA0Movs,
-                  TimerID::OPTIMIZER);
+                      TimerID::OPTIMIZER);
   OPT_INITIALIZE_PASS(countGRFUsage, vISA_PrintRegUsage, TimerID::MISC_OPTS);
   OPT_INITIALIZE_PASS(changeMoveType, vISA_ChangeMoveType, TimerID::MISC_OPTS);
   OPT_INITIALIZE_PASS(accSubBeforeRA, vISA_accSubBeforeRA, TimerID::OPTIMIZER);
-  OPT_INITIALIZE_PASS(accSubPostSchedule, vISA_accSubstitution, TimerID::OPTIMIZER);
+  OPT_INITIALIZE_PASS(accSubPostSchedule, vISA_accSubstitution,
+                      TimerID::OPTIMIZER);
   OPT_INITIALIZE_PASS(s0SubAfterRA, vISA_EnableAlways, TimerID::OPTIMIZER);
-  OPT_INITIALIZE_PASS(removePseudoMov, vISA_EnableAlways,
-                  TimerID::OPTIMIZER);
+  OPT_INITIALIZE_PASS(removePseudoMov, vISA_EnableAlways, TimerID::OPTIMIZER);
   OPT_INITIALIZE_PASS(expandSendg, vISA_EnableAlways, TimerID::OPTIMIZER);
   OPT_INITIALIZE_PASS(dce, vISA_EnableDCE, TimerID::OPTIMIZER);
   OPT_INITIALIZE_PASS(reassociateConst, vISA_reassociate, TimerID::OPTIMIZER);
   OPT_INITIALIZE_PASS(split4GRFVars, vISA_split4GRFVar, TimerID::OPTIMIZER);
   OPT_INITIALIZE_PASS(loadThreadPayload, vISA_loadThreadPayload,
-                  TimerID::MISC_OPTS);
+                      TimerID::MISC_OPTS);
   OPT_INITIALIZE_PASS(addFFIDProlog, vISA_addFFIDProlog, TimerID::MISC_OPTS);
   OPT_INITIALIZE_PASS(addEmaskSetupProlog, vISA_addEmaskSetupProlog,
-                  TimerID::MISC_OPTS);
-  OPT_INITIALIZE_PASS(insertFenceBeforeEOT, vISA_EnableAlways, TimerID::MISC_OPTS);
-  OPT_INITIALIZE_PASS(insertScratchReadBeforeEOT, vISA_clearScratchWritesBeforeEOT,
-                  TimerID::MISC_OPTS);
+                      TimerID::MISC_OPTS);
+  OPT_INITIALIZE_PASS(insertFenceBeforeEOT, vISA_EnableAlways,
+                      TimerID::MISC_OPTS);
+  OPT_INITIALIZE_PASS(insertPageFaultWA, vISA_EnableAlways, TimerID::MISC_OPTS);
+  OPT_INITIALIZE_PASS(insertScratchReadBeforeEOT,
+                      vISA_clearScratchWritesBeforeEOT, TimerID::MISC_OPTS);
   OPT_INITIALIZE_PASS(mapOrphans, vISA_EnableAlways, TimerID::MISC_OPTS);
   OPT_INITIALIZE_PASS(legalizeType, vISA_EnableAlways, TimerID::MISC_OPTS);
   OPT_INITIALIZE_PASS(analyzeMove, vISA_analyzeMove, TimerID::MISC_OPTS);
   OPT_INITIALIZE_PASS(removeIntrinsics, vISA_EnableAlways, TimerID::MISC_OPTS);
   OPT_INITIALIZE_PASS(expandMulPostSchedule, vISA_expandMulPostSchedule,
-                  TimerID::MISC_OPTS);
+                      TimerID::MISC_OPTS);
   OPT_INITIALIZE_PASS(zeroSomeARF, vISA_zeroSomeARF, TimerID::MISC_OPTS);
   OPT_INITIALIZE_PASS(addSWSBInfo, vISA_addSWSBInfo, TimerID::SWSB);
   OPT_INITIALIZE_PASS(expandMadwPostSchedule, vISA_expandMadwPostSchedule,
-                  TimerID::MISC_OPTS);
-  OPT_INITIALIZE_PASS(ACCSchedule, vISA_PreSchedForAcc, TimerID::PRERA_SCHEDULING);
-  OPT_INITIALIZE_PASS(staticProfiling, vISA_staticProfiling, TimerID::MISC_OPTS);
+                      TimerID::MISC_OPTS);
+  OPT_INITIALIZE_PASS(ACCSchedule, vISA_PreSchedForAcc,
+                      TimerID::PRERA_SCHEDULING);
+  OPT_INITIALIZE_PASS(staticProfiling, vISA_staticProfiling,
+                      TimerID::MISC_OPTS);
   OPT_INITIALIZE_PASS(sinkBarrierWait, vISA_SinkBarrierWait,
-                  TimerID::OPTIMIZER);
+                      TimerID::OPTIMIZER);
 
   // Verify all passes are initialized.
 #ifdef _DEBUG
@@ -962,9 +977,13 @@ int Optimizer::optimization() {
 
   runPass(PI_insertFenceBeforeEOT);
 
-
   // PreRA scheduling
   runPass(PI_preRA_Schedule);
+
+  // Insert page-fault WA probes after preRA scheduling (so they are
+  // not reordered by the scheduler) but before RA (so probe destinations
+  // are virtual registers and spill/fill stores are naturally excluded).
+  runPass(PI_insertPageFaultWA);
 
   // HW workaround before RA
   runPass(PI_preRA_HWWorkaround);
@@ -1911,8 +1930,7 @@ static bool canHoist(FlowGraph &fg, G4_BB *bb, INST_LIST_RITER revIter) {
     auto defSrc0 = defInst->getSrc(0);
     if (inst->getDst()->getType() == Type_BF &&
         (defSrc0->getType() != Type_F ||
-         (defInst->isMov() &&
-          defSrc0->isSrcRegRegion() &&
+         (defInst->isMov() && defSrc0->isSrcRegRegion() &&
           defSrc0->asSrcRegRegion()->hasModifier()))) {
       // we currently don't handle conversion to BF from other type than float
       // As F->BF does not support srcMod, cannot hoist if definst has mod.
@@ -2753,7 +2771,7 @@ bool canDoCSEForSendPayloadCopies(
     return false;
 
   // Same destination offset
-  std::vector < std ::pair<G4_INST *, G4_INST *>> diffCopies;
+  std::vector<std ::pair<G4_INST *, G4_INST *>> diffCopies;
   for (size_t i = 0; i < sendPayLoadCopyMap[prevInst].size(); i++) {
     G4_Operand *src1 = sendPayLoadCopyMap[prevInst][i]->getSrc(0);
     G4_Operand *src2 = sendPayLoadCopyMap[succInst][i]->getSrc(0);
@@ -2771,14 +2789,14 @@ bool canDoCSEForSendPayloadCopies(
     }
 
     if ((dst1->asDstRegRegion()->getRegOff() !=
-            dst2->asDstRegRegion()->getRegOff()) ||
+         dst2->asDstRegRegion()->getRegOff()) ||
         (dst1->asDstRegRegion()->getSubRegOff() !=
-            dst2->asDstRegRegion()->getSubRegOff())) {
+         dst2->asDstRegRegion()->getSubRegOff())) {
       return false;
     }
     if (src1->compareOperand(src2, builder) != Rel_eq) {
       diffCopies.push_back(std::make_pair(sendPayLoadCopyMap[succInst][i],
-                           sendPayLoadCopyMap[prevInst][i]));
+                                          sendPayLoadCopyMap[prevInst][i]));
     }
   }
 
@@ -2819,14 +2837,15 @@ bool canDoCSEForSendPayloadCopies(
     if (hasPartialDefined) {
       for (auto diffCopy : diffCopies) {
         auto orgCopy = diffCopy.second;
-        if (std::find((*iter).second.begin(), (*iter).second.end(),
-                      orgCopy) == (*iter).second.end()) {
+        if (std::find((*iter).second.begin(), (*iter).second.end(), orgCopy) ==
+            (*iter).second.end()) {
           return false;
         }
       }
     }
     for (auto diffCopy : diffCopies) {
-      auto eraseIter = std::find(sendPayLoadCopyMap[succInst].begin(),
+      auto eraseIter =
+          std::find(sendPayLoadCopyMap[succInst].begin(),
                     sendPayLoadCopyMap[succInst].end(), diffCopy.first);
       if (eraseIter != sendPayLoadCopyMap[succInst].end())
         sendPayLoadCopyMap[succInst].erase(eraseIter);
@@ -3216,7 +3235,8 @@ void Optimizer::localCopyPropagation() {
           // Compute the composed region if exists.
           auto getComposedRegion =
               [this](unsigned dStride, unsigned ex1, const RegionDesc *rd1,
-                  unsigned ex2, const RegionDesc *rd2) -> const RegionDesc * {
+                     unsigned ex2,
+                     const RegionDesc *rd2) -> const RegionDesc * {
             // Easy cases.
             if (rd1->isScalar())
               return rd1;
@@ -5246,7 +5266,8 @@ void Optimizer::cleanupBindless() {
       if (inst->isSplitSend()) {
         G4_Operand *header = inst->getSrc(0);
         // use ind0 for G4_sendg and old exDesc a0.2 for G4_sends
-        G4_Operand *exDesc = inst->isSendg() ? inst->getSrc(2) : inst->getSrc(3);
+        G4_Operand *exDesc =
+            inst->isSendg() ? inst->getSrc(2) : inst->getSrc(3);
 
         // When header has multiple uses other than send, be conservative and
         // do not reuse the cached value. It could be introduced by
@@ -5292,7 +5313,7 @@ void Optimizer::cleanupBindless() {
           // if a use is something other than a send, do not perform the
           // optimization
           for (auto use = inst->use_begin(); use != inst->use_end(); use++) {
-            G4_INST* useInst = use->first;
+            G4_INST *useInst = use->first;
             if (!useInst->isSend())
               return false;
           }
@@ -6376,8 +6397,8 @@ bool Optimizer::addFenceCommit(INST_LIST_ITER ii, G4_BB *bb,
 void Optimizer::normalizeRegion() {
   for (auto bb : fg) {
     for (auto inst : *bb) {
-      if (inst->isCall() || inst->isFCall() ||
-          inst->isReturn() || inst->isFReturn()) {
+      if (inst->isCall() || inst->isFCall() || inst->isReturn() ||
+          inst->isFReturn()) {
         // Do not rewrite region for call or return,
         // as the effective execution size is 2.
         continue;
@@ -7248,7 +7269,8 @@ void Optimizer::recomputeBound(std::unordered_set<G4_Declare *> &declares) {
 void Optimizer::mergeScalarInst() {
 
   int bundleSizeLimit = BUNDLE_INFO::maxBundleSize;
-  if (kernel.getInt32KernelAttr(Attributes::ATTR_Target) == VISA_3D || builder.noInt64()) {
+  if (kernel.getInt32KernelAttr(Attributes::ATTR_Target) == VISA_3D ||
+      builder.noInt64()) {
     bundleSizeLimit = 4;
   }
 
@@ -8023,7 +8045,7 @@ void MadSequenceInfo::processCandidates() {
 // Returns false if we can easily detect this optimization is not possible.
 // Otherwise, returns true.
 static bool preprocessMadInBlock(IR_Builder &builder, G4_BB *bb,
-                                  const GlobalOpndHashTable &globalOpndHT) {
+                                 const GlobalOpndHashTable &globalOpndHT) {
   bool hasMad = false;
   for (auto inst : *bb) {
     if (isMad(inst)) {
@@ -8545,9 +8567,8 @@ void Optimizer::removeIntrinsics() {
         continue;
       if (inst->asIntrinsicInst()->getIntrinsicId() == Intrinsic::Breakpoint) {
         markBreakpoint(bb, I, fg.builder);
-      }
-      else if (inst->asIntrinsicInst()->getIntrinsicId() ==
-               Intrinsic::ShflIdx4) {
+      } else if (inst->asIntrinsicInst()->getIntrinsicId() ==
+                 Intrinsic::ShflIdx4) {
         auto shflInst = fg.builder->createShflInst(
             inst->getPredicate(), g4::NOSAT, inst->getExecSize(),
             inst->getDst(), inst->getSrc(0), inst->getSrc(1),
@@ -8557,11 +8578,8 @@ void Optimizer::removeIntrinsics() {
     }
 
     std::vector<Intrinsic> intrinIdVec = {
-      Intrinsic::ShflIdx4,
-      Intrinsic::MemFence,
-      Intrinsic::FlagSpill,
-      Intrinsic::Breakpoint
-    };
+        Intrinsic::ShflIdx4, Intrinsic::MemFence, Intrinsic::FlagSpill,
+        Intrinsic::Breakpoint};
     bb->removeIntrinsics(intrinIdVec);
   }
 }
@@ -9458,8 +9476,10 @@ void Optimizer::sinkBarrierWait() {
       // When there's any wait that has a flag overlap with the current inst,
       // move the range [waits.begin(), last overlapping wait iterator] back to
       // the inst list so that the waits are not reordered.
-      auto rwit = std::find_if(waits.rbegin(), waits.rend(),
-          [=](const G4_INST *i) { return hasFlagOverlap(i, inst); });
+      auto rwit =
+          std::find_if(waits.rbegin(), waits.rend(), [=](const G4_INST *i) {
+            return hasFlagOverlap(i, inst);
+          });
       if (rwit != waits.rend()) {
         G4_INST *prev = nullptr, *last = *rwit;
         auto wit = waits.begin();
@@ -9477,3 +9497,568 @@ void Optimizer::sinkBarrierWait() {
     vASSERT(waits.empty());
   }
 }
+
+unsigned Optimizer::getHdcAtomicRspLen(G4_ExecSize execSize,
+                                       const G4_SendDescRaw *msgDesc) const {
+  // Mirror the response-length calculation from the two translate functions
+  // that emit HDC atomic messages.
+  //
+  // translateVISASVMAtomicInst (DC1 A64 atomics):
+  //   dstLength = (bitwidth == 64 ? 2 : 1)
+  //   where bit 12 of the descriptor encodes 64-bit for DC1_A64_ATOMIC.
+  //
+  // translateVISADwordAtomicInst (DC1 non-A64 atomics):
+  //   execSize = roundUpExecSize(execSize);   // SIMD8 → SIMD16 on PVC
+  //   resLen   = exSize / getGenxDataportIOSize();
+  uint32_t msgType = msgDesc->getHdcMessageType();
+  if (msgType == DC1_A64_ATOMIC || msgType == DC1_A64_UNTYPED_FLOAT_ATOMIC ||
+      msgType == DC1_A64_UNTYPED_HALF_INTEGER_ATOMIC ||
+      msgType == DC1_A64_UNTYPED_HALF_FLOAT_ATOMIC) {
+    // SVM path: 64-bit ops (DC1_A64_ATOMIC with bit 12 set) need 2 GRFs;
+    // all 16-bit and 32-bit variants need 1 GRF.
+    bool is64Bit =
+        (msgType == DC1_A64_ATOMIC) && ((msgDesc->getDesc() >> 12) & 1u);
+    return is64Bit ? 2u : 1u;
+  }
+  // Dword path: replicate roundUpExecSize – on native-SIMD16 platforms (PVC)
+  // the exec size is always promoted to 16; elsewhere small sizes round to 8.
+  unsigned roundedSize = (builder.getNativeExecSize() == g4::SIMD16)
+                             ? 16u
+                             : std::max((unsigned)execSize, 8u);
+  return roundedSize / builder.getGenxDataportIOSize();
+}
+
+unsigned
+Optimizer::getLscUntypedAtomicRspLen(G4_ExecSize execSize,
+                                     const G4_SendDescRaw *msgDesc) const {
+  // Mirrors translateLscUntypedInst (non-transpose, vecSize=1):
+  //   dataRegs = max(1, max(execSize, lscMinExecSize) * elemBytes / GRFBytes)
+  // getSrc1LenRegs() is unreliable: 0 for unary atomics (iinc/idec),
+  // 2x response size for CAS.
+  LSC_SFID lscSfid = (msgDesc->getSFID() == SFID::UGML) ? LSC_UGML : LSC_UGM;
+  unsigned width =
+      std::max((unsigned)execSize, (unsigned)builder.lscMinExecSize(lscSfid));
+  return std::max(1u, width * (unsigned)msgDesc->getElemSize() /
+                          builder.getGRFSize());
+}
+
+void Optimizer::insertPageFaultWAforLSC(G4_BB *bb, INST_LIST_ITER it) {
+  G4_InstSend *sendInst = (*it)->asSendInst();
+  const G4_SendDescRaw *msgDesc =
+      static_cast<const G4_SendDescRaw *>(sendInst->getMsgDesc());
+  SFID sfid = msgDesc->getSFID();
+  vISA_ASSERT(sfid != SFID::TGM && sfid != SFID::URB,
+              "unexpected TGM/URB write message generated on this platform");
+
+  if (msgDesc->isAtomicMessage()) {
+    // Atomics with a return value already force address translation via
+    // the read side; no extra probe needed.
+    if (msgDesc->ResponseLength() > 0)
+      return;
+    // Add a return value to convert the atomic to read-modify-write,
+    // which forces page translation before the write.
+    unsigned rspLen =
+        getLscUntypedAtomicRspLen(sendInst->getExecSize(), msgDesc);
+    uint32_t atomicDescVal =
+        (msgDesc->getDesc() & ~(0x1Fu << 20)) | (rspLen << 20);
+    G4_SendDescRaw *newDesc = builder.createLscDesc(
+        sfid, atomicDescVal, msgDesc->getExtendedDesc(),
+        msgDesc->getSrc1LenRegs(), SendAccess::READ_WRITE,
+        const_cast<G4_Operand *>(msgDesc->getBti()), LdStAttrs::NONE);
+    sendInst->setMsgDesc(newDesc);
+    // Also update the descriptor immediate operand used by the binary
+    // encoder (getMsgDescOperand returns srcs[2] for G4_sends).
+    unsigned descSrcIdx = sendInst->isSplitSend() ? 2 : 1;
+    sendInst->setSrc(builder.createImm(atomicDescVal, Type_UD), descSrcIdx);
+    G4_Declare *rspDcl = builder.createTempVar(
+        rspLen * (builder.getGRFSize() / TypeSize(Type_UD)), Type_UD,
+        builder.getGRFAlign());
+    sendInst->setDest(builder.createDstRegRegion(rspDcl, 1));
+    return;
+  }
+
+  // Pure store: insert probe load + sync.allrd before the write to
+  // force address translation.
+  unsigned dataSrcLen = (unsigned)msgDesc->getSrc1LenRegs();
+  if (dataSrcLen == 0)
+    return;
+
+  // Build probe-load descriptor: clear bit 2 of the 6-bit opcode to
+  // convert STORE->LOAD, STORE_STRIDED->LOAD_STRIDED, etc.
+  // Also replace response length (bits [24:20]) with dataSrcLen.
+  uint32_t writeDescVal = msgDesc->getDesc();
+  uint32_t probeDescVal =
+      (writeDescVal & ~((1u << 2) | (0x1Fu << 20))) | (dataSrcLen << 20);
+  // Propagate the write's ExDescVal to the probe and
+  // clear src1Len in bits [10:6].
+  constexpr uint32_t SRC1_LEN_MASK = 0x1Fu << 6;
+  uint32_t writeExtDescVal = msgDesc->getExtendedDesc();
+  uint32_t probeExtDescVal = writeExtDescVal & ~SRC1_LEN_MASK;
+  G4_SendDescRaw *probeDesc = builder.createLscDesc(
+      sfid, probeDescVal, probeExtDescVal, 0, SendAccess::READ_ONLY,
+      const_cast<G4_Operand *>(msgDesc->getBti()), LdStAttrs::NONE);
+
+  // Probe destination: a fresh temporary; its value is never read,
+  // only the SBID completion (sync.allrd) matters.
+  G4_Declare *probeDstDcl = builder.createTempVar(
+      dataSrcLen * builder.getGRFSize() / TypeSize(Type_UD), Type_UD,
+      builder.getGRFAlign());
+  G4_DstRegRegion *probeDst = builder.createDstRegRegion(probeDstDcl, 1);
+
+  // Probe address: clone of the store src0 (address register).
+  G4_SrcRegRegion *probeAddrSrc =
+      builder.duplicateOperand(sendInst->getSrc(0)->asSrcRegRegion());
+
+  G4_ExecSize execSize = sendInst->getExecSize();
+  G4_InstOpts opts = sendInst->getOption();
+
+  // Propagate the write's ExDesc operand to the probe so the probe
+  // uses the same surface type (FLAT, BTI constant, BTI register,
+  // BSS, SS).  On PVC, BinaryEncodingIGA ignores ExDesc[10:6] and
+  // takes src1Len from the G4_SendDescRaw descriptor object, so the
+  // write's ExDesc can be reused as-is without masking. But it causes
+  // the intermediate G4 dump inaccurate. To improve it, If ExDesc
+  // operand is immediate, clear src1 length (ExDesc[10:6]). Do nothing
+  // if ExDesc operand is not immediate(e.g. a0.0). Otherwise, it will
+  // introduce many more instructions for clearing src1Len bits for the
+  // probe and restoring them before the store fires.
+  G4_Operand *writeExDescOp = sendInst->getMsgExtDescOperand();
+  G4_Operand *probeExDescOp;
+  if (writeExDescOp->isImm()) {
+    uint32_t probeExDescVal =
+        (uint32_t)writeExDescOp->asImm()->getImm() & ~SRC1_LEN_MASK;
+    probeExDescOp = builder.createImm(probeExDescVal, Type_UD);
+  } else {
+    probeExDescOp = builder.duplicateOperand(writeExDescOp);
+  }
+
+  // Propagate the write's predicate so the probe fires only when the
+  // write would execute (avoids spurious faults when pred is false).
+  G4_Predicate *writePred = sendInst->getPredicate();
+  G4_Predicate *probePred =
+      writePred ? builder.duplicateOperand(writePred) : nullptr;
+
+  G4_InstSend *probeLoad = builder.createSplitSendInst(
+      probePred, G4_sends, execSize, probeDst, probeAddrSrc,
+      builder.createNullSrc(Type_UD), builder.createImm(probeDescVal, Type_UD),
+      opts, probeDesc, probeExDescOp, false);
+  // Probe load and sync are generated on behalf of the store; give
+  // them the same VISA ID so debuggers map them to the same source.
+  probeLoad->setVISAId(sendInst->getVISAId());
+  bb->insertBefore(it, probeLoad);
+
+  G4_INST *syncInst =
+      builder.createSync(G4_sync_allrd, builder.createNullSrc(Type_UD));
+  syncInst->setVISAId(sendInst->getVISAId());
+  bb->insertBefore(it, syncInst);
+}
+
+void Optimizer::insertPageFaultWAforHDC(G4_BB *bb, INST_LIST_ITER it) {
+  G4_InstSend *sendInst = (*it)->asSendInst();
+  const G4_SendDescRaw *msgDesc =
+      static_cast<const G4_SendDescRaw *>(sendInst->getMsgDesc());
+  vISA_ASSERT(!msgDesc->isTyped(),
+              "unexpected typed atomic messages for page fault workaround");
+
+  SFID sfid = msgDesc->getSFID();
+
+  // Legacy HDC (data port) write messages require the same WA.
+  if (msgDesc->isAtomicMessage()) {
+    // HDC atomics: bit 13 of the descriptor is the "return data" bit.
+    // If already set (response present), no WA needed.
+    if (msgDesc->ResponseLength() > 0)
+      return;
+    // Set bit 13 to request a return value, forcing page translation.
+    // Also update the response-length field (bits [24:20]).
+    unsigned rspLen = getHdcAtomicRspLen(sendInst->getExecSize(), msgDesc);
+    // For a no-return atomic the rspLen field [24:20] is 0, so we can
+    // derive the updated descriptor by ORing in the return-data bit (13)
+    // and the new rspLen.  Use this delta for both the immediate and the
+    // register-descriptor cases below.
+    uint32_t delta = (1u << 13) | (rspLen << 20);
+    bool descIsImm = sendInst->getMsgDescOperand()->isImm();
+    // Use the actual operand value when it is an immediate so that the
+    // BTI folded into the immediate is preserved.  For a register
+    // descriptor (a0.0 = BTI + template at runtime) use the template
+    // from msgDesc->getDesc() (BTI=0) since the BTI lives in a0.0.
+    uint32_t baseDescVal =
+        descIsImm ? (uint32_t)sendInst->getMsgDescOperand()->asImm()->getImm()
+                  : msgDesc->getDesc();
+    uint32_t atomicDescVal = (baseDescVal & ~(0x1Fu << 20)) | delta;
+    G4_SendDescRaw *newDesc = builder.createSendMsgDesc(
+        sfid, atomicDescVal, msgDesc->getExtendedDesc(),
+        (int)msgDesc->getSrc1LenRegs(), SendAccess::READ_WRITE,
+        const_cast<G4_Operand *>(msgDesc->getBti()));
+    sendInst->setMsgDesc(newDesc);
+    unsigned descSrcIdx = sendInst->isSplitSend() ? 2 : 1;
+    if (descIsImm) {
+      sendInst->setSrc(builder.createImm(atomicDescVal, Type_UD), descSrcIdx);
+    } else {
+      // Register descriptor: a0.N = (BTI + descTemplate) at runtime,
+      // set up by "add a0.N, r_bti, descTemplate" earlier in this BB.
+      // Since there is only one send being updated (no probe/write pair),
+      // patch that add's immediate in place instead of inserting a new
+      // instruction.
+      // For example:
+      // (W) add (1)  a0.0<1>:ud  r0.0<0;1,0>:ud  0x2008700:ud
+      // (W) sends.dc1 (8) null:ud r4 r5 0x4c:ud a0.0<0;1,0>:ud
+      // =>
+      // (W) add (1) a0.0<1>:ud  r0.0<0;1,0>:ud  0x210a700:ud
+      // (W) sends.dc1 (8) TV7(0,0):ud r4 r5 0x4c:ud a0.0<0;1,0>:ud
+      G4_SrcRegRegion *descOpnd =
+          sendInst->getMsgDescOperand()->asSrcRegRegion();
+      unsigned descSubReg = descOpnd->getSubRegOff();
+      bool patched = false;
+      for (auto sit = std::prev(it);; --sit) {
+        G4_INST *s = *sit;
+        G4_DstRegRegion *d = s->getDst();
+        if (d && d->getBase()->isRegVar() &&
+            d->getBase()->asRegVar()->getDeclare()->getRegFile() ==
+                G4_ADDRESS &&
+            d->getSubRegOff() == (int)descSubReg) {
+          if (s->opcode() == G4_add && s->getSrc(1) && s->getSrc(1)->isImm()) {
+            s->setSrc(builder.createImm(s->getSrc(1)->asImm()->getImm() | delta,
+                                        Type_UD),
+                      1);
+            patched = true;
+            break;
+          }
+        }
+        if (sit == bb->begin())
+          break;
+      }
+      if (!patched)
+        vISA_ASSERT_UNREACHABLE("no a0 setup found before HDC atomic");
+    }
+    G4_Declare *rspDcl = builder.createTempVar(
+        rspLen * (builder.getGRFSize() / TypeSize(Type_UD)), Type_UD,
+        builder.getGRFAlign());
+    sendInst->setDest(builder.createDstRegRegion(rspDcl, 1));
+    return;
+  }
+  // HDC non-atomic write: build a probe-load descriptor by converting
+  // the write opcode to its read counterpart, then insert probe load
+  // + sync.allrd before the write.
+  unsigned dataSrcLen = msgDesc->getWriteDataLenRegs();
+  if (dataSrcLen == 0)
+    return;
+
+  // When copy propagation has inlined the BTI into an immediate
+  // descriptor (e.g. "add a0, T6=6, 0x020A0000" collapsed to the
+  // immediate 0x020A0006), msgDesc->getDesc() still returns 0x020A0000
+  // (without BTI). Use the actual instruction operand value so the
+  // probe descriptor inherits the correct BTI.
+  uint32_t writeDescVal =
+      sendInst->getMsgDescOperand()->isImm()
+          ? (uint32_t)sendInst->getMsgDescOperand()->asImm()->getImm()
+          : msgDesc->getDesc();
+  uint32_t probeDescVal;
+  if (msgDesc->isHWordScratchWrite()) {
+    // HWord scratch write: clear bit 17 (write->read toggle),
+    // replace response-length [24:20] with dataSrcLen, and trim
+    // message-length [28:25] to 1. Non-split scratch writes have
+    // MessageLength=1+dataGRFs, but scratch reads only use the header.
+    probeDescVal = (writeDescVal & ~(0x20000u | (0x1Fu << 20) | (0xFu << 25))) |
+                   (dataSrcLen << 20) | (1u << 25);
+  } else {
+    // Replace message-type bits [18:14] with the corresponding read
+    // opcode and set the response-length field [24:20].
+    uint32_t writeMsgType = (writeDescVal >> 14) & 0x1Fu;
+    uint32_t readMsgType;
+    if (sfid == SFID::DP_DC0) {
+      switch (writeMsgType) {
+      case DC_OWORD_BLOCK_WRITE:
+        readMsgType = DC_OWORD_BLOCK_READ;
+        break;
+      case DC_DWORD_SCATTERED_WRITE:
+        readMsgType = DC_DWORD_SCATTERED_READ;
+        break;
+      case DC_BYTE_SCATTERED_WRITE:
+        readMsgType = DC_BYTE_SCATTERED_READ;
+        break;
+      default:
+        vISA_ASSERT_UNREACHABLE("unhandled DC0 write message in page-fault WA");
+        return;
+      }
+    } else if (sfid == SFID::DP_DC1) {
+      switch (writeMsgType) {
+      case DC1_UNTYPED_SURFACE_WRITE:
+        readMsgType = DC1_UNTYPED_SURFACE_READ;
+        break;
+      case DC1_A64_UNTYPED_SURFACE_WRITE:
+        readMsgType = DC1_A64_UNTYPED_SURFACE_READ;
+        break;
+      case DC1_A64_SCATTERED_WRITE:
+        readMsgType = DC1_A64_SCATTERED_READ;
+        break;
+      case DC1_A64_BLOCK_WRITE:
+        readMsgType = DC1_A64_BLOCK_READ;
+        break;
+      default:
+        vISA_ASSERT_UNREACHABLE("unhandled DC1 write message in page-fault WA");
+        return;
+      }
+    } else {
+      vISA_ASSERT_UNREACHABLE("unexpected HDC SFID in page-fault WA");
+      return;
+    }
+    // For non-split sends (e.g. DC0 scatter), MessageLength
+    // covers header+addr+data; trim the probe to header+addr.
+    uint32_t probeMsgLen = sendInst->isSplitSend()
+                               ? msgDesc->MessageLength()
+                               : msgDesc->MessageLength() - dataSrcLen;
+    probeDescVal =
+        (writeDescVal & ~((0xFu << 25) | (0x1Fu << 14) | (0x1Fu << 20))) |
+        (probeMsgLen << 25) | (readMsgType << 14) | (dataSrcLen << 20);
+  }
+  // Determine the BTI operand for the probe descriptor.
+  //
+  // Three cases for the descriptor at this point (post copy-prop):
+  //
+  //   (a) Regular BTI, desc still a register (e.g. a0.0):
+  //       Pass the BTI register through so createSplitSendInst
+  //       generates "add a0.0, bti, probeDescVal".
+  //       For example:
+  //       (W) add (1) a0.0<1>:ud  r0.0<0;1,0>:ud  0x20a0000:ud
+  //       (W) sends.dc0 (4) null:ud M2(0,0) r1 0x4a:ud a0.0<0;1,0>:ud
+  //       =>
+  //       (W) add (1) a0.0<1>:ud  r0.0<0;1,0>:ud  0x20a0000:ud
+  //       (W) add (1) a0.0<1>:ud  a0.0<0;1,0>:ud  0xe0000:ud
+  //       (W) sends.dc0 (4) TV5(0,0):ud M2(0,0) null 0xa:ud a0.0<0;1,0>:ud
+  //       sync_allrd (1) null:ud
+  //       (W) add (1) a0.0<1>:ud  a0.0<0;1,0>:ud  0xfff20000:ud
+  //       (W) sends.dc0 (4) null:ud M2(0,0) r1 0x4a:ud a0.0<0;1,0>:ud
+  //
+  //   (b) Regular BTI folded into an immediate descriptor:
+  //       Copy propagation has inlined the BTI (e.g. "mov T6, 6;
+  //       add a0, T6, desc_imm" → immediate 0x020A0006).  The BTI
+  //       is already baked into probeDescVal; pass nullptr so
+  //       createSplitSendInst skips the a0 setup and uses the
+  //       immediate directly.  (Using the now-dead T6 register would
+  //       produce garbage in a0.)
+  //       For example:
+  //       (W) sends.dc0 (4) null:ud M2(0,0) r0 0x4a:ud 0x20a0006:ud
+  //       =>
+  //       (W) sends.dc0 (4) TV12(0,0):ud M2(0,0) null 0xa:ud 0x2180006:ud
+  //       sync_allrd (1) null:ud
+  //       (W) sends.dc0 (4) null:ud M2(0,0) r0 0x4a:ud 0x20a0006:ud
+  //
+  //   (c) T252/scratch ExBSO (PVC+ extended-descriptor format):
+  //       createSplitSendInst bakes PREDEF_SURF_252 (or 251) into the
+  //       desc immediate and routes the real BTI register to a0.2 via
+  //       "mov a0.2, T252/scratch".  Even though the desc is already
+  //       an immediate, we must pass the BTI register so
+  //       createSplitSendInst regenerates that "mov a0.2" for the
+  //       probe's extended descriptor.
+  //       For example:
+  //       (W) mov (1)  ExDesc3(0,0)<1>:ud  %bss(0,0)<0;1,0>:ud
+  //       (W) sends.dc0 (4) null:ud M3(0,0) r3 ExDesc3(0,0)<0;1,0>:ud
+  //                         0x20a00fc:ud
+  //       =>
+  //       (W) mov (1) ExDesc3(0,0)<1>:ud  %bss(0,0)<0;1,0>:ud
+  //       (W) sends.dc0 (4) TV6(0,0):ud M3(0,0) null ExDesc3(0,0)<0;1,0>:ud
+  //                         0x21800fc:ud
+  //       sync_allrd (1) null:ud
+  //       (W) sends.dc0 (4) null:ud M3(0,0) r3 ExDesc3(0,0)<0;1,0>:ud
+  //       0x20a00fc:ud
+  const G4_Operand *origBti = msgDesc->getBti();
+  G4_Operand *probeBti;
+  if (!sendInst->getMsgDescOperand()->isImm()) {
+    // Case (a): register descriptor – BTI not folded.
+    probeBti = const_cast<G4_Operand *>(origBti);
+  } else if (origBti && origBti->isSrcRegRegion() &&
+             (builder.isBindlessSurface(origBti) ||
+              builder.isScratchSpace(const_cast<G4_Operand *>(origBti)))) {
+    // Case (c): ExBSO – pass through BTI so a0.2 gets set up.
+    probeBti = const_cast<G4_Operand *>(origBti);
+  } else {
+    // Case (b): BTI folded into immediate.
+    probeBti = nullptr;
+  }
+  G4_SendDescRaw *probeDesc =
+      builder.createReadMsgDesc(sfid, probeDescVal, probeBti);
+
+  G4_Declare *probeDstDcl = builder.createTempVar(
+      dataSrcLen * builder.getGRFSize() / TypeSize(Type_UD), Type_UD,
+      builder.getGRFAlign());
+  G4_DstRegRegion *probeDst = builder.createDstRegRegion(probeDstDcl, 1);
+
+  G4_SrcRegRegion *probeAddrSrc =
+      builder.duplicateOperand(sendInst->getSrc(0)->asSrcRegRegion());
+
+  G4_ExecSize execSize = sendInst->getExecSize();
+  G4_InstOpts opts = sendInst->getOption();
+
+  // Detect ExBSO: T252 or scratch surfaces whose BTI is a register
+  // even though the message descriptor is an immediate.
+  bool isExBSO = probeBti != nullptr &&
+                 (builder.isBindlessSurface(probeBti) ||
+                  builder.isScratchSpace(const_cast<G4_Operand *>(probeBti)));
+
+  // For case (a) – register BTI in an address register – a0.0 already
+  // holds (BTI + writeDescVal) from the original descriptor setup (e.g.
+  // "add a0.0, r_bti, writeDescVal").  We must NOT compute
+  // "add a0.0, a0.0, probeDescVal" because that would give
+  // (BTI + writeDescVal + probeDescVal) for both probe and write
+  // (a0.0 clobbered).
+  //
+  // Instead, derive the probe descriptor by adding a delta:
+  //   probe_a0 = a0.0 + delta,  delta = probeDescVal - writeDescVal
+  //   => probe_a0 = BTI + writeDescVal + delta = BTI + probeDescVal ✓
+  // After sync.allrd restore a0.0 = probe_a0 - delta = BTI +
+  // writeDescVal so the original write send sees the correct
+  // descriptor. ✓
+  //
+  // restoreDescInst is set here when a restore is needed and inserted
+  // after the sync below.
+  G4_INST *restoreDescInst = nullptr;
+
+  // Helper: insert "add a0.0, a0.0, imm" with the given immediate and
+  // return an a0.0 source operand for the following probe send.
+  auto setupA0Delta = [&](uint32_t delta) -> G4_SrcRegRegion * {
+    G4_INST *setupAdd = builder.createBinOp(
+        G4_add, g4::SIMD1,
+        builder.createDstRegRegion(builder.getBuiltinA0(), 1),
+        builder.createSrcRegRegion(builder.getBuiltinA0(),
+                                   builder.getRegionScalar()),
+        builder.createImm(delta, Type_UD), InstOpt_WriteEnable, false);
+    setupAdd->setVISAId(sendInst->getVISAId());
+    bb->insertBefore(it, setupAdd);
+    return builder.createSrcRegRegion(builder.getBuiltinA0(),
+                                      builder.getRegionScalar());
+  };
+
+  // Propagate the write's predicate so the probe fires only when the
+  // write would execute (avoids spurious faults when pred is false).
+  G4_Predicate *writePred = sendInst->getPredicate();
+  G4_Predicate *probePred =
+      writePred ? builder.duplicateOperand(writePred) : nullptr;
+
+  G4_InstSend *probeLoad;
+  if (sendInst->isSplitSend()) {
+    if (probeBti != nullptr && !isExBSO) {
+      // Case (a): register-BTI split send (non-ExBSO).
+      // Use delta to derive probe descriptor from write descriptor.
+      G4_SrcRegRegion *probeDescReg = setupA0Delta(probeDescVal - writeDescVal);
+      probeLoad = builder.createSplitSendInst(
+          probePred, G4_sends, execSize, probeDst, probeAddrSrc,
+          builder.createNullSrc(Type_UD), probeDescReg, opts, probeDesc,
+          nullptr, // exDesc auto-computed from probeDesc
+          false);
+      probeLoad->setVISAId(sendInst->getVISAId());
+      bb->insertBefore(it, probeLoad);
+      // Restore a0.0 to write descriptor after sync.
+      restoreDescInst = builder.createBinOp(
+          G4_add, g4::SIMD1,
+          builder.createDstRegRegion(builder.getBuiltinA0(), 1),
+          builder.createSrcRegRegion(builder.getBuiltinA0(),
+                                     builder.getRegionScalar()),
+          builder.createImm(writeDescVal - probeDescVal, Type_UD),
+          InstOpt_WriteEnable, false);
+    } else if (isExBSO) {
+      // Case (c): ExBSO — the probe and write access the same surface.
+      // On PVC+ (useNewExtDescFormat), the ExDesc register holds only the
+      // surface pointer (mov ExDescN, T252/scratch) with no src1Len baked
+      // in, so both sends share an identical ExDesc value.  Reuse the
+      // write's existing ExDesc operand directly to avoid an extra mov.
+      G4_SrcRegRegion *probeExtDesc = builder.duplicateOperand(
+          sendInst->getMsgExtDescOperand()->asSrcRegRegion());
+      probeLoad = builder.createSplitSendInst(
+          probePred, G4_sends, execSize, probeDst, probeAddrSrc,
+          builder.createNullSrc(Type_UD),
+          builder.createImm(probeDescVal, Type_UD), opts, probeDesc,
+          probeExtDesc, false);
+      probeLoad->setVISAId(sendInst->getVISAId());
+      bb->insertBefore(it, probeLoad);
+    } else {
+      // Case (b): BTI folded into immediate descriptor — no ExBSO, no
+      // new ExDesc mov needed.
+      probeLoad = builder.createSplitSendInst(probePred, probeDst, probeAddrSrc,
+                                              builder.createNullSrc(Type_UD),
+                                              execSize, probeDesc, opts, false);
+      for (G4_INST *genInst : builder.instList) {
+        genInst->setVISAId(sendInst->getVISAId());
+        bb->insertBefore(it, genInst);
+      }
+      builder.instList.clear();
+    }
+    // probeLoad is now in the block (either via direct insertBefore or
+    // via the instList flush above); do not insert it again below.
+  } else {
+    // Non-split send (G4_send).
+    G4_Operand *probeDescSrc;
+    if (probeBti != nullptr) {
+      // Case (a): register-BTI non-split send.
+      // Use delta to derive probe descriptor from write descriptor;
+      // restore a0.0 after sync so the write sees its original desc.
+      probeDescSrc = setupA0Delta(probeDescVal - writeDescVal);
+      restoreDescInst = builder.createBinOp(
+          G4_add, g4::SIMD1,
+          builder.createDstRegRegion(builder.getBuiltinA0(), 1),
+          builder.createSrcRegRegion(builder.getBuiltinA0(),
+                                     builder.getRegionScalar()),
+          builder.createImm(writeDescVal - probeDescVal, Type_UD),
+          InstOpt_WriteEnable, false);
+    } else {
+      // Case (b): BTI folded into immediate – no a0 involved.
+      probeDescSrc = builder.createImm(probeDescVal, Type_UD);
+    }
+    probeLoad = builder.createSendInst(probePred, G4_send, execSize, probeDst,
+                                       probeAddrSrc, probeDescSrc, opts,
+                                       probeDesc, false);
+    probeLoad->setVISAId(sendInst->getVISAId());
+    bb->insertBefore(it, probeLoad);
+  }
+
+  G4_INST *syncInst =
+      builder.createSync(G4_sync_allrd, builder.createNullSrc(Type_UD));
+  syncInst->setVISAId(sendInst->getVISAId());
+  bb->insertBefore(it, syncInst);
+
+  // Insert the a0 restore instruction (if needed) between sync and the
+  // original write so the write sees the correct descriptor value.
+  if (restoreDescInst) {
+    restoreDescInst->setVISAId(sendInst->getVISAId());
+    bb->insertBefore(it, restoreDescInst);
+  }
+}
+
+void Optimizer::insertPageFaultWA() {
+  if (!(builder.needBarrierWA() &&
+        (builder.getPlatform() == Xe_PVC || builder.getPlatform() == Xe_PVCXT)))
+    return;
+  if (!kernel.fg.builder->getIsKernel())
+    return;
+
+  for (auto bb : kernel.fg) {
+    for (auto it = bb->begin(), ie = bb->end(); it != ie;) {
+      G4_INST *inst = *it;
+      ++it;
+      if (!inst->isSend())
+        continue;
+      G4_InstSend *sendInst = inst->asSendInst();
+      const G4_SendDesc *sd = sendInst->getMsgDesc();
+      if (!sd->isRaw())
+        continue;
+      const G4_SendDescRaw *msgDesc = static_cast<const G4_SendDescRaw *>(sd);
+      if (!msgDesc->isWrite())
+        continue;
+      SFID sfid = msgDesc->getSFID();
+      // Fence and gateway are treated as read and write
+      if (msgDesc->isFence() || sfid == SFID::GATEWAY)
+        continue;
+      // SLM doesn't generate page faults
+      if (msgDesc->isSLM())
+        continue;
+
+      if (msgDesc->isLSC())
+        insertPageFaultWAforLSC(bb, std::prev(it));
+      else if (msgDesc->isHDC())
+        insertPageFaultWAforHDC(bb, std::prev(it));
+      else
+        vISA_ASSERT(false, "unexpected non-LSC/non-HDC write in page-fault WA");
+    }
+    builder.instList.clear();
+  }
+}
+

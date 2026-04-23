@@ -4468,8 +4468,8 @@ struct LscInstVerifier {
     const char *src0Name = opInfo.isStrided() ? "Src0AddrBase" : "Src0Addr";
     verifyRawOperand(src0Name, src0Ix); // Src0Addr
     if (opInfo.isStrided()) {
-      if (verifyVectorOperand("Src0AddrStride", currOpIx + 3)) {
-        const auto &vo = getVectorOperand(inst, currOpIx + 3);
+      if (verifyVectorOperand("Src0AddrStride", currOpIx + 4)) {
+        const auto &vo = getVectorOperand(inst, currOpIx + 4);
         switch (vo.tag & 0x7) {
         case OPERAND_IMMEDIATE:
           if (vo.opnd_val.const_opnd._val.ival > 0xFFFF) {

@@ -2562,3 +2562,26 @@ static bool isDc1OpTyped(uint32_t desc) {
 bool G4_SendDescRaw::isTyped() const {
   return getSFID() == SFID::DP_DC1 && isDc1OpTyped(getDesc());
 }
+
+unsigned G4_SendDescRaw::getWriteDataLenRegs() const {
+  // Split sends: data is in src1.
+  unsigned s1 = (unsigned)getSrc1LenRegs();
+  if (s1 != 0)
+    return s1;
+  // Non-split HDC send: derive data length from MessageLength.
+  unsigned hdrLen = isHeaderPresent() ? 1u : 0u;
+  unsigned payloadLen = MessageLength() - hdrLen;
+  if (getSFID() == SFID::DP_DC0) {
+    uint32_t msgType = getHdcMessageType();
+    // DC0 scatter (DWORD/BYTE/QWORD): src0 = [addr][data] with equal halves.
+    // DC0 OWord block write and HWord scratch: src0 = [data] only
+    // (address is encoded in the message header, not as a separate payload).
+    bool isScatter = (msgType == DC_DWORD_SCATTERED_WRITE ||
+                      msgType == DC_BYTE_SCATTERED_WRITE ||
+                      msgType == DC_QWORD_SCATTERED_WRITE);
+    return isScatter ? payloadLen / 2 : payloadLen;
+  }
+  // DC1 writes on PVC always use split-send (useSends()==true), so
+  // getSrc1LenRegs() != 0 and this path is not reached on PVC.
+  return payloadLen / 2;
+}

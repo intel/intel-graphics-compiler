@@ -6,8 +6,8 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
-#include "../Assertions.h"
 #include "Dependencies_G4IR.h"
+#include "../Assertions.h"
 #include "../G4_IR.hpp"
 
 using namespace vISA;
@@ -190,7 +190,8 @@ DepType vISA::getDepScratchSend(G4_INST *curInst, G4_INST *liveInst) {
 }
 
 DepType vISA::CheckBarrier(G4_INST *inst) {
-  if (inst->isOptBarrier() || inst->isAtomicInst() || inst->opcode() == G4_madm) {
+  if (inst->isOptBarrier() || inst->isAtomicInst() ||
+      inst->opcode() == G4_madm) {
     return OPT_BARRIER;
   }
 
@@ -207,8 +208,12 @@ DepType vISA::CheckBarrier(G4_INST *inst) {
                inst->getMsgDesc()->getSFID() == SFID::SPAWNER) {
       return MSG_BARRIER;
     }
-  } else if (inst->opcode() == G4_wait ||
-      inst->isYieldInst()) {
+  } else if (inst->opcode() == G4_wait || inst->isYieldInst()) {
+    return MSG_BARRIER;
+  } else if (inst->opcode() == G4_sync_allrd ||
+             inst->opcode() == G4_sync_allwr) {
+    // sync.allrd/sync.allwr wait for all outstanding reads/writes; treat as
+    // a scheduling barrier to prevent sends from being reordered across them.
     return MSG_BARRIER;
   } else if (inst->isFlowControl()) {
     // All control flow instructions are scheduling barriers

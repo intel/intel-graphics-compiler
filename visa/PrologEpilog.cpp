@@ -1935,7 +1935,9 @@ void Optimizer::insertFenceBeforeEOT() {
       builder.getOption(vISA_clearLSCUGMWritesBeforeEOT);
   bool clearHDCWritesBeforeEOT =
       builder.getOption(vISA_clearHDCWritesBeforeEOT);
-  bool clearWritesBeforeEOT = builder.needBarrierWA() && builder.supportsLSC();
+  bool clearWritesBeforeEOT =
+      builder.needBarrierWA() && builder.supportsLSC() &&
+      builder.getPlatform() != Xe_PVC && builder.getPlatform() != Xe_PVCXT;
   // for vector path we need this WA always, so just use table
   if (kernel.getInt32KernelAttr(Attributes::ATTR_Target) == VISA_CM) {
     clearHDCWritesBeforeEOT =
