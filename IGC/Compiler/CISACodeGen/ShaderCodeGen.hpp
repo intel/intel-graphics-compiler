@@ -591,6 +591,8 @@ private:
   // CVariable from its source operand.
   CVariable *GetSymbolFromSource(llvm::Instruction *UseInst, e_alignment preferredAlign);
 
+  bool isExtractCoalescedOnlyByNoopAlias(llvm::Value *V);
+
 protected:
   CShaderProgram *m_parent = nullptr;
   CodeGenContext *m_ctx = nullptr;

@@ -1557,6 +1557,19 @@ bool DeSSA::isSingleValued(llvm::Value *V) const {
   return true;
 }
 
+bool DeSSA::isOnlyNoopAliasee(Value *V) const {
+  // Must be a self-root in AliasMap (aliasee, not aliaser)
+  if (!isAliasee(V))
+    return false;
+  // Must not participate in InsertElement coalescing
+  if (InsEltMap.count(V) > 0)
+    return false;
+  // Must not be in a non-isolated PHI congruent class
+  if (getRegRoot(V) != nullptr)
+    return false;
+  return true;
+}
+
 // The following paper explains an approach to check if two
 // congruent classes interfere using a linear approach.
 //
