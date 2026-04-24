@@ -794,7 +794,10 @@ void DumpLLVMIR(IGC::CodeGenContext *pContext, const char *dumpName) {
     if (fp != nullptr) {
       fclose(fp);
       // Check if not trying to override dump that cause a crash
-      if (strcmp(dumpName, "codegen") == 0 || pContext->m_retryManager->GetRetryId() != 0) {
+      bool isCodegenDump = strcmp(dumpName, "codegen") == 0;
+      bool isRetry = pContext->m_retryManager->GetRetryId() != 0;
+      bool allowCodegenOverride = false;
+      if ((isCodegenDump && !allowCodegenOverride) || isRetry) {
         pContext->EmitWarning(std::string("Override shader attempt detected for an unsupported dump: " + fileName +
                                           ". Skipping override.")
                                   .c_str(),

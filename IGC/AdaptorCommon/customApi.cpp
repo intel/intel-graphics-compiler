@@ -409,8 +409,20 @@ OutputFolderName IGC_DEBUG_API_CALL GetBaseIGCOutputFolder() {
 }
 
 std::string &GetShaderOverridePathString() {
-  static std::string path =
-      IGC_IS_FLAG_ENABLED(ShaderOverride) ? std::string(GetBaseIGCOutputFolder()) + "ShaderOverride/" : "";
+  static std::string path = []() -> std::string {
+    if (IGC_IS_FLAG_DISABLED(ShaderOverride)) {
+      return "";
+    }
+    const char *customDir = IGC_GET_REGKEYSTRING(ShaderOverrideFromDir);
+    if (customDir != nullptr && strnlen_s(customDir, sizeof(debugString)) > 0) {
+      std::string p = customDir;
+      if (!p.empty() && p.back() != '/' && p.back() != '\\') {
+        p += '/';
+      }
+      return p;
+    }
+    return std::string(GetBaseIGCOutputFolder()) + "ShaderOverride/";
+  }();
   return path;
 }
 

@@ -900,6 +900,10 @@ DECLARE_IGC_REGKEY(bool, ShaderDumpPidDisable, false, "disabled adding PID to th
 DECLARE_IGC_REGKEY(bool, DumpToCurrentDir, false, "dump shaders to the current directory", true)
 DECLARE_IGC_REGKEY(debugString, DumpToCustomDir, 0, "Dump shaders to custom directory. Parent directory must exist.",
                    true)
+DECLARE_IGC_REGKEY(debugString, ShaderOverrideFromDir, 0,
+                   "Override shaders from a custom directory instead of the default DumpDir/ShaderOverride/. "
+                   "The directory must exist. The OverrideLog.txt is also written here.",
+                   true)
 DECLARE_IGC_REGKEY(bool, EnableShaderNumbering, false,
                    "Number shaders in the order they are dumped based on their hashes", true)
 DECLARE_IGC_REGKEY(bool, PrintToConsole, false, "dump to console", true)
