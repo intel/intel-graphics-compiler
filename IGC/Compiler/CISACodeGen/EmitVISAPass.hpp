@@ -891,6 +891,7 @@ public:
   BlockCoalescing *m_blockCoalescing = nullptr;
   const SIMDMode m_SimdMode;
   const ShaderDispatchMode m_ShaderDispatchMode;
+  CShaderProgram::KernelShaderMap m_ownedShaders;
   CShaderProgram::KernelShaderMap &m_shaders;
   CShader *m_currShader;
   CEncoder *m_encoder;

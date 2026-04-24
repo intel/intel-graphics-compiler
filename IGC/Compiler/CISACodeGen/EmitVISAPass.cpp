@@ -111,9 +111,6 @@ public:
   void trackBlockId(const BasicBlock *BB, uint32_t bbid) { m_blockId[BB] = bbid; }
 };
 
-// FIXME: This is a WA used for opt to test EmitPass only. Maybe consider to
-// move KernelShaderMap to CodeGenContext.
-static CShaderProgram::KernelShaderMap KernelShaderMap;
 
 static cl::opt<SIMDMode>
     SimdMode("simd-mode", cl::desc("Simd mode used for visa codegen"),
@@ -159,7 +156,13 @@ IGC_INITIALIZE_PASS_END(EmitPass, PASS_FLAG, PASS_DESC, PASS_CFG_ONLY, PASS_ANAL
 } // namespace IGC
 
 // Note that the default ctor is intended to be used for opt testing only.
-EmitPass::EmitPass() : EmitPass(KernelShaderMap, SimdMode, AbortOnSpill, DispatchMode) {
+EmitPass::EmitPass()
+    : FunctionPass(ID), m_SimdMode(SimdMode), m_ShaderDispatchMode(DispatchMode), m_shaders(m_ownedShaders),
+      m_currShader(nullptr), m_encoder(nullptr), m_canAbortOnSpill(AbortOnSpill),
+      m_roundingMode_FP(ERoundingMode::ROUND_TO_NEAREST_EVEN), m_roundingMode_FPCvtInt(ERoundingMode::ROUND_TO_ZERO),
+      m_pSignature(nullptr),
+      m_isDuplicate(false) {
+  initializeEmitPassPass(*PassRegistry::getPassRegistry());
   // Call LoadRegistryKeys to set up the implied regkeys for testing purpose.
   LoadRegistryKeys();
 }
@@ -172,7 +175,7 @@ EmitPass::EmitPass(CShaderProgram::KernelShaderMap &shaders, SIMDMode mode, bool
   initializeEmitPassPass(*PassRegistry::getPassRegistry());
 }
 
-EmitPass::~EmitPass() {}
+EmitPass::~EmitPass() { destroyShaderMap(m_ownedShaders); }
 
 // Switch to payload section
 // When switching to payload section, the code redirects vKernel pointing to the
