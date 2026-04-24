@@ -56,16 +56,14 @@ __kernel void foo(global char *foo_param) {
 // CHECK-NEXT: DW_AT_decl_file : [[#DECL_FILE]]
 // CHECK-NEXT: DW_AT_decl_line : 28
 // CHECK-NEXT: DW_AT_type :
-// CHECK-DG2-NEXT: DW_AT_location : {{.+}} (DW_OP_const1u: 143; DW_OP_const1u: 128; DW_OP_INTEL_regval_bits: 64; DW_OP_plus_uconst: 16; DW_OP_INTEL_push_simd_lane; DW_OP_lit8; DW_OP_mul; DW_OP_plus; DW_OP_plus_uconst: [[#]])
-// CHECK-CRI-NEXT: DW_AT_location : {{.+}} (DW_OP_const1u: 143; DW_OP_const2u: 256; DW_OP_INTEL_regval_bits: 64; DW_OP_plus_uconst: 16; DW_OP_INTEL_push_simd_lane; DW_OP_lit8; DW_OP_mul; DW_OP_plus; DW_OP_plus_uconst: [[#]])
+// CHECK-NEXT: DW_AT_location : {{.+}} (location list)
 
 // CHECK: Abbrev Number: [[#]] (DW_TAG_variable)
 // CHECK-NEXT: DW_AT_name : foo_ptr
 // CHECK-NEXT: DW_AT_decl_file : [[#DECL_FILE]]
 // CHECK-NEXT: DW_AT_decl_line : 29
 // CHECK-NEXT: DW_AT_type :
-// CHECK-DG2-NEXT: DW_AT_location : {{.+}} (DW_OP_const1u: 143; DW_OP_const1u: 128; DW_OP_INTEL_regval_bits: 64; DW_OP_plus_uconst: 16; DW_OP_INTEL_push_simd_lane; DW_OP_lit8; DW_OP_mul; DW_OP_plus; DW_OP_plus_uconst: [[#]])
-// CHECK-CRI-NEXT: DW_AT_location : {{.+}} (DW_OP_const1u: 143; DW_OP_const2u: 256; DW_OP_INTEL_regval_bits: 64; DW_OP_plus_uconst: 16; DW_OP_INTEL_push_simd_lane; DW_OP_lit8; DW_OP_mul; DW_OP_plus; DW_OP_plus_uconst: [[#]])
+// CHECK-NEXT: DW_AT_location : {{.+}} (location list)
 
 // CHECK: Abbrev Number: [[#]] (DW_TAG_subprogram)
 // CHECK-NEXT: DW_AT_name : f1
@@ -79,16 +77,19 @@ __kernel void foo(global char *foo_param) {
 // CHECK-NEXT: DW_AT_decl_file : [[#DECL_FILE]]
 // CHECK-NEXT: DW_AT_decl_line : 23
 // CHECK-NEXT: DW_AT_type :
-// CHECK-DG2-NEXT: DW_AT_location : {{.+}} (DW_OP_const1u: 143; DW_OP_const1u: 128; DW_OP_INTEL_regval_bits: 64; DW_OP_plus_uconst: 16; DW_OP_INTEL_push_simd_lane; DW_OP_lit8; DW_OP_mul; DW_OP_plus; DW_OP_plus_uconst: [[#]])
-// CHECK-CRI-NEXT: DW_AT_location : {{.+}} (DW_OP_const1u: 143; DW_OP_const2u: 256; DW_OP_INTEL_regval_bits: 64; DW_OP_plus_uconst: 16; DW_OP_INTEL_push_simd_lane; DW_OP_lit8; DW_OP_mul; DW_OP_plus; DW_OP_plus_uconst: [[#]])
+// CHECK-NEXT: DW_AT_location : {{.+}} (location list)
 
 // CHECK: Abbrev Number: [[#]] (DW_TAG_variable)
 // CHECK-NEXT: DW_AT_name : f1_ptr
 // CHECK-NEXT: DW_AT_decl_file : [[#DECL_FILE]]
 // CHECK-NEXT: DW_AT_decl_line : 24
 // CHECK-NEXT: DW_AT_type :
-// CHECK-DG2-NEXT: DW_AT_location : {{.+}} (DW_OP_const1u: 143; DW_OP_const1u: 128; DW_OP_INTEL_regval_bits: 64; DW_OP_plus_uconst: 16; DW_OP_INTEL_push_simd_lane; DW_OP_lit8; DW_OP_mul; DW_OP_plus; DW_OP_plus_uconst: [[#]])
-// CHECK-CRI-NEXT: DW_AT_location : {{.+}} (DW_OP_const1u: 143; DW_OP_const2u: 256; DW_OP_INTEL_regval_bits: 64; DW_OP_plus_uconst: 16; DW_OP_INTEL_push_simd_lane; DW_OP_lit8; DW_OP_mul; DW_OP_plus; DW_OP_plus_uconst: [[#]])
+// CHECK-NEXT: DW_AT_location : {{.+}} (location list)
 
 // CHECK: The File Name Table (offset {{.+}}):
 // CHECK: [[#DECL_FILE]] [[#]] 0 0 global-variable-location.cl
+//
+// CHECK-DG2: .debug_loc
+// CHECK-DG2: (DW_OP_const1u: 143; DW_OP_const1u: 128; DW_OP_INTEL_regval_bits: 64; DW_OP_plus_uconst: 16; DW_OP_INTEL_push_simd_lane; DW_OP_lit8; DW_OP_mul; DW_OP_plus; DW_OP_plus_uconst: [[#]])
+// CHECK-CRI: .debug_loc
+// CHECK-CRI: (DW_OP_const1u: 143; DW_OP_const2u: 256; DW_OP_INTEL_regval_bits: 64; DW_OP_plus_uconst: 16; DW_OP_INTEL_push_simd_lane; DW_OP_lit8; DW_OP_mul; DW_OP_plus; DW_OP_plus_uconst: [[#]])

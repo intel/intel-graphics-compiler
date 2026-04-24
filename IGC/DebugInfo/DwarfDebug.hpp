@@ -643,7 +643,7 @@ private:
   /// \brief Represents a pending location entry for .debug_loc encoding.
   /// Used to merge consecutive identical locations before emitting.
   struct VarLocation {
-    enum class Type { Empty = 0, Imm = 1, Reg = 2 };
+    enum class Type { Empty = 0, Imm = 1, Reg = 2, FpBased = 3 };
     Type type = Type::Empty;
     uint64_t start = 0;
     uint64_t end = 0;
@@ -660,6 +660,7 @@ private:
     bool isEmpty() const { return type == Type::Empty; }
     bool isImm() const { return type == Type::Imm; }
     bool isReg() const { return type == Type::Reg; }
+    bool isFpBased() const { return type == Type::FpBased; }
     bool isFragmented() { return FragmentInfo.has_value(); }
 
     void setEmpty() {
@@ -675,6 +676,17 @@ private:
       dbgVar = var;
       pInst = inst;
       imm = val;
+      FragmentInfo = fragInfo;
+    }
+
+    void setFpBased(uint64_t s, uint64_t e, DbgVariable *var, const llvm::DbgVariableIntrinsic *inst,
+                    const VISAVariableLocation &loc, std::optional<llvm::DIExpression::FragmentInfo> fragInfo = {}) {
+      type = Type::FpBased;
+      start = s;
+      end = e;
+      dbgVar = var;
+      pInst = inst;
+      Loc = loc;
       FragmentInfo = fragInfo;
     }
 
@@ -731,6 +743,10 @@ private:
   /// location in a GRF register. Handles caller-save.
   void encodeReg(IGC::DotDebugLocEntry &dotLoc, const VarLocation &vl, uint32_t &offset);
 
+  /// \brief Encode an FE_FP-based (StorageOffset) location into .debug_loc.
+  /// Uses buildGeneral with IR-derived ranges (no VISA register liveness).
+  void encodeFpBased(IGC::DotDebugLocEntry &dotLoc, const VarLocation &vl, uint32_t &offset);
+
   /// \brief Build composite DWARF location expressions for fragmented variables.
   /// For each IP sub-interval, assembles a single .debug_loc entry describing
   /// all active fragments.
@@ -743,6 +759,22 @@ private:
   /// and merges consecutive identical locations per-fragment into the output vector.
   void resolveRangesToVarLocations(DbgVariable *RegVar, const std::vector<DbgVarIPInfo> &Ranges,
                                    std::vector<VarLocation> &ResolvedLocations);
+
+  /// \brief Contains prologue and epilogue information for non-optimized stack-call functions.
+  struct FPStackCallFuncInfo {
+    uint64_t PrologueEndIP = 0;
+    uint64_t EpilogueStartIP = 0;
+
+    // If true, override FP-based location range with prologue/epilogue bounds.
+    bool setFunctionIPRange = false;
+  };
+  FPStackCallFuncInfo FPFuncInfo;
+  void computeFPFuncInfo();
+
+  /// \brief Decide whether a variable's location can be inlined directly in
+  /// the DIE.
+  bool canInlineToDIE(const llvm::DbgVariableIntrinsic *DbgInst, const VISAVariableLocation &Loc,
+                      ::IGC::LexicalScope *Scope) const;
 
   /// \brief Determine the lexical scope for a debug variable.
   ::IGC::LexicalScope *resolveVariableScope(llvm::DIVariable *DV, const llvm::DbgVariableIntrinsic *H,

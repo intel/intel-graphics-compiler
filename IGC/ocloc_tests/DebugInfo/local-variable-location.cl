@@ -64,8 +64,7 @@ __kernel void foo(local int *foo_param, global char *foo_param1) {
 // CHECK-NEXT: DW_AT_decl_file : [[#DECL_FILE]]
 // CHECK-NEXT: DW_AT_decl_line : 33
 // CHECK-NEXT: DW_AT_type : <0x[[#%x,SLMPTR_TYPE:]]>
-// CHECK-DG2-NEXT: DW_AT_location : {{.+}} (DW_OP_const1u: 143; DW_OP_const1u: 128; DW_OP_INTEL_regval_bits: 64; DW_OP_plus_uconst: 16; DW_OP_INTEL_push_simd_lane; DW_OP_lit8; DW_OP_mul; DW_OP_plus; DW_OP_plus_uconst: [[#]])
-// CHECK-CRI-NEXT: DW_AT_location : {{.+}} (DW_OP_const1u: 143; DW_OP_const2u: 256; DW_OP_INTEL_regval_bits: 64; DW_OP_plus_uconst: 16; DW_OP_INTEL_push_simd_lane; DW_OP_lit8; DW_OP_mul; DW_OP_plus; DW_OP_plus_uconst: [[#]])
+// CHECK-NEXT: DW_AT_location : {{.+}} (location list)
 
 // FP based foo_param1.
 // CHECK: Abbrev Number: [[#]] (DW_TAG_formal_parameter)
@@ -73,8 +72,7 @@ __kernel void foo(local int *foo_param, global char *foo_param1) {
 // CHECK-NEXT: DW_AT_decl_file : [[#DECL_FILE]]
 // CHECK-NEXT: DW_AT_decl_line : 33
 // CHECK-NEXT: DW_AT_type :
-// CHECK-DG2-NEXT: DW_AT_location : {{.+}} (DW_OP_const1u: 143; DW_OP_const1u: 128; DW_OP_INTEL_regval_bits: 64; DW_OP_plus_uconst: 16; DW_OP_INTEL_push_simd_lane; DW_OP_lit8; DW_OP_mul; DW_OP_plus; DW_OP_plus_uconst: [[#]])
-// CHECK-CRI-NEXT: DW_AT_location : {{.+}} (DW_OP_const1u: 143; DW_OP_const2u: 256; DW_OP_INTEL_regval_bits: 64; DW_OP_plus_uconst: 16; DW_OP_INTEL_push_simd_lane; DW_OP_lit8; DW_OP_mul; DW_OP_plus; DW_OP_plus_uconst: [[#]])
+// CHECK-NEXT: DW_AT_location : {{.+}} (location list)
 
 // Const gb_float.
 // CHECK: Abbrev Number: [[#]] (DW_TAG_variable)
@@ -127,8 +125,7 @@ __kernel void foo(local int *foo_param, global char *foo_param1) {
 // CHECK-NEXT: DW_AT_decl_file : [[#DECL_FILE]]
 // CHECK-NEXT: DW_AT_decl_line : 28
 // CHECK-NEXT: DW_AT_type :
-// CHECK-DG2-NEXT: DW_AT_location : {{.+}} (DW_OP_const1u: 143; DW_OP_const1u: 128; DW_OP_INTEL_regval_bits: 64; DW_OP_plus_uconst: 16; DW_OP_INTEL_push_simd_lane; DW_OP_lit4; DW_OP_mul; DW_OP_plus; DW_OP_plus_uconst: [[#]])
-// CHECK-CRI-NEXT: DW_AT_location : {{.+}} (DW_OP_const1u: 143; DW_OP_const2u: 256; DW_OP_INTEL_regval_bits: 64; DW_OP_plus_uconst: 16; DW_OP_INTEL_push_simd_lane; DW_OP_lit4; DW_OP_mul; DW_OP_plus; DW_OP_plus_uconst: [[#]])
+// CHECK-NEXT: DW_AT_location : {{.+}} (location list)
 
 // Const gb_float.
 // CHECK: Abbrev Number: [[#]] (DW_TAG_variable)
@@ -144,8 +141,7 @@ __kernel void foo(local int *foo_param, global char *foo_param1) {
 // CHECK-NEXT: DW_AT_decl_file : [[#DECL_FILE]]
 // CHECK-NEXT: DW_AT_decl_line : 29
 // CHECK-NEXT: DW_AT_type : <0x[[#SLMPTR_TYPE]]>
-// CHECK-DG2-NEXT: DW_AT_location : {{.+}} (DW_OP_const1u: 143; DW_OP_const1u: 128; DW_OP_INTEL_regval_bits: 64; DW_OP_plus_uconst: 16; DW_OP_INTEL_push_simd_lane; DW_OP_lit8; DW_OP_mul; DW_OP_plus; DW_OP_plus_uconst: [[#]])
-// CHECK-CRI-NEXT: DW_AT_location : {{.+}} (DW_OP_const1u: 143; DW_OP_const2u: 256; DW_OP_INTEL_regval_bits: 64; DW_OP_plus_uconst: 16; DW_OP_INTEL_push_simd_lane; DW_OP_lit8; DW_OP_mul; DW_OP_plus; DW_OP_plus_uconst: [[#]])
+// CHECK-NEXT: DW_AT_location : {{.+}} (location list)
 
 // Expect SLM pointer type to has DW_AT_address_class flag.
 // CHECK: <[[#]]><[[#SLMPTR_TYPE]]>: Abbrev Number: [[#]] (DW_TAG_pointer_type)
@@ -154,3 +150,10 @@ __kernel void foo(local int *foo_param, global char *foo_param1) {
 
 // CHECK: The File Name Table (offset {{.+}}):
 // CHECK: [[#DECL_FILE]] [[#]] 0 0 local-variable-location.cl
+//
+// CHECK-DG2: .debug_loc
+// CHECK-DG2: (DW_OP_const1u: 143; DW_OP_const1u: 128; DW_OP_INTEL_regval_bits: 64; DW_OP_plus_uconst: 16; DW_OP_INTEL_push_simd_lane; DW_OP_lit8; DW_OP_mul; DW_OP_plus; DW_OP_plus_uconst: [[#]])
+// CHECK-DG2: (DW_OP_const1u: 143; DW_OP_const1u: 128; DW_OP_INTEL_regval_bits: 64; DW_OP_plus_uconst: 16; DW_OP_INTEL_push_simd_lane; DW_OP_lit4; DW_OP_mul; DW_OP_plus; DW_OP_plus_uconst: [[#]])
+// CHECK-CRI: .debug_loc
+// CHECK-CRI: (DW_OP_const1u: 143; DW_OP_const2u: 256; DW_OP_INTEL_regval_bits: 64; DW_OP_plus_uconst: 16; DW_OP_INTEL_push_simd_lane; DW_OP_lit8; DW_OP_mul; DW_OP_plus; DW_OP_plus_uconst: [[#]])
+// CHECK-CRI: (DW_OP_const1u: 143; DW_OP_const2u: 256; DW_OP_INTEL_regval_bits: 64; DW_OP_plus_uconst: 16; DW_OP_INTEL_push_simd_lane; DW_OP_lit4; DW_OP_mul; DW_OP_plus; DW_OP_plus_uconst: [[#]])

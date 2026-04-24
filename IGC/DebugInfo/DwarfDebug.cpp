@@ -1492,6 +1492,12 @@ void writeULEB128(std::vector<unsigned char> &vec, uint64_t data) {
   free(buf);
 }
 
+// Check whether a dbg.declare describes an FE_FP-based stack location
+// (StorageOffset metadata, no surface/SLM binding).
+static bool isFpBased(const llvm::DbgVariableIntrinsic *DbgInst, const VISAVariableLocation &Loc) {
+  return isa<DbgDeclareInst>(DbgInst) && DbgInst->getMetadata("StorageOffset") && !Loc.HasSurface() && !Loc.IsSLM();
+}
+
 void DwarfDebug::encodeImm(IGC::DotDebugLocEntry &dotLoc, const VarLocation &vl, uint32_t &offset) {
   auto op = llvm::dwarf::DW_OP_implicit_value;
   const unsigned int lebSize = 8;
@@ -1512,6 +1518,22 @@ void DwarfDebug::encodeImm(IGC::DotDebugLocEntry &dotLoc, const VarLocation &vl,
 
   TempDotDebugLocEntries.push_back(dotLoc);
   // For DWARF v4 offsets, account for start / end + u16 length + expr bytes
+  offset += PointerSize * 2 + 2 + dotLoc.loc.size();
+}
+
+void DwarfDebug::encodeFpBased(IGC::DotDebugLocEntry &dotLoc, const VarLocation &vl, uint32_t &offset) {
+  dotLoc.start = vl.start;
+  dotLoc.end = vl.end;
+
+  auto block = FirstCU->buildGeneral(*vl.dbgVar, vl.Loc, /*vars=*/nullptr);
+  std::vector<unsigned char> buffer;
+  if (block) {
+    block->EmitToRawBuffer(buffer);
+    block->~DIEBlock();
+  }
+  write(dotLoc.loc, buffer.data(), buffer.size());
+
+  TempDotDebugLocEntries.push_back(dotLoc);
   offset += PointerSize * 2 + 2 + dotLoc.loc.size();
 }
 
@@ -1713,6 +1735,34 @@ void DwarfDebug::encodeCompositeExprs(DbgVariable *RegVar, const std::vector<Var
   }
 }
 
+void DwarfDebug::computeFPFuncInfo() {
+  FPFuncInfo = {};
+  const auto *F = m_pModule->GetEntryFunction();
+  const bool optnone = F && F->hasFnAttribute(llvm::Attribute::OptimizeNone);
+
+  if (!(m_pModule->GetType() == VISAModule::ObjectType::STACKCALL_FUNC))
+    return;
+
+  if (!optnone)
+    return;
+
+  const auto &CFI = VisaDbgInfo->getCFI();
+  if (CFI.befpValid && !CFI.befp.empty()) {
+    const unsigned int MovGenInstSizeInBytes = 16;
+    const unsigned int relocOffset = VisaDbgInfo->getRelocOffset();
+
+    // Set prologue end after the last BE_FP instruction that sets up
+    // frame pointer, plus the following MOV that generates FP value.
+    FPFuncInfo.PrologueEndIP = CFI.befp.front().start + relocOffset;
+    FPFuncInfo.PrologueEndIP += MovGenInstSizeInBytes;
+
+    // Set EpilogueStartIP to just before FP becomes invalid.
+    FPFuncInfo.EpilogueStartIP = CFI.befp.back().end + relocOffset;
+    FPFuncInfo.EpilogueStartIP -= 2 * MovGenInstSizeInBytes;
+    FPFuncInfo.setFunctionIPRange = true;
+  }
+}
+
 void DwarfDebug::resolveRangesToVarLocations(DbgVariable *RegVar, const std::vector<DbgVarIPInfo> &Ranges,
                                              std::vector<VarLocation> &ResolvedLocations) {
   using IntervalTy = decltype(DbgDecoder::LiveIntervalGenISA::start);
@@ -1740,12 +1790,37 @@ void DwarfDebug::resolveRangesToVarLocations(DbgVariable *RegVar, const std::vec
 
   for (const auto &[startIp, endIp, pInst] : Ranges) {
     auto FI = IGCLLVM::makeOptional(pInst->getExpression()->getFragmentInfo());
-
-    auto &prev = prevPerFrag[FI];
     auto CurLoc = m_pModule->GetVariableLocation(pInst);
 
     LLVM_DEBUG(dbgs() << "  Processing Location at IP Range: [0x"; dbgs().write_hex(startIp) << "; " << "0x";
                dbgs().write_hex(endIp) << "]\n"; CurLoc.print(dbgs()););
+
+    if (isFpBased(pInst, CurLoc)) {
+      uint64_t fpStart = startIp;
+      uint64_t fpEnd = endIp;
+
+      // FP-based variable lives on stack while BE_FP is valid.
+      // Kernel: from dbg.declare position (startIp) to end of range.
+      // Stack-call (-O0): from after prologue to epilogue start.
+      if (FPFuncInfo.setFunctionIPRange) {
+        fpStart = FPFuncInfo.PrologueEndIP;
+        fpEnd = std::min(fpEnd, FPFuncInfo.EpilogueStartIP);
+      }
+
+      if (fpStart >= fpEnd)
+        continue;
+
+      // We expect one dbg.declare for variable, so it doesn't have to go through
+      // prev-based merge/extend logic.
+      ResolvedLocations.emplace_back();
+      ResolvedLocations.back().setFpBased(fpStart, fpEnd, RegVar, pInst, CurLoc, FI);
+
+      LLVM_DEBUG(dbgs() << "  FP-based Resolved IP Range: [0x"; dbgs().write_hex(fpStart) << ",0x";
+                 dbgs().write_hex(fpEnd) << ")\n";);
+      continue;
+    }
+
+    auto &prev = prevPerFrag[FI];
 
     if (CurLoc.IsImmediate()) {
       const Constant *pConstVal = CurLoc.GetImmediate();
@@ -1816,6 +1891,27 @@ void DwarfDebug::resolveRangesToVarLocations(DbgVariable *RegVar, const std::vec
     if (!prev.isEmpty())
       ResolvedLocations.push_back(prev);
   }
+}
+
+bool DwarfDebug::canInlineToDIE(const llvm::DbgVariableIntrinsic *DbgInst, const VISAVariableLocation &Loc,
+                                LexicalScope *Scope) const {
+  // Immediates are always safe to inline.
+  if (Loc.IsImmediate())
+    return true;
+
+  // Surface/SLM-bound declares have a fixed address
+  if (isa<DbgDeclareInst>(DbgInst) && (Loc.HasSurface() || Loc.IsSLM()))
+    return true;
+
+  // FP-based locations in non-outermost scopes can be inlined, since
+  // FE_FP is valid throughout the inlined scope. Outermost-scope
+  // FP-based must go through .debug_loc so that the emitted range
+  // is limited to the interval where FE_FP is valid.
+  bool IsOutermostScope = Scope == LScopes.getCurrentFunctionScope();
+  if (isFpBased(DbgInst, Loc) && !IsOutermostScope)
+    return true;
+
+  return false;
 }
 
 LexicalScope *DwarfDebug::resolveVariableScope(DIVariable *DV, const llvm::DbgVariableIntrinsic *pInst,
@@ -1897,21 +1993,10 @@ DIVariable *DwarfDebug::processVariableHistory(const llvm::MDNode *Var,
     // Conditions below decide whether we want to emit location to .debug_loc
     // or inline it in the DIE. To inline in DIE, we simply set dbg
     // instruction and return DV. Location list won't be emitted.
-
-    // We emit inlined location for the variable in the following cases:
-    // 1. There is a single llvm.dbg.declare instruction describing memory
-    // location of the variable.
-    // 2. There is a single llvm.dbg.value instruction with immediate value -
-    // we assume that the value of the variable is constant.
-    // We want to support more cases in the future.
-    if (History.size() == 1) {
-      bool CanInline =
-          isa<DbgDeclareInst>(DbgInst) && (DbgInst->getMetadata("StorageOffset") || Loc.HasSurface() || Loc.IsSLM());
-      if (Loc.IsImmediate() || CanInline) {
-        RegVar->setDbgInst(DbgInst);
-        RegVar->setLocationInlined(true);
-        return DV;
-      }
+    if (History.size() == 1 && canInlineToDIE(DbgInst, Loc, Scope)) {
+      RegVar->setDbgInst(DbgInst);
+      RegVar->setLocationInlined(true);
+      return DV;
     }
 
     const Instruction *Start = DbgInst;
@@ -2017,10 +2102,14 @@ void DwarfDebug::collectVariableInfo(const Function *MF, SmallPtrSet<const MDNod
           // instruction.
           vl.dbgVar->setDbgInst(vl.pInst);
 
-          if (vl.isImm()) {
+          if (vl.isFpBased()) {
+            encodeFpBased(dotLoc, vl, offset);
+          } else if (vl.isImm()) {
             encodeImm(dotLoc, vl, offset);
-          } else {
+          } else if (vl.isReg()) {
             encodeReg(dotLoc, vl, offset);
+          } else {
+            IGC_ASSERT_MESSAGE(0, "Unexpected VarLocation type in .debug_loc encoding");
           }
         }
       }
@@ -2415,6 +2504,7 @@ void DwarfDebug::endFunction(const Function *MF) {
     Asm->SetDwarfCompileUnitID(0);
 
     SmallPtrSet<const MDNode *, 16> ProcessedVars;
+    computeFPFuncInfo();
     LLVM_DEBUG(dbgs() << "[DwarfDebug] collecting variables ---\n");
     collectVariableInfo(MF, ProcessedVars);
     LLVM_DEBUG(dbgs() << "[DwarfDebug] variables collected ***\n");
