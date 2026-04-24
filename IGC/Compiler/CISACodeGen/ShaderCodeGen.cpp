@@ -77,6 +77,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CISACodeGen/EvaluateFreeze.hpp"
 #include "Compiler/CISACodeGen/DpasScan.hpp"
 #include "Compiler/CISACodeGen/FPRoundingModeCoalescing.hpp"
+#include "Compiler/CISACodeGen/SimpleAluVectorizer.hpp"
 
 #include "Compiler/CISACodeGen/SLMConstProp.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/SplitStructurePhisPass/SplitStructurePhisPass.hpp"
@@ -1113,6 +1114,12 @@ void AddLegalizationPasses(CodeGenContext &ctx, IGCPassManager &mpm, PSSignature
   }
 
   mpm.add(createInstSimplifyLegacyPass());
+
+  if (ctx.platform.enableSimpleAluVectorizer() && ctx.m_DriverInfo.allowSimpleAluVectorizerPass() &&
+      ctx.type == ShaderType::COMPUTE_SHADER) {
+    mpm.add(createSimpleAluVectorizerPass());
+  }
+
   // This pass inserts bitcasts for vector loads/stores.
   // This pass could be moved further toward EmitPass.
   mpm.add(createVectorProcessPass());

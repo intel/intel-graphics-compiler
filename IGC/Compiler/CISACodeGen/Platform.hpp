@@ -1684,5 +1684,11 @@ public:
     return simdMode;
   }
 
+
+  bool enableSimpleAluVectorizer() const {
+    bool enabled = IGC_IS_FLAG_ENABLED(EnableSimpleAluVectorizer);
+
+    return enabled;
+  }
 };
 } // namespace IGC
