@@ -2264,13 +2264,14 @@ GRFMode::GRFMode(const TARGET_PLATFORM plat, unsigned regSize, Options *op)
 unsigned GRFMode::setModeByRegPressure(unsigned maxRP, unsigned largestInputReg,
                                        bool forceGRFModeUp) {
   unsigned size = configs.size(), i = 0;
-  bool spillAllowed = getSpillThreshold() > 0;
-  unsigned spillThresholdInRegs = getSpillThreshold() / grfSize;
   // find appropiate GRF based on reg pressure
   for (; i < size; i++) {
     if (configs[i].VRTEnable && configs[i].numGRF >= lowerBoundGRF &&
         configs[i].numGRF <= upperBoundGRF) {
       currentMode = i;
+      unsigned spillThreshold = getSpillThreshold();
+      unsigned spillThresholdInRegs = spillThreshold / grfSize;
+      bool spillAllowed = spillThreshold > 0;
       if (maxRP <= configs[i].numGRF &&
           // Check that we've at least 8 GRFs over and above
           // those blocked for kernel input. This helps cases
@@ -2285,6 +2286,7 @@ unsigned GRFMode::setModeByRegPressure(unsigned maxRP, unsigned largestInputReg,
 
         if (spillAllowed && !hasSmallerGRFSameThreads() && currentMode > 0) {
           unsigned lowerGRFNum = getSmallerGRF();
+          bool lowerGRFSpillAllowed = getSpillThreshold(currentMode-1) > 0;
           // Select a lower GRF number in PreRA in case the register
           // pressure computed is a bit higher (e.g. 4%) than the lower GRF
           // config. If spills are detected, RA will still bump up the GRF
@@ -2295,7 +2297,8 @@ unsigned GRFMode::setModeByRegPressure(unsigned maxRP, unsigned largestInputReg,
           if ((lowerGRFNum * 1.04 >= maxRP ||
                configs[currentMode].numGRF == getMaxGRF()) &&
               lowerGRFNum >= (largestInputReg + 8) &&
-              lowerGRFNum >= lowerBoundGRF)
+              lowerGRFNum >= lowerBoundGRF &&
+              lowerGRFSpillAllowed)
             setModeByNumGRFs(lowerGRFNum);
         }
         return configs[currentMode].numGRF;
@@ -2328,9 +2331,9 @@ bool GRFMode::hasSmallerGRFSameThreads() const {
   return configs[currentMode].numThreads == configs[smallerGrfIdx].numThreads;
 }
 
-// Get spill threshold for current GRF mode
-unsigned GRFMode::getSpillThreshold() const {
-  const auto &config = configs[currentMode];
+// Get spill threshold for the given GRF mode
+unsigned GRFMode::getSpillThreshold(unsigned mode) const {
+  const auto &config = configs[mode];
   uint32_t numGRF = config.numGRF;
 
   // Platforms pre Xe3 do not support spill threshold

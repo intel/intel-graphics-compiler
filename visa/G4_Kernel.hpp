@@ -156,7 +156,8 @@ public:
                                 bool forceGRFModedUp = false);
   bool hasLargerGRFSameThreads() const;
   bool hasSmallerGRFSameThreads() const;
-  unsigned getSpillThreshold() const;
+  unsigned getSpillThreshold(unsigned mode) const;
+  unsigned getSpillThreshold() const { return getSpillThreshold(currentMode); }
 
   bool canUpdateMode() const;
   unsigned getCurrentMode() const { return currentMode; }
