@@ -10,6 +10,8 @@ SPDX-License-Identifier: MIT
 #include "BuildIR.h"
 #include "FlowGraph.h"
 
+#include <unordered_set>
+
 using namespace vISA;
 
 SpillFillPropagation::SpillFillPropagation(G4_Kernel &k, IR_Builder &b,
@@ -181,8 +183,8 @@ bool SpillFillPropagation::replaceFillWithMovs(
 // instruction pointed to by rit (backward pass). Erases the pending fill
 // instruction and re-seats rit. Returns false if src/dst overlap unsafely.
 bool SpillFillPropagation::replaceFillWithMovsAfter(
-    G4_BB *bb, INST_LIST_RITER &rit, const PendingFill &pf,
-    const std::vector<unsigned> &srcGRFs) {
+    G4_BB *bb, INST_LIST_RITER &rit, INST_LIST_ITER &insertAfterIt,
+    const PendingFill &pf, const std::vector<unsigned> &srcGRFs) {
 
   if (!canSafelyReplace(srcGRFs, pf.dstStartGRF, pf.numRows))
     return false;
@@ -194,7 +196,8 @@ bool SpillFillPropagation::replaceFillWithMovsAfter(
     type = Type_UQ;
   G4_ExecSize singleRowExecSize(grfSize / TypeSize(type));
 
-  INST_LIST_ITER insertPos = std::next(sourceIt);
+  INST_LIST_ITER insertPos = std::next(insertAfterIt);
+  INST_LIST_ITER lastInserted = insertAfterIt;
 
   for (unsigned i = 0; i < pf.numRows;) {
     if (srcGRFs[i] == pf.dstStartGRF + i) {
@@ -228,6 +231,7 @@ bool SpillFillPropagation::replaceFillWithMovsAfter(
     mov->setVISAId(pf.visaId);
 
     bb->insertBefore(insertPos, mov);
+    lastInserted = std::prev(insertPos);
 
     if (gra.EUFusionNoMaskWANeeded()) {
       gra.addEUFusionNoMaskWAInst(bb, mov);
@@ -243,6 +247,10 @@ bool SpillFillPropagation::replaceFillWithMovsAfter(
   // Re-seat the reverse iterator to the source instruction.
   // Insertions after sourceIt may have shifted what rit dereferences to.
   rit = INST_LIST_RITER(std::next(sourceIt));
+
+  // Advance the caller's insertion anchor so the next match chains its mov(s)
+  // after the ones just inserted instead of sharing the same anchor.
+  insertAfterIt = lastInserted;
   return true;
 }
 
@@ -437,6 +445,12 @@ void SpillFillPropagation::invalidateSrcs(
   }
 }
 
+// Order matched fills by ascending lexical id so each emitted mov chains in
+// original program order after the previous one.
+static const auto byLexIdAsc = [](const G4_INST *a, const G4_INST *b) {
+  return a->getLexicalId() < b->getLexicalId();
+};
+
 // Backward (bottom-up) pass: collect pending fills and match them against
 // earlier spills/fills that produce the same scratch data, inserting movs
 // right after the source instruction.
@@ -463,9 +477,11 @@ void SpillFillPropagation::processBBBackward(G4_BB *bb) {
       unsigned fillNumRows = fill->getNumRows();
       auto [fillDstStart, fillDstEnd] = getGRFRange(fill->getDst());
       if (inst->isWriteEnableInst()) {
-        // Try to match pending fills whose offset range is fully covered
-        // by this fill and whose rows are all still present in pendingFills.
-        std::set<G4_INST *> matched;
+        // Deterministic ordering of matched fills (see byLexIdAsc above).
+        std::set<G4_INST *, decltype(byLexIdAsc)> matched(byLexIdAsc);
+        // Iterate over all pending fills, and find matching ones. A matching
+        // fill is one that's fully covered by the current fill
+        // (fillOffset/NumRows).
         for (auto &[off, pf] : pendingFills) {
           if (matched.count(pf.inst))
             continue;
@@ -486,6 +502,21 @@ void SpillFillPropagation::processBBBackward(G4_BB *bb) {
               matched.insert(pf.inst);
           }
         }
+        // Ordinarily, each matching fill can be replaced with a MOV. However,
+        // there are some cases where this isn't safe. For eg,
+        //   intrinsic.fill.4 r122  Scratch[10x32]   // wide fill: r122..r125
+        //   ...
+        //   intrinsic.fill.1 r123  Scratch[12x32]   // becomes: mov r123, r124
+        //   ...
+        //   intrinsic.fill.1 r124  Scratch[11x32]   // becomes: mov r124, r123
+        // Emitting both movs would swap r123/r124 and corrupt one value.
+        // clobberedRows tracks dst GRFs written by already-emitted movs in
+        // this batch; if a later match would read such a row, skip it and
+        // leave the fill at its original program position.
+        std::unordered_set<unsigned> clobberedRows;
+        // Chain each emitted mov after the previous one so later matches don't
+        // land between earlier movs and the source — keeps WAR order safe.
+        INST_LIST_ITER insertAfterIt = std::next(rit).base();
         for (G4_INST *matchedInst : matched) {
           // Find the PendingFill for this matched instruction.
           PendingFill *matchedPF = nullptr;
@@ -503,7 +534,22 @@ void SpillFillPropagation::processBBBackward(G4_BB *bb) {
           srcGRFs.reserve(pfNumRows);
           for (unsigned i = 0; i < pfNumRows; ++i)
             srcGRFs.push_back(fillDstStart + (pfOffset - fillOffset) + i);
-          if (replaceFillWithMovsAfter(bb, rit, *matchedPF, srcGRFs)) {
+
+          bool conflicts = false;
+          for (unsigned g : srcGRFs) {
+            if (clobberedRows.count(g)) {
+              conflicts = true;
+              break;
+            }
+          }
+          if (conflicts)
+            continue;
+
+          if (replaceFillWithMovsAfter(bb, rit, insertAfterIt, *matchedPF,
+                                       srcGRFs)) {
+            for (unsigned g = matchedPF->dstStartGRF;
+                 g <= matchedPF->dstEndGRF; ++g)
+              clobberedRows.insert(g);
             for (unsigned i = 0; i < pfNumRows; ++i)
               pendingFills.erase(pfOffset + i);
           }
@@ -539,7 +585,7 @@ void SpillFillPropagation::processBBBackward(G4_BB *bb) {
         auto [payloadStart, payloadEnd] = getGRFRange(spill->getPayload());
 
         // Try to match pending fills whose rows are all still present.
-        std::set<G4_INST *> matched;
+        std::set<G4_INST *, decltype(byLexIdAsc)> matched(byLexIdAsc);
         for (auto &[off, pf] : pendingFills) {
           if (matched.count(pf.inst))
             continue;
@@ -559,6 +605,8 @@ void SpillFillPropagation::processBBBackward(G4_BB *bb) {
               matched.insert(pf.inst);
           }
         }
+        std::unordered_set<unsigned> clobberedRows;
+        INST_LIST_ITER insertAfterIt = std::next(rit).base();
         for (G4_INST *matchedInst : matched) {
           PendingFill *matchedPF = nullptr;
           for (auto &[off, pf] : pendingFills) {
@@ -575,7 +623,22 @@ void SpillFillPropagation::processBBBackward(G4_BB *bb) {
           srcGRFs.reserve(pfNumRows);
           for (unsigned i = 0; i < pfNumRows; ++i)
             srcGRFs.push_back(payloadStart + (pfOffset - spillOffset) + i);
-          if (replaceFillWithMovsAfter(bb, rit, *matchedPF, srcGRFs)) {
+
+          bool conflicts = false;
+          for (unsigned g : srcGRFs) {
+            if (clobberedRows.count(g)) {
+              conflicts = true;
+              break;
+            }
+          }
+          if (conflicts)
+            continue;
+
+          if (replaceFillWithMovsAfter(bb, rit, insertAfterIt, *matchedPF,
+                                       srcGRFs)) {
+            for (unsigned g = matchedPF->dstStartGRF;
+                 g <= matchedPF->dstEndGRF; ++g)
+              clobberedRows.insert(g);
             for (unsigned i = 0; i < pfNumRows; ++i)
               pendingFills.erase(pfOffset + i);
           }
@@ -616,6 +679,13 @@ void SpillFillPropagation::processBBBackward(G4_BB *bb) {
 void SpillFillPropagation::run() {
   if (gra.useLscForScatterSpill)
     return;
+
+  // Assign fresh lexical ids so the backward pass can order matched pending
+  // fills deterministically and by original program position.
+  uint32_t id = 0;
+  for (auto *bb : kernel.fg)
+    for (auto *inst : *bb)
+      inst->setLexicalId(id++);
 
   for (G4_BB *bb : kernel.fg)
     processBBBackward(bb);

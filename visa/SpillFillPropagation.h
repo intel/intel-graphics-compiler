@@ -70,6 +70,7 @@ class SpillFillPropagation {
   void processBBForward(G4_BB *bb);
   void processBBBackward(G4_BB *bb);
   bool replaceFillWithMovsAfter(G4_BB *bb, INST_LIST_RITER &rit,
+                                INST_LIST_ITER &insertAfterIt,
                                 const PendingFill &pf,
                                 const std::vector<unsigned> &srcGRFs);
   bool hasAssignedGRF(G4_Declare *topdcl) const;
