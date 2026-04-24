@@ -6,8 +6,6 @@
 #
 #============================ end_copyright_notice =============================
 
-cmake_minimum_required(VERSION 2.8.12)
-
 message(STATUS "============================ SPIRV-Tools project ============================")
 
 if(IGC_OPTION__SPIRV_TOOLS_MODE STREQUAL PREBUILDS_MODE_NAME)

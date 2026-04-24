@@ -6,8 +6,8 @@
 #
 #============================ end_copyright_notice =============================
 
-# We require cmake 3.2.0 or later
-cmake_minimum_required(VERSION 3.2.0 FATAL_ERROR)
+# We require cmake 3.11 or later
+cmake_minimum_required(VERSION 3.11 FATAL_ERROR)
 
 # We want to organize our IDE targets into folders
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
