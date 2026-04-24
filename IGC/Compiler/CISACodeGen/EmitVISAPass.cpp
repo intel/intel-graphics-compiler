@@ -14889,7 +14889,8 @@ this to 8 back to back atomic instructions which are extremely slow to execute.
 */
 void EmitPass::emitScalarAtomics(llvm::Instruction *pInst, ResourceDescriptor &resource, AtomicOp atomic_op,
                                  CVariable *pUniformBaseAddr, CVariable *pDstAddr, CVariable *pU, CVariable *pV,
-                                 CVariable *pR, CVariable *pSrc, bool isA64, int bitWidth, int immOffset, int immScale,
+                                 CVariable *pR,
+                                 CVariable *pSrc, bool isA64, int bitWidth, int immOffset, int immScale,
                                  LSC_ADDR_SIZE addrSize) {
   e_opcode op = EOPCODE_ADD;
   // find the value for which opcode(x, identity) == x
@@ -15114,8 +15115,10 @@ void EmitPass::emitScalarAtomics(llvm::Instruction *pInst, ResourceDescriptor &r
   if (shouldGenerateLSC(pInst)) {
     auto cacheOpts = LSC_DEFAULT_CACHING;
     if (pU || pV || pR) {
-      m_encoder->LSC_TypedAtomic(uniformAtomicOp, &resource, pU, pV, pR, pFinalAtomicSrcVal, nullptr /*src1*/,
-                                 pReturnVal, bitWidth, LSC_ADDR_SIZE_32b, cacheOpts);
+      {
+        m_encoder->LSC_TypedAtomic(uniformAtomicOp, &resource, pU, pV, pR, pFinalAtomicSrcVal, nullptr /*src1*/,
+                                   pReturnVal, bitWidth, LSC_ADDR_SIZE_32b, cacheOpts);
+      }
     } else {
       m_encoder->LSC_AtomicRaw(uniformAtomicOp, pReturnVal, pUniformBaseAddr, pDstAddr, pFinalAtomicSrcVal, nullptr,
                                bitWidth, &resource, addrSize, immOffset, immScale, cacheOpts);
@@ -15166,8 +15169,9 @@ void EmitPass::emitScalarAtomics(llvm::Instruction *pInst, ResourceDescriptor &r
 // when the atomic is uniform we can directly generate a SIMD1 atomic_or
 //
 void EmitPass::emitScalarAtomicLoad(llvm::Instruction *pInst, ResourceDescriptor &resource, CVariable *pUniformBase,
-                                    CVariable *pDstAddr, CVariable *pU, CVariable *pV, CVariable *pR, CVariable *pSrc,
-                                    bool isA64, int bitWidth, int immOffset, int immScale, LSC_ADDR_SIZE addrSize) {
+                                    CVariable *pDstAddr, CVariable *pU, CVariable *pV, CVariable *pR,
+                                    CVariable *pSrc, bool isA64, int bitWidth, int immOffset, int immScale,
+                                    LSC_ADDR_SIZE addrSize) {
   auto moveToReg = [&](CVariable *&pVar) {
     CVariable *pVarCopy = m_currShader->GetNewVariable(1, pVar->GetType(), EALIGN_GRF, true, pVar->getName());
     m_encoder->SetSimdSize(SIMDMode::SIMD1);
@@ -15209,8 +15213,10 @@ void EmitPass::emitScalarAtomicLoad(llvm::Instruction *pInst, ResourceDescriptor
   if (shouldGenerateLSC(pInst)) {
     auto cacheOpts = LSC_DEFAULT_CACHING;
     if (pU || pV || pR) {
-      m_encoder->LSC_TypedAtomic(EATOMIC_OR, &resource, pU, pV, pR, pSrc, nullptr /*src1*/, atomicDst, bitWidth,
-                                 LSC_ADDR_SIZE_32b, cacheOpts);
+      {
+        m_encoder->LSC_TypedAtomic(EATOMIC_OR, &resource, pU, pV, pR, pSrc, nullptr /*src1*/, atomicDst, bitWidth,
+                                   LSC_ADDR_SIZE_32b, cacheOpts);
+      }
     } else {
       m_encoder->LSC_AtomicRaw(EATOMIC_OR, atomicDst, pUniformBase, pDstAddr, pSrc, nullptr, bitWidth, &resource,
                                addrSize, immOffset, immScale, cacheOpts);
@@ -15304,18 +15310,20 @@ bool EmitPass::IsUniformAtomic(llvm::Instruction *pInst) {
       if (IGC_IS_FLAG_DISABLED(EnableScalarTypedAtomics))
         return false;
 
-      llvm::Value *pllbuffer = pInst->getOperand(0);
-      llvm::Value *pllU = pInst->getOperand(1);
-      llvm::Value *pllV = pInst->getOperand(2);
-      llvm::Value *pllR = pInst->getOperand(3);
+      const unsigned atomicOpIdx = 5;
 
-      // Use GetIsUniform (WI analysis) instead of GetSymbol()->IsUniform()
-      // to avoid asserting on instructions consumed by Efficient64b folding.
-      if (m_currShader->GetIsUniform(pllbuffer) && (m_currShader->GetIsUniform(pllU) || isa<UndefValue>(pllU)) &&
-          (m_currShader->GetIsUniform(pllV) || isa<UndefValue>(pllV)) &&
-          (m_currShader->GetIsUniform(pllR) || isa<UndefValue>(pllR))) {
-        AtomicOp atomic_op = static_cast<AtomicOp>(llvm::cast<llvm::ConstantInt>(pInst->getOperand(5))->getZExtValue());
+      llvm::Value *pDstBuffer = pInst->getOperand(0);
+      llvm::Value *pU = pInst->getOperand(1);
+      llvm::Value *pV = pInst->getOperand(2);
+      llvm::Value *pR = pInst->getOperand(3);
 
+      auto isUniformOrUndef = [this](llvm::Value *v) { return m_currShader->GetIsUniform(v) || isa<UndefValue>(v); };
+      bool allUniform = m_currShader->GetIsUniform(pDstBuffer) && isUniformOrUndef(pU) && isUniformOrUndef(pV) &&
+                        isUniformOrUndef(pR);
+
+      if (allUniform) {
+        AtomicOp atomic_op =
+            static_cast<AtomicOp>(llvm::cast<llvm::ConstantInt>(pInst->getOperand(atomicOpIdx))->getZExtValue());
         bool isAddAtomic = atomic_op == EATOMIC_IADD || atomic_op == EATOMIC_INC || atomic_op == EATOMIC_SUB ||
                            atomic_op == EATOMIC_DEC;
         bool isMinMaxAtomic = atomic_op == EATOMIC_UMAX || atomic_op == EATOMIC_UMIN || atomic_op == EATOMIC_IMIN ||
@@ -15470,7 +15478,8 @@ void EmitPass::emitAtomicRaw(llvm::GenIntrinsicInst *pInst, Value *dstAddr, Cons
                              pSrc0, isA64, bitwidth, immOffsetVal, immScaleVal, addrSize);
       } else {
         emitScalarAtomics(pInst, resource, atomic_op, uniformBaseVar, pDstAddr, nullptr /*u*/, nullptr /*v*/,
-                          nullptr /*r*/, pSrc0, isA64, bitwidth, immOffsetVal, immScaleVal, addrSize);
+                          nullptr /*r*/,
+                          pSrc0, isA64, bitwidth, immOffsetVal, immScaleVal, addrSize);
         ResetVMask();
       }
     return;
@@ -15632,10 +15641,12 @@ void EmitPass::emitAtomicTyped(GenIntrinsicInst *pInsn) {
     if (atomic_op == EATOMIC_OR && OrWith0Atomic(pInsn, 4)) {
       // special case of atomic_load
       emitScalarAtomicLoad(pInsn, resource, nullptr, /*uniformBase*/
-                           nullptr /*pDstAddr*/, pU, pV, pR, pSrc0, false /*isA64*/, bitwidth, 0, 1, LSC_ADDR_SIZE_32b);
+                           nullptr /*pDstAddr*/, pU, pV, pR,
+                           pSrc0, false /*isA64*/, bitwidth, 0, 1, LSC_ADDR_SIZE_32b);
     } else {
       emitScalarAtomics(pInsn, resource, atomic_op, nullptr, /*uniformBase*/
-                        nullptr /*pDstAddr*/, pU, pV, pR, pSrc0, false /*isA64*/, bitwidth, 0, 1, LSC_ADDR_SIZE_32b);
+                        nullptr /*pDstAddr*/, pU, pV, pR,
+                        pSrc0, false /*isA64*/, bitwidth, 0, 1, LSC_ADDR_SIZE_32b);
     }
   } else {
     pU = BroadcastIfUniform(pU);
@@ -19557,8 +19568,9 @@ void EmitPass::emitLSCAtomicTyped(llvm::GenIntrinsicInst *inst) {
   // Currently, Dword Atomics can be called by matching 2 intrinsics. One is the
   // DwordAtomicRaw and AtomicCmpXchg (which has 2 srcs unlike the other
   // atomics).
-  IGC_ASSERT(IGCLLVM::getNumArgOperands(inst) == 6);
 
+  GenISAIntrinsic::ID ID = inst->getIntrinsicID();
+  IGC_ASSERT(IGCLLVM::getNumArgOperands(inst) == 6u);
   /// Immediate Atomics return the value before the atomic operation is
   /// performed. So that flag needs to be set for this.
   bool returnsImmValue = !inst->user_empty();
@@ -19572,14 +19584,15 @@ void EmitPass::emitLSCAtomicTyped(llvm::GenIntrinsicInst *inst) {
   CVariable *pSrc0 = nullptr;
   CVariable *pSrc1 = nullptr;
   AtomicOp atomic_op = EATOMIC_UNDEF;
-  if (inst->getIntrinsicID() == GenISAIntrinsic::GenISA_icmpxchgatomictyped ||
-      inst->getIntrinsicID() == GenISAIntrinsic::GenISA_fcmpxchgatomictyped) {
+  if (ID == GenISAIntrinsic::GenISA_icmpxchgatomictyped || ID == GenISAIntrinsic::GenISA_fcmpxchgatomictyped
+  ) {
     llvm::Value *pllSrc1 = inst->getOperand(5);
     pSrc1 = GetSymbol(pllSrc1);
     pSrc1 = UnpackOrBroadcastIfUniform(pSrc1);
-    atomic_op = EATOMIC_CMPXCHG;
-    atomic_op =
-        inst->getIntrinsicID() == GenISAIntrinsic::GenISA_icmpxchgatomictyped ? EATOMIC_CMPXCHG : EATOMIC_FCMPWR;
+    atomic_op = (ID == GenISAIntrinsic::GenISA_icmpxchgatomictyped
+                 )
+                    ? EATOMIC_CMPXCHG
+                    : EATOMIC_FCMPWR;
   } else {
     atomic_op = static_cast<AtomicOp>(cast<ConstantInt>(inst->getOperand(5))->getZExtValue());
   }
@@ -19597,30 +19610,39 @@ void EmitPass::emitLSCAtomicTyped(llvm::GenIntrinsicInst *inst) {
   CVariable *pU = GetSymbol(pllU);
   auto eltSizeInBits = inst->getType()->getScalarSizeInBits();
 
+  // The uniform (scalar) atomic optimization reduces a SIMD-wide atomic to a
+  // single-lane operation with wave-level reduction.
   if (IsUniformAtomic(inst)) {
-    // check if the UVR payload is reused. If so get the CVariable from cached
-    // tuple this can reduce the mov instructions for creating UVR payload.
-    tuple<CVariable *, CVariable *, CVariable *> cachedCVar;
-    tuple<Value *, Value *, Value *> uvr = make_tuple(pllU, pllV, pllR);
-    if (auto It = atomic_shared_pUVR.find(uvr); It != atomic_shared_pUVR.end()) {
-      cachedCVar = It->second;
-    } else {
-      pU = ReAlignUniformVariable(pU, EALIGN_GRF);
-      pV = pV ? ReAlignUniformVariable(pV, EALIGN_GRF) : pV;
-      pR = pR ? ReAlignUniformVariable(pR, EALIGN_GRF) : pR;
-      cachedCVar = addToCachedPayloadUVR(pU, pV, pR);
-      atomic_shared_pUVR[uvr] = cachedCVar;
-    }
+    CVariable *pScalarU = nullptr;
+    CVariable *pScalarV = nullptr;
+    CVariable *pScalarR = nullptr;
+      // check if the UVR payload is reused. If so get the CVariable from cached
+      // tuple this can reduce the mov instructions for creating UVR payload.
+      tuple<CVariable *, CVariable *, CVariable *> cachedCVar;
+      tuple<Value *, Value *, Value *> uvr = make_tuple(pllU, pllV, pllR);
+      if (auto It = atomic_shared_pUVR.find(uvr); It != atomic_shared_pUVR.end()) {
+        cachedCVar = It->second;
+      } else {
+        pU = ReAlignUniformVariable(pU, EALIGN_GRF);
+        pV = pV ? ReAlignUniformVariable(pV, EALIGN_GRF) : pV;
+        pR = pR ? ReAlignUniformVariable(pR, EALIGN_GRF) : pR;
+        cachedCVar = addToCachedPayloadUVR(pU, pV, pR);
+        atomic_shared_pUVR[uvr] = cachedCVar;
+      }
+      pScalarU = get<0>(cachedCVar);
+      pScalarV = get<1>(cachedCVar);
+      pScalarR = get<2>(cachedCVar);
 
-    if (atomic_op == EATOMIC_OR && OrWith0Atomic(inst, 4)) {
+    unsigned src0Idx = 4;
+    if (atomic_op == EATOMIC_OR && OrWith0Atomic(inst, src0Idx)) {
       // special case of atomic_load
       emitScalarAtomicLoad(inst, resource, nullptr, /*uniformBase*/
-                           nullptr /*pDstAddr*/, get<0>(cachedCVar), get<1>(cachedCVar), get<2>(cachedCVar), pSrc0,
-                           false /*isA64*/, eltSizeInBits, 0, 1, LSC_ADDR_SIZE_32b);
+                           nullptr /*pDstAddr*/, pScalarU, pScalarV, pScalarR,
+                           pSrc0, false /*isA64*/, eltSizeInBits, 0, 1, LSC_ADDR_SIZE_32b);
     } else {
       emitScalarAtomics(inst, resource, atomic_op, nullptr, /*uniformBase*/
-                        nullptr /*pDstAddr*/, get<0>(cachedCVar), get<1>(cachedCVar), get<2>(cachedCVar), pSrc0,
-                        false /*isA64*/, eltSizeInBits, 0, 1, LSC_ADDR_SIZE_32b);
+                        nullptr /*pDstAddr*/, pScalarU, pScalarV, pScalarR,
+                        pSrc0, false /*isA64*/, eltSizeInBits, 0, 1, LSC_ADDR_SIZE_32b);
     }
   } else {
     pU = BroadcastIfUniform(pU);
@@ -19650,8 +19672,8 @@ void EmitPass::emitLSCAtomicTyped(llvm::GenIntrinsicInst *inst) {
     auto cacheOpts = LSC_DEFAULT_CACHING;
     if (!needsSplit) {
       m_encoder->SetPredicate(flag);
-      m_encoder->LSC_TypedAtomic(atomic_op, &resource, pU, pV, pR, pSrc0, pSrc1,
-                                 returnsImmValue ? m_destination : nullptr, eltSizeInBits, addrSize, cacheOpts);
+        m_encoder->LSC_TypedAtomic(atomic_op, &resource, pU, pV, pR, pSrc0, pSrc1,
+                                   returnsImmValue ? m_destination : nullptr, eltSizeInBits, addrSize, cacheOpts);
       m_encoder->Push();
     } else {
       const unsigned int numLanesForInstWidth = numLanes(instWidth);
@@ -19668,8 +19690,8 @@ void EmitPass::emitLSCAtomicTyped(llvm::GenIntrinsicInst *inst) {
         setSIMDSizeMask(m_encoder, m_currShader, i);
         m_encoder->SetSrcSubVar(0, i * regsPerAddrChannel);
         m_encoder->SetSrcSubVar(1, i * regsPerDataChannel);
-        m_encoder->LSC_TypedAtomic(atomic_op, &resource, pU, pV, pR, pSrc0, pSrc1, tempdst[i], eltSizeInBits, addrSize,
-                                   cacheOpts);
+          m_encoder->LSC_TypedAtomic(atomic_op, &resource, pU, pV, pR, pSrc0, pSrc1, tempdst[i], eltSizeInBits,
+                                     addrSize, cacheOpts);
         m_encoder->Push();
       }
     }

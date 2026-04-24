@@ -582,18 +582,24 @@ void CustomSafeOptPass::visitIntAtomicIAddToIncOrDec(CallInst *I) {
 // %7 = call i32 @llvm.genx.GenISA.intatomictyped.i32.p2490368__Buffer_Typed_DIM_Resource(%__Buffer_Typed_DIM_Resource addrspace(2490368)* %u01, i32 %ThreadID_X, i32 undef, i32 undef, i32 poison, i32 2)
 // %8 = call i32 @llvm.genx.GenISA.intatomictyped.i32.p2490368__Buffer_Typed_DIM_Resource(%__Buffer_Typed_DIM_Resource addrspace(2490368)* %u01, i32 %ThreadID_X, i32 undef, i32 undef, i32 poison, i32 3)
   // clang-format on
-  if (id == GenISAIntrinsic::GenISA_intatomictyped) {
+  if (id == GenISAIntrinsic::GenISA_intatomictyped
+  ) {
+    // MS variant has sample_index at operand 4, shifting src0/atomic_op by +1
+    unsigned srcIdx = 4;
+    unsigned opIdx = 5;
     // for immediate 1 or -1
-    if (auto *constInt1 = llvm::dyn_cast<llvm::ConstantInt>(instr->getOperand(4))) {
+    if (auto *constInt1 = llvm::dyn_cast<llvm::ConstantInt>(instr->getOperand(srcIdx))) {
       // for atomic_iadd
-      if (auto *constInt2 = llvm::dyn_cast<llvm::ConstantInt>(instr->getOperand(5))) {
+      if (auto *constInt2 = llvm::dyn_cast<llvm::ConstantInt>(instr->getOperand(opIdx))) {
         if (AtomicOp::EATOMIC_IADD == constInt2->getZExtValue()) {
           if (constInt1->getSExtValue() == 1) {
-            instr->setOperand(5, llvm::ConstantInt::get(instr->getOperand(5)->getType(), AtomicOp::EATOMIC_INC));
-            instr->setOperand(4, PoisonValue::get(constInt1->getType()));
+            instr->setOperand(opIdx,
+                              llvm::ConstantInt::get(instr->getOperand(opIdx)->getType(), AtomicOp::EATOMIC_INC));
+            instr->setOperand(srcIdx, PoisonValue::get(constInt1->getType()));
           } else if (constInt1->getSExtValue() == -1) {
-            instr->setOperand(5, llvm::ConstantInt::get(instr->getOperand(5)->getType(), AtomicOp::EATOMIC_DEC));
-            instr->setOperand(4, PoisonValue::get(constInt1->getType()));
+            instr->setOperand(opIdx,
+                              llvm::ConstantInt::get(instr->getOperand(opIdx)->getType(), AtomicOp::EATOMIC_DEC));
+            instr->setOperand(srcIdx, PoisonValue::get(constInt1->getType()));
           }
         }
       }

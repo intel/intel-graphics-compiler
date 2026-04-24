@@ -320,8 +320,9 @@ public:
                          CVariable *pSrc, bool isA64, int bitSize, int immOffset, int immScale, LSC_ADDR_SIZE addrSize);
 
   void emitScalarAtomicLoad(llvm::Instruction *pInst, ResourceDescriptor &resource, CVariable *pUniformBase,
-                            CVariable *pDstAddr, CVariable *pU, CVariable *pV, CVariable *pR, CVariable *pSrc,
-                            bool isA64, int bitWidth, int immOffset, int immScale, LSC_ADDR_SIZE addrSize);
+                            CVariable *pDstAddr, CVariable *pU, CVariable *pV, CVariable *pR,
+                            CVariable *pSrc, bool isA64, int bitWidth, int immOffset, int immScale,
+                            LSC_ADDR_SIZE addrSize);
 
   /// wave/subgroup support
   /// reduction and prefix/postfix facilities
