@@ -3489,7 +3489,6 @@ public:
 protected:
   CodeGenContext *m_ctx;
   LoopInfo *m_LI;
-  llvm::BumpPtrAllocator Allocator;
 
   struct MulNode {
     llvm::Value *value = nullptr;
@@ -3502,6 +3501,8 @@ protected:
     bool visited = false;
     FastMathFlags FMF;
   };
+
+  llvm::SpecificBumpPtrAllocator<MulNode> Allocator;
 
   struct RootNode {
     llvm::Instruction *fsum;
@@ -3522,7 +3523,7 @@ protected:
     if (it != nodeMap.end()) {
       node = (*it).second;
     } else {
-      node = new (Allocator) MulNode();
+      node = new (Allocator.Allocate()) MulNode();
       node->value = value;
       nodeMap[value] = node;
     }
@@ -3641,7 +3642,7 @@ bool HoistFMulInLoopPass::runOnFunction(Function &F) {
   m_LI = &getAnalysis<LoopInfoWrapperPass>().getLoopInfo();
   changed = hoistMulInLoops();
 
-  Allocator.Reset();
+  Allocator.DestroyAll();
 
   return changed;
 }

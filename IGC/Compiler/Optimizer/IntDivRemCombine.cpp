@@ -75,21 +75,25 @@ struct IntDivRemCombine : public FunctionPass {
       bool blockChanged;
       do {
         blockChanged = false;
-        for (BasicBlock::iterator ii = BB.begin(), ie = BB.end(); ii != ie && !blockChanged; ii++) {
-          Instruction *I = &*ii;
+        for (BasicBlock::iterator ii = BB.begin(), ie = BB.end(); ii != ie;) {
+          BasicBlock::iterator current = ii++;
+          Instruction *I = &*current;
           switch (I->getOpcode()) {
           case Instruction::SDiv:
           case Instruction::UDiv:
             if (shouldSimplify(cast<BinaryOperator>(I))) {
-              blockChanged |= replaceAllRemsInBlock(ii, ie);
+              blockChanged |= replaceAllRemsInBlock(current, ie);
               break;
             }
           case Instruction::SRem:
           case Instruction::URem:
             if (shouldSimplify(cast<BinaryOperator>(I))) {
-              blockChanged |= hoistMatchingDivAbove(ii, ie);
+              blockChanged |= hoistMatchingDivAbove(current, ie);
               break;
             }
+          }
+          if (blockChanged) {
+            break;
           }
         }
         changed |= blockChanged;
