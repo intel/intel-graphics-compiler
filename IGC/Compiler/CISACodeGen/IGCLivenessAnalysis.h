@@ -84,6 +84,7 @@ public:
   DFSet &getOutSet() { return Out; }
   const DFSet &getOutSet() const { return Out; }
 
+  unsigned int getSizeForType(Value *V, const DataLayout &DL);
   PressurePair computeSizeInBytes(Value *V, unsigned int SIMD, WIAnalysisRunner *WI, const DataLayout &DL);
   PressurePair estimateSizeInBytes(ValueSet &Set, llvm::Function &F, unsigned int SIMD, WIAnalysisRunner *WI = nullptr);
   PressurePair estimateSizeInBytes(const llvm::SmallSetVector<llvm::Instruction *, 16> &Set, llvm::Function &F,

@@ -2,21 +2,18 @@
 
 ; LLVM with opaque pointers:
 ; RUN: llvm-as %OPAQUE_PTR_FLAG% %s -o %t.bc
-; RUN: ocloc compile -llvm_input -file %t.bc -device mtl -options "-igc_opts 'EnableOpaquePointersBackend=1,DisableCodeScheduling=1,VISAOptions=-asmToConsole'" &> %t_output.ll
+; RUN: ocloc compile -llvm_input -file %t.bc -device mtl -options "-igc_opts 'EnableOpaquePointersBackend=1,DisableCodeScheduling=1'" &> %t_output.ll
 ; RUN: FileCheck --input-file %t_output.ll %s
 
 ; LLVM with typed pointers:
 ; RUN: llvm-as %TYPED_PTR_FLAG% %s -o %t.bc
-; RUN: ocloc compile -llvm_input -file %t.bc -device mtl -options "-igc_opts 'DisableCodeScheduling=1,VISAOptions=-asmToConsole'" &> %t_output.ll
+; RUN: ocloc compile -llvm_input -file %t.bc -device mtl -options "-igc_opts 'DisableCodeScheduling=1'" &> %t_output.ll
 ; RUN: FileCheck --input-file %t_output.ll %s
 
 ; This test checks that after kernel recompilation there is no more spills
-
-; CHECK://.kernel _ZTSN2at15AtenIpexTypeXPU4impl35FastGroupRadixSortImplKernelFunctorIbxLi1024ELb0ELb1EtLi32ELi4ENS0_19GroupRadixProcesserIbLi1024ELi32ELi4ELb0EttjLi4EEEbEE
-; CHECK-NOT://.spill size
-; CHECK: end of thread
-
-; CHECK: warning: in kernel '{{.*}}FastGroupRadixSort{{.*}}': [RetryManager] Start recompilation of the kernel
+; CHECK: warning: {{.*}} [RetryManager] Start recompilation of the kernel
+; CHECK-NOT: warning: kernel {{.*}} compiled SIMD32 allocated 128 regs and spilled around {{.*}}
+; CHECK: Build succeeded.
 
 ; ModuleID = 'reduced.ll'
 source_filename = "reduced.ll"

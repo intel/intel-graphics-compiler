@@ -115,6 +115,14 @@ void IGCLivenessAnalysisBase::combineOut(llvm::BasicBlock *BB) {
   }
 }
 
+unsigned int IGCLivenessAnalysisBase::getSizeForType(Value *V, const DataLayout &DL) {
+
+  if (V->getType()->isPointerTy())
+    return CGCtx->getRegisterPointerSizeInBits(V->getType()->getPointerAddressSpace());
+
+  return (unsigned int)DL.getTypeSizeInBits(V->getType());
+}
+
 PressurePair IGCLivenessAnalysisBase::computeSizeInBytes(Value *V, unsigned int SIMD, WIAnalysisRunner *WI,
                                                          const DataLayout &DL) {
   // when we check size of operands, this check is redundant
@@ -123,8 +131,7 @@ PressurePair IGCLivenessAnalysisBase::computeSizeInBytes(Value *V, unsigned int 
   if (NoRetVal)
     return {};
 
-  auto Type = V->getType();
-  unsigned int TypeSizeInBits = (unsigned int)DL.getTypeSizeInBits(Type);
+  unsigned int TypeSizeInBits = getSizeForType(V, DL);
 
   if (WI && WI->isUniform(V))
     return {TypeSizeInBits / 8, 0};
@@ -371,7 +378,8 @@ void IGCRegisterPressurePrinter::printIntraBlock(llvm::BasicBlock &BB, std::stri
       Output += "N: ";
     }
     PressurePair SizeInBytes = BBListing[Inst];
-    unsigned int AmountOfRegistersRoundUp = RPE->bytesToRegisters(SizeInBytes);
+    // to prevent overcounting by one
+    unsigned int AmountOfRegistersRoundUp = RPE->bytesToRegisters((unsigned int)SizeInBytes);
     PressurePair PairInRegisters = RPE->bytesToRegisters(SizeInBytes);
     MaxPressureInFunction = std::max(MaxPressureInFunction, AmountOfRegistersRoundUp);
     MaxPressurePair = std::max(MaxPressurePair, PairInRegisters);
@@ -379,7 +387,8 @@ void IGCRegisterPressurePrinter::printIntraBlock(llvm::BasicBlock &BB, std::stri
     if (PrinterType > 5)
       Output += "UP: " + std::to_string(PairInRegisters.Uniform) +
                 " NP: " + std::to_string(PairInRegisters.NonUniform) + " \t";
-    Output += std::to_string(SizeInBytes) + " (" + std::to_string(AmountOfRegistersRoundUp) + ")" + "    \t";
+    Output +=
+        std::to_string((unsigned int)SizeInBytes) + " \t (" + std::to_string(AmountOfRegistersRoundUp) + ")" + "    \t";
     printInstruction(Inst, Output);
   }
 }
