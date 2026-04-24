@@ -168,6 +168,7 @@ public:
             bool isSendc = false);
   void Sends(CVariable *dst, CVariable *src0, CVariable *src1, uint ffid, CVariable *exDesc, CVariable *messDescriptor,
              bool isSendc = false, bool hasEOT = false);
+  void Sendg(CVariable *dst, CVariable *src0, unsigned sfid, uint64_t desc, bool hasEOT = false);
 
   void TraceRay(CVariable *destination, TRACE_RAY_OPCODE opcode, CVariable *globalBufferPointer,
                 STACK_ADDRESS_MODE stackAddressMode, CVariable *payload);

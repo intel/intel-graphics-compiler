@@ -9607,7 +9607,10 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst *inst) {
     break;
   }
   case GenISAIntrinsic::GenISA_thread_exit: {
-    m_currShader->EOTGateway();
+    if (m_currShader->m_Platform->hasEfficient64bEnabled())
+      m_currShader->EOTGatewaySendg();
+    else
+      m_currShader->EOTGateway();
     break;
   }
   case GenISAIntrinsic::GenISA_getStackPointer: {

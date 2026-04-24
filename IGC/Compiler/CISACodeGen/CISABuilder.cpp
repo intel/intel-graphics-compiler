@@ -1966,6 +1966,22 @@ void CEncoder::Sends(CVariable *dst, CVariable *src0, CVariable *src1, uint ffid
                                     dstSize, desc, srcOpnd0, srcOpnd1, dstOpnd, hasEOT));
 }
 
+void CEncoder::Sendg(CVariable *dst, CVariable *src0, unsigned sfid, uint64_t desc, bool hasEOT) {
+  VISA_PredOpnd *predOpnd = GetFlagOperand(m_encoderState.m_flag);
+  VISA_RawOpnd *dstOpnd = GetRawDestination(dst);
+  VISA_RawOpnd *src0Opnd = GetRawSource(src0);
+  VISA_RawOpnd *src1Opnd = GetRawSource(nullptr);
+
+  int dstLenBytes = dst ? dst->GetSize() : 0;
+  int src0LenBytes = src0 ? src0->GetSize() : 0;
+
+  V(vKernel->AppendVISAMiscRawSendg(sfid, predOpnd, GetAluEMask(dst), visaExecSize(m_encoderState.m_simdSize), dstOpnd,
+                                    dstLenBytes, src0Opnd, src0LenBytes, src1Opnd, /*src1LenBytes=*/0,
+                                    /*ind0=*/nullptr, /*ind1=*/nullptr, desc,
+                                    /*sendgConditional=*/false,
+                                    /*issueEOT=*/hasEOT));
+}
+
 VISA_StateOpndHandle *CEncoder::GetBTIOperand(uint bindingTableIndex) {
   IGC::e_predefSurface predDefSurface = ESURFACE_NORMAL;
   if (bindingTableIndex == 255)

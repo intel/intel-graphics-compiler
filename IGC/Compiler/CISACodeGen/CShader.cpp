@@ -200,6 +200,19 @@ void CShader::EOTGateway(CVariable *payload) {
   encoder.Push();
 }
 
+// EOT via sendg.gtwy for platforms with efficient 64b addressing.
+void CShader::EOTGatewaySendg() {
+  constexpr unsigned sfidGateway = EU_MESSAGE_TARGET_GATEWAY;
+  constexpr uint64_t desc = 0x0;
+
+  // src0 (contains thread-per-TG info required by gateway)
+  CVariable *src0 = GetR0();
+
+  encoder.SetSimdSize(SIMDMode::SIMD1);
+  encoder.Sendg(/*dst=*/nullptr, src0, sfidGateway, desc, /*hasEOT=*/true);
+  encoder.Push();
+}
+
 
 void CShader::EOTRenderTarget(CVariable *r1, bool isPerCoarse) {
   CVariable *src[4] = {nullptr, nullptr, nullptr, nullptr};

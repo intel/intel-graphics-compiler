@@ -111,6 +111,7 @@ public:
   void EOTURBWrite();
   CVariable *URBFence(LSC_SCOPE scope = LSC_SCOPE_LOCAL);
   void EOTGateway(CVariable *payload = nullptr);
+  void EOTGatewaySendg();
   CVariable *prepareRTSurfaceStatePointer(CVariable *rtvHeapBaseAddress, uint RT_BTIndex, CVariable *rtIndexOpnd);
   void EOTRenderTarget(CVariable *r1, bool isPerCoarse);
   virtual void AddEpilogue(llvm::ReturnInst *ret);
