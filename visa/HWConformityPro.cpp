@@ -3589,28 +3589,6 @@ void HWConformityPro::fix2SrcInstImm(INST_LIST_ITER it, G4_BB *bb) {
                                                    pred->getControl()));
       }
       inst->swapSrc(0, 1);
-    } else if (inst->opcode() == G4_sel && src1->isImm() &&
-               inst->getPredicate() && !inst->getCondMod()) {
-      // Both src0 and src1 are immediates; ISA can't encode two immediates in
-      // sel. Replace with two predicated movs for better parallelism:
-      //   (pred) sel exec dst imm0 imm1
-      //   =>
-      //   (pred)  mov exec dst imm0
-      //   (~pred) mov exec dst imm1
-      auto pred = inst->getPredicate();
-      G4_PredState revState = pred->getState() == PredState_Minus
-                                  ? PredState_Plus
-                                  : PredState_Minus;
-      G4_Predicate *negPred = builder.createPredicate(
-          revState, pred->getBase(), pred->getSubRegOff(), pred->getControl());
-      G4_INST *falseMov =
-          builder.createMov(negPred, inst->getExecSize(),
-                            builder.createDstRegRegion(*inst->getDst()), src1,
-                            inst->getMaskOption(), false);
-      falseMov->setSaturate(inst->getSaturate());
-      bb->insertAfter(it, falseMov);
-      inst->setOpcode(G4_mov);
-      inst->setSrc(nullptr, 1);
     } else {
       // If src0 is not 64-bit, src1 is 64-bit, swap them to save one move.
       if (INST_COMMUTATIVE(inst->opcode()) && src0->isImm() && src1->isImm() &&
