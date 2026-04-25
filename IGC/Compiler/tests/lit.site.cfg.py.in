@@ -21,7 +21,6 @@ config.test_run_dir = "@CMAKE_CURRENT_BINARY_DIR@"
 config.igc_opt_dir = "$<TARGET_FILE_DIR:igc_opt>"
 config.regkeys_disabled = $<CONFIG:Release>
 config.opaque_pointers = os.getenv('IGC_LIT_OPAQUE_PTR_FIX', '0')
-config.igc_llvm_opaque_pointers = "@IGC_LIT_ENABLE_OPAQUE_POINTERS@"
 
 # Support substitution of the tools and libs dirs with user parameters. This is
 # used when we can't determine the tool dir at configuration time.

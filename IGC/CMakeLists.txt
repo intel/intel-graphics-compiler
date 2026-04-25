@@ -276,20 +276,11 @@ if (FCL_ENABLED)
   unset(_allowBifLink)
 endif()
 
-if (WIN32)
-  # TODO: Remove this flag once only LLVM 16+ is supported (no possibility to enable typed pointers).
-  if(IGC_OPTION__LLVM_PREFERRED_VERSION VERSION_GREATER_EQUAL 17)
-    option(IGC_OPTION__API_ENABLE_OPAQUE_POINTERS "Enable opaque pointers across the IGC stack. Forces opaque pointers' usage in IGC/LLVM passes, OCL Clang FE and built-in functions' bitcode. Enabled by default for LLVM 16+." ON)
-  elseif(NOT DEFINED IGC_OPTION__API_ENABLE_OPAQUE_POINTERS)
-    option(IGC_OPTION__API_ENABLE_OPAQUE_POINTERS "Enable typed pointers across the IGC stack. Forces typed pointers' usage in IGC/LLVM passes, OCL Clang FE and built-in functions' bitcode. Enabled by default for LLVM 16+." OFF)
-  endif()
+# TODO: Remove this flag once only LLVM 16+ is supported (no possibility to enable typed pointers).
+if(IGC_OPTION__LLVM_PREFERRED_VERSION VERSION_GREATER_EQUAL 16)
+  option(IGC_OPTION__API_ENABLE_OPAQUE_POINTERS "Enable opaque pointers across the IGC stack. Forces opaque pointers' usage in IGC/LLVM passes, OCL Clang FE and built-in functions' bitcode. Enabled by default for LLVM 16+." ON)
 else()
-  # TODO: Remove this flag once only LLVM 16+ is supported (no possibility to enable typed pointers).
-  if(IGC_OPTION__LLVM_PREFERRED_VERSION VERSION_GREATER_EQUAL 16)
-    option(IGC_OPTION__API_ENABLE_OPAQUE_POINTERS "Enable opaque pointers across the IGC stack. Forces opaque pointers' usage in IGC/LLVM passes, OCL Clang FE and built-in functions' bitcode. Enabled by default for LLVM 16+." ON)
-  else()
-    option(IGC_OPTION__API_ENABLE_OPAQUE_POINTERS "Enable typed pointers across the IGC stack. Forces typed pointers' usage in IGC/LLVM passes, OCL Clang FE and built-in functions' bitcode. Enabled by default for LLVM 16+." OFF)
-  endif()
+  option(IGC_OPTION__API_ENABLE_OPAQUE_POINTERS "Enable opaque pointers across the IGC stack. Forces opaque pointers' usage in IGC/LLVM passes, OCL Clang FE and built-in functions' bitcode. Enabled by default for LLVM 16+." OFF)
 endif()
 
 option(IGC_OPTION__ENABLE_BF16_BIF "Enables BF16 support in BiF (requires patched Clang)" ON)

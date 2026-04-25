@@ -32,7 +32,6 @@ config.llvm_spirv_dir = "@IGC_LLVM_SPIRV_DIR@"
 config.llvm_version_major = "@LLVM_VERSION_MAJOR@"
 config.is32b = "$<BOOL:$<EQUAL:@CMAKE_SIZEOF_VOID_P@,4>>"
 config.debug_build = $<CONFIG:Debug>
-config.igc_llvm_opaque_pointers = "@IGC_LIT_ENABLE_OPAQUE_POINTERS@"
 config.has_vc =  "$<BOOL:@IGC_ENABLE_VC_OCLOC_TESTS@>"
 
 # Support substitution of the tools and libs dirs with user parameters. This is

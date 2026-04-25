@@ -28,13 +28,6 @@ inline void setOpaquePointers(llvm::LLVMContext *Ctx, const bool Enable) {
 #endif // LLVM_VERSION_MAJOR
 #endif
 };
-
-inline void setOpaquePointers(llvm::LLVMContext *Ctx) {
-#if LLVM_VERSION_MAJOR == 16
-  bool enableOpaquePointers = __IGC_OPAQUE_POINTERS_API_ENABLED;
-  Ctx->setOpaquePointers(enableOpaquePointers);
-#endif
-}
 } // end namespace IGCLLVM
 
 namespace IGC {

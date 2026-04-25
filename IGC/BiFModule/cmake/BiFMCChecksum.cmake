@@ -19,9 +19,6 @@ get_bif_src_list(${opencl-header} ${BiFModule_SRC} BiFModule_SRC_LIST)
 
 # Collect all checksum of all source files into one file
 set(allFilesChecksum "")
-# There is a need to have separate BiFs for llvm16 opaque/typed drivers
-set(allFilesChecksum "${allFilesChecksum}${IGC_BUILD__OPAQUE_POINTERS_DEFAULT_ARG_CLANG}")
-
 foreach(_file ${BiFModule_SRC_LIST})
   file(SHA1 ${_file} fileChecksum)
   set(allFilesChecksum "${allFilesChecksum}${fileChecksum}")

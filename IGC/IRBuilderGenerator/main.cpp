@@ -63,7 +63,6 @@ SPDX-License-Identifier: MIT
 #include "llvmWrapper/IR/Type.h"
 #include "llvmWrapper/IR/Instructions.h"
 #include "llvmWrapper/Support/YAMLParser.h"
-#include "llvmWrapper/IR/LLVMContext.h"
 
 #include <map>
 #include <optional>
@@ -1259,9 +1258,8 @@ Generate code for the specified bitcode.
   }
 
   LLVMContext Context;
-  IGCLLVM::setOpaquePointers(&Context);
-
   SMDiagnostic Err;
+
   std::unique_ptr<Module> M = parseIRFile(InputFilename, Err, Context);
 
   if (!M) {

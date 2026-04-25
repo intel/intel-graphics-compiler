@@ -91,7 +91,7 @@ if int(config.llvm_version_major) <= 15:
 if int(config.llvm_version_major) >= 15:
   config.available_features.add('llvm-15-plus')
 
-if int(config.llvm_version_major) >= 16 and config.igc_llvm_opaque_pointers == '1':
+if int(config.llvm_version_major) >= 16:
   config.available_features.add('llvm-16-plus')
 
 if int(config.llvm_version_major) >= 17:
