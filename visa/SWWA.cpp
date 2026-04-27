@@ -3741,6 +3741,7 @@ void Optimizer::fixSendSrcRegion(G4_INST *inst) {
     inst->getSrc(0)->asSrcRegRegion()->setRegion(builder, newDesc);
   }
 }
+
 // WA: For three source operand instruction,
 // 1, If src2 = NULL and src0 = GRF , then assign src2 the same GRF as
 //    src0, with src2 stride aligned with destination operand.
@@ -4047,8 +4048,9 @@ void Optimizer::HWWorkaround() {
         bb->insertBefore(ii, dummyMov);
       }
 
-      if (builder.needThreeSrcInstNullSrc2WA())
+      if (VISA_WA_CHECK(builder.getPWaTable(), Wa_14025753813))
         applyThreeSrcInstNullSrc2WA(ii, bb);
+
       ii++;
     }
   }

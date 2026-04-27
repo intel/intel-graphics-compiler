@@ -1076,7 +1076,5 @@ bool supportSendAddrScale(bool isSLM, bool isBTS) {
 
   return false;
 }
-bool needThreeSrcInstNullSrc2WA() {
-  return getPlatform() == Xe3P_Graphics;
-}
+
 // end HW capabilities

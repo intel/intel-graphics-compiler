@@ -213,6 +213,9 @@ static const WA_TABLE *CreateVisaWaTable(TARGET_PLATFORM platform,
     VISA_WA_ENABLE(pWaTable, Wa_22017182272);
     VISA_WA_ENABLE(pWaTable, Wa_18042479026);
     break;
+  case Xe3P_Graphics:
+    VISA_WA_ENABLE(pWaTable, Wa_14025753813);
+    break;
   default:
     break;
   }
