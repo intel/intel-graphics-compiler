@@ -11,14 +11,11 @@ SPDX-License-Identifier: MIT
 #include "llvm/ADT/DenseMap.h"
 #include "llvm/ADT/PostOrderIterator.h"
 #include "llvm/ADT/SmallPtrSet.h"
-#include "llvm/Analysis/ValueTracking.h"
+#include "llvm/IR/Argument.h"
 #include "llvm/IR/DataLayout.h"
-#include "llvm/IR/Dominators.h"
 #include "llvm/IR/Function.h"
-#include "llvm/IR/InstIterator.h"
 #include "llvm/IR/Instruction.h"
 #include "llvm/IR/Instructions.h"
-#include "llvm/IR/InstVisitor.h"
 #include "llvm/IR/IntrinsicInst.h"
 #include "llvm/IR/Module.h"
 #include "llvm/IR/Type.h"
@@ -29,10 +26,10 @@ SPDX-License-Identifier: MIT
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/IR/Instructions.h"
 #include "llvmWrapper/Support/Alignment.h"
+#include "common/LLVMUtils.h"
 #include "common/IGCIRBuilder.h"
 #include "GenISAIntrinsics/GenIntrinsics.h"
-#include "Compiler/CodeGenContextWrapper.hpp"
-#include "Compiler/CodeGenPublic.h"
+#include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
 #include "Compiler/IGCPassSupport.h"
 #include "Compiler/MetaDataUtilsWrapper.h"
 #include "Compiler/CISACodeGen/PartialEmuI64OpsPass.h"
@@ -42,6 +39,8 @@ SPDX-License-Identifier: MIT
 using namespace llvm;
 using namespace IGC;
 using namespace IGC::IGCMD;
+
+using std::ldexp;
 
 namespace {
 
@@ -271,31 +270,6 @@ public:
 
   bool preprocess(Function &F) {
     bool Changed = false;
-    // Preprocess InstCombined optimized add i64 A, B where A and B have no common bits
-    // Revert or i64 A, B to add i64 A, B if platform supports QWadd
-    // TODO: On platforms where 64-bit OR is supported, skip this preprocess step to convert OR to ADD
-    SmallVector<Instruction *> InstsToErase;
-    for (auto &I : instructions(F)) {
-      auto *BO = dyn_cast<BinaryOperator>(&I);
-      if (!BO || BO->getOpcode() != Instruction::Or || !BO->getType()->isIntegerTy(64)) {
-        continue;
-      }
-      auto *LHS = BO->getOperand(0);
-      auto *RHS = BO->getOperand(1);
-
-      if (Emu->CGC->platform.hasInt64Add() &&
-          haveNoCommonBitsSet(LHS, RHS, F.getParent()->getDataLayout(), nullptr, nullptr, Emu->DT)) {
-        IRB->SetInsertPoint(BO);
-        auto *NewAdd = IRB->CreateAdd(LHS, RHS);
-        BO->replaceAllUsesWith(NewAdd);
-        InstsToErase.push_back(BO);
-        Changed = true;
-      }
-    }
-    for (auto *toErase : InstsToErase) {
-      IGC_ASSERT(toErase->user_empty());
-      toErase->eraseFromParent();
-    }
     // Preprocess additions with overflow.
     for (auto &BB : F) {
       for (auto BI = BB.begin(), BE = BB.end(); BI != BE; /*EMPTY*/) {
@@ -729,7 +703,6 @@ void InstExpander::convert2xi32OutputBackToi64(Instruction &instr, Value *Lo, Va
 bool PartialEmuI64Ops::hasNoInt64HWSupport(Instruction *instr) {
   if (
       // list of the instructions without Int64 HW support on PVC-B0+
-      // TODO: On platforms where 64-bit OR is supported, skip the preprocess step to convert OR to ADD
       (instr->getOpcode() == llvm::Instruction::Mul && useMulEmu(instr)) ||
       (instr->getOpcode() == llvm::Instruction::Add && !CGC->platform.hasInt64Add()) ||
       (instr->getOpcode() == llvm::Instruction::Sub && !CGC->platform.hasInt64Add()) ||
