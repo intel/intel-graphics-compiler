@@ -1584,8 +1584,8 @@ public:
       vISA_ASSERT_INPUT(scratchInlineOffset > 0,
           "scratch inline offset attribute should be non-zero");
       // this attribute should be specified only for graphics part
-      vISA_ASSERT_INPUT(kernel.getPlatform() == Xe3P_Graphics,
-        "attribute should be specified for 3d shaders");
+      vISA_ASSERT_INPUT(kernel.getPlatform() >= Xe3P_Graphics,
+                        "attribute should be specified for 3d shaders");
       // check if scratch location specified is qword aligned
       vISA_ASSERT_INPUT(scratchInlineOffset % TypeSize(Type_UQ) == 0,
         "scratch pointer offset must be aligned to QW");
@@ -1618,8 +1618,8 @@ public:
     auto generateSequenceGivenScratchRegMemOffsets =
       [&] (int scratchRegOffset, int scratchMemOffset) {
         // this attribute should be specified only for graphics part
-        vISA_ASSERT_INPUT(kernel.getPlatform() == Xe3P_Graphics,
-          "attribute should be specified for 3d shaders");
+        vISA_ASSERT_INPUT(kernel.getPlatform() >= Xe3P_Graphics,
+                          "attribute should be specified for 3d shaders");
         // check if scratch location specified is qword aligned
         vISA_ASSERT_INPUT(scratchRegOffset % TypeSize(Type_UQ) == 0,
           "scratch pointer offset must be aligned to QW");
@@ -1783,7 +1783,7 @@ void Optimizer::loadThreadPayload() {
   }
   PayloadLoader pl {builder, kernel, fg};
   if (builder.isEfficient64bEnabled()) {
-    if (kernel.getPlatform() == Xe3P_Graphics) {
+    if (kernel.getPlatform() >= Xe3P_Graphics) {
       // check if IGC has provided scratch location
       if (kernel.isScratchLocationSet()) {
         // if provided, use the 3D code path

@@ -166,7 +166,7 @@ template<PlatformGen Gen>
 uint16_t LatencyTableXe<Gen>::getLatency(const G4_INST *Inst) const {
   if (Inst->isSend())
     return getMsgLatency(Inst);
-  if (m_builder.getPlatform() == Xe3P_Graphics && Inst->isDFInstruction())
+  if (m_builder.getPlatform() >= Xe3P_Graphics && Inst->isDFInstruction())
     return getDPLatency(Inst);
   if (Inst->isMath())
     return getMathLatency(Inst);
