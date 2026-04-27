@@ -74,8 +74,8 @@ bool BufferBoundsChecking::runOnModule(Module &M) {
     }
 
     // Kernel args
-    kernelArgs = new KernelArgs(function, &function.getParent()->getDataLayout(), metadataUtils, moduleMetadata,
-                                context->platform.getGRFSize());
+    kernelArgs = std::make_unique<KernelArgs>(function, &function.getParent()->getDataLayout(), metadataUtils,
+                                              moduleMetadata, context->platform.getGRFSize());
 
     // Local and global Ids
     std::tie(localId0, localId1, localId2) = getLocalIds(function);

@@ -165,7 +165,7 @@ public:
   static char ID;
 
   VariableReuseAnalysis();
-  ~VariableReuseAnalysis() {}
+  ~VariableReuseAnalysis() { clearAliasState(); }
 
   typedef llvm::SmallVector<SVecInsEltInfo, 32> VecInsEltInfoTy;
   typedef std::unordered_map<llvm::Value *, SSubVecDesc *> AliasMapTy;
@@ -340,10 +340,7 @@ public:
   llvm::DenseMap<llvm::BasicBlock *, llvm::TinyPtrVector<llvm::Value *>> m_LifetimeAtEndOfBB;
 
 private:
-  void reset() {
-    m_SimdSize = 0;
-    m_IsFunctionPressureLow = Status::Undef;
-    m_IsBlockPressureLow = Status::Undef;
+  void clearAliasState() {
     m_aliasMap.clear();
     m_baseVecMap.clear();
     m_sortedBaseVec.clear();
@@ -351,6 +348,15 @@ private:
     m_HasBecomeNoopInsts.clear();
     m_LifetimeAt1stDefOfBB.clear();
     m_LifetimeAtEndOfBB.clear();
+    BaseVecAllocator.DestroyAll();
+    SubVecAllocator.Reset();
+  }
+
+  void reset() {
+    m_SimdSize = 0;
+    m_IsFunctionPressureLow = Status::Undef;
+    m_IsBlockPressureLow = Status::Undef;
+    clearAliasState();
   }
 
   // Initialize per-block states. In particular, check if the entire block has a
@@ -432,7 +438,8 @@ private:
   llvm::DominatorTree *m_DT = nullptr;
   const llvm::DataLayout *m_DL = nullptr;
 
-  llvm::BumpPtrAllocator Allocator;
+  llvm::SpecificBumpPtrAllocator<SBaseVecDesc> BaseVecAllocator;
+  llvm::BumpPtrAllocator SubVecAllocator;
 
   /// Current Function; set on entry to runOnFunction
   /// and unset on exit to runOnFunction

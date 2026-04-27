@@ -16,6 +16,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/InstVisitor.h>
 #include <llvm/IR/IRBuilder.h>
 #include "common/LLVMWarningsPop.hpp"
+#include <memory>
 #include "llvmWrapper/IR/Module.h"
 
 namespace IGC {
@@ -38,7 +39,7 @@ public:
   void visitCallInst(llvm::CallInst &icmp);
 
 private:
-  ImplicitArgs *implicitArgs = nullptr;
+  std::unique_ptr<ImplicitArgs> implicitArgs;
   IGCMD::MetaDataUtils *metadataUtils = nullptr;
   llvm::SmallVector<llvm::CallInst *, 8> toRemove;
 

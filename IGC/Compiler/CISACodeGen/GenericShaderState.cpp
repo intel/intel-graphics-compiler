@@ -101,6 +101,7 @@ void GenericShaderState::CreateConstantBufferOutput(SKernelProgram *pKernelProgr
     pKernelProgram->m_ConstantBufferReplaceShaderPatternsSize = GetContext().m_ConstantBufferReplaceShaderPatternsSize;
     pKernelProgram->m_ConstantBufferUsageMask = GetContext().m_ConstantBufferUsageMask;
     pKernelProgram->m_ConstantBufferReplaceSize = GetContext().m_ConstantBufferReplaceSize;
+    GetContext().m_ConstantBufferReplaceShaderPatterns = nullptr;
   }
 }
 

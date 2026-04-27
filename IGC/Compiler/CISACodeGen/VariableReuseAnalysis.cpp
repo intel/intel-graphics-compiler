@@ -786,7 +786,7 @@ void VariableReuseAnalysis::addVecAlias(Value *Aliaser, Value *Aliasee, Value *O
 
 SSubVecDesc *VariableReuseAnalysis::getOrCreateSubVecDesc(Value *V) {
   if (m_aliasMap.count(V) == 0) {
-    SSubVecDesc *SV = new (Allocator) SSubVecDesc(V);
+    SSubVecDesc *SV = new (SubVecAllocator) SSubVecDesc(V);
     m_aliasMap.insert(std::make_pair(V, SV));
   }
   return m_aliasMap[V];
@@ -794,7 +794,7 @@ SSubVecDesc *VariableReuseAnalysis::getOrCreateSubVecDesc(Value *V) {
 
 SBaseVecDesc *VariableReuseAnalysis::getOrCreateBaseVecDesc(Value *V, Value *OV, e_alignment A) {
   if (m_baseVecMap.count(V) == 0) {
-    SBaseVecDesc *BV = new (Allocator) SBaseVecDesc(V, OV, A);
+    SBaseVecDesc *BV = new (BaseVecAllocator.Allocate()) SBaseVecDesc(V, OV, A);
     m_baseVecMap.insert(std::make_pair(V, BV));
   }
   return m_baseVecMap[V];

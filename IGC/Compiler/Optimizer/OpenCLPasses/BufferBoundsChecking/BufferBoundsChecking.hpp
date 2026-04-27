@@ -17,6 +17,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/InstVisitor.h>
 #include <llvm/IR/IRBuilder.h>
 #include "common/LLVMWarningsPop.hpp"
+#include <memory>
 #include "llvmWrapper/IR/Module.h"
 
 namespace IGC {
@@ -55,8 +56,7 @@ private:
 
   IGCMD::MetaDataUtils *metadataUtils = nullptr;
   ModuleMetaData *moduleMetadata = nullptr;
-  ImplicitArgs *implicitArgs = nullptr;
-  KernelArgs *kernelArgs = nullptr;
+  std::unique_ptr<KernelArgs> kernelArgs;
   llvm::SmallVector<llvm::Instruction *, 4> loadsAndStoresToCheck;
   llvm::DenseMap<llvm::StringRef, llvm::GlobalVariable *> stringsCache;
   llvm::DICompileUnit *compileUnit = nullptr;

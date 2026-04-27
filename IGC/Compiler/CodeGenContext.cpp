@@ -582,6 +582,14 @@ void CodeGenContext::clear() {
   m_enableSubroutine = false;
   m_enableFunctionPointer = false;
 
+  if (m_ConstantBufferReplaceShaderPatterns) {
+    IGC::aligned_free(m_ConstantBufferReplaceShaderPatterns);
+    m_ConstantBufferReplaceShaderPatterns = nullptr;
+  }
+  m_ConstantBufferReplaceShaderPatternsSize = 0;
+  m_ConstantBufferUsageMask = 0;
+  m_ConstantBufferReplaceSize = 0;
+
   delete modMD;
   delete m_pMdUtils;
   modMD = nullptr;
