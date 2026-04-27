@@ -6343,7 +6343,7 @@ unsigned G4_SrcRegRegion::computeRightBound(uint8_t exec_size) {
       }
     } else {
       unsigned short numAddrSubReg = 1;
-      if (desc->isRegionWH()) {
+      if (desc->isRegionWH() || (inst && inst->opcode() == G4_movi)) {
         numAddrSubReg = exec_size / desc->width;
       }
       for (uint16_t i = 0; i < numAddrSubReg; i++) {
