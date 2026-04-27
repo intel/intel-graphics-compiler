@@ -1836,9 +1836,10 @@ void COpenCLKernel::FillKernel(SIMDMode simdMode) {
 
   m_kernelInfo.m_executionEnvironment.CompiledSIMDSize = numLanes(simdMode);
 
-  m_kernelInfo.m_executionEnvironment.PerThreadPrivateMemoryUsage =
+  m_kernelInfo.m_executionEnvironment.PerThreadPrivateMemoryUsage = (DWORD)std::min(
       pOutput->m_UseScratchSpacePrivateMemory ? pOutput->m_scratchSpaceUsedByShader
-                                              : m_perWIStatelessPrivateMemSize * numLanes(simdMode);
+                                              : (uint64_t)m_perWIStatelessPrivateMemSize * numLanes(simdMode),
+      (uint64_t)INT32_MAX);
   m_kernelInfo.m_executionEnvironment.PerThreadSpillMemoryUsage = pOutput->m_scratchSpaceUsedBySpills;
 
   m_kernelInfo.m_executionEnvironment.PerThreadScratchSpace = pOutput->getScratchSpaceUsageInSlot0();
