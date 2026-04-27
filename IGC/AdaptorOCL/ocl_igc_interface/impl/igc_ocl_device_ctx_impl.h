@@ -26,6 +26,7 @@ SPDX-License-Identifier: MIT
 
 #include "Compiler/CISACodeGen/Platform.hpp"
 #include "common/SystemThread.h"
+#include "common/igc_regkeys.hpp"
 
 #include "cif/macros/enable.h"
 #include "version.h"
@@ -138,6 +139,7 @@ CIF_DECLARE_INTERFACE_PIMPL(IgcOclDeviceCtx) : CIF::PimplBase {
     new_platform->SetGTSystemInfo(gtSystemInfo->gsi);
     new_platform->setOclCaps(igcFeaturesAndWorkarounds->OCLCaps);
     IGC::SetWorkaroundTable(&igcFeaturesAndWorkarounds->FeTable, new_platform);
+    LoadRegistryKeys();
     IGC::SetCompilerCaps(&igcFeaturesAndWorkarounds->FeTable, new_platform);
     // assign new_platform to igcPlatform after a full initialization
     // is finished to avoid race conditions
