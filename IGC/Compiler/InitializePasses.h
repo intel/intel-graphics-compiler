@@ -320,3 +320,4 @@ void initializeInstructionHoistingOptimizationPass(llvm::PassRegistry &);
 void initializeWaveBallotCSEPass(llvm::PassRegistry &);
 void initializeProcessBICodeAssumptionPass(llvm::PassRegistry &);
 void initializeSimpleAluVectorizerPass(llvm::PassRegistry &);
+void initializeRedundantOpsCSEPassPass(llvm::PassRegistry &);

@@ -658,6 +658,13 @@ DECLARE_IGC_REGKEY(bool, ForceHoistUDivURem, false,
 DECLARE_IGC_REGKEY(DWORD, FPRangeAnalysisMaxDepth, 64, "Max recursive depth for FP range analysis", false)
 DECLARE_IGC_REGKEY(bool, EnableSimpleAluVectorizer, true,
                    "Enable coalescing of ALU SIMD1/SIMD2 uniform operations into wider SIMD", false)
+DECLARE_IGC_REGKEY(bool, EnableRedundantOpsCSE, true, "Enable redundant binary operator CSE pass", false)
+DECLARE_IGC_REGKEY(bool, EnableRedundantOpsCrossBBCSE, false, "Enable cross-basic-block CSE in RedundantOpsCSEPass",
+                   false)
+DECLARE_IGC_REGKEY(DWORD, RedundantOpsIntraBBMaxDist, 64,
+                   "Maximum instruction distance for inside-BB CSE in RedundantOpsCSEPass (0 = unlimited)", false)
+DECLARE_IGC_REGKEY(DWORD, RedundantOpsCrossBBMaxDist, 100,
+                   "Maximum instruction distance for cross-BB CSE in RedundantOpsCSEPass (0 = unlimited)", false)
 
 DECLARE_IGC_GROUP("Shader debugging")
 DECLARE_IGC_REGKEY(bool, CopyA0ToDBG0, false, " Copy a0 used for extended msg descriptor to dbg0 to help debug", false)
