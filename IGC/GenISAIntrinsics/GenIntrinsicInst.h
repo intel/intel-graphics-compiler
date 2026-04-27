@@ -1143,6 +1143,36 @@ public:
   static inline bool classof(const Value *V) { return isa<GenIntrinsicInst>(V) && classof(cast<GenIntrinsicInst>(V)); }
 };
 
+class JointWaveBroadcastIntrinsic : public GenIntrinsicInst {
+public:
+  Value *getSrc() const { return getOperand(0); }
+  Value *getLane() const { return getOperand(1); }
+  Value *getHelperLane() const { return getOperand(2); }
+
+  void setSrc(Value *src) { setOperand(0, src); }
+
+  // Methods for support type inquiry through isa, cast, and dyn_cast:
+  static inline bool classof(const GenIntrinsicInst *I) {
+    return I->getIntrinsicID() == GenISAIntrinsic::GenISA_JointWaveBroadcast;
+  }
+  static inline bool classof(const Value *V) { return isa<GenIntrinsicInst>(V) && classof(cast<GenIntrinsicInst>(V)); }
+};
+
+class WaveBroadcastIntrinsic : public GenIntrinsicInst {
+public:
+  Value *getSrc() const { return getOperand(0); }
+  Value *getLane() const { return getOperand(1); }
+  Value *getHelperLane() const { return getOperand(2); }
+
+  void setSrc(Value *src) { setOperand(0, src); }
+
+  // Methods for support type inquiry through isa, cast, and dyn_cast:
+  static inline bool classof(const GenIntrinsicInst *I) {
+    return I->getIntrinsicID() == GenISAIntrinsic::GenISA_WaveBroadcast;
+  }
+  static inline bool classof(const Value *V) { return isa<GenIntrinsicInst>(V) && classof(cast<GenIntrinsicInst>(V)); }
+};
+
 class WaveShuffleIndexIntrinsic : public GenIntrinsicInst {
 public:
   Value *getSrc() const { return getOperand(0); }

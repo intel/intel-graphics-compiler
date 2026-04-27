@@ -6168,6 +6168,62 @@ void EmitPass::emitCrossInstanceMov(const SSource &source, const DstModifier &mo
   }
 }
 
+static unsigned int getConstantValueAsInt(Value *I) {
+  ConstantInt *Value = dyn_cast<ConstantInt>(I);
+  IGC_ASSERT_EXIT_MESSAGE(Value, "Value is not a constant int, can't convert");
+  unsigned int Result = Value->getSExtValue();
+  return Result;
+}
+
+void EmitPass::emitJointWaveBroadcast(llvm::Instruction *inst) {
+
+  auto SIMD = m_currShader->m_State.m_dispatchSize;
+  const bool IsSimd16 = (SIMD == SIMDMode::SIMD16);
+  auto Intr = llvm::cast<JointWaveBroadcastIntrinsic>(inst);
+
+  if (!IsSimd16)
+    IGC_ASSERT_EXIT_MESSAGE(0, "joint wave broadcast: only simd 16 supported");
+  if (!Intr->getType()->isVectorTy())
+    IGC_ASSERT_EXIT_MESSAGE(0, "joint wave broadcast: ret is not a vector");
+  if (!Intr->getLane()->getType()->isVectorTy())
+    IGC_ASSERT_EXIT_MESSAGE(0, "joint wave broadcast: lane is not a vector");
+
+  const auto *constVec = llvm::dyn_cast<llvm::ConstantDataVector>(Intr->getLane());
+  if (!constVec)
+    IGC_ASSERT_EXIT_MESSAGE(0, "joint wave broadcast: not supported vector of indices");
+  if (!constVec->getType()->getElementType()->isIntegerTy())
+    IGC_ASSERT_EXIT_MESSAGE(0, "joint wave broadcast: not supported vector of indices");
+
+  unsigned NumElem = constVec->getNumElements();
+  unsigned int LeftIndex = getConstantValueAsInt(constVec->getElementAsConstant(0));
+  unsigned int RightIndex = getConstantValueAsInt(constVec->getElementAsConstant(NumElem - 1));
+
+  CVariable *Src = GetSymbol(Intr->getSrc());
+  if (Src->GetNumberElement() != numLanes(SIMD))
+    IGC_ASSERT_EXIT_MESSAGE(0, "joint wave broadcast: not expected number of elements inside data");
+
+  // if number of elements is 15 and RightIndex = 15 (we have 0-indexed) its still OOB
+  if (Src->GetNumberElement() <= RightIndex)
+    IGC_ASSERT_EXIT_MESSAGE(0, "joint wave broadcast: element out of bounds check");
+
+  unsigned PrevIndex = LeftIndex;
+  for (unsigned int i = 1; i < NumElem; ++i) {
+
+    auto *ConstIndex = llvm::dyn_cast<llvm::ConstantInt>(constVec->getElementAsConstant(i));
+    unsigned int Index = getConstantValueAsInt(ConstIndex);
+
+    unsigned int Diff = Index - PrevIndex;
+    PrevIndex = Index;
+    if (Diff != 1)
+      IGC_ASSERT_EXIT_MESSAGE(0, "joint wave broadcast: not supported sequence of indices");
+  }
+
+  auto NewAlias = m_currShader->GetNewAlias(Src, Src->GetType(), LeftIndex * Src->GetElemSize(), NumElem, true);
+  m_currShader->UpdateSymbolMap(inst, NewAlias);
+  m_destination = NewAlias;
+  return;
+}
+
 /// Emits VISA instructions for SIMD_SHUFFLE.
 void EmitPass::emitSimdShuffle(llvm::Instruction *inst) {
   bool disableHelperLanes = int_cast<int>(cast<ConstantInt>(inst->getOperand(2))->getSExtValue()) == 2;
@@ -9799,6 +9855,9 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst *inst) {
   case GenISAIntrinsic::GenISA_WaveShuffleIndex:
   case GenISAIntrinsic::GenISA_WaveBroadcast:
     emitSimdShuffle(inst);
+    break;
+  case GenISAIntrinsic::GenISA_JointWaveBroadcast:
+    emitJointWaveBroadcast(inst);
     break;
   case GenISAIntrinsic::GenISA_WaveClusteredBroadcast:
     emitSimdClusteredBroadcast(inst);

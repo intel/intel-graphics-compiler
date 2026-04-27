@@ -200,8 +200,7 @@ void IGCVectorizer::findInsertElementsInDataFlow(llvm::Instruction *I, VecArr &C
   }
 }
 
-// returns very bin number in case of error
-unsigned int getConstantValueAsInt(Value *I) {
+static unsigned int getConstantValueAsInt(Value *I) {
   ConstantInt *Value = dyn_cast<ConstantInt>(I);
   IGC_ASSERT_MESSAGE(Value, "IGCVectorizer: trying to get an index from value that is not constant int");
   if (!Value)
@@ -210,7 +209,7 @@ unsigned int getConstantValueAsInt(Value *I) {
   return Result;
 }
 
-unsigned int getVectorSize(Value *I) {
+static unsigned int getVectorSize(Value *I) {
   IGCLLVM::FixedVectorType *VecType = llvm::dyn_cast<IGCLLVM::FixedVectorType>(I->getType());
   IGC_ASSERT_MESSAGE(VecType, "IGCVectorizer: Trying to get vector size from value that is not VecType");
   unsigned int NumElements = VecType->getNumElements();
@@ -294,6 +293,8 @@ bool isGenIntrinsicSafe(Instruction *I) {
 
   auto GenIntrinsicID = IntrinsicI->getIntrinsicID();
   bool Result = (GenIntrinsicID == llvm::GenISAIntrinsic::GenISA_WaveAll) && IGC_GET_FLAG_VALUE(VectorizerAllowWAVEALL);
+  Result |= (GenIntrinsicID == llvm::GenISAIntrinsic::GenISA_WaveBroadcast) &&
+            IGC_GET_FLAG_VALUE(VectorizerAllowWAVEBROADCAST);
   return Result;
 }
 
@@ -922,6 +923,90 @@ bool IGCVectorizer::handleCastInstruction(VecArr &Slice) {
   return true;
 }
 
+bool IGCVectorizer::handleWaveBroadcast(VecArr &Slice) {
+
+  if (!isGenIntrinsicSafe(Slice.front()))
+    return false;
+
+  Value *PrevVectorization = nullptr;
+  if (checkPrevVectorization(Slice, PrevVectorization))
+    return true;
+
+  auto First = llvm::cast<WaveBroadcastIntrinsic>(Slice.front());
+  unsigned int ExpectedLane = getConstantValueAsInt(First->getLane());
+  for (unsigned int i = 0; i < Slice.size(); ++i) {
+
+    auto Intrinsic = llvm::dyn_cast<WaveBroadcastIntrinsic>(Slice[i]);
+    if (!Intrinsic)
+      return false;
+
+    if (First->getSrc() != Intrinsic->getSrc()) {
+      PRINT_LOG_NL("Source operand differ between wavebroadcasts inside the slice");
+      return false;
+    }
+
+    unsigned int HelperLane = getConstantValueAsInt(Intrinsic->getHelperLane());
+    if (HelperLane != 0) {
+      PRINT_LOG_NL("Helper lane is not naive, we expect 0 across all slice");
+      return false;
+    }
+
+    unsigned int Index = getConstantValueAsInt(Intrinsic->getLane());
+
+    if (Index >= SIMDSize) {
+      PRINT_LOG_NL("Index is OOB for simd line, probably intrinsic is invalid, do not vectorize");
+      return false;
+    }
+
+    if (Index != ExpectedLane) {
+      PRINT_LOG_NL("Can't simply eliminate wave broadcast, do nothing, not ascending access");
+      return false;
+    }
+    ExpectedLane++;
+  }
+
+  VecVal Operands;
+  Operands.push_back(First->getSrc());
+  if (!collectOperandsForVectorization(1, 2, First, Slice, Operands))
+    return false;
+  Operands.push_back(First->getHelperLane());
+
+  Instruction *InsertPoint = getInsertPointForCreatedInstruction(Operands, Slice);
+  llvm::VectorType *VectorType = llvm::FixedVectorType::get(First->getType(), Slice.size());
+  auto IntrinsicID = GenISAIntrinsic::GenISA_JointWaveBroadcast;
+  llvm::Type *OverloadedType[] = {VectorType, First->getSrc()->getType(), Operands[1]->getType()};
+  auto *Decl = GenISAIntrinsic::getDeclaration(M, IntrinsicID, OverloadedType);
+  PRINT_DECL_NL(Decl);
+  auto *CreatedInst = llvm::CallInst::Create(Decl, Operands);
+
+  CreatedInst->setName("vectorized_joint_wavebroadcast");
+  CreatedInst->setDebugLoc(First->getDebugLoc());
+  CreatedInst->insertAfter(InsertPoint);
+  CreatedVectorInstructions.push_back(CreatedInst);
+
+  PRINT_LOG("Intrinsic instruction created: ");
+  PRINT_INST_NL(CreatedInst);
+
+  replaceSliceInstructionsWithExtract(Slice, CreatedInst);
+
+  for (auto &el : Slice) {
+    if (ScalarToVector.count(el)) {
+      PRINT_LOG_NL("Vectorized version already present");
+      PRINT_INST(el);
+      PRINT_LOG(" --> ");
+      PRINT_INST_NL(ScalarToVector[el]);
+    }
+    ScalarToVector[el] = CreatedInst;
+  }
+
+  if (PrevVectorization) {
+    PRINT_LOG_NL("Replaced with proper vector version");
+    PrevVectorization->replaceAllUsesWith(CreatedInst);
+  }
+
+  return true;
+}
+
 bool IGCVectorizer::handleWaveAll(VecArr &Slice) {
 
   if (!isGenIntrinsicSafe(Slice.front()))
@@ -1075,6 +1160,24 @@ bool IGCVectorizer::handleExtractElement(VecArr &Slice) {
   return true;
 }
 
+bool IGCVectorizer::handleGenIntrinsic(VecArr &Slice) {
+
+  auto Opcode = llvm::cast<GenIntrinsicInst>(Slice.front())->getIntrinsicID();
+  switch (Opcode) {
+  case llvm::GenISAIntrinsic::GenISA_WaveBroadcast:
+    if (!handleWaveBroadcast(Slice))
+      return false;
+    break;
+  case llvm::GenISAIntrinsic::GenISA_WaveAll:
+    if (!handleWaveAll(Slice))
+      return false;
+    break;
+  default:
+    IGC_ASSERT_UNREACHABLE();
+  }
+  return true;
+}
+
 bool IGCVectorizer::processChain(InsertStruct &InSt) {
   std::reverse(InSt.SlChain.begin(), InSt.SlChain.end());
 
@@ -1105,7 +1208,7 @@ bool IGCVectorizer::processChain(InsertStruct &InSt) {
       if (!handleSelectInstruction(Slice))
         return false;
     } else if (llvm::isa<GenIntrinsicInst>(First)) {
-      if (!handleWaveAll(Slice))
+      if (!handleGenIntrinsic(Slice))
         return false;
     } else if (llvm::isa<IntrinsicInst>(First)) {
       if (!handleIntrinsic(Slice))

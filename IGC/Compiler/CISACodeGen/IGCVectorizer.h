@@ -120,7 +120,9 @@ private:
   bool handleBinaryInstruction(VecArr &Slice);
   bool handleCMPInstruction(VecArr &Slice);
   bool handleIntrinsic(VecArr &Slice);
+  bool handleGenIntrinsic(VecArr &Slice);
   bool handleWaveAll(VecArr &Slice);
+  bool handleWaveBroadcast(VecArr &Slice);
   bool checkBinaryOperator(VecArr &Slice);
   bool checkPrevVectorization(VecArr &Slice, Value *&PrevVectorization);
   bool collectOperandsForVectorization(unsigned OperNumToStart, unsigned OperNumToStop, Instruction *First,

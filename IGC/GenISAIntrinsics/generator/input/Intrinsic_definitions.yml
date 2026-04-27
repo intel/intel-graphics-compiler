@@ -45,6 +45,10 @@ types:
         ID: !TypeID "Vector"
         num_elements: 0
         element_type: *i16
+    - &v_i32_ !<TypeDefinition>
+        ID: !TypeID "Vector"
+        num_elements: 0
+        element_type: *i32
     - &v4_i16_ !<TypeDefinition>
         ID: !TypeID "Vector"
         num_elements: 4
@@ -2803,6 +2807,33 @@ intrinsics:
                 type_definition: *i32
                 comment: "helperLaneMode : 0: not used; 1: helper lanes participatein\
                     \ wave ops, 2: helper lanes do not participate in wave ops."
+        attributes:
+            - !AttributeID "Convergent"
+            - !AttributeID "NoUnwind"
+            - !AttributeID "WillReturn"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef
+    - !<IntrinsicDefinition>
+        name: "GenISA_JointWaveBroadcast"
+        comment: "Broadcasts from specific set of lanes to all lanes. Overlaps with WaveShuffleIndex,\
+            \ but guarantees that lane is thread-uniform."
+        return_definition: !<ReturnDefinition>
+            type_definition: *any
+            comment: "result"
+        arguments:
+            - !<ArgumentDefinition>
+                name: Arg0
+                type_definition: *any
+                comment: "value"
+            - !<ArgumentDefinition>
+                name: Arg1
+                type_definition: *v_i32_
+                comment: "lane"
+            - !<ArgumentDefinition>
+                name: Arg2
+                type_definition: *i32
+                comment: "helperLaneMode - to match WaveShuffleIndex"
         attributes:
             - !AttributeID "Convergent"
             - !AttributeID "NoUnwind"

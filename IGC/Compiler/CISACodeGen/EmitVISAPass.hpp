@@ -276,6 +276,7 @@ public:
 
   void emitSimdSize(llvm::Instruction *inst);
   void emitSimdShuffle(llvm::Instruction *inst);
+  void emitJointWaveBroadcast(llvm::Instruction *inst);
   void emitSimdClusteredBroadcast(llvm::Instruction *inst);
   void emitCrossInstanceMov(const SSource &source, const DstModifier &modifier);
   void emitSimdShuffleDown(llvm::Instruction *inst);
