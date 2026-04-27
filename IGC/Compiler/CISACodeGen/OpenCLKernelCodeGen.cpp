@@ -323,10 +323,19 @@ SOpenCLKernelInfo::SResourceInfo COpenCLKernel::getResourceInfo(int argNo) {
   ModuleMetaData *modMD = pCtx->getModuleMetaData();
   FunctionMetaData *funcMD = &modMD->FuncMD[entry];
   ResourceAllocMD *resAllocMD = &funcMD->resAllocMD;
-  IGC_ASSERT_MESSAGE(resAllocMD->argAllocMDList.size() > 0, "ArgAllocMD List Out of Bounds");
-  ArgAllocMD *argAlloc = &resAllocMD->argAllocMDList[argNo];
 
   SOpenCLKernelInfo::SResourceInfo resInfo;
+  resInfo.Type = SOpenCLKernelInfo::SResourceInfo::RES_OTHER;
+  resInfo.Index = -1;
+
+  IGC_ASSERT_MESSAGE(argNo >= 0 && static_cast<size_t>(argNo) < resAllocMD->argAllocMDList.size(),
+                     "ArgAllocMD List Out of Bounds");
+  if (argNo < 0 || static_cast<size_t>(argNo) >= resAllocMD->argAllocMDList.size()) {
+    return resInfo;
+  }
+
+  ArgAllocMD *argAlloc = &resAllocMD->argAllocMDList[argNo];
+
   ResourceTypeEnum type = (ResourceTypeEnum)argAlloc->type;
 
   if (type == ResourceTypeEnum::UAVResourceType || type == ResourceTypeEnum::BindlessUAVResourceType) {
@@ -345,7 +354,13 @@ ResourceExtensionTypeEnum COpenCLKernel::getExtensionInfo(int argNo) {
   ModuleMetaData *modMD = pCtx->getModuleMetaData();
   FunctionMetaData *funcMD = &modMD->FuncMD[entry];
   ResourceAllocMD *resAllocMD = &funcMD->resAllocMD;
-  IGC_ASSERT_MESSAGE(resAllocMD->argAllocMDList.size() > 0, "ArgAllocMD List Out of Bounds");
+
+  IGC_ASSERT_MESSAGE(argNo >= 0 && static_cast<size_t>(argNo) < resAllocMD->argAllocMDList.size(),
+                     "ArgAllocMD List Out of Bounds");
+  if (argNo < 0 || static_cast<size_t>(argNo) >= resAllocMD->argAllocMDList.size()) {
+    return ResourceExtensionTypeEnum::NonExtensionType;
+  }
+
   ArgAllocMD *argAlloc = &resAllocMD->argAllocMDList[argNo];
   return (ResourceExtensionTypeEnum)argAlloc->extensionType;
 }
@@ -702,10 +717,9 @@ bool COpenCLKernel::CreateZEPayloadArguments(IGC::KernelArg *kernelArg, uint pay
     ResourceAllocMD &resAllocMD = GetContext()->getModuleMetaData()->FuncMD[entry].resAllocMD;
     IGC_ASSERT_MESSAGE(resAllocMD.argAllocMDList.size() > 0, "ArgAllocMDList is empty.");
 
-    ArgAllocMD &argAlloc = resAllocMD.argAllocMDList[arg_idx];
-
     zebin::PreDefinedAttrGetter::ArgAddrMode addr_mode = zebin::PreDefinedAttrGetter::ArgAddrMode::stateless;
-    if (argAlloc.type == ResourceTypeEnum::BindlessUAVResourceType)
+    if (arg_idx < resAllocMD.argAllocMDList.size() &&
+        resAllocMD.argAllocMDList[arg_idx].type == ResourceTypeEnum::BindlessUAVResourceType)
       addr_mode = zebin::PreDefinedAttrGetter::ArgAddrMode::bindless;
 
     zebin::zeInfoPayloadArgument &arg = zebin::ZEInfoBuilder::addPayloadArgumentByPointer(
