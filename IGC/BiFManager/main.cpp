@@ -26,6 +26,7 @@ SPDX-License-Identifier: MIT
 #include <llvmWrapper/IR/Instructions.h>
 #include <llvmWrapper/IR/Module.h>
 #include <llvmWrapper/ADT/STLExtras.h>
+#include <llvmWrapper/IR/LLVMContext.h>
 #include "BiFManagerTool.hpp"
 
 #include <string>
@@ -44,19 +45,7 @@ static cl::opt<std::string> OutputPathH(cl::Positional, cl::desc("<output .h fil
 
 int main(int argc, char *argv[]) {
   LLVMContext Context;
-#if LLVM_VERSION_MAJOR >= 16
-  bool enableOpaquePointers = __IGC_OPAQUE_POINTERS_API_ENABLED;
-
-  if (enableOpaquePointers) {
-    printf("[BiFManager] - Enabling Opaque Pointers\n");
-  } else {
-    printf("[BiFManager] - Disabling Opaque Pointers\n");
-  }
-
-#if LLVM_VERSION_MAJOR < 17
-  Context.setOpaquePointers(enableOpaquePointers);
-#endif
-#endif
+  IGCLLVM::setOpaquePointers(&Context);
 
   cl::ParseCommandLineOptions(argc, argv);
 
