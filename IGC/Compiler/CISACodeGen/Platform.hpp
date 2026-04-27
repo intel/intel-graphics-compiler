@@ -164,7 +164,6 @@ public:
 
   bool supportDisableMidThreadPreemptionSwitch() const { return m_platformInfo.eRenderCoreFamily >= IGFX_GEN10_CORE; }
 
-
   bool support16BitImmSrcForMad() const { return (m_platformInfo.eRenderCoreFamily >= IGFX_GEN10_CORE); }
 
   // This function checks if product is child of another product
