@@ -1068,7 +1068,9 @@ public:
   /********** APPEND 3D Instructions END ******************/
 
   /********** MISC APIs START *************************/
-  VISA_BUILDER_API int GetGenxBinary(void *&buffer, int &size) const override;
+  VISA_BUILDER_API int GetGenxBinary(void *&buffer, int &size) override;
+  VISA_BUILDER_API int GetGenxBinaryRef(const void *&buffer,
+                                        int &size) const override;
   VISA_BUILDER_API int GetJitInfo(vISA::FINALIZER_INFO *&jitInfo) const override;
   VISA_BUILDER_API int GetKernelInfo(KERNEL_INFO *&kernelInfo) const override;
   VISA_BUILDER_API int GetErrorMessage(const char *&errorMsg) const override;

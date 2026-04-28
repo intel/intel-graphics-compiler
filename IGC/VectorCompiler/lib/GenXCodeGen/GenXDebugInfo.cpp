@@ -643,7 +643,7 @@ class GenObjectWrapper {
   void *GenDbgInfoDataPtr = nullptr;
 
   int GenBinaryDataSize = 0;
-  void *GenBinaryDataPtr = nullptr;
+  const void *GenBinaryDataPtr = nullptr;
 
   const Function &EntryPoint;
 
@@ -667,7 +667,7 @@ public:
 
   ArrayRef<char> getGenBinary() const {
     IGC_ASSERT(GenBinaryDataPtr);
-    return ArrayRef<char>(static_cast<char *>(GenBinaryDataPtr),
+    return ArrayRef<char>(static_cast<const char *>(GenBinaryDataPtr),
                           GenBinaryDataSize);
   }
 
@@ -715,8 +715,10 @@ GenObjectWrapper::GenObjectWrapper(VISAKernel &VK, const Function &F)
   }
   IGC_ASSERT(JitInfo);
 
-  // Extract Gen Binary (will need it for line table generation)
-  VK.GetGenxBinary(GenBinaryDataPtr, GenBinaryDataSize);
+  // Borrow Gen Binary for line table generation (non-owning, no freeBlock).
+  const void *GenBinRef = nullptr;
+  VK.GetGenxBinaryRef(GenBinRef, GenBinaryDataSize);
+  GenBinaryDataPtr = GenBinRef;
   if (GenBinaryDataSize <= 0) {
     setError("could not extract gen binary from finalizer");
     return;

@@ -557,7 +557,7 @@ static GenXOCLRuntimeInfo::SymbolSeq constructFunctionSymbols(
 // to \p GenBinary.
 static void
 appendFuncBinary(genx::BinaryDataAccumulator<const GlobalValue *> &GenBinary,
-                 const Function &Func, const VISAKernel &BuiltFunc) {
+                 const Function &Func, VISAKernel &BuiltFunc) {
   void *GenBin = nullptr;
   int GenBinSize = 0;
   CISA_CALL(BuiltFunc.GetGenxBinary(GenBin, GenBinSize));

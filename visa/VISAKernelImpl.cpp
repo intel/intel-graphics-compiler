@@ -9291,11 +9291,21 @@ VISAKernelImpl::~VISAKernelImpl() {
 
   delete fmt;
   delete verifier;
+
+  freeBlock(m_genx_binary_buffer);
+  m_genx_binary_buffer = nullptr;
 }
 
-int VISAKernelImpl::GetGenxBinary(void *&buffer, int &size) const {
+int VISAKernelImpl::GetGenxBinary(void *&buffer, int &size) {
   buffer = m_genx_binary_buffer;
-  size = m_genx_binary_size;
+  size = (int)m_genx_binary_size;
+  m_genx_binary_buffer = nullptr;
+  return VISA_SUCCESS;
+}
+
+int VISAKernelImpl::GetGenxBinaryRef(const void *&buffer, int &size) const {
+  buffer = m_genx_binary_buffer;
+  size = (int)m_genx_binary_size;
   return VISA_SUCCESS;
 }
 

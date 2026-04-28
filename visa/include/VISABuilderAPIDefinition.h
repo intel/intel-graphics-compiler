@@ -1271,12 +1271,21 @@ public:
 
   /********** APPEND INSTRUCTION APIS END   ******************/
 
-  /// GetGenxBinary -- returns the GEN binary in <buffer> and update its size in
-  /// <size> This function may only be called after Compile() is called If
-  /// finalization fails, buffer will be set to null and size will be set to 0.
-  /// buffer must be de-allocated using freeBlock API.
+  /// GetGenxBinary -- returns the GEN binary in <buffer> and updates its size
+  /// in <size>. Transfers ownership to the caller: the internal pointer is
+  /// cleared after this call, so the buffer will NOT be freed on VISAKernel
+  /// destruction. This function may only be called after Compile() is called.
+  /// If finalization fails, buffer will be set to null and size will be set to
+  /// 0. buffer must be de-allocated using freeBlock API.
   VISA_BUILDER_API virtual int GetGenxBinary(void *&buffer,
-                                             int &size) const = 0;
+                                             int &size) = 0;
+
+  /// GetGenxBinaryRef -- returns a non-owning pointer to the GEN binary.
+  /// The returned pointer is valid as long as the VISAKernel object is alive
+  /// and no call to GetGenxBinary has been made (which transfers ownership).
+  /// Caller must NOT free the returned buffer.
+  VISA_BUILDER_API virtual int GetGenxBinaryRef(const void *&buffer,
+                                                int &size) const = 0;
 
   /// GetJitInfo -- returns auxiliary information collected during finalization
   /// This function may only be called after Compile() is called
