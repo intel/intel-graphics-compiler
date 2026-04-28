@@ -428,9 +428,6 @@ bool GEPLowering::simplifyGEP(BasicBlock &BB) {
     auto *Idx = GEP->getOperand(1);
     if (auto *ZExt = dyn_cast<ZExtInst>(Idx)) {
       Idx = ZExt->getOperand(0);
-      auto *Op = dyn_cast<OverflowingBinaryOperator>(Idx);
-      if (Op && !Op->hasNoUnsignedWrap())
-        continue;
     } else if (auto *SExt = dyn_cast<SExtInst>(Idx)) {
       Idx = SExt->getOperand(0);
       Operator *Opr = dyn_cast<Operator>(Idx);
