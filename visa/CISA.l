@@ -10,6 +10,7 @@ SPDX-License-Identifier: MIT
 #include <string.h>
 #include <stdio.h>
 #include <ctype.h>
+#include <vector>
 
 #ifdef _MSC_VER
 // To disable warning for duplicate macros definitions
@@ -58,7 +59,24 @@ static DNSCL_MODE str2DnsclMode(const char *str, int *off);
 static DNSCL_RND_MODE str2DnsclRoundMode(const char *str, int *off);
 
 static bool buildOptionPresent = false;
+static std::vector<char *> allocatedTokenStrings;
+
+static char *duplicateTokenString(const char *text) {
+    char *dup = strdup(text);
+    allocatedTokenStrings.push_back(dup);
+    return dup;
+}
+
+static char *adoptTokenString(char *text) {
+    allocatedTokenStrings.push_back(text);
+    return text;
+}
+
 void resetGlobalVariables() {
+    for (char *token : allocatedTokenStrings) {
+        free(token);
+    }
+    allocatedTokenStrings.clear();
     buildOptionPresent = false;
 }
 %}
@@ -81,7 +99,7 @@ void resetGlobalVariables() {
             YY_FATAL_ERROR("more then one instance of build options");
         buildOptionPresent = true;
         TRACE("** BUILD_OPTION\n");
-        CISAlval.string = strdup(yytext);
+        CISAlval.string = duplicateTokenString(yytext);
         return BUILD_OPTION_LINE;
     }
 }
@@ -142,9 +160,7 @@ void resetGlobalVariables() {
     }
     \\.                       YY_FATAL_ERROR("lexical error: illegal escape sequence");
     \"  {
-          char *tmp = strdup(CISAlval.strlit.decoded);
-          free(CISAlval.strlit.decoded);
-          CISAlval.string = tmp;
+          CISAlval.string = adoptTokenString(CISAlval.strlit.decoded);
           BEGIN(INITIAL);
           return STRING_LIT;
     }
@@ -201,7 +217,7 @@ void resetGlobalVariables() {
 ".input"            {TRACE("** INPUT"); return DIRECTIVE_INPUT;}
 "."implicit[a-zA-Z0-9_\-$@?]* {
         TRACE("**  DIRECTIVE_IMPLICIT");
-        char* yytext_dup = strdup(yytext);
+        char* yytext_dup = duplicateTokenString(yytext);
         yytext_dup[yyleng] = '\0';
         CISAlval.string = yytext_dup;
         return DIRECTIVE_IMPLICIT;
@@ -1008,7 +1024,7 @@ lifetime"."end {
 
 ^[a-zA-Z_$@?][a-zA-Z0-9_\-$@?]*: {
         TRACE("**  LABEL");
-        char* yytext_dup = strdup(yytext);
+        char* yytext_dup = duplicateTokenString(yytext);
         yytext_dup[yyleng - 1] = '\0';
         CISAlval.string = yytext_dup;
         return LABEL;
@@ -1426,7 +1442,7 @@ surf   {return LSC_AM_SURF;}
 
 "."("<"[a-zA-Z]+">")+ {
         TRACE("** RTWRITE OPTION");
-        CISAlval.string = strdup(yytext+1);
+        CISAlval.string = duplicateTokenString(yytext+1);
         return RTWRITE_OPTION;
     }
 
@@ -1444,7 +1460,7 @@ surf   {return LSC_AM_SURF;}
 
 %null {
         TRACE("** Built-in %%null");
-        CISAlval.string = strdup(yytext);
+        CISAlval.string = duplicateTokenString(yytext);
         return BUILTIN_NULL;
     }
 
@@ -1462,25 +1478,25 @@ surf   {return LSC_AM_SURF;}
 %[[:alpha:]_][[:alnum:]_]* {
         // this matches %null, but lex prefers the first pattern
         TRACE("** Builtin-in variable");
-        CISAlval.string = strdup(yytext);
+        CISAlval.string = duplicateTokenString(yytext);
         return BUILTIN;
     }
 
 [[:alpha:]_][[:alnum:]_]* {
         TRACE("** IDENTIFIER");
-        CISAlval.string = strdup(yytext);
+        CISAlval.string = duplicateTokenString(yytext);
         return IDENT;
     }
 
 ".uniform" {
         TRACE("** UNIFORM");
-        CISAlval.string = strdup(yytext);
+        CISAlval.string = duplicateTokenString(yytext);
         return UNIFORM;
     }
 
 ".noreturn" {
         TRACE("** NORETURN");
-        CISAlval.string = strdup(yytext);
+        CISAlval.string = duplicateTokenString(yytext);
         return NORETURN;
     }
 

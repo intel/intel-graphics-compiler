@@ -258,6 +258,7 @@ DLL_EXPORT void freeBlock(void *ptr) {
 #ifndef DLL_MODE
 
 extern int CISAparse(CISA_IR_Builder *builder);
+extern void resetGlobalVariables();
 
 int parseText(llvm::StringRef fileName, int argc, const char *argv[],
               Options &opt) {
@@ -277,6 +278,7 @@ int parseText(llvm::StringRef fileName, int argc, const char *argv[],
 
   CISAdebug = 0;
   int fail = CISAparse(cisa_builder);
+  resetGlobalVariables();
   fclose(CISAin);
   if (fail) {
     if (cisa_builder->HasParseError()) {
@@ -285,6 +287,7 @@ int parseText(llvm::StringRef fileName, int argc, const char *argv[],
       std::cerr << "error during parsing: CISAparse() returned " << fail
                 << "\n";
     }
+    CISA_IR_Builder::DestroyBuilder(cisa_builder);
     return EXIT_FAILURE;
   }
 
@@ -313,6 +316,7 @@ int parseText(llvm::StringRef fileName, int argc, const char *argv[],
   auto compErr = cisa_builder->Compile(isaasmFileName.c_str());
   if (compErr) {
     std::cerr << cisa_builder->GetCriticalMsg() << "\n";
+    CISA_IR_Builder::DestroyBuilder(cisa_builder);
     return EXIT_FAILURE;
   }
   auto dstbErr = CISA_IR_Builder::DestroyBuilder(cisa_builder);
