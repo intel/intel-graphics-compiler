@@ -454,7 +454,7 @@ def SPV_KHR_bfloat16 : ExperimentalExtension<
 def SPV_INTEL_subgroup_scaled_matrix_multiply_accumulate : ExperimentalExtension<
   "SPV_INTEL_subgroup_scaled_matrix_multiply_accumulate",
   [ Capability<"SubgroupScaledMatrixMultiplyAccumulateINTEL"> ],
-  "https://github.com/intel/llvm/pull/20656",
+  "https://github.com/intel/llvm/blob/sycl/sycl/doc/design/spirv-extensions/SPV_INTEL_subgroup_scaled_matrix_multiply_accumulate.asciidoc",
   isCoreChildOf<IGFX_XE3P_CORE>
 >;
 

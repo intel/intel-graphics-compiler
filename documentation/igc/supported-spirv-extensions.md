@@ -481,7 +481,7 @@ This document lists all SPIR-V extensions supported by IGC and their platform re
 
 ## SPV_INTEL_subgroup_scaled_matrix_multiply_accumulate
 
-**Specification**: https://github.com/intel/llvm/pull/20656
+**Specification**: https://github.com/intel/llvm/blob/sycl/sycl/doc/design/spirv-extensions/SPV_INTEL_subgroup_scaled_matrix_multiply_accumulate.asciidoc
 
 > **Experimentally supported on**: XE3P+ (NVL, CRI)
 
