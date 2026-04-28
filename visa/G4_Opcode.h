@@ -208,11 +208,15 @@ enum G4_Type : unsigned char {
   Type_DF,
   Type_BOOL,
   Type_UV,
-  Type_Q,  // 64-bit signed integer
-  Type_UQ, // 64-bit unsigned integer
-  Type_HF, // half float
-  Type_NF, // native float (only used by plane macro)
-  Type_BF, // bfloat16 (used in mov only)
+  Type_Q,    // 64-bit signed integer
+  Type_UQ,   // 64-bit unsigned integer
+  Type_HF,   // half float
+  Type_NF,   // native float (only used by plane macro)
+  Type_BF,   // bfloat16 (used in mov only)
+  Type_TF32, // tensor float, stored in bits[31:13] of a 32-bit container
+  Type_HF8,  // E4M3
+  Type_BF8,  // E5M2
+  Type_E2M1,
   Type_UNDEF
 };
 
@@ -242,6 +246,10 @@ constexpr G4_Type_Info G4_Type_Table[Type_UNDEF + 1]{
     {Type_HF, 16, 2, 0x03, "hf"},
     {Type_NF, 64, 8, 0xFF, "nf"},
     {Type_BF, 16, 2, 0x03, "bf"},
+    {Type_TF32, 32, 4, 0x0F, "tf32"},
+    {Type_HF8, 8, 1, 0x01, "hf8"},
+    {Type_BF8, 8, 1, 0x01, "bf8"},
+    {Type_E2M1, 8, 1, 0x01, "e2m1"}, // 4-bit, footprint ?
     {Type_UNDEF, 0, 0, 0x0, "???"}};
 static inline constexpr G4_Type_Info TypeInfo(G4_Type t) {
   return G4_Type_Table[(unsigned)t > (unsigned)Type_UNDEF ? Type_UNDEF : t];

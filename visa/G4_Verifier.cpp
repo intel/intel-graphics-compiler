@@ -1122,24 +1122,16 @@ void G4Verifier::verifyDpas(G4_INST *inst) {
 
   else if (dpasInst->isFP8()) {
     auto plat = dpasInst->getPlatform();
+    bool dTyOk = dTy == Type_F || dTy == Type_BF;
+    bool s0TyOk = s0Ty == Type_F || s0Ty == Type_BF;
     if (plat > Xe3) {
-      if ((dTy != Type_F && dTy != Type_BF) ||
-          (s0Ty != Type_F && s0Ty != Type_BF)) {
-        DEBUG_VERBOSE("incorrect type for dst or src0, expecting F or BF!");
-        inst->emit(std::cerr);
-        DEBUG_VERBOSE("\n");
-        vISA_ASSERT(false, "should be type F or BF for dst or src0");
-      }
-    }
-    else {
-      if (dTy != Type_F || s0Ty != Type_F) {
-        DEBUG_VERBOSE("incorrect type for dst or src0, expecting F!");
-        inst->emit(std::cerr);
-        DEBUG_VERBOSE("\n");
-        vISA_ASSERT(false, "should be type F for dst or src0");
-      }
-    }
-    if (dpasInst->isHF8() && plat <= Xe3) {
+        if (!dTyOk || !s0TyOk) {
+          DEBUG_VERBOSE("incorrect type for dst or src0, expecting F or BF!");
+          inst->emit(std::cerr);
+          DEBUG_VERBOSE("\n");
+          vISA_ASSERT(false, "should be type F or BF for dst or src0");
+        }
+    } else {
       DEBUG_VERBOSE("incorrect HF8 type for src1 or src2!");
       inst->emit(std::cerr);
       DEBUG_VERBOSE("\n");

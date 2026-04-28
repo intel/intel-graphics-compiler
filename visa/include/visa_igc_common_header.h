@@ -114,6 +114,10 @@ typedef enum : unsigned char {
   ISA_TYPE_Q = 0xD,
   ISA_TYPE_HF = 0xE,
   ISA_TYPE_BF = 0xF,
+  ISA_TYPE_TF32 = 0x10, // tensor float as bits[31:13] in a 32-bit container
+  ISA_TYPE_HF8 = 0x11,  // E4M3
+  ISA_TYPE_BF8 = 0x12,  // E5M2
+  ISA_TYPE_E2M1 = 0x13,
   ISA_TYPE_NUM
 } VISA_Type;
 

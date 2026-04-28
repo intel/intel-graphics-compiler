@@ -201,12 +201,17 @@ const char *CISAAtomicOpNames[] = {
 };
 
 CISATypeInfo CISATypeTable[ISA_TYPE_NUM] = {
-    {ISA_TYPE_UD, "ud", 4}, {ISA_TYPE_D, "d", 4},       {ISA_TYPE_UW, "uw", 2},
-    {ISA_TYPE_W, "w", 2},   {ISA_TYPE_UB, "ub", 1},     {ISA_TYPE_B, "b", 1},
-    {ISA_TYPE_DF, "df", 8}, {ISA_TYPE_F, "f", 4},       {ISA_TYPE_V, "v", 4},
-    {ISA_TYPE_VF, "vf", 4}, {ISA_TYPE_BOOL, "bool", 1}, {ISA_TYPE_UQ, "uq", 8},
-    {ISA_TYPE_UV, "uv", 4}, {ISA_TYPE_Q, "q", 8},       {ISA_TYPE_HF, "hf", 2},
-    {ISA_TYPE_BF, "bf", 2}};
+    {ISA_TYPE_UD, "ud", 4},       {ISA_TYPE_D, "d", 4},
+    {ISA_TYPE_UW, "uw", 2},       {ISA_TYPE_W, "w", 2},
+    {ISA_TYPE_UB, "ub", 1},       {ISA_TYPE_B, "b", 1},
+    {ISA_TYPE_DF, "df", 8},       {ISA_TYPE_F, "f", 4},
+    {ISA_TYPE_V, "v", 4},         {ISA_TYPE_VF, "vf", 4},
+    {ISA_TYPE_BOOL, "bool", 1},   {ISA_TYPE_UQ, "uq", 8},
+    {ISA_TYPE_UV, "uv", 4},       {ISA_TYPE_Q, "q", 8},
+    {ISA_TYPE_HF, "hf", 2},       {ISA_TYPE_BF, "bf", 2},
+    {ISA_TYPE_TF32, "tf32", 4},   {ISA_TYPE_HF8, "hf8", 1},
+    {ISA_TYPE_BF8, "bf8", 1},     {ISA_TYPE_E2M1, "e2m1", 1},
+};
 
 const char *ChannelMask::Names[] = {
     "0000", // ABGR

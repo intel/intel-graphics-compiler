@@ -1552,6 +1552,7 @@ void vISAVerifier::verifyInstructionMisc(const CISA_INST *inst) {
     if (irBuilder->getPlatform() < Xe_PVC) {
       verifyRawOperandType(inst, dst, FNIsIntOrFloat);
     }
+    // TODO: decide to enable it or disable the code under Future
     else {
       verifyRawOperandType(inst, dst, FNIsIntOrFloatXePVC);
     }
