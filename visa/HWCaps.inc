@@ -657,6 +657,7 @@ bool hasDPAS() const {
   return getPlatform() >= Xe_XeHPSDV && getPlatform() != Xe_MTL;
 }
 
+
 bool hasAMFSFastClear() const { return getPlatform() >= Xe_XeHPSDV; }
 
 // only valid type combinations during format mov conversion if acc is used:
