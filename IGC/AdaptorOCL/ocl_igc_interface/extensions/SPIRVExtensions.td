@@ -425,7 +425,7 @@ def SPV_INTEL_float4 : ExperimentalExtension<
   isCoreChildOf<IGFX_XE3P_CORE>
 >;
 
-def SPV_INTEL_16bit_atomics : ExperimentalExtension<
+def SPV_INTEL_16bit_atomics : Extension<
   "SPV_INTEL_16bit_atomics",
   [ Capability<"AtomicInt16CompareExchangeINTEL", isCoreChildOf<IGFX_XE3P_CORE>>,
     Capability<"Int16AtomicsINTEL", NotSupported>,

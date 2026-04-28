@@ -74,15 +74,15 @@ This document lists all SPIR-V extensions supported by IGC and their platform re
 **Capabilities**:
 
 - **AtomicInt16CompareExchangeINTEL**
-  > **Experimentally supported on**: XE3P+ (NVL, CRI)
+  > **Supported On**: XE3P+ (NVL, CRI)
 - **Int16AtomicsINTEL**
-  > **Experimentally supported on**: Not supported
+  > **Supported On**: Not supported
 - **AtomicBFloat16LoadStoreINTEL**
-  > **Experimentally supported on**: XE3P+ (NVL, CRI)
+  > **Supported On**: XE3P+ (NVL, CRI)
 - **AtomicBFloat16AddINTEL**
-  > **Experimentally supported on**: XE3P+ (NVL, CRI)
+  > **Supported On**: XE3P+ (NVL, CRI)
 - **AtomicBFloat16MinMaxINTEL**
-  > **Experimentally supported on**: XE3P+ (NVL, CRI)
+  > **Supported On**: XE3P+ (NVL, CRI)
 
 ---
 
