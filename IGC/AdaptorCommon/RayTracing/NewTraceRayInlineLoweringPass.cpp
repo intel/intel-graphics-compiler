@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
+#include <optional>
 #include "Compiler/IGCPassSupport.h"
 #include "Compiler/CodeGenPublic.h"
 #include "IGC/common/StringMacros.hpp"
@@ -697,7 +698,7 @@ void InlineRaytracing::LowerIntrinsics(Function &F) {
 InlineRaytracing::LivenessDataMap InlineRaytracing::AnalyzeLiveness(Function &F, DominatorTree &DT, LoopInfo &LI) {
   LivenessDataMap data;
   for (auto *I : m_Functions[CREATE_RQ_OBJECT]->users()) {
-    data.insert(std::make_pair(cast<Instruction>(I), ProcessInstruction(cast<Instruction>(I), DT, LI)));
+    data.insert(std::make_pair(cast<Instruction>(I), ProcessInstruction(cast<Instruction>(I), DT, LI, std::nullopt)));
   }
 
   return data;

@@ -14,6 +14,8 @@ SPDX-License-Identifier: MIT
 #include <llvm/ADT/SetVector.h>
 #include "common/LLVMWarningsPop.hpp"
 
+#include <optional>
+
 namespace llvm {
 class BasicBlock;
 class CallInst;
@@ -59,7 +61,7 @@ public:
 
     LivenessData(llvm::Instruction *allocationInstruction, llvm::SetVector<llvm::Instruction *> &&usersOfAllocation,
                  const llvm::LoopInfo &LI, const llvm::DominatorTree &DT, const BBToIndexMapT &bbToIndexMap,
-                 llvm::BasicBlock *userDominatorBlock = nullptr,
+                 size_t numBBs, llvm::BasicBlock *userDominatorBlock = nullptr,
                  llvm::SetVector<llvm::Instruction *> &&lifetimeLeakingUsers = {});
 
     bool OverlapsWith(const LivenessData &LD) const;
@@ -70,7 +72,7 @@ public:
 
 protected:
   LivenessData ProcessInstruction(llvm::Instruction *I, llvm::DominatorTree &DT, llvm::LoopInfo &LI,
-                                  bool includeOrigin = false);
+                                  std::optional<size_t> numBBs, bool includeOrigin = false);
 
   void getAnalysisUsage(llvm::AnalysisUsage &AU) const override;
   virtual void getAdditionalAnalysisUsage(llvm::AnalysisUsage &AU) const = 0;

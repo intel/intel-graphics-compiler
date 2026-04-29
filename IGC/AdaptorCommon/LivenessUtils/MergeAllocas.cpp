@@ -190,8 +190,9 @@ bool MergeAllocas::runOnFunction(Function &F) {
 
   llvm::SmallVector<std::pair<llvm::Instruction *, LivenessData *>> ABLA;
 
+  const auto numBBs = F.size();
   for (auto &I : make_filter_range(instructions(F), [](auto &I) { return isa<AllocaInst>(&I); })) {
-    storage.push_back(ProcessInstruction(&I, DT, LI));
+    storage.push_back(ProcessInstruction(&I, DT, LI, numBBs));
     ABLA.push_back(std::make_pair(&I, &storage.back()));
   }
 

@@ -14,6 +14,7 @@ SPDX-License-Identifier: MIT
 #include "debug/DebugMacros.hpp"
 
 #include "common/LLVMWarningsPush.hpp"
+#include <llvm/ADT/STLExtras.h>
 #include <llvm/ADT/SetOperations.h>
 #include <llvm/ADT/SetVector.h>
 #include <llvm/ADT/SmallSet.h>
@@ -32,8 +33,10 @@ SPDX-License-Identifier: MIT
 using namespace llvm;
 using namespace IGC;
 
-AllocationLivenessAnalyzer::LivenessData
-AllocationLivenessAnalyzer::ProcessInstruction(Instruction *I, DominatorTree &DT, LoopInfo &LI, bool includeOrigin) {
+AllocationLivenessAnalyzer::LivenessData AllocationLivenessAnalyzer::ProcessInstruction(Instruction *I,
+                                                                                        DominatorTree &DT, LoopInfo &LI,
+                                                                                        std::optional<size_t> numBBs,
+                                                                                        bool includeOrigin) {
   // static allocas are usually going to be in the entry block
   // that's a practice, but we only care about the last block that dominates all uses
   BasicBlock *commonDominator = includeOrigin ? I->getParent() : nullptr;
@@ -113,11 +116,18 @@ AllocationLivenessAnalyzer::ProcessInstruction(Instruction *I, DominatorTree &DT
   if (includeOrigin)
     allUsers.insert(I);
 
-  auto *F = I->getParent()->getParent();
+  auto *F = I->getFunction();
   if (PerFunctionBBToIndexMap.count(F) == 0) {
     initBBtoIndexMap(*F);
   }
-  return {I, std::move(allUsers), LI, DT, PerFunctionBBToIndexMap[F], commonDominator, std::move(lifetimeLeakingUsers)};
+  return {I,
+          std::move(allUsers),
+          LI,
+          DT,
+          PerFunctionBBToIndexMap[F],
+          numBBs.has_value() ? numBBs.value() : F->size(),
+          commonDominator,
+          std::move(lifetimeLeakingUsers)};
 }
 
 void AllocationLivenessAnalyzer::getAnalysisUsage(llvm::AnalysisUsage &AU) const {
@@ -173,7 +183,7 @@ static inline void doWorkLoop(SmallVectorImpl<BasicBlock *> &worklist, SetT &bbS
 AllocationLivenessAnalyzer::LivenessData::LivenessData(Instruction *allocationInstruction,
                                                        SetVector<Instruction *> &&usersOfAllocation, const LoopInfo &LI,
                                                        const DominatorTree &DT, const BBToIndexMapT &bbToIndexMap,
-                                                       llvm::BasicBlock *userDominatorBlock,
+                                                       size_t numBBs, llvm::BasicBlock *userDominatorBlock,
                                                        SetVector<Instruction *> &&lifetimeLeakingUsers) {
   llvm::SmallSetVector<llvm::BasicBlock *, 16> bbInSet;
   llvm::SmallSetVector<llvm::BasicBlock *, 16> bbOutSet;
@@ -230,10 +240,8 @@ AllocationLivenessAnalyzer::LivenessData::LivenessData(Instruction *allocationIn
         [&](auto *currbb) { return false; });
 
     // add terminators to users, so we can later add them to our lifetimeEnd vector
-    auto leakingbbOnlyIn = leakingbbIn;
-    leakingbbOnlyIn.set_subtract(leakingbbOut);
-
-    for (auto *bb : leakingbbOnlyIn)
+    auto leakingbbOnlyInIt = llvm::make_filter_range(leakingbbIn, [&](auto *bb) { return !leakingbbOut.contains(bb); });
+    for (auto *bb : leakingbbOnlyInIt)
       usersOfAllocation.insert(bb->getTerminator());
 
     bbInSet.set_union(leakingbbIn);
@@ -278,17 +286,13 @@ AllocationLivenessAnalyzer::LivenessData::LivenessData(Instruction *allocationIn
 
   // at this point we have all the blocks we need, so fill out the start/end data
 
-  // substract the inflow blocks from the outflow blocks to find the block which starts the lifetime - there should be
+  // Find the outflow block not in the inflow blocks to find the block which starts the lifetime - there should be
   // only one!
-  auto bbOutOnly = bbOutSet;
-  bbOutOnly.set_subtract(bbInSet);
-
-  IGC_ASSERT_MESSAGE(bbOutOnly.size() == 1, "Multiple lifetime start blocks?");
-
-  auto *lifetimeStartBB = *bbOutOnly.begin();
+  const auto *lifetimeStartBBIt = llvm::find_if_not(bbOutSet, [&](auto *bb) { return bbInSet.contains(bb); });
+  IGC_ASSERT_MESSAGE(lifetimeStartBBIt != bbOutSet.end(), "No lifetime start block?");
 
   // fill out the lifetime start/ends instruction
-  for (auto &I : *lifetimeStartBB) {
+  for (auto &I : **lifetimeStartBBIt) {
     lifetimeStart = LivenessInstruction(&I, bbToIndexMap);
     if (usersOfAllocation.contains(&I))
       break;
@@ -307,10 +311,8 @@ AllocationLivenessAnalyzer::LivenessData::LivenessData(Instruction *allocationIn
     bbOutSet.clear();
   } else {
     // find all blocks where lifetime flows in, but doesnt flow out
-    auto bbOnlyIn = bbInSet;
-    bbOnlyIn.set_subtract(bbOutSet);
-
-    for (auto *bb : bbOnlyIn) {
+    auto bbOnlyInIt = llvm::make_filter_range(bbInSet, [&](auto *bb) { return !bbOutSet.contains(bb); });
+    for (auto *bb : bbOnlyInIt) {
       for (auto &I : llvm::reverse(*bb)) {
         if (usersOfAllocation.contains(&I)) {
           lifetimeEndInstructions.push_back(LivenessInstruction(&I, bbToIndexMap));
@@ -335,13 +337,12 @@ AllocationLivenessAnalyzer::LivenessData::LivenessData(Instruction *allocationIn
     }
   }
 
-  auto &F = *allocationInstruction->getParent()->getParent();
   // Fill bitvectors for faster overlap checks
-  bbIn.resize(F.size());
+  bbIn.resize(numBBs);
   for (auto *bb : bbInSet) {
     bbIn.set(bbToIndexMap.lookup(bb));
   }
-  bbOut.resize(F.size());
+  bbOut.resize(numBBs);
   for (auto *bb : bbOutSet) {
     bbOut.set(bbToIndexMap.lookup(bb));
   }
