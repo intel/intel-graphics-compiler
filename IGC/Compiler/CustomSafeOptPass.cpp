@@ -3597,6 +3597,49 @@ to:
 */
 
 void GenSpecificPattern::visitBitCastInst(BitCastInst &I) {
+#if LLVM_VERSION_MAJOR >= 16
+  // --- New: Reconstruct decomposed half extraction (LLVM 16+) ---
+  // Pattern: (bitcast (trunc (lshr %val, 16)) to half) => extractelement (bitcast %val to <2 x half>), 1
+  // Pattern: (bitcast (trunc %val) to half)            => extractelement (bitcast %val to <2 x half>), 0
+  if (IGC_IS_FLAG_ENABLED(EnableMatchDecomposedHalfExtract) && I.getType()->isHalfTy()) {
+    if (auto *Trunc = dyn_cast<TruncInst>(I.getOperand(0))) {
+      if (Trunc->getType()->isIntegerTy(16)) {
+        Value *Src = Trunc->getOperand(0);
+        if (Src->getType()->isIntegerTy(32)) {
+          unsigned Index = 0;
+          Value *BaseSrc = Src;
+
+          // If the source is an lshr, only match shift by exactly 16.
+          // Any other shift amount is not our target pattern - bail out.
+          if (auto *Shr = dyn_cast<BinaryOperator>(Src)) {
+            if (Shr->getOpcode() == Instruction::LShr) {
+              auto *Amt = dyn_cast<ConstantInt>(Shr->getOperand(1));
+              if (!Amt || Amt->getZExtValue() != 16)
+                return; // Not the decomposed half-extraction pattern
+
+              BaseSrc = Shr->getOperand(0);
+              Index = 1;
+            }
+          }
+
+          IRBuilder<> Builder(&I);
+          auto *VecTy = IGCLLVM::FixedVectorType::get(Builder.getHalfTy(), 2);
+          Value *VecBC = Builder.CreateBitCast(BaseSrc, VecTy);
+          Value *Extract = Builder.CreateExtractElement(VecBC, Builder.getInt32(Index));
+          I.replaceAllUsesWith(Extract);
+
+          Value *DeadTrunc = I.getOperand(0);
+          I.eraseFromParent();
+
+          if (auto *DT = dyn_cast<Instruction>(DeadTrunc))
+            RecursivelyDeleteTriviallyDeadInstructions(DT);
+
+          return;
+        }
+      }
+    }
+  }
+#endif
   if (I.getType()->isDoubleTy() && I.getOperand(0)->getType()->isIntegerTy(64)) {
     BinaryOperator *binOperator = nullptr;
     if ((binOperator = dyn_cast<BinaryOperator>(I.getOperand(0))) && binOperator->getOpcode() == Instruction::Or) {

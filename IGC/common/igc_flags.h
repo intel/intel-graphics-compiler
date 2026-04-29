@@ -665,6 +665,8 @@ DECLARE_IGC_REGKEY(DWORD, RedundantOpsIntraBBMaxDist, 64,
                    "Maximum instruction distance for inside-BB CSE in RedundantOpsCSEPass (0 = unlimited)", false)
 DECLARE_IGC_REGKEY(DWORD, RedundantOpsCrossBBMaxDist, 100,
                    "Maximum instruction distance for cross-BB CSE in RedundantOpsCSEPass (0 = unlimited)", false)
+DECLARE_IGC_REGKEY(bool, EnableMatchDecomposedHalfExtract, true, "Reconstruct LLVM16+ decomposed half extraction",
+                   false)
 
 DECLARE_IGC_GROUP("Shader debugging")
 DECLARE_IGC_REGKEY(bool, CopyA0ToDBG0, false, " Copy a0 used for extended msg descriptor to dbg0 to help debug", false)
