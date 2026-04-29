@@ -1016,20 +1016,24 @@ void G4Verifier::verifyDpas(G4_INST *inst) {
     DEBUG_VERBOSE("\n");
     vISA_ASSERT(false, "DPAS may not have condMod");
   }
-  if (dpasInst->isInt() && (kernel.fg.builder->hasSimplifiedRegions() ||
-      kernel.fg.builder->getOption(vISA_GAReArchBugFix))) {
+  if (dpasInst->isInt()) {
     auto src1Precision = dpasInst->getSrc1Precision();
     auto src2Precision = dpasInst->getSrc2Precision();
-    if (dpasInst->GetPrecisionSizeInBits(src1Precision) !=
-            dpasInst->GetPrecisionSizeInBits(src2Precision) ||
-        src1Precision == GenPrecision::U2 ||
-        src1Precision == GenPrecision::S2) {
-      VISA_DEBUG_VERBOSE({
-        std::cout << "should not have u2/s2 and mixed precision";
-        inst->emit(std::cerr);
-        std::cout << "\n";
-      });
-      vISA_ASSERT(false, "u2/s2 and mixed precision is not supported");
+    auto src1Bits = dpasInst->GetPrecisionSizeInBits(src1Precision);
+    auto src2Bits = dpasInst->GetPrecisionSizeInBits(src2Precision);
+    bool checked = false;
+    if (!checked && (kernel.fg.builder->hasSimplifiedRegions() ||
+                     kernel.fg.builder->getOption(vISA_GAReArchBugFix))) {
+      // No mixed int dpas
+      if (src1Bits != src2Bits || src1Precision == GenPrecision::U2 ||
+          src1Precision == GenPrecision::S2) {
+        VISA_DEBUG_VERBOSE({
+          std::cout << "should not have u2/s2 or mixed precision";
+          inst->emit(std::cerr);
+          std::cout << "\n";
+        });
+        vISA_ASSERT(false, "either u2/s2 or mixed precision is not supported");
+      }
     }
   }
 
@@ -1184,7 +1188,7 @@ void G4Verifier::verifyDpas(G4_INST *inst) {
     vISA_ASSERT(false, "src region should be <1;1,0> and dst region <1>!");
   }
 
-  // register alignment & size
+  // register alignment & size in general
   //   dst & src0 : aligned on execsize
   //   src1 : aligned on grf
   //   src2 : aligned on systolic depth * OPS_PER_CHAN
@@ -1223,6 +1227,20 @@ void G4Verifier::verifyDpas(G4_INST *inst) {
         vISA_ASSERT(false, "depth must be 8!");
       }
 
+      // src1 and src2 must be grf-aligned
+      if ((src1->getLinearizedStart() % kernel.numEltPerGRF<Type_UB>()) != 0) {
+        DEBUG_VERBOSE("bdpas's src1.subreg should be 0!");
+        inst->emit(std::cerr);
+        DEBUG_VERBOSE("\n");
+        vISA_ASSERT(false, "bdpas's src1.subreg should be 0!");
+      }
+      if ((src2->getLinearizedStart() % kernel.numEltPerGRF<Type_UB>()) != 0) {
+        DEBUG_VERBOSE("bdpas's src2.subreg should be 0!");
+        inst->emit(std::cerr);
+        DEBUG_VERBOSE("\n");
+        vISA_ASSERT(false, "bdpas's src2.subreg should be 0!");
+      }
+
       G4_SrcRegRegion *src4 = dpasInst->getSrc(4)->asSrcRegRegion();
       if (dpasInst->isFP16() || dpasInst->isBF16() || dpasInst->isFP8()) {
         if ((src3->getSubRegOff() & 15) != 0) {
@@ -1255,6 +1273,9 @@ void G4Verifier::verifyDpas(G4_INST *inst) {
           vISA_ASSERT(false, "invalid subreg for src4");
         }
       }
+    }
+
+    if (dpasInst->isInt()) {
     }
 
     uint32_t dAlignBytes = TypeSize(dTy) * ES;
@@ -1301,10 +1322,20 @@ void G4Verifier::verifyDpas(G4_INST *inst) {
 
     uint32_t s2AlignBytes = dpasInst->getSrc2SizePerLaneInByte() * D;
     if ((src2->getLinearizedStart() % s2AlignBytes) != 0) {
-      DEBUG_VERBOSE("src2's subreg offset is incorrec!");
+      DEBUG_VERBOSE("src2's subreg offset is incorrect!");
       inst->emit(std::cerr);
       DEBUG_VERBOSE("\n");
       vISA_ASSERT(false, "src2's subreg offset is incorrect!");
+    }
+
+    // For Xe2+, src2's subreg must be zero if RC=8 and D=8
+    if (dpasInst->getPlatform() >= Xe2 && RC == 8 && D == 8) {
+      if ((src2->getLinearizedStart() % kernel.numEltPerGRF<Type_UB>()) != 0) {
+        DEBUG_VERBOSE("dpas.8x8's src2.subreg should be 0!");
+        inst->emit(std::cerr);
+        DEBUG_VERBOSE("\n");
+        vISA_ASSERT(false, "dpas.8x8's src2.subreg should be 0!");
+      }
     }
 
     uint32_t s2Bytes =

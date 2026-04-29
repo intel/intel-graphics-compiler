@@ -249,7 +249,7 @@ constexpr G4_Type_Info G4_Type_Table[Type_UNDEF + 1]{
     {Type_TF32, 32, 4, 0x0F, "tf32"},
     {Type_HF8, 8, 1, 0x01, "hf8"},
     {Type_BF8, 8, 1, 0x01, "bf8"},
-    {Type_E2M1, 8, 1, 0x01, "e2m1"}, // 4-bit, footprint ?
+    {Type_E2M1, 8, 1, 0x01, "e2m1"},
     {Type_UNDEF, 0, 0, 0x0, "???"}};
 static inline constexpr G4_Type_Info TypeInfo(G4_Type t) {
   return G4_Type_Table[(unsigned)t > (unsigned)Type_UNDEF ? Type_UNDEF : t];

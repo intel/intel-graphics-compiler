@@ -8405,6 +8405,8 @@ bool G4_InstDpas::isInt8() const {
 }
 
 bool G4_InstDpas::is2xInt8() const {
+  // Only valid combinations can reach here as all invalid ones should
+  // have been rejected in G4_Verifier.
   if ((Src1Precision == GenPrecision::S4 || Src1Precision == GenPrecision::U4 ||
        Src1Precision == GenPrecision::S2 ||
        Src1Precision == GenPrecision::U2) &&
