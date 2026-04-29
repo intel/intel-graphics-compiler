@@ -46,11 +46,9 @@ typedef struct _SKU_FEATURE_TABLE
         unsigned int   FtrMmioBar : 1;
         unsigned int   FtrDioBar : 1;
         unsigned int   FtrPrimaryVga : 1;
-        unsigned int   FtrBandwidthLimit : 1;
         unsigned int   FtrCoreClkLimit : 1;
         unsigned int   Ftr36BitPhysAddress : 1;
         unsigned int   FtrVTdEnabled : 1;
-        unsigned int   FtrPgtblEnableSupported : 1;
         unsigned int   FtrVERing : 1;
         unsigned int   FtrBlitterRing : 1;
         unsigned int   FtrMFXRing : 1;
@@ -67,7 +65,6 @@ typedef struct _SKU_FEATURE_TABLE
         unsigned int   FtrGT1_6 : 1;
         unsigned int   FtrGT2 : 1;
         unsigned int   FtrNativeGT2 : 1;
-        unsigned int   FtrGT2_5 : 1;
         unsigned int   FtrGT3 : 1;
         unsigned int   FtrNativeGT3 : 1;
         unsigned int   FtrGT4 : 1;
@@ -172,9 +169,6 @@ typedef struct _SKU_FEATURE_TABLE
 
         unsigned int   FtrOverlay : 1;
         unsigned int   FtrOverlayMmioFlip : 1;
-        unsigned int   FtrFullOverlayDownscale : 1;
-        unsigned int   FtrFixedGfxMem64MbMax : 1;
-        unsigned int   FtrTotalGfxMem256MbMax : 1;
         unsigned int   FtrAsyncMMIOFlipSupport : 1;
 
 
@@ -213,7 +207,6 @@ typedef struct _SKU_FEATURE_TABLE
         unsigned int   FtrL3HangOnParityError           : 1;
         unsigned int   FtrEDram                         : 1;
         unsigned int   FtrLLCBypass                     : 1;
-        unsigned int   FtrCrystalwell                   : 1;
         unsigned int   FtrCentralCachePolicy            : 1;
         unsigned int   FtrIoMmu                         : 1;
         unsigned int   FtrDriverControlledIoMmu         : 1;
@@ -239,7 +232,6 @@ typedef struct _SKU_FEATURE_TABLE
         unsigned int   FtrDeferredWaitForEventOnAsyncFlip : 1;
         unsigned int   FtrPerfModeSdiWrite : 1;
         unsigned int   FtrUse3DEngineforLateralBlts : 1;
-        unsigned int   FtrPreemptTestMode : 1;
         unsigned int   FtrGuCWriteCombineEnable : 1;
         unsigned int   FtrGuCInternalMsgChannelEnable : 1;
 
@@ -248,7 +240,6 @@ typedef struct _SKU_FEATURE_TABLE
         unsigned int   FtrGpuMmuPageFault : 1;
         unsigned int   FtrOSManagedAllocations  : 1;
         unsigned int   FtrCsResponseEventOptimization : 1;
-        unsigned int   FtrRuntimeLogBuffer            : 1;
         unsigned int   FtrLocalMemory                 : 1;
         unsigned int   FtrEfficient64BitAddressing    : 1;
 
@@ -256,8 +247,6 @@ typedef struct _SKU_FEATURE_TABLE
 
     struct
     {
-        unsigned int   FtrHwBin : 1;
-        unsigned int   Ftr8BitPalette : 1;
         unsigned int   FtrPixelShader : 1;
         unsigned int   FtrPixelShader30 : 1;
         unsigned int   FtrBWGConsumerTextures : 1;
