@@ -505,11 +505,7 @@ static void populateCodeGenPassManager(const vc::CompileOptions &Opts,
 static vc::CompileOutput runCodeGen(const vc::CompileOptions &Opts,
                                     const vc::ExternalData &ExtData,
                                     TargetMachine &TM, Module &M) {
-#if LLVM_VERSION_MAJOR < 16
   vc::PassManager PM;
-#else
-  llvm::legacy::PassManager PM;
-#endif
 
   populateCodeGenPassManager(Opts, ExtData, TM, PM);
 
