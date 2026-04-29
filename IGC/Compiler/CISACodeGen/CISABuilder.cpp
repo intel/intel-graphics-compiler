@@ -5972,6 +5972,24 @@ void CEncoder::Compile(bool hasSymbolTable, GenXFunctionGroupAnalysis *&pFGA) {
     freeBlock(genxbin);
   }
 
+  // Append a content-based hash to the .asm dump when PrintInstOffsetInShaderDumpAsm is enabled.
+  // This is used by EUSS tool to correlate a specific dispatch with the exact .asm file.
+  if (IGC_IS_FLAG_ENABLED(PrintInstOffsetInShaderDumpAsm) && m_enableVISAdump && kernel != nullptr) {
+    const QWORD kernelHash = iSTD::HashFromBuffer(reinterpret_cast<const char *>(kernel), size + padding);
+    auto asmNameObj = IGC::Debug::GetDumpNameObj(m_program, "asm");
+    const std::string asmPath = asmNameObj.str();
+    std::ifstream asmExists(asmPath, std::ios::binary | std::ios::in);
+    if (asmExists.is_open()) {
+      asmExists.close();
+      std::ofstream asmOut(asmPath, std::ios::binary | std::ios::app);
+      if (asmOut.is_open()) {
+        asmOut << "//.KernelHash: 0x" << std::hex << std::setw(16) << std::setfill('0') << kernelHash << std::dec
+               << "\n";
+        IGC_ASSERT_MESSAGE(asmOut.good(), "Failed appending KernelHash to .asm");
+      }
+    }
+  }
+
   void *dbgInfo = nullptr;
   unsigned int dbgSize = 0;
   if (context->m_instrTypes.hasDebugInfo || m_enableVISAdump) {
