@@ -86,12 +86,6 @@ static void *loadBinFile(const std::string &fileName, int &binSize) {
 iga_gen_t GetIGAPlatform(PLATFORM const &platform) {
   auto &ProductFamily = platform.eProductFamily;
   switch (platform.eRenderCoreFamily) {
-  case IGFX_GEN8_CORE:
-    if (ProductFamily == IGFX_CHERRYVIEW) {
-      return IGA_GEN8lp;
-    } else {
-      return IGA_GEN8;
-    }
   case IGFX_GEN9_CORE:
   case IGFX_GENNEXT_CORE:
     if (ProductFamily == IGFX_BROXTON || ProductFamily == IGFX_GEMINILAKE) {

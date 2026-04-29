@@ -1190,7 +1190,7 @@ Value *RTBuilder::emitStateRegID(uint32_t BitStart, uint32_t BitEnd) {
 }
 
 std::pair<uint32_t, uint32_t> RTBuilder::getSliceIDBitsInSR0() const {
-  if (Ctx.platform.GetPlatformFamily() == IGFX_GEN8_CORE || Ctx.platform.GetPlatformFamily() == IGFX_GEN9_CORE) {
+  if (Ctx.platform.GetPlatformFamily() == IGFX_GEN9_CORE) {
     return {14, 15};
   } else if (Ctx.platform.GetPlatformFamily() == IGFX_GEN12_CORE ||
              Ctx.platform.GetPlatformFamily() == IGFX_XE_HP_CORE ||
@@ -1210,7 +1210,7 @@ std::pair<uint32_t, uint32_t> RTBuilder::getSliceIDBitsInSR0() const {
 }
 
 std::pair<uint32_t, uint32_t> RTBuilder::getSubsliceIDBitsInSR0() const {
-  if (Ctx.platform.GetPlatformFamily() == IGFX_GEN8_CORE || Ctx.platform.GetPlatformFamily() == IGFX_GEN9_CORE) {
+  if (Ctx.platform.GetPlatformFamily() == IGFX_GEN9_CORE) {
     return {12, 13};
   } else if (Ctx.platform.GetPlatformFamily() == IGFX_XE2_HPG_CORE) {
     return {8, 9};

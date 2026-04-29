@@ -49,7 +49,7 @@ const int NamedBarriersResolution::GetMaxNamedBarriers() {
 
 NamedBarriersResolution::NamedBarriersResolution() : ModulePass(ID) {
   m_CountNamedBarriers = 0;
-  m_GFX_CORE = IGFX_GEN8_CORE;
+  m_GFX_CORE = IGFX_UNKNOWN_CORE; // sentinel until setRenderCore runs
   m_NamedBarrierType = nullptr;
   m_NamedBarrierID = nullptr;
   m_NamedBarrierArray = nullptr;

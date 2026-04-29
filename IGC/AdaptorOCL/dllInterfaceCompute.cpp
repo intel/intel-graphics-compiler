@@ -1211,11 +1211,9 @@ bool TranslateBuildSPMD(const STB_TranslateInputArgs *pInputArgs, STB_TranslateO
   // Set default denorm.
   // Note that those values have been set to FLOAT_DENORM_FLUSH_TO_ZERO
   CompOptions *compOpt = &oclContext.getModuleMetaData()->compOpt;
-  if (IGFX_GEN8_CORE <= oclContext.platform.GetPlatformFamily()) {
-    compOpt->FloatDenormMode16 = FLOAT_DENORM_RETAIN;
-    compOpt->FloatDenormMode32 = FLOAT_DENORM_RETAIN;
-    compOpt->FloatDenormMode64 = FLOAT_DENORM_RETAIN;
-  }
+  compOpt->FloatDenormMode16 = FLOAT_DENORM_RETAIN;
+  compOpt->FloatDenormMode32 = FLOAT_DENORM_RETAIN;
+  compOpt->FloatDenormMode64 = FLOAT_DENORM_RETAIN;
   if (oclContext.platform.hasBFTFDenormMode()) {
     compOpt->FloatDenormModeBFTF = FLOAT_DENORM_RETAIN;
   }
@@ -1332,11 +1330,9 @@ bool TranslateBuildSPMD(const STB_TranslateInputArgs *pInputArgs, STB_TranslateO
         // Set default denorm since metadata was cleared.
         // Note that those values have been set to FLOAT_DENORM_FLUSH_TO_ZERO
         compOpt = &oclContext.getModuleMetaData()->compOpt;
-        if (IGFX_GEN8_CORE <= oclContext.platform.GetPlatformFamily()) {
-          compOpt->FloatDenormMode16 = FLOAT_DENORM_RETAIN;
-          compOpt->FloatDenormMode32 = FLOAT_DENORM_RETAIN;
-          compOpt->FloatDenormMode64 = FLOAT_DENORM_RETAIN;
-        }
+        compOpt->FloatDenormMode16 = FLOAT_DENORM_RETAIN;
+        compOpt->FloatDenormMode32 = FLOAT_DENORM_RETAIN;
+        compOpt->FloatDenormMode64 = FLOAT_DENORM_RETAIN;
         if (oclContext.platform.hasBFTFDenormMode()) {
           compOpt->FloatDenormModeBFTF = FLOAT_DENORM_RETAIN;
         }

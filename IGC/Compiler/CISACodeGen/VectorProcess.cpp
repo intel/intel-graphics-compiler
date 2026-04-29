@@ -130,8 +130,7 @@ public:
   typedef SmallVector<Instruction *, 32> InstWorkVector;
 
   static char ID; // Pass identification, replacement for typeid
-  VectorProcess()
-      : FunctionPass(ID), m_DL(nullptr), m_C(nullptr), has_8Byte_A64_BS(true), has_QW_BTS_GS(false), m_WorkList() {
+  VectorProcess() : FunctionPass(ID), m_DL(nullptr), m_C(nullptr), has_QW_BTS_GS(false), m_WorkList() {
     initializeVectorProcessPass(*PassRegistry::getPassRegistry());
   }
   StringRef getPassName() const override { return "VectorProcess"; }
@@ -149,7 +148,6 @@ private:
 private:
   const DataLayout *m_DL;
   LLVMContext *m_C;
-  bool has_8Byte_A64_BS; // true if 8-byte A64 Byte scattered is supported
   bool has_QW_BTS_GS;    // true if qword BTS Gather/Scatter is supported
   InstWorkVector m_WorkList;
 };
@@ -281,7 +279,7 @@ bool VectorProcess::reLayoutLoadStore(Instruction *Inst) {
 
     bool useQW = false;
     if (useA64) {
-      useQW = (TBytes % 8 == 0) && ((has_8Byte_A64_BS && align < 4) || (eTyBytes == 8U && align >= 8U));
+      useQW = (TBytes % 8 == 0) && (eTyBytes == 8U && align >= 8U);
     } else if (useBSS) {
       useQW = has_QW_BTS_GS && nelts == 1 && (eTyBytes == 8U && align >= 8U);
     }
@@ -511,7 +509,6 @@ bool VectorProcess::runOnFunction(Function &F) {
   bool changed = false;
   m_DL = &F.getParent()->getDataLayout();
   m_C = &F.getContext();
-  has_8Byte_A64_BS = cgCtx->platform.has8ByteA64ByteScatteredMessage();
   has_QW_BTS_GS = cgCtx->platform.hasQWGatherScatterBTSMessage();
 
   //  Adjust load/store layout by inserting bitcast.
@@ -659,7 +656,6 @@ void VectorMessage::getInfo(Type *Ty, uint64_t Align, bool useA32, bool forceByt
   // Per-channel Max Bytes (MB) that can be read/written by a single send inst
   unsigned MB;
   SIMDMode SM = Shader->m_SIMDSize;
-  bool has_8B_A64_BS = Shader->m_Platform->has8ByteA64ByteScatteredMessage();
   bool has_8DW_A64_SM = Shader->m_Platform->has8DWA64ScatteredMessage();
 
   //
@@ -672,8 +668,7 @@ void VectorMessage::getInfo(Type *Ty, uint64_t Align, bool useA32, bool forceByt
       IGC_ASSERT(useA32);
     }
     defaultKind = useA32 ? MESSAGE_A32_BYTE_SCATTERED_RW : MESSAGE_A64_SCATTERED_RW;
-    MB = useA32 ? A32_BYTE_SCATTERED_MAX_BYTES
-                : ((has_8B_A64_BS && eltSize == 8) ? A64_BYTE_SCATTERED_MAX_BYTES_8B : A64_BYTE_SCATTERED_MAX_BYTES);
+    MB = useA32 ? A32_BYTE_SCATTERED_MAX_BYTES : A64_BYTE_SCATTERED_MAX_BYTES;
     defaultDataType = ISA_TYPE_UB;
 
     // To make sure that vector and message match.

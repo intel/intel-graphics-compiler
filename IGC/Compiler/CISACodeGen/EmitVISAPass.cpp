@@ -5891,19 +5891,6 @@ CVariable *EmitPass::ComputeSampleIntOffset(llvm::Instruction *sample, uint sour
   return packedOffset;
 }
 
-// simple helper to reorder input depending on the generation
-uint CorrectLdIndex(uint i, bool oldLoad) {
-  uint index = i;
-  if (oldLoad) {
-    if (i == 1) {
-      index = 2;
-    } else if (i == 2) {
-      index = 1;
-    }
-  }
-  return index;
-}
-
 CVariable *EmitPass::IndexableResourceIndex(CVariable *indexVar, uint btiIndex) {
   CVariable *bti = m_currShader->ImmToVariable(btiIndex, ISA_TYPE_UD);
   CVariable *dst = m_currShader->GetNewVariable(indexVar);
@@ -5959,7 +5946,7 @@ void EmitPass::emitLdInstruction(llvm::Instruction *inst) {
   SmallVector<CVariable *, 4> payload;
 
   for (uint i = numSources - 1; i > 0; i--) {
-    uint index = CorrectLdIndex(i, m_currShader->m_Platform->hasOldLdOrder());
+    uint index = i;
     CVariable *src = GetSymbol(inst->getOperand(index));
     if (!(src->IsImmediate() && src->GetImmediateValue() == 0)) {
       break;
@@ -5978,10 +5965,6 @@ void EmitPass::emitLdInstruction(llvm::Instruction *inst) {
   // create send payload for numSources
   for (uint i = 0; i < numSources; i++) {
     uint index = i;
-    // no difference in ld_lz between SKL+ and BDW
-    if (!zeroLOD) {
-      index = CorrectLdIndex(i, m_currShader->m_Platform->hasOldLdOrder());
-    }
 
     if (opCode == llvm_ld_ptr && index == 2 && zeroLOD) {
       // 3D resources skip lod and read z coordinate
@@ -6811,8 +6794,7 @@ void EmitPass::emitSimdShuffleDown(llvm::Instruction *inst) {
   }
 
   // Emit mov with direct addressing when delta is a compile-time constant.
-  const bool useDirectAddressing =
-      pDelta->IsImmediate() && m_currShader->m_Platform->GetPlatformFamily() != IGFX_GEN8_CORE;
+  const bool useDirectAddressing = pDelta->IsImmediate();
 
   SIMDMode simdMode = m_currShader->m_Platform->getMinDispatchMode();
   auto nativeExecSize = numLanes(simdMode);
@@ -9684,8 +9666,7 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst *inst) {
     break;
   }
   case GenISAIntrinsic::GenISA_slice_id: {
-    if (m_currShader->m_Platform->GetPlatformFamily() == IGFX_GEN8_CORE ||
-        m_currShader->m_Platform->GetPlatformFamily() == IGFX_GEN9_CORE)
+    if (m_currShader->m_Platform->GetPlatformFamily() == IGFX_GEN9_CORE)
       emitStateRegID(14, 15);
     else if (m_currShader->m_Platform->GetPlatformFamily() == IGFX_GEN12_CORE ||
              m_currShader->m_Platform->GetPlatformFamily() == IGFX_XE_HP_CORE)
@@ -9705,8 +9686,7 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst *inst) {
     break;
   }
   case GenISAIntrinsic::GenISA_subslice_id: {
-    if (m_currShader->m_Platform->GetPlatformFamily() == IGFX_GEN8_CORE ||
-        m_currShader->m_Platform->GetPlatformFamily() == IGFX_GEN9_CORE)
+    if (m_currShader->m_Platform->GetPlatformFamily() == IGFX_GEN9_CORE)
       emitStateRegID(12, 13);
     else if (m_currShader->m_Platform->GetPlatformFamily() == IGFX_XE_HPC_CORE) {
       emitStateRegID(9, 11);
@@ -9750,8 +9730,7 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst *inst) {
     break;
   }
   case GenISAIntrinsic::GenISA_eu_id: {
-    if (m_currShader->m_Platform->GetPlatformFamily() == IGFX_GEN8_CORE ||
-        m_currShader->m_Platform->GetPlatformFamily() == IGFX_GEN9_CORE)
+    if (m_currShader->m_Platform->GetPlatformFamily() == IGFX_GEN9_CORE)
       emitStateRegID(8, 11);
     else if (m_currShader->m_Platform->GetPlatformFamily() == IGFX_XE_HPC_CORE) {
       emitStateRegID(4, 8);
@@ -16416,8 +16395,7 @@ void EmitPass::emitMemoryFence(llvm::Instruction *inst) {
 
   bool EmitFence = true;
 
-  // Check whether we know this is a local fence. If we do, don't emit fence for
-  // a BDW+SKL/BXT only.
+  // Check whether we know this is a local fence. If we do, don't emit fence.
   if (!Global_Mem_Fence) {
     if (ctx->platform.localMemFenceSupress()) {
       EmitFence = false;

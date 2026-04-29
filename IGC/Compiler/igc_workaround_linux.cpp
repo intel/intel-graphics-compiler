@@ -30,12 +30,6 @@ void SetWorkaroundTable(SKU_FEATURE_TABLE *pSkuFeatureTable, CPlatform *platform
     platform->OverrideProductFamily(IGC_GET_FLAG_VALUE(OverrideProductFamilyForWA));
 
   switch (platform->getPlatformInfo().eProductFamily) {
-  case IGFX_BROADWELL:
-    InitBdwWaTable(&waTable, pSkuFeatureTable, &stWaInitParam);
-    break;
-  case IGFX_CHERRYVIEW:
-    InitChvWaTable(&waTable, pSkuFeatureTable, &stWaInitParam);
-    break;
   case IGFX_BROXTON:
     InitBxtWaTable(&waTable, pSkuFeatureTable, &stWaInitParam);
     break;

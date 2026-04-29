@@ -2705,13 +2705,6 @@ VISA_VectorOpnd *CEncoder::GetUniformSource(CVariable *var) {
 
 TARGET_PLATFORM GetVISAPlatform(const CPlatform *platform) {
   switch (platform->GetPlatformFamily()) {
-  case IGFX_GEN8_CORE:
-    if (platform->getPlatformInfo().eProductFamily == IGFX_CHERRYVIEW) {
-      return GENX_CHV;
-    } else {
-      return GENX_BDW;
-    }
-    // fall-through
   case IGFX_GEN9_CORE:
   case IGFX_GENNEXT_CORE:
     if (platform->getPlatformInfo().eProductFamily == IGFX_BROXTON ||
@@ -2720,7 +2713,6 @@ TARGET_PLATFORM GetVISAPlatform(const CPlatform *platform) {
     } else {
       return GENX_SKL;
     }
-    // fall-through
   case IGFX_GEN11_CORE:
     return GENX_ICLLP;
   case IGFX_GEN12_CORE:
@@ -6390,51 +6382,12 @@ void CEncoder::BoolToInt(CVariable *dst, CVariable *src) {
 void CEncoder::GatherA64(CVariable *dst, CVariable *offset, unsigned elemSize, unsigned numElems) {
   IGC_ASSERT_MESSAGE((elemSize == 8) || (elemSize == 32) || (elemSize == 64),
                      "Only B/DW/QW-sized elements are supported!");
-  IGC_ASSERT_MESSAGE(
-      (numElems == 1) || (numElems == 2) || (numElems == 4) ||
-          ((numElems == 8) && ((elemSize == 32) || m_program->m_Platform->has8ByteA64ByteScatteredMessage())),
-      "Only 1/2/4/8 elements are supported!");
+  IGC_ASSERT_MESSAGE((numElems == 1) || (numElems == 2) || (numElems == 4) || (numElems == 8),
+                     "Only 1/2/4/8 elements are supported!");
 
   VISA_PredOpnd *predOpnd = GetFlagOperand(m_encoderState.m_flag);
   VISA_RawOpnd *addressOpnd = GetRawSource(offset);
   VISA_RawOpnd *dstOpnd = GetRawDestination(dst);
-
-  SIMDMode thisSM = offset->IsUniform() ? lanesToSIMDMode(offset->GetNumberElement()) : m_encoderState.m_simdSize;
-  if (m_program->m_Platform->GetPlatformFamily() == IGFX_GEN8_CORE && thisSM == SIMDMode::SIMD16) {
-    // BDW A64 gather does not support SIMD16, split it into 2 SIMD8
-    VISA_EMask_Ctrl execMask = GetAluEMask(offset);
-    VISA_Exec_Size fromExecSize = EXEC_SIZE_16;
-    VISA_Exec_Size toExecSize = EXEC_SIZE_8;
-
-    if (numElems == 1 || elemSize == 8) { // No mov instructions (for packing) are needed.
-      for (unsigned p = 0; p < 2; ++p) {
-        addressOpnd = GetRawSource(offset, GetRawOpndSplitOffset(fromExecSize, toExecSize, p, offset));
-        dstOpnd = GetRawDestination(dst, GetRawOpndSplitOffset(fromExecSize, toExecSize, p, dst));
-
-        V(vKernel->AppendVISASvmGatherInst(predOpnd, SplitEMask(fromExecSize, toExecSize, p, execMask), toExecSize,
-                                           visaBlockType(elemSize), visaBlockNum(numElems), addressOpnd, dstOpnd));
-      }
-    } else {
-      // Do two SIMD8 gather and then merge (pack) the two simd8 results
-      // to form the single simd16 payload.
-      CVariable *V0, *V1;
-      uint16_t newNumElems = (uint16_t)8 * numElems;
-      V0 = m_program->GetNewVariable(newNumElems, dst->GetType(), dst->GetAlign(), dst->IsUniform(), dst->getName());
-      V1 = m_program->GetNewVariable(newNumElems, dst->GetType(), dst->GetAlign(), dst->IsUniform(), dst->getName());
-
-      for (unsigned p = 0; p < 2; ++p) {
-        addressOpnd = GetRawSource(offset, GetRawOpndSplitOffset(fromExecSize, toExecSize, p, offset));
-        dstOpnd = GetRawDestination(p == 0 ? V0 : V1);
-
-        V(vKernel->AppendVISASvmGatherInst(predOpnd, SplitEMask(fromExecSize, toExecSize, p, execMask), toExecSize,
-                                           visaBlockType(elemSize), visaBlockNum(numElems), addressOpnd, dstOpnd));
-      }
-
-      uint32_t dstOfstBytes = dst->GetAliasOffset() + m_encoderState.m_dstOperand.subVar * getGRFSize();
-      MergePayloadToHigherSIMD(V0, V1, numElems, dst, dstOfstBytes, 16);
-    }
-    return;
-  }
 
   V(vKernel->AppendVISASvmGatherInst(
       predOpnd, GetAluEMask(offset),
@@ -6445,50 +6398,12 @@ void CEncoder::GatherA64(CVariable *dst, CVariable *offset, unsigned elemSize, u
 void CEncoder::ScatterA64(CVariable *src, CVariable *offset, unsigned elemSize, unsigned numElems) {
   IGC_ASSERT_MESSAGE((elemSize == 8) || (elemSize == 32) || (elemSize == 64),
                      "Only B/DW/QW-sized elements are supported!");
-  IGC_ASSERT_MESSAGE(
-      (numElems == 1) || (numElems == 2) || (numElems == 4) ||
-          ((numElems == 8) && ((elemSize == 32) || m_program->m_Platform->has8ByteA64ByteScatteredMessage())),
-      "Only 1/2/4/8 elements are supported!");
+  IGC_ASSERT_MESSAGE((numElems == 1) || (numElems == 2) || (numElems == 4) || (numElems == 8),
+                     "Only 1/2/4/8 elements are supported!");
 
   VISA_PredOpnd *predOpnd = GetFlagOperand(m_encoderState.m_flag);
   VISA_RawOpnd *addressOpnd = GetRawSource(offset);
   VISA_RawOpnd *srcOpnd = GetRawSource(src);
-
-  SIMDMode thisSM = offset->IsUniform() ? lanesToSIMDMode(offset->GetNumberElement()) : m_encoderState.m_simdSize;
-  if (m_program->m_Platform->GetPlatformFamily() == IGFX_GEN8_CORE && thisSM == SIMDMode::SIMD16) {
-    // BDW A64 scatter does not support SIMD16, split it into 2 SIMD8
-    VISA_EMask_Ctrl execMask = GetAluEMask(offset);
-    VISA_Exec_Size fromExecSize = EXEC_SIZE_16;
-    VISA_Exec_Size toExecSize = EXEC_SIZE_8;
-
-    if (numElems == 1 || elemSize == 8) { // No unpacking (mov instructions) are needed.
-      for (unsigned p = 0; p < 2; ++p) {
-        addressOpnd = GetRawSource(offset, GetRawOpndSplitOffset(fromExecSize, toExecSize, p, offset));
-        srcOpnd = GetRawSource(src, GetRawOpndSplitOffset(fromExecSize, toExecSize, p, src));
-        V(vKernel->AppendVISASvmScatterInst(predOpnd, SplitEMask(fromExecSize, toExecSize, p, execMask), toExecSize,
-                                            visaBlockType(elemSize), visaBlockNum(numElems), addressOpnd, srcOpnd));
-      }
-    } else {
-      // Unpacking the original simd16 data payload to form the two simd8
-      // data payload by splitting the original simd16 data payload.
-      CVariable *V0, *V1;
-      uint16_t newNumElems = (uint16_t)8 * numElems;
-      V0 = m_program->GetNewVariable(newNumElems, src->GetType(), src->GetAlign(), src->IsUniform(), CName::NONE);
-      V1 = m_program->GetNewVariable(newNumElems, src->GetType(), src->GetAlign(), src->IsUniform(), CName::NONE);
-      // Starting offset is calculated from AliasOffset only (subVar not used).
-      uint32_t srcOfstBytes = src->GetAliasOffset();
-      SplitPayloadToLowerSIMD(src, srcOfstBytes, numElems, V0, V1, 16);
-
-      for (unsigned p = 0; p < 2; ++p) {
-        addressOpnd = GetRawSource(offset, GetRawOpndSplitOffset(fromExecSize, toExecSize, p, offset));
-        srcOpnd = GetRawSource(p == 0 ? V0 : V1);
-
-        V(vKernel->AppendVISASvmScatterInst(predOpnd, SplitEMask(fromExecSize, toExecSize, p, execMask), toExecSize,
-                                            visaBlockType(elemSize), visaBlockNum(numElems), addressOpnd, srcOpnd));
-      }
-    }
-    return;
-  }
 
   V(vKernel->AppendVISASvmScatterInst(
       predOpnd, GetAluEMask(offset),
@@ -6667,7 +6582,6 @@ void CEncoder::Gather4A64(CVariable *dst, CVariable *offset) {
   IGC_ASSERT(nullptr != dst);
   IGC_ASSERT_MESSAGE(dst->GetElemSize() == 4, "Gather4 must have 4-byte element");
 
-  uint32_t dstOfstBytes = m_encoderState.m_dstOperand.subVar * getGRFSize() + dst->GetAliasOffset();
   unsigned nd = dst->GetSize();
   switch (m_encoderState.m_simdSize) {
   case SIMDMode::SIMD8:
@@ -6692,46 +6606,6 @@ void CEncoder::Gather4A64(CVariable *dst, CVariable *offset) {
   int val = 0;
   V(vKernel->CreateVISAImmediate(globalOffsetOpnd, &val, ISA_TYPE_UD));
 
-  if (m_program->m_Platform->GetPlatformFamily() == IGFX_GEN8_CORE && m_encoderState.m_simdSize == SIMDMode::SIMD16) {
-    // BDW A64 untyped does not support SIMD16, split it into 2 SIMD8
-    VISA_EMask_Ctrl execMask = GetAluEMask(offset);
-    VISA_Exec_Size fromExecSize = EXEC_SIZE_16;
-    VISA_Exec_Size toExecSize = EXEC_SIZE_8;
-
-    if (nd == 1) {
-      // No packing is needed.
-      for (unsigned p = 0; p < 2; ++p) {
-        addressOpnd = GetRawSource(offset, GetRawOpndSplitOffset(fromExecSize, toExecSize, p, offset));
-        dstOpnd = GetRawDestination(dst, GetRawOpndSplitOffset(fromExecSize, toExecSize, p, dst));
-
-        V(vKernel->AppendVISASvmGather4ScaledInst(predOpnd, SplitEMask(fromExecSize, toExecSize, p, execMask),
-                                                  toExecSize, ConvertChannelMaskToVisaType(BIT(nd) - 1),
-                                                  globalOffsetOpnd, addressOpnd, dstOpnd));
-      }
-    } else {
-      // Packing the two SIMD8 data payload to form the SIMD16 data payload
-      // by merging the two simd8 data payload.
-      CVariable *V0, *V1;
-      uint16_t newNumElems = (uint16_t)8 * nd;
-      V0 = m_program->GetNewVariable(newNumElems, dst->GetType(), dst->GetAlign(), dst->IsUniform(),
-                                     CName(dst->getName(), "_M0"));
-      V1 = m_program->GetNewVariable(newNumElems, dst->GetType(), dst->GetAlign(), dst->IsUniform(),
-                                     CName(dst->getName(), "_M8"));
-
-      for (unsigned p = 0; p < 2; ++p) {
-        addressOpnd = GetRawSource(offset, GetRawOpndSplitOffset(fromExecSize, toExecSize, p, offset));
-        dstOpnd = GetRawDestination(p == 0 ? V0 : V1);
-
-        V(vKernel->AppendVISASvmGather4ScaledInst(predOpnd, SplitEMask(fromExecSize, toExecSize, p, execMask),
-                                                  toExecSize, ConvertChannelMaskToVisaType(BIT(nd) - 1),
-                                                  globalOffsetOpnd, addressOpnd, dstOpnd));
-      }
-
-      MergePayloadToHigherSIMD(V0, V1, nd, dst, dstOfstBytes, 16);
-    }
-    return;
-  }
-
   V(vKernel->AppendVISASvmGather4ScaledInst(predOpnd, GetAluEMask(dst), visaExecSize(m_encoderState.m_simdSize),
                                             ConvertChannelMaskToVisaType(BIT(nd) - 1), globalOffsetOpnd, addressOpnd,
                                             dstOpnd));
@@ -6741,7 +6615,6 @@ void CEncoder::Scatter4A64(CVariable *src, CVariable *offset) {
   IGC_ASSERT(nullptr != src);
   IGC_ASSERT_MESSAGE(src->GetElemSize() == 4, "scatter4 must have 4-byte element");
 
-  uint32_t srcOfstBytes = src->GetAliasOffset();
   unsigned nd = src->GetSize();
   switch (m_encoderState.m_simdSize) {
   case SIMDMode::SIMD8:
@@ -6765,46 +6638,6 @@ void CEncoder::Scatter4A64(CVariable *src, CVariable *offset) {
   VISA_VectorOpnd *globalOffsetOpnd = 0;
   int val = 0;
   V(vKernel->CreateVISAImmediate(globalOffsetOpnd, &val, ISA_TYPE_UD));
-
-  if (m_program->m_Platform->GetPlatformFamily() == IGFX_GEN8_CORE && m_encoderState.m_simdSize == SIMDMode::SIMD16) {
-    // BDW A64 untyped does not support SIMD16, split it into 2 SIMD8
-    VISA_EMask_Ctrl execMask = GetAluEMask(src);
-    VISA_Exec_Size fromExecSize = EXEC_SIZE_16;
-    VISA_Exec_Size toExecSize = EXEC_SIZE_8;
-
-    if (nd == 1) {
-      // No need to do unpacking
-      for (unsigned p = 0; p < 2; ++p) {
-        addressOpnd = GetRawSource(offset, GetRawOpndSplitOffset(fromExecSize, toExecSize, p, offset));
-        srcOpnd = GetRawSource(src, GetRawOpndSplitOffset(fromExecSize, toExecSize, p, src));
-
-        V(vKernel->AppendVISASvmScatter4ScaledInst(predOpnd, SplitEMask(fromExecSize, toExecSize, p, execMask),
-                                                   toExecSize, ConvertChannelMaskToVisaType(BIT(nd) - 1),
-                                                   globalOffsetOpnd, addressOpnd, srcOpnd));
-      }
-    } else {
-      // Unpacking is needed from the original SIMD16 data payload to form
-      // two SIMD8 data payload by splitting the original simd16 data payload.
-      CVariable *V0, *V1;
-      uint16_t newNumElems = (uint16_t)8 * nd;
-      V0 = m_program->GetNewVariable(newNumElems, src->GetType(), src->GetAlign(), src->IsUniform(),
-                                     CName(src->getName(), "_M0"));
-      V1 = m_program->GetNewVariable(newNumElems, src->GetType(), src->GetAlign(), src->IsUniform(),
-                                     CName(src->getName(), "_M8"));
-
-      SplitPayloadToLowerSIMD(src, srcOfstBytes, nd, V0, V1, 16);
-
-      for (unsigned p = 0; p < 2; ++p) {
-        addressOpnd = GetRawSource(offset, GetRawOpndSplitOffset(fromExecSize, toExecSize, p, offset));
-        srcOpnd = GetRawSource(p == 0 ? V0 : V1);
-
-        V(vKernel->AppendVISASvmScatter4ScaledInst(predOpnd, SplitEMask(fromExecSize, toExecSize, p, execMask),
-                                                   toExecSize, ConvertChannelMaskToVisaType(BIT(nd) - 1),
-                                                   globalOffsetOpnd, addressOpnd, srcOpnd));
-      }
-    }
-    return;
-  }
 
   V(vKernel->AppendVISASvmScatter4ScaledInst(predOpnd, GetAluEMask(src), visaExecSize(m_encoderState.m_simdSize),
                                              ConvertChannelMaskToVisaType(BIT(nd) - 1), globalOffsetOpnd, addressOpnd,
@@ -6974,10 +6807,6 @@ void CEncoder::SendVideoAnalytic(llvm::GenIntrinsicInst *inst, CVariable *vaResu
   EDMode erodeDilateMode = VA_DILATE;
   EDExecMode execMode = VA_ED_64x4;
   bool isBigKernel = true;
-
-  if (m_program->m_Platform->GetPlatformFamily() == IGFX_GEN8_CORE) {
-    isBigKernel = false;
-  }
 
   switch (inst->getIntrinsicID()) {
   case GenISAIntrinsic::GenISA_vaErode:

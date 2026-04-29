@@ -538,7 +538,7 @@ void WAFMinFMax::visitCallInst(CallInst &I) {
     case Intrinsic::minnum: {
       if (m_ctx->m_DriverInfo.SupportsIEEEMinMax()) {
         // OCL's fmax/fmin maps to GEN's max/min in non-IEEE mode.
-        // By default, gen uses non-IEEE mode.  But, in BDW and SKL
+        // By default, gen uses non-IEEE mode.  But, in SKL
         // prior to C step, IEEE mode is used if denorm bit is set.
         // If there are no sNaN as inputs to fmax/fmin,  IEEE mode
         // is the same as non-IEEE mode;  if there are sNaN,  non-IEEE

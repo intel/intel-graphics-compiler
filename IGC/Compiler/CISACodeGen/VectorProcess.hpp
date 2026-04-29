@@ -46,7 +46,6 @@ public:
 
     // SKL+
     // Exception
-    //    BDW : use A64_BYTE_SCATTERED_MAX_BYTES_8B
     //    TGL : no 8DW scattered message.
     //          use A64_SCATTERED_MAX_BYTES_4DW
     A32_UNTYPED_MAX_BYTES = 16,

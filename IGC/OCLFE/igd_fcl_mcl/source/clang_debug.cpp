@@ -52,7 +52,7 @@ struct DEBUG_VARIABLES_REGKEY {
       cl_khr_fp16_, // cl_khr_fp16 actual ask ???
       "CLANG_Debug",
       "Force enables the cl_khr_fp16 (half precision) extension through the compiler, even on products that do not "
-      "support the extension by default.  Currently, this only applies to Broadwell (Gen8).  This includes: defining "
+      "support the extension by default.  This includes: defining "
       "cl_khr_fp16, allowing the pragma for cl_khr_fp16, and enabling fp16 code generation in the IGIL backend.",
       g_cl_khr_fp16);
 

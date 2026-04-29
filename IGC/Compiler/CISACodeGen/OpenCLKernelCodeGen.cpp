@@ -1276,9 +1276,6 @@ void COpenCLKernel::AllocatePayload() {
 
   loadThreadPayload = m_Platform->supportLoadThreadPayloadForCompute();
 
-  // SKL defaults to indirect thread payload storage.
-  // BDW needs CURBE payload. Spec says:
-  // "CURBE should be used for the payload when using indirect dispatch rather than indirect payload".
   m_kernelInfo.m_threadPayload.CompiledForIndirectPayloadStorage = true;
   if (IGC_IS_FLAG_ENABLED(DisableGPGPUIndirectPayload) ||
       m_Context->platform.getWATable().WaDisableIndirectDataForIndirectDispatch) {

@@ -75,7 +75,6 @@ public:
   WA_TABLE const &getWATable() const { return m_WaTable; }
   SKU_FEATURE_TABLE const &getSkuTable() const { return m_SkuTable; }
 
-  bool has8ByteA64ByteScatteredMessage() const { return m_platformInfo.eRenderCoreFamily == IGFX_GEN8_CORE; }
   bool hasQWGatherScatterBTSMessage() const { return m_platformInfo.eRenderCoreFamily >= IGFX_XE_HP_SDV; }
 
   bool hasPredicatedBarriers() const { return m_platformInfo.eRenderCoreFamily >= IGFX_GEN9_CORE; }
@@ -84,13 +83,8 @@ public:
 
 
 
-  /// On some platforms ld sources order is: u lod v r
-  bool hasOldLdOrder() const { return m_platformInfo.eRenderCoreFamily <= IGFX_GEN8_CORE; }
   bool supportSampleAndLd_lz() const { return m_platformInfo.eRenderCoreFamily >= IGFX_GEN9_CORE; }
-  bool supportFP16() const {
-    return (m_platformInfo.eRenderCoreFamily >= IGFX_GEN9_CORE) ||
-           ((m_platformInfo.eRenderCoreFamily == IGFX_GEN8_CORE) && (m_platformInfo.eProductFamily == IGFX_CHERRYVIEW));
-  }
+  bool supportFP16() const { return m_platformInfo.eRenderCoreFamily >= IGFX_GEN9_CORE; }
   bool supportFP16Rounding() const { return false; }
   bool supportSamplerFp16Input() const { return m_platformInfo.eRenderCoreFamily >= IGFX_GEN10_CORE; }
   bool supportPooledEU() const { return m_SkuTable.FtrPooledEuEnabled != 0; }
@@ -225,7 +219,6 @@ public:
   bool supportGPGPUMidThreadPreemption() const {
     return m_platformInfo.eRenderCoreFamily >= IGFX_GEN9_CORE && m_platformInfo.eRenderCoreFamily <= IGFX_GEN11LP_CORE;
   }
-  bool supportSamplerCacheResinfo() const { return m_platformInfo.eRenderCoreFamily == IGFX_GEN8_CORE; }
 
   unsigned int getMaxGPGPUShaderThreads() const { return m_caps.MediaShaderThreads - 1; }
   unsigned int getKernelPointerAlignSize() const { return m_caps.KernelHwCaps.KernelPointerAlignSize; }
@@ -1073,8 +1066,8 @@ public:
   bool supportMixMode() const {
     return IGC_IS_FLAG_ENABLED(ForceMixMode) ||
            (IGC_IS_FLAG_DISABLED(DisableMixMode) &&
-            (m_platformInfo.eProductFamily == IGFX_CHERRYVIEW || m_platformInfo.eProductFamily == IGFX_DG1 ||
-             m_platformInfo.eProductFamily == IGFX_TIGERLAKE_LP || m_platformInfo.eProductFamily == IGFX_ROCKETLAKE ||
+            (m_platformInfo.eProductFamily == IGFX_DG1 || m_platformInfo.eProductFamily == IGFX_TIGERLAKE_LP ||
+             m_platformInfo.eProductFamily == IGFX_ROCKETLAKE ||
              m_platformInfo.eRenderCoreFamily == IGFX_GEN12LP_CORE ||
              m_platformInfo.eProductFamily == IGFX_ALDERLAKE_S || m_platformInfo.eProductFamily == IGFX_ALDERLAKE_P ||
              m_platformInfo.eProductFamily == IGFX_ALDERLAKE_N || m_platformInfo.eRenderCoreFamily == IGFX_GEN9_CORE ||
@@ -1213,8 +1206,7 @@ public:
   // ***** Below go accessor methods for testing WA data from WA_TABLE *****
 
   bool WaDoNotPushConstantsForAllPulledGSTopologies() const {
-    return (m_platformInfo.eProductFamily == IGFX_BROADWELL) ||
-           m_WaTable.WaDoNotPushConstantsForAllPulledGSTopologies != 0;
+    return m_WaTable.WaDoNotPushConstantsForAllPulledGSTopologies != 0;
   }
 
   bool WaForceMinMaxGSThreadCount() const { return m_WaTable.WaForceMinMaxGSThreadCount != 0; }
