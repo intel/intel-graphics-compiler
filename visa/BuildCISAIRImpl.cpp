@@ -56,6 +56,9 @@ CISA_IR_Builder::~CISA_IR_Builder() {
     // don't call delete since vISAKernelImpl is allocated in memory pool
     k->~VISAKernelImpl();
   }
+  for (auto k : m_removedKernelsAndFunctions) {
+    k->~VISAKernelImpl();
+  }
 
   if (needsToFreeWATable) {
     delete m_pWaTable;
@@ -582,7 +585,11 @@ void CISA_IR_Builder::RemoveOptimizingFunction(
   }
 
   llvm::erase_if(m_kernelsAndFunctions, [&](VISAKernelImpl *k) {
-    return removeList.count(k->getKernel());
+    if (removeList.count(k->getKernel())) {
+      m_removedKernelsAndFunctions.push_back(k);
+      return true;
+    }
+    return false;
   });
 
 }
@@ -1348,7 +1355,6 @@ void CISA_IR_Builder::LinkTimeOptimization(
       caller->fg.builder->usedBarries() |= callee->fg.builder->usedBarries();
     }
 
-    callee->fg.builder->~IR_Builder();
     callee->fg.builder = nullptr;
   }
 

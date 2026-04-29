@@ -745,6 +745,8 @@ private:
 
   // list of kernels and functions added to this builder
   KernelListTy m_kernelsAndFunctions;
+  // list of LTO-inlined callees to be destroyed in ~CISA_IR_Builder
+  KernelListTy m_removedKernelsAndFunctions;
 
   // for cases of several kernels/functions in one CisaBuilder
   // we need to keep a mapping of kernels to names
