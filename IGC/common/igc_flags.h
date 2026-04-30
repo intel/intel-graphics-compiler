@@ -1237,6 +1237,9 @@ DECLARE_IGC_REGKEY(bool, LscForceSpillNonStackcall, false, "Non-stack call kerne
                    true)
 DECLARE_IGC_REGKEY(bool, EnableEmitMoreMoviCases, false,
                    "Enables emitting movi for waveShuffle cases using And to keep index within single register.", true)
+DECLARE_IGC_REGKEY(bool, EnableSimd32Movi, true,
+                   "Enables emitting simd32 movi for waveShuffle cases using And to keep index within single register ",
+                   true)
 DECLARE_IGC_REGKEY_ENUM(ForceRegisterAccessBoundsChecks, -1,
                         "Controls the behavior of RegisterAccessBoundsChecks, the pass that adds runtime bounds-checks "
                         "for vector-indexing instructions."

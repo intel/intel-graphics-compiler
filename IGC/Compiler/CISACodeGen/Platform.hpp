@@ -1416,6 +1416,11 @@ public:
     return hasEfficient64bEnabled() && (IGC_IS_FLAG_ENABLED(EnableReadStateToA64Read) || m_WaTable.Wa_14025275057);
   }
 
+  bool supportsSimd32Movi() const {
+    return false;
+  }
+
+
   bool supportsSimd32ForAllShaders() const {
     return isCoreChildOf(IGFX_XE3P_CORE);
   }
