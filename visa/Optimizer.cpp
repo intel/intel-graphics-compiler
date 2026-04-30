@@ -2323,6 +2323,33 @@ void Optimizer::reassociateConst() {
           return false;
         }
 
+        // When use has a larger execSize than def, substituting def's src0
+        // region into use may create an illegal source region: a 2D source
+        // region valid for def's smaller execSize can access more rows under
+        // use's larger execSize and produce a region that violates the
+        // restriction "elements within a width cannot cross register
+        // boundaries". Skip reassociation if def's src0 is not single-stride
+        // when evaluated under use's execSize.
+        //
+        // Example (would be incorrectly folded without this guard):
+        //   add (4)  v14<1>:ud  v6<4;2,4>:ud  0x73      // def, execSize=4
+        //   add (16) v15<1>:ub  v14<1;4,0>:ud 0xf8a24a6b // use, execSize=16
+        // Folding would produce:
+        //   add (16) v15<1>:ub  v6<4;2,4>:ud  0xF8A24ADE
+        // <4;2,4>:ud is legal for execSize=4 but causes GRF boundary crossing
+        // for execSize=16 (row 7's width elements span two GRFs).
+        // If leaving this illegal region to be fixed by HWConformity, there
+        // will be more instructions generated which is very inefficient.
+        if (def->getExecSize() < use->getExecSize()) {
+          auto *srcToSub = def->getSrc(0);
+          if (srcToSub->isSrcRegRegion()) {
+            uint16_t stride;
+            if (!srcToSub->asSrcRegRegion()->getRegion()->isSingleStride(
+                    use->getExecSize().value, stride))
+              return false;
+          }
+        }
+
         return true;
       };
 
