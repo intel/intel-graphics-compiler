@@ -205,6 +205,12 @@ private:
       return val;
     }
 
+    Value *CreateShuffleVector(Value *V1, Value *V2, ArrayRef<int> Mask, const Twine &Name = "") {
+      Value *val = IGCIRBuilder<>::CreateShuffleVector(V1, V2, Mask, Name);
+      m_TT->RegisterNewValueAndAssignID(val);
+      return val;
+    }
+
   private:
     TranslationTable *m_TT;
   };

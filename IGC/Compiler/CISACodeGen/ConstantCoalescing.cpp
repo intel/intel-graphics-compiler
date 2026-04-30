@@ -1351,7 +1351,9 @@ bool ConstantCoalescing::DecomposePtrExp(Value *ptr_val, Value *&buf_idxv, Value
 }
 
 /// look at all the uses of a vector load. If they are all extract-elements
-/// with constant indices, return the max-elt-index + 1.
+/// with constant indices, or shuffle-vectors that pick a prefix from the load
+/// (with the second source operand being undef/poison/constant), return
+/// the max-elt-index + 1.
 uint ConstantCoalescing::CheckVectorElementUses(const Instruction *load) {
   uint maxEltPlus = 0;
   for (auto *U : load->users()) {
@@ -1361,6 +1363,28 @@ uint ConstantCoalescing::CheckVectorElementUses(const Instruction *load) {
         maxEltPlus = std::max(maxEltPlus, cv + 1);
       } else {
         return 0;
+      }
+    } else if (auto *shuffle = dyn_cast<ShuffleVectorInst>(U)) {
+      // Only handle shuffles that pick from the load (operand 0) and have
+      // a constant/undef/poison second operand. Mask elements must not
+      // reference the second source vector; undef/poison mask entries are
+      // ignored since they do not read from the load.
+      if (shuffle->getOperand(0) != load)
+        return 0;
+      if (!isa<Constant>(shuffle->getOperand(1)))
+        return 0;
+      auto *srcVecTy = dyn_cast<IGCLLVM::FixedVectorType>(load->getType());
+      if (!srcVecTy)
+        return 0;
+      uint numSrcElts = static_cast<uint>(srcVecTy->getNumElements());
+      ArrayRef<int> mask = shuffle->getShuffleMask();
+      for (int m : mask) {
+        if (m < 0)
+          continue; // undef/poison mask element does not read from the load
+        uint um = static_cast<uint>(m);
+        if (um >= numSrcElts)
+          return 0; // references the second source vector
+        maxEltPlus = std::max(maxEltPlus, um + 1);
       }
     } else {
       return 0;
@@ -1646,14 +1670,33 @@ Instruction *ConstantCoalescing::AdjustChunkAddExtract(BufChunk *cov_chunk, uint
 }
 
 void ConstantCoalescing::MoveExtracts(BufChunk *cov_chunk, Instruction *load, uint start_adj) {
-  // modify the extract-elements from the load, and move it to the chunk
+  // modify the extract-elements / shufflevectors from the load, and move
+  // them to the chunk
   Value::user_iterator use_it = load->user_begin();
   Value::user_iterator use_e = load->user_end();
   bool noneDirectExtract = false;
   std::vector<Instruction *> use_set;
   for (; use_it != use_e; ++use_it) {
     Instruction *usei = cast<Instruction>(*use_it);
-    if (!isa<ExtractElementInst>(usei) || !isa<ConstantInt>(usei->getOperand(1))) {
+    if (auto *ee = dyn_cast<ExtractElementInst>(usei)) {
+      if (!isa<ConstantInt>(ee->getOperand(1))) {
+        noneDirectExtract = true;
+        break;
+      }
+    } else if (auto *sv = dyn_cast<ShuffleVectorInst>(usei)) {
+      // Only handle the safe pattern recognized by CheckVectorElementUses:
+      // the load is the first source, the second source is a constant
+      // (typically undef/poison), and the mask only references the first
+      // source. Also bail if the chunk is a different scalar type.
+      if (sv->getOperand(0) != load || !isa<Constant>(sv->getOperand(1))) {
+        noneDirectExtract = true;
+        break;
+      }
+      if (cov_chunk->chunkIO->getType()->getScalarType() != load->getType()->getScalarType()) {
+        noneDirectExtract = true;
+        break;
+      }
+    } else {
       noneDirectExtract = true;
       break;
     }
@@ -1663,6 +1706,25 @@ void ConstantCoalescing::MoveExtracts(BufChunk *cov_chunk, Instruction *load, ui
     uint num_uses = use_set.size();
     for (uint i = 0; i < num_uses; ++i) {
       Instruction *usei = use_set[i];
+      if (auto *sv = dyn_cast<ShuffleVectorInst>(usei)) {
+        // Build a new shufflevector that picks from the chunk. Shift mask
+        // entries by start_adj and replace the second source with a
+        // properly-sized undef of the chunk's type.
+        ArrayRef<int> oldMask = sv->getShuffleMask();
+        SmallVector<int, 8> newMask;
+        newMask.reserve(oldMask.size());
+        for (int m : oldMask) {
+          // Preserve undef/poison mask entries; shift the rest by start_adj.
+          newMask.push_back(m < 0 ? m : m + static_cast<int>(start_adj));
+        }
+        irBuilder->SetInsertPoint(sv);
+        Value *poisonSrc2 = PoisonValue::get(cov_chunk->chunkIO->getType());
+        Value *newSV = irBuilder->CreateShuffleVector(cov_chunk->chunkIO, poisonSrc2, newMask);
+        wiAns->incUpdateDepend(newSV, wiAns->whichDepend(sv));
+        sv->replaceAllUsesWith(newSV);
+        sv->eraseFromParent();
+        continue;
+      }
       if (start_adj) {
         llvm::ConstantInt *e_idx = cast<ConstantInt>(usei->getOperand(1));
         uint val = (uint)e_idx->getZExtValue();
