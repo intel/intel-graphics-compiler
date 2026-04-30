@@ -32,6 +32,17 @@ SPDX-License-Identifier: MIT
 
 using namespace llvm;
 
+// Verdict for the i32 chain feeding a zext that may be rewritten to sext after
+// const-add sinking. The cast materializes as an i32->i64 mov (`:q <- :ud`
+// for zext, `:q <- :d` for sext); flipping changes the i64 value when bit 31
+// is set, so the frontend's zext is authoritative -- only flip when the chain
+// has a provably negative component.
+enum class ZextDecision {
+  FLIP,                // chain provably/possibly negative -> rewrite to sext
+  KEEP_REASON_ABI,     // chain provably non-negative (RV / Arg / Load) -> keep zext
+  KEEP_REASON_UNKNOWN, // chain analysis inconclusive -> keep zext (default safe)
+};
+
 class SinkPointerConstAddPass : public llvm::FunctionPass {
 public:
   SinkPointerConstAddPass() : llvm::FunctionPass(ID) {
@@ -45,8 +56,18 @@ public:
 private:
   bool getConstantOffset(llvm::Value *value, std::vector<llvm::Instruction *> &zexts, int &offset);
   void zextToSext(std::vector<llvm::Instruction *> &zexts);
-  bool skipZextToSext(llvm::Instruction *op, llvm::BasicBlock *parentBB);
+  ZextDecision getZextDecision(llvm::Value *value, llvm::BasicBlock *parentBB);
 };
+
+// KEEP_REASON_ABI dominates (any provably non-neg leg suffices); otherwise
+// FLIP wins over KEEP_REASON_UNKNOWN (positive evidence beats absence).
+static ZextDecision combineZextDecision(ZextDecision a, ZextDecision b) {
+  if (a == ZextDecision::KEEP_REASON_ABI || b == ZextDecision::KEEP_REASON_ABI)
+    return ZextDecision::KEEP_REASON_ABI;
+  if (a == ZextDecision::FLIP || b == ZextDecision::FLIP)
+    return ZextDecision::FLIP;
+  return ZextDecision::KEEP_REASON_UNKNOWN;
+}
 
 #define PASS_FLAG "igc-sink-ptr-const-add"
 #define PASS_DESCRIPTION "Sink pointer const add"
@@ -108,44 +129,65 @@ bool SinkPointerConstAddPass::getConstantOffset(llvm::Value *value, std::vector<
   return false;
 }
 
-bool SinkPointerConstAddPass::skipZextToSext(llvm::Instruction *op, llvm::BasicBlock *parentBB) {
-  // This is a simple pass, only sink within the same basic block
-  if (op && parentBB == op->getParent()) {
-    // Do not change zext of pushed constants or loaded values - UMD provides unsigned offsets
-    if (llvm::GenIntrinsicInst *instr = llvm::dyn_cast<llvm::GenIntrinsicInst>(op)) {
-      if (instr->getIntrinsicID() == llvm::GenISAIntrinsic::GenISA_RuntimeValue) {
-        return true;
-      }
-    } else if (llvm::dyn_cast<llvm::Argument>(op) || llvm::dyn_cast<llvm::LoadInst>(op)) {
-      return true;
-    } else if (llvm::ExtractElementInst *eei = llvm::dyn_cast<llvm::ExtractElementInst>(op)) {
-      return skipZextToSext(llvm::dyn_cast<llvm::Instruction>(eei->getOperand(0)), parentBB);
-    } else if (llvm::BinaryOperator *bo = llvm::dyn_cast<BinaryOperator>(op)) {
-      llvm::ConstantInt *cOp0 = llvm::dyn_cast<llvm::ConstantInt>(bo->getOperand(0));
-      llvm::ConstantInt *cOp1 = llvm::dyn_cast<llvm::ConstantInt>(bo->getOperand(1));
-      if ((cOp0 && cOp0->isNegative()) || (cOp1 && cOp1->isNegative())) {
-        return false;
-      } else if (bo->getOpcode() == llvm::Instruction::Sub) {
-        return false;
-      } else {
-        return (skipZextToSext(llvm::dyn_cast<llvm::Instruction>(bo->getOperand(0)), parentBB) &&
-                skipZextToSext(llvm::dyn_cast<llvm::Instruction>(bo->getOperand(1)), parentBB));
-      }
-    } else {
-      return false;
-    }
+ZextDecision SinkPointerConstAddPass::getZextDecision(llvm::Value *value, llvm::BasicBlock *parentBB) {
+  if (llvm::isa<llvm::Argument>(value)) {
+    return ZextDecision::KEEP_REASON_ABI;
   }
-  return true;
+
+  llvm::Instruction *op = llvm::dyn_cast<llvm::Instruction>(value);
+  if (!op || parentBB != op->getParent()) {
+    return ZextDecision::KEEP_REASON_UNKNOWN;
+  }
+
+  if (llvm::GenIntrinsicInst *instr = llvm::dyn_cast<llvm::GenIntrinsicInst>(op)) {
+    if (instr->getIntrinsicID() == llvm::GenISAIntrinsic::GenISA_RuntimeValue) {
+      return ZextDecision::KEEP_REASON_ABI;
+    }
+    return ZextDecision::KEEP_REASON_UNKNOWN;
+  }
+
+  if (llvm::isa<llvm::LoadInst>(op)) {
+    return ZextDecision::KEEP_REASON_ABI;
+  }
+
+  if (llvm::ExtractElementInst *eei = llvm::dyn_cast<llvm::ExtractElementInst>(op)) {
+    return getZextDecision(eei->getOperand(0), parentBB);
+  }
+
+  if (llvm::BinaryOperator *bo = llvm::dyn_cast<BinaryOperator>(op)) {
+    llvm::ConstantInt *cOp0 = llvm::dyn_cast<llvm::ConstantInt>(bo->getOperand(0));
+    llvm::ConstantInt *cOp1 = llvm::dyn_cast<llvm::ConstantInt>(bo->getOperand(1));
+
+    if ((cOp0 && cOp0->isNegative()) || (cOp1 && cOp1->isNegative())) {
+      return ZextDecision::FLIP;
+    }
+    if (bo->getOpcode() == llvm::Instruction::Sub) {
+      return ZextDecision::FLIP;
+    }
+
+    // A non-negative ConstantInt leg carries no signedness info; propagate from
+    // the non-const leg instead of letting it dominate via the null-op path.
+    if (cOp0 && !cOp1) {
+      return getZextDecision(bo->getOperand(1), parentBB);
+    }
+    if (cOp1 && !cOp0) {
+      return getZextDecision(bo->getOperand(0), parentBB);
+    }
+
+    ZextDecision d0 = getZextDecision(bo->getOperand(0), parentBB);
+    ZextDecision d1 = getZextDecision(bo->getOperand(1), parentBB);
+    return combineZextDecision(d0, d1);
+  }
+
+  return ZextDecision::KEEP_REASON_UNKNOWN;
 }
 
 void SinkPointerConstAddPass::zextToSext(std::vector<llvm::Instruction *> &zexts) {
   // Remove duplicates
   std::sort(zexts.begin(), zexts.end());
   zexts.erase(std::unique(zexts.begin(), zexts.end()), zexts.end());
-  // Convert zext instructions to sext instructions
   for (auto &zext : zexts) {
-    llvm::Instruction *op = llvm::dyn_cast<llvm::Instruction>(zext->getOperand(0));
-    if (skipZextToSext(op, zext->getParent())) {
+    if (getZextDecision(zext->getOperand(0), zext->getParent()) != ZextDecision::FLIP) {
       continue;
     }
     llvm::IRBuilder<> builder(zext);
