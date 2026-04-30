@@ -4221,6 +4221,12 @@ void CEncoder::InitVISABuilderOptions(TARGET_PLATFORM VISAPlatform, bool canAbor
         // "Auto" mode per module (by compiler option) - use compiler heuristics
         // to determine number of threads per EU
         SaveOption(vISA_AutoGRFSelection, true);
+
+        auto *oclKernel = static_cast<COpenCLKernel *>(m_program);
+        if (oclKernel->preventLargeGRFNumForReqdWorkGroupSize(m_program->m_State.m_dispatchSize))
+          // Cap GRF count for kernels with reqd_work_group_size that would
+          // exceed the runtime's reduced maxWorkGroupSize when using more GRFs.
+          SaveOption(vISA_MaxGRFNum, CodeGenContext::DEFAULT_TOTAL_GRF_NUM);
       }
 
       // Emit warnings if mismatch is found in user input

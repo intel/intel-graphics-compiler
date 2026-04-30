@@ -2713,6 +2713,27 @@ bool COpenCLKernel::IsRegularGRFRequested() { return m_regularGRFRequested; }
 
 bool COpenCLKernel::IsLargeGRFRequested() { return m_largeGRFRequested; }
 
+bool COpenCLKernel::preventLargeGRFNumForReqdWorkGroupSize(SIMDMode simdMode) const {
+  // NEO runtime halves maxWorkGroupSize when numGrfRequired == largeGrfNumber
+  // and simdSize != 32. If the kernel has reqd_work_group_size that exceeds the
+  // halved maxWorkGroupSize, we must cap GRF count to avoid the conflict.
+  if (!m_Platform->isCoreChildOf(IGFX_XE_HP_CORE))
+    return false;
+
+  if (simdMode == SIMDMode::SIMD32)
+    return false;
+
+  uint32_t reqdWorkGroupSize = IGCMetaDataHelper::getThreadGroupSize(*m_Context->getMetaDataUtils(), entry);
+  if (reqdWorkGroupSize == 0)
+    return false;
+
+  uint32_t maxWGSize = m_Context->getModuleMetaData()->csInfo.maxWorkGroupSize;
+  if (maxWGSize == 0)
+    maxWGSize = m_Platform->getOfflineCompilerMaxWorkGroupSize();
+
+  return reqdWorkGroupSize > maxWGSize / 2;
+}
+
 SIMDStatus COpenCLKernel::checkSIMDCompileConds(SIMDMode simdMode, EmitPass &EP, llvm::Function &F,
                                                 bool hasSyncRTCalls) {
   CShader *simd8Program = m_parent->GetShader(SIMDMode::SIMD8);

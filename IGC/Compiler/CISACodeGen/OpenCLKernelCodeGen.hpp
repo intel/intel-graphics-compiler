@@ -120,6 +120,7 @@ public:
 
   bool IsRegularGRFRequested() override;
   bool IsLargeGRFRequested() override;
+  bool preventLargeGRFNumForReqdWorkGroupSize(SIMDMode simdMode) const;
   int getAnnotatedNumThreads() override;
   void FillKernel(SIMDMode simdMode);
 
