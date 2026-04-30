@@ -10230,6 +10230,16 @@ void EmitPass::EmitInlineAsm(llvm::CallInst *inst) {
       outputs[id] = GetSymbol(ex);
       DstOpndMap[outputs[id]] = ex;
     }
+    // Back unused output operands with a temporary so $N substitution
+    // doesn't emit "null".
+    for (unsigned i = 0; i < numOutputs; i++) {
+      if (outputs[i] == nullptr) {
+        Type *elemTy = inst->getType()->getStructElementType(i);
+        unsigned numElts = m_currShader->GetNumElts(elemTy, /*isUniform=*/false);
+        VISA_Type visaTy = m_currShader->GetType(elemTy);
+        outputs[i] = m_currShader->GetNewVariable(numElts, visaTy, EALIGN_GRF, false, "inline_asm_unused_out");
+      }
+    }
     for (auto var : outputs)
       opnds.push_back(var);
   } else if (m_destination) {
