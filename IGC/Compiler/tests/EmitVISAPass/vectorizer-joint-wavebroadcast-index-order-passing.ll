@@ -27,14 +27,15 @@
 ; CHECK-LABEL: .kernel "foo"
 ; CHECK: .decl tmp7 v_type=G type=f num_elts=128 align=wordx32
 ; CHECK:    dpas.?.?.0.0 (M1, 16) tmp7.0 %null.0 Broadcast_0v.0 Broadcast_1v(0,0)
-; CHECK:    mul (M1, 16) vectorized_intrinsic(0,0)<1> tmp7(2,0)<0;1,0> tmp7(0,0)<1;1,0>
-; CHECK:    mul (M1, 16) vectorized_intrinsic(1,0)<1> tmp7(2,1)<0;1,0> tmp7(1,0)<1;1,0>
-; CHECK:    mul (M1, 16) vectorized_intrinsic(2,0)<1> tmp7(2,2)<0;1,0> tmp7(2,0)<1;1,0>
-; CHECK:    mul (M1, 16) vectorized_intrinsic(3,0)<1> tmp7(2,3)<0;1,0> tmp7(3,0)<1;1,0>
-; CHECK:    mul (M1, 16) vectorized_intrinsic(4,0)<1> tmp7(2,4)<0;1,0> tmp7(4,0)<1;1,0>
-; CHECK:    mul (M1, 16) vectorized_intrinsic(5,0)<1> tmp7(2,5)<0;1,0> tmp7(5,0)<1;1,0>
-; CHECK:    mul (M1, 16) vectorized_intrinsic(6,0)<1> tmp7(2,6)<0;1,0> tmp7(6,0)<1;1,0>
-; CHECK:    mul (M1, 16) vectorized_intrinsic(7,0)<1> tmp7(2,7)<0;1,0> tmp7(7,0)<1;1,0>
+; CHECK:    mov (M1, 16) tmp8(0,0)<1> tmp7(2,0)<1;1,0>
+; CHECK:    mul (M1, 16) vectorized_intrinsic(0,0)<1> tmp8(0,0)<0;1,0> tmp7(0,0)<1;1,0>
+; CHECK:    mul (M1, 16) vectorized_intrinsic(1,0)<1> tmp8(0,1)<0;1,0> tmp7(1,0)<1;1,0>
+; CHECK:    mul (M1, 16) vectorized_intrinsic(2,0)<1> tmp8(0,2)<0;1,0> tmp7(2,0)<1;1,0>
+; CHECK:    mul (M1, 16) vectorized_intrinsic(3,0)<1> tmp8(0,3)<0;1,0> tmp7(3,0)<1;1,0>
+; CHECK:    mul (M1, 16) vectorized_intrinsic(4,0)<1> tmp8(0,4)<0;1,0> tmp7(4,0)<1;1,0>
+; CHECK:    mul (M1, 16) vectorized_intrinsic(5,0)<1> tmp8(0,5)<0;1,0> tmp7(5,0)<1;1,0>
+; CHECK:    mul (M1, 16) vectorized_intrinsic(6,0)<1> tmp8(0,6)<0;1,0> tmp7(6,0)<1;1,0>
+; CHECK:    mul (M1, 16) vectorized_intrinsic(7,0)<1> tmp8(0,7)<0;1,0> tmp7(7,0)<1;1,0>
 
 ; CHECK-LABEL: .kernel "foo_long"
 ; CHECK: .decl tmp7 v_type=G type=f num_elts=128 align=wordx32
@@ -95,36 +96,36 @@
 
 ; CHECK-LABEL: .kernel "foo_elem0"
 ; CHECK: .decl tmp_e0 v_type=G type=f num_elts=128 align=wordx32
-; CHECK:    mul (M1, 16) mul_e0(0,0)<1> tmp_e0(0,2)<0;1,0> tmp_e0(0,0)<1;1,0>
-; CHECK:    mul (M1, 16) mul_e0(1,0)<1> tmp_e0(0,3)<0;1,0> tmp_e0(1,0)<1;1,0>
-; CHECK:    mul (M1, 16) mul_e0(2,0)<1> tmp_e0(0,4)<0;1,0> tmp_e0(2,0)<1;1,0>
-; CHECK:    mul (M1, 16) mul_e0(3,0)<1> tmp_e0(0,5)<0;1,0> tmp_e0(3,0)<1;1,0>
-; CHECK:    mul (M1, 16) mul_e0(4,0)<1> tmp_e0(0,6)<0;1,0> tmp_e0(4,0)<1;1,0>
-; CHECK:    mul (M1, 16) mul_e0(5,0)<1> tmp_e0(0,7)<0;1,0> tmp_e0(5,0)<1;1,0>
-; CHECK:    mul (M1, 16) mul_e0(6,0)<1> tmp_e0(0,8)<0;1,0> tmp_e0(6,0)<1;1,0>
-; CHECK:    mul (M1, 16) mul_e0(7,0)<1> tmp_e0(0,9)<0;1,0> tmp_e0(7,0)<1;1,0>
+; CHECK:    mul (M1, 16) mul_e0(0,0)<1> tmp_e0_s(0,2)<0;1,0> tmp_e0(0,0)<1;1,0>
+; CHECK:    mul (M1, 16) mul_e0(1,0)<1> tmp_e0_s(0,3)<0;1,0> tmp_e0(1,0)<1;1,0>
+; CHECK:    mul (M1, 16) mul_e0(2,0)<1> tmp_e0_s(0,4)<0;1,0> tmp_e0(2,0)<1;1,0>
+; CHECK:    mul (M1, 16) mul_e0(3,0)<1> tmp_e0_s(0,5)<0;1,0> tmp_e0(3,0)<1;1,0>
+; CHECK:    mul (M1, 16) mul_e0(4,0)<1> tmp_e0_s(0,6)<0;1,0> tmp_e0(4,0)<1;1,0>
+; CHECK:    mul (M1, 16) mul_e0(5,0)<1> tmp_e0_s(0,7)<0;1,0> tmp_e0(5,0)<1;1,0>
+; CHECK:    mul (M1, 16) mul_e0(6,0)<1> tmp_e0_s(0,8)<0;1,0> tmp_e0(6,0)<1;1,0>
+; CHECK:    mul (M1, 16) mul_e0(7,0)<1> tmp_e0_s(0,9)<0;1,0> tmp_e0(7,0)<1;1,0>
 
 ; CHECK-LABEL: .kernel "foo_elem7"
 ; CHECK: .decl tmp_e7 v_type=G type=f num_elts=128 align=wordx32
-; CHECK:    mul (M1, 16) mul_e7(0,0)<1> tmp_e7(7,0)<0;1,0> tmp_e7(0,0)<1;1,0>
-; CHECK:    mul (M1, 16) mul_e7(1,0)<1> tmp_e7(7,1)<0;1,0> tmp_e7(1,0)<1;1,0>
-; CHECK:    mul (M1, 16) mul_e7(2,0)<1> tmp_e7(7,2)<0;1,0> tmp_e7(2,0)<1;1,0>
-; CHECK:    mul (M1, 16) mul_e7(3,0)<1> tmp_e7(7,3)<0;1,0> tmp_e7(3,0)<1;1,0>
-; CHECK:    mul (M1, 16) mul_e7(4,0)<1> tmp_e7(7,4)<0;1,0> tmp_e7(4,0)<1;1,0>
-; CHECK:    mul (M1, 16) mul_e7(5,0)<1> tmp_e7(7,5)<0;1,0> tmp_e7(5,0)<1;1,0>
-; CHECK:    mul (M1, 16) mul_e7(6,0)<1> tmp_e7(7,6)<0;1,0> tmp_e7(6,0)<1;1,0>
-; CHECK:    mul (M1, 16) mul_e7(7,0)<1> tmp_e7(7,7)<0;1,0> tmp_e7(7,0)<1;1,0>
+; CHECK:    mul (M1, 16) mul_e7(0,0)<1> tmp_e7_s(0,0)<0;1,0> tmp_e7(0,0)<1;1,0>
+; CHECK:    mul (M1, 16) mul_e7(1,0)<1> tmp_e7_s(0,1)<0;1,0> tmp_e7(1,0)<1;1,0>
+; CHECK:    mul (M1, 16) mul_e7(2,0)<1> tmp_e7_s(0,2)<0;1,0> tmp_e7(2,0)<1;1,0>
+; CHECK:    mul (M1, 16) mul_e7(3,0)<1> tmp_e7_s(0,3)<0;1,0> tmp_e7(3,0)<1;1,0>
+; CHECK:    mul (M1, 16) mul_e7(4,0)<1> tmp_e7_s(0,4)<0;1,0> tmp_e7(4,0)<1;1,0>
+; CHECK:    mul (M1, 16) mul_e7(5,0)<1> tmp_e7_s(0,5)<0;1,0> tmp_e7(5,0)<1;1,0>
+; CHECK:    mul (M1, 16) mul_e7(6,0)<1> tmp_e7_s(0,6)<0;1,0> tmp_e7(6,0)<1;1,0>
+; CHECK:    mul (M1, 16) mul_e7(7,0)<1> tmp_e7_s(0,7)<0;1,0> tmp_e7(7,0)<1;1,0>
 
 ; CHECK-LABEL: .kernel "foo_fadd"
 ; CHECK: .decl tmp_fa v_type=G type=f num_elts=128 align=wordx32
-; CHECK:    add (M1, 16) add_fa(0,0)<1> tmp_fa(2,0)<0;1,0> tmp_fa(0,0)<1;1,0>
-; CHECK:    add (M1, 16) add_fa(1,0)<1> tmp_fa(2,1)<0;1,0> tmp_fa(1,0)<1;1,0>
-; CHECK:    add (M1, 16) add_fa(2,0)<1> tmp_fa(2,2)<0;1,0> tmp_fa(2,0)<1;1,0>
-; CHECK:    add (M1, 16) add_fa(3,0)<1> tmp_fa(2,3)<0;1,0> tmp_fa(3,0)<1;1,0>
-; CHECK:    add (M1, 16) add_fa(4,0)<1> tmp_fa(2,4)<0;1,0> tmp_fa(4,0)<1;1,0>
-; CHECK:    add (M1, 16) add_fa(5,0)<1> tmp_fa(2,5)<0;1,0> tmp_fa(5,0)<1;1,0>
-; CHECK:    add (M1, 16) add_fa(6,0)<1> tmp_fa(2,6)<0;1,0> tmp_fa(6,0)<1;1,0>
-; CHECK:    add (M1, 16) add_fa(7,0)<1> tmp_fa(2,7)<0;1,0> tmp_fa(7,0)<1;1,0>
+; CHECK:    add (M1, 16) add_fa(0,0)<1> tmp_fa_s(0,0)<0;1,0> tmp_fa(0,0)<1;1,0>
+; CHECK:    add (M1, 16) add_fa(1,0)<1> tmp_fa_s(0,1)<0;1,0> tmp_fa(1,0)<1;1,0>
+; CHECK:    add (M1, 16) add_fa(2,0)<1> tmp_fa_s(0,2)<0;1,0> tmp_fa(2,0)<1;1,0>
+; CHECK:    add (M1, 16) add_fa(3,0)<1> tmp_fa_s(0,3)<0;1,0> tmp_fa(3,0)<1;1,0>
+; CHECK:    add (M1, 16) add_fa(4,0)<1> tmp_fa_s(0,4)<0;1,0> tmp_fa(4,0)<1;1,0>
+; CHECK:    add (M1, 16) add_fa(5,0)<1> tmp_fa_s(0,5)<0;1,0> tmp_fa(5,0)<1;1,0>
+; CHECK:    add (M1, 16) add_fa(6,0)<1> tmp_fa_s(0,6)<0;1,0> tmp_fa(6,0)<1;1,0>
+; CHECK:    add (M1, 16) add_fa(7,0)<1> tmp_fa_s(0,7)<0;1,0> tmp_fa(7,0)<1;1,0>
 
 
 define spir_kernel void @foo() {

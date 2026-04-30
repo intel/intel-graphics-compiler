@@ -3194,27 +3194,14 @@ bool CShader::CanTreatAsAlias(llvm::ExtractElementInst *inst) {
     return false;
   }
 
-  if (IsCoalesced(vecSrc)) {
-    return false;
-  }
-  // Allow extractelement whose only coalescing is from DeSSA noop-alias
-  // (downstream bitcast). The alias chain resolves correctly through
-  // CVariable::ResolveAlias.
-  if (IsCoalesced(inst) && !isExtractCoalescedOnlyByNoopAlias(inst)) {
+  if (IsCoalesced(inst) || IsCoalesced(vecSrc)) {
     return false;
   }
 
   for (auto I = vecSrc->user_begin(), E = vecSrc->user_end(); I != E; ++I) {
     llvm::ExtractElementInst *extract = llvm::dyn_cast<llvm::ExtractElementInst>(*I);
     if (!extract) {
-      // Allow non-extract users that consume the vector as a whole-vector
-      // operand via GetSymbol(). These are lowered to element-wise VISA
-      // instructions with sub-register addressing and don't conflict with
-      // extract aliasing. Reject types that may decompose the vector or
-      // create coalescing constraints:
-      if (isa<BitCastInst>(*I) || isa<PHINode>(*I) || isa<InsertElementInst>(*I) || isa<ShuffleVectorInst>(*I))
-        return false;
-      continue;
+      return false;
     }
     if (!isa<ConstantInt>(extract->getIndexOperand())) {
       return false;
@@ -3223,7 +3210,7 @@ bool CShader::CanTreatAsAlias(llvm::ExtractElementInst *inst) {
     // component cannot be neither. This decision should be mitigated once
     // the VISA could track the liveness of individual elements of vector
     // variables.
-    if (IsCoalesced(extract) && !isExtractCoalescedOnlyByNoopAlias(extract))
+    if (IsCoalesced(extract))
       return false;
   }
   return true;
@@ -3321,14 +3308,6 @@ bool CShader::IsCoalesced(Value *V) {
     return true;
   }
   return false;
-}
-
-bool CShader::isExtractCoalescedOnlyByNoopAlias(Value *V) {
-  if (m_VRA && m_VRA->isAliasedValue(V))
-    return false;
-  if (m_coalescingEngine && m_coalescingEngine->GetValueCCTupleMapping(V))
-    return false;
-  return m_deSSA && m_deSSA->isOnlyNoopAliasee(V);
 }
 
 #define SET_INTRINSICS()                                                                                               \

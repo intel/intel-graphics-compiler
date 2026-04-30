@@ -260,7 +260,6 @@ public:
   bool isAliasee(llvm::Value *V) const;
   bool isAliaser(llvm::Value *V) const;
   bool isNoopAliaser(llvm::Value *V) const;
-  bool isOnlyNoopAliasee(llvm::Value *V) const;
   bool isSingleValued(llvm::Value *V) const;
   bool interfere(llvm::Value *V0, llvm::Value *V1);
   bool aliasInterfere(llvm::Value *V0, llvm::Value *V1);
