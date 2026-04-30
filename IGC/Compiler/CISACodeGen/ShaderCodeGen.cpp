@@ -115,6 +115,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/Optimizer/WaveAllJointReduction.hpp"
 #include "Compiler/Optimizer/InstructionHoistingOptimization.hpp"
 #include "Compiler/Optimizer/WaveBallotCSE.hpp"
+#include "Compiler/Optimizer/RedundantOpsCSE.hpp"
 #include "Compiler/MetaDataApi/PurgeMetaDataUtils.hpp"
 #include "Compiler/HandleLoadStoreInstructions.hpp"
 #include "Compiler/CustomSafeOptPass.hpp"
@@ -415,6 +416,9 @@ void AddAnalysisPasses(CodeGenContext &ctx, IGCPassManager &mpm) {
 
   if (ctx.platform.hasEfficient64bEnabled() && IGC_IS_FLAG_ENABLED(EnableSinkPointerConstAdd)) {
     mpm.add(createSinkPointerConstAddPass());
+    if (IGC_IS_FLAG_ENABLED(EnableRedundantOpsCSE)) {
+      mpm.add(createRedundantOpsCSEPass());
+    }
   }
 
   //
