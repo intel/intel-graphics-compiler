@@ -47,8 +47,6 @@ void GenericShaderState::CreateGatherMap() {
       USC::SConstantGatherEntry entry;
       entry.GatherEntry.Fields.constantBufferOffset = cstOffset % 256;
       entry.GatherEntry.Fields.channelMask = BIT(cstChannel);
-      // with 3DSTATE_DX9_CONSTANT if buffer is more than 4Kb,
-      //  the constant after 255 can be accessed in constant buffer 1
       int CBIndex = cstOffset / 256;
       entry.GatherEntry.Fields.constantBufferIndex = CBIndex;
       m_constantBufferMask |= BIT(CBIndex);

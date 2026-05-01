@@ -109,7 +109,6 @@ set(IGC_BUILD__HDR__AdaptorOCL
 
     #"${IGC_BUILD__COMMON_COMPILER_DIR}/adapters/d3d10/API/USC_d3d10.h"
     #"${IGC_BUILD__COMMON_COMPILER_DIR}/adapters/d3d10/usc_d3d10_umd.h"
-    #"${IGC_BUILD__COMMON_COMPILER_DIR}/adapters/d3d9/api/usc_d3d9.h"
     "${IGC_BUILD__COMMON_COMPILER_DIR}/API/ErrorCode.h"
     "${IGC_BUILD__COMMON_COMPILER_DIR}/API/SurfaceFormats.h"
     "${IGC_BUILD__COMMON_COMPILER_DIR}/API/usc.h"

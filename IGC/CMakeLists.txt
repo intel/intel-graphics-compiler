@@ -1506,8 +1506,6 @@ include_directories(
 
 if(LLVM_ON_WIN32)
   include_directories(
-      "${IGC_BUILD__COMMON_COMPILER_DIR}/adapters/d3d9/api"
-      "${IGC_BUILD__COMMON_COMPILER_DIR}/adapters/d3d9"
       "${IGC_BUILD__COMMON_COMPILER_DIR}/adapters/d3d10/API"
     )
 endif()

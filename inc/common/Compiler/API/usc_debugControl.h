@@ -540,7 +540,7 @@ struct SUSCRegistryVariables
     USC_RV_Declare( bool, DSSIMD8CompileForce, false, "", "" );
     USC_RV_Declare( bool, DSSIMD8SPCompileForce, false, "", "" );
     USC_RV_Declare( bool, GSSIMD8CompileForce, false, "", "" );
-    USC_RV_Declare( bool, VSSIMD8WithFullEpilogEnable, false, "", "Enabling this causes sending all parts of Vertex Header and position as paramter for DX9 from VS" );
+    USC_RV_Declare( bool, VSSIMD8WithFullEpilogEnable, false, "", "Enabling this causes sending all parts of Vertex Header and position from VS" );
     USC_RV_Declare( bool, HSSIMD8DualPatchModeCompileEnable, false, "", "" );
     USC_RV_Declare( bool, HSSIMD8EightPatchModeCompileEnable, false, "", "For Gen9+ this mean SIMD8 single- and dual-patch compilation instead of SIMD4x2" );
     USC_RV_Declare( bool, DSSIMD8SingleOrDualPatchModeCompileEnable, false, "", "For Gen9+ only, this mean only single-patch compilation" );

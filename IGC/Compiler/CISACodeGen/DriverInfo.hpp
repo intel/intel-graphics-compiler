@@ -71,9 +71,6 @@ public:
     return IGC_IS_FLAG_ENABLED(SeparateSpillPvtScratchSpace);
   }
 
-  /// The driver Uses special states to push constants beyond index 256
-  virtual bool Uses3DSTATE_DX9_CONSTANT() const { return false; }
-
   /// The driver uses typed or untyped constant buffers (for ld_raw vs sampler)
   virtual bool UsesTypedConstantBuffers3D() const { return true; }
 

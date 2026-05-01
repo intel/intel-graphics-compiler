@@ -905,10 +905,7 @@ void PushAnalysis::processGather(Instruction *inst, uint bufId, uint eltId) {
   PushInfo &pushInfo = m_context->getModuleMetaData()->pushInfo;
 
   eltId = eltId >> 2;
-  if (!m_context->m_DriverInfo.Uses3DSTATE_DX9_CONSTANT() &&
-      (eltId + inst->getType()->getPrimitiveSizeInBits() / 8) >= (MaxConstantBufferIndexSize * 4)) {
-    // Hardware supports pushing more than 256 constants
-    // in case 3DSTATE_DX9_CONSTANT mode is used
+  if ((eltId + inst->getType()->getPrimitiveSizeInBits() / 8) >= (MaxConstantBufferIndexSize * 4)) {
     return;
   } else if (bufId > 15) {
     // resource streamer cannot push above buffer slot 15 and driver doesn't allow

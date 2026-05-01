@@ -24,16 +24,10 @@ SPDX-License-Identifier: MIT
 #define USC_PARAM_NAME_GTSYSTEMINFO "GTSystemInfo"
 #define USC_PARAM_NAME_ADAPTERINFO "AdapterInfo"
 
-#define USC_PARAM_NAME_ADAPTER_D3D9 "d3d9"
 #define USC_PARAM_NAME_ADAPTER_D3D10 "d3d10"
 #define USC_PARAM_NAME_ADAPTER_ILTEXT "iltext"
 #define USC_PARAM_NAME_ADAPTER_OGL "ogl"
 #define USC_PARAM_NAME_ADAPTER_OCL "ocl"
-
-// D3D9 adapter
-#define USC_PARAM_NAME_D3D9_DXVERSION "DXinterfaceVersion"
-#define USC_PARAM_NAME_D3D9_VSNOS "VSnos"
-#define USC_PARAM_NAME_D3D9_PSNOS "PSnos"
 
 // ILTEXT adapter
 #define USC_PARAM_NAME_ILTEXT_CLIENTTYPE "clientType"
