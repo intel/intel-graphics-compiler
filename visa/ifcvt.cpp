@@ -70,8 +70,8 @@ struct IfConvertible {
 class IfConverter {
   FlowGraph &fg;
 
-  // getSinglePredecessor - Get the single predecessor or null
-  // otherwise.
+  /// getSinglePredecessor - Get the single predecessor or null
+  /// otherwise.
   G4_BB *getSinglePredecessor(G4_BB *BB, G4_BB *If) const {
     if (BB->Preds.size() != 1) {
       if (BB->Preds.size() == 2) {
@@ -85,8 +85,8 @@ class IfConverter {
     return BB->Preds.front();
   }
 
-  // getSingleSuccessor - Get the single successor or null
-  // otherwise.
+  /// getSingleSuccessor - Get the single successor or null
+  /// otherwise.
   G4_BB *getSingleSuccessor(G4_BB *BB, G4_BB *Else) const {
     if (BB->Succs.size() != 1) {
       if (BB->Succs.size() == 2) {
@@ -100,56 +100,57 @@ class IfConverter {
     return BB->Succs.front();
   }
 
-  // getEMaskBits() -
+  /// getEMaskBits() -
   unsigned getEMaskBits(unsigned maskOffset, unsigned execSize) const {
     uint64_t Val = ((uint64_t)1 << execSize) - 1;
     return (uint32_t)(Val << maskOffset);
   }
 
-  // getInnermostIfBlock - If the given BB is the head of an innermost IF
-  // block, return its condition, 'if' branch, 'else' branch (if any), tail,
-  // and the detected shape.  Otherwise return all null pointers.
-  //
-  //  Triangle (IfShape_Triangle):      Diamond (IfShape_Diamond):
-  //         H                                  H
-  //      s0                                 s0   s1
-  //         T (=s1)                            T
-  //
-  //  Physical-succ: s0 is physically laid out before s1; different tails.
-  std::tuple<G4_INST * /* branch */, G4_BB * /* s0 */, G4_BB * /* s1 */,
-             G4_BB * /* tail */, IfConvertKind>
+  /// getnnerMostIf - If the given BB is the head of an innermost IF
+  /// block, return its condition, 'if' branch and 'else' branch (if any)
+  /// and tail, i.e.,
+  ///
+  ///         H                  H
+  ///        / \                / |
+  ///     'if' 'else'   or   'if' |
+  ///        \ /                \ |
+  ///         T                  T
+  /// Otherwise, return all null pointers.
+  ///
+  /// TODO: Add 'goto' support as CFG structurization is currently all or
+  /// nothing.
+  std::tuple<G4_INST * /* last instruction in head, i.e. 'if' */,
+             G4_BB * /* if */, G4_BB * /* else */, G4_BB * /* tail */>
   getInnermostIfBlock(G4_BB *BB) const {
-    auto null = std::make_tuple(nullptr, nullptr, nullptr, nullptr,
-                                FullConvert);
-
+    // Such BB should already be recognized as structural IF statement.
     if (BB->empty())
-      return null;
+      return std::make_tuple(nullptr, nullptr, nullptr, nullptr);
 
     G4_INST *last = BB->back();
 
     // Skip if there's 'NoMask' on that (possible) conditional branch.
     if (last->getMaskOption() & InstOpt_WriteEnable)
-      return null;
+      return std::make_tuple(nullptr, nullptr, nullptr, nullptr);
 
     // Check whether it's 'if' or 'goto'.
     G4_opcode op = last->opcode();
     if (op != G4_if) {
       if (op != G4_goto)
-        return null;
+        return std::make_tuple(nullptr, nullptr, nullptr, nullptr);
 
       // Extra checks for 'goto'.
 
       // Skip if there's no predicate.
       if (!last->getPredicate())
-        return null;
+        return std::make_tuple(nullptr, nullptr, nullptr, nullptr);
 
       // Skip backward goto.
       if (last->isFlowControl() && last->asCFInst()->isBackward())
-        return null;
+        return std::make_tuple(nullptr, nullptr, nullptr, nullptr);
 
       // Skip if there's no exactly 2 successors.
       if (BB->Succs.size() != 2)
-        return null;
+        return std::make_tuple(nullptr, nullptr, nullptr, nullptr);
     }
 
     vISA_ASSERT(BB->Succs.size() == 2,
@@ -160,60 +161,44 @@ class IfConverter {
     G4_BB *s1 = BB->Succs.back();  // else-block
 
     G4_BB *t0 = getSingleSuccessor(s0, s1);
-    if (!t0)
-      return null;
-
-    // s0 needs a single predecessor.
+    if (!t0) {
+      // The innermost 'if' branch should have only one
+      // successor.
+      return std::make_tuple(nullptr, nullptr, nullptr, nullptr);
+    }
+    // It also needs to have a single predecessor.
     if (!getSinglePredecessor(s0, s1))
-      return null;
+      return std::make_tuple(nullptr, nullptr, nullptr, nullptr);
 
-    // Triangle ('if-fi'): s0's only successor is s1 (the tail).
     if (t0 == s1) {
-      unsigned n0 = getPredictableInsts(s0, last);
-      if (n0 == 0 || n0 >= FullyConvertibleMaxInsts)
-        return null;
+      // 'if-fi'
       VISA_DEBUG(std::cout << "Found an innermost if-fi block at"
                       << " BB" << BB->getId() << " with branch BB"
                       << s0->getId() << " and tail BB" << t0->getId() << '\n');
-      return std::make_tuple(last, s0, nullptr, t0, FullConvert);
+      return std::make_tuple(last, s0, nullptr, t0);
     }
 
-    // Regular diamond ('if-else-fi'): s0 and s1 share the same logical tail,
-    // s1 has a single predecessor, and s0 != s1.
     G4_BB *t1 = getSingleSuccessor(s1, s0);
-    if (t1 && t0 == t1 && getSinglePredecessor(s1, s0) &&
-        !(s0 == s1 && BB->getPhysicalSucc() == s0)) {
-      unsigned n0 = getPredictableInsts(s0, last);
-      unsigned n1 = getPredictableInsts(s1, last);
-      if (n0 > 0 && n0 < FullyConvertibleMaxInsts &&
-          n1 > 0 && n1 < FullyConvertibleMaxInsts) {
-        VISA_DEBUG(std::cout << "Found an innermost if-else-fi block at"
-                             << " BB" << BB->getId() << " with branches {"
-                             << "BB" << s0->getId() << ", BB" << s1->getId()
-                             << "} and tail BB" << t0->getId() << '\n');
-        return std::make_tuple(last, s0, s1, t0, FullConvert);
-      }
+    if (!t1 || t0 != t1) {
+      // The innermost 'else' branch should have only one common
+      // successor from the 'if' branch.
+      return std::make_tuple(nullptr, nullptr, nullptr, nullptr);
     }
+    // It also needs to have a single predecessor.
+    if (!getSinglePredecessor(s1, s0))
+      return std::make_tuple(nullptr, nullptr, nullptr, nullptr);
 
-    // Physical-successor pattern: s0 and s1 do not share the same logical
-    // tail (t0 != t1), but s0 is physically laid out immediately before s1.
-    // Only PartialIfConvert is valid here: s1 has no join and must be kept.
-    // Require goto (not G4_if) with JIP/UIP pointing to s1, confirming that
-    // s0 is the fall-through path and s1 is the jump target of head's goto.
-    if (op == G4_goto && s0->getPhysicalSucc() == s1 &&
-        last->asCFInst()->getJip() == s1->getLabel() &&
-        last->asCFInst()->getUip() == s1->getLabel()) {
-      unsigned n0 = getPredictableInsts(s0, last);
-      if (n0 == 0 || n0 >= PartialConvertibleMaxInsts)
-        return null;
-      VISA_DEBUG(std::cout << "Found an innermost if-fi (physical-succ) block"
-                           << " at BB" << BB->getId() << " with branch BB"
-                           << s0->getId() << ", else BB" << s1->getId()
-                           << " and tail BB" << t0->getId() << '\n');
-      return std::make_tuple(last, s0, s1, t0, PartialIfConvert);
-    }
+    // Not a valid if then else for ifcvt
+    if (s0 == s1 && BB->getPhysicalSucc() == s0)
+      return std::make_tuple(nullptr, nullptr, nullptr, nullptr);
 
-    return null;
+    VISA_DEBUG(std::cout << "Found an innermost if-else-fi block at"
+                         << " BB" << BB->getId() << " with branches {"
+                         << "BB" << s0->getId() << ", BB" << s1->getId()
+                         << "} and tail BB" << t0->getId() << '\n');
+
+    // 'if-else-fi'
+    return std::make_tuple(last, s0, s1, t0);
   }
 
   /// isPredictable - Check whether the given instruction 'I' could be
@@ -451,24 +436,46 @@ void IfConverter::analyze(std::vector<IfConvertible> &list) {
   for (auto *BB : fg) {
     G4_INST *ifInst;
     G4_BB *s0, *s1, *t;
-    IfConvertKind kind;
-    std::tie(ifInst, s0, s1, t, kind) = getInnermostIfBlock(BB);
+    std::tie(ifInst, s0, s1, t) = getInnermostIfBlock(BB);
 
-    if (!ifInst)
+    if (!ifInst) {
+      // Skip non-innermost if.
       continue;
+    }
 
-    if (t && (t->isEndWithCall() || (t->getLastOpcode() == G4_return)))
+    if (t && (t->isEndWithCall() || (t->getLastOpcode() == G4_return))) {
       continue;
+    }
 
     vASSERT(s0);
 
     // Conservatively skip if BB is set with G4_BB_KEEP_TYPE
     if ((t && (t->getBBType() & G4_BB_KEEP_TYPE)) ||
-        (s0->getBBType() & G4_BB_KEEP_TYPE) ||
-        (s1 && (s1->getBBType() & G4_BB_KEEP_TYPE)))
+      ((s0->getBBType() & G4_BB_KEEP_TYPE)) ||
+      (s1 && (s1->getBBType() & G4_BB_KEEP_TYPE))) {
       continue;
+    }
 
-    list.push_back(IfConvertible(kind, ifInst->getPredicate(), BB, s0, s1, t));
+    G4_Predicate *pred = ifInst->getPredicate();
+
+    unsigned n0 = getPredictableInsts(s0, ifInst);
+    unsigned n1 = s1 ? getPredictableInsts(s1, ifInst) : 0;
+
+    if (s1) {
+      if (((n0 > 0) && (n0 < FullyConvertibleMaxInsts)) &&
+          ((n1 > 0) && (n1 < FullyConvertibleMaxInsts))) {
+        // Both 'if' and 'else' are profitable to be if-converted.
+        list.push_back(IfConvertible(FullConvert, pred, BB, s0, s1, t));
+      } else if ((n0 > 0) && (n0 < PartialConvertibleMaxInsts)) {
+        // Only 'if' is profitable to be converted.
+        list.push_back(IfConvertible(PartialIfConvert, pred, BB, s0, s1, t));
+      } else if ((n1 > 0) && (n1 < PartialConvertibleMaxInsts)) {
+        // Only 'else' is profitable to be converted.
+        list.push_back(IfConvertible(PartialElseConvert, pred, BB, s0, s1, t));
+      }
+    } else if ((n0 > 0) && (n0 < FullyConvertibleMaxInsts)) {
+      list.push_back(IfConvertible(FullConvert, pred, BB, s0, nullptr, t));
+    }
   }
 }
 
@@ -580,53 +587,7 @@ void IfConverter::fullConvert(IfConvertible &IC) {
 }
 
 void IfConverter::partialConvert(IfConvertible &IC) {
-  // Physical-succ PartialIfConvert: s0 is the fall-through block physically
-  // adjacent to s1 (the goto target).  s0's trailing goto already carries the
-  // correct JIP/UIP set by processGoto; hoist it with a predicate into head
-  // and erase head's original conditional goto.
-  //
-  //   Before:  head: (+P) goto s1          [JIP=s1, UIP=s1]
-  //            s0:   <if-insts>; goto tail  [JIP/UIP from processGoto]
-  //            s1:   <else-insts> → tail    (no join)
-  //            tail: join; ...
-  //
-  //   After:   head: (-P) <if-insts>; (-P) goto tail [JIP/UIP from processGoto]
-  //            s0:   <empty>
-  //            s1:   <else-insts> → tail    (kept as fall-through body)
-  //            tail: join; ...
-  vISA_ASSERT(IC.kind == PartialIfConvert, "Expected PartialIfConvert!");
-
-  G4_Predicate &pred = *IC.pred;
-  G4_BB *head = IC.head;
-  G4_BB *s0 = IC.succIf;
-
-  INST_LIST_ITER pos = std::prev(head->end());
-  vISA_ASSERT((*pos)->opcode() == G4_goto,
-              "Physical-succ head must end with goto!");
-
-  bool needReversePredicateForGoto = fg.builder->gotoJumpOnTrue();
-
-  // Predicate all of s0's non-label instructions and hoist them into head
-  // before head's conditional goto.  s0's trailing goto (with its
-  // processGoto JIP/UIP) becomes the new predicated branch in head.
-  for (; !s0->empty(); s0->pop_front()) {
-    G4_INST *I = s0->front();
-    if (I->opcode() == G4_label)
-      continue;
-    if (needReversePredicateForGoto) {
-      G4_Predicate *negPred = fg.builder->createPredicate(pred);
-      reversePredicate(negPred);
-      I->setPredicate(negPred);
-    } else {
-      I->setPredicate(fg.builder->createPredicate(pred));
-    }
-    head->insertBefore(pos, I);
-  }
-  s0->markEmpty(fg.builder);
-
-  // Erase head's original conditional goto; the hoisted goto from s0 takes
-  // its place.  Fall-through now reaches s1 directly.
-  head->erase(pos);
+  // TODO: Add partial if-conversion support.
 }
 
 void runIfCvt(FlowGraph &fg) {
