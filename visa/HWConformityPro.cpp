@@ -3379,6 +3379,15 @@ void HWConformityPro::evenlySplitInst(INST_LIST_ITER iter, G4_BB *bb) {
       }
 
       if (useTmp) {
+        if (op == G4_movi) {
+          // movi requires an indirect src operand. Inserting mov on src would
+          // strip the indirect addressing and break the instruction. Instead,
+          // redirect the dst to a tmp and insert "mov real_dst, tmp" after the
+          // movi to eliminate the overlap.
+          replaceDstWithRawMov(iter, bb, dst->getHorzStride(), Any);
+          dst = inst->getDst();
+          break;
+        }
         // insert mov
         replaceSrcWithRawMov(iter, bb, i, /*tmpStride*/ 1, Any);
         srcs[i] = inst->getSrc(i);
