@@ -117,7 +117,6 @@ public:
     return m_platformInfo.eRenderCoreFamily <= IGFX_GEN9_CORE || IGC_IS_FLAG_ENABLED(DisbleLocalFences);
   }
 
-
   bool canSupportWMTPWithoutBTD() const {
     // Returns true if the platform has the capability of supporting
     // WMTP but WMTP isn't supported for all shader types

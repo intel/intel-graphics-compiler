@@ -591,10 +591,6 @@ enum class ShaderTypeMD
         bool forceEarlyZ                     = false;   // force earlyz test
         bool hasVersionedLoop                = false;   // if versioned by customloopversioning
         bool forceSingleSourceRTWAfterDualSourceRTW = false;
-        // Number of samples for this pixel shader if known.
-        // Valid values 0, 1, 2, 4, 8 and 16.
-        // 0 means unknown or not set.
-        unsigned char NumSamples             = 0;
         std::vector<int> blendOptimizationMode;
         std::vector<int> colorOutputMask;
         std::vector<bool> isBlendEnabled;
