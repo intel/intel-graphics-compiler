@@ -2436,7 +2436,7 @@ elseif (WIN32)
 
   endif(CMAKE_SIZEOF_VOID_P EQUAL 8)
 
-  if (FCL_ENABLED)
+  if (FCL_ENABLED AND (NOT IGC_BUILD__SHIM_MODE STREQUAL "Fallback"))
     install(TARGETS ${IGC_BUILD__PROJ__fcl_dll}
             RUNTIME DESTINATION Release/bin          CONFIGURATIONS Release)
     install(TARGETS ${IGC_BUILD__PROJ__fcl_dll}
