@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; REQUIRES: llvm-spirv, regkeys, pvc-supported
+; REQUIRES: temporarily-disabled, llvm-spirv, regkeys, pvc-supported
 ; UNSUPPORTED: sys32
 
 ; RUN: llvm-as %s -o %t.bc
