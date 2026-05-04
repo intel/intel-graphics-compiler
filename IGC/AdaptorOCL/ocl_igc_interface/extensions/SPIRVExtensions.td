@@ -193,11 +193,12 @@ def SPV_INTEL_unstructured_loop_controls : Extension<
 
 def SPV_KHR_integer_dot_product : Extension<
   "SPV_KHR_integer_dot_product",
-  [ Capability<"DotProductKHR">,
-    Capability<"DotProductInputAllKHR">,
-    Capability<"DotProductInput4x8BitKHR">,
-    Capability<"DotProductInput4x8BitPackedKHR"> ],
-  "https://github.khronos.org/SPIRV-Registry/extensions/KHR/SPV_KHR_integer_dot_product.html"
+  [ Capability<"DotProductKHR", AllPlatformSupport>,
+    Capability<"DotProductInputAllKHR", NotSupported>,
+    Capability<"DotProductInput4x8BitKHR", AllPlatformSupport>,
+    Capability<"DotProductInput4x8BitPackedKHR", AllPlatformSupport> ],
+  "https://github.khronos.org/SPIRV-Registry/extensions/KHR/SPV_KHR_integer_dot_product.html",
+  InheritFromCapabilities
 >;
 
 def SPV_KHR_uniform_group_instructions : ExperimentalExtension<

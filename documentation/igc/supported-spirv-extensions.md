@@ -609,14 +609,16 @@ This document lists all SPIR-V extensions supported by IGC and their platform re
 
 **Specification**: https://github.khronos.org/SPIRV-Registry/extensions/KHR/SPV_KHR_integer_dot_product.html
 
-> **Supported on**: All platforms
-
 **Capabilities**:
 
 - **DotProductKHR**
+  > **Supported On**: All platforms
 - **DotProductInputAllKHR**
+  > **Supported On**: Not supported
 - **DotProductInput4x8BitKHR**
+  > **Supported On**: All platforms
 - **DotProductInput4x8BitPackedKHR**
+  > **Supported On**: All platforms
 
 ---
 
