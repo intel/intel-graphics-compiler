@@ -11,4 +11,5 @@ SPDX-License-Identifier: MIT
 ///////////////////////////////////////////////////////////////////////////////
 /// @brief This pass is responsible for eliminating redundant ResourceDescriptorHeap
 llvm::FunctionPass *createRedundantOpsCSEPass();
+llvm::FunctionPass *createRedundantOpsCSEPass(bool enableCrossBB);
 void initializeRedundantOpsCSEPassPass(llvm::PassRegistry &);

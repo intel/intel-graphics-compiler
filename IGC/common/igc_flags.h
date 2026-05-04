@@ -659,12 +659,20 @@ DECLARE_IGC_REGKEY(DWORD, FPRangeAnalysisMaxDepth, 64, "Max recursive depth for 
 DECLARE_IGC_REGKEY(bool, EnableSimpleAluVectorizer, true,
                    "Enable coalescing of ALU SIMD1/SIMD2 uniform operations into wider SIMD", false)
 DECLARE_IGC_REGKEY(bool, EnableRedundantOpsCSE, true, "Enable redundant binary operator CSE pass", false)
-DECLARE_IGC_REGKEY(bool, EnableRedundantOpsCrossBBCSE, false, "Enable cross-basic-block CSE in RedundantOpsCSEPass",
+DECLARE_IGC_REGKEY(bool, EnableRedundantOpsCrossBBCSE, true, "Enable cross-basic-block CSE in RedundantOpsCSEPass",
                    false)
 DECLARE_IGC_REGKEY(DWORD, RedundantOpsIntraBBMaxDist, 64,
                    "Maximum instruction distance for inside-BB CSE in RedundantOpsCSEPass (0 = unlimited)", false)
 DECLARE_IGC_REGKEY(DWORD, RedundantOpsCrossBBMaxDist, 100,
                    "Maximum instruction distance for cross-BB CSE in RedundantOpsCSEPass (0 = unlimited)", false)
+DECLARE_IGC_REGKEY(DWORD, RedundantOpsCrossBBInstThreshold, 5000,
+                   "Disable cross-BB CSE in RedundantOpsCSEPass when shader IR instruction count exceeds this "
+                   "threshold (combined with NumBB threshold). 0 = never disable based on inst count.",
+                   false)
+DECLARE_IGC_REGKEY(DWORD, RedundantOpsCrossBBNumBBThreshold, 500,
+                   "Disable cross-BB CSE in RedundantOpsCSEPass when shader BB count exceeds this threshold "
+                   "(combined with inst count threshold). 0 = never disable based on BB count.",
+                   false)
 DECLARE_IGC_REGKEY(bool, EnableMatchDecomposedHalfExtract, true, "Reconstruct LLVM16+ decomposed half extraction",
                    false)
 

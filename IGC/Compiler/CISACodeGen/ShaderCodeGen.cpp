@@ -417,7 +417,16 @@ void AddAnalysisPasses(CodeGenContext &ctx, IGCPassManager &mpm) {
   if (ctx.platform.hasEfficient64bEnabled() && IGC_IS_FLAG_ENABLED(EnableSinkPointerConstAdd)) {
     mpm.add(createSinkPointerConstAddPass());
     if (IGC_IS_FLAG_ENABLED(EnableRedundantOpsCSE)) {
-      mpm.add(createRedundantOpsCSEPass());
+      // Cross-BB CSE extends the result's live range across BB boundaries.
+      // In large, complex shaders near the GRF pressure limit, this can
+      // perturb the register allocator, causing minor ALU Time regressions.
+      // Skip cross-BB mode for high-complexity shaders, following the
+      // pattern used for EarlyCSE (line ~1594) and LICM (line ~1603).
+      bool highComplexity = (IGC_GET_FLAG_VALUE(RedundantOpsCrossBBInstThreshold) != 0 &&
+                             ctx.m_instrTypes.numInsts > IGC_GET_FLAG_VALUE(RedundantOpsCrossBBInstThreshold)) &&
+                            (IGC_GET_FLAG_VALUE(RedundantOpsCrossBBNumBBThreshold) != 0 &&
+                             ctx.m_instrTypes.numBB > IGC_GET_FLAG_VALUE(RedundantOpsCrossBBNumBBThreshold));
+      mpm.add(createRedundantOpsCSEPass(!highComplexity));
     }
   }
 

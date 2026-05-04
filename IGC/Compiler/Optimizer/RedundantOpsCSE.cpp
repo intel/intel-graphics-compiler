@@ -27,8 +27,9 @@ using namespace IGC;
 class RedundantOpsCSEPass : public llvm::FunctionPass {
 public:
   static char ID;
+  bool m_enableCrossBB;
 
-  RedundantOpsCSEPass();
+  RedundantOpsCSEPass(bool enableCrossBB = true);
 
   llvm::StringRef getPassName() const override { return "RedundantOpsCSEPass"; }
 
@@ -74,7 +75,7 @@ static bool hasAllInvariantOperands(Instruction *I) {
 }
 
 ////////////////////////////////////////////////////////////////////////////
-RedundantOpsCSEPass::RedundantOpsCSEPass() : llvm::FunctionPass(ID) {
+RedundantOpsCSEPass::RedundantOpsCSEPass(bool enableCrossBB) : llvm::FunctionPass(ID), m_enableCrossBB(enableCrossBB) {
   initializeRedundantOpsCSEPassPass(*PassRegistry::getPassRegistry());
 }
 
@@ -240,7 +241,7 @@ bool RedundantOpsCSEPass::processFunction(llvm::Function &F) {
   // Process across basic blocks using dominance -- only when explicitly
   // enabled. The invariant-only mode was extending live ranges across
   // BB boundaries in high-pressure SIMD32 CS, causing spill regressions.
-  if (IGC_IS_FLAG_ENABLED(EnableRedundantOpsCrossBBCSE)) {
+  if (m_enableCrossBB && IGC_IS_FLAG_ENABLED(EnableRedundantOpsCrossBBCSE)) {
     DominatorTree &DT = getAnalysis<DominatorTreeWrapperPass>().getDomTree();
     modified |= processRedundantOpsAcrossBBs(RPOT, DT);
   }
@@ -258,4 +259,5 @@ void RedundantOpsCSEPass::getAnalysisUsage(llvm::AnalysisUsage &AU) const {
 }
 
 ////////////////////////////////////////////////////////////////////////
-FunctionPass *createRedundantOpsCSEPass() { return new RedundantOpsCSEPass(); }
+FunctionPass *createRedundantOpsCSEPass() { return new RedundantOpsCSEPass(true); }
+FunctionPass *createRedundantOpsCSEPass(bool enableCrossBB) { return new RedundantOpsCSEPass(enableCrossBB); }
