@@ -296,9 +296,13 @@ uint16_t LatencyTableXe<Gen>::getOccupancy(const G4_INST *Inst) const {
   uint16_t Scale = (Sz <= NativeSz) ? 1 : (Sz == NativeSz * 2) ? 2 : 4;
   if (Inst->isMath())
     return value_of(LI::OC_MATH) * Scale;
-  if (Inst->isFastHFInstruction())
+  if (Inst->isFastHFInstruction()) {
     Scale = (Sz <= NativeSz * 2) ? 1 : 2;
-  else if (G4_DstRegRegion *Dst = Inst->getDst()) {
+  } else if (Inst->opcode() == G4_mov &&
+             Inst->getSrc(0) != nullptr &&
+             Inst->getSrc(0)->isVxHIndirect()) {
+    Scale = Sz;
+  } else if (G4_DstRegRegion *Dst = Inst->getDst()) {
     if (Dst->getTypeSize() == 8)
       Scale = (Sz <= NativeSz / 2) ? 1 : 2;
   }
@@ -421,9 +425,13 @@ LatencyTableXe<PlatformGen::XE>::getOccupancy(const G4_INST *Inst) const {
   int Scale = (Sz <= 8) ? 1 : (Sz == 16) ? 2 : 4;
   if (Inst->isMath())
     return value_of(LI::OC_MATH) * Scale;
-  if (Inst->isFastHFInstruction())
+  if (Inst->isFastHFInstruction()) {
     Scale = (Sz <= 16) ? 1 : 2;
-  else if (G4_DstRegRegion *Dst = Inst->getDst()) {
+  } else if (Inst->opcode() == G4_mov &&
+             Inst->getSrc(0) != nullptr &&
+             Inst->getSrc(0)->isVxHIndirect()) {
+    Scale = Sz;
+  } else if (G4_DstRegRegion *Dst = Inst->getDst()) {
     if (Dst->getTypeSize() == 8)
       Scale = (Sz <= 4) ? 1 : 2;
   }
