@@ -455,6 +455,9 @@ public:
     ModulePass::getAnalysisUsage(AU);
   }
   bool runOnModule(Module &M) override;
+
+private:
+  void fixupBoolSelectsForLowering();
 };
 
 // GenX late SIMD control flow conformance pass
@@ -631,6 +634,65 @@ static bool hasStackCall(const Module &M) {
 }
 
 /***********************************************************************
+ * fixupBoolSelectsForLowering : ensure that select(EM, <vNi1> TrueVal, zero)
+ *    has a CmpInst as TrueVal, so GenXLowering can create wrpredpredregion.
+ *
+ * LLVM-17 InstCombine may fold icmp(select(pred, 1, 0), 0) back to pred,
+ * producing xor(cmp, all_true) instead of the expected CmpInst. This fixup
+ * detects the pattern and replaces xor(cmp, all_true) with an inverse CmpInst.
+ */
+void GenXEarlySimdCFConformance::fixupBoolSelectsForLowering() {
+  if (EMVals.empty())
+    return;
+
+  using namespace PatternMatch;
+
+  for (Function &F : *M) {
+    for (BasicBlock &BB : F) {
+      for (auto BI = BB.begin(), BE = BB.end(); BI != BE; ++BI) {
+        auto *Sel = dyn_cast<SelectInst>(&*BI);
+        if (!Sel)
+          continue;
+        if (!Sel->getType()->isVectorTy() ||
+            !Sel->getType()->getScalarType()->isIntegerTy(1))
+          continue;
+        Value *TrueVal = Sel->getTrueValue();
+        if (isa<CmpInst>(TrueVal))
+          continue;
+        // FalseVal must be zero — this is the CMSimdCFLowering pattern.
+        if (!match(Sel->getFalseValue(), m_Zero()))
+          continue;
+        if (!GotoJoin::isEMValue(Sel->getCondition()))
+          continue;
+
+        // Pattern: select(EM, xor(cmp, all_true), zero).
+        // Replace xor(cmp, all_true) with the inverse CmpInst.
+        auto *BO = dyn_cast<BinaryOperator>(TrueVal);
+        IGC_ASSERT_EXIT_MESSAGE(BO && BO->getOpcode() == Instruction::Xor,
+                                "unexpected non-CmpInst TrueVal in EM select: "
+                                "expected xor(cmp, all_true)");
+
+        Value *Op0 = BO->getOperand(0);
+        Value *Op1 = BO->getOperand(1);
+        IGC_ASSERT_EXIT_MESSAGE(
+            match(Op1, m_AllOnes()),
+            "xor operand 1 must be all-ones (inverted pred)");
+
+        auto *SrcCmp = dyn_cast<CmpInst>(Op0);
+        IGC_ASSERT_EXIT_MESSAGE(SrcCmp, "xor operand 0 must be a CmpInst");
+
+        auto *InvCmp = cast<CmpInst>(SrcCmp->clone());
+        InvCmp->setPredicate(SrcCmp->getInversePredicate());
+        InvCmp->insertBefore(Sel);
+        InvCmp->setName(SrcCmp->getName() + ".inv");
+        Sel->setOperand(1, InvCmp);
+        Modified = true;
+      }
+    }
+  }
+}
+
+/***********************************************************************
  * runOnModule : run the early SIMD control flow conformance pass for this
  *  module
  */
@@ -668,6 +730,10 @@ bool GenXEarlySimdCFConformance::runOnModule(Module &ArgM) {
     ensureConformance();
     optimizeRestoredSIMDCF();
   }
+  // LLVM-17 InstCombine may fold icmp(select(pred,1,0),0) back to pred (xor),
+  // leaving select(EM, <vNi1> non-CmpInst, zero). GenXLowering requires a
+  // CmpInst as TrueVal to create wrpredpredregion.
+  fixupBoolSelectsForLowering();
   // Perform check for genx_simdcf_get_em intrinsics and remove redundant ones.
   lowerUnsuitableGetEMs();
   clear();
