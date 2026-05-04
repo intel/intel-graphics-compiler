@@ -4640,7 +4640,14 @@ void SWSB::insertSync(G4_BB *bb, SBNode *node, G4_INST *inst,
   }
 
   if (node->followDistOneAreg() && insertedSync) {
-    G4_INST *syncInst = insertSyncInstructionAfter(bb, prevIt);
+    INST_LIST_ITER nextIt = std::next(prevIt);
+    G4_INST *syncInst;
+    if (nextIt != bb->end() && (*nextIt)->opcode() == G4_sync_nop &&
+        (*nextIt)->getDistance() != 0) {
+      syncInst = *nextIt;
+    } else {
+      syncInst = insertSyncInstructionAfter(bb, prevIt);
+    }
     syncInst->setDistance(1);
     if (fg.builder->hasThreeALUPipes() || fg.builder->hasFourALUPipes()) {
       syncInst->setDistanceTypeXe(G4_INST::DistanceType::DISTALL);
