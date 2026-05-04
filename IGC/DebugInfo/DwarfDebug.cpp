@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -1031,12 +1031,36 @@ void DwarfDebug::ExtractConstantData(const llvm::Constant *ConstVal, DwarfDebug:
   // the values element by element. Note that this is not exclusive with the two
   // cases above, so the order of ifs is meaningful.
   else if (ConstVal->getType()->isVectorTy() || ConstVal->getType()->isArrayTy() || ConstVal->getType()->isStructTy()) {
-    const int numElts = ConstVal->getNumOperands();
-    for (int i = 0; i < numElts; ++i) {
+    // Get element count from the type, not getNumOperands(), which returns
+    // expression operand count for ConstantExpr and would be incorrect.
+    Type *Ty = ConstVal->getType();
+    unsigned numElts = 0;
+    if (auto *VTy = dyn_cast<FixedVectorType>(Ty))
+      numElts = VTy->getNumElements();
+    else if (auto *ATy = dyn_cast<ArrayType>(Ty))
+      numElts = ATy->getNumElements();
+    else if (auto *STy = dyn_cast<StructType>(Ty))
+      numElts = STy->getNumElements();
+
+    for (unsigned i = 0; i < numElts; ++i) {
       Constant *C = ConstVal->getAggregateElement(i);
-      IGC_ASSERT_MESSAGE(C, "getAggregateElement returned null, unsupported constant");
-      // Since the type may not be primitive, extra alignment is required.
-      ExtractConstantData(C, Result);
+      if (C) {
+        // Since the type may not be primitive, extra alignment is required.
+        ExtractConstantData(C, Result);
+      } else {
+        // getAggregateElement can return null for complex constants
+        // (e.g., ConstantExpr with aggregate type). Fill with zeros.
+        DataLayout DL(GetVISAModule()->GetDataLayout());
+        Type *ElemTy = nullptr;
+        if (auto *VTy2 = dyn_cast<FixedVectorType>(Ty))
+          ElemTy = VTy2->getElementType();
+        else if (auto *ATy2 = dyn_cast<ArrayType>(Ty))
+          ElemTy = ATy2->getElementType();
+        else if (auto *STy2 = dyn_cast<StructType>(Ty))
+          ElemTy = STy2->getElementType(i);
+        if (ElemTy)
+          Result.insert(Result.end(), (unsigned)DL.getTypeAllocSize(ElemTy), 0);
+      }
     }
   }
   // And, finally, we have to handle base types - ints and floats.
