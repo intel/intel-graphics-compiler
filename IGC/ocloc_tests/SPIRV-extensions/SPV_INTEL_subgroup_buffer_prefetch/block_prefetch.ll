@@ -10,10 +10,7 @@
 ; UNSUPPORTED: sys32
 
 ; RUN: llvm-as %s -o %t.bc
-; RUN: llvm-spirv %t.bc \
-; COM: Uncomment below line when support for SPV_INTEL_subgroup_buffer_prefetch is implemented in the Khronos SPIRV-LLVM Translator
-; COM: --spirv-ext=+SPV_INTEL_subgroup_buffer_prefetch
-; RUN: -o %t.spv
+; RUN: llvm-spirv %t.bc --spirv-ext=+SPV_INTEL_subgroup_buffer_prefetch -o %t.spv
 ; RUN: ocloc compile -spirv_input -file %t.spv -device pvc -options " -igc_opts 'DumpVISAASMToConsole=1'" 2>&1 | FileCheck %s
 
 target triple = "spir64-unknown-unknown"

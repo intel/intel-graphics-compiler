@@ -9,18 +9,24 @@
 ; REQUIRES: llvm-spirv, regkeys, pvc-supported
 ; UNSUPPORTED: sys32
 
-; LLVM with opaque pointers:
-; RUN: llvm-as %OPAQUE_PTR_FLAG% %s -o %t.bc
-; COM: Replace SPV_INTEL_subgroups with SPV_INTEL_subgroup_buffer_prefetch once support for prefetches is implemented in the KHR Translator
-; RUN: llvm-spirv %t.bc %OPAQUE_PTR_FLAG% --spirv-ext=+SPV_INTEL_subgroups,+SPV_INTEL_cache_controls -o %t.spv
-; RUN: ocloc compile -spirv_input -file %t.spv -device pvc -options " -igc_opts 'EnableOpaquePointersBackend=1, DumpVISAASMToConsole=1'" 2>&1 | FileCheck %s
-
-; LLVM with typed pointers/default pointer typing:
 ; RUN: llvm-as %TYPED_PTR_FLAG% %s -o %t.bc
-; COM: Replace SPV_INTEL_subgroups with SPV_INTEL_subgroup_buffer_prefetch once support for prefetches is implemented in the KHR Translator
-; RUN: llvm-spirv %t.bc %TYPED_PTR_FLAG% --spirv-ext=+SPV_INTEL_subgroups,+SPV_INTEL_cache_controls -o %t.spv
-; RUN: ocloc compile -spirv_input -file %t.spv -device pvc -options " -igc_opts 'DumpVISAASMToConsole=1'" 2>&1 | FileCheck %s
+; RUN: llvm-spirv %t.bc %TYPED_PTR_FLAG% --spirv-ext=+SPV_INTEL_subgroup_buffer_prefetch,+SPV_INTEL_cache_controls -o %t.spv
+; RUN: llvm-spirv %t.spv %TYPED_PTR_FLAG% --to-text -o %t.spt
+; RUN: FileCheck < %t.spt %s --check-prefix=CHECK-SPIRV
 
+; Verify that the SPIR-V module actually carries the SubgroupBlockPrefetchINTEL
+; opcode AND that the prefetch was not left as an unresolved external function
+; call -- the mangled `__spirv_SubgroupBlockPrefetchINTEL` name must not appear
+; anywhere in the disassembly.
+; CHECK-SPIRV-NOT: __spirv_SubgroupBlockPrefetchINTEL
+; CHECK-SPIRV:     SubgroupBlockPrefetchINTEL
+; CHECK-SPIRV-NOT: __spirv_SubgroupBlockPrefetchINTEL
+
+; LLVM with opaque pointers:
+; RUN: %if llvm-16-plus %{ocloc compile -spirv_input -file %t.spv -device pvc -options " -igc_opts 'EnableOpaquePointersBackend=1, DumpVISAASMToConsole=1'" 2>&1 | FileCheck %s %}
+
+; LLVM with typed pointers:
+; RUN: ocloc compile -spirv_input -file %t.spv -device pvc -options " -igc_opts 'EnableOpaquePointersBackend=0,DumpVISAASMToConsole=1'" 2>&1 | FileCheck %s
 
 target triple = "spir64-unknown-unknown"
 
