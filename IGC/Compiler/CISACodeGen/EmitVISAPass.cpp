@@ -6365,24 +6365,24 @@ void EmitPass::emitSimdShuffle(llvm::Instruction *inst) {
     bool platformMoviTypeCheck = m_currShader->m_Platform->allowsMoviForType(data->GetType());
     bool moviBaseCondition = platformMoviTypeCheck && moviPromotionEnabled && !channelUniform;
     bool forcePreventOOB = moviBaseCondition && isSingleGrf;
-    // For 2-GRF SIMD32 shuffles: split into four SIMD16 movs (split2Movi) or keep SIMD32 with
-    // NoMask (noMaskSimd32Movi) so canPromoteToMovi() in vISA sees isWriteEnableInst() == true.
+    // For 2-GRF SIMD32 shuffles: split into four SIMD16 movs (split4Movi) or keep SIMD32 with
+    // NoMask (keep1Movi) so canPromoteToMovi() in vISA sees isWriteEnableInst() == true.
     bool twoGrfSimd32 =
         moviBaseCondition && (srcGRFSize == 2) && (dstGRFSize == 2) && (m_currShader->m_SIMDSize == SIMDMode::SIMD32);
-    bool split2Movi = twoGrfSimd32 && m_currShader->m_Platform->canDoMultipleLineMOVOpt() &&
-                      !m_currShader->m_Platform->supportsSimd32Movi();
-    bool noMaskSimd32Movi = twoGrfSimd32 && m_currShader->m_Platform->supportsSimd32Movi();
+    bool doAdvMovi = false;
+    bool split4Movi = twoGrfSimd32 && m_currShader->m_Platform->canDoMultipleLineMOVOpt() && !doAdvMovi;
+    bool keep1Movi = twoGrfSimd32 && doAdvMovi;
 
-    if (defaultConditions || forcePreventOOB || split2Movi || noMaskSimd32Movi) {
+    if (defaultConditions || forcePreventOOB || split4Movi || keep1Movi) {
       uint maskOfValidLanes = numLanes(m_currShader->m_State.m_dispatchSize) - 1;
 
       // To support conversion to movi we need to make all calculations (shl, addr_add) of address NoMask.
       // to avoid random data from previous execution in divergent CF.
-      if (split2Movi) {
+      if (split4Movi) {
         // To fit data into single GRF, we can only handle 16 lanes, 0-15
         maskOfValidLanes = 15;
         m_encoder->SetNoMask();
-      } else if (forcePreventOOB || noMaskSimd32Movi) {
+      } else if (forcePreventOOB || keep1Movi) {
         m_encoder->SetNoMask();
       }
 
@@ -6397,7 +6397,7 @@ void EmitPass::emitSimdShuffle(llvm::Instruction *inst) {
         CVariable *tempCopy = m_currShader->GetNewVariable(simdChannel, "SanitizedIndexShuffleTmp");
         m_encoder->And(tempCopy, simdChannel, m_currShader->ImmToVariable(maskOfValidLanes, ISA_TYPE_UW));
         simdChannelUW = m_currShader->BitCast(tempCopy, ISA_TYPE_UW); // clamped channel 0-15
-      } else if (split2Movi) {
+      } else if (split4Movi) {
         CVariable *tempCopy = m_currShader->GetNewVariable(simdChannel, "SanitizedIndexShuffleTmpWA");
         m_encoder->SetSrcRegion(0, 2, 1, 0);
         m_encoder->SetDstRegion(2);
@@ -6409,13 +6409,13 @@ void EmitPass::emitSimdShuffle(llvm::Instruction *inst) {
         m_encoder->And(simdChannelUW, simdChannelUW, m_currShader->ImmToVariable(maskOfValidLanes, ISA_TYPE_UW));
       }
       m_encoder->Push();
-    } // if (defaultConditions || forcePreventOOB || split2Movi || noMaskSimd32Movi)
+    } // if (defaultConditions || forcePreventOOB || split4Movi || keep1Movi)
     CVariable *pSrcElm = m_currShader->GetNewVariable(simdChannel->GetNumberElement(), ISA_TYPE_UW, EALIGN_GRF,
                                                       channelUniform, simdChannel->GetNumberInstance(), "ShuffleTmp");
     if (!channelUniform) {
       m_encoder->SetSrcRegion(0, 16, 8, 2);
     }
-    if (forcePreventOOB || split2Movi || noMaskSimd32Movi) {
+    if (forcePreventOOB || split4Movi || keep1Movi) {
       m_encoder->SetNoMask();
     }
     m_encoder->Shl(pSrcElm, simdChannelUW, m_currShader->ImmToVariable(shtAmt, ISA_TYPE_UW));
@@ -6423,7 +6423,7 @@ void EmitPass::emitSimdShuffle(llvm::Instruction *inst) {
 
     CVariable *src = data;
     CVariable *lowerLaneFlag = nullptr;
-    if (split2Movi) {
+    if (split4Movi) {
       lowerLaneFlag =
           m_currShader->GetNewVariable(numLanes(m_SimdMode), ISA_TYPE_BOOL, EALIGN_BYTE, false, "LowerLane");
       m_encoder->Cmp(EPREDICATE_LT, lowerLaneFlag, simdChannelOrig, m_currShader->ImmToVariable(16, ISA_TYPE_UD));
@@ -6452,8 +6452,8 @@ void EmitPass::emitSimdShuffle(llvm::Instruction *inst) {
           m_encoder->Push();
         } else // !channelUniform
         {
-          if (!split2Movi && addrSize == numLanes(m_currShader->m_SIMDSize)) {
-            if (forcePreventOOB || noMaskSimd32Movi) {
+          if (!split4Movi && addrSize == numLanes(m_currShader->m_SIMDSize)) {
+            if (forcePreventOOB || keep1Movi) {
               m_encoder->SetNoMask();
             }
             m_encoder->AddrAdd(pDstArrElm, src, pSrcElm, m_currentBlock);
@@ -6465,7 +6465,7 @@ void EmitPass::emitSimdShuffle(llvm::Instruction *inst) {
               ResetVMask();
             }
             return;
-          } else if (split2Movi) {
+          } else if (split4Movi) {
             // split SIMD32 mov to four SIMD16 movs to allow movi promotion
 
             // Split 2GRF source to two 1GRF aliases
@@ -6530,7 +6530,7 @@ void EmitPass::emitSimdShuffle(llvm::Instruction *inst) {
               ResetVMask();
             }
             return;
-          } // if (split2Movi)
+          } // if (split4Movi)
 
           m_encoder->SetSimdSize(SIMDMode::SIMD16);
           if (forcePreventOOB) {
