@@ -22,7 +22,6 @@ void initializeGlobalDCELegacyPassWrapperPass(llvm::PassRegistry &);
 void initializeIPSCCPLegacyPassWrapperPass(llvm::PassRegistry &);
 void initializeInstructionCombiningPassWrapperPass(llvm::PassRegistry &);
 void initializeLoopDeletionLegacyPassWrapperPass(llvm::PassRegistry &);
-void initializeLoopIdiomRecognizeLegacyPassWrapperPass(llvm::PassRegistry &);
 void initializeLoopLoadEliminationLegacyPassWrapperPass(llvm::PassRegistry &);
 void initializePostOrderFunctionAttrsLegacyPassWrapperPass(llvm::PassRegistry &);
 void initializeSCCPLegacyPassWrapperPass(llvm::PassRegistry &);
@@ -56,4 +55,6 @@ void initializeDemandedBitsLegacyPassWrapperPass(llvm::PassRegistry &);
 void initializeLoopAccessAnalysisLegacyPassWrapperPass(llvm::PassRegistry &);
 void initializeInjectTLIMappingsLegacyPassWrapperPass(llvm::PassRegistry &);
 void initializeSimpleInlinerLegacyPassWrapperPass(llvm::PassRegistry &);
+
+void initializeAllLLVMWrapperPasses(llvm::PassRegistry &Registry);
 #endif // IGCLLVM_TRANSFORMS_INITIALIZE_PASSES_H

@@ -129,6 +129,7 @@ set(IGC_WrapperLLVM_SRC
     "${CMAKE_CURRENT_SOURCE_DIR}/lib/llvmWrapper/Analysis/AliasAnalysisWrapperPass.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/lib/llvmWrapper/Analysis/DemandedBits.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/lib/llvmWrapper/Analysis/LoopAccessAnalysis.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/lib/llvmWrapper/Transforms/InitializePasses.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/lib/llvmWrapper/Transforms/Scalar/ADCE.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/lib/llvmWrapper/Transforms/Scalar/BDCE.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/lib/llvmWrapper/Transforms/Scalar/CallSiteSplitting.cpp"
