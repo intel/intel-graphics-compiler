@@ -5831,6 +5831,10 @@ void G4_BB_SB::setSendOpndMayKilled(SBNODE_VECT &SBNodes, PointsToAnalysis &p,
         unsigned short internalOffset = 0;
         DepType dep = getDepForOpnd(nodeInfo.liveOpnd, curOpnd);
 
+        if (dep == NODEP) {
+          continue;
+        }
+
         // Early exit if current live node is already marked as killed.
         if ((dep == WAR && send_may_kill.isSrcSet(globalID)) ||
             (dep == RAW && send_may_kill.isDstSet(globalID)) ||
