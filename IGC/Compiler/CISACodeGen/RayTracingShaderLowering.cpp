@@ -192,8 +192,7 @@ bool RayTracingShaderLowering::runOnModule(Module &M) {
   CGCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
 
   RTBuilder RTB(M.getContext(), *CGCtx);
-  bool ForcePreemptionDisable = CGCtx->type == ShaderType::RAYTRACING_SHADER && CGCtx->platform.canSupportWMTP();
-
+  const bool ForcePreemptionDisable = CGCtx->type == ShaderType::RAYTRACING_SHADER && CGCtx->platform.canSupportWMTP();
 
   bool Changed = false;
   for (auto &F : M) {
