@@ -1,0 +1,120 @@
+/*========================== begin_copyright_notice ============================
+
+Copyright (C) 2026 Intel Corporation
+
+SPDX-License-Identifier: MIT
+
+============================= end_copyright_notice ===========================*/
+
+/*========================== begin_copyright_notice ============================
+
+Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
+See https://llvm.org/LICENSE.txt for license information.
+SPDX-License-Identifier: Apache-2.0 with LLVM-exception
+
+============================= end_copyright_notice ===========================*/
+
+# Backport of upstream commit 96605c1665a4 (PR llvm/llvm-project#194341,
+# fixes llvm/llvm-project#194007) onto llvmorg-17.0.6.
+#
+# The 17.0.6 matcher uses a flat m_BinOp(ShiftedX, Mask) shape, while
+# upstream main wraps the later m_c_BinOp(m_CombineAnd(...), Mask) variant.
+# The semantic change is identical: require the outer binop to be one-use
+# so the rewrite only fires when it can actually eliminate instructions.
+#
+# Supersedes the equivalent downstream-only patch
+# InstCombine-foldBinOpShiftWithShift-require-oneuse-binop.patch.
+
+From 8d4993cd491070f12480698f64dcaac49ce36974 Mon Sep 17 00:00:00 2001
+From: "Grabezhnoy, Andrey" <andrey.grabezhnoy@intel.com>
+Date: Mon, 27 Apr 2026 11:41:48 +0200
+Subject: [PATCH] [InstCombine] Require one-use intermediate binop in
+ foldBinOpShiftWithShift
+
+foldBinOpShiftWithShift rewrites
+  binop(shift(X,C) op Mask, shift(Y,C))
+to
+  binop(shift(X+Y,C), Mask).
+
+Both shifts are matched with m_OneUse, but the enclosing binop that
+wraps (shift(X,C), Mask) is not. When that binop has additional users
+the rewrite cannot eliminate the originals and only adds new
+instructions. The reproducer in the issue shows this: a shared base
+with several downstream consumers gets duplicated on each one, so the
+fold grows the IR instead of shrinking it.
+
+Wrap the outer m_BinOp in m_OneUse so the fold only fires when the
+binop can actually be replaced. Mirrors the one-use discipline already
+applied to both shifts in the same matcher.
+
+Fixes llvm/llvm-project#194007.
+---
+ .../InstCombine/InstructionCombining.cpp      |  2 +-
+ .../test/Transforms/InstCombine/and-xor-or.ll |  5 ++--
+ .../InstCombine/binop-and-shifts.ll           | 23 +++++++++++++++++++
+ 3 files changed, 26 insertions(+), 4 deletions(-)
+
+diff --git a/llvm/lib/Transforms/InstCombine/InstructionCombining.cpp b/llvm/lib/Transforms/InstCombine/InstructionCombining.cpp
+index 767b7c7defbb..ef8b827b9d86 100644
+--- a/llvm/lib/Transforms/InstCombine/InstructionCombining.cpp
++++ b/llvm/lib/Transforms/InstCombine/InstructionCombining.cpp
+@@ -808,7 +808,7 @@ Instruction *InstCombinerImpl::foldBinOpShiftWithShift(BinaryOperator &I) {
+                m_OneUse(m_LogicalShift(m_Value(Y), m_Value(Shift)))))
+       return nullptr;
+     if (!match(I.getOperand(1 - ShOpnum),
+-               m_BinOp(m_Value(ShiftedX), m_Value(Mask))))
++               m_OneUse(m_BinOp(m_Value(ShiftedX), m_Value(Mask)))))
+       return nullptr;
+
+     if (!match(ShiftedX,
+diff --git a/llvm/test/Transforms/InstCombine/and-xor-or.ll b/llvm/test/Transforms/InstCombine/and-xor-or.ll
+index e03a768ac36d..669264a19914 100644
+--- a/llvm/test/Transforms/InstCombine/and-xor-or.ll
++++ b/llvm/test/Transforms/InstCombine/and-xor-or.ll
+@@ -561,10 +561,9 @@ define i8 @xor_lshr_multiuse(i8 %x, i8 %y, i8 %z, i8 %shamt) {
+ ; CHECK-LABEL: define {{[^@]+}}@xor_lshr_multiuse
+ ; CHECK-SAME: (i8 [[X:%.*]], i8 [[Y:%.*]], i8 [[Z:%.*]], i8 [[SHAMT:%.*]]) {
+ ; CHECK-NEXT:    [[SX:%.*]] = lshr i8 [[X]], [[SHAMT]]
++; CHECK-NEXT:    [[SY:%.*]] = lshr i8 [[Y]], [[SHAMT]]
+ ; CHECK-NEXT:    [[A:%.*]] = xor i8 [[SX]], [[Z]]
+-; CHECK-NEXT:    [[TMP1:%.*]] = xor i8 [[X]], [[Y]]
+-; CHECK-NEXT:    [[TMP2:%.*]] = lshr i8 [[TMP1]], [[SHAMT]]
+-; CHECK-NEXT:    [[R:%.*]] = xor i8 [[TMP2]], [[Z]]
++; CHECK-NEXT:    [[R:%.*]] = xor i8 [[A]], [[SY]]
+ ; CHECK-NEXT:    [[R2:%.*]] = sdiv i8 [[A]], [[R]]
+ ; CHECK-NEXT:    ret i8 [[R2]]
+ ;
+diff --git a/llvm/test/Transforms/InstCombine/binop-and-shifts.ll b/llvm/test/Transforms/InstCombine/binop-and-shifts.ll
+index f1814e3a6934..24f908c0c8d5 100644
+--- a/llvm/test/Transforms/InstCombine/binop-and-shifts.ll
++++ b/llvm/test/Transforms/InstCombine/binop-and-shifts.ll
+@@ -549,3 +549,26 @@ define i8 @shl_add_and_fail_mismatch_shift(i8 %x, i8 %y) {
+   %bw1 = and i8 %shift1, %bw2
+   ret i8 %bw1
+ }
++
++; Negative test: outer binop has multiple users
++
++define i8 @shl_add_add_multiuse_binop(i8 %x, i8 %y0, i8 %y1) {
++; CHECK-LABEL: @shl_add_add_multiuse_binop(
++; CHECK-NEXT:    [[SHIFT1:%.*]] = shl i8 [[X:%.*]], 2
++; CHECK-NEXT:    [[BASE:%.*]] = add i8 [[SHIFT1]], 48
++; CHECK-NEXT:    [[SHIFT_Y0:%.*]] = shl i8 [[Y0:%.*]], 2
++; CHECK-NEXT:    [[SHIFT_Y1:%.*]] = shl i8 [[Y1:%.*]], 2
++; CHECK-NEXT:    [[R0:%.*]] = add i8 [[BASE]], [[SHIFT_Y0]]
++; CHECK-NEXT:    [[R1:%.*]] = add i8 [[BASE]], [[SHIFT_Y1]]
++; CHECK-NEXT:    [[R:%.*]] = xor i8 [[R0]], [[R1]]
++; CHECK-NEXT:    ret i8 [[R]]
++;
++  %shift1 = shl i8 %x, 2
++  %base = add i8 %shift1, 48
++  %shift.y0 = shl i8 %y0, 2
++  %shift.y1 = shl i8 %y1, 2
++  %r0 = add i8 %base, %shift.y0
++  %r1 = add i8 %base, %shift.y1
++  %r = xor i8 %r0, %r1
++  ret i8 %r
++}
+--
+2.43.0
+
