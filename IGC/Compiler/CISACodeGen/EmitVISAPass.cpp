@@ -6959,6 +6959,30 @@ void EmitPass::emitSimdShuffleDown(llvm::Instruction *inst) {
   }
 }
 
+void EmitPass::emitSubgroupBitcastShuffle(llvm::Instruction *inst) {
+  CVariable *pSrc = GetSymbol(inst->getOperand(0));
+
+  // Determine the destination element type and count from the return type.
+  Type *dstTy = inst->getType();
+  unsigned dstElemSizeInBytes = 0;
+  unsigned dstNumElems = 0;
+  if (auto *vecTy = dyn_cast<FixedVectorType>(dstTy)) {
+    dstElemSizeInBytes = (unsigned)vecTy->getElementType()->getPrimitiveSizeInBits() / 8;
+    dstNumElems = vecTy->getNumElements() * numLanes(m_SimdMode);
+  } else {
+    dstElemSizeInBytes = (unsigned)dstTy->getPrimitiveSizeInBits() / 8;
+    dstNumElems = numLanes(m_SimdMode);
+  }
+
+  VISA_Type dstVisaTy = GetTypeFromSize(dstElemSizeInBytes);
+
+  // Create an alias that reinterprets the source register as the destination
+  // type, e.g. a single i32 lane becomes 4 consecutive i8 elements.
+  // No copy needed - just map the instruction to the alias directly.
+  CVariable *pAlias = m_currShader->GetNewAlias(pSrc, dstVisaTy, 0, (uint16_t)dstNumElems);
+  m_currShader->UpdateSymbolMap(inst, pAlias);
+}
+
 void EmitPass::emitSimdShuffleXor(llvm::Instruction *inst) {
   CVariable *pData = m_currShader->GetSymbol(inst->getOperand(0));
   CVariable *pXorValue = m_currShader->GetSymbol(inst->getOperand(1));
@@ -9224,6 +9248,9 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst *inst) {
     break;
   case GenISAIntrinsic::GenISA_simdShuffleXor:
     emitSimdShuffleXor(inst);
+    break;
+  case GenISAIntrinsic::GenISA_SubgroupBitcastShuffle:
+    emitSubgroupBitcastShuffle(inst);
     break;
   case GenISAIntrinsic::GenISA_simdBlockRead:
     emitSimdBlockRead(inst);

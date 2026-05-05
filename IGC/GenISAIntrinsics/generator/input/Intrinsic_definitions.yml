@@ -13184,3 +13184,20 @@ intrinsics:
         memory_effects:
             - !<MemoryRestriction>
                 memory_access: !MemoryAccessType NoModRef
+    - !<IntrinsicDefinition>
+        name: "GenISA_SubgroupBitcastShuffle"
+        comment: "Perform subgroup bitcast shuffle"
+        return_definition: !<ReturnDefinition>
+            type_definition: *any
+            comment: ""
+        arguments:
+            - !<ArgumentDefinition>
+                name: Data
+                type_definition: *any
+                comment: ""
+        attributes:
+            - !AttributeID "Convergent"
+            - !AttributeID "NoUnwind"
+        memory_effects:
+            - !<MemoryRestriction>
+                memory_access: !MemoryAccessType NoModRef

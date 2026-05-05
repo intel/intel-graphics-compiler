@@ -129,6 +129,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/Optimizer/OpenCLPasses/MinimumValidAddressChecking/MinimumValidAddressChecking.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/Spv2dBlockIOResolution/Spv2dBlockIOResolution.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/SpvSubgroupMMAResolution/SpvSubgroupMMAResolution.hpp"
+#include "Compiler/Optimizer/OpenCLPasses/SpvSubgroupBitcastShuffleResolution/SpvSubgroupBitcastShuffleResolution.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/ProcessBICodeAssumption/ProcessBICodeAssumption.hpp"
 
 #include "common/debug/Debug.hpp"
@@ -368,6 +369,7 @@ static void CommonOCLBasedPasses(OpenCLProgramContext *pContext) {
 
   mpm.add(new SpvSubgroupMMAResolution());
   mpm.add(new SpvPredicatedIOResolution());
+  mpm.add(new SpvSubgroupBitcastShuffleResolution());
 
   mpm.add(createProcessBICodeAssumptionPass());
   mpm.add(new PreBIImportAnalysis());

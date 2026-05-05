@@ -281,6 +281,7 @@ public:
   void emitCrossInstanceMov(const SSource &source, const DstModifier &modifier);
   void emitSimdShuffleDown(llvm::Instruction *inst);
   void emitSimdShuffleXor(llvm::Instruction *inst);
+  void emitSubgroupBitcastShuffle(llvm::Instruction *inst);
   void emitSimdBlockRead(llvm::Instruction *inst, llvm::Value *ptrVal = nullptr);
   void emitSimdBlockWrite(llvm::Instruction *inst, llvm::Value *ptrVal = nullptr);
   void emitLegacySimdBlockWrite(llvm::Instruction *inst, llvm::Value *ptrVal = nullptr);
