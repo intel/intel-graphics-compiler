@@ -1827,6 +1827,9 @@ int CISA_IR_Builder::Compile(const char *isaasmFileName, bool emit_visa_only) {
           }
         }
       }
+      // Release analysis data and optionally metadata that are no longer
+      // needed after Phase 1 compilation, to reduce peak memory (GSD-12025).
+      kernel->resetPostCompile();
     }
 
     if (hasEarlyExit) {

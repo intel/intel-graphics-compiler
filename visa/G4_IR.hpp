@@ -25,9 +25,11 @@ SPDX-License-Identifier: MIT
 #include <string>
 #include <vector>
 
+// clang-format off
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/ADT/SmallVector.h>
 #include "common/LLVMWarningsPop.hpp"
+// clang-format on
 
 #include "Assertions.h"
 #include "Attributes.hpp"
@@ -151,11 +153,11 @@ protected:
 
   // def-use chain: list of <inst, opndPos> such that this[dst/condMod] defines
   // inst[opndPos] opndNum must be one of src0, src1, src2, pred, implAccSrc
-  USE_EDGE_LIST useInstList;
+  std::optional<USE_EDGE_LIST> useInstList;
 
   // use-def chain: list of <inst, opndPos> such that inst[dst/condMod] defines
   // this[opndPos]
-  DEF_EDGE_LIST defInstList;
+  std::optional<DEF_EDGE_LIST> defInstList;
 
   // instruction's id in BB. Each optimization should re-initialize before using
   int32_t localId = 0;
@@ -271,10 +273,9 @@ public:
   unsigned short getSBIDSetToken() const {
     if (swsb.tokenType == SB_SET)
       return swsb.SBToken;
-    else
-      if (swsb.tokenType == SBID_CNTR)
-        return swsb.SBToken;
-      return -1;
+    else if (swsb.tokenType == SBID_CNTR)
+      return swsb.SBToken;
+    return -1;
   }
 
   unsigned short getSBIDToken(SWSBTokenType t) const {
@@ -348,8 +349,8 @@ public:
     return predicate ? predicate->getBase() : nullptr;
   }
   G4_VarBase *getPredicateBase() {
-    return const_cast<G4_VarBase *>(((const G4_INST *)this)
-        ->getPredicateBase());
+    return const_cast<G4_VarBase *>(
+        ((const G4_INST *)this)->getPredicateBase());
   }
 
   void setSaturate(G4_Sat s) { sat = (s == g4::SAT); }
@@ -481,8 +482,7 @@ public:
 
   bool nonALUInstructions() const {
     return isSend() || isLabel() || isCFInst() || isDpas() || isIntrinsic() ||
-           opcode() == G4_thryld ||
-           opcode() == G4_nop || isWait();
+           opcode() == G4_thryld || opcode() == G4_nop || isWait();
   }
 
   G4_InstMath *asMathInst() const {
@@ -533,7 +533,7 @@ public:
 
   bool isDnscl() const { return op == G4_dnscl; }
 
-  const G4_InstDnscl* asDnsclInst() const {
+  const G4_InstDnscl *asDnsclInst() const {
     vISA_ASSERT(isDnscl(), ERROR_UNKNOWN);
     return reinterpret_cast<const G4_InstDnscl *>(this);
   }
@@ -796,37 +796,85 @@ public:
                   Gen4_Operand_Number srcIxB = Opnd_src1);
   void addDefUse(G4_INST *use, Gen4_Operand_Number usePos);
   void uniqueDefUse() {
-    useInstList.unique();
-    defInstList.unique();
+    if (useInstList)
+      useInstList->unique();
+    if (defInstList)
+      defInstList->unique();
   }
-  void clearUse() { useInstList.clear(); }
-  void clearDef() { defInstList.clear(); }
-  bool useEmpty() const { return useInstList.empty(); }
-  bool hasOneUse() const { return useInstList.size() == 1; }
+  void clearUse() {
+    if (useInstList)
+      useInstList->clear();
+  }
+  void clearDef() {
+    if (defInstList)
+      defInstList->clear();
+  }
+  // Disengage def-use lists so the underlying std::list destructors run while
+  // the use-def arena is still alive. After this, only the safe boolean/size
+  // queries below remain valid; iterator/front/back accessors must not be used.
+  void resetDefUse() {
+    useInstList.reset();
+    defInstList.reset();
+  }
+  bool useEmpty() const { return !useInstList || useInstList->empty(); }
+  bool hasOneUse() const { return useInstList && useInstList->size() == 1; }
   /// Returns its definition if this's operand has a single definition. Returns
   /// 0 otherwise.
   G4_INST *getSingleDef(Gen4_Operand_Number opndNum, bool MakeUnique = false);
   USE_EDGE_LIST::const_iterator use_begin() const {
-    return useInstList.begin();
+    vISA_ASSERT(useInstList.has_value(), "def-use chain has been reset");
+    return useInstList->begin();
   }
-  USE_EDGE_LIST::iterator use_begin() { return useInstList.begin(); }
-  USE_EDGE_LIST::const_iterator use_end() const { return useInstList.end(); }
-  USE_EDGE_LIST::iterator use_end() { return useInstList.end(); }
-  USE_EDGE_LIST::reference use_front() { return useInstList.front(); }
-  USE_EDGE_LIST::reference use_back() { return useInstList.back(); }
+  USE_EDGE_LIST::iterator use_begin() {
+    vISA_ASSERT(useInstList.has_value(), "def-use chain has been reset");
+    return useInstList->begin();
+  }
+  USE_EDGE_LIST::const_iterator use_end() const {
+    vISA_ASSERT(useInstList.has_value(), "def-use chain has been reset");
+    return useInstList->end();
+  }
+  USE_EDGE_LIST::iterator use_end() {
+    vISA_ASSERT(useInstList.has_value(), "def-use chain has been reset");
+    return useInstList->end();
+  }
+  USE_EDGE_LIST::reference use_front() {
+    vISA_ASSERT(useInstList.has_value(), "def-use chain has been reset");
+    return useInstList->front();
+  }
+  USE_EDGE_LIST::reference use_back() {
+    vISA_ASSERT(useInstList.has_value(), "def-use chain has been reset");
+    return useInstList->back();
+  }
   DEF_EDGE_LIST::const_iterator def_begin() const {
-    return defInstList.begin();
+    vISA_ASSERT(defInstList.has_value(), "def-use chain has been reset");
+    return defInstList->begin();
   }
-  DEF_EDGE_LIST::iterator def_begin() { return defInstList.begin(); }
-  DEF_EDGE_LIST::const_iterator def_end() const { return defInstList.end(); }
-  DEF_EDGE_LIST::iterator def_end() { return defInstList.end(); }
-  DEF_EDGE_LIST::reference def_front() { return defInstList.front(); }
-  DEF_EDGE_LIST::reference def_back() { return defInstList.back(); }
-  size_t use_size() const { return useInstList.size(); }
-  size_t def_size() const { return defInstList.size(); }
+  DEF_EDGE_LIST::iterator def_begin() {
+    vISA_ASSERT(defInstList.has_value(), "def-use chain has been reset");
+    return defInstList->begin();
+  }
+  DEF_EDGE_LIST::const_iterator def_end() const {
+    vISA_ASSERT(defInstList.has_value(), "def-use chain has been reset");
+    return defInstList->end();
+  }
+  DEF_EDGE_LIST::iterator def_end() {
+    vISA_ASSERT(defInstList.has_value(), "def-use chain has been reset");
+    return defInstList->end();
+  }
+  DEF_EDGE_LIST::reference def_front() {
+    vISA_ASSERT(defInstList.has_value(), "def-use chain has been reset");
+    return defInstList->front();
+  }
+  DEF_EDGE_LIST::reference def_back() {
+    vISA_ASSERT(defInstList.has_value(), "def-use chain has been reset");
+    return defInstList->back();
+  }
+  size_t use_size() const { return useInstList ? useInstList->size() : 0; }
+  size_t def_size() const { return defInstList ? defInstList->size() : 0; }
   void dumpDefUse(std::ostream &os = std::cerr);
   template <typename Compare> void sortUses(Compare Cmp) {
-    useInstList.sort(Cmp);
+    if (useInstList)
+      useInstList->sort(Cmp);
   }
 
   void fixMACSrc2DefUse();
@@ -940,14 +988,15 @@ public:
 
   TARGET_PLATFORM getPlatform() const;
 
-  void setMetadata(const std::string &key, MDNode *value);
+  void setMetadata(Metadata::MDKey key, MDNode *value);
+  void detachMD() { MD = nullptr; }
 
-  MDNode *getMetadata(const std::string &key) const {
+  MDNode *getMetadata(Metadata::MDKey key) const {
     return MD ? MD->getMetadata(key) : nullptr;
   }
 
   unsigned getTokenLocationNum() const {
-    auto tokenLoc = getMetadata(Metadata::TokenLoc);
+    auto tokenLoc = getMetadata(Metadata::MDKey::TokenLoc);
     if (!tokenLoc) {
       return 0;
     }
@@ -960,7 +1009,7 @@ public:
   }
 
   unsigned getTokenLoc(int i, unsigned short &tokenID) const {
-    auto tokenLoc = getMetadata(Metadata::TokenLoc);
+    auto tokenLoc = getMetadata(Metadata::MDKey::TokenLoc);
     if (!tokenLoc) {
       return 0;
     }
@@ -989,14 +1038,14 @@ public:
   void setNeedPostRA(bool V) { doPostRA = V; }
 
   std::string getComments() const {
-    auto comments = getMetadata(Metadata::InstComment);
+    auto comments = getMetadata(Metadata::MDKey::InstComment);
     return comments && comments->isMDString()
                ? comments->asMDString()->getData()
                : "";
   }
 
   MDLocation *getLocation() const {
-    auto location = getMetadata(Metadata::InstLoc);
+    auto location = getMetadata(Metadata::MDKey::InstLoc);
     return (location && location->isMDLocation()) ? location->asMDLocation()
                                                   : nullptr;
   }
@@ -1031,8 +1080,8 @@ public:
 
   bool canSupportPureBF() const {
     return (op == G4_mov || op == G4_add || op == G4_sel || op == G4_cmp ||
-           op == G4_csel || op == G4_cmpn || op == G4_mul || op == G4_mad ||
-           op == G4_math);
+            op == G4_csel || op == G4_cmpn || op == G4_mul || op == G4_mad ||
+            op == G4_math);
   }
 
   bool isWriteCombineBlockCandidate() const {
@@ -1044,9 +1093,12 @@ public:
   }
 
   virtual bool requireNopAfter() const { return false; }
+
 private:
   // use inheritDIFrom() instead
-  void setLocation(MDLocation *loc) { setMetadata(Metadata::InstLoc, loc); }
+  void setLocation(MDLocation *loc) {
+    setMetadata(Metadata::MDKey::InstLoc, loc);
+  }
   bool detectComprInst() const;
   bool isLegalType(G4_Type type, Gen4_Operand_Number opndNum) const;
   bool isFloatOnly() const;
@@ -1111,8 +1163,8 @@ public:
               G4_Operand *s2, G4_Operand *s3, G4_Operand *s4, G4_InstOpts opt,
               GenPrecision a, GenPrecision w, uint8_t sd, uint8_t rc,
               G4_Predicate *pred = nullptr)
-      : G4_INST(builder, pred, o, nullptr, g4::NOSAT, size, d, s0, s1, s2,
-                s3, s4, opt),
+      : G4_INST(builder, pred, o, nullptr, g4::NOSAT, size, d, s0, s1, s2, s3,
+                s4, opt),
         Src1Precision(w), Src2Precision(a), SystolicDepth(sd), RepeatCount(rc) {
   }
 
@@ -1432,10 +1484,10 @@ public:
   //    with a send instruction with message to the Thread Spawner unit. A child
   //    thread should also terminate with a send to TS.
   bool canBeEOT() const {
-    bool canEOT = getMsgDesc()->getDstLenRegs() == 0 &&
-                  (getMsgDesc()->getSFID() != SFID::NULL_SFID &&
-                   getMsgDesc()->getSFID() != SFID::SAMPLER &&
-                  !getMsgDesc()->isFence());
+    bool canEOT =
+        getMsgDesc()->getDstLenRegs() == 0 &&
+        (getMsgDesc()->getSFID() != SFID::NULL_SFID &&
+         getMsgDesc()->getSFID() != SFID::SAMPLER && !getMsgDesc()->isFence());
 
     return canEOT;
   }
@@ -1459,9 +1511,9 @@ public:
   bool isSerializedInst() const { return (option & InstOpt_Serialize) != 0; }
   void setIND0(G4_Operand *ind0) { setSrc(ind0, 2); }
   void setIND1(G4_Operand *ind1) { setSrc(ind1, 3); }
-  G4_Operand* getIND0() { return getSrc(2); }
-  G4_Operand* getIND1() { return getSrc(3); }
-};     // G4_InstSend
+  G4_Operand *getIND0() { return getSrc(2); }
+  G4_Operand *getIND1() { return getSrc(3); }
+}; // G4_InstSend
 
 class G4_InstShfl : public G4_INST {
 public:
@@ -1502,8 +1554,7 @@ public:
   G4_InstDnscl(const IR_Builder &builder, G4_Predicate *prd,
                G4_ExecSize execSize, G4_DstRegRegion *dst, G4_Operand *src0,
                G4_Operand *src1, G4_Operand *src2, G4_InstOpts opt,
-               DNSCL_CONVERT_TYPE t,
-               DNSCL_MODE m, DNSCL_RND_MODE rm)
+               DNSCL_CONVERT_TYPE t, DNSCL_MODE m, DNSCL_RND_MODE rm)
       : G4_INST(builder, prd, G4_dnscl, nullptr, g4::NOSAT, execSize, dst, src0,
                 src1, src2, opt),
         type(t), mode(m), rndMode(rm) {}
@@ -1809,7 +1860,7 @@ inline bool G4_INST::isCalleeRestore() const {
 
 inline bool G4_INST::isShflIdx4() const {
   return isIntrinsic() &&
-    asIntrinsicInst()->getIntrinsicId() == Intrinsic::ShflIdx4;
+         asIntrinsicInst()->getIntrinsicId() == Intrinsic::ShflIdx4;
 }
 inline bool G4_INST::isRelocationMov() const {
   return isMov() && srcs[0]->isRelocImm();

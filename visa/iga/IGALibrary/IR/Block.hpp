@@ -29,8 +29,7 @@ typedef InstList::iterator InstListIterator;
 
 class Block {
 public:
-  Block(int32_t pc = -1, const Loc &loc = Loc::INVALID)
-      : m_offset(pc), m_loc(loc), m_id(pc) {}
+  Block(int32_t pc = -1) : m_offset(pc), m_id(pc) {}
   ~Block() {
     // Destruct instructions.  The memory allocated for them will be
     // de-allocated by the top-level MemManager allocator, but we need
@@ -48,8 +47,6 @@ public:
 
   PC getPC() const { return m_offset; }
   void setPC(PC pc) { m_offset = pc; }
-  Loc getLoc() const { return m_loc; }
-  void setLoc(const Loc &loc) { m_loc = loc; }
   void setID(int id) { m_id = id; }
   int getID() const { return m_id; }
   const InstList &getInstList() const { return m_instructions; }
@@ -63,7 +60,6 @@ public:
 
 private:
   int32_t m_offset;
-  Loc m_loc; // optional src location
   InstList m_instructions;
   int m_id;
 

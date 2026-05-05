@@ -649,6 +649,20 @@ public:
   LoopDetection &getLoops() { return loops; }
   void markStale();
 
+  // Free analysis data no longer needed after compileFastPath().
+  // Call per-function in Phase 1 to reduce peak memory (GSD-12025).
+  void resetPostCompile() {
+    static_cast<Analysis &>(immDom).reset();
+    static_cast<Analysis &>(pDom).reset();
+    static_cast<Analysis &>(loops).reset();
+    backEdges.clear();
+    naturalLoops.clear();
+    pseudoDcls.clear();
+    pseudoVCADcls.clear();
+    pseudoA0Dcls.clear();
+    resetLocalDataFlowData();
+  }
+
 private:
   // Use normalized region descriptors for each source operand if possible.
   void normalizeRegionDescriptors();
