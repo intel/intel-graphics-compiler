@@ -342,6 +342,17 @@ Value *GenXLscAddrCalcFolding::applyLscAddrFolding(Value *Offsets, APInt &Scale,
       return nullptr;
     if (!Imm.isIntN(Scale.getBitWidth()))
       return nullptr;
+    if (const WA_TABLE *WATable = BC->getWATable()) {
+      if (WATable->Wa_14024616135 &&
+          vc::InternalIntrinsic::getMemorySurfaceOperandIndex(Inst) > 0)
+        return nullptr;
+      if (WATable->Wa_14025718210 &&
+          vc::InternalIntrinsic::isSlmIntrinsic(Inst) &&
+          !llvm::computeKnownBits(NewOffsets,
+                                  Inst->getModule()->getDataLayout())
+               .isNonNegative())
+        return nullptr;
+    }
     if (Imm.getBitWidth() > Scale.getBitWidth())
       Imm = Imm.trunc(Scale.getBitWidth());
     NewScale = Scale.umul_ov(Imm, Overflow);
@@ -349,6 +360,17 @@ Value *GenXLscAddrCalcFolding::applyLscAddrFolding(Value *Offsets, APInt &Scale,
   case Instruction::Shl:
     if (ST->getLSCScaleMax() == 1)
       return nullptr;
+    if (const WA_TABLE *WATable = BC->getWATable()) {
+      if (WATable->Wa_14024616135 &&
+          vc::InternalIntrinsic::getMemorySurfaceOperandIndex(Inst) > 0)
+        return nullptr;
+      if (WATable->Wa_14025718210 &&
+          vc::InternalIntrinsic::isSlmIntrinsic(Inst) &&
+          !llvm::computeKnownBits(NewOffsets,
+                                  Inst->getModule()->getDataLayout())
+               .isNonNegative())
+        return nullptr;
+    }
     NewScale = Scale.ushl_ov(Imm, Overflow);
     break;
   }
