@@ -4357,6 +4357,10 @@ void CEncoder::InitVISABuilderOptions(TARGET_PLATFORM VISAPlatform, bool canAbor
         m_program->m_Platform->getPlatformInfo().eProductFamily == IGFX_PTL) {
       SaveOption(vISA_forceBCR, true);
       SaveOption(vISA_bumpGRFForForceBCR, true);
+      // For shader with very low register pressure, we want to restrict the RP
+      // threshold to 90 to stay in 128 GRF mode even with bump GRF for force BCR.
+      if (!IGC_IS_FLAG_ENABLED(VISAPreSchedRPThreshold))
+        SaveOption(vISA_preRA_ScheduleRPThreshold, (uint32_t)90);
     }
   }
   if (context->type == ShaderType::OPENCL_SHADER && m_program->m_Platform->supportDpasInstruction()) {
