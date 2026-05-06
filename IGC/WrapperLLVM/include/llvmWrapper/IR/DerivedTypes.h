@@ -45,6 +45,9 @@ inline llvm::Type *getWithNewBitWidth(const llvm::Type *Ty, unsigned NewBitWidth
 inline llvm::PointerType *get(llvm::PointerType *PT, unsigned AddressSpace) {
 #if LLVM_VERSION_MAJOR < 17
   return llvm::PointerType::getWithSamePointeeType(PT, AddressSpace);
+#elif LLVM_VERSION_MAJOR >= 22
+  // LLVM 22 drops support for PointerType::get(llvm::Type *) in favour of PointerType::get(LLVMContext &) only
+  return llvm::PointerType::get(PT->getContext(), AddressSpace);
 #else
   return llvm::PointerType::get(PT, AddressSpace);
 #endif

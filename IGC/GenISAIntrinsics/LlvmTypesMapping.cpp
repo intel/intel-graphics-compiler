@@ -217,7 +217,14 @@ bool StructType::VerifyType(llvm::Type *pType) const {
 
 llvm::Type *PointerType::GetType(llvm::LLVMContext &ctx, llvm::Type *pType, uint32_t addressSpace) {
   IGC_ASSERT(pType != nullptr && addressSpace != UINT32_MAX);
+#if LLVM_VERSION_MAJOR <= 17
   return llvm::PointerType::get(pType, addressSpace);
+#else
+  // LLVM 22 drops support for PointerType::get(llvm::Type *) to PointerType::get(LLVMContext &) only,
+  // context based overload is supported since LLVM 15 so this will work for versions 18 and beyond
+  (void)pType;
+  return llvm::PointerType::get(ctx, addressSpace);
+#endif
 }
 
 llvm::Type *PointerType::GetType(llvm::LLVMContext &ctx) const {
