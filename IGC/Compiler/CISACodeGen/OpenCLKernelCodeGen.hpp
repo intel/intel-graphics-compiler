@@ -92,6 +92,7 @@ public:
   float GetSpillThreshold(SIMDMode dispatchSize);
   bool isAutoGRFSelectionEnabled() const override;
   uint64_t getMinimumValidAddress() const override;
+  bool allowRetryAt512GRF() const;
 
   void clearBeforeRetry() { m_programOutput.clearBeforeRetry(); }
 

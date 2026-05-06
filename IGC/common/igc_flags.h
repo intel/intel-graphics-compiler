@@ -1639,6 +1639,7 @@ DECLARE_IGC_REGKEY(DWORD, EarlyRetryDefaultGRFThreshold, 190,
                    "Cutoff value for register estimation, when highter than that kernel skips first compilation stage "
                    "and goes to retry immediately for default GRF.",
                    false)
+DECLARE_IGC_REGKEY(bool, EnableOCLRetry512GRF, true, "Lift the VRT GRF ceiling to 512 on OCL recompilation", true)
 DECLARE_IGC_REGKEY(bool, ForceNoFP64bRegioning, false, "force regioning rules for FP and 64b FPU instructions", false)
 DECLARE_IGC_REGKEY(bool, EnableA64WA, true, "Guarantee A64 load/store addres-hi is uniform", true)
 DECLARE_IGC_REGKEY(bool, EnableSamplerSplit, false, "Split Sampler 3d message to odd and even", false)

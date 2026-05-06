@@ -85,6 +85,10 @@ uint32_t OpenCLProgramContext::getNumGRFPerThread(bool returnDefault) {
       return 512;
     }
   }
+  // If it's retry and VRT can choose 512 GRF
+  // Return 512 for the optimizations to work in the new budget
+  if (allowRetryAt512GRF())
+    return 512;
   return CodeGenContext::getNumGRFPerThread(returnDefault);
 }
 
@@ -103,6 +107,51 @@ bool OpenCLProgramContext::isAutoGRFSelectionEnabled() const {
   }
 
   return false;
+}
+
+bool OpenCLProgramContext::allowRetryAt512GRF() const {
+  if (!IGC_IS_FLAG_ENABLED(EnableOCLRetry512GRF))
+    return false;
+  if (!platform.supports512GRFPerThread())
+    return false;
+
+  // Allow only on recompilation
+  if (!m_retryManager || m_retryManager->IsFirstTry())
+    return false;
+
+  // Respect the explicit GRF options
+  if (m_InternalOptions.Intel128GRFPerThread || m_Options.Intel128GRFPerThread ||
+      m_InternalOptions.Intel256GRFPerThread || m_Options.Intel256GRFPerThread || m_Options.IntelLargeRegisterFile ||
+      m_InternalOptions.Intel512GRFPerThread || m_Options.Intel512GRFPerThread || m_InternalOptions.IntelExpGRFSize ||
+      m_Options.IntelExpGRFSize || IGC_GET_FLAG_VALUE(TotalGRFNum)) {
+    return false;
+  }
+  if (getModuleMetaData()->compOpt.forceTotalGRFNum != 0)
+    return false;
+
+  auto kernelHasHighRP = [&](FunctionInfoMetaDataHandle &FI) -> bool {
+    int32_t threshold = static_cast<int32_t>(IGC_GET_FLAG_VALUE(EarlySIMD16DropForXE3Threshold));
+    return FI->getMaxRegPressure()->getMaxPressure() >= threshold && !m_instrTypes.hasSubroutines && !m_hasStackCalls;
+  };
+
+  // Allow only if every kernel in the retry set requires sub-group size 16
+  // (per cl_intel_subgroup_matrix_multiply_accumulate spec, DPAS mandates
+  // the minimum sub-group size, i.e. 16 on Xe3p) or has high register
+  // pressure that will drop it to SIMD16 heuristically.
+  auto *MDU = getMetaDataUtils();
+  for (auto it = MDU->begin_FunctionsInfo(), end = MDU->end_FunctionsInfo(); it != end; ++it) {
+    llvm::Function *F = it->first;
+    if (!isEntryFunc(MDU, F))
+      continue;
+    if (F->getName() == INTEL_SYMBOL_TABLE_VOID_PROGRAM)
+      continue;
+    if (!m_retryManager->kernelSet.empty() && !m_retryManager->kernelSet.count(F->getName().str()))
+      continue;
+    if (it->second->getSubGroupSize()->getSIMDSize() != 16 && !kernelHasHighRP(it->second))
+      return false;
+  }
+
+  return true;
 }
 
 bool OpenCLProgramContext::forceGlobalMemoryAllocation() const {
