@@ -79,7 +79,8 @@ static int getUniformScalarCost(unsigned VF) { return static_cast<int>(VF); }
 ///   - (VF - aliasable_RHS) MOVs for RHS insertelements
 ///   - GRF-splitting penalty for wide vectors
 ///   - VF-scaled register pressure penalty for larger vectors
-static int getUniformVectorCost(ArrayRef<BinaryOperator *> Slice, unsigned VF, unsigned GRFBits) {
+static int getUniformVectorCost(ArrayRef<BinaryOperator *> Slice, unsigned VF, unsigned GRFBits,
+                                const SmallPtrSetImpl<const Instruction *> *Candidates) {
   int Cost = 0;
 
   // Vector ALU instruction.
@@ -183,18 +184,38 @@ static int getUniformVectorCost(ArrayRef<BinaryOperator *> Slice, unsigned VF, u
     Cost += static_cast<int>(VF - AliasableRHS);
   }
 
-  // Extract cost for non-local or multi-use results.
-  // Extracts are typically zero-cost via sub-register aliasing on Gen,
-  // but when the result has users in a different basic block, the backend
-  // may need to materialize the scalar into a separate register.
-  // This mirrors SLP's CommonCost extract handling (lines ~5169-5237).
+  // Extract cost: charge per-lane for users that will force the extract
+  // to materialize as a real MOV.  An extract is "free" (sub-register
+  // alias) when its consumer can read directly from a vector lane:
+  //   - another vectorization candidate (will become a vector op),
+  //   - a vector-typed consumer (e.g. a vector binop), or
+  //   - a scalar store (Gen stores can address a vector sub-register
+  //     directly, no MOV needed).
+  // Materializing consumers: insertelement / shufflevector (consume
+  // SCALAR inputs into a different vector layout), same-BB scalar
+  // non-candidate instructions, and any cross-BB user.
+  auto consumerForcesMaterialization = [Candidates](Instruction *Producer, Instruction *UI) {
+    if (UI->getParent() != Producer->getParent())
+      return true;
+    if (Candidates && Candidates->count(UI))
+      return false;
+    if (isa<InsertElementInst>(UI) || isa<ShuffleVectorInst>(UI))
+      return true;
+    if (isa<StoreInst>(UI))
+      return false; // store can read a vector sub-register directly
+    if (UI->getType()->isVectorTy())
+      return false;
+    return true;
+  };
+
   for (unsigned I = 0; I < VF; ++I) {
     for (auto *U : Slice[I]->users()) {
-      if (auto *UI = dyn_cast<Instruction>(U)) {
-        if (UI->getParent() != Slice[I]->getParent()) {
-          Cost += 1; // non-local extract may need materialization
-          break;
-        }
+      auto *UI = dyn_cast<Instruction>(U);
+      if (!UI)
+        continue;
+      if (consumerForcesMaterialization(Slice[I], UI)) {
+        Cost += 1;
+        break; // charge at most once per slice element
       }
     }
   }
@@ -214,16 +235,6 @@ static int getUniformVectorCost(ArrayRef<BinaryOperator *> Slice, unsigned VF, u
     Cost += static_cast<int>(VecBits / GRFBits);
 
   return Cost;
-}
-
-/// Return true if vectorizing the uniform slice is estimated to be profitable.
-static bool isProfitable(ArrayRef<BinaryOperator *> Slice, unsigned VF, unsigned GRFBits) {
-  int SCost = getUniformScalarCost(VF);
-  int VCost = getUniformVectorCost(Slice, VF, GRFBits);
-
-  LLVM_DEBUG(dbgs() << "IGC SimpleAluVec cost: scalar=" << SCost << " vector=" << VCost << " VF=" << VF << "\n");
-
-  return VCost < SCost;
 }
 
 class SimpleAluVectorizer : public FunctionPass {
@@ -250,11 +261,24 @@ private:
   WIAnalysis *WIA = nullptr;
   RegisterEstimator *RPE = nullptr;
 
+  /// Set of instructions in the current BB that are candidates for
+  /// vectorization (i.e., belong to some group of size >= 2).  Used by
+  /// vectorizeAluChain() to decide whether at least one downstream user
+  /// is likely to also be vectorized; if every user is a plain scalar
+  /// instruction, the extracts will materialize and the transform is
+  /// unlikely to pay off.
+  SmallPtrSet<const Instruction *, 32> VectorizableCandidates;
+
   /// Return true if the instruction and all its operands are uniform.
   bool isUniformWithOperands(BinaryOperator *BO) const;
 
   /// Return true if BB already has high register pressure.
   bool isBBHighPressure(BasicBlock *BB) const;
+
+  /// Return true if at least one user of any instruction in \p Slice is
+  /// either another vectorization candidate or already produces/consumes
+  /// a vector value.
+  bool hasVectorFriendlyConsumer(ArrayRef<BinaryOperator *> Slice) const;
 
   /// Scan a basic block for groups of isomorphic uniform ALU instructions.
   bool vectorizeBlock(BasicBlock *BB, unsigned MaxVecRegBits);
@@ -346,7 +370,9 @@ bool SimpleAluVectorizer::runOnFunction(Function &F) {
   if (!CGCtx->platform.isCoreChildOf(IGFX_XE3_CORE))
     RegPressureThreshold = 64;
   else if (!CGCtx->platform.isCoreChildOf(IGFX_XE3P_CORE))
-    RegPressureThreshold = 96;
+    // PTL/Xe3 (non-Xe3P): tighter than the original 96 to avoid
+    // vectorizing near-spill BBs that increase send count.
+    RegPressureThreshold = 72;
 
   // Compute register pressure estimates for per-BB queries.
   RPE->calculate();
@@ -356,6 +382,38 @@ bool SimpleAluVectorizer::runOnFunction(Function &F) {
     Changed |= vectorizeBlock(&BB, MaxVecRegBits);
 
   return Changed;
+}
+
+bool SimpleAluVectorizer::hasVectorFriendlyConsumer(ArrayRef<BinaryOperator *> Slice) const {
+  // A consumer is "vector-friendly" if it is either:
+  //   (a) another vectorization candidate in the same BB (it may itself
+  //       be replaced by a vector op, so the extract feeding it can be
+  //       elided / forwarded), or
+  //   (b) an instruction that itself produces a vector value (e.g. a
+  //       vector binop or vector intrinsic).  Such consumers already
+  //       operate in vector territory, so the extract feeding them is
+  //       likely to fold away during codegen.
+  //
+  // Note: insertelement / shufflevector produce vectors but consume
+  // SCALAR elements from us, so they must NOT count as friendly --
+  // the extract still materializes.  They are filtered out below
+  // before we test the consumer's result type.
+  for (BinaryOperator *BO : Slice) {
+    for (Use &U : BO->uses()) {
+      auto *UI = dyn_cast<Instruction>(U.getUser());
+      if (!UI)
+        continue;
+      if (VectorizableCandidates.count(UI))
+        return true;
+      // Skip insert/shuffle: they consume scalars from us.
+      if (isa<InsertElementInst>(UI) || isa<ShuffleVectorInst>(UI))
+        continue;
+      // Consumer that itself produces a vector value.
+      if (UI->getType()->isVectorTy())
+        return true;
+    }
+  }
+  return false;
 }
 
 bool SimpleAluVectorizer::vectorizeBlock(BasicBlock *BB, unsigned MaxVecRegBits) {
@@ -398,11 +456,25 @@ bool SimpleAluVectorizer::vectorizeBlock(BasicBlock *BB, unsigned MaxVecRegBits)
     Groups[{BO->getOpcode(), Ty}].push_back(BO);
   }
 
+  // Build the candidate set: every instruction that lives in a group of
+  // size >= 2 (i.e., has at least one isomorphic peer it could be
+  // vectorized with).  Consulted by vectorizeAluChain() to gate on
+  // whether downstream users are likely to also become vector ops.
+  VectorizableCandidates.clear();
+  for (auto &KV : Groups) {
+    if (KV.second.size() >= 2) {
+      for (BinaryOperator *BO : KV.second)
+        VectorizableCandidates.insert(BO);
+    }
+  }
+
   bool Changed = false;
   for (auto &KV : Groups) {
     if (KV.second.size() >= 2)
       Changed |= tryVectorizeGroup(KV.second, MaxVecRegBits);
   }
+
+  VectorizableCandidates.clear();
   return Changed;
 }
 
@@ -475,8 +547,38 @@ bool SimpleAluVectorizer::vectorizeAluChain(ArrayRef<BinaryOperator *> Group, un
   }
 
   // --- Cost-model gate ---
-  if (!isProfitable(Slice, VF, GRFBits)) {
+  int SCost = getUniformScalarCost(VF);
+  int VCost = getUniformVectorCost(Slice, VF, GRFBits, &VectorizableCandidates);
+  if (VCost >= SCost) {
     LLVM_DEBUG(dbgs() << "IGC SimpleAluVec: Skipping unprofitable VF=" << VF << " group\n");
+    return false;
+  }
+
+  // Consumer gate
+  // Require at least one downstream user that is either another
+  // vectorization candidate or already vector-typed.  Exception: when
+  // an operand is a splat, the vector form is a broadcast + vector ALU,
+  // which is a clear win even with purely scalar consumers, because the
+  // insertelements collapse to a single MOV.  The cost model still
+  // rejects bad cases (e.g. extracts feeding insertelements into an
+  // unrelated vector layout) via the per-lane materialization penalty.
+  bool HasSplatOperand = false;
+  {
+    Value *L0 = Slice[0]->getOperand(0);
+    Value *R0 = Slice[0]->getOperand(1);
+    bool LHSSplat = true, RHSSplat = true;
+    for (unsigned I = 1; I < VF; ++I) {
+      if (Slice[I]->getOperand(0) != L0)
+        LHSSplat = false;
+      if (Slice[I]->getOperand(1) != R0)
+        RHSSplat = false;
+    }
+    HasSplatOperand = LHSSplat || RHSSplat;
+  }
+
+  if (!HasSplatOperand && !hasVectorFriendlyConsumer(Slice)) {
+    LLVM_DEBUG(dbgs() << "IGC SimpleAluVec: Skipping VF=" << VF
+                      << " group: no splat operand and no vector-friendly consumer\n");
     return false;
   }
 
