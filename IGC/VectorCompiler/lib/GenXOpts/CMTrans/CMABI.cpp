@@ -21,6 +21,8 @@ SPDX-License-Identifier: MIT
 ///
 //===----------------------------------------------------------------------===//
 
+#include <memory>
+
 #include "llvmWrapper/Analysis/CallGraph.h"
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/IR/Function.h"
@@ -230,7 +232,7 @@ class CMABIAnalysis : public ModulePass {
 public:
   static char ID;
 
-  using GIType = SmallDenseMap<Function *, LocalizationInfo *>;
+  using GIType = SmallDenseMap<Function *, std::shared_ptr<LocalizationInfo>>;
 
   CMABIAnalysisPassResult Info;
 
@@ -254,11 +256,10 @@ public:
 
   static LocalizationInfo &getLocalizationInfo(Function *F,
                                                GIType &GlobalInfo) {
-    if (GlobalInfo.count(F))
-      return *GlobalInfo[F];
-    LocalizationInfo *LI = new LocalizationInfo{F};
-    GlobalInfo[F] = LI;
-    return *LI;
+    auto [It, Inserted] = GlobalInfo.try_emplace(F);
+    if (Inserted)
+      It->second = std::make_shared<LocalizationInfo>(F);
+    return *It->second;
   }
 
   // \brief Returns the localization info associated to a function.
@@ -1627,7 +1628,7 @@ CMABIAnalysisPass::run(llvm::Module &M,
   CMABIAnalysis CMAbiAn(&CG);
   CMAbiAn.runOnModule(M);
   return CMABIAnalysisPass::Result{CMAbiAn.Info.Kernels,
-                                   CMAbiAn.Info.GlobalInfo};
+                                   std::move(CMAbiAn.Info.GlobalInfo)};
 }
 
 AnalysisKey CMABIAnalysisPass::Key;

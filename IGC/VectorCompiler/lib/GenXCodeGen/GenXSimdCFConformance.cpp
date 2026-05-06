@@ -223,6 +223,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/IR/IRBuilder.h"
 #include "llvm/IR/LLVMContext.h"
 #include "llvm/IR/PatternMatch.h"
+#include "llvm/IR/ValueHandle.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/Debug.h"
 #include "llvm/Transforms/Utils/Local.h"
@@ -275,7 +276,7 @@ protected:
   FunctionGroup *FG = nullptr;
   FunctionGroupAnalysis *FGA = nullptr;
   DominatorTreeGroupWrapperPass *DTWrapper = nullptr;
-  std::map<Function *, DominatorTree *> DTs;
+  std::map<Function *, std::unique_ptr<DominatorTree>> DTs;
   GenXLiveness *Liveness = nullptr;
   bool Modified = false;
   SetVector<SimpleValue> EMVals;
@@ -1845,12 +1846,12 @@ void GenXSimdCFConformance::emptyBranchingJoinBlock(CallInst *Join) {
 DominatorTree *GenXSimdCFConformance::getDomTree(Function *F) {
   if (!DTWrapper) {
     // In early pass, which is a module pass.
-    if (!DTs[F]) {
-      auto DT = new DominatorTree;
-      DT->recalculate(*F);
-      DTs[F] = DT;
+    auto [It, Inserted] = DTs.try_emplace(F);
+    if (Inserted) {
+      It->second = std::make_unique<DominatorTree>();
+      It->second->recalculate(*F);
     }
-    return DTs[F];
+    return It->second.get();
   }
   // In late pass, use the DominatorTreeGroupWrapper.
   return DTWrapper->getDomTree(F);
@@ -2173,34 +2174,48 @@ void GenXSimdCFConformance::lowerUnsuitableGetEMs() {
  * all any gotos, joins, and unmasks
  */
 void GenXSimdCFConformance::lowerAllSimdCF() {
-  for (auto i = EMVals.begin(), e = EMVals.end(); i != e; ++i) {
-    if (auto *CI = dyn_cast<CallInst>(i->getValue())) {
-      auto IID = vc::getAnyIntrinsicID(i->getValue());
-      if (IID == GenXIntrinsic::genx_simdcf_join)
-        lowerJoin(CI);
-      else if (IID == GenXIntrinsic::genx_simdcf_goto)
-        lowerGoto(CI);
-      else if (IID == GenXIntrinsic::genx_simdcf_unmask) {
-        auto SaveMask = CI->getArgOperand(0);
-        if (auto *CI0 = dyn_cast<CallInst>(SaveMask)) {
-          IRBuilder<> Builder(CI0);
-          auto Replace =
-              Builder.CreateBitCast(CI0->getArgOperand(0), CI0->getType());
-          CI0->replaceAllUsesWith(Replace);
-          CI0->eraseFromParent();
-        }
-        IRBuilder<> Builder(CI);
-        auto Replace =
-            Builder.CreateBitCast(CI->getArgOperand(1), CI->getType());
-        CI->replaceAllUsesWith(Replace);
-        CI->eraseFromParent();
-      } else if (IID == GenXIntrinsic::genx_simdcf_remask) {
-        IRBuilder<> Builder(CI);
-        auto Replace =
-            Builder.CreateBitCast(CI->getArgOperand(1), CI->getType());
-        CI->replaceAllUsesWith(Replace);
-        CI->eraseFromParent();
+  SmallVector<std::pair<WeakTrackingVH, unsigned>, 16> CallsToLower;
+  for (auto &EMVal : EMVals) {
+    auto *CI = dyn_cast<CallInst>(EMVal.getValue());
+    if (!CI)
+      continue;
+    auto IID = vc::getAnyIntrinsicID(CI);
+    if (IID == GenXIntrinsic::genx_simdcf_join ||
+        IID == GenXIntrinsic::genx_simdcf_goto ||
+        IID == GenXIntrinsic::genx_simdcf_unmask ||
+        IID == GenXIntrinsic::genx_simdcf_remask)
+      CallsToLower.emplace_back(CI, IID);
+  }
+
+  for (auto &[Handle, IID] : CallsToLower) {
+    auto *CI = dyn_cast_or_null<CallInst>(Handle);
+    if (!CI)
+      continue;
+
+    if (IID == GenXIntrinsic::genx_simdcf_join)
+      lowerJoin(CI);
+    else if (IID == GenXIntrinsic::genx_simdcf_goto)
+      lowerGoto(CI);
+    else if (IID == GenXIntrinsic::genx_simdcf_unmask) {
+      if (auto *SaveMaskCI = dyn_cast<CallInst>(CI->getArgOperand(0))) {
+        IRBuilder<> Builder(SaveMaskCI);
+        auto *Replace = Builder.CreateBitCast(SaveMaskCI->getArgOperand(0),
+                                              SaveMaskCI->getType());
+        SaveMaskCI->replaceAllUsesWith(Replace);
+        SaveMaskCI->eraseFromParent();
       }
+      IRBuilder<> Builder(CI);
+      auto *Replace =
+          Builder.CreateBitCast(CI->getArgOperand(1), CI->getType());
+      CI->replaceAllUsesWith(Replace);
+      CI->eraseFromParent();
+    } else {
+      IGC_ASSERT(IID == GenXIntrinsic::genx_simdcf_remask);
+      IRBuilder<> Builder(CI);
+      auto *Replace =
+          Builder.CreateBitCast(CI->getArgOperand(1), CI->getType());
+      CI->replaceAllUsesWith(Replace);
+      CI->eraseFromParent();
     }
   }
 }

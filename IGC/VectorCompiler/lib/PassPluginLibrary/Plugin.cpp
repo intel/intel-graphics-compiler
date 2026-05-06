@@ -63,10 +63,8 @@ void registerPluginPasses(PassBuilder &PB) {
   std::string CPUStr = "";
   std::string FeaturesStr = "";
 
-  llvm::TargetMachine *TM =
-      GetTargetMachine(std::move(TheTriple), CPUStr, FeaturesStr, Options);
-
-  auto *GTM = static_cast<GenXTargetMachine *>(TM);
+  auto TMOwner = std::shared_ptr<TargetMachine>(
+      GetTargetMachine(std::move(TheTriple), CPUStr, FeaturesStr, Options));
 
 #define ADD_PASS(NAME, CREATE_PASS)                                            \
   if (Name == NAME) {                                                          \
@@ -86,6 +84,8 @@ void registerPluginPasses(PassBuilder &PB) {
   PB.registerPipelineParsingCallback(
       [=](StringRef Name, ModulePassManager &PM,
           ArrayRef<PassBuilder::PipelineElement>) {
+        auto *TM = TMOwner.get();
+        auto *GTM = static_cast<GenXTargetMachine *>(TM);
 #define MODULE_PASS(NAME, CREATE_PASS) ADD_PASS(NAME, CREATE_PASS)
 #include "GenXPassRegistry.h"
 #undef MODULE_PASS
@@ -95,6 +95,7 @@ void registerPluginPasses(PassBuilder &PB) {
   PB.registerPipelineParsingCallback(
       [=](StringRef Name, FunctionPassManager &PM,
           ArrayRef<PassBuilder::PipelineElement>) {
+        auto *TM = TMOwner.get();
 #define FUNCTION_PASS(NAME, CREATE_PASS) ADD_PASS(NAME, CREATE_PASS)
 #include "GenXPassRegistry.h"
 #undef FUNCTION_PASS

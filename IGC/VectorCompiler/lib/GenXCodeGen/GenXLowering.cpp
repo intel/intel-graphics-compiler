@@ -198,14 +198,13 @@ void DiagnosticInfoLowering::print(DiagnosticPrinter &DP) const {
 // GenXLowering : legalize execution widths and GRF crossing
 class GenXLowering : public FunctionPass {
   DominatorTree *DT = nullptr;
-  DomTreeUpdater *DTU = nullptr;
   const GenXSubtarget *ST = nullptr;
   SmallVector<Instruction *, 8> ToErase;
   const DataLayout *DL = nullptr;
 
 public:
   static char ID;
-  explicit GenXLowering() : FunctionPass(ID), DT(nullptr), DTU(nullptr) {}
+  explicit GenXLowering() : FunctionPass(ID), DT(nullptr) {}
   StringRef getPassName() const override { return "GenX lowering"; }
   void getAnalysisUsage(AnalysisUsage &AU) const override;
   bool runOnFunction(Function &F) override;
@@ -2591,11 +2590,11 @@ bool GenXLowering::lowerBoolScalarSelect(SelectInst *SI) {
 
   DominatorTreeWrapperPass *const DTW =
       getAnalysisIfAvailable<DominatorTreeWrapperPass>();
-  DTU = new DomTreeUpdater(DTW ? &DTW->getDomTree() : nullptr,
-                           DomTreeUpdater::UpdateStrategy::Lazy);
+  DomTreeUpdater DTU(DTW ? &DTW->getDomTree() : nullptr,
+                     DomTreeUpdater::UpdateStrategy::Lazy);
 
   auto *TermThen =
-      SplitBlockAndInsertIfThen(SI->getCondition(), SI, false, nullptr, DTU);
+      SplitBlockAndInsertIfThen(SI->getCondition(), SI, false, nullptr, &DTU);
   (cast<BranchInst>(BB1->getTerminator()))->swapSuccessors();
   auto *BB2 = TermThen->getParent();
   auto *BB4 = BB2->getSingleSuccessor();

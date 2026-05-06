@@ -11,6 +11,7 @@ SPDX-License-Identifier: MIT
 
 #include "IGC/common/LLVMWarningsPush.hpp"
 #include "llvm/Config/llvm-config.h"
+#include "llvm/IR/LegacyPassManager.h"
 #include "llvm/CodeGen/MachineModuleInfo.h"
 #include "llvm/Support/CodeGen.h"
 #include "llvm/Target/TargetMachine.h"
@@ -37,8 +38,10 @@ private:
                            llvm::CodeGenFileType FileType, bool DisableVerify,
                            llvm::MachineModuleInfoWrapperPass *MMIWP) override {
     llvm::MachineModuleInfo *MMI = nullptr;
-    if (MMIWP)
+    if (MMIWP) {
       MMI = &MMIWP->getMMI();
+      PM.add(MMIWP);
+    }
     return addPassesToEmitFile(PM, o, pi, FileType, DisableVerify, MMI);
   }
 
@@ -64,8 +67,10 @@ private:
                            llvm::CodeGenFileType FileType, bool DisableVerify,
                            llvm::MachineModuleInfoWrapperPass *MMIWP) override {
     llvm::MachineModuleInfo *MMI = nullptr;
-    if (MMIWP)
+    if (MMIWP) {
       MMI = &MMIWP->getMMI();
+      PM.add(MMIWP);
+    }
     return addPassesToEmitFile(PM, o, pi, FileType, DisableVerify, MMI);
   }
 

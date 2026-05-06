@@ -8,13 +8,16 @@ SPDX-License-Identifier: MIT
 #ifndef GENX_OPTS_CMABIANALYSIS
 #define GENX_OPTS_CMABIANALYSIS
 
+#include <memory>
+
 // void initializeCMABIAnalysis(PassRegistry &);
 
 class LocalizationInfo;
 
 struct CMABIAnalysisPassResult {
   llvm::SmallPtrSet<llvm::Function *, 8> Kernels;
-  llvm::SmallDenseMap<llvm::Function *, LocalizationInfo *> GlobalInfo;
+  llvm::SmallDenseMap<llvm::Function *, std::shared_ptr<LocalizationInfo>>
+      GlobalInfo;
 
   // TODO: Fill invalidator
   template <class IR, class Analysis, class Invalidator>
