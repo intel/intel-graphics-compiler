@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2025 Intel Corporation
+; Copyright (C) 2025-2026 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -12,7 +12,9 @@
 ; SinkPointerConstAdd
 ; ------------------------------------------------
 ;
-; Test checks basic usage of improved clip distance feature
+; rv (an opaque GenISA RuntimeValue) feeds an i32 chain whose bit 31 cannot be
+; proven zero by computeKnownBits. The pass refuses to cross the zext rather
+; than guess a sign for it, so the i32-level +128 stays inside the chain.
 
 ; Function Attrs: alwaysinline null_pointer_is_valid
 define void @main(<8 x i32> %r0, i8* %privateBase) #0 {
@@ -20,13 +22,14 @@ GlobalScopeInitialization:
   %0 = call i32 @llvm.genx.GenISA.RuntimeValue.i32(i32 6)
   %1 = call i64 @llvm.genx.GenISA.RuntimeValue.i64(i32 2)
   %2 = add i32 %0, 128
+; CHECK: %2 = add i32 %0, 128
   %3 = zext i32 %2 to i64
-; CHECK: %2 = zext i32 %0 to i64
+; CHECK-NEXT: %3 = zext i32 %2 to i64
+; CHECK-NOT: sext
   %4 = add i64 %1, %3
-; CHECK-NEXT: %3 = add i64 %1, %2
-; CHECK-NEXT: %4 = add i64 %3, 128
+; CHECK-NEXT: %4 = add i64 %1, %3
   %ptr = inttoptr i64 %4 to i32 addrspace(1)*
-; CHECK-NEXT: %5 = inttoptr i64 %4 to ptr addrspace(1)
+; CHECK-NEXT: %ptr = inttoptr i64 %4 to ptr addrspace(1)
   ret void
 }
 
