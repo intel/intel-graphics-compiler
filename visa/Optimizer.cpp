@@ -10054,8 +10054,6 @@ void Optimizer::insertPageFaultWA() {
   if (!(builder.needBarrierWA() &&
         (builder.getPlatform() == Xe_PVC || builder.getPlatform() == Xe_PVCXT)))
     return;
-  if (!kernel.fg.builder->getIsKernel())
-    return;
 
   for (auto bb : kernel.fg) {
     for (auto it = bb->begin(), ie = bb->end(); it != ie;) {
