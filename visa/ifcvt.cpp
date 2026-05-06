@@ -127,23 +127,23 @@ class IfConverter {
 
     G4_INST *last = BB->back();
 
-    G4_opcode op = last->opcode();
-
     // Skip if there's 'NoMask' on that (possible) conditional branch.
-    // jmpi is scalar and naturally carries WriteEnable; allow it through.
-    if ((last->getMaskOption() & InstOpt_WriteEnable) && op != G4_jmpi)
+    if (last->getMaskOption() & InstOpt_WriteEnable)
       return null;
 
-    // Check whether it's 'if', 'goto', or 'jmpi'.
+    // Check whether it's 'if' or 'goto'.
+    G4_opcode op = last->opcode();
     if (op != G4_if) {
-      if (op != G4_goto && op != G4_jmpi)
+      if (op != G4_goto)
         return null;
+
+      // Extra checks for 'goto'.
 
       // Skip if there's no predicate.
       if (!last->getPredicate())
         return null;
 
-      // Skip backward branch.
+      // Skip backward goto.
       if (last->isFlowControl() && last->asCFInst()->isBackward())
         return null;
 
@@ -154,7 +154,7 @@ class IfConverter {
 
     vISA_ASSERT(BB->Succs.size() == 2,
                 "'if' should have exactly two successors!");
-    vISA_ASSERT(last->getPredicate(), "'if', 'goto', or 'jmpi' should be conditional!");
+    vISA_ASSERT(last->getPredicate(), "'if' or 'goto' should be conditional!");
 
     G4_BB *s0 = BB->Succs.front(); // if-block
     G4_BB *s1 = BB->Succs.back();  // else-block
@@ -167,53 +167,42 @@ class IfConverter {
     if (!getSinglePredecessor(s0, s1))
       return null;
 
-    // jmpi is only supported for PartialIfConvert; skip FullConvert shapes.
-    if (op != G4_jmpi) {
-      // Triangle ('if-fi'): s0's only successor is s1 (the tail).
-      if (t0 == s1) {
-        unsigned n0 = getPredictableInsts(s0, last);
-        if (n0 == 0 || n0 >= FullyConvertibleMaxInsts)
-          return null;
-        VISA_DEBUG(std::cout << "Found an innermost if-fi block at"
-                        << " BB" << BB->getId() << " with branch BB"
-                        << s0->getId() << " and tail BB" << t0->getId() << '\n');
-        return std::make_tuple(last, s0, nullptr, t0, FullConvert);
-      }
+    // Triangle ('if-fi'): s0's only successor is s1 (the tail).
+    if (t0 == s1) {
+      unsigned n0 = getPredictableInsts(s0, last);
+      if (n0 == 0 || n0 >= FullyConvertibleMaxInsts)
+        return null;
+      VISA_DEBUG(std::cout << "Found an innermost if-fi block at"
+                      << " BB" << BB->getId() << " with branch BB"
+                      << s0->getId() << " and tail BB" << t0->getId() << '\n');
+      return std::make_tuple(last, s0, nullptr, t0, FullConvert);
+    }
 
-      // Regular diamond ('if-else-fi'): s0 and s1 share the same logical tail,
-      // s1 has a single predecessor, and s0 != s1.
-      G4_BB *t1 = getSingleSuccessor(s1, s0);
-      if (t1 && t0 == t1 && getSinglePredecessor(s1, s0) &&
-          !(s0 == s1 && BB->getPhysicalSucc() == s0)) {
-        unsigned n0 = getPredictableInsts(s0, last);
-        unsigned n1 = getPredictableInsts(s1, last);
-        if (n0 > 0 && n0 < FullyConvertibleMaxInsts &&
-            n1 > 0 && n1 < FullyConvertibleMaxInsts) {
-          VISA_DEBUG(std::cout << "Found an innermost if-else-fi block at"
-                               << " BB" << BB->getId() << " with branches {"
-                               << "BB" << s0->getId() << ", BB" << s1->getId()
-                               << "} and tail BB" << t0->getId() << '\n');
-          return std::make_tuple(last, s0, s1, t0, FullConvert);
-        }
+    // Regular diamond ('if-else-fi'): s0 and s1 share the same logical tail,
+    // s1 has a single predecessor, and s0 != s1.
+    G4_BB *t1 = getSingleSuccessor(s1, s0);
+    if (t1 && t0 == t1 && getSinglePredecessor(s1, s0) &&
+        !(s0 == s1 && BB->getPhysicalSucc() == s0)) {
+      unsigned n0 = getPredictableInsts(s0, last);
+      unsigned n1 = getPredictableInsts(s1, last);
+      if (n0 > 0 && n0 < FullyConvertibleMaxInsts &&
+          n1 > 0 && n1 < FullyConvertibleMaxInsts) {
+        VISA_DEBUG(std::cout << "Found an innermost if-else-fi block at"
+                             << " BB" << BB->getId() << " with branches {"
+                             << "BB" << s0->getId() << ", BB" << s1->getId()
+                             << "} and tail BB" << t0->getId() << '\n');
+        return std::make_tuple(last, s0, s1, t0, FullConvert);
       }
     }
 
     // Physical-successor pattern: s0 and s1 do not share the same logical
     // tail (t0 != t1), but s0 is physically laid out immediately before s1.
     // Only PartialIfConvert is valid here: s1 has no join and must be kept.
-    // Confirm that s1 is the jump target of head's branch:
-    //   goto: JIP/UIP must point to s1;  jmpi: src0 must be s1's label.
-    auto branchTargetIsS1 = [&]() {
-      if (op == G4_goto)
-        return last->asCFInst()->getJip() == s1->getLabel() &&
-               last->asCFInst()->getUip() == s1->getLabel();
-      if (op == G4_jmpi)
-        return last->getSrc(0)->isLabel() &&
-               last->getSrc(0) == s1->getLabel();
-      return false;
-    };
-    if ((op == G4_goto || op == G4_jmpi) && s0->getPhysicalSucc() == s1 &&
-        branchTargetIsS1()) {
+    // Require goto (not G4_if) with JIP/UIP pointing to s1, confirming that
+    // s0 is the fall-through path and s1 is the jump target of head's goto.
+    if (op == G4_goto && s0->getPhysicalSucc() == s1 &&
+        last->asCFInst()->getJip() == s1->getLabel() &&
+        last->asCFInst()->getUip() == s1->getLabel()) {
       unsigned n0 = getPredictableInsts(s0, last, /*isPartial=*/true);
       if (n0 == 0 || n0 >= PartialConvertibleMaxInsts)
         return null;
@@ -303,16 +292,12 @@ class IfConverter {
     //
     //  (+P.any) mov (1) V0 V1 {NoMask} or
     //  (-P.all) mov (1) V0 V1 {NoMask}
-    //
-    // For jmpi (scalar), NoMask instructions are expected and can be
-    // predicated directly with the scalar predicate.
-    if ((maskOpt & InstOpt_WriteEnable) && ifInst->opcode() != G4_jmpi)
+    if (maskOpt & InstOpt_WriteEnable)
       return false;
 
     [[maybe_unused]] unsigned ifMaskOpt = ifInst->getMaskOption();
-    vISA_ASSERT(
-        (ifInst->opcode() == G4_jmpi || (ifMaskOpt & InstOpt_WriteEnable) == 0),
-        "Unexpected 'NoMask' in 'if' emask.");
+    vISA_ASSERT((ifMaskOpt & InstOpt_WriteEnable) == 0,
+                "Unexpected 'NoMask' in 'if' emask.");
 
     unsigned maskBits = getEMaskBits(I->getMaskOffset(), I->getExecSize());
     unsigned ifMaskBits =
@@ -369,11 +354,10 @@ class IfConverter {
   /// hoisted with a new predicate, so reject if it already carries one.
   unsigned getPredictableInsts(G4_BB *BB, G4_INST *ifInst,
                                bool isPartial = false) const {
-    vISA_ASSERT(ifInst->opcode() == G4_if || ifInst->opcode() == G4_goto ||
-                    ifInst->opcode() == G4_jmpi,
+    vISA_ASSERT(ifInst->opcode() == G4_if || ifInst->opcode() == G4_goto,
                 "Either 'if' or 'goto' is expected!");
 
-    bool isGoto = (ifInst->opcode() == G4_goto || ifInst->opcode() == G4_jmpi);
+    bool isGoto = (ifInst->opcode() == G4_goto);
     unsigned sum = 0;
 
     for (auto *I : *BB) {
@@ -391,7 +375,7 @@ class IfConverter {
                       "'join' should be the second instruction!");
           continue;
         }
-        if (op == G4_goto || op == G4_jmpi) {
+        if (op == G4_goto) {
           vISA_ASSERT(I == BB->back(),
                       "'goto' should be the last instruction!");
           // For partialConvert the goto is hoisted with a new predicate;
@@ -519,7 +503,8 @@ void IfConverter::fullConvert(IfConvertible &IC) {
     if (op == G4_label)
       continue;
     if (isGoto && s1) {
-      // Have both s0 and s1, goto in s0 can be removed always.
+      // Have both s0 and s1, goto in s0 can be
+      // removed always.
       if (op == G4_goto)
         continue;
       if (isFlagClearingFollowedByGoto(I, s0))
@@ -528,10 +513,13 @@ void IfConverter::fullConvert(IfConvertible &IC) {
       if (op == G4_else)
         continue;
       // If there is a goto, its target must be tail.
-      // If merging is done, we must remove goto as its target is gone.
+      // If merging is done, we must remove goto as its
+      // target is gone.
       if (doTailMerging && op == G4_goto)
         continue;
     }
+    /* Predicate instructions if it's not goto-style or it's not
+     * neither goto nor its flag clearing instruction */
     if (!isGoto || !(op == G4_goto || isFlagClearingFollowedByGoto(I, s0))) {
       // Negative predicate instructions if needed.
       if (needReversePredicateForGoto) {
@@ -557,9 +545,12 @@ void IfConverter::fullConvert(IfConvertible &IC) {
       if (op == G4_join)
         continue;
       // If there is a goto, its target must be tail.
-      // If merging is done, we must remove goto as its target is gone.
+      // If merging is done, we must remove goto as its
+      // target is gone.
       if (doTailMerging && op == G4_goto)
         continue;
+      /* Predicate instructions if it's not goto-style or it's not
+       * neither goto nor its flag clearing instruction */
       if (!isGoto || !(op == G4_goto || isFlagClearingFollowedByGoto(I, s1))) {
         // Negative predicate instructions if needed.
         if (needReversePredicateForGoto) {
@@ -617,13 +608,10 @@ void IfConverter::partialConvert(IfConvertible &IC) {
   G4_BB *s1 = IC.succElse;
 
   INST_LIST_ITER pos = std::prev(head->end());
-  G4_opcode op = (*pos)->opcode();
-  vISA_ASSERT(op == G4_goto || op == G4_jmpi,
-              "Physical-succ head must end with goto or jmpi!");
+  vISA_ASSERT((*pos)->opcode() == G4_goto,
+              "Physical-succ head must end with goto!");
 
-  // jmpi always jumps on true; goto behavior is platform-dependent.
-  bool needReversePredicateForGoto =
-      (op == G4_jmpi) ? true : fg.builder->gotoJumpOnTrue();
+  bool needReversePredicateForGoto = fg.builder->gotoJumpOnTrue();
 
   // Save s0's UIP successor (outer convergence) before disconnecting edges.
   // For an unconditional goto, s0->Succs = {outer} (UIP only, no fall-through).
