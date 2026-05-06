@@ -246,7 +246,7 @@ void PromoteSubByte::cleanUp(Module &module) {
       for (auto it = basicBlock.rbegin(); it != basicBlock.rend(); ++it) {
         Instruction *instruction = &*it;
 
-        bool isDeadInstCandidate = isa<TruncInst>(instruction) || isa<ZExtInst>(instruction);
+        bool isDeadInstCandidate = isa<TruncInst, ZExtInst>(instruction);
         if (GenIntrinsicInst *GII = dyn_cast<GenIntrinsicInst>(instruction)) {
           GenISAIntrinsic::ID IID = GII->getIntrinsicID();
           isDeadInstCandidate |=

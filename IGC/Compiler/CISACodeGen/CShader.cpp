@@ -1709,7 +1709,7 @@ uint64_t CShader::GetConstantExpr(ConstantExpr *CE) {
     break;
   case Instruction::IntToPtr: {
     Constant *C = CE->getOperand(0);
-    if (isa<ConstantInt>(C) || isa<ConstantFP>(C) || isa<ConstantPointerNull>(C))
+    if (isa<ConstantInt, ConstantFP, ConstantPointerNull>(C))
       return GetImmediateVal(C);
     if (ConstantExpr *CE1 = dyn_cast<ConstantExpr>(C))
       return GetConstantExpr(CE1);
@@ -1766,7 +1766,7 @@ CVariable *CShader::GetScalarConstant(llvm::Value *const c) {
   const VISA_Type type = GetType(c->getType());
 
   // Constants
-  if (isa<ConstantInt>(c) || isa<ConstantFP>(c) || isa<ConstantPointerNull>(c)) {
+  if (isa<ConstantInt, ConstantFP, ConstantPointerNull>(c)) {
     return ImmToVariable(GetImmediateVal(c), type);
   }
 
@@ -1925,8 +1925,7 @@ auto sizeToSIMDMode = [](uint32_t size) {
 CVariable *CShader::GetStructVariable(llvm::Value *v) {
   IGC_ASSERT(v->getType()->isStructTy());
 
-  IGC_ASSERT_MESSAGE(isa<Constant>(v) || isa<InsertValueInst>(v) || isa<CallInst>(v) || isa<Argument>(v) ||
-                         isa<PHINode>(v) || isa<SelectInst>(v),
+  IGC_ASSERT_MESSAGE((isa<Constant, InsertValueInst, CallInst, Argument, PHINode, SelectInst>(v)),
                      "Invalid instruction using struct type!");
 
   if (isa<InsertValueInst>(v)) {
@@ -1995,7 +1994,7 @@ CVariable *CShader::GetStructVariable(llvm::Value *v) {
         return it->second;
       }
     }
-  } else if (isa<CallInst>(v) || isa<Argument>(v)) {
+  } else if (isa<CallInst, Argument>(v)) {
     // For now, special handling of bitcasttostruct intrinsic
     GenIntrinsicInst *GII = dyn_cast<GenIntrinsicInst>(v);
     if (IGC_IS_FLAG_ENABLED(EnableDeSSA) && m_deSSA && GII &&
@@ -3402,7 +3401,7 @@ bool CShader::VMECoalescePattern(GenIntrinsicInst *genInst) {
 bool CShader::isUnpacked(llvm::Value *value) {
   bool isUnpacked = false;
   if (m_SIMDSize == m_Platform->getMinDispatchMode()) {
-    if (isa<SampleIntrinsic>(value) || isa<LdmcsInstrinsic>(value)) {
+    if (isa<SampleIntrinsic, LdmcsInstrinsic>(value)) {
       if (cast<VectorType>(value->getType())->getElementType()->isHalfTy() ||
           cast<VectorType>(value->getType())->getElementType()->isIntegerTy(16)) {
         isUnpacked = true;
@@ -3761,7 +3760,7 @@ Tristate CShader::shouldGenerateLSCQuery(const CodeGenContext &Ctx, Instruction 
 
   // Generate LSC for load/store instructions as Load/store emit can
   // handle full-payload uniform non-transpose LSC on PVC A0.
-  if (vectorLdStInst == nullptr || isa<LoadInst>(vectorLdStInst) || isa<StoreInst>(vectorLdStInst))
+  if (vectorLdStInst == nullptr || isa<LoadInst, StoreInst>(vectorLdStInst))
     return Tristate::True;
 
   if (GenIntrinsicInst *inst = dyn_cast<GenIntrinsicInst>(vectorLdStInst)) {

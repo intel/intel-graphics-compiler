@@ -355,7 +355,7 @@ bool DynamicRayManagementPass::TryProceedBasedApproach(Function &F) {
     for (auto &I : *checkBB) {
       IP = &I;
 
-      if (isa<TraceRaySyncProceedHLIntrinsic>(&I) || isa<TraceRayInlineHLIntrinsic>(&I))
+      if (isa<TraceRaySyncProceedHLIntrinsic, TraceRayInlineHLIntrinsic>(&I))
         break;
     }
 
@@ -376,7 +376,7 @@ bool DynamicRayManagementPass::TryProceedBasedApproach(Function &F) {
 
     // insert the release as far back as possible into the BB
     for (auto &I : llvm::reverse(*releaseBB)) {
-      if (isa<TraceRaySyncProceedHLIntrinsic>(&I) || isa<PHINode>(&I))
+      if (isa<TraceRaySyncProceedHLIntrinsic, PHINode>(&I))
         break;
 
       IP = &I;

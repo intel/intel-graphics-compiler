@@ -2509,7 +2509,7 @@ bool JointMatrixFuncsResolutionPass::preprocessAccessChain(Function *F) {
       // %gep = getelementptr inbounds %structtype, %structtype addrspace(4)* %call, i64 0, i32 0
       // %cast = bitcast i16 addrspace(4)* %gep to half addrspace(4)*
       // %extract = load half, half addrspace(4)* %cast
-      while (isa<GetElementPtrInst>(memInst) || isa<BitCastInst>(memInst) || isa<AddrSpaceCastInst>(memInst)) {
+      while (isa<GetElementPtrInst, BitCastInst, AddrSpaceCastInst>(memInst)) {
         if (isa<GetElementPtrInst>(memInst))
           IGC_ASSERT_MESSAGE(cast<GetElementPtrInst>(memInst)->hasAllZeroIndices(),
                              "Unexpected matrix insert/extract format");
@@ -2524,7 +2524,7 @@ bool JointMatrixFuncsResolutionPass::preprocessAccessChain(Function *F) {
       // %element = load %element_ptr
       // 2. For insert
       // store %element %element_ptr
-      IGC_ASSERT_MESSAGE(isa<LoadInst>(memInst) || isa<StoreInst>(memInst), "Unexpected matrix insert/extract format");
+      IGC_ASSERT_MESSAGE((isa<LoadInst, StoreInst>(memInst)), "Unexpected matrix insert/extract format");
       // Get __spirv_AccessChain function's mangling postfix to reuse it
       // for overloading of insert/extract
       constexpr unsigned ACNameLength = 23; // "_Z19__spirv_AccessChain"
@@ -3055,7 +3055,7 @@ void JointMatrixFuncsResolutionPass::RecursiveSearchAndFixCanonicalizdGEPandLife
   // Depth first recursive traversal of root users
   for (auto U : root->users()) {
     // Only traverse children nodes if current node is a cast or a PHI node.
-    if (isa<CastInst>(U) || isa<PHINode>(U)) {
+    if (isa<CastInst, PHINode>(U)) {
       LLVM_DEBUG(dbgs() << "DFS: visiting users of " << *U << '\n');
       RecursiveSearchAndFixCanonicalizdGEPandLifetime(visited, DL, U, matrixTypeAllocSize, totalAllocationSize);
       continue;

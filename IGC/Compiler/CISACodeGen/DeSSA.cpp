@@ -1388,7 +1388,7 @@ void DeSSA::coalesceAliasInsertValue(InsertValueInst *theIVI) {
   //          V0 = insval undef, s, 10
   //
   const Value *Oprd0 = theIVI->getOperand(0);
-  if (theIVI->getType()->isStructTy() && (isa<Constant>(Oprd0) || isa<Argument>(Oprd0) || isa<PHINode>(Oprd0))) {
+  if (theIVI->getType()->isStructTy() && isa<Constant, Argument, PHINode>(Oprd0)) {
     SmallVector<Value *, 8> IVIChain;
     InsertValueInst *LeadInst = getInsValChain(theIVI, IVIChain);
     setInsValAlias(IVIChain);

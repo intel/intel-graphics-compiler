@@ -143,7 +143,7 @@ void AggregateArgumentsAnalysis::addImplictArgs(Type *type, uint64_t baseAllocaO
 
       addImplictArgs(elementType, baseAllocaOffset + elementOffsetInStruct);
     }
-  } else if (isa<ArrayType>(type) || isa<VectorType>(type)) {
+  } else if (isa<ArrayType, VectorType>(type)) {
     uint64_t numElements = getNumElements(type);
     IGC_ASSERT(numElements < UINT_MAX);
 

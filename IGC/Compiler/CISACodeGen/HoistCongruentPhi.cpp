@@ -81,7 +81,7 @@ bool HoistCongruentPHI::checkCongruent(std::vector<InstPair> &instMap, const Ins
   Instruction *src1 = values.second;
 
   if (depth > 32 || src0->getOpcode() != src1->getOpcode() || src0->getNumOperands() != src1->getNumOperands() ||
-      src0->getType() != src1->getType() || isa<PHINode>(src0) || isa<CmpInst>(src0) ||
+      src0->getType() != src1->getType() || isa<PHINode, CmpInst>(src0) ||
       !(src0->getNumOperands() == 1 || src0->getNumOperands() == 2) || (isa<AllocaInst>(src0) && src0 != src1))
     return false;
 
@@ -137,7 +137,7 @@ bool HoistCongruentPHI::checkCongruent(std::vector<InstPair> &instMap, const Ins
         } else {
           return false;
         }
-      } else if (!(isa<Argument>(v0) || isa<Constant>(v0) || isa<GlobalValue>(v0))) {
+      } else if (!isa<Argument, Constant, GlobalValue>(v0)) {
         return false;
       }
       continue;
@@ -179,7 +179,7 @@ bool HoistCongruentPHI::checkCongruent(std::vector<InstPair> &instMap, const Ins
         } else {
           return false;
         }
-      } else if (!(isa<Argument>(v0) || isa<Constant>(v0) || isa<GlobalValue>(v0))) {
+      } else if (!isa<Argument, Constant, GlobalValue>(v0)) {
         return false;
       }
       continue;

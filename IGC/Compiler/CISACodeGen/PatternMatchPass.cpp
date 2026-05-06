@@ -874,7 +874,7 @@ bool CodeGenPatternMatch::MatchShrSatModifier(llvm::SelectInst &I) {
       ConstantInt *c = isa<ConstantInt>(LHS) ? cast<ConstantInt>(LHS) : cast<ConstantInt>(RHS);
       if (c->getZExtValue() == 0) {
         Value *v = isa<ConstantInt>(LHS) ? RHS : LHS;
-        if (isa<LShrOperator>(v) || isa<AShrOperator>(v)) {
+        if (isa<LShrOperator, AShrOperator>(v)) {
           Instruction *inst = cast<Instruction>(v);
           ShrSatPattern *pattern = new (m_allocator) ShrSatPattern();
           pattern->inst = inst;
@@ -1934,7 +1934,7 @@ void CodeGenPatternMatch::MarkAsSource(llvm::Value *v, bool isSampleDerivative) 
     // skip constant
     return;
   }
-  if (isa<Instruction>(v) || isa<Argument>(v)) {
+  if (isa<Instruction, Argument>(v)) {
     m_LivenessInfo->HandleVirtRegUse(v, m_root->getParent(), m_root);
   }
   // mark the source as used so that we know we need to generate this value
@@ -2376,7 +2376,7 @@ bool CodeGenPatternMatch::IsMulCandidateForIMad(llvm::BinaryOperator *Mul, llvm:
     // b64 = zext i32 b to i64
     // temp = mul i64 a64, b64
     // res = add i64 temp, c64
-    while (isa<ZExtInst>(V) || isa<SExtInst>(V) || isa<BitCastInst>(V))
+    while (isa<ZExtInst, SExtInst, BitCastInst>(V))
       V = cast<Instruction>(V)->getOperand(0);
     Type *T = V->getType();
     return (T->isIntegerTy() && T->getPrimitiveSizeInBits() == bitWidth);
@@ -3716,7 +3716,7 @@ bool CodeGenPatternMatch::MatchUnpack4i8(Instruction &I) {
       pass->EmitUnpack4i8(source, index, isUnsigned, modifier);
     }
   };
-  if (I.getType()->isIntegerTy(32) && (isa<ZExtInst>(&I) || isa<SExtInst>(&I))) {
+  if (I.getType()->isIntegerTy(32) && isa<ZExtInst, SExtInst>(&I)) {
     auto extract = dyn_cast<ExtractElementInst>(I.getOperand(0));
     if (extract && isa<ConstantInt>(extract->getIndexOperand()) && isa<BitCastInst>(extract->getVectorOperand()) &&
         cast<BitCastInst>(extract->getVectorOperand())->getType()->isIntOrIntVectorTy(8) &&
@@ -4136,7 +4136,7 @@ bool CodeGenPatternMatch::MatchBinaryUnpack4i8(Instruction &I) {
     // Shl+Asr pattern:
     //   %x0 = shl i32 %x, 24
     //   %dst = ashr i32 %x0, 28
-    if ((isa<LShrOperator>(&I) || isa<AShrOperator>(&I)) && isa<ConstantInt>(cast<Instruction>(&I)->getOperand(1))) {
+    if (isa<LShrOperator, AShrOperator>(&I) && isa<ConstantInt>(cast<Instruction>(&I)->getOperand(1))) {
       auto shr = cast<Instruction>(&I);
       auto shl = dyn_cast<ShlOperator>(shr->getOperand(0));
       if (shl && isa<ConstantInt>(shl->getOperand(1)) && cast<ConstantInt>(shl->getOperand(1))->getZExtValue() == 24) {
@@ -4157,7 +4157,7 @@ bool CodeGenPatternMatch::MatchBinaryUnpack4i8(Instruction &I) {
       for (uint32_t i = 0; i < 2; ++i) {
         Value *op = I.getOperand(i);
         sources[i] = std::make_tuple(false, false, op, 0);
-        if (isa<ZExtInst>(op) || isa<SExtInst>(op)) {
+        if (isa<ZExtInst, SExtInst>(op)) {
           auto ext = cast<Instruction>(op);
           if (auto extract = dyn_cast<ExtractElementInst>(ext->getOperand(0))) {
             if (isa<ConstantInt>(extract->getIndexOperand()) && isa<BitCastInst>(extract->getVectorOperand()) &&

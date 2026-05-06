@@ -800,7 +800,7 @@ FPRange computeFPRange(Value *V, FPRangeCache *Cache, unsigned Depth) {
 
   if (auto *C = dyn_cast<ConstantFP>(V)) {
     return FPRange::getPoint(C->getValueAPF());
-  } else if (isa<UndefValue>(V) || isa<PoisonValue>(V) || isa<Argument>(V)) {
+  } else if (isa<UndefValue, PoisonValue, Argument>(V)) {
     // Unknown values - don't set MayBeNaN here; we track operation-generated NaN,
     // not whether inputs could already be NaN.
     return FPRange::getFull(Sem);

@@ -120,7 +120,7 @@ bool PushAnalysis::IsPushableBindlessLoad(Instruction *inst, int &grfOffset, uns
       return true;
     } else if (IntToPtrInst *ptrToInt = dyn_cast<IntToPtrInst>(v)) {
       return isPushable(ptrToInt->getOperand(0));
-    } else if (m_context->platform.hasEfficient64bEnabled() && (isa<ZExtInst>(v) || isa<SExtInst>(v))) {
+    } else if (m_context->platform.hasEfficient64bEnabled() && isa<ZExtInst, SExtInst>(v)) {
       return isPushable(cast<Instruction>(v)->getOperand(0));
     } else if (Instruction *instr = dyn_cast<Instruction>(v)) {
       if (instr->getOpcode() == Instruction::Add && isa<ConstantInt>(instr->getOperand(1)) &&
@@ -173,7 +173,7 @@ bool PushAnalysis::IsStatelessCBLoad(llvm::Instruction *inst, int &pushableAddre
 
   Value *pAddress = pLoad->getOperand(pLoad->getPointerOperandIndex());
   // skip casts
-  if (isa<IntToPtrInst>(pAddress) || isa<PtrToIntInst>(pAddress) || isa<BitCastInst>(pAddress)) {
+  if (isa<IntToPtrInst, PtrToIntInst, BitCastInst>(pAddress)) {
     pAddress = cast<Instruction>(pAddress)->getOperand(0);
   }
 
@@ -186,7 +186,7 @@ bool PushAnalysis::IsStatelessCBLoad(llvm::Instruction *inst, int &pushableAddre
     if (pAdd && pAdd->getOpcode() == llvm::Instruction::Add) {
       GetPotentialPushableAddresses(pAdd->getOperand(0));
       GetPotentialPushableAddresses(pAdd->getOperand(1));
-    } else if (isa<ZExtInst>(pAddress) || isa<SExtInst>(pAddress)) {
+    } else if (isa<ZExtInst, SExtInst>(pAddress)) {
       GetPotentialPushableAddresses(cast<Instruction>(pAddress)->getOperand(0));
     } else if (isa<ConstantInt>(pAddress)) {
       ConstantInt *pConst = cast<ConstantInt>(pAddress);
@@ -337,7 +337,7 @@ bool PushAnalysis::IsStatelessCBLoad(llvm::Instruction *inst, int &pushableAddre
 bool PushAnalysis::IsPushableAddress(llvm::Instruction *inst, llvm::Value *pAddress, int &pushableAddressGrfOffset,
                                      int &pushableOffsetGrfOffset) {
   // skip casts
-  while (isa<IntToPtrInst>(pAddress) || isa<PtrToIntInst>(pAddress) || isa<BitCastInst>(pAddress)) {
+  while (isa<IntToPtrInst, PtrToIntInst, BitCastInst>(pAddress)) {
     pAddress = cast<Instruction>(pAddress)->getOperand(0);
   }
 
@@ -650,7 +650,7 @@ void PushAnalysis::AllocatePushedConstant(Instruction *load, const SimplePushInf
     return;
   }
   unsigned int size = GetSizeInBits(load->getType()) / 8;
-  IGC_ASSERT_MESSAGE(isa<LoadInst>(load) || isa<LdRawIntrinsic>(load), "Expected a load instruction");
+  IGC_ASSERT_MESSAGE((isa<LoadInst, LdRawIntrinsic>(load)), "Expected a load instruction");
 
   // greedy allocation for now
   // first check if we are already pushing from the buffer

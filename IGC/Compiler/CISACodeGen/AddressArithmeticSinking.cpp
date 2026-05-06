@@ -65,7 +65,7 @@ bool AddressArithmeticSinking::runOnFunction(Function &F) {
 }
 
 static bool isAddressArithmetic(Instruction *I) {
-  if (isa<GetElementPtrInst>(I) || isa<ExtractElementInst>(I) || isa<InsertElementInst>(I) || isa<InsertValueInst>(I) ||
+  if (isa<GetElementPtrInst, ExtractElementInst, InsertElementInst, InsertValueInst>(I) ||
       (isa<UnaryInstruction>(I) && !isa<LoadInst>(I)) || isa<BinaryOperator>(I))
     return true;
 

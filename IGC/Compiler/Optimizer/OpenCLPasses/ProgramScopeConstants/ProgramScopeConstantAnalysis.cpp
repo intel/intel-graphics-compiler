@@ -392,7 +392,7 @@ void ProgramScopeConstantAnalysis::addData(Constant *initializer,
         // inside a kernel.  We can't patch it in so we just set it to zero here.
         inlineProgramScopeBuffer.insert(inlineProgramScopeBuffer.end(), pointerSize, 0);
       }
-    } else if (isa<ConstantPointerNull>(initializer) || isa<UndefValue>(initializer)) {
+    } else if (isa<ConstantPointerNull, UndefValue>(initializer)) {
       inlineProgramScopeBuffer.insert(inlineProgramScopeBuffer.end(), pointerSize, 0);
     } else if (isFunc) {
       // Save patch info for function pointer to be patched later by runtime

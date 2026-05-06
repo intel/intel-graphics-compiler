@@ -332,7 +332,7 @@ void CImagesBI::prepareColor(Value *Color) {
 void CImagesBI::prepareImageBTI() {
   Value *pImg = nullptr;
   ConstantInt *imageIndex = CImagesUtils::getImageIndex(m_pParamMap, m_pCallInst, 0, pImg);
-  IGC_ASSERT(isa<Argument>(pImg) || isa<LoadInst>(pImg));
+  IGC_ASSERT((isa<Argument, LoadInst>(pImg)));
   unsigned int addrSpace = EncodeAS4GFXResource(*imageIndex, RESOURCE);
   Value *img = ConstantPointerNull::get(PointerType::get(pImg->getType(), addrSpace));
   m_args.push_back(img); // BTI
@@ -359,7 +359,7 @@ void CImagesBI::preparePairedResource() {
 
   Value *pImg = nullptr;
   ConstantInt *imageIndex = CImagesUtils::getImageIndex(m_pParamMap, m_pCallInst, 0, pImg);
-  IGC_ASSERT(isa<Argument>(pImg) || isa<LoadInst>(pImg));
+  IGC_ASSERT((isa<Argument, LoadInst>(pImg)));
   unsigned int addrSpace = EncodeAS4GFXResource(*imageIndex, RESOURCE);
   Type *ptrTy = llvm::PointerType::get(m_pFloatType, addrSpace);
   Value *pairedResource = UndefValue::get(ptrTy);
@@ -408,7 +408,7 @@ ConstantInt *CImagesBI::CImagesUtils::getImageIndex(ParamMap *pParamMap, CallIns
 
   imageParam = ValueTracker::track(pCallInst, paramIndex, nullptr, nullptr, isSYCLBindlessImageLoad);
   IGC_ASSERT(imageParam);
-  IGC_ASSERT(isa<Argument>(imageParam) || isa<LoadInst>(imageParam));
+  IGC_ASSERT((isa<Argument, LoadInst>(imageParam)));
   int i = (*pParamMap)[imageParam].index;
   imageIndex = ConstantInt::get(Type::getInt32Ty(pCallInst->getContext()), i);
   return imageIndex;
@@ -417,7 +417,7 @@ ConstantInt *CImagesBI::CImagesUtils::getImageIndex(ParamMap *pParamMap, CallIns
 BufferType CImagesBI::CImagesUtils::getImageType(ParamMap *pParamMap, CallInst *pCallInst, unsigned int paramIndex) {
   Value *imageParam = ValueTracker::track(pCallInst, paramIndex, nullptr, nullptr, isSYCLBindlessImageLoad);
   IGC_ASSERT(imageParam);
-  IGC_ASSERT(isa<Argument>(imageParam) || isa<LoadInst>(imageParam));
+  IGC_ASSERT((isa<Argument, LoadInst>(imageParam)));
   return isa<LoadInst>(imageParam) ? BufferType::BINDLESS : (*pParamMap)[imageParam].type;
 }
 

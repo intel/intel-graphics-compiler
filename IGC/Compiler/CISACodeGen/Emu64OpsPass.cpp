@@ -1697,7 +1697,7 @@ bool InstExpander::visitPtrToInt(PtrToIntInst &P2I) {
 
   // Skip through bitcasts and addrspacecasts to find the source. Track if any addrspacecast involves the generic
   // address space.
-  while (isa<BitCastInst>(SrcPtr) || isa<AddrSpaceCastInst>(SrcPtr)) {
+  while (isa<BitCastInst, AddrSpaceCastInst>(SrcPtr)) {
     if (AddrSpaceCastInst *ASC = dyn_cast<AddrSpaceCastInst>(SrcPtr)) {
       unsigned SrcAS = ASC->getSrcAddressSpace();
       unsigned DstAS = ASC->getDestAddressSpace();

@@ -152,7 +152,7 @@ static TrivialUniformity checkValue(const Value *Val, UniformityCache *Cache) {
   if (isa<Argument>(Val)) {
     return TrivialUniformity::FormalArgument();
   }
-  if (isa<Constant>(Val) || isa<BasicBlock>(Val)) { /* Assume constants to be uniform. */
+  if (isa<Constant, BasicBlock>(Val)) { /* Assume constants to be uniform. */
     return TrivialUniformity::Unifrom();
   }
   if (!isa<Instruction>(Val) && !isa<Operator>(Val)) { /* The check supports only instructions and opeators. */

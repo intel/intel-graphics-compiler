@@ -65,7 +65,7 @@ e_alignment getMinAlignment(Value *V, WIAnalysis *WIA, CodeGenContext *pContext)
   bool isSend = false;
   for (auto UI = V->user_begin(), UE = V->user_end(); UI != UE; ++UI) {
     User *U = *UI;
-    if (isa<LoadInst>(U) || isa<StoreInst>(U))
+    if (isa<LoadInst, StoreInst>(U))
       isSend = true;
     if (GenIntrinsicInst *CI = dyn_cast<GenIntrinsicInst>(V)) {
       switch (CI->getIntrinsicID()) {
@@ -286,7 +286,7 @@ void VariableReuseAnalysis::mergeVariables(Function *F) {
         Value *out = CI;
         Value *input = CI->getOperand(0);
 
-        if (!(isa<Instruction>(input) || isa<Argument>(input))) {
+        if (!isa<Instruction, Argument>(input)) {
           // input may be a constant for example
           break;
         }

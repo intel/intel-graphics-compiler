@@ -289,7 +289,7 @@ void PromoteInt8Type::collectCandidates() {
       valinfo->NeedPromote = needPromote;
 
       // Instructions for special handling later
-      if (isa<InsertElementInst>(I) || isa<ExtractElementInst>(I)) {
+      if (isa<InsertElementInst, ExtractElementInst>(I)) {
         worklist.push_back(valinfo);
       }
     }
@@ -802,7 +802,7 @@ Value *PromoteInt8Type::getI16Value(Value *V, bool IsZExt) {
     return UndefValue::get(i16Ty);
   }
 
-  if (isa<Argument>(V) || isa<Instruction>(V)) {
+  if (isa<Argument, Instruction>(V)) {
     auto II = m_valInfoMap.find(V);
     IGC_ASSERT(II != m_valInfoMap.end());
 
@@ -830,7 +830,7 @@ Value *PromoteInt8Type::getI8Value(Value *V) {
     return V;
   }
 
-  if (isa<Argument>(V) || isa<Instruction>(V)) {
+  if (isa<Argument, Instruction>(V)) {
     auto II = m_valInfoMap.find(V);
     IGC_ASSERT_MESSAGE(II != m_valInfoMap.end(), "ICE: Value should be in valInfoMap!");
 

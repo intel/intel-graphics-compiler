@@ -18,7 +18,7 @@ using namespace llvm;
 
 namespace IGC {
 std::optional<ALoadInst> ALoadInst::get(Value *value) {
-  if (isa<LoadInst>(value) || isa<PredicatedLoadIntrinsic>(value))
+  if (isa<LoadInst, PredicatedLoadIntrinsic>(value))
     return ALoadInst{cast<Instruction>(value)};
   return std::nullopt;
 }
@@ -244,7 +244,7 @@ Value *AStoreInst::getPredicate() const {
 }
 
 std::optional<AStoreInst> AStoreInst::get(Value *value) {
-  if (isa<StoreInst>(value) || isa<PredicatedStoreIntrinsic>(value)) {
+  if (isa<StoreInst, PredicatedStoreIntrinsic>(value)) {
     return AStoreInst{cast<Instruction>(value)};
   }
   return std::nullopt;
@@ -280,8 +280,7 @@ MemoryLocation getLocation(Instruction *I, TargetLibraryInfo *TLI) {
   if (StoreInst *SI = dyn_cast<StoreInst>(I))
     return MemoryLocation::get(SI);
 
-  if (isa<LdRawIntrinsic>(I) || isa<StoreRawIntrinsic>(I) || isa<PredicatedLoadIntrinsic>(I) ||
-      isa<PredicatedStoreIntrinsic>(I))
+  if (isa<LdRawIntrinsic, StoreRawIntrinsic, PredicatedLoadIntrinsic, PredicatedStoreIntrinsic>(I))
     return MemoryLocation::getForArgument(cast<CallInst>(I), 0, TLI);
 
   if (GenIntrinsicInst *GInst = dyn_cast<GenIntrinsicInst>(I))

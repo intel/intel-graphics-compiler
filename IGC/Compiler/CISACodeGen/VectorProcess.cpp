@@ -515,7 +515,7 @@ bool VectorProcess::runOnFunction(Function &F) {
   //  Those bitcasts should not be optimized away.
   for (inst_iterator I = inst_begin(F), E = inst_end(F); I != E; ++I) {
     Instruction *inst = &*I;
-    if (isa<LoadInst>(inst) || isa<StoreInst>(inst)) {
+    if (isa<LoadInst, StoreInst>(inst)) {
       m_WorkList.push_back(inst);
     } else if (GenIntrinsicInst *intrin = dyn_cast<GenIntrinsicInst>(inst)) {
       if (intrin->getIntrinsicID() == GenISAIntrinsic::GenISA_ldrawvector_indexed ||

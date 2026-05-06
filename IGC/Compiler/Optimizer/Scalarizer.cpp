@@ -177,7 +177,7 @@ bool ScalarizeFunction::runOnFunction(Function &F) {
 /// </summary>
 void ScalarizeFunction::buildExclusiveSet() {
 
-  auto isAddToWeb = [](Value *V) -> bool { return isa<PHINode>(V) || isa<BitCastInst>(V); };
+  auto isAddToWeb = [](Value *V) -> bool { return isa<PHINode, BitCastInst>(V); };
 
   auto DT = &getAnalysis<DominatorTreeWrapperPass>().getDomTree();
   for (auto dfi = df_begin(DT->getRootNode()), dfe = df_end(DT->getRootNode()); dfi != dfe; ++dfi) {

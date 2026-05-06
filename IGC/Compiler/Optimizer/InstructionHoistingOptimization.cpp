@@ -127,7 +127,7 @@ private:
   inline bool isHoistableInstruction(Value *op, BasicBlock *hoistBB) {
     if (auto *I = dyn_cast<Instruction>(op)) {
       auto *currBB = I->getParent();
-      if (isa<LoadInst>(I) || isa<LdRawIntrinsic>(I) || isa<SampleIntrinsic>(I)) {
+      if (isa<LoadInst, LdRawIntrinsic, SampleIntrinsic>(I)) {
         return false;
       }
       if (currBB != hoistBB) {
@@ -234,7 +234,7 @@ void InstructionHoistingOptimization::CollectHoistableInstructions() {
       }
 
       if (Instruction *I = dyn_cast<Instruction>(Op)) {
-        if (isa<LoadInst>(I) || isa<LdRawIntrinsic>(I) || isa<SampleIntrinsic>(I)) {
+        if (isa<LoadInst, LdRawIntrinsic, SampleIntrinsic>(I)) {
           canInstrHoisted = false;
           break;
         }

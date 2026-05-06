@@ -146,7 +146,7 @@ const SCEV *SCEVMulBuilder::build() {
 static bool deconstructSCEVImpl(const SCEV *S, ScalarEvolution &SE, Loop *L, SCEVExpander &E,
                                 DeconstructedSCEV &Result) {
   // In case of ext instruction analyze nested content.
-  if (isa<SCEVZeroExtendExpr>(S) || isa<SCEVSignExtendExpr>(S)) {
+  if (isa<SCEVZeroExtendExpr, SCEVSignExtendExpr>(S)) {
     if (!deconstructSCEVImpl(dyn_cast<SCEVCastExpr>(S)->getOperand(), SE, L, E, Result))
       return false;
 

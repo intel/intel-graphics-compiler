@@ -59,7 +59,7 @@ char RedundantOpsCSEPass::ID = 0;
 // CSE cannot extend its live range: Arguments, Constants, and
 // GenISA_RuntimeValue intrinsic calls.
 static bool isFunctionWideInvariant(Value *V) {
-  if (isa<Argument>(V) || isa<Constant>(V))
+  if (isa<Argument, Constant>(V))
     return true;
   if (auto *GII = dyn_cast<GenIntrinsicInst>(V))
     return GII->getIntrinsicID() == GenISAIntrinsic::GenISA_RuntimeValue;

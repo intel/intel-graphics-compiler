@@ -985,7 +985,7 @@ std::optional<unsigned> MemOpt::chainedSelectAndPhis(Instruction *Inst, unsigned
   unsigned MaxRemDepth = 0;
   for (auto &operand : Inst->operands()) {
     if (auto *op_inst = dyn_cast<Instruction>(operand)) {
-      if (isa<PHINode>(op_inst) || isa<SelectInst>(op_inst)) {
+      if (isa<PHINode, SelectInst>(op_inst)) {
         std::optional<unsigned> RemDepth = chainedSelectAndPhis(op_inst, depth + 1, depthTracking);
         if (!RemDepth)
           return std::nullopt;
@@ -1052,9 +1052,8 @@ bool MemOpt::mergeLoad(ALoadInst &LeadingLoad, MemRefListTy::iterator aMI, MemRe
 
       CastInst *lastIx0 = dyn_cast<CastInst>(LeadGEP->getOperand(N));
       CastInst *lastIx1 = dyn_cast<CastInst>(NextGEP->getOperand(N));
-      if (lastIx0 && lastIx1 && lastIx0->getOpcode() == lastIx1->getOpcode() &&
-          (isa<SExtInst>(lastIx0) || isa<ZExtInst>(lastIx0)) && lastIx0->getType() == lastIx1->getType() &&
-          lastIx0->getSrcTy() == lastIx1->getSrcTy()) {
+      if (lastIx0 && lastIx1 && lastIx0->getOpcode() == lastIx1->getOpcode() && isa<SExtInst, ZExtInst>(lastIx0) &&
+          lastIx0->getType() == lastIx1->getType() && lastIx0->getSrcTy() == lastIx1->getSrcTy()) {
         if (!LeadLastIdx)
           LeadLastIdx = SE->getSCEV(lastIx0->getOperand(0));
         const SCEV *NextIdx = SE->getSCEV(lastIx1->getOperand(0));
@@ -1139,7 +1138,7 @@ bool MemOpt::mergeLoad(ALoadInst &LeadingLoad, MemRefListTy::iterator aMI, MemRe
     if (aGEP && aGEP->hasIndices()) {
       // index starts from 1
       Value *ix = aGEP->getOperand(aGEP->getNumIndices());
-      DoCmpOnLastIdx = (isa<SExtInst>(ix) || isa<ZExtInst>(ix));
+      DoCmpOnLastIdx = isa<SExtInst, ZExtInst>(ix);
     }
   }
 
@@ -3950,7 +3949,7 @@ void LdStCombine::mergeConstElements(SmallVector<Value *, 4> &EltVals, uint32_t 
   //  b = 8 :
   //     no change.
 
-  auto isValidConst = [](Value *v) { return isa<ConstantInt>(v) || isa<ConstantFP>(v) || isa<ConstantPointerNull>(v); };
+  auto isValidConst = [](Value *v) { return isa<ConstantInt, ConstantFP, ConstantPointerNull>(v); };
 
   // Check if it has two consecutive constants, skip if not.
   // This is a quick check to skip for majority of cases.
@@ -5082,7 +5081,7 @@ uint64_t bitcastToUI64(Constant *C, const DataLayout *DL) {
         }
       } else {
         // C_i is scalar of int, fp or null pointer
-        IGC_ASSERT(isa<ConstantInt>(C_i) || isa<ConstantFP>(C_i) || isa<ConstantPointerNull>(C_i));
+        IGC_ASSERT((isa<ConstantInt, ConstantFP, ConstantPointerNull>(C_i)));
         uint32_t nbits = (uint32_t)DL->getTypeStoreSizeInBits(ty_i);
         uint64_t tImm = GetImmediateVal(C_i);
         tImm &= maxUIntN(nbits);
@@ -5091,10 +5090,10 @@ uint64_t bitcastToUI64(Constant *C, const DataLayout *DL) {
     }
     return imm;
   }
-  if (isa<ConstantFP>(C) || isa<ConstantInt>(C)) {
+  if (isa<ConstantFP, ConstantInt>(C)) {
     return GetImmediateVal(C);
   }
-  if (isa<UndefValue>(C) || isa<ConstantPointerNull>(C)) {
+  if (isa<UndefValue, ConstantPointerNull>(C)) {
     return 0;
   }
   IGC_ASSERT_MESSAGE(0, "unsupported Constant!");

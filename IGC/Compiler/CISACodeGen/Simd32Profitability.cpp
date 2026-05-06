@@ -950,8 +950,7 @@ bool Simd32ProfitabilityAnalysis::checkPSSimd32Profitable() {
           hasIO = true;
           break;
         }
-        if (isa<SampleIntrinsic>(II) || isa<SamplerLoadIntrinsic>(II) || isa<InfoIntrinsic>(II) ||
-            isa<SamplerGatherIntrinsic>(II)) {
+        if (isa<SampleIntrinsic, SamplerLoadIntrinsic, InfoIntrinsic, SamplerGatherIntrinsic>(II)) {
           hasIO = true;
           break;
         }

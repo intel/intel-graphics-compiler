@@ -89,7 +89,7 @@ bool ExtractValuePairFixup::fixup(Function &F) const {
         continue;
       auto II = I->getIterator();
       for (++II; II != BI; ++II) {
-        if (isa<ExtractValueInst>(II) || isa<PHINode>(II))
+        if (isa<ExtractValueInst, PHINode>(II))
           continue;
         // Move this extractvalue after the aggregate value
         // and other extractvalue and PHI instructions.

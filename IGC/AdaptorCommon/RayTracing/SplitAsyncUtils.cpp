@@ -231,8 +231,7 @@ bool RematChecker::materializable(const Instruction &I) const {
   REMAT_DIAG(I.print(*m_pStream));
   REMAT_DIAG(*m_pStream << "\n");
 
-  if (isa<CastInst>(&I) || isa<GetElementPtrInst>(&I) || isa<BinaryOperator>(&I) || isa<CmpInst>(&I) ||
-      isa<SelectInst>(&I) || isa<ExtractElementInst>(&I)) {
+  if (isa<CastInst, GetElementPtrInst, BinaryOperator, CmpInst, SelectInst, ExtractElementInst>(&I)) {
     REMAT_DIAG(*m_pStream << "true: [one of: castinst, gep, binaryoperator, cmpinst, selectinst, eei]\n");
     return true;
   }

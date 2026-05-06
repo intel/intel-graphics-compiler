@@ -218,8 +218,8 @@ static bool isSafelyRematerializable(Use &Use) {
 }
 
 static bool isAddressArithmetic(Instruction *I) {
-  bool Result = isa<GetElementPtrInst>(I) || isa<InsertElementInst>(I) || isa<InsertValueInst>(I) ||
-                isa<BinaryOperator>(I) || isa<AddrSpaceCastInst>(I) || isa<SelectInst>(I) || isa<CastInst>(I) ||
+  bool Result = isa<GetElementPtrInst, InsertElementInst, InsertValueInst, BinaryOperator, AddrSpaceCastInst,
+                    SelectInst, CastInst>(I) ||
                 (isa<UnaryInstruction>(I) && !isa<LoadInst>(I)) ||
                 (IGC_GET_FLAG_VALUE(RematAllowLoads) && isa<LoadInst>(I)) ||
                 (IGC_GET_FLAG_VALUE(RematAllowOneUseLoad) && isa<LoadInst>(I) && I->hasOneUse()) ||

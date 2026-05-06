@@ -94,8 +94,8 @@ bool SampleMultiversioning::isOnlyMultiplied(Instruction *Sample, Instruction *V
 
 Instruction *SampleMultiversioning::getPureFunction(Value *Val) {
   if (auto I = dyn_cast<Instruction>(Val)) {
-    if (isa<UnaryInstruction>(I) || isa<BinaryOperator>(I) || isa<CmpInst>(I) || isa<ExtractElementInst>(I) ||
-        isa<CastInst>(I) || isa<PHINode>(I) || IsMathIntrinsic(GetOpCode(I)) || isa<SelectInst>(I)) {
+    if (isa<UnaryInstruction, BinaryOperator, CmpInst, ExtractElementInst, CastInst, PHINode, SelectInst>(I) ||
+        IsMathIntrinsic(GetOpCode(I))) {
       return I;
     }
   }

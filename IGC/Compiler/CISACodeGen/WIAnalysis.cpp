@@ -389,7 +389,7 @@ bool WIAnalysisRunner::isInstructionSimple(const Instruction *inst) {
     return false;
   }
 
-  if (isa<UnaryInstruction>(inst) || isa<BinaryOperator>(inst) || isa<CmpInst>(inst) || isa<SelectInst>(inst)) {
+  if (isa<UnaryInstruction, BinaryOperator, CmpInst, SelectInst>(inst)) {
     return true;
   }
   if (IsMathIntrinsic(GetOpCode((Instruction *)inst))) {

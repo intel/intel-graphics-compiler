@@ -152,7 +152,7 @@ void TraceRayInlineLatencySchedulerPass::split(RayQuerySyncStackToShadowMemory *
     } else if (auto *GI = dyn_cast<GenIntrinsicInst>(inst)) {
       // The last two asyncRT intrinsics, IgnoreHit() and AcceptHitAndEndSearch(), are not suspendpoints
       // because they will cause shader to end immediately (instead of let shader to continue to end)
-      return (isa<ContinuationHLIntrinsic>(GI) || isa<TraceRayIntrinsic>(GI) || isa<ReportHitHLIntrinsic>(GI));
+      return isa<ContinuationHLIntrinsic, TraceRayIntrinsic, ReportHitHLIntrinsic>(GI);
     } else if (isa<CallInst>(inst) && !isa<IntrinsicInst>(inst)) {
       // We are conservative here because non-intrinsic function might call SuspendPoint instructions.
       return true;

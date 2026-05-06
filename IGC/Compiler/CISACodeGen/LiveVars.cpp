@@ -177,7 +177,7 @@ void LiveVars::setupBBIds(Function *F) {
 
 /// getLVInfo - Get (possibly creating) a LVInfo object for the given vreg.
 LiveVars::LVInfo &LiveVars::getLVInfo(Value *LV) {
-  IGC_ASSERT(isa<Instruction>(LV) || isa<Argument>(LV));
+  IGC_ASSERT((isa<Instruction, Argument>(LV)));
   DenseMap<Value *, LiveVars::LVInfo *>::const_iterator it = VirtRegInfo.find(LV);
   if (it == VirtRegInfo.end()) {
     LiveVars::LVInfo *lvInfo = new (Allocator.Allocate()) LiveVars::LVInfo();
@@ -429,7 +429,7 @@ void LiveVars::analyzePHINodes(const Function &Fn) {
       for (unsigned i = 0, e = phi->getNumOperands(); i != e; ++i) {
         BasicBlock *PBB = phi->getIncomingBlock(i);
         Value *VL = phi->getOperand(i);
-        if (isa<Instruction>(VL) || isa<Argument>(VL)) {
+        if (isa<Instruction, Argument>(VL)) {
           SmallVector<Value *, 4> &VV = PHIVarInfo[PBB];
           VV.push_back(phi->getOperand(i));
         }
@@ -568,7 +568,7 @@ void LiveVars::Calculate(Function *mf, WIAnalysis *wia) {
         // Process all uses.
         for (unsigned i = 0, e = MI->getNumOperands(); i != e; ++i) {
           Value *V = MI->getOperand(i);
-          if (isa<Instruction>(V) || isa<Argument>(V)) {
+          if (isa<Instruction, Argument>(V)) {
             HandleVirtRegUse(V, MBB, MI, false, true);
           }
         }
@@ -606,7 +606,7 @@ void LiveVars::Calculate(Function *mf, WIAnalysis *wia) {
         Instruction *EEI = dyn_cast<ExtractElementInst>(DefV);
         if (EEI) {
           DefV = EEI->getOperand(0);
-          if (isa<Instruction>(DefV) || isa<Argument>(DefV)) {
+          if (isa<Instruction, Argument>(DefV)) {
             DefBlk = (isa<Instruction>(DefV)) ? cast<Instruction>(DefV)->getParent() : NULL;
             MarkVirtRegAliveInBlock(getLVInfo(DefV), DefBlk, MBB);
           }

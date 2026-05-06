@@ -761,8 +761,7 @@ static bool isFreeOfGenericPtrTagBits(Value *V) {
     }
 
     // Safe leaf values that do not propagate pointer-derived tag bits.
-    if (isa<Constant>(Cur) || isa<LoadInst>(Cur) || isa<CallInst>(Cur) || isa<Argument>(Cur) ||
-        isa<ExtractElementInst>(Cur) || isa<ExtractValueInst>(Cur))
+    if (isa<Constant, LoadInst, CallInst, Argument, ExtractElementInst, ExtractValueInst>(Cur))
       continue;
 
     // Binary arithmetic, both operands may contribute bits.
@@ -787,7 +786,7 @@ static bool isFreeOfGenericPtrTagBits(Value *V) {
     }
 
     // Integer casts (zext, sext, trunc).
-    if (isa<ZExtInst>(Cur) || isa<SExtInst>(Cur) || isa<TruncInst>(Cur)) {
+    if (isa<ZExtInst, SExtInst, TruncInst>(Cur)) {
       Worklist.push_back(cast<Instruction>(Cur)->getOperand(0));
       continue;
     }

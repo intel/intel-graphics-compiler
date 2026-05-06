@@ -213,7 +213,7 @@ static void GetAllocaLiverange(Instruction *I, unsigned int &liverangeStart, uns
   IGC_ASSERT(nullptr != I);
 
   for (Value::user_iterator use_it = I->user_begin(), use_e = I->user_end(); use_it != use_e; ++use_it) {
-    if (isa<GetElementPtrInst>(*use_it) || isa<BitCastInst>(*use_it)) {
+    if (isa<GetElementPtrInst, BitCastInst>(*use_it)) {
       // collect liveranges for GEP operations related to alloca
       Instruction *Inst = cast<Instruction>(*use_it);
       LowerGEPForPrivMem::PromotedLiverange GEPliverange;
@@ -227,7 +227,7 @@ static void GetAllocaLiverange(Instruction *I, unsigned int &liverangeStart, uns
 
       liverangeStart = std::min(liverangeStart, GEPliverange.lowId);
       liverangeEnd = std::max(liverangeEnd, GEPliverange.highId);
-    } else if (isa<LoadInst>(*use_it) || isa<StoreInst>(*use_it) || isa<llvm::IntrinsicInst>(*use_it)) {
+    } else if (isa<LoadInst, StoreInst, IntrinsicInst>(*use_it)) {
       unsigned int idx = rpe->getAssignedNumberForInst(cast<Instruction>(*use_it));
       liverangeStart = std::min(liverangeStart, idx);
       liverangeEnd = std::max(liverangeEnd, idx);

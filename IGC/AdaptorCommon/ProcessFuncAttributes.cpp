@@ -759,7 +759,7 @@ bool ProcessFuncAttributes::runOnModule(Module &M) {
             } else if (opc == Instruction::FPToSI || opc == Instruction::FCmp || opc == Instruction::FPToUI ||
                        opc == Instruction::FPTrunc) {
               isSet = aI.getOperand(0)->getType()->isDoubleTy();
-            } else if (isa<IntrinsicInst>(&aI) || isa<GenIntrinsicInst>(&aI)) {
+            } else if (isa<IntrinsicInst, GenIntrinsicInst>(&aI)) {
               CallInst *callI = cast<CallInst>(&aI);
               isSet =
                   (callI->getType()->isDoubleTy() || std::any_of(callI->arg_begin(), callI->arg_end(),

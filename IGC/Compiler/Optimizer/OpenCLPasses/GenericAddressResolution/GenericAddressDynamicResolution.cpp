@@ -101,7 +101,7 @@ bool GenericAddressDynamicResolution::runOnFunction(Function &F) {
       loadStoreInstructions.push_back(&instruction);
     } else if (isa<CallInst>(instruction)) {
       callInstructions.push_back(&instruction);
-    } else if (isa<LoadInst>(instruction) || isa<StoreInst>(instruction)) {
+    } else if (isa<LoadInst, StoreInst>(instruction)) {
       loadStoreInstructions.push_back(&instruction);
     }
   }

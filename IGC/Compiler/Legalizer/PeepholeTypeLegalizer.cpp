@@ -118,7 +118,7 @@ void PeepholeTypeLegalizer::visitInstruction(Instruction &I) {
       legalizePhiInstruction(I); // phi nodes and all incoming values
     } else if (isa<UnaryInstruction>(&I)) {
       legalizeUnaryInstruction(I); // pointercast &/or load
-    } else if (isa<ICmpInst>(&I) || isa<BinaryOperator>(&I) || isa<SelectInst>(&I)) {
+    } else if (isa<ICmpInst, BinaryOperator, SelectInst>(&I)) {
       legalizeBinaryOperator(I); // Bitwise and Arithmetic Operations
     } else if (isa<ExtractElementInst>(&I)) {
       legalizeExtractElement(I);

@@ -44,7 +44,7 @@ bool NontemporalLoadsAndStoresInAssert::runOnModule(Module &M) {
       continue;
 
     for (auto I = inst_begin(F); I != inst_end(F); ++I) {
-      if (isa<LoadInst>(*I) || isa<StoreInst>(*I)) {
+      if (isa<LoadInst, StoreInst>(*I)) {
         Constant *One = ConstantInt::get(Type::getInt32Ty(I->getContext()), 1);
         MDNode *Node = MDNode::get(I->getContext(), ConstantAsMetadata::get(One));
         I->setMetadata(LLVMContext::MD_nontemporal, Node);

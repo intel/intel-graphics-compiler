@@ -70,8 +70,7 @@ void *GenIntrinsicsTTIImpl::getAdjustedAnalysisPointer(const void *ID) {
 }
 
 bool isSendMessage(const llvm::GenIntrinsicInst *inst) {
-  if (isa<SamplerLoadIntrinsic>(inst) || isa<SampleIntrinsic>(inst) || isa<LdRawIntrinsic>(inst) ||
-      isa<InfoIntrinsic>(inst) || isa<SamplerGatherIntrinsic>(inst)) {
+  if (isa<SamplerLoadIntrinsic, SampleIntrinsic, LdRawIntrinsic, InfoIntrinsic, SamplerGatherIntrinsic>(inst)) {
     return true;
   }
 
@@ -254,7 +253,7 @@ void GenIntrinsicsTTIImpl::getUnrollingPreferences(Loop *L, ScalarEvolution &SE,
           hasDPInst = I.getType()->isDoubleTy();
           break;
         case Instruction::Call: {
-          if (isa<GenIntrinsicInst>(&I) || isa<IntrinsicInst>(&I)) {
+          if (isa<GenIntrinsicInst, IntrinsicInst>(&I)) {
             CallInst *callI = cast<CallInst>(&I);
             hasDPInst =
                 (callI->getType()->isDoubleTy() || std::any_of(callI->arg_begin(), callI->arg_end(),

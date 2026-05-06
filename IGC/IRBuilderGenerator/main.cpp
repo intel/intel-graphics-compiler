@@ -495,7 +495,7 @@ public:
   ValueRepr(const TypeRepr &TyRepr, SymbolTracker &SymTracker) : TyRepr(TyRepr), SymTracker(SymTracker) {}
 
   std::string getValueRepr(const Value *V) {
-    if (isa<Argument>(V) || isa<Instruction>(V) || isa<BasicBlock>(V)) {
+    if (isa<Argument, Instruction, BasicBlock>(V)) {
       return SymTracker.getName(V);
     } else if (isa<Constant>(V)) {
       std::string S;

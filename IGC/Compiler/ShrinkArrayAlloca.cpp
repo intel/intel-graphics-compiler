@@ -190,7 +190,7 @@ inline bool GetUsedVectorElements(Value *parentPtr, Value *val, SmallVector<bool
     // elsewhere.
     IGC_ASSERT(store->getValueOperand()->getType()->isVectorTy());
     return false;
-  } else if (!(isa<AllocaInst>(val) || isa<PHINode>(val) || isa<InsertElementInst>(val) || isa<LoadInst>(val))) {
+  } else if (!isa<AllocaInst, PHINode, InsertElementInst, LoadInst>(val)) {
     return false;
   }
 

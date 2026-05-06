@@ -355,7 +355,7 @@ bool RegisterPressureEstimate::buildLiveIntervals(bool RemoveLR) {
       // Handle its input operands.
       for (auto OI = Inst->op_begin(), OE = Inst->op_end(); OI != OE; ++OI) {
         Value *Opnd = *OI;
-        if (isa<Argument>(Opnd) || isa<Instruction>(Opnd)) {
+        if (isa<Argument, Instruction>(Opnd)) {
           if (LiveRange *LR = getLiveRangeOrNull(Opnd)) {
             LR->addSegment(BlockNum, InstNum);
           }

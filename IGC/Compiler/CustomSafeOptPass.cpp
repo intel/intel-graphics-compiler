@@ -7327,8 +7327,7 @@ void InsertBranchOpt::atomicSplitOpt(Function &F, int mode) {
 // This function is used to determine if an instruction can be safely cloned
 // and re-inserted elsewhere without changing program semantics.
 static bool isRematerializable(const Instruction *I) {
-  if (isa<PHINode>(I) || isa<AllocaInst>(I) || isa<StoreInst>(I) || I->isTerminator() || I->isEHPad() ||
-      I->isDebugOrPseudoInst())
+  if (isa<PHINode, AllocaInst, StoreInst>(I) || I->isTerminator() || I->isEHPad() || I->isDebugOrPseudoInst())
     return false;
 
   if (isa<LoadInst>(I)) {
@@ -7366,7 +7365,7 @@ bool isRematerializable(Value *V, const Instruction *dest, const DominatorTree &
       continue;
 
     // Constants and function arguments are always rematerializable
-    if (isa<Constant>(cur) || isa<Argument>(cur))
+    if (isa<Constant, Argument>(cur))
       continue;
 
     if (auto *I = dyn_cast<Instruction>(cur)) {

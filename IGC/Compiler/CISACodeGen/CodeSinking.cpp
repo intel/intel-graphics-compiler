@@ -486,7 +486,7 @@ bool CodeSinking::localSink(BasicBlock *BB) {
 
 bool CodeSinking::isSafeToMove(Instruction *inst, bool &reducePressure, bool &hasAliasConcern,
                                SmallPtrSetImpl<Instruction *> &Stores) {
-  if (isa<AllocaInst>(inst) || isa<ExtractValueInst>(inst)) {
+  if (isa<AllocaInst, ExtractValueInst>(inst)) {
     return false;
   }
   if (isa<CallInst>(inst) && cast<CallInst>(inst)->isConvergent()) {
@@ -494,9 +494,8 @@ bool CodeSinking::isSafeToMove(Instruction *inst, bool &reducePressure, bool &ha
   }
   hasAliasConcern = true;
   reducePressure = false;
-  if (isa<GetElementPtrInst>(inst) || isa<ExtractElementInst>(inst) || isa<InsertElementInst>(inst) ||
-      isa<InsertValueInst>(inst) || (isa<UnaryInstruction>(inst) && !isa<LoadInst>(inst)) ||
-      isa<BinaryOperator>(inst)) {
+  if (isa<GetElementPtrInst, ExtractElementInst, InsertElementInst, InsertValueInst>(inst) ||
+      (isa<UnaryInstruction>(inst) && !isa<LoadInst>(inst)) || isa<BinaryOperator>(inst)) {
     hasAliasConcern = false;
     // sink CmpInst to make the flag-register lifetime short
     reducePressure = (isCastInstrReducingPressure(inst, true) || isa<CmpInst>(inst));
@@ -1165,7 +1164,7 @@ bool CodeLoopSinking::loopSink(Loop *L, LoopSinkMode Mode) {
           continue;
 
         Worthiness = LoopSinkWorthiness::Sink;
-      } else if (isa<BinaryOperator>(I) || isa<CastInst>(I)) {
+      } else if (isa<BinaryOperator, CastInst>(I)) {
         Worthiness = LoopSinkWorthiness::MaybeSink;
 
         if (isCastInstrReducingPressure(I, false))
@@ -2069,7 +2068,7 @@ bool CodeLoopSinking::tryCreateShufflePatternCandidates(BasicBlock *BB, Loop *L,
 }
 
 bool CodeLoopSinking::isAlwaysSinkInstruction(Instruction *I) {
-  return (isa<IntToPtrInst>(I) || isa<PtrToIntInst>(I) || isa<ExtractElementInst>(I) || isa<InsertValueInst>(I));
+  return isa<IntToPtrInst, PtrToIntInst, ExtractElementInst, InsertValueInst>(I);
 }
 
 // Check that this instruction is a part of address calc
@@ -2266,7 +2265,7 @@ bool CodeLoopSinking::mayBeLoopSinkCandidate(Instruction *I, Loop *L) {
       return false;
   }
 
-  if (isAlwaysSinkInstruction(I) || isa<BinaryOperator>(I) || isa<CastInst>(I))
+  if (isAlwaysSinkInstruction(I) || isa<BinaryOperator, CastInst>(I))
     return true;
 
   bool AllowLoadSinking = IGC_IS_FLAG_ENABLED(EnableLoadsLoopSink) || IGC_IS_FLAG_ENABLED(ForceLoadsLoopSink);

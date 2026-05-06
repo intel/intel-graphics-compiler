@@ -1536,8 +1536,8 @@ private:
 
         Value *FirstOp = Node.I->getOperand(0);
         auto *FirstOpI = dyn_cast<Instruction>(FirstOp);
-        bool IsHead = isa<UndefValue>(FirstOp) || isa<ConstantAggregateZero>(FirstOp) || !FirstOpI ||
-                      !isDPAS(FirstOpI) || FirstOpI->getParent() != BB;
+        bool IsHead = isa<UndefValue, ConstantAggregateZero>(FirstOp) || !FirstOpI || !isDPAS(FirstOpI) ||
+                      FirstOpI->getParent() != BB;
 
         if (IsHead) {
           int ChainIdx = static_cast<int>(DPASChains.size());
@@ -2127,7 +2127,7 @@ private:
       for (auto &Node : ScheduledList) {
         NewPositions[Node->I] = CurrentPos;
 
-        if (isa<InsertElementInst>(Node->I) || isa<ExtractElementInst>(Node->I)) {
+        if (isa<InsertElementInst, ExtractElementInst>(Node->I)) {
           continue;
         }
         if (isNoOpInst(Node->I, CTX)) {
@@ -2636,7 +2636,7 @@ private:
               if (PN->Src->I == Node->I) {
                 continue;
               }
-              if (isa<Constant>(PN->Src->I) || isa<PHINode>(PN->Src->I)) {
+              if (isa<Constant, PHINode>(PN->Src->I)) {
                 continue;
               }
               Instruction *OpI = dyn_cast<Instruction>(PN->Src->I);

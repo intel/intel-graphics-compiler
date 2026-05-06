@@ -290,7 +290,7 @@ CallInst *Decompose2DBlockFuncsWithHoisting::createPayload(Instruction *PlaceToI
 
 bool Decompose2DBlockFuncsWithHoisting::checkArg(Value *Val, Loop *L) const {
   // If Val is a constant or function argument, it's always safe to hoist
-  if (isa<Constant>(Val) || isa<Argument>(Val))
+  if (isa<Constant, Argument>(Val))
     return true;
 
   // If Val is an instruction, check if it's defined outside the loop
@@ -307,7 +307,7 @@ bool Decompose2DBlockFuncsWithHoisting::checkArg(Value *Val, Loop *L) const {
     if (BitCastInst *BC = dyn_cast<BitCastInst>(I)) {
       Value *Op = BC->getOperand(0);
       // Only allow hoisting if operand is constant, argument, or defined outside loop
-      if (isa<Constant>(Op) || isa<Argument>(Op))
+      if (isa<Constant, Argument>(Op))
         return true;
       if (Instruction *OpInst = dyn_cast<Instruction>(Op)) {
         // Operand must be defined outside the loop (not inside)

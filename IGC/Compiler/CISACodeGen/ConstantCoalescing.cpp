@@ -708,8 +708,7 @@ void ConstantCoalescing::CombineTwoLoads(BufChunk *cov_chunk, Instruction *load,
 
     if (addrSpace == ADDRESS_SPACE_CONSTANT) {
       // OCL path
-      IGC_ASSERT(isa<IntToPtrInst>(addr_ptr) || isa<BitCastInst>(addr_ptr) ||
-                 cast<GetElementPtrInst>(addr_ptr)->hasAllZeroIndices());
+      IGC_ASSERT((isa<IntToPtrInst, BitCastInst>(addr_ptr)) || cast<GetElementPtrInst>(addr_ptr)->hasAllZeroIndices());
       Value *eac = cast<Instruction>(addr_ptr)->getOperand(0);
       // non-uniform, address must be non-uniform
       // modify the address calculation if the chunk-start is changed
@@ -800,7 +799,7 @@ void ConstantCoalescing::CombineTwoLoads(BufChunk *cov_chunk, Instruction *load,
 }
 
 alignment_t ConstantCoalescing::GetAlignment(Instruction *load) const {
-  IGC_ASSERT(isa<LdRawIntrinsic>(load) || isa<LoadInst>(load));
+  IGC_ASSERT((isa<LdRawIntrinsic, LoadInst>(load)));
   alignment_t alignment = 1;
 
   if (isa<LoadInst>(load)) {
@@ -813,7 +812,7 @@ alignment_t ConstantCoalescing::GetAlignment(Instruction *load) const {
 }
 
 void ConstantCoalescing::SetAlignment(Instruction *load, uint alignment) {
-  IGC_ASSERT(isa<LdRawIntrinsic>(load) || isa<LoadInst>(load));
+  IGC_ASSERT((isa<LdRawIntrinsic, LoadInst>(load)));
   IGC_ASSERT(isPowerOf2_32(alignment));
 
   if (isa<LoadInst>(load)) {
@@ -824,7 +823,7 @@ void ConstantCoalescing::SetAlignment(Instruction *load, uint alignment) {
 }
 
 void ConstantCoalescing::SetAlignmentFromOffset(Instruction *load) {
-  IGC_ASSERT(isa<LdRawIntrinsic>(load) || isa<LoadInst>(load));
+  IGC_ASSERT((isa<LdRawIntrinsic, LoadInst>(load)));
   Value *offset = nullptr;
   if (auto loadInst = dyn_cast<LoadInst>(load)) {
     Value *ptr = loadInst->getOperand(0);
@@ -1550,7 +1549,7 @@ void ConstantCoalescing::AdjustChunk(BufChunk *cov_chunk, uint start_adj, uint s
           } else {
             Instruction *expr2 = dyn_cast<Instruction>(expr->getOperand(srcIdx));
             if (expr2 && expr2->hasOneUse()) {
-              if ((isa<ZExtInst>(expr2) || isa<SExtInst>(expr2)) && isa<BinaryOperator>(expr2->getOperand(0)))
+              if (isa<ZExtInst, SExtInst>(expr2) && isa<BinaryOperator>(expr2->getOperand(0)))
                 expr2 = cast<Instruction>(expr2->getOperand(0));
               IGC_ASSERT(isa<BinaryOperator>(expr2));
 
@@ -1574,10 +1573,10 @@ void ConstantCoalescing::AdjustChunk(BufChunk *cov_chunk, uint start_adj, uint s
       }
     } else {
       // gfx path
-      IGC_ASSERT(isa<IntToPtrInst>(addr_ptr) || isa<BitCastInst>(addr_ptr));
+      IGC_ASSERT((isa<IntToPtrInst, BitCastInst>(addr_ptr)));
       addr_ptr->mutateType(PointerType::get(vty, addrSpace));
       Instruction *intToPtrInst = cast<Instruction>(addr_ptr);
-      while (isa<IntToPtrInst>(intToPtrInst->getOperand(0)) || isa<BitCastInst>(intToPtrInst->getOperand(0))) {
+      while (isa<IntToPtrInst, BitCastInst>(intToPtrInst->getOperand(0))) {
         intToPtrInst = cast<Instruction>(intToPtrInst->getOperand(0));
       }
       IGC_ASSERT(isa<IntToPtrInst>(intToPtrInst));
@@ -1764,7 +1763,7 @@ void ConstantCoalescing::EnlargeChunk(BufChunk *cov_chunk, uint size_adj) {
     // change the dest ptr-type on bitcast
     Value *addr_ptr = cov_chunk->chunkIO->getOperand(0);
     unsigned addrSpace = (cast<PointerType>(addr_ptr->getType()))->getAddressSpace();
-    if (isa<BitCastInst>(addr_ptr) || isa<IntToPtrInst>(addr_ptr)) {
+    if (isa<BitCastInst, IntToPtrInst>(addr_ptr)) {
       addr_ptr->mutateType(PointerType::get(vty, addrSpace));
     }
   } else {

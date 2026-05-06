@@ -1003,8 +1003,7 @@ bool IsReadOnlyLoadDirectCB(llvm::Instruction *pLLVMInst, uint &cbId, llvm::Valu
     while (isa<BitCastInst>(ptrVal)) {
       ptrVal = cast<BitCastInst>(ptrVal)->getOperand(0);
     }
-    if (isa<ConstantPointerNull>(ptrVal) || isa<IntToPtrInst>(ptrVal) || isa<GetElementPtrInst>(ptrVal) ||
-        isa<ConstantExpr>(ptrVal) || isa<LoadInst>(ptrVal) || isa<Argument>(ptrVal)) {
+    if (isa<ConstantPointerNull, IntToPtrInst, GetElementPtrInst, ConstantExpr, LoadInst, Argument>(ptrVal)) {
       eltPtrVal = ptrVal;
       return true;
     }
@@ -1824,7 +1823,7 @@ bool IsBitCastForLifetimeMark(const llvm::Value *V) {
 }
 
 ERoundingMode GetRoundingMode_FPCvtInt(ModuleMetaData *modMD, Instruction *pInst) {
-  if (isa<FPToSIInst>(pInst) || isa<FPToUIInst>(pInst)) {
+  if (isa<FPToSIInst, FPToUIInst>(pInst)) {
     const ERoundingMode defaultRoundingMode_FPCvtInt =
         static_cast<ERoundingMode>(modMD->compOpt.FloatCvtIntRoundingMode);
     return defaultRoundingMode_FPCvtInt;
@@ -1994,9 +1993,8 @@ bool ignoresRoundingMode(llvm::Instruction *inst) {
     return false;
   };
 
-  if (isa<InsertElementInst>(inst) || isa<ExtractElementInst>(inst) || isa<BitCastInst>(inst) || isa<ICmpInst>(inst) ||
-      isa<FPExtInst>(inst) || isa<FCmpInst>(inst) || isa<SelectInst>(inst) || isa<TruncInst>(inst) ||
-      isa<LoadInst>(inst) || isa<StoreInst>(inst)) {
+  if (isa<InsertElementInst, ExtractElementInst, BitCastInst, ICmpInst, FPExtInst, FCmpInst, SelectInst, TruncInst,
+          LoadInst, StoreInst>(inst)) {
     // these are not affected by rounding mode.
     return true;
   }
@@ -2208,7 +2206,7 @@ int getSIMDSize(const IGCMD::MetaDataUtils *M, llvm::Function *F) {
 
 // If true, the codegen will likely not emit instruction for this instruction.
 bool isNoOpInst(Instruction *I, CodeGenContext *Ctx) {
-  if (isa<BitCastInst>(I) || isa<IntToPtrInst>(I) || isa<PtrToIntInst>(I)) {
+  if (isa<BitCastInst, IntToPtrInst, PtrToIntInst>(I)) {
     // Don't bother with constant operands
     if (isa<Constant>(I->getOperand(0))) {
       return false;
@@ -2672,7 +2670,7 @@ void FixAddressSpaceInAllUses(llvm::Value *ptr, uint newAS, uint oldAS) {
   for (auto UI = ptr->user_begin(), E = ptr->user_end(); UI != E; ++UI) {
     Instruction *inst = cast<Instruction>(*UI);
     PointerType *instType = nullptr;
-    if (isa<BitCastInst>(inst) || isa<GetElementPtrInst>(inst) || isa<AddrSpaceCastInst>(inst) || isa<PHINode>(inst)) {
+    if (isa<BitCastInst, GetElementPtrInst, AddrSpaceCastInst, PHINode>(inst)) {
       instType = dyn_cast<PointerType>(inst->getType());
     }
 
