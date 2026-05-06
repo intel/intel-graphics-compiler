@@ -1257,6 +1257,11 @@ DECLARE_IGC_REGKEY(bool, LscForceSpillNonStackcall, false, "Non-stack call kerne
                    true)
 DECLARE_IGC_REGKEY(bool, EnableEmitMoreMoviCases, false,
                    "Enables emitting movi for waveShuffle cases using And to keep index within single register.", true)
+DECLARE_IGC_REGKEY(bool, ConvergentGradientsOnGenISA, false,
+                   "Force-enable the ConvergentGradientsOnGenISA AIL: mark GenISA gradient intrinsics convergent so "
+                   "code-motion passes cannot sink them across divergent branches. Useful for testing the workaround "
+                   "without UMD AIL detection.",
+                   true)
 DECLARE_IGC_REGKEY_ENUM(ForceRegisterAccessBoundsChecks, -1,
                         "Controls the behavior of RegisterAccessBoundsChecks, the pass that adds runtime bounds-checks "
                         "for vector-indexing instructions."
