@@ -393,7 +393,7 @@ This document lists all SPIR-V extensions supported by IGC and their platform re
 
 ## SPV_INTEL_rounded_divide_sqrt
 
-**Specification**: TBD
+**Specification**: https://github.khronos.org/SPIRV-Registry/extensions/INTEL/SPV_INTEL_rounded_divide_sqrt.html
 
 > **Experimentally supported on**: XE_HP+ (XE_HP_SDV, DG2, PVC, METEORLAKE, ARROWLAKE, BMG, LUNARLAKE, PTL, NVL_XE3G, NVL, CRI)
 

@@ -468,7 +468,7 @@ def SPV_INTEL_device_barrier : ExperimentalExtension<
 def SPV_INTEL_rounded_divide_sqrt : ExperimentalExtension<
   "SPV_INTEL_rounded_divide_sqrt",
   [ Capability<"RoundedDivideSqrtINTEL"> ],
-  "TBD",
+  "https://github.khronos.org/SPIRV-Registry/extensions/INTEL/SPV_INTEL_rounded_divide_sqrt.html",
   isCoreChildOf<IGFX_XE_HP_CORE>
 >;
 
