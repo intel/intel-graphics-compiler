@@ -1,6 +1,6 @@
 #=========================== begin_copyright_notice ============================
 #
-# Copyright (C) 2021 Intel Corporation
+# Copyright (C) 2021-2026 Intel Corporation
 #
 # SPDX-License-Identifier: MIT
 #
@@ -125,6 +125,10 @@ elseif(IGC_BUILD__LLVM_PREBUILDS)
     Passes
     SelectionDAG
     Support)
+  if(LLVM_VERSION_MAJOR GREATER_EQUAL 22)
+    igc_get_llvm_targets(LLD_ELF_DTLTO_DEP DTLTO)
+    list(APPEND LLD_ELF_LLVM_DEPS ${LLD_ELF_DTLTO_DEP})
+  endif()
   target_link_libraries(lldCommon INTERFACE
     ${LLD_COMMON_LLVM_DEPS})
   target_link_libraries(lldELF INTERFACE

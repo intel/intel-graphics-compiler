@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2018-2024 Intel Corporation
+Copyright (C) 2018-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -68,36 +68,73 @@ public:
 
   using llvm::IRBuilder<T, InserterTy>::CreateMemCpy;
 
+#if LLVM_VERSION_MAJOR >= 22
+  // LLVM 22 requires merging the four individual AA metadata params into AAMDNodes.
+  static llvm::AAMDNodes makeAAMDNodes(llvm::MDNode *TBAATag, llvm::MDNode *TBAAStructTag, llvm::MDNode *ScopeTag,
+                                       llvm::MDNode *NoAliasTag) {
+    llvm::AAMDNodes AATags;
+    AATags.TBAA = TBAATag;
+    AATags.TBAAStruct = TBAAStructTag;
+    AATags.Scope = ScopeTag;
+    AATags.NoAlias = NoAliasTag;
+    return AATags;
+  }
+#endif
+
   inline llvm::CallInst *CreateMemCpy(llvm::Value *Dst, llvm::Value *Src, uint64_t Size, alignment_t Align,
                                       bool isVolatile = false, llvm::MDNode *TBAATag = nullptr,
                                       llvm::MDNode *TBAAStructTag = nullptr, llvm::MDNode *ScopeTag = nullptr,
                                       llvm::MDNode *NoAliasTag = nullptr) {
+#if LLVM_VERSION_MAJOR >= 22
+    return llvm::IRBuilder<T, InserterTy>::CreateMemCpy(Dst, getCorrectAlign(Align), Src, getCorrectAlign(Align), Size,
+                                                        isVolatile,
+                                                        makeAAMDNodes(TBAATag, TBAAStructTag, ScopeTag, NoAliasTag));
+#else
     return llvm::IRBuilder<T, InserterTy>::CreateMemCpy(Dst, getCorrectAlign(Align), Src, getCorrectAlign(Align), Size,
                                                         isVolatile, TBAATag, TBAAStructTag, ScopeTag, NoAliasTag);
+#endif
   }
 
   inline llvm::CallInst *CreateMemCpy(llvm::Value *Dst, llvm::Value *Src, llvm::Value *Size, alignment_t Align,
                                       bool isVolatile = false, llvm::MDNode *TBAATag = nullptr,
                                       llvm::MDNode *TBAAStructTag = nullptr, llvm::MDNode *ScopeTag = nullptr,
                                       llvm::MDNode *NoAliasTag = nullptr) {
+#if LLVM_VERSION_MAJOR >= 22
+    return llvm::IRBuilder<T, InserterTy>::CreateMemCpy(Dst, getCorrectAlign(Align), Src, getCorrectAlign(Align), Size,
+                                                        isVolatile,
+                                                        makeAAMDNodes(TBAATag, TBAAStructTag, ScopeTag, NoAliasTag));
+#else
     return llvm::IRBuilder<T, InserterTy>::CreateMemCpy(Dst, getCorrectAlign(Align), Src, getCorrectAlign(Align), Size,
                                                         isVolatile, TBAATag, TBAAStructTag, ScopeTag, NoAliasTag);
+#endif
   }
 
   inline llvm::CallInst *CreateMemCpy(llvm::Value *Dst, alignment_t DstAlign, llvm::Value *Src, alignment_t SrcAlign,
                                       llvm::Value *Size, bool isVolatile = false, llvm::MDNode *TBAATag = nullptr,
                                       llvm::MDNode *TBAAStructTag = nullptr, llvm::MDNode *ScopeTag = nullptr,
                                       llvm::MDNode *NoAliasTag = nullptr) {
+#if LLVM_VERSION_MAJOR >= 22
+    return llvm::IRBuilder<T, InserterTy>::CreateMemCpy(Dst, getCorrectAlign(DstAlign), Src, getCorrectAlign(SrcAlign),
+                                                        Size, isVolatile,
+                                                        makeAAMDNodes(TBAATag, TBAAStructTag, ScopeTag, NoAliasTag));
+#else
     return llvm::IRBuilder<T, InserterTy>::CreateMemCpy(Dst, getCorrectAlign(DstAlign), Src, getCorrectAlign(SrcAlign),
                                                         Size, isVolatile, TBAATag, TBAAStructTag, ScopeTag, NoAliasTag);
+#endif
   }
 
   inline llvm::CallInst *CreateMemCpy(llvm::Value *Dst, alignment_t DstAlign, llvm::Value *Src, alignment_t SrcAlign,
                                       uint64_t Size, bool isVolatile = false, llvm::MDNode *TBAATag = nullptr,
                                       llvm::MDNode *TBAAStructTag = nullptr, llvm::MDNode *ScopeTag = nullptr,
                                       llvm::MDNode *NoAliasTag = nullptr) {
+#if LLVM_VERSION_MAJOR >= 22
+    return llvm::IRBuilder<T, InserterTy>::CreateMemCpy(Dst, getCorrectAlign(DstAlign), Src, getCorrectAlign(SrcAlign),
+                                                        Size, isVolatile,
+                                                        makeAAMDNodes(TBAATag, TBAAStructTag, ScopeTag, NoAliasTag));
+#else
     return llvm::IRBuilder<T, InserterTy>::CreateMemCpy(Dst, getCorrectAlign(DstAlign), Src, getCorrectAlign(SrcAlign),
                                                         Size, isVolatile, TBAATag, TBAAStructTag, ScopeTag, NoAliasTag);
+#endif
   }
 
   using llvm::IRBuilder<T, InserterTy>::CreateMemSet;
