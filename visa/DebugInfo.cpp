@@ -2142,12 +2142,10 @@ void SaveRestoreInfo::update(G4_INST *inst, int32_t memOffset,
         inst->getDst()->getLinearizedStart() / builder.numEltPerGRF<Type_UB>();
 
     // Remove any item in map that is saved as storage for some other reg.
-    for (const auto &mapIt : saveRestoreMap) {
-      if (mapIt.second.first == RegOrMem::Reg &&
-          mapIt.second.second.regNum == dstreg) {
-        DEBUG_VERBOSE("Removed r" << mapIt.second.second.regNum
-                                  << ".0 (8):d\n");
-        saveRestoreMap.erase(mapIt.first);
+    for (const auto &[key, value] : saveRestoreMap) {
+      if (value.first == RegOrMem::Reg && value.second.regNum == dstreg) {
+        DEBUG_VERBOSE("Removed r" << dstreg << ".0 (8):d\n");
+        saveRestoreMap.erase(key);
         break;
       }
     }
@@ -2162,15 +2160,13 @@ void SaveRestoreInfo::update(G4_INST *inst, int32_t memOffset,
         inst->getDst()->getLinearizedStart() / builder.numEltPerGRF<Type_UB>();
 
     bool done = false;
-    for (const auto &mapIt : saveRestoreMap) {
-      if (mapIt.second.first == RegOrMem::Reg &&
-          mapIt.second.second.regNum == srcreg && mapIt.first == dstreg) {
-        saveRestoreMap.erase(mapIt.first);
-        done = true;
-        DEBUG_VERBOSE("Restored r" << dstreg << ".0 (8):d from r" << srcreg
-                                   << ".0 (8):d\n");
-        break;
-      }
+    auto it = saveRestoreMap.find(dstreg);
+    if (it != saveRestoreMap.end() && it->second.first == RegOrMem::Reg &&
+        it->second.second.regNum == srcreg) {
+      saveRestoreMap.erase(it);
+      done = true;
+      DEBUG_VERBOSE("Restored r" << dstreg << ".0 (8):d from r" << srcreg
+                                 << ".0 (8):d\n");
     }
 
     if (done == false) {
@@ -2263,21 +2259,18 @@ void SaveRestoreInfo::update(G4_INST *inst, int32_t memOffset,
         int32_t offsetForReg =
             startoff + ((reg - dstreg) * builder.numEltPerGRF<Type_UB>());
 
-        for (const auto &mapIt : saveRestoreMap) {
-          if (mapIt.first == reg &&
-              (mapIt.second.first == RegOrMem::MemAbs ||
-               mapIt.second.first == RegOrMem::MemOffBEFP) &&
-              mapIt.second.second.offset == offsetForReg) {
-            saveRestoreMap.erase(mapIt.first);
-
-            const char* offstr =
-                (mapIt.second.first == RegOrMem::MemAbs) ? "abs" : "off befp";
-            (void)offstr;
-            DEBUG_VERBOSE("Restored r" << reg << ".0 (8):d from mem offset "
-                                       << offsetForReg << " bytes (" << offstr
-                                       << ")\n");
-            break;
-          }
+        auto it = saveRestoreMap.find(reg);
+        if (it != saveRestoreMap.end() &&
+            (it->second.first == RegOrMem::MemAbs ||
+             it->second.first == RegOrMem::MemOffBEFP) &&
+            it->second.second.offset == offsetForReg) {
+          const char *offstr =
+              (it->second.first == RegOrMem::MemAbs) ? "abs" : "off befp";
+          (void)offstr;
+          DEBUG_VERBOSE("Restored r" << reg << ".0 (8):d from mem offset "
+                                     << offsetForReg << " bytes (" << offstr
+                                     << ")\n");
+          saveRestoreMap.erase(it);
         }
       }
     }

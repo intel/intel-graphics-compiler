@@ -1576,6 +1576,7 @@ typedef struct yy_buffer_state *YY_BUFFER_STATE;
 extern int CISAparse(CISA_IR_Builder *builder);
 extern YY_BUFFER_STATE CISA_scan_string(const char *yy_str);
 extern void CISA_delete_buffer(YY_BUFFER_STATE buf);
+extern int CISAlex_destroy(void);
 static std::mutex mtx;
 extern void resetGlobalVariables();
 
@@ -1613,6 +1614,7 @@ int CISA_IR_Builder::ParseVISAText(const std::string &visaText,
     status = VISA_FAILURE;
   }
   CISA_delete_buffer(visaBuf);
+  CISAlex_destroy();
   resetGlobalVariables();
 
   if (CISAout) {
@@ -1644,14 +1646,17 @@ int CISA_IR_Builder::ParseVISAText(const std::string &visaFile) {
   }
 
   resetGlobalVariables();
-  if (CISAparse(this) != 0) {
-    vISA_ASSERT(false, "Parsing visa text failed");
-    resetGlobalVariables();
-    fclose(CISAin);
-    return VISA_FAILURE;
-  }
+  int parseResult = CISAparse(this);
+  CISAlex_destroy();
   resetGlobalVariables();
   fclose(CISAin);
+  if (parseResult != 0) {
+    vISA_ASSERT(false, "Parsing visa text failed");
+    if (CISAout) {
+      fclose(CISAout);
+    }
+    return VISA_FAILURE;
+  }
 
   if (CISAout) {
     fclose(CISAout);

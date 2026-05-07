@@ -1075,7 +1075,7 @@ public:
   VISA_BUILDER_API int GetKernelInfo(KERNEL_INFO *&kernelInfo) const override;
   VISA_BUILDER_API int GetErrorMessage(const char *&errorMsg) const override;
   VISA_BUILDER_API virtual int
-  GetGenxDebugInfo(void *&buffer, unsigned int &size) const override;
+  GetGenxDebugInfo(void *&buffer, unsigned int &size) override;
   /// GetRelocations -- add vISA created relocations into given relocation list
   VISA_BUILDER_API int GetRelocations(RelocListType &relocs) override;
   VISA_BUILDER_API int GetGTPinBuffer(void *&buffer, unsigned int &size,

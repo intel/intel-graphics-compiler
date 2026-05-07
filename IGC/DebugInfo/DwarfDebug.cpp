@@ -1524,6 +1524,11 @@ void DwarfDebug::encodeReg(IGC::DotDebugLocEntry &dotLoc, const VarLocation &vl,
   // caller save sequence
   auto allCallerSave = m_pModule->getAllCallerSave(*VisaDbgInfo, vl.start, vl.end, visaRange);
 
+  auto emitBlock = [](IGC::DIEBlock *B, std::vector<unsigned char> &Buf) {
+    B->EmitToRawBuffer(Buf);
+    B->~DIEBlock();
+  };
+
   // For SIMD32, we need two registers (lower and upper channels).
   std::vector<DbgDecoder::LiveIntervalsVISA> vars = {visaRange};
   if (Loc.HasLocationSecondReg())
@@ -1537,7 +1542,7 @@ void DwarfDebug::encodeReg(IGC::DotDebugLocEntry &dotLoc, const VarLocation &vl,
     auto block = FirstCU->buildGeneral(*vl.dbgVar, Loc, &vars);
     std::vector<unsigned char> buffer;
     if (block)
-      block->EmitToRawBuffer(buffer);
+      emitBlock(block, buffer);
     write(TempDotDebugLocEntries.back().loc, buffer.data(), buffer.size());
     offset += PointerSize * 2 + 2 + buffer.size();
 
@@ -1555,7 +1560,7 @@ void DwarfDebug::encodeReg(IGC::DotDebugLocEntry &dotLoc, const VarLocation &vl,
     block = FirstCU->buildGeneral(*vl.dbgVar, Loc, &callerSaveVars);
     buffer.clear();
     if (block)
-      block->EmitToRawBuffer(buffer);
+      emitBlock(block, buffer);
     write(TempDotDebugLocEntries.back().loc, buffer.data(), buffer.size());
     offset += PointerSize * 2 + 2 + buffer.size();
 
@@ -1574,7 +1579,7 @@ void DwarfDebug::encodeReg(IGC::DotDebugLocEntry &dotLoc, const VarLocation &vl,
   auto block = FirstCU->buildGeneral(*vl.dbgVar, Loc, &vars);
   std::vector<unsigned char> buffer;
   if (block)
-    block->EmitToRawBuffer(buffer);
+    emitBlock(block, buffer);
   write(TempDotDebugLocEntries.back().loc, buffer.data(), buffer.size());
   offset += PointerSize * 2 + 2 + buffer.size();
 }
@@ -1687,6 +1692,7 @@ void DwarfDebug::encodeCompositeExprs(DbgVariable *RegVar, const std::vector<Var
         if (block) {
           std::vector<unsigned char> buffer;
           block->EmitToRawBuffer(buffer);
+          block->~DIEBlock();
           CompositeExpr.insert(CompositeExpr.end(), buffer.begin(), buffer.end());
         }
       }

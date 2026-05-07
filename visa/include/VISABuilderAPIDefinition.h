@@ -1303,12 +1303,13 @@ public:
   VISA_BUILDER_API virtual int GetErrorMessage(const char *&errorMsg) const = 0;
 
   /// GetGenxDebugInfo -- returns the GEN debug info binary in <buffer>
-  /// and its size in <size>.
-  /// This function may only be called after Compile() is called
-  /// If finalization fails, buffer will be set to null and size will be set to
-  /// 0. buffer must be de-allocated using freeBlock API.
+  /// and its size in <size>. Transfers ownership to the caller: the internal
+  /// pointer is cleared after this call, so the buffer will NOT be freed on
+  /// VISAKernel destruction. This function may only be called after Compile()
+  /// is called. If finalization fails, buffer will be set to null and size
+  /// will be set to 0. buffer must be de-allocated using freeBlock API.
   VISA_BUILDER_API virtual int GetGenxDebugInfo(void *&buffer,
-                                                unsigned int &size) const = 0;
+                                                unsigned int &size) = 0;
 
   /// GetRelocations -- add vISA created relocations into given relocation list
   typedef std::vector<vISA::ZERelocEntry> RelocListType;

@@ -9314,6 +9314,8 @@ VISAKernelImpl::~VISAKernelImpl() {
 
   freeBlock(m_genx_binary_buffer);
   m_genx_binary_buffer = nullptr;
+  freeBlock(m_genx_debug_info_buffer);
+  m_genx_debug_info_buffer = nullptr;
 }
 
 int VISAKernelImpl::GetGenxBinary(void *&buffer, int &size) {
@@ -9344,9 +9346,11 @@ int VISAKernelImpl::GetRelocations(RelocListType &relocs) {
   return VISA_SUCCESS;
 }
 
-int VISAKernelImpl::GetGenxDebugInfo(void *&buffer, unsigned int &size) const {
+int VISAKernelImpl::GetGenxDebugInfo(void *&buffer, unsigned int &size) {
   buffer = m_genx_debug_info_buffer;
   size = m_genx_debug_info_size;
+  m_genx_debug_info_buffer = nullptr;
+  m_genx_debug_info_size = 0;
 
   return VISA_SUCCESS;
 }
