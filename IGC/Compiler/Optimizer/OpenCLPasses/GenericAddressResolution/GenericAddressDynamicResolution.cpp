@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2024 Intel Corporation
+Copyright (C) 2017-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -14,6 +14,8 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CISACodeGen/OpenCLKernelCodeGen.hpp"
 #include "Compiler/IGCPassSupport.h"
 #include "Compiler/MetaDataUtilsWrapper.h"
+#include "GenISAIntrinsics/GenIntrinsicInst.h"
+#include "GenISAIntrinsics/GenIntrinsicFunctions.h"
 
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/ADT/SmallVector.h>
@@ -95,7 +97,9 @@ bool GenericAddressDynamicResolution::runOnFunction(Function &F) {
 
   for (auto &instruction : llvm::instructions(F)) {
 
-    if (isa<CallInst>(instruction)) {
+    if (isa<PredicatedLoadIntrinsic>(instruction) || isa<PredicatedStoreIntrinsic>(instruction)) {
+      loadStoreInstructions.push_back(&instruction);
+    } else if (isa<CallInst>(instruction)) {
       callInstructions.push_back(&instruction);
     } else if (isa<LoadInst>(instruction) || isa<StoreInst>(instruction)) {
       loadStoreInstructions.push_back(&instruction);
@@ -155,6 +159,12 @@ bool GenericAddressDynamicResolution::visitLoadStoreInst(Instruction &I) {
   } else if (auto *store = dyn_cast<StoreInst>(&I)) {
     pointerOperand = store->getPointerOperand();
     pointerAddressSpace = store->getPointerAddressSpace();
+  } else if (auto *predLoad = dyn_cast<PredicatedLoadIntrinsic>(&I)) {
+    pointerOperand = predLoad->getPointerOperand();
+    pointerAddressSpace = predLoad->getPointerAddressSpace();
+  } else if (auto *predStore = dyn_cast<PredicatedStoreIntrinsic>(&I)) {
+    pointerOperand = predStore->getPointerOperand();
+    pointerAddressSpace = predStore->getPointerAddressSpace();
   } else {
     IGC_ASSERT_EXIT_MESSAGE(0, "Unable to resolve generic address space pointer");
   }
@@ -252,6 +262,19 @@ void GenericAddressDynamicResolution::resolveGAS(Instruction &I, Value *pointerO
       generatedLoadStore = cast<Instruction>(load);
     } else if (auto *SI = dyn_cast<StoreInst>(&I)) {
       generatedLoadStore = builder.CreateAlignedStore(I.getOperand(0), ptr, getAlign(*SI), SI->isVolatile());
+    } else if (auto *PLI = dyn_cast<PredicatedLoadIntrinsic>(&I)) {
+      Type *retTy = PLI->getType();
+      Function *newFunc = IGC::GetDeclaration(BB->getModule(), GenISAIntrinsic::GenISA_PredicatedLoad,
+                                              {retTy, ptr->getType(), retTy}, {});
+      load = builder.CreateCall(newFunc, {ptr, PLI->getAlignmentValue(), PLI->getPredicate(), PLI->getMergeValue()},
+                                LoadName);
+      generatedLoadStore = cast<Instruction>(load);
+    } else if (auto *PSI = dyn_cast<PredicatedStoreIntrinsic>(&I)) {
+      Type *valTy = PSI->getValueOperand()->getType();
+      Function *newFunc =
+          IGC::GetDeclaration(BB->getModule(), GenISAIntrinsic::GenISA_PredicatedStore, {ptr->getType(), valTy}, {});
+      generatedLoadStore =
+          builder.CreateCall(newFunc, {ptr, PSI->getValueOperand(), PSI->getAlignmentValue(), PSI->getPredicate()});
     }
     if (generatedLoadStore != nullptr) {
       generatedLoadStores.push_back(generatedLoadStore);
@@ -289,7 +312,7 @@ void GenericAddressDynamicResolution::resolveGAS(Instruction &I, Value *pointerO
       switchTag->addCase(localTag, localBlock);
     }
 
-    if (isa<LoadInst>(&I)) {
+    if (isa<LoadInst>(&I) || isa<PredicatedLoadIntrinsic>(&I)) {
       IGCLLVM::IRBuilder<> phiBuilder(&(*convergeBlock->begin()));
       PHINode *phi = phiBuilder.CreatePHI(I.getType(), numCases + 1, I.getName());
       if (privateLoad) {
@@ -323,6 +346,20 @@ void GenericAddressDynamicResolution::resolveGASWithoutBranches(Instruction &I, 
     generatedLoadStore = cast<Instruction>(nonLocalLoad);
   } else if (auto *SI = dyn_cast<StoreInst>(&I)) {
     generatedLoadStore = builder.CreateAlignedStore(I.getOperand(0), globalPtr, getAlign(*SI), SI->isVolatile());
+  } else if (auto *PLI = dyn_cast<PredicatedLoadIntrinsic>(&I)) {
+    Type *retTy = PLI->getType();
+    Function *newFunc =
+        IGC::GetDeclaration(m_module, GenISAIntrinsic::GenISA_PredicatedLoad, {retTy, globalPtr->getType(), retTy}, {});
+    nonLocalLoad =
+        builder.CreateCall(newFunc, {globalPtr, PLI->getAlignmentValue(), PLI->getPredicate(), PLI->getMergeValue()},
+                           "globalOrPrivateLoad");
+    generatedLoadStore = cast<Instruction>(nonLocalLoad);
+  } else if (auto *PSI = dyn_cast<PredicatedStoreIntrinsic>(&I)) {
+    Type *valTy = PSI->getValueOperand()->getType();
+    Function *newFunc =
+        IGC::GetDeclaration(m_module, GenISAIntrinsic::GenISA_PredicatedStore, {globalPtr->getType(), valTy}, {});
+    generatedLoadStore =
+        builder.CreateCall(newFunc, {globalPtr, PSI->getValueOperand(), PSI->getAlignmentValue(), PSI->getPredicate()});
   }
   if (generatedLoadStore != nullptr) {
     generatedLoadStores.push_back(generatedLoadStore);
