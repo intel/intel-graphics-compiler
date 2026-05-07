@@ -18,7 +18,6 @@ bool OpSpec::hasImpicitEm() const {
   case Op::ILLEGAL:
   case Op::JMPI:
   case Op::WAIT:
-  case Op::THRYLD:
     return true;
   default:
     return false;

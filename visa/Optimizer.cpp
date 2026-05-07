@@ -17,7 +17,6 @@ SPDX-License-Identifier: MIT
 #include "FlowGraph.h"
 #include "Passes/AccSubstitution.hpp"
 #include "Passes/InsertS0Movs.hpp"
-#include "Passes/InsertThryld.hpp"
 #include "Passes/InstCombine.hpp"
 #include "Passes/LVN.hpp"
 #include "Passes/MergeScalars.hpp"
@@ -703,7 +702,6 @@ void Optimizer::initOptimizations() {
                       TimerID::MISC_OPTS);
   OPT_INITIALIZE_PASS(fixSamplerCacheBitInHeader, vISA_EnableAlways,
                       TimerID::MISC_OPTS);
-  OPT_INITIALIZE_PASS(insertThryld, vISA_EnableAlways, TimerID::MISC_OPTS);
   OPT_INITIALIZE_PASS(InsertS0Movs, vISA_EnableAlways, TimerID::MISC_OPTS);
   OPT_INITIALIZE_PASS(fixSamplerCacheBit, vISA_EnableAlways,
                       TimerID::MISC_OPTS);
@@ -1125,7 +1123,6 @@ int Optimizer::optimization() {
   runPass(PI_removePseudoMov);
   runPass(PI_expandSendg);
 
-  runPass(PI_insertThryld);
 
   runPass(PI_staticProfiling);
 
@@ -1422,15 +1419,6 @@ void Optimizer::removePseudoMov() {
       ii++;
     }
   }
-}
-void Optimizer::insertThryld() {
-  if (!builder.getOption(vISA_enableInsertThryld))
-    return;
-
-  InsertThryld insertThryldPass(kernel.fg);
-  insertThryldPass.run();
-
-  return;
 }
 
 void Optimizer::fixSamplerCacheBitInHeader() {

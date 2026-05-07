@@ -482,7 +482,7 @@ public:
 
   bool nonALUInstructions() const {
     return isSend() || isLabel() || isCFInst() || isDpas() || isIntrinsic() ||
-           opcode() == G4_thryld || opcode() == G4_nop || isWait();
+           opcode() == G4_nop || isWait();
   }
 
   G4_InstMath *asMathInst() const {

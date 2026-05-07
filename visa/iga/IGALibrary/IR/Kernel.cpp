@@ -165,17 +165,6 @@ Instruction *Kernel::createSendgInstruction(
 
   return inst;
 }
-Instruction* Kernel::createThryldInstruction() {
-  Instruction *inst =
-      new (&m_mem) Instruction(m_model.lookupOpSpec(Op::THRYLD), ExecSize::SIMD1,
-                               ChannelOffset::M0, MaskCtrl::NORMAL);
-  const Predication predOpnd;
-  inst->setPredication(predOpnd);
-  inst->setFlagModifier(FlagModifier::NONE);
-  inst->setFlagReg(REGREF_ZERO_ZERO);
-
-  return inst;
-}
 
 Instruction *Kernel::createNopInstruction() {
   Instruction *inst =

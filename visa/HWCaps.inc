@@ -869,7 +869,7 @@ bool hasSimplifiedRegions() const {
 }
 
 bool needBothAcc(G4_Operand *opnd) const {
-  if (hasSimplifiedRegions() || getOption(vISA_GAReArchBugFix)) {
+  if (hasSimplifiedRegions()) {
     return (((unsigned)opnd->getInst()->getExecSize() * opnd->getTypeSize())
         > getACCSize());
   }

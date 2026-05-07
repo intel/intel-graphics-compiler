@@ -145,7 +145,6 @@ class HWConformity {
   bool fixMov(INST_LIST_ITER i, G4_BB *bb);
   bool fixRotate(INST_LIST_ITER i, G4_BB *bb);
   bool fixIntToHFMove(G4_BB *bb);
-  void fixEvEURegionRestrictions(G4_BB *bb);
 
   bool isFloatOr64b(G4_INST *inst);
   uint16_t getSrcStride(G4_SrcRegRegion *src);

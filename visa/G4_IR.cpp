@@ -937,8 +937,6 @@ bool G4_INST::hasNoPipe() const {
       op == G4_sync_allwr) {
     return true;
   }
-  if (op == G4_thryld)
-    return true;
 
   return false;
 }
@@ -3359,7 +3357,7 @@ static void emitPredWrEn(std::ostream &output, G4_INST &inst) {
 
 static void emitExecSize(std::ostream &output, const G4_INST &inst) {
   auto execSize = static_cast<int>(inst.getExecSize());
-  if (inst.opcode() != G4_nop && inst.opcode() != G4_thryld &&
+  if (inst.opcode() != G4_nop &&
       inst.opcode() != G4_wait) {
     output << '(';
     if (execSize == UNDEFINED_EXEC_SIZE) {
@@ -4966,8 +4964,7 @@ static G4_CmpRelation compareRegRegionToOperand(G4_Operand *regRegion,
       // on xe3p, implicit acc dst could be both acc0 and acc1 for simd32
       // instruction, or acc0 only for other simd size. If both operands are
       // acc, we need to check the footprint.
-      if (builder.hasSimplifiedRegions() ||
-          builder.getOption(vISA_GAReArchBugFix)) {
+      if (builder.hasSimplifiedRegions()) {
         if (myPhyReg->asAreg()->isAccReg() &&
             opndPhyReg->asAreg()->isAccReg()) {
           auto opndLeftBound = opnd->getLeftBound();
@@ -6674,8 +6671,7 @@ void G4_INST::computeLeftBoundForImplAcc(G4_Operand *opnd) {
     extype = getOpExecType(extypesize);
 
     if ((IS_WTYPE(extype) || IS_DTYPE(extype)) &&
-        !(builder.hasSimplifiedRegions() ||
-          builder.getOption(vISA_GAReArchBugFix))) {
+        !builder.hasSimplifiedRegions()) {
       // This condition is a result of HW Conformity requirement
       // that for exec type = D/DW, only acc0 is used even when
       // qtr control is set to Q2/H2
@@ -6846,8 +6842,7 @@ void G4_INST::computeRightBound(G4_Operand *opnd) {
           // On xe3p, implicit acc is only used as dst (e.g. addc/aubb) and
           // it's always aligned to the destination register regardless off
           // mask offset.
-          !(builder.hasSimplifiedRegions() ||
-            builder.getOption(vISA_GAReArchBugFix)) &&
+          !builder.hasSimplifiedRegions() &&
           ((opnd == getImplAccSrc()) || (opnd == getImplAccDst()))) {
         // for ARF (flag, acc) we have to adjust its bound based on the emask
         // We have to reset LB since the original instruction may have a non
@@ -7341,8 +7336,7 @@ bool G4_INST::supportsNullDst() const {
     // null:b not supported
     return false;
   }
-  if (builder.hasSimplifiedRegions() ||
-      builder.getOption(vISA_GAReArchBugFix)) {
+  if (builder.hasSimplifiedRegions()) {
     return true;
   } else {
     return getNumSrc() != 3 && !(op == G4_pln && !builder.doPlane());

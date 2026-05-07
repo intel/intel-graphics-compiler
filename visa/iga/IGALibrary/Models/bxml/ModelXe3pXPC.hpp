@@ -847,13 +847,7 @@ static const iga::OpSpec MODEL_XE3P_XPC_OPSPECS[unsigned(Op::TOTAL_OPS) + 1] {
     },
     OpSpec::Attr::NONE
   },
-  {Op::THRYLD /* Op::90 */, Platform::XE3P_XPC, 0x02,
-    "thryld",
-    "Thread Yield",
-    OpSpec::Format::NULLARY,
-    {}, // no type mappings
-    OpSpec::Attr::NONE
-  },
+  {Op::INVALID, Platform::XE3P_XPC, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, },
   {Op::INVALID, Platform::XE3P_XPC, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, },
   {Op::WHILE /* Op::92 */, Platform::XE3P_XPC, 0x27,
     "while",

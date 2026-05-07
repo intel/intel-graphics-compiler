@@ -285,9 +285,6 @@ static inline GED_OPCODE lowerOpcode(Op opcode) {
   case Op::LFSR:
     op = GED_OPCODE_lfsr;
     break;
-  case Op::THRYLD:
-    op = GED_OPCODE_thryld;
-    break;
   //
   default:
     break;

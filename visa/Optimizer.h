@@ -128,7 +128,6 @@ class Optimizer {
   void removePseudoMov();
   void expandSendg();
   void FoldAddrImmediate();
-  void insertThryld();
   void fixSamplerCacheBitInHeader();
   void InsertS0Movs();
   void fixSamplerCacheBit();
@@ -396,7 +395,6 @@ public:
     PI_reassignBlockIDs,      // always
     PI_evalAddrExp,           // always
     PI_FoldAddrImmediate,
-    PI_insertThryld,
     PI_fixSamplerCacheBitInHeader,
     PI_InsertS0Movs,
     PI_fixSamplerCacheBit,

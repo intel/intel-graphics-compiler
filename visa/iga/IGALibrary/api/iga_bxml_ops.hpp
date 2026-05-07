@@ -106,7 +106,6 @@ enum class Op
   SRND         = FIRST_OP +  86,
   SUBB         = FIRST_OP +  87,
   SYNC         = FIRST_OP +  88,
-  THRYLD       = FIRST_OP +  89,
   WAIT         = FIRST_OP +  90,
   WHILE        = FIRST_OP +  91,
   XOR          = FIRST_OP +  92,

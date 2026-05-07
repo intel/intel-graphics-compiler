@@ -427,8 +427,6 @@ Instruction *Decoder::decodeNextInstruction(Kernel &kernel) {
       inst = kernel.createIllegalInstruction();
     } else if (m_opSpec->op == Op::NOP) {
       inst = kernel.createNopInstruction();
-    } else if (m_opSpec->op == Op::THRYLD) {
-      inst = kernel.createThryldInstruction();
     } else {
       std::stringstream ss;
       ss << "at pc " << currentPc() << ": invalid operation format";

@@ -1079,9 +1079,6 @@ BinaryEncodingIGA::getIgaOpInfo(const G4_INST *inst, const Model *m,
     igaOp = Op::DNSCL;
     sf = getDnsclFC(inst);
     break;
-  case G4_thryld:
-    igaOp = Op::THRYLD;
-    break;
   case G4_srnd:
     igaOp = Op::SRND;
     break;
@@ -1549,8 +1546,6 @@ Instruction *BinaryEncodingIGA::translateInstruction(G4_INST *g4inst,
     igaInst = IGAKernel->createNopInstruction();
   } else if (opSpec->op == Op::ILLEGAL) {
     igaInst = IGAKernel->createIllegalInstruction();
-  } else if (opSpec->op == Op::THRYLD) {
-    igaInst = IGAKernel->createThryldInstruction();
   } else {
     igaInst = IGAKernel->createBasicInstruction(
         *opSpec, pred, flagReg, execSize, chOff, maskCtrl, condModifier, sf);

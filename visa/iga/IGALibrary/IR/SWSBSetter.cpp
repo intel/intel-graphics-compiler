@@ -1429,7 +1429,7 @@ void SWSBAnalyzer::run() {
       // it affect the in-pipe instruction count. Skipping it can avoid we
       // accidentally set SWSB on it (e.g. when forcing B2B dependency). Illeagl
       // instructions cannot carry SWSB info.
-      if (inst->getOp() == Op::ILLEGAL || inst->getOp() == Op::THRYLD)
+      if (inst->getOp() == Op::ILLEGAL)
         continue;
       DepSet *input = nullptr;
       DepSet *output = nullptr;

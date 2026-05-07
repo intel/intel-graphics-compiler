@@ -82,7 +82,6 @@ public:
                                       int src0Len, int src1Len, RegRef id0,
                                       RegRef id1, uint64_t desc);
 
-  Instruction *createThryldInstruction();
   Instruction *createNopInstruction();
   Instruction *createIllegalInstruction();
   Instruction *createSyncNopInstruction(SWSB sw);

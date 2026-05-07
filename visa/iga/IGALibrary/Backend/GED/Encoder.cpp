@@ -446,7 +446,7 @@ void Encoder::encodeInstruction(Instruction &inst) {
     return;
   }
 
-  if (m_opcode == Op::ILLEGAL || m_opcode == Op::THRYLD) {
+  if (m_opcode == Op::ILLEGAL) {
     // GED does all the work for this instruction
     return;
   } else if (m_opcode == Op::NOP) {
@@ -2328,8 +2328,7 @@ void Encoder::encodeOptions(const Instruction &inst) {
     GED_ENCODE(NoSrcDepSet, GED_NO_SRC_DEP_SET_Normal);
   }
 
-  if (platform() >= Platform::XE && m_opcode != Op::ILLEGAL &&
-      m_opcode != Op::THRYLD) {
+  if (platform() >= Platform::XE && m_opcode != Op::ILLEGAL) {
     SWSB::InstType inst_type = inst.getSWSBInstType(m_opts.swsbEncodeMode);
     uint32_t swsbBinary =
         inst.getSWSB().encode(m_opts.swsbEncodeMode, inst_type);

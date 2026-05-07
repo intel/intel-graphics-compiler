@@ -289,9 +289,6 @@ static inline Op translate(GED_OPCODE gedOpcode) {
   case GED_OPCODE_dnscl:
     opcode = Op::DNSCL;
     break;
-  case GED_OPCODE_thryld:
-    opcode = Op::THRYLD;
-    break;
   default:
     opcode = Op::ILLEGAL;
     break;

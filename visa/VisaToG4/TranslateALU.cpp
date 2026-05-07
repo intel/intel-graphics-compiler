@@ -82,7 +82,7 @@ int IR_Builder::translateVISAArithmeticInst(
                            src1Opnd, src2Opnd, instOpt, true);
 
     if (opcode == ISA_MADW &&
-        !((getOption(vISA_EnableInt32MULLH) || hasSimplifiedRegions()) &&
+        !(hasSimplifiedRegions() &&
           src2Opnd != nullptr && src2Opnd->isImm() &&
           src2Opnd->asImm()->getInt() == 0)) {
       G4_DstRegRegion *accDstOpnd =
@@ -97,8 +97,7 @@ int IR_Builder::translateVISAArithmeticInst(
                            src1Opnd, instOpt, true);
 
     if (opcode == ISA_ADDC || opcode == ISA_SUBB) {
-      if ((hasSimplifiedRegions() || getOption(vISA_GAReArchBugFix)) &&
-          inst->getMaskOffset() >= 16) {
+      if (hasSimplifiedRegions() && inst->getMaskOffset() >= 16) {
         // addc (M5, 16) V007(0,0)<1> V008(0,0)<1> V009(0,0)<1;1,0>
         //               V010(0,0)<1;1,0>
         // =>

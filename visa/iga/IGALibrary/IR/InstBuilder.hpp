@@ -371,8 +371,6 @@ public:
         inst = m_kernel->createInlineBinaryInstruction(m_inlineInstBinary);
       else
         inst = m_kernel->createIllegalInstruction();
-    } else if (m_opSpec->op == Op::THRYLD) {
-      inst = m_kernel->createThryldInstruction();
     } else {
       inst = m_kernel->createBasicInstruction(
           *m_opSpec, m_predication, m_flagReg, m_execSize, m_chOff, m_maskCtrl,

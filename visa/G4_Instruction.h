@@ -187,7 +187,6 @@ HANDLE_INST(sync_nop, 1, 0, InstTypeMisc, GENX_TGLLP, ATTR_NONE)
 HANDLE_INST(sync_allrd, 1, 0, InstTypeMisc, GENX_TGLLP, ATTR_NONE)
 HANDLE_INST(sync_allwr, 1, 0, InstTypeMisc, GENX_TGLLP, ATTR_NONE)
 HANDLE_INST(sync_fence, 1, 0, InstTypeMisc, Xe_PVC, ATTR_NONE)
-HANDLE_INST(thryld, 0, 0, InstTypeMisc, Xe3P_Graphics, ATTR_NONE)
 
 //
 // Following are pseudo instructions

@@ -200,8 +200,6 @@ set(GenX_Common_Sources_G4_Passes
   Passes/SRSubstitution.hpp
   Passes/InsertS0Movs.cpp
   Passes/InsertS0Movs.hpp
-  Passes/InsertThryld.cpp
-  Passes/InsertThryld.hpp
   Passes/InstCombine.cpp
   Passes/InstCombine.hpp
   Passes/LVN.cpp

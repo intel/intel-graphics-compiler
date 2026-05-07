@@ -327,7 +327,7 @@ struct OpSpec {
   bool supportsBranchCtrl() const { return hasAttrs(Attr::SUPPORTS_BRCTL); }
 
   bool supportsThreadCtrl() const {
-    if (op == Op::NOP || op == Op::ILLEGAL || op == Op::THRYLD)
+    if (op == Op::NOP || op == Op::ILLEGAL)
         return false;
     if (!isAnySendFormat())
       return true;

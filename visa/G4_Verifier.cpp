@@ -623,8 +623,7 @@ void G4Verifier::verifyOpnd(G4_Operand *opnd, G4_INST *inst) {
         vISA_ASSERT(false, "Left/right bound span incorrect!");
       }
 
-      if (!(kernel.fg.builder->hasSimplifiedRegions() ||
-            kernel.fg.builder->getOption(vISA_GAReArchBugFix)) &&
+      if (!kernel.fg.builder->hasSimplifiedRegions() &&
           inst->getMaskOffset() > 0 && opnd == inst->getImplAccDst()) {
         // Update left/right bound as per inst mask offset, eg Q2
         // has offset 8
@@ -1022,8 +1021,7 @@ void G4Verifier::verifyDpas(G4_INST *inst) {
     auto src1Bits = dpasInst->GetPrecisionSizeInBits(src1Precision);
     auto src2Bits = dpasInst->GetPrecisionSizeInBits(src2Precision);
     bool checked = false;
-    if (!checked && (kernel.fg.builder->hasSimplifiedRegions() ||
-                     kernel.fg.builder->getOption(vISA_GAReArchBugFix))) {
+    if (!checked && kernel.fg.builder->hasSimplifiedRegions()) {
       // No mixed int dpas
       if (src1Bits != src2Bits || src1Precision == GenPrecision::U2 ||
           src1Precision == GenPrecision::S2) {

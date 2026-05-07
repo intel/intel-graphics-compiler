@@ -240,15 +240,6 @@ DEF_VISA_OPTION(vISA_dynamicAddrForExDescInLscSend, ET_BOOL_TRUE,
                 "Use unfixed address which is assigned by RA instead of a0.2 as "
                 "the extend messaged descriptor in LSC send messages",
                 true)
-DEF_VISA_OPTION(vISA_enableInsertThryld, ET_BOOL_TRUE, "-enableInsertThryld",
-                UNUSED,
-                false)
-DEF_VISA_OPTION(vISA_samplerTholdForThryld, ET_INT32, "-samplerTholdForThryld",
-                UNUSED, 4)
-DEF_VISA_OPTION(vISA_NonsamplerLoadTholdForThryld, ET_INT32,
-                "-nonsamplerLoadTholdForThryld", UNUSED, 4)
-DEF_VISA_OPTION(vISA_aluTholdForThryld, ET_INT32, "-aluTholdForThryld", UNUSED,
-                12)
 
 //=== code gen options ===
 DEF_VISA_OPTION(vISA_noSrc1Byte, ET_BOOL, "-nosrc1byte", UNUSED, false)
@@ -658,20 +649,20 @@ DEF_VISA_OPTION(vISA_SelectiveRAGlobaVarRatioThreshold, ET_CSTR, "-selectiveRAGV
 DEF_VISA_OPTION(vISA_EnableSwapAccSub, ET_BOOL, "-swapAccSub", UNUSED, true)
 DEF_VISA_OPTION(vISA_EnableRRAccSub, ET_BOOL, "-roundRobinAccSub", UNUSED,
                 false)
-DEF_VISA_OPTION(vISA_EURegionRemoval, ET_BOOL_TRUE, "-fixNonMovRegion", UNUSED,
-                false)
-DEF_VISA_OPTION(vISA_AllowSrcCRegion, ET_BOOL_TRUE, "-allowSrcCRegion", UNUSED,
-                false)
-DEF_VISA_OPTION(vISA_RelaxQWRegion, ET_BOOL_TRUE, "-relaxQWRegion", UNUSED,
-                false)
+DEF_VISA_OPTION(vISA_EURegionRemoval, ET_BOOL_TRUE, "-fixNonMovRegion",
+                "DEPRECATED, is a nop", false)
+DEF_VISA_OPTION(vISA_AllowSrcCRegion, ET_BOOL_TRUE, "-allowSrcCRegion",
+                "DEPRECATED, is a nop", false)
+DEF_VISA_OPTION(vISA_RelaxQWRegion, ET_BOOL_TRUE, "-relaxQWRegion",
+                "DEPRECATED, is a nop", false)
 DEF_VISA_OPTION(vISA_BalanceIntMov, ET_INT32, "-balanceIntMov",
                 "USAGE: -balanceIntMov <ratio>\n", -1)
-DEF_VISA_OPTION(vISA_GAReArchBugFix, ET_BOOL_TRUE, "-GAReArchBugFix", UNUSED,
-                false)
+DEF_VISA_OPTION(vISA_GAReArchBugFix, ET_BOOL_TRUE, "-GAReArchBugFix",
+                "DEPRECATED, is a nop", false)
 DEF_VISA_OPTION(vISA_EnableInt32DstMulMad, ET_BOOL_TRUE,
-                "-enableInt32DstMulMad", UNUSED, false)
+                "-enableInt32DstMulMad", "DEPRECATED, is a nop", false)
 DEF_VISA_OPTION(vISA_EnableInt32MULLH, ET_BOOL_TRUE, "-enableInt32Mullh",
-                UNUSED, false)
+                "DEPRECATED, is a nop", false)
 // Apply the new ACC usage restructions and add the ACC usage in new
 // instructions and data types
 DEF_VISA_OPTION(vISA_GAReArchACC, ET_BOOL_TRUE, "-GAReArchACC",

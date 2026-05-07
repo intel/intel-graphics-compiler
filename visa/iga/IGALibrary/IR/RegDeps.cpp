@@ -18,7 +18,7 @@ SPDX-License-Identifier: MIT
 using namespace iga;
 
 static DEP_CLASS getClassFromPipeType(DEP_PIPE type, const OpSpec &opspec) {
-  if (opspec.is(Op::SYNC) || opspec.is(Op::ILLEGAL) || opspec.is(Op::THRYLD))
+  if (opspec.is(Op::SYNC) || opspec.is(Op::ILLEGAL))
     return DEP_CLASS::OTHER;
 
   switch (type) {
