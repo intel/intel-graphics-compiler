@@ -11,7 +11,7 @@
 ; RUN: FileCheck --input-file %t_output.ll %s
 
 ; This test checks that after kernel recompilation there is no more spills
-; CHECK: warning: {{.*}} [RetryManager] Start recompilation of the kernel
+; CHECK: warning: {{.*}}[RetryManager] Start recompilation of the kernel
 ; CHECK-NOT: warning: kernel {{.*}} compiled SIMD32 allocated 128 regs and spilled around {{.*}}
 ; CHECK: Build succeeded.
 
