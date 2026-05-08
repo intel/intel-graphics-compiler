@@ -2029,8 +2029,13 @@ void CustomSafeOptPass::visitBinaryOperator(BinaryOperator &I) {
       if (src0imm || src1imm) {
         llvm::Instruction *nextInst = llvm::dyn_cast<llvm::Instruction>(*(I.user_begin()));
         if (nextInst && nextInst->getOpcode() == Instruction::Add) {
-          // do not apply if any add instruction has NSW flag since we can't save it
-          if ((isa<OverflowingBinaryOperator>(I) && I.hasNoSignedWrap()) || nextInst->hasNoSignedWrap())
+          // Wrap flags survive only when both adds carry nsw and nuw: operands
+          // and the sum are non-negative i31, so the new intermediate fits too.
+          bool IBothFlags = isa<OverflowingBinaryOperator>(I) && I.hasNoSignedWrap() && I.hasNoUnsignedWrap();
+          bool NextBothFlags = nextInst->hasNoSignedWrap() && nextInst->hasNoUnsignedWrap();
+          bool PreserveNSW = IBothFlags && NextBothFlags;
+          bool HasAnyNSW = (isa<OverflowingBinaryOperator>(I) && I.hasNoSignedWrap()) || nextInst->hasNoSignedWrap();
+          if (HasAnyNSW && !PreserveNSW)
             return;
           ConstantInt *secondSrc0imm = dyn_cast<ConstantInt>(nextInst->getOperand(0));
           ConstantInt *secondSrc1imm = dyn_cast<ConstantInt>(nextInst->getOperand(1));
@@ -2041,13 +2046,13 @@ void CustomSafeOptPass::visitBinaryOperator(BinaryOperator &I) {
                 Value *newAdd = BinaryOperator::CreateAdd(src0imm ? I.getOperand(1) : I.getOperand(0),
                                                           nextInst->getOperand(1 - i), "", nextInst);
 
-                // Conservatively clear the NSW NUW flags, since they may not be
-                // preserved by the reassociation.
+                // NUW survives if both adds carry it; NSW only when paired with NUW on both.
                 bool IsNUW =
                     isa<OverflowingBinaryOperator>(I) && I.hasNoUnsignedWrap() && nextInst->hasNoUnsignedWrap();
                 cast<BinaryOperator>(newAdd)->setHasNoUnsignedWrap(IsNUW);
+                cast<BinaryOperator>(newAdd)->setHasNoSignedWrap(PreserveNSW);
                 nextInst->setHasNoUnsignedWrap(IsNUW);
-                nextInst->setHasNoSignedWrap(false);
+                nextInst->setHasNoSignedWrap(PreserveNSW);
 
                 nextInst->setOperand(0, newAdd);
                 nextInst->setOperand(1, I.getOperand(src0imm ? 0 : 1));
