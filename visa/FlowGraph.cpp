@@ -626,7 +626,6 @@ void FlowGraph::normalizeFlowGraph() {
 //
 //
 void FlowGraph::constructFlowGraph(INST_LIST &instlist) {
-  //vISA_ASSERT(!instlist.empty(), ERROR_SYNTAX("empty instruction list"));
   setCurrentDebugPass("CFG");
   VISA_DEBUG(std::cout << "Entering CFG construction\n");
 
