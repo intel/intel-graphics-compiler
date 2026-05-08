@@ -374,6 +374,7 @@ set(KHR_DEFINES ${KHR_DEFINES} "cl_intel_subgroup_matrix_multiply_accumulate_fp8
 set(KHR_DEFINES ${KHR_DEFINES} "cl_intel_concurrent_dispatch")
 set(KHR_DEFINES ${KHR_DEFINES} "cl_intel_stochastic_rounding")
 set(KHR_DEFINES ${KHR_DEFINES} "cl_intel_bfloat16_atomics")
+set(KHR_DEFINES ${KHR_DEFINES} "cl_intel_sigmoid")
 
 set(BFLOAT_SOURCE_ENABLED TRUE)
 if(IGC_OPTION__ENABLE_BF16_BIF)

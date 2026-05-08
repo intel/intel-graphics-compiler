@@ -3384,6 +3384,23 @@ half8 __attribute__((overloadable))  sigm(half8);
 half16 __attribute__((overloadable)) sigm(half16);
 #endif // defined(cl_khr_fp16)
 
+#if defined(cl_intel_sigmoid)
+float __attribute__((overloadable))   intel_sigmoid(float);
+float2 __attribute__((overloadable))  intel_sigmoid(float2);
+float3 __attribute__((overloadable))  intel_sigmoid(float3);
+float4 __attribute__((overloadable))  intel_sigmoid(float4);
+float8 __attribute__((overloadable))  intel_sigmoid(float8);
+float16 __attribute__((overloadable)) intel_sigmoid(float16);
+#if defined(cl_khr_fp16)
+half __attribute__((overloadable))   intel_sigmoid(half);
+half2 __attribute__((overloadable))  intel_sigmoid(half2);
+half3 __attribute__((overloadable))  intel_sigmoid(half3);
+half4 __attribute__((overloadable))  intel_sigmoid(half4);
+half8 __attribute__((overloadable))  intel_sigmoid(half8);
+half16 __attribute__((overloadable)) intel_sigmoid(half16);
+#endif // defined(cl_khr_fp16)
+#endif // defined(cl_intel_sigmoid)
+
 #ifdef cl_intel_subgroup_extended_block_read
 ushort2 intel_subgroup_block_read_u8_m1k32v2(
     __global void* base_address, int width, int height, int pitch, int2 coord);
