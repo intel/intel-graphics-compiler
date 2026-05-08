@@ -1376,9 +1376,7 @@ void BinaryEncodingIGA::Encode() {
       autoCompact = false; // PVC-A0 compaction is off (IGA only does B0+)
 
     KernelEncoder encoder(IGAKernel, autoCompact);
-    if (autoCompact && (platform == TARGET_PLATFORM::Xe3P_CRI ||
-                        platform == TARGET_PLATFORM::Xe3P_Graphics ||
-                        platform == TARGET_PLATFORM::Xe2))
+    if (autoCompact && platform >= TARGET_PLATFORM::Xe2)
       encoder.enableCompactRestrict();
     encoder.setSWSBEncodingMode(swsbEncodeMode);
 
