@@ -133,6 +133,7 @@ DEF_VISA_OPTION(vISA_OptReport, ET_BOOL, "-optreport", "DEPRECATED, is a nop",
                 false)
 DEF_VISA_OPTION(vISA_removeRedundMov, ET_BOOL, "-keepRedundMov", UNUSED, true)
 DEF_VISA_OPTION(vISA_MergeScalar, ET_BOOL, "-nomergescalar", UNUSED, true)
+DEF_VISA_OPTION(vISA_MergeScalarMax, ET_BOOL, "-mergescalarmax", UNUSED, false)
 DEF_VISA_OPTION(vISA_EnableMACOpt, ET_BOOL, "-nomac", UNUSED, true)
 DEF_VISA_OPTION(vISA_EnableDCE, ET_BOOL_TRUE, "-dce", UNUSED, false)
 DEF_VISA_OPTION(vISA_DisableleHFOpt, ET_BOOL, "-disableHFOpt", UNUSED, false)
