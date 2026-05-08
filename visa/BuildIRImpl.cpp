@@ -4879,6 +4879,7 @@ bool IR_Builder::canPromoteToMovi(G4_INST *inst) {
   // GRF size in bytes
   unsigned int GrfSizeInBytes = numEltPerGRF<Type_UB>();
 
+
   // Promote to movi if the offsets are immediate.
   // Immediate in :uv ensures each element is a byte-offset with range [0,15]
   // which is within half-GRF if GRF size is 32 or within quarter-GRF if GRF
@@ -4921,12 +4922,6 @@ bool IR_Builder::canPromoteToMovi(G4_INST *inst) {
   //   (W) add (16) A158(0,0)<1>:uw  &V3130+0 ShuffleTmp_157(0,0)<1;1,0>:uw
   //       mov (16) V3154(0,0)<1>:w  r[A158(0,0), 0]<1,0>:w
   // clang-format on
-
-  // Check declare size. We only handle the cases when the declare size is
-  // smaller than or equal to 2 GRFs since larger declare size requires more
-  // complex pattern matching.
-  if (Dcl->getRootDeclare()->getByteSize() > 2 * GrfSizeInBytes)
-    return false;
 
   // If the declare size is 2 GRFs, we expect to see the cmp instruction
   // comparing the index with 0x10 to make sure the address calculated is within
@@ -5002,10 +4997,10 @@ bool IR_Builder::canPromoteToMovi(G4_INST *inst) {
   // element within GRF.
   // With "less or equal" it would address second GRF.
   unsigned maxIndexSize = GrfSizeInBytes;
-  bool isSanitizedSingleGRFIndexing =
+  bool isSanitizedBoundedIndexing =
       andImmIsPowOf2Min1 && (indexSize < maxIndexSize);
 
-  return isSanitizedSingleGRFIndexing;
+  return isSanitizedBoundedIndexing;
 }
 
 void IR_Builder::resetPostCompile() {
