@@ -1631,6 +1631,10 @@ DECLARE_IGC_REGKEY(DWORD, EarlyRetryLargeGRFThreshold, 500,
                    "Cutoff value for register estimation, when highter than that kernel skips first compilation stage "
                    "and goes to retry immediately for large GRF.",
                    false)
+DECLARE_IGC_REGKEY(bool, EnableLateRPRepublish, false,
+                   "Experimental flag: republish metadata for early retry in the end of pipeline, "
+                   "instead of reusing the existing if the existing shows that early recompilation is needed",
+                   true)
 DECLARE_IGC_REGKEY(DWORD, EarlyRetryDefaultGRFThreshold, 190,
                    "Cutoff value for register estimation, when highter than that kernel skips first compilation stage "
                    "and goes to retry immediately for default GRF.",

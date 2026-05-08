@@ -660,10 +660,18 @@ bool IGCRegisterPressurePublisher::runOnModule(llvm::Module &M) {
     unsigned int MaxPressureInFunction = 0;
 
     unsigned int SimdSize = numLanes(RPE.bestGuessSIMDSize(&F, FGA));
-    // If we have some published metadata already don't do anything
-    bool AlreadyPublished = (RPE.checkPublishRegPressureMetadata(F) != 0);
+    unsigned int Existing = RPE.checkPublishRegPressureMetadata(F);
+    bool AlreadyPublished = (Existing != 0);
 
-    if (!AlreadyPublished) {
+    // Compile-time guard: passes between CodeLoopSinking and this point are
+    // assumed to only reduce RP. If the early estimate is already below the
+    // lowest possible early-retry threshold, the refined value can never trip
+    // any threshold -- skip the WIAnalysis + IGCLiveness re-run entirely.
+    unsigned int MinThreshold =
+        std::min(IGC_GET_FLAG_VALUE(EarlyRetryLargeGRFThreshold), IGC_GET_FLAG_VALUE(EarlyRetryDefaultGRFThreshold));
+    bool RepublishLate = IGC_IS_FLAG_ENABLED(EnableLateRPRepublish) && AlreadyPublished && Existing >= MinThreshold;
+
+    if (!AlreadyPublished || RepublishLate) {
       auto ExternalPressure = getAnalysis<IGCFunctionExternalRegPressureAnalysis>().getExternalPressureForFunction(&F);
 
       auto *DT = &getAnalysis<DominatorTreeWrapperPass>(F).getDomTree();

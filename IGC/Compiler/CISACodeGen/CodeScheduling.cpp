@@ -3282,6 +3282,16 @@ bool CodeScheduling::runOnFunction(Function &F) {
 
   IGC_ASSERT(false == verifyFunction(F, &dbgs()));
 
+  // Refresh max_reg_pressure metadata
+  // CodeScheduling preserves CFG and only reorders within BBs, so the cached
+  // In/Out sets in RPE remain valid; we just need to re-walk per-BB pressure.
+  if (Changed) {
+    unsigned int SIMD = numLanes(RPE->bestGuessSIMDSize(&F, FGA));
+    unsigned int MaxPressure = RPE->getMaxRegCountForFunction(F, SIMD, WI);
+    unsigned int ExternalPressure = FRPE->getExternalPressureForFunction(&F);
+    RPE->publishRegPressureMetadata(F, MaxPressure + ExternalPressure);
+  }
+
   return Changed;
 }
 
