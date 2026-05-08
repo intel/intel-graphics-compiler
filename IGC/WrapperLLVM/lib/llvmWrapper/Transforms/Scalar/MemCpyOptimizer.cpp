@@ -37,7 +37,7 @@ MemCpyOptLegacyPassWrapper::MemCpyOptLegacyPassWrapper() : FunctionPass(ID) {
 
 void MemCpyOptLegacyPassWrapper::initializeAnalysisManagers() {
   FAM.registerPass([]() {
-    auto TLII = TargetLibraryInfoImpl{};
+    TargetLibraryInfoImpl TLII(llvm::Triple{});
     TLII.disableAllFunctions();
     return TargetLibraryAnalysis(TLII);
   });

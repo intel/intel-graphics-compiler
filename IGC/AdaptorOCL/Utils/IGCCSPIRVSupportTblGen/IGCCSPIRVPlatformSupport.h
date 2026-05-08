@@ -17,6 +17,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/TableGen/Record.h"
 #include "llvm/TableGen/Error.h"
 #include "llvm/Support/SourceMgr.h"
+#include "llvmWrapper/ADT/StringRef.h"
 
 extern llvm::SourceMgr llvm::SrcMgr;
 

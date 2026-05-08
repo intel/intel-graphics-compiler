@@ -3102,11 +3102,16 @@ inline llvm::CallInst *setUnsafeToHoistAttr(llvm::CallInst *CI) {
   llvm::OperandBundleDef OpDef("nohoist", llvm::ArrayRef<llvm::Value *>());
 
   // An operand bundle cannot be appended onto a call after creation.
-  // clone the instruction but add our operandbundle on as well.
   llvm::SmallVector<llvm::OperandBundleDef, 1> OpBundles;
   CI->getOperandBundlesAsDefs(OpBundles);
   OpBundles.push_back(OpDef);
-  llvm::CallInst *NewCall = llvm::CallInst::Create(CI, OpBundles, CI);
+  llvm::IRBuilder<> Builder(CI);
+  llvm::SmallVector<llvm::Value *, 8> Args(CI->args());
+  llvm::CallInst *NewCall =
+      Builder.CreateCall(CI->getFunctionType(), CI->getCalledOperand(), Args, OpBundles, CI->getName());
+  NewCall->setCallingConv(CI->getCallingConv());
+  NewCall->setAttributes(CI->getAttributes());
+  NewCall->setDebugLoc(CI->getDebugLoc());
   CI->replaceAllUsesWith(NewCall);
   return NewCall;
 }

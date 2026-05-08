@@ -94,7 +94,11 @@ inline int32_t getSourceLangLiteralMDValue(const llvm::DICompileUnit *compileUni
 inline uint16_t getSourceLanguage(const llvm::DICompileUnit *compileUnit, const llvm::Module *module) {
   int32_t sourceLanguage = getSourceLangLiteralMDValue(compileUnit, module);
   if (sourceLanguage == SOURCE_LANG_LITERAL_MD_IS_NOT_PRESENT) {
+#if LLVM_VERSION_MAJOR >= 22
+    sourceLanguage = compileUnit->getSourceLanguage().getUnversionedName();
+#else
     sourceLanguage = compileUnit->getSourceLanguage();
+#endif
   }
   return uint16_t(sourceLanguage);
 }

@@ -244,7 +244,11 @@ void BiFManagerHandler::preapareBiFSections(llvm::Module &pMainModule, TFunction
           if (T == "") {
             bifGenericSection.setTargetTriple(builtinSizeModule()->getTargetTriple());
           } else {
+#if LLVM_VERSION_MAJOR >= 22
+            bifGenericSection.setTargetTriple(llvm::Triple(T));
+#else
             bifGenericSection.setTargetTriple(T);
+#endif
           }
         }
         if (DL == nullptr) {
