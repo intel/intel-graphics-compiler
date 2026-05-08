@@ -572,7 +572,24 @@ bool SOALayoutChecker::visitBitCastInst(BitCastInst &BI) {
   return false;
 }
 
-bool SOALayoutChecker::visitGetElementPtrInst(GetElementPtrInst &GEP) { return checkUsers(GEP); }
+bool SOALayoutChecker::visitGetElementPtrInst(GetElementPtrInst &GEP) {
+  // If the GEP indexes through a simple scalar whose store size
+  // differs from the alloca's base scalar type, the old algorithm's
+  // handleGEPInst cannot compute correct promoted-vector indices.
+
+  if (pInfo && pInfo->baseType) {
+    Type *gepSrcEltTy = GEP.getSourceElementType();
+    if (!gepSrcEltTy->isAggregateType() && !gepSrcEltTy->isVectorTy()) {
+      uint64_t gepBits = pDL->getTypeStoreSizeInBits(gepSrcEltTy);
+      uint64_t baseBits = pDL->getTypeStoreSizeInBits(pInfo->baseType->getScalarType());
+      if (gepBits != 0 && baseBits != 0 && gepBits != baseBits) {
+        return false;
+      }
+    }
+  }
+
+  return checkUsers(GEP);
+}
 
 bool SOALayoutChecker::visitIntrinsicInst(IntrinsicInst &II) {
   llvm::Intrinsic::ID IID = II.getIntrinsicID();
