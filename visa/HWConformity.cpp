@@ -9536,6 +9536,21 @@ bool HWConformity::fixSrnd(INST_LIST_ITER it, G4_BB *bb) {
     }
     changed = true;
   }
+
+  // For f->hf, both packed and unpacked dst are supported. For the packed
+  // case, src0 must not span more than 1 GRF. When exec size exceeds the
+  // native exec size, src0 spans 2 GRFs, so split the instruction into halves
+  // (each at native exec size) to keep src0 within 1 GRF.
+  dst = inst->getDst();
+  if (dst->getType() == Type_HF && dst->getHorzStride() == 1 &&
+      inst->getExecSize() > builder.getNativeExecSize()) {
+    G4_Operand *s0 = inst->getSrc(0);
+    if (s0->isSrcRegRegion() && !s0->asSrcRegRegion()->getRegion()->isScalar()) {
+      evenlySplitInst(it, bb);
+      changed = true;
+    }
+  }
+
   return changed;
 }
 
