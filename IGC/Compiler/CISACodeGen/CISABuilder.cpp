@@ -4959,12 +4959,6 @@ void CEncoder::InitEncoder(bool canAbortOnSpill, bool hasStackCall, bool hasInli
     }
   }
 
-  if (context->type == ShaderType::OPENCL_SHADER && m_program->m_State.m_dispatchSize == SIMDMode::SIMD16) {
-    auto *clCtx = static_cast<OpenCLProgramContext *>(context);
-    if (clCtx->allowRetryAt512GRF())
-      userVRTGRFCeiling = 512;
-  }
-
   // For UMD AIL config specific, such as GRF 512, override the default
   if (context->getModuleMetaData()->compOpt.ForceVRTGRFCeiling) {
     userVRTGRFCeiling = context->getModuleMetaData()->compOpt.ForceVRTGRFCeiling;
