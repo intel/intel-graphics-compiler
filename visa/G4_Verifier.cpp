@@ -1002,6 +1002,7 @@ void G4Verifier::verifyOpcode(G4_INST *inst) {
 void G4Verifier::verifyDpas(G4_INST *inst) {
   // Verify region and size of each operands
   G4_InstDpas *dpasInst = inst->asDpasInst();
+  auto plat = dpasInst->getPlatform();
 
   if (dpasInst->getPredicate()) {
     DEBUG_VERBOSE("should not have predicate");
@@ -1123,7 +1124,6 @@ void G4Verifier::verifyDpas(G4_INST *inst) {
   }
 
   else if (dpasInst->isFP8()) {
-    auto plat = dpasInst->getPlatform();
     bool dTyOk = dTy == Type_F || dTy == Type_BF;
     bool s0TyOk = s0Ty == Type_F || s0Ty == Type_BF;
     if (plat > Xe3) {
@@ -1327,7 +1327,7 @@ void G4Verifier::verifyDpas(G4_INST *inst) {
     }
 
     // For Xe2+, src2's subreg must be zero if RC=8 and D=8
-    if (dpasInst->getPlatform() >= Xe2 && RC == 8 && D == 8) {
+    if (plat >= Xe2 && RC == 8 && D == 8) {
       if ((src2->getLinearizedStart() % kernel.numEltPerGRF<Type_UB>()) != 0) {
         DEBUG_VERBOSE("dpas.8x8's src2.subreg should be 0!");
         inst->emit(std::cerr);

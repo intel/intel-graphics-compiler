@@ -1648,8 +1648,9 @@ void vISAVerifier::verifyInstructionMisc(const CISA_INST *inst) {
     // TODO: Check src3/src4 subreg offset.
     // src3
     const vector_opnd &src3 = getVectorOperand(inst, i);
+    VISA_Type src3Ty = ISA_TYPE_UB;
     if (src3.opnd_val.gen_opnd.index != 0) {
-      VISA_Type src3Ty = getVectorOperandType(header, src3);
+      src3Ty = getVectorOperandType(header, src3);
       REPORT_INSTRUCTION(
           options,
           src3Ty == ISA_TYPE_UB,

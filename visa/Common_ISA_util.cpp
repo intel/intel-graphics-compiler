@@ -349,6 +349,14 @@ G4_Type GetGenTypeFromVISAType(VISA_Type type) {
     return Type_HF;
   case ISA_TYPE_BF:
     return Type_BF;
+  case ISA_TYPE_TF32:
+    return Type_TF32;
+  case ISA_TYPE_HF8:
+    return Type_HF8;
+  case ISA_TYPE_BF8:
+    return Type_BF8;
+  case ISA_TYPE_E2M1:
+    return Type_E2M1;
   default:
     return Type_UNDEF;
   }
@@ -388,6 +396,14 @@ VISA_Type Get_Common_ISA_Type_From_G4_Type(G4_Type type) {
     return ISA_TYPE_HF;
   case Type_BF:
     return ISA_TYPE_BF;
+  case Type_TF32:
+    return ISA_TYPE_TF32;
+  case Type_HF8:
+    return ISA_TYPE_HF8;
+  case Type_BF8:
+    return ISA_TYPE_BF8;
+  case Type_E2M1:
+    return ISA_TYPE_E2M1;
   default:
     return ISA_TYPE_NUM;
   }

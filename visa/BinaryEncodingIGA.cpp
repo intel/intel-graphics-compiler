@@ -315,13 +315,15 @@ private:
     case 3:
     {
       G4_Operand* src3 = DpasInst->getSrc(3);
-      ty = getIGAType(src3->getType(), platform);
+      G4_Type g4Ty = src3->getType();
+        ty = getIGAType(g4Ty, platform);
       break;
     }
     case 4:
     {
       G4_Operand* src4 = DpasInst->getSrc(4);
-      ty = getIGAType(src4->getType(), platform);
+      G4_Type g4Ty = src4->getType();
+        ty = getIGAType(g4Ty, platform);
       break;
     }
     }
@@ -2166,6 +2168,14 @@ Type BinaryEncodingIGA::getIGAType(G4_Type type, TARGET_PLATFORM genxPlatform) {
     return Type::NF;
   case Type_BF:
     return Type::BF;
+  case Type_TF32:
+    return Type::TF32;
+  case Type_HF8:
+    return Type::HF8;
+  case Type_BF8:
+    return Type::BF8;
+  case Type_E2M1:
+    return Type::E2M1;
   default:
     vISA_ASSERT_UNREACHABLE("illegal type");
     return Type::INVALID;
