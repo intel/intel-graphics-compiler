@@ -484,6 +484,15 @@ uint32_t COpenCLKernel::getReqdSubGroupSize(llvm::Function &F, MetaDataUtils *MD
   return simd_size;
 }
 
+COpenCLKernel::SIMDSizeRequirement COpenCLKernel::getEffectiveRequiredSIMDSize(llvm::Function &F,
+                                                                               MetaDataUtils *MDUtils) const {
+  if (uint32_t size = getReqdSubGroupSize(F, MDUtils))
+    return {size, "intel_reqd_sub_group_size"};
+  if (uint32_t size = m_Context->getModuleMetaData()->csInfo.forcedSIMDSize)
+    return {size, "forced SIMD size"};
+  return {};
+}
+
 uint32_t COpenCLKernel::getMaxPressure(llvm::Function &F, MetaDataUtils *MDUtils) const {
   FunctionInfoMetaDataHandle funcInfoMD = MDUtils->getFunctionsInfoItem(&F);
   unsigned int maxPressure = funcInfoMD->getMaxRegPressure()->getMaxPressure();
@@ -2499,16 +2508,14 @@ bool COpenCLKernel::hasReadWriteImage(llvm::Function &F) {
 }
 
 bool COpenCLKernel::CompileSIMDSize(SIMDMode simdMode, EmitPass &EP, llvm::Function &F) {
-  unsigned char forcedSIMDSize = m_Context->getModuleMetaData()->csInfo.forcedSIMDSize;
   MetaDataUtils *pMdUtils = EP.getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
-  auto reqdSubGroupSize = getReqdSubGroupSize(F, pMdUtils);
+  auto simdReq = getEffectiveRequiredSIMDSize(F, pMdUtils);
 
   if (!CompileSIMDSizeInCommon(simdMode)) {
-    if (forcedSIMDSize == numLanes(simdMode))
-      m_Context->EmitError(("Failed to compile the forced SIMD size of " + std::to_string(forcedSIMDSize)).c_str(), &F);
-    else if (reqdSubGroupSize == numLanes(simdMode))
-      m_Context->EmitError(
-          ("Failed to compile the required sub-group size of " + std::to_string(reqdSubGroupSize)).c_str(), &F);
+    if (simdReq && simdReq.Size == numLanes(simdMode)) {
+      std::string msg = "Failed to compile the " + simdReq.SourceName.str() + " of " + std::to_string(simdReq.Size);
+      m_Context->EmitError(msg.c_str(), &F);
+    }
     return false;
   }
 
@@ -2553,14 +2560,12 @@ bool COpenCLKernel::CompileSIMDSize(SIMDMode simdMode, EmitPass &EP, llvm::Funct
   if (simdStatus == SIMDStatus::SIMD_PASS) {
     return true;
   }
-  // Report an error if intel_reqd_sub_group_size cannot be satisfied
+  // Report an error if required SIMD size cannot be satisfied
   else {
-    if (reqdSubGroupSize == numLanes(simdMode)) {
-      m_Context->EmitError(
-          (std::string("Cannot compile a kernel in the SIMD mode specified by intel_reqd_sub_group_size(") +
-           std::to_string(reqdSubGroupSize) + std::string(")"))
-              .c_str(),
-          &F);
+    if (simdReq && simdReq.Size == numLanes(simdMode)) {
+      std::string msg = "Cannot compile a kernel in the SIMD mode specified by the " + simdReq.SourceName.str() +
+                        " of " + std::to_string(simdReq.Size);
+      m_Context->EmitError(msg.c_str(), &F);
       return false;
     }
   }
@@ -2611,7 +2616,8 @@ SIMDStatus COpenCLKernel::checkSIMDCompileCondsForMin16(SIMDMode simdMode, EmitP
 
   MetaDataUtils *pMdUtils = EP.getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
   FunctionInfoMetaDataHandle funcInfoMD = pMdUtils->getFunctionsInfoItem(&F);
-  uint32_t requiredSimdSize = getReqdSubGroupSize(F, pMdUtils);
+  auto simdReq = getEffectiveRequiredSIMDSize(F, pMdUtils);
+  uint32_t requiredSimdSize = simdReq.Size;
 
   // there is a requirement for specific compilation size, we can't abort on simd32
   if (requiredSimdSize != 0 && !(requiredSimdSize < 32 && SIMDMode::SIMD32 == simdMode)) {
@@ -2758,7 +2764,8 @@ SIMDStatus COpenCLKernel::checkSIMDCompileConds(SIMDMode simdMode, EmitPass &EP,
   MetaDataUtils *pMdUtils = EP.getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
   ModuleMetaData *modMD = pCtx->getModuleMetaData();
   FunctionInfoMetaDataHandle funcInfoMD = pMdUtils->getFunctionsInfoItem(&F);
-  uint32_t requiredSimdSize = getReqdSubGroupSize(F, pMdUtils);
+  auto simdReq = getEffectiveRequiredSIMDSize(F, pMdUtils);
+  uint32_t requiredSimdSize = simdReq.Size;
   uint32_t maxPressure = getMaxPressure(F, pMdUtils);
 
   // For simd variant functions, detect which SIMD sizes are needed
@@ -2790,13 +2797,13 @@ SIMDStatus COpenCLKernel::checkSIMDCompileConds(SIMDMode simdMode, EmitPass &EP,
     bool hasIndirectCall = FG && FG->hasIndirectCall();
     if (hasNestedCall || hasIndirectCall || isIndirectGroup) {
       // Disable EU fusion if SIMD32 is requested
-      if (getReqdSubGroupSize(F, pMdUtils) == numLanes(SIMDMode::SIMD32)) {
+      if (requiredSimdSize == numLanes(SIMDMode::SIMD32)) {
         pCtx->getModuleMetaData()->compOpt.DisableEUFusion = true;
         if (FG->getHead() == &F) {
-          pCtx->EmitWarning(std::string("EU fusion is disabled, it does not work on the current platform if SIMD32 "
-                                        "mode specified by intel_reqd_sub_group_size(32)")
-                                .c_str(),
-                            &F);
+          std::string msg = "EU fusion is disabled, it does not work on the current platform"
+                            " if SIMD32 mode specified by " +
+                            simdReq.SourceName.str() + "(" + std::to_string(simdReq.Size) + ")";
+          pCtx->EmitWarning(msg.c_str(), &F);
         }
       } else {
         pCtx->SetSIMDInfo(SIMD_SKIP_HW, simdMode, ShaderDispatchMode::NOT_APPLICABLE);

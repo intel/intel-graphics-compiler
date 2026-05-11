@@ -223,6 +223,15 @@ private:
   std::string getKernelArgAccessQualifier(const FunctionMetaData &funcMD, uint argIndex) const;
   // Helper function to get SIMD size specified in intel_reqd_sub_group_size attribute
   uint32_t getReqdSubGroupSize(llvm::Function &F, IGC::IGCMD::MetaDataUtils *MDUtils) const;
+  // Effective required SIMD size with its origin.
+  struct SIMDSizeRequirement {
+    uint32_t Size = 0;
+    llvm::StringRef SourceName;
+    explicit operator bool() const { return Size != 0; }
+  };
+  // Returns the effective required SIMD size, considering both intel_reqd_sub_group_size
+  // attribute and forcedSIMDSize from compute shader info.
+  SIMDSizeRequirement getEffectiveRequiredSIMDSize(llvm::Function &F, IGC::IGCMD::MetaDataUtils *MDUtils) const;
   uint32_t getMaxPressure(llvm::Function &F, IGC::IGCMD::MetaDataUtils *MDUtils) const;
   bool isUnusedArg(KernelArg &arg) const;
   bool canSkipScratchPointer(KernelArgs &args) const;
