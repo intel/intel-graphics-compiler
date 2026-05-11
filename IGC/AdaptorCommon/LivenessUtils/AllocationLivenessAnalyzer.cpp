@@ -153,10 +153,9 @@ void AllocationLivenessAnalyzer::implementCallSpecificBehavior(CallInst *callI, 
   }
 }
 
-template <typename range, typename SetT>
-static inline void doWorkLoop(SmallVectorImpl<BasicBlock *> &worklist, SetT &bbSet1, SetT &bbSet2,
-                              std::function<range(BasicBlock *)> iterate,
-                              std::function<bool(BasicBlock *)> continueCondition) {
+template <typename range, typename SetT, typename IterateFn, typename ContinueFn>
+static inline void doWorkLoop(SmallVectorImpl<BasicBlock *> &worklist, SetT &bbSet1, SetT &bbSet2, IterateFn &&iterate,
+                              ContinueFn &&continueCondition) {
   // perform data flow analysis
   while (!worklist.empty()) {
     auto *currbb = worklist.pop_back_val();
