@@ -171,7 +171,13 @@ DumpName DumpName::Pass(std::string const &name, std::optional<unsigned int> ind
   newName.erase(
       remove_if(newName.begin(), newName.end(), [](char c) { return isspace(static_cast<unsigned char>(c)); }),
       newName.end());
-  std::replace_if(newName.begin(), newName.end(), [](const char s) { return s == '/' || s == '\\'; }, '_');
+  std::replace_if(
+      newName.begin(), newName.end(),
+      [](unsigned char c) {
+        return c < 0x20 || c == '\\' || c == '/' || c == ':' || c == '*' || c == '?' || c == '"' || c == '<' ||
+               c == '>' || c == '|';
+      },
+      '_');
   IGC_ASSERT_MESSAGE(newName.find(' ') == std::string::npos, "Pass name must not contain spaces");
   DumpName copy(*this);
   CPassDescriptor pd = {std::move(newName), index};
