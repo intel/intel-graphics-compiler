@@ -20,22 +20,6 @@ void InitDg1HwWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT
 
 
     SI_WA_ENABLE(
-        Wa_220856683,
-        "No Link Provided",
-        "No HWSightingLink provided",
-        PLATFORM_ALL,
-        SI_WA_BETWEEN(iStepId_DG1, DG1_GT_REV_ID_A0, FUTURE_PROJECT));
-
-
-    SI_WA_ENABLE(
-        Wa_1409460247,
-        "No Link Provided",
-        "No HWSightingLink provided",
-        PLATFORM_ALL,
-        SI_WA_BETWEEN(iStepId_DG1, DG1_GT_REV_ID_A0, DG1_GT_REV_ID_B0));
-
-
-    SI_WA_ENABLE(
         Wa_14010017096,
         "No Link Provided",
         "No HWSightingLink provided",
@@ -73,14 +57,6 @@ void InitDg1HwWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT
         "No HWSightingLink provided",
         PLATFORM_ALL,
         SI_WA_BETWEEN(iStepId_DG1, DG1_GT_REV_ID_B0, FUTURE_PROJECT));
-
-
-    SI_WA_ENABLE(
-        Wa_18012660806,
-        "No Link Provided",
-        "No HWSightingLink provided",
-        PLATFORM_ALL,
-        SI_WA_BETWEEN(iStepId_DG1, DG1_GT_REV_ID_A0, FUTURE_PROJECT));
 
 
     SI_WA_ENABLE(

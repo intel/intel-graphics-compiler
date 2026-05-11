@@ -84,14 +84,6 @@ void InitCnlWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
 
     }
 
-    WA_ENABLE(
-        ulStepId_CNL,
-        Wa_220856683,
-        "No Link Provided",
-        "No HWSightingLink provided",
-        PLATFORM_ALL,
-        SIWA_FOREVER);
-
 
     WA_ENABLE(
         ulStepId_CNL,

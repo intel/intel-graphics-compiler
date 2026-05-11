@@ -436,6 +436,18 @@ SPDX-License-Identifier: MIT
         WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_UNKNOWN)
 
         WA_DECLARE(
+        Wa_14025753813,
+        "Workaround",
+        WA_BUG_TYPE_UNKNOWN,
+        WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_UNKNOWN)
+
+        WA_DECLARE(
+        Wa_14027487226,
+        "Workaround",
+        WA_BUG_TYPE_UNKNOWN,
+        WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_UNKNOWN)
+
+        WA_DECLARE(
         Wa_1406306137,
         "Workaround",
         WA_BUG_TYPE_HANG,
@@ -445,12 +457,6 @@ SPDX-License-Identifier: MIT
         Wa_1406950495,
         "Workaround",
         WA_BUG_TYPE_HANG,
-        WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_UNKNOWN)
-
-        WA_DECLARE(
-        Wa_1409460247,
-        "Workaround",
-        WA_BUG_TYPE_UNKNOWN,
         WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_UNKNOWN)
 
         WA_DECLARE(
@@ -550,18 +556,6 @@ SPDX-License-Identifier: MIT
         WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_UNKNOWN)
 
         WA_DECLARE(
-        Wa_18012660806,
-        "Workaround",
-        WA_BUG_TYPE_CORRUPTION,
-        WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_D3D | WA_COMPONENT_OGL | WA_COMPONENT_KMD)
-
-        WA_DECLARE(
-        Wa_18013852970,
-        "Workaround",
-        WA_BUG_TYPE_CORRUPTION,
-        WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_UNKNOWN)
-
-        WA_DECLARE(
         Wa_18015444900,
         "Workaround",
         WA_BUG_TYPE_CORRUPTION,
@@ -652,12 +646,6 @@ SPDX-License-Identifier: MIT
         WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_UNKNOWN)
 
         WA_DECLARE(
-        Wa_22014559856,
-        "Workaround",
-        WA_BUG_TYPE_CORRUPTION,
-        WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_UNKNOWN)
-
-        WA_DECLARE(
         Wa_22016140776,
         "Workaround",
         WA_BUG_TYPE_UNKNOWN,
@@ -681,20 +669,3 @@ SPDX-License-Identifier: MIT
         WA_BUG_TYPE_UNKNOWN,
         WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_UNKNOWN)
 
-        WA_DECLARE(
-        Wa_220856683,
-        "Workaround",
-        WA_BUG_TYPE_FUNCTIONAL,
-        WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_D3D)
-
-        WA_DECLARE(
-        Wa_14025753813,
-        "Workaround",
-        WA_BUG_TYPE_UNKNOWN,
-        WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_UNKNOWN)
-
-        WA_DECLARE(
-        Wa_14027487226,
-        "Workaround",
-        WA_BUG_TYPE_UNKNOWN,
-        WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_UNKNOWN)
