@@ -83,15 +83,17 @@ void CodeGenPatternMatch::CodeGenNode(llvm::DomTreeNode *node) {
   }
 }
 
-bool CodeGenPatternMatch::runOnFunction(llvm::Function &F) {
+void CodeGenPatternMatch::releaseMemory() {
   m_blockMap.clear();
   ConstantPlacement.clear();
   PairOutputMap.clear();
   UniformBools.clear();
-
+  LoopExitingBlocksCache.clear();
   delete[] m_blocks;
   m_blocks = nullptr;
+}
 
+bool CodeGenPatternMatch::runOnFunction(llvm::Function &F) {
   m_ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
 
   MetaDataUtils *pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
@@ -1417,10 +1419,12 @@ void CodeGenPatternMatch::visitPHINode(PHINode &I) {
   };
 
   if (Loop *L = LI->getLoopFor(I.getParent())) {
-    SmallVector<BasicBlock *, 4> exitingBlocks;
+    auto &exitingBlocks = LoopExitingBlocksCache[L];
+    if (exitingBlocks.empty()) {
+      L->getExitingBlocks(exitingBlocks);
+    }
     SmallPtrSet<Instruction *, 8> visitedInstructions;
-    L->getExitingBlocks(exitingBlocks);
-    for (auto exitingBlock : exitingBlocks) {
+    for (auto *exitingBlock : exitingBlocks) {
       if (!isUniform(exitingBlock->getTerminator())) {
         std::vector<Instruction *> worklist;
         worklist.push_back(&I);

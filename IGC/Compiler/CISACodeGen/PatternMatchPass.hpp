@@ -132,6 +132,8 @@ public:
 
   virtual bool runOnFunction(llvm::Function &F) override;
 
+  virtual void releaseMemory() override;
+
   virtual llvm::StringRef getPassName() const override { return "CodeGenPatternMatchPass"; }
 
   void visitCastInst(llvm::CastInst &I);
@@ -329,6 +331,7 @@ private:
   // Otherwise, they are expanded to the SIMD size.
   llvm::DenseSet<const llvm::Value *> UniformBools;
   llvm::DenseMap<const llvm::BinaryOperator *, bool> NecessaryMulCandidates;
+  llvm::DenseMap<llvm::Loop *, llvm::SmallVector<llvm::BasicBlock *, 4>> LoopExitingBlocksCache;
 
   // Find bool values that will be emitted as uniform variables.
   // Otherwise they will be expanded to the SIMD size, by default.
