@@ -67,57 +67,27 @@ static const WA_TABLE *CreateVisaWaTable(TARGET_PLATFORM platform,
   WA_TABLE *pWaTable = new WA_TABLE;
   memset(pWaTable, 0, sizeof(WA_TABLE));
 
-  if ((platform == GENX_SKL && (step == Step_A || step == Step_B)) ||
-      (platform == GENX_BXT && step == Step_A)) {
-    VISA_WA_ENABLE(pWaTable, WaHeaderRequiredOnSimd16Sample16bit);
-  } else {
-    VISA_WA_DISABLE(pWaTable, WaHeaderRequiredOnSimd16Sample16bit);
-  }
+  VISA_WA_DISABLE(pWaTable, WaHeaderRequiredOnSimd16Sample16bit);
 
-  if ((platform == GENX_SKL) && (step == Step_A)) {
-    VISA_WA_ENABLE(pWaTable, WaSendsSrc1SizeLimitWhenEOT);
-  } else {
-    VISA_WA_DISABLE(pWaTable, WaSendsSrc1SizeLimitWhenEOT);
-  }
+  VISA_WA_DISABLE(pWaTable, WaSendsSrc1SizeLimitWhenEOT);
 
-  if ((platform == GENX_SKL && (step == Step_A || step == Step_B)) ||
-      (platform == GENX_BXT && step == Step_A)) {
-    VISA_WA_ENABLE(pWaTable, WaDisallow64BitImmMov);
-  } else {
-    VISA_WA_DISABLE(pWaTable, WaDisallow64BitImmMov);
-  }
+  VISA_WA_DISABLE(pWaTable, WaDisallow64BitImmMov);
 
-  if (platform == GENX_BDW || platform == GENX_CHV || platform == GENX_BXT ||
-      platform == GENX_SKL) {
+  if (platform == GENX_BDW || platform == GENX_CHV) {
     VISA_WA_ENABLE(pWaTable, WaThreadSwitchAfterCall);
   } else {
     VISA_WA_DISABLE(pWaTable, WaThreadSwitchAfterCall);
   }
 
-  if ((platform == GENX_SKL && step < Step_E) ||
-      (platform == GENX_BXT && step <= Step_B)) {
-    VISA_WA_ENABLE(pWaTable, WaSrc1ImmHfNotAllowed);
-  } else {
-    VISA_WA_DISABLE(pWaTable, WaSrc1ImmHfNotAllowed);
-  }
+  VISA_WA_DISABLE(pWaTable, WaSrc1ImmHfNotAllowed);
 
-  if (platform == GENX_SKL && step == Step_A) {
-    VISA_WA_ENABLE(pWaTable, WaDstSubRegNumNotAllowedWithLowPrecPacked);
-  } else {
-    VISA_WA_DISABLE(pWaTable, WaDstSubRegNumNotAllowedWithLowPrecPacked);
-  }
+  VISA_WA_DISABLE(pWaTable, WaDstSubRegNumNotAllowedWithLowPrecPacked);
 
-  if ((platform == GENX_SKL && step < Step_C)) {
-    VISA_WA_ENABLE(pWaTable, WaDisableMixedModeLog);
-    VISA_WA_ENABLE(pWaTable, WaDisableMixedModeFdiv);
-    VISA_WA_ENABLE(pWaTable, WaDisableMixedModePow);
-  } else {
-    VISA_WA_DISABLE(pWaTable, WaDisableMixedModeLog);
-    VISA_WA_DISABLE(pWaTable, WaDisableMixedModeFdiv);
-    VISA_WA_DISABLE(pWaTable, WaDisableMixedModePow);
-  }
+  VISA_WA_DISABLE(pWaTable, WaDisableMixedModeLog);
+  VISA_WA_DISABLE(pWaTable, WaDisableMixedModeFdiv);
+  VISA_WA_DISABLE(pWaTable, WaDisableMixedModePow);
 
-  if ((platform == GENX_SKL && step < Step_C) || platform == GENX_CHV) {
+  if (platform == GENX_CHV) {
     VISA_WA_ENABLE(pWaTable,
                    WaFloatMixedModeSelNotAllowedWithPackedDestination);
   } else {
@@ -128,32 +98,9 @@ static const WA_TABLE *CreateVisaWaTable(TARGET_PLATFORM platform,
   // always disable in offline mode
   VISA_WA_DISABLE(pWaTable, WADisableWriteCommitForPageFault);
 
-  if ((platform == GENX_SKL && step < Step_D) ||
-      (platform == GENX_BXT && step == Step_A)) {
-    VISA_WA_ENABLE(pWaTable, WaDisableSIMD16On3SrcInstr);
-  }
+  VISA_WA_DISABLE(pWaTable, WaSendSEnableIndirectMsgDesc);
 
-  if (platform == GENX_SKL && (step == Step_C || step == Step_D)) {
-    VISA_WA_ENABLE(pWaTable, WaSendSEnableIndirectMsgDesc);
-  } else {
-    VISA_WA_DISABLE(pWaTable, WaSendSEnableIndirectMsgDesc);
-  }
-
-  if (platform == GENX_SKL || platform == GENX_BXT) {
-    VISA_WA_ENABLE(pWaTable, WaClearArfDependenciesBeforeEot);
-  }
-
-  if (platform == GENX_SKL && step == Step_A) {
-    VISA_WA_ENABLE(pWaTable, WaDisableSendsSrc0DstOverlap);
-  }
-
-  if (platform >= GENX_SKL) {
-    VISA_WA_ENABLE(pWaTable, WaMixModeSelInstDstNotPacked);
-  }
-
-  if (platform == GENX_SKL || platform == GENX_BXT) {
-    VISA_WA_ENABLE(pWaTable, WaResetN0BeforeGatewayMessage);
-  }
+  VISA_WA_ENABLE(pWaTable, WaMixModeSelInstDstNotPacked);
 
   // WA for future platforms
   if (platform == GENX_ICLLP) {

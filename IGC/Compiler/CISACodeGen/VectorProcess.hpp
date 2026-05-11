@@ -44,7 +44,7 @@ public:
   enum {
     VECMESSAGEINFO_MAX_LEN = 16,
 
-    // SKL+
+    // Default for platforms supporting these scattered messages.
     // Exception
     //    TGL : no 8DW scattered message.
     //          use A64_SCATTERED_MAX_BYTES_4DW

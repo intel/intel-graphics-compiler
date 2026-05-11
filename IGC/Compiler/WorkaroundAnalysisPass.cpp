@@ -538,8 +538,8 @@ void WAFMinFMax::visitCallInst(CallInst &I) {
     case Intrinsic::minnum: {
       if (m_ctx->m_DriverInfo.SupportsIEEEMinMax()) {
         // OCL's fmax/fmin maps to GEN's max/min in non-IEEE mode.
-        // By default, gen uses non-IEEE mode.  But, in SKL
-        // prior to C step, IEEE mode is used if denorm bit is set.
+        // By default, gen uses non-IEEE mode. On platforms without an IEEE
+        // min/max control bit, IEEE mode is used if the denorm bit is set.
         // If there are no sNaN as inputs to fmax/fmin,  IEEE mode
         // is the same as non-IEEE mode;  if there are sNaN,  non-IEEE
         // mode is NOT the same as IEEE mode. But non-IEEE mode is the
@@ -548,8 +548,8 @@ void WAFMinFMax::visitCallInst(CallInst &I) {
         //           x1 = IEEE_fmin(x, qNaN), y1 = IEEE_fmin(y, qNaN)
         //             (or fadd(x, -0.0); y1 = fadd(y, -0.0);)
         //           IEEE_fmax(x1, y1)
-        // SKL C+ has IEEE minmax bit in Control Register(CR), so far we
-        // don't set it (meaning non-ieee mode).
+        // On platforms with an IEEE min/max bit in Control Register(CR), so
+        // far we don't set it (meaning non-ieee mode).
         //
         // Therefore, if fmax/fmin is in IEEE mode, we need to workaround
         // that by converting sNAN to qNAN if one of operands is sNAN but
@@ -574,13 +574,9 @@ void WAFMinFMax::visitCallInst(CallInst &I) {
         //
         // We choose FMIN to prevent other optimizations kicking in.
         //
-
-        // Note that m_enableFMaxFMinPlusZero is used here for GEN9 only; if it
-        // is set,  it means that IEEE-mode min/max is used if denorm bit is set.
         Type *Ty = intr->getType();
         ModuleMetaData *modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
-        bool minmaxModeSetByDenormBit = (!m_ctx->platform.hasIEEEMinmaxBit() ||
-                                         m_ctx->platform.WaOCLEnableFMaxFMinPlusZero() || EnableFMaxFMinPlusZero);
+        bool minmaxModeSetByDenormBit = EnableFMaxFMinPlusZero;
         bool hasNaNs = !modMD->compOpt.FiniteMathOnly;
         if (hasNaNs && minmaxModeSetByDenormBit &&
             ((Ty->isFloatTy() && (modMD->compOpt.FloatDenormMode32 == FLOAT_DENORM_RETAIN)) ||

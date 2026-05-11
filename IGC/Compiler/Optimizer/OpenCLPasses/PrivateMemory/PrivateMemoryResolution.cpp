@@ -1249,7 +1249,7 @@ bool PrivateMemoryResolution::resolveAllocaInstructions(bool privateOnStack, boo
   // %totalPrivateMemPerThread    = zext i32 %totalPrivateMemPerThread to i64
 
   // %r0.5                        = extractelement <8 x i32> %r0, i32 5
-  // %threadId                    = and i32 %r0.5, 0x1FF|0x3FF   (Thread ID is in the lower 9 bits or 10 bit(KBL & CNL+)
+  // %threadId                    = and i32 %r0.5, 0x1FF|0x3FF   (Thread ID is in the lower 9 or 10 bits)
   // of r0.5) %threadId                    = zext i32 %threadId to i64 %perThreadOffset             = mul i64 %threadId,
   // %totalPrivateMemPerThread
   Function *pHWTIDFunc = GenISAIntrinsic::getDeclaration(

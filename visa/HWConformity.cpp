@@ -2474,8 +2474,7 @@ bool HWConformity::fixMULInst(INST_LIST_ITER &i, G4_BB *bb) {
     // mul/mach/mov sequence
     doNativeMul = true;
   } else {
-    if ((builder.getPlatform() == GENX_CHV ||
-         builder.getPlatform() == GENX_BXT)) {
+    if (builder.getPlatform() == GENX_CHV) {
       if (inst->getExecSize() == g4::SIMD1) {
         // scalar insts are a-ok
         return false;
@@ -7875,8 +7874,7 @@ void HWConformity::fixMixedHFInst(G4_BB *bb) {
         12: [DevCHV, DevSKL]: Indirect Addressing on source is not supported
        when source and destination data types are mixed float.
     */
-    if (builder.getPlatform() == GENX_CHV ||
-        builder.getPlatform() == GENX_SKL) {
+    if (builder.getPlatform() == GENX_CHV) {
       for (uint8_t i = 0; i < inst->getNumSrc(); ++i) {
         G4_Operand *src = inst->getSrc(i);
         if (src == nullptr || !src->isSrcRegRegion() ||

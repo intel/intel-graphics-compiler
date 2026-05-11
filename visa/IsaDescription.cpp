@@ -1697,7 +1697,7 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] = {
     /// 87
     ///  FIXME: fix ELEM_NUM type
     {
-        GENX_SKL,
+        ALL,
         ISA_VME_IDM,
         ISA_Inst_Misc,
         "vme_idm",

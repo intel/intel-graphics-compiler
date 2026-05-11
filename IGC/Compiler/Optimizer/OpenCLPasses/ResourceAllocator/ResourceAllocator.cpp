@@ -237,11 +237,11 @@ bool ResourceAllocator::runOnFunction(llvm::Function &F) {
 
   BindlessAllocationMode allocationMode = BindlessAllocationMode::Unsupported;
 
-  if (IGC_IS_FLAG_ENABLED(EnableFallbackToBindless) && ctx->platform.supportBindless()) {
+  if (IGC_IS_FLAG_ENABLED(EnableFallbackToBindless)) {
     allocationMode = BindlessAllocationMode::Supported;
   }
 
-  if (CompilerOpts.PreferBindlessImages && ctx->platform.supportBindless()) {
+  if (CompilerOpts.PreferBindlessImages) {
     allocationMode = BindlessAllocationMode::Preferred;
   }
 

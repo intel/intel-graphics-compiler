@@ -9,7 +9,7 @@
 ; REQUIRES: llvm-14-plus
 ; RUN: igc_opt --opaque-pointers -igc-vectorpreprocess -S %s -o - | FileCheck %s
 
-target triple = "igil_32_GEN9"
+target triple = "igil_32_GEN12"
 
 ;
 ; Positive cases: loads that should be widened to i32 elements

@@ -104,7 +104,7 @@ bool SamplerPerfOptPass::FixCubeHFPrecisionBug(SampleIntrinsic *sampleInst) {
     // if (ctx->platform.isAIParameterCombiningWithLODBiasEnabled()) statement.
     //
     // MMIO: Enable-new-message-layout-for-cube-array bit must be set.
-    // KM_GEN9_HALF_SLICE_CHICKEN7, KM_XE_HP_ENABLE_NEW_MSG_LAYOUT_FOR_CUBE_ARRAY
+    // KM_XE_HP_ENABLE_NEW_MSG_LAYOUT_FOR_CUBE_ARRAY
 
     // WA details
     //    The WA must be applied only for : cubes + half-float types

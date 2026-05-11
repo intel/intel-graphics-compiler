@@ -12,7 +12,7 @@
 ; RUN: igc_opt --regkey PrintToConsole --regkey OCLSIMD16SelectionMask=2 --enable-profitability-print --simd32-profit -igc-serialize-metadata --inputocl -S < %s 2>&1 | FileCheck %s
 ; RUN: igc_opt --regkey PrintToConsole --regkey OCLSIMD16SelectionMask=4 --enable-profitability-print --simd32-profit -igc-serialize-metadata --inputocl -S < %s 2>&1 | FileCheck %s
 ;
-; RUN: igc_opt --regkey PrintToConsole --enable-profitability-print --simd32-profit -igc-serialize-metadata --inputocl --platformglk -S < %s 2>&1 | FileCheck %s
+; RUN: igc_opt --regkey PrintToConsole --enable-profitability-print --simd32-profit -igc-serialize-metadata --inputocl --platformbmg -S < %s 2>&1 | FileCheck %s
 ; ------------------------------------------------
 ; Simd32ProfitabilityAnalysis
 ; ------------------------------------------------

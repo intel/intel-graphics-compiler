@@ -2345,7 +2345,7 @@ void SetExtMsgDescr(G4_INST *inst, BinInst *mybin, uint32_t value) {
                    emd.ExtMsgDescriptor.ExtMessageLength);
     mybin->SetBits(bitsSendsExDescFuncCtrl_0, bitsSendsExDescFuncCtrl_1,
                    emd.ExtMsgDescriptor.ExtFunctionControl);
-  } else if (inst->getPlatform() >= GENX_SKL) {
+  } else {
     // needs to encode extended message desc function control as well for SKL+
     uint32_t val = emd.ExtMsgDescriptor.ExtFunctionControl & 0xF;
     mybin->SetBits(bitsSendExDesc19, bitsSendExDesc16, val);

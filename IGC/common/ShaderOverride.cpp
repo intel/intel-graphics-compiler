@@ -86,13 +86,6 @@ static void *loadBinFile(const std::string &fileName, int &binSize) {
 iga_gen_t GetIGAPlatform(PLATFORM const &platform) {
   auto &ProductFamily = platform.eProductFamily;
   switch (platform.eRenderCoreFamily) {
-  case IGFX_GEN9_CORE:
-  case IGFX_GENNEXT_CORE:
-    if (ProductFamily == IGFX_BROXTON || ProductFamily == IGFX_GEMINILAKE) {
-      return IGA_GEN9lp;
-    } else {
-      return IGA_GEN9;
-    }
   case IGFX_GEN10_CORE:
     return IGA_GEN10;
   case IGFX_GEN11_CORE:
@@ -135,7 +128,7 @@ iga_gen_t GetIGAPlatform(PLATFORM const &platform) {
     IGC_ASSERT_MESSAGE(0, "unsupported platform");
     break;
   }
-  return IGA_GEN9;
+  return IGA_GEN_INVALID;
 }
 
 void appendToShaderOverrideLogFile(std::string const &binFileName, const char *message) {

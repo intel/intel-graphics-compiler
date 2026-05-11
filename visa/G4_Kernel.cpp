@@ -740,12 +740,6 @@ static iga_gen_t getIGAPlatform(TARGET_PLATFORM genPlatform) {
   case GENX_CHV:
     platform = IGA_GEN8lp;
     break;
-  case GENX_SKL:
-    platform = IGA_GEN9;
-    break;
-  case GENX_BXT:
-    platform = IGA_GEN9lp;
-    break;
   case GENX_ICLLP:
     platform = IGA_GEN11;
     break;

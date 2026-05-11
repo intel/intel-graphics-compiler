@@ -51,11 +51,10 @@ void IGC::selectWalkOrderInPass(bool useLinearWalk, uint numberOfTypedAccess, ui
 
   bool needsLinearWalk = MMD->csInfo.neededThreadIdLayout == ThreadIDLayout::X;
   if (platform.supportHWGenerateTID() && driverInfo.SupportHWGenerateTID()) {
-    // If KeepTileYForFlattened == 2, use the platform default value.
+    // If KeepTileYForFlattened == 2, use the default value.
     // Otherwise 0 is forced off, 1 is forced on.
-    bool KeepTileYForFlattenedValue = IGC_GET_FLAG_VALUE(KeepTileYForFlattened) == 2
-                                          ? platform.EnableKeepTileYForFlattenedDefault()
-                                          : IGC_IS_FLAG_ENABLED(KeepTileYForFlattened);
+    bool KeepTileYForFlattenedValue =
+        IGC_GET_FLAG_VALUE(KeepTileYForFlattened) != 2 && IGC_IS_FLAG_ENABLED(KeepTileYForFlattened);
     if (!KeepTileYForFlattenedValue && useLinearWalk) {
       needsLinearWalk = true;
     }

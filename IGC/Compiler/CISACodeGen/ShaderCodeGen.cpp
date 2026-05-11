@@ -931,8 +931,7 @@ void AddLegalizationPasses(CodeGenContext &ctx, IGCPassManager &mpm, PSSignature
   if (IGC_IS_FLAG_ENABLED(ForceHalfPromotion) ||
       (ctx.getModuleMetaData()->compOpt.WaForceHalfPromotionComputeShader && ctx.type == ShaderType::COMPUTE_SHADER) ||
       (ctx.getModuleMetaData()->compOpt.WaForceHalfPromotionPixelVertexShader &&
-       (ctx.type == ShaderType::PIXEL_SHADER || ctx.type == ShaderType::VERTEX_SHADER)) ||
-      (!ctx.platform.supportFP16() && IGC_IS_FLAG_ENABLED(EnableHalfPromotion))) {
+       (ctx.type == ShaderType::PIXEL_SHADER || ctx.type == ShaderType::VERTEX_SHADER))) {
     mpm.add(new HalfPromotion());
     if (IGC_IS_FLAG_ENABLED(EnableGVN)) {
       mpm.add(createGVNPass());

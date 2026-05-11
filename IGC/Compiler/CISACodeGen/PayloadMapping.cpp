@@ -421,7 +421,7 @@ uint PayloadMapping::GetNumPayloadElements_Sample(const SampleIntrinsic *inst) {
 bool PayloadMapping::IsZeroLOD(const SampleIntrinsic *inst) {
   const CPlatform &platform = m_CodeGenContext->platform;
 
-  if (platform.supportSampleAndLd_lz() && !platform.WaDisableSampleLz()) {
+  if (!platform.WaDisableSampleLz()) {
     if (const SampleIntrinsic *sampleInst = dyn_cast<SampleIntrinsic>(inst)) {
       return sampleInst->ZeroLOD();
     }

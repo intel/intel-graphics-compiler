@@ -54,9 +54,10 @@ define spir_kernel void @test_printf(i32 %src, <8 x i32> %r0, <8 x i32> %payload
 ; CHECK:    [[TMP2:%[A-z0-9]*]] = load float, float* [[F1]], align 4
 ; CHECK:    [[CONV:%[A-z0-9]*]] = call spir_func double @__builtin_spirv_OpFConvert_f64_f32(float [[TMP2]])
 ; CHECK:    [[TMP3:%[A-z0-9]*]] = getelementptr inbounds [15 x i8], [15 x i8] addrspace(2)* @.str, i64 0, i64 0
+; CHECK:    [[TOFLOAT:%[A-z0-9]*]] = fptrunc double [[CONV]] to float
 ; CHECK:    [[PTRBC:%[A-z0-9]*]] = bitcast i8 addrspace(1)* [[PRINTFBUFFER:%[A-z0-9]*]] to i32 addrspace(1)*
-; CHECK:    [[WRITE_OFFSET:%[A-z0-9]*]] = call i32 @__builtin_IB_atomic_add_global_i32(i32 addrspace(1)* [[PTRBC]], i32 28)
-; CHECK:    [[END_OFFSET:%[A-z0-9]*]] = add i32 [[WRITE_OFFSET]], 28
+; CHECK:    [[WRITE_OFFSET:%[A-z0-9]*]] = call i32 @__builtin_IB_atomic_add_global_i32(i32 addrspace(1)* [[PTRBC]], i32 24)
+; CHECK:    [[END_OFFSET:%[A-z0-9]*]] = add i32 [[WRITE_OFFSET]], 24
 ; CHECK:    [[WRITE_OFFSET1:%[A-z0-9]*]] = zext i32 [[WRITE_OFFSET]] to i64
 ; CHECK:    [[BUFFER_PTR:%[A-z0-9]*]] = ptrtoint i8 addrspace(1)* [[PRINTFBUFFER]] to i64
 ; CHECK:    [[WRITE_OFFSET2:%[A-z0-9]*]] = add i64 [[BUFFER_PTR]], [[WRITE_OFFSET1]]
@@ -74,11 +75,11 @@ define spir_kernel void @test_printf(i32 %src, <8 x i32> %r0, <8 x i32> %payload
 ; CHECK:    store i32 [[TMP1]], i32 addrspace(1)* [[WRITE_OFFSET_PTR6]], align 4
 ; CHECK:    [[WRITE_OFFSET7:%[A-z0-9]*]] = add i64 [[WRITE_OFFSET5]], 4
 ; CHECK:    [[WRITE_OFFSET_PTR8:%[A-z0-9]*]] = inttoptr i64 [[WRITE_OFFSET7]] to i32 addrspace(1)*
-; CHECK:    store i32 8, i32 addrspace(1)* [[WRITE_OFFSET_PTR8]], align 4
+; CHECK:    store i32 4, i32 addrspace(1)* [[WRITE_OFFSET_PTR8]], align 4
 ; CHECK:    [[WRITE_OFFSET9:%[A-z0-9]*]] = add i64 [[WRITE_OFFSET7]], 4
-; CHECK:    [[WRITE_OFFSET_PTR10:%[A-z0-9]*]] = inttoptr i64 [[WRITE_OFFSET9]] to double addrspace(1)*
-; CHECK:    store double [[CONV]], double addrspace(1)* [[WRITE_OFFSET_PTR10]], align 4
-; CHECK:    [[WRITE_OFFSET11:%[A-z0-9]*]] = add i64 [[WRITE_OFFSET9]], 8
+; CHECK:    [[WRITE_OFFSET_PTR10:%[A-z0-9]*]] = inttoptr i64 [[WRITE_OFFSET9]] to float addrspace(1)*
+; CHECK:    store float [[TOFLOAT]], float addrspace(1)* [[WRITE_OFFSET_PTR10]], align 4
+; CHECK:    [[WRITE_OFFSET11:%[A-z0-9]*]] = add i64 [[WRITE_OFFSET9]], 4
 ; CHECK:    br label [[BBLOCKJOIN:%[A-z0-9]*]]
 ; CHECK:  write_offset_false:
 ; CHECK:    [[END_OFFSET12:%[A-z0-9]*]] = add i32 [[WRITE_OFFSET]], 4

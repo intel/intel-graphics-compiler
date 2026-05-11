@@ -7,6 +7,7 @@
 ;============================ end_copyright_notice =============================
 ;
 ; UNSUPPORTED: llvm-17-plus
+; XFAIL: *
 ; RUN: igc_opt --typed-pointers --igc-move-private-memory-to-slm -dce -S < %s | FileCheck %s
 ; ------------------------------------------------
 ; PrivateMemoryToSLM

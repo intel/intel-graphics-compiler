@@ -81,7 +81,7 @@ const ResourceExtensionTypeEnum VA_FUNCTION_SAMPLER_TYPES[] = {
     ResourceExtensionTypeEnum::MediaSamplerTypeCentroid,
     ResourceExtensionTypeEnum::MediaSamplerTypeBoolCentroid,
     ResourceExtensionTypeEnum::MediaSamplerTypeBoolSum,
-    // SKL+ functions:
+    // Extended functions:
     ResourceExtensionTypeEnum::MediaSamplerTypeConvolve,
     ResourceExtensionTypeEnum::MediaSamplerTypeConvolve,
     ResourceExtensionTypeEnum::MediaSamplerTypeLbp,

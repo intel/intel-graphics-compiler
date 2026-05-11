@@ -197,9 +197,8 @@ void CoalescingEngine::ProcessTuple(Instruction *tupleGeneratingInstruction) {
   // bindless sampler always have a header
   bool needsHeader = IsBindlessSampler(tupleGeneratingInstruction);
 
-  // There should be an early exit in the case we have split-send available
-  // and this instruction is sure to generate two-Element payload.
-  if (m_Platform.supportSplitSend() && !needsHeader) {
+  // There should be an early exit if this instruction is sure to generate two-element payload.
+  if (!needsHeader) {
     if (numOperands < 3) {
       return;
     }

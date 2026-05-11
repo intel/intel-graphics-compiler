@@ -42,9 +42,9 @@ bool needsNoPreemptR2ForSend() const {
   return getPlatformGeneration() == PlatformGen::GEN11;
 }
 
-bool noDDAllowedPlatform() const { return getPlatform() >= GENX_SKL; }
+bool noDDAllowedPlatform() const { return true; }
 
-bool noSrcDepSetAllowedPlatform() const { return getPlatform() >= GENX_SKL; }
+bool noSrcDepSetAllowedPlatform() const { return true; }
 
 bool doPlane() const {
   return getPlatform() < GENX_ICLLP && !getOption(vISA_expandPlane);
@@ -87,7 +87,7 @@ bool noDFTypeMac() const {
 
 bool needsFenceCommitEnable() const {
   if (m_options->getTarget() == VISA_CM) {
-    return getPlatform() >= GENX_SKL;
+    return true;
   } else {
     return getPlatform() >= GENX_CNL;
   }
@@ -101,7 +101,7 @@ bool needsToReserveR127() const { return getPlatform() < GENX_CNL; }
 
 bool hasSLMFence() const { return getPlatform() >= GENX_ICLLP; }
 
-bool GRFAlign() const { return getPlatform() < GENX_SKL; }
+bool GRFAlign() const { return false; }
 
 bool twoSourcesCollision() const { return getPlatform() < GENX_CNL; }
 
@@ -125,17 +125,15 @@ uint32_t getMaxSendMessageLength() const {
   return getPlatform() < GENX_CNL ? 16 : 32;
 }
 
-bool hasPixelNullMask() const { return getPlatform() >= GENX_SKL; }
+bool hasPixelNullMask() const { return true; }
 
-bool noSLMMsgHeader() const { return getPlatform() >= GENX_SKL; }
+bool noSLMMsgHeader() const { return true; }
 
-bool needsA32MsgHeader() const { return getPlatform() < GENX_SKL; }
+bool needsA32MsgHeader() const { return false; }
 
-int getThreadIDMask() const {
-  return getPlatform() >= GENX_SKL ? 0x7FF : 0x1FF;
-}
+int getThreadIDMask() const { return 0x7FF; }
 
-bool hasFloatAtomics() const { return getPlatform() >= GENX_SKL; }
+bool hasFloatAtomics() const { return true; }
 
 bool hasBlockedSLMMessage() const { return false; }
 
@@ -146,10 +144,7 @@ bool hasDotProductInst() const { return getPlatform() < GENX_CNL; }
 bool hasLRP() const { return getPlatform() < GENX_ICLLP; }
 
 int getBarrierMask(bool enableBarrierInstCounterBits) const {
-  if (getPlatform() < GENX_SKL) {
-    // pre-SKL: and (8) H0.0:ud r0.2:ud 0x0F000000 (r0.2, bit 24-27)
-    return enableBarrierInstCounterBits ? 0x0F00FE00 : 0x0F000000;
-  } else if (getPlatform() < GENX_ICLLP) {
+  if (getPlatform() < GENX_ICLLP) {
     // SKL+: and (8) H0.0:ud r0.2:ud 0x8F000000 (r0.2, bit24-27, bit31)
     return enableBarrierInstCounterBits ? 0x8F00FE00 : 0x8F000000;
   } else {
@@ -358,9 +353,9 @@ bool has8ByteA64Gather() const { return getPlatform() != GENX_TGLLP; }
 
 bool WaDisableSendSrcDstOverlap() const {
   return getOption(vISA_noSendSrcDstOverlap) ||
-         (m_options->getTarget() == VISA_CM && getPlatform() >= GENX_SKL &&
-          getPlatform() < GENX_TGLLP) || getPlatform() == GENX_ICLLP ||
-          (getPlatform() >= Xe_MTL && getPlatform() <= Xe_PVCXT);
+         (m_options->getTarget() == VISA_CM && getPlatform() < GENX_TGLLP) ||
+         getPlatform() == GENX_ICLLP ||
+         (getPlatform() >= Xe_MTL && getPlatform() <= Xe_PVCXT);
 }
 
 bool isXeLP() const { return getPlatform() == GENX_TGLLP; }
@@ -379,15 +374,15 @@ bool noFP64() const {
 }
 
 bool hasQDDMul() const {
-  return getPlatform() == GENX_BDW || getPlatform() == GENX_SKL ||
-         getPlatform() == GENX_CNL || getPlatform() == Xe_XeHPSDV ||
-         getPlatform() == Xe_PVC || getPlatform() > Xe3;
+  return getPlatform() == GENX_BDW || getPlatform() == GENX_CNL ||
+         getPlatform() == Xe_XeHPSDV || getPlatform() == Xe_PVC ||
+         getPlatform() > Xe3;
 }
 
 bool no64bitRegioning() const {
-  return getPlatform() == GENX_CHV || getPlatform() == GENX_BXT ||
-         getPlatform() == GENX_ICLLP || isXeLP() || getPlatform() == Xe_DG2 ||
-         getPlatform() == Xe_MTL || getPlatform() == Xe_ARL;
+  return getPlatform() == GENX_CHV || getPlatform() == GENX_ICLLP || isXeLP() ||
+         getPlatform() == Xe_DG2 || getPlatform() == Xe_MTL ||
+         getPlatform() == Xe_ARL;
 }
 
 bool hasBankCollision() const {

@@ -1028,7 +1028,7 @@ KernelArgs::const_iterator KernelArgs::end() {
 
 void KernelArgs::checkForZeroPerThreadData() {
 
-  // On SKL, when we use Indirect thread payload, Spec says:
+  // When we use Indirect thread payload, the spec says:
   // if Cross-Thread Constant Data Read Length for Indirect is greater than 0,
   // then Per thread data field must also be greater than 0.
   // In that case we allocate one blank payload grf for Per thread constant.

@@ -2897,8 +2897,7 @@ public:
   }
 
   bool useSends() const {
-    return getPlatform() >= GENX_SKL &&
-           !(VISA_WA_CHECK(m_pWaTable, WaDisableSendsSrc0DstOverlap));
+    return !(VISA_WA_CHECK(m_pWaTable, WaDisableSendsSrc0DstOverlap));
   }
 
   Metadata *allocateMD() {

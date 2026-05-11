@@ -2399,7 +2399,7 @@ void vISAVerifier::verifyInstructionSampler(const CISA_INST *inst) {
     VISASampler3DSubOpCode subOp = VISASampler3DSubOpCode(value & 0xFF);
 
     if (pixelNullMask) {
-      REPORT_INSTRUCTION(options, irBuilder->getPlatform() >= GENX_SKL,
+      REPORT_INSTRUCTION(options, true,
                          "Pixel Null Mask Enable only valid for SKL+");
     }
 
@@ -2439,7 +2439,7 @@ void vISAVerifier::verifyInstructionSampler(const CISA_INST *inst) {
     bool pixelNullMask = (value & (1 << 8)) != 0;
 
     if (pixelNullMask) {
-      REPORT_INSTRUCTION(options, irBuilder->getPlatform() >= GENX_SKL,
+      REPORT_INSTRUCTION(options, true,
                          "Pixel Null Mask Enable only valid for SKL+");
     }
 

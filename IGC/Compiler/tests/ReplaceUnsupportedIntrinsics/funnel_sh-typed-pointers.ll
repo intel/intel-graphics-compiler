@@ -11,7 +11,7 @@
 
 define i8 @A0(i8, i8, i8) {
 entry:
-; CHECK-LABEL: entry:
+; CHECK-LABEL: define i8 @A0(
 ; CHECK:  [[AND:%[a-zA-Z0-9]+]] = and i8 %2, 7
 ; CHECK:  [[CMP:%[a-zA-Z0-9]+]] = icmp eq i8 [[AND]], 0
 ; CHECK:  [[SUB:%[a-zA-Z0-9]+]] = sub i8 8, [[AND]]
@@ -26,7 +26,7 @@ entry:
 
 define i8 @A1(i8, i8) {
 entry:
-; CHECK-LABEL: entry:
+; CHECK-LABEL: define i8 @A1(
 ; CHECK:  [[SHL:%[a-zA-Z0-9]+]] = shl i8 %0, 0
 ; CHECK:  [[LSHR:%[a-zA-Z0-9]+]] = lshr i8 %1, 8
 ; CHECK:  [[OR:%[a-zA-Z0-9]+]] = or i8 [[SHL]], [[LSHR]]
@@ -38,7 +38,7 @@ entry:
 
 define i32 @A2(i32, i32) {
 entry:
-; CHECK-LABEL: entry:
+; CHECK-LABEL: define i32 @A2(
 ; CHECK:  [[SHL:%[a-zA-Z0-9]+]] = shl i32 %0, 1
 ; CHECK:  [[LSHR:%[a-zA-Z0-9]+]] = lshr i32 %1, 31
 ; CHECK:  [[OR:%[a-zA-Z0-9]+]] = or i32 [[SHL]], [[LSHR]]
@@ -50,19 +50,16 @@ entry:
 
 define i32 @A3(i32) {
 entry:
-; CHECK-LABEL: entry:
-; CHECK:  [[SHL:%[a-zA-Z0-9]+]] = shl i32 %0, 5
-; CHECK:  [[LSHR:%[a-zA-Z0-9]+]] = lshr i32 %0, 27
-; CHECK:  [[OR:%[a-zA-Z0-9]+]] = or i32 [[SHL]], [[LSHR]]
-; CHECK:  [[SEL:%[a-zA-Z0-9]+]] = select i1 false, i32 %0, i32 [[OR]]
-; CHECK:  ret i32 [[SEL]]
+; CHECK-LABEL: define i32 @A3(
+; CHECK:  [[CALL:%[a-zA-Z0-9]+]] = call i32 @llvm.fshl.i32(i32 %0, i32 %0, i32 5)
+; CHECK:  ret i32 [[CALL]]
   %1 = call i32 @llvm.fshl.i32(i32 %0, i32 %0, i32 5)
   ret i32 %1
 }
 
 define i64 @A4(i64, i64, i64) {
 entry:
-; CHECK-LABEL: entry:
+; CHECK-LABEL: define i64 @A4(
 ; CHECK:  [[AND:%[a-zA-Z0-9]+]] = and i64 %2, 63
 ; CHECK:  [[CMP:%[a-zA-Z0-9]+]] = icmp eq i64 [[AND]], 0
 ; CHECK:  [[SUB:%[a-zA-Z0-9]+]] = sub i64 64, [[AND]]
@@ -77,7 +74,7 @@ entry:
 
 define i64 @A5(i64, i64) {
 entry:
-; CHECK-LABEL: entry:
+; CHECK-LABEL: define i64 @A5(
 ; CHECK:  [[SHL:%[a-zA-Z0-9]+]] = shl i64 %0, 36
 ; CHECK:  [[LSHR:%[a-zA-Z0-9]+]] = lshr i64 %1, 28
 ; CHECK:  [[OR:%[a-zA-Z0-9]+]] = or i64 [[SHL]], [[LSHR]]
@@ -89,7 +86,7 @@ entry:
 
 define <2 x i16> @A6(<2 x i16>, <2 x i16>, <2 x i16>) {
 entry:
-; CHECK-LABEL: entry:
+; CHECK-LABEL: define <2 x i16> @A6(
 ; CHECK:  [[AND:%[a-zA-Z0-9]+]] = and <2 x i16> %2, <i16 15, i16 15>
 ; CHECK:  [[CMP:%[a-zA-Z0-9]+]] = icmp eq <2 x i16> [[AND]], zeroinitializer
 ; CHECK:  [[SUB:%[a-zA-Z0-9]+]] = sub <2 x i16> <i16 16, i16 16>, [[AND]]
@@ -104,7 +101,7 @@ entry:
 
 define i8 @B0(i8, i8, i8) {
 entry:
-; CHECK-LABEL: entry:
+; CHECK-LABEL: define i8 @B0(
 ; CHECK:  [[AND:%[a-zA-Z0-9]+]] = and i8 %2, 7
 ; CHECK:  [[CMP:%[a-zA-Z0-9]+]] = icmp eq i8 [[AND]], 0
 ; CHECK:  [[SUB:%[a-zA-Z0-9]+]] = sub i8 8, [[AND]]
@@ -119,7 +116,7 @@ entry:
 
 define i8 @B1(i8, i8) {
 entry:
-; CHECK-LABEL: entry:
+; CHECK-LABEL: define i8 @B1(
 ; CHECK:  [[SHL:%[a-zA-Z0-9]+]] = shl i8 %0, 8
 ; CHECK:  [[LSHR:%[a-zA-Z0-9]+]] = lshr i8 %1, 0
 ; CHECK:  [[OR:%[a-zA-Z0-9]+]] = or i8 [[SHL]], [[LSHR]]
@@ -131,7 +128,7 @@ entry:
 
 define i32 @B2(i32, i32) {
 entry:
-; CHECK-LABEL: entry:
+; CHECK-LABEL: define i32 @B2(
 ; CHECK:  [[SHL:%[a-zA-Z0-9]+]] = shl i32 %0, 31
 ; CHECK:  [[LSHR:%[a-zA-Z0-9]+]] = lshr i32 %1, 1
 ; CHECK:  [[OR:%[a-zA-Z0-9]+]] = or i32 [[SHL]], [[LSHR]]
@@ -143,19 +140,16 @@ entry:
 
 define i32 @B3(i32) {
 entry:
-; CHECK-LABEL: entry:
-; CHECK:  [[SHL:%[a-zA-Z0-9]+]] = shl i32 %0, 27
-; CHECK:  [[LSHR:%[a-zA-Z0-9]+]] = lshr i32 %0, 5
-; CHECK:  [[OR:%[a-zA-Z0-9]+]] = or i32 [[SHL]], [[LSHR]]
-; CHECK:  [[SEL:%[a-zA-Z0-9]+]] = select i1 false, i32 %0, i32 [[OR]]
-; CHECK:  ret i32 [[SEL]]
+; CHECK-LABEL: define i32 @B3(
+; CHECK:  [[CALL:%[a-zA-Z0-9]+]] = call i32 @llvm.fshr.i32(i32 %0, i32 %0, i32 5)
+; CHECK:  ret i32 [[CALL]]
   %1 = call i32 @llvm.fshr.i32(i32 %0, i32 %0, i32 5)
   ret i32 %1
 }
 
 define i64 @B4(i64, i64, i64) {
 entry:
-; CHECK-LABEL: entry:
+; CHECK-LABEL: define i64 @B4(
 ; CHECK:  [[AND:%[a-zA-Z0-9]+]] = and i64 %2, 63
 ; CHECK:  [[CMP:%[a-zA-Z0-9]+]] = icmp eq i64 [[AND]], 0
 ; CHECK:  [[SUB:%[a-zA-Z0-9]+]] = sub i64 64, [[AND]]
@@ -170,7 +164,7 @@ entry:
 
 define i64 @B5(i64, i64) {
 entry:
-; CHECK-LABEL: entry:
+; CHECK-LABEL: define i64 @B5(
 ; CHECK:  [[SHL:%[a-zA-Z0-9]+]] = shl i64 %0, 28
 ; CHECK:  [[LSHR:%[a-zA-Z0-9]+]] = lshr i64 %1, 36
 ; CHECK:  [[OR:%[a-zA-Z0-9]+]] = or i64 [[SHL]], [[LSHR]]
@@ -182,7 +176,7 @@ entry:
 
 define <2 x i16> @B6(<2 x i16>, <2 x i16>, <2 x i16>) {
 entry:
-; CHECK-LABEL: entry:
+; CHECK-LABEL: define <2 x i16> @B6(
 ; CHECK:  [[AND:%[a-zA-Z0-9]+]] = and <2 x i16> %2, <i16 15, i16 15>
 ; CHECK:  [[CMP:%[a-zA-Z0-9]+]] = icmp eq <2 x i16> [[AND]], zeroinitializer
 ; CHECK:  [[SUB:%[a-zA-Z0-9]+]] = sub <2 x i16> <i16 16, i16 16>, [[AND]]

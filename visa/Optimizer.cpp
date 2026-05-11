@@ -3834,7 +3834,6 @@ bool Optimizer::createSmov(G4_BB *bb, G4_INST *flagMove, G4_INST *next_inst) {
       next_inst->getDst()->getRegAccess() == Direct ||
       next_inst->getDst()->getTypeSize() == 1 ||
       next_inst->getSrc(0)->getTypeSize() == 1 ||
-      (builder.getPlatform() < GENX_SKL && builder.getPlatform() != GENX_BDW) ||
       next_inst->getDst()->getTypeSize() <
           next_inst->getSrc(0)->getTypeSize()) {
     return false;
@@ -5659,10 +5658,8 @@ bool Optimizer::isBarrierPattern(G4_INST *sendInst,
            (src0->asSrcRegRegion()->getRegOff() == 0) &&
            (src0->asSrcRegRegion()->getSubRegOff() == 2)); // r0.2
 
-      bool isSrc1 =
-          src1->isImm() && !src1->isRelocImm() &&
-          src1->asImm()->getInt() ==
-              (builder.getPlatform() >= GENX_SKL ? 0x8F000000 : 0x0F000000);
+      bool isSrc1 = src1->isImm() && !src1->isRelocImm() &&
+                    src1->asImm()->getInt() == 0x8F000000;
 
       if (isSrc0 && isSrc1 && sendInst->getSrc(0) &&
           sendInst->getSrc(0)->isSrcRegRegion()) {
@@ -5696,11 +5693,7 @@ void Optimizer::hoistBarrierHeaderToTop(G4_SrcRegRegion *barrierSendSrc0) {
 
   // for SKL+ there are 5 bits for barrierID
   // 5th bit is stored in bit 31 of second dword
-  if (builder.getPlatform() < GENX_SKL) {
-    g4Imm = builder.createImm(0x0F000000, Type_UD);
-  } else {
-    g4Imm = builder.createImm(0x8F000000, Type_UD);
-  }
+  g4Imm = builder.createImm(0x8F000000, Type_UD);
 
   G4_INST *andInst =
       builder.createBinOp(G4_and, g4::SIMD8, dst1_opnd, r0_src_opnd, g4Imm,

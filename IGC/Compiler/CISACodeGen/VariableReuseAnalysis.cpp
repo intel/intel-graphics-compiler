@@ -130,8 +130,7 @@ bool VariableReuseAnalysis::runOnFunction(Function &F) {
   // Nothing but cleanup data from previous runs.
   reset();
 
-  if (IGC_IS_FLAG_ENABLED(EnableVariableAlias) && m_DeSSA && !m_pCtx->getModuleMetaData()->compOpt.OptDisable &&
-      m_pCtx->platform.GetPlatformFamily() >= IGFX_GEN9_CORE) {
+  if (IGC_IS_FLAG_ENABLED(EnableVariableAlias) && m_DeSSA && !m_pCtx->getModuleMetaData()->compOpt.OptDisable) {
     // Setup ArgDeSSARoot (for subroutine, it might be conservative,
     // but it should work.).
     m_ArgDeSSARoot.clear();

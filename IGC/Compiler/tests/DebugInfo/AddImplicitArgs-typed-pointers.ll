@@ -13,7 +13,7 @@
 ;; This LIT test checks that AddImplicitArgs pass handles variable debug info.
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-target triple = "igil_32_GEN9"
+target triple = "igil_32_GEN12"
 
 define void @test(float addrspace(1)* %dst) #0 {
 entry:

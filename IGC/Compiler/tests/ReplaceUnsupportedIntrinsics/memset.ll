@@ -10,7 +10,7 @@
 ; RUN: igc_opt --typed-pointers -igc-replace-unsupported-intrinsics -verify -S %s -o %t
 ; RUN: FileCheck %s < %t
 
-target triple = "igil_32_GEN9"
+target triple = "igil_32_GEN12"
 
 define void @A(i8 addrspace(1)* %B, i32 %S, <8 x i32> %r0, <8 x i32> %payloadHeader) #0 {
 entry:

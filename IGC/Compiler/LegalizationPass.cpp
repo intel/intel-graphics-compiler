@@ -258,8 +258,7 @@ void Legalization::visitUnaryInstruction(UnaryInstruction &I) {
 
 void Legalization::visitBinaryOperator(llvm::BinaryOperator &I) {
   if (I.getOpcode() == Instruction::FRem && (I.getType()->isFloatTy() || I.getType()->isHalfTy())) {
-    bool hasFP16Floor = !m_ctx->platform.supportFP16Rounding();
-    Type *floorType = hasFP16Floor ? I.getType() : m_builder->getFloatTy();
+    Type *floorType = I.getType();
     Function *floorFunc = IGCLLVM::getOrInsertDeclaration(m_ctx->getModule(), Intrinsic::floor, floorType);
     m_builder->SetInsertPoint(&I);
     Value *a = I.getOperand(0);
@@ -1843,9 +1842,8 @@ void Legalization::visitIntrinsicInst(llvm::IntrinsicInst &I) {
   case Intrinsic::floor:
   case Intrinsic::ceil:
   case Intrinsic::trunc: {
-    if (I.getType()->isBFloatTy() || (!m_ctx->platform.supportFP16Rounding() && I.getType()->isHalfTy())) {
-      // On platform lacking of FP16 rounding or for BFloat, promote them to FP32 and
-      // demote back.
+    if (I.getType()->isBFloatTy() || I.getType()->isHalfTy()) {
+      // Half and BFloat operations are promoted to FP32 and demoted back.
       Value *Val = Builder.CreateFPExt(I.getOperand(0), Builder.getFloatTy());
       Value *Callee =
           IGCLLVM::getOrInsertDeclaration(I.getParent()->getParent()->getParent(), intrinsicID, Builder.getFloatTy());

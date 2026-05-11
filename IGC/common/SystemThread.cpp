@@ -17,13 +17,6 @@ SPDX-License-Identifier: MIT
 #include "common/SIPKernels/Gen10SIPCSRDebug.h"
 #include "common/SIPKernels/Gen10SIPDebug.h"
 #include "common/SIPKernels/Gen10SIPDebugBindless.h"
-#include "common/SIPKernels/Gen9BXTSIPCSR.h"
-#include "common/SIPKernels/Gen9SIPCSR.h"
-#include "common/SIPKernels/Gen9SIPCSRDebug.h"
-#include "common/SIPKernels/Gen9SIPCSRDebugLocal.h"
-#include "common/SIPKernels/Gen9SIPDebug.h"
-#include "common/SIPKernels/Gen9SIPDebugBindless.h"
-#include "common/SIPKernels/Gen9GLVSIPCSR.h"
 #include "common/SIPKernels/Gen11SIPCSR.h"
 #include "common/SIPKernels/Gen11SIPCSRDebug.h"
 #include "common/SIPKernels/Gen11SIPCSRDebugBindless.h"
@@ -1331,8 +1324,6 @@ static struct StateSaveAreaHeader XeHPGSIPCSRDebugBindlessDebugHeader = {
 
 bool SIPSuppoertedOnPlatformFamily(const GFXCORE_FAMILY &family) {
   switch (family) {
-  case IGFX_GEN9_CORE:
-  case IGFX_GENNEXT_CORE:
   case IGFX_GEN10_CORE:
   case IGFX_GEN11_CORE:
   case IGFX_GEN12_CORE:
@@ -1472,13 +1463,6 @@ void populateSIPKernelInfo(
     std::map<unsigned char, std::tuple<void *, unsigned int, void *, unsigned int>> &SIPKernelInfo) {
   // LLVM_UPGRADE_TODO
   //  check if (int)sizeof(T) is ok or change the pair def for SIPKernelInfo
-  SIPKernelInfo[GEN9_SIP_DEBUG] = std::make_tuple((void *)&Gen9SIPDebug, (int)sizeof(Gen9SIPDebug), nullptr, 0);
-
-  SIPKernelInfo[GEN9_SIP_CSR] = std::make_tuple((void *)&Gen9SIPCSR, (int)sizeof(Gen9SIPCSR), nullptr, 0);
-
-  SIPKernelInfo[GEN9_SIP_CSR_DEBUG] =
-      std::make_tuple((void *)&Gen9SIPCSRDebug, (int)sizeof(Gen9SIPCSRDebug), nullptr, 0);
-
   SIPKernelInfo[GEN10_SIP_DEBUG] = std::make_tuple((void *)&Gen10SIPDebug, (int)sizeof(Gen10SIPDebug), nullptr, 0);
 
   SIPKernelInfo[GEN10_SIP_CSR] = std::make_tuple((void *)&Gen10SIPCSR, (int)sizeof(Gen10SIPCSR), nullptr, 0);
@@ -1486,18 +1470,8 @@ void populateSIPKernelInfo(
   SIPKernelInfo[GEN10_SIP_CSR_DEBUG] =
       std::make_tuple((void *)&Gen10SIPCSRDebug, (int)sizeof(Gen10SIPCSRDebug), nullptr, 0);
 
-  SIPKernelInfo[GEN9_SIP_DEBUG_BINDLESS] =
-      std::make_tuple((void *)&Gen9SIPDebugBindless, (int)sizeof(Gen9SIPDebugBindless), nullptr, 0);
-
   SIPKernelInfo[GEN10_SIP_DEBUG_BINDLESS] =
       std::make_tuple((void *)&Gen10SIPDebugBindless, (int)sizeof(Gen10SIPDebugBindless), nullptr, 0);
-
-  SIPKernelInfo[GEN9_BXT_SIP_CSR] = std::make_tuple((void *)&Gen9BXTSIPCSR, (int)sizeof(Gen9BXTSIPCSR), nullptr, 0);
-
-  SIPKernelInfo[GEN9_SIP_CSR_DEBUG_LOCAL] =
-      std::make_tuple((void *)&Gen9SIPCSRDebugLocal, (int)sizeof(Gen9SIPCSRDebugLocal), nullptr, 0);
-
-  SIPKernelInfo[GEN9_GLV_SIP_CSR] = std::make_tuple((void *)&Gen9GLVSIPCSR, (int)sizeof(Gen9GLVSIPCSR), nullptr, 0);
 
   SIPKernelInfo[GEN11_SIP_CSR] = std::make_tuple((void *)&Gen11SIPCSR, (int)sizeof(Gen11SIPCSR), nullptr, 0);
 
@@ -1752,29 +1726,6 @@ CGenSystemInstructionKernelProgram *CGenSystemInstructionKernelProgram::Create(c
   GT_SYSTEM_INFO sysInfo = platform.GetGTSystemInfo();
 
   switch (platform.getPlatformInfo().eRenderCoreFamily) {
-  case IGFX_GEN9_CORE:
-  case IGFX_GENNEXT_CORE: {
-    if (mode & SYSTEM_THREAD_MODE_DEBUG) {
-      SIPIndex = bindlessMode ? GEN9_SIP_DEBUG_BINDLESS : GEN9_SIP_DEBUG;
-    } else if (bindlessMode) {
-      // Add the rest later for bindless mode for preemption
-    } else if (mode == (SYSTEM_THREAD_MODE_CSR | SYSTEM_THREAD_MODE_DEBUG_LOCAL)) {
-      SIPIndex = GEN9_SIP_CSR_DEBUG_LOCAL;
-    } else if (mode == SYSTEM_THREAD_MODE_CSR) {
-      switch (platform.getPlatformInfo().eProductFamily) {
-      case IGFX_BROXTON:
-      case IGFX_GEMINILAKE:
-        /*Special SIP for 2x6 from HW team with 64KB offset*/
-        SIPIndex = GEN9_BXT_SIP_CSR;
-        break;
-
-      default:
-        SIPIndex = GEN9_SIP_CSR;
-        break;
-      }
-    }
-    break;
-  }
   case IGFX_GEN10_CORE: {
     if (mode & SYSTEM_THREAD_MODE_DEBUG) {
       SIPIndex = bindlessMode ? GEN10_SIP_DEBUG_BINDLESS : GEN10_SIP_DEBUG;

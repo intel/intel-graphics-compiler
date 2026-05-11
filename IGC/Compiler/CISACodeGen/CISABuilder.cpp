@@ -2705,14 +2705,6 @@ VISA_VectorOpnd *CEncoder::GetUniformSource(CVariable *var) {
 
 TARGET_PLATFORM GetVISAPlatform(const CPlatform *platform) {
   switch (platform->GetPlatformFamily()) {
-  case IGFX_GEN9_CORE:
-  case IGFX_GENNEXT_CORE:
-    if (platform->getPlatformInfo().eProductFamily == IGFX_BROXTON ||
-        platform->getPlatformInfo().eProductFamily == IGFX_GEMINILAKE) {
-      return GENX_BXT;
-    } else {
-      return GENX_SKL;
-    }
   case IGFX_GEN11_CORE:
     return GENX_ICLLP;
   case IGFX_GEN12_CORE:
@@ -2759,7 +2751,7 @@ TARGET_PLATFORM GetVISAPlatform(const CPlatform *platform) {
     IGC_ASSERT_MESSAGE(0, "unsupported platform");
     break;
   }
-  return GENX_SKL;
+  return GENX_NONE;
 }
 
 void CEncoder::OWLoad(CVariable *dst, const ResourceDescriptor &resource, CVariable *src0, bool owordAligned,
@@ -4607,7 +4599,7 @@ void CEncoder::InitVISABuilderOptions(TARGET_PLATFORM VISAPlatform, bool canAbor
   //  more investigation needs to be done on whether simply replacing sr0.2 with
   //  sr0.3 is enough.
   if (IGC_IS_FLAG_ENABLED(EnableSendFusion) &&
-      m_program->GetContext()->platform.supportSplitSend() && m_program->m_State.m_dispatchSize == SIMDMode::SIMD8 &&
+      m_program->m_State.m_dispatchSize == SIMDMode::SIMD8 &&
       (IGC_GET_FLAG_VALUE(EnableSendFusion) == FLAG_LEVEL_2 || // 2: force send fusion
        context->m_DriverInfo.AllowSendFusion())) {
     SaveOption(vISA_EnableSendFusion, true);

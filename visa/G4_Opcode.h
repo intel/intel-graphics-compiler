@@ -491,11 +491,7 @@ inline G4_SubReg_Align Get_G4_SubRegAlign_From_Size(uint16_t size,
   case 4:
     return Even_Word;
   case 8:
-    if (platform != GENX_BXT)
-      return Four_Word;
-    // FALL THROUGH
-    // WA: It's a workaround where a potential HW issue needs
-    // identifying.
+    return Four_Word;
   case 16:
     return Eight_Word;
   case 32:

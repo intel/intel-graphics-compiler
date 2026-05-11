@@ -582,10 +582,6 @@ bool Simd32ProfitabilityAnalysis::checkSimd32Profitable(CodeGenContext *ctx) {
 
   const CPlatform *platform = &ctx->platform;
   switch (platform->GetPlatformFamily()) {
-  case IGFX_GEN9_CORE:
-    /* TODO: Try to apply for platform->getPlatformInfo().eProductFamily ==
-     * IGFX_BROXTON only. */
-    // FALL THROUGH
   case IGFX_GEN10_CORE:
     if (hasIEEESqrtOrDivFunc(*F)) {
       return false;
@@ -866,24 +862,6 @@ bool Simd32ProfitabilityAnalysis::checkSimd16Profitable(CodeGenContext *ctx) {
     if (ldStInLoop.pProblematicLoop != nullptr) {
       return false;
     }
-  }
-
-  auto hasDouble = [](Function &F) {
-    for (auto &BB : F)
-      for (auto &I : BB) {
-        if (I.getType()->isDoubleTy())
-          return true;
-        for (Value *V : I.operands())
-          if (V->getType()->isDoubleTy())
-            return true;
-      }
-    return false;
-  };
-
-  const CPlatform *platform = &ctx->platform;
-  if (platform->GetPlatformFamily() == IGFX_GEN9_CORE &&
-      platform->getPlatformInfo().eProductFamily == IGFX_GEMINILAKE && hasDouble(*F)) {
-    return false;
   }
 
   return true;

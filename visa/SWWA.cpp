@@ -30,7 +30,7 @@ using namespace vISA;
 // SW workarounds.
 void Optimizer::insertDummyCompactInst() {
   // Only for SKL+ and compaction is enabled.
-  if (builder.getPlatform() < GENX_SKL || !builder.getOption(vISA_Compaction))
+  if (!builder.getOption(vISA_Compaction))
     return;
 
   // Insert mov (1) r0 r0 at the beginning of this kernel.

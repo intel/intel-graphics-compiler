@@ -53,7 +53,7 @@ struct SKernelBinaryHeader {
 static_assert(sizeof(SKernelBinaryHeader) == 20, "The size of SKernelBinaryHeader is not what is expected");
 
 /*****************************************************************************\
-STRUCT: SKernelBinaryHeaderCommon  (used by Gen7, Gen7.5, Gen8, Gen9, Gen10)
+STRUCT: SKernelBinaryHeaderCommon
 \*****************************************************************************/
 struct SKernelBinaryHeaderCommon : SKernelBinaryHeader {
   uint32_t KernelHeapSize;

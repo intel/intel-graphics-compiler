@@ -52,9 +52,7 @@ static cl::opt<ShaderType>
 
 static cl::opt<PRODUCT_FAMILY>
     PlatformOption(cl::desc("Specify destination platform: "),
-                   cl::values(clEnumValN(PRODUCT_FAMILY::IGFX_SKYLAKE, "platformskl", "Skylake"),
-                              clEnumValN(PRODUCT_FAMILY::IGFX_GEMINILAKE, "platformglk", "Geminilake"),
-                              clEnumValN(PRODUCT_FAMILY::IGFX_TIGERLAKE_LP, "platformtgllp", "TGLLP"),
+                   cl::values(clEnumValN(PRODUCT_FAMILY::IGFX_TIGERLAKE_LP, "platformtgllp", "TGLLP"),
                               clEnumValN(PRODUCT_FAMILY::IGFX_ALDERLAKE_S, "platformadls", "ADLS"),
                               clEnumValN(PRODUCT_FAMILY::IGFX_ALDERLAKE_P, "platformadlp", "ADLP"),
                               clEnumValN(PRODUCT_FAMILY::IGFX_ALDERLAKE_N, "platformadln", "ADLN"),
@@ -71,7 +69,7 @@ static cl::opt<PRODUCT_FAMILY>
                               clEnumValN(PRODUCT_FAMILY::IGFX_NVL, "platformNvl", "NVL"),
                               clEnumValN(PRODUCT_FAMILY::IGFX_CRI, "platformCri", "CRI")
                                   ),
-                   cl::init(PRODUCT_FAMILY::IGFX_SKYLAKE));
+                   cl::init(PRODUCT_FAMILY::IGFX_TIGERLAKE_LP));
 
 static cl::opt<ClientApi>
     ClientApiOption(cl::desc("Specify Client API: "),
@@ -96,10 +94,6 @@ IGC::CodeGenContext *CreateCodeGenContext() {
       platform.usRevId = RevIdOption;
     }
     switch (platform.eProductFamily) {
-    case PRODUCT_FAMILY::IGFX_SKYLAKE:
-    case PRODUCT_FAMILY::IGFX_GEMINILAKE:
-      platform.eRenderCoreFamily = IGFX_GEN9_CORE;
-      break;
     case PRODUCT_FAMILY::IGFX_TIGERLAKE_LP:
     case PRODUCT_FAMILY::IGFX_ALDERLAKE_S:
     case PRODUCT_FAMILY::IGFX_ALDERLAKE_P:

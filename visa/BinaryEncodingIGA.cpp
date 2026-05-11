@@ -372,10 +372,6 @@ BinaryEncodingIGA::getIGAInternalPlatform(TARGET_PLATFORM genxPlatform) {
   case GENX_CHV:
     platform = Platform::GEN8;
     break;
-  case GENX_SKL:
-  case GENX_BXT:
-    platform = Platform::GEN9;
-    break;
   case GENX_ICLLP:
     platform = Platform::GEN11;
     break;
@@ -1586,7 +1582,7 @@ void BinaryEncodingIGA::translateInstructionDst(G4_INST *g4inst,
 
   // workaround for SKL bug
   // not all bits are copied from immediate descriptor
-  if (g4inst->isSend() && platform >= GENX_SKL && platform < GENX_ICLLP) {
+  if (g4inst->isSend() && platform < GENX_ICLLP) {
     const G4_SendDescRaw *msgDesc = g4inst->getMsgDescRaw();
     vISA_ASSERT(msgDesc, "expected raw descriptor");
     G4_Operand *descOpnd = g4inst->asSendInst()->getMsgDescOperand();
@@ -1718,7 +1714,7 @@ void BinaryEncodingIGA::translateInstructionSrcs(G4_INST *inst,
       // let IGA take care of types for send/s instructions
       if (!igaInst->getOpSpec().isAnySendFormat()) {
         type = getIGAType(inst, inst->getSrcOperandNum(i), platform);
-      } else if (i == 0 && platform >= GENX_SKL && platform < GENX_ICLLP) {
+      } else if (i == 0 && platform < GENX_ICLLP) {
         // work around for SKL bug
         // not all bits are copied from immediate descriptor
         G4_SendDescRaw *msgDesc = inst->getMsgDescRaw();

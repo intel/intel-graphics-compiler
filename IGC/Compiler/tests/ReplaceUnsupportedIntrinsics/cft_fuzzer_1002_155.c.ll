@@ -13,7 +13,7 @@
 ; CHECK-NOT: "llvm.memcpy"
 ; CHECK: attributes
 
-target triple = "igil_32_GEN9"
+target triple = "igil_32_GEN12"
 
 @main_function_ocl.path_reference = private unnamed_addr constant [1 x i8] c"\0B", align 1
 @.str = private addrspace(2) constant [4 x i8] c"ocl\00", align 1

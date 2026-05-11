@@ -1508,19 +1508,6 @@ int64_t typecastVals(const void *value, VISA_Type isaType) {
 
 // convert binary vISA surface id to GEN surface index
 int Get_PreDefined_Surf_Index(int index, TARGET_PLATFORM platform) {
-  if (platform < GENX_SKL) {
-    switch (index) {
-    case 1:
-      return PREDEF_SURF_1_OLD;
-    case 2:
-      return PREDEF_SURF_2_OLD;
-    case 3:
-      return PREDEF_SURF_3_OLD;
-    default:;
-      // fallthrough
-    }
-  }
-
   return vISAPreDefSurf[index].genId;
 }
 

@@ -18,9 +18,6 @@ using namespace vISA;
 const PlatformInfo PlatformInfo::ALL_PLATFORMS[] = {
     PlatformInfo(GENX_BDW, PlatformGen::GEN8, 3, 32, "BDW", "GEN8"),
     PlatformInfo(GENX_CHV, PlatformGen::GEN8, 4, 32, "CHV", "GEN8LP"),
-    PlatformInfo(GENX_SKL, PlatformGen::GEN9, 5, 32, "SKL", "GEN9", "KBL",
-                 "CFL"),
-    PlatformInfo(GENX_BXT, PlatformGen::GEN9, 6, 32, "BXT", "GEN9LP"),
     PlatformInfo(GENX_ICLLP, PlatformGen::GEN11, 10, 32, "ICLLP", "ICL",
                  "GEN11", "GEN11LP"),
     PlatformInfo(GENX_TGLLP, PlatformGen::XE, 12, 32, "TGLLP", "DG1", "GEN12LP",

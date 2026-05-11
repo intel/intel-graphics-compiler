@@ -10,7 +10,7 @@
 ; RUN: igc_opt --typed-pointers -igc-fix-alignment -S %s -o %t.ll
 ; RUN: FileCheck %s --input-file=%t.ll
 
-target triple = "igil_32_GEN9"
+target triple = "igil_32_GEN12"
 
 ; Function Attrs: alwaysinline nounwind
 ; CHECK: @regular

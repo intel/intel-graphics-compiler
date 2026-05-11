@@ -1409,10 +1409,8 @@ static bool isHdcIntAtomicMessage(SFID funcID, uint16_t msgType,
   if (msgType == DC1_UNTYPED_ATOMIC || msgType == DC1_A64_ATOMIC) {
     return true;
   }
-  if (irb.getPlatform() >= GENX_SKL) {
-    if (msgType == DC1_TYPED_ATOMIC)
-      return true;
-  }
+  if (msgType == DC1_TYPED_ATOMIC)
+    return true;
   if (irb.getPlatformGeneration() >= PlatformGen::XE) {
     if (msgType == DC1_TYPED_HALF_INTEGER_ATOMIC ||
         msgType == DC1_TYPED_HALF_COUNTER_ATOMIC ||
@@ -1428,11 +1426,9 @@ static bool isHdcFloatAtomicMessage(SFID funcID, uint16_t msgType,
   if (funcID != SFID::DP_DC1)
     return false;
 
-  if (irb.getPlatform() >= GENX_SKL) {
-    if (msgType == DC1_UNTYPED_FLOAT_ATOMIC ||
-        msgType == DC1_A64_UNTYPED_FLOAT_ATOMIC)
-      return true;
-  }
+  if (msgType == DC1_UNTYPED_FLOAT_ATOMIC ||
+      msgType == DC1_A64_UNTYPED_FLOAT_ATOMIC)
+    return true;
   if (irb.getPlatformGeneration() >= PlatformGen::XE) {
     if (msgType == DC1_UNTYPED_HALF_FLOAT_ATOMIC ||
         msgType == DC1_A64_UNTYPED_HALF_FLOAT_ATOMIC)

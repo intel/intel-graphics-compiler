@@ -15,7 +15,7 @@
 
 ; CHECK: target
 
-target triple = "igil_32_GEN9"
+target triple = "igil_32_GEN12"
 
 %struct.sSin_Table_Type = type { [256 x [4 x i32]], i32, i32, i32, i32, i32, i32, i32, i32, i32, i32, i32, i32, i32, i32, i32, i32, i32 }
 %struct.sReduction_Table_Type = type { [256 x [3 x i32]] }

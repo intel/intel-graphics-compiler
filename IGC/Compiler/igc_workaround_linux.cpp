@@ -30,26 +30,8 @@ void SetWorkaroundTable(SKU_FEATURE_TABLE *pSkuFeatureTable, CPlatform *platform
     platform->OverrideProductFamily(IGC_GET_FLAG_VALUE(OverrideProductFamilyForWA));
 
   switch (platform->getPlatformInfo().eProductFamily) {
-  case IGFX_BROXTON:
-    InitBxtWaTable(&waTable, pSkuFeatureTable, &stWaInitParam);
-    break;
-  case IGFX_SKYLAKE:
-  case IGFX_GENNEXT:
-    InitSklWaTable(&waTable, pSkuFeatureTable, &stWaInitParam);
-    break;
   case IGFX_CANNONLAKE:
     InitCnlWaTable(&waTable, pSkuFeatureTable, &stWaInitParam);
-    break;
-  case IGFX_KABYLAKE:
-    InitKblDisplayWaTable(&waTable, pSkuFeatureTable, &stWaInitParam);    // Display WA only
-    InitKblNonDisplayWaTable(&waTable, pSkuFeatureTable, &stWaInitParam); // Non Display WA
-    break;
-  case IGFX_COFFEELAKE:
-    InitKblDisplayWaTable(&waTable, pSkuFeatureTable, &stWaInitParam);    // Display WA only
-    InitCflNonDisplayWaTable(&waTable, pSkuFeatureTable, &stWaInitParam); // Non Display WA
-    break;
-  case IGFX_GEMINILAKE:
-    InitGlkWaTable(&waTable, pSkuFeatureTable, &stWaInitParam);
     break;
   case IGFX_ICELAKE:
     InitIclHwWaTable(&waTable, pSkuFeatureTable, &stWaInitParam);

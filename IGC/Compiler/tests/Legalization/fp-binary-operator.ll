@@ -56,8 +56,8 @@ define float @test_fmul(float %src1, float %src2) {
 define float @test_fdiv(float %src1, float %src2) {
 ; CHECK-LABEL: define float @test_fdiv(
 ; CHECK-SAME: float [[SRC1:%.*]], float [[SRC2:%.*]]) {
-; CHECK:    [[TMP1:%.*]] = fdiv float [[SRC1]], [[SRC2]]
-; CHECK:    ret float [[TMP1]]
+; CHECK:    fdiv float 1.000000e+00,
+; CHECK:    ret float
 ;
   %1 = call float @llvm.genx.GenISA.FPBinaryOperator.f32(float %src1, float %src2, i32 8)
   ret float %1

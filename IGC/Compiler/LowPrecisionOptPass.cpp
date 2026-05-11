@@ -143,11 +143,6 @@ bool LowPrecisionOpt::propagateSamplerType(llvm::GenIntrinsicInst &I) {
     return false;
   }
 
-  IGC::CodeGenContext &CGContext = *getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
-  if (!CGContext.platform.supportFP16()) {
-    return false;
-  }
-
   Type *eltTy = NULL;
   bool isFloatType = false;
 

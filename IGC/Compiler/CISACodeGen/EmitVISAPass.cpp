@@ -5956,7 +5956,7 @@ void EmitPass::emitLdInstruction(llvm::Instruction *inst) {
 
   CVariable *lodSrc = opCode == llvm_ldlptr ? GetSymbol(inst->getOperand(3)) : GetSymbol(inst->getOperand(2));
 
-  if (m_currShader->m_Platform->supportSampleAndLd_lz() && lodSrc->IsImmediate() && lodSrc->GetImmediateValue() == 0) {
+  if (lodSrc->IsImmediate() && lodSrc->GetImmediateValue() == 0) {
     zeroLOD = true;
   }
 
@@ -8742,8 +8742,7 @@ void EmitPass::emitSampleInstruction(SampleIntrinsic *inst) {
   // SIMD8 mode. Hence the movs to handle this layout in SIMD8 mode
   bool simd8HFRet = isHalfGRFReturn(m_destination, m_SimdMode);
 
-  bool zeroLOD = m_currShader->m_Platform->supportSampleAndLd_lz() && inst->ZeroLOD() &&
-                 !m_currShader->m_Platform->WaDisableSampleLz();
+  bool zeroLOD = inst->ZeroLOD() && !m_currShader->m_Platform->WaDisableSampleLz();
 
   ModuleMetaData *modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
   auto &predicationMap = modMD->predicationMap;
@@ -9691,10 +9690,8 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst *inst) {
     break;
   }
   case GenISAIntrinsic::GenISA_slice_id: {
-    if (m_currShader->m_Platform->GetPlatformFamily() == IGFX_GEN9_CORE)
-      emitStateRegID(14, 15);
-    else if (m_currShader->m_Platform->GetPlatformFamily() == IGFX_GEN12_CORE ||
-             m_currShader->m_Platform->GetPlatformFamily() == IGFX_XE_HP_CORE)
+    if (m_currShader->m_Platform->GetPlatformFamily() == IGFX_GEN12_CORE ||
+        m_currShader->m_Platform->GetPlatformFamily() == IGFX_XE_HP_CORE)
       emitStateRegID(11, 13);
     else if (m_currShader->m_Platform->GetPlatformFamily() == IGFX_XE_HPG_CORE)
       emitStateRegID(11, 13);
@@ -9711,9 +9708,7 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst *inst) {
     break;
   }
   case GenISAIntrinsic::GenISA_subslice_id: {
-    if (m_currShader->m_Platform->GetPlatformFamily() == IGFX_GEN9_CORE)
-      emitStateRegID(12, 13);
-    else if (m_currShader->m_Platform->GetPlatformFamily() == IGFX_XE_HPC_CORE) {
+    if (m_currShader->m_Platform->GetPlatformFamily() == IGFX_XE_HPC_CORE) {
       emitStateRegID(9, 11);
     } else if (m_currShader->m_Platform->GetPlatformFamily() == IGFX_XE2_HPG_CORE)
       emitStateRegID(8, 9);
@@ -9755,9 +9750,7 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst *inst) {
     break;
   }
   case GenISAIntrinsic::GenISA_eu_id: {
-    if (m_currShader->m_Platform->GetPlatformFamily() == IGFX_GEN9_CORE)
-      emitStateRegID(8, 11);
-    else if (m_currShader->m_Platform->GetPlatformFamily() == IGFX_XE_HPC_CORE) {
+    if (m_currShader->m_Platform->GetPlatformFamily() == IGFX_XE_HPC_CORE) {
       emitStateRegID(4, 8);
       m_currShader->RemoveBitRange(m_destination, 2, 2);
     } else if (m_currShader->m_Platform->GetPlatformFamily() == IGFX_XE2_HPG_CORE ||
@@ -18193,7 +18186,7 @@ void EmitPass::emitVectorStore(StoreInst *inst, Value *offset, ConstantInt *immO
       IGC_ASSERT_MESSAGE(dstUniform, "ICE: for vector uniform store, both dst and src must be uniform!");
       IGC_ASSERT_MESSAGE(srcUniform, "ICE: for vector uniform store, both dst and src must be uniform!");
 
-      // As we use simd8 for vector (SKL HW WA). Converting DW to QW
+      // As we use simd8 for vector A64 stores, converting DW to QW
       // makes sense only if the final is a scalar (a single QW).
       bool useQW = (!useA32) && (eltBytes == 8 ||                                   // requested by vector layout
                                  (eltBytes == 4 && totalBytes == 8 && align >= 8)); // convert DW to QW
@@ -18203,9 +18196,8 @@ void EmitPass::emitVectorStore(StoreInst *inst, Value *offset, ConstantInt *immO
       uint16_t activelanes = useQW ? (totalBytes / 8) : (totalBytes / 4);
       uint16_t nbelts = (activelanes == 3 ? 4 : activelanes);
 
-      // Work around of a possible SKL HW bug. Using send(4) for "store
-      // <4xi32>v, *p" Therefore, using simd8 for A64 vector store to get around
-      // of this issue..
+      // Use SIMD8 for A64 vector stores to avoid the problematic send(4)
+      // "store <4xi32>v, *p" sequence.
 
       // This is simdmode we wanted, but we need to work around of A64 HW bug
       SIMDMode simdWanted = lanesToSIMDMode(nbelts);
@@ -18231,7 +18223,7 @@ void EmitPass::emitVectorStore(StoreInst *inst, Value *offset, ConstantInt *immO
         uint32_t incImm = useQW ? 0x80 : (activelanes == 2 ? 0x40 : (activelanes == 3 ? 0x8840 : 0xC840));
         CVariable *immVar = m_currShader->ImmToVariable(incImm, ISA_TYPE_UV);
 
-        // When work-around of A64 SKL Si limitation of SIMD4, we use SIMD8
+        // When working around the A64 SIMD4 limitation, we use SIMD8
         // (nbelts > nbeltsWanted) in which all upper four channels are zero,
         // meaning eOffset[0], Later, stored value must use storvedVar[0] for
         // those extra lanes.
@@ -18270,7 +18262,7 @@ void EmitPass::emitVectorStore(StoreInst *inst, Value *offset, ConstantInt *immO
         CVariable *NewVar =
             m_currShader->GetNewVariable(nbelts, storedVar->GetType(), grfAlign, true /*srcUniform*/, CName::NONE);
 
-        // A64 SKL HW issue work-around: set remaining lanes to storedVar[0]
+        // A64 SIMD4 workaround: set remaining lanes to storedVar[0]
         // as eOffset has been set to the first element already.
         if (nbeltsWanted < nbelts) {
           m_encoder->SetNoMask();

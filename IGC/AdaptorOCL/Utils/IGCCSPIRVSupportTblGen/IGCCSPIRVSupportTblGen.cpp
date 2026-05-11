@@ -63,10 +63,6 @@ class ProductCoreTable {
 #define PCR(P, C) {#P, P, #C, C}
   // clang-format off
   static constexpr Row kPlatforms[] = {
-      PCR(IGFX_SKYLAKE,       IGFX_GEN9_CORE),
-      PCR(IGFX_KABYLAKE,      IGFX_GEN9_CORE),
-      PCR(IGFX_GEMINILAKE,    IGFX_GEN9_CORE),
-      PCR(IGFX_BROXTON,       IGFX_GEN9_CORE),
       PCR(IGFX_TIGERLAKE_LP,  IGFX_GEN12_CORE),
       PCR(IGFX_DG1,           IGFX_GEN12_CORE),
       PCR(IGFX_ROCKETLAKE,    IGFX_GEN12_CORE),

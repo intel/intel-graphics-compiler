@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; RUN: igc_opt -platformskl -igc-legalization -S -dce < %s | FileCheck %s
+; RUN: igc_opt -platformbmg -igc-legalization -S -dce < %s | FileCheck %s
 ; ------------------------------------------------
 ; Legalization: intrinsics
 ; ------------------------------------------------

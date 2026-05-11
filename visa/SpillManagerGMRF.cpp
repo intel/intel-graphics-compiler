@@ -197,7 +197,7 @@ SpillManagerGRF::SpillManagerGRF(GlobalRA &g, unsigned spillAreaOffset,
 }
 
 bool SpillManagerGRF::headerNeeded() const {
-  if (useScratchMsg_ && builder_->getPlatform() >= GENX_SKL)
+  if (useScratchMsg_)
     return false;
 
   if (builder_->kernel.fg.getHasStackCalls() ||
@@ -1686,7 +1686,6 @@ static uint32_t getScratchBlocksizeEncoding(int numGRF,
   } else if (size == 4) {
     blocksize_encoding = 0x2;
   } else if (size == 8) {
-    vASSERT(builder.getPlatform() >= GENX_SKL);
     blocksize_encoding = 0x3;
   } else
     vASSERT(false);
@@ -1885,8 +1884,7 @@ G4_INST *SpillManagerGRF::createSendInst(G4_ExecSize execSize,
 // Create the send instructions to fill in the value of spillRangeDcl into
 // fillRangeDcl in aligned portions.
 static int getNextSize(int height, bool useHWordMsg, const IR_Builder &irb) {
-  bool has8GRFMessage =
-      useHWordMsg && irb.getPlatform() >= GENX_SKL && irb.getGRFSize() == 32;
+  bool has8GRFMessage = useHWordMsg && irb.getGRFSize() == 32;
   if (has8GRFMessage && height >= 8) {
     return 8;
   } else if (height >= 4) {

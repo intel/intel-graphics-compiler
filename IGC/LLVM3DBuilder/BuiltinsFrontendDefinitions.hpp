@@ -3312,8 +3312,8 @@ inline llvm::Value *LLVM3DBuilder<T, Inserter>::readFirstLane(llvm::Value *src, 
 /// Some of the unsupported formats are  mandatory in Vulkan and OGL.
 /// In order to support these formats the driver and the compiler implement the
 /// following emulation:
-/// Since Gen9 HW typed read messages return raw data when reading from an
-/// unsupported format. It's enough to call the conversion method
+/// When HW typed read messages return raw data for an unsupported format,
+/// it's enough to call the conversion method
 /// CreateImageDataConversion() using data returned from typed read messages.
 ///
 /// @param format Surface format of the typed image (original i.e. from shader)

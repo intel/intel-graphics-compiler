@@ -1792,8 +1792,8 @@ void PreCompiledFuncImport::visitFCmpInst(FCmpInst &I) {
 void PreCompiledFuncImport::visitCallInst(llvm::CallInst &I) {
   if (IGC_IS_FLAG_ENABLED(EnableTestIGCBuiltin)) {
     // This is to test if an emulated function is the same
-    // as the hardware instruction. It requires the platform
-    // that has hw instructions, such ask SKL etc.
+    // as the hardware instruction. It requires a platform
+    // that has the corresponding hardware instructions.
     // Currently, it is available for OCL only.  For example,
     // the following ocl kernel will test if double-to-int32
     // is the same as its emulated function.

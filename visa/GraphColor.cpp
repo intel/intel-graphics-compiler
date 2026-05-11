@@ -8456,9 +8456,6 @@ void GlobalRA::saveRegs(unsigned startReg, unsigned owordSize,
                         unsigned frameOwordOffset, G4_BB *bb,
                         INST_LIST_ITER insertIt,
                         std::unordered_set<G4_INST *> &group) {
-  vISA_ASSERT(builder.getPlatform() >= GENX_SKL,
-              "stack call only supported on SKL+");
-
   if ((useLscForSpillFill && owordSize == 16) || owordSize == 8 ||
       owordSize == 4 || owordSize == 2) {
     // add (1) r126.2<1>:ud    r125.3<0;1,0>:ud    0x2:ud

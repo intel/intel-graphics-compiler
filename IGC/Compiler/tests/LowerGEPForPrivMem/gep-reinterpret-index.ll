@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: igc_opt --opaque-pointers -igc-priv-mem-to-reg -S < %s 2>&1 | FileCheck %s
+; RUN: igc_opt --opaque-pointers --platformbmg -igc-priv-mem-to-reg -S < %s 2>&1 | FileCheck %s
 
 ; Verify correct scalarized GEP index advancement for reinterpreted vectors.
 ; Before the fix, when storing a <8 x i32> vector into a promoted private alloca

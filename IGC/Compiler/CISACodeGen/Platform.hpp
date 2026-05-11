@@ -44,7 +44,7 @@ private:
            || isCoreChildOf(IGFX_XE2_HPG_CORE);
   }
 
-  // all the platforms which DONOT support 64 bit int operations
+  // All platforms that do not support native 64-bit integer operations.
   bool hasNoInt64Inst() const {
     return m_platformInfo.eProductFamily == IGFX_ICELAKE_LP ||
            m_platformInfo.eProductFamily == IGFX_LAKEFIELD ||
@@ -77,19 +77,12 @@ public:
 
   bool hasQWGatherScatterBTSMessage() const { return m_platformInfo.eRenderCoreFamily >= IGFX_XE_HP_SDV; }
 
-  bool hasPredicatedBarriers() const { return m_platformInfo.eRenderCoreFamily >= IGFX_GEN9_CORE; }
-  bool hasIEEEMinmaxBit() const { return m_platformInfo.eRenderCoreFamily >= IGFX_GEN9_CORE; }
   bool hasL1ReadOnlyCache() const { return m_platformInfo.eRenderCoreFamily >= IGFX_GEN10_CORE; }
 
 
 
-  bool supportSampleAndLd_lz() const { return m_platformInfo.eRenderCoreFamily >= IGFX_GEN9_CORE; }
-  bool supportFP16() const { return m_platformInfo.eRenderCoreFamily >= IGFX_GEN9_CORE; }
-  bool supportFP16Rounding() const { return false; }
   bool supportSamplerFp16Input() const { return m_platformInfo.eRenderCoreFamily >= IGFX_GEN10_CORE; }
   bool supportPooledEU() const { return m_SkuTable.FtrPooledEuEnabled != 0; }
-  bool supportSplitSend() const { return m_platformInfo.eRenderCoreFamily >= IGFX_GEN9_CORE; }
-  bool supportBindless() const { return m_platformInfo.eRenderCoreFamily >= IGFX_GEN9_CORE; }
   bool supportsHDCLegacyDCROMessage() const { return m_platformInfo.eRenderCoreFamily <= IGFX_XE_HPC_CORE; }
 
   bool hasEfficient64bEnabled() const {
@@ -111,11 +104,8 @@ public:
   }
 
   bool hasEngineIDEnabled() const { return isCoreChildOf(IGFX_XE3P_CORE) && IGC_IS_FLAG_DISABLED(DisableEngineID); }
-  bool SupportSurfaceInfoMessage() const { return m_platformInfo.eRenderCoreFamily >= IGFX_GEN9_CORE; }
   bool SupportHDCUnormFormats() const { return m_platformInfo.eRenderCoreFamily >= IGFX_GEN10_CORE; }
-  bool localMemFenceSupress() const {
-    return m_platformInfo.eRenderCoreFamily <= IGFX_GEN9_CORE || IGC_IS_FLAG_ENABLED(DisbleLocalFences);
-  }
+  bool localMemFenceSupress() const { return IGC_IS_FLAG_ENABLED(DisbleLocalFences); }
 
   bool canSupportWMTPWithoutBTD() const {
     // Returns true if the platform has the capability of supporting
@@ -215,10 +205,7 @@ public:
 
   GT_SYSTEM_INFO GetGTSystemInfo() const { return m_GTSystemInfo; }
 
-  bool supportGPGPUMidThreadPreemption() const {
-    return m_platformInfo.eRenderCoreFamily >= IGFX_GEN9_CORE && m_platformInfo.eRenderCoreFamily <= IGFX_GEN11LP_CORE;
-  }
-
+  bool supportGPGPUMidThreadPreemption() const { return m_platformInfo.eRenderCoreFamily <= IGFX_GEN11LP_CORE; }
   unsigned int getMaxGPGPUShaderThreads() const { return m_caps.MediaShaderThreads - 1; }
   unsigned int getKernelPointerAlignSize() const { return m_caps.KernelHwCaps.KernelPointerAlignSize; }
   unsigned int getSharedLocalMemoryBlockSize() const { return m_caps.SharedLocalMemoryBlockSize; }
@@ -281,11 +268,7 @@ public:
   }
   bool supportsSIMD32forCPS() const { return (m_platformInfo.eProductFamily >= IGFX_METEORLAKE); }
 
-  bool supportsThreadCombining() const {
-    return (!(!m_WaTable.WaEnablePooledEuFor2x6 && m_platformInfo.eProductFamily == IGFX_BROXTON &&
-              m_GTSystemInfo.SubSliceCount == 2)) &&
-           (m_platformInfo.eRenderCoreFamily < IGFX_GEN12_CORE);
-  }
+  bool supportsThreadCombining() const { return (m_platformInfo.eRenderCoreFamily < IGFX_GEN12_CORE); }
 
   bool enableMaxWorkGroupSizeCalculation() const {
     return (m_platformInfo.eRenderCoreFamily >= IGFX_GEN11_CORE) && IGC_IS_FLAG_ENABLED(EnableMaxWGSizeCalculation);
@@ -325,15 +308,9 @@ public:
 
   bool singleThreadBasedInstScheduling() const { return m_platformInfo.eRenderCoreFamily < IGFX_GEN12_CORE; }
 
-  // all the platforms which do not support 64 bit operations and
-  // needs int64 emulation support. Except also for BXT where
-  // 64-bit inst has much lower throughput compared to SKL.
-  // Emulating it improves performance on some benchmarks and
-  // won't have impact on the overall performance.
-  bool need64BitEmulation() const {
-    return m_platformInfo.eProductFamily == IGFX_GEMINILAKE || m_platformInfo.eProductFamily == IGFX_BROXTON ||
-           hasNoInt64Inst();
-  }
+  // Platforms that need int64 emulation because they lack native 64-bit integer
+  // operations.
+  bool need64BitEmulation() const { return hasNoInt64Inst(); }
 
   bool HDCCoalesceSLMAtomicINCWithNoReturn() const { return m_platformInfo.eRenderCoreFamily == IGFX_GEN12_CORE; }
 
@@ -382,17 +359,7 @@ public:
   // the amount of constant buffer data promoted to registers.
   uint32_t getBlockPushConstantThreshold() const {
     constexpr uint32_t defaultThreshold = 31;
-    constexpr uint32_t gen9GT2Threshold = 15;
-
-    const GTTYPE gt = m_platformInfo.eGTType;
-    switch (m_platformInfo.eProductFamily) {
-    case IGFX_COFFEELAKE:
-    case IGFX_SKYLAKE:
-    case IGFX_KABYLAKE:
-      return (gt == GTTYPE_GT2) ? gen9GT2Threshold : defaultThreshold;
-    default:
-      return defaultThreshold;
-    }
+    return defaultThreshold;
   }
 
   bool hasDualSubSlices() const {
@@ -422,10 +389,7 @@ public:
     return slmSizePerSsOrDss;
   }
 
-  bool canForcePrivateToGlobal() const {
-    return m_platformInfo.eRenderCoreFamily >= IGFX_GEN9_CORE &&
-           IGC_IS_FLAG_ENABLED(ForcePrivateMemoryToGlobalOnGeneric);
-  }
+  bool canForcePrivateToGlobal() const { return IGC_IS_FLAG_ENABLED(ForcePrivateMemoryToGlobalOnGeneric); }
 
   bool getHWTIDFromSR0() const { return isProductChildOf(IGFX_XE_HP_SDV); }
 
@@ -844,8 +808,6 @@ public:
     return true;
   }
 
-  bool EnableKeepTileYForFlattenedDefault() const { return false; }
-
   bool supportsWriteableMSAATextures() const { return isCoreChildOf(IGFX_XE3_CORE); }
   bool supportsVRT() const { return isCoreChildOf(IGFX_XE3_CORE); }
 
@@ -1069,8 +1031,7 @@ public:
              m_platformInfo.eProductFamily == IGFX_ROCKETLAKE ||
              m_platformInfo.eRenderCoreFamily == IGFX_GEN12LP_CORE ||
              m_platformInfo.eProductFamily == IGFX_ALDERLAKE_S || m_platformInfo.eProductFamily == IGFX_ALDERLAKE_P ||
-             m_platformInfo.eProductFamily == IGFX_ALDERLAKE_N || m_platformInfo.eRenderCoreFamily == IGFX_GEN9_CORE ||
-             m_platformInfo.eRenderCoreFamily == IGFX_GEN10_CORE));
+             m_platformInfo.eProductFamily == IGFX_ALDERLAKE_N || m_platformInfo.eRenderCoreFamily == IGFX_GEN10_CORE));
   }
 
   bool supportsStaticRegSharing() const {
@@ -1210,8 +1171,6 @@ public:
 
   bool WaForceMinMaxGSThreadCount() const { return m_WaTable.WaForceMinMaxGSThreadCount != 0; }
 
-  bool WaOCLEnableFMaxFMinPlusZero() const { return m_WaTable.WaOCLEnableFMaxFMinPlusZero != 0; }
-
   bool WaDisableSendsSrc0DstOverlap() const { return m_WaTable.WaDisableSendsSrc0DstOverlap != 0; }
 
   bool WaDisableEuBypass() const { return (m_WaTable.WaDisableEuBypassOnSimd16Float32 != 0); }
@@ -1287,13 +1246,12 @@ public:
     if (isCoreChildOf(IGFX_XE_HPC_CORE) && !isCoreChildOf(IGFX_XE2_HPG_CORE))
       return false;
 
-    return GetPlatformFamily() >= IGFX_GEN9_CORE;
+    return true;
   }
 
   // platform natively not support DW-DW multiply
   bool noNativeDwordMulSupport() const {
-    return m_platformInfo.eProductFamily == IGFX_BROXTON || m_platformInfo.eProductFamily == IGFX_GEMINILAKE ||
-           m_platformInfo.eProductFamily == IGFX_DG2 || m_platformInfo.eProductFamily == IGFX_METEORLAKE ||
+    return m_platformInfo.eProductFamily == IGFX_DG2 || m_platformInfo.eProductFamily == IGFX_METEORLAKE ||
            m_platformInfo.eProductFamily == IGFX_ARROWLAKE || GetPlatformFamily() == IGFX_GEN11_CORE ||
            GetPlatformFamily() == IGFX_GEN12LP_CORE;
   }

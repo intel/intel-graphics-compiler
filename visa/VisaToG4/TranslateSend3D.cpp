@@ -197,8 +197,7 @@ int IR_Builder::translateVISASampleInfoInst(VISA_Exec_Size executionSize,
   G4_ExecSize execSize{Get_VISA_Exec_Size(executionSize)};
   G4_InstOpts instOpt = Get_Gen4_Emask(emask, execSize, hasNibCtrl());
   VISAChannelMask channels = chMask.getAPI();
-  bool useFakeHeader =
-      (getPlatform() < GENX_SKL) ? false : (channels == CHANNEL_MASK_R);
+  bool useFakeHeader = (channels == CHANNEL_MASK_R);
   bool preEmption = forceSamplerHeader();
   bool forceSplitSend = shouldForceSplitSend(surface);
   bool useHeader = true;
@@ -297,7 +296,7 @@ int IR_Builder::translateVISAResInfoInst(
   VISAChannelMask channels = chMask.getAPI();
   bool preEmption = forceSamplerHeader();
   bool useHeader =
-      preEmption || (getPlatform() < GENX_SKL)
+      preEmption
           ? channels != CHANNEL_MASK_RGBA
           : (channels != CHANNEL_MASK_R && channels != CHANNEL_MASK_RG &&
              channels != CHANNEL_MASK_RGB && channels != CHANNEL_MASK_RGBA);
@@ -2507,10 +2506,8 @@ int IR_Builder::translateVISASampler3DInst(
   // For SKL+ channel mask R, RG, RGB, and RGBA may be derived from response
   // length
   bool needHeaderForChannels =
-      (getPlatform() < GENX_SKL)
-          ? channels != CHANNEL_MASK_RGBA
-          : (channels != CHANNEL_MASK_R && channels != CHANNEL_MASK_RG &&
-             channels != CHANNEL_MASK_RGB && channels != CHANNEL_MASK_RGBA);
+      (channels != CHANNEL_MASK_R && channels != CHANNEL_MASK_RG &&
+       channels != CHANNEL_MASK_RGB && channels != CHANNEL_MASK_RGBA);
 
   bool nonZeroAoffImmi =
       !(aoffimmi->isImm() && aoffimmi->asImm()->getInt() == 0);
@@ -3036,10 +3033,8 @@ int IR_Builder::translateVISALoad3DInst(
   // For SKL+ channel mask R, RG, RGB, and RGBA may be derived from response
   // length
   bool needHeaderForChannels =
-      (getPlatform() < GENX_SKL)
-          ? channels != CHANNEL_MASK_RGBA
-          : (channels != CHANNEL_MASK_R && channels != CHANNEL_MASK_RG &&
-             channels != CHANNEL_MASK_RGB && channels != CHANNEL_MASK_RGBA);
+      (channels != CHANNEL_MASK_R && channels != CHANNEL_MASK_RG &&
+       channels != CHANNEL_MASK_RGB && channels != CHANNEL_MASK_RGBA);
 
   bool nonZeroAoffImmi =
       !(aoffimmi->isImm() && aoffimmi->asImm()->getInt() == 0);
@@ -3387,27 +3382,15 @@ int IR_Builder::translateVISASamplerInst(
   createMovSendSrcInst(dcl1, 0, 0, simdMode, uOffOpnd, 0);
   if (sampler == NULL) {
     // ld
-    if (getPlatform() < GENX_SKL) {
-      // the order of paramters is
-      // u    lod        v    r
-      /* mov  (sample_mode)    VX(sample_mode/8, 0)<1>,  lod */
-      createMovSendSrcInst(dcl1, simdMode / 8, 0, simdMode,
-                           createImm(0, Type_UD), 0);
-      /* mov  (sample_mode)    VX(2*sample_mode/8, 0)<1>,  v */
-      createMovSendSrcInst(dcl1, 2 * simdMode / 8, 0, simdMode, vOffOpnd, 0);
-      /* mov  (sample_mode)    VX(3*sampler_mode/8, 0)<1>,  r */
-      createMovSendSrcInst(dcl1, 3 * simdMode / 8, 0, simdMode, rOffOpnd, 0);
-    } else {
-      // SKL+: the order of paramters is
-      // u    v   lod r
-      /* mov  (sample_mode)    VX(sample_mode/8, 0)<1>,  v */
-      createMovSendSrcInst(dcl1, simdMode / 8, 0, simdMode, vOffOpnd, 0);
-      /* mov  (sample_mode)    VX(2*sample_mode/8, 0)<1>,  lod */
-      createMovSendSrcInst(dcl1, 2 * simdMode / 8, 0, simdMode,
-                           createImm(0, Type_UD), 0);
-      /* mov  (sample_mode)    VX(3*sampler_mode/8, 0)<1>,  r */
-      createMovSendSrcInst(dcl1, 3 * simdMode / 8, 0, simdMode, rOffOpnd, 0);
-    }
+    // SKL+: the order of paramters is
+    // u    v   lod r
+    /* mov  (sample_mode)    VX(sample_mode/8, 0)<1>,  v */
+    createMovSendSrcInst(dcl1, simdMode / 8, 0, simdMode, vOffOpnd, 0);
+    /* mov  (sample_mode)    VX(2*sample_mode/8, 0)<1>,  lod */
+    createMovSendSrcInst(dcl1, 2 * simdMode / 8, 0, simdMode,
+                         createImm(0, Type_UD), 0);
+    /* mov  (sample_mode)    VX(3*sampler_mode/8, 0)<1>,  r */
+    createMovSendSrcInst(dcl1, 3 * simdMode / 8, 0, simdMode, rOffOpnd, 0);
   } else {
     // sample
     /* mov  (sample_mode)    VX(1 + sample_mode/8, 0)<1>,  v */
