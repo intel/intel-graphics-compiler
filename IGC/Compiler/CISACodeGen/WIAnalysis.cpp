@@ -20,7 +20,9 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/CFG.h>
 #include <llvm/Support/CommandLine.h>
 #include <llvm/Support/Debug.h>
+#include <llvm/Support/FormattedStream.h>
 #include <llvm/IR/Constants.h>
+#include <llvm/IR/ModuleSlotTracker.h>
 #include "common/LLVMWarningsPop.hpp"
 
 #include <string>
@@ -165,67 +167,71 @@ public:
 } // namespace IGC
 
 void WIAnalysisRunner::print(raw_ostream &OS, const Module *) const {
-  DenseMap<BasicBlock *, int> BBIDs;
-  int id = 0;
-  for (Function::iterator I = m_func->begin(), E = m_func->end(); I != E; ++I, ++id) {
-    BasicBlock *BB = &*I;
-    BBIDs[BB] = id;
+
+  DenseMap<const BasicBlock *, int> BBIDs;
+  {
+    int id = 0;
+    for (auto &BB : *m_func)
+      BBIDs[&BB] = id++;
   }
 
-  std::stringstream ss;
-  ss << "WIAnalysis: " << m_func->getName().str();
-  Banner(OS, ss.str());
+  Banner(OS, "WIAnalysis: " + m_func->getName().str());
 
-  OS << "Args: \n";
-  for (Function::arg_iterator I = m_func->arg_begin(), E = m_func->arg_end(); I != E; ++I) {
-    Value *AVal = &*I;
+  {
+    llvm::ModuleSlotTracker MST(m_func->getParent());
+    MST.incorporateFunction(*m_func);
 
-    if (m_depMap.GetAttributeWithoutCreating(AVal) != m_depMap.end())
-      OS << "    " << dep_str[m_depMap.GetAttributeWithoutCreating(AVal)] << " " << *AVal << "\n";
-    else
-      OS << "  unknown " << *AVal << "\n";
-  }
-  OS << "\n";
-
-  for (Function::iterator I = m_func->begin(), E = m_func->end(); I != E; ++I) {
-    BasicBlock *BB = &*I;
-    OS << "BB:" << BBIDs[BB];
-    if (BB->hasName())
-      OS << " " << BB->getName();
-    OS << "       ; preds =";
-    bool isFirst = true;
-    for (pred_iterator PI = pred_begin(BB), PE = pred_end(BB); PI != PE; ++PI) {
-      BasicBlock *pred = *PI;
-      OS << ((isFirst) ? " " : ", ") << "BB:" << BBIDs[pred] << "  ";
-      if (pred->hasName())
-        OS << pred->getName();
-      isFirst = false;
-    }
-    {
-      auto dep = getCFDependency(BB);
-      OS << "[ " << dep_str[dep] << " ]";
-    }
-    OS << "\n";
-    for (BasicBlock::iterator it = BB->begin(), ie = BB->end(); it != ie; ++it) {
-      Instruction *I = &*it;
-      if (m_depMap.GetAttributeWithoutCreating(I) != m_depMap.end()) {
-        OS << "  " << dep_str[m_depMap.GetAttributeWithoutCreating(I)] << " " << *I;
-      } else {
-        OS << "  unknown " << *I;
-      }
-      if (I->isTerminator()) {
-        IGCLLVM::TerminatorInst *TI = dyn_cast<IGCLLVM::TerminatorInst>(I);
-        OS << " [";
-        for (unsigned i = 0, e = TI->getNumSuccessors(); i < e; ++i) {
-          BasicBlock *succ = TI->getSuccessor(i);
-          OS << " BB:" << BBIDs[succ];
-        }
-        OS << " ]";
-      }
+    OS << "Args:\n";
+    for (auto &Arg : m_func->args()) {
+      auto it = m_depMap.GetAttributeWithoutCreating(&Arg);
+      OS << (it != m_depMap.end() ? dep_str[it] : "unknown") << " ";
+      Arg.printAsOperand(OS, /*PrintType=*/true, MST);
       OS << "\n";
     }
     OS << "\n";
   }
+
+  struct WIAAnnotator : public llvm::AssemblyAnnotationWriter {
+    const WIAnalysisRunner &Runner;
+    const DenseMap<const BasicBlock *, int> &IDs;
+
+    WIAAnnotator(const WIAnalysisRunner &R, const DenseMap<const BasicBlock *, int> &I) : Runner(R), IDs(I) {}
+
+    void emitBasicBlockStartAnnot(const BasicBlock *BB, formatted_raw_ostream &OS) override {
+      OS << "BB:" << IDs.lookup(BB);
+      if (BB->hasName())
+        OS << " " << BB->getName();
+
+      OS << "       ; preds =";
+      bool First = true;
+      for (const auto *P : predecessors(BB)) {
+        OS << (First ? " " : ", ") << "BB:" << IDs.lookup(P);
+        if (P->hasName())
+          OS << "  " << P->getName();
+        First = false;
+      }
+      OS << "[ " << dep_str[Runner.getCFDependency(BB)] << " ]\n";
+    }
+
+    void emitInstructionAnnot(const Instruction *I, formatted_raw_ostream &OS) override {
+      auto it = Runner.m_depMap.GetAttributeWithoutCreating(I);
+      OS << "  " << (it != Runner.m_depMap.end() ? dep_str[it] : "unknown");
+    }
+
+    void printInfoComment(const Value &V, formatted_raw_ostream &OS) override {
+      const auto *I = dyn_cast<Instruction>(&V);
+      if (!I || !I->isTerminator())
+        return;
+
+      OS << " [";
+      for (unsigned i = 0, e = I->getNumSuccessors(); i < e; ++i) {
+        OS << " BB:" << IDs.lookup(I->getSuccessor(i));
+      }
+      OS << " ]";
+    }
+  } Annotator(*this, BBIDs);
+
+  m_func->print(OS, &Annotator, /*PreserveUseListOrder=*/false, /*IsForDebug=*/false);
 }
 
 void WIAnalysisRunner::lock_print() {
