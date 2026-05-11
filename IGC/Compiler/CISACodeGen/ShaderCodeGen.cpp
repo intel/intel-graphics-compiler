@@ -1824,6 +1824,7 @@ void OptimizeIR(CodeGenContext *const pContext) {
     }
 
     if (IGC_IS_FLAG_ENABLED(EnableIntDivRemIncrementReduction) &&
+        pContext->platform.supportIntDivRemIncrementReduction() &&
         !pContext->getModuleMetaData()->compOpt.DisableIntDivRemIncrementReduction) {
       mpm.add(createIntDivRemIncrementReductionPass());
     }
