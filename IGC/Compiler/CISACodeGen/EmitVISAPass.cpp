@@ -11761,11 +11761,14 @@ void EmitPass::emitVLAStackAlloca(llvm::GenIntrinsicInst *intrinsic) {
     //   SP = SP + vla_size * simdWidth
     CVariable *vla_size = m_currShader->GetSymbol(intrinsic->getOperand(1));
     if (!(isa<ConstantInt>(lane_offset) && cast<ConstantInt>(lane_offset)->getZExtValue() == 0)) {
+      CVariable *simd_vla_size = m_currShader->GetNewVariable(vla_size);
       // vla_size must be uniform, if it's not uniform, set region to take only
       // <0;1,0>
       m_encoder->SetSrcRegion(0, 0, 1, 0);
-      m_encoder->Mul(vla_size, vla_size, m_currShader->ImmToVariable(numLanes(m_currShader->m_SIMDSize), ISA_TYPE_UW));
+      m_encoder->Mul(simd_vla_size, vla_size,
+                     m_currShader->ImmToVariable(numLanes(m_currShader->m_SIMDSize), ISA_TYPE_UW));
       m_encoder->Push();
+      vla_size = simd_vla_size;
     }
     m_encoder->SetSrcRegion(1, 0, 1, 0);
     emitAddPointer(pSP, pSP, vla_size);
