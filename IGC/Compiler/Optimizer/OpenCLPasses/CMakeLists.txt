@@ -55,7 +55,7 @@ add_subdirectory(RewriteLocalSize)
 add_subdirectory(ScalarArgAsPointer)
 add_subdirectory(SCEVUtils)
 add_subdirectory(SetFastMathFlags)
-add_subdirectory(Spv2dBlockIOResolution)
+add_subdirectory(Subgroup2DBlockIoResolution)
 add_subdirectory(SpvPredicatedIOResolution)
 add_subdirectory(SpvSubgroupMMAResolution)
 add_subdirectory(SpvSubgroupBitcastShuffleResolution)
@@ -124,7 +124,7 @@ set(IGC_BUILD__SRC__Optimizer_OpenCLPasses_All
     ${IGC_BUILD__SRC__OpenCLPasses_SetFastMathFlags}
     ${IGC_BUILD__SRC__OpenCLPasses_SplitStructurePhisPass}
     ${IGC_BUILD__SRC__OpenCLPasses_MergeScalarPhisPass}
-    ${IGC_BUILD__SRC__OpenCLPasses_Spv2dBlockIOResolution}
+    ${IGC_BUILD__SRC__OpenCLPasses_Subgroup2DBlockIoResolution}
     ${IGC_BUILD__SRC__OpenCLPasses_SpvPredicatedIOResolution}
     ${IGC_BUILD__SRC__OpenCLPasses_SpvSubgroupMMAResolution}
     ${IGC_BUILD__SRC__OpenCLPasses_SpvSubgroupBitcastShuffleResolution}
@@ -197,7 +197,7 @@ set(IGC_BUILD__HDR__Optimizer_OpenCLPasses_All
     ${IGC_BUILD__HDR__OpenCLPasses_SetFastMathFlags}
     ${IGC_BUILD__HDR__OpenCLPasses_SplitStructurePhisPass}
     ${IGC_BUILD__HDR__OpenCLPasses_MergeScalarPhisPass}
-    ${IGC_BUILD__HDR__OpenCLPasses_Spv2dBlockIOResolution}
+    ${IGC_BUILD__HDR__OpenCLPasses_Subgroup2DBlockIoResolution}
     ${IGC_BUILD__HDR__OpenCLPasses_SpvPredicatedIOResolution}
     ${IGC_BUILD__HDR__OpenCLPasses_SpvSubgroupMMAResolution}
     ${IGC_BUILD__HDR__OpenCLPasses_SpvSubgroupBitcastShuffleResolution}

@@ -127,7 +127,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/Optimizer/OpenCLPasses/BufferBoundsChecking/BufferBoundsChecking.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/BufferBoundsChecking/BufferBoundsCheckingPatcher.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/MinimumValidAddressChecking/MinimumValidAddressChecking.hpp"
-#include "Compiler/Optimizer/OpenCLPasses/Spv2dBlockIOResolution/Spv2dBlockIOResolution.hpp"
+#include "Compiler/Optimizer/OpenCLPasses/Subgroup2DBlockIoResolution/Subgroup2DBlockIoResolution.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/SpvSubgroupMMAResolution/SpvSubgroupMMAResolution.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/SpvSubgroupBitcastShuffleResolution/SpvSubgroupBitcastShuffleResolution.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/ProcessBICodeAssumption/ProcessBICodeAssumption.hpp"
@@ -365,7 +365,7 @@ static void CommonOCLBasedPasses(OpenCLProgramContext *pContext) {
   mpm.add(new NamedBarriersResolution(pContext->platform.getPlatformInfo().eRenderCoreFamily));
 
   // This pass should be run before BuiltInImport and before Inlining to allow cache control to be resolved
-  mpm.add(new Spv2dBlockIOResolution());
+  mpm.add(new Subgroup2DBlockIoResolution());
 
   mpm.add(new SpvSubgroupMMAResolution());
   mpm.add(new SpvPredicatedIOResolution());
