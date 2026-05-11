@@ -41,7 +41,7 @@ class LivenessAnalysis : public llvm::FunctionPass {
 public:
   static char ID; // Pass identification, replacement for typeid
 
-  LivenessAnalysis() : llvm::FunctionPass(ID), m_LV(nullptr), m_F(nullptr), m_WIA(nullptr) {
+  LivenessAnalysis() : llvm::FunctionPass(ID), m_F(nullptr), m_WIA(nullptr) {
     initializeLivenessAnalysisPass(*llvm::PassRegistry::getPassRegistry());
   }
 
@@ -74,7 +74,7 @@ public:
   // (See LiveVars for the detail of distance)
   uint32_t getDistance(llvm::Instruction *I) { return m_LV->getDistance(I); }
 
-  LiveVars *getLiveVars() { return m_LV; }
+  LiveVars *getLiveVars() { return m_LV.get(); }
 
   llvm::Value *getValueFromBitId(int BitId) {
     llvm::Value *V = nullptr;
@@ -103,7 +103,7 @@ public:
   virtual void releaseMemory() override { clear(); }
 
 private:
-  LiveVars *m_LV;
+  std::unique_ptr<LiveVars> m_LV;
   llvm::Function *m_F;
   WIAnalysis *m_WIA; // Optional
 

@@ -60,7 +60,7 @@ public:
   typedef LVInfoMap::iterator iterator;
   typedef LVInfoMap::const_iterator const_iterator;
 
-  LiveVars() {}
+  LiveVars() = default;
   ~LiveVars();
   LiveVars(const LiveVars &) = delete;
   LiveVars &operator=(const LiveVars &) = delete;
@@ -142,6 +142,8 @@ private: // Intermediate data structures
   llvm::Function *MF;
   WIAnalysis *WIA;
   llvm::SpecificBumpPtrAllocator<LVInfo> Allocator;
+  llvm::DenseMap<llvm::BasicBlock *, int> BBIds;
+  llvm::SmallVector<llvm::BasicBlock *, 16> BBs;
 
   // For each basic-block, we have a vector of phi-uses if there are phi-insts
   // in a successor-block
@@ -159,6 +161,10 @@ private: // Intermediate data structures
 
   /// Initialize DistanceMap
   void initDistance(llvm::Function &F);
+
+  /// Cache F's basic blocks in BBs / BBIds (and IdToBBs in _DEBUG)
+  /// so getPrevNode() walks can be replaced by O(1) index arithmetic.
+  void setupBBs(llvm::Function &F);
 
 public:
   /// Can be called to release memory when the object won't be used anymore.
@@ -217,10 +223,8 @@ public:
 
 #if defined(_DEBUG)
   // for debugging
-  llvm::DenseMap<llvm::BasicBlock *, int> BBIds;
   llvm::DenseMap<int, llvm::BasicBlock *> IdToBBs;
 
-  void setupBBIds(llvm::Function *F);
   void dump(llvm::Function *F);
   void dump(int BBId);
 #endif

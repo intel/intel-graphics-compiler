@@ -90,6 +90,30 @@ void LiveVars::releaseMemory() {
   VirtRegInfo.clear();
   PHIVarInfo.clear();
   DistanceMap.clear();
+  BBs.clear();
+  BBIds.clear();
+#if defined(_DEBUG)
+  IdToBBs.clear();
+#endif
+}
+
+void LiveVars::setupBBs(Function &F) {
+  BBs.clear();
+  BBIds.clear();
+#if defined(_DEBUG)
+  IdToBBs.clear();
+#endif
+  BBs.reserve(F.size());
+  BBIds.reserve(F.size());
+  int Id = 0;
+  for (auto &BB : F) {
+    BBs.push_back(&BB);
+    BBIds.insert({&BB, Id});
+#if defined(_DEBUG)
+    IdToBBs.insert({Id, &BB});
+#endif
+    ++Id;
+  }
 }
 
 void LiveVars::preAllocMemory(Function &F) {
@@ -120,10 +144,6 @@ void LiveVars::dump() const { print(ods()); }
 void LiveVars::dump(Function *F) {
   if (F->size() == 0) {
     return;
-  }
-
-  if (BBIds.size() == 0) {
-    setupBBIds(F);
   }
 
   raw_ostream &OS = errs();
@@ -157,21 +177,9 @@ void LiveVars::dump(Function *F) {
 }
 
 void LiveVars::dump(int BBId) {
-  BasicBlock *BB = IdToBBs[BBId];
-  if (BB) {
-    BB->print(ods());
-  }
-}
-
-void LiveVars::setupBBIds(Function *F) {
-  if (F) {
-    int ix = 0;
-    for (Function::iterator I = F->begin(), E = F->end(); I != E; ++I) {
-      BasicBlock *BB = &*I;
-      BBIds.insert(std::make_pair(BB, ix));
-      IdToBBs.insert(std::make_pair(ix, BB));
-      ++ix;
-    }
+  auto It = IdToBBs.find(BBId);
+  if (It != IdToBBs.end() && It->second) {
+    It->second->print(ods());
   }
 }
 #endif
@@ -240,12 +248,14 @@ void LiveVars::MarkVirtRegAliveInBlock(LiveVars::LVInfo &VRInfo, BasicBlock *Def
     }
   }
   if (hasLayoutPred && hasNonUniformBranch && VRInfo.uniform) {
-    BasicBlock *simdPred = MBB->getPrevNode();
-    while (simdPred && simdPred != DefBlock) {
+    auto It = BBIds.find(MBB);
+    IGC_ASSERT_MESSAGE(It != BBIds.end(), "MBB missing from LiveVars BB cache");
+    int SimdPredId = It->second - 1;
+    while (SimdPredId >= 0 && BBs[SimdPredId] != DefBlock) {
       // check if it is marked live
-      if (!VRInfo.AliveBlocks.count(simdPred))
-        WorkList.push_back(simdPred);
-      simdPred = simdPred->getPrevNode();
+      if (!VRInfo.AliveBlocks.count(BBs[SimdPredId]))
+        WorkList.push_back(BBs[SimdPredId]);
+      SimdPredId -= 1;
     }
   }
 }
@@ -349,11 +359,13 @@ void LiveVars::HandleVirtRegUse(Value *VL, BasicBlock *MBB, Instruction *MI, boo
       hasLayoutPred = false;
   }
   if (hasLayoutPred && hasNonUniformBranch && WIA->isUniform(VL)) {
-    BasicBlock *simdPred = MBB->getPrevNode();
+    auto It = BBIds.find(MBB);
+    IGC_ASSERT_MESSAGE(It != BBIds.end(), "MBB missing from LiveVars BB cache");
+    int SimdPredId = It->second - 1;
     BasicBlock *DefBlk = (isa<Instruction>(VL)) ? cast<Instruction>(VL)->getParent() : NULL;
-    while (simdPred && simdPred != DefBlk) {
-      MarkVirtRegAliveInBlock(VRInfo, DefBlk, simdPred);
-      simdPred = simdPred->getPrevNode();
+    while (SimdPredId >= 0 && BBs[SimdPredId] != DefBlk) {
+      MarkVirtRegAliveInBlock(VRInfo, DefBlk, BBs[SimdPredId]);
+      SimdPredId -= 1;
     }
   }
 }
@@ -386,6 +398,7 @@ void LiveVars::ComputeLiveness(Function *mf, WIAnalysis *wia) {
   WIA = wia;
 
   preAllocMemory(*MF);
+  setupBBs(*MF);
 
   // First, set up DistanceMap
   // save distance map
@@ -468,7 +481,8 @@ bool LiveVars::isLiveAt(Value *VL, Instruction *MI) {
   if (Def && Def->getParent() == MBB) {
     if (getDistance(Def) > getDistance(MI)) {
       return false;
-    } else if (info.AliveBlocks.empty() && info.Kills.empty()) {
+    }
+    if (info.AliveBlocks.empty() && info.Kills.empty()) {
       // handle that special case: def is the current block
       // and phi in the immed-successor block is the last use
       return true;
@@ -547,6 +561,7 @@ void LiveVars::Calculate(Function *mf, WIAnalysis *wia) {
   WIA = wia;
 
   preAllocMemory(*MF);
+  setupBBs(*MF);
 
   initDistance(*MF);
 

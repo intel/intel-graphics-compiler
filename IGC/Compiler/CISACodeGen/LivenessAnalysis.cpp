@@ -25,6 +25,8 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPop.hpp"
 #include "Probe/Assertion.h"
 
+#include <memory>
+
 using namespace llvm;
 using namespace IGC;
 
@@ -87,8 +89,7 @@ void LivenessAnalysis::clear() {
   IdValues.clear();
   BBLiveIns.clear();
 
-  delete m_LV;
-  m_LV = nullptr;
+  m_LV.reset();
 }
 
 void LivenessAnalysis::initValueIds() {
@@ -167,7 +168,7 @@ void LivenessAnalysis::calculate(Function *F) {
   m_WIA = getAnalysisIfAvailable<WIAnalysis>();
 
   // todo: might use LiveVars as a pass
-  m_LV = new LiveVars();
+  m_LV = std::make_unique<LiveVars>();
   m_LV->Calculate(F, m_WIA);
 
   // Pre-allocate memory to avoid many small alocations.

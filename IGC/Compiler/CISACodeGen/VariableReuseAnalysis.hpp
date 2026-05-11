@@ -431,7 +431,6 @@ private:
 
   CodeGenContext *m_pCtx;
   WIAnalysis *m_WIA;
-  LiveVars *m_LV;
   DeSSA *m_DeSSA;
   CodeGenPatternMatch *m_PatternMatch;
   CoalescingEngine *m_coalescingEngine;

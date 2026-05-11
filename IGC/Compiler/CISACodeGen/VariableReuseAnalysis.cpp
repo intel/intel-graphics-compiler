@@ -104,7 +104,7 @@ IGC_INITIALIZE_PASS_END(VariableReuseAnalysis, "VariableReuseAnalysis", "Variabl
 llvm::FunctionPass *IGC::createVariableReuseAnalysisPass() { return new VariableReuseAnalysis; }
 
 VariableReuseAnalysis::VariableReuseAnalysis()
-    : FunctionPass(ID), m_pCtx(nullptr), m_WIA(nullptr), m_LV(nullptr), m_DeSSA(nullptr), m_PatternMatch(nullptr),
+    : FunctionPass(ID), m_pCtx(nullptr), m_WIA(nullptr), m_DeSSA(nullptr), m_PatternMatch(nullptr),
       m_coalescingEngine(nullptr), m_RPE(nullptr), m_SimdSize(0), m_IsFunctionPressureLow(Status::Undef),
       m_IsBlockPressureLow(Status::Undef), m_BBSizeThreshold(IGC_GET_FLAG_VALUE(ScalarAliasBBSizeThreshold)) {
   initializeVariableReuseAnalysisPass(*PassRegistry::getPassRegistry());
@@ -117,7 +117,6 @@ bool VariableReuseAnalysis::runOnFunction(Function &F) {
   if (IGC_IS_FLAG_ENABLED(EnableDeSSA)) {
     m_DeSSA = &getAnalysis<DeSSA>();
   }
-  m_LV = &(getAnalysis<LiveVarsAnalysis>().getLiveVars());
   m_PatternMatch = &getAnalysis<CodeGenPatternMatch>();
   m_pCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
   m_coalescingEngine = &getAnalysis<CoalescingEngine>();
