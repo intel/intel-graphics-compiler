@@ -12982,7 +12982,22 @@ void EmitPass::emitInsert(llvm::Instruction *inst) {
     // addressing
     llvm::Value *pElement = inst->getOperand(1); // element to insert
     llvm::Value *pIndex = inst->getOperand(2);   // index to insert at
-    CVariable *pIndexVar = m_currShader->BitCast(GetSymbol(pIndex), ISA_TYPE_UW);
+    CVariable *pIndexVar = GetSymbol(pIndex);
+    IGC_ASSERT(pIndex->getType()->getPrimitiveSizeInBits() <= 64);
+
+    if (pIndex->getType()->getPrimitiveSizeInBits() >= 32) {
+      // Create a uw alias – the variable is wide enough for this to be safe.
+      pIndexVar = m_currShader->BitCast(pIndexVar, ISA_TYPE_UW);
+    } else {
+      // For narrow types (e.g., i8/i16) aliasing to uw may produce a
+      // zero-element variable, so zero-extend via a mov instead.
+      unsigned numElems = pIndexVar->IsUniform() ? 1 : numLanes(m_currShader->m_SIMDSize);
+      CVariable *pIndexVarUW =
+          m_currShader->GetNewVariable(numElems, ISA_TYPE_UW, EALIGN_WORD, pIndexVar->IsUniform(), CName::NONE);
+      m_encoder->Cast(pIndexVarUW, pIndexVar);
+      m_encoder->Push();
+      pIndexVar = pIndexVarUW;
+    }
     CVariable *pElemVar = GetSymbol(pElement);
 
     // size of vector entry
@@ -12999,7 +13014,7 @@ void EmitPass::emitInsert(llvm::Instruction *inst) {
     CVariable *pOffset2 = m_currShader->GetNewVariable(pIndexVar->IsUniform() ? 1 : numLanes(m_currShader->m_SIMDSize),
                                                        ISA_TYPE_UW, EALIGN_WORD, pIndexVar->IsUniform(), CName::NONE);
 
-    if (!pIndexVar->IsUniform()) {
+    if (pIndex->getType()->getPrimitiveSizeInBits() >= 32 && !pIndexVar->IsUniform()) {
       m_encoder->SetSrcRegion(0, 16, 8, 2);
     }
     m_encoder->Mul(pOffset2, pIndexVar, pOffset1);
