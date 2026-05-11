@@ -1,0 +1,3 @@
+BasedOnStyle: InheritParentConfig
+ReflowComments: false
+AlignTrailingComments: Leave
