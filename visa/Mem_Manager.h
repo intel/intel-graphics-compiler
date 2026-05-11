@@ -33,13 +33,6 @@ public:
     return _arenaManager.AllocDataSpace(size, static_cast<size_t>(al));
   }
 
-  // Free all arenas and reinitialize; used to release memory after
-  // Phase 1 compilation of a stack-call function (GSD-12025).
-  void releaseMemory() {
-    _arenaManager.FreeArenas();
-    _arenaManager.CreateArena(_arenaManager._defaultArenaSize);
-  }
-
 private:
   vISA::ArenaManager _arenaManager;
 };
@@ -114,8 +107,6 @@ public:
   bool operator!=(const std_arena_based_allocator &a) const {
     return !operator==(a);
   }
-
-  void resetMem() { mem_manager_ptr->releaseMemory(); }
 };
 } // namespace vISA
 #endif

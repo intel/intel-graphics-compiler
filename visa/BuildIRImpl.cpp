@@ -5002,35 +5002,3 @@ bool IR_Builder::canPromoteToMovi(G4_INST *inst) {
 
   return isSanitizedBoundedIndexing;
 }
-
-void IR_Builder::resetPostCompile() {
-  m_fcallInfo.clear();
-  m_fcallLabels.clear();
-  kernel.fg.resetPostCompile();
-  kernel.resetPostCompile();
-  for (auto *inst : instAllocList)
-    inst->resetDefUse();
-  useDefAllocator.resetMem();
-  if (!isMDEarlyCleared())
-    return;
-  for (auto *bb : kernel.fg.getBBList()) {
-    for (auto *inst : *bb) {
-      inst->detachMD();
-    }
-  }
-  for (auto *md : allMDs)
-    md->~Metadata();
-  for (auto *node : allMDNodes)
-    node->~MDNode();
-  allMDs.clear();
-  allMDNodes.clear();
-  metadataMem.releaseMemory();
-}
-
-bool IR_Builder::isMDEarlyCleared() const {
-  return !m_options->getOption(vISA_DumpRegInfo) &&
-         !m_options->getOption(vISA_asmToConsole) &&
-         !m_options->getOption(vISA_outputToFile) &&
-         !m_options->getOption(vISA_GenerateDebugInfo) &&
-         !m_options->getOption(vISA_AddKernelID);
-}

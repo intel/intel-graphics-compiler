@@ -40,12 +40,10 @@ SPDX-License-Identifier: MIT
 #endif
 
 #include <cctype>
-// clang-format off
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/ADT/StringRef.h>
 #include <llvm/Support/Path.h>
 #include "common/LLVMWarningsPop.hpp"
-// clang-format on
 
 using namespace CisaFramework;
 using namespace vISA;
@@ -207,24 +205,6 @@ static void setDeclAlignment(G4_Declare *dcl, const IR_Builder &builder,
     vISA_ASSERT_INPUT(false, "Incorrect vISA alignment");
     break;
   }
-}
-
-void VISAKernelImpl::resetPostCompile() {
-  // Free CISA-level lists no longer needed after compileFastPath().
-  for (auto *inst : m_instruction_list)
-    inst->~CisaInst();
-  m_instruction_list.clear();
-  if (!m_kernel->getOption(vISA_GenerateDebugInfo)) {
-    m_var_info_list.clear();
-    m_input_info_list.clear();
-    m_label_info_list.clear();
-    m_addr_info_list.clear();
-    m_GenVarToNameMap.clear();
-    reservedNames.clear();
-    varNames.clear();
-  }
-  if (IS_GEN_BOTH_PATH)
-    m_builder->resetPostCompile();
 }
 
 int VISAKernelImpl::compileTillOptimize() {
