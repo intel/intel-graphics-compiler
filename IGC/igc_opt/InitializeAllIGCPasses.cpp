@@ -291,6 +291,7 @@ void initializeAllIGCPasses(llvm::PassRegistry &Registry) {
   initializeGatingSimilarSamplesPass(Registry);
   IGC::initializeAdvMemOptPass(Registry);
   initializeStatelessToStatefulPass(Registry);
+  initializeStatelessOffsetNarrowingPass(Registry);
   initializeMemOpt2Pass(Registry);
   initializeSplitLoadsPass(Registry);
   initializeResolveSampledImageBuiltinsPass(Registry);

@@ -60,6 +60,7 @@ add_subdirectory(SpvPredicatedIOResolution)
 add_subdirectory(SpvSubgroupMMAResolution)
 add_subdirectory(SpvSubgroupBitcastShuffleResolution)
 add_subdirectory(StackOverflowDetection)
+add_subdirectory(StatelessOffsetNarrowing)
 add_subdirectory(StatelessToStateful)
 add_subdirectory(SplitStructurePhisPass)
 add_subdirectory(MergeScalarPhisPass)
@@ -128,6 +129,7 @@ set(IGC_BUILD__SRC__Optimizer_OpenCLPasses_All
     ${IGC_BUILD__SRC__OpenCLPasses_SpvSubgroupMMAResolution}
     ${IGC_BUILD__SRC__OpenCLPasses_SpvSubgroupBitcastShuffleResolution}
     ${IGC_BUILD__SRC__OpenCLPasses_StackOverflowDetection}
+    ${IGC_BUILD__SRC__OpenCLPasses_StatelessOffsetNarrowing}
     ${IGC_BUILD__SRC__OpenCLPasses_StatelessToStateful}
     ${IGC_BUILD__SRC__OpenCLPasses_SubGroupFuncs}
     ${IGC_BUILD__SRC__OpenCLPasses_SubGroupReductionPattern}
@@ -200,6 +202,7 @@ set(IGC_BUILD__HDR__Optimizer_OpenCLPasses_All
     ${IGC_BUILD__HDR__OpenCLPasses_SpvSubgroupMMAResolution}
     ${IGC_BUILD__HDR__OpenCLPasses_SpvSubgroupBitcastShuffleResolution}
     ${IGC_BUILD__HDR__OpenCLPasses_StackOverflowDetection}
+    ${IGC_BUILD__HDR__OpenCLPasses_StatelessOffsetNarrowing}
     ${IGC_BUILD__HDR__OpenCLPasses_StatelessToStatefull}
     ${IGC_BUILD__HDR__OpenCLPasses_SubGroupFuncs}
     ${IGC_BUILD__HDR__OpenCLPasses_SubGroupReductionPattern}
@@ -269,6 +272,7 @@ set(IGC_BUILD_Compiler_OpenCLPasses_Groups
     Compiler__OpenCLPasses_SplitStructurePhisPass
     Compiler__OpenCLPasses_MergeScalarPhisPass
     Compiler__OpenCLPasses_StackOverflowDetection
+    Compiler__OpenCLPasses_StatelessOffsetNarrowing
     Compiler__OpenCLPasses_StatelessToStateful
     Compiler__OpenCLPasses_SubGroupFuncs
     Compiler__OpenCLPasses_SubGroupReductionPattern

@@ -563,6 +563,8 @@ DECLARE_IGC_REGKEY(bool, ForceLocalScopeEvictTGM, false, "Forces upgrading fence
 DECLARE_IGC_REGKEY(
     bool, EnableStatelessToStateful, true,
     "Enable Stateless To Stateful transformation for global and constant address space in OpenCL kernels", false)
+DECLARE_IGC_REGKEY(bool, EnableStatelessOffsetNarrowing, true,
+                   "Enable narrowing of 64-bit stateless pointer arithmetic to 32-bit if offsets fit in 32 bits", false)
 DECLARE_IGC_REGKEY(bool, EnableStatefulToken, true,
                    "Enable to indicate ptr arguments are fully converted to stateful (temporary)", false)
 DECLARE_IGC_REGKEY(bool, DisableConstBaseGlobalBaseArg, false,

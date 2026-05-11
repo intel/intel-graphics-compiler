@@ -176,6 +176,7 @@ void initializeSpvPredicatedIOResolutionPass(llvm::PassRegistry &);
 void initializeSpvSubgroupMMAResolutionPass(llvm::PassRegistry &);
 void initializeSplitLoadsPass(llvm::PassRegistry &);
 void initializeStatelessToStatefulPass(llvm::PassRegistry &);
+void initializeStatelessOffsetNarrowingPass(llvm::PassRegistry &);
 void initializeSubGroupFuncsResolutionPass(llvm::PassRegistry &);
 void initializeSubGroupReductionPatternPass(llvm::PassRegistry &);
 void initializeTransformUnmaskedFunctionsPassPass(llvm::PassRegistry &);

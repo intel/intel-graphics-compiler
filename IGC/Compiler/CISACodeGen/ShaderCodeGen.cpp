@@ -94,6 +94,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/Optimizer/PreCompiledFuncImport.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/AddressSpaceAliasAnalysis/AddressSpaceAliasAnalysis.h"
 #include "Compiler/Optimizer/OpenCLPasses/StatelessToStateful/StatelessToStateful.hpp"
+#include "Compiler/Optimizer/OpenCLPasses/StatelessOffsetNarrowing/StatelessOffsetNarrowing.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/DisableLoopUnrollOnRetry/DisableLoopUnrollOnRetry.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/TransformUnmaskedFunctionsPass/TransformUnmaskedFunctionsPass.h"
 #include "Compiler/Optimizer/OpenCLPasses/UnreachableHandling/UnreachableHandling.hpp"
@@ -826,6 +827,14 @@ void AddLegalizationPasses(CodeGenContext &ctx, IGCPassManager &mpm, PSSignature
 
   if (!isOptDisabled && ctx.useStatelessToStateful()) {
     mpm.add(new StatelessToStateful(TargetAddressing::BINDFUL));
+  }
+
+  // For remaining stateless accesses (not promoted to stateful), narrow
+  // 64-bit pointer arithmetic to 32-bit offsets when possible.
+  // This is beneficial on platforms without efficient native 64-bit addressing.
+  if (!isOptDisabled && ctx.m_instrTypes.hasLoadStore && !ctx.platform.hasEfficient64bEnabled() &&
+      IGC_IS_FLAG_ENABLED(EnableStatelessOffsetNarrowing)) {
+    mpm.add(new StatelessOffsetNarrowing());
   }
 
   // Light cleanup for subroutines after cloning. Note that the constant
