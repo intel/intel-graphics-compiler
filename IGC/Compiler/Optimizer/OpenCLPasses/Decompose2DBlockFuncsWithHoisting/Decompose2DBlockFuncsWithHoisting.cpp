@@ -368,19 +368,19 @@ void Decompose2DBlockFuncsWithHoisting::collectPayloads(GenIntrinsicInst &GII, I
   BlockCreateAddrPayloadArgs[8] = IV.VNumBlocks;
 
   // SCEV info for payload args that need to be expanded at preheader
-  // Maps argIdx to DeconstructedSCEV for args that are not directly loop invariant but have zero step
+  // Maps ArgIdx to DeconstructedSCEV for args that are not directly loop invariant but have zero step
   std::map<size_t, SCEVUtils::DeconstructedSCEV> PayloadArgsSCEVInfo;
 
   // Instructions inside loop that need to be hoisted to preheader
-  // Maps argIdx to the instruction that needs cloning
+  // Maps ArgIdx to the instruction that needs cloning
   std::map<size_t, Instruction *> InstsToHoist;
 
   // Check if the innermost loop affects the parameters of the payload
   int FirstVariantLoopIdx = -1;
 
   Loop *InnermostLoop = ParentLoops[0];
-  for (size_t argIdx = 0; argIdx < BlockCreateAddrPayloadArgs.size(); ++argIdx) {
-    Value *V = BlockCreateAddrPayloadArgs[argIdx];
+  for (size_t ArgIdx = 0; ArgIdx < BlockCreateAddrPayloadArgs.size(); ++ArgIdx) {
+    Value *V = BlockCreateAddrPayloadArgs[ArgIdx];
 
     // Check if value is loop-invariant or can be used directly in preheader
     if (InnermostLoop->isLoopInvariant(V))
@@ -394,7 +394,7 @@ void Decompose2DBlockFuncsWithHoisting::collectPayloads(GenIntrinsicInst &GII, I
       if (Instruction *I = dyn_cast<Instruction>(V)) {
         if (InnermostLoop->contains(I->getParent())) {
           // Store instruction for hoisting in decompose()
-          InstsToHoist[argIdx] = I;
+          InstsToHoist[ArgIdx] = I;
         }
       }
       continue;
@@ -410,7 +410,7 @@ void Decompose2DBlockFuncsWithHoisting::collectPayloads(GenIntrinsicInst &GII, I
           // Will check isSafeToExpandAt after we determine the preheader
           SCEVUtils::DeconstructedSCEV Info;
           Info.set(DeconstructedResult.Start, DeconstructedResult.Step);
-          PayloadArgsSCEVInfo[argIdx] = Info;
+          PayloadArgsSCEVInfo[ArgIdx] = Info;
           continue; // Skip marking as variant, we'll handle via SCEV
         }
         return;
@@ -437,7 +437,7 @@ void Decompose2DBlockFuncsWithHoisting::collectPayloads(GenIntrinsicInst &GII, I
   // Verify all collected SCEVs are safe to expand at preheader and store them
   PayloadSCEVArgsType PayloadSCEVArgs;
   for (const auto &Entry : PayloadArgsSCEVInfo) {
-    size_t argIdx = Entry.first;
+    size_t ArgIdx = Entry.first;
     const SCEVUtils::DeconstructedSCEV &Info = Entry.second;
 
     if (!Info.isValid() || !Info.isStepZero())
@@ -445,14 +445,14 @@ void Decompose2DBlockFuncsWithHoisting::collectPayloads(GenIntrinsicInst &GII, I
 
     bool IsSafeToExpand = IGCLLVM::isSafeToExpandAt(Info.getStart(), PlaceToInsertPayload, SE, Expander);
     if (IsSafeToExpand) {
-      // Map argIdx to BlockField: argIdx 0 -> BASE(1), argIdx 1 -> WIDTH(2), etc.
+      // Map ArgIdx to BlockField: ArgIdx 0 -> BASE(1), ArgIdx 1 -> WIDTH(2), etc.
       // Only indices 0-5 map to BlockField values
-      if (argIdx <= 5) {
-        BlockField Field = static_cast<BlockField>(argIdx + 1);
+      if (ArgIdx <= 5) {
+        BlockField Field = static_cast<BlockField>(ArgIdx + 1);
         PayloadSCEVArgs[Field] = Info.getStart();
         // Set placeholder value - will be replaced by SCEV expansion in decompose()
         // Index 0 (BASE/ImageOffset) is i64, others are i32
-        BlockCreateAddrPayloadArgs[argIdx] = (argIdx == 0) ? Zero64 : Zero32;
+        BlockCreateAddrPayloadArgs[ArgIdx] = (ArgIdx == 0) ? Zero64 : Zero32;
       }
     } else {
       return;
@@ -483,7 +483,28 @@ void Decompose2DBlockFuncsWithHoisting::collectPayloads(GenIntrinsicInst &GII, I
 
   std::map<BlockField, SetFieldSpec> SetFieldsToCreate;
   std::map<BlockField, llvm::ConstantInt *> ImmOffsets;
-  // Iterate over WIDTH = 2, HEIGHT = 3, PITCH = 4, BLOCKX = 5, BLOCKY = 6
+  std::map<BlockField, SCEVUtils::DeconstructedSCEV> BlockXYSCEVInfo;
+
+  // Helper lambda for type-safe SCEV subtraction.
+  // SE->getMinusSCEV requires both operands to have the same type.
+  // This helper extends the narrower operand to match the wider one.
+  auto getMinusSCEVSafe = [this](const SCEV *LHS, const SCEV *RHS) -> const SCEV * {
+    Type *LHSTy = LHS->getType();
+    Type *RHSTy = RHS->getType();
+    if (LHSTy != RHSTy) {
+      Type *WiderTy = SE->getWiderType(LHSTy, RHSTy);
+      if (LHSTy != WiderTy)
+        LHS = SE->getSignExtendExpr(LHS, WiderTy);
+      if (RHSTy != WiderTy)
+        RHS = SE->getSignExtendExpr(RHS, WiderTy);
+    }
+    return SE->getMinusSCEV(LHS, RHS);
+  };
+
+  // std::set<BlockField> iterates in enum order: WIDTH(2), HEIGHT(3),
+  // PITCH(4), BLOCKX(5), BLOCKY(6). This guarantees non-XY fields are
+  // processed first, so PayloadSCEVArgs for WIDTH/HEIGHT/PITCH are fully
+  // populated before BLOCKX/BLOCKY offset matching.
   for (auto BFType : UninitializedPayloadFields) {
     Value *IVVal{IV.getVal(BFType)};
 
@@ -496,7 +517,6 @@ void Decompose2DBlockFuncsWithHoisting::collectPayloads(GenIntrinsicInst &GII, I
     LLVM_DEBUG(dbgs() << "Need to create LSC2DBlockSetAddrPayloadField for "
                          "non-loop-invariant field "
                       << static_cast<int>(BFType) << "\n");
-
     LoopsToSave.push_back(InnermostLoopForField);
     PlaceToInsertSetField = &GII;
 
@@ -529,100 +549,43 @@ void Decompose2DBlockFuncsWithHoisting::collectPayloads(GenIntrinsicInst &GII, I
     }
 
     if (BFType == BlockField::BLOCKX || BFType == BlockField::BLOCKY) {
-      bool IsOffset = false;
-
-      // Helper lambda for type-safe SCEV subtraction.
-      // SE->getMinusSCEV requires both operands to have the same type.
-      // This helper extends the narrower operand to match the wider one.
-      auto getMinusSCEVSafe = [this](const SCEV *LHS, const SCEV *RHS) -> const SCEV * {
-        Type *LHSTy = LHS->getType();
-        Type *RHSTy = RHS->getType();
-        if (LHSTy != RHSTy) {
-          Type *WiderTy = SE->getWiderType(LHSTy, RHSTy);
-          if (LHSTy != WiderTy)
-            LHS = SE->getSignExtendExpr(LHS, WiderTy);
-          if (RHSTy != WiderTy)
-            RHS = SE->getSignExtendExpr(RHS, WiderTy);
-        }
-        return SE->getMinusSCEV(LHS, RHS);
-      };
-
-      for (auto &Entry : CreatedPayloads) {
-        const SCEV *OffsetForField = nullptr;
-        if (SCEVInfoPtr.hasStep()) {
-          const SCEV *LastSetFieldStartScev = nullptr;
-          const SCEV *LastSetFieldStepScev = nullptr;
-          for (auto RIt = Entry.second.rbegin(); RIt != Entry.second.rend(); ++RIt) {
-            OldLSCAndRequiredSetFields *LSCEntry = *RIt;
-            if (!LSCEntry)
-              continue;
-
-            auto ItSetField = LSCEntry->SetFields.find(BFType);
-            if (ItSetField == LSCEntry->SetFields.end())
-              continue;
-
-            LastSetFieldStartScev = ItSetField->second.SCEVInfo.getStart();
-            LastSetFieldStepScev = ItSetField->second.SCEVInfo.getStep();
-            break;
-          }
-
-          if (!LastSetFieldStartScev || !LastSetFieldStepScev)
-            continue;
-
-          const SCEV *StartOffsetForField = getMinusSCEVSafe(SCEVInfoPtr.getStart(), LastSetFieldStartScev);
-          const SCEV *StepOffsetForField = getMinusSCEVSafe(SCEVInfoPtr.getStep(), LastSetFieldStepScev);
-          if (!isa<SCEVConstant>(StartOffsetForField) || !isa<SCEVConstant>(StepOffsetForField))
-            continue;
-
-          // Steps must be identical for a constant immediate offset.
-          // A non-zero step difference means the offset between the two
-          // intrinsics varies per iteration (offset = start_diff + k*step_diff)
-          // and cannot be represented as a compile-time constant immediate.
-          if (!cast<SCEVConstant>(StepOffsetForField)->getValue()->isZero())
-            continue;
-          OffsetForField = StartOffsetForField;
-        } else {
+      if (SCEVInfoPtr.hasStep()) {
+        // Defer hasStep fields to unified matching phase.
+        // All hasStep BLOCKX/BLOCKY fields must match the same CreatedPayloads
+        // entry to prevent cross-group offset sharing.
+        BlockXYSCEVInfo[BFType] = SCEVInfoPtr;
+        ImmOffsets[BFType] = cast<ConstantInt>(Zero32);
+      } else {
+        // Per-field offset matching for loop-invariant BLOCKX/BLOCKY.
+        // This is safe because !hasStep values are baked into the payload
+        // via PayloadSCEVArgs, and ImmOffsets are relative to baked values.
+        bool IsOffset = false;
+        for (auto &Entry : CreatedPayloads) {
           auto It = Entry.first.PayloadSCEVArgs.find(BFType);
           if (It == Entry.first.PayloadSCEVArgs.end())
             continue;
-          OffsetForField = getMinusSCEVSafe(SCEVInfoPtr.getStart(), It->second);
+          const SCEV *OffsetForField = getMinusSCEVSafe(SCEVInfoPtr.getStart(), It->second);
+          if (!OffsetForField || !isa<SCEVConstant>(OffsetForField))
+            continue;
+          if (PlaceToInsertPayload != Entry.first.PayloadInsertBefore ||
+              BlockCreateAddrPayloadArgs != Entry.first.PayloadArgs ||
+              UninitializedPayloadFields != Entry.first.PayloadFieldsToUpdate)
+            continue;
+          ConstantInt *OffsetCI = cast<SCEVConstant>(OffsetForField)->getValue();
+          int64_t OffsetValue = OffsetCI->getSExtValue();
+          if (OffsetValue < -512 || OffsetValue >= 512)
+            continue;
+          IsOffset = true;
+          PayloadSCEVArgs[BFType] = It->second;
+          ImmOffsets[BFType] = OffsetCI;
+          PlaceToInsertSetField = nullptr;
+          break;
         }
-
-        if (!OffsetForField || !isa<SCEVConstant>(OffsetForField))
-          continue;
-
-        if (PlaceToInsertPayload != Entry.first.PayloadInsertBefore ||
-            BlockCreateAddrPayloadArgs != Entry.first.PayloadArgs ||
-            UninitializedPayloadFields != Entry.first.PayloadFieldsToUpdate)
-          continue;
-
-        ConstantInt *OffsetCI = cast<SCEVConstant>(OffsetForField)->getValue();
-
-        // Check that OffsetCI is within the valid immediate offset range
-        int64_t OffsetValue = OffsetCI->getSExtValue();
-        if (OffsetValue < -512 || OffsetValue >= 512)
-          continue;
-
-        const SCEV *PayloadArgForField = nullptr;
-        auto It = Entry.first.PayloadSCEVArgs.find(BFType);
-        if (It != Entry.first.PayloadSCEVArgs.end())
-          PayloadArgForField = It->second;
-
-        IsOffset = true;
-        if (!SCEVInfoPtr.hasStep()) {
-          PayloadSCEVArgs[BFType] = PayloadArgForField;
+        if (!IsOffset) {
+          PayloadSCEVArgs[BFType] = SCEVInfoPtr.getStart();
+          PlaceToInsertSetField = nullptr;
+          ImmOffsets[BFType] = cast<ConstantInt>(Zero32);
         }
-        ImmOffsets[BFType] = OffsetCI;
-        PlaceToInsertSetField = nullptr;
-        break;
-      }
-
-      if (!IsOffset) {
-        const SCEV *StartSCEV = SCEVInfoPtr.getStart();
-        if (!SCEVInfoPtr.hasStep()) {
-          PayloadSCEVArgs[BFType] = StartSCEV;
-        }
-        ImmOffsets[BFType] = cast<ConstantInt>(Zero32);
       }
     } else {
       if (!SCEVInfoPtr.hasStep()) {
@@ -635,6 +598,99 @@ void Decompose2DBlockFuncsWithHoisting::collectPayloads(GenIntrinsicInst &GII, I
     if (PlaceToInsertSetField) {
       SetFieldsToCreate.emplace(BFType, SetFieldSpec{IVVal, PlaceToInsertSetField, IV.IsAddend, SCEVInfoPtr,
                                                      FirstVariantLoopIdxForField, LoopsToSave});
+    }
+  } // end field loop
+
+  // Unified BLOCKX/BLOCKY offset sharing: match ALL fields as a unit against
+  // each CreatedPayloads entry. Only accept an entry if every BLOCKX/BLOCKY
+  // field matches. This prevents per-field independent matching against
+  // foreign payload group entries.
+  if (!BlockXYSCEVInfo.empty()) {
+    for (auto &Entry : CreatedPayloads) {
+      if (PlaceToInsertPayload != Entry.first.PayloadInsertBefore ||
+          BlockCreateAddrPayloadArgs != Entry.first.PayloadArgs ||
+          UninitializedPayloadFields != Entry.first.PayloadFieldsToUpdate || InstsToHoist != Entry.first.InstsToHoist)
+        continue;
+
+      // Verify PayloadSCEVArgs match for all fields NOT being processed
+      // by unified matching (i.e., not in BlockXYSCEVInfo). This includes
+      // non-XY fields AND !hasStep BLOCKX/BLOCKY fields (already resolved
+      // by per-field matching). This prevents cross-group matching when
+      // BlockCreateAddrPayloadArgs uses zero placeholders.
+      //
+      // The check must be symmetric: if the Entry has extra non-XY fields
+      // absent from the current PayloadSCEVArgs, we must also reject the
+      // match. Compare filtered sizes first to catch asymmetric cases.
+      auto filteredSCEVSize = [&](const PayloadSCEVArgsType &M) {
+        size_t N = 0;
+        for (const auto &P : M)
+          if (!BlockXYSCEVInfo.count(P.first))
+            ++N;
+        return N;
+      };
+      if (filteredSCEVSize(PayloadSCEVArgs) != filteredSCEVSize(Entry.first.PayloadSCEVArgs))
+        continue;
+
+      bool SCEVMismatch = false;
+      for (const auto &[Field, SCEVVal] : PayloadSCEVArgs) {
+        if (BlockXYSCEVInfo.count(Field))
+          continue;
+        auto It = Entry.first.PayloadSCEVArgs.find(Field);
+        if (It == Entry.first.PayloadSCEVArgs.end() || It->second != SCEVVal) {
+          SCEVMismatch = true;
+          break;
+        }
+      }
+      if (SCEVMismatch)
+        continue;
+
+      bool AllMatch = true;
+      std::map<BlockField, ConstantInt *> MatchedOffsets;
+
+      for (auto &[BFType, SCEVInfo] : BlockXYSCEVInfo) {
+        // BlockXYSCEVInfo only contains hasStep fields.
+        const SCEV *LastStart = nullptr;
+        const SCEV *LastStep = nullptr;
+        for (auto RIt = Entry.second.rbegin(); RIt != Entry.second.rend(); ++RIt) {
+          OldLSCAndRequiredSetFields *LSCEntry = *RIt;
+          if (!LSCEntry)
+            continue;
+          auto ItSF = LSCEntry->SetFields.find(BFType);
+          if (ItSF == LSCEntry->SetFields.end())
+            continue;
+          LastStart = ItSF->second.SCEVInfo.getStart();
+          LastStep = ItSF->second.SCEVInfo.getStep();
+          break;
+        }
+        if (!LastStart || !LastStep) {
+          AllMatch = false;
+          break;
+        }
+        const SCEV *StartOff = getMinusSCEVSafe(SCEVInfo.getStart(), LastStart);
+        const SCEV *StepOff = getMinusSCEVSafe(SCEVInfo.getStep(), LastStep);
+        if (!isa<SCEVConstant>(StartOff) || !isa<SCEVConstant>(StepOff) ||
+            !cast<SCEVConstant>(StepOff)->getValue()->isZero()) {
+          AllMatch = false;
+          break;
+        }
+
+        ConstantInt *OffsetCI = cast<SCEVConstant>(StartOff)->getValue();
+        int64_t OffsetValue = OffsetCI->getSExtValue();
+        if (OffsetValue < -512 || OffsetValue >= 512) {
+          AllMatch = false;
+          break;
+        }
+
+        MatchedOffsets[BFType] = OffsetCI;
+      }
+
+      if (AllMatch) {
+        for (auto &[BFType, OffsetCI] : MatchedOffsets) {
+          ImmOffsets[BFType] = OffsetCI;
+          SetFieldsToCreate.erase(BFType);
+        }
+        break;
+      }
     }
   }
 
