@@ -302,7 +302,7 @@ struct zeInfoContainer
     zeinfo_str_t l1_cache_policy;
 };
 struct PreDefinedAttrGetter{
-    static zeinfo_str_t getVersionNumber() { return "1.70"; }
+    static zeinfo_str_t getVersionNumber() { return "1.71"; }
 
     enum class ArgL1CachePolicy {
         wbp,

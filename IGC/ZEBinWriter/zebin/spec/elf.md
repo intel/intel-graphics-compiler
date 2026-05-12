@@ -30,6 +30,7 @@ be documented properly in version.md.
 | .misc.{*misc_name*} | the miscellaneous data for multiple purposes. See [Misc Sections](#misc-sections) for details.  | SHT_ZEBIN_MISC |
 | .note.intelgt.compat | the compatibility notes for runtime information | SHT_NOTE |
 | .strtab | the string table for section/symbol names | SHT_STRTAB |
+| .pisa | PISA of the module (if required) | SHT_ZEBIN_PISA |
 
 An ZE binary contains information of one compiled module. A compiled module
 could contain more than one kernel, each kernel binary represented in a text
@@ -89,7 +90,8 @@ enum SHT_ZEBIN : uint32_t
     SHT_ZEBIN_ZEINFO     = 0xff000011, // .ze_info section
     SHT_ZEBIN_GTPIN_INFO = 0xff000012, // .gtpin_info section
     SHT_ZEBIN_VISAASM    = 0xff000013, // .visaasm section
-    SHT_ZEBIN_MISC       = 0xff000014  // .misc section
+    SHT_ZEBIN_MISC       = 0xff000014, // .misc section
+    SHT_ZEBIN_PISA       = 0xff000015  // .pisa section
 }
 ~~~
 
