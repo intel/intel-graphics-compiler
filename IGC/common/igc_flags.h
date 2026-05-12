@@ -1295,6 +1295,8 @@ DECLARE_IGC_REGKEY(
     "When enabled, validate each SPIR-V OpExtension against device support and fail compilation if any are "
     "unsupported.",
     true)
+DECLARE_IGC_REGKEY(bool, PreservePaddingInAggregateArgumentsPass, true, "Preserve padding in AggregateArguments pass",
+                   true)
 
 DECLARE_IGC_GROUP("Performance experiments")
 DECLARE_IGC_REGKEY(DWORD, ManageableBarriersMode, 0,

@@ -129,11 +129,22 @@ static uint64_t getNumElements(Type *type) {
 
 void AggregateArgumentsAnalysis::addImplictArgs(Type *type, uint64_t baseAllocaOffset) {
   IGC_ASSERT(baseAllocaOffset < UINT_MAX);
-  // Structs and Unions are StructTypes
+  // Structs and Unions are both represented as StructTypes in LLVM IR.
+  // LLVM represents C/C++ unions using the layout of only one member,
+  // so padding holes in the struct layout may actually hold meaningful
+  // data from another union member. We emit byte-level implicit args
+  // for every padding gap (and trailing padding) so that all bytes are
+  // faithfully copied to the device. For plain structs the padding is
+  // undefined and the extra byte args are harmless.
   if (StructType *structType = dyn_cast<StructType>(type)) {
     const StructLayout *layout = m_pDL->getStructLayout(structType);
+    uint64_t structSize = layout->getSizeInBytes();
 
     unsigned int numElements = structType->getStructNumElements();
+
+    // Track how far (in bytes from the struct start) we have covered,
+    // so we can detect and fill padding gaps.
+    uint64_t coveredUpTo = 0;
 
     // build the implicit arguments forwards for all elements
     // in the struct
@@ -141,7 +152,25 @@ void AggregateArgumentsAnalysis::addImplictArgs(Type *type, uint64_t baseAllocaO
       Type *elementType = structType->getElementType(i);
       uint64_t elementOffsetInStruct = layout->getElementOffset(i);
 
+      if (IGC_GET_FLAG_VALUE(PreservePaddingInAggregateArgumentsPass)) {
+        // Emit byte-level implicit args for any padding gap before
+        // this element.
+        for (uint64_t pad = coveredUpTo; pad < elementOffsetInStruct; ++pad) {
+          m_argList.push_back(ImplicitArg::StructArgElement(ImplicitArg::CONSTANT_REG_BYTE,
+                                                            static_cast<unsigned int>(baseAllocaOffset + pad)));
+        }
+        coveredUpTo = elementOffsetInStruct + m_pDL->getTypeStoreSize(elementType);
+      }
+
       addImplictArgs(elementType, baseAllocaOffset + elementOffsetInStruct);
+    }
+
+    if (IGC_GET_FLAG_VALUE(PreservePaddingInAggregateArgumentsPass)) {
+      // Emit byte-level implicit args for any trailing padding.
+      for (uint64_t pad = coveredUpTo; pad < structSize; ++pad) {
+        m_argList.push_back(ImplicitArg::StructArgElement(ImplicitArg::CONSTANT_REG_BYTE,
+                                                          static_cast<unsigned int>(baseAllocaOffset + pad)));
+      }
     }
   } else if (isa<ArrayType, VectorType>(type)) {
     uint64_t numElements = getNumElements(type);
