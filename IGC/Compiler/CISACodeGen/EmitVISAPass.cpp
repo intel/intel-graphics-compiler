@@ -550,7 +550,8 @@ bool EmitPass::shouldForceEarlyRecompile(MetaDataUtils *pMdUtils, llvm::Function
   // we only skip first compilation stage, if compilation pipeline
   // was configured to start from retry already, otherwise we do nothing
   bool IsFirstStage = m_pCtx->m_retryManager->GetRetryId() == 0;
-  if (!isEntryFunc(pMdUtils, F) || IGC_GET_FLAG_VALUE(DisableRecompilation) || !IsFirstStage) {
+  if (!isEntryFunc(pMdUtils, F) || IGC_GET_FLAG_VALUE(DisableRecompilation) || !m_pCtx->m_retryManager->IsEnabled() ||
+      !IsFirstStage) {
     return false;
   }
   if (m_currShader->IsRecompilationRequestForced()) {

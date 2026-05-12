@@ -714,6 +714,7 @@ public:
 
   void Enable(ShaderType ty = ShaderType::UNKNOWN);
   void Disable(bool DisablePerKernel = false);
+  bool IsEnabled() const { return enabled; }
 
   void SetSpillSize(unsigned int spillSize);
   unsigned int GetLastSpillSize() const;
