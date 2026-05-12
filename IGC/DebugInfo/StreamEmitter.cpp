@@ -70,30 +70,36 @@ public:
   VISAELFObjectWriter(uint8_t osABI, uint16_t eMachine)
       : MCELFObjectTargetWriter(true /* is64Bit */, osABI, eMachine, true /* hasRelocationAddend */) {}
 
+#if LLVM_VERSION_MAJOR >= 22
+  unsigned getRelocType(const MCFixup &Fixup, const MCValue &Target, bool IsPCRel) const override{
+#else
   unsigned getRelocType(MCContext &Ctx, const MCValue &Target, const MCFixup &Fixup, bool IsPCRel) const {
-    IGC_ASSERT_MESSAGE(IsPCRel == false, "expecting non-PC relative reloc type");
-    unsigned type = ELF::R_X86_64_NONE;
+#endif
+      IGC_ASSERT_MESSAGE(IsPCRel == false, "expecting non-PC relative reloc type");
+  unsigned type = ELF::R_X86_64_NONE;
 
-    switch ((unsigned)Fixup.getKind()) {
-    default:
-      IGC_ASSERT_EXIT_MESSAGE(0, "invalid fixup kind!");
-    case FK_Data_8:
-      IGC_ASSERT_MESSAGE(Target.isAbsolute() || Target.getSymA()->getKind() == MCSymbolRefExpr::VK_None,
-                         "expecting absolute target reloc");
-      type = ELF::R_X86_64_64;
-      break;
-    case FK_Data_4:
-      type = ELF::R_X86_64_32;
-      break;
-    case FK_Data_2:
-      type = ELF::R_X86_64_16;
-      break;
-    case FK_Data_1:
-      type = ELF::R_X86_64_8;
-      break;
-    }
+  switch ((unsigned)Fixup.getKind()) {
+  default:
+    IGC_ASSERT_EXIT_MESSAGE(0, "invalid fixup kind!");
+  case FK_Data_8:
+#if LLVM_VERSION_MAJOR <= 17
+    IGC_ASSERT_MESSAGE(Target.isAbsolute() || Target.getSymA()->getKind() == MCSymbolRefExpr::VK_None,
+                       "expecting absolute target reloc");
+#endif
+    type = ELF::R_X86_64_64;
+    break;
+  case FK_Data_4:
+    type = ELF::R_X86_64_32;
+    break;
+  case FK_Data_2:
+    type = ELF::R_X86_64_16;
+    break;
+  case FK_Data_1:
+    type = ELF::R_X86_64_8;
+    break;
+  }
 
-    return type;
+  return type;
   }
 };
 
@@ -103,7 +109,11 @@ class VISAAsmBackend : public MCAsmBackend {
 public:
   VISAAsmBackend(StringRef targetTriple) : MCAsmBackend(IGCLLVM::endianness::little), m_targetTriple(targetTriple) {}
 
+#if LLVM_VERSION_MAJOR >= 22
+  unsigned getNumFixupKinds() const { return 0; }
+#else
   unsigned getNumFixupKinds() const override { return 0; }
+#endif
 
   static unsigned getFixupKindLog2Size(unsigned Kind) {
     switch (Kind) {
@@ -120,11 +130,19 @@ public:
     }
   }
 
+#if LLVM_VERSION_MAJOR >= 22
+  void applyFixup(const MCFragment &F, const MCFixup &fixup, const MCValue &Target, uint8_t *Data, uint64_t value,
+                  bool IsResolved) override {
+    unsigned size = 1 << getFixupKindLog2Size(fixup.getKind());
+
+    IGC_ASSERT_MESSAGE(fixup.getOffset() + size <= F.getSize(), "Invalid fixup size!");
+#else
   void applyFixup(const MCAssembler &Asm, const MCFixup &fixup, const MCValue &Target, MutableArrayRef<char> Data,
                   uint64_t value, bool IsResolved, const MCSubtargetInfo *STI) const override {
     unsigned size = 1 << getFixupKindLog2Size(fixup.getKind());
 
     IGC_ASSERT_MESSAGE(fixup.getOffset() + size <= Data.size(), "Invalid fixup offset!");
+#endif
 
     // Check that uppper bits are either all zeros or all ones.
     // Specifically ignore overflow/underflow as long as the leakage is
@@ -137,17 +155,25 @@ public:
     }
   }
 
+#if LLVM_VERSION_MAJOR >= 22
+  bool mayNeedRelaxation(const MCInst &inst, const MCSubtargetInfo &STI) const {
+#else
   bool mayNeedRelaxation(const MCInst &inst, const MCSubtargetInfo &STI) const override {
+#endif
     // TODO: implement this
     IGC_ASSERT_EXIT_MESSAGE(0, "Unimplemented");
     return false;
   }
 
+#if LLVM_VERSION_MAJOR >= 22
+  bool fixupNeedsRelaxation(const MCFixup &fixup, uint64_t value, const MCFragment *pDF) const {
+#else
   bool fixupNeedsRelaxation(const MCFixup &fixup, uint64_t value, const MCRelaxableFragment *pDF,
                             const MCAsmLayout &layout) const override {
-    // TODO: implement this
-    IGC_ASSERT_EXIT_MESSAGE(0, "Unimplemented");
-    return false;
+#endif
+      // TODO: implement this
+      IGC_ASSERT_EXIT_MESSAGE(0, "Unimplemented");
+  return false;
   }
 
   bool writeNopData(raw_ostream &OS, uint64_t Count, const MCSubtargetInfo *STI) const override {
@@ -167,8 +193,13 @@ public:
 class VISAMCCodeEmitter : public MCCodeEmitter {
   /// EncodeInstruction - Encode the given \p inst to bytes on the output
   /// stream \p OS.
+#if LLVM_VERSION_MAJOR >= 22
+  virtual void encodeInstruction(const MCInst &inst, SmallVectorImpl<char> &os, SmallVectorImpl<MCFixup> &fixups,
+                                 const MCSubtargetInfo &m) const {
+#else
   virtual void encodeInstruction(const MCInst &inst, raw_ostream &os, SmallVectorImpl<MCFixup> &fixups,
                                  const MCSubtargetInfo &m) const {
+#endif
     // TODO: implement this
     IGC_ASSERT_EXIT_MESSAGE(0, "Unimplemented");
   }
@@ -211,14 +242,24 @@ StreamEmitter::StreamEmitter(raw_pwrite_stream &outStream, const std::string &da
   std::unique_ptr<MCAsmBackend> pAsmBackend = IGCLLVM::make_unique<VISAAsmBackend>(GetTargetTriple());
   std::unique_ptr<MCELFObjectTargetWriter> pTargetObjectWriter =
       IGCLLVM::make_unique<VISAELFObjectWriter>(osABI, eMachine);
+#if LLVM_VERSION_MAJOR >= 22
+  std::unique_ptr<MCObjectWriter> pObjectWriter =
+      std::make_unique<ELFObjectWriter>(std::move(pTargetObjectWriter), outStream, true);
+#else
   std::unique_ptr<MCObjectWriter> pObjectWriter =
       createELFObjectWriter(std::move(pTargetObjectWriter), outStream, true);
+#endif
   std::unique_ptr<MCCodeEmitter> pCodeEmitter = IGCLLVM::make_unique<VISAMCCodeEmitter>();
 
   bool isRelaxAll = false;
   bool isNoExecStack = false;
+#if LLVM_VERSION_MAJOR >= 22
+  m_pMCStreamer =
+      createELFStreamer(*m_pContext, std::move(pAsmBackend), std::move(pObjectWriter), std::move(pCodeEmitter));
+#else
   m_pMCStreamer = createELFStreamer(*m_pContext, std::move(pAsmBackend), std::move(pObjectWriter),
                                     std::move(pCodeEmitter), isRelaxAll);
+#endif
 
   IGCLLVM::initSections(m_pMCStreamer, isNoExecStack, m_pContext);
 }

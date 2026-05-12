@@ -13,6 +13,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/IR/InstVisitor.h"
 #include "llvm/Transforms/IPO.h"
 #include "llvm/Analysis/ProfileSummaryInfo.h"
+#include "llvm/Analysis/TargetTransformInfo.h"
 #include "llvm/Transforms/Utils/ModuleUtils.h"
 #include "llvm/Transforms/Utils/Local.h"
 #include "llvm/Analysis/BasicAliasAnalysis.h"
@@ -39,7 +40,25 @@ bool removeDeadFunctions(CallGraph &CG, bool AlwaysInlineOnly) {
     // Remove any edges from the external node to the function's call graph
     // node.  These edges might have been made irrelegant due to
     // optimization of the program.
+#if LLVM_VERSION_MAJOR >= 22
+    // removeAnyCallEdgeTo was removed in LLVM 22; iterate and remove all abstract edges.
+    {
+      auto *ExtNode = CG.getExternalCallingNode();
+      bool Found = true;
+      while (Found) {
+        Found = false;
+        for (auto I = ExtNode->begin(), E = ExtNode->end(); I != E; ++I) {
+          if (I->second == CGN) {
+            ExtNode->removeCallEdge(I);
+            Found = true;
+            break;
+          }
+        }
+      }
+    }
+#else
     CG.getExternalCallingNode()->removeAnyCallEdgeTo(CGN);
+#endif
 
     // Removing the node for callee from the call graph and delete it.
     FunctionsToRemove.push_back(CGN);
@@ -169,8 +188,11 @@ void mergeInlinedArrayAllocas(Function *Caller, InlineFunctionInfo &IFI, Inlined
         if (auto *MDV = MetadataAsValue::getIfExists(AI->getContext(), L))
           for (User *U : MDV->users())
             if (DbgDeclareInst *DDI = dyn_cast<DbgDeclareInst>(U))
+#if LLVM_VERSION_MAJOR >= 22
+              DDI->moveBeforePreserving(AvailableAlloca->getNextNode()->getIterator());
+#else
               DDI->moveBefore(AvailableAlloca->getNextNode());
-
+#endif
       AI->replaceAllUsesWith(AvailableAlloca);
 
       if (Align1 > Align2)
@@ -357,7 +379,13 @@ bool inlineCallsImpl(CallGraphSCC &SCC, CallGraph &CG, std::function<AssumptionC
       // just become a regular analysis dependency.
       llvm::OptimizationRemarkEmitter ORE(Caller);
 
+#if LLVM_VERSION_MAJOR >= 22
+      // LLVM 22 shouldInline requires TargetTransformInfo for the callee.
+      TargetTransformInfo CalleeTTI(Callee->getDataLayout());
+      auto OIC = shouldInline(CB, CalleeTTI, GetInlineCost, ORE);
+#else
       auto OIC = shouldInline(CB, GetInlineCost, ORE);
+#endif
       // If the policy determines that we should inline this function,
       // delete the call instead.
       if (!OIC)
@@ -371,7 +399,11 @@ bool inlineCallsImpl(CallGraphSCC &SCC, CallGraph &CG, std::function<AssumptionC
         LLVM_DEBUG(dbgs() << "    -> Deleting dead call: " << CB << "\n");
         // Update the call graph by deleting the edge from Callee to Caller.
         setInlineRemark(CB, "trivially dead");
+#if LLVM_VERSION_MAJOR >= 22
+        CG[Caller]->removeOneAbstractEdgeTo(CG[Callee]);
+#else
         CG[Caller]->removeCallEdgeFor(CB);
+#endif
         CB.eraseFromParent();
       } else {
         // Get DebugLoc to report. CB will be invalid after Inliner.
