@@ -375,11 +375,6 @@ bool IGCVectorizer::handlePHI(VecArr &Slice) {
     }
   }
 
-  llvm::VectorType *PhiVectorType = llvm::FixedVectorType::get(ScalarPhi->getType(), Slice.size());
-
-  PHINode *Phi = PHINode::Create(PhiVectorType, 2);
-  Phi->setName("vectorized_phi");
-
   VecVal Operands;
   for (auto &BB : ScalarPhi->blocks()) {
 
@@ -438,6 +433,10 @@ bool IGCVectorizer::handlePHI(VecArr &Slice) {
       return false;
     }
   }
+
+  llvm::VectorType *PhiVectorType = llvm::FixedVectorType::get(ScalarPhi->getType(), Slice.size());
+  PHINode *Phi = PHINode::Create(PhiVectorType, 2);
+  Phi->setName("vectorized_phi");
 
   for (unsigned int i = 0; i < Operands.size(); ++i) {
     auto BB = ScalarPhi->getIncomingBlock(i);
