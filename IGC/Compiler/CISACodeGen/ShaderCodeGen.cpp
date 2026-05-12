@@ -266,7 +266,7 @@ void AddAnalysisPasses(CodeGenContext &ctx, IGCPassManager &mpm) {
       mpm.add(createMemOpt2Pass(16));
   }
 
-  if (!isOptDisabled) {
+  if (!isOptDisabled && ctx.type == ShaderType::OPENCL_SHADER) {
     mpm.add(createSplitLoadsPass());
   }
 

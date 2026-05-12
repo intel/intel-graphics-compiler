@@ -864,7 +864,7 @@ static Value *createAdd(IRBuilder<> &builder, Value *value, unsigned offset) {
 bool Config::initialize(Function *F, CodeGenContext *inCGC, IGCLivenessAnalysisRunner *inRPE) {
   CGC = inCGC;
   RPE = inRPE;
-  if (!F || !CGC || !RPE)
+  if (!F || !CGC)
     return false;
   if (!CGC->platform.hasLSC()) {
     DBG(dbgs() << " [SKIP] No support for LSC on this platform.\n");
@@ -894,8 +894,9 @@ bool Config::initialize(Function *F, CodeGenContext *inCGC, IGCLivenessAnalysisR
     break;
   }
   actualSimd = 0;
-  if (RPE->MDUtils && RPE->MDUtils->findFunctionsInfoItem(F) != RPE->MDUtils->end_FunctionsInfo()) {
-    IGC::IGCMD::FunctionInfoMetaDataHandle funcInfoMD = RPE->MDUtils->getFunctionsInfoItem(F);
+  IGC::IGCMD::MetaDataUtils *MDUtils = CGC->getMetaDataUtils();
+  if (MDUtils && MDUtils->findFunctionsInfoItem(F) != MDUtils->end_FunctionsInfo()) {
+    IGC::IGCMD::FunctionInfoMetaDataHandle funcInfoMD = MDUtils->getFunctionsInfoItem(F);
     actualSimd = funcInfoMD->getSubGroupSize()->getSIMDSize();
   }
   if (IGC_GET_FLAG_VALUE(ForceOCLSIMDWidth)) {
@@ -904,7 +905,7 @@ bool Config::initialize(Function *F, CodeGenContext *inCGC, IGCLivenessAnalysisR
 
   isLegitW8 = false;
   isLegitW8 = CGC->platform.supports2dBlockTranspose64ByteWidth();
-  sizeOfRegs_B = RPE->registerSizeInBytes();
+  sizeOfRegs_B = CGC->platform.isProductChildOf(IGFX_PVC) ? 64 : 32;
   numOfRegs = CGC->getNumGRFPerThread();
 
   minSplitSize_B = minSplitSize_GRF * sizeOfRegs_B;
@@ -1767,6 +1768,10 @@ std::unique_ptr<LoadSplitter::Impl> LoadSplitter::Impl::Create(Function *inF, Co
 }
 
 bool LoadSplitter::Impl::isRPHigh(BasicBlock *BB) {
+  if (!config().RPE) {
+    DBG(dbgs() << " [OK] No liveness runner — assuming reg pressure high.\n");
+    return true;
+  }
   int regPressure = config().RPE->getMaxRegCountForBB(*BB, config().SIMD()) * config().sizeOfRegs_B;
   DBG(dbgs() << " -- Reg Pressure = " << regPressure << " B, threshold = " << config().splitThreshold_B << " B.\n");
   if (regPressure <= config().splitThreshold_B) {
@@ -2022,7 +2027,7 @@ public:
 
   void getAnalysisUsage(AnalysisUsage &AU) const override {
     AU.addRequired<CodeGenContextWrapper>();
-    AU.addRequired<IGCLivenessAnalysis>();
+    AU.addRequired<MetaDataUtilsWrapper>();
     AU.setPreservesCFG();
   }
 
@@ -2046,7 +2051,7 @@ char SplitLoads::ID = 0;
 #define PASS_ANALYSIS false
 IGC_INITIALIZE_PASS_BEGIN(SplitLoads, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
-IGC_INITIALIZE_PASS_DEPENDENCY(IGCLivenessAnalysis)
+IGC_INITIALIZE_PASS_DEPENDENCY(MetaDataUtilsWrapper)
 IGC_INITIALIZE_PASS_END(SplitLoads, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
 FunctionPass *IGC::createSplitLoadsPass() { return new SplitLoads(); }
@@ -2058,7 +2063,7 @@ bool SplitLoads::runOnFunction(Function &F) {
     return false;
   }
   loadSplitter = LoadSplitter::Create(&F, getAnalysis<CodeGenContextWrapper>().getCodeGenContext(),
-                                      &getAnalysis<IGCLivenessAnalysis>().getLivenessRunner());
+                                      /*RPE=*/nullptr);
   if (!loadSplitter) {
     return false;
   }
