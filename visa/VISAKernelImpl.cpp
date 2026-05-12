@@ -207,6 +207,33 @@ static void setDeclAlignment(G4_Declare *dcl, const IR_Builder &builder,
   }
 }
 
+void VISAKernelImpl::resetPostCompile() {
+  // Skip CISA-level cleanup if the caller will still need the data after
+  // Compile() returns. isaDump() (driven by EmitZeBinVISASections in IGC, or
+  // -dumpcommonisa / -isaasmToConsole in standalone) iterates both
+  // m_instruction_list and m_var_info_list; debug info generation also needs
+  // these lists.
+  const bool needsCisaData =
+      m_kernel->getOption(vISA_GenerateDebugInfo) ||
+      m_kernel->getOption(vISA_GenerateISAASM) ||
+      m_kernel->getOption(vISA_GenerateCombinedISAASM) ||
+      m_kernel->getOption(vISA_ISAASMToConsole);
+  if (!needsCisaData) {
+    for (auto *inst : m_instruction_list)
+      inst->~CisaInst();
+    m_instruction_list.clear();
+    m_var_info_list.clear();
+    m_input_info_list.clear();
+    m_label_info_list.clear();
+    m_addr_info_list.clear();
+    m_GenVarToNameMap.clear();
+    reservedNames.clear();
+    varNames.clear();
+  }
+  if (IS_GEN_BOTH_PATH)
+    m_builder->resetPostCompile();
+}
+
 int VISAKernelImpl::compileTillOptimize() {
   if (m_options->getOption(vISA_splitInstructions)) {
     InstSplitPass instSplit(m_builder);

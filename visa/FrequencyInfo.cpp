@@ -51,8 +51,8 @@ void FrequencyInfo::storeStaticFrequencyAsMetadata(G4_INST *i,
   MDNode *md_digits =
       irb->allocateMDString(std::to_string(curFreq.getDigits()));
   MDNode *md_scale = irb->allocateMDString(std::to_string(curFreq.getScale()));
-  i->setMetadata("stats.blockFrequency.digits", md_digits);
-  i->setMetadata("stats.blockFrequency.scale", md_scale);
+  i->setMetadata(Metadata::MDKey::BlockFreqDigits, md_digits);
+  i->setMetadata(Metadata::MDKey::BlockFreqScale, md_scale);
 
   if (willDumpLLVMToG4()) {
     std::cerr << "LLVM to G4_Inst - Frequency data: ";
@@ -550,8 +550,8 @@ void FrequencyInfo::sortBasedOnFreq(std::vector<LiveRange*>& lrs)
 }
 
 bool FrequencyInfo::hasFreqMetaData(G4_INST* i) {
-  MDNode* md_digits = i->getMetadata("stats.blockFrequency.digits");
-  MDNode* md_scale = i->getMetadata("stats.blockFrequency.scale");
+  MDNode* md_digits = i->getMetadata(Metadata::MDKey::BlockFreqDigits);
+  MDNode* md_scale = i->getMetadata(Metadata::MDKey::BlockFreqScale);
   return md_digits && md_scale && (md_digits->asMDString()->getData() != "") &&
     (md_scale->asMDString()->getData() != "");
 }

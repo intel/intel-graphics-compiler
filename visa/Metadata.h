@@ -9,8 +9,8 @@ SPDX-License-Identifier: MIT
 #ifndef _METADATA_H_
 #define _METADATA_H_
 
+#include <array>
 #include <iostream>
-#include <optional>
 
 namespace vISA {
 
@@ -18,18 +18,17 @@ namespace vISA {
 // A metadata is simply a collection of (<key>, <value>) pairs that may be
 // attached to an IR object (BB, Inst, Declare, etc.) Metadata is completely
 // optional; vISA optimizations and transformations are not obliged to preserve
-// them, and dropping them should not affect correctness Metadata key is a
-// string, and only one value is allowed per key for now. Metadata value is
-// represented by an MDNode abstract class, each subclass provides the actual
-// implementation of the metadata value Currently there are only two types of
-// metadata: MDString and MDLocation. Metadata memory management is performed by
-// IR_Builder through the various allocaeMD* methods. An MDNode may be shared
-// among muitiple IR objects, it's the user's responsiblity to ensure correct
-// ownership and sharing behaviors. Each object has its own unqiue metadata map,
-// however. Currently only G4_INST supports metadata through the
-// setMetaData/getMetadata interface. OPEN: use enum instead of string as
-// metadata key. This would speed up lookup at the expense of some flexibility.
-// OPEN: better management schemes for a MDNode's lifetime/ownership.
+// them, and dropping them should not affect correctness. Metadata key is a
+// Metadata::MDKey enum value, and only one value is allowed per key. Metadata
+// value is represented by an MDNode abstract class, each subclass provides the
+// actual implementation of the metadata value Currently there are only two
+// types of metadata: MDString and MDLocation. Metadata memory management is
+// performed by IR_Builder through the various allocaeMD* methods. An MDNode may
+// be shared among muitiple IR objects, it's the user's responsiblity to ensure
+// correct ownership and sharing behaviors. Each object has its own unqiue
+// metadata map, however. Currently only G4_INST supports metadata through the
+// setMetaData/getMetadata interface. OPEN: better management schemes for a
+// MDNode's lifetime/ownership.
 //
 
 enum class MDType { String, SrcLoc, TokenLoc };
@@ -151,10 +150,21 @@ public:
 
 class Metadata {
 
-  std::unordered_map<std::string, MDNode *> MDMap;
+public:
+  enum class MDKey : unsigned {
+    InstComment = 0,
+    InstLoc = 1,
+    TokenLoc = 2,
+    BlockFreqDigits = 3,
+    BlockFreqScale = 4,
+    Count
+  };
+
+private:
+  std::array<MDNode *, static_cast<size_t>(MDKey::Count)> MDMap{};
 
 public:
-  explicit Metadata() {}
+  explicit Metadata() = default;
 
   Metadata(const Metadata &md) = delete;
 
@@ -162,37 +172,34 @@ public:
 
   void *operator new(size_t sz, Mem_Manager &m) { return m.alloc(sz); }
 
-  // it simply overwrites existing value for key if it already exists
-  void setMetadata(const std::string &key, MDNode *value) {
-    if (!value) {
-      // do not allow nullptr value for now. ToDo: distinguish between nullptr
-      // value vs. metadata not set?
+  void setMetadata(MDKey key, MDNode *value) {
+    if (!value)
       return;
-    }
-    MDMap[key] = value;
+    MDMap[static_cast<size_t>(key)] = value;
   }
 
-  MDNode *getMetadata(const std::string &key) {
-    auto iter = MDMap.find(key);
-    return iter != MDMap.end() ? iter->second : nullptr;
-  }
+  MDNode *getMetadata(MDKey key) { return MDMap[static_cast<size_t>(key)]; }
 
-  bool isMetadataSet(const std::string &key) { return MDMap.count(key); }
+  bool isMetadataSet(MDKey key) {
+    return MDMap[static_cast<size_t>(key)] != nullptr;
+  }
 
   void print(std::ostream &OS) const {
-    for (auto &&iter : MDMap) {
-      OS << "\"" << iter.first << "\" : ";
-      iter.second->print(OS);
-      OS << "\n";
+    static const char *names[] = {"comment", "location", "tokenlocation",
+                                  "stats.blockFrequency.digits",
+                                  "stats.blockFrequency.scale"};
+    static_assert(std::size(names) == static_cast<size_t>(MDKey::Count),
+                  "names[] must match MDKey enum");
+    for (size_t i = 0; i < MDMap.size(); i++) {
+      if (MDMap[i]) {
+        OS << "\"" << names[i] << "\" : ";
+        MDMap[i]->print(OS);
+        OS << "\n";
+      }
     }
   }
 
   void dump() const { print(std::cerr); }
-
-  // list the known keys here to avoid typos
-  inline static const std::string InstComment = "comment";
-  inline static const std::string InstLoc = "location";
-  inline static const std::string TokenLoc = "tokenlocation";
 };
 
 } // namespace vISA

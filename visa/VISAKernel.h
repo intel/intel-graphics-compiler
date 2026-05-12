@@ -1207,6 +1207,7 @@ public:
   void setOutputAsmPath(const std::string& val) { m_asmName = val; }
 
   int compileFastPath();
+  void resetPostCompile();
 
   unsigned int m_magic_number;
   unsigned char m_major_version;

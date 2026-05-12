@@ -2948,6 +2948,12 @@ public:
 
 #include "HWCaps.inc"
 
+  // Returns true when metadata can be freed after Phase 1 compilation
+  // (i.e., no debug info / asm output is being produced).
+  bool isMDEarlyCleared() const;
+  // Release analysis data and optionally metadata after compileFastPath().
+  void resetPostCompile();
+
 private:
   G4_INST* getSingleDefInst(G4_INST* UI, Gen4_Operand_Number OpndNum) const;
   G4_SrcRegRegion *createBindlessExDesc(uint32_t exdesc);

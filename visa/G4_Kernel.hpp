@@ -880,6 +880,13 @@ public:
   bool hasInlineData() const;
   std::vector<ArgLayout> getArgumentLayout();
 
+  // Free maps no longer needed after compileFastPath().
+  void resetPostCompile() {
+    instImplicitAccDef.clear();
+    instImplicitAccSrc.clear();
+    callerRestoreDecls.clear();
+  }
+
 private:
   G4_BB *getNextBB(G4_BB *bb) const;
   unsigned getBinOffsetOfBB(G4_BB *bb) const;

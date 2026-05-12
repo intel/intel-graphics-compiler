@@ -228,7 +228,7 @@ G4_INST::G4_INST(const IR_Builder &irb, G4_Predicate *prd, G4_opcode o,
                  G4_Operand *s0, G4_Operand *s1, G4_Operand *s2, G4_Operand *s3,
                  G4_InstOpts opt)
     : op(o), dst(d), predicate(prd), mod(m), option(opt),
-      useInstList(irb.getAllocator()), defInstList(irb.getAllocator()),
+      useInstList(std::in_place, irb.getAllocator()), defInstList(std::in_place, irb.getAllocator()),
       dead(false), evenlySplitInst(false), doPostRA(false), canBeAcc(false),
       doNotDelete(false), execSize(size), builder(irb) {
   // FIXME: Currently srcs would be initialized with a list that has max
@@ -244,7 +244,7 @@ G4_INST::G4_INST(const IR_Builder &irb, G4_Predicate *prd, G4_opcode o,
                  G4_Operand *s0, G4_Operand *s1, G4_Operand *s2, G4_Operand *s3,
                  G4_Operand *s4, G4_InstOpts opt)
     : op(o), dst(d), predicate(prd), mod(m), option(opt),
-      useInstList(irb.getAllocator()), defInstList(irb.getAllocator()),
+      useInstList(std::in_place, irb.getAllocator()), defInstList(std::in_place, irb.getAllocator()),
       dead(false), evenlySplitInst(false), doPostRA(false), canBeAcc(false),
       doNotDelete(false), execSize(size), builder(irb) {
   vISA_ASSERT(isDpas(), "Currently only dpas variants support 5 srcs");
@@ -259,7 +259,7 @@ G4_INST::G4_INST(const IR_Builder &irb, G4_Predicate *prd, G4_opcode o,
                  G4_Operand *s4, G4_Operand *s5, G4_Operand *s6, G4_Operand *s7,
                  G4_InstOpts opt)
     : op(o), dst(d), predicate(prd), mod(m), option(opt),
-      useInstList(irb.getAllocator()), defInstList(irb.getAllocator()),
+      useInstList(std::in_place, irb.getAllocator()), defInstList(std::in_place, irb.getAllocator()),
       dead(false), evenlySplitInst(false), doPostRA(false), canBeAcc(false),
       doNotDelete(false), execSize(size), builder(irb) {
   srcs = {s0, s1, s2, s3, s4, s5, s6, s7};
@@ -532,7 +532,9 @@ uint16_t G4_INST::getMaskOffset() const {
   }
 }
 
-void G4_INST::setMetadata(const std::string &key, MDNode *value) {
+void G4_INST::setMetadata(Metadata::MDKey key, MDNode *value) {
+  if (!value)
+    return;
   if (!MD) {
     MD = const_cast<IR_Builder &>(builder).allocateMD();
   }
@@ -543,7 +545,7 @@ void G4_INST::setComments(const std::string &str) {
   // We create a new MDNode each time; the assumption is that comment should be
   // unique and there is no opportunity for sharing
   auto node = const_cast<IR_Builder &>(builder).allocateMDString(str);
-  setMetadata(Metadata::InstComment, node);
+  setMetadata(Metadata::MDKey::InstComment, node);
 }
 
 void G4_INST::addComment(const std::string &comment) {
@@ -559,11 +561,11 @@ void G4_INST::setTokenLoc(unsigned short token, unsigned globalID) {
   if (!builder.getOption(vISA_SBIDDepLoc)) {
     return;
   }
-  auto tokenLoc = getMetadata(Metadata::TokenLoc);
+  auto tokenLoc = getMetadata(Metadata::MDKey::TokenLoc);
   if (!tokenLoc) {
     auto node = const_cast<IR_Builder &>(builder).allocateMDTokenLocation(
         token, globalID);
-    setMetadata(Metadata::TokenLoc, node);
+    setMetadata(Metadata::MDKey::TokenLoc, node);
   } else {
     MDTokenLocation *tokenL = tokenLoc->asMDTokenLocation();
     tokenL->addTokenLocation(token, globalID);
@@ -574,36 +576,36 @@ void G4_INST::setTokenLoc(unsigned short token, unsigned globalID) {
 // remove all references to this inst in other inst's use_list
 // this is used when we want to delete this instruction
 void G4_INST::removeAllDefs() {
-  for (auto &&item : defInstList) {
+  for (auto &&item : *defInstList) {
     G4_INST *def = item.first;
-    def->useInstList.remove_if(
+    def->useInstList->remove_if(
         [&](USE_DEF_NODE node) { return node.first == this; });
   }
-  defInstList.clear();
+  defInstList->clear();
 }
 
 void G4_INST::removeAllUses() {
-  for (auto &&item : useInstList) {
+  for (auto &&item : *useInstList) {
     G4_INST *user = item.first;
-    user->defInstList.remove_if(
+    user->defInstList->remove_if(
         [&](USE_DEF_NODE node) { return node.first == this; });
   }
-  useInstList.clear();
+  useInstList->clear();
 }
 
 //
 // remove def/use for opndNum, which must be a source
 // (i.e., not Opnd_dst/Opnd_condMod/Opnd_implAccDst)
 void G4_INST::removeDefUse(Gen4_Operand_Number opndNum) {
-  DEF_EDGE_LIST_ITER iter = defInstList.begin();
-  while (iter != defInstList.end()) {
+  DEF_EDGE_LIST_ITER iter = defInstList->begin();
+  while (iter != defInstList->end()) {
     if ((*iter).second == opndNum) {
       auto defInst = (*iter).first;
-      defInst->useInstList.remove_if([&](USE_DEF_NODE node) {
+      defInst->useInstList->remove_if([&](USE_DEF_NODE node) {
         return node.first == this && node.second == opndNum;
       });
       DEF_EDGE_LIST_ITER curr_iter = iter++;
-      defInstList.erase(curr_iter);
+      defInstList->erase(curr_iter);
     } else {
       ++iter;
     }
@@ -650,28 +652,28 @@ const G4_Operand *G4_INST::getOperand(Gen4_Operand_Number opnd_num) const {
 
 USE_EDGE_LIST_ITER G4_INST::eraseUse(USE_EDGE_LIST_ITER iter) {
   G4_INST *useInst = iter->first;
-  useInst->defInstList.remove_if([&](USE_DEF_NODE node) {
+  useInst->defInstList->remove_if([&](USE_DEF_NODE node) {
     return node.first == this && node.second == iter->second;
   });
-  return useInstList.erase(iter);
+  return useInstList->erase(iter);
 }
 
 // Transfer definitions used in this[opndNum1] to definitions used in
 // inst2[opndNum2] and update definitions's def-use chain accordingly.
 void G4_INST::transferDef(G4_INST *inst2, Gen4_Operand_Number opndNum1,
                           Gen4_Operand_Number opndNum2) {
-  DEF_EDGE_LIST_ITER iter = defInstList.begin();
-  while (iter != defInstList.end()) {
+  DEF_EDGE_LIST_ITER iter = defInstList->begin();
+  while (iter != defInstList->end()) {
     auto defInst = (*iter).first;
     if ((*iter).second == opndNum1) {
       // gcc 5.0 doesn't like emplace_back for some reason
-      inst2->defInstList.push_back(USE_DEF_NODE(defInst, opndNum2));
-      defInst->useInstList.remove_if([&](USE_DEF_NODE node) {
+      inst2->defInstList->push_back(USE_DEF_NODE(defInst, opndNum2));
+      defInst->useInstList->remove_if([&](USE_DEF_NODE node) {
         return node.second == opndNum1 && node.first == this;
       });
-      defInst->useInstList.push_back(USE_DEF_NODE(inst2, opndNum2));
+      defInst->useInstList->push_back(USE_DEF_NODE(inst2, opndNum2));
       DEF_EDGE_LIST_ITER curr_iter = iter++;
-      defInstList.erase(curr_iter);
+      defInstList->erase(curr_iter);
 
       // Remove the redundant d/u node.
       // Due to the instruction optimization, such as merge scalars, redundant
@@ -683,10 +685,10 @@ void G4_INST::transferDef(G4_INST *inst2, Gen4_Operand_Number opndNum1,
       //==>
       //(W) shl (2) Merged138(0,0)<1>:d Merged139(0,0)<1;1,0>:d 0x17:w
       //(W) add (2) Merged140(0,0)<1>:d 0x43800000:d -Merged138(0,0)<1;1,0>:d
-      inst2->defInstList.sort();
-      inst2->defInstList.unique();
-      defInst->useInstList.sort();
-      defInst->useInstList.unique();
+      inst2->defInstList->sort();
+      inst2->defInstList->unique();
+      defInst->useInstList->sort();
+      defInst->useInstList->unique();
     } else {
       ++iter;
     }
@@ -722,7 +724,7 @@ void G4_INST::copyDef(G4_INST *inst2, Gen4_Operand_Number opndNum1,
       I->first->addDefUse(inst2, opndNum2);
     }
   }
-  inst2->defInstList.unique();
+  inst2->defInstList->unique();
 }
 
 /// Copy this instruction's defs to inst2.
@@ -808,9 +810,9 @@ void G4_INST::transferUse(G4_INST *inst2, bool keepExisting) {
 // remove all references of this inst in other inst's def list
 // this is used when we want to delete this instruction
 void G4_INST::removeUseOfInst() {
-  for (auto &&node : defInstList) {
+  for (auto &&node : *defInstList) {
     auto defInst = node.first;
-    defInst->useInstList.remove_if(
+    defInst->useInstList->remove_if(
         [&](USE_DEF_NODE node) { return node.first == this; });
   }
 }
@@ -819,15 +821,15 @@ void G4_INST::removeUseOfInst() {
 // instruction splitting
 void G4_INST::trimDefInstList() {
   // trim def list
-  DEF_EDGE_LIST_ITER iter = defInstList.begin();
+  DEF_EDGE_LIST_ITER iter = defInstList->begin();
   // since ACC is only exposed in ARCTAN intrinsic translation, there is no
   // instruction split with ACC
-  while (iter != defInstList.end()) {
+  while (iter != defInstList->end()) {
     G4_Operand *src = getOperand((*iter).second);
 
     if (src == nullptr) {
       // it's possible the source is entirely gone (e.g., predicate removed)
-      iter = defInstList.erase(iter);
+      iter = defInstList->erase(iter);
       continue;
     }
     G4_CmpRelation rel = Rel_undef;
@@ -848,17 +850,17 @@ void G4_INST::trimDefInstList() {
     if (rel == Rel_disjoint) {
       // remove this def-use
       // assumption: no duplicate def-use info
-      USE_EDGE_LIST_ITER useIter = (*iter).first->useInstList.begin();
-      while (useIter != (*iter).first->useInstList.end()) {
+      USE_EDGE_LIST_ITER useIter = (*iter).first->useInstList->begin();
+      while (useIter != (*iter).first->useInstList->end()) {
         if ((*useIter).first == this && (*useIter).second == Opnd_src2) {
-          (*iter).first->useInstList.erase(useIter);
+          (*iter).first->useInstList->erase(useIter);
           break;
         }
         useIter++;
       }
       DEF_EDGE_LIST_ITER tmpIter = iter;
       iter++;
-      defInstList.erase(tmpIter);
+      defInstList->erase(tmpIter);
       continue;
     }
     iter++;
@@ -1307,11 +1309,11 @@ static void printDefUseImpl(std::ostream &os, G4_INST *def, G4_INST *use,
 void G4_INST::dumpDefUse(std::ostream &os) {
 #if _DEBUG
   std::cerr << "\n------------ defs ------------\n";
-  for (auto &&UD : defInstList) {
+  for (auto &&UD : *defInstList) {
     printDefUseImpl(std::cerr, UD.first, this, UD.second);
   }
   std::cerr << "\n------------ uses ------------\n";
-  for (auto &&DU : useInstList) {
+  for (auto &&DU : *useInstList) {
     printDefUseImpl(std::cerr, this, DU.first, DU.second);
   }
 #endif
@@ -1337,7 +1339,7 @@ G4_INST *G4_INST::getSingleDef(Gen4_Operand_Number opndNum, bool MakeUnique) {
     std::set<DEF_EDGE_LIST_ITER, def_less> found;
     for (auto I = def_begin(); I != def_end(); /* empty */) {
       if (!found.insert(I).second) {
-        I = defInstList.erase(I);
+        I = defInstList->erase(I);
       } else {
         ++I;
       }
@@ -1366,20 +1368,20 @@ void G4_INST::addDefUse(G4_INST *inst, Gen4_Operand_Number srcPos) {
           srcPos == Opnd_src5 || srcPos == Opnd_src6 || srcPos == Opnd_src7 ||
           srcPos == Opnd_pred || srcPos == Opnd_implAccSrc,
       "unexpected operand number");
-  useInstList.emplace_back(inst, srcPos);
-  inst->defInstList.emplace_back(this, srcPos);
+  useInstList->emplace_back(inst, srcPos);
+  inst->defInstList->emplace_back(this, srcPos);
 }
 
 // exchange def/use info of src0 and src1 after they are swapped.
 void G4_INST::swapDefUse(Gen4_Operand_Number srcIxA,
                          Gen4_Operand_Number srcIxB) {
-  DEF_EDGE_LIST_ITER iter = defInstList.begin();
+  DEF_EDGE_LIST_ITER iter = defInstList->begin();
   // To avoid redundant define and use items
   INST_LIST handledDefInst;
 
   // since ACC is only exposed in ARCTAN intrinsic translation, there is no
   // instruction split with ACC
-  while (iter != defInstList.end()) {
+  while (iter != defInstList->end()) {
     if ((*iter).second == srcIxB) {
       (*iter).second = srcIxA;
     } else if ((*iter).second == srcIxA) {
@@ -1395,8 +1397,8 @@ void G4_INST::swapDefUse(Gen4_Operand_Number srcIxA,
     }
     handledDefInst.push_back((*iter).first);
     // change uselist of def inst
-    USE_EDGE_LIST_ITER useIter = (*iter).first->useInstList.begin();
-    for (; useIter != (*iter).first->useInstList.end(); useIter++) {
+    USE_EDGE_LIST_ITER useIter = (*iter).first->useInstList->begin();
+    for (; useIter != (*iter).first->useInstList->end(); useIter++) {
       if ((*useIter).first == this) {
         if ((*useIter).second == srcIxB) {
           (*useIter).second = srcIxA;
@@ -1449,13 +1451,13 @@ void G4_INST::fixMACSrc2DefUse() {
   if (op != G4_mac) {
     return;
   }
-  for (DEF_EDGE_LIST_ITER iter = defInstList.begin(); iter != defInstList.end();
+  for (DEF_EDGE_LIST_ITER iter = defInstList->begin(); iter != defInstList->end();
        iter++) {
     if ((*iter).second == Opnd_src2) {
       (*iter).second = Opnd_implAccSrc;
       G4_INST *defInst = (*iter).first;
-      for (USE_EDGE_LIST_ITER useIter = defInst->useInstList.begin();
-           useIter != defInst->useInstList.end(); ++useIter) {
+      for (USE_EDGE_LIST_ITER useIter = defInst->useInstList->begin();
+           useIter != defInst->useInstList->end(); ++useIter) {
         if (((*useIter).first == this) && ((*useIter).second == Opnd_src2)) {
           (*useIter).second = Opnd_implAccSrc;
           break;
@@ -1630,7 +1632,7 @@ G4_INST::MovType G4_INST::canPropagate() const {
       || getSaturate() ||
       getCondMod()
       // Do not eliminate if there's no use (dead or side-effect code?)
-      || useInstList.size() == 0
+      || useInstList->size() == 0
       // Do not eliminate stack call return value passing instructions.
       // Do not eliminate vars marked with Output attribute
       || (topDcl && topDcl->isOutput())) {
@@ -1731,7 +1733,7 @@ G4_INST::MovType G4_INST::canPropagate() const {
     break;
   case FPDownConv: {
     if (IS_TYPE_F32_F64(srcType) && builder.getMixModeType() == dstType &&
-        builder.getOption(vISA_enableUnsafeCP_DF) && useInstList.size() == 1)
+        builder.getOption(vISA_enableUnsafeCP_DF) && useInstList->size() == 1)
       return FPDownConvSafe;
     break;
   }
@@ -1767,7 +1769,7 @@ bool G4_INST::canPropagateBinaryToTernary() const {
     return false; // no {AccWrEn}
   else if (getSaturate() || getCondMod())
     return false; // do not eliminate if either sat or condMod is present.
-  else if (useInstList.size() == 0)
+  else if (useInstList->size() == 0)
     return false; // do not eliminate if there's no use (dead or side-effect
                   // code?)
 
@@ -2534,12 +2536,12 @@ bool G4_INST::canHoist(bool simdBB, const Options *opt) const {
   bool indirectSrc = (src->getTopDcl() && src->getTopDcl()->getAddressed()) ||
                      src->isIndirect();
   bool noMultiDefOpt =
-      ((defInstList.size() > 1) &&
+      ((defInstList->size() > 1) &&
        (predicate || (dst->getRegAccess() != Direct) || simdBB));
   if (src->isImm() || archRegSrc || indirectSrc ||
       (src->isSrcRegRegion() &&
        src->asSrcRegRegion()->getModifier() != Mod_src_undef) ||
-      (defInstList.size() == 0) || noMultiDefOpt) {
+      (defInstList->size() == 0) || noMultiDefOpt) {
     return false;
   }
 
@@ -2552,7 +2554,7 @@ bool G4_INST::canHoist(bool simdBB, const Options *opt) const {
   MovType MT = getMovType(this);
   if (!(Is_Type_Included(dstType, srcType, builder) || MT == G4_INST::Copy) ||
       // if multi def, src and dst should have the same type size
-      (defInstList.size() > 1 &&
+      (defInstList->size() > 1 &&
        (TypeSize(srcType) != TypeSize(dstType) ||
         // if multidef and used as a scalar, execution size should be one.
         (src->isSrcRegRegion() && src->asSrcRegRegion()->isScalar() &&
@@ -2624,7 +2626,7 @@ bool G4_INST::canHoistTo(const G4_INST *defInst, bool simdBB) const {
   bool cantHoistMAD =
       (defInst->opcode() == G4_pseudo_mad &&
        !(IS_TYPE_FLOAT_ALL(dstType) && IS_TYPE_FLOAT_ALL(defDstType)));
-  if ((defInst->useInstList.size() != 1) || (defInst->opcode() == G4_sad2) ||
+  if ((defInst->useInstList->size() != 1) || (defInst->opcode() == G4_sad2) ||
       (defInst->opcode() == G4_sada2) ||
       (defInst->opcode() == G4_cbit && dstType != defDstType) ||
       (defInst->opcode() == G4_dp4a && dstType != defDstType) ||
@@ -3703,7 +3705,7 @@ static const char *const operandString[] = {OPND_NUM_ENUM(STRINGIFY)};
 
 void G4_INST::emitDefUse(std::ostream &output) const {
   output << "Def:\n";
-  for (auto iter = defInstList.begin(), iterEnd = defInstList.end();
+  for (auto iter = defInstList->begin(), iterEnd = defInstList->end();
        iter != iterEnd; ++iter) {
     G4_INST *inst = (*iter).first;
     inst->emit(output);
@@ -3711,7 +3713,7 @@ void G4_INST::emitDefUse(std::ostream &output) const {
     output << "\n";
   }
   output << "Use:\n";
-  for (auto iter = useInstList.begin(), iterEnd = useInstList.end();
+  for (auto iter = useInstList->begin(), iterEnd = useInstList->end();
        iter != iterEnd; ++iter) {
     G4_INST *inst = (*iter).first;
     inst->emit(output);

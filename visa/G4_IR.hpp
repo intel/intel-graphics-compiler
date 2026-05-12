@@ -153,11 +153,11 @@ protected:
 
   // def-use chain: list of <inst, opndPos> such that this[dst/condMod] defines
   // inst[opndPos] opndNum must be one of src0, src1, src2, pred, implAccSrc
-  USE_EDGE_LIST useInstList;
+  std::optional<USE_EDGE_LIST> useInstList;
 
   // use-def chain: list of <inst, opndPos> such that inst[dst/condMod] defines
   // this[opndPos]
-  DEF_EDGE_LIST defInstList;
+  std::optional<DEF_EDGE_LIST> defInstList;
 
   // instruction's id in BB. Each optimization should re-initialize before using
   int32_t localId = 0;
@@ -796,37 +796,85 @@ public:
                   Gen4_Operand_Number srcIxB = Opnd_src1);
   void addDefUse(G4_INST *use, Gen4_Operand_Number usePos);
   void uniqueDefUse() {
-    useInstList.unique();
-    defInstList.unique();
+    if (useInstList)
+      useInstList->unique();
+    if (defInstList)
+      defInstList->unique();
   }
-  void clearUse() { useInstList.clear(); }
-  void clearDef() { defInstList.clear(); }
-  bool useEmpty() const { return useInstList.empty(); }
-  bool hasOneUse() const { return useInstList.size() == 1; }
+  void clearUse() {
+    if (useInstList)
+      useInstList->clear();
+  }
+  void clearDef() {
+    if (defInstList)
+      defInstList->clear();
+  }
+  // Disengage def-use lists so the underlying std::list destructors run while
+  // the use-def arena is still alive. After this, only the safe boolean/size
+  // queries below remain valid; iterator/front/back accessors must not be used.
+  void resetDefUse() {
+    useInstList.reset();
+    defInstList.reset();
+  }
+  bool useEmpty() const { return !useInstList || useInstList->empty(); }
+  bool hasOneUse() const { return useInstList && useInstList->size() == 1; }
   /// Returns its definition if this's operand has a single definition. Returns
   /// 0 otherwise.
   G4_INST *getSingleDef(Gen4_Operand_Number opndNum, bool MakeUnique = false);
   USE_EDGE_LIST::const_iterator use_begin() const {
-    return useInstList.begin();
+    vISA_ASSERT(useInstList.has_value(), "def-use chain has been reset");
+    return useInstList->begin();
   }
-  USE_EDGE_LIST::iterator use_begin() { return useInstList.begin(); }
-  USE_EDGE_LIST::const_iterator use_end() const { return useInstList.end(); }
-  USE_EDGE_LIST::iterator use_end() { return useInstList.end(); }
-  USE_EDGE_LIST::reference use_front() { return useInstList.front(); }
-  USE_EDGE_LIST::reference use_back() { return useInstList.back(); }
+  USE_EDGE_LIST::iterator use_begin() {
+    vISA_ASSERT(useInstList.has_value(), "def-use chain has been reset");
+    return useInstList->begin();
+  }
+  USE_EDGE_LIST::const_iterator use_end() const {
+    vISA_ASSERT(useInstList.has_value(), "def-use chain has been reset");
+    return useInstList->end();
+  }
+  USE_EDGE_LIST::iterator use_end() {
+    vISA_ASSERT(useInstList.has_value(), "def-use chain has been reset");
+    return useInstList->end();
+  }
+  USE_EDGE_LIST::reference use_front() {
+    vISA_ASSERT(useInstList.has_value(), "def-use chain has been reset");
+    return useInstList->front();
+  }
+  USE_EDGE_LIST::reference use_back() {
+    vISA_ASSERT(useInstList.has_value(), "def-use chain has been reset");
+    return useInstList->back();
+  }
   DEF_EDGE_LIST::const_iterator def_begin() const {
-    return defInstList.begin();
+    vISA_ASSERT(defInstList.has_value(), "def-use chain has been reset");
+    return defInstList->begin();
   }
-  DEF_EDGE_LIST::iterator def_begin() { return defInstList.begin(); }
-  DEF_EDGE_LIST::const_iterator def_end() const { return defInstList.end(); }
-  DEF_EDGE_LIST::iterator def_end() { return defInstList.end(); }
-  DEF_EDGE_LIST::reference def_front() { return defInstList.front(); }
-  DEF_EDGE_LIST::reference def_back() { return defInstList.back(); }
-  size_t use_size() const { return useInstList.size(); }
-  size_t def_size() const { return defInstList.size(); }
+  DEF_EDGE_LIST::iterator def_begin() {
+    vISA_ASSERT(defInstList.has_value(), "def-use chain has been reset");
+    return defInstList->begin();
+  }
+  DEF_EDGE_LIST::const_iterator def_end() const {
+    vISA_ASSERT(defInstList.has_value(), "def-use chain has been reset");
+    return defInstList->end();
+  }
+  DEF_EDGE_LIST::iterator def_end() {
+    vISA_ASSERT(defInstList.has_value(), "def-use chain has been reset");
+    return defInstList->end();
+  }
+  DEF_EDGE_LIST::reference def_front() {
+    vISA_ASSERT(defInstList.has_value(), "def-use chain has been reset");
+    return defInstList->front();
+  }
+  DEF_EDGE_LIST::reference def_back() {
+    vISA_ASSERT(defInstList.has_value(), "def-use chain has been reset");
+    return defInstList->back();
+  }
+  size_t use_size() const { return useInstList ? useInstList->size() : 0; }
+  size_t def_size() const { return defInstList ? defInstList->size() : 0; }
   void dumpDefUse(std::ostream &os = std::cerr);
   template <typename Compare> void sortUses(Compare Cmp) {
-    useInstList.sort(Cmp);
+    if (useInstList)
+      useInstList->sort(Cmp);
   }
 
   void fixMACSrc2DefUse();
@@ -940,14 +988,15 @@ public:
 
   TARGET_PLATFORM getPlatform() const;
 
-  void setMetadata(const std::string &key, MDNode *value);
+  void setMetadata(Metadata::MDKey key, MDNode *value);
+  void detachMD() { MD = nullptr; }
 
-  MDNode *getMetadata(const std::string &key) const {
+  MDNode *getMetadata(Metadata::MDKey key) const {
     return MD ? MD->getMetadata(key) : nullptr;
   }
 
   unsigned getTokenLocationNum() const {
-    auto tokenLoc = getMetadata(Metadata::TokenLoc);
+    auto tokenLoc = getMetadata(Metadata::MDKey::TokenLoc);
     if (!tokenLoc) {
       return 0;
     }
@@ -960,7 +1009,7 @@ public:
   }
 
   unsigned getTokenLoc(int i, unsigned short &tokenID) const {
-    auto tokenLoc = getMetadata(Metadata::TokenLoc);
+    auto tokenLoc = getMetadata(Metadata::MDKey::TokenLoc);
     if (!tokenLoc) {
       return 0;
     }
@@ -989,14 +1038,14 @@ public:
   void setNeedPostRA(bool V) { doPostRA = V; }
 
   std::string getComments() const {
-    auto comments = getMetadata(Metadata::InstComment);
+    auto comments = getMetadata(Metadata::MDKey::InstComment);
     return comments && comments->isMDString()
                ? comments->asMDString()->getData()
                : "";
   }
 
   MDLocation *getLocation() const {
-    auto location = getMetadata(Metadata::InstLoc);
+    auto location = getMetadata(Metadata::MDKey::InstLoc);
     return (location && location->isMDLocation()) ? location->asMDLocation()
                                                   : nullptr;
   }
@@ -1047,7 +1096,9 @@ public:
 
 private:
   // use inheritDIFrom() instead
-  void setLocation(MDLocation *loc) { setMetadata(Metadata::InstLoc, loc); }
+  void setLocation(MDLocation *loc) {
+    setMetadata(Metadata::MDKey::InstLoc, loc);
+  }
   bool detectComprInst() const;
   bool isLegalType(G4_Type type, Gen4_Operand_Number opndNum) const;
   bool isFloatOnly() const;
