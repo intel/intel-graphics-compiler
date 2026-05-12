@@ -655,13 +655,16 @@ bool IGCRegisterPressurePublisher::runOnModule(llvm::Module &M) {
     }
 
     IGCLivenessAnalysisRunner RPE(CGCtx, MDUtils, FGA);
-    RPE.livenessAnalysis(F, nullptr);
-
-    unsigned int MaxPressureInFunction = 0;
 
     unsigned int SimdSize = numLanes(RPE.bestGuessSIMDSize(&F, FGA));
     unsigned int Existing = RPE.checkPublishRegPressureMetadata(F);
-    bool AlreadyPublished = (Existing != 0);
+    bool LegacyPublished = (Existing != 0);
+    bool PerSIMDPublished = false;
+    if (MDUtils->findFunctionsInfoItem(&F) != MDUtils->end_FunctionsInfo()) {
+      auto md = MDUtils->getFunctionsInfoItem(&F);
+      PerSIMDPublished = (md->getMaxRegPressureForSIMDSize(numLanes(SIMDMode::SIMD16))->getMaxPressure() != 0) &&
+                         (md->getMaxRegPressureForSIMDSize(numLanes(SIMDMode::SIMD32))->getMaxPressure() != 0);
+    }
 
     // Compile-time guard: passes between CodeLoopSinking and this point are
     // assumed to only reduce RP. If the early estimate is already below the
@@ -669,22 +672,42 @@ bool IGCRegisterPressurePublisher::runOnModule(llvm::Module &M) {
     // any threshold -- skip the WIAnalysis + IGCLiveness re-run entirely.
     unsigned int MinThreshold =
         std::min(IGC_GET_FLAG_VALUE(EarlyRetryLargeGRFThreshold), IGC_GET_FLAG_VALUE(EarlyRetryDefaultGRFThreshold));
-    bool RepublishLate = IGC_IS_FLAG_ENABLED(EnableLateRPRepublish) && AlreadyPublished && Existing >= MinThreshold;
+    bool RepublishLate = IGC_IS_FLAG_ENABLED(EnableLateRPRepublish) && LegacyPublished && Existing >= MinThreshold;
 
-    if (!AlreadyPublished || RepublishLate) {
-      auto ExternalPressure = getAnalysis<IGCFunctionExternalRegPressureAnalysis>().getExternalPressureForFunction(&F);
+    if (LegacyPublished && !RepublishLate && PerSIMDPublished) {
+      continue;
+    }
 
-      auto *DT = &getAnalysis<DominatorTreeWrapperPass>(F).getDomTree();
-      auto *PDT = &getAnalysis<PostDominatorTreeWrapperPass>(F).getPostDomTree();
-      auto *LI = &getAnalysis<LoopInfoWrapperPass>(F).getLoopInfo();
+    RPE.livenessAnalysis(F, nullptr);
+    PressurePair ExternalPressurePair =
+        getAnalysis<IGCFunctionExternalRegPressureAnalysis>().getExternalPressurePairForFunction(&F);
 
-      TranslationTable TT;
-      TT.run(F);
-      WIAnalysisRunner WI(&F, LI, DT, PDT, MDUtils, CGCtx, ModMD, &TT, false);
-      WI.run();
+    auto *DT = &getAnalysis<DominatorTreeWrapperPass>(F).getDomTree();
+    auto *PDT = &getAnalysis<PostDominatorTreeWrapperPass>(F).getPostDomTree();
+    auto *LI = &getAnalysis<LoopInfoWrapperPass>(F).getLoopInfo();
 
-      MaxPressureInFunction = RPE.getMaxRegCountForFunction(F, SimdSize, &WI);
-      RPE.publishRegPressureMetadata(F, MaxPressureInFunction + ExternalPressure);
+    TranslationTable TT;
+    TT.run(F);
+    WIAnalysisRunner WI(&F, LI, DT, PDT, MDUtils, CGCtx, ModMD, &TT, false);
+    WI.run();
+
+    if (!LegacyPublished || RepublishLate) {
+      unsigned int MaxPressureInFunction = RPE.getMaxRegCountForFunction(F, SimdSize, &WI);
+      RPE.publishRegPressureMetadata(F, MaxPressureInFunction + RPE.bytesToRegisters(ExternalPressurePair));
+    }
+
+    if (!PerSIMDPublished) {
+      // Publish per-SIMD estimates so later SIMD-selection heuristics
+      // (e.g. shouldDropToSIMD16 on VRT platforms) can compare SIMD16 vs SIMD32
+      // pressure instead of a single measurement.
+      PressurePair ExternalPressurePair16 = {
+          ExternalPressurePair.Uniform, 16 * (uint32_t)llvm::divideCeil(ExternalPressurePair.NonUniform, SimdSize)};
+      PressurePair Pair16Pressure =
+          RPE.getMaxPressurePairForFunction(F, numLanes(SIMDMode::SIMD16), &WI) + ExternalPressurePair16;
+      unsigned int Simd16Pressure = RPE.bytesToRegisters(Pair16Pressure);
+      unsigned int Simd32Pressure = RPE.bytesToRegisters({Pair16Pressure.Uniform, 2 * Pair16Pressure.NonUniform});
+      RPE.publishRegPressureMetadataForSIMD(F, numLanes(SIMDMode::SIMD16), Simd16Pressure);
+      RPE.publishRegPressureMetadataForSIMD(F, numLanes(SIMDMode::SIMD32), Simd32Pressure);
     }
   }
 

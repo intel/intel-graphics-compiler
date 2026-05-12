@@ -417,6 +417,16 @@ public:
   SubGroupSizeMetaDataHandle getSubGroupSize() { return m_SubGroupSize; }
 
   MaxRegPressureMetaDataHandle getMaxRegPressure() { return m_MaxRegPressure; }
+  MaxRegPressureMetaDataHandle getMaxRegPressureForSIMDSize(unsigned SimdSize) {
+    switch (SimdSize) {
+    case 16:
+      return m_MaxRegPressureSimd16;
+    case 32:
+      return m_MaxRegPressureSimd32;
+    default:
+      return m_MaxRegPressure;
+    }
+  }
 
   // OpenCLVectorTypeHint
   VectorTypeHintMetaDataHandle getOpenCLVectorTypeHint() { return m_OpenCLVectorTypeHint; }
@@ -433,6 +443,8 @@ private:
   ThreadGroupSizeMetaDataHandle m_ThreadGroupSizeHint;
   SubGroupSizeMetaDataHandle m_SubGroupSize;
   MaxRegPressureMetaDataHandle m_MaxRegPressure;
+  MaxRegPressureMetaDataHandle m_MaxRegPressureSimd16;
+  MaxRegPressureMetaDataHandle m_MaxRegPressureSimd32;
   VectorTypeHintMetaDataHandle m_OpenCLVectorTypeHint;
 };
 

@@ -54,6 +54,11 @@ struct PressurePair {
     this->NonUniform -= rhs.NonUniform;
     return *this;
   }
+
+  friend PressurePair operator+(PressurePair lhs, const PressurePair &rhs) {
+    lhs += rhs;
+    return lhs;
+  }
 };
 
 typedef std::unordered_map<llvm::Value *, PressurePair> InsideBlockPressureMap;
@@ -137,6 +142,19 @@ public:
     if (MDUtils->findFunctionsInfoItem(&F) != MDUtils->end_FunctionsInfo()) {
       IGC::IGCMD::FunctionInfoMetaDataHandle funcInfoMD = MDUtils->getFunctionsInfoItem(&F);
       funcInfoMD->getMaxRegPressure()->setMaxPressure(MaxPressure);
+      MDUtils->save(F.getContext());
+    }
+  }
+
+  void publishRegPressureMetadataForSIMD(llvm::Function &F, unsigned int SimdLanes, unsigned int MaxPressure) {
+    publishRegPressureMetadataForSIMD(F, SimdLanes, MaxPressure, MDUtils);
+  }
+
+  static void publishRegPressureMetadataForSIMD(llvm::Function &F, unsigned int SimdLanes, unsigned int MaxPressure,
+                                                IGC::IGCMD::MetaDataUtils *MDUtils) {
+    if (MDUtils->findFunctionsInfoItem(&F) != MDUtils->end_FunctionsInfo()) {
+      IGC::IGCMD::FunctionInfoMetaDataHandle funcInfoMD = MDUtils->getFunctionsInfoItem(&F);
+      funcInfoMD->getMaxRegPressureForSIMDSize(SimdLanes)->setMaxPressure(MaxPressure);
       MDUtils->save(F.getContext());
     }
   }
@@ -270,10 +288,10 @@ private:
   IGCLivenessAnalysisRunner LivenessRunner;
 };
 
-typedef std::unordered_map<llvm::CallInst *, unsigned int> CallSiteToPressureMap;
+typedef std::unordered_map<llvm::CallInst *, PressurePair> CallSiteToPressureMap;
 class IGCFunctionExternalRegPressureAnalysis : public llvm::ModulePass, public IGCLivenessAnalysisBase {
   // this map contains external pressure for a function
-  std::unordered_map<Function *, unsigned int> ExternalFunctionPressure;
+  std::unordered_map<Function *, PressurePair> ExternalFunctionPressure;
   // this map contains all the callsites in the module and their pressure
   CallSiteToPressureMap CallSitePressure;
   // contains all spir_func definitions inside our module, to check against
@@ -304,6 +322,12 @@ public:
   // returns pressure in registers
   unsigned int getExternalPressureForFunction(llvm::Function *F) {
     unsigned int Registers = bytesToRegisters(ExternalFunctionPressure[F]);
+    return Registers;
+  }
+
+  // returns pressure in bytes
+  PressurePair getExternalPressurePairForFunction(llvm::Function *F) {
+    PressurePair Registers = ExternalFunctionPressure[F];
     return Registers;
   }
 
