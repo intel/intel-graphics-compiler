@@ -325,11 +325,18 @@ Type *PromoteSubByte::getOrCreatePromotedType(Type *type) {
     Type *promotedElemType = getOrCreatePromotedType(fixedVectorType->getElementType());
     newType = IGCLLVM::FixedVectorType::get(promotedElemType, numElts);
   } else if (auto pointerType = dyn_cast<PointerType>(type)) {
+// This guard is needed as PointerType::get llvm::type based overload would cause build failures on LLVM 22 switch
+// as support for this overload is dropped, this line should not be reachable for opaque pointer based compilation
+// as IGCLLVM::isPointerTy(pointerType) is always true so it's not needed to handle PointerType::get for newer LLVM
+#if LLVM_VERSION_MAJOR < 17
     newType = IGCLLVM::isPointerTy(pointerType)
                   ? pointerType
                   : PointerType::get(getOrCreatePromotedType(
                                          IGCLLVM::getNonOpaquePtrEltTy(type)), // Legacy code: getNonOpaquePtrEltTy
                                      pointerType->getAddressSpace());
+#else
+    newType = pointerType;
+#endif
   } else if (auto arrayType = dyn_cast<ArrayType>(type)) {
     newType = ArrayType::get(getOrCreatePromotedType(arrayType->getElementType()), arrayType->getNumElements());
   } else if (auto structType = dyn_cast<StructType>(type)) {
@@ -644,6 +651,10 @@ Constant *PromoteSubByte::promoteConstant(Constant *constant) {
     if (IGCLLVM::isPointerTy(constantPointerNull->getType())) {
       return constant;
     }
+// This guard is needed as PointerType::get llvm::type based overload would cause build failures on LLVM 22 switch
+// as support for this overload is dropped, this line should not be reachable for opaque pointer based compilation
+// which is the only one possible after LLVM 17
+#if LLVM_VERSION_MAJOR < 17
     if (!typeNeedsPromotion(
             IGCLLVM::getNonOpaquePtrEltTy(constantPointerNull->getType()))) // Legacy code: getNonOpaquePtrEltTy
     {
@@ -654,6 +665,7 @@ Constant *PromoteSubByte::promoteConstant(Constant *constant) {
         IGCLLVM::getNonOpaquePtrEltTy(constantPointerNull->getType())); // Legacy code: getNonOpaquePtrEltTy
     return ConstantPointerNull::get(
         PointerType::get(newPointerElementType, constantPointerNull->getType()->getAddressSpace()));
+#endif
   } else if (auto constantVector = dyn_cast<ConstantVector>(constant)) {
     if (!typeNeedsPromotion(constantVector->getType())) {
       return constant;

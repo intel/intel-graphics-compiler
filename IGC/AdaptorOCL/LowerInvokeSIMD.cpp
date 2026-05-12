@@ -115,7 +115,13 @@ void LowerInvokeSIMD::visitCallInst(CallInst &CI) {
     fixUniformParamsAndSIMDSize(Callee, *NewCall);
 
   } else {
+// LLVM 22 drops support for llvm::type based PointerType::get overload and context based overload is needed
+#if LLVM_VERSION_MAJOR <= 17
     auto PTy = PointerType::get(FTy, cast<PointerType>(CI.getArgOperand(0)->getType())->getAddressSpace());
+#else
+    auto PTy =
+        PointerType::get(FTy->getContext(), cast<PointerType>(CI.getArgOperand(0)->getType())->getAddressSpace());
+#endif
     auto CastedPointer = m_Builder->CreateBitCast(CI.getArgOperand(0), PTy);
     NewCall = m_Builder->CreateCall(FTy, CastedPointer, ArgVals);
   }
