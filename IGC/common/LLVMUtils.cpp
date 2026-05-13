@@ -20,6 +20,7 @@ SPDX-License-Identifier: MIT
 #include <fstream>
 #include <iomanip>
 #include <iostream>
+#include <memory>
 #include <string>
 #include <unordered_map>
 
@@ -556,6 +557,8 @@ void displayAllPasses(const Pass *P) {
 }
 
 void IGCPassManager::add(Pass *P) {
+  std::unique_ptr<Pass> guard(P);
+
   if (IGC_IS_FLAG_ENABLED(ShaderDumpTranslationOnly))
     return;
 
@@ -624,6 +627,7 @@ void IGCPassManager::add(Pass *P) {
     PassManager::add(createTimeStatsIGCPass(m_pContext, m_name + '_' + pname, STATS_COUNTER_START));
   }
 
+  guard.release();
   PassManager::add(P);
 
   if (IGC_REGKEY_OR_FLAG_ENABLED(DumpTimeStatsPerPass, TIME_STATS_PER_PASS)) {

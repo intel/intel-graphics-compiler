@@ -286,6 +286,7 @@ void DebugInfoPass::EmitDebugInfo(bool finalize, const IGC::VISADebugInfo &VisaD
     memcpy_s(dbgInfo, buffer.size(), buffer.data(), buffer.size());
 
   SProgramOutput *pOutput = m_currShader->ProgramOutput();
+  IGC::aligned_free(pOutput->m_debugData);
   pOutput->m_debugData = dbgInfo;
   pOutput->m_debugDataSize = dbgInfo ? buffer.size() : 0;
 }

@@ -9,6 +9,7 @@ SPDX-License-Identifier: MIT
 #include "IGC/common/StringMacros.hpp"
 #include "LLVMSPIRVOpts.h"
 #include "common/LLVMWarningsPush.hpp"
+#include "llvm/ADT/ScopeExit.h"
 #include "llvm/Config/llvm-config.h"
 #include "llvm/Support/ScaledNumber.h"
 #include "llvm/Support/CommandLine.h"
@@ -1158,6 +1159,8 @@ bool TranslateBuildSPMD(const STB_TranslateInputArgs *pInputArgs, STB_TranslateO
   IGC::COCLBTILayout oclLayout(&zeroLayout);
   OpenCLProgramContext oclContext(oclLayout, IGCPlatform, pInputArgs, *driverInfo, llvmContext);
 
+  bool compilerTimeNeedsEnd = false;
+
   SIMDMode MinDispatchMode = oclContext.platform.getMinDispatchMode();
   if (IGC_IS_FLAG_SET(ForceOCLSIMDWidth) && IGC_GET_FLAG_VALUE(ForceOCLSIMDWidth) < numLanes(MinDispatchMode)) {
     std::string errorMsg = "SIMD size of " + std::to_string(IGC_GET_FLAG_VALUE(ForceOCLSIMDWidth)) +
@@ -1187,7 +1190,15 @@ bool TranslateBuildSPMD(const STB_TranslateInputArgs *pInputArgs, STB_TranslateO
 #pragma GCC diagnostic pop
 #endif // __GNUC__
 
+  auto compilerTimeCleanup = llvm::make_scope_exit([&]() {
+    if (compilerTimeNeedsEnd) {
+      COMPILER_TIME_END(&oclContext, TIME_TOTAL);
+    }
+    COMPILER_TIME_DEL(&oclContext, m_compilerTimeStats);
+  });
+
   COMPILER_TIME_START(&oclContext, TIME_TOTAL);
+  compilerTimeNeedsEnd = true;
   oclContext.m_ProfilingTimerResolution = profilingTimerResolution;
 
   if (inputDataFormatTemp == TB_DATA_FORMAT_SPIR_V) {
@@ -1388,8 +1399,8 @@ bool TranslateBuildSPMD(const STB_TranslateInputArgs *pInputArgs, STB_TranslateO
   }
 
   // IGC metrics are empty
-  auto metricData = "n\a";
-  size_t metricDataSize = sizeof(metricData);
+  constexpr char metricData[] = "n/a";
+  constexpr uint32_t metricDataSize = sizeof(metricData) - 1;
 
   unsigned PtrSzInBits = oclContext.getModule()->getDataLayout().getPointerSizeInBits();
   unsigned int pointerSizeInBytes = (PtrSzInBits == 64) ? 8 : 4;
@@ -1407,11 +1418,10 @@ bool TranslateBuildSPMD(const STB_TranslateInputArgs *pInputArgs, STB_TranslateO
     overrideOCLProgramBinary(oclContext, pOutputArgs->Output);
 
   COMPILER_TIME_END(&oclContext, TIME_TOTAL);
+  compilerTimeNeedsEnd = false;
 
   COMPILER_TIME_PER_PASS_PRINT(&oclContext, ShaderType::OPENCL_SHADER, oclContext.hash);
   COMPILER_TIME_PRINT(&oclContext, ShaderType::OPENCL_SHADER, oclContext.hash);
-
-  COMPILER_TIME_DEL(&oclContext, m_compilerTimeStats);
 
   return true;
 }

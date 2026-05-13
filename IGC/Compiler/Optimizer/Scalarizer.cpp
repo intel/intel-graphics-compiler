@@ -84,9 +84,10 @@ ScalarizeFunction::ScalarizeFunction(IGC::SelectiveScalarizer selectiveMode) : F
   m_SCMArrayLocation = 0;
 }
 
+ScalarizeFunction::~ScalarizeFunction() { destroySCMBuffers(); }
+
 bool ScalarizeFunction::doFinalization(llvm::Module &M) {
-  releaseAllSCMEntries();
-  delete[] m_SCMAllocationArray;
+  destroySCMBuffers();
   destroyDummyFunc();
   V_PRINT(scalarizer, "ScalarizeFunction doFinalization\n");
   return true;
@@ -1197,6 +1198,15 @@ void ScalarizeFunction::releaseAllSCMEntries() {
   }
   // set the "current" array pointer to the only remaining array
   m_SCMAllocationArray = m_SCMArrays[0];
+  m_SCMArrayLocation = 0;
+}
+
+void ScalarizeFunction::destroySCMBuffers() {
+  for (SCMEntry *array : m_SCMArrays) {
+    delete[] array;
+  }
+  m_SCMArrays.clear();
+  m_SCMAllocationArray = nullptr;
   m_SCMArrayLocation = 0;
 }
 

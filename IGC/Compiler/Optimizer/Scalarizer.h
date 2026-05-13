@@ -62,6 +62,7 @@ public:
   // Default value differs from createScalarizerPass to allow control over selective
   // scalarization when pass is directly called from the command line (via igc_opt).
   ScalarizeFunction(SelectiveScalarizer selectiveMode = IGC::SelectiveScalarizer::Auto);
+  ~ScalarizeFunction() override;
   ScalarizeFunction(const ScalarizeFunction &) = delete;
   ScalarizeFunction &operator=(const ScalarizeFunction &) = delete;
 
@@ -189,6 +190,9 @@ private:
   /// @brief release all allocations of SCM entries
   void releaseAllSCMEntries();
 
+  /// @brief fully tears down SCM allocation arrays
+  void destroySCMBuffers();
+
   /// @brief create the dummy function which is called to signify a dummy value
   inline llvm::Function *getOrCreateDummyFunc(llvm::Type *dummyType, llvm::Module *module) {
     if (createdDummyFunctions.find(dummyType) == createdDummyFunctions.end()) {
@@ -222,16 +226,16 @@ private:
     for (auto &function : createdDummyFunctions) {
       if (function.second) {
         function.second->eraseFromParent();
-        function.second = nullptr;
       }
     }
+    createdDummyFunctions.clear();
   }
 
   /// @brief An array of available SCMEntry's
-  SCMEntry *m_SCMAllocationArray;
+  SCMEntry *m_SCMAllocationArray = nullptr;
 
   /// @brief Index, in "SCMAllocationArray", of next free SCMEntry
-  unsigned m_SCMArrayLocation;
+  unsigned m_SCMArrayLocation = 0;
 
   /// @brief Vector containing all the "SCMAllocationArray" arrays which were allocated
   llvm::SmallVector<SCMEntry *, 4> m_SCMArrays;

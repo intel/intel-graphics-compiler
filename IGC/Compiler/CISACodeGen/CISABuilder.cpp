@@ -3408,7 +3408,7 @@ void CEncoder::InitBuildParams(
   if (context->type == ShaderType::OPENCL_SHADER &&
       static_cast<OpenCLProgramContext *>(context)->m_Options.Xfinalizer) {
     std::string opt(static_cast<OpenCLProgramContext *>(context)->m_Options.XfinalizerOption);
-    params.push_back(param_uptr(_strdup(opt.c_str()), literal_deleter));
+    params.push_back(param_uptr(_strdup(opt.c_str()), dup_deleter));
   }
 
   if (context->platform.supportsOverfetch() && context->m_DriverInfo.disableOverfetching()) {
