@@ -119,8 +119,10 @@ bool NamedBarriersResolution::runOnModule(Module &M) {
   }
   if (IsNamedBarriersAdded()) {
     // Remove not needed declaration
-    nbarrierInitF->eraseFromParent();
-    nbarrierBarrierF->eraseFromParent();
+    if (nbarrierInitF)
+      nbarrierInitF->eraseFromParent();
+    if (nbarrierBarrierF)
+      nbarrierBarrierF->eraseFromParent();
   }
 
   return IsNamedBarriersAdded();
