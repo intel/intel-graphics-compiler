@@ -323,7 +323,8 @@ ReadIGCEnv
 static bool ReadIGCEnv(
     const char*  pName,
     void*        pValue,
-    unsigned int size )
+    unsigned int size,
+    const char*  pType )
 {
     if( pName != NULL )
     {
@@ -334,7 +335,7 @@ static bool ReadIGCEnv(
 
         if( envVal != NULL )
         {
-            if( size >= sizeof( unsigned int ) )
+            if( strcmp(pType, "debugString") != 0 && size >= sizeof( unsigned int ) )
             {
                 // Try integer conversion
                 if (envVal[0] == '0' && std::tolower(envVal[1]) == 'b')
@@ -386,10 +387,11 @@ bool ReadIGCRegistry(
     const char*  pName,
     void*        pValue,
     unsigned int size ,
+    const char*  pType,
     bool readFromEnv)
 {
     // All platforms can retrieve settings from environment
-    if( readFromEnv && ReadIGCEnv( pName, pValue, size ))
+    if( readFromEnv && ReadIGCEnv( pName, pValue, size, pType ))
     {
         return true;
     }
@@ -1151,12 +1153,13 @@ Output:
     read status
 
 \*****************************************************************************/
-extern "C" bool IGC_DEBUG_API_CALL GetRegistryKeyValue(const char* key, void* buffer, uint32_t bufferSize)
+extern "C" bool IGC_DEBUG_API_CALL GetRegistryKeyValue(const char* key, void* buffer, uint32_t bufferSize, const char* pType)
 {
     bool isSet = ReadIGCRegistry(
         key,
         buffer,
-        bufferSize);
+        bufferSize,
+        pType);
     return isSet;
 }
 
@@ -1177,7 +1180,8 @@ static void LoadFromRegKeyOrEnvVarOrOptions(
         bool isSet = GetRegistryKeyValue(
             name,
             &value,
-            sizeof(value));
+            sizeof(value),
+            pRegKeyVariable[i].GetType());
 
         if (isSet)
         {

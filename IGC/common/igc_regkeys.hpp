@@ -96,6 +96,7 @@ struct SRegKeyVariableMetaData
     virtual const char* GetName() const = 0;
     virtual unsigned GetDefault() const = 0;
     virtual void SetToNonDefaultValue() = 0;
+    virtual const char* GetType() const = 0;
     virtual ~SRegKeyVariableMetaData()
     {
     }
@@ -136,6 +137,10 @@ struct SRegKeyVariableMetaData_##regkeyName : public SRegKeyVariableMetaData \
     bool IsReleaseMode() const                      \
     {                                               \
         return releaseMode;                         \
+    }                                               \
+    const char* GetType() const                     \
+    {                                               \
+        return #dataType;                           \
     }                                               \
 } regkeyName;                                       \
 static_assert(sizeof(regkeyName) == sizeof(SRegKeyVariableMetaData));
@@ -221,7 +226,7 @@ void DumpIGCRegistryKeyDefinitions();
 void DumpIGCRegistryKeyDefinitions3(std::string driverRegistryPath, unsigned long pciBus, unsigned long pciDevice, unsigned long pciFunction);
 void InitializeRegKeys();
 void LoadRegistryKeys(const std::string& options = "", bool *RegFlagNameError = nullptr);
-bool ReadIGCRegistry(const char* pName, void* pValue, unsigned int size, bool readFromEnv = true);
+bool ReadIGCRegistry(const char* pName, void* pValue, unsigned int size, const char* pType, bool readFromEnv = true);
 void SetCurrentDebugHash(const ShaderHash &hash);
 void SetCurrentEntryPoints(const std::vector<std::string> &entry_points);
 void ClearCurrentEntryPoints();
