@@ -996,7 +996,7 @@ DECLARE_IGC_REGKEY(bool, EnableScalarTypedAtomics, true, "Enable the Scalar Type
 DECLARE_IGC_REGKEY(bool, EnableScalarPhisMerger, true,
                    "enable optimization that merges scalar phi nodes into vector ones", true)
 DECLARE_IGC_REGKEY(bool, EnableVectorizer, true, "Enable IGCVectorizer pass", true)
-DECLARE_IGC_REGKEY(bool, VectorizerInsertElAsSeed, false, "IGCVectorizer treats every insert element as a seed", true)
+DECLARE_IGC_REGKEY(bool, VectorizerInsertElAsSeed, true, "IGCVectorizer treats every insert element as a seed", true)
 DECLARE_IGC_REGKEY(DWORD, VectorizerDepWindowMultiplier, 6,
                    "Multiplier for the slice size to account for vectorizer dependency check window", true)
 DECLARE_IGC_REGKEY(bool, VectorizerCheckScalarizer, false, "Add scalariser after vectorizer to check performance", true)
