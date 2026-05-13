@@ -13,8 +13,6 @@ SPDX-License-Identifier: MIT
 #include "llvm/Demangle/Demangle.h"
 #include "common/LLVMWarningsPop.hpp"
 
-#include <unordered_map>
-
 using namespace llvm;
 using namespace IGC;
 char BfloatBuiltinsResolution::ID = 0;
@@ -107,6 +105,11 @@ void BfloatBuiltinsResolution::visitCallInst(CallInst &CI) {
     return;
 
   StringRef MangledName = CI.getCalledFunction()->getName();
+
+  // Strip any ".old" suffixes that may have been added by resolving
+  // calls to the same function in other kernels processed earlier.
+  while (MangledName.consume_back(".old"))
+    ;
 
   // The functions that we are about to resolve are in mangled form.
   // Quick check before demangling to save compilation time.
