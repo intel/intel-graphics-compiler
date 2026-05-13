@@ -1,0 +1,98 @@
+/*========================== begin_copyright_notice ============================
+
+Copyright (C) 2026 Intel Corporation
+
+SPDX-License-Identifier: MIT
+
+============================= end_copyright_notice ===========================*/
+
+/*========================== begin_copyright_notice ============================
+
+Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
+See https://llvm.org/LICENSE.txt for license information.
+SPDX-License-Identifier: Apache-2.0 with LLVM-exception
+
+============================= end_copyright_notice ===========================*/
+
+This PR reverts removal of stripPointerCasts in computePointerICmp which was done in this commit.
+
+https://github.com/llvm/llvm-project/commit/793eb0c0e4ffadc1cfebcda0c0cb1bcc2311def2
+
+I've found that in some case(s) it caused e.g function inliner to fail where on LLVM 16 it worked better.
+
+Repro, where on LLVM 16 "%1 = icmp eq i64 %0, 0" is fully removed
+
+    ; Function Attrs: nounwind
+    define spir_kernel void @main1(i1 %branch1, i1 %branch2) {
+    entry:
+        %kernel = alloca i32, align 8
+
+        %bitcast1 = bitcast ptr %kernel to ptr
+        %data = getelementptr inbounds i8, ptr %bitcast1, i64 8
+        %data2 = addrspacecast ptr %data to ptr addrspace(4)
+        br i1 %branch1, label %callBranch, label %exit
+
+    callBranch:
+        call spir_func void @main2(ptr addrspace(4) align 8 dereferenceable(40) %data2, i1 %branch2)
+        br label %exit
+
+    exit:
+        ret void
+    }
+
+    ; Function Attrs: alwaysinline nounwind
+    define internal spir_func void @main2(ptr addrspace(4) align 8 dereferenceable(40) %data, i1 %branch2)
+    {
+    entry:
+        %args17 = alloca i32, align 8
+        br i1 %branch2, label %if.else, label %exit
+
+    if.else:
+        %args17.ascast = addrspacecast ptr %args17 to ptr addrspace(4)
+        call spir_func void @main3(ptr addrspace(4) %args17.ascast)
+        br label %exit
+
+    exit:
+        ret void
+    }
+
+    ; Function Attrs: alwaysinline nounwind
+    define internal spir_func void @main3(ptr addrspace(4) %args) {
+    entry:
+    %default_args = alloca i32, align 8
+    %0 = ptrtoint ptr addrspace(4) %args to i64
+    %1 = icmp eq i64 %0, 0
+    br i1 %1, label %branch1, label %branch2
+
+    branch1:
+    %default_args.ascast = addrspacecast ptr %default_args to ptr addrspace(4)
+    br label %combined
+
+    branch2:
+    %src = bitcast ptr addrspace(4) %args to ptr addrspace(4)
+    br label %combined
+
+    combined:
+    %args.addr.017 = phi ptr addrspace(4) [ %default_args.ascast, %branch1 ], [ %src, %branch2 ]
+    store ptr addrspace(4) %args, ptr addrspace(4) %args.addr.017, align 4
+    br label %exit
+
+    exit:
+    ret void
+    }
+
+diff --git a/llvm/lib/Analysis/InstructionSimplify.cpp b/llvm/lib/Analysis/InstructionSimplify.cpp
+index 0bfea6140ab5..5daac2d08d61 100644
+--- a/llvm/lib/Analysis/InstructionSimplify.cpp
++++ b/llvm/lib/Analysis/InstructionSimplify.cpp
+@@ -2724,6 +2724,10 @@ static Constant *computePointerICmp(CmpInst::Predicate Pred, Value *LHS,
+   const Instruction *CxtI = Q.CxtI;
+   const InstrInfoQuery &IIQ = Q.IIQ;
+ 
++  // First, skip past any trivial no-ops.
++  LHS = LHS->stripPointerCasts();
++  RHS = RHS->stripPointerCasts();
++
+   // A non-null pointer is not equal to a null pointer.
+   if (isa<ConstantPointerNull>(RHS) && ICmpInst::isEquality(Pred) &&
+       llvm::isKnownNonZero(LHS, DL, 0, nullptr, nullptr, nullptr,
