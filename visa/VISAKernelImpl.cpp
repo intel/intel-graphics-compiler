@@ -2196,13 +2196,19 @@ int VISAKernelImpl::CreateVISASrcOperand(
 
   cisa_opnd = static_cast<VISA_VectorOpnd *>(getOpndFromPool());
   if (IS_GEN_BOTH_PATH) {
-    if (cisa_decl->index < Get_CISA_PreDefined_Var_Count()) {
+    G4_Declare *dcl = cisa_decl->genVar.dcl;
+    G4_Declare *aliasDcl = dcl ? dcl->getRootDeclare() : nullptr;
+
+    // replace vISA %null variable with a null src to avoid confusing later
+    // passes
+    if (cisa_decl->type == GENERAL_VAR &&
+        (cisa_decl->index == 0 ||
+         (aliasDcl && strcmp(aliasDcl->getName(), "%null") == 0))) {
+      cisa_opnd->g4opnd = m_builder->createNullSrc(dcl->getElemType());
+    } else if (cisa_decl->index < Get_CISA_PreDefined_Var_Count()) {
       cisa_opnd->g4opnd = CommonISABuildPreDefinedSrc(
           cisa_decl->index, vStride, width, hStride, rowOffset, colOffset, mod);
     } else {
-
-      // create reg region
-      G4_Declare *dcl = cisa_decl->genVar.dcl;
       const RegionDesc *rd =
           m_builder->createRegionDesc(vStride, width, hStride);
       G4_SrcModifier g4_mod = GetGenSrcModFromVISAMod(mod);
