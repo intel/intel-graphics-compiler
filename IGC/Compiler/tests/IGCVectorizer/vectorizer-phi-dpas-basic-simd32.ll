@@ -11,6 +11,8 @@
 
 define spir_kernel void @quux() {
 ; CHECK: SIMD Size: 32
+; CHECK: Seed:   %tmp111 = insertelement <8 x float> %tmp110, float %tmp97, i64 7
+; CHECK: Seed:   %tmp151 = bitcast <8 x float> %tmp150 to <8 x i32>
 
 ; CHECK-LABEL: @quux(
 ; CHECK-NEXT:  bb43:

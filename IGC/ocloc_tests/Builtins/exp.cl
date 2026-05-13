@@ -29,8 +29,7 @@ SPDX-License-Identifier: MIT
 
 // CHECK-ASM-LABEL: test_exp
 
-// CHECK-ASM: mov (2|M0)  [[REG_CONST:(r[0-9]+)]].{{.*}}:f     0x3FB8AA3B:f
-// CHECK-ASM: mul {{\(.*\)}} [[REG:(r[0-9]+|acc[0-9]+)]].{{.*}}:f {{.*}}:f  [[REG_CONST]].{{.*}}:f
+// CHECK-ASM: mul {{\(.*\)}} [[REG:(r[0-9]+|acc[0-9]+)]].{{.*}}:f {{.*}}:f 0x3FB8AA3B:f
 // CHECK-ASM: math.exp {{\(.*\)}} {{.*}}:f [[REG]].{{.*}}:f
 
 __attribute__((intel_reqd_sub_group_size(16)))
@@ -44,8 +43,7 @@ __kernel void test_exp(__global const float *A,__global const float2 *B, __globa
 
 // CHECK-ASM-LABEL: test_native_exp
 
-// CHECK-ASM: mov (2|M0)  [[REG_CONST:(r[0-9]+)]].{{.*}}:f     0x3FB8AA3B:f
-// CHECK-ASM: mul {{\(.*\)}} [[REG:(r[0-9]+|acc[0-9]+)]].{{.*}}:f {{.*}}:f  [[REG_CONST]].{{.*}}:f
+// CHECK-ASM: mul {{\(.*\)}} [[REG:(r[0-9]+|acc[0-9]+)]].{{.*}}:f {{.*}}:f 0x3FB8AA3B:f
 // CHECK-ASM: math.exp {{\(.*\)}} {{.*}}:f [[REG]].{{.*}}:f
 
 __attribute__((intel_reqd_sub_group_size(16)))
