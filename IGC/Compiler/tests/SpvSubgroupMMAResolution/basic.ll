@@ -66,7 +66,7 @@ entry:
 ;CHECK: error: in kernel 'test': __spirv_SubgroupMatrixMultiplyAccumulateINTEL: K Dim argument must be a constant scalar 32-bit integer
   %call11 = call spir_func i32 @_Z45__spirv_SubgroupMatrixMultiplyAccumulateINTEL_all_correct(i32 %iMa, i32 %iMa, <8 x i32> %iM8b, i32 %iMc, i32 51)
 
-;CHECK: error: in kernel 'test': __spirv_SubgroupMatrixMultiplyAccumulateINTEL: expected K Dim = 16 or 64 or 32 for targeted HW. Actual: 8
+;CHECK: error: in kernel 'test': __spirv_SubgroupMatrixMultiplyAccumulateINTEL: expected K Dim = 16 or 32 or 64 for targeted HW. Actual: 8
   %call12 = call spir_func i32 @_Z45__spirv_SubgroupMatrixMultiplyAccumulateINTEL_all_correct(i32 8, i32 %iMa, <8 x i32> %iM8b, i32 %iMc, i32 51)
 
 ;CHECK: error: in kernel 'test': __spirv_SubgroupMatrixMultiplyAccumulateINTEL: expected Result element type to be float32_t for K Dim = 16 for targeted HW. Actual: int32_t

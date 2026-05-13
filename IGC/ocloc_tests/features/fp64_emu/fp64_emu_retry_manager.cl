@@ -32,10 +32,10 @@ SPDX-License-Identifier: MIT
 // CHECK: .kernel fadd_kernel
 
 #pragma OPENCL EXTENSION cl_khr_fp64 : enable
-__kernel void fadd_kernel(__global double* in, __global double* out, int N) {
-    double sum = 0.0;
-    for (int i = 0; i < N; i++) {
-        sum += in[i];
-    }
-    out[get_global_id(0)] = sum;
+__kernel void fadd_kernel(__global double *in, __global double *out, int N) {
+  double sum = 0.0;
+  for (int i = 0; i < N; i++) {
+    sum += in[i];
+  }
+  out[get_global_id(0)] = sum;
 }

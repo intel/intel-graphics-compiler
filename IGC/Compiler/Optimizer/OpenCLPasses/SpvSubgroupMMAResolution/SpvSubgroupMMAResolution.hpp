@@ -59,6 +59,7 @@ private:
 
   static void populateSimd8Table();
   static void populateSimd16Table();
+  static void populateSimd16ScaledTable();
   SupportedTable *getSupportedTable();
 
   void emitError(const llvm::Twine &message, const llvm::CallInst &CI);
@@ -69,27 +70,36 @@ private:
   int getElemCount(const llvm::Type *Ty) const;
   template <typename TableType> std::string getValidTypesStr(const TableType &table) const;
 
-  bool validateI32Constant(const llvm::Value *V, const llvm::Twine &ParamName, const llvm::CallInst &CI);
-  bool validateCType(const llvm::Type *ResultTy, const llvm::Type *CType, const llvm::CallInst &CI);
-  bool validateElementType(const ElType ElemTy, llvm::StringRef ParamName, const llvm::CallInst &CI);
-  bool validateElemCounts(int M, int AElemCount, int BElemCount, uint32_t Operands, llvm::CallInst &CI);
+  bool validateI32Constant(const llvm::Value *V, const llvm::Twine &ParamName, llvm::StringRef BuiltinName,
+                           const llvm::CallInst &CI);
+  bool validateCType(const llvm::Type *ResultTy, const llvm::Type *CType, llvm::StringRef BuiltinName,
+                     const llvm::CallInst &CI);
+  bool validateElementType(const ElType ElemTy, llvm::StringRef ParamName, llvm::StringRef BuiltinName,
+                           const llvm::CallInst &CI);
+  bool validateDpasElemCounts(int M, int AElemCount, int BElemCount, uint32_t Operands, llvm::CallInst &CI);
+  bool validateBdpasElemCounts(int M, int AElemCount, int BElemCount, const llvm::CallInst &CI);
+  bool validateScaleType(const llvm::Value *Scale, llvm::StringRef ParamName, int K, const llvm::CallInst &CI);
 
   template <typename T>
-  bool validateKDimInTable(const T KIt, int K, const SupportedTable *table, const llvm::CallInst &CI);
+  bool validateKDimInTable(const T KIt, int K, const SupportedTable *table, llvm::StringRef BuiltinName,
+                           const llvm::CallInst &CI);
   template <typename T>
   bool validateResultElementInTable(const T RIt, int K, ElType ResultElemTy, const RTable &table,
-                                    const llvm::CallInst &CI);
+                                    llvm::StringRef BuiltinName, const llvm::CallInst &CI);
   template <typename T>
   bool validateAElementInTable(const T AIt, int K, ElType ResultElemTy, ElType AElemTy, const ATable &table,
-                               const llvm::CallInst &CI);
+                               llvm::StringRef BuiltinName, const llvm::CallInst &CI);
   template <typename T>
   bool validateBElementInTable(const T BIt, int K, ElType ResultElemTy, ElType AElemTy, ElType BElemTy,
-                               const BTable &table, const llvm::CallInst &CI);
+                               const BTable &table, llvm::StringRef BuiltinName, const llvm::CallInst &CI);
   template <typename T>
   bool validateOperands(const T OpIt, int K, ElType ResultElemTy, ElType AElemTy, ElType BElemTy, uint32_t Operands,
-                        const OperandsTable &operandMap, const llvm::CallInst &CI);
+                        const OperandsTable &operandMap, llvm::StringRef BuiltinName, const llvm::CallInst &CI);
 
   bool isDoubleSubgroup(llvm::CallInst &CI);
+
+  void lowerToDpasBuiltin(llvm::CallInst &CI, llvm::Function *F);
+  void lowerToBdpasBuiltin(llvm::CallInst &CI, llvm::Function *F);
 
   llvm::DenseSet<llvm::Function *> m_BuiltinsToRemove;
   bool m_Changed = false;
@@ -97,5 +107,6 @@ private:
   llvm::Module *m_Module = nullptr;
   static SupportedTable m_Simd8Table;
   static SupportedTable m_Simd16Table;
+  static SupportedTable m_Simd16ScaledTable;
 };
 } // namespace IGC

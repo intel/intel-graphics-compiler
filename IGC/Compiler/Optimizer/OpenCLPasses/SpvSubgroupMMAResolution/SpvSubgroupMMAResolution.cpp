@@ -28,9 +28,13 @@ SPDX-License-Identifier: MIT
 using namespace llvm;
 using namespace IGC;
 
+static constexpr StringRef DpasOpName = "__spirv_SubgroupMatrixMultiplyAccumulateINTEL";
+static constexpr StringRef BdpasOpName = "__spirv_SubgroupScaledMatrixMultiplyAccumulateINTEL";
+
 char SpvSubgroupMMAResolution::ID = 0;
 SpvSubgroupMMAResolution::SupportedTable SpvSubgroupMMAResolution::m_Simd8Table;
 SpvSubgroupMMAResolution::SupportedTable SpvSubgroupMMAResolution::m_Simd16Table;
+SpvSubgroupMMAResolution::SupportedTable SpvSubgroupMMAResolution::m_Simd16ScaledTable;
 
 #define PASS_FLAG "igc-spv-subgroup-mma-resolution"
 #define PASS_DESC "Lowering of SPIR-V INTEL subgroup_matrix_multiply_accumulate instructions"
@@ -83,6 +87,8 @@ enum {
   MatrixBPackedFloat8E5M2INTEL = 0x20000,
   MatrixAPackedFloat4E2M1INTEL = 0x40000,
   MatrixBPackedFloat4E2M1INTEL = 0x80000,
+  ScaleAFloat8E8M0INTEL = 0x100000,
+  ScaleBFloat8E8M0INTEL = 0x200000,
 };
 
 static std::string GetHumanReadableOperand(uint32_t operand) {
@@ -128,6 +134,10 @@ static std::string GetHumanReadableOperand(uint32_t operand) {
     operands.push_back("MatrixAPackedFloat4E2M1INTEL");
   if (operand & MatrixBPackedFloat4E2M1INTEL)
     operands.push_back("MatrixBPackedFloat4E2M1INTEL");
+  if (operand & ScaleAFloat8E8M0INTEL)
+    operands.push_back("ScaleAFloat8E8M0INTEL");
+  if (operand & ScaleBFloat8E8M0INTEL)
+    operands.push_back("ScaleBFloat8E8M0INTEL");
 
   if (operands.empty())
     return "None";
@@ -236,6 +246,57 @@ void SpvSubgroupMMAResolution::populateSimd16Table() {
       "bf_bf_e2m1_e2m1_";
 }
 
+void SpvSubgroupMMAResolution::populateSimd16ScaledTable() {
+  const uint32_t ScaleFlags = ScaleAFloat8E8M0INTEL | ScaleBFloat8E8M0INTEL;
+
+  // fp16 matrix sources, fp32 accumulator:
+  m_Simd16ScaledTable[16][ElType::F32][ElType::I16][ElType::I32]
+                     [MatrixAPackedFloat16INTEL | MatrixBPackedFloat16INTEL | ScaleFlags] = "f_f_hf_hf_";
+  // bf16 matrix sources, fp32 accumulator:
+  m_Simd16ScaledTable[16][ElType::F32][ElType::I16][ElType::I32]
+                     [MatrixAPackedBFloat16INTEL | MatrixBPackedBFloat16INTEL | ScaleFlags] = "f_f_bf_bf_";
+  // fp16 matrix sources, fp16 accumulator:
+  m_Simd16ScaledTable[16][ElType::F16][ElType::I16][ElType::I32]
+                     [MatrixAPackedFloat16INTEL | MatrixBPackedFloat16INTEL | ScaleFlags] = "hf_hf_hf_hf_";
+  // bf16 matrix sources, bf16 accumulator:
+  m_Simd16ScaledTable[16][ElType::I16][ElType::I16][ElType::I32]
+                     [MatrixResultBFloat16INTEL | MatrixAPackedBFloat16INTEL | MatrixBPackedBFloat16INTEL |
+                      MatrixCBFloat16INTEL | ScaleFlags] = "bf_bf_bf_bf_";
+
+  // fp8 matrix sources (e4m3 and e5m2), fp32 accumulator:
+  m_Simd16ScaledTable[32][ElType::F32][ElType::I16][ElType::I32]
+                     [MatrixAPackedFloat8E5M2INTEL | MatrixBPackedFloat8E5M2INTEL | ScaleFlags] = "f_f_bf8_bf8_";
+  m_Simd16ScaledTable[32][ElType::F32][ElType::I16][ElType::I32]
+                     [MatrixAPackedFloat8E4M3INTEL | MatrixBPackedFloat8E5M2INTEL | ScaleFlags] = "f_f_hf8_bf8_";
+  m_Simd16ScaledTable[32][ElType::F32][ElType::I16][ElType::I32]
+                     [MatrixAPackedFloat8E5M2INTEL | MatrixBPackedFloat8E4M3INTEL | ScaleFlags] = "f_f_bf8_hf8_";
+  m_Simd16ScaledTable[32][ElType::F32][ElType::I16][ElType::I32]
+                     [MatrixAPackedFloat8E4M3INTEL | MatrixBPackedFloat8E4M3INTEL | ScaleFlags] = "f_f_hf8_hf8_";
+
+  // fp8 matrix sources (e4m3 and e5m2), bf16 accumulator:
+  m_Simd16ScaledTable[32][ElType::I16][ElType::I16][ElType::I32]
+                     [MatrixResultBFloat16INTEL | MatrixAPackedFloat8E5M2INTEL | MatrixBPackedFloat8E5M2INTEL |
+                      MatrixCBFloat16INTEL | ScaleFlags] = "bf_bf_bf8_bf8_";
+  m_Simd16ScaledTable[32][ElType::I16][ElType::I16][ElType::I32]
+                     [MatrixResultBFloat16INTEL | MatrixAPackedFloat8E4M3INTEL | MatrixBPackedFloat8E5M2INTEL |
+                      MatrixCBFloat16INTEL | ScaleFlags] = "bf_bf_hf8_bf8_";
+  m_Simd16ScaledTable[32][ElType::I16][ElType::I16][ElType::I32]
+                     [MatrixResultBFloat16INTEL | MatrixAPackedFloat8E5M2INTEL | MatrixBPackedFloat8E4M3INTEL |
+                      MatrixCBFloat16INTEL | ScaleFlags] = "bf_bf_bf8_hf8_";
+  m_Simd16ScaledTable[32][ElType::I16][ElType::I16][ElType::I32]
+                     [MatrixResultBFloat16INTEL | MatrixAPackedFloat8E4M3INTEL | MatrixBPackedFloat8E4M3INTEL |
+                      MatrixCBFloat16INTEL | ScaleFlags] = "bf_bf_hf8_hf8_";
+
+  // fp4 matrix sources, fp32 accumulator:
+  m_Simd16ScaledTable[64][ElType::F32][ElType::I16][ElType::I32]
+                     [MatrixAPackedFloat4E2M1INTEL | MatrixBPackedFloat4E2M1INTEL | ScaleFlags] = "f_f_e2m1_e2m1_";
+
+  // fp4 matrix sources, bf16 accumulator:
+  m_Simd16ScaledTable[64][ElType::I16][ElType::I16][ElType::I32]
+                     [MatrixResultBFloat16INTEL | MatrixAPackedFloat4E2M1INTEL | MatrixBPackedFloat4E2M1INTEL |
+                      MatrixCBFloat16INTEL | ScaleFlags] = "bf_bf_e2m1_e2m1_";
+}
+
 void SpvSubgroupMMAResolution::emitError(const Twine &message, const CallInst &CI) {
   m_Ctx->EmitError(message.str().c_str(), &CI);
 }
@@ -278,24 +339,23 @@ SpvSubgroupMMAResolution::ElType SpvSubgroupMMAResolution::getValidMatrixType(co
   return Unknown;
 }
 
-bool SpvSubgroupMMAResolution::validateI32Constant(const Value *V, const Twine &ParamName, const CallInst &CI) {
+bool SpvSubgroupMMAResolution::validateI32Constant(const Value *V, const Twine &ParamName, StringRef BuiltinName,
+                                                   const CallInst &CI) {
   if (!isa<ConstantInt>(V) || !V->getType()->isIntegerTy(32)) {
-    emitError(Twine("__spirv_SubgroupMatrixMultiplyAccumulateINTEL: ") + ParamName +
-                  " argument must be a constant scalar 32-bit integer",
-              CI);
+    emitError(Twine(BuiltinName) + ": " + ParamName + " argument must be a constant scalar 32-bit integer", CI);
     return false;
   }
   return true;
 }
 
-bool SpvSubgroupMMAResolution::validateCType(const Type *ResultTy, const Type *CType, const CallInst &CI) {
+bool SpvSubgroupMMAResolution::validateCType(const Type *ResultTy, const Type *CType, StringRef BuiltinName,
+                                             const CallInst &CI) {
   if (ResultTy == CType)
     return true;
 
   std::string msg;
   raw_string_ostream rso(msg);
-  rso << "__spirv_SubgroupMatrixMultiplyAccumulateINTEL: expected Result type to match type of Matrix C for targeted "
-         "HW. Result type: ";
+  rso << BuiltinName << ": expected Result type to match type of Matrix C for targeted HW. Result type: ";
 
   ResultTy->print(rso);
   rso << ", Matrix C type: ";
@@ -305,11 +365,12 @@ bool SpvSubgroupMMAResolution::validateCType(const Type *ResultTy, const Type *C
   return false;
 }
 
-bool SpvSubgroupMMAResolution::validateElementType(const ElType ElemTy, StringRef ParamName, const CallInst &CI) {
+bool SpvSubgroupMMAResolution::validateElementType(const ElType ElemTy, StringRef ParamName, StringRef BuiltinName,
+                                                   const CallInst &CI) {
   if (ElemTy != Unknown)
     return true;
 
-  emitError(Twine("__spirv_SubgroupMatrixMultiplyAccumulateINTEL: expected ") + ParamName +
+  emitError(Twine(BuiltinName) + ": expected " + ParamName +
                 " to be a scalar or vector of int32_t, int16_t, float32_t, or float16_t for targeted HW",
             CI);
   return false;
@@ -321,35 +382,73 @@ int SpvSubgroupMMAResolution::getElemCount(const Type *Ty) const {
   return 1;
 }
 
-bool SpvSubgroupMMAResolution::validateElemCounts(int M, int AElemCount, int BElemCount, uint32_t Operands,
-                                                  CallInst &CI) {
+bool SpvSubgroupMMAResolution::validateDpasElemCounts(int M, int AElemCount, int BElemCount, uint32_t Operands,
+                                                      CallInst &CI) {
   if (M != 1 && M != 2 && M != 4 && M != 8) {
-    emitError(
-        "__spirv_SubgroupMatrixMultiplyAccumulateINTEL: M dimension must be 1, 2, 4 or 8 for targeted HW. Actual: " +
-            std::to_string(M),
-        CI);
+    emitError(Twine(DpasOpName) + ": M dimension must be 1, 2, 4 or 8 for targeted HW. Actual: " + std::to_string(M),
+              CI);
     return false;
   }
   if (Operands & MatrixATF32INTEL) {
     int expected = std::ceil(M / 2.0);
     if (AElemCount != expected) {
-      emitError("__spirv_SubgroupMatrixMultiplyAccumulateINTEL: Matrix A argument must have ceil(M/2) components "
-                "when MatrixATF32INTEL operand is set for targeted HW. Expected " +
-                    std::to_string(expected) + ". Actual " + std::to_string(M),
+      emitError(Twine(DpasOpName) +
+                    ": Matrix A argument must have ceil(M/2) components when MatrixATF32INTEL operand is set for "
+                    "targeted HW. Expected " +
+                    std::to_string(expected) + ". Actual " + std::to_string(AElemCount),
                 CI);
       return false;
     }
   } else if (AElemCount != M) {
-    emitError("__spirv_SubgroupMatrixMultiplyAccumulateINTEL: Matrix A argument must have size " + std::to_string(M) +
+    emitError(Twine(DpasOpName) + ": Matrix A argument must have size " + std::to_string(M) +
                   " to match M defined by Result type for targeted HW. Actual: " + std::to_string(AElemCount),
               CI);
     return false;
   }
   const int expectedBCount = isDoubleSubgroup(CI) ? 4 : 8;
   if (BElemCount != expectedBCount) {
-    emitError("__spirv_SubgroupMatrixMultiplyAccumulateINTEL: Matrix B argument must have " +
-                  std::to_string(expectedBCount) +
-                  " components for targeted  HW. Actual: " + std::to_string(BElemCount),
+    emitError(Twine(DpasOpName) + ": Matrix B argument must have " + std::to_string(expectedBCount) +
+                  " components for targeted HW. Actual: " + std::to_string(BElemCount),
+              CI);
+    return false;
+  }
+  return true;
+}
+
+bool SpvSubgroupMMAResolution::validateBdpasElemCounts(int M, int AElemCount, int BElemCount, const CallInst &CI) {
+  // bdpas spec fixes M = 8
+  if (M != 8) {
+    emitError(Twine(BdpasOpName) + ": M dimension must be 8 for targeted HW. Actual: " + std::to_string(M), CI);
+    return false;
+  }
+
+  if (AElemCount != 8) {
+    emitError(Twine(BdpasOpName) +
+                  ": Matrix A argument must have 8 components for targeted HW. Actual: " + std::to_string(AElemCount),
+              CI);
+    return false;
+  }
+
+  if (BElemCount != 8) {
+    emitError(Twine(BdpasOpName) +
+                  ": Matrix B argument must have 8 components for targeted HW. Actual: " + std::to_string(BElemCount),
+              CI);
+    return false;
+  }
+
+  return true;
+}
+
+bool SpvSubgroupMMAResolution::validateScaleType(const Value *Scale, StringRef ParamName, int K, const CallInst &CI) {
+  const Type *T = Scale->getType();
+  const Type *ElemTy = T->getScalarType();
+  int NElts = T->isVectorTy() ? (int)cast<FixedVectorType>(T)->getNumElements() : 1;
+  int Expected = (K == 64) ? 2 : 1;
+
+  // Scales are uint8_t for K in {16, 32} and 2 x uint8_t for K == 64
+  if (!ElemTy->isIntegerTy(8) || NElts != Expected) {
+    std::string ExpectedStr = Expected == 1 ? "uint8_t" : "2 x uint8_t";
+    emitError(Twine(BdpasOpName) + ": " + ParamName + " must be " + ExpectedStr + " for K Dim = " + std::to_string(K),
               CI);
     return false;
   }
@@ -379,15 +478,16 @@ SpvSubgroupMMAResolution::SupportedTable *SpvSubgroupMMAResolution::getSupported
 
 template <typename T>
 bool SpvSubgroupMMAResolution::validateKDimInTable(const T KIt, int K, const SupportedTable *table,
-                                                   const CallInst &CI) {
+                                                   StringRef BuiltinName, const CallInst &CI) {
   if (KIt != table->end())
     return true;
 
   SmallVector<std::string, 8> validKDims;
   for (const auto &it : *table)
     validKDims.push_back(std::to_string(it.first));
+  llvm::sort(validKDims);
 
-  emitError(Twine("__spirv_SubgroupMatrixMultiplyAccumulateINTEL: expected K Dim = ") + llvm::join(validKDims, " or ") +
+  emitError(Twine(BuiltinName) + ": expected K Dim = " + llvm::join(validKDims, " or ") +
                 " for targeted HW. Actual: " + Twine(K),
             CI);
   return false;
@@ -397,45 +497,46 @@ template <typename TableType> std::string SpvSubgroupMMAResolution::getValidType
   SmallVector<std::string, 8> validTypes;
   for (const auto &it : table)
     validTypes.push_back(getElTypeStr(it.first).str());
+  llvm::sort(validTypes);
   return llvm::join(validTypes, " or ");
 }
 
 template <typename T>
 bool SpvSubgroupMMAResolution::validateResultElementInTable(const T RIt, int K, ElType ResultElemTy,
-                                                            const RTable &table, const CallInst &CI) {
+                                                            const RTable &table, StringRef BuiltinName,
+                                                            const CallInst &CI) {
   if (RIt != table.end())
     return true;
 
-  emitError(Twine("__spirv_SubgroupMatrixMultiplyAccumulateINTEL: expected Result element type to be ") +
-                getValidTypesStr(table) + " for K Dim = " + Twine(K) +
-                " for targeted HW. Actual: " + getElTypeStr(ResultElemTy),
+  emitError(Twine(BuiltinName) + ": expected Result element type to be " + getValidTypesStr(table) +
+                " for K Dim = " + Twine(K) + " for targeted HW. Actual: " + getElTypeStr(ResultElemTy),
             CI);
   return false;
 }
 
 template <typename T>
 bool SpvSubgroupMMAResolution::validateAElementInTable(const T AIt, int K, ElType ResultElemTy, ElType AElemTy,
-                                                       const ATable &table, const CallInst &CI) {
+                                                       const ATable &table, StringRef BuiltinName, const CallInst &CI) {
   if (AIt != table.end())
     return true;
 
-  emitError(Twine("__spirv_SubgroupMatrixMultiplyAccumulateINTEL: expected A element type to be ") +
-                getValidTypesStr(table) + " for K Dim = " + Twine(K) + ", for Result element type " +
-                getElTypeStr(ResultElemTy) + ", for targeted HW. Actual: " + getElTypeStr(AElemTy),
+  emitError(Twine(BuiltinName) + ": expected A element type to be " + getValidTypesStr(table) +
+                " for K Dim = " + Twine(K) + ", for Result element type " + getElTypeStr(ResultElemTy) +
+                ", for targeted HW. Actual: " + getElTypeStr(AElemTy),
             CI);
   return false;
 }
 
 template <typename T>
 bool SpvSubgroupMMAResolution::validateBElementInTable(const T BIt, int K, ElType ResultElemTy, ElType AElemTy,
-                                                       ElType BElemTy, const BTable &table, const CallInst &CI) {
+                                                       ElType BElemTy, const BTable &table, StringRef BuiltinName,
+                                                       const CallInst &CI) {
   if (BIt != table.end())
     return true;
 
-  emitError(Twine("__spirv_SubgroupMatrixMultiplyAccumulateINTEL: expected B element type to be ") +
-                getValidTypesStr(table) + " for K Dim = " + Twine(K) + ", for Result element type " +
-                getElTypeStr(ResultElemTy) + ", for A element type " + getElTypeStr(AElemTy) +
-                ", for targeted HW. Actual: " + getElTypeStr(BElemTy),
+  emitError(Twine(BuiltinName) + ": expected B element type to be " + getValidTypesStr(table) +
+                " for K Dim = " + Twine(K) + ", for Result element type " + getElTypeStr(ResultElemTy) +
+                ", for A element type " + getElTypeStr(AElemTy) + ", for targeted HW. Actual: " + getElTypeStr(BElemTy),
             CI);
   return false;
 }
@@ -443,12 +544,12 @@ bool SpvSubgroupMMAResolution::validateBElementInTable(const T BIt, int K, ElTyp
 template <typename T>
 bool SpvSubgroupMMAResolution::validateOperands(const T OpIt, int K, ElType ResultElemTy, ElType AElemTy,
                                                 ElType BElemTy, uint32_t Operands, const OperandsTable &operandMap,
-                                                const CallInst &CI) {
+                                                StringRef BuiltinName, const CallInst &CI) {
   if (OpIt != operandMap.end())
     return true;
 
   std::stringstream ss;
-  ss << "__spirv_SubgroupMatrixMultiplyAccumulateINTEL: expected Operands to be one of these combinations:\n";
+  ss << BuiltinName.str() << ": expected Operands to be one of these combinations:\n";
   for (const auto &it : operandMap)
     ss << it.first << ": " << GetHumanReadableOperand(it.first) << "\n";
   ss << "for K Dim = " << K << ", for Result element type " << getElTypeStr(ResultElemTy).str();
@@ -460,20 +561,10 @@ bool SpvSubgroupMMAResolution::validateOperands(const T OpIt, int K, ElType Resu
   return false;
 }
 
-void SpvSubgroupMMAResolution::visitCallInst(CallInst &CI) {
-  Function *F = CI.getCalledFunction();
-  if (!F)
-    return;
-
-  StringRef funcName = F->getName();
-  if (!funcName.contains("__spirv_SubgroupMatrixMultiplyAccumulateINTEL"))
-    return;
-
+void SpvSubgroupMMAResolution::lowerToDpasBuiltin(CallInst &CI, Function *F) {
   int numArgs = IGCLLVM::getNumArgOperands(&CI);
   if (numArgs != 5) {
-    emitError("__spirv_SubgroupMatrixMultiplyAccumulateINTEL: invalid number of arguments. Expected 5. Actual " +
-                  std::to_string(numArgs),
-              CI);
+    emitError(Twine(DpasOpName) + ": invalid number of arguments. Expected 5. Actual " + std::to_string(numArgs), CI);
     return;
   }
 
@@ -483,24 +574,24 @@ void SpvSubgroupMMAResolution::visitCallInst(CallInst &CI) {
   Value *a = CI.getArgOperand(1);
   Value *b = CI.getArgOperand(2);
   Value *c = CI.getArgOperand(3);
-  Value *OpVaue = CI.getArgOperand(4);
+  Value *OpValue = CI.getArgOperand(4);
 
-  if (!validateI32Constant(OpVaue, "Operands", CI))
+  if (!validateI32Constant(OpValue, "Operands", DpasOpName, CI))
     return;
-  uint32_t Operands = cast<ConstantInt>(OpVaue)->getZExtValue();
+  uint32_t Operands = cast<ConstantInt>(OpValue)->getZExtValue();
 
-  if (!validateCType(ResultTy, c->getType(), CI))
+  if (!validateCType(ResultTy, c->getType(), DpasOpName, CI))
     return;
 
   ElType ResultElemTy = getValidMatrixType(ResultTy);
   ElType AElemTy = getValidMatrixType(a->getType());
   ElType BElemTy = getValidMatrixType(b->getType());
 
-  if (!validateElementType(ResultElemTy, "Result", CI))
+  if (!validateElementType(ResultElemTy, "Result", DpasOpName, CI))
     return;
-  if (!validateElementType(AElemTy, "Matrix A", CI))
+  if (!validateElementType(AElemTy, "Matrix A", DpasOpName, CI))
     return;
-  if (!validateElementType(BElemTy, "Matrix B", CI))
+  if (!validateElementType(BElemTy, "Matrix B", DpasOpName, CI))
     return;
 
   // The number of components in Result Type defines the M dimension.
@@ -508,32 +599,32 @@ void SpvSubgroupMMAResolution::visitCallInst(CallInst &CI) {
   int M = getElemCount(ResultTy);
   int AElemCount = getElemCount(a->getType());
   int BElemCount = getElemCount(b->getType());
-  if (!validateElemCounts(M, AElemCount, BElemCount, Operands, CI))
+  if (!validateDpasElemCounts(M, AElemCount, BElemCount, Operands, CI))
     return;
 
-  if (!validateI32Constant(kDim, "K Dim", CI))
+  if (!validateI32Constant(kDim, "K Dim", DpasOpName, CI))
     return;
   int K = cast<ConstantInt>(kDim)->getZExtValue();
 
   SupportedTable *table = getSupportedTable();
   auto KIt = table->find(K);
-  if (!validateKDimInTable(KIt, K, table, CI))
+  if (!validateKDimInTable(KIt, K, table, DpasOpName, CI))
     return;
 
   auto ResultIt = KIt->second.find(ResultElemTy);
-  if (!validateResultElementInTable(ResultIt, K, ResultElemTy, KIt->second, CI))
+  if (!validateResultElementInTable(ResultIt, K, ResultElemTy, KIt->second, DpasOpName, CI))
     return;
 
   auto AIt = ResultIt->second.find(AElemTy);
-  if (!validateAElementInTable(AIt, K, ResultElemTy, AElemTy, ResultIt->second, CI))
+  if (!validateAElementInTable(AIt, K, ResultElemTy, AElemTy, ResultIt->second, DpasOpName, CI))
     return;
 
   auto BIt = AIt->second.find(BElemTy);
-  if (!validateBElementInTable(BIt, K, ResultElemTy, AElemTy, BElemTy, AIt->second, CI))
+  if (!validateBElementInTable(BIt, K, ResultElemTy, AElemTy, BElemTy, AIt->second, DpasOpName, CI))
     return;
 
   auto OperandsIt = BIt->second.find(Operands);
-  if (!validateOperands(OperandsIt, K, ResultElemTy, AElemTy, BElemTy, Operands, BIt->second, CI))
+  if (!validateOperands(OperandsIt, K, ResultElemTy, AElemTy, BElemTy, Operands, BIt->second, DpasOpName, CI))
     return;
 
   // creating IB built-in
@@ -563,4 +654,131 @@ void SpvSubgroupMMAResolution::visitCallInst(CallInst &CI) {
 
   if (F->use_empty())
     m_BuiltinsToRemove.insert(F);
+}
+
+void SpvSubgroupMMAResolution::lowerToBdpasBuiltin(CallInst &CI, Function *F) {
+  // Validate number of arguments: 6 + 1 optional
+  int numArgs = IGCLLVM::getNumArgOperands(&CI);
+  if (numArgs != 6 && numArgs != 7) {
+    emitError(Twine(BdpasOpName) + ": invalid number of arguments. Expected 6 or 7. Actual " + std::to_string(numArgs),
+              CI);
+    return;
+  }
+
+  // Validate platform support
+  if (!m_Ctx->platform.isCoreChildOf(IGFX_XE3P_CORE)) {
+    emitError(Twine(BdpasOpName) + ": not supported on targeted HW.", CI);
+    return;
+  }
+
+  // Sub-group size 32 is spec-defined, but not yet implemented in IGC
+  if (isDoubleSubgroup(CI)) {
+    emitError(Twine(BdpasOpName) + ": sub-group size 32 is not supported yet.", CI);
+    return;
+  }
+
+  // Get arguments
+  Type *ResultTy = CI.getType();
+  Value *kDim = CI.getArgOperand(0);
+  Value *a = CI.getArgOperand(1);
+  Value *b = CI.getArgOperand(2);
+  Value *c = CI.getArgOperand(3);
+  Value *scaleA = CI.getArgOperand(4);
+  Value *scaleB = CI.getArgOperand(5);
+
+  // Get optional Operands argument
+  uint32_t Operands = 0;
+  if (numArgs == 7) {
+    Value *OpValue = CI.getArgOperand(6);
+    if (!validateI32Constant(OpValue, "Operands", BdpasOpName, CI))
+      return;
+    Operands = cast<ConstantInt>(OpValue)->getZExtValue();
+  }
+
+  // Validate argument types and values
+  if (!validateCType(ResultTy, c->getType(), BdpasOpName, CI))
+    return;
+
+  ElType ResultElemTy = getValidMatrixType(ResultTy);
+  ElType AElemTy = getValidMatrixType(a->getType());
+  ElType BElemTy = getValidMatrixType(b->getType());
+
+  if (!validateElementType(ResultElemTy, "Result", BdpasOpName, CI))
+    return;
+  if (!validateElementType(AElemTy, "Matrix A", BdpasOpName, CI))
+    return;
+  if (!validateElementType(BElemTy, "Matrix B", BdpasOpName, CI))
+    return;
+
+  int M = getElemCount(ResultTy);
+  int AElemCount = getElemCount(a->getType());
+  int BElemCount = getElemCount(b->getType());
+  if (!validateBdpasElemCounts(M, AElemCount, BElemCount, CI))
+    return;
+
+  if (!validateI32Constant(kDim, "K Dim", BdpasOpName, CI))
+    return;
+  int K = cast<ConstantInt>(kDim)->getZExtValue();
+
+  if (!validateScaleType(scaleA, "Scale A", K, CI))
+    return;
+  if (!validateScaleType(scaleB, "Scale B", K, CI))
+    return;
+
+  if (m_Simd16ScaledTable.empty())
+    populateSimd16ScaledTable();
+
+  auto KIt = m_Simd16ScaledTable.find(K);
+  if (!validateKDimInTable(KIt, K, &m_Simd16ScaledTable, BdpasOpName, CI))
+    return;
+
+  auto ResultIt = KIt->second.find(ResultElemTy);
+  if (!validateResultElementInTable(ResultIt, K, ResultElemTy, KIt->second, BdpasOpName, CI))
+    return;
+
+  auto AIt = ResultIt->second.find(AElemTy);
+  if (!validateAElementInTable(AIt, K, ResultElemTy, AElemTy, ResultIt->second, BdpasOpName, CI))
+    return;
+
+  auto BIt = AIt->second.find(BElemTy);
+  if (!validateBElementInTable(BIt, K, ResultElemTy, AElemTy, BElemTy, AIt->second, BdpasOpName, CI))
+    return;
+
+  auto OperandsIt = BIt->second.find(Operands);
+  if (!validateOperands(OperandsIt, K, ResultElemTy, AElemTy, BElemTy, Operands, BIt->second, BdpasOpName, CI))
+    return;
+
+  // Create IB built-in
+  SmallVector<Value *, 5> args({c, a, b, scaleA, scaleB});
+  SmallVector<Type *, 5> argTypes({c->getType(), a->getType(), b->getType(), scaleA->getType(), scaleB->getType()});
+  FunctionType *FT = FunctionType::get(CI.getType(), argTypes, false);
+
+  // Per spec, SD=8 and RC=8 are hardcoded
+  std::stringstream newFuncName;
+  newFuncName << "__builtin_IB_sub_group16_bdpas_" << OperandsIt->second.str() << "8_8";
+
+  auto newFunc = m_Module->getOrInsertFunction(newFuncName.str(), FT);
+  auto newCall = CallInst::Create(newFunc, args, "", &CI);
+
+  CI.replaceAllUsesWith(newCall);
+  CI.eraseFromParent();
+  m_Changed = true;
+
+  if (F->use_empty())
+    m_BuiltinsToRemove.insert(F);
+}
+
+void SpvSubgroupMMAResolution::visitCallInst(CallInst &CI) {
+  Function *F = CI.getCalledFunction();
+  if (!F)
+    return;
+
+  StringRef funcName = F->getName();
+  if (funcName.contains(BdpasOpName)) {
+    lowerToBdpasBuiltin(CI, F);
+    return;
+  }
+
+  if (funcName.contains(DpasOpName))
+    lowerToDpasBuiltin(CI, F);
 }
