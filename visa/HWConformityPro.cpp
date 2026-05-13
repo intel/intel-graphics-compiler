@@ -666,8 +666,23 @@ void HWConformityPro::fixRegRegionIntPipe(INST_LIST_ITER it, G4_BB *bb) {
         // If it would exceed 4, leave dst unchanged and let the source be fixed
         // via replaceSrcWithRawMov in the second loop below.
         if (newHorzStride <= 4) {
-          inst->getDst()->setHorzStride(newHorzStride);
-          break;
+          // If src is GRF-aligned, the second loop will skip the mov for this
+          // src (matching stride + GRF-aligned). Otherwise, a mov will be
+          // inserted with hstride = dstExecTypeBytes / TypeSize(src), which
+          // after this change equals srcStrideInBytes / TypeSize(src). Only
+          // apply the optimization when that mov hstride would still be legal
+          // (<= 4); else leave dst unchanged so the second loop emits a legal
+          // mov instead. E.g. cmp (2) null<1>:d ...,<8;1,0>:uw with src1
+          // stride 16 would otherwise force an illegal hstride of 8 on the
+          // uw mov dst.
+          bool srcGRFAligned = builder.tryToAlignOperand(
+              srcRR, builder.numEltPerGRF<Type_UB>());
+          bool movStrideLegal =
+              srcStrideInBytes <= 4u * TypeSize(srcRR->getType());
+          if (srcGRFAligned || movStrideLegal) {
+            inst->getDst()->setHorzStride(newHorzStride);
+            break;
+          }
         }
       }
     } else {
