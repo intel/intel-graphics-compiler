@@ -1843,6 +1843,9 @@ bool G4_INST::isLegalType(G4_Type type, Gen4_Operand_Number opndNum) const {
   case G4_fbl:
     return type == Type_UD;
   case G4_lzd:
+    return type == Type_UD;
+  case G4_madw:
+  case G4_mulh:
     return type == Type_D || type == Type_UD;
   case G4_sad2:
   case G4_sada2:
