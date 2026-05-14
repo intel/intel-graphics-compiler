@@ -55,6 +55,8 @@ void initializeDemandedBitsLegacyPassWrapperPass(llvm::PassRegistry &);
 void initializeLoopAccessAnalysisLegacyPassWrapperPass(llvm::PassRegistry &);
 void initializeInjectTLIMappingsLegacyPassWrapperPass(llvm::PassRegistry &);
 void initializeSimpleInlinerLegacyPassWrapperPass(llvm::PassRegistry &);
+void initializeLoopRotateLegacyPassWrapperPass(llvm::PassRegistry &);
+void initializeLoopSinkLegacyPassWrapperPass(llvm::PassRegistry &);
 
 void initializeAllLLVMWrapperPasses(llvm::PassRegistry &Registry);
 #endif // IGCLLVM_TRANSFORMS_INITIALIZE_PASSES_H

@@ -61,6 +61,9 @@ SPDX-License-Identifier: MIT
 #include "llvmWrapper/Transforms/Scalar/MemCpyOptimizer.h"
 #include "llvmWrapper/Transforms/Scalar/LoopUnrollPass.h"
 #include "llvmWrapper/Transforms/Scalar/IndVarSimplify.h"
+#include "llvmWrapper/Transforms/Scalar/LoopRotation.h"
+#include "llvmWrapper/Transforms/Scalar/LoopSink.h"
+#include "llvmWrapper/Transforms/Scalar/LowerExpectIntrinsic.h"
 #include "Compiler/IGCPassSupport.h"
 
 using namespace llvm;
@@ -96,7 +99,7 @@ void PassManagerBuilder::populateFunctionPassManager(legacy::FunctionPassManager
 
   // Lower llvm.expect to metadata before attempting transforms.
   // Compare/branch metadata may alter the behavior of passes like SimplifyCFG.
-  FPM.add(createLowerExpectIntrinsicPass());
+  FPM.add(IGCLLVM::createLegacyWrappedLowerExpectIntrinsicPass());
   FPM.add(createCFGSimplificationPass());
   FPM.add(createSROAPass());
   FPM.add(createEarlyCSEPass());
@@ -146,7 +149,7 @@ void PassManagerBuilder::addFunctionSimplificationPasses(legacy::PassManagerBase
   MPM.add(IGCLLVM::createLegacyWrappedLICMPass(LicmMssaOptCap, LicmMssaNoAccForPromotionCap,
                                                /*AllowSpeculation=*/false));
   // Rotate Loop - disable header duplication at -Oz
-  MPM.add(createLoopRotatePass(SizeLevel == 2 ? 0 : -1, false));
+  MPM.add(IGCLLVM::createLegacyWrappedLoopRotatePass(SizeLevel == 2 ? 0 : -1, false));
   // TODO: Investigate promotion cap for O1.
   MPM.add(IGCLLVM::createLegacyWrappedLICMPass(LicmMssaOptCap, LicmMssaNoAccForPromotionCap,
                                                /*AllowSpeculation=*/true));
@@ -388,7 +391,7 @@ void PassManagerBuilder::populateModulePassManager(legacy::PassManagerBase &MPM)
   // Re-rotate loops in all our loop nests. These may have fallout out of
   // rotated form due to GVN or other transformations, and the vectorizer relies
   // on the rotated form. Disable header duplication at -Oz.
-  MPM.add(createLoopRotatePass(SizeLevel == 2 ? 0 : -1, false));
+  MPM.add(IGCLLVM::createLegacyWrappedLoopRotatePass(SizeLevel == 2 ? 0 : -1, false));
 
   // Distribute loops to allow partial vectorization.  I.e. isolate dependences
   // into separate loop that would otherwise inhibit vectorization.  This is
@@ -412,7 +415,7 @@ void PassManagerBuilder::populateModulePassManager(legacy::PassManagerBase &MPM)
   // canonicalization pass that enables other optimizations. As a result,
   // LoopSink pass needs to be a very late IR pass to avoid undoing LICM
   // result too early.
-  MPM.add(createLoopSinkPass());
+  MPM.add(IGCLLVM::createLegacyWrappedLoopSinkPass());
   // Get rid of LCSSA nodes.
   MPM.add(createInstSimplifyLegacyPass());
 

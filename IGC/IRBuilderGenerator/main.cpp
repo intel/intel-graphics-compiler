@@ -1224,7 +1224,7 @@ int main(int argc, char **argv) {
   sys::PrintStackTraceOnErrorSignal(argv[0]);
   llvm::PrettyStackTraceProgram X(argc, argv);
 
-  llvm_shutdown_obj Y;
+  llvm::llvm_shutdown_obj Y;
 
   const char *Overview =
       R""""(
