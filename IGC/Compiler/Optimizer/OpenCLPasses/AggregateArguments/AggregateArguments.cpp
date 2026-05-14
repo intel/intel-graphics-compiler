@@ -253,6 +253,9 @@ bool ResolveAggregateArguments::runOnFunction(Function &F) {
     std::string allocaName = std::string(arg->getName()) + "_alloca";
     llvm::AllocaInst *base = irBuilder.CreateAlloca(structType, 0, allocaName);
 
+    if (llvm::MaybeAlign BA = arg->getParamAlign())
+      base->setAlignment(*BA);
+
     // Now that we have the alloca push the contents of the struct onto the stack
     storeArgument(arg, base, irBuilder);
 
