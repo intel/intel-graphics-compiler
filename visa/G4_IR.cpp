@@ -2173,9 +2173,25 @@ bool G4_INST::canPropagateTo(G4_INST *useInst, Gen4_Operand_Number opndNum,
 
   // The following are copied from local dataflow analysis.
   // TODO: re-examine..
-  if (((opndNum == Opnd_src0 && useInst->isSend()) && !statelessAddr) ||
-      (opndNum == Opnd_src1 && useInst->isSplitSend())) {
+  if ((opndNum == Opnd_src0 && useInst->isSend()) && !statelessAddr) {
     return false;
+  }
+  // src1 of split send is a GRF data payload: block propagation when the
+  // source is an immediate (not a GRF), indirect (HW forbids indirect send
+  // payloads), or not GRF-aligned (HWConformity enforces GRF alignment on
+  // split send src1).
+  if (opndNum == Opnd_src1 && useInst->isSplitSend()) {
+    if (src->isImm() || indirectSrc ||
+        !getBuilder().tryToAlignOperand(src, getBuilder().numEltPerGRF<Type_UB>())) {
+      return false;
+    }
+    // Ensure the source covers the full send payload.
+    unsigned src1LenBytes = useInst->getMsgDesc()->getSrc1LenBytes();
+    if (src1LenBytes > 0) {
+      unsigned srcBytes = src->getRightBound() - src->getLeftBound() + 1;
+      if (srcBytes < src1LenBytes)
+        return false;
+    }
   }
 
   auto isFloatPseudoMAD = [](G4_INST *inst) {
