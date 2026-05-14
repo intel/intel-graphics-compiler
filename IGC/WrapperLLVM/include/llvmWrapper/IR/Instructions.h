@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2018-2021 Intel Corporation
+Copyright (C) 2018-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -21,6 +21,176 @@ SPDX-License-Identifier: MIT
 #include "Probe/Assertion.h"
 
 namespace IGCLLVM {
+
+inline llvm::CallInst *createCallInst(llvm::Function *F, llvm::ArrayRef<llvm::Value *> Args, const llvm::Twine &Name,
+                                      llvm::Instruction *InsertBefore) {
+#if LLVM_VERSION_MAJOR < 18
+  return llvm::CallInst::Create(F, Args, Name, InsertBefore);
+#else
+  IGC_ASSERT(InsertBefore);
+  return llvm::CallInst::Create(F, Args, Name, InsertBefore->getIterator());
+#endif
+}
+
+inline llvm::CallInst *createCallInst(llvm::FunctionType *FTy, llvm::Value *Callee, llvm::ArrayRef<llvm::Value *> Args,
+                                      const llvm::Twine &Name, llvm::Instruction *InsertBefore) {
+#if LLVM_VERSION_MAJOR < 18
+  return llvm::CallInst::Create(FTy, Callee, Args, Name, InsertBefore);
+#else
+  IGC_ASSERT(InsertBefore);
+  return llvm::CallInst::Create(FTy, Callee, Args, Name, InsertBefore->getIterator());
+#endif
+}
+
+inline llvm::CallInst *createCallInst(llvm::FunctionCallee Callee, llvm::ArrayRef<llvm::Value *> Args,
+                                      const llvm::Twine &Name, llvm::Instruction *InsertBefore) {
+#if LLVM_VERSION_MAJOR < 18
+  return llvm::CallInst::Create(Callee, Args, Name, InsertBefore);
+#else
+  IGC_ASSERT(InsertBefore);
+  return llvm::CallInst::Create(Callee, Args, Name, InsertBefore->getIterator());
+#endif
+}
+
+inline llvm::ExtractValueInst *createExtractValueInst(llvm::Value *Agg, llvm::ArrayRef<unsigned> Idxs,
+                                                      const llvm::Twine &Name, llvm::Instruction *InsertBefore) {
+#if LLVM_VERSION_MAJOR < 18
+  return llvm::ExtractValueInst::Create(Agg, Idxs, Name, InsertBefore);
+#else
+  IGC_ASSERT(InsertBefore);
+  return llvm::ExtractValueInst::Create(Agg, Idxs, Name, InsertBefore->getIterator());
+#endif
+}
+
+inline llvm::InsertValueInst *createInsertValueInst(llvm::Value *Agg, llvm::Value *Val, llvm::ArrayRef<unsigned> Idxs,
+                                                    const llvm::Twine &Name, llvm::Instruction *InsertBefore) {
+#if LLVM_VERSION_MAJOR < 18
+  return llvm::InsertValueInst::Create(Agg, Val, Idxs, Name, InsertBefore);
+#else
+  IGC_ASSERT(InsertBefore);
+  return llvm::InsertValueInst::Create(Agg, Val, Idxs, Name, InsertBefore->getIterator());
+#endif
+}
+
+inline llvm::AllocaInst *createAllocaInst(llvm::Type *Ty, unsigned AddrSpace, llvm::Value *ArraySize,
+                                          const llvm::Twine &Name, llvm::Instruction *InsertBefore) {
+#if LLVM_VERSION_MAJOR < 18
+  return new llvm::AllocaInst(Ty, AddrSpace, ArraySize, Name, InsertBefore);
+#else
+  IGC_ASSERT(InsertBefore);
+  return new llvm::AllocaInst(Ty, AddrSpace, ArraySize, Name, InsertBefore->getIterator());
+#endif
+}
+
+inline llvm::StoreInst *createStoreInst(llvm::Value *Val, llvm::Value *Ptr, bool isVolatile,
+                                        llvm::Instruction *InsertBefore) {
+#if LLVM_VERSION_MAJOR < 18
+  return new llvm::StoreInst(Val, Ptr, isVolatile, InsertBefore);
+#else
+  IGC_ASSERT(InsertBefore);
+  return new llvm::StoreInst(Val, Ptr, isVolatile, InsertBefore->getIterator());
+#endif
+}
+
+inline llvm::LoadInst *createLoadInst(llvm::Type *Ty, llvm::Value *Ptr, const llvm::Twine &Name,
+                                      llvm::Instruction *InsertBefore) {
+#if LLVM_VERSION_MAJOR < 18
+  return new llvm::LoadInst(Ty, Ptr, Name, InsertBefore);
+#else
+  IGC_ASSERT(InsertBefore);
+  return new llvm::LoadInst(Ty, Ptr, Name, InsertBefore->getIterator());
+#endif
+}
+
+inline llvm::GetElementPtrInst *createGEPInBounds(llvm::Type *PointeeType, llvm::Value *Ptr,
+                                                  llvm::ArrayRef<llvm::Value *> IdxList, const llvm::Twine &Name,
+                                                  llvm::Instruction *InsertBefore) {
+#if LLVM_VERSION_MAJOR < 18
+  return llvm::GetElementPtrInst::CreateInBounds(PointeeType, Ptr, IdxList, Name, InsertBefore);
+#else
+  IGC_ASSERT(InsertBefore);
+  return llvm::GetElementPtrInst::CreateInBounds(PointeeType, Ptr, IdxList, Name, InsertBefore->getIterator());
+#endif
+}
+
+inline llvm::GetElementPtrInst *createGEPInst(llvm::Type *PointeeType, llvm::Value *Ptr,
+                                              llvm::ArrayRef<llvm::Value *> IdxList, const llvm::Twine &Name,
+                                              llvm::Instruction *InsertBefore) {
+#if LLVM_VERSION_MAJOR < 18
+  return llvm::GetElementPtrInst::Create(PointeeType, Ptr, IdxList, Name, InsertBefore);
+#else
+  IGC_ASSERT(InsertBefore);
+  return llvm::GetElementPtrInst::Create(PointeeType, Ptr, IdxList, Name, InsertBefore->getIterator());
+#endif
+}
+
+inline void insertBefore(llvm::Instruction *What, llvm::Instruction *Pos) {
+#if LLVM_VERSION_MAJOR < 18
+  What->insertBefore(Pos);
+#else
+  IGC_ASSERT(Pos);
+  What->insertBefore(Pos->getIterator());
+#endif
+}
+
+inline llvm::AddrSpaceCastInst *createAddrSpaceCastInst(llvm::Value *S, llvm::Type *DstTy, const llvm::Twine &Name,
+                                                        llvm::Instruction *InsertBefore) {
+#if LLVM_VERSION_MAJOR < 18
+  return new llvm::AddrSpaceCastInst(S, DstTy, Name, InsertBefore);
+#else
+  IGC_ASSERT(InsertBefore);
+  return new llvm::AddrSpaceCastInst(S, DstTy, Name, InsertBefore->getIterator());
+#endif
+}
+
+inline llvm::BitCastInst *createBitCastInst(llvm::Value *S, llvm::Type *Ty, const llvm::Twine &Name,
+                                            llvm::Instruction *InsertBefore) {
+#if LLVM_VERSION_MAJOR < 18
+  return new llvm::BitCastInst(S, Ty, Name, InsertBefore);
+#else
+  IGC_ASSERT(InsertBefore);
+  return new llvm::BitCastInst(S, Ty, Name, InsertBefore->getIterator());
+#endif
+}
+
+inline llvm::ICmpInst *createICmpInst(llvm::Instruction *InsertBefore, llvm::CmpInst::Predicate Pred, llvm::Value *LHS,
+                                      llvm::Value *RHS, const llvm::Twine &Name) {
+#if LLVM_VERSION_MAJOR < 18
+  return new llvm::ICmpInst(InsertBefore, Pred, LHS, RHS, Name);
+#else
+  IGC_ASSERT(InsertBefore);
+  return new llvm::ICmpInst(InsertBefore->getIterator(), Pred, LHS, RHS, Name);
+#endif
+}
+
+inline llvm::PHINode *createPHINode(llvm::Type *Ty, unsigned int NumReservedValue, const llvm::Twine &Name,
+                                    llvm::Instruction *InsertBefore) {
+#if LLVM_VERSION_MAJOR < 18
+  return llvm::PHINode::Create(Ty, NumReservedValue, Name, InsertBefore);
+#else
+  IGC_ASSERT(InsertBefore);
+  return llvm::PHINode::Create(Ty, NumReservedValue, Name, InsertBefore->getIterator());
+#endif
+}
+
+inline llvm::IntToPtrInst *createIntToPtrInst(llvm::Value *S, llvm::Type *Ty, const llvm::Twine &Name,
+                                              llvm::Instruction *InsertBefore) {
+#if LLVM_VERSION_MAJOR < 18
+  return new llvm::IntToPtrInst(S, Ty, Name, InsertBefore);
+#else
+  IGC_ASSERT(InsertBefore);
+  return new llvm::IntToPtrInst(S, Ty, Name, InsertBefore->getIterator());
+#endif
+}
+
+inline llvm::Instruction *getFirstNonPHI(llvm::BasicBlock *BB) {
+#if LLVM_VERSION_MAJOR < 18
+  return BB->getFirstNonPHI();
+#else
+  auto It = BB->getFirstNonPHIIt();
+  return It == BB->end() ? nullptr : &*It;
+#endif
+}
 
 inline llvm::Value *getCalledValue(llvm::CallInst &CI) { return CI.getCalledOperand(); }
 
@@ -69,14 +239,6 @@ inline bool isFreezeInst(llvm::Instruction *I) { return llvm::isa<llvm::FreezeIn
 inline bool isDebugOrPseudoInst(const llvm::Instruction &I) { return I.isDebugOrPseudoInst(); }
 
 inline bool comesBefore(llvm::Instruction *A, llvm::Instruction *B) { return A->comesBefore(B); }
-
-inline void insertBefore(llvm::Instruction *I, llvm::Instruction *InsertPos) {
-#if LLVM_VERSION_MAJOR >= 22
-  I->insertBefore(InsertPos->getIterator());
-#else
-  I->insertBefore(InsertPos);
-#endif
-}
 
 inline llvm::Type *getGEPIndexedType(llvm::Type *Ty, llvm::SmallVectorImpl<unsigned> &indices) {
   llvm::SmallVector<llvm::Value *, 8> gepIndices;

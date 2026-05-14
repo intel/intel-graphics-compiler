@@ -52,7 +52,7 @@ void PreprocessSPVIR::createCallAndReplace(CallInst &oldCallInst, StringRef newF
   FunctionType *FT = FunctionType::get(oldCallInst.getType(), argTypes, false);
   auto *newFunction = cast<Function>(m_Module->getOrInsertFunction(newFuncName, FT, F->getAttributes()));
   newFunction->setCallingConv(F->getCallingConv());
-  CallInst *newCall = CallInst::Create(newFunction, args, "", &oldCallInst);
+  CallInst *newCall = IGCLLVM::createCallInst(newFunction, args, "", &oldCallInst);
   newCall->setCallingConv(oldCallInst.getCallingConv());
   newCall->setAttributes(oldCallInst.getAttributes());
   oldCallInst.replaceAllUsesWith(newCall);
@@ -68,7 +68,12 @@ void PreprocessSPVIR::createCallAndReplace(CallInst &oldCallInst, StringRef newF
 // IGC supports clang-consistent representation of printf (which is unmangled,
 // variadic function), all printf calls must get replaced.
 void PreprocessSPVIR::visitOpenCLEISPrintf(llvm::CallInst &CI) {
-  FunctionType *FT = FunctionType::get(CI.getType(), Type::getInt8PtrTy(m_Module->getContext(), 2), true);
+  FunctionType *FT = nullptr;
+#if LLVM_VERSION_MAJOR >= 18
+  FT = FunctionType::get(CI.getType(), PointerType::get(m_Module->getContext(), 2), true);
+#else
+  FT = FunctionType::get(CI.getType(), Type::getInt8PtrTy(m_Module->getContext(), 2), true);
+#endif
   Function *newPrintf = cast<Function>(m_Module->getOrInsertFunction("printf", FT));
   CI.setCalledFunction(newPrintf);
 
@@ -114,11 +119,11 @@ void PreprocessSPVIR::processBuiltinsWithArrayArguments(llvm::Function &F) {
         }
 
         auto FBegin = CI->getFunction()->begin()->getFirstInsertionPt();
-        auto *Alloca = new AllocaInst(T, 0, "", &(*FBegin));
-        new StoreInst(arg, Alloca, false, CI);
+        auto *Alloca = IGCLLVM::createAllocaInst(T, 0, /*ArraySize=*/nullptr, "", &(*FBegin));
+        IGCLLVM::createStoreInst(arg, Alloca, false, CI);
         auto *Zero = ConstantInt::getNullValue(Type::getInt32Ty(T->getContext()));
         Value *Index[] = {Zero, Zero};
-        auto *GEP = GetElementPtrInst::CreateInBounds(T, Alloca, Index, "", CI);
+        auto *GEP = IGCLLVM::createGEPInBounds(T, Alloca, Index, "", CI);
         newArgs.push_back(GEP);
       }
 

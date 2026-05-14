@@ -392,9 +392,10 @@ void HandleSpirvDecorationMetadata::handleCacheControlINTELFor2DBlockIO(CallInst
 
   FunctionType *FT = FunctionType::get(I.getType(), argTypes, false);
   std::string newFuncName = "__internal_" + unmangledName.str() + "_cache_controls";
-  auto newFunction = m_Module->getOrInsertFunction(newFuncName, FT);
 
-  auto newCall = CallInst::Create(newFunction, args, "", &I);
+  auto newFunction = m_Module->getOrInsertFunction(newFuncName, FT);
+  auto newCall = IGCLLVM::createCallInst(newFunction, args, "", &I);
+
   I.replaceAllUsesWith(newCall);
   I.eraseFromParent();
   m_changed = true;
@@ -459,9 +460,10 @@ void HandleSpirvDecorationMetadata::handleCacheControlINTELForPrefetch(llvm::Cal
 
   FunctionType *FT = FunctionType::get(I.getType(), argTypes, false);
   std::string newFuncName = "__lsc_prefetch_cache_controls";
-  auto newFunction = m_Module->getOrInsertFunction(newFuncName, FT);
 
-  auto newCall = CallInst::Create(newFunction, args, "", &I);
+  auto newFunction = m_Module->getOrInsertFunction(newFuncName, FT);
+  auto newCall = IGCLLVM::createCallInst(newFunction, args, "", &I);
+
   I.replaceAllUsesWith(newCall);
   I.eraseFromParent();
   m_changed = true;
@@ -541,9 +543,10 @@ void HandleSpirvDecorationMetadata::handleCacheControlINTELFor1DBlockIO(CallInst
 
   FunctionType *funcTy = FunctionType::get(I.getType(), argTypes, false);
   std::string newFuncName = "__internal_" + funcName + "_" + typeName + "_cache_controls";
-  auto newFunction = m_Module->getOrInsertFunction(newFuncName, funcTy);
 
-  auto newCall = CallInst::Create(newFunction, args, "", &I);
+  auto newFunction = m_Module->getOrInsertFunction(newFuncName, funcTy);
+  auto newCall = IGCLLVM::createCallInst(newFunction, args, "", &I);
+
   I.replaceAllUsesWith(newCall);
   I.eraseFromParent();
   m_changed = true;
@@ -617,9 +620,10 @@ void HandleSpirvDecorationMetadata::handleCacheControlINTELForOCL1DBlockPrefetch
 
   auto *funcTy = FunctionType::get(I.getType(), argTypes, false);
   auto newFuncName = "__internal_SubgroupBlockPrefetchINTEL_" + typeName + "_cache_controls";
-  auto newFunction = m_Module->getOrInsertFunction(newFuncName, funcTy);
 
-  auto newCall = CallInst::Create(newFunction, args, "", &I);
+  auto newFunction = m_Module->getOrInsertFunction(newFuncName, funcTy);
+  auto newCall = IGCLLVM::createCallInst(newFunction, args, "", &I);
+
   I.replaceAllUsesWith(newCall);
   I.eraseFromParent();
   m_changed = true;
@@ -707,7 +711,7 @@ void HandleSpirvDecorationMetadata::handleFPRoundingMode(Instruction &I, SmallPt
   Args.push_back(ConstantInt::get(Type::getInt32Ty(I.getContext()), ComputeRM));
 
   Function *IntrinsicFunc = GenISAIntrinsic::getDeclaration(m_Module, IntrinsicId, ComputeType);
-  auto *NewCall = CallInst::Create(IntrinsicFunc, Args, Name, &I);
+  auto *NewCall = IGCLLVM::createCallInst(IntrinsicFunc, Args, Name, &I);
   NewCall->copyFastMathFlags(&I);
   NewCall->setDebugLoc(I.getDebugLoc());
 
@@ -722,7 +726,7 @@ void HandleSpirvDecorationMetadata::handleFPRoundingMode(Instruction &I, SmallPt
     };
     Type *OverloadTypes[] = {OpType, ComputeType};
     Function *FtofFunc = GenISAIntrinsic::getDeclaration(m_Module, SpirvRMToFtof[RoundingMode], OverloadTypes);
-    Result = CallInst::Create(FtofFunc, {NewCall}, "ftof_rm", &I);
+    Result = IGCLLVM::createCallInst(FtofFunc, {NewCall}, "ftof_rm", &I);
     cast<Instruction>(Result)->setDebugLoc(I.getDebugLoc());
   }
 
