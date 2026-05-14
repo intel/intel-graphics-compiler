@@ -1414,6 +1414,7 @@ void OptimizeIR(CodeGenContext *const pContext) {
     mpm.add(llvm::createEarlyCSEPass());
 
 
+
     if (pContext->m_instrTypes.CorrelatedValuePropagationEnable) {
       mpm.add(IGCLLVM::createLegacyWrappedCorrelatedValuePropagationPass());
     }

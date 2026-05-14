@@ -1010,7 +1010,10 @@ Value *RTBuilder::getPrimitiveIndex(RTBuilder::StackPointerVal *perLaneStackPtr,
   }
 }
 
+
 Value *RTBuilder::getPrimitiveIndex(RTBuilder::StackPointerVal *perLaneStackPtr, Value *leafType, Value *ShaderTy) {
+
+
     switch (getMemoryStyle()) {
 #define STYLE(X)                                                                                                       \
   case RTMemoryStyle::X:                                                                                               \
@@ -1039,6 +1042,8 @@ Value *RTBuilder::getGeometryIndex(RTBuilder::StackPointerVal *perLaneStackPtr, 
 }
 
 Value *RTBuilder::getGeometryIndex(RTBuilder::StackPointerVal *perLaneStackPtr, Value *leafType, Value *ShaderTy) {
+
+
     switch (getMemoryStyle()) {
 #define STYLE(X)                                                                                                       \
   case RTMemoryStyle::X:                                                                                               \

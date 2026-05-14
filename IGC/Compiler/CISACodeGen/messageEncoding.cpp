@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -679,5 +679,6 @@ uint BindlessThreadDispatch(const uint messageLength, const uint SIMDMode, const
 
   return messageDescriptor.DW0.Value;
 }
+
 
 } // namespace IGC

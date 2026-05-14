@@ -24814,6 +24814,7 @@ void EmitPass::emitTraceRay(TraceRayIntrinsic *I, bool RayQueryEnable) {
   m_encoder->Push();
 }
 
+
 void EmitPass::emitTraceRayEff64(TraceRayIntrinsic *instruction, bool rayQueryEnable) {
   // We emit a SW fence here to prevent motion of other sends across this
   // send.rta until we have VISA support. An actual fence was previously

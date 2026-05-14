@@ -1996,6 +1996,7 @@ VISA_StateOpndHandle *CEncoder::GetBTIOperand(uint bindingTableIndex) {
   return GetVISASurfaceOpnd(predDefSurface, &tempImm);
 }
 
+
 void CEncoder::TraceRay(CVariable *destination, TRACE_RAY_OPCODE opcode, CVariable *globalBufferPointer,
                         STACK_ADDRESS_MODE stackAddressMode, CVariable *payload) {
   [[maybe_unused]] VISA_RawOpnd *dstOpnd = GetRawDestination(destination);

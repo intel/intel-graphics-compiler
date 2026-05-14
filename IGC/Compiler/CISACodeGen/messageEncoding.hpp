@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -637,6 +637,7 @@ struct TraceRayBTDMessageDescriptorGen12 {
     unsigned int Value;
   } DW0;
 };
+
 
 /*****************************************************************************\
 STRUCT: VMEMessageDescriptorGen8_0
