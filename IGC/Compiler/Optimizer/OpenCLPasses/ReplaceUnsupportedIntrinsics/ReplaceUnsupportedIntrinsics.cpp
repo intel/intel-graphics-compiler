@@ -106,6 +106,7 @@ private:
   void replaceLRound(IntrinsicInst *I);
   void replaceLRint(IntrinsicInst *I);
   void replaceCountTheLeadingZeros(IntrinsicInst *I);
+  void replaceCountTheTrailingZeros(IntrinsicInst *I);
   void replaceMinMax(IntrinsicInst *I);
   void replaceI1MinMax(IntrinsicInst *I);
   void replaceI64MinMax(IntrinsicInst *I);
@@ -143,6 +144,7 @@ const std::map<Intrinsic::ID, ReplaceUnsupportedIntrinsics::MemFuncPtr_t>
     { Intrinsic::lrint,                         &ReplaceUnsupportedIntrinsics::replaceLRint },
     { Intrinsic::llrint,                        &ReplaceUnsupportedIntrinsics::replaceLRint },
     { Intrinsic::ctlz,                          &ReplaceUnsupportedIntrinsics::replaceCountTheLeadingZeros },
+    { Intrinsic::cttz,                          &ReplaceUnsupportedIntrinsics::replaceCountTheTrailingZeros },
     { Intrinsic::smax,                          &ReplaceUnsupportedIntrinsics::replaceMinMax },
     { Intrinsic::smin,                          &ReplaceUnsupportedIntrinsics::replaceMinMax },
     { Intrinsic::umax,                          &ReplaceUnsupportedIntrinsics::replaceMinMax },
@@ -1365,6 +1367,82 @@ Value *ReplaceUnsupportedIntrinsics::evaluateCtlz64bit(IGCLLVM::IRBuilder<> *Bui
   Value *retVal = Builder->CreateSelect(cmp, lowBits, hiBits);
   retVal = Builder->CreateZExt(retVal, singleElementType);
   return retVal;
+}
+
+// Gen HW has no native count-trailing-zeros. Lower llvm.cttz to the vISA
+// primitive ISA_FBL (exposed as GenISA_firstbitLo), which returns the
+// position of the lowest set bit for non-zero inputs and 0xFFFFFFFF for
+// zero. The LLVM LangRef defines llvm.cttz as:
+//   declare iN @llvm.cttz.iN(iN <src>, i1 <is_zero_poison>)
+// When is_zero_poison == false, llvm.cttz(0) must return the source
+// bit-width; firstbitLo's 0xFFFFFFFF result is wrong for that case, so a
+// select against the zero input is emitted to substitute the bit-width.
+// When is_zero_poison == true, firstbitLo's result on zero is poison
+// anyway and the select is omitted. All supported widths (i8/i16/i32/i64)
+// are routed through firstbitLo on i32, with i64 split into hi/lo halves.
+void ReplaceUnsupportedIntrinsics::replaceCountTheTrailingZeros(IntrinsicInst *I) {
+  IGC_ASSERT(I->getIntrinsicID() == Intrinsic::cttz);
+
+  Type *DstType = I->getType();
+  Type *ElementType = DstType;
+  uint32_t NumElements = 1;
+  bool IsVector = DstType->isVectorTy();
+
+  if (IsVector) {
+    auto *FVT = cast<IGCLLVM::FixedVectorType>(DstType);
+    NumElements = (uint32_t)FVT->getNumElements();
+    ElementType = FVT->getElementType();
+  }
+
+  int Bits = ElementType->getScalarSizeInBits();
+  IGC_ASSERT_MESSAGE(Bits == 8 || Bits == 16 || Bits == 32 || Bits == 64,
+                     "Currently for Intrinsic::cttz we support source bit size: 8,16,32,64");
+
+  IGCLLVM::IRBuilder<> Builder(I);
+  Module *M = I->getModule();
+  Function *FirstbitLo = GenISAIntrinsic::getDeclaration(M, GenISAIntrinsic::GenISA_firstbitLo);
+
+  Value *InputVal = I->getArgOperand(0);
+  bool IsZeroPoison = cast<ConstantInt>(I->getArgOperand(1))->isOne();
+
+  Value *OutputVal = llvm::PoisonValue::get(DstType);
+
+  for (uint32_t Idx = 0; Idx < NumElements; ++Idx) {
+    Value *X = IsVector ? Builder.CreateExtractElement(InputVal, Idx) : InputVal;
+    Value *Result = nullptr;
+
+    if (Bits == 64) {
+      // Split i64 into lo/hi i32 halves and combine the per-half results.
+      Value *Lo = Builder.CreateTrunc(X, Builder.getInt32Ty());
+      Value *Hi = Builder.CreateTrunc(Builder.CreateLShr(X, 32), Builder.getInt32Ty());
+      Value *FblLo = Builder.CreateCall(FirstbitLo, {Lo});
+      Value *FblHi = Builder.CreateCall(FirstbitLo, {Hi});
+      Value *LoIsZero = Builder.CreateICmpEQ(Lo, Builder.getInt32(0));
+      Value *FblHiPlus32 = Builder.CreateAdd(FblHi, Builder.getInt32(32));
+      Value *Combined = Builder.CreateSelect(LoIsZero, FblHiPlus32, FblLo);
+      if (!IsZeroPoison) {
+        Value *XIsZero = Builder.CreateICmpEQ(X, Builder.getInt64(0));
+        Combined = Builder.CreateSelect(XIsZero, Builder.getInt32(64), Combined);
+      }
+      Result = Builder.CreateZExt(Combined, Builder.getInt64Ty());
+    } else {
+      Value *X32 = (Bits == 32) ? X : Builder.CreateZExt(X, Builder.getInt32Ty());
+      Value *Fbl = Builder.CreateCall(FirstbitLo, {X32});
+      if (!IsZeroPoison) {
+        Value *XIsZero = Builder.CreateICmpEQ(X, ConstantInt::get(ElementType, 0));
+        Fbl = Builder.CreateSelect(XIsZero, Builder.getInt32(Bits), Fbl);
+      }
+      Result = (Bits == 32) ? Fbl : Builder.CreateTrunc(Fbl, ElementType);
+    }
+
+    if (IsVector)
+      OutputVal = Builder.CreateInsertElement(OutputVal, Result, Builder.getInt32(Idx));
+    else
+      OutputVal = Result;
+  }
+
+  I->replaceAllUsesWith(OutputVal);
+  I->eraseFromParent();
 }
 
 void ReplaceUnsupportedIntrinsics::visitIntrinsicInst(IntrinsicInst &I) {
