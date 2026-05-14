@@ -18,8 +18,9 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/Attributes.h>
 #include <llvm/IR/IRBuilder.h>
 #include "common/LLVMWarningsPop.hpp"
-#include "llvmWrapper/IR/Type.h"
+#include "llvmWrapper/IR/Attributes.h"
 #include "llvmWrapper/IR/Function.h"
+#include "llvmWrapper/IR/Type.h"
 
 #include "Probe/Assertion.h"
 
@@ -101,7 +102,7 @@ bool transformConstExprCastCall(CallInst &Call) {
       return false; // Cannot transform this parameter value.
 
     AttrBuilder AB(FT->getContext(), CallerPAL.getParamAttrs(i));
-    if (AB.overlaps(AttributeFuncs::typeIncompatible(ParamTy)))
+    if (AB.overlaps(IGCLLVM::typeIncompatible(ParamTy, Call.getAttributes().getParamAttrs(i))))
       return false; // Attribute not compatible with transformed value.
 
     if (Call.isInAllocaArgument(i))
@@ -150,7 +151,7 @@ bool transformConstExprCastCall(CallInst &Call) {
   AttrBuilder RAttrs(FT->getContext(), CallerPAL.getRetAttrs());
   // If the return value is not being used, the type may not be compatible
   // with the existing attributes.  Wipe out any problematic attributes.
-  RAttrs.remove(AttributeFuncs::typeIncompatible(NewRetTy));
+  RAttrs.remove(IGCLLVM::typeIncompatible(NewRetTy, Call.getAttributes().getRetAttrs()));
 
   LLVMContext &Ctx = Call.getContext();
   AI = Call.arg_begin();

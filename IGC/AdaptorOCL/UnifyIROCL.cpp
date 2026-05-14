@@ -298,7 +298,7 @@ static void CommonOCLBasedPasses(OpenCLProgramContext *pContext) {
 
   // right now we don't support any standard function in the code gen
   // maybe we want to support some at some point to take advantage of LLVM optimizations
-  TargetLibraryInfoImpl TLI;
+  TargetLibraryInfoImpl TLI(Triple(pContext->getModule()->getTargetTriple()));
   TLI.disableAllFunctions();
 
   mpm.add(new llvm::TargetLibraryInfoWrapperPass(TLI));

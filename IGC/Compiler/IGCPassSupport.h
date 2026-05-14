@@ -45,11 +45,17 @@ See LICENSE.TXT for details.
 
 #define IGC_INITIALIZE_AG_DEPENDENCY(depName) INITIALIZE_AG_DEPENDENCY(depName)
 
+#if LLVM_VERSION_MAJOR >= 22
+#define IGC_PASS_RETURN_PI
+#else
+#define IGC_PASS_RETURN_PI return PI;
+#endif
+
 #define IGC_INITIALIZE_PASS_END(passName, arg, name, cfg, analysis)                                                    \
   PassInfo *PI =                                                                                                       \
       new PassInfo(name, arg, &passName ::ID, PassInfo::NormalCtor_t(callDefaultCtor<passName>), cfg, analysis);       \
   Registry.registerPass(*PI, true);                                                                                    \
-  return PI;                                                                                                           \
+  IGC_PASS_RETURN_PI                                                                                                   \
   }                                                                                                                    \
   static llvm::once_flag Initialize##passName##PassFlag;                                                               \
   void initialize##passName##Pass(PassRegistry &Registry) {                                                            \

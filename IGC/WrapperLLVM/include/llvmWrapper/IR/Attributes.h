@@ -32,6 +32,14 @@ inline void addCapture(llvm::AttributeList &list, llvm::LLVMContext &ctx, uint8_
 #endif
 }
 
+inline llvm::AttributeMask typeIncompatible(llvm::Type *Ty, llvm::AttributeSet AS = llvm::AttributeSet()) {
+#if LLVM_VERSION_MAJOR >= 22
+  return llvm::AttributeFuncs::typeIncompatible(Ty, AS);
+#else
+  return llvm::AttributeFuncs::typeIncompatible(Ty);
+#endif
+}
+
 } // namespace IGCLLVM
 
 #endif // IGCLLVM_IR_ATTRIBUTES_H

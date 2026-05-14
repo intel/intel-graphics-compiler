@@ -70,6 +70,14 @@ inline bool isDebugOrPseudoInst(const llvm::Instruction &I) { return I.isDebugOr
 
 inline bool comesBefore(llvm::Instruction *A, llvm::Instruction *B) { return A->comesBefore(B); }
 
+inline void insertBefore(llvm::Instruction *I, llvm::Instruction *InsertPos) {
+#if LLVM_VERSION_MAJOR >= 22
+  I->insertBefore(InsertPos->getIterator());
+#else
+  I->insertBefore(InsertPos);
+#endif
+}
+
 inline llvm::Type *getGEPIndexedType(llvm::Type *Ty, llvm::SmallVectorImpl<unsigned> &indices) {
   llvm::SmallVector<llvm::Value *, 8> gepIndices;
   gepIndices.reserve(indices.size() + 1);

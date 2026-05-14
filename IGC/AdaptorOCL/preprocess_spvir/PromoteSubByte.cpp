@@ -12,6 +12,7 @@ SPDX-License-Identifier: MIT
 #include "PreprocessSPVIR.h"
 #include "BiFManager/BiFManagerHandler.hpp"
 #include "llvmWrapper/IR/DerivedTypes.h"
+#include "llvmWrapper/IR/Instructions.h"
 #include "llvmWrapper/IR/Type.h"
 #include "llvmWrapper/Support/Alignment.h"
 #include "llvmWrapper/Transforms/Utils/Cloning.h"
@@ -452,7 +453,7 @@ Value *PromoteSubByte::getOrCreatePromotedValue(Value *value) {
 
     if (isIntegerTy(value, 1)) {
       auto clone = instruction->clone();
-      clone->insertBefore(instruction);
+      IGCLLVM::insertBefore(clone, instruction);
       instruction->replaceAllUsesWith(clone);
       newValue = convertI1ToI8(clone, instruction);
     }
@@ -572,8 +573,12 @@ Function *PromoteSubByte::promoteFunction(Function *function) {
           userInstructions.push_back(instruction);
         }
       }
+#if LLVM_VERSION_MAJOR >= 22
+      auto cast = castTo(newArg, arg.getType(), &*newFunction->getEntryBlock().getFirstNonPHIIt());
+#else
+      auto cast = castTo(newArg, arg.getType(), &*newFunction->getEntryBlock().getFirstNonPHI());
+#endif
 
-      auto cast = castTo(newArg, arg.getType(), newFunction->getEntryBlock().getFirstNonPHI());
       for (auto &instruction : userInstructions) {
         instruction->replaceUsesOfWith(newArg, cast);
       }
