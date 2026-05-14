@@ -6641,6 +6641,10 @@ bool G4_BB_SB::dpasCanFwd(SBNode &curNode, SBNode &nextNode) const {
   SBFootprint *curDst = curNode.getFirstFootprint(Opnd_dst);
   SBFootprint *nextSrc0 = nextNode.getFirstFootprint(Opnd_src0);
   SBFootprint *nextDst = nextNode.getFirstFootprint(Opnd_dst);
+
+  if (!nextSrc0)
+    return false;
+
   if (builder.allowsMixedDstAndSrc0TypesInMacro() &&
       cur.isDstAndSrc0MixOfBF16AndFP32() &&
       next.isDstAndSrc0MixOfBF16AndFP32()) {
