@@ -3274,21 +3274,20 @@ std::optional<std::pair<Value *, unsigned>> CodeGenPatternMatch::matchStateIndex
   using namespace llvm::PatternMatch;
   Value *TmpBase = nullptr;
   ConstantInt *SurfaceOffset = nullptr;
-  if (match(resourcePtr, m_IntToPtr(m_c_Add(m_Value(TmpBase), m_ConstantInt(SurfaceOffset))))) {
-    unsigned SurfaceStateSize =
-        sampler ? m_Platform.GetBindlessSamplerSize() : m_ctx->m_DriverInfo.getSurfaceStateSize();
-    uint64_t Offset = SurfaceOffset->getZExtValue();
-    if (Offset % SurfaceStateSize == 0) {
-      uint64_t Idx = Offset / SurfaceStateSize;
-      if ((!sampler && TmpBase->getType()->getPrimitiveSizeInBits() == 64 &&
-           // vISA has emulation for larger indices, but let's
-           // just not waste time emulating it.
-           Idx < 32) ||
-          (sampler && Idx < 7)) {
-        return std::make_pair(TmpBase, unsigned(Idx));
-      }
-    }
-  }
+  if (!match(resourcePtr, m_IntToPtr(m_c_Add(m_Value(TmpBase), m_ConstantInt(SurfaceOffset)))))
+    return {};
+
+  unsigned SurfaceStateSize = sampler ? m_Platform.GetBindlessSamplerSize() : m_ctx->m_DriverInfo.getSurfaceStateSize();
+  if (SurfaceStateSize == 0)
+    return {};
+
+  uint64_t Offset = SurfaceOffset->getZExtValue();
+  if (Offset % SurfaceStateSize != 0)
+    return {};
+
+  uint64_t Idx = Offset / SurfaceStateSize;
+  if ((!sampler && TmpBase->getType()->getPrimitiveSizeInBits() == 64 && Idx < 32) || (sampler && Idx < 7))
+    return std::make_pair(TmpBase, unsigned(Idx));
   return {};
 }
 

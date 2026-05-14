@@ -27,6 +27,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CISACodeGen/CodeSinking.hpp"
 #include "Compiler/CISACodeGen/LatencyHidingAnalysis.hpp"
 #include "Compiler/CISACodeGen/AddressArithmeticSinking.hpp"
+#include "Compiler/CISACodeGen/StateIndexAddrChainCanonicalize.hpp"
 #include "Compiler/CISACodeGen/AtomicOptPass.hpp"
 #include "Compiler/CISACodeGen/BlockMemOpAddrScalarizationPass.hpp"
 #include "Compiler/CISACodeGen/SinkCommonOffsetFromGEP.h"
@@ -415,19 +416,32 @@ void AddAnalysisPasses(CodeGenContext &ctx, IGCPassManager &mpm) {
     mpm.add(new StackOverflowDetectionPass(StackOverflowDetectionPass::Mode::RemoveDummyCalls));
   }
 
-  if (ctx.platform.hasEfficient64bEnabled() && IGC_IS_FLAG_ENABLED(EnableSinkPointerConstAdd)) {
-    mpm.add(createSinkPointerConstAddPass());
-    if (IGC_IS_FLAG_ENABLED(EnableRedundantOpsCSE)) {
-      // Cross-BB CSE extends the result's live range across BB boundaries.
-      // In large, complex shaders near the GRF pressure limit, this can
-      // perturb the register allocator, causing minor ALU Time regressions.
-      // Skip cross-BB mode for high-complexity shaders, following the
-      // pattern used for EarlyCSE (line ~1594) and LICM (line ~1603).
-      bool highComplexity = (IGC_GET_FLAG_VALUE(RedundantOpsCrossBBInstThreshold) != 0 &&
-                             ctx.m_instrTypes.numInsts > IGC_GET_FLAG_VALUE(RedundantOpsCrossBBInstThreshold)) &&
-                            (IGC_GET_FLAG_VALUE(RedundantOpsCrossBBNumBBThreshold) != 0 &&
-                             ctx.m_instrTypes.numBB > IGC_GET_FLAG_VALUE(RedundantOpsCrossBBNumBBThreshold));
-      mpm.add(createRedundantOpsCSEPass(!highComplexity));
+  if (ctx.platform.hasEfficient64bEnabled()) {
+    if (IGC_IS_FLAG_ENABLED(EnableSinkPointerConstAdd)) {
+      mpm.add(createSinkPointerConstAddPass());
+
+      if (IGC_IS_FLAG_ENABLED(EnableRedundantOpsCSE)) {
+        // Cross-BB CSE extends the result's live range across BB boundaries.
+        // In large, complex shaders near the GRF pressure limit, this can
+        // perturb the register allocator, causing minor ALU Time regressions.
+        // Skip cross-BB mode for high-complexity shaders, following the
+        // pattern used for EarlyCSE (line ~1594) and LICM (line ~1603).
+        bool highComplexity = (IGC_GET_FLAG_VALUE(RedundantOpsCrossBBInstThreshold) != 0 &&
+                               ctx.m_instrTypes.numInsts > IGC_GET_FLAG_VALUE(RedundantOpsCrossBBInstThreshold)) &&
+                              (IGC_GET_FLAG_VALUE(RedundantOpsCrossBBNumBBThreshold) != 0 &&
+                               ctx.m_instrTypes.numBB > IGC_GET_FLAG_VALUE(RedundantOpsCrossBBNumBBThreshold));
+        mpm.add(createRedundantOpsCSEPass(!highComplexity));
+      }
+    }
+
+    if (IGC_IS_FLAG_ENABLED(EnableStateIndexAddrChainCanonicalize)) {
+      // Hoist buried constants in addr-chains feeding inttoptr-resource-pointers
+      // so that matchStateIndex's downstream lookup is a one-shot match. Placed
+      // after SinkPointerConstAdd / RedundantOpsCSE so we see the final shape of
+      // the chain. The pass mutates IR (creates new adds, deletes the old chain);
+      // any subsequent WIAnalysis run picks up fresh WI-deps for the new
+      // instructions automatically.
+      mpm.add(createStateIndexAddrChainCanonicalizePass());
     }
   }
 

@@ -677,6 +677,12 @@ DECLARE_IGC_REGKEY(DWORD, RedundantOpsCrossBBNumBBThreshold, 500,
                    false)
 DECLARE_IGC_REGKEY(bool, EnableMatchDecomposedHalfExtract, true, "Reconstruct LLVM16+ decomposed half extraction",
                    false)
+DECLARE_IGC_REGKEY(bool, EnableStateIndexAddrChainCanonicalize, true,
+                   "Enable surface state index address chain canonicalize pass", false)
+DECLARE_IGC_REGKEY(DWORD, StateIndexAddrChainCanonicalizeInstThreshold, 3000,
+                   "Disable StateIndexAddrChainCanonicalize when the function instruction count exceeds this "
+                   "threshold. 0 = never disable based on inst count.",
+                   false)
 
 DECLARE_IGC_GROUP("Shader debugging")
 DECLARE_IGC_REGKEY(bool, CopyA0ToDBG0, false, " Copy a0 used for extended msg descriptor to dbg0 to help debug", false)

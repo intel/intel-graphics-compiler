@@ -321,3 +321,4 @@ void initializeWaveBallotCSEPass(llvm::PassRegistry &);
 void initializeProcessBICodeAssumptionPass(llvm::PassRegistry &);
 void initializeSimpleAluVectorizerPass(llvm::PassRegistry &);
 void initializeRedundantOpsCSEPassPass(llvm::PassRegistry &);
+void initializeStateIndexAddrChainCanonicalizePass(llvm::PassRegistry &);

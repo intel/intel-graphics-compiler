@@ -358,4 +358,5 @@ void initializeAllIGCPasses(llvm::PassRegistry &Registry) {
   initializePrintFPRangeAnalysisPass(Registry);
   initializeSimpleAluVectorizerPass(Registry);
   initializeRedundantOpsCSEPassPass(Registry);
+  initializeStateIndexAddrChainCanonicalizePass(Registry);
 }
