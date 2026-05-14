@@ -27,6 +27,8 @@ constexpr const char *CROSS_THREAD_OFF_R0_RELOCATION_NAME =
     "__INTEL_PATCH_CROSS_THREAD_OFFSET_OFF_R0";
 constexpr const char *PER_THREAD_OFF_RELOCATION_NAME =
     "__INTEL_PER_THREAD_OFF";
+constexpr const char *SURFACE_STATE_SIZE_RELOCATION_NAME =
+    "__INTEL_SURFACE_STATE_SIZE";
 
 /// GenSymType - Specify the symbol's type
 enum GenSymType {

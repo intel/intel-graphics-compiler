@@ -636,6 +636,7 @@ struct SOpenCLProgramInfo {
   ZEBinGlobalHostAccessTable m_zebinGlobalHostAccessTable;
   bool m_hasCrossThreadOffsetRelocations = false;
   bool m_hasPerThreadOffsetRelocations = false;
+  bool m_hasSurfaceStateSizeRelocations = false;
 };
 
 class CBTILayout {

@@ -9,7 +9,7 @@ SPDX-License-Identifier: MIT
 ///
 /// \file
 /// This file contains the declaration of ResolveImageImplicitArgsForBindless
-/// llvm pass.
+/// LLVM pass.
 ///
 /// This pass searches for built-in calls querying for image properties and
 /// replaces them with calls to GenISA_ldraw_indexed intrinsic to fetch the
@@ -19,9 +19,7 @@ SPDX-License-Identifier: MIT
 
 #pragma once
 
-#include "Compiler/MetaDataUtilsWrapper.h"
 #include "Compiler/CodeGenContextWrapper.hpp"
-
 #include <common/LLVMWarningsPush.hpp>
 #include <llvm/ADT/SetVector.h>
 #include <llvm/Pass.h>
@@ -29,8 +27,6 @@ SPDX-License-Identifier: MIT
 #include <common/LLVMWarningsPop.hpp>
 
 namespace IGC {
-class CPlatform;
-
 class ResolveImageImplicitArgsForBindless : public llvm::ModulePass,
                                             public llvm::InstVisitor<ResolveImageImplicitArgsForBindless> {
 public:
@@ -51,7 +47,6 @@ public:
   bool runOnModule(llvm::Module &M) override;
 
 private:
-  CDriverInfo const *mDriverInfo = nullptr;
   llvm::SmallSetVector<llvm::Instruction *, 16> mInstsToRemove;
 
   bool mChanged = false;

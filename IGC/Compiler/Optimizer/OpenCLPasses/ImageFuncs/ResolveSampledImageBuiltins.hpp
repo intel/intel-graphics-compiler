@@ -9,6 +9,7 @@ SPDX-License-Identifier: MIT
 #pragma once
 
 #include "Compiler/MetaDataUtilsWrapper.h"
+#include "Compiler/CodeGenContextWrapper.hpp"
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/Pass.h>
 #include <llvm/IR/InstVisitor.h>
@@ -32,7 +33,7 @@ public:
 
   virtual llvm::StringRef getPassName() const override { return "ResolveSampledImageBuiltins"; }
 
-  virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override { AU.addRequired<MetaDataUtilsWrapper>(); }
+  virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override { AU.addRequired<CodeGenContextWrapper>(); }
 
   virtual bool runOnModule(llvm::Module &M) override;
   void visitCallInst(llvm::CallInst &CI);

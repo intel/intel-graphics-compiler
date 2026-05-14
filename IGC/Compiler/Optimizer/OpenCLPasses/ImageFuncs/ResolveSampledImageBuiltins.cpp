@@ -8,8 +8,12 @@ SPDX-License-Identifier: MIT
 
 #include "Compiler/Optimizer/OpenCLPasses/ImageFuncs/ResolveSampledImageBuiltins.hpp"
 #include "Compiler/IGCPassSupport.h"
+#include "Compiler/CodeGenPublic.h"
+#include "RelocationInfo.h"
+#include "GenISAIntrinsics/GenIntrinsics.h"
 #include "common/MDFrameWork.h"
 #include "common/LLVMWarningsPush.hpp"
+#include <llvm/IR/Constants.h>
 #include <llvm/IR/Function.h>
 #include <llvm/IR/Instructions.h>
 #include "common/LLVMWarningsPop.hpp"
@@ -25,7 +29,7 @@ using namespace IGC;
 #define PASS_CFG_ONLY false
 #define PASS_ANALYSIS false
 IGC_INITIALIZE_PASS_BEGIN(ResolveSampledImageBuiltins, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
-IGC_INITIALIZE_PASS_DEPENDENCY(MetaDataUtilsWrapper)
+IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
 IGC_INITIALIZE_PASS_END(ResolveSampledImageBuiltins, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
 char ResolveSampledImageBuiltins::ID = 0;
@@ -39,7 +43,7 @@ ResolveSampledImageBuiltins::ResolveSampledImageBuiltins() : ModulePass(ID) {
 
 bool ResolveSampledImageBuiltins::runOnModule(Module &M) {
   m_changed = false;
-  modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
+  modMD = getAnalysis<CodeGenContextWrapper>().getCodeGenContext()->getModuleMetaData();
   visit(M);
 
   for (auto builtin : m_builtinsToRemove) {
@@ -138,6 +142,13 @@ Value *ResolveSampledImageBuiltins::lowerGetSampler(CallInst &CI) {
   //   %image_offset = ptrtoint %spirv.SampledImage._void_1_0_0_0_0_0_0 addrspace(1)* %image to i64
   //   %sampler_offset = add i64 %image_offset, 128
   //   %queried_sampler = or i64 %sampler_offset, 1
+  // Or:
+  //   %image_offset = ptrtoint %spirv.SampledImage._void_1_0_0_0_0_0_0 addrspace(1)* %image to i64
+  //   %surfaceStateSize = call i32 @__static_constant_patch_value
+  //   %surfaceStateSize64 = zext i32 %surfaceStateSize to i64
+  //   %twiceSurfaceStatesSize = shl i64 %surfaceStateSize64, 1
+  //   %sampler_offset = add i64 %image_offset, %twiceSurfaceStatesSize
+  //   %queried_sampler = or i64 %sampler_offset, 1
   if (!samplerArg) {
     IGC_ASSERT(modMD->UseBindlessImage);
     IGC_ASSERT(image->getType()->isPointerTy());
@@ -147,12 +158,25 @@ Value *ResolveSampledImageBuiltins::lowerGetSampler(CallInst &CI) {
     // | image state | image implicit args state | sampler state | redescribed image state | ...
     // Sampler state offset is addition of image state offset, size of
     // image state and size of image implicit args state.
-    // Both size of image state and image implicit args state are 64 bytes.
-    constexpr uint64_t surfaceStateSize = 64;
-    auto *stateSizeValue = ConstantInt::get(Int64Ty, surfaceStateSize * 2);
-    auto *samplerOffset = BinaryOperator::CreateAdd(imageOffset, stateSizeValue, "sampler_offset", &CI);
+    Module *M = CI.getParent()->getParent()->getParent();
+    Value *TwoStatesOffset;
+    if (IGC_GET_FLAG_VALUE(ForceEnableSurfaceStateSizeReloc)) {
+      // SurfaceStateSize is a relocation patched by the runtime.
+      auto *PatchNameArg =
+          ConstantDataArray::getString(CI.getContext(), vISA::SURFACE_STATE_SIZE_RELOCATION_NAME, false);
+      Type *PatchTys[] = {Type::getInt32Ty(CI.getContext()), PatchNameArg->getType()};
+      auto *PatchFunc = GenISAIntrinsic::getDeclaration(M, GenISAIntrinsic::GenISA_staticConstantPatchValue, PatchTys);
+      auto *SurfaceStateSizeI32 = CallInst::Create(PatchFunc, PatchNameArg, "surfaceStateSize", &CI);
+      auto *SurfaceStateSizeI64 = CastInst::Create(Instruction::ZExt, SurfaceStateSizeI32, Int64Ty, "", &CI);
+      // Sampler offset = image state offset + 2 * surfaceStateSize
+      TwoStatesOffset =
+          BinaryOperator::Create(Instruction::Shl, SurfaceStateSizeI64, ConstantInt::get(Int64Ty, 1), "", &CI);
+    } else {
+      TwoStatesOffset = ConstantInt::get(Int64Ty, 2 * 64);
+    }
+    auto *SamplerOffset = BinaryOperator::CreateAdd(imageOffset, TwoStatesOffset, "sampler_offset", &CI);
     // Set bit-field 0 to 1 to select Bindless Sampler State Base Address.
-    return BinaryOperator::CreateOr(samplerOffset, ConstantInt::get(Int64Ty, 1), "", &CI);
+    return BinaryOperator::CreateOr(SamplerOffset, ConstantInt::get(Int64Ty, 1), "", &CI);
   }
 
   // Transforms the following sequence:

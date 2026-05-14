@@ -7,7 +7,6 @@ SPDX-License-Identifier: MIT
 ============================= end_copyright_notice ===========================*/
 
 #pragma once
-#include "Compiler/CodeGenPublic.h"
 #include "Compiler/CISACodeGen/helper.h"
 #include "visa_igc_common_header.h"
 

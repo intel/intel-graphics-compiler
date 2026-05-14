@@ -8,7 +8,10 @@ SPDX-License-Identifier: MIT
 
 #include "ResolveImageImplicitArgsForBindless.hpp"
 
+#include "Compiler/CodeGenPublic.h"
 #include "Compiler/IGCPassSupport.h"
+#include "Compiler/CodeGenContextWrapper.hpp"
+#include "RelocationInfo.h"
 #include "Compiler/CISACodeGen/messageEncoding.hpp"
 #include "LLVMWarningsPush.hpp"
 #include <llvm/ADT/StringRef.h>
@@ -83,10 +86,10 @@ std::map<StringRef, ImageImplicitArgInfo> BuiltinToArgMap = {
 bool ResolveImageImplicitArgsForBindless::runOnModule(Module &M) {
   mChanged = false;
 
-  CodeGenContext *Ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
-  if (!Ctx->getModuleMetaData()->extensions.spvINTELBindlessImages)
+  auto *Ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+  auto *modMD = Ctx->getModuleMetaData();
+  if (!modMD->extensions.spvINTELBindlessImages)
     return false; // Bindless exclusive pass.
-  mDriverInfo = &Ctx->m_DriverInfo;
 
   visit(M);
 
@@ -119,18 +122,31 @@ void ResolveImageImplicitArgsForBindless::visitCallInst(CallInst &CI) {
   Value *Img = CI.getOperand(0);
   Value *ImgToInt = isa<IntegerType>(Img->getType()) ? Builder.CreateZExtOrTrunc(Img, Builder.getInt64Ty())
                                                      : Builder.CreatePtrToInt(Img, Builder.getInt64Ty());
-  uint64_t SurfaceStateSize = mDriverInfo->getSurfaceStateSize();
-  auto *StateSizeValue = Builder.getInt64(SurfaceStateSize);
+
+  Value *StateSizeValue;
+  if (IGC_GET_FLAG_VALUE(ForceEnableSurfaceStateSizeReloc)) {
+    // When SurfaceStateSize is a relocation patched by the runtime, UMD can choose the surface state size without the
+    // need to recompile the module.
+    auto *PatchNameArg = ConstantDataArray::getString(CI.getContext(), vISA::SURFACE_STATE_SIZE_RELOCATION_NAME, false);
+    Type *PatchTys[] = {Builder.getInt32Ty(), PatchNameArg->getType()};
+    auto *PatchFunc = GenISAIntrinsic::getDeclaration(M, GenISAIntrinsic::GenISA_staticConstantPatchValue, PatchTys);
+    Value *SurfaceStateSizeI32 = Builder.CreateCall(PatchFunc, PatchNameArg, "surfaceStateSize");
+    StateSizeValue = Builder.CreateZExt(SurfaceStateSizeI32, Builder.getInt64Ty());
+  } else {
+    StateSizeValue = Builder.getInt64(64);
+  }
+
+  // Offset Img arg into ImageImplicitArgs bindless slot:
   auto *ImageImplicitArgsOffset = Builder.CreateAdd(ImgToInt, StateSizeValue);
-  Value *ImageImplicitArgs =
+  Value *ImplicitArgsPtr =
       Builder.CreateBitOrPointerCast(ImageImplicitArgsOffset, BindlessOffsetPtrTy, "imageImplicitArgs");
 
   // Create ldraw decl:
-  Type *const Tys[] = {CI.getType(), ImageImplicitArgs->getType()};
+  Type *const Tys[] = {CI.getType(), ImplicitArgsPtr->getType()};
   auto *Callee = GenISAIntrinsic::getDeclaration(M, GenISAIntrinsic::GenISA_ldraw_indexed, Tys);
 
   // Create ldraw call:
-  Value *const Args[] = {ImageImplicitArgs, Builder.getInt32(ArgOffsetInStruct), Builder.getInt32(AlignmentInBytes),
+  Value *const Args[] = {ImplicitArgsPtr, Builder.getInt32(ArgOffsetInStruct), Builder.getInt32(AlignmentInBytes),
                          Builder.getInt1(false)};
   CallInst *Result = Builder.CreateCall(Callee, Args);
   Result->setDebugLoc(CI.getDebugLoc());

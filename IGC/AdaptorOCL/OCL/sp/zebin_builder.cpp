@@ -365,6 +365,9 @@ void ZEBinaryBuilder::addRuntimeSymbols(const IGC::SOpenCLProgramInfo &annotatio
   if (annotations.m_hasPerThreadOffsetRelocations)
     mBuilder.addSymbol(vISA::PER_THREAD_OFF_RELOCATION_NAME, /*addr*/ 0, /*size*/ 0, llvm::ELF::STB_GLOBAL,
                        llvm::ELF::STT_NOTYPE, /*sectionId*/ -1);
+  if (annotations.m_hasSurfaceStateSizeRelocations)
+    mBuilder.addSymbol(vISA::SURFACE_STATE_SIZE_RELOCATION_NAME, /*addr*/ 0, /*size*/ 0, llvm::ELF::STB_GLOBAL,
+                       llvm::ELF::STT_OBJECT, /*sectionId*/ -1);
 }
 
 void ZEBinaryBuilder::addProgramSymbols(const IGC::SOpenCLProgramInfo &annotations) {

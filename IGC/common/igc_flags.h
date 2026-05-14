@@ -1230,6 +1230,8 @@ DECLARE_IGC_REGKEY(bool, DisableStatefulFolding, false,
                    "Turns off all folding for stateful messages (imm offset, scaling, and surface state idx)", false)
 DECLARE_IGC_REGKEY(bool, EnableStatefulScaleFolding, false, "Enables folding of shl into the scale of a stateful send",
                    false)
+DECLARE_IGC_REGKEY(bool, ForceEnableSurfaceStateSizeReloc, false,
+                   "Forces emission of surface state size as a relocation in compute path.", true)
 DECLARE_IGC_REGKEY(bool, DisableLSCForTypedUAV, false,
                    "Forces legacy HDC messages for typed UAV read/write."
                    "Temporary knob for XE2 bringup.",

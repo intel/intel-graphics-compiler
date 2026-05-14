@@ -6125,6 +6125,9 @@ void CEncoder::createRelocationTables(VISAKernel &pMainKernel) {
       } else if (reloc.r_symbol == vISA::PER_THREAD_OFF_RELOCATION_NAME) {
         auto cl_context = static_cast<OpenCLProgramContext *>(context);
         cl_context->m_programInfo.m_hasPerThreadOffsetRelocations = true;
+      } else if (reloc.r_symbol == vISA::SURFACE_STATE_SIZE_RELOCATION_NAME) {
+        auto cl_context = static_cast<OpenCLProgramContext *>(context);
+        cl_context->m_programInfo.m_hasSurfaceStateSizeRelocations = true;
       }
     }
   }
