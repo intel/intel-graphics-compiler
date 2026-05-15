@@ -10,6 +10,11 @@ SPDX-License-Identifier: MIT
 // operations that need it, but don't have it set yet.
 // Please do not add any future code that would be setting our cache controls
 // after this pass. If you need to add it - add it here, or before this pass.
+//
+// Global cache-control overrides (driver-level CacheControlOverride and the
+// matching IGC registry keys: {Lsc,Tgm}{Load,Store}CacheControlOverride) are
+// applied here as well. They have the highest priority and will overwrite any
+// cache-hint metadata previously attached by analysis passes.
 
 #include "Compiler/IGCPassSupport.h"
 #include "Compiler/MetaDataUtilsWrapper.h"
@@ -51,14 +56,101 @@ bool LSCCacheHints::runOnFunction(Function &F) {
   ModuleMetaData *ModMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
   if (ModMD != nullptr) {
     for (auto &I : instructions(F)) {
-      VisitInstruction(ModMD, I);
+      // This pass is restricted to IO-shaped instructions,
+      // so we don't pollute unrelated IR with cache hints.
+      if (IsCacheHintRelevantInstruction(I))
+        VisitInstruction(ModMD, I);
     }
   }
   return false;
 }
 
+// TGM (typed-resource) IO intrinsics. Used to gate the TGM-only
+// platform check and to pick the Tgm{Load,Store}CacheControlOverride
+// flag. Kept in one place so the callers can't drift apart.
+bool LSCCacheHints::IsTGMIntrinsic(GenISAIntrinsic::ID Id) {
+  switch (Id) {
+  case GenISAIntrinsic::GenISA_typedread:
+  case GenISAIntrinsic::GenISA_typedwrite:
+  case GenISAIntrinsic::GenISA_typedreadMS:
+  case GenISAIntrinsic::GenISA_typedwriteMS:
+  case GenISAIntrinsic::GenISA_LSCTypedLoadStatus:
+    return true;
+  default:
+    return false;
+  }
+}
+
+// Instructions whose cache hint may be steered by the global override.
+// Mirrors the set of emission sites in EmitVISAPass that consume
+// lsc.cache.ctrl via translateLSCCacheControlsFromMetadata: plain LSC
+// loads/stores, raw indexed load/store, predicated load/store, typed
+// (TGM) messages, simd block read/write, and cooperative-matrix
+// load/store/prefetch.
+//
+// Intentionally excluded:
+//   - Atomics: routed through LscAtomicCacheControlOverride at emit
+//     time and do not consume lsc.cache.ctrl metadata.
+//   - Fences (LSCFence, typedmemoryfence, systemmemoryfence).
+//   - GenISA_LSC{Load,Store,Prefetch}* family and LSC2DBlock*: take
+//     their cache controls from an instruction operand
+//     (translateLSCCacheControlsFromValue), not metadata.
+bool LSCCacheHints::IsCacheHintRelevantInstruction(const llvm::Instruction &I) {
+  if (isa<LoadInst>(&I) || isa<StoreInst>(&I))
+    return true;
+  if (isa<LdRawIntrinsic>(&I) || isa<StoreRawIntrinsic>(&I))
+    return true;
+  if (isa<PredicatedLoadIntrinsic>(&I) || isa<PredicatedStoreIntrinsic>(&I))
+    return true;
+  const GenIntrinsicInst *II = dyn_cast<GenIntrinsicInst>(&I);
+  if (!II)
+    return false;
+  if (IsTGMIntrinsic(II->getIntrinsicID()))
+    return true;
+  switch (II->getIntrinsicID()) {
+  case GenISAIntrinsic::GenISA_simdBlockRead:
+  case GenISAIntrinsic::GenISA_simdBlockReadBindless:
+  case GenISAIntrinsic::GenISA_simdBlockWrite:
+  case GenISAIntrinsic::GenISA_simdBlockWriteBindless:
+    return true;
+  default:
+    return false;
+  }
+}
+
+// True for the load-shaped half of IsCacheHintRelevantInstruction.
+// Prefetches count as loads (they consume LscLoadCacheControlOverride
+// and EmitVISAPass interprets their lsc.cache.ctrl with isLoad=true),
+// so this can't be derived from the return type alone:
+// CooperativeMatrixPrefetch returns void but is load-shaped.
+// Caller must ensure I is in the set accepted by
+// IsCacheHintRelevantInstruction; anything else returns false.
+bool LSCCacheHints::IsLoadShapedIO(const llvm::Instruction &I) {
+  if (isa<LoadInst>(&I) || isa<LdRawIntrinsic>(&I) || isa<PredicatedLoadIntrinsic>(&I))
+    return true;
+  const GenIntrinsicInst *II = dyn_cast<GenIntrinsicInst>(&I);
+  if (!II)
+    return false;
+  switch (II->getIntrinsicID()) {
+  case GenISAIntrinsic::GenISA_typedread:
+  case GenISAIntrinsic::GenISA_typedreadMS:
+  case GenISAIntrinsic::GenISA_LSCTypedLoadStatus:
+  case GenISAIntrinsic::GenISA_simdBlockRead:
+  case GenISAIntrinsic::GenISA_simdBlockReadBindless:
+    return true;
+  default:
+    return false;
+  }
+}
+
 void LSCCacheHints::VisitInstruction(const ModuleMetaData *ModMD, llvm::Instruction &I) {
+  // Global cache-control overrides take precedence over any pre-set cache
+  // metadata or analysis-based defaults below.
+  if (TryApplyGlobalOverride(ModMD, I))
+    return;
+
   const bool HasLscCacheCtrl = (I.getMetadata("lsc.cache.ctrl") != nullptr);
+
   if (!HasLscCacheCtrl)
     SetupLscCacheCtrl(ModMD, I);
 }
@@ -82,14 +174,10 @@ void LSCCacheHints::SetupLscCacheCtrl(const ModuleMetaData *ModMD, llvm::Instruc
   const CodeGenContext *pContext = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
   bool IsTGM = false;
   if (GenIntrinsicInst *II = dyn_cast<GenIntrinsicInst>(&I)) {
-    if (II->getIntrinsicID() == GenISAIntrinsic::GenISA_typedread ||
-        II->getIntrinsicID() == GenISAIntrinsic::GenISA_typedwrite ||
-        II->getIntrinsicID() == GenISAIntrinsic::GenISA_typedreadMS ||
-        II->getIntrinsicID() == GenISAIntrinsic::GenISA_typedwriteMS ||
-        II->getIntrinsicID() == GenISAIntrinsic::GenISA_LSCTypedLoadStatus) {
+    if (IsTGMIntrinsic(II->getIntrinsicID()))
       IsTGM = true;
-    }
   }
+
   if (ShouldGenerateLSC_Duplicate(I, IsTGM) && (IGC_GET_FLAG_VALUE(RovOpt) & 2) &&
       UseRasterizerOrderedByteAddressBuffer(ModMD, I)) {
     SetInstructionCacheHint(I, LSC_L1UC_L3C_WB, "RovOpt");
@@ -232,6 +320,49 @@ bool LSCCacheHints::UseRasterizerOrderedByteAddressBuffer(const ModuleMetaData *
     }
   }
   return isRov;
+}
+
+bool LSCCacheHints::TryApplyGlobalOverride(const ModuleMetaData *ModMD, llvm::Instruction &I) {
+  bool IsTGM = false;
+  if (GenIntrinsicInst *II = dyn_cast<GenIntrinsicInst>(&I)) {
+    if (IsTGMIntrinsic(II->getIntrinsicID()))
+      IsTGM = true;
+  }
+
+  // TGM cache override only applies on platforms that support non-default
+  // LSC cache settings; this mirrors the historical gate in
+  // EmitPass::translateLSCCacheControlsFromMetadata. Pre-Xe2 messages to
+  // UGML/TGM require default cache settings.
+  if (IsTGM) {
+    const CodeGenContext *pContext = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+    if (!pContext->platform.supportsNonDefaultLSCCacheSetting())
+      return false;
+  }
+
+  uint32_t CacheCtrl = 0;
+  const bool IsLoad = IsLoadShapedIO(I);
+  if (!TryOverrideCacheOpts(CacheCtrl, IsLoad, IsTGM, ModMD->m_CacheControlOption))
+    return false;
+
+  // Override wins over any pre-existing cache MD; clear so the
+  // SetInstructionCacheHint invariant ("no metadata set") holds.
+  I.setMetadata("lsc.cache.ctrl", nullptr);
+  SetInstructionCacheHint(I, CacheCtrl, "global override");
+  return true;
+}
+
+bool LSCCacheHints::TryOverrideCacheOpts(uint32_t &CacheCtrl, bool IsLoad, bool IsTGM,
+                                         const CacheControlOverride &CacheControlOption) {
+  if (IsTGM && IsLoad) {
+    CacheCtrl = (CacheControlOption.TgmLoadCacheControlOverride | IGC_GET_FLAG_VALUE(TgmLoadCacheControlOverride));
+  } else if (IsTGM && !IsLoad) {
+    CacheCtrl = CacheControlOption.TgmStoreCacheControlOverride | IGC_GET_FLAG_VALUE(TgmStoreCacheControlOverride);
+  } else if (!IsTGM && IsLoad) {
+    CacheCtrl = (CacheControlOption.LscLoadCacheControlOverride | IGC_GET_FLAG_VALUE(LscLoadCacheControlOverride));
+  } else if (!IsTGM && !IsLoad) {
+    CacheCtrl = CacheControlOption.LscStoreCacheControlOverride | IGC_GET_FLAG_VALUE(LscStoreCacheControlOverride);
+  }
+  return (CacheCtrl != 0);
 }
 
 

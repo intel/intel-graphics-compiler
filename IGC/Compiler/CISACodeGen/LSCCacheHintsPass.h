@@ -8,11 +8,12 @@ SPDX-License-Identifier: MIT
 
 #pragma once
 
-#include "common/LLVMWarningsPush.hpp" // for suppressing LLVM warnings
-#include <llvm/ADT/StringRef.h>        // for llvm::StringRef
-#include <llvm/IR/Function.h>          // for llvm::Function
-#include <llvm/Pass.h>                 // for llvm::FunctionPass
-#include "common/LLVMWarningsPop.hpp"  // for suppressing LLVM warnings
+#include "common/LLVMWarningsPush.hpp"         // for suppressing LLVM warnings
+#include <llvm/ADT/StringRef.h>                // for llvm::StringRef
+#include <llvm/IR/Function.h>                  // for llvm::Function
+#include <llvm/Pass.h>                         // for llvm::FunctionPass
+#include "common/LLVMWarningsPop.hpp"          // for suppressing LLVM warnings
+#include "GenISAIntrinsics/GenIntrinsicInst.h" // for llvm::GenISAIntrinsic::ID
 
 namespace IGC {
 
@@ -35,6 +36,13 @@ private:
   uint32_t TotalBytesToStoreOrLoad_Duplicate(llvm::Instruction *vectorLdStInst) const;
   unsigned int GetScalarTypeSizeInRegister_Duplicate(const llvm::Type *Ty) const;
   bool UseRasterizerOrderedByteAddressBuffer(const ModuleMetaData *ModMD, llvm::Instruction &I) const;
+  bool TryApplyGlobalOverride(const ModuleMetaData *ModMD, llvm::Instruction &I);
+  static bool TryOverrideCacheOpts(uint32_t &CacheCtrl, bool IsLoad, bool IsTGM,
+                                   const CacheControlOverride &CacheControlOption);
+  static bool IsCacheHintRelevantInstruction(const llvm::Instruction &I);
+  static bool IsLoadShapedIO(const llvm::Instruction &I);
+  static bool IsTGMIntrinsic(llvm::GenISAIntrinsic::ID Id);
+
 };
 
 void initializeLSCCacheHintsPass(llvm::PassRegistry &);

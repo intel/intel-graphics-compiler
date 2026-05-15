@@ -23283,37 +23283,12 @@ std::optional<LSC_CACHE_OPTS> EmitPass::cacheOptionsForConstantBufferLoads(Instr
   return cacheOpts;
 }
 
-bool EmitPass::tryOverrideCacheOpts(LSC_CACHE_OPTS &cacheOpts, bool isLoad, bool isTGM,
-                                    const Value *warningContextValue, CacheControlOverride m_CacheControlOption) const {
-  uint32_t l1l3CacheVal = 0;
-
-  if (isTGM) {
-    l1l3CacheVal =
-        isLoad ? (m_CacheControlOption.TgmLoadCacheControlOverride | IGC_GET_FLAG_VALUE(TgmLoadCacheControlOverride))
-               : (m_CacheControlOption.TgmStoreCacheControlOverride | IGC_GET_FLAG_VALUE(TgmStoreCacheControlOverride));
-  } else {
-    l1l3CacheVal =
-        isLoad ? (m_CacheControlOption.LscLoadCacheControlOverride | IGC_GET_FLAG_VALUE(LscLoadCacheControlOverride))
-               : (m_CacheControlOption.LscStoreCacheControlOverride | IGC_GET_FLAG_VALUE(LscStoreCacheControlOverride));
-  }
-
-  if (l1l3CacheVal != 0) {
-    cacheOpts = translateLSCCacheControlsEnum(static_cast<LSC_L1_L3_CC>(l1l3CacheVal), isLoad, warningContextValue);
-  }
-  return l1l3CacheVal != 0;
-}
-
 LSC_CACHE_OPTS
 EmitPass::translateLSCCacheControlsFromMetadata(Instruction *inst, bool isLoad, bool isTGM) const {
   LSC_CACHE_OPTS cacheOpts{LSC_CACHING_DEFAULT, LSC_CACHING_DEFAULT};
 
   if (isTGM) {
     if (m_pCtx->platform.supportsNonDefaultLSCCacheSetting()) {
-      if (tryOverrideCacheOpts(cacheOpts, isLoad, isTGM, inst, m_currShader->m_ModuleMetadata->m_CacheControlOption)) {
-        // global override cache settings have highest priority
-        return cacheOpts;
-      }
-
       const MDNode *node = inst ? inst->getMetadata("lsc.cache.ctrl") : nullptr;
       if (node) {
         ConstantAsMetadata *MD = cast<ConstantAsMetadata>(node->getOperand(0));
@@ -23353,11 +23328,7 @@ EmitPass::translateLSCCacheControlsFromMetadata(Instruction *inst, bool isLoad, 
     }
   }
 
-  if (tryOverrideCacheOpts(cacheOpts, isLoad, isTGM, inst, m_currShader->m_ModuleMetadata->m_CacheControlOption)) {
-    // global override cache settings have highest priority
-    return cacheOpts;
-  }
-  // next check for MD nodes. Internal lsc.cache.ctrl gets higher priority as
+  // Check for MD nodes. Internal lsc.cache.ctrl gets higher priority as
   // they are more precise
   const MDNode *node = inst ? inst->getMetadata("lsc.cache.ctrl") : nullptr;
   if (node) {
