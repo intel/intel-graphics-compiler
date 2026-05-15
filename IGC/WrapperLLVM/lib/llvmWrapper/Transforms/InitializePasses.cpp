@@ -53,6 +53,9 @@ void initializeAllLLVMWrapperPasses(llvm::PassRegistry &Registry) {
   initializeLoopAccessAnalysisLegacyPassWrapperPass(Registry);
   initializeInjectTLIMappingsLegacyPassWrapperPass(Registry);
   initializeSimpleInlinerLegacyPassWrapperPass(Registry);
+  initializeMergedLoadStoreMotionLegacyPassWrapperPass(Registry);
+  initializeGVNLegacyPassWrapperPass(Registry);
+  initializeLowerConstantIntrinsicsLegacyPassWrapperPass(Registry);
   initializeLoopRotateLegacyPassWrapperPass(Registry);
   initializeLoopSinkLegacyPassWrapperPass(Registry);
 }

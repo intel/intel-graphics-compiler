@@ -61,6 +61,9 @@ SPDX-License-Identifier: MIT
 #include "llvmWrapper/Transforms/Scalar/MemCpyOptimizer.h"
 #include "llvmWrapper/Transforms/Scalar/LoopUnrollPass.h"
 #include "llvmWrapper/Transforms/Scalar/IndVarSimplify.h"
+#include "llvmWrapper/Transforms/Scalar/MergedLoadStoreMotion.h"
+#include "llvmWrapper/Transforms/Scalar/GVN.h"
+#include "llvmWrapper/Transforms/Scalar/LowerConstantIntrinsics.h"
 #include "llvmWrapper/Transforms/Scalar/LoopRotation.h"
 #include "llvmWrapper/Transforms/Scalar/LoopSink.h"
 #include "llvmWrapper/Transforms/Scalar/LowerExpectIntrinsic.h"
@@ -172,8 +175,8 @@ void PassManagerBuilder::addFunctionSimplificationPasses(legacy::PassManagerBase
   MPM.add(createSROAPass());
 
   if (OptLevel > 1) {
-    MPM.add(createMergedLoadStoreMotionPass()); // Merge ld/st in diamonds
-    MPM.add(createGVNPass(false));              // Remove redundancies
+    MPM.add(IGCLLVM::createLegacyWrappedMergedLoadStoreMotionPass()); // Merge ld/st in diamonds
+    MPM.add(IGCLLVM::createLegacyWrappedGVNPass());                   // Remove redundancies
   }
   MPM.add(IGCLLVM::createLegacyWrappedSCCPPass()); // Constant prop with SCCP
 
@@ -386,7 +389,7 @@ void PassManagerBuilder::populateModulePassManager(legacy::PassManagerBase &MPM)
   MPM.add(createGlobalsAAWrapperPass());
 
   MPM.add(IGCLLVM::createLegacyWrappedFloat2IntPass());
-  MPM.add(createLowerConstantIntrinsicsPass());
+  MPM.add(IGCLLVM::createLegacyWrappedLowerConstantIntrinsicsPass());
 
   // Re-rotate loops in all our loop nests. These may have fallout out of
   // rotated form due to GVN or other transformations, and the vectorizer relies

@@ -55,6 +55,9 @@ void initializeDemandedBitsLegacyPassWrapperPass(llvm::PassRegistry &);
 void initializeLoopAccessAnalysisLegacyPassWrapperPass(llvm::PassRegistry &);
 void initializeInjectTLIMappingsLegacyPassWrapperPass(llvm::PassRegistry &);
 void initializeSimpleInlinerLegacyPassWrapperPass(llvm::PassRegistry &);
+void initializeMergedLoadStoreMotionLegacyPassWrapperPass(llvm::PassRegistry &);
+void initializeGVNLegacyPassWrapperPass(llvm::PassRegistry &);
+void initializeLowerConstantIntrinsicsLegacyPassWrapperPass(llvm::PassRegistry &);
 void initializeLoopRotateLegacyPassWrapperPass(llvm::PassRegistry &);
 void initializeLoopSinkLegacyPassWrapperPass(llvm::PassRegistry &);
 
