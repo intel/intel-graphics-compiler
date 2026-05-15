@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2025 Intel Corporation
+Copyright (C) 2025-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -16,18 +16,17 @@ SPDX-License-Identifier: MIT
 #include "llvm/IR/IRBuilder.h"
 #include "common/LLVMWarningsPop.hpp"
 
-#include "GenISAIntrinsics/GenIntrinsicInst.h"
-
 // Simple pass which sinks constant add operations in pointer calculations
 // It changes following pattern:
-// %addr_part1 = <base1> + const
-// %addr_part2 = <base2> + %addr_part1
-// %ptr = inttoptr %addr_part2
-// to:
-// %addr_part1 = <base1> + <base2>
-// %addr_part2 = <addr_part1> + const
-// %ptr = inttoptr %addr_part2
-
+//
+//   %p1 = <base1> + const
+//   %p2 = <base2> + %p1
+//   %ptr = inttoptr %p2
+// to
+//   %p1 = <base1> + <base2>
+//   %p2 = %p1 + const
+//   %ptr = inttoptr %p2
+//
 // This helps other optimizations like GVN to eliminate redundant calculations.
 
 using namespace llvm;
@@ -43,9 +42,8 @@ public:
   static char ID;
 
 private:
-  bool getConstantOffset(llvm::Value *value, std::vector<llvm::Instruction *> &zexts, int &offset);
-  void zextToSext(std::vector<llvm::Instruction *> &zexts);
-  bool skipZextToSext(llvm::Instruction *op, llvm::BasicBlock *parentBB);
+  bool getConstantOffset(llvm::Value *value, int64_t &offset);
+  bool sinkConstantThroughCast(llvm::Value *value, int64_t &offset, bool acrossSExt);
 };
 
 #define PASS_FLAG "igc-sink-ptr-const-add"
@@ -54,105 +52,116 @@ private:
 #define PASS_ANALYSIS false
 IGC_INITIALIZE_PASS(SinkPointerConstAddPass, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
-bool SinkPointerConstAddPass::getConstantOffset(llvm::Value *value, std::vector<llvm::Instruction *> &zexts,
-                                                int &offset) {
-  // Recursively search for constant add operations - this will stop after the first const add found,
-  // and should be called repeatedly until no more const adds can be sunk.
+enum class ExtensionKind {
+  Signed,
+  Zero,
+};
 
-  if (value->getNumUses() > 1) {
-    return false; // We cannot sink constant add if the value is used more than once.
+template <typename Fn> static bool HandleAddSub(Instruction *I, int64_t &offset, ExtensionKind kind, Fn recurseFn) {
+
+  auto widenConstant = [kind](ConstantInt *c) -> int64_t {
+    return kind == ExtensionKind::Signed ? c->getSExtValue() : static_cast<int64_t>(c->getZExtValue());
+  };
+
+  auto opcode = I->getOpcode();
+
+  if (auto *CO = dyn_cast<ConstantInt>(I->getOperand(1))) {
+
+    offset += opcode == Instruction::Add ? widenConstant(CO) : -widenConstant(CO);
+    I->replaceAllUsesWith(I->getOperand(0));
+    I->eraseFromParent();
+    return true;
   }
 
-  if (llvm::Instruction *instr = llvm::dyn_cast<llvm::Instruction>(value)) {
-    if (instr->getOpcode() == llvm::Instruction::Trunc || instr->getOpcode() == llvm::Instruction::ZExt ||
-        instr->getOpcode() == llvm::Instruction::SExt) {
-      // Skip cast instructions
-      llvm::Instruction *op = llvm::dyn_cast<llvm::Instruction>(instr->getOperand(0));
-      // This is a simple pass, only sink within the same basic block
-      if (op && instr->getParent() == op->getParent()) {
-        // Collect zext instructions for later processing
-        if (instr->getOpcode() == llvm::Instruction::ZExt) {
-          zexts.push_back(instr);
-        }
-        return getConstantOffset(instr->getOperand(0), zexts, offset);
-      } else {
-        return false;
-      }
-    } else if (instr->getOpcode() == llvm::Instruction::Add || instr->getOpcode() == llvm::Instruction::Sub) {
-      if (llvm::ConstantInt *constInt = llvm::dyn_cast<llvm::ConstantInt>(instr->getOperand(1))) {
-        offset = instr->getOpcode() == llvm::Instruction::Add ? offset + constInt->getSExtValue()
-                                                              : offset - constInt->getSExtValue();
-        instr->replaceAllUsesWith(instr->getOperand(0));
-        instr->eraseFromParent();
-        return true;
-      } else if (llvm::ConstantInt *constInt = llvm::dyn_cast<llvm::ConstantInt>(instr->getOperand(0))) {
-        if (instr->getOpcode() == llvm::Instruction::Sub) {
-          // Cannot sink constant on the left side of subtraction
-          return false;
-        }
-        offset += constInt->getSExtValue();
-        instr->replaceAllUsesWith(instr->getOperand(1));
-        instr->eraseFromParent();
-        return true;
-      } else {
-        llvm::Instruction *op0 = llvm::dyn_cast<llvm::Instruction>(instr->getOperand(0));
-        llvm::Instruction *op1 = llvm::dyn_cast<llvm::Instruction>(instr->getOperand(1));
-        // This is a simple pass, only sink within the same basic block
-        return (op0 && instr->getParent() == op0->getParent() && getConstantOffset(op0, zexts, offset)) ? true
-               : (op1 && instr->getParent() == op1->getParent()) ? getConstantOffset(op1, zexts, offset)
-                                                                 : false;
-      }
-    }
+  if (auto *CO = dyn_cast<ConstantInt>(I->getOperand(0))) {
+
+    if (opcode == Instruction::Sub)
+      // Cannot sink constant on the left side of subtraction
+      return false;
+
+    offset += widenConstant(CO);
+    I->replaceAllUsesWith(I->getOperand(1));
+    I->eraseFromParent();
+    return true;
+  }
+
+  for (auto *op : {I->getOperand(0), I->getOperand(1)}) {
+
+    auto *opI = dyn_cast<Instruction>(op);
+    if (!opI)
+      continue;
+
+    // This is a simple pass, only sink within the same basic block
+    if (opI->getParent() != I->getParent())
+      continue;
+
+    if (!recurseFn(op, offset))
+      continue;
+
+    return true;
   }
 
   return false;
 }
 
-bool SinkPointerConstAddPass::skipZextToSext(llvm::Instruction *op, llvm::BasicBlock *parentBB) {
-  // This is a simple pass, only sink within the same basic block
-  if (op && parentBB == op->getParent()) {
-    // Do not change zext of pushed constants or loaded values - UMD provides unsigned offsets
-    if (llvm::GenIntrinsicInst *instr = llvm::dyn_cast<llvm::GenIntrinsicInst>(op)) {
-      if (instr->getIntrinsicID() == llvm::GenISAIntrinsic::GenISA_RuntimeValue) {
-        return true;
-      }
-    } else if (llvm::dyn_cast<llvm::Argument>(op) || llvm::dyn_cast<llvm::LoadInst>(op)) {
-      return true;
-    } else if (llvm::ExtractElementInst *eei = llvm::dyn_cast<llvm::ExtractElementInst>(op)) {
-      return skipZextToSext(llvm::dyn_cast<llvm::Instruction>(eei->getOperand(0)), parentBB);
-    } else if (llvm::BinaryOperator *bo = llvm::dyn_cast<BinaryOperator>(op)) {
-      llvm::ConstantInt *cOp0 = llvm::dyn_cast<llvm::ConstantInt>(bo->getOperand(0));
-      llvm::ConstantInt *cOp1 = llvm::dyn_cast<llvm::ConstantInt>(bo->getOperand(1));
-      if ((cOp0 && cOp0->isNegative()) || (cOp1 && cOp1->isNegative())) {
-        return false;
-      } else if (bo->getOpcode() == llvm::Instruction::Sub) {
-        return false;
-      } else {
-        return (skipZextToSext(llvm::dyn_cast<llvm::Instruction>(bo->getOperand(0)), parentBB) &&
-                skipZextToSext(llvm::dyn_cast<llvm::Instruction>(bo->getOperand(1)), parentBB));
-      }
-    } else {
-      return false;
-    }
+bool SinkPointerConstAddPass::getConstantOffset(Value *value, int64_t &offset) {
+  // Recursively search for constant add operations - this will stop after the first const add found,
+  // and should be called repeatedly until no more const adds can be sunk.
+
+  if (!value->hasOneUse()) {
+    return false; // We cannot sink constant add if the value is used more than once.
   }
-  return true;
+
+  auto *I = dyn_cast<Instruction>(value);
+
+  if (!I)
+    return false;
+
+  auto opcode = I->getOpcode();
+
+  switch (opcode) {
+
+  case Instruction::SExt:
+  case Instruction::ZExt: {
+    // check if we are leaving current block
+    // if yes - bail, doing this across blocks is a net loss
+    auto *operandInst = dyn_cast<Instruction>(I->getOperand(0));
+    if (operandInst && operandInst->getParent() != I->getParent())
+      return false;
+
+    return sinkConstantThroughCast(I->getOperand(0), offset, opcode == Instruction::SExt);
+  } break;
+  case Instruction::Add:
+  case Instruction::Sub:
+    return HandleAddSub(I, offset, ExtensionKind::Signed,
+                        [this](Value *value, int64_t &offset) { return getConstantOffset(value, offset); });
+    break;
+  default:
+    break;
+  }
+
+  return false;
 }
 
-void SinkPointerConstAddPass::zextToSext(std::vector<llvm::Instruction *> &zexts) {
-  // Remove duplicates
-  std::sort(zexts.begin(), zexts.end());
-  zexts.erase(std::unique(zexts.begin(), zexts.end()), zexts.end());
-  // Convert zext instructions to sext instructions
-  for (auto &zext : zexts) {
-    llvm::Instruction *op = llvm::dyn_cast<llvm::Instruction>(zext->getOperand(0));
-    if (skipZextToSext(op, zext->getParent())) {
-      continue;
-    }
-    llvm::IRBuilder<> builder(zext);
-    llvm::Value *sext = builder.CreateSExt(zext->getOperand(0), zext->getType());
-    zext->replaceAllUsesWith(sext);
-    zext->eraseFromParent();
-  }
+bool SinkPointerConstAddPass::sinkConstantThroughCast(Value *value, int64_t &offset, bool acrossSExt) {
+  if (!value->hasOneUse())
+    return false;
+
+  auto *I = dyn_cast<Instruction>(value);
+  if (!I)
+    return false;
+
+  auto opcode = I->getOpcode();
+  if (opcode != Instruction::Add && opcode != Instruction::Sub)
+    return false;
+
+  const bool flagOK = acrossSExt ? I->hasNoSignedWrap() : I->hasNoUnsignedWrap();
+  if (!flagOK)
+    return false;
+
+  return HandleAddSub(
+      I, offset, acrossSExt ? ExtensionKind::Signed : ExtensionKind::Zero,
+      [this, acrossSExt](Value *value, int64_t &offset) { return sinkConstantThroughCast(value, offset, acrossSExt); });
 }
 
 bool SinkPointerConstAddPass::runOnFunction(llvm::Function &F) {
@@ -160,7 +169,7 @@ bool SinkPointerConstAddPass::runOnFunction(llvm::Function &F) {
   std::vector<llvm::IntToPtrInst *> intToPtrInsts;
   intToPtrInsts.reserve(50);
 
-  // Collect all inttoptr instructions first
+  // Collect inttoptr instructions first.
   for (llvm::BasicBlock &BB : F) {
     for (llvm::Instruction &inst : BB) {
       if (llvm::IntToPtrInst *intrinsic = llvm::dyn_cast<llvm::IntToPtrInst>(&inst)) {
@@ -170,19 +179,10 @@ bool SinkPointerConstAddPass::runOnFunction(llvm::Function &F) {
   }
 
   for (auto &intrinsic : intToPtrInsts) {
-    int offset = 0;
-    bool localChanged = false;
-    std::vector<llvm::Instruction *> zexts;
+    int64_t offset = 0;
     // Keep sinking constant adds until no more can be sunk
-    while (getConstantOffset(intrinsic->getOperand(0), zexts, offset)) {
-      localChanged = true;
+    while (getConstantOffset(intrinsic->getOperand(0), offset)) {
       changed = true;
-    }
-
-    if (localChanged) {
-      // In some cases, sinking constant add may introduce negative values in pointer calculations.
-      // Convert affected zext instructions to sext instructions to avoid potential issues.
-      zextToSext(zexts);
     }
 
     // If we found any constant offset, create new pointer calculation

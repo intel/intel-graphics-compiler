@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2025 Intel Corporation
+; Copyright (C) 2025-2026 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -12,34 +12,32 @@
 ; SinkPointerConstAdd
 ; ------------------------------------------------
 ;
-; Test checks basic usage of improved clip distance feature
+; A single i64 constant add buried inside a descriptor-pointer chain is sunk
+; past the dynamic (base+offset) sum to a single add immediately before the
+; inttoptr.
 
-; Function Attrs: alwaysinline null_pointer_is_valid
 define void @main(<8 x i32> %r0, i8* %privateBase) #0 {
-GlobalScopeInitialization:
-  %0 = call i32 @llvm.genx.GenISA.RuntimeValue.i32(i32 6)
-  %1 = call i64 @llvm.genx.GenISA.RuntimeValue.i64(i32 2)
-  %2 = add i32 %0, 128
-  %3 = zext i32 %2 to i64
-; CHECK: %2 = zext i32 %0 to i64
-  %4 = add i64 %1, %3
-; CHECK-NEXT: %3 = add i64 %1, %2
-; CHECK-NEXT: %4 = add i64 %3, 128
-  %ptr = inttoptr i64 %4 to i32 addrspace(1)*
-; CHECK-NEXT: %5 = inttoptr i64 %4 to ptr addrspace(1)
+entry:
+  %rv_base32 = call i32 @llvm.genx.GenISA.RuntimeValue.i32(i32 6)
+  %rv_off32  = call i32 @llvm.genx.GenISA.RuntimeValue.i32(i32 8)
+  %base = zext i32 %rv_base32 to i64
+  %off  = sext i32 %rv_off32  to i64
+  %c1 = add i64 %base, 128
+  %c2 = add i64 %c1, %off
+  %ptr = inttoptr i64 %c2 to i32 addrspace(1)*
+; CHECK: %base = zext i32 %rv_base32 to i64
+; CHECK-NEXT: %off = sext i32 %rv_off32 to i64
+; CHECK-NEXT: %c2 = add i64 %base, %off
+; CHECK-NEXT: %[[SUNK:[0-9]+]] = add i64 %c2, 128
+; CHECK-NEXT: %{{[0-9]+}} = inttoptr i64 %[[SUNK]] to ptr addrspace(1)
   ret void
 }
-
-; Function Attrs: nounwind readnone willreturn
-declare i64 @llvm.genx.GenISA.RuntimeValue.i64(i32) #1
 
 ; Function Attrs: nounwind readnone willreturn
 declare i32 @llvm.genx.GenISA.RuntimeValue.i32(i32) #1
 
 attributes #0 = { alwaysinline null_pointer_is_valid }
 attributes #1 = { nounwind readnone willreturn }
-attributes #2 = { noduplicate nounwind }
-
 
 !igc.functions = !{!0}
 

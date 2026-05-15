@@ -2045,14 +2045,9 @@ void CustomSafeOptPass::visitBinaryOperator(BinaryOperator &I) {
       if (src0imm || src1imm) {
         llvm::Instruction *nextInst = llvm::dyn_cast<llvm::Instruction>(*(I.user_begin()));
         if (nextInst && nextInst->getOpcode() == Instruction::Add) {
-          // Wrap flags survive only when both adds carry nsw and nuw: operands
-          // and the sum are non-negative i31, so the new intermediate fits too.
           bool IBothFlags = isa<OverflowingBinaryOperator>(I) && I.hasNoSignedWrap() && I.hasNoUnsignedWrap();
           bool NextBothFlags = nextInst->hasNoSignedWrap() && nextInst->hasNoUnsignedWrap();
           bool PreserveNSW = IBothFlags && NextBothFlags;
-          bool HasAnyNSW = (isa<OverflowingBinaryOperator>(I) && I.hasNoSignedWrap()) || nextInst->hasNoSignedWrap();
-          if (HasAnyNSW && !PreserveNSW)
-            return;
           ConstantInt *secondSrc0imm = dyn_cast<ConstantInt>(nextInst->getOperand(0));
           ConstantInt *secondSrc1imm = dyn_cast<ConstantInt>(nextInst->getOperand(1));
           // found 2 add instructions to swap srcs
