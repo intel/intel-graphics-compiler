@@ -4053,6 +4053,9 @@ void CEncoder::InitVISABuilderOptions(TARGET_PLATFORM VISAPlatform, bool canAbor
       SaveOption(vISA_fusedCallWA, (uint32_t)1);
     }
   }
+  if (m_program->m_Platform->needWASlmGlobalOffsetS20()) {
+    SaveOption(vISA_WA_SLMGlobalOffsetS20, true);
+  }
 
   if (context->type == ShaderType::OPENCL_SHADER) {
     auto ClContext = static_cast<OpenCLProgramContext *>(context);

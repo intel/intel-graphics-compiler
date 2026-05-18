@@ -948,3 +948,8 @@ DEF_VISA_OPTION(vISA_enable320and448Vrt, ET_BOOL_TRUE, "-enable320and448Vrt",
 DEF_VISA_OPTION(vISA_GRFBumpUpNumber, ET_INT32, "-GRFBumpUpNumber",
                 "Sets the number of steps/configs which the RA will try to use (during retry) to compile the kernel",
                 1)
+DEF_VISA_OPTION(vISA_WA_SLMGlobalOffsetS20, ET_BOOL_TRUE, "-waSlmGOS20",
+                "This WA is to limit the global offset to s20 (1 sign bit +"
+                "20 data bits), instead of s21 signed integer for flat slm"
+                "send that uses ind0.",
+                false)

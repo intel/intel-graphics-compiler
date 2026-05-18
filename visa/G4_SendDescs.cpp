@@ -1118,6 +1118,8 @@ bool G4_SendgDesc::encodeAddrGlobalOffset(int immOffset) {
     descValue = putBitField(descValue, 27, 43 - 27 + 1, (uint64_t)immOffElems);
   } else {
     // global offset is encoded in [43:22] for stateless
+    if (irb.get_WA_SLMGlobalOffsetS20EncoderCtrl() && !fitsIn(immOffElems, 21))
+      return false;
     if (!fitsIn(immOffElems, 22))
       return false;
     descValue = putBitField(descValue, 22, 43 - 22 + 1, (uint64_t)immOffElems);

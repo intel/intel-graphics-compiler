@@ -373,6 +373,7 @@ private:
   // for PVC send WAR WA
   bool hasDF = false;
 
+  bool WA_SLMGlobalOffsetS20EncoderCtrl = false;
 
   // function call related declares
   G4_Declare *be_sp = nullptr;
@@ -679,6 +680,12 @@ public:
   bool hasValidOldA0Dot2() { return oldA0Dot2Temp; }
   bool hasDFInst() const { return hasDF; }
 
+  void set_WA_SLMGlobalOffsetS20EncoderCtrl(bool V) {
+    WA_SLMGlobalOffsetS20EncoderCtrl = V;
+  }
+  bool get_WA_SLMGlobalOffsetS20EncoderCtrl() const {
+    return WA_SLMGlobalOffsetS20EncoderCtrl;
+  }
 
   IR_Builder(INST_LIST_NODE_ALLOCATOR &alloc, G4_Kernel &k, Mem_Manager &m,
              Options *options, CISA_IR_Builder *parent, FINALIZER_INFO *jitInfo,

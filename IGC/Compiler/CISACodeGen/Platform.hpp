@@ -244,6 +244,7 @@ public:
     return (m_platformInfo.eRenderCoreFamily >= IGFX_GEN11_CORE);
   }
   bool enableBlendToDiscardAndFill() const { return (m_platformInfo.eRenderCoreFamily < IGFX_GEN11_CORE); }
+  bool needWASlmGlobalOffsetS20() const { return getWATable().Wa_14026265758 != 0; }
 
   bool NeedResetA0forVxHA0() const {
     return (m_platformInfo.eRenderCoreFamily >= IGFX_GEN11_CORE && !isCoreChildOf(IGFX_XE3_CORE));

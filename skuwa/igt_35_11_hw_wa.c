@@ -20,6 +20,14 @@ void InitGt_35_11HwWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA
 
 
     SI_WA_ENABLE(
+        Wa_14026265758,
+        "No Link Provided",
+        "No HWSightingLink provided",
+        PLATFORM_ALL,
+        SI_WA_BETWEEN(iStepId_GT_35_11, GT_35_11_REV_ID_A0, FUTURE_PROJECT));
+
+
+    SI_WA_ENABLE(
         Wa_14027487226,
         "No Link Provided",
         "No HWSightingLink provided",

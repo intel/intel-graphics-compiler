@@ -885,6 +885,10 @@ int IR_Builder::translateLscUntypedInstUnified(
                cacheOpts.l1 == LSC_CACHE_OPT::LSC_CACHING_CACHED &&
                m_options->getOption(vISA_enableOverfetch);
 
+  if (getOption(vISA_WA_SLMGlobalOffsetS20) && sfid == SFID::SLM &&
+      !isNullZero(surface)) {
+    set_WA_SLMGlobalOffsetS20EncoderCtrl(true);
+  }
 
   if (MsgOpHasChMask(mop)) {
     msgDesc = createUntypedCMaskDesc(
@@ -907,6 +911,9 @@ int IR_Builder::translateLscUntypedInstUnified(
         overfetch);
   }
 
+  // See the above comment where set_WA_SLMGlobalOffsetS20EncoderCtrl(true)
+  // is called.
+  set_WA_SLMGlobalOffsetS20EncoderCtrl(false);
 
   if (addrInfo.immScale != 1 || addrInfo.immOffset != 0) {
     // We were not able to or did not need to encode either of immScale
