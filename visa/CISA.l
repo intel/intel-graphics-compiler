@@ -1879,6 +1879,7 @@ static LFSR_FC str2lfsrfc(const char* str)
 
 static DNSCL_CONVERT_TYPE str2DnsclConvertType(const char *str, int *offset) {
     DNSCL_CONVERT_TYPE type = DNSCL_CONVERT_TYPE::INVALID;
+    int len = 8;
     if (strncmp(yytext + *offset,"bftoe2m1", 8) == 0)
         type = DNSCL_CONVERT_TYPE::BFTOE2M1;
     else if (strncmp(yytext + *offset,"bftoint4", 8) == 0)
@@ -1891,7 +1892,7 @@ static DNSCL_CONVERT_TYPE str2DnsclConvertType(const char *str, int *offset) {
         YY_FATAL_ERROR("Invalid dnscl conversion type");
 
     if (type != DNSCL_CONVERT_TYPE::INVALID)
-        *offset += 8;
+        *offset += len;
 
     return type;
 }

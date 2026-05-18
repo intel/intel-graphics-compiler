@@ -705,10 +705,10 @@ enum class LFSR_FC {
 
 enum class DNSCL_CONVERT_TYPE {
   INVALID = -1,
-  BFTOE2M1 = 1,  // conversion from BF to E2M1
-  BFTOINT4 = 2,  // conversion from BF to INT4
-  HFTOE2M1 = 4,  // conversion from HF to E2M1
-  HFTOINT4 = 5   // conversion from HF to INT4
+  BFTOE2M1 = 1, // conversion from BF to E2M1
+  BFTOINT4 = 2, // conversion from BF to INT4
+  HFTOE2M1 = 4, // conversion from HF to E2M1
+  HFTOINT4 = 5, // conversion from HF to INT4
 };
 
 enum class DNSCL_MODE {

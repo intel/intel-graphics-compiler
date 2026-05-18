@@ -232,7 +232,8 @@ const char *ChannelMask::Names[] = {
     "RGBA"  // 1111
 };
 const char *lfsrFuncCtrl[] = {"b32", "b16v2", "b8v4"};
-const char *dnsclConvertType[] = {"none", "bftoe2m1", "bftoint4",
-                                  "none", "hftoe2m1", "hftoint4"};
+const char *dnsclConvertType[] = {
+    "none",    "bftoe2m1", "bftoint4", "none", "hftoe2m1", "hftoint4",
+};
 const char *dnsclMode[] = {"mode0", "mode1", "mode2", "mode3"};
 const char *dnsclRndMode[] = {"srnd", "rne"};
