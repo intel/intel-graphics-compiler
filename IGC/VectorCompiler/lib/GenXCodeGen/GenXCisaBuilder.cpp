@@ -2173,6 +2173,8 @@ std::string GenXKernelBuilder::createInlineAsmOperand(
         getContext(), Inst,
         " immediate constraint in inline assembly was satisfied to value",
         DS_Warning);
+    IGC_ASSERT(Reg);
+    IGC_ASSERT(Reg->Category == vc::RegCategory::General);
     ResultOperand = createGeneralOperand(R, Reg->GetVar<VISA_GenVar>(Kernel),
                                          Signed, Mod, IsDst);
     break;
@@ -2305,7 +2307,7 @@ std::string GenXKernelBuilder::createInlineAsmSourceOperand(
 
   IGC_ASSERT(Reg->Category == vc::RegCategory::General || R.Indirect);
 
-  return createInlineAsmOperand(Inst, Reg, &R, false /*IsDst*/, Signed, Ty,
+  return createInlineAsmOperand(AsmInst, Reg, &R, false /*IsDst*/, Signed, Ty,
                                 Mod);
 }
 

@@ -8,13 +8,17 @@
 
 ; RUN: %llc_typed_ptrs %s -march=genx64 -mcpu=Xe2 -o /dev/null 2>&1 | FileCheck %s
 ; RUN: %llc_opaque_ptrs %s -march=genx64 -mcpu=Xe2 -o /dev/null 2>&1 | FileCheck %s
-; CHECK: warning: GenXCisaBuilder failed for: < %call = call i32 asm "mov (M1, 1) $0 $1", "=a,i"(i32 %arg) #{{[0-9]+}}, !srcloc !{{[0-9]+}}, !genx.inlasm.constraints.info !{{[0-9]+}}>: "mov (M1, 1) $0 $1" immediate constraint in inline assembly was satisfied to value
+; CHECK: warning: GenXCisaBuilder failed for: < %call = call i32 asm "mov (M1, 1) $0 $1", "=a,i"(i32 %rdregioni) #{{[0-9]+}}, !srcloc !{{[0-9]+}}, !genx.inlasm.constraints.info !{{[0-9]+}}>: "mov (M1, 1) $0 $1" immediate constraint in inline assembly was satisfied to value
 
 ; Function Attrs: noinline nounwind
 define dllexport spir_kernel void @test(i32 %0, i32 %1, i64 %privBase) #2 {
-  %3 = call i32 asm "mov (M1, 1) $0 $1", "=a,i"(i32 %0) #1, !srcloc !42
+  %vec = tail call <8 x i32> @llvm.genx.oword.ld.v8i32(i32 0, i32 %0, i32 0)
+  %3 = extractelement <8 x i32> %vec, i32 0
+  %4 = call i32 asm "mov (M1, 1) $0 $1", "=a,i"(i32 %3) #1, !srcloc !42
   ret void
 }
+
+declare <8 x i32> @llvm.genx.oword.ld.v8i32(i32, i32, i32)
 
 attributes #2 = { noinline nounwind "CMGenxMain" "oclrt"="1" }
 
