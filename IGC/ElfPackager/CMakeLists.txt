@@ -48,6 +48,8 @@ if(NOT TARGET ${IGC_BUILD__PROJ__ElfPackager})
   target_link_libraries(${IGC_BUILD__PROJ__ElfPackager}
       ${IGC_BUILD__LLVM_LIBS_TO_LINK})
 
+  igc_target_enable_address_sanitizer("${IGC_BUILD__PROJ__ElfPackager}")
+
   include_directories (
     ${IGC_SOURCE_DIR}/AdaptorOCL/CLElfLib/
   )

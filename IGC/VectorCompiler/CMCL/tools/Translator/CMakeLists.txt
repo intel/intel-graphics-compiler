@@ -35,4 +35,5 @@ if(NOT TARGET CMCLTranslatorTool)
   target_link_libraries(CMCLTranslatorTool
     CMCLSupport
     ${LLVM_LIBS})
+  igc_target_enable_address_sanitizer(CMCLTranslatorTool)
 endif()

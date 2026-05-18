@@ -297,6 +297,7 @@ option(IGC_OPTION__ENABLE_BF16_BIF "Enables BF16 support in BiF (requires patche
 # https://github.com/intel/opencl-clang/tree/ocl-open-160/patches/clang
 
 option(IGC_OPTION__ENABLE_LIT_TESTS "Enable lit testing for IGC compiler. May require additional tools like llvm lit and opt" OFF)
+option(IGC_OPTION__ENABLE_ADDRESS_SANITIZER "Enable AddressSanitizer instrumentation for IGC binaries and their linked static libraries." OFF)
 
 set(IGC_OPTION__BIF_SRC_OCL_DIR "${IGC_SOURCE_DIR}/BiFModule"
     CACHE PATH "Built-in Functions: Root directory where sources for OpenCL builtins are located.")
@@ -322,6 +323,22 @@ endif()
 
 set(IGC_OPTION__IST_IGCC_ONLY ON CACHE BOOL
     "Only building igcc part of IGCStandalone.")
+
+if(IGC_OPTION__ENABLE_ADDRESS_SANITIZER AND (NOT _igc_compiler_is_gnu_or_clang))
+  message(FATAL_ERROR "IGC_OPTION__ENABLE_ADDRESS_SANITIZER is supported only for builds with GCC or Clang.")
+endif()
+
+include(Sanitizers)
+
+if(IGC_OPTION__ENABLE_ADDRESS_SANITIZER)
+  add_compile_options(-fsanitize=address -fno-omit-frame-pointer)
+  add_link_options(-fsanitize=address)
+
+  get_asan_runtime_library(IGC_BUILD__ASAN_RUNTIME_LIB "${CMAKE_CXX_COMPILER}")
+  if(IGC_BUILD__ASAN_RUNTIME_LIB)
+    get_filename_component(IGC_BUILD__ASAN_RUNTIME_DIR "${IGC_BUILD__ASAN_RUNTIME_LIB}" DIRECTORY)
+  endif()
+endif()
 
 if(NOT DEFINED IGC_OPTION__BUILD_IGC_OPT)
     set(IGC_OPTION__BUILD_IGC_OPT OFF)
@@ -375,6 +392,7 @@ message(STATUS "")
 message(STATUS "Advanced:")
 message(STATUS " - Link BiF resources:              ${IGC_OPTION__BIF_LINK_BC}")
 message(STATUS " - Building Windows Universal:      ${IGC_OPTION__UNIVERSAL_DRIVER}")
+message(STATUS " - AddressSanitizer for IGC:        ${IGC_OPTION__ENABLE_ADDRESS_SANITIZER}")
 message(STATUS "=============================================================================")
 
 # ======================================================================================================
@@ -1136,14 +1154,16 @@ foreach(_compilerFlagName IN ITEMS "CMAKE_CXX_FLAGS" "CMAKE_C_FLAGS")
   endif()
 endforeach()
 
-if( ANDROID OR _igc_compiler_is_gnu_or_clang)
-  igc_config_flag_apply_settings(
-      LinkerOptions
-      CMAKE_SHARED_LINKER_FLAGS
-      ALL_PATTERN ""
-      SET_RAW
-    -Wl,--no-undefined
-    )
+if(ANDROID OR _igc_compiler_is_gnu_or_clang)
+  if(NOT IGC_OPTION__ENABLE_ADDRESS_SANITIZER)
+    igc_config_flag_apply_settings(
+        LinkerOptions
+        CMAKE_SHARED_LINKER_FLAGS
+        ALL_PATTERN ""
+        SET_RAW
+      -Wl,--no-undefined
+      )
+  endif()
 endif()
 
 # NOTE: [WA] Workaround for OpenGL-IGC crash problem. Due to different handling of static objects destructors
@@ -1269,6 +1289,16 @@ elseif(_igc_compiler_is_gnu_or_clang)
 endif()
 
 if(_igc_compiler_is_clang)
+  if(IGC_OPTION__ENABLE_ADDRESS_SANITIZER)
+    igc_config_flag_apply_settings(
+        LinkerOptions
+        CMAKE_EXE_LINKER_FLAGS
+        ALL_PATTERN ""
+        SET_RAW
+          -fsanitize=address
+    )
+  endif()
+
   igc_config_flag_apply_settings(
       LinkerOptions
       CMAKE_SHARED_LINKER_FLAGS
@@ -1718,6 +1748,7 @@ add_subdirectory(VISALinkerDriver)
 #endif()
 
 igc_sg_define(IGC__VISALinkerDriver)
+
 if(MSVC)
   set(IGC_BUILD__RES__IGC__igc_common
       "${CMAKE_CURRENT_SOURCE_DIR}/igc.rc"
@@ -1837,6 +1868,7 @@ add_library("${IGC_BUILD__PROJ__igc_dll}" SHARED
     $<TARGET_OBJECTS:${IGC_BUILD__PROJ__igc_objs}>
     ${IGC_BUILD__RES__IGC__igc_dll}
 )
+igc_target_enable_address_sanitizer("${IGC_BUILD__PROJ__igc_dll}")
 
 # Resource define for the .rc compile (per-target, not a C++ define).
 target_compile_definitions(${IGC_BUILD__PROJ__igc_dll} PRIVATE VER_ORIGINALNAME="$<TARGET_FILE_NAME:${IGC_BUILD__PROJ__igc_dll}>")
@@ -2224,6 +2256,15 @@ list(APPEND _targetLinkLineCommon "${IGC_BUILD__PROJ__VISALinkerDriver}")
     list(APPEND _targetLinkLineCommon
       -Wl,--exclude-libs,liblldELF.a
     )
+  endif()
+
+  if(IGC_OPTION__ENABLE_ADDRESS_SANITIZER)
+    foreach(_igc_asan_link_target IN LISTS _targetLinkLineCommon)
+      if(TARGET "${_igc_asan_link_target}")
+        igc_target_enable_address_sanitizer("${_igc_asan_link_target}")
+      endif()
+    endforeach()
+    unset(_igc_asan_link_target)
   endif()
 
   if(_targetIsStatic)

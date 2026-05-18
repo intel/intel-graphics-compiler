@@ -27,3 +27,6 @@ target_link_libraries("${VCB_EXECUTABLE_NAME}"
   ${LLVM_LIBS}
   )
 
+igc_target_enable_address_sanitizer("${VCB_EXECUTABLE_NAME}")
+
+

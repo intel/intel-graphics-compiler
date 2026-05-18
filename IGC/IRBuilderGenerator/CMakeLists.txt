@@ -45,6 +45,8 @@ if(NOT TARGET ${IGC_BUILD__PROJ__IRBuilderGenerator})
   target_include_directories(${IGC_BUILD__PROJ__IRBuilderGenerator} PUBLIC
     "${CMAKE_CURRENT_SOURCE_DIR}/../"
   )
+
+  igc_target_enable_address_sanitizer("${IGC_BUILD__PROJ__IRBuilderGenerator}")
 endif()
 
 if(MSVC)

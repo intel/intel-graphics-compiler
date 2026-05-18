@@ -73,12 +73,10 @@ if(UNIX)
 endif()
 
 if(UNIX)
-  set(IGC_BUILD__PROJ__igc_opt_LINK_OPT )
-  list(APPEND IGC_BUILD__PROJ__igc_opt_LINK_OPT "-Wl,--no-gc-sections")
-  list(APPEND IGC_BUILD__PROJ__igc_opt_LINK_OPT "-Wl,--export-dynamic")
-
-  set_target_properties(${IGC_BUILD__PROJ__igc_opt} PROPERTIES LINK_OPTIONS "${IGC_BUILD__PROJ__igc_opt_LINK_OPT}")
+  target_link_options(${IGC_BUILD__PROJ__igc_opt} PRIVATE -Wl,--no-gc-sections -Wl,--export-dynamic)
 endif()
+
+igc_target_enable_address_sanitizer("${IGC_BUILD__PROJ__igc_opt}")
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "")
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "")

@@ -50,6 +50,7 @@ target_link_libraries("${IGC_BUILD__PROJ__BiFManager_EXE}"
     ${IGC_BUILD__LLVM_LIBS_TO_LINK}
   )
 target_compile_definitions(${IGC_BUILD__PROJ__BiFManager_EXE} PRIVATE BiFManagerBIN)
+igc_target_enable_address_sanitizer("${IGC_BUILD__PROJ__BiFManager_EXE}")
 
 add_dependencies("${IGC_BUILD__PROJ__BiFManager}"
     "${IGC_BUILD__PROJ__BiFManager_EXE}")

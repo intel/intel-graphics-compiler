@@ -31,6 +31,10 @@ set_llvm_opt(LLVM_ENABLE_TERMINFO OFF CACHE BOOL "desc")
 set_llvm_opt(LLVM_ENABLE_EH ON CACHE BOOL "desc")
 set_llvm_opt(LLVM_ENABLE_RTTI ON CACHE BOOL "desc")
 
+if(IGC_OPTION__ENABLE_ADDRESS_SANITIZER)
+  set_llvm_opt(LLVM_USE_SANITIZER "Address" CACHE STRING "desc")
+endif()
+
 set_llvm_opt(LLVM_ENABLE_EH ON CACHE BOOL "desc")
 set_llvm_opt(LLVM_ENABLE_RTTI ON CACHE BOOL "desc")
 if ("${ARCH}" STREQUAL "32")

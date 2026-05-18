@@ -24,6 +24,10 @@ llvm_update_compile_flags(igcc-spirv-support-tblgen)
 target_include_directories(igcc-spirv-support-tblgen PRIVATE
   ${IGC_BUILD__GFX_DEV_SRC_DIR}
 )
+igc_target_enable_address_sanitizer(igcc-spirv-support-tblgen)
+if(IGC_OPTION__ENABLE_ADDRESS_SANITIZER AND LLVM_USE_SANITIZE_COVERAGE)
+  target_link_options(igcc-spirv-support-tblgen PRIVATE -fsanitize=fuzzer-no-link)
+endif()
 
 # Always link static TableGen explicitly — never rely on libLLVM.so here
 # TableGen is never part of libLLVM.so (ref: llvm-project/llvm/tools/llvm-shlib/CMakeLists.txt)

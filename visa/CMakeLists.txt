@@ -454,6 +454,8 @@ if (UNIX OR WIN32)
   igc_get_llvm_targets(LLVM_LIBS Support)
   target_link_libraries(GenX_IR_Exe IGA_SLIB IGA_ENC_LIB ${LLVM_LIBS})
 
+  igc_target_enable_address_sanitizer(GenX_IR_Exe)
+
   if (UNIX)
     target_link_libraries(GenX_IR_Exe dl)
     if(NOT ANDROID)
