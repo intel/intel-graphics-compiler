@@ -8475,19 +8475,26 @@ void G4_InstDpas::computeRightBound(G4_Operand *opnd) {
                               opnd->left_bound + bytes - 1);
     } else if (opcode() == G4_bdpas && opnd && !opnd->isNullReg() &&
                (opnd == srcs[3] || opnd == srcs[4])) {
+      // footprint:
+      //   Src3 and Src4 may have non-contiguous GRF bytes. For calculating
+      //   footprint, using the total contiguous GRF bytes as their sizes.
       unsigned K = D * getOpsPerChan();
       unsigned bytes = 0;
       if (K <= 32) {
-        // When K <= 32, the access ranges are 16 bytes [0:15] for src3 and
-        // 8 bytes [0:7] for src4.
+        // When K <= 32, it is not for FP4 and thus block size = 32
+        //    Src3 : 16 bytes, subreg=0,16,32,48
+        //    Src4 :  8 bytes, subreg=0,8,16,24,32,40,48,56
         bytes = opnd == srcs[3] ? ES : C;
       } else {
         vASSERT(K == 64);
-        // The actual access ranges are 32 bytes [0:15, 32:47] for src3 and
-        // [0:7, 32:39] for src4. Although the access ranges are not
-        // consecutive, here we treat them as consecutive ranges to make
-        // footprint modeling easier, i.e., 48 bytes for src3 and 40 bytes for
-        // src4.
+        // Block size
+        //    32: scaling type UB (UE8M0)
+        //        Each K-dimension needs two scaling values.
+        //        Src3: two groups of 16 bytes each - [0:15, 32:47]; 48 bytes
+        //              which includes holes, subreg = 0, 16
+        //        Src4: two groups of  8 bytes each - [0:7, 32:39];  40 bytes
+        //              which includes holes, subreg = 0, 8, 16, 24
+        vASSERT(getMxBlockSize() == 32);
         bytes = opnd == srcs[3] ? ES + 32 : C + 32;
       }
       computeDpasOperandBound(opnd, opnd->left_bound,

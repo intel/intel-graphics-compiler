@@ -1127,8 +1127,8 @@ public:
 };
 
 class G4_InstDpas : public G4_INST {
-  GenPrecision Src1Precision; // Weights
-  GenPrecision Src2Precision; // Activation
+  GenPrecision Src1Precision;
+  GenPrecision Src2Precision;
   uint8_t SystolicDepth;      // 1|2|4|8
   uint8_t RepeatCount;        // 1-8
   bool mayNeedRSWA = false;
@@ -1188,6 +1188,9 @@ public:
   uint8_t getRepeatCount() const { return RepeatCount; }
   GenPrecision getSrc1Precision() const { return Src1Precision; }
   GenPrecision getSrc2Precision() const { return Src2Precision; }
+  uint16_t getMxBlockSize() const {
+    return 32;
+  }
 
   bool hasSameSrc1Precision(GenPrecision p) const {
     return hasSamePrecision(Src1Precision, p);
