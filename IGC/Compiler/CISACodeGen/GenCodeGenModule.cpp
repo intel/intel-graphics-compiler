@@ -1312,8 +1312,10 @@ bool SubroutineInliner::runOnSCC(CallGraphSCC &SCC) {
   FSA = &getAnalysis<EstimateFunctionSize>();
   MDUW = &getAnalysis<MetaDataUtilsWrapper>();
 #if LLVM_VERSION_MAJOR >= 16
+#if LLVM_VERSION_MAJOR < 22
   if (skipSCC(SCC))
     return false;
+#endif
   bool changed = inlineCalls(SCC);
 #else
   bool changed = LegacyInlinerBase::runOnSCC(SCC);

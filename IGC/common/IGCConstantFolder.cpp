@@ -340,7 +340,7 @@ llvm::Constant *IGCConstantFolder::CreateUbfe(llvm::Constant *C0, llvm::Constant
   llvm::ConstantInt *CI2 = llvm::cast<llvm::ConstantInt>(C2); // the number to shift
   uint32_t width = int_cast<uint32_t>(CI0->getZExtValue());
   uint32_t offset = int_cast<uint32_t>(CI1->getZExtValue());
-  uint32_t bitwidth = CI2->getType()->getBitWidth();
+  uint32_t bitwidth = CI2->getType()->getIntegerBitWidth();
 
   llvm::APInt result = CI2->getValue();
   if ((width + offset) < bitwidth) {
@@ -363,7 +363,7 @@ llvm::Constant *IGCConstantFolder::CreateIbfe(llvm::Constant *C0, llvm::Constant
   llvm::ConstantInt *CI2 = llvm::cast<llvm::ConstantInt>(C2); // the number to shift
   uint32_t width = int_cast<uint32_t>(CI0->getZExtValue());
   uint32_t offset = int_cast<uint32_t>(CI1->getZExtValue());
-  uint32_t bitwidth = CI2->getType()->getBitWidth();
+  uint32_t bitwidth = CI2->getType()->getIntegerBitWidth();
 
   llvm::APInt result = CI2->getValue();
   if ((width + offset) < bitwidth) {
@@ -409,7 +409,7 @@ llvm::Constant *IGCConstantFolder::CreateFirstBitHi(llvm::Constant *C0) const {
   }
   llvm::ConstantInt *CI0 = llvm::cast<llvm::ConstantInt>(C0);
   const unsigned fbh = CI0->getValue().countLeadingZeros();
-  if (fbh == CI0->getType()->getBitWidth()) {
+  if (fbh == CI0->getType()->getIntegerBitWidth()) {
     return llvm::ConstantInt::get(C0->getType(), -1);
   }
   return llvm::ConstantInt::get(C0->getType(), fbh);
@@ -422,7 +422,7 @@ llvm::Constant *IGCConstantFolder::CreateFirstBitShi(llvm::Constant *C0) const {
   IGC_ASSERT(llvm::isa<llvm::ConstantInt>(C0));
   llvm::ConstantInt *CI0 = llvm::cast<llvm::ConstantInt>(C0);
   const uint32_t fbs = CI0->isNegative() ? CI0->getValue().countLeadingOnes() : CI0->getValue().countLeadingZeros();
-  if (fbs == CI0->getType()->getBitWidth()) {
+  if (fbs == CI0->getType()->getIntegerBitWidth()) {
     return llvm::ConstantInt::get(C0->getType(), -1);
   }
   return llvm::ConstantInt::get(C0->getType(), fbs);
@@ -435,7 +435,7 @@ llvm::Constant *IGCConstantFolder::CreateFirstBitLo(llvm::Constant *C0) const {
   IGC_ASSERT(llvm::isa<llvm::ConstantInt>(C0));
   llvm::ConstantInt *CI0 = llvm::cast<llvm::ConstantInt>(C0);
   const unsigned fbl = CI0->getValue().countTrailingZeros();
-  if (fbl == CI0->getType()->getBitWidth()) {
+  if (fbl == CI0->getType()->getIntegerBitWidth()) {
     return llvm::ConstantInt::get(C0->getType(), -1);
   }
   return llvm::ConstantInt::get(C0->getType(), fbl);
@@ -452,7 +452,7 @@ llvm::Constant *IGCConstantFolder::CreateBfi(llvm::Constant *C0, llvm::Constant 
   llvm::ConstantInt *CI3 = llvm::cast<llvm::ConstantInt>(C3); // the number with bits to be replaced.
   uint32_t width = int_cast<uint32_t>(CI0->getZExtValue());
   uint32_t offset = int_cast<uint32_t>(CI1->getZExtValue());
-  uint32_t bitwidth = CI2->getType()->getBitWidth();
+  uint32_t bitwidth = CI2->getType()->getIntegerBitWidth();
   llvm::APInt bitmask = llvm::APInt::getBitsSet(bitwidth, offset, offset + width);
   llvm::APInt result = CI2->getValue();
   result = result.shl(offset);

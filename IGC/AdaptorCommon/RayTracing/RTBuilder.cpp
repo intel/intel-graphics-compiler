@@ -1636,7 +1636,7 @@ enum class RaytracingType {
 // will later be updated to null values with the actual types.
 NamedMDNode *initTypeMD(Module &M, uint32_t NumEntries) {
   auto *TypesMD = M.getOrInsertNamedMetadata(RaytracingTypesMDName);
-  auto *Val = UndefValue::get(Type::getInt8PtrTy(M.getContext()));
+  auto *Val = UndefValue::get(PointerType::get(Type::getInt8Ty(M.getContext()), 0));
   auto *Node = MDNode::get(M.getContext(), ConstantAsMetadata::get(Val));
 
   for (uint32_t i = 0; i < NumEntries; i++)

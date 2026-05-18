@@ -51,9 +51,10 @@ SimpleInlinerLegacyPassWrapper::SimpleInlinerLegacyPassWrapper(InlineParams Para
 
 bool SimpleInlinerLegacyPassWrapper::runOnSCC(CallGraphSCC &SCC) {
   TTIWP = &getAnalysis<TargetTransformInfoWrapperPass>();
-
+#if LLVM_VERSION_MAJOR < 22
   if (skipSCC(SCC))
     return false;
+#endif
   bool changed = inlineCalls(SCC);
   return changed;
 }
