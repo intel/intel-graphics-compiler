@@ -507,6 +507,20 @@ uint32_t COpenCLKernel::getMaxPressure(llvm::Function &F, MetaDataUtils *MDUtils
   return maxPressure;
 }
 
+uint32_t COpenCLKernel::getMaxPressureForSIMD(llvm::Function &F, MetaDataUtils *MDUtils, unsigned SimdLanes) const {
+  FunctionInfoMetaDataHandle funcInfoMD = MDUtils->getFunctionsInfoItem(&F);
+  unsigned int maxPressure = funcInfoMD->getMaxRegPressureForSIMDSize(SimdLanes)->getMaxPressure();
+
+  if (m_FGA) {
+    llvm::Function *Kernel = &F;
+    auto FG = m_FGA->getGroup(&F);
+    Kernel = FG->getHead();
+    funcInfoMD = MDUtils->getFunctionsInfoItem(Kernel);
+    maxPressure = funcInfoMD->getMaxRegPressureForSIMDSize(SimdLanes)->getMaxPressure();
+  }
+  return maxPressure;
+}
+
 std::string COpenCLKernel::getVecTypeHintTypeString(const VectorTypeHintMetaDataHandle &vecTypeHintInfo) const {
   std::string vecTypeString;
 
@@ -2601,9 +2615,19 @@ static bool shouldDropToSIMD16(uint32_t maxPressure, uint32_t simd16Pressure, ui
   if (!autoGRF || pCtx->getNumGRFPerThread(false) != 0) {
     return false;
   }
+
   auto threshold = IGC_GET_FLAG_VALUE(EarlySIMD16DropForXE3Threshold);
-  bool shouldDrop = maxPressure > threshold;
-  return shouldDrop;
+
+  // Prefer SIMD16 when SIMD32 is over-pressured but SIMD16 fits comfortably.
+  // Gated to PTL until broader validation.
+  if (pCtx->supportsVRT() && pCtx->platform.getPlatformInfo().eProductFamily == IGFX_PTL) {
+    auto simd32High = IGC_GET_FLAG_VALUE(OCLVRTSimd16DropSimd32High);
+    auto simd16Low = IGC_GET_FLAG_VALUE(OCLVRTSimd16DropSimd16Low);
+    if ((simd32Pressure > simd32High && simd16Pressure > 0 && simd16Pressure < simd16Low) || simd32Pressure > threshold)
+      return true;
+  }
+
+  return maxPressure > threshold;
 }
 
 SIMDStatus COpenCLKernel::checkSIMDCompileCondsForMin16(SIMDMode simdMode, EmitPass &EP, llvm::Function &F,
@@ -2718,8 +2742,8 @@ SIMDStatus COpenCLKernel::checkSIMDCompileCondsForMin16(SIMDMode simdMode, EmitP
 
   bool isSupportedCore = pCtx->platform.isCoreXE2() || pCtx->platform.isCoreXE3();
   if (EP.m_canAbortOnSpill && isSupportedCore && IGC_IS_FLAG_ENABLED(AllowSIMD16DropForXE2Plus)) {
-    uint32_t simd16Pressure = getMaxPressureForSIMD(F, numLanes(SIMDMode::SIMD16));
-    uint32_t simd32Pressure = getMaxPressureForSIMD(F, numLanes(SIMDMode::SIMD32));
+    uint32_t simd16Pressure = getMaxPressureForSIMD(F, pMdUtils, numLanes(SIMDMode::SIMD16));
+    uint32_t simd32Pressure = getMaxPressureForSIMD(F, pMdUtils, numLanes(SIMDMode::SIMD32));
     bool shouldDrop = shouldDropToSIMD16(maxPressure, simd16Pressure, simd32Pressure, simdMode, pCtx, pMdUtils, &F);
     if (shouldDrop) {
       pCtx->SetSIMDInfo(SIMD_SKIP_PERF, simdMode, ShaderDispatchMode::NOT_APPLICABLE);
