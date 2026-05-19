@@ -11,9 +11,12 @@
 ; RUN: igc_opt --opaque-pointers -igc-pressure-publisher -S %s | FileCheck %s
 ; RUN: igc_opt --typed-pointers -igc-pressure-publisher -S %s | FileCheck %s
 
-; Test checks that RegisterPressurePublisher writes max_reg_pressure in metadata
+; Test checks that RegisterPressurePublisher writes max_reg_pressure and the per-SIMD
+; max_reg_pressure_simd16 / max_reg_pressure_simd32 entries in metadata.
 
 ; CHECK: "max_reg_pressure", i32 {{[0-9]+}}
+; CHECK: "max_reg_pressure_simd16", i32 {{[0-9]+}}
+; CHECK: "max_reg_pressure_simd32", i32 {{[0-9]+}}
 
 define spir_kernel void @testNoUnif(float addrspace(1)* %out, float addrspace(1)* %in, <8 x i32> %r0, <8 x i32> %payloadHeader, <3 x i32> %localSize, i16 %localIdX, i16 %localIdY, i16 %localIdZ, i32 %bufferOffset, i32 %bufferOffset1) {
 entry:

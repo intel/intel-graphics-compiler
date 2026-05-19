@@ -105,7 +105,7 @@ void IGCFunctionExternalRegPressureAnalysis::generateTableOfPressure(llvm::Modul
   std::reverse(PostOrder.begin(), PostOrder.end());
 
   for (auto El : PostOrder) {
-    unsigned int MaxPressure = 0;
+    PressurePair MaxPressure = {};
     // top level functions won't go inside this cycle
     // noone is calling them
     for (auto U : El->users()) {
@@ -116,7 +116,7 @@ void IGCFunctionExternalRegPressureAnalysis::generateTableOfPressure(llvm::Modul
       // that could potentially call our function, should be processed already
       // and we know its external pressure, for a top level function it will be 0
       // and we will process them first
-      unsigned int ExternalPressure = CallSitePressure[Callsite] + ExternalFunctionPressure[Callsite->getFunction()];
+      PressurePair ExternalPressure = CallSitePressure[Callsite] + ExternalFunctionPressure[Callsite->getFunction()];
       MaxPressure = std::max(MaxPressure, ExternalPressure);
     }
     ExternalFunctionPressure[El] = MaxPressure;
