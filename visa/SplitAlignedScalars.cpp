@@ -16,6 +16,14 @@ bool SplitAlignedScalars::canReplaceDst(G4_INST *inst) {
   if (inst->useAcc())
     return false;
 
+  // IEEE math macros (invm/rsqtm) and madm encode an mme channel select on
+  // their operands, which requires the operands to remain GRF-aligned. Skip
+  // them so the alignment is preserved.
+  if (inst->isMath() && inst->asMathInst()->isIEEEMath())
+    return false;
+  if (inst->opcode() == G4_madm)
+    return false;
+
   // dst must be 64 bit aligned for ternary instructions on certain platforms
   if (inst->getBuilder().kernel.getPlatform() < Xe_XeHPSDV &&
       inst->getNumSrc() == 3)
@@ -34,6 +42,14 @@ bool SplitAlignedScalars::canReplaceSrc(G4_INST *inst, unsigned int idx) {
   auto opcode = inst->opcode();
 
   if (inst->useAcc())
+    return false;
+
+  // IEEE math macros (invm/rsqtm) and madm encode an mme channel select on
+  // their operands, which requires the operands to remain GRF-aligned. Skip
+  // them so the alignment is preserved.
+  if (inst->isMath() && inst->asMathInst()->isIEEEMath())
+    return false;
+  if (opcode == G4_madm)
     return false;
 
   if (inst->isMov() || inst->isMath() || inst->isArithmetic() ||
@@ -388,7 +404,7 @@ void SplitAlignedScalars::run() {
         if (canReplaceDst(inst)) {
           auto newDstRgn = kernel.fg.builder->createDst(
               newDcl->getRegVar(), dst->getRegOff(), dst->getSubRegOff(),
-              dst->getHorzStride(), dst->getType());
+              dst->getHorzStride(), dst->getType(), dst->getAccRegSel());
           inst->setDest(newDstRgn);
         } else {
           // found an instruction where dst has to be GRF aligned,
@@ -400,7 +416,7 @@ void SplitAlignedScalars::run() {
           auto newAlignedVar = getDclForRgn(dst, newAlignedTmpTopDcl);
           auto dstRgn = kernel.fg.builder->createDst(
               newAlignedVar->getRegVar(), dst->getRegOff(), dst->getSubRegOff(),
-              dst->getHorzStride(), dst->getType());
+              dst->getHorzStride(), dst->getType(), dst->getAccRegSel());
           inst->setDest(dstRgn);
 
           // emit copy to store data to original non-aligned scalar
@@ -454,7 +470,8 @@ void SplitAlignedScalars::run() {
             auto newSrcRgn = kernel.fg.builder->createSrcRegRegion(
                 srcRgn->getModifier(), srcRgn->getRegAccess(),
                 newDcl->getRegVar(), srcRgn->getRegOff(),
-                srcRgn->getSubRegOff(), srcRgn->getRegion(), srcRgn->getType());
+                srcRgn->getSubRegOff(), srcRgn->getRegion(), srcRgn->getType(),
+                srcRgn->getAccRegSel());
             inst->setSrc(newSrcRgn, i);
           } else {
             // create a new aligned tmp
@@ -494,7 +511,8 @@ void SplitAlignedScalars::run() {
             auto newAlignedSrc = kernel.fg.builder->createSrcRegRegion(
                 srcRgn->getModifier(), srcRgn->getRegAccess(),
                 dclToUse->getRegVar(), srcRgn->getRegOff(),
-                srcRgn->getSubRegOff(), srcRgn->getRegion(), srcRgn->getType());
+                srcRgn->getSubRegOff(), srcRgn->getRegion(), srcRgn->getType(),
+                srcRgn->getAccRegSel());
             inst->setSrc(newAlignedSrc, i);
             bb->insertBefore(instIt, copy);
 
