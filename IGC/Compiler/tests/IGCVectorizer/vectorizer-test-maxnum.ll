@@ -1,6 +1,6 @@
 
 ; REQUIRES: regkeys
-; RUN: igc_opt -S  --igc-vectorizer -dce --regkey=VectorizerAllowEXP2=1 --regkey=VectorizerAllowMAXNUM=1 < %s 2>&1 | FileCheck %s
+; RUN: igc_opt -S  --igc-vectorizer -dce --regkey=VectorizerAllowEXP2=1 --regkey=VectorizerAllowMAXNUM=1 --platformbmg < %s 2>&1 | FileCheck %s
 
 ; CHECK: %vectorized_phi
 ; CHECK: %vectorized_intrinsic23 = call <8 x float> @llvm.exp2.v8f32(<8 x float> %vectorized_phi)

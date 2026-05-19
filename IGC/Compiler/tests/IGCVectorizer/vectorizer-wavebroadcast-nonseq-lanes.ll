@@ -7,7 +7,7 @@
 ;============================ end_copyright_notice =============================
 
 ; REQUIRES: regkeys
-; RUN: igc_opt -S --opaque-pointers --igc-vectorizer --regkey=VectorizerAllowWAVEBROADCAST=1 --dce < %s 2>&1 | FileCheck %s
+; RUN: igc_opt -S --opaque-pointers --igc-vectorizer --regkey=VectorizerAllowWAVEBROADCAST=1 --dce --platformbmg < %s 2>&1 | FileCheck %s
 
 ; Verify that WaveBroadcast slices with non-sequential lane indices are NOT
 ; vectorized.  Each group broadcasts from lanes 0,2,4,...,14 and 16,18,...,30

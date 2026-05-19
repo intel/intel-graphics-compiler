@@ -1,6 +1,6 @@
 ; UNSUPPORTED: system-windows
 
-; RUN: igc_opt -S  --igc-vectorizer -dce < %s 2>&1 | FileCheck %s
+; RUN: igc_opt -S  --igc-vectorizer -dce --platformbmg < %s 2>&1 | FileCheck %s
 ; CHECK-NOT: %vectorized_phi
 
 ; ModuleID = 'reduced.ll'
