@@ -1,0 +1,310 @@
+From: Aleksander Mielczarek <aleksander.mielczarek@intel.com>
+Date: Mon, 18 May 2026 00:00:00 +0000
+Subject: [PATCH] [IGC LLVM22] Temporary workaround for LLVM 22 buildability
+
+TEMPORARY WORKAROUND: This patch restores deprecated APIs removed in LLVM 22
+that are still used by IGC. It is intended as a short-term fix to unblock
+compilation while the IGC codebase is migrated to the new LLVM 22 APIs.
+This patch should be removed once IGC has been fully ported.
+
+---
+
+diff --git a/llvm/include/llvm/ADT/PointerUnion.h b/llvm/include/llvm/ADT/PointerUnion.h
+index d9087dd1c516..2f38555d9793 100644
+--- a/llvm/include/llvm/ADT/PointerUnion.h
++++ b/llvm/include/llvm/ADT/PointerUnion.h
+@@ -151,7 +151,6 @@ public:
+   ///
+   /// If the specified pointer type is incorrect, assert.
+   template <typename T>
+-  [[deprecated("Use cast instead")]]
+   inline T get() const {
+     assert(isa<T>(*this) && "Invalid accessor called");
+     return cast<T>(*this);
+diff --git a/llvm/include/llvm/ADT/StringRef.h b/llvm/include/llvm/ADT/StringRef.h
+index 09c6d6d6eab0..ea8ed00727be 100644
+--- a/llvm/include/llvm/ADT/StringRef.h
++++ b/llvm/include/llvm/ADT/StringRef.h
+@@ -168,6 +168,14 @@ namespace llvm {
+       return StringRef(S, size());
+     }
+ 
++    [[nodiscard]] bool equals(StringRef RHS) const {
++      if (size() != RHS.size())
++        return false;
++      if (empty())
++        return true;
++      return ::memcmp(data(), RHS.data(), size()) == 0;
++    }
++
+     /// Check for string equality, ignoring case.
+     [[nodiscard]] bool equals_insensitive(StringRef RHS) const {
+       return size() == RHS.size() && compare_insensitive(RHS) == 0;
+@@ -265,6 +273,13 @@ namespace llvm {
+     [[nodiscard]] bool starts_with(char Prefix) const {
+       return !empty() && front() == Prefix;
+     }
++    [[nodiscard]] bool startswith(StringRef Prefix) const {
++      return size() >= Prefix.size() &&
++             compareMemory(data(), Prefix.data(), Prefix.size()) == 0;
++    }
++    [[nodiscard]] bool startswith(char Prefix) const {
++      return !empty() && front() == Prefix;
++    }
+ 
+     /// Check if this string starts with the given \p Prefix, ignoring case.
+     [[nodiscard]] LLVM_ABI bool starts_with_insensitive(StringRef Prefix) const;
+@@ -278,6 +293,15 @@ namespace llvm {
+     [[nodiscard]] bool ends_with(char Suffix) const {
+       return !empty() && back() == Suffix;
+     }
++    /// Check if this string ends with the given \p Suffix.
++    [[nodiscard]] bool endswith(StringRef Suffix) const {
++      return size() >= Suffix.size() &&
++             compareMemory(end() - Suffix.size(), Suffix.data(),
++                           Suffix.size()) == 0;
++    }
++    [[nodiscard]] bool endswith(char Suffix) const {
++      return !empty() && back() == Suffix;
++    }
+ 
+     /// Check if this string ends with the given \p Suffix, ignoring case.
+     [[nodiscard]] LLVM_ABI bool ends_with_insensitive(StringRef Suffix) const;
+diff --git a/llvm/include/llvm/Analysis/TargetLibraryInfo.h b/llvm/include/llvm/Analysis/TargetLibraryInfo.h
+index 0f98af69f12c..28d6f730cc8c 100644
+--- a/llvm/include/llvm/Analysis/TargetLibraryInfo.h
++++ b/llvm/include/llvm/Analysis/TargetLibraryInfo.h
+@@ -19,6 +19,7 @@
+ #include "llvm/Pass.h"
+ #include "llvm/Support/Compiler.h"
+ #include "llvm/TargetParser/Triple.h"
++#include "llvm/Analysis/CallGraphSCCPass.h"
+ #include <bitset>
+ #include <optional>
+ 
+diff --git a/llvm/include/llvm/IR/BasicBlock.h b/llvm/include/llvm/IR/BasicBlock.h
+index 07d411fcf07a..1e2a6602201c 100644
+--- a/llvm/include/llvm/IR/BasicBlock.h
++++ b/llvm/include/llvm/IR/BasicBlock.h
+@@ -277,11 +277,8 @@ public:
+   ///
+   /// Deprecated in favour of getFirstNonPHIIt, which returns an iterator that
+   /// preserves some debugging information.
+-  LLVM_ABI LLVM_DEPRECATED("Use iterators as instruction positions",
+-                           "getFirstNonPHIIt") const
+-      Instruction *getFirstNonPHI() const;
+-  LLVM_ABI LLVM_DEPRECATED("Use iterators as instruction positions instead",
+-                           "getFirstNonPHIIt") Instruction *getFirstNonPHI();
++  const Instruction *getFirstNonPHI() const;
++  Instruction *getFirstNonPHI();
+ 
+   /// Returns an iterator to the first instruction in this block that is not a
+   /// PHINode instruction.
+diff --git a/llvm/include/llvm/IR/DerivedTypes.h b/llvm/include/llvm/IR/DerivedTypes.h
+index b22177c9e6c2..00780513a439 100644
+--- a/llvm/include/llvm/IR/DerivedTypes.h
++++ b/llvm/include/llvm/IR/DerivedTypes.h
+@@ -708,8 +708,6 @@ public:
+ 
+   /// This constructs a pointer to an object of the specified type in a numbered
+   /// address space.
+-  [[deprecated("PointerType::get with pointee type is pending removal. Use "
+-               "Context overload.")]]
+   LLVM_ABI static PointerType *get(Type *ElementType, unsigned AddressSpace);
+   /// This constructs an opaque pointer to an object in a numbered address
+   /// space.
+diff --git a/llvm/include/llvm/IR/IRBuilder.h b/llvm/include/llvm/IR/IRBuilder.h
+index bc35caabeb84..4775df8d59d3 100644
+--- a/llvm/include/llvm/IR/IRBuilder.h
++++ b/llvm/include/llvm/IR/IRBuilder.h
+@@ -611,6 +611,9 @@ public:
+   IntegerType *getIntPtrTy(const DataLayout &DL, unsigned AddrSpace = 0) {
+     return DL.getIntPtrType(Context, AddrSpace);
+   }
++  IntegerType *getInt8PtrTy(const DataLayout &DL, unsigned AddrSpace = 0) {
++    return DL.getIntPtrType(Context, AddrSpace);
++  }
+ 
+   /// Fetch the type of an integer that should be used to index GEP operations
+   /// within AddressSpace.
+diff --git a/llvm/include/llvm/IR/Instruction.h b/llvm/include/llvm/IR/Instruction.h
+index 11385666e7ff..499a59381d2b 100644
+--- a/llvm/include/llvm/IR/Instruction.h
++++ b/llvm/include/llvm/IR/Instruction.h
+@@ -53,9 +53,7 @@ class InsertPosition {
+ 
+ public:
+   InsertPosition(std::nullptr_t) : InsertAt() {}
+-  LLVM_ABI LLVM_DEPRECATED("Use BasicBlock::iterators for insertion instead",
+-                           "BasicBlock::iterator")
+-      InsertPosition(Instruction *InsertBefore);
++  InsertPosition(Instruction *InsertBefore);
+   LLVM_ABI InsertPosition(BasicBlock *InsertAtEnd);
+   InsertPosition(InstListType::iterator InsertAt) : InsertAt(InsertAt) {}
+   operator InstListType::iterator() const { return InsertAt; }
+@@ -213,8 +211,7 @@ public:
+   /// start of a block such as BasicBlock::getFirstNonPHIIt must be passed into
+   /// insertBefore without unwrapping/rewrapping. For all other positions, call
+   /// getIterator to fetch the instruction iterator.
+-  LLVM_ABI LLVM_DEPRECATED("Use iterators as instruction positions",
+-                           "") void insertBefore(Instruction *InsertPos);
++  void insertBefore(Instruction *InsertPos);
+ 
+   /// Insert an unlinked instruction into a basic block immediately before
+   /// the specified position.
+@@ -242,8 +239,7 @@ public:
+   /// start of a block such as BasicBlock::getFirstNonPHIIt must be passed into
+   /// moveBefore without unwrapping/rewrapping. For all other positions, call
+   /// getIterator to fetch the instruction iterator.
+-  LLVM_ABI LLVM_DEPRECATED("Use iterators as instruction positions",
+-                           "") void moveBefore(Instruction *MovePos);
++  void moveBefore(Instruction *MovePos);
+ 
+   /// Unlink this instruction from its current basic block and insert it into
+   /// the basic block that MovePos lives in, right before MovePos.
+@@ -265,8 +261,7 @@ public:
+   ///
+   /// Deprecated in favour of the iterator-accepting flavour of
+   /// moveBeforePreserving, as all insertions should be at iterator positions.
+-  LLVM_ABI LLVM_DEPRECATED("Use iterators as instruction positions",
+-                           "") void moveBeforePreserving(Instruction *MovePos);
++  void moveBeforePreserving(Instruction *MovePos);
+ 
+ private:
+   /// RemoveDIs project: all other moves implemented with this method,
+@@ -905,6 +900,28 @@ public:
+   /// Return true if the instruction is a DbgInfoIntrinsic or PseudoProbeInst.
+   LLVM_ABI bool isDebugOrPseudoInst() const LLVM_READONLY;
+ 
++  /// Return a pointer to the next non-debug instruction in the same basic
++  /// block as 'this', or nullptr if no such instruction exists. Skip any pseudo
++  /// operations if \c SkipPseudoOp is true.
++  const Instruction *
++  getNextNonDebugInstruction(bool SkipPseudoOp = false) const;
++  Instruction *getNextNonDebugInstruction(bool SkipPseudoOp = false) {
++    return const_cast<Instruction *>(
++        static_cast<const Instruction *>(this)->getNextNonDebugInstruction(
++            SkipPseudoOp));
++  }
++
++  /// Return a pointer to the previous non-debug instruction in the same basic
++  /// block as 'this', or nullptr if no such instruction exists. Skip any pseudo
++  /// operations if \c SkipPseudoOp is true.
++  const Instruction *
++  getPrevNonDebugInstruction(bool SkipPseudoOp = false) const;
++  Instruction *getPrevNonDebugInstruction(bool SkipPseudoOp = false) {
++    return const_cast<Instruction *>(
++        static_cast<const Instruction *>(this)->getPrevNonDebugInstruction(
++            SkipPseudoOp));
++  }
++
+   /// Create a copy of 'this' instruction that is identical in all ways except
+   /// the following:
+   ///   * The instruction has no parent
+diff --git a/llvm/include/llvm/IR/Intrinsics.h b/llvm/include/llvm/IR/Intrinsics.h
+index 2c86a43e114e..8dc7f4f34a9b 100644
+--- a/llvm/include/llvm/IR/Intrinsics.h
++++ b/llvm/include/llvm/IR/Intrinsics.h
+@@ -108,6 +108,8 @@ namespace Intrinsic {
+   /// the intrinsic.
+   LLVM_ABI Function *getOrInsertDeclaration(Module *M, ID id,
+                                             ArrayRef<Type *> Tys = {});
++  LLVM_ABI Function *getDeclaration(Module *M, ID id,
++                                    ArrayRef<Type *> Tys = {});
+ 
+   /// Look up the Function declaration of the intrinsic \p IID in the Module
+   /// \p M. If it does not exist, add a declaration and return it. Otherwise,
+@@ -123,6 +125,8 @@ namespace Intrinsic {
+   /// \param ArgTys - The argument types of the intrinsic.
+   LLVM_ABI Function *getOrInsertDeclaration(Module *M, ID IID, Type *RetTy,
+                                             ArrayRef<Type *> ArgTys);
++  LLVM_ABI Function *getDeclaration(Module *M, ID IID, Type *RetTy,
++                                    ArrayRef<Type *> ArgTys);
+ 
+   /// Look up the Function declaration of the intrinsic \p id in the Module
+   /// \p M and return it if it exists. Otherwise, return nullptr. This version
+diff --git a/llvm/include/llvm/IR/Type.h b/llvm/include/llvm/IR/Type.h
+index 1c042500ba8e..ac85146aa4a5 100644
+--- a/llvm/include/llvm/IR/Type.h
++++ b/llvm/include/llvm/IR/Type.h
+@@ -484,8 +484,7 @@ public:
+   /// Return a pointer to the current type. This is equivalent to
+   /// PointerType::get(Ctx, AddrSpace).
+   /// TODO: Remove this after opaque pointer transition is complete.
+-  LLVM_ABI LLVM_DEPRECATED("Use PointerType::get instead", "PointerType::get")
+-      PointerType *getPointerTo(unsigned AddrSpace = 0) const;
++  PointerType *getPointerTo(unsigned AddrSpace = 0) const;
+ 
+ private:
+   /// Derived types like structures and arrays are sized iff all of the members
+diff --git a/llvm/lib/IR/Instruction.cpp b/llvm/lib/IR/Instruction.cpp
+index 7682c28e23b3..938660f362b2 100644
+--- a/llvm/lib/IR/Instruction.cpp
++++ b/llvm/lib/IR/Instruction.cpp
+@@ -1268,6 +1268,22 @@ const DebugLoc &Instruction::getStableDebugLoc() const {
+   return getDebugLoc();
+ }
+ 
++const Instruction *
++Instruction::getNextNonDebugInstruction(bool SkipPseudoOp) const {
++  for (const Instruction *I = getNextNode(); I; I = I->getNextNode())
++    if (!isa<DbgInfoIntrinsic>(I) && !(SkipPseudoOp && isa<PseudoProbeInst>(I)))
++      return I;
++  return nullptr;
++}
++
++const Instruction *
++Instruction::getPrevNonDebugInstruction(bool SkipPseudoOp) const {
++  for (const Instruction *I = getPrevNode(); I; I = I->getPrevNode())
++    if (!isa<DbgInfoIntrinsic>(I) && !(SkipPseudoOp && isa<PseudoProbeInst>(I)))
++      return I;
++  return nullptr;
++}
++
+ bool Instruction::isAssociative() const {
+   if (auto *II = dyn_cast<IntrinsicInst>(this))
+     return II->isAssociative();
+diff --git a/llvm/lib/IR/Intrinsics.cpp b/llvm/lib/IR/Intrinsics.cpp
+index f46d3e5063e4..1d5438291acf 100644
+--- a/llvm/lib/IR/Intrinsics.cpp
++++ b/llvm/lib/IR/Intrinsics.cpp
+@@ -789,6 +789,37 @@ Function *Intrinsic::getOrInsertDeclaration(Module *M, ID id, Type *RetTy,
+   return getOrInsertIntrinsicDeclarationImpl(M, id, OverloadTys, FTy);
+ }
+ 
++Function *Intrinsic::getDeclaration(Module *M, ID id,
++                                    ArrayRef<Type *> Tys) {
++  FunctionType *FT = getType(M->getContext(), id, Tys);
++  return getOrInsertIntrinsicDeclarationImpl(M, id, Tys, FT);
++}
++
++Function *Intrinsic::getDeclaration(Module *M, ID id, Type *RetTy,
++                                    ArrayRef<Type *> ArgTys) {
++  if (!Intrinsic::isOverloaded(id))
++    return getOrInsertDeclaration(M, id);
++
++  SmallVector<Intrinsic::IITDescriptor, 8> Table;
++  getIntrinsicInfoTableEntries(id, Table);
++  ArrayRef<Intrinsic::IITDescriptor> TableRef = Table;
++
++  FunctionType *FTy = FunctionType::get(RetTy, ArgTys, /*isVarArg=*/false);
++
++  SmallVector<Type *, 4> OverloadTys;
++  [[maybe_unused]] Intrinsic::MatchIntrinsicTypesResult Res =
++      matchIntrinsicSignature(FTy, TableRef, OverloadTys);
++  assert(Res == Intrinsic::MatchIntrinsicTypes_Match &&
++         "intrinsic signature mismatch");
++
++  if (!matchIntrinsicVarArg(/*isVarArg=*/true, TableRef))
++    FTy = FunctionType::get(RetTy, ArgTys, /*isVarArg=*/true);
++
++  assert(TableRef.empty() && "Unprocessed descriptors remain");
++
++  return getOrInsertIntrinsicDeclarationImpl(M, id, OverloadTys, FTy);
++}
++
+ Function *Intrinsic::getDeclarationIfExists(const Module *M, ID id) {
+   return M->getFunction(getName(id));
+ }
+--
+2.43.0
