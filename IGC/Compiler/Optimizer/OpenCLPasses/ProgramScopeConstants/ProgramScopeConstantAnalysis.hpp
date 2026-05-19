@@ -50,25 +50,14 @@ protected:
   typedef std::vector<unsigned char> DataVector;
   typedef llvm::MapVector<llvm::GlobalVariable *, int64_t> BufferOffsetMap;
 
-  struct PointerOffsetInfo {
-    unsigned AddressSpaceWherePointerResides;
-    uint64_t PointerOffsetFromBufferBase;
-    unsigned AddressSpacePointedTo;
-
-    PointerOffsetInfo(unsigned AddressSpaceWherePointerResides, uint64_t PointerOffsetFromBufferBase,
-                      unsigned AddressSpacePointedTo)
-        : AddressSpaceWherePointerResides(AddressSpaceWherePointerResides),
-          PointerOffsetFromBufferBase(PointerOffsetFromBufferBase), AddressSpacePointedTo(AddressSpacePointedTo) {}
-  };
-
-  typedef std::list<PointerOffsetInfo> PointerOffsetInfoList;
-
   /// @brief  Add data from the inline constant into the buffer.
-  /// @param  initializer           The initializer of the constant being added.
-  /// @param  inlineConstantBuffer  The buffer the data is being added to.
+  /// @param  initializer                   The initializer of the constant being added.
+  /// @param  inlineProgramScopeBufferType  Selects the target buffer (Globals, Constants, or ConstantStrings).
+  /// @param  inlineProgramScopeOffsets     Map tracking each global's offset within its buffer.
+  /// @param  addressSpace                  Address space where the global resides.
+  /// @param  forceAlignmentOne             If true, uses alignment of 1; used for packed structs.
   void addData(llvm::Constant *initializer, InlineProgramScopeBufferType inlineProgramScopeBufferType,
-               PointerOffsetInfoList &pointerOffsetInfo, BufferOffsetMap &inlineProgramScopeOffsets,
-               unsigned addressSpace, bool forceAlignmentOne = false);
+               BufferOffsetMap &inlineProgramScopeOffsets, unsigned addressSpace, bool forceAlignmentOne = false);
 
   /// @brief  Align the buffer according to the required alignment
   /// @param  buffer     The buffer to align.

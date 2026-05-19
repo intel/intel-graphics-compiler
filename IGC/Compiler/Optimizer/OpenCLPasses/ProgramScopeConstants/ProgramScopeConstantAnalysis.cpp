@@ -40,10 +40,6 @@ ProgramScopeConstantAnalysis::ProgramScopeConstantAnalysis() : ModulePass(ID) {
 bool ProgramScopeConstantAnalysis::runOnModule(Module &M) {
   BufferOffsetMap inlineProgramScopeOffsets;
 
-  // maintains pointer information so we can patch in
-  // actual pointer addresses in runtime.
-  PointerOffsetInfoList pointerOffsetInfoList;
-
   LLVMContext &C = M.getContext();
   m_DL = &M.getDataLayout();
 
@@ -152,7 +148,7 @@ bool ProgramScopeConstantAnalysis::runOnModule(Module &M) {
     inlineProgramScopeOffsets[globalVar] = inlineProgramScopeBuffer->size();
 
     // Add the data to the buffer
-    addData(initializer, inlineProgramScopeBufferType, pointerOffsetInfoList, inlineProgramScopeOffsets, AS);
+    addData(initializer, inlineProgramScopeBufferType, inlineProgramScopeOffsets, AS);
   }
 
   // Set the needed allocation size to the actual buffer size
@@ -237,34 +233,6 @@ bool ProgramScopeConstantAnalysis::runOnModule(Module &M) {
     }
   }
 
-  // Setup the metadata for pointer patch info to be utilized during
-  // OCL codegen.
-
-  if (pointerOffsetInfoList.size() > 0) {
-    for (auto &info : pointerOffsetInfoList) {
-      // We currently just use a single buffer at index 0; hardcode
-      // the patch to reference it.
-
-      if (info.AddressSpaceWherePointerResides == ADDRESS_SPACE_GLOBAL) {
-        PointerProgramBinaryInfo ppbi;
-        ppbi.PointerBufferIndex = 0;
-        ppbi.PointerOffset = int_cast<int32_t>(info.PointerOffsetFromBufferBase);
-        ppbi.PointeeBufferIndex = 0;
-        ppbi.PointeeAddressSpace = info.AddressSpacePointedTo;
-        m_pModuleMd->GlobalPointerProgramBinaryInfos.push_back(ppbi);
-      } else if (info.AddressSpaceWherePointerResides == ADDRESS_SPACE_CONSTANT) {
-        PointerProgramBinaryInfo ppbi;
-        ppbi.PointerBufferIndex = 0;
-        ppbi.PointerOffset = int_cast<int32_t>(info.PointerOffsetFromBufferBase);
-        ppbi.PointeeBufferIndex = 0;
-        ppbi.PointeeAddressSpace = info.AddressSpacePointedTo;
-        m_pModuleMd->ConstantPointerProgramBinaryInfos.push_back(ppbi);
-      } else {
-        IGC_ASSERT_MESSAGE(0, "trying to patch unsupported address space");
-      }
-    }
-  }
-
   const bool changed = !inlineProgramScopeOffsets.empty();
   for (const auto &offset : inlineProgramScopeOffsets) {
     std::string globalName = offset.first->getName().str();
@@ -336,7 +304,6 @@ static unsigned WalkCastsToFindNamedAddrSpace(const Value *val) {
 
 void ProgramScopeConstantAnalysis::addData(Constant *initializer,
                                            InlineProgramScopeBufferType inlineProgramScopeBufferType,
-                                           PointerOffsetInfoList &pointerOffsetInfoList,
                                            BufferOffsetMap &inlineProgramScopeOffsets, unsigned addressSpace,
                                            bool forceAlignmentOne) {
   DataVector &inlineProgramScopeBuffer = m_pModuleMd->inlineBuffers[inlineProgramScopeBufferType].Buffer;
@@ -419,16 +386,15 @@ void ProgramScopeConstantAnalysis::addData(Constant *initializer,
           uint64_t val = *cast<ConstantInt>(ce->getOperand(0))->getValue().getRawData();
           inlineProgramScopeBuffer.insert(inlineProgramScopeBuffer.end(), (char *)&val, ((char *)&val) + pointerSize);
         } else {
-          addData(ce->getOperand(0), inlineProgramScopeBufferType, pointerOffsetInfoList, inlineProgramScopeOffsets,
-                  addressSpace);
+          addData(ce->getOperand(0), inlineProgramScopeBufferType, inlineProgramScopeOffsets, addressSpace);
         }
       } else if (GEPOperator *GEP = dyn_cast<GEPOperator>(ce)) {
         for (auto &Op : GEP->operands())
           if (Constant *C = dyn_cast<Constant>(&Op))
-            addData(C, inlineProgramScopeBufferType, pointerOffsetInfoList, inlineProgramScopeOffsets, addressSpace);
+            addData(C, inlineProgramScopeBufferType, inlineProgramScopeOffsets, addressSpace);
       } else if (ce->getOpcode() == Instruction::AddrSpaceCast || ce->getOpcode() == Instruction::BitCast) {
         if (Constant *C = dyn_cast<Constant>(ce->getOperand(0)))
-          addData(C, inlineProgramScopeBufferType, pointerOffsetInfoList, inlineProgramScopeOffsets, addressSpace);
+          addData(C, inlineProgramScopeBufferType, inlineProgramScopeOffsets, addressSpace);
       } else {
         IGC_ASSERT_MESSAGE(0, "unknown constant expression");
       }
@@ -447,24 +413,20 @@ void ProgramScopeConstantAnalysis::addData(Constant *initializer,
     // Right now, this means a bitcast, or a ptrtoint/inttoptr pair.
     // Handle it by adding the source of the cast.
     if (ce->getOpcode() == Instruction::BitCast || ce->getOpcode() == Instruction::AddrSpaceCast) {
-      addData(ce->getOperand(0), inlineProgramScopeBufferType, pointerOffsetInfoList, inlineProgramScopeOffsets,
-              addressSpace);
+      addData(ce->getOperand(0), inlineProgramScopeBufferType, inlineProgramScopeOffsets, addressSpace);
     } else if (ce->getOpcode() == Instruction::IntToPtr) {
       ConstantExpr *const opExpr = dyn_cast<ConstantExpr>(ce->getOperand(0));
       IGC_ASSERT_MESSAGE(nullptr != opExpr, "Unexpected operand of IntToPtr");
       IGC_ASSERT_MESSAGE(opExpr->getOpcode() == Instruction::PtrToInt, "Unexpected operand of IntToPtr");
-      addData(opExpr->getOperand(0), inlineProgramScopeBufferType, pointerOffsetInfoList, inlineProgramScopeOffsets,
-              addressSpace);
+      addData(opExpr->getOperand(0), inlineProgramScopeBufferType, inlineProgramScopeOffsets, addressSpace);
     } else if (ce->getOpcode() == Instruction::PtrToInt) {
-      addData(ce->getOperand(0), inlineProgramScopeBufferType, pointerOffsetInfoList, inlineProgramScopeOffsets,
-              addressSpace);
+      addData(ce->getOperand(0), inlineProgramScopeBufferType, inlineProgramScopeOffsets, addressSpace);
     } else {
       IGC_ASSERT_MESSAGE(0, "Unexpected constant expression type");
     }
   } else if (ConstantDataSequential *cds = dyn_cast<ConstantDataSequential>(initializer)) {
     for (unsigned i = 0; i < cds->getNumElements(); i++) {
-      addData(cds->getElementAsConstant(i), inlineProgramScopeBufferType, pointerOffsetInfoList,
-              inlineProgramScopeOffsets, addressSpace);
+      addData(cds->getElementAsConstant(i), inlineProgramScopeBufferType, inlineProgramScopeOffsets, addressSpace);
     }
   } else if (ConstantAggregateZero *cag = dyn_cast<ConstantAggregateZero>(initializer)) {
     // Zero aggregates are filled with, well, zeroes.
@@ -481,8 +443,7 @@ void ProgramScopeConstantAnalysis::addData(Constant *initializer,
       Constant *C = initializer->getAggregateElement(i);
       IGC_ASSERT_MESSAGE(C, "getAggregateElement returned null, unsupported constant");
       // Since the type may not be primitive, extra alignment is required.
-      addData(C, inlineProgramScopeBufferType, pointerOffsetInfoList, inlineProgramScopeOffsets, addressSpace,
-              forceAlignmentOne);
+      addData(C, inlineProgramScopeBufferType, inlineProgramScopeOffsets, addressSpace, forceAlignmentOne);
     }
   }
   // And, finally, we have to handle base types - ints and floats.

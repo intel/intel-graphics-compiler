@@ -714,14 +714,6 @@ enum class ShaderTypeMD
         std::map<unsigned, unsigned> zeroIdxs;
     };
 
-    struct PointerProgramBinaryInfo
-    {
-        int PointerBufferIndex = 0;
-        int PointerOffset = 0;
-        int PointeeAddressSpace = 0;
-        int PointeeBufferIndex = 0;
-    };
-
     struct PointerAddressRelocInfo
     {
         unsigned BufferOffset = 0;
@@ -796,8 +788,6 @@ enum class ShaderTypeMD
         ImmConstantInfo immConstant;
         llvm::SetVector<llvm::GlobalVariable*> stringConstants;
         std::array<InlineProgramScopeBuffer, InlineProgramScopeBufferType::Count> inlineBuffers = {};
-        std::vector<PointerProgramBinaryInfo> GlobalPointerProgramBinaryInfos;
-        std::vector<PointerProgramBinaryInfo> ConstantPointerProgramBinaryInfos;
         std::vector<PointerAddressRelocInfo> GlobalBufferAddressRelocInfo;
         std::vector<PointerAddressRelocInfo> ConstantBufferAddressRelocInfo;
         std::map<uint32_t, uint32_t> forceLscCacheList;
