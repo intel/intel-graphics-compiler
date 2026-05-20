@@ -186,11 +186,24 @@ function(igc_bif_build_bc)
 
     math(EXPR _bcFileId "${_bcFileId} + 1")
 
+    set(LLVM_VERSION_DEPENDENT_ARGS "")
+
+    if(LLVM_VERSION_MAJOR LESS 20)
+      list(APPEND LLVM_VERSION_DEPENDENT_ARGS "-fpreserve-vec3-type")
+    endif()
+
+    # TODO:
+    # Temporary workaround to enable BiF compilation
+    # Needs to be removed ASAP if possible
+    if(LLVM_VERSION_MAJOR GREATER_EQUAL 22)
+      list(APPEND LLVM_VERSION_DEPENDENT_ARGS "-Wno-incompatible-pointer-types")
+    endif()
+
     # OpenCL source compilation is triggered by CLANG change, change of source files, change of precompiled header, change of
     # forcibly included headers or change of additional dependencies.
     execute_process(
         COMMAND "${CMAKE_COMMAND}" -E make_directory "${_outBcFileDir}"
-        COMMAND ${clang-tool} -cc1 ${IGC_BUILD__OPAQUE_POINTERS_DEFAULT_ARG_CLANG} -x cl -fblocks -fpreserve-vec3-type -opencl-builtins "-triple=${_archTriple}" -w -emit-llvm-bc -discard-value-names -o "${_bcTempFilePath}" ${_pchFlags} ${_incFileFlags} ${_includeDirsFlags} ${_defineFlags} ${_options_DEFAULT} ${_options_CL} "${_srcFilePath}"
+        COMMAND ${clang-tool} -cc1 ${IGC_BUILD__OPAQUE_POINTERS_DEFAULT_ARG_CLANG} -x cl -fblocks ${LLVM_VERSION_DEPENDENT_ARGS} -opencl-builtins "-triple=${_archTriple}" -w -emit-llvm-bc -discard-value-names -o "${_bcTempFilePath}" ${_pchFlags} ${_incFileFlags} ${_includeDirsFlags} ${_defineFlags} ${_options_DEFAULT} ${_options_CL} "${_srcFilePath}"
     COMMAND_ECHO STDOUT
       )
     execute_process(
