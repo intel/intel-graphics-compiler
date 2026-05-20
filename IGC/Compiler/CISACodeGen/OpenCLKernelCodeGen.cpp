@@ -2056,10 +2056,7 @@ void CollectProgramInfo(OpenCLProgramContext *ctx) {
     std::unique_ptr<iOpenCL::InitConstantAnnotation> initConstant(new iOpenCL::InitConstantAnnotation());
     initConstant->Alignment = ipsbMDHandle.alignment;
     initConstant->AllocSize = ipsbMDHandle.allocSize;
-
-    size_t bufferSize = (ipsbMDHandle.Buffer).size();
-    initConstant->InlineData.resize(bufferSize);
-    memcpy_s(initConstant->InlineData.data(), bufferSize, ipsbMDHandle.Buffer.data(), bufferSize);
+    initConstant->InlineData = std::move(ipsbMDHandle.Buffer);
 
     ctx->m_programInfo.m_initConstantAnnotation = std::move(initConstant);
 
@@ -2068,10 +2065,7 @@ void CollectProgramInfo(OpenCLProgramContext *ctx) {
     std::unique_ptr<iOpenCL::InitConstantAnnotation> initStringConstant(new iOpenCL::InitConstantAnnotation());
     initStringConstant->Alignment = ipsbStringMDHandle.alignment;
     initStringConstant->AllocSize = ipsbStringMDHandle.allocSize;
-
-    bufferSize = (ipsbStringMDHandle.Buffer).size();
-    initStringConstant->InlineData.resize(bufferSize);
-    memcpy_s(initStringConstant->InlineData.data(), bufferSize, ipsbStringMDHandle.Buffer.data(), bufferSize);
+    initStringConstant->InlineData = std::move(ipsbStringMDHandle.Buffer);
 
     ctx->m_programInfo.m_initConstantStringAnnotation = std::move(initStringConstant);
   }
@@ -2082,10 +2076,7 @@ void CollectProgramInfo(OpenCLProgramContext *ctx) {
     std::unique_ptr<iOpenCL::InitGlobalAnnotation> initGlobal(new iOpenCL::InitGlobalAnnotation());
     initGlobal->Alignment = ipsbMDHandle.alignment;
     initGlobal->AllocSize = ipsbMDHandle.allocSize;
-
-    size_t bufferSize = (ipsbMDHandle.Buffer).size();
-    initGlobal->InlineData.resize(bufferSize);
-    memcpy_s(initGlobal->InlineData.data(), bufferSize, ipsbMDHandle.Buffer.data(), bufferSize);
+    initGlobal->InlineData = std::move(ipsbMDHandle.Buffer);
 
     ctx->m_programInfo.m_initGlobalAnnotation = std::move(initGlobal);
   }
