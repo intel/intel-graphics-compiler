@@ -1361,9 +1361,6 @@ public:
   }
 
   bool supports2dBlockTranspose64ByteWidth() const { return isCoreChildOf(IGFX_XE3P_CORE); }
-  bool supports2dBlockPrefetch256Bytes() const { return isCoreChildOf(IGFX_XE3P_CORE); }
-  bool supports2dBlockTransform64ElementsWidth() const { return isCoreChildOf(IGFX_XE2_HPG_CORE); }
-  bool padsWithZerosSubGRF2dBlocks() const { return isCoreChildOf(IGFX_XE2_HPG_CORE); }
 
   bool supportsReadStateInfo() const {
     return hasEfficient64bEnabled() && (IGC_IS_FLAG_ENABLED(EnableReadStateToA64Read) || m_WaTable.Wa_14025275057);

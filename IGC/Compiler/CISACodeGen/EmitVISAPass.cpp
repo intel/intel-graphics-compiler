@@ -24165,27 +24165,6 @@ void EmitPass::emitLSC2DBlockOperation(llvm::GenIntrinsicInst *inst) {
 
   bool emu_read = (isRead && isTranspose && (elemSizeInBits == 8 || elemSizeInBits == 16));
   if (!emu_read) {
-    // On platforms that do NOT zero-pad sub-GRF 2D block loads (e.g. PVC),
-    // zero-init the destination first so the garbage tail in each block's
-    // GRF comes out zero. HW writes only the valid block bytes, so the
-    // LSC message below preserves the zeros in the garbage region.
-    if (isRead && !isPrefetch && !m_currShader->m_Platform->padsWithZerosSubGRF2dBlocks()) {
-      unsigned grfSize = m_currShader->m_Platform->getGRFSize();
-      unsigned elemSizeInBytes = elemSizeInBits / 8;
-      unsigned blockSizeInBytes = blockWidth * blockHeight * elemSizeInBytes;
-      unsigned simdRead = numLanes(m_currShader->m_SIMDSize) * (isVnni ? 4 : elemSizeInBytes);
-
-      if (blockSizeInBytes < grfSize && (simdRead == grfSize || numBlocksV == 1)) {
-        unsigned lanes = destination->GetSize() / 8;
-        CVariable *zeroUQ = m_currShader->ImmToVariable(0, ISA_TYPE_UQ);
-        CVariable *alias = m_currShader->GetNewAlias(destination, ISA_TYPE_UQ, 0, lanes);
-        m_encoder->SetSimdSize(lanesToSIMDMode(lanes));
-        m_encoder->SetNoMask();
-        m_encoder->Copy(alias, zeroUQ);
-        m_encoder->Push();
-      }
-    }
-
     m_encoder->LSC_2DBlockMessage(isRead ? LSC_LOAD_BLOCK2D : LSC_STORE_BLOCK2D, nullptr, destination,
                                   nullptr, // pImgBTI - not needed for read
                                   pXOffset, pYOffset,

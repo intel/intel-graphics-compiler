@@ -7979,22 +7979,17 @@ void CEncoder::LSC_2DBlockMessage(LSC_OP subOp, ResourceDescriptor *resource, CV
       dstVar = GetRawDestination(dst1, 0);
     }
 
-    CVariable *yOffsetIncrementedVar = nullptr;
-    if (yOffset->IsImmediate()) {
-      yOffsetIncrementedVar = m_program->ImmToVariable(yOffset->GetImmediateValue() + 8, yOffset->GetType());
-    } else {
-      VISA_VectorOpnd *srcOpnd0 = GetSourceOperandNoModifier(yOffset);
-      VISA_VectorOpnd *srcOpnd1 = nullptr;
-      uint immediate = 8;
-      V(vKernel->CreateVISAImmediate(srcOpnd1, &immediate, ISA_TYPE_UD));
-      yOffsetIncrementedVar = m_program->GetNewVariable(yOffset->GetNumberElement(), yOffset->GetType(),
-                                                        yOffset->GetAlign(), yOffset->IsUniform(), CName::NONE);
-      VISA_VectorOpnd *yVarIncremented = nullptr;
-      V(vKernel->CreateVISADstOperand(yVarIncremented, GetVISAVariable(yOffsetIncrementedVar), 1, 0, 0));
-      V(vKernel->AppendVISAArithmeticInst(ISA_ADD, nullptr, false, vISA_EMASK_M1_NM,
-                                          GetAluExecSize(yOffset), // EXEC_SIZE_1
-                                          yVarIncremented, srcOpnd0, srcOpnd1));
-    }
+    VISA_VectorOpnd *srcOpnd0 = GetSourceOperandNoModifier(yOffset);
+    VISA_VectorOpnd *srcOpnd1 = nullptr;
+    uint immediate = 8;
+    V(vKernel->CreateVISAImmediate(srcOpnd1, &immediate, ISA_TYPE_UD));
+    CVariable *yOffsetIncrementedVar = m_program->GetNewVariable(
+        yOffset->GetNumberElement(), yOffset->GetType(), yOffset->GetAlign(), yOffset->IsUniform(), CName::NONE);
+    VISA_VectorOpnd *yVarIncremented = nullptr;
+    V(vKernel->CreateVISADstOperand(yVarIncremented, GetVISAVariable(yOffsetIncrementedVar), 1, 0, 0));
+    V(vKernel->AppendVISAArithmeticInst(ISA_ADD, nullptr, false, vISA_EMASK_M1_NM,
+                                        GetAluExecSize(yOffset), // EXEC_SIZE_1
+                                        yVarIncremented, srcOpnd0, srcOpnd1));
 
     VISA_VectorOpnd *xVarPart2 = GetSourceOperandNoModifier(xOffset);
     VISA_VectorOpnd *yVarPart2 = GetSourceOperandNoModifier(yOffsetIncrementedVar);
