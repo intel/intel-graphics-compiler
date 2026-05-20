@@ -18,6 +18,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/IR/Intrinsics.h"
 #include "llvm/ADT/SetVector.h"
 #include "llvmWrapper/IR/Value.h"
+#include "llvmWrapper/IR/Instructions.h"
 #include "Probe/Assertion.h"
 
 using namespace llvm;
@@ -135,7 +136,7 @@ bool GotoJoin::isValidJoin(CallInst *Join) {
   // were given.
   if (!isJoinLabel(BB))
     return true;
-  auto Inst = BB->getFirstNonPHIOrDbg();
+  auto Inst = IGCLLVM::getFirstNonPHIOrDbg(BB);
   while (isa<BitCastInst>(Inst))
     Inst = Inst->getNextNode();
   if (GenXIntrinsic::getGenXIntrinsicID(Inst) ==
@@ -154,7 +155,7 @@ bool GotoJoin::isValidJoin(CallInst *Join) {
  */
 bool GotoJoin::isBranchingJoinLabelBlock(BasicBlock *BB) {
   auto Join = isBranchingJoinBlock(BB);
-  if (!Join || Join != BB->getFirstNonPHIOrDbg())
+  if (!Join || Join != IGCLLVM::getFirstNonPHIOrDbg(BB))
     return false;
   return isJoinLabel(BB);
 }
@@ -185,7 +186,7 @@ BasicBlock *GotoJoin::getBranchingBlockForBB(BasicBlock *BB,
     // critical edge splitter.
     auto PredBB = PredBr->getParent();
     if (SkipCriticalEdgeSplitter && PredBr->getNumSuccessors() == 1 &&
-        PredBr == PredBB->getFirstNonPHIOrDbg() && PredBB->hasOneUse()) {
+        PredBr == IGCLLVM::getFirstNonPHIOrDbg(PredBB) && PredBB->hasOneUse()) {
       auto ui2 = PredBB->use_begin();
       PredBr = dyn_cast<BranchInst>(ui2->getUser());
       if (!PredBr || ui2->getOperandNo() != PredBr->getNumOperands() - 1)

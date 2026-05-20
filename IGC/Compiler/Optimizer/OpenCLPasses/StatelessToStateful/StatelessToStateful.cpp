@@ -24,6 +24,7 @@ SPDX-License-Identifier: MIT
 #include <string>
 #include "Probe/Assertion.h"
 #include "PointersSettings.h"
+#include "llvmWrapper/IR/Instructions.h"
 
 using namespace llvm;
 using namespace IGC;
@@ -657,7 +658,7 @@ bool StatelessToStateful::pointerIsPositiveOffsetFromKernelArgument(
     // guarantted to be DW-aligned.)
     //
     // Note that implicit arg is always aligned.
-    auto insertionPt = F->getEntryBlock().getFirstNonPHI();
+    auto insertionPt = IGCLLVM::getFirstNonPHI(&F->getEntryBlock());
     bool isAlignedPointee = determinePointerAlignment(arg, base, *DL, V, AC, insertionPt, OriginalInstructionAlignment);
 
     // If m_hasBufferOffsetArg is true, the offset argument is added to

@@ -184,10 +184,28 @@ inline llvm::IntToPtrInst *createIntToPtrInst(llvm::Value *S, llvm::Type *Ty, co
 }
 
 inline llvm::Instruction *getFirstNonPHI(llvm::BasicBlock *BB) {
-#if LLVM_VERSION_MAJOR < 18
+#if LLVM_VERSION_MAJOR < 20
   return BB->getFirstNonPHI();
 #else
   auto It = BB->getFirstNonPHIIt();
+  return It == BB->end() ? nullptr : &*It;
+#endif
+}
+
+inline llvm::Instruction *getFirstNonPHIOrDbg(llvm::BasicBlock *BB, bool SkipPseudoOp = true) {
+#if LLVM_VERSION_MAJOR < 20
+  return BB->getFirstNonPHIOrDbg(SkipPseudoOp);
+#else
+  auto It = BB->getFirstNonPHIOrDbg(SkipPseudoOp);
+  return It == BB->end() ? nullptr : &*It;
+#endif
+}
+
+inline llvm::Instruction *getFirstNonPHIOrDbgOrLifetime(llvm::BasicBlock *BB, bool SkipPseudoOp = true) {
+#if LLVM_VERSION_MAJOR < 20
+  return BB->getFirstNonPHIOrDbgOrLifetime(SkipPseudoOp);
+#else
+  auto It = BB->getFirstNonPHIOrDbgOrLifetime(SkipPseudoOp);
   return It == BB->end() ? nullptr : &*It;
 #endif
 }

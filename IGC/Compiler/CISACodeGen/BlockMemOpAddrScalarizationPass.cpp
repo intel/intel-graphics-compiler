@@ -13,6 +13,7 @@ SPDX-License-Identifier: MIT
 
 #include "common/LLVMWarningsPush.hpp"
 #include "common/LLVMWarningsPop.hpp"
+#include "llvmWrapper/IR/Instructions.h"
 
 using namespace llvm;
 using namespace IGC;
@@ -191,7 +192,7 @@ Value *BlockMemOpAddrScalarizationPass::insertBroadcast(Instruction *InstForBroa
   Instruction *PlaceForInsert = nullptr;
 
   if (isa<PHINode>(InstForBroadcast))
-    PlaceForInsert = InstForBroadcast->getParent()->getFirstNonPHI();
+    PlaceForInsert = IGCLLVM::getFirstNonPHI(InstForBroadcast->getParent());
   else
     PlaceForInsert = InstForBroadcast->getNextNonDebugInstruction();
 

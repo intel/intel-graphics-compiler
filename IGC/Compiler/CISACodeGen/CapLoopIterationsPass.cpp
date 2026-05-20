@@ -20,6 +20,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/Analysis/LoopInfo.h"
 #include "llvm/IR/Dominators.h"
 #include "common/LLVMWarningsPop.hpp"
+#include "llvmWrapper/IR/Instructions.h"
 
 using namespace llvm;
 using namespace IGC;
@@ -54,7 +55,7 @@ bool CapLoopIterations::runOnFunction(Function &F) {
     if (!loop->isLoopSimplifyForm()) // preheader is required
       continue;
 
-    IRB.SetInsertPoint(loop->getHeader()->getFirstNonPHI());
+    IRB.SetInsertPoint(IGCLLVM::getFirstNonPHI(loop->getHeader()));
 
     auto counterphi = IRB.CreatePHI(IRB.getInt32Ty(), 2, "counterphi");
     counterphi->addIncoming(IRB.getInt32(0), loop->getLoopPreheader());

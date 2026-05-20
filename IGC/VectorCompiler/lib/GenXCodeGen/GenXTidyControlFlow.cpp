@@ -76,6 +76,7 @@ SPDX-License-Identifier: MIT
 #include "llvmWrapper/IR/IntrinsicInst.h"
 #include <llvmWrapper/IR/BasicBlock.h>
 #include "Probe/Assertion.h"
+#include "llvmWrapper/IR/Instructions.h"
 
 #define DEBUG_TYPE "GENX_TIDYCONTROLFLOW"
 
@@ -192,7 +193,7 @@ void GenXTidyControlFlow::removeEmptyBlocks(Function *F) {
     // eliminating.
     if (dyn_cast<PHINode>(&BB->front()))
       continue;
-    BranchInst *BI = dyn_cast<BranchInst>(BB->getFirstNonPHIOrDbg());
+    BranchInst *BI = dyn_cast<BranchInst>(IGCLLVM::getFirstNonPHIOrDbg(BB));
     if (!BI || !BI->isUnconditional())
       continue;
     // Do not remove BB if it has more than one predecessor.
@@ -217,7 +218,7 @@ void GenXTidyControlFlow::removeEmptyBlocks(Function *F) {
     // Change all of BB's uses to use its successor instead.
     IGC_ASSERT_MESSAGE(BB->getSinglePredecessor() != BB, "self loop");
     BB->replaceAllUsesWith(BI->getSuccessor(0));
-    moveDbgBeforeBlockRemoval(BB, Succ->getFirstNonPHI(), !HasOnePred);
+    moveDbgBeforeBlockRemoval(BB, IGCLLVM::getFirstNonPHI(Succ), !HasOnePred);
     BI->eraseFromParent();
     BB->eraseFromParent();
     Modified = true;
@@ -258,7 +259,7 @@ void GenXTidyControlFlow::fixGotoOverBranch(Function *F) {
       continue;
     if (Br->getSuccessor(0)->getPrevNode() != Succ)
       continue;
-    auto SuccBr = dyn_cast<BranchInst>(Succ->getFirstNonPHIOrDbg());
+    auto SuccBr = dyn_cast<BranchInst>(IGCLLVM::getFirstNonPHIOrDbg(Succ));
     if (!SuccBr || SuccBr->isConditional())
       continue;
     // The goto branches over just an unconditional branch.

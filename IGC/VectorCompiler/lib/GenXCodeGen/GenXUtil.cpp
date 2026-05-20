@@ -2311,7 +2311,7 @@ std::size_t genx::getStructElementPaddedSize(unsigned ElemIdx,
 bool genx::splitStructPhi(PHINode *Phi) {
   StructType *Ty = cast<StructType>(Phi->getType());
   // Find where we need to insert the combine instructions.
-  Instruction *CombineInsertBefore = Phi->getParent()->getFirstNonPHI();
+  Instruction *CombineInsertBefore = IGCLLVM::getFirstNonPHI(Phi->getParent());
   // Now split the phi.
   Value *Combined = UndefValue::get(Ty);
   // For each struct element...

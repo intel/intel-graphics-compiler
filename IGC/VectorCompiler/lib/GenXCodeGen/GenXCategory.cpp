@@ -352,7 +352,7 @@ void placeConvAfterDef(Function *Func, Instruction *Conv, Value *Def) {
       // produce incorrect IR in case of several PHI nodes since they must be
       // grouped at top of basic block. So insert the conversion after all PHI
       // nodes.
-      auto *FirstNonPhiInst = Inst->getParent()->getFirstNonPHI();
+      auto *FirstNonPhiInst = IGCLLVM::getFirstNonPHI(Inst->getParent());
       Conv->insertBefore(FirstNonPhiInst);
       Conv->setDebugLoc(Inst->getDebugLoc());
       return;
@@ -608,7 +608,7 @@ bool GenXCategory::fixCircularPhis(Function *F) {
       IGC_ASSERT(!isa<StructType>(Phi->getType()));
       // Insert a copy, split as required to be legal.
       auto NewCopy =
-          Liveness->insertCopy(Phi, nullptr, BB->getFirstNonPHI(),
+          Liveness->insertCopy(Phi, nullptr, IGCLLVM::getFirstNonPHI(BB),
                                Phi->getName() + ".unoverlapper", 0, Subtarget);
       // Change the uses that existed before we added the copy to use the
       // copy instead.

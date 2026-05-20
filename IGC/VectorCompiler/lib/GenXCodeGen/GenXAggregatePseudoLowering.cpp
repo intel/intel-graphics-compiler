@@ -82,6 +82,7 @@ SPDX-License-Identifier: MIT
 
 #include <unordered_map>
 #include <vector>
+#include "llvmWrapper/IR/Instructions.h"
 
 using namespace llvm;
 using namespace genx;
@@ -177,7 +178,7 @@ bool GenXAggregatePseudoLowering::runOnFunction(Function &F) {
 // before which new instruction can be inserted.
 static Instruction *getFirstInsertionPtAfter(Instruction &Inst) {
   if (isa<PHINode>(Inst))
-    return Inst.getParent()->getFirstNonPHI();
+    return IGCLLVM::getFirstNonPHI(Inst.getParent());
   return Inst.getNextNode();
 }
 

@@ -1051,7 +1051,7 @@ void ScalarizeFunction::obtainScalarizedValues(SmallVectorImpl<Value *> &retValu
       locationInst = &(*insertLocation);
       // If the insert location is PHI, move the insert location to after all PHIs is the block
       if (isa<PHINode>(locationInst)) {
-        locationInst = locationInst->getParent()->getFirstNonPHI();
+        locationInst = IGCLLVM::getFirstNonPHI(locationInst->getParent());
       }
     }
 
@@ -1102,7 +1102,7 @@ void ScalarizeFunction::obtainVectorValueWhichMightBeScalarizedImpl(Value *vecto
   Instruction *insertLocation = vectorInst;
   // If the original instruction was PHI, place the re-assembly only after all PHIs is the block
   if (isa<PHINode>(vectorInst)) {
-    insertLocation = insertLocation->getParent()->getFirstNonPHI();
+    insertLocation = IGCLLVM::getFirstNonPHI(insertLocation->getParent());
   }
 
   Value *assembledVector = UndefValue::get(vectorVal->getType());
@@ -1253,7 +1253,7 @@ void ScalarizeFunction::resolveDeferredInstructions() {
       ++insertLocation;
       // If the insert location is PHI, move the insert location to after all PHIs is the block
       if (isa<PHINode>(insertLocation)) {
-        insertLocation = BasicBlock::iterator(insertLocation->getParent()->getFirstNonPHI());
+        insertLocation = BasicBlock::iterator(IGCLLVM::getFirstNonPHI(insertLocation->getParent()));
       }
 
       newInsts.resize(width);

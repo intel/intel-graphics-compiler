@@ -15,6 +15,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/ADT/BreadthFirstIterator.h"
 #include "llvm/Transforms/Utils/Local.h"
 #include "common/LLVMWarningsPop.hpp"
+#include "llvmWrapper/IR/Instructions.h"
 #include "Compiler/CISACodeGen/IGCLivenessAnalysis.h"
 #include <fstream>
 
@@ -947,7 +948,7 @@ bool RematAddressArithmetic::rematerializePhiMemoryAddressCalculation(Function &
         Instruction *newIntToPtr = intToPtr->clone();
         newIntToPtr->setOperand(0, newAdd);
         // and insert in after the phi
-        Instruction *insertPoint = BB->getFirstNonPHIOrDbgOrLifetime();
+        Instruction *insertPoint = IGCLLVM::getFirstNonPHIOrDbgOrLifetime(BB);
         newAdd->insertBefore(insertPoint);
         newIntToPtr->insertBefore(insertPoint);
         phi->replaceAllUsesWith(newIntToPtr);

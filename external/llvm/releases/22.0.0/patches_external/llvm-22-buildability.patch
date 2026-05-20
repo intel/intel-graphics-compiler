@@ -82,24 +82,6 @@ index 0f98af69f12c..28d6f730cc8c 100644
  #include <bitset>
  #include <optional>
  
-diff --git a/llvm/include/llvm/IR/BasicBlock.h b/llvm/include/llvm/IR/BasicBlock.h
-index 07d411fcf07a..1e2a6602201c 100644
---- a/llvm/include/llvm/IR/BasicBlock.h
-+++ b/llvm/include/llvm/IR/BasicBlock.h
-@@ -277,11 +277,8 @@ public:
-   ///
-   /// Deprecated in favour of getFirstNonPHIIt, which returns an iterator that
-   /// preserves some debugging information.
--  LLVM_ABI LLVM_DEPRECATED("Use iterators as instruction positions",
--                           "getFirstNonPHIIt") const
--      Instruction *getFirstNonPHI() const;
--  LLVM_ABI LLVM_DEPRECATED("Use iterators as instruction positions instead",
--                           "getFirstNonPHIIt") Instruction *getFirstNonPHI();
-+  const Instruction *getFirstNonPHI() const;
-+  Instruction *getFirstNonPHI();
- 
-   /// Returns an iterator to the first instruction in this block that is not a
-   /// PHINode instruction.
 diff --git a/llvm/include/llvm/IR/DerivedTypes.h b/llvm/include/llvm/IR/DerivedTypes.h
 index b22177c9e6c2..00780513a439 100644
 --- a/llvm/include/llvm/IR/DerivedTypes.h

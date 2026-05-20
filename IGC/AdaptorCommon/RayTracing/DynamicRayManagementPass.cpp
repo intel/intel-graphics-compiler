@@ -20,6 +20,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/Transforms/Utils/SSAUpdater.h>
 #include "common/LLVMWarningsPop.hpp"
 #include "llvmWrapper/Analysis/InstructionSimplify.h"
+#include "llvmWrapper/IR/Instructions.h"
 
 using namespace IGC;
 using namespace llvm;
@@ -349,7 +350,7 @@ bool DynamicRayManagementPass::TryProceedBasedApproach(Function &F) {
   SmallVector<CallInst *> CheckReleaseIntrinsics;
 
   for (auto *checkBB : checkBBs) {
-    auto *IP = checkBB->getFirstNonPHI();
+    auto *IP = IGCLLVM::getFirstNonPHI(checkBB);
 
     // insert the check as far forward as possible into the BB
     for (auto &I : *checkBB) {
@@ -631,7 +632,7 @@ bool DynamicRayManagementPass::AddDynamicRayManagement(Function &F) {
   } else if (commonPostDominatorForRayQueryUsers->hasNPredecessors(1)) {
     // Single-exit loop case, common post-dominator has only one
     // predecessor that is a loop exiting block.
-    builder.SetInsertPoint(commonPostDominatorForRayQueryUsers->getFirstNonPHI());
+    builder.SetInsertPoint(IGCLLVM::getFirstNonPHI(commonPostDominatorForRayQueryUsers));
   } else {
     // If Release is put in the block which does not contain the last
     // AllocateRayQueryIntrinsic user, it might be reached from

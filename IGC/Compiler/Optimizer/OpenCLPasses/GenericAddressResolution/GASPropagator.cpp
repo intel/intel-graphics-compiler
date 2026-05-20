@@ -8,6 +8,7 @@ SPDX-License-Identifier: MIT
 #include "GASPropagator.h"
 #include "llvmWrapper/IR/Intrinsics.h"
 #include "llvmWrapper/IR/DerivedTypes.h"
+#include "llvmWrapper/IR/Instructions.h"
 
 using namespace IGC;
 
@@ -220,7 +221,7 @@ bool GASPropagator::visitPHINode(PHINode &PN) {
   NewPN->setDebugLoc(PN.getDebugLoc());
 
   BuilderType::InsertPointGuard Guard(IRB);
-  IRB.SetInsertPoint(PN.getParent()->getFirstNonPHI());
+  IRB.SetInsertPoint(IGCLLVM::getFirstNonPHI(PN.getParent()));
   Value *NewPtr = IRB.CreateAddrSpaceCast(NewPN, GASTy);
   PN.replaceAllUsesWith(NewPtr);
   PN.eraseFromParent();

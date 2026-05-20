@@ -540,7 +540,7 @@ bool CMABIBase<CallGraphImpl>::runOnCallGraphImpl(CallGraphImpl &SCC) {
           isReadOnlyArg(Arg))
         continue;
       auto *M = F->getParent();
-      auto *InsertBefore = F->getEntryBlock().getFirstNonPHI();
+      auto *InsertBefore = IGCLLVM::getFirstNonPHI(&F->getEntryBlock());
       auto *PtrTy = cast<PointerType>(ArgTy);
       auto *Ty = F->getParamByValType(Arg.getArgNo());
       auto *Int64Ty = Type::getInt64Ty(M->getContext());

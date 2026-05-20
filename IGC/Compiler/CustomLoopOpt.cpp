@@ -23,6 +23,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/IGCPassSupport.h"
 #include "Compiler/MetaDataUtilsWrapper.h"
 #include "Probe/Assertion.h"
+#include "llvmWrapper/IR/Instructions.h"
 
 using namespace llvm;
 using namespace IGC;
@@ -142,7 +143,7 @@ bool CustomLoopVersioning::detectLoop(Loop *loop, Value *&var_range_x, Value *&v
   BasicBlock *header = loop->getHeader();
   BasicBlock *body = loop->getLoopLatch();
 
-  Instruction *i0 = body->getFirstNonPHIOrDbg();
+  Instruction *i0 = IGCLLVM::getFirstNonPHIOrDbg(body);
   Instruction *i1 = i0->getNextNonDebugInstruction();
 
   CallInst *imax = dyn_cast<CallInst>(i0);
@@ -254,7 +255,7 @@ void CustomLoopVersioning::rewriteLoopSeg1(Loop *loop, Value *interval_x, Value 
 
   fcmp->setOperand(1, interval_x);
 
-  Instruction *i0 = body->getFirstNonPHIOrDbg();
+  Instruction *i0 = IGCLLVM::getFirstNonPHIOrDbg(body);
   Instruction *i1 = i0->getNextNonDebugInstruction();
 
   IntrinsicInst *imax = cast<IntrinsicInst>(i0);
@@ -311,7 +312,7 @@ void CustomLoopVersioning::hoistSeg2Invariant(Loop *loop, Instruction *fmul, Val
   if (fmul_log2 && fmul_log2->getParent() == body) {
     IntrinsicInst *intrin = dyn_cast<IntrinsicInst>(*fmul_log2->users().begin());
     if (intrin && intrin->getIntrinsicID() == Intrinsic::exp2) {
-      IRBuilder<> irb(preHdr->getFirstNonPHIOrDbg());
+      IRBuilder<> irb(IGCLLVM::getFirstNonPHIOrDbg(preHdr));
       irb.setFastMathFlags(fmul_log2->getFastMathFlags());
 
       Function *flog =
@@ -350,7 +351,7 @@ void CustomLoopVersioning::rewriteLoopSeg2(Loop *loop, Value *interval_y, Value 
   v->setFast(true);
   fcmp->setOperand(1, v);
 
-  Instruction *i0 = body->getFirstNonPHIOrDbg();
+  Instruction *i0 = IGCLLVM::getFirstNonPHIOrDbg(body);
   Instruction *i1 = i0->getNextNonDebugInstruction();
 
   IntrinsicInst *imax = cast<IntrinsicInst>(i0);
@@ -392,7 +393,7 @@ void CustomLoopVersioning::rewriteLoopSeg2(Loop *loop, Value *interval_y, Value 
 //     float val0 = t;
 //     float val1 = loop_range_y;
 void CustomLoopVersioning::rewriteLoopSeg3(BasicBlock *bb, Value *interval_y) {
-  Instruction *i0 = bb->getFirstNonPHIOrDbg();
+  Instruction *i0 = IGCLLVM::getFirstNonPHIOrDbg(bb);
   Instruction *i1 = i0->getNextNonDebugInstruction();
 
   IntrinsicInst *imax = cast<IntrinsicInst>(i0);
@@ -403,7 +404,7 @@ void CustomLoopVersioning::rewriteLoopSeg3(BasicBlock *bb, Value *interval_y) {
   imin->replaceAllUsesWith(interval_y);
 
   auto II = bb->begin();
-  auto IE = BasicBlock::iterator(bb->getFirstNonPHI());
+  auto IE = BasicBlock::iterator(IGCLLVM::getFirstNonPHI(bb));
 
   while (II != IE) {
     PHINode *PN = cast<PHINode>(II);
@@ -433,7 +434,7 @@ void CustomLoopVersioning::linkLoops(Loop *loopSeg1, Loop *loopSeg2, BasicBlock 
   br->setSuccessor(idx, loopSeg2->getLoopPreheader());
 
   auto II_1 = seg1Body->begin(), II_2 = seg2Body->begin();
-  auto IE_2 = BasicBlock::iterator(seg2Body->getFirstNonPHI());
+  auto IE_2 = BasicBlock::iterator(IGCLLVM::getFirstNonPHI(seg2Body));
 
   for (; II_2 != IE_2; ++II_2, ++II_1) {
     PHINode *PN2 = cast<PHINode>(II_2);
@@ -648,7 +649,7 @@ static BasicBlock *insertUniqueBackedgeBlock(Loop *L, BasicBlock *Preheader, Dom
   // Create and insert the new backedge block...
   BasicBlock *BEBlock = BasicBlock::Create(Header->getContext(), Header->getName() + ".backedge", F);
   BranchInst *BETerminator = BranchInst::Create(Header, BEBlock);
-  BETerminator->setDebugLoc(Header->getFirstNonPHI()->getDebugLoc());
+  BETerminator->setDebugLoc(IGCLLVM::getFirstNonPHI(Header)->getDebugLoc());
 
   // Move the new backedge block to right after the last backedge block.
   Function::iterator InsertPos = ++BackedgeBlocks.back()->getIterator();
@@ -896,7 +897,7 @@ bool LoopHoistConstant::runOnLoop(Loop *L, LPPassManager &LPM) {
   IntrinsicInst *MinInst = nullptr;
 
   // Match the loop induction variable
-  InductionPostInc = dyn_cast<BinaryOperator>(Header->getFirstNonPHIOrDbg());
+  InductionPostInc = dyn_cast<BinaryOperator>(IGCLLVM::getFirstNonPHIOrDbg(Header));
   if (InductionPostInc && InductionPostInc->getOpcode() == BinaryOperator::FMul) {
     InductionPreInc = dyn_cast<PHINode>(InductionPostInc->getOperand(0));
     if (!InductionPreInc)
@@ -1602,7 +1603,7 @@ bool LoopSplitWidePHIs::processPHI(SmallVectorImpl<PHINode *> &WL, Loop *L) {
 
       // Replace PN with PHIs for each of ShufI's sources, and replace
       // all uses with a concat of the new PHI's results.
-      auto InsBeforeI = PN->getParent()->getFirstNonPHI();
+      auto InsBeforeI = IGCLLVM::getFirstNonPHI(PN->getParent());
       Instruction *ToConcat[2];
       for (unsigned i = 0; i < 2; ++i) {
         auto PHIPart = PHINode::Create(CV.Types[i], 1, "join", PN);
@@ -1711,7 +1712,7 @@ PHINode *LoopSplitWidePHIs::foldBitcasts(PHINode *PHI, CatenatedValue &CV, Loop 
     // and a bitcast back to the type of the use.
     // Otherwise, we just generate a bitcast to the use type in place.
     if (auto *PN = dyn_cast<PHINode>(U)) {
-      auto InsBeforeI = PN->getParent()->getFirstNonPHI();
+      auto InsBeforeI = IGCLLVM::getFirstNonPHI(PN->getParent());
       auto NewPN = PHINode::Create(CV.Result->getType(), 1, "", PN);
       NewPN->addIncoming(CV.Result, Latch);
       auto BCI = new BitCastInst(NewPN, PN->getType(), "", InsBeforeI);
@@ -1948,7 +1949,7 @@ bool LoopAllocaUpperbound::runOnLoop(Loop *L, LPPassManager &LPM) {
   //   |    |
   //   |    |
   //   ContinueBB
-  IfTerm = SplitBlockAndInsertIfThen(CondPHI, Header->getFirstNonPHIOrDbg(), false);
+  IfTerm = SplitBlockAndInsertIfThen(CondPHI, IGCLLVM::getFirstNonPHIOrDbg(Header), false);
   BasicBlock *IfCondBB = IfTerm->getParent();
   BasicBlock *ContinueBB = IfCondBB->getNextNode();
 

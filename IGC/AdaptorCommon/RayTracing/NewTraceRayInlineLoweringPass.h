@@ -10,6 +10,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/PassRegistry.h"
 #include "RTBuilder.h"
 #include "RTStackFormat.h"
+#include "llvmWrapper/IR/Instructions.h"
 
 namespace llvm {
 class Instruction;
@@ -167,9 +168,9 @@ private:
         auto &DL = m_pCGCtx->getModule()->getDataLayout();
         llvm::RTBuilder::InsertPointGuard g(IRB);
 
-        IRB.SetInsertPoint(key.first->getParent()->getEntryBlock().getFirstNonPHI());
+        IRB.SetInsertPoint(IGCLLVM::getFirstNonPHI(&key.first->getParent()->getEntryBlock()));
         auto *SMStack = IRB.CreateAlloca(IRB.getRTStack2Ty(), nullptr, VALUE_NAME("CrossBlockLoadSMStackForBlock"));
-        IRB.SetInsertPoint(key.first->getFirstNonPHI());
+        IRB.SetInsertPoint(IGCLLVM::getFirstNonPHI(key.first));
         IRB.CreateMemCpy(SMStack, getStackPtr(IRB, rqObject), IRB.getInt64(DL.getTypeAllocSize(IRB.getRTStack2Ty())),
                          RayDispatchGlobalData::StackChunkSize);
         m_CrossBlockVectorizationStacks[key] = SMStack;

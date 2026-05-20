@@ -200,6 +200,7 @@ namespace packed {
 
 #undef IMPLICIT_ARGS_STRUCT_H_
 #include "implicit_args_struct.h"
+#include "llvmWrapper/IR/Instructions.h"
 
 // According to the ABI specification, implicit_args struct must be naturally aligned.
 // To ensure that offsets to struct members are compiler-independent, it is necessary to
@@ -732,7 +733,7 @@ llvm::Value *LowerImplicitArgIntrinsics::getIntrinsicCall(llvm::Function *F, llv
       if (inst->getIntrinsicID() == IntrinsicID) {
         // Make sure that intrinsic that we use is called before we use it's result
         auto parentFunction = inst->getParent()->getParent();
-        auto firstFunc = parentFunction->getEntryBlock().getFirstNonPHI();
+        auto firstFunc = IGCLLVM::getFirstNonPHI(&parentFunction->getEntryBlock());
         inst->moveBefore(firstFunc);
         return inst;
       }

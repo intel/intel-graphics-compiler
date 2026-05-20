@@ -39,6 +39,7 @@ See LICENSE.TXT for details.
 #include <llvm/ADT/DepthFirstIterator.h>
 #include "common/LLVMWarningsPop.hpp"
 #include "llvmWrapper/IR/CFG.h"
+#include "llvmWrapper/IR/Instructions.h"
 #include <algorithm>
 #include "Probe/Assertion.h"
 #include "helper.h"
@@ -631,11 +632,11 @@ bool LiveVars::hasInterference(llvm::Value *V0, llvm::Value *V1) {
 
   if (!I0) {
     // V0 must be argument. Use the first inst in Entry
-    I0 = MF->getEntryBlock().getFirstNonPHIOrDbg();
+    I0 = IGCLLVM::getFirstNonPHIOrDbg(&MF->getEntryBlock());
   }
   if (!I1) {
     // V1 must be argument. Use the first inst in Entry
-    I1 = MF->getEntryBlock().getFirstNonPHIOrDbg();
+    I1 = IGCLLVM::getFirstNonPHIOrDbg(&MF->getEntryBlock());
   }
 
   if (isLiveAt(V0, I1) || isLiveAt(V1, I0)) {

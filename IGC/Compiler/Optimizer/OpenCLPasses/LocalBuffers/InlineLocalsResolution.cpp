@@ -19,6 +19,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/Instructions.h>
 #include "common/LLVMWarningsPop.hpp"
 #include <llvmWrapper/Support/Alignment.h>
+#include "llvmWrapper/IR/Instructions.h"
 #include "Probe/Assertion.h"
 
 #include <unordered_set>
@@ -413,7 +414,7 @@ void InlineLocalsResolution::collectInfoOnSharedLocalMem(Module &M) {
   for (const auto &I : m_FuncToVarsMap) {
     Function *userFunc = I.first;
     for (auto *G : I.second) {
-      Instruction *pInsertBefore = &(*userFunc->begin()->getFirstNonPHIOrDbg());
+      Instruction *pInsertBefore = IGCLLVM::getFirstNonPHIOrDbg(&*userFunc->begin());
       TODO("Should inline local buffer points to origin offset 'globalVar' or to fixed offset 'pMovedPtr'?");
       Utils::UpdateGlobalVarDebugInfo(G, G, pInsertBefore, true);
     }

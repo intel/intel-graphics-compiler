@@ -13,6 +13,7 @@ SPDX-License-Identifier: MIT
 
 #include "llvm/CodeGen/TargetPassConfig.h"
 #include "llvm/InitializePasses.h"
+#include "llvmWrapper/IR/Instructions.h"
 
 #define DEBUG_TYPE "GENX_FLOAT_CONTROL"
 
@@ -86,7 +87,8 @@ bool GenXFloatControl::runOnFunction(Function &F) {
     return false;
   // Kernels, stackcalls and subroutines with attribute set float control on
   // entry - provided by the attribute or the default one
-  auto *OldV = buildCr0Update(FloatControl, F.getEntryBlock().getFirstNonPHI());
+  auto *OldV =
+      buildCr0Update(FloatControl, IGCLLVM::getFirstNonPHI(&F.getEntryBlock()));
   if (fg::isGroupHead(F))
     return true;
   // Stackcalls and subroutines with attribute must save caller's float

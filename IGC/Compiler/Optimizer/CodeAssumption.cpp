@@ -17,6 +17,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/Instructions.h>
 #include <llvm/IR/IRBuilder.h>
 #include "common/LLVMWarningsPop.hpp"
+#include "llvmWrapper/IR/Instructions.h"
 
 using namespace llvm;
 using namespace IGC;
@@ -230,7 +231,7 @@ bool CodeAssumption::addAssumption(Function *F, AssumptionCache *AC) {
         if (!PN)
           break;
         if (assumptionAdded.count(PN) == 0 && CodeAssumption::isPositiveIndVar(PN, &DL, AC)) {
-          IRBuilder<> IRB(BB->getFirstNonPHI());
+          IRBuilder<> IRB(IGCLLVM::getFirstNonPHI(BB));
           Constant *Zero = ConstantInt::get(PN->getType(), 0);
           Value *icmp = IRB.CreateICmpSGE(PN, Zero, "assumeCond");
           CallInst *assumeInst = IRB.CreateAssumption(icmp);

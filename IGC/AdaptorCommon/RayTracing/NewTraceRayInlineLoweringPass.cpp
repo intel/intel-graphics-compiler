@@ -103,7 +103,7 @@ bool InlineRaytracing::LowerAllocations(Function &F) {
     // mark it as read only so it gets removed due to no uses
     IGCLLVM::setOnlyReadsMemory(*I);
 
-    IRB.SetInsertPoint(F.getEntryBlock().getFirstNonPHI());
+    IRB.SetInsertPoint(IGCLLVM::getFirstNonPHI(&F.getEntryBlock()));
     Value *rqObject = nullptr;
 
     IRB.SetInsertPoint(I);
@@ -496,7 +496,7 @@ void InlineRaytracing::LowerIntrinsics(Function &F) {
         elseTerm->eraseFromParent();
       }
 
-      IRB.SetInsertPoint(proceedBB->getFirstNonPHI());
+      IRB.SetInsertPoint(IGCLLVM::getFirstNonPHI(proceedBB));
       auto *bvhLevel = IRB.CreatePHI(IRB.getInt32Ty(), 2, VALUE_NAME("BVHLevel"));
 
       EmitPreTraceRayFence(IRB, rqObject);
@@ -970,7 +970,7 @@ void InlineRaytracing::HandleOptimizationsAndSpills(llvm::Function &F, LivenessD
     if (!edge.to->getSinglePredecessor())
       succ = SplitEdge(edge.from, succ);
 
-    IRB.SetInsertPoint(succ->getFirstNonPHI());
+    IRB.SetInsertPoint(IGCLLVM::getFirstNonPHI(succ));
 
     for (const auto &c : closures)
       c(IRB);

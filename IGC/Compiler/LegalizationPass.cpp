@@ -891,7 +891,7 @@ void Legalization::visitPHINode(PHINode &phi) {
       newPhi->addIncoming(newSource, phi.getIncomingBlock(i));
     }
     Instruction *boolean = CmpInst::Create(Instruction::ICmp, CmpInst::ICMP_NE, newPhi, ConstantInt::get(newType, 0),
-                                           "", phi.getParent()->getFirstNonPHI());
+                                           "", IGCLLVM::getFirstNonPHI(phi.getParent()));
     boolean->setDebugLoc(phi.getDebugLoc());
     phi.replaceAllUsesWith(boolean);
     phi.eraseFromParent();

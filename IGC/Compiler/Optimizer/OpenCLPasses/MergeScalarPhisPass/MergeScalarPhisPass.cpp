@@ -17,6 +17,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/Support/raw_ostream.h>
 #include "common/LLVMWarningsPop.hpp"
 #include <llvmWrapper/IR/DerivedTypes.h>
+#include "llvmWrapper/IR/Instructions.h"
 
 using namespace llvm;
 using namespace IGC;
@@ -183,7 +184,7 @@ bool MergeScalarPhisPass::makeChanges(Function *F) {
     }
 
     BasicBlock *BB = FirstPN->getParent();
-    Builder.SetInsertPoint(BB->getFirstNonPHI());
+    Builder.SetInsertPoint(IGCLLVM::getFirstNonPHI(BB));
     for (auto *PN : Entry.second) {
       // Find an incoming ExtractElementInst to get the index value.
       ExtractElementInst *EEI = nullptr;

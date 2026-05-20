@@ -18,6 +18,7 @@ SPDX-License-Identifier: MIT
 #include "llvmWrapper/IR/Function.h"
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include <optional>
+#include "llvmWrapper/IR/Instructions.h"
 
 // (1)
 // Optimization pass to lower generic pointers in function arguments.
@@ -207,7 +208,7 @@ void LowerGPCallArg::updateFunctionArgs(Function *oldFunc, Function *newFunc) {
     }
 
     auto *NewArgToGeneric = CastInst::Create(Instruction::AddrSpaceCast, newArg, oldArg->getType(), "",
-                                             newFunc->getEntryBlock().getFirstNonPHI());
+                                             IGCLLVM::getFirstNonPHI(&newFunc->getEntryBlock()));
     oldArg->replaceAllUsesWith(NewArgToGeneric);
 
     LoopInfo &LI = getAnalysis<LoopInfoWrapperPass>(*newFunc).getLoopInfo();

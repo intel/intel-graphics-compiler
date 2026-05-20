@@ -36,6 +36,7 @@ SPDX-License-Identifier: MIT
 
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/Support/TypeSize.h"
+#include "llvmWrapper/IR/Instructions.h"
 
 #define DEBUG_TYPE "GENX_POST_LEGALIZATION"
 
@@ -431,7 +432,7 @@ void VectorDecomposer::setNotDecomposing(Instruction *Inst, const char *Text) {
     Inst = NotDecomposingReportInst;
   IGC_ASSERT_EXIT(Inst);
   if (Inst->getDebugLoc())
-    Inst = Inst->getParent()->getFirstNonPHI();
+    Inst = IGCLLVM::getFirstNonPHI(Inst->getParent());
   reportLocation(Inst->getContext(), Inst->getDebugLoc(), dbgs());
   dbgs() << ": vector decomposition failed because: " << Text << "\n";
 }

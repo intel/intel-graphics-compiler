@@ -1527,7 +1527,7 @@ void GenXCoalescing::processKernelArgs(FunctionGroup *FG) {
   auto F = FG->getHead();
   if (!vc::isKernel(F))
     return;
-  Instruction *InsertBefore = F->front().getFirstNonPHIOrDbg();
+  Instruction *InsertBefore = IGCLLVM::getFirstNonPHIOrDbg(&F->front());
   vc::KernelMetadata KM{F};
   unsigned Idx = 0;
   for (auto ai = F->arg_begin(), ae = F->arg_end(); ai != ae; ++ai) {
@@ -1587,7 +1587,7 @@ void GenXCoalescing::coalesceOutputArgs(FunctionGroup *FG) {
   // corresponding output argument with intrinsic argument (assuming that their
   // number and ordering are exactly the same).
   for (auto &BB : *F) {
-    CallInst *CI = GetNextGenXOutput(BB.getFirstNonPHI());
+    CallInst *CI = GetNextGenXOutput(IGCLLVM::getFirstNonPHI(&BB));
     if (!CI)
       continue;
 

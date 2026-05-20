@@ -122,6 +122,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/Debug.h"
 #include "Probe/Assertion.h"
+#include "llvmWrapper/IR/Instructions.h"
 
 using namespace llvm;
 using namespace genx;
@@ -656,7 +657,7 @@ void GenXDepressurizer::processBasicBlock(BasicBlock *BB) {
   // values, as long as non-flag pressure is low, and as long as this is not a
   // join label.
   if (!GotoJoin::isJoinLabel(BB) && FlagGRFTolerance > Live->getPressure())
-    attemptSinking(BB->getFirstNonPHI(), nullptr, Liveness::FLAG,
+    attemptSinking(IGCLLVM::getFirstNonPHI(BB), nullptr, Liveness::FLAG,
                    /*AllowClone=*/false);
 }
 

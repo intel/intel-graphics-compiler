@@ -13,6 +13,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/IR/DerivedTypes.h"
 #include <vector>
 #include <algorithm>
+#include "llvmWrapper/IR/Instructions.h"
 
 using namespace llvm;
 using namespace IGC;
@@ -390,7 +391,7 @@ static bool sinkCommonOffsetForGroup(const CommonBaseGroup &Group) {
 
   // Create and fill new phi node for base GEPs
   auto PhiType = NewPointers.front().first->getType();
-  auto BasePhi = PHINode::Create(PhiType, 2, "", Group.Successor->getFirstNonPHI());
+  auto BasePhi = PHINode::Create(PhiType, 2, "", IGCLLVM::getFirstNonPHI(Group.Successor));
   for (auto &NP : NewPointers)
     BasePhi->addIncoming(NP.first, NP.second);
 

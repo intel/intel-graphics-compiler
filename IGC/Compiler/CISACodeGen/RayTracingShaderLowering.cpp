@@ -26,6 +26,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/IR/InstIterator.h"
 #include "common/LLVMWarningsPop.hpp"
 #include "GenISAIntrinsics/GenIntrinsicInst.h"
+#include "llvmWrapper/IR/Instructions.h"
 
 using namespace llvm;
 using namespace IGC;
@@ -308,7 +309,7 @@ bool RayTracingShaderLowering::runOnModule(Module &M) {
     if (disablePreemptionBB) {
       IGC_ASSERT(enablePreemptionBB);
 
-      RTB.SetInsertPoint(disablePreemptionBB->getFirstNonPHI());
+      RTB.SetInsertPoint(IGCLLVM::getFirstNonPHI(disablePreemptionBB));
       RTB.CreatePreemptionDisableIntrinsic();
     }
 

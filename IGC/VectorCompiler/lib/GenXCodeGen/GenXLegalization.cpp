@@ -2493,7 +2493,7 @@ void GenXLegalization::fixIllegalPredicates(Function *F) {
   SmallVector<PHINode *, 4> PhisToErase;
   for (auto fi = F->begin(), fe = F->end(); fi != fe; ++fi) {
     auto BB = &*fi;
-    Instruction *FirstNonPhi = BB->getFirstNonPHI();
+    Instruction *FirstNonPhi = IGCLLVM::getFirstNonPHI(BB);
     for (auto Phi = dyn_cast<PHINode>(BB->begin()); Phi;
          Phi = dyn_cast<PHINode>(Phi->getNextNode())) {
       if (!Phi->getType()->getScalarType()->isIntegerTy(1))

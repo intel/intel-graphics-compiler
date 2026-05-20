@@ -12,6 +12,7 @@ SPDX-License-Identifier: MIT
 #include <queue>
 #endif
 #include <algorithm>
+#include "llvmWrapper/IR/Instructions.h"
 
 //
 // IGCVectorizer pass currently looks for insert elements instructions
@@ -494,7 +495,7 @@ Instruction *IGCVectorizer::getInsertPointForVector(VecArr &Arr) {
   Instruction *InsertPoint = getMaxPoint(Arr);
   // if insert point is PHI, shift it to the first nonPHI to be safe
   if (llvm::isa<llvm::PHINode>(InsertPoint))
-    InsertPoint = InsertPoint->getParent()->getFirstNonPHI();
+    InsertPoint = IGCLLVM::getFirstNonPHI(InsertPoint->getParent());
   if (InsertPoint->isTerminator())
     InsertPoint = InsertPoint->getPrevNonDebugInstruction();
 
@@ -514,12 +515,12 @@ Instruction *IGCVectorizer::getInsertPointForCreatedInstruction(VecVal &Operands
     PRINT_INST_NL(Inst);
   }
 
-  Instruction *InsertPoint = Slice.front()->getParent()->getFirstNonPHI();
+  Instruction *InsertPoint = IGCLLVM::getFirstNonPHI(Slice.front()->getParent());
   if (InstOperands.size() != 0) {
     InsertPoint = getMaxPoint(InstOperands)->getNextNonDebugInstruction();
     // if insert point is PHI, shift it to the first nonPHI to be safe
     if (llvm::isa<llvm::PHINode>(InsertPoint))
-      InsertPoint = InsertPoint->getParent()->getFirstNonPHI();
+      InsertPoint = IGCLLVM::getFirstNonPHI(InsertPoint->getParent());
   }
 
   return InsertPoint;
@@ -589,7 +590,7 @@ void IGCVectorizer::replaceSliceInstructionsWithExtract(VecArr &Slice, Instructi
   PRINT_LOG(" Extracted from: ");
   PRINT_INST_NL(CreatedInst);
 
-  Instruction *InsertPoint = (llvm::isa<PHINode>(Slice.front())) ? CreatedInst->getParent()->getFirstNonPHI()
+  Instruction *InsertPoint = (llvm::isa<PHINode>(Slice.front())) ? IGCLLVM::getFirstNonPHI(CreatedInst->getParent())
                                                                  : CreatedInst->getNextNonDebugInstruction();
 
   for (size_t i = 0; i < Slice.size(); i++) {

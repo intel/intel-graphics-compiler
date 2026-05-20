@@ -17,6 +17,7 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPop.hpp"
 #include <llvmWrapper/IR/DerivedTypes.h>
 #include "Probe/Assertion.h"
+#include "llvmWrapper/IR/Instructions.h"
 
 using namespace llvm;
 using namespace IGC;
@@ -119,7 +120,7 @@ bool TypeDemote::demoteOnBasicBlock(BasicBlock *BB) const {
         PN->setIncomingValue(i, DemotedValues[i]);
       // Create the unsigned extension.
       BuilderType::InsertPointGuard Guard(*IRB);
-      IRB->SetInsertPoint(BB->getFirstNonPHI());
+      IRB->SetInsertPoint(IGCLLVM::getFirstNonPHI(BB));
       Value *V = IRB->CreateZExt(PN, OriginTy, ".demoted.zext");
       for (auto UI = PN->use_begin(), UE = PN->use_end(); UI != UE; /* EMPTY */) {
         Use &U = *UI++;

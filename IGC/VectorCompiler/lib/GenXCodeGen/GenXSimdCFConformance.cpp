@@ -1478,7 +1478,7 @@ bool GenXSimdCFConformance::hoistGotoUser(Instruction *Inst, CallInst *Goto,
   // Copy instruction and place it in the false successor. Get EM will be
   // created later to handle its goto use.
   Instruction *FalseVal = Inst->clone();
-  FalseVal->insertBefore(FalseSucc->getFirstNonPHI());
+  FalseVal->insertBefore(IGCLLVM::getFirstNonPHI(FalseSucc));
 
   // Handle all users
   BasicBlockEdge TrueEdge(Goto->getParent(), TrueSucc);
@@ -1685,7 +1685,7 @@ void GenXSimdCFConformance::moveCodeInJoinBlocks() {
         if (!Br || Br->isConditional())
           continue;
         auto BB = Br->getParent();
-        if (BB->getFirstNonPHIOrDbg() != Br)
+        if (IGCLLVM::getFirstNonPHIOrDbg(BB) != Br)
           continue;
         if (GotoJoin::isJoinLabel(BB, /*SkipCriticalEdgeSplitter=*/true)) {
           PredBlock = BB;
@@ -1798,7 +1798,7 @@ void GenXSimdCFConformance::emptyBranchingJoinBlocksInFunc(Function *F) {
 void GenXSimdCFConformance::emptyBranchingJoinBlock(CallInst *Join) {
   BasicBlock *BB = Join->getParent();
   Instruction *InsertBefore = nullptr;
-  for (Instruction *NextInst = BB->getFirstNonPHIOrDbg();;) {
+  for (Instruction *NextInst = IGCLLVM::getFirstNonPHIOrDbg(BB);;) {
     auto Inst = NextInst;
     if (Inst->isTerminator())
       break;
@@ -1905,7 +1905,7 @@ bool GenXSimdCFConformance::hoistJoin(CallInst *Join) {
   }
   // Hoist the join.
   auto BB = Join->getParent();
-  auto InsertBefore = BB->getFirstNonPHIOrDbg();
+  auto InsertBefore = IGCLLVM::getFirstNonPHIOrDbg(BB);
   if (InsertBefore == Join)
     return true; // already at start
   Join->removeFromParent();
@@ -2421,7 +2421,7 @@ bool GenXSimdCFConformance::checkJoin(SimpleValue EMVal) {
 static BasicBlock *getEmptyCriticalEdgeSplitterSuccessor(BasicBlock *BB) {
   if (!BB->hasOneUse())
     return nullptr; // not exactly one predecessor
-  auto *Term = dyn_cast<Instruction>(BB->getFirstNonPHIOrDbg());
+  auto *Term = dyn_cast<Instruction>(IGCLLVM::getFirstNonPHIOrDbg(BB));
   if (!Term->isTerminator())
     return nullptr; // not empty
   auto TI = cast<IGCLLVM::TerminatorInst>(Term);
@@ -2466,7 +2466,7 @@ bool GenXSimdCFConformance::checkGotoJoin(SimpleValue EMVal) {
     // critical edge splitter block in between; this will get removed in
     // setCategories in this pass.
     BasicBlock *TrueSucc = Br->getSuccessor(0);
-    Instruction *First = TrueSucc->getFirstNonPHIOrDbg();
+    Instruction *First = IGCLLVM::getFirstNonPHIOrDbg(TrueSucc);
     auto IID = vc::getAnyIntrinsicID(First);
     if (IID != GenXIntrinsic::genx_simdcf_join) {
       // "True" successor is not a join label. Check for an empty critical edge
@@ -2478,7 +2478,7 @@ bool GenXSimdCFConformance::checkGotoJoin(SimpleValue EMVal) {
             << "checkGotoJoin: goto/join true successor not join label\n");
         return false; // Not empty critical edge splitter
       }
-      if (vc::getAnyIntrinsicID(TrueSucc->getFirstNonPHIOrDbg()) !=
+      if (vc::getAnyIntrinsicID(IGCLLVM::getFirstNonPHIOrDbg(TrueSucc)) !=
           GenXIntrinsic::genx_simdcf_join) {
         LLVM_DEBUG(
             dbgs()
@@ -3440,7 +3440,8 @@ Value *GenXSimdCFConformance::lowerEVIUse(ExtractValueInst *EVI,
 
     // GetEM is removed later if redundant.
     Value *TrueVal = Constant::getNullValue(EVI->getType());
-    Value *FalseVal = getGetEMLoweredValue(EVI, FalseBlock->getFirstNonPHI());
+    Value *FalseVal =
+        getGetEMLoweredValue(EVI, IGCLLVM::getFirstNonPHI(FalseBlock));
 
     // Early return for direct phi true edge: lowered value is zeroed
     if (PhiPredBlock == DefBB && TrueBlock == User->getParent()) {
@@ -3488,7 +3489,8 @@ Value *GenXSimdCFConformance::lowerPHIUse(PHINode *PN,
   }
 
   if (!GotoJoin::isJoinLabel(PN->getParent())) {
-    auto res = getGetEMLoweredValue(PN, PN->getParent()->getFirstNonPHI());
+    auto res =
+        getGetEMLoweredValue(PN, IGCLLVM::getFirstNonPHI(PN->getParent()));
     LLVM_DEBUG(dbgs() << "lowerPHIUse: Created " << *res << "\n");
     return res;
   }
@@ -3526,7 +3528,8 @@ Value *GenXSimdCFConformance::lowerArgumentUse(Argument *Arg) {
   LLVM_DEBUG(dbgs() << "lowerArgumentUse: Lowering argument use:\n"
                     << *Arg << "\n");
 
-  return getGetEMLoweredValue(Arg, Arg->getParent()->front().getFirstNonPHI());
+  return getGetEMLoweredValue(
+      Arg, IGCLLVM::getFirstNonPHI(&Arg->getParent()->front()));
 }
 
 /***********************************************************************
@@ -4043,7 +4046,7 @@ static void fixBlockDataBeforeRemoval(BasicBlock *BB, BasicBlock *SuccBB) {
   IGC_ASSERT_MESSAGE(BB->getSingleSuccessor() == SuccBB,
                      "Awaiting only one successor");
   bool HasOnePred = SuccBB->hasNPredecessors(1);
-  Instruction *InsertBefore = SuccBB->getFirstNonPHI();
+  Instruction *InsertBefore = IGCLLVM::getFirstNonPHI(SuccBB);
   while (auto *DBG = dyn_cast<DbgVariableIntrinsic>(BB->begin())) {
     DBG->moveBefore(InsertBefore);
     if (!HasOnePred)
@@ -4586,7 +4589,7 @@ void GenXSimdCFConformance::optimizeLinearization(BasicBlock *BB,
   // The idea of this is to save the instructions' order so we don't brake
   // dominance when movement is performed.
   std::vector<Instruction *> OrderedInstsToMove;
-  for (Instruction *Inst = BB->getFirstNonPHI(); Inst;
+  for (Instruction *Inst = IGCLLVM::getFirstNonPHI(BB); Inst;
        Inst = Inst->getNextNode()) {
     if (InstsToMove.find(Inst) == InstsToMove.end())
       continue;
@@ -4600,7 +4603,7 @@ void GenXSimdCFConformance::optimizeLinearization(BasicBlock *BB,
   // Handle selects
   for (auto *Select : SelectsToOptimize) {
     PHINode *PN = PHINode::Create(Select->getType(), 2, "optimized_sel",
-                                  BB->getFirstNonPHI());
+                                  IGCLLVM::getFirstNonPHI(BB));
     PN->addIncoming(Select->getTrueValue(), JPData.getTruePred());
     PN->addIncoming(Select->getFalseValue(), JPData.getFalsePred());
     Select->replaceAllUsesWith(PN);

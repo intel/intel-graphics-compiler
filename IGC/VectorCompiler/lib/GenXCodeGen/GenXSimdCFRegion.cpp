@@ -144,6 +144,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/InitializePasses.h>
 #include <llvm/Support/CommandLine.h>
 #include <llvm/Support/FormattedStream.h>
+#include "llvmWrapper/IR/Instructions.h"
 
 #define DEBUG_TYPE "simdcf-region"
 
@@ -625,7 +626,7 @@ Value *GenXPredToSimdCF::getEMValue(BasicBlock *BB) {
   if (EM != EMLoads.end())
     return EMLoads[BB];
 
-  auto *Inst = BB->getFirstNonPHI();
+  auto *Inst = IGCLLVM::getFirstNonPHI(BB);
   IRBuilder<> Builder(Inst);
 
   auto *EMAddr = getEMAddr(Inst->getFunction());
@@ -1761,7 +1762,7 @@ void GenXPredToSimdCF::fixPHIs(SimdCFIfRegion *R) {
   auto *EBB = R->getExit();
   if (!R->hasElse()) {
     LLVM_DEBUG(dbgs() << "Phi fixing for: " << EBB->getName());
-    Instruction *InsertPoint = JoinBlocks[R]->getFirstNonPHI();
+    Instruction *InsertPoint = IGCLLVM::getFirstNonPHI(JoinBlocks[R]);
     IGC_ASSERT(JoinBlocks[R] != EBB);
     LLVM_DEBUG(dbgs() << "Insert to : " << InsertPoint->getName() << "\nEBB: "
                       << EBB->getName() << "  = " << JoinBlocks[R]->getName());
@@ -1843,7 +1844,7 @@ void GenXPredToSimdCF::fixPHIs(SimdCFLoopRegion *R) {
   LLVM_DEBUG(dbgs() << "Phi fixing for: " << EBB->getName() << "\n");
   IGC_ASSERT(JoinBlocks[R] != EBB);
   LLVM_DEBUG(dbgs() << "Insert to : "
-                    << JoinBlocks[R]->getFirstNonPHI()->getName()
+                    << IGCLLVM::getFirstNonPHI(JoinBlocks[R])->getName()
                     << "\n for: " << EBB->getName()
                     << "\n Join: " << JoinBlocks[R]->getName() << "\n");
 

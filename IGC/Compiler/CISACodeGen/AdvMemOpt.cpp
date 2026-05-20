@@ -25,6 +25,7 @@ SPDX-License-Identifier: MIT
 #include "llvmWrapper/Transforms/Utils/LoopUtils.h"
 #include "llvmWrapper/ADT/Optional.h"
 #include "Probe/Assertion.h"
+#include "llvmWrapper/IR/Instructions.h"
 
 using namespace llvm;
 using namespace llvm::PatternMatch;
@@ -330,7 +331,7 @@ bool AdvMemOpt::hoistInst(Instruction *LD, BasicBlock *BB) const {
     return false;
   BasicBlock *FromBB = LD->getParent();
   Instruction *Pos = BB->getTerminator();
-  for (auto II = FromBB->getFirstNonPHI()->getIterator(), IE = FromBB->end(); II != IE; /*EMPTY*/) {
+  for (auto II = IGCLLVM::getFirstNonPHI(FromBB)->getIterator(), IE = FromBB->end(); II != IE; /*EMPTY*/) {
     Instruction *I = &*II++;
     if (ToHoist.count(I)) {
       I->moveBefore(Pos);
@@ -370,7 +371,7 @@ bool AdvMemOpt::hoistUniformLoad(ArrayRef<BasicBlock *> Line) const {
       }
 
       // Hoist uniform loads from Curr into Lead.
-      for (auto II = Curr->getFirstNonPHI()->getIterator(), IE = Curr->end(); II != IE; /*EMPTY*/) {
+      for (auto II = IGCLLVM::getFirstNonPHI(Curr)->getIterator(), IE = Curr->end(); II != IE; /*EMPTY*/) {
         LLVM_DEBUG(dbgs() << " - - Try hoisting: " << *II << "\n");
 
         if (II->mayWriteToMemory()) {
@@ -392,7 +393,7 @@ bool AdvMemOpt::hoistUniformLoad(ArrayRef<BasicBlock *> Line) const {
         LLVM_DEBUG(dbgs() << " - - Hoisted!\n");
 
         // Reset iterator
-        II = Curr->getFirstNonPHI()->getIterator();
+        II = IGCLLVM::getFirstNonPHI(Curr)->getIterator();
       }
 
       // After hoisting uniform loads safely, if Curr has memory write, stop

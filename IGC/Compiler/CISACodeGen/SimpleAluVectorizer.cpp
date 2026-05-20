@@ -28,6 +28,7 @@ SPDX-License-Identifier: MIT
 
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/Support/MathExtras.h"
+#include "llvmWrapper/IR/Instructions.h"
 
 using namespace llvm;
 using namespace IGC;
@@ -601,7 +602,7 @@ bool SimpleAluVectorizer::vectorizeAluChain(ArrayRef<BinaryOperator *> Group, un
   // Inserting non-PHI instructions before all PHIs have ended produces
   // invalid IR.
   if (InsertPt && isa<PHINode>(InsertPt))
-    InsertPt = BB->getFirstNonPHI();
+    InsertPt = IGCLLVM::getFirstNonPHI(BB);
 
   // Find the earliest user of any instruction in the slice.
   // The extract instructions must be placed before this point so that

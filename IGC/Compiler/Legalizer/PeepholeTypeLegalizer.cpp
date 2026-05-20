@@ -28,6 +28,7 @@ except 3. what is max allowed?
 #include "Compiler/CodeGenContextWrapper.hpp"
 #include "Compiler/CodeGenPublic.h"
 #include "CISACodeGen/PrepareLoadsStoresUtils.h"
+#include "llvmWrapper/IR/Instructions.h"
 
 using namespace llvm;
 using namespace IGC::Legalizer;
@@ -216,7 +217,7 @@ void PeepholeTypeLegalizer::legalizePhiInstruction(Instruction &I) {
       newPhi->addIncoming(newVecValue, oldPhi->getIncomingBlock(i));
     }
     // Cast back to original type
-    m_builder->SetInsertPoint(newPhi->getParent()->getFirstNonPHI());
+    m_builder->SetInsertPoint(IGCLLVM::getFirstNonPHI(newPhi->getParent()));
     Value *NewLargeIntPhi = m_builder->CreateBitCast(newPhi, newLargeIntType);
     Value *NewOrigIntPhi = m_builder->CreateTrunc(NewLargeIntPhi, newOrigIntType);
     result = m_builder->CreateBitCast(NewOrigIntPhi, oldPhi->getType());
@@ -231,7 +232,7 @@ void PeepholeTypeLegalizer::legalizePhiInstruction(Instruction &I) {
       newPhi->addIncoming(newValue, oldPhi->getIncomingBlock(i));
     }
     // Cast back to original type
-    m_builder->SetInsertPoint(newPhi->getParent()->getFirstNonPHI());
+    m_builder->SetInsertPoint(IGCLLVM::getFirstNonPHI(newPhi->getParent()));
     result = m_builder->CreateTrunc(newPhi, oldPhi->getType());
   }
   oldPhi->replaceAllUsesWith(result);

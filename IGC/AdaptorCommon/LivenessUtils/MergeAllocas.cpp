@@ -34,6 +34,7 @@ SPDX-License-Identifier: MIT
 
 #include "common/LLVMWarningsPop.hpp"
 #include "llvmWrapper/IR/IRBuilder.h"
+#include "llvmWrapper/IR/Instructions.h"
 
 using namespace llvm;
 using namespace IGC;
@@ -127,7 +128,7 @@ static bool AddNonOverlappingAlloca(MergeAllocas::AllocaInfo *MergableAlloca, Me
 
 static void ReplaceAllocas(const MergeAllocas::AllocaInfo &MergableAlloca, Function &F) {
   Instruction *topAlloca = MergableAlloca.allocaI;
-  topAlloca->moveBefore(F.getEntryBlock().getFirstNonPHI());
+  topAlloca->moveBefore(IGCLLVM::getFirstNonPHI(&F.getEntryBlock()));
   topAlloca->setName(VALUE_NAME("MergedAlloca"));
 
   IRBuilder<> Builder(topAlloca->getParent());

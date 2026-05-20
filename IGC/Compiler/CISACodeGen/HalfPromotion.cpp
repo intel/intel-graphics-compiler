@@ -24,6 +24,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/Function.h>
 #include "common/LLVMWarningsPop.hpp"
 #include "llvmWrapper/IR/Intrinsics.h"
+#include "llvmWrapper/IR/Instructions.h"
 
 using namespace llvm;
 using namespace IGC;
@@ -197,7 +198,7 @@ void HalfPromotion::visitPHINode(llvm::PHINode &PHI) {
     pNewPhi->addIncoming(phiFloatValue, PHI.getIncomingBlock(i));
   }
 
-  builder.SetInsertPoint(PHI.getParent()->getFirstNonPHI());
+  builder.SetInsertPoint(IGCLLVM::getFirstNonPHI(PHI.getParent()));
   Value *f16Val = builder.CreateFPTrunc(pNewPhi, builder.getHalfTy());
   PHI.replaceAllUsesWith(f16Val);
   PHI.eraseFromParent();

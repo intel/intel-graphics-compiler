@@ -30,6 +30,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/Pass.h"
 
 #include "llvmWrapper/IR/DerivedTypes.h"
+#include "llvmWrapper/IR/Instructions.h"
 
 #define DEBUG_TYPE "genx-promote-predicate"
 
@@ -129,7 +130,7 @@ static Value *promoteInstToScalar(Instruction *Inst) {
       ScalarPhi->addIncoming(ScalarValue, IncomingBlock);
     }
 
-    IRB.SetInsertPoint(Phi->getParent()->getFirstNonPHI());
+    IRB.SetInsertPoint(IGCLLVM::getFirstNonPHI(Phi->getParent()));
     return IRB.CreateBitCast(ScalarPhi, VTy);
   }
 
@@ -167,7 +168,8 @@ static Value *promoteInst(Instruction *Inst, bool AllowScalarPromotion) {
           getExtendedValue(IncomingValue, IncomingBlock->getTerminator()),
           IncomingBlock);
     }
-    return getTruncatedValue(WidenedPhi, Phi->getParent()->getFirstNonPHI());
+    return getTruncatedValue(WidenedPhi,
+                             IGCLLVM::getFirstNonPHI(Phi->getParent()));
   }
   // Process binary operators.
   IGC_ASSERT(isa<BinaryOperator>(Inst));

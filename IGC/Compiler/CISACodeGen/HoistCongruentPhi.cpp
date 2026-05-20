@@ -27,6 +27,7 @@ See LICENSE.TXT for details.
 #include "common/LLVMWarningsPop.hpp"
 #include "llvmWrapper/IR/Function.h"
 #include "Probe/Assertion.h"
+#include "llvmWrapper/IR/Instructions.h"
 
 using namespace llvm;
 using namespace IGC::Debug;
@@ -248,7 +249,7 @@ bool HoistCongruentPHI::hoistCongruentPhi(PHINode *phi) {
           }
         }
         if (isa<PHINode>(last)) {
-          insertPos = predBB->getFirstNonPHI();
+          insertPos = IGCLLVM::getFirstNonPHI(predBB);
         } else {
           insertPos = last->getNextNode();
         }

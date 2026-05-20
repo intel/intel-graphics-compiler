@@ -22,6 +22,7 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPop.hpp"
 
 #include "Compiler/Optimizer/ValueTracker.h"
+#include "llvmWrapper/IR/Instructions.h"
 
 using namespace llvm;
 using namespace IGC;
@@ -106,11 +107,11 @@ std::tuple<Value *, Value *, Value *> BufferBoundsChecking::getLocalIds(Function
 
   return {
       CallInst::Create(getOrCreateBuiltin("__builtin_IB_get_local_id_x"), {}, "localId0",
-                       function.getEntryBlock().getFirstNonPHI()),
+                       IGCLLVM::getFirstNonPHI(&function.getEntryBlock())),
       CallInst::Create(getOrCreateBuiltin("__builtin_IB_get_local_id_y"), {}, "localId1",
-                       function.getEntryBlock().getFirstNonPHI()),
+                       IGCLLVM::getFirstNonPHI(&function.getEntryBlock())),
       CallInst::Create(getOrCreateBuiltin("__builtin_IB_get_local_id_z"), {}, "localId2",
-                       function.getEntryBlock().getFirstNonPHI()),
+                       IGCLLVM::getFirstNonPHI(&function.getEntryBlock())),
   };
 }
 
@@ -121,11 +122,11 @@ std::tuple<Value *, Value *, Value *> BufferBoundsChecking::getGlobalIds(Functio
 
   return {
       CallInst::Create(builtin, {ConstantInt::get(Type::getInt32Ty(function.getContext()), 0)}, "globalId0",
-                       function.getEntryBlock().getFirstNonPHI()),
+                       IGCLLVM::getFirstNonPHI(&function.getEntryBlock())),
       CallInst::Create(builtin, {ConstantInt::get(Type::getInt32Ty(function.getContext()), 1)}, "globalId1",
-                       function.getEntryBlock().getFirstNonPHI()),
+                       IGCLLVM::getFirstNonPHI(&function.getEntryBlock())),
       CallInst::Create(builtin, {ConstantInt::get(Type::getInt32Ty(function.getContext()), 2)}, "globalId2",
-                       function.getEntryBlock().getFirstNonPHI()),
+                       IGCLLVM::getFirstNonPHI(&function.getEntryBlock())),
   };
 }
 

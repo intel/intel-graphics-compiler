@@ -20,6 +20,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CISACodeGen/WIAnalysis.hpp"
 #include "LLVM3DBuilder/BuiltinsFrontend.hpp"
 #include <llvm/Transforms/Utils/BasicBlockUtils.h>
+#include "llvmWrapper/IR/Instructions.h"
 
 using namespace llvm;
 namespace IGC {
@@ -221,7 +222,7 @@ bool ResourceLoopUnroll::emitResourceLoop(llvm::CallInst *CI) {
   BasicBlock *latch = BasicBlock::Create(context, "latch", BB->getParent(), mergeBB);
 
   // Fill MergeBB
-  builder.SetInsertPoint(mergeBB->getFirstNonPHI());
+  builder.SetInsertPoint(IGCLLVM::getFirstNonPHI(mergeBB));
   PHINode *PN = builder.CreatePHI(CI->getType(), LOOP_COUNT, "");
 
   // we create it "from the end", adding new blocks before previously inserted

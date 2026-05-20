@@ -12,6 +12,7 @@ SPDX-License-Identifier: MIT
 #include "LLVM3DBuilder/BuiltinsFrontend.hpp"
 #include "UniformAssumptions.hpp"
 #include "Probe/Assertion.h"
+#include "llvmWrapper/IR/Instructions.h"
 
 using namespace llvm;
 
@@ -191,12 +192,12 @@ void UniformAssumptions::HoistAssumptions(llvm::Function &F) {
           newAssumption->setOperand(0, src);
           if (auto srcInst = dyn_cast<Instruction>(src)) {
             if (isa<PHINode>(srcInst)) {
-              newAssumption->insertBefore(srcInst->getParent()->getFirstNonPHI());
+              newAssumption->insertBefore(IGCLLVM::getFirstNonPHI(srcInst->getParent()));
             } else {
               newAssumption->insertAfter(srcInst);
             }
           } else {
-            newAssumption->insertBefore(F.getEntryBlock().getFirstNonPHI());
+            newAssumption->insertBefore(IGCLLVM::getFirstNonPHI(&F.getEntryBlock()));
           }
           check_further = true;
         }

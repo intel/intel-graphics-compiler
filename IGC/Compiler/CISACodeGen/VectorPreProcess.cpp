@@ -29,6 +29,7 @@ SPDX-License-Identifier: MIT
 #include <utility> // std::pair, std::make_pair
 #include <sstream> // std::string, std::stringstream
 #include <fstream> // std::ofstream
+#include "llvmWrapper/IR/Instructions.h"
 
 using namespace llvm;
 using namespace IGC;
@@ -490,7 +491,7 @@ void VectorPreProcess::replaceAllVectorUsesWithScalars(Instruction *VI, ValVecto
     if (!isa<PHINode>(VI)) {
       I = VI;
     } else {
-      I = VI->getParent()->getFirstNonPHI();
+      I = IGCLLVM::getFirstNonPHI(VI->getParent());
     }
     IRBuilder<> Builder(I);
     IGCLLVM::FixedVectorType *VTy = cast<IGCLLVM::FixedVectorType>(VI->getType());

@@ -591,7 +591,7 @@ ValuePair InstExpander::getExpandedValues(Value *V) {
       auto *I = &*std::next(instrOp->getIterator());
       if (isa<PHINode>(instrOp))
         // insert the bitcast,extract instructions just after the PHI instructions block
-        I = &*(instrOp->getParent()->getFirstNonPHI()->getIterator());
+        I = &*(IGCLLVM::getFirstNonPHI(instrOp->getParent())->getIterator());
       IRB->SetInsertPoint(I);
       insertPointChanged = true;
     }

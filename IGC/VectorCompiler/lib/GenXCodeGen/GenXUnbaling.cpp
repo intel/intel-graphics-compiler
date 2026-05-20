@@ -263,6 +263,7 @@ SPDX-License-Identifier: MIT
 #include "GenXNumbering.h"
 #include "GenXUtil.h"
 
+#include "llvmWrapper/IR/Instructions.h"
 #include "vc/Support/BackendConfig.h"
 
 #include "llvm/ADT/PostOrderIterator.h"
@@ -584,9 +585,9 @@ void GenXUnbaling::processTwoAddrOrPhi(Instruction *Inst,
   if (auto I = dyn_cast<Instruction>(Root)) {
     InsertBefore = I->getNextNode();
     if (isa<PHINode>(InsertBefore))
-      InsertBefore = InsertBefore->getParent()->getFirstNonPHI();
+      InsertBefore = IGCLLVM::getFirstNonPHI(InsertBefore->getParent());
   } else
-    InsertBefore = Inst->getFunction()->front().getFirstNonPHI();
+    InsertBefore = IGCLLVM::getFirstNonPHI(&Inst->getFunction()->front());
   SmallVector<Instruction *, 4> BitCastQueue;
   for (unsigned bci = 0;;) {
     // For this value, find uses that are bitcast and save them.
