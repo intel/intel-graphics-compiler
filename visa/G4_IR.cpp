@@ -2173,57 +2173,9 @@ bool G4_INST::canPropagateTo(G4_INST *useInst, Gen4_Operand_Number opndNum,
 
   // The following are copied from local dataflow analysis.
   // TODO: re-examine..
-  if ((opndNum == Opnd_src0 && useInst->isSend()) && !statelessAddr) {
+  if (((opndNum == Opnd_src0 && useInst->isSend()) && !statelessAddr) ||
+      (opndNum == Opnd_src1 && useInst->isSplitSend())) {
     return false;
-  }
-  // src1 of split send is a GRF data payload: block propagation when the
-  // source is an immediate (not a GRF), indirect (HW forbids indirect send
-  // payloads), or not GRF-aligned (HWConformity enforces GRF alignment on
-  // split send src1).
-  if (opndNum == Opnd_src1 && useInst->isSplitSend()) {
-    if (src->isImm() || indirectSrc) {
-      return false;
-    }
-    auto *srcRgn = src->asSrcRegRegion();
-    // Physical registers (direct GRF references or pre-assigned variables such
-    // as predefined inputs) are not fully captured by local def-use chains,
-    // so propagating them into a send payload may be unsafe.
-    G4_VarBase *srcBase = srcRgn->getBase();
-    if (!srcBase->isRegVar() || srcBase->asRegVar()->isPhyRegAssigned()) {
-      return false;
-    }
-    // GRF-alignment checks for the send payload (pre-RA: physical address is
-    // not yet assigned, so we check the declare's alignment constraint and the
-    // compile-time offset).
-    const unsigned grfBytes = getBuilder().numEltPerGRF<Type_UB>();
-    G4_Declare *dcl = srcBase->asRegVar()->getDeclare();
-    // Root declare must carry a GRF-alignment constraint so that RA places it
-    // on a GRF boundary.
-    if (dcl->getRootDeclare()->getSubRegAlign() < getBuilder().getGRFAlign()) {
-      return false;
-    }
-    // The total byte offset from the root declare (alias-chain offset + sub-
-    // register offset within this variable) must also be GRF-aligned.
-    if (!srcRgn->checkGRFAlign(getBuilder())) {
-      return false;
-    }
-    // Send payloads are raw consecutive GRF data: a non-contiguous source
-    // region (stride > 1) would produce wrong byte layout in the payload.
-    if (!srcRgn->getRegion()->isContiguous(getExecSize())) {
-      return false;
-    }
-    // Source size must be a whole number of GRFs and must exactly match the
-    // payload size from the message descriptor.  A size mismatch means either
-    // the send reads undefined data (too small) or introduces false register
-    // dependencies (too large, because liveness tracks the full source range).
-    unsigned srcBytes = src->getRightBound() - src->getLeftBound() + 1;
-    if (srcBytes % grfBytes != 0) {
-      return false;
-    }
-    unsigned src1LenBytes = useInst->getMsgDesc()->getSrc1LenBytes();
-    if (src1LenBytes > 0 && srcBytes != src1LenBytes) {
-      return false;
-    }
   }
 
   auto isFloatPseudoMAD = [](G4_INST *inst) {
