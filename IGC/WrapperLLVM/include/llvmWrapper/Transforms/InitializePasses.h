@@ -60,6 +60,9 @@ void initializeGVNLegacyPassWrapperPass(llvm::PassRegistry &);
 void initializeLowerConstantIntrinsicsLegacyPassWrapperPass(llvm::PassRegistry &);
 void initializeLoopRotateLegacyPassWrapperPass(llvm::PassRegistry &);
 void initializeLoopSinkLegacyPassWrapperPass(llvm::PassRegistry &);
+void initializeLoopInstSimplifyLegacyPassWrapperPass(llvm::PassRegistry &);
+void initializeLoopSimplifyCFGLegacyPassWrapperPass(llvm::PassRegistry &);
+void initializeSimpleLoopUnswitchLegacyPassWrapperPass(llvm::PassRegistry &);
 
 void initializeAllLLVMWrapperPasses(llvm::PassRegistry &Registry);
 #endif // IGCLLVM_TRANSFORMS_INITIALIZE_PASSES_H

@@ -8,22 +8,16 @@ SPDX-License-Identifier: MIT
 
 #include "common/LLVMWarningsPush.hpp"
 
-#include "llvm/Transforms/IPO/ElimAvailExtern.h"
 #include "llvm/Analysis/TypeBasedAliasAnalysis.h"
 #include "llvm/Analysis/ScopedNoAliasAA.h"
 #include "llvm/IR/LegacyPassManager.h"
 #include "llvm/Transforms/Scalar.h"
 #include "llvm/Transforms/IPO.h"
-#include "llvm/Transforms/IPO/ForceFunctionAttrs.h"
-#include "llvm/Transforms/IPO/FunctionAttrs.h"
 #include "llvm/Transforms/InstCombine/InstCombine.h"
 #include "llvm/Transforms/Scalar/LICM.h"
-#include "llvm/Transforms/Scalar/SimpleLoopUnswitch.h"
 #include "llvm/Transforms/Utils.h"
 #include "llvm/Transforms/Scalar/LoopUnrollPass.h"
-#include "llvm/Transforms/Scalar/GVN.h"
 #include "llvm/Analysis/GlobalsModRef.h"
-#include "llvmWrapper/Transforms/Vectorize/Vectorize.h"
 #include "common/LLVMWarningsPop.hpp"
 
 #include "llvmWrapper/Transforms/IPO/LegacyPassManagerBuilder.h"
@@ -66,6 +60,9 @@ SPDX-License-Identifier: MIT
 #include "llvmWrapper/Transforms/Scalar/LowerConstantIntrinsics.h"
 #include "llvmWrapper/Transforms/Scalar/LoopRotation.h"
 #include "llvmWrapper/Transforms/Scalar/LoopSink.h"
+#include "llvmWrapper/Transforms/Scalar/LoopInstSimplify.h"
+#include "llvmWrapper/Transforms/Scalar/LoopSimplifyCFG.h"
+#include "llvmWrapper/Transforms/Scalar/SimpleLoopUnswitch.h"
 #include "llvmWrapper/Transforms/Scalar/LowerExpectIntrinsic.h"
 #include "Compiler/IGCPassSupport.h"
 
@@ -140,8 +137,8 @@ void PassManagerBuilder::addFunctionSimplificationPasses(legacy::PassManagerBase
   // The simple loop unswitch pass relies on separate cleanup passes. Schedule
   // them first so when we re-process a loop they run before other loop
   // passes.
-  MPM.add(createLoopInstSimplifyPass());
-  MPM.add(createLoopSimplifyCFGPass());
+  MPM.add(IGCLLVM::createLoopInstSimplifyPass());
+  MPM.add(IGCLLVM::createLoopSimplifyCFGPass());
 
   // Try to remove as much code from the loop header as possible,
   // to reduce amount of IR that will have to be duplicated. However,
@@ -156,7 +153,7 @@ void PassManagerBuilder::addFunctionSimplificationPasses(legacy::PassManagerBase
   // TODO: Investigate promotion cap for O1.
   MPM.add(IGCLLVM::createLegacyWrappedLICMPass(LicmMssaOptCap, LicmMssaNoAccForPromotionCap,
                                                /*AllowSpeculation=*/true));
-  MPM.add(createSimpleLoopUnswitchLegacyPass(OptLevel == 3));
+  MPM.add(IGCLLVM::createSimpleLoopUnswitchLegacyPass(OptLevel == 3));
   // FIXME: We break the loop pass pipeline here in order to do full
   // simplifycfg. Eventually loop-simplifycfg should be enhanced to replace the
   // need for this.
