@@ -930,7 +930,7 @@ const char* SaturateEnumeration[3] =
 #endif // GED_SATURATE_HIDDEN
 
 #ifndef GED_SFID_HIDDEN
-const char* SFIDEnumeration[24] =
+const char* SFIDEnumeration[25] =
 {
     "NULL", // 0
     "SAMPLER", // 1
@@ -952,10 +952,11 @@ const char* SFIDEnumeration[24] =
     "SLM", // 17
     "UGM", // 18
     "DP_CONST", // 19
-    "DP_GENERIC", // 20
-    "DP_SAMPLER", // 21
-    "DP_CC", // 22
-    NULL // 23
+    "RTGD", // 20
+    "DP_GENERIC", // 21
+    "DP_SAMPLER", // 22
+    "DP_CC", // 23
+    NULL // 24
 }; // SFIDEnumeration[]
 #endif // GED_SFID_HIDDEN
 

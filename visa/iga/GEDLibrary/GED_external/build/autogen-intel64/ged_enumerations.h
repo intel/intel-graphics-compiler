@@ -787,6 +787,7 @@ typedef enum
     GED_SFID_SLM,        ///< XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3, XE3P.CRI
     GED_SFID_UGM,        ///< XE.HPG, XE.HPC.A, XE.HPC, XE.LPG.MD, XE2, XE3, XE3P.CRI
     GED_SFID_DP_CONST,   ///< XE2, XE3
+    GED_SFID_RTGD,       ///< XE3P.CRI
     GED_SFID_DP_GENERIC, ///< XE3P.CRI
     GED_SFID_DP_SAMPLER, ///< 7, 7.5, 8, 8.1
     GED_SFID_DP_CC,      ///< 7, 7.5, 8, 8.1

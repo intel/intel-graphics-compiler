@@ -5558,6 +5558,7 @@ static GED_SFID SFIDVar19 = (GED_SFID)19;
 static GED_SFID SFIDVar20 = (GED_SFID)20;
 static GED_SFID SFIDVar21 = (GED_SFID)21;
 static GED_SFID SFIDVar22 = (GED_SFID)22;
+static GED_SFID SFIDVar23 = (GED_SFID)23;
 const GED_SFID* SFIDTable0[16] =
 {
     &SFIDVar0, // 0
@@ -5637,7 +5638,7 @@ const GED_SFID* SFIDTable3[16] =
 const GED_SFID* SFIDTable4[16] =
 {
     &SFIDVar0, // 0
-    NULL, // 1
+    &SFIDVar20, // 1
     &SFIDVar1, // 2
     &SFIDVar2, // 3
     NULL, // 4
@@ -5648,7 +5649,7 @@ const GED_SFID* SFIDTable4[16] =
     NULL, // 9
     &SFIDVar9, // 10
     NULL, // 11
-    &SFIDVar20, // 12
+    &SFIDVar21, // 12
     &SFIDVar16, // 13
     &SFIDVar17, // 14
     &SFIDVar18 // 15
@@ -5659,12 +5660,12 @@ const GED_SFID* SFIDTable5[16] =
     NULL, // 1
     &SFIDVar1, // 2
     &SFIDVar2, // 3
-    &SFIDVar21, // 4
+    &SFIDVar22, // 4
     &SFIDVar4, // 5
     &SFIDVar5, // 6
     &SFIDVar6, // 7
     &SFIDVar7, // 8
-    &SFIDVar22, // 9
+    &SFIDVar23, // 9
     &SFIDVar9, // 10
     &SFIDVar10, // 11
     NULL, // 12
@@ -5678,12 +5679,12 @@ const GED_SFID* SFIDTable6[16] =
     NULL, // 1
     &SFIDVar1, // 2
     &SFIDVar2, // 3
-    &SFIDVar21, // 4
+    &SFIDVar22, // 4
     &SFIDVar4, // 5
     &SFIDVar5, // 6
     &SFIDVar6, // 7
     &SFIDVar7, // 8
-    &SFIDVar22, // 9
+    &SFIDVar23, // 9
     &SFIDVar9, // 10
     &SFIDVar10, // 11
     &SFIDVar11, // 12

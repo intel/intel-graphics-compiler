@@ -71,7 +71,7 @@ extern const char* RepCtrlEnumeration[3];
 extern const char* ReturnDataControlEnumeration[3];
 extern const char* RoundingModeEnumeration[3];
 extern const char* SaturateEnumeration[3];
-extern const char* SFIDEnumeration[24];
+extern const char* SFIDEnumeration[25];
 extern const char* ShuffleFCEnumeration[2];
 extern const char* SIMDModeEnumeration[4];
 extern const char* SlotGroupEnumeration[4];
