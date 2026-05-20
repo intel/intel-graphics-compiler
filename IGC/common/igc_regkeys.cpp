@@ -593,7 +593,8 @@ static std::optional<std::pair<HashRange::Type, llvm::StringRef>> parseHashType(
     return {};
 
   auto Ty = StringSwitch<std::optional<HashRange::Type>>(line.substr(0, Loc))
-                .Cases("hash", "asmhash", HashRange::Type::Asm)
+                .Case("hash", HashRange::Type::Asm)
+                .Case("asmhash", HashRange::Type::Asm)
                 .Case("psohash", HashRange::Type::Pso)
                 .Default({});
   if (!Ty)

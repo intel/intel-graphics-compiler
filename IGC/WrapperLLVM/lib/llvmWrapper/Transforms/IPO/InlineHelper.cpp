@@ -415,8 +415,13 @@ bool inlineCallsImpl(CallGraphSCC &SCC, CallGraph &CG, std::function<AssumptionC
 
 #if LLVM_VERSION_MAJOR >= 17
         CallGraphNode *CallerNode = CG[Caller];
+#if LLVM_VERSION_MAJOR >= 22
+        CallerNode->removeOneAbstractEdgeTo(CG[Callee]);
+#else
         CallerNode->removeCallEdgeFor(CB);
 #endif
+#endif
+
         InlineResult IR = inlineCallIfPossible(CB, InlineInfo, InlinedArrayAllocas, InlineHistoryID, InsertLifetime,
                                                AARGetter, ImportedFunctionsStats);
         if (!IR.isSuccess()) {

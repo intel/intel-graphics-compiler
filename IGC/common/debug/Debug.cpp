@@ -192,14 +192,28 @@ void FatalErrorHandler(void *user_data, const char *reason, bool gen_crash_diag)
   throw std::runtime_error("LLVM Error: " + reasonStrWrapper);
 }
 
+#if LLVM_VERSION_MAJOR >= 22
+void ComputeFatalErrorHandler(const DiagnosticInfo *DI, void * /*Context*/) {
+  // Skip non-error diag.
+  if (!DI || DI->getSeverity() != DS_Error)
+    return;
+#else
 void ComputeFatalErrorHandler(const DiagnosticInfo &DI, void * /*Context*/) {
   // Skip non-error diag.
   if (DI.getSeverity() != DS_Error)
     return;
+#endif
+
   std::string MsgStorage;
   raw_string_ostream Stream(MsgStorage);
   DiagnosticPrinterRawOStream DP(Stream);
+
+#if LLVM_VERSION_MAJOR >= 22
+  DI->print(DP);
+#else
   DI.print(DP);
+#endif
+
   Stream.flush();
 
   std::string msg;

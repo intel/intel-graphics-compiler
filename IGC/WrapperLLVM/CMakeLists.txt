@@ -16,6 +16,7 @@ set(IGC_WrapperLLVM_HDR
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/ADT/STLExtras.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/ADT/StringExtras.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/ADT/StringRef.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/ADT/ScopeExit.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/Analysis/AliasAnalysis.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/Analysis/AliasAnalysisWrapperPass.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/Analysis/AliasSetTracker.h"

@@ -9,7 +9,6 @@ SPDX-License-Identifier: MIT
 #include "IGC/common/StringMacros.hpp"
 #include "LLVMSPIRVOpts.h"
 #include "common/LLVMWarningsPush.hpp"
-#include "llvm/ADT/ScopeExit.h"
 #include "llvm/Config/llvm-config.h"
 #include "llvm/Support/ScaledNumber.h"
 #include "llvm/Support/CommandLine.h"
@@ -19,6 +18,7 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPop.hpp"
 #include "llvmWrapper/ADT/Optional.h"
 #include "llvmWrapper/IR/Module.h"
+#include "llvmWrapper/ADT/ScopeExit.h"
 
 #include <cstring>
 #include <string>
@@ -659,6 +659,19 @@ bool ProcessElfInput(STB_TranslateInputArgs &InputArgs, STB_TranslateOutputArgs 
       }
     }
 
+#if LLVM_VERSION_MAJOR >= 22
+    Context.getLLVMContext()->setDiagnosticHandlerCallBack(
+        [](const llvm::DiagnosticInfo *DI, void *Ptr) {
+          if (DI && DI->getSeverity() == llvm::DS_Error) {
+            auto *S = static_cast<std::string *>(Ptr);
+            llvm::raw_string_ostream OS(*S);
+            llvm::DiagnosticPrinterRawOStream DP(OS);
+            DI->print(DP);
+            OS << '\n';
+          }
+        },
+        &ErrorMsg);
+#else
     Context.getLLVMContext()->setDiagnosticHandlerCallBack(
         [](const llvm::DiagnosticInfo &DI, void *Ptr) {
           if (DI.getSeverity() == llvm::DS_Error) {
@@ -670,6 +683,7 @@ bool ProcessElfInput(STB_TranslateInputArgs &InputArgs, STB_TranslateOutputArgs 
           }
         },
         &ErrorMsg);
+#endif
 
     for (auto &InputModule : LLVMBinariesToLink) {
       if (OutputModule.get() == NULL) {
@@ -1190,7 +1204,7 @@ bool TranslateBuildSPMD(const STB_TranslateInputArgs *pInputArgs, STB_TranslateO
 #pragma GCC diagnostic pop
 #endif // __GNUC__
 
-  auto compilerTimeCleanup = llvm::make_scope_exit([&]() {
+  auto compilerTimeCleanup = IGCLLVM::make_scope_exit([&]() {
     if (compilerTimeNeedsEnd) {
       COMPILER_TIME_END(&oclContext, TIME_TOTAL);
     }
