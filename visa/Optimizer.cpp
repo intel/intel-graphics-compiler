@@ -1665,9 +1665,12 @@ void Optimizer::FoldAddrImmediate() {
             int width, hstride;
             width = inst->getExecSize();
             hstride = dst->getHorzStride();
+            const int numAddrSubReg = (int)builder.getNumAddrRegisters();
 
             for (int j = 0; j < width; j++) {
               int currSubreg = dst_subReg + j * hstride;
+              if (currSubreg < 0 || currSubreg >= numAddrSubReg)
+                continue;
               // this kills the previous def on a0.x
               if (addrRegInfo[currSubreg].iter != iend &&
                   addrRegInfo[currSubreg].canRemoveInst) {

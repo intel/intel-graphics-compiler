@@ -2248,6 +2248,27 @@ void vISAVerifier::verifyInstructionAddress(const CISA_INST *inst) {
       REPORT_INSTRUCTION(options, operand_class == OPERAND_ADDRESS,
                          "CISA address instruction destination only supports "
                          "an address operand.");
+      if (operand_class == OPERAND_ADDRESS) {
+        const vector_opnd &dst = getVectorOperand(inst, i);
+        uint32_t declID = dst.opnd_val.addr_opnd.index;
+        uint32_t subRegOff = dst.opnd_val.addr_opnd.offset;
+        uint32_t execSize = Get_VISA_Exec_Size(inst->getExecSize());
+        REPORT_INSTRUCTION(options, declID < header->getAddrCount(),
+                           "ADDR_ADD destination references undeclared "
+                           "address variable A%u.",
+                           declID);
+        // ADDR_ADD writes execSize consecutive address subregisters
+        // (hstride is implicitly 1 for the destination). The region
+        // must fit within the architectural address-register file; vISA
+        // allows a logical decl smaller than the physical file, so the
+        // bound is getNumAddrRegisters(), not the decl's num_elements.
+        uint32_t numAddrRegs = irBuilder->getNumAddrRegisters();
+        REPORT_INSTRUCTION(options, subRegOff + execSize <= numAddrRegs,
+                           "ADDR_ADD destination region writes %u "
+                           "elements starting at A%u(%u), which exceeds "
+                           "the platform's %u address registers.",
+                           execSize, declID, subRegOff, numAddrRegs);
+      }
       continue;
     }
 

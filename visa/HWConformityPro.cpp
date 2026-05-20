@@ -2096,8 +2096,15 @@ void HWConformityPro::fixMadw(INST_LIST_ITER it, G4_BB *bb) {
         (execSize != g4::SIMD32 && (unsigned)execSize * dst->getHorzStride() >
                                        builder.numEltPerGRF<Type_D>());
 
-    // mullh does not support saturation and must be GRF-aligned for dst
-    if (isPreAssignedRegOffsetNonZero<G4_DstRegRegion>(dst) ||
+    // mullh does not support saturation and must be GRF-aligned for dst.
+    // For an indirect dst the expansion below (mullhDst = duplicateOperand(dst))
+    // would inherit indirect addressing, but downstream paths assume direct
+    // mullh dst; route through fixDstMadw to get a direct temp + indirect
+    // writeback. tryToAlignOperand can incidentally return true for indirect
+    // via the LEA-pattern recovery, so we have to check isIndirect explicitly
+    // rather than rely on the alignment check to catch it.
+    if (dst->isIndirect() ||
+        isPreAssignedRegOffsetNonZero<G4_DstRegRegion>(dst) ||
         !builder.tryToAlignOperand(dst, builder.getGRFSize()) ||
         dstCrossGrfBound || inst->getSaturate() != g4::NOSAT) {
       fixDstMadw(it, bb, builder);
@@ -2123,6 +2130,19 @@ void HWConformityPro::fixMadw(INST_LIST_ITER it, G4_BB *bb) {
     //   mov (16) signExt<1>:q  src2<1;1,0>:d
     //   add3  (16) dst_hi32<1>:d  signExt.1<2;1,0>:d   acc0.0<1;1,0>:d
     //              mullh_dst_hi32<1;1,0>:d
+
+    // dstLo32/dstHi32 below are built via createDst(dst->getBase(),
+    // dst->getRegOff() + offset, ...) which is direct addressing on
+    // dst->getBase(). For an indirect madw dst the base is a0, so a direct
+    // write at regOff != 0 corrupts a0 and trips ExSubRegNum's regOff == 0
+    // invariant later in the pipeline. Route through fixDstMadw to expand
+    // into a temp GRF with indirect writeback. Mirrors the notDoAdd guard
+    // above.
+    if (dst->isIndirect()) {
+      fixDstMadw(it, bb, builder);
+      dst = inst->getDst();
+    }
+
     tmpType =
         (IS_UNSIGNED_INT(src0->getType()) && IS_UNSIGNED_INT(src1->getType()) &&
          IS_UNSIGNED_INT(src2->getType()))
