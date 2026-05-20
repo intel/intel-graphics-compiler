@@ -881,6 +881,26 @@ void ConstantCoalescing::MergeUniformLoad(Instruction *load, Value *bufIdxV, uin
       ((offsetInBytes % 4) == 0 && (alignment >= 4 || eltIdxV == nullptr || IsDwordAligned(eltIdxV)));
 
   auto shouldMerge = [&](const BufChunk *cur_chunk) {
+    // Do not merge two loads of the same buffer whose defining basic blocks
+    // are far apart in the dominator tree. The chunk's defining BB always
+    // dominates the new load's BB (ProcessFunction pops chunks whose
+    // def-BB no longer dominates the current block), so the depth delta is
+    // measures how far the chunk would have to stretch. Merging across a large depth
+    // can cause a long live GRF hurting register pressure.
+    const uint32_t maxDepthDelta = IGC_GET_FLAG_VALUE(ConstantCoalescingMaxBBDepthDelta);
+    if (maxDepthDelta > 0) {
+      DominatorTree &domTree = getAnalysis<DominatorTreeWrapperPass>().getDomTree();
+      if (auto *chunkNode = domTree.getNode(cur_chunk->chunkIO->getParent())) {
+        if (auto *loadNode = domTree.getNode(load->getParent())) {
+          const unsigned cLvl = chunkNode->getLevel();
+          const unsigned lLvl = loadNode->getLevel();
+          const unsigned delta = (lLvl > cLvl) ? (lLvl - cLvl) : (cLvl - lLvl);
+          if (delta > maxDepthDelta)
+            return false;
+        }
+      }
+    }
+
     if (CompareBufferBase(cur_chunk->bufIdxV, cur_chunk->addrSpace, bufIdxV, addrSpace) &&
         cur_chunk->baseIdxV == eltIdxV && cur_chunk->chunkIO->getType()->getScalarType() == loadEltTy &&
         CompareMetadata(cur_chunk->chunkIO, load) && !CheckForAliasingWrites(addrSpace, cur_chunk->chunkIO, load) &&
