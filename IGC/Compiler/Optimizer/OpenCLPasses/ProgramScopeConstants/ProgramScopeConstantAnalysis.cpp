@@ -47,6 +47,13 @@ bool ProgramScopeConstantAnalysis::runOnModule(Module &M) {
   MetaDataUtils *mdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
   m_pModuleMd = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
 
+  bool isFirstTry = Ctx->m_retryManager->IsFirstTry();
+
+  // Track which buffer types have globals, used for implicit arg decisions.
+  bool hasConstants = false;
+  bool hasGlobals = false;
+  bool hasConstantStrings = false;
+
   SmallVector<GlobalVariable *, 32> zeroInitializedGlobals;
 
   for (Module::global_iterator I = M.global_begin(), E = M.global_end(); I != E; ++I) {
@@ -124,11 +131,14 @@ bool ProgramScopeConstantAnalysis::runOnModule(Module &M) {
     if (isZebinPrintfStringConst) {
       m_pModuleMd->stringConstants.insert(globalVar);
       inlineProgramScopeBufferType = InlineProgramScopeBufferType::ConstantStrings;
+      hasConstantStrings = true;
     } else {
       if (AS == ADDRESS_SPACE_GLOBAL) {
         inlineProgramScopeBufferType = InlineProgramScopeBufferType::Globals;
+        hasGlobals = true;
       } else {
         inlineProgramScopeBufferType = InlineProgramScopeBufferType::Constants;
+        hasConstants = true;
       }
     }
 
@@ -137,38 +147,54 @@ bool ProgramScopeConstantAnalysis::runOnModule(Module &M) {
       continue;
     }
 
-    DataVector *inlineProgramScopeBuffer = &m_pModuleMd->inlineBuffers[inlineProgramScopeBufferType].Buffer;
+    if (isFirstTry) {
+      DataVector *inlineProgramScopeBuffer = &m_pModuleMd->inlineBuffers[inlineProgramScopeBufferType].Buffer;
 
-    // Align the buffer.
-    if (inlineProgramScopeBuffer->size() != 0) {
-      alignBuffer(*inlineProgramScopeBuffer, (unsigned int)m_DL->getPreferredAlign(globalVar).value());
+      // Align the buffer.
+      if (inlineProgramScopeBuffer->size() != 0) {
+        alignBuffer(*inlineProgramScopeBuffer, (unsigned int)m_DL->getPreferredAlign(globalVar).value());
+      }
+
+      // Ok, buffer is aligned, remember where this inline variable starts.
+      inlineProgramScopeOffsets[globalVar] = inlineProgramScopeBuffer->size();
+
+      // Add the data to the buffer
+      addData(initializer, inlineProgramScopeBufferType, inlineProgramScopeOffsets, AS);
+    } else {
+      // Retry: register the global in the offset map with a placeholder value.
+      // The actual offset is restored from Ctx->inlineProgramScopeGlobalOffsets
+      // cache at the end of this function.
+      inlineProgramScopeOffsets[globalVar] = 0;
     }
-
-    // Ok, buffer is aligned, remember where this inline variable starts.
-    inlineProgramScopeOffsets[globalVar] = inlineProgramScopeBuffer->size();
-
-    // Add the data to the buffer
-    addData(initializer, inlineProgramScopeBufferType, inlineProgramScopeOffsets, AS);
   }
 
-  // Set the needed allocation size to the actual buffer size
-  m_pModuleMd->inlineBuffers[InlineProgramScopeBufferType::Globals].allocSize =
-      m_pModuleMd->inlineBuffers[InlineProgramScopeBufferType::Globals].Buffer.size();
-  m_pModuleMd->inlineBuffers[InlineProgramScopeBufferType::Constants].allocSize =
-      m_pModuleMd->inlineBuffers[InlineProgramScopeBufferType::Constants].Buffer.size();
-  m_pModuleMd->inlineBuffers[InlineProgramScopeBufferType::ConstantStrings].allocSize =
-      m_pModuleMd->inlineBuffers[InlineProgramScopeBufferType::ConstantStrings].Buffer.size();
-  // Calculate the correct offsets for zero-initialized globals/constants
-  // Total allocation size in runtime needs to include zero-init values, but data copied to compiler output can ignore
-  // them
-  for (auto globalVar : zeroInitializedGlobals) {
-    unsigned AS = cast<PointerType>(globalVar->getType())->getAddressSpace();
-    size_t &offset = (AS == ADDRESS_SPACE_GLOBAL)
-                         ? m_pModuleMd->inlineBuffers[InlineProgramScopeBufferType::Globals].allocSize
-                         : m_pModuleMd->inlineBuffers[InlineProgramScopeBufferType::Constants].allocSize;
-    offset = iSTD::Align(offset, (unsigned)m_DL->getPreferredAlign(globalVar).value());
-    inlineProgramScopeOffsets[globalVar] = offset;
-    offset += (unsigned)(m_DL->getTypeAllocSize(globalVar->getValueType()));
+  if (isFirstTry) {
+    // Set the needed allocation size to the actual buffer size
+    m_pModuleMd->inlineBuffers[InlineProgramScopeBufferType::Globals].allocSize =
+        m_pModuleMd->inlineBuffers[InlineProgramScopeBufferType::Globals].Buffer.size();
+    m_pModuleMd->inlineBuffers[InlineProgramScopeBufferType::Constants].allocSize =
+        m_pModuleMd->inlineBuffers[InlineProgramScopeBufferType::Constants].Buffer.size();
+    m_pModuleMd->inlineBuffers[InlineProgramScopeBufferType::ConstantStrings].allocSize =
+        m_pModuleMd->inlineBuffers[InlineProgramScopeBufferType::ConstantStrings].Buffer.size();
+    // Calculate the correct offsets for zero-initialized globals/constants
+    // Total allocation size in runtime needs to include zero-init values, but data copied to compiler output can ignore
+    // them
+    for (auto globalVar : zeroInitializedGlobals) {
+      unsigned AS = cast<PointerType>(globalVar->getType())->getAddressSpace();
+      size_t &offset = (AS == ADDRESS_SPACE_GLOBAL)
+                           ? m_pModuleMd->inlineBuffers[InlineProgramScopeBufferType::Globals].allocSize
+                           : m_pModuleMd->inlineBuffers[InlineProgramScopeBufferType::Constants].allocSize;
+      offset = iSTD::Align(offset, (unsigned)m_DL->getPreferredAlign(globalVar).value());
+      inlineProgramScopeOffsets[globalVar] = offset;
+      offset += (unsigned)(m_DL->getTypeAllocSize(globalVar->getValueType()));
+    }
+  } else {
+    // Retry: register zero-initialized globals in the offset map with
+    // placeholder values. Actual offsets are restored from
+    // Ctx->inlineProgramScopeGlobalOffsets cache at the end of this function.
+    for (auto globalVar : zeroInitializedGlobals) {
+      inlineProgramScopeOffsets[globalVar] = 0;
+    }
   }
 
   if (inlineProgramScopeOffsets.size()) {
@@ -200,9 +226,7 @@ bool ProgramScopeConstantAnalysis::runOnModule(Module &M) {
   bool skipConstAndGlobalBaseArgs =
       IGC_IS_FLAG_ENABLED(DisableConstBaseGlobalBaseArg) || !m_pModuleMd->stringConstants.empty();
 
-  if (!skipConstAndGlobalBaseArgs &&
-      (m_pModuleMd->inlineBuffers[InlineProgramScopeBufferType::Constants].allocSize ||
-       m_pModuleMd->inlineBuffers[InlineProgramScopeBufferType::ConstantStrings].allocSize)) {
+  if (!skipConstAndGlobalBaseArgs && (hasConstants || hasConstantStrings)) {
     for (auto &pFunc : M) {
       if (pFunc.isDeclaration())
         continue;
@@ -218,7 +242,7 @@ bool ProgramScopeConstantAnalysis::runOnModule(Module &M) {
     }
   }
 
-  if (!skipConstAndGlobalBaseArgs && m_pModuleMd->inlineBuffers[InlineProgramScopeBufferType::Globals].allocSize) {
+  if (!skipConstAndGlobalBaseArgs && hasGlobals) {
     for (auto &pFunc : M) {
       if (pFunc.isDeclaration())
         continue;
