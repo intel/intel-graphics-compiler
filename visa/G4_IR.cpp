@@ -3122,15 +3122,8 @@ const G4_VarBase *G4_INST::getCondModBase() const {
 }
 
 bool G4_INST::isOptBarrier() const {
-  if (op == G4_join || op == G4_madm) {
+  if (op == G4_join) {
     return true;
-  }
-
-  if (op == G4_math) {
-    G4_MathOp mathOp = this->asMathInst()->getMathCtrl();
-    if (mathOp == MATH_INVM || mathOp == MATH_RSQRTM) { // Macro
-      return true;
-    }
   }
 
   if (isIntrinsic() && asIntrinsicInst()->hasSideEffects()) {
