@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2024 Intel Corporation
+Copyright (C) 2017-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -76,8 +76,8 @@ bool HoistCongruentPHI::runOnFunction(Function &F) {
   return Changed;
 }
 
-bool HoistCongruentPHI::checkCongruent(std::vector<InstPair> &instMap, const InstPair &values, InstVec &leaves,
-                                       unsigned depth) {
+bool HoistCongruentPHI::checkCongruent(const llvm::DominatorTree &DT, std::vector<InstPair> &instMap,
+                                       const InstPair &values, InstVec &leaves, unsigned depth) {
   Instruction *src0 = values.first;
   Instruction *src1 = values.second;
 
@@ -132,7 +132,7 @@ bool HoistCongruentPHI::checkCongruent(std::vector<InstPair> &instMap, const Ins
 
     if (v0 == v1) {
       if (iv0) {
-        if (DT->dominates(iv0->getParent(), src0->getParent()) && DT->dominates(iv0->getParent(), src1->getParent())) {
+        if (DT.dominates(iv0->getParent(), src0->getParent()) && DT.dominates(iv0->getParent(), src1->getParent())) {
           appendIfNotExist(tmpVec, iv0);
           continue;
         } else {
@@ -144,7 +144,7 @@ bool HoistCongruentPHI::checkCongruent(std::vector<InstPair> &instMap, const Ins
       continue;
     }
     if (iv0 && iv0->getParent() == src0->getParent() && iv1 && iv1->getParent() == src1->getParent()) {
-      if (!checkCongruent(instMap, std::make_pair(iv0, iv1), tmpVec, depth + 1)) {
+      if (!checkCongruent(DT, instMap, std::make_pair(iv0, iv1), tmpVec, depth + 1)) {
         equals = false;
         break;
       }
@@ -174,7 +174,7 @@ bool HoistCongruentPHI::checkCongruent(std::vector<InstPair> &instMap, const Ins
 
     if (v0 == v1) {
       if (iv0) {
-        if (DT->dominates(iv0->getParent(), src0->getParent()) && DT->dominates(iv0->getParent(), src1->getParent())) {
+        if (DT.dominates(iv0->getParent(), src0->getParent()) && DT.dominates(iv0->getParent(), src1->getParent())) {
           appendIfNotExist(tmpVec, iv0);
           continue;
         } else {
@@ -187,7 +187,7 @@ bool HoistCongruentPHI::checkCongruent(std::vector<InstPair> &instMap, const Ins
     }
 
     if (iv0 && iv0->getParent() == src0->getParent() && iv1 && iv1->getParent() == src1->getParent()) {
-      if (!checkCongruent(instMap, std::make_pair(iv0, iv1), leaves, depth + 1)) {
+      if (!checkCongruent(DT, instMap, std::make_pair(iv0, iv1), leaves, depth + 1)) {
         equals = false;
         break;
       }
@@ -218,7 +218,7 @@ bool HoistCongruentPHI::hoistCongruentPhi(PHINode *phi) {
     // the corresponding instructions of source1
     std::vector<InstPair> instMap;
 
-    if (checkCongruent(instMap, std::make_pair(src0, src1), leaves, 0)) {
+    if (checkCongruent(*DT, instMap, std::make_pair(src0, src1), leaves, 0)) {
       BasicBlock *predBB = nullptr;
       Instruction *insertPos = nullptr;
       bool apply = true;
@@ -336,6 +336,56 @@ bool HoistCongruentPHI::hoistCongruentPhi(Function &F) {
     }
   }
   return changed;
+}
+
+bool HoistCongruentPHI::wouldRunOnFunction(const llvm::Function &F, const CodeGenContext *CTX) {
+  if (CTX == nullptr)
+    return false;
+  if (CTX->type != ShaderType::PIXEL_SHADER && CTX->type != ShaderType::DOMAIN_SHADER &&
+      CTX->type != ShaderType::OPENCL_SHADER && CTX->type != ShaderType::RAYTRACING_SHADER &&
+      CTX->type != ShaderType::COMPUTE_SHADER)
+    return false;
+  if (IGC_IS_FLAG_ENABLED(DisableCodeSinking))
+    return false;
+  if (numInsts(F) < IGC_GET_FLAG_VALUE(CodeSinkingMinSize))
+    return false;
+  return true;
+}
+
+bool HoistCongruentPHI::wouldHoist(const llvm::PHINode *phi, const llvm::DominatorTree &DT) {
+  if (phi->getNumIncomingValues() != 2)
+    return false;
+
+  Instruction *src0 = dyn_cast<Instruction>(phi->getIncomingValue(0));
+  Instruction *src1 = dyn_cast<Instruction>(phi->getIncomingValue(1));
+  if (!src0 || !src1 || src0 == src1)
+    return false;
+
+  std::vector<InstPair> instMap;
+  InstVec leaves;
+  if (!checkCongruent(DT, instMap, std::make_pair(src0, src1), leaves, 0))
+    return false;
+
+  // Apply-time decision from hoistCongruentPhi(PHINode*):
+  //   - leaves empty -> always hoists (replace with a src or insert at the
+  //     common dominator of src0/src1).
+  //   - leaves non-empty -> hoists iff every leaf after the first shares a
+  //     parent BB that dominates both src0 and src1's parent blocks. The
+  //     first leaf only seeds predBB; mirror that asymmetry to stay
+  //     bit-identical with the pass.
+  if (leaves.empty())
+    return true;
+
+  BasicBlock *predBB = nullptr;
+  for (auto *I : leaves) {
+    if (!predBB) {
+      predBB = I->getParent();
+    } else if (predBB != I->getParent() || !DT.dominates(predBB, src0->getParent()) ||
+               !DT.dominates(predBB, src1->getParent())) {
+      return false;
+    }
+  }
+  return true;
 }
 
 } // namespace IGC

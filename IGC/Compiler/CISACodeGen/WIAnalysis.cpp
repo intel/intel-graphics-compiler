@@ -11,6 +11,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CISACodeGen/helper.h"
 #include "Compiler/CodeGenContextWrapper.hpp"
 #include "Compiler/CodeGenPublic.h"
+#include "Compiler/CISACodeGen/HoistCongruentPhi.hpp"
 #include "Compiler/IGCPassSupport.h"
 #include "common/debug/Debug.hpp"
 #include "common/igc_regkeys.hpp"
@@ -25,6 +26,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/ModuleSlotTracker.h>
 #include "common/LLVMWarningsPop.hpp"
 
+#include <functional>
 #include <string>
 #include <sstream>
 #include "Probe/Assertion.h"
@@ -68,6 +70,8 @@ DenseMap<const Function *, int> WIAnalysisRunner::m_funcInvocationId;
 #define PTR WIAnalysis::PTR_CONSECUTIVE
 #define STR WIAnalysis::STRIDED
 #define RND WIAnalysis::RANDOM
+
+static constexpr unsigned PhiShapeEquivMaxDepth = 8;
 
 static const char *const dep_str[] = {"uniform_global", "uniform_workgroup", "uniform_thread", "consecu",
                                       "p_conse",        "strided",           "random "};
@@ -278,6 +282,8 @@ void WIAnalysisRunner::init(llvm::Function *F, llvm::LoopInfo *LI, llvm::Dominat
   m_localIDxUniform = false;
   m_localIDyUniform = false;
   m_localIDzUniform = false;
+
+  m_hoistEnabledForFunction = -1;
 }
 
 bool WIAnalysisRunner::run() {
@@ -843,6 +849,11 @@ void WIAnalysisRunner::update_cf_dep(const IGCLLVM::TerminatorInst *inst) {
   IGC_ASSERT(hasDependency(inst));
   WIBaseClass::WIDependancy instDep = getDependency(inst);
 
+  // Clear the structural-equivalence exempt set so that exemptions
+  // computed for one branch do not leak into unrelated branches.
+  // Each branch's updatePHIDepAtJoin re-populates this for its own phis.
+  m_structEquivExemptDefs.clear();
+
   BasicBlock *blk = (BasicBlock *)(inst->getParent());
   BasicBlock *ipd = PDT->getNode(blk)->getIDom()->getBlock();
   // a branch can have NULL immediate post-dominator when a function
@@ -936,6 +947,14 @@ void WIAnalysisRunner::update_cf_dep(const IGCLLVM::TerminatorInst *inst) {
       if (isRegionInvariant(defi, &br_info)) {
         continue;
       }
+
+      // Skip defs whose every in-region user is covered by a vouching
+      // phi from updatePHIDepAtJoin. Downgrading them would re-propagate
+      // non-uniformity back into the phi and undo the shape-equivalence
+      // decision.
+      if (isDefiExemptViaVouchingPhi(defi, &br_info)) {
+        continue;
+      }
       // We need to look at where the use is in order to decide
       // we should make def to be "random" when loop is not in
       // LCSSA form because we do not have LCSSA phi-nodes.
@@ -974,6 +993,210 @@ void WIAnalysisRunner::update_cf_dep(const IGCLLVM::TerminatorInst *inst) {
   } // end of influence-region block loop
 }
 
+bool WIAnalysisRunner::areShapeEquivalentAcrossPaths(const llvm::Value *A, const llvm::Value *B, unsigned Depth,
+                                                     StructEquivMemo &Memo) const {
+  using namespace llvm;
+
+  if (A == B)
+    return true;
+  if (!A || !B || Depth == 0)
+    return false;
+  if (A->getType() != B->getType())
+    return false;
+
+  // std::less<> gives a portable total order on unrelated pointers; raw
+  // std::min/std::max would be implementation-defined here.
+  auto Key = std::less<>{}(A, B) ? std::make_pair(A, B) : std::make_pair(B, A);
+  auto It = Memo.find(Key);
+  if (It != Memo.end())
+    return It->second;
+  Memo[Key] = false; // pessimistic placeholder breaks recursion cycles
+
+  if (isa<Constant>(A) || isa<Constant>(B))
+    return false; // uniqued constants — A == B would have caught equal ones
+
+  const auto *IA = dyn_cast<Instruction>(A);
+  const auto *IB = dyn_cast<Instruction>(B);
+  if (!IA || !IB)
+    return false;
+
+  // Phis carry their own join semantics:
+  // Inner phis must be classified by updatePHIDepAtJoin, not
+  // by structural recursion here.
+  if (isa<PHINode>(IA) || isa<PHINode>(IB))
+    return false;
+
+  // Memory ops can disagree even with identical SSA inputs.
+  if (IA->mayReadOrWriteMemory() || IB->mayReadOrWriteMemory())
+    return false;
+
+  if (!IA->isSameOperationAs(IB))
+    return false;
+  if (IA->getNumOperands() != IB->getNumOperands())
+    return false;
+
+  // mayReadOrWriteMemory above already rejected non-readnone calls; the
+  // operand loop below compares the called operand alongside the args.
+  IGC_ASSERT(!isa<CallInst>(IA) || cast<CallInst>(IA)->doesNotAccessMemory());
+
+  bool Ok = true;
+  for (unsigned i = 0, e = IA->getNumOperands(); i < e && Ok; ++i) {
+    Value *OpA = IA->getOperand(i);
+    Value *OpB = IB->getOperand(i);
+    if (OpA == OpB)
+      continue;
+
+    // Shape-only: do not gate on hasDependency/isDepUniform. The shape
+    // check proves path-invariance (every lane gets the same value on
+    // either side of the branch). Cross-lane uniformity is then decided
+    // by calculate_dep(PHINode) combining the incomings — if a leaf is
+    // lane-varying, non-uniformity propagates up naturally and the phi
+    // ends up non-uniform anyway. Gating on WIA classification here is
+    // both unnecessary and order-fragile: updatePHIDepAtJoin runs when
+    // the branch first becomes RANDOM, before the worklist has visited
+    // the phi's incoming defs.
+    if (!areShapeEquivalentAcrossPaths(OpA, OpB, Depth - 1, Memo))
+      Ok = false;
+  }
+
+  Memo[Key] = Ok;
+  return Ok;
+}
+
+bool WIAnalysisRunner::tryExemptPhiFromShapeEquivalence(const PHINode *phi, BranchInfo *brInfo) {
+  if (!isSafeApplyPhiFromShapeEquivalence(phi))
+    return false;
+
+  StructEquivMemo Memo;
+  Value *First = phi->getIncomingValue(0);
+  for (unsigned i = 1, e = phi->getNumIncomingValues(); i < e; ++i) {
+    if (!areShapeEquivalentAcrossPaths(First, phi->getIncomingValue(i), PhiShapeEquivMaxDepth, Memo))
+      return false;
+  }
+
+  // Exempt the phi's transitive operand chains (restricted to the
+  // influence region) from the influence-region downgrade in
+  // update_cf_dep. Without this, the worklist would re-propagate
+  // non-uniformity from the downgraded incoming defs back into the
+  // phi via calculate_dep(PHINode), silently undoing this decision.
+  llvm::SmallVector<const llvm::Value *, 8> Worklist;
+  for (unsigned i = 0, e = phi->getNumIncomingValues(); i < e; ++i)
+    Worklist.push_back(phi->getIncomingValue(i));
+  while (!Worklist.empty()) {
+    if (const llvm::Instruction *VI = llvm::dyn_cast<llvm::Instruction>(Worklist.pop_back_val())) {
+      if (!brInfo->influence_region.contains(VI->getParent()))
+        continue;
+      if (!m_structEquivExemptDefs[phi].insert(VI).second)
+        continue;
+      // Don't walk through phis — they have their own join semantics
+      // and are processed independently by updatePHIDepAtJoin.
+      if (llvm::isa<llvm::PHINode>(VI))
+        continue;
+      for (const llvm::Use &U : VI->operands())
+        Worklist.push_back(U.get());
+    }
+  }
+
+  // If the shape-equivalence is trivial (no in-region operand chain to
+  // preserve), the only effect is making this single phi uniform —
+  // which can pin a uniform live range across a large join and cost
+  // more in scalar spill/fill than the SIMD phi it replaces.
+  if (m_structEquivExemptDefs[phi].empty()) {
+    m_structEquivExemptDefs.erase(phi);
+    return false;
+  }
+
+  return true;
+}
+
+bool WIAnalysisRunner::isSafeApplyPhiFromShapeEquivalence(const PHINode *phi) {
+  if (phi->getNumIncomingValues() < 2)
+    return false;
+
+  // Ray-tracing state-machine functions (continuations, callstack handler) are
+  // large divergent kernels where shape-equivalence exemptions can pin uniform
+  // live ranges across many joins and increase scalar spill/fill.
+  if (m_func->hasFnAttribute("is.continuation") || m_func->getName().contains("__Continuation_") ||
+      m_func->getName().contains("__callStackHandler"))
+    return false;
+
+  // Guard: reject shape-equivalence for phis inside any loop.
+  // Inner-loop divergent-join phis (if-else merge points within hot loops)
+  // with exempt operand chains pin uniform scalar GRFs across loop iterations
+  if (LI->getLoopFor(phi->getParent()))
+    return false;
+
+  if (DT && phi->getNumIncomingValues() == 2) {
+    // Cache the O(N) function-level HoistCongruentPHI gate across all phis
+    // in this function. wouldHoist itself is per-phi and cheap.
+    if (m_hoistEnabledForFunction < 0)
+      m_hoistEnabledForFunction = HoistCongruentPHI::wouldRunOnFunction(*m_func, m_CGCtx) ? 1 : 0;
+    if (m_hoistEnabledForFunction == 1 && HoistCongruentPHI::wouldHoist(phi, *DT)) {
+      bool HasVarVarCombine = false;
+      for (const llvm::User *U : phi->users()) {
+        const auto *UI = llvm::dyn_cast<llvm::Instruction>(U);
+        if (!UI || !UI->isBinaryOp())
+          continue;
+        for (unsigned i = 0, e = UI->getNumOperands(); i < e && !HasVarVarCombine; ++i) {
+          const llvm::Value *Op = UI->getOperand(i);
+          if (Op == phi)
+            continue;
+          if (!llvm::isa<llvm::Constant>(Op)) {
+            HasVarVarCombine = true;
+            break;
+          }
+        }
+        if (HasVarVarCombine)
+          break;
+      }
+      if (HasVarVarCombine)
+        return false;
+    }
+  }
+
+  return true;
+}
+
+bool WIAnalysisRunner::isDefiExemptViaVouchingPhi(const Instruction *defi, BranchInfo *brInfo) const {
+  // Symmetric read-side counterpart to tryExemptPhiFromShapeEquivalence:
+  // a def `defi` produced inside the influence region escapes the
+  // downgrade only when every in-region user is "covered" by some
+  // vouching phi P — i.e., there exists P with defi in
+  // m_structEquivExemptDefs[P] such that the user is either P itself
+  // or another node in m_structEquivExemptDefs[P]. Out-of-region
+  // users do not force a downgrade: they are processed by the natural
+  // divergent-CF treatment and exist as covered (vouching phi at the
+  // full-join) or harmless (external consumer). At least one covered
+  // user must exist or there is no shape-equivalence reason to skip
+  // the downgrade. Per-phi keying prevents bleed between full-join
+  // and partial-join phis: a partial-join phi that consumes `defi`
+  // without vouching for it forces the downgrade.
+  bool SawCoveredUser = false;
+  for (const User *U : defi->users()) {
+    const Instruction *UserI = dyn_cast<Instruction>(U);
+    if (!UserI)
+      continue;
+    bool Covered = false;
+    for (const auto &Kv : m_structEquivExemptDefs) {
+      const PHINode *P = Kv.first;
+      const auto &ExemptSet = Kv.second;
+      if (!ExemptSet.contains(defi))
+        continue;
+      if (UserI == P || ExemptSet.contains(UserI)) {
+        Covered = true;
+        break;
+      }
+    }
+    if (Covered) {
+      SawCoveredUser = true;
+      continue;
+    }
+    if (brInfo->influence_region.contains(UserI->getParent()))
+      return false;
+  }
+  return SawCoveredUser;
+}
+
 void WIAnalysisRunner::updatePHIDepAtJoin(BasicBlock *blk, BranchInfo *brInfo) {
   // This is to bring down PHI's dep to br's dep.
   // If PHI's dep is already weaker than br's dep, do nothing.
@@ -990,6 +1213,11 @@ void WIAnalysisRunner::updatePHIDepAtJoin(BasicBlock *blk, BranchInfo *brInfo) {
       // phi's dep is already the same or weaker, do nothing.
       continue;
     }
+
+    if (IGC_IS_FLAG_ENABLED(EnableWIPhiStructuralEquivalence) && tryExemptPhiFromShapeEquivalence(phi, brInfo)) {
+      continue;
+    }
+
     Value *trickySrc = nullptr;
     for (unsigned predIdx = 0; predIdx < phi->getNumOperands(); ++predIdx) {
       Value *srcVal = phi->getOperand(predIdx);

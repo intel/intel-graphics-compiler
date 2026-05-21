@@ -683,6 +683,12 @@ DECLARE_IGC_REGKEY(DWORD, StateIndexAddrChainCanonicalizeInstThreshold, 3000,
                    "Disable StateIndexAddrChainCanonicalize when the function instruction count exceeds this "
                    "threshold. 0 = never disable based on inst count.",
                    false)
+DECLARE_IGC_REGKEY(bool, EnableWIPhiStructuralEquivalence, true,
+                   "Keep a phi at a divergent join uniform when all its incomings are "
+                   "shape-equivalent expressions (recursive, memory-free). Path-invariance "
+                   "per lane; cross-lane uniformity is still decided by calculate_dep. "
+                   "Catches GVN-PRE materialization at divergent joins.",
+                   false)
 
 DECLARE_IGC_GROUP("Shader debugging")
 DECLARE_IGC_REGKEY(bool, CopyA0ToDBG0, false, " Copy a0 used for extended msg descriptor to dbg0 to help debug", false)

@@ -207,6 +207,51 @@ private:
   /// @brief return true is the instruction is simple and making it random is cheap
   bool isInstructionSimple(const llvm::Instruction *inst);
 
+  using StructEquivMemo = llvm::SmallDenseMap<std::pair<const llvm::Value *, const llvm::Value *>, bool, 16>;
+
+  /// @brief Determine if two values are path-invariant per lane — i.e.,
+  /// every lane gets the same value from either A or B regardless of which
+  /// side of a divergent branch it took.
+  ///
+  /// Returns true when A and B are the same SSA value, equal constants, or
+  /// instructions that are structurally identical (same opcode/type/flags)
+  /// with operands that are recursively structurally equal. This is a
+  /// shape-only check — it does NOT inspect WIA's classification of
+  /// operands, so it is safe to call before the worklist has visited
+  /// them. Cross-lane uniformity of the resulting phi is still decided
+  /// by calculate_dep(PHINode) over the incomings; if a leaf is lane-
+  /// varying, the natural dataflow propagation will mark the phi non-
+  /// uniform. Recursion is bounded by Depth; memory-accessing instructions
+  /// are rejected. Memo is shared across one call tree to avoid quadratic
+  /// work.
+  ///
+  /// Cyclic operand chains (e.g., loop-carried phis) conservatively return false
+  /// to break recursion — this is sound but may miss otherwise-equivalent shapes.
+  bool areShapeEquivalentAcrossPaths(const llvm::Value *A, const llvm::Value *B, unsigned Depth,
+                                     StructEquivMemo &Memo) const;
+
+  /// @brief If every incoming of `phi` is shape-equivalent to the first
+  /// (per areShapeEquivalentAcrossPaths), populate m_structEquivExemptDefs
+  /// with the transitive operand chain inside the influence region and
+  /// return true. Otherwise return false and leave the exempt set
+  /// unchanged. The exempt set keeps update_cf_dep's influence-region
+  /// walk from downgrading these defs to RANDOM and re-propagating
+  /// non-uniformity back into `phi` via calculate_dep(PHINode).
+  bool tryExemptPhiFromShapeEquivalence(const llvm::PHINode *phi, BranchInfo *brInfo);
+
+  /// @brief Returns true if `defi` should be skipped by the
+  /// influence-region downgrade walk because every in-region user is
+  /// "covered" by some vouching phi P — i.e., there exists P with
+  /// defi in m_structEquivExemptDefs[P] such that the user is either
+  /// P itself or another node in m_structEquivExemptDefs[P]. At least
+  /// one covered user must exist. Out-of-region users do not force a
+  /// downgrade. Symmetric read-side counterpart to
+  /// tryExemptPhiFromShapeEquivalence.
+  bool isDefiExemptViaVouchingPhi(const llvm::Instruction *defi, BranchInfo *brInfo) const;
+
+  /// @brief Returns true if heuristic conditions are met
+  bool isSafeApplyPhiFromShapeEquivalence(const llvm::PHINode *phi);
+
   /// @brief return true if all the source operands are defined outside the region
   bool isRegionInvariant(const llvm::Instruction *inst, BranchInfo *brInfo);
 
@@ -262,6 +307,25 @@ private:
   llvm::DenseMap<const llvm::StoreInst *, const llvm::AllocaInst *> m_storeDepMap;
 
   IGC::FastValueMap<WIBaseClass::WIDependancy, FastValueMapAttributeInfo<WIBaseClass::WIDependancy>> m_depMap;
+
+  // Transient per-update_cf_dep map keyed by the phi that vouched for
+  // each operand-chain instruction. Each entry holds defs in the current
+  // branch's influence region whose operand-chain feeds a phi that
+  // updatePHIDepAtJoin accepted as structurally-equivalent-uniform at the
+  // join. The influence-region walk in update_cf_dep must skip downgrading
+  // those defs, otherwise the worklist would re-propagate non-uniformity
+  // back into the phi and undo the shape-equivalence decision. Keyed
+  // per-phi so that full-join and partial-join processing don't bleed
+  // exemptions across unrelated phis. Cleared at the top of each
+  // update_cf_dep invocation.
+  llvm::SmallDenseMap<const llvm::PHINode *, llvm::SmallPtrSet<const llvm::Instruction *, 8>> m_structEquivExemptDefs;
+
+  // Cached HoistCongruentPHI::wouldRunOnFunction() verdict for m_func.
+  // -1 = uncomputed, 0 = false, 1 = true. wouldRunOnFunction walks every
+  // instruction in F (CodeSinkingMinSize gate); on large shaders (e.g.
+  // CP2077 RT, ~200k insts, ~10k phis) querying it per-phi from
+  // isSafeApplyPhiFromShapeEquivalence would be O(P*N). Reset in init().
+  int m_hoistEnabledForFunction = -1;
 
   // For dumpping WIA info per each invocation
   static llvm::DenseMap<const llvm::Function *, int> m_funcInvocationId;
