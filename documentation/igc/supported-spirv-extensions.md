@@ -670,6 +670,18 @@ This document lists all SPIR-V extensions supported by IGC and their platform re
 
 ---
 
+## SPV_KHR_subgroup_rotate
+
+**Specification**: https://github.khronos.org/SPIRV-Registry/extensions/KHR/SPV_KHR_subgroup_rotate.html
+
+> **Experimentally supported on**: All platforms
+
+**Capabilities**:
+
+- **GroupNonUniformRotateKHR**
+
+---
+
 ## SPV_KHR_uniform_group_instructions
 
 **Specification**: https://github.khronos.org/SPIRV-Registry/extensions/KHR/SPV_KHR_uniform_group_instructions.html

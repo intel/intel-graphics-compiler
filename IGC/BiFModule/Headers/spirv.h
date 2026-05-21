@@ -7039,6 +7039,26 @@ DECL_NON_UNIFORM_SHUFFLE_RELATIVE(half, f16)
 #endif // defined(cl_khr_fp16)
 #endif // defined(cl_khr_subgroup_shuffle_relative)
 
+#if defined(cl_khr_subgroup_rotate)
+#define DECL_NON_UNIFORM_ROTATE(TYPE, TYPE_ABBR)                         \
+    TYPE __attribute__((overloadable)) __spirv_GroupNonUniformRotateKHR( \
+        int Execution, TYPE Value, uint Delta);                          \
+    TYPE __attribute__((overloadable)) __spirv_GroupNonUniformRotateKHR( \
+        int Execution, TYPE Value, uint Delta, uint ClusterSize);
+
+DECL_NON_UNIFORM_ROTATE(char, i8)
+DECL_NON_UNIFORM_ROTATE(short, i16)
+DECL_NON_UNIFORM_ROTATE(int, i32)
+DECL_NON_UNIFORM_ROTATE(long, i64)
+DECL_NON_UNIFORM_ROTATE(float, f32)
+#if defined(cl_khr_fp64)
+DECL_NON_UNIFORM_ROTATE(double, f64)
+#endif // defined(cl_khr_fp64)
+#if defined(cl_khr_fp16)
+DECL_NON_UNIFORM_ROTATE(half, f16)
+#endif // defined(cl_khr_fp16)
+#endif // defined(cl_khr_subgroup_rotate)
+
 #if defined(cl_khr_subgroup_non_uniform_arithmetic) || \
     defined(cl_khr_subgroup_clustered_reduce)
 #define DEFN_NON_UNIFORM_OPERATION_BASE(TYPE, OPERATION, TYPE_ABBR)

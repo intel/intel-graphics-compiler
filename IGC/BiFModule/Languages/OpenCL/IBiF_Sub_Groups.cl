@@ -1523,3 +1523,37 @@ DEFN_SUB_GROUP_SHUFFLE_RELATIVE(double, double, f64)
 DEFN_SUB_GROUP_SHUFFLE_RELATIVE(half,   half,   f16)
 #endif // defined(cl_khr_fp16)
 #endif // defined(cl_khr_subgroup_shuffle_relative)
+
+#if defined(cl_khr_subgroup_rotate)
+#define POSITIVE_MODULO(x, y) (((x) % (y) + (y)) % (y))
+
+#define DEFN_SUB_GROUP_ROTATE(TYPE, SPV_TYPE)                                            \
+    INLINE TYPE OVERLOADABLE sub_group_rotate(TYPE value, int delta)                     \
+    {                                                                                    \
+        uint udelta = POSITIVE_MODULO(delta, __builtin_IB_get_simd_size());              \
+        return __spirv_GroupNonUniformRotateKHR(Subgroup, as_##SPV_TYPE(value), udelta); \
+    }                                                                                    \
+    INLINE TYPE OVERLOADABLE sub_group_clustered_rotate(                                 \
+        TYPE value, int delta, uint clustersize)                                         \
+    {                                                                                    \
+        uint udelta = POSITIVE_MODULO(delta, clustersize);                               \
+        return __spirv_GroupNonUniformRotateKHR(                                         \
+            Subgroup, as_##SPV_TYPE(value), udelta, clustersize);                        \
+    }
+
+DEFN_SUB_GROUP_ROTATE(char, char)
+DEFN_SUB_GROUP_ROTATE(uchar, char)
+DEFN_SUB_GROUP_ROTATE(short, short)
+DEFN_SUB_GROUP_ROTATE(ushort, short)
+DEFN_SUB_GROUP_ROTATE(int, int)
+DEFN_SUB_GROUP_ROTATE(uint, int)
+DEFN_SUB_GROUP_ROTATE(long, long)
+DEFN_SUB_GROUP_ROTATE(ulong, long)
+DEFN_SUB_GROUP_ROTATE(float, float)
+#if defined(cl_khr_fp64)
+DEFN_SUB_GROUP_ROTATE(double, double)
+#endif // defined(cl_khr_fp64)
+#if defined(cl_khr_fp16)
+DEFN_SUB_GROUP_ROTATE(half, half)
+#endif // defined(cl_khr_fp16)
+#endif // defined(cl_khr_subgroup_rotate)

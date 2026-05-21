@@ -8249,6 +8249,29 @@ double __attribute__((overloadable)) intel_sub_group_shuffle_xor(double x, uint 
 
 #endif // defined(cl_intel_simd_operations_placeholder) || defined(cl_intel_subgroups) || defined(cl_khr_subgroups)
 
+#if defined(cl_khr_subgroup_rotate)
+#define DECL_SUB_GROUP_ROTATE(TYPE)                                             \
+    TYPE __attribute__((overloadable)) sub_group_rotate(TYPE value, int delta); \
+    TYPE __attribute__((overloadable)) sub_group_clustered_rotate(              \
+        TYPE value, int delta, uint clustersize);
+
+DECL_SUB_GROUP_ROTATE(char)
+DECL_SUB_GROUP_ROTATE(uchar)
+DECL_SUB_GROUP_ROTATE(short)
+DECL_SUB_GROUP_ROTATE(ushort)
+DECL_SUB_GROUP_ROTATE(int)
+DECL_SUB_GROUP_ROTATE(uint)
+DECL_SUB_GROUP_ROTATE(long)
+DECL_SUB_GROUP_ROTATE(ulong)
+DECL_SUB_GROUP_ROTATE(float)
+#if defined(cl_khr_fp64)
+DECL_SUB_GROUP_ROTATE(double)
+#endif // defined(cl_khr_fp64)
+#if defined(cl_khr_fp16)
+DECL_SUB_GROUP_ROTATE(half)
+#endif // defined (cl_khr_fp16)
+#endif // defined(cl_khr_subgroup_rotate)
+
 #if defined(cl_khr_subgroup_shuffle)
 #define DECL_SUB_GROUP_SHUFFLE(TYPE)                                              \
     TYPE __attribute__((overloadable)) sub_group_shuffle(TYPE value, uint index); \

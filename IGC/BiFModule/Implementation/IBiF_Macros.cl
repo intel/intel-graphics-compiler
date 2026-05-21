@@ -1308,6 +1308,127 @@ SPDX-License-Identifier: MIT
                                 __spirv_##__opcode(x, y.sf, z) );                       \
     }
 
+#define GENERATE_VECTOR_FUNCTIONS_3ARGS_SVS(                                   \
+    __opcode,                                                                  \
+    __rettype,                                                                 \
+    __sarg0type,                                                               \
+    __vargtype,                                                                \
+    __sarg1type,                                                               \
+    __abbrsarg0type,                                                           \
+    __abbrvargtype,                                                            \
+    __abbrsarg1type)                                                           \
+    __rettype##2 __attribute__((overloadable)) __opcode(                       \
+        __sarg0type x, __vargtype##2 y, __sarg1type z)                         \
+    {                                                                          \
+        return (__rettype##2)(__opcode(x, y.s0, z), __opcode(x, y.s1, z));     \
+    }                                                                          \
+    __rettype##3 __attribute__((overloadable)) __opcode(                       \
+        __sarg0type x, __vargtype##3 y, __sarg1type z)                         \
+    {                                                                          \
+        return (__rettype##3)(                                                 \
+            __opcode(x, y.s0, z), __opcode(x, y.s1, z), __opcode(x, y.s2, z)); \
+    }                                                                          \
+    __rettype##4 __attribute__((overloadable)) __opcode(                       \
+        __sarg0type x, __vargtype##4 y, __sarg1type z)                         \
+    {                                                                          \
+        return (__rettype##4)(                                                 \
+            __opcode(x, y.s0, z),                                              \
+            __opcode(x, y.s1, z),                                              \
+            __opcode(x, y.s2, z),                                              \
+            __opcode(x, y.s3, z));                                             \
+    }                                                                          \
+    __rettype##8 __attribute__((overloadable)) __opcode(                       \
+        __sarg0type x, __vargtype##8 y, __sarg1type z)                         \
+    {                                                                          \
+        return (__rettype##8)(                                                 \
+            __opcode(x, y.s0, z),                                              \
+            __opcode(x, y.s1, z),                                              \
+            __opcode(x, y.s2, z),                                              \
+            __opcode(x, y.s3, z),                                              \
+            __opcode(x, y.s4, z),                                              \
+            __opcode(x, y.s5, z),                                              \
+            __opcode(x, y.s6, z),                                              \
+            __opcode(x, y.s7, z));                                             \
+    }                                                                          \
+    __rettype##16 __attribute__((overloadable)) __opcode(                      \
+        __sarg0type x, __vargtype##16 y, __sarg1type z)                        \
+    {                                                                          \
+        return (__rettype##16)(                                                \
+            __opcode(x, y.s0, z),                                              \
+            __opcode(x, y.s1, z),                                              \
+            __opcode(x, y.s2, z),                                              \
+            __opcode(x, y.s3, z),                                              \
+            __opcode(x, y.s4, z),                                              \
+            __opcode(x, y.s5, z),                                              \
+            __opcode(x, y.s6, z),                                              \
+            __opcode(x, y.s7, z),                                              \
+            __opcode(x, y.s8, z),                                              \
+            __opcode(x, y.s9, z),                                              \
+            __opcode(x, y.sa, z),                                              \
+            __opcode(x, y.sb, z),                                              \
+            __opcode(x, y.sc, z),                                              \
+            __opcode(x, y.sd, z),                                              \
+            __opcode(x, y.se, z),                                              \
+            __opcode(x, y.sf, z));                                             \
+    }
+
+#define GENERATE_VECTOR_FUNCTIONS_4ARGS_SVSS(                                           \
+    __opcode, __rettype, __sarg0type, __vargtype, __sarg1type, __sarg2type)             \
+    __rettype##2 __attribute__((overloadable)) __opcode(                                \
+        __sarg0type x, __vargtype##2 y, __sarg1type z, __sarg2type w)                   \
+    {                                                                                   \
+        return (__rettype##2)(__opcode(x, y.s0, z, w), __opcode(x, y.s1, z, w));        \
+    }                                                                                   \
+    __rettype##3 __attribute__((overloadable)) __opcode(                                \
+        __sarg0type x, __vargtype##3 y, __sarg1type z, __sarg2type w)                   \
+    {                                                                                   \
+        return (__rettype##3)(                                                          \
+            __opcode(x, y.s0, z, w), __opcode(x, y.s1, z, w), __opcode(x, y.s2, z, w)); \
+    }                                                                                   \
+    __rettype##4 __attribute__((overloadable)) __opcode(                                \
+        __sarg0type x, __vargtype##4 y, __sarg1type z, __sarg2type w)                   \
+    {                                                                                   \
+        return (__rettype##4)(                                                          \
+            __opcode(x, y.s0, z, w),                                                    \
+            __opcode(x, y.s1, z, w),                                                    \
+            __opcode(x, y.s2, z, w),                                                    \
+            __opcode(x, y.s3, z, w));                                                   \
+    }                                                                                   \
+    __rettype##8 __attribute__((overloadable)) __opcode(                                \
+        __sarg0type x, __vargtype##8 y, __sarg1type z, __sarg2type w)                   \
+    {                                                                                   \
+        return (__rettype##8)(                                                          \
+            __opcode(x, y.s0, z, w),                                                    \
+            __opcode(x, y.s1, z, w),                                                    \
+            __opcode(x, y.s2, z, w),                                                    \
+            __opcode(x, y.s3, z, w),                                                    \
+            __opcode(x, y.s4, z, w),                                                    \
+            __opcode(x, y.s5, z, w),                                                    \
+            __opcode(x, y.s6, z, w),                                                    \
+            __opcode(x, y.s7, z, w));                                                   \
+    }                                                                                   \
+    __rettype##16 __attribute__((overloadable)) __opcode(                               \
+        __sarg0type x, __vargtype##16 y, __sarg1type z, __sarg2type w)                  \
+    {                                                                                   \
+        return (__rettype##16)(                                                         \
+            __opcode(x, y.s0, z, w),                                                    \
+            __opcode(x, y.s1, z, w),                                                    \
+            __opcode(x, y.s2, z, w),                                                    \
+            __opcode(x, y.s3, z, w),                                                    \
+            __opcode(x, y.s4, z, w),                                                    \
+            __opcode(x, y.s5, z, w),                                                    \
+            __opcode(x, y.s6, z, w),                                                    \
+            __opcode(x, y.s7, z, w),                                                    \
+            __opcode(x, y.s8, z, w),                                                    \
+            __opcode(x, y.s9, z, w),                                                    \
+            __opcode(x, y.sa, z, w),                                                    \
+            __opcode(x, y.sb, z, w),                                                    \
+            __opcode(x, y.sc, z, w),                                                    \
+            __opcode(x, y.sd, z, w),                                                    \
+            __opcode(x, y.se, z, w),                                                    \
+            __opcode(x, y.sf, z, w));                                                   \
+    }
+
 #define GENERATE_CONVERSIONS_FUNCTIONS_VECTORS( __func, __rettype, __argtype, __abbrrettype, __abbrargtype )      \
     __rettype##2 __attribute__((overloadable)) __spirv_##__func##_R##__rettype##2( __argtype##2 x ) {                 \
         return (__rettype##2)( __spirv_##__func##_R##__rettype(x.s0),                                \

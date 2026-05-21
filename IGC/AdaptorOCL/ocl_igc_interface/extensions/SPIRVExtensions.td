@@ -261,6 +261,13 @@ def SPV_INTEL_vector_compute : ExperimentalExtension<
   "https://github.com/intel/llvm/pull/1612"
 >;
 
+// This extension adds a new instruction that enables rotating values across invocations within a subgroup.
+def SPV_KHR_subgroup_rotate : ExperimentalExtension<
+  "SPV_KHR_subgroup_rotate",
+  [ Capability<"GroupNonUniformRotateKHR"> ],
+  "https://github.khronos.org/SPIRV-Registry/extensions/KHR/SPV_KHR_subgroup_rotate.html"
+>;
+
 // ---------------------------------------------
 
 // --- Extensions not supported on all platforms ---

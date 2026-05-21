@@ -3456,3 +3456,52 @@ DEFN_NON_UNIFORM_SHUFFLE_UP(double, f64)
 DEFN_NON_UNIFORM_SHUFFLE_UP(half,   f16)
 #endif // defined(cl_khr_fp16)
 #endif // defined(cl_khr_subgroup_shuffle_relative)
+
+#if defined(cl_khr_subgroup_rotate)
+#define DEFN_NON_UNIFORM_ROTATE_KHR(TYPE)                                                \
+    TYPE __attribute__((overloadable)) __spirv_GroupNonUniformRotateKHR(                 \
+        int Execution, TYPE Value, uint Delta, uint ClusterSize)                         \
+    {                                                                                    \
+        if (Execution != Subgroup && Execution != Workgroup)                             \
+        {                                                                                \
+            return 0;                                                                    \
+        }                                                                                \
+                                                                                         \
+        uint LocalId;                                                                    \
+        if (Execution == Subgroup)                                                       \
+        {                                                                                \
+            LocalId = __spirv_BuiltInSubgroupLocalInvocationId();                        \
+        }                                                                                \
+        else                                                                             \
+        {                                                                                \
+            LocalId = __intel_LocalInvocationIndex() % __spirv_BuiltInSubgroupMaxSize(); \
+        }                                                                                \
+                                                                                         \
+        uint ClusterBegin    = (LocalId / ClusterSize) * ClusterSize;                    \
+        uint OffsetInCluster = LocalId - ClusterBegin;                                   \
+        uint InvocationID    = (OffsetInCluster + Delta) % ClusterSize + ClusterBegin;   \
+        return __spirv_SubgroupShuffleINTEL(Value, InvocationID);                        \
+    }                                                                                    \
+    GENERATE_VECTOR_FUNCTIONS_4ARGS_SVSS(                                                \
+        __spirv_GroupNonUniformRotateKHR, TYPE, int, TYPE, uint, uint)                   \
+    TYPE __attribute__((overloadable)) __spirv_GroupNonUniformRotateKHR(                 \
+        int Execution, TYPE Value, uint Delta)                                           \
+    {                                                                                    \
+        return __spirv_GroupNonUniformRotateKHR(                                         \
+            Execution, Value, Delta, __spirv_BuiltInSubgroupMaxSize());                  \
+    }                                                                                    \
+    GENERATE_VECTOR_FUNCTIONS_3ARGS_SVS(                                                 \
+        __spirv_GroupNonUniformRotateKHR, TYPE, int, TYPE, uint, , , )
+
+DEFN_NON_UNIFORM_ROTATE_KHR(char)
+DEFN_NON_UNIFORM_ROTATE_KHR(short)
+DEFN_NON_UNIFORM_ROTATE_KHR(int)
+DEFN_NON_UNIFORM_ROTATE_KHR(long)
+DEFN_NON_UNIFORM_ROTATE_KHR(float)
+#if defined(cl_khr_fp64)
+DEFN_NON_UNIFORM_ROTATE_KHR(double)
+#endif // defined(cl_khr_fp64)
+#if defined(cl_khr_fp16)
+DEFN_NON_UNIFORM_ROTATE_KHR(half)
+#endif // defined(cl_khr_fp16)
+#endif // defined(cl_khr_subgroup_rotate)
