@@ -27,6 +27,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CISACodeGen/WIAnalysis.hpp"
 #include <llvmWrapper/Transforms/Utils/LoopUtils.h>
 #include <llvmWrapper/ADT/Optional.h>
+#include <llvmWrapper/IR/CmpPredicate.h>
 #include "Probe/Assertion.h"
 
 using namespace llvm;
@@ -200,7 +201,7 @@ void WorkItemSetting::collect(Function *F) {
       auto Inst = &*BI;
       // GlobalSize.X = (GlobalSize1.X == 0) ? X : GlobalSize1.X
       Value *X = nullptr;
-      ICmpInst::Predicate Pred;
+      IGCLLVM::ICmpInstPredicate Pred;
       if (match(Inst,
                 m_Select(m_ICmp(Pred, m_Specific(GlobalSize1.X), m_Zero()), m_Value(X), m_Specific(GlobalSize1.X))) &&
           Pred == ICmpInst::ICMP_EQ) {

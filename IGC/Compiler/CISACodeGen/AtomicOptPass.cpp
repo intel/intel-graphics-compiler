@@ -12,6 +12,7 @@ SPDX-License-Identifier: MIT
 
 #include "Compiler/IGCPassSupport.h"
 #include "GenISAIntrinsics/GenIntrinsicInst.h"
+#include <llvmWrapper/IR/CmpPredicate.h>
 
 #include "common/LLVMWarningsPush.hpp"
 #include "common/LLVMWarningsPop.hpp"
@@ -104,7 +105,7 @@ bool AtomicOptPass::checkFloatAtomicEmulation(Instruction *Inst, size_t &Operand
   else
     return false;
 
-  CmpInst::Predicate Pred = CmpInst::Predicate::ICMP_EQ;
+  IGCLLVM::CmpInstPredicate Pred(CmpInst::Predicate::ICMP_EQ);
   Instruction *FinishInstr = cast<Instruction>(AtomicFinishInstr);
   auto CmpPattern = m_Cmp(Pred, m_Instruction(Inst), m_Instruction(FinishInstr));
 

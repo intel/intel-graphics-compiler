@@ -22,6 +22,7 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPop.hpp"
 #include <llvmWrapper/IR/Instructions.h>
 #include "llvmWrapper/Support/Alignment.h"
+#include <llvmWrapper/IR/CmpPredicate.h>
 #include "Compiler/IGCPassSupport.h"
 #include "Compiler/InitializePasses.h"
 #include "Compiler/DebugInfo/ScalarVISAModule.h"
@@ -678,13 +679,13 @@ CodeGenPatternMatch::isFPToUnsignedIntSatWithInexactConstant(llvm::SelectInst *S
   Constant *FMin = ConstantExpr::getUIToFP(CMin, Ty);
   Constant *FMax = ConstantExpr::getUIToFP(CMax, Ty);
 
-  FCmpInst::Predicate Pred = FCmpInst::FCMP_FALSE;
+  IGCLLVM::FCmpInstPredicate Pred(FCmpInst::FCMP_FALSE);
   if (!match(Cond2, m_FCmp(Pred, m_Specific(X), m_Specific(FMax))))
     return std::make_tuple(nullptr, 0, ISA_TYPE_F);
   if (Pred != FCmpInst::FCMP_OGT) // FIXME: We should use OGE instead of OGT.
     return std::make_tuple(nullptr, 0, ISA_TYPE_F);
 
-  FCmpInst::Predicate Pred2 = FCmpInst::FCMP_FALSE;
+  IGCLLVM::FCmpInstPredicate Pred2 = FCmpInst::FCMP_FALSE;
   if (!match(Cond, m_Or(m_FCmp(Pred, m_Specific(X), m_Specific(FMin)), m_FCmp(Pred2, m_Specific(X), m_Specific(X))))) {
     if (!match(Cond, m_Or(m_FCmp(Pred, m_Specific(X), m_Specific(FMin)), m_Zero()))) {
       return std::make_tuple(nullptr, 0, ISA_TYPE_F);
@@ -768,7 +769,7 @@ std::tuple<Value *, bool, bool> CodeGenPatternMatch::isIntegerSatTrunc(llvm::Sel
   if (!Cmp)
     return std::make_tuple(nullptr, false, false);
 
-  ICmpInst::Predicate Pred = Cmp->getPredicate();
+  IGCLLVM::ICmpInstPredicate Pred = Cmp->getPredicate();
   if (Pred != ICmpInst::ICMP_SGT && Pred != ICmpInst::ICMP_UGT)
     return std::make_tuple(nullptr, false, false);
 
@@ -6678,7 +6679,7 @@ static bool isIntegerAbs(SelectInst *SI, e_modifier &mod, Value *&source) {
   Value *TVal = SI->getOperand(1);
   Value *FVal = SI->getOperand(2);
 
-  ICmpInst::Predicate IPred = FCmpInst::FCMP_FALSE;
+  IGCLLVM::ICmpInstPredicate IPred(FCmpInst::FCMP_FALSE);
   Value *LHS = nullptr;
   Value *RHS = nullptr;
 

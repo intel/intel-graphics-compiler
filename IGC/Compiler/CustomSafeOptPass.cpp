@@ -93,6 +93,7 @@ cmp+sel to avoid expensive VxH mov.
 #include "llvmWrapper/IR/DIBuilder.h"
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/IR/IRBuilder.h"
+#include <llvmWrapper/IR/CmpPredicate.h>
 #include "llvmWrapper/Analysis/TargetLibraryInfo.h"
 #include "common/secure_mem.h"
 #include "Probe/Assertion.h"
@@ -160,7 +161,7 @@ void CustomSafeOptPass::visitInstruction(Instruction &I) {
 void CustomSafeOptPass::visitXor(Instruction &XorInstr) {
   using namespace llvm::PatternMatch;
 
-  CmpInst::Predicate Pred = CmpInst::Predicate::FCMP_FALSE;
+  IGCLLVM::CmpInstPredicate Pred(CmpInst::Predicate::FCMP_FALSE);
   auto XorPattern = m_c_Xor(m_ICmp(Pred, m_Value(), m_Value()), m_SpecificInt(1));
   if (!match(&XorInstr, XorPattern)) {
     return;
@@ -252,7 +253,7 @@ void CustomSafeOptPass::visitAnd(BinaryOperator &I) {
   }
 
   Value *XorArgValue = nullptr;
-  CmpInst::Predicate Pred = CmpInst::Predicate::FCMP_FALSE;
+  IGCLLVM::CmpInstPredicate Pred(CmpInst::Predicate::FCMP_FALSE);
   auto AndPattern = m_c_And(m_c_Xor(m_Value(XorArgValue), m_SpecificInt(1)), m_ICmp(Pred, m_Value(), m_Value()));
   if (!match(&I, AndPattern))
     return;
@@ -3310,7 +3311,7 @@ void GenSpecificPattern::visitOr(BinaryOperator &I) {
 
 void GenSpecificPattern::visitCmpInst(CmpInst &I) {
   using namespace llvm::PatternMatch;
-  CmpInst::Predicate Pred = CmpInst::Predicate::BAD_ICMP_PREDICATE;
+  IGCLLVM::CmpInstPredicate Pred(CmpInst::Predicate::BAD_ICMP_PREDICATE);
   Value *Val1 = nullptr;
   uint64_t const_int1 = 0, const_int2 = 0;
   auto cmp_pattern = m_Cmp(Pred, m_And(m_Value(Val1), m_ConstantInt(const_int1)), m_ConstantInt(const_int2));
@@ -3749,7 +3750,7 @@ void GenSpecificPattern::visitZExtInst(ZExtInst &ZEI) {
     return;
 
   using namespace llvm::PatternMatch;
-  CmpInst::Predicate pred = CmpInst::Predicate::FCMP_FALSE;
+  IGCLLVM::CmpInstPredicate pred(CmpInst::Predicate::FCMP_FALSE);
   Instruction *I1 = nullptr;
   Instruction *I2 = nullptr;
   Instruction *I3 = nullptr;
