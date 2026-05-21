@@ -1,6 +1,6 @@
 <!---======================= begin_copyright_notice ============================
 
-Copyright (C) 2019-2025 Intel Corporation
+Copyright (C) 2019-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -43,7 +43,7 @@ Also, depending on the Ubuntu release, SPIRV-LLVM-Translator available through a
 For **LLVM**, **LLD** and **Clang** packages please visit this [link](https://apt.llvm.org/) to download and install desired version.
 For `apt` package manager you can use this command:
 ```shell
-sudo apt-get install llvm-16 llvm-16-dev clang-16 liblld-16 liblld-16-dev libllvmspirvlib16 libllvmspirvlib-16-dev
+sudo apt-get install llvm-17 llvm-17-dev clang-17 liblld-17 liblld-17-dev libllvmspirvlib17 libllvmspirvlib-17-dev
 ```
 As of now **OpenCL Clang** is still needed to be built and installed manually. Sources are available [here](https://github.com/intel/opencl-clang). You can use out-of-tree build method with LLVM and Clang preinstalled.
 **VC Intrinsics** is a lightweight library that is built from sources with IGC and there is no package for it.
@@ -75,13 +75,13 @@ mkdir -p $IGC_WORKSPACE_DIR && cd $IGC_WORKSPACE_DIR
 Download all dependencies
 ```shell
 git clone https://github.com/intel/vc-intrinsics vc-intrinsics
-git clone -b llvmorg-16.0.6 https://github.com/llvm/llvm-project llvm-project
-git clone -b ocl-open-160 https://github.com/intel/opencl-clang llvm-project/llvm/projects/opencl-clang
-git clone -b llvm_release_160 https://github.com/KhronosGroup/SPIRV-LLVM-Translator llvm-project/llvm/projects/llvm-spirv
+git clone -b llvmorg-17.0.6 https://github.com/llvm/llvm-project llvm-project
+git clone -b ocl-open-170 https://github.com/intel/opencl-clang llvm-project/llvm/projects/opencl-clang
+git clone -b llvm_release_170 https://github.com/KhronosGroup/SPIRV-LLVM-Translator llvm-project/llvm/projects/llvm-spirv
 git clone https://github.com/KhronosGroup/SPIRV-Tools.git SPIRV-Tools
 git clone https://github.com/KhronosGroup/SPIRV-Headers.git SPIRV-Headers
 ```
-These commands will set up a workspace with LLVM 16. If you wish to use any other version please refer to the [component revision table](#Revision-table)
+These commands will set up a workspace with LLVM 17. If you wish to use any other version please refer to the [component revision table](#Revision-table)
 
 Correct directory tree looks like this:
 ```
@@ -103,7 +103,7 @@ There are several flags for these builds modes that you can pass to
 cmake command.
 
 - `IGC_OPTION__LLVM_PREFERRED_VERSION` -- sets version of LLVM that
-  will be used by IGC (defaults to "16.0.6").
+  will be used by IGC (defaults to "17.0.6").
 - `IGC_OPTION__LLVM_MODE` -- select LLVM mode for IGC to use. Possible
 values are: **Source**, **Prebuilds** or empty (that is
 default). **Source** mode uses LLVM sources to build LLVM in-tree with
@@ -193,7 +193,8 @@ default and requires `igc_opt` to be built.
 
 | Version          | Product quality |
 |:----------------:|-----------------|
-| LLVM 16/Clang 16           | **Production** |
+| LLVM 17/Clang 17           | **Production** |
+| LLVM 16/Clang 16           | Experimental   |
 | LLVM 15/Clang 15           | Experimental   |
 | LLVM 14/Clang 14 and older | Experimental   |
 
@@ -207,11 +208,11 @@ default and requires `igc_opt` to be built.
 LLVM version determines what branches are used when building dependencies.
 When checking out the components refer to the following table, replace **XX** with the LLVM version used:
 
-| Repository name       | Version specific | Branch               | LLVM 16 example  |
+| Repository name       | Version specific | Branch / Git Tag     | LLVM 17 example  |
 |-----------------------|:----------------:|----------------------|------------------|
-| llvm-project          | -                | release/**XX**.x     | release/16.x     |
+| llvm-project          | -                | llvmorg-**XX**       | llvmorg-17.0.6   |
 | vc-intrinsics         | no               | master               | master           |
 | SPIRV-Tools           | no               | master               | master           |
 | SPIRV-Headers         | no               | master               | master           |
-| SPIRV-LLVM-Translator | yes              | llvm_release_**XX**0 | llvm_release_160 |
-| opencl-clang          | yes              | ocl-open-**XX**0     | ocl-open-160     |
+| SPIRV-LLVM-Translator | yes              | llvm_release_**XX**0 | llvm_release_170 |
+| opencl-clang          | yes              | ocl-open-**XX**0     | ocl-open-170     |
