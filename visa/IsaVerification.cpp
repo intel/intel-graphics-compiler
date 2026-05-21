@@ -1824,6 +1824,12 @@ void vISAVerifier::verifyInstructionArith(const CISA_INST *inst) {
                              dstType == ISA_TYPE_DF,
                          "%s does not support saturation on integer types.",
                          ISA_Inst_Table[opcode].str);
+      break;
+    case ISA_MAD:
+      REPORT_INSTRUCTION(options, !IsIntType(dstType),
+                         "%s does not support saturation on integer types.",
+                         ISA_Inst_Table[opcode].str);
+      break;
     default:
       break;
     }
