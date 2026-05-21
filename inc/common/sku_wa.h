@@ -219,7 +219,6 @@ typedef struct _SKU_FEATURE_TABLE
         unsigned int   FtrStandardMipTailFormat         : 1;
         unsigned int   FtrDisplayColorEnhancement       : 1;
         unsigned int   FtrWddm2_1_64kbPages             : 1;
-        unsigned int   FtrGttCacheInvalidation          : 1;
         unsigned int   FtrMemorySeg                     : 1;
         unsigned int   FtrCacheCoherentMemSeg           : 1;
         unsigned int   FtrLinearCCS                     : 1;
