@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -71,7 +71,7 @@ bool LivenessAnalysis::runOnFunction(Function &F) {
   // allocate even more to avoid such automatic resizing.
   uint32_t mapCap1 = int_cast<uint32_t>((size_t)(nVals * 1.40f));
   uint32_t vecCap1 = int_cast<uint32_t>((size_t)(nVals * 1.10f));
-  ValueIds.grow(mapCap1);
+  ValueIds.reserve(mapCap1);
   IdValues.reserve(vecCap1);
 
   initValueIds();
@@ -178,8 +178,8 @@ void LivenessAnalysis::calculate(Function *F) {
   // allocate even more to avoid such automatic resizing.
   uint32_t mapCap1 = int_cast<uint32_t>((size_t)(nVals * 1.40f));
   uint32_t mapCap2 = int_cast<uint32_t>((size_t)(m_F->size() * 1.40f));
-  BBLiveIns.grow(mapCap2);
-  KillInsts.grow(mapCap1);
+  BBLiveIns.reserve(mapCap2);
+  KillInsts.reserve(mapCap1);
 
   for (LiveVars::iterator LVI = m_LV->begin(), LVE = m_LV->end(); LVI != LVE; ++LVI) {
     Value *V = LVI->first;

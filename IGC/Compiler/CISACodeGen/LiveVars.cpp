@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -109,9 +109,9 @@ void LiveVars::preAllocMemory(Function &F) {
   uint32_t mapCap1 = int_cast<uint32_t>((size_t)(nVals * 1.40f));
   // For PHIVarInfo, increase 10% only.
   uint32_t mapCap2 = int_cast<uint32_t>((size_t)(F.size() * 1.10f));
-  DistanceMap.grow(mapCap1);
-  VirtRegInfo.grow(mapCap1);
-  PHIVarInfo.grow(mapCap2);
+  DistanceMap.reserve(mapCap1);
+  VirtRegInfo.reserve(mapCap1);
+  PHIVarInfo.reserve(mapCap2);
 }
 
 void LiveVars::dump() const { print(ods()); }
