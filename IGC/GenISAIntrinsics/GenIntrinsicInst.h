@@ -1975,8 +1975,8 @@ public:
   }
 
   static inline bool classof(const Value *V) { return isa<GenIntrinsicInst>(V) && classof(cast<GenIntrinsicInst>(V)); }
-  static uint32_t getByteOffsetOpIdx() { return 0; }
-  Value *getByteOffset() const { return getOperand(getByteOffsetOpIdx()); }
+
+  Value *getByteOffset() const { return getOperand(0); }
   uint32_t getRootSigSize() const { return int_cast<uint32_t>(getImm64Operand(1)); }
 };
 
