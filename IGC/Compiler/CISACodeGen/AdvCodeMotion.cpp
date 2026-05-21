@@ -777,9 +777,14 @@ static bool sliceCandidateRun(BasicBlock *BB, ArrayRef<Instruction *> Run) {
 
   DenseMap<Instruction * /*Leader*/, Instruction * /*Pos*/> Leaders;
   for (auto I = ECs.begin(), E = ECs.end(); I != E; ++I) {
-    if (!I->isLeader())
+#if LLVM_VERSION_MAJOR >= 22
+    const auto *ECV = *I;
+#else
+    auto ECV = I;
+#endif
+    if (!ECV->isLeader())
       continue;
-    Instruction *Leader = I->getData();
+    Instruction *Leader = ECV->getData();
     Leaders.insert(std::make_pair(Leader, nullptr));
   }
 
@@ -858,13 +863,20 @@ bool MadLoopSlice::sliceLoop(Loop *L) const {
   }
   DenseMap<Instruction * /*Leader*/, Instruction * /*Pos*/> Leaders;
   for (auto I = ECs.begin(), E = ECs.end(); I != E; ++I) {
-    if (!I->isLeader())
+#if LLVM_VERSION_MAJOR >= 22
+    const auto *ECV = *I;
+    auto LoopECV = *ECV;
+#else
+    auto ECV = I;
+    auto LoopECV = I;
+#endif
+    if (!ECV->isLeader())
       continue;
-    Instruction *Leader = I->getData();
+    Instruction *Leader = ECV->getData();
     // Skip EC with the loop condition.
     if (ECs.isEquivalent(Leader, BI))
       continue;
-    for (auto MI = ECs.member_begin(I), ME = ECs.member_end(); MI != ME; ++MI) {
+    for (auto MI = ECs.member_begin(LoopECV), ME = ECs.member_end(); MI != ME; ++MI) {
       // Skip the slicing if there is non-MAD instructions.
       if (!isa<PHINode>(*MI) && !isCandidateMAD(*MI, CGC))
         return false;
