@@ -39,14 +39,17 @@ CIF_DEFINE_INTERFACE_VER(IgcOptionsAndCapabilities, 1) {
   //   - name: SPV_INTEL_subgroups
   //     url: "https://github.com/KhronosGroup/SPIRV-Registry/blob/main/extensions/INTEL/SPV_INTEL_subgroups.asciidoc"
   //     supported_capabilities:
-  //       - SubgroupShuffleINTEL
-  //       - SubgroupBufferBlockIOINTEL
-  //       - SubgroupImageBlockIOINTEL
+  //       - id: 5568
+  //         name: SubgroupShuffleINTEL
+  //       - id: 5569
+  //         name: SubgroupBufferBlockIOINTEL
+  //       - id: 5570
+  //         name: SubgroupImageBlockIOINTEL
   //   - name: SPV_INTEL_cache_controls
   //     url: "https://github.com/KhronosGroup/SPIRV-Registry/blob/main/extensions/INTEL/SPV_INTEL_cache_controls.asciidoc"
   //     supported_capabilities:
-  //       - CacheControlsINTEL
-  //
+  //       - id: 6441
+  //         name: CacheControlsINTEL
   // clang-format on
   OCL_API_CALL virtual void GetCompilerSupportedSPIRVExtensionsYAML(CIF::Builtins::BufferSimple *
                                                                     outSupportedSPIRVExtensionsYAML) const;

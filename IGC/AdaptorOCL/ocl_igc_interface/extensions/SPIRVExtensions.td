@@ -175,7 +175,7 @@ def SPV_INTEL_fp_max_error : ExperimentalExtension<
 
 def SPV_INTEL_long_composites : Extension<
   "SPV_INTEL_long_composites",
-  [ Capability<"CapabilityLongCompositesINTEL"> ],
+  [ Capability<"LongCompositesINTEL"> ],
   "https://github.khronos.org/SPIRV-Registry/extensions/INTEL/SPV_INTEL_long_composites.html"
 >;
 
@@ -381,14 +381,14 @@ def SPV_EXT_shader_atomic_float_min_max : Extension<
 
 def SPV_INTEL_bfloat16_arithmetic : Extension<
   "SPV_INTEL_bfloat16_arithmetic",
-  [ Capability<"BFloat16ArithmeticINTEL"> ],
+  [ CapabilityWithManualId<"BFloat16ArithmeticINTEL", 6226> ],
   "https://github.com/intel/llvm/blob/sycl/sycl/doc/design/spirv-extensions/SPV_INTEL_bfloat16_arithmetic.asciidoc",
   isCoreChildOf<IGFX_XE3P_CORE>
 >;
 
 def SPV_INTEL_bfloat16_arithmetic_experimental : ExperimentalExtension<
   "SPV_INTEL_bfloat16_arithmetic",
-  [ Capability<"BFloat16ArithmeticINTEL"> ],
+  [ CapabilityWithManualId<"BFloat16ArithmeticINTEL", 6226> ],
   "https://github.com/intel/llvm/blob/sycl/sycl/doc/design/spirv-extensions/SPV_INTEL_bfloat16_arithmetic.asciidoc",
   // XE3P platforms are officially supported via the Extension definition above. This ExperimentalExtension covers
   // older platforms (XE_HPG_CORE and newer, excluding METEORLAKE) to maintain compatibility with existing LIT tests
@@ -428,11 +428,11 @@ def SPV_INTEL_float4 : ExperimentalExtension<
 
 def SPV_INTEL_16bit_atomics : Extension<
   "SPV_INTEL_16bit_atomics",
-  [ Capability<"AtomicInt16CompareExchangeINTEL", isCoreChildOf<IGFX_XE3P_CORE>>,
-    Capability<"Int16AtomicsINTEL", NotSupported>,
-    Capability<"AtomicBFloat16LoadStoreINTEL", isCoreChildOf<IGFX_XE3P_CORE>>,
-    Capability<"AtomicBFloat16AddINTEL", isCoreChildOf<IGFX_XE3P_CORE>>,
-    Capability<"AtomicBFloat16MinMaxINTEL", isCoreChildOf<IGFX_XE3P_CORE>> ],
+  [ CapabilityWithManualId<"AtomicInt16CompareExchangeINTEL", 6260, isCoreChildOf<IGFX_XE3P_CORE>>,
+    CapabilityWithManualId<"Int16AtomicsINTEL",              6261, NotSupported>,
+    CapabilityWithManualId<"AtomicBFloat16LoadStoreINTEL",   6262, isCoreChildOf<IGFX_XE3P_CORE>>,
+    CapabilityWithManualId<"AtomicBFloat16AddINTEL",         6255, isCoreChildOf<IGFX_XE3P_CORE>>,
+    CapabilityWithManualId<"AtomicBFloat16MinMaxINTEL",      6256, isCoreChildOf<IGFX_XE3P_CORE>> ],
   "https://github.com/intel/llvm/pull/20009",
   InheritFromCapabilities
 >;

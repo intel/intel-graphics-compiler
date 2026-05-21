@@ -12,6 +12,14 @@ set(IGC_BUILD__PROJ_LABEL__AdaptorOCL "AdaptorOCL")
 
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}")
 
+# SPIRV-Headers is needed by igc_options_and_capabilities_impl.cpp to map
+# SPIR-V capability names to numeric opcodes for the YAML returned to NEO via
+# GetCompilerSupportedSPIRVExtensionsYAML (consumed by cl_khr_spirv_queries /
+# ze_khr_spirv_queries).
+if(DEFINED IGC_BUILD__SPIRV-Headers_DIR)
+  include_directories("${IGC_BUILD__SPIRV-Headers_DIR}/include")
+endif()
+
 #include_directories("${CMAKE_CURRENT_SOURCE_DIR}/ocl_igc_shared/executable_format")
 
 set(IGC_BUILD__SRC__AdaptorOCL

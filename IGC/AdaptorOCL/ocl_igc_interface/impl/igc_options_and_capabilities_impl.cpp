@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 ============================= end_copyright_notice ===========================*/
 
 #include "ocl_igc_interface/impl/igc_options_and_capabilities_impl.h"
+#include "Probe/Assertion.h"
 #include "ocl_igc_interface/igc_options_and_capabilities.h"
 
 #include "ocl_igc_interface/platform.h"
@@ -18,18 +19,34 @@ SPDX-License-Identifier: MIT
 
 #include "Options/include/igc/Options/Options.h"
 
+#include <llvm/ADT/StringRef.h>
 #include <llvm/Support/raw_ostream.h>
 #include <llvm/Support/YAMLTraits.h>
+
+#include <cstdint>
 
 // YAML serialization support
 LLVM_YAML_IS_SEQUENCE_VECTOR(IGC::SPIRVExtensionsSupport::SPIRVExtension)
 LLVM_YAML_IS_SEQUENCE_VECTOR(IGC::SPIRVExtensionsSupport::SPIRVCapability)
 
+namespace {
+uint32_t getSPIRVCapabilityId(llvm::StringRef Name) {
+  auto It = IGC::SPIRVExtensionsSupport::RequiredSPIRVCapabilityIds.find(Name);
+  if (It == IGC::SPIRVExtensionsSupport::RequiredSPIRVCapabilityIds.end())
+    IGC_ASSERT_UNREACHABLE();
+  return It->second;
+}
+} // namespace
+
 namespace llvm {
 namespace yaml {
 
 template <> struct MappingTraits<IGC::SPIRVExtensionsSupport::SPIRVCapability> {
-  static void mapping(IO &Io, IGC::SPIRVExtensionsSupport::SPIRVCapability &Cap) { Io.mapRequired("name", Cap.Name); }
+  static void mapping(IO &Io, IGC::SPIRVExtensionsSupport::SPIRVCapability &Cap) {
+    uint32_t Id = getSPIRVCapabilityId(Cap.Name);
+    Io.mapRequired("id", Id);
+    Io.mapRequired("name", Cap.Name);
+  }
 };
 
 template <> struct MappingTraits<IGC::SPIRVExtensionsSupport::SPIRVExtension> {

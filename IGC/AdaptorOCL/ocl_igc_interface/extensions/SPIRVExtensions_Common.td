@@ -176,6 +176,12 @@ def InheritFromExtension : PlatformSupport;  // Default for capabilities - inher
 class SPIRVCapability<string name, PlatformSupport support = InheritFromExtension> {
   string Name = name;
   PlatformSupport Support = support;
+  // Numeric SPIR-V capability ID. -1 means "take the value from
+  // spv::Capability<Name>" at codegen time. Override only for capabilities
+  // not yet present in the vendored SPIRV-Headers
+  // (external/SPIRV-Headers/include/spirv/unified1/spirv.hpp) — use the
+  // CapabilityWithManualId helper class for that.
+  int Id = -1;
 }
 
 class SPIRVExtension<string name, list<SPIRVCapability> caps, string url, PlatformSupport support = AllPlatformSupport, bit experimental = 0> {
@@ -195,5 +201,13 @@ class ExperimentalExtension<string name, list<SPIRVCapability> caps, string url,
 
 class Capability<string name, PlatformSupport support = InheritFromExtension>  // Default: inherit from extension
   : SPIRVCapability<name, support>;
+
+// Use for capabilities that do not yet appear in the vendored SPIRV-Headers
+// (spv::Capability<Name> would not compile). Provide the numeric ID literal
+// from the extension spec; remove the override once the headers catch up.
+class CapabilityWithManualId<string name, int id, PlatformSupport support = InheritFromExtension>
+  : SPIRVCapability<name, support> {
+  let Id = id;
+}
 
 #endif // SPIRV_EXTENSIONS_COMMON_TD

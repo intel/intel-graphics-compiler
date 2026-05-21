@@ -51,6 +51,9 @@ struct CapabilityEntry {
   const Record *Root; // original capability record
   const Record *ProductionSupport = nullptr;
   const Record *ExperimentalSupport = nullptr;
+  // Optional manual numeric ID override from TD (-1 means "unset";
+  // use spv::Capability<Name> from the vendored SPIRV-Headers).
+  int64_t Id = -1;
 };
 
 struct ExtensionEntry {
@@ -208,6 +211,15 @@ static SPIRVExtensions collectSPIRVExtensionSupport(const RecordKeeper &Records)
         CapEntry = &Entry.Capabilities.back();
         CapEntry->Name = CapName;
         CapEntry->Root = Cap;
+        CapEntry->Id = Cap->getValueAsInt("Id");
+      } else {
+        int64_t NewId = Cap->getValueAsInt("Id");
+        if (NewId != -1 && CapEntry->Id != -1 && NewId != CapEntry->Id) {
+          PrintFatalError(Cap->getLoc(),
+                          "Capability '" + CapName + "' has conflicting Id overrides across definitions.");
+        }
+        if (NewId != -1)
+          CapEntry->Id = NewId;
       }
 
       const Record *CapSupport = Cap->getValueAsDef("Support");

@@ -31,7 +31,8 @@ set(CPP_HEADER_FILENAME "SPIRVExtensionsSupport")
 set(TABLEGEN_OUTPUT)
 set(LLVM_TARGET_DEFINITIONS ${SPIRV_TD_INPUT_FILE})
 set(IGCC_LIB_INTERFACES_CPP_TABLEGEN_EXE "${IGCC_LIB_INTERFACES_TABLEGEN_EXE}")
-tablegen(IGCC_LIB_INTERFACES_CPP ${CPP_HEADER_FILENAME}.h -gen-igcc-spirv-extension-support-header)
+tablegen(IGCC_LIB_INTERFACES_CPP ${CPP_HEADER_FILENAME}.h
+         -gen-igcc-spirv-extension-support-header)
 add_public_tablegen_target(IGCCSPIRVExtensionsCpp)
 
 add_custom_target(${CPP_HEADER_FILENAME}Gen

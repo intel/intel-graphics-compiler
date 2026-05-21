@@ -530,6 +530,7 @@ class SPIRVSupportQueriesEmitter {
   void emitExtensionSupportFn(raw_ostream &OS);
   void emitCapabilitySupportFn(raw_ostream &OS);
   void emitGetSupportedInfoFn(raw_ostream &OS);
+  void emitRequiredCapabilityIdsTable(raw_ostream &OS);
   std::string buildPredicate(const Record *Support, StringRef platformVar);
   void emitSingleExtensionSupportIf(raw_ostream &OS, const ExtensionEntry &Ext);
   void emitSingleCapabilitySupportIf(raw_ostream &OS, const CapabilityEntry &Cap);
@@ -543,13 +544,17 @@ public:
 void SPIRVSupportQueriesEmitter::emit(raw_ostream &OS) {
   OS << "#ifndef IGCC_SPIRV_EXTENSIONS_SUPPORT_H\n";
   OS << "#define IGCC_SPIRV_EXTENSIONS_SUPPORT_H\n\n";
+  OS << "#include <cstdint>\n";
   OS << "#include <vector>\n";
   OS << "#include <string>\n";
-  OS << "#include \"igfxfmid.h\"\n\n";
+  OS << "#include \"llvm/ADT/StringMap.h\"\n";
+  OS << "#include \"igfxfmid.h\"\n";
+  OS << "#include \"spirv/unified1/spirv.hpp\"\n\n";
   OS << "namespace IGC {\n";
   OS << "namespace SPIRVExtensionsSupport {\n\n";
   emitSPIRVExtensionStructures(OS);
   emitPlatformSupportQuery(OS);
+  emitRequiredCapabilityIdsTable(OS);
   OS << "} // namespace SPIRVExtensionsSupport\n";
   OS << "} // namespace IGC\n\n";
   OS << "#endif // IGCC_SPIRV_EXTENSIONS_SUPPORT_H\n";
@@ -704,6 +709,35 @@ void SPIRVSupportQueriesEmitter::emitPlatformSupportQuery(raw_ostream &OS) {
   emitExtensionSupportFn(OS);
   emitCapabilitySupportFn(OS);
   emitGetSupportedInfoFn(OS);
+}
+
+// Emits a StringMap of capability name -> numeric SPIR-V capability ID.
+// Per cap: if the TD provides `let Id = N;` we emit N as a literal,
+// otherwise we reference spv::CapabilityName from the vendored
+// SPIRV-Headers. The C++ compiler enforces correctness: a cap missing
+// from spv:: without a TD override produces a clear `'CapabilityX' is
+// not a member of 'spv'` error, telling the developer to bump
+// SPIRV-Headers or add the TD override.
+void SPIRVSupportQueriesEmitter::emitRequiredCapabilityIdsTable(raw_ostream &OS) {
+  std::map<StringRef, int64_t> Names; // cap name -> TD Id (-1 if unset)
+  for (const auto &Ext : Extensions) {
+    if (!Ext.ProductionSupport)
+      continue;
+    for (const auto &Cap : Ext.Capabilities) {
+      if (!Cap.ProductionSupport)
+        continue;
+      Names.emplace(Cap.Name, Cap.Id);
+    }
+  }
+
+  OS << "inline const llvm::StringMap<uint32_t> RequiredSPIRVCapabilityIds = {\n";
+  for (const auto &[N, Id] : Names) {
+    if (Id >= 0)
+      OS << "    {\"" << N << "\", " << Id << "u}, // TD override\n";
+    else
+      OS << "    {\"" << N << "\", static_cast<uint32_t>(spv::Capability" << N << ")},\n";
+  }
+  OS << "};\n\n";
 }
 
 std::string SPIRVSupportQueriesEmitter::buildPredicate(const Record *Support, StringRef PlatformVar) {

@@ -339,7 +339,7 @@ This document lists all SPIR-V extensions supported by IGC and their platform re
 
 **Capabilities**:
 
-- **CapabilityLongCompositesINTEL**
+- **LongCompositesINTEL**
 
 ---
 
