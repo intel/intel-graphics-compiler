@@ -194,7 +194,8 @@ template <typename val> MDNode *CreateNode(const std::optional<val> &option, Mod
   if (option.has_value())
     nodes.push_back(CreateNode(*option, module, name.str() + "Option"));
   else
-    nodes.push_back(ValueAsMetadata::get(ConstantPointerNull::get(Type::getInt1PtrTy(module->getContext()))));
+    nodes.push_back(
+        ValueAsMetadata::get(ConstantPointerNull::get(PointerType::get(Type::getInt1Ty(module->getContext()), 0))));
 
   MDNode *node = MDNode::get(module->getContext(), nodes);
   return node;

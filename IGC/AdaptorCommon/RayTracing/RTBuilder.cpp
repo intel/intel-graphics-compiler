@@ -1563,7 +1563,7 @@ Value *RTBuilder::getGlobalBufferPtrForSlot(IGC::ADDRESS_SPACE Addrspace, Value 
 
   auto *offset = CreateMul(slot, getInt32(IGC::Align(sizeof(RayDispatchGlobalData), IGC::RTGlobalsAlign)));
 
-  auto *globalBufferPtr = CreateBitCast(mainGlobalBufferPtr, getInt8PtrTy(ADDRESS_SPACE_CONSTANT));
+  auto *globalBufferPtr = CreateBitCast(mainGlobalBufferPtr, IGCLLVM::getPtrTy(*this, ADDRESS_SPACE_CONSTANT));
   globalBufferPtr = CreateInBoundsGEP(getInt8Ty(), globalBufferPtr, offset);
   globalBufferPtr = CreateBitCast(globalBufferPtr, mainGlobalBufferPtr->getType(), VALUE_NAME("globalBuffer[]"));
 
