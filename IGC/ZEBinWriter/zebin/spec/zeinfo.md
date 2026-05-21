@@ -157,6 +157,7 @@ If an attribute is **Required**, it must be present in execution_env. If it's **
 | required_work_group_size | int32x3 | Optional | [0, 0, 0] | The value of this key is a sequence of three int32, for example [256, 2, 1]. The values are given by users in kernel attributes "reqd_work_group_size" |
 | simd_size | int32 | Required | | Valid value {1, 8, 16, 32} |
 | slm_size | int32 | Optional | 0 | SLM size in bytes |
+| slm_alloc_mode | int32 | Optional | 0 | SLM allocation mode: indicates who manages SLM kernel argument offsets. 0: Compiler resolves the offsets during codegen. 1: Runtime adjusts the offsets (by slm_size) before kernel launch. |
 | private_size | int32 | Optional | 0 | This value represents the total stack size for private-only stacks design, or the total private variable size in bytes for shared stacks design. |
 | spill_size | int32 | Optional | 0 | This value represents the total stack size for spill/fill-only stacks design, or the total spill/fill variable size in bytes for shared stacks design. |
 | subgroup_independent_forward_progress | bool | Optional | false | |

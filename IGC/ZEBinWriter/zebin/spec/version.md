@@ -7,7 +7,7 @@ SPDX-License-Identifier: MIT
 ============================= end_copyright_notice ==========================-->
 
 # ZEBIN Version
-Version 1.72
+Version 1.73
 =======
 
 ## Versioning
@@ -16,6 +16,7 @@ Format: \<_Major number_\>.\<_Minor number_\>
 - Minor number: Increase when backward-compatible features are added. For example, add new attributes.
 
 ## Change Note
+- **Version 1.73**: Add slm_alloc_mode execution_env field.
 - **Version 1.72**: Internal feature.
 - **Version 1.71**: Define new .pisa ELF section to embed kernel code in PISA format in zebin.
 - **Version 1.70**: Internal feature.

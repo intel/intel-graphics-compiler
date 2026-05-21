@@ -83,6 +83,7 @@ void MappingTraits<zeInfoExecutionEnv>::mapping(IO& io, zeInfoExecutionEnv& info
     io.mapOptional("required_work_group_size", info.required_work_group_size);
     io.mapRequired("simd_size", info.simd_size);
     io.mapOptional("slm_size", info.slm_size, 0);
+    io.mapOptional("slm_alloc_mode", info.slm_alloc_mode, 0);
     io.mapOptional("private_size", info.private_size, 0);
     io.mapOptional("spill_size", info.spill_size, 0);
     io.mapOptional("subgroup_independent_forward_progress", info.subgroup_independent_forward_progress, false);
