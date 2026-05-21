@@ -9913,7 +9913,7 @@ int VISAKernelImpl::AppendVISAShflIdx4Inst(
     unsigned char size = executionSize;
     size += emask << 4;
     inst->createCisaInstruction(opcode, size, 0, predOpnd, opnd, num_operands,
-                                inst_desc);
+        inst_desc);
     addInstructionToEnd(inst);
   }
 
