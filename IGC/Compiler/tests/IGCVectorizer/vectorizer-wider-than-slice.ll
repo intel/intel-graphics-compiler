@@ -7,7 +7,7 @@
 ;============================ end_copyright_notice =============================
 
 ; UNSUPPORTED: system-windows
-; RUN: igc_opt --igc-vectorizer -S -dce --platformbmg < %s 2>&1 | FileCheck %s
+; RUN: igc_opt --igc-vectorizer -S -dce < %s 2>&1 | FileCheck %s
 
 define spir_kernel void @wibble(<64 x float> %arg) {
 bb:

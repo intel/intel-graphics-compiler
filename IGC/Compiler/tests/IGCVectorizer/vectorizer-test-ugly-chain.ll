@@ -1,5 +1,5 @@
 ; REQUIRES: regkeys
-; RUN: igc_opt -S  --igc-vectorizer -dce --regkey=VectorizerEnablePartialVectorization=0 --platformbmg < %s 2>&1 | FileCheck %s
+; RUN: igc_opt -S  --igc-vectorizer -dce --regkey=VectorizerEnablePartialVectorization=0 < %s 2>&1 | FileCheck %s
 
 ; CHECK: %vectorized_phi
 ; CHECK: %vector = insertelement <8 x float> undef

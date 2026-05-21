@@ -1,5 +1,5 @@
 ; REQUIRES: regkeys
-; RUN: igc_opt --igc-vectorizer -S -dce --regkey=VectorizerLog=1 --regkey=VectorizerLogToErr=1 --platformbmg < %s 2>&1 | FileCheck %s
+; RUN: igc_opt --igc-vectorizer -S -dce --regkey=VectorizerLog=1 --regkey=VectorizerLogToErr=1 < %s 2>&1 | FileCheck %s
 
 ; CHECK: degenerate insert of the type <1 x float> -> rejected
 ; CHECK: degenerate insert of the type <1 x float> -> rejected

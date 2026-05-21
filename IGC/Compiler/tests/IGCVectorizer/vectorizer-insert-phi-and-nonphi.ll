@@ -1,5 +1,5 @@
 ; REQUIRES: regkeys
-; RUN: igc_opt -S  --igc-vectorizer -dce --platformbmg < %s 2>&1 | FileCheck %s
+; RUN: igc_opt -S  --igc-vectorizer -dce < %s 2>&1 | FileCheck %s
 
 ; CHECK: call float @llvm.genx.GenISA.WaveAll.f32
 ; CHECK: call float @llvm.genx.GenISA.WaveAll.f32

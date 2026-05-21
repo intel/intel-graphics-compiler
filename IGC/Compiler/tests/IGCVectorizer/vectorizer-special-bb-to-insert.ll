@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: igc_opt -S  --igc-vectorizer -dce --regkey=VectorizerDepWindowMultiplier=6 --platformbmg < %s 2>&1 | FileCheck %s
+; RUN: igc_opt -S  --igc-vectorizer -dce --regkey=VectorizerDepWindowMultiplier=6 < %s 2>&1 | FileCheck %s
 
 ; CHECK-LABEL: bb3:
 ; CHECK-NEXT: [[PHI:%.*]] = phi float

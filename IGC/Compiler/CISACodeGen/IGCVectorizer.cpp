@@ -1699,11 +1699,6 @@ bool IGCVectorizer::runOnFunction(llvm::Function &F) {
   CGCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
   initializeLogFile(F, "vectorizer");
 
-  if (CGCtx->platform.getGRFSize() != 64) {
-    PRINT_LOG_NL("Unsupported register width");
-    return false;
-  }
-
   AllowedPlatform = CGCtx->platform.isCoreXE2() || CGCtx->platform.isPVC() || CGCtx->platform.isCoreXE3();
   MDUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
   SIMDSize = checkSIMD(F, MDUtils);

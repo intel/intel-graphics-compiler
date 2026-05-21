@@ -1,7 +1,7 @@
 ; NOTE: this test just checks that we can process such IR
 ; previously we had issues with processing discarded instructions for
 ; vectorization chain
-; RUN: igc_opt -S %s --igc-vectorizer -dce --platformbmg
+; RUN: igc_opt -S %s --igc-vectorizer -dce
 
 ; ModuleID = 'reduced.ll'
 source_filename = "reduced.ll"

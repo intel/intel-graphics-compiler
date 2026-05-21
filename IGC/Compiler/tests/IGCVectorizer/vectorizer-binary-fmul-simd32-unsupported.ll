@@ -7,7 +7,7 @@
 ;============================ end_copyright_notice =============================
 
 ; REQUIRES: regkeys, llvm-16-plus
-; RUN: igc_opt -S  --igc-vectorizer -dce --regkey=VectorizerLog=1 --regkey=VectorizerLogToErr=1 --platformbmg < %s 2>&1 | FileCheck %s
+; RUN: igc_opt -S  --igc-vectorizer -dce --regkey=VectorizerLog=1 --regkey=VectorizerLogToErr=1 < %s 2>&1 | FileCheck %s
 
 ; CHECK: SIMD Size: 32
 ; CHECK: Operand [1]:  First:   %17 = fmul fast float %9, %1

@@ -1,5 +1,5 @@
 ; REQUIRES: regkeys
-; RUN: igc_opt -S  --igc-vectorizer -dce --platformbmg --regkey=VectorizerEnablePartialVectorization=0 < %s 2>&1 | FileCheck %s
+; RUN: igc_opt -S  --igc-vectorizer -dce --regkey=VectorizerEnablePartialVectorization=0 < %s 2>&1 | FileCheck %s
 
 ; CHECK: [[start:%.*]] = fmul fast float
 ; CHECK: [[mul_0:%.*]] = fmul fast float [[start]]

@@ -7,7 +7,7 @@
 ;============================ end_copyright_notice =============================
 
 ; REQUIRES: regkeys
-; RUN: igc_opt -S  --igc-vectorizer -dce --regkey=VectorizerAllowSelect=1 --regkey=VectorizerInsertElAsSeed=0 --regkey=VectorizerAllowCMP=1 --regkey=VectorizerAllowMAXNUM=1 --regkey=VectorizerAllowWAVEALL=1 --regkey=VectorizerLog=1 --regkey=VectorizerLogToErr=1 --platformbmg < %s 2>&1 | FileCheck %s
+; RUN: igc_opt -S  --igc-vectorizer -dce --regkey=VectorizerAllowSelect=1 --regkey=VectorizerAllowCMP=1 --regkey=VectorizerAllowMAXNUM=1 --regkey=VectorizerAllowWAVEALL=1 --regkey=VectorizerLog=1 --regkey=VectorizerLogToErr=1 < %s 2>&1 | FileCheck %s
 
 ; CHECK: Slice:   %37 = icmp slt i32 %3, %.pn1482
 ; CHECK-NEXT: Slice:   %38 = icmp slt i32 %4, %.pn1482
@@ -68,9 +68,25 @@
 ; CHECK-DAG: [[INSRT_2_6:%.*]] = insertelement <8 x float> [[INSRT_2_5]], float [[SEL_2_6]], i32 6
 ; CHECK-DAG: [[INSRT_2_7:%.*]] = insertelement <8 x float> [[INSRT_2_6]], float [[SEL_2_7]], i32 7
 
+; CHECK: [[WAVE_1_0:%.*]] = call float @llvm.genx.GenISA.WaveAll.f32(float [[SEL_2_0]], i8 12, i1 true, i32 0)
+; CHECK: [[WAVE_1_1:%.*]] = call float @llvm.genx.GenISA.WaveAll.f32(float [[SEL_2_1]], i8 12, i1 true, i32 0)
+; CHECK: [[WAVE_1_2:%.*]] = call float @llvm.genx.GenISA.WaveAll.f32(float [[SEL_2_2]], i8 12, i1 true, i32 0)
+; CHECK: [[WAVE_1_3:%.*]] = call float @llvm.genx.GenISA.WaveAll.f32(float [[SEL_2_3]], i8 12, i1 true, i32 0)
+; CHECK: [[WAVE_1_4:%.*]] = call float @llvm.genx.GenISA.WaveAll.f32(float [[SEL_2_4]], i8 12, i1 true, i32 0)
+; CHECK: [[WAVE_1_5:%.*]] = call float @llvm.genx.GenISA.WaveAll.f32(float [[SEL_2_5]], i8 12, i1 true, i32 0)
+; CHECK: [[WAVE_1_6:%.*]] = call float @llvm.genx.GenISA.WaveAll.f32(float [[SEL_2_6]], i8 12, i1 true, i32 0)
+; CHECK: [[WAVE_1_7:%.*]] = call float @llvm.genx.GenISA.WaveAll.f32(float [[SEL_2_7]], i8 12, i1 true, i32 0)
 
-; CHECK: call <8 x float> @llvm.genx.GenISA.WaveAll.v8f32(<8 x float> [[INSRT_2_7]]
-; CHECK: call <8 x float> @llvm.maxnum.v8f32(<8 x float> %vectorized_phi, <8 x float>
+; CHECK-DAG: [[INSRT_1_0:%.*]] = insertelement <8 x float> undef,      float [[WAVE_1_0]], i32 0
+; CHECK-DAG: [[INSRT_1_1:%.*]] = insertelement <8 x float> [[INSRT_1_0]], float [[WAVE_1_1]], i32 1
+; CHECK-DAG: [[INSRT_1_2:%.*]] = insertelement <8 x float> [[INSRT_1_1]], float [[WAVE_1_2]], i32 2
+; CHECK-DAG: [[INSRT_1_3:%.*]] = insertelement <8 x float> [[INSRT_1_2]], float [[WAVE_1_3]], i32 3
+; CHECK-DAG: [[INSRT_1_4:%.*]] = insertelement <8 x float> [[INSRT_1_3]], float [[WAVE_1_4]], i32 4
+; CHECK-DAG: [[INSRT_1_5:%.*]] = insertelement <8 x float> [[INSRT_1_4]], float [[WAVE_1_5]], i32 5
+; CHECK-DAG: [[INSRT_1_6:%.*]] = insertelement <8 x float> [[INSRT_1_5]], float [[WAVE_1_6]], i32 6
+; CHECK-DAG: [[INSRT_1_7:%.*]] = insertelement <8 x float> [[INSRT_1_6]], float [[WAVE_1_7]], i32 7
+
+; CHECK: call <8 x float> @llvm.maxnum.v8f32(<8 x float> %vectorized_phi, <8 x float> [[INSRT_1_7]])
 ; CHECK: {{%.*}} = fsub <8 x float> [[INSRT_2_7]], {{%.*}}
 
 

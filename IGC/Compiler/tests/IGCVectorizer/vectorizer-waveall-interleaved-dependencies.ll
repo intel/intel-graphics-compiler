@@ -1,5 +1,5 @@
 ; REQUIRES: llvm-16-plus, regkeys
-; RUN: igc_opt -S -opaque-pointers  --igc-vectorizer -dce --regkey=VectorizerLog=1 --regkey=VectorizerLogToErr=1 --regkey=VectorizerDepWindowMultiplier=4 --regkey=VectorizerAllowWAVEALLJoint=1 --regkey=VectorizerAllowWAVEALL=1 --platformbmg < %s 2>&1 | FileCheck %s
+; RUN: igc_opt -S -opaque-pointers  --igc-vectorizer -dce --regkey=VectorizerLog=1 --regkey=VectorizerLogToErr=1 --regkey=VectorizerDepWindowMultiplier=4 --regkey=VectorizerAllowWAVEALLJoint=1 --regkey=VectorizerAllowWAVEALL=1 < %s 2>&1 | FileCheck %s
 
 
 

@@ -7,7 +7,7 @@
 ;============================ end_copyright_notice =============================
 
 ; REQUIRES: regkeys, llvm-16-plus
-; RUN: igc_opt -S  --igc-vectorizer -dce --regkey=VectorizerLog=1 --platformbmg --regkey=VectorizerLogToErr=1 < %s 2>&1 | FileCheck %s
+; RUN: igc_opt -S  --igc-vectorizer -dce --regkey=VectorizerLog=1 --regkey=VectorizerLogToErr=1 < %s 2>&1 | FileCheck %s
 
 ; CHECK: Unsupported SIMD: 8 exit
 

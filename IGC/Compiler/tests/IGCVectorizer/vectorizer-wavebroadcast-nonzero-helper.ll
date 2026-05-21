@@ -7,7 +7,7 @@
 ;============================ end_copyright_notice =============================
 
 ; REQUIRES: regkeys
-; RUN: igc_opt -S --opaque-pointers --igc-vectorizer --regkey=VectorizerAllowWAVEBROADCAST=1 --dce --platformbmg < %s 2>&1 | FileCheck %s
+; RUN: igc_opt -S --opaque-pointers --igc-vectorizer --regkey=VectorizerAllowWAVEBROADCAST=1 --dce < %s 2>&1 | FileCheck %s
 
 ; Verify that WaveBroadcast slices with a non-zero helper-lane argument are NOT
 ; vectorized.  All broadcasts use sequential lanes 0-15 and the same source, but

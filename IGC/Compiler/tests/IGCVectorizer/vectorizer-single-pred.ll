@@ -7,16 +7,18 @@
 ;============================ end_copyright_notice =============================
 
 ; REQUIRES: llvm-16-plus, regkeys
-; RUN: igc_opt -S --opaque-pointers --igc-vectorizer --regkey=VectorizerAllowUniformSelect=1 --regkey=VectorizerAllowUniformCMP=1 -dce --regkey=VectorizerLog=1 --regkey=VectorizerLogToErr=1 --platformbmg < %s 2>&1 | FileCheck %s
+; RUN: igc_opt -S --opaque-pointers --igc-vectorizer --regkey=VectorizerAllowUniformSelect=1 --regkey=VectorizerAllowUniformCMP=1 -dce --regkey=VectorizerLog=1 --regkey=VectorizerLogToErr=1 < %s 2>&1 | FileCheck %s
 
-; CHECK:  %tmp18 = select i1 %tmpCMP, float 0.000000e+00, float {{%.*}} --> float 0.000000e+00
-; CHECK-NEXT:  %tmp19 = select i1 %tmpCMP, float 0.000000e+00, float {{%.*}} --> float 0.000000e+00
-; CHECK-NEXT:  %tmp20 = select i1 %tmpCMP, float 0.000000e+00, float {{%.*}} --> float 0.000000e+00
-; CHECK-NEXT:  %tmp21 = select i1 %tmpCMP, float 0.000000e+00, float {{%.*}} --> float 0.000000e+00
-; CHECK-NEXT:  %tmp22 = select i1 %tmpCMP, float 0.000000e+00, float {{%.*}} --> float 0.000000e+00
-; CHECK-NEXT:  %tmp23 = select i1 %tmpCMP, float 0.000000e+00, float {{%.*}} --> float 0.000000e+00
-; CHECK-NEXT:  %tmp24 = select i1 %tmpCMP, float 0.000000e+00, float {{%.*}} --> float 0.000000e+00
-; CHECK-NEXT:  %tmp25 = select i1 %tmpCMP, float 0.000000e+00, float {{%.*}} --> float 0.000000e+00
+; CHECK: Slice:   %tmp18 = select i1 %tmpCMP, float 0.000000e+00, float %vector_extract
+; CHECK: Operand num: 1 is not vectorized
+; CHECK-NEXT:  %tmp18 = select i1 %tmpCMP, float 0.000000e+00, float %vector_extract --> float 0.000000e+00
+; CHECK-NEXT:  %tmp19 = select i1 %tmpCMP, float 0.000000e+00, float %vector_extract8 --> float 0.000000e+00
+; CHECK-NEXT:  %tmp20 = select i1 %tmpCMP, float 0.000000e+00, float %vector_extract9 --> float 0.000000e+00
+; CHECK-NEXT:  %tmp21 = select i1 %tmpCMP, float 0.000000e+00, float %vector_extract10 --> float 0.000000e+00
+; CHECK-NEXT:  %tmp22 = select i1 %tmpCMP, float 0.000000e+00, float %vector_extract11 --> float 0.000000e+00
+; CHECK-NEXT:  %tmp23 = select i1 %tmpCMP, float 0.000000e+00, float %vector_extract12 --> float 0.000000e+00
+; CHECK-NEXT:  %tmp24 = select i1 %tmpCMP, float 0.000000e+00, float %vector_extract13 --> float 0.000000e+00
+; CHECK-NEXT:  %tmp25 = select i1 %tmpCMP, float 0.000000e+00, float %vector_extract14 --> float 0.000000e+00
 ; CHECK-NEXT:New vector created: <8 x float> zeroinitializer
 ; CHECK-NEXT:Same Predicate!
 

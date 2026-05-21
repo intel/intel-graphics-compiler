@@ -1,5 +1,5 @@
 ; REQUIRES: regkeys, llvm-15-or-older
-; RUN: igc_opt -S  --igc-vectorizer -dce --regkey=VectorizerAllowSelect=1 --regkey=VectorizerAllowCMP=1 --regkey=VectorizerAllowMAXNUM=1 --regkey=VectorizerAllowWAVEALL=1 --regkey=VectorizerDepWindowMultiplier=6 --platformbmg < %s 2>&1 | FileCheck %s
+; RUN: igc_opt -S  --igc-vectorizer -dce --regkey=VectorizerAllowSelect=1 --regkey=VectorizerAllowCMP=1 --regkey=VectorizerAllowMAXNUM=1 --regkey=VectorizerAllowWAVEALL=1 --regkey=VectorizerDepWindowMultiplier=6 < %s 2>&1 | FileCheck %s
 
 ; CHECK: [[dpas_0:%.*]] = call <8 x float> @llvm.genx.GenISA.sub.group.dpas.v8f32.v8f32.v8i16.v8i32
 ; CHECK: [[extract_0_0:%.*]] = extractelement <8 x float> [[dpas_0]], i64 0

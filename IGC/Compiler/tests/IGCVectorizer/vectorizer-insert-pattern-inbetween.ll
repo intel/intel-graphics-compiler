@@ -7,7 +7,7 @@
 ;============================ end_copyright_notice =============================
 
 ; REQUIRES: regkeys
-; RUN: igc_opt -S  --igc-vectorizer -dce --platformbmg --regkey=VectorizerAllowSelect=1 --regkey=VectorizerAllowCMP=1 --regkey=VectorizerAllowMAXNUM=1 --regkey=VectorizerAllowWAVEALL=1 --regkey=VectorizerDepWindowMultiplier=4 < %s 2>&1 | FileCheck %s
+; RUN: igc_opt -S  --igc-vectorizer -dce --regkey=VectorizerAllowSelect=1 --regkey=VectorizerAllowCMP=1 --regkey=VectorizerAllowMAXNUM=1 --regkey=VectorizerAllowWAVEALL=1 --regkey=VectorizerDepWindowMultiplier=4 < %s 2>&1 | FileCheck %s
 
 ; CHECK: [[fmul0:%.*]] = fmul float {{.*}}, 1.250000e-01
 ; CHECK: [[fmul1:%.*]] = fmul float {{.*}}, 1.250000e-01
