@@ -11,9 +11,9 @@
 ; RUN: not --crash igc_opt -S -opaque-pointers -dce -platformpvc -igc-emit-visa --regkey=EnableSimpleAluVectorizer=0 --regkey=EnableAssertEvaluation=1 --regkey=EnableAssertProgramTermination=0 --regkey=EnableLogAssertToStderr=1 --regkey=EnableStandardAssert=1 -simd-mode 32 < %s &> %t_output.ll
 ; RUN: FileCheck --input-file %t_output.ll %s
 
-; Checks that the assertion fails.
+; Checks that the SIMD32 vector emission guard triggers and terminates compilation.
 
-; CHECK: numLanes(m_encoder->GetSimdSize()) == 16
+; CHECK: internal compiler error
 
 define spir_kernel void @widget() {
 entry:
