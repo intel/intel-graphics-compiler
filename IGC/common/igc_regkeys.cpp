@@ -1059,10 +1059,7 @@ void InitializeRegKeys() {
     flagsSet = true;
     setImpliedIGCKeys();
 
-#if !defined(_DEBUG)
-    if (IGC_IS_FLAG_ENABLED(EnableDebugging))
-#endif
-    {
+    if (IGC_IS_FLAG_ENABLED(EnableDebugging)) {
       // DumpIGCRegistryKeyDefinitions();
       LoadDebugFlagsFromFile();
       LoadDebugFlagsFromString(IGC_GET_REGKEYSTRING(SelectiveHashOptions));

@@ -1309,9 +1309,7 @@ void OptimizeIR(CodeGenContext *const pContext) {
   }
 
   IGCPassManager mpm(pContext, "OPT");
-#if !defined(_DEBUG)
   if (IGC_IS_FLAG_ENABLED(EnableDebugging))
-#endif
     // do verifyModule for debug/release_internal only.
     if (false == pContext->m_hasLegacyDebugInfo) {
       IGC_ASSERT(nullptr != pContext->getModule());
