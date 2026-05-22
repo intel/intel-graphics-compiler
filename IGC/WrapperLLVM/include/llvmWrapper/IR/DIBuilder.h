@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2018-2021 Intel Corporation
+Copyright (C) 2018-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -28,17 +28,29 @@ public:
   inline llvm::Instruction *insertDbgValueIntrinsic(llvm::Value *V, uint64_t Offset, llvm::DILocalVariable *VarInfo,
                                                     llvm::DIExpression *Expr, const llvm::DILocation *DL,
                                                     llvm::BasicBlock *InsertAtEnd) {
+#if LLVM_VERSION_MAJOR < 22
     return llvm::DIBuilder::insertDbgValueIntrinsic(V, VarInfo, Expr, DL, InsertAtEnd);
+#else
+    return llvm::DIBuilder::insertDbgValueIntrinsic(V, VarInfo, Expr, DL, InsertAtEnd).dyn_cast<llvm::Instruction *>();
+#endif
   }
   inline llvm::Instruction *insertDbgValueIntrinsic(llvm::Value *V, uint64_t Offset, llvm::DILocalVariable *VarInfo,
                                                     llvm::DIExpression *Expr, const llvm::DILocation *DL,
                                                     llvm::Instruction *InsertBefore) {
+#if LLVM_VERSION_MAJOR < 22
     return llvm::DIBuilder::insertDbgValueIntrinsic(V, VarInfo, Expr, DL, InsertBefore);
+#else
+    return llvm::DIBuilder::insertDbgValueIntrinsic(V, VarInfo, Expr, DL, InsertBefore).dyn_cast<llvm::Instruction *>();
+#endif
   }
   inline llvm::Instruction *insertDbgValueIntrinsic(llvm::Value *V, llvm::DILocalVariable *VarInfo,
                                                     llvm::DIExpression *Expr, const llvm::DILocation *DL,
                                                     llvm::Instruction *InsertBefore) {
+#if LLVM_VERSION_MAJOR < 22
     return llvm::DIBuilder::insertDbgValueIntrinsic(V, VarInfo, Expr, DL, InsertBefore);
+#else
+    return llvm::DIBuilder::insertDbgValueIntrinsic(V, VarInfo, Expr, DL, InsertBefore).dyn_cast<llvm::Instruction *>();
+#endif
   }
   inline llvm::DINamespace *createNameSpace(llvm::DIScope *Scope, llvm::StringRef Name, llvm::DIFile *File,
                                             unsigned LineNo, bool ExportSymbols) {

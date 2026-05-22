@@ -258,6 +258,34 @@ inline bool isDebugOrPseudoInst(const llvm::Instruction &I) { return I.isDebugOr
 
 inline bool comesBefore(llvm::Instruction *A, llvm::Instruction *B) { return A->comesBefore(B); }
 
+// On LLVM < 22, debug intrinsics  appear in the
+// instruction stream and getNextNonDebugInstruction() skips over them.
+// On LLVM >= 22, debug info moved to DbgVariableRecord so
+// getNextNode() / getPrevNode() are already non-debug.
+inline llvm::Instruction *getNextNonDebugInstruction(llvm::Instruction *I, bool SkipPseudoOp = false) {
+#if LLVM_VERSION_MAJOR >= 22
+  return I->getNextNode();
+#else
+  return I->getNextNonDebugInstruction(SkipPseudoOp);
+#endif
+}
+
+inline const llvm::Instruction *getNextNonDebugInstruction(const llvm::Instruction *I, bool SkipPseudoOp = false) {
+#if LLVM_VERSION_MAJOR >= 22
+  return I->getNextNode();
+#else
+  return I->getNextNonDebugInstruction(SkipPseudoOp);
+#endif
+}
+
+inline llvm::Instruction *getPrevNonDebugInstruction(llvm::Instruction *I, bool SkipPseudoOp = false) {
+#if LLVM_VERSION_MAJOR >= 22
+  return I->getPrevNode();
+#else
+  return I->getPrevNonDebugInstruction(SkipPseudoOp);
+#endif
+}
+
 inline llvm::Type *getGEPIndexedType(llvm::Type *Ty, llvm::SmallVectorImpl<unsigned> &indices) {
   llvm::SmallVector<llvm::Value *, 8> gepIndices;
   gepIndices.reserve(indices.size() + 1);

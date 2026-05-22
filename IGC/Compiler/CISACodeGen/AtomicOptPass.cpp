@@ -16,6 +16,7 @@ SPDX-License-Identifier: MIT
 
 #include "common/LLVMWarningsPush.hpp"
 #include "common/LLVMWarningsPop.hpp"
+#include "llvmWrapper/IR/Instructions.h"
 
 using namespace llvm;
 using namespace IGC;
@@ -72,19 +73,20 @@ bool AtomicOptPass::checkFloatAtomicEmulation(Instruction *Inst, size_t &Operand
   if (BbWithAtomic->hasNPredecessorsOrMore(3))
     return false;
 
-  BitCastInst *FirstBitcastInstr = dyn_cast<BitCastInst>(GInst->getNextNonDebugInstruction());
+  BitCastInst *FirstBitcastInstr = dyn_cast<BitCastInst>(IGCLLVM::getNextNonDebugInstruction(GInst));
   if (!FirstBitcastInstr)
     return false;
 
-  Instruction *OpInstr = FirstBitcastInstr->getNextNonDebugInstruction();
+  Instruction *OpInstr = IGCLLVM::getNextNonDebugInstruction(FirstBitcastInstr);
   if (!OpInstr || !OpInstr->isFast())
     return false;
 
-  BitCastInst *SecondBitcastInstr = dyn_cast<BitCastInst>(OpInstr->getNextNonDebugInstruction());
+  BitCastInst *SecondBitcastInstr = dyn_cast<BitCastInst>(IGCLLVM::getNextNonDebugInstruction(OpInstr));
   if (!SecondBitcastInstr)
     return false;
 
-  GenIntrinsicInst *AtomicFinishInstr = dyn_cast<GenIntrinsicInst>(SecondBitcastInstr->getNextNonDebugInstruction());
+  GenIntrinsicInst *AtomicFinishInstr =
+      dyn_cast<GenIntrinsicInst>(IGCLLVM::getNextNonDebugInstruction(SecondBitcastInstr));
 
   if (!AtomicFinishInstr)
     return false;
@@ -92,7 +94,7 @@ bool AtomicOptPass::checkFloatAtomicEmulation(Instruction *Inst, size_t &Operand
   if (AtomicFinishInstr->getIntrinsicID() != GenISAIntrinsic::GenISA_icmpxchgatomicrawA64)
     return false;
 
-  CmpInst *CmpInstr = dyn_cast<CmpInst>(AtomicFinishInstr->getNextNonDebugInstruction());
+  CmpInst *CmpInstr = dyn_cast<CmpInst>(IGCLLVM::getNextNonDebugInstruction(AtomicFinishInstr));
   if (!CmpInstr)
     return false;
 
@@ -104,7 +106,6 @@ bool AtomicOptPass::checkFloatAtomicEmulation(Instruction *Inst, size_t &Operand
     OperandPos = 0;
   else
     return false;
-
   IGCLLVM::CmpInstPredicate Pred(CmpInst::Predicate::ICMP_EQ);
   Instruction *FinishInstr = cast<Instruction>(AtomicFinishInstr);
   auto CmpPattern = m_Cmp(Pred, m_Instruction(Inst), m_Instruction(FinishInstr));
@@ -152,8 +153,8 @@ bool AtomicOptPass::runOnFunction(Function &F) {
       size_t OperandPos = 0;
       // Here we check if this is an atomic instruction emulation or not.
       if (checkFloatAtomicEmulation(&I, OperandPos)) {
-        Instruction *FirstBitcastInstr = I.getNextNonDebugInstruction();
-        Instruction *MainInstr = FirstBitcastInstr->getNextNonDebugInstruction();
+        Instruction *FirstBitcastInstr = IGCLLVM::getNextNonDebugInstruction(&I);
+        Instruction *MainInstr = IGCLLVM::getNextNonDebugInstruction(FirstBitcastInstr);
 
         BasicBlock *BbWithAtomic = I.getParent();
         BasicBlock *BackBb = nullptr;

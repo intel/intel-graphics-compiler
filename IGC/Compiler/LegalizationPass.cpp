@@ -1213,7 +1213,7 @@ void Legalization::visitStoreInst(StoreInst &I) {
 
     PointerType *ptrTy = cast<PointerType>(I.getPointerOperand()->getType());
     unsigned addressSpace = ptrTy->getAddressSpace();
-    PointerType *I8PtrTy = m_builder->getInt8PtrTy(addressSpace);
+    llvm::PointerType *I8PtrTy = IGCLLVM::getPtrTy(*m_builder, addressSpace);
     Value *I8PtrOp = m_builder->CreateBitCast(I.getPointerOperand(), I8PtrTy);
 
     IGC::cloneStore(&I, newVal, I8PtrOp);
@@ -1276,7 +1276,7 @@ void Legalization::visitLoadInst(LoadInst &I) {
     m_builder->SetInsertPoint(&I);
     PointerType *ptrTy = cast<PointerType>(I.getPointerOperand()->getType());
     unsigned addressSpace = ptrTy->getAddressSpace();
-    PointerType *I8PtrTy = m_builder->getInt8PtrTy(addressSpace);
+    llvm::PointerType *I8PtrTy = IGCLLVM::getPtrTy(*m_builder, addressSpace);
     Value *I8PtrOp = m_builder->CreateBitCast(I.getPointerOperand(), I8PtrTy);
 
     LoadInst *pNewLoadInst = IGC::cloneLoad(&I, m_builder->getInt8Ty(), I8PtrOp);

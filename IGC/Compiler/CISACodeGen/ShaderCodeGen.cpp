@@ -189,6 +189,7 @@ SPDX-License-Identifier: MIT
 #include "llvmWrapper/Transforms/Scalar/LoopUnrollPass.h"
 #include "llvmWrapper/Transforms/Scalar/LICM.h"
 #include "llvmWrapper/Transforms/Scalar/IndVarSimplify.h"
+#include "llvmWrapper/Transforms/Scalar/LoopRotation.h"
 
 #include "Compiler/CISACodeGen/PatternMatchPass.hpp"
 #include "Compiler/CISACodeGen/EmitVISAPass.hpp"
