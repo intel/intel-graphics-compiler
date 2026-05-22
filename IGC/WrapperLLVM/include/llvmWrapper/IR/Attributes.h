@@ -12,6 +12,7 @@ SPDX-License-Identifier: MIT
 #include "IGC/common/LLVMWarningsPush.hpp"
 #include "llvm/IR/Attributes.h"
 #include "llvm/IR/LLVMContext.h"
+#include "llvm/IR/Instructions.h"
 #include "IGC/common/LLVMWarningsPop.hpp"
 
 #include "llvmWrapper/Support/ModRef.h"
@@ -19,16 +20,44 @@ SPDX-License-Identifier: MIT
 
 namespace IGCLLVM {
 
-inline void addCapture(llvm::AttributeList &list, llvm::LLVMContext &ctx, uint8_t index,
-                       IGCLLVM::CaptureComponents capture) {
+inline llvm::AttributeList addCapture(llvm::AttributeList &list, llvm::LLVMContext &ctx, uint8_t index,
+                                      IGCLLVM::CaptureComponents capture) {
 #if LLVM_VERSION_MAJOR >= 22
-  list = list.addParamAttribute(ctx, {index}, llvm::Attribute::getWithCaptureInfo(ctx, llvm::CaptureInfo(capture)));
+  return list.addParamAttribute(ctx, {index}, llvm::Attribute::getWithCaptureInfo(ctx, llvm::CaptureInfo(capture)));
 #else
   if (capture == IGCLLVM::CaptureComponents::None)
-    list = list.addParamAttribute(ctx, {index}, llvm::Attribute::get(ctx, llvm::Attribute::NoCapture));
+    return list.addParamAttribute(ctx, {index}, llvm::Attribute::get(ctx, llvm::Attribute::NoCapture));
   else
     IGC_ASSERT_EXIT_MESSAGE(
         false, "We only support llvm::Attribute::NoCapture/llvm::CaptureComponents::None on LLVMs below 22.");
+#endif
+
+  return list;
+}
+
+inline void setNoCaptureAttributeAtArgIndex(llvm::Function *F, unsigned ArgNo) {
+  if (!F)
+    return;
+
+#if LLVM_VERSION_MAJOR >= 22
+  llvm::LLVMContext &ctx = F->getContext();
+  auto capture = llvm::Attribute::getWithCaptureInfo(ctx, llvm::CaptureInfo(IGCLLVM::CaptureComponents::None));
+  F->addParamAttr(ArgNo, capture);
+#else
+  F->addParamAttr(ArgNo, llvm::Attribute::NoCapture);
+#endif
+}
+
+inline void setNoCaptureAttributeAtArgIndex(llvm::CallInst *CI, unsigned ArgNo) {
+  if (!CI)
+    return;
+
+#if LLVM_VERSION_MAJOR >= 22
+  llvm::LLVMContext &ctx = CI->getContext();
+  auto capture = llvm::Attribute::getWithCaptureInfo(ctx, llvm::CaptureInfo(IGCLLVM::CaptureComponents::None));
+  CI->addParamAttr(ArgNo, capture);
+#else
+  CI->addParamAttr(ArgNo, llvm::Attribute::NoCapture);
 #endif
 }
 

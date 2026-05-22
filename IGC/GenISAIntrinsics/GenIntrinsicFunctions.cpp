@@ -329,7 +329,7 @@ private:
     auto RetrieveParamAttr = [&overloadedTypeIndex, &ctx, &overloadedPointeeTys,
                               &mainAttrList](uint8_t index, const ArgumentDescription &arg) {
       if (arg.m_Capture.has_value()) {
-        IGCLLVM::addCapture(mainAttrList, ctx, index, arg.m_Capture.value());
+        mainAttrList = IGCLLVM::addCapture(mainAttrList, ctx, index, arg.m_Capture.value());
       }
 
       if (arg.m_AttrKind == llvm::Attribute::None) {
