@@ -57,7 +57,6 @@ void LoopRotateLegacyPassWrapper::getAnalysisUsage(AnalysisUsage &AU) const {
   AU.addRequired<AssumptionCacheTracker>();
   AU.addRequired<TargetTransformInfoWrapperPass>();
   AU.addPreserved<MemorySSAWrapperPass>();
-  getLoopAnalysisUsage(AU);
 
   AU.addPreserved<LazyBlockFrequencyInfoPass>();
   AU.addPreserved<LazyBranchProbabilityInfoPass>();

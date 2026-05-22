@@ -185,6 +185,7 @@ SPDX-License-Identifier: MIT
 #include "llvmWrapper/Transforms/Scalar/MemCpyOptimizer.h"
 #include "llvmWrapper/Transforms/Scalar/LoopDeletion.h"
 #include "llvmWrapper/Transforms/Scalar/LoopLoadElimination.h"
+#include "llvmWrapper/Transforms/Scalar/LoopRotation.h"
 #include "llvmWrapper/Transforms/Scalar/SCCP.h"
 #include "llvmWrapper/Transforms/Scalar/LoopUnrollPass.h"
 #include "llvmWrapper/Transforms/Scalar/LICM.h"
@@ -578,7 +579,7 @@ void AddLegalizationPasses(CodeGenContext &ctx, IGCPassManager &mpm, PSSignature
     mpm.add(createLoopCanonicalization());
     mpm.add(IGCLLVM::createLegacyWrappedLoopDeletionPass());
     mpm.add(llvm::createBreakCriticalEdgesPass());
-    mpm.add(llvm::createLoopRotatePass(LOOP_ROTATION_HEADER_INST_THRESHOLD));
+    mpm.add(IGCLLVM::createLegacyWrappedLoopRotatePass(LOOP_ROTATION_HEADER_INST_THRESHOLD));
     mpm.add(llvm::createLowerSwitchPass());
 
     int LoopUnrollThreshold = ctx.m_DriverInfo.GetLoopUnrollThreshold();
@@ -1479,7 +1480,7 @@ void OptimizeIR(CodeGenContext *const pContext) {
         mpm.add(createLoopCanonicalization());
         mpm.add(IGCLLVM::createLegacyWrappedLoopDeletionPass());
         mpm.add(llvm::createBreakCriticalEdgesPass());
-        mpm.add(llvm::createLoopRotatePass(LOOP_ROTATION_HEADER_INST_THRESHOLD));
+        mpm.add(IGCLLVM::createLegacyWrappedLoopRotatePass(LOOP_ROTATION_HEADER_INST_THRESHOLD));
         mpm.add(llvm::createLCSSAPass());
         mpm.add(llvm::createLoopSimplifyPass());
       }
@@ -1724,7 +1725,7 @@ void OptimizeIR(CodeGenContext *const pContext) {
         assert(disableGOPT);
         // disable loop unroll for excessive large shaders
         if (pContext->m_instrTypes.numOfLoop) {
-          mpm.add(llvm::createLoopRotatePass(LOOP_ROTATION_HEADER_INST_THRESHOLD));
+          mpm.add(IGCLLVM::createLegacyWrappedLoopRotatePass(LOOP_ROTATION_HEADER_INST_THRESHOLD));
 
 
           int LoopUnrollThreshold = pContext->m_DriverInfo.GetLoopUnrollThreshold();
