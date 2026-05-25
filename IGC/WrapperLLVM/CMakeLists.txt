@@ -40,6 +40,7 @@ set(IGC_WrapperLLVM_HDR
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/IR/ConstantFolder.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/IR/Constants.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/IR/DataLayout.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/IR/DebugInfo.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/IR/DerivedTypes.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/IR/DIBuilder.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/IR/Function.h"

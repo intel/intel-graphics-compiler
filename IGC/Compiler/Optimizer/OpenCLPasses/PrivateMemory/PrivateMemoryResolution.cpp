@@ -23,6 +23,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/IR/DebugInfo.h"
 #include "llvm/IR/Dominators.h"
 #include "common/LLVMWarningsPop.hpp"
+#include "llvmWrapper/IR/DebugInfo.h"
 #include "llvmWrapper/IR/IRBuilder.h"
 #include <llvmWrapper/ADT/Optional.h>
 #include "Probe/Assertion.h"
@@ -1029,7 +1030,7 @@ bool PrivateMemoryResolution::resolveAllocaInstructions(bool privateOnStack, boo
 
         // Attaching this metadata is crucial to both properly interpret this locations as stack based ond to inline it.
         // Because these are stack locations we can safely inline them even with optimizations disabled (O0).
-        auto DbgDcls = llvm::FindDbgDeclareUses(pAI);
+        auto DbgDcls = IGCLLVM::findDbgDeclareUses(pAI);
         for (auto DbgDcl : DbgDcls) {
           unsigned scalarBufferOffset = m_ModAllocaInfo->getBufferOffset(pAI);
           unsigned bufferSize = m_ModAllocaInfo->getBufferStride(pAI);
@@ -1331,7 +1332,7 @@ bool PrivateMemoryResolution::resolveAllocaInstructions(bool privateOnStack, boo
     // We can only safely inline such locations with optimizations disabled.
     // On O2 we have no guarantee the offsets in registers are gonna be valid throughout the entire variable lifetime.
     if (modMD->compOpt.OptDisable) {
-      auto DbgDcls = llvm::FindDbgDeclareUses(pAI);
+      auto DbgDcls = IGCLLVM::findDbgDeclareUses(pAI);
       for (auto DbgDcl : DbgDcls) {
         // Attach metadata to instruction containing offset of storage
         unsigned int scalarBufferOffset = m_ModAllocaInfo->getBufferOffset(pAI);

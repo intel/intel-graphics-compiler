@@ -91,6 +91,7 @@ cmp+sel to avoid expensive VxH mov.
 #include "llvmWrapper/IR/IntrinsicInst.h"
 #include "llvmWrapper/IR/Intrinsics.h"
 #include "llvmWrapper/IR/DIBuilder.h"
+#include "llvmWrapper/IR/DebugInfo.h"
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/IR/IRBuilder.h"
 #include <llvmWrapper/IR/CmpPredicate.h>
@@ -903,7 +904,7 @@ void CustomSafeOptPass::visitAllocaInst(AllocaInst &I) {
 
   // A debug line info is moved so the alloca has corresponding dbg.declare call
   // with DIExpression DW_OP_LLVM_fragment specifying fragment.
-  auto Dbgs = llvm::FindDbgDeclareUses(&I);
+  auto Dbgs = IGCLLVM::findDbgDeclareUses(&I);
   unsigned typeSize = (unsigned)pType->getArrayElementType()->getPrimitiveSizeInBits();
   if (!Dbgs.empty()) {
     const DebugLoc DL = I.getDebugLoc();
