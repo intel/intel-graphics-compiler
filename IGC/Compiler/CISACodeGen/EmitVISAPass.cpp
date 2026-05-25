@@ -41,6 +41,7 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPop.hpp"
 #include "llvmWrapper/IR/Instructions.h"
 #include "llvmWrapper/IR/DerivedTypes.h"
+#include "llvmWrapper/IR/InlineAsm.h"
 #include "llvmWrapper/IR/Function.h"
 #include "llvmWrapper/Support/MathExtras.h"
 #include "Probe/Assertion.h"
@@ -10221,7 +10222,7 @@ bool EmitPass::validateInlineAsmConstraints(llvm::CallInst *inst, SmallVector<St
 void EmitPass::EmitInlineAsm(llvm::CallInst *inst) {
   std::stringstream &str = m_encoder->GetVISABuilder()->GetAsmTextStream();
   InlineAsm *IA = cast<InlineAsm>(IGCLLVM::getCalledValue(inst));
-  string asmStr = IA->getAsmString();
+  string asmStr = IGCLLVM::getAsmString(IA);
   smallvector<CVariable *, 8> opnds;
   SmallVector<StringRef, 8> constraints;
   DenseMap<CVariable *, Instruction *> DstOpndMap;
