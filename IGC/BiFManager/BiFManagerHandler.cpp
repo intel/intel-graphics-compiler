@@ -169,7 +169,11 @@ void BiFManagerHandler::findAllBuiltins(llvm::Module *pModule, TFunctionsVec &ne
   std::function<bool(llvm::Function *)> predicate = [&](llvm::Function *pFunc) -> bool {
     auto funcName = pFunc->getName().str();
 
-    return (isPtrSizeInBits32 ? GetDepList32(funcName) : GetDepList64(funcName))[0] > -1;
+    if (isPtrSizeInBits32) {
+      return GetDepList32(funcName)[0] > -1;
+    } else {
+      return GetDepList64(funcName)[0] > -1;
+    }
   };
 
   FindAllBuiltins(pModule, predicate, neededBuiltinInstr);
@@ -194,10 +198,7 @@ void BiFManagerHandler::preapareBiFSections(llvm::Module &pMainModule, TFunction
     return recordBifIndex;
   };
 
-  for (auto bif_i : BuiltInNeeded) {
-    auto funcName = bif_i->getName().str();
-    auto deps = isPtrSizeInBits32 ? GetDepList32(funcName) : GetDepList64(funcName);
-
+  auto process_deps = [&](const auto &deps) {
     for (auto dep_i = deps.begin(); dep_i != deps.end(); ++dep_i) {
       auto bifIndexSection = *dep_i;
 
@@ -207,6 +208,16 @@ void BiFManagerHandler::preapareBiFSections(llvm::Module &pMainModule, TFunction
       }
 
       neededModules[bifIndexSection] = getModulePtr(bifIndexSection);
+    }
+  };
+
+  for (auto bif_i : BuiltInNeeded) {
+    auto funcName = bif_i->getName().str();
+
+    if (isPtrSizeInBits32) {
+      process_deps(GetDepList32(funcName));
+    } else {
+      process_deps(GetDepList64(funcName));
     }
   }
 

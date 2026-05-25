@@ -203,6 +203,8 @@ void BiFManagerTool::WriteHeader(const llvm::StringRef HeaderPath) {
 
   writeHashMap(fileDataHeader, &Bif64, Bif64MaxDep, 64);
   printf("[BiFManager] - Done for BiF32 header for bifbc\n");
+
+  assert(Bif32MaxDep == Bif64MaxDep && "[BiFManager] - Mismatch between BiF32 and BiF64");
 }
 
 void BiFManagerTool::prepareDependencies(BiFDictionary &BiFMapBitType, int BiFMainMaxIdx, int BiFSizeIdxStart,
