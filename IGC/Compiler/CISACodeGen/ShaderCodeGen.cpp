@@ -548,7 +548,7 @@ void AddLegalizationPasses(CodeGenContext &ctx, IGCPassManager &mpm, PSSignature
   // Disable all target library functions.
   // right now we don't support any standard function in the code gen
   // maybe we want to support some at some point to take advantage of LLVM optimizations
-  TargetLibraryInfoImpl TLI;
+  TargetLibraryInfoImpl TLI(Triple(ctx.getModule()->getTargetTriple()));
   TLI.disableAllFunctions();
   mpm.add(new llvm::TargetLibraryInfoWrapperPass(TLI));
 
@@ -1328,7 +1328,7 @@ void OptimizeIR(CodeGenContext *const pContext) {
 
     // right now we don't support any standard function in the code gen
     // maybe we want to support some at some point to take advantage of LLVM optimizations
-    TargetLibraryInfoImpl TLI;
+    TargetLibraryInfoImpl TLI(Triple(pContext->getModule()->getTargetTriple()));
     TLI.disableAllFunctions();
 
     mpm.add(new MetaDataUtilsWrapper(pMdUtils, pContext->getModuleMetaData()));
