@@ -36,6 +36,14 @@ public:
 #endif // LLVM_VERSION_MAJOR
   }
 };
+
+template <typename ImplT, typename... Args> llvm::TargetTransformInfo TargetTransformInfo(Args &&...args) {
+#if LLVM_VERSION_MAJOR >= 22
+  return llvm::TargetTransformInfo(std::make_unique<ImplT>(std::forward<Args>(args)...));
+#else
+  return llvm::TargetTransformInfo(ImplT(std::forward<Args>(args)...));
+#endif
+}
 } // namespace IGCLLVM
 
 #endif

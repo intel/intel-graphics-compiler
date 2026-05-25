@@ -320,10 +320,8 @@ int main(int argc, char **argv) {
   // GenTTI exposes IGC-specific cost modeling instead of using
   // the default LLVM TTI implementation.
   if (UseGenTTI) {
-    TIRA = TargetIRAnalysis([&](const Function &) {
-      GenIntrinsicsTTIImpl GTTI(ctx.get());
-      return TargetTransformInfo(std::move(GTTI));
-    });
+    TIRA = TargetIRAnalysis(
+        [&](const Function &) { return IGCLLVM::TargetTransformInfo<GenIntrinsicsTTIImpl>(ctx.get()); });
   } else {
     TIRA = TargetIRAnalysis();
   }

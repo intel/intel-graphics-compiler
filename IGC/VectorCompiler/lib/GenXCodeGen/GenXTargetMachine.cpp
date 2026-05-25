@@ -265,8 +265,8 @@ void initializeGenXPasses(PassRegistry &registry) {
 
 TargetTransformInfo GenXTargetMachine::getTargetTransformInfo(const Function &F)
     LLVM_GET_TTI_API_QUAL {
-  GenXTTIImpl GTTI(F.getParent()->getDataLayout(), *BC, Subtarget);
-  return TargetTransformInfo(std::move(GTTI));
+  return IGCLLVM::TargetTransformInfo<GenXTTIImpl>(
+      F.getParent()->getDataLayout(), *BC, Subtarget);
 }
 void GenXTTIImpl::getUnrollingPreferences(
     Loop *L, ScalarEvolution &SE, TargetTransformInfo::UnrollingPreferences &UP,

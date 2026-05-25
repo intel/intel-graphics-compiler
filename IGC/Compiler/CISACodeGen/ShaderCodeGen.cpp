@@ -538,10 +538,8 @@ void AddLegalizationPasses(CodeGenContext &ctx, IGCPassManager &mpm, PSSignature
       ctx.m_DriverInfo.DisableConvergentInstructionsHoisting() && ctx.m_instrTypes.numWaveIntrinsics > 0;
   if (disableConvergentInstructionsHoisting || IGC_IS_FLAG_ENABLED(ForceAllPrivateMemoryToSLM) ||
       IGC_IS_FLAG_ENABLED(ForcePrivateMemoryToSLMOnBuffers)) {
-    TargetIRAnalysis GenTTgetIIRAnalysis([&](const Function &F) {
-      GenIntrinsicsTTIImpl GTTI(&ctx);
-      return TargetTransformInfo(GTTI);
-    });
+    TargetIRAnalysis GenTTgetIIRAnalysis(
+        [&](const Function &F) { return IGCLLVM::TargetTransformInfo<GenIntrinsicsTTIImpl>(&ctx); });
     mpm.add(new TargetTransformInfoWrapperPass(std::move(GenTTgetIIRAnalysis)));
   }
 
@@ -1334,10 +1332,8 @@ void OptimizeIR(CodeGenContext *const pContext) {
     mpm.add(new MetaDataUtilsWrapper(pMdUtils, pContext->getModuleMetaData()));
 
     mpm.add(new CodeGenContextWrapper(pContext));
-    TargetIRAnalysis GenTTgetIIRAnalysis([&](const Function &F) {
-      GenIntrinsicsTTIImpl GTTI(pContext);
-      return TargetTransformInfo(GTTI);
-    });
+    TargetIRAnalysis GenTTgetIIRAnalysis(
+        [&](const Function &F) { return IGCLLVM::TargetTransformInfo<GenIntrinsicsTTIImpl>(pContext); });
 
     mpm.add(new TargetTransformInfoWrapperPass(GenTTgetIIRAnalysis));
 #if defined(_DEBUG) && !defined(__ANDROID__)

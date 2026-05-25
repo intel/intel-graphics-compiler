@@ -183,11 +183,7 @@ bool GenIntrinsicsTTIImpl::isGEPLoopConstDerived(GetElementPtrInst *GEP, const L
 }
 
 static TargetTransformInfo createTargetTransformInfo(const GenIntrinsicsTTIImpl &TTIImpl) {
-#if LLVM_VERSION_MAJOR >= 22
-  return TargetTransformInfo(std::make_unique<GenIntrinsicsTTIImpl>(TTIImpl));
-#else
-  return TargetTransformInfo(TTIImpl);
-#endif
+  return IGCLLVM::TargetTransformInfo<GenIntrinsicsTTIImpl>(TTIImpl);
 }
 
 void GenIntrinsicsTTIImpl::getUnrollingPreferences(Loop *L, ScalarEvolution &SE, TTI::UnrollingPreferences &UP,
