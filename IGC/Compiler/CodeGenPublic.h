@@ -1036,7 +1036,12 @@ private:
   std::stringstream oclErrorMessage;
   // For storing warning message
   std::stringstream oclWarningMessage;
+
+#if LLVM_VERSION_MAJOR >= 22
+  llvm::LLVMRemarkFileHandle RemarksFile;
+#else
   std::unique_ptr<llvm::ToolOutputFile> RemarksFile;
+#endif
 
 protected:
   // Objects pointed to by these pointers are owned by this class.
