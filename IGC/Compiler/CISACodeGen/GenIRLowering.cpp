@@ -24,12 +24,12 @@ SPDX-License-Identifier: MIT
 #include <llvm/Analysis/ValueTracking.h>
 #include <llvm/IR/GetElementPtrTypeIterator.h>
 #include <llvm/Support/KnownBits.h>
-#include <llvm/Transforms/Utils/ScalarEvolutionExpander.h>
 #include <llvm/Transforms/Utils/Local.h>
 #include "common/LLVMWarningsPop.hpp"
 #include "llvmWrapper/IR/Intrinsics.h"
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/Support/MathExtras.h"
+#include "llvmWrapper/Transforms/Utils/ScalarEvolutionExpander.h"
 #include "GenISAIntrinsics/GenIntrinsics.h"
 #include "common/IGCIRBuilder.h"
 #include "Probe/Assertion.h"
@@ -504,7 +504,7 @@ bool GEPLowering::simplifyGEP(BasicBlock &BB) {
     for (auto PI = B.second.rbegin(), PE = B.second.rend(); PI != PE; ++PI) {
       auto &P = *PI;
       if (P.Offset) {
-        SCEVExpander E(*SE, *DL, "gep-simplification");
+        IGCLLVM::IGCSCEVExpander E(*SE, *DL, "gep-simplification");
         Value *V = E.expandCodeFor(P.Offset, P.Idx->getType(), P.GEP);
         Builder->SetInsertPoint(P.GEP);
         auto *NewGEP = Builder->CreateInBoundsGEP(P.Base->getResultElementType(), P.Base,

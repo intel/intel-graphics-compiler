@@ -126,11 +126,11 @@ void BfloatBuiltinsResolution::visitCallInst(CallInst &CI) {
       return;
   }
 
+  std::string MangledNameForDemangling = MangledName.str();
 #if LLVM_VERSION_MAJOR < 20
   // Workaround for LLVM 16 demangler not supporting DF16b mangling (even though LLVM 16 supports bfloat type)
   // Support was implemented in LLVM 20
   // (https://github.com/llvm/llvm-project/commit/a100fd8cbd3dad3846a6212d97279ca23db85c75)
-  std::string MangledNameForDemangling = MangledName.str();
   if (MangledName.contains("DF16b")) {
     MangledNameForDemangling = replaceAll(MangledName, "DF16b", "u6__bf16");
   }

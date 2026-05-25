@@ -249,7 +249,7 @@ bool Decompose2DBlockFuncsWithHoisting::runOnFunction(Function &F) {
   DL = &F.getParent()->getDataLayout();
   LI = &getAnalysis<LoopInfoWrapperPass>().getLoopInfo();
 
-  E = std::make_unique<SCEVExpander>(*SE, *DL, "decompose-2d-block-funcs-with-hoisting");
+  E = std::make_unique<IGCLLVM::IGCSCEVExpander>(*SE, *DL, "decompose-2d-block-funcs-with-hoisting");
   Platform = &CGC->platform;
 
   m_changed = false;

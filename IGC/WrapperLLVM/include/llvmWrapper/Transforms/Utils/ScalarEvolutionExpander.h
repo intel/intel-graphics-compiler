@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2023 Intel Corporation
+Copyright (C) 2023-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -17,6 +17,19 @@ SPDX-License-Identifier: MIT
 #include "Probe/Assertion.h"
 
 namespace IGCLLVM {
+class IGCSCEVExpander : public llvm::SCEVExpander {
+public:
+  IGCSCEVExpander(llvm::ScalarEvolution &se, const llvm::DataLayout &DL, const char *name, bool PreserveLCSSA = true)
+      :
+#if LLVM_VERSION_MAJOR >= 22
+        llvm::SCEVExpander(se, name)
+#else
+        llvm::SCEVExpander(se, DL, name)
+#endif
+  {
+  }
+};
+
 inline bool isSafeToExpand(const llvm::SCEV *S, llvm::ScalarEvolution *SE, llvm::SCEVExpander *SCEVE) {
   IGC_ASSERT(SE);
   IGC_ASSERT(SCEVE);
