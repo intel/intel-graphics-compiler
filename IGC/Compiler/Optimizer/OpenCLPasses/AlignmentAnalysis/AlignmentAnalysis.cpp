@@ -91,10 +91,20 @@ void AlignmentAnalysis::setArgumentAlignmentBasedOnOptionalMetadata(Function &F)
       StringRef ScalarType = KernelArgType.take_until([](char C) { return C >= '0' && C <= '9'; });
 
       auto ScalarAlignment = llvm::StringSwitch<std::optional<llvm::Align>>(ScalarType)
-                                 .CasesLower("char", "uchar", llvm::Align(1))
-                                 .CasesLower("short", "ushort", "half", llvm::Align(2))
-                                 .CasesLower("int", "uint", "float", llvm::Align(4))
-                                 .CasesLower("long", "ulong", "double", llvm::Align(8))
+                                 .CaseLower("char", llvm::Align(1))
+                                 .CaseLower("uchar", llvm::Align(1))
+
+                                 .CaseLower("short", llvm::Align(2))
+                                 .CaseLower("ushort", llvm::Align(2))
+                                 .CaseLower("half", llvm::Align(2))
+
+                                 .CaseLower("int", llvm::Align(4))
+                                 .CaseLower("uint", llvm::Align(4))
+                                 .CaseLower("float", llvm::Align(4))
+
+                                 .CaseLower("long", llvm::Align(8))
+                                 .CaseLower("ulong", llvm::Align(8))
+                                 .CaseLower("double", llvm::Align(8))
                                  .Default(std::nullopt);
 
       if (!ScalarAlignment) {
