@@ -67,10 +67,14 @@ static Instruction::CastOps isEliminableCastPair(const CastInst *CI1, const Cast
   Instruction::CastOps firstOp = CI1->getOpcode();
   Instruction::CastOps secondOp = CI2->getOpcode();
   Type *SrcIntPtrTy = SrcTy->isPtrOrPtrVectorTy() ? DL.getIntPtrType(SrcTy) : nullptr;
-  Type *MidIntPtrTy = MidTy->isPtrOrPtrVectorTy() ? DL.getIntPtrType(MidTy) : nullptr;
   Type *DstIntPtrTy = DstTy->isPtrOrPtrVectorTy() ? DL.getIntPtrType(DstTy) : nullptr;
+#if LLVM_VERSION_MAJOR >= 22
+  unsigned Res = CastInst::isEliminableCastPair(firstOp, secondOp, SrcTy, MidTy, DstTy, &DL);
+#else
+  Type *MidIntPtrTy = MidTy->isPtrOrPtrVectorTy() ? DL.getIntPtrType(MidTy) : nullptr;
   unsigned Res =
       CastInst::isEliminableCastPair(firstOp, secondOp, SrcTy, MidTy, DstTy, SrcIntPtrTy, MidIntPtrTy, DstIntPtrTy);
+#endif
 
   // We don't want to form an inttoptr or ptrtoint that converts to an integer
   // type that differs from the pointer size.

@@ -421,7 +421,7 @@ RegPressureTracker::RegPressureTracker(RegisterEstimator *RPE) : m_BB(nullptr), 
   // Pre-allocate DenseMap
   size_t nVals = m_pRPE->getNumValues();
   uint32_t mapCap = int_cast<uint32_t>((size_t)(nVals * 1.40f));
-  m_DeadValueNumUses.grow(mapCap);
+  m_DeadValueNumUses.reserve(mapCap);
 }
 
 void RegPressureTracker::init(BasicBlock *BB, bool doMaxRegInBB) {

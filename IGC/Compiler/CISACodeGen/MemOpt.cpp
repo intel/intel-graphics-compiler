@@ -3037,7 +3037,11 @@ bool LdStCombine::hasAlias(AliasSetTracker &AST, MemoryLocation &MemLoc) {
   for (auto &AS : AST) {
     if (AS.isForwardingAliasSet())
       continue;
+#if LLVM_VERSION_MAJOR >= 22
+    AliasResult aresult = AS.aliasesMemoryLocation(MemLoc, AST.getAliasAnalysis());
+#else
     AliasResult aresult = AS.aliasesPointer(MemLoc.Ptr, MemLoc.Size, MemLoc.AATags, AST.getAliasAnalysis());
+#endif
     if (aresult != AliasResult::NoAlias) {
       return true;
     }
