@@ -427,8 +427,8 @@ public:
 
   bool hasScratchSurface() const { return isProductChildOf(IGFX_XE_HP_SDV); }
 
-  bool has16MBPerThreadScratchSpace() const { return isProductChildOf(IGFX_NVL); }
-  bool canCoalesceAtomicWithNoReturn() const { return isProductChildOf(IGFX_NVL); }
+  bool has16MBPerThreadScratchSpace() const { return isCoreChildOf(IGFX_XE3P_CORE); }
+  bool canCoalesceAtomicWithNoReturn() const { return isCoreChildOf(IGFX_XE3P_CORE); }
 
   bool hasAtomicPreDec() const { return !isProductChildOf(IGFX_XE_HP_SDV); }
 
@@ -897,7 +897,7 @@ public:
   uint32_t getGRFSize() const { return isCoreChildOf(IGFX_XE_HPC_CORE) ? 64 : 32; }
 
   uint32_t getMaxNumGRF(ShaderType type) const {
-    if (hasEfficient64bEnabled() && isProductChildOf(IGFX_NVL)) {
+    if (hasEfficient64bEnabled() && isCoreChildOf(IGFX_XE3P_CORE)) {
       return (type == ShaderType::HULL_SHADER) ? 256 : 512;
     } else if (supports512GRFPerThread() && type == ShaderType::OPENCL_SHADER) {
       return 512;
@@ -1160,7 +1160,7 @@ public:
   }
 
   bool isRayQueryReturnOptimizationPackedStatusEnabled() const {
-    return isProductChildOf(IGFX_NVL) && isRayQueryReturnOptimizationEnabled() &&
+    return isCoreChildOf(IGFX_XE3P_CORE) && isRayQueryReturnOptimizationEnabled() &&
            IGC_IS_FLAG_DISABLED(DisableRayQueryReturnOptimizationPackedStatus);
   }
 
@@ -1409,10 +1409,10 @@ public:
 
   bool supportsFp4Int4Upsampling() const { return isCoreChildOf(IGFX_XE3P_CORE); }
 
-  bool supportsRayTracingMotionBlur() const { return isProductChildOf(IGFX_NVL); }
+  bool supportsRayTracingMotionBlur() const { return isCoreChildOf(IGFX_XE3P_CORE); }
 
   bool supportsRayTracingExtendedCacheControl() const {
-    return isProductChildOf(IGFX_NVL) && hasEfficient64bEnabled() &&
+    return isCoreChildOf(IGFX_XE3P_CORE) && hasEfficient64bEnabled() &&
            IGC_IS_FLAG_DISABLED(DisableRayTracingExtendedCacheControl) &&
            IGC_IS_FLAG_DISABLED(DisableRayTracingExtendedCacheControlTierI) && (m_WaTable.Wa_14027487226 == 0);
   }
@@ -1421,7 +1421,7 @@ public:
     return m_SkuTable.FtrAdditionalRegPerThreadMode && IGC_IS_FLAG_ENABLED(Enable320and448GRFConfigsWithoutSendG);
   }
 
-  bool supportsOverfetch() const { return isProductChildOf(IGFX_NVL); }
+  bool supportsOverfetch() const { return isCoreChildOf(IGFX_XE3P_CORE); }
 
   bool supportsNativeHyperbolicTan() const { return isCoreChildOf(IGFX_XE3P_CORE); }
 
@@ -1429,9 +1429,9 @@ public:
 
   bool supportsNativeSigmoid() const { return isCoreChildOf(IGFX_XE3P_CORE); }
 
-  bool supportsNativeSinCos() const { return isProductChildOf(IGFX_NVL) && IGC_IS_FLAG_ENABLED(EnableNativeSinCos); }
+  bool supportsNativeSinCos() const { return isCoreChildOf(IGFX_XE3P_CORE) && IGC_IS_FLAG_ENABLED(EnableNativeSinCos); }
 
-  bool hasAccurateLog2() const { return isProductChildOf(IGFX_NVL); }
+  bool hasAccurateLog2() const { return isCoreChildOf(IGFX_XE3P_CORE); }
 
   bool forceZeroTileID() const {
     bool supported = IGC_IS_FLAG_ENABLED(ForceZeroTileID) && isCoreChildOf(IGFX_XE3P_CORE);

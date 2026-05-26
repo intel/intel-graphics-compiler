@@ -2744,11 +2744,11 @@ TARGET_PLATFORM GetVISAPlatform(const CPlatform *platform) {
     return Xe3;
     // fall-through
   case IGFX_XE3P_CORE:
-    if (platform->getPlatformInfo().eProductFamily == IGFX_CRI) {
+    // CRI is an exception to the IP-centric approach: it shares IGFX_XE3P_CORE
+    // with other XE3p products and has no unique render core family set.
+    if (platform->getPlatformInfo().eProductFamily == IGFX_CRI)
       return Xe3P_CRI;
-    } else if (platform->getPlatformInfo().eProductFamily == IGFX_NVL) {
-      return Xe3P_Graphics;
-    }
+    return Xe3P_Graphics;
   default:
     IGC_ASSERT_MESSAGE(0, "unsupported platform");
     break;
@@ -4353,13 +4353,13 @@ void CEncoder::InitVISABuilderOptions(TARGET_PLATFORM VISAPlatform, bool canAbor
     if (m_program->GetParent()->getLLVMFunction()->size() == 1 &&
         m_program->m_Platform->getMinDispatchMode() != SIMDMode::SIMD8) {
       SaveOption(vISA_forceBCR, true);
-      if (context->supportsVRT() && m_program->m_Platform->getPlatformInfo().eProductFamily == IGFX_PTL)
+      if (context->supportsVRT() && m_program->m_Platform->GetPlatformFamily() == IGFX_XE3_CORE)
         SaveOption(vISA_bumpGRFForForceBCR, true);
     }
     // For OCL shader with very low register pressure, it is safe to enable vISA_bumpGRFForForceBCR on platform with VRT
     // support.
     if (MaxRegPressure > 0 && MaxRegPressure < 32 && context->supportsVRT() &&
-        m_program->m_Platform->getPlatformInfo().eProductFamily == IGFX_PTL) {
+        m_program->m_Platform->GetPlatformFamily() == IGFX_XE3_CORE) {
       SaveOption(vISA_forceBCR, true);
       SaveOption(vISA_bumpGRFForForceBCR, true);
       // For shader with very low register pressure, we want to restrict the RP

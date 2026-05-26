@@ -1838,37 +1838,17 @@ CGenSystemInstructionKernelProgram *CGenSystemInstructionKernelProgram::Create(c
   }
 
   case IGFX_XE3P_CORE:
+    // CRI is an exception to the IP-centric approach: it shares IGFX_XE3P_CORE
+    // with other XE3p products and has no unique render core family set.
     if (mode & SYSTEM_THREAD_MODE_DEBUG) {
-      switch (platform.getPlatformInfo().eProductFamily) {
-      case IGFX_CRI:
-        SIPIndex = XE3P_DEBUG_E64;
-        break;
-      case IGFX_NVL:
-        SIPIndex = XE3PLPG_DEBUG_E64;
-        break;
-      default:
-        IGC_ASSERT(false);
-        break;
-      }
+        if (platform.getPlatformInfo().eProductFamily == IGFX_CRI) {
+          SIPIndex = XE3P_DEBUG_E64;
+        } else {
+          SIPIndex = XE3PLPG_DEBUG_E64;
+        }
     } else if (mode == SYSTEM_THREAD_MODE_CSR) {
-      switch (platform.getPlatformInfo().eProductFamily) {
-      case IGFX_CRI:
-        if (!bindlessMode) {
-          SIPIndex = XE3PLPG_CSR_DEBUG_E64;
-        } else {
-          SIPIndex = XE3PLPG_CSR_DEBUG_LEGACY;
-        }
-        break;
-      case IGFX_NVL:
-        if (!bindlessMode) {
-          SIPIndex = XE3PLPG_CSR_DEBUG_E64;
-        } else {
-          SIPIndex = XE3PLPG_CSR_DEBUG_LEGACY;
-        }
-        break;
-      default:
-        IGC_ASSERT(false);
-        break;
+      {
+        SIPIndex = !bindlessMode ? XE3PLPG_CSR_DEBUG_E64 : XE3PLPG_CSR_DEBUG_LEGACY;
       }
     }
     break;

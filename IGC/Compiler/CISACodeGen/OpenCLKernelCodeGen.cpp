@@ -2596,8 +2596,8 @@ static bool shouldDropToSIMD16(uint32_t maxPressure, uint32_t simd16Pressure, ui
   auto threshold = IGC_GET_FLAG_VALUE(EarlySIMD16DropForXE3Threshold);
 
   // Prefer SIMD16 when SIMD32 is over-pressured but SIMD16 fits comfortably.
-  // Gated to PTL until broader validation.
-  if (pCtx->supportsVRT() && pCtx->platform.getPlatformInfo().eProductFamily == IGFX_PTL) {
+  // Gated to XE3 base core until broader validation.
+  if (pCtx->supportsVRT() && pCtx->platform.GetPlatformFamily() == IGFX_XE3_CORE) {
     auto simd32High = IGC_GET_FLAG_VALUE(OCLVRTSimd16DropSimd32High);
     auto simd16Low = IGC_GET_FLAG_VALUE(OCLVRTSimd16DropSimd16Low);
     if ((simd32Pressure > simd32High && simd16Pressure > 0 && simd16Pressure < simd16Low) || simd32Pressure > threshold)
