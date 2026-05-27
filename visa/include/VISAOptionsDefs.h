@@ -650,18 +650,8 @@ DEF_VISA_OPTION(vISA_SelectiveRAGlobaVarRatioThreshold, ET_CSTR, "-selectiveRAGV
 DEF_VISA_OPTION(vISA_EnableSwapAccSub, ET_BOOL, "-swapAccSub", UNUSED, true)
 DEF_VISA_OPTION(vISA_EnableRRAccSub, ET_BOOL, "-roundRobinAccSub", UNUSED,
                 false)
-DEF_VISA_OPTION(vISA_EURegionRemoval, ET_BOOL_TRUE, "-fixNonMovRegion",
-                "DEPRECATED, is a nop", false)
-DEF_VISA_OPTION(vISA_AllowSrcCRegion, ET_BOOL_TRUE, "-allowSrcCRegion",
-                "DEPRECATED, is a nop", false)
-DEF_VISA_OPTION(vISA_RelaxQWRegion, ET_BOOL_TRUE, "-relaxQWRegion",
-                "DEPRECATED, is a nop", false)
 DEF_VISA_OPTION(vISA_BalanceIntMov, ET_INT32, "-balanceIntMov",
                 "USAGE: -balanceIntMov <ratio>\n", -1)
-DEF_VISA_OPTION(vISA_GAReArchBugFix, ET_BOOL_TRUE, "-GAReArchBugFix",
-                "DEPRECATED, is a nop", false)
-DEF_VISA_OPTION(vISA_EnableInt32DstMulMad, ET_BOOL_TRUE,
-                "-enableInt32DstMulMad", "DEPRECATED, is a nop", false)
 DEF_VISA_OPTION(vISA_EnableInt32MULLH, ET_BOOL_TRUE, "-enableInt32Mullh",
                 "DEPRECATED, is a nop", false)
 // Apply the new ACC usage restructions and add the ACC usage in new
