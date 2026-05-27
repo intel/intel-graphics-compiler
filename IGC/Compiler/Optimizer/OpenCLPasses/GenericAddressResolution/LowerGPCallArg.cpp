@@ -152,7 +152,8 @@ Function *LowerGPCallArg::createFuncWithLoweredArgs(Function *F, GenericPointerA
   FunctionType *pFuncType = F->getFunctionType();
   std::vector<Type *> newParamTypes(pFuncType->param_begin(), pFuncType->param_end());
   for (auto &argInfo : argsInfo) {
-    PointerType *ptrType = IGCLLVM::get(dyn_cast<PointerType>(newParamTypes[argInfo.argNo]), argInfo.addrSpace);
+    PointerType *ptrType =
+        IGCLLVM::PointerType::get(dyn_cast<PointerType>(newParamTypes[argInfo.argNo]), argInfo.addrSpace);
     newParamTypes[argInfo.argNo] = ptrType;
   }
 

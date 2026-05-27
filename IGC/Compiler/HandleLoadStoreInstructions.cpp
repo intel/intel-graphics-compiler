@@ -62,7 +62,7 @@ void HandleLoadStoreInstructions::visitLoadInst(llvm::LoadInst &I) {
     llvm::Value *newInst = nullptr;
     // WA: driver does not support gather4(untyped surface read) from constant buffer
     if (bufType == CONSTANT_BUFFER) {
-      llvm::Type *floatyptr = llvm::PointerType::get(builder.getFloatTy(), as);
+      llvm::Type *floatyptr = IGCLLVM::PointerType::get(builder.getFloatTy(), as);
       llvm::Value *byteOffset = nullptr;
       if (!isa<ConstantPointerNull>(ptrv)) {
         if (ConstantExpr *ptrExpr = dyn_cast<ConstantExpr>(ptrv)) {
@@ -93,7 +93,7 @@ void HandleLoadStoreInstructions::visitLoadInst(llvm::LoadInst &I) {
     else {
       // double to <floatx2> ; <doublex2> to <floatx4>
       llvm::Type *dataType = IGCLLVM::FixedVectorType::get(builder.getFloatTy(), numVectorElements * 2);
-      llvm::PointerType *ptrType = llvm::PointerType::get(dataType, ptrv->getType()->getPointerAddressSpace());
+      llvm::PointerType *ptrType = IGCLLVM::PointerType::get(dataType, ptrv->getType()->getPointerAddressSpace());
       llvm::Value *newPtrv = builder.CreateBitCast(ptrv, ptrType);
       Value *newLoad = builder.CreateLoad(dataType, newPtrv);
       newInst = builder.CreateBitCast(newLoad, doubleDstType);
@@ -119,7 +119,8 @@ void HandleLoadStoreInstructions::visitStoreInst(llvm::StoreInst &I) {
 
     // %9 = bitcast double addrspace(8519681)* %8 to <2 x float> addrspace(8519681)*
     llvm::Type *floatDatType = IGCLLVM::FixedVectorType::get(builder.getFloatTy(), numVectorElements * 2);
-    llvm::PointerType *floatPtrType = llvm::PointerType::get(floatDatType, ptrv->getType()->getPointerAddressSpace());
+    llvm::PointerType *floatPtrType =
+        IGCLLVM::PointerType::get(floatDatType, ptrv->getType()->getPointerAddressSpace());
     llvm::Value *newPtrv = builder.CreateBitCast(ptrv, floatPtrType);
     I.setOperand(I.getPointerOperandIndex(), newPtrv);
 

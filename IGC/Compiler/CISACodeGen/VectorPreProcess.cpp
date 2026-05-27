@@ -151,7 +151,7 @@ public:
                       Value *mergeValue = nullptr) {
     IGCLLVM::IRBuilder<> builder(m_inst);
     if (isa<LoadInst>(m_inst)) {
-      Type *newPtrType = PointerType::get(returnType, ptr->getType()->getPointerAddressSpace());
+      Type *newPtrType = IGCLLVM::PointerType::get(returnType, ptr->getType()->getPointerAddressSpace());
       ptr = builder.CreateBitCast(ptr, newPtrType);
       LoadInst *newLI = builder.CreateAlignedLoad(returnType, ptr, IGCLLVM::getAlign(alignment), isVolatile);
       if (MDNode *lscMetadata = m_inst->getMetadata("lsc.cache.ctrl")) {
@@ -179,7 +179,7 @@ public:
     IGC_ASSERT(mergeValue->getType() == returnType);
 
     PredicatedLoadIntrinsic *PLI = getPredicatedLoad();
-    Type *newPtrType = PointerType::get(returnType, ptr->getType()->getPointerAddressSpace());
+    Type *newPtrType = IGCLLVM::PointerType::get(returnType, ptr->getType()->getPointerAddressSpace());
     ptr = builder.CreateBitCast(ptr, newPtrType);
     Type *types[3] = {returnType, ptr->getType(), returnType};
     Function *predLoadFunc = GenISAIntrinsic::getDeclaration(m_inst->getModule(), PLI->getIntrinsicID(), types);
@@ -193,7 +193,7 @@ public:
   Value *CreateConstScalarGEP(Type *returnType, Value *ptr, uint32_t offset) {
     IGCLLVM::IRBuilder<> builder(m_inst);
     if (isa<LoadInst, PredicatedLoadIntrinsic>(m_inst)) {
-      Type *ePtrType = PointerType::get(returnType->getScalarType(), ptr->getType()->getPointerAddressSpace());
+      Type *ePtrType = IGCLLVM::PointerType::get(returnType->getScalarType(), ptr->getType()->getPointerAddressSpace());
       ptr = builder.CreateBitCast(ptr, ePtrType);
       return builder.CreateConstGEP1_32(returnType->getScalarType(), ptr, offset);
     } else {
@@ -271,7 +271,7 @@ public:
     IRBuilder<> builder(m_inst);
     Type *newType = storedValue->getType();
     if (isa<StoreInst>(m_inst)) {
-      Type *newPtrType = PointerType::get(newType, ptr->getType()->getPointerAddressSpace());
+      Type *newPtrType = IGCLLVM::PointerType::get(newType, ptr->getType()->getPointerAddressSpace());
       ptr = builder.CreateBitCast(ptr, newPtrType);
       return alignment ? builder.CreateAlignedStore(storedValue, ptr, IGCLLVM::getAlign(alignment), isVolatile)
                        : builder.CreateStore(storedValue, ptr, isVolatile);
@@ -290,7 +290,7 @@ public:
       return builder.CreateCall(newStoreRawFunction, args);
     }
 
-    Type *newPtrType = PointerType::get(newType, ptr->getType()->getPointerAddressSpace());
+    Type *newPtrType = IGCLLVM::PointerType::get(newType, ptr->getType()->getPointerAddressSpace());
     ptr = builder.CreateBitCast(ptr, newPtrType);
     Type *types[2] = {ptr->getType(), newType};
     Function *predStoreFunc = GenISAIntrinsic::getDeclaration(getPredicatedStore()->getModule(),
@@ -305,7 +305,7 @@ public:
   Value *CreateConstScalarGEP(Type *storedType, Value *ptr, uint32_t offset) {
     IGCLLVM::IRBuilder<> builder(m_inst);
     if (isa<StoreInst, PredicatedStoreIntrinsic>(m_inst)) {
-      Type *ePtrType = PointerType::get(storedType->getScalarType(), ptr->getType()->getPointerAddressSpace());
+      Type *ePtrType = IGCLLVM::PointerType::get(storedType->getScalarType(), ptr->getType()->getPointerAddressSpace());
       ptr = builder.CreateBitCast(ptr, ePtrType);
       return builder.CreateConstGEP1_32(storedType->getScalarType(), ptr, offset);
     } else {

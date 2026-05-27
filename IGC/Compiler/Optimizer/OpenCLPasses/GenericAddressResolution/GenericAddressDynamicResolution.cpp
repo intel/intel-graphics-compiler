@@ -253,7 +253,7 @@ void GenericAddressDynamicResolution::resolveGAS(Instruction &I, Value *pointerO
   auto createBlock = [&](const Twine &BlockName, const Twine &LoadName, IGC::ADDRESS_SPACE addressSpace, Value *&load) {
     BasicBlock *BB = BasicBlock::Create(I.getContext(), BlockName, convergeBlock->getParent(), convergeBlock);
     builder.SetInsertPoint(BB);
-    PointerType *ptrType = IGCLLVM::get(pointerType, addressSpace);
+    PointerType *ptrType = IGCLLVM::PointerType::get(pointerType, addressSpace);
     Value *ptr = builder.CreateAddrSpaceCast(pointerOperand, ptrType);
     Instruction *generatedLoadStore = nullptr;
 
@@ -336,7 +336,7 @@ void GenericAddressDynamicResolution::resolveGASWithoutBranches(Instruction &I, 
 
   Value *nonLocalLoad = nullptr;
 
-  PointerType *ptrType = IGCLLVM::get(pointerType, ADDRESS_SPACE_GLOBAL);
+  PointerType *ptrType = IGCLLVM::PointerType::get(pointerType, ADDRESS_SPACE_GLOBAL);
   Value *globalPtr = builder.CreateAddrSpaceCast(pointerOperand, ptrType);
   Instruction *generatedLoadStore = nullptr;
 
@@ -434,7 +434,7 @@ bool GenericAddressDynamicResolution::visitIntrinsicCall(CallInst &I) {
     // If Block
     {
       IRBuilder<> ifBuilder(ifBlock);
-      PointerType *ptrType = IGCLLVM::get(pointerType, targetAS);
+      PointerType *ptrType = IGCLLVM::PointerType::get(pointerType, targetAS);
       newPtr = ifBuilder.CreateAddrSpaceCast(arg, ptrType);
       ifBuilder.CreateBr(convergeBlock);
     }

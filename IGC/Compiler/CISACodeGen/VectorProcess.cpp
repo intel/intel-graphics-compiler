@@ -307,7 +307,7 @@ bool VectorProcess::reLayoutLoadStore(Instruction *Inst) {
   } else {
     newVTy = FixedVectorType::get(new_eTy, new_nelts);
   }
-  Type *newPtrTy = PointerType::get(newVTy, PtrTy->getPointerAddressSpace());
+  Type *newPtrTy = IGCLLVM::PointerType::get(newVTy, PtrTy->getPointerAddressSpace());
   Value *newPtr;
   if (IntToPtrInst *i2p = dyn_cast<IntToPtrInst>(Ptr)) {
     newPtr = Builder.CreateIntToPtr(i2p->getOperand(0), newPtrTy, "IntToPtr2");

@@ -129,7 +129,7 @@ bool LdShrink::runOnFunction(Function &F) {
       Type *Ty = LI->getType();
       Type *ScalarTy = Ty->getScalarType();
       PointerType *PtrTy = cast<PointerType>(Ptr->getType());
-      PointerType *ScalarPtrTy = PointerType::get(ScalarTy, PtrTy->getAddressSpace());
+      PointerType *ScalarPtrTy = IGCLLVM::PointerType::get(ScalarTy, PtrTy->getAddressSpace());
       Value *ScalarPtr = Builder.CreatePointerCast(Ptr, ScalarPtrTy);
       if (Offset)
         ScalarPtr = Builder.CreateInBoundsGEP(ScalarTy, ScalarPtr, Builder.getInt32(Offset));

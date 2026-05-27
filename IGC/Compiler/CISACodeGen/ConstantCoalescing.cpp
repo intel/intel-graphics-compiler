@@ -717,14 +717,15 @@ void ConstantCoalescing::CombineTwoLoads(BufChunk *cov_chunk, Instruction *load,
       }
       // new IntToPtr and new load
       // cannot use irbuilder to create IntToPtr. It may create ConstantExpr instead of instruction
-      auto *ptrcast = CastInst::CreateBitOrPointerCast(eac, PointerType::get(vty, addrSpace), "twoScalar", load0);
+      auto *ptrcast =
+          CastInst::CreateBitOrPointerCast(eac, IGCLLVM::PointerType::get(vty, addrSpace), "twoScalar", load0);
       m_TT->RegisterNewValueAndAssignID(ptrcast);
       wiAns->incUpdateDepend(ptrcast, WIAnalysis::RANDOM);
       cov_chunk->chunkIO = irBuilder->CreateLoad(vty, ptrcast, false);
       wiAns->incUpdateDepend(cov_chunk->chunkIO, WIAnalysis::RANDOM);
     } else {
       IGC_ASSERT(isa<IntToPtrInst>(addr_ptr));
-      addr_ptr->mutateType(PointerType::get(vty, addrSpace));
+      addr_ptr->mutateType(IGCLLVM::PointerType::get(vty, addrSpace));
       cov_chunk->chunkIO = irBuilder->CreateLoad(cov_chunk->chunkIO->getType(), addr_ptr, false);
       wiAns->incUpdateDepend(cov_chunk->chunkIO, WIAnalysis::RANDOM);
       // modify the address calculation if the chunk-start is changed
@@ -1424,7 +1425,7 @@ Instruction *ConstantCoalescing::CreateChunkLoad(Instruction *seedi, BufChunk *c
     }
     Type *vty = IGCLLVM::FixedVectorType::get(load->getType()->getScalarType(), chunk->chunkSize);
     unsigned addrSpace = (cast<PointerType>(cb_ptr->getType()))->getAddressSpace();
-    PointerType *pty = PointerType::get(vty, addrSpace);
+    PointerType *pty = IGCLLVM::PointerType::get(vty, addrSpace);
     // cannot use irbuilder to create IntToPtr. It may create ConstantExpr instead of instruction
     Instruction *ptr = IntToPtrInst::Create(Instruction::IntToPtr, eac, pty, "chunkPtr", seedi);
     m_TT->RegisterNewValueAndAssignID(ptr);
@@ -1531,7 +1532,7 @@ void ConstantCoalescing::AdjustChunk(BufChunk *cov_chunk, uint start_adj, uint s
       IGC_ASSERT(isa<IntToPtrInst>(addr_ptr));
       Instruction *intToPtr = cast<Instruction>(addr_ptr);
       irBuilder->SetInsertPoint(intToPtr);
-      addr_ptr->mutateType(PointerType::get(vty, addrSpace));
+      addr_ptr->mutateType(IGCLLVM::PointerType::get(vty, addrSpace));
       Value *eac = intToPtr->getOperand(0);
       Instruction *expr = dyn_cast<Instruction>(eac);
       bool foundOffset = false;
@@ -1574,7 +1575,7 @@ void ConstantCoalescing::AdjustChunk(BufChunk *cov_chunk, uint start_adj, uint s
     } else {
       // gfx path
       IGC_ASSERT((isa<IntToPtrInst, BitCastInst>(addr_ptr)));
-      addr_ptr->mutateType(PointerType::get(vty, addrSpace));
+      addr_ptr->mutateType(IGCLLVM::PointerType::get(vty, addrSpace));
       Instruction *intToPtrInst = cast<Instruction>(addr_ptr);
       while (isa<IntToPtrInst, BitCastInst>(intToPtrInst->getOperand(0))) {
         intToPtrInst = cast<Instruction>(intToPtrInst->getOperand(0));
@@ -1764,7 +1765,7 @@ void ConstantCoalescing::EnlargeChunk(BufChunk *cov_chunk, uint size_adj) {
     Value *addr_ptr = cov_chunk->chunkIO->getOperand(0);
     unsigned addrSpace = (cast<PointerType>(addr_ptr->getType()))->getAddressSpace();
     if (isa<BitCastInst, IntToPtrInst>(addr_ptr)) {
-      addr_ptr->mutateType(PointerType::get(vty, addrSpace));
+      addr_ptr->mutateType(IGCLLVM::PointerType::get(vty, addrSpace));
     }
   } else {
     LdRawIntrinsic *ldRaw = cast<LdRawIntrinsic>(cov_chunk->chunkIO);
@@ -2012,8 +2013,8 @@ Instruction *ConstantCoalescing::CreateSamplerLoad(Value *index, Value *resource
   IGC_ASSERT(!resourcePtr || isa<PointerType>(resourcePtr->getType()));
   IGC_ASSERT(!resourcePtr || addrSpace == resourcePtr->getType()->getPointerAddressSpace());
 
-  PointerType *resourceType =
-      resourcePtr ? cast<PointerType>(resourcePtr->getType()) : PointerType::get(irBuilder->getFloatTy(), addrSpace);
+  PointerType *resourceType = resourcePtr ? cast<PointerType>(resourcePtr->getType())
+                                          : IGCLLVM::PointerType::get(irBuilder->getFloatTy(), addrSpace);
 
   Type *types[] = {IGCLLVM::FixedVectorType::get(irBuilder->getFloatTy(), 4), resourceType, resourceType};
   Function *l = GenISAIntrinsic::getDeclaration(curFunc->getParent(), llvm::GenISAIntrinsic::GenISA_ldptr, types);

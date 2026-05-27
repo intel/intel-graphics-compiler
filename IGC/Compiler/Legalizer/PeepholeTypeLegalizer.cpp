@@ -604,7 +604,7 @@ void PeepholeTypeLegalizer::legalizeUnaryInstruction(Instruction &I) {
 
       if (quotient > 1) {
         Type *I8xXTy = IGCLLVM::FixedVectorType::get(m_builder->getInt8Ty(), quotient);
-        Type *I8xXPtrTy = PointerType::get(I8xXTy, I.getType()->getPointerAddressSpace());
+        Type *I8xXPtrTy = IGCLLVM::PointerType::get(I8xXTy, I.getType()->getPointerAddressSpace());
 
         Value *newBitCastToVec = m_builder->CreateBitCast(I.getOperand(0), I8xXPtrTy);
         Value *newBitCastToScalar = m_builder->CreateBitCast(newBitCastToVec, I.getType());

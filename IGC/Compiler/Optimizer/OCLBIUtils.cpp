@@ -334,7 +334,7 @@ void CImagesBI::prepareImageBTI() {
   ConstantInt *imageIndex = CImagesUtils::getImageIndex(m_pParamMap, m_pCallInst, 0, pImg);
   IGC_ASSERT((isa<Argument, LoadInst>(pImg)));
   unsigned int addrSpace = EncodeAS4GFXResource(*imageIndex, RESOURCE);
-  Value *img = ConstantPointerNull::get(PointerType::get(pImg->getType(), addrSpace));
+  Value *img = ConstantPointerNull::get(IGCLLVM::PointerType::get(pImg->getType(), addrSpace));
   m_args.push_back(img); // BTI
 
   // prepareImageBTI() is called for standard image reads.  If there is an extension already tagged on
@@ -351,7 +351,7 @@ void CImagesBI::preparePairedResource() {
     ConstantInt *bindlessIndex = ConstantInt::get(m_pIntType, BINDLESS_BTI);
 
     uint32_t addrSpace = EncodeAS4GFXResource(*bindlessIndex, RESOURCE);
-    Type *ptrTy = llvm::PointerType::get(m_pFloatType, addrSpace);
+    Type *ptrTy = IGCLLVM::PointerType::get(m_pFloatType, addrSpace);
     Value *pairedResource = UndefValue::get(ptrTy);
     m_args.push_back(pairedResource);
     return;
@@ -361,7 +361,7 @@ void CImagesBI::preparePairedResource() {
   ConstantInt *imageIndex = CImagesUtils::getImageIndex(m_pParamMap, m_pCallInst, 0, pImg);
   IGC_ASSERT((isa<Argument, LoadInst>(pImg)));
   unsigned int addrSpace = EncodeAS4GFXResource(*imageIndex, RESOURCE);
-  Type *ptrTy = llvm::PointerType::get(m_pFloatType, addrSpace);
+  Type *ptrTy = IGCLLVM::PointerType::get(m_pFloatType, addrSpace);
   Value *pairedResource = UndefValue::get(ptrTy);
   m_args.push_back(pairedResource);
 }
@@ -429,7 +429,7 @@ void CImagesBI::createGetBufferPtr() {
     Value *pImg = m_pCallInst->getOperand(0);
     ConstantInt *bindlessIndex = ConstantInt::get(m_pIntType, BINDLESS_BTI);
     uint32_t addrSpace = EncodeAS4GFXResource(*bindlessIndex, BINDLESS);
-    Type *ptrTy = llvm::PointerType::get(m_pFloatType, addrSpace);
+    Type *ptrTy = IGCLLVM::PointerType::get(m_pFloatType, addrSpace);
 
     Value *basePointer = isa<IntegerType>(pImg->getType())
                              ? BitCastInst::CreateBitOrPointerCast(pImg, ptrTy, "bindless_img", m_pCallInst)
@@ -442,7 +442,7 @@ void CImagesBI::createGetBufferPtr() {
   ConstantInt *imageIndex = CImagesUtils::getImageIndex(m_pParamMap, m_pCallInst, 0, pImg);
   BufferType bufType = CImagesUtils::getImageType(m_pParamMap, m_pCallInst, 0);
   unsigned int addressSpace = IGC::EncodeAS4GFXResource(*imageIndex, bufType);
-  Type *ptrTy = llvm::PointerType::get(m_pFloatType, addressSpace);
+  Type *ptrTy = IGCLLVM::PointerType::get(m_pFloatType, addressSpace);
 
   Function *pFuncGetBufferPtr = getFunctionDeclaration(GenISAIntrinsic::GenISA_GetBufferPtr, ptrTy);
 
@@ -578,7 +578,7 @@ public:
       // Map the bindless pointer.
       ConstantInt *bindlessIndex = ConstantInt::get(m_pIntType, BINDLESS_BTI);
       unsigned int addressSpace = IGC::EncodeAS4GFXResource(*bindlessIndex, BufferType::BINDLESS_SAMPLER);
-      Type *ptrTy = llvm::PointerType::get(m_pFloatType, addressSpace);
+      Type *ptrTy = IGCLLVM::PointerType::get(m_pFloatType, addressSpace);
       Value *bindlessSampler =
           isa<IntegerType>(sampler->getType())
               ? BitCastInst::CreateBitOrPointerCast(sampler, ptrTy, "bindless_sampler", m_pCallInst)
@@ -648,7 +648,7 @@ public:
       return false;
     if (isa<ConstantInt>(samplerValue)) {
       unsigned int addrSpace = EncodeAS4GFXResource(*samplerValue, SAMPLER);
-      samplerValue = ConstantPointerNull::get(PointerType::get(samplerValue->getType(), addrSpace));
+      samplerValue = ConstantPointerNull::get(IGCLLVM::PointerType::get(samplerValue->getType(), addrSpace));
     }
 
     m_args.push_back(samplerValue);

@@ -23,6 +23,7 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPop.hpp"
 #include "llvmWrapper/ADT/StringRef.h"
 #include "llvmWrapper/IR/Type.h"
+#include "llvmWrapper/IR/DerivedTypes.h"
 
 #include "Compiler/CodeGenPublicEnums.h"
 #include "Probe/Assertion.h"
@@ -179,7 +180,7 @@ private:
     else if (IGCLLVM::starts_with(TyName, "spirv.Sampler"))
       AS = ADDRESS_SPACE_CONSTANT;
 
-    return PointerType::get(Ctx, AS);
+    return IGCLLVM::PointerType::get(Ctx, AS);
   }
 
   Type *remapStructType(StructType *StructTy) {

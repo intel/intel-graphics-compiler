@@ -486,7 +486,7 @@ RTBuilder::SyncStackPointerVal *RTBuilder::getSyncStackPointer(RTBuilder::RTMemo
   if (Mode == RTBuilder::STATEFUL) {
     IGC_ASSERT_MESSAGE(!globalBufferPtr, "Arbitrary global buffer is not supported in stateful mode");
     uint32_t AddrSpace = getRTSyncStackStatefulAddrSpace(*Ctx.getModuleMetaData());
-    Value *perLaneStackPointer = this->CreateIntToPtr(syncStackOffset, PointerType::get(PointeeTy, AddrSpace));
+    Value *perLaneStackPointer = this->CreateIntToPtr(syncStackOffset, IGCLLVM::PointerType::get(PointeeTy, AddrSpace));
     return static_cast<RTBuilder::SyncStackPointerVal *>(perLaneStackPointer);
   } else {
     Value *memBasePtr = nullptr;
@@ -498,7 +498,8 @@ RTBuilder::SyncStackPointerVal *RTBuilder::getSyncStackPointer(RTBuilder::RTMemo
     Value *stackBase = this->CreatePtrToInt(memBasePtr, this->getInt64Ty());
     Value *perLaneStackPointer = this->CreateSub(stackBase, this->CreateZExt(syncStackOffset, stackBase->getType()),
                                                  VALUE_NAME("HWMem.perLaneSyncStackPointer"));
-    perLaneStackPointer = this->CreateIntToPtr(perLaneStackPointer, PointerType::get(PointeeTy, ADDRESS_SPACE_GLOBAL));
+    perLaneStackPointer =
+        this->CreateIntToPtr(perLaneStackPointer, IGCLLVM::PointerType::get(PointeeTy, ADDRESS_SPACE_GLOBAL));
     return static_cast<RTBuilder::SyncStackPointerVal *>(perLaneStackPointer);
   }
 }
@@ -1642,7 +1643,7 @@ enum class RaytracingType {
 // will later be updated to null values with the actual types.
 NamedMDNode *initTypeMD(Module &M, uint32_t NumEntries) {
   auto *TypesMD = M.getOrInsertNamedMetadata(RaytracingTypesMDName);
-  auto *Val = UndefValue::get(PointerType::get(Type::getInt8Ty(M.getContext()), 0));
+  auto *Val = UndefValue::get(IGCLLVM::PointerType::get(Type::getInt8Ty(M.getContext()), 0));
   auto *Node = MDNode::get(M.getContext(), ConstantAsMetadata::get(Val));
 
   for (uint32_t i = 0; i < NumEntries; i++)

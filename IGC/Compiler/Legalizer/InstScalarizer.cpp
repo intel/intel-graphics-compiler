@@ -113,7 +113,7 @@ bool InstScalarizer::visitLoadInst(LoadInst &I) {
     unsigned NumElts = (unsigned)cast<IGCLLVM::FixedVectorType>(OrigTy)->getNumElements();
     unsigned Elt = 0;
 
-    Type *NewPtrTy = PointerType::get(EltTy, AS);
+    Type *NewPtrTy = IGCLLVM::PointerType::get(EltTy, AS);
     Value *OldPtr = I.getPointerOperand();
     Value *NewBasePtr = IRB->CreatePointerCast(OldPtr, NewPtrTy, Twine(OldPtr->getName(), getSuffix()) + Twine(Elt));
 
@@ -129,7 +129,7 @@ bool InstScalarizer::visitLoadInst(LoadInst &I) {
         if (PL != 1) {
           // Load <PL x EltTy>
           Type *VecTy = IGCLLVM::FixedVectorType::get(EltTy, PL);
-          Type *VecPtrTy = PointerType::get(VecTy, AS);
+          Type *VecPtrTy = IGCLLVM::PointerType::get(VecTy, AS);
           NewPtr = IRB->CreatePointerCast(NewPtr, VecPtrTy, Twine(NewPtr->getName(), ".ptrcast"));
           LoadInst *NewLd = IRB->CreateLoad(NewPtr, Twine(Name, ".vec") + Twine(Elt));
           TL->dupMemoryAttribute(NewLd, &I, Off);
@@ -158,7 +158,7 @@ bool InstScalarizer::visitLoadInst(LoadInst &I) {
   unsigned Width = TL->getTypeStoreSizeInBits(OrigTy);
 
   Type *NewTy = TL->getIntNTy(Width);
-  Type *NewPtrTy = PointerType::get(NewTy, AS);
+  Type *NewPtrTy = IGCLLVM::PointerType::get(NewTy, AS);
 
   // Load all bits.
   Value *OldPtr = I.getPointerOperand();
@@ -230,7 +230,7 @@ bool InstScalarizer::visitStoreInst(StoreInst &I) {
     unsigned NumElts = (unsigned)cast<IGCLLVM::FixedVectorType>(OrigTy)->getNumElements();
     unsigned Elt = 0;
 
-    Type *NewPtrTy = PointerType::get(EltTy, AS);
+    Type *NewPtrTy = IGCLLVM::PointerType::get(EltTy, AS);
     Value *OldPtr = I.getPointerOperand();
     Value *NewBasePtr = IRB->CreatePointerCast(OldPtr, NewPtrTy, Twine(OldPtr->getName(), getSuffix()) + Twine(Elt));
 
@@ -252,7 +252,7 @@ bool InstScalarizer::visitStoreInst(StoreInst &I) {
             Value *Idx = IRB->getInt32(i);
             Vec = IRB->CreateInsertElement(Vec, (*ValSeq)[Elt + i], Idx, Twine(Name, ".vec") + Twine(Elt + i));
           }
-          Type *VecPtrTy = PointerType::get(VecTy, AS);
+          Type *VecPtrTy = IGCLLVM::PointerType::get(VecTy, AS);
           NewPtr = IRB->CreatePointerCast(NewPtr, VecPtrTy, Twine(NewPtr->getName(), ".ptrcast"));
           StoreInst *NewSt = IRB->CreateStore(Vec, NewPtr);
           TL->dupMemoryAttribute(NewSt, &I, Off);
@@ -293,7 +293,7 @@ bool InstScalarizer::visitStoreInst(StoreInst &I) {
                           Twine(Name, ".chunk") + Twine(Elt));
   }
 
-  Type *NewPtrTy = PointerType::get(NewTy, AS);
+  Type *NewPtrTy = IGCLLVM::PointerType::get(NewTy, AS);
 
   Value *OldPtr = I.getPointerOperand();
   Value *NewPtr = IRB->CreatePointerCast(OldPtr, NewPtrTy, Twine(OldPtr->getName(), ".ptrcast"));

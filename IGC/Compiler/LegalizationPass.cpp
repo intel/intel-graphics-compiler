@@ -1250,7 +1250,7 @@ void Legalization::visitStoreInst(StoreInst &I) {
     IGC_ASSERT(nullptr != storePtr);
     IGC_ASSERT(nullptr != storePtr->getType());
 
-    PointerType *ptrTy = PointerType::get(legalTy, storePtr->getType()->getPointerAddressSpace());
+    PointerType *ptrTy = IGCLLVM::PointerType::get(legalTy, storePtr->getType()->getPointerAddressSpace());
     IntToPtrInst *intToPtr = dyn_cast<IntToPtrInst>(storePtr);
 
     if (intToPtr) {
@@ -2258,7 +2258,7 @@ void GenOptLegalizer::visitLoadInst(LoadInst &I) {
     //
     m_Builder->SetInsertPoint(&I);
     Type *I8x3Ty = IGCLLVM::FixedVectorType::get(m_Builder->getInt8Ty(), 3);
-    Type *I8x3PtrTy = PointerType::get(I8x3Ty, I.getPointerAddressSpace());
+    Type *I8x3PtrTy = IGCLLVM::PointerType::get(I8x3Ty, I.getPointerAddressSpace());
     Value *NewPtr = m_Builder->CreateBitCast(I.getPointerOperand(), I8x3PtrTy);
     Value *NewLD = IGC::cloneLoad(&I, I8x3Ty, NewPtr);
     Type *NewTy = ZEI->getType();
@@ -2296,14 +2296,14 @@ void GenOptLegalizer::visitStoreInst(StoreInst &I) {
       // %1 = store <3 x i8> %0, <3 x i8>* %newdst
       //
       Type *I8x3Ty = IGCLLVM::FixedVectorType::get(m_Builder->getInt8Ty(), 3);
-      Type *I8x3PtrTy = PointerType::get(I8x3Ty, LD->getPointerAddressSpace());
+      Type *I8x3PtrTy = IGCLLVM::PointerType::get(I8x3Ty, LD->getPointerAddressSpace());
       // Replace load of i24 to load of <3 x i8>
       m_Builder->SetInsertPoint(LD);
       Value *NewPtr = m_Builder->CreateBitCast(LD->getPointerOperand(), I8x3PtrTy);
       Value *NewLD = IGC::cloneLoad(LD, I8x3Ty, NewPtr);
       // Replace store of i24 to load of <3 x i8>
       m_Builder->SetInsertPoint(&I);
-      I8x3PtrTy = PointerType::get(I8x3Ty, I.getPointerAddressSpace());
+      I8x3PtrTy = IGCLLVM::PointerType::get(I8x3Ty, I.getPointerAddressSpace());
       NewPtr = m_Builder->CreateBitCast(I.getPointerOperand(), I8x3PtrTy);
       IGC::cloneStore(&I, NewLD, NewPtr);
       // Remove original LD and ST.
@@ -2329,7 +2329,7 @@ void GenOptLegalizer::visitStoreInst(StoreInst &I) {
         //
         m_Builder->SetInsertPoint(&I);
         Type *I8x3Ty = IGCLLVM::FixedVectorType::get(m_Builder->getInt8Ty(), 3);
-        Type *I8x3PtrTy = PointerType::get(I8x3Ty, I.getPointerAddressSpace());
+        Type *I8x3PtrTy = IGCLLVM::PointerType::get(I8x3Ty, I.getPointerAddressSpace());
 
         // Convert i32 to <4 x i8>
         Type *SrcTy = SV->getOperand(0)->getType();

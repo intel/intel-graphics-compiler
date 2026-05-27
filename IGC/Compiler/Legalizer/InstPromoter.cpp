@@ -249,7 +249,7 @@ bool InstPromoter::visitLoadInst(LoadInst &I) {
     ActualLoadBits = TL->getLargestLegalIntTypeSize(TotalLoadBits);
 
     Type *NewTy = TL->getIntNTy(ActualLoadBits);
-    Type *NewPtrTy = PointerType::get(NewTy, AS);
+    Type *NewPtrTy = IGCLLVM::PointerType::get(NewTy, AS);
 
     Value *NewPtr = TL->getPointerToElt(NewBasePtr, Off, NewPtrTy, Twine(NewBasePtr->getName(), ".off") + Twine(Off));
 
@@ -317,7 +317,7 @@ bool InstPromoter::visitStoreInst(StoreInst &I) {
     ActualStoreBits = TL->getLargestLegalIntTypeSize(TotalStoreBits);
 
     Type *NewTy = TL->getIntNTy(ActualStoreBits);
-    Type *NewPtrTy = PointerType::get(NewTy, AS);
+    Type *NewPtrTy = IGCLLVM::PointerType::get(NewTy, AS);
 
     Value *NewPtr = TL->getPointerToElt(NewBasePtr, Off, NewPtrTy, Twine(NewBasePtr->getName(), ".off") + Twine(Off));
 

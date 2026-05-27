@@ -82,19 +82,6 @@ index 0f98af69f12c..28d6f730cc8c 100644
  #include <bitset>
  #include <optional>
  
-diff --git a/llvm/include/llvm/IR/DerivedTypes.h b/llvm/include/llvm/IR/DerivedTypes.h
-index b22177c9e6c2..00780513a439 100644
---- a/llvm/include/llvm/IR/DerivedTypes.h
-+++ b/llvm/include/llvm/IR/DerivedTypes.h
-@@ -708,8 +708,6 @@ public:
- 
-   /// This constructs a pointer to an object of the specified type in a numbered
-   /// address space.
--  [[deprecated("PointerType::get with pointee type is pending removal. Use "
--               "Context overload.")]]
-   LLVM_ABI static PointerType *get(Type *ElementType, unsigned AddressSpace);
-   /// This constructs an opaque pointer to an object in a numbered address
-   /// space.
 diff --git a/llvm/include/llvm/IR/IRBuilder.h b/llvm/include/llvm/IR/IRBuilder.h
 index bc35caabeb84..4775df8d59d3 100644
 --- a/llvm/include/llvm/IR/IRBuilder.h

@@ -314,7 +314,7 @@ void WorkaroundAnalysis::convertReadSurfaceTypeAndFormatToA64(llvm::CallInst &I,
 
   // Convert pointer to integer, then back to pointer in ADDRESS_SPACE_CONSTANT
   Value *ptrAsInt = m_builder->CreatePtrToInt(resourcePtr, m_builder->getInt64Ty());
-  llvm::PointerType *ptrType = llvm::PointerType::get(m_builder->getInt32Ty(), ADDRESS_SPACE_CONSTANT);
+  llvm::PointerType *ptrType = IGCLLVM::PointerType::get(m_builder->getInt32Ty(), ADDRESS_SPACE_CONSTANT);
   Value *surfaceStatePtr = m_builder->CreateIntToPtr(ptrAsInt, ptrType);
 
   Value *dwordPtr;

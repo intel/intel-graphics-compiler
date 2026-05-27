@@ -20,6 +20,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/Instructions.h>
 #include <llvm/IR/InstIterator.h>
 #include "common/LLVMWarningsPop.hpp"
+#include "llvmWrapper/IR/DerivedTypes.h"
 #include "Probe/Assertion.h"
 
 using namespace llvm;
@@ -101,10 +102,10 @@ void FixResourcePtr::RemoveGetBufferPtr(GenIntrinsicInst *bufPtr, Value *bufIdx)
     IGC_ASSERT(nullptr != instType);
     PointerType *ptrType = nullptr;
     if (IGCLLVM::isPointerTy(instType)) {
-      ptrType = PointerType::get(bufPtr->getContext(), outAS);
+      ptrType = IGCLLVM::PointerType::get(bufPtr->getContext(), outAS);
     } else {
       Type *eltType = IGCLLVM::getNonOpaquePtrEltTy(instType); // Legacy code: getNonOpaquePtrEltTy
-      ptrType = PointerType::get(eltType, outAS);
+      ptrType = IGCLLVM::PointerType::get(eltType, outAS);
     }
     inst->mutateType(ptrType);
     // iterate all the uses, put bitcast on the worklist

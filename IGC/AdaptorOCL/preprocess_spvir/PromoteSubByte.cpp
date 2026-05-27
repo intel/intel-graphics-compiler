@@ -329,11 +329,12 @@ Type *PromoteSubByte::getOrCreatePromotedType(Type *type) {
 // as support for this overload is dropped, this line should not be reachable for opaque pointer based compilation
 // as IGCLLVM::isPointerTy(pointerType) is always true so it's not needed to handle PointerType::get for newer LLVM
 #if LLVM_VERSION_MAJOR < 17
-    newType = IGCLLVM::isPointerTy(pointerType)
-                  ? pointerType
-                  : PointerType::get(getOrCreatePromotedType(
-                                         IGCLLVM::getNonOpaquePtrEltTy(type)), // Legacy code: getNonOpaquePtrEltTy
-                                     pointerType->getAddressSpace());
+    newType =
+        IGCLLVM::isPointerTy(pointerType)
+            ? pointerType
+            : IGCLLVM::PointerType::get(
+                  getOrCreatePromotedType(IGCLLVM::getNonOpaquePtrEltTy(type)), // Legacy code: getNonOpaquePtrEltTy
+                  pointerType->getAddressSpace());
 #else
     newType = pointerType;
 #endif
@@ -661,7 +662,7 @@ Constant *PromoteSubByte::promoteConstant(Constant *constant) {
     auto newPointerElementType = getOrCreatePromotedType(
         IGCLLVM::getNonOpaquePtrEltTy(constantPointerNull->getType())); // Legacy code: getNonOpaquePtrEltTy
     return ConstantPointerNull::get(
-        PointerType::get(newPointerElementType, constantPointerNull->getType()->getAddressSpace()));
+        IGCLLVM::PointerType::get(newPointerElementType, constantPointerNull->getType()->getAddressSpace()));
 #endif
   } else if (auto constantVector = dyn_cast<ConstantVector>(constant)) {
     if (!typeNeedsPromotion(constantVector->getType())) {

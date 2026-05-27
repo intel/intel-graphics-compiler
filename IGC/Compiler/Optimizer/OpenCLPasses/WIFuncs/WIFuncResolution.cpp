@@ -338,7 +338,7 @@ llvm::Value *LowerImplicitArgIntrinsics::BuildLoadInst(llvm::CallInst &CI, unsig
 
   llvm::Value *LoadedData = nullptr;
   auto F = CI.getFunction();
-  auto Int32Ptr = PointerType::get(Type::getInt32Ty(F->getParent()->getContext()), AddrSpace);
+  auto Int32Ptr = IGCLLVM::PointerType::get(Type::getInt32Ty(F->getParent()->getContext()), AddrSpace);
   auto ElemType = DataType->getScalarType();
   auto IntToPtr = Builder.CreateIntToPtr(
       Builder.getIntN(F->getParent()->getDataLayout().getPointerSizeInBits(AddrSpace), AlignedOffset), Int32Ptr);
@@ -361,7 +361,7 @@ llvm::Value *LowerImplicitArgIntrinsics::BuildLoadInst(llvm::CallInst &CI, unsig
   }
 
   auto LoadType = IGCLLVM::FixedVectorType::get(ElemType, LoadByteSize / ElemByteSize);
-  auto PtrType = PointerType::get(LoadType, AddrSpace);
+  auto PtrType = IGCLLVM::PointerType::get(LoadType, AddrSpace);
   auto BitCast = Builder.CreateBitCast(IntToPtr, PtrType);
   auto LoadInst = Builder.CreateLoad(LoadType, BitCast);
   LoadInst->setAlignment(IGCLLVM::getCorrectAlign(ElemByteSize));
@@ -807,7 +807,7 @@ void LowerImplicitArgIntrinsics::visitCallInst(CallInst &CI) {
       llvm::Value *Result = nullptr;
       if (!m_ctx->platform.isProductChildOf(IGFX_XE_HP_SDV)) {
         // Get local id buffer base ptr
-        auto Int32Ptr = PointerType::get(Type::getInt32Ty(F->getParent()->getContext()), ADDRESS_SPACE_GLOBAL);
+        auto Int32Ptr = IGCLLVM::PointerType::get(Type::getInt32Ty(F->getParent()->getContext()), ADDRESS_SPACE_GLOBAL);
         auto *M = CI.getModule();
         SmallVector<Type *, 1> Args = {Int32Ptr};
         auto *Func = GenISAIntrinsic::getDeclaration(M, GenISAIntrinsic::GenISA_GetLocalIdBufferPtr, Args);

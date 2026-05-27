@@ -297,7 +297,7 @@ void LegalizeFunctionSignatures::FixFunctionSignatures(Module &M) {
       retTypeOption = ReturnOpt::RETURN_STRUCT;
     } else if (!isLegalSignatureType(M, pFunc->getReturnType(), isStackCall)) {
       retTypeOption = ReturnOpt::RETURN_BY_REF;
-      argTypes.push_back(PointerType::get(pFunc->getReturnType(), 0));
+      argTypes.push_back(IGCLLVM::PointerType::get(pFunc->getReturnType(), 0));
     } else if (!isLegalIntVectorType(M, pFunc->getReturnType())) {
       retTypeOption = ReturnOpt::RETURN_LEGAL_INT;
     }
@@ -322,7 +322,7 @@ void LegalizeFunctionSignatures::FixFunctionSignatures(Module &M) {
         }
       } else if (!isLegalSignatureType(M, ai->getType(), isStackCall)) {
         fixArgType = true;
-        argTypes.push_back(PointerType::get(ai->getType(), 0));
+        argTypes.push_back(IGCLLVM::PointerType::get(ai->getType(), 0));
       } else {
         argTypes.push_back(ai->getType());
       }
@@ -655,7 +655,7 @@ void LegalizeFunctionSignatures::FixCallInstruction(Module &M, CallInst *callIns
                                                                      : callInst->getType();
       newFnTy = FunctionType::get(retType, argTypes, false);
       Value *calledValue = IGCLLVM::getCalledValue(callInst);
-      newCalledValue = builder.CreatePointerCast(calledValue, PointerType::get(newFnTy, 0));
+      newCalledValue = builder.CreatePointerCast(calledValue, IGCLLVM::PointerType::get(newFnTy, 0));
     } else {
       // Directly call the new function pointer
       IGC_ASSERT(oldToNewFuncMap.find(calledFunc) != oldToNewFuncMap.end());

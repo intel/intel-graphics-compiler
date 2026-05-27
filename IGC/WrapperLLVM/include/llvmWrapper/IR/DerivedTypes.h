@@ -13,6 +13,7 @@ SPDX-License-Identifier: MIT
 #include "IGC/common/LLVMWarningsPush.hpp"
 #include "llvm/Config/llvm-config.h"
 #include "llvm/Support/Casting.h"
+#include "llvm/IR/LLVMContext.h"
 #include "llvm/IR/DerivedTypes.h"
 #include "llvm/IR/Module.h"
 #include "IGC/common/LLVMWarningsPop.hpp"
@@ -42,16 +43,33 @@ inline llvm::Type *getWithNewBitWidth(const llvm::Type *Ty, unsigned NewBitWidth
   return Ty->getWithNewBitWidth(NewBitWidth);
 }
 
+namespace PointerType {
+
 inline llvm::PointerType *get(llvm::PointerType *PT, unsigned AddressSpace) {
 #if LLVM_VERSION_MAJOR < 17
   return llvm::PointerType::getWithSamePointeeType(PT, AddressSpace);
-#elif LLVM_VERSION_MAJOR >= 22
-  // LLVM 22 drops support for PointerType::get(llvm::Type *) in favour of PointerType::get(LLVMContext &) only
-  return llvm::PointerType::get(PT->getContext(), AddressSpace);
 #else
-  return llvm::PointerType::get(PT, AddressSpace);
+  return llvm::PointerType::get(PT->getContext(), AddressSpace);
 #endif
 }
+
+inline llvm::PointerType *get(llvm::Type *ElementType, unsigned AddressSpace) {
+#if LLVM_VERSION_MAJOR < 22
+  return llvm::PointerType::get(ElementType, AddressSpace);
+#else
+  return llvm::PointerType::get(ElementType->getContext(), AddressSpace);
+#endif
+}
+
+inline llvm::PointerType *get(llvm::LLVMContext &C, unsigned AddressSpace) {
+#if LLVM_VERSION_MAJOR < 15
+  return llvm::PointerType::get(llvm::Type::getInt8Ty(C), AddressSpace);
+#else
+  return llvm::PointerType::get(C, AddressSpace);
+#endif
+}
+
+} // namespace PointerType
 
 inline bool isOpaqueOrPointeeTypeMatches(llvm::PointerType *PT, llvm::Type *Ty) {
 #if LLVM_VERSION_MAJOR < 17

@@ -499,7 +499,7 @@ void BIImport::fixInvalidBitcasts(llvm::Module &M) {
       PointerType *DstPtrType = dyn_cast<PointerType>(BitCastI->getType());
 
       // New bitcast
-      PointerType *FinalBitCastType = IGCLLVM::get(DstPtrType, SrcPtrType->getAddressSpace());
+      PointerType *FinalBitCastType = IGCLLVM::PointerType::get(DstPtrType, SrcPtrType->getAddressSpace());
       BitCastInst *NewBitCastI = new BitCastInst(BitCastI->getOperand(0), FinalBitCastType, "bcast", BitCastI);
 
       // New addrspacecast
@@ -702,7 +702,7 @@ bool BIImport::runOnModule(Module &M) {
           Value *argBuffer = CI->getArgOperand(1);
           // Function type is always void (i8*)
           FunctionType *funcTy = FunctionType::get(builder.getVoidTy(), {argBuffer->getType()}, false);
-          Value *funcPtr = builder.CreatePointerCast(CI->getArgOperand(0), PointerType::get(funcTy, 0));
+          Value *funcPtr = builder.CreatePointerCast(CI->getArgOperand(0), IGCLLVM::PointerType::get(funcTy, 0));
           // Replace builtin with the function call
           CallInst *callFunc = builder.CreateCall(funcTy, funcPtr, argBuffer);
           callFunc->setCallingConv(llvm::CallingConv::SPIR_FUNC);

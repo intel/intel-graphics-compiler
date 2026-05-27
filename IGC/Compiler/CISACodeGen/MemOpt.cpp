@@ -1388,7 +1388,7 @@ bool MemOpt::mergeLoad(ALoadInst &LeadingLoad, MemRefListTy::iterator aMI, MemRe
     IGC_ASSERT_MESSAGE(FirstOffset % LdScalarSize == 0, "Remainder is expected to be 0!");
 
     Value *Idx = Builder.getInt64(FirstOffset / LdScalarSize);
-    Type *Ty = PointerType::get(LeadingLoadScalarType, LeadingLoad.getPointerAddressSpace());
+    Type *Ty = IGCLLVM::PointerType::get(LeadingLoadScalarType, LeadingLoad.getPointerAddressSpace());
     Ptr = Builder.CreateBitCast(Ptr, Ty);
 
     GEPOperator *FirstGEP = dyn_cast<GEPOperator>(FirstLoad.getPointerOperand());
@@ -1399,7 +1399,7 @@ bool MemOpt::mergeLoad(ALoadInst &LeadingLoad, MemRefListTy::iterator aMI, MemRe
   }
 
   Type *NewLoadType = IGCLLVM::FixedVectorType::get(LeadingLoadScalarType, NumElts);
-  Type *NewPointerType = PointerType::get(NewLoadType, LeadingLoad.getPointerAddressSpace());
+  Type *NewPointerType = IGCLLVM::PointerType::get(NewLoadType, LeadingLoad.getPointerAddressSpace());
   Value *NewPointer = Builder.CreateBitCast(Ptr, NewPointerType);
 
   // Prepare Merge Value if needed:
@@ -1810,7 +1810,7 @@ bool MemOpt::mergeStore(AStoreInst &LeadingStore, MemRefListTy::iterator MI, Mem
   // We don't need to recalculate the new pointer as we merge stores to the
   // tailing store, which is dominated by all mergable stores' address
   // calculations.
-  Type *NewPointerType = PointerType::get(NewStoreType, LeadingStore.getPointerAddressSpace());
+  Type *NewPointerType = IGCLLVM::PointerType::get(NewStoreType, LeadingStore.getPointerAddressSpace());
   Value *NewPointer = Builder.CreateBitCast(FirstStore.getPointerOperand(), NewPointerType);
   Instruction *NewStore = FirstStore.CreateAlignedStore(Builder, NewStoreVal, NewPointer);
   NewStore->setDebugLoc(TailingStore->getDebugLoc());
@@ -4835,7 +4835,7 @@ void LdStCombine::createCombinedStores(BasicBlock *BB) {
 
     Value *Addr = leadStore.getPointerOperand();
     PointerType *PTy = cast<PointerType>(Addr->getType());
-    PointerType *nPTy = PointerType::get(VTy, PTy->getAddressSpace());
+    PointerType *nPTy = IGCLLVM::PointerType::get(VTy, PTy->getAddressSpace());
     Value *nAddr = irBuilder.CreateBitCast(Addr, nPTy);
     Instruction *finalStore = leadStore.CreateAlignedStore(irBuilder, nV, nAddr, leadStore.isVolatile());
     finalStore->setDebugLoc(anchorStore->getDebugLoc());
@@ -4946,7 +4946,7 @@ void LdStCombine::createCombinedLoads(BasicBlock *BB) {
       if (MI != m_instOrder.end() && MI->second > anchorLoadNum) {
         Value *anchorAddr = ALoadInst::get(anchorLoad)->getPointerOperand();
         Type *bTy = Type::getInt8Ty(leadLoad.inst()->getContext());
-        Type *nTy = PointerType::get(bTy, leadLoad.getPointerAddressSpace());
+        Type *nTy = IGCLLVM::PointerType::get(bTy, leadLoad.getPointerAddressSpace());
         Value *nAddr = irBuilder.CreateBitCast(anchorAddr, nTy);
         Value *aIdx = irBuilder.getInt64(leadOffset - anchorOffset);
         GEPOperator *aGEP = dyn_cast<GEPOperator>(anchorAddr);
@@ -4958,7 +4958,7 @@ void LdStCombine::createCombinedLoads(BasicBlock *BB) {
       };
     }
     PointerType *PTy = cast<PointerType>(Addr->getType());
-    PointerType *nPTy = PointerType::get(VTy, PTy->getAddressSpace());
+    PointerType *nPTy = IGCLLVM::PointerType::get(VTy, PTy->getAddressSpace());
     Value *nAddr = irBuilder.CreateBitCast(Addr, nPTy);
 
     // Merge "merge values" of each predicated load in loadedValues to use in a new load.

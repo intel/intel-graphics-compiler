@@ -16,6 +16,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/DerivedTypes.h>
 #include <llvm/IR/IRBuilder.h>
 #include "LLVMWarningsPop.hpp"
+#include "llvmWrapper/IR/DerivedTypes.h"
 #include <map>
 
 using namespace IGC;
@@ -113,7 +114,7 @@ void ResolveImageImplicitArgsForBindless::visitCallInst(CallInst &CI) {
 
   ConstantInt *BindlessIndex = Builder.getInt32(BINDLESS_BTI);
   uint32_t AddrSpace = EncodeAS4GFXResource(*BindlessIndex, BufferType::BINDLESS);
-  Type *BindlessOffsetPtrTy = PointerType::get(Builder.getInt8Ty(), AddrSpace);
+  Type *BindlessOffsetPtrTy = IGCLLVM::PointerType::get(Builder.getInt8Ty(), AddrSpace);
 
   Value *Img = CI.getOperand(0);
   Value *ImgToInt = isa<IntegerType>(Img->getType()) ? Builder.CreateZExtOrTrunc(Img, Builder.getInt64Ty())

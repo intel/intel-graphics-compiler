@@ -18,6 +18,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/Function.h>
 #include <llvm/IR/IRBuilder.h>
 #include "common/LLVMWarningsPop.hpp"
+#include "llvmWrapper/IR/DerivedTypes.h"
 
 #include "CISACodeGen/helper.h"
 #include "Compiler/IGCPassSupport.h"
@@ -66,7 +67,7 @@ static llvm::Function *getPlaceholderFn(llvm::Function *F) {
   IRBuilder<> builder(BB);
 
   if (IGC_GET_FLAG_VALUE(CrashOnDroppedFnAccess)) {
-    PointerType *PtrAsTy = PointerType::get(Type::getInt32Ty(Ctx), ::IGC::ADDRESS_SPACE_GLOBAL);
+    PointerType *PtrAsTy = IGCLLVM::PointerType::get(Type::getInt32Ty(Ctx), ::IGC::ADDRESS_SPACE_GLOBAL);
     Value *NullPtr = Constant::getNullValue(PtrAsTy);
     builder.CreateStore(ConstantInt::get(Type::getInt32Ty(Ctx), 42), NullPtr, true);
     builder.CreateUnreachable();

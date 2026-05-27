@@ -12,6 +12,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/raw_ostream.h"
 #include "common/LLVMWarningsPop.hpp"
+#include "llvmWrapper/IR/DerivedTypes.h"
 #include "Probe/Assertion.h"
 
 #define DEBUG_TYPE "type-legalizer"
@@ -349,7 +350,7 @@ bool InstExpander::visitLoadInst(LoadInst &I) {
   // After expanding, illegal types are represented in a sequence of types
   // of the major type except the last one, which may be a different type.
   Type *MajorTy = TySeq->front();
-  Type *MajorPtrTy = PointerType::get(MajorTy, AS);
+  Type *MajorPtrTy = IGCLLVM::PointerType::get(MajorTy, AS);
 
   Value *OldPtr = I.getPointerOperand();
   Value *NewBasePtr = IRB->CreatePointerCast(OldPtr, MajorPtrTy, Twine(OldPtr->getName(), getSuffix()) + Twine(0));
@@ -357,7 +358,7 @@ bool InstExpander::visitLoadInst(LoadInst &I) {
   unsigned Part = 0;
   unsigned Off = 0;
   for (auto *Ty : *TySeq) {
-    Value *NewPtr = TL->getPointerToElt(NewBasePtr, Part, PointerType::get(Ty, AS),
+    Value *NewPtr = TL->getPointerToElt(NewBasePtr, Part, IGCLLVM::PointerType::get(Ty, AS),
                                         Twine(OldPtr->getName(), getSuffix()) + Twine(Part));
     LoadInst *NewLd = IRB->CreateLoad(NewPtr, Twine(I.getName(), getSuffix()) + Twine(Part));
     TL->dupMemoryAttribute(NewLd, &I, Off);
@@ -385,7 +386,7 @@ bool InstExpander::visitStoreInst(StoreInst &I) {
   // After expanding, illegal types are represented in a sequence of types
   // of the major type except the last one, which may be a different type.
   Type *MajorTy = TySeq->front();
-  Type *MajorPtrTy = PointerType::get(MajorTy, AS);
+  Type *MajorPtrTy = IGCLLVM::PointerType::get(MajorTy, AS);
 
   Value *OldPtr = I.getPointerOperand();
   Value *NewBasePtr = IRB->CreatePointerCast(OldPtr, MajorPtrTy, Twine(OldPtr->getName(), getSuffix()) + Twine(0));
@@ -393,7 +394,7 @@ bool InstExpander::visitStoreInst(StoreInst &I) {
   unsigned Part = 0;
   unsigned Off = 0;
   for (auto *Ty : *TySeq) {
-    Value *NewPtr = TL->getPointerToElt(NewBasePtr, Part, PointerType::get(Ty, AS),
+    Value *NewPtr = TL->getPointerToElt(NewBasePtr, Part, IGCLLVM::PointerType::get(Ty, AS),
                                         Twine(OldPtr->getName(), getSuffix()) + Twine(Part));
     StoreInst *NewSt = IRB->CreateStore((*ValSeq)[Part], NewPtr);
     TL->dupMemoryAttribute(NewSt, &I, Off);

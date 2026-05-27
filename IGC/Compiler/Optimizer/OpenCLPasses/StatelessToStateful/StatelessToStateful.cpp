@@ -740,7 +740,7 @@ void StatelessToStateful::promoteIntrinsic(InstructionInfo &II) {
   Module *M = m_F->getParent();
   const DebugLoc &DL = I->getDebugLoc();
   GenISAIntrinsic::ID const intrinID = I->getIntrinsicID();
-  PointerType *pTy = IGCLLVM::get(dyn_cast<PointerType>(II.ptr->getType()), II.getStatefulAddrSpace());
+  PointerType *pTy = IGCLLVM::PointerType::get(dyn_cast<PointerType>(II.ptr->getType()), II.getStatefulAddrSpace());
 
   if (m_targetAddressing == TargetAddressing::BINDLESS) {
     Argument *srcOffset =
@@ -827,7 +827,7 @@ void StatelessToStateful::promoteIntrinsic(InstructionInfo &II) {
 
 void StatelessToStateful::promoteLoad(InstructionInfo &II) {
   LoadInst *I = cast<LoadInst>(II.statelessInst);
-  PointerType *pTy = PointerType::get(I->getType(), II.getStatefulAddrSpace());
+  PointerType *pTy = IGCLLVM::PointerType::get(I->getType(), II.getStatefulAddrSpace());
 
   const DebugLoc &DL = I->getDebugLoc();
 
@@ -871,7 +871,7 @@ void StatelessToStateful::promoteStore(InstructionInfo &II) {
   StoreInst *I = cast<StoreInst>(II.statelessInst);
 
   Value *dataVal = I->getValueOperand();
-  PointerType *pTy = PointerType::get(dataVal->getType(), II.getStatefulAddrSpace());
+  PointerType *pTy = IGCLLVM::PointerType::get(dataVal->getType(), II.getStatefulAddrSpace());
 
   const DebugLoc &DL = I->getDebugLoc();
 

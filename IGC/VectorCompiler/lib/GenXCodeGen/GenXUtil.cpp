@@ -1710,7 +1710,8 @@ Instruction *genx::foldBitCastInst(Instruction *Inst) {
     Value *Val = SI->getValueOperand();
     if (auto CI = dyn_cast<BitCastInst>(Val)) {
       auto SrcTy = CI->getSrcTy();
-      auto NewPtrTy = PointerType::get(SrcTy, SI->getPointerAddressSpace());
+      auto NewPtrTy =
+          IGCLLVM::PointerType::get(SrcTy, SI->getPointerAddressSpace());
       auto NewPtr = ConstantExpr::getBitCast(GV, NewPtrTy);
       StoreInst *NewSI = new StoreInst(CI->getOperand(0), NewPtr,
                                        /*volatile*/ SI->isVolatile(), Inst);
@@ -1721,8 +1722,8 @@ Instruction *genx::foldBitCastInst(Instruction *Inst) {
     }
   } else if (LI && LI->hasOneUse()) {
     if (auto CI = dyn_cast<BitCastInst>(LI->user_back())) {
-      auto NewPtrTy =
-          PointerType::get(CI->getType(), LI->getPointerAddressSpace());
+      auto NewPtrTy = IGCLLVM::PointerType::get(CI->getType(),
+                                                LI->getPointerAddressSpace());
       auto NewPtr = ConstantExpr::getBitCast(GV, NewPtrTy);
       auto NewLI = new LoadInst(CI->getType(), NewPtr, "",
                                 /*volatile*/ LI->isVolatile(), Inst);

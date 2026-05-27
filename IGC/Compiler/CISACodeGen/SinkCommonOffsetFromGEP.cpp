@@ -11,6 +11,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
 #include "Compiler/IGCPassSupport.h"
 #include "llvm/IR/DerivedTypes.h"
+#include "llvmWrapper/IR/DerivedTypes.h"
 #include <vector>
 #include <algorithm>
 #include "llvmWrapper/IR/Instructions.h"
@@ -381,7 +382,7 @@ static bool sinkCommonOffsetForGroup(const CommonBaseGroup &Group) {
     }
 
     if (auto ASC = Group.Casts.find(BB)->second) {
-      auto PType = PointerType::get(NewPointerElType, ASC->getDestAddressSpace());
+      auto PType = IGCLLVM::PointerType::get(NewPointerElType, ASC->getDestAddressSpace());
       auto BaseASC = new AddrSpaceCastInst(NewPointer, PType, "", BB->getTerminator());
       NewPointer = BaseASC;
     }

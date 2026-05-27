@@ -246,7 +246,7 @@ inline void ReplaceUseWith(Value *user, Value *oldOp, Type *newOpTy, Value *newO
       Type *newDstType = GetNewType(scalarType, numElements);
       newInstElTy = newDstType;
       if (bc->getType()->isPointerTy()) {
-        newDstType = PointerType::get(newDstType, ADDRESS_SPACE_PRIVATE);
+        newDstType = IGCLLVM::PointerType::get(newDstType, ADDRESS_SPACE_PRIVATE);
       }
       newInst = builder.CreateBitCast(newOp, newDstType, bc->getName());
     }

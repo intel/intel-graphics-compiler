@@ -126,7 +126,7 @@ bool GASPropagator::visitBitCastInst(BitCastInst &I) {
     // Push `addrspacecast` forward by replacing this `bitcast` on GAS with the
     // one on non-GAS followed by a new `addrspacecast` to GAS.
     Type *DstTy = IGCLLVM::getNonOpaquePtrEltTy(DstPtrTy); // Legacy code: getNonOpaquePtrEltTy
-    PointerType *TransPtrTy = PointerType::get(DstTy, SrcPtrTy->getAddressSpace());
+    PointerType *TransPtrTy = IGCLLVM::PointerType::get(DstTy, SrcPtrTy->getAddressSpace());
     if (IGCLLVM::getNonOpaquePtrEltTy(SrcPtrTy) != DstTy) // Legacy code: getNonOpaquePtrEltTy
       Src = IRB.CreateBitCast(Src, TransPtrTy);
   }
@@ -151,7 +151,7 @@ bool GASPropagator::visitGetElementPtrInst(GetElementPtrInst &I) {
   // Push `getelementptr` forward by replacing this `bitcast` on GAS with the
   // one on non-GAS followed by a new `addrspacecast` to GAS.
   Type *DstTy = I.getResultElementType();
-  PointerType *TransPtrTy = PointerType::get(DstTy, SrcPtrTy->getAddressSpace());
+  PointerType *TransPtrTy = IGCLLVM::PointerType::get(DstTy, SrcPtrTy->getAddressSpace());
   TheUse->set(TheVal);
   I.mutateType(TransPtrTy);
   Value *NewPtr = IRB.CreateAddrSpaceCast(&I, DstPtrTy);
@@ -274,7 +274,7 @@ bool GASPropagator::visitSelect(SelectInst &I) {
 
   // Push 'addrspacecast' forward by changing the select return type to non-GAS pointer
   // followed by a new 'addrspacecast' to GAS
-  PointerType *TransPtrTy = IGCLLVM::get(DstPtrTy, NonGASPtrTy->getAddressSpace());
+  PointerType *TransPtrTy = IGCLLVM::PointerType::get(DstPtrTy, NonGASPtrTy->getAddressSpace());
   I.mutateType(TransPtrTy);
   Value *NewPtr = IRB.CreateAddrSpaceCast(&I, DstPtrTy);
 

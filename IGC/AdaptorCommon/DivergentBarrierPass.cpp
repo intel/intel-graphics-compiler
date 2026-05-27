@@ -183,7 +183,7 @@ Value *DivergentBarrierPass::allocateSLM(IRBuilder<> &IRB) {
     TGSMSize += 4;
 
     auto *ThreadDoneCntPtr =
-        IRB.CreateIntToPtr(IRB.getInt32(Offset), PointerType::get(IRB.getInt32Ty(), ADDRESS_SPACE_LOCAL));
+        IRB.CreateIntToPtr(IRB.getInt32(Offset), IGCLLVM::PointerType::get(IRB.getInt32Ty(), ADDRESS_SPACE_LOCAL));
 
     return ThreadDoneCntPtr;
   } else {

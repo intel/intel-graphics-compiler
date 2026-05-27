@@ -18,6 +18,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/ADT/STLExtras.h>
 #include <llvm/IR/BasicBlock.h>
 #include "common/LLVMWarningsPop.hpp"
+#include "llvmWrapper/IR/DerivedTypes.h"
 
 using namespace llvm;
 using namespace IGC;
@@ -112,8 +113,9 @@ static void lowerLoadsfromPHI(PHINode *PHI) {
       if (AddrSpaceCast) {
         IRBuilder<> Builder(LoadSource);
         if (isa<BitCastInst>(I)) {
-          auto *NewBitcast = Builder.CreateBitCast(
-              AddrSpaceCast->getOperand(0), PointerType::get(PHILoad->getType(), AddrSpaceCast->getSrcAddressSpace()));
+          auto *NewBitcast =
+              Builder.CreateBitCast(AddrSpaceCast->getOperand(0),
+                                    IGCLLVM::PointerType::get(PHILoad->getType(), AddrSpaceCast->getSrcAddressSpace()));
           LoadSource = cast<Instruction>(NewBitcast);
         } else if (isa<LoadInst>(I)) {
           auto *NewLoad = Builder.CreateLoad(PHILoad->getType(), AddrSpaceCast->getOperand(0));

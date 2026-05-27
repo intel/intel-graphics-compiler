@@ -2154,7 +2154,7 @@ Value *JointMatrixFuncsResolutionPass::ResolveFill(CallInst *CI) {
   if (fillValue->getType()->isPointerTy()) {
     IntegerType *sliceElmentType = Type::getIntNTy(builder.getContext(), desc.bitWidth);
     PointerType *PT = dyn_cast<PointerType>(fillValue->getType());
-    fillValue = builder.CreateBitCast(fillValue, PointerType::get(sliceElmentType, PT->getAddressSpace()));
+    fillValue = builder.CreateBitCast(fillValue, IGCLLVM::PointerType::get(sliceElmentType, PT->getAddressSpace()));
     fillValue = builder.CreateLoad(sliceElmentType, fillValue);
   }
 
@@ -2821,7 +2821,7 @@ Type *JointMatrixFuncsResolutionPass::ResolvePointerType(Type *oldType) {
   if (!isOrContainsMatrixType(elemType))
     return oldType;
 
-  Type *newType = PointerType::get(ResolveTypes(elemType), ptrType->getAddressSpace());
+  Type *newType = IGCLLVM::PointerType::get(ResolveTypes(elemType), ptrType->getAddressSpace());
   CacheResolvedTypes(oldType, newType);
   return newType;
 }
@@ -3232,9 +3232,9 @@ void JointMatrixFuncsResolutionPass::visitStoreInst(StoreInst &I) {
   Type *newBCElementType = ResolveTypes(dyn_cast<PointerType>(PTIOperand->getType()));
   PointerType *BCDstType = dyn_cast<PointerType>(BC->getDestTy());
 
-  BitCastInst *newBC =
-      new BitCastInst(Resolve(BC->getOperand(0)),
-                      PointerType::get(newBCElementType, BCDstType->getPointerAddressSpace()), BC->getName(), BC);
+  BitCastInst *newBC = new BitCastInst(Resolve(BC->getOperand(0)),
+                                       IGCLLVM::PointerType::get(newBCElementType, BCDstType->getPointerAddressSpace()),
+                                       BC->getName(), BC);
 
   StoreInst *newSI = new StoreInst(Resolve(PTIOperand), newBC, I.isVolatile(), IGCLLVM::getAlign(I), &I);
 

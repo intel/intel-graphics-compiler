@@ -90,7 +90,7 @@ bool GASResolving::canonicalizeAddrSpaceCasts(Function &F) const {
     if (IGCLLVM::getNonOpaquePtrEltTy(SrcType) == DstElementType) // Legacy code: getNonOpaquePtrEltTy
       continue;
 
-    PointerType *TransPtrTy = PointerType::get(DstElementType, SrcType->getPointerAddressSpace());
+    PointerType *TransPtrTy = IGCLLVM::PointerType::get(DstElementType, SrcType->getPointerAddressSpace());
     IRB->SetInsertPoint(ASCI);
     Src = IRB->CreateBitCast(Src, TransPtrTy);
     ASCI->setOperand(0, Src);
@@ -237,7 +237,7 @@ void GASResolving::convertLoadToGlobal(LoadInst *LI) const {
 
   PointerType *PtrTy = cast<PointerType>(LI->getType());
   IRB->SetInsertPoint(LI->getNextNode());
-  PointerType *GlobalPtrTy = IGCLLVM::get(PtrTy, ADDRESS_SPACE_GLOBAL);
+  PointerType *GlobalPtrTy = IGCLLVM::PointerType::get(PtrTy, ADDRESS_SPACE_GLOBAL);
   Value *GlobalAddr = IRB->CreateAddrSpaceCast(LI, GlobalPtrTy);
   Value *GenericCopyAddr = IRB->CreateAddrSpaceCast(GlobalAddr, PtrTy);
 

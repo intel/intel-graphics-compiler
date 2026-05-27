@@ -16,6 +16,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/IR/Module.h"
 #endif
 #include "common/LLVMWarningsPop.hpp"
+#include "llvmWrapper/IR/DerivedTypes.h"
 
 using namespace IGC;
 using namespace llvm;
@@ -93,9 +94,9 @@ bool InjectPrintf::runOnFunction(Function &F) {
   IRBuilder<> Builder(Context);
   GlobalVariable *FormatStrGlobal = createGlobalFormatStr(Module, Context);
 
-  FunctionCallee PrintfFunc =
-      Module->getOrInsertFunction("printf", FunctionType::get(IntegerType::getInt32Ty(Context),
-                                                              PointerType::get(Type::getInt8Ty(Context), 2), true));
+  FunctionCallee PrintfFunc = Module->getOrInsertFunction(
+      "printf", FunctionType::get(IntegerType::getInt32Ty(Context),
+                                  IGCLLVM::PointerType::get(Type::getInt8Ty(Context), 2), true));
 
   auto InjectPrintfFlag = static_cast<InjectPrintfFlagType>(IGC_GET_FLAG_VALUE(InjectPrintfFlag));
   for (auto &BB : F) {

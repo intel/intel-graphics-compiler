@@ -508,8 +508,8 @@ void ReplaceUnsupportedIntrinsics::replaceMemcpy(IntrinsicInst *I) {
     // Note that if NewCount is small, we may directly generate ld/st
     // without generating the loop.
     if (NewCount > 0) {
-      vSrc = Builder.CreateBitCast(SkipBitCast(Src), PointerType::get(VecTys[0], SrcAS), "memcpy_vsrc");
-      vDst = Builder.CreateBitCast(SkipBitCast(Dst), PointerType::get(VecTys[0], DstAS), "memcpy_vdst");
+      vSrc = Builder.CreateBitCast(SkipBitCast(Src), IGCLLVM::PointerType::get(VecTys[0], SrcAS), "memcpy_vsrc");
+      vDst = Builder.CreateBitCast(SkipBitCast(Dst), IGCLLVM::PointerType::get(VecTys[0], DstAS), "memcpy_vdst");
 
       // getPrimitiveSizeInBits() should be enough, no need to
       // use DataLayout to get target-dependent size.
@@ -558,8 +558,8 @@ void ReplaceUnsupportedIntrinsics::replaceMemcpy(IntrinsicInst *I) {
       SrcAlign = adjust_align < SrcAlign ? adjust_align : SrcAlign;
       NewSrc = BOfst > 0 ? Builder.CreateConstGEP1_32(Builder.getInt8Ty(), Src, BOfst) : Src;
       NewDst = BOfst > 0 ? Builder.CreateConstGEP1_32(Builder.getInt8Ty(), Dst, BOfst) : Dst;
-      vSrc = Builder.CreateBitCast(SkipBitCast(NewSrc), PointerType::get(VecTys[i], SrcAS), "memcpy_rem");
-      vDst = Builder.CreateBitCast(SkipBitCast(NewDst), PointerType::get(VecTys[i], DstAS), "memcpy_rem");
+      vSrc = Builder.CreateBitCast(SkipBitCast(NewSrc), IGCLLVM::PointerType::get(VecTys[i], SrcAS), "memcpy_rem");
+      vDst = Builder.CreateBitCast(SkipBitCast(NewDst), IGCLLVM::PointerType::get(VecTys[i], DstAS), "memcpy_rem");
       LoadInst *L = Builder.CreateAlignedLoad(VecTys[i], vSrc, getAlign(SrcAlign), IsVolatile);
       (void)Builder.CreateAlignedStore(L, vDst, getAlign(Align), IsVolatile);
       BOfst += SZ;
@@ -685,15 +685,15 @@ void ReplaceUnsupportedIntrinsics::replaceMemMove(IntrinsicInst *I) {
         auto *tSrc = B.CreateConstGEP1_32(B.getInt8Ty(), i8Src, offset);
         auto *tDst = B.CreateConstGEP1_32(B.getInt8Ty(), i8Dst, offset);
 
-        auto *vSrc = B.CreateBitCast(SkipBitCast(tSrc), PointerType::get(VecTys[i], SrcAS), "memcpy_rem");
-        auto *vDst = B.CreateBitCast(SkipBitCast(tDst), PointerType::get(VecTys[i], DstAS), "memcpy_rem");
+        auto *vSrc = B.CreateBitCast(SkipBitCast(tSrc), IGCLLVM::PointerType::get(VecTys[i], SrcAS), "memcpy_rem");
+        auto *vDst = B.CreateBitCast(SkipBitCast(tDst), IGCLLVM::PointerType::get(VecTys[i], DstAS), "memcpy_rem");
         LoadInst *L = B.CreateAlignedLoad(VecTys[i], vSrc, getAlign(newAlign), IsVolatile);
         (void)B.CreateAlignedStore(L, vDst, getAlign(newAlign), IsVolatile);
       }
 
       // now emit the <8 x i32> stores
-      auto *vSrc = B.CreateBitCast(SkipBitCast(Src), PointerType::get(VecTys[0], SrcAS), "memcpy_vsrc");
-      auto *vDst = B.CreateBitCast(SkipBitCast(Dst), PointerType::get(VecTys[0], DstAS), "memcpy_vdst");
+      auto *vSrc = B.CreateBitCast(SkipBitCast(Src), IGCLLVM::PointerType::get(VecTys[0], SrcAS), "memcpy_vsrc");
+      auto *vDst = B.CreateBitCast(SkipBitCast(Dst), IGCLLVM::PointerType::get(VecTys[0], DstAS), "memcpy_vdst");
       // If NewCount is less than the threshold, don't generate loop.
       uint32_t SZ = (unsigned int)(VecTys[0]->getPrimitiveSizeInBits() / 8);
       uint32_t newAlign = getLargestPowerOfTwo(Align + SZ);
@@ -806,7 +806,7 @@ void ReplaceUnsupportedIntrinsics::replaceMemset(IntrinsicInst *I) {
 
     // First, insert main loop before MC.
     if (NewCount > 0) {
-      PointerType *PTy = PointerType::get(VecTys[0], AS);
+      PointerType *PTy = IGCLLVM::PointerType::get(VecTys[0], AS);
       vSrc = replicateScalar(Src, VecTys[0], MS);
       vDst = Builder.CreateBitCast(SkipBitCast(Dst), PTy, "memset_vdst");
 
@@ -849,7 +849,7 @@ void ReplaceUnsupportedIntrinsics::replaceMemset(IntrinsicInst *I) {
       uint32_t SZ = (unsigned int)VecTys[i]->getPrimitiveSizeInBits() / 8;
       uint32_t adjust_align = getLargestPowerOfTwo(SZ);
       Align = adjust_align < Align ? adjust_align : Align;
-      PointerType *PTy = PointerType::get(VecTys[i], AS);
+      PointerType *PTy = IGCLLVM::PointerType::get(VecTys[i], AS);
       NewDst = BOfst > 0 ? Builder.CreateConstGEP1_32(Builder.getInt8Ty(), Dst, BOfst) : Dst;
       vSrc = replicateScalar(Src, VecTys[i], MS);
       vDst = Builder.CreateBitCast(SkipBitCast(NewDst), PTy, "memset_rem");

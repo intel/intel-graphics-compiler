@@ -14,6 +14,7 @@ SPDX-License-Identifier: MIT
 
 #include "Probe/Assertion.h"
 #include "llvmWrapper/IR/Module.h"
+#include "llvmWrapper/IR/DerivedTypes.h"
 
 #include <llvm/GenXIntrinsics/GenXIntrinsics.h>
 
@@ -78,8 +79,9 @@ vc::ImplicitArgs::Buffer::getPtrAddrSpace(vc::ThreadPayloadKind Kind) {
 
 PointerType &vc::ImplicitArgs::Buffer::getPtrType(Module &M,
                                                   vc::ThreadPayloadKind Kind) {
-  return *PointerType::get(&vc::ImplicitArgs::Buffer::getType(M),
-                           vc::ImplicitArgs::Buffer::getPtrAddrSpace(Kind));
+  return *IGCLLVM::PointerType::get(
+      &vc::ImplicitArgs::Buffer::getType(M),
+      vc::ImplicitArgs::Buffer::getPtrAddrSpace(Kind));
 }
 
 template <>
@@ -180,8 +182,8 @@ StructType &vc::ImplicitArgs::LocalID::getType(Module &M) {
 }
 
 PointerType &vc::ImplicitArgs::LocalID::getPtrType(Module &M) {
-  return *PointerType::get(&vc::ImplicitArgs::LocalID::getType(M),
-                           vc::AddrSpace::Global);
+  return *IGCLLVM::PointerType::get(&vc::ImplicitArgs::LocalID::getType(M),
+                                    vc::AddrSpace::Global);
 }
 
 Value &vc::ImplicitArgs::LocalID::getBasePtr(Value &BufferPtr, IRBuilder<> &IRB,

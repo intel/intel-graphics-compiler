@@ -3737,7 +3737,7 @@ void GenSpecificPattern::visitLoadInst(LoadInst &LI) {
 
   auto PointerOperand = VectorLoadInst->getPointerOperand();
   PointerType *newLoadPointerType =
-      PointerType::get(LI.getPointerOperand()->getType(), PointerOperand->getType()->getPointerAddressSpace());
+      IGCLLVM::PointerType::get(LI.getPointerOperand()->getType(), PointerOperand->getType()->getPointerAddressSpace());
   IRBuilder<> builder(VectorLoadInst);
   auto CastedPointer = builder.CreateBitCast(PointerOperand, newLoadPointerType);
   auto NewLoadInst = IGC::cloneLoad(VectorLoadInst, LI.getPointerOperand()->getType(), CastedPointer);
@@ -4576,7 +4576,8 @@ static bool isICBOffseted(llvm::LoadInst *inst, uint offset, uint &offsetIntoMer
       GetElementPtrInst *gep = dyn_cast<GetElementPtrInst>(srcInstList[srcInstList.size() - 2]);
 
       if (gep && gep->getNumOperands() == 2 && gep->getOperand(0) == genIntr &&
-          genIntr->getType() == PointerType::get(Type::getInt8Ty(inst->getContext()), ADDRESS_SPACE_CONSTANT)) {
+          genIntr->getType() ==
+              IGCLLVM::PointerType::get(Type::getInt8Ty(inst->getContext()), ADDRESS_SPACE_CONSTANT)) {
         llvm::ConstantInt *ci = dyn_cast<llvm::ConstantInt>(gep->getOperand(1));
 
         if (ci)

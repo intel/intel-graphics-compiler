@@ -114,7 +114,7 @@ std::pair<Value *, Instruction *> expand64BitLoad(IGCIRBuilder<T> &IRB, const Da
   uint32_t NewNumElts = NumElts * 2;
 
   auto *NewTy = IGCLLVM::FixedVectorType::get(IRB.getInt32Ty(), NewNumElts);
-  auto *PtrTy = PointerType::get(NewTy, OldPtrTy->getPointerAddressSpace());
+  auto *PtrTy = IGCLLVM::PointerType::get(NewTy, OldPtrTy->getPointerAddressSpace());
 
   auto *NewPtr = IRB.CreateBitCast(LI.getPointerOperand(), PtrTy);
 

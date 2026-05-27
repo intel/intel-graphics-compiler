@@ -643,7 +643,7 @@ public:
     if (!vectorIO && pLoad->getType()->isVectorTy()) {
       Type *scalarType = pLoad->getType()->getScalarType();
       IGC_ASSERT(nullptr != scalarType);
-      Type *scalarptrTy = PointerType::get(scalarType, pLoad->getPointerAddressSpace());
+      Type *scalarptrTy = IGCLLVM::PointerType::get(scalarType, pLoad->getPointerAddressSpace());
       IGC_ASSERT(scalarType->getPrimitiveSizeInBits() / 8 == elementSize);
       Value *vec = UndefValue::get(pLoad->getType());
       auto pLoadVT = cast<IGCLLVM::FixedVectorType>(pLoad->getType());
@@ -675,7 +675,7 @@ public:
     if (!vectorIO && pStore->getValueOperand()->getType()->isVectorTy()) {
       Type *scalarType = pStore->getValueOperand()->getType()->getScalarType();
       IGC_ASSERT(nullptr != scalarType);
-      Type *scalarptrTy = PointerType::get(scalarType, pStore->getPointerAddressSpace());
+      Type *scalarptrTy = IGCLLVM::PointerType::get(scalarType, pStore->getPointerAddressSpace());
       IGC_ASSERT(scalarType->getPrimitiveSizeInBits() / 8 == elementSize);
       Value *vec = pStore->getValueOperand();
 

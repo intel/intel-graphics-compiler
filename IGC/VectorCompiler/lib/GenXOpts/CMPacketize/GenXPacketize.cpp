@@ -280,7 +280,7 @@ Function *GenXPacketize::vectorizeSIMTFunction(Function *F, unsigned Width) {
     else if (ArgTy->isPointerTy()) {
       // FIXME: check the pointer defined by an argument or an alloca
       // [N x float]* should packetize to [N x <8 x float>]*
-      auto *VTy = PointerType::get(
+      auto *VTy = IGCLLVM::PointerType::get(
           B->getVectorType(IGCLLVM::getNonOpaquePtrEltTy(ArgTy)),
           ArgTy->getPointerAddressSpace());
       ArgTypes.push_back(VTy);
@@ -874,13 +874,13 @@ Value *GenXPacketize::packetizeLLVMInstruction(Instruction *Inst) {
         auto *DstScalarTy = IGCLLVM::getNonOpaquePtrEltTy(Inst->getType());
         if (VectorType::isValidElementType(DstScalarTy))
           // Map <N x OldTy>* to <N x NewTy>*
-          ReturnTy =
-              PointerType::get(B->getVectorType(DstScalarTy),
-                               Inst->getType()->getPointerAddressSpace());
+          ReturnTy = IGCLLVM::PointerType::get(
+              B->getVectorType(DstScalarTy),
+              Inst->getType()->getPointerAddressSpace());
         else {
           // Map <N x OldTy>* to <N x NewTy*> using cast then GEP
           auto *TmpTy = llvm::ArrayType::get(DstScalarTy, B->VWidth);
-          auto *TmpPtrTy = PointerType::get(
+          auto *TmpPtrTy = IGCLLVM::PointerType::get(
               TmpTy, Inst->getType()->getPointerAddressSpace());
           auto *TmpInst =
               B->CAST((Instruction::CastOps)Opcode, PacketizedSrc, TmpPtrTy);

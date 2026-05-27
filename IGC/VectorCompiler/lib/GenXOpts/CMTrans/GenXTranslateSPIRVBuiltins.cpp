@@ -138,8 +138,8 @@ Value *SPIRVExpander::emitAddcSubb(IRBuilder<> &Builder, unsigned IID,
   // SPIRV builtins Addc/Subbi have an inverted structure with respect to
   // vc-intrinsics
   unsigned int AddrSpace = cast<PointerType>(Res->getType())->getAddressSpace();
-  Res = Builder.CreateBitCast(Res,
-                              PointerType::get(ExtRes->getType(), AddrSpace));
+  Res = Builder.CreateBitCast(
+      Res, IGCLLVM::PointerType::get(ExtRes->getType(), AddrSpace));
   auto *ResPtr = Builder.CreateGEP(Carry->getType(), Res, Builder.getInt32(0));
   auto *CarryPtr =
       Builder.CreateGEP(ExtRes->getType(), Res, Builder.getInt32(1));
@@ -167,7 +167,7 @@ Value *SPIRVExpander::emitMulExtended(IRBuilder<> &Builder, unsigned IID,
   auto *Hi = Builder.CreateExtractValue(Instr, {1});
 
   unsigned int AddrSpace = cast<PointerType>(Res->getType())->getAddressSpace();
-  Res = Builder.CreateBitCast(Res, PointerType::get(Ty, AddrSpace));
+  Res = Builder.CreateBitCast(Res, IGCLLVM::PointerType::get(Ty, AddrSpace));
   auto *LoPtr = Builder.CreateGEP(Ty, Res, Builder.getInt32(0));
   auto *HiPtr = Builder.CreateGEP(Ty, Res, Builder.getInt32(1));
 

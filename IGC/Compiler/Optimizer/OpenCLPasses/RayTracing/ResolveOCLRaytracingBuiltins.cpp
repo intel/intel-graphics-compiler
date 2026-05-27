@@ -9,6 +9,7 @@ SPDX-License-Identifier: MIT
 #include <map>
 #include "common/LLVMWarningsPush.hpp"
 #include "common/LLVMWarningsPop.hpp"
+#include "llvmWrapper/IR/DerivedTypes.h"
 #include "ResolveOCLRaytracingBuiltins.hpp"
 #include "Compiler/IGCPassSupport.h"
 #include "Compiler/CodeGenPublicEnums.h"
@@ -159,9 +160,9 @@ void ResolveOCLRaytracingBuiltins::defineOpaqueTypes() {
 
   if (m_pCtx->platform.supportsRayTracingExtendedCacheControl()) {
     SmallVector<Type *, 5> Tys{
-        PointerType::get(rtFenceTy, ADDRESS_SPACE_PRIVATE),
-        PointerType::get(rtGlobalsTy, ADDRESS_SPACE_GLOBAL),
-        PointerType::get(Type::getInt8Ty(C), ADDRESS_SPACE_GLOBAL),
+        IGCLLVM::PointerType::get(rtFenceTy, ADDRESS_SPACE_PRIVATE),
+        IGCLLVM::PointerType::get(rtGlobalsTy, ADDRESS_SPACE_GLOBAL),
+        IGCLLVM::PointerType::get(Type::getInt8Ty(C), ADDRESS_SPACE_GLOBAL),
         Type::getInt32Ty(C),
         Type::getInt32Ty(C),
         Type::getInt1Ty(C),
@@ -170,9 +171,10 @@ void ResolveOCLRaytracingBuiltins::defineOpaqueTypes() {
     return;
   }
 
-  SmallVector<Type *, 4> Tys{
-      PointerType::get(rtFenceTy, ADDRESS_SPACE_PRIVATE), PointerType::get(rtGlobalsTy, ADDRESS_SPACE_GLOBAL),
-      PointerType::get(Type::getInt8Ty(C), ADDRESS_SPACE_GLOBAL), Type::getInt32Ty(C), Type::getInt32Ty(C)};
+  SmallVector<Type *, 4> Tys{IGCLLVM::PointerType::get(rtFenceTy, ADDRESS_SPACE_PRIVATE),
+                             IGCLLVM::PointerType::get(rtGlobalsTy, ADDRESS_SPACE_GLOBAL),
+                             IGCLLVM::PointerType::get(Type::getInt8Ty(C), ADDRESS_SPACE_GLOBAL), Type::getInt32Ty(C),
+                             Type::getInt32Ty(C)};
 
   rayQueryTy->setBody(Tys);
 }

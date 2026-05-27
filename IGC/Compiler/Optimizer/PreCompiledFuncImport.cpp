@@ -176,7 +176,7 @@ void PreCompiledFuncImport::handleInstrTypeChange(Instruction *oldInst, Value *n
     // If the use of instruction is StoreInst, we need to also convert pointer type from double to i64
     if (StoreInst *SI = dyn_cast<StoreInst>(I)) {
       if (SI->getValueOperand()->getType()->isDoubleTy()) {
-        PointerType *newPtrTy = PointerType::get(builder.getInt64Ty(), SI->getPointerAddressSpace());
+        PointerType *newPtrTy = IGCLLVM::PointerType::get(builder.getInt64Ty(), SI->getPointerAddressSpace());
         Value *newPtr = builder.CreatePointerCast(SI->getPointerOperand(), newPtrTy, "");
         I->replaceUsesOfWith(SI->getPointerOperand(), newPtr);
       } else {

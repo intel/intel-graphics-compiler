@@ -13,6 +13,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/Function.h>
 #include <llvm/IR/Instructions.h>
 #include "common/LLVMWarningsPop.hpp"
+#include "llvmWrapper/IR/DerivedTypes.h"
 #include "Probe/Assertion.h"
 
 using namespace llvm;
@@ -334,7 +335,8 @@ static inline Value *castSYCLBFloat16toi16(PointerType *PtrTy, Value *Ptr, CallI
   {
     // check if ST has only field and this field is i16 type
     if (ST->getNumElements() == 1 && ST->getElementType(0)->isIntegerTy(16)) {
-      return CastInst::CreatePointerCast(Ptr, PointerType::get(Type::getInt16Ty(C), PtrTy->getAddressSpace()), "", &CI);
+      return CastInst::CreatePointerCast(Ptr, IGCLLVM::PointerType::get(Type::getInt16Ty(C), PtrTy->getAddressSpace()),
+                                         "", &CI);
     }
   }
 

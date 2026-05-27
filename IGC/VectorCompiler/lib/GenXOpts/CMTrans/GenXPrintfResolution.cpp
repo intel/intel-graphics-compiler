@@ -423,21 +423,21 @@ static PrintfImplTypeStorage getPrintfImplTypes(LLVMContext &Ctx) {
       FunctionType::get(TransferDataTy, ArgsInfoTy, IsVarArg);
   FuncTys[PrintfImplFunc::PrintfInit] =
       FunctionType::get(TransferDataTy, ArgsInfoTy, IsVarArg);
-  FuncTys[PrintfImplFunc::Fmt] =
-      FunctionType::get(TransferDataTy,
-                        {TransferDataTy, PointerType::get(Type::getInt8Ty(Ctx),
-                                                          AddrSpace::Constant)},
-                        IsVarArg);
-  FuncTys[PrintfImplFunc::FmtGlobal] =
-      FunctionType::get(TransferDataTy,
-                        {TransferDataTy, PointerType::get(Type::getInt8Ty(Ctx),
-                                                          AddrSpace::Global)},
-                        IsVarArg);
-  FuncTys[PrintfImplFunc::FmtLegacy] =
-      FunctionType::get(TransferDataTy,
-                        {TransferDataTy, PointerType::get(Type::getInt8Ty(Ctx),
-                                                          AddrSpace::Private)},
-                        IsVarArg);
+  FuncTys[PrintfImplFunc::Fmt] = FunctionType::get(
+      TransferDataTy,
+      {TransferDataTy,
+       IGCLLVM::PointerType::get(Type::getInt8Ty(Ctx), AddrSpace::Constant)},
+      IsVarArg);
+  FuncTys[PrintfImplFunc::FmtGlobal] = FunctionType::get(
+      TransferDataTy,
+      {TransferDataTy,
+       IGCLLVM::PointerType::get(Type::getInt8Ty(Ctx), AddrSpace::Global)},
+      IsVarArg);
+  FuncTys[PrintfImplFunc::FmtLegacy] = FunctionType::get(
+      TransferDataTy,
+      {TransferDataTy,
+       IGCLLVM::PointerType::get(Type::getInt8Ty(Ctx), AddrSpace::Private)},
+      IsVarArg);
   FuncTys[PrintfImplFunc::Arg] = FunctionType::get(
       TransferDataTy, {TransferDataTy, Type::getInt32Ty(Ctx), ArgDataTy},
       IsVarArg);

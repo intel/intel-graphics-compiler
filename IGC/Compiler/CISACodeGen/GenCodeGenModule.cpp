@@ -1273,15 +1273,17 @@ void SubroutineInliner::visitMemCpyInst(MemCpyInst &I) {
   // Copying from alloca to alloca, but has addrspace mismatch due to incorrect bitcast
   if (isa<AllocaInst>(origSrc) && isa<AllocaInst>(origDst)) {
     if (origSrc->getType()->getPointerAddressSpace() != Src->getType()->getPointerAddressSpace()) {
-      Value *SrcCast = BitCastInst::Create(
-          Instruction::BitCast, origSrc,
-          IGCLLVM::get(dyn_cast<PointerType>(Src->getType()), origSrc->getType()->getPointerAddressSpace()), "", &I);
+      Value *SrcCast = BitCastInst::Create(Instruction::BitCast, origSrc,
+                                           IGCLLVM::PointerType::get(dyn_cast<PointerType>(Src->getType()),
+                                                                     origSrc->getType()->getPointerAddressSpace()),
+                                           "", &I);
       I.replaceUsesOfWith(Src, SrcCast);
     }
     if (origDst->getType()->getPointerAddressSpace() != Dst->getType()->getPointerAddressSpace()) {
-      Value *DstCast = BitCastInst::Create(
-          Instruction::BitCast, origDst,
-          IGCLLVM::get(dyn_cast<PointerType>(Dst->getType()), origDst->getType()->getPointerAddressSpace()), "", &I);
+      Value *DstCast = BitCastInst::Create(Instruction::BitCast, origDst,
+                                           IGCLLVM::PointerType::get(dyn_cast<PointerType>(Dst->getType()),
+                                                                     origDst->getType()->getPointerAddressSpace()),
+                                           "", &I);
       I.replaceUsesOfWith(Dst, DstCast);
     }
   }

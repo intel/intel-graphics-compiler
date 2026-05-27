@@ -14,6 +14,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/Instructions.h>
 #include <llvm/IR/Constants.h>
 #include "common/LLVMWarningsPop.hpp"
+#include "llvmWrapper/IR/DerivedTypes.h"
 #include "GenISAIntrinsics/GenIntrinsics.h"
 #include "Probe/Assertion.h"
 
@@ -181,7 +182,7 @@ CallInst *ResolveOCLAtomics::genGetBufferPtr(CallInst &callInst, BufferType bufT
   } else {
     addressSpace = ADDRESS_SPACE_GLOBAL;
   }
-  Type *ptrType = PointerType::get(m_Int32Ty, addressSpace);
+  Type *ptrType = IGCLLVM::PointerType::get(m_Int32Ty, addressSpace);
   Function *getBufferPtr = GenISAIntrinsic::getDeclaration(m_pModule, GenISAIntrinsic::GenISA_GetBufferPtr, ptrType);
 
   // Generate a call to GenISA.GetBufferPtr intrinsic:

@@ -26,6 +26,7 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPop.hpp"
 #include "llvmWrapper/IR/IRBuilder.h"
 #include "llvmWrapper/IR/Instructions.h"
+#include "llvmWrapper/IR/DerivedTypes.h"
 #include "GenISAIntrinsics/GenIntrinsics.h"
 #include "CommonMacros.h"
 #include "Compiler/CodeGenPublicEnums.h"

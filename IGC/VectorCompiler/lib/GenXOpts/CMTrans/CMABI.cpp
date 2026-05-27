@@ -549,8 +549,9 @@ bool CMABIBase<CallGraphImpl>::runOnCallGraphImpl(CallGraphImpl &SCC) {
       auto *Alloca = new AllocaInst(Ty, vc::AddrSpace::Private,
                                     Arg.getName() + ".byval", InsertBefore);
       Arg.replaceAllUsesWith(Alloca);
-      auto *DstTy = PointerType::get(Int8Ty, vc::AddrSpace::Private);
-      auto *SrcTy = PointerType::get(Int8Ty, PtrTy->getPointerAddressSpace());
+      auto *DstTy = IGCLLVM::PointerType::get(Int8Ty, vc::AddrSpace::Private);
+      auto *SrcTy =
+          IGCLLVM::PointerType::get(Int8Ty, PtrTy->getPointerAddressSpace());
       auto *Decl = IGCLLVM::getOrInsertDeclaration(
           M, Intrinsic::memcpy, llvm::ArrayRef<Type *>{DstTy, SrcTy, Int64Ty});
       auto *Dst = new BitCastInst(Alloca, DstTy, "", InsertBefore);
@@ -1341,7 +1342,7 @@ bool CMLowerVLoadVStore::lowerLoadStore(Function &F) {
           IRBuilder<> Builder(&Inst);
           if (GenXIntrinsic::isVStore(&Inst)) {
             auto PtrTy = cast<PointerType>(Inst.getOperand(1)->getType());
-            PtrTy = IGCLLVM::get(PtrTy, AS1);
+            PtrTy = IGCLLVM::PointerType::get(PtrTy, AS1);
             auto PtrCast =
                 Builder.CreateAddrSpaceCast(Inst.getOperand(1), PtrTy);
             Type *Tys[] = {Inst.getOperand(0)->getType(), PtrCast->getType()};
@@ -1351,7 +1352,7 @@ bool CMLowerVLoadVStore::lowerLoadStore(Function &F) {
             Builder.CreateCall(Fn, Args, Inst.getName());
           } else {
             auto PtrTy = cast<PointerType>(Inst.getOperand(0)->getType());
-            PtrTy = IGCLLVM::get(PtrTy, AS1);
+            PtrTy = IGCLLVM::PointerType::get(PtrTy, AS1);
             auto PtrCast =
                 Builder.CreateAddrSpaceCast(Inst.getOperand(0), PtrTy);
             Type *Tys[] = {Inst.getType(), PtrCast->getType()};

@@ -14,6 +14,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/Instructions.h>
 #include "common/LLVMWarningsPop.hpp"
 #include <llvmWrapper/IR/IRBuilder.h>
+#include "llvmWrapper/IR/DerivedTypes.h"
 #include "Probe/Assertion.h"
 
 using namespace llvm;
@@ -65,7 +66,7 @@ void ExtensionFuncsResolution::visitCallInst(CallInst &CI) {
     IGCLLVM::IRBuilder<> builder(&CI);
     Type *retType = CI.getType();
     IGC_ASSERT(retType->isVectorTy() || retType->isIntegerTy());
-    PointerType *ptrType = PointerType::get(retType, 0);
+    PointerType *ptrType = IGCLLVM::PointerType::get(retType, 0);
     auto bitcastInst = builder.CreateBitCast(CI.getArgOperand(0), ptrType);
     auto ret = builder.CreateLoad(retType, bitcastInst);
     CI.replaceAllUsesWith(ret);

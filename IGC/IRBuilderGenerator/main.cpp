@@ -273,10 +273,10 @@ void emitType(const Type *Ty, const HoleMap &HoleTys, const AlignMap &Aligns, ra
       OS.indent(In * 2) << "auto *EltTy =\n";
       emitType(IGCLLVM::getNonOpaquePtrEltTy(PTy), HoleTys, Aligns, OS, In + 1, false);
       OS << ";\n";
-      OS.indent(In * 2) << "return PointerType::get(EltTy, " << PTy->getAddressSpace() << ");\n";
+      OS.indent(In * 2) << "return IGCLLVM::PointerType::get(EltTy, " << PTy->getAddressSpace() << ");\n";
       OS.indent(Level * 2) << "}()";
     } else {
-      OS.indent(Level * 2) << "PointerType::get(M.getContext(), " << PTy->getAddressSpace() << ")";
+      OS.indent(Level * 2) << "IGCLLVM::PointerType::get(M.getContext(), " << PTy->getAddressSpace() << ")";
     }
   } else if (auto *IntTy = dyn_cast<IntegerType>(Ty)) {
     OS.indent(Level * 2) << "IntegerType::get(M.getContext(), " << IntTy->getBitWidth() << ")";
@@ -445,7 +445,7 @@ public:
       OS << ", " << VecTy->getNumElements() << ")";
       return OS.str();
     } else if (auto *PTy = dyn_cast<PointerType>(Ty)) {
-      OS << "PointerType::get(";
+      OS << "IGCLLVM::PointerType::get(";
       if (!IGCLLVM::isPointerTy(PTy))
         OS << getTypeRepr(IGCLLVM::getNonOpaquePtrEltTy(PTy));
       else
