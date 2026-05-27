@@ -12,6 +12,7 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/IR/Function.h>
 #include "common/LLVMWarningsPop.hpp"
+#include "llvmWrapper/IR/DerivedTypes.h"
 #include "MDFrameWork.h"
 #include "Probe/Assertion.h"
 
@@ -296,7 +297,7 @@ void NamedBarriersResolution::HandleNamedBarrierInitSW(CallInst &NBarrierInitCal
 
   auto newName = "__builtin_spirv_OpNamedBarrierInitialize_i32_p3__namedBarrier_p3i32";
   SmallVector<Type *, 3> ArgsTy{Type::getInt32Ty(context), m_NamedBarrierType->getPointerTo(SPIRAS_Local),
-                                Type::getInt32PtrTy(context, SPIRAS_Local)};
+                                IGCLLVM::getInt32PtrTy(context, SPIRAS_Local)};
   Type *BaseTy = m_NamedBarrierArray->getValueType();
   auto pointerNBarrier = GetElementPtrInst::Create(BaseTy, m_NamedBarrierArray,
                                                    {ConstantInt::get(Type::getInt64Ty(module->getContext()), 0, true),

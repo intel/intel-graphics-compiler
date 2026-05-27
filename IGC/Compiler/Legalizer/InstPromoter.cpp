@@ -10,6 +10,7 @@ SPDX-License-Identifier: MIT
 #include "InstPromoter.h"
 #include "llvmWrapper/IR/Intrinsics.h"
 #include "llvmWrapper/IR/DerivedTypes.h"
+#include "llvmWrapper/IR/IRBuilder.h"
 #include "common/LLVMWarningsPush.hpp"
 #include "llvm/Support/Debug.h"
 #include "llvm/IR/Dominators.h"
@@ -232,7 +233,8 @@ bool InstPromoter::visitLoadInst(LoadInst &I) {
 
   Type *PromotedTy = TySeq->front();
 
-  Value *NewBasePtr = IRB->CreatePointerCast(OldPtr, IRB->getInt8PtrTy(AS), Twine(OldPtr->getName(), ".ptrcast"));
+  Value *NewBasePtr =
+      IRB->CreatePointerCast(OldPtr, IGCLLVM::getInt8PtrTy(*IRB, AS), Twine(OldPtr->getName(), ".ptrcast"));
 
   // Different from promotion of regular instructions, such as 'add', promotion
   // of load is required to split the original load into small ones and
@@ -307,7 +309,8 @@ bool InstPromoter::visitStoreInst(StoreInst &I) {
 
   Value *PromotedVal = ValSeq->front();
 
-  Value *NewBasePtr = IRB->CreatePointerCast(OldPtr, IRB->getInt8PtrTy(AS), Twine(OldPtr->getName(), ".ptrcast"));
+  Value *NewBasePtr =
+      IRB->CreatePointerCast(OldPtr, IGCLLVM::getInt8PtrTy(*IRB, AS), Twine(OldPtr->getName(), ".ptrcast"));
 
   unsigned Off = 0;
   for (unsigned TotalStoreBits = TL->getTypeStoreSizeInBits(OrigTy), ActualStoreBits = 0; TotalStoreBits != 0;

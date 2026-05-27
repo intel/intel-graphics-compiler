@@ -367,19 +367,19 @@ void SubGroupFuncsResolution::simdBlockRead(llvm::CallInst &CI, bool hasCacheCon
 
   switch (scalarSizeInBits) {
   case 8:
-    types[1] = Type::getInt8PtrTy(C, AS);
+    types[1] = IGCLLVM::getInt8PtrTy(C, AS);
     break;
   case 16:
-    types[1] = Type::getInt16PtrTy(C, AS);
+    types[1] = IGCLLVM::getInt16PtrTy(C, AS);
     break;
   case 64:
-    types[1] = (Type::getInt64PtrTy(C, AS));
+    types[1] = (IGCLLVM::getInt64PtrTy(C, AS));
     break;
   default:
     IGC_ASSERT_MESSAGE(0, "unrecognized bit width!");
     // assertion failed but continue code failsafe using default 32
   case 32:
-    types[1] = (Type::getInt32PtrTy(C, AS));
+    types[1] = (IGCLLVM::getInt32PtrTy(C, AS));
     break;
   }
 
@@ -449,19 +449,19 @@ void SubGroupFuncsResolution::simdBlockWrite(llvm::CallInst &CI, bool hasCacheCo
 
   switch (dataArg->getType()->getScalarType()->getScalarSizeInBits()) {
   case 8:
-    types.push_back(Type::getInt8PtrTy(C, AS));
+    types.push_back(IGCLLVM::getInt8PtrTy(C, AS));
     break;
   case 16:
-    types.push_back(Type::getInt16PtrTy(C, AS));
+    types.push_back(IGCLLVM::getInt16PtrTy(C, AS));
     break;
   case 64:
-    types.push_back(Type::getInt64PtrTy(C, AS));
+    types.push_back(IGCLLVM::getInt64PtrTy(C, AS));
     break;
   default:
     IGC_ASSERT_MESSAGE(0, "unrecognized bit width!");
     // assertion failed but continue code failsafe using default 32
   case 32:
-    types.push_back(Type::getInt32PtrTy(C, AS));
+    types.push_back(IGCLLVM::getInt32PtrTy(C, AS));
     break;
   }
 

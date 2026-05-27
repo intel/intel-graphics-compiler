@@ -1034,7 +1034,7 @@ void PreCompiledFuncImport::processInt32Divide(BinaryOperator &inst, Int32Emulat
   Function *func = m_pModule->getFunction(funcName);
 
   Type *intTy = Type::getInt32Ty(inst.getContext());
-  Type *intPtrTy = Type::getInt32PtrTy(inst.getContext());
+  Type *intPtrTy = IGCLLVM::getInt32PtrTy(inst.getContext());
 
   // Try to look up the function in the module's symbol
   // table first, else add it.

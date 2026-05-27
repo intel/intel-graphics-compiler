@@ -885,7 +885,7 @@ void LowerImplicitArgIntrinsics::visitCallInst(CallInst &CI) {
       }
 
       // Load data
-      auto Int16Ptr = Type::getInt16PtrTy(F->getContext(), ADDRESS_SPACE_GLOBAL);
+      auto Int16Ptr = IGCLLVM::getInt16PtrTy(F->getContext(), ADDRESS_SPACE_GLOBAL);
       auto Addr = Builder.CreateIntToPtr(Result, Int16Ptr);
       auto LoadInst = Builder.CreateLoad(Builder.getInt16Ty(), Addr);
       auto Trunc = Builder.CreateZExtOrBitCast(LoadInst, CI.getType());

@@ -1254,9 +1254,11 @@ public:
 
     IGCLLVM::IRBuilder<> IRB(m_pCallInst);
 
-    Value *pDsti8 = IRB.CreateBitCast(pDst, IRB.getInt8PtrTy(cast<PointerType>(pDst->getType())->getAddressSpace()));
+    Value *pDsti8 =
+        IRB.CreateBitCast(pDst, IGCLLVM::getInt8PtrTy(IRB, cast<PointerType>(pDst->getType())->getAddressSpace()));
 
-    Value *pSrci8 = IRB.CreateBitCast(pSrc, IRB.getInt8PtrTy(cast<PointerType>(pSrc->getType())->getAddressSpace()));
+    Value *pSrci8 =
+        IRB.CreateBitCast(pSrc, IGCLLVM::getInt8PtrTy(IRB, cast<PointerType>(pSrc->getType())->getAddressSpace()));
 
     CallInst *pCall = IRB.CreateMemCpy(pDsti8, pSrci8, pNumBytes, int_cast<unsigned int>(Align));
     pCall->setDebugLoc(m_DL);

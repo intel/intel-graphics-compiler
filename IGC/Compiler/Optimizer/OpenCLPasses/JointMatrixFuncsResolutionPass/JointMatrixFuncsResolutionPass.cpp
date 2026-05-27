@@ -1590,7 +1590,7 @@ template <bool IsJointMatrix, bool IsChecked> Instruction *JointMatrixFuncsResol
    * have a single set of store builtins for floats and integer */
   LLVMContext &ctx = CI->getContext();
   Type *retTy = Type::getVoidTy(ctx);
-  Type *arrayTy = Type::getInt8PtrTy(ctx, ADDRESS_SPACE_PRIVATE);
+  Type *arrayTy = IGCLLVM::getInt8PtrTy(ctx, ADDRESS_SPACE_PRIVATE);
 
   Module *M = CI->getParent()->getModule();
   unsigned address_space = ptrVal->getType()->getPointerAddressSpace();
@@ -1665,7 +1665,7 @@ template <bool IsJointMatrix, bool IsChecked> Instruction *JointMatrixFuncsResol
    * have a single set of store builtins for floats and integers */
 
   LLVMContext &ctx = CI->getContext();
-  Type *arrayTy = Type::getInt8PtrTy(ctx, ADDRESS_SPACE_PRIVATE);
+  Type *arrayTy = IGCLLVM::getInt8PtrTy(ctx, ADDRESS_SPACE_PRIVATE);
 
   Module *M = CI->getParent()->getModule();
 
@@ -1729,7 +1729,7 @@ Instruction *JointMatrixFuncsResolutionPass::ResolveTestDumpLoad(CallInst *CI) {
 
   LLVMContext &ctx = CI->getContext();
   Type *retTy = Type::getVoidTy(ctx);
-  Type *arrayTy = Type::getInt8PtrTy(ctx, ADDRESS_SPACE_PRIVATE);
+  Type *arrayTy = IGCLLVM::getInt8PtrTy(ctx, ADDRESS_SPACE_PRIVATE);
 
   Module *M = CI->getParent()->getModule();
 
@@ -1744,7 +1744,7 @@ Instruction *JointMatrixFuncsResolutionPass::ResolveTestDumpLoad(CallInst *CI) {
   Value *dst = builder.CreateBitCast(sliceArray, arrayTy);
 
   // Cast pointer to generic address space so a single BIF works for global/local/generic.
-  Type *genericPtrTy = Type::getInt8PtrTy(ctx, ADDRESS_SPACE_GENERIC);
+  Type *genericPtrTy = IGCLLVM::getInt8PtrTy(ctx, ADDRESS_SPACE_GENERIC);
   Value *memPtr = ptrVal;
   if (ptrVal->getType()->getPointerAddressSpace() != ADDRESS_SPACE_GENERIC) {
     memPtr = builder.CreateAddrSpaceCast(ptrVal, genericPtrTy);
@@ -1787,7 +1787,7 @@ Instruction *JointMatrixFuncsResolutionPass::ResolveTestDumpStore(CallInst *CI) 
   (void)matTy;
 
   LLVMContext &ctx = CI->getContext();
-  Type *arrayTy = Type::getInt8PtrTy(ctx, ADDRESS_SPACE_PRIVATE);
+  Type *arrayTy = IGCLLVM::getInt8PtrTy(ctx, ADDRESS_SPACE_PRIVATE);
 
   Module *M = CI->getParent()->getModule();
 
@@ -1805,7 +1805,7 @@ Instruction *JointMatrixFuncsResolutionPass::ResolveTestDumpStore(CallInst *CI) 
   Value *src = builder.CreateBitCast(sliceArray, arrayTy);
 
   // Cast pointer to generic address space so a single BIF works for global/local/generic.
-  Type *genericPtrTy = Type::getInt8PtrTy(ctx, ADDRESS_SPACE_GENERIC);
+  Type *genericPtrTy = IGCLLVM::getInt8PtrTy(ctx, ADDRESS_SPACE_GENERIC);
   Value *memPtr = ptrVal;
   if (ptrVal->getType()->getPointerAddressSpace() != ADDRESS_SPACE_GENERIC) {
     memPtr = builder.CreateAddrSpaceCast(ptrVal, genericPtrTy);
@@ -1957,7 +1957,7 @@ static Function *getMADBuiltin(Module *Mod, unsigned M, unsigned N, unsigned K, 
   std::string funcName = getMADBuiltinName(M, N, K, PA, PB, cDesc, dDesc);
 
   Type *retTy = Type::getVoidTy(Mod->getContext());
-  Type *argTy = Type::getInt8PtrTy(Mod->getContext(), ADDRESS_SPACE_PRIVATE);
+  Type *argTy = IGCLLVM::getInt8PtrTy(Mod->getContext(), ADDRESS_SPACE_PRIVATE);
 
   FunctionType *funcType = FunctionType::get(retTy, {argTy, argTy, argTy, argTy}, false);
 
@@ -2046,7 +2046,7 @@ Instruction *JointMatrixFuncsResolutionPass::ResolveMad(CallInst *CI, unsigned O
     builder.CreateStore(cMat, sliceC);
 
     LLVMContext &ctx = CI->getContext();
-    Type *arrayTy = Type::getInt8PtrTy(ctx, ADDRESS_SPACE_PRIVATE);
+    Type *arrayTy = IGCLLVM::getInt8PtrTy(ctx, ADDRESS_SPACE_PRIVATE);
 
     Value *ptrA = builder.CreateBitCast(sliceA, arrayTy);
     Value *ptrB = builder.CreateBitCast(sliceB, arrayTy);
@@ -2206,7 +2206,7 @@ Instruction *JointMatrixFuncsResolutionPass::ResolveFillChecked(CallInst *CI) {
   Type *matTy = ResolveType(CI->getType(), &desc);
   LLVMContext &ctx = CI->getContext();
   Type *retTy = Type::getVoidTy(ctx);
-  Type *arrayTy = Type::getInt8PtrTy(ctx, ADDRESS_SPACE_PRIVATE);
+  Type *arrayTy = IGCLLVM::getInt8PtrTy(ctx, ADDRESS_SPACE_PRIVATE);
 
   Module *M = CI->getParent()->getModule();
 

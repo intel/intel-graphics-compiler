@@ -275,7 +275,7 @@ void ResolveAggregateArguments::storeArgument(const Argument *arg, AllocaInst *b
   // associated with the explicit given argument.
   Function::arg_iterator implicitArgToStore = std::next(m_pFunction->arg_begin(), baseImplicitArg + startArgNo);
 
-  Value *baseAsPtri8 = irBuilder.CreateBitCast(base, Type::getInt8PtrTy(base->getContext(), ADDRESS_SPACE_PRIVATE));
+  Value *baseAsPtri8 = irBuilder.CreateBitCast(base, IGCLLVM::getInt8PtrTy(base->getContext(), ADDRESS_SPACE_PRIVATE));
 
   // Iterate over all base type args of the structure and store them
   // into the correct offset from the alloca.

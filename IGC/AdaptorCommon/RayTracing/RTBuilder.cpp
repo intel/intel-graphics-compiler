@@ -1816,9 +1816,13 @@ Instruction *RTBuilder::getEntryFirstInsertionPointInBlock(BasicBlock &block,
   return curInsertPoint;
 }
 
-Type *RTBuilder::getInt64PtrTy(unsigned int AddrSpace) const { return Type::getInt64PtrTy(this->Context, AddrSpace); }
+Type *RTBuilder::getInt64PtrTy(unsigned int AddrSpace) const {
+  return IGCLLVM::getInt64PtrTy(this->Context, AddrSpace);
+}
 
-Type *RTBuilder::getInt32PtrTy(unsigned int AddrSpace) const { return Type::getInt32PtrTy(this->Context, AddrSpace); }
+Type *RTBuilder::getInt32PtrTy(unsigned int AddrSpace) const {
+  return IGCLLVM::getInt32PtrTy(this->Context, AddrSpace);
+}
 
 IGC::RTMemoryStyle RTBuilder::getMemoryStyle() const { return Ctx.getModuleMetaData()->rtInfo.MemStyle; }
 

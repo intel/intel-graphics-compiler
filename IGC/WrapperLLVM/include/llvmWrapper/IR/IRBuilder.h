@@ -256,6 +256,12 @@ inline llvm::PointerType *getPtrTy(llvm::IRBuilderBase &Builder, unsigned AddrSp
 #endif
 }
 
+/// Convenience alias matching the removed IRBuilder::getInt8PtrTy interface.
+/// Delegates to IGCLLVM::getPtrTy for mechanical call-site migration.
+inline llvm::PointerType *getInt8PtrTy(llvm::IRBuilderBase &Builder, unsigned AddrSpace = 0) {
+  return IGCLLVM::getPtrTy(Builder, AddrSpace);
+}
+
 } // namespace IGCLLVM
 
 #endif

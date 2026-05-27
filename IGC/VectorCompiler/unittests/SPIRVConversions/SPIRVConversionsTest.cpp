@@ -42,7 +42,7 @@ Type *generateAnyType(Intrinsic::IITDescriptor::ArgKind AK, LLVMContext &Ctx) {
   case IITDescriptor::AK_AnyFloat:
     return Type::getDoubleTy(Ctx);
   case IITDescriptor::AK_AnyPointer:
-    return Type::getInt32PtrTy(Ctx);
+    return IGCLLVM::getInt32PtrTy(Ctx);
   case IITDescriptor::AK_AnyVector:
     return IGCLLVM::FixedVectorType::get(Type::getInt32Ty(Ctx), 8);
   }
@@ -117,7 +117,7 @@ protected:
 };
 
 TEST_F(SpirvConvertionsTest, IntrinsicAttrs) {
-  Type *FArgTy[] = {Type::getInt32PtrTy(Ctx_)};
+  Type *FArgTy[] = {IGCLLVM::getInt32PtrTy(Ctx_)};
   FunctionType *FT = FunctionType::get(Type::getVoidTy(Ctx_), FArgTy, false);
   Function *F = Function::Create(FT, Function::ExternalLinkage, "", M_.get());
   BasicBlock *BB = BasicBlock::Create(Ctx_, "", F);
@@ -192,7 +192,7 @@ TEST_F(SpirvConvertionsTest, FunctionAttrs) {
       {"SafeStack", Attribute::SafeStack},
   };
   for (const auto &k : kinds) {
-    Type *FArgTy[] = {Type::getInt32PtrTy(Ctx_)};
+    Type *FArgTy[] = {IGCLLVM::getInt32PtrTy(Ctx_)};
     FunctionType *FT = FunctionType::get(Type::getVoidTy(Ctx_), FArgTy, false);
     Function *test_f =
         Function::Create(FT, Function::ExternalLinkage, k.first, M_.get());

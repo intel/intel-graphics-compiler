@@ -82,20 +82,6 @@ index 0f98af69f12c..28d6f730cc8c 100644
  #include <bitset>
  #include <optional>
  
-diff --git a/llvm/include/llvm/IR/IRBuilder.h b/llvm/include/llvm/IR/IRBuilder.h
-index bc35caabeb84..4775df8d59d3 100644
---- a/llvm/include/llvm/IR/IRBuilder.h
-+++ b/llvm/include/llvm/IR/IRBuilder.h
-@@ -611,6 +611,9 @@ public:
-   IntegerType *getIntPtrTy(const DataLayout &DL, unsigned AddrSpace = 0) {
-     return DL.getIntPtrType(Context, AddrSpace);
-   }
-+  IntegerType *getInt8PtrTy(const DataLayout &DL, unsigned AddrSpace = 0) {
-+    return DL.getIntPtrType(Context, AddrSpace);
-+  }
- 
-   /// Fetch the type of an integer that should be used to index GEP operations
-   /// within AddressSpace.
 diff --git a/llvm/include/llvm/IR/Instruction.h b/llvm/include/llvm/IR/Instruction.h
 index 11385666e7ff..499a59381d2b 100644
 --- a/llvm/include/llvm/IR/Instruction.h

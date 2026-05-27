@@ -18,6 +18,8 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/Function.h>
 #include "common/LLVMWarningsPop.hpp"
 #include <llvmWrapper/IR/Instructions.h>
+#include <llvmWrapper/IR/DerivedTypes.h>
+#include <llvmWrapper/IR/IRBuilder.h>
 #include "MDFrameWork.h"
 #include "Probe/Assertion.h"
 
@@ -74,7 +76,8 @@ Value *ManageableBarriersResolution::allocBarriersDataPool(Function *pFunc) {
       new GlobalVariable(*(pFunc->getParent()), manageBarrierDataPoolType, false, GlobalVariable::InternalLinkage,
                          nullptr, "", nullptr, GlobalVariable::NotThreadLocal, ADDRESS_SPACE_LOCAL, false);
 
-  Value *cast = BitCastInst::CreateBitOrPointerCast(SLMPool, builder.getInt8PtrTy(ADDRESS_SPACE_LOCAL), "", pFirstInst);
+  Value *cast =
+      BitCastInst::CreateBitOrPointerCast(SLMPool, IGCLLVM::getInt8PtrTy(builder, ADDRESS_SPACE_LOCAL), "", pFirstInst);
 
   return cast;
 }
@@ -88,7 +91,7 @@ Value *ManageableBarriersResolution::preparePointerToBarrierStruct(Value *ptrToB
 
   // Pick insterested us data/field from this selected barrier data
   Value *barrierIdx2Field = builder.CreateAdd(ptrToBarrierSlotPtr2Int, builder.getInt32((int)FiledType * sizeof(int)));
-  Value *slmPoolInt2Ptr = builder.CreateIntToPtr(barrierIdx2Field, builder.getInt8PtrTy(ADDRESS_SPACE_LOCAL));
+  Value *slmPoolInt2Ptr = builder.CreateIntToPtr(barrierIdx2Field, IGCLLVM::getInt8PtrTy(builder, ADDRESS_SPACE_LOCAL));
   return slmPoolInt2Ptr;
 }
 
@@ -103,7 +106,8 @@ Value *ManageableBarriersResolution::getManageableBarrierstructDataPtr(CallInst 
   // We need to move to correct barrier slot
   Value *barrierIdx = builder.CreateMul(barrierID, builder.getInt32((int)MBDynamicStructFields::Max * sizeof(int)));
   Value *slmBarrierSlotPtr2Int = builder.CreateAdd(barrierIdx, slmPoolPtr2Int);
-  Value *slmBarrierSlotPtr = builder.CreateIntToPtr(slmBarrierSlotPtr2Int, builder.getInt8PtrTy(ADDRESS_SPACE_LOCAL));
+  Value *slmBarrierSlotPtr =
+      builder.CreateIntToPtr(slmBarrierSlotPtr2Int, IGCLLVM::getInt8PtrTy(builder, ADDRESS_SPACE_LOCAL));
 
   // Return ptr to the begining of the Barrier Data slot
   return slmBarrierSlotPtr;
@@ -154,7 +158,7 @@ Value *ManageableBarriersResolution::getManageableBarrierstructDataFieldPtr(Valu
   IGCIRBuilder<> builder(pInsertBefore);
   Value *ptr8ty = preparePointerToBarrierStruct(ptrToBarrierSlot, DataType, pInsertBefore);
   Value *ptr32ty =
-      builder.CreatePointerCast(ptr8ty, Type::getInt32PtrTy(pInsertBefore->getContext(), ADDRESS_SPACE_LOCAL));
+      builder.CreatePointerCast(ptr8ty, IGCLLVM::getInt32PtrTy(pInsertBefore->getContext(), ADDRESS_SPACE_LOCAL));
 
   return ptr32ty;
 }
@@ -174,8 +178,8 @@ Value *ManageableBarriersResolution::prepareBarrierIDPoolPtr(Instruction *pInser
 
   Value *offset2IDPool = builder.CreateAdd(
       ptr2int, builder.getInt32(getMaxNamedBarrierCount() * (int)MBDynamicStructFields::Max * sizeof(int)));
-  Value *pIDPool = builder.CreateIntToPtr(offset2IDPool,
-                                          PointerType::getInt32PtrTy(pInsertBefore->getContext(), ADDRESS_SPACE_LOCAL));
+  Value *pIDPool =
+      builder.CreateIntToPtr(offset2IDPool, IGCLLVM::getInt32PtrTy(pInsertBefore->getContext(), ADDRESS_SPACE_LOCAL));
 
   if (hasSimpleBarrier()) {
     IGC_ASSERT_MESSAGE(mManageBarrierInstructionsInit.size() < 31, "There is no free ID for the barrier");

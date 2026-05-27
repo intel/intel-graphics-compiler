@@ -689,7 +689,7 @@ CallInst *OpenCLPrintfResolution::genAtomicAdd(Value *outputBufferPtr, Value *da
   //   %writeOffset = call i32 @__builtin_IB_atomic_add_global_i32(i32 addrspace(1)* <outputBufferPtr>,
   //                                                               i32 <dataSize>)
   //
-  Type *bufPtrType = Type::getInt32PtrTy(*m_context, ADDRESS_SPACE_GLOBAL);
+  Type *bufPtrType = IGCLLVM::getInt32PtrTy(*m_context, ADDRESS_SPACE_GLOBAL);
   if (outputBufferPtr->getType() != bufPtrType) {
     outputBufferPtr =
         CastInst::Create(Instruction::CastOps::BitCast, outputBufferPtr, bufPtrType, "ptrBC", &printfCall);
@@ -827,9 +827,9 @@ Instruction *OpenCLPrintfResolution::generateCastToPtr(SPrintfArgDescriptor *arg
 
   case IGC::SHADER_PRINTF_STRING_LITERAL: {
     if (m_CGContext->type == ShaderType::OPENCL_SHADER)
-      castedType = Type::getInt64PtrTy(*m_context, ADDRESS_SPACE_GLOBAL);
+      castedType = IGCLLVM::getInt64PtrTy(*m_context, ADDRESS_SPACE_GLOBAL);
     else
-      castedType = Type::getInt32PtrTy(*m_context, ADDRESS_SPACE_GLOBAL);
+      castedType = IGCLLVM::getInt32PtrTy(*m_context, ADDRESS_SPACE_GLOBAL);
     break;
   }
   case IGC::SHADER_PRINTF_POINTER:

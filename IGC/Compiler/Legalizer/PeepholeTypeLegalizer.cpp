@@ -612,8 +612,9 @@ void PeepholeTypeLegalizer::legalizeUnaryInstruction(Instruction &I) {
         I.replaceAllUsesWith(newBitCastToScalar);
         I.eraseFromParent();
       } else {
-        Value *newUpBitCast = m_builder->CreateBitCast(
-            I.getOperand(0), Type::getIntNPtrTy(I.getContext(), promoteToInt, I.getType()->getPointerAddressSpace()));
+        Value *newUpBitCast =
+            m_builder->CreateBitCast(I.getOperand(0), IGCLLVM::getIntNPtrTy(I.getContext(), promoteToInt,
+                                                                            I.getType()->getPointerAddressSpace()));
         Value *newDownBitCast = m_builder->CreateBitCast(newUpBitCast, I.getType());
 
         I.replaceAllUsesWith(newDownBitCast);
@@ -1035,7 +1036,7 @@ void PeepholeTypeLegalizer::cleanupZExtInst(Instruction &I) {
     auto Load = cast<LoadInst>(prevInst);
     unsigned zext_size = I.getType()->getScalarSizeInBits();
     auto max_srcSize = APInt::getMaxValue(srcSize).getZExtValue();
-    auto ptrTy = Type::getIntNPtrTy(I.getContext(), zext_size, Load->getPointerAddressSpace());
+    auto ptrTy = IGCLLVM::getIntNPtrTy(I.getContext(), zext_size, Load->getPointerAddressSpace());
     auto ldTy = Type::getIntNTy(I.getContext(), zext_size);
 
     auto newBitcast = m_builder->CreateBitCast(prevInst->getOperand(0), ptrTy);

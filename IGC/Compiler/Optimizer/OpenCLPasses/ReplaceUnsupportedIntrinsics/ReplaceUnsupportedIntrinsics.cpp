@@ -474,8 +474,8 @@ void ReplaceUnsupportedIntrinsics::replaceMemcpy(IntrinsicInst *I) {
   const uint32_t DstAS = MC->getDestAddressSpace();
 
   LLVMContext &C = MC->getContext();
-  Type *TySrcPtrI8 = Type::getInt8PtrTy(C, SrcAS);
-  Type *TyDstPtrI8 = Type::getInt8PtrTy(C, DstAS);
+  Type *TySrcPtrI8 = IGCLLVM::getInt8PtrTy(C, SrcAS);
+  Type *TyDstPtrI8 = IGCLLVM::getInt8PtrTy(C, DstAS);
 
   IGCLLVM::IRBuilder<> Builder(MC);
 
@@ -605,8 +605,8 @@ void ReplaceUnsupportedIntrinsics::replaceMemMove(IntrinsicInst *I) {
   }
 
   LLVMContext &C = MM->getContext();
-  Type *TySrcPtrI8 = Type::getInt8PtrTy(C, SrcAS);
-  Type *TyDstPtrI8 = Type::getInt8PtrTy(C, DstAS);
+  Type *TySrcPtrI8 = IGCLLVM::getInt8PtrTy(C, SrcAS);
+  Type *TyDstPtrI8 = IGCLLVM::getInt8PtrTy(C, DstAS);
 
   auto *F = MM->getParent()->getParent();
 
@@ -761,7 +761,7 @@ void ReplaceUnsupportedIntrinsics::replaceMemset(IntrinsicInst *I) {
   const uint32_t AS = MS->getDestAddressSpace();
 
   LLVMContext &C = MS->getContext();
-  Type *TyPtrI8 = Type::getInt8PtrTy(C, AS);
+  Type *TyPtrI8 = IGCLLVM::getInt8PtrTy(C, AS);
 
   IGCLLVM::IRBuilder<> Builder(MS);
 

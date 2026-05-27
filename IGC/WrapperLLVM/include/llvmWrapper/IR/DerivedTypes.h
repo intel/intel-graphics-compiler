@@ -93,6 +93,47 @@ inline bool isOpaquePointerTy(const llvm::Type *Type) {
   return false;
 }
 
+inline llvm::PointerType *getInt8PtrTy(llvm::LLVMContext &C, unsigned AS = 0) {
+#if LLVM_VERSION_MAJOR < 22
+  return llvm::Type::getInt8PtrTy(C, AS);
+#else
+  return llvm::PointerType::get(C, AS);
+#endif
+}
+
+inline llvm::PointerType *getInt16PtrTy(llvm::LLVMContext &C, unsigned AS = 0) {
+#if LLVM_VERSION_MAJOR < 22
+  return llvm::Type::getInt16PtrTy(C, AS);
+#else
+  return llvm::PointerType::get(C, AS);
+#endif
+}
+
+inline llvm::PointerType *getInt32PtrTy(llvm::LLVMContext &C, unsigned AS = 0) {
+#if LLVM_VERSION_MAJOR < 22
+  return llvm::Type::getInt32PtrTy(C, AS);
+#else
+  return llvm::PointerType::get(C, AS);
+#endif
+}
+
+inline llvm::PointerType *getInt64PtrTy(llvm::LLVMContext &C, unsigned AS = 0) {
+#if LLVM_VERSION_MAJOR < 22
+  return llvm::Type::getInt64PtrTy(C, AS);
+#else
+  return llvm::PointerType::get(C, AS);
+#endif
+}
+
+inline llvm::PointerType *getIntNPtrTy(llvm::LLVMContext &C, unsigned N, unsigned AS = 0) {
+#if LLVM_VERSION_MAJOR < 22
+  return llvm::Type::getIntNPtrTy(C, N, AS);
+#else
+  (void)N;
+  return llvm::PointerType::get(C, AS);
+#endif
+}
+
 } // namespace IGCLLVM
 
 #endif
