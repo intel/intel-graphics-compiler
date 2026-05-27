@@ -14,6 +14,7 @@ SPDX-License-Identifier: MIT
 #include <functional>
 #include <iomanip>
 #include <iostream>
+#include <memory>
 #include <sstream>
 #include <string>
 #include <vector>
@@ -492,7 +493,7 @@ template <typename O> class CmdlineSpec {
   const char *exeTitle;
   const char *exeName;
   Group<O> opts;                     // command line options (top-level)
-  std::vector<Group<O> *> optGroups; // special option groups (e.g. -X....)
+  std::vector<std::unique_ptr<Group<O>>> optGroups; // special option groups (e.g. -X....)
   std::vector<Opt<O>> args;          // command line arguments
   const char *examples;
 
@@ -530,6 +531,11 @@ public:
                  }); // end  defineFlag(...)
     }                // end if appendHelpOpt
   }                  // end constructor
+
+  CmdlineSpec(const CmdlineSpec &) = delete;
+  CmdlineSpec &operator=(const CmdlineSpec &) = delete;
+  CmdlineSpec(CmdlineSpec &&) = delete;
+  CmdlineSpec &operator=(CmdlineSpec &&) = delete;
 
   // a flag requires no argument, but allows for one
   void defineFlag(const char *sNm, const char *lNm, const char *desc,
@@ -602,14 +608,14 @@ public:
       }
     }
 #endif
-    optGroups.emplace_back(new Group<O>(prefix, name));
+    optGroups.push_back(std::make_unique<Group<O>>(prefix, name));
     return *optGroups.back();
   }
 
   void handleHelpArgument(const char *inp, const ErrorHandler &err,
                           const char *exeTitle, const char *exeName,
                           const Group<O> &opts,
-                          const std::vector<Group<O> *> &groups,
+                          const std::vector<std::unique_ptr<Group<O>>> &groups,
                           const std::vector<Opt<O>> &args,
                           const char *examples) {
     if (!inp || !*inp) {
@@ -660,7 +666,7 @@ public:
       }
       // try for an exact group match first
       // Group<O> *group = nullptr;
-      for (auto g : groups) {
+      for (const auto &g : groups) {
         if (streq(g->prefix, inp)) {
           g->appendGroupSummary(std::cerr);
           exit(EXIT_SUCCESS);
@@ -796,7 +802,7 @@ public:
   }
 
   static void appendUsage(std::ostream &os, const Group<O> &opts,
-                          const std::vector<Group<O> *> &groups,
+                          const std::vector<std::unique_ptr<Group<O>>> &groups,
                           const std::vector<Opt<O>> &args, const char *exeName,
                           const char *examples) {
     os << "usage: " << exeName << " OPTIONS ARGS\n";

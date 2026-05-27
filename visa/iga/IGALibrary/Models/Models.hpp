@@ -201,15 +201,16 @@ static inline uint32_t SubRegToBinaryOffset(int subRegNum, RegName regName,
 class OpSpecTableIterator {
   Op curr;
   const OpSpec *const opsArray;
+  bool inRange() const { return curr <= Op::LAST_OP; }
   void advanceToNextValid() {
     advance(); // advance at least one
-    while (curr <= Op::LAST_OP && !currValid()) {
+    while (inRange() && !currValid()) {
       advance();
     }
   }
-  bool currValid() const { return opsArray[(int)curr].isValid(); }
+  bool currValid() const { return inRange() && opsArray[(int)curr].isValid(); }
   void advance() {
-    if (curr <= Op::LAST_OP) {
+    if (inRange()) {
       curr = (Op)((int)curr + 1);
     }
   }
