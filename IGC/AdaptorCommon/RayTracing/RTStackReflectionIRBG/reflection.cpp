@@ -34,6 +34,8 @@ PUREBUILTIN RTGAS RayDispatchGlobalData *getGlobalBufferPtr();
 PUREBUILTIN uint64_t canonizePointer(uint64_t);
 BUILTIN void createReadSyncTraceRay(uint32_t);
 PUREBUILTIN bool isRayQueryReturnOptimizationEnabled();
+
+
 PUREBUILTIN uint32_t ctlz(uint32_t);
 PUREBUILTIN uint32_t cttz(uint32_t);
 PUREBUILTIN uint32_t get32BitLaneIDReplicate();
@@ -932,9 +934,23 @@ IMPL bool _syncStackToShadowMemory(RTSAS RTStack2<GenT> *__restrict__ HWStackPtr
       // Inverting it allows simpler handling with no divergent paths
       // for optimization on and off.
       PH.done = Data.PROCEED_FURTHER == 0;
-      PH.leafType =
-          Data.candidateType == CANDIDATE_TYPE::CANDIDATE_NON_OPAQUE_TRIANGLE ? NODE_TYPE_QUAD : NODE_TYPE_PROCEDURAL;
+
+      // RayQueryReturnOptimization returns just CANDIDATE_TYPE enum.
+      // We are using ShadowMemory, which reflects MemHit structure,
+      // we need to translate this enum into Valid bit, and LeafType
+      // so it could be further processed as if it was read from HWStack.
+      // CANDIDATE_TYPE contains only two values:
+      // CANDIDATE_NON_OPAQUE_TRIANGLE
+      // CANDIDATE_PROCEDURAL_PRIMITIVE
+      // So it makes impossible to losslessly restore LeafType. We can only set
+      // Quad or Procedural. It is enough for just candidate processing, as
+      // we only need to distinguish Procedural from other type (e.g Quad).
+      // NODE_TYPE_PROCEDURAL has LSB bit set, while others not.
+        PH.leafType =
+            Data.candidateType == CANDIDATE_TYPE::CANDIDATE_NON_OPAQUE_TRIANGLE ? NODE_TYPE_QUAD : NODE_TYPE_PROCEDURAL;
+
       isValid = Data.committedStatus != COMMITTED_STATUS::COMMITTED_NOTHING;
+
     } else {
       isValid = HWStackPtr->committedHit.valid;
     }
@@ -963,8 +979,21 @@ IMPL bool _syncStackToShadowMemory(RTSAS RTStack2<GenT> *__restrict__ HWStackPtr
         // back to get Committed type from NodeType.
         // See (_getCommittedStatus*).
         CH.valid = isValid;
-        CH.leafType =
-            Data.committedStatus == COMMITTED_STATUS::COMMITTED_TRIANGLE_HIT ? NODE_TYPE_QUAD : NODE_TYPE_PROCEDURAL;
+
+        // RayQueryReturnOptimization returns just COMMITTED_STATUS enum.
+        // We are using ShadowMemory, which reflects MemHit structure,
+        // we need to translate this enum into Valid bit, and LeafType
+        // so it could be further processed as if it was read from HWStack.
+        // COMMITTED_STATUS contains only two LeafType relevant values:
+        // COMMITTED_TRIANGLE_HIT
+        // COMMITTED_PROCEDURAL_PRIMITIVE_HIT
+        // So it makes impossible to losslessly restore LeafType. We can only set
+        // Quad or Procedural. It is enough for just candidate processing, as
+        // we only need to distinguish Procedural from other type (e.g. Quad).
+        // NODE_TYPE_PROCEDURAL has LSB bit set, while others not.
+
+          CH.leafType =
+              Data.committedStatus == COMMITTED_STATUS::COMMITTED_TRIANGLE_HIT ? NODE_TYPE_QUAD : NODE_TYPE_PROCEDURAL;
       }
     }
 

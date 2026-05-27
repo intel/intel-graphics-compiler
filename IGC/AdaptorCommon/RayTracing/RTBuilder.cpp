@@ -1856,6 +1856,7 @@ ConstantInt *RTBuilder::isRayQueryReturnOptimizationEnabled() {
 }
 
 
+
 GenIntrinsicInst *RTBuilder::createDummyInstID(Value *pSrcVal) {
   Module *module = GetInsertBlock()->getModule();
   Function *pFunc = GenISAIntrinsic::getDeclaration(module, GenISAIntrinsic::GenISA_dummyInstID, pSrcVal->getType());

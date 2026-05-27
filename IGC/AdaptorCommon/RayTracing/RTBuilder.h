@@ -429,6 +429,7 @@ public:
   ConstantInt *isRayQueryReturnOptimizationEnabled();
 
 
+
   GenIntrinsicInst *createDummyInstID(Value *pSrcVal);
 
   CallInst *ctlz(Value *V);
