@@ -42,7 +42,6 @@ declare <8 x i32> @llvm.genx.GenISA.sub.group.dpas.v8f32.v8f32.v8i16.v8i32(<8 x 
 !igc.functions = !{!0}
 
 !0 = !{void ()* @_foo, !1}
-!1 = !{!2, !4, !3}
+!1 = !{!2, !3}
 !2 = !{!"function_type", i32 0}
 !3 = !{!"sub_group_size", i32 16}
-!4 = !{!"max_reg_pressure", i32 185}

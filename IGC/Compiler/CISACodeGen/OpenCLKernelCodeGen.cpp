@@ -493,30 +493,42 @@ COpenCLKernel::SIMDSizeRequirement COpenCLKernel::getEffectiveRequiredSIMDSize(l
   return {};
 }
 
-uint32_t COpenCLKernel::getMaxPressure(llvm::Function &F, MetaDataUtils *MDUtils) const {
-  FunctionInfoMetaDataHandle funcInfoMD = MDUtils->getFunctionsInfoItem(&F);
-  unsigned int maxPressure = funcInfoMD->getMaxRegPressure()->getMaxPressure();
+uint32_t COpenCLKernel::getMaxPressure(llvm::Function &F) const {
+  const auto *modMD = m_Context->getModuleMetaData();
+  auto it = modMD->FuncMD.find(&F);
+  unsigned int maxPressure = (it != modMD->FuncMD.end()) ? it->second.maxRegPressure : 0;
 
   if (m_FGA) {
     llvm::Function *Kernel = &F;
     auto FG = m_FGA->getGroup(&F);
     Kernel = FG->getHead();
-    funcInfoMD = MDUtils->getFunctionsInfoItem(Kernel);
-    maxPressure = funcInfoMD->getMaxRegPressure()->getMaxPressure();
+    auto kit = modMD->FuncMD.find(Kernel);
+    maxPressure = (kit != modMD->FuncMD.end()) ? kit->second.maxRegPressure : 0;
   }
   return maxPressure;
 }
 
-uint32_t COpenCLKernel::getMaxPressureForSIMD(llvm::Function &F, MetaDataUtils *MDUtils, unsigned SimdLanes) const {
-  FunctionInfoMetaDataHandle funcInfoMD = MDUtils->getFunctionsInfoItem(&F);
-  unsigned int maxPressure = funcInfoMD->getMaxRegPressureForSIMDSize(SimdLanes)->getMaxPressure();
+uint32_t COpenCLKernel::getMaxPressureForSIMD(llvm::Function &F, unsigned SimdLanes) const {
+  const auto *modMD = m_Context->getModuleMetaData();
+  auto pickPressure = [SimdLanes](const FunctionMetaData &funcMD) {
+    switch (SimdLanes) {
+    case 16:
+      return funcMD.maxRegPressureSimd16;
+    case 32:
+      return funcMD.maxRegPressureSimd32;
+    default:
+      return funcMD.maxRegPressure;
+    }
+  };
+  auto it = modMD->FuncMD.find(&F);
+  unsigned int maxPressure = (it != modMD->FuncMD.end()) ? pickPressure(it->second) : 0;
 
   if (m_FGA) {
     llvm::Function *Kernel = &F;
     auto FG = m_FGA->getGroup(&F);
     Kernel = FG->getHead();
-    funcInfoMD = MDUtils->getFunctionsInfoItem(Kernel);
-    maxPressure = funcInfoMD->getMaxRegPressureForSIMDSize(SimdLanes)->getMaxPressure();
+    auto kit = modMD->FuncMD.find(Kernel);
+    maxPressure = (kit != modMD->FuncMD.end()) ? pickPressure(kit->second) : 0;
   }
   return maxPressure;
 }
@@ -2639,7 +2651,7 @@ SIMDStatus COpenCLKernel::checkSIMDCompileCondsForMin16(SIMDMode simdMode, EmitP
     EP.m_canAbortOnSpill = false;
   }
   bool hasSubGroupForce = hasSubGroupIntrinsicPVC(F);
-  uint32_t maxPressure = getMaxPressure(F, pMdUtils);
+  uint32_t maxPressure = getMaxPressure(F);
 
   auto FG = m_FGA ? m_FGA->getGroup(&F) : nullptr;
   bool hasStackCall = FG && FG->hasStackCall();
@@ -2718,8 +2730,8 @@ SIMDStatus COpenCLKernel::checkSIMDCompileCondsForMin16(SIMDMode simdMode, EmitP
   }
 
   if (EP.m_canAbortOnSpill && pCtx->platform.isCoreXE3() && IGC_IS_FLAG_ENABLED(AllowEarlySIMD16DropForXE3)) {
-    uint32_t simd16Pressure = getMaxPressureForSIMD(F, pMdUtils, numLanes(SIMDMode::SIMD16));
-    uint32_t simd32Pressure = getMaxPressureForSIMD(F, pMdUtils, numLanes(SIMDMode::SIMD32));
+    uint32_t simd16Pressure = getMaxPressureForSIMD(F, numLanes(SIMDMode::SIMD16));
+    uint32_t simd32Pressure = getMaxPressureForSIMD(F, numLanes(SIMDMode::SIMD32));
     bool shouldDrop = shouldDropToSIMD16(maxPressure, simd16Pressure, simd32Pressure, simdMode, pCtx, pMdUtils, &F);
     if (shouldDrop) {
       pCtx->SetSIMDInfo(SIMD_SKIP_PERF, simdMode, ShaderDispatchMode::NOT_APPLICABLE);
@@ -2783,7 +2795,7 @@ SIMDStatus COpenCLKernel::checkSIMDCompileConds(SIMDMode simdMode, EmitPass &EP,
   FunctionInfoMetaDataHandle funcInfoMD = pMdUtils->getFunctionsInfoItem(&F);
   auto simdReq = getEffectiveRequiredSIMDSize(F, pMdUtils);
   uint32_t requiredSimdSize = simdReq.Size;
-  uint32_t maxPressure = getMaxPressure(F, pMdUtils);
+  uint32_t maxPressure = getMaxPressure(F);
 
   // For simd variant functions, detect which SIMD sizes are needed
   if (compileFunctionVariants && F.hasFnAttribute("variant-function-def")) {

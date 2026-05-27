@@ -232,8 +232,8 @@ private:
   // Returns the effective required SIMD size, considering both intel_reqd_sub_group_size
   // attribute and forcedSIMDSize from compute shader info.
   SIMDSizeRequirement getEffectiveRequiredSIMDSize(llvm::Function &F, IGC::IGCMD::MetaDataUtils *MDUtils) const;
-  uint32_t getMaxPressure(llvm::Function &F, IGC::IGCMD::MetaDataUtils *MDUtils) const;
-  uint32_t getMaxPressureForSIMD(llvm::Function &F, IGC::IGCMD::MetaDataUtils *MDUtils, unsigned SimdLanes) const;
+  uint32_t getMaxPressure(llvm::Function &F) const;
+  uint32_t getMaxPressureForSIMD(llvm::Function &F, unsigned SimdLanes) const;
   bool isUnusedArg(KernelArg &arg) const;
   bool canSkipScratchPointer(KernelArgs &args) const;
   void setOCLThreadPayloadLocalIDs(KernelArgs &args);

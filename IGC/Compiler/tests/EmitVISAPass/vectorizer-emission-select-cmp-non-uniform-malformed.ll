@@ -60,10 +60,9 @@ attributes #0 = { nocallback nofree nosync nounwind speculatable willreturn memo
 !igc.functions = !{!0}
 
 !0 = !{ptr @foo, !1}
-!1 = !{!2, !3, !6, !7}
+!1 = !{!2, !3, !6}
 !2 = !{!"function_type", i32 0}
 !3 = !{!"implicit_arg_desc", !4, !5}
 !4 = !{i32 0}
 !5 = !{i32 2}
 !6 = !{!"sub_group_size", i32 16}
-!7 = !{!"max_reg_pressure", i32 151}

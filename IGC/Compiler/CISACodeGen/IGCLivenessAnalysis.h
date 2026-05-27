@@ -134,40 +134,28 @@ public:
   }
 
   void publishRegPressureMetadata(llvm::Function &F, unsigned int MaxPressure) {
-    publishRegPressureMetadata(F, MaxPressure, MDUtils);
-  }
-
-  static void publishRegPressureMetadata(llvm::Function &F, unsigned int MaxPressure,
-                                         IGC::IGCMD::MetaDataUtils *MDUtils) {
-    if (MDUtils->findFunctionsInfoItem(&F) != MDUtils->end_FunctionsInfo()) {
-      IGC::IGCMD::FunctionInfoMetaDataHandle funcInfoMD = MDUtils->getFunctionsInfoItem(&F);
-      funcInfoMD->getMaxRegPressure()->setMaxPressure(MaxPressure);
-      MDUtils->save(F.getContext());
-    }
+    CGCtx->getModuleMetaData()->FuncMD[&F].maxRegPressure = MaxPressure;
   }
 
   void publishRegPressureMetadataForSIMD(llvm::Function &F, unsigned int SimdLanes, unsigned int MaxPressure) {
-    publishRegPressureMetadataForSIMD(F, SimdLanes, MaxPressure, MDUtils);
-  }
-
-  static void publishRegPressureMetadataForSIMD(llvm::Function &F, unsigned int SimdLanes, unsigned int MaxPressure,
-                                                IGC::IGCMD::MetaDataUtils *MDUtils) {
-    if (MDUtils->findFunctionsInfoItem(&F) != MDUtils->end_FunctionsInfo()) {
-      IGC::IGCMD::FunctionInfoMetaDataHandle funcInfoMD = MDUtils->getFunctionsInfoItem(&F);
-      funcInfoMD->getMaxRegPressureForSIMDSize(SimdLanes)->setMaxPressure(MaxPressure);
-      MDUtils->save(F.getContext());
+    auto &FuncMDEntry = CGCtx->getModuleMetaData()->FuncMD[&F];
+    switch (SimdLanes) {
+    case 16:
+      FuncMDEntry.maxRegPressureSimd16 = MaxPressure;
+      break;
+    case 32:
+      FuncMDEntry.maxRegPressureSimd32 = MaxPressure;
+      break;
+    default:
+      FuncMDEntry.maxRegPressure = MaxPressure;
+      break;
     }
   }
 
-  unsigned checkPublishRegPressureMetadata(llvm::Function &F) { return checkPublishRegPressureMetadata(F, MDUtils); }
-
-  static unsigned checkPublishRegPressureMetadata(llvm::Function &F, IGC::IGCMD::MetaDataUtils *MDUtils) {
-    unsigned Result = 0;
-    if (MDUtils->findFunctionsInfoItem(&F) != MDUtils->end_FunctionsInfo()) {
-      IGC::IGCMD::FunctionInfoMetaDataHandle funcInfoMD = MDUtils->getFunctionsInfoItem(&F);
-      Result = funcInfoMD->getMaxRegPressure()->getMaxPressure();
-    }
-    return Result;
+  unsigned checkPublishRegPressureMetadata(llvm::Function &F) {
+    const auto *modMD = CGCtx->getModuleMetaData();
+    auto it = modMD->FuncMD.find(&F);
+    return (it != modMD->FuncMD.end()) ? it->second.maxRegPressure : 0;
   }
 
   PressurePair getMaxPressurePairForBB(llvm::BasicBlock &BB, unsigned int SIMD, WIAnalysisRunner *WI = nullptr) {

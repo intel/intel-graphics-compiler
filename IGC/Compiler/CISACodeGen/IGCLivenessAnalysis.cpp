@@ -660,10 +660,9 @@ bool IGCRegisterPressurePublisher::runOnModule(llvm::Module &M) {
     unsigned int Existing = RPE.checkPublishRegPressureMetadata(F);
     bool LegacyPublished = (Existing != 0);
     bool PerSIMDPublished = false;
-    if (MDUtils->findFunctionsInfoItem(&F) != MDUtils->end_FunctionsInfo()) {
-      auto md = MDUtils->getFunctionsInfoItem(&F);
-      PerSIMDPublished = (md->getMaxRegPressureForSIMDSize(numLanes(SIMDMode::SIMD16))->getMaxPressure() != 0) &&
-                         (md->getMaxRegPressureForSIMDSize(numLanes(SIMDMode::SIMD32))->getMaxPressure() != 0);
+    auto fmdIt = ModMD->FuncMD.find(&F);
+    if (fmdIt != ModMD->FuncMD.end()) {
+      PerSIMDPublished = (fmdIt->second.maxRegPressureSimd16 != 0) && (fmdIt->second.maxRegPressureSimd32 != 0);
     }
 
     // Compile-time guard: passes between CodeLoopSinking and this point are

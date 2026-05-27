@@ -391,11 +391,13 @@ bool EmitPass::IsUndefOrZeroImmediate(const Value *value) {
 
 // check all functions inside function group (current compilation unit)
 // to find the one with the highest register pressure
-unsigned int EmitPass::getMaxRegPressureInFunctionGroup(llvm::Function *F, const IGCMD::MetaDataUtils *MDU) {
+unsigned int EmitPass::getMaxRegPressureInFunctionGroup(llvm::Function *F) {
+  const auto *modMD = m_pCtx->getModuleMetaData();
   unsigned int MaxRegPressure = 0;
   if (!m_FGA) {
-    auto FuncMD = MDU->getFunctionsInfoItem(F);
-    MaxRegPressure = FuncMD->getMaxRegPressure()->getMaxPressure();
+    auto it = modMD->FuncMD.find(F);
+    if (it != modMD->FuncMD.end())
+      MaxRegPressure = it->second.maxRegPressure;
     return MaxRegPressure;
   }
 
@@ -405,11 +407,10 @@ unsigned int EmitPass::getMaxRegPressureInFunctionGroup(llvm::Function *F, const
 
   for (auto it = Group->begin(), ie = Group->end(); it != ie; ++it) {
     Function *PtrF = *it;
-    if (MDU->findFunctionsInfoItem(PtrF) == MDU->end_FunctionsInfo())
+    auto fit = modMD->FuncMD.find(PtrF);
+    if (fit == modMD->FuncMD.end())
       continue;
-    auto FuncMD = MDU->getFunctionsInfoItem(PtrF);
-    unsigned int Pressure = FuncMD->getMaxRegPressure()->getMaxPressure();
-    MaxRegPressure = std::max(MaxRegPressure, Pressure);
+    MaxRegPressure = std::max(MaxRegPressure, fit->second.maxRegPressure);
   }
   return MaxRegPressure;
 }
@@ -574,7 +575,7 @@ bool EmitPass::shouldForceEarlyRecompile(MetaDataUtils *pMdUtils, llvm::Function
       !m_pCtx->m_instrTypes.mayHaveIndirectOperands) {
     Threshold = std::min(Threshold, IGC_GET_FLAG_VALUE(EarlyRetryDefaultGRFThreshold));
   }
-  auto MaxRegPressure = getMaxRegPressureInFunctionGroup(F, pMdUtils);
+  auto MaxRegPressure = getMaxRegPressureInFunctionGroup(F);
   bool PassedThreshold = MaxRegPressure >= Threshold;
   return PassedThreshold;
 }

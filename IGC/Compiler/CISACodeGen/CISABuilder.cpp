@@ -4341,8 +4341,9 @@ void CEncoder::InitVISABuilderOptions(TARGET_PLATFORM VISAPlatform, bool canAbor
     SaveOption(vISA_enableBCR, true);
   }
 
-  auto funcInfoMD = context->getMetaDataUtils()->getFunctionsInfoItem(m_program->entry);
-  uint32_t MaxRegPressure = funcInfoMD->getMaxRegPressure()->getMaxPressure();
+  const auto *modMD = context->getModuleMetaData();
+  auto funcMDIter = modMD->FuncMD.find(m_program->entry);
+  uint32_t MaxRegPressure = (funcMDIter != modMD->FuncMD.end()) ? funcMDIter->second.maxRegPressure : 0;
   uint32_t RegPressureThreshold = (uint32_t)(context->getNumGRFPerThread(true) * 0.6);
 
   if (context->type == ShaderType::OPENCL_SHADER &&
