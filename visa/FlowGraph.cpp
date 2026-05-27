@@ -1972,8 +1972,8 @@ void FlowGraph::removeRedundantLabels() {
         // replace label in instructions
         if (i->isFlowControl()) {
           if (isIndirectJmpTarget(i)) {
-            // due to the switchjmp we may have multiple jmpi
-            // at the end of a block.
+            // switchjmp expands to multiple jmpis; prior label removals can
+            // leave more than one targeting the same label, so update all.
             [[maybe_unused]] bool foundMatchingJmp = false;
             for (INST_LIST::iterator iter = --pred->end();
                  iter != pred->begin(); --iter) {
@@ -1983,7 +1983,6 @@ void FlowGraph::removeRedundantLabels() {
                     i->getSrc(0) == removedBlockInst->getLabel()) {
                   i->setSrc(succ_label, 0);
                   foundMatchingJmp = true;
-                  break;
                 }
               } else {
                 break;
