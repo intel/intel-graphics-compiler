@@ -3678,7 +3678,7 @@ void SpillManagerGRF::insertAddrTakenSpillAndFillCode(
           }
 
           off += curExSize;
-          numbytes -= curExSize * 2;
+          numbytes -= curExSize * TypeSize(type);
         }
 
         // Update points to
@@ -3875,7 +3875,7 @@ void SpillManagerGRF::insertAddrTakenLSSpillAndFillCode(
           }
 
           off += curExSize;
-          numbytes -= curExSize * 2;
+          numbytes -= curExSize * TypeSize(type);
         }
 
         // Update points to
