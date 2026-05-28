@@ -247,7 +247,7 @@ public:
   bool isAccReg() const;
   bool isFlag() const;
   bool isMaskReg() const;
-  bool isMsReg() const;
+  bool isMsgReg() const;
   bool isSrReg() const;
   bool isCrReg() const;
   bool isDbgReg() const;
@@ -603,7 +603,7 @@ public:
   bool isNReg() const { return base->isNReg(); }
   bool isAccReg() const { return base->isAccReg(); }
   bool isMaskReg() const { return base->isMaskReg(); }
-  bool isMsReg() const { return base->isMsReg(); }
+  bool isMsgReg() const { return base->isMsgReg(); }
   bool isSrReg() const { return base->isSrReg(); }
   bool isCrReg() const { return base->isCrReg(); }
   bool isDbgReg() const { return base->isDbgReg(); }
@@ -762,7 +762,7 @@ public:
   bool isNReg() const { return base->isNReg(); }
   bool isAccReg() const { return base->isAccReg(); }
   bool isMaskReg() const { return base->isMaskReg(); }
-  bool isMsReg() const { return base->isMsReg(); }
+  bool isMsgReg() const { return base->isMsgReg(); }
   bool isSrReg() const { return base->isSrReg(); }
   bool isCrReg() const { return base->isCrReg(); }
   bool isDbgReg() const { return base->isDbgReg(); }
@@ -1062,8 +1062,8 @@ inline bool G4_Operand::isFlag() const {
 inline bool G4_Operand::isMaskReg() const {
   return isRegRegion() && const_cast<G4_VarBase *>(getBase())->isMaskReg();
 }
-inline bool G4_Operand::isMsReg() const {
-  return isRegRegion() && const_cast<G4_VarBase *>(getBase())->isMsReg();
+inline bool G4_Operand::isMsgReg() const {
+  return isRegRegion() && const_cast<G4_VarBase *>(getBase())->isMsgReg();
 }
 inline bool G4_Operand::isSrReg() const {
   return isRegRegion() && const_cast<G4_VarBase *>(getBase())->isSrReg();

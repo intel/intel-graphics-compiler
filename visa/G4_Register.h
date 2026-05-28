@@ -69,7 +69,7 @@ public:
   bool isNReg() const;
   bool isAccReg() const;
   bool isMaskReg() const;
-  bool isMsReg() const;
+  bool isMsgReg() const;
   bool isSrReg() const;
   bool isCrReg() const;
   bool isDbgReg() const;
@@ -264,44 +264,50 @@ public:
   G4_Declare *getDeclare() { return decl; }
   bool isPhyRegAssigned() const { return reg.phyReg != NULL; }
   bool isFlag() const { return decl->getRegFile() == G4_FLAG; }
-  bool isAreg() const { return (reg.phyReg != NULL) && (reg.phyReg->isAreg()); }
-  bool isA0() const { return (reg.phyReg != NULL) && (reg.phyReg->isA0()); }
+  bool isAreg() const {
+    return (reg.phyReg != NULL) && reg.phyReg->isPhyAreg();
+  }
+  bool isA0() const {
+    return isAreg() && reg.phyReg->asAreg()->isA0();
+  }
   bool isCrReg() const {
-    return (reg.phyReg != NULL) && (reg.phyReg->isCrReg());
+    return isAreg() && reg.phyReg->asAreg()->isCrReg();
   }
   bool isDbgReg() const {
-    return (reg.phyReg != NULL) && (reg.phyReg->isDbgReg());
+    return isAreg() && reg.phyReg->asAreg()->isDbgReg();
   }
-  bool isGreg() const { return (reg.phyReg != NULL) && (reg.phyReg->isGreg()); }
-  bool isNReg() const { return (reg.phyReg != NULL) && (reg.phyReg->isNReg()); }
+  bool isGreg() const {
+    return (reg.phyReg != NULL) && reg.phyReg->isPhyGreg();
+  }
+  bool isNReg() const { return isAreg() && reg.phyReg->asAreg()->isNReg(); }
   bool isNullReg() const {
-    return (reg.phyReg != NULL) && (reg.phyReg->isNullReg());
+    return isAreg() && reg.phyReg->asAreg()->isNullReg();
   }
   bool isSrReg() const {
-    return (reg.phyReg != NULL) && (reg.phyReg->isSrReg());
+    return isAreg() && reg.phyReg->asAreg()->isSrReg();
   }
   bool isTDRReg() const {
-    return (reg.phyReg != NULL) && (reg.phyReg->isTDRReg());
+    return isAreg() && reg.phyReg->asAreg()->isTDRReg();
   }
   bool isTmReg() const {
-    return (reg.phyReg != NULL) && (reg.phyReg->isTmReg());
+    return isAreg() && reg.phyReg->asAreg()->isTmReg();
   }
   bool isAccReg() const {
-    return (reg.phyReg != NULL) && (reg.phyReg->isAccReg());
+    return isAreg() && reg.phyReg->asAreg()->isAccReg();
   }
   bool isIpReg() const {
-    return (reg.phyReg != NULL) && (reg.phyReg->isIpReg());
+    return isAreg() && reg.phyReg->asAreg()->isIpReg();
   }
   bool isMaskReg() const {
-    return (reg.phyReg != NULL) && (reg.phyReg->isMaskReg());
+    return isAreg() && reg.phyReg->asAreg()->isMaskReg();
   }
-  bool isMsReg() const {
-    return (reg.phyReg != NULL) && (reg.phyReg->isMsReg());
+  bool isMsgReg() const {
+    return isAreg() && reg.phyReg->asAreg()->isMsgReg();
   }
   bool isSpReg() const {
-    return (reg.phyReg != NULL) && (reg.phyReg->isSpReg());
+    return isAreg() && reg.phyReg->asAreg()->isSpReg();
   }
-  bool isS0() const { return (reg.phyReg != NULL) && (reg.phyReg->isS0()); }
+  bool isS0() const { return isAreg() && reg.phyReg->asAreg()->isS0(); }
 
   bool isRegAllocPartaker() const { return id != UNDEFINED_VAL; }
   unsigned getRegAllocPartaker() const { return id; }
@@ -462,10 +468,10 @@ inline bool G4_VarBase::isMaskReg() const {
     return asRegVar()->isMaskReg();
   return isPhyAreg() && asAreg()->isMaskReg();
 }
-inline bool G4_VarBase::isMsReg() const {
+inline bool G4_VarBase::isMsgReg() const {
   if (isRegVar())
-    return asRegVar()->isMsReg();
-  return isPhyAreg() && asAreg()->isMsReg();
+    return asRegVar()->isMsgReg();
+  return isPhyAreg() && asAreg()->isMsgReg();
 }
 inline bool G4_VarBase::isSrReg() const {
   if (isRegVar())
