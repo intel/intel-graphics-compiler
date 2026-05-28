@@ -25,27 +25,33 @@ SPDX-License-Identifier: MIT
 #include <Devpkey.h>  // for DEVPKEY_*
 #include <SetupAPI.h>
 #include <Shlwapi.h>
-#include <algorithm>
 #endif
 
-#include <list>
-#include <vector>
-#include <string>
-#include <utility>
+#include <algorithm>
+#include <charconv>
 #include <chrono>
 #include <fstream>
-#include <sstream>
 #include <iostream>
+#include <list>
 #include <mutex>
-#include <algorithm>
 #include <optional>
+#include <sstream>
+#include <string_view>
+#include <string>
+#include <utility>
+#include <vector>
 #include "Probe/Assertion.h"
 #include "common/Types.hpp"
 
 // path for IGC registry keys
 #define IGC_REGISTRY_KEY "SOFTWARE\\INTEL\\IGFX\\IGC"
 
-SRegKeysList g_RegKeyList;
+IGCFlagsArray g_IGCFlagsArray = {{
+#define DECLARE_IGC_REGKEY(dataType, regkeyName, defaultValue, description, releaseMode)                               \
+  IGCFlag((unsigned)defaultValue, #regkeyName, releaseMode, IGCFlagType_##dataType),
+#include "igc_regkeys.h"
+#undef DECLARE_IGC_REGKEY
+}};
 
 #if defined(_WIN64) || defined(_WIN32)
 
@@ -267,7 +273,7 @@ std::string getNewRegistryPath(DEVINST deviceInstance) {
 /*****************************************************************************\
 ReadIGCEnv
 \*****************************************************************************/
-static bool ReadIGCEnv(const char *pName, void *pValue, unsigned int size, const char *pType) {
+static bool ReadIGCEnv(const char *pName, void *pValue, unsigned int size, IGCFlagType type) {
   if (pName != NULL) {
     const char nameTag[] = "IGC_";
     std::string pKey = std::string(nameTag) + std::string(pName);
@@ -275,7 +281,7 @@ static bool ReadIGCEnv(const char *pName, void *pValue, unsigned int size, const
     const char *envVal = getenv(pKey.c_str());
 
     if (envVal != NULL) {
-      if (strcmp(pType, "debugString") != 0 && size >= sizeof(unsigned int)) {
+      if (type != IGCFlagType_debugString && size >= sizeof(unsigned int)) {
         // Try integer conversion
         if (envVal[0] == '0' && std::tolower(envVal[1]) == 'b') {
           // Binary literals, like in C++14
@@ -312,12 +318,9 @@ static bool ReadIGCEnv(const char *pName, void *pValue, unsigned int size, const
   return false;
 }
 
-/*****************************************************************************\
-ReadIGCRegistry
-\*****************************************************************************/
-bool ReadIGCRegistry(const char *pName, void *pValue, unsigned int size, const char *pType, bool readFromEnv) {
+extern "C" bool ReadIGCRegistry(const char *pName, void *pValue, unsigned int size, IGCFlagType type) {
   // All platforms can retrieve settings from environment
-  if (readFromEnv && ReadIGCEnv(pName, pValue, size, pType)) {
+  if (ReadIGCEnv(pName, pValue, size, type)) {
     return true;
   }
 
@@ -356,21 +359,6 @@ bool ReadIGCRegistry(const char *pName, void *pValue, unsigned int size, const c
   return false;
 }
 
-/*****************************************************************************\
-
-Function:
-    DumpIGCRegistryKeyDefinitions
-
-Description:
-    Dumps registry key definitions to an XML file.
-
-Input:
-    none
-
-Output:
-    none
-
-\*****************************************************************************/
 [[maybe_unused]] static const char *ConvertType(const char *flagType) {
   if (strcmp(flagType, "int") == 0)
     return "DWORD";
@@ -459,13 +447,6 @@ void DumpIGCRegistryKeyDefinitions3(std::string driverRegistryPath, unsigned lon
                               std::to_string(pciDevice) + "." + std::to_string(pciFunction) + ".xml";
 
   DumpIGCRegistryKeyDefinitions(registryKeyPath.c_str(), xmlPath.c_str());
-}
-
-static void checkAndSetIfKeyHasNoDefaultValue(SRegKeyVariableMetaData *pRegKeyVariable) {
-  // Todo: need to interpret value based on its type
-  if (pRegKeyVariable->m_Value != pRegKeyVariable->GetDefault()) {
-    pRegKeyVariable->SetToNonDefaultValue();
-  }
 }
 
 /// Function taken from LLVM CommandLine.cpp file
@@ -673,19 +654,18 @@ static void ParseEntryPoint(llvm::StringRef line, std::vector<EntryPoint> &entry
   } while (!vString.empty());
 }
 
-static void setIGCKeyOnHash(std::vector<HashRange> &hashes, const unsigned value, SRegKeyVariableMetaData *var) {
+static void setIGCKeyOnHash(std::vector<HashRange> &hashes, const unsigned value, IGCFlag *var) {
   // hashes can be empty if the var is not set via Options.txt
   for (size_t i = 0; i < hashes.size(); i++)
     var->hashes.push_back(hashes[i]);
-  var->Set();
+  var->isSet = true;
   var->m_Value = value;
 }
 
-static void setIGCKeyOnEntryPoints(std::vector<EntryPoint> &entry_points, const unsigned value,
-                                   SRegKeyVariableMetaData *var) {
+static void setIGCKeyOnEntryPoints(std::vector<EntryPoint> &entry_points, const unsigned value, IGCFlag *var) {
   // hashes can be empty if the var is not set via Options.txt
   var->entry_points.insert(var->entry_points.end(), entry_points.begin(), entry_points.end());
-  var->Set();
+  var->isSet = true;
   var->m_Value = value;
 }
 
@@ -766,8 +746,7 @@ static void setImpliedIGCKeys() {
   IGC_SET_IMPLIED_REGKEY(ForceOCLSIMDWidth, 8, EnableOCLSIMD16, false);
 }
 
-void setImpliedRegkey(SRegKeyVariableMetaData &name, const bool set, SRegKeyVariableMetaData &subname,
-                      const unsigned subvalue) {
+void setImpliedRegkey(IGCFlag &name, const bool set, IGCFlag &subname, const unsigned subvalue) {
   if (set) {
     setIGCKeyOnHash(name.hashes, subvalue, &subname);
     setIGCKeyOnEntryPoints(name.entry_points, subvalue, &subname);
@@ -775,8 +754,7 @@ void setImpliedRegkey(SRegKeyVariableMetaData &name, const bool set, SRegKeyVari
 }
 
 static void declareIGCKey(const std::string &line, const char *dataType, const char *regkeyName,
-                          std::vector<HashRange> &hashes, std::vector<EntryPoint> &entry_points,
-                          SRegKeyVariableMetaData *regKey) {
+                          std::vector<HashRange> &hashes, std::vector<EntryPoint> &entry_points, IGCFlag *regKey) {
   bool isSet = false;
   debugString value = {0};
   setRegkeyFromOption(line, dataType, regkeyName, &value, isSet);
@@ -793,7 +771,7 @@ static void declareIGCKey(const std::string &line, const char *dataType, const c
     std::cout << std::endl;
 
     std::cout << "** regkey " << line << std::endl;
-    regKey->Set();
+    regKey->isSet = true;
     memcpy_s(regKey->m_string, sizeof(value), value, sizeof(value));
   }
   if (isSet && !entry_points.empty()) {
@@ -806,7 +784,7 @@ static void declareIGCKey(const std::string &line, const char *dataType, const c
     std::cout << std::endl;
 
     std::cout << "** regkey " << line << std::endl;
-    regKey->Set();
+    regKey->isSet = true;
     memcpy_s(regKey->m_string, sizeof(value), value, sizeof(value));
   }
 }
@@ -827,7 +805,7 @@ static void LoadDebugFlagsFromFile() {
     ParseEntryPoint(line, entry_points);
 #define DECLARE_IGC_REGKEY(dataType, regkeyName, defaultValue, description, releaseMode)                               \
   {                                                                                                                    \
-    declareIGCKey(line, #dataType, #regkeyName, hashes, entry_points, &(g_RegKeyList.regkeyName));                     \
+    declareIGCKey(line, #dataType, #regkeyName, hashes, entry_points, &IGC_GET_REGKEY(regkeyName));                    \
   }
 #include "igc_regkeys.h"
     DECLARE_IGC_REGKEY(bool, ShaderDumpEnable, false, "dump LLVM IR, visaasm, and GenISA", true)
@@ -855,7 +833,7 @@ static void LoadDebugFlagsFromString(const char *input) {
     ParseEntryPoint(line, entry_points);
 #define DECLARE_IGC_REGKEY(dataType, regkeyName, defaultValue, description, releaseMode)                               \
   {                                                                                                                    \
-    declareIGCKey(line, #dataType, #regkeyName, hashes, entry_points, &(g_RegKeyList.regkeyName));                     \
+    declareIGCKey(line, #dataType, #regkeyName, hashes, entry_points, &IGC_GET_REGKEY(regkeyName));                    \
   }
 #include "igc_regkeys.h"
 #undef DECLARE_IGC_REGKEY
@@ -892,7 +870,7 @@ void ClearCurrentEntryPoints() {
 }
 
 
-bool CheckHashRange(SRegKeyVariableMetaData &varname) {
+bool CheckHashRange(IGCFlag &varname) {
   if (varname.hashes.empty()) {
     if (varname.entry_points.empty()) {
       return true;
@@ -901,7 +879,7 @@ bool CheckHashRange(SRegKeyVariableMetaData &varname) {
     }
   }
   if (!g_CurrentShaderHash.is_set()) {
-    std::string msg = "Warning: hash not calculated yet; IGC_GET_FLAG_VALUE(" + std::string(varname.GetName()) +
+    std::string msg = "Warning: hash not calculated yet; IGC_GET_FLAG_VALUE(" + std::string(varname.name) +
                       ") returned default value";
     appendToOptionsLogFile(msg);
   }
@@ -912,7 +890,7 @@ bool CheckHashRange(SRegKeyVariableMetaData &varname) {
       varname.m_Value = it.m_Value;
       constexpr uint32_t Len = 100;
       char msg[Len];
-      int size = snprintf(msg, Len, "Shader %#0llx: %s=%d", CurrHash, varname.GetName(), it.m_Value);
+      int size = snprintf(msg, Len, "Shader %#0llx: %s=%d", CurrHash, varname.name, it.m_Value);
       if (size >= 0 && size < Len) {
         appendToOptionsLogFile(msg);
       }
@@ -923,7 +901,7 @@ bool CheckHashRange(SRegKeyVariableMetaData &varname) {
   return false;
 }
 
-bool CheckEntryPoint(SRegKeyVariableMetaData &varname) {
+bool CheckEntryPoint(IGCFlag &varname) {
   // return false;
   if (varname.entry_points.empty()) {
     if (varname.hashes.empty()) {
@@ -935,7 +913,7 @@ bool CheckEntryPoint(SRegKeyVariableMetaData &varname) {
 
   if (g_CurrentEntryPointNames.size() == 0)
   {
-    std::string msg = "Warning: entry point not set yet; IGC_GET_FLAG_VALUE(" + std::string(varname.GetName()) +
+    std::string msg = "Warning: entry point not set yet; IGC_GET_FLAG_VALUE(" + std::string(varname.name) +
                       ") returned default value";
     appendToOptionsLogFile(msg);
   }
@@ -956,99 +934,101 @@ bool CheckEntryPoint(SRegKeyVariableMetaData &varname) {
   return false;
 }
 
-/*****************************************************************************\
+IGCFlag *FindIGCFlagByName(const char *name) {
+  if (!name)
+    return nullptr;
 
-Function:
-    GetRegistryKeyValue
-
-Description:
-    Reads a registry variable from the registry
-
-Input:
-    key
-    buffer
-    bufferSize
-
-Output:
-    read status
-
-\*****************************************************************************/
-extern "C" bool IGC_DEBUG_API_CALL GetRegistryKeyValue(const char *key, void *buffer, uint32_t bufferSize,
-                                                       const char *pType) {
-  bool isSet = ReadIGCRegistry(key, buffer, bufferSize, pType);
-  return isSet;
-}
-
-static void LoadFromRegKeyOrEnvVarOrOptions(const std::string &options = "", bool *RegFlagNameError = nullptr) {
-  SRegKeyVariableMetaData *pRegKeyVariable = (SRegKeyVariableMetaData *)&g_RegKeyList;
-  constexpr unsigned NUM_REGKEY_ENTRIES = sizeof(SRegKeysList) / sizeof(SRegKeyVariableMetaData);
-  for (DWORD i = 0; i < NUM_REGKEY_ENTRIES; i++) {
-    debugString value = {0};
-    const char *name = pRegKeyVariable[i].GetName();
-    std::string nameWithEqual = name;
-    nameWithEqual = nameWithEqual + "=";
-
-    bool isSet = GetRegistryKeyValue(name, &value, sizeof(value), pRegKeyVariable[i].GetType());
-
-    if (isSet) {
-      memcpy_s(pRegKeyVariable[i].m_string, sizeof(value), value, sizeof(value));
-
-      pRegKeyVariable[i].Set();
-      checkAndSetIfKeyHasNoDefaultValue(&pRegKeyVariable[i]);
-    }
-
-    debugString valueFromOptions = {0};
-    std::size_t found = options.find(nameWithEqual);
-
-    if (found != std::string::npos) {
-      std::size_t foundComma = options.find(',', found);
-      if (foundComma != std::string::npos) {
-        if (found == 0 || options[found - 1] == ' ' || options[found - 1] == ',') {
-          std::string token = options.substr(found + nameWithEqual.size(), foundComma - (found + nameWithEqual.size()));
-          unsigned int size = sizeof(value);
-          void *pValueFromOptions = &valueFromOptions;
-
-          const char *envValFromOptions = token.c_str();
-          bool valueIsInt = false;
-          if (envValFromOptions != NULL) {
-            if (size >= sizeof(unsigned int)) {
-              // Try integer conversion
-              char *pStopped = nullptr;
-              unsigned int *puValFromOptions = (unsigned int *)pValueFromOptions;
-              *puValFromOptions = strtoul(envValFromOptions, &pStopped, 0);
-              if (pStopped == envValFromOptions + std::strlen(envValFromOptions)) {
-                valueIsInt = true;
-              }
-            }
-            if (!valueIsInt) {
-              // Just return the string
-              strncpy_s((char *)pValueFromOptions, size, envValFromOptions, size);
-            }
-          }
-          memcpy_s(pRegKeyVariable[i].m_string, sizeof(valueFromOptions), valueFromOptions, sizeof(valueFromOptions));
-          pRegKeyVariable[i].Set();
-          checkAndSetIfKeyHasNoDefaultValue(&pRegKeyVariable[i]);
-        } else if (found > 0 && options[found - 1] != ' ' && options[found - 1] != ',') {
-          // some keywords are a substring of another keywords
-          // for example, "ControlKernelTotalSize" and "PrintControlKernelTotalSize"
-          // so we need to check it and skip executing the keyword if it is not the expected one
-          continue;
-        } else if (RegFlagNameError != nullptr) {
-          *RegFlagNameError = true;
-        }
-      }
+  for (IGCFlag &igcFlag : g_IGCFlagsArray) {
+    if (strcmp(igcFlag.name, name) == 0) {
+      return &igcFlag;
     }
   }
-  if (IGC_IS_FLAG_ENABLED(PrintDebugSettings)) {
-    // Using std::cout caused crashes in SYCL environment so we use fprintf instead as a work around.
-    std::ostringstream debugOutputStream;
+  return nullptr;
+}
 
-    for (DWORD i = 0; i < NUM_REGKEY_ENTRIES; i++) {
-      if (pRegKeyVariable[i].m_isSetToNonDefaultValue)
-        debugOutputStream << pRegKeyVariable[i].GetName() << " " << pRegKeyVariable[i].m_Value << '\n';
+static void LoadIGCFlagsFromRegistry(const std::string &options = "", bool *RegFlagNameError = nullptr) {
+  for (IGCFlag &igcFlag : g_IGCFlagsArray) {
+    debugString value = {0};
+    bool registryValueFound = ReadIGCRegistry(igcFlag.name, &value, sizeof(value), igcFlag.type);
+    if (registryValueFound) {
+      memcpy_s(igcFlag.m_string, sizeof(value), value, sizeof(value));
+      igcFlag.isSet = true;
+    }
+  }
+}
+
+static void LoadIGCFlagsFromOptionsString(const std::string_view &options, bool *parseError) {
+  std::string_view allSeparators = ", \v\f\t\r\n";
+
+  for (IGCFlag &igcFlag : g_IGCFlagsArray) {
+    std::string nameWithEqual = std::string(igcFlag.name) + "=";
+    size_t foundName = options.find(nameWithEqual);
+    if (foundName == std::string::npos)
+      continue;
+
+    if (!(foundName == 0 || allSeparators.find(options[foundName - 1]) != std::string::npos)) {
+      // some keywords are a substring of another keywords
+      // for example, "ControlKernelTotalSize" and "PrintControlKernelTotalSize"
+      // so we need to check it and skip executing the keyword if it is not the expected one
+      continue;
     }
 
-    fprintf(stdout, "%s", debugOutputStream.str().c_str());
+    bool setError = false;
+    std::string_view token = options.substr(foundName + nameWithEqual.size());
+
+    // We do not use allSeparators here to allow us to match strings with whitespaces when igcFlag is string.
+    size_t foundSeparator = token.find(",");
+    if (foundSeparator != std::string::npos)
+      token = token.substr(0, foundSeparator);
+
+    if (igcFlag.IsNumber()) {
+      // Try integer conversion
+      unsigned parsedInt = 0;
+      auto [intEndPtr, intError] = std::from_chars(token.data(), token.data() + token.size(), parsedInt);
+      bool isValidInt = intError == std::errc();
+      if (isValidInt) {
+        igcFlag.m_Value = parsedInt;
+        igcFlag.isSet = true;
+      } else {
+        std::cerr << "Failed to parse flag '" << igcFlag.name << "' as an unsigned integer. Token: '" << token << "\n";
+        setError = true;
+      }
+    } else { // IsString
+      size_t foundEqual = token.find('=');
+      if (foundEqual != std::string::npos) {
+        std::cerr << "Failed to parse flag '" << igcFlag.name << "', found an unexpected '=' character in token: '"
+                  << token << "'. Make sure to use comma , separator in igc_opts.\n";
+        setError = true;
+      }
+
+      if (!setError && sizeof(igcFlag.m_string) <= token.size()) {
+        std::cerr << "Failed to parse flag '" << igcFlag.name << "' due to max length limit overflow.\n";
+        setError = true;
+      }
+
+      if (!setError) {
+        strncpy_s(igcFlag.m_string, sizeof(igcFlag.m_string), token.data(), token.size());
+        igcFlag.isSet = true;
+      }
+    }
+
+    if (setError && parseError != nullptr)
+      *parseError = true;
+  }
+}
+
+static void PrintIGCFlags() {
+  if (IGC_IS_FLAG_ENABLED(PrintDebugSettings)) {
+    for (IGCFlag &igcFlag : g_IGCFlagsArray) {
+      if (igcFlag.IsSetToNonDefaultValue()) {
+        std::cout << igcFlag.name << " ";
+        if (igcFlag.IsString())
+          std::cout << igcFlag.m_string;
+        else
+          std::cout << igcFlag.m_Value;
+        std::cout << '\n';
+      }
+    }
   }
 }
 
@@ -1059,12 +1039,6 @@ Function:
 
 Description:
     Initialize global-scoped registry variables
-
-Input:
-    None
-
-Output:
-    None
 
 \*****************************************************************************/
 void InitializeRegKeys() {
@@ -1095,22 +1069,7 @@ void InitializeRegKeys() {
   }
 }
 
-/*****************************************************************************\
-
-Function:
-    LoadRegistryKeys
-
-Description:
-    Loads registry variables from the registry
-
-Input:
-    None
-
-Output:
-    None
-
-\*****************************************************************************/
-void LoadRegistryKeys(const std::string &options, bool *RegFlagNameError) {
+void LoadRegistryKeys(const std::string &options, bool *optionsParseError) {
   // only load the debug flags once before compiling to avoid any multi-threading issue
   static std::mutex loadFlags;
   static volatile bool flagsSet = false;
@@ -1118,7 +1077,9 @@ void LoadRegistryKeys(const std::string &options, bool *RegFlagNameError) {
 
   if (!flagsSet) {
     flagsSet = true;
-    LoadFromRegKeyOrEnvVarOrOptions(options, RegFlagNameError);
+    LoadIGCFlagsFromRegistry();
+    LoadIGCFlagsFromOptionsString(options, optionsParseError);
+    PrintIGCFlags();
     InitializeRegKeys();
   }
 }
@@ -1138,14 +1099,13 @@ void GetKeysSetExplicitly(std::string *KeyValuePairs, std::string *OptionKeys) {
 
   std::stringstream pairs;
   std::stringstream optionkeys;
-  SRegKeyVariableMetaData *pRegKeyVariable = (SRegKeyVariableMetaData *)&g_RegKeyList;
-  unsigned NUM_REGKEY_ENTRIES = sizeof(SRegKeysList) / sizeof(SRegKeyVariableMetaData);
   bool isFirst = true;
-  for (DWORD i = 0; i < NUM_REGKEY_ENTRIES; i++) {
-    if (pRegKeyVariable[i].m_isSetToNonDefaultValue == false) {
+
+  for (IGCFlag &igcFlag : g_IGCFlagsArray) {
+    if (!igcFlag.IsSetToNonDefaultValue()) {
       continue;
     }
-    const char *key = pRegKeyVariable[i].GetName();
+    const char *key = igcFlag.name;
 
     // Ignore some dump keys
     if (strcmp("ShaderDumpEnableAll", key) == 0 || strcmp("ShaderDumpEnable", key) == 0 ||
@@ -1155,12 +1115,21 @@ void GetKeysSetExplicitly(std::string *KeyValuePairs, std::string *OptionKeys) {
       continue;
     }
 
-    unsigned value = pRegKeyVariable[i].m_Value;
-    pairs << "    " << key << "    " << value << "\n";
+    pairs << "    " << key << "    ";
     if (!isFirst) {
       optionkeys << ",";
     }
-    optionkeys << key << "=" << value;
+    optionkeys << key << "=";
+
+    if (igcFlag.IsString()) {
+      pairs << igcFlag.m_string;
+      optionkeys << igcFlag.m_string;
+    } else {
+      pairs << igcFlag.m_Value;
+      optionkeys << igcFlag.m_Value;
+    }
+
+    pairs << "\n";
     isFirst = false;
   }
 

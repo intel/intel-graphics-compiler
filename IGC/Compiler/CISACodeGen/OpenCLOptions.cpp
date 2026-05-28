@@ -15,6 +15,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CISACodeGen/OpenCLOptions.hpp"
 #include "common/igc_regkeys.hpp"
 #include "igc/Options/Options.h"
+#include "Probe/Assertion.h"
 
 namespace IGC {
 void InternalOptions::parseOptions(const char *internalOpts) {

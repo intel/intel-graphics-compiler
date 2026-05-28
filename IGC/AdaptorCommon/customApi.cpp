@@ -168,7 +168,7 @@ void IGC_DEBUG_API_CALL SetCompilerOption(OptionFlag flag, debugString s) {
   switch (flag) {
 #define DECLARE_IGC_REGKEY(dataType, regkeyName, defaultValue, description, releaseMode)                               \
   case OptionFlag::OPTION_##regkeyName:                                                                                \
-    strcpy_s(g_RegKeyList.regkeyName.m_string, sizeof(debugString), s);                                                \
+    strcpy_s(IGC_GET_REGKEY(regkeyName).m_string, sizeof(debugString), s);                                             \
     break;
 #include "common/igc_regkeys.h"
 #undef DECLARE_IGC_REGKEY
@@ -181,7 +181,7 @@ void IGC_DEBUG_API_CALL SetCompilerOption(OptionFlag flag, int value) {
   switch (flag) {
 #define DECLARE_IGC_REGKEY(dataType, regkeyName, defaultValue, description, releaseMode)                               \
   case OptionFlag::OPTION_##regkeyName:                                                                                \
-    g_RegKeyList.regkeyName.m_Value = value;                                                                           \
+    IGC_GET_REGKEY(regkeyName).m_Value = value;                                                                        \
     break;
 #include "common/igc_regkeys.h"
 #undef DECLARE_IGC_REGKEY
@@ -203,8 +203,8 @@ void IGC_DEBUG_API_CALL SetCompilerOptionOpaque(OptionFlag flag, void *data) {
   switch (flag) {
 #define DECLARE_IGC_REGKEY(dataType, regkeyName, defaultValue, description, releaseMode)                               \
   case OptionFlag::OPTION_##regkeyName:                                                                                \
-    SetCompilerOptionOpaqueHelper(g_RegKeyList.regkeyName, reinterpret_cast<dataType *>(data));                        \
-    g_RegKeyList.regkeyName.Set();                                                                                     \
+    SetCompilerOptionOpaqueHelper(IGC_GET_REGKEY(regkeyName), reinterpret_cast<dataType *>(data));                     \
+    IGC_GET_REGKEY(regkeyName).isSet = true;                                                                           \
     break;
 #include "common/igc_regkeys.h"
 #undef DECLARE_IGC_REGKEY
@@ -214,39 +214,21 @@ void IGC_DEBUG_API_CALL SetCompilerOptionOpaque(OptionFlag flag, void *data) {
 }
 
 extern "C" void IGC_DEBUG_API_CALL SetCompilerOptionValue(const char *flagName, int value) {
-  if (!flagName) {
+  IGCFlag *flag = FindIGCFlagByName(flagName);
+  if (!flag || !flag->IsNumber())
     return;
-  }
 
-  SRegKeyVariableMetaData *pRegKeyVariable = (SRegKeyVariableMetaData *)&g_RegKeyList;
-  unsigned NUM_REGKEY_ENTRIES = sizeof(SRegKeysList) / sizeof(SRegKeyVariableMetaData);
-  for (DWORD i = 0; i < NUM_REGKEY_ENTRIES; i++) {
-    const char *name = pRegKeyVariable[i].GetName();
-
-    if (!strcmp(flagName, name)) {
-      pRegKeyVariable[i].m_Value = value;
-      pRegKeyVariable[i].Set();
-      break;
-    }
-  }
+  flag->m_Value = value;
+  flag->isSet = true;
 }
 
 extern "C" void IGC_DEBUG_API_CALL SetCompilerOptionString(const char *flagName, debugString s) {
-  if (!flagName) {
+  IGCFlag *flag = FindIGCFlagByName(flagName);
+  if (!flag || !flag->IsString())
     return;
-  }
 
-  SRegKeyVariableMetaData *pRegKeyVariable = (SRegKeyVariableMetaData *)&g_RegKeyList;
-  unsigned NUM_REGKEY_ENTRIES = sizeof(SRegKeysList) / sizeof(SRegKeyVariableMetaData);
-  for (DWORD i = 0; i < NUM_REGKEY_ENTRIES; i++) {
-    const char *name = pRegKeyVariable[i].GetName();
-
-    if (!strcmp(flagName, name)) {
-      strcpy_s(pRegKeyVariable[i].m_string, sizeof(debugString), s);
-      pRegKeyVariable[i].Set();
-      break;
-    }
-  }
+  strcpy_s(flag->m_string, sizeof(debugString), s);
+  flag->isSet = true;
 }
 
 void IGC_DEBUG_API_CALL SetDebugFlag(DebugFlag flag, bool enabled) {

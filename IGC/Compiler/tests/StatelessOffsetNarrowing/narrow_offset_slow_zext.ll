@@ -7,7 +7,7 @@
 ;============================ end_copyright_notice =============================
 
 ; REQUIRES: regkeys
-; RUN: igc_opt --opaque-pointers %s -S -o - --regkey EnableStatelessOffsetNarrowing=1 --regkey GreaterThan4GBBufferRequired=1 -igc-stateless-offset-narrowing | FileCheck %s
+; RUN: igc_opt --opaque-pointers %s -S -o - --regkey EnableStatelessOffsetNarrowing=1 -igc-stateless-offset-narrowing | FileCheck %s
 
 ; This test verifies that stateless offset narrowing is applied even when
 ; GreaterThan4GBBufferRequired == true, provided that the max byte offset

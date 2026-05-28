@@ -6,19 +6,14 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
-/*****************************************************************************\
-STRUCT: SRegKeyVariableMetaData
-PURPOSE: Defines meta data for holding/defining regkey variables
-\*****************************************************************************/
 #pragma once
-#include "IGC/common/igc_debug.h"
-#include "IGC/common/igc_flags.hpp"
-#include "common/SysUtils.hpp"
 #include "iStdLib/types.h"
 #include "common/shaderHash.hpp"
-#include "Probe/Assertion.h"
-#include <string>
+#include "common/SysUtils.hpp"
+#include <array>
+#include <cstddef>
 #include <regex>
+#include <string>
 #include "CommonMacros.h"
 
 typedef char debugString[1024];
@@ -60,108 +55,103 @@ struct HashRange {
 };
 
 struct EntryPoint {
-
   std::string entry_point_name;
   union {
     unsigned m_Value;
     debugString m_string;
   };
 };
-struct SRegKeyVariableMetaData {
+
+enum IGCFlagType {
+  IGCFlagType_int = 0,
+  IGCFlagType_DWORD = IGCFlagType_int,
+  IGCFlagType_bool = IGCFlagType_int,
+  IGCFlagType_debugString = 1,
+};
+
+struct IGCFlag {
   union {
     unsigned m_Value;
     debugString m_string;
   };
   std::vector<HashRange> hashes;
   std::vector<EntryPoint> entry_points;
-  bool m_isSetToNonDefaultValue;
-  bool m_isSet = false;
-  bool IsSet() const { return m_isSet; }
-  void Set() { m_isSet = true; }
-  virtual const char *GetName() const = 0;
-  virtual unsigned GetDefault() const = 0;
-  virtual void SetToNonDefaultValue() = 0;
-  virtual const char *GetType() const = 0;
-  virtual ~SRegKeyVariableMetaData() {}
+  bool isSet = false;
+  const bool isReleaseMode = false;
+  const char *name;
+  const unsigned defaultValue;
+  IGCFlagType type;
+
+  IGCFlag(unsigned value, const char *name_, bool releaseMode, IGCFlagType type_)
+      : m_Value(value), isReleaseMode(releaseMode), name(name_), defaultValue(value), type(type_) {}
+
+  bool IsNumber() { return type == IGCFlagType_int; }
+
+  bool IsString() { return type == IGCFlagType_debugString; }
+
+  bool IsSetToNonDefaultValue() {
+    if (IsString()) {
+      return m_string[0] != '\0';
+    } else {
+      return m_Value != defaultValue;
+    }
+  }
 };
 
 #if defined(__linux__) && !defined(_DEBUG) && !defined(_INTERNAL)
 #define LINUX_RELEASE_MODE
 #endif
 
-/*****************************************************************************\
-MACRO: IGC_REGKEY
-PURPOSE: Declares a new regkey variable.
-\*****************************************************************************/
-#define IGC_REGKEY(dataType, regkeyName, defaultValue, description, releaseMode)                                       \
-  struct SRegKeyVariableMetaData_##regkeyName : public SRegKeyVariableMetaData {                                       \
-    SRegKeyVariableMetaData_##regkeyName() {                                                                           \
-      m_Value = (unsigned)defaultValue;                                                                                \
-      m_isSetToNonDefaultValue = false;                                                                                \
-    }                                                                                                                  \
-    const char *GetName() const { return #regkeyName; }                                                                \
-    unsigned GetDefault() const { return (unsigned)defaultValue; }                                                     \
-    bool IsSetToNonDefaultValue() const { return m_isSetToNonDefaultValue; }                                           \
-    void SetToNonDefaultValue() { m_isSetToNonDefaultValue = true; }                                                   \
-    bool IsReleaseMode() const { return releaseMode; }                                                                 \
-    const char *GetType() const { return #dataType; }                                                                  \
-  } regkeyName;                                                                                                        \
-  static_assert(sizeof(regkeyName) == sizeof(SRegKeyVariableMetaData));
-
 // XMACRO defining the regkeys
-#define DECLARE_IGC_REGKEY(dataType, regkeyName, defaultValue, description, releaseMode)                               \
-  IGC_REGKEY(dataType, regkeyName, defaultValue, description, releaseMode);
-struct SRegKeysList {
+#define DECLARE_IGC_REGKEY(dataType, regkeyName, defaultValue, description, releaseMode) regkeyName,
+enum class IGCFlagIndex {
 #include "igc_regkeys.h"
+  IGCFlagIndexCount
 };
 #undef DECLARE_IGC_REGKEY
-bool CheckHashRange(SRegKeyVariableMetaData &varname);
-bool CheckEntryPoint(SRegKeyVariableMetaData &varname);
-void setImpliedRegkey(SRegKeyVariableMetaData &name, const bool set, SRegKeyVariableMetaData &subname,
-                      const unsigned value);
+
+using IGCFlagsArray = std::array<IGCFlag, static_cast<std::size_t>(IGCFlagIndex::IGCFlagIndexCount)>;
+extern IGCFlagsArray g_IGCFlagsArray;
+#define IGC_GET_REGKEY(name) (g_IGCFlagsArray[static_cast<std::size_t>(IGCFlagIndex::name)])
+bool CheckHashRange(IGCFlag &varname);
+bool CheckEntryPoint(IGCFlag &varname);
+void setImpliedRegkey(IGCFlag &name, const bool set, IGCFlag &subname, const unsigned value);
 
 inline bool doesRegexMatch(const std::string &src, const char *regex) {
   return (regex && *regex != '\0') ? std::regex_search(src, std::regex(regex)) : true;
 }
 
-extern SRegKeysList g_RegKeyList;
 #if defined(LINUX_RELEASE_MODE)
 #define IGC_GET_FLAG_VALUE(name)                                                                                       \
-  (((CheckHashRange(g_RegKeyList.name) || CheckEntryPoint(g_RegKeyList.name)) && g_RegKeyList.name.IsReleaseMode())    \
-       ? g_RegKeyList.name.m_Value                                                                                     \
-       : g_RegKeyList.name.GetDefault())
-#define IGC_IS_FLAG_SET(name)                                                                                          \
-  ((CheckHashRange(g_RegKeyList.name) || CheckEntryPoint(g_RegKeyList.name)) ? g_RegKeyList.name.IsSet() : false)
-#define IGC_GET_FLAG_DEFAULT_VALUE(name) (g_RegKeyList.name.GetDefault())
-#define IGC_IS_FLAG_ENABLED(name) (IGC_GET_FLAG_VALUE(name) != 0)
-#define IGC_IS_FLAG_DISABLED(name) (!IGC_IS_FLAG_ENABLED(name))
-#define IGC_SET_FLAG_VALUE(name, regkeyValue) (g_RegKeyList.name.m_Value = regkeyValue)
+  (((CheckHashRange(IGC_GET_REGKEY(name)) || CheckEntryPoint(IGC_GET_REGKEY(name))) &&                                 \
+    IGC_GET_REGKEY(name).isReleaseMode)                                                                                \
+       ? IGC_GET_REGKEY(name).m_Value                                                                                  \
+       : IGC_GET_REGKEY(name).defaultValue)
 #define IGC_GET_REGKEYSTRING(name)                                                                                     \
-  (((CheckHashRange(g_RegKeyList.name) || CheckEntryPoint(g_RegKeyList.name)) && g_RegKeyList.name.IsReleaseMode())    \
-       ? g_RegKeyList.name.m_string                                                                                    \
+  (((CheckHashRange(IGC_GET_REGKEY(name)) || CheckEntryPoint(IGC_GET_REGKEY(name))) &&                                 \
+    IGC_GET_REGKEY(name).isReleaseMode)                                                                                \
+       ? IGC_GET_REGKEY(name).m_string                                                                                 \
        : "")
-#define IGC_SET_IMPLIED_REGKEY(name, setOnValue, subname, subvalue)                                                    \
-  (setImpliedRegkey(g_RegKeyList.name, (g_RegKeyList.name.m_Value == setOnValue), g_RegKeyList.subname, subvalue))
-#define IGC_SET_IMPLIED_REGKEY_ANY(name, subname, subvalue)                                                            \
-  (setImpliedRegkey(g_RegKeyList.name, (g_RegKeyList.name.m_Value != 0), g_RegKeyList.subname, subvalue))
 #else
 #define IGC_GET_FLAG_VALUE(name)                                                                                       \
-  ((CheckHashRange(g_RegKeyList.name) || CheckEntryPoint(g_RegKeyList.name)) ? g_RegKeyList.name.m_Value               \
-                                                                             : g_RegKeyList.name.GetDefault())
-#define IGC_IS_FLAG_SET(name)                                                                                          \
-  ((CheckHashRange(g_RegKeyList.name) || CheckEntryPoint(g_RegKeyList.name)) ? g_RegKeyList.name.IsSet() : false)
-#define IGC_GET_FLAG_DEFAULT_VALUE(name) (g_RegKeyList.name.GetDefault())
-#define IGC_IS_FLAG_ENABLED(name) (IGC_GET_FLAG_VALUE(name) != 0)
-#define IGC_IS_FLAG_DISABLED(name) (!IGC_IS_FLAG_ENABLED(name))
-#define IGC_SET_FLAG_VALUE(name, regkeyValue) (g_RegKeyList.name.m_Value = regkeyValue)
+  ((CheckHashRange(IGC_GET_REGKEY(name)) || CheckEntryPoint(IGC_GET_REGKEY(name)))                                     \
+       ? IGC_GET_REGKEY(name).m_Value                                                                                  \
+       : IGC_GET_REGKEY(name).defaultValue)
 #define IGC_GET_REGKEYSTRING(name)                                                                                     \
-  ((CheckHashRange(g_RegKeyList.name) || CheckEntryPoint(g_RegKeyList.name)) ? g_RegKeyList.name.m_string : "")
-#define IGC_SET_IMPLIED_REGKEY(name, setOnValue, subname, subvalue)                                                    \
-  (setImpliedRegkey(g_RegKeyList.name, (g_RegKeyList.name.m_Value == setOnValue), g_RegKeyList.subname, subvalue))
-#define IGC_SET_IMPLIED_REGKEY_ANY(name, subname, subvalue)                                                            \
-  (setImpliedRegkey(g_RegKeyList.name, (g_RegKeyList.name.m_Value != 0), g_RegKeyList.subname, subvalue))
+  ((CheckHashRange(IGC_GET_REGKEY(name)) || CheckEntryPoint(IGC_GET_REGKEY(name))) ? IGC_GET_REGKEY(name).m_string : "")
 #endif
 
+#define IGC_GET_FLAG_DEFAULT_VALUE(name) (IGC_GET_REGKEY(name).defaultValue)
+#define IGC_IS_FLAG_ENABLED(name) (IGC_GET_FLAG_VALUE(name) != 0)
+#define IGC_IS_FLAG_DISABLED(name) (!IGC_IS_FLAG_ENABLED(name))
+#define IGC_SET_FLAG_VALUE(name, regkeyValue) (IGC_GET_REGKEY(name).m_Value = regkeyValue)
+#define IGC_IS_FLAG_SET(name)                                                                                          \
+  ((CheckHashRange(IGC_GET_REGKEY(name)) || CheckEntryPoint(IGC_GET_REGKEY(name))) ? IGC_GET_REGKEY(name).isSet : false)
+#define IGC_SET_IMPLIED_REGKEY(name, setOnValue, subname, subvalue)                                                    \
+  (setImpliedRegkey(IGC_GET_REGKEY(name), (IGC_GET_REGKEY(name).m_Value == setOnValue), IGC_GET_REGKEY(subname),       \
+                    subvalue))
+#define IGC_SET_IMPLIED_REGKEY_ANY(name, subname, subvalue)                                                            \
+  (setImpliedRegkey(IGC_GET_REGKEY(name), (IGC_GET_REGKEY(name).m_Value != 0), IGC_GET_REGKEY(subname), subvalue))
 #define IGC_REGKEY_OR_FLAG_ENABLED(name, flag)                                                                         \
   (IGC_IS_FLAG_ENABLED(name) || IGC::Debug::GetDebugFlag(IGC::Debug::DebugFlag::flag))
 
@@ -187,10 +177,11 @@ void DumpIGCRegistryKeyDefinitions3(std::string driverRegistryPath, unsigned lon
                                     unsigned long pciFunction);
 void InitializeRegKeys();
 void LoadRegistryKeys(const std::string &options = "", bool *RegFlagNameError = nullptr);
-bool ReadIGCRegistry(const char *pName, void *pValue, unsigned int size, const char *pType, bool readFromEnv = true);
+extern "C" bool ReadIGCRegistry(const char *pName, void *pValue, unsigned int size, IGCFlagType type);
 void SetCurrentDebugHash(const ShaderHash &hash);
 void SetCurrentEntryPoints(const std::vector<std::string> &entry_points);
 void ClearCurrentEntryPoints();
+IGCFlag *FindIGCFlagByName(const char *name);
 #undef LINUX_RELEASE_MODE
 #else
 static inline void GetKeysSetExplicitly(std::string *KeyValuePairs, std::string *OptionKeys) {

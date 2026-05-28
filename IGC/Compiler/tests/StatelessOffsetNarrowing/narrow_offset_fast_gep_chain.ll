@@ -7,7 +7,7 @@
 ;============================ end_copyright_notice =============================
 
 ; REQUIRES: regkeys
-; RUN: igc_opt --opaque-pointers %s -S -o - --regkey EnableStatelessOffsetNarrowing=1 --regkey GreaterThan4GBBufferRequired=0 -igc-stateless-offset-narrowing | FileCheck %s
+; RUN: igc_opt --opaque-pointers %s -S -o - --regkey EnableStatelessOffsetNarrowing=1 -igc-stateless-offset-narrowing | FileCheck %s
 
 ; This test verifies narrowing of a 3-GEP chain combining:
 ;   1) Dynamic index into an array of structs  (trunc + mul + add)
