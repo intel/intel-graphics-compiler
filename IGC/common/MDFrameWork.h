@@ -188,6 +188,14 @@ enum class ShaderTypeMD
         int dim2 = 0;
     };
 
+    struct ThreadGroupSizeMD
+    {
+        // {0, 0, 0} = unspecified
+        int dim0 = 0;
+        int dim1 = 0;
+        int dim2 = 0;
+    };
+
     struct FuncArgMD
     {
         int bufferLocationIndex = -1;
@@ -350,6 +358,7 @@ enum class ShaderTypeMD
     {
         std::vector<LocalOffsetMD> localOffsets{};
         WorkGroupWalkOrderMD workGroupWalkOrder{};
+        ThreadGroupSizeMD threadGroupSizeHint{};
         std::vector<FuncArgMD> funcArgs{};
         FunctionTypeMD functionType = KernelFunction;
         RayTraceShaderInfo rtInfo{};

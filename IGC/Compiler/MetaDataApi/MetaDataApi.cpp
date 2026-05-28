@@ -267,7 +267,6 @@ FunctionInfoMetaData::FunctionInfoMetaData(const llvm::MDNode *pNode, bool hasId
       m_ArgInfoList(getNamedNode(pNode, "arg_desc"), true),
       m_ImplicitArgInfoList(getNamedNode(pNode, "implicit_arg_desc"), true),
       m_ThreadGroupSize(new ThreadGroupSizeMetaData(getNamedNode(pNode, "thread_group_size"), true)),
-      m_ThreadGroupSizeHint(new ThreadGroupSizeMetaData(getNamedNode(pNode, "thread_group_size_hint"), true)),
       m_SubGroupSize(new SubGroupSizeMetaData(getNamedNode(pNode, "sub_group_size"), true)),
       m_OpenCLVectorTypeHint(new VectorTypeHintMetaData(getNamedNode(pNode, "opencl_vec_type_hint"), true)),
       m_pNode(pNode) {}
@@ -275,26 +274,24 @@ FunctionInfoMetaData::FunctionInfoMetaData(const llvm::MDNode *pNode, bool hasId
 FunctionInfoMetaData::FunctionInfoMetaData()
     : m_Type("function_type"), m_ArgInfoList("arg_desc"), m_ImplicitArgInfoList("implicit_arg_desc"),
       m_ThreadGroupSize(new ThreadGroupSizeMetaDataHandle::ObjectType("thread_group_size")),
-      m_ThreadGroupSizeHint(new ThreadGroupSizeMetaDataHandle::ObjectType("thread_group_size_hint")),
       m_SubGroupSize(new SubGroupSizeMetaDataHandle::ObjectType("sub_group_size")),
       m_OpenCLVectorTypeHint(new VectorTypeHintMetaDataHandle::ObjectType("opencl_vec_type_hint")), m_pNode(nullptr) {}
 
 FunctionInfoMetaData::FunctionInfoMetaData(const char *name)
     : _Mybase(name), m_Type("function_type"), m_ArgInfoList("arg_desc"), m_ImplicitArgInfoList("implicit_arg_desc"),
       m_ThreadGroupSize(new ThreadGroupSizeMetaDataHandle::ObjectType("thread_group_size")),
-      m_ThreadGroupSizeHint(new ThreadGroupSizeMetaDataHandle::ObjectType("thread_group_size_hint")),
       m_SubGroupSize(new SubGroupSizeMetaDataHandle::ObjectType("sub_group_size")),
       m_OpenCLVectorTypeHint(new VectorTypeHintMetaDataHandle::ObjectType("opencl_vec_type_hint")), m_pNode(nullptr) {}
 
 bool FunctionInfoMetaData::hasValue() const {
   return m_Type.hasValue() || m_ArgInfoList.hasValue() || m_ImplicitArgInfoList.hasValue() ||
-         m_ThreadGroupSize->hasValue() || m_ThreadGroupSizeHint->hasValue() || m_SubGroupSize->hasValue() ||
-         m_OpenCLVectorTypeHint->hasValue() || nullptr != m_pNode || dirty();
+         m_ThreadGroupSize->hasValue() || m_SubGroupSize->hasValue() || m_OpenCLVectorTypeHint->hasValue() ||
+         nullptr != m_pNode || dirty();
 }
 
 bool FunctionInfoMetaData::dirty() const {
   return m_Type.dirty() || m_ArgInfoList.dirty() || m_ImplicitArgInfoList.dirty() || m_ThreadGroupSize.dirty() ||
-         m_ThreadGroupSizeHint.dirty() || m_SubGroupSize.dirty() || m_OpenCLVectorTypeHint.dirty();
+         m_SubGroupSize.dirty() || m_OpenCLVectorTypeHint.dirty();
 }
 
 void FunctionInfoMetaData::discardChanges() {
@@ -302,7 +299,6 @@ void FunctionInfoMetaData::discardChanges() {
   m_ArgInfoList.discardChanges();
   m_ImplicitArgInfoList.discardChanges();
   m_ThreadGroupSize.discardChanges();
-  m_ThreadGroupSizeHint.discardChanges();
   m_SubGroupSize.discardChanges();
   m_OpenCLVectorTypeHint.discardChanges();
 }
@@ -325,9 +321,6 @@ llvm::Metadata *FunctionInfoMetaData::generateNode(llvm::LLVMContext &context) c
   if (m_ThreadGroupSize->hasValue()) {
     args.push_back(m_ThreadGroupSize.generateNode(context));
   }
-  if (m_ThreadGroupSizeHint->hasValue()) {
-    args.push_back(m_ThreadGroupSizeHint.generateNode(context));
-  }
   if (m_SubGroupSize->hasValue()) {
     args.push_back(m_SubGroupSize.generateNode(context));
   }
@@ -349,7 +342,6 @@ void FunctionInfoMetaData::save(llvm::LLVMContext &context, llvm::MDNode *pNode)
   m_ArgInfoList.save(context, getNamedNode(pNode, "arg_desc"));
   m_ImplicitArgInfoList.save(context, getNamedNode(pNode, "implicit_arg_desc"));
   m_ThreadGroupSize.save(context, getNamedNode(pNode, "thread_group_size"));
-  m_ThreadGroupSizeHint.save(context, getNamedNode(pNode, "thread_group_size_hint"));
   m_SubGroupSize.save(context, getNamedNode(pNode, "sub_group_size"));
   m_OpenCLVectorTypeHint.save(context, getNamedNode(pNode, "opencl_vec_type_hint"));
 }

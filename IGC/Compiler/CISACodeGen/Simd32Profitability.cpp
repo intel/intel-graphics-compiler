@@ -560,16 +560,23 @@ bool Simd32ProfitabilityAnalysis::checkSimd32Profitable(CodeGenContext *ctx) {
   auto funcInfoMD = pMdUtils->findFunctionsInfoItem(F);
   if (funcInfoMD != pMdUtils->end_FunctionsInfo()) {
     ThreadGroupSizeMetaDataHandle tgSize = funcInfoMD->second->getThreadGroupSize();
-    ThreadGroupSizeMetaDataHandle tgSizeHint = funcInfoMD->second->getThreadGroupSizeHint();
     const int tgSizeLimit = 16;
     int tgSizeCal = tgSize->getXDim() * tgSize->getYDim() * tgSize->getZDim();
-    int tgSizeHintCal = tgSizeHint->getXDim() * tgSizeHint->getYDim() * tgSizeHint->getZDim();
 
-    if (ctx->getModuleMetaData()->csInfo.maxWorkGroupSize &&
-        ctx->getModuleMetaData()->csInfo.maxWorkGroupSize <= tgSizeLimit)
+    ModuleMetaData *modMD = ctx->getModuleMetaData();
+    if (modMD->csInfo.maxWorkGroupSize && modMD->csInfo.maxWorkGroupSize <= tgSizeLimit)
       return false;
 
-    if ((tgSize->hasValue() && tgSizeCal <= tgSizeLimit) || (tgSizeHint->hasValue() && tgSizeHintCal <= tgSizeLimit)) {
+    int tgSizeHintCal = 0;
+    bool tgSizeHintHasValue = false;
+    auto itHint = modMD->FuncMD.find(F);
+    if (itHint != modMD->FuncMD.end()) {
+      const ThreadGroupSizeMD &tgSizeHint = itHint->second.threadGroupSizeHint;
+      tgSizeHintCal = tgSizeHint.dim0 * tgSizeHint.dim1 * tgSizeHint.dim2;
+      tgSizeHintHasValue = tgSizeHint.dim0 || tgSizeHint.dim1 || tgSizeHint.dim2;
+    }
+
+    if ((tgSize->hasValue() && tgSizeCal <= tgSizeLimit) || (tgSizeHintHasValue && tgSizeHintCal <= tgSizeLimit)) {
       return false;
     }
   }

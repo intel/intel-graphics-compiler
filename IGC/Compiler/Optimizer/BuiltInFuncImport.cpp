@@ -1047,7 +1047,7 @@ bool PreBIImportAnalysis::runOnModule(Module &M) {
       ModuleMetaData *modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
       if (isEntryFunc(pMdUtils, pFunc)) {
         uint32_t WGSize = IGCMetaDataHelper::getThreadGroupSize(*pMdUtils, pFunc);
-        uint32_t WGSizeHint = IGCMetaDataHelper::getThreadGroupSizeHint(*pMdUtils, pFunc);
+        uint32_t WGSizeHint = IGCMetaDataHelper::getThreadGroupSizeHint(modMD, pFunc);
         if (WGSize != 1 && WGSizeHint != 1) {
           modMD->FuncMD[pFunc].workGroupWalkOrder.dim0 = 0;
           modMD->FuncMD[pFunc].workGroupWalkOrder.dim1 = 1;

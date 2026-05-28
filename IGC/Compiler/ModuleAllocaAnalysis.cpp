@@ -198,7 +198,7 @@ bool ModuleAllocaAnalysis::safeToUseScratchSpace() const {
       simd_size = std::min(subGrpSize, static_cast<int32_t>(numLanes(SIMDMode::SIMD32)));
     int32_t groupSize = IGCMD::IGCMetaDataHelper::getThreadGroupSize(*pMdUtils, &F);
     if (groupSize == 0)
-      groupSize = IGCMD::IGCMetaDataHelper::getThreadGroupSizeHint(*pMdUtils, &F);
+      groupSize = IGCMD::IGCMetaDataHelper::getThreadGroupSizeHint(&modMD, &F);
     if (groupSize > simd_size)
       simd_size = std::min(groupSize, static_cast<int32_t>(numLanes(SIMDMode::SIMD32)));
 
@@ -587,7 +587,7 @@ unsigned ModuleAllocaAnalysis::getMinSimdSize(llvm::Function *pFunc) const {
       minSimdSize = std::min(int_cast<uint16_t>(subGrpSize), numLanes(SIMDMode::SIMD32));
     int32_t groupSize = IGCMD::IGCMetaDataHelper::getThreadGroupSize(*pMdUtils, pFunc);
     if (groupSize == 0)
-      groupSize = IGCMD::IGCMetaDataHelper::getThreadGroupSizeHint(*pMdUtils, pFunc);
+      groupSize = IGCMD::IGCMetaDataHelper::getThreadGroupSizeHint(&modMD, pFunc);
     if (groupSize > 0 && int_cast<uint16_t>(groupSize) > int_cast<uint16_t>(minSimdSize))
       minSimdSize = std::min(int_cast<uint16_t>(groupSize), numLanes(SIMDMode::SIMD32));
     break;

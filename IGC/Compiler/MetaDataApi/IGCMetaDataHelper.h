@@ -28,6 +28,6 @@ public:
   // Return thread group size (hint) if present; return 0 otherwise.
   static std::optional<std::array<uint32_t, 3>> getThreadGroupDims(MetaDataUtils &mdUtils, llvm::Function *pKernelFunc);
   static uint32_t getThreadGroupSize(MetaDataUtils &mdUtils, llvm::Function *pKernelFunc);
-  static uint32_t getThreadGroupSizeHint(MetaDataUtils &mdUtils, llvm::Function *pKernelFunc);
+  static uint32_t getThreadGroupSizeHint(const ModuleMetaData *modMD, llvm::Function *pKernelFunc);
 };
 } // namespace IGC::IGCMD

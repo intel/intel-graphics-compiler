@@ -366,9 +366,6 @@ public:
   // ThreadGroupSize
   ThreadGroupSizeMetaDataHandle getThreadGroupSize() { return m_ThreadGroupSize; }
 
-  // ThreadGroupSizeHint
-  ThreadGroupSizeMetaDataHandle getThreadGroupSizeHint() { return m_ThreadGroupSizeHint; }
-
   // SubGroupSize
   SubGroupSizeMetaDataHandle getSubGroupSize() { return m_SubGroupSize; }
 
@@ -384,7 +381,6 @@ private:
   ArgInfoListList m_ArgInfoList;
   ImplicitArgInfoListList m_ImplicitArgInfoList;
   ThreadGroupSizeMetaDataHandle m_ThreadGroupSize;
-  ThreadGroupSizeMetaDataHandle m_ThreadGroupSizeHint;
   SubGroupSizeMetaDataHandle m_SubGroupSize;
   VectorTypeHintMetaDataHandle m_OpenCLVectorTypeHint;
 };

@@ -17555,8 +17555,7 @@ bool EmitPass::hasA64WAEnable() const {
     return false;
 
   // Disable A64WA for kernels which specify work_group_size_hint(1, 1, 1).
-  MetaDataUtils *pMdUtils = m_currShader->GetMetaDataUtils();
-  uint32_t WGSize = IGCMetaDataHelper::getThreadGroupSizeHint(*pMdUtils, m_currShader->entry);
+  uint32_t WGSize = IGCMetaDataHelper::getThreadGroupSizeHint(m_pCtx->getModuleMetaData(), m_currShader->entry);
   if (WGSize == 1)
     return false;
 

@@ -29,7 +29,10 @@ declare spir_kernel void @test_spir(i64 addrspace(1)*)
 ; CHECK-DAG: {!"MatchSinCosPi", i1 true}
 ; CHECK-DAG: {!"FuncMDMap[0]", void (i64 addrspace(1)*)* @test_spir}
 ; CHECK-DAG: {!"thread_group_size", i32 1, i32 1, i32 16}
-; CHECK-DAG: {!"thread_group_size_hint", i32 1, i32 1, i32 4}
+; CHECK-DAG: {!"threadGroupSizeHint", [[DH0:![0-9]+]], [[DH1:![0-9]+]], [[DH2:![0-9]+]]}
+; CHECK-DAG: [[DH0]] = !{!"dim0", i32 1}
+; CHECK-DAG: [[DH1]] = !{!"dim1", i32 1}
+; CHECK-DAG: [[DH2]] = !{!"dim2", i32 4}
 ; CHECK-DAG: {!"function_type", i32 0}
 ; CHECK-DAG: {!"sub_group_size", i32 16}
 ; CHECK-DAG: {!"m_OpenCLArgAddressSpaces", [[AS_VEC:![0-9]*]]}

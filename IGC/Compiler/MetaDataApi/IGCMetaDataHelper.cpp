@@ -97,12 +97,10 @@ uint32_t IGCMetaDataHelper::getThreadGroupSize(MetaDataUtils &mdUtils, llvm::Fun
   return Vals[0] * Vals[1] * Vals[2];
 }
 
-uint32_t IGCMetaDataHelper::getThreadGroupSizeHint(MetaDataUtils &mdUtils, llvm::Function *pKernelFunc) {
-  FunctionInfoMetaDataHandle finfo = mdUtils.getFunctionsInfoItem(pKernelFunc);
-  uint32_t size = 0;
-  if (finfo->getThreadGroupSizeHint()->hasValue()) {
-    size = finfo->getThreadGroupSizeHint()->getXDim() * finfo->getThreadGroupSizeHint()->getYDim() *
-           finfo->getThreadGroupSizeHint()->getZDim();
-  }
-  return size;
+uint32_t IGCMetaDataHelper::getThreadGroupSizeHint(const ModuleMetaData *modMD, llvm::Function *pKernelFunc) {
+  auto it = modMD->FuncMD.find(pKernelFunc);
+  if (it == modMD->FuncMD.end())
+    return 0;
+  const auto &h = it->second.threadGroupSizeHint;
+  return static_cast<uint32_t>(h.dim0) * static_cast<uint32_t>(h.dim1) * static_cast<uint32_t>(h.dim2);
 }

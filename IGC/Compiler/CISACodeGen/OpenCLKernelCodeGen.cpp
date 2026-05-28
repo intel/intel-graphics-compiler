@@ -1840,11 +1840,14 @@ void COpenCLKernel::FillZEUserAttributes(IGC::IGCMD::FunctionInfoMetaDataHandle 
   }
 
   // work_group_size_hint
-  ThreadGroupSizeMetaDataHandle threadGroupSizeHint = funcInfoMD->getThreadGroupSizeHint();
-  if (threadGroupSizeHint->hasValue()) {
-    m_kernelInfo.m_zeUserAttributes.work_group_size_hint.push_back(threadGroupSizeHint->getXDim());
-    m_kernelInfo.m_zeUserAttributes.work_group_size_hint.push_back(threadGroupSizeHint->getYDim());
-    m_kernelInfo.m_zeUserAttributes.work_group_size_hint.push_back(threadGroupSizeHint->getZDim());
+  auto itHint = m_Context->getModuleMetaData()->FuncMD.find(entry);
+  if (itHint != m_Context->getModuleMetaData()->FuncMD.end()) {
+    const ThreadGroupSizeMD &threadGroupSizeHint = itHint->second.threadGroupSizeHint;
+    if (threadGroupSizeHint.dim0 || threadGroupSizeHint.dim1 || threadGroupSizeHint.dim2) {
+      m_kernelInfo.m_zeUserAttributes.work_group_size_hint.push_back(threadGroupSizeHint.dim0);
+      m_kernelInfo.m_zeUserAttributes.work_group_size_hint.push_back(threadGroupSizeHint.dim1);
+      m_kernelInfo.m_zeUserAttributes.work_group_size_hint.push_back(threadGroupSizeHint.dim2);
+    }
   }
 
   // function attribute added at PoisonFP64KernelsPass for describing the invalid kernel reason "uses-fp64-math"
@@ -2870,7 +2873,7 @@ SIMDStatus COpenCLKernel::checkSIMDCompileConds(SIMDMode simdMode, EmitPass &EP,
   }
 
   if (groupSize == 0) {
-    groupSize = IGCMetaDataHelper::getThreadGroupSizeHint(*pMdUtils, &F);
+    groupSize = IGCMetaDataHelper::getThreadGroupSizeHint(modMD, &F);
   }
 
   if (requiredSimdSize) {
