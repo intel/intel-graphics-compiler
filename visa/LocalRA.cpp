@@ -1473,6 +1473,10 @@ bool LocalRA::hasDstSrcOverlapPotential(G4_DstRegRegion *dst,
                            dstRgn->getLinearizedEnd() -
                            dstRgn->getLinearizedStart() + 1 >
                        kernel.numEltPerGRF<Type_UB>();
+      bool dstCross2GRF =
+          (dstRgn->getSubRegOff() * dstRgn->getTypeSize() +
+           (dstRgn->getLinearizedEnd() - dstRgn->getLinearizedStart()) + 1) >
+          builder.numEltPerGRF<Type_UB>() * 2;
 
       if (src != NULL && src->isSrcRegRegion() &&
           src->asSrcRegRegion()->getBase()->isRegVar()) {
@@ -1484,11 +1488,25 @@ bool LocalRA::hasDstSrcOverlapPotential(G4_DstRegRegion *dst,
                                   srcRgn->getLinearizedEnd() -
                                   srcRgn->getLinearizedStart() + 1 >
                               kernel.numEltPerGRF<Type_UB>();
+        bool srcCross2GRF =
+            (srcRgn->getSubRegOff() * srcRgn->getTypeSize() +
+             (srcRgn->getLinearizedEnd() - srcRgn->getLinearizedStart()) + 1) >
+            builder.numEltPerGRF<Type_UB>() * 2;
+
+        if (gra.use4GRFAlign && (dstCross2GRF || srcCross2GRF)) {
+          bool NoIntfDueToQuadAlign =
+              gra.isQuadAligned(dstDcl) && gra.isQuadAligned(srcDcl) &&
+              (srcOffset % 4 == dstOffset % 4) && dstCross2GRF && srcCross2GRF;
+          if (!NoIntfDueToQuadAlign)
+            return true;
+        }
 
         if (dstOpndNumRows || srcOpndNumRows) {
-          if (!(gra.isEvenAligned(dstDcl) && gra.isEvenAligned(srcDcl) &&
-                srcOffset % 2 == dstOffset % 2 && dstOpndNumRows &&
-                srcOpndNumRows)) {
+          bool NoIntfDueToEvenAlign = gra.isEvenAligned(dstDcl) &&
+                                      gra.isEvenAligned(srcDcl) &&
+                                      (srcOffset % 2 == dstOffset % 2) &&
+                                      dstOpndNumRows && srcOpndNumRows;
+          if (!NoIntfDueToEvenAlign) {
             return true;
           }
         }
