@@ -329,6 +329,20 @@ execute_process( COMMAND ${CMAKE_COMMAND} -E compare_files ${BiFModule_PREBUILD_
                  RESULT_VARIABLE compare_result
 )
 
+# When debugging or performing experiments with e.g LLVM Core codebase
+# The BiF was being rebuilt when there was no reason to do so.
+# For example: You've just set up IGC workspace from scratch and fully built it.
+# Then you decided to add additional log / print / whatever to e.g InstCombiner.
+# Such change does not affect the result of InstCombiner, but the BiF was being rebuild anyway,
+# which takes time, which very significantly slows down the development and increases feedback loop.
+
+# This env variable allows developer to prevent BiF from being created/recreated and is intended for debug/experimental purposes only.
+
+if($ENV{IGC_DBG_SKIP_BIF_GENERATION})
+  message("[IGC\\BiFModuleCache] Skipping BiF building/rebuilding due to env. variable ['IGC_DBG_SKIP_BIF_GENERATION'] being set. This is intended for debug/experimental purposes only, use with caution.")
+  return()
+endif()
+
 if( compare_result EQUAL 1)
 message("[IGC\\BiFModuleCache] - Buidling from source start")
 
