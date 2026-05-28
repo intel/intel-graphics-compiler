@@ -15,6 +15,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/Support/Casting.h>
 #include <llvm/ADT/MapVector.h>
 #include "common/LLVMWarningsPop.hpp"
+#include <llvmWrapper/IR/DerivedTypes.h>
 
 #include "StringMacros.hpp"
 #include "common/igc_regkeys.hpp"
@@ -194,8 +195,8 @@ template <typename val> MDNode *CreateNode(const std::optional<val> &option, Mod
   if (option.has_value())
     nodes.push_back(CreateNode(*option, module, name.str() + "Option"));
   else
-    nodes.push_back(
-        ValueAsMetadata::get(ConstantPointerNull::get(PointerType::get(Type::getInt1Ty(module->getContext()), 0))));
+    nodes.push_back(ValueAsMetadata::get(
+        ConstantPointerNull::get(IGCLLVM::PointerType::get(Type::getInt1Ty(module->getContext()), 0))));
 
   MDNode *node = MDNode::get(module->getContext(), nodes);
   return node;
