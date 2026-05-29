@@ -153,7 +153,8 @@ bool GlobalOpndHashTable::isOpndGlobal(G4_Operand *opnd) const {
   G4_Declare *dcl = opnd->getTopDcl();
   if (dcl == NULL) {
     return false;
-  } else if (dcl->getAddressed() || dcl->isAddrSpillFill()) {
+  } else if (dcl->getAddressed() || dcl->isAddrSpillFill() ||
+             dcl->isForceGlobal()) {
     // Conservatively assume that all address taken
     // virtual registers are global
     return true;

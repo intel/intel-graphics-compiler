@@ -163,6 +163,11 @@ bool SpillFillPropagation::replaceFillWithMovs(
 
     G4_INST *mov =
         builder.createMov(execSize, dst, src, InstOpt_WriteEnable, false);
+    // This mov's dst may be propagated to successor BB. So mark it as global
+    // here. Since this is post RA pass, it doesn't reuse old virtual variables.
+    // Therefore if data is run again in later passes, it could incorrectly
+    // treat mov dst as a local otherwise (and remove it in some cases).
+    dstTopDcl->setForceGlobal();
     mov->setVISAId(fill->getVISAId());
 
     bb->insertBefore(fillIt, mov);

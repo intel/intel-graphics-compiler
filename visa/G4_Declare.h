@@ -98,6 +98,11 @@ class G4_Declare {
   // Especially for the variable with pseodu_kill,
   // while will be removed in removeLifetimeOps pass.
   uint16_t isBBLocal : 1;
+  // Marked by post RA spill cleanup. In post RA spill/fill
+  // cleanup, we mark topdcl of mov dst as force global so
+  // any post RA pass that recomputes data flow sees it as
+  // a global value that may be used in a later BB.
+  uint16_t isForceGlobalVar : 1;
 
   unsigned declId; // global decl id for this builder
 
@@ -312,6 +317,9 @@ public:
 
   void setAddrSpillFill() { addrSpillFill = true; }
   bool isAddrSpillFill() const { return addrSpillFill; }
+
+  void setForceGlobal() { isForceGlobalVar = true; }
+  bool isForceGlobal() const { return isForceGlobalVar; }
 
   bool isMsgDesc() const {
     return regFile == G4_ADDRESS && elemInfo.getType() == Type_UD;
