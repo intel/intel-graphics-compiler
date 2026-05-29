@@ -20,6 +20,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/Transforms/Utils/Local.h>
 #include "llvm/Analysis/ValueTracking.h"
 #include "common/LLVMWarningsPop.hpp"
+#include "llvmWrapper/Analysis/ValueTracking.h"
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/IR/Instructions.h"
 #include "llvmWrapper/IR/Intrinsics.h"
@@ -2257,7 +2258,7 @@ bool isNoOpInst(Instruction *I, CodeGenContext *Ctx) {
 //
 //
 bool valueIsPositive(Value *V, const DataLayout *DL, llvm::AssumptionCache *AC, llvm::Instruction *CxtI) {
-  return computeKnownBits(V, *DL, 0, AC, CxtI).isNonNegative();
+  return IGCLLVM::computeKnownBits(V, *DL, AC, CxtI).isNonNegative();
 }
 
 void appendToUsed(llvm::Module &M, ArrayRef<GlobalValue *> Values) {

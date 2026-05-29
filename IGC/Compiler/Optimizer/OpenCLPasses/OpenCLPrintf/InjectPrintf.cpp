@@ -79,7 +79,11 @@ void InjectPrintf::insertPrintf(IRBuilder<> &Builder, FunctionCallee PrintfFunc,
   std::string TypeStr;
   raw_string_ostream RSO(TypeStr);
   ValueType->print(RSO);
+#if LLVM_VERSION_MAJOR >= 22
+  Value *TypeStrGlobal = Builder.CreateGlobalString(RSO.str());
+#else
   Value *TypeStrGlobal = Builder.CreateGlobalStringPtr(RSO.str());
+#endif
   Builder.CreateCall(PrintfFunc, {FormatStr, PointerOperand, TypeStrGlobal});
 }
 

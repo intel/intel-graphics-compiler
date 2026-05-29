@@ -61,7 +61,11 @@ See LICENSE.TXT for details.
 #include "llvm/TargetParser/SubtargetFeature.h"
 #endif // LLVM_VERSION_MAJOR
 #include "llvm/Support/Debug.h"
+#if LLVM_VERSION_MAJOR >= 16
+#include "llvm/TargetParser/Host.h"
+#else // LLVM_VERSION_MAJOR
 #include "llvm/Support/Host.h"
+#endif // LLVM_VERSION_MAJOR
 #include "llvm/Support/ManagedStatic.h"
 #include "llvm/Support/PluginLoader.h"
 #include "llvm/Support/PrettyStackTrace.h"

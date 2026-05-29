@@ -16,6 +16,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/Analysis/ValueTracking.h>
 #include <llvm/Support/KnownBits.h>
 #include "common/LLVMWarningsPop.hpp"
+#include "llvmWrapper/Analysis/ValueTracking.h"
 #include "Probe/Assertion.h"
 
 using namespace llvm;
@@ -156,7 +157,7 @@ Value *StatelessOffsetNarrowing::isNarrowableStatelessAccess(Value *Pointer,
   const auto &DL = this->CurrentF->getParent()->getDataLayout();
   for (auto *GEP : GEPs)
     for (const auto &Index : GEP->indices())
-      if (!computeKnownBits(Index.get(), DL, 0, this->CurrentAC).isNonNegative())
+      if (!IGCLLVM::computeKnownBits(Index.get(), DL, this->CurrentAC).isNonNegative())
         return nullptr;
 
   return Result;
@@ -229,7 +230,7 @@ bool StatelessOffsetNarrowing::offsetFitsIn32Bits(const SmallVectorImpl<GetEleme
           MaxTotalOffset += TypeAllocSize * cast<ConstantInt>(Index)->getSExtValue();
         } else {
           uint32_t IndexBitWidth = Index->getType()->getScalarSizeInBits();
-          KnownBits KB = computeKnownBits(Index, *DL, 0, this->CurrentAC);
+          KnownBits KB = IGCLLVM::computeKnownBits(Index, *DL, this->CurrentAC);
           unsigned ActiveBits = IndexBitWidth - KB.countMinLeadingZeros();
 
           if (ActiveBits == 0)
