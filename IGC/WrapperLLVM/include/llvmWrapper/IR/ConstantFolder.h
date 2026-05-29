@@ -265,14 +265,21 @@ public:
   }
 #endif
 
+#if LLVM_VERSION_MAJOR < 22
   inline llvm::Value *FoldICmp(llvm::CmpInst::Predicate P, llvm::Value *LHS, llvm::Value *RHS) const override {
     return m_baseConstantFolder.FoldICmp(P, LHS, RHS);
   }
+#else
+  inline llvm::Value *FoldCmp(llvm::CmpInst::Predicate P, llvm::Value *LHS, llvm::Value *RHS) const override {
+    return m_baseConstantFolder.FoldCmp(P, LHS, RHS);
+  }
+#endif
 
   inline llvm::Value *FoldSelect(llvm::Value *C, llvm::Value *True, llvm::Value *False) const override {
     return m_baseConstantFolder.FoldSelect(C, True, False);
   }
 
+#if LLVM_VERSION_MAJOR < 22
   inline llvm::Value *FoldGEP(llvm::Type *Ty, llvm::Value *Ptr, llvm::ArrayRef<llvm::Value *> IdxList,
                               bool IsInBounds = false) const override {
     return m_baseConstantFolder.FoldGEP(Ty, Ptr, IdxList, IsInBounds);
@@ -282,6 +289,21 @@ public:
                                     llvm::Type *DestTy) const override {
     return m_baseConstantFolder.CreateCast(Op, C, DestTy);
   }
+#else
+  inline llvm::Value *FoldGEP(llvm::Type *Ty, llvm::Value *Ptr, llvm::ArrayRef<llvm::Value *> IdxList,
+                              llvm::GEPNoWrapFlags NW) const override {
+    return m_baseConstantFolder.FoldGEP(Ty, Ptr, IdxList, NW);
+  }
+
+  inline llvm::Value *FoldCast(llvm::Instruction::CastOps Op, llvm::Value *V, llvm::Type *DestTy) const override {
+    return m_baseConstantFolder.FoldCast(Op, V, DestTy);
+  }
+
+  inline llvm::Value *FoldBinaryIntrinsic(llvm::Intrinsic::ID ID, llvm::Value *LHS, llvm::Value *RHS, llvm::Type *Ty,
+                                          llvm::Instruction *FMFSource = nullptr) const override {
+    return m_baseConstantFolder.FoldBinaryIntrinsic(ID, LHS, RHS, Ty, FMFSource);
+  }
+#endif
 
   inline llvm::Constant *CreatePointerCast(llvm::Constant *C, llvm::Type *DestTy) const override {
     return m_baseConstantFolder.CreatePointerCast(C, DestTy);
@@ -291,16 +313,9 @@ public:
     return m_baseConstantFolder.CreatePointerBitCastOrAddrSpaceCast(C, DestTy);
   }
 
+#if LLVM_VERSION_MAJOR < 22
   inline llvm::Constant *CreateIntCast(llvm::Constant *C, llvm::Type *DestTy, bool isSigned) const override {
     return m_baseConstantFolder.CreateIntCast(C, DestTy, isSigned);
-  }
-
-  inline llvm::Constant *CreateFPCast(llvm::Constant *C, llvm::Type *DestTy) const override {
-    return m_baseConstantFolder.CreateFPCast(C, DestTy);
-  }
-
-  inline llvm::Constant *CreateBitCast(llvm::Constant *C, llvm::Type *DestTy) const override {
-    return m_baseConstantFolder.CreateCast(llvm::Instruction::BitCast, C, DestTy);
   }
 
   inline llvm::Constant *CreateIntToPtr(llvm::Constant *C, llvm::Type *DestTy) const override {
@@ -309,10 +324,6 @@ public:
 
   inline llvm::Constant *CreatePtrToInt(llvm::Constant *C, llvm::Type *DestTy) const override {
     return m_baseConstantFolder.CreateCast(llvm::Instruction::PtrToInt, C, DestTy);
-  }
-
-  inline llvm::Constant *CreateZExtOrBitCast(llvm::Constant *C, llvm::Type *DestTy) const override {
-    return m_baseConstantFolder.CreateZExtOrBitCast(C, DestTy);
   }
 
   inline llvm::Constant *CreateSExtOrBitCast(llvm::Constant *C, llvm::Type *DestTy) const override {
@@ -327,6 +338,48 @@ public:
                                     llvm::Constant *RHS) const override {
     return m_baseConstantFolder.CreateFCmp(P, LHS, RHS);
   }
+#endif
+
+  inline llvm::Constant *CreateBitCast(llvm::Constant *C, llvm::Type *DestTy) const
+#if LLVM_VERSION_MAJOR < 22
+      override {
+    return m_baseConstantFolder.CreateCast(llvm::Instruction::BitCast, C, DestTy);
+  }
+#else
+  {
+    return llvm::cast_or_null<llvm::Constant>(m_baseConstantFolder.FoldCast(llvm::Instruction::BitCast, C, DestTy));
+  }
+#endif
+
+  inline llvm::Constant *CreateZExtOrBitCast(llvm::Constant *C, llvm::Type *DestTy) const
+#if LLVM_VERSION_MAJOR < 22
+      override {
+    return m_baseConstantFolder.CreateZExtOrBitCast(C, DestTy);
+  }
+#else
+  {
+    llvm::Instruction::CastOps Op = C->getType()->getScalarSizeInBits() == DestTy->getScalarSizeInBits()
+                                        ? llvm::Instruction::BitCast
+                                        : llvm::Instruction::ZExt;
+    return llvm::cast_or_null<llvm::Constant>(m_baseConstantFolder.FoldCast(Op, C, DestTy));
+  }
+#endif
+
+  inline llvm::Constant *CreateFPCast(llvm::Constant *C, llvm::Type *DestTy) const
+#if LLVM_VERSION_MAJOR < 22
+      override {
+    return m_baseConstantFolder.CreateFPCast(C, DestTy);
+  }
+#else
+  {
+    unsigned SrcBits = C->getType()->getScalarSizeInBits();
+    unsigned DstBits = DestTy->getScalarSizeInBits();
+    llvm::Instruction::CastOps Op = SrcBits == DstBits  ? llvm::Instruction::BitCast
+                                    : SrcBits > DstBits ? llvm::Instruction::FPTrunc
+                                                        : llvm::Instruction::FPExt;
+    return llvm::cast_or_null<llvm::Constant>(m_baseConstantFolder.FoldCast(Op, C, DestTy));
+  }
+#endif
 };
 } // namespace IGCLLVM
 
