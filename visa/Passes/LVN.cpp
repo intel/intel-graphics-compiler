@@ -508,21 +508,18 @@ void LVN::replaceAllUses(G4_INST *defInst, bool negate, UseList &uses,
           srcMod, Direct, lvnInst->getDst()->getBase()->asRegVar(), newRegOff,
           newSubRegOff, srcToReplace->getRegion(), srcToReplace->getType());
     } else {
-      unsigned short vstride = srcToReplace->getRegion()->vertStride;
-      unsigned short width = srcToReplace->getRegion()->width;
-      // Rule: If Width = 1, HorzStride must be 0 regardless of the values of
-      //       ExecSize and VertStride.
-      unsigned short hstride =
-          (width == 1) ? 0 : getActualHStride(srcToReplace);
+      // canReplaceUses enforced noPartialUse, so the use's region already
+      // describes the exact read pattern. Preserve it as-is; getActualHStride
+      // must not be used here because it returns a fingerprint sentinel (e.g.
+      // 0x8000 for <2;2,0>) rather than a real hstride.
       G4_Type type = srcToReplace->getType();
-
       unsigned int subRegOffScaled =
           subRegOff * lvnInst->getDst()->getTypeSize() / TypeSize(type);
 
       srcRgn = builder.createSrcRegRegion(
           srcMod, Direct, lvnInst->getDst()->getBase()->asRegVar(),
           (short)regOff, (short)subRegOffScaled,
-          builder.createRegionDesc(vstride, width, hstride), type);
+          srcToReplace->getRegion(), type);
     }
 
     if (srcToReplace->isAccRegValid()) {
