@@ -50,6 +50,13 @@ inline void setExpression(llvm::DbgVariableIntrinsic *DbgInst, llvm::DIExpressio
   IGC_ASSERT(DbgInst);
   DbgInst->setExpression(NewExpr);
 }
+
+#if LLVM_VERSION_MAJOR >= 22
+inline void setExpression(llvm::DbgVariableRecord *DbgRec, llvm::DIExpression *NewExpr) {
+  IGC_ASSERT(DbgRec);
+  DbgRec->setExpression(NewExpr);
+}
+#endif
 } // namespace IGCLLVM
 
 #endif

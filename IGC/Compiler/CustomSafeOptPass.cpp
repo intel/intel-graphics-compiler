@@ -216,8 +216,13 @@ void CustomSafeOptPass::visitXor(Instruction &XorInstr) {
   if (Instruction *NewCmpInst = dyn_cast<Instruction>(NewCmp)) {
     NewCmpInst->setDebugLoc(DL);
     auto *Val = static_cast<Value *>(ICmpInstr);
+#if LLVM_VERSION_MAJOR >= 22
+    SmallVector<DbgVariableRecord *, 1> DbgValues;
+    llvm::findDbgValues(Val, DbgValues);
+#else
     SmallVector<DbgValueInst *, 1> DbgValues;
     llvm::findDbgValues(DbgValues, Val);
+#endif
     for (auto DV : DbgValues) {
       DIExpression *OldExpr = DV->getExpression();
       DIExpression *NewExpr =
@@ -276,8 +281,13 @@ void CustomSafeOptPass::visitAnd(BinaryOperator &I) {
   if (Instruction *NewOrInst = dyn_cast<Instruction>(OrInst)) {
     NewOrInst->setDebugLoc(DL);
     auto *Val = static_cast<Value *>(&I);
+#if LLVM_VERSION_MAJOR >= 22
+    SmallVector<DbgVariableRecord *, 1> DbgValues;
+    llvm::findDbgValues(Val, DbgValues);
+#else
     SmallVector<DbgValueInst *, 1> DbgValues;
     llvm::findDbgValues(DbgValues, Val);
+#endif
     for (auto DV : DbgValues) {
       DIExpression *OldExpr = DV->getExpression();
       DIExpression *NewExpr =

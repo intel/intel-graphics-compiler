@@ -56,7 +56,11 @@ void BIFFlagCtrlResolution::FillFlagCtrl() {
   BIF_FLAG_CTRL_SET(UseBfn, IGC_IS_FLAG_ENABLED(EnableBfn) && PtrCGC->platform.supportBfnInstruction());
   BIF_FLAG_CTRL_SET(hasHWLocalThreadID, PtrCGC->platform.hasHWLocalThreadID());
   BIF_FLAG_CTRL_SET(CRMacros, PtrCGC->platform.hasCorrectlyRoundedMacros());
+#if LLVM_VERSION_MAJOR >= 22
+  BIF_FLAG_CTRL_SET(APIRS, !(StringRef(PtrCGC->getModule()->getTargetTriple().str()).size() > 0));
+#else
   BIF_FLAG_CTRL_SET(APIRS, !(StringRef(PtrCGC->getModule()->getTargetTriple()).size() > 0));
+#endif
 
   if (PtrCGC->type == ShaderType::OPENCL_SHADER) {
     BIF_FLAG_CTRL_SET(IsSPIRV, static_cast<OpenCLProgramContext *>(PtrCGC)->isSPIRV());
