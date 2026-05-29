@@ -206,8 +206,13 @@ int main(int argc, char **argv) {
   // For codegen passes, only passes that do IR to IR transformation are
   // supported.
 
+#if LLVM_VERSION_MAJOR < 22
   initializeCodeGenPreparePass(Registry);
   initializeAtomicExpandPass(Registry);
+#else
+  initializeCodeGenPrepareLegacyPassPass(Registry);
+  initializeAtomicExpandLegacyPass(Registry);
+#endif
 #if LLVM_VERSION_MAJOR < 17
   initializeRewriteSymbolsLegacyPassPass(Registry);
 #endif // LLVM_VERSION_MAJOR
