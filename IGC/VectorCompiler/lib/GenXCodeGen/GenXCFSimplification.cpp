@@ -29,6 +29,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/Pass.h"
 #include "llvm/Support/Debug.h"
 #include "llvm-c/Core.h"
+#include "llvmWrapper/IR/Instructions.h"
 
 #define DEBUG_TYPE "GENX_CFSIMPLIFICATION"
 
@@ -263,7 +264,7 @@ BasicBlock *GenXCFSimplification::processBranchedOverBlock(BasicBlock *BB) {
       if (Inst->isTerminator())
         break;
       Inst->removeFromParent();
-      Inst->insertBefore(PredBr);
+      IGCLLVM::insertBefore(Inst, PredBr);
     }
   }
   // In each phi node in the successor, change the incoming for the predecessor

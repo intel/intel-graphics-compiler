@@ -724,7 +724,7 @@ Value *ImplicitArgs::getImplicitArgValue(llvm::Function &F, ImplicitArg::ArgType
             // Make sure that intrinsic that we use is called before we use it's result
             auto parentFunction = inst->getParent()->getParent();
             auto firstFunc = IGCLLVM::getFirstNonPHI(&parentFunction->getEntryBlock());
-            inst->moveBefore(firstFunc);
+            IGCLLVM::moveBefore(inst, firstFunc);
             return inst;
           }
         }

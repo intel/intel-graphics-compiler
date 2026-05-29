@@ -598,7 +598,7 @@ void ReplaceUnsupportedIntrinsics::replaceMemMove(IntrinsicInst *I) {
   if (SrcAS < ADDRESS_SPACE_NUM_ADDRESSES && DstAS < ADDRESS_SPACE_NUM_ADDRESSES && SrcAS != ADDRESS_SPACE_GENERIC &&
       DstAS != ADDRESS_SPACE_GENERIC && SrcAS != DstAS) {
     auto *MemCpy = MemMoveToMemCpy(MM);
-    MemCpy->insertBefore(MM);
+    IGCLLVM::insertBefore(MemCpy, MM);
     replaceMemcpy(MemCpy);
     MM->eraseFromParent();
     return;
@@ -721,7 +721,7 @@ void ReplaceUnsupportedIntrinsics::replaceMemMove(IntrinsicInst *I) {
     // for false block (Src >= Dst), just a plain memcpy.
     {
       auto *MemCpy = MemMoveToMemCpy(MM);
-      MemCpy->insertBefore(BBFalse->getTerminator());
+      IGCLLVM::insertBefore(MemCpy, BBFalse->getTerminator());
       replaceMemcpy(MemCpy);
     }
   } else {
@@ -742,7 +742,7 @@ void ReplaceUnsupportedIntrinsics::replaceMemMove(IntrinsicInst *I) {
     // for false block (Src >= Dst), just a plain memcpy.
     {
       auto *MemCpy = MemMoveToMemCpy(MM);
-      MemCpy->insertBefore(BBFalse->getTerminator());
+      IGCLLVM::insertBefore(MemCpy, BBFalse->getTerminator());
       replaceMemcpy(MemCpy);
     }
   }

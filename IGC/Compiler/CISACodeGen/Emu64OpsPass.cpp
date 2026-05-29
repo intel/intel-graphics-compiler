@@ -1970,7 +1970,7 @@ bool InstExpander::visitCall(CallInst &Call) {
   // intrinsics)
   auto *CallCopy = Call.clone();
   IGC_ASSERT(nullptr != CallCopy);
-  CallCopy->insertBefore(&Call);
+  IGCLLVM::insertBefore(CallCopy, &Call);
   IRB->SetInsertPoint(CallCopy);
   for (int argNo = 0, sz = (int)IGCLLVM::getNumArgOperands(&Call); argNo < sz; ++argNo) {
     Value *OldVal = Call.getArgOperand(argNo);
@@ -2102,7 +2102,7 @@ bool InstExpander::visitExtractValue(ExtractValueInst &EVI) {
   IGC_ASSERT(EVI.getNumIndices() == 1);
 
   auto *EVICopy = EVI.clone();
-  EVICopy->insertBefore(&EVI);
+  IGCLLVM::insertBefore(EVICopy, &EVI);
   IRB->SetInsertPoint(&EVI);
   Value *OutputLo = nullptr, *OutputHi = nullptr;
   Value *V = IRB->CreateBitCast(EVICopy, Emu->getV2Int32Ty());
@@ -2120,7 +2120,7 @@ bool InstExpander::visitInsertValue(InsertValueInst &IVI) {
   IGC_ASSERT(IVI.getNumIndices() == 1);
 
   auto *IVICopy = IVI.clone();
-  IVICopy->insertBefore(&IVI);
+  IGCLLVM::insertBefore(IVICopy, &IVI);
   IRB->SetInsertPoint(IVICopy);
   Value *In64 = IVI.getOperand(1);
   auto [InputLo, InputHi] = Emu->getExpandedValues(In64);

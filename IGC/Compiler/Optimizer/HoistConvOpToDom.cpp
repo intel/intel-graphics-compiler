@@ -15,6 +15,7 @@ SPDX-License-Identifier: MIT
 
 #include "Compiler/IGCPassSupport.h"
 #include "Probe/Assertion.h"
+#include "llvmWrapper/IR/Instructions.h"
 
 #define DEBUG_TYPE "HoistConvOpToDom"
 
@@ -96,7 +97,7 @@ bool HoistConvOpToDom::runOnFunction(Function &F) {
 
       auto *CommonDominator = findNearestCommonDominator(PHI);
       if (FirstCast->getParent() != CommonDominator)
-        FirstCast->moveBefore(CommonDominator->getTerminator());
+        IGCLLVM::moveBefore(FirstCast, CommonDominator->getTerminator());
 
       for (auto *I : ToUpdate) {
         LLVM_DEBUG(dbgs() << "HoistConvOpToDom: Replacing " << *I << " with " << *FirstCast << "\n");

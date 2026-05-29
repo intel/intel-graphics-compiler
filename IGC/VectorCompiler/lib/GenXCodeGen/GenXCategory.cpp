@@ -353,7 +353,7 @@ void placeConvAfterDef(Function *Func, Instruction *Conv, Value *Def) {
       // grouped at top of basic block. So insert the conversion after all PHI
       // nodes.
       auto *FirstNonPhiInst = IGCLLVM::getFirstNonPHI(Inst->getParent());
-      Conv->insertBefore(FirstNonPhiInst);
+      IGCLLVM::insertBefore(Conv, FirstNonPhiInst);
       Conv->setDebugLoc(Inst->getDebugLoc());
       return;
     }
@@ -365,7 +365,7 @@ void placeConvAfterDef(Function *Func, Instruction *Conv, Value *Def) {
                        "must be an argument if not an instruction");
     // Original value is a function argument. Insert at the start of the
     // function.
-    Conv->insertBefore(&*Func->begin()->begin());
+    IGCLLVM::insertBefore(Conv, &*Func->begin()->begin());
   }
 }
 
@@ -374,10 +374,11 @@ void placeConvBeforeUse(Instruction *Conv, Instruction *Use,
   if (auto PhiUse = dyn_cast<PHINode>(Use)) {
     // Use is in a phi node. Insert before terminator in corresponding
     // incoming block.
-    Conv->insertBefore(PhiUse->getIncomingBlock(UseOperand)->getTerminator());
+    IGCLLVM::insertBefore(
+        Conv, PhiUse->getIncomingBlock(UseOperand)->getTerminator());
   } else {
     // Insert just before use.
-    Conv->insertBefore(Use);
+    IGCLLVM::insertBefore(Conv, Use);
     Conv->setDebugLoc(Use->getDebugLoc());
   }
 }

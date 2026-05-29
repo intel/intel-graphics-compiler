@@ -73,6 +73,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/Support/MathExtras.h>
 #include <llvm/Transforms/Utils/BasicBlockUtils.h>
 #include "common/LLVMWarningsPop.hpp"
+#include "llvmWrapper/IR/Instructions.h"
 
 using namespace std;
 using namespace llvm;
@@ -186,7 +187,7 @@ void TraceRayInlineLatencySchedulerPass::schedule(RayQuerySyncStackToShadowMemor
   Function &F = *Stk2SM->getParent()->getParent();
   SuspendCrossingInfo checker(F, SPIs);
   BasicBlock *tgt = findFarthestSafeBB(Stk2SM, checker);
-  Stk2SM->moveBefore(tgt->getTerminator());
+  IGCLLVM::moveBefore(Stk2SM, tgt->getTerminator());
 }
 
 // This function finds the farthest "safe" BB away from src BB.

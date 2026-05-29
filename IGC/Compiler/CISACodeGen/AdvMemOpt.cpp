@@ -334,7 +334,7 @@ bool AdvMemOpt::hoistInst(Instruction *LD, BasicBlock *BB) const {
   for (auto II = IGCLLVM::getFirstNonPHI(FromBB)->getIterator(), IE = FromBB->end(); II != IE; /*EMPTY*/) {
     Instruction *I = &*II++;
     if (ToHoist.count(I)) {
-      I->moveBefore(Pos);
+      IGCLLVM::moveBefore(I, Pos);
       ToHoist.erase(I);
       if (ToHoist.empty())
         break;

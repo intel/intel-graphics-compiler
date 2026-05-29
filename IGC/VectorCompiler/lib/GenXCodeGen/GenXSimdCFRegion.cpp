@@ -1772,7 +1772,7 @@ void GenXPredToSimdCF::fixPHIs(SimdCFIfRegion *R) {
       Phis.push_back(&PHINode);
     }
     for (auto *PHINode : Phis) {
-      PHINode->moveBefore(InsertPoint);
+      IGCLLVM::moveBefore(PHINode, InsertPoint);
       LLVM_DEBUG(dbgs() << *PHINode);
       if (JPSplit)
         for (unsigned i = 0, e = PHINode->getNumIncomingValues(); i != e; i++) {

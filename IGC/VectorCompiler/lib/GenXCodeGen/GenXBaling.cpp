@@ -1910,14 +1910,14 @@ void GenXBaling::doClones() {
         Liveness->getOrCreateLiveRange(Cloned)->setCategory(
             Liveness->getOrCreateLiveRange(Opnd)->getCategory());
       // Insert the clone just before its single use.
-      Cloned->insertBefore(NC.Inst);
+      IGCLLVM::insertBefore(Cloned, NC.Inst);
       // If the instruction that we cloned is now single use, not in a phi
       // node, move it to just before its use.
       if (Opnd->hasOneUse()) {
         auto User = Opnd->use_begin()->getUser();
         if (!isa<PHINode>(User)) {
           Opnd->removeFromParent();
-          Opnd->insertBefore(cast<Instruction>(User));
+          IGCLLVM::insertBefore(Opnd, cast<Instruction>(User));
         }
       }
     }
@@ -2371,7 +2371,7 @@ bool GenXBaling::preBalingCleanAndOptimize(Function &F) {
                              /*AllowScalar*/ !V->getType()->isVectorTy());
 
         IGC_ASSERT(NewV->getType() == V->getType());
-        Inst->moveBefore(NewV);
+        IGCLLVM::moveBefore(Inst, NewV);
         for (auto UI = V->use_begin(); UI != V->use_end(); /*Empty*/) {
           Use &U = *UI++;
           if (U.getUser() != Inst)
@@ -2486,12 +2486,12 @@ bool GenXBaling::preBalingCleanAndOptimize(Function &F) {
           Instruction *IndexInst = dyn_cast<Instruction>(Index);
           if (IndexInst && (vc::getAnyIntrinsicID(IndexInst) ==
                             GenXIntrinsic::genx_convert_addr))
-            IndexInst->moveBefore(&Inst);
+            IGCLLVM::moveBefore(IndexInst, &Inst);
           Value *OldVal =
               WrR->getOperand(GenXIntrinsic::GenXRegion::OldValueOperandNum);
           LoadInst *Load = dyn_cast<LoadInst>(OldVal);
           if (Load && isGlobalLoad(Load))
-            Load->moveBefore(&Inst);
+            IGCLLVM::moveBefore(Load, &Inst);
           WrR->moveAfter(EV);
         }
       }

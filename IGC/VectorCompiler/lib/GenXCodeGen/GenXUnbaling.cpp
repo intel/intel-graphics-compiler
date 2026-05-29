@@ -524,7 +524,7 @@ void GenXUnbaling::shortenLiveRanges(Function *F) {
             BI.clearOperandBaled(RdR->use_begin()->getOperandNo());
             Baling->setBaleInfo(UnbaleFrom, BI);
           }
-          RdR->moveBefore(InsertBefore);
+          IGCLLVM::moveBefore(RdR, InsertBefore);
           Modified = true;
         }
       }
@@ -602,7 +602,7 @@ void GenXUnbaling::processTwoAddrOrPhi(Instruction *Inst,
     if (BC == InsertBefore)
       InsertBefore = BC->getNextNode();
     else
-      BC->moveBefore(InsertBefore);
+      IGCLLVM::moveBefore(BC, InsertBefore);
     V = BC;
   }
   // Unbale and/or move uses found in scanUsesForUnbaleAndMove().
@@ -640,7 +640,7 @@ void GenXUnbaling::processTwoAddrOrPhi(Instruction *Inst,
         for (auto bi = B.begin(), be = B.end(); bi != be; ++bi) {
           auto MoveInst = bi->Inst;
           LLVM_DEBUG(dbgs() << "  moving " << MoveInst->getName() << "\n");
-          MoveInst->moveBefore(InsertBefore);
+          IGCLLVM::moveBefore(MoveInst, InsertBefore);
         }
       }
     }
@@ -1230,7 +1230,7 @@ void GenXUnbaling::processNonOverlappingRegion(CallInst *EndWr) {
     }
     for (unsigned i = 0, e = BaleTrace.size() - 1; i != e; ++i) {
       auto InstToMove = BaleTrace[i];
-      InstToMove->moveBefore(BaleTrace.back());
+      IGCLLVM::moveBefore(InstToMove, BaleTrace.back());
     }
   }
   // For the undef input case, also modify that.

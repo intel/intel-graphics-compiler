@@ -30,6 +30,7 @@ SPDX-License-Identifier: MIT
 
 #include <optional>
 #include <utility>
+#include "llvmWrapper/IR/Instructions.h"
 
 using namespace llvm;
 using namespace IGC;
@@ -538,7 +539,7 @@ static void sinkAllocas(SmallVectorImpl<AllocaInst *> &Allocas, bool highAllocaR
           InsertPt = Use;
         }
       }
-      AI->moveBefore(InsertPt);
+      IGCLLVM::moveBefore(AI, InsertPt);
     }
   }
 }
@@ -609,7 +610,7 @@ static void sinkAllocaSingleUse(SmallVectorImpl<AllocaInst *> &Allocas) {
             InsertPt = Use;
           }
         }
-        UI->moveBefore(InsertPt);
+        IGCLLVM::moveBefore(UI, InsertPt);
       }
     }
   }

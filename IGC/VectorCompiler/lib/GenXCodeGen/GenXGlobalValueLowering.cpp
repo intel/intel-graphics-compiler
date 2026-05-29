@@ -55,6 +55,7 @@ SPDX-License-Identifier: MIT
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
+#include "llvmWrapper/IR/Instructions.h"
 
 using namespace llvm;
 
@@ -309,7 +310,7 @@ Value *GenXGlobalValueLowering::buildConstExprReplacement(
   Instruction *Replacement = ConstExpr.getAsInstruction();
   // set new operands
   std::copy(NewOps.begin(), NewOps.end(), Replacement->op_begin());
-  Replacement->insertBefore(&*Builder.GetInsertPoint());
+  IGCLLVM::insertBefore(Replacement, &*Builder.GetInsertPoint());
   Replacement->setName("gaddr.lowering");
   // May create a new map entry here.
   WorkList[&Func].Replacement[&ConstExpr] = Replacement;

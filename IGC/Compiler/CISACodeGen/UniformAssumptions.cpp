@@ -192,12 +192,12 @@ void UniformAssumptions::HoistAssumptions(llvm::Function &F) {
           newAssumption->setOperand(0, src);
           if (auto srcInst = dyn_cast<Instruction>(src)) {
             if (isa<PHINode>(srcInst)) {
-              newAssumption->insertBefore(IGCLLVM::getFirstNonPHI(srcInst->getParent()));
+              IGCLLVM::insertBefore(newAssumption, IGCLLVM::getFirstNonPHI(srcInst->getParent()));
             } else {
               newAssumption->insertAfter(srcInst);
             }
           } else {
-            newAssumption->insertBefore(IGCLLVM::getFirstNonPHI(&F.getEntryBlock()));
+            IGCLLVM::insertBefore(newAssumption, IGCLLVM::getFirstNonPHI(&F.getEntryBlock()));
           }
           check_further = true;
         }

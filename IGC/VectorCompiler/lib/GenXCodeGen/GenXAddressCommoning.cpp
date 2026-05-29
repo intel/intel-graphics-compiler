@@ -96,6 +96,7 @@ SPDX-License-Identifier: MIT
 #include "Probe/Assertion.h"
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/Support/TypeSize.h"
+#include "llvmWrapper/IR/Instructions.h"
 
 #define DEBUG_TYPE "GENX_ADDRESSCOMMONING"
 
@@ -626,7 +627,7 @@ void GenXAddressCommoning::processCommonAddrsWithValidOffsets(
       Instruction *Inst = i->Inst;
       DominatingAddr = Inst;
       Inst->removeFromParent();
-      Inst->insertBefore(InsertBefore);
+      IGCLLVM::insertBefore(Inst, InsertBefore);
       Numbering->setNumber(Inst, Num);
     }
   }

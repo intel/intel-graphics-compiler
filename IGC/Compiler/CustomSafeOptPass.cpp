@@ -90,6 +90,7 @@ cmp+sel to avoid expensive VxH mov.
 #include "common/LLVMWarningsPop.hpp"
 #include "llvmWrapper/IR/IntrinsicInst.h"
 #include "llvmWrapper/IR/Intrinsics.h"
+#include "llvmWrapper/IR/Instructions.h"
 #include "llvmWrapper/IR/DIBuilder.h"
 #include "llvmWrapper/IR/DebugInfo.h"
 #include "llvmWrapper/IR/DerivedTypes.h"
@@ -765,7 +766,7 @@ void CustomSafeOptPass::visitUDiv(BinaryOperator &I) {
             // Force hoist I to a common ancestor basic block, even if it may result in speculatively executing the udiv
             // as a result of following a CFG path that reaches neither of the original blocks containing udiv.
             auto *insertBlock = DT->findNearestCommonDominator(I.getParent(), userInst->getParent());
-            I.moveBefore(insertBlock->getTerminator());
+            IGCLLVM::moveBefore(&I, insertBlock->getTerminator());
           }
           ToReplace.push_back(userInst);
         }
@@ -812,7 +813,7 @@ void CustomSafeOptPass::visitURem(BinaryOperator &I) {
       // Don't hoist to a block without a matching udiv
       if (!ExistingUDivAvailable.contains(insertBlock))
         continue;
-      I.moveBefore(insertBlock->getTerminator());
+      IGCLLVM::moveBefore(&I, insertBlock->getTerminator());
     }
     ToReplace.push_back(urem);
   }
@@ -1054,10 +1055,10 @@ void CustomSafeOptPass::visitLoadInst(LoadInst &load) {
           GetElementPtrInst::Create(BaseTy, gep->getPointerOperand(), indices, gep->getName(), gep);
       gep2->setDebugLoc(gep->getDebugLoc());
       LoadInst *load1 = cast<LoadInst>(load.clone());
-      load1->insertBefore(&load);
+      IGCLLVM::insertBefore(load1, &load);
       load1->setOperand(0, gep1);
       LoadInst *load2 = cast<LoadInst>(load.clone());
-      load2->insertBefore(&load);
+      IGCLLVM::insertBefore(load2, &load);
       load2->setOperand(0, gep2);
       SelectInst *result = SelectInst::Create(sel->getCondition(), load1, load2, load.getName(), &load);
       result->setDebugLoc(load.getDebugLoc());
@@ -5630,7 +5631,7 @@ bool FlattenSmallSwitch::processSwitchInst(SwitchInst *SI) {
       if (I->isTerminator())
         return;
 
-      I->moveBefore(InsertPoint);
+      IGCLLVM::moveBefore(I, InsertPoint);
     }
   };
 
@@ -6253,7 +6254,7 @@ bool LogicalAndToBranch::scheduleUp(BasicBlock *bb, Value *V, Instruction *&inse
 
   if (insertPos) {
     inst->removeFromParent();
-    inst->insertBefore(insertPos);
+    IGCLLVM::insertBefore(inst, insertPos);
   }
 
   return true;
@@ -6288,7 +6289,7 @@ void LogicalAndToBranch::convertAndToBranch(Instruction *opAnd, Instruction *con
   BasicBlock *bb = opAnd->getParent();
   BasicBlock *bbThen, *bbElse, *bbEnd;
 
-  Instruction *splitBefore = cond0->getNextNonDebugInstruction();
+  Instruction *splitBefore = IGCLLVM::getNextNonDebugInstruction(cond0);
   bbThen = bb->splitBasicBlock(splitBefore->getIterator(), "if.then");
   bbElse = bbThen->splitBasicBlock(opAnd, "if.else");
   bbEnd = bbElse->splitBasicBlock(opAnd, "if.end");
@@ -6725,7 +6726,7 @@ void MergeMemFromBranchOpt::visitTypedWrite(llvm::CallInst *inst) {
 
       // move the first typedwrite instruction into mergeBB
       inst->removeFromParent();
-      inst->insertBefore(&*mergeBB->getFirstInsertionPt());
+      IGCLLVM::insertBefore(inst, &*mergeBB->getFirstInsertionPt());
 
       // set the inst srcs to results from phi nodes above
       inst->setOperand(0, itp);
@@ -6872,7 +6873,7 @@ bool SinkLoadOpt::sinkLoadInstruction(Function &F) {
 
   if (moveInst.size()) {
     for (auto &mi : reverse(moveInst)) {
-      mi.first->moveBefore(mi.second);
+      IGCLLVM::moveBefore(mi.first, mi.second);
     }
     return true;
   }
@@ -7034,7 +7035,7 @@ void InsertBranchOpt::CreateBranchBlock(Function &F, Value *cmpI, loadGroup &lg,
   Instruction *termatorInst = SplitBlockAndInsertIfThen(cmpI, inst[0], false);
 
   for (uint i = 0; i < lg.num; i++) {
-    inst[i]->moveBefore(termatorInst);
+    IGCLLVM::moveBefore(inst[i], termatorInst);
   }
 
   Value *zeroF = ConstantFP::get(Type::getFloatTy(F.getContext()), 0.);
@@ -7289,7 +7290,7 @@ void InsertBranchOpt::atomicSplitOpt(Function &F, int mode) {
       //    use typedread or load
       Instruction *condInst = cast<Instruction>(builder.CreateICmp(ICmpInst::ICMP_NE, src, builder.getInt32(0)));
       splitBBAndName(condInst, inst, &ThenTerm, &ElseTerm, MergeBlock);
-      inst->moveBefore(ThenTerm);
+      IGCLLVM::moveBefore(inst, ThenTerm);
 
       builder.SetInsertPoint(ElseTerm);
       readI = createReadFromAtomic(builder, inst, isTyped);
@@ -7305,7 +7306,7 @@ void InsertBranchOpt::atomicSplitOpt(Function &F, int mode) {
       Instruction *condInst = cast<Instruction>(builder.CreateICmp(predicate, src, readI));
 
       splitBBAndName(condInst, inst, &ThenTerm, nullptr, MergeBlock);
-      inst->moveBefore(ThenTerm);
+      IGCLLVM::moveBefore(inst, ThenTerm);
 
       isModified = true;
     }
@@ -7476,7 +7477,7 @@ static Value *rematerializeChainIterative(Value *rootVal, Instruction *insertBef
     Instruction *newInst = inst->clone();
     for (unsigned i = 0; i < newOps.size(); ++i)
       newInst->setOperand(i, newOps[i]);
-    newInst->insertBefore(insertBefore);
+    IGCLLVM::insertBefore(newInst, insertBefore);
     rematMap[inst] = newInst;
   }
 
@@ -7605,12 +7606,12 @@ void typedWriteZeroStoreCheck(Function &F, DominatorTree &DT, PostDominatorTree 
           }
 
           tyR->removeFromParent();
-          tyR->insertBefore(fromBB->getTerminator());
+          IGCLLVM::insertBefore(tyR, fromBB->getTerminator());
 
           // How to check for redundant inst?
           for (uint32_t i = 0; i < numActiveChannels; i++) {
             eeInst[i]->removeFromParent();
-            eeInst[i]->insertBefore(fromBB->getTerminator());
+            IGCLLVM::insertBefore(eeInst[i], fromBB->getTerminator());
           }
 
           // ensure that the fmul instructions are given the values that the
@@ -7620,7 +7621,7 @@ void typedWriteZeroStoreCheck(Function &F, DominatorTree &DT, PostDominatorTree 
             Instruction *fmulOp = fmulInst[i];
             Instruction *faddOp = faddInst[i];
             fmulOp->removeFromParent();
-            fmulOp->insertBefore(fromBB->getTerminator());
+            IGCLLVM::insertBefore(fmulOp, fromBB->getTerminator());
             // Fix FMul operands: rematerialize non-PHI, replace PHI with
             // non-zero value
             for (unsigned op = 0; op < fmulOp->getNumOperands(); ++op) {
@@ -7636,11 +7637,11 @@ void typedWriteZeroStoreCheck(Function &F, DominatorTree &DT, PostDominatorTree 
               }
             }
             faddOp->removeFromParent();
-            faddOp->insertBefore(fromBB->getTerminator());
+            IGCLLVM::insertBefore(faddOp, fromBB->getTerminator());
           }
 
           tyW->removeFromParent();
-          tyW->insertBefore(fromBB->getTerminator());
+          IGCLLVM::insertBefore(tyW, fromBB->getTerminator());
 
           for (uint32_t i = 0; i < paramCnt; i++) {
             tyR->setOperand(i, rematerializedVals[i]);

@@ -15,6 +15,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/IR/IntrinsicInst.h"
 
 #include "llvmWrapper/IR/IntrinsicInst.h"
+#include "llvmWrapper/IR/Instructions.h"
 
 using namespace llvm;
 using namespace IGC;
@@ -462,7 +463,7 @@ bool CatchAllLineNumber::runOnFunction(llvm::Function &F) {
 
   intCall->setDebugLoc(dbg);
 
-  intCall->insertBefore(&*F.getEntryBlock().getFirstInsertionPt());
+  IGCLLVM::insertBefore(intCall, &*F.getEntryBlock().getFirstInsertionPt());
 
   return true;
 }

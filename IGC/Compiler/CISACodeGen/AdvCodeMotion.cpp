@@ -29,6 +29,7 @@ SPDX-License-Identifier: MIT
 #include <llvmWrapper/ADT/Optional.h>
 #include <llvmWrapper/IR/CmpPredicate.h>
 #include "Probe/Assertion.h"
+#include "llvmWrapper/IR/Instructions.h"
 
 using namespace llvm;
 using namespace llvm::PatternMatch;
@@ -237,7 +238,7 @@ bool AdvCodeMotion::hoistUniform(BasicBlock *Src, BasicBlock *Dst) const {
     Instruction *Inst = &*BI++;
     if (!WI->isUniform(Inst) || Inst->isTerminator())
       break;
-    Inst->moveBefore(Pos);
+    IGCLLVM::moveBefore(Inst, Pos);
     Changed = true;
   }
   return Changed;
@@ -351,7 +352,7 @@ bool AdvCodeMotion::hoistMost(bool InvPred, BasicBlock *IfBB, BasicBlock *TBB, B
   Pos = Upper->getTerminator();
   for (auto BI = TBB->begin(), BE = TBB->end(); BI != BE; /*EMPTY*/) {
     Instruction *Inst = &*BI++;
-    Inst->moveBefore(Pos);
+    IGCLLVM::moveBefore(Inst, Pos);
   }
   Pos->eraseFromParent();
   // Merge exit block into lower part.
@@ -360,7 +361,7 @@ bool AdvCodeMotion::hoistMost(bool InvPred, BasicBlock *IfBB, BasicBlock *TBB, B
     Instruction *Inst = &*BI++;
     if (Inst->isTerminator())
       break;
-    Inst->moveBefore(Pos);
+    IGCLLVM::moveBefore(Inst, Pos);
   }
   Lower->moveBefore(JBB);
   // Rebuild CFG.
@@ -419,7 +420,7 @@ bool AdvCodeMotion::hoistMost2(bool InvPred, BasicBlock *IfBB, BasicBlock *TBB, 
   }
   for (auto BI = TBB->begin(), BE = TBB->end(); BI != BE; /*EMPTY*/) {
     Instruction *Inst = &*BI++;
-    Inst->moveBefore(Pos);
+    IGCLLVM::moveBefore(Inst, Pos);
   }
   Pos->eraseFromParent();      // Remove original terminator in IfBB
   Pos = IfBB->getTerminator(); // Fetch the new terminator (the one in TBB).
@@ -454,7 +455,7 @@ bool AdvCodeMotion::hoistMost2(bool InvPred, BasicBlock *IfBB, BasicBlock *TBB, 
       PN->eraseFromParent();
       continue;
     }
-    Inst->moveBefore(Pos);
+    IGCLLVM::moveBefore(Inst, Pos);
   }
   Pos->eraseFromParent();
   // Update PHI nodes.
@@ -748,7 +749,7 @@ static bool clusterByEquivalenceClasses(ArrayRef<Instruction *> Order, Equivalen
     if (MapIt->second) {
       // Avoid reporting a change for a no-op move.
       if (I->getNextNode() != MapIt->second) {
-        I->moveBefore(MapIt->second);
+        IGCLLVM::moveBefore(I, MapIt->second);
         Changed = true;
       }
     }

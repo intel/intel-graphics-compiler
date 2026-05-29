@@ -417,7 +417,7 @@ void CloneAddressArithmetic::rematWholeChain(llvm::Instruction *I, RematChain &C
     MDNode *Node = MDNode::get(I->getContext(), MDString::get(I->getContext(), "remat"));
     Clone->setMetadata("remat", Node);
     Clone->setName("remat");
-    Clone->insertBefore(I);
+    IGCLLVM::insertBefore(Clone, I);
   }
 
   for (unsigned int i = 0; i < I->getNumOperands(); ++i) {
@@ -491,7 +491,7 @@ bool CloneAddressArithmetic::rematerialize(RematSet &ToProcess, unsigned int Flo
       MDNode *Node = MDNode::get(El->getContext(), MDString::get(El->getContext(), "remat"));
       Clone->setMetadata("remat", Node);
       Clone->setName("cloned_" + El->getName());
-      Clone->insertBefore(UserInst);
+      IGCLLVM::insertBefore(Clone, UserInst);
       *Use = Clone;
 
       PRINT_INST_NL(Clone);
@@ -949,8 +949,8 @@ bool RematAddressArithmetic::rematerializePhiMemoryAddressCalculation(Function &
         newIntToPtr->setOperand(0, newAdd);
         // and insert in after the phi
         Instruction *insertPoint = IGCLLVM::getFirstNonPHIOrDbgOrLifetime(BB);
-        newAdd->insertBefore(insertPoint);
-        newIntToPtr->insertBefore(insertPoint);
+        IGCLLVM::insertBefore(newAdd, insertPoint);
+        IGCLLVM::insertBefore(newIntToPtr, insertPoint);
         phi->replaceAllUsesWith(newIntToPtr);
         modified = true;
       }
@@ -1025,7 +1025,7 @@ bool RematAddressArithmetic::rematerialize(Instruction *I, SmallVectorImpl<Value
   Value *CurV = I;
   for (auto *V : Chain) {
     Instruction *Clone = dyn_cast<Instruction>(V)->clone();
-    Clone->insertBefore(dyn_cast<Instruction>(CurV));
+    IGCLLVM::insertBefore(Clone, dyn_cast<Instruction>(CurV));
     for (auto &U : V->uses()) {
       if (CurV == U.getUser())
         U.set(Clone);

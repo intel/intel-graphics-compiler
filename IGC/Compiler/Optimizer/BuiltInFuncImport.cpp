@@ -960,7 +960,7 @@ void BIImport::removeFunctionBitcasts(Module &M) {
           // get first instruction in function and insert addressspacecast before it
           Instruction *firstInst = &(*pDstFunc->begin()->getFirstInsertionPt());
           for (Instruction *valToInsert : castInsts)
-            valToInsert->insertBefore(firstInst);
+            IGCLLVM::insertBefore(valToInsert, firstInst);
 
           pDstFunc->setCallingConv(funcToBeChanged->getCallingConv());
           bitcastFunctionMap[funcToBeChanged].push_back(pDstFunc);

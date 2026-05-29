@@ -1268,7 +1268,7 @@ PHINode *GenXCoalescing::copyNonCoalescedPhi(PHINode *PhiPred,
                                              PHINode *PhiSucc) {
   // Perform copy
   auto *PhiCopy = cast<PHINode>(PhiPred->clone());
-  PhiCopy->insertBefore(PhiPred->getNextNode());
+  IGCLLVM::insertBefore(PhiCopy, PhiPred->getNextNode());
   PhiCopy->setName(PhiPred->getName() + ".copy");
   Numbering->setNumber(PhiCopy, Numbering->getNumber(PhiPred));
 

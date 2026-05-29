@@ -72,8 +72,8 @@ bool LowPrecisionOpt::runOnFunction(Function &F) {
   std::sort(bundles.begin(), bundles.end(), cmpOperator);
   auto bundleEnd = bundles.end();
   for (auto bundle = bundles.begin(); bundle != bundleEnd; ++bundle) {
-    (*bundle).fpTrunc->moveBefore(&(*(m_currFunction->getEntryBlock().begin())));
-    (*bundle).cInst->moveBefore(&(*(m_currFunction->getEntryBlock().begin())));
+    IGCLLVM::moveBefore((*bundle).fpTrunc, &(*(m_currFunction->getEntryBlock().begin())));
+    IGCLLVM::moveBefore((*bundle).cInst, &(*(m_currFunction->getEntryBlock().begin())));
   }
   return m_changed;
 }

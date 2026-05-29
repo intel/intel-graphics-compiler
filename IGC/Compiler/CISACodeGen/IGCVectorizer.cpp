@@ -444,7 +444,7 @@ bool IGCVectorizer::handlePHI(VecArr &Slice) {
     Phi->addIncoming(Operands[i], BB);
   }
 
-  Phi->insertBefore(ScalarPhi);
+  IGCLLVM::insertBefore(Phi, ScalarPhi);
   Phi->setDebugLoc(ScalarPhi->getDebugLoc());
   CreatedVectorInstructions.push_back(Phi);
 
@@ -572,7 +572,7 @@ InsertElementInst *IGCVectorizer::createVector(VecArr &Slice, Instruction *Inser
       CreatedInsert = InsertElementInst::Create(UndefVector, Slice[i], index);
     CreatedInsert->setName("vector");
     CreatedInsert->setDebugLoc(Slice[i]->getDebugLoc());
-    CreatedInsert->insertBefore(InsertPoint);
+    IGCLLVM::insertBefore(CreatedInsert, InsertPoint);
     CreatedVectorInstructions.push_back(CreatedInsert);
   }
 
@@ -601,7 +601,7 @@ void IGCVectorizer::replaceSliceInstructionsWithExtract(VecArr &Slice, Instructi
 
     CreatedExtract->setName("vector_extract");
     CreatedExtract->setDebugLoc(Slice[i]->getDebugLoc());
-    CreatedExtract->insertBefore(InsertPoint);
+    IGCLLVM::insertBefore(CreatedExtract, InsertPoint);
     CreatedVectorInstructions.push_back(CreatedExtract);
 
     PRINT_INST_NL(CreatedExtract);
@@ -630,7 +630,7 @@ bool IGCVectorizer::handleBinaryInstruction(VecArr &Slice) {
   auto *CreatedInst = BinaryOperator::CreateWithCopiedFlags(BinaryOpcode, Operands[0], Operands[1], First);
   CreatedInst->setName("vectorized_binary");
   CreatedInst->setDebugLoc(First->getDebugLoc());
-  CreatedInst->insertBefore(InsertPoint);
+  IGCLLVM::insertBefore(CreatedInst, InsertPoint);
   CreatedVectorInstructions.push_back(CreatedInst);
 
   PRINT_LOG("Binary instruction created: ");
@@ -745,7 +745,7 @@ bool IGCVectorizer::handleSelectInstruction(VecArr &Slice) {
   CreatedInst->setMetadata("vectorized", Node);
 
   CreatedInst->setDebugLoc(First->getDebugLoc());
-  CreatedInst->insertBefore(InsertPoint);
+  IGCLLVM::insertBefore(CreatedInst, InsertPoint);
   CreatedVectorInstructions.push_back(CreatedInst);
 
   PRINT_LOG("Select instruction created: ");
@@ -862,7 +862,7 @@ bool IGCVectorizer::handleCMPInstruction(VecArr &Slice) {
 
   CreatedInst->setName("vectorized_cmp");
   CreatedInst->setDebugLoc(First->getDebugLoc());
-  CreatedInst->insertBefore(InsertPoint);
+  IGCLLVM::insertBefore(CreatedInst, InsertPoint);
   CreatedVectorInstructions.push_back(CreatedInst);
 
   PRINT_LOG("Binary instruction created: ");
@@ -914,7 +914,7 @@ bool IGCVectorizer::handleCastInstruction(VecArr &Slice) {
   CreatedCast->setName("vectorized_cast");
 
   CreatedCast->setDebugLoc(First->getDebugLoc());
-  CreatedCast->insertBefore(First);
+  IGCLLVM::insertBefore(CreatedCast, First);
   CreatedVectorInstructions.push_back(CreatedCast);
 
   PRINT_LOG("Cast instruction created: ");
@@ -1574,13 +1574,13 @@ bool IGCVectorizerCommon::checkDependencyAndTryToEliminate(VecArr &Slice, unsign
     if (!Poisoned.count(El)) {
       PRINT_LOG("Before minpoint: ");
       PRINT_INST_NL(El);
-      El->moveBefore(MinPoint);
+      IGCLLVM::moveBefore(El, MinPoint);
     } else if (SliceSet.count(El))
       continue;
     else {
       PRINT_LOG("After maxpoint: ");
       PRINT_INST_NL(El);
-      El->moveBefore(AfterInsertPoint);
+      IGCLLVM::moveBefore(El, AfterInsertPoint);
     }
   }
 
@@ -1876,7 +1876,7 @@ void IGCVectorCoalescer::ShuffleIn(VecArr &Slice, unsigned StartIndex, unsigned 
       }
 
       auto ShuffleVector = new llvm::ShuffleVectorInst(Seed, OperandsToCoalesce[index], Mask, "coalesced_input");
-      ShuffleVector->insertBefore(Slice.front());
+      IGCLLVM::insertBefore(ShuffleVector, Slice.front());
       Seed = ShuffleVector;
       PRINT_INST_NL(ShuffleVector);
     }

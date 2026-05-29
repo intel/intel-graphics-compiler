@@ -555,11 +555,11 @@ void GenXDepressurizer::orderAndNumber(Function *F) {
               // UInst will be numbered in the next iterations.
               IGC_ASSERT(UInst->hasOneUse());
               UInst->removeFromParent();
-              UInst->insertBefore(InsertBefore);
+              IGCLLVM::insertBefore(UInst, InsertBefore);
             }
           }
           Inst->removeFromParent();
-          Inst->insertBefore(InsertBefore);
+          IGCLLVM::insertBefore(Inst, InsertBefore);
         }
         if (GotoJoin) {
           // For a goto/join, check that its outside-bale uses are also moved,
@@ -587,7 +587,7 @@ void GenXDepressurizer::orderAndNumber(Function *F) {
             if (User->getParent() == GotoJoin->getParent()) {
               // Only move the extractvalue if it is in the same basic block.
               User->removeFromParent();
-              User->insertBefore(InsertBefore);
+              IGCLLVM::insertBefore(User, InsertBefore);
               InstNumbers[User] = InstNum;
               InstFenceDomain[User] = FenceNum;
             }
@@ -617,7 +617,7 @@ void GenXDepressurizer::orderAndNumber(Function *F) {
               if (!OpndInst->hasOneUse())
                 continue;
               OpndInst->removeFromParent();
-              OpndInst->insertBefore(InsertBefore);
+              IGCLLVM::insertBefore(OpndInst, InsertBefore);
             }
           }
         }
@@ -1211,7 +1211,7 @@ bool GenXDepressurizer::sinkOnce(Instruction *InsertBefore, Superbale *SB,
       for (auto j = B.begin(), je = B.end(); j != je; ++j) {
         Changed = j->Inst;
         Changed->removeFromParent();
-        Changed->insertBefore(InsertBefore);
+        IGCLLVM::insertBefore(Changed, InsertBefore);
         InstNumbers[Changed] = InsertNum - 1;
         ++NumSunk;
       }
@@ -1227,7 +1227,7 @@ bool GenXDepressurizer::sinkOnce(Instruction *InsertBefore, Superbale *SB,
       for (auto j = B.begin(), je = B.end(); j != je; ++j) {
         InstToClone = j->Inst;
         Changed = InstToClone->clone();
-        Changed->insertBefore(InsertBefore);
+        IGCLLVM::insertBefore(Changed, InsertBefore);
         Changed->setName(InstToClone->getName() + ".cloned");
         // Ensure new instruction has the same baling.
         Baling->setBaleInfo(Changed, j->Info);

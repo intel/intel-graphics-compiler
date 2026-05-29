@@ -23,6 +23,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/IGCPassSupport.h"
 #include "Probe/Assertion.h"
 #include <queue>
+#include "llvmWrapper/IR/Instructions.h"
 
 using namespace llvm;
 using namespace IGC::Debug;
@@ -166,16 +167,16 @@ bool AddressArithmeticSinking::sink(Instruction *I) {
   }
 
   if (usesInBB.empty())
-    I->moveBefore(tgtBB->getTerminator());
+    IGCLLVM::moveBefore(I, tgtBB->getTerminator());
   else if (usesInBB.size() == 1) {
     Instruction *use = *(usesInBB.begin());
     if (!isa<PHINode>(use))
-      I->moveBefore(use);
+      IGCLLVM::moveBefore(I, use);
   } else {
     Instruction *firstUse = findFirstUse(tgtBB, usesInBB);
     IGC_ASSERT(firstUse);
     if (!isa<PHINode>(firstUse))
-      I->moveBefore(firstUse);
+      IGCLLVM::moveBefore(I, firstUse);
   }
 
   return true;

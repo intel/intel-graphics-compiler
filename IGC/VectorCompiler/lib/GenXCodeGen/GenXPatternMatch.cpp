@@ -4494,7 +4494,7 @@ bool GenXPatternMatch::extendMask(BinaryOperator *BO) {
 
   Instruction *NewInst = vc::cloneInstWithNewOps(*BO, {Op0, Op1});
   IGC_ASSERT(NewInst);
-  NewInst->insertBefore(BO);
+  IGCLLVM::insertBefore(NewInst, BO);
   NewInst->takeName(BO);
 
   Value *Inst =

@@ -32,6 +32,7 @@ SPDX-License-Identifier: MIT
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/IR/Value.h"
 #include <llvmWrapper/Analysis/TargetLibraryInfo.h>
+#include "llvmWrapper/IR/Instructions.h"
 
 using namespace llvm;
 using namespace IGC::Debug;
@@ -2103,7 +2104,7 @@ private:
       Instruction *InsertPoint = nullptr;
       for (auto &Node : ScheduledList) {
         if (!InsertPoint) {
-          Node->I->moveBefore(&*BB->getFirstInsertionPt());
+          IGCLLVM::moveBefore(Node->I, &*BB->getFirstInsertionPt());
         } else {
           Node->I->moveAfter(InsertPoint);
         }

@@ -22,6 +22,7 @@ SPDX-License-Identifier: MIT
 #include "llvmWrapper/ADT/Optional.h"
 #include "Probe/Assertion.h"
 #include <optional>
+#include "llvmWrapper/IR/Instructions.h"
 
 using namespace llvm;
 using namespace IGC;
@@ -289,7 +290,7 @@ bool PreRARematFlag::reMaterialize(Instruction *I, User *LocalUser) const {
       InsertPt = PredBB->getTerminator();
     }
     Instruction *Clone = I->clone();
-    Clone->insertBefore(InsertPt);
+    IGCLLVM::insertBefore(Clone, InsertPt);
     U.set(Clone);
     Changed = true;
   }

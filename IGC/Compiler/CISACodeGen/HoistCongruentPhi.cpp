@@ -289,7 +289,7 @@ bool HoistCongruentPHI::hoistCongruentPhi(PHINode *phi) {
               }
             }
           }
-          ni->insertBefore(insertBefore);
+          IGCLLVM::insertBefore(ni, insertBefore);
           ni->setName(VALUE_NAME(ni->getName() + ".hoist"));
 
           if (phi->getIncomingValue(0) == I) {

@@ -62,6 +62,7 @@ SPDX-License-Identifier: MIT
 #include "llvmWrapper/IR/Intrinsics.h"
 #include "llvmWrapper/IR/IntrinsicInst.h"
 #include "llvmWrapper/IR/Function.h"
+#include "llvmWrapper/IR/Instructions.h"
 #include "Probe/Assertion.h"
 
 using namespace llvm;
@@ -340,10 +341,10 @@ bool CustomUnsafeOptPass::visitBinaryOperatorFmulFaddPropagation(BinaryOperator 
     return false;
   }
 
-  instBase[1] = instBase[0]->getNextNonDebugInstruction();
+  instBase[1] = IGCLLVM::getNextNonDebugInstruction(instBase[0]);
 
   if (instBase[1] && instBase[1]->getOpcode() != opcode) {
-    instBase[1] = instBase[1]->getNextNonDebugInstruction();
+    instBase[1] = IGCLLVM::getNextNonDebugInstruction(instBase[1]);
   }
 
   if (instBase[1] == nullptr || instBase[1]->getOpcode() != opcode ||
@@ -361,10 +362,10 @@ bool CustomUnsafeOptPass::visitBinaryOperatorFmulFaddPropagation(BinaryOperator 
     matchPattern1 = true;
   }
   for (int i = 2; i < 4; i++) {
-    instBase[i] = instBase[i - 1]->getNextNonDebugInstruction();
+    instBase[i] = IGCLLVM::getNextNonDebugInstruction(instBase[i - 1]);
 
     if (instBase[i] && instBase[i - 1]->getOpcode() != instBase[i]->getOpcode()) {
-      instBase[i] = instBase[i]->getNextNonDebugInstruction();
+      instBase[i] = IGCLLVM::getNextNonDebugInstruction(instBase[i]);
     }
 
     if (!instBase[i] || instBase[i]->getOpcode() != opcode ||
@@ -449,7 +450,7 @@ bool CustomUnsafeOptPass::visitBinaryOperatorFmulFaddPropagation(BinaryOperator 
       }
       instSrc1[0]->setOperand(1 - sameSrcId1, tempOp);
       // move instSrc1[0] to before base
-      instSrc1[0]->moveBefore(instBase[0]);
+      IGCLLVM::moveBefore(instSrc1[0], instBase[0]);
 
       for (int i = 1; i < numOfSet; ++i) {
         if (instSrc1[i]->use_empty())
@@ -534,9 +535,9 @@ bool CustomUnsafeOptPass::visitBinaryOperatorFmulFaddPropagation(BinaryOperator 
       instSrc1[0]->setOperand(1 - sameSrcId1, tempOp);
 
       for (int i = 0; i < numOfSet; i++) {
-        instSrc2[i]->moveBefore(instBase[0]);
+        IGCLLVM::moveBefore(instSrc2[i], instBase[0]);
       }
-      instSrc1[0]->moveBefore(instSrc2[0]);
+      IGCLLVM::moveBefore(instSrc1[0], instSrc2[0]);
 
       for (int i = 1; i < numOfSet; ++i) {
         if (instSrc1[i]->use_empty())
@@ -2804,13 +2805,13 @@ Instruction *EarlyOutPatterns::moveToDef(Instruction *Def, ArrayRef<Instruction 
     // need to move the bitcast too.
     if (it->getOperand(0) != Def) {
       auto bitcast = cast<Instruction>(it->getOperand(0));
-      bitcast->moveBefore(insertPoint->getNextNode());
+      IGCLLVM::moveBefore(bitcast, insertPoint->getNextNode());
       insertPoint = bitcast;
     }
   }
   for (auto it : Users) {
     // move all the users right after the def instruction for simplicity
-    it->moveBefore(insertPoint->getNextNode());
+    IGCLLVM::moveBefore(it, insertPoint->getNextNode());
     insertPoint = it;
   }
 

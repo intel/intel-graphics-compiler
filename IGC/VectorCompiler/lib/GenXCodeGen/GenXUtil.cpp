@@ -378,7 +378,7 @@ Value *genx::invertCondition(Value *Condition) {
     else if (Argument *Arg = dyn_cast<Argument>(Condition))
       Parent = &Arg->getParent()->getEntryBlock();
     IGC_ASSERT_MESSAGE(Parent, "Unsupported condition to invert");
-    Inverted->insertBefore(&*Parent->getFirstInsertionPt());
+    IGCLLVM::insertBefore(Inverted, &*Parent->getFirstInsertionPt());
   }
   return Inverted;
 }
@@ -1402,7 +1402,7 @@ Value *genx::sinkAdd(Value *V) {
                                                         e = ScaleInsts.rend();
        i != e; ++i) {
     Instruction *Clone = (*i)->clone();
-    Clone->insertBefore(IdxVal);
+    IGCLLVM::insertBefore(Clone, IdxVal);
     Clone->setName((*i)->getName());
     Clone->setOperand(0, Inst);
     Inst = Clone;

@@ -11,6 +11,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/IGCPassSupport.h"
 #include "Compiler/InitializePasses.h"
 #include "Probe/Assertion.h"
+#include "llvmWrapper/IR/Instructions.h"
 
 using namespace llvm;
 using namespace IGC;
@@ -241,7 +242,7 @@ bool SampleMultiversioning::runOnFunction(Function &F) {
         Instruction *tempInsn = iterInsn;
         iterInsn = iterInsn->getNextNode();
         if (toHoist.find(tempInsn) != toHoist.end()) {
-          tempInsn->moveBefore(SI.Sample);
+          IGCLLVM::moveBefore(tempInsn, SI.Sample);
           hoistSize--;
         }
       }

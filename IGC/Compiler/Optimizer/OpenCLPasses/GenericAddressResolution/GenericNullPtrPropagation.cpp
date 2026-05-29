@@ -17,6 +17,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/Pass.h>
 #include <llvm/IR/InstVisitor.h>
 #include "common/LLVMWarningsPop.hpp"
+#include "llvmWrapper/IR/Instructions.h"
 
 using namespace llvm;
 using namespace IGC;
@@ -100,7 +101,7 @@ static void updateAddrSpaceCastLocation(AddrSpaceCastInst &I, DominatorTree *DT)
   if (FirstInsertPt == DomBB->end() || DomInst->comesBefore(&*FirstInsertPt)) {
     return;
   }
-  I.moveBefore(&*DomInst);
+  IGCLLVM::moveBefore(&I, &*DomInst);
 }
 
 static void addChecks(AddrSpaceCastInst &I, DominatorTree *DT) {

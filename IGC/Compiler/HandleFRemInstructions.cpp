@@ -15,6 +15,7 @@ SPDX-License-Identifier: MIT
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "Compiler/IGCPassSupport.h"
 #include "Probe/Assertion.h"
+#include "llvmWrapper/IR/Instructions.h"
 
 using namespace llvm;
 using namespace IGC;
@@ -81,7 +82,7 @@ void HandleFRemInstructions::visitFRem(llvm::BinaryOperator &I) {
   SmallVector<Value *, 2> FuncArgs{Val1, Val2};
   Instruction *NewFRem = CallInst::Create(Callee, FuncArgs, "");
   if (IGCLLVM::isBFloatTy(ScalarType)) {
-    NewFRem->insertBefore(&I);
+    IGCLLVM::insertBefore(NewFRem, &I);
     NewFRem->setDebugLoc(I.getDebugLoc());
     NewFRem = new FPTruncInst(NewFRem, I.getOperand(0)->getType());
   }

@@ -31,6 +31,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/Transforms/Utils/BasicBlockUtils.h"
 #include "llvm/Support/Debug.h"
 #include "common/LLVMWarningsPop.hpp"
+#include "llvmWrapper/IR/Instructions.h"
 
 #define DEBUG_TYPE "igc-divrem-increment-reduction"
 
@@ -363,8 +364,8 @@ void DivRemPair::simplify(const DivRemGroup *chainPrevDivRemGroup, const DivRemG
   Div->replaceUsesWithIf(joinDiv, noOverrideDivRemInGroup); // do not replace uses in the normal branch
   auto *joinRem = PHINode::Create(Rem->getType(), 2, "join.rem.", joinInsertPt);
   Rem->replaceUsesWithIf(joinRem, noOverrideDivRemInGroup); // do not replace uses in the normal branch
-  Div->moveBefore(normalInsertPt);
-  Rem->moveBefore(normalInsertPt);
+  IGCLLVM::moveBefore(Div, normalInsertPt);
+  IGCLLVM::moveBefore(Rem, normalInsertPt);
 
   // connect phis
   joinDiv->addIncoming(Div, normalInsertPt->getParent());
@@ -557,7 +558,7 @@ void IntDivRemIncrementReductionImpl::divisorIsZeroCSE(DivRemChain *divRemChain,
             // common parent block
             auto *insertBlock = DT->findNearestCommonDominator(
                 divisorIsZeroTest->getParent(), divRemChain->Chain[j]->DivRems[i]->DivisorIsZeroTest->getParent());
-            divisorIsZeroTest->moveBefore(insertBlock->getTerminator());
+            IGCLLVM::moveBefore(divisorIsZeroTest, insertBlock->getTerminator());
           }
           // Replace with prior ICmpInst
           divRemChain->Chain[j]->DivRems[i]->DivisorIsZeroTest->replaceAllUsesWith(divisorIsZeroTest);

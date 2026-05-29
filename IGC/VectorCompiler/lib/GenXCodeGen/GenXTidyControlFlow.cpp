@@ -152,7 +152,7 @@ static void moveDbgBeforeBlockRemoval(BasicBlock *BB, Instruction *InsertBefore,
                                       bool MakeUndef = false) {
 
   while (auto *DBG = dyn_cast<llvm::DbgVariableIntrinsic>(BB->begin())) {
-    DBG->moveBefore(InsertBefore);
+    IGCLLVM::moveBefore(DBG, InsertBefore);
     if (MakeUndef)
       IGCLLVM::setKillLocation(DBG);
   }

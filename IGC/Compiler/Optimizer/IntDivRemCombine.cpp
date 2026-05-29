@@ -21,6 +21,7 @@ SPDX-License-Identifier: MIT
 #include "common/igc_regkeys.hpp"
 
 #include <cmath>
+#include "llvmWrapper/IR/Instructions.h"
 
 using namespace llvm;
 
@@ -170,7 +171,7 @@ struct IntDivRemCombine : public FunctionPass {
       // (c.f. PatternMatch.hpp)
       if (Q->getOpcode() == targetOp && Q->getOperand(0) == R->getOperand(0) && Q->getOperand(1) == R->getOperand(1)) {
         Q->removeFromParent();
-        Q->insertBefore(R);
+        IGCLLVM::insertBefore(Q, R);
 
         // since we're here, we'll fix this one
         emulateRem(Q, R);

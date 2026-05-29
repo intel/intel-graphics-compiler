@@ -23,6 +23,7 @@ SPDX-License-Identifier: MIT
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/Support/Alignment.h"
 #include "Probe/Assertion.h"
+#include "llvmWrapper/IR/Instructions.h"
 
 /// @brief ConstantCoalescing merges multiple constant loads into one load
 /// of larger quantity
@@ -277,10 +278,10 @@ void ConstantCoalescing::VectorizePrep(llvm::BasicBlock *bb) {
         for (int ie = srcNElts - 1; ie >= 0; ie--) {
           if (Instruction *extEle = extractElementMap[ie]) {
             if (extEle->hasOneUse() && safeToMoveInstUp(extEle, load)) {
-              extEle->moveBefore(load->getNextNode());
+              IGCLLVM::moveBefore(extEle, load->getNextNode());
               Instruction *extractUse = cast<Instruction>(*extEle->user_begin());
               if (safeToMoveInstUp(extractUse, extEle)) {
-                extractUse->moveBefore(extEle->getNextNode());
+                IGCLLVM::moveBefore(extractUse, extEle->getNextNode());
               }
             }
           }
@@ -1528,7 +1529,7 @@ Instruction *ConstantCoalescing::FindOrAddChunkExtract(BufChunk *cov_chunk, uint
     if (val == eltid - cov_chunk->chunkStart) {
       splitter = usei;
       // move the extract element to make sure it dominates the new use
-      usei->moveBefore(cov_chunk->chunkIO->getNextNode());
+      IGCLLVM::moveBefore(usei, cov_chunk->chunkIO->getNextNode());
       break;
     }
   }

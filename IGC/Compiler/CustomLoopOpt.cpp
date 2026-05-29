@@ -971,8 +971,8 @@ bool LoopHoistConstant::runOnLoop(Loop *L, LPPassManager &LPM) {
     II = II->getNextNode();
 
     Instruction *clonedI = currI->clone();
-    clonedI->insertBefore(ifTerm);
-    currI->moveBefore(elseTerm);
+    IGCLLVM::insertBefore(clonedI, ifTerm);
+    IGCLLVM::moveBefore(currI, elseTerm);
     VMap[currI] = clonedI;
   }
   // Update the operands for the cloned instructions
@@ -1542,7 +1542,7 @@ bool LoopSplitWidePHIs::processPHI(SmallVectorImpl<PHINode *> &WL, Loop *L) {
   auto PreValue = PHI->getIncomingValue(PreIdx);
   for (unsigned i = 0; i < 2; ++i) {
     auto *PreShufI = new ShuffleVectorInst(PreValue, PreValue, MaskParts[i]);
-    PreShufI->insertBefore(Preheader->getTerminator());
+    IGCLLVM::insertBefore(PreShufI, Preheader->getTerminator());
     NewPHI[i]->addIncoming(PreShufI, Preheader);
     NewPHI[i]->addIncoming(CV.Parts[i], Latch);
   }
@@ -1563,7 +1563,7 @@ bool LoopSplitWidePHIs::processPHI(SmallVectorImpl<PHINode *> &WL, Loop *L) {
       auto SVI = cast<ShuffleVectorInst>(SU.first);
       auto NewSVI = new ShuffleVectorInst(NewPHI[0], IGCLLVM::PoisonValue::get(NewPHI[0]->getType()),
                                           IGCLLVM::getShuffleMaskForBitcode(SVI));
-      NewSVI->insertBefore(SU.first);
+      IGCLLVM::insertBefore(NewSVI, SU.first);
       ReplaceWith = NewSVI;
 
       if (NewSVI->isIdentity()) {
@@ -1613,10 +1613,10 @@ bool LoopSplitWidePHIs::processPHI(SmallVectorImpl<PHINode *> &WL, Loop *L) {
 
       if (MaskPad) {
         ToConcat[1] = new ShuffleVectorInst(ToConcat[1], IGCLLVM::PoisonValue::get(ToConcat[1]->getType()), MaskPad);
-        ToConcat[1]->insertBefore(InsBeforeI);
+        IGCLLVM::insertBefore(ToConcat[1], InsBeforeI);
       }
       auto ConcatI = new ShuffleVectorInst(ToConcat[0], ToConcat[1], MaskJoin);
-      ConcatI->insertBefore(InsBeforeI);
+      IGCLLVM::insertBefore(ConcatI, InsBeforeI);
 
       SmallVector<User *, 8u> Users(PN->users());
       for (auto *U : Users)
@@ -1628,7 +1628,7 @@ bool LoopSplitWidePHIs::processPHI(SmallVectorImpl<PHINode *> &WL, Loop *L) {
       // instruction.
       auto *I = cast<Instruction>(LatchUse);
       auto ConcatI = new ShuffleVectorInst(CV.Parts[0], CV.Parts[1], MaskJoin);
-      ConcatI->insertBefore(I);
+      IGCLLVM::insertBefore(ConcatI, I);
       I->replaceUsesOfWith(CV.Result, ConcatI);
     }
   }
@@ -1967,12 +1967,12 @@ bool LoopAllocaUpperbound::runOnLoop(Loop *L, LPPassManager &LPM) {
     Instruction *CurrI = II;
     II = II->getNextNode();
 
-    CurrI->moveBefore(IfTerm);
+    IGCLLVM::moveBefore(CurrI, IfTerm);
   }
 
   // Move old loop condition and induction increment to ContinueBB
-  LoopCond->moveBefore(cast<Instruction>(NewAdd));
-  InductionInc->moveBefore(cast<Instruction>(LoopCond));
+  IGCLLVM::moveBefore(LoopCond, cast<Instruction>(NewAdd));
+  IGCLLVM::moveBefore(InductionInc, cast<Instruction>(LoopCond));
   LoopBranch->replaceUsesOfWith(LoopCond, NewCMP);
 
   // Update Phi to preserve LCSSA form

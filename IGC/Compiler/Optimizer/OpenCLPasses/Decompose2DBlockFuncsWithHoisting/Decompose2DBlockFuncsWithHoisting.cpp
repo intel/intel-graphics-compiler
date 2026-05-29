@@ -13,6 +13,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/Constants.h>
 #include <llvm/Support/raw_ostream.h>
 #include <memory>
+#include "llvmWrapper/IR/Instructions.h"
 
 using namespace llvm;
 using namespace IGC;
@@ -953,7 +954,7 @@ void Decompose2DBlockFuncsWithHoisting::decompose() {
       Instruction *ClonedInst = OrigInst->clone();
 
       // Insert cloned instruction before the payload creation point (in preheader)
-      ClonedInst->insertBefore(PlaceToInsertPayload);
+      IGCLLVM::insertBefore(ClonedInst, PlaceToInsertPayload);
 
       // For instructions like bitcast, we need to ensure operands are available in preheader
       // The operands should already be loop-invariant (verified in checkArg)

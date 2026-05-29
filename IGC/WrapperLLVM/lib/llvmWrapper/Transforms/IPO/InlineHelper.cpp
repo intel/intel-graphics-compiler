@@ -22,6 +22,7 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPop.hpp"
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/Analysis/CallGraph.h"
+#include "llvmWrapper/IR/Instructions.h"
 
 using namespace llvm;
 
@@ -191,7 +192,7 @@ void mergeInlinedArrayAllocas(Function *Caller, InlineFunctionInfo &IFI, Inlined
 #if LLVM_VERSION_MAJOR >= 22
               DDI->moveBeforePreserving(AvailableAlloca->getNextNode()->getIterator());
 #else
-              DDI->moveBefore(AvailableAlloca->getNextNode());
+              IGCLLVM::moveBefore(DDI, AvailableAlloca->getNextNode());
 #endif
       AI->replaceAllUsesWith(AvailableAlloca);
 

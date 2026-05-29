@@ -394,8 +394,8 @@ bool DynamicRayManagementPass::TryProceedBasedApproach(Function &F) {
   };
 
   // make sure guard dominates all uses
-  init_guard->moveBefore(&*F.getEntryBlock().getFirstInsertionPt());
-  guard->moveBefore(&*F.getEntryBlock().getFirstInsertionPt());
+  IGCLLVM::moveBefore(init_guard, &*F.getEntryBlock().getFirstInsertionPt());
+  IGCLLVM::moveBefore(guard, &*F.getEntryBlock().getFirstInsertionPt());
 
   SmallVector<PHINode *> phis;
 
@@ -814,7 +814,7 @@ bool DynamicRayManagementPass::AddDynamicRayManagement(Function &F) {
       if (m_PDT->dominates(rayQueryRelease->getParent(), bb)) {
         for (auto &I : *bb) {
           if (isa<AllocateRayQueryIntrinsic>(&I) || &I == bb->getTerminator() || &I == rayQueryRelease) {
-            rayQueryCheck->moveBefore(&I);
+            IGCLLVM::moveBefore(rayQueryCheck, &I);
             break;
           }
         }
@@ -861,9 +861,9 @@ bool DynamicRayManagementPass::AddDynamicRayManagement(Function &F) {
       ReleaseBB = getIDom(m_PDT, ReleaseBB);
   }
   if (CheckBB != rayQueryCheck->getParent())
-    rayQueryCheck->moveBefore(CheckBB->getTerminator());
+    IGCLLVM::moveBefore(rayQueryCheck, CheckBB->getTerminator());
   if (ReleaseBB != rayQueryRelease->getParent())
-    rayQueryRelease->moveBefore(&*ReleaseBB->getFirstInsertionPt());
+    IGCLLVM::moveBefore(rayQueryRelease, &*ReleaseBB->getFirstInsertionPt());
 
   // Add created RayQueryCheck-Release to the list, which
   // will be used during complex control flow handling.

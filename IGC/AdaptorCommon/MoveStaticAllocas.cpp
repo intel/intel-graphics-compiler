@@ -14,6 +14,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/Instructions.h>
 #include <llvm/IR/InstIterator.h>
 #include "common/LLVMWarningsPop.hpp"
+#include "llvmWrapper/IR/Instructions.h"
 
 using namespace llvm;
 using namespace IGC;
@@ -50,7 +51,7 @@ bool MoveStaticAllocas::runOnFunction(llvm::Function &F) {
   }
 
   for (auto I = staticAllocas.rbegin(), E = staticAllocas.rend(); I != E; ++I) {
-    (*I)->moveBefore(&*F.getEntryBlock().getFirstInsertionPt());
+    IGCLLVM::moveBefore((*I), &*F.getEntryBlock().getFirstInsertionPt());
   }
 
   return staticAllocas.size() > 0;

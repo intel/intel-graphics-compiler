@@ -286,6 +286,15 @@ inline llvm::Instruction *getPrevNonDebugInstruction(llvm::Instruction *I, bool 
 #endif
 }
 
+inline void moveBefore(llvm::Instruction *I, llvm::Instruction *Pos) {
+#if LLVM_VERSION_MAJOR < 18
+  I->moveBefore(Pos);
+#else
+  IGC_ASSERT(Pos);
+  I->moveBefore(Pos->getIterator());
+#endif
+}
+
 inline llvm::Type *getGEPIndexedType(llvm::Type *Ty, llvm::SmallVectorImpl<unsigned> &indices) {
   llvm::SmallVector<llvm::Value *, 8> gepIndices;
   gepIndices.reserve(indices.size() + 1);

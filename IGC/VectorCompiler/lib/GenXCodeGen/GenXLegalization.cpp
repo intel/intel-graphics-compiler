@@ -852,7 +852,7 @@ bool GenXLegalization::processBale(Instruction *InsertBefore) {
       // does not get re-processed by the main loop of this pass.
       removingInst(bi->Inst);
       bi->Inst->removeFromParent();
-      bi->Inst->insertBefore(InsertBefore);
+      IGCLLVM::insertBefore(bi->Inst, InsertBefore);
       InsertBefore = bi->Inst;
     }
   }
@@ -1982,7 +1982,7 @@ Value *GenXLegalization::splitInst(Value *PrevSliceRes, BaleInst BInst,
         continue;
       if (GvLoad->users().end() != llvm::find(GvLoad->users(), BInst.Inst)) {
         auto *GvLoadClone = GvLoad->clone();
-        GvLoadClone->insertBefore(InsertBefore);
+        IGCLLVM::insertBefore(GvLoadClone, InsertBefore);
         GvLoadClone->setName(BInst.Inst->getName() + ".gvload_use_split_clone");
         BInst.Inst->replaceUsesOfWith(GvLoad, GvLoadClone);
       } else {
@@ -2835,11 +2835,11 @@ void GenXLegalization::fixIntrinsicCalls(Function *F) {
     // No entry definition found, then clone one.
     if (EntryDef == nullptr) {
       EntryDef = I.second.front()->clone();
-      EntryDef->insertBefore(InsertPos);
+      IGCLLVM::insertBefore(EntryDef, InsertPos);
       llvm::replaceAllDbgUsesWith(*I.second.front(), *EntryDef, *InsertPos,
                                   *DT);
     } else
-      EntryDef->moveBefore(InsertPos);
+      IGCLLVM::moveBefore(EntryDef, InsertPos);
 
     // Now replace all uses with this new definition.
     for (auto *Inst : I.second) {

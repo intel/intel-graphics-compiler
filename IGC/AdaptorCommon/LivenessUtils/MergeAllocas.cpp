@@ -128,7 +128,7 @@ static bool AddNonOverlappingAlloca(MergeAllocas::AllocaInfo *MergableAlloca, Me
 
 static void ReplaceAllocas(const MergeAllocas::AllocaInfo &MergableAlloca, Function &F) {
   Instruction *topAlloca = MergableAlloca.allocaI;
-  topAlloca->moveBefore(IGCLLVM::getFirstNonPHI(&F.getEntryBlock()));
+  IGCLLVM::moveBefore(topAlloca, IGCLLVM::getFirstNonPHI(&F.getEntryBlock()));
   topAlloca->setName(VALUE_NAME("MergedAlloca"));
 
   IRBuilder<> Builder(topAlloca->getParent());

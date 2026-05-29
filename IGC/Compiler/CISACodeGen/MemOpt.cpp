@@ -40,6 +40,7 @@ SPDX-License-Identifier: MIT
 #include "Probe/Assertion.h"
 #include <DebugInfo/DwarfDebug.cpp>
 #include "MemOptUtils.h"
+#include "llvmWrapper/IR/Instructions.h"
 
 using namespace llvm;
 using namespace IGC;
@@ -693,7 +694,7 @@ bool MemOpt::removeRedBlockRead(GenIntrinsicInst *LeadingBlockRead, MemRefListTy
   // Raise the blockread, which we will not remove, in place of the leading blockread.
   if (BlockReadToOptimize != LeadingBlockRead) {
     Type *ArgType = BlockReadToOptimize->getOperand(0)->getType();
-    BlockReadToOptimize->moveBefore(LeadingBlockRead);
+    IGCLLVM::moveBefore(BlockReadToOptimize, LeadingBlockRead);
 
     Builder.SetInsertPoint(BlockReadToOptimize);
     Value *BitCast = Builder.CreateBitCast(LeadingBlockRead->getOperand(0), ArgType);

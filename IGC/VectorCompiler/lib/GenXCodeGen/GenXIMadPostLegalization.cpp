@@ -27,6 +27,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/Pass.h"
 #include "llvm/Support/raw_ostream.h"
 #include "Probe/Assertion.h"
+#include "llvmWrapper/IR/Instructions.h"
 
 #define DEBUG_TYPE "GENX_IMAD_POST_LEGALIZATION"
 
@@ -188,7 +189,7 @@ bool GenXIMadPostLegalization::runOnFunction(Function &F) {
             !genx::isSafeToSink_CheckAVLoadKill(MadSumOpndInst, MadInst,
                                                 Baling))
           continue;
-        MadSumOpndInst->moveBefore(MadInst);
+        IGCLLVM::moveBefore(MadSumOpndInst, MadInst);
         Changed = true;
         continue;
       }
@@ -212,7 +213,7 @@ bool GenXIMadPostLegalization::runOnFunction(Function &F) {
                                                Baling)) {
           auto *NewMadSumOpndInst = MadSumOpndInst->clone();
           NewMadSumOpndInst->setName(MadSumOpndInst->getName() + ".postimad");
-          NewMadSumOpndInst->insertBefore(UserInst);
+          IGCLLVM::insertBefore(NewMadSumOpndInst, UserInst);
           MadSumOpndUse.set(NewMadSumOpndInst);
         } else {
           OtherUseCases.push_back(UserInst);
@@ -227,7 +228,7 @@ bool GenXIMadPostLegalization::runOnFunction(Function &F) {
         InsertPt = InsertPt ? InsertPt : NBB->getTerminator();
         if (genx::isSafeToSink_CheckAVLoadKill(MadSumOpndInst, InsertPt,
                                                Baling))
-          MadSumOpndInst->moveBefore(InsertPt);
+          IGCLLVM::moveBefore(MadSumOpndInst, InsertPt);
       } else
         OrphanedMadSumOpndInst.push_back(MadSumOpndInst);
       Changed = true;
@@ -392,7 +393,7 @@ bool GenXIMadPostLegalization::fixMadChain(BasicBlock *BB) {
           if (!genx::isSafeToSink_CheckAVLoadKill(*Bale, Pos) ||
               isa<PHINode>(BaleInst->Inst))
             break;
-          BaleInst->Inst->moveBefore(Pos);
+          IGCLLVM::moveBefore(BaleInst->Inst, Pos);
           Pos = BaleInst->Inst;
           Changed = true;
         }

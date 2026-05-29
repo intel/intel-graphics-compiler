@@ -17,6 +17,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/Metadata.h>
 #include <llvm/IR/InstIterator.h>
 #include "common/LLVMWarningsPop.hpp"
+#include "llvmWrapper/IR/Instructions.h"
 
 using namespace llvm;
 using namespace IGC;
@@ -130,10 +131,10 @@ bool BreakConstantExpr::runOnFunction(Function &F) {
 void BreakConstantExpr::replaceConstantWith(llvm::Constant *exprOrVec, llvm::Instruction *newInst, int operandIndex,
                                             llvm::Instruction *user) {
   if (PHINode *phi = dyn_cast<PHINode>(user)) {
-    newInst->insertBefore(phi->getIncomingBlock(operandIndex)->getTerminator());
+    IGCLLVM::insertBefore(newInst, phi->getIncomingBlock(operandIndex)->getTerminator());
     user->setOperand(operandIndex, newInst);
   } else if (dyn_cast<DbgInfoIntrinsic>(user)) {
-    newInst->insertBefore(user);
+    IGCLLVM::insertBefore(newInst, user);
     // For debug info intrinsic, the operand is a metadata that
     // contains the constant expression.
     if (isa<DbgDeclareInst>(user)) {
@@ -143,7 +144,7 @@ void BreakConstantExpr::replaceConstantWith(llvm::Constant *exprOrVec, llvm::Ins
       user->setOperand(operandIndex, newInst);
     }
   } else {
-    newInst->insertBefore(user);
+    IGCLLVM::insertBefore(newInst, user);
     user->replaceUsesOfWith(exprOrVec, newInst);
   }
   if (exprOrVec->use_empty()) {
@@ -187,9 +188,9 @@ bool BreakConstantExpr::breakExpressionsInVector(llvm::ConstantVector *cvec, int
 
     if (elemIdx < cvec->getNumOperands() - 1) {
       if (PHINode *phi = dyn_cast<PHINode>(user)) {
-        newInst->insertBefore(phi->getIncomingBlock(operandIndex)->getTerminator());
+        IGCLLVM::insertBefore(newInst, phi->getIncomingBlock(operandIndex)->getTerminator());
       } else {
-        newInst->insertBefore(user);
+        IGCLLVM::insertBefore(newInst, user);
       }
     } else {
       // cvec can be destroyed inside!
@@ -213,9 +214,9 @@ bool BreakConstantExpr::breakConstantStruct(ConstantStruct *cs, int operandIndex
   //        the impact. It may be worth refactoring breakConstantExpr
   auto insertBefore = [=](Instruction *newInst, Instruction *InsertPos) {
     if (PHINode *phi = dyn_cast<PHINode>(InsertPos)) {
-      newInst->insertBefore(phi->getIncomingBlock(operandIndex)->getTerminator());
+      IGCLLVM::insertBefore(newInst, phi->getIncomingBlock(operandIndex)->getTerminator());
     } else {
-      newInst->insertBefore(InsertPos);
+      IGCLLVM::insertBefore(newInst, InsertPos);
     }
   };
 

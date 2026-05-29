@@ -19,6 +19,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/Transforms/Utils/BasicBlockUtils.h>
 #include <llvm/Transforms/Utils/Cloning.h>
 #include "common/LLVMWarningsPop.hpp"
+#include "llvmWrapper/IR/Instructions.h"
 
 using namespace llvm;
 using namespace IGC;
@@ -132,7 +133,7 @@ void MinimumValidAddressChecking::handleLoadStore(Instruction *instruction) {
   // Valid offset
   auto thenBlock = thenTerminator->getParent();
   thenBlock->setName("minimumvalidaddresschecking.valid");
-  instruction->moveBefore(thenTerminator);
+  IGCLLVM::moveBefore(instruction, thenTerminator);
 
   // Invalid offset
   auto elseBlock = elseTerminator->getParent();

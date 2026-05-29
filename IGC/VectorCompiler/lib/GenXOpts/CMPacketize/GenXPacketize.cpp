@@ -696,7 +696,7 @@ Value *GenXPacketize::getPacketizeValue(Value *OrigValue) {
         auto *VecType = B->getVectorType(AI->getAllocatedType());
         auto *V = B->ALLOCA(VecType, nullptr, AI->getName());
         V->removeFromParent();
-        V->insertBefore(Inst);
+        IGCLLVM::insertBefore(V, Inst);
         ReplaceMap[OrigValue] = V;
         return V;
       }

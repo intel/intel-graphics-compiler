@@ -30,6 +30,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/InstIterator.h>
 
 #include <algorithm>
+#include "llvmWrapper/IR/Instructions.h"
 
 using namespace llvm;
 using namespace genx;
@@ -343,7 +344,7 @@ void GenXVectorCombiner::createNewInstruction(
 
   auto *NewInst = vc::cloneInstWithNewOps(*Operation, Vals);
   IGC_ASSERT(NewInst);
-  NewInst->insertBefore(InsteadOf);
+  IGCLLVM::insertBefore(NewInst, InsteadOf);
   NewInst->setDebugLoc(InsteadOf->getDebugLoc());
   NewInst->takeName(Operation);
   InsteadOf->replaceAllUsesWith(NewInst);

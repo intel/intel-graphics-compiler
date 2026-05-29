@@ -684,7 +684,7 @@ void GenXEarlySimdCFConformance::fixupBoolSelectsForLowering() {
 
         auto *InvCmp = cast<CmpInst>(SrcCmp->clone());
         InvCmp->setPredicate(SrcCmp->getInversePredicate());
-        InvCmp->insertBefore(Sel);
+        IGCLLVM::insertBefore(InvCmp, Sel);
         InvCmp->setName(SrcCmp->getName() + ".inv");
         Sel->setOperand(1, InvCmp);
         Modified = true;
@@ -1471,14 +1471,14 @@ bool GenXSimdCFConformance::hoistGotoUser(Instruction *Inst, CallInst *Goto,
 
   // Copy instruction and set the value for true block. Place it before goto.
   Instruction *TrueVal = Inst->clone();
-  TrueVal->insertBefore(Goto);
+  IGCLLVM::insertBefore(TrueVal, Goto);
   TrueVal->setOperand(operandNo, Constant::getNullValue(
                                      Inst->getOperand(operandNo)->getType()));
 
   // Copy instruction and place it in the false successor. Get EM will be
   // created later to handle its goto use.
   Instruction *FalseVal = Inst->clone();
-  FalseVal->insertBefore(IGCLLVM::getFirstNonPHI(FalseSucc));
+  IGCLLVM::insertBefore(FalseVal, IGCLLVM::getFirstNonPHI(FalseSucc));
 
   // Handle all users
   BasicBlockEdge TrueEdge(Goto->getParent(), TrueSucc);
@@ -1587,7 +1587,7 @@ void GenXSimdCFConformance::moveCodeInGotoBlocks(bool hoistGotoUsers) {
         continue;
       // Hoist the instruction.
       Inst->removeFromParent();
-      Inst->insertBefore(Goto);
+      IGCLLVM::insertBefore(Inst, Goto);
     }
   }
 }
@@ -1762,7 +1762,7 @@ void GenXSimdCFConformance::moveCodeInJoinBlocks() {
               Phi->addIncoming(Phi, TermBB);
             }
             Phi->removeFromParent();
-            Phi->insertBefore(&JoinBlock->front());
+            IGCLLVM::insertBefore(Phi, &JoinBlock->front());
           }
           // Adjust branches targeting PredBlock to target JoinBlock instead.
           PredBlock->replaceAllUsesWith(JoinBlock);
@@ -1835,7 +1835,7 @@ void GenXSimdCFConformance::emptyBranchingJoinBlock(CallInst *Join) {
     }
     // Hoist the instruction.
     Inst->removeFromParent();
-    Inst->insertBefore(InsertBefore);
+    IGCLLVM::insertBefore(Inst, InsertBefore);
     Modified = true;
   }
 }
@@ -1894,7 +1894,7 @@ bool GenXSimdCFConformance::hoistJoin(CallInst *Join) {
           if (GotoJoin->getParent() != Join->getParent()) {
             LLVM_DEBUG(dbgs() << "moving out of join block: " << *EV << "\n");
             EV->removeFromParent();
-            EV->insertBefore(GotoJoin->getNextNode());
+            IGCLLVM::insertBefore(EV, GotoJoin->getNextNode());
             continue;
           }
         }
@@ -1909,7 +1909,7 @@ bool GenXSimdCFConformance::hoistJoin(CallInst *Join) {
   if (InsertBefore == Join)
     return true; // already at start
   Join->removeFromParent();
-  Join->insertBefore(InsertBefore);
+  IGCLLVM::insertBefore(Join, InsertBefore);
   // Such transformation should be performed only for Early Conformance pass
   if (!FG)
     GotoJoinEVsMap[Join].hoistEVs();
@@ -4048,7 +4048,7 @@ static void fixBlockDataBeforeRemoval(BasicBlock *BB, BasicBlock *SuccBB) {
   bool HasOnePred = SuccBB->hasNPredecessors(1);
   Instruction *InsertBefore = IGCLLVM::getFirstNonPHI(SuccBB);
   while (auto *DBG = dyn_cast<DbgVariableIntrinsic>(BB->begin())) {
-    DBG->moveBefore(InsertBefore);
+    IGCLLVM::moveBefore(DBG, InsertBefore);
     if (!HasOnePred)
       IGCLLVM::setKillLocation(DBG);
   }
@@ -4505,7 +4505,7 @@ void GenXSimdCFConformance::replaceGetEMUse(Instruction *Inst,
       if (isa<ShuffleVectorInst>(Pred)) {
         // Copy truncation via SVI
         NewOp = Pred->clone();
-        NewOp->insertBefore(JPData.getFalsePred()->getTerminator());
+        IGCLLVM::insertBefore(NewOp, JPData.getFalsePred()->getTerminator());
         NewOp->setOperand(0, JPData.getRealEM());
         FullEM = cast<Instruction>(Pred->getOperand(0));
       }
@@ -4597,7 +4597,7 @@ void GenXSimdCFConformance::optimizeLinearization(BasicBlock *BB,
   }
   for (auto *Inst : OrderedInstsToMove) {
     replaceGetEMUse(Inst, JPData);
-    Inst->moveBefore(JPData.getFalsePred()->getTerminator());
+    IGCLLVM::moveBefore(Inst, JPData.getFalsePred()->getTerminator());
   }
 
   // Handle selects

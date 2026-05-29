@@ -2340,7 +2340,7 @@ void GenOptLegalizer::visitStoreInst(StoreInst &I) {
         SmallVector<uint32_t, 3> maskVals = {0, 1, 2};
         Value *pMask = ConstantDataVector::get(I.getContext(), maskVals);
         auto *NewVal = new ShuffleVectorInst(NewVec, UndefValue::get(NewVecTy), pMask);
-        NewVal->insertBefore(&I);
+        IGCLLVM::insertBefore(NewVal, &I);
         // Bitcast src pointer to <3 x i8>* instead of i24*
         Value *NewPtr = m_Builder->CreateBitCast(SP->getOperand(0), I8x3PtrTy);
         // Create new store

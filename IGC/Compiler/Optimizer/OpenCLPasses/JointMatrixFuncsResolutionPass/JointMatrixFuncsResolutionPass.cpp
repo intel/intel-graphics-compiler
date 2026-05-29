@@ -34,6 +34,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/IR/DIBuilder.h"
 #include "llvm/Support/Debug.h"
 #include "common/LLVMWarningsPop.hpp"
+#include "llvmWrapper/IR/Instructions.h"
 
 using namespace llvm;
 using namespace IGC;
@@ -2726,7 +2727,7 @@ Value *JointMatrixFuncsResolutionPass::ResolveGeneric(Instruction *OldInst) {
 
   NewInst->mutateType(ResolveTypes(NewInst->getType()));
   NewInst->setName(OldInst->getName());
-  NewInst->insertBefore(OldInst);
+  IGCLLVM::insertBefore(NewInst, OldInst);
   NewInst->setDebugLoc(OldInst->getDebugLoc());
 
   CacheResolvedValue(OldInst, NewInst);

@@ -35,6 +35,7 @@ See LICENSE.TXT for details.
 #include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
 #include "Compiler/IGCPassSupport.h"
 #include "Probe/Assertion.h"
+#include "llvmWrapper/IR/Instructions.h"
 
 using namespace llvm;
 using namespace IGC::Debug;
@@ -79,7 +80,7 @@ static void ProcessDbgValueInst(BasicBlock &blk, DominatorTree *DT) {
     }
   }
   for (auto &[I, Pos] : PositionMap) {
-    I->moveBefore(Pos);
+    IGCLLVM::moveBefore(I, Pos);
   }
 }
 
@@ -434,17 +435,17 @@ bool CodeSinking::sinkInstruction(Instruction *InstToSink, SmallPtrSetImpl<Instr
   }
 
   if (!ReducePressure || HasAliasConcern) {
-    InstToSink->moveBefore(&(*SuccToSinkTo->getFirstInsertionPt()));
+    IGCLLVM::moveBefore(InstToSink, &(*SuccToSinkTo->getFirstInsertionPt()));
   }
   // when alasing is not an issue and reg-pressure is not an issue
   // move it as close to the uses as possible
   else if (UsesInBB.empty()) {
-    InstToSink->moveBefore(SuccToSinkTo->getTerminator());
+    IGCLLVM::moveBefore(InstToSink, SuccToSinkTo->getTerminator());
   } else if (UsesInBB.size() == 1) {
-    InstToSink->moveBefore(*(UsesInBB.begin()));
+    IGCLLVM::moveBefore(InstToSink, *(UsesInBB.begin()));
   } else {
     // first move to the beginning of the target block
-    InstToSink->moveBefore(&(*SuccToSinkTo->getFirstInsertionPt()));
+    IGCLLVM::moveBefore(InstToSink, &(*SuccToSinkTo->getFirstInsertionPt()));
     // later on, move it close to the use
     LocalBlkSet.insert(SuccToSinkTo);
     LocalInstSet.insert(InstToSink);
@@ -471,7 +472,7 @@ bool CodeSinking::localSink(BasicBlock *BB) {
       if (Def->getParent() == BB && LocalInstSet.count(Def)) {
         if (Def->getNextNode() != Use) {
           Instruction *InsertPoint = Use;
-          Def->moveBefore(InsertPoint);
+          IGCLLVM::moveBefore(Def, InsertPoint);
           Changed = true;
         }
         LocalInstSet.erase(Def);
@@ -660,7 +661,7 @@ void CodeSinking::rollbackSinking(BasicBlock *BB) {
   for (int i = 0; i < NumChanges; ++i) {
     Instruction *UndoLoca = UndoLocas[i];
     IGC_ASSERT(UndoLoca->getParent() == BB);
-    MovedInsts[i]->moveBefore(UndoLoca);
+    IGCLLVM::moveBefore(MovedInsts[i], UndoLoca);
   }
 }
 
@@ -1335,7 +1336,7 @@ bool CodeLoopSinking::loopSink(Loop *L, LoopSinkMode Mode) {
             CurrentInstToCandidate[I] = C;
             InstToCandidate[I] = C;
 
-            I->moveBefore(InsertPoint);
+            IGCLLVM::moveBefore(I, InsertPoint);
             InsertPoint = I;
 
             if (SinkFromPH) {
@@ -1488,7 +1489,7 @@ bool CodeLoopSinking::loopSink(Loop *L, LoopSinkMode Mode) {
         if (InsertPoint)
           I->moveAfter(InsertPoint);
         else
-          I->moveBefore(&*BB->getFirstInsertionPt());
+          IGCLLVM::moveBefore(I, &*BB->getFirstInsertionPt());
 
         InsertPoint = I;
       }
@@ -2651,7 +2652,7 @@ bool CodeLoopSinking::localSink(BasicBlock *BB, InstToCandidateMap &InstToCandid
 
       // Candidate can be a group of several instructions, so sinking the whole Candidate
       for (Instruction *CI : *C) {
-        CI->moveBefore(InsertPoint);
+        IGCLLVM::moveBefore(CI, InsertPoint);
         InstToCandidate.erase(CI);
         InsertPoint = CI;
       }

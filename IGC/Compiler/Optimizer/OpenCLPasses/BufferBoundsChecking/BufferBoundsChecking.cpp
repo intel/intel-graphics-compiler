@@ -260,7 +260,7 @@ void BufferBoundsChecking::createBoundsCheckingCode(Instruction *instruction, co
   // Valid offset
   auto thenBlock = thenTerminator->getParent();
   thenBlock->setName("bufferboundschecking.valid");
-  instruction->moveBefore(thenTerminator);
+  IGCLLVM::moveBefore(instruction, thenTerminator);
 
   // Invalid offset
   auto elseBlock = elseTerminator->getParent();

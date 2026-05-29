@@ -12,6 +12,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/Function.h>
 #include "common/igc_regkeys.hpp"
 #include "llvmWrapper/IR/DerivedTypes.h"
+#include "llvmWrapper/IR/Instructions.h"
 
 using namespace llvm;
 using namespace IGC;
@@ -245,7 +246,7 @@ void TransformSimd1LoadsStores::multiversionLoadUGM(LdRawIntrinsic *I) {
   // --- Split: BB -> [uniformBB, defaultBB] -> mergeBB ---
   // Clone the load for the default (fallback) path
   Instruction *defaultLoad = I->clone();
-  defaultLoad->insertBefore(I);
+  IGCLLVM::insertBefore(defaultLoad, I);
 
   BasicBlock *defaultBB = BB->splitBasicBlock(defaultLoad, "load-default");
   BasicBlock *mergeBB = defaultBB->splitBasicBlock(I, "load-merge");
@@ -261,7 +262,7 @@ void TransformSimd1LoadsStores::multiversionLoadUGM(LdRawIntrinsic *I) {
   IRBuilder<> builderUniform(uniformBB);
   // The load in the uniform path uses the original instruction (moved here)
   I->removeFromParent();
-  I->insertBefore(builderUniform.CreateUnreachable()); // placeholder
+  IGCLLVM::insertBefore(I, builderUniform.CreateUnreachable()); // placeholder
   uniformBB->getTerminator()->eraseFromParent();       // remove unreachable
 
   // Broadcast result from elected lane

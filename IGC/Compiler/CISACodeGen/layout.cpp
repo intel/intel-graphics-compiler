@@ -15,6 +15,7 @@ SPDX-License-Identifier: MIT
 #include "Probe/Assertion.h"
 #include "llvmWrapper/IR/BasicBlock.h"
 #include "llvmWrapper/IR/Function.h"
+#include "llvmWrapper/IR/Instructions.h"
 
 using namespace llvm;
 using namespace IGC;

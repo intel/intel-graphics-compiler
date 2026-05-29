@@ -22,6 +22,7 @@ SPDX-License-Identifier: MIT
 #include "GenXUtil.h"
 #include "llvm/Pass.h"
 #include "Probe/Assertion.h"
+#include "llvmWrapper/IR/Instructions.h"
 
 using namespace llvm;
 using namespace genx;
@@ -128,7 +129,7 @@ void GenXRematerialization::remat(Function *F, PressureTracker &RP) {
     Instruction *Inst = cast<Instruction>(U->get());
     Instruction *UI = cast<Instruction>(U->getUser());
     Instruction *Clone = Inst->clone();
-    Clone->insertBefore(UI);
+    IGCLLVM::insertBefore(Clone, UI);
     U->set(Clone);
     Modified = true;
   }

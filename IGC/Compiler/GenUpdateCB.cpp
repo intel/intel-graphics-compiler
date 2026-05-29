@@ -27,6 +27,7 @@ SPDX-License-Identifier: MIT
 #include <iStdLib/MemCopy.h>
 #include "common/LLVMUtils.h"
 #include "Probe/Assertion.h"
+#include "llvmWrapper/IR/Instructions.h"
 
 char IGC::GenUpdateCB::ID = 0;
 
@@ -170,13 +171,13 @@ void GenUpdateCB::InsertInstTree(Instruction *inst, Instruction *pos) {
   if (isConstantBufferLoad(dyn_cast<LoadInst>(inst), bufId)) {
     Instruction *Clone = inst->clone();
     vmap[inst] = Clone;
-    Clone->insertBefore(pos);
+    IGCLLVM::insertBefore(Clone, pos);
     m_ConstantBufferUsageMask |= (1 << bufId);
     return;
   } else if (isResInfo(dyn_cast<GenIntrinsicInst>(inst), texId, lod, isUAV)) {
     CallInst *cloneInst = cast<CallInst>(inst->clone());
     vmap[inst] = cloneInst;
-    cloneInst->insertBefore(pos);
+    IGCLLVM::insertBefore(cloneInst, pos);
 
     llvm::Function *pfunc = nullptr;
     pfunc = GenISAIntrinsic::getDeclaration(m_ConstantBufferReplaceShaderPatterns, GenISAIntrinsic::GenISA_resinfoptr,
@@ -197,7 +198,7 @@ void GenUpdateCB::InsertInstTree(Instruction *inst, Instruction *pos) {
       Clone->setOperand(i, vmap[inst->getOperand(i)]);
     }
   }
-  Clone->insertBefore(pos);
+  IGCLLVM::insertBefore(Clone, pos);
 
   // update declare
   llvm::Function *pfunc = nullptr;
@@ -424,11 +425,11 @@ bool GenUpdateCB::runOnFunction(Function &F) {
         llvm::Function *runtimeFunc =
             llvm::GenISAIntrinsic::getDeclaration(F.getParent(), GenISAIntrinsic::GenISA_RuntimeValue);
         Instruction *pValue = orig_builder.CreateCall(runtimeFunc, orig_builder.getInt32(counter));
-        pValue->insertBefore(inst);
+        IGCLLVM::insertBefore(pValue, inst);
 
         if (inst->getType()->isIntegerTy()) {
           pValue = llvm::cast<llvm::Instruction>(orig_builder.CreateBitCast(pValue, orig_builder.getInt32Ty()));
-          pValue->insertBefore(inst);
+          IGCLLVM::insertBefore(pValue, inst);
         }
 
         inst->replaceAllUsesWith(pValue);

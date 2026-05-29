@@ -15,6 +15,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/ADT/SmallVector.h>
 #include <llvm/IR/Dominators.h>
 #include "common/LLVMWarningsPop.hpp"
+#include "llvmWrapper/IR/Instructions.h"
 
 #define DEBUG_TYPE "igc-wave-shuffle-index-sinking"
 
@@ -194,7 +195,7 @@ class WaveShuffleIndexSinkingImpl {
           // clone the inst to be hoisted
           auto *hoistedInst = InstChains.front()[idx]->clone();
           hoistedInst->setName(InstChains.front()[idx]->getName() + "_hoisted");
-          hoistedInst->insertBefore(ShuffleOps.front());
+          IGCLLVM::insertBefore(hoistedInst, ShuffleOps.front());
 
           if (CommonDominator != hoistedInst->getParent()) {
             moveToCommonDominator = true;
@@ -221,7 +222,7 @@ class WaveShuffleIndexSinkingImpl {
               // clone the inst to be hoisted
               auto *anchorHoistedInst = hoistedInst->clone();
               anchorHoistedInst->setName(hoistedInst->getName() + "_for_" + InstChains.front()[anchorIdx]->getName());
-              anchorHoistedInst->insertBefore(InstChains.front()[anchorIdx]);
+              IGCLLVM::insertBefore(anchorHoistedInst, InstChains.front()[anchorIdx]);
 
               // Replace the correct operand
               // ex.
@@ -399,7 +400,7 @@ bool WaveShuffleIndexSinkingImpl::splitWaveShuffleIndexes() {
       auto *userInst = cast<Instruction>(user);
       auto *clonedWaveShuffleInst = instToSplit->clone();
       clonedWaveShuffleInst->setName(instToSplit->getName() + "_clone");
-      clonedWaveShuffleInst->insertBefore(instToSplit);
+      IGCLLVM::insertBefore(clonedWaveShuffleInst, instToSplit);
       // Track replacement to perform after loop since iterators will be messed up if performed mid loop
       ReplacementPairs.emplace_back(userInst, clonedWaveShuffleInst);
     }
@@ -437,7 +438,7 @@ bool WaveShuffleIndexSinkingImpl::moveToCommonDominator() {
       }
     }
     for (auto &inst : bb.second) {
-      inst->moveBefore(instrInsertPtr);
+      IGCLLVM::moveBefore(inst, instrInsertPtr);
       Changed = true;
     }
   }

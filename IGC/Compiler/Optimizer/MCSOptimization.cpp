@@ -245,7 +245,7 @@ void MCSOptimization::ProcessLdmcsAndUsersInstrinsic(LdmcsWork &work) {
     // block
     if (thenBlockTerminator) {
       for (auto instToMove : ldmsInstsToClub) {
-        instToMove->moveBefore(thenBlockTerminator);
+        IGCLLVM::moveBefore(instToMove, thenBlockTerminator);
         IRB.SetInsertPoint(&*(thenBlockTerminator->getSuccessor(0)->begin()));
         PHINode *PN = IRB.CreatePHI(instToMove->getType(), 2);
         instToMove->replaceAllUsesWith(PN);

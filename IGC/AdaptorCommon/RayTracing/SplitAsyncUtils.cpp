@@ -27,6 +27,7 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPop.hpp"
 
 #include <optional>
+#include "llvmWrapper/IR/Instructions.h"
 
 using namespace llvm;
 using namespace IGC;
@@ -181,7 +182,7 @@ void rewriteMaterializableInstructions(const SmallVector<Spill, 8> &Spills) {
       CurrentBlock = E.userBlock();
       CurrentMaterialization = CurrentDef->clone();
       CurrentMaterialization->setName(CurrentDef->getName());
-      CurrentMaterialization->insertBefore(&*CurrentBlock->getFirstInsertionPt());
+      IGCLLVM::insertBefore(CurrentMaterialization, &*CurrentBlock->getFirstInsertionPt());
     }
 
     if (auto *PN = dyn_cast<PHINode>(E.user())) {

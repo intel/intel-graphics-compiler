@@ -21,6 +21,7 @@ SPDX-License-Identifier: MIT
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
+#include "llvmWrapper/IR/Instructions.h"
 
 namespace vc {
 
@@ -243,7 +244,7 @@ private:
     if (!Replace)
       return coverNonCloneCase(*OrigInst.User, createNewOperands(OrigInst));
     Replace->takeName(OrigInst.User);
-    Replace->insertBefore(OrigInst.User);
+    IGCLLVM::insertBefore(Replace, OrigInst.User);
     Replace->setDebugLoc(OrigInst.User->getDebugLoc());
     return Replace;
   }

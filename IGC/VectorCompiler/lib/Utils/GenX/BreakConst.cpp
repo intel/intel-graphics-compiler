@@ -88,7 +88,7 @@ Value *vc::breakConstantVector(ConstantVector *CV, Instruction *CurInst,
     // Turn element into an instruction
     auto Inst = S->getAsInstruction();
     Inst->setDebugLoc(DbgLoc);
-    Inst->insertBefore(InsertPt);
+    IGCLLVM::insertBefore(Inst, InsertPt);
 
     Value *Result = nullptr;
     // Splat the value.
@@ -114,7 +114,7 @@ Value *vc::breakConstantVector(ConstantVector *CV, Instruction *CurInst,
     if (auto CE = dyn_cast<ConstantExpr>(Elt)) {
       auto Inst = CE->getAsInstruction();
       Inst->setDebugLoc(DbgLoc);
-      Inst->insertBefore(InsertPt);
+      IGCLLVM::insertBefore(Inst, InsertPt);
       Vals.push_back(Inst);
       HasConstExpr = true;
     } else
@@ -148,7 +148,7 @@ bool vc::breakConstantExprs(Instruction *I,
       if (ConstantExpr *CE = dyn_cast<ConstantExpr>(Op)) {
         Instruction *NewInst = CE->getAsInstruction();
         NewInst->setDebugLoc(CurInst->getDebugLoc());
-        NewInst->insertBefore(InsertPt);
+        IGCLLVM::insertBefore(NewInst, InsertPt);
         CurInst->setOperand(i, NewInst);
         Worklist.push_back(NewInst);
         Modified = true;
