@@ -269,13 +269,32 @@ bool HoistCongruentPHI::hoistCongruentPhi(PHINode *phi) {
           // instruction has users that are before the
           // `insertPos`. In such cases the`insertPos` must be
           // moved before all such users.
-          IGC_ASSERT(std::all_of(insts.first->user_begin(), insts.first->user_end(), [this, insertPos](User *user) {
-            Instruction *userInst = dyn_cast<Instruction>(user);
-            return userInst == nullptr || DT->dominates(insertPos, userInst);
-          }));
-          IGC_ASSERT(std::all_of(insts.second->user_begin(), insts.second->user_end(), [this, insertPos](User *user) {
-            Instruction *userInst = dyn_cast<Instruction>(user);
-            return userInst == nullptr || DT->dominates(insertPos->getParent(), userInst->getParent());
+          //
+          // Dominance is checked per-use rather than per-user, because for a
+          // PHI user the relevant use happens on the incoming edge: the
+          // operand only needs to be dominated at the end of that predecessor
+          // block, not over the whole PHI block. The plain
+          // `dominates(Def, User)` / `getParent()` checks conservatively
+          // require the latter and would report a false violation when a
+          // hoisted instruction feeds a PHI whose block is also reachable
+          // along an edge that bypasses `insertPos` (e.g. a loop-exit PHI).
+          //
+          // For `insts.first` the new value (`ni`, inserted at `insertPos`)
+          // must dominate every use, so use the `dominates(Value*, Use&)`
+          // overload directly. For `insts.second` only block-level dominance
+          // is required: a use earlier than `insertPos` within the same block
+          // is tolerated and the `insertBefore` adjustment below moves the
+          // clone ahead of it. So we resolve each use to its effective block
+          // (the incoming block for a PHI operand) and check that.
+          IGC_ASSERT(std::all_of(insts.first->use_begin(), insts.first->use_end(),
+                                 [this, insertPos](Use &use) { return DT->dominates(insertPos, use); }));
+          IGC_ASSERT(std::all_of(insts.second->use_begin(), insts.second->use_end(), [this, insertPos](Use &use) {
+            Instruction *userInst = dyn_cast<Instruction>(use.getUser());
+            if (userInst == nullptr)
+              return true;
+            BasicBlock *useBB =
+                isa<PHINode>(userInst) ? cast<PHINode>(userInst)->getIncomingBlock(use) : userInst->getParent();
+            return DT->dominates(insertPos->getParent(), useBB);
           }));
           Instruction *insertBefore = insertPos;
           if (insts.second->getParent() == insertBefore->getParent() && isInstPrecede(insts.second, insertBefore)) {

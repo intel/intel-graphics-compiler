@@ -50,5 +50,59 @@ exit:
   ret float %retVal
 }
 
+; The congruent sources of a phi may both depend on an instruction defined in a
+; loop header, and may also feed a loop-exit phi whose block is reachable along
+; an edge that bypasses the header. Hoisting into the header is legal (the
+; loop-exit phi uses the values only on edges dominated by the header), but a
+; naive whole-block dominance check on the phi user reports a false violation.
+; Check that the two congruent `add`s are hoisted into the header and that the
+; pass does not assert.
+;
+; CHECK-LABEL: @test_loop_exit_phi(
+define i32 @test_loop_exit_phi(i1 %enter, i1 %c0, i1 %c1, i1 %c2, i32 %seed) {
+entry:
+  br i1 %enter, label %header, label %exit
+
+; The congruent adds (add %iv, 1) are hoisted to the top of the header.
+; CHECK-LABEL: header:
+; CHECK: %iv = phi i32
+; CHECK: [[H:%.*]] = add i32 %iv, 1
+; CHECK: br i1 %c0, label %leaf.a, label %leaf.b
+header:                                           ; preds = %join, %entry
+  %iv = phi i32 [ %merged, %join ], [ 0, %entry ]
+  %acc = add i32 %iv, %seed
+  %big0 = mul i32 %acc, 3
+  %big1 = mul i32 %big0, 5
+  %big2 = mul i32 %big1, 7
+  br i1 %c0, label %leaf.a, label %leaf.b
+
+leaf.a:                                           ; preds = %header
+  %addA = add i32 %iv, 1
+  %cmpA = icmp ugt i32 %addA, 200
+  br i1 %cmpA, label %brk.a, label %join
+
+leaf.b:                                           ; preds = %header
+  %addB = add i32 %iv, 1
+  %cmpB = icmp ugt i32 %addB, 200
+  br i1 %cmpB, label %brk.b, label %join
+
+; %merged is the congruent phi: both incoming values are `add %iv, 1`.
+join:                                             ; preds = %leaf.a, %leaf.b
+  %merged = phi i32 [ %addA, %leaf.a ], [ %addB, %leaf.b ]
+  br label %header
+
+brk.a:                                            ; preds = %leaf.a
+  br label %exit
+
+brk.b:                                            ; preds = %leaf.b
+  br label %exit
+
+; %exit is reachable directly from %entry, so %header does not dominate it.
+; %addA / %addB are used here on edges that *are* dominated by %header.
+exit:                                             ; preds = %brk.a, %brk.b, %entry
+  %res = phi i32 [ %addA, %brk.a ], [ %addB, %brk.b ], [ 0, %entry ]
+  ret i32 %res
+}
+
 declare void @foo()
 
