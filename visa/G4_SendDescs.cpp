@@ -965,7 +965,8 @@ bool G4_SendgDesc::isDataOrderNonTranspose() const {
   // The following operations support transpose
   // load, store, load block 2d
   // for these operations, extract the transpose field (bit 10) and check
-  if (isOp(MsgOp::LOAD, MsgOp::STORE, MsgOp::LOAD_BLOCK2D)) {
+  bool supportsTranspose = isOp(MsgOp::LOAD, MsgOp::STORE, MsgOp::LOAD_BLOCK2D);
+  if (supportsTranspose) {
     return ((descValue >> 10) & 0x1) == 0;
   }
   // for all other operations, data order is non transpose

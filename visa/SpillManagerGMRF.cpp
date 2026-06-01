@@ -5177,6 +5177,9 @@ void GlobalRA::expandSpillLscEff64(G4_BB *bb, INST_LIST_ITER &instIt) {
       (LSC_L1_L3_CC)builder->getuint32Option(vISA_lscSpillStoreCCOverride);
   const auto cachingOpt = ToStCaching(overrideCaching);
 
+  MsgOp spillOp = MsgOp::STORE;
+  G4_ExecSize spillExecSize = g4::SIMD1;
+
   builder->instList.clear();
   while (numRows > 0) {
     auto numGRFToWrite = std::min(4u, getPayloadSizeGRF(numRows));
@@ -5206,17 +5209,11 @@ void GlobalRA::expandSpillLscEff64(G4_BB *bb, INST_LIST_ITER &instIt) {
                                                 builder->getRegionStride1());
     auto spillData = builder->createSrcWithNewRegOff(payload, rowOffset);
     auto vecSize = ToVecElems(numGRFToWrite * builder->getGRFSize() / 4);
-    auto sendInst =
-        builder->createLscVecSendgInstSeq(nullptr, MsgOp::STORE, SFID::UGM,
-                                          g4::SIMD1,
-                                          DataSize::D32, vecSize,
-                                          DataOrder::TRANSPOSE,
-                                          AddrSizeType::GLB_STATE_A32, cachingOpt,
-                                          LdStAttrs::SCRATCH_SURFACE,
-                                          nullptr,
-                                          surface, 0, 1, src0Addr, addrImmOff,
-                                          spillData,
-                                          inst->getOption());
+    auto sendInst = builder->createLscVecSendgInstSeq(
+        nullptr, spillOp, SFID::UGM, spillExecSize, DataSize::D32, vecSize,
+        DataOrder::TRANSPOSE, AddrSizeType::GLB_STATE_A32, cachingOpt,
+        LdStAttrs::SCRATCH_SURFACE, nullptr, surface, 0, 1, src0Addr,
+        addrImmOff, spillData, inst->getOption());
 
     sendInst->addComment(makeSpillFillComment(
         "spill", "to", inst->getFP() ? "FP" : "offset", spillOffset,
