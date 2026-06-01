@@ -237,27 +237,11 @@ CIF_DECLARE_INTERFACE_PIMPL(IgcOclTranslationCtx) : CIF::PimplBase {
     USC::SShaderStageBTLayout zeroLayout = USC::g_cZeroShaderStageBTLayout;
     IGC::COCLBTILayout oclLayout(&zeroLayout);
 
-    std::string RegKeysFlagsFromOptions;
-    if (inputArgs.pOptions != nullptr) {
-      std::string_view optionsWithFlags = inputArgs.pOptions;
-
-      // check if there are more instances of '-igc_opts'
-      while (!optionsWithFlags.empty()) {
-        std::size_t found = optionsWithFlags.find("-igc_opts");
-        if (found == std::string::npos)
-          break;
-
-        std::size_t foundFirstSingleQuote = optionsWithFlags.find('\'', found);
-        std::size_t foundSecondSingleQuote = optionsWithFlags.find('\'', foundFirstSingleQuote + 1);
-        if (foundFirstSingleQuote == std::string::npos || foundSecondSingleQuote == std::string::npos) {
-          outputInterface->GetImpl()->SetError(TranslationErrorType::Unused, "Missing single quotes for -igc_opts");
-          return outputInterface.release();
-        }
-        RegKeysFlagsFromOptions +=
-            optionsWithFlags.substr(foundFirstSingleQuote + 1, (foundSecondSingleQuote - foundFirstSingleQuote - 1));
-        RegKeysFlagsFromOptions = RegKeysFlagsFromOptions + ',';
-        optionsWithFlags = optionsWithFlags.substr(foundSecondSingleQuote + 1, optionsWithFlags.length());
-      }
+    std::string igcOptsError;
+    std::string RegKeysFlagsFromOptions = ExtractIGCOptsFromOptions(inputArgs.pOptions, igcOptsError);
+    if (!igcOptsError.empty()) {
+      outputInterface->GetImpl()->SetError(TranslationErrorType::Unused, igcOptsError.c_str());
+      return outputInterface.release();
     }
     bool RegFlagNameError = 0;
     LoadRegistryKeys(RegKeysFlagsFromOptions, &RegFlagNameError);

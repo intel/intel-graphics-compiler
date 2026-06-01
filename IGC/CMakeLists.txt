@@ -1816,6 +1816,9 @@ if (FCL_ENABLED)
   set_target_properties("${IGC_BUILD__PROJ__fcl_dll}" PROPERTIES FOLDER "Libraries")
 
   add_dependencies("${IGC_BUILD__PROJ__fcl_dll}" opencl-clang-lib)
+
+  target_compile_definitions("${IGC_BUILD__PROJ__fcl_dll}" PRIVATE
+      IGC_FCL_BUILD)
 endif()
 
 set(IGC_BUILD__HDR__IGC__igc_lib

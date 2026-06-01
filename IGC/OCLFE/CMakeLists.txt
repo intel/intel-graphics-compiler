@@ -31,6 +31,8 @@ set(IGC_BUILD__SRC__FCL
   "${CMAKE_CURRENT_SOURCE_DIR}/igd_fcl_mcl/source/clang_tb.cpp"
   "${CMAKE_CURRENT_SOURCE_DIR}/igd_fcl_mcl/source/clang_debug.cpp"
   "${CMAKE_CURRENT_SOURCE_DIR}/igd_fcl_mcl/source/LoadBuffer.cpp"
+  "${CMAKE_CURRENT_SOURCE_DIR}/../common/igc_regkeys.cpp"
+  "${CMAKE_CURRENT_SOURCE_DIR}/../common/igc_dump_paths.cpp"
   "${IGC_BUILD__SRC__IGC_Common_CLElfLib}"
 )
 

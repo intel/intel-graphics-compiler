@@ -11,6 +11,7 @@ SPDX-License-Identifier: MIT
 #include "GlobalData.h"
 #include "igfxfmid.h"
 #include "TranslationBlock.h"
+#include "common/igc_dump_paths.hpp"
 #include <string>
 #include <memory>
 #include <vector>
@@ -137,22 +138,8 @@ protected:
 
 namespace FCL {
 
-// type for name of output folder
-using OutputFolderName = const char *;
+using IGC::Debug::GetBaseIGCOutputFolder;
+using IGC::Debug::GetShaderOutputFolder;
+using IGC::Debug::OutputFolderName;
 
-// function returns full path where to dump shaders for FCL
-OutputFolderName GetShaderOutputFolder();
-
-// different register-dependent functions
-bool GetFCLShaderDumpEnable();
-bool GetFCLShaderDumpPidDisable();
-bool GetFCLDumpToCurrentDir();
-bool GetFCLDumpToCustomDir();
-bool GetFCLEnableKernelNamesBasedHash();
-#if LLVM_VERSION_MAJOR < 17
-bool GetFCLEnableOpaquePointersBackend();
-#endif
 } // namespace FCL
-
-// convenient macro to check FCL flags
-#define FCL_IGC_IS_FLAG_ENABLED(name) FCL::GetFCL##name()

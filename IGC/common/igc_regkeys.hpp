@@ -225,6 +225,12 @@ template <typename T> bool IsEnabled(const T &value) { return value != 0; }
 inline bool doesRegexMatch(const std::string &src, const char *regex) { return false; }
 #endif
 
+// Extracts the content of -igc_opts '...' sections from an options string.
+// Supports multiple -igc_opts instances; their contents are concatenated with commas.
+// Returns the extracted comma-separated key=value pairs suitable for LoadRegistryKeys.
+// On malformed input (missing quotes), sets errorString and returns what was extracted so far.
+std::string ExtractIGCOptsFromOptions(const char *pOptions, std::string &errorString);
+
 // unset: Unlimited/Enable - return true
 //     0: Disabled         - return false
 //   >=1: Enable           - key_value -= 1; return true

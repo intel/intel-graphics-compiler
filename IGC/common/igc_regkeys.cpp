@@ -16,7 +16,9 @@ SPDX-License-Identifier: MIT
 #include "3d/common/iStdLib/File.h"
 #include "secure_mem.h"
 #include "secure_string.h"
+#if !defined(IGC_FCL_BUILD)
 #include "AdaptorCommon/customApi.hpp"
+#endif
 #include "llvmWrapper/ADT/StringRef.h"
 
 #if defined(_WIN64) || defined(_WIN32)
@@ -41,7 +43,6 @@ SPDX-License-Identifier: MIT
 #include <utility>
 #include <vector>
 #include "Probe/Assertion.h"
-#include "common/Types.hpp"
 
 // path for IGC registry keys
 #define IGC_REGISTRY_KEY "SOFTWARE\\INTEL\\IGFX\\IGC"
@@ -292,7 +293,7 @@ static bool ReadIGCEnv(const char *pName, void *pValue, unsigned int size, IGCFl
           std::size_t pos = 0;
           int val = std::stoi(str, &pos, 2);
           if (pos > 0 && pos == str.size()) {
-            *reinterpret_cast<unsigned int *>(pValue) = int_cast<unsigned int>(val);
+            *reinterpret_cast<unsigned int *>(pValue) = static_cast<unsigned int>(val);
             return true;
           } else {
             // Like "0b", "0b1EFF", "0b''"
@@ -732,11 +733,13 @@ static void setImpliedIGCKeys() {
 
   IGC_SET_IMPLIED_REGKEY(DumpTimeStatsPerPass, 1, DumpTimeStats, true);
   IGC_SET_IMPLIED_REGKEY(DumpTimeStatsCoarse, 1, DumpTimeStats, true);
+#if !defined(IGC_FCL_BUILD)
   if (IGC_IS_FLAG_ENABLED(DumpTimeStatsPerPass) || IGC_IS_FLAG_ENABLED(DumpTimeStatsCoarse) ||
       IGC_IS_FLAG_ENABLED(DumpTimeStats)) {
     // Need to turn on this setting so per-shader .csv is generated
     IGC::Debug::SetDebugFlag(IGC::Debug::DebugFlag::TIME_STATS_PER_SHADER, true);
   }
+#endif
 
   IGC_SET_IMPLIED_REGKEY(ForceOCLSIMDWidth, 32, EnableOCLSIMD32, true);
   IGC_SET_IMPLIED_REGKEY(ForceOCLSIMDWidth, 32, EnableOCLSIMD16, false);
@@ -1146,3 +1149,28 @@ void GetKeysSetExplicitly(std::string *KeyValuePairs, std::string *OptionKeys) {
   }
 }
 #endif
+
+std::string ExtractIGCOptsFromOptions(const char *pOptions, std::string &errorString) {
+  std::string result;
+  if (pOptions == nullptr)
+    return result;
+
+  std::string_view remaining = pOptions;
+  while (!remaining.empty()) {
+    std::size_t found = remaining.find("-igc_opts");
+    if (found == std::string_view::npos)
+      break;
+
+    std::size_t firstQuote = remaining.find('\'', found);
+    std::size_t secondQuote =
+        (firstQuote != std::string_view::npos) ? remaining.find('\'', firstQuote + 1) : std::string_view::npos;
+    if (firstQuote == std::string_view::npos || secondQuote == std::string_view::npos) {
+      errorString = "Missing single quotes for -igc_opts";
+      break;
+    }
+    result += remaining.substr(firstQuote + 1, secondQuote - firstQuote - 1);
+    result += ',';
+    remaining = remaining.substr(secondQuote + 1);
+  }
+  return result;
+}

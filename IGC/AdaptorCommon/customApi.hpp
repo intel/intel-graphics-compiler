@@ -11,29 +11,10 @@ SPDX-License-Identifier: MIT
 #include "usc.h"
 #include "API/igc.h"
 #include "common/igc_regkeys.hpp"
+#include "common/igc_dump_paths.hpp"
 
 #if !defined(IGC_DEBUG_VARIABLES)
 #include <stdio.h>
-#endif
-
-// In _RELEASE builds, make these api functions available for internal use,
-// but do not export them in the dll.
-#if defined(IGC_DEBUG_VARIABLES)
-#if defined(_WIN32)
-#if defined(IGC_EXPORTS)
-#define IGC_DEBUG_API_CALL __declspec(dllexport)
-#else
-#define IGC_DEBUG_API_CALL __declspec(dllimport)
-#endif
-#else
-#if defined(IGC_EXPORTS)
-#define IGC_DEBUG_API_CALL __attribute__((visibility("default")))
-#else
-#define IGC_DEBUG_API_CALL
-#endif
-#endif
-#else
-#define IGC_DEBUG_API_CALL
 #endif
 
 namespace IGC {
@@ -181,15 +162,10 @@ void IGC_DEBUG_API_CALL SetShaderCorpusName(CorpusName name);
 /// Get the name for the to-be-compiled set of shaders
 CorpusName IGC_DEBUG_API_CALL GetShaderCorpusName();
 
-/// Set a name for the output folder
-void IGC_DEBUG_API_CALL SetShaderOutputFolder(OutputFolderName name);
-
 void IGC_DEBUG_API_CALL SetShaderOutputName(OutputName name);
 
 void IGC_DEBUG_API_CALL SetShaderOverridePath(OutputFolderName pOutputFolderName);
 OutputFolderName IGC_DEBUG_API_CALL GetShaderOverridePath();
-/// Get the name for the output folder
-OutputFolderName IGC_DEBUG_API_CALL GetShaderOutputFolder();
 
 OutputName IGC_DEBUG_API_CALL GetShaderOutputName();
 
@@ -282,12 +258,7 @@ inline void IGC_DEBUG_API_CALL SetShaderCorpusName(CorpusName name) { (void)name
 /// Returns empty string in _RELEASE builds
 inline CorpusName IGC_DEBUG_API_CALL GetShaderCorpusName() { return ""; }
 
-/// Does nothing in _RELEASE builds
-inline void IGC_DEBUG_API_CALL SetShaderOutputFolder(OutputFolderName name) { (void)name; }
 inline void IGC_DEBUG_API_CALL SetShaderOutputName(OutputName name) { (void)name; }
-
-/// Returns empty string in _RELEASE builds
-inline OutputFolderName IGC_DEBUG_API_CALL GetShaderOutputFolder() { return ""; }
 inline OutputName IGC_DEBUG_API_CALL GetShaderOutputName() { return ""; }
 
 inline void IGC_DEBUG_API_CALL SetShaderOverridePath(OutputFolderName pOutputFolderName) { (void)pOutputFolderName; }

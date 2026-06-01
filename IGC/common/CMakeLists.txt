@@ -14,6 +14,7 @@ include_directories("${CMAKE_CURRENT_SOURCE_DIR}")
 
 set(IGC_BUILD__SRC__common
     "${CMAKE_CURRENT_SOURCE_DIR}/igc_regkeys.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/igc_dump_paths.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/IGCConstantFolder.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/LLVMUtils.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/ShaderOverride.cpp"
@@ -60,6 +61,7 @@ set(IGC_BUILD__HDR__common
     "${CMAKE_CURRENT_SOURCE_DIR}/igc_flags.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/igc_regkeys.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/igc_regkeys.hpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/igc_dump_paths.hpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/igc_regkeys_enums_defs.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/igc_resourceDimTypes.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/ResourceAddrSpace.h"

@@ -15,369 +15,24 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPush.hpp"
 #include "llvm/Config/llvm-config.h"
 #include "llvm/Bitcode/BitcodeReader.h"
-#include "llvm/Bitcode/BitcodeWriter.h"
 #include "common/LLVMWarningsPop.hpp"
 #include "iStdLib/utility.h"
 
 #include "secure_mem.h"
 #include "secure_string.h"
-#include "AdaptorCommon/customApi.hpp"
+#include "common/igc_regkeys.hpp"
+#include "common/igc_dump_paths.hpp"
 
 #include "SPIRVExtensionsSupport.h"
 
-#include <mutex>
 #include <sstream>
-#include <stdlib.h>
 #include <string>
 #include <iomanip>
 
-#include "3d/common/iStdLib/File.h"
 #include "Probe/Assertion.h"
-
-#if defined(_DEBUG) || defined(_INTERNAL)
-#define IGC_DEBUG_VARIABLES
-#endif
-
-
-#if defined(IGC_DEBUG_VARIABLES)
-
-// Code for reading IGC regkeys "ShaderDumpEnable", "DumpToCurrentDir", "ShaderDumpPidDisable".
-// Code for shader dump directory name scheme.
-// Code is copied from IGC project. This duplication is undesirable in the long term.
-// IGC is expected to put this code in single file, without unncessary llvm (and other dependencies).
-// Then FCL will just include this single file to avoid code duplication and maintainability issues.
-
-#if defined(_WIN32) || defined(_WIN64)
-#include <direct.h>
-#include <process.h>
-#endif
-
-#if defined __linux__
-#include "iStdLib/File.h"
-#endif
-
-namespace {
-std::string g_shaderOutputFolder;
-}
-
-namespace FCL {
-namespace Debug {
-static std::mutex stream_mutex;
-
-void DumpLock() { stream_mutex.lock(); }
-
-void DumpUnlock() { stream_mutex.unlock(); }
-} // namespace Debug
-
-#define IGC_REGISTRY_KEY "SOFTWARE\\INTEL\\IGFX\\IGC"
-
-typedef char FCLdebugString[256];
-
-int32_t FCLShDumpEn = 0;
-int32_t FCLDumpToCurrDir = 0;
-int32_t FCLDumpToCustomDir = 0;
-int32_t FCLShDumpPidDis = 0;
-int32_t FCLEnableKernelNamesBasedHash = 0;
-#if LLVM_VERSION_MAJOR < 17
-int32_t FCLEnableOpaquePointersBackend = 0;
-#endif
-int32_t FCLEnvKeysRead = 0;
-std::string RegKeysFlagsFromOptions = "";
-
-/*****************************************************************************\
-FCLReadIGCEnv
-\*****************************************************************************/
-static bool FCLReadIGCEnv(const char *pName, void *pValue, unsigned int size) {
-  if (pName != NULL) {
-    const char nameTag[] = "IGC_";
-    std::string pKey = std::string(nameTag) + std::string(pName);
-
-    const char *envVal = getenv(pKey.c_str());
-
-    if (envVal != NULL) {
-      if (size >= sizeof(unsigned int)) {
-        // Try integer conversion
-        char *pStopped = nullptr;
-        unsigned int *puVal = (unsigned int *)pValue;
-        *puVal = strtoul(envVal, &pStopped, 0);
-        if (pStopped == envVal + std::string(envVal).length()) {
-          return true;
-        }
-      }
-
-      // Just return the string
-      strncpy_s((char *)pValue, size, envVal, size);
-
-      return true;
-    }
-  }
-
-  return false;
-}
-
-/*****************************************************************************\
-FCLReadIGCRegistry
-\*****************************************************************************/
-static bool FCLReadIGCRegistry(const char *pName, void *pValue, unsigned int size) {
-  // All platforms can retrieve settings from environment
-  if (FCLReadIGCEnv(pName, pValue, size)) {
-    return true;
-  }
-
-#if defined _WIN32
-  LONG success = ERROR_SUCCESS;
-  HKEY uscKey;
-
-  success = RegOpenKeyExA(HKEY_LOCAL_MACHINE, IGC_REGISTRY_KEY, 0, KEY_READ, &uscKey);
-
-  if (ERROR_SUCCESS == success) {
-    DWORD dwSize = size;
-    success = RegQueryValueExA(uscKey, pName, NULL, NULL, (LPBYTE)pValue, &dwSize);
-
-    RegCloseKey(uscKey);
-  }
-  return (ERROR_SUCCESS == success);
-#endif // defined _WIN32
-
-  return false;
-}
-
-bool getFCLIGCBinaryKey(const char *keyName) {
-  FCLdebugString value = {0};
-
-  bool isSet = FCLReadIGCRegistry(keyName, &value, sizeof(value));
-  isSet = isSet;
-
-  return (value[0] != 0);
-}
-
-void FCLReadKeysFromEnv() {
-  if (!FCLEnvKeysRead) {
-    FCLShDumpEn = getFCLIGCBinaryKey("ShaderDumpEnable") ||
-                  (RegKeysFlagsFromOptions.find("ShaderDumpEnable=1") != std::string::npos);
-    FCLDumpToCurrDir = getFCLIGCBinaryKey("DumpToCurrentDir") ||
-                       (RegKeysFlagsFromOptions.find("DumpToCurrentDir=1") != std::string::npos);
-    FCLDumpToCustomDir = getFCLIGCBinaryKey("DumpToCustomDir") ||
-                         (RegKeysFlagsFromOptions.find("DumpToCustomDir=") != std::string::npos);
-    FCLShDumpPidDis = getFCLIGCBinaryKey("ShaderDumpPidDisable") ||
-                      (RegKeysFlagsFromOptions.find("ShaderDumpPidDisable=1") != std::string::npos);
-    FCLEnableKernelNamesBasedHash = getFCLIGCBinaryKey("EnableKernelNamesBasedHash") ||
-                                    (RegKeysFlagsFromOptions.find("EnableKernelNamesBasedHash=1") != std::string::npos);
-#if LLVM_VERSION_MAJOR < 17
-    FCLEnableOpaquePointersBackend =
-        getFCLIGCBinaryKey("EnableOpaquePointersBackend") ||
-        (RegKeysFlagsFromOptions.find("EnableOpaquePointersBackend=1") != std::string::npos);
-#endif
-    FCLEnvKeysRead = 1;
-  }
-}
-
-bool GetFCLShaderDumpEnable() {
-  FCLReadKeysFromEnv();
-  return FCLShDumpEn;
-}
-
-bool GetFCLShaderDumpPidDisable() {
-  FCLReadKeysFromEnv();
-  return FCLShDumpPidDis;
-}
-
-bool GetFCLDumpToCurrentDir() {
-  FCLReadKeysFromEnv();
-  return FCLDumpToCurrDir;
-}
-
-bool GetFCLDumpToCustomDir() {
-  FCLReadKeysFromEnv();
-  return FCLDumpToCustomDir;
-}
-
-bool GetFCLEnableKernelNamesBasedHash() {
-  FCLReadKeysFromEnv();
-  return FCLEnableKernelNamesBasedHash;
-}
-
-#if LLVM_VERSION_MAJOR < 17
-bool GetFCLEnableOpaquePointersBackend() {
-  FCLReadKeysFromEnv();
-  return FCLEnableOpaquePointersBackend;
-}
-#endif
-
-OutputFolderName GetBaseIGCOutputFolder() {
-#if defined(IGC_DEBUG_VARIABLES)
-  static std::mutex m;
-  std::lock_guard<std::mutex> lck(m);
-  static std::string IGCBaseFolder;
-  if (IGCBaseFolder != "") {
-    return IGCBaseFolder.c_str();
-  }
-#if defined(_WIN64) || defined(_WIN32)
-  if (!FCL_IGC_IS_FLAG_ENABLED(DumpToCurrentDir) && !FCL_IGC_IS_FLAG_ENABLED(DumpToCustomDir)) {
-    bool needMkdir = 1;
-    char dumpPath[256];
-
-    sprintf_s(dumpPath, "c:\\Intel\\IGC\\");
-
-    if (GetFileAttributesA(dumpPath) != FILE_ATTRIBUTE_DIRECTORY && needMkdir) {
-      _mkdir(dumpPath);
-    }
-
-    // Make sure we can write in the dump folder as the app may be sandboxed
-    if (needMkdir) {
-      int tmp_id = _getpid();
-      std::string testFilename = std::string(dumpPath) + "testfile" + std::to_string(tmp_id);
-      HANDLE testFile =
-          CreateFileA(testFilename.c_str(), GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_FLAG_DELETE_ON_CLOSE, NULL);
-      if (testFile == INVALID_HANDLE_VALUE) {
-        char temppath[256];
-        if (GetTempPathA(sizeof(temppath), temppath) != 0) {
-          sprintf_s(dumpPath, "%sIGC\\", temppath);
-        }
-      } else {
-        CloseHandle(testFile);
-      }
-    }
-
-    if (GetFileAttributesA(dumpPath) != FILE_ATTRIBUTE_DIRECTORY && needMkdir) {
-      _mkdir(dumpPath);
-    }
-
-    IGCBaseFolder = dumpPath;
-  } else if (FCL_IGC_IS_FLAG_ENABLED(DumpToCustomDir)) {
-    std::string dumpPath = "c:\\Intel\\IGC\\"; // default if something goes wrong
-    char custom_dir[256];
-    std::string DumpToCustomDirFlagNameWithEqual = "DumpToCustomDir=";
-    std::size_t found = RegKeysFlagsFromOptions.find(DumpToCustomDirFlagNameWithEqual);
-    FCLReadIGCRegistry("DumpToCustomDir", custom_dir, sizeof(custom_dir));
-    if (std::string(custom_dir).length() > 0 && (found == std::string::npos)) {
-      dumpPath = custom_dir;
-    } else {
-      std::size_t foundComma = RegKeysFlagsFromOptions.find(',', found);
-      if (foundComma != std::string::npos) {
-        std::string token =
-            RegKeysFlagsFromOptions.substr(found + DumpToCustomDirFlagNameWithEqual.size(),
-                                           foundComma - (found + DumpToCustomDirFlagNameWithEqual.size()));
-        if (token.size() > 0) {
-          dumpPath = token;
-        }
-      }
-    }
-
-    char pathBuf[256];
-    iSTD::CreateAppOutputDir(pathBuf, 256, dumpPath.c_str(), false, false, false);
-
-    IGCBaseFolder = pathBuf;
-  }
-#elif defined __linux__
-  if (!FCL_IGC_IS_FLAG_ENABLED(DumpToCustomDir)) {
-    IGCBaseFolder = "/tmp/IntelIGC/";
-  } else {
-    std::string dumpPath = "/tmp/IntelIGC/"; // default if something goes wrong
-    const size_t maxLen = 255;
-    char custom_dir[maxLen + 1] = {0};
-    std::string DumpToCustomDirFlagNameWithEqual = "DumpToCustomDir=";
-    std::size_t found = RegKeysFlagsFromOptions.find(DumpToCustomDirFlagNameWithEqual);
-    FCLReadIGCRegistry("DumpToCustomDir", custom_dir, maxLen);
-    if (std::string(custom_dir).length() > 0 && (found == std::string::npos)) {
-      IGC_ASSERT_MESSAGE(std::string(custom_dir).length() < maxLen, "custom_dir path too long");
-      dumpPath = custom_dir;
-      dumpPath += "/";
-    } else {
-      std::size_t foundComma = RegKeysFlagsFromOptions.find(',', found);
-      if (foundComma != std::string::npos) {
-        std::string token =
-            RegKeysFlagsFromOptions.substr(found + DumpToCustomDirFlagNameWithEqual.size(),
-                                           foundComma - (found + DumpToCustomDirFlagNameWithEqual.size()));
-        if (token.size() > 0) {
-          dumpPath = token;
-        }
-      }
-    }
-
-    char pathBuf[256];
-    iSTD::CreateAppOutputDir(pathBuf, 256, dumpPath.c_str(), false, false, false);
-
-    IGCBaseFolder = pathBuf;
-  }
-#endif
-  return IGCBaseFolder.c_str();
-#else
-  return "";
-#endif
-}
-
-OutputFolderName GetShaderOutputFolder() {
-#if defined(IGC_DEBUG_VARIABLES)
-  static std::mutex m;
-  std::lock_guard<std::mutex> lck(m);
-  if (g_shaderOutputFolder != "") {
-    return g_shaderOutputFolder.c_str();
-  }
-#if defined(_WIN64) || defined(_WIN32)
-  if (!FCL_IGC_IS_FLAG_ENABLED(DumpToCurrentDir) && !FCL_IGC_IS_FLAG_ENABLED(DumpToCustomDir)) {
-    char dumpPath[256];
-    sprintf_s(dumpPath, "%s", GetBaseIGCOutputFolder());
-    char appPath[MAX_PATH] = {0};
-    // check a process id and make an adequate directory for it:
-
-    if (::GetModuleFileNameA(NULL, appPath, sizeof(appPath) - 1)) {
-      std::string appPathStr = std::string(appPath);
-      int pos = appPathStr.find_last_of("\\") + 1;
-
-      if (FCL_IGC_IS_FLAG_ENABLED(ShaderDumpPidDisable)) {
-        sprintf_s(dumpPath, "%s%s\\", dumpPath, appPathStr.substr(pos, MAX_PATH).c_str());
-      } else {
-        sprintf_s(dumpPath, "%s%s_%d\\", dumpPath, appPathStr.substr(pos, MAX_PATH).c_str(), _getpid());
-      }
-    } else {
-      sprintf_s(dumpPath, "%sunknownProcess_%d\\", dumpPath, _getpid());
-    }
-
-    if (GetFileAttributesA(dumpPath) != FILE_ATTRIBUTE_DIRECTORY) {
-      _mkdir(dumpPath);
-    }
-
-    g_shaderOutputFolder = dumpPath;
-  } else if (FCL_IGC_IS_FLAG_ENABLED(DumpToCustomDir)) {
-    char pathBuf[256];
-    iSTD::CreateAppOutputDir(pathBuf, 256, GetBaseIGCOutputFolder(), false, true,
-                             !FCL_IGC_IS_FLAG_ENABLED(ShaderDumpPidDisable));
-    g_shaderOutputFolder = pathBuf;
-  }
-#elif defined __linux__
-  if (!FCL_IGC_IS_FLAG_ENABLED(DumpToCurrentDir) && g_shaderOutputFolder == "" &&
-      !FCL_IGC_IS_FLAG_ENABLED(DumpToCustomDir)) {
-    bool needMkdir = true;
-
-    char path[MAX_PATH] = {0};
-    bool pidEnabled = !FCL_IGC_IS_FLAG_ENABLED(ShaderDumpPidDisable);
-
-    if (needMkdir) {
-      iSTD::CreateAppOutputDir(path, MAX_PATH, GetBaseIGCOutputFolder(), false, true, pidEnabled);
-    }
-
-    g_shaderOutputFolder = path;
-  } else if (FCL_IGC_IS_FLAG_ENABLED(DumpToCustomDir)) {
-    char pathBuf[256];
-    iSTD::CreateAppOutputDir(pathBuf, 256, GetBaseIGCOutputFolder(), false, false, false);
-    g_shaderOutputFolder = pathBuf;
-  }
-
-#endif
-  return g_shaderOutputFolder.c_str();
-#else
-  return "";
-#endif
-}
-
-} // namespace FCL
-  /// pk this ends here
-#endif
 
 #ifndef WIN32
 #include <dlfcn.h>
-#include <stdexcept>
 #endif
 
 #if defined(_WIN32)
@@ -391,7 +46,7 @@ using namespace std;
 // ElfReader related typedefs
 using namespace CLElfLib;
 
-void ElfReaderDP(CElfReader *pElfReader) {
+static void ElfReaderDP(CElfReader *pElfReader) {
   if (pElfReader)
     CElfReader::Delete(pElfReader);
 }
@@ -399,12 +54,6 @@ typedef unique_ptr<CElfReader, decltype(&ElfReaderDP)> CElfReaderPtr;
 
 // ClangFE related typedefs
 using namespace Intel::OpenCL::ClangFE;
-void ReleaseDP(IOCLFEBinaryResult *pT) {
-  if (pT)
-    pT->Release();
-}
-
-typedef unique_ptr<IOCLFEBinaryResult, decltype(&ReleaseDP)> IOCLFEBinaryResultPtr;
 
 namespace TC {
 constexpr bool is64bit = sizeof(void *) == sizeof(uint64_t);
@@ -413,7 +62,7 @@ namespace Utils {
 // Replace \0 in input string with \n. This works around an issue in
 // Clang where the error message is not generated for inputs that contain
 // a non-ending \0
-char *NormalizeString(char *input, uint32_t size) {
+static char *NormalizeString(char *input, uint32_t size) {
   for (uint32_t i = 0; i < size; i++) {
     if (input[i] == '\0') {
       input[i] = '\n';
@@ -424,8 +73,8 @@ char *NormalizeString(char *input, uint32_t size) {
 }
 
 // Translates the ClangFE results to STB Output results
-void FillOutputArgs(IOCLFEBinaryResult *pFEBinaryResult, STB_TranslateOutputArgs *pOutputArgs,
-                    std::string &exceptString) {
+static void FillOutputArgs(IOCLFEBinaryResult *pFEBinaryResult, STB_TranslateOutputArgs *pOutputArgs,
+                           std::string &exceptString) {
   // fill the result structure
   uint32_t ErrorStringSize = (uint32_t)std::string(pFEBinaryResult->GetErrorLog()).length();
   if (ErrorStringSize > 0) {
@@ -451,11 +100,6 @@ void FillOutputArgs(IOCLFEBinaryResult *pFEBinaryResult, STB_TranslateOutputArgs
 }
 } // namespace Utils
 
-struct OCLVersionNumberMapping {
-  const char *version;
-  unsigned int number;
-};
-
 // Input parameters to the 3 function
 struct TranslateClangArgs {
   TranslateClangArgs() : pszProgramSource(NULL), pPCHBuffer(NULL), uiPCHBufferSize(0), b32bit(!is64bit) {}
@@ -480,21 +124,6 @@ struct TranslateClangArgs {
   bool b32bit;
 };
 
-// Initialize static mutex object to be shared with all threads
-// llvm::sys::Mutex CClangTranslationBlock::m_Mutex(/* recursive = */ true);
-
-/*****************************************************************************\
-
-Function:
-CClangTranslationBlock::Create
-
-Description:
-
-Input:
-
-Output:
-
-\*****************************************************************************/
 bool CClangTranslationBlock::Create(const STB_CreateArgs *pCreateArgs, STB_TranslateOutputArgs *pOutputArgs,
                                     CClangTranslationBlock *&pTranslationBlock) {
   bool success = true;
@@ -535,18 +164,6 @@ bool CClangTranslationBlock::Create(const STB_CreateArgs *pCreateArgs, STB_Trans
   return success;
 }
 
-/*****************************************************************************\
-
-Function:
-CClangTranslationBlock::Delete
-
-Description:
-
-Input:
-
-Output:
-
-\*****************************************************************************/
 void CClangTranslationBlock::Delete(CClangTranslationBlock *&pTranslationBlock) {
 #ifdef _WIN32
   // Unload the Common Clang library
@@ -560,41 +177,17 @@ void CClangTranslationBlock::Delete(CClangTranslationBlock *&pTranslationBlock) 
   pTranslationBlock = NULL;
 }
 
-/*****************************************************************************\
-
-Function:
-CClangTranslationBlock::SetErrorString
-
-Description:
-Given an error string, mallocs memory for the string and sets the
-appropriate STB_TranslateOutputArgs fields.
-
-Input:
-
-Output:
-
-\*****************************************************************************/
+// Given an error string, mallocs memory for the string and sets the
+// appropriate STB_TranslateOutputArgs fields.
 void CClangTranslationBlock::SetErrorString(const char *pErrorString, STB_TranslateOutputArgs *pOutputArgs) {
   IGC_ASSERT(pErrorString != NULL);
   IGC_ASSERT(pOutputArgs != NULL);
   pOutputArgs->ErrorString = pErrorString;
 }
 
-/*****************************************************************************\
-
-Function:
-CClangTranslationBlock::GetOclApiVersion
-
-Description:
-Parses the given internal options and return the OCL Version to be used
-for Clang compilation. If OCL version was not specified in internal options
-returns the default OCL version for the device
-
-Input:
-
-Output:
-
-\*****************************************************************************/
+// Parses the given internal options and return the OCL Version to be used
+// for Clang compilation. If OCL version was not specified in internal options
+// returns the default OCL version for the device
 std::string CClangTranslationBlock::GetOclApiVersion(const char *pInternalOptions) const {
   static const char *OCL_VERSION_OPT = "-ocl-version=";
   static size_t OCL_VERSION_OPT_SIZE = std::string(OCL_VERSION_OPT).length();
@@ -611,24 +204,12 @@ std::string CClangTranslationBlock::GetOclApiVersion(const char *pInternalOption
   return m_OCL_Ver;
 }
 
-/*****************************************************************************\
-
-Function:
-EnforceOCLCVersion
-
-Description:
-In case the '-force-cl-std' options was specified, check that the user
-requested OCL C version isn't higher than the supported OCL version.
-exception is thrown otherwise
-
-Input:
-
-Output:
-
-\*****************************************************************************/
-unsigned int GetOclCVersionFromOptions(const char *pOptions, const char *pInternalOptions,
-                                       const std::string &oclVersion /*OCL runtime API version*/,
-                                       std::string &exceptString) {
+// In case the '-force-cl-std' options was specified, check that the user
+// requested OCL C version isn't higher than the supported OCL version.
+// exception is thrown otherwise
+static unsigned int GetOclCVersionFromOptions(const char *pOptions, const char *pInternalOptions,
+                                              const std::string &oclVersion /*OCL runtime API version*/,
+                                              std::string &exceptString) {
   exceptString.clear();
 
   if (pOptions == nullptr) {
@@ -688,20 +269,8 @@ unsigned int GetOclCVersionFromOptions(const char *pOptions, const char *pIntern
   return retVersion;
 }
 
-/*****************************************************************************\
-
-Function:
-IsBuildingFor32bit
-
-Description:
-Return true if clang should generate 32bit code
-
-Input:
-
-Output:
-
-\*****************************************************************************/
-bool IsBuildingFor32bit(const char *pInternalOptions) {
+// Return true if clang should generate 32bit code
+static bool IsBuildingFor32bit(const char *pInternalOptions) {
   // Detect pointer size from internal option string. Default to using the
   // architecture type if the string is unavailable.
   if (pInternalOptions != NULL) {
@@ -717,16 +286,8 @@ bool IsBuildingFor32bit(const char *pInternalOptions) {
   return !is64bit;
 }
 
-/*****************************************************************************\
-
-Function:
-AreVMETypesDefined
-
-Description:
-Returns true if CommonClang used on current OS has VME types defined.
-
-\*****************************************************************************/
-bool AreVMETypesDefined() {
+// Returns true if CommonClang used on current OS has VME types defined.
+static bool AreVMETypesDefined() {
 #ifdef VME_TYPES_DEFINED
 #if VME_TYPES_DEFINED
   return true;
@@ -737,19 +298,7 @@ bool AreVMETypesDefined() {
   return true;
 }
 
-/*****************************************************************************\
-
-Function:
-CClangTranslationBlock::GetTranslateClangArgs
-
-Description:
-Prepares the arguments for the TranslateClang method for the given text input
-
-Input:
-
-Output:
-
-\*****************************************************************************/
+// Prepares the arguments for the TranslateClang method for the given text input
 void CClangTranslationBlock::GetTranslateClangArgs(char *pInput, uint32_t uiInputSize, const char *pOptions,
                                                    const char *pInternalOptions, TranslateClangArgs *pClangArgs,
                                                    std::string &exceptString) {
@@ -763,11 +312,11 @@ void CClangTranslationBlock::GetTranslateClangArgs(char *pInput, uint32_t uiInpu
     pClangArgs->options.assign(pOptions);
   }
 #if defined(IGC_DEBUG_VARIABLES)
-  char debugOptions[1024];
-  if (FCL::FCLReadIGCRegistry("ExtraOCLOptions", debugOptions, sizeof(debugOptions))) {
+  const char *extraOpts = IGC_GET_REGKEYSTRING(ExtraOCLOptions);
+  if (extraOpts != nullptr && strlen(extraOpts) > 0) {
     if (!pClangArgs->options.empty())
       pClangArgs->options += ' ';
-    pClangArgs->options += debugOptions;
+    pClangArgs->options += extraOpts;
   }
 #endif
 
@@ -775,19 +324,7 @@ void CClangTranslationBlock::GetTranslateClangArgs(char *pInput, uint32_t uiInpu
   EnsureProperPCH(pClangArgs, pInternalOptions, exceptString);
 }
 
-/*****************************************************************************\
-
-Function:
-CClangTranslationBlock::GetTranslateClangArgs
-
-Description:
-Parses the given ELF binary to prepare the arguments for the TranslateClang
-
-Input:
-
-Output:
-
-\*****************************************************************************/
+// Parses the given ELF binary to prepare the arguments for the TranslateClang
 void CClangTranslationBlock::GetTranslateClangArgs(CElfReader *pElfReader, const char *pOptions,
                                                    const char *pInternalOptions, TranslateClangArgs *pClangArgs,
                                                    std::string &exceptString) {
@@ -838,7 +375,7 @@ void CClangTranslationBlock::GetTranslateClangArgs(CElfReader *pElfReader, const
   EnsureProperPCH(pClangArgs, pInternalOptions, exceptString);
 }
 
-std::string FormatExtensionsString(const std::vector<std::string> &extensions) {
+static std::string FormatExtensionsString(const std::vector<std::string> &extensions) {
   std::stringstream output;
 
   if (!extensions.empty()) {
@@ -852,7 +389,7 @@ std::string FormatExtensionsString(const std::vector<std::string> &extensions) {
 }
 
 // Extracts a substring starting with "prefix" and ending with space.
-std::string GetSubstring(const std::string &str, const std::string &prefix) {
+static std::string GetSubstring(const std::string &str, const std::string &prefix) {
   size_t start_pos = 0, end_pos = 0;
   std::string returnString = "";
 
@@ -872,7 +409,7 @@ std::string GetSubstring(const std::string &str, const std::string &prefix) {
   return returnString;
 }
 
-std::string GetCDefinesFromInternalOptions(const char *pInternalOptions) {
+static std::string GetCDefinesFromInternalOptions(const char *pInternalOptions) {
   if (pInternalOptions == nullptr) {
     return std::string{};
   }
@@ -922,8 +459,8 @@ struct ExtensionsRequiringManualFeatureMacros {
   bool fp64 = false; // cl_khr_fp64 (dependency for atomic macros)
 };
 
-std::string GetFeatureMacrosForExtensions(const ExtensionsRequiringManualFeatureMacros &enabledExtensions,
-                                          unsigned int oclStd) {
+static std::string GetFeatureMacrosForExtensions(const ExtensionsRequiringManualFeatureMacros &enabledExtensions,
+                                                 unsigned int oclStd) {
   // For OpenCL C versions older than 3.0, manually enable feature macros for specific extensions
   std::string featureMacros;
 
@@ -971,7 +508,8 @@ std::string GetFeatureMacrosForExtensions(const ExtensionsRequiringManualFeature
 // The expected extensions input string is in a form:
 // -cl-ext=-all,+supported_ext_name,+second_supported_ext_name
 // -cl-feature=+__opencl_c_3d_image_writes,+__opencl_c_atomic_order_acq_rel
-std::string GetCDefinesForEnableList(llvm::StringRef enableListStr, unsigned int oclStd, const StringRef prefix) {
+static std::string GetCDefinesForEnableList(llvm::StringRef enableListStr, unsigned int oclStd,
+                                            const StringRef prefix) {
 
   std::string definesStr;
 
@@ -1032,20 +570,8 @@ std::string GetCDefinesForEnableList(llvm::StringRef enableListStr, unsigned int
   return definesStr;
 }
 
-/*****************************************************************************\
-
-Function:
-CClangTranslationBlock::EnsureProperPCH
-
-Description:
-Ensures that the given TranslateClang arguments has the proper CTH and PCH
-headers specified
-
-Input:
-
-Output:
-
-\*****************************************************************************/
+// Ensures that the given TranslateClang arguments has the proper CTH and PCH
+// headers specified
 void CClangTranslationBlock::EnsureProperPCH(TranslateClangArgs *pArgs, const char *pInternalOptions,
                                              std::string &exceptString) {
   unsigned long CTHeaderSize = 0;
@@ -1063,21 +589,12 @@ void CClangTranslationBlock::EnsureProperPCH(TranslateClangArgs *pArgs, const ch
   }
 }
 
-/**********************************************************************\
-
-Function:
-GetParam
-
-Description:
-takes first parameter from Head
-and assigns the rest of parameters to Tail
-Head  : input string with list / output with head
-Tail  : output string
-
-returns Head or NULL if Head is empty
-
-\**********************************************************************/
-char *GetParam(char *Head, char *Tail) {
+// Takes first parameter from Head
+// and assigns the rest of parameters to Tail.
+// Head  : input string with list / output with head
+// Tail  : output string
+// Returns Head or NULL if Head is empty
+static char *GetParam(char *Head, char *Tail) {
   static char Delim = ' ';
   static char Slash = '\\';
   char QuoteDouble = 0;
@@ -1168,17 +685,8 @@ ERROR_HANDLER:
   return Head;
 }
 
-/**********************************************************************\
-
-Class Function:
-BuildOptionsAreValid
-
-Description:
-Walks through options and makes sure they're ok
-
-\**********************************************************************/
-
-int BuildOptionsAreValid(const std::string &options, std::string &exceptString) {
+// Walks through options and makes sure they're ok
+static int BuildOptionsAreValid(const std::string &options, std::string &exceptString) {
   int retVal = 0;
 
   char *nextTok = NULL;
@@ -1352,19 +860,7 @@ int BuildOptionsAreValid(const std::string &options, std::string &exceptString) 
   return retVal;
 }
 
-/*****************************************************************************\
-
-Function:
-CClangTranslationBlock::TranslateClang
-
-Description:
-Translates from CL to LL/BC
-
-Input:
-
-Output:
-
-\*****************************************************************************/
+// Translates from CL to LL/BC
 bool CClangTranslationBlock::TranslateClang(const TranslateClangArgs *pInputArgs, STB_TranslateOutputArgs *pOutputArgs,
                                             std::string &exceptString, const char *pInternalOptions) {
   // additional clang options
@@ -1407,7 +903,7 @@ bool CClangTranslationBlock::TranslateClang(const TranslateClangArgs *pInputArgs
 #if LLVM_VERSION_MAJOR < 17 && defined(IGC_DEBUG_VARIABLES)
   // Allow to dynamically switch from typed to opaque pointers on
   // LLVM < 17. Disabling opaque pointers dynamically is not possible.
-  if (FCL_IGC_IS_FLAG_ENABLED(EnableOpaquePointersBackend)) {
+  if (IGC_IS_FLAG_ENABLED(EnableOpaquePointersBackend)) {
     optionsEx += " -opaque-pointers";
   } else {
 #endif
@@ -1523,19 +1019,8 @@ bool CClangTranslationBlock::TranslateClang(const TranslateClangArgs *pInputArgs
   return (0 == res);
 }
 
-/*****************************************************************************\
-
-Function:
-CClangTranslationBlock::ReturnSuppliedIR
-
-Description: Extract the IR from the input arguments and supply it unmodified
-to the output
-
-Input:
-
-Output:
-
-\*****************************************************************************/
+// Extract the IR from the input arguments and supply it unmodified
+// to the output
 bool CClangTranslationBlock::ReturnSuppliedIR(const STB_TranslateInputArgs *pInputArgs,
                                               STB_TranslateOutputArgs *pOutputArgs) {
   bool success = true;
@@ -1643,23 +1128,19 @@ bool CClangTranslationBlock::TranslateElf(const STB_TranslateInputArgs *pInputAr
   return false;
 }
 
-/*****************************************************************************\
-
-Function:
-CClangTranslationBlock::Translate
-
-Description:
-
-Input:
-
-Output:
-
-\*****************************************************************************/
 bool CClangTranslationBlock::Translate(const STB_TranslateInputArgs *pInputArgs, STB_TranslateOutputArgs *pOutputArgs) {
   // Setup a MutexGuard so that it's automatically released if it goes out of
   // scope
   // llvm::MutexGuard mutexGuard(m_Mutex);
   // resetOptionOccurrence();
+
+  // Initialize IGC flags from env vars, registry, and -igc_opts on first call.
+  std::string igcOptsError;
+  std::string igcOpts = ExtractIGCOptsFromOptions(pInputArgs->pOptions, igcOptsError);
+  LoadRegistryKeys(igcOpts);
+  if (!igcOptsError.empty()) {
+    pOutputArgs->ErrorString.append("warning: " + igcOptsError + "\n");
+  }
 
   std::string exceptString;
   switch (m_InputFormat) {
@@ -1673,28 +1154,14 @@ bool CClangTranslationBlock::Translate(const STB_TranslateInputArgs *pInputArgs,
     bool successTC = TranslateClang(&args, pOutputArgs, exceptString, pInputArgs->pInternalOptions);
 
 #if defined(IGC_DEBUG_VARIABLES)
-    if (pInputArgs->pOptions != nullptr) {
-      const std::string optionsWithFlags = pInputArgs->pOptions;
-      std::size_t found = optionsWithFlags.find("-igc_opts");
-      if (found != std::string::npos) {
-        std::size_t foundFirstSingleQuote = optionsWithFlags.find('\'', found);
-        std::size_t foundSecondSingleQuote = optionsWithFlags.find('\'', foundFirstSingleQuote + 1);
-        if (foundFirstSingleQuote != std::string::npos && foundSecondSingleQuote != std::string::npos) {
-          FCL::RegKeysFlagsFromOptions =
-              optionsWithFlags.substr(foundFirstSingleQuote + 1, foundSecondSingleQuote - foundFirstSingleQuote - 1);
-          FCL::RegKeysFlagsFromOptions = FCL::RegKeysFlagsFromOptions + ',';
-        }
-      }
-    }
-
-    if (FCL_IGC_IS_FLAG_ENABLED(ShaderDumpEnable)) {
+    if (IGC_IS_FLAG_ENABLED(ShaderDumpEnable)) {
       // Works for all OSes. Creates dir if necessary.
       const char *pOutputFolder = FCL::GetShaderOutputFolder();
       stringstream ss;
       const char *pBuffer = pInputArgs->pInput;
       UINT bufferSize = pInputArgs->InputSize;
 
-      if (FCL_IGC_IS_FLAG_ENABLED(EnableKernelNamesBasedHash)) {
+      if (IGC_IS_FLAG_ENABLED(EnableKernelNamesBasedHash)) {
         // The spirv parser cannot be used here - we would have to include it in the Makefile
         // which is simply not worth it. Without it there's no good and reliable way to get
         // the kernel names for the hash generation, so the warning is to be emitted instead.
@@ -1760,47 +1227,11 @@ bool CClangTranslationBlock::Translate(const STB_TranslateInputArgs *pInputArgs,
   }
 }
 
-/*****************************************************************************\
-
-Function:
-CClangTranslationBlock constructor
-
-Description:
-
-Input:
-
-Output:
-
-\*****************************************************************************/
 CClangTranslationBlock::CClangTranslationBlock(void) : m_GlobalData() {}
 
-/*****************************************************************************\
-
-Function:
-CClangTranslationBlock destructor
-
-Description:
-
-Input:
-
-Output:
-
-\*****************************************************************************/
 CClangTranslationBlock::~CClangTranslationBlock(void) {}
 
 
-/*****************************************************************************\
-
-Function:
-CClangTranslationBlock::Initialize
-
-Description:
-
-Input:
-
-Output:
-
-\*****************************************************************************/
 bool CClangTranslationBlock::Initialize(const STB_CreateArgs *pCreateArgs) {
   if (pCreateArgs == NULL) {
     return false;

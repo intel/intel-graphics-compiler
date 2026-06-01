@@ -7,7 +7,7 @@ SPDX-License-Identifier: MIT
 ============================= end_copyright_notice ===========================*/
 
 #include "ocl_igc_interface/impl/fcl_ocl_translation_ctx_impl.h"
-#include "AdaptorCommon/customApi.hpp"
+#include "common/igc_regkeys.hpp"
 #include "common/StringMacros.hpp"
 #include "common/VCPlatformSelector.hpp"
 #include "common/debug/Dump.hpp"
@@ -130,7 +130,7 @@ std::optional<FeShaderDumpData> getShaderDumpData(PLATFORM *Platform, const char
                                                   CIF::Builtins::BufferSimple *InternalOptions,
                                                   CIF::Builtins::BufferSimple *TracingOptions) {
 #if defined(_DEBUG) || defined(_INTERNAL)
-  if (!FCL_IGC_IS_FLAG_ENABLED(ShaderDumpEnable))
+  if (!IGC_IS_FLAG_ENABLED(ShaderDumpEnable))
     return {};
 
   return FeShaderDumpData(Platform, Selected, Stepping, Src, Options, InternalOptions, TracingOptions);
