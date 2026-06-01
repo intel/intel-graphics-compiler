@@ -67,6 +67,20 @@ This document lists all SPIR-V extensions supported by IGC and their platform re
 
 ---
 
+## SPV_INTEL_2d_block_io
+
+**Specification**: https://github.com/KhronosGroup/SPIRV-Registry/blob/main/extensions/INTEL/SPV_INTEL_2d_block_io.asciidoc
+
+> **Supported on**: XE_HPC+ (PVC, BMG, LUNARLAKE, PTL, NVL_XE3G, NVL, CRI)
+
+**Capabilities**:
+
+- **Subgroup2DBlockIOINTEL**
+- **Subgroup2DBlockTransformINTEL**
+- **Subgroup2DBlockTransposeINTEL**
+
+---
+
 ## SPV_INTEL_16bit_atomics
 
 **Specification**: https://github.com/intel/llvm/pull/20009
@@ -83,20 +97,6 @@ This document lists all SPIR-V extensions supported by IGC and their platform re
   > **Supported On**: XE3P+ (NVL, CRI)
 - **AtomicBFloat16MinMaxINTEL**
   > **Supported On**: XE3P+ (NVL, CRI)
-
----
-
-## SPV_INTEL_2d_block_io
-
-**Specification**: https://github.com/KhronosGroup/SPIRV-Registry/blob/main/extensions/INTEL/SPV_INTEL_2d_block_io.asciidoc
-
-> **Supported on**: XE_HPC+ (PVC, BMG, LUNARLAKE, PTL, NVL_XE3G, NVL, CRI)
-
-**Capabilities**:
-
-- **Subgroup2DBlockIOINTEL**
-- **Subgroup2DBlockTransformINTEL**
-- **Subgroup2DBlockTransposeINTEL**
 
 ---
 
