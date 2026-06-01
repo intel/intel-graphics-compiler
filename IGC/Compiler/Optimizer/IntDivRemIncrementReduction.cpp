@@ -31,6 +31,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/Transforms/Utils/BasicBlockUtils.h"
 #include "llvm/Support/Debug.h"
 #include "common/LLVMWarningsPop.hpp"
+#include "llvmWrapper/Analysis/ValueTracking.h"
 #include "llvmWrapper/IR/Instructions.h"
 
 #define DEBUG_TYPE "igc-divrem-increment-reduction"
@@ -489,8 +490,8 @@ std::pair<Value *, APInt> IntDivRemIncrementReductionImpl::getBaseAndOffset(Valu
       // only one operand is a constant
       if (I->getOpcode() == Instruction::Add || // ADD inst
           (I->getOpcode() == Instruction::Or && // OR inst with no common bits set between both operands
-           haveNoCommonBitsSet(I->getOperand(0), I->getOperand(1), I->getFunction()->getParent()->getDataLayout(),
-                               nullptr, I, DT))) {
+           IGCLLVM::haveNoCommonBitsSet(I->getOperand(0), I->getOperand(1),
+                                        I->getFunction()->getParent()->getDataLayout(), nullptr, I, DT))) {
         if (c0)
           return {I->getOperand(1), c0->getValue()};
         else

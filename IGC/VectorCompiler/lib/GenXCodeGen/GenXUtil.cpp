@@ -25,6 +25,7 @@ SPDX-License-Identifier: MIT
 #include "vc/Utils/GenX/Printf.h"
 #include "vc/Utils/General/Types.h"
 
+#include "llvmWrapper/Analysis/ValueTracking.h"
 #include "llvmWrapper/IR/Instructions.h"
 #include "llvm/ADT/MapVector.h"
 #include "llvm/ADT/PostOrderIterator.h"
@@ -1379,8 +1380,9 @@ Value *genx::sinkAdd(Value *V) {
           if (IdxVal != Inst)
             NeedChange = true;
         } else if (Inst->getOpcode() == Instruction::Or) {
-          if (!haveNoCommonBitsSet(Inst->getOperand(0), Inst->getOperand(1),
-                                   Inst->getModule()->getDataLayout()))
+          if (!IGCLLVM::haveNoCommonBitsSet(Inst->getOperand(0),
+                                            Inst->getOperand(1),
+                                            Inst->getModule()->getDataLayout()))
             break;
           Offset += CI->getSExtValue() * Scale;
           if (V != Inst)

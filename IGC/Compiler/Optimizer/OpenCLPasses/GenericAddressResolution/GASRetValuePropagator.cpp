@@ -312,5 +312,9 @@ void GASRetValuePropagator::updateDwarfAddressSpace(Function *F) {
 DIDerivedType *GASRetValuePropagator::getDIDerivedTypeWithDwarfAddrspace(DIDerivedType *type, unsigned dwarfTag) {
   return DIDerivedType::get(type->getContext(), type->getTag(), type->getName(), type->getFile(), type->getLine(),
                             type->getScope(), type->getBaseType(), type->getSizeInBits(), type->getAlignInBits(),
-                            type->getOffsetInBits(), dwarfTag, type->getFlags(), type->getExtraData());
+                            type->getOffsetInBits(), dwarfTag,
+#if LLVM_VERSION_MAJOR >= 22
+                            std::nullopt,
+#endif
+                            type->getFlags(), type->getExtraData());
 }

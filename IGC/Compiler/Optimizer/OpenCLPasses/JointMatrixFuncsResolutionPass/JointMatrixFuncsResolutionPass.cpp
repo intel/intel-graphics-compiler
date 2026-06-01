@@ -13,6 +13,8 @@ SPDX-License-Identifier: MIT
 #include "Compiler/IGCPassSupport.h"
 #include "Compiler/Optimizer/OCLBIUtils.h"
 #include "llvmWrapper/ADT/Optional.h"
+#include "llvmWrapper/IR/DIBuilder.h"
+#include "llvmWrapper/IR/DebugInfo.h"
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/IR/Type.h"
 #include "llvmWrapper/IR/Value.h"
@@ -3023,7 +3025,7 @@ std::string getTypeName(Type *T) {
 DIType *getOrCreateType(Type *T, Module *M) {
   DIType *diType = nullptr;
   DIBuilder Builder(*M, true);
-  DataLayout Layout(M);
+  const DataLayout Layout = M->getDataLayout();
 
   if (T->isPointerTy()) {
 
@@ -3071,7 +3073,7 @@ void JointMatrixFuncsResolutionPass::RecursiveSearchAndFixCanonicalizdGEPandLife
         uint64_t pointerSize = DL.getPointerSizeInBits(GEP->getPointerAddressSpace()) / 8;
         uint64_t offsetInElements = offset->getZExtValue() / pointerSize;
         uint64_t correctOffset = offsetInElements * matrixTypeAllocSize;
-        ConstantInt *newOffsetConstant = ConstantInt::get(offset->getType(), correctOffset);
+        ConstantInt *newOffsetConstant = ConstantInt::get(cast<IntegerType>(offset->getType()), correctOffset);
         GEP->setOperand(1, newOffsetConstant);
         LLVM_DEBUG(dbgs().indent(2) << "Fixed index: " << *GEP << "\n");
       }
@@ -3105,9 +3107,10 @@ void JointMatrixFuncsResolutionPass::visitAllocaInst(AllocaInst &I) {
 
   // update debug info
   {
-    TinyPtrVector<DbgDeclareInst *> DDIs = FindDbgDeclareUses(&I);
 
-    for (DbgDeclareInst *ddi : DDIs) {
+    auto DDIs = IGCLLVM::findDbgDeclareUses(&I);
+
+    for (auto *ddi : DDIs) {
       auto loc = ddi->getDebugLoc();
       auto var = ddi->getVariable();
       auto file = var->getFile();
@@ -3116,9 +3119,14 @@ void JointMatrixFuncsResolutionPass::visitAllocaInst(AllocaInst &I) {
 
       auto type = getOrCreateType(newInst->getType(), I.getModule());
 
-      DIBuilder builder(*(I.getModule()));
+      IGCLLVM::DIBuilder builder(*(I.getModule()));
       auto created = builder.createAutoVariable(scope, var->getName(), file, lineNo, type);
-      builder.insertDbgValueIntrinsic(newInst, created, builder.createExpression(), loc, ddi);
+#if LLVM_VERSION_MAJOR < 22
+      Instruction *insertBefore = ddi;
+#else
+      Instruction *insertBefore = const_cast<Instruction *>(ddi->getInstruction());
+#endif
+      builder.insertDbgValueIntrinsic(newInst, created, builder.createExpression(), loc, insertBefore);
       ddi->eraseFromParent();
     }
   }

@@ -40,6 +40,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/Transforms/Utils/Local.h"
 
 #include "llvmWrapper/Analysis/InstructionSimplify.h"
+#include "llvmWrapper/Analysis/ValueTracking.h"
 #include "llvmWrapper/IR/Instructions.h"
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/IR/Type.h"
@@ -1145,8 +1146,8 @@ bool GenXBaling::getIndexOr(Value *V, int &Offset) {
   }
   if (ConstantInt *CI = dyn_cast<ConstantInt>(C)) {
     // check for or could be changed to add
-    if (!haveNoCommonBitsSet(Inst->getOperand(0), Inst->getOperand(1),
-                             Inst->getModule()->getDataLayout())) {
+    if (!IGCLLVM::haveNoCommonBitsSet(Inst->getOperand(0), Inst->getOperand(1),
+                                      Inst->getModule()->getDataLayout())) {
       return false;
     }
     Offset = CI->getSExtValue();

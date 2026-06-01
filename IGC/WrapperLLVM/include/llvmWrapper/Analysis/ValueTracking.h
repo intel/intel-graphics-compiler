@@ -29,6 +29,16 @@ inline llvm::KnownBits computeKnownBits(const llvm::Value *V, const llvm::DataLa
   return llvm::computeKnownBits(V, DL, 0, AC, CxtI);
 #endif
 }
+
+inline bool haveNoCommonBitsSet(const llvm::Value *V1, const llvm::Value *V2, const llvm::DataLayout &DL,
+                                llvm::AssumptionCache *AC = nullptr, const llvm::Instruction *CxtI = nullptr,
+                                const llvm::DominatorTree *DT = nullptr) {
+#if LLVM_VERSION_MAJOR >= 22
+  return llvm::haveNoCommonBitsSet(V1, V2, llvm::SimplifyQuery(DL, DT, AC, CxtI));
+#else
+  return llvm::haveNoCommonBitsSet(V1, V2, DL, AC, CxtI, DT);
+#endif
+}
 } // namespace IGCLLVM
 
 #endif

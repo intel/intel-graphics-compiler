@@ -15,6 +15,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/PatternMatch.h>
 #include "common/LLVMWarningsPop.hpp"
 
+#include "llvmWrapper/IR/CmpPredicate.h"
 #include "Compiler/CodeGenPublic.h"
 
 using namespace llvm;
@@ -77,7 +78,7 @@ bool ProcessBICodeAssumption::runOnFunction(Function &F) {
 void ProcessBICodeAssumption::visitCallInst(CallInst &CI) {
 
   Instruction *I = nullptr;
-  ICmpInst::Predicate Pred;
+  IGCLLVM::ICmpInstPredicate Pred;
   ConstantInt *Const = nullptr;
 
   // Look for assume:

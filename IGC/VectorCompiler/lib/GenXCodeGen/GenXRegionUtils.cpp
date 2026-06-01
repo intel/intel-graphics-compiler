@@ -34,6 +34,7 @@ SPDX-License-Identifier: MIT
 #include <unordered_map>
 #include <optional>
 
+#include "llvmWrapper/Analysis/ValueTracking.h"
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/Support/TypeSize.h"
 #include "llvmWrapper/Support/MathExtras.h"
@@ -92,7 +93,7 @@ bool testOperator(const llvm::Instruction *const Operator) {
     const llvm::Value *const Op1 = Operator->getOperand(1);
     const DataLayout &DL = Operator->getModule()->getDataLayout();
 
-    Result = llvm::haveNoCommonBitsSet(Op0, Op1, DL);
+    Result = IGCLLVM::haveNoCommonBitsSet(Op0, Op1, DL);
     IGC_ASSERT_MESSAGE(Result, "OR should be changed to ADD with no errors");
   }
 
