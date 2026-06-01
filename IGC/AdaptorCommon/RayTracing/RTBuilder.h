@@ -392,8 +392,6 @@ private:
                                            Value *globalBufferPtr = nullptr);
   Value *getGeometryIndex(StackPointerVal *perLaneStackPtr, Value *leafType, Value *ShaderTy);
   Value *getPrimitiveIndex(StackPointerVal *perLaneStackPtr, Value *leafType, Value *ShaderTy);
-
-
   Value *getInstanceIndex(StackPointerVal *perLaneStackPtr, Value *ShaderTy);
   Value *getInstanceID(StackPointerVal *perLaneStackPtr, Value *ShaderTy);
   Value *TransformWorldToObject(StackPointerVal *StackPointerVal, unsigned int dim, bool isOrigin, Value *ShaderTy,

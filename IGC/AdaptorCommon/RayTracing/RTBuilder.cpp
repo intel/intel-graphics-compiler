@@ -1011,7 +1011,6 @@ Value *RTBuilder::getPrimitiveIndex(RTBuilder::StackPointerVal *perLaneStackPtr,
   }
 }
 
-
 Value *RTBuilder::getPrimitiveIndex(RTBuilder::StackPointerVal *perLaneStackPtr, Value *leafType, Value *ShaderTy) {
 
 
