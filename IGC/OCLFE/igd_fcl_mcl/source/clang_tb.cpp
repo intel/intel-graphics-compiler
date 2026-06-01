@@ -1011,7 +1011,7 @@ std::string GetCDefinesForEnableList(llvm::StringRef enableListStr, unsigned int
         enabledExtensions.fp16 = true;
       } else if (ext == "cl_khr_fp64") {
         enabledExtensions.fp64 = true;
-      } else if (ext.equals("cl_khr_kernel_clock")) {
+      } else if (ext == "cl_khr_kernel_clock") {
         enabledExtensions.kernelClock = true;
       }
 

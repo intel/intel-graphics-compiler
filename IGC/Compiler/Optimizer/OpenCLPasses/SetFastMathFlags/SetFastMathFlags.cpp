@@ -127,7 +127,7 @@ bool SetFastMathFlags::setFlags(Function &F, FastMathFlags fmfs) {
       }
 
       StringRef DemangledNameRef = DemangledName;
-      if (DemangledNameRef.equals(funcName)) {
+      if (DemangledNameRef == funcName) {
         isUnoptimizedFunc = true;
         break;
       }

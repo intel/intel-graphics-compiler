@@ -394,8 +394,8 @@ bool GASPropagator::visitCallInst(CallInst &I) {
     return false;
 
   PointerType *SrcPtrTy = cast<PointerType>(TheVal->getType());
-  bool IsGAS2P = Callee->getName().equals("__builtin_IB_memcpy_generic_to_private");
-  bool IsP2GAS = Callee->getName().equals("__builtin_IB_memcpy_private_to_generic");
+  bool IsGAS2P = Callee->getName() == "__builtin_IB_memcpy_generic_to_private";
+  bool IsP2GAS = Callee->getName() == "__builtin_IB_memcpy_private_to_generic";
   if (IsGAS2P || IsP2GAS) {
     Type *Tys[4];
     Tys[0] = IsGAS2P ? I.getArgOperand(0)->getType() : SrcPtrTy;
@@ -434,7 +434,7 @@ bool GASPropagator::visitCallInst(CallInst &I) {
     }
   }
 
-  if (Callee->getName().equals("__builtin_IB_to_local")) {
+  if (Callee->getName() == "__builtin_IB_to_local") {
     Type *DstTy = I.getType();
     Value *NewPtr = Constant::getNullValue(DstTy);
     if (SrcPtrTy->getAddressSpace() == ADDRESS_SPACE_LOCAL) {
@@ -448,7 +448,7 @@ bool GASPropagator::visitCallInst(CallInst &I) {
     return true;
   }
 
-  if (Callee->getName().equals("__builtin_IB_to_private")) {
+  if (Callee->getName() == "__builtin_IB_to_private") {
     Type *DstTy = I.getType();
     Value *NewPtr = Constant::getNullValue(DstTy);
     if (SrcPtrTy->getAddressSpace() == ADDRESS_SPACE_PRIVATE) {

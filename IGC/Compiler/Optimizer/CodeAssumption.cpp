@@ -62,8 +62,8 @@ void CodeAssumption::uniformHelper(Module *M) {
     StringRef FN = F->getName();
 
     // sub_group_id
-    if (!FN.equals("_Z25__spirv_BuiltInSubgroupIdv") && !FN.equals("__builtin_spirv_BuiltInSubgroupId") &&
-        !FN.equals("_Z16get_sub_group_idv"))
+    if (FN != "_Z25__spirv_BuiltInSubgroupIdv" && FN != "__builtin_spirv_BuiltInSubgroupId" &&
+        FN != "_Z16get_sub_group_idv")
       continue;
     // find all the callees
     for (auto ui = F->use_begin(), ue = F->use_end(); ui != ue; ++ui) {

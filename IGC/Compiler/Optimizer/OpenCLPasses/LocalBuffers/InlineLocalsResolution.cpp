@@ -309,7 +309,7 @@ void InlineLocalsResolution::collectInfoOnSharedLocalMem(Module &M) {
         Instruction *inst = &(*I);
         if (CallInst *CI = dyn_cast<CallInst>(inst)) {
           Function *pFunc = CI->getCalledFunction();
-          if (pFunc && pFunc->getName().equals(BUILTIN_MEMPOOL)) {
+          if (pFunc && pFunc->getName() == BUILTIN_MEMPOOL) {
             // should always be called with constant operands
             IGC_ASSERT(isa<ConstantInt>(CI->getArgOperand(0)));
             IGC_ASSERT(isa<ConstantInt>(CI->getArgOperand(1)));

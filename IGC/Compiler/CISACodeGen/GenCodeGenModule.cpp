@@ -133,7 +133,7 @@ void GenXCodeGenModule::detectUnpromotableFunctions(Module *pM) {
   // Find functions that have uses of "localSLM" globals
   for (auto gi = pM->global_begin(), ge = pM->global_end(); gi != ge; gi++) {
     GlobalVariable *GV = dyn_cast<GlobalVariable>(gi);
-    if (GV && GV->hasSection() && GV->getSection().equals("localSLM")) {
+    if (GV && GV->hasSection() && GV->getSection() == "localSLM") {
       for (auto user : GV->users()) {
         if (Instruction *U = dyn_cast<Instruction>(user)) {
           Function *pF = U->getParent()->getParent();
@@ -186,7 +186,7 @@ void GenXCodeGenModule::processFunction(Function &F) {
 
   std::vector<llvm::Function *> Callers;
   if (IGC_IS_FLAG_ENABLED(StackOverflowDetection)) {
-    if (F.getName().equals("__stackoverflow_detection")) {
+    if (F.getName() == "__stackoverflow_detection") {
       // Mark all stack calls as users of this detection function.
       // It will be used as a subroutine, so it needs to be cloned for
       // each of stack call functions.

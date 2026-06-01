@@ -63,8 +63,7 @@ void FoldKnownWorkGroupSizes::visitCallInst(llvm::CallInst &I) {
   }
   StringRef funcName = calledFunction->getName();
 
-  if (funcName.equals(WIFuncsAnalysis::GET_GLOBAL_OFFSET) &&
-      ctx->getModuleMetaData()->compOpt.replaceGlobalOffsetsByZero) {
+  if (funcName == WIFuncsAnalysis::GET_GLOBAL_OFFSET && ctx->getModuleMetaData()->compOpt.replaceGlobalOffsetsByZero) {
     if (calledFunction->getReturnType() == Type::getInt32Ty(module->getContext())) {
       ConstantInt *IntZero = ConstantInt::get(Type::getInt32Ty(module->getContext()), 0);
       I.replaceAllUsesWith(IntZero);
@@ -72,7 +71,7 @@ void FoldKnownWorkGroupSizes::visitCallInst(llvm::CallInst &I) {
         I.eraseFromParent();
       m_changed = true;
     }
-  } else if (funcName.equals(WIFuncsAnalysis::GET_ENQUEUED_LOCAL_SIZE)) {
+  } else if (funcName == WIFuncsAnalysis::GET_ENQUEUED_LOCAL_SIZE) {
     auto Dims = IGCMetaDataHelper::getThreadGroupDims(*ctx->getMetaDataUtils(), I.getFunction());
 
     if (!Dims)

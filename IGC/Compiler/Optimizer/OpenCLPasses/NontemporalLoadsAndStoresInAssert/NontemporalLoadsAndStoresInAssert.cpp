@@ -40,7 +40,7 @@ bool NontemporalLoadsAndStoresInAssert::runOnModule(Module &M) {
   bool changed = false;
   for (Function &F : M) {
 
-    if (!F.getName().equals(ASSERT_FUNCTION_NAME))
+    if (F.getName() != ASSERT_FUNCTION_NAME)
       continue;
 
     for (auto I = inst_begin(F); I != inst_end(F); ++I) {

@@ -204,37 +204,37 @@ void WIFuncsAnalysis::visitCallInst(CallInst &CI) {
 
   // Check for OpenCL WI function calls
   StringRef funcName = F->getName();
-  if (funcName.equals(GET_LOCAL_ID_X) || funcName.equals(GET_LOCAL_ID_Y) || funcName.equals(GET_LOCAL_ID_Z)) {
+  if (funcName == GET_LOCAL_ID_X || funcName == GET_LOCAL_ID_Y || funcName == GET_LOCAL_ID_Z) {
     m_hasLocalID = true;
-  } else if (funcName.equals(GET_GROUP_ID)) {
+  } else if (funcName == GET_GROUP_ID) {
     m_hasGroupID = true;
-  } else if (funcName.equals(GET_LOCAL_THREAD_ID)) {
+  } else if (funcName == GET_LOCAL_THREAD_ID) {
     m_hasLocalThreadID = true;
-  } else if (funcName.equals(WIFuncsAnalysis::GET_GLOBAL_OFFSET)) {
+  } else if (funcName == WIFuncsAnalysis::GET_GLOBAL_OFFSET) {
     m_hasGlobalOffset = true;
-  } else if (funcName.equals(GET_GLOBAL_SIZE)) {
+  } else if (funcName == GET_GLOBAL_SIZE) {
     m_hasGlobalSize = true;
-  } else if (funcName.equals(GET_LOCAL_SIZE)) {
+  } else if (funcName == GET_LOCAL_SIZE) {
     m_hasLocalSize = true;
-  } else if (funcName.equals(GET_WORK_DIM)) {
+  } else if (funcName == GET_WORK_DIM) {
     m_hasWorkDim = true;
-  } else if (funcName.equals(GET_NUM_GROUPS)) {
+  } else if (funcName == GET_NUM_GROUPS) {
     m_hasNumGroups = true;
-  } else if (funcName.equals(GET_ENQUEUED_LOCAL_SIZE)) {
+  } else if (funcName == GET_ENQUEUED_LOCAL_SIZE) {
     m_hasEnqueuedLocalSize = true;
-  } else if (funcName.equals(GET_STAGE_IN_GRID_ORIGIN)) {
+  } else if (funcName == GET_STAGE_IN_GRID_ORIGIN) {
     m_hasStageInGridOrigin = true;
-  } else if (funcName.equals(GET_STAGE_IN_GRID_SIZE)) {
+  } else if (funcName == GET_STAGE_IN_GRID_SIZE) {
     m_hasStageInGridSize = true;
-  } else if (funcName.equals(GET_SYNC_BUFFER)) {
+  } else if (funcName == GET_SYNC_BUFFER) {
     m_hasSyncBuffer = true;
-  } else if (funcName.equals(GET_ASSERT_BUFFER)) {
+  } else if (funcName == GET_ASSERT_BUFFER) {
     m_hasAssertBuffer = true;
-  } else if (funcName.equals(GET_REGION_GROUP_SIZE)) {
+  } else if (funcName == GET_REGION_GROUP_SIZE) {
     m_hasRegionGroupSize = true;
-  } else if (funcName.equals(GET_REGION_GROUP_WG_COUNT)) {
+  } else if (funcName == GET_REGION_GROUP_WG_COUNT) {
     m_hasRegionGroupWGCount = true;
-  } else if (funcName.equals(GET_REGION_GROUP_BARRIER_BUFFER)) {
+  } else if (funcName == GET_REGION_GROUP_BARRIER_BUFFER) {
     m_hasRegionGroupBarrierBuffer = true;
   }
 }

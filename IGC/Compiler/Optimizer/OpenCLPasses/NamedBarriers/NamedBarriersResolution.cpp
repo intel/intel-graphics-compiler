@@ -92,10 +92,10 @@ bool NamedBarriersResolution::runOnModule(Module &M) {
 
   for (auto &func : M.getFunctionList()) {
     StringRef funcName = func.getName();
-    if (funcName.equals(NamedBarriersResolution::NAMED_BARRIERS_INIT)) {
+    if (funcName == NamedBarriersResolution::NAMED_BARRIERS_INIT) {
       nbarrierInitF = &func;
-    } else if (funcName.equals(NamedBarriersResolution::NAMED_BARRIERS_BARRIER_ARG2) ||
-               funcName.equals(NamedBarriersResolution::NAMED_BARRIERS_BARRIER_ARG3)) {
+    } else if (funcName == NamedBarriersResolution::NAMED_BARRIERS_BARRIER_ARG2 ||
+               funcName == NamedBarriersResolution::NAMED_BARRIERS_BARRIER_ARG3) {
       nbarrierBarrierF = &func;
     } else {
       visit(func);
@@ -274,12 +274,12 @@ int NamedBarriersResolution::AlignNBCnt2BarrierNumber(uint NBCnt) {
 }
 
 bool NamedBarriersResolution::isNamedBarrierInit(StringRef &FunctionName) {
-  return FunctionName.equals(NamedBarriersResolution::NAMED_BARRIERS_INIT);
+  return FunctionName == NamedBarriersResolution::NAMED_BARRIERS_INIT;
 }
 
 bool NamedBarriersResolution::isNamedBarrierSync(StringRef &FunctionName) {
-  return FunctionName.equals(NamedBarriersResolution::NAMED_BARRIERS_BARRIER_ARG2) ||
-         FunctionName.equals(NamedBarriersResolution::NAMED_BARRIERS_BARRIER_ARG3);
+  return FunctionName == NamedBarriersResolution::NAMED_BARRIERS_BARRIER_ARG2 ||
+         FunctionName == NamedBarriersResolution::NAMED_BARRIERS_BARRIER_ARG3;
 }
 
 void NamedBarriersResolution::HandleNamedBarrierInitSW(CallInst &NBarrierInitCall) {

@@ -38,7 +38,7 @@ bool HandleDevicelibAssert::runOnModule(Module &M) {
   bool changed = false;
   for (Function &F : M) {
 
-    if (!F.getName().equals(ASSERT_FUNCTION_NAME))
+    if (F.getName() != ASSERT_FUNCTION_NAME)
       continue;
 
     if (F.isDeclaration())

@@ -108,41 +108,41 @@ void WIFuncResolution::visitCallInst(CallInst &CI) {
   // Add appropriate sequence and handle out of range where needed
   StringRef funcName = CI.getCalledFunction()->getName();
 
-  if (funcName.equals(WIFuncsAnalysis::GET_LOCAL_ID_X)) {
+  if (funcName == WIFuncsAnalysis::GET_LOCAL_ID_X) {
     wiRes = getLocalId(CI, ImplicitArg::LOCAL_ID_X);
-  } else if (funcName.equals(WIFuncsAnalysis::GET_LOCAL_ID_Y)) {
+  } else if (funcName == WIFuncsAnalysis::GET_LOCAL_ID_Y) {
     wiRes = getLocalId(CI, ImplicitArg::LOCAL_ID_Y);
-  } else if (funcName.equals(WIFuncsAnalysis::GET_LOCAL_ID_Z)) {
+  } else if (funcName == WIFuncsAnalysis::GET_LOCAL_ID_Z) {
     wiRes = getLocalId(CI, ImplicitArg::LOCAL_ID_Z);
-  } else if (funcName.equals(WIFuncsAnalysis::GET_GROUP_ID)) {
+  } else if (funcName == WIFuncsAnalysis::GET_GROUP_ID) {
     wiRes = getGroupId(CI);
-  } else if (funcName.equals(WIFuncsAnalysis::GET_LOCAL_THREAD_ID)) {
+  } else if (funcName == WIFuncsAnalysis::GET_LOCAL_THREAD_ID) {
     wiRes = getLocalThreadId(CI);
-  } else if (funcName.equals(WIFuncsAnalysis::GET_GLOBAL_SIZE)) {
+  } else if (funcName == WIFuncsAnalysis::GET_GLOBAL_SIZE) {
     wiRes = getGlobalSize(CI);
-  } else if (funcName.equals(WIFuncsAnalysis::GET_LOCAL_SIZE)) {
+  } else if (funcName == WIFuncsAnalysis::GET_LOCAL_SIZE) {
     wiRes = getLocalSize(CI);
-  } else if (funcName.equals(WIFuncsAnalysis::GET_ENQUEUED_LOCAL_SIZE)) {
+  } else if (funcName == WIFuncsAnalysis::GET_ENQUEUED_LOCAL_SIZE) {
     wiRes = getEnqueuedLocalSize(CI);
-  } else if (funcName.equals(WIFuncsAnalysis::GET_GLOBAL_OFFSET)) {
+  } else if (funcName == WIFuncsAnalysis::GET_GLOBAL_OFFSET) {
     wiRes = getGlobalOffset(CI);
-  } else if (funcName.equals(WIFuncsAnalysis::GET_WORK_DIM)) {
+  } else if (funcName == WIFuncsAnalysis::GET_WORK_DIM) {
     wiRes = getWorkDim(CI);
-  } else if (funcName.equals(WIFuncsAnalysis::GET_NUM_GROUPS)) {
+  } else if (funcName == WIFuncsAnalysis::GET_NUM_GROUPS) {
     wiRes = getNumGroups(CI);
-  } else if (funcName.equals(WIFuncsAnalysis::GET_STAGE_IN_GRID_ORIGIN)) {
+  } else if (funcName == WIFuncsAnalysis::GET_STAGE_IN_GRID_ORIGIN) {
     wiRes = getStageInGridOrigin(CI);
-  } else if (funcName.equals(WIFuncsAnalysis::GET_STAGE_IN_GRID_SIZE)) {
+  } else if (funcName == WIFuncsAnalysis::GET_STAGE_IN_GRID_SIZE) {
     wiRes = getStageInGridSize(CI);
-  } else if (funcName.equals(WIFuncsAnalysis::GET_SYNC_BUFFER)) {
+  } else if (funcName == WIFuncsAnalysis::GET_SYNC_BUFFER) {
     wiRes = getSyncBufferPtr(CI);
-  } else if (funcName.equals(WIFuncsAnalysis::GET_ASSERT_BUFFER)) {
+  } else if (funcName == WIFuncsAnalysis::GET_ASSERT_BUFFER) {
     wiRes = getAssertBufferPtr(CI);
-  } else if (funcName.equals(WIFuncsAnalysis::GET_REGION_GROUP_SIZE)) {
+  } else if (funcName == WIFuncsAnalysis::GET_REGION_GROUP_SIZE) {
     wiRes = getRegionGroupSize(CI);
-  } else if (funcName.equals(WIFuncsAnalysis::GET_REGION_GROUP_WG_COUNT)) {
+  } else if (funcName == WIFuncsAnalysis::GET_REGION_GROUP_WG_COUNT) {
     wiRes = getRegionGroupWGCount(CI);
-  } else if (funcName.equals(WIFuncsAnalysis::GET_REGION_GROUP_BARRIER_BUFFER)) {
+  } else if (funcName == WIFuncsAnalysis::GET_REGION_GROUP_BARRIER_BUFFER) {
     wiRes = getRegionGroupBarrierBufferPtr(CI);
   } else {
     // Non WI function, do nothing

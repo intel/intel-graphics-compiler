@@ -65,9 +65,9 @@ void ResolveSampledImageBuiltins::visitCallInst(CallInst &CI) {
   Value *res = nullptr;
   StringRef funcName = CI.getCalledFunction()->getName();
 
-  if (funcName.equals(ResolveSampledImageBuiltins::GET_IMAGE)) {
+  if (funcName == ResolveSampledImageBuiltins::GET_IMAGE) {
     res = lowerGetImage(CI);
-  } else if (funcName.equals(ResolveSampledImageBuiltins::GET_SAMPLER)) {
+  } else if (funcName == ResolveSampledImageBuiltins::GET_SAMPLER) {
     res = lowerGetSampler(CI);
   } else {
     return;
