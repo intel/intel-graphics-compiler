@@ -16,6 +16,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/Dominators.h>
 #include <llvm/Transforms/Utils/BasicBlockUtils.h>
 #include "common/LLVMWarningsPop.hpp"
+#include "llvmWrapper/IR/Instructions.h"
 #include <llvmWrapper/IR/InstrTypes.h>
 #include <llvmWrapper/IR/BasicBlock.h>
 #include "Probe/Assertion.h"
@@ -30,13 +31,13 @@ static bool samplesAveragedEqually(const std::vector<Instruction *> &similarSamp
   unsigned totalSimilarSamples = similarToTexelSampleInstsCount + 1; // texel(sample2) + similar to texel(sample3,4,5)
   const float cmpAveragingFactor = (float)1.0 / (float(totalSimilarSamples));
   for (auto sampleInst : similarSampleInsts) {
-    Instruction *inst = sampleInst->getNextNonDebugInstruction();
+    Instruction *inst = IGCLLVM::getNextNonDebugInstruction(sampleInst);
     std::set<Value *> texels; // for storing texel_x, texel_y, texel_z of this sampleInst
 
     for (int i = 0; i < 3; i++) {
       if (inst->getOpcode() == Instruction::ExtractElement) {
         texels.insert(inst);
-        inst = inst->getNextNonDebugInstruction();
+        inst = IGCLLVM::getNextNonDebugInstruction(inst);
       } else {
         return false; // Sample->followed by 3 EE == this  pattern is not matching
       }
@@ -59,7 +60,7 @@ static bool samplesAveragedEqually(const std::vector<Instruction *> &similarSamp
       } else {
         return false; // 3 EE -> followed by 3 FMuls == this  pattern is not matching
       }
-      inst = inst->getNextNonDebugInstruction();
+      inst = IGCLLVM::getNextNonDebugInstruction(inst);
     }
     IGC_ASSERT_MESSAGE(texels.size() == 0, " All texels.x/y/z were not multiplied by same float");
     texels.clear();
@@ -92,7 +93,7 @@ static bool detectSampleAveragePattern2(const std::vector<Instruction *> &sample
   Instruction *rgb[3] = {nullptr};
 
   for (unsigned i = 0; i < nSampleInsts; i++) {
-    Instruction *inst = sampleInsts[i]->getNextNonDebugInstruction();
+    Instruction *inst = IGCLLVM::getNextNonDebugInstruction(sampleInsts[i]);
     for (unsigned j = 0; j < 3; j++) {
       ExtractElementInst *ei = dyn_cast<ExtractElementInst>(inst);
       if (!ei) {
@@ -122,7 +123,7 @@ static bool detectSampleAveragePattern2(const std::vector<Instruction *> &sample
         }
         rgb[idx] = fadd;
       }
-      inst = inst->getNextNonDebugInstruction();
+      inst = IGCLLVM::getNextNonDebugInstruction(inst);
     }
     if (isa<ExtractElementInst>(inst)) {
       return false;
@@ -342,13 +343,13 @@ bool GatingSimilarSamples::runOnFunction(llvm::Function &F) {
     return false;
 
   // extract original texel.xyz and averaged color.xyz values for creating 3 PHI nodes
-  Instruction *texel_x = texelSample->getNextNonDebugInstruction();
+  Instruction *texel_x = IGCLLVM::getNextNonDebugInstruction(texelSample);
   if (!dyn_cast<ExtractElementInst>(texel_x))
     return false;
-  Instruction *texel_y = texel_x->getNextNonDebugInstruction();
+  Instruction *texel_y = IGCLLVM::getNextNonDebugInstruction(texel_x);
   if (!dyn_cast<ExtractElementInst>(texel_y))
     return false;
-  Instruction *texel_z = texel_y->getNextNonDebugInstruction();
+  Instruction *texel_z = IGCLLVM::getNextNonDebugInstruction(texel_y);
   if (!dyn_cast<ExtractElementInst>(texel_z))
     return false;
 

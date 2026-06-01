@@ -194,7 +194,7 @@ Value *BlockMemOpAddrScalarizationPass::insertBroadcast(Instruction *InstForBroa
   if (isa<PHINode>(InstForBroadcast))
     PlaceForInsert = IGCLLVM::getFirstNonPHI(InstForBroadcast->getParent());
   else
-    PlaceForInsert = InstForBroadcast->getNextNonDebugInstruction();
+    PlaceForInsert = IGCLLVM::getNextNonDebugInstruction(InstForBroadcast);
 
   IRBuilder<> Builder(PlaceForInsert);
 

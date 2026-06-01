@@ -1221,11 +1221,11 @@ bool PrivateMemoryResolution::resolveAllocaInstructions(bool privateOnStack, boo
   // because getImplicitArgValue() can move instructions, and it means that the insert point will be moved too.
   Instruction *pointInstr = &*entryBuilder.GetInsertPoint();
   if (pointInstr->isDebugOrPseudoInst())
-    pointInstr = pointInstr->getNextNonDebugInstruction();
+    pointInstr = IGCLLVM::getNextNonDebugInstruction(pointInstr);
   if (GenIntrinsicInst *inst = dyn_cast_or_null<GenIntrinsicInst>(pointInstr)) {
     if (inst->getIntrinsicID() == GenISAIntrinsic::GenISA_getR0 ||
         inst->getIntrinsicID() == GenISAIntrinsic::GenISA_getPrivateBase)
-      pointInstr = inst->getNextNonDebugInstruction();
+      pointInstr = IGCLLVM::getNextNonDebugInstruction(inst);
   }
 
   // Find the implicit argument representing r0 and the private memory base.

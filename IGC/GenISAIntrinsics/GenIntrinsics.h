@@ -13,6 +13,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/IR/Function.h"
 #include "common/LLVMWarningsPop.hpp"
 #include "llvmWrapper/ADT/StringRef.h"
+#include "llvmWrapper/IR/Intrinsics.h"
 
 #include <string>
 #include <vector>
@@ -33,7 +34,7 @@ struct IntrinsicComments {
 
 IntrinsicComments getIntrinsicComments(ID id);
 
-/// Intrinsic::getDeclaration(M, ID) - Create or insert an LLVM Function
+/// IGCLLVM::getOrInsertDeclaration(M, ID) - Create or insert an LLVM Function
 /// declaration for an intrinsic, and return it.
 ///
 /// The OverloadedTys parameter is for intrinsics with overloaded types

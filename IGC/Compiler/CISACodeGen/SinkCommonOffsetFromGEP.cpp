@@ -407,7 +407,8 @@ static bool sinkCommonOffsetForGroup(const CommonBaseGroup &Group) {
       Indices.push_back(ConstantInt::get(Offset->getType(), 0));
     Indices.push_back(Offset);
 
-    auto OffsetGEP = GetElementPtrInst::Create(PhiElType, BasePhi, Indices, "", BasePhi->getNextNonDebugInstruction());
+    auto OffsetGEP =
+        GetElementPtrInst::Create(PhiElType, BasePhi, Indices, "", IGCLLVM::getNextNonDebugInstruction(BasePhi));
 
     bool isInBounds = false;
     for (const auto &Gep : Geps)

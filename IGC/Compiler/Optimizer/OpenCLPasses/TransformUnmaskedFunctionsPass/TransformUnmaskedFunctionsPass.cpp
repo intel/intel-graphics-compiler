@@ -12,6 +12,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/MetaDataApi/MetaDataApi.h"
 #include "Compiler/Optimizer/OpenCLPasses/TransformUnmaskedFunctionsPass/TransformUnmaskedFunctionsPass.h"
 #include "llvmWrapper/Transforms/Utils/Cloning.h"
+#include "llvmWrapper/IR/Instructions.h"
 #include "Probe/Assertion.h"
 
 #include "common/LLVMWarningsPush.hpp"
@@ -52,7 +53,7 @@ static void annotateUnmaskedCallSite(CallInst *CI) {
   Function *unmaskedEnd = GenISAIntrinsic::getDeclaration(M, GenISAIntrinsic::GenISA_UnmaskedRegionEnd);
 
   builder.CreateCall(unmaskedBegin);
-  builder.SetInsertPoint(CI->getNextNonDebugInstruction());
+  builder.SetInsertPoint(IGCLLVM::getNextNonDebugInstruction(CI));
   builder.CreateCall(unmaskedEnd);
 }
 

@@ -18,12 +18,12 @@ SPDX-License-Identifier: MIT
 namespace IGCLLVM {
 using Intrinsic = llvm::Intrinsic::IndependentIntrinsics;
 
-template <typename... Tys>
-inline llvm::Function *getOrInsertDeclaration(llvm::Module *M, llvm::Intrinsic::ID Id, Tys &&...Types) {
+inline llvm::Function *getOrInsertDeclaration(llvm::Module *M, llvm::Intrinsic::ID Id,
+                                              llvm::ArrayRef<llvm::Type *> Tys = {}) {
 #if LLVM_VERSION_MAJOR >= 22
-  return llvm::Intrinsic::getOrInsertDeclaration(M, Id, std::forward<Tys>(Types)...);
+  return llvm::Intrinsic::getOrInsertDeclaration(M, Id, Tys);
 #else
-  return llvm::Intrinsic::getDeclaration(M, Id, std::forward<Tys>(Types)...);
+  return llvm::Intrinsic::getDeclaration(M, Id, Tys);
 #endif
 }
 

@@ -703,7 +703,7 @@ bool MemOpt::removeRedBlockRead(GenIntrinsicInst *LeadingBlockRead, MemRefListTy
     aMI->first = BlockReadToOptimize;
   }
 
-  Builder.SetInsertPoint(BlockReadToOptimize->getNextNonDebugInstruction());
+  Builder.SetInsertPoint(IGCLLVM::getNextNonDebugInstruction(BlockReadToOptimize));
   Value *subgroupLocalInvocationId = nullptr;
 
   // Go through the collected blockreads to replace them with shuffles
@@ -729,7 +729,7 @@ bool MemOpt::removeRedBlockRead(GenIntrinsicInst *LeadingBlockRead, MemRefListTy
 
       std::get<1>(ITuple)->first = nullptr;
       I->eraseFromParent();
-      Builder.SetInsertPoint(BlockReadToOptimize->getNextNonDebugInstruction());
+      Builder.SetInsertPoint(IGCLLVM::getNextNonDebugInstruction(BlockReadToOptimize));
     }
   }
   aMI->first = BlockReadToOptimize;

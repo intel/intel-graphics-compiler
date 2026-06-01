@@ -13,7 +13,7 @@ SPDX-License-Identifier: MIT
 #endif
 #include <algorithm>
 #include "llvmWrapper/IR/Instructions.h"
-
+#include "llvmWrapper/IR/Intrinsics.h"
 //
 // IGCVectorizer pass currently looks for insert elements instructions
 // that are going inside LSC2DBlockWrite & sub_group_dpas
@@ -426,7 +426,7 @@ bool IGCVectorizer::handlePHI(VecArr &Slice) {
       Instruction *InsertPoint = getInsertPointForVector(ForVector);
       if (!InsertPoint)
         return false;
-      auto CreatedVec = createVector(ForVector, InsertPoint->getNextNonDebugInstruction());
+      auto CreatedVec = createVector(ForVector, IGCLLVM::getNextNonDebugInstruction(InsertPoint));
       PRINT_INST_NL(CreatedVec);
       Operands.push_back(CreatedVec);
     } else {
@@ -497,7 +497,7 @@ Instruction *IGCVectorizer::getInsertPointForVector(VecArr &Arr) {
   if (llvm::isa<llvm::PHINode>(InsertPoint))
     InsertPoint = IGCLLVM::getFirstNonPHI(InsertPoint->getParent());
   if (InsertPoint->isTerminator())
-    InsertPoint = InsertPoint->getPrevNonDebugInstruction();
+    InsertPoint = IGCLLVM::getPrevNonDebugInstruction(InsertPoint);
 
   return InsertPoint;
 }
@@ -517,7 +517,7 @@ Instruction *IGCVectorizer::getInsertPointForCreatedInstruction(VecVal &Operands
 
   Instruction *InsertPoint = IGCLLVM::getFirstNonPHI(Slice.front()->getParent());
   if (InstOperands.size() != 0) {
-    InsertPoint = getMaxPoint(InstOperands)->getNextNonDebugInstruction();
+    InsertPoint = IGCLLVM::getNextNonDebugInstruction(getMaxPoint(InstOperands));
     // if insert point is PHI, shift it to the first nonPHI to be safe
     if (llvm::isa<llvm::PHINode>(InsertPoint))
       InsertPoint = IGCLLVM::getFirstNonPHI(InsertPoint->getParent());
@@ -591,7 +591,7 @@ void IGCVectorizer::replaceSliceInstructionsWithExtract(VecArr &Slice, Instructi
   PRINT_INST_NL(CreatedInst);
 
   Instruction *InsertPoint = (llvm::isa<PHINode>(Slice.front())) ? IGCLLVM::getFirstNonPHI(CreatedInst->getParent())
-                                                                 : CreatedInst->getNextNonDebugInstruction();
+                                                                 : IGCLLVM::getNextNonDebugInstruction(CreatedInst);
 
   for (size_t i = 0; i < Slice.size(); i++) {
 
@@ -1119,7 +1119,7 @@ bool IGCVectorizer::handleIntrinsic(VecArr &Slice) {
   llvm::VectorType *VectorType = llvm::FixedVectorType::get(First->getType(), Slice.size());
 
   auto IntrinsicID = llvm::cast<IntrinsicInst>(First)->getIntrinsicID();
-  auto *Decl = Intrinsic::getDeclaration(M, IntrinsicID, {VectorType});
+  auto *Decl = IGCLLVM::getOrInsertDeclaration(M, IntrinsicID, {VectorType});
   PRINT_DECL_NL(Decl);
 
   auto *CreatedInst = llvm::CallInst::Create(Decl, Operands);
@@ -1394,7 +1394,7 @@ Value *IGCVectorizer::vectorizeSlice(VecArr &Slice, unsigned int OperNum) {
       PRINT_LOG_NL("Couldn't find insert point");
       return nullptr;
     }
-    NewVector = createVector(NotVectorizedInstruction, InsertPoint->getNextNonDebugInstruction());
+    NewVector = createVector(NotVectorizedInstruction, IGCLLVM::getNextNonDebugInstruction(InsertPoint));
     PRINT_LOG("New vector created: ");
     PRINT_INST_NL(NewVector);
   }
@@ -1520,7 +1520,7 @@ bool IGCVectorizerCommon::checkDependencyAndTryToEliminate(VecArr &Slice, unsign
   Instruction *SearchPoint = MinPoint;
   SliceScope.push_back(SearchPoint);
   while (SearchPoint != MaxPoint) {
-    SearchPoint = SearchPoint->getNextNonDebugInstruction();
+    SearchPoint = IGCLLVM::getNextNonDebugInstruction(SearchPoint);
     SliceScope.push_back(SearchPoint);
   }
 
@@ -1566,7 +1566,7 @@ bool IGCVectorizerCommon::checkDependencyAndTryToEliminate(VecArr &Slice, unsign
     }
   }
 
-  Instruction *AfterInsertPoint = MaxPoint->getNextNonDebugInstruction();
+  Instruction *AfterInsertPoint = IGCLLVM::getNextNonDebugInstruction(MaxPoint);
   // scheduling part
   // everything that doesn't depend on slice values goes before
   // everything that DEPENDS on slice-value goes after
@@ -1923,7 +1923,7 @@ void IGCVectorCoalescer::mergeHorizontalSliceIntrinsic(VecArr &Slice) {
 
   ShuffleIn(Slice, 0, Slice.front()->getNumOperands() - 1, Operands);
   auto IntrinsicID = llvm::cast<IntrinsicInst>(Slice.front())->getIntrinsicID();
-  auto *Decl = Intrinsic::getDeclaration(M, IntrinsicID, {vectorType});
+  auto *Decl = IGCLLVM::getOrInsertDeclaration(M, IntrinsicID, {vectorType});
   auto *CreatedInst = llvm::CallInst::Create(Decl, Operands);
 
   CreatedInst->setName("coalesced_intrinsic");

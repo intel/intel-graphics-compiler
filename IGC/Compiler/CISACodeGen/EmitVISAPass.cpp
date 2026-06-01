@@ -16855,8 +16855,8 @@ void EmitPass::ResetRoundingMode(Instruction *inst) {
   // next explicit-RM setting instruction (genintrinsic).
   bool nextImplicitFPCvtInt = false;
   bool nextImplicitFP = false;
-  for (auto nextInst = inst->getNextNonDebugInstruction(); nextInst != nullptr;
-       nextInst = nextInst->getNextNonDebugInstruction()) {
+  for (auto nextInst = IGCLLVM::getNextNonDebugInstruction(inst); nextInst != nullptr;
+       nextInst = IGCLLVM::getNextNonDebugInstruction(nextInst)) {
     if (ignoresRoundingMode(nextInst)) {
       continue;
     }
