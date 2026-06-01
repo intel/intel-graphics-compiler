@@ -1146,7 +1146,7 @@ bool GEPLoopStrengthReduction::runOnFunction(llvm::Function &F) {
   auto *WI = &FRPE.getWIAnalysis(&F);
 
   // Using one SCEV expander between all reductions reduces number of duplicated new instructions.
-  auto E = SCEVExpander(SE, DL, "gep-loop-strength-reduction");
+  auto E = IGCLLVM::IGCSCEVExpander(SE, DL, "gep-loop-strength-reduction");
 
   SmallVector<ReductionCandidateGroup, 32> Candidates;
 

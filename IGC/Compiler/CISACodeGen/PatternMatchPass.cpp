@@ -3196,7 +3196,7 @@ bool CodeGenPatternMatch::MatchLoadStoreAtomicsStatelessUniformBase(llvm::Instru
     auto ScaleImm = 1ll << Scale->getSExtValue();
     if (DataSizeInBytes == ScaleImm) {
       Offset = NotScaledOffset;
-      Scale = ConstantInt::get(Scale->getType(), ScaleImm);
+      Scale = ConstantInt::get(cast<IntegerType>(Scale->getType()), ScaleImm);
     } else {
       Scale = nullptr;
     }
@@ -3405,7 +3405,7 @@ bool CodeGenPatternMatch::MatchLoadStoreAtomicsStatefulEff64(GenIntrinsicInst *I
         int64_t ScaleImm = 1ll << Scale->getSExtValue();
         if (DataSizeInBytes == ScaleImm) {
           VarOffset = NotScaledOffset;
-          Scale = ConstantInt::get(Scale->getType(), ScaleImm);
+          Scale = ConstantInt::get(cast<IntegerType>(Scale->getType()), ScaleImm);
         } else {
           Scale = nullptr;
         }

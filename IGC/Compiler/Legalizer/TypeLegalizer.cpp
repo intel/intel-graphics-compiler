@@ -19,6 +19,7 @@ SPDX-License-Identifier: MIT
 */
 #include "common/LLVMWarningsPush.hpp"
 #include "llvm/ADT/PostOrderIterator.h"
+#include "llvm/Analysis/ConstantFolding.h"
 #include "llvm/IR/CFG.h"
 #include "llvm/Transforms/Utils/Local.h"
 #include "common/LLVMWarningsPop.hpp"
@@ -420,7 +421,8 @@ void TypeLegalizer::promoteConstant(ValueSeq *ValSeq, TypeSeq *TySeq, Constant *
 
   Type *PromotedTy = TySeq->front();
 
-  auto *ExtValue = isSigned ? ConstantExpr::getSExt(C, PromotedTy) : ConstantExpr::getZExt(C, PromotedTy);
+  auto *ExtValue = ConstantFoldCastOperand(isSigned ? Instruction::SExt : Instruction::ZExt, C, PromotedTy, *DL);
+  IGC_ASSERT(ExtValue);
 
   ValSeq->push_back(ExtValue);
 }
