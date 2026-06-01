@@ -252,7 +252,6 @@ Value *TypesLegalizationPass::ResolveValue(Instruction *ip, Value *val, SmallVec
     auto evi = ev->getIndices();
     SmallVector<unsigned, 8> newIndices(evi.begin(), evi.end());
     newIndices.append(indices);
-
     return ResolveValue(ev, ev->getAggregateOperand(), newIndices);
   } else if (auto *II = dyn_cast<IntrinsicInst>(val)) {
     switch (II->getIntrinsicID()) {
@@ -275,11 +274,7 @@ Value *TypesLegalizationPass::ResolveValue(Instruction *ip, Value *val, SmallVec
     IRBuilder<> builder(ip);
     return builder.CreateExtractValue(val, indices);
   } else if (isa<Argument>(val)) {
-
-    IGC_ASSERT_MESSAGE(!val->getType()->isStructTy(),
-                       "Illegal IR. Structures are passed as a pointer to a struct with the byval attribute.!");
-
-    if ((val->getType()->isArrayTy())) {
+    if (val->getType()->isArrayTy() || val->getType()->isStructTy()) {
       IRBuilder<> builder(ip);
       return builder.CreateExtractValue(val, indices);
     }
