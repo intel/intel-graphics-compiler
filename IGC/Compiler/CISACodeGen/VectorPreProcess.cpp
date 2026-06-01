@@ -1381,7 +1381,7 @@ Instruction *VectorPreProcess::simplifyLoadStore(Instruction *Inst) {
       if (BC) {
         IGCLLVM::FixedVectorType *DstVTy = dyn_cast<IGCLLVM::FixedVectorType>(BC->getType());
         IGCLLVM::FixedVectorType *SrcVTy = dyn_cast<IGCLLVM::FixedVectorType>(BC->getOperand(0)->getType());
-        if (IGC_IS_FLAG_DISABLED(EnableBitcastedLoadNarrowing) || !DstVTy || !SrcVTy ||
+        if (!m_CGCtx->platform.enableBitcastedLoadNarrowing() || !DstVTy || !SrcVTy ||
             DstVTy->getNumElements() != SrcVTy->getNumElements()) {
           BC = nullptr;
         } else {
@@ -1435,7 +1435,7 @@ Instruction *VectorPreProcess::simplifyLoadStore(Instruction *Inst) {
     // as a float).
     // TODO: remove WA when issue is resolved.
     bool skipSimplifyBitcastedOneUse =
-        canSimplifyOneUse && BC && IGC_IS_FLAG_DISABLED(EnableBitcastedLoadNarrowingToScalar);
+        canSimplifyOneUse && BC && !m_CGCtx->platform.enableBitcastedLoadNarrowingToScalar();
 
     auto simplifyLDVecToLDRaw = [&](bool calc_offset) {
       auto EE_user = ConstEEIUses.front();

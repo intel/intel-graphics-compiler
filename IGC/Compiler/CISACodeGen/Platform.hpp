@@ -157,6 +157,21 @@ public:
   }
 
   bool isPVC() const { return (m_platformInfo.eProductFamily == IGFX_PVC); }
+
+  // Narrowing of bitcasted vector loads (see VectorPreProcess). An explicitly
+  // set EnableBitcastedLoadNarrowing regkey (enable or disable) always takes
+  // precedence.
+  bool enableBitcastedLoadNarrowing() const {
+    return IGC_IS_FLAG_ENABLED(EnableBitcastedLoadNarrowing);
+  }
+
+  // Narrowing of bitcasted vector loads down to a scalar load (see
+  // VectorPreProcess). An explicitly set EnableBitcastedLoadNarrowingToScalar
+  // regkey always takes precedence.
+  bool enableBitcastedLoadNarrowingToScalar() const {
+    return IGC_IS_FLAG_ENABLED(EnableBitcastedLoadNarrowingToScalar);
+  }
+
   bool isCoreXE2() const { return (m_platformInfo.eRenderCoreFamily == IGFX_XE2_HPG_CORE); }
 
   bool isCoreXE3() const {
