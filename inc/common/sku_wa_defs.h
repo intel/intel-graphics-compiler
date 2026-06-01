@@ -118,12 +118,6 @@ SPDX-License-Identifier: MIT
         WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_UNKNOWN)
 
         WA_DECLARE(
-        WaEnablePooledEuFor2x6,
-        "Workaround",
-        WA_BUG_TYPE_FUNCTIONAL,
-        WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_UNKNOWN)
-
-        WA_DECLARE(
         WaFloatMixedModeSelNotAllowedWithPackedDestination,
         "Workaround",
         WA_BUG_TYPE_UNKNOWN,
@@ -175,12 +169,6 @@ SPDX-License-Identifier: MIT
         WaNoSimd16TernarySrc0Imm,
         "Workaround",
         WA_BUG_TYPE_FAIL,
-        WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_UNKNOWN)
-
-        WA_DECLARE(
-        WaOCLEnableFMaxFMinPlusZero,
-        "Workaround",
-        WA_BUG_TYPE_UNKNOWN,
         WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_UNKNOWN)
 
         WA_DECLARE(

@@ -111,15 +111,6 @@ void InitBdwWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
 
     WA_ENABLE(
         ulStepId_BDW,
-        WaOCLEnableFMaxFMinPlusZero,
-        "No HWBugLink provided",
-        "No HWSightingLink provided",
-        PLATFORM_ALL,
-        SIWA_UNTIL_BDW_A1);
-
-
-    WA_ENABLE(
-        ulStepId_BDW,
         WaDisableIndirectDataForIndirectDispatch,
         "No Link Provided",
         "No HWSightingLink provided",

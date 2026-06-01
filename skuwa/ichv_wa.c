@@ -410,15 +410,6 @@ void InitChvWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
 
     WA_ENABLE(
         ulStepId_CHV,
-        WaOCLEnableFMaxFMinPlusZero,
-        "No Link Provided",
-        "No HWSightingLink provided",
-        PLATFORM_ALL,
-        SIWA_FOREVER);
-
-
-    WA_ENABLE(
-        ulStepId_CHV,
         WaThreadSwitchAfterCall,
         "No Link Provided",
         "No HWSightingLink provided",

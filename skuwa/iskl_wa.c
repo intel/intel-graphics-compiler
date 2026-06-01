@@ -240,14 +240,6 @@ void InitSklWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
 
     WA_ENABLE(
         ulStepId_SKL,
-        WaOCLEnableFMaxFMinPlusZero,
-        "No Link Provided",
-        "No HWSightingLink provided",
-        PLATFORM_ALL,
-        SIWA_UNTIL_SKL_B0);
-
-    WA_ENABLE(
-        ulStepId_SKL,
         WaHeaderRequiredOnSimd16Sample16bit,
         "No Link Provided",
         "No HWSightingLink provided",

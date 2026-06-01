@@ -21,28 +21,11 @@ void InitBxtWaTable(PWA_TABLE pWaTable, PSKU_FEATURE_TABLE pSkuTable, PWA_INIT_P
 
     SI_WA_ENABLE(
 
-        WaOCLEnableFMaxFMinPlusZero,
-        "No Link Provided",
-        "No HWSightingLink provided",
-        PLATFORM_ALL,
-        SI_WA_UNTIL(StepId_BXT, BXT_REV_ID_A0));
-
-
-    SI_WA_ENABLE(
-
         WaSamplerResponseLengthMustBeGreaterThan1,
         "No Link Provided",
         "No HWSightingLink provided",
         PLATFORM_ALL,
         SI_WA_UNTIL(StepId_BXT, BXT_REV_ID_A0));
-
-
-    SI_WA_ENABLE(
-        WaEnablePooledEuFor2x6,
-        "No Link Provided",
-        "No Link Provided",
-        PLATFORM_ALL,
-        SI_WA_BEFORE(StepId_BXT, BXT_REV_ID_C0));
 
 
     SI_WA_ENABLE(
