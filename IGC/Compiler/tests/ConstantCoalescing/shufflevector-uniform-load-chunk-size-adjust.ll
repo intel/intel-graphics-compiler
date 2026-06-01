@@ -108,12 +108,38 @@ entry:
 ; CHECK: shufflevector <2 x i32> {{.*}}, <2 x i32> poison, <3 x i32> <i32 0, i32 1, i32 {{(undef|poison)}}>
 
 
+; Test that a later scalar load merging into a chunk that already has a
+; shufflevector user does not trip the assert in FindOrAddChunkExtract. The
+; first (vector) load seeds a chunk whose only user is a shufflevector; the
+; second is a scalar load whose element falls inside the existing chunk
+; (start_adj == 0 && size_adj == 0), so it reaches FindOrAddChunkExtract,
+; which must skip the shufflevector user and add a fresh extract.
+define i32 @f_scalar_after_shuffle() {
+entry:
+  %base_addr = call i64 @llvm.genx.GenISA.RuntimeValue.i64(i32 0)
+  %adr0 = add i64 %base_addr, 96
+  %ptr0 = inttoptr i64 %adr0 to ptr addrspace(2)
+  %data = load <4 x i32>, ptr addrspace(2) %ptr0, align 16
+  %vec = shufflevector <4 x i32> %data, <4 x i32> undef, <4 x i32> <i32 0, i32 1, i32 2, i32 3>
+  %v0 = extractelement <4 x i32> %vec, i32 0
+  ; scalar load of element 1 of the same chunk (offset 96 + 4 = 100)
+  %adr1 = add i64 %base_addr, 100
+  %ptr1 = inttoptr i64 %adr1 to ptr addrspace(2)
+  %s = load i32, ptr addrspace(2) %ptr1, align 4
+  %sum = add i32 %v0, %s
+  ret i32 %sum
+}
+; CHECK-LABEL: define i32 @f_scalar_after_shuffle
+; CHECK: load <4 x i32>, ptr addrspace(2)
+; CHECK-NOT: load i32, ptr addrspace(2)
+; CHECK: ret i32
+
 ; Function Attrs: nounwind readnone
 declare i64 @llvm.genx.GenISA.RuntimeValue.i64(i32) #0
 
 attributes #0 = { nounwind readnone }
 
-!igc.functions = !{!3, !4, !5, !6, !7}
+!igc.functions = !{!3, !4, !5, !6, !7, !8}
 
 !1 = !{!2}
 !2 = !{!"function_type", i32 0}
@@ -123,3 +149,4 @@ attributes #0 = { nounwind readnone }
 !5 = !{ptr @f2, !1}
 !6 = !{ptr @f3, !1}
 !7 = !{ptr @f_disjoint, !1}
+!8 = !{ptr @f_scalar_after_shuffle, !1}

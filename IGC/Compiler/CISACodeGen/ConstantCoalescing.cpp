@@ -1519,7 +1519,12 @@ Instruction *ConstantCoalescing::FindOrAddChunkExtract(BufChunk *cov_chunk, uint
   for (; use_it != use_e; ++use_it) {
     Instruction *const usei = dyn_cast<Instruction>(*use_it);
     IGC_ASSERT(nullptr != usei);
-    IGC_ASSERT(isa<ExtractElementInst>(usei));
+    // The chunk load may have non-extract users (for example shufflevectors
+    // produced when merging vector loads, see MoveExtracts). We only look for
+    // an existing extract to reuse, so skip anything that is not one.
+    if (!isa<ExtractElementInst>(usei)) {
+      continue;
+    }
     ConstantInt *e_idx = dyn_cast<ConstantInt>(usei->getOperand(1));
     if (!e_idx) {
       continue;
