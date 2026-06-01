@@ -2197,13 +2197,8 @@ int VISAKernelImpl::CreateVISASrcOperand(
   cisa_opnd = static_cast<VISA_VectorOpnd *>(getOpndFromPool());
   if (IS_GEN_BOTH_PATH) {
     G4_Declare *dcl = cisa_decl->genVar.dcl;
-#if START_ASSERT_CHECK
-    if (dcl == nullptr) {
-      vASSERT(false);
-      return VISA_FAILURE;
-    }
-#endif
-    G4_Declare *aliasDcl = dcl ? dcl->getRootDeclare() : nullptr;
+    vASSERT(dcl != nullptr);
+    G4_Declare *aliasDcl = dcl->getRootDeclare();
 
     // replace vISA %null variable with a null src to avoid confusing later
     // passes
