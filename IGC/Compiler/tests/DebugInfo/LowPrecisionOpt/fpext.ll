@@ -16,6 +16,9 @@
 ;
 ; Debug MD for this test was created with debugify pass.
 ; ------------------------------------------------
+; igc_opt defaults to the OpenCL shader type, where the lossy fpext(fptrunc(x))
+; round-trip is only folded away under fast-relaxed-math, set in the metadata
+; below so the debug-info update on the fold is exercised.
 
 ; ModuleID = './LowPrecisionOpt/fpext.ll'
 source_filename = "./LowPrecisionOpt/fpext.ll"
@@ -63,22 +66,22 @@ entry:
 }
 
 ; Testcase 1 MD:
-; CHECK-DAG: [[TRUNC_LOC]] = !DILocation(line: 3, column: 1, scope: !9)
-; CHECK-DAG: [[TRUNC_MD]] = !DILocalVariable(name: "3", scope: !9, file: !4, line: 3, type: !16)
+; CHECK-DAG: [[TRUNC_LOC]] = !DILocation(line: 3, column: 1, scope: !{{[0-9]+}})
+; CHECK-DAG: [[TRUNC_MD]] = !DILocalVariable(name: "3", scope: !{{[0-9]+}}, file: !{{[0-9]+}}, line: 3, type: !{{[0-9]+}})
 ;
-; CHECK-DAG: [[EXT_LOC]] = !DILocation(line: 4, column: 1, scope: !9)
-; CHECK-DAG: [[EXT_MD]] = !DILocalVariable(name: "4", scope: !9, file: !4, line: 4, type: !13)
+; CHECK-DAG: [[EXT_LOC]] = !DILocation(line: 4, column: 1, scope: !{{[0-9]+}})
+; CHECK-DAG: [[EXT_MD]] = !DILocalVariable(name: "4", scope: !{{[0-9]+}}, file: !{{[0-9]+}}, line: 4, type: !{{[0-9]+}})
 ;
-; CHECK-DAG: [[STORE_LOC]] = !DILocation(line: 6, column: 1, scope: !9)
-; CHECK-DAG: [[STORE_MD]] = !DILocalVariable(name: "5", scope: !9, file: !4, line: 5, type: !19)
+; CHECK-DAG: [[STORE_LOC]] = !DILocation(line: 6, column: 1, scope: !{{[0-9]+}})
+; CHECK-DAG: [[STORE_MD]] = !DILocalVariable(name: "5", scope: !{{[0-9]+}}, file: !{{[0-9]+}}, line: 5, type: !{{[0-9]+}})
 
 ; Testcase 2 MD:
-; CHECK-DAG: [[CALL_LOC]] = !DILocation(line: 7, column: 1, scope: !9)
+; CHECK-DAG: [[CALL_LOC]] = !DILocation(line: 7, column: 1, scope: !{{[0-9]+}})
 ;
-; CHECK-DAG: [[EXT2_LOC]] = !DILocation(line: 8, column: 1, scope: !9)
-; CHECK-DAG: [[EXT2_MD]] = !DILocalVariable(name: "7", scope: !9, file: !4, line: 8, type: !13)
+; CHECK-DAG: [[EXT2_LOC]] = !DILocation(line: 8, column: 1, scope: !{{[0-9]+}})
+; CHECK-DAG: [[EXT2_MD]] = !DILocalVariable(name: "7", scope: !{{[0-9]+}}, file: !{{[0-9]+}}, line: 8, type: !{{[0-9]+}})
 ;
-; CHECK-DAG: [[STORE2_LOC]] = !DILocation(line: 9, column: 1, scope: !9)
+; CHECK-DAG: [[STORE2_LOC]] = !DILocation(line: 9, column: 1, scope: !{{[0-9]+}})
 
 declare half @llvm.genx.GenISA.DCL.inputVec.f16(i32, i32)
 
@@ -91,6 +94,7 @@ declare void @llvm.dbg.declare(metadata, metadata, metadata) #0
 attributes #0 = { nounwind readnone speculatable }
 
 !igc.functions = !{!0}
+!IGCMetadata = !{!32}
 !llvm.dbg.cu = !{!3}
 !llvm.debugify = !{!6, !7}
 !llvm.module.flags = !{!8}
@@ -127,3 +131,6 @@ attributes #0 = { nounwind readnone speculatable }
 !29 = !DILocation(line: 8, column: 1, scope: !9)
 !30 = !DILocation(line: 9, column: 1, scope: !9)
 !31 = !DILocation(line: 10, column: 1, scope: !9)
+!32 = !{!"ModuleMD", !33}
+!33 = !{!"compOpt", !34}
+!34 = !{!"FastRelaxedMath", i1 true}

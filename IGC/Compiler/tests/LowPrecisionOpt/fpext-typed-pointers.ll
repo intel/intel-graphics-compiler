@@ -10,6 +10,8 @@
 ; ------------------------------------------------
 ; LowPrecisionOpt
 ; ------------------------------------------------
+; igc_opt defaults to the OpenCL shader type, where the lossy fpext(fptrunc(x))
+; round-trip is only folded away under fast-relaxed-math, set in the metadata below.
 
 define void @test_fptrunc_fpext(float %src1, float %src2) {
 ; CHECK-LABEL: @test_fptrunc_fpext(
@@ -48,8 +50,12 @@ declare half @llvm.genx.GenISA.DCL.inputVec.f16(i32, i32)
 declare float @llvm.genx.GenISA.RuntimeValue.f32(i32)
 
 !igc.functions = !{!0, !3}
+!IGCMetadata = !{!4}
 
 !0 = !{void (float,float)* @test_fptrunc_fpext, !1}
 !1 = !{!2}
 !2 = !{!"function_type", i32 0}
 !3 = !{void (i32,i32)* @test_genx_fpext, !1}
+!4 = !{!"ModuleMD", !5}
+!5 = !{!"compOpt", !6}
+!6 = !{!"FastRelaxedMath", i1 true}

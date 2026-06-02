@@ -61,6 +61,15 @@ bool LowPrecisionOpt::runOnFunction(Function &F) {
   m_builder = &builder;
   m_currFunction = &F;
   shdrType = ctx->type;
+
+  // The fpext(fptrunc(x)) -> x fold in visitFPExtInst() drops a lossy fp16
+  // round-trip. In OpenCL half is a precise IEEE-754 binary16, so it may only
+  // be folded away under fast-relaxed-math (unsafe-math covers the rounding loss,
+  // finite-math the overflow-to-inf case). Casts carry no fast-math flags, so
+  // read the module-level compile options.
+  auto &compOpt = ctx->getModuleMetaData()->compOpt;
+  m_allowFp16RoundTripFold = (shdrType != ShaderType::OPENCL_SHADER) || compOpt.FastRelaxedMath ||
+                             (compOpt.UnsafeMathOptimizations && compOpt.FiniteMathOnly);
   bundles.clear();
   m_simplifyAlu = true;
   m_changeSample = false;
@@ -86,7 +95,8 @@ void LowPrecisionOpt::visitFPExtInst(llvm::FPExtInst &I) {
     Instruction *I0 = dyn_cast<Instruction>(I.getOperand(0));
     llvm::GenIntrinsicInst *callInst = llvm::dyn_cast<llvm::GenIntrinsicInst>(I.getOperand(0));
 
-    if (I0 && I0->getOpcode() == Instruction::FPTrunc && I.getDestTy() == I0->getOperand(0)->getType()) {
+    if (m_allowFp16RoundTripFold && I0 && I0->getOpcode() == Instruction::FPTrunc &&
+        I.getDestTy() == I0->getOperand(0)->getType()) {
       I.replaceAllUsesWith(I0->getOperand(0));
       I.eraseFromParent();
       m_changed = true;

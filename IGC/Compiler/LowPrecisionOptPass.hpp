@@ -48,6 +48,9 @@ private:
   llvm::SmallVector<moveBundle, 11> bundles;
   bool m_changeSample = false;
   bool m_simplifyAlu = false;
+  // Whether the lossy fpext(fptrunc(x)) -> x fp16 round-trip may be folded away.
+  // For OpenCL this requires fast-relaxed-math. Set in runOnFunction().
+  bool m_allowFp16RoundTripFold = false;
 
 public:
   static char ID;
