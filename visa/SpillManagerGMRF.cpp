@@ -3650,7 +3650,10 @@ void SpillManagerGRF::insertAddrTakenSpillAndFillCode(
             curExSize = G4_ExecSize(0);
           }
 
-          const RegionDesc *rd = kernel->fg.builder->getRegionStride1();
+          // If ExecSize = Width = 1, both VertStride and HorzStride must be 0.
+          const RegionDesc *rd = (curExSize == g4::SIMD1)
+                                     ? kernel->fg.builder->getRegionScalar()
+                                     : kernel->fg.builder->getRegionStride1();
 
           G4_SrcRegRegion *srcRex =
               kernel->fg.builder->createSrc(lr->getVar(), 0, off, rd, type);
@@ -3847,7 +3850,10 @@ void SpillManagerGRF::insertAddrTakenLSSpillAndFillCode(
             curExSize = G4_ExecSize(0);
           }
 
-          const RegionDesc *rd = kernel->fg.builder->getRegionStride1();
+          // If ExecSize = Width = 1, both VertStride and HorzStride must be 0.
+          const RegionDesc *rd = (curExSize == g4::SIMD1)
+                                     ? kernel->fg.builder->getRegionScalar()
+                                     : kernel->fg.builder->getRegionStride1();
 
           G4_SrcRegRegion *srcRex = kernel->fg.builder->createSrc(
               lr->getTopDcl()->getRegVar(), 0, off, rd, type);

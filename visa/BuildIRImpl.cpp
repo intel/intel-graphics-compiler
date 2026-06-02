@@ -3893,7 +3893,7 @@ G4_SrcRegRegion *IR_Builder::getScratchSurfaceStatusIndex() {
 void IR_Builder::RestoreA0() {
   auto dst = createDstRegRegion(builtinA0Dot2, 1);
   auto src0 =
-      createSrc(builtinR0->getRegVar(), 0, 8, getRegionStride1(), Type_UD);
+      createSrc(builtinR0->getRegVar(), 0, 8, getRegionScalar(), Type_UD);
   createMov(g4::SIMD1, dst, src0, InstOpt_WriteEnable, true);
 }
 
