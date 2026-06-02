@@ -3926,7 +3926,12 @@ void CEncoder::InitVISABuilderOptions(TARGET_PLATFORM VISAPlatform, bool canAbor
     SaveOption(vISA_GRFBumpUpNumber, IGC_GET_FLAG_VALUE(VISAGRFBumpUpNumber));
 
   if (m_program->m_Platform->isCoreChildOf(IGFX_XE3_CORE)) {
-    if (uint Val = IGC_GET_FLAG_VALUE(VISASpillAllowed)) {
+    uint Val = IGC_GET_FLAG_VALUE(VISASpillAllowed);
+    if (!IGC_IS_FLAG_SET(VISASpillAllowed) && pCtx->getModuleMetaData()->compOpt.VISASpillAllowed) {
+      // Use the driver value if reg key is not set
+      Val = pCtx->getModuleMetaData()->compOpt.VISASpillAllowed;
+    }
+    if (Val) {
       context->m_spillAllowed = Val;
       SaveOption(vISA_SpillAllowed, Val);
     }

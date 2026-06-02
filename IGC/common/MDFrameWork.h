@@ -557,6 +557,7 @@ enum class ShaderTypeMD
         bool UseLinearScanRA                            = false;
         bool DisableConvertingAtomicIAddToIncDec        = false;
         bool ZeroInitRegistersBeforeExecution = false;
+        unsigned VISASpillAllowed                       = 0;
     };
 
     enum class ThreadIDLayout
