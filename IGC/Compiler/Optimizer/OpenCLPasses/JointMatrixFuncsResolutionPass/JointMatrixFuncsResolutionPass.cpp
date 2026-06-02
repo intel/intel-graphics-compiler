@@ -2364,8 +2364,8 @@ Value *JointMatrixFuncsResolutionPass::getAcc2x64ElementPtr(CallInst *CI, Value 
 
   Type *returnType = getAccElemTypeFromDesc(builder->getContext(), desc);
 
-  Value *AccElementPtr =
-      builder->CreateBitCast(*MatPtr, returnType->getPointerTo((*MatPtr)->getType()->getPointerAddressSpace()));
+  Value *AccElementPtr = builder->CreateBitCast(
+      *MatPtr, IGCLLVM::PointerType::get(returnType, (*MatPtr)->getType()->getPointerAddressSpace()));
 
   return builder->CreateGEP(returnType, AccElementPtr, index);
 }

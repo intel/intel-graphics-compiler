@@ -363,7 +363,7 @@ public:
             // Cast the original pointer to pointer to pointer to i64.
             Value *OldPtr = LD->getPointerOperand();
             PointerType *OldPtrTy = cast<PointerType>(OldPtr->getType());
-            PointerType *NewPtrTy = IRB->getInt64Ty()->getPointerTo(OldPtrTy->getAddressSpace());
+            PointerType *NewPtrTy = IGCLLVM::PointerType::get(IRB->getInt64Ty(), OldPtrTy->getAddressSpace());
             Value *NewPtr = IRB->CreateBitCast(OldPtr, NewPtrTy);
             // Create new load.
             LoadInst *NewLD = IRB->CreateLoad(IRB->getInt64Ty(), NewPtr);
@@ -387,7 +387,7 @@ public:
             // Cast the pointer to pointer to pointer to i64.
             Value *OldPtr = ST->getPointerOperand();
             PointerType *OldPtrTy = cast<PointerType>(OldPtr->getType());
-            PointerType *NewPtrTy = IRB->getInt64Ty()->getPointerTo(OldPtrTy->getAddressSpace());
+            PointerType *NewPtrTy = IGCLLVM::PointerType::get(IRB->getInt64Ty(), OldPtrTy->getAddressSpace());
             Value *NewPtr = IRB->CreateBitCast(OldPtr, NewPtrTy);
             // Cast the pointer to be stored into i64.
             Value *OldVal = ST->getValueOperand();

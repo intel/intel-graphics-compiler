@@ -1656,7 +1656,7 @@ static Type *setRTTypeMD(Module &M, RaytracingType Idx, NamedMDNode *TypesMD, Ty
   IGC_ASSERT_MESSAGE(ExpectedSize == M.getDataLayout().getTypeAllocSize(Ty), "mismatch?");
   // Replace the undef value as set from initTypeMD() with a null pointer
   // to indicate that we have the type in place.
-  auto *Val = ConstantPointerNull::get(Ty->getPointerTo(AddrSpace));
+  auto *Val = ConstantPointerNull::get(IGCLLVM::PointerType::get(Ty, AddrSpace));
   auto *Node = MDNode::get(M.getContext(), ConstantAsMetadata::get(Val));
   TypesMD->setOperand((uint32_t)Idx, Node);
   return Val->getType();

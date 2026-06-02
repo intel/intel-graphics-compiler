@@ -15,6 +15,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/Pass.h>
 #include "common/LLVMWarningsPop.hpp"
 #include <llvmWrapper/IR/Function.h>
+#include "llvmWrapper/IR/DerivedTypes.h"
 
 #include <algorithm>
 
@@ -318,9 +319,9 @@ CallBase *Decompose2DBlockFuncs::createPayload(GenIntrinsicInst &GII, const Inpu
     }
   }
 
-  Function *BlockCreateFunc{GenISAIntrinsic::getDeclaration(GII.getCalledFunction()->getParent(),
-                                                            GenISAIntrinsic::GenISA_LSC2DBlockCreateAddrPayload,
-                                                            Type::getInt32Ty(GII.getContext())->getPointerTo())};
+  Function *BlockCreateFunc{GenISAIntrinsic::getDeclaration(
+      GII.getCalledFunction()->getParent(), GenISAIntrinsic::GenISA_LSC2DBlockCreateAddrPayload,
+      IGCLLVM::PointerType::get(Type::getInt32Ty(GII.getContext()), 0))};
 
   // FIXME
   // We can only set this since we know with certainty that the associated
@@ -397,7 +398,7 @@ Instruction *Decompose2DBlockFuncs::createPayloadIO(GenIntrinsicInst &GII, const
   switch (IT) {
   case GenISAIntrinsic::GenISA_LSC2DBlockRead: {
     LLVM_DEBUG(dbgs() << "Creating read intrinsic\n");
-    std::array<Type *, 2> Tys{GII.getType(), Type::getInt32Ty(GII.getContext())->getPointerTo()};
+    std::array<Type *, 2> Tys{GII.getType(), IGCLLVM::PointerType::get(Type::getInt32Ty(GII.getContext()), 0)};
     Function *BlockAddrFunc{GenISAIntrinsic::getDeclaration(GII.getCalledFunction()->getParent(),
                                                             GenISAIntrinsic::GenISA_LSC2DBlockReadAddrPayload, Tys)};
     IOCallInst = CallInst::Create(BlockAddrFunc, BlockAddrPayloadArgs, "Block2D_ReadAddrPayload", &GII);

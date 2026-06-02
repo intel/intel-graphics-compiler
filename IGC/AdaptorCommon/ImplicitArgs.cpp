@@ -217,13 +217,13 @@ Type *ImplicitArg::getLLVMType(LLVMContext &context) const {
     baseType = Type::getFloatTy(context);
     break;
   case CONSTPTR:
-    baseType = Type::getInt8Ty(context)->getPointerTo(ADDRESS_SPACE_CONSTANT);
+    baseType = IGCLLVM::PointerType::get(Type::getInt8Ty(context), ADDRESS_SPACE_CONSTANT);
     break;
   case PRIVATEPTR:
-    baseType = Type::getInt8Ty(context)->getPointerTo(ADDRESS_SPACE_PRIVATE);
+    baseType = IGCLLVM::PointerType::get(Type::getInt8Ty(context), ADDRESS_SPACE_PRIVATE);
     break;
   case GLOBALPTR:
-    baseType = Type::getInt8Ty(context)->getPointerTo(ADDRESS_SPACE_GLOBAL);
+    baseType = IGCLLVM::PointerType::get(Type::getInt8Ty(context), ADDRESS_SPACE_GLOBAL);
     break;
   default:
     IGC_ASSERT_MESSAGE(0, "Unrecognized implicit argument type");

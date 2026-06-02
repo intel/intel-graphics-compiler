@@ -84,9 +84,10 @@ SPDX-License-Identifier: MIT
 ///
 //===----------------------------------------------------------------------===//
 
+#include "llvmWrapper/IR/DerivedTypes.h"
+#include "llvmWrapper/IR/IRBuilder.h"
 #include "llvmWrapper/IR/Type.h"
 #include "llvmWrapper/Support/Alignment.h"
-#include "llvmWrapper/IR/IRBuilder.h"
 
 #include "vc/GenXOpts/GenXOpts.h"
 #include "vc/Utils/GenX/KernelInfo.h"
@@ -268,7 +269,7 @@ void CMKernelArgOffset::resolveByValArgs(Function *F) const {
       Value *StoreAddrUntyped =
           Builder.CreateGEP(Builder.getInt8Ty(), BaseAsI8Ptr, Info.Offset);
       Value *StoreAddrTyped = Builder.CreateBitCast(
-          StoreAddrUntyped, Info.Arg->getType()->getPointerTo());
+          StoreAddrUntyped, IGCLLVM::PointerType::get(Info.Arg->getType(), 0));
       Builder.CreateStore(Info.Arg, StoreAddrTyped);
     }
 

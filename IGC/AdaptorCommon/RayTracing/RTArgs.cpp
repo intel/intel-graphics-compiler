@@ -19,6 +19,7 @@ SPDX-License-Identifier: MIT
 #include "MDFrameWork.h"
 #include "Probe/Assertion.h"
 #include "llvmWrapper/IR/IRBuilder.h"
+#include "llvmWrapper/IR/DerivedTypes.h"
 #include <optional>
 #include "Compiler/CISACodeGen/getCacheOpts.h"
 

@@ -14,6 +14,7 @@ SPDX-License-Identifier: MIT
 #include "NewTraceRayInlineLoweringPass.h"
 
 #include "llvmWrapper/IR/Instructions.h"
+#include "llvmWrapper/IR/DerivedTypes.h"
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/ADT/STLExtras.h>
 #include <llvm/ADT/DenseMapInfo.h>
@@ -78,16 +79,16 @@ bool InlineRaytracing::LowerAllocations(Function &F) {
   if (!m_RQObjectType)
     m_RQObjectType = StructType::create(*m_pCGCtx->getLLVMContext(), {IRB.getInt32Ty(), IRB.getInt32Ty()}, name);
 
-  auto *createRQObjectFnTy = FunctionType::get(m_RQObjectType->getPointerTo(), IRB.getInt32Ty(), false);
+  auto *createRQObjectFnTy = FunctionType::get(IGCLLVM::PointerType::get(m_RQObjectType, 0), IRB.getInt32Ty(), false);
   auto *createRQObjectFn = m_Functions[CREATE_RQ_OBJECT] =
       Function::Create(createRQObjectFnTy, GlobalValue::PrivateLinkage, VALUE_NAME("createRQObject"), F.getParent());
 
-  auto *getStackPointerFnTy = FunctionType::get(rtstackTy, m_RQObjectType->getPointerTo(), false);
+  auto *getStackPointerFnTy = FunctionType::get(rtstackTy, IGCLLVM::PointerType::get(m_RQObjectType, 0), false);
   auto *getStackPointerFn = m_Functions[GET_STACK_POINTER_FROM_RQ_OBJECT] = Function::Create(
       getStackPointerFnTy, GlobalValue::PrivateLinkage, VALUE_NAME("getStackPointerFn"), F.getParent());
 
   auto *getRQHandleFromRQObjectFnTy =
-      FunctionType::get(IRB.getInt32Ty(), {m_RQObjectType->getPointerTo(), IRB.getInt32Ty()}, false);
+      FunctionType::get(IRB.getInt32Ty(), {IGCLLVM::PointerType::get(m_RQObjectType, 0), IRB.getInt32Ty()}, false);
   auto *getRQHandleFromRQObjectFn = m_Functions[GET_RQ_HANDLE_FROM_RQ_OJECT] = Function::Create(
       getRQHandleFromRQObjectFnTy, GlobalValue::PrivateLinkage, VALUE_NAME("getRQHandleFromRQObjectFn"), F.getParent());
 
@@ -177,7 +178,7 @@ bool InlineRaytracing::LowerAllocations(Function &F) {
               if (v2vMap.count(origin) == 1)
                 continue;
 
-              auto *ty = ArrayType::get(m_RQObjectType->getPointerTo(),
+              auto *ty = ArrayType::get(IGCLLVM::PointerType::get(m_RQObjectType, 0),
                                         cast<ArrayType>(array->getAllocatedType())->getNumElements());
 
               IRB.SetInsertPoint(array);
@@ -211,7 +212,7 @@ bool InlineRaytracing::LowerAllocations(Function &F) {
         } break;
         case Instruction::Load:
           IRB.SetInsertPoint(II);
-          v2vMap[II] = IRB.CreateLoad(m_RQObjectType->getPointerTo(), v2vMap[II->getOperand(0)],
+          v2vMap[II] = IRB.CreateLoad(IGCLLVM::PointerType::get(m_RQObjectType, 0), v2vMap[II->getOperand(0)],
                                       VALUE_NAME("RQObjectLoad_") + II->getName());
           llvm::for_each(II->uses(), [&worklist](Use &U) { worklist.push_back(&U); });
           break;

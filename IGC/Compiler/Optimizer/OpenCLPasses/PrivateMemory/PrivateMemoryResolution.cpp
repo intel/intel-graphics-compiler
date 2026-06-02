@@ -1146,9 +1146,9 @@ bool PrivateMemoryResolution::resolveAllocaInstructions(bool privateOnStack, boo
         Value *simdBufferOffset =
             m_ModAllocaInfo->getOffset(builder, pAI, simdSize, simdLaneId, SOAInfo.SOAPartitionBytes);
         Value *bufferBase = addOffset(builder, DL, threadBase, simdBufferOffset);
-        privateBufferPTR =
-            builder.CreateIntToPtr(bufferBase, pAI->getAllocatedType()->getPointerTo(scratchMemoryAddressSpace),
-                                   VALUE_NAME(pAI->getName() + ".privateBufferPTR"));
+        privateBufferPTR = builder.CreateIntToPtr(
+            bufferBase, IGCLLVM::PointerType::get(pAI->getAllocatedType(), scratchMemoryAddressSpace),
+            VALUE_NAME(pAI->getName() + ".privateBufferPTR"));
 
         TransposePrivMem helper(DL, bufferBase, simdSize, SOAInfo.SOAPartitionBytes);
         Value *Idx = builder.getInt32(0);
@@ -1181,9 +1181,9 @@ bool PrivateMemoryResolution::resolveAllocaInstructions(bool privateOnStack, boo
 
         Value *simdBufferOffset = m_ModAllocaInfo->getOffset(builder, pAI, simdSize, simdLaneId, bufferSize);
         Value *bufferBase = addOffset(builder, DL, threadBase, simdBufferOffset);
-        privateBufferPTR =
-            builder.CreateIntToPtr(bufferBase, pAI->getAllocatedType()->getPointerTo(scratchMemoryAddressSpace),
-                                   VALUE_NAME(pAI->getName() + ".privateBufferPTR"));
+        privateBufferPTR = builder.CreateIntToPtr(
+            bufferBase, IGCLLVM::PointerType::get(pAI->getAllocatedType(), scratchMemoryAddressSpace),
+            VALUE_NAME(pAI->getName() + ".privateBufferPTR"));
         // privateBuffer = builder.CreatePointerCast(privateBufferPTR, pAI->getType(), VALUE_NAME(pAI->getName() +
         // ".privateBuffer"));
 

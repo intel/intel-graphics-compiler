@@ -169,8 +169,8 @@ template <typename T> Instruction *expand64BitStore(IGCIRBuilder<T> &IRB, const 
     NewVal = getPtrToInt(IRB, NewVal, NewTy);
   }
   NewVal = IRB.CreateBitCast(NewVal, NewTy);
-  auto *NewPtr =
-      IRB.CreateBitCast(SI.getPointerOperand(), NewVal->getType()->getPointerTo(OldPtrTy->getPointerAddressSpace()));
+  auto *NewPtr = IRB.CreateBitCast(SI.getPointerOperand(),
+                                   IGCLLVM::PointerType::get(NewVal->getType(), OldPtrTy->getPointerAddressSpace()));
   auto *NewST = SI.CreateAlignedStore(IRB, NewVal, NewPtr);
   NewST->copyMetadata(*SI.inst());
 

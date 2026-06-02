@@ -20,6 +20,7 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPop.hpp"
 #include <llvmWrapper/Support/Alignment.h>
 #include "llvmWrapper/IR/Instructions.h"
+#include "llvmWrapper/IR/DerivedTypes.h"
 #include "Probe/Assertion.h"
 
 #include <unordered_set>
@@ -169,7 +170,7 @@ bool InlineLocalsResolution::runOnModule(Module &M) {
         SmallVector<Value *, 1> idx(1, sizeConstant);
         Instruction *pInsertBefore = &(*F.begin()->getFirstInsertionPt());
         Type *pCharType = Type::getInt8Ty(C);
-        Type *pLocalCharPtrType = pCharType->getPointerTo(ADDRESS_SPACE_LOCAL);
+        Type *pLocalCharPtrType = IGCLLVM::PointerType::get(pCharType, ADDRESS_SPACE_LOCAL);
         Instruction *pCharPtr = BitCastInst::CreatePointerCast(arg, pLocalCharPtrType, "localToChar", pInsertBefore);
         Value *pMovedCharPtr = GetElementPtrInst::Create(pCharType, pCharPtr, idx, "movedLocal", pInsertBefore);
 

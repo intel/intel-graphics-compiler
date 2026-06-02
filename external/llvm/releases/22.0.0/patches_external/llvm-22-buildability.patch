@@ -127,19 +127,5 @@ index 11385666e7ff..499a59381d2b 100644
  
  private:
    /// RemoveDIs project: all other moves implemented with this method,
-diff --git a/llvm/include/llvm/IR/Type.h b/llvm/include/llvm/IR/Type.h
-index 1c042500ba8e..ac85146aa4a5 100644
---- a/llvm/include/llvm/IR/Type.h
-+++ b/llvm/include/llvm/IR/Type.h
-@@ -484,8 +484,7 @@ public:
-   /// Return a pointer to the current type. This is equivalent to
-   /// PointerType::get(Ctx, AddrSpace).
-   /// TODO: Remove this after opaque pointer transition is complete.
--  LLVM_ABI LLVM_DEPRECATED("Use PointerType::get instead", "PointerType::get")
--      PointerType *getPointerTo(unsigned AddrSpace = 0) const;
-+  PointerType *getPointerTo(unsigned AddrSpace = 0) const;
- 
- private:
-   /// Derived types like structures and arrays are sized iff all of the members
 --
 2.43.0

@@ -284,8 +284,8 @@ void ResolveAggregateArguments::storeArgument(const Argument *arg, AllocaInst *b
 
     Value *offsetFromBase = ConstantInt::get(Type::getInt32Ty(base->getContext()), baseAllocaOffset);
     Value *storeAddress = irBuilder.CreateGEP(Type::getInt8Ty(base->getContext()), baseAsPtri8, offsetFromBase);
-    Value *offsetAsPointer =
-        irBuilder.CreateBitCast(storeAddress, implicitArgToStore->getType()->getPointerTo(ADDRESS_SPACE_PRIVATE));
+    Value *offsetAsPointer = irBuilder.CreateBitCast(
+        storeAddress, IGCLLVM::PointerType::get(implicitArgToStore->getType(), ADDRESS_SPACE_PRIVATE));
     irBuilder.CreateStore(&(*implicitArgToStore), offsetAsPointer);
   }
 }

@@ -301,7 +301,8 @@ void LSCCacheOptimizationPass::visitStoreInst(StoreInst &storeInst) {
     // %2 = bitcast i8* %1 to <num_green_blocks_left x iN>*
     auto *left_green_vector_pointer = builder.CreateBitCast(
         left_green_address,
-        IGCLLVM::FixedVectorType::get(element_type, (unsigned)num_green_blocks_left)->getPointerTo(addrspace));
+        IGCLLVM::PointerType::get(IGCLLVM::FixedVectorType::get(element_type, (unsigned)num_green_blocks_left),
+                                  addrspace));
     // %3 = load <num_green_blocks_left x iN>, <num_green_blocks_left x iN>* %2
     auto *left_green_vector_rvalue = builder.CreateLoad(
         IGCLLVM::FixedVectorType::get(element_type, (unsigned)num_green_blocks_left), left_green_vector_pointer);
@@ -324,7 +325,8 @@ void LSCCacheOptimizationPass::visitStoreInst(StoreInst &storeInst) {
 
     auto *final_vector_pointer_left = builder.CreateBitCast(
         left_green_address,
-        IGCLLVM::FixedVectorType::get(element_type, (unsigned)num_total_blocks_left)->getPointerTo(addrspace));
+        IGCLLVM::PointerType::get(IGCLLVM::FixedVectorType::get(element_type, (unsigned)num_total_blocks_left),
+                                  addrspace));
     builder.CreateAlignedStore(final_vector_left, final_vector_pointer_left, llvm::Align(LSC_WRITE_GRANULARITY));
 
     auto *right_part_address = builder.CreateGEP(builder.getInt8Ty(), bitcast1, builder.getInt64(32 - offset));
@@ -336,7 +338,8 @@ void LSCCacheOptimizationPass::visitStoreInst(StoreInst &storeInst) {
     auto *right_green_address = builder.CreateGEP(builder.getInt8Ty(), bitcast1, builder.getInt64(data_size));
     auto *right_green_vector_pointer = builder.CreateBitCast(
         right_green_address,
-        IGCLLVM::FixedVectorType::get(element_type, (unsigned)num_green_blocks_right)->getPointerTo(addrspace));
+        IGCLLVM::PointerType::get(IGCLLVM::FixedVectorType::get(element_type, (unsigned)num_green_blocks_right),
+                                  addrspace));
     auto *right_green_vector_rvalue = builder.CreateLoad(
         IGCLLVM::FixedVectorType::get(element_type, (unsigned)num_green_blocks_right), right_green_vector_pointer);
     extract_elements(builder, right_green_vector_rvalue, green_elements_right, num_green_blocks_right);
@@ -350,7 +353,8 @@ void LSCCacheOptimizationPass::visitStoreInst(StoreInst &storeInst) {
 
     auto *final_vector_pointer_right = builder.CreateBitCast(
         right_part_address,
-        IGCLLVM::FixedVectorType::get(element_type, (unsigned)num_total_blocks_right)->getPointerTo(addrspace));
+        IGCLLVM::PointerType::get(IGCLLVM::FixedVectorType::get(element_type, (unsigned)num_total_blocks_right),
+                                  addrspace));
     builder.CreateAlignedStore(final_vector_right, final_vector_pointer_right, llvm::Align(LSC_WRITE_GRANULARITY));
   }
   // If the data straddles across one or two 16 byte size chunks,
@@ -375,8 +379,8 @@ void LSCCacheOptimizationPass::visitStoreInst(StoreInst &storeInst) {
       auto *green_address = builder.CreateGEP(builder.getInt8Ty(), bitcast1, builder.getInt64(data_size));
       // %2 = bitcast i8* %1 to <num_green_blocks x iN>*
       auto *green_vector_pointer = builder.CreateBitCast(
-          green_address,
-          IGCLLVM::FixedVectorType::get(element_type, (unsigned)num_green_blocks)->getPointerTo(addrspace));
+          green_address, IGCLLVM::PointerType::get(
+                             IGCLLVM::FixedVectorType::get(element_type, (unsigned)num_green_blocks), addrspace));
       // %3 = load <num_green_blocks x iN>, <num_green_blocks x iN>* %2
       auto *green_vector_rvalue = builder.CreateLoad(
           IGCLLVM::FixedVectorType::get(element_type, (unsigned)num_green_blocks), green_vector_pointer);
@@ -393,7 +397,7 @@ void LSCCacheOptimizationPass::visitStoreInst(StoreInst &storeInst) {
 
       auto *final_vector_pointer = builder.CreateBitCast(
           initial_pointer,
-          IGCLLVM::FixedVectorType::get(element_type, (unsigned)num_elements)->getPointerTo(addrspace));
+          IGCLLVM::PointerType::get(IGCLLVM::FixedVectorType::get(element_type, (unsigned)num_elements), addrspace));
       builder.CreateAlignedStore(final_vector, final_vector_pointer, llvm::Align(LSC_WRITE_GRANULARITY));
     }
     // the red blocks are on the right side, contiguous green blocks on the left side
@@ -413,8 +417,8 @@ void LSCCacheOptimizationPass::visitStoreInst(StoreInst &storeInst) {
       auto *green_address = builder.CreateGEP(builder.getInt8Ty(), bitcast1, builder.getInt64(-1 * offset));
       // %2 = bitcast i8* %1 to <num_green_blocks x iN>*
       auto *green_vector_pointer = builder.CreateBitCast(
-          green_address,
-          IGCLLVM::FixedVectorType::get(element_type, (unsigned)num_green_blocks)->getPointerTo(addrspace));
+          green_address, IGCLLVM::PointerType::get(
+                             IGCLLVM::FixedVectorType::get(element_type, (unsigned)num_green_blocks), addrspace));
       // %3 = load <num_green_blocks x iN>, <num_green_blocks x iN>* %2
       auto *green_vector_rvalue = builder.CreateLoad(
           IGCLLVM::FixedVectorType::get(element_type, (unsigned)num_green_blocks), green_vector_pointer);
@@ -430,7 +434,8 @@ void LSCCacheOptimizationPass::visitStoreInst(StoreInst &storeInst) {
       auto *final_vector = insert_elements(builder, intermediate_vector, blue_elements, num_green_blocks, num_elements);
 
       auto *final_vector_pointer = builder.CreateBitCast(
-          green_address, IGCLLVM::FixedVectorType::get(element_type, (unsigned)num_elements)->getPointerTo(addrspace));
+          green_address,
+          IGCLLVM::PointerType::get(IGCLLVM::FixedVectorType::get(element_type, (unsigned)num_elements), addrspace));
       builder.CreateAlignedStore(final_vector, final_vector_pointer, llvm::Align(LSC_WRITE_GRANULARITY));
     }
     // the red blocks in the middle, around them discontinuous green blocks
@@ -449,8 +454,8 @@ void LSCCacheOptimizationPass::visitStoreInst(StoreInst &storeInst) {
       auto *starting_address = builder.CreateGEP(builder.getInt8Ty(), bitcast1, builder.getInt64(-1 * offset));
       // %2 = bitcast i8* %1 to <num_total_blocks x iN>*
       auto *full_vector_pointer = builder.CreateBitCast(
-          starting_address,
-          IGCLLVM::FixedVectorType::get(element_type, (unsigned)num_total_blocks)->getPointerTo(addrspace));
+          starting_address, IGCLLVM::PointerType::get(
+                                IGCLLVM::FixedVectorType::get(element_type, (unsigned)num_total_blocks), addrspace));
       // %3 = load <num_total_blocks x iN>, <num_total_blocks x iN>* %2
       auto *full_vector_rvalue = builder.CreateLoad(
           IGCLLVM::FixedVectorType::get(element_type, (unsigned)num_total_blocks), full_vector_pointer);
@@ -498,7 +503,10 @@ bool LSCCacheOptimizationPass::create_48_wide_store(Function& function)
                     // %1 = getelementptr i8, i8* %0, i64 offset
                     auto* red_address = builder.CreateGEP(builder.getInt8Ty(), bitcast1, builder.getInt64(offset));
                     // %2 = bitcast i8* %1 to <num_red_blocks x iN>*
-                    auto* red_vector_pointer = builder.CreateBitCast(red_address, IGCLLVM::FixedVectorType::get(element_type, (unsigned)num_red_blocks)->getPointerTo(addrspace));
+                    auto* red_vector_pointer = builder.CreateBitCast(
+                        red_address,
+                        IGCLLVM::PointerType::get(IGCLLVM::FixedVectorType::get(element_type, (unsigned)num_red_blocks),
+                                                  addrspace));
                     auto* red_vector_rvalue = getZeroedVector(builder, element_type, num_red_blocks);
                     builder.CreateStore(red_vector_rvalue, red_vector_pointer);
 

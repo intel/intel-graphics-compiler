@@ -296,7 +296,7 @@ void NamedBarriersResolution::HandleNamedBarrierInitSW(CallInst &NBarrierInitCal
   }
 
   auto newName = "__builtin_spirv_OpNamedBarrierInitialize_i32_p3__namedBarrier_p3i32";
-  SmallVector<Type *, 3> ArgsTy{Type::getInt32Ty(context), m_NamedBarrierType->getPointerTo(SPIRAS_Local),
+  SmallVector<Type *, 3> ArgsTy{Type::getInt32Ty(context), IGCLLVM::PointerType::get(m_NamedBarrierType, SPIRAS_Local),
                                 IGCLLVM::getInt32PtrTy(context, SPIRAS_Local)};
   Type *BaseTy = m_NamedBarrierArray->getValueType();
   auto pointerNBarrier = GetElementPtrInst::Create(BaseTy, m_NamedBarrierArray,
@@ -304,7 +304,7 @@ void NamedBarriersResolution::HandleNamedBarrierInitSW(CallInst &NBarrierInitCal
                                                     ConstantInt::get(Type::getInt32Ty(module->getContext()), 0, true)},
                                                    "", &(NBarrierInitCall));
   auto bitcastPointerNBarrier = BitCastInst::CreatePointerBitCastOrAddrSpaceCast(
-      pointerNBarrier, m_NamedBarrierType->getPointerTo(SPIRAS_Local), "", &(NBarrierInitCall));
+      pointerNBarrier, IGCLLVM::PointerType::get(m_NamedBarrierType, SPIRAS_Local), "", &(NBarrierInitCall));
   SmallVector<Value *, 3> ArgsVal{NBarrierInitCall.getArgOperand(0), bitcastPointerNBarrier, m_NamedBarrierID};
   auto newFType = FunctionType::get(NBarrierInitCall.getType(), ArgsTy, false);
   auto newF = module->getOrInsertFunction(newName, newFType);
@@ -326,7 +326,7 @@ void NamedBarriersResolution::HandleNamedBarrierSyncSW(CallInst &NBarrierSyncCal
   Module *module = NBarrierSyncCall.getModule();
 
   auto newName = "__builtin_spirv_OpMemoryNamedBarrierWrapperOCL_p3__namedBarrier_i32";
-  SmallVector<Type *, 2> ArgsTy{m_NamedBarrierType->getPointerTo(SPIRAS_Local), Type::getInt32Ty(context)};
+  SmallVector<Type *, 2> ArgsTy{IGCLLVM::PointerType::get(m_NamedBarrierType, SPIRAS_Local), Type::getInt32Ty(context)};
   SmallVector<Value *, 2> ArgsVal{NBarrierSyncCall.getArgOperand(0), NBarrierSyncCall.getArgOperand(1)};
 
   // For overload with 3 arguments

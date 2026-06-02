@@ -153,9 +153,9 @@ defineOptimalValueAndLength(MemSetInst &MemSet) {
   auto *NewSetVal = IRB.CreateBitCast(PreNewSetVal, IRB.getInt32Ty(),
                                       OrigSetVal.getName() + ".coalesce");
   auto DstAS = cast<PointerType>(OrigBaseAddr.getType())->getAddressSpace();
-  auto *NewBaseAddr =
-      IRB.CreateBitCast(&OrigBaseAddr, IRB.getInt32Ty()->getPointerTo(DstAS),
-                        OrigBaseAddr.getName() + ".align");
+  auto *NewBaseAddr = IRB.CreateBitCast(
+      &OrigBaseAddr, IGCLLVM::PointerType::get(IRB.getInt32Ty(), DstAS),
+      OrigBaseAddr.getName() + ".align");
   return {*NewSetVal, *NewBaseAddr, OrigLength / CoalescedTySize};
 }
 
@@ -179,7 +179,8 @@ static void setMemorySliceWithVecStore(SliceInfo Slice, Value &SetVal,
         IRB.CreateGEP(SetVal.getType(), &BaseAddr, IRB.getInt32(Slice.Offset),
                       BaseAddr.getName() + ".addr.offset");
   auto DstAS = cast<PointerType>(DstAddr->getType())->getAddressSpace();
-  auto *StoreVecPtr = IRB.CreateBitCast(DstAddr, VecTy->getPointerTo(DstAS));
+  auto *StoreVecPtr =
+      IRB.CreateBitCast(DstAddr, IGCLLVM::PointerType::get(VecTy, DstAS));
   auto *Store = IRB.CreateStore(WriteOut, StoreVecPtr);
   Store->setAlignment(IGCLLVM::getAlign(Slice.Align));
   Store->setDebugLoc(InsertionPt->getDebugLoc());
@@ -281,15 +282,15 @@ void GenXLowerAggrCopies::expandMemMov2VecLoadStore(T *MemCall) {
   unsigned SrcAddrSpace =
       cast<PointerType>(SrcAddr->getType())->getAddressSpace();
 
-  auto *LoadPtrV =
-      IRB.CreateBitCast(SrcAddr, VecTy->getPointerTo(SrcAddrSpace));
+  auto *LoadPtrV = IRB.CreateBitCast(
+      SrcAddr, IGCLLVM::PointerType::get(VecTy, SrcAddrSpace));
   auto *Load = IRB.CreateLoad(VecTy, LoadPtrV);
   Load->setAlignment(IGCLLVM::getSourceAlign(*MemCall));
 
   unsigned DstAddrSpace =
       cast<PointerType>(DstAddr->getType())->getAddressSpace();
-  auto *StorePtrV =
-      IRB.CreateBitCast(DstAddr, VecTy->getPointerTo(DstAddrSpace));
+  auto *StorePtrV = IRB.CreateBitCast(
+      DstAddr, IGCLLVM::PointerType::get(VecTy, DstAddrSpace));
   auto *Store = IRB.CreateStore(Load, StorePtrV);
   Store->setAlignment(IGCLLVM::getDestAlign(*MemCall));
 }

@@ -122,7 +122,8 @@ Value *ManageableBarriersResolution::loadManageBarrierAllStructData(Value *ptrTo
   IGCIRBuilder<> builder(pInsertBefore);
   Value *ptr =
       getManageableBarrierstructDataFieldPtr(ptrToBarrierSlot, MBDynamicStructFields::BarrierID, pInsertBefore);
-  Value *ptrCast = builder.CreatePointerCast(ptr, getMBDynamicStructType()->getPointerTo(ADDRESS_SPACE_LOCAL));
+  Value *ptrCast =
+      builder.CreatePointerCast(ptr, IGCLLVM::PointerType::get(getMBDynamicStructType(), ADDRESS_SPACE_LOCAL));
   Value *allDataLoad = builder.CreateLoad(getMBDynamicStructType(), ptrCast);
   return allDataLoad;
 }

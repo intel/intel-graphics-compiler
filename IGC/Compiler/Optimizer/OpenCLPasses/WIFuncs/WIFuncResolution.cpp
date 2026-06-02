@@ -66,15 +66,15 @@ void WIFuncResolution::storeImplicitBufferPtrs(llvm::Function &F) {
 
       auto DataTypeI16 = Type::getInt16Ty(C);
       auto AllocaVec = Builder.CreateAlloca(DataTypeI16, ConstantInt::get(DataTypeI16, (uint64_t)3));
-      auto FirstSlot = Builder.CreatePointerCast(AllocaVec, DataTypeI16->getPointerTo());
+      auto FirstSlot = Builder.CreatePointerCast(AllocaVec, IGCLLVM::PointerType::get(DataTypeI16, 0));
       Builder.CreateStore(LocalIdX, FirstSlot, true);
       auto SecondSlot = Builder.CreatePtrToInt(FirstSlot, Type::getInt64Ty(C));
       SecondSlot = Builder.CreateAdd(SecondSlot, ConstantInt::get(SecondSlot->getType(), (uint64_t)2));
-      SecondSlot = Builder.CreateIntToPtr(SecondSlot, DataTypeI16->getPointerTo());
+      SecondSlot = Builder.CreateIntToPtr(SecondSlot, IGCLLVM::PointerType::get(DataTypeI16, 0));
       Builder.CreateStore(LocalIdY, SecondSlot, true);
       auto ThirdSlot = Builder.CreatePtrToInt(FirstSlot, Type::getInt64Ty(C));
       ThirdSlot = Builder.CreateAdd(ThirdSlot, ConstantInt::get(ThirdSlot->getType(), (uint64_t)4));
-      ThirdSlot = Builder.CreateIntToPtr(ThirdSlot, DataTypeI16->getPointerTo());
+      ThirdSlot = Builder.CreateIntToPtr(ThirdSlot, IGCLLVM::PointerType::get(DataTypeI16, 0));
       Builder.CreateStore(LocalIdZ, ThirdSlot, true);
 
       auto *LidFunc =

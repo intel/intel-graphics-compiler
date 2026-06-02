@@ -353,7 +353,7 @@ Value &createMainInst<BuiltinID::Gather>(const std::vector<Value *> &Operands,
 
   auto *RetVTy = cast<IGCLLVM::FixedVectorType>(&RetTy);
   auto *RetETy = RetVTy->getElementType();
-  auto *PtrETy = RetETy->getPointerTo(AddrSpace);
+  auto *PtrETy = IGCLLVM::PointerType::get(RetETy, AddrSpace);
   auto *PtrVTy =
       IGCLLVM::FixedVectorType::get(PtrETy, RetVTy->getNumElements());
   auto *MaskVTy =
@@ -382,7 +382,7 @@ Value &createMainInst<BuiltinID::Scatter>(const std::vector<Value *> &Operands,
 
   auto *DataVTy = cast<IGCLLVM::FixedVectorType>(DataV->getType());
   auto *DataETy = DataVTy->getElementType();
-  auto *PtrETy = DataETy->getPointerTo(AddrSpace);
+  auto *PtrETy = IGCLLVM::PointerType::get(DataETy, AddrSpace);
   auto *PtrVTy =
       IGCLLVM::FixedVectorType::get(PtrETy, DataVTy->getNumElements());
   auto *MaskVTy =

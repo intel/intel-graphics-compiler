@@ -183,7 +183,7 @@ void PreCompiledFuncImport::handleInstrTypeChange(Instruction *oldInst, Value *n
         uint32_t numVecElements =
             (uint32_t)cast<IGCLLVM::FixedVectorType>(SI->getValueOperand()->getType())->getNumElements();
         Type *newVecType = IGCLLVM::FixedVectorType::get(builder.getInt64Ty(), numVecElements);
-        PointerType *newVecPtrTy = newVecType->getPointerTo(SI->getPointerAddressSpace());
+        PointerType *newVecPtrTy = IGCLLVM::PointerType::get(newVecType, SI->getPointerAddressSpace());
         Value *newPtr = builder.CreatePointerCast(SI->getPointerOperand(), newVecPtrTy, "");
         I->replaceUsesOfWith(SI->getPointerOperand(), newPtr);
       }
@@ -1391,7 +1391,7 @@ Function *PreCompiledFuncImport::getOrCreateFunction(FunctionIDs FID) {
   Type *int64Ty = Type::getInt64Ty(m_pModule->getContext());
   Type *dpTy = Type::getDoubleTy(m_pModule->getContext());
   Type *spTy = Type::getFloatTy(m_pModule->getContext());
-  Type *intPtrTy = intTy->getPointerTo(ADDRESS_SPACE_PRIVATE);
+  Type *intPtrTy = IGCLLVM::PointerType::get(intTy, ADDRESS_SPACE_PRIVATE);
   Type *retTy;
   switch (FID) {
   case FUNCTION_DP_FMA:

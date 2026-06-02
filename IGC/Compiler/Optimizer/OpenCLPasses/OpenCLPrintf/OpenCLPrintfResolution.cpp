@@ -497,9 +497,9 @@ void OpenCLPrintfResolution::expandPrintfCall(CallInst &printfCall, Function &F)
     if (i != 0) {
       // *write_offset = argument[i].dataType
       Value *argTypeVal = ConstantInt::get(m_int32Type, (unsigned int)dataType);
-      writeOffsetPtr =
-          CastInst::Create(Instruction::CastOps::IntToPtr, writeOffset, m_int32Type->getPointerTo(ADDRESS_SPACE_GLOBAL),
-                           "write_offset_ptr", bblockTrue);
+      writeOffsetPtr = CastInst::Create(Instruction::CastOps::IntToPtr, writeOffset,
+                                        IGCLLVM::PointerType::get(m_int32Type, ADDRESS_SPACE_GLOBAL),
+                                        "write_offset_ptr", bblockTrue);
       writeOffsetPtr->setDebugLoc(m_DL);
       genStoreInternal(argTypeVal, writeOffsetPtr, bblockTrue, m_DL, isPrintfBuiltin);
 
@@ -510,9 +510,9 @@ void OpenCLPrintfResolution::expandPrintfCall(CallInst &printfCall, Function &F)
       // For vector arguments, add vector size after type ID.
       if (argDesc->vecSize > 0) {
         Value *vecSizeVal = ConstantInt::get(m_int32Type, argDesc->vecSize);
-        writeOffsetPtr =
-            CastInst::Create(Instruction::CastOps::IntToPtr, writeOffset,
-                             m_int32Type->getPointerTo(ADDRESS_SPACE_GLOBAL), "write_offset_ptr", bblockTrue);
+        writeOffsetPtr = CastInst::Create(Instruction::CastOps::IntToPtr, writeOffset,
+                                          IGCLLVM::PointerType::get(m_int32Type, ADDRESS_SPACE_GLOBAL),
+                                          "write_offset_ptr", bblockTrue);
         writeOffsetPtr->setDebugLoc(m_DL);
         genStoreInternal(vecSizeVal, writeOffsetPtr, bblockTrue, m_DL, isPrintfBuiltin);
 
@@ -560,9 +560,9 @@ void OpenCLPrintfResolution::expandPrintfCall(CallInst &printfCall, Function &F)
 
   // *writeOffset = -1;
   Value *constValErrStringIdx = ConstantInt::get(m_int32Type, -1);
-  writeOffsetPtr =
-      CastInst::Create(Instruction::CastOps::IntToPtr, writeOffsetAdd, m_int32Type->getPointerTo(ADDRESS_SPACE_GLOBAL),
-                       "write_offset_ptr", bblockErrorString);
+  writeOffsetPtr = CastInst::Create(Instruction::CastOps::IntToPtr, writeOffsetAdd,
+                                    IGCLLVM::PointerType::get(m_int32Type, ADDRESS_SPACE_GLOBAL), "write_offset_ptr",
+                                    bblockErrorString);
   writeOffsetPtr->setDebugLoc(m_DL);
   genStoreInternal(constValErrStringIdx, writeOffsetPtr, bblockErrorString, m_DL, isPrintfBuiltin);
   brInst = BranchInst::Create(bblockFalseJoin, bblockErrorString);
@@ -821,7 +821,7 @@ Instruction *OpenCLPrintfResolution::generateCastToPtr(SPrintfArgDescriptor *arg
   case IGC::SHADER_PRINTF_VECTOR_FLOAT:
   case IGC::SHADER_PRINTF_VECTOR_DOUBLE: {
     Type *origType = argDesc->value->getType();
-    castedType = origType->getPointerTo(ADDRESS_SPACE_GLOBAL);
+    castedType = IGCLLVM::PointerType::get(origType, ADDRESS_SPACE_GLOBAL);
     break;
   }
 
@@ -833,7 +833,7 @@ Instruction *OpenCLPrintfResolution::generateCastToPtr(SPrintfArgDescriptor *arg
     break;
   }
   case IGC::SHADER_PRINTF_POINTER:
-    castedType = m_ptrSizeIntType->getPointerTo(ADDRESS_SPACE_GLOBAL);
+    castedType = IGCLLVM::PointerType::get(m_ptrSizeIntType, ADDRESS_SPACE_GLOBAL);
     break;
 
   default:
