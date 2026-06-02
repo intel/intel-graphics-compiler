@@ -23,6 +23,27 @@ inline llvm::Constant *getShuffleVector(llvm::Constant *V1, llvm::Constant *V2, 
                                         llvm::Type *OnlyIfReducedTy = nullptr) {
   return llvm::ConstantExpr::getShuffleVector(V1, V2, static_cast<int>(Mask), OnlyIfReducedTy);
 }
+inline llvm::Constant *getZExt(llvm::Constant *C, llvm::Type *Ty, bool OnlyIfReduced = false) {
+#if LLVM_VERSION_MAJOR < 22
+  return llvm::ConstantExpr::getZExt(C, Ty, OnlyIfReduced);
+#else
+  return llvm::ConstantExpr::getCast(llvm::Instruction::ZExt, C, Ty, OnlyIfReduced);
+#endif
+}
+inline llvm::Constant *getSExt(llvm::Constant *C, llvm::Type *Ty, bool OnlyIfReduced = false) {
+#if LLVM_VERSION_MAJOR < 22
+  return llvm::ConstantExpr::getSExt(C, Ty, OnlyIfReduced);
+#else
+  return llvm::ConstantExpr::getCast(llvm::Instruction::SExt, C, Ty, OnlyIfReduced);
+#endif
+}
+inline llvm::Constant *getUIToFP(llvm::Constant *C, llvm::Type *Ty, bool OnlyIfReduced = false) {
+#if LLVM_VERSION_MAJOR < 22
+  return llvm::ConstantExpr::getUIToFP(C, Ty, OnlyIfReduced);
+#else
+  return llvm::ConstantExpr::getCast(llvm::Instruction::UIToFP, C, Ty, OnlyIfReduced);
+#endif
+}
 } // namespace ConstantExpr
 
 namespace ConstantFixedVector {

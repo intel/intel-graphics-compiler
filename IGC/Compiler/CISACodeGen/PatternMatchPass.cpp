@@ -23,6 +23,7 @@ SPDX-License-Identifier: MIT
 #include <llvmWrapper/IR/Instructions.h>
 #include "llvmWrapper/Support/Alignment.h"
 #include <llvmWrapper/IR/CmpPredicate.h>
+#include "llvmWrapper/IR/Constants.h"
 #include "Compiler/IGCPassSupport.h"
 #include "Compiler/InitializePasses.h"
 #include "Compiler/DebugInfo/ScalarVISAModule.h"
@@ -480,12 +481,12 @@ void CodeGenPatternMatch::SetPatternRoot(llvm::Instruction &inst) {
 template <typename Op_t, typename ConstTy> struct ClampWithConstants_match {
   typedef ConstTy *ConstPtrTy;
 
-  Op_t Op;
+  mutable Op_t Op;
   ConstPtrTy &CMin, &CMax;
 
   ClampWithConstants_match(const Op_t &OpMatch, ConstPtrTy &Min, ConstPtrTy &Max) : Op(OpMatch), CMin(Min), CMax(Max) {}
 
-  template <typename OpTy> bool match(OpTy *V) {
+  template <typename OpTy> bool match(OpTy *V) const {
     CallInst *GII = dyn_cast<CallInst>(V);
     if (!GII)
       return false;
@@ -540,7 +541,7 @@ template <typename Op_t> struct IsNaN_match {
 
   IsNaN_match(const Op_t &OpMatch) : Op(OpMatch) {}
 
-  template <typename OpTy> bool match(OpTy *V) {
+  template <typename OpTy> bool match(OpTy *V) const {
     using namespace llvm::PatternMatch;
 
     FCmpInst *FCI = dyn_cast<FCmpInst>(V);
@@ -676,8 +677,8 @@ CodeGenPatternMatch::isFPToUnsignedIntSatWithInexactConstant(llvm::SelectInst *S
   if (!CMax || !CMin || !CMax->isMaxValue(false) || !CMin->isMinValue(false))
     return std::make_tuple(nullptr, 0, ISA_TYPE_F);
 
-  Constant *FMin = ConstantExpr::getUIToFP(CMin, Ty);
-  Constant *FMax = ConstantExpr::getUIToFP(CMax, Ty);
+  Constant *FMin = IGCLLVM::ConstantExpr::getUIToFP(CMin, Ty);
+  Constant *FMax = IGCLLVM::ConstantExpr::getUIToFP(CMax, Ty);
 
   IGCLLVM::FCmpInstPredicate Pred(FCmpInst::FCMP_FALSE);
   if (!match(Cond2, m_FCmp(Pred, m_Specific(X), m_Specific(FMax))))

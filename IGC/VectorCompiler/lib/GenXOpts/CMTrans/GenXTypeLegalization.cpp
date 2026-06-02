@@ -25,6 +25,7 @@ SPDX-License-Identifier: MIT
 #include "Probe/Assertion.h"
 
 #include "llvmWrapper/IR/IRBuilder.h"
+#include "llvmWrapper/IR/Constants.h"
 
 #include <llvm/IR/Dominators.h>
 #include <llvm/IR/Function.h>
@@ -130,7 +131,7 @@ Value *GenXTypeLegalization::getLegalizedValue(Value *OldV) {
   if (auto *C = dyn_cast<Constant>(OldV)) {
     auto *NewCType = getLegalizedType(C->getType());
     // TODO: consider signess here.
-    return ConstantExpr::getZExt(C, NewCType);
+    return IGCLLVM::ConstantExpr::getZExt(C, NewCType);
   }
   auto *NewV = ValueMap[OldV];
   // Instructions are visited in topological order so a record should exist.

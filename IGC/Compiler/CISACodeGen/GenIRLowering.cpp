@@ -77,8 +77,8 @@ char GenIRLowering::ID = 0;
 
 template <typename LHS_t, typename RHS_t, typename Pred_t> struct FMaxMinCast_match {
   unsigned &CastOpcode;
-  LHS_t L;
-  RHS_t R;
+  mutable LHS_t L;
+  mutable RHS_t R;
 
   FMaxMinCast_match(unsigned &Opcode, const LHS_t &LHS, const RHS_t &RHS) : CastOpcode(Opcode), L(LHS), R(RHS) {}
 
@@ -100,7 +100,7 @@ template <typename LHS_t, typename RHS_t, typename Pred_t> struct FMaxMinCast_ma
     return false;
   }
 
-  template <typename OpTy> bool match(OpTy *V) {
+  template <typename OpTy> bool match(OpTy *V) const {
     SelectInst *SI = dyn_cast<SelectInst>(V);
     if (!SI)
       return false;
@@ -158,12 +158,12 @@ inline FMaxMinCast_match<LHS, RHS, llvm::PatternMatch::ofmin_pred_ty> m_OrdFMinC
 template <typename Op_t, typename ConstTy> struct ClampWithConstants_match {
   typedef ConstTy *ConstPtrTy;
 
-  Op_t Op;
+  mutable Op_t Op;
   ConstPtrTy &CMin, &CMax;
 
   ClampWithConstants_match(const Op_t &OpMatch, ConstPtrTy &Min, ConstPtrTy &Max) : Op(OpMatch), CMin(Min), CMax(Max) {}
 
-  template <typename OpTy> bool match(OpTy *V) {
+  template <typename OpTy> bool match(OpTy *V) const {
     CallInst *GII = dyn_cast<CallInst>(V);
     if (!GII)
       return false;
