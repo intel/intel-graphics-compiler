@@ -961,7 +961,7 @@ bool CClangTranslationBlock::TranslateClang(const TranslateClangArgs *pInputArgs
   // This allows opencl-clang to enable only relevant extensions when compiling
   // OpenCL C to SPIR-V instead of enabling all extensions by default, and
   // prevents generating SPIR-V that uses extensions not supported by IGC.
-  const auto &Extensions = IGC::SPIRVExtensionsSupport::AllExtensions;
+  const auto &Extensions = IGC::SPIRVExtensionsSupport::getAllExtensions();
   if (!Extensions.empty()) {
     optionsEx += " --spirv-ext=";
 

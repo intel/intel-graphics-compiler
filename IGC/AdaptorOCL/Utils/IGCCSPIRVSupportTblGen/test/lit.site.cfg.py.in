@@ -1,0 +1,33 @@
+# ========================== begin_copyright_notice ============================
+#
+# Copyright (C) 2026 Intel Corporation
+#
+# SPDX-License-Identifier: MIT
+#
+# =========================== end_copyright_notice =============================
+
+@LIT_SITE_CFG_IN_HEADER@
+
+import sys
+
+config.llvm_tools_dir = "@LLVM_TOOLS_DIR@"
+config.lit_tools_dir = "@LLVM_TOOLS_DIR@"
+config.host_triple = "@LLVM_HOST_TRIPLE@"
+config.target_triple = "@TARGET_TRIPLE@"
+config.host_arch = "@HOST_ARCH@"
+config.python_executable = "@PYTHON_EXECUTABLE@"
+config.test_run_dir = "@CMAKE_CURRENT_BINARY_DIR@"
+config.spirv_tblgen_dir = "$<$<TARGET_EXISTS:igcc-spirv-support-tblgen>:$<TARGET_FILE_DIR:igcc-spirv-support-tblgen>>"
+config.spirv_extensions_inc = "@SPIRV_EXTENSIONS_INC_DIR@"
+
+try:
+    config.llvm_tools_dir = config.llvm_tools_dir % lit_config.params
+except KeyError:
+    e = sys.exc_info()[1]
+    key, = e.args
+    lit_config.fatal("unable to find %r parameter, use '--param=%s=VALUE'" % (key,key))
+
+import lit.llvm
+lit.llvm.initialize(lit_config, config)
+
+lit_config.load_config(config, "@SPIRV_TBLGEN_TEST_SOURCE_DIR@/lit.cfg.py")

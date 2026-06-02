@@ -29,22 +29,12 @@ SPDX-License-Identifier: MIT
 LLVM_YAML_IS_SEQUENCE_VECTOR(IGC::SPIRVExtensionsSupport::SPIRVExtension)
 LLVM_YAML_IS_SEQUENCE_VECTOR(IGC::SPIRVExtensionsSupport::SPIRVCapability)
 
-namespace {
-uint32_t getSPIRVCapabilityId(llvm::StringRef Name) {
-  auto It = IGC::SPIRVExtensionsSupport::RequiredSPIRVCapabilityIds.find(Name);
-  if (It == IGC::SPIRVExtensionsSupport::RequiredSPIRVCapabilityIds.end())
-    IGC_ASSERT_UNREACHABLE();
-  return It->second;
-}
-} // namespace
-
 namespace llvm {
 namespace yaml {
 
 template <> struct MappingTraits<IGC::SPIRVExtensionsSupport::SPIRVCapability> {
   static void mapping(IO &Io, IGC::SPIRVExtensionsSupport::SPIRVCapability &Cap) {
-    uint32_t Id = getSPIRVCapabilityId(Cap.Name);
-    Io.mapRequired("id", Id);
+    Io.mapRequired("id", Cap.Id);
     Io.mapRequired("name", Cap.Name);
   }
 };

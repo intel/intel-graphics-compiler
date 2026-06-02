@@ -35,3 +35,5 @@ target_link_libraries(igcc-spirv-support-tblgen PRIVATE
   LLVMSupport
   LLVMTableGen
 )
+
+add_subdirectory(test)

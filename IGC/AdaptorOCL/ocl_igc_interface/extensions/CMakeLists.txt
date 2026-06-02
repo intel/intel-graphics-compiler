@@ -27,15 +27,21 @@ set(CPP_HEADER_FILENAME "SPIRVExtensionsSupport")
 # CPP Headers Generation
 #=============================================================================
 
-# Generate C++ header for SPIR-V extensions
+# Generate data .inc file for SPIR-V extensions (included by the hand-written
+# SPIRVExtensionsSupport.h header in this source directory).
 set(TABLEGEN_OUTPUT)
 set(LLVM_TARGET_DEFINITIONS ${SPIRV_TD_INPUT_FILE})
 set(IGCC_LIB_INTERFACES_CPP_TABLEGEN_EXE "${IGCC_LIB_INTERFACES_TABLEGEN_EXE}")
-tablegen(IGCC_LIB_INTERFACES_CPP ${CPP_HEADER_FILENAME}.h
+tablegen(IGCC_LIB_INTERFACES_CPP ${CPP_HEADER_FILENAME}.inc
          -gen-igcc-spirv-extension-support-header)
 add_public_tablegen_target(IGCCSPIRVExtensionsCpp)
 
 add_custom_target(${CPP_HEADER_FILENAME}Gen
-    DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/${CPP_HEADER_FILENAME}.h)
+    DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/${CPP_HEADER_FILENAME}.inc)
 add_dependencies(${CPP_HEADER_FILENAME}Gen IGCCSPIRVExtensionsCpp)
+
+# The hand-written .h lives in the source tree; the .inc it includes is in the
+# binary tree.  Both directories must be on the include path for consumers.
+include_directories("${CMAKE_CURRENT_SOURCE_DIR}")
+include_directories("${CMAKE_CURRENT_BINARY_DIR}")
 

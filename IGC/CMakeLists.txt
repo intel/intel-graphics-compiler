@@ -1513,6 +1513,7 @@ include_directories(
     "${CMAKE_CURRENT_BINARY_DIR}/Options/include"
     )
 
+include_directories("${IGC_BUILD__IGC_SRC_DIR}/AdaptorOCL/ocl_igc_interface/extensions")
 include_directories("${IGC_BUILD__IGC_BIN_DIR}/AdaptorOCL/ocl_igc_interface/extensions")
 
 
