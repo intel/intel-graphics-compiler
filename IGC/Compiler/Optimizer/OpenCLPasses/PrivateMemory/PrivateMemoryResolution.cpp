@@ -1036,12 +1036,26 @@ bool PrivateMemoryResolution::resolveAllocaInstructions(bool privateOnStack, boo
           unsigned scalarBufferOffset = m_ModAllocaInfo->getBufferOffset(pAI);
           unsigned bufferSize = m_ModAllocaInfo->getBufferStride(pAI);
 
-          // Attach metadata to instruction containing offset of storage
+          // Attach metadata to instruction containing offset of storage.
+          // In LLVM >= 22 debug declares are DbgVariableRecord objects (not Instructions)
+          // and have no metadata slots. The DwarfDebug/DwarfCompileUnit consumers
+          // (buildFpBasedLoc, buildPrivateBaseRegBased) are also not yet migrated to
+          // the new debug-records API and cannot find these declares anyway, so skip
+          // the metadata for now.
+          // FIXME: once DwarfDebug is migrated to DbgVariableRecord, carry StorageOffset
+          // and StorageSize via an alternative mechanism (e.g. DbgVariableRecord side
+          // map or DIExpression extension).
+#if LLVM_VERSION_MAJOR < 22
           auto OffsetMD =
               MDNode::get(builder.getContext(), ConstantAsMetadata::get(builder.getInt32(scalarBufferOffset)));
           DbgDcl->setMetadata("StorageOffset", OffsetMD);
           auto SizeMD = MDNode::get(builder.getContext(), ConstantAsMetadata::get(builder.getInt32(bufferSize)));
           DbgDcl->setMetadata("StorageSize", SizeMD);
+#else
+          (void)scalarBufferOffset;
+          (void)bufferSize;
+          (void)DbgDcl;
+#endif
         }
       }
       // Replace all uses of original alloca with the bitcast
@@ -1335,11 +1349,16 @@ bool PrivateMemoryResolution::resolveAllocaInstructions(bool privateOnStack, boo
     if (modMD->compOpt.OptDisable) {
       auto DbgDcls = IGCLLVM::findDbgDeclareUses(pAI);
       for (auto DbgDcl : DbgDcls) {
-        // Attach metadata to instruction containing offset of storage
+        // Attach metadata to instruction containing offset of storage.
+        // FIXME: for llvm 22 (see above for more context).
+#if LLVM_VERSION_MAJOR < 22
         unsigned int scalarBufferOffset = m_ModAllocaInfo->getBufferOffset(pAI);
         auto OffsetMD =
             MDNode::get(builder.getContext(), ConstantAsMetadata::get(builder.getInt32(scalarBufferOffset)));
         DbgDcl->setMetadata("StorageOffset", OffsetMD);
+#else
+        (void)DbgDcl;
+#endif
       }
     }
 
