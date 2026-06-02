@@ -1976,8 +1976,16 @@ public:
 
   static inline bool classof(const Value *V) { return isa<GenIntrinsicInst>(V) && classof(cast<GenIntrinsicInst>(V)); }
 
-  Value *getByteOffset() const { return getOperand(0); }
-  uint32_t getRootSigSize() const { return int_cast<uint32_t>(getImm64Operand(1)); }
+  enum class Argument { Offset, Size, Count };
+  static constexpr unsigned int GetArgumentIndex(Argument arg) { return static_cast<unsigned int>(arg); }
+  inline llvm::Value *GetArgument(Argument arg) const { return getOperand(GetArgumentIndex(arg)); }
+  inline llvm::Use &GetArgumentUse(Argument arg) { return getOperandUse(GetArgumentIndex(arg)); }
+  inline const llvm::Use &GetArgumentUse(Argument arg) const { return getOperandUse(GetArgumentIndex(arg)); }
+
+  Value *getByteOffset() const { return GetArgument(Argument::Offset); }
+  llvm::Use &getByteOffsetUse() { return GetArgumentUse(Argument::Offset); }
+  const llvm::Use &getByteOffsetUse() const { return GetArgumentUse(Argument::Offset); }
+  uint32_t getRootSigSize() const { return int_cast<uint32_t>(getImm64Operand(GetArgumentIndex(Argument::Size))); }
 };
 
 class StaticConstantPatchIntrinsic : public GenIntrinsicInst {

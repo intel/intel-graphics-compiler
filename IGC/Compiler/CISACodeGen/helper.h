@@ -42,6 +42,8 @@ SPDX-License-Identifier: MIT
 #include "LLVM3DBuilder/MetadataBuilder.h"
 #include "Probe/Assertion.h"
 #include <functional>
+#include <optional>
+#include <utility>
 #include "common/ResourceAddrSpace.h"
 
 typedef unsigned int uint;
@@ -590,4 +592,20 @@ bool UsedWithoutImmInMemInst(llvm::Value *v);
 bool AllowShortImplicitPayloadHeader(const CodeGenContext *ctx);
 bool AllowRemovingUnusedImplicitArguments(const CodeGenContext *ctx);
 bool AllowRemovingUnusedImplicitLocalIDs(const CodeGenContext *ctx);
+
+struct ExtractBoundsResult {
+  llvm::Value *SourceValue = nullptr;
+  std::optional<std::pair<uint64_t, uint64_t>> Bounds; // [Lo, Hi), or nullopt if no useful constraint.
+};
+
+/// Given a Use U that may reference a GenISA_launder:
+///  1. Replaces U in-place with the launder's operand.
+///  2. If the launder has no remaining users, erases it.
+///  3. Returns the tightest [Lo, Hi) by intersecting:
+///     a) computeConstantRange(operand, depth=0), including assumes on the operand,
+///     b) ConstantRange::fromKnownBits(computeKnownBits(operand)),
+///     c) computeConstantRange(launder, depth=0), including assumes/range on the launder.
+/// If U does not reference a launder, only (a) and (b) are applied.
+ExtractBoundsResult ExtractBounds(llvm::Use &U, llvm::AssumptionCache &AC, llvm::Instruction *CtxI,
+                                  bool peelLaunder = true);
 } // namespace IGC

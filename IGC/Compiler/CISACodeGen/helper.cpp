@@ -14,6 +14,7 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPush.hpp"
 #include "llvm/Config/llvm-config.h"
 #include "llvm/IR/GetElementPtrTypeIterator.h"
+#include <llvm/IR/ConstantRange.h>
 #include <llvm/IR/InstIterator.h>
 #include <llvm/IR/Intrinsics.h>
 #include <llvm/Support/KnownBits.h>
@@ -2991,6 +2992,73 @@ bool AllowRemovingUnusedImplicitLocalIDs(const CodeGenContext *ctx) {
   }
 
   return ctx->platform.isCoreChildOf(IGFX_XE2_HPG_CORE);
+}
+
+ExtractBoundsResult ExtractBounds(llvm::Use &U, llvm::AssumptionCache &AC, llvm::Instruction *CtxI,
+                                  bool peelLaunder /*= true*/) {
+  IGC_ASSERT_MESSAGE(U.get() && U.get()->getType()->isIntegerTy(), "Expecting an integer operand");
+
+  ExtractBoundsResult Result;
+  llvm::Value *V = U.get();
+  std::optional<llvm::ConstantRange> CRFromErasedLaunder;
+  Result.SourceValue = V;
+
+  if (peelLaunder) {
+    auto *MaybeLaunder = llvm::dyn_cast<GenIntrinsicInst>(V);
+    const bool IsLaunder = MaybeLaunder && MaybeLaunder->isGenIntrinsic(GenISAIntrinsic::GenISA_launder);
+    if (IsLaunder) {
+      llvm::Value *Operand = MaybeLaunder->getOperand(0);
+      Result.SourceValue = Operand;
+      auto *OperandTy = llvm::dyn_cast<llvm::IntegerType>(Operand->getType());
+      if (!OperandTy || OperandTy->getBitWidth() > 64)
+        return Result;
+
+      if (auto *Constant = llvm::dyn_cast<llvm::ConstantInt>(Operand)) {
+        MaybeLaunder->replaceAllUsesWith(Operand);
+        MaybeLaunder->eraseFromParent();
+        const uint64_t Lo = Constant->getZExtValue();
+        Result.Bounds = std::make_pair(Lo, Lo + 1);
+        return Result;
+      }
+
+      U.set(Operand);
+
+      if (MaybeLaunder->user_empty()) {
+        CRFromErasedLaunder = llvm::computeConstantRange(MaybeLaunder, /*ForSigned=*/false,
+                                                         /*UseInstrInfo=*/true, &AC, CtxI,
+                                                         /*DT=*/nullptr, /*Depth=*/0);
+        MaybeLaunder->eraseFromParent();
+        V = nullptr;
+      }
+    }
+  }
+
+  auto *Ty = llvm::dyn_cast<llvm::IntegerType>(Result.SourceValue->getType());
+  if (!Ty || Ty->getBitWidth() > 64 || !CtxI)
+    return Result;
+
+  const llvm::DataLayout &DL = CtxI->getModule()->getDataLayout();
+
+  llvm::ConstantRange CRFromOperand = llvm::computeConstantRange(
+      Result.SourceValue, /*ForSigned=*/false, /*UseInstrInfo=*/true, &AC, CtxI, /*DT=*/nullptr, /*Depth=*/0);
+  llvm::KnownBits KB = IGCLLVM::computeKnownBits(Result.SourceValue, DL, &AC, CtxI);
+  llvm::ConstantRange Combined = CRFromOperand.intersectWith(llvm::ConstantRange::fromKnownBits(KB, false));
+
+  if (CRFromErasedLaunder.has_value()) {
+    Combined = Combined.intersectWith(*CRFromErasedLaunder);
+  } else if (V && V != Result.SourceValue) {
+    llvm::ConstantRange CRFromV = llvm::computeConstantRange(V, /*ForSigned=*/false, /*UseInstrInfo=*/true, &AC, CtxI,
+                                                             /*DT=*/nullptr, /*Depth=*/0);
+    Combined = Combined.intersectWith(CRFromV);
+  }
+
+  if (!Combined.isFullSet()) {
+    const uint64_t Lo = Combined.getUnsignedMin().getZExtValue();
+    const uint64_t Hi = Combined.getUnsignedMax().getZExtValue() + 1;
+    Result.Bounds = std::make_pair(Lo, Hi);
+  }
+
+  return Result;
 }
 
 } // namespace IGC
