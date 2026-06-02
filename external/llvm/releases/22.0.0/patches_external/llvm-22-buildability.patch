@@ -21,55 +21,6 @@ index d9087dd1c516..2f38555d9793 100644
    inline T get() const {
      assert(isa<T>(*this) && "Invalid accessor called");
      return cast<T>(*this);
-diff --git a/llvm/include/llvm/ADT/StringRef.h b/llvm/include/llvm/ADT/StringRef.h
-index 09c6d6d6eab0..ea8ed00727be 100644
---- a/llvm/include/llvm/ADT/StringRef.h
-+++ b/llvm/include/llvm/ADT/StringRef.h
-@@ -168,6 +168,14 @@ namespace llvm {
-       return StringRef(S, size());
-     }
- 
-+    [[nodiscard]] bool equals(StringRef RHS) const {
-+      if (size() != RHS.size())
-+        return false;
-+      if (empty())
-+        return true;
-+      return ::memcmp(data(), RHS.data(), size()) == 0;
-+    }
-+
-     /// Check for string equality, ignoring case.
-     [[nodiscard]] bool equals_insensitive(StringRef RHS) const {
-       return size() == RHS.size() && compare_insensitive(RHS) == 0;
-@@ -265,6 +273,13 @@ namespace llvm {
-     [[nodiscard]] bool starts_with(char Prefix) const {
-       return !empty() && front() == Prefix;
-     }
-+    [[nodiscard]] bool startswith(StringRef Prefix) const {
-+      return size() >= Prefix.size() &&
-+             compareMemory(data(), Prefix.data(), Prefix.size()) == 0;
-+    }
-+    [[nodiscard]] bool startswith(char Prefix) const {
-+      return !empty() && front() == Prefix;
-+    }
- 
-     /// Check if this string starts with the given \p Prefix, ignoring case.
-     [[nodiscard]] LLVM_ABI bool starts_with_insensitive(StringRef Prefix) const;
-@@ -278,6 +293,15 @@ namespace llvm {
-     [[nodiscard]] bool ends_with(char Suffix) const {
-       return !empty() && back() == Suffix;
-     }
-+    /// Check if this string ends with the given \p Suffix.
-+    [[nodiscard]] bool endswith(StringRef Suffix) const {
-+      return size() >= Suffix.size() &&
-+             compareMemory(end() - Suffix.size(), Suffix.data(),
-+                           Suffix.size()) == 0;
-+    }
-+    [[nodiscard]] bool endswith(char Suffix) const {
-+      return !empty() && back() == Suffix;
-+    }
- 
-     /// Check if this string ends with the given \p Suffix, ignoring case.
-     [[nodiscard]] LLVM_ABI bool ends_with_insensitive(StringRef Suffix) const;
 diff --git a/llvm/include/llvm/Analysis/TargetLibraryInfo.h b/llvm/include/llvm/Analysis/TargetLibraryInfo.h
 index 0f98af69f12c..28d6f730cc8c 100644
 --- a/llvm/include/llvm/Analysis/TargetLibraryInfo.h
