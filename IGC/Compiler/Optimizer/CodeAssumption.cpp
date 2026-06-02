@@ -258,7 +258,6 @@ bool CodeAssumption::IsSGIdUniform(MetaDataUtils *pMDU, ModuleMetaData *modMD, F
   }
 
   FunctionInfoMetaDataHandle funcInfoMD = pMDU->getFunctionsInfoItem(F);
-  ThreadGroupSizeMetaDataHandle threadGroupSize = funcInfoMD->getThreadGroupSize();
 
   // WO (Walk Order): it is a triple (d0, d1, d2), where each d0/d1/d2 are 0|1|2.
   // This WO indicates that the work-items are dispatched along d0 first, then d1,
@@ -289,21 +288,24 @@ bool CodeAssumption::IsSGIdUniform(MetaDataUtils *pMDU, ModuleMetaData *modMD, F
     }
   }
 
-  if (threadGroupSize->hasValue()) {
-    SubGroupSizeMetaDataHandle subGroupSize = funcInfoMD->getSubGroupSize();
-    if (subGroupSize->hasValue()) {
-      uint32_t simdSize = (uint32_t)subGroupSize->getSIMDSize();
+  if (funcMD != modMD->FuncMD.end()) {
+    const ThreadGroupSizeMD &threadGroupSize = funcMD->second.threadGroupSize;
+    if (threadGroupSize.dim0 || threadGroupSize.dim1 || threadGroupSize.dim2) {
+      SubGroupSizeMetaDataHandle subGroupSize = funcInfoMD->getSubGroupSize();
+      if (subGroupSize->hasValue()) {
+        uint32_t simdSize = (uint32_t)subGroupSize->getSIMDSize();
 
-      uint32_t X = (uint32_t)threadGroupSize->getXDim();
-      uint32_t Y = (uint32_t)threadGroupSize->getYDim();
-      uint32_t Z = (uint32_t)threadGroupSize->getZDim();
+        uint32_t X = (uint32_t)threadGroupSize.dim0;
+        uint32_t Y = (uint32_t)threadGroupSize.dim1;
+        uint32_t Z = (uint32_t)threadGroupSize.dim2;
 
-      bool hasWO = (WO_0 >= 0); // WO_1 and WO_2 >=0
-      if ((X * Y * Z) <= simdSize) {
-        // WG has only 1 thread.
-        return true;
-      } else if (hasWO && ((Y == 1 && Z == 1) || (X == 1 && Z == 1) || (X == 1 && Y == 1))) {
-        return true;
+        bool hasWO = (WO_0 >= 0); // WO_1 and WO_2 >=0
+        if ((X * Y * Z) <= simdSize) {
+          // WG has only 1 thread.
+          return true;
+        } else if (hasWO && ((Y == 1 && Z == 1) || (X == 1 && Z == 1) || (X == 1 && Y == 1))) {
+          return true;
+        }
       }
     }
   }

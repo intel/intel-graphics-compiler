@@ -264,7 +264,7 @@ void COpenCLKernel::PreCompile() {
     tryHWGenerateLocalIDs();
 }
 void COpenCLKernel::tryHWGenerateLocalIDs() {
-  auto Dims = IGCMetaDataHelper::getThreadGroupDims(*m_pMdUtils, entry);
+  auto Dims = IGCMetaDataHelper::getThreadGroupDims(m_Context->getModuleMetaData(), entry);
 
   if (!Dims)
     return;
@@ -1826,11 +1826,9 @@ void COpenCLKernel::FillZEUserAttributes(IGC::IGCMD::FunctionInfoMetaDataHandle 
   }
 
   // reqd_work_group_size
-  ThreadGroupSizeMetaDataHandle threadGroupSize = funcInfoMD->getThreadGroupSize();
-  if (threadGroupSize->hasValue()) {
-    m_kernelInfo.m_zeUserAttributes.reqd_work_group_size.push_back(threadGroupSize->getXDim());
-    m_kernelInfo.m_zeUserAttributes.reqd_work_group_size.push_back(threadGroupSize->getYDim());
-    m_kernelInfo.m_zeUserAttributes.reqd_work_group_size.push_back(threadGroupSize->getZDim());
+  if (auto dims = IGCMetaDataHelper::getThreadGroupDims(m_Context->getModuleMetaData(), entry)) {
+    auto &reqd = m_kernelInfo.m_zeUserAttributes.reqd_work_group_size;
+    reqd.insert(reqd.end(), dims->begin(), dims->end());
   }
 
   // vec_type_hint
@@ -1843,7 +1841,7 @@ void COpenCLKernel::FillZEUserAttributes(IGC::IGCMD::FunctionInfoMetaDataHandle 
   auto itHint = m_Context->getModuleMetaData()->FuncMD.find(entry);
   if (itHint != m_Context->getModuleMetaData()->FuncMD.end()) {
     const ThreadGroupSizeMD &threadGroupSizeHint = itHint->second.threadGroupSizeHint;
-    if (threadGroupSizeHint.dim0 || threadGroupSizeHint.dim1 || threadGroupSizeHint.dim2) {
+    if (isSpecified(threadGroupSizeHint)) {
       m_kernelInfo.m_zeUserAttributes.work_group_size_hint.push_back(threadGroupSizeHint.dim0);
       m_kernelInfo.m_zeUserAttributes.work_group_size_hint.push_back(threadGroupSizeHint.dim1);
       m_kernelInfo.m_zeUserAttributes.work_group_size_hint.push_back(threadGroupSizeHint.dim2);
@@ -1909,12 +1907,11 @@ void COpenCLKernel::FillKernel(SIMDMode simdMode) {
 
   FunctionInfoMetaDataHandle funcInfoMD = m_pMdUtils->getFunctionsInfoItem(entry);
 
-  ThreadGroupSizeMetaDataHandle threadGroupSize = funcInfoMD->getThreadGroupSize();
-  if (threadGroupSize->hasValue()) {
+  if (auto dims = IGCMetaDataHelper::getThreadGroupDims(m_Context->getModuleMetaData(), entry)) {
     m_kernelInfo.m_executionEnvironment.HasFixedWorkGroupSize = true;
-    m_kernelInfo.m_executionEnvironment.FixedWorkgroupSize[0] = threadGroupSize->getXDim();
-    m_kernelInfo.m_executionEnvironment.FixedWorkgroupSize[1] = threadGroupSize->getYDim();
-    m_kernelInfo.m_executionEnvironment.FixedWorkgroupSize[2] = threadGroupSize->getZDim();
+    m_kernelInfo.m_executionEnvironment.FixedWorkgroupSize[0] = (*dims)[0];
+    m_kernelInfo.m_executionEnvironment.FixedWorkgroupSize[1] = (*dims)[1];
+    m_kernelInfo.m_executionEnvironment.FixedWorkgroupSize[2] = (*dims)[2];
   }
 
   SubGroupSizeMetaDataHandle subGroupSize = funcInfoMD->getSubGroupSize();
@@ -2037,7 +2034,7 @@ void COpenCLKernel::RecomputeBTLayout() {
 }
 
 bool COpenCLKernel::HasFullDispatchMask() {
-  unsigned int groupSize = IGCMetaDataHelper::getThreadGroupSize(*m_pMdUtils, entry);
+  unsigned int groupSize = IGCMetaDataHelper::getThreadGroupSize(m_Context->getModuleMetaData(), entry);
   if (groupSize != 0) {
     if (groupSize % numLanes(m_State.m_dispatchSize) == 0) {
       return true;
@@ -2761,7 +2758,7 @@ bool COpenCLKernel::preventLargeGRFNumForReqdWorkGroupSize(SIMDMode simdMode) co
   if (simdMode == SIMDMode::SIMD32)
     return false;
 
-  uint32_t reqdWorkGroupSize = IGCMetaDataHelper::getThreadGroupSize(*m_Context->getMetaDataUtils(), entry);
+  uint32_t reqdWorkGroupSize = IGCMetaDataHelper::getThreadGroupSize(m_Context->getModuleMetaData(), entry);
   if (reqdWorkGroupSize == 0)
     return false;
 
@@ -2869,7 +2866,7 @@ SIMDStatus COpenCLKernel::checkSIMDCompileConds(SIMDMode simdMode, EmitPass &EP,
   if (modMD->csInfo.maxWorkGroupSize) {
     groupSize = modMD->csInfo.maxWorkGroupSize;
   } else {
-    groupSize = IGCMetaDataHelper::getThreadGroupSize(*pMdUtils, &F);
+    groupSize = IGCMetaDataHelper::getThreadGroupSize(modMD, &F);
   }
 
   if (groupSize == 0) {

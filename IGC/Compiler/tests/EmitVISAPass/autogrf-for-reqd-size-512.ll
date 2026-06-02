@@ -24,9 +24,18 @@ entry:
 }
 
 !igc.functions = !{!0}
+!IGCMetadata = !{!100}
 
 !0 = !{ptr @test, !1}
-!1 = !{!2, !3, !20}
+!1 = !{!2, !3}
+!100 = !{!"ModuleMD", !101}
+!101 = !{!"FuncMD", !102, !103}
+!102 = !{!"FuncMDMap[0]", ptr @test}
+!103 = !{!"FuncMDValue[0]", !104}
+!104 = !{!"threadGroupSize", !105, !106, !107}
+!105 = !{!"dim0", i32 512}
+!106 = !{!"dim1", i32 1}
+!107 = !{!"dim2", i32 1}
 !2 = !{!"function_type", i32 0}
 !3 = !{!"implicit_arg_desc", !4, !5, !6, !7, !8, !9, !10, !11, !12, !14, !16, !18}
 !4 = !{i32 0}
@@ -45,4 +54,3 @@ entry:
 !17 = !{!"explicit_arg_num", i32 2}
 !18 = !{i32 15, !19}
 !19 = !{!"explicit_arg_num", i32 3}
-!20 = !{!"thread_group_size", i32 512, i32 1, i32 1}

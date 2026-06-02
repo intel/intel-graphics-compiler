@@ -694,8 +694,8 @@ LowerImplicitArgIntrinsics::LowerImplicitArgIntrinsics() : FunctionPass(ID) {
   initializeLowerImplicitArgIntrinsicsPass(*PassRegistry::getPassRegistry());
 }
 
-Constant *getKnownWorkGroupSize(IGCMD::MetaDataUtils *MDUtils, llvm::Function &F) {
-  auto Dims = IGCMD::IGCMetaDataHelper::getThreadGroupDims(*MDUtils, &F);
+Constant *getKnownWorkGroupSize(const IGC::ModuleMetaData *modMD, llvm::Function &F) {
+  auto Dims = IGCMD::IGCMetaDataHelper::getThreadGroupDims(modMD, &F);
   if (!Dims)
     return nullptr;
 
@@ -712,7 +712,7 @@ bool LowerImplicitArgIntrinsics::runOnFunction(Function &F) {
   /// If the work group size is known at compile time, emit it as a
   /// literal rather than reading from the payload.
   auto MDUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
-  if (Constant *KnownWorkGroupSize = getKnownWorkGroupSize(MDUtils, F)) {
+  if (Constant *KnownWorkGroupSize = getKnownWorkGroupSize(m_ctx->getModuleMetaData(), F)) {
     ImplicitArgs IAS(F, MDUtils);
     if (auto *V = IAS.getImplicitArgValue(F, ImplicitArg::ENQUEUED_LOCAL_WORK_SIZE, MDUtils))
       V->replaceAllUsesWith(KnownWorkGroupSize);

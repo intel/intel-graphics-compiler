@@ -481,3 +481,5 @@ int IGC::extractAnnotatedNumThreads(const IGC::FunctionMetaData &funcMD) {
 
   return -1;
 }
+
+bool IGC::isSpecified(const IGC::ThreadGroupSizeMD &tgs) { return tgs.dim0 || tgs.dim1 || tgs.dim2; }

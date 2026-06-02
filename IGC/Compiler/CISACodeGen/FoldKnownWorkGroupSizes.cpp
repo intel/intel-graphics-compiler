@@ -72,7 +72,7 @@ void FoldKnownWorkGroupSizes::visitCallInst(llvm::CallInst &I) {
       m_changed = true;
     }
   } else if (funcName == WIFuncsAnalysis::GET_ENQUEUED_LOCAL_SIZE) {
-    auto Dims = IGCMetaDataHelper::getThreadGroupDims(*ctx->getMetaDataUtils(), I.getFunction());
+    auto Dims = IGCMetaDataHelper::getThreadGroupDims(ctx->getModuleMetaData(), I.getFunction());
 
     if (!Dims)
       return;

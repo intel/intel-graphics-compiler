@@ -557,26 +557,22 @@ bool Simd32ProfitabilityAnalysis::checkSimd32Profitable(CodeGenContext *ctx) {
   // If we have workgroup size (or workgroup size hint) metadata, check whether the X dimension
   // is expected to be of size 16 or below. If it is, no point in using SIMD32, we'll just
   // get empty lanes.
-  auto funcInfoMD = pMdUtils->findFunctionsInfoItem(F);
-  if (funcInfoMD != pMdUtils->end_FunctionsInfo()) {
-    ThreadGroupSizeMetaDataHandle tgSize = funcInfoMD->second->getThreadGroupSize();
+  ModuleMetaData *modMD = ctx->getModuleMetaData();
+  auto funcMDIt = modMD->FuncMD.find(F);
+  if (funcMDIt != modMD->FuncMD.end()) {
     const int tgSizeLimit = 16;
-    int tgSizeCal = tgSize->getXDim() * tgSize->getYDim() * tgSize->getZDim();
-
-    ModuleMetaData *modMD = ctx->getModuleMetaData();
     if (modMD->csInfo.maxWorkGroupSize && modMD->csInfo.maxWorkGroupSize <= tgSizeLimit)
       return false;
 
-    int tgSizeHintCal = 0;
-    bool tgSizeHintHasValue = false;
-    auto itHint = modMD->FuncMD.find(F);
-    if (itHint != modMD->FuncMD.end()) {
-      const ThreadGroupSizeMD &tgSizeHint = itHint->second.threadGroupSizeHint;
-      tgSizeHintCal = tgSizeHint.dim0 * tgSizeHint.dim1 * tgSizeHint.dim2;
-      tgSizeHintHasValue = tgSizeHint.dim0 || tgSizeHint.dim1 || tgSizeHint.dim2;
-    }
+    const ThreadGroupSizeMD &tgSize = funcMDIt->second.threadGroupSize;
+    int tgSizeCal = tgSize.dim0 * tgSize.dim1 * tgSize.dim2;
+    bool tgSizeHasValue = tgSize.dim0 || tgSize.dim1 || tgSize.dim2;
 
-    if ((tgSize->hasValue() && tgSizeCal <= tgSizeLimit) || (tgSizeHintHasValue && tgSizeHintCal <= tgSizeLimit)) {
+    const ThreadGroupSizeMD &tgSizeHint = funcMDIt->second.threadGroupSizeHint;
+    int tgSizeHintCal = tgSizeHint.dim0 * tgSizeHint.dim1 * tgSizeHint.dim2;
+    bool tgSizeHintHasValue = tgSizeHint.dim0 || tgSizeHint.dim1 || tgSizeHint.dim2;
+
+    if ((tgSizeHasValue && tgSizeCal <= tgSizeLimit) || (tgSizeHintHasValue && tgSizeHintCal <= tgSizeLimit)) {
       return false;
     }
   }

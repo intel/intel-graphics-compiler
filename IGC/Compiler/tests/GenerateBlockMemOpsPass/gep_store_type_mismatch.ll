@@ -31,7 +31,7 @@ entry:
 !igc.functions = !{!0}
 
 !0 = !{ptr @foo, !1}
-!1 = !{!2, !3, !15}
+!1 = !{!2, !3}
 !2 = !{!"function_type", i32 0}
 !3 = !{!"implicit_arg_desc", !4, !5, !6, !7, !8, !9, !10, !11, !12, !13}
 !4 = !{i32 0}
@@ -45,5 +45,4 @@ entry:
 !12 = !{i32 13}
 !13 = !{i32 15, !14}
 !14 = !{!"explicit_arg_num", i32 0}
-!15 = !{!"thread_group_size", i32 64, i32 1, i32 1}
 

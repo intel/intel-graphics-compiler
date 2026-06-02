@@ -23,9 +23,6 @@ using SubGroupSizeMetaDataHandle = MetaObjectHandle<SubGroupSizeMetaData>;
 class VectorTypeHintMetaData;
 using VectorTypeHintMetaDataHandle = MetaObjectHandle<VectorTypeHintMetaData>;
 
-class ThreadGroupSizeMetaData;
-using ThreadGroupSizeMetaDataHandle = MetaObjectHandle<ThreadGroupSizeMetaData>;
-
 class FunctionInfoMetaData;
 using FunctionInfoMetaDataHandle = MetaObjectHandle<FunctionInfoMetaData>;
 
@@ -235,59 +232,6 @@ private:
   SignType m_Sign;
 };
 
-class ThreadGroupSizeMetaData : public IMetaDataObject {
-public:
-  using _Mybase = IMetaDataObject;
-
-  ThreadGroupSizeMetaData(const llvm::MDNode *pNode, bool hasId);
-  ThreadGroupSizeMetaData();
-  ThreadGroupSizeMetaData(const char *name);
-
-  // Returns true if any of the ArgInfoMetaData`s members has changed
-  bool dirty() const override;
-
-  // Returns true if the structure was loaded from the metadata or was changed
-  bool hasValue() const;
-
-  // Discards the changes done to the ArgInfoMetaData instance
-  void discardChanges() override;
-
-  // Generates the new MDNode hierarchy for the given structure
-  llvm::Metadata *generateNode(llvm::LLVMContext &context) const;
-
-  // Saves the structure changes to the given MDNode
-  void save(llvm::LLVMContext &context, llvm::MDNode *pNode) const;
-
-  //
-  // Data members
-  //
-  using DimType = MetaDataValue<int32_t>;
-
-  // XDim
-  DimType::value_type getXDim() const { return m_XDim.get(); }
-  void setXDim(const DimType::value_type &val) { m_XDim.set(val); }
-  bool isXDimHasValue() const { return m_XDim.hasValue(); }
-
-  // YDim
-  DimType::value_type getYDim() const { return m_YDim.get(); }
-  void setYDim(const DimType::value_type &val) { m_YDim.set(val); }
-  bool isYDimHasValue() const { return m_YDim.hasValue(); }
-
-  // ZDim
-  DimType::value_type getZDim() const { return m_ZDim.get(); }
-  void setZDim(const DimType::value_type &val) { m_ZDim.set(val); }
-  bool isZDimHasValue() const { return m_ZDim.hasValue(); }
-
-private:
-  // parent node
-  const llvm::MDNode *m_pNode;
-
-  // data members
-  DimType m_XDim;
-  DimType m_YDim;
-  DimType m_ZDim;
-};
-
 class FunctionInfoMetaData : public IMetaDataObject {
 public:
   using _Mybase = IMetaDataObject;
@@ -363,9 +307,6 @@ public:
     return m_ImplicitArgInfoList.erase(i);
   }
 
-  // ThreadGroupSize
-  ThreadGroupSizeMetaDataHandle getThreadGroupSize() { return m_ThreadGroupSize; }
-
   // SubGroupSize
   SubGroupSizeMetaDataHandle getSubGroupSize() { return m_SubGroupSize; }
 
@@ -380,7 +321,6 @@ private:
   TypeType m_Type;
   ArgInfoListList m_ArgInfoList;
   ImplicitArgInfoListList m_ImplicitArgInfoList;
-  ThreadGroupSizeMetaDataHandle m_ThreadGroupSize;
   SubGroupSizeMetaDataHandle m_SubGroupSize;
   VectorTypeHintMetaDataHandle m_OpenCLVectorTypeHint;
 };

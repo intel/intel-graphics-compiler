@@ -40,10 +40,9 @@ entry:
 !igc.functions = !{!1}
 
 !1 = !{void (float addrspace(1)*, float addrspace(1)*, <8 x i32>, <8 x i32>, <3 x i32>, i16, i16, i16, i32, i32)* @testNoUnif, !2}
-!2 = !{!3, !4, !5}
+!2 = !{!3, !4}
 !3 = !{!"function_type", i32 0}
 !4 = !{!"implicit_arg_desc", !7, !8, !9, !10, !11, !12, !13, !15}
-!5 = !{!"thread_group_size", i32 16, i32 32, i32 32}
 !7 = !{i32 0}
 !8 = !{i32 1}
 !9 = !{i32 6}

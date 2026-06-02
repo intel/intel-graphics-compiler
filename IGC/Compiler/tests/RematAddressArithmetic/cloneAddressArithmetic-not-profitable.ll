@@ -386,7 +386,7 @@ attributes #0 = { convergent nounwind null_pointer_is_valid "less-precise-fpmad"
 !igc.functions = !{!0}
 
 !0 = !{ptr @kernel, !1}
-!1 = !{!2, !3, !17, !18}
+!1 = !{!2, !3, !18}
 !2 = !{!"function_type", i32 0}
 !3 = !{!"implicit_arg_desc", !4, !5, !6, !7, !8, !9, !11, !13, !15}
 !4 = !{i32 0}
@@ -402,5 +402,4 @@ attributes #0 = { convergent nounwind null_pointer_is_valid "less-precise-fpmad"
 !14 = !{!"explicit_arg_num", i32 2}
 !15 = !{i32 15, !16}
 !16 = !{!"explicit_arg_num", i32 9}
-!17 = !{!"thread_group_size", i32 64, i32 1, i32 1}
 !18 = !{!"sub_group_size", i32 32}

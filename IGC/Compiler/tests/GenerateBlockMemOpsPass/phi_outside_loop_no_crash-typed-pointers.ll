@@ -36,14 +36,17 @@ store_BB:
 !IGCMetadata = !{!3}
 
 !0 = !{void ()* @test, !1}
-!1 = !{!2, !11}
+!1 = !{!2}
 !2 = !{!"function_type", i32 0}
 !3 = !{!"ModuleMD", !4}
 !4 = !{!"FuncMD", !5, !6}
 !5 = !{!"FuncMDMap[0]", void ()* @test}
-!6 = !{!"FuncMDValue[0]", !7}
+!6 = !{!"FuncMDValue[0]", !7, !11}
 !7 = !{!"workGroupWalkOrder", !8, !9, !10}
 !8 = !{!"dim0", i32 0}
 !9 = !{!"dim1", i32 1}
 !10 = !{!"dim2", i32 2}
-!11 = !{!"thread_group_size", i32 32, i32 32, i32 32}
+!11 = !{!"threadGroupSize", !12, !13, !14}
+!12 = !{!"dim0", i32 32}
+!13 = !{!"dim1", i32 32}
+!14 = !{!"dim2", i32 32}

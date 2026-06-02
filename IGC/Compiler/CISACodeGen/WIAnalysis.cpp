@@ -2187,11 +2187,11 @@ void WIAnalysisRunner::checkLocalIdUniform(Function *F, bool &IsLxUniform, bool 
   simdSize = simdSize >= 8 ? simdSize : 32;
 
   int32_t X = -1, Y = -1, Z = -1;
-  ThreadGroupSizeMetaDataHandle threadGroupSize = funcInfoMD->getThreadGroupSize();
-  if (threadGroupSize->hasValue()) {
-    X = (int32_t)threadGroupSize->getXDim();
-    Y = (int32_t)threadGroupSize->getYDim();
-    Z = (int32_t)threadGroupSize->getZDim();
+  const ThreadGroupSizeMD &threadGroupSize = funcMD->second.threadGroupSize;
+  if (threadGroupSize.dim0 || threadGroupSize.dim1 || threadGroupSize.dim2) {
+    X = (int32_t)threadGroupSize.dim0;
+    Y = (int32_t)threadGroupSize.dim1;
+    Z = (int32_t)threadGroupSize.dim2;
   }
 
   if (WO_0 == 0 && ((X / simdSize) * simdSize) == X) {

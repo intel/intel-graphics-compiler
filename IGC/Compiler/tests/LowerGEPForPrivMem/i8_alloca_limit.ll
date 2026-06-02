@@ -274,7 +274,7 @@ attributes #1 = { nofree nosync nounwind readnone speculatable willreturn }
 !igc.functions = !{!0}
 
 !0 = !{void (<4 x i8> addrspace(1)*, <4 x i8> addrspace(1)*, float, i32, i32, i32, <8 x i32>, <8 x i32>, <3 x i32>, i16, i16, i16, i8 addrspace(2)*, i8*, i32, i32)* bitcast (void (<4 x i8> addrspace(1)*, <4 x i8> addrspace(1)*, float, i32, <3 x i32>, i16, i16, i16, i8 addrspace(2)*, i8*)* @WaveletDenoise to void (<4 x i8> addrspace(1)*, <4 x i8> addrspace(1)*, float, i32, i32, i32, <8 x i32>, <8 x i32>, <3 x i32>, i16, i16, i16, i8 addrspace(2)*, i8*, i32, i32)*), !1}
-!1 = !{!2, !3, !16}
+!1 = !{!2, !3}
 !2 = !{!"function_type", i32 0}
 !3 = !{!"implicit_arg_desc", !4, !5, !6, !7, !8, !9, !10, !11, !12, !14}
 !4 = !{i32 0}
@@ -289,4 +289,3 @@ attributes #1 = { nofree nosync nounwind readnone speculatable willreturn }
 !13 = !{!"explicit_arg_num", i32 0}
 !14 = !{i32 15, !15}
 !15 = !{!"explicit_arg_num", i32 1}
-!16 = !{!"thread_group_size", i32 64, i32 4, i32 1}

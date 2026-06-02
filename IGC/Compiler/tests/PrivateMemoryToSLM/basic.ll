@@ -72,9 +72,10 @@ entry:
 attributes #0 = { convergent noinline nounwind optnone }
 
 !igc.functions = !{!3}
+!IGCMetadata = !{!100}
 
 !3 = !{void (i32 addrspace(1)*, <8 x i32>, <8 x i32>, i16, i16, i16, i8*, i32)* @test_slm, !4}
-!4 = !{!5, !6, !15}
+!4 = !{!5, !6}
 !5 = !{!"function_type", i32 0}
 !6 = !{!"implicit_arg_desc", !7, !8, !9, !10, !11, !12, !13}
 !7 = !{i32 0}
@@ -85,4 +86,11 @@ attributes #0 = { convergent noinline nounwind optnone }
 !12 = !{i32 13}
 !13 = !{i32 15, !14}
 !14 = !{!"explicit_arg_num", i32 0}
-!15 = !{!"thread_group_size", i32 1, i32 2, i32 1}
+!100 = !{!"ModuleMD", !101}
+!101 = !{!"FuncMD", !102, !103}
+!102 = !{!"FuncMDMap[0]", void (i32 addrspace(1)*, <8 x i32>, <8 x i32>, i16, i16, i16, i8*, i32)* @test_slm}
+!103 = !{!"FuncMDValue[0]", !104}
+!104 = !{!"threadGroupSize", !105, !106, !107}
+!105 = !{!"dim0", i32 1}
+!106 = !{!"dim1", i32 2}
+!107 = !{!"dim2", i32 1}

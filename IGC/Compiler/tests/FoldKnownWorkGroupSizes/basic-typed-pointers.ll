@@ -49,12 +49,18 @@ declare spir_func i32 @__builtin_IB_get_enqueued_local_size(i32)
 !IGCMetadata = !{!0}
 !igc.functions = !{!3, !6}
 
-!0 = !{!"ModuleMD", !1}
+!0 = !{!"ModuleMD", !1, !9}
 !1 = !{!"compOpt", !2}
 !2 = !{!"replaceGlobalOffsetsByZero", i1 true}
 !3 = !{void ()* @test_foldws_global, !4}
 !4 = !{!5}
 !5 = !{!"function_type", i32 0}
 !6 = !{void ()* @test_foldws_local, !7}
-!7 = !{!5, !8}
-!8 = !{!"thread_group_size", i32 13, i32 2, i32 3}
+!7 = !{!5}
+!8 = !{!"FuncMDMap[0]", void ()* @test_foldws_local}
+!9 = !{!"FuncMD", !8, !10}
+!10 = !{!"FuncMDValue[0]", !11}
+!11 = !{!"threadGroupSize", !12, !13, !14}
+!12 = !{!"dim0", i32 13}
+!13 = !{!"dim1", i32 2}
+!14 = !{!"dim2", i32 3}

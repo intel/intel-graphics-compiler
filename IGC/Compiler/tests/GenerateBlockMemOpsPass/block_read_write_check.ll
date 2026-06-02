@@ -39,7 +39,7 @@ entry:
 }
 
 ; IGC cannot turn load/store statements into block statements for the testNoUnif function, since these instructions
-; work with non-contiguous memory relative to the subgroup. See thread_group_size metadata below.
+; work with non-contiguous memory relative to the subgroup. See threadGroupSize metadata below.
 
 define spir_kernel void @testNoUnif(ptr addrspace(1) %out, ptr addrspace(1) %in, <8 x i32> %r0, <8 x i32> %payloadHeader, <3 x i32> %localSize, i16 %localIdX, i16 %localIdY, i16 %localIdZ, i32 %bufferOffset, i32 %bufferOffset1) {
 
@@ -147,10 +147,10 @@ terminator:
 !2 = !{ptr @testNoUnif, !42}
 !3 = !{ptr @testYZUnifLoop, !43}
 !4 = !{ptr @test8ByteBlockOps, !44}
-!41 = !{!5, !6, !17}
+!41 = !{!5, !6}
 !42 = !{!5, !6}
-!43 = !{!5, !6, !17}
-!44 = !{!5, !6, !17}
+!43 = !{!5, !6}
+!44 = !{!5, !6}
 !5 = !{!"function_type", i32 0}
 !6 = !{!"implicit_arg_desc", !7, !8, !9, !10, !11, !12, !13, !15}
 !7 = !{i32 0}
@@ -166,24 +166,24 @@ terminator:
 
 ; This metadata provides information about the size of the work group.
 ; The IGC can generate block memory instructions only if data access is contiguous across the workgroup.
-; This requires that the workgroup be completely vectorized along the x-axis, in other words local_size_x % 32 == 0 (case !17).
+; This requires that the workgroup be completely vectorized along the x-axis, in other words local_size_x % 32 == 0.
+; The threadGroupSize value (32,32,32) is carried in the FuncMD block below.
 
-!17 = !{!"thread_group_size", i32 32, i32 32, i32 32}
-
-; IGC cannot apply the optimization in the !18 case because local_size_x % 32 != 0.
-
-!18 = !{!"thread_group_size", i32 16, i32 32, i32 32}
 !19 = !{!"ModuleMD", !112}
 !112 = !{!"FuncMD", !113, !114, !333, !334, !335, !336, !337, !338}
 !113 = !{!"FuncMDMap[0]", ptr @testYZUnif}
-!114 = !{!"FuncMDValue[0]", !116}
+!114 = !{!"FuncMDValue[0]", !116, !120}
 !333 = !{!"FuncMDMap[1]", ptr @testNoUnif}
 !334 = !{!"FuncMDValue[1]", !116}
 !335 = !{!"FuncMDMap[2]", ptr @testYZUnifLoop}
-!336 = !{!"FuncMDValue[2]", !116}
+!336 = !{!"FuncMDValue[2]", !116, !120}
 !337 = !{!"FuncMDMap[3]", ptr @test8ByteBlockOps}
-!338 = !{!"FuncMDValue[3]", !116}
+!338 = !{!"FuncMDValue[3]", !116, !120}
 !116 = !{!"workGroupWalkOrder", !117, !118, !119}
 !117 = !{!"dim0", i32 0}
 !118 = !{!"dim1", i32 1}
 !119 = !{!"dim2", i32 2}
+!120 = !{!"threadGroupSize", !121, !122, !123}
+!121 = !{!"dim0", i32 32}
+!122 = !{!"dim1", i32 32}
+!123 = !{!"dim2", i32 32}

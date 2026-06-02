@@ -59,14 +59,17 @@ exit:
 !IGCMetadata = !{!3}
 
 !0 = !{void (float addrspace(1)*, i32, i64, i64, i64)* @test, !1}
-!1 = !{!2, !11}
+!1 = !{!2}
 !2 = !{!"function_type", i32 0}
 !3 = !{!"ModuleMD", !4}
 !4 = !{!"FuncMD", !5, !6}
 !5 = !{!"FuncMDMap[0]", void (float addrspace(1)*, i32, i64, i64, i64)* @test}
-!6 = !{!"FuncMDValue[0]", !7}
+!6 = !{!"FuncMDValue[0]", !7, !11}
 !7 = !{!"workGroupWalkOrder", !8, !9, !10}
 !8 = !{!"dim0", i32 0}
 !9 = !{!"dim1", i32 1}
 !10 = !{!"dim2", i32 2}
-!11 = !{!"thread_group_size", i32 256, i32 1, i32 1}
+!11 = !{!"threadGroupSize", !12, !13, !14}
+!12 = !{!"dim0", i32 256}
+!13 = !{!"dim1", i32 1}
+!14 = !{!"dim2", i32 1}

@@ -147,10 +147,9 @@ bool SPIRMetaDataTranslation::runOnModule(Module &M) {
     // Handling Thread Group Size
     SPIRMD::WorkGroupDimensionsMetaDataHandle reqdWorkGroupSize = spirKernel->getRequiredWorkGroupSize();
     if (reqdWorkGroupSize->hasValue()) {
-      IGCMD::ThreadGroupSizeMetaDataHandle tgzHandle = fHandle->getThreadGroupSize();
-      tgzHandle->setXDim(reqdWorkGroupSize->getXDim());
-      tgzHandle->setYDim(reqdWorkGroupSize->getYDim());
-      tgzHandle->setZDim(reqdWorkGroupSize->getZDim());
+      funcMD.threadGroupSize.dim0 = reqdWorkGroupSize->getXDim();
+      funcMD.threadGroupSize.dim1 = reqdWorkGroupSize->getYDim();
+      funcMD.threadGroupSize.dim2 = reqdWorkGroupSize->getZDim();
     }
 
     // Handling Thread Group Size Hint

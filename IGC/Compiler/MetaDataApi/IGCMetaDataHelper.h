@@ -26,8 +26,9 @@ public:
 
   // In OCL, thread group size (hint) is given by kernel attributes reqd_work_group_size and work_group_size_hint.
   // Return thread group size (hint) if present; return 0 otherwise.
-  static std::optional<std::array<uint32_t, 3>> getThreadGroupDims(MetaDataUtils &mdUtils, llvm::Function *pKernelFunc);
-  static uint32_t getThreadGroupSize(MetaDataUtils &mdUtils, llvm::Function *pKernelFunc);
+  static std::optional<std::array<uint32_t, 3>> getThreadGroupDims(const ModuleMetaData *modMD,
+                                                                   llvm::Function *pKernelFunc);
+  static uint32_t getThreadGroupSize(const ModuleMetaData *modMD, llvm::Function *pKernelFunc);
   static uint32_t getThreadGroupSizeHint(const ModuleMetaData *modMD, llvm::Function *pKernelFunc);
 };
 } // namespace IGC::IGCMD

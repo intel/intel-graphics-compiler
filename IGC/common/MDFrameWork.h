@@ -358,6 +358,7 @@ enum class ShaderTypeMD
     {
         std::vector<LocalOffsetMD> localOffsets{};
         WorkGroupWalkOrderMD workGroupWalkOrder{};
+        ThreadGroupSizeMD threadGroupSize{};
         ThreadGroupSizeMD threadGroupSizeHint{};
         std::vector<FuncArgMD> funcArgs{};
         FunctionTypeMD functionType = KernelFunction;
@@ -890,4 +891,7 @@ enum class ShaderTypeMD
 
     // User annotations query functions
     int extractAnnotatedNumThreads(const IGC::FunctionMetaData& funcMD);
+
+    // Thread group size query functions
+    bool isSpecified(const ThreadGroupSizeMD &tgs);
 }

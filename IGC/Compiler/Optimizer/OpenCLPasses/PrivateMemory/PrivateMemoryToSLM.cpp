@@ -152,10 +152,11 @@ bool PrivateMemoryToSLM::runOnModule(Module &M) {
     uint64_t zDim = 0;
 
     if (CodeGenCtx->type == ShaderType::OPENCL_SHADER) {
-      ThreadGroupSizeMetaDataHandle threadGroupSize = funcMD->getThreadGroupSize();
-      xDim = threadGroupSize->getXDim();
-      yDim = threadGroupSize->getYDim();
-      zDim = threadGroupSize->getZDim();
+      if (auto dims = IGCMetaDataHelper::getThreadGroupDims(CodeGenCtx->getModuleMetaData(), F)) {
+        xDim = (*dims)[0];
+        yDim = (*dims)[1];
+        zDim = (*dims)[2];
+      }
     }
 
     uint64_t threadsNum = xDim * yDim * zDim;

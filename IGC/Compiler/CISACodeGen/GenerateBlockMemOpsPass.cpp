@@ -317,12 +317,13 @@ bool GenerateBlockMemOpsPass::getOffset(Value *Init, SmallVector<Value *, 2> &Of
       if (Inst->getOpcode() != Instruction::Add)
         return false;
 
-      IGC::IGCMD::FunctionInfoMetaDataHandle FuncInfoMD = MdUtils->getFunctionsInfoItem(Inst->getFunction());
-      IGC::IGCMD::ThreadGroupSizeMetaDataHandle ThreadGroupSize = FuncInfoMD->getThreadGroupSize();
+      ModuleMetaData *ModMD = CGCtx->getModuleMetaData();
+      auto FuncMDIt = ModMD->FuncMD.find(Inst->getFunction());
 
       // ThreadGroupSize should be specified. It is checked earlier in checkVectorizationAlongX function.
-      IGC_ASSERT(ThreadGroupSize->hasValue());
-      int LogBase2 = std::log2((int32_t)ThreadGroupSize->getXDim());
+      IGC_ASSERT(FuncMDIt != ModMD->FuncMD.end());
+      const ThreadGroupSizeMD &ThreadGroupSize = FuncMDIt->second.threadGroupSize;
+      int LogBase2 = std::log2((int32_t)ThreadGroupSize.dim0);
 
       // Check global_id_x pattern
       Value *LocalIdX = nullptr;
@@ -609,11 +610,11 @@ bool GenerateBlockMemOpsPass::checkVectorizationAlongX(Function *F) {
     return false;
 
   int32_t X = -1;
-  IGC::IGCMD::ThreadGroupSizeMetaDataHandle ThreadGroupSize = FuncInfoMD->getThreadGroupSize();
-  if (!ThreadGroupSize->hasValue())
+  const ThreadGroupSizeMD &ThreadGroupSize = FuncMD->second.threadGroupSize;
+  if (!ThreadGroupSize.dim0 && !ThreadGroupSize.dim1 && !ThreadGroupSize.dim2)
     return false;
 
-  X = (int32_t)ThreadGroupSize->getXDim();
+  X = (int32_t)ThreadGroupSize.dim0;
   if (!X)
     return false;
 

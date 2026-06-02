@@ -69,26 +69,21 @@ void IGCMetaDataHelper::removeFunction(MetaDataUtils &mdUtils, ModuleMetaData &M
   }
 }
 
-std::optional<std::array<uint32_t, 3>> IGCMetaDataHelper::getThreadGroupDims(MetaDataUtils &mdUtils,
+std::optional<std::array<uint32_t, 3>> IGCMetaDataHelper::getThreadGroupDims(const ModuleMetaData *modMD,
                                                                              llvm::Function *pKernelFunc) {
-  auto finfo = mdUtils.findFunctionsInfoItem(pKernelFunc);
-  if (finfo == mdUtils.end_FunctionsInfo())
+  auto it = modMD->FuncMD.find(pKernelFunc);
+  if (it == modMD->FuncMD.end())
     return std::nullopt;
 
-  auto &FI = finfo->second;
-
-  if (!FI->getThreadGroupSize()->hasValue())
+  const auto &tgs = it->second.threadGroupSize;
+  if (!isSpecified(tgs))
     return std::nullopt;
 
-  auto Dims = FI->getThreadGroupSize();
-
-  std::array<uint32_t, 3> A{(uint32_t)Dims->getXDim(), (uint32_t)Dims->getYDim(), (uint32_t)Dims->getZDim()};
-
-  return A;
+  return std::array<uint32_t, 3>{(uint32_t)tgs.dim0, (uint32_t)tgs.dim1, (uint32_t)tgs.dim2};
 }
 
-uint32_t IGCMetaDataHelper::getThreadGroupSize(MetaDataUtils &mdUtils, llvm::Function *pKernelFunc) {
-  auto Dims = IGCMD::IGCMetaDataHelper::getThreadGroupDims(mdUtils, pKernelFunc);
+uint32_t IGCMetaDataHelper::getThreadGroupSize(const ModuleMetaData *modMD, llvm::Function *pKernelFunc) {
+  auto Dims = IGCMD::IGCMetaDataHelper::getThreadGroupDims(modMD, pKernelFunc);
   if (!Dims)
     return 0;
 

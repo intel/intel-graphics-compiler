@@ -16362,8 +16362,7 @@ void EmitPass::emitThreadGroupBarrier(llvm::Instruction *inst) {
   if (IGC_IS_FLAG_DISABLED(DisableBarrierSkipOptimization)) {
       if (m_currShader->GetShaderType() == ShaderType::OPENCL_SHADER) {
         Function *F = inst->getParent()->getParent();
-        MetaDataUtils *pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
-        uint32_t threadGroupSize = IGCMetaDataHelper::getThreadGroupSize(*pMdUtils, F);
+        uint32_t threadGroupSize = IGCMetaDataHelper::getThreadGroupSize(m_pCtx->getModuleMetaData(), F);
         if (threadGroupSize != 0) {
           constexpr bool hasFusedEU = false;
           canSkipBarrier = BarrierSkipOptimization::canSkip(threadGroupSize, numLanes(m_SimdMode), hasFusedEU);
@@ -24467,8 +24466,7 @@ void EmitPass::emitLSCFence(llvm::GenIntrinsicInst *inst) {
   if (memoryPort == LSC_SLM) {
       if (m_currShader->GetShaderType() == ShaderType::OPENCL_SHADER) {
         Function *F = inst->getParent()->getParent();
-        MetaDataUtils *pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
-        uint32_t sz = IGCMetaDataHelper::getThreadGroupSize(*pMdUtils, F);
+        uint32_t sz = IGCMetaDataHelper::getThreadGroupSize(m_pCtx->getModuleMetaData(), F);
         if (sz != 0 && sz <= numLanes(m_SimdMode)) {
           return;
         }
