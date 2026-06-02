@@ -1225,6 +1225,8 @@ bool compareBBLoopLevel(G4_BB *bb1, G4_BB *bb2) {
   if (bb1->getNestLevel() > bb2->getNestLevel()) {
     return true;
   } else if (bb1->getNestLevel() == bb2->getNestLevel()) {
+    if (bb1->size() == bb2->size())
+      return bb1->getId() > bb2->getId();
     return bb1->size() > bb2->size();
   }
 
