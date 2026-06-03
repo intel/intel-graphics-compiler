@@ -298,6 +298,11 @@ static bool AreVMETypesDefined() {
   return true;
 }
 
+// Returns true if the input is SYCL source, indicated by the '-x sycl' option.
+// For SYCL input the OpenCL-specific options (extension/feature macro defines,
+// the custom OpenCL header, etc.) must not be passed into the frontend.
+static bool IsBuildingForSYCL(const std::string &options) { return options.find("-x sycl") != std::string::npos; }
+
 // Prepares the arguments for the TranslateClang method for the given text input
 void CClangTranslationBlock::GetTranslateClangArgs(char *pInput, uint32_t uiInputSize, const char *pOptions,
                                                    const char *pInternalOptions, TranslateClangArgs *pClangArgs,
@@ -574,6 +579,10 @@ static std::string GetCDefinesForEnableList(llvm::StringRef enableListStr, unsig
 // headers specified
 void CClangTranslationBlock::EnsureProperPCH(TranslateClangArgs *pArgs, const char *pInternalOptions,
                                              std::string &exceptString) {
+  // The custom OpenCL header is not applicable to SYCL input.
+  if (IsBuildingForSYCL(pArgs->options))
+    return;
+
   unsigned long CTHeaderSize = 0;
   m_cthBuffer = llvm::LoadCharBufferFromResource(IDR_CTH_H, "H", CTHeaderSize);
   IGC_ASSERT_MESSAGE(m_cthBuffer, "Error loading Opencl_cth.h");
@@ -860,13 +869,88 @@ static int BuildOptionsAreValid(const std::string &options, std::string &exceptS
   return retVal;
 }
 
+// Builds the OpenCL-specific clang options: the supported extension list, the
+// corresponding extension/feature macro defines and the other OpenCL C macros.
+// These options only apply to OpenCL C source and must not be passed for SYCL.
+std::string CClangTranslationBlock::GetOpenCLOptions(const TranslateClangArgs *pInputArgs, const char *pInternalOptions,
+                                                     std::string &exceptString) const {
+  std::string optionsEx;
+  std::string extensions;
+  std::string extensionsFromInternalOptions = GetSubstring(pInternalOptions, "-cl-ext=");
+
+  unsigned int oclStd =
+      GetOclCVersionFromOptions(pInputArgs->options.data(), nullptr, pInputArgs->oclVersion, exceptString);
+
+  // if extensions list is passed in via internal options, it will override the default ones.
+  if (!extensionsFromInternalOptions.empty()) {
+    extensions = extensionsFromInternalOptions;
+  } else {
+    extensions = FormatExtensionsString(m_Extensions);
+  }
+
+  optionsEx.append(extensions);
+  optionsEx.append(" -I. -D__ENABLE_GENERIC__=1 -D__ENDIAN_LITTLE__");
+
+  // Undefine Clang's SPIR/SPIRV macros to prevent automatic extension enablement.
+  // According to the March 20th OpenCL tooling meeting, Clang's automatic extension
+  // handling "is trying to do the right thing on a best effort basis, but should not
+  // be treated as a reference solution, and in its current state appears to be broken
+  // and doing more harm than good." The recommended solution is to handle all extension
+  // and feature macro definitions manually.
+  // By undefining __SPIR__ and __SPIRV__, we prevent Clang from automatically enabling extensions,
+  // allowing us to explicitly control which extensions are enabled through manual defines.
+  optionsEx += " -U__SPIR__ -U__SPIRV__";
+
+  // get additional -D flags from internal options
+  optionsEx += " " + GetCDefinesFromInternalOptions(pInternalOptions);
+  optionsEx += " " + GetCDefinesForEnableList(extensions, oclStd, "-cl-ext=-all,");
+
+  // Workaround for Clang issue.
+  // Clang always defines __IMAGE_SUPPORT__ macro for SPIR target, even if device doesn't support it.
+  if (optionsEx.find("__IMAGE_SUPPORT__") == std::string::npos) {
+    optionsEx += " -U__IMAGE_SUPPORT__";
+  }
+
+  // FIXME: do we still support VME?
+  if (AreVMETypesDefined()) {
+    optionsEx += " -D__VME_TYPES_DEFINED__";
+  }
+
+  optionsEx += " -D__LLVM_VERSION_MAJOR__=" + to_string(LLVM_VERSION_MAJOR);
+
+  return optionsEx;
+}
+
+// Builds the '--spirv-ext=' option listing the SPIR-V extensions supported by IGC.
+// This allows opencl-clang to enable only relevant extensions when compiling to
+// SPIR-V instead of enabling all extensions by default, and prevents generating
+// SPIR-V that uses extensions not supported by IGC.
+static std::string GetSpirvExtensionsOption() {
+  const auto &Extensions = IGC::SPIRVExtensionsSupport::getAllExtensions();
+  if (Extensions.empty())
+    return {};
+
+  std::string option = " --spirv-ext=";
+
+  auto it = Extensions.begin();
+  option += "+";
+  option += it->Name;
+
+  for (++it; it != Extensions.end(); ++it) {
+    option += ",+";
+    option += it->Name;
+  }
+
+  return option;
+}
+
 // Translates from CL to LL/BC
 bool CClangTranslationBlock::TranslateClang(const TranslateClangArgs *pInputArgs, STB_TranslateOutputArgs *pOutputArgs,
                                             std::string &exceptString, const char *pInternalOptions) {
   // additional clang options
   std::string optionsEx = pInputArgs->optionsEx;
   std::string options = pInputArgs->options;
-  optionsEx.append(" -disable-llvm-optzns -fblocks -I. -D__ENABLE_GENERIC__=1");
+  bool IsSYCL = IsBuildingForSYCL(options);
 
   switch (m_OutputFormat) {
   case TB_DATA_FORMAT_LLVM_TEXT:
@@ -882,10 +966,8 @@ bool CClangTranslationBlock::TranslateClang(const TranslateClangArgs *pInputArgs
     break;
   }
 
-  if (AreVMETypesDefined()) {
-    optionsEx += " -D__VME_TYPES_DEFINED__";
-  }
-
+  // TODO: do we really need to override the triple? Do we still support 32-bit
+  // host code for compute?
   if (options.find("-triple") == std::string::npos) {
     // if target triple not explicitly set
     if (pInputArgs->b32bit) {
@@ -894,10 +976,6 @@ bool CClangTranslationBlock::TranslateClang(const TranslateClangArgs *pInputArgs
     } else {
       options += " -triple spir64";
     }
-  }
-
-  if (options.find("-gline-tables-only") != std::string::npos) {
-    optionsEx += " -debug-info-kind=line-tables-only -dwarf-version=4";
   }
 
 #if LLVM_VERSION_MAJOR < 17 && defined(IGC_DEBUG_VARIABLES)
@@ -913,65 +991,14 @@ bool CClangTranslationBlock::TranslateClang(const TranslateClangArgs *pInputArgs
   }
 #endif
 
-  std::string extensionsFromInternalOptions = GetSubstring(pInternalOptions, "-cl-ext=");
-
-  std::string extensions;
-
-  // if extensions list is passed in via internal options, it will override the default ones.
-  if (extensionsFromInternalOptions.size() != 0) {
-    extensions = extensionsFromInternalOptions;
-  } else {
-    extensions = FormatExtensionsString(m_Extensions);
-  }
-
-  optionsEx += " " + extensions;
-
-  unsigned int oclStd =
-      GetOclCVersionFromOptions(pInputArgs->options.data(), nullptr, pInputArgs->oclVersion, exceptString);
-
-  // Undefine Clang's SPIR/SPIRV macros to prevent automatic extension enablement.
-  // According to the March 20th OpenCL tooling meeting, Clang's automatic extension
-  // handling "is trying to do the right thing on a best effort basis, but should not
-  // be treated as a reference solution, and in its current state appears to be broken
-  // and doing more harm than good." The recommended solution is to handle all extension
-  // and feature macro definitions manually.
-  // By undefining __SPIR__ and __SPIRV__, we prevent Clang from automatically enabling extensions,
-  // allowing us to explicitly control which extensions are enabled through manual defines.
-  optionsEx += " -U__SPIR__";
-  optionsEx += " -U__SPIRV__";
-
-  // get additional -D flags from internal options
-  optionsEx += " " + GetCDefinesFromInternalOptions(pInternalOptions);
-  optionsEx += " " + GetCDefinesForEnableList(extensions, oclStd, "-cl-ext=-all,");
-
-  optionsEx += " -D__ENDIAN_LITTLE__";
-
-  optionsEx += " -D__LLVM_VERSION_MAJOR__=" + to_string(LLVM_VERSION_MAJOR);
-
-  // Workaround for Clang issue.
-  // Clang always defines __IMAGE_SUPPORT__ macro for SPIR target, even if device doesn't support it.
-  if (optionsEx.find("__IMAGE_SUPPORT__") == std::string::npos) {
-    optionsEx += " -U__IMAGE_SUPPORT__";
-  }
-
-  // TODO: Workaround - remove after some time to be consistent with LLVM15+ behavior
-  optionsEx += " -Wno-error=implicit-int";
+  // SYCL input is compiled without the OpenCL-specific options
+  // (extension list, feature/extension macro defines, the custom OpenCL
+  // header, etc.), which only apply to OpenCL C source.
+  if (!IsSYCL)
+    optionsEx += GetOpenCLOptions(pInputArgs, pInternalOptions, exceptString);
 
   // Pass the list of supported SPIR-V extensions from IGC to opencl-clang.
-  // This allows opencl-clang to enable only relevant extensions when compiling
-  // OpenCL C to SPIR-V instead of enabling all extensions by default, and
-  // prevents generating SPIR-V that uses extensions not supported by IGC.
-  const auto &Extensions = IGC::SPIRVExtensionsSupport::getAllExtensions();
-  if (!Extensions.empty()) {
-    optionsEx += " --spirv-ext=";
-
-    auto it = Extensions.begin();
-    optionsEx += "+" + it->Name;
-
-    for (++it; it != Extensions.end(); ++it) {
-      optionsEx += ",+" + it->Name;
-    }
-  }
+  optionsEx += GetSpirvExtensionsOption();
 
   IOCLFEBinaryResult *pResultPtr = NULL;
   int res = 0;
@@ -985,7 +1012,10 @@ bool CClangTranslationBlock::TranslateClang(const TranslateClangArgs *pInputArgs
         (unsigned int)pInputArgs->inputHeaders.size(), (const char **)pInputArgs->inputHeadersNames.data(), NULL, 0,
         options.c_str(), optionsEx.c_str(), pInputArgs->oclVersion.c_str(), &pResultPtr);
   }
-  if (0 != BuildOptionsAreValid(options, exceptString))
+
+  // Don't check the options correctness for SYCL after the compilation failure,
+  // because SYCL compilation requires a different set of options.
+  if (!IsSYCL && 0 != BuildOptionsAreValid(options, exceptString))
     res = -43;
 
   Utils::FillOutputArgs(pResultPtr, pOutputArgs, exceptString);

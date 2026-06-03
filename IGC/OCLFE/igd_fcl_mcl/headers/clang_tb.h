@@ -45,7 +45,8 @@ struct TranslateClangArgs;
 static const STB_TranslationCode g_cClangTranslationCodes[] = {
     {TB_DATA_FORMAT_OCL_TEXT, TB_DATA_FORMAT_LLVM_TEXT}, {TB_DATA_FORMAT_OCL_TEXT, TB_DATA_FORMAT_LLVM_BINARY},
     {TB_DATA_FORMAT_OCL_TEXT, TB_DATA_FORMAT_SPIR_V},    {TB_DATA_FORMAT_ELF, TB_DATA_FORMAT_LLVM_BINARY},
-    {TB_DATA_FORMAT_ELF, TB_DATA_FORMAT_SPIR_V},         {TB_DATA_FORMAT_ELF, TB_DATA_FORMAT_LLVM_ARCHIVE}};
+    {TB_DATA_FORMAT_ELF, TB_DATA_FORMAT_SPIR_V},         {TB_DATA_FORMAT_ELF, TB_DATA_FORMAT_LLVM_ARCHIVE},
+};
 
 #ifdef _WIN32
 #ifdef COMMON_CLANG_LIB_FULL_NAME
@@ -117,6 +118,10 @@ protected:
 
   bool TranslateClang(const TranslateClangArgs *pInputArgs, STB_TranslateOutputArgs *pOutputArgs,
                       std::string &exceptString, const char *pInternalOptions);
+
+  // Builds the OpenCL-specific clang options (extension list and macro defines)
+  std::string GetOpenCLOptions(const TranslateClangArgs *pInputArgs, const char *pInternalOptions,
+                               std::string &exceptString) const;
 
   bool TranslateElf(const STB_TranslateInputArgs *pInputArgs, STB_TranslateOutputArgs *pOutputArgs,
                     std::string &exceptString);
