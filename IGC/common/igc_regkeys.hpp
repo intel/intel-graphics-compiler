@@ -176,7 +176,7 @@ void DumpIGCRegistryKeyDefinitions();
 void DumpIGCRegistryKeyDefinitions3(std::string driverRegistryPath, unsigned long pciBus, unsigned long pciDevice,
                                     unsigned long pciFunction);
 void InitializeRegKeys();
-void LoadRegistryKeys(const std::string &options = "", bool *RegFlagNameError = nullptr);
+void LoadRegistryKeys(const std::string &options = "", std::string *optionsParseError = nullptr);
 extern "C" bool ReadIGCRegistry(const char *pName, void *pValue, unsigned int size, IGCFlagType type);
 void SetCurrentDebugHash(const ShaderHash &hash);
 void SetCurrentEntryPoints(const std::vector<std::string> &entry_points);
@@ -191,9 +191,9 @@ static inline void GetKeysSetExplicitly(std::string *KeyValuePairs, std::string 
 static inline void SetCurrentDebugHash(const ShaderHash &hash) { IGC_UNUSED(hash); }
 static inline void SetCurrentEntryPoints(const std::vector<std::string> &entry_points) { IGC_UNUSED(entry_points); }
 static inline void InitializeRegKeys() {};
-static inline void LoadRegistryKeys(const std::string &options = "", bool *RegFlagNameError = nullptr) {
+static inline void LoadRegistryKeys(const std::string &options = "", std::string *optionsParseError = nullptr) {
   IGC_UNUSED(options);
-  IGC_UNUSED(RegFlagNameError);
+  IGC_UNUSED(optionsParseError);
 }
 #define IGC_SET_FLAG_VALUE(name, regkeyValue) true
 #define DECLARE_IGC_REGKEY(dataType, regkeyName, defaultValue, description, releaseMode)                               \
@@ -224,12 +224,6 @@ template <typename T> bool IsEnabled(const T &value) { return value != 0; }
   }
 inline bool doesRegexMatch(const std::string &src, const char *regex) { return false; }
 #endif
-
-// Extracts the content of -igc_opts '...' sections from an options string.
-// Supports multiple -igc_opts instances; their contents are concatenated with commas.
-// Returns the extracted comma-separated key=value pairs suitable for LoadRegistryKeys.
-// On malformed input (missing quotes), sets errorString and returns what was extracted so far.
-std::string ExtractIGCOptsFromOptions(const char *pOptions, std::string &errorString);
 
 // unset: Unlimited/Enable - return true
 //     0: Disabled         - return false

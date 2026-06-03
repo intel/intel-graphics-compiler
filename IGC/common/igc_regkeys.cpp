@@ -960,7 +960,7 @@ static void LoadIGCFlagsFromRegistry(const std::string &options = "", bool *RegF
   }
 }
 
-static void LoadIGCFlagsFromOptionsString(const std::string_view &options, bool *parseError) {
+static void LoadIGCFlagsFromOptionsString(const std::string_view &options, std::string *parseError) {
   std::string_view allSeparators = ", \v\f\t\r\n";
 
   for (IGCFlag &igcFlag : g_IGCFlagsArray) {
@@ -993,19 +993,28 @@ static void LoadIGCFlagsFromOptionsString(const std::string_view &options, bool 
         igcFlag.m_Value = parsedInt;
         igcFlag.isSet = true;
       } else {
-        std::cerr << "Failed to parse flag '" << igcFlag.name << "' as an unsigned integer. Token: '" << token << "\n";
+        std::string msg = "Failed to parse flag '" + std::string(igcFlag.name) + "' as an unsigned integer. Token: '" +
+                          std::string(token) + "'\n";
+        if (parseError)
+          *parseError += msg;
         setError = true;
       }
     } else { // IsString
       size_t foundEqual = token.find('=');
       if (foundEqual != std::string::npos) {
-        std::cerr << "Failed to parse flag '" << igcFlag.name << "', found an unexpected '=' character in token: '"
-                  << token << "'. Make sure to use comma , separator in igc_opts.\n";
+        std::string msg = "Failed to parse flag '" + std::string(igcFlag.name) +
+                          "', found an unexpected '=' character in token: '" + std::string(token) +
+                          "'. Make sure to use comma , separator in igc_opts.\n";
+        if (parseError)
+          *parseError += msg;
         setError = true;
       }
 
       if (!setError && sizeof(igcFlag.m_string) <= token.size()) {
-        std::cerr << "Failed to parse flag '" << igcFlag.name << "' due to max length limit overflow.\n";
+        std::string msg =
+            "Failed to parse flag '" + std::string(igcFlag.name) + "' due to max length limit overflow.\n";
+        if (parseError)
+          *parseError += msg;
         setError = true;
       }
 
@@ -1014,13 +1023,10 @@ static void LoadIGCFlagsFromOptionsString(const std::string_view &options, bool 
         igcFlag.isSet = true;
       }
     }
-
-    if (setError && parseError != nullptr)
-      *parseError = true;
   }
 }
 
-static void PrintIGCFlags() {
+[[maybe_unused]] static void PrintIGCFlags() {
   if (IGC_IS_FLAG_ENABLED(PrintDebugSettings)) {
     for (IGCFlag &igcFlag : g_IGCFlagsArray) {
       if (igcFlag.IsSetToNonDefaultValue()) {
@@ -1072,7 +1078,30 @@ void InitializeRegKeys() {
   }
 }
 
-void LoadRegistryKeys(const std::string &options, bool *optionsParseError) {
+static std::string ExtractIGCOptsFromOptions(const std::string &options, std::string *errorString) {
+  std::string result;
+  std::string_view remaining = options;
+  while (!remaining.empty()) {
+    std::size_t found = remaining.find("-igc_opts");
+    if (found == std::string_view::npos)
+      break;
+
+    std::size_t firstQuote = remaining.find('\'', found);
+    std::size_t secondQuote =
+        (firstQuote != std::string_view::npos) ? remaining.find('\'', firstQuote + 1) : std::string_view::npos;
+    if (firstQuote == std::string_view::npos || secondQuote == std::string_view::npos) {
+      if (errorString)
+        *errorString += "Missing single quotes for -igc_opts\n";
+      break;
+    }
+    result += remaining.substr(firstQuote + 1, secondQuote - firstQuote - 1);
+    result += ',';
+    remaining = remaining.substr(secondQuote + 1);
+  }
+  return result;
+}
+
+void LoadRegistryKeys(const std::string &options, std::string *optionsParseError) {
   // only load the debug flags once before compiling to avoid any multi-threading issue
   static std::mutex loadFlags;
   static volatile bool flagsSet = false;
@@ -1081,8 +1110,15 @@ void LoadRegistryKeys(const std::string &options, bool *optionsParseError) {
   if (!flagsSet) {
     flagsSet = true;
     LoadIGCFlagsFromRegistry();
-    LoadIGCFlagsFromOptionsString(options, optionsParseError);
+
+    std::string igcOpts = ExtractIGCOptsFromOptions(options, optionsParseError);
+    if (!igcOpts.empty()) {
+      LoadIGCFlagsFromOptionsString(igcOpts, optionsParseError);
+    }
+
+#if !defined(IGC_FCL_BUILD)
     PrintIGCFlags();
+#endif
     InitializeRegKeys();
   }
 }
@@ -1149,28 +1185,3 @@ void GetKeysSetExplicitly(std::string *KeyValuePairs, std::string *OptionKeys) {
   }
 }
 #endif
-
-std::string ExtractIGCOptsFromOptions(const char *pOptions, std::string &errorString) {
-  std::string result;
-  if (pOptions == nullptr)
-    return result;
-
-  std::string_view remaining = pOptions;
-  while (!remaining.empty()) {
-    std::size_t found = remaining.find("-igc_opts");
-    if (found == std::string_view::npos)
-      break;
-
-    std::size_t firstQuote = remaining.find('\'', found);
-    std::size_t secondQuote =
-        (firstQuote != std::string_view::npos) ? remaining.find('\'', firstQuote + 1) : std::string_view::npos;
-    if (firstQuote == std::string_view::npos || secondQuote == std::string_view::npos) {
-      errorString = "Missing single quotes for -igc_opts";
-      break;
-    }
-    result += remaining.substr(firstQuote + 1, secondQuote - firstQuote - 1);
-    result += ',';
-    remaining = remaining.substr(secondQuote + 1);
-  }
-  return result;
-}

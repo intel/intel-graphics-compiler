@@ -237,17 +237,11 @@ CIF_DECLARE_INTERFACE_PIMPL(IgcOclTranslationCtx) : CIF::PimplBase {
     USC::SShaderStageBTLayout zeroLayout = USC::g_cZeroShaderStageBTLayout;
     IGC::COCLBTILayout oclLayout(&zeroLayout);
 
-    std::string igcOptsError;
-    std::string RegKeysFlagsFromOptions = ExtractIGCOptsFromOptions(inputArgs.pOptions, igcOptsError);
-    if (!igcOptsError.empty()) {
-      outputInterface->GetImpl()->SetError(TranslationErrorType::Unused, igcOptsError.c_str());
-      return outputInterface.release();
+    std::string igcFlagsError;
+    LoadRegistryKeys(inputArgs.pOptions ? inputArgs.pOptions : "", &igcFlagsError);
+    if (!igcFlagsError.empty()) {
+      outputInterface->GetImpl()->SetError(TranslationErrorType::Unused, igcFlagsError.c_str());
     }
-    bool RegFlagNameError = 0;
-    LoadRegistryKeys(RegKeysFlagsFromOptions, &RegFlagNameError);
-    if (RegFlagNameError)
-      outputInterface->GetImpl()->SetError(
-          TranslationErrorType::Unused, "Invalid registry flag name in -igc_opts, at least one flag has been ignored");
 
     IGC::CPlatform igcPlatform = this->globalState.GetIgcCPlatform();
 

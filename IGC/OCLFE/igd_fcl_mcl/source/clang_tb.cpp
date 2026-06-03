@@ -1136,10 +1136,9 @@ bool CClangTranslationBlock::Translate(const STB_TranslateInputArgs *pInputArgs,
 
   // Initialize IGC flags from env vars, registry, and -igc_opts on first call.
   std::string igcOptsError;
-  std::string igcOpts = ExtractIGCOptsFromOptions(pInputArgs->pOptions, igcOptsError);
-  LoadRegistryKeys(igcOpts);
+  LoadRegistryKeys(pInputArgs->pOptions ? pInputArgs->pOptions : "", &igcOptsError);
   if (!igcOptsError.empty()) {
-    pOutputArgs->ErrorString.append("warning: " + igcOptsError + "\n");
+    pOutputArgs->ErrorString.append(igcOptsError);
   }
 
   std::string exceptString;

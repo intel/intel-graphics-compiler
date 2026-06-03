@@ -59,14 +59,14 @@ SPDX-License-Identifier: MIT
 // RUN: env IGC_PrintDebugSettings=1 ocloc compile -file %s \
 // RUN:   -options "-igc_opts 'PrintAfter=SomePass ForceOCLSIMDWidth=8'" \
 // RUN:   -device dg2 2>&1 | FileCheck %s --check-prefix=STR-NOT-LAST
-// STR-NOT-LAST: Failed to parse flag 'PrintAfter'
-// STR-NOT-LAST: ForceOCLSIMDWidth 8
+// STR-NOT-LAST-DAG: Failed to parse flag 'PrintAfter'
+// STR-NOT-LAST-DAG: ForceOCLSIMDWidth 8
 
 // String between two numbers, space-separated.
 // RUN: env IGC_PrintDebugSettings=1 ocloc compile -file %s \
 // RUN:   -options "-igc_opts 'ForceOCLSIMDWidth=8 PrintAfter=SomePass SetLoopUnrollThreshold=100'" \
 // RUN:   -device dg2 2>&1 | FileCheck %s --check-prefix=STR-MIDDLE
-// STR-MIDDLE: Failed to parse flag 'PrintAfter'
+// STR-MIDDLE-DAG: Failed to parse flag 'PrintAfter'
 // STR-MIDDLE-DAG: ForceOCLSIMDWidth 8
 // STR-MIDDLE-DAG: SetLoopUnrollThreshold 100
 
