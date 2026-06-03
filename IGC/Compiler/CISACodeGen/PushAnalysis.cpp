@@ -180,8 +180,8 @@ bool PushAnalysis::IsStatelessCBLoad(llvm::Instruction *inst, int &pushableAddre
   int64_t offset = 0;
   SmallVector<Value *, 4> potentialPushableAddresses;
   std::function<void(Value *)> GetPotentialPushableAddresses;
-  GetPotentialPushableAddresses = [&potentialPushableAddresses, &offset,
-                                   &GetPotentialPushableAddresses](Value *pAddress) {
+  GetPotentialPushableAddresses = [&potentialPushableAddresses, &offset, &GetPotentialPushableAddresses,
+                                   this](Value *pAddress) {
     BinaryOperator *pAdd = dyn_cast<BinaryOperator>(pAddress);
     if (pAdd && pAdd->getOpcode() == llvm::Instruction::Add) {
       GetPotentialPushableAddresses(pAdd->getOperand(0));
@@ -191,6 +191,13 @@ bool PushAnalysis::IsStatelessCBLoad(llvm::Instruction *inst, int &pushableAddre
     } else if (isa<ConstantInt>(pAddress)) {
       ConstantInt *pConst = cast<ConstantInt>(pAddress);
       offset += pConst->getZExtValue();
+    } else if (isa<GetElementPtrInst>(pAddress)) {
+      auto pGEP = cast<GetElementPtrInst>(pAddress);
+      APInt gepOffset{m_DL->getIndexSizeInBits(ADDRESS_SPACE_CONSTANT), 0};
+      if (pGEP->accumulateConstantOffset(*m_DL, gepOffset)) {
+        GetPotentialPushableAddresses(pGEP->getPointerOperand());
+        offset += gepOffset.getSExtValue();
+      }
     } else {
       potentialPushableAddresses.push_back(pAddress);
     }
