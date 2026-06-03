@@ -661,10 +661,16 @@ bool AccSubPass::isAccCandidate(G4_INST *inst, int &lastUse, bool &mustBeAcc0,
     // Fixme: the rule should be removed with
     // kernel.fg.builder->removedAccRestrictionsAsGRF().
     if ((dst->getType() != src->getType()) ||
-        kernel.fg.globalOpndHT.isOpndGlobal(src) ||
-        dst->compareOperand(src, builder) != Rel_eq) {
+        kernel.fg.globalOpndHT.isOpndGlobal(src)) {
       return false;
     }
+
+    if (dst->compareOperand(src, builder) != Rel_eq) {
+      if (!builder.getOption(vISA_EnableSuperSetAccSub) ||
+          dst->compareOperand(src, builder) != Rel_gt)
+        return false;
+    }
+
     if (!useInst->canSrcBeAcc(opndNum)) {
       // Need further check when swapAccSub is enabled and the operand
       // number is src2.
@@ -791,26 +797,30 @@ bool AccSubPass::replaceDstWithAcc(G4_INST *inst, int accNum) {
   }
 
   // at this point acc substitution must succeed
-
   G4_Areg *accReg = useAcc1 ? builder.phyregpool.getAcc1Reg()
                             : builder.phyregpool.getAcc0Reg();
-  G4_DstRegRegion *accDst =
-      builder.createDst(accReg, (short)accNum, 0, 1, dst->getType());
-  accDst->setAccRegSel(inst->getDst()->getAccRegSel());
-  inst->setDest(accDst);
+
+  // Update the source operand first
   for (auto I = inst->use_begin(), E = inst->use_end(); I != E; ++I) {
     auto &&use = *I;
     G4_INST *useInst = use.first;
     int srcId = useInst->getSrcNum(use.second);
     G4_SrcRegRegion *oldSrc = useInst->getSrc(srcId)->asSrcRegRegion();
     G4_SrcRegRegion *accSrc = nullptr;
+    int realAccNum = accNum;
+
+    if (builder.getOption(vISA_EnableSuperSetAccSub) &&
+        dst->compareOperand(oldSrc, builder) == Rel_gt &&
+        dst->getLeftBound() != oldSrc->getLeftBound())
+      realAccNum++;
+
     if (kernel.fg.builder->removedAccRestrictionsAsGRF()) {
       accSrc = builder.createSrcRegRegion(
-          oldSrc->getModifier(), Direct, accReg, (short)accNum, 0,
+          oldSrc->getModifier(), Direct, accReg, (short)realAccNum, 0,
           oldSrc->getRegion(), oldSrc->getType());
     } else {
       accSrc = builder.createSrcRegRegion(
-          oldSrc->getModifier(), Direct, accReg, (short)accNum, 0,
+          oldSrc->getModifier(), Direct, accReg, (short)realAccNum, 0,
           builder.getRegionStride1(), dst->getType());
     }
     accSrc->setAccRegSel(oldSrc->getAccRegSel());
@@ -865,6 +875,14 @@ bool AccSubPass::replaceDstWithAcc(G4_INST *inst, int accNum) {
       useInst->setSrc(accSrc, srcId);
     }
   }
+
+  // Update dst operand, cannot do before src operands because setDest will
+  // break the reference from dst to instruction, which is needed in
+  // compareOperand
+  G4_DstRegRegion *accDst =
+      builder.createDst(accReg, (short)accNum, 0, 1, dst->getType());
+  accDst->setAccRegSel(inst->getDst()->getAccRegSel());
+  inst->setDest(accDst);
 
   return true;
 }

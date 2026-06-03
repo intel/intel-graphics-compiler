@@ -650,6 +650,7 @@ DEF_VISA_OPTION(vISA_SelectiveRAGlobaVarRatioThreshold, ET_CSTR, "-selectiveRAGV
 DEF_VISA_OPTION(vISA_EnableSwapAccSub, ET_BOOL, "-swapAccSub", UNUSED, true)
 DEF_VISA_OPTION(vISA_EnableRRAccSub, ET_BOOL, "-roundRobinAccSub", UNUSED,
                 false)
+DEF_VISA_OPTION(vISA_EnableSuperSetAccSub, ET_BOOL_TRUE, "-superSetAccSub", UNUSED, false)
 DEF_VISA_OPTION(vISA_BalanceIntMov, ET_INT32, "-balanceIntMov",
                 "USAGE: -balanceIntMov <ratio>\n", -1)
 DEF_VISA_OPTION(vISA_EnableInt32MULLH, ET_BOOL_TRUE, "-enableInt32Mullh",
