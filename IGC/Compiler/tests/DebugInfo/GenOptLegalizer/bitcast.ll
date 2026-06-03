@@ -8,7 +8,7 @@
 
 
 ; REQUIRES: llvm-14-plus
-; RUN: igc_opt --opaque-pointers -GenOptLegalizer -S < %s | FileCheck %s
+; RUN: igc_opt --opaque-pointers -GenOptLegalizer -S < %s | FileCheck %s --check-prefixes=CHECK,%if llvm-22-plus %{CHECK-DBG-RECORDS%} %else %{CHECK-DBG-INTRINSIC%}
 ; ------------------------------------------------
 ; GenOptLegalizer
 ; ------------------------------------------------
@@ -20,25 +20,32 @@
 
 ; CHECK: define void @test{{.*}} !dbg [[SCOPE:![0-9]*]]
 ; CHECK-DAG: store half [[VAL3_V:%[A-z0-9]*]], {{.*}}, !dbg [[STR1_LOC:![0-9]*]]
-; CHECK-DAG: void @llvm.dbg.value(metadata half [[VAL3_V]], metadata [[VAL3_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL3_LOC:![0-9]*]]
+; CHECK-DBG-INTRINSIC-DAG: void @llvm.dbg.value(metadata half [[VAL3_V]], metadata [[VAL3_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL3_LOC:![0-9]*]]
+; CHECK-DBG-RECORDS-DAG: #dbg_value(half [[VAL3_V]], [[VAL3_MD:![0-9]*]], !DIExpression(), [[VAL3_LOC:![0-9]*]])
 ; CHECK-DAG: [[VAL3_V]] = {{.*}}, !dbg [[VAL3_LOC]]
 ; CHECK-DAG: store half [[VAL7_V:%[A-z0-9]*]], {{.*}}, !dbg [[STR2_LOC:![0-9]*]]
-; CHECK-DAG: void @llvm.dbg.value(metadata half [[VAL7_V]], metadata [[VAL7_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL7_LOC:![0-9]*]]
+; CHECK-DBG-INTRINSIC-DAG: void @llvm.dbg.value(metadata half [[VAL7_V]], metadata [[VAL7_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL7_LOC:![0-9]*]]
+; CHECK-DBG-RECORDS-DAG: #dbg_value(half [[VAL7_V]], [[VAL7_MD:![0-9]*]], !DIExpression(), [[VAL7_LOC:![0-9]*]])
 ; CHECK-DAG: [[VAL7_V]] = {{.*}}, !dbg [[VAL7_LOC]]
 ; CHECK-DAG: store float [[VAL11_V:%[A-z0-9]*]], {{.*}}, !dbg [[STR3_LOC:![0-9]*]]
 ; CHECK-DAG: store float [[VAL12_V:%[A-z0-9]*]], {{.*}}, !dbg [[STR4_LOC:![0-9]*]]
 ; CHECK-DAG: store float [[VAL13_V:%[A-z0-9]*]], {{.*}}, !dbg [[STR5_LOC:![0-9]*]]
-; CHECK-DAG: void @llvm.dbg.value(metadata float [[VAL11_V]], metadata [[VAL11_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL11_LOC:![0-9]*]]
+; CHECK-DBG-INTRINSIC-DAG: void @llvm.dbg.value(metadata float [[VAL11_V]], metadata [[VAL11_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL11_LOC:![0-9]*]]
+; CHECK-DBG-RECORDS-DAG: #dbg_value(float [[VAL11_V]], [[VAL11_MD:![0-9]*]], !DIExpression(), [[VAL11_LOC:![0-9]*]])
 ; CHECK-DAG: [[VAL11_V]] = {{.*}}, !dbg [[VAL11_LOC]]
-; CHECK-DAG: void @llvm.dbg.value(metadata float [[VAL12_V]], metadata [[VAL12_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL12_LOC:![0-9]*]]
+; CHECK-DBG-INTRINSIC-DAG: void @llvm.dbg.value(metadata float [[VAL12_V]], metadata [[VAL12_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL12_LOC:![0-9]*]]
+; CHECK-DBG-RECORDS-DAG: #dbg_value(float [[VAL12_V]], [[VAL12_MD:![0-9]*]], !DIExpression(), [[VAL12_LOC:![0-9]*]])
 ; CHECK-DAG: [[VAL12_V]] = {{.*}}, !dbg [[VAL12_LOC]]
-; CHECK-DAG: void @llvm.dbg.value(metadata float [[VAL13_V]], metadata [[VAL13_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL13_LOC:![0-9]*]]
+; CHECK-DBG-INTRINSIC-DAG: void @llvm.dbg.value(metadata float [[VAL13_V]], metadata [[VAL13_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL13_LOC:![0-9]*]]
+; CHECK-DBG-RECORDS-DAG: #dbg_value(float [[VAL13_V]], [[VAL13_MD:![0-9]*]], !DIExpression(), [[VAL13_LOC:![0-9]*]])
 ; CHECK-DAG: [[VAL13_V]] = {{.*}}, !dbg [[VAL13_LOC]]
 ; CHECK-DAG: store i8 [[VAL16_V:%[A-z0-9]*]], {{.*}}, !dbg [[STR6_LOC:![0-9]*]]
-; CHECK-DAG: void @llvm.dbg.value(metadata i8 [[VAL16_V]], metadata [[VAL16_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL16_LOC:![0-9]*]]
+; CHECK-DBG-INTRINSIC-DAG: void @llvm.dbg.value(metadata i8 [[VAL16_V]], metadata [[VAL16_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL16_LOC:![0-9]*]]
+; CHECK-DBG-RECORDS-DAG: #dbg_value(i8 [[VAL16_V]], [[VAL16_MD:![0-9]*]], !DIExpression(), [[VAL16_LOC:![0-9]*]])
 ; CHECK-DAG: [[VAL16_V]] = {{.*}}, !dbg [[VAL16_LOC]]
 ; CHECK-DAG: store i8 [[VAL19_V:%[A-z0-9]*]], {{.*}}, !dbg [[STR7_LOC:![0-9]*]]
-; CHECK-DAG: void @llvm.dbg.value(metadata i8 [[VAL19_V]], metadata [[VAL19_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL19_LOC:![0-9]*]]
+; CHECK-DBG-INTRINSIC-DAG: void @llvm.dbg.value(metadata i8 [[VAL19_V]], metadata [[VAL19_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL19_LOC:![0-9]*]]
+; CHECK-DBG-RECORDS-DAG: #dbg_value(i8 [[VAL19_V]], [[VAL19_MD:![0-9]*]], !DIExpression(), [[VAL19_LOC:![0-9]*]])
 ; CHECK-DAG: [[VAL19_V]] = {{.*}}, !dbg [[VAL19_LOC]]
 
 

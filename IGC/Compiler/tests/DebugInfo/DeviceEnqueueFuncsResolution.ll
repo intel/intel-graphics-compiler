@@ -7,7 +7,7 @@
 ;============================ end_copyright_notice =============================
 ;
 ; REQUIRES: llvm-14-plus
-; RUN: igc_opt --opaque-pointers --igc-device-enqueue-func-resolution -S < %s | FileCheck %s
+; RUN: igc_opt --opaque-pointers --igc-device-enqueue-func-resolution -S < %s | FileCheck %s --check-prefixes=CHECK,%if llvm-22-plus %{CHECK-DBG-RECORDS%} %else %{CHECK-DBG-INTRINSIC%}
 ; ------------------------------------------------
 ; DeviceEnqueueFuncsResolution
 ; ------------------------------------------------
@@ -21,30 +21,50 @@
 ; CHECK: define spir_kernel void @test_device
 ; CHECK-SAME: !dbg [[SCOPE:![0-9]*]]
 ;
-; CHECK: call void @llvm.dbg.value
-; CHECK-SAME: metadata ptr addrspace(1) [[DDQ_V:%[A-z0-9]*]]
-; CHECK-SAME: metadata [[DDQ_MD:![0-9]*]], metadata !DIExpression()
-; CHECK-SAME: !dbg [[DDQ_LOC:![0-9]*]]
+; CHECK-DBG-INTRINSIC: call void @llvm.dbg.value
+; CHECK-DBG-RECORDS: #dbg_value
+; CHECK-DBG-INTRINSIC-SAME: metadata ptr addrspace(1) [[DDQ_V:%[A-z0-9]*]]
+; CHECK-DBG-RECORDS-SAME: ptr addrspace(1) [[DDQ_V:%[A-z0-9]*]]
+; CHECK-DBG-INTRINSIC-SAME: metadata [[DDQ_MD:![0-9]*]], metadata !DIExpression()
+; CHECK-DBG-RECORDS-SAME: [[DDQ_MD:![0-9]*]], !DIExpression()
+; CHECK-DBG-INTRINSIC-SAME: !dbg [[DDQ_LOC:![0-9]*]]
+; CHECK-DBG-RECORDS-SAME: [[DDQ_LOC:![0-9]*]]
 ;
-; CHECK: call void @llvm.dbg.value
-; CHECK-SAME: metadata ptr addrspace(1) [[EP_V:%[A-z0-9]*]]
-; CHECK-SAME: metadata [[EP_MD:![0-9]*]], metadata !DIExpression()
-; CHECK-SAME: !dbg [[EP_LOC:![0-9]*]]
+; CHECK-DBG-INTRINSIC: call void @llvm.dbg.value
+; CHECK-DBG-RECORDS: #dbg_value
+; CHECK-DBG-INTRINSIC-SAME: metadata ptr addrspace(1) [[EP_V:%[A-z0-9]*]]
+; CHECK-DBG-RECORDS-SAME: ptr addrspace(1) [[EP_V:%[A-z0-9]*]]
+; CHECK-DBG-INTRINSIC-SAME: metadata [[EP_MD:![0-9]*]], metadata !DIExpression()
+; CHECK-DBG-RECORDS-SAME: [[EP_MD:![0-9]*]], !DIExpression()
+; CHECK-DBG-INTRINSIC-SAME: !dbg [[EP_LOC:![0-9]*]]
+; CHECK-DBG-RECORDS-SAME: [[EP_LOC:![0-9]*]]
 ;
-; CHECK: call void @llvm.dbg.value
-; CHECK-SAME: metadata i32 [[MWG_V:%[A-z0-9]*]]
-; CHECK-SAME: metadata [[MWG_MD:![0-9]*]], metadata !DIExpression()
-; CHECK-SAME: !dbg [[MWG_LOC:![0-9]*]]
+; CHECK-DBG-INTRINSIC: call void @llvm.dbg.value
+; CHECK-DBG-RECORDS: #dbg_value
+; CHECK-DBG-INTRINSIC-SAME: metadata i32 [[MWG_V:%[A-z0-9]*]]
+; CHECK-DBG-RECORDS-SAME: i32 [[MWG_V:%[A-z0-9]*]]
+; CHECK-DBG-INTRINSIC-SAME: metadata [[MWG_MD:![0-9]*]], metadata !DIExpression()
+; CHECK-DBG-RECORDS-SAME: [[MWG_MD:![0-9]*]], !DIExpression()
+; CHECK-DBG-INTRINSIC-SAME: !dbg [[MWG_LOC:![0-9]*]]
+; CHECK-DBG-RECORDS-SAME: [[MWG_LOC:![0-9]*]]
 ;
-; CHECK: call void @llvm.dbg.value
-; CHECK-SAME: metadata i32 [[PE_V:%[A-z0-9]*]]
-; CHECK-SAME: metadata [[PE_MD:![0-9]*]], metadata !DIExpression()
-; CHECK-SAME: !dbg [[PE_LOC:![0-9]*]]
+; CHECK-DBG-INTRINSIC: call void @llvm.dbg.value
+; CHECK-DBG-RECORDS: #dbg_value
+; CHECK-DBG-INTRINSIC-SAME: metadata i32 [[PE_V:%[A-z0-9]*]]
+; CHECK-DBG-RECORDS-SAME: i32 [[PE_V:%[A-z0-9]*]]
+; CHECK-DBG-INTRINSIC-SAME: metadata [[PE_MD:![0-9]*]], metadata !DIExpression()
+; CHECK-DBG-RECORDS-SAME: [[PE_MD:![0-9]*]], !DIExpression()
+; CHECK-DBG-INTRINSIC-SAME: !dbg [[PE_LOC:![0-9]*]]
+; CHECK-DBG-RECORDS-SAME: [[PE_LOC:![0-9]*]]
 ;
-; CHECK: call void @llvm.dbg.value
-; CHECK-SAME: metadata i32 [[PWM_V:%[A-z0-9]*]]
-; CHECK-SAME: metadata [[PWM_MD:![0-9]*]], metadata !DIExpression()
-; CHECK-SAME: !dbg [[PWM_LOC:![0-9]*]]
+; CHECK-DBG-INTRINSIC: call void @llvm.dbg.value
+; CHECK-DBG-RECORDS: #dbg_value
+; CHECK-DBG-INTRINSIC-SAME: metadata i32 [[PWM_V:%[A-z0-9]*]]
+; CHECK-DBG-RECORDS-SAME: i32 [[PWM_V:%[A-z0-9]*]]
+; CHECK-DBG-INTRINSIC-SAME: metadata [[PWM_MD:![0-9]*]], metadata !DIExpression()
+; CHECK-DBG-RECORDS-SAME: [[PWM_MD:![0-9]*]], !DIExpression()
+; CHECK-DBG-INTRINSIC-SAME: !dbg [[PWM_LOC:![0-9]*]]
+; CHECK-DBG-RECORDS-SAME: [[PWM_LOC:![0-9]*]]
 ;
 ; CHECK: store
 ; CHECK-SAME: [[MWG_V]]

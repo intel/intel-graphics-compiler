@@ -7,7 +7,7 @@
 ;============================ end_copyright_notice =============================
 ;
 ; REQUIRES: llvm-14-plus
-; RUN: igc_opt --opaque-pointers --igc-generic-address-dynamic-resolution -S < %s | FileCheck %s
+; RUN: igc_opt --opaque-pointers --igc-generic-address-dynamic-resolution -S < %s | FileCheck %s --check-prefixes=CHECK,%if llvm-22-plus %{CHECK-DBG-RECORDS%} %else %{CHECK-DBG-INTRINSIC%}
 ; ------------------------------------------------
 ; GenericAddressDynamicResolution
 ; ------------------------------------------------
@@ -22,16 +22,21 @@
 ;
 ; CHECK: [[ACAST_V:%[0-9A-z]*]] = addrspacecast
 ; CHECK-SAME: !dbg [[ACAST_LOC:![0-9]*]]
-; CHECK: @llvm.dbg.value(metadata ptr addrspace(4) [[ACAST_V]]
-; CHECK-SAME: metadata [[ACAST_MD:![0-9]*]], metadata !DIExpression()), !dbg [[ACAST_LOC]]
+; CHECK-DBG-INTRINSIC: @llvm.dbg.value(metadata ptr addrspace(4) [[ACAST_V]]
+; CHECK-DBG-RECORDS: #dbg_value(ptr addrspace(4) [[ACAST_V]]
+; CHECK-DBG-INTRINSIC-SAME: metadata [[ACAST_MD:![0-9]*]], metadata !DIExpression()), !dbg [[ACAST_LOC]]
+; CHECK-DBG-RECORDS-SAME: [[ACAST_MD:![0-9]*]], !DIExpression(), [[ACAST_LOC]])
 ;
-; CHECK-DAG: @llvm.dbg.value(metadata ptr [[IBP_V:%[A-z0-9.]*]], metadata [[IBP_MD:![0-9]*]], metadata !DIExpression()), !dbg [[IBP_LOC:![0-9]*]]
+; CHECK-DBG-INTRINSIC-DAG: @llvm.dbg.value(metadata ptr [[IBP_V:%[A-z0-9.]*]], metadata [[IBP_MD:![0-9]*]], metadata !DIExpression()), !dbg [[IBP_LOC:![0-9]*]]
+; CHECK-DBG-RECORDS-DAG: #dbg_value(ptr [[IBP_V:%[A-z0-9.]*]], [[IBP_MD:![0-9]*]], !DIExpression(), [[IBP_LOC:![0-9]*]])
 ; CHECK-DAG: [[IBP_V]] = {{.*}} !dbg [[IBP_LOC]]
 ;
-; CHECK-DAG: @llvm.dbg.value(metadata ptr addrspace(1) [[IBG_V:%[A-z0-9.]*]], metadata [[IBG_MD:![0-9]*]], metadata !DIExpression()), !dbg [[IBG_LOC:![0-9]*]]
+; CHECK-DBG-INTRINSIC-DAG: @llvm.dbg.value(metadata ptr addrspace(1) [[IBG_V:%[A-z0-9.]*]], metadata [[IBG_MD:![0-9]*]], metadata !DIExpression()), !dbg [[IBG_LOC:![0-9]*]]
+; CHECK-DBG-RECORDS-DAG: #dbg_value(ptr addrspace(1) [[IBG_V:%[A-z0-9.]*]], [[IBG_MD:![0-9]*]], !DIExpression(), [[IBG_LOC:![0-9]*]])
 ; CHECK-DAG: [[IBG_V]] = {{.*}} !dbg [[IBG_LOC]]
 ;
-; CHECK-DAG: @llvm.dbg.value(metadata ptr addrspace(3) [[IBL_V:%[A-z0-9.]*]], metadata [[IBL_MD:![0-9]*]], metadata !DIExpression()), !dbg [[IBL_LOC:![0-9]*]]
+; CHECK-DBG-INTRINSIC-DAG: @llvm.dbg.value(metadata ptr addrspace(3) [[IBL_V:%[A-z0-9.]*]], metadata [[IBL_MD:![0-9]*]], metadata !DIExpression()), !dbg [[IBL_LOC:![0-9]*]]
+; CHECK-DBG-RECORDS-DAG: #dbg_value(ptr addrspace(3) [[IBL_V:%[A-z0-9.]*]], [[IBL_MD:![0-9]*]], !DIExpression(), [[IBL_LOC:![0-9]*]])
 ; CHECK-DAG: [[IBL_V]] = {{.*}} !dbg [[IBL_LOC]]
 
 

@@ -8,7 +8,7 @@
 
 
 ; REQUIRES: llvm-14-plus
-; RUN: igc_opt --opaque-pointers --igc-workaround -S < %s | FileCheck %s
+; RUN: igc_opt --opaque-pointers --igc-workaround -S < %s | FileCheck %s --check-prefixes=CHECK,%if llvm-22-plus %{CHECK-DBG-RECORDS%} %else %{CHECK-DBG-INTRINSIC%}
 ; ------------------------------------------------
 ; WorkaroundAnalysis : Ldmsptr wa
 ; ------------------------------------------------
@@ -22,8 +22,10 @@
 ; CHECK-SAME: !dbg [[SCOPE:![0-9]*]]
 
 ; CHECK: [[ST_V:%[A-z0-9]*]] = alloca
-; CHECK: @llvm.dbg.declare(metadata {{.*}} [[ST_V]], metadata [[ST_MD:![0-9]*]], metadata !DIExpression()), !dbg [[ST_LOC:![0-9]*]]
-; CHECK-DAG: @llvm.dbg.value(metadata {{.*}} [[CALL_V:%[A-z0-9]*]], metadata [[CALL_MD:![0-9]*]], metadata !DIExpression()), !dbg [[CALL_LOC:![0-9]*]]
+; CHECK-DBG-INTRINSIC: @llvm.dbg.declare(metadata {{.*}} [[ST_V]], metadata [[ST_MD:![0-9]*]], metadata !DIExpression()), !dbg [[ST_LOC:![0-9]*]]
+; CHECK-DBG-RECORDS: #dbg_declare({{.*}} [[ST_V]], [[ST_MD:![0-9]*]], !DIExpression(), [[ST_LOC:![0-9]*]])
+; CHECK-DBG-INTRINSIC-DAG: @llvm.dbg.value(metadata {{.*}} [[CALL_V:%[A-z0-9]*]], metadata [[CALL_MD:![0-9]*]], metadata !DIExpression()), !dbg [[CALL_LOC:![0-9]*]]
+; CHECK-DBG-RECORDS-DAG: #dbg_value({{.*}} [[CALL_V:%[A-z0-9]*]], [[CALL_MD:![0-9]*]], !DIExpression(), [[CALL_LOC:![0-9]*]])
 ; CHECK-DAG: [[CALL_V]] = {{.*}}, !dbg [[CALL_LOC]]
 
 define spir_kernel void @test_wa(i32 %a, i32 %b, i32 %c, i32 %d, i32 %e, i32 %f, i32 %g, i8* %s) !dbg !6 {

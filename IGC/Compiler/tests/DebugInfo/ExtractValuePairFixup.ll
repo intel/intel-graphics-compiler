@@ -7,7 +7,7 @@
 ;============================ end_copyright_notice =============================
 ;
 ; REQUIRES: llvm-14-plus
-; RUN: igc_opt --opaque-pointers --igc-extractvalue-pair-fixup -S < %s | FileCheck %s
+; RUN: igc_opt --opaque-pointers --igc-extractvalue-pair-fixup -S < %s | FileCheck %s --check-prefixes=CHECK,%if llvm-22-plus %{CHECK-DBG-RECORDS%} %else %{CHECK-DBG-INTRINSIC%}
 ; ------------------------------------------------
 ; ExtractValuePairFixup
 ; ------------------------------------------------
@@ -21,27 +21,34 @@
 ; CHECK: @test_extr{{.*}} !dbg [[SCOPE:![0-9]*]]
 ; CHECK: entry:
 ; CHECK: [[IV1_V:%[0-9]*]] = insertvalue{{.*}} !dbg [[IV1_LOC:![0-9]*]]
-; CHECK: @llvm.dbg.value(metadata{{.*}} [[IV1_V]], metadata [[IV1_MD:![0-9]*]], metadata !DIExpression()), !dbg [[IV1_LOC]]
+; CHECK-DBG-INTRINSIC: @llvm.dbg.value(metadata{{.*}} [[IV1_V]], metadata [[IV1_MD:![0-9]*]], metadata !DIExpression()), !dbg [[IV1_LOC]]
+; CHECK-DBG-RECORDS: #dbg_value({{.*}} [[IV1_V]], [[IV1_MD:![0-9]*]], !DIExpression(), [[IV1_LOC]])
 ; CHECK: [[IV2_V:%[0-9]*]] = insertvalue{{.*}} !dbg [[IV2_LOC:![0-9]*]]
 ;
 ; extractvalue is moved somewhere in this BB.
 ;
-; CHECK-DAG: @llvm.dbg.value(metadata{{.*}} [[IV2_V]], metadata [[IV2_MD:![0-9]*]], metadata !DIExpression()), !dbg [[IV2_LOC]]
+; CHECK-DBG-INTRINSIC-DAG: @llvm.dbg.value(metadata{{.*}} [[IV2_V]], metadata [[IV2_MD:![0-9]*]], metadata !DIExpression()), !dbg [[IV2_LOC]]
+; CHECK-DBG-RECORDS-DAG: #dbg_value({{.*}} [[IV2_V]], [[IV2_MD:![0-9]*]], !DIExpression(), [[IV2_LOC]])
 ; CHECK-DAG: [[EV1_V:%[0-9]*]] = extractvalue %str [[IV2_V]], 1, !dbg [[EV1_LOC:![0-9]*]]
 ; CHECK-DAG: [[ALLOCA_V:%[0-9]*]] = alloca {{.*}} !dbg [[ALLOCA_LOC:![0-9]*]]
 ;
 ; but dbg calls should remain in same order
 ;
-; CHECK: @llvm.dbg.value(metadata ptr [[ALLOCA_V]], metadata [[ALLOCA_MD:![0-9]*]], metadata !DIExpression()), !dbg [[ALLOCA_LOC]]
-; CHECK: @llvm.dbg.value(metadata i64 [[EV1_V]], metadata [[EV1_MD:![0-9]*]], metadata !DIExpression()), !dbg [[EV1_LOC]]
+; CHECK-DBG-INTRINSIC: @llvm.dbg.value(metadata ptr [[ALLOCA_V]], metadata [[ALLOCA_MD:![0-9]*]], metadata !DIExpression()), !dbg [[ALLOCA_LOC]]
+; CHECK-DBG-RECORDS: #dbg_value(ptr [[ALLOCA_V]], [[ALLOCA_MD:![0-9]*]], !DIExpression(), [[ALLOCA_LOC]])
+; CHECK-DBG-INTRINSIC: @llvm.dbg.value(metadata i64 [[EV1_V]], metadata [[EV1_MD:![0-9]*]], metadata !DIExpression()), !dbg [[EV1_LOC]]
+; CHECK-DBG-RECORDS: #dbg_value(i64 [[EV1_V]], [[EV1_MD:![0-9]*]], !DIExpression(), [[EV1_LOC]])
 ; check that nothing moved between BBs.
 ; CHECK: lbl:
 ; CHECK: [[IV3_V:%[0-9]*]] = insertvalue{{.*}} !dbg [[IV3_LOC:![0-9]*]]
-; CHECK-DAG: @llvm.dbg.value(metadata{{.*}} [[IV3_V]], metadata [[IV3_MD:![0-9]*]], metadata !DIExpression()), !dbg [[IV3_LOC]]
+; CHECK-DBG-INTRINSIC-DAG: @llvm.dbg.value(metadata{{.*}} [[IV3_V]], metadata [[IV3_MD:![0-9]*]], metadata !DIExpression()), !dbg [[IV3_LOC]]
+; CHECK-DBG-RECORDS-DAG: #dbg_value({{.*}} [[IV3_V]], [[IV3_MD:![0-9]*]], !DIExpression(), [[IV3_LOC]])
 ; CHECK-DAG: [[EV2_V:%[0-9]*]] = extractvalue %str [[IV3_V]], 1, !dbg [[EV2_LOC:![0-9]*]]
 ; CHECK-DAG: [[SEXT_V:%[0-9]*]] = sext {{.*}} !dbg [[SEXT_LOC:![0-9]*]]
-; CHECK: @llvm.dbg.value(metadata i64 [[SEXT_V]], metadata [[SEXT_MD:![0-9]*]], metadata !DIExpression()), !dbg [[SEXT_LOC]]
-; CHECK: @llvm.dbg.value(metadata i64 [[EV2_V]], metadata [[EV2_MD:![0-9]*]], metadata !DIExpression()), !dbg [[EV2_LOC]]
+; CHECK-DBG-INTRINSIC: @llvm.dbg.value(metadata i64 [[SEXT_V]], metadata [[SEXT_MD:![0-9]*]], metadata !DIExpression()), !dbg [[SEXT_LOC]]
+; CHECK-DBG-RECORDS: #dbg_value(i64 [[SEXT_V]], [[SEXT_MD:![0-9]*]], !DIExpression(), [[SEXT_LOC]])
+; CHECK-DBG-INTRINSIC: @llvm.dbg.value(metadata i64 [[EV2_V]], metadata [[EV2_MD:![0-9]*]], metadata !DIExpression()), !dbg [[EV2_LOC]]
+; CHECK-DBG-RECORDS: #dbg_value(i64 [[EV2_V]], [[EV2_MD:![0-9]*]], !DIExpression(), [[EV2_LOC]])
 
 define spir_kernel void @test_extr(i32 %src1, i64 %src2) !dbg !9 {
 entry:

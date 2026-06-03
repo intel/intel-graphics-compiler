@@ -7,7 +7,7 @@
 ;============================ end_copyright_notice =============================
 ;
 ; REQUIRES: llvm-14-plus
-; RUN: igc_opt --opaque-pointers --igc-insert-dummy-kernel-for-symbol-table -S < %s | FileCheck %s
+; RUN: igc_opt --opaque-pointers --igc-insert-dummy-kernel-for-symbol-table -S < %s | FileCheck %s --check-prefixes=CHECK,%if llvm-22-plus %{CHECK-DBG-RECORDS%} %else %{CHECK-DBG-INTRINSIC%}
 ; ------------------------------------------------
 ; InsertDummyKernelForSymbolTable
 ; ------------------------------------------------
@@ -22,8 +22,10 @@
 ; CHECK: define spir_kernel void @bar
 ; CHECK-SAME: !dbg [[SCOPE:![0-9]*]]
 
-; CHECK: @llvm.dbg.declare(metadata ptr %{{.*}}, metadata [[A_MD:![0-9]*]], metadata !DIExpression()), !dbg [[A_LOC:![0-9]*]]
-; CHECK: @llvm.dbg.declare(metadata ptr %{{.*}}, metadata [[SID_MD:![0-9]*]], metadata !DIExpression()), !dbg [[SID_LOC:![0-9]*]]
+; CHECK-DBG-INTRINSIC: @llvm.dbg.declare(metadata ptr %{{.*}}, metadata [[A_MD:![0-9]*]], metadata !DIExpression()), !dbg [[A_LOC:![0-9]*]]
+; CHECK-DBG-RECORDS: #dbg_declare(ptr %{{.*}}, [[A_MD:![0-9]*]], !DIExpression(), [[A_LOC:![0-9]*]])
+; CHECK-DBG-INTRINSIC: @llvm.dbg.declare(metadata ptr %{{.*}}, metadata [[SID_MD:![0-9]*]], metadata !DIExpression()), !dbg [[SID_LOC:![0-9]*]]
+; CHECK-DBG-RECORDS: #dbg_declare(ptr %{{.*}}, [[SID_MD:![0-9]*]], !DIExpression(), [[SID_LOC:![0-9]*]])
 ; CHECK: [[CALL_V:%[A-z0-9]*]] = call spir_func i32 {{.*}} !dbg [[SIDCALL_LOC:![0-9]*]]
 ; CHECK: store i32 [[CALL_V]], {{.*}} !dbg [[SID_LOC]]
 

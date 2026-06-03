@@ -7,7 +7,7 @@
 ;============================ end_copyright_notice =============================
 ;
 ; REQUIRES: llvm-14-plus
-; RUN: igc_opt --opaque-pointers -igc-builtin-import -disable-verify -S < %s | FileCheck %s
+; RUN: igc_opt --opaque-pointers -igc-builtin-import -disable-verify -S < %s | FileCheck %s --check-prefixes=CHECK,%if llvm-22-plus %{CHECK-DBG-RECORDS%} %else %{CHECK-DBG-INTRINSIC%}
 ; ------------------------------------------------
 ; BIImport
 ; ------------------------------------------------
@@ -18,7 +18,8 @@
 
 ; CHECK: void @test_biimport{{.*}} !dbg [[SCOPE:![0-9]*]]
 ; CHECK: [[CONV_V:%[A-z0-9]*]] = call{{.*}}, !dbg [[CONV_LOC:![0-9]*]]
-; CHECK: void @llvm.dbg.value(metadata i32 [[CONV_V]], metadata [[CONV_MD:![0-9]*]], metadata !DIExpression()), !dbg [[CONV_LOC]]
+; CHECK-DBG-INTRINSIC: void @llvm.dbg.value(metadata i32 [[CONV_V]], metadata [[CONV_MD:![0-9]*]], metadata !DIExpression()), !dbg [[CONV_LOC]]
+; CHECK-DBG-RECORDS: #dbg_value(i32 [[CONV_V]], [[CONV_MD:![0-9]*]], !DIExpression(), [[CONV_LOC]])
 ; CHECK: call{{.*}}, !dbg [[WRITE_LOC:![0-9]*]]
 ; CHECK: ret{{.*}} !dbg [[RET_LOC:![0-9]*]]
 

@@ -7,7 +7,7 @@
 ;============================ end_copyright_notice =============================
 ;
 ; REQUIRES: llvm-14-plus
-; RUN: igc_opt --opaque-pointers -igc-spir-metadata-translation -S < %s | FileCheck %s
+; RUN: igc_opt --opaque-pointers -igc-spir-metadata-translation -S < %s | FileCheck %s --check-prefixes=CHECK,%if llvm-22-plus %{CHECK-DBG-RECORDS%} %else %{CHECK-DBG-INTRINSIC%}
 ; ------------------------------------------------
 ; SPIRMetaDataTranslation
 ; ------------------------------------------------
@@ -18,14 +18,18 @@
 
 ; CHECK: @test_spir{{.*}} !dbg [[SCOPE:![0-9]*]]
 
-; CHECK: @llvm.dbg.declare(metadata ptr {{.*}}, metadata [[DST_MD:![0-9]*]], metadata !DIExpression()), !dbg [[DST_LOC:![0-9]*]]
-; CHECK: @llvm.dbg.declare(metadata ptr {{.*}}, metadata [[GID_MD:![0-9]*]], metadata !DIExpression()), !dbg [[GID_LOC:![0-9]*]]
+; CHECK-DBG-INTRINSIC: @llvm.dbg.declare(metadata ptr {{.*}}, metadata [[DST_MD:![0-9]*]], metadata !DIExpression()), !dbg [[DST_LOC:![0-9]*]]
+; CHECK-DBG-RECORDS: #dbg_declare(ptr {{.*}}, [[DST_MD:![0-9]*]], !DIExpression(), [[DST_LOC:![0-9]*]])
+; CHECK-DBG-INTRINSIC: @llvm.dbg.declare(metadata ptr {{.*}}, metadata [[GID_MD:![0-9]*]], metadata !DIExpression()), !dbg [[GID_LOC:![0-9]*]]
+; CHECK-DBG-RECORDS: #dbg_declare(ptr {{.*}}, [[GID_MD:![0-9]*]], !DIExpression(), [[GID_LOC:![0-9]*]])
 ; CHECK: [[EXTR_V:%[A-z0-9]*]] = extractelement {{.*}} !dbg [[EXTR_LOC:![0-9]*]]
 ; CHECK: [[CALLB1_V:%[A-z0-9]*]] = call spir_func {{.*}} !dbg [[EXTR_LOC]]
 ; CHECK: store {{.*}} !dbg [[GID_LOC]]
-; CHECK: @llvm.dbg.declare(metadata ptr {{.*}}, metadata [[TID_MD:![0-9]*]], metadata !DIExpression()), !dbg [[TID_LOC:![0-9]*]]
+; CHECK-DBG-INTRINSIC: @llvm.dbg.declare(metadata ptr {{.*}}, metadata [[TID_MD:![0-9]*]], metadata !DIExpression()), !dbg [[TID_LOC:![0-9]*]]
+; CHECK-DBG-RECORDS: #dbg_declare(ptr {{.*}}, [[TID_MD:![0-9]*]], !DIExpression(), [[TID_LOC:![0-9]*]])
 ; CHECK: store {{.*}} !dbg [[TID_LOC]]
-; CHECK: @llvm.dbg.declare(metadata ptr {{.*}}, metadata [[DIM_MD:![0-9]*]], metadata !DIExpression()), !dbg [[DIM_LOC:![0-9]*]]
+; CHECK-DBG-INTRINSIC: @llvm.dbg.declare(metadata ptr {{.*}}, metadata [[DIM_MD:![0-9]*]], metadata !DIExpression()), !dbg [[DIM_LOC:![0-9]*]]
+; CHECK-DBG-RECORDS: #dbg_declare(ptr {{.*}}, [[DIM_MD:![0-9]*]], !DIExpression(), [[DIM_LOC:![0-9]*]])
 ; CHECK: store {{.*}} !dbg [[DIM_LOC]]
 ; CHECK: [[LOAD_V:%[A-z0-9]*]] = load {{.*}} !dbg [[LOAD1_LOC:![0-9]*]]
 ; CHECK: [[LOAD_V:%[A-z0-9]*]] = load {{.*}} !dbg [[LOAD2_LOC:![0-9]*]]

@@ -8,7 +8,7 @@
 
 
 ; REQUIRES: llvm-14-plus
-; RUN: igc_opt --opaque-pointers -igc-custom-safe-opt -S < %s | FileCheck %s
+; RUN: igc_opt --opaque-pointers -igc-custom-safe-opt -S < %s | FileCheck %s --check-prefixes=CHECK,%if llvm-22-plus %{CHECK-DBG-RECORDS%} %else %{CHECK-DBG-INTRINSIC%}
 ; ------------------------------------------------
 ; CustomSafeOptPass
 ; ------------------------------------------------
@@ -20,12 +20,14 @@
 
 ; CHECK: define spir_kernel void @test_customsafe{{.*}} !dbg [[SCOPE:![0-9]*]]
 ; CHECK: entry:
-; CHECK-DAG: void @llvm.dbg.value(metadata i32 [[VAL1_V:%[A-z0-9]*]], metadata [[VAL1_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL1_LOC:![0-9]*]]
+; CHECK-DBG-INTRINSIC-DAG: void @llvm.dbg.value(metadata i32 [[VAL1_V:%[A-z0-9]*]], metadata [[VAL1_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL1_LOC:![0-9]*]]
+; CHECK-DBG-RECORDS-DAG: #dbg_value(i32 [[VAL1_V:%[A-z0-9]*]], [[VAL1_MD:![0-9]*]], !DIExpression(), [[VAL1_LOC:![0-9]*]])
 ; CHECK-DAG: [[VAL1_V]] = {{.*}}, !dbg [[VAL1_LOC]]
 ; CHECK: store i32 [[VAL1_V]]{{.*}}, !dbg [[STORE1_LOC:![0-9]*]]
 ; CHECK-DAG: store float [[VAL10_V:%[A-z0-9]*]]{{.*}}, !dbg [[STORE2_LOC:![0-9]*]]
 ; CHECK-DAG: [[VAL10_V]] = {{.*}}, !dbg [[VAL10_LOC:![0-9]*]]
-; CHECK-DAG: void @llvm.dbg.value(metadata float [[VAL10_V]], metadata [[VAL10_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL10_LOC]]
+; CHECK-DBG-INTRINSIC-DAG: void @llvm.dbg.value(metadata float [[VAL10_V]], metadata [[VAL10_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL10_LOC]]
+; CHECK-DBG-RECORDS-DAG: #dbg_value(float [[VAL10_V]], [[VAL10_MD:![0-9]*]], !DIExpression(), [[VAL10_LOC]])
 
 
 define spir_kernel void @test_customsafe(i32 %a, i32* %b, float* %c) !dbg !6 {

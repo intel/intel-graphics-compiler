@@ -7,15 +7,17 @@
 ;============================ end_copyright_notice =============================
 ; REQUIRES: llvm-14-plus
 
-; RUN: igc_opt --opaque-pointers -igc-debug-finalize -S < %s | FileCheck %s
+; RUN: igc_opt --opaque-pointers -igc-debug-finalize -S < %s | FileCheck %s --check-prefixes=%if llvm-22-plus %{CHECK-DBG-RECORDS%} %else %{CHECK-DBG-INTRINSIC%}
 ; ------------------------------------------------
 ; DebugInfoPass
 ; ------------------------------------------------
 
 ; Test checks DIArgList WA that replaces Arglist values with undef(if multiple).
 
-; CHECK:  call void @llvm.dbg.value(metadata !DIArgList(i32 %a)
-; CHECK-NEXT:  call void @llvm.dbg.value(metadata !DIArgList(i32 %b)
+; CHECK-DBG-INTRINSIC:  call void @llvm.dbg.value(metadata !DIArgList(i32 %a)
+; CHECK-DBG-RECORDS:  #dbg_value(!DIArgList(i32 %a)
+; CHECK-DBG-INTRINSIC-NEXT:  call void @llvm.dbg.value(metadata !DIArgList(i32 %b)
+; CHECK-DBG-RECORDS-NEXT:  #dbg_value(!DIArgList(i32 %b)
 ; CHECK-LLVM-14:  call void @llvm.dbg.value(metadata !DIArgList(i32 undef, i32 undef)
 ; CHECK-LLVM-15:  call void @llvm.dbg.value(metadata !DIArgList(i32 undef, i32 undef)
 ; CHECK-LLVM-16:  call void @llvm.dbg.value(metadata !DIArgList(i32 poison, i32 poison)

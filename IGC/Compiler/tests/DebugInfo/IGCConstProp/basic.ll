@@ -8,7 +8,7 @@
 
 
 ; REQUIRES: llvm-14-plus
-; RUN: igc_opt --opaque-pointers -igc-const-prop -S < %s | FileCheck %s
+; RUN: igc_opt --opaque-pointers -igc-const-prop -S < %s | FileCheck %s --check-prefixes=CHECK,%if llvm-22-plus %{CHECK-DBG-RECORDS%} %else %{CHECK-DBG-INTRINSIC%}
 ; ------------------------------------------------
 ; IGCConstProp
 ; ------------------------------------------------
@@ -21,26 +21,35 @@
 ; CHECK: define spir_kernel void @test_slmconst{{.*}} !dbg [[SCOPE:![0-9]*]]
 
 ; First value is dead
-; CHECK: call void @llvm.dbg.value
+; CHECK-DBG-INTRINSIC: call void @llvm.dbg.value
+; CHECK-DBG-RECORDS: #dbg_value
 
-; CHECK: void @llvm.dbg.value(metadata i1 false, metadata [[VAL2_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL2_LOC:![0-9]*]]
+; CHECK-DBG-INTRINSIC: void @llvm.dbg.value(metadata i1 false, metadata [[VAL2_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL2_LOC:![0-9]*]]
+; CHECK-DBG-RECORDS: #dbg_value(i1 false, [[VAL2_MD:![0-9]*]], !DIExpression(), [[VAL2_LOC:![0-9]*]])
 ; CHECK: [[VAL3_V:%[A-z0-9]*]] = {{.*}}, !dbg [[VAL3_LOC:![0-9]*]]
-; CHECK: void @llvm.dbg.value(metadata i32 [[VAL3_V]], metadata [[VAL3_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL3_LOC]]
+; CHECK-DBG-INTRINSIC: void @llvm.dbg.value(metadata i32 [[VAL3_V]], metadata [[VAL3_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL3_LOC]]
+; CHECK-DBG-RECORDS: #dbg_value(i32 [[VAL3_V]], [[VAL3_MD:![0-9]*]], !DIExpression(), [[VAL3_LOC]])
 ; CHECK: store i32 [[VAL3_V]]{{.*}}, !dbg [[STORE1_LOC:![0-9]*]]
 
 ; Another dead value
-; CHECK: call void @llvm.dbg.value
-; CHECK: void @llvm.dbg.value(metadata i32 55, metadata [[VAL5_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL5_LOC:![0-9]*]]
+; CHECK-DBG-INTRINSIC: call void @llvm.dbg.value
+; CHECK-DBG-RECORDS: #dbg_value
+; CHECK-DBG-INTRINSIC: void @llvm.dbg.value(metadata i32 55, metadata [[VAL5_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL5_LOC:![0-9]*]]
+; CHECK-DBG-RECORDS: #dbg_value(i32 55, [[VAL5_MD:![0-9]*]], !DIExpression(), [[VAL5_LOC:![0-9]*]])
 ; CHECK: store i32 55{{.*}}, !dbg [[STORE2_LOC:![0-9]*]]
 
 ; Another dead value
-; CHECK: call void @llvm.dbg.value
-; CHECK: void @llvm.dbg.value(metadata i32 42, metadata [[VAL7_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL7_LOC:![0-9]*]]
+; CHECK-DBG-INTRINSIC: call void @llvm.dbg.value
+; CHECK-DBG-RECORDS: #dbg_value
+; CHECK-DBG-INTRINSIC: void @llvm.dbg.value(metadata i32 42, metadata [[VAL7_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL7_LOC:![0-9]*]]
+; CHECK-DBG-RECORDS: #dbg_value(i32 42, [[VAL7_MD:![0-9]*]], !DIExpression(), [[VAL7_LOC:![0-9]*]])
 ; CHECK: store i32 42{{.*}}, !dbg [[STORE3_LOC:![0-9]*]]
 
 ; Another dead value
-; CHECK: call void @llvm.dbg.value
-; CHECK: void @llvm.dbg.value(metadata i32 0, metadata [[VAL9_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL9_LOC:![0-9]*]]
+; CHECK-DBG-INTRINSIC: call void @llvm.dbg.value
+; CHECK-DBG-RECORDS: #dbg_value
+; CHECK-DBG-INTRINSIC: void @llvm.dbg.value(metadata i32 0, metadata [[VAL9_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL9_LOC:![0-9]*]]
+; CHECK-DBG-RECORDS: #dbg_value(i32 0, [[VAL9_MD:![0-9]*]], !DIExpression(), [[VAL9_LOC:![0-9]*]])
 ; CHECK: store i32 0{{.*}}, !dbg [[STORE4_LOC:![0-9]*]]
 
 define spir_kernel void @test_slmconst(i32 %a, i32* %b, i1 %c) !dbg !20 {

@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 ; REQUIRES: llvm-14-plus
-; RUN: igc_opt --opaque-pointers --EstimateFunctionSize -S < %s | FileCheck %s
+; RUN: igc_opt --opaque-pointers --EstimateFunctionSize -S < %s | FileCheck %s --check-prefixes=CHECK,%if llvm-22-plus %{CHECK-DBG-RECORDS%} %else %{CHECK-DBG-INTRINSIC%}
 ; ------------------------------------------------
 ; EstimateFunctionSize
 ; ------------------------------------------------
@@ -19,18 +19,26 @@
 ; CHECK: define spir_kernel void @test_estimate{{.*}}!dbg [[SCOPEK:![0-9]*]]
 ; CHECK: entry:
 ; CHECK: [[ALLOCA_V:%[0-9]*]] = {{.*}} !dbg [[ALLOCA_LOC:![0-9]*]]
-; CHECK: call void @llvm.dbg.value(metadata ptr [[ALLOCA_V]]
-; CHECK-SAME: metadata [[ALLOCA_MD:![0-9]*]], metadata !DIExpression()), !dbg [[ALLOCA_LOC]]
+; CHECK-DBG-INTRINSIC: call void @llvm.dbg.value(metadata ptr [[ALLOCA_V]]
+; CHECK-DBG-RECORDS: #dbg_value(ptr [[ALLOCA_V]]
+; CHECK-DBG-INTRINSIC-SAME: metadata [[ALLOCA_MD:![0-9]*]], metadata !DIExpression()), !dbg [[ALLOCA_LOC]]
+; CHECK-DBG-RECORDS-SAME: [[ALLOCA_MD:![0-9]*]], !DIExpression(), [[ALLOCA_LOC]])
 ; CHECK: [[CALLF_V:%[0-9]*]] = {{.*}} !dbg [[CALLF_LOC:![0-9]*]]
-; CHECK: call void @llvm.dbg.value(metadata i32 [[CALLF_V]]
-; CHECK-SAME: metadata [[CALLF_MD:![0-9]*]], metadata !DIExpression()), !dbg [[CALLF_LOC]]
+; CHECK-DBG-INTRINSIC: call void @llvm.dbg.value(metadata i32 [[CALLF_V]]
+; CHECK-DBG-RECORDS: #dbg_value(i32 [[CALLF_V]]
+; CHECK-DBG-INTRINSIC-SAME: metadata [[CALLF_MD:![0-9]*]], metadata !DIExpression()), !dbg [[CALLF_LOC]]
+; CHECK-DBG-RECORDS-SAME: [[CALLF_MD:![0-9]*]], !DIExpression(), [[CALLF_LOC]])
 ; CHECK: end:
 ; CHECK: [[CALLB_V:%[0-9]*]] = {{.*}} !dbg [[CALLB_LOC:![0-9]*]]
-; CHECK: call void @llvm.dbg.value(metadata i32 [[CALLB_V]]
-; CHECK-SAME: metadata [[CALLB_MD:![0-9]*]], metadata !DIExpression()), !dbg [[CALLB_LOC]]
+; CHECK-DBG-INTRINSIC: call void @llvm.dbg.value(metadata i32 [[CALLB_V]]
+; CHECK-DBG-RECORDS: #dbg_value(i32 [[CALLB_V]]
+; CHECK-DBG-INTRINSIC-SAME: metadata [[CALLB_MD:![0-9]*]], metadata !DIExpression()), !dbg [[CALLB_LOC]]
+; CHECK-DBG-RECORDS-SAME: [[CALLB_MD:![0-9]*]], !DIExpression(), [[CALLB_LOC]])
 ; CHECK: [[ADD_V:%[0-9]*]] = {{.*}} !dbg [[ADD_LOC:![0-9]*]]
-; CHECK: call void @llvm.dbg.value(metadata i32 [[ADD_V]]
-; CHECK-SAME: metadata [[ADD_MD:![0-9]*]], metadata !DIExpression()), !dbg [[ADD_LOC]]
+; CHECK-DBG-INTRINSIC: call void @llvm.dbg.value(metadata i32 [[ADD_V]]
+; CHECK-DBG-RECORDS: #dbg_value(i32 [[ADD_V]]
+; CHECK-DBG-INTRINSIC-SAME: metadata [[ADD_MD:![0-9]*]], metadata !DIExpression()), !dbg [[ADD_LOC]]
+; CHECK-DBG-RECORDS-SAME: [[ADD_MD:![0-9]*]], !DIExpression(), [[ADD_LOC]])
 
 define spir_kernel void @test_estimate(ptr %s) !dbg !6 {
 entry:
@@ -52,21 +60,31 @@ end:                                              ; preds = %entry
 ; CHECK: define spir_func i32 @foo{{.*}}!dbg [[SCOPEF:![0-9]*]]
 ; CHECK: entry:
 ; CHECK: [[LOAD_V:%[0-9]*]] = {{.*}} !dbg [[LOAD_LOC:![0-9]*]]
-; CHECK: call void @llvm.dbg.value(metadata i32 [[LOAD_V]]
-; CHECK-SAME: metadata [[LOAD_MD:![0-9]*]], metadata !DIExpression()), !dbg [[LOAD_LOC]]
+; CHECK-DBG-INTRINSIC: call void @llvm.dbg.value(metadata i32 [[LOAD_V]]
+; CHECK-DBG-RECORDS: #dbg_value(i32 [[LOAD_V]]
+; CHECK-DBG-INTRINSIC-SAME: metadata [[LOAD_MD:![0-9]*]], metadata !DIExpression()), !dbg [[LOAD_LOC]]
+; CHECK-DBG-RECORDS-SAME: [[LOAD_MD:![0-9]*]], !DIExpression(), [[LOAD_LOC]])
 ; CHECK: [[PTRTOI_V:%[0-9]*]] = {{.*}} !dbg [[PTRTOI_LOC:![0-9]*]]
-; CHECK: call void @llvm.dbg.value(metadata i32 [[PTRTOI_V]]
-; CHECK-SAME: metadata [[PTRTOI_MD:![0-9]*]], metadata !DIExpression()), !dbg [[PTRTOI_LOC]]
+; CHECK-DBG-INTRINSIC: call void @llvm.dbg.value(metadata i32 [[PTRTOI_V]]
+; CHECK-DBG-RECORDS: #dbg_value(i32 [[PTRTOI_V]]
+; CHECK-DBG-INTRINSIC-SAME: metadata [[PTRTOI_MD:![0-9]*]], metadata !DIExpression()), !dbg [[PTRTOI_LOC]]
+; CHECK-DBG-RECORDS-SAME: [[PTRTOI_MD:![0-9]*]], !DIExpression(), [[PTRTOI_LOC]])
 ; CHECK: [[CMP_V:%[0-9]*]] = {{.*}} !dbg [[CMP_LOC:![0-9]*]]
-; CHECK: call void @llvm.dbg.value(metadata i1 [[CMP_V]]
-; CHECK-SAME: metadata [[CMP_MD:![0-9]*]], metadata !DIExpression()), !dbg [[CMP_LOC]]
+; CHECK-DBG-INTRINSIC: call void @llvm.dbg.value(metadata i1 [[CMP_V]]
+; CHECK-DBG-RECORDS: #dbg_value(i1 [[CMP_V]]
+; CHECK-DBG-INTRINSIC-SAME: metadata [[CMP_MD:![0-9]*]], metadata !DIExpression()), !dbg [[CMP_LOC]]
+; CHECK-DBG-RECORDS-SAME: [[CMP_MD:![0-9]*]], !DIExpression(), [[CMP_LOC]])
 ; CHECK: continue:
 ; CHECK: [[ITOPTR_V:%[0-9]*]] = {{.*}} !dbg [[ITOPTR_LOC:![0-9]*]]
-; CHECK: call void @llvm.dbg.value(metadata ptr [[ITOPTR_V]]
-; CHECK-SAME: metadata [[ITOPTR_MD:![0-9]*]], metadata !DIExpression()), !dbg [[ITOPTR_LOC]]
+; CHECK-DBG-INTRINSIC: call void @llvm.dbg.value(metadata ptr [[ITOPTR_V]]
+; CHECK-DBG-RECORDS: #dbg_value(ptr [[ITOPTR_V]]
+; CHECK-DBG-INTRINSIC-SAME: metadata [[ITOPTR_MD:![0-9]*]], metadata !DIExpression()), !dbg [[ITOPTR_LOC]]
+; CHECK-DBG-RECORDS-SAME: [[ITOPTR_MD:![0-9]*]], !DIExpression(), [[ITOPTR_LOC]])
 ; CHECK: [[CALLF2_V:%[0-9]*]] = {{.*}} !dbg [[CALLF2_LOC:![0-9]*]]
-; CHECK: call void @llvm.dbg.value(metadata i32 [[CALLF2_V]]
-; CHECK-SAME: metadata [[CALLF2_MD:![0-9]*]], metadata !DIExpression()), !dbg [[CALLF2_LOC]]
+; CHECK-DBG-INTRINSIC: call void @llvm.dbg.value(metadata i32 [[CALLF2_V]]
+; CHECK-DBG-RECORDS: #dbg_value(i32 [[CALLF2_V]]
+; CHECK-DBG-INTRINSIC-SAME: metadata [[CALLF2_MD:![0-9]*]], metadata !DIExpression()), !dbg [[CALLF2_LOC]]
+; CHECK-DBG-RECORDS-SAME: [[CALLF2_MD:![0-9]*]], !DIExpression(), [[CALLF2_LOC]])
 
 define spir_func i32 @foo(ptr %a) !dbg !22 {
 entry:

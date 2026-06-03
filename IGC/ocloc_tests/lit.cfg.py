@@ -119,6 +119,9 @@ if llvm_ver >= 16 and config.igc_llvm_opaque_pointers == '1':
 if llvm_ver >= 17:
   config.available_features.add('llvm-17-plus')
 
+if llvm_ver >= 22:
+  config.available_features.add('llvm-22-plus')
+
 # On LLVM 17 tools like llvm-as do not have "opaque-pointers" flag, so in order to keep tests working on all LLVMs
 # on 17 tools we just provide empty string
 if llvm_ver >= 17:

@@ -8,7 +8,7 @@
 
 
 ; REQUIRES: llvm-14-plus
-; RUN: igc_opt --opaque-pointers -igc-custom-safe-opt -S < %s | FileCheck %s
+; RUN: igc_opt --opaque-pointers -igc-custom-safe-opt -S < %s | FileCheck %s --check-prefixes=CHECK,%if llvm-22-plus %{CHECK-DBG-RECORDS%} %else %{CHECK-DBG-INTRINSIC%}
 ; ------------------------------------------------
 ; CustomSafeOptPass
 ; ------------------------------------------------
@@ -21,15 +21,20 @@
 ; CHECK: define spir_kernel void @test_customsafe{{.*}} !dbg [[SCOPE:![0-9]*]]
 ; CHECK: entry:
 ; CHECK: [[VAL1_V:%[A-z0-9]*]] = {{.*}}, !dbg [[VAL1_LOC:![0-9]*]]
-; CHECK: void @llvm.dbg.value(metadata i32 [[VAL1_V]], metadata [[VAL1_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL1_LOC]]
-; CHECK-DAG: void @llvm.dbg.value(metadata i32 [[VAL2_V:%[A-z0-9]*]], metadata [[VAL2_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL2_LOC:![0-9]*]]
+; CHECK-DBG-INTRINSIC: void @llvm.dbg.value(metadata i32 [[VAL1_V]], metadata [[VAL1_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL1_LOC]]
+; CHECK-DBG-RECORDS: #dbg_value(i32 [[VAL1_V]], [[VAL1_MD:![0-9]*]], !DIExpression(), [[VAL1_LOC]])
+; CHECK-DBG-INTRINSIC-DAG: void @llvm.dbg.value(metadata i32 [[VAL2_V:%[A-z0-9]*]], metadata [[VAL2_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL2_LOC:![0-9]*]]
+; CHECK-DBG-RECORDS-DAG: #dbg_value(i32 [[VAL2_V:%[A-z0-9]*]], [[VAL2_MD:![0-9]*]], !DIExpression(), [[VAL2_LOC:![0-9]*]])
 ; CHECK-DAG: [[VAL2_V]] = {{.*}}, !dbg [[VAL2_LOC]]
 ; CHECK: store i32 [[VAL2_V]]{{.*}}, !dbg [[STORE1_LOC:![0-9]*]]
 ; CHECK: [[VAL3_V:%[A-z0-9]*]] = {{.*}}, !dbg [[VAL3_LOC:![0-9]*]]
-; CHECK: void @llvm.dbg.value(metadata i16 [[VAL3_V]], metadata [[VAL3_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL3_LOC]]
+; CHECK-DBG-INTRINSIC: void @llvm.dbg.value(metadata i16 [[VAL3_V]], metadata [[VAL3_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL3_LOC]]
+; CHECK-DBG-RECORDS: #dbg_value(i16 [[VAL3_V]], [[VAL3_MD:![0-9]*]], !DIExpression(), [[VAL3_LOC]])
 ; CHECK: [[VAL4_V:%[A-z0-9]*]] = {{.*}}, !dbg [[VAL4_LOC:![0-9]*]]
-; CHECK: void @llvm.dbg.value(metadata i16 [[VAL4_V]], metadata [[VAL4_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL4_LOC]]
-; CHECK-DAG: void @llvm.dbg.value(metadata i16 [[VAL5_V:%[A-z0-9]*]], metadata [[VAL5_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL5_LOC:![0-9]*]]
+; CHECK-DBG-INTRINSIC: void @llvm.dbg.value(metadata i16 [[VAL4_V]], metadata [[VAL4_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL4_LOC]]
+; CHECK-DBG-RECORDS: #dbg_value(i16 [[VAL4_V]], [[VAL4_MD:![0-9]*]], !DIExpression(), [[VAL4_LOC]])
+; CHECK-DBG-INTRINSIC-DAG: void @llvm.dbg.value(metadata i16 [[VAL5_V:%[A-z0-9]*]], metadata [[VAL5_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL5_LOC:![0-9]*]]
+; CHECK-DBG-RECORDS-DAG: #dbg_value(i16 [[VAL5_V:%[A-z0-9]*]], [[VAL5_MD:![0-9]*]], !DIExpression(), [[VAL5_LOC:![0-9]*]])
 ; CHECK-DAG: [[VAL5_V]] = {{.*}}, !dbg [[VAL5_LOC]]
 ; CHECK: store i16 [[VAL5_V]]{{.*}}, !dbg [[STORE2_LOC:![0-9]*]]
 

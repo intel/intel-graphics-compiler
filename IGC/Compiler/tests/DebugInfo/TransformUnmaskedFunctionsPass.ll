@@ -7,7 +7,7 @@
 ;============================ end_copyright_notice =============================
 ;
 ; REQUIRES: llvm-14-plus
-; RUN: igc_opt --opaque-pointers --transform-unmasked -S < %s | FileCheck %s
+; RUN: igc_opt --opaque-pointers --transform-unmasked -S < %s | FileCheck %s --check-prefixes=CHECK,%if llvm-22-plus %{CHECK-DBG-RECORDS%} %else %{CHECK-DBG-INTRINSIC%}
 ; ------------------------------------------------
 ; TransformUnmaskedFunctionsPass
 ; ------------------------------------------------
@@ -34,25 +34,37 @@
 ; CHECK: define {{.*}} @foo
 ; CHECK-SAME: !dbg [[FOO_SCOPE:![0-9]*]]
 ;
-; CHECK: call void @llvm.dbg.declare(metadata ptr %
-; CHECK-SAME: metadata [[SRC_MD:![0-9]*]], metadata !DIExpression()), !dbg [[SRC_LOC:![0-9]*]]
+; CHECK-DBG-INTRINSIC: call void @llvm.dbg.declare(metadata ptr %
+; CHECK-DBG-RECORDS: #dbg_declare(ptr %
+; CHECK-DBG-INTRINSIC-SAME: metadata [[SRC_MD:![0-9]*]], metadata !DIExpression()), !dbg [[SRC_LOC:![0-9]*]]
+; CHECK-DBG-RECORDS-SAME: [[SRC_MD:![0-9]*]], !DIExpression(), [[SRC_LOC:![0-9]*]])
 ;
-; CHECK: call void @llvm.dbg.declare(metadata ptr %
-; CHECK-SAME: metadata [[R_MD:![0-9]*]], metadata !DIExpression()), !dbg [[R_LOC:![0-9]*]]
+; CHECK-DBG-INTRINSIC: call void @llvm.dbg.declare(metadata ptr %
+; CHECK-DBG-RECORDS: #dbg_declare(ptr %
+; CHECK-DBG-INTRINSIC-SAME: metadata [[R_MD:![0-9]*]], metadata !DIExpression()), !dbg [[R_LOC:![0-9]*]]
+; CHECK-DBG-RECORDS-SAME: [[R_MD:![0-9]*]], !DIExpression(), [[R_LOC:![0-9]*]])
 ;
-; CHECK: call void @llvm.dbg.declare(metadata ptr %
-; CHECK-SAME: metadata [[L_MD:![0-9]*]], metadata !DIExpression()), !dbg [[L_LOC:![0-9]*]]
+; CHECK-DBG-INTRINSIC: call void @llvm.dbg.declare(metadata ptr %
+; CHECK-DBG-RECORDS: #dbg_declare(ptr %
+; CHECK-DBG-INTRINSIC-SAME: metadata [[L_MD:![0-9]*]], metadata !DIExpression()), !dbg [[L_LOC:![0-9]*]]
+; CHECK-DBG-RECORDS-SAME: [[L_MD:![0-9]*]], !DIExpression(), [[L_LOC:![0-9]*]])
 ;
 ; CHECK: call spir_func i8 @__builtin_spirv_OpSConvert{{.*}} !dbg [[OPS_LOC:![0-9]*]]
 ;
-; CHECK: call void @llvm.dbg.declare(metadata ptr %
-; CHECK-SAME: metadata [[A_MD:![0-9]*]], metadata !DIExpression()), !dbg [[A_LOC:![0-9]*]]
+; CHECK-DBG-INTRINSIC: call void @llvm.dbg.declare(metadata ptr %
+; CHECK-DBG-RECORDS: #dbg_declare(ptr %
+; CHECK-DBG-INTRINSIC-SAME: metadata [[A_MD:![0-9]*]], metadata !DIExpression()), !dbg [[A_LOC:![0-9]*]]
+; CHECK-DBG-RECORDS-SAME: [[A_MD:![0-9]*]], !DIExpression(), [[A_LOC:![0-9]*]])
 ;
-; CHECK: call void @llvm.dbg.declare(metadata ptr %
-; CHECK-SAME: metadata [[B_MD:![0-9]*]], metadata !DIExpression()), !dbg [[B_LOC:![0-9]*]]
+; CHECK-DBG-INTRINSIC: call void @llvm.dbg.declare(metadata ptr %
+; CHECK-DBG-RECORDS: #dbg_declare(ptr %
+; CHECK-DBG-INTRINSIC-SAME: metadata [[B_MD:![0-9]*]], metadata !DIExpression()), !dbg [[B_LOC:![0-9]*]]
+; CHECK-DBG-RECORDS-SAME: [[B_MD:![0-9]*]], !DIExpression(), [[B_LOC:![0-9]*]])
 ;
-; CHECK: call void @llvm.dbg.declare(metadata ptr %
-; CHECK-SAME: metadata [[C_MD:![0-9]*]], metadata !DIExpression()), !dbg [[C_LOC:![0-9]*]]
+; CHECK-DBG-INTRINSIC: call void @llvm.dbg.declare(metadata ptr %
+; CHECK-DBG-RECORDS: #dbg_declare(ptr %
+; CHECK-DBG-INTRINSIC-SAME: metadata [[C_MD:![0-9]*]], metadata !DIExpression()), !dbg [[C_LOC:![0-9]*]]
+; CHECK-DBG-RECORDS-SAME: [[C_MD:![0-9]*]], !DIExpression(), [[C_LOC:![0-9]*]])
 
 define spir_func i32 @foo(i32 %src, i32 %r) #0 !dbg !5 {
 entry:

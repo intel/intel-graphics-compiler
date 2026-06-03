@@ -59,10 +59,13 @@ if llvm_version >= 15:
   config.available_features.add('llvm-15-plus')
 
 if llvm_version >= 16 and config.igc_llvm_opaque_pointers == '1':
-    config.available_features.add('llvm-16-plus')
+  config.available_features.add('llvm-16-plus')
 
 if llvm_version >= 17:
   config.available_features.add('llvm-17-plus')
+
+if llvm_version >= 22:
+  config.available_features.add('llvm-22-plus')
 
 if not config.regkeys_disabled:
   config.available_features.add('regkeys')

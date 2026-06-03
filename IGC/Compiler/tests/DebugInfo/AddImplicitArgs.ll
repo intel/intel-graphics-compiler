@@ -7,7 +7,7 @@
 ;============================ end_copyright_notice =============================
 
 ; REQUIRES: llvm-14-plus
-; RUN: igc_opt --opaque-pointers -igc-add-implicit-args -S %s -o - | FileCheck %s
+; RUN: igc_opt --opaque-pointers -igc-add-implicit-args -S %s -o - | FileCheck %s --check-prefixes=CHECK,%if llvm-22-plus %{CHECK-DBG-RECORDS%} %else %{CHECK-DBG-INTRINSIC%}
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; This LIT test checks that AddImplicitArgs pass handles variable debug info.
@@ -22,7 +22,8 @@ entry:
   ret void
 
 ; CHECK: define void @test(ptr addrspace(1) %dst, <8 x i32> %r0, <8 x i32> %payloadHeader)
-; CHECK: call void @llvm.dbg.value({{.*}})
+; CHECK-DBG-INTRINSIC: call void @llvm.dbg.value({{.*}})
+; CHECK-DBG-RECORDS: #dbg_value({{.*}})
 }
 
 declare void @llvm.dbg.value(metadata, i64, metadata, metadata) #1

@@ -8,7 +8,7 @@
 
 
 ; REQUIRES: llvm-14-plus
-; RUN: igc_opt --opaque-pointers -igc-custom-unsafe-opt-pass -S < %s | FileCheck %s
+; RUN: igc_opt --opaque-pointers -igc-custom-unsafe-opt-pass -S < %s | FileCheck %s --check-prefixes=CHECK,%if llvm-22-plus %{CHECK-DBG-RECORDS%} %else %{CHECK-DBG-INTRINSIC%}
 ; ------------------------------------------------
 ; CustomUnsafeOptPass
 ; ------------------------------------------------
@@ -21,23 +21,31 @@
 ; CHECK: define spir_kernel void @test_custom{{.*}} !dbg [[SCOPE:![0-9]*]]
 ; CHECK: entry:
 ; CHECK: [[VAL1_V:%[A-z0-9]*]] = {{.*}}, !dbg [[VAL1_LOC:![0-9]*]]
-; CHECK: void @llvm.dbg.value(metadata float [[VAL1_V]], metadata [[VAL1_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL1_LOC]]
+; CHECK-DBG-INTRINSIC: void @llvm.dbg.value(metadata float [[VAL1_V]], metadata [[VAL1_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL1_LOC]]
+; CHECK-DBG-RECORDS: #dbg_value(float [[VAL1_V]], [[VAL1_MD:![0-9]*]], !DIExpression(), [[VAL1_LOC]])
 ; this value is unsalvageble
-; CHECK: void @llvm.dbg.value({{.*}}
-; CHECK: void @llvm.dbg.value(metadata float [[VAL1_V]], metadata [[VAL3_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL3_LOC:![0-9]*]]
+; CHECK-DBG-INTRINSIC: void @llvm.dbg.value({{.*}}
+; CHECK-DBG-RECORDS: #dbg_value({{.*}}
+; CHECK-DBG-INTRINSIC: void @llvm.dbg.value(metadata float [[VAL1_V]], metadata [[VAL3_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL3_LOC:![0-9]*]]
+; CHECK-DBG-RECORDS: #dbg_value(float [[VAL1_V]], [[VAL3_MD:![0-9]*]], !DIExpression(), [[VAL3_LOC:![0-9]*]])
 ; CHECK: store float [[VAL1_V]]{{.*}}, !dbg [[STORE1_LOC:![0-9]*]]
 ; this value is unsalvageble
-; CHECK: void @llvm.dbg.value({{.*}}
-; CHECK-DAG: void @llvm.dbg.value(metadata float [[VAL5_V:%[A-z0-9]*]], metadata [[VAL5_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL5_LOC:![0-9]*]]
+; CHECK-DBG-INTRINSIC: void @llvm.dbg.value({{.*}}
+; CHECK-DBG-RECORDS: #dbg_value({{.*}}
+; CHECK-DBG-INTRINSIC-DAG: void @llvm.dbg.value(metadata float [[VAL5_V:%[A-z0-9]*]], metadata [[VAL5_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL5_LOC:![0-9]*]]
+; CHECK-DBG-RECORDS-DAG: #dbg_value(float [[VAL5_V:%[A-z0-9]*]], [[VAL5_MD:![0-9]*]], !DIExpression(), [[VAL5_LOC:![0-9]*]])
 ; CHECK-DAG: [[VAL5_V]] = {{.*}}, !dbg [[VAL5_LOC]]
 ; CHECK: store float [[VAL5_V]]{{.*}}, !dbg [[STORE2_LOC:![0-9]*]]
 ; this value is unsalvageble
-; CHECK: void @llvm.dbg.value({{.*}}
-; CHECK-DAG: void @llvm.dbg.value(metadata float [[VAL7_V:%[A-z0-9]*]], metadata [[VAL7_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL7_LOC:![0-9]*]]
+; CHECK-DBG-INTRINSIC: void @llvm.dbg.value({{.*}}
+; CHECK-DBG-RECORDS: #dbg_value({{.*}}
+; CHECK-DBG-INTRINSIC-DAG: void @llvm.dbg.value(metadata float [[VAL7_V:%[A-z0-9]*]], metadata [[VAL7_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL7_LOC:![0-9]*]]
+; CHECK-DBG-RECORDS-DAG: #dbg_value(float [[VAL7_V:%[A-z0-9]*]], [[VAL7_MD:![0-9]*]], !DIExpression(), [[VAL7_LOC:![0-9]*]])
 ; CHECK-DAG: [[VAL7_V]] = {{.*}}, !dbg [[VAL7_LOC]]
 ; CHECK: store float [[VAL7_V]]{{.*}}, !dbg [[STORE3_LOC:![0-9]*]]
 ; CHECK-DAG: store float [[VAL9_V:%[0-9]*]]{{.*}}, !dbg [[STORE4_LOC:![0-9]*]]
-; CHECK-DAG: void @llvm.dbg.value(metadata float [[VAL9_V]], metadata [[VAL9_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL9_LOC:![0-9]*]]
+; CHECK-DBG-INTRINSIC-DAG: void @llvm.dbg.value(metadata float [[VAL9_V]], metadata [[VAL9_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL9_LOC:![0-9]*]]
+; CHECK-DBG-RECORDS-DAG: #dbg_value(float [[VAL9_V]], [[VAL9_MD:![0-9]*]], !DIExpression(), [[VAL9_LOC:![0-9]*]])
 ; CHECK-DAG: [[VAL9_V]] = fadd fast float [[TEMP_VAL:%[A-z0-9]*]], {{.*}}, !dbg [[VAL9_LOC]]
 ; It would be more correct to have VAL9_LOC here:
 ; CHECK-DAG: [[TEMP_VAL]] = {{.*}}, !dbg [[VAL8_LOC:![0-9]*]]

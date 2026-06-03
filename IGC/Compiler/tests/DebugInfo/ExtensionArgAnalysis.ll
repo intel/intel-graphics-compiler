@@ -7,7 +7,7 @@
 ;============================ end_copyright_notice =============================
 ;
 ; REQUIRES: llvm-14-plus
-; RUN: igc_opt --opaque-pointers --igc-extension-arg-analysis -S < %s | FileCheck %s
+; RUN: igc_opt --opaque-pointers --igc-extension-arg-analysis -S < %s | FileCheck %s --check-prefixes=CHECK,%if llvm-22-plus %{CHECK-DBG-RECORDS%} %else %{CHECK-DBG-INTRINSIC%}
 ; ------------------------------------------------
 ; ExtensionArgAnalysis
 ; ------------------------------------------------
@@ -20,13 +20,16 @@
 ; CHECK: @test_extarga{{.*}} !dbg [[SCOPE:![0-9]*]]
 ;
 ; CHECK: [[MBLOCK_V:%[A-z0-9]*]] = call spir_func ptr{{.*}} !dbg [[MBLOCK_LOC:![0-9]*]]
-; CHECK: @llvm.dbg.value(metadata ptr [[MBLOCK_V]], metadata [[MBLOCK_MD:![0-9]*]], metadata !DIExpression()), !dbg [[MBLOCK_LOC]]
+; CHECK-DBG-INTRINSIC: @llvm.dbg.value(metadata ptr [[MBLOCK_V]], metadata [[MBLOCK_MD:![0-9]*]], metadata !DIExpression()), !dbg [[MBLOCK_LOC]]
+; CHECK-DBG-RECORDS: #dbg_value(ptr [[MBLOCK_V]], [[MBLOCK_MD:![0-9]*]], !DIExpression(), [[MBLOCK_LOC]])
 ; CHECK: [[FBRN_V:%[A-z0-9]*]] = call spir_func <4 x i32>{{.*}} !dbg [[FBRN_LOC:![0-9]*]]
-; CHECK: @llvm.dbg.value(metadata <4 x i32> [[FBRN_V]], metadata [[FBRN_MD:![0-9]*]], metadata !DIExpression()), !dbg [[FBRN_LOC]]
+; CHECK-DBG-INTRINSIC: @llvm.dbg.value(metadata <4 x i32> [[FBRN_V]], metadata [[FBRN_MD:![0-9]*]], metadata !DIExpression()), !dbg [[FBRN_LOC]]
+; CHECK-DBG-RECORDS: #dbg_value(<4 x i32> [[FBRN_V]], [[FBRN_MD:![0-9]*]], !DIExpression(), [[FBRN_LOC]])
 ; CHECK: call spir_func void{{.*}} !dbg [[SENDI_LOC:![0-9]*]]
 ; CHECK: call spir_func void{{.*}} !dbg [[SENDS_LOC:![0-9]*]]
 ; CHECK: [[ALLOCA_V:%[A-z0-9]*]] = alloca <4 x i32>{{.*}} !dbg [[ALLOCA_LOC:![0-9]*]]
-; CHECK: @llvm.dbg.value(metadata ptr [[ALLOCA_V]], metadata [[ALLOCA_MD:![0-9]*]], metadata !DIExpression()), !dbg [[ALLOCA_LOC]]
+; CHECK-DBG-INTRINSIC: @llvm.dbg.value(metadata ptr [[ALLOCA_V]], metadata [[ALLOCA_MD:![0-9]*]], metadata !DIExpression()), !dbg [[ALLOCA_LOC]]
+; CHECK-DBG-RECORDS: #dbg_value(ptr [[ALLOCA_V]], [[ALLOCA_MD:![0-9]*]], !DIExpression(), [[ALLOCA_LOC]])
 ; CHECK: store {{.*}} !dbg [[STORE1_LOC:![0-9]*]]
 ; CHECK: store {{.*}} !dbg [[STORE2_LOC:![0-9]*]]
 

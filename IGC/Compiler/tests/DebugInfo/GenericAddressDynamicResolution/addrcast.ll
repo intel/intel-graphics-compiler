@@ -7,7 +7,7 @@
 ;============================ end_copyright_notice =============================
 ;
 ; REQUIRES: llvm-14-plus
-; RUN: igc_opt --opaque-pointers --igc-generic-address-dynamic-resolution -S < %s | FileCheck %s
+; RUN: igc_opt --opaque-pointers --igc-generic-address-dynamic-resolution -S < %s | FileCheck %s --check-prefixes=CHECK,%if llvm-22-plus %{CHECK-DBG-RECORDS%} %else %{CHECK-DBG-INTRINSIC%}
 ; ------------------------------------------------
 ; GenericAddressDynamicResolution
 ; ------------------------------------------------
@@ -24,28 +24,38 @@
 ;
 ; CHECK: [[ACAST_V:%[0-9A-z]*]] = addrspacecast
 ; CHECK-SAME: !dbg [[ACAST_LOC:![0-9]*]]
-; CHECK: @llvm.dbg.value(metadata ptr addrspace(4) [[ACAST_V]]
-; CHECK-SAME: metadata [[ACAST_MD:![0-9]*]], metadata !DIExpression()), !dbg [[ACAST_LOC]]
+; CHECK-DBG-INTRINSIC: @llvm.dbg.value(metadata ptr addrspace(4) [[ACAST_V]]
+; CHECK-DBG-RECORDS: #dbg_value(ptr addrspace(4) [[ACAST_V]]
+; CHECK-DBG-INTRINSIC-SAME: metadata [[ACAST_MD:![0-9]*]], metadata !DIExpression()), !dbg [[ACAST_LOC]]
+; CHECK-DBG-RECORDS-SAME: [[ACAST_MD:![0-9]*]], !DIExpression(), [[ACAST_LOC]])
 ;
 ; CHECK: [[PTRI1_V:%[0-9A-z]*]] = ptrtoint
 ; CHECK-SAME: !dbg [[PTRI1_LOC:![0-9]*]]
-; CHECK: @llvm.dbg.value(metadata i32 [[PTRI1_V]]
-; CHECK-SAME: metadata [[PTRI1_MD:![0-9]*]], metadata !DIExpression()), !dbg [[PTRI1_LOC]]
+; CHECK-DBG-INTRINSIC: @llvm.dbg.value(metadata i32 [[PTRI1_V]]
+; CHECK-DBG-RECORDS: #dbg_value(i32 [[PTRI1_V]]
+; CHECK-DBG-INTRINSIC-SAME: metadata [[PTRI1_MD:![0-9]*]], metadata !DIExpression()), !dbg [[PTRI1_LOC]]
+; CHECK-DBG-RECORDS-SAME: [[PTRI1_MD:![0-9]*]], !DIExpression(), [[PTRI1_LOC]])
 ;
 ; CHECK: [[GEP_V:%[0-9A-z]*]] = getelementptr
 ; CHECK-SAME: !dbg [[GEP_LOC:![0-9]*]]
-; CHECK: @llvm.dbg.value(metadata ptr addrspace(4) [[GEP_V]]
-; CHECK-SAME: metadata [[GEP_MD:![0-9]*]], metadata !DIExpression()), !dbg [[GEP_LOC]]
+; CHECK-DBG-INTRINSIC: @llvm.dbg.value(metadata ptr addrspace(4) [[GEP_V]]
+; CHECK-DBG-RECORDS: #dbg_value(ptr addrspace(4) [[GEP_V]]
+; CHECK-DBG-INTRINSIC-SAME: metadata [[GEP_MD:![0-9]*]], metadata !DIExpression()), !dbg [[GEP_LOC]]
+; CHECK-DBG-RECORDS-SAME: [[GEP_MD:![0-9]*]], !DIExpression(), [[GEP_LOC]])
 ;
 ; CHECK: [[PTRI2_V:%[0-9A-z]*]] = ptrtoint
 ; CHECK-SAME: !dbg [[PTRI2_LOC:![0-9]*]]
-; CHECK: @llvm.dbg.value(metadata i32 [[PTRI2_V]]
-; CHECK-SAME: metadata [[PTRI2_MD:![0-9]*]], metadata !DIExpression()), !dbg [[PTRI2_LOC]]
+; CHECK-DBG-INTRINSIC: @llvm.dbg.value(metadata i32 [[PTRI2_V]]
+; CHECK-DBG-RECORDS: #dbg_value(i32 [[PTRI2_V]]
+; CHECK-DBG-INTRINSIC-SAME: metadata [[PTRI2_MD:![0-9]*]], metadata !DIExpression()), !dbg [[PTRI2_LOC]]
+; CHECK-DBG-RECORDS-SAME: [[PTRI2_MD:![0-9]*]], !DIExpression(), [[PTRI2_LOC]])
 ;
 ; CHECK: [[ADD_V:%[0-9A-z]*]] = add
 ; CHECK-SAME: !dbg [[ADD_LOC:![0-9]*]]
-; CHECK: @llvm.dbg.value(metadata i32 [[ADD_V]]
-; CHECK-SAME: metadata [[ADD_MD:![0-9]*]], metadata !DIExpression()), !dbg [[ADD_LOC]]
+; CHECK-DBG-INTRINSIC: @llvm.dbg.value(metadata i32 [[ADD_V]]
+; CHECK-DBG-RECORDS: #dbg_value(i32 [[ADD_V]]
+; CHECK-DBG-INTRINSIC-SAME: metadata [[ADD_MD:![0-9]*]], metadata !DIExpression()), !dbg [[ADD_LOC]]
+; CHECK-DBG-RECORDS-SAME: [[ADD_MD:![0-9]*]], !DIExpression(), [[ADD_LOC]])
 
 
 define spir_kernel void @test_kernel(ptr addrspace(1) %src) !dbg !6 {

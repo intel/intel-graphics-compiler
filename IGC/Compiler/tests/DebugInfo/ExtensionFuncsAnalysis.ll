@@ -7,7 +7,7 @@
 ;============================ end_copyright_notice =============================
 ;
 ; REQUIRES: llvm-14-plus
-; RUN: igc_opt --opaque-pointers -igc-extension-funcs-analysis -S < %s | FileCheck %s
+; RUN: igc_opt --opaque-pointers -igc-extension-funcs-analysis -S < %s | FileCheck %s --check-prefixes=CHECK,%if llvm-22-plus %{CHECK-DBG-RECORDS%} %else %{CHECK-DBG-INTRINSIC%}
 ; ------------------------------------------------
 ; ExtensionFuncsAnalysis
 ; ------------------------------------------------
@@ -23,24 +23,33 @@
 ; CHECK: @test_extfunca{{.*}} !dbg [[SCOPE:![0-9]*]]
 ;
 ; CHECK: [[CALL1_V:%[A-z0-9]*]] = call spir_func i32{{.*}} !dbg [[CALL1_LOC:![0-9]*]]
-; CHECK: @llvm.dbg.value(metadata i32 [[CALL1_V]], metadata [[CALL1_MD:![0-9]*]], metadata !DIExpression()), !dbg [[CALL1_LOC]]
+; CHECK-DBG-INTRINSIC: @llvm.dbg.value(metadata i32 [[CALL1_V]], metadata [[CALL1_MD:![0-9]*]], metadata !DIExpression()), !dbg [[CALL1_LOC]]
+; CHECK-DBG-RECORDS: #dbg_value(i32 [[CALL1_V]], [[CALL1_MD:![0-9]*]], !DIExpression(), [[CALL1_LOC]])
 ; CHECK: [[CALL2_V:%[A-z0-9]*]] = call spir_func i32{{.*}} !dbg [[CALL2_LOC:![0-9]*]]
-; CHECK: @llvm.dbg.value(metadata i32 [[CALL2_V]], metadata [[CALL2_MD:![0-9]*]], metadata !DIExpression()), !dbg [[CALL2_LOC]]
+; CHECK-DBG-INTRINSIC: @llvm.dbg.value(metadata i32 [[CALL2_V]], metadata [[CALL2_MD:![0-9]*]], metadata !DIExpression()), !dbg [[CALL2_LOC]]
+; CHECK-DBG-RECORDS: #dbg_value(i32 [[CALL2_V]], [[CALL2_MD:![0-9]*]], !DIExpression(), [[CALL2_LOC]])
 ; CHECK: [[CALL3_V:%[A-z0-9]*]] = call spir_func i32{{.*}} !dbg [[CALL3_LOC:![0-9]*]]
-; CHECK: @llvm.dbg.value(metadata i32 [[CALL3_V]], metadata [[CALL3_MD:![0-9]*]], metadata !DIExpression()), !dbg [[CALL3_LOC]]
+; CHECK-DBG-INTRINSIC: @llvm.dbg.value(metadata i32 [[CALL3_V]], metadata [[CALL3_MD:![0-9]*]], metadata !DIExpression()), !dbg [[CALL3_LOC]]
+; CHECK-DBG-RECORDS: #dbg_value(i32 [[CALL3_V]], [[CALL3_MD:![0-9]*]], !DIExpression(), [[CALL3_LOC]])
 ; CHECK: [[CALL4_V:%[A-z0-9]*]] = call spir_func i32{{.*}} !dbg [[CALL4_LOC:![0-9]*]]
-; CHECK: @llvm.dbg.value(metadata i32 [[CALL4_V]], metadata [[CALL4_MD:![0-9]*]], metadata !DIExpression()), !dbg [[CALL4_LOC]]
+; CHECK-DBG-INTRINSIC: @llvm.dbg.value(metadata i32 [[CALL4_V]], metadata [[CALL4_MD:![0-9]*]], metadata !DIExpression()), !dbg [[CALL4_LOC]]
+; CHECK-DBG-RECORDS: #dbg_value(i32 [[CALL4_V]], [[CALL4_MD:![0-9]*]], !DIExpression(), [[CALL4_LOC]])
 ; CHECK: [[ADD1_V:%[A-z0-9]*]] = add i32{{.*}} !dbg [[ADD1_LOC:![0-9]*]]
-; CHECK: @llvm.dbg.value(metadata i32 [[ADD1_V]], metadata [[ADD1_MD:![0-9]*]], metadata !DIExpression()), !dbg [[ADD1_LOC]]
+; CHECK-DBG-INTRINSIC: @llvm.dbg.value(metadata i32 [[ADD1_V]], metadata [[ADD1_MD:![0-9]*]], metadata !DIExpression()), !dbg [[ADD1_LOC]]
+; CHECK-DBG-RECORDS: #dbg_value(i32 [[ADD1_V]], [[ADD1_MD:![0-9]*]], !DIExpression(), [[ADD1_LOC]])
 ; CHECK: [[ADD2_V:%[A-z0-9]*]] = add i32{{.*}} !dbg [[ADD2_LOC:![0-9]*]]
-; CHECK: @llvm.dbg.value(metadata i32 [[ADD2_V]], metadata [[ADD2_MD:![0-9]*]], metadata !DIExpression()), !dbg [[ADD2_LOC]]
+; CHECK-DBG-INTRINSIC: @llvm.dbg.value(metadata i32 [[ADD2_V]], metadata [[ADD2_MD:![0-9]*]], metadata !DIExpression()), !dbg [[ADD2_LOC]]
+; CHECK-DBG-RECORDS: #dbg_value(i32 [[ADD2_V]], [[ADD2_MD:![0-9]*]], !DIExpression(), [[ADD2_LOC]])
 ; CHECK: [[ADD3_V:%[A-z0-9]*]] = add i32{{.*}} !dbg [[ADD3_LOC:![0-9]*]]
-; CHECK: @llvm.dbg.value(metadata i32 [[ADD3_V]], metadata [[ADD3_MD:![0-9]*]], metadata !DIExpression()), !dbg [[ADD3_LOC]]
+; CHECK-DBG-INTRINSIC: @llvm.dbg.value(metadata i32 [[ADD3_V]], metadata [[ADD3_MD:![0-9]*]], metadata !DIExpression()), !dbg [[ADD3_LOC]]
+; CHECK-DBG-RECORDS: #dbg_value(i32 [[ADD3_V]], [[ADD3_MD:![0-9]*]], !DIExpression(), [[ADD3_LOC]])
 ; CHECK: store {{.*}} !dbg [[STORE1_LOC:![0-9]*]]
 ; CHECK: [[CALL5_V:%[A-z0-9]*]] = call spir_func ptr{{.*}} !dbg [[CALL5_LOC:![0-9]*]]
-; CHECK: @llvm.dbg.value(metadata ptr [[CALL5_V]], metadata [[CALL5_MD:![0-9]*]], metadata !DIExpression()), !dbg [[CALL5_LOC]]
+; CHECK-DBG-INTRINSIC: @llvm.dbg.value(metadata ptr [[CALL5_V]], metadata [[CALL5_MD:![0-9]*]], metadata !DIExpression()), !dbg [[CALL5_LOC]]
+; CHECK-DBG-RECORDS: #dbg_value(ptr [[CALL5_V]], [[CALL5_MD:![0-9]*]], !DIExpression(), [[CALL5_LOC]])
 ; CHECK: [[CALL6_V:%[A-z0-9]*]] = call spir_func <4 x i32>{{.*}} !dbg [[CALL6_LOC:![0-9]*]]
-; CHECK: @llvm.dbg.value(metadata <4 x i32> [[CALL6_V]], metadata [[CALL6_MD:![0-9]*]], metadata !DIExpression()), !dbg [[CALL6_LOC]]
+; CHECK-DBG-INTRINSIC: @llvm.dbg.value(metadata <4 x i32> [[CALL6_V]], metadata [[CALL6_MD:![0-9]*]], metadata !DIExpression()), !dbg [[CALL6_LOC]]
+; CHECK-DBG-RECORDS: #dbg_value(<4 x i32> [[CALL6_V]], [[CALL6_MD:![0-9]*]], !DIExpression(), [[CALL6_LOC]])
 
 %struct.mce_payload_t = type opaque
 

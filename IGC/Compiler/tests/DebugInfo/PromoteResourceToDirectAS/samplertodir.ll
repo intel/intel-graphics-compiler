@@ -7,7 +7,7 @@
 ;============================ end_copyright_notice =============================
 ;
 ; REQUIRES: llvm-14-plus
-; RUN: igc_opt --opaque-pointers --igc-promote-resources-to-direct-addrspace -S < %s | FileCheck %s
+; RUN: igc_opt --opaque-pointers --igc-promote-resources-to-direct-addrspace -S < %s | FileCheck %s --check-prefixes=CHECK,%if llvm-22-plus %{CHECK-DBG-RECORDS%} %else %{CHECK-DBG-INTRINSIC%}
 ; ------------------------------------------------
 ; PromoteResourceToDirectAS : sampler promotion part
 ; ------------------------------------------------
@@ -22,8 +22,10 @@
 ;
 ; CHECK: [[ACAST_V:%[0-9A-z]*]] = addrspacecast
 ; CHECK-SAME: !dbg [[ACAST_LOC:![0-9]*]]
-; CHECK: @llvm.dbg.value(metadata ptr addrspace(2293760) [[ACAST_V]]
-; CHECK-SAME: metadata [[ACAST_MD:![0-9]*]], metadata !DIExpression()), !dbg [[ACAST_LOC]]
+; CHECK-DBG-INTRINSIC: @llvm.dbg.value(metadata ptr addrspace(2293760) [[ACAST_V]]
+; CHECK-DBG-RECORDS: #dbg_value(ptr addrspace(2293760) [[ACAST_V]]
+; CHECK-DBG-INTRINSIC-SAME: metadata [[ACAST_MD:![0-9]*]], metadata !DIExpression()), !dbg [[ACAST_LOC]]
+; CHECK-DBG-RECORDS-SAME: [[ACAST_MD:![0-9]*]], !DIExpression(), [[ACAST_LOC]])
 ;
 ; CHECK: !dbg [[CALL_LOC:[0-9]*]]
 ; CHECK: ret void

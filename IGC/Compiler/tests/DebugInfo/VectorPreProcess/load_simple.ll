@@ -8,7 +8,7 @@
 
 
 ; REQUIRES: llvm-14-plus
-; RUN: igc_opt --opaque-pointers --igc-vectorpreprocess -S < %s | FileCheck %s
+; RUN: igc_opt --opaque-pointers --igc-vectorpreprocess -S < %s | FileCheck %s --check-prefixes=CHECK,%if llvm-22-plus %{CHECK-DBG-RECORDS%} %else %{CHECK-DBG-INTRINSIC%}
 ; ------------------------------------------------
 ; VectorPreProcess : load aligned
 ; ------------------------------------------------
@@ -22,21 +22,30 @@
 ; CHECK-SAME: !dbg [[SCOPE:![0-9]*]]
 
 ; CHECK: [[ST_V:%[A-z0-9]*]] = alloca
-; CHECK: @llvm.dbg.declare(metadata {{.*}} [[ST_V]], metadata [[ST_MD:![0-9]*]], metadata !DIExpression()), !dbg [[ST_LOC:![0-9]*]]
+; CHECK-DBG-INTRINSIC: @llvm.dbg.declare(metadata {{.*}} [[ST_V]], metadata [[ST_MD:![0-9]*]], metadata !DIExpression()), !dbg [[ST_LOC:![0-9]*]]
+; CHECK-DBG-RECORDS: #dbg_declare({{.*}} [[ST_V]], [[ST_MD:![0-9]*]], !DIExpression(), [[ST_LOC:![0-9]*]])
 ; CHECK: [[LOAD1_V:%[A-z0-9*]]] = load {{.*}}, !dbg [[LOAD1_LOC:![0-9]*]]
 ; CHECK-DAG: [[EXTR1_V:%[A-z0-9]*]] = extractelement {{.*}} 0, !dbg [[EXTR1_LOC:![0-9]*]]
 ; CHECK-DAG: [[EXTR2_V:%[A-z0-9]*]] = extractelement {{.*}} 1, !dbg [[EXTR2_LOC:![0-9]*]]
 ; CHECK-DAG: [[EXTR3_V:%[A-z0-9]*]] = extractelement {{.*}} 2, !dbg [[EXTR3_LOC:![0-9]*]]
-; CHECK-DAG: @llvm.dbg.value(metadata {{.*}}, metadata [[LOAD1_MD:![0-9]*]], metadata !DIExpression()), !dbg [[LOAD1_LOC]]
-; CHECK-DAG: @llvm.dbg.value(metadata {{.*}} [[EXTR1_V]], metadata [[EXTR1_MD:![0-9]*]], metadata !DIExpression()), !dbg [[EXTR1_LOC]]
-; CHECK-DAG: @llvm.dbg.value(metadata {{.*}} [[EXTR2_V]], metadata [[EXTR2_MD:![0-9]*]], metadata !DIExpression()), !dbg [[EXTR2_LOC]]
-; CHECK-DAG: @llvm.dbg.value(metadata {{.*}} [[EXTR3_V]], metadata [[EXTR3_MD:![0-9]*]], metadata !DIExpression()), !dbg [[EXTR3_LOC]]
+; CHECK-DBG-INTRINSIC-DAG: @llvm.dbg.value(metadata {{.*}}, metadata [[LOAD1_MD:![0-9]*]], metadata !DIExpression()), !dbg [[LOAD1_LOC]]
+; CHECK-DBG-RECORDS-DAG: #dbg_value({{.*}}, [[LOAD1_MD:![0-9]*]], !DIExpression(), [[LOAD1_LOC]])
+; CHECK-DBG-INTRINSIC-DAG: @llvm.dbg.value(metadata {{.*}} [[EXTR1_V]], metadata [[EXTR1_MD:![0-9]*]], metadata !DIExpression()), !dbg [[EXTR1_LOC]]
+; CHECK-DBG-RECORDS-DAG: #dbg_value({{.*}} [[EXTR1_V]], [[EXTR1_MD:![0-9]*]], !DIExpression(), [[EXTR1_LOC]])
+; CHECK-DBG-INTRINSIC-DAG: @llvm.dbg.value(metadata {{.*}} [[EXTR2_V]], metadata [[EXTR2_MD:![0-9]*]], metadata !DIExpression()), !dbg [[EXTR2_LOC]]
+; CHECK-DBG-RECORDS-DAG: #dbg_value({{.*}} [[EXTR2_V]], [[EXTR2_MD:![0-9]*]], !DIExpression(), [[EXTR2_LOC]])
+; CHECK-DBG-INTRINSIC-DAG: @llvm.dbg.value(metadata {{.*}} [[EXTR3_V]], metadata [[EXTR3_MD:![0-9]*]], metadata !DIExpression()), !dbg [[EXTR3_LOC]]
+; CHECK-DBG-RECORDS-DAG: #dbg_value({{.*}} [[EXTR3_V]], [[EXTR3_MD:![0-9]*]], !DIExpression(), [[EXTR3_LOC]])
 ; CHECK-DAG: [[CALL1_V:%[A-z0-9*]]] = call float {{.*}}, !dbg [[CALL1_LOC:![0-9]*]]
-; CHECK-DAG: @llvm.dbg.value(metadata <4 x float> {{.*}}, metadata [[CALL0_MD:![0-9]*]], metadata !DIExpression()), !dbg [[CALL0_LOC:![0-9]*]]
-; CHECK-DAG: @llvm.dbg.value(metadata float [[CALL1_V]], metadata [[CALL1_MD:![0-9]*]], metadata !DIExpression()), !dbg [[CALL1_LOC]]
+; CHECK-DBG-INTRINSIC-DAG: @llvm.dbg.value(metadata <4 x float> {{.*}}, metadata [[CALL0_MD:![0-9]*]], metadata !DIExpression()), !dbg [[CALL0_LOC:![0-9]*]]
+; CHECK-DBG-RECORDS-DAG: #dbg_value(<4 x float> {{.*}}, [[CALL0_MD:![0-9]*]], !DIExpression(), [[CALL0_LOC:![0-9]*]])
+; CHECK-DBG-INTRINSIC-DAG: @llvm.dbg.value(metadata float [[CALL1_V]], metadata [[CALL1_MD:![0-9]*]], metadata !DIExpression()), !dbg [[CALL1_LOC]]
+; CHECK-DBG-RECORDS-DAG: #dbg_value(float [[CALL1_V]], [[CALL1_MD:![0-9]*]], !DIExpression(), [[CALL1_LOC]])
 ; CHECK-DAG: [[CALL3_V:%[A-z0-9*]]] = call float {{.*}}, !dbg [[CALL3_LOC:![0-9]*]]
-; CHECK-DAG: @llvm.dbg.value(metadata <4 x float> {{.*}}, metadata [[CALL2_MD:![0-9]*]], metadata !DIExpression()), !dbg [[CALL2_LOC:![0-9]*]]
-; CHECK-DAG: @llvm.dbg.value(metadata float [[CALL3_V]], metadata [[CALL3_MD:![0-9]*]], metadata !DIExpression()), !dbg [[CALL3_LOC]]
+; CHECK-DBG-INTRINSIC-DAG: @llvm.dbg.value(metadata <4 x float> {{.*}}, metadata [[CALL2_MD:![0-9]*]], metadata !DIExpression()), !dbg [[CALL2_LOC:![0-9]*]]
+; CHECK-DBG-RECORDS-DAG: #dbg_value(<4 x float> {{.*}}, [[CALL2_MD:![0-9]*]], !DIExpression(), [[CALL2_LOC:![0-9]*]])
+; CHECK-DBG-INTRINSIC-DAG: @llvm.dbg.value(metadata float [[CALL3_V]], metadata [[CALL3_MD:![0-9]*]], metadata !DIExpression()), !dbg [[CALL3_LOC]]
+; CHECK-DBG-RECORDS-DAG: #dbg_value(float [[CALL3_V]], [[CALL3_MD:![0-9]*]], !DIExpression(), [[CALL3_LOC]])
 
 define spir_kernel void @test_vecpre(<4 x float> addrspace(1)* %a) !dbg !6 {
   %st = alloca float, align 4, !dbg !24

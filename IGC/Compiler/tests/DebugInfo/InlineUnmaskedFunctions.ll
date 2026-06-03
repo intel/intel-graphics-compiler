@@ -8,7 +8,7 @@
 
 
 ; REQUIRES: llvm-14-plus
-; RUN: igc_opt --opaque-pointers -inline-unmasked -S < %s | FileCheck %s
+; RUN: igc_opt --opaque-pointers -inline-unmasked -S < %s | FileCheck %s --check-prefixes=CHECK,%if llvm-22-plus %{CHECK-DBG-RECORDS%} %else %{CHECK-DBG-INTRINSIC%}
 ; ------------------------------------------------
 ; InlineUnmaskedFunctions
 ; ------------------------------------------------
@@ -20,14 +20,18 @@
 
 ; CHECK: define void @test{{.*}} !dbg [[SCOPE1:![0-9]*]]
 ; CHECK: [[VAL1_V:%[A-z0-9]*]] = {{.*}}, !dbg [[VAL1_LOC:![0-9]*]]
-; CHECK: void @llvm.dbg.value(metadata i32 [[VAL1_V]], metadata [[VAL1_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL1_LOC]]
+; CHECK-DBG-INTRINSIC: void @llvm.dbg.value(metadata i32 [[VAL1_V]], metadata [[VAL1_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL1_LOC]]
+; CHECK-DBG-RECORDS: #dbg_value(i32 [[VAL1_V]], [[VAL1_MD:![0-9]*]], !DIExpression(), [[VAL1_LOC]])
 ; CHECK: [[FVAL1_V:%[A-z0-9]*]] = {{.*}}, !dbg [[FVAL1_LOC:![0-9]*]]
-; CHECK: void @llvm.dbg.value(metadata i32 [[FVAL1_V]], metadata [[FVAL1_MD:![0-9]*]], metadata !DIExpression()), !dbg [[FVAL1_LOC]]
+; CHECK-DBG-INTRINSIC: void @llvm.dbg.value(metadata i32 [[FVAL1_V]], metadata [[FVAL1_MD:![0-9]*]], metadata !DIExpression()), !dbg [[FVAL1_LOC]]
+; CHECK-DBG-RECORDS: #dbg_value(i32 [[FVAL1_V]], [[FVAL1_MD:![0-9]*]], !DIExpression(), [[FVAL1_LOC]])
 ; CHECK: [[FVAL2_V:%[A-z0-9]*]] = {{.*}}, !dbg [[FVAL2_LOC:![0-9]*]]
-; CHECK: void @llvm.dbg.value(metadata i32 [[FVAL2_V]], metadata [[FVAL2_MD:![0-9]*]], metadata !DIExpression()), !dbg [[FVAL2_LOC]]
+; CHECK-DBG-INTRINSIC: void @llvm.dbg.value(metadata i32 [[FVAL2_V]], metadata [[FVAL2_MD:![0-9]*]], metadata !DIExpression()), !dbg [[FVAL2_LOC]]
+; CHECK-DBG-RECORDS: #dbg_value(i32 [[FVAL2_V]], [[FVAL2_MD:![0-9]*]], !DIExpression(), [[FVAL2_LOC]])
 ; CHECK: store {{.*}}, !dbg [[FSTR1_LOC:![0-9]*]]
 ; CHECK: [[VAL2_V:%[A-z0-9]*]] = {{.*}}, !dbg [[VAL2_LOC:![0-9]*]]
-; CHECK: void @llvm.dbg.value(metadata i32 [[VAL2_V]], metadata [[VAL2_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL2_LOC]]
+; CHECK-DBG-INTRINSIC: void @llvm.dbg.value(metadata i32 [[VAL2_V]], metadata [[VAL2_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL2_LOC]]
+; CHECK-DBG-RECORDS: #dbg_value(i32 [[VAL2_V]], [[VAL2_MD:![0-9]*]], !DIExpression(), [[VAL2_LOC]])
 ; CHECK: store {{.*}}, !dbg [[STR1_LOC:![0-9]*]]
 
 define void @test(i32 %src, i32* %dst) !dbg !17 {

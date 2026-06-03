@@ -7,7 +7,7 @@
 ;============================ end_copyright_notice =============================
 ;
 ; REQUIRES: llvm-14-plus
-; RUN: igc_opt --opaque-pointers -igc-layout -S < %s | FileCheck %s
+; RUN: igc_opt --opaque-pointers -igc-layout -S < %s | FileCheck %s --check-prefixes=CHECK,%if llvm-22-plus %{CHECK-DBG-RECORDS%} %else %{CHECK-DBG-INTRINSIC%}
 ; ------------------------------------------------
 ; Layout
 ; ------------------------------------------------
@@ -22,18 +22,23 @@
 
 ; CHECK: entry:
 ; CHECK: [[CMP1_V:%[A-z.0-9]*]] = {{.*}} !dbg [[CMP1_LOC:![0-9]*]]
-; CHECK: call void @llvm.dbg.value(metadata i1 [[CMP1_V]], metadata [[CMP1_MD:![0-9]*]], metadata !DIExpression()), !dbg [[CMP1_LOC]]
+; CHECK-DBG-INTRINSIC: call void @llvm.dbg.value(metadata i1 [[CMP1_V]], metadata [[CMP1_MD:![0-9]*]], metadata !DIExpression()), !dbg [[CMP1_LOC]]
+; CHECK-DBG-RECORDS: #dbg_value(i1 [[CMP1_V]], [[CMP1_MD:![0-9]*]], !DIExpression(), [[CMP1_LOC]])
 ; CHECK: br{{.*}} !dbg [[BR1_LOC:![0-9]*]]
 
 ; CHECK: for.body:
 ; CHECK: [[PHI1_V:%[A-z.0-9]*]] = {{.*}} !dbg [[PHI1_LOC:![0-9]*]]
 ; CHECK: [[PHI2_V:%[A-z.0-9]*]] = {{.*}} !dbg [[PHI2_LOC:![0-9]*]]
-; CHECK: call void @llvm.dbg.value(metadata ptr [[PHI1_V]], metadata [[PHI1_MD:![0-9]*]], metadata !DIExpression()), !dbg [[PHI1_LOC]]
-; CHECK: call void @llvm.dbg.value(metadata i32 [[PHI2_V]], metadata [[PHI2_MD:![0-9]*]], metadata !DIExpression()), !dbg [[PHI2_LOC]]
+; CHECK-DBG-INTRINSIC: call void @llvm.dbg.value(metadata ptr [[PHI1_V]], metadata [[PHI1_MD:![0-9]*]], metadata !DIExpression()), !dbg [[PHI1_LOC]]
+; CHECK-DBG-RECORDS: #dbg_value(ptr [[PHI1_V]], [[PHI1_MD:![0-9]*]], !DIExpression(), [[PHI1_LOC]])
+; CHECK-DBG-INTRINSIC: call void @llvm.dbg.value(metadata i32 [[PHI2_V]], metadata [[PHI2_MD:![0-9]*]], metadata !DIExpression()), !dbg [[PHI2_LOC]]
+; CHECK-DBG-RECORDS: #dbg_value(i32 [[PHI2_V]], [[PHI2_MD:![0-9]*]], !DIExpression(), [[PHI2_LOC]])
 ; CHECK: [[LOAD_V:%[A-z.0-9]*]] = {{.*}} !dbg [[LOAD_LOC:![0-9]*]]
-; CHECK: call void @llvm.dbg.value(metadata i32 [[LOAD_V]], metadata [[LOAD_MD:![0-9]*]], metadata !DIExpression()), !dbg [[LOAD_LOC]]
+; CHECK-DBG-INTRINSIC: call void @llvm.dbg.value(metadata i32 [[LOAD_V]], metadata [[LOAD_MD:![0-9]*]], metadata !DIExpression()), !dbg [[LOAD_LOC]]
+; CHECK-DBG-RECORDS: #dbg_value(i32 [[LOAD_V]], [[LOAD_MD:![0-9]*]], !DIExpression(), [[LOAD_LOC]])
 ; CHECK: [[CMP2_V:%[A-z.0-9]*]] = {{.*}} !dbg [[CMP2_LOC:![0-9]*]]
-; CHECK: call void @llvm.dbg.value(metadata i1 [[CMP2_V]], metadata [[CMP2_MD:![0-9]*]], metadata !DIExpression()), !dbg [[CMP2_LOC]]
+; CHECK-DBG-INTRINSIC: call void @llvm.dbg.value(metadata i1 [[CMP2_V]], metadata [[CMP2_MD:![0-9]*]], metadata !DIExpression()), !dbg [[CMP2_LOC]]
+; CHECK-DBG-RECORDS: #dbg_value(i1 [[CMP2_V]], [[CMP2_MD:![0-9]*]], !DIExpression(), [[CMP2_LOC]])
 ; CHECK: br{{.*}} !dbg [[BR2_LOC:![0-9]*]]
 ;
 ; CHECK: for.if:
@@ -41,9 +46,11 @@
 ;
 ; CHECK: for.else:
 ; CHECK: [[GEP_V:%[A-z.0-9]*]] = {{.*}} !dbg [[GEP_LOC:![0-9]*]]
-; CHECK: call void @llvm.dbg.value(metadata ptr [[GEP_V]], metadata [[GEP_MD:![0-9]*]], metadata !DIExpression()), !dbg [[GEP_LOC]]
+; CHECK-DBG-INTRINSIC: call void @llvm.dbg.value(metadata ptr [[GEP_V]], metadata [[GEP_MD:![0-9]*]], metadata !DIExpression()), !dbg [[GEP_LOC]]
+; CHECK-DBG-RECORDS: #dbg_value(ptr [[GEP_V]], [[GEP_MD:![0-9]*]], !DIExpression(), [[GEP_LOC]])
 ; CHECK: [[CMP3_V:%[A-z.0-9]*]] = {{.*}} !dbg [[CMP3_LOC:![0-9]*]]
-; CHECK: call void @llvm.dbg.value(metadata i1 [[CMP3_V]], metadata [[CMP3_MD:![0-9]*]], metadata !DIExpression()), !dbg [[CMP3_LOC]]
+; CHECK-DBG-INTRINSIC: call void @llvm.dbg.value(metadata i1 [[CMP3_V]], metadata [[CMP3_MD:![0-9]*]], metadata !DIExpression()), !dbg [[CMP3_LOC]]
+; CHECK-DBG-RECORDS: #dbg_value(i1 [[CMP3_V]], [[CMP3_MD:![0-9]*]], !DIExpression(), [[CMP3_LOC]])
 ; CHECK: br{{.*}} !dbg [[BR4_LOC:![0-9]*]]
 
 define spir_kernel void @test_layout(ptr %a, ptr %b, i32 %c) !dbg !6 {

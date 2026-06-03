@@ -8,7 +8,7 @@
 
 
 ; REQUIRES: llvm-14-plus
-; RUN: igc_opt --opaque-pointers -igc-phielimination -S < %s | FileCheck %s
+; RUN: igc_opt --opaque-pointers -igc-phielimination -S < %s | FileCheck %s --check-prefixes=CHECK,%if llvm-22-plus %{CHECK-DBG-RECORDS%} %else %{CHECK-DBG-INTRINSIC%}
 ; ------------------------------------------------
 ; DeadPHINodeElimination
 ; ------------------------------------------------
@@ -21,18 +21,24 @@
 ; CHECK: define void @test{{.*}} !dbg [[SCOPE:![0-9]*]]
 ; CHECK: body:
 ; CHECK: [[Y1_V:%[A-z0-9.]*]] = {{.*}}, !dbg [[Y1_LOC:![0-9]*]]
-; CHECK: void @llvm.dbg.value(metadata i32 [[Y1_V]], metadata [[X1_MD:![0-9]*]], metadata !DIExpression()), !dbg [[X1_LOC:![0-9]*]]
-; CHECK: void @llvm.dbg.value(metadata i32 [[Y1_V]], metadata [[Y1_MD:![0-9]*]], metadata !DIExpression()), !dbg [[Y1_LOC:![0-9]*]]
+; CHECK-DBG-INTRINSIC: void @llvm.dbg.value(metadata i32 [[Y1_V]], metadata [[X1_MD:![0-9]*]], metadata !DIExpression()), !dbg [[X1_LOC:![0-9]*]]
+; CHECK-DBG-RECORDS: #dbg_value(i32 [[Y1_V]], [[X1_MD:![0-9]*]], !DIExpression(), [[X1_LOC:![0-9]*]])
+; CHECK-DBG-INTRINSIC: void @llvm.dbg.value(metadata i32 [[Y1_V]], metadata [[Y1_MD:![0-9]*]], metadata !DIExpression()), !dbg [[Y1_LOC:![0-9]*]]
+; CHECK-DBG-RECORDS: #dbg_value(i32 [[Y1_V]], [[Y1_MD:![0-9]*]], !DIExpression(), [[Y1_LOC:![0-9]*]])
 
 ; CHECK: body1:
 ; CHECK: [[Y2_V:%[A-z0-9.]*]] = {{.*}}, !dbg [[Y2_LOC:![0-9]*]]
-; CHECK: void @llvm.dbg.value(metadata i32 [[Y2_V]], metadata [[X2_MD:![0-9]*]], metadata !DIExpression()), !dbg [[X2_LOC:![0-9]*]]
-; CHECK: void @llvm.dbg.value(metadata i32 [[Y2_V]], metadata [[Y2_MD:![0-9]*]], metadata !DIExpression()), !dbg [[Y2_LOC:![0-9]*]]
+; CHECK-DBG-INTRINSIC: void @llvm.dbg.value(metadata i32 [[Y2_V]], metadata [[X2_MD:![0-9]*]], metadata !DIExpression()), !dbg [[X2_LOC:![0-9]*]]
+; CHECK-DBG-RECORDS: #dbg_value(i32 [[Y2_V]], [[X2_MD:![0-9]*]], !DIExpression(), [[X2_LOC:![0-9]*]])
+; CHECK-DBG-INTRINSIC: void @llvm.dbg.value(metadata i32 [[Y2_V]], metadata [[Y2_MD:![0-9]*]], metadata !DIExpression()), !dbg [[Y2_LOC:![0-9]*]]
+; CHECK-DBG-RECORDS: #dbg_value(i32 [[Y2_V]], [[Y2_MD:![0-9]*]], !DIExpression(), [[Y2_LOC:![0-9]*]])
 
 ; CHECK: body2:
 ; CHECK: [[Y3_V:%[A-z0-9.]*]] = {{.*}}, !dbg [[Y3_LOC:![0-9]*]]
-; CHECK: void @llvm.dbg.value(metadata i32 [[Y3_V]], metadata [[X3_MD:![0-9]*]], metadata !DIExpression()), !dbg [[X3_LOC:![0-9]*]]
-; CHECK: void @llvm.dbg.value(metadata i32 [[Y3_V]], metadata [[Y3_MD:![0-9]*]], metadata !DIExpression()), !dbg [[Y3_LOC:![0-9]*]]
+; CHECK-DBG-INTRINSIC: void @llvm.dbg.value(metadata i32 [[Y3_V]], metadata [[X3_MD:![0-9]*]], metadata !DIExpression()), !dbg [[X3_LOC:![0-9]*]]
+; CHECK-DBG-RECORDS: #dbg_value(i32 [[Y3_V]], [[X3_MD:![0-9]*]], !DIExpression(), [[X3_LOC:![0-9]*]])
+; CHECK-DBG-INTRINSIC: void @llvm.dbg.value(metadata i32 [[Y3_V]], metadata [[Y3_MD:![0-9]*]], metadata !DIExpression()), !dbg [[Y3_LOC:![0-9]*]]
+; CHECK-DBG-RECORDS: #dbg_value(i32 [[Y3_V]], [[Y3_MD:![0-9]*]], !DIExpression(), [[Y3_LOC:![0-9]*]])
 
 define void @test(i32 %a, i32* %b) !dbg !10 {
 entry:
