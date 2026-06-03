@@ -2579,12 +2579,26 @@ bool COpenCLKernel::CompileSIMDSize(SIMDMode simdMode, EmitPass &EP, llvm::Funct
   return simdStatus == SIMDStatus::SIMD_PASS;
 }
 
-static bool shouldDropToSIMD16(uint32_t maxPressure, SIMDMode simdMode, CodeGenContext *pCtx, MetaDataUtils *pMdUtils,
-                               llvm::Function *F) {
+static bool shouldDropToSIMD16(uint32_t maxPressure, uint32_t simd16Pressure, uint32_t simd32Pressure,
+                               SIMDMode simdMode, CodeGenContext *pCtx, MetaDataUtils *pMdUtils, llvm::Function *F) {
   if (simdMode != SIMDMode::SIMD32 || !isEntryFunc(pMdUtils, F)) {
     return false;
   }
-  if (!pCtx->isAutoGRFSelectionEnabled() || pCtx->getNumGRFPerThread(false) != 0) {
+
+  bool autoGRF = pCtx->isAutoGRFSelectionEnabled();
+
+  // Non-VRT platforms have no VRT GRF step-up: SIMD32 is only profitable when
+  // its register pressure fits the GRF budget. Drop to SIMD16 when SIMD32
+  // pressure exceeds the budget -- the forced GRF count, otherwise 128 (256 in
+  // auto large-GRF mode).
+  if (pCtx->platform.isCoreXE2()) {
+    uint32_t grfBudget = pCtx->getNumGRFPerThread(false);
+    if (grfBudget == 0)
+      grfBudget = autoGRF ? 256 : 128;
+    return simd32Pressure > grfBudget;
+  }
+
+  if (!autoGRF || pCtx->getNumGRFPerThread(false) != 0) {
     return false;
   }
   auto threshold = IGC_GET_FLAG_VALUE(EarlySIMD16DropForXE3Threshold);
@@ -2702,8 +2716,11 @@ SIMDStatus COpenCLKernel::checkSIMDCompileCondsForMin16(SIMDMode simdMode, EmitP
     }
   }
 
-  if (EP.m_canAbortOnSpill && pCtx->platform.isCoreXE3() && IGC_IS_FLAG_ENABLED(AllowEarlySIMD16DropForXE3)) {
-    bool shouldDrop = shouldDropToSIMD16(maxPressure, simdMode, pCtx, pMdUtils, &F);
+  bool isSupportedCore = pCtx->platform.isCoreXE2() || pCtx->platform.isCoreXE3();
+  if (EP.m_canAbortOnSpill && isSupportedCore && IGC_IS_FLAG_ENABLED(AllowSIMD16DropForXE2Plus)) {
+    uint32_t simd16Pressure = getMaxPressureForSIMD(F, numLanes(SIMDMode::SIMD16));
+    uint32_t simd32Pressure = getMaxPressureForSIMD(F, numLanes(SIMDMode::SIMD32));
+    bool shouldDrop = shouldDropToSIMD16(maxPressure, simd16Pressure, simd32Pressure, simdMode, pCtx, pMdUtils, &F);
     if (shouldDrop) {
       pCtx->SetSIMDInfo(SIMD_SKIP_PERF, simdMode, ShaderDispatchMode::NOT_APPLICABLE);
       return SIMDStatus::SIMD_FUNC_FAIL;
