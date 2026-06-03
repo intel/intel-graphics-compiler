@@ -814,10 +814,10 @@ enum class ShaderTypeMD
         ShaderData shaderData;
         URBLayoutInfo URBInfo;
         bool UseBindlessImage = false;
-
         // This is used to set has_bindless_image_read zeinfo flag.
         bool HasBindlessImageRead = false;
 
+        bool UseBindlessImageWithSamplerTracking = false;
         bool enableRangeReduce = false;
         //when true, compiler enables MatchMad optimization for VS
         bool allowMatchMadOptimizationforVS = false;

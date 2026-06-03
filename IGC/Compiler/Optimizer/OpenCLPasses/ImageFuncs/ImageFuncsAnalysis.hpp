@@ -107,6 +107,7 @@ private:
   //        by being lowered to a ConstantInt value of 0.
   bool m_useSPVINTELBindlessImages{};
 
+  bool m_useBindlessImageWithSamplerTracking{};
   int m_inlineSamplerIndex = 0;
 };
 
