@@ -1,6 +1,6 @@
 
 ; REQUIRES: regkeys
-; RUN: igc_opt -S  --igc-vectorizer -dce < %s 2>&1 | FileCheck %s
+; RUN: igc_opt -S  --igc-vectorizer -dce --platformbmg < %s 2>&1 | FileCheck %s
 
 ; CHECK-LABEL: ._crit_edge
 ; CHECK: [[fmul:%.*]] = fmul fast <8 x float>

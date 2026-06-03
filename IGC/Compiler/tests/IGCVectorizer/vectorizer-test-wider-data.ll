@@ -1,4 +1,4 @@
-; RUN: igc_opt -S  --igc-vectorizer -dce < %s 2>&1 | FileCheck %s
+; RUN: igc_opt -S  --igc-vectorizer -dce --platformbmg < %s 2>&1 | FileCheck %s
 
 ; ModuleID = 'reduced.ll'
 source_filename = "initial_test.ll"

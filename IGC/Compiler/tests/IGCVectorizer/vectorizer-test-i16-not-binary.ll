@@ -7,7 +7,7 @@
 ;============================ end_copyright_notice =============================
 
 ; REQUIRES: regkeys
-; RUN: igc_opt -S  --igc-vectorizer -dce  --regkey=VectorizerAllowADD=1 --regkey=VectorizerAllowMUL=1 --regkey=VectorizerLog=1 --regkey=VectorizerLogToErr=1 < %s 2>&1 | FileCheck %s
+; RUN: igc_opt -S  --igc-vectorizer -dce  --regkey=VectorizerAllowADD=1 --regkey=VectorizerAllowMUL=1 --regkey=VectorizerLog=1 --regkey=VectorizerLogToErr=1 --platformbmg < %s 2>&1 | FileCheck %s
 
 ; CHECK: Candidate:   %32 = insertelement <8 x i16> %31, i16 %24, i64 7
 ; CHECK: Chain:   %32 = insertelement <8 x i16> %31, i16 %24, i64 7

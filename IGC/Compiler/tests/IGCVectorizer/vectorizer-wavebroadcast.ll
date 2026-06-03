@@ -7,7 +7,7 @@
 ;============================ end_copyright_notice =============================
 
 ; REQUIRES: regkeys
-; RUN: igc_opt -S --opaque-pointers --igc-vectorizer --regkey=VectorizerAllowWAVEBROADCAST=1 --dce < %s 2>&1 | FileCheck %s
+; RUN: igc_opt -S --opaque-pointers --igc-vectorizer --regkey=VectorizerAllowWAVEBROADCAST=1 --dce --platformbmg < %s 2>&1 | FileCheck %s
 
 ; check that scalar versions are eliminated, if someone does something to the attributes
 ; that prevents dce from removing it we must find it, vectorizer does not clean them up

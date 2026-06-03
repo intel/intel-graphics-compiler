@@ -1401,6 +1401,32 @@ Value *IGCVectorizer::vectorizeSlice(VecArr &Slice, unsigned int OperNum) {
   return NewVector;
 }
 
+bool IGCVectorizer::checkIsSameOrder(VecVal &Slice, InsertElementInst *Vectorized) {
+
+  VecVal Vector;
+  while (true) {
+    Vector.push_back(Vectorized->getOperand(1));
+    Vectorized = llvm::dyn_cast<InsertElementInst>(Vectorized->getOperand(0));
+    if (!Vectorized)
+      break;
+  }
+
+  std::reverse(Vector.begin(), Vector.end());
+
+  if (Vector.size() != Slice.size())
+    return false;
+  for (unsigned i = 0; i < Vector.size(); ++i) {
+    if (Vector[i] != Slice[i]) {
+      PRINT_INST(Vector[i]);
+      PRINT_LOG(" not same order ");
+      PRINT_INST_NL(Slice[i]);
+      return false;
+    }
+  }
+
+  return true;
+}
+
 Value *IGCVectorizer::checkOperandsToBeVectorized(Instruction *First, unsigned int OperNum, VecArr &Slice) {
 
   Value *Compare = ScalarToVector[First->getOperand(OperNum)];
@@ -1408,19 +1434,35 @@ Value *IGCVectorizer::checkOperandsToBeVectorized(Instruction *First, unsigned i
     PRINT_LOG_NL(" Operand num: " << OperNum << " is not vectorized");
     return nullptr;
   }
+
+  InsertElementInst *InsElInst = llvm::dyn_cast<InsertElementInst>(Compare);
+  if (!InsElInst) {
+    for (auto &El : Slice) {
+      Value *Val = El->getOperand(OperNum);
+      Value *ValCompare = ScalarToVector[Val];
+      if (ValCompare != Compare) {
+        PRINT_LOG("Compare: ");
+        PRINT_INST_NL(Compare);
+        PRINT_LOG("ValCompare: ");
+        PRINT_INST_NL(ValCompare);
+        PRINT_LOG_NL("Operands in slice do not converge");
+        return nullptr;
+      }
+    }
+    return Compare;
+  }
+
+  VecVal SliceOfOperands;
   for (auto &El : Slice) {
     Value *Val = El->getOperand(OperNum);
-    Value *ValCompare = ScalarToVector[Val];
-    if (ValCompare != Compare) {
-      PRINT_LOG("Compare: ");
-      PRINT_INST_NL(Compare);
-      PRINT_LOG("ValCompare: ");
-      PRINT_INST_NL(ValCompare);
-      PRINT_LOG_NL("Operands in slice do not converge");
-      return nullptr;
-    }
+    SliceOfOperands.push_back(Val);
   }
-  return Compare;
+
+  if (checkIsSameOrder(SliceOfOperands, InsElInst))
+    return Compare;
+
+  PRINT_LOG_NL("Not the same order");
+  return nullptr;
 }
 
 bool IGCVectorizer::checkInsertElement(Instruction *First, VecArr &Slice) {
@@ -1698,6 +1740,11 @@ bool IGCVectorizer::runOnFunction(llvm::Function &F) {
   M = F.getParent();
   CGCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
   initializeLogFile(F, "vectorizer");
+
+  if (CGCtx->platform.getGRFSize() != 64) {
+    PRINT_LOG_NL("Unsupported register width");
+    return false;
+  }
 
   AllowedPlatform = CGCtx->platform.isCoreXE2() || CGCtx->platform.isPVC() || CGCtx->platform.isCoreXE3();
   MDUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
