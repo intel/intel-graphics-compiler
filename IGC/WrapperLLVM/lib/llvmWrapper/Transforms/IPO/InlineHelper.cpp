@@ -400,11 +400,9 @@ bool inlineCallsImpl(CallGraphSCC &SCC, CallGraph &CG, std::function<AssumptionC
         LLVM_DEBUG(dbgs() << "    -> Deleting dead call: " << CB << "\n");
         // Update the call graph by deleting the edge from Callee to Caller.
         setInlineRemark(CB, "trivially dead");
-#if LLVM_VERSION_MAJOR >= 22
-        CG[Caller]->removeOneAbstractEdgeTo(CG[Callee]);
-#else
-        CG[Caller]->removeCallEdgeFor(CB);
-#endif
+
+        IGCLLVM::removeCallEdgeFor(CG[Caller], CG, CB);
+
         CB.eraseFromParent();
       } else {
         // Get DebugLoc to report. CB will be invalid after Inliner.
@@ -416,11 +414,7 @@ bool inlineCallsImpl(CallGraphSCC &SCC, CallGraph &CG, std::function<AssumptionC
 
 #if LLVM_VERSION_MAJOR >= 17
         CallGraphNode *CallerNode = CG[Caller];
-#if LLVM_VERSION_MAJOR >= 22
-        CallerNode->removeOneAbstractEdgeTo(CG[Callee]);
-#else
-        CallerNode->removeCallEdgeFor(CB);
-#endif
+        IGCLLVM::removeCallEdgeFor(CallerNode, CG, CB);
 #endif
 
         InlineResult IR = inlineCallIfPossible(CB, InlineInfo, InlinedArrayAllocas, InlineHistoryID, InsertLifetime,
