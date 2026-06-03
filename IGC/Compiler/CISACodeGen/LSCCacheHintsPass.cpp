@@ -21,6 +21,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/Support/Debug.h>
 #include <llvmWrapper/IR/DerivedTypes.h>
 #include "LSCCacheHintsPass.h"
+#include "getCacheOpts.h"
 #include "MDFrameWork.h"
 #include "ShaderCodeGen.hpp"
 
