@@ -184,9 +184,6 @@ protected:
   // Creates annotations for inline sampler_t objects
   void CreateZEInlineSamplerAnnotations();
 
-  // A helper function to get vector type hint string for filling user attributes
-  std::string getVecTypeHintTypeString(const IGC::IGCMD::VectorTypeHintMetaDataHandle &vecTypeHintInfo) const;
-
   // Load from MD and return the resource information for argument number argNo
   SOpenCLKernelInfo::SResourceInfo getResourceInfo(int argNo);
 

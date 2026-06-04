@@ -20,6 +20,9 @@ using ArgInfoMetaDataHandle = MetaObjectHandle<ArgInfoMetaData>;
 class SubGroupSizeMetaData;
 using SubGroupSizeMetaDataHandle = MetaObjectHandle<SubGroupSizeMetaData>;
 
+// NOTE: VectorTypeHintMetaData is retained solely for the SPIR-V input metadata
+// layer (SpirMetaDataApi.h aliases it as SPIRMD::VectorTypeHintMetaData). The IGC
+// output side now carries the OpenCL vec_type_hint as ModuleMetaData::FuncMD[F].vecTypeHint.
 class VectorTypeHintMetaData;
 using VectorTypeHintMetaDataHandle = MetaObjectHandle<VectorTypeHintMetaData>;
 
@@ -184,6 +187,8 @@ private:
   SIMDSizeType m_SIMDSize;
 };
 
+// Retained for the SPIR-V input metadata layer only (see SpirMetaDataApi.h).
+// The IGC output side reads/writes ModuleMetaData::FuncMD[F].vecTypeHint instead.
 class VectorTypeHintMetaData : public IMetaDataObject {
 public:
   using _Mybase = IMetaDataObject;
@@ -310,9 +315,6 @@ public:
   // SubGroupSize
   SubGroupSizeMetaDataHandle getSubGroupSize() { return m_SubGroupSize; }
 
-  // OpenCLVectorTypeHint
-  VectorTypeHintMetaDataHandle getOpenCLVectorTypeHint() { return m_OpenCLVectorTypeHint; }
-
 private:
   // parent node
   const llvm::MDNode *m_pNode;
@@ -322,7 +324,6 @@ private:
   ArgInfoListList m_ArgInfoList;
   ImplicitArgInfoListList m_ImplicitArgInfoList;
   SubGroupSizeMetaDataHandle m_SubGroupSize;
-  VectorTypeHintMetaDataHandle m_OpenCLVectorTypeHint;
 };
 
 class MetaDataUtils {

@@ -32,6 +32,7 @@ declare spir_kernel void @test_spir(i64 addrspace(1)*)
 ; CHECK-DAG: [[D2]] = !{!"dim2", i32 16}
 ; CHECK-DAG: {!"threadGroupSizeHint", {{![0-9]+}}, {{![0-9]+}}, [[DH2:![0-9]+]]}
 ; CHECK-DAG: [[DH2]] = !{!"dim2", i32 4}
+; CHECK-DAG: {!"vecTypeHint", !"float4"}
 ; CHECK-DAG: {!"function_type", i32 0}
 ; CHECK-DAG: {!"sub_group_size", i32 16}
 ; CHECK-DAG: {!"m_OpenCLArgAddressSpaces", [[AS_VEC:![0-9]*]]}

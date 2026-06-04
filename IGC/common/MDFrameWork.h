@@ -360,6 +360,7 @@ enum class ShaderTypeMD
         WorkGroupWalkOrderMD workGroupWalkOrder{};
         ThreadGroupSizeMD threadGroupSize{};
         ThreadGroupSizeMD threadGroupSizeHint{};
+        std::string vecTypeHint = ""; // "" = not specified; OpenCL vec_type_hint as ZEBinary string (e.g. "uchar4")
         std::vector<FuncArgMD> funcArgs{};
         FunctionTypeMD functionType = KernelFunction;
         RayTraceShaderInfo rtInfo{};

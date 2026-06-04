@@ -10,9 +10,15 @@ SPDX-License-Identifier: MIT
 #include "Compiler/MetaDataApi/SpirMetaDataApi.h"
 #include "Compiler/IGCPassSupport.h"
 #include "Compiler/CodeGenPublic.h"
+#include "Probe/Assertion.h"
+// llvmWrapper/IR/DerivedTypes.h manages its own LLVMWarnings push/pop, so it
+// must be included outside the warnings block below (a nested push with no
+// matching pop trips the guard in LLVMWarningsPush.hpp).
+#include "llvmWrapper/IR/DerivedTypes.h"
 
 #include "common/LLVMWarningsPush.hpp"
 #include "llvm/ADT/StringSwitch.h"
+#include "llvm/ADT/StringExtras.h"
 #include "common/LLVMWarningsPop.hpp"
 
 using namespace llvm;
@@ -43,6 +49,66 @@ bool IGC::isLegalOCLVersion(int major, int minor) {
     return true;
   }
   return false;
+}
+
+// Reduce an OpenCL vec_type_hint LLVM type to its ZEBinary string form (e.g. "uchar4").
+// Relocated here from COpenCLKernel::getVecTypeHintTypeString as part of migrating the
+// opencl_vec_type_hint metadata from MetaDataApi to ModuleMetaData::FuncMD[F].vecTypeHint:
+// the string is now computed at SPIR-translate time (where the LLVM type is available)
+// and stored as a POD string, so codegen no longer needs the LLVM type.
+static std::string getVecTypeHintTypeString(Type *baseType) {
+  std::string vecTypeString;
+
+  unsigned int numElements = 1;
+  if (baseType->isVectorTy()) {
+    numElements = (unsigned)cast<IGCLLVM::FixedVectorType>(baseType)->getNumElements();
+    baseType = cast<VectorType>(baseType)->getElementType();
+  }
+
+  // ExecutionModel doesn't differentiate base type in term of signed/unsigned.
+  if (baseType->isIntegerTy()) {
+    vecTypeString += "u";
+  }
+
+  switch (baseType->getTypeID()) {
+  case Type::IntegerTyID:
+    switch (baseType->getIntegerBitWidth()) {
+    case 8:
+      vecTypeString += "char";
+      break;
+    case 16:
+      vecTypeString += "short";
+      break;
+    case 32:
+      vecTypeString += "int";
+      break;
+    case 64:
+      vecTypeString += "long";
+      break;
+    default:
+      IGC_ASSERT_MESSAGE(0, "Unexpected data type in vec_type_hint");
+      break;
+    }
+    break;
+  case Type::DoubleTyID:
+    vecTypeString += "double";
+    break;
+  case Type::FloatTyID:
+    vecTypeString += "float";
+    break;
+  case Type::HalfTyID:
+    vecTypeString += "half";
+    break;
+  default:
+    IGC_ASSERT_MESSAGE(0, "Unexpected data type in vec_type_hint");
+    break;
+  }
+
+  if (numElements != 1) {
+    vecTypeString += utostr(numElements);
+  }
+
+  return vecTypeString;
 }
 
 // Khronos SPIRV-LLVM Translator attaches kernel metadata directly to LLVM function, example:
@@ -194,9 +260,8 @@ bool SPIRMetaDataTranslation::runOnModule(Module &M) {
     // Handling OpenCL Vector Type Hint
     SPIRMD::VectorTypeHintMetaDataHandle vectorTypeHint = spirKernel->getVectorTypeHint();
     if (vectorTypeHint->hasValue()) {
-      IGCMD::VectorTypeHintMetaDataHandle vthHandle = fHandle->getOpenCLVectorTypeHint();
-      vthHandle->setVecType(vectorTypeHint->getVecType());
-      vthHandle->setSign(vectorTypeHint->getSign());
+      // Sign is not used downstream (vec_type_hint is type-only), so it is not carried over.
+      funcMD.vecTypeHint = getVecTypeHintTypeString(vectorTypeHint->getVecType()->getType());
     }
 
     // Handling OpenCL Kernel Args Address Spaces

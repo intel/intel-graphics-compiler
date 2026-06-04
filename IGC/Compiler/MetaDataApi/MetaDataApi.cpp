@@ -218,28 +218,23 @@ FunctionInfoMetaData::FunctionInfoMetaData(const llvm::MDNode *pNode, bool hasId
     : _Mybase(pNode, hasId), m_Type(getNamedNode(pNode, "function_type")),
       m_ArgInfoList(getNamedNode(pNode, "arg_desc"), true),
       m_ImplicitArgInfoList(getNamedNode(pNode, "implicit_arg_desc"), true),
-      m_SubGroupSize(new SubGroupSizeMetaData(getNamedNode(pNode, "sub_group_size"), true)),
-      m_OpenCLVectorTypeHint(new VectorTypeHintMetaData(getNamedNode(pNode, "opencl_vec_type_hint"), true)),
-      m_pNode(pNode) {}
+      m_SubGroupSize(new SubGroupSizeMetaData(getNamedNode(pNode, "sub_group_size"), true)), m_pNode(pNode) {}
 
 FunctionInfoMetaData::FunctionInfoMetaData()
     : m_Type("function_type"), m_ArgInfoList("arg_desc"), m_ImplicitArgInfoList("implicit_arg_desc"),
-      m_SubGroupSize(new SubGroupSizeMetaDataHandle::ObjectType("sub_group_size")),
-      m_OpenCLVectorTypeHint(new VectorTypeHintMetaDataHandle::ObjectType("opencl_vec_type_hint")), m_pNode(nullptr) {}
+      m_SubGroupSize(new SubGroupSizeMetaDataHandle::ObjectType("sub_group_size")), m_pNode(nullptr) {}
 
 FunctionInfoMetaData::FunctionInfoMetaData(const char *name)
     : _Mybase(name), m_Type("function_type"), m_ArgInfoList("arg_desc"), m_ImplicitArgInfoList("implicit_arg_desc"),
-      m_SubGroupSize(new SubGroupSizeMetaDataHandle::ObjectType("sub_group_size")),
-      m_OpenCLVectorTypeHint(new VectorTypeHintMetaDataHandle::ObjectType("opencl_vec_type_hint")), m_pNode(nullptr) {}
+      m_SubGroupSize(new SubGroupSizeMetaDataHandle::ObjectType("sub_group_size")), m_pNode(nullptr) {}
 
 bool FunctionInfoMetaData::hasValue() const {
   return m_Type.hasValue() || m_ArgInfoList.hasValue() || m_ImplicitArgInfoList.hasValue() ||
-         m_SubGroupSize->hasValue() || m_OpenCLVectorTypeHint->hasValue() || nullptr != m_pNode || dirty();
+         m_SubGroupSize->hasValue() || nullptr != m_pNode || dirty();
 }
 
 bool FunctionInfoMetaData::dirty() const {
-  return m_Type.dirty() || m_ArgInfoList.dirty() || m_ImplicitArgInfoList.dirty() || m_SubGroupSize.dirty() ||
-         m_OpenCLVectorTypeHint.dirty();
+  return m_Type.dirty() || m_ArgInfoList.dirty() || m_ImplicitArgInfoList.dirty() || m_SubGroupSize.dirty();
 }
 
 void FunctionInfoMetaData::discardChanges() {
@@ -247,7 +242,6 @@ void FunctionInfoMetaData::discardChanges() {
   m_ArgInfoList.discardChanges();
   m_ImplicitArgInfoList.discardChanges();
   m_SubGroupSize.discardChanges();
-  m_OpenCLVectorTypeHint.discardChanges();
 }
 
 llvm::Metadata *FunctionInfoMetaData::generateNode(llvm::LLVMContext &context) const {
@@ -268,9 +262,6 @@ llvm::Metadata *FunctionInfoMetaData::generateNode(llvm::LLVMContext &context) c
   if (m_SubGroupSize->hasValue()) {
     args.push_back(m_SubGroupSize.generateNode(context));
   }
-  if (m_OpenCLVectorTypeHint->hasValue()) {
-    args.push_back(m_OpenCLVectorTypeHint.generateNode(context));
-  }
   return llvm::MDNode::get(context, args);
 }
 
@@ -286,6 +277,5 @@ void FunctionInfoMetaData::save(llvm::LLVMContext &context, llvm::MDNode *pNode)
   m_ArgInfoList.save(context, getNamedNode(pNode, "arg_desc"));
   m_ImplicitArgInfoList.save(context, getNamedNode(pNode, "implicit_arg_desc"));
   m_SubGroupSize.save(context, getNamedNode(pNode, "sub_group_size"));
-  m_OpenCLVectorTypeHint.save(context, getNamedNode(pNode, "opencl_vec_type_hint"));
 }
 } // namespace IGC::IGCMD

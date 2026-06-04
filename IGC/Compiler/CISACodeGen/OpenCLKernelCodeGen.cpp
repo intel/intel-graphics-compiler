@@ -533,63 +533,6 @@ uint32_t COpenCLKernel::getMaxPressureForSIMD(llvm::Function &F, unsigned SimdLa
   return maxPressure;
 }
 
-std::string COpenCLKernel::getVecTypeHintTypeString(const VectorTypeHintMetaDataHandle &vecTypeHintInfo) const {
-  std::string vecTypeString;
-
-  // Get the information about the type
-  Type *baseType = vecTypeHintInfo->getVecType()->getType();
-  unsigned int numElements = 1;
-  if (baseType->isVectorTy()) {
-    numElements = (unsigned)cast<IGCLLVM::FixedVectorType>(baseType)->getNumElements();
-    baseType = cast<VectorType>(baseType)->getElementType();
-  }
-
-  // ExecutionModel doesn't differentiate base type in term of signed/unsigned.
-  if (baseType->isIntegerTy()) {
-    vecTypeString += "u";
-  }
-
-  switch (baseType->getTypeID()) {
-  case Type::IntegerTyID:
-    switch (baseType->getIntegerBitWidth()) {
-    case 8:
-      vecTypeString += "char";
-      break;
-    case 16:
-      vecTypeString += "short";
-      break;
-    case 32:
-      vecTypeString += "int";
-      break;
-    case 64:
-      vecTypeString += "long";
-      break;
-    default:
-      IGC_ASSERT_MESSAGE(0, "Unexpected data type in vec_type_hint");
-      break;
-    }
-    break;
-  case Type::DoubleTyID:
-    vecTypeString += "double";
-    break;
-  case Type::FloatTyID:
-    vecTypeString += "float";
-    break;
-  case Type::HalfTyID:
-    vecTypeString += "half";
-    break;
-  default:
-    IGC_ASSERT_MESSAGE(0, "Unexpected data type in vec_type_hint");
-    break;
-  }
-
-  if (numElements != 1) {
-    vecTypeString += utostr(numElements);
-  }
-
-  return vecTypeString;
-}
-
 bool COpenCLKernel::CreateZEPayloadArguments(IGC::KernelArg *kernelArg, uint payloadPosition,
                                              PtrArgsAttrMapType &ptrArgsAttrMap) {
 #ifndef DX_ONLY_IGC
@@ -1832,9 +1775,9 @@ void COpenCLKernel::FillZEUserAttributes(IGC::IGCMD::FunctionInfoMetaDataHandle 
   }
 
   // vec_type_hint
-  VectorTypeHintMetaDataHandle vecTypeHintInfo = funcInfoMD->getOpenCLVectorTypeHint();
-  if (vecTypeHintInfo->hasValue()) {
-    m_kernelInfo.m_zeUserAttributes.vec_type_hint = getVecTypeHintTypeString(vecTypeHintInfo);
+  auto itVecTypeHint = m_Context->getModuleMetaData()->FuncMD.find(entry);
+  if (itVecTypeHint != m_Context->getModuleMetaData()->FuncMD.end() && !itVecTypeHint->second.vecTypeHint.empty()) {
+    m_kernelInfo.m_zeUserAttributes.vec_type_hint = itVecTypeHint->second.vecTypeHint;
   }
 
   // work_group_size_hint
