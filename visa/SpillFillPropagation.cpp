@@ -23,6 +23,7 @@ SpillFillPropagation::SpillFillPropagation(G4_Kernel &k, IR_Builder &b,
 void SpillFillPropagation::clearTable() {
   offsetToGRFs.clear();
   grfToOffsets.clear();
+  grfToDeclare.clear();
 }
 
 // Record that a physical GRF holds the value for a scratch offset.
@@ -50,6 +51,8 @@ void SpillFillPropagation::invalidateGRF(unsigned grfNum) {
     }
     grfToOffsets.erase(it);
   }
+
+  grfToDeclare[grfNum].clear();
 }
 
 // Remove all physical GRFs mapping to given offset
@@ -141,9 +144,9 @@ bool SpillFillPropagation::replaceFillWithMovs(
       continue;
     }
 
-    bool canDoTwoRows =
-        (i + 1 < numRows) && (srcGRFs[i + 1] != dstStartGRF + i + 1) &&
-        (srcGRFs[i] + 1 == srcGRFs[i + 1]);
+    bool canDoTwoRows = (i + 1 < numRows) &&
+                        (srcGRFs[i + 1] != dstStartGRF + i + 1) &&
+                        (srcGRFs[i] + 1 == srcGRFs[i + 1]);
 
     unsigned rowsThisMov = canDoTwoRows ? 2 : 1;
     G4_ExecSize execSize =
@@ -158,16 +161,12 @@ bool SpillFillPropagation::replaceFillWithMovs(
         name, G4_GRF, kernel.numEltPerGRF<Type_UD>(), rowsThisMov, Type_UD);
     srcDcl->getRegVar()->setPhyReg(builder.phyregpool.getGreg(srcGRFs[i]), 0);
 
-    G4_SrcRegRegion *src = builder.createSrc(
-        srcDcl->getRegVar(), 0, 0, builder.getRegionStride1(), type);
+    G4_SrcRegRegion *src = builder.createSrc(srcDcl->getRegVar(), 0, 0,
+                                             builder.getRegionStride1(), type);
 
     G4_INST *mov =
         builder.createMov(execSize, dst, src, InstOpt_WriteEnable, false);
-    // This mov's dst may be propagated to successor BB. So mark it as global
-    // here. Since this is post RA pass, it doesn't reuse old virtual variables.
-    // Therefore if data is run again in later passes, it could incorrectly
-    // treat mov dst as a local otherwise (and remove it in some cases).
-    dstTopDcl->setForceGlobal();
+
     mov->setVISAId(fill->getVISAId());
 
     bb->insertBefore(fillIt, mov);
@@ -179,9 +178,24 @@ bool SpillFillPropagation::replaceFillWithMovs(
     i += rowsThisMov;
   }
 
+  markGlobalDcls(srcGRFs);
+
   // Erase the fill intrinsic.
   fillIt = bb->erase(fillIt);
   return true;
+}
+
+void SpillFillPropagation::markGlobalDcls(
+    const std::vector<unsigned int> &GRFs) {
+  // Mark all G4_Declare* containing each GRF as global so they're preserved
+  for (auto GRF : GRFs) {
+    auto it = grfToDeclare.find(GRF);
+    if (it == grfToDeclare.end())
+      continue;
+    for (auto dcl : it->second) {
+      dcl->setForceGlobal();
+    }
+  }
 }
 
 // Replace a pending fill with GRF-to-GRF movs inserted after the source
@@ -245,6 +259,7 @@ bool SpillFillPropagation::replaceFillWithMovsAfter(
     i += rowsThisMov;
   }
 
+  pf.dstTopDcl->setForceGlobal();
 
   // Erase the pending fill instruction.
   bb->erase(pf.instIt);
@@ -297,13 +312,21 @@ static bool hasIndirectOperand(G4_INST *inst) {
   return false;
 }
 
+void SpillFillPropagation::mapGRFsToDcl(unsigned int startGRF,
+                                        unsigned int numGRFs, G4_Declare *dcl) {
+  for (unsigned grf = startGRF; grf != (startGRF + numGRFs); ++grf) {
+    grfToDeclare[grf].insert(dcl);
+  }
+}
+
 // Forward (top-down) pass: track which GRFs hold spilled data and replace
 // fills with movs when the data is already available in a GRF.
 void SpillFillPropagation::processBBForward(G4_BB *bb) {
   // Load carried-over state or start fresh.
   auto entryIt = bbEntryState.find(bb);
   if (entryIt != bbEntryState.end()) {
-    offsetToGRFs = std::move(entryIt->second);
+    offsetToGRFs = std::move(entryIt->second.offsetToGRFs);
+    grfToDeclare = std::move(entryIt->second.grfToDeclare);
     // Rebuild the reverse map.
     grfToOffsets.clear();
     for (auto &[off, grfs] : offsetToGRFs)
@@ -327,6 +350,8 @@ void SpillFillPropagation::processBBForward(G4_BB *bb) {
             getGRFRange(spill->getPayload());
         for (unsigned i = 0; i < numRows; ++i)
           addEntry(offset + i, payloadStartGRF + i, /*clearOld=*/true);
+        mapGRFsToDcl(payloadStartGRF, numRows,
+                     spill->getPayload()->getTopDcl());
       } else {
         // Scatter spill or non-WriteEnable: invalidate any GRF mapping to
         // these offsets since we cannot propagate through them.
@@ -350,6 +375,7 @@ void SpillFillPropagation::processBBForward(G4_BB *bb) {
           invalidateClobberedEntries(inst);
           for (unsigned i = 0; i < numRows; ++i)
             addEntry(offset + i, dstStartGRF + i);
+          mapGRFsToDcl(dstStartGRF, numRows, fill->getDst()->getTopDcl());
           // it already advanced by erase
           continue;
         }
@@ -357,6 +383,7 @@ void SpillFillPropagation::processBBForward(G4_BB *bb) {
         invalidateClobberedEntries(inst);
         for (unsigned i = 0; i < numRows; ++i)
           addEntry(offset + i, dstStartGRF + i);
+        mapGRFsToDcl(dstStartGRF, numRows, fill->getDst()->getTopDcl());
       } else {
         // Non-WriteEnable fill: invalidate destination GRFs (WAW clobber).
         invalidateClobberedEntries(inst);
@@ -395,8 +422,12 @@ void SpillFillPropagation::processBBForward(G4_BB *bb) {
     G4_INST *lastInst = bb->back();
     if (lastInst->opcode() == G4_goto && lastInst->getPredicate()) {
       G4_BB *ftBB = bb->Succs.empty() ? nullptr : bb->Succs.front();
-      if (ftBB && ftBB->Preds.size() == 1 && ftBB->Preds.front() == bb)
-        bbEntryState[ftBB] = offsetToGRFs;
+      if (ftBB && ftBB->Preds.size() == 1 && ftBB->Preds.front() == bb) {
+        BBEntryState state;
+        state.offsetToGRFs = offsetToGRFs;
+        state.grfToDeclare = grfToDeclare;
+        bbEntryState[ftBB] = state;
+      }
     }
   }
 }
@@ -552,6 +583,7 @@ void SpillFillPropagation::processBBBackward(G4_BB *bb) {
 
           if (replaceFillWithMovsAfter(bb, rit, insertAfterIt, *matchedPF,
                                        srcGRFs)) {
+            fill->getDst()->getTopDcl()->setForceGlobal();
             for (unsigned g = matchedPF->dstStartGRF;
                  g <= matchedPF->dstEndGRF; ++g)
               clobberedRows.insert(g);
@@ -641,6 +673,8 @@ void SpillFillPropagation::processBBBackward(G4_BB *bb) {
 
           if (replaceFillWithMovsAfter(bb, rit, insertAfterIt, *matchedPF,
                                        srcGRFs)) {
+            auto *payloadDcl = spill->getPayload()->getTopDcl();
+            payloadDcl->setForceGlobal();
             for (unsigned g = matchedPF->dstStartGRF;
                  g <= matchedPF->dstEndGRF; ++g)
               clobberedRows.insert(g);

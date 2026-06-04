@@ -30,6 +30,11 @@ struct PendingFill {
   unsigned dstEndGRF; // inclusive
 };
 
+typedef struct BBEntryState {
+  std::unordered_map<unsigned, std::set<unsigned>> offsetToGRFs;
+  std::unordered_map<unsigned, std::set<G4_Declare *>> grfToDeclare;
+} BBEntryState;
+
 // Post-RA pass that eliminates redundant fill intrinsics by tracking which
 // physical GRFs still hold spilled/filled data and replacing fills with
 // GRF-to-GRF mov instructions when possible.
@@ -46,13 +51,13 @@ class SpillFillPropagation {
   std::unordered_map<unsigned, std::set<unsigned>> offsetToGRFs;
   // Reverse map: physical GRF number -> set of scratch offsets it maps to
   std::unordered_map<unsigned, std::set<unsigned>> grfToOffsets;
+  // Map GRF -> set of G4_Declare* to mark latter as global
+  std::unordered_map<unsigned, std::set<G4_Declare *>> grfToDeclare;
   // Per-BB entry state for fall-through propagation
-  std::unordered_map<G4_BB *, std::unordered_map<unsigned, std::set<unsigned>>>
-      bbEntryState;
+  std::unordered_map<G4_BB *, BBEntryState> bbEntryState;
 
   void clearTable();
-  void addEntry(unsigned scratchOffset, unsigned grfNum,
-                bool clearOld = false);
+  void addEntry(unsigned scratchOffset, unsigned grfNum, bool clearOld = false);
   void invalidateGRF(unsigned grfNum);
   void invalidateOffset(unsigned offset);
   std::pair<unsigned, unsigned> getGRFRange(G4_Operand *opnd);
@@ -61,12 +66,10 @@ class SpillFillPropagation {
                            G4_FillIntrinsic *fill,
                            const std::vector<unsigned> &srcGRFs);
   void invalidateClobberedEntries(G4_INST *inst);
-  void invalidateDst(
-      G4_INST *inst,
-      std::unordered_map<unsigned, PendingFill> &pendingFills);
-  void invalidateSrcs(
-      G4_INST *inst,
-      std::unordered_map<unsigned, PendingFill> &pendingFills);
+  void invalidateDst(G4_INST *inst,
+                     std::unordered_map<unsigned, PendingFill> &pendingFills);
+  void invalidateSrcs(G4_INST *inst,
+                      std::unordered_map<unsigned, PendingFill> &pendingFills);
   void processBBForward(G4_BB *bb);
   void processBBBackward(G4_BB *bb);
   bool replaceFillWithMovsAfter(G4_BB *bb, INST_LIST_RITER &rit,
@@ -74,6 +77,9 @@ class SpillFillPropagation {
                                 const PendingFill &pf,
                                 const std::vector<unsigned> &srcGRFs);
   bool hasAssignedGRF(G4_Declare *topdcl) const;
+  void markGlobalDcls(const std::vector<unsigned int> &GRFs);
+  void mapGRFsToDcl(unsigned int startGRF, unsigned int numGRFs,
+                    G4_Declare *dcl);
 
 public:
   SpillFillPropagation(G4_Kernel &k, IR_Builder &b, GlobalRA &g);
