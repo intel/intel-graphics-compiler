@@ -671,18 +671,14 @@ void InlineRaytracing::LowerIntrinsics(Function &F) {
     default:
       I->replaceAllUsesWith(IRB.lowerRayInfo(stackPtr, I, shaderTy, std::nullopt));
       break;
-      // leave this in for now, until we prove we don't need the hack anymore
     case GEOMETRY_INDEX: {
       bool specialPattern = false;
       if (I->isCommitted() && IGC_GET_FLAG_VALUE(ForceRTShortCircuitingOR)) {
         specialPattern = forceShortCurcuitingOR_CommittedGeomIdx(IRB, I);
       }
 
-      Value *leafType = IRB.getLeafType(stackPtr, IRB.getInt1(I->isCommitted()));
-      Value *geoIndex = IRB.getGeometryIndex(
-          stackPtr, I, leafType,
-          IRB.getInt32(I->isCommitted() ? CallableShaderTypeMD::ClosestHit : CallableShaderTypeMD::AnyHit),
-          !specialPattern);
+      Value *leafType = IRB.getLeafType(stackPtr, loadCommittedFromPotential);
+      Value *geoIndex = IRB.getGeometryIndex(stackPtr, I, leafType, shaderTy, !specialPattern);
       IGC_ASSERT_MESSAGE(I->getType()->isIntegerTy(), "Invalid geometryIndex type!");
       I->replaceAllUsesWith(geoIndex);
       break;
