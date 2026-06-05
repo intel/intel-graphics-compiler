@@ -230,3 +230,29 @@ e_alignment CVariable::GetCISADataTypeAlignment(VISA_Type type) {
 
   return EALIGN_BYTE;
 }
+
+e_alignment CVariable::GetCISADataTypeAlignment(uint align) {
+  IGC_ASSERT_MESSAGE(llvm::isPowerOf2_64(align), "Alignment is not a power of 2");
+  switch (align) {
+  case 1:
+    return EALIGN_BYTE;
+  case 2:
+    return EALIGN_WORD;
+  case 4:
+    return EALIGN_DWORD;
+  case 8:
+    return EALIGN_QWORD;
+  case 16:
+    return EALIGN_OWORD;
+  case 32:
+    return EALIGN_HWORD;
+  case 64:
+    return EALIGN_32WORD;
+  case 128:
+    return EALIGN_64WORD;
+  default:
+    IGC_ASSERT_MESSAGE(0, "Unimplemented CISA Data Type");
+    break;
+  }
+  return EALIGN_BYTE;
+}

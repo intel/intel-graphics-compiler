@@ -337,6 +337,7 @@ public:
   }
   static uint GetCISADataTypeSize(VISA_Type type);
   static e_alignment GetCISADataTypeAlignment(VISA_Type type);
+  static e_alignment GetCISADataTypeAlignment(uint align);
 
   bool isQType() const { return (m_type == ISA_TYPE_UQ || m_type == ISA_TYPE_Q); }
   VISA_Type GetDTypeFromQType() const { return (m_type == ISA_TYPE_UQ ? ISA_TYPE_UD : ISA_TYPE_D); }

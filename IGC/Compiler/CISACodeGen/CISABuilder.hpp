@@ -435,6 +435,7 @@ public:
 
   static uint GetCISADataTypeSize(VISA_Type type) { return CVariable::GetCISADataTypeSize(type); }
   static e_alignment GetCISADataTypeAlignment(VISA_Type type) { return CVariable::GetCISADataTypeAlignment(type); }
+  static e_alignment GetCISADataTypeAlignment(uint align) { return CVariable::GetCISADataTypeAlignment(align); }
 
   static VISASampler3DSubOpCode ConvertSubOpcode(EOPCODE subOpcode, bool zeroLOD);
 

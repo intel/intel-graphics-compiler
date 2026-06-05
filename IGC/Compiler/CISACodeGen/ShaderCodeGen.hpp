@@ -55,7 +55,8 @@ struct PushInfo;
 // Helper Function
 VISA_Type GetType(llvm::Type *pType, CodeGenContext *pDataLayout);
 uint64_t GetImmediateVal(llvm::Value *Const);
-e_alignment GetPreferredAlignment(llvm::Value *Val, WIAnalysis *WIA, CodeGenContext *pContext);
+e_alignment GetPreferredAlignment(llvm::Value *Val, WIAnalysis *WIA, CodeGenContext *pContext,
+                                  const DataLayout *DL = nullptr);
 
 class CShaderProgram;
 

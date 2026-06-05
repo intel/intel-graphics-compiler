@@ -392,7 +392,7 @@ void CShader::CreateImplicitArgs() {
     Value *ArgVal = arg;
     if (ArgVal->use_empty())
       continue;
-    e_alignment algn = GetPreferredAlignment(ArgVal, m_WI, m_ctx);
+    e_alignment algn = GetPreferredAlignment(ArgVal, m_WI, m_ctx, m_DL);
     CVariable *ArgCVar = GetNewVector(ArgVal, algn);
     updateArgSymbolMapping(ArgVal, ArgCVar);
   }
@@ -1683,6 +1683,10 @@ uint CShader::GetNbElementAndMask(llvm::Value *value, uint32_t &mask) {
   case llvm::Type::DoubleTyID:
     nbElement = GetIsUniform(value) ? 1 : numLanes(m_SIMDSize);
     break;
+  case llvm::Type::StructTyID:
+    IGC_ASSERT_MESSAGE(GetIsUniform(value), "Uniform value expected");
+    nbElement = (uint)m_DL->getTypeAllocSize(type);
+    break;
   default:
     IGC_ASSERT(0);
     break;
@@ -2399,15 +2403,22 @@ static e_alignment GetPreferredAlignmentOnUse(llvm::Value *V, WIAnalysis *WIA, C
 
 /// GetPreferredAlignment - Return preferred alignment based on how the
 /// specified value is being defined/used.
-e_alignment IGC::GetPreferredAlignment(llvm::Value *V, WIAnalysis *WIA, CodeGenContext *pContext) {
+e_alignment IGC::GetPreferredAlignment(llvm::Value *V, WIAnalysis *WIA, CodeGenContext *pContext,
+                                       const DataLayout *DL) {
   // So far, non-uniform variables are always naturally aligned.
   if (!WIA->isUniform(V))
     return EALIGN_AUTO;
 
   // As the layout of argument is fixed, only naturally aligned could be
   // assumed.
-  if (isa<Argument>(V))
+  if (isa<Argument>(V)) {
+    if (auto ST = llvm::dyn_cast<llvm::StructType>(V->getType())) {
+      if (!ST->isPacked() && DL != nullptr) {
+        return CEncoder::GetCISADataTypeAlignment((DL->getABITypeAlign(ST)).value());
+      }
+    }
     return CEncoder::GetCISADataTypeAlignment(GetType(V->getType(), pContext));
+  }
 
   // For values not being mapped to variables directly, always assume
   // natually aligned.
