@@ -3122,7 +3122,8 @@ void SpillManagerGRF::insertSpillRangeCode(INST_LIST::iterator spilledInstIter,
         newSubregOff = subRegOff;
       }
 
-      if ((!bb->isAllLaneActive() && !preloadNeeded) || useScatter) {
+      bool applyDefEM = !bb->isAllLaneActive() && !preloadNeeded;
+      if (applyDefEM || useScatter) {
         spillSendOption = (*spilledInstIter)->getMaskOption();
       }
     }
