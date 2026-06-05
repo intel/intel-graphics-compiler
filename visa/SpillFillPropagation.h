@@ -72,6 +72,8 @@ class SpillFillPropagation {
                       std::unordered_map<unsigned, PendingFill> &pendingFills);
   void processBBForward(G4_BB *bb);
   void processBBBackward(G4_BB *bb);
+  void removeRedundantSpills();
+  void removeSpillWithoutFill();
   bool replaceFillWithMovsAfter(G4_BB *bb, INST_LIST_RITER &rit,
                                 INST_LIST_ITER &insertAfterIt,
                                 const PendingFill &pf,

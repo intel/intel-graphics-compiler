@@ -713,6 +713,118 @@ void SpillFillPropagation::processBBBackward(G4_BB *bb) {
   }
 }
 
+// Per-BB bottom-up pass that removes spills fully overwritten by a later spill
+// before any fill reads the same scratch rows. Tracks per-BB the set of scratch
+// row offsets known to be re-spilled below the current point.
+void SpillFillPropagation::removeRedundantSpills() {
+  for (G4_BB *bb : kernel.fg) {
+    std::unordered_set<unsigned> spilledOffsets;
+
+    for (auto rit = bb->rbegin(); rit != bb->rend();) {
+      G4_INST *inst = *rit;
+
+      if (inst->isFillIntrinsic()) {
+        auto *fill = inst->asFillIntrinsic();
+        unsigned offset = fill->getOffset();
+        unsigned numRows = fill->getNumRows();
+        // Fill reads scratch — earlier spills to these rows are needed.
+        for (unsigned i = 0; i < numRows; ++i)
+          spilledOffsets.erase(offset + i);
+        ++rit;
+        continue;
+      }
+
+      if (inst->isSpillIntrinsic()) {
+        auto *spill = inst->asSpillIntrinsic();
+        if (spill->isScatterSpill()) {
+          // Don't propagate any tracked live spill across a scatter spill.
+          spilledOffsets.clear();
+          ++rit;
+          continue;
+        }
+        unsigned offset = spill->getOffset();
+        unsigned numRows = spill->getNumRows();
+        // Non-scatter spill (WE or non-WE) is redundant if every row is
+        // already overwritten by a later spill below.
+        bool redundant = true;
+        for (unsigned i = 0; i < numRows; ++i) {
+          if (!spilledOffsets.count(offset + i)) {
+            redundant = false;
+            break;
+          }
+        }
+        if (redundant && !spill->isDoNotDelete()) {
+          INST_LIST_ITER fwd = std::next(rit).base();
+          auto next = bb->erase(fwd);
+          rit = INST_LIST_RITER(next);
+          continue;
+        }
+        // Only WriteEnable spills fully overwrite scratch and can cover
+        // earlier spills. Non-WE spills don't update the set.
+        if (inst->isWriteEnableInst()) {
+          for (unsigned i = 0; i < numRows; ++i)
+            spilledOffsets.insert(offset + i);
+        }
+        ++rit;
+        continue;
+      }
+
+      ++rit;
+    }
+  }
+}
+
+// Kernel-wide pass that removes spills whose every row offset is never read
+// by any fill. Such spills are dead because scratch is only observable via
+// fill intrinsics.
+void SpillFillPropagation::removeSpillWithoutFill() {
+  std::unordered_set<unsigned> filledOffsets;
+  for (G4_BB *bb : kernel.fg) {
+    for (G4_INST *inst : *bb) {
+      if (!inst->isFillIntrinsic())
+        continue;
+      auto *fill = inst->asFillIntrinsic();
+      unsigned offset = fill->getOffset();
+      unsigned numRows = fill->getNumRows();
+      for (unsigned i = 0; i < numRows; ++i)
+        filledOffsets.insert(offset + i);
+    }
+  }
+
+  for (G4_BB *bb : kernel.fg) {
+    for (auto it = bb->begin(); it != bb->end();) {
+      G4_INST *inst = *it;
+      if (!inst->isSpillIntrinsic()) {
+        ++it;
+        continue;
+      }
+      auto *spill = inst->asSpillIntrinsic();
+      if (spill->isScatterSpill()) {
+        ++it;
+        continue;
+      }
+      if (spill->isDoNotDelete()) {
+        ++it;
+        continue;
+      }
+      unsigned offset = spill->getOffset();
+      unsigned numRows = spill->getNumRows();
+      bool hasFill = false;
+      for (unsigned i = 0; i < numRows; ++i) {
+        if (filledOffsets.count(offset + i)) {
+          hasFill = true;
+          break;
+        }
+      }
+      if (!hasFill) {
+        it = bb->erase(it);
+        continue;
+      }
+      ++it;
+    }
+  }
+}
+
 // Entry point. Run backward pass first to catch cases where the source GRFs
 // are clobbered before a later fill, then forward pass for remaining cases.
 void SpillFillPropagation::run() {
@@ -731,4 +843,8 @@ void SpillFillPropagation::run() {
 
   for (G4_BB *bb : kernel.fg)
     processBBForward(bb);
+
+  removeRedundantSpills();
+
+  removeSpillWithoutFill();
 }

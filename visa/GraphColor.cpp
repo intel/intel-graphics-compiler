@@ -8407,6 +8407,7 @@ void GlobalRA::stackCallProlog() {
                               builder.getBESP(), InstOpt_WriteEnable, false);
     }
     builder.setFDSpillInst(store);
+    store->markDoNotDelete();
     auto iter = std::find_if(entryBB->begin(), entryBB->end(),
                              [](G4_INST *inst) { return !inst->isLabel(); });
     iter = entryBB->insertBefore(iter, store);
@@ -9678,6 +9679,7 @@ void GlobalRA::storeCEInProlog() {
                                 InstOpt_WriteEnable, false);
   }
   kernel.fg.getEntryBB()->insertAfter(nextPos, store);
+  store->markDoNotDelete();
 
   if (builder.kernel.getOption(vISA_GenerateDebugInfo)) {
     builder.kernel.getKernelDebugInfo()->setSaveCEInst(store);
