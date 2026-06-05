@@ -2233,13 +2233,22 @@ bool SymbolicPointer::checkTerms(const Term *T, const Term *OtherT, int64_t &Off
   if (checkInstructions(Inst, OtherInst))
     return true;
 
+  // OpNum == 3 is a sentinel set by checkInstructions() when both operands of
+  // the top-level instructions are identical. Guard here before calling
+  // getOperand(OpNum) to avoid an out-of-bounds access on a two-operand
+  // BinaryOperator.
+  // When scales differ the offset contribution is runtime-dependent; reject the
+  // merge. When scales are equal the contributions cancel to zero; accept.
+  if (OpNum == 3)
+    return T->Scale != OtherT->Scale;
+
   auto InstOp0 = dyn_cast<BinaryOperator>(Inst->getOperand(OpNum));
   auto OtherInstOp0 = dyn_cast<BinaryOperator>(OtherInst->getOperand(OpNum));
   if (checkInstructions(InstOp0, OtherInstOp0))
     return true;
 
   if (OpNum == 3)
-    return false;
+    return T->Scale != OtherT->Scale;
 
   auto ConstInt = dyn_cast<ConstantInt>(InstOp0->getOperand(OpNum));
   auto OtherConstInt = dyn_cast<ConstantInt>(OtherInstOp0->getOperand(OpNum));
