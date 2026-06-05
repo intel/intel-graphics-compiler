@@ -38,7 +38,6 @@ bool SCCPLegacyPassWrapper::runOnFunction(Function &F) {
 void SCCPLegacyPassWrapper::getAnalysisUsage(AnalysisUsage &AU) const {
   AU.addRequired<TargetLibraryInfoWrapperPass>();
   AU.addPreserved<GlobalsAAWrapperPass>();
-  AU.addPreserved<DominatorTreeWrapperPass>();
 }
 
 char SCCPLegacyPassWrapper::ID = 0;
