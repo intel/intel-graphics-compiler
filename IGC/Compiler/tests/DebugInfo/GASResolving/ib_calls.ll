@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; REQUIRES: opaque-ptr-fix, llvm-14-plus
+; REQUIRES: llvm-14-plus
 ; RUN: igc_opt --opaque-pointers --igc-gas-resolve -S < %s | FileCheck %s
 ; ------------------------------------------------
 ; GASResolve
@@ -20,7 +20,7 @@
 ; CHECK: define spir_kernel void @test_kernel
 ; CHECK-SAME: !dbg [[SCOPE:![0-9]*]]
 ;
-; CHECK: call void @llvm.dbg.value(metadata i8 {{.*}} [[DST_V:%[A-z0-9]*]]
+; CHECK: call void @llvm.dbg.value(metadata ptr addrspace(1) [[DST_V:%[A-z0-9]*]]
 ; CHECK-SAME: metadata [[DST_MD:![0-9]*]], metadata !DIExpression()), !dbg [[DST_LOC:![0-9]*]]
 ;
 ; CHECK: call void {{.*}}_to_private{{.*}} !dbg [[PRIV_LOC:![0-9]*]]

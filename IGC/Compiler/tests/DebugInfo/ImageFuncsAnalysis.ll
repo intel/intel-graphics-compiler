@@ -6,7 +6,8 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; REQUIRES: opaque-ptr-fix, llvm-14-plus
+; REQUIRES: llvm-14-plus, opaque-ptr-fix
+; FIXME: ImageFuncsAnalysis crashes with opaque pointers (std::bad_array_new_length)
 ; RUN: igc_opt --opaque-pointers --igc-image-func-analysis -S < %s | FileCheck %s
 ; ------------------------------------------------
 ; ImageFuncsAnalysis

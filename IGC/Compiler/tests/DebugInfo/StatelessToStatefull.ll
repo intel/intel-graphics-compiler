@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; REQUIRES: opaque-ptr-fix, llvm-14-plus
+; REQUIRES: llvm-14-plus
 ; RUN: igc_opt --opaque-pointers -igc-stateless-to-stateful-resolution -S < %s | FileCheck %s
 ; ------------------------------------------------
 ; StatelessToStateful

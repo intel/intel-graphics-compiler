@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; REQUIRES: opaque-ptr-fix, llvm-14-plus
+; REQUIRES: llvm-14-plus
 ; RUN: igc_opt --opaque-pointers --igc-fix-alignment -S < %s | FileCheck %s
 ; AlignmentAnalysis
 ; ------------------------------------------------
@@ -20,16 +20,16 @@
 ; CHECK: @test_align{{.*}} !dbg [[SCOPE:![0-9]*]]
 ;
 ; CHECK: [[ALLOCA_V:%[A-z0-9]*]] = alloca {{.*}} !dbg [[ALLOCA_LOC:![0-9]*]]
-; CHECK: @llvm.dbg.value(metadata %opencl.image2d_t.read_only addrspace(1)** [[ALLOCA_V]], metadata [[ALLOCA_MD:![0-9]*]], metadata !DIExpression()), !dbg [[ALLOCA_LOC]]
+; CHECK: @llvm.dbg.value(metadata ptr [[ALLOCA_V]], metadata [[ALLOCA_MD:![0-9]*]], metadata !DIExpression()), !dbg [[ALLOCA_LOC]]
 ; CHECK: store {{.*}} !dbg [[STORE1_LOC:![0-9]*]]
 ; CHECK: [[LOAD1_V:%[A-z0-9]*]] = load i32{{.*}} !dbg [[LOAD1_LOC:![0-9]*]]
 ; CHECK: @llvm.dbg.value(metadata i32 [[LOAD1_V]], metadata [[LOAD1_MD:![0-9]*]], metadata !DIExpression()), !dbg [[LOAD1_LOC]]
 ; CHECK: [[ITOPTR_V:%[A-z0-9]*]] = inttoptr i64{{.*}} !dbg [[ITOPTR_LOC:![0-9]*]]
-; CHECK: @llvm.dbg.value(metadata i32* [[ITOPTR_V]], metadata [[ITOPTR_MD:![0-9]*]], metadata !DIExpression()), !dbg [[ITOPTR_LOC]]
+; CHECK: @llvm.dbg.value(metadata ptr [[ITOPTR_V]], metadata [[ITOPTR_MD:![0-9]*]], metadata !DIExpression()), !dbg [[ITOPTR_LOC]]
 ; CHECK: [[LOAD2_V:%[A-z0-9]*]] = load i32{{.*}} !dbg [[LOAD2_LOC:![0-9]*]]
 ; CHECK: @llvm.dbg.value(metadata i32 [[LOAD2_V]], metadata [[LOAD2_MD:![0-9]*]], metadata !DIExpression()), !dbg [[LOAD2_LOC]]
 ; CHECK: [[GEP_V:%[A-z0-9]*]] = getelementptr{{.*}} !dbg [[GEP_LOC:![0-9]*]]
-; CHECK: @llvm.dbg.value(metadata i32 addrspace(2)* [[GEP_V]], metadata [[GEP_MD:![0-9]*]], metadata !DIExpression()), !dbg [[GEP_LOC]]
+; CHECK: @llvm.dbg.value(metadata ptr addrspace(2) [[GEP_V]], metadata [[GEP_MD:![0-9]*]], metadata !DIExpression()), !dbg [[GEP_LOC]]
 ; CHECK: store i32{{.*}} !dbg [[STORE2_LOC:![0-9]*]]
 ; CHECK: store i32{{.*}} !dbg [[STORE3_LOC:![0-9]*]]
 ; CHECK: call void @llvm.memcpy{{.*}} !dbg [[CMEMC_LOC:![0-9]*]]

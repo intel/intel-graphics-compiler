@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; REQUIRES: opaque-ptr-fix, llvm-14-plus
+; REQUIRES: llvm-14-plus
 ; RUN: igc_opt --opaque-pointers --igc-private-mem-usage-analysis -S < %s | FileCheck %s
 ; ------------------------------------------------
 ; PrivateMemoryUsageAnalysis
@@ -22,7 +22,7 @@
 ; CHECK: @test_pma1{{.*}} !dbg [[SCOPE1:![0-9]*]]
 ;
 ; CHECK: [[ALLOCA_V:%[A-z0-9]*]] = alloca i32{{.*}} !dbg [[ALLOCA_LOC:![0-9]*]]
-; CHECK: @llvm.dbg.value(metadata i32* [[ALLOCA_V]], metadata [[ALLOCA_MD:![0-9]*]], metadata !DIExpression()), !dbg [[ALLOCA_LOC]]
+; CHECK: @llvm.dbg.value(metadata ptr [[ALLOCA_V]], metadata [[ALLOCA_MD:![0-9]*]], metadata !DIExpression()), !dbg [[ALLOCA_LOC]]
 ; CHECK: [[UDIV_V:%[A-z0-9]*]] = udiv i32 {{.*}} !dbg [[UDIV_LOC:![0-9]*]]
 ; CHECK: @llvm.dbg.value(metadata i32 [[UDIV_V]], metadata [[UDIV_MD:![0-9]*]], metadata !DIExpression()), !dbg [[UDIV_LOC]]
 ; CHECK: store {{.*}} !dbg [[STORE1_LOC:![0-9]*]]

@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; REQUIRES: opaque-ptr-fix, llvm-14-plus
+; REQUIRES: llvm-14-plus
 ; RUN: igc_opt --opaque-pointers --igc-gas-resolve -S < %s | FileCheck %s
 ; ------------------------------------------------
 ; GASResolve
@@ -20,10 +20,10 @@
 ; CHECK: define spir_kernel void @test_kernel
 ; CHECK-SAME: !dbg [[SCOPE:![0-9]*]]
 ;
-; CHECK: call void @llvm.dbg.value(metadata i32{{.*}} [[SRC_V:%[A-z0-9]*]]
+; CHECK: call void @llvm.dbg.value(metadata ptr addrspace(1) [[SRC_V:%[A-z0-9]*]]
 ; CHECK-SAME: metadata [[SRC_MD:![0-9]*]], metadata !DIExpression()), !dbg [[SRC_LOC:![0-9]*]]
 ;
-; CHECK: call void @llvm.dbg.value(metadata i32{{.*}} [[DST_V:%[A-z0-9]*]]
+; CHECK: call void @llvm.dbg.value(metadata ptr addrspace(1) [[DST_V:%[A-z0-9]*]]
 ; CHECK-SAME: metadata [[DST_MD:![0-9]*]], metadata !DIExpression()), !dbg [[DST_LOC:![0-9]*]]
 ;
 ; CHECK: [[CMP_V:%[A-z0-9]*]] = icmp {{.*}} !dbg [[CMP_LOC:![0-9]*]]
@@ -31,12 +31,12 @@
 ; CHECK-SAME: metadata [[CMP_MD:![0-9]*]], metadata !DIExpression()), !dbg [[CMP_LOC]]
 ;
 ; CHECK: [[SELECT_V:%[A-z0-9]*]] = select {{.*}} !dbg [[SELECT_LOC:![0-9]*]]
-; CHECK: call void @llvm.dbg.value(metadata i32{{.*}} [[SELECT_V]]
+; CHECK: call void @llvm.dbg.value(metadata ptr addrspace(1) [[SELECT_V]]
 ; CHECK-SAME: metadata [[SELECT_MD:![0-9]*]], metadata !DIExpression()), !dbg [[SELECT_LOC]]
 ;
 ; CHECK: lbl:
 ; CHECK: [[PHI_V:%[A-z0-9]*]] = phi {{.*}} !dbg [[PHI_LOC:![0-9]*]]
-; CHECK: call void @llvm.dbg.value(metadata i32{{.*}} [[PHI_V]]
+; CHECK: call void @llvm.dbg.value(metadata ptr addrspace(1) [[PHI_V]]
 ; CHECK-SAME: metadata [[PHI_MD:![0-9]*]], metadata !DIExpression()), !dbg [[PHI_LOC]]
 
 define spir_kernel void @test_kernel(i32 addrspace(1)* %src, i32 addrspace(1)* %dst) !dbg !10 {

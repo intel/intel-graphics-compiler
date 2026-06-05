@@ -6,7 +6,8 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; REQUIRES: opaque-ptr-fix, llvm-14-plus
+; REQUIRES: llvm-14-plus, opaque-ptr-fix
+; FIXME: PromoteResourceToDirectAS crashes with opaque pointers ("Typed pointers are discontinued above LLVM16")
 ; RUN: igc_opt --opaque-pointers --igc-promote-resources-to-direct-addrspace -S < %s | FileCheck %s
 ; ------------------------------------------------
 ; PromoteResourceToDirectAS : load/store promotion part

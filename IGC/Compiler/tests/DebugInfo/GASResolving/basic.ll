@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; REQUIRES: opaque-ptr-fix, llvm-14-plus
+; REQUIRES: llvm-14-plus
 ; RUN: igc_opt --opaque-pointers --igc-gas-resolve -S < %s | FileCheck %s
 ; ------------------------------------------------
 ; GASResolve
@@ -20,8 +20,8 @@
 ; CHECK: define spir_kernel void @test_kernel
 ; CHECK-SAME: !dbg [[SCOPE:![0-9]*]]
 ;
-; CHECK-DAG: [[ACAST_V:%[0-9]*]] = {{.*}} !dbg [[ACAST_LOC:![0-9]*]]
-; CHECK-DAG: call void @llvm.dbg.value(metadata float{{.*}} [[ACAST_V]]
+; CHECK: [[ACAST_V:%[0-9]*]] = addrspacecast {{.*}} !dbg [[ACAST_LOC:![0-9]*]]
+; CHECK: call void @llvm.dbg.value(metadata ptr addrspace(1) %src
 ; CHECK-SAME: metadata [[ACAST_MD:![0-9]*]], metadata !DIExpression()), !dbg [[ACAST_LOC]]
 ;
 ; CHECK: store float {{.*}} !dbg [[STORE_LOC:![0-9]*]]
@@ -30,9 +30,8 @@
 ; CHECK: call void @llvm.dbg.value(metadata float [[LOAD_V]]
 ; CHECK-SAME: metadata [[LOAD_MD:![0-9]*]], metadata !DIExpression()), !dbg [[LOAD_LOC]]
 ;
-; CHECK: [[BCAST_V:%[A-z0-9]*]] = bitcast {{.*}} to <2 x i16> {{.*}}, !dbg [[BCAST_LOC:![0-9]*]]
-; CHECK: call void @llvm.dbg.value(metadata <2 x i16> {{.*}} [[BCAST_V]]
-; CHECK-SAME: metadata [[BCAST_MD:![0-9]*]], metadata !DIExpression()), !dbg [[BCAST_LOC]]
+; CHECK: call void @llvm.dbg.value(metadata ptr addrspace(1) %src
+; CHECK-SAME: metadata [[BCAST_MD:![0-9]*]], metadata !DIExpression()), !dbg [[BCAST_LOC:![0-9]*]]
 ;
 ; CHECK: [[LOAD_V:%[A-z0-9]*]] = load <2 x i16>, {{.*}} !dbg [[LOADV_LOC:![0-9]*]]
 ; CHECK: call void @llvm.dbg.value(metadata <2 x i16> [[LOAD_V]]
@@ -47,7 +46,7 @@
 ; CHECK-SAME: metadata [[EXTR_MD:![0-9]*]], metadata !DIExpression()), !dbg [[EXTR_LOC]]
 ;
 ; CHECK: [[GEP_V:%[A-z0-9]*]] = getelementptr {{.*}}, !dbg [[GEP_LOC:![0-9]*]]
-; CHECK: call void @llvm.dbg.value(metadata float {{.*}} [[GEP_V]]
+; CHECK: call void @llvm.dbg.value(metadata ptr addrspace(1) [[GEP_V]]
 ; CHECK-SAME: metadata [[GEP_MD:![0-9]*]], metadata !DIExpression()), !dbg [[GEP_LOC]]
 
 define spir_kernel void @test_kernel(i32 addrspace(1)* %src) !dbg !10 {

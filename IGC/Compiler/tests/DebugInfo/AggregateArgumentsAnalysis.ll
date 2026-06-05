@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; REQUIRES: opaque-ptr-fix, llvm-14-plus
+; REQUIRES: llvm-14-plus
 ; RUN: igc_opt --opaque-pointers -igc-agg-arg-analysis -S < %s | FileCheck %s
 ; ------------------------------------------------
 ; AggregateArgumentsAnalysis
@@ -43,29 +43,29 @@ target datalayout = "e-p:64:64:64-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64-f3
 
 ; IR check:
 ;
-; CHECK: define spir_kernel void @bar(%struct._st_foo* byval(%struct._st_foo) %src) #0 !dbg [[KERNEL_SCOPE:![0-9]*]]
+; CHECK: define spir_kernel void @bar(ptr byval(%struct._st_foo) %src) #0 !dbg [[KERNEL_SCOPE:![0-9]*]]
 ; CHECK-NEXT: entry:
-; CHECK: @llvm.dbg.declare(metadata %struct._st_foo* %src, metadata [[SRC_MD:![0-9]*]], metadata !DIExpression()), !dbg [[SRC_LOC:![0-9]*]]
-; CHECK: @llvm.dbg.declare(metadata %struct._st_foo* %temp, metadata [[TEMP_MD:![0-9]*]], metadata !DIExpression()), !dbg [[TEMP_LOC:![0-9]*]]
+; CHECK: @llvm.dbg.declare(metadata ptr %src, metadata [[SRC_MD:![0-9]*]], metadata !DIExpression()), !dbg [[SRC_LOC:![0-9]*]]
+; CHECK: @llvm.dbg.declare(metadata ptr %temp, metadata [[TEMP_MD:![0-9]*]], metadata !DIExpression()), !dbg [[TEMP_LOC:![0-9]*]]
 ; CHECK-NEXT: bitcast {{.*}}, !dbg [[COPY_LOC:![0-9]*]]
 ; CHECK-NEXT: bitcast {{.*}}, !dbg [[COPY_LOC]]
 ; CHECK-NEXT: @llvm.memcpy{{.*}}, !dbg [[COPY_LOC]]
-; CHECK-NEXT: @llvm.dbg.declare(metadata i32* %aa, metadata [[AA_MD:![0-9]*]], metadata !DIExpression()), !dbg [[AA_LOC:![0-9]*]]
+; CHECK-NEXT: @llvm.dbg.declare(metadata ptr %aa, metadata [[AA_MD:![0-9]*]], metadata !DIExpression()), !dbg [[AA_LOC:![0-9]*]]
 ; CHECK-NEXT: %a = getelementptr {{.*}}, !dbg [[AG_LOC:![0-9]*]]
 ; CHECK-NEXT: load {{.*}}, !dbg [[AG_LOC]]
 ; CHECK-NEXT: store {{.*}}, !dbg [[AA_LOC]]
-; CHECK-NEXT: @llvm.dbg.declare(metadata i32* %bb, metadata [[BB_MD:![0-9]*]], metadata !DIExpression()), !dbg [[BB_LOC:![0-9]*]]
+; CHECK-NEXT: @llvm.dbg.declare(metadata ptr %bb, metadata [[BB_MD:![0-9]*]], metadata !DIExpression()), !dbg [[BB_LOC:![0-9]*]]
 ; CHECK-NEXT: %b = getelementptr {{.*}}, !dbg [[BG1_LOC:![0-9]*]]
 ; CHECK-NEXT: load {{.*}}, !dbg [[BG2_LOC:![0-9]*]]
 ; CHECK-NEXT: extractelement {{.*}}, !dbg [[BG2_LOC]]
 ; CHECK-NEXT: fptosi {{.*}}, !dbg [[CONV_LOC:![0-9]*]]
 ; CHECK-NEXT: store {{.*}}, !dbg [[BB_LOC]]
-; CHECK-NEXT: @llvm.dbg.declare(metadata i32* %cc, metadata [[CC_MD:![0-9]*]], metadata !DIExpression()), !dbg [[CC_LOC:![0-9]*]]
+; CHECK-NEXT: @llvm.dbg.declare(metadata ptr %cc, metadata [[CC_MD:![0-9]*]], metadata !DIExpression()), !dbg [[CC_LOC:![0-9]*]]
 ; CHECK-NEXT: %c = getelementptr {{.*}}, !dbg [[CG1_LOC:![0-9]*]]
 ; CHECK-NEXT: %arrayidx = getelementptr {{.*}}, !dbg [[CG2_LOC:![0-9]*]]
 ; CHECK-NEXT: load {{.*}}, !dbg [[CG2_LOC]]
 ; CHECK-NEXT: trunc {{.*}}, !dbg [[CG2_LOC]]
-; CHECK-NEXT: store i32 %conv.i1, i32* %cc, align 4, !dbg [[CC_LOC]]
+; CHECK-NEXT: store i32 %conv.i1, ptr %cc, align 4, !dbg [[CC_LOC]]
 ; CHECK-NEXT: ret void, !dbg [[RET_LOC:![0-9]*]]
 
 ; Debug MD check:
