@@ -91,6 +91,30 @@ define i44 @f5(i44 %a) #0 {
 ; CHECK: %12 = trunc i64 %11 to i44
 ; CHECK: ret i44 %12
 
+define i9 @f6(i9 %a) #0 {
+  %r = call i9 @llvm.bitreverse.i9(i9 %a)
+  ret i9 %r
+}
+
+; CHECK-LABEL: define i9 @f6
+; CHECK: %1 = zext i9 %a to i32
+; CHECK: %2 = call i32 @llvm.genx.GenISA.bfrev.i32(i32 %1)
+; CHECK: %3 = lshr i32 %2, 23
+; CHECK: %4 = trunc i32 %3 to i9
+; CHECK: ret i9 %4
+
+define i3 @f7(i3 %a) #0 {
+  %r = call i3 @llvm.bitreverse.i3(i3 %a)
+  ret i3 %r
+}
+
+; CHECK-LABEL: define i3 @f7
+; CHECK: %1 = zext i3 %a to i32
+; CHECK: %2 = call i32 @llvm.genx.GenISA.bfrev.i32(i32 %1)
+; CHECK: %3 = lshr i32 %2, 29
+; CHECK: %4 = trunc i32 %3 to i3
+; CHECK: ret i3 %4
+
 declare i4 @llvm.bitreverse.i4(i4) #1
 
 declare i8 @llvm.bitreverse.i8(i8) #1
@@ -99,12 +123,16 @@ declare i44 @llvm.bitreverse.i44(i44) #1
 
 declare i64 @llvm.bitreverse.i64(i64) #1
 
+declare i9 @llvm.bitreverse.i9(i9) #1
+
+declare i3 @llvm.bitreverse.i3(i3) #1
+
 declare <4 x i32> @llvm.bitreverse.v4i32(<4 x i32>) #1
 
 attributes #0 = { nounwind }
 attributes #1 = { nounwind readnone speculatable }
 
-!igc.functions = !{!0, !1, !2, !4, !5}
+!igc.functions = !{!0, !1, !2, !4, !5, !6, !7}
 
 !0 = !{i8 (i8)* @f1, !3}
 !1 = !{i64 (i64)* @f2, !3}
@@ -112,3 +140,5 @@ attributes #1 = { nounwind readnone speculatable }
 !3 = !{}
 !4 = !{i4 (i4)* @f4, !3}
 !5 = !{i44 (i44)* @f5, !3}
+!6 = !{i9 (i9)* @f6, !3}
+!7 = !{i3 (i3)* @f7, !3}

@@ -1961,6 +1961,62 @@ void Legalization::visitIntrinsicInst(llvm::IntrinsicInst &I) {
     I.replaceAllUsesWith(newValue);
     I.eraseFromParent();
   } break;
+  case Intrinsic::bswap: {
+    Value *src0 = I.getArgOperand(0);
+    Type *instrType = I.getType();
+    IGC_ASSERT(nullptr != instrType);
+    IGC_ASSERT_MESSAGE(instrType->isIntOrIntVectorTy(), "Unsupported type");
+    Type *const intType = instrType->getScalarType();
+    unsigned BitWidth = intType->getIntegerBitWidth();
+    unsigned Elems = 1;
+    if (instrType->isVectorTy())
+      Elems = (unsigned)cast<IGCLLVM::FixedVectorType>(instrType)->getNumElements();
+
+    // bswap requires the bitwidth to be a multiple of 8
+    IGC_ASSERT_MESSAGE((BitWidth % 8) == 0, "bswap requires byte-aligned types");
+    // Legal bswap widths handled here are 16, 32 and 64 bits.
+    IGC_ASSERT_MESSAGE(BitWidth <= 64, "bswap wider than 64 bits is not supported");
+
+    // Legal widths (16, 32, 64) are handled later by EmitVISA. Only illegal
+    // widths (e.g. i24, i40, i48, i56) need to be lowered here. This case
+    // exists so that the custom LLVM patch preventing InstCombine from emitting
+    // bswap intrinsics of illegal widths can be removed.
+    if (BitWidth == 16 || BitWidth == 32 || BitWidth == 64)
+      break;
+
+    Value *newValue = Elems == 1 ? nullptr : UndefValue::get(instrType);
+    for (unsigned i = 0; i < Elems; i++) {
+      Value *ElVal = src0;
+      Value *ElRes = nullptr;
+      if (Elems > 1) {
+        ElVal = Builder.CreateExtractElement(src0, ConstantInt::get(Type::getInt32Ty(I.getContext()), i));
+      }
+
+      // For bswap with illegal widths, extend to the next legal type (16, 32 or
+      // 64 bits), perform bswap, then shift and truncate back.
+      unsigned legalBitWidth = BitWidth < 16 ? 16 : (BitWidth < 32 ? 32 : 64);
+      Type *legalType = Builder.getIntNTy(legalBitWidth);
+      // Zero-extend to legal type
+      ElVal = Builder.CreateZExt(ElVal, legalType);
+
+      // Create bswap call with legal type
+      Function *bswapFunc = IGCLLVM::getOrInsertDeclaration(m_ctx->getModule(), Intrinsic::bswap, legalType);
+      ElRes = Builder.CreateCall(bswapFunc, ElVal);
+
+      // Shift right to drop the zero-extended bytes, then truncate back.
+      unsigned shiftAmount = legalBitWidth - BitWidth;
+      ElRes = Builder.CreateLShr(ElRes, shiftAmount);
+      ElRes = Builder.CreateTrunc(ElRes, intType);
+
+      if (Elems > 1) {
+        newValue = Builder.CreateInsertElement(newValue, ElRes, Builder.getInt32(i));
+      } else
+        newValue = ElRes;
+    }
+    IGC_ASSERT(nullptr != newValue);
+    I.replaceAllUsesWith(newValue);
+    I.eraseFromParent();
+  } break;
   case Intrinsic::bitreverse: {
     Value *src0 = I.getArgOperand(0);
     Type *instrType = I.getType();

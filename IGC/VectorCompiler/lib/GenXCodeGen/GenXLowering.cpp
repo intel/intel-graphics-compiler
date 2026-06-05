@@ -2443,8 +2443,19 @@ bool GenXLowering::lowerTrunc(Instruction *Inst) {
   }
 
   IGC_ASSERT(OutElementTy->getPrimitiveSizeInBits());
-  unsigned Stride = InElementTy->getPrimitiveSizeInBits() /
-                    OutElementTy->getPrimitiveSizeInBits();
+  unsigned InElementBits = InElementTy->getPrimitiveSizeInBits();
+  unsigned OutElementBits = OutElementTy->getPrimitiveSizeInBits();
+  // The bitcast + strided rdregion lowering below reinterprets the source
+  // element as a vector of <InElementBits / OutElementBits> destination
+  // elements. That is only valid when the destination element width evenly
+  // divides the source element width. For illegal widths (e.g. trunc i32 to
+  // i24 or i64 to i48), which can now reach this pass after removing the
+  // InstCombine patch that blocked illegal-width bitreverse/bswap intrinsics,
+  // the bitcast would be invalid. Leave such truncs untouched so they are
+  // handled by later legalization instead of asserting here.
+  if (OutElementBits == 0 || (InElementBits % OutElementBits) != 0)
+    return false;
+  unsigned Stride = InElementBits / OutElementBits;
   // Create the new bitcast.
   Instruction *BC = CastInst::Create(
       Instruction::BitCast, InValue,
@@ -4324,6 +4335,35 @@ bool GenXLowering::lowerBitreverse(CallInst *CI) {
   Value *ValueToBitReverse = CI->getOperand(0);
   auto IDBfrev = GenXIntrinsic::genx_bfrev;
   Type *OriginalType = ValueToBitReverse->getType();
+  auto OriginalElementBitSize = OriginalType->getScalarSizeInBits();
+
+  // Illegal widths wider than 32 and narrower than 64 bits (e.g. i33, i44,
+  // i48) cannot be handled by lower64Bitreverse directly (it asserts on a
+  // 64-bit scalar size). Extend them to i64, emit a bitreverse.i64 (which is
+  // re-lowered by lower64Bitreverse), then shift and truncate back. This makes
+  // it possible to remove the custom LLVM patch that prevents InstCombine from
+  // emitting bitreverse intrinsics of illegal widths.
+  if (OriginalElementBitSize > 32 && OriginalElementBitSize < 64) {
+    IRBuilder<> Builder(CI);
+    Type *I64Type = isa<IGCLLVM::FixedVectorType>(OriginalType)
+                        ? cast<Type>(IGCLLVM::FixedVectorType::get(
+                              Type::getInt64Ty(Ctx),
+                              cast<IGCLLVM::FixedVectorType>(OriginalType)
+                                  ->getNumElements()))
+                        : cast<Type>(Type::getInt64Ty(Ctx));
+    Value *Zext = Builder.CreateZExt(ValueToBitReverse, I64Type);
+    Value *WiderRes =
+        Builder.CreateIntrinsic(Intrinsic::bitreverse, {I64Type}, {Zext});
+    unsigned ShiftSize = 64 - OriginalElementBitSize;
+    WiderRes =
+        Builder.CreateLShr(WiderRes, ConstantInt::get(I64Type, ShiftSize));
+    Value *Res = Builder.CreateTrunc(WiderRes, OriginalType);
+
+    CI->replaceAllUsesWith(Res);
+    ToErase.push_back(CI);
+    return true;
+  }
+
   Type *BfrevType =
       isa<IGCLLVM::FixedVectorType>(OriginalType)
           ? cast<Type>(IGCLLVM::FixedVectorType::get(
@@ -4333,7 +4373,6 @@ bool GenXLowering::lowerBitreverse(CallInst *CI) {
 
   auto *DeclGenXBfReverse =
       GenXIntrinsic::getGenXDeclaration(CI->getModule(), IDBfrev, {BfrevType});
-  auto OriginalElementBitSize = OriginalType->getScalarSizeInBits();
   int ShiftSize = 32 - OriginalElementBitSize;
   if (ShiftSize < 0) {
     return lower64Bitreverse(CI);
@@ -4430,20 +4469,53 @@ bool GenXLowering::lowerByteSwap(CallInst *CI) {
   Type *BSwapTy = CI->getType();
   IGC_ASSERT(BSwapTy->isIntOrIntVectorTy());
   unsigned ElementBits = BSwapTy->getScalarSizeInBits();
-  IGC_ASSERT_MESSAGE(isPowerOf2_32(ElementBits) && ElementBits >= WordBits &&
-                         ElementBits <= QWordBits,
-                     "Unexpected integer type of llvm.bswap intrinsic");
-  unsigned InputNumElements = 1;
-  if (auto *BSwapVecTy = dyn_cast<IGCLLVM::FixedVectorType>(BSwapTy)) {
-    InputNumElements = BSwapVecTy->getNumElements();
-  }
-  unsigned FullBitWidth = ElementBits * InputNumElements;
+
+  // bswap requires byte-aligned types
+  IGC_ASSERT_MESSAGE((ElementBits % 8) == 0,
+                     "bswap requires byte-aligned integer types");
+  // Legal bswap element widths handled here are 16, 32 and 64 bits.
+  IGC_ASSERT_MESSAGE(ElementBits <= QWordBits,
+                     "bswap wider than 64 bits is not supported");
 
   llvm::IRBuilder<> Builder(CI);
+  Value *IntSliceV = CI->getArgOperand(0);
 
-  auto *IntSliceV = CI->getArgOperand(0);
+  // Determine the legal element type: power of 2 in range [16, 64] bits.
+  // Illegal widths are extended to the next legal size, then shifted and
+  // truncated back after the swap.
+  unsigned LegalElementBits = ElementBits;
+  bool NeedsLegalization =
+      !isPowerOf2_32(ElementBits) || ElementBits < WordBits;
+  if (NeedsLegalization) {
+    if (ElementBits <= WordBits)
+      LegalElementBits = WordBits; // 16
+    else if (ElementBits <= DWordBits)
+      LegalElementBits = DWordBits; // 32
+    else
+      LegalElementBits = QWordBits; // 64
+  }
 
-  for (auto SliceBits = WordBits; SliceBits <= ElementBits; SliceBits *= 2) {
+  // For illegal types, extend to legal type
+  Type *LegalBSwapTy = BSwapTy;
+  if (NeedsLegalization) {
+    if (auto *BSwapVecTy = dyn_cast<IGCLLVM::FixedVectorType>(BSwapTy)) {
+      LegalBSwapTy = IGCLLVM::FixedVectorType::get(
+          Builder.getIntNTy(LegalElementBits), BSwapVecTy->getNumElements());
+    } else {
+      LegalBSwapTy = Builder.getIntNTy(LegalElementBits);
+    }
+    IntSliceV = Builder.CreateZExt(IntSliceV, LegalBSwapTy);
+  }
+
+  unsigned InputNumElements = 1;
+  if (auto *LegalBSwapVecTy =
+          dyn_cast<IGCLLVM::FixedVectorType>(LegalBSwapTy)) {
+    InputNumElements = LegalBSwapVecTy->getNumElements();
+  }
+  unsigned FullBitWidth = LegalElementBits * InputNumElements;
+
+  for (auto SliceBits = WordBits; SliceBits <= LegalElementBits;
+       SliceBits *= 2) {
     auto SliceNumElements = FullBitWidth / SliceBits;
 
     auto *SliceETy = Builder.getIntNTy(SliceBits);
@@ -4453,7 +4525,17 @@ bool GenXLowering::lowerByteSwap(CallInst *CI) {
     IntSliceV = swapLowHighHalves(Builder, Cast);
   }
 
-  CI->replaceAllUsesWith(Builder.CreateBitCast(IntSliceV, BSwapTy));
+  Value *Result = Builder.CreateBitCast(IntSliceV, LegalBSwapTy);
+
+  // For illegal types, shift and truncate back
+  if (NeedsLegalization) {
+    unsigned ShiftAmount = LegalElementBits - ElementBits;
+    Result =
+        Builder.CreateLShr(Result, ConstantInt::get(LegalBSwapTy, ShiftAmount));
+    Result = Builder.CreateTrunc(Result, BSwapTy);
+  }
+
+  CI->replaceAllUsesWith(Result);
   ToErase.push_back(CI);
   return true;
 }
