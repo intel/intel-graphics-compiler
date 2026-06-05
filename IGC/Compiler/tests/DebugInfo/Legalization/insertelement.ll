@@ -8,7 +8,7 @@
 
 
 ; REQUIRES: llvm-14-plus
-; RUN: igc_opt --opaque-pointers --igc-legalization -S < %s | FileCheck %s
+; RUN: igc_opt --opaque-pointers --igc-legalization -S < %s | FileCheck %s --check-prefixes=CHECK,%if llvm-22-plus %{CHECK-DBG-RECORDS%} %else %{CHECK-DBG-INTRINSIC%}
 ; ------------------------------------------------
 ; Legalization: insertelement patterns
 ; ------------------------------------------------
@@ -28,7 +28,8 @@ define spir_kernel void @test_insert(i32 %src1, <3 x i1> %src2) !dbg !7 {
 ; CHECK-NEXT: [[INS2_V:%[0-9]*]] = insertelement <3 x i32> [[INS1_V]], i32 1, i32 1
 ; CHECK-NEXT: [[INS3_V:%[0-9]*]] = insertelement <3 x i32> [[INS2_V]], i32 2, i32 2
 ; CHECK-NEXT: [[INS_EL_V:%[0-9]*]] = insertelement <3 x i32> [[INS3_V]], i32 %src1, i32 0, !dbg [[INS_EL_LOC:![0-9]*]]
-; CHECK: [[DBG_VALUE_CALL:dbg.value\(metadata]] <3 x i32> [[INS_EL_V]],  metadata [[INS_EL_MD:![0-9]*]], {{.*}}, !dbg [[INS_EL_LOC]]
+; CHECK-DBG-INTRINSIC: [[DBG_VALUE_CALL:dbg.value\(metadata]] <3 x i32> [[INS_EL_V]],  metadata [[INS_EL_MD:![0-9]*]], {{.*}}, !dbg [[INS_EL_LOC]]
+; CHECK-DBG-RECORDS: #dbg_value(<3 x i32> [[INS_EL_V]], [[INS_EL_MD:![0-9]*]], {{.*}}, [[INS_EL_LOC]])
 
   %1 = insertelement <3 x i32> <i32 0, i32 1, i32 2>, i32 %src1, i32 0, !dbg !18
   call void @llvm.dbg.value(metadata <3 x i32> %1, metadata !10, metadata !DIExpression()), !dbg !18
@@ -40,7 +41,8 @@ define spir_kernel void @test_insert(i32 %src1, <3 x i1> %src2) !dbg !7 {
 ; CHECK-NEXT: [[INS_EL32_V:%[0-9]*]] = insertelement <3 x i32> undef, i32 [[SEXT_V]], i32 1
 ; CHECK: [[EXTR32_V:%[0-9]*]] = extractelement <3 x i32> [[INS_EL32_V]], i32 1
 ; CHECK-NEXT: [[EXTR1_V:%[0-9]*]] = trunc i32 %10 to i1, !dbg [[EXTR1_LOC:![0-9]*]]
-; CHECK: [[DBG_VALUE_CALL]] i1 [[EXTR1_V]], metadata [[EXTR1_MD:![0-9]*]], metadata !DIExpression()), !dbg [[EXTR1_LOC]]
+; CHECK-DBG-INTRINSIC: [[DBG_VALUE_CALL]] i1 [[EXTR1_V]], metadata [[EXTR1_MD:![0-9]*]], metadata !DIExpression()), !dbg [[EXTR1_LOC]]
+; CHECK-DBG-RECORDS: #dbg_value(i1 [[EXTR1_V]], [[EXTR1_MD:![0-9]*]], !DIExpression(), [[EXTR1_LOC]])
 
   %2 = extractelement <3 x i1> %src2, i32 2, !dbg !19
   call void @llvm.dbg.value(metadata i1 %2, metadata !12, metadata !DIExpression()), !dbg !19

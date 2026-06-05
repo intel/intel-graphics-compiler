@@ -8,7 +8,7 @@
 
 
 ; REQUIRES: llvm-14-plus
-; RUN: igc_opt --opaque-pointers --igc-legalization -S < %s | FileCheck %s
+; RUN: igc_opt --opaque-pointers --igc-legalization -S < %s | FileCheck %s --check-prefixes=CHECK,%if llvm-22-plus %{CHECK-DBG-RECORDS%} %else %{CHECK-DBG-INTRINSIC%}
 ; ------------------------------------------------
 ; Legalization: frem, Or and And patterns
 ; ------------------------------------------------
@@ -34,7 +34,8 @@ entry:
 ; CHECK-NEXT: [[FLOOR:%[0-9]*]] = call float @llvm.floor.f32(float [[FMUL]])
 ; CHECK-NEXT: [[FSUB:%[0-9]*]] = fsub float [[FMUL]], [[FLOOR]]
 ; CHECK-NEXT: [[FREM_V:%[0-9]*]] = fmul float [[FSUB]], [[SELECT]], !dbg [[FREM_LOC:![0-9]*]]
-; CHECK-NEXT: [[DBG_VALUE_CALL:dbg.value\(metadata]] float [[FREM_V]],  metadata [[FREM_MD:![0-9]*]], {{.*}}, !dbg [[FREM_LOC]]
+; CHECK-DBG-INTRINSIC-NEXT: [[DBG_VALUE_CALL:dbg.value\(metadata]] float [[FREM_V]],  metadata [[FREM_MD:![0-9]*]], {{.*}}, !dbg [[FREM_LOC]]
+; CHECK-DBG-RECORDS-NEXT: #dbg_value(float [[FREM_V]], [[FREM_MD:![0-9]*]], {{.*}}, [[FREM_LOC]])
   %0 = frem float %src1, %src2, !dbg !21
   call void @llvm.dbg.value(metadata float %0, metadata !10, metadata !DIExpression()), !dbg !21
 
@@ -42,9 +43,11 @@ entry:
 ; Only select and branch lines should be preseved
 ; Value can be salvaged(not checked) and not salvaged FIXME
 ; CHECK: [[NOT_OR:%[0-9]*]] = and i1 %src3, %src4
-; CHECK-NEXT: [[DBG_VALUE_CALL]] {{.*}},  metadata [[OR_MD:![0-9]*]], {{.*}}, !dbg [[OR_LOC:![0-9]*]]
+; CHECK-DBG-INTRINSIC-NEXT: [[DBG_VALUE_CALL]] {{.*}},  metadata [[OR_MD:![0-9]*]], {{.*}}, !dbg [[OR_LOC:![0-9]*]]
+; CHECK-DBG-RECORDS-NEXT: #dbg_value({{.*}}, [[OR_MD:![0-9]*]], {{.*}}, [[OR_LOC:![0-9]*]])
 ; CHECK-NEXT: [[NOT_AND:%[0-9]*]] = or i1 %src3, %src4
-; CHECK-NEXT: [[DBG_VALUE_CALL]] {{.*}},  metadata [[AND_MD:![0-9]*]], {{.*}}, !dbg [[AND_LOC:![0-9]*]]
+; CHECK-DBG-INTRINSIC-NEXT: [[DBG_VALUE_CALL]] {{.*}},  metadata [[AND_MD:![0-9]*]], {{.*}}, !dbg [[AND_LOC:![0-9]*]]
+; CHECK-DBG-RECORDS-NEXT: #dbg_value({{.*}}, [[AND_MD:![0-9]*]], {{.*}}, [[AND_LOC:![0-9]*]])
 ; CHECK-NEXT: br i1 [[NOT_OR]], label %then.or, label %endif.or, !dbg [[BRANCH_OR_LOC:![0-9]*]]
 ; CHECK: %select.or = select i1 [[NOT_OR]], float %src2, float %src1, !dbg [[SELECT_OR_LOC:![0-9]*]]
 ; CHECK: br i1 [[NOT_AND]], label %then.and, label %endif.and, !dbg [[BRANCH_AND_LOC:![0-9]*]]

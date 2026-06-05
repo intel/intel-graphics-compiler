@@ -8,7 +8,7 @@
 
 
 ; REQUIRES: llvm-14-plus
-; RUN: igc_opt --opaque-pointers --igc-legalization -S < %s | FileCheck %s
+; RUN: igc_opt --opaque-pointers --igc-legalization -S < %s | FileCheck %s --check-prefixes=CHECK,%if llvm-22-plus %{CHECK-DBG-RECORDS%} %else %{CHECK-DBG-INTRINSIC%}
 ; ------------------------------------------------
 ; Legalization: shufflevector patterns
 ; ------------------------------------------------
@@ -37,7 +37,8 @@ define spir_kernel void @test_shuffle(<4 x i32> %src1, <4 x i32> %src2) !dbg !7 
 ; CHECK-NEXT: [[INS4_V:%[0-9]*]] = insertelement <6 x i32> [[INS3_V]], i32 [[EXTR4_V]], i32 4
 ; CHECK-NEXT: [[EXTR5_V:%[0-9]*]] = extractelement <4 x i32> %src2, i32 2
 ; CHECK-NEXT: [[SHUF_V:%[0-9]*]] = insertelement <6 x i32> [[INS4_V]], i32 [[EXTR5_V]], i32 5, !dbg [[SHUF_LOC:![0-9]*]]
-; CHECK-NEXT: [[DBG_VALUE_CALL:dbg.value\(metadata]] <6 x i32> [[SHUF_V]],  metadata [[SHUF_MD:![0-9]*]], metadata !DIExpression()), !dbg [[SHUF_LOC]]
+; CHECK-DBG-INTRINSIC-NEXT: [[DBG_VALUE_CALL:dbg.value\(metadata]] <6 x i32> [[SHUF_V]],  metadata [[SHUF_MD:![0-9]*]], metadata !DIExpression()), !dbg [[SHUF_LOC]]
+; CHECK-DBG-RECORDS-NEXT: #dbg_value(<6 x i32> [[SHUF_V]], [[SHUF_MD:![0-9]*]], !DIExpression(), [[SHUF_LOC]])
 
   %1 = shufflevector <4 x i32> %src1, <4 x i32> %src2, <6 x i32> <i32 0, i32 1, i32 3, i32 4, i32 5, i32 6>, !dbg !16
   call void @llvm.dbg.value(metadata <6 x i32> %1, metadata !10, metadata !DIExpression()), !dbg !16
@@ -52,7 +53,8 @@ define spir_kernel void @test_shuffle(<4 x i32> %src1, <4 x i32> %src2) !dbg !7 
 ; CHECK-NEXT: [[INS4_V:%[0-9]*]] = insertelement <6 x i32> [[INS3_V]], i32 [[EXTR3_V]], i32 4
 ; CHECK-NEXT: [[EXTR2_V:%[0-9]*]] = extractelement <4 x i32> %src1, i32 2
 ; CHECK-NEXT: [[SHUF1_V:%[0-9]*]] = insertelement <6 x i32> [[INS4_V]], i32 [[EXTR2_V]], i32 5, !dbg [[SHUF1_LOC:![0-9]*]]
-; CHECK-NEXT: [[DBG_VALUE_CALL]] <6 x i32> [[SHUF1_V]],  metadata [[SHUF1_MD:![0-9]*]], metadata !DIExpression()), !dbg [[SHUF1_LOC]]
+; CHECK-DBG-INTRINSIC-NEXT: [[DBG_VALUE_CALL]] <6 x i32> [[SHUF1_V]],  metadata [[SHUF1_MD:![0-9]*]], metadata !DIExpression()), !dbg [[SHUF1_LOC]]
+; CHECK-DBG-RECORDS-NEXT: #dbg_value(<6 x i32> [[SHUF1_V]], [[SHUF1_MD:![0-9]*]], !DIExpression(), [[SHUF1_LOC]])
 
   %2 = shufflevector <4 x i32> %src1, <4 x i32> <i32 42, i32 0, i32 1, i32 4>, <6 x i32> <i32 6, i32 5, i32 7, i32 4, i32 3, i32 2>, !dbg !17
   call void @llvm.dbg.value(metadata <6 x i32> %2, metadata !12, metadata !DIExpression()), !dbg !17
@@ -63,7 +65,8 @@ define spir_kernel void @test_shuffle(<4 x i32> %src1, <4 x i32> %src2) !dbg !7 
 ; CHECK-NEXT: [[INS1_V:%[0-9]*]] = insertelement <4 x i32> undef, i32 [[EXTR0_V]], i32 1
 ; CHECK-NEXT: [[EXTR2_V:%[0-9]*]] = extractelement <4 x i32> %src1, i32 2
 ; CHECK-NEXT: [[SHUF2_V:%[0-9]*]] = insertelement <4 x i32> [[INS1_V]], i32 [[EXTR2_V]], i32 3, !dbg [[SHUF2_LOC:![0-9]*]]
-; CHECK-NEXT: [[DBG_VALUE_CALL]] <4 x i32> [[SHUF2_V]],  metadata [[SHUF2_MD:![0-9]*]], metadata !DIExpression()), !dbg [[SHUF2_LOC]]
+; CHECK-DBG-INTRINSIC-NEXT: [[DBG_VALUE_CALL]] <4 x i32> [[SHUF2_V]],  metadata [[SHUF2_MD:![0-9]*]], metadata !DIExpression()), !dbg [[SHUF2_LOC]]
+; CHECK-DBG-RECORDS-NEXT: #dbg_value(<4 x i32> [[SHUF2_V]], [[SHUF2_MD:![0-9]*]], !DIExpression(), [[SHUF2_LOC]])
 
   %3 = shufflevector <4 x i32> %src1, <4 x i32> %src2, <4 x i32> <i32 undef, i32 4, i32 undef, i32 2>, !dbg !18
   call void @llvm.dbg.value(metadata <4 x i32> %3, metadata !13, metadata !DIExpression()), !dbg !18
@@ -74,7 +77,8 @@ define spir_kernel void @test_shuffle(<4 x i32> %src1, <4 x i32> %src2) !dbg !7 
 ; CHECK-NEXT: [[INS2_V:%[0-9]*]] = insertelement <4 x i32> %src1, i32 [[EXTR0_V]], i32 2
 ; CHECK-NEXT: [[EXTR1_V:%[0-9]*]] = extractelement <4 x i32> %src2, i32 1
 ; CHECK-NEXT: [[SHUF3_V:%[0-9]*]] = insertelement <4 x i32> [[INS2_V]], i32 [[EXTR1_V]], i32 3, !dbg [[SHUF3_LOC:![0-9]*]]
-; CHECK-NEXT: [[DBG_VALUE_CALL]] <4 x i32> [[SHUF3_V]],  metadata [[SHUF3_MD:![0-9]*]], metadata !DIExpression()), !dbg [[SHUF3_LOC]]
+; CHECK-DBG-INTRINSIC-NEXT: [[DBG_VALUE_CALL]] <4 x i32> [[SHUF3_V]],  metadata [[SHUF3_MD:![0-9]*]], metadata !DIExpression()), !dbg [[SHUF3_LOC]]
+; CHECK-DBG-RECORDS-NEXT: #dbg_value(<4 x i32> [[SHUF3_V]], [[SHUF3_MD:![0-9]*]], !DIExpression(), [[SHUF3_LOC]])
 
   %4 = shufflevector <4 x i32> %src1, <4 x i32> %src2, <4 x i32> <i32 0, i32 1, i32 4, i32 5>, !dbg !19
   call void @llvm.dbg.value(metadata <4 x i32> %4, metadata !15, metadata !DIExpression()), !dbg !19

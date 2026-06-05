@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: igc_opt --igc-discard-samplecmp -S < %s | FileCheck %s
+; RUN: igc_opt --igc-discard-samplecmp -S < %s | FileCheck %s --check-prefixes=CHECK,%if llvm-22-plus %{CHECK-DBG-RECORDS%} %else %{CHECK-DBG-INTRINSIC%}
 ; ------------------------------------------------
 ; SampleCmpToDiscard
 ; ------------------------------------------------
@@ -21,15 +21,20 @@
 
 ; CHECK: @test_samplecmp{{.*}} !dbg [[SCOPE:![0-9]*]]
 ; CHECK: [[SAMPLE_V:%[A-z0-9]*]] = call <4 x float>{{.*}} !dbg [[SAMPLE_LOC:![0-9]*]]
-; CHECK: @llvm.dbg.value(metadata <4 x float> [[SAMPLE_V]], metadata [[SAMPLE_MD:![0-9]*]], metadata !DIExpression()), !dbg [[SAMPLE_LOC]]
+; CHECK-DBG-INTRINSIC: @llvm.dbg.value(metadata <4 x float> [[SAMPLE_V]], metadata [[SAMPLE_MD:![0-9]*]], metadata !DIExpression()), !dbg [[SAMPLE_LOC]]
+; CHECK-DBG-RECORDS: #dbg_value(<4 x float> [[SAMPLE_V]], [[SAMPLE_MD:![0-9]*]], !DIExpression(), [[SAMPLE_LOC]])
 ; CHECK: [[F1_V:%[A-z0-9]*]] = extractelement <4 x float>{{.*}} !dbg [[F1_LOC:![0-9]*]]
-; CHECK: @llvm.dbg.value(metadata float [[F1_V]], metadata [[F1_MD:![0-9]*]], metadata !DIExpression()), !dbg [[F1_LOC]]
+; CHECK-DBG-INTRINSIC: @llvm.dbg.value(metadata float [[F1_V]], metadata [[F1_MD:![0-9]*]], metadata !DIExpression()), !dbg [[F1_LOC]]
+; CHECK-DBG-RECORDS: #dbg_value(float [[F1_V]], [[F1_MD:![0-9]*]], !DIExpression(), [[F1_LOC]])
 ; CHECK: [[F2_V:%[A-z0-9]*]] = fsub float{{.*}} !dbg [[F2_LOC:![0-9]*]]
-; CHECK: @llvm.dbg.value(metadata float [[F2_V]], metadata [[F2_MD:![0-9]*]], metadata !DIExpression()), !dbg [[F2_LOC]]
+; CHECK-DBG-INTRINSIC: @llvm.dbg.value(metadata float [[F2_V]], metadata [[F2_MD:![0-9]*]], metadata !DIExpression()), !dbg [[F2_LOC]]
+; CHECK-DBG-RECORDS: #dbg_value(float [[F2_V]], [[F2_MD:![0-9]*]], !DIExpression(), [[F2_LOC]])
 ; CHECK: [[F3_V:%[A-z0-9]*]] = fmul float{{.*}} !dbg [[F3_LOC:![0-9]*]]
-; CHECK: @llvm.dbg.value(metadata float [[F3_V]], metadata [[F3_MD:![0-9]*]], metadata !DIExpression()), !dbg [[F3_LOC]]
+; CHECK-DBG-INTRINSIC: @llvm.dbg.value(metadata float [[F3_V]], metadata [[F3_MD:![0-9]*]], metadata !DIExpression()), !dbg [[F3_LOC]]
+; CHECK-DBG-RECORDS: #dbg_value(float [[F3_V]], [[F3_MD:![0-9]*]], !DIExpression(), [[F3_LOC]])
 ; CHECK: [[F4_V:%[A-z0-9]*]] = fadd float{{.*}} !dbg [[F4_LOC:![0-9]*]]
-; CHECK: @llvm.dbg.value(metadata float [[F4_V]], metadata [[F4_MD:![0-9]*]], metadata !DIExpression()), !dbg [[F4_LOC]]
+; CHECK-DBG-INTRINSIC: @llvm.dbg.value(metadata float [[F4_V]], metadata [[F4_MD:![0-9]*]], metadata !DIExpression()), !dbg [[F4_LOC]]
+; CHECK-DBG-RECORDS: #dbg_value(float [[F4_V]], [[F4_MD:![0-9]*]], !DIExpression(), [[F4_LOC]])
 ; CHECK: call void @llvm.genx.GenISA.RTWrite.f32(float [[F4_V]]{{.*}} !dbg [[RT_LOC:![0-9]*]]
 
 define void @test_samplecmp(float %src1, float %src2, float %src3) !dbg !6 {

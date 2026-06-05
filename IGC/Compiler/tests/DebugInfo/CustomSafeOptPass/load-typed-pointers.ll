@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: igc_opt -igc-custom-safe-opt -S < %s | FileCheck %s
+; RUN: igc_opt -igc-custom-safe-opt -S < %s | FileCheck %s --check-prefixes=CHECK,%if llvm-22-plus %{CHECK-DBG-RECORDS%} %else %{CHECK-DBG-INTRINSIC%}
 ; ------------------------------------------------
 ; CustomSafeOptPass
 ; ------------------------------------------------
@@ -23,14 +23,16 @@
 ; CHECK: %{{.*}} = {{.*}}, !dbg [[GEP1_LOC:![0-9]*]]
 ; CHECK: %{{.*}} = {{.*}}, !dbg [[GEP1_LOC]]
 ; load value is now select
-; CHECK-DAG: void @llvm.dbg.value(metadata i32 [[LOAD1_V:%[A-z0-9]*]], metadata [[LOAD1_MD:![0-9]*]], metadata !DIExpression()), !dbg [[LOAD1_LOC:![0-9]*]]
+; CHECK-DBG-INTRINSIC-DAG: void @llvm.dbg.value(metadata i32 [[LOAD1_V:%[A-z0-9]*]], metadata [[LOAD1_MD:![0-9]*]], metadata !DIExpression()), !dbg [[LOAD1_LOC:![0-9]*]]
+; CHECK-DBG-RECORDS-DAG: #dbg_value(i32 [[LOAD1_V:%[A-z0-9]*]], [[LOAD1_MD:![0-9]*]], !DIExpression(), [[LOAD1_LOC:![0-9]*]])
 ; CHECK-DAG: [[LOAD1_V]] = {{.*}}, !dbg [[LOAD1_LOC]]
 ; CHECK: store i32 [[LOAD1_V]]{{.*}}, !dbg [[STORE1_LOC:![0-9]*]]
 
 ; CHECK: %{{.*}} = {{.*}}, !dbg [[GEP2_LOC:![0-9]*]]
 ; CHECK: %{{.*}} = {{.*}}, !dbg [[GEP2_LOC]]
 ; load value is now select
-; CHECK-DAG: void @llvm.dbg.value(metadata i32 [[LOAD2_V:%[A-z0-9]*]], metadata [[LOAD2_MD:![0-9]*]], metadata !DIExpression()), !dbg [[LOAD2_LOC:![0-9]*]]
+; CHECK-DBG-INTRINSIC-DAG: void @llvm.dbg.value(metadata i32 [[LOAD2_V:%[A-z0-9]*]], metadata [[LOAD2_MD:![0-9]*]], metadata !DIExpression()), !dbg [[LOAD2_LOC:![0-9]*]]
+; CHECK-DBG-RECORDS-DAG: #dbg_value(i32 [[LOAD2_V:%[A-z0-9]*]], [[LOAD2_MD:![0-9]*]], !DIExpression(), [[LOAD2_LOC:![0-9]*]])
 ; CHECK-DAG: [[LOAD2_V]] = {{.*}}, !dbg [[LOAD2_LOC]]
 ; CHECK: store i32 [[LOAD2_V]]{{.*}}, !dbg [[STORE2_LOC:![0-9]*]]
 

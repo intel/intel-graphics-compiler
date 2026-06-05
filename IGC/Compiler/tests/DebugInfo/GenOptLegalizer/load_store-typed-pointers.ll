@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: igc_opt -GenOptLegalizer -S < %s | FileCheck %s
+; RUN: igc_opt -GenOptLegalizer -S < %s | FileCheck %s --check-prefixes=CHECK,%if llvm-22-plus %{CHECK-DBG-RECORDS%} %else %{CHECK-DBG-INTRINSIC%}
 ; ------------------------------------------------
 ; GenOptLegalizer
 ; ------------------------------------------------
@@ -19,7 +19,8 @@
 
 ; CHECK: define void @test{{.*}} !dbg [[SCOPE:![0-9]*]]
 ; CHECK-DAG: store i32 [[VAL2_V:%[A-z0-9]*]], {{.*}}, !dbg [[STR1_LOC:![0-9]*]]
-; CHECK-DAG: void @llvm.dbg.value(metadata i32 [[VAL2_V]], metadata [[VAL2_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL2_LOC:![0-9]*]]
+; CHECK-DBG-INTRINSIC-DAG: void @llvm.dbg.value(metadata i32 [[VAL2_V]], metadata [[VAL2_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL2_LOC:![0-9]*]]
+; CHECK-DBG-RECORDS-DAG: #dbg_value(i32 [[VAL2_V]], [[VAL2_MD:![0-9]*]], !DIExpression(), [[VAL2_LOC:![0-9]*]])
 ; CHECK-DAG: [[VAL2_V]] = {{.*}}, !dbg [[VAL2_LOC]]
 ; CHECK: store <3 x i8> {{.*}}, !dbg [[STR2_LOC:![0-9]*]]
 ; CHECK: store <3 x i8> {{.*}}, !dbg [[STR3_LOC:![0-9]*]]

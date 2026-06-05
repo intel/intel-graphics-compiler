@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: igc_opt --igc-workaround -S < %s | FileCheck %s
+; RUN: igc_opt --igc-workaround -S < %s | FileCheck %s --check-prefixes=CHECK,%if llvm-22-plus %{CHECK-DBG-RECORDS%} %else %{CHECK-DBG-INTRINSIC%}
 ; ------------------------------------------------
 ; WorkaroundAnalysis : Sin/Cos lowering part
 ; ------------------------------------------------
@@ -20,10 +20,13 @@
 ; CHECK-SAME: !dbg [[SCOPE:![0-9]*]]
 
 ; CHECK: [[ST_V:%[A-z0-9]*]] = alloca
-; CHECK: @llvm.dbg.declare(metadata {{.*}} [[ST_V]], metadata [[ST_MD:![0-9]*]], metadata !DIExpression()), !dbg [[ST_LOC:![0-9]*]]
-; CHECK-DAG: @llvm.dbg.value(metadata {{.*}} [[SIN_V:%[A-z0-9]*]], metadata [[SIN_MD:![0-9]*]], metadata !DIExpression()), !dbg [[SIN_LOC:![0-9]*]]
+; CHECK-DBG-INTRINSIC: @llvm.dbg.declare(metadata {{.*}} [[ST_V]], metadata [[ST_MD:![0-9]*]], metadata !DIExpression()), !dbg [[ST_LOC:![0-9]*]]
+; CHECK-DBG-RECORDS: #dbg_declare({{.*}} [[ST_V]], [[ST_MD:![0-9]*]], !DIExpression(), [[ST_LOC:![0-9]*]])
+; CHECK-DBG-INTRINSIC-DAG: @llvm.dbg.value(metadata {{.*}} [[SIN_V:%[A-z0-9]*]], metadata [[SIN_MD:![0-9]*]], metadata !DIExpression()), !dbg [[SIN_LOC:![0-9]*]]
+; CHECK-DBG-RECORDS-DAG: #dbg_value({{.*}} [[SIN_V:%[A-z0-9]*]], [[SIN_MD:![0-9]*]], !DIExpression(), [[SIN_LOC:![0-9]*]])
 ; CHECK-DAG: [[SIN_V]] = {{.*}}, !dbg [[SIN_LOC]]
-; CHECK-DAG: @llvm.dbg.value(metadata {{.*}} [[COS_V:%[A-z0-9]*]], metadata [[COS_MD:![0-9]*]], metadata !DIExpression()), !dbg [[COS_LOC:![0-9]*]]
+; CHECK-DBG-INTRINSIC-DAG: @llvm.dbg.value(metadata {{.*}} [[COS_V:%[A-z0-9]*]], metadata [[COS_MD:![0-9]*]], metadata !DIExpression()), !dbg [[COS_LOC:![0-9]*]]
+; CHECK-DBG-RECORDS-DAG: #dbg_value({{.*}} [[COS_V:%[A-z0-9]*]], [[COS_MD:![0-9]*]], !DIExpression(), [[COS_LOC:![0-9]*]])
 ; CHECK-DAG: [[COS_V]] = {{.*}}, !dbg [[COS_LOC]]
 
 define spir_kernel void @test_wa(float %src) !dbg !8 {

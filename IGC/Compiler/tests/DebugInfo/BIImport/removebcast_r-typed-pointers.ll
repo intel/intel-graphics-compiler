@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; RUN: igc_opt -igc-builtin-import -disable-verify -S < %s | FileCheck %s
+; RUN: igc_opt -igc-builtin-import -disable-verify -S < %s | FileCheck %s --check-prefixes=CHECK,%if llvm-22-plus %{CHECK-DBG-RECORDS%} %else %{CHECK-DBG-INTRINSIC%}
 ; ------------------------------------------------
 ; BIImport
 ; ------------------------------------------------
@@ -18,7 +18,8 @@
 
 ; CHECK: void @test_biimport{{.*}} !dbg [[SCOPE:![0-9]*]]
 ; CHECK: [[CALL_V:%[A-z0-9]*]] = {{.*}}, !dbg [[CALL_LOC:![0-9]*]]
-; CHECK: void @llvm.dbg.value(metadata i32 [[CALL_V]], metadata [[CALL_MD:![0-9]*]], metadata !DIExpression()), !dbg [[CALL_LOC]]
+; CHECK-DBG-INTRINSIC: void @llvm.dbg.value(metadata i32 [[CALL_V]], metadata [[CALL_MD:![0-9]*]], metadata !DIExpression()), !dbg [[CALL_LOC]]
+; CHECK-DBG-RECORDS: #dbg_value(i32 [[CALL_V]], [[CALL_MD:![0-9]*]], !DIExpression(), [[CALL_LOC]])
 ; CHECK: store{{.*}}, !dbg [[STORE_LOC:![0-9]*]]
 ; CHECK: ret{{.*}} !dbg [[RET_LOC:![0-9]*]]
 
@@ -31,7 +32,8 @@ define void @test_biimport(i32* %a) !dbg !6 {
 
 ; CHECK: @foo
 ; CHECK: [[PTOI_V:%[A-z0-9]*]] = {{.*}}, !dbg [[PTOI_LOC:![0-9]*]]
-; CHECK: void @llvm.dbg.value(metadata i32 [[PTOI_V]], metadata [[PTOI_MD:![0-9]*]], metadata !DIExpression()), !dbg [[PTOI_LOC]]
+; CHECK-DBG-INTRINSIC: void @llvm.dbg.value(metadata i32 [[PTOI_V]], metadata [[PTOI_MD:![0-9]*]], metadata !DIExpression()), !dbg [[PTOI_LOC]]
+; CHECK-DBG-RECORDS: #dbg_value(i32 [[PTOI_V]], [[PTOI_MD:![0-9]*]], !DIExpression(), [[PTOI_LOC]])
 
 define i32 @foo(i8* %b) {
   %1 = ptrtoint i8* %b to i32, !dbg !17

@@ -7,7 +7,7 @@
 ;============================ end_copyright_notice =============================
 ;
 ; REQUIRES: llvm-14-plus
-; RUN: igc_opt --opaque-pointers --igc-addrspacecast-fix -S < %s | FileCheck %s
+; RUN: igc_opt --opaque-pointers --igc-addrspacecast-fix -S < %s | FileCheck %s --check-prefixes=CHECK,%if llvm-22-plus %{CHECK-DBG-RECORDS%} %else %{CHECK-DBG-INTRINSIC%}
 ; ------------------------------------------------
 ; FixAddrSpaceCast
 ; ------------------------------------------------
@@ -19,9 +19,11 @@
 
 ; CHECK: @test_fixaddr{{.*}} !dbg [[SCOPE:![0-9]*]]
 ; CHECK: [[ITOPTR_V:%[0-9A-z.]*]] = bitcast{{.*}}, !dbg [[ITOPTR_LOC:![0-9]*]]
-; CHECK: llvm.dbg.value(metadata ptr [[ITOPTR_V]], metadata [[ITOPTR_MD:![0-9]*]], metadata !DIExpression()), !dbg [[ITOPTR_LOC]]
+; CHECK-DBG-INTRINSIC: llvm.dbg.value(metadata ptr [[ITOPTR_V]], metadata [[ITOPTR_MD:![0-9]*]], metadata !DIExpression()), !dbg [[ITOPTR_LOC]]
+; CHECK-DBG-RECORDS: #dbg_value(ptr [[ITOPTR_V]], [[ITOPTR_MD:![0-9]*]], !DIExpression(), [[ITOPTR_LOC]])
 ; CHECK: [[ACAST_V:%[0-9A-z.]*]] = addrspacecast{{.*}}, !dbg [[ACAST_LOC:![0-9]*]]
-; CHECK: llvm.dbg.value(metadata ptr addrspace(2) [[ACAST_V]], metadata [[ACAST_MD:![0-9]*]], metadata !DIExpression()), !dbg [[ACAST_LOC]]
+; CHECK-DBG-INTRINSIC: llvm.dbg.value(metadata ptr addrspace(2) [[ACAST_V]], metadata [[ACAST_MD:![0-9]*]], metadata !DIExpression()), !dbg [[ACAST_LOC]]
+; CHECK-DBG-RECORDS: #dbg_value(ptr addrspace(2) [[ACAST_V]], [[ACAST_MD:![0-9]*]], !DIExpression(), [[ACAST_LOC]])
 ; CHECK: store {{.*}}, !dbg [[STORE_LOC:![0-9]*]]
 
 define void @test_fixaddr(ptr %src) !dbg !6 {

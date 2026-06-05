@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: igc_opt -igc-synchronization-object-coalescing -S < %s | FileCheck %s
+; RUN: igc_opt -igc-synchronization-object-coalescing -S < %s | FileCheck %s --check-prefixes=CHECK,%if llvm-22-plus %{CHECK-DBG-RECORDS%} %else %{CHECK-DBG-INTRINSIC%}
 ; ------------------------------------------------
 ; SynchronizationObjectCoalescing
 ; ------------------------------------------------
@@ -21,7 +21,8 @@
 ; CHECK: call void @llvm.genx.GenISA.memoryfence{{.*}}, !dbg [[FENCE1_LOC:![0-9]*]]
 ; CHECK: call void @llvm.genx.GenISA.threadgroupbarrier{{.*}}, !dbg [[BARRIER1_LOC:![0-9]*]]
 ; CHECK: [[LOAD1_V:%[A-z0-9.]*]] = {{.*}}, !dbg [[LOAD1_LOC:![0-9]*]]
-; CHECK: void @llvm.dbg.value(metadata float [[LOAD1_V]], metadata [[LOAD1_MD:![0-9]*]], metadata !DIExpression()), !dbg [[LOAD1_LOC]]
+; CHECK-DBG-INTRINSIC: void @llvm.dbg.value(metadata float [[LOAD1_V]], metadata [[LOAD1_MD:![0-9]*]], metadata !DIExpression()), !dbg [[LOAD1_LOC]]
+; CHECK-DBG-RECORDS: #dbg_value(float [[LOAD1_V]], [[LOAD1_MD:![0-9]*]], !DIExpression(), [[LOAD1_LOC]])
 
 define void @test1(float addrspace(3)* %src1, float addrspace(3)* %src2) !dbg !6 {
   store float 5.000000e-01, float addrspace(3)* %src1, align 4, !dbg !11
@@ -34,7 +35,8 @@ define void @test1(float addrspace(3)* %src1, float addrspace(3)* %src2) !dbg !6
 
 ; CHECK: define void @test2{{.*}} !dbg [[SCOPE2:![0-9]*]]
 ; CHECK: [[LOAD2_V:%[A-z0-9.]*]] = {{.*}}, !dbg [[LOAD2_LOC:![0-9]*]]
-; CHECK: void @llvm.dbg.value(metadata float [[LOAD2_V]], metadata [[LOAD2_MD:![0-9]*]], metadata !DIExpression()), !dbg [[LOAD2_LOC]]
+; CHECK-DBG-INTRINSIC: void @llvm.dbg.value(metadata float [[LOAD2_V]], metadata [[LOAD2_MD:![0-9]*]], metadata !DIExpression()), !dbg [[LOAD2_LOC]]
+; CHECK-DBG-RECORDS: #dbg_value(float [[LOAD2_V]], [[LOAD2_MD:![0-9]*]], !DIExpression(), [[LOAD2_LOC]])
 ; CHECK: call void @llvm.genx.GenISA.memoryfence{{.*}}, !dbg [[FENCE2_LOC:![0-9]*]]
 ; CHECK: call void @llvm.genx.GenISA.threadgroupbarrier{{.*}}, !dbg [[BARRIER2_LOC:![0-9]*]]
 ; CHECK: store float {{.*}}, !dbg [[STR2_LOC:![0-9]*]]
@@ -64,9 +66,11 @@ define void @test3(float addrspace(3)* %src1, float addrspace(3)* %src2) !dbg !2
 
 ; CHECK: define void @test4{{.*}} !dbg [[SCOPE4:![0-9]*]]
 ; CHECK: [[LOAD3_V:%[A-z0-9.]*]] = {{.*}}, !dbg [[LOAD3_LOC:![0-9]*]]
-; CHECK: void @llvm.dbg.value(metadata float [[LOAD3_V]], metadata [[LOAD3_MD:![0-9]*]], metadata !DIExpression()), !dbg [[LOAD3_LOC]]
+; CHECK-DBG-INTRINSIC: void @llvm.dbg.value(metadata float [[LOAD3_V]], metadata [[LOAD3_MD:![0-9]*]], metadata !DIExpression()), !dbg [[LOAD3_LOC]]
+; CHECK-DBG-RECORDS: #dbg_value(float [[LOAD3_V]], [[LOAD3_MD:![0-9]*]], !DIExpression(), [[LOAD3_LOC]])
 ; CHECK: [[LOAD4_V:%[A-z0-9.]*]] = {{.*}}, !dbg [[LOAD4_LOC:![0-9]*]]
-; CHECK: void @llvm.dbg.value(metadata float [[LOAD4_V]], metadata [[LOAD4_MD:![0-9]*]], metadata !DIExpression()), !dbg [[LOAD4_LOC]]
+; CHECK-DBG-INTRINSIC: void @llvm.dbg.value(metadata float [[LOAD4_V]], metadata [[LOAD4_MD:![0-9]*]], metadata !DIExpression()), !dbg [[LOAD4_LOC]]
+; CHECK-DBG-RECORDS: #dbg_value(float [[LOAD4_V]], [[LOAD4_MD:![0-9]*]], !DIExpression(), [[LOAD4_LOC]])
 
 define void @test4(float addrspace(3)* %src1, float addrspace(3)* %src2) !dbg !30 {
   %1 = load float, float addrspace(3)* %src2, align 4, !dbg !34

@@ -8,7 +8,7 @@
 
 
 ; REQUIRES: llvm-14-plus
-; RUN: igc_opt --opaque-pointers -igc-custom-unsafe-opt-pass -S < %s | FileCheck %s
+; RUN: igc_opt --opaque-pointers -igc-custom-unsafe-opt-pass -S < %s | FileCheck %s --check-prefixes=CHECK,%if llvm-22-plus %{CHECK-DBG-RECORDS%} %else %{CHECK-DBG-INTRINSIC%}
 ; ------------------------------------------------
 ; CustomUnsafeOptPass
 ; ------------------------------------------------
@@ -21,21 +21,29 @@
 ; CHECK: define spir_kernel void @test_custom{{.*}} !dbg [[SCOPE:![0-9]*]]
 ; CHECK: entry:
 ; CHECK: [[VAL1_V:%[A-z0-9]*]] = {{.*}}, !dbg [[VAL1_LOC:![0-9]*]]
-; CHECK: void @llvm.dbg.value(metadata float [[VAL1_V]], metadata [[VAL1_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL1_LOC]]
-; CHECK: void @llvm.dbg.value(metadata float 0.0{{.*}}, metadata [[VAL2_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL2_LOC:![0-9]*]]
-; CHECK: void @llvm.dbg.value(metadata float %a, metadata [[VAL3_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL3_LOC:![0-9]*]]
+; CHECK-DBG-INTRINSIC: void @llvm.dbg.value(metadata float [[VAL1_V]], metadata [[VAL1_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL1_LOC]]
+; CHECK-DBG-RECORDS: #dbg_value(float [[VAL1_V]], [[VAL1_MD:![0-9]*]], !DIExpression(), [[VAL1_LOC]])
+; CHECK-DBG-INTRINSIC: void @llvm.dbg.value(metadata float 0.0{{.*}}, metadata [[VAL2_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL2_LOC:![0-9]*]]
+; CHECK-DBG-RECORDS: #dbg_value(float 0.0{{.*}}, [[VAL2_MD:![0-9]*]], !DIExpression(), [[VAL2_LOC:![0-9]*]])
+; CHECK-DBG-INTRINSIC: void @llvm.dbg.value(metadata float %a, metadata [[VAL3_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL3_LOC:![0-9]*]]
+; CHECK-DBG-RECORDS: #dbg_value(float %a, [[VAL3_MD:![0-9]*]], !DIExpression(), [[VAL3_LOC:![0-9]*]])
 ; CHECK: store float %a,{{.*}}, !dbg [[STORE1_LOC:![0-9]*]]
 ; CHECK: [[TEMP_V:%[A-z0-9]*]] = fsub fast float 0{{.*}}, !dbg [[VAL5_LOC:![0-9]*]]
 ; CHECK: [[VAL5_V:%[A-z0-9]*]] = fmul fast float [[TEMP_V]],{{.*}}, !dbg [[VAL5_LOC]]
-; CHECK: void @llvm.dbg.value(metadata float [[VAL5_V]], metadata [[VAL4_MD:![0-9]*]], metadata !DIExpression({{.*}}{{DW_OP_neg|(DW_OP_constu, 0, DW_OP_swap, DW_OP_minus)}}{{.*}})), !dbg [[VAL4_LOC:![0-9]*]]
-; CHECK: void @llvm.dbg.value(metadata float [[VAL5_V]], metadata [[VAL5_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL5_LOC:![0-9]*]]
+; CHECK-DBG-INTRINSIC: void @llvm.dbg.value(metadata float [[VAL5_V]], metadata [[VAL4_MD:![0-9]*]], metadata !DIExpression({{.*}}{{DW_OP_neg|(DW_OP_constu, 0, DW_OP_swap, DW_OP_minus)}}{{.*}})), !dbg [[VAL4_LOC:![0-9]*]]
+; CHECK-DBG-RECORDS: #dbg_value(float [[VAL5_V]], [[VAL4_MD:![0-9]*]], !DIExpression({{.*}}{{DW_OP_neg|(DW_OP_constu, 0, DW_OP_swap, DW_OP_minus)|(DW_OP_lit0, DW_OP_swap, DW_OP_minus)}}{{.*}}), [[VAL4_LOC:![0-9]*]])
+; CHECK-DBG-INTRINSIC: void @llvm.dbg.value(metadata float [[VAL5_V]], metadata [[VAL5_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL5_LOC:![0-9]*]]
+; CHECK-DBG-RECORDS: #dbg_value(float [[VAL5_V]], [[VAL5_MD:![0-9]*]], !DIExpression(), [[VAL5_LOC:![0-9]*]])
 ; CHECK: store float [[VAL5_V]]{{.*}}, !dbg [[STORE2_LOC:![0-9]*]]
 ; this value is unsalvageble
-; CHECK: void @llvm.dbg.value({{.*}}
+; CHECK-DBG-INTRINSIC: void @llvm.dbg.value({{.*}}
+; CHECK-DBG-RECORDS: #dbg_value({{.*}}
 ; CHECK: [[VAL7_V:%[A-z0-9]*]] = {{.*}}, !dbg [[VAL7_LOC:![0-9]*]]
-; CHECK: void @llvm.dbg.value(metadata float [[VAL7_V]], metadata [[VAL7_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL7_LOC]]
+; CHECK-DBG-INTRINSIC: void @llvm.dbg.value(metadata float [[VAL7_V]], metadata [[VAL7_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL7_LOC]]
+; CHECK-DBG-RECORDS: #dbg_value(float [[VAL7_V]], [[VAL7_MD:![0-9]*]], !DIExpression(), [[VAL7_LOC]])
 ; CHECK: store float [[VAL7_V]]{{.*}}, !dbg [[STORE3_LOC:![0-9]*]]
-; CHECK: void @llvm.dbg.value(metadata float [[VAL1_V]], metadata [[VAL10_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL10_LOC:![0-9]*]]
+; CHECK-DBG-INTRINSIC: void @llvm.dbg.value(metadata float [[VAL1_V]], metadata [[VAL10_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL10_LOC:![0-9]*]]
+; CHECK-DBG-RECORDS: #dbg_value(float [[VAL1_V]], [[VAL10_MD:![0-9]*]], !DIExpression(), [[VAL10_LOC:![0-9]*]])
 
 define spir_kernel void @test_custom(float %a, float addrspace(65549)* %b) !dbg !9 {
 entry:

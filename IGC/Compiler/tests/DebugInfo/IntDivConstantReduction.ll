@@ -8,7 +8,7 @@
 
 
 ; REQUIRES: llvm-14-plus
-; RUN: igc_opt --opaque-pointers -igc-intdiv-red -S < %s | FileCheck %s
+; RUN: igc_opt --opaque-pointers -igc-intdiv-red -S < %s | FileCheck %s --check-prefixes=CHECK,%if llvm-22-plus %{CHECK-DBG-RECORDS%} %else %{CHECK-DBG-INTRINSIC%}
 ; ------------------------------------------------
 ; IntDivConstantReduction
 ; ------------------------------------------------
@@ -25,25 +25,29 @@ define spir_kernel void @test_div(i32 %src1) !dbg !6 {
 ; Testcase 1
 ; Check that udiv debug value is preserved
 ; CHECK: [[UDIV_V:%[a-z0-9_]*]] = lshr i32 {{.*}} !dbg [[UDIV_LOC:![0-9]*]]
-; CHECK-NEXT: [[DBG_VALUE_CALL:dbg.value\(metadata]] i32 [[UDIV_V]],  metadata [[UDIV_MD:![0-9]*]], metadata !DIExpression()), !dbg [[UDIV_LOC]]
+; CHECK-DBG-INTRINSIC-NEXT: [[DBG_VALUE_CALL:dbg.value\(metadata]] i32 [[UDIV_V]],  metadata [[UDIV_MD:![0-9]*]], metadata !DIExpression()), !dbg [[UDIV_LOC]]
+; CHECK-DBG-RECORDS-NEXT: #dbg_value(i32 [[UDIV_V]], [[UDIV_MD:![0-9]*]], !DIExpression(), [[UDIV_LOC]])
   %1 = udiv i32 %src1, 3, !dbg !14
   call void @llvm.dbg.value(metadata i32 %1, metadata !9, metadata !DIExpression()), !dbg !14
 ; Testcase 2
 ; Check that sdiv debug value is preserved
 ; CHECK: [[SDIV_V:%[a-z0-9_]*]] = sub i32 {{.*}} !dbg [[SDIV_LOC:![0-9]*]]
-; CHECK-NEXT: [[DBG_VALUE_CALL]] i32 [[SDIV_V]],  metadata [[SDIV_MD:![0-9]*]], metadata !DIExpression()), !dbg [[SDIV_LOC]]
+; CHECK-DBG-INTRINSIC-NEXT: [[DBG_VALUE_CALL]] i32 [[SDIV_V]],  metadata [[SDIV_MD:![0-9]*]], metadata !DIExpression()), !dbg [[SDIV_LOC]]
+; CHECK-DBG-RECORDS-NEXT: #dbg_value(i32 [[SDIV_V]], [[SDIV_MD:![0-9]*]], !DIExpression(), [[SDIV_LOC]])
   %2 = sdiv i32 %src1, -2147483648, !dbg !15
   call void @llvm.dbg.value(metadata i32 %2, metadata !11, metadata !DIExpression()), !dbg !15
 ; Testcase 3
 ; Check that urem debug value is preserved
 ; CHECK: [[UREM_V:%[a-z0-9_]*]] = sub i32 {{.*}} !dbg [[UREM_LOC:![0-9]*]]
-; CHECK-NEXT: [[DBG_VALUE_CALL]] i32 [[UREM_V]],  metadata [[UREM_MD:![0-9]*]], metadata !DIExpression()), !dbg [[UREM_LOC]]
+; CHECK-DBG-INTRINSIC-NEXT: [[DBG_VALUE_CALL]] i32 [[UREM_V]],  metadata [[UREM_MD:![0-9]*]], metadata !DIExpression()), !dbg [[UREM_LOC]]
+; CHECK-DBG-RECORDS-NEXT: #dbg_value(i32 [[UREM_V]], [[UREM_MD:![0-9]*]], !DIExpression(), [[UREM_LOC]])
   %3 = urem i32 %src1, 15, !dbg !16
   call void @llvm.dbg.value(metadata i32 %3, metadata !12, metadata !DIExpression()), !dbg !16
 ; Testcase 4
 ; Check that srem debug value is preserved
 ; CHECK: [[SREM_V:%[a-z0-9_]*]] = sub i32 {{.*}} !dbg [[SREM_LOC:![0-9]*]]
-; CHECK-NEXT: [[DBG_VALUE_CALL]] i32 [[SREM_V]],  metadata [[SREM_MD:![0-9]*]], metadata !DIExpression()), !dbg [[SREM_LOC]]
+; CHECK-DBG-INTRINSIC-NEXT: [[DBG_VALUE_CALL]] i32 [[SREM_V]],  metadata [[SREM_MD:![0-9]*]], metadata !DIExpression()), !dbg [[SREM_LOC]]
+; CHECK-DBG-RECORDS-NEXT: #dbg_value(i32 [[SREM_V]], [[SREM_MD:![0-9]*]], !DIExpression(), [[SREM_LOC]])
   %4 = srem i32 %src1, 2, !dbg !17
   call void @llvm.dbg.value(metadata i32 %4, metadata !13, metadata !DIExpression()), !dbg !17
   ret void, !dbg !18

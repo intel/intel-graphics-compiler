@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: igc_opt -igc-custom-safe-opt -S < %s | FileCheck %s
+; RUN: igc_opt -igc-custom-safe-opt -S < %s | FileCheck %s --check-prefixes=CHECK,%if llvm-22-plus %{CHECK-DBG-RECORDS%} %else %{CHECK-DBG-INTRINSIC%}
 ; ------------------------------------------------
 ; CustomSafeOptPass
 ; ------------------------------------------------
@@ -20,15 +20,20 @@
 ; CHECK: entry:
 ; CHECK: [[VAL2_V:%[A-z0-9]*]] = {{.*}}, !dbg [[VAL2_LOC:![0-9]*]]
 ; Note: other DIExpr than xor could be used
-; CHECK: void @llvm.dbg.value(metadata i1 [[VAL2_V]], metadata [[VAL1_MD:![0-9]*]], metadata !DIExpression(DW_OP_constu, 1, DW_OP_xor, DW_OP_stack_value)), !dbg [[VAL1_LOC:![0-9]*]]
-; CHECK: void @llvm.dbg.value(metadata i1 [[VAL2_V]], metadata [[VAL2_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL2_LOC]]
+; CHECK-DBG-INTRINSIC: void @llvm.dbg.value(metadata i1 [[VAL2_V]], metadata [[VAL1_MD:![0-9]*]], metadata !DIExpression(DW_OP_constu, 1, DW_OP_xor, DW_OP_stack_value)), !dbg [[VAL1_LOC:![0-9]*]]
+; CHECK-DBG-RECORDS: #dbg_value(i1 [[VAL2_V]], [[VAL1_MD:![0-9]*]], !DIExpression(DW_OP_constu, 1, DW_OP_xor, DW_OP_stack_value), [[VAL1_LOC:![0-9]*]])
+; CHECK-DBG-INTRINSIC: void @llvm.dbg.value(metadata i1 [[VAL2_V]], metadata [[VAL2_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL2_LOC]]
+; CHECK-DBG-RECORDS: #dbg_value(i1 [[VAL2_V]], [[VAL2_MD:![0-9]*]], !DIExpression(), [[VAL2_LOC]])
 ; CHECK: [[VAL3_V:%[A-z0-9]*]] = {{.*}}, !dbg [[VAL3_LOC:![0-9]*]]
-; CHECK: void @llvm.dbg.value(metadata i32 [[VAL3_V]], metadata [[VAL3_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL3_LOC]]
+; CHECK-DBG-INTRINSIC: void @llvm.dbg.value(metadata i32 [[VAL3_V]], metadata [[VAL3_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL3_LOC]]
+; CHECK-DBG-RECORDS: #dbg_value(i32 [[VAL3_V]], [[VAL3_MD:![0-9]*]], !DIExpression(), [[VAL3_LOC]])
 ; CHECK: store i32 [[VAL3_V]]{{.*}}, !dbg [[STORE1_LOC:![0-9]*]]
 ; CHECK: [[VAL5_V:%[A-z0-9]*]] = {{.*}}, !dbg [[VAL5_LOC:![0-9]*]]
 ; Note: other DIExpr than xor could be used
-; CHECK: void @llvm.dbg.value(metadata i1 [[VAL5_V]], metadata [[VAL4_MD:![0-9]*]], metadata !DIExpression(DW_OP_constu, 1, DW_OP_xor, DW_OP_stack_value)), !dbg [[VAL4_LOC:![0-9]*]]
-; CHECK: void @llvm.dbg.value(metadata i1 [[VAL5_V]], metadata [[VAL5_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL5_LOC]]
+; CHECK-DBG-INTRINSIC: void @llvm.dbg.value(metadata i1 [[VAL5_V]], metadata [[VAL4_MD:![0-9]*]], metadata !DIExpression(DW_OP_constu, 1, DW_OP_xor, DW_OP_stack_value)), !dbg [[VAL4_LOC:![0-9]*]]
+; CHECK-DBG-RECORDS: #dbg_value(i1 [[VAL5_V]], [[VAL4_MD:![0-9]*]], !DIExpression(DW_OP_constu, 1, DW_OP_xor, DW_OP_stack_value), [[VAL4_LOC:![0-9]*]])
+; CHECK-DBG-INTRINSIC: void @llvm.dbg.value(metadata i1 [[VAL5_V]], metadata [[VAL5_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL5_LOC]]
+; CHECK-DBG-RECORDS: #dbg_value(i1 [[VAL5_V]], [[VAL5_MD:![0-9]*]], !DIExpression(), [[VAL5_LOC]])
 
 define spir_kernel void @test_customsafe(i32 %a, i32 %b, i32* %c) !dbg !6 {
 entry:

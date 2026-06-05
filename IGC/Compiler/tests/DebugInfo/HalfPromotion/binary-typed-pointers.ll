@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: igc_opt --half-promotion  -S < %s | FileCheck %s
+; RUN: igc_opt --half-promotion  -S < %s | FileCheck %s --check-prefixes=CHECK,%if llvm-22-plus %{CHECK-DBG-RECORDS%} %else %{CHECK-DBG-INTRINSIC%}
 ; ------------------------------------------------
 ; HalfPromotion
 ; ------------------------------------------------
@@ -18,22 +18,28 @@
 
 ; CHECK: define void @test_half
 ; CHECK-SAME: !dbg [[SCOPE:![0-9]*]]
-; CHECK-DAG: @llvm.dbg.value(metadata half [[FADD_V:%[0-9]*]], metadata [[FADD_MD:![0-9]*]], metadata !DIExpression()), !dbg [[FADD_LOC:![0-9]*]]
+; CHECK-DBG-INTRINSIC-DAG: @llvm.dbg.value(metadata half [[FADD_V:%[0-9]*]], metadata [[FADD_MD:![0-9]*]], metadata !DIExpression()), !dbg [[FADD_LOC:![0-9]*]]
+; CHECK-DBG-RECORDS-DAG: #dbg_value(half [[FADD_V:%[0-9]*]], [[FADD_MD:![0-9]*]], !DIExpression(), [[FADD_LOC:![0-9]*]])
 ; CHECK-DAG: [[FADD_V]] = {{.*}}, !dbg [[FADD_LOC:![0-9]*]]
 
-; CHECK-DAG: @llvm.dbg.value(metadata half [[FMUL_V:%[0-9]*]], metadata [[FMUL_MD:![0-9]*]], metadata !DIExpression()), !dbg [[FMUL_LOC:![0-9]*]]
+; CHECK-DBG-INTRINSIC-DAG: @llvm.dbg.value(metadata half [[FMUL_V:%[0-9]*]], metadata [[FMUL_MD:![0-9]*]], metadata !DIExpression()), !dbg [[FMUL_LOC:![0-9]*]]
+; CHECK-DBG-RECORDS-DAG: #dbg_value(half [[FMUL_V:%[0-9]*]], [[FMUL_MD:![0-9]*]], !DIExpression(), [[FMUL_LOC:![0-9]*]])
 ; CHECK-DAG: [[FMUL_V]] = {{.*}}, !dbg [[FMUL_LOC:![0-9]*]]
 
-; CHECK-DAG: @llvm.dbg.value(metadata half [[UITO_V:%[0-9]*]], metadata [[UITO_MD:![0-9]*]], metadata !DIExpression()), !dbg [[UITO_LOC:![0-9]*]]
+; CHECK-DBG-INTRINSIC-DAG: @llvm.dbg.value(metadata half [[UITO_V:%[0-9]*]], metadata [[UITO_MD:![0-9]*]], metadata !DIExpression()), !dbg [[UITO_LOC:![0-9]*]]
+; CHECK-DBG-RECORDS-DAG: #dbg_value(half [[UITO_V:%[0-9]*]], [[UITO_MD:![0-9]*]], !DIExpression(), [[UITO_LOC:![0-9]*]])
 ; CHECK-DAG: [[UITO_V]] = {{.*}}, !dbg [[UITO_LOC:![0-9]*]]
 
-; CHECK-DAG: @llvm.dbg.value(metadata half [[SITO_V:%[0-9]*]], metadata [[SITO_MD:![0-9]*]], metadata !DIExpression()), !dbg [[SITO_LOC:![0-9]*]]
+; CHECK-DBG-INTRINSIC-DAG: @llvm.dbg.value(metadata half [[SITO_V:%[0-9]*]], metadata [[SITO_MD:![0-9]*]], metadata !DIExpression()), !dbg [[SITO_LOC:![0-9]*]]
+; CHECK-DBG-RECORDS-DAG: #dbg_value(half [[SITO_V:%[0-9]*]], [[SITO_MD:![0-9]*]], !DIExpression(), [[SITO_LOC:![0-9]*]])
 ; CHECK-DAG: [[SITO_V]] = {{.*}}, !dbg [[SITO_LOC:![0-9]*]]
 
-; CHECK-DAG: @llvm.dbg.value(metadata i16 [[TOUI_V:%[0-9]*]], metadata [[TOUI_MD:![0-9]*]], metadata !DIExpression()), !dbg [[TOUI_LOC:![0-9]*]]
+; CHECK-DBG-INTRINSIC-DAG: @llvm.dbg.value(metadata i16 [[TOUI_V:%[0-9]*]], metadata [[TOUI_MD:![0-9]*]], metadata !DIExpression()), !dbg [[TOUI_LOC:![0-9]*]]
+; CHECK-DBG-RECORDS-DAG: #dbg_value(i16 [[TOUI_V:%[0-9]*]], [[TOUI_MD:![0-9]*]], !DIExpression(), [[TOUI_LOC:![0-9]*]])
 ; CHECK-DAG: [[TOUI_V]] = {{.*}}, !dbg [[TOUI_LOC:![0-9]*]]
 
-; CHECK-DAG: @llvm.dbg.value(metadata i16 [[TOSI_V:%[0-9]*]], metadata [[TOSI_MD:![0-9]*]], metadata !DIExpression()), !dbg [[TOSI_LOC:![0-9]*]]
+; CHECK-DBG-INTRINSIC-DAG: @llvm.dbg.value(metadata i16 [[TOSI_V:%[0-9]*]], metadata [[TOSI_MD:![0-9]*]], metadata !DIExpression()), !dbg [[TOSI_LOC:![0-9]*]]
+; CHECK-DBG-RECORDS-DAG: #dbg_value(i16 [[TOSI_V:%[0-9]*]], [[TOSI_MD:![0-9]*]], !DIExpression(), [[TOSI_LOC:![0-9]*]])
 ; CHECK-DAG: [[TOSI_V]] = {{.*}}, !dbg [[TOSI_LOC:![0-9]*]]
 
 define void @test_half(half %src1, half %src2, i32 %src3) !dbg !6 {

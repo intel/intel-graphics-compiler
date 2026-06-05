@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: igc_opt -GenStrengthReduction -S < %s | FileCheck %s
+; RUN: igc_opt -GenStrengthReduction -S < %s | FileCheck %s --check-prefixes=CHECK,%if llvm-22-plus %{CHECK-DBG-RECORDS%} %else %{CHECK-DBG-INTRINSIC%}
 ; ------------------------------------------------
 ; GenStrengthReduction
 ; ------------------------------------------------
@@ -16,22 +16,29 @@
 ; Debug MD for this test was created with debugify pass.
 
 ; CHECK: define spir_kernel void @test{{.*}} !dbg [[SCOPE:![0-9]*]]
-; CHECK: void @llvm.dbg.value(metadata float %a, metadata [[VAL1_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL1_LOC:![0-9]*]]
+; CHECK-DBG-INTRINSIC: void @llvm.dbg.value(metadata float %a, metadata [[VAL1_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL1_LOC:![0-9]*]]
+; CHECK-DBG-RECORDS: #dbg_value(float %a, [[VAL1_MD:![0-9]*]], !DIExpression(), [[VAL1_LOC:![0-9]*]])
 ; CHECK: store float %a, {{.*}}, !dbg [[STR1_LOC:![0-9]*]]
-; CHECK: void @llvm.dbg.value(metadata float [[VAL2_V:[0.e+]*]], metadata [[VAL2_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL2_LOC:![0-9]*]]
+; CHECK-DBG-INTRINSIC: void @llvm.dbg.value(metadata float [[VAL2_V:[0.e+]*]], metadata [[VAL2_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL2_LOC:![0-9]*]]
+; CHECK-DBG-RECORDS: #dbg_value(float [[VAL2_V:[0.e+]*]], [[VAL2_MD:![0-9]*]], !DIExpression(), [[VAL2_LOC:![0-9]*]])
 ; CHECK: store float [[VAL2_V]], {{.*}}, !dbg [[STR2_LOC:![0-9]*]]
-; CHECK: void @llvm.dbg.value(metadata float [[VAL3_V:[0.e+]*]], metadata [[VAL3_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL3_LOC:![0-9]*]]
+; CHECK-DBG-INTRINSIC: void @llvm.dbg.value(metadata float [[VAL3_V:[0.e+]*]], metadata [[VAL3_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL3_LOC:![0-9]*]]
+; CHECK-DBG-RECORDS: #dbg_value(float [[VAL3_V:[0.e+]*]], [[VAL3_MD:![0-9]*]], !DIExpression(), [[VAL3_LOC:![0-9]*]])
 ; CHECK: store float [[VAL3_V]], {{.*}}, !dbg [[STR3_LOC:![0-9]*]]
-; CHECK: void @llvm.dbg.value(metadata float %a, metadata [[VAL4_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL4_LOC:![0-9]*]]
+; CHECK-DBG-INTRINSIC: void @llvm.dbg.value(metadata float %a, metadata [[VAL4_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL4_LOC:![0-9]*]]
+; CHECK-DBG-RECORDS: #dbg_value(float %a, [[VAL4_MD:![0-9]*]], !DIExpression(), [[VAL4_LOC:![0-9]*]])
 ; CHECK: store float %a, {{.*}}, !dbg [[STR4_LOC:![0-9]*]]
 ; CHECK-DAG: store float [[VAL6_V:%[A-z0-9]*]], {{.*}}, !dbg [[STR5_LOC:![0-9]*]]
-; CHECK-DAG: void @llvm.dbg.value(metadata float [[VAL6_V]], metadata [[VAL6_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL6_LOC:![0-9]*]]
+; CHECK-DBG-INTRINSIC-DAG: void @llvm.dbg.value(metadata float [[VAL6_V]], metadata [[VAL6_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL6_LOC:![0-9]*]]
+; CHECK-DBG-RECORDS-DAG: #dbg_value(float [[VAL6_V]], [[VAL6_MD:![0-9]*]], !DIExpression(), [[VAL6_LOC:![0-9]*]])
 ; CHECK-DAG: [[VAL6_V]] = {{.*}}, !dbg [[VAL6_LOC]]
 ; CHECK-DAG: store float [[VAL7_V:%[A-z0-9]*]], {{.*}}, !dbg [[STR6_LOC:![0-9]*]]
-; CHECK-DAG: void @llvm.dbg.value(metadata float [[VAL7_V]], metadata [[VAL7_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL7_LOC:![0-9]*]]
+; CHECK-DBG-INTRINSIC-DAG: void @llvm.dbg.value(metadata float [[VAL7_V]], metadata [[VAL7_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL7_LOC:![0-9]*]]
+; CHECK-DBG-RECORDS-DAG: #dbg_value(float [[VAL7_V]], [[VAL7_MD:![0-9]*]], !DIExpression(), [[VAL7_LOC:![0-9]*]])
 ; CHECK-DAG: [[VAL7_V]] = {{.*}}, !dbg [[VAL7_LOC]]
 ; CHECK-DAG: store float [[VAL8_V:%[A-z0-9]*]], {{.*}}, !dbg [[STR7_LOC:![0-9]*]]
-; CHECK-DAG: void @llvm.dbg.value(metadata float [[VAL8_V]], metadata [[VAL8_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL8_LOC:![0-9]*]]
+; CHECK-DBG-INTRINSIC-DAG: void @llvm.dbg.value(metadata float [[VAL8_V]], metadata [[VAL8_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL8_LOC:![0-9]*]]
+; CHECK-DBG-RECORDS-DAG: #dbg_value(float [[VAL8_V]], [[VAL8_MD:![0-9]*]], !DIExpression(), [[VAL8_LOC:![0-9]*]])
 ; CHECK-DAG: [[VAL8_V]] = {{.*}}, !dbg [[VAL8_LOC]]
 
 define spir_kernel void @test(float %a, float* %b, i1 %c, float %d) !dbg !6 {

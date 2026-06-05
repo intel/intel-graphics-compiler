@@ -8,7 +8,7 @@
 
 
 ; REQUIRES: llvm-14-plus
-; RUN: igc_opt --opaque-pointers --igc-legalization -S < %s | FileCheck %s
+; RUN: igc_opt --opaque-pointers --igc-legalization -S < %s | FileCheck %s --check-prefixes=CHECK,%if llvm-22-plus %{CHECK-DBG-RECORDS%} %else %{CHECK-DBG-INTRINSIC%}
 ; ------------------------------------------------
 ; Legalization: fcmp patterns with flush NaN
 ; ------------------------------------------------
@@ -25,9 +25,11 @@ define spir_kernel void @test_fcmp(float %src1, float %src2) !dbg !7 {
 ; Testcase 1
 ; Since NaNs are flushed, cmp ord is true
 ; and value is RAUW'd.
-; CHECK: [[DBG_VALUE_CALL:dbg.value\(metadata]] i1 true,  metadata [[FCMP_ORD_MD:![0-9]*]], metadata !DIExpression()), !dbg [[FCMP_ORD_LOC:![0-9]*]]
+; CHECK-DBG-INTRINSIC: [[DBG_VALUE_CALL:dbg.value\(metadata]] i1 true,  metadata [[FCMP_ORD_MD:![0-9]*]], metadata !DIExpression()), !dbg [[FCMP_ORD_LOC:![0-9]*]]
+; CHECK-DBG-RECORDS: #dbg_value(i1 true, [[FCMP_ORD_MD:![0-9]*]], !DIExpression(), [[FCMP_ORD_LOC:![0-9]*]])
 ; CHECK-NEXT: [[ZEXT_ORD_V:%[0-9]*]] = zext i1 true to i32, !dbg [[ZEXT_ORD_LOC:![0-9]*]]
-; CHECK-NEXT: [[DBG_VALUE_CALL]] i32 [[ZEXT_ORD_V]],  metadata [[ZEXT_ORD_MD:![0-9]*]], metadata !DIExpression()), !dbg [[ZEXT_ORD_LOC]]
+; CHECK-DBG-INTRINSIC-NEXT: [[DBG_VALUE_CALL]] i32 [[ZEXT_ORD_V]],  metadata [[ZEXT_ORD_MD:![0-9]*]], metadata !DIExpression()), !dbg [[ZEXT_ORD_LOC]]
+; CHECK-DBG-RECORDS-NEXT: #dbg_value(i32 [[ZEXT_ORD_V]], [[ZEXT_ORD_MD:![0-9]*]], !DIExpression(), [[ZEXT_ORD_LOC]])
 
   %1 = fcmp ord float %src1, %src2, !dbg !23
   call void @llvm.dbg.value(metadata i1 %1, metadata !10, metadata !DIExpression()), !dbg !23
@@ -37,9 +39,11 @@ define spir_kernel void @test_fcmp(float %src1, float %src2) !dbg !7 {
 ; Testcase 2
 ; Since NaNs are flushed, cmp uno is false
 ; and its value is RAUW'd.
-; CHECK: [[DBG_VALUE_CALL]] i1 false,  metadata [[FCMP_UNO_MD:![0-9]*]], metadata !DIExpression()), !dbg [[FCMP_UNO_LOC:![0-9]*]]
+; CHECK-DBG-INTRINSIC: [[DBG_VALUE_CALL]] i1 false,  metadata [[FCMP_UNO_MD:![0-9]*]], metadata !DIExpression()), !dbg [[FCMP_UNO_LOC:![0-9]*]]
+; CHECK-DBG-RECORDS: #dbg_value(i1 false, [[FCMP_UNO_MD:![0-9]*]], !DIExpression(), [[FCMP_UNO_LOC:![0-9]*]])
 ; CHECK-NEXT: [[ZEXT_UNO_V:%[0-9]*]] = zext i1 false to i32, !dbg [[ZEXT_UNO_LOC:![0-9]*]]
-; CHECK-NEXT: [[DBG_VALUE_CALL]] i32 [[ZEXT_UNO_V]],  metadata [[ZEXT_UNO_MD:![0-9]*]], metadata !DIExpression()), !dbg [[ZEXT_UNO_LOC]]
+; CHECK-DBG-INTRINSIC-NEXT: [[DBG_VALUE_CALL]] i32 [[ZEXT_UNO_V]],  metadata [[ZEXT_UNO_MD:![0-9]*]], metadata !DIExpression()), !dbg [[ZEXT_UNO_LOC]]
+; CHECK-DBG-RECORDS-NEXT: #dbg_value(i32 [[ZEXT_UNO_V]], [[ZEXT_UNO_MD:![0-9]*]], !DIExpression(), [[ZEXT_UNO_LOC]])
 
   %3 = fcmp uno float %src1, %src2, !dbg !25
   call void @llvm.dbg.value(metadata i1 %3, metadata !14, metadata !DIExpression()), !dbg !25
@@ -53,9 +57,11 @@ define spir_kernel void @test_fcmp(float %src1, float %src2) !dbg !7 {
 ; uge -> oge
 ; Testcase 3:
 ; CHECK-NEXT: [[FCMP_ONE_V:%[0-9]*]] = fcmp une float %src1, %src2, !dbg [[FCMP_ONE_LOC:![0-9]*]]
-; CHECK-NEXT: [[DBG_VALUE_CALL]] i1 [[FCMP_ONE_V]],  metadata [[FCMP_ONE_MD:![0-9]*]], metadata !DIExpression()), !dbg [[FCMP_ONE_LOC]]
+; CHECK-DBG-INTRINSIC-NEXT: [[DBG_VALUE_CALL]] i1 [[FCMP_ONE_V]],  metadata [[FCMP_ONE_MD:![0-9]*]], metadata !DIExpression()), !dbg [[FCMP_ONE_LOC]]
+; CHECK-DBG-RECORDS-NEXT: #dbg_value(i1 [[FCMP_ONE_V]], [[FCMP_ONE_MD:![0-9]*]], !DIExpression(), [[FCMP_ONE_LOC]])
 ; CHECK-NEXT: [[ZEXT_ONE_V:%[0-9]*]] = zext i1 [[FCMP_ONE_V]] to i32, !dbg [[ZEXT_ONE_LOC:![0-9]*]]
-; CHECK-NEXT: [[DBG_VALUE_CALL]] i32 [[ZEXT_ONE_V]],  metadata [[ZEXT_ONE_MD:![0-9]*]], metadata !DIExpression()), !dbg [[ZEXT_ONE_LOC]]
+; CHECK-DBG-INTRINSIC-NEXT: [[DBG_VALUE_CALL]] i32 [[ZEXT_ONE_V]],  metadata [[ZEXT_ONE_MD:![0-9]*]], metadata !DIExpression()), !dbg [[ZEXT_ONE_LOC]]
+; CHECK-DBG-RECORDS-NEXT: #dbg_value(i32 [[ZEXT_ONE_V]], [[ZEXT_ONE_MD:![0-9]*]], !DIExpression(), [[ZEXT_ONE_LOC]])
   %5 = fcmp one float %src1, %src2, !dbg !27
   call void @llvm.dbg.value(metadata i1 %5, metadata !16, metadata !DIExpression()), !dbg !27
   %6 = zext i1 %5 to i32, !dbg !28
@@ -63,9 +69,11 @@ define spir_kernel void @test_fcmp(float %src1, float %src2) !dbg !7 {
 
 ; Testcase 4
 ; CHECK-NEXT: [[FCMP_UEQ_V:%[0-9]*]] = fcmp oeq float %src1, %src2, !dbg [[FCMP_UEQ_LOC:![0-9]*]]
-; CHECK-NEXT: [[DBG_VALUE_CALL]] i1 [[FCMP_UEQ_V]],  metadata [[FCMP_UEQ_MD:![0-9]*]], metadata !DIExpression()), !dbg [[FCMP_UEQ_LOC]]
+; CHECK-DBG-INTRINSIC-NEXT: [[DBG_VALUE_CALL]] i1 [[FCMP_UEQ_V]],  metadata [[FCMP_UEQ_MD:![0-9]*]], metadata !DIExpression()), !dbg [[FCMP_UEQ_LOC]]
+; CHECK-DBG-RECORDS-NEXT: #dbg_value(i1 [[FCMP_UEQ_V]], [[FCMP_UEQ_MD:![0-9]*]], !DIExpression(), [[FCMP_UEQ_LOC]])
 ; CHECK-NEXT: [[ZEXT_UEQ_V:%[0-9]*]] = zext i1 [[FCMP_UEQ_V]] to i32, !dbg [[ZEXT_UEQ_LOC:![0-9]*]]
-; CHECK-NEXT: [[DBG_VALUE_CALL]] i32 [[ZEXT_UEQ_V]],  metadata [[ZEXT_UEQ_MD:![0-9]*]], metadata !DIExpression()), !dbg [[ZEXT_UEQ_LOC]]
+; CHECK-DBG-INTRINSIC-NEXT: [[DBG_VALUE_CALL]] i32 [[ZEXT_UEQ_V]],  metadata [[ZEXT_UEQ_MD:![0-9]*]], metadata !DIExpression()), !dbg [[ZEXT_UEQ_LOC]]
+; CHECK-DBG-RECORDS-NEXT: #dbg_value(i32 [[ZEXT_UEQ_V]], [[ZEXT_UEQ_MD:![0-9]*]], !DIExpression(), [[ZEXT_UEQ_LOC]])
   %7 = fcmp ueq float %src1, %src2, !dbg !29
   call void @llvm.dbg.value(metadata i1 %7, metadata !18, metadata !DIExpression()), !dbg !29
   %8 = zext i1 %7 to i32, !dbg !30
@@ -73,9 +81,11 @@ define spir_kernel void @test_fcmp(float %src1, float %src2) !dbg !7 {
 ; Testcase 5
 ; MD Check:
 ; CHECK-NEXT: [[FCMP_UGE_V:%[0-9]*]] = fcmp oge float %src1, %src2, !dbg [[FCMP_UGE_LOC:![0-9]*]]
-; CHECK-NEXT: [[DBG_VALUE_CALL]] i1 [[FCMP_UGE_V]],  metadata [[FCMP_UGE_MD:![0-9]*]], metadata !DIExpression()), !dbg [[FCMP_UGE_LOC]]
+; CHECK-DBG-INTRINSIC-NEXT: [[DBG_VALUE_CALL]] i1 [[FCMP_UGE_V]],  metadata [[FCMP_UGE_MD:![0-9]*]], metadata !DIExpression()), !dbg [[FCMP_UGE_LOC]]
+; CHECK-DBG-RECORDS-NEXT: #dbg_value(i1 [[FCMP_UGE_V]], [[FCMP_UGE_MD:![0-9]*]], !DIExpression(), [[FCMP_UGE_LOC]])
 ; CHECK-NEXT: [[ZEXT_UGE_V:%[0-9]*]] = zext i1 [[FCMP_UGE_V]] to i32, !dbg [[ZEXT_UGE_LOC:![0-9]*]]
-; CHECK-NEXT: [[DBG_VALUE_CALL]] i32 [[ZEXT_UGE_V]],  metadata [[ZEXT_UGE_MD:![0-9]*]], metadata !DIExpression()), !dbg [[ZEXT_UGE_LOC]]
+; CHECK-DBG-INTRINSIC-NEXT: [[DBG_VALUE_CALL]] i32 [[ZEXT_UGE_V]],  metadata [[ZEXT_UGE_MD:![0-9]*]], metadata !DIExpression()), !dbg [[ZEXT_UGE_LOC]]
+; CHECK-DBG-RECORDS-NEXT: #dbg_value(i32 [[ZEXT_UGE_V]], [[ZEXT_UGE_MD:![0-9]*]], !DIExpression(), [[ZEXT_UGE_LOC]])
   ; Testcase 5
   %9 = fcmp uge float %src1, %src2, !dbg !31
   call void @llvm.dbg.value(metadata i1 %9, metadata !20, metadata !DIExpression()), !dbg !31

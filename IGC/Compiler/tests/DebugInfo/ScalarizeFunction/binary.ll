@@ -8,7 +8,7 @@
 
 
 ; REQUIRES: llvm-14-plus
-; RUN: igc_opt --opaque-pointers --igc-scalarize -S < %s | FileCheck %s
+; RUN: igc_opt --opaque-pointers --igc-scalarize -S < %s | FileCheck %s --check-prefixes=CHECK,%if llvm-22-plus %{CHECK-DBG-RECORDS%} %else %{CHECK-DBG-INTRINSIC%}
 ; ------------------------------------------------
 ; ScalarizeFunction : binary operands
 ; ------------------------------------------------
@@ -21,8 +21,10 @@
 ; Check IR:
 
 ; CHECK: alloca {{.*}}, !dbg [[ALLOC_LOC:![0-9]*]]
-; CHECK: dbg.declare({{.*}}, metadata [[R_MD:![0-9]*]], metadata !DIExpression()), !dbg [[ALLOC_LOC]]
-; CHECK-DAG: dbg.value(metadata <2 x i32> [[ADD_V:%[a-z0-9\.]*]], metadata [[ADD_MD:![0-9]*]], metadata !DIExpression()), !dbg [[ADD_LOC:![0-9]*]]
+; CHECK-DBG-INTRINSIC: dbg.declare({{.*}}, metadata [[R_MD:![0-9]*]], metadata !DIExpression()), !dbg [[ALLOC_LOC]]
+; CHECK-DBG-RECORDS: #dbg_declare({{.*}}, [[R_MD:![0-9]*]], !DIExpression(), [[ALLOC_LOC]])
+; CHECK-DBG-INTRINSIC-DAG: dbg.value(metadata <2 x i32> [[ADD_V:%[a-z0-9\.]*]], metadata [[ADD_MD:![0-9]*]], metadata !DIExpression()), !dbg [[ADD_LOC:![0-9]*]]
+; CHECK-DBG-RECORDS-DAG: #dbg_value(<2 x i32> [[ADD_V:%[a-z0-9\.]*]], [[ADD_MD:![0-9]*]], !DIExpression(), [[ADD_LOC:![0-9]*]])
 ; CHECK-DAG: [[ADD_V]] = {{.*}}, !dbg [[ADD_LOC]]
 ; CHECK-DAG: store <2 x i32> [[ADD_V]], {{.*}}, !dbg [[STORE_LOC:![0-9]*]]
 

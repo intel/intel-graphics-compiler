@@ -7,7 +7,7 @@
 ;============================ end_copyright_notice =============================
 ;
 ; REQUIRES: llvm-14-plus
-; RUN: igc_opt --opaque-pointers  -igc-opencl-printf-resolution -S  < %s | FileCheck %s
+; RUN: igc_opt --opaque-pointers  -igc-opencl-printf-resolution -S  < %s | FileCheck %s --check-prefixes=CHECK,%if llvm-22-plus %{CHECK-DBG-RECORDS%} %else %{CHECK-DBG-INTRINSIC%}
 ; ------------------------------------------------
 ; OpenCLPrintfResolution
 ; ------------------------------------------------
@@ -49,13 +49,17 @@ define spir_kernel void @test_printf(i32 %src, <8 x i32> %r0, <8 x i32> %payload
   ; variable info is not lost
   ;
   ; CHECK: store <4 x float> {{.*}}, !dbg [[STORE_F_LOC:![0-9]*]]
-  ; CHECK-NEXT: declare(metadata ptr %f, metadata [[F_MD:![0-9]*]], metadata !DIExpression()), !dbg [[STORE_F_LOC]]
+  ; CHECK-DBG-INTRINSIC-NEXT: declare(metadata ptr %f, metadata [[F_MD:![0-9]*]], metadata !DIExpression()), !dbg [[STORE_F_LOC]]
+  ; CHECK-DBG-RECORDS-NEXT: #dbg_declare(ptr %f, [[F_MD:![0-9]*]], !DIExpression(), [[STORE_F_LOC]])
   ; CHECK-NEXT: store <4 x i8> {{.*}}, !dbg [[STORE_UC_LOC:![0-9]*]]
-  ; CHECK-NEXT: declare(metadata ptr %uc, metadata [[UC_MD:![0-9]*]], metadata !DIExpression()), !dbg [[STORE_UC_LOC]]
+  ; CHECK-DBG-INTRINSIC-NEXT: declare(metadata ptr %uc, metadata [[UC_MD:![0-9]*]], metadata !DIExpression()), !dbg [[STORE_UC_LOC]]
+  ; CHECK-DBG-RECORDS-NEXT: #dbg_declare(ptr %uc, [[UC_MD:![0-9]*]], !DIExpression(), [[STORE_UC_LOC]])
   ; CHECK-NEXT: store i32 {{.*}}, !dbg [[STORE_I_LOC:![0-9]*]]
-  ; CHECK-NEXT: declare(metadata ptr %i, metadata [[I_MD:![0-9]*]], metadata !DIExpression()), !dbg [[STORE_I_LOC]]
+  ; CHECK-DBG-INTRINSIC-NEXT: declare(metadata ptr %i, metadata [[I_MD:![0-9]*]], metadata !DIExpression()), !dbg [[STORE_I_LOC]]
+  ; CHECK-DBG-RECORDS-NEXT: #dbg_declare(ptr %i, [[I_MD:![0-9]*]], !DIExpression(), [[STORE_I_LOC]])
   ; CHECK-NEXT: store float {{.*}}, !dbg [[STORE_F1_LOC:![0-9]*]]
-  ; CHECK-NEXT: declare(metadata ptr %f1, metadata [[F1_MD:![0-9]*]], metadata !DIExpression()), !dbg [[STORE_F1_LOC]]
+  ; CHECK-DBG-INTRINSIC-NEXT: declare(metadata ptr %f1, metadata [[F1_MD:![0-9]*]], metadata !DIExpression()), !dbg [[STORE_F1_LOC]]
+  ; CHECK-DBG-RECORDS-NEXT: #dbg_declare(ptr %f1, [[F1_MD:![0-9]*]], !DIExpression(), [[STORE_F1_LOC]])
   store <4 x float> <float 1.000000e+00, float 2.000000e+00, float 3.000000e+00, float 4.000000e+00>, ptr %f, align 16, !dbg !50
   call void @llvm.dbg.declare(metadata ptr %f, metadata !25, metadata !DIExpression()), !dbg !50
   store <4 x i8> <i8 -6, i8 -5, i8 -4, i8 -3>, ptr %uc, align 4, !dbg !51
@@ -80,7 +84,8 @@ define spir_kernel void @test_printf(i32 %src, <8 x i32> %r0, <8 x i32> %payload
   ; CHECK: store i32 [[I_V]], {{.*}}, !dbg [[PRINT_IF1_LOC:![0-9]*]]
   ; CHECK: store {{double|float}} %{{to_float|conv}}, {{.*}}, !dbg [[PRINT_IF1_LOC:![0-9]*]]
   ; CHECK: [[IF1_RET_V:%.*]] = select i1 {{.*}}, !dbg [[PRINT_IF1_LOC]]
-  ; CHECK-NEXT: dbg.value(metadata i32 [[IF1_RET_V]], metadata [[IF1_RET_MD:![0-9]*]], metadata !DIExpression()), !dbg [[PRINT_IF1_LOC]]
+  ; CHECK-DBG-INTRINSIC-NEXT: dbg.value(metadata i32 [[IF1_RET_V]], metadata [[IF1_RET_MD:![0-9]*]], metadata !DIExpression()), !dbg [[PRINT_IF1_LOC]]
+  ; CHECK-DBG-RECORDS-NEXT: #dbg_value(i32 [[IF1_RET_V]], [[IF1_RET_MD:![0-9]*]], !DIExpression(), [[PRINT_IF1_LOC]])
   %call = call spir_func i32 (ptr addrspace(2), ...) @printf(ptr addrspace(2) @.str, i32 %1, double %conv), !dbg !58
   call void @llvm.dbg.value(metadata i32 %call, metadata !35, metadata !DIExpression()), !dbg !58
   %3 = load <4 x float>, ptr %f, align 16, !dbg !59
@@ -94,7 +99,8 @@ define spir_kernel void @test_printf(i32 %src, <8 x i32> %r0, <8 x i32> %payload
   ; CHECK: [[F4_V:%[0-9]*]] = load <4 x float>, ptr %f
   ; CHECK: store <4 x float> [[F4_V]], {{.*}}, !dbg [[PRINT_F4_LOC:![0-9]*]]
   ; CHECK: [[F4_RET_V:%.*]] = select i1 {{.*}}, !dbg [[PRINT_F4_LOC]]
-  ; CHECK-NEXT: dbg.value(metadata i32 [[F4_RET_V]], metadata [[F4_RET_MD:![0-9]*]], metadata !DIExpression()), !dbg [[PRINT_F4_LOC]]
+  ; CHECK-DBG-INTRINSIC-NEXT: dbg.value(metadata i32 [[F4_RET_V]], metadata [[F4_RET_MD:![0-9]*]], metadata !DIExpression()), !dbg [[PRINT_F4_LOC]]
+  ; CHECK-DBG-RECORDS-NEXT: #dbg_value(i32 [[F4_RET_V]], [[F4_RET_MD:![0-9]*]], !DIExpression(), [[PRINT_F4_LOC]])
   %call2 = call spir_func i32 (ptr addrspace(2), ...) @printf(ptr addrspace(2) @.str.1, <4 x float> %3), !dbg !61
   call void @llvm.dbg.value(metadata i32 %call2, metadata !39, metadata !DIExpression()), !dbg !61
   %4 = load <4 x i8>, ptr %uc, align 4, !dbg !62
@@ -108,7 +114,8 @@ define spir_kernel void @test_printf(i32 %src, <8 x i32> %r0, <8 x i32> %payload
   ; CHECK: [[I4_V:%[0-9]*]] = load <4 x i8>, ptr %uc
   ; CHECK: store <4 x i8> [[I4_V]], {{.*}}, !dbg [[PRINT_I4_LOC:![0-9]*]]
   ; CHECK: [[I4_RET_V:%.*]] = select i1 {{.*}}, !dbg [[PRINT_I4_LOC]]
-  ; CHECK-NEXT: dbg.value(metadata i32 [[I4_RET_V]], metadata [[I4_RET_MD:![0-9]*]], metadata !DIExpression()), !dbg [[PRINT_I4_LOC]]
+  ; CHECK-DBG-INTRINSIC-NEXT: dbg.value(metadata i32 [[I4_RET_V]], metadata [[I4_RET_MD:![0-9]*]], metadata !DIExpression()), !dbg [[PRINT_I4_LOC]]
+  ; CHECK-DBG-RECORDS-NEXT: #dbg_value(i32 [[I4_RET_V]], [[I4_RET_MD:![0-9]*]], !DIExpression(), [[PRINT_I4_LOC]])
   %call3 = call spir_func i32 (ptr addrspace(2), ...) @printf(ptr addrspace(2) @.str.2, <4 x i8> %4), !dbg !64
   call void @llvm.dbg.value(metadata i32 %call3, metadata !42, metadata !DIExpression()), !dbg !64
 
@@ -120,7 +127,8 @@ define spir_kernel void @test_printf(i32 %src, <8 x i32> %r0, <8 x i32> %payload
   ; check call location and return value
   ;
   ; CHECK: [[S_RET_V:%.*]] = select i1 {{.*}}, !dbg [[PRINT_S_LOC:![0-9]*]]
-  ; CHECK-NEXT: dbg.value(metadata i32 [[S_RET_V]], metadata [[S_RET_MD:![0-9]*]], metadata !DIExpression()), !dbg [[PRINT_S_LOC]]
+  ; CHECK-DBG-INTRINSIC-NEXT: dbg.value(metadata i32 [[S_RET_V]], metadata [[S_RET_MD:![0-9]*]], metadata !DIExpression()), !dbg [[PRINT_S_LOC]]
+  ; CHECK-DBG-RECORDS-NEXT: #dbg_value(i32 [[S_RET_V]], [[S_RET_MD:![0-9]*]], !DIExpression(), [[PRINT_S_LOC]])
   %call4 = call spir_func i32 (ptr addrspace(2), ...) @printf(ptr addrspace(2) @.str.3, ptr addrspace(2) @.str.4), !dbg !67
   call void @llvm.dbg.value(metadata i32 %call4, metadata !45, metadata !DIExpression()), !dbg !67
   ret void, !dbg !68

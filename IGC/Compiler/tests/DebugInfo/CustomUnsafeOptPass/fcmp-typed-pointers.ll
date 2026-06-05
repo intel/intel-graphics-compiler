@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: igc_opt -igc-custom-unsafe-opt-pass -S < %s | FileCheck %s
+; RUN: igc_opt -igc-custom-unsafe-opt-pass -S < %s | FileCheck %s --check-prefixes=CHECK,%if llvm-22-plus %{CHECK-DBG-RECORDS%} %else %{CHECK-DBG-INTRINSIC%}
 ; ------------------------------------------------
 ; CustomUnsafeOptPass
 ; ------------------------------------------------
@@ -18,17 +18,25 @@
 
 ; CHECK: define spir_kernel void @test_custom{{.*}} !dbg [[SCOPE:![0-9]*]]
 ; CHECK: entry:
-; CHECK: void @llvm.dbg.value(metadata i1 false, metadata [[VAL1_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL1_LOC:![0-9]*]]
-; CHECK: void @llvm.dbg.value(metadata i1 true, metadata [[VAL2_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL2_LOC:![0-9]*]]
-; CHECK: void @llvm.dbg.value({{.*}}
-; CHECK: void @llvm.dbg.value({{.*}}
-; CHECK: void @llvm.dbg.value({{.*}}
+; CHECK-DBG-INTRINSIC: void @llvm.dbg.value(metadata i1 false, metadata [[VAL1_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL1_LOC:![0-9]*]]
+; CHECK-DBG-RECORDS: #dbg_value(i1 false, [[VAL1_MD:![0-9]*]], !DIExpression(), [[VAL1_LOC:![0-9]*]])
+; CHECK-DBG-INTRINSIC: void @llvm.dbg.value(metadata i1 true, metadata [[VAL2_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL2_LOC:![0-9]*]]
+; CHECK-DBG-RECORDS: #dbg_value(i1 true, [[VAL2_MD:![0-9]*]], !DIExpression(), [[VAL2_LOC:![0-9]*]])
+; CHECK-DBG-INTRINSIC: void @llvm.dbg.value({{.*}}
+; CHECK-DBG-RECORDS: #dbg_value({{.*}}
+; CHECK-DBG-INTRINSIC: void @llvm.dbg.value({{.*}}
+; CHECK-DBG-RECORDS: #dbg_value({{.*}}
+; CHECK-DBG-INTRINSIC: void @llvm.dbg.value({{.*}}
+; CHECK-DBG-RECORDS: #dbg_value({{.*}}
 ; CHECK: [[VAL6_V:%[A-z0-9]*]] = {{.*}}, !dbg [[VAL6_LOC:![0-9]*]]
-; CHECK: void @llvm.dbg.value(metadata i1 [[VAL6_V]], metadata [[VAL6_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL6_LOC]]
+; CHECK-DBG-INTRINSIC: void @llvm.dbg.value(metadata i1 [[VAL6_V]], metadata [[VAL6_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL6_LOC]]
+; CHECK-DBG-RECORDS: #dbg_value(i1 [[VAL6_V]], [[VAL6_MD:![0-9]*]], !DIExpression(), [[VAL6_LOC]])
 ; CHECK: [[VAL11_V:%[A-z0-9]*]] = fcmp one {{.*}}, !dbg [[VAL11_LOC:![0-9]*]]
-; CHECK: void @llvm.dbg.value(metadata i1 [[VAL11_V]], metadata [[VAL11_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL11_LOC]]
+; CHECK-DBG-INTRINSIC: void @llvm.dbg.value(metadata i1 [[VAL11_V]], metadata [[VAL11_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL11_LOC]]
+; CHECK-DBG-RECORDS: #dbg_value(i1 [[VAL11_V]], [[VAL11_MD:![0-9]*]], !DIExpression(), [[VAL11_LOC]])
 ; CHECK: [[VAL14_V:%[A-z0-9]*]] = fcmp uge {{.*}}, !dbg [[VAL14_LOC:![0-9]*]]
-; CHECK: void @llvm.dbg.value(metadata i1 [[VAL14_V]], metadata [[VAL14_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL14_LOC]]
+; CHECK-DBG-INTRINSIC: void @llvm.dbg.value(metadata i1 [[VAL14_V]], metadata [[VAL14_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL14_LOC]]
+; CHECK-DBG-RECORDS: #dbg_value(i1 [[VAL14_V]], [[VAL14_MD:![0-9]*]], !DIExpression(), [[VAL14_LOC]])
 
 define spir_kernel void @test_custom(float %a, float %b, float* %d) !dbg !9 {
 entry:

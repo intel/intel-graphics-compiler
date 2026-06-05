@@ -8,7 +8,7 @@
 
 
 ; REQUIRES: llvm-14-plus
-; RUN: igc_opt --opaque-pointers --igc-scalarize -S < %s | FileCheck %s
+; RUN: igc_opt --opaque-pointers --igc-scalarize -S < %s | FileCheck %s --check-prefixes=CHECK,%if llvm-22-plus %{CHECK-DBG-RECORDS%} %else %{CHECK-DBG-INTRINSIC%}
 ; ------------------------------------------------
 ; ScalarizeFunction : castInst operands
 ; ------------------------------------------------
@@ -21,14 +21,18 @@
 ; Check IR:
 
 ; CHECK: alloca {{.*}}, !dbg [[ALLOC64_LOC:![0-9]*]]
-; CHECK: dbg.declare({{.*}}, metadata [[R64_MD:![0-9]*]], metadata !DIExpression()), !dbg [[ALLOC64_LOC]]
+; CHECK-DBG-INTRINSIC: dbg.declare({{.*}}, metadata [[R64_MD:![0-9]*]], metadata !DIExpression()), !dbg [[ALLOC64_LOC]]
+; CHECK-DBG-RECORDS: #dbg_declare({{.*}}, [[R64_MD:![0-9]*]], !DIExpression(), [[ALLOC64_LOC]])
 ; CHECK: alloca {{.*}}, !dbg [[ALLOC16_LOC:![0-9]*]]
-; CHECK: dbg.declare({{.*}}, metadata [[R16_MD:![0-9]*]], metadata !DIExpression()), !dbg [[ALLOC16_LOC]]
-; CHECK-DAG: dbg.value(metadata <2 x i64> [[CAST_V:%[a-z0-9\.]*]], metadata [[CAST_MD:![0-9]*]], metadata !DIExpression()), !dbg [[CAST_LOC:![0-9]*]]
+; CHECK-DBG-INTRINSIC: dbg.declare({{.*}}, metadata [[R16_MD:![0-9]*]], metadata !DIExpression()), !dbg [[ALLOC16_LOC]]
+; CHECK-DBG-RECORDS: #dbg_declare({{.*}}, [[R16_MD:![0-9]*]], !DIExpression(), [[ALLOC16_LOC]])
+; CHECK-DBG-INTRINSIC-DAG: dbg.value(metadata <2 x i64> [[CAST_V:%[a-z0-9\.]*]], metadata [[CAST_MD:![0-9]*]], metadata !DIExpression()), !dbg [[CAST_LOC:![0-9]*]]
+; CHECK-DBG-RECORDS-DAG: #dbg_value(<2 x i64> [[CAST_V:%[a-z0-9\.]*]], [[CAST_MD:![0-9]*]], !DIExpression(), [[CAST_LOC:![0-9]*]])
 ; CHECK-DAG: [[CAST_V]] = {{.*}}, !dbg [[CAST_LOC]]
 ; CHECK-DAG: store <2 x i64> [[CAST_V]], {{.*}}, !dbg [[STORE64_LOC:![0-9]*]]
 
-; CHECK-DAG: dbg.value(metadata <4 x i16> [[BITCAST_V:%[a-z0-9\.]*]], metadata [[BITCAST_MD:![0-9]*]], metadata !DIExpression()), !dbg [[BITCAST_LOC:![0-9]*]]
+; CHECK-DBG-INTRINSIC-DAG: dbg.value(metadata <4 x i16> [[BITCAST_V:%[a-z0-9\.]*]], metadata [[BITCAST_MD:![0-9]*]], metadata !DIExpression()), !dbg [[BITCAST_LOC:![0-9]*]]
+; CHECK-DBG-RECORDS-DAG: #dbg_value(<4 x i16> [[BITCAST_V:%[a-z0-9\.]*]], [[BITCAST_MD:![0-9]*]], !DIExpression(), [[BITCAST_LOC:![0-9]*]])
 ; CHECK-DAG: [[BITCAST_V]] = {{.*}}, !dbg [[BITCAST_LOC]]
 ; CHECK-DAG: store <4 x i16> [[BITCAST_V]], {{.*}}, !dbg [[STORE16_LOC:![0-9]*]]
 

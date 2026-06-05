@@ -7,7 +7,7 @@
 ;============================ end_copyright_notice =============================
 ;
 ; REQUIRES: llvm-14-plus
-; RUN: igc_opt --opaque-pointers -igc-low-precision-opt -S < %s | FileCheck %s
+; RUN: igc_opt --opaque-pointers -igc-low-precision-opt -S < %s | FileCheck %s --check-prefixes=CHECK,%if llvm-22-plus %{CHECK-DBG-RECORDS%} %else %{CHECK-DBG-INTRINSIC%}
 ; ------------------------------------------------
 ; LowPrecisionOpt
 ; ------------------------------------------------
@@ -34,13 +34,16 @@ entry:
 ; fpext and fptrunc
 ;
 ; CHECK: [[TRUNC_V:%[0-9]*]] = fptrunc float [[ADD_V:%[0-9]*]] to half, !dbg [[TRUNC_LOC:![0-9]*]]
-; CHECK-NEXT: dbg.value(metadata half [[TRUNC_V]], metadata [[TRUNC_MD:![0-9]*]], metadata !DIExpression()), !dbg [[TRUNC_LOC]]
+; CHECK-DBG-INTRINSIC-NEXT: dbg.value(metadata half [[TRUNC_V]], metadata [[TRUNC_MD:![0-9]*]], metadata !DIExpression()), !dbg [[TRUNC_LOC]]
+; CHECK-DBG-RECORDS-NEXT: #dbg_value(half [[TRUNC_V]], [[TRUNC_MD:![0-9]*]], !DIExpression(), [[TRUNC_LOC]])
 ;
 ; Check that fpext is removed and its value is RAUW
 ;
-; CHECK-NEXT: dbg.value(metadata float [[ADD_V]], metadata [[EXT_MD:![0-9]*]], metadata !DIExpression()), !dbg [[EXT_LOC:![0-9]*]]
+; CHECK-DBG-INTRINSIC-NEXT: dbg.value(metadata float [[ADD_V]], metadata [[EXT_MD:![0-9]*]], metadata !DIExpression()), !dbg [[EXT_LOC:![0-9]*]]
+; CHECK-DBG-RECORDS-NEXT: #dbg_value(float [[ADD_V]], [[EXT_MD:![0-9]*]], !DIExpression(), [[EXT_LOC:![0-9]*]])
 ; CHECK: store float [[ADD_V]], ptr [[STORE_A:%[0-9]*]],{{.*}} !dbg [[STORE_LOC:![0-9]*]]
-; CHECK-NEXT: dbg.declare(metadata ptr [[STORE_A]], metadata [[STORE_MD:![0-9]*]], metadata !DIExpression()), !dbg [[STORE_LOC]]
+; CHECK-DBG-INTRINSIC-NEXT: dbg.declare(metadata ptr [[STORE_A]], metadata [[STORE_MD:![0-9]*]], metadata !DIExpression()), !dbg [[STORE_LOC]]
+; CHECK-DBG-RECORDS-NEXT: #dbg_declare(ptr [[STORE_A]], [[STORE_MD:![0-9]*]], !DIExpression(), [[STORE_LOC]])
   %2 = fptrunc float %1 to half, !dbg !24
   call void @llvm.dbg.value(metadata half %2, metadata !15, metadata !DIExpression()), !dbg !24
   %3 = fpext half %2 to float, !dbg !25
@@ -55,7 +58,8 @@ entry:
 ; Check that fpext is removed and its value is RAUW
 ;
 ; CHECK: [[CALL_V:%[0-9]*]] = call float @llvm.genx{{.*}} !dbg [[CALL_LOC:![0-9]*]]
-; CHECK: dbg.value(metadata float [[CALL_V]], metadata [[EXT2_MD:![0-9]*]], metadata !DIExpression()), !dbg [[EXT2_LOC:![0-9]*]]
+; CHECK-DBG-INTRINSIC: dbg.value(metadata float [[CALL_V]], metadata [[EXT2_MD:![0-9]*]], metadata !DIExpression()), !dbg [[EXT2_LOC:![0-9]*]]
+; CHECK-DBG-RECORDS: #dbg_value(float [[CALL_V]], [[EXT2_MD:![0-9]*]], !DIExpression(), [[EXT2_LOC:![0-9]*]])
 ; CHECK: store float [[CALL_V]], ptr [[STORE_A]], align 4, !dbg [[STORE2_LOC:![0-9]*]]
   %5 = call half @llvm.genx.GenISA.DCL.inputVec.f16(i32 1, i32 2), !dbg !28
   call void @llvm.dbg.value(metadata half %5, metadata !20, metadata !DIExpression()), !dbg !28

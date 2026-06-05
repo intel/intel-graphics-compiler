@@ -8,7 +8,7 @@
 
 
 ; REQUIRES: llvm-14-plus
-; RUN: igc_opt --opaque-pointers --igc-legalization -S < %s | FileCheck %s
+; RUN: igc_opt --opaque-pointers --igc-legalization -S < %s | FileCheck %s --check-prefixes=CHECK,%if llvm-22-plus %{CHECK-DBG-RECORDS%} %else %{CHECK-DBG-INTRINSIC%}
 ; ------------------------------------------------
 ; Legalization: select patterns
 ; ------------------------------------------------
@@ -28,7 +28,8 @@ define spir_kernel void @test_select(i64 %src1, i64 %src2, i1 %src3, i1 %src4) !
 ; CHECK-NEXT: [[ZEXT2_V:%[0-9]*]] = zext i1 %src4 to i32
 ; CHECK-NEXT: [[SELECT32_V:%[0-9]*]] = select i1 [[COND_V:%[0-9]*]], i32 [[ZEXT1_V]], i32 [[ZEXT2_V]]
 ; CHECK-NEXT: [[SELECT_V:%[0-9]*]] = trunc i32 [[SELECT32_V]] to i1, !dbg [[SELECT1_LOC:![0-9]*]]
-; CHECK-NEXT: [[DBG_VALUE_CALL:dbg.value\(metadata]] i1 [[SELECT_V]],  metadata [[SELECT1_MD:![0-9]*]], metadata !DIExpression()), !dbg [[SELECT1_LOC]]
+; CHECK-DBG-INTRINSIC-NEXT: [[DBG_VALUE_CALL:dbg.value\(metadata]] i1 [[SELECT_V]],  metadata [[SELECT1_MD:![0-9]*]], metadata !DIExpression()), !dbg [[SELECT1_LOC]]
+; CHECK-DBG-RECORDS-NEXT: #dbg_value(i1 [[SELECT_V]], [[SELECT1_MD:![0-9]*]], !DIExpression(), [[SELECT1_LOC]])
 
   %1 = icmp slt i64 %src1, %src2, !dbg !20
   call void @llvm.dbg.value(metadata i1 %1, metadata !10, metadata !DIExpression()), !dbg !20
@@ -44,7 +45,8 @@ define spir_kernel void @test_select(i64 %src1, i64 %src2, i1 %src3, i1 %src4) !
 ; CHECK-NEXT: [[EXTR21_V:%[0-9]*]] = extractelement <2 x i64> [[VEC2]], i32 1
 ; CHECK-NEXT: [[SELECT1_V:%[0-9]*]] = select i1 [[SELECT_V]], i64 [[EXTR11_V]], i64 [[EXTR21_V]]
 ; CHECK-NEXT: [[SELECTV_V:%[0-9]*]] = insertelement <2 x i64> [[INS_EL0_V]], i64 [[SELECT1_V]], i32 1, !dbg [[SELECTV_LOC:![0-9]*]]
-; CHECK-NEXT: [[DBG_VALUE_CALL]] <2 x i64> [[SELECTV_V]], metadata [[SELECTV_MD:![0-9]*]], metadata !DIExpression()), !dbg [[SELECTV_LOC]]
+; CHECK-DBG-INTRINSIC-NEXT: [[DBG_VALUE_CALL]] <2 x i64> [[SELECTV_V]], metadata [[SELECTV_MD:![0-9]*]], metadata !DIExpression()), !dbg [[SELECTV_LOC]]
+; CHECK-DBG-RECORDS-NEXT: #dbg_value(<2 x i64> [[SELECTV_V]], [[SELECTV_MD:![0-9]*]], !DIExpression(), [[SELECTV_LOC]])
 
   %3 = insertelement <2 x i64> zeroinitializer, i64 %src1, i32 0, !dbg !22
   call void @llvm.dbg.value(metadata <2 x i64> %3, metadata !13, metadata !DIExpression()), !dbg !22
@@ -59,7 +61,8 @@ define spir_kernel void @test_select(i64 %src1, i64 %src2, i1 %src3, i1 %src4) !
 ; CHECK: [[COND1_V:%[0-9]*]] = extractelement <2 x i1> [[CONDV_V]], i32 1
 ; CHECK: [[SELECT1_V:%[0-9]*]] = select i1 [[COND1_V]]
 ; CHECK: [[SELECTV2_V:%[0-9]*]] = insertelement <2 x i64> {{.*}}, i64 [[SELECT1_V]], i32 1, !dbg [[SELECTV2_LOC:![0-9]*]]
-; CHECK-NEXT: [[DBG_VALUE_CALL]] <2 x i64> [[SELECTV2_V]], metadata [[SELECTV2_MD:![0-9]*]], metadata !DIExpression()), !dbg [[SELECTV2_LOC]]
+; CHECK-DBG-INTRINSIC-NEXT: [[DBG_VALUE_CALL]] <2 x i64> [[SELECTV2_V]], metadata [[SELECTV2_MD:![0-9]*]], metadata !DIExpression()), !dbg [[SELECTV2_LOC]]
+; CHECK-DBG-RECORDS-NEXT: #dbg_value(<2 x i64> [[SELECTV2_V]], [[SELECTV2_MD:![0-9]*]], !DIExpression(), [[SELECTV2_LOC]])
 
   %6 = insertelement <2 x i1> <i1 false, i1 true>, i1 %1, i32 0, !dbg !25
   call void @llvm.dbg.value(metadata <2 x i1> %6, metadata !17, metadata !DIExpression()), !dbg !25

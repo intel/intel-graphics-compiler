@@ -8,7 +8,7 @@
 
 
 ; REQUIRES: llvm-14-plus
-; RUN: igc_opt --opaque-pointers --igc-scalarize -S < %s | FileCheck %s
+; RUN: igc_opt --opaque-pointers --igc-scalarize -S < %s | FileCheck %s --check-prefixes=CHECK,%if llvm-22-plus %{CHECK-DBG-RECORDS%} %else %{CHECK-DBG-INTRINSIC%}
 ; ------------------------------------------------
 ; ScalarizeFunction : select operands
 ; ------------------------------------------------
@@ -21,18 +21,23 @@
 ; Check IR:
 
 ; CHECK: alloca {{.*}}, !dbg [[ALLOC32_LOC:![0-9]*]]
-; CHECK: dbg.declare({{.*}}, metadata [[R32_MD:![0-9]*]], metadata !DIExpression()), !dbg [[ALLOC32_LOC]]
+; CHECK-DBG-INTRINSIC: dbg.declare({{.*}}, metadata [[R32_MD:![0-9]*]], metadata !DIExpression()), !dbg [[ALLOC32_LOC]]
+; CHECK-DBG-RECORDS: #dbg_declare({{.*}}, [[R32_MD:![0-9]*]], !DIExpression(), [[ALLOC32_LOC]])
 ; CHECK: alloca {{.*}}, !dbg [[ALLOC16_LOC:![0-9]*]]
-; CHECK: dbg.declare({{.*}}, metadata [[R16_MD:![0-9]*]], metadata !DIExpression()), !dbg [[ALLOC16_LOC]]
-; CHECK-DAG: dbg.value(metadata <2 x i32> [[SELECT32_V:%[a-z0-9\.]*]], metadata [[SELECT32_MD:![0-9]*]], metadata !DIExpression()), !dbg [[SELECT32_LOC:![0-9]*]]
+; CHECK-DBG-INTRINSIC: dbg.declare({{.*}}, metadata [[R16_MD:![0-9]*]], metadata !DIExpression()), !dbg [[ALLOC16_LOC]]
+; CHECK-DBG-RECORDS: #dbg_declare({{.*}}, [[R16_MD:![0-9]*]], !DIExpression(), [[ALLOC16_LOC]])
+; CHECK-DBG-INTRINSIC-DAG: dbg.value(metadata <2 x i32> [[SELECT32_V:%[a-z0-9\.]*]], metadata [[SELECT32_MD:![0-9]*]], metadata !DIExpression()), !dbg [[SELECT32_LOC:![0-9]*]]
+; CHECK-DBG-RECORDS-DAG: #dbg_value(<2 x i32> [[SELECT32_V:%[a-z0-9\.]*]], [[SELECT32_MD:![0-9]*]], !DIExpression(), [[SELECT32_LOC:![0-9]*]])
 ; CHECK-DAG: [[SELECT32_V]] = {{.*}}, !dbg [[SELECT32_LOC]]
 ; CHECK-DAG: store <2 x i32> [[SELECT32_V]], {{.*}}, !dbg [[STORE32_LOC:![0-9]*]]
 
-; CHECK-DAG: dbg.value(metadata <4 x i16> [[SELECT16_V:%[a-z0-9\.]*]], metadata [[SELECT16_MD:![0-9]*]], metadata !DIExpression()), !dbg [[SELECT16_LOC:![0-9]*]]
+; CHECK-DBG-INTRINSIC-DAG: dbg.value(metadata <4 x i16> [[SELECT16_V:%[a-z0-9\.]*]], metadata [[SELECT16_MD:![0-9]*]], metadata !DIExpression()), !dbg [[SELECT16_LOC:![0-9]*]]
+; CHECK-DBG-RECORDS-DAG: #dbg_value(<4 x i16> [[SELECT16_V:%[a-z0-9\.]*]], [[SELECT16_MD:![0-9]*]], !DIExpression(), [[SELECT16_LOC:![0-9]*]])
 ; CHECK-DAG: [[SELECT16_V]] = {{.*}}, !dbg [[SELECT16_LOC]]
 ; CHECK-DAG: store <4 x i16> [[SELECT16_V]], {{.*}}, !dbg [[STORE16_LOC:![0-9]*]]
 
-; CHECK-DAG: dbg.value(metadata <4 x i16> [[SELECT16_1_V:%[a-z0-9\.]*]], metadata [[SELECT16_1_MD:![0-9]*]], metadata !DIExpression()), !dbg [[SELECT16_1_LOC:![0-9]*]]
+; CHECK-DBG-INTRINSIC-DAG: dbg.value(metadata <4 x i16> [[SELECT16_1_V:%[a-z0-9\.]*]], metadata [[SELECT16_1_MD:![0-9]*]], metadata !DIExpression()), !dbg [[SELECT16_1_LOC:![0-9]*]]
+; CHECK-DBG-RECORDS-DAG: #dbg_value(<4 x i16> [[SELECT16_1_V:%[a-z0-9\.]*]], [[SELECT16_1_MD:![0-9]*]], !DIExpression(), [[SELECT16_1_LOC:![0-9]*]])
 ; CHECK-DAG: [[SELECT16_1_V]] = {{.*}}, !dbg [[SELECT16_1_LOC]]
 
 define spir_kernel void @test_select(<2 x i32> %src1, <4 x i16> %src2, i1 %cond, <4 x i1> %vcond) !dbg !6 {

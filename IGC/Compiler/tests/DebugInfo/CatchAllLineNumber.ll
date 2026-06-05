@@ -8,7 +8,7 @@
 
 
 ; REQUIRES: llvm-14-plus
-; RUN: igc_opt --opaque-pointers -igc-catch-all-linenum -S < %s | FileCheck %s
+; RUN: igc_opt --opaque-pointers -igc-catch-all-linenum -S < %s | FileCheck %s --check-prefixes=CHECK,%if llvm-22-plus %{CHECK-DBG-RECORDS%} %else %{CHECK-DBG-INTRINSIC%}
 ; ------------------------------------------------
 ; CatchAllLineNumber
 ; ------------------------------------------------
@@ -25,7 +25,8 @@
 ; CHECK: define {{.*}} @catchline{{.*}} !dbg [[CL_SCOPE:![0-9]*]]
 ; CHECK-DAG: [[ADD_V:%[0-9]*]] = add i32 {{.*}} !dbg [[ADD_LOC:![0-9]*]]
 ; CHECK-DAG: call {{.*}}CatchAllDebugLine(), !dbg [[CALL_LOC:![0-9]*]]
-; CHECK: dbg.value(metadata i32 [[ADD_V]], metadata [[ADD_MD:![0-9]*]], metadata !DIExpression()), !dbg [[ADD_LOC]]
+; CHECK-DBG-INTRINSIC: dbg.value(metadata i32 [[ADD_V]], metadata [[ADD_MD:![0-9]*]], metadata !DIExpression()), !dbg [[ADD_LOC]]
+; CHECK-DBG-RECORDS: #dbg_value(i32 [[ADD_V]], [[ADD_MD:![0-9]*]], !DIExpression(), [[ADD_LOC]])
 ; CHECK-NEXT: br label %end, !dbg [[BR_LOC:![0-9]*]]
 
 define spir_kernel void @catchline(i32 %a) !dbg !6 {
@@ -47,7 +48,8 @@ end:                                              ; preds = %entry
 ; CHECK: define {{.*}} @no_catchline{{.*}} !dbg [[NCL_SCOPE:![0-9]*]]
 ; CHECK-NOT: CatchAllDebugLine
 ; CHECK: [[ADD1_V:%[0-9]*]] = add i32 {{.*}} !dbg [[ADD1_LOC:![0-9]*]]
-; CHECK: dbg.value(metadata i32 [[ADD1_V]], metadata [[ADD1_MD:![0-9]*]], metadata !DIExpression()), !dbg [[ADD1_LOC]]
+; CHECK-DBG-INTRINSIC: dbg.value(metadata i32 [[ADD1_V]], metadata [[ADD1_MD:![0-9]*]], metadata !DIExpression()), !dbg [[ADD1_LOC]]
+; CHECK-DBG-RECORDS: #dbg_value(i32 [[ADD1_V]], [[ADD1_MD:![0-9]*]], !DIExpression(), [[ADD1_LOC]])
 
 define spir_func i32 @no_catchline(i32 %a) !dbg !16 {
   %1 = add i32 %a, 1, !dbg !19

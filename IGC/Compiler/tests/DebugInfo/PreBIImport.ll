@@ -8,7 +8,7 @@
 
 
 ; REQUIRES: llvm-14-plus
-; RUN: igc_opt --opaque-pointers -igc-Pre-BIImport-Analysis -S < %s | FileCheck %s
+; RUN: igc_opt --opaque-pointers -igc-Pre-BIImport-Analysis -S < %s | FileCheck %s --check-prefixes=CHECK,%if llvm-22-plus %{CHECK-DBG-RECORDS%} %else %{CHECK-DBG-INTRINSIC%}
 ; ------------------------------------------------
 ; PreBIImport
 ; ------------------------------------------------
@@ -25,7 +25,8 @@ define spir_kernel void @test_sincos(float %src1, float* %dst) !dbg !10 {
 ; Testcase 1:
 ; direct fmul usage
 ; CHECK: [[COS_V:%[0-9]*]] = call float @__builtin_spirv_OpenCL_cos{{.*}}, !dbg [[COS_LOC:![0-9]*]]
-; CHECK-NEXT: dbg.value(metadata float [[COS_V]],  metadata [[COS_MD:![0-9]*]], metadata !DIExpression()), !dbg [[COS_LOC]]
+; CHECK-DBG-INTRINSIC-NEXT: dbg.value(metadata float [[COS_V]],  metadata [[COS_MD:![0-9]*]], metadata !DIExpression()), !dbg [[COS_LOC]]
+; CHECK-DBG-RECORDS-NEXT: #dbg_value(float [[COS_V]], [[COS_MD:![0-9]*]], !DIExpression(), [[COS_LOC]])
   %1 = fmul float 0x400921FB60000000, %src1, !dbg !21
   call void @llvm.dbg.value(metadata float %1, metadata !13, metadata !DIExpression()), !dbg !21
   %2 = call float @__builtin_spirv_OpenCL_cos_f32(float %1), !dbg !22
@@ -33,7 +34,8 @@ define spir_kernel void @test_sincos(float %src1, float* %dst) !dbg !10 {
 ; Testcase 2:
 ; alloced fmul usage
 ; CHECK: [[SIN_V:%[0-9]*]] = call float @__builtin_spirv_OpenCL_sin{{.*}}, !dbg [[SIN_LOC:![0-9]*]]
-; CHECK-NEXT: dbg.value(metadata float [[SIN_V]],  metadata [[SIN_MD:![0-9]*]], metadata !DIExpression()), !dbg [[SIN_LOC]]
+; CHECK-DBG-INTRINSIC-NEXT: dbg.value(metadata float [[SIN_V]],  metadata [[SIN_MD:![0-9]*]], metadata !DIExpression()), !dbg [[SIN_LOC]]
+; CHECK-DBG-RECORDS-NEXT: #dbg_value(float [[SIN_V]], [[SIN_MD:![0-9]*]], !DIExpression(), [[SIN_LOC]])
   %3 = fmul float 0x401921FB60000000, %src1, !dbg !23
   call void @llvm.dbg.value(metadata float %3, metadata !16, metadata !DIExpression()), !dbg !23
   %4 = alloca float, align 4, !dbg !24

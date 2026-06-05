@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: igc_opt -igc-layout -S < %s | FileCheck %s
+; RUN: igc_opt -igc-layout -S < %s | FileCheck %s --check-prefixes=CHECK,%if llvm-22-plus %{CHECK-DBG-RECORDS%} %else %{CHECK-DBG-INTRINSIC%}
 ; ------------------------------------------------
 ; Layout
 ; ------------------------------------------------
@@ -21,30 +21,39 @@
 
 ; CHECK: entry:
 ; CHECK: [[LOAD_V:%[0-9]*]] = {{.*}} !dbg [[LOAD_LOC:![0-9]*]]
-; CHECK: call void @llvm.dbg.value(metadata i32 [[LOAD_V]], metadata [[LOAD_MD:![0-9]*]], metadata !DIExpression()), !dbg [[LOAD_LOC]]
+; CHECK-DBG-INTRINSIC: call void @llvm.dbg.value(metadata i32 [[LOAD_V]], metadata [[LOAD_MD:![0-9]*]], metadata !DIExpression()), !dbg [[LOAD_LOC]]
+; CHECK-DBG-RECORDS: #dbg_value(i32 [[LOAD_V]], [[LOAD_MD:![0-9]*]], !DIExpression(), [[LOAD_LOC]])
 ; CHECK: [[CMP1_V:%[0-9]*]] = {{.*}} !dbg [[CMP1_LOC:![0-9]*]]
-; CHECK: call void @llvm.dbg.value(metadata i1 [[CMP1_V]], metadata [[CMP1_MD:![0-9]*]], metadata !DIExpression()), !dbg [[CMP1_LOC]]
+; CHECK-DBG-INTRINSIC: call void @llvm.dbg.value(metadata i1 [[CMP1_V]], metadata [[CMP1_MD:![0-9]*]], metadata !DIExpression()), !dbg [[CMP1_LOC]]
+; CHECK-DBG-RECORDS: #dbg_value(i1 [[CMP1_V]], [[CMP1_MD:![0-9]*]], !DIExpression(), [[CMP1_LOC]])
 ; CHECK: br{{.*}} !dbg [[BR1_LOC:![0-9]*]]
 
 ; CHECK: lbl1:
 ; CHECK: [[P2I_V:%[0-9]*]] = {{.*}} !dbg [[P2I_LOC:![0-9]*]]
-; CHECK: call void @llvm.dbg.value(metadata i32 [[P2I_V]], metadata [[P2I_MD:![0-9]*]], metadata !DIExpression()), !dbg [[P2I_LOC]]
+; CHECK-DBG-INTRINSIC: call void @llvm.dbg.value(metadata i32 [[P2I_V]], metadata [[P2I_MD:![0-9]*]], metadata !DIExpression()), !dbg [[P2I_LOC]]
+; CHECK-DBG-RECORDS: #dbg_value(i32 [[P2I_V]], [[P2I_MD:![0-9]*]], !DIExpression(), [[P2I_LOC]])
 ; CHECK: [[SHL_V:%[0-9]*]] = {{.*}} !dbg [[SHL_LOC:![0-9]*]]
-; CHECK: call void @llvm.dbg.value(metadata i32 [[SHL_V]], metadata [[SHL_MD:![0-9]*]], metadata !DIExpression()), !dbg [[SHL_LOC]]
+; CHECK-DBG-INTRINSIC: call void @llvm.dbg.value(metadata i32 [[SHL_V]], metadata [[SHL_MD:![0-9]*]], metadata !DIExpression()), !dbg [[SHL_LOC]]
+; CHECK-DBG-RECORDS: #dbg_value(i32 [[SHL_V]], [[SHL_MD:![0-9]*]], !DIExpression(), [[SHL_LOC]])
 ; CHECK: [[CMP2_V:%[0-9]*]] = {{.*}} !dbg [[CMP2_LOC:![0-9]*]]
-; CHECK: call void @llvm.dbg.value(metadata i1 [[CMP2_V]], metadata [[CMP2_MD:![0-9]*]], metadata !DIExpression()), !dbg [[CMP2_LOC]]
+; CHECK-DBG-INTRINSIC: call void @llvm.dbg.value(metadata i1 [[CMP2_V]], metadata [[CMP2_MD:![0-9]*]], metadata !DIExpression()), !dbg [[CMP2_LOC]]
+; CHECK-DBG-RECORDS: #dbg_value(i1 [[CMP2_V]], [[CMP2_MD:![0-9]*]], !DIExpression(), [[CMP2_LOC]])
 ; CHECK: [[AOR_V:%[A-z0-9.]*]] = {{.*}} !dbg [[AOR_LOC:![0-9]*]]
-; CHECK: call void @llvm.dbg.value(metadata i32 [[AOR_V]], metadata [[AOR_MD:![0-9]*]], metadata !DIExpression()), !dbg [[AOR_LOC]]
+; CHECK-DBG-INTRINSIC: call void @llvm.dbg.value(metadata i32 [[AOR_V]], metadata [[AOR_MD:![0-9]*]], metadata !DIExpression()), !dbg [[AOR_LOC]]
+; CHECK-DBG-RECORDS: #dbg_value(i32 [[AOR_V]], [[AOR_MD:![0-9]*]], !DIExpression(), [[AOR_LOC]])
 ; CHECK: br{{.*}} !dbg [[BR2_LOC:![0-9]*]]
 
 ; CHECK: lbl2:
 ; CHECK: [[ADD_V:%[0-9]*]] = {{.*}} !dbg [[ADD_LOC:![0-9]*]]
-; CHECK: call void @llvm.dbg.value(metadata i32 [[ADD_V]], metadata [[ADD_MD:![0-9]*]], metadata !DIExpression()), !dbg [[ADD_LOC]]
+; CHECK-DBG-INTRINSIC: call void @llvm.dbg.value(metadata i32 [[ADD_V]], metadata [[ADD_MD:![0-9]*]], metadata !DIExpression()), !dbg [[ADD_LOC]]
+; CHECK-DBG-RECORDS: #dbg_value(i32 [[ADD_V]], [[ADD_MD:![0-9]*]], !DIExpression(), [[ADD_LOC]])
 ; CHECK: store{{.*}} !dbg [[STORE1_LOC:![0-9]*]]
 ; CHECK: [[CMP3_V:%[0-9]*]] = {{.*}} !dbg [[CMP3_LOC:![0-9]*]]
-; CHECK: call void @llvm.dbg.value(metadata i1 [[CMP3_V]], metadata [[CMP3_MD:![0-9]*]], metadata !DIExpression()), !dbg [[CMP3_LOC]]
+; CHECK-DBG-INTRINSIC: call void @llvm.dbg.value(metadata i1 [[CMP3_V]], metadata [[CMP3_MD:![0-9]*]], metadata !DIExpression()), !dbg [[CMP3_LOC]]
+; CHECK-DBG-RECORDS: #dbg_value(i1 [[CMP3_V]], [[CMP3_MD:![0-9]*]], !DIExpression(), [[CMP3_LOC]])
 ; CHECK: [[AXCHG_V:%[A-z0-9.]*]] = {{.*}} !dbg [[AXCHG_LOC:![0-9]*]]
-; CHECK: call void @llvm.dbg.value(metadata i32 [[AXCHG_V]], metadata [[AXCHG_MD:![0-9]*]], metadata !DIExpression()), !dbg [[AXCHG_LOC]]
+; CHECK-DBG-INTRINSIC: call void @llvm.dbg.value(metadata i32 [[AXCHG_V]], metadata [[AXCHG_MD:![0-9]*]], metadata !DIExpression()), !dbg [[AXCHG_LOC]]
+; CHECK-DBG-RECORDS: #dbg_value(i32 [[AXCHG_V]], [[AXCHG_MD:![0-9]*]], !DIExpression(), [[AXCHG_LOC]])
 ; CHECK: br{{.*}} !dbg [[BR3_LOC:![0-9]*]]
 
 ; CHECK: lbl4:

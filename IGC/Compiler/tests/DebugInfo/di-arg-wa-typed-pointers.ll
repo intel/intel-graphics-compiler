@@ -7,18 +7,23 @@
 ;============================ end_copyright_notice =============================
 ; REQUIRES: llvm-14-plus
 
-; RUN: igc_opt -igc-debug-finalize -S < %s | FileCheck %s
+; RUN: igc_opt -igc-debug-finalize -S < %s | FileCheck %s --check-prefixes=%if llvm-22-plus %{CHECK-DBG-RECORDS%} %else %{CHECK-DBG-INTRINSIC%}
 ; ------------------------------------------------
 ; DebugInfoPass
 ; ------------------------------------------------
 
 ; Test checks DIArgList WA that replaces Arglist values with undef(if multiple).
 
-; CHECK:  call void @llvm.dbg.value(metadata !DIArgList(i32 %a)
-; CHECK-NEXT:  call void @llvm.dbg.value(metadata !DIArgList(i32 %b)
-; CHECK-LLVM-14:  call void @llvm.dbg.value(metadata !DIArgList(i32 undef, i32 undef)
-; CHECK-LLVM-15:  call void @llvm.dbg.value(metadata !DIArgList(i32 undef, i32 undef)
-; CHECK-LLVM-16:  call void @llvm.dbg.value(metadata !DIArgList(i32 poison, i32 poison)
+; CHECK-DBG-INTRINSIC:  call void @llvm.dbg.value(metadata !DIArgList(i32 %a)
+; CHECK-DBG-RECORDS:  #dbg_value(!DIArgList(i32 %a)
+; CHECK-DBG-INTRINSIC-NEXT:  call void @llvm.dbg.value(metadata !DIArgList(i32 %b)
+; CHECK-DBG-RECORDS-NEXT:  #dbg_value(!DIArgList(i32 %b)
+; CHECK-DBG-INTRINSIC-LLVM-14:  call void @llvm.dbg.value(metadata !DIArgList(i32 undef, i32 undef)
+; CHECK-DBG-RECORDS-LLVM-14:  #dbg_value(!DIArgList(i32 undef, i32 undef)
+; CHECK-DBG-INTRINSIC-LLVM-15:  call void @llvm.dbg.value(metadata !DIArgList(i32 undef, i32 undef)
+; CHECK-DBG-RECORDS-LLVM-15:  #dbg_value(!DIArgList(i32 undef, i32 undef)
+; CHECK-DBG-INTRINSIC-LLVM-16:  call void @llvm.dbg.value(metadata !DIArgList(i32 poison, i32 poison)
+; CHECK-DBG-RECORDS-LLVM-16:  #dbg_value(!DIArgList(i32 poison, i32 poison)
 
 define spir_kernel void @test_arglist(i32 %a, i32 %b) !dbg !5 {
 entry:

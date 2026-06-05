@@ -8,7 +8,7 @@
 
 
 ; REQUIRES: llvm-14-plus
-; RUN: igc_opt --opaque-pointers --igc-scalarize -S < %s | FileCheck %s
+; RUN: igc_opt --opaque-pointers --igc-scalarize -S < %s | FileCheck %s --check-prefixes=CHECK,%if llvm-22-plus %{CHECK-DBG-RECORDS%} %else %{CHECK-DBG-INTRINSIC%}
 ; ------------------------------------------------
 ; ScalarizeFunction : cmp insn operands
 ; ------------------------------------------------
@@ -21,8 +21,10 @@
 ; Check IR:
 
 ; CHECK: alloca {{.*}}, !dbg [[ALLOC_LOC:![0-9]*]]
-; CHECK: dbg.declare({{.*}}, metadata [[R_MD:![0-9]*]], metadata !DIExpression()), !dbg [[ALLOC_LOC]]
-; CHECK-DAG: dbg.value(metadata <2 x i1> [[CMP_V:%[a-z0-9\.]*]], metadata [[CMP_MD:![0-9]*]], metadata !DIExpression()), !dbg [[CMP_LOC:![0-9]*]]
+; CHECK-DBG-INTRINSIC: dbg.declare({{.*}}, metadata [[R_MD:![0-9]*]], metadata !DIExpression()), !dbg [[ALLOC_LOC]]
+; CHECK-DBG-RECORDS: #dbg_declare({{.*}}, [[R_MD:![0-9]*]], !DIExpression(), [[ALLOC_LOC]])
+; CHECK-DBG-INTRINSIC-DAG: dbg.value(metadata <2 x i1> [[CMP_V:%[a-z0-9\.]*]], metadata [[CMP_MD:![0-9]*]], metadata !DIExpression()), !dbg [[CMP_LOC:![0-9]*]]
+; CHECK-DBG-RECORDS-DAG: #dbg_value(<2 x i1> [[CMP_V:%[a-z0-9\.]*]], [[CMP_MD:![0-9]*]], !DIExpression(), [[CMP_LOC:![0-9]*]])
 ; CHECK-DAG: [[CMP_V]] = {{.*}}, !dbg [[CMP_LOC]]
 ; CHECK-DAG: store <2 x i1> [[CMP_V]], {{.*}}, !dbg [[STORE_LOC:![0-9]*]]
 
