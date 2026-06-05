@@ -168,7 +168,7 @@ void OpenCLProgramContext::failOnSpills() {
       auto &annotatnions = funcMD.UserAnnotations;
       auto output = shader->ProgramOutput();
 
-      if (hasSpills(output->m_scratchSpaceUsedBySpills, output->m_numGRFTotal) &&
+      if (hasSpills(output->m_scratchSpaceUsedBySpills, output->m_numGRFTotal, output->m_spillThreshold) &&
           std::find(annotatnions.begin(), annotatnions.end(), "igc-do-not-spill") != annotatnions.end()) {
         std::string msg = "Spills detected in kernel: " + shader->m_kernelInfo.m_kernelName;
         EmitError(msg.c_str(), shader->entry);
@@ -2140,7 +2140,7 @@ RetryType NeedsRetry(OpenCLProgramContext *ctx, COpenCLKernel *pShader, CShaderP
     return RetryType::YES_Retry;
   } else if (isWorstThanPrv) {
     return RetryType::NO_Retry_Pick_Prv;
-  } else if (!ctx->hasSpills(pOutput->m_scratchSpaceUsedBySpills, pOutput->m_numGRFTotal) ||
+  } else if (!ctx->hasSpills(pOutput->m_scratchSpaceUsedBySpills, pOutput->m_numGRFTotal, pOutput->m_spillThreshold) ||
              ctx->getModuleMetaData()->compOpt.OptDisable || ctx->m_retryManager->IsLastTry() ||
              (!ctx->m_retryManager->kernelSkip.empty() &&
               ctx->m_retryManager->kernelSkip.count(pFunc->getName().str()))) {

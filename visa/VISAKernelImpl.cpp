@@ -745,6 +745,9 @@ void VISAKernelImpl::recordFinalizerInfo() {
     jitInfo->stats.numGRFTotal = m_kernel->getNumRegTotal();
     jitInfo->stats.numThreads = m_kernel->getNumThreads();
     jitInfo->BBNum = static_cast<uint32_t>(m_kernel->fg.size());
+    // Report the final GRF spill budget (base + adjusted-RPE bonus) so IGC's
+    // PS SIMD-mode selection can tolerate spills up to the same budget vISA used.
+    jitInfo->spillThreshold = m_kernel->grfMode.getSpillThreshold();
   }
 }
 

@@ -575,6 +575,62 @@ static unsigned getLatencyHidingThreshold(G4_Kernel &kernel, unsigned NumGrfs) {
   return unsigned(RPThreshold * (std::max(NumGrfs, 128u) - 32u) / 96u);
 }
 
+// Count high-latency send instructions in a BB (sampler reads for now).
+// Mirrors the check in BB_Scheduler::scheduleBlockForLatency.
+static unsigned countHighLatencyInsts(G4_BB *bb) {
+  unsigned count = 0;
+  for (auto inst : *bb) {
+    if (inst->isSend()) {
+      G4_SendDesc *desc = inst->getMsgDesc();
+      if (desc && desc->isSampler())
+        ++count;
+    }
+  }
+  return count;
+}
+
+// Compute the GRF overage allowed for a single BB:
+//   - Sampler-heavy BBs: long-latency sends hide spill/fill cost.
+//   - Cold BBs (outside any loop, single predecessor): rarely executed.
+static unsigned getBBSpillOverageInGRFs(G4_BB *bb, unsigned coldBBOverage,
+                                        unsigned samplerOverage) {
+  static const unsigned MAX_SAMPLER_OVERAGE_IN_GRFS = 96;
+  unsigned overage = 0;
+  unsigned numHighLatency = countHighLatencyInsts(bb);
+  if (numHighLatency >= 1)
+    overage +=
+        std::min(numHighLatency * samplerOverage, MAX_SAMPLER_OVERAGE_IN_GRFS);
+  if (bb->getNestLevel() == 0)
+    overage += coldBBOverage;
+  return overage;
+}
+
+// Compute an adjusted kernel pressure for GRF selection.
+// Only high-pressure BBs (those within HIGH_PRESSURE_MARGIN registers of the
+// true kernel max) can drive the GRF count up; for those BBs a per-BB overage
+// discount is applied when spills are cheap (sampler-heavy or cold BBs).
+// Returns the spill size to be added to spill threshold when selecting GRF.
+static unsigned computeAdjustedKernelPressure(RegisterPressure &rp,
+                                              G4_Kernel &kernel) {
+  unsigned maxRP = rp.getMaxRP();
+  static const unsigned HIGH_PRESSURE_MARGIN = 128;
+  unsigned coldBBOverage = kernel.getuInt32Option(vISA_ColdBBOverage);
+  unsigned samplerOverage = kernel.getuInt32Option(vISA_SamplerRegs);
+
+  unsigned highPressureThreshold =
+      (maxRP > HIGH_PRESSURE_MARGIN) ? maxRP - HIGH_PRESSURE_MARGIN : 0;
+
+  unsigned adjustedMax = 0;
+  for (auto bb : kernel.fg) {
+    unsigned BBRP = rp.getPressure(bb);
+    if (BBRP > highPressureThreshold)
+      adjustedMax =
+          std::max(adjustedMax,
+                   getBBSpillOverageInGRFs(bb, coldBBOverage, samplerOverage));
+  }
+  return adjustedMax;
+}
+
 preRA_Scheduler::preRA_Scheduler(G4_Kernel &k) : kernel(k) {}
 
 preRA_Scheduler::~preRA_Scheduler() {}
@@ -707,8 +763,14 @@ bool preRA_Scheduler::runWithGRFSelection(unsigned &KernelPressure) {
     KernelPressure = rp.getMaxRP();
   }
 
-  // Adjust GRF based on register pressure
   unsigned oldGRFNum = kernel.getNumRegTotal();
+
+  // Adjust GRF based on register pressure. Use an adjusted pressure that
+  // allows more spills in BBs where they are latency-hidden (sampler-heavy
+  // BBs) or unlikely to be frequently executed (cold BBs), so GRF selection
+  // can pick a smaller count and retain more HW threads per EU.
+  if (kernel.getOption(vISA_AdjustedRPE))
+    kernel.grfMode.setSpillThresholdBonusInGRFs(computeAdjustedKernelPressure(rp, kernel));
   kernel.updateKernelByRegPressure(KernelPressure);
   bool GRFdecreased = kernel.getNumRegTotal() < oldGRFNum;
   Changed = false;
@@ -749,6 +811,12 @@ bool preRA_Scheduler::runWithGRFSelection(unsigned &KernelPressure) {
   if (Changed) {
     rp.recompute();
     KernelPressure = rp.getMaxRP();
+    // Final GRF selection: reapply adjusted pressure after latency scheduling
+    // (rp was recomputed above if Changed). Overwrites the bonus set before
+    // latency scheduling so the new register pressure drives GRF selection.
+    if (kernel.getOption(vISA_AdjustedRPE))
+      kernel.grfMode.setSpillThresholdBonusInGRFs(
+          computeAdjustedKernelPressure(rp, kernel));
   }
 
   kernel.updateKernelByRegPressure(KernelPressure, true);

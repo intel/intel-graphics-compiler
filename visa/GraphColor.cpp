@@ -2315,7 +2315,7 @@ bool GlobalRA::canIncreaseGRF(unsigned spillSize, bool infCostSpilled) {
   //  - #GRFs selected and next larger one has same number of threads, or
   //  - Spill size is above threshold
   if ((infCostSpilled || kernel.grfMode.hasLargerGRFSameThreads() ||
-       spillSize > kernel.grfMode.getSpillThreshold()) &&
+       (spillSize > 0 && spillSize >= kernel.grfMode.getSpillThreshold())) &&
       kernel.grfMode.canUpdateMode()) {
     if (kernel.updateKernelToLargerGRF()) {
       // GRF successfully increased
@@ -11789,11 +11789,20 @@ GlobalRA::abortOnSpill(unsigned int GRFSpillFillCount, unsigned int spillSize,
   };
 
   unsigned int instNum = instCount();
-  bool isUnderThreshold =
-      underSpillThreshold(GRFSpillFillCount, spillSize, instNum, coloring);
-  isUnderThreshold = builder.getFreqInfoManager().underFreqSpillThreshold(
-      coloring.getSpilledLiveRanges(), instNum, GRFSpillFillCount,
-      isUnderThreshold);
+  bool isUnderThreshold = false;
+
+  if (builder.getOptions()->getOption(vISA_AdjustedRPE)) {
+    // When adjusted RPE is enabled, the GRF spill (if any) was intentionally
+    // allowed to keep a lower GRF count; decide abort purely on the spill
+    // budget and do not let the frequency-based analysis abort it.
+    isUnderThreshold = spillSize < kernel.grfMode.getSpillThreshold();
+  } else {
+    isUnderThreshold =
+        underSpillThreshold(GRFSpillFillCount, spillSize, instNum, coloring);
+    isUnderThreshold = builder.getFreqInfoManager().underFreqSpillThreshold(
+        coloring.getSpilledLiveRanges(), instNum, GRFSpillFillCount,
+        isUnderThreshold);
+  }
 
   if (isUnderThreshold) {
     if (auto jitInfo = builder.getJitInfo()) {

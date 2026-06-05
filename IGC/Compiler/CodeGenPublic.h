@@ -158,6 +158,9 @@ public:
   unsigned int m_scratchSpaceSizeLimit = 0;
   unsigned int m_numGRFTotal = 128;
   unsigned int m_numGRFSpillFill = 0;
+  // Final GRF spill budget vISA used for this kernel (base + adjusted-RPE bonus),
+  // from FINALIZER_INFO::spillThreshold. hasSpills() tolerates spills up to this.
+  unsigned int m_spillThreshold = 0;
   using NamedVISAAsm =
       std::pair<std::string, std::string>; // Pair of name for the section (1st elem) and VISA asm text (2nd elem).
   std::vector<NamedVISAAsm> m_VISAAsm;
@@ -1291,11 +1294,15 @@ public:
     return false;
   }
 
-  bool hasSpills(uint mscratchSpaceUsedBySpills, uint numGRF) {
-    if (numGRF == 256 && m_spillAllowedFor256GRF)
-      return (mscratchSpaceUsedBySpills > m_spillAllowedFor256GRF);
-    else
-      return (mscratchSpaceUsedBySpills > m_spillAllowed);
+  bool hasSpills(uint mscratchSpaceUsedBySpills, uint numGRF, uint spillThreshold = 0) {
+    uint allowed = (numGRF == 256 && m_spillAllowedFor256GRF) ? m_spillAllowedFor256GRF : m_spillAllowed;
+    // vISA may have intentionally allowed a larger spill budget for this kernel
+    // (e.g. -adjustedrpe base+bonus, reported via SProgramOutput::m_spillThreshold);
+    // honor whichever budget is larger so an intentionally-spilled shader is not
+    // treated as failed.
+    if (spillThreshold > allowed)
+      allowed = spillThreshold;
+    return (mscratchSpaceUsedBySpills > allowed);
   }
 
   bool useStatelessToStateful() {

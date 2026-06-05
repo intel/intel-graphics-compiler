@@ -227,6 +227,12 @@ struct FINALIZER_INFO {
   // Whether kernel recompilation should be avoided. vISA hint for IGC.
   bool avoidRetry = false;
 
+  // The final GRF spill budget vISA used for this kernel
+  // (GRFMode::getSpillThreshold() = base + adjusted-RPE bonus). Reported to IGC
+  // so PS SIMD-mode selection can tolerate spills up to the same budget vISA
+  // intentionally allowed, instead of falling back to a smaller SIMD width.
+  uint32_t spillThreshold = 0;
+
   // GTPin information
   void *freeGRFInfo = nullptr;
   uint32_t freeGRFInfoSize = 0;

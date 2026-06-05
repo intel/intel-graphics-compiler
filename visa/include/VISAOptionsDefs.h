@@ -197,6 +197,24 @@ DEF_VISA_OPTION(vISA_ForceGRFModeUp, ET_INT32, "-forceGRFModeUp",
                 "Set the GRF mode k higher than the one selected by default"
                 "heuristics. 0 means no increase in GRF mode.",
                 0)
+DEF_VISA_OPTION(
+    vISA_AdjustedRPE, ET_BOOL, "-adjustedrpe",
+    "Use an adjusted pressure that allows more spills in BBs where they are "
+    "latency-hidden (sampler-heavy BBs) or unlikely to be frequently executed "
+    "(cold BBs), so GRF selection can pick a smaller count and retain more HW "
+    "threads per EU.",
+    false)
+DEF_VISA_OPTION(vISA_ColdBBOverage, ET_INT32, "-coldbb",
+                "USAGE: -coldbb <k>.\n"
+                "Number of registers that are discounted in cold BB (not "
+                "frequently executed)"
+                "when computing RPE.",
+                4)
+DEF_VISA_OPTION(vISA_SamplerRegs, ET_INT32, "-samplerRegs",
+                "USAGE: -samplerRegs <k>.\n"
+                "Number of registers that are discounted in a BB with "
+                "sampler instructions when computing RPE.",
+                8)
 DEF_VISA_OPTION(vISA_ScalarPipe, ET_INT32, "-scalarPipe",
                 "USAGE: -scalarPipe <num>\n", 0)
 DEF_VISA_OPTION(vISA_LVN, ET_BOOL, "-nolvn", UNUSED, true)

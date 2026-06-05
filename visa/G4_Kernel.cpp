@@ -653,8 +653,8 @@ void G4_Kernel::updateKernelByRegPressure(unsigned regPressure,
     largestInputReg = std::max(largestInputReg, maxRegPayloadDispatch);
   }
 
-  unsigned newGRF = grfMode.setModeByRegPressure(regPressure, largestInputReg,
-                                                 forceGRFModeUp);
+  unsigned newGRF = grfMode.setModeByRegPressure(
+      regPressure, largestInputReg, forceGRFModeUp);
 
   if (newGRF == numRegTotal)
     return;
@@ -2334,8 +2334,10 @@ unsigned GRFMode::getSpillThreshold(unsigned mode) const {
   if (platform < Xe3)
     return 0;
 
-  // Xe3 supports spill threshold only if GRF >= 128
-  if (platform == Xe3 && numGRF < 128)
+  // Xe3 supports spill threshold only if GRF >= 128 unless there is an
+  // adjusted RPE bonus from per-BB heuristics (sampler-heavy/cold BBs).
+  if (platform == Xe3 && numGRF < 128 &&
+      spillThresholdBonusInGRFs == 0)
     return 0;
 
   // Platforms after Xe3 support spilling only if GRF >= 96
@@ -2344,16 +2346,21 @@ unsigned GRFMode::getSpillThreshold(unsigned mode) const {
 
   // Special case: 256 GRF with specific spill option
   if (numGRF == 256) {
-    uint32_t spill256Option = options->getuInt32Option(vISA_SpillAllowed256GRF);
+    uint32_t spill256Option =
+        options->getuInt32Option(vISA_SpillAllowed256GRF);
     if (spill256Option > 0)
       return spill256Option;
   }
 
   // Default spill threshold
-  return options->getuInt32Option(vISA_SpillAllowed);
+  unsigned baseThreshold = options->getuInt32Option(vISA_SpillAllowed);
+  if (baseThreshold == 0)
+    return 0;
+
+  return baseThreshold + spillThresholdBonusInGRFs * grfSize;
 }
 
 bool GRFMode::canUpdateMode() const {
-  return (getCurrentMode() + 1) < getCountOfMode() &&
-    currentStepInMode < allowedStepsInMode;
+    return (getCurrentMode() + 1) < getCountOfMode() &&
+        currentStepInMode < allowedStepsInMode;
 }

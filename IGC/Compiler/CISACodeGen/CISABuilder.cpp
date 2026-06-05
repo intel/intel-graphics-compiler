@@ -6064,6 +6064,7 @@ void CEncoder::Compile(bool hasSymbolTable, GenXFunctionGroupAnalysis *&pFGA) {
 
   pOutput->m_numGRFTotal = jitInfo->stats.numGRFTotal;
   pOutput->m_numThreads = jitInfo->stats.numThreads;
+  pOutput->m_spillThreshold = jitInfo->spillThreshold;
 
   pOutput->m_perThreadArgumentStackSize = m_argumentStackSize;
 

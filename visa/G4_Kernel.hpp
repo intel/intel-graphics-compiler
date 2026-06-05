@@ -156,6 +156,7 @@ public:
                                 bool forceGRFModedUp = false);
   bool hasLargerGRFSameThreads() const;
   bool hasSmallerGRFSameThreads() const;
+
   unsigned getSpillThreshold(unsigned mode) const;
   unsigned getSpillThreshold() const { return getSpillThreshold(currentMode); }
 
@@ -245,6 +246,12 @@ public:
     return configs[currentMode].numGRF;
   }
 
+  // Set the per-BB spill threshold bonus (in GRFs). Caller (pre-RA scheduler)
+  // owns when to update this; subsequent calls overwrite the previous value.
+  void setSpillThresholdBonusInGRFs(unsigned bonusInGRFs) {
+    spillThresholdBonusInGRFs = bonusInGRFs;
+  }
+
 private:
   // Parameters associated to a GRF mode
   struct Config {
@@ -277,6 +284,11 @@ private:
   const TARGET_PLATFORM platform;
   unsigned grfSize;
   Options *options;
+  // Per-BB spill threshold bonus in GRFs. Set explicitly by the pre-RA
+  // scheduler via setSpillThresholdBonusInGRFs() to reflect BBs where spills
+  // are cheap (sampler-heavy or cold BBs). Read by getSpillThreshold() to
+  // augment the platform base threshold.
+  unsigned spillThresholdBonusInGRFs = 0;
 };
 
 // NoMask WA Information
