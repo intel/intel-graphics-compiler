@@ -3542,12 +3542,6 @@ short __attribute__((overloadable)) __spirv_GaloisLFSRINTEL(short seed, short po
 int __attribute__((overloadable)) __spirv_GaloisLFSRINTEL(int seed, int polynomial) {
     return __builtin_IB_lfsr_b32(seed, polynomial);
 }
-long __attribute__((overloadable)) __spirv_GaloisLFSRINTEL(long seed, long polynomial) {
-    // unsigned long is needed for *zero extended* shift right
-    ulong seed_r1 = as_ulong(seed) >> 1ul;
-    if (seed & 1) seed_r1 ^= as_ulong(polynomial);
-    return as_long(seed_r1);
-}
 // lfsr vec2
 char2 __attribute__((overloadable)) __spirv_GaloisLFSRINTEL(char2 seed, char polynomial) {
     char2 poly = {polynomial, polynomial};
@@ -3608,14 +3602,6 @@ int4 __attribute__((overloadable)) __spirv_GaloisLFSRINTEL(int4 seed, int polyno
     result.z = __builtin_IB_lfsr_b32(as_uint(seed.z), as_uint(polynomial));
     result.w = __builtin_IB_lfsr_b32(as_uint(seed.w), as_uint(polynomial));
     return as_int4(result);
-}
-long4 __attribute__((overloadable)) __spirv_GaloisLFSRINTEL(long4 seed, long polynomial) {
-    long4 result;
-    result.x = __spirv_GaloisLFSRINTEL(seed.x, polynomial);
-    result.y = __spirv_GaloisLFSRINTEL(seed.y, polynomial);
-    result.z = __spirv_GaloisLFSRINTEL(seed.z, polynomial);
-    result.w = __spirv_GaloisLFSRINTEL(seed.w, polynomial);
-    return result;
 }
 // lfsr vec8
 char8 __attribute__((overloadable)) __spirv_GaloisLFSRINTEL(char8 seed, char polynomial) {
