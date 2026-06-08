@@ -17,7 +17,20 @@ on:
 permissions: read-all
 
 jobs:
+  get-release-tag:
+    if: github.repository == 'intel/intel-graphics-compiler'
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.get-latest-IGC-release-tag.outputs.tag }}
+    steps:
+      - name: get latest IGC release tag
+        id: get-latest-IGC-release-tag
+        run: |
+          TAG=$(gh api repos/intel/intel-graphics-compiler/releases --jq '[.[] | select(.draft | not)][0].tag_name')
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+
   download-OpenCL-Clang: # openCL Clang is downloaded from intel/intel-graphics-compiler releases
+    needs: [get-release-tag]
     if: github.repository == 'intel/intel-graphics-compiler'
     runs-on: ubuntu-latest
     env:
@@ -27,14 +40,9 @@ jobs:
     outputs:
       CLANG_CACHE_KEY: ${{ env.CLANG_CACHE_KEY }}
     steps:
-      - name: get latest IGC release tag
-        id: get-latest-IGC-release-tag
-        run: |
-          TAG=$(gh api repos/intel/intel-graphics-compiler/releases/latest --jq .tag_name)
-          echo "tag=$TAG" >> $GITHUB_OUTPUT
       - name: set initial cache key
         run: |
-          LOC_CLANG_CACHE_KEY="${{ steps.get-latest-IGC-release-tag.outputs.tag }}"
+          LOC_CLANG_CACHE_KEY="${{ needs.get-release-tag.outputs.tag }}"
           echo "CLANG_CACHE_KEY=$LOC_CLANG_CACHE_KEY" >> $GITHUB_ENV
           echo "ORIGINAL_CLANG_CACHE_KEY=$LOC_CLANG_CACHE_KEY" >> $GITHUB_ENV
       - name: caching downloaded OpenCL Clang # Downloading a new OpenCL Clang only after the new IGC is released
@@ -48,7 +56,7 @@ jobs:
         run: |
          if [[ $(ls ./igc-official-release | wc -c)  == "0" ]]; then
            echo "CLANG_CACHE_VALID=false" >> $GITHUB_ENV
-           echo "CLANG_CACHE_KEY=${{ steps.get-latest-IGC-release-tag.outputs.tag }}-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}" >> $GITHUB_ENV
+           echo "CLANG_CACHE_KEY=${{ needs.get-release-tag.outputs.tag }}-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}" >> $GITHUB_ENV
          fi
       - name: creating a folder for downloaded deb files
         if: ${{ steps.cache-igc-release.outputs.cache-hit != 'true' || env.CLANG_CACHE_VALID != 'true' }}
@@ -57,7 +65,7 @@ jobs:
         if:  ${{ steps.cache-igc-release.outputs.cache-hit != 'true' || env.CLANG_CACHE_VALID != 'true' }}
         working-directory: ./igc-official-release
         # To install openCL clang from Deb package, IGC must also be installed. Therefore, the last IGC release is also downloaded.
-        run: curl -s https://api.github.com/repos/intel/intel-graphics-compiler/releases/latest | grep browser_download_url | egrep 'opencl-|core-' | cut -d '"' -f 4 | wget -qi -
+        run: gh api repos/intel/intel-graphics-compiler/releases/tags/${{ needs.get-release-tag.outputs.tag }} --jq '.assets[].browser_download_url' | egrep 'opencl-|core-' | wget -qi -
       - name: checking if downloaded deb files are here
         run: |
           ls ./igc-official-release
@@ -133,11 +141,6 @@ jobs:
       - uses: actions/checkout@v6
 
 #Get OpenCL Clang
-      - name: get latest IGC release tag
-        id: get-latest-IGC-release-tag
-        run: |
-          TAG="$(gh api repos/intel/intel-graphics-compiler/releases/latest --jq .tag_name)"
-          echo "tag=$TAG" >> $GITHUB_OUTPUT
       - name: getting OpenCL Clang from cache from the previous job
         id: cache-igc-release
         uses: actions/cache@v5
