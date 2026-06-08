@@ -143,7 +143,7 @@ void MinimumValidAddressChecking::handleLoadStore(Instruction *instruction) {
 
   // PhiNode
   if (isa<LoadInst>(instruction)) {
-    PHINode *phi = PHINode::Create(instruction->getType(), 2, "", &mergeBlock->front());
+    PHINode *phi = PHINode::Create(instruction->getType(), 2, "", IGCLLVM::insertPosition(&mergeBlock->front()));
     instruction->replaceUsesOutsideBlock(phi, thenBlock);
     phi->addIncoming(instruction, thenBlock);
     phi->addIncoming(replacement, elseBlock);
@@ -155,7 +155,8 @@ Value *MinimumValidAddressChecking::createLoadStoreReplacement(Instruction *inst
     return Constant::getNullValue(instruction->getType());
   } else if (auto store = dyn_cast<StoreInst>(instruction)) {
     return new StoreInst(store->getValueOperand(),
-                         ConstantPointerNull::get(dyn_cast<PointerType>(store->getPointerOperandType())), insertBefore);
+                         ConstantPointerNull::get(dyn_cast<PointerType>(store->getPointerOperandType())),
+                         IGCLLVM::insertPosition(insertBefore));
   } else {
     IGC_ASSERT(0);
     return nullptr;
@@ -177,7 +178,7 @@ void MinimumValidAddressChecking::createAssertCall(Value *address, Instruction *
                                             FunctionType::get(Type::getVoidTy(M->getContext()), assertArgsTypes, false))
                          .getCallee());
 
-  auto call = CallInst::Create(assert, assertArgs, "", insertBefore);
+  auto call = CallInst::Create(assert, assertArgs, "", IGCLLVM::insertPosition(insertBefore));
   call->setCallingConv(CallingConv::SPIR_FUNC);
 }
 
@@ -185,8 +186,8 @@ SmallVector<Value *, 4> MinimumValidAddressChecking::createAssertArgs(Value *add
                                                                       Instruction *insertBefore) {
   auto createGEP = [insertBefore](GlobalVariable *globalVariable) {
     const auto zero = ConstantInt::getSigned(Type::getInt32Ty(globalVariable->getParent()->getContext()), 0);
-    auto result =
-        GetElementPtrInst::Create(globalVariable->getValueType(), globalVariable, {zero, zero}, "", insertBefore);
+    auto result = GetElementPtrInst::Create(globalVariable->getValueType(), globalVariable, {zero, zero}, "",
+                                            IGCLLVM::insertPosition(insertBefore));
     result->setIsInBounds(true);
     return result;
   };

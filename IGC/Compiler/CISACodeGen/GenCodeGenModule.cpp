@@ -1251,12 +1251,12 @@ void SubroutineInliner::visitGetElementPtrInst(GetElementPtrInst &GEPI) {
         // we need to create a new GEPI because the old one has coded old AS,
         // and we can not create new load instruction with the old GEPI with the correct AS
         // This is WA for a bug in LLVM 11.
-        GetElementPtrInst *newGEPI =
-            GetElementPtrInst::Create(GEPI.getSourceElementType(), GEPIPointerOperand, Idx, "", &GEPI);
+        GetElementPtrInst *newGEPI = GetElementPtrInst::Create(GEPI.getSourceElementType(), GEPIPointerOperand, Idx, "",
+                                                               IGCLLVM::insertPosition(&GEPI));
         newGEPI->setIsInBounds(GEPI.isInBounds());
         newGEPI->setDebugLoc(GEPI.getDebugLoc());
 
-        auto *newLoad = new LoadInst(loadInst->getType(), newGEPI, "", loadInst);
+        auto *newLoad = new LoadInst(loadInst->getType(), newGEPI, "", IGCLLVM::insertPosition(loadInst));
         newLoad->setAlignment(IGCLLVM::getAlign(*loadInst));
         loadInst->replaceAllUsesWith(newLoad);
         newLoad->setDebugLoc(loadInst->getDebugLoc());
@@ -1276,14 +1276,14 @@ void SubroutineInliner::visitMemCpyInst(MemCpyInst &I) {
       Value *SrcCast = BitCastInst::Create(Instruction::BitCast, origSrc,
                                            IGCLLVM::PointerType::get(dyn_cast<PointerType>(Src->getType()),
                                                                      origSrc->getType()->getPointerAddressSpace()),
-                                           "", &I);
+                                           "", IGCLLVM::insertPosition(&I));
       I.replaceUsesOfWith(Src, SrcCast);
     }
     if (origDst->getType()->getPointerAddressSpace() != Dst->getType()->getPointerAddressSpace()) {
       Value *DstCast = BitCastInst::Create(Instruction::BitCast, origDst,
                                            IGCLLVM::PointerType::get(dyn_cast<PointerType>(Dst->getType()),
                                                                      origDst->getType()->getPointerAddressSpace()),
-                                           "", &I);
+                                           "", IGCLLVM::insertPosition(&I));
       I.replaceUsesOfWith(Dst, DstCast);
     }
   }

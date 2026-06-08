@@ -97,7 +97,7 @@ void AccuracyDecoratedCallsBiFResolution::visitBinaryOperator(BinaryOperator &in
   Function *newFunc =
       cast<Function>(m_Module->getOrInsertFunction("__builtin_spirv_divide_cr_f32_f32", FT, {}).getCallee());
   newFunc->setCallingConv(CallingConv::SPIR_FUNC);
-  CallInst *newCall = CallInst::Create(newFunc, args, inst.getName(), &inst);
+  CallInst *newCall = CallInst::Create(newFunc, args, inst.getName(), IGCLLVM::insertPosition(&inst));
 
   llvm::Attribute attr = llvm::Attribute::get(inst.getContext(), "fpbuiltin-max-error", maxErrorStr);
   newCall->addFnAttr(attr);
@@ -135,7 +135,7 @@ void AccuracyDecoratedCallsBiFResolution::visitCallInst(CallInst &callInst) {
   Function *newFunc = getOrInsertNewFunc(F->getName(), F->getReturnType(), args, F->getAttributes(),
                                          F->getCallingConv(), maxErrorStr, currInst);
 
-  CallInst *newCall = CallInst::Create(newFunc, args, callInst.getName(), &callInst);
+  CallInst *newCall = CallInst::Create(newFunc, args, callInst.getName(), IGCLLVM::insertPosition(&callInst));
   newCall->setCallingConv(callInst.getCallingConv());
   newCall->setAttributes(callInst.getAttributes());
 

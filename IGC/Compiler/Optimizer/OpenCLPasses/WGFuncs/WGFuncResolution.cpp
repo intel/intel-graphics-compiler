@@ -12,6 +12,7 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/IR/Module.h>
 #include "common/LLVMWarningsPop.hpp"
+#include "llvmWrapper/IR/Instructions.h"
 #include "GenISAIntrinsics/GenIntrinsics.h"
 
 using namespace llvm;
@@ -53,7 +54,8 @@ void WGFuncResolution::visitCallInst(CallInst &callInst) {
     args.push_back(callInst.getOperand(0));
 
     Function *isaIntrinFunc = GenISAIntrinsic::getDeclaration(m_pModule, GenISAIntrinsic::GenISA_WorkGroupAny);
-    CallInst *isaIntrinCall = CallInst::Create(isaIntrinFunc, args, callInst.getName(), &callInst);
+    CallInst *isaIntrinCall =
+        CallInst::Create(isaIntrinFunc, args, callInst.getName(), IGCLLVM::insertPosition(&callInst));
 
     isaIntrinCall->setDebugLoc(callInst.getDebugLoc());
 

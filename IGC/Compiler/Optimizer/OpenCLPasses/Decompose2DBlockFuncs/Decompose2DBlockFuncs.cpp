@@ -332,7 +332,8 @@ CallBase *Decompose2DBlockFuncs::createPayload(GenIntrinsicInst &GII, const Inpu
     IGCLLVM::setDoesNotAccessMemory(*BlockCreateFunc);
   }
 
-  auto *PayloadInst{CallInst::Create(BlockCreateFunc, BlockCreateAddrPayloadArgs, "Block2D_AddrPayload", &GII)};
+  auto *PayloadInst{CallInst::Create(BlockCreateFunc, BlockCreateAddrPayloadArgs, "Block2D_AddrPayload",
+                                     IGCLLVM::insertPosition(&GII))};
 
   // Save payload instruction for the arguments being considered
   CreatedPayloads[BlockCreateAddrPayloadArgs] = PayloadInst;
@@ -370,7 +371,7 @@ CallInst *Decompose2DBlockFuncs::createSetAdd(GenIntrinsicInst &GII, const Input
     IGCLLVM::setOnlyWritesMemory(*BlockSetAddrFunc);
   }
 
-  return CallInst::Create(BlockSetAddrFunc, SetAddrPayloadArgs, "", &GII);
+  return CallInst::Create(BlockSetAddrFunc, SetAddrPayloadArgs, "", IGCLLVM::insertPosition(&GII));
 }
 
 // Create read, write, prefetch
@@ -401,7 +402,8 @@ Instruction *Decompose2DBlockFuncs::createPayloadIO(GenIntrinsicInst &GII, const
     std::array<Type *, 2> Tys{GII.getType(), IGCLLVM::PointerType::get(Type::getInt32Ty(GII.getContext()), 0)};
     Function *BlockAddrFunc{GenISAIntrinsic::getDeclaration(GII.getCalledFunction()->getParent(),
                                                             GenISAIntrinsic::GenISA_LSC2DBlockReadAddrPayload, Tys)};
-    IOCallInst = CallInst::Create(BlockAddrFunc, BlockAddrPayloadArgs, "Block2D_ReadAddrPayload", &GII);
+    IOCallInst =
+        CallInst::Create(BlockAddrFunc, BlockAddrPayloadArgs, "Block2D_ReadAddrPayload", IGCLLVM::insertPosition(&GII));
     break;
   }
   case GenISAIntrinsic::GenISA_LSC2DBlockWrite: {
@@ -409,7 +411,7 @@ Instruction *Decompose2DBlockFuncs::createPayloadIO(GenIntrinsicInst &GII, const
     std::array<Type *, 2> Tys{Payload->getType(), IV.Data->getType()};
     Function *BlockAddrFunc{GenISAIntrinsic::getDeclaration(GII.getCalledFunction()->getParent(),
                                                             GenISAIntrinsic::GenISA_LSC2DBlockWriteAddrPayload, Tys)};
-    IOCallInst = CallInst::Create(BlockAddrFunc, BlockAddrPayloadArgs, "", &GII);
+    IOCallInst = CallInst::Create(BlockAddrFunc, BlockAddrPayloadArgs, "", IGCLLVM::insertPosition(&GII));
     break;
   }
   case GenISAIntrinsic::GenISA_LSC2DBlockPrefetch: {
@@ -417,7 +419,7 @@ Instruction *Decompose2DBlockFuncs::createPayloadIO(GenIntrinsicInst &GII, const
     Function *BlockAddrFunc{GenISAIntrinsic::getDeclaration(GII.getCalledFunction()->getParent(),
                                                             GenISAIntrinsic::GenISA_LSC2DBlockPrefetchAddrPayload,
                                                             Payload->getType())};
-    IOCallInst = CallInst::Create(BlockAddrFunc, BlockAddrPayloadArgs, "", &GII);
+    IOCallInst = CallInst::Create(BlockAddrFunc, BlockAddrPayloadArgs, "", IGCLLVM::insertPosition(&GII));
 
     break;
   }

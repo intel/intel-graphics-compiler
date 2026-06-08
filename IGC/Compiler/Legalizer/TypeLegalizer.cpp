@@ -580,8 +580,8 @@ bool TypeLegalizer::preparePHIs(Function &F) {
         IGC_ASSERT(TySeq->size() == 1);
         Type *PromotedTy = TySeq->front();
         StringRef Name = PN->getName();
-        PHINode *Promoted =
-            PHINode::Create(PromotedTy, PN->getNumIncomingValues(), Twine(Name, getSuffix(Act)), &(*BI));
+        PHINode *Promoted = PHINode::Create(PromotedTy, PN->getNumIncomingValues(), Twine(Name, getSuffix(Act)),
+                                            IGCLLVM::insertPosition(&(*BI)));
         Promoted->setDebugLoc(PN->getDebugLoc());
         replaceAllDbgUsesWith(*PN, *Promoted, *PN, *DT);
         setLegalizedValues(PN, Promoted);

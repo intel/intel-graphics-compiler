@@ -646,7 +646,7 @@ void SpvSubgroupMMAResolution::lowerToDpasBuiltin(CallInst &CI, Function *F) {
   newFuncName << "dpas_" << OperandsIt->second.str() << "8_" << M;
 
   auto newFunc = m_Module->getOrInsertFunction(newFuncName.str(), FT);
-  auto newCall = CallInst::Create(newFunc, args, "", &CI);
+  auto newCall = CallInst::Create(newFunc, args, "", IGCLLVM::insertPosition(&CI));
 
   CI.replaceAllUsesWith(newCall);
   CI.eraseFromParent();
@@ -758,7 +758,7 @@ void SpvSubgroupMMAResolution::lowerToBdpasBuiltin(CallInst &CI, Function *F) {
   newFuncName << "__builtin_IB_sub_group16_bdpas_" << OperandsIt->second.str() << "8_8";
 
   auto newFunc = m_Module->getOrInsertFunction(newFuncName.str(), FT);
-  auto newCall = CallInst::Create(newFunc, args, "", &CI);
+  auto newCall = CallInst::Create(newFunc, args, "", IGCLLVM::insertPosition(&CI));
 
   CI.replaceAllUsesWith(newCall);
   CI.eraseFromParent();

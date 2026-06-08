@@ -186,7 +186,7 @@ void SpvPredicatedIOResolution::visitPredicatedSPVCallInst(CallInst &CI) {
   }
 
   Function *NewFunction = GenISAIntrinsic::getDeclaration(m_Module, Iid, ArgTypes);
-  auto NewCall = CallInst::Create(NewFunction, Args, "", &CI);
+  auto NewCall = CallInst::Create(NewFunction, Args, "", IGCLLVM::insertPosition(&CI));
   NewCall->setDebugLoc(CI.getDebugLoc());
   NewCall->setName(CI.getName());
 

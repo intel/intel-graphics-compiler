@@ -17,6 +17,7 @@ SPDX-License-Identifier: MIT
 #endif
 #include "common/LLVMWarningsPop.hpp"
 #include "llvmWrapper/IR/DerivedTypes.h"
+#include "llvmWrapper/IR/Instructions.h"
 
 using namespace IGC;
 using namespace llvm;
@@ -61,8 +62,8 @@ Value *InjectPrintf::createGEP(GlobalVariable *GlobalVariable, Instruction *Inse
 
   LLVMContext &Context = GlobalVariable->getParent()->getContext();
   const auto Zero = ConstantInt::getSigned(Type::getInt32Ty(Context), 0);
-  auto Result =
-      GetElementPtrInst::Create(GlobalVariable->getValueType(), GlobalVariable, {Zero, Zero}, "", InsertBefore);
+  auto Result = GetElementPtrInst::Create(GlobalVariable->getValueType(), GlobalVariable, {Zero, Zero}, "",
+                                          IGCLLVM::insertPosition(InsertBefore));
   Result->setIsInBounds(true);
   return Result;
 }

@@ -87,7 +87,8 @@ void CodeAssumption::uniformHelper(Module *M) {
       Type *ITys[3] = {args[0]->getType(), int32Ty, int32Ty};
       Function *shuffleIntrin = GenISAIntrinsic::getDeclaration(M, GenISAIntrinsic::GenISA_WaveShuffleIndex, ITys);
 
-      Instruction *shuffleCall = CallInst::Create(shuffleIntrin, args, "sgid", CI->getNextNode());
+      Instruction *shuffleCall =
+          CallInst::Create(shuffleIntrin, args, "sgid", IGCLLVM::insertPosition(CI->getNextNode()));
 
       shuffleCall->setDebugLoc(CI->getDebugLoc());
 

@@ -354,7 +354,8 @@ void ScalarizeFunction::visitUnaryOperator(UnaryOperator &UI) {
   SmallVector<Value *, MAX_INPUT_VECTOR_WIDTH> newScalarizedInsts;
   newScalarizedInsts.resize(numElements);
   for (unsigned dup = 0; dup < numElements; dup++) {
-    UnaryOperator *Val = UnaryOperator::Create(UI.getOpcode(), operand0[dup], UI.getName(), &UI);
+    UnaryOperator *Val =
+        UnaryOperator::Create(UI.getOpcode(), operand0[dup], UI.getName(), IGCLLVM::insertPosition(&UI));
     // Copy fast math flags if any.
     if (isa<FPMathOperator>(Val))
       Val->setFastMathFlags(UI.getFastMathFlags());
@@ -399,7 +400,8 @@ void ScalarizeFunction::visitBinaryOperator(BinaryOperator &BI) {
   SmallVector<Value *, MAX_INPUT_VECTOR_WIDTH> newScalarizedInsts;
   newScalarizedInsts.resize(numElements);
   for (unsigned dup = 0; dup < numElements; dup++) {
-    BinaryOperator *Val = BinaryOperator::Create(BI.getOpcode(), operand0[dup], operand1[dup], BI.getName(), &BI);
+    BinaryOperator *Val = BinaryOperator::Create(BI.getOpcode(), operand0[dup], operand1[dup], BI.getName(),
+                                                 IGCLLVM::insertPosition(&BI));
 
     // Copy overflow flags if any.
     if (isa<OverflowingBinaryOperator>(Val)) {
@@ -455,7 +457,8 @@ void ScalarizeFunction::visitCmpInst(CmpInst &CI) {
   SmallVector<Value *, MAX_INPUT_VECTOR_WIDTH> newScalarizedInsts;
   newScalarizedInsts.resize(numElements);
   for (unsigned dup = 0; dup < numElements; dup++) {
-    CmpInst *Val = CmpInst::Create(CI.getOpcode(), CI.getPredicate(), operand0[dup], operand1[dup], CI.getName(), &CI);
+    CmpInst *Val = CmpInst::Create(CI.getOpcode(), CI.getPredicate(), operand0[dup], operand1[dup], CI.getName(),
+                                   IGCLLVM::insertPosition(&CI));
     if (isa<FPMathOperator>(Val)) {
       Val->setFastMathFlags(CI.getFastMathFlags());
     }
@@ -519,7 +522,8 @@ void ScalarizeFunction::visitCastInst(CastInst &CI) {
   SmallVector<Value *, MAX_INPUT_VECTOR_WIDTH> newScalarizedInsts;
   newScalarizedInsts.resize(numElements);
   for (unsigned dup = 0; dup < numElements; dup++) {
-    CastInst *tmp = CastInst::Create(CI.getOpcode(), operand0[dup], scalarDestType, CI.getName(), &CI);
+    CastInst *tmp =
+        CastInst::Create(CI.getOpcode(), operand0[dup], scalarDestType, CI.getName(), IGCLLVM::insertPosition(&CI));
     tmp->copyMetadata(CI);
     newScalarizedInsts[dup] = tmp;
   }
@@ -615,7 +619,7 @@ void ScalarizeFunction::visitPHINode(PHINode &PI) {
     SmallVector<Value *, MAX_INPUT_VECTOR_WIDTH> newScalarizedPHI;
     newScalarizedPHI.resize(numElements);
     for (unsigned i = 0; i < numElements; i++) {
-      PHINode *tmp = PHINode::Create(scalarType, numValues, PI.getName(), &PI);
+      PHINode *tmp = PHINode::Create(scalarType, numValues, PI.getName(), IGCLLVM::insertPosition(&PI));
       if (isa<FPMathOperator>(tmp)) {
         tmp->setFastMathFlags(PI.getFastMathFlags());
       }
@@ -688,7 +692,8 @@ void ScalarizeFunction::visitSelectInst(SelectInst &SI) {
   for (unsigned dup = 0; dup < numElements; dup++) {
     // Small optimization: Some scalar selects may be redundant (trueVal == falseVal)
     if (trueValOp[dup] != falseValOp[dup]) {
-      SelectInst *Val = SelectInst::Create(condOp[dup], trueValOp[dup], falseValOp[dup], SI.getName(), &SI);
+      SelectInst *Val =
+          SelectInst::Create(condOp[dup], trueValOp[dup], falseValOp[dup], SI.getName(), IGCLLVM::insertPosition(&SI));
       if (isa<FPMathOperator>(Val)) {
         Val->setFastMathFlags(SI.getFastMathFlags());
       }
@@ -876,7 +881,7 @@ void ScalarizeFunction::ScalarizeIntrinsic(IntrinsicInst &II) {
 
     auto *ScalarIntr =
         CallInst::Create(IGCLLVM::getOrInsertDeclaration(II.getModule(), II.getIntrinsicID(), ScalarType),
-                         ScalarOperands, II.getName() + ".scalar", &II);
+                         ScalarOperands, II.getName() + ".scalar", IGCLLVM::insertPosition(&II));
     ScalarIntr->copyMetadata(II);
     NewScalarizedInsts[i] = ScalarIntr;
   }
@@ -944,11 +949,13 @@ void ScalarizeFunction::visitGetElementPtrInst(GetElementPtrInst &GI) {
     auto op2 = indexValue->getType()->isVectorTy() ? operand2[i] : indexValue;
 
     Type *BaseTy = GI.getSourceElementType();
-    GetElementPtrInst *newGEP = GetElementPtrInst::Create(BaseTy, op1, op2, VALUE_NAME(GI.getName()), &GI);
+    GetElementPtrInst *newGEP =
+        GetElementPtrInst::Create(BaseTy, op1, op2, VALUE_NAME(GI.getName()), IGCLLVM::insertPosition(&GI));
     newGEP->copyMetadata(GI);
     Value *constIndex = ConstantInt::get(Type::getInt32Ty(context()), i);
-    Instruction *insert = InsertElementInst::Create(assembledVector, newGEP, constIndex,
-                                                    VALUE_NAME(GI.getName() + ".assembled.vect"), &GI);
+    Instruction *insert =
+        InsertElementInst::Create(assembledVector, newGEP, constIndex, VALUE_NAME(GI.getName() + ".assembled.vect"),
+                                  IGCLLVM::insertPosition(&GI));
     assembledVector = insert;
     scalarValues[i] = newGEP;
 
@@ -1058,8 +1065,8 @@ void ScalarizeFunction::obtainScalarizedValues(SmallVectorImpl<Value *> &retValu
     // Generate extractElement instructions
     for (unsigned i = 0; i < width; ++i) {
       Value *constIndex = ConstantInt::get(Type::getInt32Ty(context()), i);
-      retValues[i + destIdx] =
-          ExtractElementInst::Create(origValue, constIndex, VALUE_NAME(origValue->getName() + ".scalar"), locationInst);
+      retValues[i + destIdx] = ExtractElementInst::Create(
+          origValue, constIndex, VALUE_NAME(origValue->getName() + ".scalar"), IGCLLVM::insertPosition(locationInst));
     }
     SCMEntry *newEntry = getSCMEntry(origValue);
     updateSCMEntryWithValues(newEntry, &(retValues[destIdx]), origValue, false);
@@ -1110,9 +1117,9 @@ void ScalarizeFunction::obtainVectorValueWhichMightBeScalarizedImpl(Value *vecto
   for (unsigned i = 0; i < width; i++) {
     IGC_ASSERT_MESSAGE(NULL != valueEntry->scalarValues[i], "SCM entry has NULL value");
     Value *constIndex = ConstantInt::get(Type::getInt32Ty(context()), i);
-    Instruction *insert =
-        InsertElementInst::Create(assembledVector, valueEntry->scalarValues[i], constIndex,
-                                  VALUE_NAME(vectorVal->getName() + ".assembled.vect"), insertLocation);
+    Instruction *insert = InsertElementInst::Create(assembledVector, valueEntry->scalarValues[i], constIndex,
+                                                    VALUE_NAME(vectorVal->getName() + ".assembled.vect"),
+                                                    IGCLLVM::insertPosition(insertLocation));
     VectorizerUtils::SetDebugLocBy(insert, vectorInst);
     assembledVector = insert;
     V_PRINT(scalarizer, "\t\t\tCreated vector assembly inst:" << *assembledVector << "\n");
@@ -1259,8 +1266,9 @@ void ScalarizeFunction::resolveDeferredInstructions() {
       newInsts.resize(width);
       for (unsigned i = 0; i < width; i++) {
         Value *constIndex = ConstantInt::get(Type::getInt32Ty(context()), i);
-        Instruction *EE = ExtractElementInst::Create(vectorInst, constIndex,
-                                                     VALUE_NAME(vectorInst->getName() + ".scalar"), &(*insertLocation));
+        Instruction *EE =
+            ExtractElementInst::Create(vectorInst, constIndex, VALUE_NAME(vectorInst->getName() + ".scalar"),
+                                       IGCLLVM::insertPosition(&(*insertLocation)));
         newInsts[i] = EE;
       }
       updateSCMEntryWithValues(currentInstEntry, &(newInsts[0]), vectorInst, false);

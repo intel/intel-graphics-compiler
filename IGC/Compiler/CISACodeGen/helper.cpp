@@ -123,7 +123,7 @@ bool isNaNCheck(llvm::FCmpInst &FC) {
 }
 
 llvm::LoadInst *cloneLoad(llvm::LoadInst *Orig, llvm::Type *Ty, llvm::Value *Ptr) {
-  llvm::LoadInst *LI = new llvm::LoadInst(Ty, Ptr, "", false, Orig);
+  llvm::LoadInst *LI = new llvm::LoadInst(Ty, Ptr, "", false, IGCLLVM::insertPosition(Orig));
   LI->setVolatile(Orig->isVolatile());
   LI->setAlignment(IGCLLVM::getAlign(*Orig));
   if (LI->isAtomic()) {
@@ -140,7 +140,7 @@ llvm::LoadInst *cloneLoad(llvm::LoadInst *Orig, llvm::Type *Ty, llvm::Value *Ptr
 }
 
 llvm::StoreInst *cloneStore(llvm::StoreInst *Orig, llvm::Value *Val, llvm::Value *Ptr) {
-  llvm::StoreInst *SI = new llvm::StoreInst(Val, Ptr, Orig);
+  llvm::StoreInst *SI = new llvm::StoreInst(Val, Ptr, IGCLLVM::insertPosition(Orig));
   SI->setVolatile(Orig->isVolatile());
   SI->setAlignment(IGCLLVM::getAlign(*Orig));
   if (SI->isAtomic()) {
@@ -761,19 +761,23 @@ void ChangePtrTypeInIntrinsic(llvm::GenIntrinsicInst *&pIntr, llvm::Value *oldPt
     overloadedTys.push_back(newPtr->getType());
     if (id == GenISAIntrinsic::GenISA_intatomicrawA64) {
       args[0] = args[1];
-      args[1] = CastInst::CreatePointerCast(args[1], Type::getInt32Ty(pModule->getContext()), "", pIntr);
+      args[1] = CastInst::CreatePointerCast(args[1], Type::getInt32Ty(pModule->getContext()), "",
+                                            IGCLLVM::insertPosition(pIntr));
       id = GenISAIntrinsic::GenISA_intatomicraw;
     } else if (id == GenISAIntrinsic::GenISA_icmpxchgatomicrawA64) {
       args[0] = args[1];
-      args[1] = CastInst::CreatePointerCast(args[1], Type::getInt32Ty(pModule->getContext()), "", pIntr);
+      args[1] = CastInst::CreatePointerCast(args[1], Type::getInt32Ty(pModule->getContext()), "",
+                                            IGCLLVM::insertPosition(pIntr));
       id = GenISAIntrinsic::GenISA_icmpxchgatomicraw;
     } else if (id == GenISAIntrinsic::GenISA_floatatomicrawA64) {
       args[0] = args[1];
-      args[1] = CastInst::CreatePointerCast(args[1], Type::getFloatTy(pModule->getContext()), "", pIntr);
+      args[1] = CastInst::CreatePointerCast(args[1], Type::getFloatTy(pModule->getContext()), "",
+                                            IGCLLVM::insertPosition(pIntr));
       id = GenISAIntrinsic::GenISA_floatatomicraw;
     } else if (id == GenISAIntrinsic::GenISA_fcmpxchgatomicrawA64) {
       args[0] = args[1];
-      args[1] = CastInst::CreatePointerCast(args[1], Type::getFloatTy(pModule->getContext()), "", pIntr);
+      args[1] = CastInst::CreatePointerCast(args[1], Type::getFloatTy(pModule->getContext()), "",
+                                            IGCLLVM::insertPosition(pIntr));
       id = GenISAIntrinsic::GenISA_fcmpxchgatomicraw;
     }
     break;
@@ -812,7 +816,7 @@ void ChangePtrTypeInIntrinsic(llvm::GenIntrinsicInst *&pIntr, llvm::Value *oldPt
 
   pNewIntr = llvm::GenISAIntrinsic::getDeclaration(pModule, id, overloadedTys);
 
-  llvm::CallInst *pNewCall = llvm::CallInst::Create(pNewIntr, args, "", pIntr);
+  llvm::CallInst *pNewCall = llvm::CallInst::Create(pNewIntr, args, "", IGCLLVM::insertPosition(pIntr));
   pNewCall->setDebugLoc(pIntr->getDebugLoc());
 
   pIntr->replaceAllUsesWith(pNewCall);
@@ -1668,7 +1672,8 @@ void VectorToElement(llvm::Value *inst, llvm::Value *elem[], llvm::Type *int32Ty
   for (int i = 0; i < vsize; i++) {
     if (elem[i] == nullptr) {
       // Create an ExtractElementInst
-      elem[i] = llvm::ExtractElementInst::Create(inst, llvm::ConstantInt::get(int32Ty, i), "", insert_before);
+      elem[i] = llvm::ExtractElementInst::Create(inst, llvm::ConstantInt::get(int32Ty, i), "",
+                                                 IGCLLVM::insertPosition(insert_before));
     }
   }
 }
@@ -1679,8 +1684,8 @@ llvm::Value *ElementToVector(llvm::Value *elem[], llvm::Type *int32Ty, llvm::Ins
 
   for (int i = 0; i < vsize; ++i) {
 
-    vecValue =
-        llvm::InsertElementInst::Create(vecValue, elem[i], llvm::ConstantInt::get(int32Ty, i), "", insert_before);
+    vecValue = llvm::InsertElementInst::Create(vecValue, elem[i], llvm::ConstantInt::get(int32Ty, i), "",
+                                               IGCLLVM::insertPosition(insert_before));
     ((Instruction *)vecValue)->setDebugLoc(insert_before->getDebugLoc());
   }
   return vecValue;

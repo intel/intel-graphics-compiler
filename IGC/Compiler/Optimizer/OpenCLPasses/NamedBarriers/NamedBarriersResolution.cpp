@@ -231,7 +231,7 @@ void NamedBarriersResolution::HandleNamedBarrierSyncHW(CallInst &NBarrierSyncCal
                                falseValue,    // bool evictL1
                                scopeValue     // int memory scope
                            },
-                           "", &(NBarrierSyncCall));
+                           "", IGCLLVM::insertPosition(&(NBarrierSyncCall)));
 
   CallSignal(nbStruct.threadGroupNBarrierID, nbStruct.threadGroupNBarrierCount, nbStruct.threadGroupNBarrierCount,
              NamedBarrierType::ProducerConsumer, &NBarrierSyncCall);
@@ -302,14 +302,15 @@ void NamedBarriersResolution::HandleNamedBarrierInitSW(CallInst &NBarrierInitCal
   auto pointerNBarrier = GetElementPtrInst::Create(BaseTy, m_NamedBarrierArray,
                                                    {ConstantInt::get(Type::getInt64Ty(module->getContext()), 0, true),
                                                     ConstantInt::get(Type::getInt32Ty(module->getContext()), 0, true)},
-                                                   "", &(NBarrierInitCall));
+                                                   "", IGCLLVM::insertPosition(&(NBarrierInitCall)));
   auto bitcastPointerNBarrier = BitCastInst::CreatePointerBitCastOrAddrSpaceCast(
-      pointerNBarrier, IGCLLVM::PointerType::get(m_NamedBarrierType, SPIRAS_Local), "", &(NBarrierInitCall));
+      pointerNBarrier, IGCLLVM::PointerType::get(m_NamedBarrierType, SPIRAS_Local), "",
+      IGCLLVM::insertPosition(&(NBarrierInitCall)));
   SmallVector<Value *, 3> ArgsVal{NBarrierInitCall.getArgOperand(0), bitcastPointerNBarrier, m_NamedBarrierID};
   auto newFType = FunctionType::get(NBarrierInitCall.getType(), ArgsTy, false);
   auto newF = module->getOrInsertFunction(newName, newFType);
 
-  auto newCall = CallInst::Create(newF, ArgsVal, "", &(NBarrierInitCall));
+  auto newCall = CallInst::Create(newF, ArgsVal, "", IGCLLVM::insertPosition(&(NBarrierInitCall)));
   newCall->setDebugLoc(NBarrierInitCall.getDebugLoc());
   NBarrierInitCall.replaceAllUsesWith(newCall);
   NBarrierInitCall.eraseFromParent();
@@ -339,7 +340,7 @@ void NamedBarriersResolution::HandleNamedBarrierSyncSW(CallInst &NBarrierSyncCal
   auto newFType = FunctionType::get(NBarrierSyncCall.getType(), ArgsTy, false);
   auto newF = module->getOrInsertFunction(newName, newFType);
 
-  CallInst *newCall = CallInst::Create(newF, ArgsVal, "", &(NBarrierSyncCall));
+  CallInst *newCall = CallInst::Create(newF, ArgsVal, "", IGCLLVM::insertPosition(&(NBarrierSyncCall)));
   newCall->setDebugLoc(NBarrierSyncCall.getDebugLoc());
   NBarrierSyncCall.eraseFromParent();
 #endif // #ifndef VK_ONLY_IGC
@@ -376,24 +377,25 @@ void NamedBarriersResolution::CallSignal(llvm::Value *barrierID, llvm::Value *Pr
 
   llvm::Value *namedBarrierType = builder.getInt16((int)Type);
 
-  llvm::Value *getIDInt8 =
-      llvm::BitCastInst::CreateIntegerCast(barrierID, builder.getInt8Ty(), false, "", pInsertBefore);
-  llvm::Value *getProducerCntInt8 =
-      llvm::BitCastInst::CreateIntegerCast(ProducerCnt, builder.getInt8Ty(), false, "", pInsertBefore);
-  llvm::Value *getConsumerCntInt8 =
-      llvm::BitCastInst::CreateIntegerCast(ConsumerCnt, builder.getInt8Ty(), false, "", pInsertBefore);
+  llvm::Value *getIDInt8 = llvm::BitCastInst::CreateIntegerCast(barrierID, builder.getInt8Ty(), false, "",
+                                                                IGCLLVM::insertPosition(pInsertBefore));
+  llvm::Value *getProducerCntInt8 = llvm::BitCastInst::CreateIntegerCast(ProducerCnt, builder.getInt8Ty(), false, "",
+                                                                         IGCLLVM::insertPosition(pInsertBefore));
+  llvm::Value *getConsumerCntInt8 = llvm::BitCastInst::CreateIntegerCast(ConsumerCnt, builder.getInt8Ty(), false, "",
+                                                                         IGCLLVM::insertPosition(pInsertBefore));
 
   GenIntrinsicInst::Create(GenISAIntrinsic::getDeclaration(pM, GenISAIntrinsic::GenISA_threadgroupnamedbarriers_signal),
-                           {getIDInt8, namedBarrierType, getProducerCntInt8, getConsumerCntInt8}, "", pInsertBefore);
+                           {getIDInt8, namedBarrierType, getProducerCntInt8, getConsumerCntInt8}, "",
+                           IGCLLVM::insertPosition(pInsertBefore));
 }
 
 void NamedBarriersResolution::CallWait(llvm::Value *barrierID, llvm::Instruction *pInsertBefore) {
   IGCLLVM::IRBuilder<> builder(pInsertBefore);
   llvm::Module *pM = pInsertBefore->getModule();
 
-  llvm::Value *getIDInt8 =
-      llvm::BitCastInst::CreateIntegerCast(barrierID, builder.getInt8Ty(), false, "", pInsertBefore);
+  llvm::Value *getIDInt8 = llvm::BitCastInst::CreateIntegerCast(barrierID, builder.getInt8Ty(), false, "",
+                                                                IGCLLVM::insertPosition(pInsertBefore));
 
   GenIntrinsicInst::Create(GenISAIntrinsic::getDeclaration(pM, GenISAIntrinsic::GenISA_threadgroupnamedbarriers_wait),
-                           {getIDInt8}, "", pInsertBefore);
+                           {getIDInt8}, "", IGCLLVM::insertPosition(pInsertBefore));
 }

@@ -56,7 +56,7 @@ Function *CCommand::getFunctionDeclaration(IGCLLVM::Intrinsic id, ArrayRef<Type 
 
 void CCommand::replaceCallInst(IGCLLVM::Intrinsic intrinsicName, ArrayRef<Type *> Tys) {
   Function *func = getFunctionDeclaration(intrinsicName, Tys);
-  Instruction *newCall = CallInst::Create(func, m_args, m_pCallInst->getName(), m_pCallInst);
+  Instruction *newCall = CallInst::Create(func, m_args, m_pCallInst->getName(), IGCLLVM::insertPosition(m_pCallInst));
 
   if (isa<FPMathOperator>(m_pCallInst)) {
     if (auto II = dyn_cast<IntrinsicInst>(newCall)) {
@@ -84,7 +84,7 @@ void CCommand::replaceGenISACallInst(GenISAIntrinsic::ID intrinsicName, ArrayRef
   } break;
   }
   Function *func = getFunctionDeclaration(intrinsicName, Tys);
-  Instruction *newCall = CallInst::Create(func, m_args, m_pCallInst->getName(), m_pCallInst);
+  Instruction *newCall = CallInst::Create(func, m_args, m_pCallInst->getName(), IGCLLVM::insertPosition(m_pCallInst));
   newCall->setDebugLoc(m_DL);
   m_pCallInst->replaceAllUsesWith(newCall);
 }
@@ -109,18 +109,18 @@ void CImagesBI::prepareCoords(Dimension Dim, Value *Coord, Value *Zero) {
   case DIM_3D:
   case DIM_2D_ARRAY:
     tmp = ExtractElementInst::Create(Coord, ConstantInt::get(m_pIntType, COORD_Z), "CoordZ",
-                                     m_pCallInst); // z
+                                     IGCLLVM::insertPosition(m_pCallInst)); // z
     tmp->setDebugLoc(m_DL);
     CoordZ = tmp;
     // fall through
   case DIM_2D:
   case DIM_1D_ARRAY:
     tmp = ExtractElementInst::Create(Coord, ConstantInt::get(m_pIntType, COORD_X), "CoordX",
-                                     m_pCallInst); // x
+                                     IGCLLVM::insertPosition(m_pCallInst)); // x
     tmp->setDebugLoc(m_DL);
     CoordX = tmp;
     tmp = ExtractElementInst::Create(Coord, ConstantInt::get(m_pIntType, COORD_Y), "CoordY",
-                                     m_pCallInst); // y
+                                     IGCLLVM::insertPosition(m_pCallInst)); // y
     tmp->setDebugLoc(m_DL);
     CoordY = tmp;
     // fall through
@@ -287,14 +287,15 @@ void CImagesBI::prepareColor(Value *Color) {
     // therefore we do bitcast that should disappear in the final code.
     Type *CastTy =
         VTy ? IGCLLVM::FixedVectorType::get(m_pFloatType, static_cast<unsigned>(VTy->getNumElements())) : m_pFloatType;
-    Instruction *tmp = BitCastInst::Create(Instruction::BitCast, Color, CastTy, "floatColor", m_pCallInst);
+    Instruction *tmp =
+        BitCastInst::Create(Instruction::BitCast, Color, CastTy, "floatColor", IGCLLVM::insertPosition(m_pCallInst));
     tmp->setDebugLoc(m_DL);
     TmpColor = tmp;
   }
 
-  Value *ColorX =
-      VTy ? ExtractElementInst::Create(TmpColor, ConstantInt::get(m_pIntType, COORD_X), "ColorX", m_pCallInst)
-          : TmpColor; // color x
+  Value *ColorX = VTy ? ExtractElementInst::Create(TmpColor, ConstantInt::get(m_pIntType, COORD_X), "ColorX",
+                                                   IGCLLVM::insertPosition(m_pCallInst))
+                      : TmpColor; // color x
   if (VTy) {
     cast<Instruction>(ColorX)->setDebugLoc(m_DL);
   }
@@ -306,18 +307,18 @@ void CImagesBI::prepareColor(Value *Color) {
     unsigned NumElts = static_cast<unsigned>(VTy->getNumElements());
     IGC_ASSERT(NumElts == 2 || NumElts == 3 || NumElts == 4);
     if (NumElts >= 2) {
-      ColorY =
-          ExtractElementInst::Create(TmpColor, ConstantInt::get(m_pIntType, COORD_Y), "ColorY", m_pCallInst); // color y
+      ColorY = ExtractElementInst::Create(TmpColor, ConstantInt::get(m_pIntType, COORD_Y), "ColorY",
+                                          IGCLLVM::insertPosition(m_pCallInst)); // color y
       cast<Instruction>(ColorY)->setDebugLoc(m_DL);
     }
     if (NumElts >= 3) {
-      ColorZ =
-          ExtractElementInst::Create(TmpColor, ConstantInt::get(m_pIntType, COORD_Z), "ColorZ", m_pCallInst); // color z
+      ColorZ = ExtractElementInst::Create(TmpColor, ConstantInt::get(m_pIntType, COORD_Z), "ColorZ",
+                                          IGCLLVM::insertPosition(m_pCallInst)); // color z
       cast<Instruction>(ColorZ)->setDebugLoc(m_DL);
     }
     if (NumElts == 4) {
-      ColorW =
-          ExtractElementInst::Create(TmpColor, ConstantInt::get(m_pIntType, COORD_W), "ColorW", m_pCallInst); // color w
+      ColorW = ExtractElementInst::Create(TmpColor, ConstantInt::get(m_pIntType, COORD_W), "ColorW",
+                                          IGCLLVM::insertPosition(m_pCallInst)); // color w
       cast<Instruction>(ColorW)->setDebugLoc(m_DL);
     }
   }
@@ -431,9 +432,10 @@ void CImagesBI::createGetBufferPtr() {
     uint32_t addrSpace = EncodeAS4GFXResource(*bindlessIndex, BINDLESS);
     Type *ptrTy = IGCLLVM::PointerType::get(m_pFloatType, addrSpace);
 
-    Value *basePointer = isa<IntegerType>(pImg->getType())
-                             ? BitCastInst::CreateBitOrPointerCast(pImg, ptrTy, "bindless_img", m_pCallInst)
-                             : BitCastInst::CreatePointerCast(pImg, ptrTy, "bindless_img", m_pCallInst);
+    Value *basePointer =
+        isa<IntegerType>(pImg->getType())
+            ? BitCastInst::CreateBitOrPointerCast(pImg, ptrTy, "bindless_img", IGCLLVM::insertPosition(m_pCallInst))
+            : BitCastInst::CreatePointerCast(pImg, ptrTy, "bindless_img", IGCLLVM::insertPosition(m_pCallInst));
     m_args.push_back(basePointer);
     return;
   }
@@ -453,7 +455,8 @@ void CImagesBI::createGetBufferPtr() {
   getBufferPtrArgs.push_back(imageIndex);
   getBufferPtrArgs.push_back(ConstantInt::get(m_pIntType, bufType));
 
-  CallInst *pDstBuffer = CallInst::Create(pFuncGetBufferPtr, getBufferPtrArgs, m_pCallInst->getName(), m_pCallInst);
+  CallInst *pDstBuffer = CallInst::Create(pFuncGetBufferPtr, getBufferPtrArgs, m_pCallInst->getName(),
+                                          IGCLLVM::insertPosition(m_pCallInst));
   pDstBuffer->setDebugLoc(m_DL);
   m_args.push_back(pDstBuffer);
 
@@ -549,12 +552,13 @@ void CImagesBI::replaceGenISATypedRead() {
   Type *Tys[] = {m_args[0]->getType()};
 
   Function *func = getFunctionDeclaration(intrinsicName, Tys);
-  Instruction *newCall = CallInst::Create(func, m_args, m_pCallInst->getName(), m_pCallInst);
+  Instruction *newCall = CallInst::Create(func, m_args, m_pCallInst->getName(), IGCLLVM::insertPosition(m_pCallInst));
   if (m_pCallInst->getType()->getScalarType() != m_pFloatType) {
     // GenISA_typedread intrinsic returns <4 x float>
     // therefore we do bitcast that should disappear in the final code.
     Type *CastTy = m_pCallInst->getType();
-    Instruction *tmp = BitCastInst::Create(Instruction::BitCast, newCall, CastTy, "", m_pCallInst);
+    Instruction *tmp =
+        BitCastInst::Create(Instruction::BitCast, newCall, CastTy, "", IGCLLVM::insertPosition(m_pCallInst));
     tmp->setDebugLoc(m_DL);
     newCall = tmp;
   }
@@ -579,10 +583,11 @@ public:
       ConstantInt *bindlessIndex = ConstantInt::get(m_pIntType, BINDLESS_BTI);
       unsigned int addressSpace = IGC::EncodeAS4GFXResource(*bindlessIndex, BufferType::BINDLESS_SAMPLER);
       Type *ptrTy = IGCLLVM::PointerType::get(m_pFloatType, addressSpace);
-      Value *bindlessSampler =
-          isa<IntegerType>(sampler->getType())
-              ? BitCastInst::CreateBitOrPointerCast(sampler, ptrTy, "bindless_sampler", m_pCallInst)
-              : BitCastInst::CreatePointerCast(sampler, ptrTy, "bindless_sampler", m_pCallInst);
+      Value *bindlessSampler = isa<IntegerType>(sampler->getType())
+                                   ? BitCastInst::CreateBitOrPointerCast(sampler, ptrTy, "bindless_sampler",
+                                                                         IGCLLVM::insertPosition(m_pCallInst))
+                                   : BitCastInst::CreatePointerCast(sampler, ptrTy, "bindless_sampler",
+                                                                    IGCLLVM::insertPosition(m_pCallInst));
       return bindlessSampler;
     }
     ConstantInt *samplerIndex = nullptr;
@@ -662,25 +667,31 @@ public:
     Instruction *tmp;
     switch (Dim) {
     case DIM_3D:
-      tmp = ExtractElementInst::Create(gradX, ConstantInt::get(m_pIntType, COORD_Z), "gradXZ", m_pCallInst);
+      tmp = ExtractElementInst::Create(gradX, ConstantInt::get(m_pIntType, COORD_Z), "gradXZ",
+                                       IGCLLVM::insertPosition(m_pCallInst));
       tmp->setDebugLoc(m_DL);
       m_gradXZ = tmp;
-      tmp = ExtractElementInst::Create(gradY, ConstantInt::get(m_pIntType, COORD_Z), "gradYZ", m_pCallInst);
+      tmp = ExtractElementInst::Create(gradY, ConstantInt::get(m_pIntType, COORD_Z), "gradYZ",
+                                       IGCLLVM::insertPosition(m_pCallInst));
       tmp->setDebugLoc(m_DL);
       m_gradYZ = tmp;
       // fall through
     case DIM_2D:
     case DIM_2D_ARRAY:
-      tmp = ExtractElementInst::Create(gradX, ConstantInt::get(m_pIntType, COORD_Y), "gradXY", m_pCallInst);
+      tmp = ExtractElementInst::Create(gradX, ConstantInt::get(m_pIntType, COORD_Y), "gradXY",
+                                       IGCLLVM::insertPosition(m_pCallInst));
       tmp->setDebugLoc(m_DL);
       m_gradXY = tmp;
-      tmp = ExtractElementInst::Create(gradY, ConstantInt::get(m_pIntType, COORD_Y), "gradYY", m_pCallInst);
+      tmp = ExtractElementInst::Create(gradY, ConstantInt::get(m_pIntType, COORD_Y), "gradYY",
+                                       IGCLLVM::insertPosition(m_pCallInst));
       tmp->setDebugLoc(m_DL);
       m_gradYY = tmp;
-      tmp = ExtractElementInst::Create(gradX, ConstantInt::get(m_pIntType, COORD_X), "gradXX", m_pCallInst);
+      tmp = ExtractElementInst::Create(gradX, ConstantInt::get(m_pIntType, COORD_X), "gradXX",
+                                       IGCLLVM::insertPosition(m_pCallInst));
       tmp->setDebugLoc(m_DL);
       m_gradXX = tmp;
-      tmp = ExtractElementInst::Create(gradY, ConstantInt::get(m_pIntType, COORD_X), "gradYX", m_pCallInst);
+      tmp = ExtractElementInst::Create(gradY, ConstantInt::get(m_pIntType, COORD_X), "gradYX",
+                                       IGCLLVM::insertPosition(m_pCallInst));
       tmp->setDebugLoc(m_DL);
       m_gradYX = tmp;
       // fall through
@@ -868,10 +879,12 @@ protected:
   // mcs is received as a float vector, from which the 2 lower element need
   // to be extracted, bitcast to i32, and then pushed to the arguments list.
   void prepareMCS(Value *mcs) {
-    Instruction *fmcsl = ExtractElementInst::Create(mcs, m_pIntZero, "mcsl", m_pCallInst);
-    Instruction *fmcsh = ExtractElementInst::Create(mcs, m_pIntOne, "mcsh", m_pCallInst);
-    Instruction *imcsl = BitCastInst::Create(Instruction::BitCast, fmcsl, m_pIntType, "imcsl", m_pCallInst);
-    Instruction *imcsh = BitCastInst::Create(Instruction::BitCast, fmcsh, m_pIntType, "imcsh", m_pCallInst);
+    Instruction *fmcsl = ExtractElementInst::Create(mcs, m_pIntZero, "mcsl", IGCLLVM::insertPosition(m_pCallInst));
+    Instruction *fmcsh = ExtractElementInst::Create(mcs, m_pIntOne, "mcsh", IGCLLVM::insertPosition(m_pCallInst));
+    Instruction *imcsl =
+        BitCastInst::Create(Instruction::BitCast, fmcsl, m_pIntType, "imcsl", IGCLLVM::insertPosition(m_pCallInst));
+    Instruction *imcsh =
+        BitCastInst::Create(Instruction::BitCast, fmcsh, m_pIntType, "imcsh", IGCLLVM::insertPosition(m_pCallInst));
     fmcsl->setDebugLoc(m_DL);
     fmcsh->setDebugLoc(m_DL);
     imcsl->setDebugLoc(m_DL);
@@ -2016,5 +2029,5 @@ llvm::CallInst *IGC::CallMemoryFenceWorkgroup(llvm::Instruction *pInsertBefore) 
                                       falseValue,     // bool evictL1
                                       groupScopeValue // int memory scope
                                   },
-                                  "", pInsertBefore);
+                                  "", IGCLLVM::insertPosition(pInsertBefore));
 }

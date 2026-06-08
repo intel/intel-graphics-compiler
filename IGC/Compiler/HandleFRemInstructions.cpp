@@ -55,9 +55,9 @@ void HandleFRemInstructions::visitFRem(llvm::BinaryOperator &I) {
                                           FloatTy, (unsigned)cast<IGCLLVM::FixedVectorType>(ValType)->getNumElements())
                                     : FloatTy;
 
-    auto Val1Float = new FPExtInst(Val1, ValType, "", &I);
+    auto Val1Float = new FPExtInst(Val1, ValType, "", IGCLLVM::insertPosition(&I));
     Val1Float->setDebugLoc(I.getDebugLoc());
-    auto Val2Float = new FPExtInst(Val2, ValType, "", &I);
+    auto Val2Float = new FPExtInst(Val2, ValType, "", IGCLLVM::insertPosition(&I));
     Val2Float->setDebugLoc(I.getDebugLoc());
     Val1 = Val1Float;
     Val2 = Val2Float;

@@ -83,7 +83,8 @@ void HandleLoadStoreInstructions::visitLoadInst(llvm::LoadInst &I) {
         }
         // new IntToPtr and new load
         // cannot use irbuilder to create IntToPtr. It may create ConstantExpr instead of instruction
-        Value *i2p = llvm::IntToPtrInst::Create(Instruction::IntToPtr, offset, floatyptr, "splitDouble", &I);
+        Value *i2p = llvm::IntToPtrInst::Create(Instruction::IntToPtr, offset, floatyptr, "splitDouble",
+                                                IGCLLVM::insertPosition(&I));
         Value *data = builder.CreateLoad(builder.getFloatTy(), i2p);
         vec = builder.CreateInsertElement(vec, data, builder.getInt32(i));
       }

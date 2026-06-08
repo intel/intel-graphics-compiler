@@ -510,7 +510,8 @@ void DpasFuncsResolution::visitCallInst(CallInst &CI) {
   Type *BTy = B->getType();
   if (FixedVectorType *BVecTy = dyn_cast<FixedVectorType>(BTy); BVecTy && BTy->getScalarType()->isFloatTy()) {
     B = CastInst::Create(Instruction::CastOps::BitCast, B,
-                         FixedVectorType::get(intTy, (unsigned)BVecTy->getNumElements()), B->getName() + ".cast", &CI);
+                         FixedVectorType::get(intTy, (unsigned)BVecTy->getNumElements()), B->getName() + ".cast",
+                         IGCLLVM::insertPosition(&CI));
   }
   args[2] = B;
 
@@ -524,7 +525,7 @@ void DpasFuncsResolution::visitCallInst(CallInst &CI) {
   Type *ITys[4] = {func->getReturnType(), args[0]->getType(), args[1]->getType(), args[2]->getType()};
   Function *dpasFunc = GenISAIntrinsic::getDeclaration(func->getParent(), iid, ITys);
 
-  Instruction *dpasCall = CallInst::Create(dpasFunc, args, VALUE_NAME("dpas"), &CI);
+  Instruction *dpasCall = CallInst::Create(dpasFunc, args, VALUE_NAME("dpas"), IGCLLVM::insertPosition(&CI));
 
   updateDebugLoc(&CI, dpasCall);
 
@@ -692,7 +693,7 @@ bool DpasFuncsResolution::processCvt(CallInst &CI) {
   } else if (iid == GenISAIntrinsic::GenISA_ftotf32) {
     cvt = "tf32_cvt";
   }
-  Instruction *cvtCall = CallInst::Create(cvtFunc, ii_args, cvt, &CI);
+  Instruction *cvtCall = CallInst::Create(cvtFunc, ii_args, cvt, IGCLLVM::insertPosition(&CI));
 
   updateDebugLoc(&CI, cvtCall);
 
@@ -743,7 +744,7 @@ bool DpasFuncsResolution::processSrnd(CallInst &CI) {
 
   Type *ITys[4] = {func->getReturnType(), args[0]->getType(), args[1]->getType(), boolTy};
   Function *srndFunc = GenISAIntrinsic::getDeclaration(func->getParent(), iid, ITys);
-  Instruction *srndCall = CallInst::Create(srndFunc, ii_args, VALUE_NAME("srnd"), &CI);
+  Instruction *srndCall = CallInst::Create(srndFunc, ii_args, VALUE_NAME("srnd"), IGCLLVM::insertPosition(&CI));
 
 #if defined(_DEBUG)
   { // Verify arguments
@@ -806,7 +807,7 @@ bool DpasFuncsResolution::processLfsr(CallInst &CI) {
 
   Type *ITys[4] = {func->getReturnType(), args[0]->getType(), args[1]->getType(), int32Ty};
   Function *lfsrFunc = GenISAIntrinsic::getDeclaration(func->getParent(), iid, ITys);
-  Instruction *lfsrCall = CallInst::Create(lfsrFunc, args, VALUE_NAME("lfsr"), &CI);
+  Instruction *lfsrCall = CallInst::Create(lfsrFunc, args, VALUE_NAME("lfsr"), IGCLLVM::insertPosition(&CI));
 
   updateDebugLoc(&CI, lfsrCall);
   CI.replaceAllUsesWith(lfsrCall);
@@ -860,7 +861,7 @@ bool DpasFuncsResolution::processDnscl(CallInst &CI) {
   };
 
   Function *dnsclFunc = GenISAIntrinsic::getDeclaration(func->getParent(), iid);
-  Instruction *dnsclCall = CallInst::Create(dnsclFunc, args, VALUE_NAME("dnscl"), &CI);
+  Instruction *dnsclCall = CallInst::Create(dnsclFunc, args, VALUE_NAME("dnscl"), IGCLLVM::insertPosition(&CI));
 
   updateDebugLoc(&CI, dnsclCall);
   CI.replaceAllUsesWith(dnsclCall);
@@ -979,7 +980,7 @@ bool DpasFuncsResolution::processBdpas(CallInst &CI) {
   GenISAIntrinsic::ID IID = GenISAIntrinsic::GenISA_sub_group_bdpas;
   Function *BdpasFunc = GenISAIntrinsic::getDeclaration(Func->getParent(), IID, ITys);
 
-  Instruction *BdpasCall = CallInst::Create(BdpasFunc, Args, VALUE_NAME("bdpas"), &CI);
+  Instruction *BdpasCall = CallInst::Create(BdpasFunc, Args, VALUE_NAME("bdpas"), IGCLLVM::insertPosition(&CI));
 
   updateDebugLoc(&CI, BdpasCall);
 

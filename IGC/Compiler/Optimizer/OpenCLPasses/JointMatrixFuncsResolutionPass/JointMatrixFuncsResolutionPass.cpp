@@ -37,6 +37,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/Support/Debug.h"
 #include "common/LLVMWarningsPop.hpp"
 #include "llvmWrapper/IR/Instructions.h"
+#include "llvmWrapper/IR/DIBuilder.h"
 
 using namespace llvm;
 using namespace IGC;
@@ -1714,7 +1715,8 @@ template <bool IsJointMatrix, bool IsChecked> Instruction *JointMatrixFuncsResol
                                  {ptrVal->getType(), arrayTy, strideVal->getType(), cacheOpt->getType()}, false);
     Args = {ptrVal, src, strideVal, cacheOpt};
   }
-  Instruction *newCall = CallInst::Create(M->getOrInsertFunction(funcName, funcType), Args, "", CI);
+  Instruction *newCall =
+      CallInst::Create(M->getOrInsertFunction(funcName, funcType), Args, "", IGCLLVM::insertPosition(CI));
   newCall->setDebugLoc(CI->getDebugLoc());
   return newCall;
 }
@@ -1830,7 +1832,8 @@ Instruction *JointMatrixFuncsResolutionPass::ResolveTestDumpStore(CallInst *CI) 
       FunctionType::get(Type::getVoidTy(ctx), {genericPtrTy, arrayTy, i32Ty, i32Ty, i32Ty, i32Ty, i32Ty}, false);
   Instruction *newCall =
       CallInst::Create(M->getOrInsertFunction(bifName, funcType),
-                       {memPtr, src, wiRowsVal, contribColsVal, contribBytesVal, strideVal, elemBytesVal}, "", CI);
+                       {memPtr, src, wiRowsVal, contribColsVal, contribBytesVal, strideVal, elemBytesVal}, "",
+                       IGCLLVM::insertPosition(CI));
   newCall->setDebugLoc(CI->getDebugLoc());
   return newCall;
 }
@@ -2086,7 +2089,7 @@ Instruction *JointMatrixFuncsResolutionPass::ResolveMad(CallInst *CI, unsigned O
 
     GenISAIntrinsic::ID iid = GenISAIntrinsic::GenISA_sub_group_dpas;
     Function *dpasFunc = GenISAIntrinsic::getDeclaration(Mod, iid, ITys);
-    dpasCall = CallInst::Create(dpasFunc, args, VALUE_NAME("dpas"), CI);
+    dpasCall = CallInst::Create(dpasFunc, args, VALUE_NAME("dpas"), IGCLLVM::insertPosition(CI));
   }
 
   /* TODO: null check and throw error here */
@@ -2235,7 +2238,8 @@ Instruction *JointMatrixFuncsResolutionPass::ResolveFillChecked(CallInst *CI) {
       false);
   std::vector<Value *> Args = {dst, yVal, xVal, heightVal, widthVal, fillValueCast};
 
-  Instruction *newCall = CallInst::Create(M->getOrInsertFunction(funcName, funcType), Args, "", CI);
+  Instruction *newCall =
+      CallInst::Create(M->getOrInsertFunction(funcName, funcType), Args, "", IGCLLVM::insertPosition(CI));
   newCall->setDebugLoc(CI->getDebugLoc());
   newCall = builder.CreateLoad(matTy, sliceArray);
 
@@ -2592,7 +2596,8 @@ void JointMatrixFuncsResolutionPass::InsertPlaceholder(Value *v) {
     /* Using bit-casts as placeholder values. Undefs of each type are unique per
      * module and cannot be used as unique placeholders. */
     LLVM_DEBUG(dbgs() << "   -- CREATE UNDEF BITCAST TO: " << *type << "\n");
-    placeholder = BitCastInst::Create(Instruction::BitCast, UndefValue::get(type), type, "tmp.value", predecesor);
+    placeholder = BitCastInst::Create(Instruction::BitCast, UndefValue::get(type), type, "tmp.value",
+                                      IGCLLVM::insertPosition(predecesor));
   } else {
     /* Structure types cannot be bitcasted. Use insert element with two undefs
      * to create unique placeholder for structure value.*/
@@ -2601,7 +2606,8 @@ void JointMatrixFuncsResolutionPass::InsertPlaceholder(Value *v) {
     Type *memberType = getAccHalfVec64Type(elemType);
     Value *memberValue = UndefValue::get(memberType);
     Value *structValue = UndefValue::get(StructType::get(ctx, ArrayRef<Type *>({memberType, memberType})));
-    placeholder = InsertValueInst::Create(structValue, memberValue, {0}, "tmp.value", predecesor);
+    placeholder =
+        InsertValueInst::Create(structValue, memberValue, {0}, "tmp.value", IGCLLVM::insertPosition(predecesor));
   }
   ResolvedValues[v] = placeholder;
   PlaceholderInstructions[v] = placeholder;
@@ -2845,7 +2851,7 @@ Value *JointMatrixFuncsResolutionPass::Resolve(Value *v) {
 
     Type *type = ResolveTypes(v->getType());
     LLVM_DEBUG(dbgs() << "   -- RESOLVED PHI TYPE: " << *type << "\n");
-    PHINode *NewPN = PHINode::Create(type, IncomingCount, PN->getName(), PN);
+    PHINode *NewPN = PHINode::Create(type, IncomingCount, PN->getName(), IGCLLVM::insertPosition(PN));
     NewPN->setDebugLoc(PN->getDebugLoc());
     CacheResolvedValue(v, NewPN);
 
@@ -3243,9 +3249,10 @@ void JointMatrixFuncsResolutionPass::visitStoreInst(StoreInst &I) {
 
   BitCastInst *newBC = new BitCastInst(Resolve(BC->getOperand(0)),
                                        IGCLLVM::PointerType::get(newBCElementType, BCDstType->getPointerAddressSpace()),
-                                       BC->getName(), BC);
+                                       BC->getName(), IGCLLVM::insertPosition(BC));
 
-  StoreInst *newSI = new StoreInst(Resolve(PTIOperand), newBC, I.isVolatile(), IGCLLVM::getAlign(I), &I);
+  StoreInst *newSI =
+      new StoreInst(Resolve(PTIOperand), newBC, I.isVolatile(), IGCLLVM::getAlign(I), IGCLLVM::insertPosition(&I));
 
   newSI->setDebugLoc(I.getDebugLoc());
   CacheResolvedValue(&I, newSI);

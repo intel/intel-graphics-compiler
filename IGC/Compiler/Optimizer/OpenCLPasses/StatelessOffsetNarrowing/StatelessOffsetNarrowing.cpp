@@ -107,16 +107,16 @@ bool StatelessOffsetNarrowing::runOnFunction(Function &F) {
     //   %offset  = zext i32 <offset> to i64
     //   %address = add i64 %base, %offset
     //   %pointer = inttoptr i64 %address to <original Pointer type>
-    auto *BaseI64 = new PtrToIntInst(Base, Type::getInt64Ty(M->getContext()), "base.i64", I);
+    auto *BaseI64 = new PtrToIntInst(Base, Type::getInt64Ty(M->getContext()), "base.i64", IGCLLVM::insertPosition(I));
     BaseI64->setDebugLoc(DL);
 
-    auto *OffsetI64 = new ZExtInst(Offset, Type::getInt64Ty(M->getContext()), "offset.i64", I);
+    auto *OffsetI64 = new ZExtInst(Offset, Type::getInt64Ty(M->getContext()), "offset.i64", IGCLLVM::insertPosition(I));
     OffsetI64->setDebugLoc(DL);
 
-    auto *Address = BinaryOperator::CreateAdd(BaseI64, OffsetI64, "narrow.address", I);
+    auto *Address = BinaryOperator::CreateAdd(BaseI64, OffsetI64, "narrow.address", IGCLLVM::insertPosition(I));
     cast<Instruction>(Address)->setDebugLoc(DL);
 
-    auto *NewPointer = new IntToPtrInst(Address, Pointer->getType(), "narrow.ptr", I);
+    auto *NewPointer = new IntToPtrInst(Address, Pointer->getType(), "narrow.ptr", IGCLLVM::insertPosition(I));
     NewPointer->setDebugLoc(DL);
 
     // Replace the pointer operand of the load/store.
@@ -200,7 +200,7 @@ Value *StatelessOffsetNarrowing::getRawOffsetFromGEPs(const SmallVectorImpl<GetE
           uint32_t Offset = TypeAllocSize * cast<ConstantInt>(Index)->getSExtValue();
           AddToResult(Offset, nullptr, GEP);
         } else {
-          Instruction *IndexI32 = CastInst::CreateTruncOrBitCast(Index, Int32Ty, "", GEP);
+          Instruction *IndexI32 = CastInst::CreateTruncOrBitCast(Index, Int32Ty, "", IGCLLVM::insertPosition(GEP));
           IndexI32->setDebugLoc(GEP->getDebugLoc());
           AddToResult(TypeAllocSize, IndexI32, GEP);
         }

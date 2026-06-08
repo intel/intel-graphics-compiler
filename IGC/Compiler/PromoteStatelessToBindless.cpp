@@ -215,7 +215,8 @@ void PromoteStatelessToBindless::PromoteStatelessToBindlessBuffers(Function &F) 
           Function *newBlockReadFunc = GenISAIntrinsic::getDeclaration(
               F.getParent(), GenISAIntrinsic::GenISA_simdBlockReadBindless,
               {accessInst->getType(), basePointer->getType(), Type::getInt32Ty(accessInst->getContext())});
-          Instruction *newBlockRead = CallInst::Create(newBlockReadFunc, {basePointer, bufferOffset}, "", accessInst);
+          Instruction *newBlockRead =
+              CallInst::Create(newBlockReadFunc, {basePointer, bufferOffset}, "", IGCLLVM::insertPosition(accessInst));
           newBlockRead->setDebugLoc(pIntr->getDebugLoc());
           accessInst->replaceAllUsesWith(newBlockRead);
           accessInst->eraseFromParent();
@@ -224,7 +225,8 @@ void PromoteStatelessToBindless::PromoteStatelessToBindlessBuffers(Function &F) 
               F.getParent(), GenISAIntrinsic::GenISA_simdBlockWriteBindless,
               {basePointer->getType(), pIntr->getOperand(1)->getType(), Type::getInt32Ty(accessInst->getContext())});
           Instruction *newBlockWrite =
-              CallInst::Create(newBlockWriteFunc, {basePointer, pIntr->getOperand(1), bufferOffset}, "", accessInst);
+              CallInst::Create(newBlockWriteFunc, {basePointer, pIntr->getOperand(1), bufferOffset}, "",
+                               IGCLLVM::insertPosition(accessInst));
           newBlockWrite->setDebugLoc(pIntr->getDebugLoc());
           accessInst->replaceAllUsesWith(newBlockWrite);
           accessInst->eraseFromParent();

@@ -374,7 +374,8 @@ static bool sinkCommonOffsetForGroup(const CommonBaseGroup &Group) {
     // If we have gep(A, constant) just take pure A without creating new GEP
     auto NewPointerElType = PtrOperandTy;
     if (BaseIndices.size() > 0) {
-      auto BaseGEP = GetElementPtrInst::Create(PtrOperandTy, PtrOperand, BaseIndices, "", BB->getTerminator());
+      auto BaseGEP = GetElementPtrInst::Create(PtrOperandTy, PtrOperand, BaseIndices, "",
+                                               IGCLLVM::insertPosition(BB->getTerminator()));
       NewPointer = BaseGEP;
       NewPointerElType = BaseGEP->getResultElementType();
 
@@ -383,7 +384,7 @@ static bool sinkCommonOffsetForGroup(const CommonBaseGroup &Group) {
 
     if (auto ASC = Group.Casts.find(BB)->second) {
       auto PType = IGCLLVM::PointerType::get(NewPointerElType, ASC->getDestAddressSpace());
-      auto BaseASC = new AddrSpaceCastInst(NewPointer, PType, "", BB->getTerminator());
+      auto BaseASC = new AddrSpaceCastInst(NewPointer, PType, "", IGCLLVM::insertPosition(BB->getTerminator()));
       NewPointer = BaseASC;
     }
     PhiElType = NewPointerElType;
@@ -392,7 +393,7 @@ static bool sinkCommonOffsetForGroup(const CommonBaseGroup &Group) {
 
   // Create and fill new phi node for base GEPs
   auto PhiType = NewPointers.front().first->getType();
-  auto BasePhi = PHINode::Create(PhiType, 2, "", IGCLLVM::getFirstNonPHI(Group.Successor));
+  auto BasePhi = PHINode::Create(PhiType, 2, "", IGCLLVM::insertPosition(IGCLLVM::getFirstNonPHI(Group.Successor)));
   for (auto &NP : NewPointers)
     BasePhi->addIncoming(NP.first, NP.second);
 
@@ -407,8 +408,8 @@ static bool sinkCommonOffsetForGroup(const CommonBaseGroup &Group) {
       Indices.push_back(ConstantInt::get(Offset->getType(), 0));
     Indices.push_back(Offset);
 
-    auto OffsetGEP =
-        GetElementPtrInst::Create(PhiElType, BasePhi, Indices, "", IGCLLVM::getNextNonDebugInstruction(BasePhi));
+    auto OffsetGEP = GetElementPtrInst::Create(PhiElType, BasePhi, Indices, "",
+                                               IGCLLVM::insertPosition(IGCLLVM::getNextNonDebugInstruction(BasePhi)));
 
     bool isInBounds = false;
     for (const auto &Gep : Geps)

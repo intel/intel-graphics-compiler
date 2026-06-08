@@ -76,8 +76,8 @@ Value *ManageableBarriersResolution::allocBarriersDataPool(Function *pFunc) {
       new GlobalVariable(*(pFunc->getParent()), manageBarrierDataPoolType, false, GlobalVariable::InternalLinkage,
                          nullptr, "", nullptr, GlobalVariable::NotThreadLocal, ADDRESS_SPACE_LOCAL, false);
 
-  Value *cast =
-      BitCastInst::CreateBitOrPointerCast(SLMPool, IGCLLVM::getInt8PtrTy(builder, ADDRESS_SPACE_LOCAL), "", pFirstInst);
+  Value *cast = BitCastInst::CreateBitOrPointerCast(SLMPool, IGCLLVM::getInt8PtrTy(builder, ADDRESS_SPACE_LOCAL), "",
+                                                    IGCLLVM::insertPosition(pFirstInst));
 
   return cast;
 }
@@ -264,8 +264,8 @@ void ManageableBarriersResolution::emitInit(CallInst *pInsertPoint) {
     BranchInst *instrJumpbbBefore2bbAfter = dyn_cast<BranchInst>(bbBefore->getTerminator());
 
     CallInst *getLocalID = WIFuncResolution::CallGetLocalID(instrJumpbbBefore2bbAfter);
-    ICmpInst *checkLocalThreadID =
-        new ICmpInst(instrJumpbbBefore2bbAfter, ICmpInst::ICMP_EQ, getLocalID, builder.getInt32(0));
+    ICmpInst *checkLocalThreadID = new ICmpInst(IGCLLVM::insertPosition(instrJumpbbBefore2bbAfter), ICmpInst::ICMP_EQ,
+                                                getLocalID, builder.getInt32(0));
     // Setup new branch conditional instruction
     BranchInst *chekForSingleLane = BranchInst::Create(bbInitSection, bbAfter, checkLocalThreadID, bbBefore);
     // Remove old branch non-conditional instruction
@@ -274,7 +274,8 @@ void ManageableBarriersResolution::emitInit(CallInst *pInsertPoint) {
     // Get current free ID for named barrier
     Value *barrierIDPoolPtr = getBarrierIDPoolPtr(pInsertPoint);
 
-    LoadInst *currentIDPoolState = new LoadInst(builder.getInt32Ty(), barrierIDPoolPtr, "", chekForSingleLane);
+    LoadInst *currentIDPoolState =
+        new LoadInst(builder.getInt32Ty(), barrierIDPoolPtr, "", IGCLLVM::insertPosition(chekForSingleLane));
     Value *getFirstFreeID = getFreeID(currentIDPoolState, chekForSingleLane);
     Value *ptrToBarrierSlot = getManageableBarrierstructDataPtr(pInsertPoint, getFirstFreeID, chekForSingleLane);
 
@@ -298,7 +299,7 @@ void ManageableBarriersResolution::emitInit(CallInst *pInsertPoint) {
 
     // Add workgroup barrier
     GenIntrinsicInst::Create(GenISAIntrinsic::getDeclaration(mModule, GenISAIntrinsic::GenISA_threadgroupbarrier), {},
-                             "", pInsertPoint);
+                             "", IGCLLVM::insertPosition(pInsertPoint));
 
     // Move the markID after the barrier and fence on workgroup scope to ensure that all of the threads will
     // read correct value from IDPool, before the threadID:0 will update it.

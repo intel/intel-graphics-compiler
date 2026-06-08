@@ -190,7 +190,8 @@ void HalfPromotion::visitPHINode(llvm::PHINode &PHI) {
   }
 
   llvm::IGCIRBuilder<> builder(&PHI);
-  llvm::PHINode *pNewPhi = llvm::PHINode::Create(builder.getFloatTy(), PHI.getNumIncomingValues(), "", &PHI);
+  llvm::PHINode *pNewPhi =
+      llvm::PHINode::Create(builder.getFloatTy(), PHI.getNumIncomingValues(), "", IGCLLVM::insertPosition(&PHI));
 
   for (unsigned int i = 0; i < PHI.getNumIncomingValues(); ++i) {
     builder.SetInsertPoint(PHI.getIncomingBlock(i)->getTerminator());

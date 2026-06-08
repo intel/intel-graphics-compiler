@@ -151,9 +151,9 @@ void WIFuncResolution::visitCallInst(CallInst &CI) {
 
   // Handle size_t return type for 64 bits
   if (wiRes && wiRes->getType()->getScalarSizeInBits() < CI.getType()->getScalarSizeInBits()) {
-    CastInst *pCast =
-        CastInst::Create(Instruction::ZExt, wiRes,
-                         IntegerType::get(CI.getContext(), CI.getType()->getScalarSizeInBits()), wiRes->getName(), &CI);
+    CastInst *pCast = CastInst::Create(Instruction::ZExt, wiRes,
+                                       IntegerType::get(CI.getContext(), CI.getType()->getScalarSizeInBits()),
+                                       wiRes->getName(), IGCLLVM::insertPosition(&CI));
     updateDebugLoc(&CI, pCast);
     wiRes = pCast;
   }
@@ -415,13 +415,14 @@ Value *WIFuncResolution::getGroupId(CallInst &CI) {
   V = m_implicitArgs.getImplicitArgValue(*F, ImplicitArg::R0, m_pMdUtils);
 
   Value *dim = CI.getArgOperand(0);
-  Instruction *cmpDim = CmpInst::Create(Instruction::ICmp, CmpInst::ICMP_EQ, dim,
-                                        ConstantInt::get(Type::getInt32Ty(CI.getContext()), 0), "cmpDim", &CI);
-  Instruction *offsetR0 =
-      SelectInst::Create(cmpDim, ConstantInt::get(Type::getInt32Ty(CI.getContext()), 1),
-                         ConstantInt::get(Type::getInt32Ty(CI.getContext()), 5), "tmpOffsetR0", &CI);
-  Instruction *index = BinaryOperator::CreateAdd(dim, offsetR0, "offsetR0", &CI);
-  Instruction *groupId = ExtractElementInst::Create(V, index, "groupId", &CI);
+  Instruction *cmpDim =
+      CmpInst::Create(Instruction::ICmp, CmpInst::ICMP_EQ, dim, ConstantInt::get(Type::getInt32Ty(CI.getContext()), 0),
+                      "cmpDim", IGCLLVM::insertPosition(&CI));
+  Instruction *offsetR0 = SelectInst::Create(cmpDim, ConstantInt::get(Type::getInt32Ty(CI.getContext()), 1),
+                                             ConstantInt::get(Type::getInt32Ty(CI.getContext()), 5), "tmpOffsetR0",
+                                             IGCLLVM::insertPosition(&CI));
+  Instruction *index = BinaryOperator::CreateAdd(dim, offsetR0, "offsetR0", IGCLLVM::insertPosition(&CI));
+  Instruction *groupId = ExtractElementInst::Create(V, index, "groupId", IGCLLVM::insertPosition(&CI));
   updateDebugLoc(&CI, cmpDim);
   updateDebugLoc(&CI, offsetR0);
   updateDebugLoc(&CI, index);
@@ -443,10 +444,11 @@ Value *WIFuncResolution::getLocalThreadId(CallInst &CI) {
   auto F = CI.getParent()->getParent();
   V = m_implicitArgs.getImplicitArgValue(*F, ImplicitArg::R0, m_pMdUtils);
 
-  Instruction *r0second =
-      ExtractElementInst::Create(V, ConstantInt::get(Type::getInt32Ty(CI.getContext()), 2), "r0second", &CI);
+  Instruction *r0second = ExtractElementInst::Create(V, ConstantInt::get(Type::getInt32Ty(CI.getContext()), 2),
+                                                     "r0second", IGCLLVM::insertPosition(&CI));
   Instruction *localThreadId =
-      TruncInst::Create(Instruction::CastOps::Trunc, r0second, Type::getInt8Ty(CI.getContext()), "localThreadId", &CI);
+      TruncInst::Create(Instruction::CastOps::Trunc, r0second, Type::getInt8Ty(CI.getContext()), "localThreadId",
+                        IGCLLVM::insertPosition(&CI));
   updateDebugLoc(&CI, r0second);
   updateDebugLoc(&CI, localThreadId);
 
@@ -465,7 +467,7 @@ Value *WIFuncResolution::getGlobalSize(CallInst &CI) {
   IGC_ASSERT(V != nullptr);
 
   Value *dim = CI.getArgOperand(0);
-  Instruction *globalSize = ExtractElementInst::Create(V, dim, "globalSize", &CI);
+  Instruction *globalSize = ExtractElementInst::Create(V, dim, "globalSize", IGCLLVM::insertPosition(&CI));
   updateDebugLoc(&CI, globalSize);
 
   return globalSize;
@@ -483,7 +485,7 @@ Value *WIFuncResolution::getLocalSize(CallInst &CI) {
   IGC_ASSERT(V != nullptr);
 
   Value *dim = CI.getArgOperand(0);
-  Instruction *localSize = ExtractElementInst::Create(V, dim, "localSize", &CI);
+  Instruction *localSize = ExtractElementInst::Create(V, dim, "localSize", IGCLLVM::insertPosition(&CI));
   updateDebugLoc(&CI, localSize);
 
   return localSize;
@@ -501,7 +503,8 @@ Value *WIFuncResolution::getEnqueuedLocalSize(CallInst &CI) {
   IGC_ASSERT(V != nullptr);
 
   Value *dim = CI.getArgOperand(0);
-  Instruction *enqueuedLocalSize = ExtractElementInst::Create(V, dim, "enqueuedLocalSize", &CI);
+  Instruction *enqueuedLocalSize =
+      ExtractElementInst::Create(V, dim, "enqueuedLocalSize", IGCLLVM::insertPosition(&CI));
   updateDebugLoc(&CI, enqueuedLocalSize);
 
   return enqueuedLocalSize;
@@ -523,7 +526,7 @@ Value *WIFuncResolution::getGlobalOffset(CallInst &CI) {
   IGC_ASSERT(V != nullptr);
 
   Value *dim = CI.getArgOperand(0);
-  auto globalOffset = ExtractElementInst::Create(V, dim, "globalOffset", &CI);
+  auto globalOffset = ExtractElementInst::Create(V, dim, "globalOffset", IGCLLVM::insertPosition(&CI));
   updateDebugLoc(&CI, cast<Instruction>(globalOffset));
 
   return globalOffset;
@@ -553,7 +556,7 @@ Value *WIFuncResolution::getNumGroups(CallInst &CI) {
   IGC_ASSERT(V != nullptr);
 
   Value *dim = CI.getArgOperand(0);
-  Instruction *numGroups = ExtractElementInst::Create(V, dim, "numGroups", &CI);
+  Instruction *numGroups = ExtractElementInst::Create(V, dim, "numGroups", IGCLLVM::insertPosition(&CI));
   updateDebugLoc(&CI, numGroups);
 
   return numGroups;
@@ -570,7 +573,7 @@ Value *WIFuncResolution::getStageInGridOrigin(CallInst &CI) {
   IGC_ASSERT(V != nullptr);
 
   Value *dim = CI.getArgOperand(0);
-  Instruction *globalSize = ExtractElementInst::Create(V, dim, "grid_origin", &CI);
+  Instruction *globalSize = ExtractElementInst::Create(V, dim, "grid_origin", IGCLLVM::insertPosition(&CI));
   updateDebugLoc(&CI, globalSize);
 
   return globalSize;
@@ -589,7 +592,7 @@ Value *WIFuncResolution::getStageInGridSize(CallInst &CI) {
   IGC_ASSERT(V != nullptr);
 
   Value *dim = CI.getArgOperand(0);
-  Instruction *globalSize = ExtractElementInst::Create(V, dim, "grid_size", &CI);
+  Instruction *globalSize = ExtractElementInst::Create(V, dim, "grid_size", IGCLLVM::insertPosition(&CI));
   updateDebugLoc(&CI, globalSize);
 
   return globalSize;
@@ -636,7 +639,7 @@ Value *WIFuncResolution::getRegionGroupSize(CallInst &CI) {
   IGC_ASSERT(V != nullptr);
 
   Value *dim = CI.getArgOperand(0);
-  Instruction *regionGroupSize = ExtractElementInst::Create(V, dim, "regionGroupSize", &CI);
+  Instruction *regionGroupSize = ExtractElementInst::Create(V, dim, "regionGroupSize", IGCLLVM::insertPosition(&CI));
   updateDebugLoc(&CI, regionGroupSize);
 
   return regionGroupSize;
@@ -1028,5 +1031,5 @@ llvm::CallInst *WIFuncResolution::CallGetLocalID(llvm::Instruction *pInsertBefor
 
   auto pFuncGetLocalID = pM->getOrInsertFunction(WIFuncsAnalysis::GET_LOCAL_THREAD_ID, pFuncTypeGetLocalID);
 
-  return llvm::CallInst::Create(pFuncGetLocalID, {}, "", pInsertBefore);
+  return llvm::CallInst::Create(pFuncGetLocalID, {}, "", IGCLLVM::insertPosition(pInsertBefore));
 }

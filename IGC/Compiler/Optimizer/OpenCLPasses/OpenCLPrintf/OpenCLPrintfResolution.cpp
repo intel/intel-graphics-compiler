@@ -253,7 +253,7 @@ Value *OpenCLPrintfResolution::processPrintfString(Value *arg, Function &F) {
   } else if (SelectInst *selectInst = dyn_cast<SelectInst>(arg)) {
     SelectInst *selectInst2 =
         SelectInst::Create(selectInst->getOperand(0), processPrintfString(selectInst->getOperand(1), F),
-                           processPrintfString(selectInst->getOperand(2), F), "", selectInst);
+                           processPrintfString(selectInst->getOperand(2), F), "", IGCLLVM::insertPosition(selectInst));
     // TODO: Clean up the original select within the current pass
     return selectInst2;
   } else if (PHINode *phiNode = dyn_cast<PHINode>(arg)) {
@@ -262,7 +262,7 @@ Value *OpenCLPrintfResolution::processPrintfString(Value *arg, Function &F) {
     for (unsigned i = 0; i < inNum; ++i) {
       Value *newIV = processPrintfString(phiNode->getIncomingValue(i), F);
       if (!newPhi)
-        newPhi = PHINode::Create(newIV->getType(), inNum, "", phiNode);
+        newPhi = PHINode::Create(newIV->getType(), inNum, "", IGCLLVM::insertPosition(phiNode));
       newPhi->addIncoming(newIV, phiNode->getIncomingBlock(i));
     }
     // TODO: Clean up the original PHI node within the current pass
@@ -447,7 +447,8 @@ void OpenCLPrintfResolution::expandPrintfCall(CallInst &printfCall, Function &F)
   Instruction *writeOffsetPtr = nullptr;
 
   // end_offset = write_offset + data_size
-  Instruction *endOffset = BinaryOperator::CreateAdd(writeOffset, dataSizeVal, "end_offset", &printfCall);
+  Instruction *endOffset =
+      BinaryOperator::CreateAdd(writeOffset, dataSizeVal, "end_offset", IGCLLVM::insertPosition(&printfCall));
   endOffset->setDebugLoc(m_DL);
 
   Value *bufferMaxSize = isPrintfBuiltin
@@ -456,19 +457,21 @@ void OpenCLPrintfResolution::expandPrintfCall(CallInst &printfCall, Function &F)
 
   // write_ptr = buffer_ptr + write_offset;
   if (m_ptrSizeIntType != writeOffset->getType()) {
-    writeOffset =
-        CastInst::Create(Instruction::CastOps::ZExt, writeOffset, m_ptrSizeIntType, "write_offset", &printfCall);
+    writeOffset = CastInst::Create(Instruction::CastOps::ZExt, writeOffset, m_ptrSizeIntType, "write_offset",
+                                   IGCLLVM::insertPosition(&printfCall));
     writeOffset->setDebugLoc(m_DL);
   }
-  Instruction *bufferPtr =
-      CastInst::Create(Instruction::CastOps::PtrToInt, basebufferPtr, m_ptrSizeIntType, "buffer_ptr", &printfCall);
+  Instruction *bufferPtr = CastInst::Create(Instruction::CastOps::PtrToInt, basebufferPtr, m_ptrSizeIntType,
+                                            "buffer_ptr", IGCLLVM::insertPosition(&printfCall));
   bufferPtr->setDebugLoc(m_DL);
-  Instruction *writeOffsetAdd = BinaryOperator::CreateAdd(bufferPtr, writeOffset, "write_offset", &printfCall);
+  Instruction *writeOffsetAdd =
+      BinaryOperator::CreateAdd(bufferPtr, writeOffset, "write_offset", IGCLLVM::insertPosition(&printfCall));
   writeOffsetAdd->setDebugLoc(m_DL);
   writeOffset = writeOffsetAdd;
 
   // if (end_offset < output_buffer_size))
-  Instruction *cmp1 = CmpInst::Create(Instruction::ICmp, CmpInst::ICMP_ULE, endOffset, bufferMaxSize, "", &printfCall);
+  Instruction *cmp1 = CmpInst::Create(Instruction::ICmp, CmpInst::ICMP_ULE, endOffset, bufferMaxSize, "",
+                                      IGCLLVM::insertPosition(&printfCall));
   cmp1->setDebugLoc(m_DL);
 
   // Since we need to insert a branch here, the current basic block should be
@@ -576,7 +579,8 @@ void OpenCLPrintfResolution::expandPrintfCall(CallInst &printfCall, Function &F)
   // return_val = select cmp1, 0, -1
   Value *constVal0 = ConstantInt::get(m_int32Type, 0);
   Value *constValm1 = ConstantInt::get(m_int32Type, -1);
-  Instruction *returnVal = SelectInst::Create(cmp1, constVal0, constValm1, "printf_ret_val", &printfCall);
+  Instruction *returnVal =
+      SelectInst::Create(cmp1, constVal0, constValm1, "printf_ret_val", IGCLLVM::insertPosition(&printfCall));
   returnVal->setDebugLoc(m_DL);
 
   printfCall.replaceAllUsesWith(returnVal);
@@ -593,7 +597,8 @@ Value *OpenCLPrintfResolution::fixupPrintfArg(CallInst &printfCall, Value *arg, 
     return processPrintfString(arg, *F);
   } break;
   case IGC::SHADER_PRINTF_POINTER: {
-    Instruction *tmp = CastInst::Create(Instruction::CastOps::PtrToInt, arg, m_ptrSizeIntType, "", &printfCall);
+    Instruction *tmp = CastInst::Create(Instruction::CastOps::PtrToInt, arg, m_ptrSizeIntType, "",
+                                        IGCLLVM::insertPosition(&printfCall));
     tmp->setDebugLoc(m_DL);
     return tmp;
   } break;
@@ -629,7 +634,7 @@ Value *OpenCLPrintfResolution::fixupPrintfArg(CallInst &printfCall, Value *arg, 
         newType = IGCLLVM::FixedVectorType::get(newType, (unsigned)argVT->getNumElements());
       }
 
-      Instruction *tmp = CastInst::CreateFPCast(arg, newType, "to_float", &printfCall);
+      Instruction *tmp = CastInst::CreateFPCast(arg, newType, "to_float", IGCLLVM::insertPosition(&printfCall));
       tmp->setDebugLoc(m_DL);
       return tmp;
     }
@@ -691,8 +696,8 @@ CallInst *OpenCLPrintfResolution::genAtomicAdd(Value *outputBufferPtr, Value *da
   //
   Type *bufPtrType = IGCLLVM::getInt32PtrTy(*m_context, ADDRESS_SPACE_GLOBAL);
   if (outputBufferPtr->getType() != bufPtrType) {
-    outputBufferPtr =
-        CastInst::Create(Instruction::CastOps::BitCast, outputBufferPtr, bufPtrType, "ptrBC", &printfCall);
+    outputBufferPtr = CastInst::Create(Instruction::CastOps::BitCast, outputBufferPtr, bufPtrType, "ptrBC",
+                                       IGCLLVM::insertPosition(&printfCall));
   }
 
   if (m_atomicAddFunc == nullptr) {
@@ -705,7 +710,7 @@ CallInst *OpenCLPrintfResolution::genAtomicAdd(Value *outputBufferPtr, Value *da
   args.push_back(outputBufferPtr);
   args.push_back(dataSize);
 
-  return CallInst::Create(m_atomicAddFunc, args, name, &printfCall);
+  return CallInst::Create(m_atomicAddFunc, args, name, IGCLLVM::insertPosition(&printfCall));
 }
 
 unsigned int OpenCLPrintfResolution::getArgTypeSize(IGC::SHADER_PRINTF_TYPE argType, uint vecSize) {

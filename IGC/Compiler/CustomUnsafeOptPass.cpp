@@ -702,16 +702,16 @@ bool CustomUnsafeOptPass::visitBinaryOperatorToFmad(BinaryOperator &I) {
     return false;
   }
 
-  Value *op0 = copyIRFlags(BinaryOperator::CreateFMul(addInst->getOperand(0), C1, "", &I), &I);
+  Value *op0 = copyIRFlags(BinaryOperator::CreateFMul(addInst->getOperand(0), C1, "", IGCLLVM::insertPosition(&I)), &I);
 
   APFloat C0Float = C0->getValueAPF();
   C0Float.multiply(C1->getValueAPF(), llvm::APFloat::rmNearestTiesToEven);
   Value *op1 = ConstantFP::get(C0->getContext(), C0Float);
 
   if (addInst->getOpcode() == Instruction::FAdd) {
-    I.replaceAllUsesWith(copyIRFlags(BinaryOperator::CreateFAdd(op0, op1, "", &I), &I));
+    I.replaceAllUsesWith(copyIRFlags(BinaryOperator::CreateFAdd(op0, op1, "", IGCLLVM::insertPosition(&I)), &I));
   } else {
-    I.replaceAllUsesWith(copyIRFlags(BinaryOperator::CreateFSub(op0, op1, "", &I), &I));
+    I.replaceAllUsesWith(copyIRFlags(BinaryOperator::CreateFSub(op0, op1, "", IGCLLVM::insertPosition(&I)), &I));
   }
 
   collectForErase(I, 1);
@@ -784,9 +784,13 @@ bool CustomUnsafeOptPass::visitBinaryOperatorFmulToFmad(BinaryOperator &I) {
       } else {
         op1 = I.getOperand(xIndex);
       }
-      op2 = copyIRFlags(BinaryOperator::CreateFMul(I.getOperand(xIndex), FsubOrFaddInst->getOperand(1), "", &I), &I);
+      op2 = copyIRFlags(BinaryOperator::CreateFMul(I.getOperand(xIndex), FsubOrFaddInst->getOperand(1), "",
+                                                   IGCLLVM::insertPosition(&I)),
+                        &I);
     } else {
-      op1 = copyIRFlags(BinaryOperator::CreateFMul(I.getOperand(xIndex), FsubOrFaddInst->getOperand(0), "", &I), &I);
+      op1 = copyIRFlags(BinaryOperator::CreateFMul(I.getOperand(xIndex), FsubOrFaddInst->getOperand(0), "",
+                                                   IGCLLVM::insertPosition(&I)),
+                        &I);
       if (Cx) {
         ConstantFP *C1 = dyn_cast<ConstantFP>(FsubOrFaddInst->getOperand(1));
         APFloat CxFloat = Cx->getValueAPF();
@@ -798,9 +802,9 @@ bool CustomUnsafeOptPass::visitBinaryOperatorFmulToFmad(BinaryOperator &I) {
     }
 
     if (FsubOrFaddInst->getOpcode() == Instruction::FSub) {
-      I.replaceAllUsesWith(copyIRFlags(BinaryOperator::CreateFSub(op1, op2, "", &I), &I));
+      I.replaceAllUsesWith(copyIRFlags(BinaryOperator::CreateFSub(op1, op2, "", IGCLLVM::insertPosition(&I)), &I));
     } else {
-      I.replaceAllUsesWith(copyIRFlags(BinaryOperator::CreateFAdd(op1, op2, "", &I), &I));
+      I.replaceAllUsesWith(copyIRFlags(BinaryOperator::CreateFAdd(op1, op2, "", IGCLLVM::insertPosition(&I)), &I));
     }
 
     collectForErase(I, 1);
@@ -845,12 +849,17 @@ bool CustomUnsafeOptPass::visitBinaryOperatorDivAddDiv(BinaryOperator &I) {
 
   if (isFDiv(I.getOperand(0), numerator0, denumerator0) && isFDiv(I.getOperand(1), numerator1, denumerator1) &&
       denumerator0 != denumerator1) {
-    Value *mul0 = copyIRFlags(BinaryOperator::CreateFMul(numerator0, denumerator1, "", &I), &I);
-    Value *mul1 = copyIRFlags(BinaryOperator::CreateFMul(numerator1, denumerator0, "", &I), &I);
-    Value *mul2 = copyIRFlags(BinaryOperator::CreateFMul(denumerator0, denumerator1, "", &I), &I);
-    Value *mul2inv = copyIRFlags(BinaryOperator::CreateFDiv(ConstantFP::get(mul2->getType(), 1.0), mul2, "", &I), &I);
-    Value *add_mul0_mul1 = copyIRFlags(BinaryOperator::CreateFAdd(mul0, mul1, "", &I), &I);
-    I.replaceAllUsesWith(copyIRFlags(BinaryOperator::CreateFMul(add_mul0_mul1, mul2inv, "", &I), &I));
+    Value *mul0 =
+        copyIRFlags(BinaryOperator::CreateFMul(numerator0, denumerator1, "", IGCLLVM::insertPosition(&I)), &I);
+    Value *mul1 =
+        copyIRFlags(BinaryOperator::CreateFMul(numerator1, denumerator0, "", IGCLLVM::insertPosition(&I)), &I);
+    Value *mul2 =
+        copyIRFlags(BinaryOperator::CreateFMul(denumerator0, denumerator1, "", IGCLLVM::insertPosition(&I)), &I);
+    Value *mul2inv = copyIRFlags(
+        BinaryOperator::CreateFDiv(ConstantFP::get(mul2->getType(), 1.0), mul2, "", IGCLLVM::insertPosition(&I)), &I);
+    Value *add_mul0_mul1 = copyIRFlags(BinaryOperator::CreateFAdd(mul0, mul1, "", IGCLLVM::insertPosition(&I)), &I);
+    I.replaceAllUsesWith(
+        copyIRFlags(BinaryOperator::CreateFMul(add_mul0_mul1, mul2inv, "", IGCLLVM::insertPosition(&I)), &I));
 
     collectForErase(I, 1);
 
@@ -884,8 +893,8 @@ bool CustomUnsafeOptPass::visitBinaryOperatorDivDivOp(BinaryOperator &I) {
         // d = c / a
         //    =>
         // d = c * b
-        I.replaceAllUsesWith(
-            copyIRFlags(BinaryOperator::CreateFMul(I.getOperand(0), prevInst->getOperand(1), "", &I), &I));
+        I.replaceAllUsesWith(copyIRFlags(
+            BinaryOperator::CreateFMul(I.getOperand(0), prevInst->getOperand(1), "", IGCLLVM::insertPosition(&I)), &I));
       }
       collectForErase(I, 1);
       ++Stat_FloatRemoved;
@@ -954,8 +963,10 @@ bool CustomUnsafeOptPass::visitBinaryOperatorAddSubOp(BinaryOperator &I) {
       } else if (i == 1) {
         for (int srci = 0; srci < 2; srci++) {
           if (op[1 - i] == srcOp[srci]) {
-            I.replaceAllUsesWith(copyIRFlags(
-                BinaryOperator::CreateFSub(ConstantFP::get(op[0]->getType(), 0), srcOp[1 - srci], "", &I), &I));
+            I.replaceAllUsesWith(
+                copyIRFlags(BinaryOperator::CreateFSub(ConstantFP::get(op[0]->getType(), 0), srcOp[1 - srci], "",
+                                                       IGCLLVM::insertPosition(&I)),
+                            &I));
             patternFound = true;
             break;
           }
@@ -993,8 +1004,9 @@ bool CustomUnsafeOptPass::visitBinaryOperatorPropNegate(BinaryOperator &I) {
     if (prevInst && prevInst->getOpcode() == Instruction::FSub) {
       ConstantFP *fp0 = dyn_cast<ConstantFP>(prevInst->getOperand(0));
       if (fp0 && fp0->isZero()) {
-        I.replaceAllUsesWith(
-            copyIRFlags(BinaryOperator::CreateFSub(I.getOperand(1 - i), prevInst->getOperand(1), "", &I), &I));
+        I.replaceAllUsesWith(copyIRFlags(
+            BinaryOperator::CreateFSub(I.getOperand(1 - i), prevInst->getOperand(1), "", IGCLLVM::insertPosition(&I)),
+            &I));
         collectForErase(I, 1);
         ++Stat_FloatRemoved;
         m_isChanged = true;
@@ -1034,8 +1046,8 @@ bool CustomUnsafeOptPass::visitBinaryOperatorNegateMultiply(BinaryOperator &I) {
 
       // otherwise replace mul src0 with the negate
       if (!replaced) {
-        BinaryOperator *fsub =
-            BinaryOperator::CreateFSub(ConstantFP::get(fmulInst->getType(), 0), fmulInst->getOperand(0), "", fmulInst);
+        BinaryOperator *fsub = BinaryOperator::CreateFSub(
+            ConstantFP::get(fmulInst->getType(), 0), fmulInst->getOperand(0), "", IGCLLVM::insertPosition(fmulInst));
         fsub = copyIRFlags(fsub, &I);
         fmulInst->setOperand(0, fsub);
 
@@ -1200,12 +1212,15 @@ bool CustomUnsafeOptPass::visitBinaryOperatorTwoConstants(BinaryOperator &I) {
       }
     } else {
       if (changeOpToAdd) {
-        I.replaceAllUsesWith(copyIRFlags(BinaryOperator::CreateFAdd(prevInstOp, newConstant, "", &I), &I));
+        I.replaceAllUsesWith(
+            copyIRFlags(BinaryOperator::CreateFAdd(prevInstOp, newConstant, "", IGCLLVM::insertPosition(&I)), &I));
       } else if (changeOpToSub) {
         if (orderConstantFirst) {
-          I.replaceAllUsesWith(copyIRFlags(BinaryOperator::CreateFSub(newConstant, prevInstOp, "", &I), &I));
+          I.replaceAllUsesWith(
+              copyIRFlags(BinaryOperator::CreateFSub(newConstant, prevInstOp, "", IGCLLVM::insertPosition(&I)), &I));
         } else {
-          I.replaceAllUsesWith(copyIRFlags(BinaryOperator::CreateFSub(prevInstOp, newConstant, "", &I), &I));
+          I.replaceAllUsesWith(
+              copyIRFlags(BinaryOperator::CreateFSub(prevInstOp, newConstant, "", IGCLLVM::insertPosition(&I)), &I));
         }
       } else {
         I.setOperand(orderConstantFirst, prevInstOp);
@@ -1232,14 +1247,15 @@ bool CustomUnsafeOptPass::visitBinaryOperatorDivRsq(BinaryOperator &I) {
         llvm::IRBuilder<> builder(I.getContext());
         llvm::CallInst *sqrt_call = llvm::IntrinsicInst::Create(
             IGCLLVM::getOrInsertDeclaration(m_ctx->getModule(), Intrinsic::sqrt, builder.getFloatTy()),
-            genIntr->getOperand(0), "", &I);
+            genIntr->getOperand(0), "", IGCLLVM::insertPosition(&I));
 
         if (fp0->isExactlyValue(1.0)) {
           // 1/rsq -> sqrt
           I.replaceAllUsesWith(sqrt_call);
         } else {
           // a/rsq -> a*sqrt
-          I.replaceAllUsesWith(copyIRFlags(BinaryOperator::CreateFMul(I.getOperand(0), sqrt_call, "", &I), &I));
+          I.replaceAllUsesWith(
+              copyIRFlags(BinaryOperator::CreateFMul(I.getOperand(0), sqrt_call, "", IGCLLVM::insertPosition(&I)), &I));
         }
         collectForErase(I, 1);
         return true;
@@ -1256,7 +1272,8 @@ bool CustomUnsafeOptPass::visitBinaryOperatorAddDiv(BinaryOperator &I) {
       faddInst->hasOneUse()) {
     for (int i = 0; i < 2; i++) {
       if (faddInst->getOperand(i) == I.getOperand(1)) {
-        BinaryOperator *div = BinaryOperator::CreateFDiv(faddInst->getOperand(1 - i), I.getOperand(1), "", faddInst);
+        BinaryOperator *div = BinaryOperator::CreateFDiv(faddInst->getOperand(1 - i), I.getOperand(1), "",
+                                                         IGCLLVM::insertPosition(faddInst));
         div = copyIRFlags(div, &I);
 
         const DebugLoc &DL = faddInst->getDebugLoc();
@@ -1267,15 +1284,19 @@ bool CustomUnsafeOptPass::visitBinaryOperatorAddDiv(BinaryOperator &I) {
 
         if (faddInst->getOpcode() == Instruction::FAdd) {
           if (i == 0) {
-            I.replaceAllUsesWith(copyIRFlags(BinaryOperator::CreateFAdd(one, div, "", &I), &I));
+            I.replaceAllUsesWith(
+                copyIRFlags(BinaryOperator::CreateFAdd(one, div, "", IGCLLVM::insertPosition(&I)), &I));
           } else {
-            I.replaceAllUsesWith(copyIRFlags(BinaryOperator::CreateFAdd(div, one, "", &I), &I));
+            I.replaceAllUsesWith(
+                copyIRFlags(BinaryOperator::CreateFAdd(div, one, "", IGCLLVM::insertPosition(&I)), &I));
           }
         } else if (faddInst->getOpcode() == Instruction::FSub) {
           if (i == 0) {
-            I.replaceAllUsesWith(copyIRFlags(BinaryOperator::CreateFSub(one, div, "", &I), &I));
+            I.replaceAllUsesWith(
+                copyIRFlags(BinaryOperator::CreateFSub(one, div, "", IGCLLVM::insertPosition(&I)), &I));
           } else {
-            I.replaceAllUsesWith(copyIRFlags(BinaryOperator::CreateFSub(div, one, "", &I), &I));
+            I.replaceAllUsesWith(
+                copyIRFlags(BinaryOperator::CreateFSub(div, one, "", IGCLLVM::insertPosition(&I)), &I));
           }
         }
         collectForErase(I, 1);
@@ -1371,9 +1392,11 @@ bool CustomUnsafeOptPass::visitExchangeCB(llvm::BinaryOperator &I) {
     return false;
 
   // perform the change
-  Value *CBsum =
-      copyIRFlags(BinaryOperator::CreateFAdd(inst0->getOperand(cbIndex0), inst1->getOperand(cbIndex1), "", &I), &I);
-  I.replaceAllUsesWith(copyIRFlags(BinaryOperator::CreateFMul(inst0->getOperand(1 - cbIndex0), CBsum, "", &I), &I));
+  Value *CBsum = copyIRFlags(BinaryOperator::CreateFAdd(inst0->getOperand(cbIndex0), inst1->getOperand(cbIndex1), "",
+                                                        IGCLLVM::insertPosition(&I)),
+                             &I);
+  I.replaceAllUsesWith(copyIRFlags(
+      BinaryOperator::CreateFMul(inst0->getOperand(1 - cbIndex0), CBsum, "", IGCLLVM::insertPosition(&I)), &I));
 
   collectForErase(I, 1);
 
@@ -1520,12 +1543,14 @@ void CustomUnsafeOptPass::visitBinaryOperator(BinaryOperator &I) {
         }
         // X * -1 => -X
         else if (fp1 && fp1->isExactlyValue(-1.0)) {
-          I.replaceAllUsesWith(copyIRFlags(BinaryOperator::CreateFSub(ConstantFP::get(opType, 0), op0, "", &I), &I));
+          I.replaceAllUsesWith(copyIRFlags(
+              BinaryOperator::CreateFSub(ConstantFP::get(opType, 0), op0, "", IGCLLVM::insertPosition(&I)), &I));
           collectForErase(I);
           ++Stat_FloatRemoved;
           m_isChanged = true;
         } else if (fp0 && fp0->isExactlyValue(-1.0)) {
-          I.replaceAllUsesWith(copyIRFlags(BinaryOperator::CreateFSub(ConstantFP::get(opType, 0), op1, "", &I), &I));
+          I.replaceAllUsesWith(copyIRFlags(
+              BinaryOperator::CreateFSub(ConstantFP::get(opType, 0), op1, "", IGCLLVM::insertPosition(&I)), &I));
           collectForErase(I);
           ++Stat_FloatRemoved;
           m_isChanged = true;
@@ -1611,8 +1636,11 @@ void CustomUnsafeOptPass::visitBinaryOperator(BinaryOperator &I) {
             if (!patternFound && !m_ctx->getCompilerOption().DisableFDivToFMulInvOpt) {
               if (!(fp0 && fp0->isExactlyValue(1.0))) {
                 if (m_ctx->getModuleMetaData()->compOpt.FastRelaxedMath || I.hasAllowReciprocal()) {
-                  Value *invOp = copyIRFlags(BinaryOperator::CreateFDiv(ConstantFP::get(opType, 1.0), op1, "", &I), &I);
-                  I.replaceAllUsesWith(copyIRFlags(BinaryOperator::CreateFMul(op0, invOp, "", &I), &I));
+                  Value *invOp = copyIRFlags(
+                      BinaryOperator::CreateFDiv(ConstantFP::get(opType, 1.0), op1, "", IGCLLVM::insertPosition(&I)),
+                      &I);
+                  I.replaceAllUsesWith(
+                      copyIRFlags(BinaryOperator::CreateFMul(op0, invOp, "", IGCLLVM::insertPosition(&I)), &I));
                   collectForErase(I);
                   patternFound = true;
                 }
@@ -1745,24 +1773,27 @@ void CustomUnsafeOptPass::matchMixOperation(llvm::BinaryOperator &I) {
             Value *fSubVal = cast<Value>(&I);
             unsigned int fMul1OpToTakeIdx = (fSubVal == fMulPair.first->getOperand(0)) ? 1 : 0;
 
-            Instruction *newFirstInst = BinaryOperator::Create(newFirstInstType, newFirstInstOp,
-                                                               fMulPair.first->getOperand(fMul1OpToTakeIdx), "", fAdd);
+            Instruction *newFirstInst =
+                BinaryOperator::Create(newFirstInstType, newFirstInstOp, fMulPair.first->getOperand(fMul1OpToTakeIdx),
+                                       "", IGCLLVM::insertPosition(fAdd));
             newFirstInst->copyFastMathFlags(fMulPair.first);
             DILocation *DL1st = I.getDebugLoc();
             if (DL1st) {
               newFirstInst->setDebugLoc(DL1st);
             }
 
-            Instruction *newFMul = BinaryOperator::CreateFMul(
-                fMulPair.second->getOperand((fMul2OpToFirstInstIdx + 1) % 2), newFirstInst, "", fAdd);
+            Instruction *newFMul =
+                BinaryOperator::CreateFMul(fMulPair.second->getOperand((fMul2OpToFirstInstIdx + 1) % 2), newFirstInst,
+                                           "", IGCLLVM::insertPosition(fAdd));
             newFMul->copyFastMathFlags(fMulPair.second);
             DILocation *DL2nd = fMulPair.second->getDebugLoc();
             if (DL2nd) {
               newFMul->setDebugLoc(DL2nd);
             }
 
-            Instruction *newLastInst = BinaryOperator::Create(newLastInstType, newFMul,
-                                                              fMulPair.first->getOperand(fMul1OpToTakeIdx), "", fAdd);
+            Instruction *newLastInst =
+                BinaryOperator::Create(newLastInstType, newFMul, fMulPair.first->getOperand(fMul1OpToTakeIdx), "",
+                                       IGCLLVM::insertPosition(fAdd));
             newLastInst->copyFastMathFlags(fAdd);
             DILocation *DL3rd = fAdd->getDebugLoc();
             if (DL3rd) {
@@ -3407,7 +3438,7 @@ BasicBlock *EarlyOutPatterns::SplitBasicBlock(Instruction *inst, const DenseSet<
     for (auto UI = II->user_begin(), UE = II->user_end(); UI != UE; ++UI) {
       if (Instruction *useInst = dyn_cast<Instruction>(*UI)) {
         if (useInst->getParent() != elseBlock) {
-          newPhi = PHINode::Create(II->getType(), 2, "", &(*endifBlock->begin()));
+          newPhi = PHINode::Create(II->getType(), 2, "", IGCLLVM::insertPosition(&(*endifBlock->begin())));
           II->replaceUsesOutsideBlock(newPhi, elseBlock);
           newPhi->addIncoming(&(*II), elseBlock);
           newPhi->addIncoming(VMap[&(*II)], ifBlock);

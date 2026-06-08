@@ -296,16 +296,18 @@ bool PatchGetElementPtr(const std::vector<Value *> &instList, Type *dstTy, unsig
       llvm::SmallVector<llvm::Value *, 4> gepArgs(gepInst->idx_begin(), gepInst->idx_end());
       // Create the new GEP instruction
       if (gepInst->isInBounds())
-        patchedInst = GetElementPtrInst::CreateInBounds(patchTy, patchedInst, gepArgs, "", gepInst);
+        patchedInst =
+            GetElementPtrInst::CreateInBounds(patchTy, patchedInst, gepArgs, "", IGCLLVM::insertPosition(gepInst));
       else
-        patchedInst = GetElementPtrInst::Create(patchTy, patchedInst, gepArgs, "", gepInst);
+        patchedInst = GetElementPtrInst::Create(patchTy, patchedInst, gepArgs, "", IGCLLVM::insertPosition(gepInst));
 
       if (GetElementPtrInst *gepPatchedInst = dyn_cast<GetElementPtrInst>(patchedInst)) {
         gepPatchedInst->setDebugLoc(gepInst->getDebugLoc());
       }
     } else if (BitCastInst *cast = dyn_cast<BitCastInst>(inst)) {
       PointerType *newptrType = IGCLLVM::PointerType::get(dyn_cast<PointerType>(cast->getType()), directAS);
-      patchedInst = BitCastInst::Create(Instruction::BitCast, patchedInst, newptrType, "", cast);
+      patchedInst =
+          BitCastInst::Create(Instruction::BitCast, patchedInst, newptrType, "", IGCLLVM::insertPosition(cast));
       if (BitCastInst *castPathedInst = dyn_cast<BitCastInst>(patchedInst)) {
         castPathedInst->setDebugLoc(cast->getDebugLoc());
       }
@@ -365,7 +367,8 @@ bool PatchInstructionAddressSpace(const std::vector<Value *> &instList, Type *ds
       // Patch both branches, then patch the select instruction
       if (PatchGetElementPtr(tempList0, srcType0, directAS, nullptr, bufferPtr0) &&
           PatchGetElementPtr(tempList1, srcType1, directAS, nullptr, bufferPtr1)) {
-        newSelectInst = SelectInst::Create(selectInst->getOperand(0), bufferPtr0, bufferPtr1, "", selectInst);
+        newSelectInst = SelectInst::Create(selectInst->getOperand(0), bufferPtr0, bufferPtr1, "",
+                                           IGCLLVM::insertPosition(selectInst));
       }
       // If there are any remaining GEP/bitcast instructions after the select, patch them as well
       if (newSelectInst) {
@@ -374,7 +377,7 @@ bool PatchInstructionAddressSpace(const std::vector<Value *> &instList, Type *ds
     }
   } else if (phiNode) {
     PointerType *newPhiTy = IGCLLVM::PointerType::get(dyn_cast<PointerType>(phiNode->getType()), directAS);
-    PHINode *pNewPhi = PHINode::Create(newPhiTy, phiNode->getNumIncomingValues(), "", phiNode);
+    PHINode *pNewPhi = PHINode::Create(newPhiTy, phiNode->getNumIncomingValues(), "", IGCLLVM::insertPosition(phiNode));
     for (unsigned int i = 0; i < phiNode->getNumIncomingValues(); ++i) {
       Value *incomingVal = phiNode->getIncomingValue(i);
       IGC_ASSERT(incomingVal->getType()->isPointerTy());

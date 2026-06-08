@@ -457,7 +457,7 @@ bool StatelessToStateful::getOffsetFromGEP(Function *F, const SmallVector<GetEle
 
           Value *OffsetValue = ConstantInt::get(int32Ty, Offset);
 
-          PointerValue = BinaryOperator::CreateAdd(PointerValue, OffsetValue, "", GEP);
+          PointerValue = BinaryOperator::CreateAdd(PointerValue, OffsetValue, "", IGCLLVM::insertPosition(GEP));
           cast<llvm::Instruction>(PointerValue)->setDebugLoc(GEP->getDebugLoc());
         }
       } else {
@@ -467,21 +467,22 @@ bool StatelessToStateful::getOffsetFromGEP(Function *F, const SmallVector<GetEle
             uint64_t Offset = DL->getTypeAllocSize(Ty) * CI->getSExtValue();
             Value *OffsetValue = ConstantInt::get(int32Ty, Offset);
 
-            PointerValue = BinaryOperator::CreateAdd(PointerValue, OffsetValue, "", GEP);
+            PointerValue = BinaryOperator::CreateAdd(PointerValue, OffsetValue, "", IGCLLVM::insertPosition(GEP));
             cast<llvm::Instruction>(PointerValue)->setDebugLoc(GEP->getDebugLoc());
           }
         } else {
-          Value *NewIdx = CastInst::CreateTruncOrBitCast(Idx, int32Ty, "", GEP);
+          Value *NewIdx = CastInst::CreateTruncOrBitCast(Idx, int32Ty, "", IGCLLVM::insertPosition(GEP));
           cast<llvm::Instruction>(NewIdx)->setDebugLoc(GEP->getDebugLoc());
 
           APInt ElementSize = APInt((unsigned int)int32Ty->getPrimitiveSizeInBits(), DL->getTypeAllocSize(Ty));
 
           if (ElementSize != 1) {
-            NewIdx = BinaryOperator::CreateMul(NewIdx, ConstantInt::get(int32Ty, ElementSize), "", GEP);
+            NewIdx = BinaryOperator::CreateMul(NewIdx, ConstantInt::get(int32Ty, ElementSize), "",
+                                               IGCLLVM::insertPosition(GEP));
             cast<llvm::Instruction>(NewIdx)->setDebugLoc(GEP->getDebugLoc());
           }
 
-          PointerValue = BinaryOperator::CreateAdd(PointerValue, NewIdx, "", GEP);
+          PointerValue = BinaryOperator::CreateAdd(PointerValue, NewIdx, "", IGCLLVM::insertPosition(GEP));
           cast<llvm::Instruction>(PointerValue)->setDebugLoc(GEP->getDebugLoc());
         }
       }
@@ -745,12 +746,13 @@ void StatelessToStateful::promoteIntrinsic(InstructionInfo &II) {
   if (m_targetAddressing == TargetAddressing::BINDLESS) {
     Argument *srcOffset =
         m_pImplicitArgs->getNumberedImplicitArg(*m_F, ImplicitArg::BINDLESS_OFFSET, II.getBaseArgIndex());
-    auto newBasePtr = IntToPtrInst::Create(Instruction::IntToPtr, srcOffset, pTy, "", I);
+    auto newBasePtr = IntToPtrInst::Create(Instruction::IntToPtr, srcOffset, pTy, "", IGCLLVM::insertPosition(I));
     if (intrinID == GenISAIntrinsic::GenISA_simdBlockRead) {
       Function *newBlockReadFunc =
           GenISAIntrinsic::getDeclaration(M, GenISAIntrinsic::GenISA_simdBlockReadBindless,
                                           {I->getType(), newBasePtr->getType(), Type::getInt32Ty(M->getContext())});
-      Instruction *newBlockRead = CallInst::Create(newBlockReadFunc, {newBasePtr, II.offset}, "", I);
+      Instruction *newBlockRead =
+          CallInst::Create(newBlockReadFunc, {newBasePtr, II.offset}, "", IGCLLVM::insertPosition(I));
       newBlockRead->setDebugLoc(I->getDebugLoc());
       I->replaceAllUsesWith(newBlockRead);
       I->eraseFromParent();
@@ -760,8 +762,8 @@ void StatelessToStateful::promoteIntrinsic(InstructionInfo &II) {
       Function *newBlockWriteFunc = GenISAIntrinsic::getDeclaration(
           M, GenISAIntrinsic::GenISA_simdBlockWriteBindless,
           {newBasePtr->getType(), I->getOperand(1)->getType(), Type::getInt32Ty(M->getContext())});
-      Instruction *newBlockWrite =
-          CallInst::Create(newBlockWriteFunc, {newBasePtr, I->getOperand(1), II.offset}, "", I);
+      Instruction *newBlockWrite = CallInst::Create(newBlockWriteFunc, {newBasePtr, I->getOperand(1), II.offset}, "",
+                                                    IGCLLVM::insertPosition(I));
       newBlockWrite->setDebugLoc(I->getDebugLoc());
       I->replaceAllUsesWith(newBlockWrite);
       I->eraseFromParent();
@@ -773,19 +775,20 @@ void StatelessToStateful::promoteIntrinsic(InstructionInfo &II) {
 
   IGC_ASSERT(m_targetAddressing == TargetAddressing::BINDFUL);
 
-  Instruction *statefulPtr = IntToPtrInst::Create(Instruction::IntToPtr, II.offset, pTy, "", I);
+  Instruction *statefulPtr =
+      IntToPtrInst::Create(Instruction::IntToPtr, II.offset, pTy, "", IGCLLVM::insertPosition(I));
   Instruction *statefulInst = nullptr;
 
   if (intrinID == GenISAIntrinsic::GenISA_simdBlockRead) {
     Function *simdMediaBlockReadFunc = GenISAIntrinsic::getDeclaration(M, intrinID, {I->getType(), pTy});
-    statefulInst = CallInst::Create(simdMediaBlockReadFunc, {statefulPtr}, "", I);
+    statefulInst = CallInst::Create(simdMediaBlockReadFunc, {statefulPtr}, "", IGCLLVM::insertPosition(I));
   } else if (intrinID == GenISAIntrinsic::GenISA_simdBlockWrite ||
              intrinID == GenISAIntrinsic::GenISA_HDCuncompressedwrite) {
     SmallVector<Value *, 2> args;
     args.push_back(statefulPtr);
     args.push_back(I->getOperand(1));
     Function *pFunc = GenISAIntrinsic::getDeclaration(M, intrinID, {pTy, I->getOperand(1)->getType()});
-    statefulInst = CallInst::Create(pFunc, args, "", I);
+    statefulInst = CallInst::Create(pFunc, args, "", IGCLLVM::insertPosition(I));
   } else if (intrinID == GenISAIntrinsic::GenISA_LSCStoreCmask) {
     SmallVector<Value *, 6> args;
     args.push_back(statefulPtr);
@@ -795,7 +798,7 @@ void StatelessToStateful::promoteIntrinsic(InstructionInfo &II) {
     args.push_back(I->getOperand(4));
     args.push_back(I->getOperand(5));
     Function *pFunc = GenISAIntrinsic::getDeclaration(M, intrinID, {pTy, I->getOperand(2)->getType()});
-    statefulInst = CallInst::Create(pFunc, args, "", I);
+    statefulInst = CallInst::Create(pFunc, args, "", IGCLLVM::insertPosition(I));
   } else if (intrinID == GenISAIntrinsic::GenISA_LSCLoadCmask) {
     Function *pCurrInstFunc = I->getCalledFunction();
     SmallVector<Value *, 5> args;
@@ -805,17 +808,19 @@ void StatelessToStateful::promoteIntrinsic(InstructionInfo &II) {
     args.push_back(I->getOperand(3));
     args.push_back(I->getOperand(4));
     Function *pFunc = GenISAIntrinsic::getDeclaration(M, intrinID, {pCurrInstFunc->getReturnType(), pTy});
-    statefulInst = CallInst::Create(pFunc, args, "", I);
+    statefulInst = CallInst::Create(pFunc, args, "", IGCLLVM::insertPosition(I));
   } else if (isUntypedAtomic(intrinID)) {
     if (intrinID == GenISAIntrinsic::GenISA_intatomicrawA64 ||
         intrinID == GenISAIntrinsic::GenISA_icmpxchgatomicrawA64 ||
         intrinID == GenISAIntrinsic::GenISA_floatatomicrawA64 ||
         intrinID == GenISAIntrinsic::GenISA_fcmpxchgatomicrawA64) {
       statefulInst = CallInst::Create(GenISAIntrinsic::getDeclaration(M, intrinID, {I->getType(), pTy, pTy}),
-                                      {statefulPtr, statefulPtr, I->getOperand(2), I->getOperand(3)}, "", I);
+                                      {statefulPtr, statefulPtr, I->getOperand(2), I->getOperand(3)}, "",
+                                      IGCLLVM::insertPosition(I));
     } else {
       statefulInst = CallInst::Create(GenISAIntrinsic::getDeclaration(M, intrinID, {I->getType(), pTy}),
-                                      {statefulPtr, II.offset, I->getOperand(2), I->getOperand(3)}, "", I);
+                                      {statefulPtr, II.offset, I->getOperand(2), I->getOperand(3)}, "",
+                                      IGCLLVM::insertPosition(I));
     }
   }
 
@@ -834,7 +839,7 @@ void StatelessToStateful::promoteLoad(InstructionInfo &II) {
   if (m_targetAddressing == TargetAddressing::BINDLESS) {
     Argument *srcOffset =
         m_pImplicitArgs->getNumberedImplicitArg(*m_F, ImplicitArg::BINDLESS_OFFSET, II.getBaseArgIndex());
-    auto newBasePtr = IntToPtrInst::Create(Instruction::IntToPtr, srcOffset, pTy, "", I);
+    auto newBasePtr = IntToPtrInst::Create(Instruction::IntToPtr, srcOffset, pTy, "", IGCLLVM::insertPosition(I));
     auto bindlessLoad = IGC::CreateLoadRawIntrinsic(I, cast<Instruction>(newBasePtr), II.offset);
 
     newBasePtr->setDebugLoc(DL);
@@ -844,9 +849,9 @@ void StatelessToStateful::promoteLoad(InstructionInfo &II) {
     I->eraseFromParent();
     setModuleUsesBindless();
   } else if (m_targetAddressing == TargetAddressing::BINDFUL) {
-    auto newBasePtr = IntToPtrInst::Create(Instruction::IntToPtr, II.offset, pTy, "", I);
+    auto newBasePtr = IntToPtrInst::Create(Instruction::IntToPtr, II.offset, pTy, "", IGCLLVM::insertPosition(I));
     auto bindfulLoad = new LoadInst(I->getType(), newBasePtr, "", I->isVolatile(), IGCLLVM::getAlign(*I),
-                                    I->getOrdering(), I->getSyncScopeID(), I);
+                                    I->getOrdering(), I->getSyncScopeID(), IGCLLVM::insertPosition(I));
 
     newBasePtr->setDebugLoc(DL);
     bindfulLoad->setDebugLoc(DL);
@@ -878,7 +883,7 @@ void StatelessToStateful::promoteStore(InstructionInfo &II) {
   if (m_targetAddressing == TargetAddressing::BINDLESS) {
     Argument *srcOffset =
         m_pImplicitArgs->getNumberedImplicitArg(*m_F, ImplicitArg::BINDLESS_OFFSET, II.getBaseArgIndex());
-    auto newBasePtr = IntToPtrInst::Create(Instruction::IntToPtr, srcOffset, pTy, "", I);
+    auto newBasePtr = IntToPtrInst::Create(Instruction::IntToPtr, srcOffset, pTy, "", IGCLLVM::insertPosition(I));
     auto bindlessStore = IGC::CreateStoreRawIntrinsic(I, cast<Instruction>(newBasePtr), II.offset);
 
     newBasePtr->setDebugLoc(DL);
@@ -887,9 +892,9 @@ void StatelessToStateful::promoteStore(InstructionInfo &II) {
     I->eraseFromParent();
     setModuleUsesBindless();
   } else if (m_targetAddressing == TargetAddressing::BINDFUL) {
-    auto newBasePtr = IntToPtrInst::Create(Instruction::IntToPtr, II.offset, pTy, "", I);
+    auto newBasePtr = IntToPtrInst::Create(Instruction::IntToPtr, II.offset, pTy, "", IGCLLVM::insertPosition(I));
     auto bindfulStore = new StoreInst(dataVal, newBasePtr, I->isVolatile(), IGCLLVM::getAlign(*I), I->getOrdering(),
-                                      I->getSyncScopeID(), I);
+                                      I->getSyncScopeID(), IGCLLVM::insertPosition(I));
 
     newBasePtr->setDebugLoc(DL);
     bindfulStore->setDebugLoc(DL);

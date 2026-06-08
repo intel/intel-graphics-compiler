@@ -273,7 +273,8 @@ bool PreCompiledFuncImport::preProcessDouble() {
         Instruction *zext = dyn_cast<ZExtInst>(oprd);
         if (zext && srcBits == 64 && dstTy->isDoubleTy() &&
             zext->getOperand(0)->getType()->getIntegerBitWidth() <= 32) {
-          Instruction *newinst = CastInst::Create(Instruction::UIToFP, zext->getOperand(0), dstTy, "", UFI);
+          Instruction *newinst =
+              CastInst::Create(Instruction::UIToFP, zext->getOperand(0), dstTy, "", IGCLLVM::insertPosition(UFI));
           UFI->replaceAllUsesWith(newinst);
           toBeDeleted.push_back(UFI);
         }
@@ -284,7 +285,8 @@ bool PreCompiledFuncImport::preProcessDouble() {
         Instruction *sext = dyn_cast<SExtInst>(oprd);
         if (sext && srcBits == 64 && dstTy->isDoubleTy() &&
             sext->getOperand(0)->getType()->getIntegerBitWidth() <= 32) {
-          Instruction *newinst = CastInst::Create(Instruction::SIToFP, sext->getOperand(0), dstTy, "", SFI);
+          Instruction *newinst =
+              CastInst::Create(Instruction::SIToFP, sext->getOperand(0), dstTy, "", IGCLLVM::insertPosition(SFI));
           SFI->replaceAllUsesWith(newinst);
           toBeDeleted.push_back(SFI);
         }
@@ -301,11 +303,11 @@ bool PreCompiledFuncImport::preProcessDouble() {
           Instruction *res = nullptr;
           if (hasNoNaN) {
             Instruction *cond = FCmpInst::Create(Instruction::FCmp, isMax ? FCmpInst::FCMP_OGE : FCmpInst::FCMP_OLT,
-                                                 Oprd0, Oprd1, "", CallI);
+                                                 Oprd0, Oprd1, "", IGCLLVM::insertPosition(CallI));
             cond->setDebugLoc(CallI->getDebugLoc());
 
             // Note that select will be splitted in legalization
-            res = SelectInst::Create(cond, Oprd0, Oprd1, "", CallI);
+            res = SelectInst::Create(cond, Oprd0, Oprd1, "", IGCLLVM::insertPosition(CallI));
             res->setDebugLoc(CallI->getDebugLoc());
           } else {
             // z = max/min(x,y) sementics:
@@ -323,13 +325,14 @@ bool PreCompiledFuncImport::preProcessDouble() {
             //   res = op0_isnan ? y : t
             //
             Instruction *cond = FCmpInst::Create(Instruction::FCmp, isMax ? FCmpInst::FCMP_UGE : FCmpInst::FCMP_ULT,
-                                                 Oprd0, Oprd1, "", CallI);
+                                                 Oprd0, Oprd1, "", IGCLLVM::insertPosition(CallI));
             cond->setDebugLoc(CallI->getDebugLoc());
-            Instruction *sel = SelectInst::Create(cond, Oprd0, Oprd1, "", CallI);
+            Instruction *sel = SelectInst::Create(cond, Oprd0, Oprd1, "", IGCLLVM::insertPosition(CallI));
             sel->setDebugLoc(CallI->getDebugLoc());
 
-            Instruction *isnan = FCmpInst::Create(Instruction::FCmp, FCmpInst::FCMP_UNE, Oprd0, Oprd0, "", CallI);
-            res = SelectInst::Create(isnan, Oprd1, sel, "", CallI);
+            Instruction *isnan = FCmpInst::Create(Instruction::FCmp, FCmpInst::FCMP_UNE, Oprd0, Oprd0, "",
+                                                  IGCLLVM::insertPosition(CallI));
+            res = SelectInst::Create(isnan, Oprd1, sel, "", IGCLLVM::insertPosition(CallI));
             res->setDebugLoc(CallI->getDebugLoc());
           }
           CallI->replaceAllUsesWith(res);
@@ -342,14 +345,15 @@ bool PreCompiledFuncImport::preProcessDouble() {
           Constant *FC0 = ConstantFP::get(resTy, 0.0);
           Constant *FC1 = ConstantFP::get(resTy, 1.0);
           Instruction *cond = FCmpInst::Create(Instruction::FCmp, hasNoNaN ? FCmpInst::FCMP_OLT : FCmpInst::FCMP_ULT,
-                                               Oprd0, FC0, "", CallI);
+                                               Oprd0, FC0, "", IGCLLVM::insertPosition(CallI));
           cond->setDebugLoc(CallI->getDebugLoc());
-          Instruction *sel = SelectInst::Create(cond, FC0, Oprd0, "", CallI);
+          Instruction *sel = SelectInst::Create(cond, FC0, Oprd0, "", IGCLLVM::insertPosition(CallI));
           sel->setDebugLoc(CallI->getDebugLoc());
 
-          Instruction *cond1 = FCmpInst::Create(Instruction::FCmp, FCmpInst::FCMP_OGT, Oprd0, FC1, "", CallI);
+          Instruction *cond1 =
+              FCmpInst::Create(Instruction::FCmp, FCmpInst::FCMP_OGT, Oprd0, FC1, "", IGCLLVM::insertPosition(CallI));
           cond1->setDebugLoc(CallI->getDebugLoc());
-          Instruction *res = SelectInst::Create(cond1, FC1, sel, "", CallI);
+          Instruction *res = SelectInst::Create(cond1, FC1, sel, "", IGCLLVM::insertPosition(CallI));
           res->setDebugLoc(CallI->getDebugLoc());
 
           CallI->replaceAllUsesWith(res);
@@ -864,7 +868,7 @@ PreCompiledFuncImport::ImportedFunction PreCompiledFuncImport::createInlinedCopy
       args.push_back(oldCall->getArgOperand(arg));
 
     // Create new call and insert it before old one
-    CallInst *newCall = CallInst::Create(copy.F, args, "", oldCall);
+    CallInst *newCall = CallInst::Create(copy.F, args, "", IGCLLVM::insertPosition(oldCall));
 
     newCall->setCallingConv(copy.F->getCallingConv());
     newCall->setAttributes(oldCall->getAttributes());
@@ -1060,7 +1064,7 @@ void PreCompiledFuncImport::processInt32Divide(BinaryOperator &inst, Int32Emulat
   AllocaInst *pRem = builder.CreateAlloca(intTy, nullptr, "Remainder");
   builder.SetInsertPoint(&inst);
   args[2] = pRem;
-  CallInst *funcCall = CallInst::Create(func, args, inst.getName(), &inst);
+  CallInst *funcCall = CallInst::Create(func, args, inst.getName(), IGCLLVM::insertPosition(&inst));
   addCallInst(funcCall);
   funcCall->setDebugLoc(inst.getDebugLoc());
 
@@ -1176,7 +1180,7 @@ void PreCompiledFuncImport::processDivide(BinaryOperator &inst, EmulatedFunction
   args[0] = inst.getOperand(0);
   args[1] = inst.getOperand(1);
 
-  CallInst *funcCall = CallInst::Create(func, args, inst.getName(), &inst);
+  CallInst *funcCall = CallInst::Create(func, args, inst.getName(), IGCLLVM::insertPosition(&inst));
   addCallInst(funcCall);
   funcCall->setDebugLoc(inst.getDebugLoc());
 
@@ -1269,7 +1273,7 @@ void PreCompiledFuncImport::visitFPTruncInst(llvm::FPTruncInst &inst) {
     args[3] = ConstantInt::get(intTy, m_flushDenorm);  // flush denorm
     args[4] = createFlagValue(CurrFunc);               // ignored
 
-    CallInst *funcCall = CallInst::Create(newFunc, args, inst.getName(), &inst);
+    CallInst *funcCall = CallInst::Create(newFunc, args, inst.getName(), IGCLLVM::insertPosition(&inst));
     addCallInst(funcCall);
     funcCall->setDebugLoc(inst.getDebugLoc());
 
@@ -1295,25 +1299,32 @@ void PreCompiledFuncImport::processFPBinaryOperator(Instruction &I, FunctionIDs 
     Type *DoubleTy = Type::getDoubleTy(m_pModule->getContext());
     VectorType *vec2Ty = IGCLLVM::FixedVectorType::get(intTy, 2);
 
-    Instruction *twoI32 = CastInst::Create(Instruction::BitCast, I.getOperand(1), vec2Ty, "", &I);
+    Instruction *twoI32 =
+        CastInst::Create(Instruction::BitCast, I.getOperand(1), vec2Ty, "", IGCLLVM::insertPosition(&I));
     twoI32->setDebugLoc(I.getDebugLoc());
-    Instruction *topI32 = ExtractElementInst::Create(twoI32, ConstantInt::get(intTy, 1), "", &I);
+    Instruction *topI32 =
+        ExtractElementInst::Create(twoI32, ConstantInt::get(intTy, 1), "", IGCLLVM::insertPosition(&I));
     topI32->setDebugLoc(I.getDebugLoc());
 
     // Isolate and flip sign bit
-    Instruction *Inst2 = BinaryOperator::CreateAnd(topI32, ConstantInt::get(intTy, 0x80000000), "", &I);
+    Instruction *Inst2 =
+        BinaryOperator::CreateAnd(topI32, ConstantInt::get(intTy, 0x80000000), "", IGCLLVM::insertPosition(&I));
     Inst2->setDebugLoc(I.getDebugLoc());
-    Instruction *Inst3 = BinaryOperator::CreateXor(Inst2, ConstantInt::get(intTy, 0x80000000), "", &I);
+    Instruction *Inst3 =
+        BinaryOperator::CreateXor(Inst2, ConstantInt::get(intTy, 0x80000000), "", IGCLLVM::insertPosition(&I));
     Inst3->setDebugLoc(I.getDebugLoc());
 
     // Change sign bit and pack back new value
-    Instruction *Inst4 = BinaryOperator::CreateAnd(topI32, ConstantInt::get(intTy, 0x7FFFFFFF), "", &I);
+    Instruction *Inst4 =
+        BinaryOperator::CreateAnd(topI32, ConstantInt::get(intTy, 0x7FFFFFFF), "", IGCLLVM::insertPosition(&I));
     Inst4->setDebugLoc(I.getDebugLoc());
-    Instruction *newTopI32 = BinaryOperator::CreateOr(Inst4, Inst3, "", &I);
+    Instruction *newTopI32 = BinaryOperator::CreateOr(Inst4, Inst3, "", IGCLLVM::insertPosition(&I));
     newTopI32->setDebugLoc(I.getDebugLoc());
-    Instruction *finalVal = InsertElementInst::Create(twoI32, newTopI32, ConstantInt::get(intTy, 1), "", &I);
+    Instruction *finalVal =
+        InsertElementInst::Create(twoI32, newTopI32, ConstantInt::get(intTy, 1), "", IGCLLVM::insertPosition(&I));
     finalVal->setDebugLoc(I.getDebugLoc());
-    Instruction *finalValDouble = CastInst::Create(Instruction::BitCast, finalVal, DoubleTy, "", &I);
+    Instruction *finalValDouble =
+        CastInst::Create(Instruction::BitCast, finalVal, DoubleTy, "", IGCLLVM::insertPosition(&I));
     finalValDouble->setDebugLoc(I.getDebugLoc());
 
     I.replaceAllUsesWith(finalValDouble);
@@ -1335,7 +1346,7 @@ void PreCompiledFuncImport::processFPBinaryOperator(Instruction &I, FunctionIDs 
       args.push_back(createFlagValue(CurrFunc));               // FP flag, ignored
     }
 
-    CallInst *funcCall = CallInst::Create(newFunc, args, I.getName(), &I);
+    CallInst *funcCall = CallInst::Create(newFunc, args, I.getName(), IGCLLVM::insertPosition(&I));
     addCallInst(funcCall);
     funcCall->setDebugLoc(I.getDebugLoc());
 
@@ -1548,7 +1559,7 @@ Value *PreCompiledFuncImport::createFlagValue(Function *F) {
     BasicBlock *EntryBB = &(F->getEntryBlock());
     Instruction *insert_before = &(*EntryBB->getFirstInsertionPt());
     Type *intTy = Type::getInt32Ty(Ctx);
-    Value *flagPtrValue = new AllocaInst(intTy, 0, "DPEmuFlag", insert_before);
+    Value *flagPtrValue = new AllocaInst(intTy, 0, "DPEmuFlag", IGCLLVM::insertPosition(insert_before));
     m_DPEmuFlagTemp[F] = flagPtrValue;
   }
   return m_DPEmuFlagTemp[F];
@@ -1562,8 +1573,8 @@ void PreCompiledFuncImport::visitFPExtInst(llvm::FPExtInst &I) {
     Function *CurrFunc = I.getParent()->getParent();
     Value *args[3];
     if (I.getSrcTy()->isHalfTy()) {
-      Instruction *newI =
-          new FPExtInst(I.getOperand(0), Type::getFloatTy(m_pModule->getContext()), "DPEmufp16tofp32", &I);
+      Instruction *newI = new FPExtInst(I.getOperand(0), Type::getFloatTy(m_pModule->getContext()), "DPEmufp16tofp32",
+                                        IGCLLVM::insertPosition(&I));
       newI->setDebugLoc(I.getDebugLoc());
       args[0] = newI;
     } else {
@@ -1571,7 +1582,7 @@ void PreCompiledFuncImport::visitFPExtInst(llvm::FPExtInst &I) {
     }
     args[1] = ConstantInt::get(intTy, m_flushDenorm); // flush denorm
     args[2] = createFlagValue(CurrFunc);              // FP flags, ignored
-    CallInst *funcCall = CallInst::Create(newFunc, args, I.getName(), &I);
+    CallInst *funcCall = CallInst::Create(newFunc, args, I.getName(), IGCLLVM::insertPosition(&I));
     addCallInst(funcCall);
     funcCall->setDebugLoc(I.getDebugLoc());
 
@@ -1625,9 +1636,9 @@ void PreCompiledFuncImport::visitCastInst(llvm::CastInst &I) {
       Type *int64Ty = Type::getInt64Ty(m_pModule->getContext());
       Type *dTy = intBits < 32 ? intTy : int64Ty;
       if (opc == Instruction::SIToFP) {
-        newInst = new SExtInst(oprd0, dTy, "DPEmusext", &I);
+        newInst = new SExtInst(oprd0, dTy, "DPEmusext", IGCLLVM::insertPosition(&I));
       } else {
-        newInst = new ZExtInst(oprd0, dTy, "DPEmuzext", &I);
+        newInst = new ZExtInst(oprd0, dTy, "DPEmuzext", IGCLLVM::insertPosition(&I));
       }
       newInst->setDebugLoc(I.getDebugLoc());
       oprd0 = newInst;
@@ -1658,14 +1669,14 @@ void PreCompiledFuncImport::visitCastInst(llvm::CastInst &I) {
     args.push_back(createFlagValue(CurrFunc));  // FP flags, ignored
   }
 
-  CallInst *funcCall = CallInst::Create(newFunc, args, I.getName(), &I);
+  CallInst *funcCall = CallInst::Create(newFunc, args, I.getName(), IGCLLVM::insertPosition(&I));
   addCallInst(funcCall);
   funcCall->setDebugLoc(I.getDebugLoc());
 
   Instruction *newVal = funcCall;
   if ((intBits != 32 && intBits != 64) && (opc == Instruction::FPToSI || opc == Instruction::FPToUI)) {
     // If not 32/64, down-cvt from 32/64 int.
-    newVal = new TruncInst(newVal, I.getType(), "DPEmuTrunc", &I);
+    newVal = new TruncInst(newVal, I.getType(), "DPEmuTrunc", IGCLLVM::insertPosition(&I));
     newVal->setDebugLoc(I.getDebugLoc());
   }
 
@@ -1761,7 +1772,7 @@ void PreCompiledFuncImport::visitFCmpInst(FCmpInst &I) {
   args[1] = I.getOperand(1);
   args[2] = ConstantInt::get(intTy, m_flushDenorm); // flush denorm.
 
-  CallInst *funcCall = CallInst::Create(newFunc, args, I.getName(), &I);
+  CallInst *funcCall = CallInst::Create(newFunc, args, I.getName(), IGCLLVM::insertPosition(&I));
   funcCall->setDebugLoc(I.getDebugLoc());
   addCallInst(funcCall);
 
@@ -1780,9 +1791,10 @@ void PreCompiledFuncImport::visitFCmpInst(FCmpInst &I) {
   Constant *maskVal = ConstantInt::get(intTy, mask);
   Constant *COne = ConstantInt::get(intTy, 1);
   Constant *CZero = ConstantInt::get(intTy, 0);
-  Instruction *bitVal = BinaryOperator::CreateShl(COne, funcCall, "", &I);
-  Instruction *anyBitSet = BinaryOperator::CreateAnd(maskVal, bitVal, "", &I);
-  Instruction *intcmp = CmpInst::Create(Instruction::ICmp, CmpInst::ICMP_NE, anyBitSet, CZero, "DPEmuCmp", &I);
+  Instruction *bitVal = BinaryOperator::CreateShl(COne, funcCall, "", IGCLLVM::insertPosition(&I));
+  Instruction *anyBitSet = BinaryOperator::CreateAnd(maskVal, bitVal, "", IGCLLVM::insertPosition(&I));
+  Instruction *intcmp =
+      CmpInst::Create(Instruction::ICmp, CmpInst::ICMP_NE, anyBitSet, CZero, "DPEmuCmp", IGCLLVM::insertPosition(&I));
 
   I.replaceAllUsesWith(intcmp);
   I.eraseFromParent();
@@ -1858,7 +1870,7 @@ void PreCompiledFuncImport::visitCallInst(llvm::CallInst &I) {
     args[2] = ConstantInt::get(Type::getInt32Ty(I.getContext()), ftz);
     args[3] = ConstantInt::get(Type::getInt32Ty(I.getContext()), daz);
 
-    CallInst *newVal = CallInst::Create(newFunc, args, I.getName(), &I);
+    CallInst *newVal = CallInst::Create(newFunc, args, I.getName(), IGCLLVM::insertPosition(&I));
     addCallInst(newVal);
     newVal->setDebugLoc(I.getDebugLoc());
 
@@ -1936,7 +1948,7 @@ void PreCompiledFuncImport::visitCallInst(llvm::CallInst &I) {
       args.push_back(createFlagValue(CurrFunc));               // FP Flag, ignored
     }
 
-    CallInst *newVal = CallInst::Create(newFunc, args, I.getName(), &I);
+    CallInst *newVal = CallInst::Create(newFunc, args, I.getName(), IGCLLVM::insertPosition(&I));
 
     addCallInst(newVal);
     newVal->setDebugLoc(I.getDebugLoc());
@@ -1960,7 +1972,7 @@ void PreCompiledFuncImport::visitCallInst(llvm::CallInst &I) {
     args[5] = ConstantInt::get(intTy, m_flushDenorm);  // flush denorm
     args[6] = createFlagValue(CurrFunc);               // FP Flag, ignored
 
-    CallInst *newVal = CallInst::Create(newFunc, args, I.getName(), &I);
+    CallInst *newVal = CallInst::Create(newFunc, args, I.getName(), IGCLLVM::insertPosition(&I));
     addCallInst(newVal);
     newVal->setDebugLoc(I.getDebugLoc());
 
@@ -1999,7 +2011,7 @@ void PreCompiledFuncImport::visitCallInst(llvm::CallInst &I) {
     args[5] = ConstantInt::get(intTy, m_flushDenorm); // flush denorm
     args[6] = createFlagValue(CurrFunc);              // FP Flag, ignored
 
-    CallInst *newVal = CallInst::Create(newFunc, args, I.getName(), &I);
+    CallInst *newVal = CallInst::Create(newFunc, args, I.getName(), IGCLLVM::insertPosition(&I));
     addCallInst(newVal);
     newVal->setDebugLoc(I.getDebugLoc());
 
@@ -2048,15 +2060,19 @@ void PreCompiledFuncImport::visitCallInst(llvm::CallInst &I) {
   if (isDPEmu() && resTy->isDoubleTy() && II && II->getIntrinsicID() == Intrinsic::fabs) {
     // bit 63 is sign bit, set it to zero. Don't use int64.
     VectorType *vec2Ty = IGCLLVM::FixedVectorType::get(intTy, 2);
-    Instruction *twoI32 = CastInst::Create(Instruction::BitCast, I.getOperand(0), vec2Ty, "", &I);
+    Instruction *twoI32 =
+        CastInst::Create(Instruction::BitCast, I.getOperand(0), vec2Ty, "", IGCLLVM::insertPosition(&I));
     twoI32->setDebugLoc(I.getDebugLoc());
-    Instruction *topI32 = ExtractElementInst::Create(twoI32, ConstantInt::get(intTy, 1), "", &I);
+    Instruction *topI32 =
+        ExtractElementInst::Create(twoI32, ConstantInt::get(intTy, 1), "", IGCLLVM::insertPosition(&I));
     topI32->setDebugLoc(I.getDebugLoc());
-    Instruction *newTopI32 = BinaryOperator::CreateAnd(topI32, ConstantInt::get(intTy, 0x7fffffff), "", &I);
+    Instruction *newTopI32 =
+        BinaryOperator::CreateAnd(topI32, ConstantInt::get(intTy, 0x7fffffff), "", IGCLLVM::insertPosition(&I));
     newTopI32->setDebugLoc(I.getDebugLoc());
-    Instruction *val = InsertElementInst::Create(twoI32, newTopI32, ConstantInt::get(intTy, 1), "", &I);
+    Instruction *val =
+        InsertElementInst::Create(twoI32, newTopI32, ConstantInt::get(intTy, 1), "", IGCLLVM::insertPosition(&I));
     val->setDebugLoc(I.getDebugLoc());
-    Instruction *fabsVal = CastInst::Create(Instruction::BitCast, val, resTy, "DPEmuFabs", &I);
+    Instruction *fabsVal = CastInst::Create(Instruction::BitCast, val, resTy, "DPEmuFabs", IGCLLVM::insertPosition(&I));
     fabsVal->setDebugLoc(I.getDebugLoc());
 
     I.replaceAllUsesWith(fabsVal);
@@ -2200,9 +2216,9 @@ void PreCompiledFuncImport::replaceFunc(Function *old_func, Function *new_func) 
     // insert new call instruction before old one
     CallInst *inst;
     if (new_func->getReturnType()->isVoidTy()) {
-      inst = CallInst::Create(new_func, new_args, "", cInst);
+      inst = CallInst::Create(new_func, new_args, "", IGCLLVM::insertPosition(cInst));
     } else {
-      inst = CallInst::Create(new_func, new_args, new_func->getName(), cInst);
+      inst = CallInst::Create(new_func, new_args, new_func->getName(), IGCLLVM::insertPosition(cInst));
     }
     inst->setCallingConv(new_func->getCallingConv());
     inst->setDebugLoc(cInst->getDebugLoc());

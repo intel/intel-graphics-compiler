@@ -300,10 +300,12 @@ void Legalization::visitBinaryOperator(llvm::BinaryOperator &I) {
         Instruction *invert = nullptr;
         if (I.getOpcode() == Instruction::And) {
           invert = llvm::BinaryOperator::CreateOr(cast<llvm::Instruction>(src0)->getOperand(0),
-                                                  cast<llvm::Instruction>(src1)->getOperand(0), "", &I);
+                                                  cast<llvm::Instruction>(src1)->getOperand(0), "",
+                                                  IGCLLVM::insertPosition(&I));
         } else {
           invert = llvm::BinaryOperator::CreateAnd(cast<llvm::Instruction>(src0)->getOperand(0),
-                                                   cast<llvm::Instruction>(src1)->getOperand(0), "", &I);
+                                                   cast<llvm::Instruction>(src1)->getOperand(0), "",
+                                                   IGCLLVM::insertPosition(&I));
         }
         if (invert) {
           invert->setDebugLoc(I.getDebugLoc());
@@ -776,7 +778,7 @@ void Legalization::visitBitCastInst(llvm::BitCastInst &I) {
     }
     auto *pMask = ConstantDataVector::get(I.getContext(), maskVals);
 
-    auto *pNewY = BitCastInst::CreateBitOrPointerCast(pX, pBCType, "", pZ);
+    auto *pNewY = BitCastInst::CreateBitOrPointerCast(pX, pBCType, "", IGCLLVM::insertPosition(pZ));
     pNewY->setDebugLoc(pY->getDebugLoc());
 
     auto *pNewZ = new ShuffleVectorInst(pNewY, UndefValue::get(pBCType), pMask);
@@ -814,17 +816,20 @@ void Legalization::visitSelectInst(SelectInst &I) {
     llvm::Value *pSrc0 = I.getOperand(1);
     llvm::Value *pSrc1 = I.getOperand(2);
     LLVMContext &context = I.getContext();
-    llvm::Instruction *pSrc0ZExt = llvm::CastInst::CreateZExtOrBitCast(pSrc0, Type::getInt32Ty(context), "", &I);
+    llvm::Instruction *pSrc0ZExt =
+        llvm::CastInst::CreateZExtOrBitCast(pSrc0, Type::getInt32Ty(context), "", IGCLLVM::insertPosition(&I));
     pSrc0ZExt->setDebugLoc(I.getDebugLoc());
 
-    llvm::Instruction *pSrc1ZExt = llvm::CastInst::CreateZExtOrBitCast(pSrc1, Type::getInt32Ty(context), "", &I);
+    llvm::Instruction *pSrc1ZExt =
+        llvm::CastInst::CreateZExtOrBitCast(pSrc1, Type::getInt32Ty(context), "", IGCLLVM::insertPosition(&I));
     pSrc1ZExt->setDebugLoc(I.getDebugLoc());
 
     // Create a new Select instruction
-    llvm::SelectInst *pNewSel = llvm::SelectInst::Create(pCond, pSrc0ZExt, pSrc1ZExt, "", &I);
+    llvm::SelectInst *pNewSel = llvm::SelectInst::Create(pCond, pSrc0ZExt, pSrc1ZExt, "", IGCLLVM::insertPosition(&I));
     pNewSel->setDebugLoc(I.getDebugLoc());
 
-    llvm::CastInst *pTruncInst = llvm::CastInst::CreateTruncOrBitCast(pNewSel, Type::getInt1Ty(context), "", &I);
+    llvm::CastInst *pTruncInst =
+        llvm::CastInst::CreateTruncOrBitCast(pNewSel, Type::getInt1Ty(context), "", IGCLLVM::insertPosition(&I));
     pTruncInst->setDebugLoc(I.getDebugLoc());
     I.replaceAllUsesWith(pTruncInst);
     I.eraseFromParent();
@@ -881,7 +886,7 @@ void Legalization::visitPHINode(PHINode &phi) {
   if (phi.getType()->isIntegerTy(1)) {
     unsigned int nbOperand = phi.getNumOperands();
     Type *newType = Type::getInt32Ty(context);
-    PHINode *newPhi = PHINode::Create(newType, nbOperand, "", &phi);
+    PHINode *newPhi = PHINode::Create(newType, nbOperand, "", IGCLLVM::insertPosition(&phi));
     newPhi->setDebugLoc(phi.getDebugLoc());
     for (unsigned int i = 0; i < nbOperand; i++) {
       Value *source = phi.getOperand(i);
@@ -891,7 +896,7 @@ void Legalization::visitPHINode(PHINode &phi) {
       newPhi->addIncoming(newSource, phi.getIncomingBlock(i));
     }
     Instruction *boolean = CmpInst::Create(Instruction::ICmp, CmpInst::ICMP_NE, newPhi, ConstantInt::get(newType, 0),
-                                           "", IGCLLVM::getFirstNonPHI(phi.getParent()));
+                                           "", IGCLLVM::insertPosition(IGCLLVM::getFirstNonPHI(phi.getParent())));
     boolean->setDebugLoc(phi.getDebugLoc());
     phi.replaceAllUsesWith(boolean);
     phi.eraseFromParent();
@@ -919,11 +924,11 @@ void Legalization::visitICmpInst(ICmpInst &IC) {
   Value *Op1 = IC.getOperand(1);
   Type *Ty = Op0->getType();
   if (Ty->isIntegerTy(1)) {
-    Instruction *operand0_i8 =
-        CastInst::CreateIntegerCast(Op0, Type::getInt8Ty(IC.getContext()), IC.isSigned(), "", &IC);
+    Instruction *operand0_i8 = CastInst::CreateIntegerCast(Op0, Type::getInt8Ty(IC.getContext()), IC.isSigned(), "",
+                                                           IGCLLVM::insertPosition(&IC));
     operand0_i8->setDebugLoc(IC.getDebugLoc());
-    Instruction *operand1_i8 =
-        CastInst::CreateIntegerCast(Op1, Type::getInt8Ty(IC.getContext()), IC.isSigned(), "", &IC);
+    Instruction *operand1_i8 = CastInst::CreateIntegerCast(Op1, Type::getInt8Ty(IC.getContext()), IC.isSigned(), "",
+                                                           IGCLLVM::insertPosition(&IC));
     operand1_i8->setDebugLoc(IC.getDebugLoc());
     IRBuilder<> m_build(&IC);
     Value *new_IC = m_build.CreateICmp(IC.getPredicate(), operand0_i8, operand1_i8, "");
@@ -982,7 +987,8 @@ Value *Legalization::addFCmpWithUNO(FCmpInst &FC) {
   if (isa<ConstantFP>(src0))
     std::swap(src0, src1);
 
-  Instruction *c0 = FCmpInst::Create(Instruction::FCmp, CmpInst::FCMP_UNE, src0, src0, "", &FC);
+  Instruction *c0 =
+      FCmpInst::Create(Instruction::FCmp, CmpInst::FCMP_UNE, src0, src0, "", IGCLLVM::insertPosition(&FC));
   c0->setDebugLoc(FC.getDebugLoc());
 
   if (ConstantFP *CFP = dyn_cast<ConstantFP>(src1)) {
@@ -990,10 +996,11 @@ Value *Legalization::addFCmpWithUNO(FCmpInst &FC) {
       return c0;
   }
 
-  Instruction *c1 = FCmpInst::Create(Instruction::FCmp, CmpInst::FCMP_UNE, src1, src1, "", &FC);
+  Instruction *c1 =
+      FCmpInst::Create(Instruction::FCmp, CmpInst::FCMP_UNE, src1, src1, "", IGCLLVM::insertPosition(&FC));
   c1->setDebugLoc(FC.getDebugLoc());
 
-  Instruction *isAnySourceUnordered = llvm::BinaryOperator::CreateOr(c0, c1, "", &FC);
+  Instruction *isAnySourceUnordered = llvm::BinaryOperator::CreateOr(c0, c1, "", IGCLLVM::insertPosition(&FC));
   isAnySourceUnordered->setDebugLoc(FC.getDebugLoc());
 
   return isAnySourceUnordered;
@@ -1015,10 +1022,10 @@ void Legalization::visitFCmpInstUndorderedPredicate(FCmpInst &FC) {
     // %2 = fcmp une %a %b
     // %c = and %1 %2
     Value *sourcesOrdered = addFCmpWithORD(FC);
-    Instruction *fcmpNotEqual =
-        FCmpInst::Create(Instruction::FCmp, FCmpInst::FCMP_UNE, FC.getOperand(0), FC.getOperand(1), "", &FC);
+    Instruction *fcmpNotEqual = FCmpInst::Create(Instruction::FCmp, FCmpInst::FCMP_UNE, FC.getOperand(0),
+                                                 FC.getOperand(1), "", IGCLLVM::insertPosition(&FC));
     fcmpNotEqual->setDebugLoc(FC.getDebugLoc());
-    result = llvm::BinaryOperator::CreateAnd(sourcesOrdered, fcmpNotEqual, "", &FC);
+    result = llvm::BinaryOperator::CreateAnd(sourcesOrdered, fcmpNotEqual, "", IGCLLVM::insertPosition(&FC));
   } break;
   case CmpInst::FCMP_UEQ: {
     // %c = fcmp ueq %a %b
@@ -1027,10 +1034,10 @@ void Legalization::visitFCmpInstUndorderedPredicate(FCmpInst &FC) {
     // %2 = fcmp oeq %a %b
     // %c = or %1 %2
     Value *sourcesUnordered = addFCmpWithUNO(FC);
-    Instruction *fcmpEqual =
-        FCmpInst::Create(Instruction::FCmp, FCmpInst::FCMP_OEQ, FC.getOperand(0), FC.getOperand(1), "", &FC);
+    Instruction *fcmpEqual = FCmpInst::Create(Instruction::FCmp, FCmpInst::FCMP_OEQ, FC.getOperand(0), FC.getOperand(1),
+                                              "", IGCLLVM::insertPosition(&FC));
     fcmpEqual->setDebugLoc(FC.getDebugLoc());
-    result = llvm::BinaryOperator::CreateOr(sourcesUnordered, fcmpEqual, "", &FC);
+    result = llvm::BinaryOperator::CreateOr(sourcesUnordered, fcmpEqual, "", IGCLLVM::insertPosition(&FC));
   } break;
   case CmpInst::FCMP_UGE:
   case CmpInst::FCMP_UGT:
@@ -1044,7 +1051,7 @@ void Legalization::visitFCmpInstUndorderedPredicate(FCmpInst &FC) {
     //       %c = not %1
     Instruction *invertedOrderedInst =
         FCmpInst::Create(Instruction::FCmp, FCmpInst::getInversePredicate(FC.getPredicate()), FC.getOperand(0),
-                         FC.getOperand(1), "", &FC);
+                         FC.getOperand(1), "", IGCLLVM::insertPosition(&FC));
     invertedOrderedInst->setDebugLoc(FC.getDebugLoc());
 
     while (!FC.user_empty()) {
@@ -1070,7 +1077,7 @@ void Legalization::visitFCmpInstUndorderedPredicate(FCmpInst &FC) {
     }
 
     if (!FC.use_empty()) {
-      result = llvm::BinaryOperator::CreateNot(invertedOrderedInst, "", &FC);
+      result = llvm::BinaryOperator::CreateNot(invertedOrderedInst, "", IGCLLVM::insertPosition(&FC));
     } else {
       FC.eraseFromParent();
     }
@@ -1136,11 +1143,13 @@ void Legalization::visitFCmpInstUndorderedFlushNan(FCmpInst &FC) {
     result = ConstantInt::getFalse(FC.getType());
     break;
   case CmpInst::FCMP_ONE:
-    result = FCmpInst::Create(Instruction::FCmp, FCmpInst::FCMP_UNE, FC.getOperand(0), FC.getOperand(1), "", &FC);
+    result = FCmpInst::Create(Instruction::FCmp, FCmpInst::FCMP_UNE, FC.getOperand(0), FC.getOperand(1), "",
+                              IGCLLVM::insertPosition(&FC));
     cast<Instruction>(result)->setFastMathFlags(FC.getFastMathFlags());
     break;
   case CmpInst::FCMP_UEQ:
-    result = FCmpInst::Create(Instruction::FCmp, FCmpInst::FCMP_OEQ, FC.getOperand(0), FC.getOperand(1), "", &FC);
+    result = FCmpInst::Create(Instruction::FCmp, FCmpInst::FCMP_OEQ, FC.getOperand(0), FC.getOperand(1), "",
+                              IGCLLVM::insertPosition(&FC));
     cast<Instruction>(result)->setFastMathFlags(FC.getFastMathFlags());
     break;
   case CmpInst::FCMP_UGE:
@@ -1148,7 +1157,7 @@ void Legalization::visitFCmpInstUndorderedFlushNan(FCmpInst &FC) {
   case CmpInst::FCMP_ULE:
   case CmpInst::FCMP_ULT:
     result = FCmpInst::Create(Instruction::FCmp, getOrderedPredicate(FC.getPredicate()), FC.getOperand(0),
-                              FC.getOperand(1), "", &FC);
+                              FC.getOperand(1), "", IGCLLVM::insertPosition(&FC));
     cast<Instruction>(result)->setFastMathFlags(FC.getFastMathFlags());
     break;
   default:
@@ -1172,7 +1181,8 @@ void Legalization::visitStoreInst(StoreInst &I) {
     for (unsigned int i = 0; i < nbElement; i++) {
       Constant *cst = vec->getElementAsConstant(i);
       if (!isa<UndefValue>(cst)) {
-        newVec = InsertElementInst::Create(newVec, cst, ConstantInt::get(Type::getInt32Ty(I.getContext()), i), "", &I);
+        newVec = InsertElementInst::Create(newVec, cst, ConstantInt::get(Type::getInt32Ty(I.getContext()), i), "",
+                                           IGCLLVM::insertPosition(&I));
         Instruction *newVecAsTempInst = dyn_cast<Instruction>(newVec);
         if (newVecAsTempInst)
           newVecAsTempInst->setDebugLoc(I.getDebugLoc());
@@ -1185,7 +1195,8 @@ void Legalization::visitStoreInst(StoreInst &I) {
     for (unsigned int i = 0; i < nbElement; i++) {
       Constant *cst = vec->getOperand(i);
       if (!isa<UndefValue>(cst)) {
-        newVec = InsertElementInst::Create(newVec, cst, ConstantInt::get(Type::getInt32Ty(I.getContext()), i), "", &I);
+        newVec = InsertElementInst::Create(newVec, cst, ConstantInt::get(Type::getInt32Ty(I.getContext()), i), "",
+                                           IGCLLVM::insertPosition(&I));
         Instruction *newVecAsTempInst = dyn_cast<Instruction>(newVec);
         if (newVecAsTempInst)
           newVecAsTempInst->setDebugLoc(I.getDebugLoc());
@@ -1200,7 +1211,8 @@ void Legalization::visitStoreInst(StoreInst &I) {
     for (unsigned int i = 0; i < nbElement; i++) {
       Constant *cst = vec->getElementValue(i);
       if (!isa<UndefValue>(cst)) {
-        newVec = InsertElementInst::Create(newVec, cst, ConstantInt::get(Type::getInt32Ty(I.getContext()), i), "", &I);
+        newVec = InsertElementInst::Create(newVec, cst, ConstantInt::get(Type::getInt32Ty(I.getContext()), i), "",
+                                           IGCLLVM::insertPosition(&I));
         Instruction *newVecAsTempInst = dyn_cast<Instruction>(newVec);
         if (newVecAsTempInst)
           newVecAsTempInst->setDebugLoc(I.getDebugLoc());
@@ -1243,7 +1255,8 @@ void Legalization::visitStoreInst(StoreInst &I) {
       return;
 
     Type *legalTy = IGCLLVM::FixedVectorType::get(Type::getIntNTy(I.getContext(), intSize), srcWidth / intSize);
-    Instruction *storeVal = BitCastInst::Create(Instruction::BitCast, I.getOperand(0), legalTy, "", &I);
+    Instruction *storeVal =
+        BitCastInst::Create(Instruction::BitCast, I.getOperand(0), legalTy, "", IGCLLVM::insertPosition(&I));
     storeVal->setDebugLoc(I.getDebugLoc());
     Value *storePtr = I.getPointerOperand();
 
@@ -1255,9 +1268,10 @@ void Legalization::visitStoreInst(StoreInst &I) {
 
     if (intToPtr) {
       // Direct cast int to the legal type
-      storePtr = IntToPtrInst::Create(Instruction::CastOps::IntToPtr, intToPtr->getOperand(0), ptrTy, "", &I);
+      storePtr = IntToPtrInst::Create(Instruction::CastOps::IntToPtr, intToPtr->getOperand(0), ptrTy, "",
+                                      IGCLLVM::insertPosition(&I));
     } else {
-      storePtr = BitCastInst::CreatePointerCast(storePtr, ptrTy, "", &I);
+      storePtr = BitCastInst::CreatePointerCast(storePtr, ptrTy, "", IGCLLVM::insertPosition(&I));
     }
     Instruction *storePtrAsTempInst = dyn_cast<Instruction>(storePtr);
     if (storePtrAsTempInst)
@@ -1290,7 +1304,7 @@ void Legalization::PromoteInsertElement(Value *I, Value *newVec) {
     m_builder->SetInsertPoint(IEinst);
     newVec = InsertElementInst::Create(newVec,
                                        m_builder->CreateSExt(IEinst->getOperand(1), Type::getInt32Ty(I->getContext())),
-                                       IEinst->getOperand(2), "", IEinst);
+                                       IEinst->getOperand(2), "", IGCLLVM::insertPosition(IEinst));
     Instruction *newVecAsTempInst = dyn_cast<Instruction>(newVec);
     if (newVecAsTempInst)
       newVecAsTempInst->setDebugLoc(IEinst->getDebugLoc());
@@ -1300,7 +1314,7 @@ void Legalization::PromoteInsertElement(Value *I, Value *newVec) {
     }
 
   } else if (ExtractElementInst *EEinst = dyn_cast<ExtractElementInst>(I)) {
-    newVec = ExtractElementInst::Create(newVec, EEinst->getOperand(1), "", EEinst);
+    newVec = ExtractElementInst::Create(newVec, EEinst->getOperand(1), "", IGCLLVM::insertPosition(EEinst));
     Instruction *newVecAsTempInst = dyn_cast<Instruction>(newVec);
     if (newVecAsTempInst)
       newVecAsTempInst->setDebugLoc(EEinst->getDebugLoc());
@@ -1314,8 +1328,8 @@ void Legalization::PromoteInsertElement(Value *I, Value *newVec) {
           newVecAsTempInst->setDebugLoc(castI->getDebugLoc());
         castI->replaceAllUsesWith(newVec);
       } else {
-        llvm::Instruction *pSrc1ZExt =
-            llvm::CastInst::CreateTruncOrBitCast(newVec, Type::getInt1Ty(I->getContext()), "", EEinst);
+        llvm::Instruction *pSrc1ZExt = llvm::CastInst::CreateTruncOrBitCast(newVec, Type::getInt1Ty(I->getContext()),
+                                                                            "", IGCLLVM::insertPosition(EEinst));
         pSrc1ZExt->setDebugLoc(EEinst->getDebugLoc());
         I->replaceAllUsesWith(pSrc1ZExt);
       }
@@ -1331,13 +1345,14 @@ void Legalization::visitInsertElementInst(InsertElementInst &I) {
     for (unsigned int i = 0; i < nbElement; i++) {
       Constant *cst = vec->getElementAsConstant(i);
       if (!isa<UndefValue>(cst)) {
-        newVec = InsertElementInst::Create(newVec, cst, ConstantInt::get(Type::getInt32Ty(I.getContext()), i), "", &I);
+        newVec = InsertElementInst::Create(newVec, cst, ConstantInt::get(Type::getInt32Ty(I.getContext()), i), "",
+                                           IGCLLVM::insertPosition(&I));
         Instruction *newVecAsTempInst = dyn_cast<Instruction>(newVec);
         if (newVecAsTempInst)
           newVecAsTempInst->setDebugLoc(I.getDebugLoc());
       }
     }
-    newVec = InsertElementInst::Create(newVec, I.getOperand(1), I.getOperand(2), "", &I);
+    newVec = InsertElementInst::Create(newVec, I.getOperand(1), I.getOperand(2), "", IGCLLVM::insertPosition(&I));
     Instruction *newVecAsTempInst = dyn_cast<Instruction>(newVec);
     if (newVecAsTempInst)
       newVecAsTempInst->setDebugLoc(I.getDebugLoc());
@@ -1348,13 +1363,14 @@ void Legalization::visitInsertElementInst(InsertElementInst &I) {
     for (unsigned int i = 0; i < nbElement; i++) {
       Constant *cst = vec->getOperand(i);
       if (!isa<UndefValue>(cst)) {
-        newVec = InsertElementInst::Create(newVec, cst, ConstantInt::get(Type::getInt32Ty(I.getContext()), i), "", &I);
+        newVec = InsertElementInst::Create(newVec, cst, ConstantInt::get(Type::getInt32Ty(I.getContext()), i), "",
+                                           IGCLLVM::insertPosition(&I));
         Instruction *newVecAsTempInst = dyn_cast<Instruction>(newVec);
         if (newVecAsTempInst)
           newVecAsTempInst->setDebugLoc(I.getDebugLoc());
       }
     }
-    newVec = InsertElementInst::Create(newVec, I.getOperand(1), I.getOperand(2), "", &I);
+    newVec = InsertElementInst::Create(newVec, I.getOperand(1), I.getOperand(2), "", IGCLLVM::insertPosition(&I));
     Instruction *newVecAsTempInst = dyn_cast<Instruction>(newVec);
     if (newVecAsTempInst)
       newVecAsTempInst->setDebugLoc(I.getDebugLoc());
@@ -1364,12 +1380,13 @@ void Legalization::visitInsertElementInst(InsertElementInst &I) {
     unsigned int nbElement = (unsigned)cast<IGCLLVM::FixedVectorType>(vec->getType())->getNumElements();
     for (unsigned int i = 0; i < nbElement; i++) {
       Constant *cst = vec->getElementValue(i);
-      newVec = InsertElementInst::Create(newVec, cst, ConstantInt::get(Type::getInt32Ty(I.getContext()), i), "", &I);
+      newVec = InsertElementInst::Create(newVec, cst, ConstantInt::get(Type::getInt32Ty(I.getContext()), i), "",
+                                         IGCLLVM::insertPosition(&I));
       Instruction *newVecAsTempInst = dyn_cast<Instruction>(newVec);
       if (newVecAsTempInst)
         newVecAsTempInst->setDebugLoc(I.getDebugLoc());
     }
-    newVec = InsertElementInst::Create(newVec, I.getOperand(1), I.getOperand(2), "", &I);
+    newVec = InsertElementInst::Create(newVec, I.getOperand(1), I.getOperand(2), "", IGCLLVM::insertPosition(&I));
     Instruction *newVecAsTempInst = dyn_cast<Instruction>(newVec);
     if (newVecAsTempInst)
       newVecAsTempInst->setDebugLoc(I.getDebugLoc());
@@ -1460,14 +1477,16 @@ void Legalization::visitShuffleVectorInst(ShuffleVectorInst &I) {
 
         // If we couldn't find it, just create a new extract.
         if (!srcVal) {
-          srcVal = ExtractElementInst::Create(srcVector, ConstantInt::get(index->getType(), srcIndex), "", &I);
+          srcVal = ExtractElementInst::Create(srcVector, ConstantInt::get(index->getType(), srcIndex), "",
+                                              IGCLLVM::insertPosition(&I));
           Instruction *srcValAsTempInst = dyn_cast<Instruction>(srcVal);
           if (srcValAsTempInst)
             srcValAsTempInst->setDebugLoc(I.getDebugLoc());
         }
       }
 
-      newVec = InsertElementInst::Create(newVec, srcVal, ConstantInt::get(index->getType(), dstIndex), "", &I);
+      newVec = InsertElementInst::Create(newVec, srcVal, ConstantInt::get(index->getType(), dstIndex), "",
+                                         IGCLLVM::insertPosition(&I));
       Instruction *newVecAsTempInst = dyn_cast<Instruction>(newVec);
       if (newVecAsTempInst)
         newVecAsTempInst->setDebugLoc(I.getDebugLoc());
@@ -1505,9 +1524,9 @@ llvm::Value *Legalization::findInsert(llvm::Value *vector, unsigned int index) {
 Value *Cast(Value *val, Type *type, Instruction *insertBefore) {
   Instruction *newVal = nullptr;
   if (type->isIntegerTy()) {
-    newVal = CastInst::CreateIntegerCast(val, type, false, "", insertBefore);
+    newVal = CastInst::CreateIntegerCast(val, type, false, "", IGCLLVM::insertPosition(insertBefore));
   } else if (type->isFloatingPointTy()) {
-    newVal = CastInst::CreateFPCast(val, type, "", insertBefore);
+    newVal = CastInst::CreateFPCast(val, type, "", IGCLLVM::insertPosition(insertBefore));
   } else {
     IGC_ASSERT_MESSAGE(0, "unexpected type");
   }
@@ -1521,7 +1540,7 @@ void Legalization::RecursivelyChangePointerType(Instruction *oldPtr, llvm::Type 
     if (GetElementPtrInst *gep = dyn_cast<GetElementPtrInst>(*II)) {
       SmallVector<Value *, 8> Idx(gep->idx_begin(), gep->idx_end());
       Type *BaseTy = Ty;
-      GetElementPtrInst *newGep = GetElementPtrInst::Create(BaseTy, newPtr, Idx, "", gep);
+      GetElementPtrInst *newGep = GetElementPtrInst::Create(BaseTy, newPtr, Idx, "", IGCLLVM::insertPosition(gep));
       newGep->setDebugLoc(gep->getDebugLoc());
       RecursivelyChangePointerType(gep, newGep->getResultElementType(), newGep);
     } else if (LoadInst *load = dyn_cast<LoadInst>(*II)) {
@@ -1536,7 +1555,7 @@ void Legalization::RecursivelyChangePointerType(Instruction *oldPtr, llvm::Type 
       Value *newData = Cast(StoredValue, Ty, store);
       IGC::cloneStore(store, newData, newPtr);
     } else if (CastInst *cast = dyn_cast<CastInst>(*II)) {
-      Instruction *newCast = CastInst::CreatePointerCast(newPtr, cast->getType(), "", cast);
+      Instruction *newCast = CastInst::CreatePointerCast(newPtr, cast->getType(), "", IGCLLVM::insertPosition(cast));
       newCast->setDebugLoc(cast->getDebugLoc());
       cast->replaceAllUsesWith(newCast);
     }
@@ -1597,7 +1616,7 @@ void Legalization::visitAlloca(AllocaInst &I) {
   Type *legalAllocaType = LegalAllocaType(type);
   if (type != legalAllocaType) {
     // Remaining alloca of i1 need to be promoted
-    AllocaInst *newAlloca = new AllocaInst(legalAllocaType, 0, "", &I);
+    AllocaInst *newAlloca = new AllocaInst(legalAllocaType, 0, "", IGCLLVM::insertPosition(&I));
     RecursivelyChangePointerType(&I, legalAllocaType, newAlloca);
     m_instructionsToRemove.push_back(&I);
   }
@@ -1694,34 +1713,36 @@ void Legalization::visitIntrinsicInst(llvm::IntrinsicInst &I) {
 
     switch (intrinsicID) {
     case Intrinsic::uadd_with_overflow:
-      res = BinaryOperator::Create(Instruction::Add, src0, src1, "", &I);
+      res = BinaryOperator::Create(Instruction::Add, src0, src1, "", IGCLLVM::insertPosition(&I));
       // Unsigned a + b overflows if a + b < a (for an unsigned comparison)
-      isOverflow = CmpInst::Create(Instruction::ICmp, CmpInst::ICMP_ULT, res, src0, "", &I);
+      isOverflow = CmpInst::Create(Instruction::ICmp, CmpInst::ICMP_ULT, res, src0, "", IGCLLVM::insertPosition(&I));
       break;
     case Intrinsic::usub_with_overflow:
-      res = BinaryOperator::Create(Instruction::Sub, src0, src1, "", &I);
+      res = BinaryOperator::Create(Instruction::Sub, src0, src1, "", IGCLLVM::insertPosition(&I));
       // Unsigned a - b overflows if a - b > a (for an unsigned comparison)
-      isOverflow = CmpInst::Create(Instruction::ICmp, CmpInst::ICMP_UGT, res, src0, "", &I);
+      isOverflow = CmpInst::Create(Instruction::ICmp, CmpInst::ICMP_UGT, res, src0, "", IGCLLVM::insertPosition(&I));
       break;
     case Intrinsic::sadd_with_overflow:
     case Intrinsic::ssub_with_overflow: {
-      Instruction *usrc0 = BitCastInst::CreateZExtOrBitCast(src0, src0->getType(), "", &I);
+      Instruction *usrc0 = BitCastInst::CreateZExtOrBitCast(src0, src0->getType(), "", IGCLLVM::insertPosition(&I));
       usrc0->setDebugLoc(I.getDebugLoc());
-      Instruction *usrc1 = BitCastInst::CreateZExtOrBitCast(src1, src1->getType(), "", &I);
+      Instruction *usrc1 = BitCastInst::CreateZExtOrBitCast(src1, src1->getType(), "", IGCLLVM::insertPosition(&I));
       usrc1->setDebugLoc(I.getDebugLoc());
       res = BinaryOperator::Create(intrinsicID == Intrinsic::sadd_with_overflow ? Instruction::Add : Instruction::Sub,
-                                   usrc0, usrc1, "", &I);
+                                   usrc0, usrc1, "", IGCLLVM::insertPosition(&I));
       if (intrinsicID == Intrinsic::ssub_with_overflow) {
-        usrc1 = BinaryOperator::CreateNot(usrc1, "", &I);
+        usrc1 = BinaryOperator::CreateNot(usrc1, "", IGCLLVM::insertPosition(&I));
         usrc1->setDebugLoc(I.getDebugLoc());
       }
-      Instruction *usrc0_xor_usrc1 = BinaryOperator::Create(Instruction::Xor, usrc0, usrc1, "", &I);
+      Instruction *usrc0_xor_usrc1 =
+          BinaryOperator::Create(Instruction::Xor, usrc0, usrc1, "", IGCLLVM::insertPosition(&I));
       usrc0_xor_usrc1->setDebugLoc(I.getDebugLoc());
-      Instruction *res_xor_usrc0 = BinaryOperator::Create(Instruction::Xor, res, usrc0, "", &I);
+      Instruction *res_xor_usrc0 =
+          BinaryOperator::Create(Instruction::Xor, res, usrc0, "", IGCLLVM::insertPosition(&I));
       res_xor_usrc0->setDebugLoc(I.getDebugLoc());
-      Instruction *negOpt = BinaryOperator::CreateNot(usrc0_xor_usrc1, "", &I);
+      Instruction *negOpt = BinaryOperator::CreateNot(usrc0_xor_usrc1, "", IGCLLVM::insertPosition(&I));
       negOpt->setDebugLoc(I.getDebugLoc());
-      Instruction *andOpt = BinaryOperator::CreateAnd(negOpt, res_xor_usrc0, "", &I);
+      Instruction *andOpt = BinaryOperator::CreateAnd(negOpt, res_xor_usrc0, "", IGCLLVM::insertPosition(&I));
       andOpt->setDebugLoc(I.getDebugLoc());
       Type *SrcScalarType = src0->getType()->getScalarType();
       const unsigned ScalarBitWidth = SrcScalarType->getIntegerBitWidth();
@@ -1734,11 +1755,13 @@ void Legalization::visitIntrinsicInst(llvm::IntrinsicInst &I) {
         // In first half of the short (the original char) we still have the correct sign bit -
         // so we are checking if original char has sign bit light-on.
         auto charSignBit = Constant::getIntegerValue(src0->getType(), APInt(8, 1 << 7));
-        andOpt = BinaryOperator::CreateAnd(andOpt, charSignBit, "", &I);
+        andOpt = BinaryOperator::CreateAnd(andOpt, charSignBit, "", IGCLLVM::insertPosition(&I));
         andOpt->setDebugLoc(I.getDebugLoc());
-        isOverflow = CmpInst::Create(Instruction::ICmp, CmpInst::ICMP_NE, andOpt, zero, "", &I);
+        isOverflow =
+            CmpInst::Create(Instruction::ICmp, CmpInst::ICMP_NE, andOpt, zero, "", IGCLLVM::insertPosition(&I));
       } else {
-        isOverflow = CmpInst::Create(Instruction::ICmp, CmpInst::ICMP_SLT, andOpt, zero, "", &I);
+        isOverflow =
+            CmpInst::Create(Instruction::ICmp, CmpInst::ICMP_SLT, andOpt, zero, "", IGCLLVM::insertPosition(&I));
       }
     } break;
     case Intrinsic::umul_with_overflow:
@@ -1748,7 +1771,7 @@ void Legalization::visitIntrinsicInst(llvm::IntrinsicInst &I) {
       IGC_ASSERT(src0->getType() == src1->getType());
       IGC_ASSERT(src0->getType()->isIntegerTy());
       bool isSigned = intrinsicID == Intrinsic::smul_with_overflow;
-      res = BinaryOperator::Create(Instruction::Mul, src0, src1, "", &I);
+      res = BinaryOperator::Create(Instruction::Mul, src0, src1, "", IGCLLVM::insertPosition(&I));
       const unsigned int bitWidth = src0->getType()->getIntegerBitWidth();
       if (bitWidth == 64 || bitWidth == 32) {
         BasicBlock *const bb = I.getParent();
@@ -1761,13 +1784,16 @@ void Legalization::visitIntrinsicInst(llvm::IntrinsicInst &I) {
           // Signed a * b overflows if Mulh(a, b) != 0 or -1   and consequently
           // if Mulh(a, b) + 1 > 1 (for an unsigned comparison)
           Value *const one = ConstantInt::get(src0->getType(), 1, true);
-          Instruction *const add1 = BinaryOperator::Create(Instruction::Add, hiDst, one, "", &I);
+          Instruction *const add1 =
+              BinaryOperator::Create(Instruction::Add, hiDst, one, "", IGCLLVM::insertPosition(&I));
           add1->setDebugLoc(I.getDebugLoc());
-          isOverflow = CmpInst::Create(Instruction::ICmp, CmpInst::ICMP_UGT, add1, one, "", &I);
+          isOverflow =
+              CmpInst::Create(Instruction::ICmp, CmpInst::ICMP_UGT, add1, one, "", IGCLLVM::insertPosition(&I));
         } else {
           // Unsigned a * b overflows if Mulh(a, b) != 0
           Value *const zero = ConstantInt::get(src0->getType(), 0, isSigned);
-          isOverflow = CmpInst::Create(Instruction::ICmp, CmpInst::ICMP_NE, hiDst, zero, "", &I);
+          isOverflow =
+              CmpInst::Create(Instruction::ICmp, CmpInst::ICMP_NE, hiDst, zero, "", IGCLLVM::insertPosition(&I));
         }
       } else {
         IGC_ASSERT(bitWidth < 32);
@@ -1783,25 +1809,31 @@ void Legalization::visitIntrinsicInst(llvm::IntrinsicInst &I) {
           //   ores is 0x00000081     (1 + 128)
           //   overflowed is 0x00000100    (1 << 8)
           //   isOverflow is false    (129 >= 256)
-          Instruction *const src0SExt = BitCastInst::CreateSExtOrBitCast(src0, Builder.getInt32Ty(), "", &I);
+          Instruction *const src0SExt =
+              BitCastInst::CreateSExtOrBitCast(src0, Builder.getInt32Ty(), "", IGCLLVM::insertPosition(&I));
           src0SExt->setDebugLoc(I.getDebugLoc());
-          Instruction *const src1SExt = BitCastInst::CreateSExtOrBitCast(src1, Builder.getInt32Ty(), "", &I);
+          Instruction *const src1SExt =
+              BitCastInst::CreateSExtOrBitCast(src1, Builder.getInt32Ty(), "", IGCLLVM::insertPosition(&I));
           src1SExt->setDebugLoc(I.getDebugLoc());
-          Instruction *const mulRes = BinaryOperator::Create(Instruction::Mul, src0SExt, src1SExt, "", &I);
+          Instruction *const mulRes =
+              BinaryOperator::Create(Instruction::Mul, src0SExt, src1SExt, "", IGCLLVM::insertPosition(&I));
           mulRes->setDebugLoc(I.getDebugLoc());
           Value *const oneShl = ConstantInt::get(Builder.getInt32Ty(), 1LL << (bitWidth - 1), true);
-          ores = BinaryOperator::Create(Instruction::Add, mulRes, oneShl, "", &I);
+          ores = BinaryOperator::Create(Instruction::Add, mulRes, oneShl, "", IGCLLVM::insertPosition(&I));
         } else {
           // Unsigned a * b overflows if a * b >= (1 << bitWidth) (for an unsigned comparison)
-          Instruction *const src0ZExt = BitCastInst::CreateZExtOrBitCast(src0, Builder.getInt32Ty(), "", &I);
+          Instruction *const src0ZExt =
+              BitCastInst::CreateZExtOrBitCast(src0, Builder.getInt32Ty(), "", IGCLLVM::insertPosition(&I));
           src0ZExt->setDebugLoc(I.getDebugLoc());
-          Instruction *const src1ZExt = BitCastInst::CreateZExtOrBitCast(src1, Builder.getInt32Ty(), "", &I);
+          Instruction *const src1ZExt =
+              BitCastInst::CreateZExtOrBitCast(src1, Builder.getInt32Ty(), "", IGCLLVM::insertPosition(&I));
           src1ZExt->setDebugLoc(I.getDebugLoc());
-          ores = BinaryOperator::Create(Instruction::Mul, src0ZExt, src1ZExt, "", &I);
+          ores = BinaryOperator::Create(Instruction::Mul, src0ZExt, src1ZExt, "", IGCLLVM::insertPosition(&I));
         }
         Value *const overflowed = ConstantInt::get(Builder.getInt32Ty(), 1LL << bitWidth, false);
         ores->setDebugLoc(I.getDebugLoc());
-        isOverflow = CmpInst::Create(Instruction::ICmp, CmpInst::ICMP_UGE, ores, overflowed, "", &I);
+        isOverflow =
+            CmpInst::Create(Instruction::ICmp, CmpInst::ICMP_UGE, ores, overflowed, "", IGCLLVM::insertPosition(&I));
       }
     } break;
     default:

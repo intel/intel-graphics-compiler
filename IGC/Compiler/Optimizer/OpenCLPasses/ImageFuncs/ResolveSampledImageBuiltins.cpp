@@ -117,7 +117,8 @@ Value *ResolveSampledImageBuiltins::lowerGetImage(CallInst &CI) {
 
   IGC_ASSERT(isa<PointerType>(image->getType()));
 
-  return PtrToIntInst::Create(Instruction::PtrToInt, image, Type::getInt64Ty(CI.getContext()), "", &CI);
+  return PtrToIntInst::Create(Instruction::PtrToInt, image, Type::getInt64Ty(CI.getContext()), "",
+                              IGCLLVM::insertPosition(&CI));
 }
 
 // Resolve __builtin_IB_get_sampler
@@ -152,7 +153,7 @@ Value *ResolveSampledImageBuiltins::lowerGetSampler(CallInst &CI) {
   if (!samplerArg) {
     IGC_ASSERT(modMD->UseBindlessImage);
     IGC_ASSERT(image->getType()->isPointerTy());
-    Value *imageOffset = PtrToIntInst::Create(Instruction::PtrToInt, image, Int64Ty, "", &CI);
+    Value *imageOffset = PtrToIntInst::Create(Instruction::PtrToInt, image, Int64Ty, "", IGCLLVM::insertPosition(&CI));
     // When sampled image is created in a single API call, e.g. SYCL bindless image,
     // bindless surface state heap layout is
     // | image state | image implicit args state | sampler state | redescribed image state | ...
@@ -166,17 +167,20 @@ Value *ResolveSampledImageBuiltins::lowerGetSampler(CallInst &CI) {
           ConstantDataArray::getString(CI.getContext(), vISA::SURFACE_STATE_SIZE_RELOCATION_NAME, false);
       Type *PatchTys[] = {Type::getInt32Ty(CI.getContext()), PatchNameArg->getType()};
       auto *PatchFunc = GenISAIntrinsic::getDeclaration(M, GenISAIntrinsic::GenISA_staticConstantPatchValue, PatchTys);
-      auto *SurfaceStateSizeI32 = CallInst::Create(PatchFunc, PatchNameArg, "surfaceStateSize", &CI);
-      auto *SurfaceStateSizeI64 = CastInst::Create(Instruction::ZExt, SurfaceStateSizeI32, Int64Ty, "", &CI);
+      auto *SurfaceStateSizeI32 =
+          CallInst::Create(PatchFunc, PatchNameArg, "surfaceStateSize", IGCLLVM::insertPosition(&CI));
+      auto *SurfaceStateSizeI64 =
+          CastInst::Create(Instruction::ZExt, SurfaceStateSizeI32, Int64Ty, "", IGCLLVM::insertPosition(&CI));
       // Sampler offset = image state offset + 2 * surfaceStateSize
-      TwoStatesOffset =
-          BinaryOperator::Create(Instruction::Shl, SurfaceStateSizeI64, ConstantInt::get(Int64Ty, 1), "", &CI);
+      TwoStatesOffset = BinaryOperator::Create(Instruction::Shl, SurfaceStateSizeI64, ConstantInt::get(Int64Ty, 1), "",
+                                               IGCLLVM::insertPosition(&CI));
     } else {
       TwoStatesOffset = ConstantInt::get(Int64Ty, 2 * 64);
     }
-    auto *SamplerOffset = BinaryOperator::CreateAdd(imageOffset, TwoStatesOffset, "sampler_offset", &CI);
+    auto *SamplerOffset =
+        BinaryOperator::CreateAdd(imageOffset, TwoStatesOffset, "sampler_offset", IGCLLVM::insertPosition(&CI));
     // Set bit-field 0 to 1 to select Bindless Sampler State Base Address.
-    return BinaryOperator::CreateOr(SamplerOffset, ConstantInt::get(Int64Ty, 1), "", &CI);
+    return BinaryOperator::CreateOr(SamplerOffset, ConstantInt::get(Int64Ty, 1), "", IGCLLVM::insertPosition(&CI));
   }
 
   // Transforms the following sequence:
@@ -196,7 +200,8 @@ Value *ResolveSampledImageBuiltins::lowerGetSampler(CallInst &CI) {
     // and ResolveInlineSamplerForBindless. They are meant to be replaced with inline sampler implicit arg.
     if (!(samplerInitializer->getCalledFunction()->getName() == "__bindless_sampler_initializer")) {
       IGC_ASSERT(samplerInitializer->getCalledFunction()->getName() == "__translate_sampler_initializer");
-      return ZExtInst::Create(Instruction::ZExt, samplerInitializer->getArgOperand(0), Int64Ty, "", &CI);
+      return ZExtInst::Create(Instruction::ZExt, samplerInitializer->getArgOperand(0), Int64Ty, "",
+                              IGCLLVM::insertPosition(&CI));
     }
   }
 
@@ -212,10 +217,12 @@ Value *ResolveSampledImageBuiltins::lowerGetSampler(CallInst &CI) {
   //   %sampler_offset = ptrtoint %spirv.Sampler addrspace(2)* %sampler to i64
   //   %queried_sampler = or i64 %sampler_offset, 1    // if UseBindlessImage is true
   IGC_ASSERT(samplerArg->getType()->isPointerTy());
-  Value *samplerOffset = PtrToIntInst::Create(Instruction::PtrToInt, samplerArg, Int64Ty, "", &CI);
+  Value *samplerOffset =
+      PtrToIntInst::Create(Instruction::PtrToInt, samplerArg, Int64Ty, "", IGCLLVM::insertPosition(&CI));
   if (modMD->UseBindlessImage) {
     // Set bit-field 0 to 1 to select Bindless Sampler State Base Address.
-    samplerOffset = BinaryOperator::CreateOr(samplerOffset, ConstantInt::get(Int64Ty, 1), "", &CI);
+    samplerOffset =
+        BinaryOperator::CreateOr(samplerOffset, ConstantInt::get(Int64Ty, 1), "", IGCLLVM::insertPosition(&CI));
   }
   return samplerOffset;
 }

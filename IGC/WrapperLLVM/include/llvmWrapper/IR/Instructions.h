@@ -133,6 +133,15 @@ inline void insertBefore(llvm::Instruction *What, llvm::Instruction *Pos) {
 #endif
 }
 
+inline auto insertPosition(llvm::Instruction *InsertBefore) {
+#if LLVM_VERSION_MAJOR < 18
+  return InsertBefore;
+#else
+  IGC_ASSERT(InsertBefore);
+  return InsertBefore->getIterator();
+#endif
+}
+
 inline llvm::AddrSpaceCastInst *createAddrSpaceCastInst(llvm::Value *S, llvm::Type *DstTy, const llvm::Twine &Name,
                                                         llvm::Instruction *InsertBefore) {
 #if LLVM_VERSION_MAJOR < 18

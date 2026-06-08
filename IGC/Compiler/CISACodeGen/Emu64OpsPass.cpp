@@ -840,9 +840,9 @@ bool InstExpander::visitShl(BinaryOperator &BinOp) {
     // uniform one in most cases.
     Value *NE = IRB->CreateICmpNE(ShAmt, Constant::getNullValue(ShAmt->getType()));
     BasicBlock *JointBB = OldBB->splitBasicBlock(&BinOp);
-    ResLo = PHINode::Create(IRB->getInt32Ty(), 2, ".shl.outer.merge.lo", &BinOp);
+    ResLo = PHINode::Create(IRB->getInt32Ty(), 2, ".shl.outer.merge.lo", IGCLLVM::insertPosition(&BinOp));
     cast<Instruction>(ResLo)->setDebugLoc(BinOpDebugLoc);
-    ResHi = PHINode::Create(IRB->getInt32Ty(), 2, ".shl.outer.merge.hi", &BinOp);
+    ResHi = PHINode::Create(IRB->getInt32Ty(), 2, ".shl.outer.merge.hi", IGCLLVM::insertPosition(&BinOp));
     cast<Instruction>(ResHi)->setDebugLoc(BinOpDebugLoc);
 
     BasicBlock *TrueBB = BasicBlock::Create(*Emu->getContext(), ".shl.outer.true.branch");
@@ -861,9 +861,9 @@ bool InstExpander::visitShl(BinaryOperator &BinOp) {
     // Prepare to generate branches to handle the case where `ShAmt` is less
     // than 32 (true branch) or otherwise (false branch).
     BasicBlock *InnerJBB = TrueBB->splitBasicBlock(TrueJmp);
-    InnerResLo = PHINode::Create(IRB->getInt32Ty(), 2, ".shl.merge.inner.lo", TrueJmp);
+    InnerResLo = PHINode::Create(IRB->getInt32Ty(), 2, ".shl.merge.inner.lo", IGCLLVM::insertPosition(TrueJmp));
     InnerResLo->setDebugLoc(BinOpDebugLoc);
-    InnerResHi = PHINode::Create(IRB->getInt32Ty(), 2, ".shl.merge.inner.hi", TrueJmp);
+    InnerResHi = PHINode::Create(IRB->getInt32Ty(), 2, ".shl.merge.inner.hi", IGCLLVM::insertPosition(TrueJmp));
     InnerResHi->setDebugLoc(BinOpDebugLoc);
 
     InnerTBB = BasicBlock::Create(*Emu->getContext(), ".shl.inner.true.branch");
@@ -966,9 +966,9 @@ bool InstExpander::visitLShr(BinaryOperator &BinOp) {
     // uniform one in most cases.
     Value *NE = IRB->CreateICmpNE(ShAmt, Constant::getNullValue(ShAmt->getType()));
     BasicBlock *JointBB = OldBB->splitBasicBlock(&BinOp);
-    ResLo = PHINode::Create(IRB->getInt32Ty(), 2, ".lshr.outer.merge.lo", &BinOp);
+    ResLo = PHINode::Create(IRB->getInt32Ty(), 2, ".lshr.outer.merge.lo", IGCLLVM::insertPosition(&BinOp));
     cast<Instruction>(ResLo)->setDebugLoc(BinOpDebugLoc);
-    ResHi = PHINode::Create(IRB->getInt32Ty(), 2, ".lshr.outer.merge.hi", &BinOp);
+    ResHi = PHINode::Create(IRB->getInt32Ty(), 2, ".lshr.outer.merge.hi", IGCLLVM::insertPosition(&BinOp));
     cast<Instruction>(ResHi)->setDebugLoc(BinOpDebugLoc);
 
     BasicBlock *TrueBB = BasicBlock::Create(*Emu->getContext(), ".lshr.outer.true.branch");
@@ -987,9 +987,9 @@ bool InstExpander::visitLShr(BinaryOperator &BinOp) {
     // Prepare to generate branches to handle the case where `ShAmt` is less
     // than 32 (true branch) or otherwise (false branch).
     BasicBlock *InnerJBB = TrueBB->splitBasicBlock(TrueJmp);
-    InnerResLo = PHINode::Create(IRB->getInt32Ty(), 2, ".lshr.merge.inner.lo", TrueJmp);
+    InnerResLo = PHINode::Create(IRB->getInt32Ty(), 2, ".lshr.merge.inner.lo", IGCLLVM::insertPosition(TrueJmp));
     InnerResLo->setDebugLoc(BinOpDebugLoc);
-    InnerResHi = PHINode::Create(IRB->getInt32Ty(), 2, ".lshr.merge.inner.hi", TrueJmp);
+    InnerResHi = PHINode::Create(IRB->getInt32Ty(), 2, ".lshr.merge.inner.hi", IGCLLVM::insertPosition(TrueJmp));
     InnerResHi->setDebugLoc(BinOpDebugLoc);
 
     InnerTBB = BasicBlock::Create(*Emu->getContext(), ".lshr.inner.true.branch");
@@ -1097,9 +1097,9 @@ bool InstExpander::visitAShr(BinaryOperator &BinOp) {
     // uniform one in most cases.
     Value *NE = IRB->CreateICmpNE(ShAmt, Constant::getNullValue(ShAmt->getType()));
     BasicBlock *JointBB = OldBB->splitBasicBlock(&BinOp);
-    ResLo = PHINode::Create(IRB->getInt32Ty(), 2, ".ashr.outer.merge.lo", &BinOp);
+    ResLo = PHINode::Create(IRB->getInt32Ty(), 2, ".ashr.outer.merge.lo", IGCLLVM::insertPosition(&BinOp));
     cast<Instruction>(ResLo)->setDebugLoc(BinOpDebugLoc);
-    ResHi = PHINode::Create(IRB->getInt32Ty(), 2, ".ashr.outer.merge.hi", &BinOp);
+    ResHi = PHINode::Create(IRB->getInt32Ty(), 2, ".ashr.outer.merge.hi", IGCLLVM::insertPosition(&BinOp));
     cast<Instruction>(ResHi)->setDebugLoc(BinOpDebugLoc);
 
     BasicBlock *TrueBB = BasicBlock::Create(*Emu->getContext(), ".ashr.outer.true.branch");
@@ -1118,9 +1118,9 @@ bool InstExpander::visitAShr(BinaryOperator &BinOp) {
     // Prepare to generate branches to handle the case where `ShAmt` is less
     // than 32 or otherwise.
     BasicBlock *InnerJBB = TrueBB->splitBasicBlock(TrueJmp);
-    InnerResLo = PHINode::Create(IRB->getInt32Ty(), 2, ".ashr.merge.inner.lo", TrueJmp);
+    InnerResLo = PHINode::Create(IRB->getInt32Ty(), 2, ".ashr.merge.inner.lo", IGCLLVM::insertPosition(TrueJmp));
     InnerResLo->setDebugLoc(BinOpDebugLoc);
-    InnerResHi = PHINode::Create(IRB->getInt32Ty(), 2, ".ashr.merge.inner.hi", TrueJmp);
+    InnerResHi = PHINode::Create(IRB->getInt32Ty(), 2, ".ashr.merge.inner.hi", IGCLLVM::insertPosition(TrueJmp));
     InnerResHi->setDebugLoc(BinOpDebugLoc);
 
     InnerTBB = BasicBlock::Create(*Emu->getContext(), ".ashr.inner.true.branch");
@@ -1490,7 +1490,7 @@ Value *InstExpander::convertUIToFP32(Type *DstTy, Value *Lo, Value *Hi, Instruct
   IRB->SetInsertPoint(Pos);
   DebugLoc PosDebugLoc = Pos->getDebugLoc();
 
-  PHINode *Res = PHINode::Create(IRB->getInt32Ty(), 2, ".u2f.outer.merge", Pos);
+  PHINode *Res = PHINode::Create(IRB->getInt32Ty(), 2, ".u2f.outer.merge", IGCLLVM::insertPosition(Pos));
   Res->setDebugLoc(PosDebugLoc);
 
   {
@@ -1510,9 +1510,11 @@ Value *InstExpander::convertUIToFP32(Type *DstTy, Value *Lo, Value *Hi, Instruct
     NE = IRB->CreateICmpNE(ShAmt, Constant::getNullValue(ShAmt->getType()));
 
     BasicBlock *InnerJBB = TrueBB->splitBasicBlock(TrueJmp);
-    PHINode *InnerResHi = PHINode::Create(IRB->getInt32Ty(), 2, ".u2f.inner.merge.hi", TrueJmp);
+    PHINode *InnerResHi =
+        PHINode::Create(IRB->getInt32Ty(), 2, ".u2f.inner.merge.hi", IGCLLVM::insertPosition(TrueJmp));
     InnerResHi->setDebugLoc(PosDebugLoc);
-    PHINode *InnerResLo = PHINode::Create(IRB->getInt32Ty(), 2, ".u2f.inner.merge.lo", TrueJmp);
+    PHINode *InnerResLo =
+        PHINode::Create(IRB->getInt32Ty(), 2, ".u2f.inner.merge.lo", IGCLLVM::insertPosition(TrueJmp));
     InnerResLo->setDebugLoc(PosDebugLoc);
 
     BasicBlock *InnerTBB = BasicBlock::Create(*Emu->getContext(), ".u2f.inner.true.branch");
@@ -1544,7 +1546,8 @@ Value *InstExpander::convertUIToFP32(Type *DstTy, Value *Lo, Value *Hi, Instruct
     NE = IRB->CreateICmpNE(InnerResLo, Constant::getNullValue(InnerResLo->getType()));
 
     BasicBlock *RoundingJBB = InnerJBB->splitBasicBlock(InnerJmp);
-    PHINode *RoundingRes = PHINode::Create(IRB->getInt32Ty(), 2, ".u2f.rounding.merge.hi", InnerJmp);
+    PHINode *RoundingRes =
+        PHINode::Create(IRB->getInt32Ty(), 2, ".u2f.rounding.merge.hi", IGCLLVM::insertPosition(InnerJmp));
     RoundingRes->setDebugLoc(PosDebugLoc);
 
     BasicBlock *RoundingBB = BasicBlock::Create(*Emu->getContext(), ".u2f.rounding.branch");

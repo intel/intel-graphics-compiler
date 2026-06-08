@@ -173,15 +173,15 @@ bool ProgramScopeConstantResolution::runOnModule(Module &M) {
         Instruction *pEntryPoint = &(*userFunc->getEntryBlock().getFirstInsertionPt());
 
         // Create a GEP to get to the right offset in the constant buffer
-        GetElementPtrInst *gep = GetElementPtrInst::Create(Type::getInt8Ty(C), &*bufArg, pOffset,
-                                                           "off" + pGlobalVar->getName(), pEntryPoint);
+        GetElementPtrInst *gep = GetElementPtrInst::Create(
+            Type::getInt8Ty(C), &*bufArg, pOffset, "off" + pGlobalVar->getName(), IGCLLVM::insertPosition(pEntryPoint));
 
         Value *replacement = gep;
 
         // TODO: Remove when typed pointers are no longer supported.
         if (!IGCLLVM::isOpaque(ptrType))
-          replacement =
-              CastInst::CreatePointerCast(gep, pGlobalVar->getType(), "cast" + pGlobalVar->getName(), pEntryPoint);
+          replacement = CastInst::CreatePointerCast(gep, pGlobalVar->getType(), "cast" + pGlobalVar->getName(),
+                                                    IGCLLVM::insertPosition(pEntryPoint));
 
         // Update the map with the fix new value
         funcToVarSet[userFunc][pGlobalVar] = replacement;
@@ -195,7 +195,8 @@ bool ProgramScopeConstantResolution::runOnModule(Module &M) {
       if (auto *GEP = dyn_cast<GetElementPtrInst>(user)) {
         if (GEP->getPointerOperand() == pGlobalVar) {
           SmallVector<Value *, 4> Indices(GEP->indices());
-          auto *NewGEP = GetElementPtrInst::Create(GEP->getSourceElementType(), bc, Indices, GEP->getName(), GEP);
+          auto *NewGEP = GetElementPtrInst::Create(GEP->getSourceElementType(), bc, Indices, GEP->getName(),
+                                                   IGCLLVM::insertPosition(GEP));
           NewGEP->setIsInBounds(GEP->isInBounds());
           NewGEP->setDebugLoc(GEP->getDebugLoc());
           // Cannot use replaceAllUsesWith because the old GEP result type

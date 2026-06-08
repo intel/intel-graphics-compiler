@@ -210,7 +210,7 @@ void GASRetValuePropagator::updateAllUsesWithNewFunction(Function *oldFunc, Func
     }
 
     // Create new call and insert it before old one
-    CallInst *newCall = CallInst::Create(newFunc, callArgs, "", cInst);
+    CallInst *newCall = CallInst::Create(newFunc, callArgs, "", IGCLLVM::insertPosition(cInst));
 
     newCall->setCallingConv(newFunc->getCallingConv());
     newCall->setAttributes(cInst->getAttributes());
@@ -224,7 +224,8 @@ void GASRetValuePropagator::updateAllUsesWithNewFunction(Function *oldFunc, Func
     IGC_ASSERT(oldRetTy->getAddressSpace() == ADDRESS_SPACE_GENERIC &&
                newRetTy->getAddressSpace() != ADDRESS_SPACE_GENERIC);
 
-    auto ASC = CastInst::Create(Instruction::AddrSpaceCast, newCall, oldFunc->getReturnType(), "", cInst);
+    auto ASC = CastInst::Create(Instruction::AddrSpaceCast, newCall, oldFunc->getReturnType(), "",
+                                IGCLLVM::insertPosition(cInst));
 
     cInst->replaceAllUsesWith(ASC);
     callsToDelete.push_back(cInst);

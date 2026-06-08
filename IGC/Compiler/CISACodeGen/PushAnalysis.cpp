@@ -752,14 +752,16 @@ void PushAnalysis::PromoteLoadToSimplePush(Instruction *load, SimplePushInfo &in
     }
     if (pTypeToPush != value->getType()) {
       IGC_ASSERT(pTypeToPush->isPointerTy() == value->getType()->isPointerTy());
-      value = pTypeToPush->isPointerTy() ? CastInst::CreatePointerBitCastOrAddrSpaceCast(value, pTypeToPush, "", load)
-                                         : CastInst::CreateZExtOrBitCast(value, pTypeToPush, "", load);
+      value = pTypeToPush->isPointerTy()
+                  ? CastInst::CreatePointerBitCastOrAddrSpaceCast(value, pTypeToPush, "", IGCLLVM::insertPosition(load))
+                  : CastInst::CreateZExtOrBitCast(value, pTypeToPush, "", IGCLLVM::insertPosition(load));
     }
 
     if (load->getType()->isVectorTy()) {
       if (!allExtract) {
         pReplacedInst = llvm::InsertElementInst::Create(
-            pReplacedInst, value, llvm::ConstantInt::get(llvm::IntegerType::get(load->getContext(), 32), i), "", load);
+            pReplacedInst, value, llvm::ConstantInt::get(llvm::IntegerType::get(load->getContext(), 32), i), "",
+            IGCLLVM::insertPosition(load));
       } else {
         for (auto II : extracts[i]) {
           II->replaceAllUsesWith(value);
@@ -767,7 +769,8 @@ void PushAnalysis::PromoteLoadToSimplePush(Instruction *load, SimplePushInfo &in
       }
     } else {
       if (load->getType()->isPointerTy()) {
-        value = IntToPtrInst::Create(Instruction::IntToPtr, value, load->getType(), load->getName(), load);
+        value = IntToPtrInst::Create(Instruction::IntToPtr, value, load->getType(), load->getName(),
+                                     IGCLLVM::insertPosition(load));
       }
       pReplacedInst = value;
     }
@@ -953,14 +956,14 @@ void PushAnalysis::processGather(Instruction *inst, uint bufId, uint eltId) {
                                                   to_string(eltId) + std::string("_elm") + to_string(i)),
                                        WIAnalysis::UNIFORM_GLOBAL);
         if (pTypeToPush != value->getType())
-          value = CastInst::CreateZExtOrBitCast(value, pTypeToPush, "", inst);
+          value = CastInst::CreateZExtOrBitCast(value, pTypeToPush, "", IGCLLVM::insertPosition(inst));
 
         pushInfo.constants[address] = m_argIndex;
       } else {
         IGC_ASSERT_MESSAGE((it->second <= m_argIndex), "Function arguments list and metadata are out of sync!");
         value = m_argList[it->second];
         if (pTypeToPush != value->getType())
-          value = CastInst::CreateZExtOrBitCast(value, pTypeToPush, "", inst);
+          value = CastInst::CreateZExtOrBitCast(value, pTypeToPush, "", IGCLLVM::insertPosition(inst));
       }
 
       if (inst->getType()->isVectorTy()) {
@@ -971,7 +974,7 @@ void PushAnalysis::processGather(Instruction *inst, uint bufId, uint eltId) {
           }
           replaceVector = llvm::InsertElementInst::Create(
               replaceVector, value, llvm::ConstantInt::get(llvm::IntegerType::get(inst->getContext(), 32), i), "",
-              inst);
+              IGCLLVM::insertPosition(inst));
         } else {
           for (auto II : extracts[i]) {
             II->replaceAllUsesWith(value);
@@ -1019,7 +1022,7 @@ void PushAnalysis::processInput(Instruction *inst, bool gsInstancingUsed) {
       if (inst->getType()->isHalfTy() && replacementValue->getType()->isFloatTy()) {
         // Input is accessed using the half version of intrinsic, e.g.:
         //     call half @llvm.genx.GenISA.DCL.inputVec.f16 (i32 13, i32 2)
-        replacementValue = CastInst::CreateFPCast(replacementValue, inst->getType(), "", inst);
+        replacementValue = CastInst::CreateFPCast(replacementValue, inst->getType(), "", IGCLLVM::insertPosition(inst));
       }
       inst->replaceAllUsesWith(replacementValue);
     }
@@ -1195,7 +1198,8 @@ void PushAnalysis::processRuntimeValue(GenIntrinsicInst *intrinsic) {
       runtimeValue = runtimeValue->user_back();
     }
     if (arg->getType() != runtimeValue->getType()) {
-      arg = CastInst::CreateBitOrPointerCast(arg, runtimeValue->getType(), "", cast<Instruction>(runtimeValue));
+      arg = CastInst::CreateBitOrPointerCast(arg, runtimeValue->getType(), "",
+                                             IGCLLVM::insertPosition(cast<Instruction>(runtimeValue)));
     }
   }
   runtimeValue->replaceAllUsesWith(arg);

@@ -911,7 +911,7 @@ void CustomSafeOptPass::visitAllocaInst(AllocaInst &I) {
 
   llvm::Function *userFunc = I.getParent()->getParent();
   llvm::Module &M = *userFunc->getParent();
-  llvm::DIBuilder DIB(M);
+  IGCLLVM::DIBuilder DIB(M);
 
   // A debug line info is moved so the alloca has corresponding dbg.declare call
   // with DIExpression DW_OP_LLVM_fragment specifying fragment.
@@ -942,11 +942,12 @@ void CustomSafeOptPass::visitAllocaInst(AllocaInst &I) {
         gepArg1 = IRB.getInt32(newIndex);
       } else {
         // pGEP->getOperand(2) is not constant. create a sub instruction to reduce it
-        gepArg1 = BinaryOperator::CreateSub(pGEP->getOperand(2), IRB.getInt32(index_lb), "reducedIndex", pGEP);
+        gepArg1 = BinaryOperator::CreateSub(pGEP->getOperand(2), IRB.getInt32(index_lb), "reducedIndex",
+                                            IGCLLVM::insertPosition(pGEP));
       }
       llvm::Value *gepArg[] = {pGEP->getOperand(1), gepArg1};
       Type *BaseTy = newAlloca->getAllocatedType();
-      llvm::Value *pGEPnew = GetElementPtrInst::Create(BaseTy, newAlloca, gepArg, "", pGEP);
+      llvm::Value *pGEPnew = GetElementPtrInst::Create(BaseTy, newAlloca, gepArg, "", IGCLLVM::insertPosition(pGEP));
 
       pGEP->replaceAllUsesWith(pGEPnew);
     }
@@ -1057,12 +1058,12 @@ void CustomSafeOptPass::visitLoadInst(LoadInst &load) {
       indices.append(gep->idx_begin(), gep->idx_end());
       indices[selIdx] = sel->getOperand(1);
       Type *BaseTy = gep->getSourceElementType();
-      GetElementPtrInst *gep1 =
-          GetElementPtrInst::Create(BaseTy, gep->getPointerOperand(), indices, gep->getName(), gep);
+      GetElementPtrInst *gep1 = GetElementPtrInst::Create(BaseTy, gep->getPointerOperand(), indices, gep->getName(),
+                                                          IGCLLVM::insertPosition(gep));
       gep1->setDebugLoc(gep->getDebugLoc());
       indices[selIdx] = sel->getOperand(2);
-      GetElementPtrInst *gep2 =
-          GetElementPtrInst::Create(BaseTy, gep->getPointerOperand(), indices, gep->getName(), gep);
+      GetElementPtrInst *gep2 = GetElementPtrInst::Create(BaseTy, gep->getPointerOperand(), indices, gep->getName(),
+                                                          IGCLLVM::insertPosition(gep));
       gep2->setDebugLoc(gep->getDebugLoc());
       LoadInst *load1 = cast<LoadInst>(load.clone());
       IGCLLVM::insertBefore(load1, &load);
@@ -1070,7 +1071,8 @@ void CustomSafeOptPass::visitLoadInst(LoadInst &load) {
       LoadInst *load2 = cast<LoadInst>(load.clone());
       IGCLLVM::insertBefore(load2, &load);
       load2->setOperand(0, gep2);
-      SelectInst *result = SelectInst::Create(sel->getCondition(), load1, load2, load.getName(), &load);
+      SelectInst *result =
+          SelectInst::Create(sel->getCondition(), load1, load2, load.getName(), IGCLLVM::insertPosition(&load));
       result->setDebugLoc(load.getDebugLoc());
       load.replaceAllUsesWith(result);
       load.eraseFromParent();
@@ -1390,7 +1392,7 @@ void CustomSafeOptPass::visitFPTruncInst(FPTruncInst &I) {
       }
     }
     if (foundPattern) {
-      PHINode *newPhi = PHINode::Create(I.getType(), numSrc, "", phi);
+      PHINode *newPhi = PHINode::Create(I.getType(), numSrc, "", IGCLLVM::insertPosition(phi));
       for (unsigned int i = 0; i < numSrc; i++) {
         newPhi->addIncoming(newSources[i], phi->getIncomingBlock(i));
       }
@@ -1433,7 +1435,8 @@ void CustomSafeOptPass::visitBitCast(BitCastInst &BC) {
       Value *falseValOrignalType = falseVal->getOperand(0);
       if (trueValOrignalType->getType() == BC.getType() && falseValOrignalType->getType() == BC.getType()) {
         Value *cond = sel->getCondition();
-        Value *newVal = SelectInst::Create(cond, trueValOrignalType, falseValOrignalType, "", sel);
+        Value *newVal =
+            SelectInst::Create(cond, trueValOrignalType, falseValOrignalType, "", IGCLLVM::insertPosition(sel));
 
         const DebugLoc &DL = BC.getDebugLoc();
         if (Instruction *newValInst = dyn_cast<Instruction>(newVal))
@@ -1460,7 +1463,7 @@ void CustomSafeOptPass::visitBitCast(BitCastInst &BC) {
         }
       }
       if (foundPattern) {
-        PHINode *newPhi = PHINode::Create(BC.getType(), numSrc, "", phi);
+        PHINode *newPhi = PHINode::Create(BC.getType(), numSrc, "", IGCLLVM::insertPosition(phi));
         for (unsigned int i = 0; i < numSrc; i++) {
           newPhi->addIncoming(newSources[i], phi->getIncomingBlock(i));
         }
@@ -1939,7 +1942,7 @@ void CustomSafeOptPass::removeHftoFCast(Instruction &I) {
           }
         } else if (Instruction *inst = dyn_cast<Instruction>(operand)) {
           // Cast the result of this operand to a float
-          return dyn_cast<Value>(new FPExtInst(inst, type, "", I));
+          return dyn_cast<Value>(new FPExtInst(inst, type, "", IGCLLVM::insertPosition(I)));
         }
         return (Value *)NULL;
       };
@@ -1962,8 +1965,8 @@ void CustomSafeOptPass::removeHftoFCast(Instruction &I) {
           return;
 
         // Create new float fmul and fadd instructions
-        Value *newFmul = BinaryOperator::Create(Instruction::FMul, src0, src1, "", &I);
-        Value *newFadd = BinaryOperator::Create(Instruction::FAdd, newFmul, src2, "", &I);
+        Value *newFmul = BinaryOperator::Create(Instruction::FMul, src0, src1, "", IGCLLVM::insertPosition(&I));
+        Value *newFadd = BinaryOperator::Create(Instruction::FAdd, newFmul, src2, "", IGCLLVM::insertPosition(&I));
 
         // Copy fast math flags
         Instruction *fmulInst = dyn_cast<Instruction>(newFmul);
@@ -1996,7 +1999,7 @@ void CustomSafeOptPass::removeHftoFCast(Instruction &I) {
 
   Value *newInst = NULL;
   if (BinaryOperator *bo = dyn_cast<BinaryOperator>(&I)) {
-    newInst = BinaryOperator::Create(bo->getOpcode(), S1, S2, "", &I);
+    newInst = BinaryOperator::Create(bo->getOpcode(), S1, S2, "", IGCLLVM::insertPosition(&I));
     Instruction *inst = dyn_cast<Instruction>(newInst);
     inst->copyFastMathFlags(&I);
     inst->setDebugLoc(castInst->getDebugLoc());
@@ -2056,8 +2059,9 @@ void CustomSafeOptPass::visitBinaryOperator(BinaryOperator &I) {
           if (!secondSrc0imm && !secondSrc1imm && nextInst->getOperand(0) != nextInst->getOperand(1)) {
             for (int i = 0; i < 2; i++) {
               if (nextInst->getOperand(i) == &I) {
-                Value *newAdd = BinaryOperator::CreateAdd(src0imm ? I.getOperand(1) : I.getOperand(0),
-                                                          nextInst->getOperand(1 - i), "", nextInst);
+                Value *newAdd =
+                    BinaryOperator::CreateAdd(src0imm ? I.getOperand(1) : I.getOperand(0), nextInst->getOperand(1 - i),
+                                              "", IGCLLVM::insertPosition(nextInst));
 
                 // NUW survives if both adds carry it; NSW only when paired with NUW on both.
                 bool IsNUW =
@@ -2286,7 +2290,7 @@ void IGC::CustomSafeOptPass::visitSampleBptr(llvm::SampleIntrinsic *sampleInst) 
     llvm::Function *sampleIntr = llvm::GenISAIntrinsic::getDeclaration(
         sampleInst->getParent()->getParent()->getParent(), GenISAIntrinsic::GenISA_sampleptr, overloadedTys);
 
-    llvm::Instruction *newSample = llvm::CallInst::Create(sampleIntr, args, "", sampleInst);
+    llvm::Instruction *newSample = llvm::CallInst::Create(sampleIntr, args, "", IGCLLVM::insertPosition(sampleInst));
     newSample->setDebugLoc(sampleInst->getDebugLoc());
     sampleInst->replaceAllUsesWith(newSample);
   }
@@ -5397,12 +5401,12 @@ bool GenStrengthReduction::processInst(Instruction *Inst) {
             BasicBlock &entryBB = Inst->getParent()->getParent()->getEntryBlock();
             insertBefore = &(*entryBB.getFirstInsertionPt());
           }
-          Inv = BinaryOperator::CreateFDiv(Src0, Src1, "", insertBefore);
+          Inv = BinaryOperator::CreateFDiv(Src0, Src1, "", IGCLLVM::insertPosition(insertBefore));
           Inv->setFastMathFlags(Inst->getFastMathFlags());
           Inv->setDebugLoc(Inst->getDebugLoc());
         }
 
-        Instruction *Mul = BinaryOperator::CreateFMul(I->getOperand(0), Inv, "", I);
+        Instruction *Mul = BinaryOperator::CreateFMul(I->getOperand(0), Inv, "", IGCLLVM::insertPosition(I));
         Mul->setFastMathFlags(Inst->getFastMathFlags());
         Mul->setDebugLoc(I->getDebugLoc());
         I->replaceAllUsesWith(Mul);
@@ -5417,7 +5421,7 @@ bool GenStrengthReduction::processInst(Instruction *Inst) {
         return false;
 
       // Only a single use of 1 / Src1. Create Inv right before the use.
-      Inv = BinaryOperator::CreateFDiv(Src0, Src1, "", Inst);
+      Inv = BinaryOperator::CreateFDiv(Src0, Src1, "", IGCLLVM::insertPosition(Inst));
       Inv->setFastMathFlags(Inst->getFastMathFlags());
       Inv->setDebugLoc(Inst->getDebugLoc());
     }
@@ -5435,9 +5439,9 @@ bool GenStrengthReduction::processInst(Instruction *Inst) {
 
     Instruction *NewInst = nullptr;
     if (bUseFSub) {
-      NewInst = BinaryOperator::CreateFSub(ConstantFP::get(Inst->getType(), 0), Inv, "", Inst);
+      NewInst = BinaryOperator::CreateFSub(ConstantFP::get(Inst->getType(), 0), Inv, "", IGCLLVM::insertPosition(Inst));
     } else {
-      NewInst = BinaryOperator::CreateFMul(Inst->getOperand(0), Inv, "", Inst);
+      NewInst = BinaryOperator::CreateFMul(Inst->getOperand(0), Inv, "", IGCLLVM::insertPosition(Inst));
     }
     NewInst->setFastMathFlags(Inst->getFastMathFlags());
     NewInst->setDebugLoc(Inst->getDebugLoc());
@@ -6312,7 +6316,7 @@ void LogicalAndToBranch::convertAndToBranch(Instruction *opAnd, Instruction *con
   br = BranchInst::Create(bbEnd, bbThen);
   br->setDebugLoc(opAnd->getDebugLoc());
 
-  PHINode *phi = PHINode::Create(opAnd->getType(), 2, "", opAnd);
+  PHINode *phi = PHINode::Create(opAnd->getType(), 2, "", IGCLLVM::insertPosition(opAnd));
   phi->addIncoming(cond1, bbThen);
   phi->addIncoming(ConstantInt::getFalse(opAnd->getType()), bbElse);
   phi->setDebugLoc(opAnd->getDebugLoc());
@@ -6695,8 +6699,8 @@ void MergeMemFromBranchOpt::visitTypedWrite(llvm::CallInst *inst) {
           if (!PN)
             break;
 
-          PHINode *newPN =
-              PHINode::Create(PN->getType(), callSet.size(), VALUE_NAME(PN->getName() + ".mm"), &mergeBB->front());
+          PHINode *newPN = PHINode::Create(PN->getType(), callSet.size(), VALUE_NAME(PN->getName() + ".mm"),
+                                           IGCLLVM::insertPosition(&mergeBB->front()));
 
           for (auto *CI : callSet) {
             BasicBlock *pred = CI->getParent();
@@ -6721,11 +6725,16 @@ void MergeMemFromBranchOpt::visitTypedWrite(llvm::CallInst *inst) {
       changed = 1;
 
       // create phi nodes for the data used by typedwrite
-      PHINode *p8 = PHINode::Create(inst->getOperand(8)->getType(), callSet.size(), "", &(mergeBB->front()));
-      PHINode *p7 = PHINode::Create(inst->getOperand(7)->getType(), callSet.size(), "", &(mergeBB->front()));
-      PHINode *p6 = PHINode::Create(inst->getOperand(6)->getType(), callSet.size(), "", &(mergeBB->front()));
-      PHINode *p5 = PHINode::Create(inst->getOperand(5)->getType(), callSet.size(), "", &(mergeBB->front()));
-      PHINode *itp = PHINode::Create(inst->getOperand(0)->getType(), callSet.size(), "", &(mergeBB->front()));
+      PHINode *p8 = PHINode::Create(inst->getOperand(8)->getType(), callSet.size(), "",
+                                    IGCLLVM::insertPosition(&(mergeBB->front())));
+      PHINode *p7 = PHINode::Create(inst->getOperand(7)->getType(), callSet.size(), "",
+                                    IGCLLVM::insertPosition(&(mergeBB->front())));
+      PHINode *p6 = PHINode::Create(inst->getOperand(6)->getType(), callSet.size(), "",
+                                    IGCLLVM::insertPosition(&(mergeBB->front())));
+      PHINode *p5 = PHINode::Create(inst->getOperand(5)->getType(), callSet.size(), "",
+                                    IGCLLVM::insertPosition(&(mergeBB->front())));
+      PHINode *itp = PHINode::Create(inst->getOperand(0)->getType(), callSet.size(), "",
+                                     IGCLLVM::insertPosition(&(mergeBB->front())));
       for (unsigned int i = 0; i < callSet.size(); i++) {
         itp->addIncoming(callSet[i]->getOperand(0), callSet[i]->getParent());
         p5->addIncoming(callSet[i]->getOperand(5), callSet[i]->getParent());
@@ -7053,7 +7062,8 @@ void InsertBranchOpt::CreateBranchBlock(Function &F, Value *cmpI, loadGroup &lg,
 
   // set up the new phi nodes
   for (int i = (int)lg.num - 1; i >= 0; i--) {
-    lg.newPhi[groupID][i] = PHINode::Create(inst[i]->getType(), 2, "", &(termatorInst->getSuccessor(0)->front()));
+    lg.newPhi[groupID][i] =
+        PHINode::Create(inst[i]->getType(), 2, "", IGCLLVM::insertPosition(&(termatorInst->getSuccessor(0)->front())));
   }
 
   for (uint i = 0; i < lg.num; i++) {
@@ -7322,7 +7332,7 @@ void InsertBranchOpt::atomicSplitOpt(Function &F, int mode) {
     }
 
     if (isModified && inst->getNumUses()) {
-      PHINode *newPhi = PHINode::Create(inst->getType(), 2, "", &MergeBlock->front());
+      PHINode *newPhi = PHINode::Create(inst->getType(), 2, "", IGCLLVM::insertPosition(&MergeBlock->front()));
       inst->replaceUsesOutsideBlock(newPhi, inst->getParent());
       newPhi->addIncoming(inst, inst->getParent());
       newPhi->addIncoming(readI, readI->getParent());

@@ -40,7 +40,8 @@ public:
 #if LLVM_VERSION_MAJOR < 22
     return llvm::DIBuilder::insertDbgValueIntrinsic(V, VarInfo, Expr, DL, InsertBefore);
 #else
-    return llvm::DIBuilder::insertDbgValueIntrinsic(V, VarInfo, Expr, DL, InsertBefore).dyn_cast<llvm::Instruction *>();
+    return llvm::DIBuilder::insertDbgValueIntrinsic(V, VarInfo, Expr, DL, InsertBefore->getIterator())
+        .dyn_cast<llvm::Instruction *>();
 #endif
   }
   inline llvm::Instruction *insertDbgValueIntrinsic(llvm::Value *V, llvm::DILocalVariable *VarInfo,
@@ -49,7 +50,8 @@ public:
 #if LLVM_VERSION_MAJOR < 22
     return llvm::DIBuilder::insertDbgValueIntrinsic(V, VarInfo, Expr, DL, InsertBefore);
 #else
-    return llvm::DIBuilder::insertDbgValueIntrinsic(V, VarInfo, Expr, DL, InsertBefore).dyn_cast<llvm::Instruction *>();
+    return llvm::DIBuilder::insertDbgValueIntrinsic(V, VarInfo, Expr, DL, InsertBefore->getIterator())
+        .dyn_cast<llvm::Instruction *>();
 #endif
   }
   inline llvm::Instruction *insertDeclare(llvm::Value *Storage, llvm::DILocalVariable *VarInfo,
@@ -58,7 +60,8 @@ public:
 #if LLVM_VERSION_MAJOR < 22
     return llvm::DIBuilder::insertDeclare(Storage, VarInfo, Expr, DL, InsertBefore);
 #else
-    return llvm::DIBuilder::insertDeclare(Storage, VarInfo, Expr, DL, InsertBefore).dyn_cast<llvm::Instruction *>();
+    return llvm::DIBuilder::insertDeclare(Storage, VarInfo, Expr, DL, InsertBefore->getIterator())
+        .dyn_cast<llvm::Instruction *>();
 #endif
   }
   inline llvm::DINamespace *createNameSpace(llvm::DIScope *Scope, llvm::StringRef Name, llvm::DIFile *File,

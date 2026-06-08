@@ -187,7 +187,7 @@ Instruction *ReplaceUnsupportedIntrinsics::insertReverseLoop(BasicBlock *Loc, Ba
   LLVMContext &C = F->getContext();
   IntegerType *LengthType = cast<IntegerType>(Length->getType());
   // Create an alloca for storing the loop's induction variable
-  Value *pIV = new AllocaInst(LengthType, 0, "pIV", &(*F->getEntryBlock().begin()));
+  Value *pIV = new AllocaInst(LengthType, 0, "pIV", IGCLLVM::insertPosition(&(*F->getEntryBlock().begin())));
   // Split the BB at the location of the call
   BasicBlock *Pre = Loc;
   // Create a new BB for the loop Body
@@ -231,7 +231,7 @@ Instruction *ReplaceUnsupportedIntrinsics::insertLoop(Instruction *Loc, Value *L
   LLVMContext &C = F->getContext();
   IntegerType *LengthType = cast<IntegerType>(Length->getType());
   // Create an alloca for storing the loop's induction variable
-  Value *pIV = new AllocaInst(LengthType, 0, "pIV", &(*F->getEntryBlock().begin()));
+  Value *pIV = new AllocaInst(LengthType, 0, "pIV", IGCLLVM::insertPosition(&(*F->getEntryBlock().begin())));
   // Split the BB at the location of the call
   BasicBlock *Pre = Loc->getParent();
   BasicBlock *Post = Pre->splitBasicBlock(BasicBlock::iterator(Loc), Twine(BBName) + ".post");

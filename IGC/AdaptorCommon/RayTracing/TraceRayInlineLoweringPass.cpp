@@ -83,7 +83,7 @@ private:
   GetElementPtrInst *getShMemRTCtrl(RTBuilder &builder, Value *queryIndex) {
     return GetElementPtrInst::Create(m_ShMemRTCtrls->getAllocatedType(), m_ShMemRTCtrls,
                                      {builder.getInt32(0), queryIndex}, VALUE_NAME("&shadowMem.RTCtrl"),
-                                     &(*builder.GetInsertPoint()));
+                                     IGCLLVM::insertPosition(&(*builder.GetInsertPoint())));
   }
 
   // return rtStacks[index]

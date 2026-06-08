@@ -19,6 +19,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/BasicBlock.h>
 #include "common/LLVMWarningsPop.hpp"
 #include "llvmWrapper/IR/DerivedTypes.h"
+#include "llvmWrapper/IR/Instructions.h"
 
 using namespace llvm;
 using namespace IGC;
@@ -220,9 +221,10 @@ bool AddrSpaceCastFixing::fixCase1(Instruction *I, BasicBlock::iterator &BI) con
 
   // Create `addrspacecast` if necessary.
   if (SrcPtrTy->getAddressSpace() != DstPtrTy->getAddressSpace())
-    V = CastInst::Create(Instruction::AddrSpaceCast, V, DstPtrTy, I->getName() + ".fix1.addrspacecast", I);
+    V = CastInst::Create(Instruction::AddrSpaceCast, V, DstPtrTy, I->getName() + ".fix1.addrspacecast",
+                         IGCLLVM::insertPosition(I));
   else
-    V = CastInst::Create(Instruction::BitCast, V, DstPtrTy, I->getName() + ".fix1.bitcast", I);
+    V = CastInst::Create(Instruction::BitCast, V, DstPtrTy, I->getName() + ".fix1.bitcast", IGCLLVM::insertPosition(I));
 
   // Remove the short sequence of `ptrtoint` followed by `inttoptr`.
   if (Instruction *VInst = dyn_cast<Instruction>(V)) {
@@ -267,13 +269,15 @@ bool AddrSpaceCastFixing::fixCase2(Instruction *I, BasicBlock::iterator &BI) con
   if (TVal->hasOneUse() && isa<AddrSpaceCastInst>(TVal))
     TVal->mutateType(DstPtrTy);
   else
-    TVal = CastInst::Create(Instruction::AddrSpaceCast, TVal, DstPtrTy, TVal->getName() + ".fix2.addrspacecast", SI);
+    TVal = CastInst::Create(Instruction::AddrSpaceCast, TVal, DstPtrTy, TVal->getName() + ".fix2.addrspacecast",
+                            IGCLLVM::insertPosition(SI));
 
   Value *FVal = SI->getFalseValue();
   if (FVal->hasOneUse() && isa<AddrSpaceCastInst>(FVal))
     FVal->mutateType(DstPtrTy);
   else
-    FVal = CastInst::Create(Instruction::AddrSpaceCast, FVal, DstPtrTy, FVal->getName() + ".fix2.addrspacecast", SI);
+    FVal = CastInst::Create(Instruction::AddrSpaceCast, FVal, DstPtrTy, FVal->getName() + ".fix2.addrspacecast",
+                            IGCLLVM::insertPosition(SI));
 
   SI->setOperand(1, TVal);
   SI->setOperand(2, FVal);

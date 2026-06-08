@@ -500,10 +500,12 @@ void BIImport::fixInvalidBitcasts(llvm::Module &M) {
 
       // New bitcast
       PointerType *FinalBitCastType = IGCLLVM::PointerType::get(DstPtrType, SrcPtrType->getAddressSpace());
-      BitCastInst *NewBitCastI = new BitCastInst(BitCastI->getOperand(0), FinalBitCastType, "bcast", BitCastI);
+      BitCastInst *NewBitCastI =
+          new BitCastInst(BitCastI->getOperand(0), FinalBitCastType, "bcast", IGCLLVM::insertPosition(BitCastI));
 
       // New addrspacecast
-      AddrSpaceCastInst *NewAddrSpaceCastI = new AddrSpaceCastInst(NewBitCastI, DstPtrType, "ascast", BitCastI);
+      AddrSpaceCastInst *NewAddrSpaceCastI =
+          new AddrSpaceCastInst(NewBitCastI, DstPtrType, "ascast", IGCLLVM::insertPosition(BitCastI));
 
       // Replace all uses of the old invalid bitcast.
       BitCastI->replaceAllUsesWith(NewAddrSpaceCastI);
@@ -970,7 +972,7 @@ void BIImport::removeFunctionBitcasts(Module &M) {
         for (unsigned I = 0, E = IGCLLVM::getNumArgOperands(pInstCall); I != E; ++I) {
           Args.push_back(pInstCall->getArgOperand(I));
         }
-        auto newCI = CallInst::Create(pDstFunc, Args, "", pInstCall);
+        auto newCI = CallInst::Create(pDstFunc, Args, "", IGCLLVM::insertPosition(pInstCall));
         newCI->takeName(pInstCall);
         newCI->setCallingConv(pInstCall->getCallingConv());
         newCI->setAttributes(pInstCall->getAttributes());

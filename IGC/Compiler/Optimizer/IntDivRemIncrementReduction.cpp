@@ -361,9 +361,9 @@ void DivRemPair::simplify(const DivRemGroup *chainPrevDivRemGroup, const DivRemG
   // or current DivRemPair is undergoing conditional transformation, and need to create join PHINodes and retain udiv
   // and urem in the normal branch
   // create phis for this udiv/urem pair at joinInsertPt, join the simple and normal results
-  auto *joinDiv = PHINode::Create(Div->getType(), 2, "join.div.", joinInsertPt);
+  auto *joinDiv = PHINode::Create(Div->getType(), 2, "join.div.", IGCLLVM::insertPosition(joinInsertPt));
   Div->replaceUsesWithIf(joinDiv, noOverrideDivRemInGroup); // do not replace uses in the normal branch
-  auto *joinRem = PHINode::Create(Rem->getType(), 2, "join.rem.", joinInsertPt);
+  auto *joinRem = PHINode::Create(Rem->getType(), 2, "join.rem.", IGCLLVM::insertPosition(joinInsertPt));
   Rem->replaceUsesWithIf(joinRem, noOverrideDivRemInGroup); // do not replace uses in the normal branch
   IGCLLVM::moveBefore(Div, normalInsertPt);
   IGCLLVM::moveBefore(Rem, normalInsertPt);

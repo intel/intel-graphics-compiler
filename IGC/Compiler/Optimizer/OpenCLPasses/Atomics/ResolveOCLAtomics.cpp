@@ -147,7 +147,8 @@ void ResolveOCLAtomics::processOCLAtomic(CallInst &callInst, AtomicOp op, Buffer
       }
     }
     if (createDstCast) {
-      Instruction *pCast = CastInst::CreatePointerCast(dst, m_Int32Ty, "PtrDstToInt", &callInst);
+      Instruction *pCast =
+          CastInst::CreatePointerCast(dst, m_Int32Ty, "PtrDstToInt", IGCLLVM::insertPosition(&callInst));
       pCast->setDebugLoc(DL);
       dst = pCast;
     }
@@ -164,7 +165,7 @@ void ResolveOCLAtomics::processOCLAtomic(CallInst &callInst, AtomicOp op, Buffer
   SmallVector<Type *, 4> intrinArgTypes{callInst.getType(), dstBuffer->getType(), dst->getType()};
 
   Function *isaIntrin = GenISAIntrinsic::getDeclaration(m_pModule, genIsaIntrinID, intrinArgTypes);
-  CallInst *isaIntrinCall = CallInst::Create(isaIntrin, args, callInst.getName(), &callInst);
+  CallInst *isaIntrinCall = CallInst::Create(isaIntrin, args, callInst.getName(), IGCLLVM::insertPosition(&callInst));
   isaIntrinCall->setDebugLoc(DL);
 
   // Replace the __builtin_IB_atomic call with a call to created GenISA intrinsic.
@@ -191,7 +192,7 @@ CallInst *ResolveOCLAtomics::genGetBufferPtr(CallInst &callInst, BufferType bufT
   getBufferPtrArgs.push_back(bufIndexVal);
   getBufferPtrArgs.push_back(bufTypeVal);
 
-  return CallInst::Create(getBufferPtr, getBufferPtrArgs, callInst.getName(), &callInst);
+  return CallInst::Create(getBufferPtr, getBufferPtrArgs, callInst.getName(), IGCLLVM::insertPosition(&callInst));
 }
 
 // i64 local atomics use a spinlock for emulation.
@@ -346,7 +347,8 @@ llvm::Instruction *ResolveOCLAtomics::CallAtomicSingleLane(AtomicOp AtomicType, 
     }
   }
   if (createDstCast) {
-    Instruction *pCast = CastInst::CreatePointerCast(dst, builder.getInt32Ty(), "PtrDstToInt", pInsertBefore);
+    Instruction *pCast =
+        CastInst::CreatePointerCast(dst, builder.getInt32Ty(), "PtrDstToInt", IGCLLVM::insertPosition(pInsertBefore));
     dst = pCast;
   }
 
@@ -356,7 +358,7 @@ llvm::Instruction *ResolveOCLAtomics::CallAtomicSingleLane(AtomicOp AtomicType, 
 
   GenIntrinsicInst::Create(
       GenISAIntrinsic::getDeclaration(pM, GenISAIntrinsic::GenISA_intatomicrawsinglelane, intrinArgTypes),
-      {ptr, dst, src0, src1}, "", pInsertBefore);
+      {ptr, dst, src0, src1}, "", IGCLLVM::insertPosition(pInsertBefore));
 
   llvm::Instruction *postFence = CallMemoryFenceWorkgroup(pInsertBefore);
 

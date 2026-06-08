@@ -171,10 +171,13 @@ bool InlineLocalsResolution::runOnModule(Module &M) {
         Instruction *pInsertBefore = &(*F.begin()->getFirstInsertionPt());
         Type *pCharType = Type::getInt8Ty(C);
         Type *pLocalCharPtrType = IGCLLVM::PointerType::get(pCharType, ADDRESS_SPACE_LOCAL);
-        Instruction *pCharPtr = BitCastInst::CreatePointerCast(arg, pLocalCharPtrType, "localToChar", pInsertBefore);
-        Value *pMovedCharPtr = GetElementPtrInst::Create(pCharType, pCharPtr, idx, "movedLocal", pInsertBefore);
+        Instruction *pCharPtr = BitCastInst::CreatePointerCast(arg, pLocalCharPtrType, "localToChar",
+                                                               IGCLLVM::insertPosition(pInsertBefore));
+        Value *pMovedCharPtr =
+            GetElementPtrInst::Create(pCharType, pCharPtr, idx, "movedLocal", IGCLLVM::insertPosition(pInsertBefore));
 
-        Value *pMovedPtr = CastInst::CreatePointerCast(pMovedCharPtr, ptrType, "charToLocal", pInsertBefore);
+        Value *pMovedPtr =
+            CastInst::CreatePointerCast(pMovedCharPtr, ptrType, "charToLocal", IGCLLVM::insertPosition(pInsertBefore));
 
         // Running over arg users and use replaceUsesOfWith to fix them is not enough,
         // because it does not cover the usage of arg in metadata (e.g. for debug info intrinsic).
@@ -352,7 +355,8 @@ void InlineLocalsResolution::collectInfoOnSharedLocalMem(Module &M) {
       m_pGV->setAlignment(IGCLLVM::getCorrectAlign(maxAlignOnModule));
 
       for (auto call : callsToReplace) {
-        CastInst *cast = new BitCastInst(m_pGV, call->getCalledFunction()->getReturnType(), "mempoolcast", call);
+        CastInst *cast = new BitCastInst(m_pGV, call->getCalledFunction()->getReturnType(), "mempoolcast",
+                                         IGCLLVM::insertPosition(call));
 
         cast->setDebugLoc(call->getDebugLoc());
 

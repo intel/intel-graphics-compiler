@@ -401,7 +401,7 @@ Instruction *LSCFuncsResolution::CreateLSCLoadIntrinsicCallInst(GenISAIntrinsic:
 
   Type *OvldTys[2]{m_pCurrInstFunc->getReturnType(), args[0]->getType()};
   Function *lscFunc = GenISAIntrinsic::getDeclaration(m_pCurrInstFunc->getParent(), op, OvldTys);
-  Instruction *lscCall = CallInst::Create(lscFunc, args, "", m_pCurrInst);
+  Instruction *lscCall = CallInst::Create(lscFunc, args, "", IGCLLVM::insertPosition(m_pCurrInst));
   return lscCall;
 }
 
@@ -426,7 +426,7 @@ Instruction *LSCFuncsResolution::CreateLSC2DBlockAddressPayload(CallInst &CI) {
   Type *Tys[1] = {CI.getType()};
   Function *Func =
       GenISAIntrinsic::getDeclaration(CI.getModule(), GenISAIntrinsic::GenISA_LSC2DBlockCreateAddrPayload, Tys);
-  Instruction *I = CallInst::Create(Func, args, "Block2D_AddrPayload", &CI);
+  Instruction *I = CallInst::Create(Func, args, "Block2D_AddrPayload", IGCLLVM::insertPosition(&CI));
   updateDebugLoc(&CI, I);
   return I;
 }
@@ -435,7 +435,7 @@ Instruction *LSCFuncsResolution::CopyLSC2DBlockAddressPayload(CallInst &CI) {
   Value *args[]{CI.getArgOperand(0)};
   Function *Func =
       GenISAIntrinsic::getDeclaration(CI.getModule(), GenISAIntrinsic::GenISA_LSC2DBlockCopyAddrPayload, CI.getType());
-  Instruction *I = CallInst::Create(Func, args, "Block2D_AddrPayload", &CI);
+  Instruction *I = CallInst::Create(Func, args, "Block2D_AddrPayload", IGCLLVM::insertPosition(&CI));
   updateDebugLoc(&CI, I);
   return I;
 }
@@ -450,7 +450,7 @@ Instruction *LSCFuncsResolution::SetLSC2DBlockAddressPayloadField(CallInst &CI, 
   Function *Func =
       GenISAIntrinsic::getDeclaration(CI.getModule(), GenISAIntrinsic::GenISA_LSC2DBlockSetAddrPayloadField, tys);
 
-  Instruction *I = CallInst::Create(Func, args, "", &CI);
+  Instruction *I = CallInst::Create(Func, args, "", IGCLLVM::insertPosition(&CI));
   updateDebugLoc(&CI, I);
   return I;
 }
@@ -630,7 +630,7 @@ Instruction *LSCFuncsResolution::CreateSubGroup2DBlockOperationAP(CallInst &CI, 
                                            GenISAIntrinsic::GenISA_LSC2DBlockWriteAddrPayload, tys);
   }
 
-  Instruction *callI = CallInst::Create(Func, args, "", &CI);
+  Instruction *callI = CallInst::Create(Func, args, "", IGCLLVM::insertPosition(&CI));
   updateDebugLoc(&CI, callI);
 
   // For verifying block dimension at the end of runOnFuncion.
@@ -1113,9 +1113,11 @@ Instruction *LSCFuncsResolution::CreateSubGroup2DBlockOperation(llvm::CallInst &
 
   LLVMContext &C = CI.getCalledFunction()->getContext();
   ConstantInt *constIndex = ConstantInt::get((Type::getInt32Ty(C)), 0);
-  Instruction *xOffset = ExtractElementInst::Create(CI.getArgOperand(4), constIndex, "xOffset", &CI);
+  Instruction *xOffset =
+      ExtractElementInst::Create(CI.getArgOperand(4), constIndex, "xOffset", IGCLLVM::insertPosition(&CI));
   ConstantInt *constIndex2 = ConstantInt::get((Type::getInt32Ty(C)), 1);
-  Instruction *yOffset = ExtractElementInst::Create(CI.getArgOperand(4), constIndex2, "yOffset", &CI);
+  Instruction *yOffset =
+      ExtractElementInst::Create(CI.getArgOperand(4), constIndex2, "yOffset", IGCLLVM::insertPosition(&CI));
   updateDebugLoc(&CI, xOffset);
   updateDebugLoc(&CI, yOffset);
   args.push_back(xOffset);
@@ -1154,7 +1156,7 @@ Instruction *LSCFuncsResolution::CreateSubGroup2DBlockOperation(llvm::CallInst &
                                                 GenISAIntrinsic::GenISA_LSC2DBlockWrite, srcVal->getType());
   }
 
-  Instruction *BlockOp = CallInst::Create(BlockFunc, args, "", &CI);
+  Instruction *BlockOp = CallInst::Create(BlockFunc, args, "", IGCLLVM::insertPosition(&CI));
   return BlockOp;
 }
 
@@ -1175,7 +1177,7 @@ Instruction *LSCFuncsResolution::CreateLSCLoadCmaskIntrinsicCallInst(bool isLoca
   Type *OvldTys[2]{m_pCurrInstFunc->getReturnType(), args[0]->getType()};
   Function *lscFunc =
       GenISAIntrinsic::getDeclaration(m_pCurrInstFunc->getParent(), GenISAIntrinsic::GenISA_LSCLoadCmask, OvldTys);
-  Instruction *lscCall = CallInst::Create(lscFunc, args, "", m_pCurrInst);
+  Instruction *lscCall = CallInst::Create(lscFunc, args, "", IGCLLVM::insertPosition(m_pCurrInst));
   return lscCall;
 }
 
@@ -1238,7 +1240,7 @@ Instruction *LSCFuncsResolution::CreateLSCSimdBlockPrefetchIntrinsicCallInst(Str
 
   Function *lscFunc = GenISAIntrinsic::getDeclaration(m_pCurrInstFunc->getParent(),
                                                       GenISAIntrinsic::GenISA_LSCSimdBlockPrefetch, OvldTys);
-  Instruction *lscCall = CallInst::Create(lscFunc, args, "", m_pCurrInst);
+  Instruction *lscCall = CallInst::Create(lscFunc, args, "", IGCLLVM::insertPosition(m_pCurrInst));
   return lscCall;
 }
 
@@ -1261,11 +1263,11 @@ Instruction *LSCFuncsResolution::CreateLSCLoadStatusPreftchIntrinsicCallInst(Gen
       args[0]->getType(), // only one overloaded type
   };
   Function *lscFunc = GenISAIntrinsic::getDeclaration(m_pCurrInstFunc->getParent(), prefetchOp, OvldTys);
-  Instruction *lscCall = CallInst::Create(lscFunc, args, "", m_pCurrInst);
+  Instruction *lscCall = CallInst::Create(lscFunc, args, "", IGCLLVM::insertPosition(m_pCurrInst));
   if (prefetchOp == GenISAIntrinsic::GenISA_LSCLoadStatus) {
     // the intrinic treats bool as i1, but OCL treats bools as i8
     Type *i8 = Type::getInt8Ty(m_pCurrInst->getContext());
-    lscCall = BitCastInst::CreateZExtOrBitCast(lscCall, i8, "", m_pCurrInst);
+    lscCall = BitCastInst::CreateZExtOrBitCast(lscCall, i8, "", IGCLLVM::insertPosition(m_pCurrInst));
   }
   return lscCall;
 }
@@ -1291,7 +1293,7 @@ Instruction *LSCFuncsResolution::CreateLSCStoreIntrinsicCallInst(GenISAIntrinsic
   };
 
   Function *lscFunc = GenISAIntrinsic::getDeclaration(m_pCurrInstFunc->getParent(), op, OvldTys);
-  Instruction *lscCall = CallInst::Create(lscFunc, args, "", m_pCurrInst);
+  Instruction *lscCall = CallInst::Create(lscFunc, args, "", IGCLLVM::insertPosition(m_pCurrInst));
   return lscCall;
 }
 
@@ -1317,7 +1319,7 @@ Instruction *LSCFuncsResolution::CreateLSCStoreCmaskIntrinsicCallInst(bool isLoc
 
   Function *lscFunc =
       GenISAIntrinsic::getDeclaration(m_pCurrInstFunc->getParent(), GenISAIntrinsic::GenISA_LSCStoreCmask, OvldTys);
-  Instruction *lscCall = CallInst::Create(lscFunc, args, "", m_pCurrInst);
+  Instruction *lscCall = CallInst::Create(lscFunc, args, "", IGCLLVM::insertPosition(m_pCurrInst));
   return lscCall;
 }
 
@@ -1355,7 +1357,7 @@ Instruction *LSCFuncsResolution::CreateLSCFenceIntrinsicCallInst(CallInst &CI) {
 
   Function *lscFunc =
       GenISAIntrinsic::getDeclaration(m_pCurrInstFunc->getParent(), GenISAIntrinsic::GenISA_LSCFence, {});
-  Instruction *lscCall = CallInst::Create(lscFunc, args, "", m_pCurrInst);
+  Instruction *lscCall = CallInst::Create(lscFunc, args, "", IGCLLVM::insertPosition(m_pCurrInst));
   return lscCall;
 }
 
@@ -1386,12 +1388,12 @@ Instruction *LSCFuncsResolution::CreateLSCFenceEvictToMemory() {
 
   Function *lscFunc =
       GenISAIntrinsic::getDeclaration(m_pCurrInstFunc->getParent(), GenISAIntrinsic::GenISA_LSCFence, {});
-  Instruction *lscCall = CallInst::Create(lscFunc, args, "", m_pCurrInst);
+  Instruction *lscCall = CallInst::Create(lscFunc, args, "", IGCLLVM::insertPosition(m_pCurrInst));
 
   if (context->platform.getPlatformInfo().eRenderCoreFamily == IGFX_XE_HPG_CORE) {
     args[2] = getConstantInt32(LSC_FENCE_OP_FLUSHL3);
 
-    lscCall = CallInst::Create(lscFunc, args, "", m_pCurrInst);
+    lscCall = CallInst::Create(lscFunc, args, "", IGCLLVM::insertPosition(m_pCurrInst));
   }
 
   // It does not really matter which lscCall is returned, as
@@ -1468,7 +1470,7 @@ Instruction *LSCFuncsResolution::CreateLSCAtomicIntrinsicCallInst(bool isLocalMe
     lscFunc = GenISAIntrinsic::getDeclaration(m_pCurrInstFunc->getParent(), id, FltTysOvld);
   }
 
-  Instruction *lscCall = CallInst::Create(lscFunc, args, "", m_pCurrInst);
+  Instruction *lscCall = CallInst::Create(lscFunc, args, "", IGCLLVM::insertPosition(m_pCurrInst));
   return lscCall;
 }
 

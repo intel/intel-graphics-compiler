@@ -228,7 +228,8 @@ void GenericAddressDynamicResolution::resolveGAS(Instruction &I, Value *pointerO
   ConstantInt *localTag = builder.getInt64(2);   // tag 010
 
   Type *intPtrTy = getPointerAsIntType(pointerOperand->getContext(), ADDRESS_SPACE_GENERIC);
-  Value *ptrAsInt = PtrToIntInst::Create(Instruction::PtrToInt, pointerOperand, intPtrTy, "", &I);
+  Value *ptrAsInt =
+      PtrToIntInst::Create(Instruction::PtrToInt, pointerOperand, intPtrTy, "", IGCLLVM::insertPosition(&I));
   // Get actual tag
   Value *tag = builder.CreateLShr(ptrAsInt, ConstantInt::get(ptrAsInt->getType(), 61));
 
@@ -396,7 +397,7 @@ bool GenericAddressDynamicResolution::visitIntrinsicCall(CallInst &I) {
     ConstantInt *localTag = builder.getInt64(2);   // tag 010
 
     Type *intPtrTy = getPointerAsIntType(arg->getContext(), ADDRESS_SPACE_GENERIC);
-    Value *ptrAsInt = PtrToIntInst::Create(Instruction::PtrToInt, arg, intPtrTy, "", &I);
+    Value *ptrAsInt = PtrToIntInst::Create(Instruction::PtrToInt, arg, intPtrTy, "", IGCLLVM::insertPosition(&I));
     // Get actual tag
     Value *tag = builder.CreateLShr(ptrAsInt, ConstantInt::get(ptrAsInt->getType(), 61));
 

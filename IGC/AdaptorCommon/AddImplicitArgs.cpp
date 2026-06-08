@@ -25,6 +25,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/ADT/DepthFirstIterator.h>
 #include "common/LLVMWarningsPop.hpp"
 #include "llvmWrapper/IR/Function.h"
+#include "llvmWrapper/IR/DIBuilder.h"
 #include <llvmWrapper/ADT/STLExtras.h>
 #include <llvmWrapper/IR/Instructions.h>
 
@@ -241,7 +242,7 @@ void AddImplicitArgs::updateNewFuncArgs(llvm::Function *pFunc, llvm::Function *p
   for (const auto &toReplace : newAddr) {
     auto d = dyn_cast<DbgDeclareInst>(toReplace.first);
 
-    llvm::DIBuilder Builder(*pNewFunc->getParent());
+    IGCLLVM::DIBuilder Builder(*pNewFunc->getParent());
     auto DIVar = d->getVariable();
     auto DIExpr = d->getExpression();
 
@@ -391,9 +392,9 @@ void AddImplicitArgs::replaceAllUsesWithNewOCLBuiltinFunction(llvm::Function *ol
     // insert new call instruction before old one
     llvm::CallInst *inst;
     if (new_func->getReturnType()->isVoidTy()) {
-      inst = CallInst::Create(new_func, new_args, "", cInst);
+      inst = CallInst::Create(new_func, new_args, "", IGCLLVM::insertPosition(cInst));
     } else {
-      inst = CallInst::Create(new_func, new_args, new_func->getName(), cInst);
+      inst = CallInst::Create(new_func, new_args, new_func->getName(), IGCLLVM::insertPosition(cInst));
     }
     inst->setCallingConv(new_func->getCallingConv());
     inst->setDebugLoc(cInst->getDebugLoc());
@@ -414,7 +415,7 @@ llvm::Value *AddImplicitArgs::coerce(llvm::Value *arg, llvm::Type *type, llvm::I
   std::string str0;
   llvm::raw_string_ostream s(str0);
   arg->getType()->print(s);
-  return new llvm::BitCastInst(arg, type, "", insertBefore);
+  return new llvm::BitCastInst(arg, type, "", IGCLLVM::insertPosition(insertBefore));
 }
 
 // Builtin CallGraph Analysis

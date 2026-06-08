@@ -76,8 +76,8 @@ static void rewritePHIs(BasicBlock &BB) {
     do {
       int Index = PN->getBasicBlockIndex(IncomingBB);
       Value *V = PN->getIncomingValue(Index);
-      PHINode *InputV =
-          PHINode::Create(V->getType(), 1, V->getName() + Twine(".") + BB.getName(), &IncomingBB->front());
+      PHINode *InputV = PHINode::Create(V->getType(), 1, V->getName() + Twine(".") + BB.getName(),
+                                        IGCLLVM::insertPosition(&IncomingBB->front()));
       InputV->addIncoming(V, Pred);
       PN->setIncomingValue(Index, InputV);
       PN = dyn_cast<PHINode>(PN->getNextNode());

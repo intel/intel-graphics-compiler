@@ -19,6 +19,7 @@ SPDX-License-Identifier: MIT
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include <optional>
 #include "llvmWrapper/IR/Instructions.h"
+#include "llvmWrapper/IR/DIBuilder.h"
 
 // (1)
 // Optimization pass to lower generic pointers in function arguments.
@@ -208,8 +209,9 @@ void LowerGPCallArg::updateFunctionArgs(Function *oldFunc, Function *newFunc) {
       continue;
     }
 
-    auto *NewArgToGeneric = CastInst::Create(Instruction::AddrSpaceCast, newArg, oldArg->getType(), "",
-                                             IGCLLVM::getFirstNonPHI(&newFunc->getEntryBlock()));
+    auto *NewArgToGeneric =
+        CastInst::Create(Instruction::AddrSpaceCast, newArg, oldArg->getType(), "",
+                         IGCLLVM::insertPosition(IGCLLVM::getFirstNonPHI(&newFunc->getEntryBlock())));
     oldArg->replaceAllUsesWith(NewArgToGeneric);
 
     LoopInfo &LI = getAnalysis<LoopInfoWrapperPass>(*newFunc).getLoopInfo();
@@ -231,7 +233,7 @@ void replaceValueInDbgInfoIntrinsic(llvm::Value *Old, llvm::Value *New, llvm::Mo
     auto localAsMD = ValueAsMetadata::getIfExists(Old);
     auto addrSpaceMD = MetadataAsValue::getIfExists(Old->getContext(), localAsMD);
     if (addrSpaceMD) {
-      llvm::DIBuilder DIB(M);
+      IGCLLVM::DIBuilder DIB(M);
       std::vector<llvm::DbgInfoIntrinsic *> DbgInfoInstToDelete;
       for (auto *User : addrSpaceMD->users()) {
         if (cast<DbgInfoIntrinsic>(User)) {
@@ -315,7 +317,8 @@ void LowerGPCallArg::updateAllUsesWithNewFunction(Function *oldFunc, Function *n
 
     // Create new call and insert it before old one
     CallInst *inst =
-        CallInst::Create(newFunc, newCallArgs, newFunc->getReturnType()->isVoidTy() ? "" : newFunc->getName(), cInst);
+        CallInst::Create(newFunc, newCallArgs, newFunc->getReturnType()->isVoidTy() ? "" : newFunc->getName(),
+                         IGCLLVM::insertPosition(cInst));
 
     inst->setCallingConv(newFunc->getCallingConv());
     inst->setDebugLoc(cInst->getDebugLoc());

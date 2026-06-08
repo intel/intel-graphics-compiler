@@ -214,7 +214,7 @@ bool GASPropagator::visitPHINode(PHINode &PN) {
   }
 
   // Propagate this phi node.
-  PHINode *NewPN = PHINode::Create(NonGASTy, e, "", &PN);
+  PHINode *NewPN = PHINode::Create(NonGASTy, e, "", IGCLLVM::insertPosition(&PN));
   for (unsigned i = 0; i != e; ++i)
     NewPN->addIncoming(NewIncomingValues[i], PN.getIncomingBlock(i));
   NewPN->takeName(&PN);

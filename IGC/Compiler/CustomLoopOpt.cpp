@@ -347,7 +347,7 @@ void CustomLoopVersioning::rewriteLoopSeg2(Loop *loop, Value *interval_y, Value 
   IGC_ASSERT(nullptr != fcmp);
   IGC_ASSERT(fcmp->getOperand(1) == interval_y);
 
-  Instruction *v = BinaryOperator::Create(Instruction::FDiv, interval_y, cbLoad, "", fcmp);
+  Instruction *v = BinaryOperator::Create(Instruction::FDiv, interval_y, cbLoad, "", IGCLLVM::insertPosition(fcmp));
   v->setFast(true);
   fcmp->setOperand(1, v);
 
@@ -549,7 +549,7 @@ void CustomLoopVersioning::addPhiNodes(const SmallVectorImpl<Instruction *> &liv
     Value *seg3Val = m_vmapToSeg3[Inst];
     PHINode *phi;
 
-    phi = PHINode::Create(Inst->getType(), 2, "", &phiBB->front());
+    phi = PHINode::Create(Inst->getType(), 2, "", IGCLLVM::insertPosition(&phiBB->front()));
     SmallVector<Instruction *, 8> instToDel;
     for (auto *User : Inst->users()) {
       PHINode *pu = dyn_cast<PHINode>(User);
@@ -659,7 +659,8 @@ static BasicBlock *insertUniqueBackedgeBlock(Loop *L, BasicBlock *Preheader, Dom
   // the backedge block which correspond to any PHI nodes in the header block.
   for (BasicBlock::iterator I = Header->begin(); isa<PHINode>(I); ++I) {
     PHINode *PN = cast<PHINode>(I);
-    PHINode *NewPN = PHINode::Create(PN->getType(), BackedgeBlocks.size(), PN->getName() + ".be", BETerminator);
+    PHINode *NewPN = PHINode::Create(PN->getType(), BackedgeBlocks.size(), PN->getName() + ".be",
+                                     IGCLLVM::insertPosition(BETerminator));
 
     // Loop over the PHI node, moving all entries except the one for the
     // preheader over to the new PHI node.
@@ -943,8 +944,8 @@ bool LoopHoistConstant::runOnLoop(Loop *L, LPPassManager &LPM) {
   // First split the HeaderBB into if/then/else blocks.
   Instruction *ifTerm;
   Instruction *elseTerm;
-  auto cmpIfHoist =
-      FCmpInst::Create(LoopCond->getOpcode(), LoopCond->getPredicate(), InductionPostInc, LoopSize, "", MinInst);
+  auto cmpIfHoist = FCmpInst::Create(LoopCond->getOpcode(), LoopCond->getPredicate(), InductionPostInc, LoopSize, "",
+                                     IGCLLVM::insertPosition(MinInst));
   llvm::SplitBlockAndInsertIfThenElse(cmpIfHoist, MinInst, &ifTerm, &elseTerm);
 
   BasicBlock *ifHoistBB = ifTerm->getParent();
@@ -999,7 +1000,7 @@ bool LoopHoistConstant::runOnLoop(Loop *L, LPPassManager &LPM) {
     // For users of the original instruction outside of the HeaderBB, we need a new PHINode
     // to pick between the if.hoist and else.hoist blocks
     if (II.isUsedOutsideOfBlock(elseHoistBB) && VMap.find(&II) != VMap.end()) {
-      PHINode *PN = PHINode::Create(II.getType(), 2, "", endHoistBB->getTerminator());
+      PHINode *PN = PHINode::Create(II.getType(), 2, "", IGCLLVM::insertPosition(endHoistBB->getTerminator()));
       if (PN) {
         II.replaceUsesOutsideBlock(PN, elseHoistBB);
         PN->addIncoming(VMap[&II], ifHoistBB);
@@ -1537,7 +1538,7 @@ bool LoopSplitWidePHIs::processPHI(SmallVectorImpl<PHINode *> &WL, Loop *L) {
   // the incoming preheader value.
   PHINode *NewPHI[2];
   for (unsigned i = 0; i < 2; ++i)
-    NewPHI[i] = PHINode::Create(CV.Types[i], 2, "split", PHI);
+    NewPHI[i] = PHINode::Create(CV.Types[i], 2, "split", IGCLLVM::insertPosition(PHI));
   int PreIdx = PHI->getBasicBlockIndex(Preheader);
   auto PreValue = PHI->getIncomingValue(PreIdx);
   for (unsigned i = 0; i < 2; ++i) {
@@ -1606,7 +1607,7 @@ bool LoopSplitWidePHIs::processPHI(SmallVectorImpl<PHINode *> &WL, Loop *L) {
       auto InsBeforeI = IGCLLVM::getFirstNonPHI(PN->getParent());
       Instruction *ToConcat[2];
       for (unsigned i = 0; i < 2; ++i) {
-        auto PHIPart = PHINode::Create(CV.Types[i], 1, "join", PN);
+        auto PHIPart = PHINode::Create(CV.Types[i], 1, "join", IGCLLVM::insertPosition(PN));
         PHIPart->addIncoming(CV.Parts[i], Latch);
         ToConcat[i] = PHIPart;
       }
@@ -1685,9 +1686,10 @@ PHINode *LoopSplitWidePHIs::foldBitcasts(PHINode *PHI, CatenatedValue &CV, Loop 
 
   // Create the new PHI of the shuffle type, and insert a bitcast
   // to the shuffle type for the preheader value.
-  auto NewPHI = PHINode::Create(CV.Result->getType(), 2, "", PHI);
+  auto NewPHI = PHINode::Create(CV.Result->getType(), 2, "", IGCLLVM::insertPosition(PHI));
   auto PreValue = PHI->getIncomingValueForBlock(Preheader);
-  auto PreValueBCI = new BitCastInst(PreValue, CV.Result->getType(), "", Preheader->getTerminator());
+  auto PreValueBCI =
+      new BitCastInst(PreValue, CV.Result->getType(), "", IGCLLVM::insertPosition(Preheader->getTerminator()));
   NewPHI->addIncoming(PreValueBCI, Preheader);
   NewPHI->addIncoming(CV.Result, Latch);
 
@@ -1713,9 +1715,9 @@ PHINode *LoopSplitWidePHIs::foldBitcasts(PHINode *PHI, CatenatedValue &CV, Loop 
     // Otherwise, we just generate a bitcast to the use type in place.
     if (auto *PN = dyn_cast<PHINode>(U)) {
       auto InsBeforeI = IGCLLVM::getFirstNonPHI(PN->getParent());
-      auto NewPN = PHINode::Create(CV.Result->getType(), 1, "", PN);
+      auto NewPN = PHINode::Create(CV.Result->getType(), 1, "", IGCLLVM::insertPosition(PN));
       NewPN->addIncoming(CV.Result, Latch);
-      auto BCI = new BitCastInst(NewPN, PN->getType(), "", InsBeforeI);
+      auto BCI = new BitCastInst(NewPN, PN->getType(), "", IGCLLVM::insertPosition(InsBeforeI));
 
       SmallVector<User *, 8u> Users(PN->users());
       for (auto *U : Users)
@@ -1723,7 +1725,7 @@ PHINode *LoopSplitWidePHIs::foldBitcasts(PHINode *PHI, CatenatedValue &CV, Loop 
       PN->eraseFromParent();
     } else {
       auto *I = cast<Instruction>(U);
-      auto BCI = new BitCastInst(CV.Result, U->getType(), "", I);
+      auto BCI = new BitCastInst(CV.Result, U->getType(), "", IGCLLVM::insertPosition(I));
       I->replaceUsesOfWith(CV.Bitcast, BCI);
     }
   }

@@ -107,11 +107,11 @@ std::tuple<Value *, Value *, Value *> BufferBoundsChecking::getLocalIds(Function
 
   return {
       CallInst::Create(getOrCreateBuiltin("__builtin_IB_get_local_id_x"), {}, "localId0",
-                       IGCLLVM::getFirstNonPHI(&function.getEntryBlock())),
+                       IGCLLVM::insertPosition(IGCLLVM::getFirstNonPHI(&function.getEntryBlock()))),
       CallInst::Create(getOrCreateBuiltin("__builtin_IB_get_local_id_y"), {}, "localId1",
-                       IGCLLVM::getFirstNonPHI(&function.getEntryBlock())),
+                       IGCLLVM::insertPosition(IGCLLVM::getFirstNonPHI(&function.getEntryBlock()))),
       CallInst::Create(getOrCreateBuiltin("__builtin_IB_get_local_id_z"), {}, "localId2",
-                       IGCLLVM::getFirstNonPHI(&function.getEntryBlock())),
+                       IGCLLVM::insertPosition(IGCLLVM::getFirstNonPHI(&function.getEntryBlock()))),
   };
 }
 
@@ -122,11 +122,11 @@ std::tuple<Value *, Value *, Value *> BufferBoundsChecking::getGlobalIds(Functio
 
   return {
       CallInst::Create(builtin, {ConstantInt::get(Type::getInt32Ty(function.getContext()), 0)}, "globalId0",
-                       IGCLLVM::getFirstNonPHI(&function.getEntryBlock())),
+                       IGCLLVM::insertPosition(IGCLLVM::getFirstNonPHI(&function.getEntryBlock()))),
       CallInst::Create(builtin, {ConstantInt::get(Type::getInt32Ty(function.getContext()), 1)}, "globalId1",
-                       IGCLLVM::getFirstNonPHI(&function.getEntryBlock())),
+                       IGCLLVM::insertPosition(IGCLLVM::getFirstNonPHI(&function.getEntryBlock()))),
       CallInst::Create(builtin, {ConstantInt::get(Type::getInt32Ty(function.getContext()), 2)}, "globalId2",
-                       IGCLLVM::getFirstNonPHI(&function.getEntryBlock())),
+                       IGCLLVM::insertPosition(IGCLLVM::getFirstNonPHI(&function.getEntryBlock()))),
   };
 }
 
@@ -159,18 +159,20 @@ Value *BufferBoundsChecking::createBoundsCheckingCondition(const AccessInfo &acc
 
   auto bufferSizePlaceholder = createBufferSizePlaceholder(accessInfo.implicitArgBufferSizeIndex, insertBefore);
 
-  auto bufferSizeIsZero = new ICmpInst(insertBefore, ICmpInst::ICMP_EQ, bufferSizePlaceholder, zero);
+  auto bufferSizeIsZero =
+      new ICmpInst(IGCLLVM::insertPosition(insertBefore), ICmpInst::ICMP_EQ, bufferSizePlaceholder, zero);
   auto bufferOffsetIsGreaterOrEqualZero =
-      new ICmpInst(insertBefore, ICmpInst::ICMP_SGE, accessInfo.bufferOffsetInBytes, zero);
-  auto upperBound =
-      BinaryOperator::Create(Instruction::Sub, bufferSizePlaceholder, accessInfo.elementSizeInBytes, "", insertBefore);
-  auto bufferOffsetIsLessThanSizeMinusElemSize =
-      new ICmpInst(insertBefore, ICmpInst::ICMP_SLT, accessInfo.bufferOffsetInBytes, upperBound);
+      new ICmpInst(IGCLLVM::insertPosition(insertBefore), ICmpInst::ICMP_SGE, accessInfo.bufferOffsetInBytes, zero);
+  auto upperBound = BinaryOperator::Create(Instruction::Sub, bufferSizePlaceholder, accessInfo.elementSizeInBytes, "",
+                                           IGCLLVM::insertPosition(insertBefore));
+  auto bufferOffsetIsLessThanSizeMinusElemSize = new ICmpInst(IGCLLVM::insertPosition(insertBefore), ICmpInst::ICMP_SLT,
+                                                              accessInfo.bufferOffsetInBytes, upperBound);
 
   return BinaryOperator::Create(Instruction::Or, bufferSizeIsZero,
                                 BinaryOperator::Create(Instruction::And, bufferOffsetIsGreaterOrEqualZero,
-                                                       bufferOffsetIsLessThanSizeMinusElemSize, "", insertBefore),
-                                "", insertBefore);
+                                                       bufferOffsetIsLessThanSizeMinusElemSize, "",
+                                                       IGCLLVM::insertPosition(insertBefore)),
+                                "", IGCLLVM::insertPosition(insertBefore));
 }
 
 Value *BufferBoundsChecking::createLoadStoreReplacement(Instruction *instruction, Instruction *insertBefore) {
@@ -178,7 +180,8 @@ Value *BufferBoundsChecking::createLoadStoreReplacement(Instruction *instruction
     return Constant::getNullValue(instruction->getType());
   } else if (auto store = dyn_cast<StoreInst>(instruction)) {
     return new StoreInst(store->getValueOperand(),
-                         ConstantPointerNull::get(dyn_cast<PointerType>(store->getPointerOperandType())), insertBefore);
+                         ConstantPointerNull::get(dyn_cast<PointerType>(store->getPointerOperandType())),
+                         IGCLLVM::insertPosition(insertBefore));
   } else {
     IGC_ASSERT(0);
     return nullptr;
@@ -198,7 +201,7 @@ void BufferBoundsChecking::createAssertCall(const AccessInfo &accessInfo, Instru
                              FunctionType::get(Type::getVoidTy(M->getContext()), assertArgsTypes, false))
           .getCallee());
 
-  auto call = CallInst::Create(assert, assertArgs, "", insertBefore);
+  auto call = CallInst::Create(assert, assertArgs, "", IGCLLVM::insertPosition(insertBefore));
   call->setCallingConv(CallingConv::SPIR_FUNC);
 }
 
@@ -206,8 +209,8 @@ SmallVector<Value *, 4> BufferBoundsChecking::createAssertArgs(const AccessInfo 
                                                                llvm::Instruction *insertBefore) {
   auto createGEP = [insertBefore](GlobalVariable *globalVariable) {
     const auto zero = ConstantInt::getSigned(Type::getInt32Ty(globalVariable->getParent()->getContext()), 0);
-    auto result =
-        GetElementPtrInst::Create(globalVariable->getValueType(), globalVariable, {zero, zero}, "", insertBefore);
+    auto result = GetElementPtrInst::Create(globalVariable->getValueType(), globalVariable, {zero, zero}, "",
+                                            IGCLLVM::insertPosition(insertBefore));
     result->setIsInBounds(true);
     return result;
   };
@@ -270,7 +273,7 @@ void BufferBoundsChecking::createBoundsCheckingCode(Instruction *instruction, co
 
   // PhiNode
   if (isa<LoadInst>(instruction)) {
-    PHINode *phi = PHINode::Create(instruction->getType(), 2, "", &mergeBlock->front());
+    PHINode *phi = PHINode::Create(instruction->getType(), 2, "", IGCLLVM::insertPosition(&mergeBlock->front()));
     instruction->replaceUsesOutsideBlock(phi, thenBlock);
     phi->addIncoming(instruction, thenBlock);
     phi->addIncoming(replacement, elseBlock);
@@ -315,8 +318,10 @@ BufferBoundsChecking::AccessInfo BufferBoundsChecking::getAccessInfo(Instruction
     return AccessInfo{};
   }
 
-  auto baseAddress = new PtrToIntInst(base, Type::getInt64Ty(instruction->getContext()), "", instruction);
-  auto address = new PtrToIntInst(value, Type::getInt64Ty(instruction->getContext()), "", instruction);
+  auto baseAddress =
+      new PtrToIntInst(base, Type::getInt64Ty(instruction->getContext()), "", IGCLLVM::insertPosition(instruction));
+  auto address =
+      new PtrToIntInst(value, Type::getInt64Ty(instruction->getContext()), "", IGCLLVM::insertPosition(instruction));
 
   auto debugLoc = instruction->getDebugLoc();
 
@@ -326,7 +331,8 @@ BufferBoundsChecking::AccessInfo BufferBoundsChecking::getAccessInfo(Instruction
   result.column = debugLoc ? debugLoc->getColumn() : 0;
   result.bufferName = arg->getArg()->getName();
   result.bufferAddress = baseAddress;
-  result.bufferOffsetInBytes = BinaryOperator::CreateSub(address, baseAddress, "", instruction);
+  result.bufferOffsetInBytes =
+      BinaryOperator::CreateSub(address, baseAddress, "", IGCLLVM::insertPosition(instruction));
   result.implicitArgBufferSizeIndex = (int)std::count_if(
       instruction->getFunction()->arg_begin(), instruction->getFunction()->arg_begin() + arg->getAssociatedArgNo(),
       [this](const Argument &arg) { return argumentQualifiesForChecking(&arg); });
@@ -361,7 +367,7 @@ Value *BufferBoundsChecking::createBufferSizePlaceholder(uint32_t implicitArgBuf
       {
           ConstantInt::getSigned(Type::getInt64Ty(insertBefore->getContext()), implicitArgBufferSizeIndex),
       },
-      "", insertBefore);
+      "", IGCLLVM::insertPosition(insertBefore));
   result->setCallingConv(CallingConv::SPIR_FUNC);
   return result;
 }

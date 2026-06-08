@@ -718,8 +718,8 @@ void ConstantCoalescing::CombineTwoLoads(BufChunk *cov_chunk, Instruction *load,
       }
       // new IntToPtr and new load
       // cannot use irbuilder to create IntToPtr. It may create ConstantExpr instead of instruction
-      auto *ptrcast =
-          CastInst::CreateBitOrPointerCast(eac, IGCLLVM::PointerType::get(vty, addrSpace), "twoScalar", load0);
+      auto *ptrcast = CastInst::CreateBitOrPointerCast(eac, IGCLLVM::PointerType::get(vty, addrSpace), "twoScalar",
+                                                       IGCLLVM::insertPosition(load0));
       m_TT->RegisterNewValueAndAssignID(ptrcast);
       wiAns->incUpdateDepend(ptrcast, WIAnalysis::RANDOM);
       cov_chunk->chunkIO = irBuilder->CreateLoad(vty, ptrcast, false);
@@ -1216,7 +1216,7 @@ Value *ConstantCoalescing::SimpleBaseOffset(Value *elt_idxv, uint64_t &offset, E
     if (it1 != m_BaseOffsets.end()) {
       return it1->second;
     }
-    Instruction *newBase = BinaryOperator::Create(Instruction::Add, base0, base1, "", expr);
+    Instruction *newBase = BinaryOperator::Create(Instruction::Add, base0, base1, "", IGCLLVM::insertPosition(expr));
     wiAns->incUpdateDepend(newBase, std::max(wiAns->whichDepend(base0), wiAns->whichDepend(base1)));
     m_BaseOffsets.insert({MakeSortedPair(base0, base1), newBase});
     return newBase;
@@ -1452,7 +1452,8 @@ Instruction *ConstantCoalescing::CreateChunkLoad(Instruction *seedi, BufChunk *c
     unsigned addrSpace = (cast<PointerType>(cb_ptr->getType()))->getAddressSpace();
     PointerType *pty = IGCLLVM::PointerType::get(vty, addrSpace);
     // cannot use irbuilder to create IntToPtr. It may create ConstantExpr instead of instruction
-    Instruction *ptr = IntToPtrInst::Create(Instruction::IntToPtr, eac, pty, "chunkPtr", seedi);
+    Instruction *ptr =
+        IntToPtrInst::Create(Instruction::IntToPtr, eac, pty, "chunkPtr", IGCLLVM::insertPosition(seedi));
     m_TT->RegisterNewValueAndAssignID(ptr);
     // Update debug location
     ptr->setDebugLoc(irBuilder->getCurrentDebugLocation());

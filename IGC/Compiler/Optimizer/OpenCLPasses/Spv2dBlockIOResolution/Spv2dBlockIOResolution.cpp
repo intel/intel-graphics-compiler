@@ -185,7 +185,7 @@ template <typename CCT> void Spv2dBlockIOResolution::visit2DBlockSPVCallInst(Cal
               << (isSimd32Op ? "_sg32" : "") << "_cache_controls";
   auto newFunction = m_Module->getOrInsertFunction(newFuncName.str(), FT);
 
-  auto newCall = CallInst::Create(newFunction, args, "", &CI);
+  auto newCall = CallInst::Create(newFunction, args, "", IGCLLVM::insertPosition(&CI));
   CI.replaceAllUsesWith(newCall);
   CI.eraseFromParent();
   m_Changed = true;
