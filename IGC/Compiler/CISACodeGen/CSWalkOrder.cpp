@@ -173,17 +173,17 @@ void IGC::overrideWalkOrderKeysInPass(bool is_pow2_x, bool is_pow2_y, bool is_po
       driverInfo.SupportHWGenerateTID()) {
     threadIDLayout = ThreadIDLayout::TileY;
     walkOrder = CS_WALK_ORDER::WO_YXZ;
-    enableHWGenerateLID = enableHWGenerateLIDInPass(walkOrder, is_pow2_x, is_pow2_y, is_pow2_z);
+    enableHWGenerateLID = enableHWGenerateLIDInPass(walkOrder, is_pow2_x, is_pow2_y, is_pow2_z, ctx);
   }
 
   if (MMD->csInfo.walkOrderEnabled) {
     walkOrder = (CS_WALK_ORDER)MMD->csInfo.walkOrderOverride;
-    enableHWGenerateLID = enableHWGenerateLIDInPass(walkOrder, is_pow2_x, is_pow2_y, is_pow2_z);
+    enableHWGenerateLID = enableHWGenerateLIDInPass(walkOrder, is_pow2_x, is_pow2_y, is_pow2_z, ctx);
   }
 
   if (IGC_IS_FLAG_ENABLED(OverrideCsWalkOrderEnable)) {
     walkOrder = (CS_WALK_ORDER)IGC_GET_FLAG_VALUE(OverrideCsWalkOrder);
-    enableHWGenerateLID = enableHWGenerateLIDInPass(walkOrder, is_pow2_x, is_pow2_y, is_pow2_z);
+    enableHWGenerateLID = enableHWGenerateLIDInPass(walkOrder, is_pow2_x, is_pow2_y, is_pow2_z, ctx);
   }
 
   if (IGC_IS_FLAG_ENABLED(OverrideCsTileLayoutEnable)) {
@@ -203,7 +203,8 @@ void IGC::overrideWalkOrderKeysInPass(bool is_pow2_x, bool is_pow2_y, bool is_po
   }
 }
 
-bool IGC::enableHWGenerateLIDInPass(CS_WALK_ORDER walk_order, bool is_pow2_x, bool is_pow2_y, bool is_pow2_z) {
+bool IGC::enableHWGenerateLIDInPass(CS_WALK_ORDER walk_order, bool is_pow2_x, bool is_pow2_y, bool is_pow2_z,
+                                    [[maybe_unused]] CodeGenContext *ctx) {
   bool bEnableHWGenerateLID = false;
 
   switch (walk_order) {

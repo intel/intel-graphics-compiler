@@ -873,7 +873,7 @@ struct RoutingIndex {
 };
 
 /// Returns appropriate retry manager based on options.
-std::unique_ptr<RetryManager> createRetryManager(bool perKernel);
+std::unique_ptr<RetryManager> createRetryManager(const CPlatform &platform, bool perKernel);
 
 class CodeGenContext {
 private:
@@ -1073,7 +1073,7 @@ public:
                  LLVMContextWrapper *LLVMContext = nullptr) ///< LLVM context to use, if null a new one will be
                                                             ///< created
       : type(_type), platform(_platform), btiLayout(_bitLayout), m_DriverInfo(driverInfo), llvmCtxWrapper(LLVMContext),
-        m_retryManager(createRetryManager(type == ShaderType::OPENCL_SHADER)) {
+        m_retryManager(createRetryManager(platform, type == ShaderType::OPENCL_SHADER)) {
     if (llvmCtxWrapper == nullptr) {
       initLLVMContextWrapper(createResourceDimTypes);
     } else {

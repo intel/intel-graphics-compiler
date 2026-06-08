@@ -22,7 +22,8 @@ void selectWalkOrderInPass(bool useLinearWalk, uint numberOfTypedAccess, uint nu
 
 void overrideWalkOrderKeysInPass(bool is_pow2_x, bool is_pow2_y, bool is_pow2_z,
                                  SComputeShaderWalkOrder &walkOrderStruct, CodeGenContext *ctx);
-bool enableHWGenerateLIDInPass(CS_WALK_ORDER walk_order, bool is_pow2_x, bool is_pow2_y, bool is_pow2_z);
+bool enableHWGenerateLIDInPass(CS_WALK_ORDER walk_order, bool is_pow2_x, bool is_pow2_y, bool is_pow2_z,
+                               CodeGenContext *ctx);
 std::optional<CS_WALK_ORDER> selectBestWalkOrderInPass(ThreadIDLayout Layout, bool is_pow2_x, bool is_pow2_y,
                                                        bool is_pow2_z);
 void setEmitLocalMaskInPass(SGVUsage channelNum, EMIT_LOCAL_MASK &emitMask);

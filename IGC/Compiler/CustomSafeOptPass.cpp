@@ -4692,7 +4692,7 @@ class IGCIndirectICBPropagaion : public FunctionPass {
 public:
   static char ID;
   static constexpr unsigned ELT_SIZE = sizeof(uint32_t);
-  uint32_t getMaxImmConstantSizePushed() const;
+  uint32_t getMaxImmConstantSizePushed(const CPlatform &platform) const;
   std::optional<uint32_t> getMaxStorageWhenStoringUniqueValues(const std::vector<char> &data,
                                                                CompressionResult &compressionResult);
   void replaceExtractElementsWithCompressedFetches(std::vector<ExtractElementInst *> &largeExtractElements,
@@ -4717,7 +4717,7 @@ FunctionPass *IGC::createIGCIndirectICBPropagaionPass() { return new IGCIndirect
 
 /// Gets the maximum immediate constant size that can be pushed for the current target.
 /// @return Maximum size in bytes for immediate constants based on target configuration
-uint32_t IGCIndirectICBPropagaion::getMaxImmConstantSizePushed() const {
+uint32_t IGCIndirectICBPropagaion::getMaxImmConstantSizePushed([[maybe_unused]] const CPlatform &platform) const {
   return IGC_GET_FLAG_VALUE(MaxImmConstantSizePushed);
 }
 
@@ -4884,7 +4884,7 @@ void IGCIndirectICBPropagaion::replaceExtractElementsWithCompressedFetches(
 bool IGCIndirectICBPropagaion::runOnFunction(Function &F) {
   CodeGenContext *ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
   ModuleMetaData *modMD = ctx->getModuleMetaData();
-  auto maxImmConstantSizePushedLimit = getMaxImmConstantSizePushed();
+  auto maxImmConstantSizePushedLimit = getMaxImmConstantSizePushed(ctx->platform);
   auto storageNeeded = modMD->immConstant.data.size();
   std::vector<ExtractElementInst *> largeExtractElements;
   bool enableCompression = false;

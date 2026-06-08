@@ -1577,5 +1577,7 @@ public:
   }
 
   bool supportIntDivRemIncrementReduction() const { return isCoreChildOf(IGFX_XE_HP_CORE); }
+
 };
+
 } // namespace IGC

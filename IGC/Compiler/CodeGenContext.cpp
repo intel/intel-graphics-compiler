@@ -461,7 +461,7 @@ RetryManagerVISA *CodeGenContext::getRetryManagerVISA() const {
 }
 
 /// Returns appropriate retry manager based on options. Called from CodeGenContext constructor.
-std::unique_ptr<RetryManager> createRetryManager(bool perKernel) {
+std::unique_ptr<RetryManager> createRetryManager([[maybe_unused]] const CPlatform &platform, bool perKernel) {
   std::unique_ptr<RetryManager> mgr;
   {
     mgr = std::make_unique<RetryManagerVISA>();
