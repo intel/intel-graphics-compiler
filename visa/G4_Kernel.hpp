@@ -140,6 +140,17 @@ public:
     unsigned size = configs.size();
     for (unsigned i = 0; i < size; i++) {
       if (configs[i].numThreads == nthreads) {
+        for (unsigned chosenCfg = i;
+             chosenCfg < size && configs[chosenCfg].numThreads == nthreads;
+             chosenCfg++) {
+          if ((configs[chosenCfg].numThreads == 8 &&
+               configs[chosenCfg].numGRF == 128) ||
+              (configs[chosenCfg].numThreads == 4 &&
+               configs[chosenCfg].numGRF == 256)) {
+            i = chosenCfg;
+            break;
+          }
+        }
         currentMode = i;
         break;
       }
