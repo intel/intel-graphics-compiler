@@ -5963,6 +5963,8 @@ void EmitPass::emitLdInstruction(llvm::Instruction *inst) {
     zeroLOD = true;
   }
 
+  SIMDMode minSamplerMessageSimdMode = m_currShader->m_Platform->getMinDispatchMode();
+
   // create send payload for numSources
   for (uint i = 0; i < numSources; i++) {
     uint index = i;
@@ -5975,11 +5977,11 @@ void EmitPass::emitLdInstruction(llvm::Instruction *inst) {
 
     CVariable *src = GetSymbol(inst->getOperand(index));
     if (src->IsUniform()) {
-      auto uniformSIMDMode = m_currShader->m_Platform->getMinDispatchMode();
-      uint16_t size = m_destination->IsUniform() ? numLanes(uniformSIMDMode) : numLanes(m_currShader->m_SIMDSize);
+      uint16_t size =
+          m_destination->IsUniform() ? numLanes(minSamplerMessageSimdMode) : numLanes(m_currShader->m_SIMDSize);
       CVariable *newSource =
           m_currShader->GetNewVariable(size, src->GetType(), EALIGN_GRF, m_destination->IsUniform(), src->getName());
-      m_encoder->SetUniformSIMDSize(uniformSIMDMode);
+      m_encoder->SetUniformSIMDSize(minSamplerMessageSimdMode);
       m_encoder->Copy(newSource, src);
       m_encoder->Push();
       src = newSource;
@@ -5991,11 +5993,9 @@ void EmitPass::emitLdInstruction(llvm::Instruction *inst) {
   // SIMD8 mode. Hence the movs to handle this layout in SIMD8 mode
   bool needPacking = false;
   CVariable *dst = m_destination;
-  SIMDMode simdSize = m_currShader->m_SIMDSize;
   {
     if (dst->IsUniform()) {
-      simdSize = m_currShader->m_Platform->getMinDispatchMode();
-      unsigned short numberOfElement = dst->GetNumberElement() * numLanes(simdSize);
+      unsigned short numberOfElement = dst->GetNumberElement() * numLanes(minSamplerMessageSimdMode);
       numberOfElement = CEncoder::GetCISADataTypeSize(dst->GetType()) == 2 ? numberOfElement * 2 : numberOfElement;
       dst = m_currShader->GetNewVariable(numberOfElement, dst->GetType(), EALIGN_GRF, dst->IsUniform(), dst->getName());
     } else {
@@ -6021,7 +6021,7 @@ void EmitPass::emitLdInstruction(llvm::Instruction *inst) {
 
   m_encoder->SetPredicate(flag);
   if (m_destination->IsUniform()) {
-    m_encoder->SetUniformSIMDSize(m_currShader->m_Platform->getMinDispatchMode());
+    m_encoder->SetUniformSIMDSize(minSamplerMessageSimdMode);
   }
 
   SamplerLoadIntrinsic *samplerLoadIntrinsic = llvm::cast<llvm::SamplerLoadIntrinsic>(inst);
@@ -6049,12 +6049,19 @@ void EmitPass::emitLdInstruction(llvm::Instruction *inst) {
     if (m_destination->IsUniform()) {
       // if dst is uniform, we simply copy the first lane of each channel
       // (including feedback enable if present) to the packed m_destination.
-      // Note that there's no need to handle feedback enable specially
       for (unsigned int i = 0; i < m_destination->GetNumberElement(); i++) {
         m_encoder->SetSrcRegion(0, 0, 1, 0);
         m_encoder->SetSrcSubVar(0, i);
         m_encoder->SetDstSubReg(i);
-        m_encoder->Copy(m_destination, dst);
+        // Feedback mask is a 32-bit value with `1` for unused SIMD channels.
+        if (feedbackEnable && i == (m_destination->GetNumberElement() - 1)) {
+          m_encoder->And(
+              m_currShader->GetNewAlias(m_destination, GetUnsignedIntegerType(m_destination->GetType()), 0, 0),
+              m_currShader->GetNewAlias(dst, GetUnsignedIntegerType(dst->GetType()), 0, 0),
+              m_currShader->ImmToVariable(0x1, ISA_TYPE_UW));
+        } else {
+          m_encoder->Copy(m_destination, dst);
+        }
         m_encoder->Push();
       }
     } else {
@@ -15293,9 +15300,9 @@ void EmitPass::emitScalarAtomics(llvm::Instruction *pInst, ResourceDescriptor &r
       // srcmod on mov
       if (negateSrc) {
         m_encoder->SetSrcModifier(0, EMOD_NEG);
+        m_encoder->Copy(pFinalAtomicSrcVal, pFinalAtomicSrcVal);
+        m_encoder->Push();
       }
-      m_encoder->Copy(pFinalAtomicSrcVal, pFinalAtomicSrcVal);
-      m_encoder->Push();
     }
   } else if ((op == EOPCODE_AND || op == EOPCODE_OR) && pSrc->IsUniform()) {
     pFinalAtomicSrcVal = ReAlignUniformVariable(pSrc, EALIGN_GRF);
@@ -25098,7 +25105,9 @@ void EmitPass::emitPostProcessRayQueryReturn(llvm::PostProcessRayQueryReturn *I)
 
   const uint16_t numElems = (m_currShader->m_SIMDSize == SIMDMode::SIMD32) ? 32 : 16;
 
-  rayQueryReturnValue = m_currShader->GetNewAlias(rayQueryReturnValue, VISA_Type::ISA_TYPE_UW, 0, numElems);
+  if (!rayQueryReturnValue->IsImmediate()) {
+    rayQueryReturnValue = m_currShader->GetNewAlias(rayQueryReturnValue, VISA_Type::ISA_TYPE_UW, 0, numElems);
+  }
 
   m_encoder->Cast(m_destination, rayQueryReturnValue);
   m_encoder->Push();
