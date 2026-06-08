@@ -42,6 +42,7 @@ SPDX-License-Identifier: MIT
 #include "LLVM3DBuilder/MetadataBuilder.h"
 #include "Probe/Assertion.h"
 #include <functional>
+#include <unordered_map>
 #include <optional>
 #include <utility>
 #include "common/ResourceAddrSpace.h"
@@ -375,6 +376,49 @@ llvm::Function *getUniqueEntryFunc(const IGCMD::MetaDataUtils *pM, IGC::ModuleMe
 // Returns a SIMD size for given function from metadata.
 // Returns 0 if function is not in metadata or function has not defined SIMD size.
 int getSIMDSize(const IGCMD::MetaDataUtils *M, llvm::Function *F);
+
+// Resolves (and pins) the kernel sub-group/SIMD size for builtin-resolution passes that
+// lower builtins to intrinsics before the backend fixes the SIMD width. The generic
+// mechanism - walking the call graph to the entry kernel, honoring forced size / dev
+// regkeys / the reqd_sub_group_size attribute, otherwise picking a platform default, and
+// writing the chosen size back so the backend cannot diverge - is shared here. The
+// per-feature policy (which SIMD sizes are valid and the platform default) is injected by
+// the constructor.
+class KernelSIMDSizeResolver {
+public:
+  // Returns true if simdSize is acceptable for this feature on the current platform.
+  using ValidatorFn = std::function<bool(int32_t)>;
+  // Returns the SIMD size to use when neither flags, the driver, nor the kernel attribute
+  // specify one. May emit an error and return 0 on unsupported configurations.
+  using DefaultFn = std::function<int32_t()>;
+
+  KernelSIMDSizeResolver(CodeGenContext *Ctx, IGCMD::MetaDataUtils *MDUtils, ValidatorFn IsValid,
+                         DefaultFn DefineDefault, llvm::StringRef FeatureName);
+
+  // Resolve the SIMD size of the kernel reachable from F. Returns the resolved size, or 0
+  // on error (an error is emitted in that case). On success the value is pinned onto the
+  // entry function's SubGroupSize metadata, or onto csInfo.forcedSIMDSize when no entry
+  // function can be found.
+  int32_t resolve(llvm::Function *F);
+
+  // Copy a cached entry-function mapping onto a newly cloned function, so callers that
+  // clone functions during resolution keep the cache valid.
+  void propagateEntry(llvm::Function *From, llvm::Function *To);
+
+private:
+  llvm::Function *getEntryFunction(llvm::Function *F);
+  int32_t determineForcedSIMDSize();
+  void forceKernelSIMDSize(llvm::Function *F, int32_t SIMDSize);
+
+  CodeGenContext *m_Ctx = nullptr;
+  IGCMD::MetaDataUtils *m_mdUtils = nullptr;
+  ValidatorFn m_isValid;
+  DefaultFn m_defineDefault;
+  llvm::StringRef m_featureName;
+  // Maps each function to its kernel entry function (nullptr if none). Persists for the
+  // resolver's lifetime, i.e. across one module run.
+  std::unordered_map<llvm::Function *, llvm::Function *> m_entryCache;
+};
 
 template <typename T> inline bool RTWriteHasSource0Alpha(const T *rtWrite, ModuleMetaData *md) {
   return (nullptr != rtWrite->getSource0Alpha()) && !llvm::isa<llvm::UndefValue>(rtWrite->getSource0Alpha());

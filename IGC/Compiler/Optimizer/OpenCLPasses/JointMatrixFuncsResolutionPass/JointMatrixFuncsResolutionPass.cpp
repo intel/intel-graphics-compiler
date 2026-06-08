@@ -185,7 +185,9 @@ template <typename F> static bool isAnyOperand(const User &U, F &&lambda) {
 bool JointMatrixFuncsResolutionPass::runOnModule(Module &M) {
   m_Ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
   m_mdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
-  FunctionEntryMap.clear();
+  m_simdResolver = std::make_unique<KernelSIMDSizeResolver>(
+      m_Ctx, m_mdUtils, [this](int32_t SIMDSize) { return IsSIMDSizeValid(SIMDSize); },
+      [this]() { return DefineKernelSIMDSize(); }, "Joint Matrix");
   ResolvedFuncSignatures.clear();
   NewFuncWithResolvedSignatures.clear();
   ResolvedTypes.clear();
@@ -229,81 +231,6 @@ bool JointMatrixFuncsResolutionPass::runOnModule(Module &M) {
   return Changed;
 }
 
-// Finds entry function for input function. If there are several entry
-// functions, it will return only one (first found).
-// So currently the case, when the same function which is using Joint Matrix
-// is called from several kernels with different sub-group size required,
-// not supported and behavior is undefined.
-Function *JointMatrixFuncsResolutionPass::getEntryFunction(Function *F) {
-  if (FunctionEntryMap.count(F) > 0) {
-    LLVM_DEBUG(dbgs() << " - FOUND CACHED ENTRY FUNCTION: " << FunctionEntryMap[F]->getName() << "\n");
-    return FunctionEntryMap[F];
-  }
-
-  if (isEntryFunc(m_mdUtils, F)) {
-    FunctionEntryMap[F] = F;
-    LLVM_DEBUG(dbgs() << " - FUNCTION IS ENTRY FUNCTION\n");
-    return F;
-  }
-
-  SmallVector<Function *, 8> toProcess;
-  toProcess.push_back(F);
-
-  while (!toProcess.empty()) {
-    Function *curFunc = toProcess.pop_back_val();
-
-    for (auto user : curFunc->users()) {
-      auto CI = dyn_cast<CallInst>(user);
-
-      if (!CI || CI->getCalledFunction() != curFunc)
-        continue;
-
-      auto parentFunction = CI->getFunction();
-      LLVM_DEBUG(dbgs() << " - CHECK PARENT FUNCTION: " << parentFunction->getName() << "\n");
-      Function *entryFunc = nullptr;
-
-      if (FunctionEntryMap.count(parentFunction) > 0) {
-        entryFunc = FunctionEntryMap[parentFunction];
-      } else if (isEntryFunc(m_mdUtils, parentFunction)) {
-        entryFunc = parentFunction;
-      }
-
-      if (entryFunc == nullptr) {
-        toProcess.push_back(parentFunction);
-        continue;
-      }
-
-      FunctionEntryMap[curFunc] = entryFunc;
-      LLVM_DEBUG(dbgs() << " - FOUND ENTRY FUNCTION: " << entryFunc->getName() << "\n");
-      return entryFunc;
-    }
-  }
-
-  FunctionEntryMap[F] = nullptr;
-  LLVM_DEBUG(dbgs() << " - NOT FOUND ENTRY FUNCTION\n");
-  return nullptr;
-}
-
-int32_t JointMatrixFuncsResolutionPass::DetermineForcedSIMDSize() {
-  int32_t forcedSIMDSize = m_Ctx->getModuleMetaData()->csInfo.forcedSIMDSize;
-
-  if (IGC_IS_FLAG_ENABLED(EnableOCLSIMD32) && IGC_IS_FLAG_DISABLED(ForceCSSIMD16) &&
-      (forcedSIMDSize == 32 || IGC_IS_FLAG_ENABLED(ForceCSSIMD32))) {
-    if (forcedSIMDSize == 0)
-      m_Ctx->getModuleMetaData()->csInfo.forcedSIMDSize = 32;
-    return 32;
-  }
-
-  if (IGC_IS_FLAG_ENABLED(EnableOCLSIMD16) && IGC_IS_FLAG_DISABLED(ForceCSSIMD32) &&
-      (forcedSIMDSize == 16 || IGC_IS_FLAG_ENABLED(ForceCSSIMD16))) {
-    if (forcedSIMDSize == 0)
-      m_Ctx->getModuleMetaData()->csInfo.forcedSIMDSize = 16;
-    return 16;
-  }
-
-  return forcedSIMDSize;
-}
-
 int32_t JointMatrixFuncsResolutionPass::DefineKernelSIMDSize() {
   if (m_Ctx->platform.hasExecSize16DPAS()) {
     if (IGC_IS_FLAG_ENABLED(EnableOCLSIMD16) && IGC_IS_FLAG_DISABLED(ForceCSSIMD32))
@@ -333,66 +260,11 @@ bool JointMatrixFuncsResolutionPass::IsSIMDSizeValid(int32_t simdSize) {
           (!m_Ctx->platform.hasExecSize16DPAS() && simdSize == 8));
 }
 
-void JointMatrixFuncsResolutionPass::ForceKernelSIMDSize(Function *F, int32_t forcedSIMDSize) {
-  Function *entryFunction = getEntryFunction(F);
-  if (entryFunction) // if can find entry function
-  {
-    IGCMD::FunctionInfoMetaDataHandle funcInfoMD = m_mdUtils->getFunctionsInfoItem(entryFunction);
-    IGCMD::SubGroupSizeMetaDataHandle subGroupSize = funcInfoMD->getSubGroupSize();
-    subGroupSize->setSIMDSize(forcedSIMDSize);
-  }
-}
-
 void JointMatrixFuncsResolutionPass::ResolveSIMDSize(Function *F) {
   if (m_SIMDSize != 0)
     return;
 
-  int32_t forcedSIMDSize = DetermineForcedSIMDSize();
-  if (forcedSIMDSize != 0) {
-    if (IsSIMDSizeValid(forcedSIMDSize)) {
-      m_SIMDSize = forcedSIMDSize;
-      ForceKernelSIMDSize(F, m_SIMDSize);
-      return;
-    }
-    // if forced and not ok for platform exit with error
-    std::string msg = "Sub group size " + std::to_string(forcedSIMDSize) +
-                      " is forced by flags but not supported by Joint Matrix on this platform.";
-    m_Ctx->EmitError(msg.c_str(), NoIRContext);
-    return;
-  }
-
-  // if not forced by driver of flags, check on entry function level
-  Function *entryFunction = getEntryFunction(F);
-  if (entryFunction) // if can find entry function
-  {
-    IGCMD::FunctionInfoMetaDataHandle funcInfoMD = m_mdUtils->getFunctionsInfoItem(entryFunction);
-    IGCMD::SubGroupSizeMetaDataHandle subGroupSize = funcInfoMD->getSubGroupSize();
-    if (subGroupSize->hasValue()) {
-      int32_t kernelSIMDSize = subGroupSize->getSIMDSize();
-      if (kernelSIMDSize != 0) {
-        if (IsSIMDSizeValid(kernelSIMDSize)) {
-          m_SIMDSize = kernelSIMDSize;
-          return;
-        }
-        // if set on entry function level and not ok for this platform exit with error
-        std::string msg = "Sub group size " + std::to_string(kernelSIMDSize) +
-                          " is forced by attribute but not supported by Joint Matrix on this platform.";
-        m_Ctx->EmitError(msg.c_str(), NoIRContext);
-        return;
-      }
-    }
-    // if not set on entry function level, define ourselves
-    m_SIMDSize = DefineKernelSIMDSize();
-    // and set to entry level function
-    subGroupSize->setSIMDSize(m_SIMDSize);
-    return;
-  }
-
-  // If no entry function found (it means that we could not detect that current function is called
-  // from any kernel), we anyway will resolve function, just in case, using default sub group size.
-  m_SIMDSize = DefineKernelSIMDSize();
-  // Force SIMD size if not set, as Joint Matrix need it to define numer of elements in WI
-  m_Ctx->getModuleMetaData()->csInfo.forcedSIMDSize = (unsigned char)m_SIMDSize;
+  m_SIMDSize = m_simdResolver->resolve(F);
 }
 
 void JointMatrixFuncsResolutionPass::clearFunctionCache() {
@@ -3007,9 +2879,7 @@ bool JointMatrixFuncsResolutionPass::ResolveFunction(Function *OriginalFunction)
   ResolveSIMDSize(OriginalFunction);
   Function *newFunction = CloneFunction(OriginalFunction);
 
-  if (FunctionEntryMap.count(OriginalFunction) > 0 && FunctionEntryMap[OriginalFunction] != nullptr) {
-    FunctionEntryMap[newFunction] = FunctionEntryMap[OriginalFunction];
-  }
+  m_simdResolver->propagateEntry(OriginalFunction, newFunction);
 
   ResolvedFuncSignatures[OriginalFunction] = newFunction;
   NewFuncWithResolvedSignatures.insert(newFunction);

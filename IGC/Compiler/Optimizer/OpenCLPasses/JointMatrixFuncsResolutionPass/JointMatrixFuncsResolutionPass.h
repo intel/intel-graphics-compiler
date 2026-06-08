@@ -9,12 +9,15 @@ SPDX-License-Identifier: MIT
 #pragma once
 
 #include "Compiler/CodeGenPublic.h"
+#include "Compiler/CISACodeGen/helper.h"
 #include "Compiler/MetaDataApi/MetaDataApi.h"
 #include "Compiler/MetaDataUtilsWrapper.h"
 
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/IR/InstVisitor.h>
 #include "common/LLVMWarningsPop.hpp"
+
+#include <memory>
 
 namespace IGC {
 struct JointMatrixTypeDescription;
@@ -126,20 +129,16 @@ private:
                                 const JointMatrixTypeDescription *desc, llvm::Value *ctx);
 
   // SIMD Size helpers
-  llvm::Function *getEntryFunction(llvm::Function *F);
   void ResolveSIMDSize(llvm::Function *F);
-  int32_t DetermineForcedSIMDSize();
+  // Joint Matrix-specific SIMD-size policy, injected into m_simdResolver.
   int32_t DefineKernelSIMDSize();
   bool IsSIMDSizeValid(int32_t simdSize);
-  void ForceKernelSIMDSize(llvm::Function *F, int32_t forcedSIMDSize);
 
   llvm::ValueMap<llvm::Value *, llvm::Instruction *> PlaceholderInstructions;
   llvm::ValueMap<llvm::Value *, llvm::Value *> ResolvedValues;
   llvm::ValueMap<llvm::Value *, llvm::Value *> MatrixAllocas;
   std::unordered_map<llvm::Type *, llvm::Type *> ResolvedTypes;
   llvm::SmallPtrSet<llvm::Instruction *, 8> InstsToErase;
-  // Maps function to it's kernel entry function
-  std::unordered_map<llvm::Function *, llvm::Function *> FunctionEntryMap;
   // Maps function with old signature to function with new signature
   std::unordered_map<llvm::Function *, llvm::Function *> ResolvedFuncSignatures;
   // Keeps track of new functions with new signature
@@ -150,5 +149,6 @@ private:
   IGCMD::MetaDataUtils *m_mdUtils = nullptr;
   bool Changed = false;
   int32_t m_SIMDSize = 0;
+  std::unique_ptr<KernelSIMDSizeResolver> m_simdResolver;
 };
 }; // namespace IGC

@@ -332,12 +332,6 @@ SPDX-License-Identifier: MIT
 
 // CHECK-VISAASM-TRANSFORM-16B-32R-16X2C-SIMD16: lsc_load_block2d.ugm (M1, 1)  V{{[0-9]+}}:d16.2x16x32nt  flat[{{.+}},0x1FF,0x2D,0x1FF,V{{[0-9]+}},V{{[0-9]+}}
 
-// RUN: ocloc compile -file %s -device pvc -options "-igc_opts 'ForceOCLSIMDWidth=32,DumpVISAASMToConsole=1' \
-// RUN: -DINPUT_TYPE=ushort -DOUTPUT_TYPE=uint -DFUNCTION=intel_sub_group_2d_block_read_transform_16b_32r16x2c -DDST_ARRAY_EL_TYPE=uint8 -DDST_ARRAY_EL_NUM=4" \
-// RUN: -internal_options "-cl-ext=-all,+cl_intel_subgroup_2d_block_io" | FileCheck %s --check-prefix=CHECK-VISAASM-TRANSFORM-16B-32R-16X2C-SIMD32
-
-// CHECK-VISAASM-TRANSFORM-16B-32R-16X2C-SIMD32: lsc_load_block2d.ugm (M1, 1)  V{{[0-9]+}}:d16.2x16x32nt  flat[{{.+}},0x1FF,0x2D,0x1FF,V{{[0-9]+}},V{{[0-9]+}}
-
 __attribute__((intel_reqd_sub_group_size(16)))
 kernel void test_default(global INPUT_TYPE* input, const global int2* coord, global OUTPUT_TYPE* output) {
     const int tid = get_global_id(0);

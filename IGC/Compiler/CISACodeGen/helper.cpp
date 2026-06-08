@@ -18,6 +18,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/InstIterator.h>
 #include <llvm/IR/Intrinsics.h>
 #include <llvm/Support/KnownBits.h>
+#include <llvm/Support/Debug.h>
 #include <llvm/Transforms/Utils/Local.h>
 #include "llvm/Analysis/ValueTracking.h"
 #include "common/LLVMWarningsPop.hpp"
@@ -2210,6 +2211,154 @@ int getSIMDSize(const IGCMD::MetaDataUtils *M, llvm::Function *F) {
   }
   return 0;
 }
+
+#define DEBUG_TYPE "kernel-simd-resolver"
+
+KernelSIMDSizeResolver::KernelSIMDSizeResolver(CodeGenContext *Ctx, IGCMD::MetaDataUtils *MDUtils, ValidatorFn IsValid,
+                                               DefaultFn DefineDefault, llvm::StringRef FeatureName)
+    : m_Ctx(Ctx), m_mdUtils(MDUtils), m_isValid(std::move(IsValid)), m_defineDefault(std::move(DefineDefault)),
+      m_featureName(FeatureName) {}
+
+void KernelSIMDSizeResolver::propagateEntry(Function *From, Function *To) {
+  auto It = m_entryCache.find(From);
+  if (It != m_entryCache.end() && It->second != nullptr)
+    m_entryCache[To] = It->second;
+}
+
+// Finds entry function for input function. If there are several entry functions, it will
+// return only one (first found). So currently the case, when the same function is called
+// from several kernels with different sub-group size required, is not supported and the
+// behavior is undefined.
+Function *KernelSIMDSizeResolver::getEntryFunction(Function *F) {
+  auto Cached = m_entryCache.find(F);
+  if (Cached != m_entryCache.end()) {
+    LLVM_DEBUG(dbgs() << " - FOUND CACHED ENTRY FUNCTION: " << Cached->second->getName() << "\n");
+    return Cached->second;
+  }
+
+  if (isEntryFunc(m_mdUtils, F)) {
+    m_entryCache[F] = F;
+    LLVM_DEBUG(dbgs() << " - FUNCTION IS ENTRY FUNCTION\n");
+    return F;
+  }
+
+  SmallVector<Function *, 8> ToProcess;
+  ToProcess.push_back(F);
+
+  while (!ToProcess.empty()) {
+    Function *CurFunc = ToProcess.pop_back_val();
+
+    for (auto User : CurFunc->users()) {
+      auto CI = dyn_cast<CallInst>(User);
+
+      if (!CI || CI->getCalledFunction() != CurFunc)
+        continue;
+
+      auto ParentFunction = CI->getFunction();
+      LLVM_DEBUG(dbgs() << " - CHECK PARENT FUNCTION: " << ParentFunction->getName() << "\n");
+      Function *EntryFunc = nullptr;
+
+      if (m_entryCache.count(ParentFunction) > 0) {
+        EntryFunc = m_entryCache[ParentFunction];
+      } else if (isEntryFunc(m_mdUtils, ParentFunction)) {
+        EntryFunc = ParentFunction;
+      }
+
+      if (EntryFunc == nullptr) {
+        ToProcess.push_back(ParentFunction);
+        continue;
+      }
+
+      m_entryCache[CurFunc] = EntryFunc;
+      LLVM_DEBUG(dbgs() << " - FOUND ENTRY FUNCTION: " << EntryFunc->getName() << "\n");
+      return EntryFunc;
+    }
+  }
+
+  m_entryCache[F] = nullptr;
+  LLVM_DEBUG(dbgs() << " - NOT FOUND ENTRY FUNCTION\n");
+  return nullptr;
+}
+
+int32_t KernelSIMDSizeResolver::determineForcedSIMDSize() {
+  int32_t ForcedSIMDSize = m_Ctx->getModuleMetaData()->csInfo.forcedSIMDSize;
+
+  if (IGC_IS_FLAG_ENABLED(EnableOCLSIMD32) && IGC_IS_FLAG_DISABLED(ForceCSSIMD16) &&
+      (ForcedSIMDSize == 32 || IGC_IS_FLAG_ENABLED(ForceCSSIMD32))) {
+    if (ForcedSIMDSize == 0)
+      m_Ctx->getModuleMetaData()->csInfo.forcedSIMDSize = 32;
+    return 32;
+  }
+
+  if (IGC_IS_FLAG_ENABLED(EnableOCLSIMD16) && IGC_IS_FLAG_DISABLED(ForceCSSIMD32) &&
+      (ForcedSIMDSize == 16 || IGC_IS_FLAG_ENABLED(ForceCSSIMD16))) {
+    if (ForcedSIMDSize == 0)
+      m_Ctx->getModuleMetaData()->csInfo.forcedSIMDSize = 16;
+    return 16;
+  }
+
+  return ForcedSIMDSize;
+}
+
+void KernelSIMDSizeResolver::forceKernelSIMDSize(Function *F, int32_t SIMDSize) {
+  Function *EntryFunction = getEntryFunction(F);
+  if (EntryFunction) // if can find entry function
+  {
+    IGCMD::FunctionInfoMetaDataHandle FuncInfoMD = m_mdUtils->getFunctionsInfoItem(EntryFunction);
+    IGCMD::SubGroupSizeMetaDataHandle SubGroupSize = FuncInfoMD->getSubGroupSize();
+    SubGroupSize->setSIMDSize(SIMDSize);
+  }
+}
+
+int32_t KernelSIMDSizeResolver::resolve(Function *F) {
+  int32_t ForcedSIMDSize = determineForcedSIMDSize();
+  if (ForcedSIMDSize != 0) {
+    if (m_isValid(ForcedSIMDSize)) {
+      forceKernelSIMDSize(F, ForcedSIMDSize);
+      return ForcedSIMDSize;
+    }
+    // if forced and not ok for platform exit with error
+    std::string Msg = "Sub group size " + std::to_string(ForcedSIMDSize) + " is forced by flags but not supported by " +
+                      m_featureName.str() + " on this platform.";
+    m_Ctx->EmitError(Msg.c_str(), NoIRContext);
+    return 0;
+  }
+
+  // if not forced by driver of flags, check on entry function level
+  Function *EntryFunction = getEntryFunction(F);
+  if (EntryFunction) // if can find entry function
+  {
+    IGCMD::FunctionInfoMetaDataHandle FuncInfoMD = m_mdUtils->getFunctionsInfoItem(EntryFunction);
+    IGCMD::SubGroupSizeMetaDataHandle SubGroupSize = FuncInfoMD->getSubGroupSize();
+    if (SubGroupSize->hasValue()) {
+      int32_t KernelSIMDSize = SubGroupSize->getSIMDSize();
+      if (KernelSIMDSize != 0) {
+        if (m_isValid(KernelSIMDSize))
+          return KernelSIMDSize;
+        // if set on entry function level and not ok for this platform exit with error
+        std::string Msg = "Sub group size " + std::to_string(KernelSIMDSize) +
+                          " is forced by attribute but not supported by " + m_featureName.str() + " on this platform.";
+        m_Ctx->EmitError(Msg.c_str(), NoIRContext);
+        return 0;
+      }
+    }
+    // if not set on entry function level, define ourselves
+    int32_t SIMDSize = m_defineDefault();
+    // and set to entry level function
+    SubGroupSize->setSIMDSize(SIMDSize);
+    return SIMDSize;
+  }
+
+  // If no entry function found (it means that we could not detect that current function is
+  // called from any kernel), we anyway will resolve function, just in case, using default
+  // sub group size, and force it module-wide since some features need it to define the
+  // number of elements per work item.
+  int32_t SIMDSize = m_defineDefault();
+  m_Ctx->getModuleMetaData()->csInfo.forcedSIMDSize = (unsigned char)SIMDSize;
+  return SIMDSize;
+}
+
+#undef DEBUG_TYPE
 
 // If true, the codegen will likely not emit instruction for this instruction.
 bool isNoOpInst(Instruction *I, CodeGenContext *Ctx) {
