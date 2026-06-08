@@ -3323,9 +3323,17 @@ bool CodeGenPatternMatch::MatchLoadStoreAtomicsStatefulEff64(GenIntrinsicInst *I
     ConstantInt *ImmOffset;
   };
 
-  // TODO: handle the subspan destination case in EmitPass::emitLSCVectorLoad().
-  // It will AND off the lowers bits, need to unfold the match.
-  if (m_ctx->type == ShaderType::PIXEL_SHADER)
+  // The subspan-destination workaround only applies to vector LOADS:
+  // EmitPass::emitLSCVectorLoad() ANDs off the low bits of the subspan
+  // destination, which the folded match does not account for. Atomics and
+  // stores have no such destination masking, so they must NOT bail here --
+  // otherwise they fall through to MatchLoadStoreAtomicsStatelessUniformBase(),
+  // which splits a uniform byte offset into a separate uniform base that the
+  // SURF (Efficient64b stateful) encoder cannot carry and silently drops
+  // (see CEncoder::LSC_AtomicRaw in CISABuilder.cpp), corrupting the address.
+  // TODO: also fold loads once emitLSCVectorLoad() handles the subspan case.
+  if (m_ctx->type == ShaderType::PIXEL_SHADER && (I->getIntrinsicID() == GenISAIntrinsic::GenISA_ldraw_indexed ||
+                                                  I->getIntrinsicID() == GenISAIntrinsic::GenISA_ldrawvector_indexed))
     return false;
 
   Type *DataTy = nullptr;
