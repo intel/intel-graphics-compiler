@@ -1648,83 +1648,50 @@ void FlowGraph::recomputePreId(BBIDMap &IDMap) {
   //
   doDFS(getEntryBB(), preId, IDMap);
 
-  // Detect unreachable CALL-RETURN loops, including chains of multiple CALL
-  // blocks. After subroutine normalization, EXIT->RETURN edges can make CALL
-  // blocks appear reachable via DFS even when they form cycles with no
-  // external entry point.
+  // The DFS above follows every successor edge unconditionally, including the
+  // EXIT->RETURN edges added when subroutines are normalized into CALL/INIT/
+  // EXIT/RETURN blocks. A RETURN block is the continuation after a call, so it
+  // is only genuinely reachable when its paired CALL block is reachable. When a
+  // subroutine is shared between a reachable caller and an unreachable one, the
+  // DFS flows out of the (reachable) callee's EXIT into the unreachable
+  // caller's RETURN block, marking it and all the code after the dead call
+  // reachable. (The same applies to a CALL-RETURN cycle with no external entry,
+  // where the CALL only looks reachable through its own RETURN block.)
   //
-  // Starting from each candidate CALL block, build a cluster by following
-  // predecessor edges backward. Two kinds of predecessor are acceptable:
-  //   - RETURN blocks whose paired CALL block is already unreachable or in
-  //     the cluster (EXIT->RETURN edges are only valid when the paired CALL
-  //     actually executes, so an unreachable CALL makes its RETURN block
-  //     acceptable regardless of EXIT's own reachability).
-  //   - Any other reachable predecessor block, as long as it is not the
-  //     entry block (Preds.empty()), which is added to the cluster and
-  //     explored transitively (handles intermediate blocks between two
-  //     consecutive CALL blocks that belong to the unreachable chain).
-  // If the cluster closes with no external entry, all members and their
-  // paired RETURN blocks are marked unreachable. Iterate to fixpoint.
+  // Recompute reachability from the entry honoring an EXIT->RETURN edge only
+  // once the RETURN block's paired CALL block is itself reachable, and mark
+  // everything the gated walk cannot reach unreachable. Iterate to a fixpoint
+  // because a callee's EXIT may be visited before the CALL site is known
+  // reachable. The pre-order ids of surviving blocks are left untouched, since
+  // dominator analysis relies on them (a fully-reachable graph keeps them all).
+  std::unordered_set<G4_BB *> reachable;
+  reachable.insert(getEntryBB());
   bool changed = true;
   while (changed) {
     changed = false;
-    for (G4_BB *startBB : BBs) {
-      if (IDMap.at(startBB) == UINT_MAX)
+    for (G4_BB *bb : BBs) {
+      if (!reachable.count(bb))
         continue;
-      if (!(startBB->getBBType() & G4_BB_CALL_TYPE))
-        continue;
-      // A CALL block with no predecessors is the entry point
-      if (startBB->Preds.empty())
-        continue;
-
-      std::unordered_set<G4_BB *> cluster;
-      std::vector<G4_BB *> worklist;
-      worklist.push_back(startBB);
-      cluster.insert(startBB);
-      bool unreachable = true;
-
-      while (!worklist.empty() && unreachable) {
-        G4_BB *cb = worklist.back();
-        worklist.pop_back();
-        for (G4_BB *pred : cb->Preds) {
-          // Check the Call block of Return
-          if (pred->getBBType() & G4_BB_RETURN_TYPE) {
-            G4_BB *callBB = pred->getPhysicalPred();
-            vISA_ASSERT(callBB && (callBB->getBBType() & G4_BB_CALL_TYPE),
-                        "vISA ICE: missing Call BB");
-            pred = callBB;
-          }
-
-          // Skip if pred is unreachable or is in cluster already
-          if (IDMap.at(pred) == UINT_MAX || cluster.count(pred))
+      for (G4_BB *succ : bb->Succs) {
+        if (reachable.count(succ))
+          continue;
+        // Gate the EXIT->RETURN edge on its paired CALL block being reachable;
+        // a skipped edge is retried on a later iteration once that CALL is.
+        if ((bb->getBBType() & G4_BB_EXIT_TYPE) &&
+            (succ->getBBType() & G4_BB_RETURN_TYPE)) {
+          G4_BB *callBB = succ->getPhysicalPred();
+          if (!callBB || !reachable.count(callBB))
             continue;
-
-          // Reachable if any pred is in the entry
-          if (pred->Preds.empty()) {
-            unreachable = false;
-            break;
-          }
-
-          // Keep processing pred
-          cluster.insert(pred);
-          worklist.push_back(pred);
         }
-      }
-
-      if (unreachable) {
-        for (G4_BB *cb : cluster) {
-          IDMap[cb] = UINT_MAX;
-          // Only mark the paired RETURN block for CALL-type members.
-          if (cb->getBBType() & G4_BB_CALL_TYPE) {
-            G4_BB *retBB = cb->getPhysicalSucc();
-            vISA_ASSERT(retBB && (retBB->getBBType() & G4_BB_RETURN_TYPE),
-                        "vISA ICE: missing Return BB");
-            IDMap[retBB] = UINT_MAX;
-          }
-        }
+        reachable.insert(succ);
         changed = true;
       }
     }
+  }
+
+  for (G4_BB *bb : BBs) {
+    if (!reachable.count(bb))
+      IDMap[bb] = UINT_MAX;
   }
 }
 
