@@ -472,6 +472,7 @@ void PeepholeTypeLegalizer::legalizeBinaryOperator(Instruction &I) {
         IGC_ASSERT_MESSAGE(0, "Select Instruction seen with 'large' illegal int type. Legalization support missing.");
         break;
       default:
+        instSupported = false;
         printf("Binary Instruction seen with illegal int type. Legalization support missing. Inst opcode:%d",
                I.getOpcode());
         IGC_ASSERT_MESSAGE(0, "Binary Instruction seen with illegal int type. Legalization support missing.");

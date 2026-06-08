@@ -132,7 +132,7 @@ VectorShuffleAnalysis::tryCreatingDestVectorForVectorization(llvm::InsertElement
       Type *EEVectorType = EE->getOperand(0)->getType();
       auto EEVectorTypeVec = dyn_cast<IGCLLVM::FixedVectorType>(EEVectorType);
       IGC_ASSERT(EEVectorTypeVec);
-      if (EEVectorTypeVec->getNumElements() != 1)
+      if (!EEVectorTypeVec || EEVectorTypeVec->getNumElements() != 1)
         return nullptr;
     }
 
