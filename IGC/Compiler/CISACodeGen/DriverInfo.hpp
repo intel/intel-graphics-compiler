@@ -429,6 +429,8 @@ public:
 
   virtual bool allowSimpleAluVectorizerPass() const { return false; }
 
+  virtual bool UsesUnsafeFpMathAttribute() const { return false; }
+
 protected:
   bool autoGRFSelection = false;
   uint8_t surfaceStateSize = 64;

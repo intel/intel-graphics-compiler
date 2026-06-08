@@ -15215,7 +15215,7 @@ void EmitPass::emitScalarAtomics(llvm::Instruction *pInst, ResourceDescriptor &r
 
   VISA_Type type;
   if (atomic_op == EATOMIC_FADD || atomic_op == EATOMIC_FSUB) {
-    type = ISA_TYPE_F;
+    type = pInst->getType()->isHalfTy() ? ISA_TYPE_HF : ISA_TYPE_F;
   } else if (atomic_op == EATOMIC_FADD64 || atomic_op == EATOMIC_FSUB64) {
     type = ISA_TYPE_DF;
   } else if (atomic_op == EATOMIC_FADDBF16 || atomic_op == EATOMIC_FSUBBF16) {
@@ -15260,7 +15260,15 @@ void EmitPass::emitScalarAtomics(llvm::Instruction *pInst, ResourceDescriptor &r
   CVariable *pFinalAtomicSrcVal;
   CVariable *pSrcsArr[2] = {nullptr, nullptr};
 
-  if (op == EOPCODE_ADD && bitWidth == 32 && pSrc->IsUniform() && getCurrInstNumInstances() == 1 && !returnsImmValue) {
+  if (type == ISA_TYPE_BF && pSrc->GetType() == ISA_TYPE_W) {
+    if (pSrc->IsImmediate()) {
+      pSrc = m_currShader->ImmToVariable(pSrc->GetImmediateValue(), ISA_TYPE_BF);
+    } else {
+      pSrc = m_currShader->GetNewAlias(pSrc, ISA_TYPE_BF, 0, 0);
+    }
+  }
+
+  if (op == EOPCODE_ADD && bitWidth < 64 && pSrc->IsUniform() && getCurrInstNumInstances() == 1 && !returnsImmValue) {
     // Special case for uniform DW src (like atomic_add(1) without return value.
     // Note: limit this code for a single instance for now as scalar atomic must
     // have
@@ -15275,10 +15283,12 @@ void EmitPass::emitScalarAtomics(llvm::Instruction *pInst, ResourceDescriptor &r
     //    (W) mul  (1|M0)  r10:ud   pSrc  r1.0:uw
     CVariable *numActiveLanes = GetNumActiveLanes();
 
+    bool isFloatingPointAtomic = (type == ISA_TYPE_F || type == ISA_TYPE_HF || type == ISA_TYPE_BF);
+
     // pFinalAtomicSrcVal is used in msg's payload and thus needs to be
     // GRF-aligned
     pFinalAtomicSrcVal = m_currShader->GetNewVariable(1, type, EALIGN_GRF, true, CName::NONE);
-    if ((type != ISA_TYPE_F) && pSrc->IsImmediate() && pSrc->GetImmediateValue() == 1) {
+    if (!isFloatingPointAtomic && pSrc->IsImmediate() && pSrc->GetImmediateValue() == 1) {
       if (negateSrc) {
         m_encoder->SetSrcModifier(0, EMOD_NEG);
       }
@@ -15286,8 +15296,9 @@ void EmitPass::emitScalarAtomics(llvm::Instruction *pInst, ResourceDescriptor &r
       m_encoder->Push();
     } else {
       CVariable *castNumActiveLanes = nullptr;
-      if (type == ISA_TYPE_F) {
-        castNumActiveLanes = m_currShader->GetNewVariable(1, ISA_TYPE_F, EALIGN_GRF, true, CName::NONE);
+      if (isFloatingPointAtomic) {
+        auto castType = (type == ISA_TYPE_BF) ? ISA_TYPE_F : type;
+        castNumActiveLanes = m_currShader->GetNewVariable(1, castType, EALIGN_GRF, true, CName::NONE);
         m_encoder->Cast(castNumActiveLanes, numActiveLanes);
       } else {
         // Use UW for numActiveLanes as it results in less insts.
@@ -15308,7 +15319,7 @@ void EmitPass::emitScalarAtomics(llvm::Instruction *pInst, ResourceDescriptor &r
     pFinalAtomicSrcVal = ReAlignUniformVariable(pSrc, EALIGN_GRF);
   } else {
     // general case
-    pFinalAtomicSrcVal = m_currShader->GetNewVariable(1, type, isA64 ? EALIGN_2GRF : EALIGN_GRF, true, CName::NONE);
+    pFinalAtomicSrcVal = m_currShader->GetNewVariable(1, type, EALIGN_GRF, true, CName::NONE);
 
     if (returnsImmValue) {
       // sum all the lanes
@@ -15363,6 +15374,8 @@ void EmitPass::emitScalarAtomics(llvm::Instruction *pInst, ResourceDescriptor &r
     pReturnValType = ISA_TYPE_DF;
   } else if (type == ISA_TYPE_F) {
     pReturnValType = ISA_TYPE_F;
+  } else if (type == ISA_TYPE_HF) {
+    pReturnValType = ISA_TYPE_HF;
   } else if (type == ISA_TYPE_BF) {
     pReturnValType = ISA_TYPE_BF;
   } else {
@@ -15527,13 +15540,15 @@ bool EmitPass::IsUniformAtomic(llvm::Instruction *pInst) {
 
     // Dst address in bytes.
     if (id == GenISAIntrinsic::GenISA_intatomicraw || id == GenISAIntrinsic::GenISA_intatomicrawA64 ||
-        id == GenISAIntrinsic::GenISA_floatatomicrawA64) {
+        id == GenISAIntrinsic::GenISA_floatatomicraw || id == GenISAIntrinsic::GenISA_floatatomicrawA64) {
       Function *F = pInst->getParent()->getParent();
 
       unsigned short bitwidth = pInst->getType()->getScalarSizeInBits();
       // We cannot optimize float and double atomics if the flag
       // "unsafe-fp-math" was not passed.
-      if (id == GenISAIntrinsic::GenISA_floatatomicrawA64) {
+      bool isFloatAtomic =
+          (id == GenISAIntrinsic::GenISA_floatatomicraw || id == GenISAIntrinsic::GenISA_floatatomicrawA64);
+      if (isFloatAtomic && m_currShader->m_DriverInfo->UsesUnsafeFpMathAttribute()) {
         if (!F->hasFnAttribute("unsafe-fp-math") ||
             !(F->getFnAttribute("unsafe-fp-math").getValueAsString() == "true") || bitwidth == 16) {
           return false;

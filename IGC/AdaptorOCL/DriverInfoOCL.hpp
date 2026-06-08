@@ -69,6 +69,8 @@ public:
   bool EnableShaderDebugHashCodeInKernel() const override { return true; }
 
   bool supportsAtomicIaddToIncDec() const override { return false; }
+
+  bool UsesUnsafeFpMathAttribute() const override { return true; }
 };
 
 // In case some cpas are specific to NEO

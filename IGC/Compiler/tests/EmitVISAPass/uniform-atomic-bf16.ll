@@ -18,8 +18,8 @@
 
 ; CHECK-DAG: lsc_atomic_bfadd.ugm (M1_NM, 1)  %null:d16u32  flat[{{.*}}]:a64  [[D16_U32_VAL:[A-z0-9]*]]
 ; CHECK-DAG: mov (M1_NM, 1) [[D16_U32_VAL]](0,0)<1> [[UW_VAL:[A-z0-9]*]](0,0)<0;1,0>
-; CHECK-DAG: .decl [[UW_VAL]] v_type=G type=uw num_elts=1 align=wordx64 alias=<[[BF_VAL:[A-z0-9]*]], 0>
-; CHECK-DAG: .decl [[BF_VAL]] v_type=G type=bf num_elts=1 align=wordx64
+; CHECK-DAG: .decl [[UW_VAL]] v_type=G type=uw num_elts=1 align=wordx32 alias=<[[BF_VAL:[A-z0-9]*]], 0>
+; CHECK-DAG: .decl [[BF_VAL]] v_type=G type=bf num_elts=1 align=wordx32
 
 target datalayout = "e-p:64:64:64-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64-f32:32:32-f64:64:64-v16:16:16-v24:32:32-v32:32:32-v48:64:64-v64:64:64-v96:128:128-v128:128:128-v192:256:256-v256:256:256-v512:512:512-v1024:1024:1024-n8:16:32"
 target triple = "spir64-unknown-unknown"
