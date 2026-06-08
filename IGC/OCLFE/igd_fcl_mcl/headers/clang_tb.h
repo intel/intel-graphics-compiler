@@ -48,20 +48,12 @@ static const STB_TranslationCode g_cClangTranslationCodes[] = {
     {TB_DATA_FORMAT_ELF, TB_DATA_FORMAT_SPIR_V},         {TB_DATA_FORMAT_ELF, TB_DATA_FORMAT_LLVM_ARCHIVE},
 };
 
-#ifdef _WIN32
-#ifdef COMMON_CLANG_LIB_FULL_NAME
 struct CCModuleStruct {
   typedef decltype(Compile) *PFcnCCCompile;
 
   void *pModule = nullptr;
   PFcnCCCompile pCompile = nullptr;
-
-  const char *pModuleName = COMMON_CLANG_LIB_FULL_NAME;
 };
-#else
-#error "Common clang name not defined"
-#endif
-#endif
 
 /***************************************************************************\
 
@@ -74,9 +66,7 @@ Description:
 class CClangTranslationBlock : public CTranslationBlock {
   TB_DATA_FORMAT m_InputFormat{};
   TB_DATA_FORMAT m_OutputFormat{};
-#ifdef _WIN32
   CCModuleStruct m_CCModule;
-#endif
 
 public:
   static bool Create(const STB_CreateArgs *pCreateArgs, STB_TranslateOutputArgs *pOutputArgs,

@@ -57,6 +57,15 @@ using namespace Intel::OpenCL::ClangFE;
 
 namespace TC {
 constexpr bool is64bit = sizeof(void *) == sizeof(uint64_t);
+
+// Initialize IGC flags from env vars, registry, and -igc_opts on first call.
+static void InitRegistryKeysOnce(const char *pOptions, STB_TranslateOutputArgs *pOutputArgs) {
+  std::string igcOptsError;
+  LoadRegistryKeys(pOptions, &igcOptsError);
+  if (!igcOptsError.empty()) {
+    pOutputArgs->ErrorString.append(igcOptsError);
+  }
+}
 // Misc utility functions used only in the current module
 namespace Utils {
 // Replace \0 in input string with \n. This works around an issue in
@@ -126,52 +135,100 @@ struct TranslateClangArgs {
 
 bool CClangTranslationBlock::Create(const STB_CreateArgs *pCreateArgs, STB_TranslateOutputArgs *pOutputArgs,
                                     CClangTranslationBlock *&pTranslationBlock) {
-  bool success = true;
-
   pTranslationBlock = new CClangTranslationBlock();
+  if (!pTranslationBlock)
+    return false;
 
-  if (pTranslationBlock) {
-    success = pTranslationBlock->Initialize(pCreateArgs);
+#if defined(IGC_DEBUG_VARIABLES)
+  debugString overrideNameBuffer = {0};
+  const char *overrideName = "";
+  // Reading igc_opts in ::Create() is not possible without IGC <-> NEO CIF interface modification
+  // For now, read IGC env/registry directly.
+  ReadIGCRegistry("LibClangOverride", overrideNameBuffer, sizeof(overrideNameBuffer), IGCFlagType_debugString);
+  overrideName = overrideNameBuffer;
+#endif
+
+  bool success = pTranslationBlock->Initialize(pCreateArgs);
+  if (success) {
+#ifdef _WIN32
+#ifdef COMMON_CLANG_LIB_FULL_NAME
+    const char *moduleName = COMMON_CLANG_LIB_FULL_NAME;
+#else
+#error "Common clang name not defined"
+#endif
+#endif
+
+    CCModuleStruct &CCModule = pTranslationBlock->m_CCModule;
+    const char *moduleDescription = "Opencl-clang library";
+
+#if defined(IGC_DEBUG_VARIABLES)
+    if (overrideName[0] != '\0') {
+      moduleDescription = "LibClangOverride library";
+#ifdef _WIN32
+      moduleName = overrideName;
+#else
+      CCModule.pModule = dlopen(overrideName, RTLD_LAZY | RTLD_LOCAL);
+      if (CCModule.pModule) {
+        CCModule.pCompile = (CCModuleStruct::PFcnCCCompile)dlsym(CCModule.pModule, "Compile");
+        if (!CCModule.pCompile) {
+          std::string err =
+              std::string("Error: ") + moduleDescription + " '" + overrideName + "' does not export Compile.";
+          SetErrorString(err.c_str(), pOutputArgs);
+          success = false;
+        }
+      } else {
+        std::string err = std::string("Error: ") + moduleDescription + " '" + overrideName + "' failed to load.";
+        SetErrorString(err.c_str(), pOutputArgs);
+        success = false;
+      }
+#endif
+    }
+#endif // IGC_DEBUG_VARIABLES
 
 #ifdef _WIN32
-    if (true == success) {
+    if (success && CCModule.pCompile == nullptr) {
+      // Load the Common Clang library
       // Both Win32 and Win64
       // load dependency only on RS
-      // Load the Common Clang library
-      CCModuleStruct &CCModule = pTranslationBlock->m_CCModule;
       if (GetWinVer() >= OS_WIN_RS) {
-        CCModule.pModule = LoadDependency(CCModule.pModuleName);
+        CCModule.pModule = LoadDependency(moduleName);
       } else {
-        CCModule.pModule = LoadLibraryA(CCModule.pModuleName);
+        CCModule.pModule = LoadLibraryA(moduleName);
       }
-      if (NULL != CCModule.pModule) {
+      if (CCModule.pModule != nullptr) {
         CCModule.pCompile = (CCModuleStruct::PFcnCCCompile)GetProcAddress((HMODULE)CCModule.pModule, "Compile");
         success = CCModule.pCompile != NULL;
+        if (!success) {
+          std::string err =
+              std::string("Error: ") + moduleDescription + " '" + moduleName + "' does not export Compile.";
+          SetErrorString(err.c_str(), pOutputArgs);
+        }
       } else {
-        SetErrorString("Error: Opencl-clang library not found.", pOutputArgs);
+        std::string err = std::string("Error: ") + moduleDescription + " '" + moduleName + "' failed to load.";
+        SetErrorString(err.c_str(), pOutputArgs);
         success = false;
       }
     }
 #endif
+  }
 
-    if (!success) {
-      CClangTranslationBlock::Delete(pTranslationBlock);
-    }
-  } else {
-    success = false;
+  if (!success) {
+    CClangTranslationBlock::Delete(pTranslationBlock);
   }
 
   return success;
 }
 
 void CClangTranslationBlock::Delete(CClangTranslationBlock *&pTranslationBlock) {
-#ifdef _WIN32
-  // Unload the Common Clang library
   if (pTranslationBlock->m_CCModule.pModule) {
+#ifdef _WIN32
+    // Unload the Common Clang library
     // Both Win32 and Win64
     FreeLibrary((HMODULE)pTranslationBlock->m_CCModule.pModule);
-  }
+#else
+    dlclose(pTranslationBlock->m_CCModule.pModule);
 #endif
+  }
 
   delete pTranslationBlock;
   pTranslationBlock = NULL;
@@ -1006,7 +1063,8 @@ bool CClangTranslationBlock::TranslateClang(const TranslateClangArgs *pInputArgs
 #ifdef _WIN32
     res = m_CCModule.pCompile(
 #else
-    res = Compile(
+    auto *compileFunc = m_CCModule.pCompile ? m_CCModule.pCompile : &Compile;
+    res = compileFunc(
 #endif
         pInputArgs->pszProgramSource, (const char **)pInputArgs->inputHeaders.data(),
         (unsigned int)pInputArgs->inputHeaders.size(), (const char **)pInputArgs->inputHeadersNames.data(), NULL, 0,
@@ -1159,17 +1217,7 @@ bool CClangTranslationBlock::TranslateElf(const STB_TranslateInputArgs *pInputAr
 }
 
 bool CClangTranslationBlock::Translate(const STB_TranslateInputArgs *pInputArgs, STB_TranslateOutputArgs *pOutputArgs) {
-  // Setup a MutexGuard so that it's automatically released if it goes out of
-  // scope
-  // llvm::MutexGuard mutexGuard(m_Mutex);
-  // resetOptionOccurrence();
-
-  // Initialize IGC flags from env vars, registry, and -igc_opts on first call.
-  std::string igcOptsError;
-  LoadRegistryKeys(pInputArgs->pOptions ? pInputArgs->pOptions : "", &igcOptsError);
-  if (!igcOptsError.empty()) {
-    pOutputArgs->ErrorString.append(igcOptsError);
-  }
+  InitRegistryKeysOnce(pInputArgs->pOptions ? pInputArgs->pOptions : "", pOutputArgs);
 
   std::string exceptString;
   switch (m_InputFormat) {

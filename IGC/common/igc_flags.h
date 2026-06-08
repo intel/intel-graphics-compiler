@@ -942,6 +942,9 @@ DECLARE_IGC_REGKEY(bool, deadLoopForFloatException, false, "enable a dead loop i
 DECLARE_IGC_REGKEY(bool, EnableIEEEFloatExceptionTrap, false, "Enable CR0 IEEE float exception trap bit", true)
 DECLARE_IGC_REGKEY(debugString, ExtraOCLOptions, 0, "Extra options for OpenCL", true)
 DECLARE_IGC_REGKEY(debugString, ExtraOCLInternalOptions, 0, "Extra internal options for OpenCL", true)
+DECLARE_IGC_REGKEY(
+    debugString, LibClangOverride, 0,
+    "Override opencl-clang library loaded by FCL. Accepts bare name or absolute path. Empty = use default.", false)
 DECLARE_IGC_REGKEY(bool, UseVISAVarNames, false,
                    "Make VISA generate names for virtual variables so they match with dbg file", true)
 DECLARE_IGC_REGKEY(bool, PrintDebugSettings, false, "Prints all non-default debug settings", false)
