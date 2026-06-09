@@ -121,7 +121,7 @@ void ImageFuncsAnalysis::visitCallInst(CallInst &CI) {
   else if (funcName == GET_SAMPLER_SNAP_WA_REQUIRED && !m_useSPVINTELBindlessImages) {
     imageFunc = &m_argMap[ImplicitArg::SAMPLER_SNAP_WA];
   } else {
-    if (funcName.endswith("sample_l") && m_useBindlessImageWithSamplerTracking) {
+    if (IGCLLVM::ends_with(funcName, "sample_l") && m_useBindlessImageWithSamplerTracking) {
       Value *callArg = ValueTracker::track(&CI, 1, getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils(),
                                            getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData());
       if (!callArg)
