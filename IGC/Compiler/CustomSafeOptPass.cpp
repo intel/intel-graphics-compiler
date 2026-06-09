@@ -1946,7 +1946,9 @@ void CustomSafeOptPass::visitTruncInst(TruncInst& I)
         {
             if( auto* ZI = dyn_cast<ZExtInst>( genIntr->getOperand( 0 ) ); ZI && ZI->getSrcTy()->isIntegerTy( 16 ) && ZI->getDestTy()->isIntegerTy( 32 ) )
             {
-                IRBuilder<> builder( &I );
+                // Insert at shuffle's position to preserve lane-activity semantics
+                // (wave ops are sensitive to which BB they execute in).
+                IRBuilder<> builder( genIntr );
 
                 llvm::SmallVector<Value*> newArgs( genIntr->args().begin(), genIntr->args().end() );
 
