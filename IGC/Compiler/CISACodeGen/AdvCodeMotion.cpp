@@ -866,10 +866,10 @@ bool MadLoopSlice::sliceLoop(Loop *L) const {
   for (auto I = ECs.begin(), E = ECs.end(); I != E; ++I) {
 #if LLVM_VERSION_MAJOR >= 22
     const auto *ECV = *I;
-    auto LoopECV = *ECV;
+    const auto &LoopECV = *ECV;
 #else
-    auto ECV = I;
-    auto LoopECV = I;
+    const auto ECV = I;
+    const auto LoopECV = I;
 #endif
     if (!ECV->isLeader())
       continue;
