@@ -8,7 +8,7 @@
 ;============================ end_copyright_notice =============================
 ; FIXME: make this test work without shader type
 ; REQUIRES: llvm-14-plus, regkeys, shader-types
-; RUN: igc_opt -platformbmg -igc-emit-visa -simd-mode 16 -inputrt -regkey ResourceLoopUnrollIteration=4,FuseResourceLoop=0,DumpVISAASMToConsole -S < %s | FileCheck %s
+; RUN: igc_opt -platformbmg -LSC-Cache-Hints -igc-emit-visa -simd-mode 16 -inputrt -regkey ResourceLoopUnrollIteration=4,FuseResourceLoop=0,DumpVISAASMToConsole -S < %s | FileCheck %s
 ;
 ; Test checks how we emit ResourceLoop
 

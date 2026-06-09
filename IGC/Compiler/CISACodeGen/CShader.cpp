@@ -3721,12 +3721,20 @@ unsigned int CShader::GetPrimitiveTypeSizeInRegister(const Type *Ty) const {
   return GetPrimitiveTypeSizeInRegisterInBits(Ty) / 8;
 }
 
-unsigned int CShader::GetScalarTypeSizeInRegisterInBits(const Type *Ty) const {
+unsigned int CShader::GetScalarTypeSizeInRegisterInBits(const Type *Ty, const CodeGenContext &Ctx) {
   unsigned int sizeInBits = Ty->getScalarSizeInBits();
   if (Ty->isPtrOrPtrVectorTy()) {
-    sizeInBits = GetContext()->getRegisterPointerSizeInBits(Ty->getPointerAddressSpace());
+    sizeInBits = Ctx.getRegisterPointerSizeInBits(Ty->getPointerAddressSpace());
   }
   return sizeInBits;
+}
+
+unsigned int CShader::GetScalarTypeSizeInRegister(const Type *Ty, const CodeGenContext &Ctx) {
+  return GetScalarTypeSizeInRegisterInBits(Ty, Ctx) / 8;
+}
+
+unsigned int CShader::GetScalarTypeSizeInRegisterInBits(const Type *Ty) const {
+  return GetScalarTypeSizeInRegisterInBits(Ty, *GetContext());
 }
 
 unsigned int CShader::GetScalarTypeSizeInRegister(const Type *Ty) const {
@@ -3816,11 +3824,10 @@ Tristate CShader::shouldGenerateLSCQuery(const CodeGenContext &Ctx, Instruction 
   return Tristate::Unknown;
 }
 
-// Note that if LSCEnabled() returns true, load/store instructions must be
-// generated with LSC; but some intrinsics are still generated with legacy.
-bool CShader::shouldGenerateLSC(llvm::Instruction *vectorLdStInst, bool isTGM) {
-  if (vectorLdStInst && m_ctx->m_DriverInfo.SupportForceRouteAndCache() &&
-      (!isTGM || m_ctx->platform.supportsNonDefaultLSCCacheSetting())) {
+bool CShader::shouldGenerateLSC(const CodeGenContext &Ctx, llvm::Instruction *vectorLdStInst, bool isTGM, SIMDMode Mode,
+                                std::optional<bool> AddressIsUniform) {
+  if (vectorLdStInst && Ctx.m_DriverInfo.SupportForceRouteAndCache() &&
+      (!isTGM || Ctx.platform.supportsNonDefaultLSCCacheSetting())) {
     // check if umd specified lsc caching mode and set the metadata if needed.
     if (vectorLdStInst->getMetadata("lsc.cache.ctrl")) {
       // if umd force the caching mode, also assume it wants the resource to be in lsc.
@@ -3828,7 +3835,7 @@ bool CShader::shouldGenerateLSC(llvm::Instruction *vectorLdStInst, bool isTGM) {
     }
   }
 
-  if (auto result = shouldGenerateLSCQuery(*m_ctx, vectorLdStInst, m_SIMDSize); result != Tristate::Unknown)
+  if (auto result = shouldGenerateLSCQuery(Ctx, vectorLdStInst, Mode); result != Tristate::Unknown)
     return (result == Tristate::True);
 
   // ensure both source and destination are not uniform
@@ -3842,14 +3849,17 @@ bool CShader::shouldGenerateLSC(llvm::Instruction *vectorLdStInst, bool isTGM) {
   if (addrs) {
     bool isA32 = false; // TODO: see below
     if (PointerType *ptrType = dyn_cast<PointerType>(addrs->getType())) {
-      isA32 = !IGC::isA64Ptr(ptrType, GetContext());
+      isA32 = !IGC::isA64Ptr(ptrType, const_cast<CodeGenContext *>(&Ctx));
     }
-    canGenerate &= isA32 || !GetSymbol(addrs)->IsUniform();
+    if (AddressIsUniform)
+      canGenerate &= isA32 || !*AddressIsUniform;
+    else
+      canGenerate &= isA32;
 
-    if (!isA32 && GetSymbol(addrs)->IsUniform()) {
+    if (!isA32 && (!AddressIsUniform || *AddressIsUniform)) {
       // This is A64 and Uniform case. The LSC is not allowed.
       // However, before exit check the total bytes to be stored or loaded.
-      if (totalBytesToStoreOrLoad(vectorLdStInst) >= 4) {
+      if (totalBytesToStoreOrLoad(vectorLdStInst, Ctx) >= 4) {
         canGenerate = true;
       }
     }
@@ -3857,7 +3867,25 @@ bool CShader::shouldGenerateLSC(llvm::Instruction *vectorLdStInst, bool isTGM) {
   return canGenerate;
 } // shouldGenerateLSC
 
-uint32_t CShader::totalBytesToStoreOrLoad(llvm::Instruction *vectorLdStInst) {
+// Note that if LSCEnabled() returns true, load/store instructions must be
+// generated with LSC; but some intrinsics are still generated with legacy.
+bool CShader::shouldGenerateLSC(llvm::Instruction *vectorLdStInst, bool isTGM) {
+  if (vectorLdStInst && m_ctx->m_DriverInfo.SupportForceRouteAndCache() &&
+      (!isTGM || m_ctx->platform.supportsNonDefaultLSCCacheSetting())) {
+    if (vectorLdStInst->getMetadata("lsc.cache.ctrl"))
+      return true;
+  }
+
+  if (auto result = shouldGenerateLSCQuery(*m_ctx, vectorLdStInst, m_SIMDSize); result != Tristate::Unknown)
+    return (result == Tristate::True);
+
+  std::optional<bool> AddressIsUniform;
+  if (GenIntrinsicInst *inst = dyn_cast_or_null<GenIntrinsicInst>(vectorLdStInst))
+    AddressIsUniform = GetSymbol(inst->getOperand(0))->IsUniform();
+  return shouldGenerateLSC(*m_ctx, vectorLdStInst, isTGM, m_SIMDSize, AddressIsUniform);
+}
+
+uint32_t CShader::totalBytesToStoreOrLoad(llvm::Instruction *vectorLdStInst, const CodeGenContext &Ctx) {
   if (dyn_cast<LoadInst>(vectorLdStInst) || dyn_cast<StoreInst>(vectorLdStInst)) {
     Type *Ty = nullptr;
     if (LoadInst *inst = dyn_cast<LoadInst>(vectorLdStInst)) {
@@ -3869,13 +3897,17 @@ uint32_t CShader::totalBytesToStoreOrLoad(llvm::Instruction *vectorLdStInst) {
     if (Ty) {
       IGCLLVM::FixedVectorType *VTy = dyn_cast<IGCLLVM::FixedVectorType>(Ty);
       Type *eltTy = VTy ? VTy->getElementType() : Ty;
-      uint32_t eltBytes = GetScalarTypeSizeInRegister(eltTy);
+      uint32_t eltBytes = GetScalarTypeSizeInRegister(eltTy, Ctx);
       uint32_t elts = VTy ? int_cast<uint32_t>(VTy->getNumElements()) : 1;
       return (eltBytes * elts);
     }
   }
   return 0;
 } // totalBytesToStoreOrLoad
+
+uint32_t CShader::totalBytesToStoreOrLoad(llvm::Instruction *vectorLdStInst) {
+  return totalBytesToStoreOrLoad(vectorLdStInst, *GetContext());
+}
 
 // getShaderFileName() returns the shader name that will be used to form a dump
 // file name.

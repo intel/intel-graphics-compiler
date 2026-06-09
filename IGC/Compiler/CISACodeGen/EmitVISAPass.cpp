@@ -15395,7 +15395,7 @@ void EmitPass::emitScalarAtomics(llvm::Instruction *pInst, ResourceDescriptor &r
     pFinalAtomicSrcVal = pCastAtomicSrcVal;
   }
   if (shouldGenerateLSC(pInst)) {
-    auto cacheOpts = LSC_DEFAULT_CACHING;
+    auto cacheOpts = atomicCacheOptsFromMetadataOrDefault(pInst);
     if (pU || pV || pR) {
       {
         m_encoder->LSC_TypedAtomic(uniformAtomicOp, &resource, pU, pV, pR, pFinalAtomicSrcVal, nullptr /*src1*/,
@@ -15493,7 +15493,7 @@ void EmitPass::emitScalarAtomicLoad(llvm::Instruction *pInst, ResourceDescriptor
                                          pDstAddr ? pDstAddr->getName() : CName::NONE)
           : nullptr;
   if (shouldGenerateLSC(pInst)) {
-    auto cacheOpts = LSC_DEFAULT_CACHING;
+    auto cacheOpts = atomicCacheOptsFromMetadataOrDefault(pInst);
     if (pU || pV || pR) {
       {
         m_encoder->LSC_TypedAtomic(EATOMIC_OR, &resource, pU, pV, pR, pSrc, nullptr /*src1*/, atomicDst, bitWidth,
@@ -15812,7 +15812,7 @@ void EmitPass::emitAtomicRaw(llvm::GenIntrinsicInst *pInst, Value *dstAddr, Cons
         m_encoder->Push();
       } else {
         if (shouldGenerateLSC()) {
-          auto cacheOpts = LSC_DEFAULT_CACHING;
+          auto cacheOpts = atomicCacheOptsFromMetadataOrDefault(pInst);
           m_encoder->LSC_AtomicRaw(atomic_op, pDst, uniformBaseVar, pDstAddr, pSrc0, pSrc1, bitwidth, &resource,
                                    addrSize, immOffsetVal, immScaleVal, cacheOpts);
         } else {
@@ -15853,7 +15853,7 @@ void EmitPass::emitAtomicRaw(llvm::GenIntrinsicInst *pInst, Value *dstAddr, Cons
       bool needLoop = ResourceLoopHeader(dest, resource, flag, label);
       ResourceLoopSubIteration(resource, flag, label);
       if (shouldGenerateLSC(pInst)) {
-        auto cacheOpts = LSC_DEFAULT_CACHING;
+        auto cacheOpts = atomicCacheOptsFromMetadataOrDefault(pInst);
         m_encoder->LSC_AtomicRaw(atomic_op, pDst, uniformBaseVar, pDstAddr, pSrc0, pSrc1, bitwidth, &resource, addrSize,
                                  immOffsetVal, immScaleVal, cacheOpts);
       } else {
@@ -19949,7 +19949,7 @@ void EmitPass::emitLSCAtomicTyped(llvm::GenIntrinsicInst *inst) {
         addrSize = LSC_ADDR_SIZE_32bU;
       }
     }
-    auto cacheOpts = LSC_DEFAULT_CACHING;
+    auto cacheOpts = atomicCacheOptsFromMetadataOrDefault(inst);
     if (!needsSplit) {
       m_encoder->SetPredicate(flag);
         m_encoder->LSC_TypedAtomic(atomic_op, &resource, pU, pV, pR, pSrc0, pSrc1,
@@ -23071,102 +23071,30 @@ LSC_CACHE_OPTS EmitPass::translateLSCCacheControlsFromValue(llvm::Value *value, 
                                        value);
 }
 
-std::optional<LSC_CACHE_OPTS> EmitPass::cacheOptionsForConstantBufferLoads(Instruction *inst, LSC_L1_L3_CC Ctrl) const {
-  if (const Value *resourcePointer = GetBufferOperand(inst)) {
-    uint addressSpace = resourcePointer->getType()->getPointerAddressSpace();
-    BufferType bufferType = GetBufferType(addressSpace);
-    if ((addressSpace == ADDRESS_SPACE_CONSTANT) || (bufferType == CONSTANT_BUFFER) ||
-        (bufferType == BINDLESS_CONSTANT_BUFFER) || (bufferType == SSH_BINDLESS_CONSTANT_BUFFER)) {
-      return translateLSCCacheControlsEnum(Ctrl, true, inst);
-    }
+// Non-operand atomics (scalar/typed intatomicraw and typed atomics) have no
+// cache-control operand. Their cache control is resolved upstream by
+// LSCCacheHints (LscAtomicCacheControlOverride) and carried in lsc.cache.ctrl
+// metadata. Read it here, falling back to LSC_DEFAULT_CACHING when no metadata
+// is present (the no-override case). Atomics are store-shaped, so isLoad=false.
+LSC_CACHE_OPTS EmitPass::atomicCacheOptsFromMetadataOrDefault(llvm::Instruction *inst) const {
+  if (const MDNode *node = inst ? inst->getMetadata("lsc.cache.ctrl") : nullptr) {
+    ConstantAsMetadata *MD = cast<ConstantAsMetadata>(node->getOperand(0));
+    return translateLSCCacheControlsFromValue(MD->getValue(), /*isLoad=*/false);
   }
-  return std::nullopt;
-}
-
-std::optional<LSC_CACHE_OPTS> EmitPass::cacheOptionsForConstantBufferLoads(Instruction *inst) const {
-  std::optional<LSC_CACHE_OPTS> cacheOpts;
-  if (IGC_IS_FLAG_DISABLED(DisableSystemMemoryCachingInGPUForConstantBuffers) &&
-      m_currShader->m_Platform->isCoreChildOf(IGFX_XE2_HPG_CORE)) {
-    if (auto Opts = cacheOptionsForConstantBufferLoads(inst, LSC_L1C_L3CC))
-      cacheOpts = *Opts;
-  }
-  if (m_pCtx->type == ShaderType::RAYTRACING_SHADER && IGC_IS_FLAG_ENABLED(ForceRTConstantBufferCacheCtrl)) {
-    auto Ctrl = (LSC_L1_L3_CC)IGC_GET_FLAG_VALUE(RTConstantBufferCacheCtrl);
-    if (auto Opts = cacheOptionsForConstantBufferLoads(inst, Ctrl))
-      cacheOpts = *Opts;
-  }
-  return cacheOpts;
+  return LSC_DEFAULT_CACHING;
 }
 
 LSC_CACHE_OPTS
 EmitPass::translateLSCCacheControlsFromMetadata(Instruction *inst, bool isLoad, bool isTGM) const {
   LSC_CACHE_OPTS cacheOpts{LSC_CACHING_DEFAULT, LSC_CACHING_DEFAULT};
 
-  if (isTGM) {
-    if (m_pCtx->platform.supportsNonDefaultLSCCacheSetting()) {
-      const MDNode *node = inst ? inst->getMetadata("lsc.cache.ctrl") : nullptr;
-      if (node) {
-        ConstantAsMetadata *MD = cast<ConstantAsMetadata>(node->getOperand(0));
-        cacheOpts = translateLSCCacheControlsFromValue(MD->getValue(), isLoad);
-      }
-    }
-
+  if (isTGM && !m_pCtx->platform.supportsNonDefaultLSCCacheSetting())
     return cacheOpts;
-  }
 
-  // To get rid of UGM-before-EOT fence, NEO changes the default and passes it
-  // to IGC. Here, set per-inst cache control explicitly to the given default to
-  // skip visa's fence WA. And this is done if fence WA is needed.
-  if (m_pCtx->type == ShaderType::OPENCL_SHADER && IGC_IS_FLAG_ENABLED(EnableLSCFenceUGMBeforeEOT) &&
-      m_pCtx->platform.NeedsLSCFenceUGMBeforeEOT()) {
-    if (isLoad && m_pCtx->getModuleMetaData()->compOpt.LoadCacheDefault != -1) { // load
-      LSC_L1_L3_CC L1L3Val = static_cast<LSC_L1_L3_CC>(m_pCtx->getModuleMetaData()->compOpt.LoadCacheDefault);
-      cacheOpts = translateLSCCacheControlsEnum(L1L3Val, true, inst);
-    } else if (!isLoad && m_pCtx->getModuleMetaData()->compOpt.StoreCacheDefault != -1) { // store
-      LSC_L1_L3_CC L1L3Val = static_cast<LSC_L1_L3_CC>(m_pCtx->getModuleMetaData()->compOpt.StoreCacheDefault);
-      cacheOpts = translateLSCCacheControlsEnum(L1L3Val, false, inst);
-    }
-  }
-
-  // inst could be nullptr when this function is called
-  if (inst) {
-    // change default setting for private-memory and constant access
-    if (auto LI = dyn_cast<LoadInst>(inst)) {
-      auto Ptr = LI->getPointerOperand();
-      if (Ptr->getType()->getPointerAddressSpace() == ADDRESS_SPACE_PRIVATE ||
-          Ptr->getType()->getPointerAddressSpace() == ADDRESS_SPACE_CONSTANT)
-        cacheOpts = {LSC_CACHING_CACHED, LSC_CACHING_CACHED};
-    } else if (auto SI = dyn_cast<StoreInst>(inst)) {
-      auto Ptr = SI->getPointerOperand();
-      if (Ptr->getType()->getPointerAddressSpace() == ADDRESS_SPACE_PRIVATE)
-        cacheOpts = {LSC_CACHING_WRITEBACK, LSC_CACHING_WRITEBACK};
-    }
-  }
-
-  // Check for MD nodes. Internal lsc.cache.ctrl gets higher priority as
-  // they are more precise
   const MDNode *node = inst ? inst->getMetadata("lsc.cache.ctrl") : nullptr;
   if (node) {
     ConstantAsMetadata *MD = cast<ConstantAsMetadata>(node->getOperand(0));
     return translateLSCCacheControlsFromValue(MD->getValue(), isLoad);
-  }
-  node = inst ? inst->getMetadata(LLVMContext::MD_nontemporal) : nullptr;
-  if (node) {
-    return {LSC_CACHING_UNCACHED, LSC_CACHING_UNCACHED};
-  }
-
-  // RT specific handling
-  bool hasRQCall = (m_pCtx->type == ShaderType::RAYTRACING_SHADER);
-  if (!hasRQCall && inst) {
-    hasRQCall = m_pCtx->hasSyncRTCalls(inst->getFunction());
-  }
-  if (hasRQCall) {
-    cacheOpts = getDefaultRaytracingCachePolicy(isLoad);
-  }
-
-  if (inst && isLoad) {
-    if (auto Opts = cacheOptionsForConstantBufferLoads(inst))
-      cacheOpts = *Opts;
   }
 
   return cacheOpts;
@@ -23379,9 +23307,6 @@ void EmitPass::emitLscIntrinsicLoad(llvm::GenIntrinsicInst *inst) {
   LSC_CACHE_OPTS cacheOpts = translateLSCCacheControlsFromValue(inst->getOperand(4), true);
   LSC_DOC_ADDR_SPACE addrSpace = m_pCtx->getUserAddrSpaceMD().Get(inst);
 
-  if (auto Opts = cacheOptionsForConstantBufferLoads(inst))
-    cacheOpts = *Opts;
-
   emitLscIntrinsicFragments(m_destination, dataSize, dataElems, immOffset,
                             [&](CVariable *gatherDst, int fragIx, LSC_DATA_ELEMS fragElems, int fragImmOffset) {
                               if (isBlockLoad) {
@@ -23538,23 +23463,6 @@ void EmitPass::emitLscIntrinsicPrefetch(llvm::GenIntrinsicInst *inst) {
       isa<ConstantInt>(inst->getOperand(1)) ? int_cast<int>(cast<ConstantInt>(inst->getOperand(1))->getSExtValue()) : 0;
 
   LSC_CACHE_OPTS cacheOpts = translateLSCCacheControlsFromValue(inst->getOperand(4), true);
-
-  if (cacheOpts.l1 == LSC_CACHING_READINVALIDATE && cacheOpts.l3 == LSC_CACHING_CACHED) {
-    // These cache opts are not allowed for prefetch message.
-    cacheOpts.l1 = cacheOpts.l3 = LSC_CACHING_CACHED;
-    IGC_ASSERT_EXIT_MESSAGE(0, "read-invalidate not permitted on prefetch");
-  }
-
-  if (cacheOpts.l1 == LSC_CACHING_DEFAULT && cacheOpts.l3 == LSC_CACHING_DEFAULT &&
-      m_currShader->m_Platform->getPlatformInfo().eProductFamily == IGFX_PVC &&
-      // needed for PVC XL A0 RevID==0x0, fixed from PVC XT A0
-      // RevID==0x3==REVISION_B
-      m_currShader->m_Platform->getPlatformInfo().usRevId < REVISION_B) {
-    // [PVC XL A0 RevID=0x0] Default cache opts are not allowed for a Prefetch
-    // message.
-    cacheOpts.l1 = cacheOpts.l3 = LSC_CACHING_CACHED;
-    IGC_ASSERT_EXIT_MESSAGE(0, "invalid cache opts for prefetch (must be non-default)");
-  }
 
   // use LSC_LOAD will null dst for prefetch
   LSC_OP lscOp = inst->getIntrinsicID() == GenISAIntrinsic::GenISA_LSCLoadStatus ? LSC_LOAD_STATUS : LSC_LOAD;
@@ -24457,26 +24365,6 @@ void EmitPass::emitLSCIntrinsic(llvm::GenIntrinsicInst *GII) {
     }
   }
 }
-LSC_CACHE_OPTS EmitPass::getDefaultRaytracingCachePolicy(bool isLoad) const {
-  LSC_CACHE_OPTS DefaultCacheCtrl{LSC_CACHING_DEFAULT, LSC_CACHING_DEFAULT};
-
-  if (IGC_IS_FLAG_ENABLED(ForceGenMemDefaultCacheCtrl))
-    return DefaultCacheCtrl;
-
-  LSC_L1_L3_CC Opts;
-  LSC_L1_L3_CC genMemLoadCacheControl = LSC_L1C_WT_L3C_WB;
-  LSC_L1_L3_CC genMemStoreCacheControl = LSC_L1IAR_WB_L3C_WB;
-  if (isLoad) {
-    Opts = IGC_IS_FLAG_ENABLED(ForceGenMemLoadCacheCtrl) ? (LSC_L1_L3_CC)IGC_GET_FLAG_VALUE(GenMemLoadCacheCtrl)
-                                                         : genMemLoadCacheControl;
-  } else {
-    Opts = IGC_IS_FLAG_ENABLED(ForceGenMemStoreCacheCtrl) ? (LSC_L1_L3_CC)IGC_GET_FLAG_VALUE(GenMemStoreCacheCtrl)
-                                                          : genMemStoreCacheControl;
-  }
-
-  return translateLSCCacheControlsEnum(Opts, isLoad, nullptr);
-}
-
 void EmitPass::emitAsyncStackID(llvm::GenIntrinsicInst *I) {
   IGC_ASSERT(m_currShader->GetShaderType() == ShaderType::RAYTRACING_SHADER);
 }

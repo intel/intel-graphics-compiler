@@ -117,4 +117,37 @@ LSC_L1_L3_CC SWStackLoadPolicy(const CodeGenContext &Ctx);
  */
 LSC_CACHE_OPTS translateLSCCacheControlsEnum(LSC_L1_L3_CC l1l3cc, bool isLoad, const llvm::Value *warningContextValue,
                                              CodeGenContext &Ctx);
+
+/**
+ * Compute the constant-buffer load cache-control *enum* decision.
+ *
+ * Mirrors the former EmitVISA constant-buffer decision: for a load whose buffer
+ * operand is a constant buffer (constant addrspace / CONSTANT_BUFFER /
+ * BINDLESS_CONSTANT_BUFFER / SSH_BINDLESS_CONSTANT_BUFFER) it returns the IGC1
+ * cache-control enum that should override the baseline:
+ *   - on Xe2+ (unless DisableSystemMemoryCachingInGPUForConstantBuffers): LSC_L1C_L3CC
+ *   - for RAYTRACING_SHADER with ForceRTConstantBufferCacheCtrl: RTConstantBufferCacheCtrl
+ * Returns nullopt when no constant-buffer override applies. The returned enum is
+ * exactly what translateLSCCacheControlsEnum was previously fed by Emit, so the
+ * resolved opts are byte-identical.
+ *
+ * @param inst load instruction whose buffer operand is inspected
+ * @param Ctx  codegen context (platform predicates + shader type)
+ */
+std::optional<LSC_L1_L3_CC> getConstantBufferLoadCacheControlEnum(llvm::Instruction *inst, CodeGenContext &Ctx);
+
+/**
+ * Compute the default ray-tracing cache-control *enum* for loads/stores.
+ *
+ * Mirrors the former EmitVISA ray-tracing default policy minus the final
+ * translateLSCCacheControlsEnum promotion. Defaults:
+ *   load  = LSC_L1C_WT_L3C_WB, store = LSC_L1IAR_WB_L3C_WB
+ * steered by ForceGenMem{Load,Store}CacheCtrl + the D3DOnly RayDispatch opts.
+ * Returns nullopt when ForceGenMemDefaultCacheCtrl forces the platform default
+ * (i.e. {DEFAULT,DEFAULT}); the caller must treat that as "leave at default".
+ *
+ * @param isLoad true for loads/prefetches, false for stores
+ * @param Ctx    codegen context (platform predicates + shader type)
+ */
+std::optional<LSC_L1_L3_CC> getDefaultRaytracingCacheControlEnum(bool isLoad, CodeGenContext &Ctx);
 } // namespace IGC

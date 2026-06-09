@@ -34,6 +34,7 @@ SPDX-License-Identifier: MIT
 #include <vector>
 #include "Probe/Assertion.h"
 #include "CShaderProgram.hpp"
+#include <optional>
 
 namespace llvm {
 class Value;
@@ -564,6 +565,8 @@ public:
 
   unsigned int GetPrimitiveTypeSizeInRegisterInBits(const llvm::Type *Ty) const;
   unsigned int GetPrimitiveTypeSizeInRegister(const llvm::Type *Ty) const;
+  static unsigned int GetScalarTypeSizeInRegisterInBits(const llvm::Type *Ty, const CodeGenContext &Ctx);
+  static unsigned int GetScalarTypeSizeInRegister(const llvm::Type *Ty, const CodeGenContext &Ctx);
   unsigned int GetScalarTypeSizeInRegisterInBits(const llvm::Type *Ty) const;
   unsigned int GetScalarTypeSizeInRegister(const llvm::Type *Ty) const;
 
@@ -572,7 +575,10 @@ public:
   // optional instruction argument checks additional constraints
   static Tristate shouldGenerateLSCQuery(const CodeGenContext &Ctx, llvm::Instruction *vectorLdStInst = nullptr,
                                          SIMDMode Mode = SIMDMode::UNKNOWN);
+  static bool shouldGenerateLSC(const CodeGenContext &Ctx, llvm::Instruction *vectorLdStInst, bool isTGM, SIMDMode Mode,
+                                std::optional<bool> AddressIsUniform);
   bool shouldGenerateLSC(llvm::Instruction *vectorLdStInst = nullptr, bool isTGM = false);
+  static uint32_t totalBytesToStoreOrLoad(llvm::Instruction *vectorLdStInst, const CodeGenContext &Ctx);
   uint32_t totalBytesToStoreOrLoad(llvm::Instruction *vectorLdStInst);
 
   void setShaderProgramID(int aID) { m_shaderProgramID = aID; }

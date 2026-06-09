@@ -7,7 +7,7 @@
 ;============================ end_copyright_notice =============================
 ;
 ; REQUIRES: llvm-14-plus
-; RUN: igc_opt --opaque-pointers -LSC-Controls-Analysis-pass -LSC-Cache-Hints  -S < %s | FileCheck %s
+; RUN: igc_opt --opaque-pointers -platformdg2 -LSC-Controls-Analysis-pass -LSC-Cache-Hints -S < %s | FileCheck %s
 ; ------------------------------------------------
 ; LSCControlsAnalysisPass
 ; ------------------------------------------------

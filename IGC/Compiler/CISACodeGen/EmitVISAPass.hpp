@@ -373,8 +373,6 @@ public:
   void emitAtomicCounter(llvm::GenIntrinsicInst *pInst);
   void emitFastClear(llvm::LoadInst *inst);
   void emitFastClearSend(llvm::Instruction *pInst);
-  std::optional<LSC_CACHE_OPTS> cacheOptionsForConstantBufferLoads(Instruction *inst, LSC_L1_L3_CC Ctrl) const;
-  std::optional<LSC_CACHE_OPTS> cacheOptionsForConstantBufferLoads(Instruction *inst) const;
   void emitUniformAtomicCounter(llvm::GenIntrinsicInst *pInst);
 
   void emitDiscard(llvm::Instruction *inst);
@@ -508,7 +506,6 @@ public:
   void emitLLVMStackRestore(llvm::IntrinsicInst *inst);
 
   void emitUnmaskedRegionBoundary(bool start);
-  LSC_CACHE_OPTS getDefaultRaytracingCachePolicy(bool isLoad) const;
   void emitAsyncStackID(llvm::GenIntrinsicInst *I);
   void emitTraceRay(llvm::TraceRayIntrinsic *I, bool RayQueryEnable);
 
@@ -561,6 +558,12 @@ public:
                                                const llvm::Value *warningContextValue) const;
   LSC_CACHE_OPTS translateLSCCacheControlsFromValue(llvm::Value *value, bool isLoad) const;
   LSC_CACHE_OPTS translateLSCCacheControlsFromMetadata(llvm::Instruction *inst, bool isLoad, bool isTGM = 0) const;
+  // Non-operand atomics (scalar/typed intatomicraw/typed) carry no cache-control
+  // operand. The LscAtomicCacheControlOverride decision now lives in
+  // LSCCacheHints, which attaches the resolved value as lsc.cache.ctrl metadata.
+  // Emit reads that metadata here (isLoad=false: atomics are store-shaped) and
+  // falls back to LSC_DEFAULT_CACHING when absent (no override -> no metadata).
+  LSC_CACHE_OPTS atomicCacheOptsFromMetadataOrDefault(llvm::Instruction *inst) const;
   struct LscMessageFragmentInfo {
     LSC_DATA_ELEMS fragElem;
     int fragElemCount;

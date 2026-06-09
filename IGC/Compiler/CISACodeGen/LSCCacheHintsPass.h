@@ -28,15 +28,30 @@ public:
   static char ID;
 
 private:
-  void VisitInstruction(const ModuleMetaData *ModMD, llvm::Instruction &I);
-  void TranslateLscCacheCtrlToPisaCacheCtrl(llvm::Instruction &I) const;
-  void SetInstructionCacheHint(llvm::Instruction &I, const unsigned CacheHint, llvm::StringRef Reason) const;
-  void SetupLscCacheCtrl(const ModuleMetaData *ModMD, llvm::Instruction &I);
-  bool ShouldGenerateLSC_Duplicate(llvm::Instruction &I, bool isTGM) const;
-  uint32_t TotalBytesToStoreOrLoad_Duplicate(llvm::Instruction *vectorLdStInst) const;
-  unsigned int GetScalarTypeSizeInRegister_Duplicate(const llvm::Type *Ty) const;
+  bool VisitInstruction(const ModuleMetaData *ModMD, llvm::Instruction &I);
+  bool SetInstructionCacheHint(llvm::Instruction &I, const unsigned CacheHint, llvm::StringRef Reason,
+                               bool AllowOverwrite = false) const;
+  bool SetupLscCacheCtrl(const ModuleMetaData *ModMD, llvm::Instruction &I);
+  // Operand-channel resolution. Distinct from the metadata channel:
+  // these intrinsics carry their cache control in an immediate i32 operand that
+  // is not represented by lsc.cache.ctrl metadata. The pass resolves the
+  // constant-buffer load override, prefetch validation, and atomic override by
+  // rewriting that operand in place to its final IGC1 LSC_L1_L3_CC enum value.
+  static bool IsOperandChannelIntrinsic(const llvm::Instruction &I);
+  bool ResolveOperandCacheControl(llvm::Instruction &I);
+  // Non-operand atomic resolution. Scalar/typed atomics
+  // (GenISA_intatomicraw / *typed / cmpxchg / singlelane families) have NO cache
+  // operand. When the atomic override is set, attach cache-control metadata via
+  // SetInstructionCacheHint; when unset, attach nothing so the default cache
+  // behavior is preserved.
+  // These must NOT go through VisitInstruction/SetupLscCacheCtrl/global-override:
+  // those apply load/store defaults and Lsc/Tgm overrides that do not belong to
+  // atomics.
+  static bool IsOverridableAtomic(const llvm::Instruction &I);
+  bool ResolveAtomicCacheControl(llvm::Instruction &I);
+  bool TryApplyRovOrForceList(const ModuleMetaData *ModMD, llvm::Instruction &I);
   bool UseRasterizerOrderedByteAddressBuffer(const ModuleMetaData *ModMD, llvm::Instruction &I) const;
-  bool TryApplyGlobalOverride(const ModuleMetaData *ModMD, llvm::Instruction &I);
+  bool TryApplyGlobalOverride(const ModuleMetaData *ModMD, llvm::Instruction &I, bool &Changed);
   static bool TryOverrideCacheOpts(uint32_t &CacheCtrl, bool IsLoad, bool IsTGM,
                                    const CacheControlOverride &CacheControlOption);
   static bool IsCacheHintRelevantInstruction(const llvm::Instruction &I);

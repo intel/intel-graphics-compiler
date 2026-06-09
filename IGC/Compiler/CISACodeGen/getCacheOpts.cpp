@@ -19,6 +19,8 @@ SPDX-License-Identifier: MIT
 #include "common/igc_regkeys.hpp"                       // for IGC_IS_FLAG_ENABLED, IGC_GET_FLAG_VALUE
 #include "Probe/Assertion.h"                            // for IGC_ASSERT_MESSAGE
 #include "AdaptorCommon/RayTracing/MemRegionAnalysis.h" // for getRTRegion(), RTMemRegion
+#include "Compiler/CISACodeGen/helper.h"                // for GetBufferOperand
+#include "common/ResourceAddrSpace.h"                   // for GetBufferType / BufferType
 
 #include "common/LLVMWarningsPush.hpp" // for suppressing LLVM warnings
 #include "llvm/IR/Instructions.h"      // for llvm::StoreInst, llvm::LoadInst
@@ -389,6 +391,50 @@ LSC_CACHE_OPTS translateLSCCacheControlsEnum(LSC_L1_L3_CC l1l3cc, bool isLoad, c
     }
   }
   return cacheOpts;
+}
+
+// Helper: is the buffer behind this instruction a constant buffer? Mirrors the
+// historical EmitVISA constant-buffer guard.
+static bool isConstantBufferOperand(llvm::Instruction *inst) {
+  if (const Value *resourcePointer = GetBufferOperand(inst)) {
+    uint addressSpace = resourcePointer->getType()->getPointerAddressSpace();
+    BufferType bufferType = GetBufferType(addressSpace);
+    return (addressSpace == ADDRESS_SPACE_CONSTANT) || (bufferType == CONSTANT_BUFFER) ||
+           (bufferType == BINDLESS_CONSTANT_BUFFER) || (bufferType == SSH_BINDLESS_CONSTANT_BUFFER);
+  }
+  return false;
+}
+
+std::optional<LSC_L1_L3_CC> getConstantBufferLoadCacheControlEnum(llvm::Instruction *inst, CodeGenContext &Ctx) {
+  std::optional<LSC_L1_L3_CC> Ctrl;
+  if (IGC_IS_FLAG_DISABLED(DisableSystemMemoryCachingInGPUForConstantBuffers) &&
+      Ctx.platform.isCoreChildOf(IGFX_XE2_HPG_CORE)) {
+    if (isConstantBufferOperand(inst))
+      Ctrl = LSC_L1C_L3CC;
+  }
+  if (Ctx.type == ShaderType::RAYTRACING_SHADER && IGC_IS_FLAG_ENABLED(ForceRTConstantBufferCacheCtrl)) {
+    if (isConstantBufferOperand(inst))
+      Ctrl = (LSC_L1_L3_CC)IGC_GET_FLAG_VALUE(RTConstantBufferCacheCtrl);
+  }
+  return Ctrl;
+}
+
+std::optional<LSC_L1_L3_CC> getDefaultRaytracingCacheControlEnum(bool isLoad, CodeGenContext &Ctx) {
+  if (IGC_IS_FLAG_ENABLED(ForceGenMemDefaultCacheCtrl))
+    return std::nullopt;
+
+  LSC_L1_L3_CC Opts;
+  LSC_L1_L3_CC genMemLoadCacheControl = LSC_L1C_WT_L3C_WB;
+  LSC_L1_L3_CC genMemStoreCacheControl = LSC_L1IAR_WB_L3C_WB;
+  if (isLoad) {
+    Opts = IGC_IS_FLAG_ENABLED(ForceGenMemLoadCacheCtrl) ? (LSC_L1_L3_CC)IGC_GET_FLAG_VALUE(GenMemLoadCacheCtrl)
+                                                         : genMemLoadCacheControl;
+  } else {
+    Opts = IGC_IS_FLAG_ENABLED(ForceGenMemStoreCacheCtrl) ? (LSC_L1_L3_CC)IGC_GET_FLAG_VALUE(GenMemStoreCacheCtrl)
+                                                          : genMemStoreCacheControl;
+  }
+
+  return Opts;
 }
 
 } // namespace IGC
