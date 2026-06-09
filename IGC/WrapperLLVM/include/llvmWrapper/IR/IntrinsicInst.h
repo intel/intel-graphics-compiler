@@ -20,6 +20,35 @@ SPDX-License-Identifier: MIT
 #include "Probe/Assertion.h"
 
 namespace IGCLLVM {
+
+/// Returns the pointer argument of a lifetime intrinsic.
+/// In LLVM < 22, llvm.lifetime.start/end had the signature (i64 size, ptr p),
+/// so the pointer was argument 1. In LLVM >= 22 the size argument was removed
+/// and the pointer is now argument 0.
+inline llvm::Value *getLifetimeIntrinsicPtr(llvm::IntrinsicInst *II) {
+  IGC_ASSERT(II);
+  IGC_ASSERT(II->getIntrinsicID() == llvm::Intrinsic::lifetime_start ||
+             II->getIntrinsicID() == llvm::Intrinsic::lifetime_end);
+#if LLVM_VERSION_MAJOR >= 22
+  return II->getArgOperand(0);
+#else
+  return II->getArgOperand(1);
+#endif
+}
+
+/// Returns the size argument of a lifetime intrinsic, or nullptr on LLVM >= 22
+/// where the size argument was removed.
+inline llvm::ConstantInt *getLifetimeIntrinsicSize(llvm::IntrinsicInst *II) {
+  IGC_ASSERT(II);
+  IGC_ASSERT(II->getIntrinsicID() == llvm::Intrinsic::lifetime_start ||
+             II->getIntrinsicID() == llvm::Intrinsic::lifetime_end);
+#if LLVM_VERSION_MAJOR >= 22
+  return nullptr;
+#else
+  return llvm::cast<llvm::ConstantInt>(II->getArgOperand(0));
+#endif
+}
+
 inline bool isKillLocation(const llvm::DbgVariableIntrinsic *DbgInst) {
   IGC_ASSERT(DbgInst);
 #if LLVM_VERSION_MAJOR <= 15

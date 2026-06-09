@@ -25,6 +25,7 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPop.hpp"
 #include "llvmWrapper/IR/DebugInfo.h"
 #include "llvmWrapper/IR/IRBuilder.h"
+#include "llvmWrapper/IR/IntrinsicInst.h"
 #include <llvmWrapper/ADT/Optional.h>
 #include "Probe/Assertion.h"
 
@@ -419,7 +420,7 @@ bool PrivateMemoryResolution::runOnModule(llvm::Module &M) {
           if (II->getIntrinsicID() != Intrinsic::lifetime_start && II->getIntrinsicID() != Intrinsic::lifetime_end) {
             continue;
           }
-          auto *PtrInst = dyn_cast<Instruction>(II->getArgOperand(1));
+          auto *PtrInst = dyn_cast<Instruction>(IGCLLVM::getLifetimeIntrinsicPtr(II));
           if (isa_and_nonnull<AllocaInst>(PtrInst)) {
             continue;
           }

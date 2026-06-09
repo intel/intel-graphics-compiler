@@ -44,9 +44,9 @@ entry:
   %GroupID = alloca [3 x i64], align 8
 
 ; Update lifetime.start size
-; CHECK-NEXT:    call void @llvm.lifetime.start.p0(i64 512, ptr [[TC_I1]])
-; CHECK-NEXT:    call void @llvm.lifetime.start.p0(i64 128, ptr [[TA_I3]])
-; CHECK-NEXT:    call void @llvm.lifetime.start.p0(i64 256, ptr [[TB_I5]])
+; CHECK-NEXT:    call void @llvm.lifetime.start.p0({{(i64 512, )?}}ptr [[TC_I1]])
+; CHECK-NEXT:    call void @llvm.lifetime.start.p0({{(i64 128, )?}}ptr [[TA_I3]])
+; CHECK-NEXT:    call void @llvm.lifetime.start.p0({{(i64 256, )?}}ptr [[TB_I5]])
   call void @llvm.lifetime.start.p0i8(i64 128, ptr %tC.i)
   call void @llvm.lifetime.start.p0i8(i64 64, ptr %tA.i)
   call void @llvm.lifetime.start.p0i8(i64 64, ptr %tB.i)
@@ -89,17 +89,17 @@ loop_header:
 
 after_loop:
 ; Life time end size update
-; CHECK:         call void @llvm.lifetime.end.p0(i64 256, ptr [[TB_I5]])
-; CHECK-NEXT:    call void @llvm.lifetime.end.p0(i64 128, ptr [[TA_I3]])
-; CHECK-NEXT:    call void @llvm.lifetime.end.p0(i64 512, ptr [[TC_I1]])
+; CHECK:         call void @llvm.lifetime.end.p0({{(i64 256, )?}}ptr [[TB_I5]])
+; CHECK-NEXT:    call void @llvm.lifetime.end.p0({{(i64 128, )?}}ptr [[TA_I3]])
+; CHECK-NEXT:    call void @llvm.lifetime.end.p0({{(i64 512, )?}}ptr [[TC_I1]])
   call void @llvm.lifetime.end.p0i8(i64 64, ptr %tB.i)
   call void @llvm.lifetime.end.p0i8(i64 64, ptr %tA.i)
   call void @llvm.lifetime.end.p0i8(i64 128, ptr %tC.i)
 
 ; do not touch life time intrinsics if not for Joint Matrix types
 ; CHECK-NEXT:    [[GROUPID_ASCAST:%.*]] = addrspacecast ptr [[GROUPID]] to ptr addrspace(4)
-; CHECK-NEXT:    call void @llvm.lifetime.start.p0(i64 24, ptr [[GROUPID]])
-; CHECK-NEXT:    call void @llvm.lifetime.end.p0(i64 24, ptr [[GROUPID]])
+; CHECK-NEXT:    call void @llvm.lifetime.start.p0({{(i64 24, )?}}ptr [[GROUPID]])
+; CHECK-NEXT:    call void @llvm.lifetime.end.p0({{(i64 24, )?}}ptr [[GROUPID]])
   %GroupID.ascast = addrspacecast ptr %GroupID to ptr addrspace(4)
   call void @llvm.lifetime.start.p0i8(i64 24, ptr %GroupID)
   call void @llvm.lifetime.end.p0i8(i64 24, ptr %GroupID)

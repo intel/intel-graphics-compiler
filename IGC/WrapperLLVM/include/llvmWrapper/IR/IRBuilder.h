@@ -243,6 +243,26 @@ public:
     llvm::Type *Ty = IGCLLVM::getNonOpaquePtrEltTy(PtrTy);
     return llvm::IRBuilder<T, InserterTy>::CreatePtrDiff(Ty, LHS, RHS, Name);
   }
+
+  /// Version-portable CreateLifetimeStart: the i64 size arg was removed in LLVM 22.
+  llvm::CallInst *CreateLifetimeStart(llvm::Value *Ptr, llvm::ConstantInt *Size = nullptr) {
+#if LLVM_VERSION_MAJOR >= 22
+    (void)Size;
+    return llvm::IRBuilder<T, InserterTy>::CreateLifetimeStart(Ptr);
+#else
+    return llvm::IRBuilder<T, InserterTy>::CreateLifetimeStart(Ptr, Size);
+#endif
+  }
+
+  /// Version-portable CreateLifetimeEnd: the i64 size arg was removed in LLVM 22.
+  llvm::CallInst *CreateLifetimeEnd(llvm::Value *Ptr, llvm::ConstantInt *Size = nullptr) {
+#if LLVM_VERSION_MAJOR >= 22
+    (void)Size;
+    return llvm::IRBuilder<T, InserterTy>::CreateLifetimeEnd(Ptr);
+#else
+    return llvm::IRBuilder<T, InserterTy>::CreateLifetimeEnd(Ptr, Size);
+#endif
+  }
 };
 
 /// Version portable pointer type accessor. With older LLVM versions opaque pointer support

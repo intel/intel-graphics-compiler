@@ -29,6 +29,7 @@ SPDX-License-Identifier: MIT
 
 #include "Probe/Assertion.h"
 #include "llvmWrapper/IR/DerivedTypes.h"
+#include "llvmWrapper/IR/IRBuilder.h"
 #include "llvmWrapper/IR/Type.h"
 #include "llvmWrapper/Support/Alignment.h"
 #include "llvmWrapper/Support/TypeSize.h"
@@ -704,7 +705,7 @@ void TransposeHelper::handleLifetimeStart(IntrinsicInst *II,
   auto IID = vc::getAnyIntrinsicID(II);
   IGC_ASSERT_EXIT(IID == Intrinsic::lifetime_start);
 
-  IRBuilder<> IRB(II);
+  IGCLLVM::IRBuilder<> IRB(II);
   IGC_ASSERT_EXIT(Idx.Index == IRB.getInt32(0));
 
   auto *Ty = VectorAlloca->getAllocatedType();
@@ -725,7 +726,7 @@ void TransposeHelper::handleLifetimeEnd(IntrinsicInst *II,
   auto IID = vc::getAnyIntrinsicID(II);
   IGC_ASSERT_EXIT(IID == Intrinsic::lifetime_end);
 
-  IRBuilder<> IRB(II);
+  IGCLLVM::IRBuilder<> IRB(II);
   IGC_ASSERT_EXIT(Idx.Index == IRB.getInt32(0));
 
   auto *Ty = VectorAlloca->getAllocatedType();

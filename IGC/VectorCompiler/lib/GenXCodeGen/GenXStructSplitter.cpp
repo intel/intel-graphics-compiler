@@ -81,6 +81,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/Transforms/Utils/BasicBlockUtils.h>
 #include <llvm/Transforms/Utils/Local.h>
 #include <llvmWrapper/ADT/Optional.h>
+#include <llvmWrapper/IR/IRBuilder.h>
 #include <llvmWrapper/Support/Alignment.h>
 
 #include "Probe/Assertion.h"
@@ -1213,7 +1214,7 @@ void Substituter::createLifetime(Instruction *OldI, AllocaInst *NewAI) {
           IGCLLVM::makeOptional(NewAI->getAllocationSizeInBits(DL));
       IGC_ASSERT_EXIT(MaybeSize.has_value());
 
-      IRBuilder<> Builder(II);
+      IGCLLVM::IRBuilder<> Builder(II);
       auto *SizeC = Builder.getInt64(MaybeSize.value() / genx::ByteBits);
 
       switch (II->getIntrinsicID()) {

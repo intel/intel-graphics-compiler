@@ -20,8 +20,7 @@ define spir_kernel void @test_lifetime() {
 ; CHECK-LABEL: @test_lifetime(
 ; CHECK:       entry:
 ; CHECK:         [[MAIN_ALLOCA:%.*]] = alloca [16 x i32], align 16
-; CHECK:         [[BC:%.*]] = bitcast ptr [[MAIN_ALLOCA]] to ptr
-; CHECK:         call void @llvm.lifetime.start.p0(i64 64, ptr [[BC]])
+; CHECK:         call void @llvm.lifetime.start.p0({{(i64 64, )?}}ptr [[MAIN_ALLOCA]])
 ; CHECK:         [[BC32:%.*]] = bitcast ptr [[MAIN_ALLOCA]] to ptr
 ; CHECK:         [[BC32_INT:%.*]] = ptrtoint ptr [[BC32]] to i64
 ; CHECK:         [[PTR3_INT:%.*]] = add i64 [[BC32_INT]], [[OFFSET3:%.*]]
@@ -37,7 +36,7 @@ define spir_kernel void @test_lifetime() {
 ; CHECK:         [[VAL2:%.*]] = load i16, ptr [[PTR5]], align 2
 
 ; CHECK:         store i16 [[A5:%.*]], ptr [[PTR5]], align 2
-; CHECK:         call void @llvm.lifetime.end.p0(i64 64, ptr [[BC]])
+; CHECK:         call void @llvm.lifetime.end.p0({{(i64 64, )?}}ptr [[MAIN_ALLOCA]])
 
 ; CHECK:         ret void
 ;
@@ -45,20 +44,19 @@ define spir_kernel void @test_lifetime() {
 entry:
   %main_alloca = alloca [16 x i32], align 16
   %some_arith = add i32 1, 2
-  %bc = bitcast [16 x i32]* %main_alloca to i8*
-  call void @llvm.lifetime.start.p0i8(i64 64, i8* %bc)
-  %load = load [16 x i32], [16 x i32]* %main_alloca, align 16
+  call void @llvm.lifetime.start.p0(i64 64, ptr %main_alloca)
+  %load = load [16 x i32], ptr %main_alloca, align 16
 
   ; Lowered GEP for index 3
-  %bc32 = bitcast [16 x i32]* %main_alloca to i32*
-  %bc32_int = ptrtoint i32* %bc32 to i64
+  %bc32 = bitcast ptr %main_alloca to ptr
+  %bc32_int = ptrtoint ptr %bc32 to i64
   %offset3 = mul i64 3, 4
   %ptr3_int = add i64 %bc32_int, %offset3
-  %ptr3 = inttoptr i64 %ptr3_int to i32*
-  store i32 42, i32* %ptr3, align 4
+  %ptr3 = inttoptr i64 %ptr3_int to ptr
+  store i32 42, ptr %ptr3, align 4
 
-  %ptr3_i16 = bitcast i32* %ptr3 to i16*
-  %val1 = load i16, i16* %ptr3_i16, align 2
+  %ptr3_i16 = bitcast ptr %ptr3 to ptr
+  %val1 = load i16, ptr %ptr3_i16, align 2
 
   ; Random arithmetic, independent of %dpas_res
   %a1 = add i16 %val1, 123
@@ -70,9 +68,9 @@ entry:
 
   %offset5 = mul i64 5, 4
   %ptr5_int = add i64 %bc32_int, %offset5
-  %ptr5 = inttoptr i64 %ptr5_int to i16*
-  store i16 %val1, i16* %ptr5, align 2
-  %val2 = load i16, i16* %ptr5, align 2
+  %ptr5 = inttoptr i64 %ptr5_int to ptr
+  store i16 %val1, ptr %ptr5, align 2
+  %val2 = load i16, ptr %ptr5, align 2
 
   %a2 = mul i16 %val2, 7
   %a3 = xor i16 %a1, %a2
@@ -80,14 +78,14 @@ entry:
   %a5 = or i16 %a4, %val1
 
   ; store a5
-  store i16 %a5, i16* %ptr5, align 2
+  store i16 %a5, ptr %ptr5, align 2
 
-  call void @llvm.lifetime.end.p0i8(i64 64, i8* %bc)
+  call void @llvm.lifetime.end.p0(i64 64, ptr %main_alloca)
   ret void
 }
 
-declare void @llvm.lifetime.start.p0i8(i64, i8* nocapture)
-declare void @llvm.lifetime.end.p0i8(i64, i8* nocapture)
+declare void @llvm.lifetime.start.p0(i64, ptr nocapture)
+declare void @llvm.lifetime.end.p0(i64, ptr nocapture)
 
 declare <8 x float> @llvm.genx.GenISA.sub.group.dpas.v8f32.v8f32.v8i16.v8i32(
   <8 x float>, <8 x i16>, <8 x i32>, i32, i32, i32, i32, i1)

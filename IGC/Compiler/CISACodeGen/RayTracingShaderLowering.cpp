@@ -27,6 +27,7 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPop.hpp"
 #include "GenISAIntrinsics/GenIntrinsicInst.h"
 #include "llvmWrapper/IR/Instructions.h"
+#include "llvmWrapper/IR/IntrinsicInst.h"
 
 using namespace llvm;
 using namespace IGC;
@@ -241,7 +242,7 @@ bool RayTracingShaderLowering::runOnModule(Module &M) {
         switch (II->getIntrinsicID()) {
         case Intrinsic::lifetime_start:
         case Intrinsic::lifetime_end: {
-          auto *Ptr = II->getOperand(1);
+          auto *Ptr = IGCLLVM::getLifetimeIntrinsicPtr(II);
           uint32_t Addrspace = Ptr->getType()->getPointerAddressSpace();
           if (Addrspace != ADDRESS_SPACE_PRIVATE)
             II->eraseFromParent();
