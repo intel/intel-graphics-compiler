@@ -11681,6 +11681,35 @@ bool GlobalRA::canVRTIncreasedGRF(GraphColor &coloring) {
   return false;
 }
 
+// Bypass allowedStepsInMode when an infinite-spill-cost variable that is
+// itself address-taken (or a macro-sequence temp) is spilled again.
+// Spilling cannot resolve pressure on such live ranges, so force a GRF bump.
+// Returns nullopt if the condition is not met, true if GRF was bumped
+// (caller should retry the RA loop), false if already at max GRF
+// (caller should return VISA_SPILL).
+std::optional<bool>
+GlobalRA::forceGRFBumpOnInfCostAddrTaken(GraphColor &coloring,
+                                         LivenessAnalysis &liveAnalysis) {
+  bool infCostAddrTakenSpilled =
+      coloring.getSpilledLiveRanges().end() !=
+      std::find_if(
+          coloring.getSpilledLiveRanges().begin(),
+          coloring.getSpilledLiveRanges().end(),
+          [&liveAnalysis](const LiveRange *lr) {
+            return lr->getSpillCost() == MAXSPILLCOST &&
+                   (lr->getDcl()->isAddrSpillFill() ||
+                    liveAnalysis.isAddressSensitive(lr->getVar()->getId()) ||
+                    // Macro-sequence temps (e.g. madm
+                    // intermediates) cannot be spilled:
+                    // their physical register constraints
+                    // must be preserved across the sequence.
+                    lr->getDcl()->isDoNotSpill());
+          });
+  if (!infCostAddrTakenSpilled)
+    return std::nullopt;
+  return builder.kernel.updateKernelToLargerGRF();
+}
+
 void GlobalRA::splitOnSpill(bool fastCompile, GraphColor &coloring,
                             LivenessAnalysis &liveAnalysis) {
   if (!kernel.getOption(vISA_Debug) && getIterNo() == 0 && !fastCompile &&
@@ -12230,7 +12259,22 @@ int GlobalRA::coloringRegAlloc() {
     if (reserveSpillReg) {
       std::tie(spillRegSize, indrSpillRegSize) = reserveGRFSpillReg(coloring);
     }
-    generateForbiddenTemplates(spillRegSize + indrSpillRegSize);
+    unsigned totalSpillRegSize = spillRegSize + indrSpillRegSize;
+    if (totalSpillRegSize >= builder.kernel.getNumRegTotal()) {
+      // Reserved spill area exceeds total GRFs; no registers left to allocate.
+      // Bypass allowedStepsInMode and attempt an unconditional GRF bump so
+      // that the next iteration has a larger register file to work with.
+      if (builder.kernel.updateKernelToLargerGRF()) {
+        RA_TRACE(
+            std::cout
+            << "\t--forced GRF bump (fail safe spill area exceeds GRFs) to "
+            << kernel.getNumRegTotal() << ". Re-run RA\n");
+        continue;
+      }
+      stopTimer(TimerID::GRF_GLOBAL_RA);
+      return VISA_SPILL;
+    }
+    generateForbiddenTemplates(totalSpillRegSize);
     bool isColoringGood =
         coloring.regAlloc(doBankConflictReduction, highInternalConflict, &rpe);
     if (!isColoringGood) {
@@ -12254,8 +12298,22 @@ int GlobalRA::coloringRegAlloc() {
       //  - #GRFs selected and next larger one has same number of threads, or
       //  - Spill ratio is above threshold
       // If none of the conditions is met, vISA will abort and return VISA_SPILL.
-      if (VRTIncreasedGRF(coloring))
+      if (VRTIncreasedGRF(coloring)) {
+        RA_TRACE(std::cout << "\t--VRT GRF bump to " << kernel.getNumRegTotal()
+                           << ". Re-run RA\n");
         continue;
+      }
+
+      if (auto bump = forceGRFBumpOnInfCostAddrTaken(coloring, liveAnalysis)) {
+        if (*bump) {
+          RA_TRACE(std::cout
+                   << "\t--forced GRF bump (inf-cost addr-taken spill) to "
+                   << kernel.getNumRegTotal() << ". Re-run RA\n");
+          continue;
+        }
+        stopTimer(TimerID::GRF_GLOBAL_RA);
+        return VISA_SPILL;
+      }
 
       bool rerunGRA1 = false, rerunGRA2 = false, rerunGRA3 = false,
            isEarlyExit = false, abort = false, success = false;

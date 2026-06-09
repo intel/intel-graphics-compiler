@@ -28,6 +28,7 @@ SPDX-License-Identifier: MIT
 #include <list>
 #include <map>
 #include <memory>
+#include <optional>
 #include <queue>
 #include <unordered_set>
 #include <vector>
@@ -2239,6 +2240,10 @@ private:
   void writeVerboseRPEStats(RPE &rpe);
   bool VRTIncreasedGRF(GraphColor &coloring);
   bool canVRTIncreasedGRF(GraphColor &coloring);
+  // nullopt = condition not met; true = GRF bumped; false = GRF at max.
+  std::optional<bool>
+  forceGRFBumpOnInfCostAddrTaken(GraphColor &coloring,
+                                 LivenessAnalysis &liveAnalysis);
   void splitOnSpill(bool fastCompile, GraphColor &coloring,
                     LivenessAnalysis &livenessAnalysis);
   bool convertToFailSafe(bool reserveSpillReg, GraphColor &coloring,
