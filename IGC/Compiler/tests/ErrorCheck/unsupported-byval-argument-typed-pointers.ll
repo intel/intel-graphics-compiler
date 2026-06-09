@@ -18,6 +18,5 @@ define void @test(i32 addrspace(3)* byval (i32) %p1) {
 }
 
 !0 = !{void (i32 addrspace(3)*)* @test, !1}
-!1 = !{!2, !3}
+!1 = !{!2}
 !2 = !{!"function_type", i32 0}
-!3 = !{!"implicit_arg_desc"}

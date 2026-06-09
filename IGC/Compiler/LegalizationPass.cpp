@@ -2252,7 +2252,8 @@ void Legalization::visitAddrSpaceCastInst(llvm::AddrSpaceCastInst &I) {
   }
 
   Function *F = I.getParent()->getParent();
-  ImplicitArgs implicitArgs = ImplicitArgs(*F, getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils());
+  ImplicitArgs implicitArgs = ImplicitArgs(*F, getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils(),
+                                           getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData());
   Argument *SLM = implicitArgs.getImplicitArg(*F, ImplicitArg::LOCAL_MEMORY_STATELESS_WINDOW_START_ADDRESS);
   if (!SLM)
     return;

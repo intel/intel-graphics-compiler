@@ -7,7 +7,7 @@
 ;============================ end_copyright_notice =============================
 ;
 ; UNSUPPORTED: llvm-17-plus
-; RUN: igc_opt --typed-pointers --raytracing-intrinsic-analysis -S %s -o %t.ll
+; RUN: igc_opt --typed-pointers --raytracing-intrinsic-analysis -igc-serialize-metadata -S %s -o %t.ll
 ; RUN: FileCheck %s --input-file=%t.ll
 ; ------------------------------------------------
 ; RayTracingIntrinsicAnalysis
@@ -41,24 +41,20 @@ declare i32 addrspace(1)* @llvm.genx.GenISA.InlinedData(i32)
 !igc.functions = !{!0, !3, !6}
 
 !0 = !{void ()* @test_rti, !1}
-!1 = !{!2, !9}
+!1 = !{!2}
 !2 = !{!"function_type", i32 0}
 !3 = !{void ()* @rti, !4}
-!4 = !{!5, !9}
+!4 = !{!5}
 !5 = !{!"function_type", i32 0}
 !6 = !{void ()* @foo, !7}
-!7 = !{!8, !9}
+!7 = !{!8}
 !8 = !{!"function_type", i32 0}
-!9 = !{!"implicit_arg_desc"}
 
-; CHECK-LABEL: !igc.functions = !{!0, !8, !9}
-; CHECK: !0 = !{void ()* @test_rti, !1}
-; CHECK: !1 = !{!2, !3}
-; CHECK: !2 = !{!"function_type", i32 0}
-; CHECK: !3 = !{!"implicit_arg_desc", !4, !5, !6, !7}
-; CHECK: !4 = !{i32 50}
-; CHECK: !5 = !{i32 51}
-; CHECK: !6 = !{i32 53}
-; CHECK: !7 = !{i32 52}
-; CHECK: !8 = !{void ()* @rti, !1}
-; CHECK: !9 = !{void ()* @foo, !1}
+; RayTracingIntrinsicAnalysis records the detected ray-tracing implicit args
+; (argId 50, 51, 53, 52) through FuncMD implicitArgInfoList rather than the legacy
+; igc.functions implicit_arg_desc.
+; CHECK: !{!"implicitArgInfoList"
+; CHECK: !{!"argId", i32 50}
+; CHECK: !{!"argId", i32 51}
+; CHECK: !{!"argId", i32 53}
+; CHECK: !{!"argId", i32 52}

@@ -191,7 +191,7 @@ void StatelessToStateful::handleFunction(llvm::Function &F) {
   m_hasPositivePointerOffset =
       (IGC_IS_FLAG_ENABLED(SToSProducesPositivePointer) || modMD->compOpt.HasPositivePointerOffset);
 
-  m_pImplicitArgs = new ImplicitArgs(F, pMdUtils);
+  m_pImplicitArgs = new ImplicitArgs(F, pMdUtils, modMD);
   m_ctx = static_cast<OpenCLProgramContext *>(getAnalysis<CodeGenContextWrapper>().getCodeGenContext());
   m_pKernelArgs = new KernelArgs(F, &(F.getParent()->getDataLayout()), pMdUtils, modMD, m_ctx->platform.getGRFSize());
 

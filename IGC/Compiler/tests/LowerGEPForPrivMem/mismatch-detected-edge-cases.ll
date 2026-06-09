@@ -201,9 +201,8 @@ define void @struct_array_struct_array_nesting(float %val) {
 !igc.functions = !{!0, !5, !6, !7, !8, !9, !10, !11, !12, !13, !14, !15}
 
 !0 = !{ptr @nested_array_peel, !1}
-!1 = !{!2, !3}
+!1 = !{!2}
 !2 = !{!"function_type", i32 0}
-!3 = !{!"implicit_arg_desc"}
 !4 = !{i1 true}
 !5 = !{ptr @array_of_vectors_peel, !1}
 !6 = !{ptr @single_elem_struct_wrapper, !1}

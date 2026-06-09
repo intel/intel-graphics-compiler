@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: igc_opt --typed-pointers -igc-image-func-analysis -S %s -o %t.ll
+; RUN: igc_opt --typed-pointers -igc-image-func-analysis -igc-serialize-metadata -S %s -o %t.ll
 ; RUN: FileCheck %s --input-file=%t.ll
 
 %spirv.Image._void_2_1_0_0_0_0_0 = type opaque
@@ -26,9 +26,8 @@ define i32 @foo(%spirv.Image._void_2_1_0_0_0_0_0 addrspace(1)* %img) nounwind {
 !2 =  !{ !"function_type", i32 0}
 !3 =  !{ !"implicit_arg_desc"}
 
-;CHECK: !{!"implicit_arg_desc",  ![[A1:[0-9]+]]}
-;CHECK: ![[A1]] = !{i32 23,  ![[A2:[0-9]+]]}
-;CHECK: ![[A2]] = !{!"explicit_arg_num", i32 0}
+;CHECK: !{!"implicitArgInfoList"
+;CHECK: !{!"argId", i32 23}
 
 ; The following metadata are needed to recognize functions using image/sampler arguments:
 !IGCMetadata = !{!4}

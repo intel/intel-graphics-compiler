@@ -90,12 +90,9 @@ declare void @llvm.dbg.value(metadata, metadata, metadata) #1
 !6 = !{i32 3, i32 102000}
 !7 = !{i16 6, i16 14}
 !8 = !{void (i32 addrspace(3)*, i32 addrspace(3)*, i32 addrspace(3)*, <8 x i32>, <3 x i32>)* @test, !9}
-!9 = !{!10, !11}
+!9 = !{!10}
 !10 = !{!"function_type", i32 0}
-!11 = !{!"implicit_arg_desc", !12, !13}
-!12 = !{i32 0}
-!13 = !{i32 2}
-!14 = !{!"ModuleMD", !15}
+!14 = !{!"ModuleMD", !15, !500}
 !15 = !{!"isPrecise", i1 false}
 !471 = !{i32 2, i32 0}
 !472 = !{!"clang version 15.0.0"}
@@ -119,3 +116,11 @@ declare void @llvm.dbg.value(metadata, metadata, metadata) #1
 !490 = !DILocation(line: 4, column: 1, scope: !473)
 !491 = !{!"80"}
 !492 = !{!"-3"}
+!493 = !{!"argId", i32 0}
+!494 = !{!"implicitArgInfoListVec[0]", !493}
+!495 = !{!"argId", i32 2}
+!496 = !{!"implicitArgInfoListVec[1]", !495}
+!497 = !{!"implicitArgInfoList", !494, !496}
+!498 = !{!"FuncMDMap[0]", void (i32 addrspace(3)*, i32 addrspace(3)*, i32 addrspace(3)*, <8 x i32>, <3 x i32>)* @test}
+!499 = !{!"FuncMDValue[0]", !497}
+!500 = !{!"FuncMD", !498, !499}

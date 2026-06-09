@@ -104,7 +104,7 @@ void OpenCLPrintfAnalysis::visitCallInst(CallInst &callInst) {
 void OpenCLPrintfAnalysis::addPrintfBufferArgs(Function &F) {
   SmallVector<ImplicitArg::ArgType, 1> implicitArgs;
   implicitArgs.push_back(ImplicitArg::PRINTF_BUFFER);
-  ImplicitArgs::addImplicitArgs(F, implicitArgs, m_pMDUtils);
+  ImplicitArgs::addImplicitArgs(F, implicitArgs, m_pMDUtils, getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData());
 }
 
 bool isPrintfStringConstantImpl(const llvm::Value *v, std::set<const llvm::User *> &visited) {

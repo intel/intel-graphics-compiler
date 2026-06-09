@@ -57,7 +57,7 @@ void ResolveInlineSamplerForBindless::visitCallInst(CallInst &CI) {
   mChanged = true;
 
   // Bindless inline sampler is passed via implicit kernel argument.
-  ImplicitArgs ImplicitArgs(*(CI.getFunction()), mMDUtils);
+  ImplicitArgs ImplicitArgs(*(CI.getFunction()), mMDUtils, getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData());
 
   IGC_ASSERT_MESSAGE(isa<ConstantInt>(CI.getArgOperand(0)),
                      "Sampler initializer calls can only be made with const int values!");

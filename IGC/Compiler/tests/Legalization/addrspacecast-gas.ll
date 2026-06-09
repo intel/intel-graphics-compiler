@@ -39,8 +39,13 @@ define i32 @test_addrcast_slm_p4(ptr addrspace(3) %p1) {
 !igc.functions = !{!0}
 
 !0 = !{ptr @test_addrcast_slm_p4, !1}
-!1 = !{!2, !3, !4}
+!1 = !{!2}
 !2 = !{!"function_type", i32 1}
-!3 = !{!"arg_desc"}
-!4 = !{!"implicit_arg_desc", !5}
-!5 = !{i32 44}
+!6 = !{!"argId", i32 44}
+!7 = !{!"implicitArgInfoListVec[0]", !6}
+!8 = !{!"implicitArgInfoList", !7}
+!9 = !{!"FuncMDMap[0]", ptr @test_addrcast_slm_p4}
+!10 = !{!"FuncMDValue[0]", !8}
+!11 = !{!"FuncMD", !9, !10}
+!12 = !{!"ModuleMD", !11}
+!IGCMetadata = !{!12}

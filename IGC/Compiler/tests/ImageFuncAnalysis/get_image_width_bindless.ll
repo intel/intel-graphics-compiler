@@ -25,9 +25,8 @@ define i32 @foo(i32 %img) nounwind {
 !IGCMetadata = !{!4}
 
 !0 = !{i32 (i32)* @foo, !1}
-!1 = !{!2, !3}
+!1 = !{!2}
 !2 = !{!"function_type", i32 0}
-!3 = !{!"implicit_arg_desc"}
 !4 = !{!"ModuleMD", !5, !8}
 !5 = !{!"compOpt", !6, !7}
 !6 = !{!"UseBindlessMode", i1 true}

@@ -37,9 +37,8 @@ attributes #0 = { nounwind readnone willreturn }
 
 !0 = !{!"ModuleMD", !5}
 !1 = !{void ()* @test_wg_walk_order, !2}
-!2 = !{!3, !4}
+!2 = !{!3}
 !3 = !{!"function_type", i32 0}
-!4 = !{!"implicit_arg_desc"}
 !5 = !{!"FuncMD", !6, !7}
 !6 = distinct !{!"FuncMDMap[0]", void ()* @test_wg_walk_order}
 !7 = !{!"FuncMDValue[0]", !8, !12, !13}

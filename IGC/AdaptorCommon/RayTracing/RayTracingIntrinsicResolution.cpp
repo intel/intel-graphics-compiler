@@ -119,7 +119,7 @@ bool RayTracingIntrinsicResolution::runOnFunction(Function &F) {
     return false;
 
   Changed = false;
-  m_implicitArgs = ImplicitArgs(F, m_pMdUtils);
+  m_implicitArgs = ImplicitArgs(F, m_pMdUtils, getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData());
   visit(F);
 
   return Changed;

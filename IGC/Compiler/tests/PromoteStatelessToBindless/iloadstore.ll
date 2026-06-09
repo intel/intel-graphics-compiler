@@ -36,9 +36,8 @@ declare void @llvm.genx.GenISA.simdBlockWrite.v2f32.p2(i8 addrspace(2)*, <2 x fl
 !IGCMetadata = !{!4}
 
 !0 = !{void (i8 addrspace(1)*, i8 addrspace(2)*)* @test_promote, !1}
-!1 = !{!2, !3}
+!1 = !{!2}
 !2 = !{!"function_type", i32 0}
-!3 = !{!"implicit_arg_desc"}
 
 !4 = !{!"ModuleMD", !5}
 !5 = !{!"FuncMD", !6, !7}

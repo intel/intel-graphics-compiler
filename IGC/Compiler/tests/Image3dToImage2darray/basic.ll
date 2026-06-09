@@ -7,7 +7,7 @@
 ;============================ end_copyright_notice =============================
 ;
 ; REQUIRES: llvm-14-plus
-; RUN: igc_opt --opaque-pointers -debugify --igc-3d-to-2darray -check-debugify -S < %s 2>&1 | FileCheck %s
+; RUN: igc_opt --opaque-pointers -debugify --igc-3d-to-2darray -igc-serialize-metadata -check-debugify -S < %s 2>&1 | FileCheck %s
 ; ------------------------------------------------
 ; Image3dToImage2darray
 ; ------------------------------------------------
@@ -38,23 +38,20 @@ define void @test_i3dto2da_f32(ptr %a, ptr %b) {
   ret void
 }
 
-; CHECK-DAG: !{ptr @test_i3dto2da, [[FI_MD:![0-9]*]]}
-; CHECK-DAG: [[FT:![0-9]*]] = !{!"function_type", i32 0}
-; CHECK-DAG: [[IMP_ARG:![0-9]*]] = !{!"implicit_arg_desc"}
-; CHECK-DAG: [[EXP_ARG:![0-9]*]] = !{!"explicit_arg_num", i32 0}
-; CHECK-DAG: [[FI_IMG_FLOAT:![0-9]*]] = !{!"img_access_float_coords", i1 false}
-; CHECK-DAG: [[FI_IMG_INT:![0-9]*]] = !{!"img_access_int_coords", i1 true}
-; CHECK-DAG: [[FI_MD]] = !{[[FT]], [[FI_IMG_MD:![0-9]*]], [[IMP_ARG]]}
-; CHECK-DAG: [[FI_IMG_MD]] = !{[[FI_IMG_A:![0-9]*]]}
-; CHECK-DAG: [[FI_IMG_A]] = !{null, [[EXP_ARG]], [[FI_IMG_FLOAT]], [[FI_IMG_INT]]}
+; Image3dToImage2darray now records per-arg image access through FuncMD argInfoList
+; (serialized by -igc-serialize-metadata) rather than the legacy igc.functions arg_desc.
+; CHECK-DAG: [[ARGID:![0-9]*]] = !{!"argId", i32 -1}
+; CHECK-DAG: [[EXP_ARG:![0-9]*]] = !{!"explicitArgNum", i32 0}
+; CHECK-DAG: [[STRUCT_OFF:![0-9]*]] = !{!"structArgOffset", i32 -1}
+; CHECK-DAG: [[FI_IMG_FLOAT:![0-9]*]] = !{!"imgAccessFloatCoords", i32 0}
+; CHECK-DAG: [[FI_IMG_INT:![0-9]*]] = !{!"imgAccessIntCoords", i32 1}
+; CHECK-DAG: [[FI_VEC:![0-9]*]] = !{!"argInfoListVec[0]", [[ARGID]], [[EXP_ARG]], [[STRUCT_OFF]], [[FI_IMG_FLOAT]], [[FI_IMG_INT]]}
+; CHECK-DAG: !{!"argInfoList", [[FI_VEC]]}
 
-
-; CHECK-DAG: !{ptr @test_i3dto2da_f32, [[FF_MD:![0-9]*]]}
-; CHECK-DAG: [[FF_IMG_FLOAT:![0-9]*]] = !{!"img_access_float_coords", i1 true}
-; CHECK-DAG: [[FF_IMG_INT:![0-9]*]] = !{!"img_access_int_coords", i1 false}
-; CHECK-DAG: [[FF_MD]] = !{[[FT]], [[FF_IMG_MD:![0-9]*]], [[IMP_ARG]]}
-; CHECK-DAG: [[FF_IMG_MD]] = !{[[FF_IMG_A:![0-9]*]]}
-; CHECK-DAG: [[FF_IMG_A]] = !{null, [[EXP_ARG]], [[FF_IMG_FLOAT]], [[FF_IMG_INT]]}
+; CHECK-DAG: [[FF_IMG_FLOAT:![0-9]*]] = !{!"imgAccessFloatCoords", i32 1}
+; CHECK-DAG: [[FF_IMG_INT:![0-9]*]] = !{!"imgAccessIntCoords", i32 0}
+; CHECK-DAG: [[FF_VEC:![0-9]*]] = !{!"argInfoListVec[0]", [[ARGID]], [[EXP_ARG]], [[STRUCT_OFF]], [[FF_IMG_FLOAT]], [[FF_IMG_INT]]}
+; CHECK-DAG: !{!"argInfoList", [[FF_VEC]]}
 
 
 declare void @use.v16i32(<16 x i32>)
@@ -69,9 +66,8 @@ declare <4 x float> @llvm.genx.GenISA.sampleLptr.v4f32.f32.p0.p0.p0(float, float
 !IGCMetadata = !{!5}
 
 !0 = !{ptr @test_i3dto2da, !1}
-!1 = !{!2, !3}
+!1 = !{!2}
 !2 = !{!"function_type", i32 0}
-!3 = !{!"implicit_arg_desc"}
 !4 = !{ptr @test_i3dto2da_f32, !1}
 !5 = !{!"ModuleMD", !6}
 !6 = !{!"FuncMD", !7, !8, !29, !30}

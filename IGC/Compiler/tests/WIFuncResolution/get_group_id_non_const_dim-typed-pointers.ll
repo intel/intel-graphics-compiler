@@ -18,11 +18,18 @@ define i32 @foo(i32 %dim, <8 x i32> %r0, <8 x i32> %payloadHeader) nounwind {
 
 !igc.functions = !{!0}
 !0 = !{i32 (i32, <8 x i32>, <8 x i32>)* @foo, !1}
-!1 = !{!2, !3}
+!1 = !{!2}
 !2 = !{!"function_type", i32 0}
-!3 = !{!"implicit_arg_desc", !4, !5}
-!4 = !{i32 0}
-!5 = !{i32 1}
+!6 = !{!"argId", i32 0}
+!7 = !{!"implicitArgInfoListVec[0]", !6}
+!8 = !{!"argId", i32 1}
+!9 = !{!"implicitArgInfoListVec[1]", !8}
+!10 = !{!"implicitArgInfoList", !7, !9}
+!11 = !{!"FuncMDMap[0]", i32 (i32, <8 x i32>, <8 x i32>)* @foo}
+!12 = !{!"FuncMDValue[0]", !10}
+!13 = !{!"FuncMD", !11, !12}
+!14 = !{!"ModuleMD", !13}
+!IGCMetadata = !{!14}
 
 ; CHECK:         %cmpDim = icmp eq i32 %dim, 0
 ; CHECK-NEXT:   %tmpOffsetR0 = select i1 %cmpDim, i32 1, i32 5

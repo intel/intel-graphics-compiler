@@ -94,31 +94,44 @@ declare spir_func %struct.mce_payload_t* @__builtin_IB_vme_helper_get_as_avc_mce
 !igc.functions = !{!0, !5, !9, !13, !17, !20}
 
 !0 = !{void (i32)* @test_vme_block_type, !1}
-!1 = !{!2, !3}
+!1 = !{!2}
 !2 = !{!"function_type", i32 0}
-!3 = !{!"implicit_arg_desc",  !4}
-!4 = !{i32 33}
 
 
 !5 = !{void (i32)* @test_vme_subpix, !6}
-!6 = !{!2, !7}
-!7 = !{!"implicit_arg_desc",  !8}
-!8 = !{i32 34}
+!6 = !{!2}
 
 !9 = !{void (i32)* @test_vme_sad, !10}
-!10 = !{!2, !11}
-!11 = !{!"implicit_arg_desc",  !12}
-!12 = !{i32 35}
+!10 = !{!2}
 
 !13 = !{void (i32)* @test_vme_search, !14}
-!14 = !{!2, !15}
-!15 = !{!"implicit_arg_desc",  !16}
-!16 = !{i32 36}
+!14 = !{!2}
 
 !17 = !{void (%struct.mce_payload_t*)* @test_vme_helper, !18}
-!18 = !{!2, !19}
-!19 = !{!"implicit_arg_desc"}
+!18 = !{!2}
 
 !20 = !{void (<4 x i32>)* @test_vme_helper_as, !21}
-!21 = !{!2, !22}
-!22 = !{!"implicit_arg_desc"}
+!21 = !{!2}
+!23 = !{!"argId", i32 33}
+!24 = !{!"implicitArgInfoListVec[0]", !23}
+!25 = !{!"implicitArgInfoList", !24}
+!26 = !{!"argId", i32 34}
+!27 = !{!"implicitArgInfoListVec[0]", !26}
+!28 = !{!"implicitArgInfoList", !27}
+!29 = !{!"argId", i32 35}
+!30 = !{!"implicitArgInfoListVec[0]", !29}
+!31 = !{!"implicitArgInfoList", !30}
+!32 = !{!"argId", i32 36}
+!33 = !{!"implicitArgInfoListVec[0]", !32}
+!34 = !{!"implicitArgInfoList", !33}
+!35 = !{!"FuncMDMap[0]", void (i32)* @test_vme_block_type}
+!36 = !{!"FuncMDValue[0]", !25}
+!37 = !{!"FuncMDMap[1]", void (i32)* @test_vme_subpix}
+!38 = !{!"FuncMDValue[1]", !28}
+!39 = !{!"FuncMDMap[2]", void (i32)* @test_vme_sad}
+!40 = !{!"FuncMDValue[2]", !31}
+!41 = !{!"FuncMDMap[3]", void (i32)* @test_vme_search}
+!42 = !{!"FuncMDValue[3]", !34}
+!43 = !{!"FuncMD", !35, !36, !37, !38, !39, !40, !41, !42}
+!44 = !{!"ModuleMD", !43}
+!IGCMetadata = !{!44}

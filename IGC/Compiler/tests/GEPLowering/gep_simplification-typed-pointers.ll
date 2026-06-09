@@ -140,6 +140,5 @@ attributes #1 = { nounwind readnone }
 !igc.functions = !{!0}
 
 !0 = !{void (i32 addrspace(1)*, i32 addrspace(1)*, i64, i64, i64, i32)* @test_gep, !1}
-!1 = !{!2, !3}
+!1 = !{!2}
 !2 = !{!"function_type", i32 0}
-!3 = !{!"implicit_arg_desc"}

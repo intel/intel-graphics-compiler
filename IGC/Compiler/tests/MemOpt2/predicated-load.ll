@@ -53,6 +53,5 @@ attributes #0 = { nounwind readonly }
 !igc.functions = !{!0}
 
 !0 = !{void (i32 addrspace(1)*, i1, i1, i1)* @test, !1}
-!1 = !{!2, !3}
+!1 = !{!2}
 !2 = !{!"function_type", i32 0}
-!3 = !{!"implicit_arg_desc"}

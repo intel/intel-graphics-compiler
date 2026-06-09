@@ -44,7 +44,7 @@ private:
   IGCMD::MetaDataUtils *m_MetadataUtils;
   IGC::ModuleMetaData *m_modMD;
   static bool createImageAnnotations(llvm::GenIntrinsicInst *pCall, unsigned imageIdx,
-                                     const IGCMD::MetaDataUtils *pMdUtils, const IGC::ModuleMetaData *m_modMD,
+                                     const IGCMD::MetaDataUtils *pMdUtils, IGC::ModuleMetaData *m_modMD,
                                      const llvm::Value *pCoord);
 };
 

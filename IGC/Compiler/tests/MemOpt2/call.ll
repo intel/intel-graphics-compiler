@@ -44,6 +44,5 @@ define i32 addrspace(1)* @callee(i32 addrspace(1)* %addr, i32* %offset) {
 
 !0 = !{void (i32 addrspace(1)*)* @test, !2}
 !1 = !{i32 addrspace(1)* (i32 addrspace(1)*, i32*)* @callee, !2}
-!2 = !{!3, !4}
+!2 = !{!3}
 !3 = !{!"function_type", i32 0}
-!4 = !{!"implicit_arg_desc"}

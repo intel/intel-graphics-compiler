@@ -355,9 +355,8 @@ declare void @llvm.genx.GenISA.PredicatedStore.p1.v2f16(ptr addrspace(1), <2 x h
 !igc.functions = !{!0, !4, !5, !6, !7, !8, !9, !10, !11, !12, !13, !14, !15, !16, !17, !18, !19, !20, !21, !22}
 
 !0 = distinct !{ptr @merge_i32_v2half, !1}
-!1 = distinct !{!2, !3}
+!1 = distinct !{!2}
 !2 = distinct !{!"function_type", i32 0}
-!3 = distinct !{!"implicit_arg_desc"}
 !4 = distinct !{ptr @merge_v2half_i32, !1}
 !5 = distinct !{ptr @merge_three_i32_v2half_i32, !1}
 !6 = distinct !{ptr @no_merge_v2half_v2half_i32, !1}

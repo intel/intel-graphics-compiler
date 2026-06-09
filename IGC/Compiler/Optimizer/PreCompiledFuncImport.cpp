@@ -2093,12 +2093,13 @@ bool PreCompiledFuncImport::usePrivateMemory(Function *F) {
 }
 
 void PreCompiledFuncImport::addMDFuncEntryForEmulationFunc(Function *F) {
+  ModuleMetaData *modMD = m_pCtx->getModuleMetaData();
   FunctionInfoMetaDataHandle FH = FunctionInfoMetaDataHandle(new FunctionInfoMetaData());
   FH->setType(FunctionTypeMD::UserFunction);
   for (auto arg = F->arg_begin(); arg != F->arg_end(); ++arg) {
-    ArgInfoMetaDataHandle AH = ArgInfoMetaDataHandle(new ArgInfoMetaData());
-    AH->setExplicitArgNum(arg->getArgNo());
-    FH->addArgInfoListItem(AH);
+    IGC::ArgInfoMD a;
+    a.explicitArgNum = arg->getArgNo();
+    modMD->FuncMD[F].argInfoList.push_back(a);
   }
   m_pMdUtils->setFunctionsInfoItem(F, FH);
 
@@ -2106,12 +2107,12 @@ void PreCompiledFuncImport::addMDFuncEntryForEmulationFunc(Function *F) {
     return;
 
   // Add private base
-  ArgInfoMetaDataHandle arg_R0 = ArgInfoMetaDataHandle(new ArgInfoMetaData());
-  arg_R0->setArgId(ImplicitArg::R0);
-  FH->addImplicitArgInfoListItem(arg_R0);
-  ArgInfoMetaDataHandle arg_PBase = ArgInfoMetaDataHandle(new ArgInfoMetaData());
-  arg_PBase->setArgId(ImplicitArg::PRIVATE_BASE);
-  FH->addImplicitArgInfoListItem(arg_PBase);
+  IGC::ArgInfoMD arg_R0;
+  arg_R0.argId = ImplicitArg::R0;
+  modMD->FuncMD[F].implicitArgInfoList.push_back(arg_R0);
+  IGC::ArgInfoMD arg_PBase;
+  arg_PBase.argId = ImplicitArg::PRIVATE_BASE;
+  modMD->FuncMD[F].implicitArgInfoList.push_back(arg_PBase);
 
   FuncNeedIA.push_back(F);
 }
@@ -2137,7 +2138,7 @@ void PreCompiledFuncImport::createFuncWithIA() {
   NewFuncWithIA.clear();
   for (int i = 0, sz = (int)FuncNeedIA.size(); i < sz; ++i) {
     Function *pFunc = FuncNeedIA[i];
-    ImplicitArgs implicitArgs(*pFunc, m_pMdUtils);
+    ImplicitArgs implicitArgs(*pFunc, m_pMdUtils, m_pCtx->getModuleMetaData());
     FunctionType *pNewFTy = getNewFuncType(pFunc, &implicitArgs);
     Function *pNewFunc = Function::Create(pNewFTy, pFunc->getLinkage());
     pNewFunc->copyAttributesFrom(pFunc);
@@ -2176,7 +2177,8 @@ void PreCompiledFuncImport::createFuncWithIA() {
 }
 
 void PreCompiledFuncImport::replaceFunc(Function *old_func, Function *new_func) {
-  FunctionInfoMetaDataHandle newFH = m_pMdUtils->getFunctionsInfoItem(new_func);
+  ModuleMetaData *modMD = m_pCtx->getModuleMetaData();
+  auto &newImplicitArgInfoList = modMD->FuncMD[new_func].implicitArgInfoList;
   std::vector<Instruction *> list_delete;
   for (auto U = old_func->user_begin(), UE = old_func->user_end(); U != UE; ++U) {
     std::vector<Value *> new_args;
@@ -2204,8 +2206,7 @@ void PreCompiledFuncImport::replaceFunc(Function *old_func, Function *new_func) 
     ImplicitArgs *parentIA = getImplicitArgs(parent_func);
     int cImpCount = 0;
     while (new_arg_iter != new_arg_end) {
-      ArgInfoMetaDataHandle argInfo = newFH->getImplicitArgInfoListItem(cImpCount);
-      ImplicitArg::ArgType argId = (ImplicitArg::ArgType)argInfo->getArgId();
+      ImplicitArg::ArgType argId = (ImplicitArg::ArgType)newImplicitArgInfoList[cImpCount].argId;
       Argument *iArgVal = parentIA->getImplicitArg(*parent_func, argId);
 
       new_args.push_back(iArgVal);
@@ -2240,7 +2241,7 @@ void PreCompiledFuncImport::replaceFunc(Function *old_func, Function *new_func) 
 
 ImplicitArgs *PreCompiledFuncImport::getImplicitArgs(Function *F) {
   if (FuncsImpArgs.count(F) == 0) {
-    ImplicitArgs *IA = new ImplicitArgs(*F, m_pMdUtils);
+    ImplicitArgs *IA = new ImplicitArgs(*F, m_pMdUtils, m_pCtx->getModuleMetaData());
     FuncsImpArgs[F] = IA;
   }
   return FuncsImpArgs[F];

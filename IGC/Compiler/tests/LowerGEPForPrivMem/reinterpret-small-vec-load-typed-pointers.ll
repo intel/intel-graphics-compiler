@@ -45,8 +45,7 @@ define void @test_bitcast_i32ptr_to_v2half_store(<2 x half> %v) {
 !igc.functions = !{!0, !5}
 
 !0 = !{void (<2 x half>*)* @test_bitcast_i32ptr_to_v2half_load, !1}
-!1 = !{!2, !3}
+!1 = !{!2}
 !2 = !{!"function_type", i32 0}
-!3 = !{!"implicit_arg_desc"}
 !4 = !{i1 true}
 !5 = !{void (<2 x half>)* @test_bitcast_i32ptr_to_v2half_store, !1}

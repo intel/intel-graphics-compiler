@@ -29,14 +29,11 @@ declare spir_func i32 @__builtin_IB_get_address_mode(i32)
 !IGCMetadata = !{!5}
 
 !0 = !{void (i32)* @test, !1}
-!1 = !{!2}
-!2 = !{!"implicit_arg_desc", !3}
-!3 = !{i32 33, !4}
-!4 = !{!"explicit_arg_num", i32 19}
+!1 = !{}
 !5 = !{!"ModuleMD", !6}
 !6 = !{!"FuncMD", !7, !8}
 !7 = !{!"FuncMDMap[0]", void (i32)* @test}
-!8 = !{!"FuncMDValue[0]", !9}
+!8 = !{!"FuncMDValue[0]", !9, !35}
 !9 = !{!"resAllocMD", !10, !15}
 !10 = !{!"argAllocMDList", !11}
 !11 = !{!"argAllocMDListVec[8]", !12, !13, !14}
@@ -60,3 +57,7 @@ declare spir_func i32 @__builtin_IB_get_address_mode(i32)
 !29 = !{!"BorderColorG", float 0.000000e+00}
 !30 = !{!"BorderColorB", float 0.000000e+00}
 !31 = !{!"BorderColorA", float 0.000000e+00}
+!32 = !{!"argId", i32 33}
+!33 = !{!"explicitArgNum", i32 19}
+!34 = !{!"implicitArgInfoListVec[0]", !32, !33}
+!35 = !{!"implicitArgInfoList", !34}

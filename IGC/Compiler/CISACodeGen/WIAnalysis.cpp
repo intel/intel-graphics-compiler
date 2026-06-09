@@ -460,7 +460,7 @@ void WIAnalysisRunner::updateArgsDependency(llvm::Function *pF) {
   // To enable subroutine for other FEs, we need to update this check.
   bool IsSubroutine = !isEntryFunc(m_pMdUtils, pF) || isNonEntryMultirateShader(pF);
 
-  ImplicitArgs implicitArgs(*pF, m_pMdUtils);
+  ImplicitArgs implicitArgs(*pF, m_pMdUtils, m_ModMD);
   int implicitArgStart = (unsigned)(pF->arg_size() - implicitArgs.size() -
                                     (IsSubroutine ? 0 : m_ModMD->pushInfo.pushAnalysisWIInfos.size()));
   IGC_ASSERT_MESSAGE(implicitArgStart >= 0, "Function arg size does not match meta data and push args.");

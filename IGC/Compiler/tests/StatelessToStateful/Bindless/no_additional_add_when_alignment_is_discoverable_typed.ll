@@ -51,27 +51,9 @@ cleanup.cont:
 !igc.functions = !{!24}
 !IGCMetadata = !{!28}
 
-!4 = !{!5, !6, !11}
+!4 = !{!5}
 !5 = !{!"function_type", i32 0}
-!6 = !{!"arg_desc", !7}
-!7 = !{null, !8, !9, !10}
-!8 = !{!"explicit_arg_num", i32 0}
-!9 = !{!"img_access_float_coords", i1 false}
-!10 = !{!"img_access_int_coords", i1 true}
 
-!11 = !{!"implicit_arg_desc", !12, !13, !14, !15, !16, !17, !18, !19, !21, !23}
-!12 = !{i32 0}
-!13 = !{i32 2}
-!14 = !{i32 7}
-!15 = !{i32 8}
-!16 = !{i32 9}
-!17 = !{i32 10}
-!18 = !{i32 13}
-!19 = !{i32 33, !20}
-!20 = !{!"explicit_arg_num", i32 18}
-!21 = !{i32 15, !22}
-!22 = !{!"explicit_arg_num", i32 2}
-!23 = !{i32 59, !22}
 
 !24 = !{void (%spirv.Image._void_1_0_0_0_0_0_0 addrspace(1)*, %spirv.Image._void_1_0_0_0_0_0_1 addrspace(1)*, float addrspace(1)*, i32, <8 x i32>, <3 x i32>, <3 x i32>, i16, i16, i16, i8*, i64, i32, i32)* @convolve_1d_horizontal, !4}
 
@@ -111,9 +93,38 @@ cleanup.cont:
 !226 = !{!"argAllocMDListVec[13]", !213, !214, !215}
 
 !299 = !{!"FuncMDMap[1]", void (%spirv.Image._void_1_0_0_0_0_0_0 addrspace(1)*, %spirv.Image._void_1_0_0_0_0_0_1 addrspace(1)*, float addrspace(1)*, i32, <8 x i32>, <3 x i32>, <3 x i32>, i16, i16, i16, i8*, i64, i32, i32)* @convolve_1d_horizontal}
-!300 = !{!"FuncMDValue[1]", !306}
+!300 = !{!"FuncMDValue[1]", !306, !333, !338}
 
 !306 = !{!"resAllocMD", !203, !204, !205, !307, !308, !309}
 !307 = !{!"uavsNumType", i32 0}
 !308 = !{!"argAllocMDList"}
 !309 = !{!"inlineSamplersMD"}
+!310 = !{!"argId", i32 0}
+!311 = !{!"implicitArgInfoListVec[0]", !310}
+!312 = !{!"argId", i32 2}
+!313 = !{!"implicitArgInfoListVec[1]", !312}
+!314 = !{!"argId", i32 7}
+!315 = !{!"implicitArgInfoListVec[2]", !314}
+!316 = !{!"argId", i32 8}
+!317 = !{!"implicitArgInfoListVec[3]", !316}
+!318 = !{!"argId", i32 9}
+!319 = !{!"implicitArgInfoListVec[4]", !318}
+!320 = !{!"argId", i32 10}
+!321 = !{!"implicitArgInfoListVec[5]", !320}
+!322 = !{!"argId", i32 13}
+!323 = !{!"implicitArgInfoListVec[6]", !322}
+!324 = !{!"argId", i32 33}
+!325 = !{!"explicitArgNum", i32 18}
+!326 = !{!"implicitArgInfoListVec[7]", !324, !325}
+!327 = !{!"argId", i32 15}
+!328 = !{!"explicitArgNum", i32 2}
+!329 = !{!"implicitArgInfoListVec[8]", !327, !328}
+!330 = !{!"argId", i32 59}
+!331 = !{!"explicitArgNum", i32 2}
+!332 = !{!"implicitArgInfoListVec[9]", !330, !331}
+!333 = !{!"implicitArgInfoList", !311, !313, !315, !317, !319, !321, !323, !326, !329, !332}
+!334 = !{!"explicitArgNum", i32 0}
+!335 = !{!"imgAccessFloatCoords", i32 0}
+!336 = !{!"imgAccessIntCoords", i32 1}
+!337 = !{!"argInfoListVec[0]", !334, !335, !336}
+!338 = !{!"argInfoList", !337}

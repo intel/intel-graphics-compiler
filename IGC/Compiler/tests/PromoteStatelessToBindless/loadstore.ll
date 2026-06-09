@@ -38,9 +38,8 @@ define spir_kernel void @test_promote(i32 addrspace(1)* %src, float addrspace(2)
 !IGCMetadata = !{!4}
 
 !0 = !{void (i32 addrspace(1)*, float addrspace(2)*)* @test_promote, !1}
-!1 = !{!2, !3}
+!1 = !{!2}
 !2 = !{!"function_type", i32 0}
-!3 = !{!"implicit_arg_desc"}
 !4 = !{!"ModuleMD", !5}
 !5 = !{!"FuncMD", !6, !7}
 !6 = !{!"FuncMDMap[0]", void (i32 addrspace(1)*, float addrspace(2)*)* @test_promote}

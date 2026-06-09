@@ -130,6 +130,21 @@ enum class ShaderTypeMD
         int argDependency = 0;
     };
 
+    // clang-format off
+    // Keep the brace on its own line: autogen.py extracts struct fields by counting
+    // braces on lines after the header, so an attached "{" makes it find zero fields
+    // and silently drop them from the generated metadata (de)serialization.
+    struct ArgInfoMD
+    {
+        // -1 = not specified (preserves the old MetaDataApi hasValue() semantics)
+        int argId = -1;
+        int explicitArgNum = -1;
+        int structArgOffset = -1;
+        int imgAccessFloatCoords = -1; // -1 = unset, 0 = false, 1 = true
+        int imgAccessIntCoords = -1;   // -1 = unset, 0 = false, 1 = true
+    };
+    // clang-format on
+
     struct ArgAllocMD
     {
         int type = -1;
@@ -362,6 +377,8 @@ enum class ShaderTypeMD
         ThreadGroupSizeMD threadGroupSizeHint{};
         std::string vecTypeHint = ""; // "" = not specified; OpenCL vec_type_hint as ZEBinary string (e.g. "uchar4")
         std::vector<FuncArgMD> funcArgs{};
+        std::vector<ArgInfoMD> argInfoList{};
+        std::vector<ArgInfoMD> implicitArgInfoList{};
         FunctionTypeMD functionType = KernelFunction;
         RayTraceShaderInfo rtInfo{};
         ResourceAllocMD resAllocMD{};

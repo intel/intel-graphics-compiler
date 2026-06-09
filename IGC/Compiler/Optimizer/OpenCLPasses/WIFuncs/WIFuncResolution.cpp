@@ -89,7 +89,7 @@ void WIFuncResolution::storeImplicitBufferPtrs(llvm::Function &F) {
 bool WIFuncResolution::runOnFunction(Function &F) {
   m_changed = false;
   m_pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
-  m_implicitArgs = ImplicitArgs(F, m_pMdUtils);
+  m_implicitArgs = ImplicitArgs(F, m_pMdUtils, getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData());
 
   visit(F);
 
@@ -716,7 +716,7 @@ bool LowerImplicitArgIntrinsics::runOnFunction(Function &F) {
   /// literal rather than reading from the payload.
   auto MDUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
   if (Constant *KnownWorkGroupSize = getKnownWorkGroupSize(m_ctx->getModuleMetaData(), F)) {
-    ImplicitArgs IAS(F, MDUtils);
+    ImplicitArgs IAS(F, MDUtils, getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData());
     if (auto *V = IAS.getImplicitArgValue(F, ImplicitArg::ENQUEUED_LOCAL_WORK_SIZE, MDUtils))
       V->replaceAllUsesWith(KnownWorkGroupSize);
   }
@@ -774,7 +774,7 @@ void LowerImplicitArgIntrinsics::visitCallInst(CallInst &CI) {
 
   // Lower intrinsic usage in the kernel to kernel args
   if (isEntryFunc(MDUtils, F)) {
-    ImplicitArgs IAS(*F, MDUtils);
+    ImplicitArgs IAS(*F, MDUtils, getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData());
     Argument *Arg = IAS.getImplicitArg(*F, argTy);
     if (Arg) {
       CI.replaceAllUsesWith(Arg);
@@ -854,7 +854,7 @@ void LowerImplicitArgIntrinsics::visitCallInst(CallInst &CI) {
         auto LocalIDBase = BuildLoadInst(CI, Offset, DataTypeI64);
 
         // Get local thread id
-        ImplicitArgs IAS(*F, MDUtils);
+        ImplicitArgs IAS(*F, MDUtils, getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData());
         auto R0Val = IAS.getImplicitArgValue(*F, ImplicitArg::R0, MDUtils);
         auto LocalThreadId =
             Builder.CreateExtractElement(R0Val, ConstantInt::get(Type::getInt32Ty(CI.getContext()), 2));

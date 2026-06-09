@@ -76,8 +76,10 @@ bool DeviceEnqueueFuncsAnalysis::runOnFunction(Function &F) {
   // Visit the function
   visit(F);
 
-  ImplicitArgs::addImplicitArgs(F, m_newImplicitArgs, m_pMDUtils);
-  ImplicitArgs::addNumberedArgs(F, m_newNumberedImplicitArgs, m_pMDUtils);
+  ImplicitArgs::addImplicitArgs(F, m_newImplicitArgs, m_pMDUtils,
+                                getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData());
+  ImplicitArgs::addNumberedArgs(F, m_newNumberedImplicitArgs, m_pMDUtils,
+                                getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData());
 
   return m_hasDeviceEnqueue;
 }
@@ -145,7 +147,8 @@ DeviceEnqueueFuncsResolution::DeviceEnqueueFuncsResolution() : FunctionPass(ID),
 bool DeviceEnqueueFuncsResolution::runOnFunction(Function &F) {
   m_Changed = false;
 
-  m_implicitArgs = ImplicitArgs(F, getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils());
+  m_implicitArgs = ImplicitArgs(F, getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils(),
+                                getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData());
 
   visit(F);
 

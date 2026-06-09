@@ -39,9 +39,8 @@ declare void @llvm.genx.GenISA.OUTPUT.f32(float, float, float, float, i32, i32, 
 !IGCMetadata = !{!4}
 
 !0 = !{void (i32)* @test_remove, !1}
-!1 = !{!2, !3}
+!1 = !{!2}
 !2 = !{!"function_type", i32 0}
-!3 = !{!"implicit_arg_desc"}
 !4 = !{!"ModuleMD", !5}
 !5 = !{!"FuncMD", !6, !7}
 !6 = distinct !{!"FuncMDMap[0]", void (i32)* @test_remove}

@@ -22,6 +22,18 @@ define i32 @foo(i32 %x) nounwind {
 !6 =  !{i32 8}
 !7 =  !{i32 9}
 !8 =  !{i32 10}
+!9 = !{!"argId", i32 8}
+!10 = !{!"implicitArgInfoListVec[0]", !9}
+!11 = !{!"argId", i32 9}
+!12 = !{!"implicitArgInfoListVec[1]", !11}
+!13 = !{!"argId", i32 10}
+!14 = !{!"implicitArgInfoListVec[2]", !13}
+!15 = !{!"implicitArgInfoList", !10, !12, !14}
+!16 = !{!"FuncMDMap[0]", i32 (i32)* @foo}
+!17 = !{!"FuncMDValue[0]", !15}
+!18 = !{!"FuncMD", !16, !17}
+!19 = !{!"ModuleMD", !18}
+!IGCMetadata = !{!19}
 
 ; CHECK:         define i32 @foo(i32 %x, i16 %localIdX, i16 %localIdY, i16 %localIdZ)
 ; CHECK-NOT:    define i32 @foo(i32 %x)

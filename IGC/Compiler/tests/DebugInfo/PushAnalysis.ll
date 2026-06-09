@@ -118,9 +118,8 @@ attributes #0 = { nounwind readnone speculatable }
 !llvm.module.flags = !{!16}
 
 !0 = !{ptr @test_pusha, !1}
-!1 = !{!2, !3}
+!1 = !{!2}
 !2 = !{!"function_type", i32 0}
-!3 = !{!"implicit_arg_desc"}
 !4 = !{!"ModuleMD", !5, !7}
 !5 = !{!"compOpt", !6}
 !6 = !{!"PushConstantsEnable", i1 true}

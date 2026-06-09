@@ -30,9 +30,7 @@ define void @test(<4 x i32> %a, ptr %b) {
 !igc.functions = !{!0}
 
 !0 = !{ptr @test, !1}
-!1 = !{!2, !3}
+!1 = !{!2}
 !2 = !{!"function_type", i32 0}
-!3 = !{!"implicit_arg_desc"}
-!4 = !{i32 8}
 !5 = !{i1 true}
 

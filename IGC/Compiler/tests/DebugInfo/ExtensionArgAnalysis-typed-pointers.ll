@@ -75,9 +75,8 @@ attributes #0 = { nounwind readnone speculatable }
 !llvm.module.flags = !{!9}
 
 !0 = !{void (i32, <2 x i32>, <4 x i32>)* @test_extarga, !1}
-!1 = !{!2, !3}
+!1 = !{!2}
 !2 = !{!"function_type", i32 0}
-!3 = !{!"implicit_arg_desc"}
 !4 = distinct !DICompileUnit(language: DW_LANG_C, file: !5, producer: "debugify", isOptimized: true, runtimeVersion: 0, emissionKind: FullDebug, enums: !6)
 !5 = !DIFile(filename: "ExtensionArgAnalysis.ll", directory: "/")
 !6 = !{}

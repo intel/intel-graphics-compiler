@@ -155,7 +155,7 @@ bool ProgramScopeConstantResolution::runOnModule(Module &M) {
         continue;
       }
 
-      ImplicitArgs implicitArgs(*userFunc, mdUtils);
+      ImplicitArgs implicitArgs(*userFunc, mdUtils, getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData());
 
       // Skip if this function does not have the implicit arg
       if (!implicitArgs.isImplicitArgExist(argType))

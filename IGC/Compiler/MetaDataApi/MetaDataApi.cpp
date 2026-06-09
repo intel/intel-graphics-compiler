@@ -10,84 +10,6 @@ SPDX-License-Identifier: MIT
 #include "Probe/Assertion.h"
 
 namespace IGC::IGCMD {
-ArgInfoMetaData::ArgInfoMetaData(const llvm::MDNode *pNode, bool hasId)
-    : _Mybase(pNode, hasId), m_ArgId(getNumberedNode(pNode, 0)),
-      m_ExplicitArgNum(getNamedNode(pNode, "explicit_arg_num")),
-      m_StructArgOffset(getNamedNode(pNode, "struct_arg_offset")),
-      m_ImgAccessFloatCoords(getNamedNode(pNode, "img_access_float_coords")),
-      m_ImgAccessIntCoords(getNamedNode(pNode, "img_access_int_coords")), m_pNode(pNode) {}
-
-ArgInfoMetaData::ArgInfoMetaData()
-    : m_ExplicitArgNum("explicit_arg_num"), m_StructArgOffset("struct_arg_offset"),
-      m_ImgAccessFloatCoords("img_access_float_coords"), m_ImgAccessIntCoords("img_access_int_coords"),
-      m_pNode(nullptr) {}
-
-ArgInfoMetaData::ArgInfoMetaData(const char *name)
-    : _Mybase(name), m_ExplicitArgNum("explicit_arg_num"), m_StructArgOffset("struct_arg_offset"),
-      m_ImgAccessFloatCoords("img_access_float_coords"), m_ImgAccessIntCoords("img_access_int_coords"),
-      m_pNode(nullptr) {}
-
-bool ArgInfoMetaData::hasValue() const {
-  return m_ArgId.hasValue() || m_ExplicitArgNum.hasValue() || m_StructArgOffset.hasValue() ||
-         m_ImgAccessFloatCoords.hasValue() || m_ImgAccessIntCoords.hasValue() || nullptr != m_pNode || dirty();
-}
-
-bool ArgInfoMetaData::dirty() const {
-  return m_ArgId.dirty() || m_ExplicitArgNum.dirty() || m_StructArgOffset.dirty() || m_ImgAccessFloatCoords.dirty() ||
-         m_ImgAccessIntCoords.dirty();
-}
-
-void ArgInfoMetaData::discardChanges() {
-  m_ArgId.discardChanges();
-  m_ExplicitArgNum.discardChanges();
-  m_StructArgOffset.discardChanges();
-  m_ImgAccessFloatCoords.discardChanges();
-  m_ImgAccessIntCoords.discardChanges();
-}
-
-llvm::Metadata *ArgInfoMetaData::generateNode(llvm::LLVMContext &context) const {
-  llvm::SmallVector<llvm::Metadata *, 5> args;
-
-  llvm::Metadata *pIDNode = IMetaDataObject::generateNode(context);
-  if (nullptr != pIDNode) {
-    args.push_back(pIDNode);
-  }
-
-  args.push_back(m_ArgId.generateNode(context));
-  if (isExplicitArgNumHasValue()) {
-    args.push_back(m_ExplicitArgNum.generateNode(context));
-  }
-
-  if (isStructArgOffsetHasValue()) {
-    args.push_back(m_StructArgOffset.generateNode(context));
-  }
-
-  if (isImgAccessFloatCoordsHasValue()) {
-    args.push_back(m_ImgAccessFloatCoords.generateNode(context));
-  }
-
-  if (isImgAccessIntCoordsHasValue()) {
-    args.push_back(m_ImgAccessIntCoords.generateNode(context));
-  }
-
-  return llvm::MDNode::get(context, args);
-}
-
-void ArgInfoMetaData::save(llvm::LLVMContext &context, llvm::MDNode *pNode) const {
-  IGC_ASSERT_MESSAGE(nullptr != pNode, "The target node should be valid pointer");
-
-  // we assume that underlying metadata node has not changed under our foot
-  if (pNode == m_pNode && !dirty()) {
-    return;
-  }
-
-  m_ArgId.save(context, getNumberedNode(pNode, 0));
-  m_ExplicitArgNum.save(context, getNamedNode(pNode, "explicit_arg_num"));
-  m_StructArgOffset.save(context, getNamedNode(pNode, "struct_arg_offset"));
-  m_ImgAccessFloatCoords.save(context, getNamedNode(pNode, "img_access_float_coords"));
-  m_ImgAccessIntCoords.save(context, getNamedNode(pNode, "img_access_int_coords"));
-}
-
 ArgDependencyInfoMetaData::ArgDependencyInfoMetaData(const llvm::MDNode *pNode, bool hasId)
     : _Mybase(pNode, hasId), m_Arg(getNumberedNode(pNode, 0)), m_ArgDependency(getNumberedNode(pNode, 1)),
       m_pNode(pNode) {}
@@ -216,31 +138,24 @@ void VectorTypeHintMetaData::save(llvm::LLVMContext &context, llvm::MDNode *pNod
 
 FunctionInfoMetaData::FunctionInfoMetaData(const llvm::MDNode *pNode, bool hasId)
     : _Mybase(pNode, hasId), m_Type(getNamedNode(pNode, "function_type")),
-      m_ArgInfoList(getNamedNode(pNode, "arg_desc"), true),
-      m_ImplicitArgInfoList(getNamedNode(pNode, "implicit_arg_desc"), true),
       m_SubGroupSize(new SubGroupSizeMetaData(getNamedNode(pNode, "sub_group_size"), true)), m_pNode(pNode) {}
 
 FunctionInfoMetaData::FunctionInfoMetaData()
-    : m_Type("function_type"), m_ArgInfoList("arg_desc"), m_ImplicitArgInfoList("implicit_arg_desc"),
-      m_SubGroupSize(new SubGroupSizeMetaDataHandle::ObjectType("sub_group_size")), m_pNode(nullptr) {}
+    : m_Type("function_type"), m_SubGroupSize(new SubGroupSizeMetaDataHandle::ObjectType("sub_group_size")),
+      m_pNode(nullptr) {}
 
 FunctionInfoMetaData::FunctionInfoMetaData(const char *name)
-    : _Mybase(name), m_Type("function_type"), m_ArgInfoList("arg_desc"), m_ImplicitArgInfoList("implicit_arg_desc"),
+    : _Mybase(name), m_Type("function_type"),
       m_SubGroupSize(new SubGroupSizeMetaDataHandle::ObjectType("sub_group_size")), m_pNode(nullptr) {}
 
 bool FunctionInfoMetaData::hasValue() const {
-  return m_Type.hasValue() || m_ArgInfoList.hasValue() || m_ImplicitArgInfoList.hasValue() ||
-         m_SubGroupSize->hasValue() || nullptr != m_pNode || dirty();
+  return m_Type.hasValue() || m_SubGroupSize->hasValue() || nullptr != m_pNode || dirty();
 }
 
-bool FunctionInfoMetaData::dirty() const {
-  return m_Type.dirty() || m_ArgInfoList.dirty() || m_ImplicitArgInfoList.dirty() || m_SubGroupSize.dirty();
-}
+bool FunctionInfoMetaData::dirty() const { return m_Type.dirty() || m_SubGroupSize.dirty(); }
 
 void FunctionInfoMetaData::discardChanges() {
   m_Type.discardChanges();
-  m_ArgInfoList.discardChanges();
-  m_ImplicitArgInfoList.discardChanges();
   m_SubGroupSize.discardChanges();
 }
 
@@ -253,12 +168,6 @@ llvm::Metadata *FunctionInfoMetaData::generateNode(llvm::LLVMContext &context) c
   }
 
   args.push_back(m_Type.generateNode(context));
-  if (isArgInfoListHasValue()) {
-    args.push_back(m_ArgInfoList.generateNode(context));
-  }
-  if (isImplicitArgInfoListHasValue()) {
-    args.push_back(m_ImplicitArgInfoList.generateNode(context));
-  }
   if (m_SubGroupSize->hasValue()) {
     args.push_back(m_SubGroupSize.generateNode(context));
   }
@@ -274,8 +183,6 @@ void FunctionInfoMetaData::save(llvm::LLVMContext &context, llvm::MDNode *pNode)
   }
 
   m_Type.save(context, getNamedNode(pNode, "function_type"));
-  m_ArgInfoList.save(context, getNamedNode(pNode, "arg_desc"));
-  m_ImplicitArgInfoList.save(context, getNamedNode(pNode, "implicit_arg_desc"));
   m_SubGroupSize.save(context, getNamedNode(pNode, "sub_group_size"));
 }
 } // namespace IGC::IGCMD

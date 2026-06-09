@@ -124,7 +124,13 @@ declare i32 @__builtin_IB_atomic_add_global_i32(i32 addrspace(1)*, i32)
 !igc.functions = !{!0}
 
 !0 = !{void (i64, i8 addrspace(1)*)* @printf_test, !1}
-!1 = !{!2, !3}
+!1 = !{!2}
 !2 = !{!"function_type", i32 0}
-!3 = !{!"implicit_arg_desc", !4}
-!4 = !{i32 14}
+!5 = !{!"argId", i32 14}
+!6 = !{!"implicitArgInfoListVec[0]", !5}
+!7 = !{!"implicitArgInfoList", !6}
+!8 = !{!"FuncMDMap[0]", void (i64, i8 addrspace(1)*)* @printf_test}
+!9 = !{!"FuncMDValue[0]", !7}
+!10 = !{!"FuncMD", !8, !9}
+!11 = !{!"ModuleMD", !10}
+!IGCMetadata = !{!11}

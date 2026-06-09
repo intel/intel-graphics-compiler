@@ -24,12 +24,20 @@ entry:
 
 !igc.functions = !{!0}
 !0 = !{void (float addrspace(1)*, float addrspace(1)*, <8 x i32>, <8 x i32>, i16)* @testMixed, !1}
-!1 = !{!2, !3}
+!1 = !{!2}
 !2 = !{!"function_type", i32 0}
-!3 = !{!"implicit_arg_desc", !4, !5, !6}
-!4 = !{i32 0}
-!5 = !{i32 1}
-!6 = !{i32 8}
+!7 = !{!"argId", i32 0}
+!8 = !{!"implicitArgInfoListVec[0]", !7}
+!9 = !{!"argId", i32 1}
+!10 = !{!"implicitArgInfoListVec[1]", !9}
+!11 = !{!"argId", i32 8}
+!12 = !{!"implicitArgInfoListVec[2]", !11}
+!13 = !{!"implicitArgInfoList", !8, !10, !12}
+!14 = !{!"FuncMDMap[0]", void (float addrspace(1)*, float addrspace(1)*, <8 x i32>, <8 x i32>, i16)* @testMixed}
+!15 = !{!"FuncMDValue[0]", !13}
+!16 = !{!"FuncMD", !14, !15}
+!17 = !{!"ModuleMD", !16}
+!IGCMetadata = !{!17}
 
 ; Uniform pointer args keep UP > 0 throughout; non-uniform localId makes NP > 0.
 ; CHECK: block: entry function: testMixed

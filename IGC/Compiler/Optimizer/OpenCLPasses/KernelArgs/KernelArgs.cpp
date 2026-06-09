@@ -909,7 +909,7 @@ bool KernelArgs::const_iterator::operator==(const const_iterator &iterator) cons
 KernelArgs::KernelArgs(const Function &F, const DataLayout *DL, MetaDataUtils *pMdUtils, ModuleMetaData *moduleMD,
                        unsigned int GRFSize, KernelArgsOrder::InputType layout)
     : m_KernelArgsOrder(layout), m_args(m_KernelArgsOrder) {
-  ImplicitArgs implicitArgs(F, pMdUtils);
+  ImplicitArgs implicitArgs(F, pMdUtils, moduleMD);
   const unsigned int numImplicitArgs = implicitArgs.size();
   const unsigned int numRuntimeValue = moduleMD ? moduleMD->pushInfo.constantReg.size() : 0;
   IGC_ASSERT_MESSAGE(F.arg_size() >= (numImplicitArgs + numRuntimeValue),
@@ -925,7 +925,6 @@ KernelArgs::KernelArgs(const Function &F, const DataLayout *DL, MetaDataUtils *p
     }
   }
 
-  FunctionInfoMetaDataHandle funcInfoMD = pMdUtils->getFunctionsInfoItem(const_cast<llvm::Function *>(&F));
   // Explicit function args
   for (unsigned int i = 0, e = numExplicitArgs; i < e; ++i, ++funcArg) {
     bool needAllocation = false;
@@ -971,13 +970,13 @@ KernelArgs::KernelArgs(const Function &F, const DataLayout *DL, MetaDataUtils *p
 
     if ((kernelArg.getArgType() == KernelArg::ArgType::IMAGE_3D ||
          kernelArg.getArgType() == KernelArg::ArgType::BINDLESS_IMAGE_3D) &&
-        funcInfoMD->isArgInfoListHasValue()) {
-      for (auto AI = funcInfoMD->begin_ArgInfoList(), AE = funcInfoMD->end_ArgInfoList(); AI != AE; ++AI) {
-        ArgInfoMetaDataHandle argInfo = *AI;
-        if (argInfo->getExplicitArgNum() == i) {
-          if (argInfo->isImgAccessFloatCoordsHasValue() && argInfo->isImgAccessIntCoordsHasValue()) {
-            kernelArg.setImgAccessedFloatCoords(argInfo->getImgAccessFloatCoords());
-            kernelArg.setImgAccessedIntCoords(argInfo->getImgAccessIntCoords());
+        moduleMD && !moduleMD->FuncMD[const_cast<Function *>(&F)].argInfoList.empty()) {
+      const std::vector<IGC::ArgInfoMD> &argInfoList = moduleMD->FuncMD[const_cast<Function *>(&F)].argInfoList;
+      for (const IGC::ArgInfoMD &argInfo : argInfoList) {
+        if (argInfo.explicitArgNum == (int)i) {
+          if (argInfo.imgAccessFloatCoords != -1 && argInfo.imgAccessIntCoords != -1) {
+            kernelArg.setImgAccessedFloatCoords(argInfo.imgAccessFloatCoords == 1);
+            kernelArg.setImgAccessedIntCoords(argInfo.imgAccessIntCoords == 1);
             break;
           }
         }

@@ -44,7 +44,13 @@ attributes #2 = { noduplicate nounwind }
 !igc.functions = !{!0}
 
 !0 = !{void (<8 x i32>, i8*)* @main, !1}
-!1 = !{!2, !3}
+!1 = !{!2}
 !2 = !{!"function_type", i32 0}
-!3 = !{!"implicit_arg_desc", !4}
-!4 = !{i32 0}
+!5 = !{!"argId", i32 0}
+!6 = !{!"implicitArgInfoListVec[0]", !5}
+!7 = !{!"implicitArgInfoList", !6}
+!8 = !{!"FuncMDMap[0]", void (<8 x i32>, i8*)* @main}
+!9 = !{!"FuncMDValue[0]", !7}
+!10 = !{!"FuncMD", !8, !9}
+!11 = !{!"ModuleMD", !10}
+!IGCMetadata = !{!11}

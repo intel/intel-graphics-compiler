@@ -47,6 +47,5 @@ attributes #0 = { nounwind readnone speculatable }
 !igc.functions = !{!0}
 
 !0 = !{void (%struct._test*, i32)* @test_gep, !1}
-!1 = !{!2, !3}
+!1 = !{!2}
 !2 = !{!"function_type", i32 0}
-!3 = !{!"implicit_arg_desc"}

@@ -665,7 +665,7 @@ bool GenerateBlockMemOpsPass::isLocalIdX(const Value *InputVal) {
   if (!A)
     return false;
   Function *F = const_cast<Function *>(A->getParent());
-  ImplicitArgs implicitArgs(*F, MdUtils);
+  ImplicitArgs implicitArgs(*F, MdUtils, CGCtx->getModuleMetaData());
   Value *localIdX = implicitArgs.getImplicitArgValue(*F, ImplicitArg::LOCAL_ID_X, MdUtils);
 
   return A == localIdX;
@@ -676,7 +676,7 @@ bool GenerateBlockMemOpsPass::isR0(const Value *InputVal) {
   if (!A)
     return false;
   Function *F = const_cast<Function *>(A->getParent());
-  ImplicitArgs implicitArgs(*F, MdUtils);
+  ImplicitArgs implicitArgs(*F, MdUtils, CGCtx->getModuleMetaData());
   Value *R0 = implicitArgs.getImplicitArgValue(*F, ImplicitArg::R0, MdUtils);
 
   return A == R0;

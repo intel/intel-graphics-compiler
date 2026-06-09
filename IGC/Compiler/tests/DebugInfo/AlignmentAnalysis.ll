@@ -116,9 +116,8 @@ attributes #1 = { nounwind readnone speculatable }
 !llvm.module.flags = !{!9}
 
 !0 = !{void (%opencl.image2d_t.read_only addrspace(1)*, i32*, i32 addrspace(2)*, i32 addrspace(2)*, %struct._st_foo*)* @test_align, !1}
-!1 = !{!2, !3}
+!1 = !{!2}
 !2 = !{!"function_type", i32 0}
-!3 = !{!"implicit_arg_desc"}
 !4 = distinct !DICompileUnit(language: DW_LANG_C, file: !5, producer: "debugify", isOptimized: true, runtimeVersion: 0, emissionKind: FullDebug, enums: !6)
 !5 = !DIFile(filename: "AlignmentAnalysis.ll", directory: "/")
 !6 = !{}

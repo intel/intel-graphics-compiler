@@ -36,11 +36,18 @@ entry:
 !2 = !{!3}
 !3 = !{i32 44, i32 4}
 !4 = !{void (i64 addrspace(1)*, <8 x i32>, <8 x i32>, i32)* @test, !5}
-!5 = !{!6, !7}
+!5 = !{!6}
 !6 = !{!"function_type", i32 0}
-!7 = !{!"implicit_arg_desc", !8, !9}
-!8 = !{i32 0}
-!9 = !{i32 1}
+!10 = !{!"argId", i32 0}
+!11 = !{!"implicitArgInfoListVec[0]", !10}
+!12 = !{!"argId", i32 1}
+!13 = !{!"implicitArgInfoListVec[1]", !12}
+!14 = !{!"implicitArgInfoList", !11, !13}
+!15 = !{!"FuncMDMap[0]", void (i64 addrspace(1)*, <8 x i32>, <8 x i32>, i32)* @test}
+!16 = !{!"FuncMDValue[0]", !14}
+!17 = !{!"FuncMD", !15, !16}
+!18 = !{!"ModuleMD", !17}
+!IGCMetadata = !{!18}
 
 ; CHECK: ![[IDX1:[0-9]+]] = !{!"localOffsets", ![[IDX2:[0-9]+]], ![[IDX3:[0-9]+]], ![[IDX4:[0-9]+]]}
 ; CHECK: ![[IDX2]] = !{!"localOffsetsVec[0]", ![[IDX5:[0-9]+]], ![[IDX6:[0-9]+]]}

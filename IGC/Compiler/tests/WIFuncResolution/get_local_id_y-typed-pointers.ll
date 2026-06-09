@@ -18,14 +18,24 @@ define i32 @foo(i32 %dim, <8 x i32> %r0, <8 x i32> %payloadHeader, i16 %localIdX
 
 !igc.functions = !{!0}
 !0 = !{i32 (i32, <8 x i32>, <8 x i32>, i16, i16, i16)* @foo, !1}
-!1 = !{!2, !3}
+!1 = !{!2}
 !2 = !{!"function_type", i32 0}
-!3 = !{!"implicit_arg_desc", !4, !5, !6, !7, !8}
-!4 = !{i32 0}
-!5 = !{i32 1}
-!6 = !{i32 8}
-!7 = !{i32 9}
-!8 = !{i32 10}
+!9 = !{!"argId", i32 0}
+!10 = !{!"implicitArgInfoListVec[0]", !9}
+!11 = !{!"argId", i32 1}
+!12 = !{!"implicitArgInfoListVec[1]", !11}
+!13 = !{!"argId", i32 8}
+!14 = !{!"implicitArgInfoListVec[2]", !13}
+!15 = !{!"argId", i32 9}
+!16 = !{!"implicitArgInfoListVec[3]", !15}
+!17 = !{!"argId", i32 10}
+!18 = !{!"implicitArgInfoListVec[4]", !17}
+!19 = !{!"implicitArgInfoList", !10, !12, !14, !16, !18}
+!20 = !{!"FuncMDMap[0]", i32 (i32, <8 x i32>, <8 x i32>, i16, i16, i16)* @foo}
+!21 = !{!"FuncMDValue[0]", !19}
+!22 = !{!"FuncMD", !20, !21}
+!23 = !{!"ModuleMD", !22}
+!IGCMetadata = !{!23}
 
 ; CHECK:         ret i32 %localIdY
 

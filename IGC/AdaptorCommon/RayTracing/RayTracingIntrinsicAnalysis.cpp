@@ -138,7 +138,8 @@ bool RayTracingIntrinsicAnalysis::runOnFunction(Function &F) {
 
   if (!implicitArgs.empty()) {
     // Create IGC metadata representing the implicit args needed by this function
-    ImplicitArgs::addImplicitArgsTotally(F, implicitArgs, pMdUtils);
+    ImplicitArgs::addImplicitArgsTotally(F, implicitArgs, pMdUtils,
+                                         getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData());
     changed = true;
   }
   return changed;

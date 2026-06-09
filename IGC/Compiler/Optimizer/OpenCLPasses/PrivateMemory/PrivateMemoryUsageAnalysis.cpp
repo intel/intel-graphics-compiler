@@ -67,7 +67,8 @@ bool PrivateMemoryUsageAnalysis::runOnModule(Module &M) {
       if (isEntryFunc(m_pMDUtils, &F)) {
         SmallVector<ImplicitArg::ArgType, 1> implicitArgs;
         implicitArgs.push_back(ImplicitArg::PRIVATE_BASE);
-        ImplicitArgs::addImplicitArgs(F, implicitArgs, m_pMDUtils);
+        ImplicitArgs::addImplicitArgs(F, implicitArgs, m_pMDUtils,
+                                      getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData());
         changed = true;
       }
     }
@@ -122,7 +123,8 @@ bool PrivateMemoryUsageAnalysis::runOnFunction(Function &F) {
   if (m_hasPrivateMem) {
     implicitArgs.push_back(ImplicitArg::PRIVATE_BASE);
   }
-  ImplicitArgs::addImplicitArgs(F, implicitArgs, getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils());
+  ImplicitArgs::addImplicitArgs(F, implicitArgs, getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils(),
+                                getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData());
 
   return true;
 }

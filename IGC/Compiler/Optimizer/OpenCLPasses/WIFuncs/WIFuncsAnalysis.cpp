@@ -186,7 +186,7 @@ bool WIFuncsAnalysis::runOnFunction(Function &F) {
   }
 
   // Create the metadata representing the implicit args needed by this function
-  ImplicitArgs::addImplicitArgs(F, implicitArgs, m_pMDUtils);
+  ImplicitArgs::addImplicitArgs(F, implicitArgs, m_pMDUtils, getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData());
 
   return true;
 }

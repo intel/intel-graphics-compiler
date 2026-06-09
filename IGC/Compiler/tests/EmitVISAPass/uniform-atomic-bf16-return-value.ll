@@ -74,7 +74,7 @@ declare i16 @llvm.genx.GenISA.intatomicrawA64.i16.p1i16.p1i16(i16 addrspace(1)*,
 !0 = !{!"ModuleMD", !1}
 !1 = !{!"FuncMD", !2, !3}
 !2 = !{!"FuncMDMap[0]", void (i16 addrspace(1)*, i16 addrspace(1)*, i16 addrspace(1)*, <8 x i32>, <8 x i32>, i16)* @atomic_fadd_bf16_with_return}
-!3 = !{!"FuncMDValue[0]", !4}
+!3 = !{!"FuncMDValue[0]", !4, !43}
 !4 = !{!"resAllocMD", !5}
 !5 = !{!"argAllocMDList", !6, !10, !11, !12, !13, !14}
 !6 = !{!"argAllocMDListVec[0]", !7, !8, !9}
@@ -88,9 +88,12 @@ declare i16 @llvm.genx.GenISA.intatomicrawA64.i16.p1i16.p1i16(i16 addrspace(1)*,
 !14 = !{!"argAllocMDListVec[5]", !7, !8, !9}
 
 !30 = !{void (i16 addrspace(1)*, i16 addrspace(1)*, i16 addrspace(1)*, <8 x i32>, <8 x i32>, i16)* @atomic_fadd_bf16_with_return, !31}
-!31 = !{!32, !33}
+!31 = !{!32}
 !32 = !{!"function_type", i32 0}
-!33 = !{!"implicit_arg_desc", !34, !35, !36}
-!34 = !{i32 0}
-!35 = !{i32 1}
-!36 = !{i32 8}
+!37 = !{!"argId", i32 0}
+!38 = !{!"implicitArgInfoListVec[0]", !37}
+!39 = !{!"argId", i32 1}
+!40 = !{!"implicitArgInfoListVec[1]", !39}
+!41 = !{!"argId", i32 8}
+!42 = !{!"implicitArgInfoListVec[2]", !41}
+!43 = !{!"implicitArgInfoList", !38, !40, !42}

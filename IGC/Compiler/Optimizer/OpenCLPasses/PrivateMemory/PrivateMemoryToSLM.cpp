@@ -197,7 +197,7 @@ bool PrivateMemoryToSLM::runOnModule(Module &M) {
     LLVMContext &llvmCtx = F->getContext();
     IntegerType *typeInt32 = Type::getInt32Ty(llvmCtx);
 
-    ImplicitArgs implicitArgs(*F, MD);
+    ImplicitArgs implicitArgs(*F, MD, getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData());
 
     Instruction *pEntryPoint = &(*F->getEntryBlock().getFirstInsertionPt());
 

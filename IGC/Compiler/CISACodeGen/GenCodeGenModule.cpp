@@ -13,6 +13,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/DebugInfo/ScalarVISAModule.h"
 #include "Compiler/CodeGenContextWrapper.hpp"
 #include "Compiler/IGCPassSupport.h"
+#include "Compiler/MetaDataApi/IGCMetaDataHelper.h"
 #include "Compiler/MetaDataApi/PurgeMetaDataUtils.hpp"
 #include "Compiler/MetaDataUtilsWrapper.h"
 #include "common/igc_regkeys.hpp"
@@ -74,35 +75,8 @@ void GenXCodeGenModule::getAnalysisUsage(AnalysisUsage &AU) const {
   AU.addRequired<llvm::CallGraphWrapperPass>();
 }
 
-// Update cloned function's metadata.
-static inline void CloneFuncMetadata(IGCMD::MetaDataUtils *pM, llvm::Function *ClonedF, llvm::Function *F) {
-  using namespace IGC::IGCMD;
-  auto Info = pM->getFunctionsInfoItem(F);
-  auto NewInfo = FunctionInfoMetaDataHandle(new FunctionInfoMetaData());
-
-  // Copy function type info.
-  if (Info->isTypeHasValue()) {
-    NewInfo->setType(Info->getType());
-  }
-
-  // Copy explicit argument info, if any.
-  unsigned i = 0;
-  for (auto AI = Info->begin_ArgInfoList(), AE = Info->begin_ArgInfoList(); AI != AE; ++AI) {
-    NewInfo->addArgInfoListItem(Info->getArgInfoListItem(i));
-    i++;
-  }
-
-  // Copy implicit argument info, if any.
-  i = 0;
-  for (auto AI = Info->begin_ImplicitArgInfoList(), AE = Info->end_ImplicitArgInfoList(); AI != AE; ++AI) {
-    NewInfo->addImplicitArgInfoListItem(Info->getImplicitArgInfoListItem(i));
-    i++;
-  }
-
-  pM->setFunctionsInfoItem(ClonedF, Info);
-}
-
-static Function *cloneFunc(IGCMD::MetaDataUtils *pM, Function *F, string prefix = "", string postfix = "_GenXClone") {
+static Function *cloneFunc(IGCMD::MetaDataUtils *pM, ModuleMetaData *modMD, Function *F, string prefix = "",
+                           string postfix = "_GenXClone") {
   ValueToValueMapTy VMap;
 
   Function *ClonedFunc = CloneFunction(F, VMap);
@@ -110,7 +84,11 @@ static Function *cloneFunc(IGCMD::MetaDataUtils *pM, Function *F, string prefix 
   // if the function is not added as part of clone, add it
   if (!F->getParent()->getFunction(ClonedFunc->getName()))
     F->getParent()->getFunctionList().push_back(ClonedFunc);
-  CloneFuncMetadata(pM, ClonedFunc, F);
+  // Copy the cloned function's metadata: both the MetaDataApi FunctionsInfo entry
+  // and the ModuleMetaData::FuncMD entry, which holds the explicit/implicit
+  // ArgInfo lists. copyFunction reserves ahead of the FuncMD insert so the
+  // MapVector storage is not invalidated mid-copy.
+  IGCMD::IGCMetaDataHelper::copyFunction(*pM, *modMD, F, ClonedFunc);
 
   return ClonedFunc;
 }
@@ -307,7 +285,7 @@ void GenXCodeGenModule::processFunction(Function &F) {
       FirstPair = false;
     } else {
       // clone the function, add to this function group
-      auto FCloned = cloneFunc(pMdUtils, &F);
+      auto FCloned = cloneFunc(pMdUtils, pCtx->getModuleMetaData(), &F);
 
       // Copy F's property over
       copyFuncProperties(FCloned, &F);
@@ -351,6 +329,8 @@ void GenXCodeGenModule::processSCC(std::vector<llvm::CallGraphNode *> *SCCNodes)
   }
   IGC_ASSERT(CallerFGs.size() >= 1);
 
+  ModuleMetaData *modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
+
   bool FirstPair = true;
   for (auto FG : CallerFGs) {
     if (FirstPair) {
@@ -364,7 +344,7 @@ void GenXCodeGenModule::processSCC(std::vector<llvm::CallGraphNode *> *SCCNodes)
       llvm::DenseMap<Function *, Function *> CloneMap;
       for (CallGraphNode *Node : (*SCCNodes)) {
         Function *F = Node->getFunction();
-        auto FCloned = cloneFunc(pMdUtils, F);
+        auto FCloned = cloneFunc(pMdUtils, modMD, F);
 
         // Copy properties
         copyFuncProperties(FCloned, F);
@@ -876,7 +856,7 @@ void GenXFunctionGroupAnalysis::CloneFunctionGroupForMultiSIMDCompile(llvm::Modu
             // Clone the function
             // Use the function vector variant syntax for mangling func name
             string prefix = "_ZGVxN" + std::to_string(simdsz) + "_";
-            Function *FCloned = cloneFunc(pMdUtils, F, prefix, "");
+            Function *FCloned = cloneFunc(pMdUtils, pCtx->getModuleMetaData(), F, prefix, "");
             copyFuncProperties(FCloned, F);
             FCloned->addFnAttr("variant-function-def");
             auto pNewICG = getOrCreateIndirectCallGroup(pModule, simdsz);
@@ -924,7 +904,7 @@ void GenXFunctionGroupAnalysis::CloneFunctionGroupForMultiSIMDCompile(llvm::Modu
         if (pModule->getFunction(prefix + F->getName().str()) != nullptr)
           continue;
 
-        Function *FCloned = cloneFunc(pMdUtils, F, prefix, "");
+        Function *FCloned = cloneFunc(pMdUtils, pCtx->getModuleMetaData(), F, prefix, "");
         copyFuncProperties(FCloned, F);
         FCloned->addFnAttr("variant-function-def");
 

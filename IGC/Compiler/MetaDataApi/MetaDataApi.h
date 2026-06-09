@@ -14,9 +14,6 @@ SPDX-License-Identifier: MIT
 // Following classes read/write its own specific structure from/to LLVM metadata.
 
 namespace IGC::IGCMD {
-class ArgInfoMetaData;
-using ArgInfoMetaDataHandle = MetaObjectHandle<ArgInfoMetaData>;
-
 class SubGroupSizeMetaData;
 using SubGroupSizeMetaDataHandle = MetaObjectHandle<SubGroupSizeMetaData>;
 
@@ -28,75 +25,6 @@ using VectorTypeHintMetaDataHandle = MetaObjectHandle<VectorTypeHintMetaData>;
 
 class FunctionInfoMetaData;
 using FunctionInfoMetaDataHandle = MetaObjectHandle<FunctionInfoMetaData>;
-
-class ArgInfoMetaData : public IMetaDataObject {
-public:
-  using _Mybase = IMetaDataObject;
-
-  ArgInfoMetaData(const llvm::MDNode *pNode, bool hasId);
-  ArgInfoMetaData();
-  ArgInfoMetaData(const char *name);
-
-  // Returns true if any of the ArgInfoMetaData`s members has changed
-  bool dirty() const override;
-
-  // Returns true if the structure was loaded from the metadata or was changed
-  bool hasValue() const;
-
-  // Discards the changes done to the ArgInfoMetaData instance
-  void discardChanges() override;
-
-  // Generates the new MDNode hierarchy for the given structure
-  llvm::Metadata *generateNode(llvm::LLVMContext &context) const;
-
-  // Saves the structure changes to the given MDNode
-  void save(llvm::LLVMContext &context, llvm::MDNode *pNode) const;
-
-  //
-  // Data members
-  //
-  using ArgIdType = MetaDataValue<int32_t>;
-  using ExplicitArgNumType = NamedMetaDataValue<int32_t>;
-  using StructArgOffsetType = NamedMetaDataValue<int32_t>;
-  using ImgAccessFloatCoordsType = NamedMetaDataValue<bool>;
-  using ImgAccessIntCoordsType = NamedMetaDataValue<bool>;
-
-  // ArgId
-  ArgIdType::value_type getArgId() const { return m_ArgId.get(); }
-  void setArgId(const ArgIdType::value_type &val) { m_ArgId.set(val); }
-  bool isArgIdHasValue() const { return m_ArgId.hasValue(); }
-
-  // ExplicitArgNum
-  ExplicitArgNumType::value_type getExplicitArgNum() const { return m_ExplicitArgNum.get(); }
-  void setExplicitArgNum(const ExplicitArgNumType::value_type &val) { m_ExplicitArgNum.set(val); }
-  bool isExplicitArgNumHasValue() const { return m_ExplicitArgNum.hasValue(); }
-
-  // StructArgOffset
-  StructArgOffsetType::value_type getStructArgOffset() const { return m_StructArgOffset.get(); }
-  void setStructArgOffset(const StructArgOffsetType::value_type &val) { m_StructArgOffset.set(val); }
-  bool isStructArgOffsetHasValue() const { return m_StructArgOffset.hasValue(); }
-
-  // ImgAccessFloatCoords
-  ImgAccessFloatCoordsType::value_type getImgAccessFloatCoords() const { return m_ImgAccessFloatCoords.get(); }
-  void setImgAccessFloatCoords(const ImgAccessFloatCoordsType::value_type &val) { m_ImgAccessFloatCoords.set(val); }
-  bool isImgAccessFloatCoordsHasValue() const { return m_ImgAccessFloatCoords.hasValue(); }
-
-  // ImgAccessIntCoords
-  ImgAccessIntCoordsType::value_type getImgAccessIntCoords() const { return m_ImgAccessIntCoords.get(); }
-  void setImgAccessIntCoords(const ImgAccessIntCoordsType::value_type &val) { m_ImgAccessIntCoords.set(val); }
-  bool isImgAccessIntCoordsHasValue() const { return m_ImgAccessIntCoords.hasValue(); }
-
-private:
-  // parent node
-  const llvm::MDNode *m_pNode;
-
-  // data members
-  ArgIdType m_ArgId;
-  ExplicitArgNumType m_ExplicitArgNum;
-  StructArgOffsetType m_StructArgOffset;
-  ImgAccessFloatCoordsType m_ImgAccessFloatCoords;
-  ImgAccessIntCoordsType m_ImgAccessIntCoords;
-};
 
 class ArgDependencyInfoMetaData : public IMetaDataObject {
 public:
@@ -264,8 +192,6 @@ public:
   // Data members
   //
   using TypeType = NamedMetaDataValue<int32_t>;
-  using ArgInfoListList = MetaDataList<ArgInfoMetaDataHandle>;
-  using ImplicitArgInfoListList = MetaDataList<ArgInfoMetaDataHandle>;
   using PrivateMemoryPerWIType = NamedMetaDataValue<int32_t>;
   using NeedBindlessHandleType = NamedMetaDataValue<int32_t>;
 
@@ -273,44 +199,6 @@ public:
   TypeType::value_type getType() const { return m_Type.get(); }
   void setType(const TypeType::value_type &val) { m_Type.set(val); }
   bool isTypeHasValue() const { return m_Type.hasValue(); }
-
-  // ArgInfoList
-  ArgInfoListList::iterator begin_ArgInfoList() { return m_ArgInfoList.begin(); }
-  ArgInfoListList::iterator end_ArgInfoList() { return m_ArgInfoList.end(); }
-  ArgInfoListList::const_iterator begin_ArgInfoList() const { return m_ArgInfoList.begin(); }
-  ArgInfoListList::const_iterator end_ArgInfoList() const { return m_ArgInfoList.end(); }
-  size_t size_ArgInfoList() const { return m_ArgInfoList.size(); }
-  bool empty_ArgInfoList() const { return m_ArgInfoList.empty(); }
-  bool isArgInfoListHasValue() const { return m_ArgInfoList.hasValue(); }
-  ArgInfoListList::item_type getArgInfoListItem(size_t index) const { return m_ArgInfoList.getItem(index); }
-  void clearArgInfoList() { m_ArgInfoList.clear(); }
-  void setArgInfoListItem(size_t index, const ArgInfoListList::item_type &item) {
-    return m_ArgInfoList.setItem(index, item);
-  }
-  void addArgInfoListItem(const ArgInfoListList::item_type &val) { m_ArgInfoList.push_back(val); }
-  ArgInfoListList::iterator eraseArgInfoListItem(ArgInfoListList::iterator i) { return m_ArgInfoList.erase(i); }
-
-  // ImplicitArgInfoList
-  ImplicitArgInfoListList::iterator begin_ImplicitArgInfoList() { return m_ImplicitArgInfoList.begin(); }
-  ImplicitArgInfoListList::iterator end_ImplicitArgInfoList() { return m_ImplicitArgInfoList.end(); }
-  ImplicitArgInfoListList::const_iterator begin_ImplicitArgInfoList() const { return m_ImplicitArgInfoList.begin(); }
-  ImplicitArgInfoListList::const_iterator end_ImplicitArgInfoList() const { return m_ImplicitArgInfoList.end(); }
-  size_t size_ImplicitArgInfoList() const { return m_ImplicitArgInfoList.size(); }
-  bool empty_ImplicitArgInfoList() const { return m_ImplicitArgInfoList.empty(); }
-  bool isImplicitArgInfoListHasValue() const { return m_ImplicitArgInfoList.hasValue(); }
-  ImplicitArgInfoListList::item_type getImplicitArgInfoListItem(size_t index) const {
-    return m_ImplicitArgInfoList.getItem(index);
-  }
-  void clearImplicitArgInfoList() { m_ImplicitArgInfoList.clear(); }
-  void setImplicitArgInfoListItem(size_t index, const ImplicitArgInfoListList::item_type &item) {
-    return m_ImplicitArgInfoList.setItem(index, item);
-  }
-  void addImplicitArgInfoListItem(const ImplicitArgInfoListList::item_type &val) {
-    m_ImplicitArgInfoList.push_back(val);
-  }
-  ImplicitArgInfoListList::iterator eraseImplicitArgInfoListItem(ImplicitArgInfoListList::iterator i) {
-    return m_ImplicitArgInfoList.erase(i);
-  }
 
   // SubGroupSize
   SubGroupSizeMetaDataHandle getSubGroupSize() { return m_SubGroupSize; }
@@ -321,8 +209,6 @@ private:
 
   // data members
   TypeType m_Type;
-  ArgInfoListList m_ArgInfoList;
-  ImplicitArgInfoListList m_ImplicitArgInfoList;
   SubGroupSizeMetaDataHandle m_SubGroupSize;
 };
 

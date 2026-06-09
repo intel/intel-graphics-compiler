@@ -70,7 +70,7 @@ bool BufferBoundsChecking::runOnModule(Module &M) {
     }
 
     if (!argMap.empty()) {
-      ImplicitArgs::addNumberedArgs(function, argMap, metadataUtils);
+      ImplicitArgs::addNumberedArgs(function, argMap, metadataUtils, moduleMetadata);
       modified = true;
     }
 

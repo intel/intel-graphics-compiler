@@ -26,12 +26,20 @@ define i32 @foo(i32 %img, i32 %imageHeigt, i32 %imageWidth) nounwind {
 
 !igc.functions = !{!0}
 !0 = !{i32 (i32, i32, i32)* @foo, !1}
-!1 = !{!2, !3}
+!1 = !{!2}
 !2 = !{!"function_type", i32 0}
-!3 = !{!"implicit_arg_desc", !4, !6}
-!4 = !{i32 21, !5}
-!5 = !{!"explicit_arg_num", i32 0}
-!6 = !{i32 22, !5}
+!101 = !{!"argId", i32 21}
+!102 = !{!"explicitArgNum", i32 0}
+!103 = !{!"implicitArgInfoListVec[0]", !101, !102}
+!104 = !{!"argId", i32 22}
+!105 = !{!"explicitArgNum", i32 0}
+!106 = !{!"implicitArgInfoListVec[1]", !104, !105}
+!107 = !{!"implicitArgInfoList", !103, !106}
+!108 = !{!"FuncMDMap[0]", i32 (i32, i32, i32)* @foo}
+!109 = !{!"FuncMDValue[0]", !107}
+!110 = !{!"FuncMD", !108, !109}
+!111 = !{!"ModuleMD", !110}
+!IGCMetadata = !{!111}
 
 ; CHECK:         %res = add i32 %imageWidth, %imageHeigt
 

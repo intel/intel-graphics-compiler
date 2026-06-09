@@ -99,9 +99,8 @@ attributes #1 = { nounwind readnone speculatable }
 !llvm.module.flags = !{!11}
 
 !0 = !{void (i32, i32)* @test_pma1, !1}
-!1 = !{!2, !3}
+!1 = !{!2}
 !2 = !{!"function_type", i32 0}
-!3 = !{!"implicit_arg_desc"}
 !4 = !{void (i32, i32, i32*)* @test_pma2, !1}
 !5 = !{void (%struct._st_foo*, i32*)* @test_pma3, !1}
 !6 = distinct !DICompileUnit(language: DW_LANG_C, file: !7, producer: "debugify", isOptimized: true, runtimeVersion: 0, emissionKind: FullDebug, enums: !8)

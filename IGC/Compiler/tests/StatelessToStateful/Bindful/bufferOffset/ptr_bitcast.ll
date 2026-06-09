@@ -27,7 +27,7 @@ entry:
 !0 = !{!"ModuleMD", !1, !8}
 !1 = !{!"FuncMD", !2, !3}
 !2 = !{!"FuncMDMap[0]", ptr @test}
-!3 = !{!"FuncMDValue[0]", !4}
+!3 = !{!"FuncMDValue[0]", !4, !17}
 !4 = !{!"resAllocMD", !5}
 !5 = !{!"argAllocMDList", !6}
 !6 = !{!"argAllocMDListVec[0]", !7}
@@ -35,7 +35,9 @@ entry:
 !8 = !{!"compOpt", !9}
 !9 = !{!"HasBufferOffsetArg", i1 true}
 !10 = !{ptr @test, !11}
-!11 = !{!12, !13}
+!11 = !{!12}
 !12 = !{!"function_type", i32 0}
-!13 = !{!"implicit_arg_desc", !14}
-!14 = !{i32 15}
+!15 = !{!"argId", i32 15}
+!16 = !{!"implicitArgInfoListVec[0]", !15, !18}
+!17 = !{!"implicitArgInfoList", !16}
+!18 = !{!"explicitArgNum", i32 0}

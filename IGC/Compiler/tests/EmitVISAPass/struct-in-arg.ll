@@ -44,7 +44,7 @@ entry:
 !0 = !{!"ModuleMD", !1}
 !1 = !{!"FuncMD", !2, !3}
 !2 = !{!"FuncMDMap[0]", ptr @struct_in_arg_test}
-!3 = !{!"FuncMDValue[0]", !4}
+!3 = !{!"FuncMDValue[0]", !4, !27}
 !4 = !{!"resAllocMD", !5}
 !5 = distinct !{!"argAllocMDList", !6, !10, !11, !5, !6}
 !6 = !{!"argAllocMDListVec[0]", !7, !8, !9}
@@ -56,9 +56,12 @@ entry:
 !12 = !{!"type", i32 1}
 !13 = !{!"indexType", i32 0}
 !14 = !{ptr @struct_in_arg_test, !15}
-!15 = !{!16, !17}
+!15 = !{!16}
 !16 = !{!"function_type", i32 0}
-!17 = !{!"implicit_arg_desc", !18, !19, !20}
-!18 = !{i32 0}
-!19 = !{i32 2}
-!20 = !{i32 13}
+!21 = !{!"argId", i32 0}
+!22 = !{!"implicitArgInfoListVec[0]", !21}
+!23 = !{!"argId", i32 2}
+!24 = !{!"implicitArgInfoListVec[1]", !23}
+!25 = !{!"argId", i32 13}
+!26 = !{!"implicitArgInfoListVec[2]", !25}
+!27 = !{!"implicitArgInfoList", !22, !24, !26}

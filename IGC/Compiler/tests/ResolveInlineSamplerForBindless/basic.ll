@@ -28,10 +28,13 @@ declare spir_func void @foo(%spirv.Sampler addrspace(2)*)
 !IGCMetadata = !{!3}
 
 !0 = !{void (i64)* @test, !1}
-!1 = !{!2, !4}
+!1 = !{!2}
 !2 = !{!"function_type", i32 0}
 !3 = !{!"ModuleMD", !7}
-!4 = !{!"implicit_arg_desc", !5}
-!5 = !{i32 32, !6}
-!6 = !{!"explicit_arg_num", i32 17}
-!7 = !{!"FuncMD"}
+!7 = !{!"FuncMD", !12, !13}
+!8 = !{!"argId", i32 32}
+!9 = !{!"explicitArgNum", i32 17}
+!10 = !{!"implicitArgInfoListVec[0]", !8, !9}
+!11 = !{!"implicitArgInfoList", !10}
+!12 = !{!"FuncMDMap[0]", void (i64)* @test}
+!13 = !{!"FuncMDValue[0]", !11}

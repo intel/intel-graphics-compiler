@@ -238,7 +238,7 @@ bool ProgramScopeConstantAnalysis::runOnModule(Module &M) {
       // Always add for kernels and subroutines
       SmallVector<ImplicitArg::ArgType, 1> implicitArgs;
       implicitArgs.push_back(ImplicitArg::CONSTANT_BASE);
-      ImplicitArgs::addImplicitArgs(pFunc, implicitArgs, mdUtils);
+      ImplicitArgs::addImplicitArgs(pFunc, implicitArgs, mdUtils, m_pModuleMd);
     }
   }
 
@@ -253,7 +253,7 @@ bool ProgramScopeConstantAnalysis::runOnModule(Module &M) {
       // Always add for kernels and subroutines
       SmallVector<ImplicitArg::ArgType, 1> implicitArgs;
       implicitArgs.push_back(ImplicitArg::GLOBAL_BASE);
-      ImplicitArgs::addImplicitArgs(pFunc, implicitArgs, mdUtils);
+      ImplicitArgs::addImplicitArgs(pFunc, implicitArgs, mdUtils, m_pModuleMd);
     }
   }
 

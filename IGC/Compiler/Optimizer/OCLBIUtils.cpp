@@ -583,7 +583,7 @@ public:
         int samplerConstantVal = int_cast<int>(cast<ConstantInt>(samplerValue)->getZExtValue());
 
         // Bindless inline sampler is passed via implicit kernel argument.
-        ImplicitArgs implicitArgs(*m_pFunc, m_pMdUtils);
+        ImplicitArgs implicitArgs(*m_pFunc, m_pMdUtils, m_modMD);
         sampler = implicitArgs.getNumberedImplicitArg(*m_pFunc, ImplicitArg::INLINE_SAMPLER, samplerConstantVal);
       } else {
         sampler = m_pCallInst->getArgOperand(1);

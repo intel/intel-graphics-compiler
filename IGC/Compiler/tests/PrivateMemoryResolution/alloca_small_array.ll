@@ -38,9 +38,13 @@ entry:
 !IGCMetadata = !{!0}
 !igc.functions = !{!1}
 
-!0 = !{!"ModuleMD"}
+!0 = !{!"ModuleMD", !11}
 !1 = !{void (i8*)* @testallocasmall, !2}
-!2 = !{!3, !4}
+!2 = !{!3}
 !3 = !{!"function_type", i32 0}
-!4 = !{!"implicit_arg_desc", !5}
-!5 = !{i32 13}
+!6 = !{!"argId", i32 13}
+!7 = !{!"implicitArgInfoListVec[0]", !6}
+!8 = !{!"implicitArgInfoList", !7}
+!9 = !{!"FuncMDMap[0]", void (i8*)* @testallocasmall}
+!10 = !{!"FuncMDValue[0]", !8}
+!11 = !{!"FuncMD", !9, !10}

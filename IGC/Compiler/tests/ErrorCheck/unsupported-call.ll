@@ -33,9 +33,8 @@ declare i32 @llvm.genx.GenISA.dp4a.ss(i32, i32, i32, i1)
 !IGCMetadata = !{!4}
 
 !0 = !{void (i32*, i32*, <32 x double>, <32 x i64>, <32 x i64>*, <256 x i64>)* @test_error, !1}
-!1 = !{!2, !3}
+!1 = !{!2}
 !2 = !{!"function_type", i32 0}
-!3 = !{!"implicit_arg_desc"}
 !4 = !{!"ModuleMD", !5}
 !5 = !{!"FuncMD", !6, !7}
 !6 = distinct !{!"FuncMDMap[0]", void (i32*, i32*, <32 x double>, <32 x i64>, <32 x i64>*, <256 x i64>)* @test_error}

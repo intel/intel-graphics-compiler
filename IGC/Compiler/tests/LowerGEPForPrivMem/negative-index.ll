@@ -34,6 +34,5 @@ define float @test(i64 %b) {
 !igc.functions = !{!0}
 
 !0 = !{ptr @test, !1}
-!1 = !{!2, !3}
+!1 = !{!2}
 !2 = !{!"function_type", i32 0}
-!3 = !{!"implicit_arg_desc"}

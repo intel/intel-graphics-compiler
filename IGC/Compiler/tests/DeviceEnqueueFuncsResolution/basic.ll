@@ -78,27 +78,45 @@ declare i32 @__builtin_IB_get_prefered_workgroup_multiple()
 !igc.functions = !{!0, !5, !9, !13, !17}
 
 !0 = !{void (i8 addrspace(1)*)* @test_device_queue, !1}
-!1 = !{!2, !3}
+!1 = !{!2}
 !2 = !{!"function_type", i32 0}
-!3 = !{!"implicit_arg_desc", !4}
-!4 = !{i32 37}
 
 !5 = !{void (i8 addrspace(1)*)* @test_device_eventpool, !6}
-!6 = !{!2, !7}
-!7 = !{!"implicit_arg_desc", !8}
-!8 = !{i32 38}
+!6 = !{!2}
 
 !9 = !{void (i32)* @test_device_maxworkgroup, !10}
-!10 = !{!2, !11}
-!11 = !{!"implicit_arg_desc", !12}
-!12 = !{i32 39}
+!10 = !{!2}
 
 !13 = !{void (i32)* @test_device_parentevent, !14}
-!14 = !{!2, !15}
-!15 = !{!"implicit_arg_desc", !16}
-!16 = !{i32 40}
+!14 = !{!2}
 
 !17 = !{void (i32)* @test_device_wg_multiple, !18}
-!18 = !{!2, !19}
-!19 = !{!"implicit_arg_desc", !20}
-!20 = !{i32 41}
+!18 = !{!2}
+!21 = !{!"argId", i32 37}
+!22 = !{!"implicitArgInfoListVec[0]", !21}
+!23 = !{!"implicitArgInfoList", !22}
+!24 = !{!"argId", i32 38}
+!25 = !{!"implicitArgInfoListVec[0]", !24}
+!26 = !{!"implicitArgInfoList", !25}
+!27 = !{!"argId", i32 39}
+!28 = !{!"implicitArgInfoListVec[0]", !27}
+!29 = !{!"implicitArgInfoList", !28}
+!30 = !{!"argId", i32 40}
+!31 = !{!"implicitArgInfoListVec[0]", !30}
+!32 = !{!"implicitArgInfoList", !31}
+!33 = !{!"argId", i32 41}
+!34 = !{!"implicitArgInfoListVec[0]", !33}
+!35 = !{!"implicitArgInfoList", !34}
+!36 = !{!"FuncMDMap[0]", void (i8 addrspace(1)*)* @test_device_queue}
+!37 = !{!"FuncMDValue[0]", !23}
+!38 = !{!"FuncMDMap[1]", void (i8 addrspace(1)*)* @test_device_eventpool}
+!39 = !{!"FuncMDValue[1]", !26}
+!40 = !{!"FuncMDMap[2]", void (i32)* @test_device_maxworkgroup}
+!41 = !{!"FuncMDValue[2]", !29}
+!42 = !{!"FuncMDMap[3]", void (i32)* @test_device_parentevent}
+!43 = !{!"FuncMDValue[3]", !32}
+!44 = !{!"FuncMDMap[4]", void (i32)* @test_device_wg_multiple}
+!45 = !{!"FuncMDValue[4]", !35}
+!46 = !{!"FuncMD", !36, !37, !38, !39, !40, !41, !42, !43, !44, !45}
+!47 = !{!"ModuleMD", !46}
+!IGCMetadata = !{!47}

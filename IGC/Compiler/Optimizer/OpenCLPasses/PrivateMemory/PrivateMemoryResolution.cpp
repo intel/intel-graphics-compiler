@@ -971,7 +971,7 @@ bool PrivateMemoryResolution::resolveAllocaInstructions(bool privateOnStack, boo
       GenISAIntrinsic::getDeclaration(m_currFunction->getParent(), GenISAIntrinsic::GenISA_simdSize);
 
   IGCLLVM::IRBuilder<> entryBuilder(&*m_currFunction->getEntryBlock().getFirstInsertionPt());
-  ImplicitArgs implicitArgs(*m_currFunction, m_pMdUtils);
+  ImplicitArgs implicitArgs(*m_currFunction, m_pMdUtils, getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData());
 
   // Construct an empty DebugLoc.
   DebugLoc entryDebugLoc;

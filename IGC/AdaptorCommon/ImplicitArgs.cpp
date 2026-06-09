@@ -342,7 +342,8 @@ bool ImplicitArg::isLocalIDs() const {
 
 GenISAIntrinsic::ID ImplicitArg::getGenIntrinsicID() const { return m_GenIntrinsicID; }
 
-ImplicitArgs::ImplicitArgs(const llvm::Function &func, const MetaDataUtils *pMdUtils) {
+ImplicitArgs::ImplicitArgs(const llvm::Function &func, const MetaDataUtils *pMdUtils, const ModuleMetaData *modMD) {
+  (void)pMdUtils;
   IGC_ASSERT_MESSAGE((IMPLICIT_ARGS.size() == ImplicitArg::NUM_IMPLICIT_ARGS),
                      "Mismatch in NUM_IMPLICIT_ARGS and IMPLICIT_ARGS vector");
   {
@@ -353,7 +354,15 @@ ImplicitArgs::ImplicitArgs(const llvm::Function &func, const MetaDataUtils *pMdU
       IGC_ASSERT_MESSAGE((Arg.getArgType() == CurArgId++), "enum and vector out of sync!");
     }
   }
-  m_funcInfoMD = pMdUtils->getFunctionsInfoItem(const_cast<llvm::Function *>(&func));
+  // modMD may be null on paths that build ImplicitArgs without module metadata
+  // (pre-migration this ctor only needed pMdUtils); treat that as no implicit args.
+  // The list is copied by value so it survives any later reallocation of the
+  // FuncMD MapVector while this ImplicitArgs object is alive.
+  if (modMD) {
+    auto it = modMD->FuncMD.find(const_cast<llvm::Function *>(&func));
+    if (it != modMD->FuncMD.end())
+      m_implicitArgs = it->second.implicitArgInfoList;
+  }
 }
 
 const ImplicitArg &ImplicitArgs::operator[](unsigned int i) const {
@@ -379,37 +388,35 @@ unsigned int ImplicitArgs::getArgIndex(ImplicitArg::ArgType argType) const {
   return implicitArgIndex;
 }
 
-bool ImplicitArgs::isImplicitArgExist(const IGCMD::FunctionInfoMetaDataHandle &funcInfo, ImplicitArg::ArgType argType) {
-  bool res = false;
-
+bool ImplicitArgs::isImplicitArgExist(const std::vector<IGC::ArgInfoMD> &implicitArgs, ImplicitArg::ArgType argType) {
   // Find the first appearance of the given implicit arg type
-  for (unsigned int implicitArgIndex = 0; implicitArgIndex < funcInfo->size_ImplicitArgInfoList(); ++implicitArgIndex) {
-    ImplicitArg::ArgType type =
-        (ImplicitArg::ArgType)funcInfo->getImplicitArgInfoListItem(implicitArgIndex)->getArgId();
-    if (type == argType) {
-      res = true;
-      break;
+  for (const auto &arg : implicitArgs) {
+    if ((ImplicitArg::ArgType)arg.argId == argType) {
+      return true;
     }
   }
-
-  return res;
+  return false;
 }
 
 bool ImplicitArgs::isImplicitArgExist(ImplicitArg::ArgType argType) const {
-  return isImplicitArgExist(m_funcInfoMD, argType);
+  return isImplicitArgExist(m_implicitArgs, argType);
 }
 
 bool ImplicitArgs::isImplicitArgExist(llvm::Function &F, ImplicitArg::ArgType argType,
-                                      const IGCMD::MetaDataUtils *pMdUtils) {
-  return isImplicitArgExist(pMdUtils->getFunctionsInfoItem(&F), argType);
+                                      const IGCMD::MetaDataUtils *pMdUtils, const ModuleMetaData *modMD) {
+  (void)pMdUtils;
+  auto it = modMD->FuncMD.find(&F);
+  if (it == modMD->FuncMD.end())
+    return false;
+  return isImplicitArgExist(it->second.implicitArgInfoList, argType);
 }
 
 bool ImplicitArgs::isImplicitArgExistForNumberedArg(ImplicitArg::ArgType argType, int argNum) const {
   IGC_ASSERT_MESSAGE((argNum >= 0), "objectNum cannot be less than 0");
 
-  for (int i = 0, e = m_funcInfoMD->size_ImplicitArgInfoList(); i < e; ++i) {
-    ArgInfoMetaDataHandle argInfo = m_funcInfoMD->getImplicitArgInfoListItem(i);
-    if (argInfo->getArgId() == argType && argInfo->getExplicitArgNum() == argNum) {
+  for (unsigned int i = 0, e = size(); i < e; ++i) {
+    const auto &argInfo = m_implicitArgs[i];
+    if (argInfo.argId == argType && argInfo.explicitArgNum == argNum) {
       return true;
     }
   }
@@ -424,40 +431,40 @@ unsigned int ImplicitArgs::getImageArgIndex(ImplicitArg::ArgType argType, const 
 unsigned int ImplicitArgs::getNumberedArgIndex(ImplicitArg::ArgType argType, int argNum) const {
   IGC_ASSERT_MESSAGE((argNum >= 0), "objectNum cannot be less than 0");
 
-  for (int i = 0, e = m_funcInfoMD->size_ImplicitArgInfoList(); i < e; ++i) {
-    ArgInfoMetaDataHandle argInfo = m_funcInfoMD->getImplicitArgInfoListItem(i);
-    if (argInfo->getArgId() == argType && argInfo->getExplicitArgNum() == argNum) {
+  for (unsigned int i = 0, e = size(); i < e; ++i) {
+    const auto &argInfo = m_implicitArgs[i];
+    if (argInfo.argId == argType && argInfo.explicitArgNum == argNum) {
       return i;
     }
   }
 
   IGC_ASSERT_MESSAGE(0, "No implicit argument for the given type & argNum");
-  return m_funcInfoMD->size_ImplicitArgInfoList();
+  return size();
 }
 
 void ImplicitArgs::addImplicitArgs(llvm::Function &F, const SmallVectorImpl<ImplicitArg::ArgType> &implicitArgs,
-                                   const MetaDataUtils *pMdUtils) {
+                                   const MetaDataUtils *pMdUtils, ModuleMetaData *modMD) {
   // Add implicit args metadata for the given function
-  FunctionInfoMetaDataHandle funcInfo = pMdUtils->getFunctionsInfoItem(&F);
+  auto &argList = modMD->FuncMD[&F].implicitArgInfoList;
   for (auto arg : implicitArgs) {
-    if (!isImplicitArgExist(F, arg, pMdUtils)) {
-      ArgInfoMetaDataHandle argMD = ArgInfoMetaDataHandle(new ArgInfoMetaData());
-      argMD->setArgId(arg);
-      funcInfo->addImplicitArgInfoListItem(argMD);
+    if (!isImplicitArgExist(F, arg, pMdUtils, modMD)) {
+      ArgInfoMD argMD;
+      argMD.argId = arg;
+      argList.push_back(argMD);
     }
   }
 }
 
 void ImplicitArgs::addImplicitArgsTotally(llvm::Function &F, const SmallVectorImpl<ImplicitArg::ArgType> &implicitArgs,
-                                          const MetaDataUtils *pMdUtils) {
+                                          const MetaDataUtils *pMdUtils, ModuleMetaData *modMD) {
   // Add implicit args metadata for the given function
-  FunctionInfoMetaDataHandle funcInfo = pMdUtils->getFunctionsInfoItem(&F);
+  auto &argList = modMD->FuncMD[&F].implicitArgInfoList;
   bool argAdded = false;
   for (auto arg : implicitArgs) {
-    if (!isImplicitArgExist(F, arg, pMdUtils)) {
-      ArgInfoMetaDataHandle argMD = ArgInfoMetaDataHandle(new ArgInfoMetaData());
-      argMD->setArgId(arg);
-      funcInfo->addImplicitArgInfoListItem(argMD);
+    if (!isImplicitArgExist(F, arg, pMdUtils, modMD)) {
+      ArgInfoMD argMD;
+      argMD.argId = arg;
+      argList.push_back(argMD);
       argAdded = true;
     }
   }
@@ -470,52 +477,56 @@ void ImplicitArgs::addImplicitArgsTotally(llvm::Function &F, const SmallVectorIm
     CallInst *cInst = dyn_cast<CallInst>(U);
     IGC_ASSERT_MESSAGE(cInst, "Caller must not be nullptr");
     Function *parent_func = cInst->getParent()->getParent();
-    addImplicitArgsTotally(*parent_func, implicitArgs, pMdUtils);
+    addImplicitArgsTotally(*parent_func, implicitArgs, pMdUtils, modMD);
   }
 }
 
-void ImplicitArgs::addImageArgs(llvm::Function &F, const ImplicitArg::ArgMap &argMap, const MetaDataUtils *pMdUtils) {
-  FunctionInfoMetaDataHandle funcInfo = pMdUtils->getFunctionsInfoItem(&F);
+void ImplicitArgs::addImageArgs(llvm::Function &F, const ImplicitArg::ArgMap &argMap, const MetaDataUtils *pMdUtils,
+                                ModuleMetaData *modMD) {
+  (void)pMdUtils;
+  auto &argList = modMD->FuncMD[&F].implicitArgInfoList;
   for (ImplicitArg::ArgType argType = ImplicitArg::IMAGES_START; argType <= ImplicitArg::IMAGES_END;
        argType = static_cast<ImplicitArg::ArgType>(argType + 1)) {
     auto argMapIter = argMap.find(argType);
     if (argMapIter != argMap.end()) {
       for (const auto &argI : argMapIter->second) {
-        ArgInfoMetaDataHandle argMD = ArgInfoMetaDataHandle(new ArgInfoMetaData());
-        argMD->setArgId(argType);
-        argMD->setExplicitArgNum(argI);
-        funcInfo->addImplicitArgInfoListItem(argMD);
+        ArgInfoMD argMD;
+        argMD.argId = argType;
+        argMD.explicitArgNum = argI;
+        argList.push_back(argMD);
       }
     }
   }
 }
 
 void ImplicitArgs::addStructArgs(llvm::Function &F, const Argument *A, const ImplicitArg::StructArgList &S,
-                                 const MetaDataUtils *pMdUtils) {
-  FunctionInfoMetaDataHandle funcInfo = pMdUtils->getFunctionsInfoItem(&F);
+                                 const MetaDataUtils *pMdUtils, ModuleMetaData *modMD) {
+  (void)pMdUtils;
+  auto &argList = modMD->FuncMD[&F].implicitArgInfoList;
 
   for (const auto &argI : S) {
     unsigned int id = argI.first;
     unsigned int offset = argI.second;
 
-    ArgInfoMetaDataHandle argMD = ArgInfoMetaDataHandle(new ArgInfoMetaData());
-    argMD->setExplicitArgNum(A->getArgNo());
-    argMD->setArgId(id);
-    argMD->setStructArgOffset(offset);
-    funcInfo->addImplicitArgInfoListItem(argMD);
+    ArgInfoMD argMD;
+    argMD.explicitArgNum = A->getArgNo();
+    argMD.argId = id;
+    argMD.structArgOffset = offset;
+    argList.push_back(argMD);
   }
 }
 
 void ImplicitArgs::addNumberedArgs(llvm::Function &F, const ImplicitArg::ArgMap &argMap,
-                                   const IGCMD::MetaDataUtils *pMdUtils) {
-  FunctionInfoMetaDataHandle funcInfo = pMdUtils->getFunctionsInfoItem(&F);
+                                   const IGCMD::MetaDataUtils *pMdUtils, ModuleMetaData *modMD) {
+  (void)pMdUtils;
+  auto &argList = modMD->FuncMD[&F].implicitArgInfoList;
   for (const auto &argPair : argMap) {
     ImplicitArg::ArgType argId = argPair.first;
     for (const auto &argNum : argPair.second) {
-      ArgInfoMetaDataHandle argMD(new ArgInfoMetaData());
-      argMD->setArgId(argId);
-      argMD->setExplicitArgNum(argNum);
-      funcInfo->addImplicitArgInfoListItem(argMD);
+      ArgInfoMD argMD;
+      argMD.argId = argId;
+      argMD.explicitArgNum = argNum;
+      argList.push_back(argMD);
     }
   }
 }
@@ -525,7 +536,6 @@ void ImplicitArgs::addNumberedArgs(llvm::Function &F, const ImplicitArg::ArgMap 
 void ImplicitArgs::addBufferOffsetArgs(llvm::Function &F, const IGCMD::MetaDataUtils *pMdUtils,
                                        IGC::ModuleMetaData *modMD) {
   ImplicitArg::ArgMap OffsetArgs;
-  FunctionInfoMetaDataHandle funcInfoMD = pMdUtils->getFunctionsInfoItem(&F);
 
   IGC_ASSERT(modMD->FuncMD.find(&F) != modMD->FuncMD.end());
 
@@ -556,7 +566,7 @@ void ImplicitArgs::addBufferOffsetArgs(llvm::Function &F, const IGCMD::MetaDataU
     OffsetArgs[ImplicitArg::BUFFER_OFFSET].insert(argNo);
   }
   if (OffsetArgs.size() > 0) {
-    ImplicitArgs::addNumberedArgs(F, OffsetArgs, pMdUtils);
+    ImplicitArgs::addNumberedArgs(F, OffsetArgs, pMdUtils, modMD);
   }
 }
 
@@ -565,7 +575,6 @@ void ImplicitArgs::addBufferOffsetArgs(llvm::Function &F, const IGCMD::MetaDataU
 void ImplicitArgs::addBindlessOffsetArgs(llvm::Function &F, const IGCMD::MetaDataUtils *pMdUtils,
                                          IGC::ModuleMetaData *modMD) {
   ImplicitArg::ArgMap OffsetArgs;
-  FunctionInfoMetaDataHandle funcInfoMD = pMdUtils->getFunctionsInfoItem(&F);
 
   IGC_ASSERT(modMD->FuncMD.find(&F) != modMD->FuncMD.end());
 
@@ -600,21 +609,20 @@ void ImplicitArgs::addBindlessOffsetArgs(llvm::Function &F, const IGCMD::MetaDat
   // At this step, they are not yet added to the function signature, but since implicit args
   // are added sequentially, we can calculate the associated argNo here.
   unsigned argNo = F.arg_size();
-  for (auto AI = funcInfoMD->begin_ImplicitArgInfoList(), AE = funcInfoMD->end_ImplicitArgInfoList(); AI != AE;
-       AI++, argNo++) {
-    ArgInfoMetaDataHandle argInfo = *AI;
-    ImplicitArg::ArgType argId = static_cast<ImplicitArg::ArgType>(argInfo->getArgId());
+  for (const auto &argInfo : modMD->FuncMD[&F].implicitArgInfoList) {
+    ImplicitArg::ArgType argId = static_cast<ImplicitArg::ArgType>(argInfo.argId);
     if (argId == ImplicitArg::CONSTANT_BASE || argId == ImplicitArg::GLOBAL_BASE) {
       OffsetArgs[ImplicitArg::BINDLESS_OFFSET].insert(argNo);
     }
+    argNo++;
   }
 
   if (OffsetArgs.size() > 0) {
-    ImplicitArgs::addNumberedArgs(F, OffsetArgs, pMdUtils);
+    ImplicitArgs::addNumberedArgs(F, OffsetArgs, pMdUtils, modMD);
   }
 }
 
-unsigned int ImplicitArgs::size() const { return m_funcInfoMD->size_ImplicitArgInfoList(); }
+unsigned int ImplicitArgs::size() const { return static_cast<unsigned int>(m_implicitArgs.size()); }
 
 bool ImplicitArgs::isImplicitImage(ImplicitArg::ArgType argType) {
   return (argType >= ImplicitArg::IMAGES_START) && (argType <= ImplicitArg::IMAGES_END);
@@ -639,14 +647,12 @@ int ImplicitArgs::getExplicitArgNumForArg(Argument *implicitArg) const {
   unsigned argNo = implicitArg->getArgNo();
   IGC_ASSERT_MESSAGE(argNo >= (argSize - numImplicitArgs), "The arg should be implicit arg");
   unsigned implicitArgIndex = argNo - (argSize - numImplicitArgs);
-  ArgInfoMetaDataHandle argInfo = m_funcInfoMD->getImplicitArgInfoListItem(implicitArgIndex);
-  return argInfo->getExplicitArgNum();
+  return m_implicitArgs[implicitArgIndex].explicitArgNum;
 }
 
 ImplicitArg::ArgType ImplicitArgs::getArgType(unsigned int index) const {
   IGC_ASSERT_MESSAGE((index < size()), "Index out of range");
-  ArgInfoMetaDataHandle argInfo = m_funcInfoMD->getImplicitArgInfoListItem(index);
-  return static_cast<ImplicitArg::ArgType>(argInfo->getArgId());
+  return static_cast<ImplicitArg::ArgType>(m_implicitArgs[index].argId);
 }
 
 ImplicitArg::ArgType ImplicitArgs::getArgType(GenISAIntrinsic::ID id) {
@@ -674,20 +680,20 @@ bool ImplicitArgs::hasIntrinsicSupport(ImplicitArg::ArgType i) {
 }
 
 int32_t ImplicitArgs::getExplicitArgNum(unsigned int index) const {
-  ArgInfoMetaDataHandle argInfo = m_funcInfoMD->getImplicitArgInfoListItem(index);
+  const auto &argInfo = m_implicitArgs[index];
 
-  if (argInfo->isExplicitArgNumHasValue()) {
-    return argInfo->getExplicitArgNum();
+  if (argInfo.explicitArgNum != -1) {
+    return argInfo.explicitArgNum;
   }
 
   return -1;
 }
 
 int32_t ImplicitArgs::getStructArgOffset(unsigned int index) const {
-  ArgInfoMetaDataHandle argInfo = m_funcInfoMD->getImplicitArgInfoListItem(index);
+  const auto &argInfo = m_implicitArgs[index];
 
-  if (argInfo->isStructArgOffsetHasValue()) {
-    return argInfo->getStructArgOffset();
+  if (argInfo.structArgOffset != -1) {
+    return argInfo.structArgOffset;
   }
 
   return -1;

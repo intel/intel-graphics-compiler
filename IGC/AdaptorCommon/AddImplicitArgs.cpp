@@ -82,8 +82,7 @@ bool AddImplicitArgs::runOnModule(Module &M) {
     // Skip functions called from functions marked with stackcall attribute
     // Also skip the dummy kernel if one was created
     if (hasStackCallInCG(&func) || IGC::isIntelSymbolTableVoidProgram(&func)) {
-      FunctionInfoMetaDataHandle funcInfo = m_pMdUtils->getFunctionsInfoItem(&func);
-      funcInfo->clearImplicitArgInfoList();
+      ctx->getModuleMetaData()->FuncMD[&func].implicitArgInfoList.clear();
       continue;
     }
 
@@ -98,7 +97,7 @@ bool AddImplicitArgs::runOnModule(Module &M) {
       ImplicitArgs::addBindlessOffsetArgs(func, m_pMdUtils, ctx->getModuleMetaData());
     }
 
-    ImplicitArgs implicitArgs(func, m_pMdUtils);
+    ImplicitArgs implicitArgs(func, m_pMdUtils, ctx->getModuleMetaData());
 
     // Create the new function body and insert it into the module
     FunctionType *pNewFTy = getNewFuncType(&func, implicitArgs);
@@ -266,14 +265,17 @@ void AddImplicitArgs::updateNewFuncArgs(llvm::Function *pFunc, llvm::Function *p
     if ((argId >= ImplicitArg::ArgType::STRUCT_START && argId <= ImplicitArg::IMAGES_END) ||
         argId == ImplicitArg::ArgType::GET_OBJECT_ID || argId == ImplicitArg::ArgType::GET_BLOCK_SIMD_SIZE) {
       // struct, image
-      FunctionInfoMetaDataHandle funcInfo = m_pMdUtils->getFunctionsInfoItem(pFunc);
-      ArgInfoMetaDataHandle argInfo = funcInfo->getImplicitArgInfoListItem(i);
-      IGC_ASSERT_MESSAGE(argInfo->isExplicitArgNumHasValue(), "wrong data in MetaData");
+      const auto &argInfo = getAnalysis<CodeGenContextWrapper>()
+                                .getCodeGenContext()
+                                ->getModuleMetaData()
+                                ->FuncMD[pFunc]
+                                .implicitArgInfoList[i];
+      IGC_ASSERT_MESSAGE(argInfo.explicitArgNum != -1, "wrong data in MetaData");
 
-      argImpToExpNum[&(*currArg)] = info.DW0.All.argExplicitNum = argInfo->getExplicitArgNum();
+      argImpToExpNum[&(*currArg)] = info.DW0.All.argExplicitNum = argInfo.explicitArgNum;
       if (argId <= ImplicitArg::ArgType::STRUCT_END) {
-        IGC_ASSERT_MESSAGE(argInfo->isStructArgOffsetHasValue(), "wrong data in MetaData");
-        info.DW0.All.argOffset = argInfo->getStructArgOffset();
+        IGC_ASSERT_MESSAGE(argInfo.structArgOffset != -1, "wrong data in MetaData");
+        info.DW0.All.argOffset = argInfo.structArgOffset;
       }
     }
     infoToArg[info.DW0.Value] = &(*currArg);
@@ -283,7 +285,11 @@ void AddImplicitArgs::updateNewFuncArgs(llvm::Function *pFunc, llvm::Function *p
 void AddImplicitArgs::replaceAllUsesWithNewOCLBuiltinFunction(llvm::Function *old_func, llvm::Function *new_func) {
   IGC_ASSERT(!old_func->use_empty());
 
-  FunctionInfoMetaDataHandle subFuncInfo = m_pMdUtils->getFunctionsInfoItem(old_func);
+  auto &subFuncImplicitArgs = getAnalysis<CodeGenContextWrapper>()
+                                  .getCodeGenContext()
+                                  ->getModuleMetaData()
+                                  ->FuncMD[old_func]
+                                  .implicitArgInfoList;
 
   std::vector<Instruction *> list_delete;
   old_func->removeDeadConstantUsers();
@@ -347,8 +353,7 @@ void AddImplicitArgs::replaceAllUsesWithNewOCLBuiltinFunction(llvm::Function *ol
     InfoToImpArgMap &infoToArg = m_FuncInfoToImpArgMap[parent_func];
     ImpArgToExpNum &argImpToExpNum = m_FuncImpToExpNumMap[new_func];
     while (new_arg_iter != new_arg_end) {
-      ArgInfoMetaDataHandle argInfo = subFuncInfo->getImplicitArgInfoListItem(cImpCount);
-      ImplicitArg::ArgType argId = static_cast<ImplicitArg::ArgType>(argInfo->getArgId());
+      ImplicitArg::ArgType argId = static_cast<ImplicitArg::ArgType>(subFuncImplicitArgs[cImpCount].argId);
 
       ImplicitStructArgument info;
       info.DW0.All.argId = argId;
@@ -466,8 +471,11 @@ bool BuiltinCallGraphAnalysis::pruneCallGraphForStackCalls(CallGraph &CG) {
   for (auto IT = df_begin(&CG), EI = df_end(&CG); IT != EI; IT++) {
     Function *F = IT->getFunction();
     if (F && !F->isDeclaration() && F->hasFnAttribute("visaStackCall")) {
-      FunctionInfoMetaDataHandle funcInfo = m_pMdUtils->getFunctionsInfoItem(F);
-      if (!funcInfo->empty_ImplicitArgInfoList()) {
+      if (!getAnalysis<CodeGenContextWrapper>()
+               .getCodeGenContext()
+               ->getModuleMetaData()
+               ->FuncMD[F]
+               .implicitArgInfoList.empty()) {
         for (unsigned i = 0; i < IT.getPathLength(); i++) {
           Function *pFuncOnPath = IT.getPath(i)->getFunction();
           if (pFuncOnPath && !isEntryFunc(m_pMdUtils, pFuncOnPath)) {
@@ -555,13 +563,13 @@ void BuiltinCallGraphAnalysis::traverseCallGraphSCC(const std::vector<CallGraphN
     Function *f = CGN->getFunction();
     if (!f || f->isDeclaration())
       continue;
-    FunctionInfoMetaDataHandle funcInfo = m_pMdUtils->getFunctionsInfoItem(f);
+    auto &implList =
+        getAnalysis<CodeGenContextWrapper>().getCodeGenContext()->getModuleMetaData()->FuncMD[f].implicitArgInfoList;
     // calculate implicit args from function metadata
 
     // build everything
-    for (auto I = funcInfo->begin_ImplicitArgInfoList(), E = funcInfo->end_ImplicitArgInfoList(); I != E; I++) {
-      ArgInfoMetaDataHandle argInfo = *I;
-      ImplicitArg::ArgType argId = static_cast<ImplicitArg::ArgType>(argInfo->getArgId());
+    for (const auto &argInfo : implList) {
+      ImplicitArg::ArgType argId = static_cast<ImplicitArg::ArgType>(argInfo.argId);
 
       if (argId < ImplicitArg::ArgType::STRUCT_START) {
         // unique implicit argument
@@ -572,15 +580,15 @@ void BuiltinCallGraphAnalysis::traverseCallGraphSCC(const std::vector<CallGraphN
         // aggregate implicity argument
 
         ImplicitStructArgument info;
-        info.DW0.All.argExplicitNum = argInfo->getExplicitArgNum();
-        info.DW0.All.argOffset = argInfo->getStructArgOffset();
+        info.DW0.All.argExplicitNum = argInfo.explicitArgNum;
+        info.DW0.All.argOffset = argInfo.structArgOffset;
         info.DW0.All.argId = argId;
         argData->StructArgSet.insert(info.DW0.Value);
       } else if (argId <= ImplicitArg::ArgType::IMAGES_END || argId == ImplicitArg::ArgType::GET_OBJECT_ID ||
                  argId == ImplicitArg::ArgType::GET_BLOCK_SIMD_SIZE) {
         // image index, project id
 
-        int argNum = argInfo->getExplicitArgNum();
+        int argNum = argInfo.explicitArgNum;
         ImplicitArg::ArgValSet &setx = argData->ArgsMaps[argId];
         setx.insert(argNum);
       } else {
@@ -648,8 +656,8 @@ void BuiltinCallGraphAnalysis::combineTwoArgDetail(ImplicitArgumentDetail &retD,
 
 void BuiltinCallGraphAnalysis::writeBackAllIntoMetaData(const ImplicitArgumentDetail &data, Function *f) {
   CodeGenContext *pCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
-  FunctionInfoMetaDataHandle funcInfo = m_pMdUtils->getFunctionsInfoItem(f);
-  funcInfo->clearImplicitArgInfoList();
+  auto &argList = pCtx->getModuleMetaData()->FuncMD[f].implicitArgInfoList;
+  argList.clear();
 
   bool isEntry = isEntryFunc(m_pMdUtils, f);
 
@@ -671,9 +679,9 @@ void BuiltinCallGraphAnalysis::writeBackAllIntoMetaData(const ImplicitArgumentDe
     }
     if (argId < ImplicitArg::ArgType::STRUCT_START) {
       // unique implicit argument, add it on metadata
-      ArgInfoMetaDataHandle argMD = ArgInfoMetaDataHandle(new ArgInfoMetaData());
-      argMD->setArgId(argId);
-      funcInfo->addImplicitArgInfoListItem(argMD);
+      ArgInfoMD argMD;
+      argMD.argId = argId;
+      argList.push_back(argMD);
     } else if (argId <= ImplicitArg::ArgType::STRUCT_END) {
       // aggregate implicity argument
 
@@ -684,29 +692,29 @@ void BuiltinCallGraphAnalysis::writeBackAllIntoMetaData(const ImplicitArgumentDe
       // image index
 
       for (const auto &vOnSet : A.second) {
-        ArgInfoMetaDataHandle argMD = ArgInfoMetaDataHandle(new ArgInfoMetaData());
-        argMD->setArgId(argId);
-        argMD->setExplicitArgNum(vOnSet);
-        funcInfo->addImplicitArgInfoListItem(argMD);
+        ArgInfoMD argMD;
+        argMD.argId = argId;
+        argMD.explicitArgNum = vOnSet;
+        argList.push_back(argMD);
       }
     } else {
       // unique implicit argument
 
-      ArgInfoMetaDataHandle argMD = ArgInfoMetaDataHandle(new ArgInfoMetaData());
-      argMD->setArgId(argId);
-      funcInfo->addImplicitArgInfoListItem(argMD);
+      ArgInfoMD argMD;
+      argMD.argId = argId;
+      argList.push_back(argMD);
     }
   }
 
   for (const auto N : data.StructArgSet) // argument number
   {
-    ArgInfoMetaDataHandle argMD = ArgInfoMetaDataHandle(new ArgInfoMetaData());
+    ArgInfoMD argMD;
     ImplicitStructArgument info;
     info.DW0.Value = N;
 
-    argMD->setExplicitArgNum(info.DW0.All.argExplicitNum);
-    argMD->setStructArgOffset(info.DW0.All.argOffset); // offset
-    argMD->setArgId(info.DW0.All.argId);               // type
-    funcInfo->addImplicitArgInfoListItem(argMD);
+    argMD.explicitArgNum = info.DW0.All.argExplicitNum;
+    argMD.structArgOffset = info.DW0.All.argOffset; // offset
+    argMD.argId = info.DW0.All.argId;               // type
+    argList.push_back(argMD);
   }
 }

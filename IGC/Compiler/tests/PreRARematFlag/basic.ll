@@ -81,6 +81,5 @@ end:
 !igc.functions = !{!0}
 
 !0 = !{void (i32*, i32*)* @test_preraremat, !1}
-!1 = !{!2, !3}
+!1 = !{!2}
 !2 = !{!"function_type", i32 0}
-!3 = !{!"implicit_arg_desc"}

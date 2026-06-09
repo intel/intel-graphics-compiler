@@ -36,9 +36,8 @@ declare float @llvm.genx.GenISA.floatatomicrawA64.f32.p1f32.p1f32(float addrspac
 !IGCMetadata = !{!4}
 
 !0 = !{float (i32 addrspace(1)*, float addrspace(1)*)* @test_unsupported, !1}
-!1 = !{!2, !3}
+!1 = !{!2}
 !2 = !{!"function_type", i32 0}
-!3 = !{!"implicit_arg_desc"}
 
 !4 = !{!"ModuleMD", !5}
 !5 = !{!"FuncMD", !6, !7}

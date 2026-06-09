@@ -46,7 +46,7 @@ bool PrepareInlineSamplerForBindless::runOnFunction(Function &F) {
 
   visit(F);
 
-  ImplicitArgs::addImageArgs(F, mArgMap, mMDUtils);
+  ImplicitArgs::addImageArgs(F, mArgMap, mMDUtils, getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData());
   mArgMap.clear();
 
   if (mChanged) {

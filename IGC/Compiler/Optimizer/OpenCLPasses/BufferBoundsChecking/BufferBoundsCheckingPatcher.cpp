@@ -44,7 +44,8 @@ bool BufferBoundsCheckingPatcher::runOnModule(Module &M) {
       continue;
     }
 
-    implicitArgs = std::make_unique<ImplicitArgs>(function, metadataUtils);
+    implicitArgs = std::make_unique<ImplicitArgs>(function, metadataUtils,
+                                                  getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData());
     if (!isEntryFunc(metadataUtils, &function)) {
       return false;
     }

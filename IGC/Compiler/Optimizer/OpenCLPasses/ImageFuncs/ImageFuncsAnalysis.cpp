@@ -78,7 +78,7 @@ bool ImageFuncsAnalysis::runOnFunction(Function &F) {
   // Visit the function
   visit(F);
 
-  ImplicitArgs::addImageArgs(F, m_argMap, m_pMDUtils);
+  ImplicitArgs::addImageArgs(F, m_argMap, m_pMDUtils, getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData());
 
   m_argMap.clear();
 

@@ -59,7 +59,6 @@ declare void @use.i32(i32)
 
 !igc.functions = !{!0, !4}
 !0 = !{void (i32 addrspace(2)*, i16)* @test_sext_zext, !1}
-!1 = !{!2, !3}
+!1 = !{!2}
 !2 = !{!"function_type", i32 0}
-!3 = !{!"implicit_arg_desc"}
 !4 = !{void (i32 addrspace(2)*, i16)* @test_zext_coalescing, !1}

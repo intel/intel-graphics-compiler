@@ -38,7 +38,8 @@ ExtensionFuncsResolution::ExtensionFuncsResolution() : FunctionPass(ID), m_impli
 
 bool ExtensionFuncsResolution::runOnFunction(Function &F) {
   m_changed = false;
-  m_implicitArgs = ImplicitArgs(F, getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils());
+  m_implicitArgs = ImplicitArgs(F, getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils(),
+                                getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData());
   visit(F);
   return m_changed;
 }

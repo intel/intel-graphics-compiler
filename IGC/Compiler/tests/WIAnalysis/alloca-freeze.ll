@@ -30,11 +30,20 @@ entry:
 !igc.functions = !{!358}
 
 !358 = !{void (<8 x i32>, <8 x i32>, i32)* @test_uniform, !359}
-!359 = !{!360, !361}
+!359 = !{!360}
 !360 = !{!"function_type", i32 0}
-!361 = !{!"implicit_arg_desc", !362, !363, !366, !364}
-!362 = !{i32 0}
-!363 = !{i32 1}
-!364 = !{i32 15, !365}
-!365 = !{!"explicit_arg_num", i32 0}
-!366 = !{i32 8}
+!367 = !{!"argId", i32 0}
+!368 = !{!"implicitArgInfoListVec[0]", !367}
+!369 = !{!"argId", i32 1}
+!370 = !{!"implicitArgInfoListVec[1]", !369}
+!371 = !{!"argId", i32 8}
+!372 = !{!"implicitArgInfoListVec[2]", !371}
+!373 = !{!"argId", i32 15}
+!374 = !{!"explicitArgNum", i32 0}
+!375 = !{!"implicitArgInfoListVec[3]", !373, !374}
+!376 = !{!"implicitArgInfoList", !368, !370, !372, !375}
+!377 = !{!"FuncMDMap[0]", void (<8 x i32>, <8 x i32>, i32)* @test_uniform}
+!378 = !{!"FuncMDValue[0]", !376}
+!379 = !{!"FuncMD", !377, !378}
+!380 = !{!"ModuleMD", !379}
+!IGCMetadata = !{!380}

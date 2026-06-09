@@ -69,7 +69,7 @@ void PromoteStatelessToBindless::visitInstruction(Instruction &I) {
 
 void PromoteStatelessToBindless::CheckPrintfBuffer(Function &F) {
   MetaDataUtils *MdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
-  ImplicitArgs implicitArgs(F, MdUtils);
+  ImplicitArgs implicitArgs(F, MdUtils, getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData());
 
   m_PrintfBuffer = implicitArgs.getImplicitArgValue(F, ImplicitArg::PRINTF_BUFFER, MdUtils);
 }
@@ -143,7 +143,7 @@ void PromoteStatelessToBindless::GetAccessInstToSrcPointerMap(Instruction *inst,
 void PromoteStatelessToBindless::PromoteStatelessToBindlessBuffers(Function &F) const {
   ModuleMetaData *modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
   MetaDataUtils *pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
-  ImplicitArgs implicitArgs(F, pMdUtils);
+  ImplicitArgs implicitArgs(F, pMdUtils, modMD);
 
   if (modMD->FuncMD.find(&F) == modMD->FuncMD.end())
     return;

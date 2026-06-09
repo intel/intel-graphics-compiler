@@ -134,7 +134,7 @@ Function *DivergentBarrierPass::createContinuation(BasicBlock *EntryBB) {
 Value *DivergentBarrierPass::getGroupSize(Function &Wrapper) const {
   IRBuilder<> IRB(Wrapper.getContext());
   if (m_CGCtx->type == ShaderType::OPENCL_SHADER) {
-    ImplicitArgs Args{Wrapper, m_CGCtx->getMetaDataUtils()};
+    ImplicitArgs Args{Wrapper, m_CGCtx->getMetaDataUtils(), m_CGCtx->getModuleMetaData()};
     auto *Arg = Args.getImplicitArg(Wrapper, ImplicitArg::LOCAL_SIZE);
     IGC_ASSERT_MESSAGE(Arg, "Should have been already added!");
     auto *VTy = cast<IGCLLVM::FixedVectorType>(Arg->getType());

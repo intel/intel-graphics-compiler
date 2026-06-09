@@ -103,7 +103,7 @@ define spir_func float @test_foo(i32 addrspace(4)* %gp1, float addrspace(4)* %gp
 }
 ; Kernel
 ; CHECK-DAG: [[FILE:![0-9]*]] = !DIFile(filename: "LowerGPCallArg.ll", directory: "/")
-; CHECK-DAG: [[SCOPE]] = distinct !DISubprogram(name: "test_kernel", linkageName: "test_kernel", scope: null, file: !10, line: 1
+; CHECK-DAG: [[SCOPE]] = distinct !DISubprogram(name: "test_kernel", linkageName: "test_kernel", scope: null, file: [[FILE]], line: 1
 ; CHECK-DAG: [[SRC_MD]] = !DILocalVariable(name: "1", scope: [[SCOPE]], file: [[FILE]], line: 1
 ; CHECK-DAG: [[SRC_LOC]] = !DILocation(line: 1, column: 1, scope: [[SCOPE]])
 ; CHECK-DAG: [[DST_MD]] = !DILocalVariable(name: "2", scope: [[SCOPE]], file: [[FILE]], line: 2
@@ -143,14 +143,13 @@ attributes #0 = { nounwind readnone speculatable }
 !llvm.module.flags = !{!14}
 
 !0 = !{void (i32 addrspace(1)*, float addrspace(1)*)* @test_kernel, !1}
-!1 = !{!2, !3}
+!1 = !{!2}
 !2 = !{!"function_type", i32 0}
-!3 = !{!"implicit_arg_desc"}
 !4 = !{float (i32 addrspace(4)*, float addrspace(4)*)* @test_foo, !5}
 !5 = distinct !{!5, !6}
 !6 = !{!"function_type", i32 1}
 !7 = !{i32 (i32 addrspace(4)*, i32 addrspace(4)*)* @test_bar, !8}
-!8 = !{!6, !3}
+!8 = !{!6}
 !9 = distinct !DICompileUnit(language: DW_LANG_C, file: !10, producer: "debugify", isOptimized: true, runtimeVersion: 0, emissionKind: FullDebug, enums: !11)
 !10 = !DIFile(filename: "LowerGPCallArg.ll", directory: "/")
 !11 = !{}

@@ -40,14 +40,11 @@ declare spir_func <4 x float> @__builtin_IB_OCL_2d_sample_l(i64, i64, <2 x float
 !IGCMetadata = !{!5}
 
 !0 = !{ptr @test, !1}
-!1 = !{!2}
-!2 = !{!"implicit_arg_desc", !3}
-!3 = !{i32 32, !4}
-!4 = !{!"explicit_arg_num", i32 16}
+!1 = !{}
 !5 = !{!"ModuleMD", !6, !20}
 !6 = !{!"FuncMD", !7, !8}
 !7 = !{!"FuncMDMap[0]", ptr @test}
-!8 = !{!"FuncMDValue[0]", !9}
+!8 = !{!"FuncMDValue[0]", !9, !24}
 !9 = !{!"resAllocMD", !10, !19}
 !10 = !{!"argAllocMDList", !11, !15}
 !11 = !{!"argAllocMDListVec[0]", !12, !13, !14}
@@ -60,3 +57,7 @@ declare spir_func <4 x float> @__builtin_IB_OCL_2d_sample_l(i64, i64, <2 x float
 !18 = !{!"indexType", i32 -1}
 !19 = !{!"inlineSamplersMD"}
 !20 = !{!"UseBindlessImage", i1 true}
+!21 = !{!"argId", i32 32}
+!22 = !{!"explicitArgNum", i32 16}
+!23 = !{!"implicitArgInfoListVec[0]", !21, !22}
+!24 = !{!"implicitArgInfoList", !23}

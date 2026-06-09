@@ -31,11 +31,17 @@ define i32 @foo(ptr addrspace(2) %sampler, i32 %smpNormalized) nounwind {
 
 !igc.functions = !{!0}
 !0 = !{ptr @foo, !1}
-!1 = !{!2, !3}
+!1 = !{!2}
 !2 = !{!"function_type", i32 0}
-!3 = !{!"implicit_arg_desc", !4}
-!4 = !{i32 30, !5}
-!5 = !{!"explicit_arg_num", i32 0}
+!101 = !{!"argId", i32 30}
+!102 = !{!"explicitArgNum", i32 0}
+!103 = !{!"implicitArgInfoListVec[0]", !101, !102}
+!104 = !{!"implicitArgInfoList", !103}
+!105 = !{!"FuncMDMap[0]", ptr @foo}
+!106 = !{!"FuncMDValue[0]", !104}
+!107 = !{!"FuncMD", !105, !106}
+!108 = !{!"ModuleMD", !107}
+!IGCMetadata = !{!108}
 
 ; CHECK:         ret i32 %smpNormalized
 

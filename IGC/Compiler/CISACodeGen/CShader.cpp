@@ -346,7 +346,7 @@ void CShader::CreateImplicitArgs() {
   encoder.GetVISAPredefinedVar(m_R0, PREDEFINED_R0);
 
   // create variables for implicit args
-  ImplicitArgs implicitArgs(*entry, m_pMdUtils);
+  ImplicitArgs implicitArgs(*entry, m_pMdUtils, m_ctx->getModuleMetaData());
   unsigned numImplicitArgs = implicitArgs.size();
 
   // Push Args are only for entry function
@@ -974,7 +974,7 @@ CVariable *CShader::GetEngineID() {
 }
 
 CVariable *CShader::GetPrivateBase() {
-  ImplicitArgs implicitArgs(*entry, m_pMdUtils);
+  ImplicitArgs implicitArgs(*entry, m_pMdUtils, m_ctx->getModuleMetaData());
   unsigned numPushArgs = m_ModuleMetadata->pushInfo.pushAnalysisWIInfos.size();
   unsigned numImplicitArgs = implicitArgs.size();
   IGC_ASSERT_MESSAGE(entry->arg_size() >= (numImplicitArgs + numPushArgs),
@@ -996,7 +996,7 @@ CVariable *CShader::GetPrivateBase() {
 
 CVariable *CShader::GetScratchPtr() {
   if (GetShaderType() == ShaderType::OPENCL_SHADER) {
-    ImplicitArgs implicitArgs(*entry, m_pMdUtils);
+    ImplicitArgs implicitArgs(*entry, m_pMdUtils, m_ctx->getModuleMetaData());
     unsigned numPushArgs = m_ModuleMetadata->pushInfo.pushAnalysisWIInfos.size();
     unsigned numImplicitArgs = implicitArgs.size();
     IGC_ASSERT_MESSAGE(entry->arg_size() >= (numImplicitArgs + numPushArgs),
@@ -2609,7 +2609,7 @@ CVariable *CShader::getOrCreateArgumentSymbol(Argument *Arg, bool ArgInCallee, b
     // An explicit argument is not uniform, and for an implicit argument, it
     // is predefined. Note that it is not necessarily uniform.
     Function *F = Arg->getParent();
-    ImplicitArgs implicitArgs(*F, m_pMdUtils);
+    ImplicitArgs implicitArgs(*F, m_pMdUtils, m_ctx->getModuleMetaData());
     unsigned numImplicitArgs = implicitArgs.size();
     unsigned numPushArgsEntry = m_ModuleMetadata->pushInfo.pushAnalysisWIInfos.size();
     unsigned numPushArgs = (isEntryFunc(m_pMdUtils, F) && !isNonEntryMultirateShader(F) ? numPushArgsEntry : 0);
@@ -2634,7 +2634,7 @@ CVariable *CShader::getOrCreateArgumentSymbol(Argument *Arg, bool ArgInCallee, b
             ArgType == ImplicitArg::ArgType::CONSTANT_BASE || ArgType == ImplicitArg::ArgType::GLOBAL_BASE ||
             ArgType == ImplicitArg::ArgType::PRIVATE_BASE || ArgType == ImplicitArg::ArgType::PRINTF_BUFFER) {
           Function &K = *m_FGA->getSubGroupMap(F);
-          ImplicitArgs IAs(K, m_pMdUtils);
+          ImplicitArgs IAs(K, m_pMdUtils, m_ctx->getModuleMetaData());
           uint32_t nIAs = (uint32_t)IAs.size();
           uint32_t iArgIx = IAs.getArgIndex(ArgType);
           uint32_t argIx = (uint32_t)K.arg_size() - nIAs + iArgIx;

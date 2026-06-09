@@ -45,9 +45,8 @@ attributes #0 = { nofree nosync nounwind readnone speculatable willreturn }
 !IGCMetadata = !{!4}
 
 !0 = !{void (%opencl.image2d_t.read_only addrspace(1)*, i32*, i32 addrspace(2)*, i32 addrspace(2)*)* @test_ress, !1}
-!1 = !{!2, !3}
+!1 = !{!2}
 !2 = !{!"function_type", i32 0}
-!3 = !{!"implicit_arg_desc"}
 !4 = !{!"ModuleMD", !5}
 !5 = !{!"FuncMD", !6, !7}
 !6 = !{!"FuncMDMap[0]", void (%opencl.image2d_t.read_only addrspace(1)*, i32*, i32 addrspace(2)*, i32 addrspace(2)*)* @test_ress}

@@ -75,7 +75,7 @@ bool ExtensionFuncsAnalysis::runOnFunction(Function &F) {
   implicitArgs.push_back(ImplicitArg::VME_SEARCH_PATH_TYPE);
 
   // Create the metadata representing the VME implicit args needed by this function
-  ImplicitArgs::addImplicitArgs(F, implicitArgs, m_pMDUtils);
+  ImplicitArgs::addImplicitArgs(F, implicitArgs, m_pMDUtils, getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData());
 
   return true;
 }

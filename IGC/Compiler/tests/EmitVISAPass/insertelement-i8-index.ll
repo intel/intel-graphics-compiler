@@ -32,9 +32,8 @@ entry:
 !igc.functions = !{!1}
 
 !1 = !{ptr @foo, !2}
-!2 = !{!3, !4}
+!2 = !{!3}
 !3 = !{!"function_type", i32 0}
-!4 = !{!"implicit_arg_desc"}
 
 !IGCMetadata = !{!20}
 !20 = !{!"ModuleMD", !21}

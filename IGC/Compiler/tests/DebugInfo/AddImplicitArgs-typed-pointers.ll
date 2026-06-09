@@ -33,14 +33,21 @@ attributes #1 = { nounwind readnone }
 !igc.functions = !{!7}
 
 !2 = !{!"function_type", i32 0}
-!3 = !{i32 0}  ;; R0
-!4 = !{i32 1}  ;; PAYLOAD_HEADER
-!5 = !{!"implicit_arg_desc", !3, !4}
-!6 = !{!2, !5}
+!6 = !{!2}
 !7 = !{void (float addrspace(1)*)* @test, !6}
 
 !llvm.module.flags = !{!8}
 !8 = !{i32 2, !"Debug Info Version", i32 3}
+!16 = !{!"argId", i32 0}
+!17 = !{!"implicitArgInfoListVec[0]", !16}
+!18 = !{!"argId", i32 1}
+!19 = !{!"implicitArgInfoListVec[1]", !18}
+!20 = !{!"implicitArgInfoList", !17, !19}
+!21 = !{!"FuncMDMap[0]", void (float addrspace(1)*)* @test}
+!22 = !{!"FuncMDValue[0]", !20}
+!23 = !{!"FuncMD", !21, !22}
+!24 = !{!"ModuleMD", !23}
+!IGCMetadata = !{!24}
 
 !10 = !DIBasicType(name: "float", size: 32, encoding: DW_ATE_float)
 !11 = !DIDerivedType(tag: DW_TAG_pointer_type, baseType: !10, size: 64)

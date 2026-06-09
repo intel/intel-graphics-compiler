@@ -52,6 +52,5 @@ attributes #0 = { nocallback nofree nosync nounwind readnone speculatable willre
 !igc.functions = !{!0}
 
 !0 = distinct !{ptr @findCorners, !1}
-!1 = distinct !{!2, !3}
+!1 = distinct !{!2}
 !2 = distinct !{!"function_type", i32 0}
-!3 = distinct !{!"implicit_arg_desc"}

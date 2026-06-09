@@ -73,9 +73,8 @@ attributes #1 = { nounwind readnone speculatable }
 !llvm.module.flags = !{!9}
 
 !0 = !{void (i8 addrspace(1)*, i8 addrspace(1)*)* @test_kernel, !1}
-!1 = !{!2, !3}
+!1 = !{!2}
 !2 = !{!"function_type", i32 0}
-!3 = !{!"implicit_arg_desc"}
 !4 = distinct !DICompileUnit(language: DW_LANG_C, file: !5, producer: "debugify", isOptimized: true, runtimeVersion: 0, emissionKind: FullDebug, enums: !6)
 !5 = !DIFile(filename: "memfunc.ll", directory: "/")
 !6 = !{}

@@ -238,7 +238,7 @@ llvm::Argument *ScalarArgAsPointerAnalysis::analyzeGlobal(llvm::GlobalValue *V) 
   if (type->getAddressSpace() != ADDRESS_SPACE_GLOBAL)
     return nullptr;
 
-  ImplicitArgs implicitArgs(*m_currentFunction, MDU);
+  ImplicitArgs implicitArgs(*m_currentFunction, MDU, getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData());
 
   if (!implicitArgs.isImplicitArgExist(ImplicitArg::GLOBAL_BASE))
     return nullptr;

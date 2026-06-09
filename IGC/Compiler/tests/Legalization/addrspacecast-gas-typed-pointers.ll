@@ -44,3 +44,11 @@ define i32 @test_addrcast_slm_p4(i32 addrspace(3)* %p1) {
 !13 =  !{ !"arg_desc"}
 !14 =  !{ !"implicit_arg_desc",  !15}
 !15 =  !{i32 44}
+!16 = !{!"argId", i32 44}
+!17 = !{!"implicitArgInfoListVec[0]", !16}
+!18 = !{!"implicitArgInfoList", !17}
+!19 = !{!"FuncMDMap[0]", i32 (i32 addrspace(3)*)* @test_addrcast_slm_p4}
+!20 = !{!"FuncMDValue[0]", !18}
+!21 = !{!"FuncMD", !19, !20}
+!22 = !{!"ModuleMD", !21}
+!IGCMetadata = !{!22}

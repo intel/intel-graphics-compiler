@@ -34,8 +34,5 @@ define void @test(<4 x i32> %a, <4 x i32>* %b) {
 !igc.functions = !{!0}
 
 !0 = !{void (<4 x i32>, <4 x i32>*)* @test, !1}
-!1 = !{!2, !3}
+!1 = !{!2}
 !2 = !{!"function_type", i32 0}
-!3 = !{!"implicit_arg_desc"}
-!4 = !{i32 8}
-!5 = !{i1 true}

@@ -36,11 +36,10 @@ Image3dToImage2darray::Image3dToImage2darray()
 }
 
 bool Image3dToImage2darray::createImageAnnotations(GenIntrinsicInst *pCall, unsigned imageIdx,
-                                                   const MetaDataUtils *pMdUtils, const ModuleMetaData *modMD,
+                                                   const MetaDataUtils *pMdUtils, ModuleMetaData *modMD,
                                                    const Value *pCoord) {
   uint argNum = 0;
   auto *pFunc = pCall->getParent()->getParent();
-  FunctionInfoMetaDataHandle funcInfoMD = pMdUtils->getFunctionsInfoItem(pFunc);
   auto *pImgOp = pCall->getArgOperand(imageIdx);
 
   // Find the arg number of the image so we can look up its ArgInfoList metadata.
@@ -64,30 +63,28 @@ bool Image3dToImage2darray::createImageAnnotations(GenIntrinsicInst *pCall, unsi
     return false;
   }
 
-  ArgInfoMetaDataHandle argHandle;
-  bool found = false;
-  if (funcInfoMD->isArgInfoListHasValue()) {
-    for (auto AI = funcInfoMD->begin_ArgInfoList(), AE = funcInfoMD->end_ArgInfoList(); AI != AE; ++AI) {
-      ArgInfoMetaDataHandle arg = *AI;
-      if (arg->getExplicitArgNum() == argNum) {
-        argHandle = arg;
-        found = true;
-        break;
-      }
+  auto &argInfoList = modMD->FuncMD[pFunc].argInfoList;
+  ArgInfoMD *argHandle = nullptr;
+  for (auto &arg : argInfoList) {
+    if (arg.explicitArgNum == (int)argNum) {
+      argHandle = &arg;
+      break;
     }
   }
 
-  if (!found) {
-    argHandle = ArgInfoMetaDataHandle(new ArgInfoMetaData());
-    argHandle->setExplicitArgNum(argNum);
-    funcInfoMD->addArgInfoListItem(argHandle);
+  if (!argHandle) {
+    ArgInfoMD newArg;
+    newArg.explicitArgNum = (int)argNum;
+    argInfoList.push_back(newArg);
+    argHandle = &argInfoList.back();
   }
 
-  if (!argHandle->isImgAccessFloatCoordsHasValue())
-    argHandle->setImgAccessFloatCoords(false);
+  // -1 = unset; preserve the old "default to false if unset" behavior
+  if (argHandle->imgAccessFloatCoords == -1)
+    argHandle->imgAccessFloatCoords = 0;
 
-  if (!argHandle->isImgAccessIntCoordsHasValue())
-    argHandle->setImgAccessIntCoords(false);
+  if (argHandle->imgAccessIntCoords == -1)
+    argHandle->imgAccessIntCoords = 0;
 
   // We check here to see if the third coord (or for 2darray, the image layer)
   // has an integer origin.  For samplers of:
@@ -99,9 +96,9 @@ bool Image3dToImage2darray::createImageAnnotations(GenIntrinsicInst *pCall, unsi
   bool intCoords = CImagesBI::derivedFromInt(pCoord);
 
   if (intCoords)
-    argHandle->setImgAccessIntCoords(true);
+    argHandle->imgAccessIntCoords = 1;
   else
-    argHandle->setImgAccessFloatCoords(true);
+    argHandle->imgAccessFloatCoords = 1;
 
   return true;
 }

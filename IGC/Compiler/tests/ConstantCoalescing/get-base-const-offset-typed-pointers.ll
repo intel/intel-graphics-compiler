@@ -89,8 +89,7 @@ declare void @use.i32(i32)
 !igc.functions = !{!0, !4, !5}
 
 !0 = !{void (i32 addrspace(2)*)* @test_merge, !1}
-!1 = !{!2, !3}
+!1 = !{!2}
 !2 = !{!"function_type", i32 0}
-!3 = !{!"implicit_arg_desc"}
 !4 = !{void (float addrspace(2)*)* @test_vectorize, !1}
 !5 = !{void (i32 addrspace(2)*, i32)* @test_nonconst_gep, !1}

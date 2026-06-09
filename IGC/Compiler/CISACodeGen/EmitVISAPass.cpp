@@ -22188,7 +22188,7 @@ void EmitPass::emitImplicitArgIntrinsic(llvm::GenIntrinsicInst *I) {
 
   if (isEntryFunc(pMdUtils, groupHead)) {
     // Map to the root kernel's implicit arg symbol
-    ImplicitArgs IAS(*groupHead, pMdUtils);
+    ImplicitArgs IAS(*groupHead, pMdUtils, m_pCtx->getModuleMetaData());
     ImplicitArg::ArgType IAtype = ImplicitArgs::getArgType(I->getIntrinsicID());
     Argument *arg = IAS.getImplicitArg(*groupHead, IAtype);
     IGC_ASSERT_MESSAGE(arg, "Implicit argument not found!");

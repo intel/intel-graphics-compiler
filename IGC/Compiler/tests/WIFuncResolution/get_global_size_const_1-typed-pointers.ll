@@ -18,12 +18,20 @@ define i32 @foo(i32 %dim, <8 x i32> %r0, <8 x i32> %payloadHeader, <3 x i32> %gl
 
 !igc.functions = !{!0}
 !0 = !{i32 (i32, <8 x i32>, <8 x i32>, <3 x i32>)* @foo, !1}
-!1 = !{!2, !3}
+!1 = !{!2}
 !2 = !{!"function_type", i32 0}
-!3 = !{!"implicit_arg_desc", !4, !5, !6}
-!4 = !{i32 0}
-!5 = !{i32 1}
-!6 = !{i32 5}
+!7 = !{!"argId", i32 0}
+!8 = !{!"implicitArgInfoListVec[0]", !7}
+!9 = !{!"argId", i32 1}
+!10 = !{!"implicitArgInfoListVec[1]", !9}
+!11 = !{!"argId", i32 5}
+!12 = !{!"implicitArgInfoListVec[2]", !11}
+!13 = !{!"implicitArgInfoList", !8, !10, !12}
+!14 = !{!"FuncMDMap[0]", i32 (i32, <8 x i32>, <8 x i32>, <3 x i32>)* @foo}
+!15 = !{!"FuncMDValue[0]", !13}
+!16 = !{!"FuncMD", !14, !15}
+!17 = !{!"ModuleMD", !16}
+!IGCMetadata = !{!17}
 
 ; CHECK:         %globalSize1 = extractelement <3 x i32> %globalSize, i32 1
 

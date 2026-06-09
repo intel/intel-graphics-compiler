@@ -61,7 +61,7 @@ entry:
 !IGCMetadata = !{!0}
 !igc.functions = !{!20}
 
-!0 = !{!"ModuleMD", !1}
+!0 = !{!"ModuleMD", !1, !47}
 !1 = !{!"inlineProgramScopeOffsets", !2, !3, !4, !5, !6, !7}
 !2 = !{!"inlineProgramScopeOffsetsMap[0]", [2 x i32] addrspace(2)* @a}
 !3 = !{!"inlineProgramScopeOffsetsValue[0]", i64 -1}
@@ -71,13 +71,22 @@ entry:
 !7 = !{!"inlineProgramScopeOffsetsValue[2]", i64 -1}
 
 !20 = !{void (i32 addrspace(1)*, <8 x i32>, <8 x i32>, i8 addrspace(2)*, i8 addrspace(1)*, i8*, i32)* @test_program, !21}
-!21 = !{!22, !23}
+!21 = !{!22}
 !22 = !{!"function_type", i32 0}
-!23 = !{!"implicit_arg_desc", !24, !25, !26, !27, !28, !29}
-!24 = !{i32 0}
-!25 = !{i32 1}
-!26 = !{i32 11}
-!27 = !{i32 12}
-!28 = !{i32 13}
-!29 = !{i32 15, !30}
-!30 = !{!"explicit_arg_num", i32 0}
+!31 = !{!"argId", i32 0}
+!32 = !{!"implicitArgInfoListVec[0]", !31}
+!33 = !{!"argId", i32 1}
+!34 = !{!"implicitArgInfoListVec[1]", !33}
+!35 = !{!"argId", i32 11}
+!36 = !{!"implicitArgInfoListVec[2]", !35}
+!37 = !{!"argId", i32 12}
+!38 = !{!"implicitArgInfoListVec[3]", !37}
+!39 = !{!"argId", i32 13}
+!40 = !{!"implicitArgInfoListVec[4]", !39}
+!41 = !{!"argId", i32 15}
+!42 = !{!"explicitArgNum", i32 0}
+!43 = !{!"implicitArgInfoListVec[5]", !41, !42}
+!44 = !{!"implicitArgInfoList", !32, !34, !36, !38, !40, !43}
+!45 = !{!"FuncMDMap[0]", void (i32 addrspace(1)*, <8 x i32>, <8 x i32>, i8 addrspace(2)*, i8 addrspace(1)*, i8*, i32)* @test_program}
+!46 = !{!"FuncMDValue[0]", !44}
+!47 = !{!"FuncMD", !45, !46}

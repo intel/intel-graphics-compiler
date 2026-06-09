@@ -41,12 +41,20 @@ declare void @llvm.memcpy.p0i8.p2i8.i64(i8* noalias nocapture writeonly, i8 addr
 !igc.functions = !{!1}
 
 !1 = !{void (i64 addrspace(1)*)* @test, !2}
-!2 = !{!3, !4}
+!2 = !{!3}
 !3 = !{!"function_type", i32 0}
-!4 = !{!"implicit_arg_desc", !5, !6, !7}
-!5 = !{i32 0}
-!6 = !{i32 1}
-!7 = !{i32 11}
+!8 = !{!"argId", i32 0}
+!9 = !{!"implicitArgInfoListVec[0]", !8}
+!10 = !{!"argId", i32 1}
+!11 = !{!"implicitArgInfoListVec[1]", !10}
+!12 = !{!"argId", i32 11}
+!13 = !{!"implicitArgInfoListVec[2]", !12}
+!14 = !{!"implicitArgInfoList", !9, !11, !13}
+!15 = !{!"FuncMDMap[0]", void (i64 addrspace(1)*)* @test}
+!16 = !{!"FuncMDValue[0]", !14}
+!17 = !{!"FuncMD", !15, !16}
+!18 = !{!"ModuleMD", !17}
+!IGCMetadata = !{!18}
 ; CHECK: !{!"BufferVec[0]", i8 1}
 ; CHECK: !{!"BufferVec[1]", i8 2}
 ; CHECK: !{!"BufferVec[2]", i8 3}

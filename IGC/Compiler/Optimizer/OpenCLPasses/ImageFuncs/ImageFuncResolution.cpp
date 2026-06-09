@@ -38,7 +38,7 @@ ImageFuncResolution::ImageFuncResolution() : FunctionPass(ID), m_implicitArgs() 
 
 bool ImageFuncResolution::runOnFunction(Function &F) {
   const MetaDataUtils *pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
-  m_implicitArgs = ImplicitArgs(F, pMdUtils);
+  m_implicitArgs = ImplicitArgs(F, pMdUtils, getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData());
   m_pCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
   m_changed = false;
   visit(F);

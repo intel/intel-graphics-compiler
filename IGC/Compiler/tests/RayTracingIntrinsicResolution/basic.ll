@@ -47,10 +47,19 @@ declare i32 addrspace(1)* @llvm.genx.GenISA.InlinedData.p1i32(i32)
 !igc.functions = !{!0}
 
 !0 = !{void (i32, i8 addrspace(1)*, i8 addrspace(1)*, i16, <2 x i8 addrspace(1)*>)* @test_rti, !1}
-!1 = !{!2, !3}
+!1 = !{!2}
 !2 = !{!"function_type", i32 0}
-!3 = !{!"implicit_arg_desc", !4, !5, !6, !7}
-!4 = !{i32 50}
-!5 = !{i32 51}
-!6 = !{i32 53}
-!7 = !{i32 52}
+!8 = !{!"argId", i32 50}
+!9 = !{!"implicitArgInfoListVec[0]", !8}
+!10 = !{!"argId", i32 51}
+!11 = !{!"implicitArgInfoListVec[1]", !10}
+!12 = !{!"argId", i32 53}
+!13 = !{!"implicitArgInfoListVec[2]", !12}
+!14 = !{!"argId", i32 52}
+!15 = !{!"implicitArgInfoListVec[3]", !14}
+!16 = !{!"implicitArgInfoList", !9, !11, !13, !15}
+!17 = !{!"FuncMDMap[0]", void (i32, i8 addrspace(1)*, i8 addrspace(1)*, i16, <2 x i8 addrspace(1)*>)* @test_rti}
+!18 = !{!"FuncMDValue[0]", !16}
+!19 = !{!"FuncMD", !17, !18}
+!20 = !{!"ModuleMD", !19}
+!IGCMetadata = !{!20}

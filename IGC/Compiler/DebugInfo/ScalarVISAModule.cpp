@@ -349,7 +349,8 @@ VISAVariableLocation ScalarVisaModule::GetVariableLocation(const llvm::Instructi
 
     if (itr != m_pShader->GetMetaDataUtils()->end_FunctionsInfo() &&
         modMD->FuncMD.find(const_cast<Function *>(curFunc)) != modMD->FuncMD.end()) {
-      unsigned int explicitArgsNum = curFunc->arg_size() - itr->second->size_ImplicitArgInfoList();
+      unsigned int explicitArgsNum =
+          curFunc->arg_size() - (unsigned int)modMD->FuncMD[const_cast<Function *>(curFunc)].implicitArgInfoList.size();
       if (pArgument->getArgNo() < explicitArgsNum &&
           modMD->FuncMD[const_cast<Function *>(curFunc)].m_OpenCLArgBaseTypes.size() > pArgument->getArgNo()) {
         const std::string typeStr =

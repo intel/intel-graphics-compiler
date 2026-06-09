@@ -12,7 +12,7 @@
 
 ; REQUIRES: llvm-14-plus
 
-; RUN: igc_opt --typed-pointers -igc-image-func-analysis -S < %s -o - | FileCheck %s
+; RUN: igc_opt --typed-pointers -igc-image-func-analysis -igc-serialize-metadata -S < %s -o - | FileCheck %s
 
 target datalayout = "e-p:64:64:64-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64-f32:32:32-f64:64:64-v16:16:16-v24:32:32-v32:32:32-v48:64:64-v64:64:64-v96:128:128-v128:128:128-v192:256:256-v256:256:256-v512:512:512-v1024:1024:1024-n8:16:32"
 target triple = "spir64-unknown-unknown"
@@ -80,7 +80,7 @@ attributes #2 = { convergent nounwind readnone willreturn }
 !1 = !{i32 4, i32 100000}
 !2 = !{i16 6, i16 14}
 !3 = !{void (%spirv.Image addrspace(1)*, %spirv.Sampler addrspace(2)*)* @foo, !4}
-!4 = !{!"implicit_arg_desc"}
+!4 = !{}
 !5 = !{i32 2, i32 0}
 !6 = !{!"ModuleMD", !7}
 !7 = !{!"FuncMD", !8, !9}
@@ -102,4 +102,4 @@ attributes #2 = { convergent nounwind readnone willreturn }
 !21 = !{!"m_OpenCLArgBaseTypesVec[0]", !"image2d_t"}
 !22 = !{!"m_OpenCLArgBaseTypesVec[1]", !"sampler_t"}
 
-; CHECK: ![[A1:[0-9]+]] = !{!"explicit_arg_num", i32 1}
+; CHECK: ![[A1:[0-9]+]] = !{!"explicitArgNum", i32 1}

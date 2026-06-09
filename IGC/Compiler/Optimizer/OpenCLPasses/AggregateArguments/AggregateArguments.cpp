@@ -105,7 +105,8 @@ bool AggregateArgumentsAnalysis::runOnModule(Module &M) {
       Type *type = arg->getParamByValType();
       IGC_ASSERT(m_pDL->getStructLayout(cast<StructType>(type))->getSizeInBytes() < UINT_MAX);
       addImplictArgs(type, 0);
-      ImplicitArgs::addStructArgs(F, arg, m_argList, m_pMdUtils);
+      ImplicitArgs::addStructArgs(F, arg, m_argList, m_pMdUtils,
+                                  getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData());
       changed = true;
     }
   }
@@ -230,7 +231,8 @@ bool ResolveAggregateArguments::runOnFunction(Function &F) {
     return false;
   }
 
-  m_implicitArgs = ImplicitArgs(F, getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils());
+  m_implicitArgs = ImplicitArgs(F, getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils(),
+                                getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData());
 
   m_pFunction = &F;
 

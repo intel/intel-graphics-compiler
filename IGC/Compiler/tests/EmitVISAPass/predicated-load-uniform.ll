@@ -246,7 +246,7 @@ declare i32 @llvm.genx.GenISA.PredicatedLoad.i32.p1.i32(ptr addrspace(1), i64, i
 !175 = !{!"argAllocMDListVec[2]", !171, !172, !173}
 !176 = !{!"argAllocMDListVec[3]", !171, !172, !173}
 !50 = !{!"FuncMDMap[1]", ptr @test_non_uniform_dst}
-!51 = !{!"FuncMDValue[1]", !52}
+!51 = !{!"FuncMDValue[1]", !52, !179}
 !52 = !{!"resAllocMD", !53}
 !53 = !{!"argAllocMDList", !54, !55, !56, !57, !58}
 !54 = !{!"argAllocMDListVec[0]", !171, !172, !173}
@@ -255,6 +255,7 @@ declare i32 @llvm.genx.GenISA.PredicatedLoad.i32.p1.i32(ptr addrspace(1), i64, i
 !57 = !{!"argAllocMDListVec[3]", !171, !172, !173}
 !58 = !{!"argAllocMDListVec[4]", !171, !172, !173}
 !100 = !{ptr @test_non_uniform_dst, !101}
-!101 = !{!4, !102}
-!102 = !{!"implicit_arg_desc", !103}
-!103 = !{i32 8}
+!101 = !{!4}
+!177 = !{!"argId", i32 8}
+!178 = !{!"implicitArgInfoListVec[0]", !177}
+!179 = !{!"implicitArgInfoList", !178}

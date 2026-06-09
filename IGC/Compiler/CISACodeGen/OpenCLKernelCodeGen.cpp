@@ -288,7 +288,7 @@ void COpenCLKernel::tryHWGenerateLocalIDs() {
 
   // OpenCL currently emits all local IDs even if only one dimension
   // is requested. Let's mirror that for now.
-  ImplicitArgs implicitArgs(*entry, m_pMdUtils);
+  ImplicitArgs implicitArgs(*entry, m_pMdUtils, m_ctx->getModuleMetaData());
   if (implicitArgs.isImplicitArgExist(ImplicitArg::LOCAL_ID_X) ||
       implicitArgs.isImplicitArgExist(ImplicitArg::LOCAL_ID_Y) ||
       implicitArgs.isImplicitArgExist(ImplicitArg::LOCAL_ID_Z)) {

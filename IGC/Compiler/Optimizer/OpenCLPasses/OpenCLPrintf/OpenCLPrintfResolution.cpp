@@ -423,7 +423,7 @@ void OpenCLPrintfResolution::expandPrintfCall(CallInst &printfCall, Function &F)
      ----------------------------------------------------------------------
   */
   MetaDataUtils *MdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
-  ImplicitArgs implicitArgs(F, MdUtils);
+  ImplicitArgs implicitArgs(F, MdUtils, getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData());
   bool isPrintfBuiltin = OpenCLPrintfAnalysis::isBuiltinPrintf(printfCall.getCalledFunction());
 
   BasicBlock *currentBBlock = printfCall.getParent();

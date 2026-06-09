@@ -88,9 +88,8 @@ define void @negative_aggregate_user(ptr %output) {
 !igc.functions = !{!0, !5, !6, !7, !8}
 
 !0 = !{ptr @test_load_v2half_from_i32_array, !1}
-!1 = !{!2, !3}
+!1 = !{!2}
 !2 = !{!"function_type", i32 0}
-!3 = !{!"implicit_arg_desc"}
 !4 = !{i1 true}
 !5 = !{ptr @test_store_v2half_to_i32_array, !1}
 !6 = !{ptr @test_sequential_v2half_stores, !1}

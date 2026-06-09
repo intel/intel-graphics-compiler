@@ -26,19 +26,18 @@ entry:
 
 !0 = !{!"ModuleMD", !5, !16}
 !1 = !{void (i8 addrspace(1)*, i32)* @test, !2}
-!2 = !{!3, !14}
+!2 = !{!3}
 !3 = !{!"function_type", i32 0}
-!4 = !{}
 !5 = !{!"FuncMD", !6, !7}
 !6 = !{!"FuncMDMap[0]", void (i8 addrspace(1)*, i32)* @test}
-!7 = !{!"FuncMDValue[0]", !8}
+!7 = !{!"FuncMDValue[0]", !8, !20}
 !8 = !{!"resAllocMD", !9}
 !9 = !{!"argAllocMDList", !10}
 !10 = !{!"argAllocMDListVec[0]", !11}
 !11 = !{!"type", i32 1}
-!12 = !{!"extensionType", i32 -1}
-!13 = !{!"indexType", i32 0}
-!14 = !{!"implicit_arg_desc", !15}
-!15 = !{i32 15}
 !16 = !{!"compOpt", !17}
 !17 = !{!"HasBufferOffsetArg", i1 true}
+!18 = !{!"argId", i32 15}
+!19 = !{!"implicitArgInfoListVec[0]", !18, !21}
+!20 = !{!"implicitArgInfoList", !19}
+!21 = !{!"explicitArgNum", i32 0}
