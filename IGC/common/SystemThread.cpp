@@ -1847,11 +1847,7 @@ CGenSystemInstructionKernelProgram *CGenSystemInstructionKernelProgram::Create(c
           SIPIndex = XE3PLPG_DEBUG_E64;
         }
     } else if (mode == SYSTEM_THREAD_MODE_CSR) {
-      const auto productFamily = platform.getPlatformInfo().eProductFamily;
-      if (productFamily == IGFX_CRI) {
-        SIPIndex = !bindlessMode ? XE3P_CSR_DEBUG_E64 : XE3P_CSR_DEBUG_LEGACY;
-      }
-      else {
+      {
         SIPIndex = !bindlessMode ? XE3PLPG_CSR_DEBUG_E64 : XE3PLPG_CSR_DEBUG_LEGACY;
       }
     }
