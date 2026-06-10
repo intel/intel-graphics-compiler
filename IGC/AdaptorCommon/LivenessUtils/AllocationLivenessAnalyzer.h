@@ -6,6 +6,8 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
+#pragma once
+
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/ADT/SmallBitVector.h>
 #include <llvm/IR/Instructions.h>
