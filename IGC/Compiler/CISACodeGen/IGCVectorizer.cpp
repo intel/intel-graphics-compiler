@@ -984,7 +984,7 @@ bool IGCVectorizer::handleWaveBroadcast(VecArr &Slice) {
 
   CreatedInst->setName("vectorized_joint_wavebroadcast");
   CreatedInst->setDebugLoc(First->getDebugLoc());
-  CreatedInst->insertAfter(InsertPoint);
+  IGCLLVM::insertBefore(CreatedInst, InsertPoint);
   CreatedVectorInstructions.push_back(CreatedInst);
 
   PRINT_LOG("Intrinsic instruction created: ");
@@ -1072,7 +1072,7 @@ bool IGCVectorizer::handleWaveAll(VecArr &Slice) {
 
   CreatedInst->setName("vectorized_joint_waveall");
   CreatedInst->setDebugLoc(First->getDebugLoc());
-  CreatedInst->insertAfter(InsertPoint);
+  IGCLLVM::insertBefore(CreatedInst, InsertPoint);
   CreatedVectorInstructions.push_back(CreatedInst);
 
   PRINT_LOG("Intrinsic instruction created: ");

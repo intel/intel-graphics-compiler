@@ -15,8 +15,8 @@
 
 ; CHECK: [[SRC:%.*]] = call float @llvm.exp2.f32(float 0.000000e+00)
 ; CHECK-NOT: llvm.genx.GenISA.WaveBroadcast.f32
-; CHECK: call <8 x float> @llvm.genx.GenISA.JointWaveBroadcast.v8f32.f32.v8i32(float [[SRC]], <8 x i32> <i32 0, i32 1, i32 2, i32 3, i32 4, i32 5, i32 6, i32 7>, i32 0)
 ; CHECK: call <8 x float> @llvm.genx.GenISA.JointWaveBroadcast.v8f32.f32.v8i32(float [[SRC]], <8 x i32> <i32 8, i32 9, i32 10, i32 11, i32 12, i32 13, i32 14, i32 15>, i32 0)
+; CHECK: call <8 x float> @llvm.genx.GenISA.JointWaveBroadcast.v8f32.f32.v8i32(float [[SRC]], <8 x i32> <i32 0, i32 1, i32 2, i32 3, i32 4, i32 5, i32 6, i32 7>, i32 0)
 ; CHECK-NOT: llvm.genx.GenISA.WaveBroadcast.f32
 
 ; only lingering declare allowed
