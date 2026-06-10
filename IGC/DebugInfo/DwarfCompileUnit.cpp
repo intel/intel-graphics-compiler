@@ -56,13 +56,6 @@ See LICENSE.TXT for details.
 using namespace llvm;
 using namespace ::IGC;
 
-static ConstantAsMetadata *getConstMdOperand(const MDNode *MD, unsigned OpIdx) {
-  return cast<ConstantAsMetadata>(MD->getOperand(OpIdx));
-}
-static const APInt &getIntConstFromMdOperand(const MDNode *MD, unsigned OpIdx) {
-  return getConstMdOperand(MD, OpIdx)->getValue()->getUniqueInteger();
-}
-
 PieceBuilder::PieceBuilder(uint16_t RegNum, size_t NumGRFs, uint64_t RegSizeBits, uint64_t VarSizeBits,
                            uint64_t SubRegOffsetBits)
     : NumGRFs(NumGRFs), RegNum(RegNum), RegSizeBits(RegSizeBits), VariableSizeInBits(VarSizeBits),
@@ -2167,9 +2160,10 @@ bool CompileUnit::buildPrivateBaseRegBased(const DbgVariable &var, IGC::DIEBlock
                        " (simdSize*<var_offset>) + (simdLaneId * <var_size>))");
 
   const auto *DbgInst = var.getDbgInst();
-  const auto *storageMD = DbgInst->getMetadata("StorageOffset");
-  IGC_ASSERT(storageMD != nullptr);
   const auto *VISAMod = loc.GetVISAModule();
+
+  auto storageOffsetOpt = VISAMod->getStorageOffset(DbgInst);
+  IGC_ASSERT(storageOffsetOpt.has_value());
   auto privateBaseRegNum = VISAMod->getPrivateBaseReg();
   int64_t offset = 0;
 
@@ -2266,9 +2260,8 @@ bool CompileUnit::buildPrivateBaseRegBased(const DbgVariable &var, IGC::DIEBlock
           dwarf::DW_OP_plus); // 10 DW_OP_plus   , i.e. add Private Base to Per
                               // Thread Offset
 
-  // Variable's bit offset can be found in the first operand of StorageOffset
-  // metadata node.
-  offset = simdSize * getIntConstFromMdOperand(storageMD, 0).getSExtValue();
+  // Variable's bit offset can be found in the storage map populated by PrivateMemoryResolution.
+  offset = simdSize * static_cast<int64_t>(*storageOffsetOpt);
 
   addUInt(Block, dwarf::DW_FORM_data1,
           dwarf::DW_OP_plus_uconst);            // 11 DW_OP_plus_uconst offset , i.e.
@@ -2301,16 +2294,18 @@ bool CompileUnit::buildPrivateBaseRegBased(const DbgVariable &var, IGC::DIEBlock
 }
 
 bool CompileUnit::buildFpBasedLoc(const DbgVariable &var, IGC::DIEBlock *Block, const VISAVariableLocation &loc) {
-  const auto *storageMD = var.getDbgInst()->getMetadata("StorageOffset");
-  IGC_ASSERT(nullptr != storageMD);
+  const auto *DbgInst = var.getDbgInst();
   const auto *VISAMod = loc.GetVISAModule();
-  const auto *sizeMD = var.getDbgInst()->getMetadata("StorageSize");
-  IGC_ASSERT(nullptr != sizeMD);
+
+  auto storageOffsetOpt = VISAMod->getStorageOffset(DbgInst);
+  IGC_ASSERT(storageOffsetOpt.has_value());
+  auto storageSizeOpt = VISAMod->getStorageSize(DbgInst);
+  IGC_ASSERT(storageSizeOpt.has_value());
 
   LLVM_DEBUG(dbgs() << "  generating FP-based location\n");
   auto simdSize = VISAMod->GetSIMDSize();
-  uint64_t storageOffset = simdSize * getIntConstFromMdOperand(storageMD, 0).getZExtValue();
-  uint64_t storageSize = getIntConstFromMdOperand(sizeMD, 0).getZExtValue();
+  uint64_t storageOffset = simdSize * *storageOffsetOpt;
+  uint64_t storageSize = *storageSizeOpt;
   LLVM_DEBUG(dbgs() << "  StorageOffset: " << storageOffset << ", StorageSize: " << storageSize << "\n");
 
   // There is a private value in the current stack frame
@@ -2321,10 +2316,10 @@ bool CompileUnit::buildFpBasedLoc(const DbgVariable &var, IGC::DIEBlock *Block, 
   // 5 DW_OP_plus_uconst  SIZE_OWORD         -- i.e. 0x10 taken from getFPOffset();
   //                                            same as emitted in EmitPass::emitStackAlloca()
   // 6 DW_OP_push_simd_lane
-  // 7 DW_OP_const1u/2u/4u/8u  storageSize   -- MD: StorageSize; the size of the variable
+  // 7 DW_OP_const1u/2u/4u/8u  storageSize   -- storage map: StorageSize; the size of the variable
   // 8 DW_OP_mul
   // 9 DW_OP_plus
-  // 10 DW_OP_plus_uconst storageOffset      -- MD: StorageOffset; the offset where each
+  // 10 DW_OP_plus_uconst storageOffset      -- storage map: StorageOffset; the offset where each
   //                                            variable is stored in the current stack frame
 
   auto regNumFP = VISAMod->getFPReg();
@@ -2514,11 +2509,14 @@ IGC::DIEBlock *CompileUnit::buildGeneral(DbgVariable &var, const VISAVariableLoc
   stackValueOffset = 0;
 
   LLVM_DEBUG(dbgs() << "  building DWARF info for the variable [" << var.getName() << "]\n");
-  const auto *storageMD = var.getDbgInst()->getMetadata("StorageOffset");
+  const auto *DbgInst = var.getDbgInst();
   const auto *VISAMod = loc.GetVISAModule();
   IGC_ASSERT_MESSAGE(VISAMod, "VISA Module is expected for LOC");
 
-  if (VISAMod->getPrivateBase() && VISAMod->hasPTO() && storageMD) {
+  bool hasStorageOffset = VISAMod->getStorageOffset(DbgInst).has_value();
+  bool hasStorageSize = VISAMod->getStorageSize(DbgInst).has_value();
+
+  if (VISAMod->getPrivateBase() && VISAMod->hasPTO() && hasStorageOffset) {
     // This is executed only when llvm.dbg.declare still exists and no stack
     // call is supported. With mem2reg run, data is stored in GRFs and this wont
     // be executed.
@@ -2532,8 +2530,7 @@ IGC::DIEBlock *CompileUnit::buildGeneral(DbgVariable &var, const VISAVariableLoc
     }
   }
 
-  const auto *sizeMD = var.getDbgInst()->getMetadata("StorageSize");
-  if (storageMD && sizeMD) {
+  if (hasStorageOffset && hasStorageSize) {
     emitLocation = true;
     if (!buildFpBasedLoc(var, Block, loc))
       return Block;

@@ -7,7 +7,9 @@
 ;============================ end_copyright_notice =============================
 ;
 ; UNSUPPORTED: llvm-17-plus
+; REQUIRES: regkeys
 ; RUN: igc_opt --typed-pointers --igc-private-mem-resolution -S < %s | FileCheck %s
+; RUN: igc_opt --typed-pointers --igc-private-mem-resolution --regkey DumpDbgVarStorageInfo=1 -S < %s 2>&1 | FileCheck %s --check-prefix=DUMP
 ; ------------------------------------------------
 ; PrivateMemoryResolution
 ; ------------------------------------------------
@@ -97,10 +99,8 @@ entry:
 
 ; CHECK: define{{.*}} @test_add{{.*}} !dbg [[FSCOPE:![0-9]*]]
 ; CHECK: @llvm.dbg.declare(metadata i32* [[A_V:%[A-z0-9.]*]], metadata [[A_MD:![0-9]*]], metadata !DIExpression()), !dbg [[A_LOC:![0-9]*]]
-; CHECK-SAME: !StorageOffset [[A_OFFSET:![0-9]*]],  !StorageSize [[B_OFFSET:![0-9]*]]
 ; CHECK: store i32 {{.*}}, i32* [[A_V]], align 4, !dbg [[A_LOC]]
 ; CHECK: @llvm.dbg.declare(metadata i32* [[B_V:%[A-z0-9.]*]], metadata [[B_MD:![0-9]*]], metadata !DIExpression()), !dbg [[B_LOC:![0-9]*]]
-; CHECK-SAME: !StorageOffset [[B_OFFSET]],  !StorageSize [[B_OFFSET]]
 ; CHECK: store i32 {{.*}}, i32* [[B_V]], align 4, !dbg [[B_LOC]]
 
 ; Function Attrs: convergent noinline nounwind optnone
@@ -133,10 +133,13 @@ entry:
 ; CHECK-DAG: [[FSCOPE]] = distinct !DISubprogram(name: "test_add", scope: null, file: [[FILE]], line: 2
 ; CHECK-DAG: [[A_MD]] = !DILocalVariable(name: "a", arg: 1, scope: [[FSCOPE]], file: [[FILE]], line: 2
 ; CHECK-DAG: [[A_LOC]] = !DILocation(line: 2, column: 27, scope: [[FSCOPE]])
-; CHECK-DAG: [[A_OFFSET]] = !{i32 0}
 ; CHECK-DAG: [[B_MD]] = !DILocalVariable(name: "b", arg: 2, scope: [[FSCOPE]], file: [[FILE]], line: 2
 ; CHECK-DAG: [[B_LOC]] = !DILocation(line: 2, column: 43, scope: [[FSCOPE]])
-; CHECK-DAG: [[B_OFFSET]] = !{i32 4}
+
+; Storage offset/size are no longer attached as IR metadata; verify the side-map instead.
+; The opt-enabled path only records storage for visaStackCall functions (test_add).
+; DUMP-DAG: variable=a StorageOffset=0 StorageSize=4
+; DUMP-DAG: variable=b StorageOffset=4 StorageSize=4
 
 ; Function Attrs: nounwind readnone speculatable
 declare void @llvm.dbg.declare(metadata, metadata, metadata) #2

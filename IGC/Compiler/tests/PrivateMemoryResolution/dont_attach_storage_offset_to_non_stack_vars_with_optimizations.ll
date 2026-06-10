@@ -12,10 +12,11 @@
 ; REQUIRES: regkeys, llvm-16-plus
 
 ; LLVM with opaque pointers:
-; RUN: igc_opt --opaque-pointers --igc-private-mem-resolution --platformdg2 --regkey EnableOpaquePointersBackend=1 -S %s | FileCheck %s
+; RUN: igc_opt --opaque-pointers --igc-private-mem-resolution --platformdg2 --regkey EnableOpaquePointersBackend=1 --regkey DumpDbgVarStorageInfo=1 -S %s 2>&1 | FileCheck %s
 
 ; CHECK: call void @llvm.dbg.declare(metadata ptr %{{[.a-zA-Z0-9]+}}, metadata {{!?[0-9]*}}, metadata !DIExpression(DW_OP_constu, 4, DW_OP_swap, DW_OP_xderef)), !dbg !{{[0-9]+}}
-; CHECK-NOT: !StorageOffset
+; Storage info for non-stack variables must NOT be recorded in the side-map.
+; CHECK-NOT: DumpDbgVarStorageInfo
 
 source_filename = "dont_inline_non_stack_vars_with_optimizations.ll"
 target datalayout = "e-p:64:64:64-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64-f32:32:32-f64:64:64-v16:16:16-v24:32:32-v32:32:32-v48:64:64-v64:64:64-v96:128:128-v128:128:128-v192:256:256-v256:256:256-v512:512:512-v1024:1024:1024-n8:16:32"

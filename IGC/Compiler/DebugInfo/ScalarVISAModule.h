@@ -54,6 +54,9 @@ public:
   }
   VISAVariableLocation GetVariableLocation(const llvm::Instruction *pInst) const override;
 
+  std::optional<uint32_t> getStorageOffset(const llvm::DbgVariableIntrinsic *DbgInst) const override;
+  std::optional<uint32_t> getStorageSize(const llvm::DbgVariableIntrinsic *DbgInst) const override;
+
   void UpdateVisaId() override;
   void ValidateVisaId() override;
   uint16_t GetSIMDSize() const override;

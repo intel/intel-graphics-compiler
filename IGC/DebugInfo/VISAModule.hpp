@@ -18,6 +18,7 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPop.hpp"
 // clang-format on
 
+#include "llvmWrapper/IR/IntrinsicInst.h"
 #include "LexicalScopes.hpp"
 #include "VISAIDebugEmitter.hpp"
 #include "IGC/common/Types.hpp"
@@ -480,6 +481,15 @@ public:
   /// @param Instruction to query.
   /// @return variable location in VISA.
   virtual VISAVariableLocation GetVariableLocation(const llvm::Instruction *pInst) const = 0;
+
+  /// @brief Look up the StorageOffset recorded by PrivateMemoryResolution.
+  /// @return nullopt if no entry found (variable is not stack-based private memory).
+  virtual std::optional<uint32_t> getStorageOffset(const llvm::DbgVariableIntrinsic *DbgInst) const {
+    return std::nullopt;
+  }
+  virtual std::optional<uint32_t> getStorageSize(const llvm::DbgVariableIntrinsic *DbgInst) const {
+    return std::nullopt;
+  }
 
   /// @brief Updates VISA instruction id to current instruction number.
   virtual void UpdateVisaId() = 0;

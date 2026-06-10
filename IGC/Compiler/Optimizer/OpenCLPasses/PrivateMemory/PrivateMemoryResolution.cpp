@@ -90,6 +90,9 @@ private:
 
   /// @brief - Current processed function
   llvm::Function *m_currFunction = nullptr;
+
+  /// @brief - CodeGen context, cached in runOnModule
+  CodeGenContext *m_pCtx = nullptr;
 };
 
 class TransposePrivMem : public TransposeHelper {
@@ -207,6 +210,7 @@ bool PrivateMemoryResolution::runOnModule(llvm::Module &M) {
   // Get the analysis
   m_pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
   auto *FGA = getAnalysisIfAvailable<GenXFunctionGroupAnalysis>();
+  m_pCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
   bool changed = false;
 
   ModuleMetaData &modMD = *getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
@@ -427,6 +431,15 @@ bool PrivateMemoryResolution::runOnModule(llvm::Module &M) {
           II->eraseFromParent();
         }
       }
+    }
+  }
+
+  if (IGC_IS_FLAG_ENABLED(DumpDbgVarStorageInfo) && !m_pCtx->m_DbgVarStorageMap.empty()) {
+    llvm::dbgs() << "[DumpDbgVarStorageInfo] DbgVarStorageMap entries:\n";
+    for (const auto &KV : m_pCtx->m_DbgVarStorageMap) {
+      llvm::dbgs() << "  variable=" << KV.first->getVariable()->getName() << " StorageOffset=" << KV.second.offset
+                   << " StorageSize=" << (KV.second.size.has_value() ? std::to_string(*KV.second.size) : "none")
+                   << "\n";
     }
   }
 
@@ -1030,29 +1043,19 @@ bool PrivateMemoryResolution::resolveAllocaInstructions(bool privateOnStack, boo
         privateBuffer =
             builder.CreatePointerCast(stackAlloca, pAI->getType(), VALUE_NAME(pAI->getName() + ".privateBuffer"));
 
-        // Attaching this metadata is crucial to both properly interpret this locations as stack based ond to inline it.
-        // Because these are stack locations we can safely inline them even with optimizations disabled (O0).
+        // Recording storage offset/size so DwarfCompileUnit can interpret this location
+        // as stack-based and safely inline it even with optimizations disabled (O0).
         auto DbgDcls = IGCLLVM::findDbgDeclareUses(pAI);
         for (auto DbgDcl : DbgDcls) {
           unsigned scalarBufferOffset = m_ModAllocaInfo->getBufferOffset(pAI);
           unsigned bufferSize = m_ModAllocaInfo->getBufferStride(pAI);
 
-          // Attach metadata to instruction containing offset of storage.
-          // In LLVM >= 22 debug declares are DbgVariableRecord objects (not Instructions)
-          // and have no metadata slots. The DwarfDebug/DwarfCompileUnit consumers
-          // (buildFpBasedLoc, buildPrivateBaseRegBased) are also not yet migrated to
-          // the new debug-records API and cannot find these declares anyway, so skip
-          // the metadata for now.
-          // FIXME: once DwarfDebug is migrated to DbgVariableRecord, carry StorageOffset
-          // and StorageSize via an alternative mechanism (e.g. DbgVariableRecord side
-          // map or DIExpression extension).
+          // Record storage offset/size so DwarfCompileUnit can interpret this as a
+          // stack-based location and safely inline it even with optimizations disabled (O0).
 #if LLVM_VERSION_MAJOR < 22
-          auto OffsetMD =
-              MDNode::get(builder.getContext(), ConstantAsMetadata::get(builder.getInt32(scalarBufferOffset)));
-          DbgDcl->setMetadata("StorageOffset", OffsetMD);
-          auto SizeMD = MDNode::get(builder.getContext(), ConstantAsMetadata::get(builder.getInt32(bufferSize)));
-          DbgDcl->setMetadata("StorageSize", SizeMD);
+          Ctx.m_DbgVarStorageMap[DbgDcl] = {scalarBufferOffset, bufferSize};
 #else
+          // FIXME: adapt to records
           (void)scalarBufferOffset;
           (void)bufferSize;
           (void)DbgDcl;
@@ -1344,20 +1347,17 @@ bool PrivateMemoryResolution::resolveAllocaInstructions(bool privateOnStack, boo
     Value *privateBuffer =
         builder.CreatePointerCast(bufferBase, pAI->getType(), VALUE_NAME(pAI->getName() + ".privateBuffer"));
 
-    // Attaching this metadata will make this location be inlined.
-    // We can only safely inline such locations with optimizations disabled.
-    // On O2 we have no guarantee the offsets in registers are gonna be valid throughout the entire variable lifetime.
+    // Recording storage offset so DwarfCompileUnit can inline this location.
+    // On O2 we have no guarantee the offsets in registers are valid throughout the entire variable lifetime.
     if (modMD->compOpt.OptDisable) {
       auto DbgDcls = IGCLLVM::findDbgDeclareUses(pAI);
       for (auto DbgDcl : DbgDcls) {
-        // Attach metadata to instruction containing offset of storage.
-        // FIXME: for llvm 22 (see above for more context).
+        // Record in the cross-pass side-map (offset only; no size needed here).
 #if LLVM_VERSION_MAJOR < 22
         unsigned int scalarBufferOffset = m_ModAllocaInfo->getBufferOffset(pAI);
-        auto OffsetMD =
-            MDNode::get(builder.getContext(), ConstantAsMetadata::get(builder.getInt32(scalarBufferOffset)));
-        DbgDcl->setMetadata("StorageOffset", OffsetMD);
+        Ctx.m_DbgVarStorageMap[DbgDcl] = {scalarBufferOffset, std::nullopt};
 #else
+        // FIXME: adapt to records
         (void)DbgDcl;
 #endif
       }

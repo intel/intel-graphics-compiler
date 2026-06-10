@@ -976,6 +976,14 @@ public:
   void *gtpin_init = nullptr;
   bool m_hasLegacyDebugInfo = false;
   bool m_hasEmu64BitInsts = false;
+
+  // Side-map for debug variable storage info (offset + size) computed by
+  // PrivateMemoryResolution and consumed by DwarfCompileUnit.
+  struct DbgVarStorageInfo {
+    uint32_t offset = 0;
+    std::optional<uint32_t> size;
+  };
+  llvm::DenseMap<const llvm::DbgVariableIntrinsic *, DbgVarStorageInfo> m_DbgVarStorageMap;
   bool m_hasDPEmu = false;
   bool m_hasDPDivSqrtEmu = false;
   bool m_hasDPConvEmu = false;

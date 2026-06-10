@@ -7,7 +7,9 @@
 ;============================ end_copyright_notice =============================
 ;
 ; UNSUPPORTED: llvm-17-plus
+; REQUIRES: regkeys
 ; RUN: igc_opt --typed-pointers --igc-private-mem-resolution -S < %s | FileCheck %s
+; RUN: igc_opt --typed-pointers --igc-private-mem-resolution --regkey DumpDbgVarStorageInfo=1 -S < %s 2>&1 | FileCheck %s --check-prefix=DUMP
 ; ------------------------------------------------
 ; PrivateMemoryResolution
 ; ------------------------------------------------
@@ -37,13 +39,10 @@
 
 ; CHECK: define{{.*}} @test_pmem{{.*}} !dbg [[KSCOPE:![0-9]*]]
 ; CHECK: @llvm.dbg.declare(metadata i32 addrspace(1)** [[DST_V:%[A-z0-9.]*]], metadata [[DST_MD:![0-9]*]], metadata !DIExpression()), !dbg [[DST_LOC:![0-9]*]]
-; CHECK-SAME: !StorageOffset [[DST_OFFSET:![0-9]*]]
 ; CHECK: store i32 addrspace(1)* %dst, i32 addrspace(1)** [[DST_V]], align 8, !dbg [[DST_LOC]]
 ; CHECK: @llvm.dbg.declare(metadata i32 addrspace(1)** [[SRC_V:%[A-z0-9.]*]], metadata [[SRC_MD:![0-9]*]], metadata !DIExpression()), !dbg [[SRC_LOC:![0-9]*]]
-; CHECK-SAME: !StorageOffset [[SRC_OFFSET:![0-9]*]]
 ; CHECK: store i32 addrspace(1)* %src, i32 addrspace(1)** [[SRC_V]], align 8, !dbg [[SRC_LOC]]
 ; CHECK: @llvm.dbg.declare(metadata i32* [[AA_V:%[A-z0-9.]*]], metadata [[AA_MD:![0-9]*]], metadata !DIExpression()), !dbg [[AA_LOC:![0-9]*]]
-; CHECK-SAME: !StorageOffset [[AA_OFFSET:![0-9]*]]
 ; CHECK: store i32 {{.*}}, i32* [[AA_V]], align 4, !dbg [[AA_LOC]]
 
 define spir_kernel void @test_pmem(i32 addrspace(1)* %dst, i32 addrspace(1)* %src, <8 x i32> %r0, <8 x i32> %payloadHeader, i8* %privateBase, i32 %bufferOffset, i32 %bufferOffset1) #0 !dbg !33 {
@@ -98,10 +97,8 @@ entry:
 
 ; CHECK: define{{.*}} @test_add{{.*}} !dbg [[FSCOPE:![0-9]*]]
 ; CHECK: @llvm.dbg.declare(metadata i32* [[A_V:%[A-z0-9.]*]], metadata [[A_MD:![0-9]*]], metadata !DIExpression()), !dbg [[A_LOC:![0-9]*]]
-; CHECK-SAME: !StorageOffset [[AA_OFFSET]],  !StorageSize [[B_OFFSET:![0-9]*]]
 ; CHECK: store i32 {{.*}}, i32* [[A_V]], align 4, !dbg [[A_LOC]]
 ; CHECK: @llvm.dbg.declare(metadata i32* [[B_V:%[A-z0-9.]*]], metadata [[B_MD:![0-9]*]], metadata !DIExpression()), !dbg [[B_LOC:![0-9]*]]
-; CHECK-SAME: !StorageOffset [[B_OFFSET:![0-9]*]],  !StorageSize [[B_OFFSET]]
 ; CHECK: store i32 {{.*}}, i32* [[B_V]], align 4, !dbg [[B_LOC]]
 
 ; Function Attrs: convergent noinline nounwind optnone
@@ -127,19 +124,22 @@ entry:
 ; CHECK-DAG: [[KSCOPE]] = distinct !DISubprogram(name: "test_pmem", scope: null, file: [[FILE]], line: 8
 ; CHECK-DAG: [[DST_MD]] = !DILocalVariable(name: "dst", arg: 1, scope: [[KSCOPE]], file: [[FILE]], line: 8
 ; CHECK-DAG: [[DST_LOC]] = !DILocation(line: 8, column: 48, scope: [[KSCOPE]])
-; CHECK-DAG: [[DST_OFFSET]] = !{i32 24}
 ; CHECK-DAG: [[SRC_MD]] = !DILocalVariable(name: "src", arg: 2, scope: [[KSCOPE]], file: [[FILE]], line: 8
 ; CHECK-DAG: [[SRC_LOC]] =  !DILocation(line: 8, column: 76, scope: [[KSCOPE]])
-; CHECK-DAG: [[SRC_OFFSET]] = !{i32 32}
 ; CHECK-DAG: [[AA_MD]] = !DILocalVariable(name: "aa", scope: [[KSCOPE]], file: [[FILE]], line: 10
 ; CHECK-DAG: [[AA_LOC]] = !DILocation(line: 10, column: 7, scope: [[KSCOPE]])
-; CHECK-DAG: [[AA_OFFSET]] = !{i32 0}
 ; CHECK-DAG: [[FSCOPE]] = distinct !DISubprogram(name: "test_add", scope: null, file: [[FILE]], line: 2
 ; CHECK-DAG: [[A_MD]] = !DILocalVariable(name: "a", arg: 1, scope: [[FSCOPE]], file: [[FILE]], line: 2
 ; CHECK-DAG: [[A_LOC]] = !DILocation(line: 2, column: 27, scope: [[FSCOPE]])
 ; CHECK-DAG: [[B_MD]] = !DILocalVariable(name: "b", arg: 2, scope: [[FSCOPE]], file: [[FILE]], line: 2
 ; CHECK-DAG: [[B_LOC]] = !DILocation(line: 2, column: 43, scope: [[FSCOPE]])
-; CHECK-DAG: [[B_OFFSET]] = !{i32 4}
+
+; Storage offset/size are no longer attached as IR metadata; verify the side-map instead.
+; DUMP-DAG: variable=dst StorageOffset=24 StorageSize=none
+; DUMP-DAG: variable=src StorageOffset=32 StorageSize=none
+; DUMP-DAG: variable=aa StorageOffset=0 StorageSize=none
+; DUMP-DAG: variable=a StorageOffset=0 StorageSize=4
+; DUMP-DAG: variable=b StorageOffset=4 StorageSize=4
 
 
 ; Function Attrs: nounwind readnone speculatable

@@ -497,6 +497,22 @@ bool ScalarVisaModule::IsCatchAllIntrinsic(const llvm::Instruction *pInst) const
            cast<GenIntrinsicInst>(pInst)->getIntrinsicID() == GenISAIntrinsic::GenISA_CatchAllDebugLine));
 }
 
+std::optional<uint32_t> ScalarVisaModule::getStorageOffset(const llvm::DbgVariableIntrinsic *DbgInst) const {
+  const auto &storageMap = m_pShader->GetContext()->m_DbgVarStorageMap;
+  auto it = storageMap.find(DbgInst);
+  if (it != storageMap.end())
+    return it->second.offset;
+  return std::nullopt;
+}
+
+std::optional<uint32_t> ScalarVisaModule::getStorageSize(const llvm::DbgVariableIntrinsic *DbgInst) const {
+  const auto &storageMap = m_pShader->GetContext()->m_DbgVarStorageMap;
+  auto it = storageMap.find(DbgInst);
+  if (it != storageMap.end())
+    return it->second.size;
+  return std::nullopt;
+}
+
 // OpenCL keyword constant is used as qualifier to variables whose values remain the
 // same throughout the program. clang inlines constants in to LLVM IR and no metadata
 // is emitted to LLVM IR for such constants. This function iterates over all globals

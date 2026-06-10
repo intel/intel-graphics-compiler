@@ -1497,9 +1497,12 @@ void writeULEB128(std::vector<unsigned char> &vec, uint64_t data) {
 }
 
 // Check whether a dbg.declare describes an FE_FP-based stack location
-// (StorageOffset metadata, no surface/SLM binding).
-static bool isFpBased(const llvm::DbgVariableIntrinsic *DbgInst, const VISAVariableLocation &Loc) {
-  return isa<DbgDeclareInst>(DbgInst) && DbgInst->getMetadata("StorageOffset") && !Loc.HasSurface() && !Loc.IsSLM();
+// (StorageOffset recorded by PrivateMemoryResolution, no surface/SLM binding).
+static bool isFpBased(const llvm::DbgVariableIntrinsic *DbgInst, const VISAVariableLocation &Loc,
+                      const VISAModule *Module) {
+  if (Loc.HasSurface() || Loc.IsSLM())
+    return false;
+  return isa<DbgDeclareInst>(DbgInst) && Module->getStorageOffset(DbgInst).has_value();
 }
 
 void DwarfDebug::encodeImm(IGC::DotDebugLocEntry &dotLoc, const VarLocation &vl, uint32_t &offset) {
@@ -1799,7 +1802,7 @@ void DwarfDebug::resolveRangesToVarLocations(DbgVariable *RegVar, const std::vec
     LLVM_DEBUG(dbgs() << "  Processing Location at IP Range: [0x"; dbgs().write_hex(startIp) << "; " << "0x";
                dbgs().write_hex(endIp) << "]\n"; CurLoc.print(dbgs()););
 
-    if (isFpBased(pInst, CurLoc)) {
+    if (isFpBased(pInst, CurLoc, m_pModule)) {
       uint64_t fpStart = startIp;
       uint64_t fpEnd = endIp;
 
@@ -1912,7 +1915,7 @@ bool DwarfDebug::canInlineToDIE(const llvm::DbgVariableIntrinsic *DbgInst, const
   // FP-based must go through .debug_loc so that the emitted range
   // is limited to the interval where FE_FP is valid.
   bool IsOutermostScope = Scope == LScopes.getCurrentFunctionScope();
-  if (isFpBased(DbgInst, Loc) && !IsOutermostScope)
+  if (isFpBased(DbgInst, Loc, m_pModule) && !IsOutermostScope)
     return true;
 
   return false;
