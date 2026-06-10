@@ -353,7 +353,10 @@ void BiFManagerTool::MakeBiFPackage(llvm::Module *pBiFModuleMain, llvm::Module *
 void BiFManagerTool::splitBiFModules(llvm::Module *pMainModule) {
   sectionCounter++;
   // Split all function in module per sections
-  for (Function &func : pMainModule->functions()) {
+  auto funcs = pMainModule->functions();
+  for (auto it = funcs.begin(), end = funcs.end(); it != end; ++it) {
+    Function &func = *it;
+
     if (func.isDeclaration()) {
       // not real built-in function
       continue;
@@ -361,7 +364,7 @@ void BiFManagerTool::splitBiFModules(llvm::Module *pMainModule) {
 
     FuncPerSections[sectionCounter].push_back(&func);
 
-    if (FuncPerSections[sectionCounter].size() == MaxFuncInSection) {
+    if (FuncPerSections[sectionCounter].size() == MaxFuncInSection && std::next(it) != end) {
       sectionCounter++;
     }
   }
