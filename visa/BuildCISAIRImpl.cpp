@@ -1567,12 +1567,11 @@ int CISA_IR_Builder::ParseVISAText(const std::string &visaText,
     status = VISA_FAILURE;
   }
   CISA_delete_buffer(visaBuf);
-  CISAlex_destroy();
-  resetGlobalVariables();
-
   if (CISAout) {
     fclose(CISAout);
   }
+  CISAlex_destroy();
+  resetGlobalVariables();
 
   // run vISA verifier to cath any additional errors.
   // the subsequent vISABuilder::Compile() call is assumed to always succeed
@@ -1595,24 +1594,23 @@ int CISA_IR_Builder::ParseVISAText(const std::string &visaFile) {
   CISAin = fopen(visaFile.c_str(), "r");
   if (!CISAin) {
     vISA_ASSERT(false, "Failed to open file");
-    return VISA_FAILURE;
-  }
-
-  resetGlobalVariables();
-  int parseResult = CISAparse(this);
-  CISAlex_destroy();
-  resetGlobalVariables();
-  fclose(CISAin);
-  if (parseResult != 0) {
-    vISA_ASSERT(false, "Parsing visa text failed");
     if (CISAout) {
       fclose(CISAout);
     }
     return VISA_FAILURE;
   }
 
+  resetGlobalVariables();
+  int parseResult = CISAparse(this);
+  fclose(CISAin);
   if (CISAout) {
     fclose(CISAout);
+  }
+  CISAlex_destroy();
+  resetGlobalVariables();
+  if (parseResult != 0) {
+    vISA_ASSERT(false, "Parsing visa text failed");
+    return VISA_FAILURE;
   }
   return VISA_SUCCESS;
 
