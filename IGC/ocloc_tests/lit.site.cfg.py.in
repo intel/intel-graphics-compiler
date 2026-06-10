@@ -23,6 +23,7 @@ config.ocloc_dir = "@IGC_OCLOC_BINARY_DIR@"
 config.ocloc_lib_dir = "@IGC_OCLOC_LIBRARY_DIR@"
 config.igc_lib_dir = "@IGC_LIBRARY_DIR@"
 config.cclang_lib_dir = "@OPENCL_CLANG_LIB_DIR@"
+config.igc_clang_lib_dir = "@IGC_CLANG_LIB_DIR@"
 # Mimic the c++ (define) IGC_DEBUG_VARIABLES
 # so the regkeys are supported on Linux release build too
 config.regkeys_disabled = $<AND:$<CONFIG:Release>,$<BOOL:"@MSVC@">>

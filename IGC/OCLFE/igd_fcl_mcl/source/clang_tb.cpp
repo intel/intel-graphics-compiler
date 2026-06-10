@@ -1076,6 +1076,12 @@ bool CClangTranslationBlock::TranslateClang(const TranslateClangArgs *pInputArgs
   if (!IsSYCL && 0 != BuildOptionsAreValid(options, exceptString))
     res = -43;
 
+  // For some failure cases a clang library can exit before pResultPtr is allocated.
+  if (pResultPtr == nullptr) {
+    SetErrorString("Error: frontend returned no result (compilation failed).", pOutputArgs);
+    return false;
+  }
+
   Utils::FillOutputArgs(pResultPtr, pOutputArgs, exceptString);
   if (!exceptString.empty()) // str != "" => there was an exception. skip further code and return.
   {

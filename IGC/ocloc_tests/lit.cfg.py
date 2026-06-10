@@ -37,11 +37,13 @@ shared_library_path_env = 'PATH' if 'system-windows' in config.available_feature
 
 llvm_config.use_default_substitutions()
 
-llvm_config.with_environment(shared_library_path_env,
-                             [config.ocloc_lib_dir,
-                              config.igc_lib_dir,
-                              config.cclang_lib_dir],
-                             append_path=True)
+lib_dirs = [config.ocloc_lib_dir, config.igc_lib_dir, config.cclang_lib_dir]
+# Optional igc-clang prebuild directory, used by the IGC_LibClangOverride tests.
+igc_clang_lib_dir = getattr(config, 'igc_clang_lib_dir', '')
+if igc_clang_lib_dir:
+    lib_dirs.append(igc_clang_lib_dir)
+
+llvm_config.with_environment(shared_library_path_env, lib_dirs, append_path=True)
 
 
 tool_dirs = [config.ocloc_dir, config.llvm_tools_dir, config.spirv_as_dir, config.llvm_spirv_dir]

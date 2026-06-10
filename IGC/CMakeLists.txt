@@ -1642,6 +1642,10 @@ igc_sg_define(IGC__AdaptorOCL)
 
 if(FCL_ENABLED)
   include(igc_find_opencl_clang)
+  # Locate the optional igc-clang prebuild (SYCL-based clang). Creates the
+  # GLOBAL igc-clang-lib IMPORTED target when fetched; consumed by the install
+  # rules below and by the ocloc lit tests (IGC_LibClangOverride).
+  include(igc_find_igc_clang)
 endif()
 
 if(IGC_BUILD__VC_ENABLED)
@@ -2480,6 +2484,12 @@ elseif (WIN32)
           RUNTIME DESTINATION Release/bin          CONFIGURATIONS Release)
   install(TARGETS ${IGC_BUILD__PROJ__igc_dll}
           RUNTIME DESTINATION Debug/bin            CONFIGURATIONS Debug)
+
+  # Ship the optional igc-clang prebuild when present, excluding Production builds.
+  if(TARGET igc-clang-lib AND NOT "${PRODUCTION_BUILD}" STREQUAL "True")
+    install(FILES $<TARGET_FILE:igc-clang-lib>
+            DESTINATION Debug/bin            CONFIGURATIONS Debug)
+  endif()
 
   install(FILES $<TARGET_PDB_FILE:${IGC_BUILD__PROJ__igc_dll}>
           DESTINATION Release/pdb              CONFIGURATIONS Release)

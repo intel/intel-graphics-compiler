@@ -61,6 +61,14 @@ endif()
     "${COMMON_CLANG}"
     )
 
+# Expose the optional igc-clang prebuild directory to the lit loader search path
+# so the IGC_LibClangOverride tests can load it by name.
+if(TARGET igc-clang-lib)
+  set(IGC_CLANG_LIB_DIR "${IGC_CLANG_PREBUILD_DIR}")
+else()
+  set(IGC_CLANG_LIB_DIR "")
+endif()
+
 igc_find_external_lit()
 
 igc_configure_lit_site_cfg(

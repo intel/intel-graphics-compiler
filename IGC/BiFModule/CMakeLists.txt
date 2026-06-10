@@ -71,6 +71,12 @@ if(UNIX)
     endif()
     install(FILES ${opencl-headers} DESTINATION ${CMAKE_INSTALL_FULL_INCLUDEDIR} COMPONENT igc-opencl-devel)
   endif()
+
+  # Ship the optional igc-clang prebuild when it is present.
+  if(TARGET igc-clang-lib)
+    file(GLOB _igc_clang_libs "${IGC_CLANG_PREBUILD_DIR}/libigc-clang*${CMAKE_SHARED_LIBRARY_SUFFIX}*")
+    install(FILES ${_igc_clang_libs} DESTINATION ${CMAKE_INSTALL_FULL_LIBDIR} COMPONENT igc-opencl)
+  endif()
 endif()
 
 # End Clang section

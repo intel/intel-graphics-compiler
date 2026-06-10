@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
-// REQUIRES: regkeys, bmg-supported, llvm-17-plus
+// REQUIRES: regkeys, bmg-supported
 // UNSUPPORTED: system-windows
 
 // Environment variables
