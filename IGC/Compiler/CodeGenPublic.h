@@ -1323,6 +1323,8 @@ struct SComputeShaderSecondCompileInput {
 };
 
 struct SComputeShaderWalkOrder {
+  // Set to true if the information below is valid.
+  bool m_valid = false;
   ThreadIDLayout m_threadIDLayout = ThreadIDLayout::X;
   CS_WALK_ORDER m_walkOrder = CS_WALK_ORDER::WO_XYZ;
   EMIT_LOCAL_MASK m_emitMask = EMIT_LOCAL_MASK::EM_NONE;
