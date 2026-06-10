@@ -112,6 +112,25 @@ CIF_DECLARE_INTERFACE_PIMPL(IgcOclDeviceCtx) : CIF::PimplBase {
 #endif
   }
 
+  // Returns the set of IGC registry keys that are explicitly set to a non-default value,
+  // It is crucial for runtime where we can recognize that we can used cached binary
+  // (if regkeys are not changed) or not (if regkeys are explicitly changed).
+  //
+  // The token is written into the buffer as a canonical, compact string
+  // "Key0=Val0,Key1=Val1,..." in fixed flag-declaration order. Dump-only keys are excluded
+  // (they do not affect the compiled binary). Empty when no non-default flag is set.
+  void GetIGCRegKeys(CIF::Builtins::BufferSimple *outIgcRegKeysBuffer) {
+    if (outIgcRegKeysBuffer == nullptr) {
+      return;
+    }
+    std::lock_guard<std::mutex> lock(this->mutex);
+    LoadRegistryKeys();
+    std::string igcRegKeysPairs;
+    GetKeysSetExplicitly(nullptr, &igcRegKeysPairs);
+    outIgcRegKeysBuffer->Clear();
+    outIgcRegKeysBuffer->PushBackRawBytes(igcRegKeysPairs.c_str(), igcRegKeysPairs.size());
+  }
+
   struct OCL_API_CALL MiscOptions {
     MiscOptions() { this->Clear(); }
 

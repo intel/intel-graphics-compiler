@@ -117,6 +117,12 @@ protected:
   virtual IgcOptionsAndCapabilitiesBase *GetIgcOptionsAndCapabilitiesHandleImpl(CIF::Version_t ver);
 };
 
+CIF_DEFINE_INTERFACE_VER_WITH_COMPATIBILITY(IgcOclDeviceCtx, 6, 5) {
+  CIF_INHERIT_CONSTRUCTOR();
+
+  OCL_API_CALL virtual void GetIGCRegKeys(CIF::Builtins::BufferSimple *outIgcRegKeysBuffer);
+};
+
 CIF_GENERATE_VERSIONS_LIST_AND_DECLARE_INTERFACE_DEPENDENCIES(IgcOclDeviceCtx, IGC::Platform, IGC::GTSystemInfo,
                                                               IGC::OclGenBinary, IGC::IgcFeaturesAndWorkarounds,
                                                               IGC::IgcOclTranslationCtx, IGC::IgcBuiltins,

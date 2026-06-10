@@ -71,6 +71,10 @@ IgcOptionsAndCapabilitiesBase *CIF_GET_INTERFACE_CLASS(IgcOclDeviceCtx,
   return CIF_GET_PIMPL()->GetIgcOptionsAndCapabilitiesHandle(ver);
 }
 
+void CIF_GET_INTERFACE_CLASS(IgcOclDeviceCtx, 6)::GetIGCRegKeys(CIF::Builtins::BufferSimple *outIgcRegKeysBuffer) {
+  CIF_GET_PIMPL()->GetIGCRegKeys(outIgcRegKeysBuffer);
+}
+
 } // namespace IGC
 
 CIF_EXPORT_ENTRY_POINTS_STATIC(IGC::IgcOclDeviceCtx);
