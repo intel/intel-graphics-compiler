@@ -269,8 +269,6 @@ void COpenCLKernel::tryHWGenerateLocalIDs() {
   if (!Dims)
     return;
 
-  m_Context->m_walkOrderStruct.m_valid = true;
-
   auto WO = getWorkGroupWalkOrder();
   bool ForcedWalkOrder = false;
   if (WO.dim0 != 0 || WO.dim1 != 0 || WO.dim2 != 0) {

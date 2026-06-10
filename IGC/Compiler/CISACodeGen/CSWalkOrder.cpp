@@ -30,8 +30,6 @@ void IGC::selectWalkOrderInPass(bool useLinearWalk, uint numberOfTypedAccess, ui
   EMIT_LOCAL_MASK &emitMask = walkOrderStruct.m_emitMask;
   bool &enableHWGenerateLID = walkOrderStruct.m_enableHWGenerateLID;
 
-  walkOrderStruct.m_valid = true;
-
   if (MMD->csInfo.neededThreadIdLayout == ThreadIDLayout::QuadTile) {
     threadIDLayout = ThreadIDLayout::QuadTile;
     return;

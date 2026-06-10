@@ -2358,44 +2358,49 @@ bool safeScheduleUp(llvm::BasicBlock *BB, llvm::Value *V, llvm::Instruction *&In
   return true;
 }
 
-inline constexpr StringRef GetThreadGroupVariableName(dim dimension) {
+unsigned int GetthreadGroupSize(const Module &M, dim dimension) {
+  unsigned int threadGroupSize = 0;
+  GlobalVariable *pGlobal = nullptr;
   switch (dimension) {
   case ThreadGroupSize_X:
-    return "ThreadGroupSize_X";
+    pGlobal = M.getGlobalVariable("ThreadGroupSize_X");
+    threadGroupSize =
+        static_cast<unsigned int>((llvm::cast<llvm::ConstantInt>(pGlobal->getInitializer())->getZExtValue()));
+    break;
   case ThreadGroupSize_Y:
-    return "ThreadGroupSize_Y";
+    pGlobal = M.getGlobalVariable("ThreadGroupSize_Y");
+    threadGroupSize =
+        static_cast<unsigned int>((llvm::cast<llvm::ConstantInt>(pGlobal->getInitializer())->getZExtValue()));
+    break;
   case ThreadGroupSize_Z:
-    return "ThreadGroupSize_Z";
+    pGlobal = M.getGlobalVariable("ThreadGroupSize_Z");
+    threadGroupSize =
+        static_cast<unsigned int>((llvm::cast<llvm::ConstantInt>(pGlobal->getInitializer())->getZExtValue()));
+    break;
   default:
-    IGC_ASSERT_MESSAGE(0, "Invalid thread group size dimension");
+    IGC_ASSERT(0);
     break;
   }
-  return "";
-}
-
-unsigned int GetthreadGroupSize(const Module &M, dim dimension) {
-  auto name = GetThreadGroupVariableName(dimension);
-  if (!name.empty()) {
-    GlobalVariable *pGlobal = M.getGlobalVariable(name);
-    if (pGlobal && pGlobal->hasInitializer()) {
-      IGC_ASSERT(pGlobal->isConstant());
-      IGC_ASSERT(pGlobal->getInitializer()->getType()->isIntegerTy());
-      return getImmValueU32(pGlobal->getInitializer());
-    }
-  };
-  return 0;
+  return threadGroupSize;
 }
 
 void SetthreadGroupSize(llvm::Module &M, llvm::Constant *size, dim dimension) {
-  auto name = GetThreadGroupVariableName(dimension);
-  if (!name.empty()) {
-    GlobalVariable *pGlobal = M.getGlobalVariable(name);
-    if (pGlobal) {
-      IGC_ASSERT(pGlobal->isConstant());
-      IGC_ASSERT(pGlobal->getInitializer()->getType()->isIntegerTy());
-      pGlobal->setInitializer(size);
-    }
+  llvm::GlobalVariable *pGlobal = nullptr;
+  switch (dimension) {
+  case ThreadGroupSize_X:
+    pGlobal = M.getGlobalVariable("ThreadGroupSize_X");
+    break;
+  case ThreadGroupSize_Y:
+    pGlobal = M.getGlobalVariable("ThreadGroupSize_Y");
+    break;
+  case ThreadGroupSize_Z:
+    pGlobal = M.getGlobalVariable("ThreadGroupSize_Z");
+    break;
+  default:
+    IGC_ASSERT(0);
+    break;
   }
+  pGlobal->setInitializer(size);
 }
 
 ConstantInt *getConstantSInt(IRBuilder<> &Builder, const int bitSize, int64_t val) {

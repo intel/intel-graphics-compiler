@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2026 Intel Corporation
+Copyright (C) 2017-2024 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -11,7 +11,6 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CISACodeGen/helper.h"
 #include "Compiler/CodeGenContextWrapper.hpp"
 #include "Compiler/CodeGenPublic.h"
-#include "Compiler/CISACodeGen/CSWalkOrder.hpp"
 #include "Compiler/CISACodeGen/HoistCongruentPhi.hpp"
 #include "Compiler/IGCPassSupport.h"
 #include "common/debug/Debug.hpp"
@@ -2045,14 +2044,39 @@ WIAnalysis::WIDependancy WIAnalysisRunner::calculate_dep(const VAArgInst *inst) 
 }
 
 void WIAnalysisRunner::CS_checkLocalIDs(Function *F) {
-  IGC_ASSERT(m_CGCtx->type == ShaderType::COMPUTE_SHADER);
+  CS_WALK_ORDER walkOrder = CS_WALK_ORDER::WO_XYZ;
+  ThreadIDLayout idLayout = ThreadIDLayout::X;
+
+  {
+    if (IGC_IS_FLAG_DISABLED(OverrideCsWalkOrderEnable) || IGC_IS_FLAG_DISABLED(OverrideCsTileLayoutEnable))
+      return;
+
+    walkOrder = (CS_WALK_ORDER)IGC_GET_FLAG_VALUE(OverrideCsWalkOrder);
+    idLayout = (ThreadIDLayout)IGC_GET_FLAG_VALUE(OverrideCsTileLayout);
+  }
+
+  if (idLayout == ThreadIDLayout::TileY || idLayout == ThreadIDLayout::QuadTile) {
+    // Need clarification on semantics. Skip for now.
+    return;
+  }
+
   Module *M = F->getParent();
-  const uint32_t X = GetthreadGroupSize(*M, ThreadGroupSize_X);
-  const uint32_t Y = GetthreadGroupSize(*M, ThreadGroupSize_Y);
-  const uint32_t Z = GetthreadGroupSize(*M, ThreadGroupSize_Z);
+  uint32_t X = 0, Y = 0, Z = 0;
+  if (GlobalVariable *pX = M->getGlobalVariable("ThreadGroupSize_X")) {
+    X = int_cast<unsigned>(cast<ConstantInt>(pX->getInitializer())->getZExtValue());
+  }
+  if (GlobalVariable *pY = M->getGlobalVariable("ThreadGroupSize_Y")) {
+    Y = int_cast<unsigned>(cast<ConstantInt>(pY->getInitializer())->getZExtValue());
+  }
+  if (GlobalVariable *pZ = M->getGlobalVariable("ThreadGroupSize_Z")) {
+    Z = int_cast<unsigned>(cast<ConstantInt>(pZ->getInitializer())->getZExtValue());
+  }
+
+  // sanity
   if (X == 0 || Y == 0 || Z == 0) {
     return;
   }
+
   if (X == 1) {
     m_localIDxUniform = true;
   }
@@ -2063,44 +2087,8 @@ void WIAnalysisRunner::CS_checkLocalIDs(Function *F) {
     m_localIDzUniform = true;
   }
 
-  bool pow2X = iSTD::IsPowerOfTwo(X);
-  bool pow2Y = iSTD::IsPowerOfTwo(Y);
-  bool pow2Z = iSTD::IsPowerOfTwo(Z);
-
-  constexpr CS_WALK_ORDER invalidWalkOrder = static_cast<CS_WALK_ORDER>(-1);
-  CS_WALK_ORDER walkOrder = invalidWalkOrder;
-  ThreadIDLayout idLayout = ThreadIDLayout::X;
-  {
-    // Check registry keys and metadata for forced walk order.
-    SComputeShaderWalkOrder walkOrderStruct = {};
-    walkOrderStruct.m_walkOrder = invalidWalkOrder;
-    overrideWalkOrderKeysInPass(pow2X, pow2Y, pow2Z, walkOrderStruct, m_CGCtx);
-    walkOrder = walkOrderStruct.m_walkOrder;
-    idLayout = walkOrderStruct.m_threadIDLayout;
-  }
-  bool isWalkOrderKnown = (walkOrder != invalidWalkOrder);
-
-  // Determine the maximum subgroup size used possible for this compute shader.
-  auto &csInfo = m_ModMD->csInfo;
-  // If no simd size was forced, assume the maximum possible size.
-  uint32_t maxSimdSize = 32;
-  uint32_t simdSize = csInfo.forcedSIMDSize > 0 ? csInfo.forcedSIMDSize : maxSimdSize;
-
-  // Unless explicitly forced, IGC never uses walk orders Z** or *Z* if
-  // workgroup size X and Y are both powers of 2
-  // See selectWalkOrderInPass() and selectBestWalkOrderInPass()
-  auto IsZLastId = [](CS_WALK_ORDER order) { return order == CS_WALK_ORDER::WO_XYZ || order == CS_WALK_ORDER::WO_YXZ; };
-  bool pow2XY = pow2X && pow2Y;
-  IGC_ASSERT(!pow2XY || IsZLastId(selectBestWalkOrderInPass(idLayout, pow2X, pow2Y, pow2Z).value_or(invalidWalkOrder)));
-  bool isZLast = !isWalkOrderKnown || IsZLastId(walkOrder);
-  // If Z is the last dimension in the walk order, and X and Y are both powers
-  // of 2, and the total number of threads is a multiple of simd size, then
-  // localIDz is also uniform within subgroup.
-  if (isZLast && pow2XY && (((X * Y) % simdSize) == 0)) {
-    m_localIDzUniform = true;
-  }
-
-  if (isWalkOrderKnown && idLayout == ThreadIDLayout::X) {
+  constexpr uint32_t simdSize = 32;
+  if (idLayout == ThreadIDLayout::X) {
     auto setUniform = [this](int dim) {
       switch (dim) {
       case 0:
