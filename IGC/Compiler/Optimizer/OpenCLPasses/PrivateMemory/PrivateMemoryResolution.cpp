@@ -1052,14 +1052,7 @@ bool PrivateMemoryResolution::resolveAllocaInstructions(bool privateOnStack, boo
 
           // Record storage offset/size so DwarfCompileUnit can interpret this as a
           // stack-based location and safely inline it even with optimizations disabled (O0).
-#if LLVM_VERSION_MAJOR < 22
           Ctx.m_DbgVarStorageMap[DbgDcl] = {scalarBufferOffset, bufferSize};
-#else
-          // FIXME: adapt to records
-          (void)scalarBufferOffset;
-          (void)bufferSize;
-          (void)DbgDcl;
-#endif
         }
       }
       // Replace all uses of original alloca with the bitcast
@@ -1353,13 +1346,8 @@ bool PrivateMemoryResolution::resolveAllocaInstructions(bool privateOnStack, boo
       auto DbgDcls = IGCLLVM::findDbgDeclareUses(pAI);
       for (auto DbgDcl : DbgDcls) {
         // Record in the cross-pass side-map (offset only; no size needed here).
-#if LLVM_VERSION_MAJOR < 22
         unsigned int scalarBufferOffset = m_ModAllocaInfo->getBufferOffset(pAI);
         Ctx.m_DbgVarStorageMap[DbgDcl] = {scalarBufferOffset, std::nullopt};
-#else
-        // FIXME: adapt to records
-        (void)DbgDcl;
-#endif
       }
     }
 

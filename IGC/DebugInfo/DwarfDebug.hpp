@@ -35,11 +35,10 @@ See LICENSE.TXT for details.
 #include "common/LLVMWarningsPop.hpp"
 // clang-format on
 
-// TODO: remove wrapper since we don't need LLVM 7 support
-#include "llvmWrapper/IR/IntrinsicInst.h"
 #include <llvmWrapper/ADT/Optional.h>
 
 #include "DIE.hpp"
+#include "DbgVariableTypes.hpp"
 #include "LexicalScopes.hpp"
 #include "VISAModule.hpp"
 
@@ -108,7 +107,7 @@ class DotDebugLocEntry {
   uint32_t offset = 0;
 
   // The location in the machine frame.
-  const llvm::DbgVariableIntrinsic *m_pDbgInst = nullptr;
+  const DbgVarInstEntry *m_DbgEntry = nullptr;
 
   // The variable to which this location entry corresponds.
   const llvm::MDNode *Variable = nullptr;
@@ -119,19 +118,18 @@ public:
   uint64_t start = 0;
   uint64_t end = 0;
 
-  DotDebugLocEntry() : m_pDbgInst(nullptr), Variable(nullptr) {}
-  DotDebugLocEntry(const llvm::MCSymbol *B, const llvm::MCSymbol *E, const llvm::DbgVariableIntrinsic *pDbgInst,
+  DotDebugLocEntry() : m_DbgEntry(nullptr), Variable(nullptr) {}
+  DotDebugLocEntry(const llvm::MCSymbol *B, const llvm::MCSymbol *E, const DbgVarInstEntry *dbgEntry,
                    const llvm::MDNode *V)
-      : m_pDbgInst(pDbgInst), Variable(V) {}
-  DotDebugLocEntry(const uint64_t s, const uint64_t e, const llvm::DbgVariableIntrinsic *pDbgInst,
-                   const llvm::MDNode *V)
-      : start(s), end(e), m_pDbgInst(pDbgInst), Variable(V) {}
+      : m_DbgEntry(dbgEntry), Variable(V) {}
+  DotDebugLocEntry(const uint64_t s, const uint64_t e, const DbgVarInstEntry *dbgEntry, const llvm::MDNode *V)
+      : start(s), end(e), m_DbgEntry(dbgEntry), Variable(V) {}
 
   /// \brief Empty entries are also used as a trigger to emit temp label. Such
   /// labels are referenced is used to find debug_loc offset for a given DIE.
   bool isEmpty() const { return start == 0 && end == 0; }
   const llvm::MDNode *getVariable() const { return Variable; }
-  const llvm::DbgVariableIntrinsic *getDbgInst() const { return m_pDbgInst; }
+  const DbgVarInstEntry *getDbgEntry() const { return m_DbgEntry; }
   uint64_t getStart() const { return start; }
   uint64_t getEnd() const { return end; }
 
@@ -170,8 +168,8 @@ private:
   unsigned int DotDebugLocOffset = InvalidDotDebugLocOffset;
   // Corresponding Abstract variable, if any
   DbgVariable *AbsVar = nullptr;
-  // DBG_VALUE instruction of the variable
-  const llvm::DbgVariableIntrinsic *m_pDbgInst = nullptr;
+  // DBG_VALUE entry of the variable
+  const DbgVarInstEntry *m_DbgEntry = nullptr;
 
   // isLocationInlined is true when we expect location to be inlined in
   // DW_AT_location.
@@ -200,10 +198,10 @@ public:
   llvm::StringRef getName() const { return Var->getName(); }
   DbgVariable *getAbstractVariable() const { return AbsVar; }
 
-  const llvm::DbgVariableIntrinsic *getDbgInst() const { return m_pDbgInst; }
-  void setDbgInst(const llvm::DbgVariableIntrinsic *pInst) {
-    IGC_ASSERT(pInst && IsSupportedDebugInst(pInst));
-    m_pDbgInst = pInst;
+  const DbgVarInstEntry *getDbgEntry() const { return m_DbgEntry; }
+  void setDbgEntry(const DbgVarInstEntry *dbgEntry) {
+    IGC_ASSERT(dbgEntry && IsSupportedDebugInst(dbgEntry));
+    m_DbgEntry = dbgEntry;
   }
 
   // TODO: re-design required since current approach does not support
@@ -285,12 +283,16 @@ public:
 
   llvm::DIType *getType() const;
 
-  static bool IsSupportedDebugInst(const llvm::Instruction *Inst);
+  static bool IsSupportedDebugInst(const DbgVarInstEntry *Inst);
   void print(llvm::raw_ostream &O, bool NestedAbstract = false) const;
+#if LLVM_VERSION_MAJOR < 22
   static void printDbgInst(llvm::raw_ostream &O, const llvm::Instruction *Inst, const char *NodePrefixes = "     ");
+#endif
 #ifndef NDEBUG
   void dump() const;
+#if LLVM_VERSION_MAJOR < 22
   static void dumpDbgInst(const llvm::Instruction *Inst);
+#endif // LLVM_VERSION_MAJOR < 22
 #endif // NDEBUG
 };
 
@@ -421,15 +423,15 @@ private:
   // Maps instruction with label emitted after instruction.
   llvm::DenseMap<const llvm::Instruction *, llvm::MCSymbol *> LabelsAfterInsn;
 
-  // Every user variable mentioned by a DBG_VALUE instruction in order of
+  // Every user variable mentioned by a debug variable entry in order of
   // appearance.
   llvm::SmallVector<const llvm::MDNode *, 8> UserVariables;
 
-  // For each user variable, keep a list of DBG_VALUE instructions in order.
+  // For each user variable, keep a list of debug variable entries in order.
   // The list can also contain normal instructions that clobber the previous
-  // DBG_VALUE.
-  using InstructionsList = llvm::SmallVector<const llvm::DbgVariableIntrinsic *, 4>;
-  typedef llvm::DenseMap<const llvm::MDNode *, InstructionsList> DbgValueHistoryMap;
+  // entry.
+  using DbgVarEntryList = llvm::SmallVector<const DbgVarInstEntry *, 4>;
+  typedef llvm::DenseMap<const llvm::MDNode *, DbgVarEntryList> DbgValueHistoryMap;
   DbgValueHistoryMap DbgValues;
 
   llvm::SmallVector<const llvm::MCSymbol *, 8> DebugRangeSymbols;
@@ -648,7 +650,7 @@ private:
     uint64_t start = 0;
     uint64_t end = 0;
     DbgVariable *dbgVar = nullptr;
-    const llvm::DbgVariableIntrinsic *pInst = nullptr;
+    const DbgVarInstEntry *dbgEntry = nullptr;
     const llvm::ConstantInt *imm = nullptr;
 
     VISAVariableLocation Loc;
@@ -668,37 +670,36 @@ private:
       FragmentInfo = {};
     }
 
-    void setImm(uint64_t s, uint64_t e, DbgVariable *var, const llvm::DbgVariableIntrinsic *inst,
-                const llvm::ConstantInt *val, std::optional<llvm::DIExpression::FragmentInfo> fragInfo = {}) {
+    void setImm(uint64_t s, uint64_t e, DbgVariable *var, const DbgVarInstEntry *entry, const llvm::ConstantInt *val,
+                std::optional<llvm::DIExpression::FragmentInfo> fragInfo = {}) {
       type = Type::Imm;
       start = s;
       end = e;
       dbgVar = var;
-      pInst = inst;
+      dbgEntry = entry;
       imm = val;
       FragmentInfo = fragInfo;
     }
 
-    void setFpBased(uint64_t s, uint64_t e, DbgVariable *var, const llvm::DbgVariableIntrinsic *inst,
+    void setFpBased(uint64_t s, uint64_t e, DbgVariable *var, const DbgVarInstEntry *entry,
                     const VISAVariableLocation &loc, std::optional<llvm::DIExpression::FragmentInfo> fragInfo = {}) {
       type = Type::FpBased;
       start = s;
       end = e;
       dbgVar = var;
-      pInst = inst;
+      dbgEntry = entry;
       Loc = loc;
       FragmentInfo = fragInfo;
     }
 
-    void setReg(uint64_t s, uint64_t e, DbgVariable *var, const llvm::DbgVariableIntrinsic *inst,
-                const VISAVariableLocation &loc, const DbgDecoder::LiveIntervalsVISA &range,
-                const DbgDecoder::LiveIntervalsVISA &range2nd = {},
+    void setReg(uint64_t s, uint64_t e, DbgVariable *var, const DbgVarInstEntry *entry, const VISAVariableLocation &loc,
+                const DbgDecoder::LiveIntervalsVISA &range, const DbgDecoder::LiveIntervalsVISA &range2nd = {},
                 std::optional<llvm::DIExpression::FragmentInfo> fragInfo = {}) {
       type = Type::Reg;
       start = s;
       end = e;
       dbgVar = var;
-      pInst = inst;
+      dbgEntry = entry;
       Loc = loc;
       visaRange = range;
       visaRange2nd = range2nd;
@@ -753,11 +754,11 @@ private:
   void encodeCompositeExprs(DbgVariable *RegVar, const std::vector<VarLocation> &ResolvedLocations,
                             llvm::DIVariable *DV, uint32_t &offset);
 
-  using DbgVarIPInfo = std::tuple<uint64_t, uint64_t, const llvm::DbgVariableIntrinsic *>;
+  using DbgVarRangeInfo = std::tuple<uint64_t, uint64_t, const DbgVarInstEntry *>;
   /// \brief Resolve debug variable ranges to merged VarLocation entries.
   /// Iterates over Ranges, resolves each to a VarLocation (immediate or register),
   /// and merges consecutive identical locations per-fragment into the output vector.
-  void resolveRangesToVarLocations(DbgVariable *RegVar, const std::vector<DbgVarIPInfo> &Ranges,
+  void resolveRangesToVarLocations(DbgVariable *RegVar, const std::vector<DbgVarRangeInfo> &Ranges,
                                    std::vector<VarLocation> &ResolvedLocations);
 
   /// \brief Contains prologue and epilogue information for non-optimized stack-call functions.
@@ -773,19 +774,19 @@ private:
 
   /// \brief Decide whether a variable's location can be inlined directly in
   /// the DIE.
-  bool canInlineToDIE(const llvm::DbgVariableIntrinsic *DbgInst, const VISAVariableLocation &Loc,
+  bool canInlineToDIE(const DbgVarInstEntry *dbgEntry, const VISAVariableLocation &Loc,
                       ::IGC::LexicalScope *Scope) const;
 
   /// \brief Determine the lexical scope for a debug variable.
-  ::IGC::LexicalScope *resolveVariableScope(llvm::DIVariable *DV, const llvm::DbgVariableIntrinsic *H,
+  ::IGC::LexicalScope *resolveVariableScope(llvm::DIVariable *DV, const DbgVarInstEntry *dbgEntry,
                                             const llvm::Function *MF);
 
   /// \brief Process the history of debug values for a single variable.
-  /// Analyzes all debug intrinsics associated with a variable and builds
+  /// Analyzes all debug variable entries associated with a variable and builds
   /// a mapping of DbgVariable instances to their GenISA IP.
   llvm::DIVariable *
   processVariableHistory(const llvm::MDNode *Var,
-                         llvm::MapVector<DbgVariable *, std::vector<DbgVarIPInfo>> &VariableLiveRanges,
+                         llvm::MapVector<DbgVariable *, std::vector<DbgVarRangeInfo>> &VariableLiveRanges,
                          const llvm::Function *MF);
 
   /// \brief Collect info for variables that were optimized out.

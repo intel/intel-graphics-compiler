@@ -188,8 +188,13 @@ bool VISAModule::IsExecutableInst(const llvm::Instruction &inst) {
   if (IsCatchAllIntrinsic(&inst))
     return false;
 
+#if LLVM_VERSION_MAJOR < 22
+  // On LLVM >= 22, debug info is stored as non-instruction DbgRecord objects
+  // attached to real instructions and never appears in the instruction stream,
+  // so this check is a no-op there.
   if (llvm::isa<DbgInfoIntrinsic>(inst))
     return false;
+#endif
 
   return true;
 }

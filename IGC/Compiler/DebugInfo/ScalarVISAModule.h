@@ -53,9 +53,10 @@ public:
     return llvm::ArrayRef<char>((const char *)PO.m_programBin, PO.m_programSize);
   }
   VISAVariableLocation GetVariableLocation(const llvm::Instruction *pInst) const override;
+  VISAVariableLocation GetVariableLocation(const DbgVarInstEntry *pEntry) const override;
 
-  std::optional<uint32_t> getStorageOffset(const llvm::DbgVariableIntrinsic *DbgInst) const override;
-  std::optional<uint32_t> getStorageSize(const llvm::DbgVariableIntrinsic *DbgInst) const override;
+  std::optional<uint32_t> getStorageOffset(DbgVarStorageKey dbgKey) const override;
+  std::optional<uint32_t> getStorageSize(DbgVarStorageKey dbgKey) const override;
 
   void UpdateVisaId() override;
   void ValidateVisaId() override;

@@ -12,9 +12,6 @@ SPDX-License-Identifier: MIT
 #include "DebugInfo/DwarfDebug.hpp"
 #include "DebugInfo/VISADebugInfo.hpp"
 #include "Compiler/CISACodeGen/DebugInfo.hpp"
-#include "llvm/IR/IntrinsicInst.h"
-
-#include "llvmWrapper/IR/IntrinsicInst.h"
 #include "llvmWrapper/IR/Instructions.h"
 
 using namespace llvm;
@@ -58,11 +55,10 @@ bool DebugInfoPass::runOnModule(llvm::Module &M) {
   for (auto &F : M) {
     for (auto &BB : F) {
       for (auto &I : BB) {
-        if (auto *dbgInst = dyn_cast<DbgVariableIntrinsic>(&I)) {
-          if (dbgInst->getNumVariableLocationOps() > 1) {
-            IGCLLVM::setKillLocation(dbgInst);
-          }
-        }
+        forEachDbgVar(I, [](DbgVarInstEntry *E) {
+          if (E->getNumVariableLocationOps() > 1)
+            dbgVarSetKillLocation(E);
+        });
       }
     }
   }
@@ -298,28 +294,30 @@ void DebugInfoPass::EmitDebugInfo(bool finalize, const IGC::VISADebugInfo &VisaD
 void DebugInfoData::extractAddressClass(llvm::Function &F) {
   DIBuilder di(*F.getParent());
 
-  for (auto &bb : F) {
-    for (auto &pInst : bb) {
-      if (auto *DI = dyn_cast<DbgVariableIntrinsic>(&pInst)) {
-        const DIExpression *DIExpr = DI->getExpression();
-        llvm::SmallVector<uint64_t, 5> newElements;
-        for (auto I = DIExpr->expr_op_begin(), E = DIExpr->expr_op_end(); I != E; ++I) {
-          if (I->getOp() == dwarf::DW_OP_constu) {
-            auto patternI = I;
-            if (++patternI != E && patternI->getOp() == dwarf::DW_OP_swap && ++patternI != E &&
-                patternI->getOp() == dwarf::DW_OP_xderef) {
-              I = patternI;
-              continue;
-            }
-          }
-          I->appendToVector(newElements);
-        }
-
-        if (newElements.size() < DIExpr->getNumElements()) {
-          DIExpression *newDIExpr = di.createExpression(newElements);
-          DI->setExpression(newDIExpr);
+  auto processDbgVariable = [&](auto *DI) {
+    const DIExpression *DIExpr = DI->getExpression();
+    llvm::SmallVector<uint64_t, 5> newElements;
+    for (auto I = DIExpr->expr_op_begin(), E = DIExpr->expr_op_end(); I != E; ++I) {
+      if (I->getOp() == dwarf::DW_OP_constu) {
+        auto patternI = I;
+        if (++patternI != E && patternI->getOp() == dwarf::DW_OP_swap && ++patternI != E &&
+            patternI->getOp() == dwarf::DW_OP_xderef) {
+          I = patternI;
+          continue;
         }
       }
+      I->appendToVector(newElements);
+    }
+
+    if (newElements.size() < DIExpr->getNumElements()) {
+      DIExpression *newDIExpr = di.createExpression(newElements);
+      DI->setExpression(newDIExpr);
+    }
+  };
+
+  for (auto &bb : F) {
+    for (auto &pInst : bb) {
+      forEachDbgVar(pInst, [&](DbgVarInstEntry *DVR) { processDbgVariable(DVR); });
     }
   }
 }

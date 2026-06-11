@@ -535,15 +535,15 @@ void StreamEmitter::verifyRegisterLocationSize(const IGC::DbgVariable &VarVal, c
   if (!GetEmitterSettings().EnableDebugInfoValidation)
     return;
 
-  auto *DbgInst = VarVal.getDbgInst();
-  IGC_ASSERT(DbgInst);
-  auto *Ty = DbgInst->getType();
+  auto *dbgEntry = VarVal.getDbgEntry();
+  IGC_ASSERT(dbgEntry);
+  auto *Ty = IGC::dbgVarGetValue(dbgEntry)->getType();
   IGC_ASSERT(Ty->isSingleValueType());
 
   if (Ty->isPointerTy())
     return; // no validation for pointers (for now)
 
-  auto *Expr = DbgInst->getExpression();
+  auto *Expr = dbgEntry->getExpression();
   if (Expr->isFragment() || Expr->isImplicit()) {
     // TODO: implement some sanity checks
     return;
@@ -571,13 +571,13 @@ void StreamEmitter::verifyRegisterLocationExpr(const DbgVariable &DV, const Dwar
   if (DV.currentLocationIsMemoryAddress())
     return;
 
-  auto *DbgInst = DV.getDbgInst();
-  if (!isa<llvm::DbgValueInst>(DbgInst))
+  auto *dbgEntry = DV.getDbgEntry();
+  if (!IGC::dbgVarIsValue(dbgEntry))
     return;
 
   DiagnosticBuff Diag;
   if (!DV.currentLocationIsImplicit() && !DV.currentLocationIsSimpleIndirectValue()) {
-    if (DbgInst->getExpression()->isComplex()) {
+    if (dbgEntry->getExpression()->isComplex()) {
       Diag.out() << "ValidationFailure [UnexpectedComlexExpression]" << " for a simple register location\n";
     }
   }

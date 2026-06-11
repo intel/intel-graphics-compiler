@@ -18,8 +18,8 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPop.hpp"
 // clang-format on
 
-#include "llvmWrapper/IR/IntrinsicInst.h"
 #include "LexicalScopes.hpp"
+#include "DbgVariableTypes.hpp"
 #include "VISAIDebugEmitter.hpp"
 #include "IGC/common/Types.hpp"
 
@@ -482,14 +482,24 @@ public:
   /// @return variable location in VISA.
   virtual VISAVariableLocation GetVariableLocation(const llvm::Instruction *pInst) const = 0;
 
+  /// @brief Return variable location in VISA for a debug variable entry.
+  /// Called by DwarfDebug via DbgVarInstEntry* (DbgVariableRecord on LLVM >= 22,
+  /// DbgVariableIntrinsic on older versions). Override in ScalarVisaModule.
+  /// On LLVM < 22, DbgVarInstEntry IS a DbgVariableIntrinsic (an Instruction),
+  /// so the default delegates to the Instruction* overload to preserve correct
+  /// dispatch for subclasses (e.g. GenXFunction) that only override that path.
+  virtual VISAVariableLocation GetVariableLocation(const DbgVarInstEntry *pEntry) const {
+#if LLVM_VERSION_MAJOR < 22
+    return GetVariableLocation(static_cast<const llvm::Instruction *>(pEntry));
+#else
+    return VISAVariableLocation(this);
+#endif
+  }
+
   /// @brief Look up the StorageOffset recorded by PrivateMemoryResolution.
   /// @return nullopt if no entry found (variable is not stack-based private memory).
-  virtual std::optional<uint32_t> getStorageOffset(const llvm::DbgVariableIntrinsic *DbgInst) const {
-    return std::nullopt;
-  }
-  virtual std::optional<uint32_t> getStorageSize(const llvm::DbgVariableIntrinsic *DbgInst) const {
-    return std::nullopt;
-  }
+  virtual std::optional<uint32_t> getStorageOffset(DbgVarStorageKey dbgKey) const { return std::nullopt; }
+  virtual std::optional<uint32_t> getStorageSize(DbgVarStorageKey dbgKey) const { return std::nullopt; }
 
   /// @brief Updates VISA instruction id to current instruction number.
   virtual void UpdateVisaId() = 0;

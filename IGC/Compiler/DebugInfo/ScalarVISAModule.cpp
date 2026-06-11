@@ -36,11 +36,11 @@ namespace IGC {
   lineNumbersOnly = false;
 
   if (Utils::HasDebugInfo(*ctx->getModule())) {
-    bool hasDbgIntrinsic = false;
+    bool hasDbgEntries = false;
     bool hasDbgLoc = false;
 
-    // Return true if LLVM IR has dbg.declare/dbg.value intrinsic calls.
-    // And also !dbgloc data.
+    // Return true if LLVM IR has debug variable records (LLVM >= 22) or
+    // dbg.declare/dbg.value intrinsic calls (LLVM < 22), and also !dbgloc data.
     auto &funcList = module->getFunctionList();
 
     for (auto funcIt = funcList.begin(); funcIt != funcList.end() && !hasFullDebugInfo; funcIt++) {
@@ -52,9 +52,10 @@ namespace IGC {
         for (auto instIt = bb.begin(); instIt != bb.end() && !hasFullDebugInfo; instIt++) {
           auto &inst = (*instIt);
 
-          if (dyn_cast_or_null<DbgInfoIntrinsic>(&inst)) {
-            hasDbgIntrinsic = true;
-          }
+          // On LLVM < 22, debug variable intrinsics appear as instructions in the
+          // stream.  On LLVM >= 22, they are DbgVariableRecord objects attached to
+          // real instructions; forEachDbgVar handles both cases uniformly.
+          IGC::forEachDbgVar(inst, [&hasDbgEntries](auto *) { hasDbgEntries = true; });
 
           auto &loc = inst.getDebugLoc();
 
@@ -62,7 +63,7 @@ namespace IGC {
             hasDbgLoc = true;
           }
 
-          hasFullDebugInfo = hasDbgIntrinsic & hasDbgLoc;
+          hasFullDebugInfo = hasDbgEntries & hasDbgLoc;
 
           fullDebugInfo |= hasFullDebugInfo;
           lineNumbersOnly |= hasDbgLoc;
@@ -301,19 +302,28 @@ const Argument *ScalarVisaModule::GetTracedArgument(const Value *pVal, bool isAd
 }
 
 VISAVariableLocation ScalarVisaModule::GetVariableLocation(const llvm::Instruction *pInst) const {
-  Value *pVal = nullptr;
-  MDNode *pNode = nullptr;
-  bool isDbgDclInst = false;
-  if (const DbgDeclareInst *pDbgAddrInst = dyn_cast<DbgDeclareInst>(pInst)) {
-    pVal = pDbgAddrInst->getAddress();
-    pNode = pDbgAddrInst->getVariable();
-    isDbgDclInst = true;
-  } else if (const DbgValueInst *pDbgValInst = dyn_cast<DbgValueInst>(pInst)) {
-    pVal = pDbgValInst->getValue();
-    pNode = pDbgValInst->getVariable();
-  } else {
-    IGC_ASSERT_MESSAGE(0, "Expected debug info instruction");
-  }
+#if LLVM_VERSION_MAJOR < 22
+  // On LLVM < 22 debug variable intrinsics are Instructions; forward to the
+  // DbgVarInstEntry* overload which holds all the real logic.
+  IGC_ASSERT_MESSAGE(isa<DbgVariableIntrinsic>(pInst), "Expected debug info instruction");
+  return GetVariableLocation(cast<DbgVariableIntrinsic>(pInst));
+#else
+  // On LLVM >= 22 debug variable info lives in DbgVariableRecord (non-instruction
+  // debug records); this overload should never be reached.
+  IGC_ASSERT_MESSAGE(0, "GetVariableLocation(Instruction*) is unreachable on LLVM >= 22");
+  return VISAVariableLocation(this);
+#endif
+}
+
+bool ScalarVisaModule::IsCatchAllIntrinsic(const llvm::Instruction *pInst) const {
+  return ((isa<GenIntrinsicInst>(pInst) &&
+           cast<GenIntrinsicInst>(pInst)->getIntrinsicID() == GenISAIntrinsic::GenISA_CatchAllDebugLine));
+}
+
+VISAVariableLocation ScalarVisaModule::GetVariableLocation(const DbgVarInstEntry *pEntry) const {
+  Value *pVal = IGC::dbgVarGetValue(pEntry);
+  MDNode *pNode = pEntry->getVariable();
+  bool isDbgDclInst = IGC::dbgVarIsDecl(pEntry);
 
   if (!pVal || isa<UndefValue>(pVal)) {
     // No debug info value, return empty location!
@@ -443,7 +453,7 @@ VISAVariableLocation ScalarVisaModule::GetVariableLocation(const llvm::Instructi
   auto globalSubCVar = m_pShader->GetGlobalCVar(pVal);
 
   if (!globalSubCVar) {
-    pVar = m_pShader->GetDebugInfoData().getMapping(*pInst->getFunction(), pVal);
+    pVar = m_pShader->GetDebugInfoData().getMapping(*IGC::dbgVarAnchorInst(pEntry)->getFunction(), pVal);
     if (!pVar) {
       return VISAVariableLocation(this);
     }
@@ -493,22 +503,17 @@ VISAVariableLocation ScalarVisaModule::GetVariableLocation(const llvm::Instructi
   return VISAVariableLocation(this);
 }
 
-bool ScalarVisaModule::IsCatchAllIntrinsic(const llvm::Instruction *pInst) const {
-  return ((isa<GenIntrinsicInst>(pInst) &&
-           cast<GenIntrinsicInst>(pInst)->getIntrinsicID() == GenISAIntrinsic::GenISA_CatchAllDebugLine));
-}
-
-std::optional<uint32_t> ScalarVisaModule::getStorageOffset(const llvm::DbgVariableIntrinsic *DbgInst) const {
+std::optional<uint32_t> ScalarVisaModule::getStorageOffset(DbgVarStorageKey dbgKey) const {
   const auto &storageMap = m_pShader->GetContext()->m_DbgVarStorageMap;
-  auto it = storageMap.find(DbgInst);
+  auto it = storageMap.find(dbgKey);
   if (it != storageMap.end())
     return it->second.offset;
   return std::nullopt;
 }
 
-std::optional<uint32_t> ScalarVisaModule::getStorageSize(const llvm::DbgVariableIntrinsic *DbgInst) const {
+std::optional<uint32_t> ScalarVisaModule::getStorageSize(DbgVarStorageKey dbgKey) const {
   const auto &storageMap = m_pShader->GetContext()->m_DbgVarStorageMap;
-  auto it = storageMap.find(DbgInst);
+  auto it = storageMap.find(dbgKey);
   if (it != storageMap.end())
     return it->second.size;
   return std::nullopt;

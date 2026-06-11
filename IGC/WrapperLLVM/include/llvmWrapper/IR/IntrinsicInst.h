@@ -14,7 +14,6 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/Constants.h>
 #include <llvm/IR/IntrinsicInst.h>
 #include "llvm/IR/DebugInfoMetadata.h"
-#include "llvm/Support/Casting.h"
 #include "IGC/common/LLVMWarningsPop.hpp"
 
 #include "Probe/Assertion.h"
@@ -84,6 +83,23 @@ inline void setExpression(llvm::DbgVariableIntrinsic *DbgInst, llvm::DIExpressio
 inline void setExpression(llvm::DbgVariableRecord *DbgRec, llvm::DIExpression *NewExpr) {
   IGC_ASSERT(DbgRec);
   DbgRec->setExpression(NewExpr);
+}
+
+inline bool isKillLocation(const llvm::DbgVariableRecord *DbgRec) {
+  IGC_ASSERT(DbgRec);
+  return DbgRec->isKillLocation();
+}
+
+inline llvm::Value *getVariableLocation(const llvm::DbgVariableRecord *DbgRec) {
+  IGC_ASSERT(DbgRec);
+  IGC_ASSERT_MESSAGE((DbgRec->getNumVariableLocationOps() == 1) || isKillLocation(DbgRec),
+                     "unsupported number of location ops");
+  return DbgRec->getVariableLocationOp(0);
+}
+
+inline void setKillLocation(llvm::DbgVariableRecord *DbgRec) {
+  IGC_ASSERT(DbgRec);
+  DbgRec->setKillLocation();
 }
 #endif
 } // namespace IGCLLVM

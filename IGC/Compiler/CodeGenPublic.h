@@ -18,6 +18,7 @@ SPDX-License-Identifier: MIT
 #include "common/igc_resourceDimTypes.h"
 // hack
 #include "common/debug/Debug.hpp"
+#include "DebugInfo/DbgVariableTypes.hpp"
 #include "common/debug/Dump.hpp"
 #include <set>
 #include <string.h>
@@ -983,7 +984,7 @@ public:
     uint32_t offset = 0;
     std::optional<uint32_t> size;
   };
-  llvm::DenseMap<const llvm::DbgVariableIntrinsic *, DbgVarStorageInfo> m_DbgVarStorageMap;
+  llvm::DenseMap<DbgVarStorageKey, DbgVarStorageInfo> m_DbgVarStorageMap;
   bool m_hasDPEmu = false;
   bool m_hasDPDivSqrtEmu = false;
   bool m_hasDPConvEmu = false;

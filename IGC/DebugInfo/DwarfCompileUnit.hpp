@@ -472,7 +472,7 @@ private:
 
 public:
   // Added for 1-step elf
-  void buildLocation(const llvm::Instruction *, IGC::DbgVariable &, IGC::DIE *);
+  void buildLocation(const DbgVarInstEntry *, IGC::DbgVariable &, IGC::DIE *);
   DIEBlock *buildPointer(const DbgVariable &, const VISAVariableLocation &);
   DIEBlock *buildSampler(const DbgVariable &, const VISAVariableLocation &);
 
