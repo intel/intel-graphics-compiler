@@ -1741,6 +1741,18 @@ void HWConformityPro::fixMulh(INST_LIST_ITER it, G4_BB *bb) {
                   IS_DTYPE(inst->getSrc(1)->getType()),
               "only DW-type sources are supported");
 
+  // mullh does not support indirect addressing for any source operand.
+  // Materialize indirect src0/src1 into a direct GRF temp before the
+  // mulh -> mullh expansion.
+  if (inst->getSrc(0)->isSrcRegRegion() &&
+      inst->getSrc(0)->asSrcRegRegion()->isIndirect()) {
+    replaceSrcWithRawMov(it, bb, 0, /*tmpStride*/ 1, builder.getGRFAlign());
+  }
+  if (inst->getSrc(1)->isSrcRegRegion() &&
+      inst->getSrc(1)->asSrcRegRegion()->isIndirect()) {
+    replaceSrcWithRawMov(it, bb, 1, /*tmpStride*/ 1, builder.getGRFAlign());
+  }
+
   if (inst->getExecSize() > builder.getNativeExecSize()) {
     auto startIter = it;
     bool isFirstInst = startIter == bb->begin();
@@ -2067,6 +2079,18 @@ void HWConformityPro::fixMadw(INST_LIST_ITER it, G4_BB *bb) {
   vISA_ASSERT(IS_DTYPE(src0->getType()) && IS_DTYPE(src1->getType()) &&
                   IS_DTYPE(src2->getType()),
               "only DW-type sources are supported");
+
+  // mullh does not support indirect addressing for any source operand.
+  // Materialize indirect src0/src1 into a direct GRF temp before the
+  // madw -> mullh expansion.
+  if (src0->isSrcRegRegion() && src0->asSrcRegRegion()->isIndirect()) {
+    replaceSrcWithRawMov(it, bb, 0, /*tmpStride*/ 1, builder.getGRFAlign());
+    src0 = inst->getSrc(0);
+  }
+  if (src1->isSrcRegRegion() && src1->asSrcRegRegion()->isIndirect()) {
+    replaceSrcWithRawMov(it, bb, 1, /*tmpStride*/ 1, builder.getGRFAlign());
+    src1 = inst->getSrc(1);
+  }
 
   // If src2 is immediate value 0, there is no need to generate addc and add
   // instructions.
