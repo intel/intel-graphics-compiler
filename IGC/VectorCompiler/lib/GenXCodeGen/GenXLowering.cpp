@@ -5064,7 +5064,8 @@ bool GenXLowering::lowerDpas(CallInst *CI) {
   return true;
 }
 
-static Value *unpackBlockScale(Value *V, Instruction *InsertPt) {
+static Value *unpackBlockScale(Value *V, Instruction *InsertPt,
+                               unsigned ScaleType) {
   auto *Ty = cast<IGCLLVM::FixedVectorType>(V->getType());
   IGC_ASSERT(Ty->isIntOrIntVectorTy(8));
 
@@ -5073,36 +5074,52 @@ static Value *unpackBlockScale(Value *V, Instruction *InsertPt) {
 
   if (auto *C = dyn_cast<ConstantDataVector>(V)) {
     auto *Splat = dyn_cast_or_null<ConstantInt>(C->getSplatValue());
-    // The splat value of 127 will be replaced with undef in GenXPatternMatch
-    // and translated into null register by the GenXCisaBuilder.
-    if (Splat && Splat->getZExtValue() == 127)
+    // A block scale operand that is a splat of 1.0 applies no scaling. It will
+    // be replaced with undef in GenXPatternMatch and translated into a null
+    // register by the GenXCisaBuilder.
+    // The encoding of 1.0 depends on the scale type
+    // (exponent set to the bias, mantissa cleared):
+    //   E8M0  (0): bias 127, 0 mantissa bits -> 127            (0x7f)
+    unsigned OneEncoding = 127; // E8M0
+    if (Splat && Splat->getZExtValue() == OneEncoding)
       return nullptr;
   }
 
+  // The block scale operand is packed as `Passes` groups of `ElementsPerPass`
+  // values, with each group placed `VStride` elements apart in the source
+  // register. The scales are accessed at `pass * 32` for the E8M0 scale type (2
+  // passes)
   constexpr unsigned VStride = 32;
-  const auto NumElements = Ty->getNumElements();
-  const auto HalfNumElements = NumElements / 2;
+  constexpr unsigned Passes = 2;
 
-  if (NumElements > VStride) // Already lowered
+  const auto NumElements = Ty->getNumElements();
+  const auto ElementsPerPass = NumElements / Passes;
+
+  // The unpacked operand has to span `(Passes - 1) * VStride` elements to reach
+  // the last pass plus `ElementsPerPass` elements of that pass.
+  const unsigned UnpackedElements = (Passes - 1) * VStride + ElementsPerPass;
+
+  constexpr unsigned MaxPackedElements = 32;
+  if (NumElements > MaxPackedElements) // Already lowered
     return nullptr;
 
   IRBuilder<> Builder(InsertPt);
   const auto &DL = InsertPt->getModule()->getDataLayout();
   const auto &DebugLoc = InsertPt->getDebugLoc();
 
-  auto *NewTy = IGCLLVM::FixedVectorType::get(Builder.getInt8Ty(),
-                                              HalfNumElements + VStride);
+  auto *NewTy =
+      IGCLLVM::FixedVectorType::get(Builder.getInt8Ty(), UnpackedElements);
 
   if (GenXIntrinsic::isRdRegion(V)) {
     auto *RdRgn = cast<CallInst>(V);
     vc::CMRegion R(RdRgn);
 
-    if (!R.Indirect && R.VStride == VStride && R.Width == HalfNumElements &&
-        R.Stride == 1 && R.Offset % HalfNumElements == 0) {
+    if (!R.Indirect && R.VStride == VStride && R.Width == ElementsPerPass &&
+        R.Stride == 1 && R.Offset % ElementsPerPass == 0) {
       auto *Src = RdRgn->getArgOperand(0);
 
       vc::CMRegion NewR(NewTy, &DL);
-      NewR.NumElements = HalfNumElements + VStride;
+      NewR.NumElements = UnpackedElements;
       NewR.VStride = 1;
       NewR.Width = 1;
       NewR.Stride = 0;
@@ -5115,7 +5132,7 @@ static Value *unpackBlockScale(Value *V, Instruction *InsertPt) {
   vc::CMRegion WidenR(NewTy, &DL);
   WidenR.NumElements = NumElements;
   WidenR.VStride = VStride;
-  WidenR.Width = HalfNumElements;
+  WidenR.Width = ElementsPerPass;
   WidenR.Stride = 1;
 
   return WidenR.createWrRegion(UndefValue::get(NewTy), V, "", InsertPt,
@@ -5126,20 +5143,29 @@ bool GenXLowering::lowerBDpas(CallInst *CI) {
   constexpr unsigned Src1ScaleIdx = 3;
   constexpr unsigned Src2ScaleIdx = 4;
   constexpr unsigned Src1PrecIdx = 5;
+  constexpr unsigned DataTypeMask = 0xff;
+  constexpr unsigned DataTypeShift = 8;
+  constexpr unsigned BlockScaleMask = 0xff;
 
   const auto IID = vc::getAnyIntrinsicID(CI);
   IGC_ASSERT(IID == GenXIntrinsic::genx_bdpas);
 
   auto *Src1PrecV = cast<ConstantInt>(CI->getArgOperand(Src1PrecIdx));
-  auto Src1Precision = static_cast<GenPrecision>(Src1PrecV->getZExtValue());
+  // For bdpas precision operands the low byte is data precision and the high
+  // byte may encode block scale type.
+  auto Src1Precision =
+      static_cast<GenPrecision>(Src1PrecV->getZExtValue() & DataTypeMask);
   if (Src1Precision != GenPrecision::E2M1)
     return false;
+
+  auto ScaleType =
+      (Src1PrecV->getZExtValue() >> DataTypeShift) & BlockScaleMask;
 
   SmallVector<Value *, 10> Args(CI->args());
   bool IsLoweringRequired = false;
 
   for (auto Idx : {Src1ScaleIdx, Src2ScaleIdx})
-    if (auto *V = unpackBlockScale(Args[Idx], CI)) {
+    if (auto *V = unpackBlockScale(Args[Idx], CI, ScaleType)) {
       Args[Idx] = V;
       IsLoweringRequired = true;
     }

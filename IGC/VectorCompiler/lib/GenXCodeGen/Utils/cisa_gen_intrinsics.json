@@ -6296,8 +6296,8 @@
           "Src2",
           "Src3",
           "Src4",
-          "static_cast<GenPrecision>(Src2Precision)",
-          "static_cast<GenPrecision>(Src1Precision)",
+          "static_cast<GenPrecision>(Src2Precision & 0xff)",
+          "static_cast<GenPrecision>(Src1Precision & 0xff)",
           "SystolicDepth",
           "RepeatCount"
         ]

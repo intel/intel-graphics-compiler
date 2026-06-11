@@ -4381,6 +4381,7 @@ bool GenXPatternMatch::simplifyDpasNullSrc(CallInst *Inst) {
 
 bool GenXPatternMatch::simplifyBDpasNullSrc(CallInst *Inst) {
   constexpr unsigned NullScaleValue = 127;
+  constexpr unsigned DataTypeMask = 0xff;
 
   auto IID = vc::getAnyIntrinsicID(Inst);
   IGC_ASSERT_EXIT(IID == GenXIntrinsic::genx_bdpas);
@@ -4414,8 +4415,10 @@ bool GenXPatternMatch::simplifyBDpasNullSrc(CallInst *Inst) {
     auto *Acc = Inst->getArgOperand(0);
     auto *Src1 = Inst->getArgOperand(1);
     auto *Src2 = Inst->getArgOperand(2);
-    auto *Src1Precision = Inst->getArgOperand(5);
-    auto *Src2Precision = Inst->getArgOperand(6);
+    auto *Src1Precision = Builder.CreateAnd(Inst->getArgOperand(5),
+                                            Builder.getInt32(DataTypeMask));
+    auto *Src2Precision = Builder.CreateAnd(Inst->getArgOperand(6),
+                                            Builder.getInt32(DataTypeMask));
     auto *SystolicDepth = Inst->getArgOperand(7);
     auto *RepeatCount = Inst->getArgOperand(8);
 

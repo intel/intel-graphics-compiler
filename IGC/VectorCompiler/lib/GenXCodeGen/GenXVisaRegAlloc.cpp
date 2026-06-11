@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2024 Intel Corporation
+Copyright (C) 2017-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -727,7 +727,7 @@ static Type *calcOverrideType(Type *OverrideType, const SimpleValue &V,
  */
 static std::tuple<bool, GenXVisaRegAlloc::Reg *>
 calcAlias(const Type *OverrideType, const Signedness &Signed, bool IsBF,
-          GenXVisaRegAlloc::Reg *R) {
+          unsigned ExplicitVisaType, GenXVisaRegAlloc::Reg *R) {
   GenXVisaRegAlloc::Reg *LastAlias = nullptr;
   for (GenXVisaRegAlloc::Reg *CurAlias = R; CurAlias;
        CurAlias = CurAlias->NextAlias) {
@@ -737,7 +737,8 @@ calcAlias(const Type *OverrideType, const Signedness &Signed, bool IsBF,
     if (ExistingType == OverrideType &&
         CurAlias->Num >= VISA_NUM_RESERVED_REGS &&
         (CurAlias->Signed == Signed || Signed == DONTCARESIGNED) &&
-        CurAlias->IsBF == IsBF) {
+        CurAlias->IsBF == IsBF &&
+        CurAlias->ExplicitVisaType == ExplicitVisaType) {
       LLVM_DEBUG(dbgs() << "Using alias: "; CurAlias->print(dbgs());
                  dbgs() << "\n");
       return std::make_tuple(true, CurAlias);
@@ -792,7 +793,8 @@ GenXVisaRegAlloc::getRegForValueUntyped(SimpleValue V) const {
  */
 GenXVisaRegAlloc::Reg *
 GenXVisaRegAlloc::getRegForValueOrNull(SimpleValue V, Signedness Signed,
-                                       Type *OverrideType, bool IsBF) const {
+                                       Type *OverrideType, bool IsBF,
+                                       unsigned ExplicitVisaType) const {
   LLVM_DEBUG(dbgs() << "getRegForValueOrNull " << *(V.getValue()) << "\n");
   Reg *R = getRegForValueUntyped(V);
   if (!R)
@@ -806,7 +808,8 @@ GenXVisaRegAlloc::getRegForValueOrNull(SimpleValue V, Signedness Signed,
     IGC_ASSERT(OverrideType == R->Ty);
     return R;
   }
-  auto [AliasFound, LastAlias] = calcAlias(OverrideType, Signed, IsBF, R);
+  auto [AliasFound, LastAlias] =
+      calcAlias(OverrideType, Signed, IsBF, ExplicitVisaType, R);
   if (AliasFound)
     return LastAlias;
   return nullptr;
@@ -828,11 +831,13 @@ GenXVisaRegAlloc::getRegForValueOrNull(SimpleValue V, Signedness Signed,
  */
 GenXVisaRegAlloc::Reg *
 GenXVisaRegAlloc::getOrCreateRegForValue(SimpleValue V, Signedness Signed,
-                                         Type *OverrideType, bool IsBF) {
+                                         Type *OverrideType, bool IsBF,
+                                         unsigned ExplicitVisaType) {
 
   LLVM_DEBUG(dbgs() << "getOrCreateRegForValue " << *(V.getValue()) << "\n");
 
-  Reg *R = getRegForValueOrNull(V, Signed, OverrideType, IsBF);
+  Reg *R =
+      getRegForValueOrNull(V, Signed, OverrideType, IsBF, ExplicitVisaType);
   if (R)
     return R;
   R = getRegForValueUntyped(V);
@@ -841,9 +846,10 @@ GenXVisaRegAlloc::getOrCreateRegForValue(SimpleValue V, Signedness Signed,
 
   OverrideType = calcOverrideType(OverrideType, V, R, DL);
   // Run out of aliases. Add a new one.
-  Reg *NewReg =
-      createReg(vc::RegCategory::General, OverrideType, Signed, 0, R, IsBF);
-  auto [AliasFound, LastAlias] = calcAlias(OverrideType, Signed, IsBF, R);
+  Reg *NewReg = createReg(vc::RegCategory::General, OverrideType, Signed, 0, R,
+                          IsBF, ExplicitVisaType);
+  auto [AliasFound, LastAlias] =
+      calcAlias(OverrideType, Signed, IsBF, ExplicitVisaType, R);
   // If alias exist - it must returned from getRegForValueOrNull above
   IGC_ASSERT(!AliasFound);
   LastAlias->NextAlias = NewReg;
@@ -878,7 +884,7 @@ void GenXVisaRegAlloc::addRetIPArgument() {
  *          Signedness = whether signed type required
  */
 TypeDetails::TypeDetails(const DataLayout &DL, Type *Ty, Signedness Signed,
-                         bool IsBF)
+                         bool IsBF, unsigned ExplicitVisaType)
     : DL(DL) {
   Type *ElementTy = Ty;
   NumElements = 1;
@@ -889,7 +895,9 @@ TypeDetails::TypeDetails(const DataLayout &DL, Type *Ty, Signedness Signed,
 
   BytesPerElement = DL.getTypeSizeInBits(ElementTy) / ByteBits;
 
-  if (IsBF) {
+  if (ExplicitVisaType != ISA_TYPE_NUM) {
+    VisaType = ExplicitVisaType;
+  } else if (IsBF) {
     IGC_ASSERT(BytesPerElement == WordBytes);
     VisaType = ISA_TYPE_BF;
   } else if (ElementTy->isIntegerTy()) {

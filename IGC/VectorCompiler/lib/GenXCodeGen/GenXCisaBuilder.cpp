@@ -509,15 +509,14 @@ private:
   createSourceOperand(Instruction *Inst, genx::Signedness Signed,
                       unsigned OperandNum, genx::BaleInfo BI, unsigned Mod = 0,
                       genx::Signedness *SignedRes = nullptr,
-                      unsigned MaxWidth = 16, bool IsNullAllowed = false);
+                      unsigned MaxWidth = 16, bool IsNullAllowed = false,
+                      unsigned ExplicitVisaType = ISA_TYPE_NUM);
 
-  VISA_VectorOpnd *createSource(Value *V, genx::Signedness Signed,
-                                const DataLayout &DL, bool Baled,
-                                unsigned Mod = 0,
-                                genx::Signedness *SignedRes = nullptr,
-                                unsigned MaxWidth = 16,
-                                unsigned *Offset = nullptr, bool IsBF = false,
-                                bool IsNullAllowed = false);
+  VISA_VectorOpnd *createSource(
+      Value *V, genx::Signedness Signed, const DataLayout &DL, bool Baled,
+      unsigned Mod = 0, genx::Signedness *SignedRes = nullptr,
+      unsigned MaxWidth = 16, unsigned *Offset = nullptr, bool IsBF = false,
+      bool IsNullAllowed = false, unsigned ExplicitVisaType = ISA_TYPE_NUM);
 
   VISA_VectorOpnd *createSource(Value *V, genx::Signedness Signed,
                                 const DataLayout &DL, unsigned MaxWidth = 16,
@@ -1736,17 +1735,16 @@ GenXKernelBuilder::createDestination(Value *Dest, genx::Signedness Signed,
   }
 }
 
-VISA_VectorOpnd *
-GenXKernelBuilder::createSourceOperand(Instruction *Inst, Signedness Signed,
-                                       unsigned OperandNum, genx::BaleInfo BI,
-                                       unsigned Mod, Signedness *SignedRes,
-                                       unsigned MaxWidth, bool IsNullAllowed) {
+VISA_VectorOpnd *GenXKernelBuilder::createSourceOperand(
+    Instruction *Inst, Signedness Signed, unsigned OperandNum,
+    genx::BaleInfo BI, unsigned Mod, Signedness *SignedRes, unsigned MaxWidth,
+    bool IsNullAllowed, unsigned ExplicitVisaType) {
   Value *V = Inst->getOperand(OperandNum);
   auto IID = vc::InternalIntrinsic::getInternalIntrinsicID(Inst);
   bool IsBF = IID == vc::InternalIntrinsic::cast_from_bf16;
   return createSource(V, Signed, Inst->getModule()->getDataLayout(),
                       BI.isOperandBaled(OperandNum), Mod, SignedRes, MaxWidth,
-                      nullptr, IsBF, IsNullAllowed);
+                      nullptr, IsBF, IsNullAllowed, ExplicitVisaType);
 }
 
 VISA_PredOpnd *
@@ -2022,7 +2020,7 @@ VISA_VectorOpnd *GenXKernelBuilder::createSource(Value *V, Signedness Signed,
 VISA_VectorOpnd *GenXKernelBuilder::createSource(
     Value *V, Signedness Signed, const DataLayout &DL, bool Baled, unsigned Mod,
     Signedness *SignedRes, unsigned MaxWidth, unsigned *Offset, bool IsBF,
-    bool IsNullAllowed) {
+    bool IsNullAllowed, unsigned ExplicitVisaType) {
   LLVM_DEBUG(dbgs() << "createSource for " << (Baled ? "baled" : "non-baled")
                     << (IsBF ? " brain" : " non-brain") << " value: ");
   LLVM_DEBUG(V->dump());
@@ -2055,7 +2053,8 @@ VISA_VectorOpnd *GenXKernelBuilder::createSource(
     return createImmediateOperand(C, Signed);
   }
   if (!Baled) {
-    Register *Reg = getRegForValueAndSaveAlias(V, Signed, nullptr, IsBF);
+    Register *Reg =
+        getRegForValueAndSaveAlias(V, Signed, nullptr, IsBF, ExplicitVisaType);
     IGC_ASSERT(Reg->Category == vc::RegCategory::General ||
                Reg->Category == vc::RegCategory::Surface ||
                Reg->Category == vc::RegCategory::Sampler);
@@ -2085,7 +2084,8 @@ VISA_VectorOpnd *GenXKernelBuilder::createSource(
     // and that is OK because the region is indirect so the vISA does not
     // contain the base register.
     Value *V = Inst->getOperand(0);
-    Register *Reg = getRegForValueOrNullAndSaveAlias(V, Signed, nullptr, IsBF);
+    Register *Reg = getRegForValueOrNullAndSaveAlias(V, Signed, nullptr, IsBF,
+                                                     ExplicitVisaType);
 
     // Ensure we pick a non-DONTCARESIGNED signedness here, as, for an
     // indirect region and DONTCARESIGNED, writeRegion arbitrarily picks a
@@ -2143,7 +2143,8 @@ VISA_VectorOpnd *GenXKernelBuilder::createSource(
   }
   return createSource(Inst->getOperand(Idx), Signed,
                       Inst->getModule()->getDataLayout(),
-                      BI.isOperandBaled(Idx), Mod, SignedRes, MaxWidth);
+                      BI.isOperandBaled(Idx), Mod, SignedRes, MaxWidth, nullptr,
+                      false, false, ExplicitVisaType);
 }
 
 static void diagnoseInlineAsm(llvm::LLVMContext &Context,
@@ -3085,7 +3086,7 @@ void GenXKernelBuilder::AddGenVar(Register &Reg) {
     }
   }
 
-  visa::TypeDetails TD(DL, Reg.Ty, Reg.Signed, Reg.IsBF);
+  visa::TypeDetails TD(DL, Reg.Ty, Reg.Signed, Reg.IsBF, Reg.ExplicitVisaType);
   LLVM_DEBUG(dbgs() << "Resulting #of elements: " << TD.NumElements << "\n");
 
   VISA_Align VA =
@@ -3433,15 +3434,19 @@ void GenXKernelBuilder::buildIntrinsic(CallInst *CI, unsigned IntrinID,
       ResultOperand = createDestination(CI, Signed, Mod, DstDesc);
     } else {
       unsigned MaxWidth = 16;
+      unsigned ExplicitVisaType = ISA_TYPE_NUM;
       if (AI.getRestriction() == II::TWICEWIDTH) {
         // For a TWICEWIDTH operand, do not allow width bigger than the
         // execution size.
         MaxWidth =
             cast<IGCLLVM::FixedVectorType>(CI->getType())->getNumElements();
       }
-      ResultOperand =
-          createSourceOperand(CI, Signed, AI.getArgIdx(), BI, 0, nullptr,
-                              MaxWidth, AI.generalNullAllowed());
+      if (IntrinID == GenXIntrinsic::genx_bdpas &&
+          (AI.getArgIdx() == 3 || AI.getArgIdx() == 4))
+        ExplicitVisaType = ISA_TYPE_UB;
+      ResultOperand = createSourceOperand(
+          CI, Signed, AI.getArgIdx(), BI, 0, nullptr, MaxWidth,
+          AI.generalNullAllowed(), ExplicitVisaType);
     }
     return ResultOperand;
   };

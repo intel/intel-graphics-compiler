@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2023 Intel Corporation
+Copyright (C) 2017-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -96,6 +96,7 @@ public:
     Type *Ty = nullptr;
     // Template, as bfloat not llvm-10 type
     bool IsBF = false;
+    unsigned ExplicitVisaType = ISA_TYPE_NUM;
 
     // log2 min alignment requested by user of register
     unsigned Alignment = 0;
@@ -112,7 +113,18 @@ public:
         genx::Signedness Signed = genx::DONTCARESIGNED,
         unsigned LogAlignment = 0, Reg *AliasTo = nullptr, bool ArgIsBF = false)
         : Category(Category), Num(Num), AliasTo(AliasTo), Signed(Signed),
-          Ty(Ty), Alignment(LogAlignment), IsBF(ArgIsBF) {
+          Ty(Ty), IsBF(ArgIsBF), ExplicitVisaType(ISA_TYPE_NUM),
+          Alignment(LogAlignment) {
+      IGC_ASSERT(vc::isRealCategory(Category));
+      NameStr = (Twine(categoryToString(Category)) + Twine(Num)).str();
+    }
+
+    Reg(vc::RegCategory Category, unsigned Num, Type *Ty,
+        genx::Signedness Signed, unsigned LogAlignment, Reg *AliasTo,
+        bool ArgIsBF, unsigned ArgExplicitVisaType)
+        : Category(Category), Num(Num), AliasTo(AliasTo), Signed(Signed),
+          Ty(Ty), IsBF(ArgIsBF), ExplicitVisaType(ArgExplicitVisaType),
+          Alignment(LogAlignment) {
       IGC_ASSERT(vc::isRealCategory(Category));
       NameStr = (Twine(categoryToString(Category)) + Twine(Num)).str();
     }
@@ -211,14 +223,15 @@ public:
   // register associated with given value.
   Reg *getRegForValueOrNull(genx::SimpleValue V,
                             genx::Signedness Signed = genx::DONTCARESIGNED,
-                            Type *OverrideType = nullptr,
-                            bool IsBF = false) const;
+                            Type *OverrideType = nullptr, bool IsBF = false,
+                            unsigned ExplicitVisaType = ISA_TYPE_NUM) const;
 
   // Get the vISA virtual register for a value or create alias if there is no
   // register associated with given value.
   Reg *getOrCreateRegForValue(genx::SimpleValue V,
                               genx::Signedness Signed = genx::DONTCARESIGNED,
-                              Type *OverrideType = nullptr, bool IsBF = false);
+                              Type *OverrideType = nullptr, bool IsBF = false,
+                              unsigned ExplicitVisaType = ISA_TYPE_NUM);
 
   // Get the vISA virtual register for a value (0 if none), ignoring type
   // and signedness so it can be a const method usable from print().
@@ -292,7 +305,7 @@ struct TypeDetails {
   unsigned BytesPerElement = 0;
   unsigned VisaType = ISA_TYPE_NUM;
   TypeDetails(const DataLayout &DL, Type *Ty, genx::Signedness Signed,
-              bool IsBF = false);
+              bool IsBF = false, unsigned ExplicitVisaType = ISA_TYPE_NUM);
 };
 } // end namespace visa
 
