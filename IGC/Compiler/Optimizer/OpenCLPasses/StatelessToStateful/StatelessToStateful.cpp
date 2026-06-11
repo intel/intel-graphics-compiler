@@ -1145,6 +1145,10 @@ void StatelessToStateful::finalizeArgInitialValue(Function *F) {
   Type *int32Ty = Type::getInt32Ty(M->getContext());
   Value *ZeroValue = ConstantInt::get(int32Ty, 0);
 
+  // Collect add instructions before replacing args with zero. We harvest from
+  // each Argument's use-list (Arguments always track uses), avoiding the need
+  // to iterate ZeroValue (ConstantInt) users after replacement.
+  DenseSet<Instruction *> AddInstructionsToLower;
   for (const auto &II : m_argsInfo) {
     const KernelArg *kernelArg = II.first;
     int mapVal = II.second;
@@ -1153,19 +1157,17 @@ void StatelessToStateful::finalizeArgInitialValue(Function *F) {
       const KernelArg *offsetArg = getBufferOffsetKernelArg(kernelArg);
       IGC_ASSERT_MESSAGE(offsetArg, "Missing BufferOffset arg!");
       Value *BufferOffsetArg = const_cast<Argument *>(offsetArg->getArg());
+      for (User *U : BufferOffsetArg->users())
+        if (auto *I = dyn_cast<Instruction>(U);
+            I && I->getOpcode() == Instruction::Add && I->getOperand(0) == BufferOffsetArg)
+          AddInstructionsToLower.insert(I);
       BufferOffsetArg->replaceAllUsesWith(ZeroValue);
     }
   }
 
   m_argsInfo.clear();
 
-  // Clear add instructions created in StatelessToStateful::getOffsetFromGEP
-  DenseSet<Instruction *> AddInstructionsToLower;
-  for (auto U : ZeroValue->users())
-    if (auto I = dyn_cast<Instruction>(U))
-      if (I->getOpcode() == Instruction::Add && I->getOperand(0) == ZeroValue)
-        AddInstructionsToLower.insert(I);
-
+  // Clear add instructions created in StatelessToStateful::getOffsetFromGEP.
   for (auto AddInst : AddInstructionsToLower) {
     AddInst->replaceAllUsesWith(AddInst->getOperand(1));
     AddInst->eraseFromParent();

@@ -166,7 +166,9 @@ VectorShuffleAnalysis::tryCreatingVectorToScalarsPattern(llvm::ExtractElementIns
     return nullptr;
 
   auto DestVectorType = dyn_cast<IGCLLVM::FixedVectorType>(Vec->getType());
-  if (!DestVectorType)
+  // If there are no users, all indices can't be covered.
+  // Constants in LLVM >= 22 don't have their uses tracked.
+  if (!DestVectorType || Vec->user_empty())
     return nullptr;
 
   auto VecSize = DestVectorType->getNumElements();
