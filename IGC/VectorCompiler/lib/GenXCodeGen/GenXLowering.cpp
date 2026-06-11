@@ -63,7 +63,7 @@ SPDX-License-Identifier: MIT
 /// * trunc
 /// * zext/sext/uitofp from (vector of) i1
 /// * select on vector of i1
-/// * ``llvm.uadd.with.overflow`` (the other
+/// * ``llvm.uadd.with.overflow``, ``llvm.usub.with.overflow`` (the other
 ///   overflowing arithmetic intrinsics are not allowed by the GenX backend
 ///   anyway.)
 /// * ``llvm.genx.*imad``
@@ -243,6 +243,7 @@ private:
   bool lowerExtractValue(ExtractValueInst *Inst);
   bool lowerInsertValue(InsertValueInst *Inst);
   bool lowerUAddWithOverflow(CallInst *CI);
+  bool lowerUSubWithOverflow(CallInst *CI);
   bool lowerUAddWithSat(CallInst *CI);
   bool lowerUSubWithSat(CallInst *CI);
   bool lowerCtpop(CallInst *CI);
@@ -1925,9 +1926,10 @@ bool GenXLowering::processInst(Instruction *Inst) {
       return lowerUSubWithSat(CI);
     case Intrinsic::uadd_with_overflow:
       return lowerUAddWithOverflow(CI);
+    case Intrinsic::usub_with_overflow:
+      return lowerUSubWithOverflow(CI);
     case Intrinsic::sadd_with_overflow:
     case Intrinsic::ssub_with_overflow:
-    case Intrinsic::usub_with_overflow:
     case Intrinsic::smul_with_overflow:
     case Intrinsic::umul_with_overflow:
       Inst->getContext().emitError(
@@ -3275,56 +3277,76 @@ bool GenXLowering::lowerInsertValue(InsertValueInst *Inst) {
   return false;
 }
 
-/***********************************************************************
- * lowerUAddWithOverflow : lower llvm.uadd.with.overflow
- *
- * This could potentially be implemented with the vISA addc instruction.
- * However an intrinsic for that would need extra GenX backend support for
- * returning a struct containing two vectors, and that support does not exist
- * now.
- *
- * So for now we use the old DEC Alpha trick of comparing the result with
- * one of the operands.
- */
-bool GenXLowering::lowerUAddWithOverflow(CallInst *CI) {
-  const DebugLoc &DL = CI->getDebugLoc();
-  // Do the add.
-  auto Add =
-      BinaryOperator::Create(Instruction::Add, CI->getArgOperand(0),
-                             CI->getArgOperand(1), CI->getName() + ".add", CI);
-  Add->setDebugLoc(DL);
-  // Do the comparison. (An unsigned add has overflowed if the result is
-  // smaller than one of the operands, and, if it has overflowed, the result
-  // is smaller than both of the operands. So it doesn't matter which operand
-  // we use for the comparison.)
-  auto Cmp = CmpInst::Create(Instruction::ICmp, CmpInst::ICMP_ULT, Add,
-                             CI->getArgOperand(1), CI->getName() + ".cmp", CI);
-  Cmp->setDebugLoc(DL);
-  // For any extractvalue use of the result of the original add with overflow,
-  // replace it directly.
-  SmallVector<ExtractValueInst *, 4> Extracts;
-  for (auto ui = CI->use_begin(), ue = CI->use_end(); ui != ue; ++ui)
-    if (auto EVI = dyn_cast<ExtractValueInst>(ui->getUser()))
-      Extracts.push_back(EVI);
-  for (auto ei = Extracts.begin(), ee = Extracts.end(); ei != ee; ++ei) {
-    auto EVI = *ei;
-    EVI->replaceAllUsesWith(EVI->getIndices()[0] ? (Value *)Cmp : (Value *)Add);
-    EVI->setOperand(0, UndefValue::get(CI->getType()));
-    ToErase.push_back(EVI);
+// Lower llvm.uadd/usub.with.overflow to genx.addc/subb.
+// genx.addc/subb return {T, T}: [IdxAddc_Carry/IdxSubb_Borrow]=carry,
+// [IdxAddc_Add/IdxSubb_Sub]=result. llvm overflow intrinsics return {T, i1}:
+// [0]=result, [1]=overflow bit. The carry/borrow from genx is the full-width
+// zext of the overflow bit.
+static bool lowerOverflowIntrinsic(CallInst *CI, unsigned GenXIID,
+                                   SmallVectorImpl<Instruction *> &ToErase) {
+  auto *ArgTy = CI->getArgOperand(0)->getType();
+  IRBuilder<> IRB(CI);
+  auto *Decl = GenXIntrinsic::getGenXDeclaration(
+      CI->getModule(), GenXIntrinsic::ID(GenXIID), {ArgTy, ArgTy});
+  auto *GenXCall =
+      IRB.CreateCall(Decl, {CI->getArgOperand(0), CI->getArgOperand(1)},
+                     CI->getName() + ".genx");
+
+  unsigned IdxRes = (GenXIID == GenXIntrinsic::genx_addc)
+                        ? GenXIntrinsic::GenXResult::IdxAddc_Add
+                        : GenXIntrinsic::GenXResult::IdxSubb_Sub;
+  unsigned IdxCarry = (GenXIID == GenXIntrinsic::genx_addc)
+                          ? GenXIntrinsic::GenXResult::IdxAddc_Carry
+                          : GenXIntrinsic::GenXResult::IdxSubb_Borrow;
+
+  auto *GenXRes = IRB.CreateExtractValue(GenXCall, {IdxRes});
+  auto *GenXCarry = IRB.CreateExtractValue(GenXCall, {IdxCarry});
+
+  // Replace zext(extractvalue(CI, 1)) users with GenXCarry directly.
+  // GenXCarry is already iN 0-or-1, same as zext(i1 overflow).
+  // This eliminates the icmp+select that zext(<N x i1>) lowers into.
+  for (auto *U : CI->users()) {
+    auto *EVI = dyn_cast<ExtractValueInst>(U);
+    if (!EVI || EVI->getIndices()[0] != 1)
+      continue;
+    for (auto *EU : make_early_inc_range(EVI->users())) {
+      // Reverse traversal always visits ZI before CI, so lowerCast has
+      // already fired on zext(<Nx i1>) %EVI and replaced it with a select.
+      // Redirect that select to GenXCarry; ZI is already in ToErase.
+      auto *SI = dyn_cast<SelectInst>(EU);
+      if (!SI || SI->getType() != ArgTy || SI->getCondition() != EVI)
+        continue;
+      // Only fold the pattern lowerCast emits: select(ovf, splat(1), splat(0)).
+      // A user-written select with the same condition but non-trivial operands
+      // must not be silently replaced with the carry value.
+      auto *TrueVal = dyn_cast<Constant>(SI->getTrueValue());
+      auto *FalseVal = dyn_cast<Constant>(SI->getFalseValue());
+      if (!TrueVal || !FalseVal || !TrueVal->isOneValue() ||
+          !FalseVal->isNullValue())
+        continue;
+      SI->replaceAllUsesWith(GenXCarry);
+      ToErase.push_back(SI);
+    }
   }
-  // If any uses of the original intrinsic remain, recreate the struct value.
-  if (!CI->use_empty()) {
-    auto Insert = InsertValueInst::Create(UndefValue::get(CI->getType()), Add,
-                                          0, CI->getName() + ".insertadd", CI);
-    Insert->setDebugLoc(DL);
-    Insert = InsertValueInst::Create(Insert, Cmp, 1,
-                                     CI->getName() + ".insertcmp", CI);
-    Insert->setDebugLoc(DL);
-    // ... and use it to replace the original intrinsic.
-    CI->replaceAllUsesWith(Insert);
-  }
+
+  auto *OverflowBit =
+      IRB.CreateICmpNE(GenXCarry, Constant::getNullValue(ArgTy));
+
+  Value *Result = PoisonValue::get(CI->getType());
+  Result = IRB.CreateInsertValue(Result, GenXRes, {0});
+  Result = IRB.CreateInsertValue(Result, OverflowBit, {1});
+
+  CI->replaceAllUsesWith(Result);
   ToErase.push_back(CI);
   return true;
+}
+
+bool GenXLowering::lowerUAddWithOverflow(CallInst *CI) {
+  return lowerOverflowIntrinsic(CI, GenXIntrinsic::genx_addc, ToErase);
+}
+
+bool GenXLowering::lowerUSubWithOverflow(CallInst *CI) {
+  return lowerOverflowIntrinsic(CI, GenXIntrinsic::genx_subb, ToErase);
 }
 
 // common subroutine for sub+sat and add+sat: builds uadd with sat
@@ -4792,7 +4814,7 @@ auto *GenerateAdd3Sequence(CallInst *CI, unsigned IntrinsicID) {
 bool GenXLowering::lowerAddcSubb(CallInst *CI, unsigned IntrinsicID) {
   IGC_ASSERT(CI);
 
-  auto *InType = (cast<Instruction>(CI->getOperand(0)))->getType();
+  auto *InType = CI->getArgOperand(0)->getType();
   if (!InType->getScalarType()->isIntegerTy(64) ||
       !dyn_cast<IGCLLVM::FixedVectorType>(InType))
     return false;
