@@ -7,7 +7,7 @@
 ;============================ end_copyright_notice =============================
 
 ; REQUIRES: regkeys
-; RUN: igc_opt -S  --igc-vectorizer -dce --regkey=VectorizerAllowSelect=1 --regkey=VectorizerInsertElAsSeed=0 --regkey=VectorizerAllowCMP=1 --regkey=VectorizerAllowMAXNUM=1 --regkey=VectorizerAllowWAVEALL=1 --regkey=VectorizerLog=1 --regkey=VectorizerLogToErr=1 --platformbmg < %s 2>&1 | FileCheck %s
+; RUN: igc_opt -S  --igc-vectorizer -dce --regkey=VectorizerAllowSelect=1 --regkey=VectorizerInsertElAsSeed=0 --regkey=VectorizerAllowCMP=1 --regkey=VectorizerAllowMAXNUM=1 --regkey=VectorizerAllowWAVEALL=1 --regkey=VectorizerLog=1 --regkey=VectorizerLogToErr=1 --platformbmg < %s 2>&1 | FileCheck %s --check-prefixes=CHECK,%if llvm-22-plus %{CHECK-LLVM22%} %else %{CHECK-PRE22%}
 
 ; CHECK: Slice:   %37 = icmp slt i32 %3, %.pn1482
 ; CHECK-NEXT: Slice:   %38 = icmp slt i32 %4, %.pn1482
@@ -30,8 +30,10 @@
 
 
 ; CHECK-LABEL: ._crit_edge333:
-; CHECK: [[VEC_BIN:%.*]] = fmul <8 x float> {{.*}}, <float 1.250000e-01, float 1.250000e-01, float 1.250000e-01, float 1.250000e-01, float 1.250000e-01, float 1.250000e-01, float 1.250000e-01, float 1.250000e-01>
-; CHECK: [[VEC_BIN_2:%.*]] = fmul <8 x float> [[VEC_BIN]], <float 0x3FF7154760000000, float 0x3FF7154760000000, float 0x3FF7154760000000, float 0x3FF7154760000000, float 0x3FF7154760000000, float 0x3FF7154760000000, float 0x3FF7154760000000, float 0x3FF7154760000000>
+; CHECK-PRE22: [[VEC_BIN:%.*]] = fmul <8 x float> {{.*}}, <float 1.250000e-01, float 1.250000e-01, float 1.250000e-01, float 1.250000e-01, float 1.250000e-01, float 1.250000e-01, float 1.250000e-01, float 1.250000e-01>
+; CHECK-LLVM22: [[VEC_BIN:%.*]] = fmul <8 x float> {{.*}}, splat (float 1.250000e-01)
+; CHECK-PRE22: [[VEC_BIN_2:%.*]] = fmul <8 x float> [[VEC_BIN]], <float 0x3FF7154760000000, float 0x3FF7154760000000, float 0x3FF7154760000000, float 0x3FF7154760000000, float 0x3FF7154760000000, float 0x3FF7154760000000, float 0x3FF7154760000000, float 0x3FF7154760000000>
+; CHECK-LLVM22: [[VEC_BIN_2:%.*]] = fmul <8 x float> [[VEC_BIN]], splat (float 0x3FF7154760000000)
 ; CHECK: [[EXT_1_0:%.*]] = extractelement <8 x float> [[VEC_BIN_2]], i32 0
 ; CHECK: [[EXT_1_1:%.*]] = extractelement <8 x float> [[VEC_BIN_2]], i32 1
 ; CHECK: [[EXT_1_2:%.*]] = extractelement <8 x float> [[VEC_BIN_2]], i32 2

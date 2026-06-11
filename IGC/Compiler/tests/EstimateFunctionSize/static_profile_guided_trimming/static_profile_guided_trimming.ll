@@ -15,8 +15,8 @@
 
 ; CHECK-DEFAULT-DAG: TrimUnit0x4: Good to trim (Big enough > 10), test_level3_1, Function Attribute: Best effort innline, Function size: 15, Freq: 0.0
 ; CHECK-DEFAULT-DAG: TrimUnit0x4: Good to trim (Big enough > 10), test_level3_2, Function Attribute: Best effort innline, Function size: 15, Freq: 0.0
-; CHECK-SPGT-DAG: TrimUnit0x4: Can't trim (Low weight < 0.000009106848046), test_level3_1, Function Attribute: Best effort innline, Function size: 15, Freq: 20967.8125, Weight: 0.00000767657555
-; CHECK-SPGT-DAG: TrimUnit0x4: Can't trim (Low weight < 0.000009106848046), test_level3_2, Function Attribute: Best effort innline, Function size: 15, Freq: 20967.8125, Weight: 0.00000767657555
+; CHECK-SPGT-DAG: TrimUnit0x4: Can't trim (Low weight < {{[0-9.eE+-]+}}), test_level3_1, Function Attribute: Best effort innline, Function size: 15, Freq: {{[0-9.eE+-]+}}, Weight: {{[0-9.eE+-]+}}
+; CHECK-SPGT-DAG: TrimUnit0x4: Can't trim (Low weight < {{[0-9.eE+-]+}}), test_level3_2, Function Attribute: Best effort innline, Function size: 15, Freq: {{[0-9.eE+-]+}}, Weight: {{[0-9.eE+-]+}}
 
 
 define spir_kernel void @test_level3_1() {

@@ -8,7 +8,7 @@
 
 ; REQUIRES: llvm-14-plus
 ; RUN: igc_opt --opaque-pointers -igc-replace-unsupported-intrinsics -verify -S %s -o %t
-; RUN: FileCheck %s < %t
+; RUN: FileCheck %s --check-prefixes=CHECK,%if llvm-22-plus %{CHECK-LLVM22%} %else %{CHECK-PRE22%} < %t
 
 define i8 @A0(i8, i8, i8) {
 entry:
@@ -88,9 +88,11 @@ entry:
 define <2 x i16> @A6(<2 x i16>, <2 x i16>, <2 x i16>) {
 entry:
 ; CHECK-LABEL: define <2 x i16> @A6(
-; CHECK:  [[AND:%[a-zA-Z0-9]+]] = and <2 x i16> %2, <i16 15, i16 15>
+; CHECK-PRE22:  [[AND:%[a-zA-Z0-9]+]] = and <2 x i16> %2, <i16 15, i16 15>
+; CHECK-LLVM22:  [[AND:%[a-zA-Z0-9]+]] = and <2 x i16> %2, splat (i16 15)
 ; CHECK:  [[CMP:%[a-zA-Z0-9]+]] = icmp eq <2 x i16> [[AND]], zeroinitializer
-; CHECK:  [[SUB:%[a-zA-Z0-9]+]] = sub <2 x i16> <i16 16, i16 16>, [[AND]]
+; CHECK-PRE22:  [[SUB:%[a-zA-Z0-9]+]] = sub <2 x i16> <i16 16, i16 16>, [[AND]]
+; CHECK-LLVM22:  [[SUB:%[a-zA-Z0-9]+]] = sub <2 x i16> splat (i16 16), [[AND]]
 ; CHECK:  [[SHL:%[a-zA-Z0-9]+]] = shl <2 x i16> %0, [[AND]]
 ; CHECK:  [[LSHR:%[a-zA-Z0-9]+]] = lshr <2 x i16> %1, [[SUB]]
 ; CHECK:  [[OR:%[a-zA-Z0-9]+]] = or <2 x i16> [[SHL]], [[LSHR]]
@@ -178,9 +180,11 @@ entry:
 define <2 x i16> @B6(<2 x i16>, <2 x i16>, <2 x i16>) {
 entry:
 ; CHECK-LABEL: define <2 x i16> @B6(
-; CHECK:  [[AND:%[a-zA-Z0-9]+]] = and <2 x i16> %2, <i16 15, i16 15>
+; CHECK-PRE22:  [[AND:%[a-zA-Z0-9]+]] = and <2 x i16> %2, <i16 15, i16 15>
+; CHECK-LLVM22:  [[AND:%[a-zA-Z0-9]+]] = and <2 x i16> %2, splat (i16 15)
 ; CHECK:  [[CMP:%[a-zA-Z0-9]+]] = icmp eq <2 x i16> [[AND]], zeroinitializer
-; CHECK:  [[SUB:%[a-zA-Z0-9]+]] = sub <2 x i16> <i16 16, i16 16>, [[AND]]
+; CHECK-PRE22:  [[SUB:%[a-zA-Z0-9]+]] = sub <2 x i16> <i16 16, i16 16>, [[AND]]
+; CHECK-LLVM22:  [[SUB:%[a-zA-Z0-9]+]] = sub <2 x i16> splat (i16 16), [[AND]]
 ; CHECK:  [[SHL:%[a-zA-Z0-9]+]] = shl <2 x i16> %0, [[SUB]]
 ; CHECK:  [[LSHR:%[a-zA-Z0-9]+]] = lshr <2 x i16> %1, [[AND]]
 ; CHECK:  [[OR:%[a-zA-Z0-9]+]] = or <2 x i16> [[SHL]], [[LSHR]]

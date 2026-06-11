@@ -7,7 +7,7 @@
 ;============================ end_copyright_notice =============================
 ; REQUIRES: llvm-14-plus, regkeys
 ;
-; RUN: igc_opt --opaque-pointers -enable-debugify -regkey EnableCodeAssumption=2 -igc-stateless-to-stateful-resolution -S < %s 2>&1 | FileCheck %s
+; RUN: igc_opt --opaque-pointers -enable-debugify -regkey EnableCodeAssumption=2 -igc-stateless-to-stateful-resolution -S < %s 2>&1 | FileCheck %s --check-prefixes=CHECK%if llvm-22-plus %{,CHECK-LLVM22%}
 ; ------------------------------------------------
 ; CodeAssumption : addAssumption on phi part
 ; ------------------------------------------------
@@ -22,6 +22,7 @@ define spir_kernel void @test_phiassume(i32* %dst) {
 ; CHECK-LABEL: @test_phiassume(
 ; CHECK:       bb1:
 ; CHECK-NEXT:    [[TMP0:%.*]] = phi i32 [ 0, %entry ], [ [[TMP1:%.*]], %bb1 ]
+; CHECK-LLVM22-NEXT:    #dbg_value(i32 [[TMP0]], {{.*}})
 ; CHECK-NEXT:    [[ASSUMECOND:%.*]] = icmp sge i32 [[TMP0]], 0
 ; CHECK-NEXT:    call void @llvm.assume(i1 [[ASSUMECOND]])
 ;

@@ -8,7 +8,7 @@
 
 
 ; REQUIRES: llvm-14-plus
-; RUN: igc_opt --opaque-pointers -igc-type-legalizer -verify -S %s -o - | FileCheck %s
+; RUN: igc_opt --opaque-pointers -igc-type-legalizer -verify -S %s -o - | FileCheck %s --check-prefixes=CHECK,%if llvm-22-plus %{CHECK-LLVM22%} %else %{CHECK-PRE22%}
 
 target datalayout = "e-p:32:32:32-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64-f16:16:16-f32:32:32-f64:64:64-f80:128:128-v16:16:16-v24:32:32-v32:32:32-v48:64:64-v64:64:64-v96:128:128-v128:128:128-v192:256:256-v256:256:256-v512:512:512-v1024:1024:1024-a:64:64-f80:128:128-n8:16:32:64"
 
@@ -60,9 +60,11 @@ define <4 x i8> @f4(<4 x i8> %a) #0 {
 }
 
 ; CHECK-LABEL: define <4 x i8> @f4
-; CHECK: %1 = and <4 x i8> %a, <i8 31, i8 31, i8 31, i8 31>
+; CHECK-PRE22: %1 = and <4 x i8> %a, <i8 31, i8 31, i8 31, i8 31>
+; CHECK-LLVM22: %1 = and <4 x i8> %a, splat (i8 31)
 ; CHECK: %2 = call <4 x i8> @llvm.bitreverse.v4i8(<4 x i8> %1)
-; CHECK: %3 = lshr <4 x i8> %2, <i8 3, i8 3, i8 3, i8 3>
+; CHECK-PRE22: %3 = lshr <4 x i8> %2, <i8 3, i8 3, i8 3, i8 3>
+; CHECK-LLVM22: %3 = lshr <4 x i8> %2, splat (i8 3)
 ; CHECK: ret <4 x i8> %3
 
 define i32 @f5(i64 %a) #0 {

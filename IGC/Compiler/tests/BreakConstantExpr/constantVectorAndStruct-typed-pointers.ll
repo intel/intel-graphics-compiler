@@ -8,8 +8,10 @@
 ;
 ; This is to test breaking constant struct that has ConstantExpr and ConstantVector.
 ; The test is derived from sycl test (multi_ptr_comparison_op).
-; LLVM 17 no longer accepts select constexprs, so we must use equivalent zext forms
-; to preserve BreakConstantExpr coverage across LLVM versions.
+; The arithmetic/compare constexprs (select/zext/icmp/trunc/or) were progressively
+; removed from the LLVM parser. To keep BreakConstantExpr coverage on the SOA layout
+; struct without depending on those forms, the i8 constants are produced by ptrtoint
+; (with a nested getelementptr), which remain valid constexprs across LLVM versions.
 ;
 ;
 ; RUN: igc_opt --typed-pointers -igc-break-const-expr -S %s | FileCheck %s
@@ -38,7 +40,7 @@ define spir_kernel void @sycl_multi_ptr_comparison_op(%half_impl addrspace(3)*, 
   %6 = ptrtoint %mptr_nullptr_result addrspace(1)* %3 to i64
   %7 = shl i64 %const_reg_qword1, 2
   %8 = add i64 %7, %6
-  %9 = call i32 @llvm.genx.GenISA.bitcastfromstruct.i32.__StructSOALayout_(%__StructSOALayout_ <{ %__StructAOSLayout_ <{ <2 x i8 > < i8 zext (i1 icmp eq (%half_impl addrspace(4)* addrspacecast (%half_impl addrspace(3)* null to %half_impl addrspace(4)*), %half_impl addrspace(4)* null) to i8), i8 1 >, i8 zext (i1 trunc (i8 or (i8 zext (i1 icmp ugt ([0 x i8] addrspace(3)* @sycl_multi_ptr_comparison_op-ExtSLM, [0 x i8] addrspace(3)* null) to i8), i8 zext (i1 icmp eq (i64 ptrtoint ([0 x i8] addrspace(3)* @sycl_multi_ptr_comparison_op-ExtSLM to i64), i64 ptrtoint (%half_impl addrspace(3)* addrspacecast (%half_impl addrspace(4)* null to %half_impl addrspace(3)*) to i64)) to i8)) to i1) to i8), i8 zext (i1 icmp uge ([0 x i8] addrspace(3)* @sycl_multi_ptr_comparison_op-ExtSLM, [0 x i8] addrspace(3)* null) to i8) }> }>)
+  %9 = call i32 @llvm.genx.GenISA.bitcastfromstruct.i32.__StructSOALayout_(%__StructSOALayout_ <{ %__StructAOSLayout_ <{ <2 x i8 > < i8 ptrtoint ([0 x i8] addrspace(3)* @sycl_multi_ptr_comparison_op-ExtSLM to i8), i8 1 >, i8 ptrtoint (i8 addrspace(3)* getelementptr ([0 x i8], [0 x i8] addrspace(3)* @sycl_multi_ptr_comparison_op-ExtSLM, i64 0, i64 1) to i8), i8 ptrtoint (i8 addrspace(3)* getelementptr ([0 x i8], [0 x i8] addrspace(3)* @sycl_multi_ptr_comparison_op-ExtSLM, i64 0, i64 2) to i8) }> }>)
   %10 = inttoptr i64 %8 to i32 addrspace(1)*
   store i32 %9, i32 addrspace(1)* %10, align 1
   ret void

@@ -11,7 +11,7 @@
 
 ; RUN: igc_opt --opaque-pointers %s -S -igc-ldstcombine -regkey=EnableLdStCombine=5 \
 ; RUN:           -platformbmg \
-; RUN: | FileCheck %s
+; RUN: | FileCheck %s --check-prefixes=CHECK,%if llvm-22-plus %{CHECK-LLVM22%} %else %{CHECK-PRE22%}
 
 
 target datalayout = "e-p:64:64:64-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64-f32:32:32-f64:64:64-v16:16:16-v24:32:32-v32:32:32-v48:64:64-v64:64:64-v96:128:128-v128:128:128-v192:256:256-v256:256:256-v512:512:512-v1024:1024:1024-n8:16:32"
@@ -26,7 +26,8 @@ entry:
 ;          No struct, just a plain vector load
 
 ; CHECK-LABEL: define spir_kernel void @test_usevector
-; CHECK: call <4 x i32> @llvm.genx.GenISA.PredicatedLoad.v4i32.p1.v4i32(ptr addrspace(1) %{{.*}}, i64 4, i1 true, <4 x i32> <i32 2, i32 extractelement (<2 x i32> bitcast (<1 x i64> <i64 3> to <2 x i32>), i32 0), i32 extractelement (<2 x i32> bitcast (<1 x i64> <i64 3> to <2 x i32>), i32 1), i32 1082130432>)
+; CHECK-PRE22: call <4 x i32> @llvm.genx.GenISA.PredicatedLoad.v4i32.p1.v4i32(ptr addrspace(1) %{{.*}}, i64 4, i1 true, <4 x i32> <i32 2, i32 extractelement (<2 x i32> bitcast (<1 x i64> <i64 3> to <2 x i32>), i32 0), i32 extractelement (<2 x i32> bitcast (<1 x i64> <i64 3> to <2 x i32>), i32 1), i32 1082130432>)
+; CHECK-LLVM22: call <4 x i32> @llvm.genx.GenISA.PredicatedLoad.v4i32.p1.v4i32(ptr addrspace(1) %{{.*}}, i64 4, i1 true, <4 x i32> <i32 2, i32 extractelement (<2 x i32> bitcast (<1 x i64> splat (i64 3) to <2 x i32>), i32 0), i32 extractelement (<2 x i32> bitcast (<1 x i64> splat (i64 3) to <2 x i32>), i32 1), i32 1082130432>)
 
   %c0.base = add i64 %conv.i.i, 8
   %c0.arrayidx = getelementptr inbounds i64, i64 addrspace(1)* %ss, i64 %c0.base

@@ -6,8 +6,8 @@
 ;
 ;============================ end_copyright_notice =============================
 ; REQUIRES: regkeys
-; RUN: igc_opt --regkey LoopSinkMinSave=0 --regkey ForceLoopSink=1 --regkey CodeLoopSinkingMinSize=10 --CheckInstrTypes -igc-update-instrtypes-on-run --basic-aa --igc-code-loop-sinking --verify -S %s | FileCheck %s --check-prefix=CHECK-SINK
-; RUN: igc_opt --regkey LoopSinkMinSave=0 --regkey ForceLoopSink=1 --regkey LoopSinkForceRollback=1 --regkey CodeLoopSinkingMinSize=10 --CheckInstrTypes -igc-update-instrtypes-on-run --basic-aa --igc-code-loop-sinking --verify -S %s | FileCheck %s --check-prefix=CHECK-ROLLBACK
+; RUN: igc_opt --regkey LoopSinkMinSave=0 --regkey ForceLoopSink=1 --regkey CodeLoopSinkingMinSize=10 --CheckInstrTypes -igc-update-instrtypes-on-run --basic-aa --igc-code-loop-sinking --verify -S %s | FileCheck %s --check-prefixes=CHECK-SINK,%if llvm-22-plus %{CHECK-SINK-DBG-RECORDS%} %else %{CHECK-SINK-DBG-INTRINSIC%}
+; RUN: %if !llvm-22-plus %{ igc_opt --regkey LoopSinkMinSave=0 --regkey ForceLoopSink=1 --regkey LoopSinkForceRollback=1 --regkey CodeLoopSinkingMinSize=10 --CheckInstrTypes -igc-update-instrtypes-on-run --basic-aa --igc-code-loop-sinking --verify -S %s | FileCheck %s --check-prefix=CHECK-ROLLBACK %}
 
 ; CHECK-LABEL: @foo(
 
@@ -15,9 +15,12 @@
 
 ; CHECK-SINK: ph:
 ; CHECK-SINK-NOT: call void @llvm.dbg.value
+; CHECK-SINK-NOT: #dbg_value
 ; CHECK-SINK: loop:
-; CHECK-SINK:     call void @llvm.dbg.value
-; CHECK-SINK-NOT: call void @llvm.dbg.value
+; CHECK-SINK-DBG-INTRINSIC:     call void @llvm.dbg.value
+; CHECK-SINK-DBG-INTRINSIC-NOT: call void @llvm.dbg.value
+; CHECK-SINK-DBG-RECORDS:     #dbg_value(
+; CHECK-SINK-DBG-RECORDS-NOT: #dbg_value(
 
 
 ; For rollback check the debug value is not duplicated

@@ -1,12 +1,13 @@
 
 ; REQUIRES: regkeys
-; RUN: igc_opt -S  --igc-vectorizer -dce --platformbmg < %s 2>&1 | FileCheck %s
+; RUN: igc_opt -S  --igc-vectorizer -dce --platformbmg < %s 2>&1 | FileCheck %s --check-prefixes=CHECK,%if llvm-22-plus %{CHECK-LLVM22%} %else %{CHECK-PRE22%}
 
 ; CHECK-LABEL: ._crit_edge
 ; CHECK: [[fmul:%.*]] = fmul fast <8 x float>
 
 ; CHECK-LABEL: bb123
-; CHECK-DAG: [[fdiv0:%.*]] = fdiv fast <8 x float> <float 1.000000e+00, float 1.000000e+00, float 1.000000e+00, float 1.000000e+00, float 1.000000e+00, float 1.000000e+00, float 1.000000e+00, float 1.000000e+00>, [[fmul]]
+; CHECK-PRE22-DAG: [[fdiv0:%.*]] = fdiv fast <8 x float> <float 1.000000e+00, float 1.000000e+00, float 1.000000e+00, float 1.000000e+00, float 1.000000e+00, float 1.000000e+00, float 1.000000e+00, float 1.000000e+00>, [[fmul]]
+; CHECK-LLVM22-DAG: [[fdiv0:%.*]] = fdiv fast <8 x float> splat (float 1.000000e+00), [[fmul]]
 ; CHECK-DAG: [[fdiv1:%.*]] = fdiv fast <8 x float> [[fdiv0]], [[fmul]]
 ; CHECK-DAG: [[fadd0:%.*]] = fadd fast <8 x float> [[fdiv0]], [[fdiv1]]
 ; CHECK-DAG: bitcast <8 x float> [[fdiv0]] to <8 x i32>

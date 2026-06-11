@@ -7,7 +7,7 @@
 ;============================ end_copyright_notice =============================
 ;
 ; REQUIRES: llvm-14-plus
-; RUN: igc_opt --opaque-pointers --igc-gas-resolve -S < %s | FileCheck %s
+; RUN: igc_opt --opaque-pointers --igc-gas-resolve -S < %s | FileCheck %s --check-prefixes=CHECK,%if llvm-22-plus %{CHECK-DBG-RECORDS%} %else %{CHECK-DBG-INTRINSIC%}
 ; ------------------------------------------------
 ; GASResolve
 ; ------------------------------------------------
@@ -21,33 +21,33 @@
 ; CHECK-SAME: !dbg [[SCOPE:![0-9]*]]
 ;
 ; CHECK: [[ACAST_V:%[0-9]*]] = addrspacecast {{.*}} !dbg [[ACAST_LOC:![0-9]*]]
-; CHECK: call void @llvm.dbg.value(metadata ptr addrspace(1) %src
-; CHECK-SAME: metadata [[ACAST_MD:![0-9]*]], metadata !DIExpression()), !dbg [[ACAST_LOC]]
+; CHECK-DBG-INTRINSIC: call void @llvm.dbg.value(metadata ptr addrspace(1) %src, metadata [[ACAST_MD:![0-9]*]], metadata !DIExpression()), !dbg [[ACAST_LOC]]
+; CHECK-DBG-RECORDS:   #dbg_value(ptr addrspace(4) [[ACAST_V]], [[ACAST_MD:![0-9]*]], !DIExpression(), [[ACAST_LOC]])
 ;
 ; CHECK: store float {{.*}} !dbg [[STORE_LOC:![0-9]*]]
 ;
 ; CHECK: [[LOAD_V:%[A-z0-9]*]] = load float, {{.*}} !dbg [[LOAD_LOC:![0-9]*]]
-; CHECK: call void @llvm.dbg.value(metadata float [[LOAD_V]]
-; CHECK-SAME: metadata [[LOAD_MD:![0-9]*]], metadata !DIExpression()), !dbg [[LOAD_LOC]]
+; CHECK-DBG-INTRINSIC: call void @llvm.dbg.value(metadata float [[LOAD_V]], metadata [[LOAD_MD:![0-9]*]], metadata !DIExpression()), !dbg [[LOAD_LOC]]
+; CHECK-DBG-RECORDS:   #dbg_value(float [[LOAD_V]], [[LOAD_MD:![0-9]*]], !DIExpression(), [[LOAD_LOC]])
 ;
-; CHECK: call void @llvm.dbg.value(metadata ptr addrspace(1) %src
-; CHECK-SAME: metadata [[BCAST_MD:![0-9]*]], metadata !DIExpression()), !dbg [[BCAST_LOC:![0-9]*]]
+; CHECK-DBG-INTRINSIC: call void @llvm.dbg.value(metadata ptr addrspace(1) %src, metadata [[BCAST_MD:![0-9]*]], metadata !DIExpression()), !dbg [[BCAST_LOC:![0-9]*]]
+; CHECK-DBG-RECORDS:   #dbg_value(ptr addrspace(4) poison, [[BCAST_MD:![0-9]*]], !DIExpression(), [[BCAST_LOC:![0-9]*]])
 ;
 ; CHECK: [[LOAD_V:%[A-z0-9]*]] = load <2 x i16>, {{.*}} !dbg [[LOADV_LOC:![0-9]*]]
-; CHECK: call void @llvm.dbg.value(metadata <2 x i16> [[LOAD_V]]
-; CHECK-SAME: metadata [[LOADV_MD:![0-9]*]], metadata !DIExpression()), !dbg [[LOADV_LOC]]
+; CHECK-DBG-INTRINSIC: call void @llvm.dbg.value(metadata <2 x i16> [[LOAD_V]], metadata [[LOADV_MD:![0-9]*]], metadata !DIExpression()), !dbg [[LOADV_LOC]]
+; CHECK-DBG-RECORDS:   #dbg_value(<2 x i16> [[LOAD_V]], [[LOADV_MD:![0-9]*]], !DIExpression(), [[LOADV_LOC]])
 ;
 ; CHECK: [[IPTR_V:%[A-z0-9]*]] = ptrtoint {{.*}}, !dbg [[IPTR_LOC:![0-9]*]]
-; CHECK: call void @llvm.dbg.value(metadata i32 [[IPTR_V]]
-; CHECK-SAME: metadata [[IPTR_MD:![0-9]*]], metadata !DIExpression()), !dbg [[IPTR_LOC]]
+; CHECK-DBG-INTRINSIC: call void @llvm.dbg.value(metadata i32 [[IPTR_V]], metadata [[IPTR_MD:![0-9]*]], metadata !DIExpression()), !dbg [[IPTR_LOC]]
+; CHECK-DBG-RECORDS:   #dbg_value(i32 [[IPTR_V]], [[IPTR_MD:![0-9]*]], !DIExpression(), [[IPTR_LOC]])
 ;
 ; CHECK: [[EXTR_V:%[A-z0-9]*]] = extractelement {{.*}}, !dbg [[EXTR_LOC:![0-9]*]]
-; CHECK: call void @llvm.dbg.value(metadata i16 [[EXTR_V]]
-; CHECK-SAME: metadata [[EXTR_MD:![0-9]*]], metadata !DIExpression()), !dbg [[EXTR_LOC]]
+; CHECK-DBG-INTRINSIC: call void @llvm.dbg.value(metadata i16 [[EXTR_V]], metadata [[EXTR_MD:![0-9]*]], metadata !DIExpression()), !dbg [[EXTR_LOC]]
+; CHECK-DBG-RECORDS:   #dbg_value(i16 [[EXTR_V]], [[EXTR_MD:![0-9]*]], !DIExpression(), [[EXTR_LOC]])
 ;
 ; CHECK: [[GEP_V:%[A-z0-9]*]] = getelementptr {{.*}}, !dbg [[GEP_LOC:![0-9]*]]
-; CHECK: call void @llvm.dbg.value(metadata ptr addrspace(1) [[GEP_V]]
-; CHECK-SAME: metadata [[GEP_MD:![0-9]*]], metadata !DIExpression()), !dbg [[GEP_LOC]]
+; CHECK-DBG-INTRINSIC: call void @llvm.dbg.value(metadata ptr addrspace(1) [[GEP_V]], metadata [[GEP_MD:![0-9]*]], metadata !DIExpression()), !dbg [[GEP_LOC]]
+; CHECK-DBG-RECORDS:   #dbg_value(ptr addrspace(1) [[GEP_V]], [[GEP_MD:![0-9]*]], !DIExpression(), [[GEP_LOC]])
 
 define spir_kernel void @test_kernel(i32 addrspace(1)* %src) !dbg !10 {
   %1 = addrspacecast i32 addrspace(1)* %src to float addrspace(4)*, !dbg !23

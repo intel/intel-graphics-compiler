@@ -7,7 +7,7 @@
 ;============================ end_copyright_notice =============================
 ;
 ; REQUIRES: llvm-14-plus
-; RUN: igc_opt --opaque-pointers --igc-private-mem-usage-analysis -S < %s | FileCheck %s
+; RUN: igc_opt --opaque-pointers --igc-private-mem-usage-analysis -S < %s | FileCheck %s --check-prefixes=CHECK,%if llvm-22-plus %{CHECK-DBG-RECORDS%} %else %{CHECK-DBG-INTRINSIC%}
 ; ------------------------------------------------
 ; PrivateMemoryUsageAnalysis
 ; ------------------------------------------------
@@ -22,9 +22,11 @@
 ; CHECK: @test_pma1{{.*}} !dbg [[SCOPE1:![0-9]*]]
 ;
 ; CHECK: [[ALLOCA_V:%[A-z0-9]*]] = alloca i32{{.*}} !dbg [[ALLOCA_LOC:![0-9]*]]
-; CHECK: @llvm.dbg.value(metadata ptr [[ALLOCA_V]], metadata [[ALLOCA_MD:![0-9]*]], metadata !DIExpression()), !dbg [[ALLOCA_LOC]]
+; CHECK-DBG-INTRINSIC: @llvm.dbg.value(metadata ptr [[ALLOCA_V]], metadata [[ALLOCA_MD:![0-9]*]], metadata !DIExpression()), !dbg [[ALLOCA_LOC]]
+; CHECK-DBG-RECORDS:   #dbg_value(ptr [[ALLOCA_V]], [[ALLOCA_MD:![0-9]*]], !DIExpression(), [[ALLOCA_LOC]])
 ; CHECK: [[UDIV_V:%[A-z0-9]*]] = udiv i32 {{.*}} !dbg [[UDIV_LOC:![0-9]*]]
-; CHECK: @llvm.dbg.value(metadata i32 [[UDIV_V]], metadata [[UDIV_MD:![0-9]*]], metadata !DIExpression()), !dbg [[UDIV_LOC]]
+; CHECK-DBG-INTRINSIC: @llvm.dbg.value(metadata i32 [[UDIV_V]], metadata [[UDIV_MD:![0-9]*]], metadata !DIExpression()), !dbg [[UDIV_LOC]]
+; CHECK-DBG-RECORDS:   #dbg_value(i32 [[UDIV_V]], [[UDIV_MD:![0-9]*]], !DIExpression(), [[UDIV_LOC]])
 ; CHECK: store {{.*}} !dbg [[STORE1_LOC:![0-9]*]]
 
 %struct._st_foo = type { i32, <4 x float>, [2 x i64] }
@@ -41,7 +43,8 @@ define spir_kernel void @test_pma1(i32 %a, i32 %b) !dbg !12 {
 ; CHECK: @test_pma2{{.*}} !dbg [[SCOPE2:![0-9]*]]
 ;
 ; CHECK: [[ADD_V:%[A-z0-9]*]] = add i32 {{.*}} !dbg [[ADD_LOC:![0-9]*]]
-; CHECK: @llvm.dbg.value(metadata i32 [[ADD_V]], metadata [[ADD_MD:![0-9]*]], metadata !DIExpression()), !dbg [[ADD_LOC]]
+; CHECK-DBG-INTRINSIC: @llvm.dbg.value(metadata i32 [[ADD_V]], metadata [[ADD_MD:![0-9]*]], metadata !DIExpression()), !dbg [[ADD_LOC]]
+; CHECK-DBG-RECORDS:   #dbg_value(i32 [[ADD_V]], [[ADD_MD:![0-9]*]], !DIExpression(), [[ADD_LOC]])
 ; CHECK: store {{.*}} !dbg [[STORE2_LOC:![0-9]*]]
 
 ; Function Attrs: convergent noinline nounwind optnone
@@ -55,9 +58,11 @@ define spir_kernel void @test_pma2(i32 %a, i32 %b, i32* %c) #0 !dbg !23 {
 ; CHECK: @test_pma3{{.*}} !dbg [[SCOPE3:![0-9]*]]
 ;
 ; CHECK: [[LOAD_V:%[A-z0-9]*]] = load %struct._st_foo{{.*}} !dbg [[LOAD_LOC:![0-9]*]]
-; CHECK: @llvm.dbg.value(metadata %struct._st_foo [[LOAD_V]], metadata [[LOAD_MD:![0-9]*]], metadata !DIExpression()), !dbg [[LOAD_LOC]]
+; CHECK-DBG-INTRINSIC: @llvm.dbg.value(metadata %struct._st_foo [[LOAD_V]], metadata [[LOAD_MD:![0-9]*]], metadata !DIExpression()), !dbg [[LOAD_LOC]]
+; CHECK-DBG-RECORDS:   #dbg_value(%struct._st_foo [[LOAD_V]], [[LOAD_MD:![0-9]*]], !DIExpression(), [[LOAD_LOC]])
 ; CHECK: [[EXTR_V:%[A-z0-9]*]] = extractvalue{{.*}} !dbg [[EXTR_LOC:![0-9]*]]
-; CHECK: @llvm.dbg.value(metadata i32 [[EXTR_V]], metadata [[EXTR_MD:![0-9]*]], metadata !DIExpression()), !dbg [[EXTR_LOC]]
+; CHECK-DBG-INTRINSIC: @llvm.dbg.value(metadata i32 [[EXTR_V]], metadata [[EXTR_MD:![0-9]*]], metadata !DIExpression()), !dbg [[EXTR_LOC]]
+; CHECK-DBG-RECORDS:   #dbg_value(i32 [[EXTR_V]], [[EXTR_MD:![0-9]*]], !DIExpression(), [[EXTR_LOC]])
 ; CHECK: store {{.*}} !dbg [[STORE3_LOC:![0-9]*]]
 
 define spir_kernel void @test_pma3(%struct._st_foo* %a, i32* %b) !dbg !29 {

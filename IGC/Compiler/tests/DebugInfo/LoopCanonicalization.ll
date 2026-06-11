@@ -7,7 +7,7 @@
 ;============================ end_copyright_notice =============================
 ;
 ; REQUIRES: llvm-14-plus
-; RUN: igc_opt --opaque-pointers --igc-loop-canonicalization -S < %s | FileCheck %s
+; RUN: igc_opt --opaque-pointers --igc-loop-canonicalization -S < %s | FileCheck %s --check-prefixes=CHECK,%if llvm-22-plus %{CHECK-DBG-RECORDS%} %else %{CHECK-DBG-INTRINSIC%}
 ; ------------------------------------------------
 ; LoopCanonicalization
 ; ------------------------------------------------
@@ -25,7 +25,8 @@
 ;
 ; CHECK: entry:
 ; CHECK-NEXT: [[CMP0_V:%[A-z0-9.]*]] = icmp {{.*}} !dbg [[CMP0_LOC:![0-9]*]]
-; CHECK-NEXT: @llvm.dbg.value(metadata i1 [[CMP0_V]], metadata [[CMP0_MD:![0-9]*]], metadata !DIExpression()), !dbg [[CMP0_LOC]]
+; CHECK-DBG-INTRINSIC-NEXT: @llvm.dbg.value(metadata i1 [[CMP0_V]], metadata [[CMP0_MD:![0-9]*]], metadata !DIExpression()), !dbg [[CMP0_LOC]]
+; CHECK-DBG-RECORDS-NEXT: #dbg_value(i1 [[CMP0_V]], [[CMP0_MD:![0-9]*]], !DIExpression(), [[CMP0_LOC]])
 ;
 ; CHECK: for.body.preheader:
 ; CHECK: br {{.*}} !dbg [[PREHEADER_LOC:![0-9]*]]
@@ -33,8 +34,10 @@
 ; CHECK: for.body:
 ; CHECK: [[PHI0_V:%[A-z0-9.]*]] = phi ptr {{.*}} !dbg [[PHI0_LOC:![0-9]*]]
 ; CHECK: [[PHI1_V:%[A-z0-9.]*]] = phi i32 {{.*}} !dbg [[PHI1_LOC:![0-9]*]]
-; CHECK: @llvm.dbg.value(metadata ptr [[PHI0_V]], metadata [[PHI0_MD:![0-9]*]], metadata !DIExpression()), !dbg [[PHI0_LOC]]
-; CHECK: @llvm.dbg.value(metadata i32 [[PHI1_V]], metadata [[PHI1_MD:![0-9]*]], metadata !DIExpression()), !dbg [[PHI1_LOC]]
+; CHECK-DBG-INTRINSIC: @llvm.dbg.value(metadata ptr [[PHI0_V]], metadata [[PHI0_MD:![0-9]*]], metadata !DIExpression()), !dbg [[PHI0_LOC]]
+; CHECK-DBG-INTRINSIC: @llvm.dbg.value(metadata i32 [[PHI1_V]], metadata [[PHI1_MD:![0-9]*]], metadata !DIExpression()), !dbg [[PHI1_LOC]]
+; CHECK-DBG-RECORDS: #dbg_value(ptr [[PHI0_V]], [[PHI0_MD:![0-9]*]], !DIExpression(), [[PHI0_LOC]])
+; CHECK-DBG-RECORDS: #dbg_value(i32 [[PHI1_V]], [[PHI1_MD:![0-9]*]], !DIExpression(), [[PHI1_LOC]])
 ; CHECK: br {{.*}} !dbg [[PREHEADER_LOC]]
 ;
 ; CHECK: for.if:

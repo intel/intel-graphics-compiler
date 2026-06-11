@@ -7,7 +7,7 @@
 ;============================ end_copyright_notice =============================
 ;
 ; REQUIRES: llvm-14-plus
-; RUN: igc_opt --opaque-pointers -igc-stateless-to-stateful-resolution -S < %s | FileCheck %s
+; RUN: igc_opt --opaque-pointers -igc-stateless-to-stateful-resolution -S < %s | FileCheck %s --check-prefixes=CHECK,%if llvm-22-plus %{CHECK-DBG-RECORDS%} %else %{CHECK-DBG-INTRINSIC%}
 ; ------------------------------------------------
 ; StatelessToStateful
 ; ------------------------------------------------
@@ -19,7 +19,8 @@
 
 ; CHECK: define spir_kernel void @func_b{{.*}} !dbg [[SCOPE:![0-9]*]]
 ; CHECK: [[VAL2_V:%[A-z0-9]*]] = load {{.*}}, !dbg [[VAL2_LOC:![0-9]*]]
-; CHECK: void @llvm.dbg.value(metadata i32 [[VAL2_V]], metadata [[VAL2_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL2_LOC]]
+; CHECK-DBG-INTRINSIC: void @llvm.dbg.value(metadata i32 [[VAL2_V]], metadata [[VAL2_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL2_LOC]]
+; CHECK-DBG-RECORDS:   #dbg_value(i32 [[VAL2_V]], [[VAL2_MD:![0-9]*]], !DIExpression(), [[VAL2_LOC]])
 ; CHECK: store i32{{.*}}, !dbg [[STR1_LOC:![0-9]*]]
 
 ; Function Attrs: convergent noinline nounwind optnone

@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: igc_opt -igc-custom-safe-opt -S < %s | FileCheck %s
+; RUN: igc_opt -igc-custom-safe-opt -S < %s | FileCheck %s --check-prefixes=CHECK,%if llvm-22-plus %{CHECK-DBG-RECORDS%} %else %{CHECK-DBG-INTRINSIC%}
 ; ------------------------------------------------
 ; CustomSafeOptPass
 ; ------------------------------------------------
@@ -19,10 +19,14 @@
 ; CHECK: define spir_kernel void @test_customsafe{{.*}} !dbg [[SCOPE:![0-9]*]]
 ; extended values in entry and bb1 blocks are lost, checking resulting phi and fpext
 ; CHECK: end:
-; CHECK-DAG: void @llvm.dbg.value(metadata double [[VAL5_V:%[A-z0-9]*]], metadata [[VAL5_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL5_LOC:![0-9]*]]
-; CHECK-DAG: [[VAL5_V]] = {{.*}}, !dbg [[VAL5_LOC]]
-; CHECK-DAG: void @llvm.dbg.value(metadata float [[VAL6_V:%[A-z0-9]*]], metadata [[VAL6_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL6_LOC:![0-9]*]]
-; CHECK-DAG: [[VAL6_V]] = {{.*}}, !dbg [[VAL6_LOC]]
+; CHECK-DBG-INTRINSIC-DAG: void @llvm.dbg.value(metadata double [[VAL5_V:%[A-z0-9]*]], metadata [[VAL5_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL5_LOC:![0-9]*]]
+; CHECK-DBG-INTRINSIC-DAG: [[VAL5_V]] = {{.*}}, !dbg [[VAL5_LOC]]
+; CHECK-DBG-INTRINSIC-DAG: void @llvm.dbg.value(metadata float [[VAL6_V:%[A-z0-9]*]], metadata [[VAL6_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL6_LOC:![0-9]*]]
+; CHECK-DBG-INTRINSIC-DAG: [[VAL6_V]] = {{.*}}, !dbg [[VAL6_LOC]]
+; CHECK-DBG-RECORDS-DAG: #dbg_value(double [[VAL5_V:%[A-z0-9]*]], [[VAL5_MD:![0-9]*]], !DIExpression(), [[VAL5_LOC:![0-9]*]])
+; CHECK-DBG-RECORDS-DAG: [[VAL5_V]] = {{.*}}, !dbg {{![0-9]*}}
+; CHECK-DBG-RECORDS-DAG: #dbg_value(float [[VAL6_V:%[A-z0-9]*]], [[VAL6_MD:![0-9]*]], !DIExpression(), [[VAL6_LOC:![0-9]*]])
+; CHECK-DBG-RECORDS-DAG: [[VAL6_V]] = {{.*}}, !dbg [[VAL6_LOC]]
 
 define spir_kernel void @test_customsafe(float %a, double* %b, i1 %c, float* %d) !dbg !6 {
 entry:

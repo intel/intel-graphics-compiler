@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; RUN: igc_opt -igc-legalization -S < %s | FileCheck %s
+; RUN: igc_opt -igc-legalization -S < %s | FileCheck %s --check-prefixes=CHECK,%if llvm-22-plus %{CHECK-LLVM22%} %else %{CHECK-PRE22%}
 ; ------------------------------------------------
 ; Legalization: bitcast float vector to double
 ; ------------------------------------------------
@@ -26,7 +26,8 @@ define double @test_bitcast_not(<2 x float> %src1) {
 ; CHECK:    [[TMP1:%.*]] = insertelement <2 x float> undef, float 0x7FFF000000000000, i32 0
 ; CHECK:    [[TMP2:%.*]] = insertelement <2 x float> [[TMP1]], float 0x7FFF000000000000, i32 1
 ; CHECK:    [[TMP3:%.*]] = insertelement <2 x float> [[TMP2]], float 1.000000e+00, i32 0
-; CHECK:    [[TMP4:%.*]] = insertelement <2 x float> <float 0x7FFF000000000000, float 0x7FFF000000000000>, float 1.000000e+00, i32 0
+; CHECK-PRE22:    [[TMP4:%.*]] = insertelement <2 x float> <float 0x7FFF000000000000, float 0x7FFF000000000000>, float 1.000000e+00, i32 0
+; CHECK-LLVM22:    [[TMP4:%.*]] = insertelement <2 x float> splat (float 0x7FFF000000000000), float 1.000000e+00, i32 0
 ; CHECK:    [[TMP5:%.*]] = bitcast <2 x float> [[TMP3]] to double
 ; CHECK:    ret double [[TMP5]]
 ;

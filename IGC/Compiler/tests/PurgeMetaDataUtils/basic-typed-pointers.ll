@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; RUN: igc_opt -igc-purgeMetaDataUtils-import -S < %s | FileCheck %s
+; RUN: igc_opt -igc-purgeMetaDataUtils-import -S < %s | FileCheck %s --check-prefixes=CHECK,%if llvm-22-plus %{CHECK-LLVM22%} %else %{CHECK-PRE22%}
 ; ------------------------------------------------
 ; PurgeMetaDataUtils
 ; ------------------------------------------------
@@ -30,7 +30,8 @@
 ; Check that non-kernel functions without usage are properly purged with their MD
 ;
 ; CHECK-NOT: @bar
-; CHECK: declare void @llvm.dbg.declare
+; CHECK-PRE22: declare void @llvm.dbg.declare
+; CHECK-LLVM22: #dbg_declare(
 ;
 
 ; Function Attrs: noinline nounwind optnone

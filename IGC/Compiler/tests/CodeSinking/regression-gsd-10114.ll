@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 ; REQUIRES: regkeys
-; RUN: igc_opt --regkey CodeSinkingMinSize=10 --CheckInstrTypes -igc-update-instrtypes-on-run -igc-code-sinking -S %s | FileCheck %s
+; RUN: igc_opt --regkey CodeSinkingMinSize=10 --CheckInstrTypes -igc-update-instrtypes-on-run -igc-code-sinking -S %s | FileCheck %s --check-prefixes=CHECK,%if llvm-22-plus %{CHECK-DBG-RECORDS%} %else %{CHECK-DBG-INTRINSIC%}
 
 define spir_kernel void @foo() {
   br label %label_1
@@ -23,11 +23,14 @@ label_1:
 label_3:
   br label %._crit_edge
 
-; CHECK:       ._crit_edge:
-; CHECK-NEXT:         = phi
-; CHECK-NEXT:         = phi
-; CHECK-NEXT:         call void @llvm.dbg.value(
-; CHECK-NEXT:         ret void
+; CHECK:                    ._crit_edge:
+; CHECK-NEXT:                  = phi
+; CHECK-NEXT:                  = phi
+; CHECK-DBG-INTRINSIC-NEXT:    call void @llvm.dbg.value(
+; CHECK-NEXT:                  ret void
+; CHECK-DBG-RECORDS:         label_2:
+; CHECK-DBG-RECORDS-NEXT:      #dbg_value(
+; CHECK-DBG-RECORDS-NEXT:      ret void
 ; CHECK-NOT:         = phi
 ._crit_edge:
   %.sroa.2 = phi i32 [ 0, %label_3 ], [ 0, %.exit ]

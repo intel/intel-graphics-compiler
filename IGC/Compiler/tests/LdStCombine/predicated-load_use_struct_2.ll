@@ -10,7 +10,7 @@
 
 ; RUN: igc_opt --opaque-pointers %s -S -igc-ldstcombine -regkey=EnableLdStCombine=5 \
 ; RUN:           -platformbmg \
-; RUN: | FileCheck %s
+; RUN: | FileCheck %s --check-prefixes=CHECK,%if llvm-22-plus %{CHECK-LLVM22%} %else %{CHECK-PRE22%}
 
 
 ; CHECK-LABEL: target datalayout
@@ -71,7 +71,8 @@ entry:
 ; case 1: load i16; load i16, load i64; -> load <3 x i32>
 
 ; CHECK-LABEL: c1.base
-; CHECK: [[T1:%.*]] = call <3 x i32> @llvm.genx.GenISA.PredicatedLoad.v3i32.p1.v3i32(ptr addrspace(1) %{{.*}}, i64 4, i1 true, <3 x i32> <i32 196610, i32 extractelement (<2 x i32> bitcast (<1 x i64> <i64 4> to <2 x i32>), i32 0), i32 extractelement (<2 x i32> bitcast (<1 x i64> <i64 4> to <2 x i32>), i32 1)>)
+; CHECK-PRE22: [[T1:%.*]] = call <3 x i32> @llvm.genx.GenISA.PredicatedLoad.v3i32.p1.v3i32(ptr addrspace(1) %{{.*}}, i64 4, i1 true, <3 x i32> <i32 196610, i32 extractelement (<2 x i32> bitcast (<1 x i64> <i64 4> to <2 x i32>), i32 0), i32 extractelement (<2 x i32> bitcast (<1 x i64> <i64 4> to <2 x i32>), i32 1)>)
+; CHECK-LLVM22: [[T1:%.*]] = call <3 x i32> @llvm.genx.GenISA.PredicatedLoad.v3i32.p1.v3i32(ptr addrspace(1) %{{.*}}, i64 4, i1 true, <3 x i32> <i32 196610, i32 extractelement (<2 x i32> bitcast (<1 x i64> splat (i64 4) to <2 x i32>), i32 0), i32 extractelement (<2 x i32> bitcast (<1 x i64> splat (i64 4) to <2 x i32>), i32 1)>)
 ; CHECK: {{.*}} = call %__StructSOALayout_.1 @llvm.genx.GenISA.bitcasttostruct.__StructSOALayout_.1.v3i32(<3 x i32> [[T1]])
 
   %c1.base = add i64 %conv.i.i.i, 16
@@ -102,7 +103,8 @@ entry:
 ;           This happens for packed/mis-aligned loads
 
 ; CHECK-LABEL: c2.base
-; CHECK: [[T2:%.*]] = call <3 x i32> @llvm.genx.GenISA.bitcastfromstruct.v3i32.__StructSOALayout_.2(%__StructSOALayout_.2 <{ %__StructAOSLayout_.0 <{ i16 2, i16 extractelement (<2 x i16> bitcast (<1 x i32> <i32 3> to <2 x i16>), i32 0) }>, %__StructAOSLayout_.0 <{ i16 extractelement (<2 x i16> bitcast (<1 x i32> <i32 3> to <2 x i16>), i32 1), i16 extractelement (<2 x i16> bitcast (<1 x i32> <i32 4> to <2 x i16>), i32 0) }>, %__StructAOSLayout_.0 <{ i16 extractelement (<2 x i16> bitcast (<1 x i32> <i32 4> to <2 x i16>), i32 1), i16 5 }> }>)
+; CHECK-PRE22: [[T2:%.*]] = call <3 x i32> @llvm.genx.GenISA.bitcastfromstruct.v3i32.__StructSOALayout_.2(%__StructSOALayout_.2 <{ %__StructAOSLayout_.0 <{ i16 2, i16 extractelement (<2 x i16> bitcast (<1 x i32> <i32 3> to <2 x i16>), i32 0) }>, %__StructAOSLayout_.0 <{ i16 extractelement (<2 x i16> bitcast (<1 x i32> <i32 3> to <2 x i16>), i32 1), i16 extractelement (<2 x i16> bitcast (<1 x i32> <i32 4> to <2 x i16>), i32 0) }>, %__StructAOSLayout_.0 <{ i16 extractelement (<2 x i16> bitcast (<1 x i32> <i32 4> to <2 x i16>), i32 1), i16 5 }> }>)
+; CHECK-LLVM22: [[T2:%.*]] = call <3 x i32> @llvm.genx.GenISA.bitcastfromstruct.v3i32.__StructSOALayout_.2(%__StructSOALayout_.2 <{ %__StructAOSLayout_.0 <{ i16 2, i16 extractelement (<2 x i16> bitcast (<1 x i32> splat (i32 3) to <2 x i16>), i32 0) }>, %__StructAOSLayout_.0 <{ i16 extractelement (<2 x i16> bitcast (<1 x i32> splat (i32 3) to <2 x i16>), i32 1), i16 extractelement (<2 x i16> bitcast (<1 x i32> splat (i32 4) to <2 x i16>), i32 0) }>, %__StructAOSLayout_.0 <{ i16 extractelement (<2 x i16> bitcast (<1 x i32> splat (i32 4) to <2 x i16>), i32 1), i16 5 }> }>)
 ; CHECK: [[T3:%.*]] = call <3 x i32> @llvm.genx.GenISA.PredicatedLoad.v3i32.p1.v3i32(ptr addrspace(1) %c2.si.i16, i64 4, i1 true, <3 x i32> [[T2]])
 ; CHECK: {{.*}} = call %__StructSOALayout_.2 @llvm.genx.GenISA.bitcasttostruct.__StructSOALayout_.2.v3i32(<3 x i32> [[T3]])
 ; ret void

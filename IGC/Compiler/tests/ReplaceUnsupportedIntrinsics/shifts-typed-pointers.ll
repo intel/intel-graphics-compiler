@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; RUN: igc_opt -enable-debugify --igc-replace-unsupported-intrinsics -S 2>&1 < %s | FileCheck %s
+; RUN: igc_opt -enable-debugify --igc-replace-unsupported-intrinsics -S 2>&1 < %s | FileCheck %s --check-prefixes=CHECK,%if llvm-22-plus %{CHECK-LLVM22%} %else %{CHECK-PRE22%}
 ; ------------------------------------------------
 ; ReplaceUnsupportedIntrinsics: funnel shifts
 ; ------------------------------------------------
@@ -35,8 +35,10 @@ define spir_kernel void @test_shift(i32 %src1, i32 %src2, i32 %src3) {
 ; CHECK:    [[TMP13:%.*]] = insertelement <2 x i32> [[TMP12]], i32 [[SRC3]], i32 1
 ; CHECK:    [[TMP14:%.*]] = insertelement <2 x i32> undef, i32 [[SRC3]], i32 0
 ; CHECK:    [[TMP15:%.*]] = insertelement <2 x i32> [[TMP14]], i32 [[SRC1]], i32 1
-; CHECK:    [[TMP16:%.*]] = and <2 x i32> [[TMP15]], <i32 31, i32 31>
-; CHECK:    [[TMP17:%.*]] = sub <2 x i32> <i32 32, i32 32>, [[TMP16]]
+; CHECK-PRE22:    [[TMP16:%.*]] = and <2 x i32> [[TMP15]], <i32 31, i32 31>
+; CHECK-LLVM22:    [[TMP16:%.*]] = and <2 x i32> [[TMP15]], splat (i32 31)
+; CHECK-PRE22:    [[TMP17:%.*]] = sub <2 x i32> <i32 32, i32 32>, [[TMP16]]
+; CHECK-LLVM22:    [[TMP17:%.*]] = sub <2 x i32> splat (i32 32), [[TMP16]]
 ; CHECK:    [[TMP18:%.*]] = shl <2 x i32> [[TMP11]], [[TMP17]]
 ; CHECK:    [[TMP19:%.*]] = lshr <2 x i32> [[TMP13]], [[TMP16]]
 ; CHECK:    [[TMP20:%.*]] = or <2 x i32> [[TMP18]], [[TMP19]]

@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; RUN: igc_opt -igc-kernel-function-cloning -S < %s | FileCheck %s
+; RUN: igc_opt -igc-kernel-function-cloning -S < %s | FileCheck %s --check-prefixes=CHECK,%if llvm-22-plus %{CHECK-DBG-RECORDS%} %else %{CHECK-DBG-INTRINSIC%}
 ; ------------------------------------------------
 ; KernelFunctionCloning
 ; ------------------------------------------------
@@ -67,17 +67,19 @@ entry:
 
 ; Check cloned kernel call location
 
-; CHECK: call spir_kernel void @bar{{.*}}, !dbg [[CALL_LOC:![0-9]*]]
+; CHECK: call spir_func void @bar{{.*}}, !dbg [[CALL_LOC:![0-9]*]]
 
-  call spir_kernel void @bar(i32 addrspace(1)* %2, i32 %3) #0, !dbg !43
+  call spir_func void @bar(i32 addrspace(1)* %2, i32 %3) #0, !dbg !43
   ret void, !dbg !44
 }
 
 ; Check cloned function
 
 ; CHECK: internal {{.*}} @bar{{.*}} !dbg [[CFUNC_MD:![0-9]*]] {
-; CHECK: dbg.declare({{.*}}, metadata [[CDECL_DST_MD:![0-9]*]], metadata !DIExpression()), !dbg [[CDECL_DST_LOC:![0-9]*]]
-; CHECK: dbg.declare({{.*}}, metadata [[CDECL_SRC_MD:![0-9]*]], metadata !DIExpression()), !dbg [[CDECL_SRC_LOC:![0-9]*]]
+; CHECK-DBG-INTRINSIC: dbg.declare({{.*}}, metadata [[CDECL_DST_MD:![0-9]*]], metadata !DIExpression()), !dbg [[CDECL_DST_LOC:![0-9]*]]
+; CHECK-DBG-INTRINSIC: dbg.declare({{.*}}, metadata [[CDECL_SRC_MD:![0-9]*]], metadata !DIExpression()), !dbg [[CDECL_SRC_LOC:![0-9]*]]
+; CHECK-DBG-RECORDS: #dbg_declare({{.*}}, [[CDECL_DST_MD:![0-9]*]], !DIExpression(), [[CDECL_DST_LOC:![0-9]*]])
+; CHECK-DBG-RECORDS: #dbg_declare({{.*}}, [[CDECL_SRC_MD:![0-9]*]], !DIExpression(), [[CDECL_SRC_LOC:![0-9]*]])
 ; CHECK-NEXT: load {{.*}}, !dbg [[LOAD_SRC_LOC:![0-9]*]]
 ; CHECK-NEXT: load {{.*}}, !dbg [[LOAD_DST_LOC:![0-9]*]]
 ; CHECK-NEXT: getelementptr {{.*}}, !dbg [[LOAD_DST_LOC]]

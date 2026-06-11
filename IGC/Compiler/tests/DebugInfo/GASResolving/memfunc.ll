@@ -7,7 +7,7 @@
 ;============================ end_copyright_notice =============================
 ;
 ; REQUIRES: llvm-14-plus
-; RUN: igc_opt --opaque-pointers --igc-gas-resolve -S < %s | FileCheck %s
+; RUN: igc_opt --opaque-pointers --igc-gas-resolve -S < %s | FileCheck %s --check-prefixes=CHECK,%if llvm-22-plus %{CHECK-DBG-RECORDS%} %else %{CHECK-DBG-INTRINSIC%}
 ; ------------------------------------------------
 ; GASResolve
 ; ------------------------------------------------
@@ -20,11 +20,11 @@
 ; CHECK: define spir_kernel void @test_kernel
 ; CHECK-SAME: !dbg [[SCOPE:![0-9]*]]
 ;
-; CHECK: call void @llvm.dbg.value(metadata ptr addrspace(1) [[SRC_V:%[A-z0-9]*]]
-; CHECK-SAME: metadata [[SRC_MD:![0-9]*]], metadata !DIExpression()), !dbg [[SRC_LOC:![0-9]*]]
+; CHECK-DBG-INTRINSIC: call void @llvm.dbg.value(metadata ptr addrspace(1) [[SRC_V:%[A-z0-9]*]], metadata [[SRC_MD:![0-9]*]], metadata !DIExpression()), !dbg [[SRC_LOC:![0-9]*]]
+; CHECK-DBG-RECORDS:   #dbg_value(ptr addrspace(4) poison, [[SRC_MD:![0-9]*]], !DIExpression(), [[SRC_LOC:![0-9]*]])
 ;
-; CHECK: call void @llvm.dbg.value(metadata ptr addrspace(1) [[DST_V:%[A-z0-9]*]]
-; CHECK-SAME: metadata [[DST_MD:![0-9]*]], metadata !DIExpression()), !dbg [[DST_LOC:![0-9]*]]
+; CHECK-DBG-INTRINSIC: call void @llvm.dbg.value(metadata ptr addrspace(1) [[DST_V:%[A-z0-9]*]], metadata [[DST_MD:![0-9]*]], metadata !DIExpression()), !dbg [[DST_LOC:![0-9]*]]
+; CHECK-DBG-RECORDS:   #dbg_value(ptr addrspace(4) poison, [[DST_MD:![0-9]*]], !DIExpression(), [[DST_LOC:![0-9]*]])
 ;
 ; CHECK: call void @llvm.memcpy{{.*}} !dbg [[MEMCPY_LOC:![0-9]*]]
 ; CHECK: call void @llvm.memmove{{.*}} !dbg [[MEMMOVE_LOC:![0-9]*]]

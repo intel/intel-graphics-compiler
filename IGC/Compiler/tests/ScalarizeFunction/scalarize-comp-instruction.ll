@@ -7,7 +7,7 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; RUN: igc_opt --igc-scalarize --opaque-pointers -S < %s | FileCheck %s
+; RUN: igc_opt --igc-scalarize --opaque-pointers -S < %s | FileCheck %s --check-prefixes=CHECK,%if llvm-22-plus %{CHECK-LLVM22%} %else %{CHECK-PRE22%}
 ; REQUIRES: llvm-14-plus
 ; ------------------------------------------------
 ; ScalarizeFunction
@@ -225,7 +225,8 @@ define <2 x i1> @should_work_with_different_coparison_type_2(<2 x float> %src1, 
 
 define <2 x i1> @should_not_scalarize_two_constants() {
 ; CHECK-LABEL: define <2 x i1> @should_not_scalarize_two_constants() {
-; CHECK-NEXT:    [[TMP1:%.*]] = icmp eq <2 x i32> <i32 4, i32 4>, <i32 4, i32 8>
+; CHECK-PRE22-NEXT:    [[TMP1:%.*]] = icmp eq <2 x i32> <i32 4, i32 4>, <i32 4, i32 8>
+; CHECK-LLVM22-NEXT:    [[TMP1:%.*]] = icmp eq <2 x i32> splat (i32 4), <i32 4, i32 8>
 ; CHECK-NEXT:    ret <2 x i1> [[TMP1]]
 ;
   %1 = icmp eq <2 x i32> <i32 4, i32 4>, <i32 4, i32 8>

@@ -7,12 +7,13 @@
 ;============================ end_copyright_notice =============================
 ; REQUIRES: llvm-16-plus
 
-; RUN: igc_opt --opaque-pointers -platformpvc -igc-joint-matrix-resolution -S %s 2>&1 | FileCheck %s
+; RUN: igc_opt --opaque-pointers -platformpvc -igc-joint-matrix-resolution -S %s 2>&1 | FileCheck %s --check-prefixes=CHECK,%if llvm-22-plus %{CHECK-LLVM22%} %else %{CHECK-PRE22%}
 
 define spir_kernel void @test(ptr addrspace(1) %dst) {
   ; CHECK-LABEL: define spir_kernel void @test(ptr addrspace(1) %dst) {
   ; CHECK-NEXT: %1 = alloca <8 x i16>, align 16
-  ; CHECK-NEXT: store <8 x i16> <i16 22448, i16 22448, i16 22448, i16 22448, i16 22448, i16 22448, i16 22448, i16 22448>, ptr %1, align 16
+  ; CHECK-PRE22-NEXT: store <8 x i16> <i16 22448, i16 22448, i16 22448, i16 22448, i16 22448, i16 22448, i16 22448, i16 22448>, ptr %1, align 16
+  ; CHECK-LLVM22-NEXT: store <8 x i16> splat (i16 22448), ptr %1, align 16
   ; CHECK-NEXT: call void @__builtin_spriv_OpJointMatrixStoreINTEL_PackedA_RowMajor_SG16_8x16_i16_8_global_pi64_v8i8(ptr addrspace(1) %dst, ptr %1, i64 16, i32 0)
   ; CHECK-NEXT: ret void
 

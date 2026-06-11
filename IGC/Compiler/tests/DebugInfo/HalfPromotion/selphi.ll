@@ -8,7 +8,7 @@
 
 
 ; REQUIRES: llvm-14-plus
-; RUN: igc_opt --opaque-pointers --half-promotion  -S < %s | FileCheck %s
+; RUN: igc_opt --opaque-pointers --half-promotion  -S < %s | FileCheck %s --check-prefixes=CHECK,%if llvm-22-plus %{CHECK-DBG-RECORDS%} %else %{CHECK-DBG-INTRINSIC%}
 ; ------------------------------------------------
 ; HalfPromotion
 ; ------------------------------------------------
@@ -20,20 +20,29 @@
 
 ; CHECK: define void @test_half
 ; CHECK-SAME: !dbg [[SCOPE:![0-9]*]]
-; CHECK-DAG: @llvm.dbg.value(metadata i1 [[FCMP_V:%[0-9]*]], metadata [[FCMP_MD:![0-9]*]], metadata !DIExpression()), !dbg [[FCMP_LOC:![0-9]*]]
-; CHECK-DAG: [[FCMP_V]] = {{.*}}, !dbg [[FCMP_LOC:![0-9]*]]
+; CHECK-DBG-INTRINSIC-DAG: @llvm.dbg.value(metadata i1 [[FCMP_V:%[0-9]*]], metadata [[FCMP_MD:![0-9]*]], metadata !DIExpression()), !dbg [[FCMP_LOC:![0-9]*]]
+; CHECK-DBG-INTRINSIC-DAG: [[FCMP_V]] = {{.*}}, !dbg [[FCMP_LOC:![0-9]*]]
+; CHECK-DBG-RECORDS-DAG: #dbg_value(i1 [[FCMP_V:%[0-9]*]], [[FCMP_MD:![0-9]*]], !DIExpression(), [[FCMP_LOC:![0-9]*]])
+; CHECK-DBG-RECORDS-DAG: [[FCMP_V]] = {{.*}}, !dbg [[FCMP_LOC:![0-9]*]]
 
-; CHECK-DAG: @llvm.dbg.value(metadata half [[COS_V:%[0-9]*]], metadata [[COS_MD:![0-9]*]], metadata !DIExpression()), !dbg [[COS_LOC:![0-9]*]]
-; CHECK-DAG: [[COS_V]] = {{.*}}, !dbg [[COS_LOC:![0-9]*]]
+; CHECK-DBG-INTRINSIC-DAG: @llvm.dbg.value(metadata half [[COS_V:%[0-9]*]], metadata [[COS_MD:![0-9]*]], metadata !DIExpression()), !dbg [[COS_LOC:![0-9]*]]
+; CHECK-DBG-INTRINSIC-DAG: [[COS_V]] = {{.*}}, !dbg [[COS_LOC:![0-9]*]]
+; CHECK-DBG-RECORDS-DAG: #dbg_value(half [[COS_V:%[0-9]*]], [[COS_MD:![0-9]*]], !DIExpression(), [[COS_LOC:![0-9]*]])
+; CHECK-DBG-RECORDS-DAG: [[COS_V]] = {{.*}}, !dbg [[COS_LOC:![0-9]*]]
 
-; CHECK-DAG: @llvm.dbg.value(metadata half [[WAVE_V:%[0-9]*]], metadata [[WAVE_MD:![0-9]*]], metadata !DIExpression()), !dbg [[WAVE_LOC:![0-9]*]]
-; CHECK-DAG: [[WAVE_V]] = {{.*}}, !dbg [[WAVE_LOC:![0-9]*]]
+; CHECK-DBG-INTRINSIC-DAG: @llvm.dbg.value(metadata half [[WAVE_V:%[0-9]*]], metadata [[WAVE_MD:![0-9]*]], metadata !DIExpression()), !dbg [[WAVE_LOC:![0-9]*]]
+; CHECK-DBG-INTRINSIC-DAG: [[WAVE_V]] = {{.*}}, !dbg [[WAVE_LOC:![0-9]*]]
+; CHECK-DBG-RECORDS-DAG: #dbg_value(half [[WAVE_V:%[0-9]*]], [[WAVE_MD:![0-9]*]], !DIExpression(), [[WAVE_LOC:![0-9]*]])
+; CHECK-DBG-RECORDS-DAG: [[WAVE_V]] = {{.*}}, !dbg [[WAVE_LOC:![0-9]*]]
 
-; CHECK-DAG: @llvm.dbg.value(metadata half [[SELECT_V:%[0-9]*]], metadata [[SELECT_MD:![0-9]*]], metadata !DIExpression()), !dbg [[SELECT_LOC:![0-9]*]]
-; CHECK-DAG: [[SELECT_V]] = {{.*}}, !dbg [[SELECT_LOC:![0-9]*]]
+; CHECK-DBG-INTRINSIC-DAG: @llvm.dbg.value(metadata half [[SELECT_V:%[0-9]*]], metadata [[SELECT_MD:![0-9]*]], metadata !DIExpression()), !dbg [[SELECT_LOC:![0-9]*]]
+; CHECK-DBG-INTRINSIC-DAG: [[SELECT_V]] = {{.*}}, !dbg [[SELECT_LOC:![0-9]*]]
+; CHECK-DBG-RECORDS-DAG: #dbg_value(half [[SELECT_V:%[0-9]*]], [[SELECT_MD:![0-9]*]], !DIExpression(), [[SELECT_LOC:![0-9]*]])
+; CHECK-DBG-RECORDS-DAG: [[SELECT_V]] = {{.*}}, !dbg [[SELECT_LOC:![0-9]*]]
 
-; CHECK-DAG: @llvm.dbg.value(metadata half [[PHI_V:%[0-9]*]], metadata [[PHI_MD:![0-9]*]], metadata !DIExpression()), !dbg [[PHI_LOC:![0-9]*]]
-; CHECK-DAG: [[PHI_V]] = {{.*}}, !dbg [[PHI_LOC:![0-9]*]]
+; CHECK-DBG-INTRINSIC-DAG: @llvm.dbg.value(metadata half [[PHI_V:%[0-9]*]], metadata [[PHI_MD:![0-9]*]], metadata !DIExpression()), !dbg [[PHI_LOC:![0-9]*]]
+; CHECK-DBG-INTRINSIC-DAG: [[PHI_V]] = {{.*}}, !dbg [[PHI_LOC:![0-9]*]]
+; CHECK-DBG-RECORDS-DAG: #dbg_value(half [[PHI_V:%[0-9]*]], [[PHI_MD:![0-9]*]], !DIExpression(), [[PHI_LOC:![0-9]*]])
 
 
 define void @test_half(half %src1, half %src2, half* %dst) !dbg !6 {
