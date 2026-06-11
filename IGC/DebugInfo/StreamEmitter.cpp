@@ -135,7 +135,7 @@ public:
                   bool IsResolved) override {
     unsigned size = 1 << getFixupKindLog2Size(fixup.getKind());
 
-    IGC_ASSERT_MESSAGE(fixup.getOffset() + size <= F.getSize(), "Invalid fixup size!");
+    IGC_ASSERT_MESSAGE(fixup.getOffset() + size <= F.getSize(), "Invalid fixup offset!");
 #else
   void applyFixup(const MCAssembler &Asm, const MCFixup &fixup, const MCValue &Target, MutableArrayRef<char> Data,
                   uint64_t value, bool IsResolved, const MCSubtargetInfo *STI) const override {
@@ -151,7 +151,12 @@ public:
     IGC_ASSERT_MESSAGE(isIntN(size * 8 + 1, value), "value does not fit in the fixup field");
 
     for (unsigned i = 0; i != size; ++i) {
+#if LLVM_VERSION_MAJOR >= 22
+      // In LLVM 22+, Data is already pre-offset.
+      Data[i] = uint8_t(value >> (i * 8));
+#else
       Data[fixup.getOffset() + i] = uint8_t(value >> (i * 8));
+#endif
     }
   }
 
