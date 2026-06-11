@@ -10084,6 +10084,13 @@ void HWConformity::fixBfnInst(G4_BB* bb) {
           inst->getSrc(i)->getType() == Type_W)
         inst->setSrc(insertMovBefore(it, i, Type_D, bb), i);
 
+    // A register source of type W used with a UD destination must be
+    // sign-extended to D before the W->UW relabeling below; otherwise the
+    // hardware zero-extends UW->UD and the upper 16 bits are wrong.
+    for (int i = 0; i < inst->getNumSrc(); i++)
+      if (inst->getSrc(i)->isSrcRegRegion() && IS_DTYPE(inst->getDst()->getType()) &&
+          inst->getSrc(i)->getType() == Type_W)
+        inst->setSrc(insertMovBefore(it, i, Type_D, bb), i);
     auto changeSrcToUnsigned = [this](G4_Operand *opnd) {
       if (opnd->isSrcRegRegion() &&
           (opnd->getType() == Type_D || opnd->getType() == Type_W)) {
