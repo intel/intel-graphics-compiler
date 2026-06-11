@@ -1960,6 +1960,8 @@ DECLARE_IGC_REGKEY(bool, DisableRayTracingExtendedCacheControl, false,
                    "Disables the Extended Cache Control for Raytracing.", false)
 DECLARE_IGC_REGKEY(bool, DisableRayTracingExtendedCacheControlTierI, false,
                    "Disables Extended Cache Control Tier I for Raytracing.", false)
+DECLARE_IGC_REGKEY(bool, ForceEnableRayTracingExtendedCacheControlTierI, false,
+                   "Forces enabling Extended Cache Control Tier I, overriding Wa_14027487226.", false)
 DECLARE_IGC_REGKEY(DWORD, RayTracingExtendedCacheControlCachePolicyL2, 0,
                    "Sets the L2 cache policy for ExtendedCacheControl called in shader.\
                                                                                    Possible values:\

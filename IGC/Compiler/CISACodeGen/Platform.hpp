@@ -1429,7 +1429,8 @@ public:
   bool supportsRayTracingExtendedCacheControl() const {
     return isCoreChildOf(IGFX_XE3P_CORE) && hasEfficient64bEnabled() &&
            IGC_IS_FLAG_DISABLED(DisableRayTracingExtendedCacheControl) &&
-           IGC_IS_FLAG_DISABLED(DisableRayTracingExtendedCacheControlTierI) && (m_WaTable.Wa_14027487226 == 0);
+           IGC_IS_FLAG_DISABLED(DisableRayTracingExtendedCacheControlTierI) &&
+           (m_WaTable.Wa_14027487226 == 0 || IGC_IS_FLAG_ENABLED(ForceEnableRayTracingExtendedCacheControlTierI));
   }
 
   bool supports320And448GRFWithoutSendg() const {
