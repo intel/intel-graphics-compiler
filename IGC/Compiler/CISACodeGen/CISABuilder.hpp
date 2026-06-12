@@ -566,9 +566,6 @@ private:
   // CreateFuncAttributeTable
   void CreateFuncAttributeTable(VISAKernel *pMainKernel, GenXFunctionGroupAnalysis *pFga);
 
-  // CreateGlobalHostAccessTable
-  typedef std::vector<vISA::HostAccessEntry> HostAccessList;
-  void CreateGlobalHostAccessTable(HostAccessList &hostAccessMap);
   // input/output: global host access names
   void CreateGlobalHostAccessTable(SOpenCLProgramInfo::ZEBinGlobalHostAccessTable &globalHostAccessTable);
 

@@ -73,12 +73,6 @@ typedef struct {
   char r_symbol[MAX_SYMBOL_NAME_LENGTH]; // The relocation target symbol's name
 } GenRelocEntry;
 
-// HostAccessEntry - per global variable host access entry
-typedef struct {
-  char device_name[MAX_SYMBOL_NAME_LENGTH];
-  char host_name[MAX_SYMBOL_NAME_LENGTH];
-} HostAccessEntry;
-
 /// FIXME: ZE*Entry information should be moved to upper level (e.g. IGC or
 /// runtime interface)
 

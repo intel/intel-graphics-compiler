@@ -5428,7 +5428,6 @@ void CEncoder::CreateSymbolTable(ValueToSymbolList &symbolTableList) {
     if (needSymbol) {
       StringRef name = pGlobal->getName();
       unsigned addrSpace = pGlobal->getType()->getAddressSpace();
-      IGC_ASSERT(name.size() <= vISA::MAX_SYMBOL_NAME_LENGTH);
 
       vISA::ZESymEntry sEntry;
       sEntry.s_name = name.str();
@@ -5505,11 +5504,19 @@ void CEncoder::CreateProgramSymbolTable(ValueToSymbolList &symbolTableList,
 }
 
 void CEncoder::CreateGlobalHostAccessTable(SOpenCLProgramInfo::ZEBinGlobalHostAccessTable &globalHostAccessTable) {
-  HostAccessList hostAccessList;
-  CreateGlobalHostAccessTable(hostAccessList);
+  ModuleMetaData *modMD = m_program->GetContext()->getModuleMetaData();
 
-  for (auto &I : hostAccessList)
-    globalHostAccessTable.push_back(vISA::ZEHostAccessEntry{I.device_name, I.host_name});
+  for (const auto &global : modMD->inlineProgramScopeOffsets) {
+    GlobalVariable *pGlobal = global.first;
+    if (pGlobal->hasAttribute("host_var_name")) {
+      vISA::ZEHostAccessEntry sEntry;
+
+      sEntry.device_name = pGlobal->getName().str();
+      sEntry.host_name = pGlobal->getAttribute("host_var_name").getValueAsString().str();
+
+      globalHostAccessTable.push_back(sEntry);
+    }
+  }
 }
 
 void CEncoder::CreateRelocationTable(VISAKernel *pMainKernel, SProgramOutput::RelocListTy &relocations) {
@@ -5554,25 +5561,6 @@ void CEncoder::CreateFuncAttributeTable(VISAKernel *pMainKernel, GenXFunctionGro
     attrs.emplace_back((uint8_t)isKernel, isExternal, barrierCount, privateMemPerThread, spillMemPerThread,
                        F->getName().str(), hasRTCalls, hasPrintfCalls, requireAssertBuffer, requireSyncBuffer,
                        hasIndirectCalls);
-  }
-}
-
-void CEncoder::CreateGlobalHostAccessTable(HostAccessList &hostAccessList) {
-  ModuleMetaData *modMD = m_program->GetContext()->getModuleMetaData();
-
-  for (const auto &global : modMD->inlineProgramScopeOffsets) {
-    GlobalVariable *pGlobal = global.first;
-    if (pGlobal->hasAttribute("host_var_name")) {
-      vISA::HostAccessEntry sEntry;
-
-      StringRef deviceName = pGlobal->getName();
-      StringRef hostName = pGlobal->getAttribute("host_var_name").getValueAsString();
-
-      strcpy_s(sEntry.device_name, vISA::MAX_SYMBOL_NAME_LENGTH, deviceName.str().c_str());
-      strcpy_s(sEntry.host_name, vISA::MAX_SYMBOL_NAME_LENGTH, hostName.str().c_str());
-
-      hostAccessList.push_back(sEntry);
-    }
   }
 }
 
