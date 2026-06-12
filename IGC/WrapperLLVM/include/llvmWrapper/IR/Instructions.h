@@ -138,7 +138,25 @@ inline auto insertPosition(llvm::Instruction *InsertBefore) {
   return InsertBefore;
 #else
   IGC_ASSERT(InsertBefore);
-  return InsertBefore->getIterator();
+  auto It = InsertBefore->getIterator();
+  // If inserting at the very start of a block, set the head-bit so the
+  // debug-record machinery knows the new instruction belongs before any
+  // debug records (required for PHINodes; matches what BB->begin() does).
+  if (InsertBefore == &InsertBefore->getParent()->front())
+    It.setHeadBit(true);
+  return It;
+#endif
+}
+
+// Returns an insert position at the end of the PHI group (i.e., just before
+// the first non-PHI instruction), suitable for appending a new PHINode.
+// On LLVM >= 18, carries the head-bit so the debug-record machinery places
+// the PHI before any debug records at that position.
+inline auto insertPositionAtFirstNonPHI(llvm::BasicBlock *BB) {
+#if LLVM_VERSION_MAJOR < 18
+  return BB->getFirstNonPHI();
+#else
+  return BB->getFirstNonPHIIt();
 #endif
 }
 

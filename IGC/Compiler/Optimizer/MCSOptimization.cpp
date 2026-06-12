@@ -246,7 +246,12 @@ void MCSOptimization::ProcessLdmcsAndUsersInstrinsic(LdmcsWork &work) {
     if (thenBlockTerminator) {
       for (auto instToMove : ldmsInstsToClub) {
         IGCLLVM::moveBefore(instToMove, thenBlockTerminator);
-        IRB.SetInsertPoint(&*(thenBlockTerminator->getSuccessor(0)->begin()));
+        BasicBlock *succBB = thenBlockTerminator->getSuccessor(0);
+        // Use (BB, iterator) overload rather than (Instruction*) to preserve
+        // the head-bit on LLVM >= 18. Without it, the insertion machinery
+        // thinks we are inserting after debug records and fires an assert
+        // when creating a PHI.
+        IRB.SetInsertPoint(succBB, succBB->begin());
         PHINode *PN = IRB.CreatePHI(instToMove->getType(), 2);
         instToMove->replaceAllUsesWith(PN);
         PN->addIncoming(instToMove, thenBlock);

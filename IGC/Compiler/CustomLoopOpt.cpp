@@ -660,7 +660,7 @@ static BasicBlock *insertUniqueBackedgeBlock(Loop *L, BasicBlock *Preheader, Dom
   for (BasicBlock::iterator I = Header->begin(); isa<PHINode>(I); ++I) {
     PHINode *PN = cast<PHINode>(I);
     PHINode *NewPN = PHINode::Create(PN->getType(), BackedgeBlocks.size(), PN->getName() + ".be",
-                                     IGCLLVM::insertPosition(BETerminator));
+                                     IGCLLVM::insertPositionAtFirstNonPHI(BEBlock));
 
     // Loop over the PHI node, moving all entries except the one for the
     // preheader over to the new PHI node.
@@ -1000,7 +1000,7 @@ bool LoopHoistConstant::runOnLoop(Loop *L, LPPassManager &LPM) {
     // For users of the original instruction outside of the HeaderBB, we need a new PHINode
     // to pick between the if.hoist and else.hoist blocks
     if (II.isUsedOutsideOfBlock(elseHoistBB) && VMap.find(&II) != VMap.end()) {
-      PHINode *PN = PHINode::Create(II.getType(), 2, "", IGCLLVM::insertPosition(endHoistBB->getTerminator()));
+      PHINode *PN = PHINode::Create(II.getType(), 2, "", IGCLLVM::insertPositionAtFirstNonPHI(endHoistBB));
       if (PN) {
         II.replaceUsesOutsideBlock(PN, elseHoistBB);
         PN->addIncoming(VMap[&II], ifHoistBB);
