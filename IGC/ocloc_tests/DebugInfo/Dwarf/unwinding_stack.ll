@@ -13,8 +13,8 @@
 ; UNSUPPORTED: sys32
 ; REQUIRES: regkeys, oneapi-readelf, llvm-16-plus, cri-supported
 
-; RUN: llvm-as %s -o %t
-; RUN: ocloc compile -llvm_input -file %t -device cri -internal_options "-cl-intel-use-bindless-mode -cl-intel-use-bindless-advanced-mode -ze-intel-has-buffer-offset-arg -cl-intel-greater-than-4GB-buffer-required -cl-store-cache-default=2 -cl-load-cache-default=4 -ze-intel-64bit-addressing" -options "-g -cl-opt-disable -igc_opts 'ElfDumpEnable=1, DumpUseShorterName=0, TotalGRFNum=128, DebugDumpNamePrefix=%t_'"
+; RUN: llvm-as  %OPAQUE_PTR_FLAG% %s -o %t
+; RUN: ocloc compile -llvm_input -file %t -device cri -internal_options "-cl-intel-use-bindless-mode -cl-intel-use-bindless-advanced-mode -ze-intel-has-buffer-offset-arg -cl-intel-greater-than-4GB-buffer-required -cl-store-cache-default=2 -cl-load-cache-default=4 -ze-intel-64bit-addressing" -options "-g -cl-opt-disable -igc_opts 'EnableOpaquePointersBackend=1, ElfDumpEnable=1, DumpUseShorterName=0, TotalGRFNum=128, DebugDumpNamePrefix=%t_'"
 ; RUN: oneapi-readelf --debug-dump %t_OCL_simd16_kernel.elf | FileCheck %s
 
 ; CHECK: Contents of the .debug_frame section:

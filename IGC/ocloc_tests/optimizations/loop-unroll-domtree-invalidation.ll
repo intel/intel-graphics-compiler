@@ -15,8 +15,8 @@
 
 ; REQUIRES: regkeys,pvc-supported,llvm-16-plus
 
-; RUN: llvm-as %s -o %t.bc
-; RUN: ocloc compile -llvm_input -file %t.bc -device pvc -options " -igc_opts 'Decompose2DBlockFuncsMode=2'" 2>&1 | FileCheck %s
+; RUN: llvm-as  %OPAQUE_PTR_FLAG% %s -o %t.bc
+; RUN: ocloc compile -llvm_input -file %t.bc -device pvc -options " -igc_opts 'EnableOpaquePointersBackend=1, Decompose2DBlockFuncsMode=2'" 2>&1 | FileCheck %s
 
 ; CHECK: Build succeeded.
 

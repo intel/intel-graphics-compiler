@@ -8,8 +8,8 @@
 
 ; REQUIRES: cri-supported
 
-; RUN: llvm-as %s -o %t.bc
-; RUN: ocloc compile -llvm_input -file %t.bc -device cri -options " -igc_opts 'DumpVISAASMToConsole=1'" | FileCheck %s
+; RUN: llvm-as %TYPED_OPAQUE_PTR_FLAG% %s -o %t.bc
+; RUN: ocloc compile -llvm_input -file %t.bc -device cri -options " -igc_opts '%OPAQUE_KEY_FLAG% DumpVISAASMToConsole=1'" | FileCheck %s
 
 
 target triple = "spir64-unknown-unknown"

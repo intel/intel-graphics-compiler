@@ -15,8 +15,8 @@
 
 ; REQUIRES: regkeys, oneapi-readelf, llvm-16-plus, dg2-supported
 
-; RUN: llvm-as %s -o %t
-; RUN: ocloc compile -llvm_input -file %t -device dg2 -options "-g -cl-opt-disable -igc_opts 'ElfDumpEnable=1, DumpUseShorterName=0, DebugDumpNamePrefix=%t_'"
+; RUN: llvm-as %OPAQUE_PTR_FLAG% %s -o %t
+; RUN: ocloc compile -llvm_input -file %t -device dg2 -options "-g -cl-opt-disable -igc_opts 'EnableOpaquePointersBackend=1, ElfDumpEnable=1, DumpUseShorterName=0, DebugDumpNamePrefix=%t_'"
 ; RUN: oneapi-readelf -r %t_OCL_simd8_caller.elf | FileCheck %s
 
 ; CHECK: Relocation section '.rela.debug_frame'
