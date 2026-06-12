@@ -21,6 +21,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/IR/PassManager.h"
 #include "llvm/Pass.h"
 #include "llvm/Passes/PassBuilder.h"
+#include "llvm/Transforms/Scalar.h"
 #include "llvm/Transforms/Scalar/LoopPassManager.h"
 #include "llvm/Transforms/Scalar/LoopRotation.h"
 
@@ -65,8 +66,12 @@ void LoopRotateLegacyPassWrapper::getAnalysisUsage(AnalysisUsage &AU) const {
 char LoopRotateLegacyPassWrapper::ID = 0;
 
 llvm::Pass *createLegacyWrappedLoopRotatePass(int MaxHeaderSize, bool PrepareForLTO) {
+#if LLVM_VERSION_MAJOR < 22
+  return llvm::createLoopRotatePass(MaxHeaderSize, PrepareForLTO);
+#else
   bool EnableHeaderDuplication = (MaxHeaderSize != 0);
   return new LoopRotateLegacyPassWrapper(EnableHeaderDuplication, PrepareForLTO);
+#endif
 }
 
 } // namespace IGCLLVM
