@@ -674,6 +674,16 @@ void DeSSA::CoalesceAliasInst() {
 
             // union liveness info
             LV->mergeUseFrom(aliasee, D);
+          } else if (GIIid == GenISAIntrinsic::GenISA_SubgroupBitcastShuffle) {
+            Value *D = GII;
+            Value *S = GII->getOperand(0);
+            if (isArgOrNeededInst(S) && WIA->whichDepend(D) == WIA->whichDepend(S) && AliasMap.count(D) == 0) {
+              AddAlias(S);
+              Value *aliasee = AliasMap[S];
+              AliasMap[D] = aliasee;
+              NoopAliasMap[D] = 1;
+              LV->mergeUseFrom(aliasee, D);
+            }
           }
         }
       }

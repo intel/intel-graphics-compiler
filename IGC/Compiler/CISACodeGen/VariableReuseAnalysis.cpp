@@ -938,6 +938,13 @@ bool VariableReuseAnalysis::getAllInsEltsIfAvailable(InsertElementInst *FirstIEI
       continue;
     }
     Value *FromVec = AllIEIs[i].FromVec;
+
+    if (GenIntrinsicInst *GII = dyn_cast_or_null<GenIntrinsicInst>(FromVec)) {
+      auto GIIid = GII->getIntrinsicID();
+      if (GIIid == GenISAIntrinsic::GenISA_SubgroupBitcastShuffle)
+        return false;
+    }
+
     if (FromVec) {
       Value *FromVec_nv = m_DeSSA->getNodeValue(FromVec);
       // check if FromVec has been coalesced with IEI already by DeSSA.

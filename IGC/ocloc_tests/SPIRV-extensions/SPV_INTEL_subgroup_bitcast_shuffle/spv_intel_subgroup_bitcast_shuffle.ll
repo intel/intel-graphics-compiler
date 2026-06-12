@@ -19,7 +19,7 @@
 
 ; CHAR2_I16: .function "test_char2_i16_1"
 ; CHAR2_I16: mov (M1, 16) {{.*}} [[OUTPUT:[a-zA-Z0-9_]+]](0,0)<1;1,0>
-; CHAR2_I16-DAG: .decl [[OUTPUT]] v_type=G type=uw num_elts=16 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
+; CHAR2_I16-DAG: .decl [[OUTPUT]] v_type=G type=w num_elts=16 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
 ; CHAR2_I16-DAG: .decl [[INPUT]] v_type=G type=b num_elts=32 align=wordx32
 
 ; RUN: sed -e 's/INPUT_TYPE/<2 x i8>/g' -e 's/OUTPUT_TYPE/half/g' \
@@ -33,7 +33,7 @@
 
 ; CHAR2_HALF: .function "test_char2_half_1"
 ; CHAR2_HALF: mov (M1, 16) {{.*}} [[OUTPUT:[a-zA-Z0-9_]+]](0,0)<1;1,0>
-; CHAR2_HALF-DAG: .decl [[OUTPUT]] v_type=G type=uw num_elts=16 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
+; CHAR2_HALF-DAG: .decl [[OUTPUT]] v_type=G type=hf num_elts=16 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
 ; CHAR2_HALF-DAG: .decl [[INPUT]] v_type=G type=b num_elts=32 align=wordx32
 
 ; RUN: sed -e 's/INPUT_TYPE/<4 x i8>/g' -e 's/OUTPUT_TYPE/<2 x i16>/g' \
@@ -48,7 +48,7 @@
 ; CHAR4_V2I16: .function "test_char4_v2i16_1"
 ; CHAR4_V2I16: mov (M1, 16) {{.*}} [[OUTPUT:[a-zA-Z0-9_]+]](0,0)<1;1,0>
 ; CHAR4_V2I16: mov (M1, 16) {{.*}} [[OUTPUT]](0,16)<1;1,0>
-; CHAR4_V2I16-DAG: .decl [[OUTPUT]] v_type=G type=uw num_elts=32 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
+; CHAR4_V2I16-DAG: .decl [[OUTPUT]] v_type=G type=w num_elts=32 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
 ; CHAR4_V2I16-DAG: .decl [[INPUT]] v_type=G type=b num_elts=64 align=wordx32
 
 ; RUN: sed -e 's/INPUT_TYPE/<4 x i8>/g' -e 's/OUTPUT_TYPE/i32/g' \
@@ -62,7 +62,7 @@
 
 ; CHAR4_I32: .function "test_char4_i32_1"
 ; CHAR4_I32: mov (M1, 16) {{.*}} [[OUTPUT:[a-zA-Z0-9_]+]](0,0)<1;1,0>
-; CHAR4_I32-DAG: .decl [[OUTPUT]] v_type=G type=ud num_elts=16 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
+; CHAR4_I32-DAG: .decl [[OUTPUT]] v_type=G type=d num_elts=16 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
 ; CHAR4_I32-DAG: .decl [[INPUT]] v_type=G type=b num_elts=64 align=wordx32
 
 ; RUN: sed -e 's/INPUT_TYPE/<4 x i8>/g' -e 's/OUTPUT_TYPE/<2 x half>/g' \
@@ -77,7 +77,7 @@
 ; CHAR4_V2HALF: .function "test_char4_v2half_1"
 ; CHAR4_V2HALF: mov (M1, 16) {{.*}} [[OUTPUT:[a-zA-Z0-9_]+]](0,0)<1;1,0>
 ; CHAR4_V2HALF: mov (M1, 16) {{.*}} [[OUTPUT]](0,16)<1;1,0>
-; CHAR4_V2HALF-DAG: .decl [[OUTPUT]] v_type=G type=uw num_elts=32 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
+; CHAR4_V2HALF-DAG: .decl [[OUTPUT]] v_type=G type=hf num_elts=32 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
 ; CHAR4_V2HALF-DAG: .decl [[INPUT]] v_type=G type=b num_elts=64 align=wordx32
 
 ; RUN: sed -e 's/INPUT_TYPE/<4 x i8>/g' -e 's/OUTPUT_TYPE/float/g' \
@@ -91,7 +91,7 @@
 
 ; CHAR4_FLOAT: .function "test_char4_float_1"
 ; CHAR4_FLOAT: mov (M1, 16) {{.*}} [[OUTPUT:[a-zA-Z0-9_]+]](0,0)<1;1,0>
-; CHAR4_FLOAT-DAG: .decl [[OUTPUT]] v_type=G type=ud num_elts=16 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
+; CHAR4_FLOAT-DAG: .decl [[OUTPUT]] v_type=G type=f num_elts=16 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
 ; CHAR4_FLOAT-DAG: .decl [[INPUT]] v_type=G type=b num_elts=64 align=wordx32
 
 ; RUN: sed -e 's/INPUT_TYPE/<8 x i8>/g' -e 's/OUTPUT_TYPE/<4 x i16>/g' \
@@ -108,7 +108,7 @@
 ; CHAR8_V4I16: mov (M1, 16) {{.*}} [[OUTPUT]](0,16)<1;1,0>
 ; CHAR8_V4I16: mov (M1, 16) {{.*}} [[OUTPUT]](1,0)<1;1,0>
 ; CHAR8_V4I16: mov (M1, 16) {{.*}} [[OUTPUT]](1,16)<1;1,0>
-; CHAR8_V4I16-DAG: .decl [[OUTPUT]] v_type=G type=uw num_elts=64 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
+; CHAR8_V4I16-DAG: .decl [[OUTPUT]] v_type=G type=w num_elts=64 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
 ; CHAR8_V4I16-DAG: .decl [[INPUT]] v_type=G type=b num_elts=128 align=wordx32
 
 ; RUN: sed -e 's/INPUT_TYPE/<8 x i8>/g' -e 's/OUTPUT_TYPE/<2 x i32>/g' \
@@ -123,7 +123,7 @@
 ; CHAR8_V2I32: .function "test_char8_v2i32_1"
 ; CHAR8_V2I32: mov (M1, 16) {{.*}} [[OUTPUT:[a-zA-Z0-9_]+]](0,0)<1;1,0>
 ; CHAR8_V2I32: mov (M1, 16) {{.*}} [[OUTPUT]](1,0)<1;1,0>
-; CHAR8_V2I32-DAG: .decl [[OUTPUT]] v_type=G type=ud num_elts=32 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
+; CHAR8_V2I32-DAG: .decl [[OUTPUT]] v_type=G type=d num_elts=32 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
 ; CHAR8_V2I32-DAG: .decl [[INPUT]] v_type=G type=b num_elts=128 align=wordx32
 
 ; RUN: sed -e 's/INPUT_TYPE/<8 x i8>/g' -e 's/OUTPUT_TYPE/i64/g' \
@@ -137,7 +137,7 @@
 
 ; CHAR8_I64: .function "test_char8_i64_1"
 ; CHAR8_I64: mov (M1, 16) {{.*}} [[OUTPUT:[a-zA-Z0-9_]+]](0,0)<1;1,0>
-; CHAR8_I64-DAG: .decl [[OUTPUT]] v_type=G type=uq num_elts=16 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
+; CHAR8_I64-DAG: .decl [[OUTPUT]] v_type=G type=q num_elts=16 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
 ; CHAR8_I64-DAG: .decl [[INPUT]] v_type=G type=b num_elts=128 align=wordx32
 
 ; RUN: sed -e 's/INPUT_TYPE/<8 x i8>/g' -e 's/OUTPUT_TYPE/<4 x half>/g' \
@@ -154,7 +154,7 @@
 ; CHAR8_V4HALF: mov (M1, 16) {{.*}} [[OUTPUT]](0,16)<1;1,0>
 ; CHAR8_V4HALF: mov (M1, 16) {{.*}} [[OUTPUT]](1,0)<1;1,0>
 ; CHAR8_V4HALF: mov (M1, 16) {{.*}} [[OUTPUT]](1,16)<1;1,0>
-; CHAR8_V4HALF-DAG: .decl [[OUTPUT]] v_type=G type=uw num_elts=64 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
+; CHAR8_V4HALF-DAG: .decl [[OUTPUT]] v_type=G type=hf num_elts=64 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
 ; CHAR8_V4HALF-DAG: .decl [[INPUT]] v_type=G type=b num_elts=128 align=wordx32
 
 ; RUN: sed -e 's/INPUT_TYPE/<8 x i8>/g' -e 's/OUTPUT_TYPE/<2 x float>/g' \
@@ -169,7 +169,7 @@
 ; CHAR8_V2FLOAT: .function "test_char8_v2float_1"
 ; CHAR8_V2FLOAT: mov (M1, 16) {{.*}} [[OUTPUT:[a-zA-Z0-9_]+]](0,0)<1;1,0>
 ; CHAR8_V2FLOAT: mov (M1, 16) {{.*}} [[OUTPUT]](1,0)<1;1,0>
-; CHAR8_V2FLOAT-DAG: .decl [[OUTPUT]] v_type=G type=ud num_elts=32 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
+; CHAR8_V2FLOAT-DAG: .decl [[OUTPUT]] v_type=G type=f num_elts=32 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
 ; CHAR8_V2FLOAT-DAG: .decl [[INPUT]] v_type=G type=b num_elts=128 align=wordx32
 
 ; RUN: sed -e 's/INPUT_TYPE/<8 x i8>/g' -e 's/OUTPUT_TYPE/double/g' \
@@ -183,7 +183,7 @@
 
 ; CHAR8_DOUBLE: .function "test_char8_double_1"
 ; CHAR8_DOUBLE: mov (M1, 16) {{.*}} [[OUTPUT:[a-zA-Z0-9_]+]](0,0)<1;1,0>
-; CHAR8_DOUBLE-DAG: .decl [[OUTPUT]] v_type=G type=uq num_elts=16 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
+; CHAR8_DOUBLE-DAG: .decl [[OUTPUT]] v_type=G type=df num_elts=16 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
 ; CHAR8_DOUBLE-DAG: .decl [[INPUT]] v_type=G type=b num_elts=128 align=wordx32
 
 ; RUN: sed -e 's/INPUT_TYPE/<16 x i8>/g' -e 's/OUTPUT_TYPE/<8 x i16>/g' \
@@ -204,7 +204,7 @@
 ; CHAR16_V8I16: mov (M1, 16) {{.*}} [[OUTPUT]](2,16)<1;1,0>
 ; CHAR16_V8I16: mov (M1, 16) {{.*}} [[OUTPUT]](3,0)<1;1,0>
 ; CHAR16_V8I16: mov (M1, 16) {{.*}} [[OUTPUT]](3,16)<1;1,0>
-; CHAR16_V8I16-DAG: .decl [[OUTPUT]] v_type=G type=uw num_elts=128 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
+; CHAR16_V8I16-DAG: .decl [[OUTPUT]] v_type=G type=w num_elts=128 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
 ; CHAR16_V8I16-DAG: .decl [[INPUT]] v_type=G type=b num_elts=256 align=wordx32
 
 ; RUN: sed -e 's/INPUT_TYPE/<16 x i8>/g' -e 's/OUTPUT_TYPE/<4 x i32>/g' \
@@ -221,7 +221,7 @@
 ; CHAR16_V4I32: mov (M1, 16) {{.*}} [[OUTPUT]](1,0)<1;1,0>
 ; CHAR16_V4I32: mov (M1, 16) {{.*}} [[OUTPUT]](2,0)<1;1,0>
 ; CHAR16_V4I32: mov (M1, 16) {{.*}} [[OUTPUT]](3,0)<1;1,0>
-; CHAR16_V4I32-DAG: .decl [[OUTPUT]] v_type=G type=ud num_elts=64 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
+; CHAR16_V4I32-DAG: .decl [[OUTPUT]] v_type=G type=d num_elts=64 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
 ; CHAR16_V4I32-DAG: .decl [[INPUT]] v_type=G type=b num_elts=256 align=wordx32
 
 ; RUN: sed -e 's/INPUT_TYPE/<16 x i8>/g' -e 's/OUTPUT_TYPE/<2 x i64>/g' \
@@ -236,7 +236,7 @@
 ; CHAR16_V2I64: .function "test_char16_v2i64_1"
 ; CHAR16_V2I64: mov (M1, 16) {{.*}} [[OUTPUT:[a-zA-Z0-9_]+]](0,0)<1;1,0>
 ; CHAR16_V2I64: mov (M1, 16) {{.*}} [[OUTPUT]](2,0)<1;1,0>
-; CHAR16_V2I64-DAG: .decl [[OUTPUT]] v_type=G type=uq num_elts=32 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
+; CHAR16_V2I64-DAG: .decl [[OUTPUT]] v_type=G type=q num_elts=32 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
 ; CHAR16_V2I64-DAG: .decl [[INPUT]] v_type=G type=b num_elts=256 align=wordx32
 
 ; RUN: sed -e 's/INPUT_TYPE/<16 x i8>/g' -e 's/OUTPUT_TYPE/<8 x half>/g' \
@@ -257,7 +257,7 @@
 ; CHAR16_V8HALF: mov (M1, 16) {{.*}} [[OUTPUT]](2,16)<1;1,0>
 ; CHAR16_V8HALF: mov (M1, 16) {{.*}} [[OUTPUT]](3,0)<1;1,0>
 ; CHAR16_V8HALF: mov (M1, 16) {{.*}} [[OUTPUT]](3,16)<1;1,0>
-; CHAR16_V8HALF-DAG: .decl [[OUTPUT]] v_type=G type=uw num_elts=128 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
+; CHAR16_V8HALF-DAG: .decl [[OUTPUT]] v_type=G type=hf num_elts=128 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
 ; CHAR16_V8HALF-DAG: .decl [[INPUT]] v_type=G type=b num_elts=256 align=wordx32
 
 ; RUN: sed -e 's/INPUT_TYPE/<16 x i8>/g' -e 's/OUTPUT_TYPE/<4 x float>/g' \
@@ -274,7 +274,7 @@
 ; CHAR16_V4FLOAT: mov (M1, 16) {{.*}} [[OUTPUT]](1,0)<1;1,0>
 ; CHAR16_V4FLOAT: mov (M1, 16) {{.*}} [[OUTPUT]](2,0)<1;1,0>
 ; CHAR16_V4FLOAT: mov (M1, 16) {{.*}} [[OUTPUT]](3,0)<1;1,0>
-; CHAR16_V4FLOAT-DAG: .decl [[OUTPUT]] v_type=G type=ud num_elts=64 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
+; CHAR16_V4FLOAT-DAG: .decl [[OUTPUT]] v_type=G type=f num_elts=64 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
 ; CHAR16_V4FLOAT-DAG: .decl [[INPUT]] v_type=G type=b num_elts=256 align=wordx32
 
 ; RUN: sed -e 's/INPUT_TYPE/<16 x i8>/g' -e 's/OUTPUT_TYPE/<2 x double>/g' \
@@ -289,7 +289,7 @@
 ; CHAR16_V2DOUBLE: .function "test_char16_v2double_1"
 ; CHAR16_V2DOUBLE: mov (M1, 16) {{.*}} [[OUTPUT:[a-zA-Z0-9_]+]](0,0)<1;1,0>
 ; CHAR16_V2DOUBLE: mov (M1, 16) {{.*}} [[OUTPUT]](2,0)<1;1,0>
-; CHAR16_V2DOUBLE-DAG: .decl [[OUTPUT]] v_type=G type=uq num_elts=32 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
+; CHAR16_V2DOUBLE-DAG: .decl [[OUTPUT]] v_type=G type=df num_elts=32 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
 ; CHAR16_V2DOUBLE-DAG: .decl [[INPUT]] v_type=G type=b num_elts=256 align=wordx32
 
 ; RUN: sed -e 's/INPUT_TYPE/i16/g' -e 's/OUTPUT_TYPE/<2 x i8>/g' \
@@ -304,7 +304,7 @@
 ; SHORT_V2I8: .function "test_short_v2i8_1"
 ; SHORT_V2I8: mov (M1, 16) {{.*}} [[OUTPUT:[a-zA-Z0-9_]+]](0,0)<1;1,0>
 ; SHORT_V2I8: mov (M1, 16) {{.*}} [[OUTPUT]](0,16)<1;1,0>
-; SHORT_V2I8-DAG: .decl [[OUTPUT]] v_type=G type=ub num_elts=32 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
+; SHORT_V2I8-DAG: .decl [[OUTPUT]] v_type=G type=b num_elts=32 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
 ; SHORT_V2I8-DAG: .decl [[INPUT]] v_type=G type=w num_elts=16 align=wordx32
 
 ; RUN: sed -e 's/INPUT_TYPE/i16/g' -e 's/OUTPUT_TYPE/half/g' \
@@ -318,7 +318,7 @@
 
 ; SHORT_HALF: .function "test_short_half_1"
 ; SHORT_HALF: mov (M1, 16) {{.*}} [[OUTPUT:[a-zA-Z0-9_]+]](0,0)<1;1,0>
-; SHORT_HALF-DAG: .decl [[OUTPUT]] v_type=G type=uw num_elts=16 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
+; SHORT_HALF-DAG: .decl [[OUTPUT]] v_type=G type=hf num_elts=16 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
 ; SHORT_HALF-DAG: .decl [[INPUT]] v_type=G type=w num_elts=16 align=wordx32
 
 ; RUN: sed -e 's/INPUT_TYPE/<2 x i16>/g' -e 's/OUTPUT_TYPE/<4 x i8>/g' \
@@ -335,7 +335,7 @@
 ; SHORT2_V4I8: mov (M1, 16) {{.*}} [[OUTPUT]](0,16)<1;1,0>
 ; SHORT2_V4I8: mov (M1, 16) {{.*}} [[OUTPUT]](0,32)<1;1,0>
 ; SHORT2_V4I8: mov (M1, 16) {{.*}} [[OUTPUT]](0,48)<1;1,0>
-; SHORT2_V4I8-DAG: .decl [[OUTPUT]] v_type=G type=ub num_elts=64 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
+; SHORT2_V4I8-DAG: .decl [[OUTPUT]] v_type=G type=b num_elts=64 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
 ; SHORT2_V4I8-DAG: .decl [[INPUT]] v_type=G type=w num_elts=32 align=wordx32
 
 ; RUN: sed -e 's/INPUT_TYPE/<2 x i16>/g' -e 's/OUTPUT_TYPE/i32/g' \
@@ -349,7 +349,7 @@
 
 ; SHORT2_I32: .function "test_short2_i32_1"
 ; SHORT2_I32: mov (M1, 16) {{.*}} [[OUTPUT:[a-zA-Z0-9_]+]](0,0)<1;1,0>
-; SHORT2_I32-DAG: .decl [[OUTPUT]] v_type=G type=ud num_elts=16 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
+; SHORT2_I32-DAG: .decl [[OUTPUT]] v_type=G type=d num_elts=16 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
 ; SHORT2_I32-DAG: .decl [[INPUT]] v_type=G type=w num_elts=32 align=wordx32
 
 ; RUN: sed -e 's/INPUT_TYPE/<2 x i16>/g' -e 's/OUTPUT_TYPE/<2 x half>/g' \
@@ -364,7 +364,7 @@
 ; SHORT2_V2HALF: .function "test_short2_v2half_1"
 ; SHORT2_V2HALF: mov (M1, 16) {{.*}} [[OUTPUT:[a-zA-Z0-9_]+]](0,0)<1;1,0>
 ; SHORT2_V2HALF: mov (M1, 16) {{.*}} [[OUTPUT]](0,16)<1;1,0>
-; SHORT2_V2HALF-DAG: .decl [[OUTPUT]] v_type=G type=uw num_elts=32 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
+; SHORT2_V2HALF-DAG: .decl [[OUTPUT]] v_type=G type=hf num_elts=32 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
 ; SHORT2_V2HALF-DAG: .decl [[INPUT]] v_type=G type=w num_elts=32 align=wordx32
 
 ; RUN: sed -e 's/INPUT_TYPE/<2 x i16>/g' -e 's/OUTPUT_TYPE/float/g' \
@@ -378,7 +378,7 @@
 
 ; SHORT2_FLOAT: .function "test_short2_float_1"
 ; SHORT2_FLOAT: mov (M1, 16) {{.*}} [[OUTPUT:[a-zA-Z0-9_]+]](0,0)<1;1,0>
-; SHORT2_FLOAT-DAG: .decl [[OUTPUT]] v_type=G type=ud num_elts=16 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
+; SHORT2_FLOAT-DAG: .decl [[OUTPUT]] v_type=G type=f num_elts=16 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
 ; SHORT2_FLOAT-DAG: .decl [[INPUT]] v_type=G type=w num_elts=32 align=wordx32
 
 ; RUN: sed -e 's/INPUT_TYPE/<4 x i16>/g' -e 's/OUTPUT_TYPE/<8 x i8>/g' \
@@ -399,7 +399,7 @@
 ; SHORT4_V8I8: mov (M1, 16) {{.*}} [[OUTPUT]](1,16)<1;1,0>
 ; SHORT4_V8I8: mov (M1, 16) {{.*}} [[OUTPUT]](1,32)<1;1,0>
 ; SHORT4_V8I8: mov (M1, 16) {{.*}} [[OUTPUT]](1,48)<1;1,0>
-; SHORT4_V8I8-DAG: .decl [[OUTPUT]] v_type=G type=ub num_elts=128 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
+; SHORT4_V8I8-DAG: .decl [[OUTPUT]] v_type=G type=b num_elts=128 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
 ; SHORT4_V8I8-DAG: .decl [[INPUT]] v_type=G type=w num_elts=64 align=wordx32
 
 ; RUN: sed -e 's/INPUT_TYPE/<4 x i16>/g' -e 's/OUTPUT_TYPE/<2 x i32>/g' \
@@ -414,7 +414,7 @@
 ; SHORT4_V2I32: .function "test_short4_v2i32_1"
 ; SHORT4_V2I32: mov (M1, 16) {{.*}} [[OUTPUT:[a-zA-Z0-9_]+]](0,0)<1;1,0>
 ; SHORT4_V2I32: mov (M1, 16) {{.*}} [[OUTPUT]](1,0)<1;1,0>
-; SHORT4_V2I32-DAG: .decl [[OUTPUT]] v_type=G type=ud num_elts=32 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
+; SHORT4_V2I32-DAG: .decl [[OUTPUT]] v_type=G type=d num_elts=32 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
 ; SHORT4_V2I32-DAG: .decl [[INPUT]] v_type=G type=w num_elts=64 align=wordx32
 
 ; RUN: sed -e 's/INPUT_TYPE/<4 x i16>/g' -e 's/OUTPUT_TYPE/i64/g' \
@@ -428,7 +428,7 @@
 
 ; SHORT4_I64: .function "test_short4_i64_1"
 ; SHORT4_I64: mov (M1, 16) {{.*}} [[OUTPUT:[a-zA-Z0-9_]+]](0,0)<1;1,0>
-; SHORT4_I64-DAG: .decl [[OUTPUT]] v_type=G type=uq num_elts=16 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
+; SHORT4_I64-DAG: .decl [[OUTPUT]] v_type=G type=q num_elts=16 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
 ; SHORT4_I64-DAG: .decl [[INPUT]] v_type=G type=w num_elts=64 align=wordx32
 
 ; RUN: sed -e 's/INPUT_TYPE/<4 x i16>/g' -e 's/OUTPUT_TYPE/<4 x half>/g' \
@@ -445,7 +445,7 @@
 ; SHORT4_V4HALF: mov (M1, 16) {{.*}} [[OUTPUT]](0,16)<1;1,0>
 ; SHORT4_V4HALF: mov (M1, 16) {{.*}} [[OUTPUT]](1,0)<1;1,0>
 ; SHORT4_V4HALF: mov (M1, 16) {{.*}} [[OUTPUT]](1,16)<1;1,0>
-; SHORT4_V4HALF-DAG: .decl [[OUTPUT]] v_type=G type=uw num_elts=64 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
+; SHORT4_V4HALF-DAG: .decl [[OUTPUT]] v_type=G type=hf num_elts=64 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
 ; SHORT4_V4HALF-DAG: .decl [[INPUT]] v_type=G type=w num_elts=64 align=wordx32
 
 ; RUN: sed -e 's/INPUT_TYPE/<4 x i16>/g' -e 's/OUTPUT_TYPE/<2 x float>/g' \
@@ -460,7 +460,7 @@
 ; SHORT4_V2FLOAT: .function "test_short4_v2float_1"
 ; SHORT4_V2FLOAT: mov (M1, 16) {{.*}} [[OUTPUT:[a-zA-Z0-9_]+]](0,0)<1;1,0>
 ; SHORT4_V2FLOAT: mov (M1, 16) {{.*}} [[OUTPUT]](1,0)<1;1,0>
-; SHORT4_V2FLOAT-DAG: .decl [[OUTPUT]] v_type=G type=ud num_elts=32 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
+; SHORT4_V2FLOAT-DAG: .decl [[OUTPUT]] v_type=G type=f num_elts=32 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
 ; SHORT4_V2FLOAT-DAG: .decl [[INPUT]] v_type=G type=w num_elts=64 align=wordx32
 
 ; RUN: sed -e 's/INPUT_TYPE/<4 x i16>/g' -e 's/OUTPUT_TYPE/double/g' \
@@ -474,7 +474,7 @@
 
 ; SHORT4_DOUBLE: .function "test_short4_double_1"
 ; SHORT4_DOUBLE: mov (M1, 16) {{.*}} [[OUTPUT:[a-zA-Z0-9_]+]](0,0)<1;1,0>
-; SHORT4_DOUBLE-DAG: .decl [[OUTPUT]] v_type=G type=uq num_elts=16 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
+; SHORT4_DOUBLE-DAG: .decl [[OUTPUT]] v_type=G type=df num_elts=16 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
 ; SHORT4_DOUBLE-DAG: .decl [[INPUT]] v_type=G type=w num_elts=64 align=wordx32
 
 ; RUN: sed -e 's/INPUT_TYPE/<8 x i16>/g' -e 's/OUTPUT_TYPE/<16 x i8>/g' \
@@ -503,7 +503,7 @@
 ; SHORT8_V16I8: mov (M1, 16) {{.*}} [[OUTPUT]](3,16)<1;1,0>
 ; SHORT8_V16I8: mov (M1, 16) {{.*}} [[OUTPUT]](3,32)<1;1,0>
 ; SHORT8_V16I8: mov (M1, 16) {{.*}} [[OUTPUT]](3,48)<1;1,0>
-; SHORT8_V16I8-DAG: .decl [[OUTPUT]] v_type=G type=ub num_elts=256 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
+; SHORT8_V16I8-DAG: .decl [[OUTPUT]] v_type=G type=b num_elts=256 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
 ; SHORT8_V16I8-DAG: .decl [[INPUT]] v_type=G type=w num_elts=128 align=wordx32
 
 ; RUN: sed -e 's/INPUT_TYPE/<8 x i16>/g' -e 's/OUTPUT_TYPE/<4 x i32>/g' \
@@ -520,7 +520,7 @@
 ; SHORT8_V4I32: mov (M1, 16) {{.*}} [[OUTPUT]](1,0)<1;1,0>
 ; SHORT8_V4I32: mov (M1, 16) {{.*}} [[OUTPUT]](2,0)<1;1,0>
 ; SHORT8_V4I32: mov (M1, 16) {{.*}} [[OUTPUT]](3,0)<1;1,0>
-; SHORT8_V4I32-DAG: .decl [[OUTPUT]] v_type=G type=ud num_elts=64 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
+; SHORT8_V4I32-DAG: .decl [[OUTPUT]] v_type=G type=d num_elts=64 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
 ; SHORT8_V4I32-DAG: .decl [[INPUT]] v_type=G type=w num_elts=128 align=wordx32
 
 ; RUN: sed -e 's/INPUT_TYPE/<8 x i16>/g' -e 's/OUTPUT_TYPE/<2 x i64>/g' \
@@ -535,7 +535,7 @@
 ; SHORT8_V2I64: .function "test_short8_v2i64_1"
 ; SHORT8_V2I64: mov (M1, 16) {{.*}} [[OUTPUT:[a-zA-Z0-9_]+]](0,0)<1;1,0>
 ; SHORT8_V2I64: mov (M1, 16) {{.*}} [[OUTPUT]](2,0)<1;1,0>
-; SHORT8_V2I64-DAG: .decl [[OUTPUT]] v_type=G type=uq num_elts=32 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
+; SHORT8_V2I64-DAG: .decl [[OUTPUT]] v_type=G type=q num_elts=32 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
 ; SHORT8_V2I64-DAG: .decl [[INPUT]] v_type=G type=w num_elts=128 align=wordx32
 
 ; RUN: sed -e 's/INPUT_TYPE/<8 x i16>/g' -e 's/OUTPUT_TYPE/<8 x half>/g' \
@@ -556,7 +556,7 @@
 ; SHORT8_V8HALF: mov (M1, 16) {{.*}} [[OUTPUT]](2,16)<1;1,0>
 ; SHORT8_V8HALF: mov (M1, 16) {{.*}} [[OUTPUT]](3,0)<1;1,0>
 ; SHORT8_V8HALF: mov (M1, 16) {{.*}} [[OUTPUT]](3,16)<1;1,0>
-; SHORT8_V8HALF-DAG: .decl [[OUTPUT]] v_type=G type=uw num_elts=128 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
+; SHORT8_V8HALF-DAG: .decl [[OUTPUT]] v_type=G type=hf num_elts=128 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
 ; SHORT8_V8HALF-DAG: .decl [[INPUT]] v_type=G type=w num_elts=128 align=wordx32
 
 ; RUN: sed -e 's/INPUT_TYPE/<8 x i16>/g' -e 's/OUTPUT_TYPE/<4 x float>/g' \
@@ -573,7 +573,7 @@
 ; SHORT8_V4FLOAT: mov (M1, 16) {{.*}} [[OUTPUT]](1,0)<1;1,0>
 ; SHORT8_V4FLOAT: mov (M1, 16) {{.*}} [[OUTPUT]](2,0)<1;1,0>
 ; SHORT8_V4FLOAT: mov (M1, 16) {{.*}} [[OUTPUT]](3,0)<1;1,0>
-; SHORT8_V4FLOAT-DAG: .decl [[OUTPUT]] v_type=G type=ud num_elts=64 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
+; SHORT8_V4FLOAT-DAG: .decl [[OUTPUT]] v_type=G type=f num_elts=64 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
 ; SHORT8_V4FLOAT-DAG: .decl [[INPUT]] v_type=G type=w num_elts=128 align=wordx32
 
 ; RUN: sed -e 's/INPUT_TYPE/<8 x i16>/g' -e 's/OUTPUT_TYPE/<2 x double>/g' \
@@ -588,7 +588,7 @@
 ; SHORT8_V2DOUBLE: .function "test_short8_v2double_1"
 ; SHORT8_V2DOUBLE: mov (M1, 16) {{.*}} [[OUTPUT:[a-zA-Z0-9_]+]](0,0)<1;1,0>
 ; SHORT8_V2DOUBLE: mov (M1, 16) {{.*}} [[OUTPUT]](2,0)<1;1,0>
-; SHORT8_V2DOUBLE-DAG: .decl [[OUTPUT]] v_type=G type=uq num_elts=32 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
+; SHORT8_V2DOUBLE-DAG: .decl [[OUTPUT]] v_type=G type=df num_elts=32 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
 ; SHORT8_V2DOUBLE-DAG: .decl [[INPUT]] v_type=G type=w num_elts=128 align=wordx32
 
 ; RUN: sed -e 's/INPUT_TYPE/<16 x i16>/g' -e 's/OUTPUT_TYPE/<8 x i32>/g' \
@@ -609,7 +609,7 @@
 ; SHORT16_V8I32: mov (M1, 16) {{.*}} [[OUTPUT]](5,0)<1;1,0>
 ; SHORT16_V8I32: mov (M1, 16) {{.*}} [[OUTPUT]](6,0)<1;1,0>
 ; SHORT16_V8I32: mov (M1, 16) {{.*}} [[OUTPUT]](7,0)<1;1,0>
-; SHORT16_V8I32-DAG: .decl [[OUTPUT]] v_type=G type=ud num_elts=128 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
+; SHORT16_V8I32-DAG: .decl [[OUTPUT]] v_type=G type=d num_elts=128 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
 ; SHORT16_V8I32-DAG: .decl [[INPUT]] v_type=G type=w num_elts=256 align=wordx32
 
 ; RUN: sed -e 's/INPUT_TYPE/<16 x i16>/g' -e 's/OUTPUT_TYPE/<4 x i64>/g' \
@@ -626,7 +626,7 @@
 ; SHORT16_V4I64: mov (M1, 16) {{.*}} [[OUTPUT]](2,0)<1;1,0>
 ; SHORT16_V4I64: mov (M1, 16) {{.*}} [[OUTPUT]](4,0)<1;1,0>
 ; SHORT16_V4I64: mov (M1, 16) {{.*}} [[OUTPUT]](6,0)<1;1,0>
-; SHORT16_V4I64-DAG: .decl [[OUTPUT]] v_type=G type=uq num_elts=64 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
+; SHORT16_V4I64-DAG: .decl [[OUTPUT]] v_type=G type=q num_elts=64 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
 ; SHORT16_V4I64-DAG: .decl [[INPUT]] v_type=G type=w num_elts=256 align=wordx32
 
 ; RUN: sed -e 's/INPUT_TYPE/<16 x i16>/g' -e 's/OUTPUT_TYPE/<16 x half>/g' \
@@ -655,7 +655,7 @@
 ; SHORT16_V16HALF: mov (M1, 16) {{.*}} [[OUTPUT]](6,16)<1;1,0>
 ; SHORT16_V16HALF: mov (M1, 16) {{.*}} [[OUTPUT]](7,0)<1;1,0>
 ; SHORT16_V16HALF: mov (M1, 16) {{.*}} [[OUTPUT]](7,16)<1;1,0>
-; SHORT16_V16HALF-DAG: .decl [[OUTPUT]] v_type=G type=uw num_elts=256 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
+; SHORT16_V16HALF-DAG: .decl [[OUTPUT]] v_type=G type=hf num_elts=256 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
 ; SHORT16_V16HALF-DAG: .decl [[INPUT]] v_type=G type=w num_elts=256 align=wordx32
 
 ; RUN: sed -e 's/INPUT_TYPE/<16 x i16>/g' -e 's/OUTPUT_TYPE/<8 x float>/g' \
@@ -676,7 +676,7 @@
 ; SHORT16_V8FLOAT: mov (M1, 16) {{.*}} [[OUTPUT]](5,0)<1;1,0>
 ; SHORT16_V8FLOAT: mov (M1, 16) {{.*}} [[OUTPUT]](6,0)<1;1,0>
 ; SHORT16_V8FLOAT: mov (M1, 16) {{.*}} [[OUTPUT]](7,0)<1;1,0>
-; SHORT16_V8FLOAT-DAG: .decl [[OUTPUT]] v_type=G type=ud num_elts=128 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
+; SHORT16_V8FLOAT-DAG: .decl [[OUTPUT]] v_type=G type=f num_elts=128 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
 ; SHORT16_V8FLOAT-DAG: .decl [[INPUT]] v_type=G type=w num_elts=256 align=wordx32
 
 ; RUN: sed -e 's/INPUT_TYPE/<16 x i16>/g' -e 's/OUTPUT_TYPE/<4 x double>/g' \
@@ -693,7 +693,7 @@
 ; SHORT16_V4DOUBLE: mov (M1, 16) {{.*}} [[OUTPUT]](2,0)<1;1,0>
 ; SHORT16_V4DOUBLE: mov (M1, 16) {{.*}} [[OUTPUT]](4,0)<1;1,0>
 ; SHORT16_V4DOUBLE: mov (M1, 16) {{.*}} [[OUTPUT]](6,0)<1;1,0>
-; SHORT16_V4DOUBLE-DAG: .decl [[OUTPUT]] v_type=G type=uq num_elts=64 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
+; SHORT16_V4DOUBLE-DAG: .decl [[OUTPUT]] v_type=G type=df num_elts=64 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
 ; SHORT16_V4DOUBLE-DAG: .decl [[INPUT]] v_type=G type=w num_elts=256 align=wordx32
 
 ; RUN: sed -e 's/INPUT_TYPE/i32/g' -e 's/OUTPUT_TYPE/<4 x i8>/g' \
@@ -710,7 +710,7 @@
 ; INT_V4I8: mov (M1, 16) {{.*}} [[OUTPUT]](0,16)<1;1,0>
 ; INT_V4I8: mov (M1, 16) {{.*}} [[OUTPUT]](0,32)<1;1,0>
 ; INT_V4I8: mov (M1, 16) {{.*}} [[OUTPUT]](0,48)<1;1,0>
-; INT_V4I8-DAG: .decl [[OUTPUT]] v_type=G type=ub num_elts=64 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
+; INT_V4I8-DAG: .decl [[OUTPUT]] v_type=G type=b num_elts=64 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
 ; INT_V4I8-DAG: .decl [[INPUT]] v_type=G type=d num_elts=16 align=wordx32
 
 ; RUN: sed -e 's/INPUT_TYPE/i32/g' -e 's/OUTPUT_TYPE/<2 x i16>/g' \
@@ -725,7 +725,7 @@
 ; INT_V2I16: .function "test_int_v2i16_1"
 ; INT_V2I16: mov (M1, 16) {{.*}} [[OUTPUT:[a-zA-Z0-9_]+]](0,0)<1;1,0>
 ; INT_V2I16: mov (M1, 16) {{.*}} [[OUTPUT]](0,16)<1;1,0>
-; INT_V2I16-DAG: .decl [[OUTPUT]] v_type=G type=uw num_elts=32 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
+; INT_V2I16-DAG: .decl [[OUTPUT]] v_type=G type=w num_elts=32 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
 ; INT_V2I16-DAG: .decl [[INPUT]] v_type=G type=d num_elts=16 align=wordx32
 
 ; RUN: sed -e 's/INPUT_TYPE/i32/g' -e 's/OUTPUT_TYPE/<2 x half>/g' \
@@ -740,7 +740,7 @@
 ; INT_V2HALF: .function "test_int_v2half_1"
 ; INT_V2HALF: mov (M1, 16) {{.*}} [[OUTPUT:[a-zA-Z0-9_]+]](0,0)<1;1,0>
 ; INT_V2HALF: mov (M1, 16) {{.*}} [[OUTPUT]](0,16)<1;1,0>
-; INT_V2HALF-DAG: .decl [[OUTPUT]] v_type=G type=uw num_elts=32 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
+; INT_V2HALF-DAG: .decl [[OUTPUT]] v_type=G type=hf num_elts=32 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
 ; INT_V2HALF-DAG: .decl [[INPUT]] v_type=G type=d num_elts=16 align=wordx32
 
 ; RUN: sed -e 's/INPUT_TYPE/i32/g' -e 's/OUTPUT_TYPE/float/g' \
@@ -754,7 +754,7 @@
 
 ; INT_FLOAT: .function "test_int_float_1"
 ; INT_FLOAT: mov (M1, 16) {{.*}} [[OUTPUT:[a-zA-Z0-9_]+]](0,0)<1;1,0>
-; INT_FLOAT-DAG: .decl [[OUTPUT]] v_type=G type=ud num_elts=16 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
+; INT_FLOAT-DAG: .decl [[OUTPUT]] v_type=G type=f num_elts=16 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
 ; INT_FLOAT-DAG: .decl [[INPUT]] v_type=G type=d num_elts=16 align=wordx32
 
 ; RUN: sed -e 's/INPUT_TYPE/<2 x i32>/g' -e 's/OUTPUT_TYPE/<8 x i8>/g' \
@@ -775,7 +775,7 @@
 ; INT2_V8I8: mov (M1, 16) {{.*}} [[OUTPUT]](1,16)<1;1,0>
 ; INT2_V8I8: mov (M1, 16) {{.*}} [[OUTPUT]](1,32)<1;1,0>
 ; INT2_V8I8: mov (M1, 16) {{.*}} [[OUTPUT]](1,48)<1;1,0>
-; INT2_V8I8-DAG: .decl [[OUTPUT]] v_type=G type=ub num_elts=128 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
+; INT2_V8I8-DAG: .decl [[OUTPUT]] v_type=G type=b num_elts=128 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
 ; INT2_V8I8-DAG: .decl [[INPUT]] v_type=G type=d num_elts=32 align=wordx32
 
 ; RUN: sed -e 's/INPUT_TYPE/<2 x i32>/g' -e 's/OUTPUT_TYPE/<4 x i16>/g' \
@@ -792,7 +792,7 @@
 ; INT2_V4I16: mov (M1, 16) {{.*}} [[OUTPUT]](0,16)<1;1,0>
 ; INT2_V4I16: mov (M1, 16) {{.*}} [[OUTPUT]](1,0)<1;1,0>
 ; INT2_V4I16: mov (M1, 16) {{.*}} [[OUTPUT]](1,16)<1;1,0>
-; INT2_V4I16-DAG: .decl [[OUTPUT]] v_type=G type=uw num_elts=64 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
+; INT2_V4I16-DAG: .decl [[OUTPUT]] v_type=G type=w num_elts=64 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
 ; INT2_V4I16-DAG: .decl [[INPUT]] v_type=G type=d num_elts=32 align=wordx32
 
 ; RUN: sed -e 's/INPUT_TYPE/<2 x i32>/g' -e 's/OUTPUT_TYPE/i64/g' \
@@ -806,7 +806,7 @@
 
 ; INT2_I64: .function "test_int2_i64_1"
 ; INT2_I64: mov (M1, 16) {{.*}} [[OUTPUT:[a-zA-Z0-9_]+]](0,0)<1;1,0>
-; INT2_I64-DAG: .decl [[OUTPUT]] v_type=G type=uq num_elts=16 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
+; INT2_I64-DAG: .decl [[OUTPUT]] v_type=G type=q num_elts=16 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
 ; INT2_I64-DAG: .decl [[INPUT]] v_type=G type=d num_elts=32 align=wordx32
 
 ; RUN: sed -e 's/INPUT_TYPE/<2 x i32>/g' -e 's/OUTPUT_TYPE/<4 x half>/g' \
@@ -823,7 +823,7 @@
 ; INT2_V4HALF: mov (M1, 16) {{.*}} [[OUTPUT]](0,16)<1;1,0>
 ; INT2_V4HALF: mov (M1, 16) {{.*}} [[OUTPUT]](1,0)<1;1,0>
 ; INT2_V4HALF: mov (M1, 16) {{.*}} [[OUTPUT]](1,16)<1;1,0>
-; INT2_V4HALF-DAG: .decl [[OUTPUT]] v_type=G type=uw num_elts=64 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
+; INT2_V4HALF-DAG: .decl [[OUTPUT]] v_type=G type=hf num_elts=64 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
 ; INT2_V4HALF-DAG: .decl [[INPUT]] v_type=G type=d num_elts=32 align=wordx32
 
 ; RUN: sed -e 's/INPUT_TYPE/<2 x i32>/g' -e 's/OUTPUT_TYPE/<2 x float>/g' \
@@ -838,7 +838,7 @@
 ; INT2_V2FLOAT: .function "test_int2_v2float_1"
 ; INT2_V2FLOAT: mov (M1, 16) {{.*}} [[OUTPUT:[a-zA-Z0-9_]+]](0,0)<1;1,0>
 ; INT2_V2FLOAT: mov (M1, 16) {{.*}} [[OUTPUT]](1,0)<1;1,0>
-; INT2_V2FLOAT-DAG: .decl [[OUTPUT]] v_type=G type=ud num_elts=32 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
+; INT2_V2FLOAT-DAG: .decl [[OUTPUT]] v_type=G type=f num_elts=32 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
 ; INT2_V2FLOAT-DAG: .decl [[INPUT]] v_type=G type=d num_elts=32 align=wordx32
 
 ; RUN: sed -e 's/INPUT_TYPE/<2 x i32>/g' -e 's/OUTPUT_TYPE/double/g' \
@@ -852,7 +852,7 @@
 
 ; INT2_DOUBLE: .function "test_int2_double_1"
 ; INT2_DOUBLE: mov (M1, 16) {{.*}} [[OUTPUT:[a-zA-Z0-9_]+]](0,0)<1;1,0>
-; INT2_DOUBLE-DAG: .decl [[OUTPUT]] v_type=G type=uq num_elts=16 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
+; INT2_DOUBLE-DAG: .decl [[OUTPUT]] v_type=G type=df num_elts=16 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
 ; INT2_DOUBLE-DAG: .decl [[INPUT]] v_type=G type=d num_elts=32 align=wordx32
 
 ; RUN: sed -e 's/INPUT_TYPE/<4 x i32>/g' -e 's/OUTPUT_TYPE/<16 x i8>/g' \
@@ -881,7 +881,7 @@
 ; INT4_V16I8: mov (M1, 16) {{.*}} [[OUTPUT]](3,16)<1;1,0>
 ; INT4_V16I8: mov (M1, 16) {{.*}} [[OUTPUT]](3,32)<1;1,0>
 ; INT4_V16I8: mov (M1, 16) {{.*}} [[OUTPUT]](3,48)<1;1,0>
-; INT4_V16I8-DAG: .decl [[OUTPUT]] v_type=G type=ub num_elts=256 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
+; INT4_V16I8-DAG: .decl [[OUTPUT]] v_type=G type=b num_elts=256 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
 ; INT4_V16I8-DAG: .decl [[INPUT]] v_type=G type=d num_elts=64 align=wordx32
 
 ; RUN: sed -e 's/INPUT_TYPE/<4 x i32>/g' -e 's/OUTPUT_TYPE/<8 x i16>/g' \
@@ -902,7 +902,7 @@
 ; INT4_V8I16: mov (M1, 16) {{.*}} [[OUTPUT]](2,16)<1;1,0>
 ; INT4_V8I16: mov (M1, 16) {{.*}} [[OUTPUT]](3,0)<1;1,0>
 ; INT4_V8I16: mov (M1, 16) {{.*}} [[OUTPUT]](3,16)<1;1,0>
-; INT4_V8I16-DAG: .decl [[OUTPUT]] v_type=G type=uw num_elts=128 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
+; INT4_V8I16-DAG: .decl [[OUTPUT]] v_type=G type=w num_elts=128 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
 ; INT4_V8I16-DAG: .decl [[INPUT]] v_type=G type=d num_elts=64 align=wordx32
 
 ; RUN: sed -e 's/INPUT_TYPE/<4 x i32>/g' -e 's/OUTPUT_TYPE/<2 x i64>/g' \
@@ -917,7 +917,7 @@
 ; INT4_V2I64: .function "test_int4_v2i64_1"
 ; INT4_V2I64: mov (M1, 16) {{.*}} [[OUTPUT:[a-zA-Z0-9_]+]](0,0)<1;1,0>
 ; INT4_V2I64: mov (M1, 16) {{.*}} [[OUTPUT]](2,0)<1;1,0>
-; INT4_V2I64-DAG: .decl [[OUTPUT]] v_type=G type=uq num_elts=32 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
+; INT4_V2I64-DAG: .decl [[OUTPUT]] v_type=G type=q num_elts=32 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
 ; INT4_V2I64-DAG: .decl [[INPUT]] v_type=G type=d num_elts=64 align=wordx32
 
 ; RUN: sed -e 's/INPUT_TYPE/<4 x i32>/g' -e 's/OUTPUT_TYPE/<8 x half>/g' \
@@ -938,7 +938,7 @@
 ; INT4_V8HALF: mov (M1, 16) {{.*}} [[OUTPUT]](2,16)<1;1,0>
 ; INT4_V8HALF: mov (M1, 16) {{.*}} [[OUTPUT]](3,0)<1;1,0>
 ; INT4_V8HALF: mov (M1, 16) {{.*}} [[OUTPUT]](3,16)<1;1,0>
-; INT4_V8HALF-DAG: .decl [[OUTPUT]] v_type=G type=uw num_elts=128 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
+; INT4_V8HALF-DAG: .decl [[OUTPUT]] v_type=G type=hf num_elts=128 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
 ; INT4_V8HALF-DAG: .decl [[INPUT]] v_type=G type=d num_elts=64 align=wordx32
 
 ; RUN: sed -e 's/INPUT_TYPE/<4 x i32>/g' -e 's/OUTPUT_TYPE/<4 x float>/g' \
@@ -955,7 +955,7 @@
 ; INT4_V4FLOAT: mov (M1, 16) {{.*}} [[OUTPUT]](1,0)<1;1,0>
 ; INT4_V4FLOAT: mov (M1, 16) {{.*}} [[OUTPUT]](2,0)<1;1,0>
 ; INT4_V4FLOAT: mov (M1, 16) {{.*}} [[OUTPUT]](3,0)<1;1,0>
-; INT4_V4FLOAT-DAG: .decl [[OUTPUT]] v_type=G type=ud num_elts=64 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
+; INT4_V4FLOAT-DAG: .decl [[OUTPUT]] v_type=G type=f num_elts=64 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
 ; INT4_V4FLOAT-DAG: .decl [[INPUT]] v_type=G type=d num_elts=64 align=wordx32
 
 ; RUN: sed -e 's/INPUT_TYPE/<4 x i32>/g' -e 's/OUTPUT_TYPE/<2 x double>/g' \
@@ -970,7 +970,7 @@
 ; INT4_V2DOUBLE: .function "test_int4_v2double_1"
 ; INT4_V2DOUBLE: mov (M1, 16) {{.*}} [[OUTPUT:[a-zA-Z0-9_]+]](0,0)<1;1,0>
 ; INT4_V2DOUBLE: mov (M1, 16) {{.*}} [[OUTPUT]](2,0)<1;1,0>
-; INT4_V2DOUBLE-DAG: .decl [[OUTPUT]] v_type=G type=uq num_elts=32 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
+; INT4_V2DOUBLE-DAG: .decl [[OUTPUT]] v_type=G type=df num_elts=32 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
 ; INT4_V2DOUBLE-DAG: .decl [[INPUT]] v_type=G type=d num_elts=64 align=wordx32
 
 ; RUN: sed -e 's/INPUT_TYPE/<8 x i32>/g' -e 's/OUTPUT_TYPE/<16 x i16>/g' \
@@ -999,7 +999,7 @@
 ; INT8_V16I16: mov (M1, 16) {{.*}} [[OUTPUT]](6,16)<1;1,0>
 ; INT8_V16I16: mov (M1, 16) {{.*}} [[OUTPUT]](7,0)<1;1,0>
 ; INT8_V16I16: mov (M1, 16) {{.*}} [[OUTPUT]](7,16)<1;1,0>
-; INT8_V16I16-DAG: .decl [[OUTPUT]] v_type=G type=uw num_elts=256 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
+; INT8_V16I16-DAG: .decl [[OUTPUT]] v_type=G type=w num_elts=256 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
 ; INT8_V16I16-DAG: .decl [[INPUT]] v_type=G type=d num_elts=128 align=wordx32
 
 ; RUN: sed -e 's/INPUT_TYPE/<8 x i32>/g' -e 's/OUTPUT_TYPE/<4 x i64>/g' \
@@ -1016,7 +1016,7 @@
 ; INT8_V4I64: mov (M1, 16) {{.*}} [[OUTPUT]](2,0)<1;1,0>
 ; INT8_V4I64: mov (M1, 16) {{.*}} [[OUTPUT]](4,0)<1;1,0>
 ; INT8_V4I64: mov (M1, 16) {{.*}} [[OUTPUT]](6,0)<1;1,0>
-; INT8_V4I64-DAG: .decl [[OUTPUT]] v_type=G type=uq num_elts=64 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
+; INT8_V4I64-DAG: .decl [[OUTPUT]] v_type=G type=q num_elts=64 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
 ; INT8_V4I64-DAG: .decl [[INPUT]] v_type=G type=d num_elts=128 align=wordx32
 
 ; RUN: sed -e 's/INPUT_TYPE/<8 x i32>/g' -e 's/OUTPUT_TYPE/<16 x half>/g' \
@@ -1045,7 +1045,7 @@
 ; INT8_V16HALF: mov (M1, 16) {{.*}} [[OUTPUT]](6,16)<1;1,0>
 ; INT8_V16HALF: mov (M1, 16) {{.*}} [[OUTPUT]](7,0)<1;1,0>
 ; INT8_V16HALF: mov (M1, 16) {{.*}} [[OUTPUT]](7,16)<1;1,0>
-; INT8_V16HALF-DAG: .decl [[OUTPUT]] v_type=G type=uw num_elts=256 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
+; INT8_V16HALF-DAG: .decl [[OUTPUT]] v_type=G type=hf num_elts=256 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
 ; INT8_V16HALF-DAG: .decl [[INPUT]] v_type=G type=d num_elts=128 align=wordx32
 
 ; RUN: sed -e 's/INPUT_TYPE/<8 x i32>/g' -e 's/OUTPUT_TYPE/<8 x float>/g' \
@@ -1066,7 +1066,7 @@
 ; INT8_V8FLOAT: mov (M1, 16) {{.*}} [[OUTPUT]](5,0)<1;1,0>
 ; INT8_V8FLOAT: mov (M1, 16) {{.*}} [[OUTPUT]](6,0)<1;1,0>
 ; INT8_V8FLOAT: mov (M1, 16) {{.*}} [[OUTPUT]](7,0)<1;1,0>
-; INT8_V8FLOAT-DAG: .decl [[OUTPUT]] v_type=G type=ud num_elts=128 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
+; INT8_V8FLOAT-DAG: .decl [[OUTPUT]] v_type=G type=f num_elts=128 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
 ; INT8_V8FLOAT-DAG: .decl [[INPUT]] v_type=G type=d num_elts=128 align=wordx32
 
 ; RUN: sed -e 's/INPUT_TYPE/<8 x i32>/g' -e 's/OUTPUT_TYPE/<4 x double>/g' \
@@ -1083,7 +1083,7 @@
 ; INT8_V4DOUBLE: mov (M1, 16) {{.*}} [[OUTPUT]](2,0)<1;1,0>
 ; INT8_V4DOUBLE: mov (M1, 16) {{.*}} [[OUTPUT]](4,0)<1;1,0>
 ; INT8_V4DOUBLE: mov (M1, 16) {{.*}} [[OUTPUT]](6,0)<1;1,0>
-; INT8_V4DOUBLE-DAG: .decl [[OUTPUT]] v_type=G type=uq num_elts=64 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
+; INT8_V4DOUBLE-DAG: .decl [[OUTPUT]] v_type=G type=df num_elts=64 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
 ; INT8_V4DOUBLE-DAG: .decl [[INPUT]] v_type=G type=d num_elts=128 align=wordx32
 
 ; RUN: sed -e 's/INPUT_TYPE/<16 x i32>/g' -e 's/OUTPUT_TYPE/<8 x i64>/g' \
@@ -1104,7 +1104,7 @@
 ; INT16_V8I64: mov (M1, 16) {{.*}} [[OUTPUT]](10,0)<1;1,0>
 ; INT16_V8I64: mov (M1, 16) {{.*}} [[OUTPUT]](12,0)<1;1,0>
 ; INT16_V8I64: mov (M1, 16) {{.*}} [[OUTPUT]](14,0)<1;1,0>
-; INT16_V8I64-DAG: .decl [[OUTPUT]] v_type=G type=uq num_elts=128 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
+; INT16_V8I64-DAG: .decl [[OUTPUT]] v_type=G type=q num_elts=128 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
 ; INT16_V8I64-DAG: .decl [[INPUT]] v_type=G type=d num_elts=256 align=wordx32
 
 ; RUN: sed -e 's/INPUT_TYPE/<16 x i32>/g' -e 's/OUTPUT_TYPE/<16 x float>/g' \
@@ -1133,7 +1133,7 @@
 ; INT16_V16FLOAT: mov (M1, 16) {{.*}} [[OUTPUT]](13,0)<1;1,0>
 ; INT16_V16FLOAT: mov (M1, 16) {{.*}} [[OUTPUT]](14,0)<1;1,0>
 ; INT16_V16FLOAT: mov (M1, 16) {{.*}} [[OUTPUT]](15,0)<1;1,0>
-; INT16_V16FLOAT-DAG: .decl [[OUTPUT]] v_type=G type=ud num_elts=256 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
+; INT16_V16FLOAT-DAG: .decl [[OUTPUT]] v_type=G type=f num_elts=256 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
 ; INT16_V16FLOAT-DAG: .decl [[INPUT]] v_type=G type=d num_elts=256 align=wordx32
 
 ; RUN: sed -e 's/INPUT_TYPE/<16 x i32>/g' -e 's/OUTPUT_TYPE/<8 x double>/g' \
@@ -1154,7 +1154,7 @@
 ; INT16_V8DOUBLE: mov (M1, 16) {{.*}} [[OUTPUT]](10,0)<1;1,0>
 ; INT16_V8DOUBLE: mov (M1, 16) {{.*}} [[OUTPUT]](12,0)<1;1,0>
 ; INT16_V8DOUBLE: mov (M1, 16) {{.*}} [[OUTPUT]](14,0)<1;1,0>
-; INT16_V8DOUBLE-DAG: .decl [[OUTPUT]] v_type=G type=uq num_elts=128 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
+; INT16_V8DOUBLE-DAG: .decl [[OUTPUT]] v_type=G type=df num_elts=128 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
 ; INT16_V8DOUBLE-DAG: .decl [[INPUT]] v_type=G type=d num_elts=256 align=wordx32
 
 ; RUN: sed -e 's/INPUT_TYPE/i64/g' -e 's/OUTPUT_TYPE/<8 x i8>/g' \
@@ -1175,7 +1175,7 @@
 ; LONG_V8I8: mov (M1, 16) {{.*}} [[OUTPUT]](1,16)<1;1,0>
 ; LONG_V8I8: mov (M1, 16) {{.*}} [[OUTPUT]](1,32)<1;1,0>
 ; LONG_V8I8: mov (M1, 16) {{.*}} [[OUTPUT]](1,48)<1;1,0>
-; LONG_V8I8-DAG: .decl [[OUTPUT]] v_type=G type=ub num_elts=128 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
+; LONG_V8I8-DAG: .decl [[OUTPUT]] v_type=G type=b num_elts=128 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
 ; LONG_V8I8-DAG: .decl [[INPUT]] v_type=G type=q num_elts=16 align=wordx32
 
 ; RUN: sed -e 's/INPUT_TYPE/i64/g' -e 's/OUTPUT_TYPE/<4 x i16>/g' \
@@ -1192,7 +1192,7 @@
 ; LONG_V4I16: mov (M1, 16) {{.*}} [[OUTPUT]](0,16)<1;1,0>
 ; LONG_V4I16: mov (M1, 16) {{.*}} [[OUTPUT]](1,0)<1;1,0>
 ; LONG_V4I16: mov (M1, 16) {{.*}} [[OUTPUT]](1,16)<1;1,0>
-; LONG_V4I16-DAG: .decl [[OUTPUT]] v_type=G type=uw num_elts=64 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
+; LONG_V4I16-DAG: .decl [[OUTPUT]] v_type=G type=w num_elts=64 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
 ; LONG_V4I16-DAG: .decl [[INPUT]] v_type=G type=q num_elts=16 align=wordx32
 
 ; RUN: sed -e 's/INPUT_TYPE/i64/g' -e 's/OUTPUT_TYPE/<2 x i32>/g' \
@@ -1207,7 +1207,7 @@
 ; LONG_V2I32: .function "test_long_v2i32_1"
 ; LONG_V2I32: mov (M1, 16) {{.*}} [[OUTPUT:[a-zA-Z0-9_]+]](0,0)<1;1,0>
 ; LONG_V2I32: mov (M1, 16) {{.*}} [[OUTPUT]](1,0)<1;1,0>
-; LONG_V2I32-DAG: .decl [[OUTPUT]] v_type=G type=ud num_elts=32 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
+; LONG_V2I32-DAG: .decl [[OUTPUT]] v_type=G type=d num_elts=32 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
 ; LONG_V2I32-DAG: .decl [[INPUT]] v_type=G type=q num_elts=16 align=wordx32
 
 ; RUN: sed -e 's/INPUT_TYPE/i64/g' -e 's/OUTPUT_TYPE/<4 x half>/g' \
@@ -1224,7 +1224,7 @@
 ; LONG_V4HALF: mov (M1, 16) {{.*}} [[OUTPUT]](0,16)<1;1,0>
 ; LONG_V4HALF: mov (M1, 16) {{.*}} [[OUTPUT]](1,0)<1;1,0>
 ; LONG_V4HALF: mov (M1, 16) {{.*}} [[OUTPUT]](1,16)<1;1,0>
-; LONG_V4HALF-DAG: .decl [[OUTPUT]] v_type=G type=uw num_elts=64 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
+; LONG_V4HALF-DAG: .decl [[OUTPUT]] v_type=G type=hf num_elts=64 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
 ; LONG_V4HALF-DAG: .decl [[INPUT]] v_type=G type=q num_elts=16 align=wordx32
 
 ; RUN: sed -e 's/INPUT_TYPE/i64/g' -e 's/OUTPUT_TYPE/<2 x float>/g' \
@@ -1239,7 +1239,7 @@
 ; LONG_V2FLOAT: .function "test_long_v2float_1"
 ; LONG_V2FLOAT: mov (M1, 16) {{.*}} [[OUTPUT:[a-zA-Z0-9_]+]](0,0)<1;1,0>
 ; LONG_V2FLOAT: mov (M1, 16) {{.*}} [[OUTPUT]](1,0)<1;1,0>
-; LONG_V2FLOAT-DAG: .decl [[OUTPUT]] v_type=G type=ud num_elts=32 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
+; LONG_V2FLOAT-DAG: .decl [[OUTPUT]] v_type=G type=f num_elts=32 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
 ; LONG_V2FLOAT-DAG: .decl [[INPUT]] v_type=G type=q num_elts=16 align=wordx32
 
 ; RUN: sed -e 's/INPUT_TYPE/i64/g' -e 's/OUTPUT_TYPE/double/g' \
@@ -1253,7 +1253,7 @@
 
 ; LONG_DOUBLE: .function "test_long_double_1"
 ; LONG_DOUBLE: mov (M1, 16) {{.*}} [[OUTPUT:[a-zA-Z0-9_]+]](0,0)<1;1,0>
-; LONG_DOUBLE-DAG: .decl [[OUTPUT]] v_type=G type=uq num_elts=16 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
+; LONG_DOUBLE-DAG: .decl [[OUTPUT]] v_type=G type=df num_elts=16 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
 ; LONG_DOUBLE-DAG: .decl [[INPUT]] v_type=G type=q num_elts=16 align=wordx32
 
 ; RUN: sed -e 's/INPUT_TYPE/<2 x i64>/g' -e 's/OUTPUT_TYPE/<16 x i8>/g' \
@@ -1282,7 +1282,7 @@
 ; LONG2_V16I8: mov (M1, 16) {{.*}} [[OUTPUT]](3,16)<1;1,0>
 ; LONG2_V16I8: mov (M1, 16) {{.*}} [[OUTPUT]](3,32)<1;1,0>
 ; LONG2_V16I8: mov (M1, 16) {{.*}} [[OUTPUT]](3,48)<1;1,0>
-; LONG2_V16I8-DAG: .decl [[OUTPUT]] v_type=G type=ub num_elts=256 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
+; LONG2_V16I8-DAG: .decl [[OUTPUT]] v_type=G type=b num_elts=256 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
 ; LONG2_V16I8-DAG: .decl [[INPUT]] v_type=G type=q num_elts=32 align=wordx32
 
 ; RUN: sed -e 's/INPUT_TYPE/<2 x i64>/g' -e 's/OUTPUT_TYPE/<8 x i16>/g' \
@@ -1303,7 +1303,7 @@
 ; LONG2_V8I16: mov (M1, 16) {{.*}} [[OUTPUT]](2,16)<1;1,0>
 ; LONG2_V8I16: mov (M1, 16) {{.*}} [[OUTPUT]](3,0)<1;1,0>
 ; LONG2_V8I16: mov (M1, 16) {{.*}} [[OUTPUT]](3,16)<1;1,0>
-; LONG2_V8I16-DAG: .decl [[OUTPUT]] v_type=G type=uw num_elts=128 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
+; LONG2_V8I16-DAG: .decl [[OUTPUT]] v_type=G type=w num_elts=128 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
 ; LONG2_V8I16-DAG: .decl [[INPUT]] v_type=G type=q num_elts=32 align=wordx32
 
 ; RUN: sed -e 's/INPUT_TYPE/<2 x i64>/g' -e 's/OUTPUT_TYPE/<4 x i32>/g' \
@@ -1320,7 +1320,7 @@
 ; LONG2_V4I32: mov (M1, 16) {{.*}} [[OUTPUT]](1,0)<1;1,0>
 ; LONG2_V4I32: mov (M1, 16) {{.*}} [[OUTPUT]](2,0)<1;1,0>
 ; LONG2_V4I32: mov (M1, 16) {{.*}} [[OUTPUT]](3,0)<1;1,0>
-; LONG2_V4I32-DAG: .decl [[OUTPUT]] v_type=G type=ud num_elts=64 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
+; LONG2_V4I32-DAG: .decl [[OUTPUT]] v_type=G type=d num_elts=64 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
 ; LONG2_V4I32-DAG: .decl [[INPUT]] v_type=G type=q num_elts=32 align=wordx32
 
 ; RUN: sed -e 's/INPUT_TYPE/<2 x i64>/g' -e 's/OUTPUT_TYPE/<8 x half>/g' \
@@ -1341,7 +1341,7 @@
 ; LONG2_V8HALF: mov (M1, 16) {{.*}} [[OUTPUT]](2,16)<1;1,0>
 ; LONG2_V8HALF: mov (M1, 16) {{.*}} [[OUTPUT]](3,0)<1;1,0>
 ; LONG2_V8HALF: mov (M1, 16) {{.*}} [[OUTPUT]](3,16)<1;1,0>
-; LONG2_V8HALF-DAG: .decl [[OUTPUT]] v_type=G type=uw num_elts=128 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
+; LONG2_V8HALF-DAG: .decl [[OUTPUT]] v_type=G type=hf num_elts=128 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
 ; LONG2_V8HALF-DAG: .decl [[INPUT]] v_type=G type=q num_elts=32 align=wordx32
 
 ; RUN: sed -e 's/INPUT_TYPE/<2 x i64>/g' -e 's/OUTPUT_TYPE/<4 x float>/g' \
@@ -1358,7 +1358,7 @@
 ; LONG2_V4FLOAT: mov (M1, 16) {{.*}} [[OUTPUT]](1,0)<1;1,0>
 ; LONG2_V4FLOAT: mov (M1, 16) {{.*}} [[OUTPUT]](2,0)<1;1,0>
 ; LONG2_V4FLOAT: mov (M1, 16) {{.*}} [[OUTPUT]](3,0)<1;1,0>
-; LONG2_V4FLOAT-DAG: .decl [[OUTPUT]] v_type=G type=ud num_elts=64 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
+; LONG2_V4FLOAT-DAG: .decl [[OUTPUT]] v_type=G type=f num_elts=64 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
 ; LONG2_V4FLOAT-DAG: .decl [[INPUT]] v_type=G type=q num_elts=32 align=wordx32
 
 ; RUN: sed -e 's/INPUT_TYPE/<2 x i64>/g' -e 's/OUTPUT_TYPE/<2 x double>/g' \
@@ -1373,7 +1373,7 @@
 ; LONG2_V2DOUBLE: .function "test_long2_v2double_1"
 ; LONG2_V2DOUBLE: mov (M1, 16) {{.*}} [[OUTPUT:[a-zA-Z0-9_]+]](0,0)<1;1,0>
 ; LONG2_V2DOUBLE: mov (M1, 16) {{.*}} [[OUTPUT]](2,0)<1;1,0>
-; LONG2_V2DOUBLE-DAG: .decl [[OUTPUT]] v_type=G type=uq num_elts=32 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
+; LONG2_V2DOUBLE-DAG: .decl [[OUTPUT]] v_type=G type=df num_elts=32 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
 ; LONG2_V2DOUBLE-DAG: .decl [[INPUT]] v_type=G type=q num_elts=32 align=wordx32
 
 ; RUN: sed -e 's/INPUT_TYPE/<4 x i64>/g' -e 's/OUTPUT_TYPE/<16 x i16>/g' \
@@ -1402,7 +1402,7 @@
 ; LONG4_V16I16: mov (M1, 16) {{.*}} [[OUTPUT]](6,16)<1;1,0>
 ; LONG4_V16I16: mov (M1, 16) {{.*}} [[OUTPUT]](7,0)<1;1,0>
 ; LONG4_V16I16: mov (M1, 16) {{.*}} [[OUTPUT]](7,16)<1;1,0>
-; LONG4_V16I16-DAG: .decl [[OUTPUT]] v_type=G type=uw num_elts=256 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
+; LONG4_V16I16-DAG: .decl [[OUTPUT]] v_type=G type=w num_elts=256 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
 ; LONG4_V16I16-DAG: .decl [[INPUT]] v_type=G type=q num_elts=64 align=wordx32
 
 ; RUN: sed -e 's/INPUT_TYPE/<4 x i64>/g' -e 's/OUTPUT_TYPE/<8 x i32>/g' \
@@ -1423,7 +1423,7 @@
 ; LONG4_V8I32: mov (M1, 16) {{.*}} [[OUTPUT]](5,0)<1;1,0>
 ; LONG4_V8I32: mov (M1, 16) {{.*}} [[OUTPUT]](6,0)<1;1,0>
 ; LONG4_V8I32: mov (M1, 16) {{.*}} [[OUTPUT]](7,0)<1;1,0>
-; LONG4_V8I32-DAG: .decl [[OUTPUT]] v_type=G type=ud num_elts=128 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
+; LONG4_V8I32-DAG: .decl [[OUTPUT]] v_type=G type=d num_elts=128 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
 ; LONG4_V8I32-DAG: .decl [[INPUT]] v_type=G type=q num_elts=64 align=wordx32
 
 ; RUN: sed -e 's/INPUT_TYPE/<4 x i64>/g' -e 's/OUTPUT_TYPE/<16 x half>/g' \
@@ -1452,7 +1452,7 @@
 ; LONG4_V16HALF: mov (M1, 16) {{.*}} [[OUTPUT]](6,16)<1;1,0>
 ; LONG4_V16HALF: mov (M1, 16) {{.*}} [[OUTPUT]](7,0)<1;1,0>
 ; LONG4_V16HALF: mov (M1, 16) {{.*}} [[OUTPUT]](7,16)<1;1,0>
-; LONG4_V16HALF-DAG: .decl [[OUTPUT]] v_type=G type=uw num_elts=256 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
+; LONG4_V16HALF-DAG: .decl [[OUTPUT]] v_type=G type=hf num_elts=256 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
 ; LONG4_V16HALF-DAG: .decl [[INPUT]] v_type=G type=q num_elts=64 align=wordx32
 
 ; RUN: sed -e 's/INPUT_TYPE/<4 x i64>/g' -e 's/OUTPUT_TYPE/<8 x float>/g' \
@@ -1473,7 +1473,7 @@
 ; LONG4_V8FLOAT: mov (M1, 16) {{.*}} [[OUTPUT]](5,0)<1;1,0>
 ; LONG4_V8FLOAT: mov (M1, 16) {{.*}} [[OUTPUT]](6,0)<1;1,0>
 ; LONG4_V8FLOAT: mov (M1, 16) {{.*}} [[OUTPUT]](7,0)<1;1,0>
-; LONG4_V8FLOAT-DAG: .decl [[OUTPUT]] v_type=G type=ud num_elts=128 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
+; LONG4_V8FLOAT-DAG: .decl [[OUTPUT]] v_type=G type=f num_elts=128 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
 ; LONG4_V8FLOAT-DAG: .decl [[INPUT]] v_type=G type=q num_elts=64 align=wordx32
 
 ; RUN: sed -e 's/INPUT_TYPE/<4 x i64>/g' -e 's/OUTPUT_TYPE/<4 x double>/g' \
@@ -1490,7 +1490,7 @@
 ; LONG4_V4DOUBLE: mov (M1, 16) {{.*}} [[OUTPUT]](2,0)<1;1,0>
 ; LONG4_V4DOUBLE: mov (M1, 16) {{.*}} [[OUTPUT]](4,0)<1;1,0>
 ; LONG4_V4DOUBLE: mov (M1, 16) {{.*}} [[OUTPUT]](6,0)<1;1,0>
-; LONG4_V4DOUBLE-DAG: .decl [[OUTPUT]] v_type=G type=uq num_elts=64 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
+; LONG4_V4DOUBLE-DAG: .decl [[OUTPUT]] v_type=G type=df num_elts=64 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
 ; LONG4_V4DOUBLE-DAG: .decl [[INPUT]] v_type=G type=q num_elts=64 align=wordx32
 
 ; RUN: sed -e 's/INPUT_TYPE/<8 x i64>/g' -e 's/OUTPUT_TYPE/<16 x i32>/g' \
@@ -1519,7 +1519,7 @@
 ; LONG8_V16I32: mov (M1, 16) {{.*}} [[OUTPUT]](13,0)<1;1,0>
 ; LONG8_V16I32: mov (M1, 16) {{.*}} [[OUTPUT]](14,0)<1;1,0>
 ; LONG8_V16I32: mov (M1, 16) {{.*}} [[OUTPUT]](15,0)<1;1,0>
-; LONG8_V16I32-DAG: .decl [[OUTPUT]] v_type=G type=ud num_elts=256 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
+; LONG8_V16I32-DAG: .decl [[OUTPUT]] v_type=G type=d num_elts=256 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
 ; LONG8_V16I32-DAG: .decl [[INPUT]] v_type=G type=q num_elts=128 align=wordx32
 
 ; RUN: sed -e 's/INPUT_TYPE/<8 x i64>/g' -e 's/OUTPUT_TYPE/<16 x float>/g' \
@@ -1548,7 +1548,7 @@
 ; LONG8_V16FLOAT: mov (M1, 16) {{.*}} [[OUTPUT]](13,0)<1;1,0>
 ; LONG8_V16FLOAT: mov (M1, 16) {{.*}} [[OUTPUT]](14,0)<1;1,0>
 ; LONG8_V16FLOAT: mov (M1, 16) {{.*}} [[OUTPUT]](15,0)<1;1,0>
-; LONG8_V16FLOAT-DAG: .decl [[OUTPUT]] v_type=G type=ud num_elts=256 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
+; LONG8_V16FLOAT-DAG: .decl [[OUTPUT]] v_type=G type=f num_elts=256 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
 ; LONG8_V16FLOAT-DAG: .decl [[INPUT]] v_type=G type=q num_elts=128 align=wordx32
 
 ; RUN: sed -e 's/INPUT_TYPE/<8 x i64>/g' -e 's/OUTPUT_TYPE/<8 x double>/g' \
@@ -1569,7 +1569,7 @@
 ; LONG8_V8DOUBLE: mov (M1, 16) {{.*}} [[OUTPUT]](10,0)<1;1,0>
 ; LONG8_V8DOUBLE: mov (M1, 16) {{.*}} [[OUTPUT]](12,0)<1;1,0>
 ; LONG8_V8DOUBLE: mov (M1, 16) {{.*}} [[OUTPUT]](14,0)<1;1,0>
-; LONG8_V8DOUBLE-DAG: .decl [[OUTPUT]] v_type=G type=uq num_elts=128 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
+; LONG8_V8DOUBLE-DAG: .decl [[OUTPUT]] v_type=G type=df num_elts=128 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
 ; LONG8_V8DOUBLE-DAG: .decl [[INPUT]] v_type=G type=q num_elts=128 align=wordx32
 
 ; RUN: sed -e 's/INPUT_TYPE/<16 x i64>/g' -e 's/OUTPUT_TYPE/<16 x double>/g' \
@@ -1598,7 +1598,7 @@
 ; LONG16_V16DOUBLE: mov (M1, 16) {{.*}} [[OUTPUT]](26,0)<1;1,0>
 ; LONG16_V16DOUBLE: mov (M1, 16) {{.*}} [[OUTPUT]](28,0)<1;1,0>
 ; LONG16_V16DOUBLE: mov (M1, 16) {{.*}} [[OUTPUT]](30,0)<1;1,0>
-; LONG16_V16DOUBLE-DAG: .decl [[OUTPUT]] v_type=G type=uq num_elts=256 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
+; LONG16_V16DOUBLE-DAG: .decl [[OUTPUT]] v_type=G type=df num_elts=256 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
 ; LONG16_V16DOUBLE-DAG: .decl [[INPUT]] v_type=G type=q num_elts=256 align=wordx32
 
 ; RUN: sed -e 's/INPUT_TYPE/half/g' -e 's/OUTPUT_TYPE/<2 x i8>/g' \
@@ -1613,7 +1613,7 @@
 ; HALF_V2I8: .function "test_half_v2i8_1"
 ; HALF_V2I8: mov (M1, 16) {{.*}} [[OUTPUT:[a-zA-Z0-9_]+]](0,0)<1;1,0>
 ; HALF_V2I8: mov (M1, 16) {{.*}} [[OUTPUT]](0,16)<1;1,0>
-; HALF_V2I8-DAG: .decl [[OUTPUT]] v_type=G type=ub num_elts=32 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
+; HALF_V2I8-DAG: .decl [[OUTPUT]] v_type=G type=b num_elts=32 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
 ; HALF_V2I8-DAG: .decl [[INPUT]] v_type=G type=hf num_elts=16 align=wordx32
 
 ; RUN: sed -e 's/INPUT_TYPE/half/g' -e 's/OUTPUT_TYPE/i16/g' \
@@ -1627,7 +1627,7 @@
 
 ; HALF_I16: .function "test_half_i16_1"
 ; HALF_I16: mov (M1, 16) {{.*}} [[OUTPUT:[a-zA-Z0-9_]+]](0,0)<1;1,0>
-; HALF_I16-DAG: .decl [[OUTPUT]] v_type=G type=uw num_elts=16 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
+; HALF_I16-DAG: .decl [[OUTPUT]] v_type=G type=w num_elts=16 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
 ; HALF_I16-DAG: .decl [[INPUT]] v_type=G type=hf num_elts=16 align=wordx32
 
 ; RUN: sed -e 's/INPUT_TYPE/<2 x half>/g' -e 's/OUTPUT_TYPE/<4 x i8>/g' \
@@ -1644,7 +1644,7 @@
 ; HALF2_V4I8: mov (M1, 16) {{.*}} [[OUTPUT]](0,16)<1;1,0>
 ; HALF2_V4I8: mov (M1, 16) {{.*}} [[OUTPUT]](0,32)<1;1,0>
 ; HALF2_V4I8: mov (M1, 16) {{.*}} [[OUTPUT]](0,48)<1;1,0>
-; HALF2_V4I8-DAG: .decl [[OUTPUT]] v_type=G type=ub num_elts=64 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
+; HALF2_V4I8-DAG: .decl [[OUTPUT]] v_type=G type=b num_elts=64 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
 ; HALF2_V4I8-DAG: .decl [[INPUT]] v_type=G type=hf num_elts=32 align=wordx32
 
 ; RUN: sed -e 's/INPUT_TYPE/<2 x half>/g' -e 's/OUTPUT_TYPE/<2 x i16>/g' \
@@ -1659,7 +1659,7 @@
 ; HALF2_V2I16: .function "test_half2_v2i16_1"
 ; HALF2_V2I16: mov (M1, 16) {{.*}} [[OUTPUT:[a-zA-Z0-9_]+]](0,0)<1;1,0>
 ; HALF2_V2I16: mov (M1, 16) {{.*}} [[OUTPUT]](0,16)<1;1,0>
-; HALF2_V2I16-DAG: .decl [[OUTPUT]] v_type=G type=uw num_elts=32 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
+; HALF2_V2I16-DAG: .decl [[OUTPUT]] v_type=G type=w num_elts=32 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
 ; HALF2_V2I16-DAG: .decl [[INPUT]] v_type=G type=hf num_elts=32 align=wordx32
 
 ; RUN: sed -e 's/INPUT_TYPE/<2 x half>/g' -e 's/OUTPUT_TYPE/i32/g' \
@@ -1673,7 +1673,7 @@
 
 ; HALF2_I32: .function "test_half2_i32_1"
 ; HALF2_I32: mov (M1, 16) {{.*}} [[OUTPUT:[a-zA-Z0-9_]+]](0,0)<1;1,0>
-; HALF2_I32-DAG: .decl [[OUTPUT]] v_type=G type=ud num_elts=16 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
+; HALF2_I32-DAG: .decl [[OUTPUT]] v_type=G type=d num_elts=16 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
 ; HALF2_I32-DAG: .decl [[INPUT]] v_type=G type=hf num_elts=32 align=wordx32
 
 ; RUN: sed -e 's/INPUT_TYPE/<2 x half>/g' -e 's/OUTPUT_TYPE/float/g' \
@@ -1687,7 +1687,7 @@
 
 ; HALF2_FLOAT: .function "test_half2_float_1"
 ; HALF2_FLOAT: mov (M1, 16) {{.*}} [[OUTPUT:[a-zA-Z0-9_]+]](0,0)<1;1,0>
-; HALF2_FLOAT-DAG: .decl [[OUTPUT]] v_type=G type=ud num_elts=16 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
+; HALF2_FLOAT-DAG: .decl [[OUTPUT]] v_type=G type=f num_elts=16 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
 ; HALF2_FLOAT-DAG: .decl [[INPUT]] v_type=G type=hf num_elts=32 align=wordx32
 
 ; RUN: sed -e 's/INPUT_TYPE/<4 x half>/g' -e 's/OUTPUT_TYPE/<8 x i8>/g' \
@@ -1708,7 +1708,7 @@
 ; HALF4_V8I8: mov (M1, 16) {{.*}} [[OUTPUT]](1,16)<1;1,0>
 ; HALF4_V8I8: mov (M1, 16) {{.*}} [[OUTPUT]](1,32)<1;1,0>
 ; HALF4_V8I8: mov (M1, 16) {{.*}} [[OUTPUT]](1,48)<1;1,0>
-; HALF4_V8I8-DAG: .decl [[OUTPUT]] v_type=G type=ub num_elts=128 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
+; HALF4_V8I8-DAG: .decl [[OUTPUT]] v_type=G type=b num_elts=128 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
 ; HALF4_V8I8-DAG: .decl [[INPUT]] v_type=G type=hf num_elts=64 align=wordx32
 
 ; RUN: sed -e 's/INPUT_TYPE/<4 x half>/g' -e 's/OUTPUT_TYPE/<4 x i16>/g' \
@@ -1725,7 +1725,7 @@
 ; HALF4_V4I16: mov (M1, 16) {{.*}} [[OUTPUT]](0,16)<1;1,0>
 ; HALF4_V4I16: mov (M1, 16) {{.*}} [[OUTPUT]](1,0)<1;1,0>
 ; HALF4_V4I16: mov (M1, 16) {{.*}} [[OUTPUT]](1,16)<1;1,0>
-; HALF4_V4I16-DAG: .decl [[OUTPUT]] v_type=G type=uw num_elts=64 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
+; HALF4_V4I16-DAG: .decl [[OUTPUT]] v_type=G type=w num_elts=64 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
 ; HALF4_V4I16-DAG: .decl [[INPUT]] v_type=G type=hf num_elts=64 align=wordx32
 
 ; RUN: sed -e 's/INPUT_TYPE/<4 x half>/g' -e 's/OUTPUT_TYPE/<2 x i32>/g' \
@@ -1740,7 +1740,7 @@
 ; HALF4_V2I32: .function "test_half4_v2i32_1"
 ; HALF4_V2I32: mov (M1, 16) {{.*}} [[OUTPUT:[a-zA-Z0-9_]+]](0,0)<1;1,0>
 ; HALF4_V2I32: mov (M1, 16) {{.*}} [[OUTPUT]](1,0)<1;1,0>
-; HALF4_V2I32-DAG: .decl [[OUTPUT]] v_type=G type=ud num_elts=32 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
+; HALF4_V2I32-DAG: .decl [[OUTPUT]] v_type=G type=d num_elts=32 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
 ; HALF4_V2I32-DAG: .decl [[INPUT]] v_type=G type=hf num_elts=64 align=wordx32
 
 ; RUN: sed -e 's/INPUT_TYPE/<4 x half>/g' -e 's/OUTPUT_TYPE/i64/g' \
@@ -1754,7 +1754,7 @@
 
 ; HALF4_I64: .function "test_half4_i64_1"
 ; HALF4_I64: mov (M1, 16) {{.*}} [[OUTPUT:[a-zA-Z0-9_]+]](0,0)<1;1,0>
-; HALF4_I64-DAG: .decl [[OUTPUT]] v_type=G type=uq num_elts=16 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
+; HALF4_I64-DAG: .decl [[OUTPUT]] v_type=G type=q num_elts=16 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
 ; HALF4_I64-DAG: .decl [[INPUT]] v_type=G type=hf num_elts=64 align=wordx32
 
 ; RUN: sed -e 's/INPUT_TYPE/<4 x half>/g' -e 's/OUTPUT_TYPE/<2 x float>/g' \
@@ -1769,7 +1769,7 @@
 ; HALF4_V2FLOAT: .function "test_half4_v2float_1"
 ; HALF4_V2FLOAT: mov (M1, 16) {{.*}} [[OUTPUT:[a-zA-Z0-9_]+]](0,0)<1;1,0>
 ; HALF4_V2FLOAT: mov (M1, 16) {{.*}} [[OUTPUT]](1,0)<1;1,0>
-; HALF4_V2FLOAT-DAG: .decl [[OUTPUT]] v_type=G type=ud num_elts=32 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
+; HALF4_V2FLOAT-DAG: .decl [[OUTPUT]] v_type=G type=f num_elts=32 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
 ; HALF4_V2FLOAT-DAG: .decl [[INPUT]] v_type=G type=hf num_elts=64 align=wordx32
 
 ; RUN: sed -e 's/INPUT_TYPE/<4 x half>/g' -e 's/OUTPUT_TYPE/double/g' \
@@ -1783,7 +1783,7 @@
 
 ; HALF4_DOUBLE: .function "test_half4_double_1"
 ; HALF4_DOUBLE: mov (M1, 16) {{.*}} [[OUTPUT:[a-zA-Z0-9_]+]](0,0)<1;1,0>
-; HALF4_DOUBLE-DAG: .decl [[OUTPUT]] v_type=G type=uq num_elts=16 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
+; HALF4_DOUBLE-DAG: .decl [[OUTPUT]] v_type=G type=df num_elts=16 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
 ; HALF4_DOUBLE-DAG: .decl [[INPUT]] v_type=G type=hf num_elts=64 align=wordx32
 
 ; RUN: sed -e 's/INPUT_TYPE/<8 x half>/g' -e 's/OUTPUT_TYPE/<16 x i8>/g' \
@@ -1812,7 +1812,7 @@
 ; HALF8_V16I8: mov (M1, 16) {{.*}} [[OUTPUT]](3,16)<1;1,0>
 ; HALF8_V16I8: mov (M1, 16) {{.*}} [[OUTPUT]](3,32)<1;1,0>
 ; HALF8_V16I8: mov (M1, 16) {{.*}} [[OUTPUT]](3,48)<1;1,0>
-; HALF8_V16I8-DAG: .decl [[OUTPUT]] v_type=G type=ub num_elts=256 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
+; HALF8_V16I8-DAG: .decl [[OUTPUT]] v_type=G type=b num_elts=256 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
 ; HALF8_V16I8-DAG: .decl [[INPUT]] v_type=G type=hf num_elts=128 align=wordx32
 
 ; RUN: sed -e 's/INPUT_TYPE/<8 x half>/g' -e 's/OUTPUT_TYPE/<8 x i16>/g' \
@@ -1833,7 +1833,7 @@
 ; HALF8_V8I16: mov (M1, 16) {{.*}} [[OUTPUT]](2,16)<1;1,0>
 ; HALF8_V8I16: mov (M1, 16) {{.*}} [[OUTPUT]](3,0)<1;1,0>
 ; HALF8_V8I16: mov (M1, 16) {{.*}} [[OUTPUT]](3,16)<1;1,0>
-; HALF8_V8I16-DAG: .decl [[OUTPUT]] v_type=G type=uw num_elts=128 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
+; HALF8_V8I16-DAG: .decl [[OUTPUT]] v_type=G type=w num_elts=128 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
 ; HALF8_V8I16-DAG: .decl [[INPUT]] v_type=G type=hf num_elts=128 align=wordx32
 
 ; RUN: sed -e 's/INPUT_TYPE/<8 x half>/g' -e 's/OUTPUT_TYPE/<4 x i32>/g' \
@@ -1850,7 +1850,7 @@
 ; HALF8_V4I32: mov (M1, 16) {{.*}} [[OUTPUT]](1,0)<1;1,0>
 ; HALF8_V4I32: mov (M1, 16) {{.*}} [[OUTPUT]](2,0)<1;1,0>
 ; HALF8_V4I32: mov (M1, 16) {{.*}} [[OUTPUT]](3,0)<1;1,0>
-; HALF8_V4I32-DAG: .decl [[OUTPUT]] v_type=G type=ud num_elts=64 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
+; HALF8_V4I32-DAG: .decl [[OUTPUT]] v_type=G type=d num_elts=64 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
 ; HALF8_V4I32-DAG: .decl [[INPUT]] v_type=G type=hf num_elts=128 align=wordx32
 
 ; RUN: sed -e 's/INPUT_TYPE/<8 x half>/g' -e 's/OUTPUT_TYPE/<2 x i64>/g' \
@@ -1865,7 +1865,7 @@
 ; HALF8_V2I64: .function "test_half8_v2i64_1"
 ; HALF8_V2I64: mov (M1, 16) {{.*}} [[OUTPUT:[a-zA-Z0-9_]+]](0,0)<1;1,0>
 ; HALF8_V2I64: mov (M1, 16) {{.*}} [[OUTPUT]](2,0)<1;1,0>
-; HALF8_V2I64-DAG: .decl [[OUTPUT]] v_type=G type=uq num_elts=32 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
+; HALF8_V2I64-DAG: .decl [[OUTPUT]] v_type=G type=q num_elts=32 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
 ; HALF8_V2I64-DAG: .decl [[INPUT]] v_type=G type=hf num_elts=128 align=wordx32
 
 ; RUN: sed -e 's/INPUT_TYPE/<8 x half>/g' -e 's/OUTPUT_TYPE/<4 x float>/g' \
@@ -1882,7 +1882,7 @@
 ; HALF8_V4FLOAT: mov (M1, 16) {{.*}} [[OUTPUT]](1,0)<1;1,0>
 ; HALF8_V4FLOAT: mov (M1, 16) {{.*}} [[OUTPUT]](2,0)<1;1,0>
 ; HALF8_V4FLOAT: mov (M1, 16) {{.*}} [[OUTPUT]](3,0)<1;1,0>
-; HALF8_V4FLOAT-DAG: .decl [[OUTPUT]] v_type=G type=ud num_elts=64 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
+; HALF8_V4FLOAT-DAG: .decl [[OUTPUT]] v_type=G type=f num_elts=64 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
 ; HALF8_V4FLOAT-DAG: .decl [[INPUT]] v_type=G type=hf num_elts=128 align=wordx32
 
 ; RUN: sed -e 's/INPUT_TYPE/<8 x half>/g' -e 's/OUTPUT_TYPE/<2 x double>/g' \
@@ -1897,7 +1897,7 @@
 ; HALF8_V2DOUBLE: .function "test_half8_v2double_1"
 ; HALF8_V2DOUBLE: mov (M1, 16) {{.*}} [[OUTPUT:[a-zA-Z0-9_]+]](0,0)<1;1,0>
 ; HALF8_V2DOUBLE: mov (M1, 16) {{.*}} [[OUTPUT]](2,0)<1;1,0>
-; HALF8_V2DOUBLE-DAG: .decl [[OUTPUT]] v_type=G type=uq num_elts=32 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
+; HALF8_V2DOUBLE-DAG: .decl [[OUTPUT]] v_type=G type=df num_elts=32 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
 ; HALF8_V2DOUBLE-DAG: .decl [[INPUT]] v_type=G type=hf num_elts=128 align=wordx32
 
 ; RUN: sed -e 's/INPUT_TYPE/<16 x half>/g' -e 's/OUTPUT_TYPE/<16 x i16>/g' \
@@ -1926,7 +1926,7 @@
 ; HALF16_V16I16: mov (M1, 16) {{.*}} [[OUTPUT]](6,16)<1;1,0>
 ; HALF16_V16I16: mov (M1, 16) {{.*}} [[OUTPUT]](7,0)<1;1,0>
 ; HALF16_V16I16: mov (M1, 16) {{.*}} [[OUTPUT]](7,16)<1;1,0>
-; HALF16_V16I16-DAG: .decl [[OUTPUT]] v_type=G type=uw num_elts=256 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
+; HALF16_V16I16-DAG: .decl [[OUTPUT]] v_type=G type=w num_elts=256 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
 ; HALF16_V16I16-DAG: .decl [[INPUT]] v_type=G type=hf num_elts=256 align=wordx32
 
 ; RUN: sed -e 's/INPUT_TYPE/<16 x half>/g' -e 's/OUTPUT_TYPE/<8 x i32>/g' \
@@ -1947,7 +1947,7 @@
 ; HALF16_V8I32: mov (M1, 16) {{.*}} [[OUTPUT]](5,0)<1;1,0>
 ; HALF16_V8I32: mov (M1, 16) {{.*}} [[OUTPUT]](6,0)<1;1,0>
 ; HALF16_V8I32: mov (M1, 16) {{.*}} [[OUTPUT]](7,0)<1;1,0>
-; HALF16_V8I32-DAG: .decl [[OUTPUT]] v_type=G type=ud num_elts=128 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
+; HALF16_V8I32-DAG: .decl [[OUTPUT]] v_type=G type=d num_elts=128 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
 ; HALF16_V8I32-DAG: .decl [[INPUT]] v_type=G type=hf num_elts=256 align=wordx32
 
 ; RUN: sed -e 's/INPUT_TYPE/<16 x half>/g' -e 's/OUTPUT_TYPE/<4 x i64>/g' \
@@ -1964,7 +1964,7 @@
 ; HALF16_V4I64: mov (M1, 16) {{.*}} [[OUTPUT]](2,0)<1;1,0>
 ; HALF16_V4I64: mov (M1, 16) {{.*}} [[OUTPUT]](4,0)<1;1,0>
 ; HALF16_V4I64: mov (M1, 16) {{.*}} [[OUTPUT]](6,0)<1;1,0>
-; HALF16_V4I64-DAG: .decl [[OUTPUT]] v_type=G type=uq num_elts=64 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
+; HALF16_V4I64-DAG: .decl [[OUTPUT]] v_type=G type=q num_elts=64 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
 ; HALF16_V4I64-DAG: .decl [[INPUT]] v_type=G type=hf num_elts=256 align=wordx32
 
 ; RUN: sed -e 's/INPUT_TYPE/<16 x half>/g' -e 's/OUTPUT_TYPE/<8 x float>/g' \
@@ -1985,7 +1985,7 @@
 ; HALF16_V8FLOAT: mov (M1, 16) {{.*}} [[OUTPUT]](5,0)<1;1,0>
 ; HALF16_V8FLOAT: mov (M1, 16) {{.*}} [[OUTPUT]](6,0)<1;1,0>
 ; HALF16_V8FLOAT: mov (M1, 16) {{.*}} [[OUTPUT]](7,0)<1;1,0>
-; HALF16_V8FLOAT-DAG: .decl [[OUTPUT]] v_type=G type=ud num_elts=128 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
+; HALF16_V8FLOAT-DAG: .decl [[OUTPUT]] v_type=G type=f num_elts=128 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
 ; HALF16_V8FLOAT-DAG: .decl [[INPUT]] v_type=G type=hf num_elts=256 align=wordx32
 
 ; RUN: sed -e 's/INPUT_TYPE/<16 x half>/g' -e 's/OUTPUT_TYPE/<4 x double>/g' \
@@ -2002,7 +2002,7 @@
 ; HALF16_V4DOUBLE: mov (M1, 16) {{.*}} [[OUTPUT]](2,0)<1;1,0>
 ; HALF16_V4DOUBLE: mov (M1, 16) {{.*}} [[OUTPUT]](4,0)<1;1,0>
 ; HALF16_V4DOUBLE: mov (M1, 16) {{.*}} [[OUTPUT]](6,0)<1;1,0>
-; HALF16_V4DOUBLE-DAG: .decl [[OUTPUT]] v_type=G type=uq num_elts=64 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
+; HALF16_V4DOUBLE-DAG: .decl [[OUTPUT]] v_type=G type=df num_elts=64 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
 ; HALF16_V4DOUBLE-DAG: .decl [[INPUT]] v_type=G type=hf num_elts=256 align=wordx32
 
 ; RUN: sed -e 's/INPUT_TYPE/float/g' -e 's/OUTPUT_TYPE/<4 x i8>/g' \
@@ -2019,7 +2019,7 @@
 ; FLOAT_V4I8: mov (M1, 16) {{.*}} [[OUTPUT]](0,16)<1;1,0>
 ; FLOAT_V4I8: mov (M1, 16) {{.*}} [[OUTPUT]](0,32)<1;1,0>
 ; FLOAT_V4I8: mov (M1, 16) {{.*}} [[OUTPUT]](0,48)<1;1,0>
-; FLOAT_V4I8-DAG: .decl [[OUTPUT]] v_type=G type=ub num_elts=64 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
+; FLOAT_V4I8-DAG: .decl [[OUTPUT]] v_type=G type=b num_elts=64 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
 ; FLOAT_V4I8-DAG: .decl [[INPUT]] v_type=G type=f num_elts=16 align=wordx32
 
 ; RUN: sed -e 's/INPUT_TYPE/float/g' -e 's/OUTPUT_TYPE/<2 x i16>/g' \
@@ -2034,7 +2034,7 @@
 ; FLOAT_V2I16: .function "test_float_v2i16_1"
 ; FLOAT_V2I16: mov (M1, 16) {{.*}} [[OUTPUT:[a-zA-Z0-9_]+]](0,0)<1;1,0>
 ; FLOAT_V2I16: mov (M1, 16) {{.*}} [[OUTPUT]](0,16)<1;1,0>
-; FLOAT_V2I16-DAG: .decl [[OUTPUT]] v_type=G type=uw num_elts=32 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
+; FLOAT_V2I16-DAG: .decl [[OUTPUT]] v_type=G type=w num_elts=32 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
 ; FLOAT_V2I16-DAG: .decl [[INPUT]] v_type=G type=f num_elts=16 align=wordx32
 
 ; RUN: sed -e 's/INPUT_TYPE/float/g' -e 's/OUTPUT_TYPE/i32/g' \
@@ -2048,7 +2048,7 @@
 
 ; FLOAT_I32: .function "test_float_i32_1"
 ; FLOAT_I32: mov (M1, 16) {{.*}} [[OUTPUT:[a-zA-Z0-9_]+]](0,0)<1;1,0>
-; FLOAT_I32-DAG: .decl [[OUTPUT]] v_type=G type=ud num_elts=16 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
+; FLOAT_I32-DAG: .decl [[OUTPUT]] v_type=G type=d num_elts=16 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
 ; FLOAT_I32-DAG: .decl [[INPUT]] v_type=G type=f num_elts=16 align=wordx32
 
 ; RUN: sed -e 's/INPUT_TYPE/float/g' -e 's/OUTPUT_TYPE/<2 x half>/g' \
@@ -2063,7 +2063,7 @@
 ; FLOAT_V2HALF: .function "test_float_v2half_1"
 ; FLOAT_V2HALF: mov (M1, 16) {{.*}} [[OUTPUT:[a-zA-Z0-9_]+]](0,0)<1;1,0>
 ; FLOAT_V2HALF: mov (M1, 16) {{.*}} [[OUTPUT]](0,16)<1;1,0>
-; FLOAT_V2HALF-DAG: .decl [[OUTPUT]] v_type=G type=uw num_elts=32 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
+; FLOAT_V2HALF-DAG: .decl [[OUTPUT]] v_type=G type=hf num_elts=32 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
 ; FLOAT_V2HALF-DAG: .decl [[INPUT]] v_type=G type=f num_elts=16 align=wordx32
 
 ; RUN: sed -e 's/INPUT_TYPE/<2 x float>/g' -e 's/OUTPUT_TYPE/<8 x i8>/g' \
@@ -2084,7 +2084,7 @@
 ; FLOAT2_V8I8: mov (M1, 16) {{.*}} [[OUTPUT]](1,16)<1;1,0>
 ; FLOAT2_V8I8: mov (M1, 16) {{.*}} [[OUTPUT]](1,32)<1;1,0>
 ; FLOAT2_V8I8: mov (M1, 16) {{.*}} [[OUTPUT]](1,48)<1;1,0>
-; FLOAT2_V8I8-DAG: .decl [[OUTPUT]] v_type=G type=ub num_elts=128 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
+; FLOAT2_V8I8-DAG: .decl [[OUTPUT]] v_type=G type=b num_elts=128 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
 ; FLOAT2_V8I8-DAG: .decl [[INPUT]] v_type=G type=f num_elts=32 align=wordx32
 
 ; RUN: sed -e 's/INPUT_TYPE/<2 x float>/g' -e 's/OUTPUT_TYPE/<4 x i16>/g' \
@@ -2101,7 +2101,7 @@
 ; FLOAT2_V4I16: mov (M1, 16) {{.*}} [[OUTPUT]](0,16)<1;1,0>
 ; FLOAT2_V4I16: mov (M1, 16) {{.*}} [[OUTPUT]](1,0)<1;1,0>
 ; FLOAT2_V4I16: mov (M1, 16) {{.*}} [[OUTPUT]](1,16)<1;1,0>
-; FLOAT2_V4I16-DAG: .decl [[OUTPUT]] v_type=G type=uw num_elts=64 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
+; FLOAT2_V4I16-DAG: .decl [[OUTPUT]] v_type=G type=w num_elts=64 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
 ; FLOAT2_V4I16-DAG: .decl [[INPUT]] v_type=G type=f num_elts=32 align=wordx32
 
 ; RUN: sed -e 's/INPUT_TYPE/<2 x float>/g' -e 's/OUTPUT_TYPE/<2 x i32>/g' \
@@ -2116,7 +2116,7 @@
 ; FLOAT2_V2I32: .function "test_float2_v2i32_1"
 ; FLOAT2_V2I32: mov (M1, 16) {{.*}} [[OUTPUT:[a-zA-Z0-9_]+]](0,0)<1;1,0>
 ; FLOAT2_V2I32: mov (M1, 16) {{.*}} [[OUTPUT]](1,0)<1;1,0>
-; FLOAT2_V2I32-DAG: .decl [[OUTPUT]] v_type=G type=ud num_elts=32 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
+; FLOAT2_V2I32-DAG: .decl [[OUTPUT]] v_type=G type=d num_elts=32 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
 ; FLOAT2_V2I32-DAG: .decl [[INPUT]] v_type=G type=f num_elts=32 align=wordx32
 
 ; RUN: sed -e 's/INPUT_TYPE/<2 x float>/g' -e 's/OUTPUT_TYPE/i64/g' \
@@ -2130,7 +2130,7 @@
 
 ; FLOAT2_I64: .function "test_float2_i64_1"
 ; FLOAT2_I64: mov (M1, 16) {{.*}} [[OUTPUT:[a-zA-Z0-9_]+]](0,0)<1;1,0>
-; FLOAT2_I64-DAG: .decl [[OUTPUT]] v_type=G type=uq num_elts=16 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
+; FLOAT2_I64-DAG: .decl [[OUTPUT]] v_type=G type=q num_elts=16 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
 ; FLOAT2_I64-DAG: .decl [[INPUT]] v_type=G type=f num_elts=32 align=wordx32
 
 ; RUN: sed -e 's/INPUT_TYPE/<2 x float>/g' -e 's/OUTPUT_TYPE/<4 x half>/g' \
@@ -2147,7 +2147,7 @@
 ; FLOAT2_V4HALF: mov (M1, 16) {{.*}} [[OUTPUT]](0,16)<1;1,0>
 ; FLOAT2_V4HALF: mov (M1, 16) {{.*}} [[OUTPUT]](1,0)<1;1,0>
 ; FLOAT2_V4HALF: mov (M1, 16) {{.*}} [[OUTPUT]](1,16)<1;1,0>
-; FLOAT2_V4HALF-DAG: .decl [[OUTPUT]] v_type=G type=uw num_elts=64 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
+; FLOAT2_V4HALF-DAG: .decl [[OUTPUT]] v_type=G type=hf num_elts=64 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
 ; FLOAT2_V4HALF-DAG: .decl [[INPUT]] v_type=G type=f num_elts=32 align=wordx32
 
 ; RUN: sed -e 's/INPUT_TYPE/<2 x float>/g' -e 's/OUTPUT_TYPE/double/g' \
@@ -2161,7 +2161,7 @@
 
 ; FLOAT2_DOUBLE: .function "test_float2_double_1"
 ; FLOAT2_DOUBLE: mov (M1, 16) {{.*}} [[OUTPUT:[a-zA-Z0-9_]+]](0,0)<1;1,0>
-; FLOAT2_DOUBLE-DAG: .decl [[OUTPUT]] v_type=G type=uq num_elts=16 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
+; FLOAT2_DOUBLE-DAG: .decl [[OUTPUT]] v_type=G type=df num_elts=16 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
 ; FLOAT2_DOUBLE-DAG: .decl [[INPUT]] v_type=G type=f num_elts=32 align=wordx32
 
 ; RUN: sed -e 's/INPUT_TYPE/<4 x float>/g' -e 's/OUTPUT_TYPE/<16 x i8>/g' \
@@ -2190,7 +2190,7 @@
 ; FLOAT4_V16I8: mov (M1, 16) {{.*}} [[OUTPUT]](3,16)<1;1,0>
 ; FLOAT4_V16I8: mov (M1, 16) {{.*}} [[OUTPUT]](3,32)<1;1,0>
 ; FLOAT4_V16I8: mov (M1, 16) {{.*}} [[OUTPUT]](3,48)<1;1,0>
-; FLOAT4_V16I8-DAG: .decl [[OUTPUT]] v_type=G type=ub num_elts=256 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
+; FLOAT4_V16I8-DAG: .decl [[OUTPUT]] v_type=G type=b num_elts=256 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
 ; FLOAT4_V16I8-DAG: .decl [[INPUT]] v_type=G type=f num_elts=64 align=wordx32
 
 ; RUN: sed -e 's/INPUT_TYPE/<4 x float>/g' -e 's/OUTPUT_TYPE/<8 x i16>/g' \
@@ -2211,7 +2211,7 @@
 ; FLOAT4_V8I16: mov (M1, 16) {{.*}} [[OUTPUT]](2,16)<1;1,0>
 ; FLOAT4_V8I16: mov (M1, 16) {{.*}} [[OUTPUT]](3,0)<1;1,0>
 ; FLOAT4_V8I16: mov (M1, 16) {{.*}} [[OUTPUT]](3,16)<1;1,0>
-; FLOAT4_V8I16-DAG: .decl [[OUTPUT]] v_type=G type=uw num_elts=128 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
+; FLOAT4_V8I16-DAG: .decl [[OUTPUT]] v_type=G type=w num_elts=128 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
 ; FLOAT4_V8I16-DAG: .decl [[INPUT]] v_type=G type=f num_elts=64 align=wordx32
 
 ; RUN: sed -e 's/INPUT_TYPE/<4 x float>/g' -e 's/OUTPUT_TYPE/<4 x i32>/g' \
@@ -2228,7 +2228,7 @@
 ; FLOAT4_V4I32: mov (M1, 16) {{.*}} [[OUTPUT]](1,0)<1;1,0>
 ; FLOAT4_V4I32: mov (M1, 16) {{.*}} [[OUTPUT]](2,0)<1;1,0>
 ; FLOAT4_V4I32: mov (M1, 16) {{.*}} [[OUTPUT]](3,0)<1;1,0>
-; FLOAT4_V4I32-DAG: .decl [[OUTPUT]] v_type=G type=ud num_elts=64 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
+; FLOAT4_V4I32-DAG: .decl [[OUTPUT]] v_type=G type=d num_elts=64 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
 ; FLOAT4_V4I32-DAG: .decl [[INPUT]] v_type=G type=f num_elts=64 align=wordx32
 
 ; RUN: sed -e 's/INPUT_TYPE/<4 x float>/g' -e 's/OUTPUT_TYPE/<2 x i64>/g' \
@@ -2243,7 +2243,7 @@
 ; FLOAT4_V2I64: .function "test_float4_v2i64_1"
 ; FLOAT4_V2I64: mov (M1, 16) {{.*}} [[OUTPUT:[a-zA-Z0-9_]+]](0,0)<1;1,0>
 ; FLOAT4_V2I64: mov (M1, 16) {{.*}} [[OUTPUT]](2,0)<1;1,0>
-; FLOAT4_V2I64-DAG: .decl [[OUTPUT]] v_type=G type=uq num_elts=32 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
+; FLOAT4_V2I64-DAG: .decl [[OUTPUT]] v_type=G type=q num_elts=32 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
 ; FLOAT4_V2I64-DAG: .decl [[INPUT]] v_type=G type=f num_elts=64 align=wordx32
 
 ; RUN: sed -e 's/INPUT_TYPE/<4 x float>/g' -e 's/OUTPUT_TYPE/<8 x half>/g' \
@@ -2264,7 +2264,7 @@
 ; FLOAT4_V8HALF: mov (M1, 16) {{.*}} [[OUTPUT]](2,16)<1;1,0>
 ; FLOAT4_V8HALF: mov (M1, 16) {{.*}} [[OUTPUT]](3,0)<1;1,0>
 ; FLOAT4_V8HALF: mov (M1, 16) {{.*}} [[OUTPUT]](3,16)<1;1,0>
-; FLOAT4_V8HALF-DAG: .decl [[OUTPUT]] v_type=G type=uw num_elts=128 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
+; FLOAT4_V8HALF-DAG: .decl [[OUTPUT]] v_type=G type=hf num_elts=128 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
 ; FLOAT4_V8HALF-DAG: .decl [[INPUT]] v_type=G type=f num_elts=64 align=wordx32
 
 ; RUN: sed -e 's/INPUT_TYPE/<4 x float>/g' -e 's/OUTPUT_TYPE/<2 x double>/g' \
@@ -2279,7 +2279,7 @@
 ; FLOAT4_V2DOUBLE: .function "test_float4_v2double_1"
 ; FLOAT4_V2DOUBLE: mov (M1, 16) {{.*}} [[OUTPUT:[a-zA-Z0-9_]+]](0,0)<1;1,0>
 ; FLOAT4_V2DOUBLE: mov (M1, 16) {{.*}} [[OUTPUT]](2,0)<1;1,0>
-; FLOAT4_V2DOUBLE-DAG: .decl [[OUTPUT]] v_type=G type=uq num_elts=32 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
+; FLOAT4_V2DOUBLE-DAG: .decl [[OUTPUT]] v_type=G type=df num_elts=32 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
 ; FLOAT4_V2DOUBLE-DAG: .decl [[INPUT]] v_type=G type=f num_elts=64 align=wordx32
 
 ; RUN: sed -e 's/INPUT_TYPE/<8 x float>/g' -e 's/OUTPUT_TYPE/<16 x i16>/g' \
@@ -2308,7 +2308,7 @@
 ; FLOAT8_V16I16: mov (M1, 16) {{.*}} [[OUTPUT]](6,16)<1;1,0>
 ; FLOAT8_V16I16: mov (M1, 16) {{.*}} [[OUTPUT]](7,0)<1;1,0>
 ; FLOAT8_V16I16: mov (M1, 16) {{.*}} [[OUTPUT]](7,16)<1;1,0>
-; FLOAT8_V16I16-DAG: .decl [[OUTPUT]] v_type=G type=uw num_elts=256 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
+; FLOAT8_V16I16-DAG: .decl [[OUTPUT]] v_type=G type=w num_elts=256 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
 ; FLOAT8_V16I16-DAG: .decl [[INPUT]] v_type=G type=f num_elts=128 align=wordx32
 
 ; RUN: sed -e 's/INPUT_TYPE/<8 x float>/g' -e 's/OUTPUT_TYPE/<8 x i32>/g' \
@@ -2329,7 +2329,7 @@
 ; FLOAT8_V8I32: mov (M1, 16) {{.*}} [[OUTPUT]](5,0)<1;1,0>
 ; FLOAT8_V8I32: mov (M1, 16) {{.*}} [[OUTPUT]](6,0)<1;1,0>
 ; FLOAT8_V8I32: mov (M1, 16) {{.*}} [[OUTPUT]](7,0)<1;1,0>
-; FLOAT8_V8I32-DAG: .decl [[OUTPUT]] v_type=G type=ud num_elts=128 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
+; FLOAT8_V8I32-DAG: .decl [[OUTPUT]] v_type=G type=d num_elts=128 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
 ; FLOAT8_V8I32-DAG: .decl [[INPUT]] v_type=G type=f num_elts=128 align=wordx32
 
 ; RUN: sed -e 's/INPUT_TYPE/<8 x float>/g' -e 's/OUTPUT_TYPE/<4 x i64>/g' \
@@ -2346,7 +2346,7 @@
 ; FLOAT8_V4I64: mov (M1, 16) {{.*}} [[OUTPUT]](2,0)<1;1,0>
 ; FLOAT8_V4I64: mov (M1, 16) {{.*}} [[OUTPUT]](4,0)<1;1,0>
 ; FLOAT8_V4I64: mov (M1, 16) {{.*}} [[OUTPUT]](6,0)<1;1,0>
-; FLOAT8_V4I64-DAG: .decl [[OUTPUT]] v_type=G type=uq num_elts=64 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
+; FLOAT8_V4I64-DAG: .decl [[OUTPUT]] v_type=G type=q num_elts=64 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
 ; FLOAT8_V4I64-DAG: .decl [[INPUT]] v_type=G type=f num_elts=128 align=wordx32
 
 ; RUN: sed -e 's/INPUT_TYPE/<8 x float>/g' -e 's/OUTPUT_TYPE/<16 x half>/g' \
@@ -2375,7 +2375,7 @@
 ; FLOAT8_V16HALF: mov (M1, 16) {{.*}} [[OUTPUT]](6,16)<1;1,0>
 ; FLOAT8_V16HALF: mov (M1, 16) {{.*}} [[OUTPUT]](7,0)<1;1,0>
 ; FLOAT8_V16HALF: mov (M1, 16) {{.*}} [[OUTPUT]](7,16)<1;1,0>
-; FLOAT8_V16HALF-DAG: .decl [[OUTPUT]] v_type=G type=uw num_elts=256 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
+; FLOAT8_V16HALF-DAG: .decl [[OUTPUT]] v_type=G type=hf num_elts=256 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
 ; FLOAT8_V16HALF-DAG: .decl [[INPUT]] v_type=G type=f num_elts=128 align=wordx32
 
 ; RUN: sed -e 's/INPUT_TYPE/<8 x float>/g' -e 's/OUTPUT_TYPE/<4 x double>/g' \
@@ -2392,7 +2392,7 @@
 ; FLOAT8_V4DOUBLE: mov (M1, 16) {{.*}} [[OUTPUT]](2,0)<1;1,0>
 ; FLOAT8_V4DOUBLE: mov (M1, 16) {{.*}} [[OUTPUT]](4,0)<1;1,0>
 ; FLOAT8_V4DOUBLE: mov (M1, 16) {{.*}} [[OUTPUT]](6,0)<1;1,0>
-; FLOAT8_V4DOUBLE-DAG: .decl [[OUTPUT]] v_type=G type=uq num_elts=64 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
+; FLOAT8_V4DOUBLE-DAG: .decl [[OUTPUT]] v_type=G type=df num_elts=64 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
 ; FLOAT8_V4DOUBLE-DAG: .decl [[INPUT]] v_type=G type=f num_elts=128 align=wordx32
 
 ; RUN: sed -e 's/INPUT_TYPE/<16 x float>/g' -e 's/OUTPUT_TYPE/<16 x i32>/g' \
@@ -2421,7 +2421,7 @@
 ; FLOAT16_V16I32: mov (M1, 16) {{.*}} [[OUTPUT]](13,0)<1;1,0>
 ; FLOAT16_V16I32: mov (M1, 16) {{.*}} [[OUTPUT]](14,0)<1;1,0>
 ; FLOAT16_V16I32: mov (M1, 16) {{.*}} [[OUTPUT]](15,0)<1;1,0>
-; FLOAT16_V16I32-DAG: .decl [[OUTPUT]] v_type=G type=ud num_elts=256 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
+; FLOAT16_V16I32-DAG: .decl [[OUTPUT]] v_type=G type=d num_elts=256 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
 ; FLOAT16_V16I32-DAG: .decl [[INPUT]] v_type=G type=f num_elts=256 align=wordx32
 
 ; RUN: sed -e 's/INPUT_TYPE/<16 x float>/g' -e 's/OUTPUT_TYPE/<8 x i64>/g' \
@@ -2442,7 +2442,7 @@
 ; FLOAT16_V8I64: mov (M1, 16) {{.*}} [[OUTPUT]](10,0)<1;1,0>
 ; FLOAT16_V8I64: mov (M1, 16) {{.*}} [[OUTPUT]](12,0)<1;1,0>
 ; FLOAT16_V8I64: mov (M1, 16) {{.*}} [[OUTPUT]](14,0)<1;1,0>
-; FLOAT16_V8I64-DAG: .decl [[OUTPUT]] v_type=G type=uq num_elts=128 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
+; FLOAT16_V8I64-DAG: .decl [[OUTPUT]] v_type=G type=q num_elts=128 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
 ; FLOAT16_V8I64-DAG: .decl [[INPUT]] v_type=G type=f num_elts=256 align=wordx32
 
 ; RUN: sed -e 's/INPUT_TYPE/<16 x float>/g' -e 's/OUTPUT_TYPE/<8 x double>/g' \
@@ -2463,7 +2463,7 @@
 ; FLOAT16_V8DOUBLE: mov (M1, 16) {{.*}} [[OUTPUT]](10,0)<1;1,0>
 ; FLOAT16_V8DOUBLE: mov (M1, 16) {{.*}} [[OUTPUT]](12,0)<1;1,0>
 ; FLOAT16_V8DOUBLE: mov (M1, 16) {{.*}} [[OUTPUT]](14,0)<1;1,0>
-; FLOAT16_V8DOUBLE-DAG: .decl [[OUTPUT]] v_type=G type=uq num_elts=128 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
+; FLOAT16_V8DOUBLE-DAG: .decl [[OUTPUT]] v_type=G type=df num_elts=128 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
 ; FLOAT16_V8DOUBLE-DAG: .decl [[INPUT]] v_type=G type=f num_elts=256 align=wordx32
 
 ; RUN: sed -e 's/INPUT_TYPE/double/g' -e 's/OUTPUT_TYPE/<8 x i8>/g' \
@@ -2484,7 +2484,7 @@
 ; DOUBLE_V8I8: mov (M1, 16) {{.*}} [[OUTPUT]](1,16)<1;1,0>
 ; DOUBLE_V8I8: mov (M1, 16) {{.*}} [[OUTPUT]](1,32)<1;1,0>
 ; DOUBLE_V8I8: mov (M1, 16) {{.*}} [[OUTPUT]](1,48)<1;1,0>
-; DOUBLE_V8I8-DAG: .decl [[OUTPUT]] v_type=G type=ub num_elts=128 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
+; DOUBLE_V8I8-DAG: .decl [[OUTPUT]] v_type=G type=b num_elts=128 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
 ; DOUBLE_V8I8-DAG: .decl [[INPUT]] v_type=G type=df num_elts=16 align=wordx32
 
 ; RUN: sed -e 's/INPUT_TYPE/double/g' -e 's/OUTPUT_TYPE/<4 x i16>/g' \
@@ -2501,7 +2501,7 @@
 ; DOUBLE_V4I16: mov (M1, 16) {{.*}} [[OUTPUT]](0,16)<1;1,0>
 ; DOUBLE_V4I16: mov (M1, 16) {{.*}} [[OUTPUT]](1,0)<1;1,0>
 ; DOUBLE_V4I16: mov (M1, 16) {{.*}} [[OUTPUT]](1,16)<1;1,0>
-; DOUBLE_V4I16-DAG: .decl [[OUTPUT]] v_type=G type=uw num_elts=64 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
+; DOUBLE_V4I16-DAG: .decl [[OUTPUT]] v_type=G type=w num_elts=64 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
 ; DOUBLE_V4I16-DAG: .decl [[INPUT]] v_type=G type=df num_elts=16 align=wordx32
 
 ; RUN: sed -e 's/INPUT_TYPE/double/g' -e 's/OUTPUT_TYPE/<2 x i32>/g' \
@@ -2516,7 +2516,7 @@
 ; DOUBLE_V2I32: .function "test_double_v2i32_1"
 ; DOUBLE_V2I32: mov (M1, 16) {{.*}} [[OUTPUT:[a-zA-Z0-9_]+]](0,0)<1;1,0>
 ; DOUBLE_V2I32: mov (M1, 16) {{.*}} [[OUTPUT]](1,0)<1;1,0>
-; DOUBLE_V2I32-DAG: .decl [[OUTPUT]] v_type=G type=ud num_elts=32 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
+; DOUBLE_V2I32-DAG: .decl [[OUTPUT]] v_type=G type=d num_elts=32 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
 ; DOUBLE_V2I32-DAG: .decl [[INPUT]] v_type=G type=df num_elts=16 align=wordx32
 
 ; RUN: sed -e 's/INPUT_TYPE/double/g' -e 's/OUTPUT_TYPE/i64/g' \
@@ -2530,7 +2530,7 @@
 
 ; DOUBLE_I64: .function "test_double_i64_1"
 ; DOUBLE_I64: mov (M1, 16) {{.*}} [[OUTPUT:[a-zA-Z0-9_]+]](0,0)<1;1,0>
-; DOUBLE_I64-DAG: .decl [[OUTPUT]] v_type=G type=uq num_elts=16 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
+; DOUBLE_I64-DAG: .decl [[OUTPUT]] v_type=G type=q num_elts=16 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
 ; DOUBLE_I64-DAG: .decl [[INPUT]] v_type=G type=df num_elts=16 align=wordx32
 
 ; RUN: sed -e 's/INPUT_TYPE/double/g' -e 's/OUTPUT_TYPE/<4 x half>/g' \
@@ -2547,7 +2547,7 @@
 ; DOUBLE_V4HALF: mov (M1, 16) {{.*}} [[OUTPUT]](0,16)<1;1,0>
 ; DOUBLE_V4HALF: mov (M1, 16) {{.*}} [[OUTPUT]](1,0)<1;1,0>
 ; DOUBLE_V4HALF: mov (M1, 16) {{.*}} [[OUTPUT]](1,16)<1;1,0>
-; DOUBLE_V4HALF-DAG: .decl [[OUTPUT]] v_type=G type=uw num_elts=64 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
+; DOUBLE_V4HALF-DAG: .decl [[OUTPUT]] v_type=G type=hf num_elts=64 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
 ; DOUBLE_V4HALF-DAG: .decl [[INPUT]] v_type=G type=df num_elts=16 align=wordx32
 
 ; RUN: sed -e 's/INPUT_TYPE/double/g' -e 's/OUTPUT_TYPE/<2 x float>/g' \
@@ -2562,7 +2562,7 @@
 ; DOUBLE_V2FLOAT: .function "test_double_v2float_1"
 ; DOUBLE_V2FLOAT: mov (M1, 16) {{.*}} [[OUTPUT:[a-zA-Z0-9_]+]](0,0)<1;1,0>
 ; DOUBLE_V2FLOAT: mov (M1, 16) {{.*}} [[OUTPUT]](1,0)<1;1,0>
-; DOUBLE_V2FLOAT-DAG: .decl [[OUTPUT]] v_type=G type=ud num_elts=32 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
+; DOUBLE_V2FLOAT-DAG: .decl [[OUTPUT]] v_type=G type=f num_elts=32 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
 ; DOUBLE_V2FLOAT-DAG: .decl [[INPUT]] v_type=G type=df num_elts=16 align=wordx32
 
 ; RUN: sed -e 's/INPUT_TYPE/<2 x double>/g' -e 's/OUTPUT_TYPE/<16 x i8>/g' \
@@ -2591,7 +2591,7 @@
 ; DOUBLE2_V16I8: mov (M1, 16) {{.*}} [[OUTPUT]](3,16)<1;1,0>
 ; DOUBLE2_V16I8: mov (M1, 16) {{.*}} [[OUTPUT]](3,32)<1;1,0>
 ; DOUBLE2_V16I8: mov (M1, 16) {{.*}} [[OUTPUT]](3,48)<1;1,0>
-; DOUBLE2_V16I8-DAG: .decl [[OUTPUT]] v_type=G type=ub num_elts=256 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
+; DOUBLE2_V16I8-DAG: .decl [[OUTPUT]] v_type=G type=b num_elts=256 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
 ; DOUBLE2_V16I8-DAG: .decl [[INPUT]] v_type=G type=df num_elts=32 align=wordx32
 
 ; RUN: sed -e 's/INPUT_TYPE/<2 x double>/g' -e 's/OUTPUT_TYPE/<8 x i16>/g' \
@@ -2612,7 +2612,7 @@
 ; DOUBLE2_V8I16: mov (M1, 16) {{.*}} [[OUTPUT]](2,16)<1;1,0>
 ; DOUBLE2_V8I16: mov (M1, 16) {{.*}} [[OUTPUT]](3,0)<1;1,0>
 ; DOUBLE2_V8I16: mov (M1, 16) {{.*}} [[OUTPUT]](3,16)<1;1,0>
-; DOUBLE2_V8I16-DAG: .decl [[OUTPUT]] v_type=G type=uw num_elts=128 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
+; DOUBLE2_V8I16-DAG: .decl [[OUTPUT]] v_type=G type=w num_elts=128 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
 ; DOUBLE2_V8I16-DAG: .decl [[INPUT]] v_type=G type=df num_elts=32 align=wordx32
 
 ; RUN: sed -e 's/INPUT_TYPE/<2 x double>/g' -e 's/OUTPUT_TYPE/<4 x i32>/g' \
@@ -2629,7 +2629,7 @@
 ; DOUBLE2_V4I32: mov (M1, 16) {{.*}} [[OUTPUT]](1,0)<1;1,0>
 ; DOUBLE2_V4I32: mov (M1, 16) {{.*}} [[OUTPUT]](2,0)<1;1,0>
 ; DOUBLE2_V4I32: mov (M1, 16) {{.*}} [[OUTPUT]](3,0)<1;1,0>
-; DOUBLE2_V4I32-DAG: .decl [[OUTPUT]] v_type=G type=ud num_elts=64 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
+; DOUBLE2_V4I32-DAG: .decl [[OUTPUT]] v_type=G type=d num_elts=64 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
 ; DOUBLE2_V4I32-DAG: .decl [[INPUT]] v_type=G type=df num_elts=32 align=wordx32
 
 ; RUN: sed -e 's/INPUT_TYPE/<2 x double>/g' -e 's/OUTPUT_TYPE/<2 x i64>/g' \
@@ -2644,7 +2644,7 @@
 ; DOUBLE2_V2I64: .function "test_double2_v2i64_1"
 ; DOUBLE2_V2I64: mov (M1, 16) {{.*}} [[OUTPUT:[a-zA-Z0-9_]+]](0,0)<1;1,0>
 ; DOUBLE2_V2I64: mov (M1, 16) {{.*}} [[OUTPUT]](2,0)<1;1,0>
-; DOUBLE2_V2I64-DAG: .decl [[OUTPUT]] v_type=G type=uq num_elts=32 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
+; DOUBLE2_V2I64-DAG: .decl [[OUTPUT]] v_type=G type=q num_elts=32 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
 ; DOUBLE2_V2I64-DAG: .decl [[INPUT]] v_type=G type=df num_elts=32 align=wordx32
 
 ; RUN: sed -e 's/INPUT_TYPE/<2 x double>/g' -e 's/OUTPUT_TYPE/<8 x half>/g' \
@@ -2665,7 +2665,7 @@
 ; DOUBLE2_V8HALF: mov (M1, 16) {{.*}} [[OUTPUT]](2,16)<1;1,0>
 ; DOUBLE2_V8HALF: mov (M1, 16) {{.*}} [[OUTPUT]](3,0)<1;1,0>
 ; DOUBLE2_V8HALF: mov (M1, 16) {{.*}} [[OUTPUT]](3,16)<1;1,0>
-; DOUBLE2_V8HALF-DAG: .decl [[OUTPUT]] v_type=G type=uw num_elts=128 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
+; DOUBLE2_V8HALF-DAG: .decl [[OUTPUT]] v_type=G type=hf num_elts=128 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
 ; DOUBLE2_V8HALF-DAG: .decl [[INPUT]] v_type=G type=df num_elts=32 align=wordx32
 
 ; RUN: sed -e 's/INPUT_TYPE/<2 x double>/g' -e 's/OUTPUT_TYPE/<4 x float>/g' \
@@ -2682,7 +2682,7 @@
 ; DOUBLE2_V4FLOAT: mov (M1, 16) {{.*}} [[OUTPUT]](1,0)<1;1,0>
 ; DOUBLE2_V4FLOAT: mov (M1, 16) {{.*}} [[OUTPUT]](2,0)<1;1,0>
 ; DOUBLE2_V4FLOAT: mov (M1, 16) {{.*}} [[OUTPUT]](3,0)<1;1,0>
-; DOUBLE2_V4FLOAT-DAG: .decl [[OUTPUT]] v_type=G type=ud num_elts=64 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
+; DOUBLE2_V4FLOAT-DAG: .decl [[OUTPUT]] v_type=G type=f num_elts=64 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
 ; DOUBLE2_V4FLOAT-DAG: .decl [[INPUT]] v_type=G type=df num_elts=32 align=wordx32
 
 ; RUN: sed -e 's/INPUT_TYPE/<4 x double>/g' -e 's/OUTPUT_TYPE/<16 x i16>/g' \
@@ -2711,7 +2711,7 @@
 ; DOUBLE4_V16I16: mov (M1, 16) {{.*}} [[OUTPUT]](6,16)<1;1,0>
 ; DOUBLE4_V16I16: mov (M1, 16) {{.*}} [[OUTPUT]](7,0)<1;1,0>
 ; DOUBLE4_V16I16: mov (M1, 16) {{.*}} [[OUTPUT]](7,16)<1;1,0>
-; DOUBLE4_V16I16-DAG: .decl [[OUTPUT]] v_type=G type=uw num_elts=256 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
+; DOUBLE4_V16I16-DAG: .decl [[OUTPUT]] v_type=G type=w num_elts=256 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
 ; DOUBLE4_V16I16-DAG: .decl [[INPUT]] v_type=G type=df num_elts=64 align=wordx32
 
 ; RUN: sed -e 's/INPUT_TYPE/<4 x double>/g' -e 's/OUTPUT_TYPE/<8 x i32>/g' \
@@ -2732,7 +2732,7 @@
 ; DOUBLE4_V8I32: mov (M1, 16) {{.*}} [[OUTPUT]](5,0)<1;1,0>
 ; DOUBLE4_V8I32: mov (M1, 16) {{.*}} [[OUTPUT]](6,0)<1;1,0>
 ; DOUBLE4_V8I32: mov (M1, 16) {{.*}} [[OUTPUT]](7,0)<1;1,0>
-; DOUBLE4_V8I32-DAG: .decl [[OUTPUT]] v_type=G type=ud num_elts=128 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
+; DOUBLE4_V8I32-DAG: .decl [[OUTPUT]] v_type=G type=d num_elts=128 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
 ; DOUBLE4_V8I32-DAG: .decl [[INPUT]] v_type=G type=df num_elts=64 align=wordx32
 
 ; RUN: sed -e 's/INPUT_TYPE/<4 x double>/g' -e 's/OUTPUT_TYPE/<4 x i64>/g' \
@@ -2749,7 +2749,7 @@
 ; DOUBLE4_V4I64: mov (M1, 16) {{.*}} [[OUTPUT]](2,0)<1;1,0>
 ; DOUBLE4_V4I64: mov (M1, 16) {{.*}} [[OUTPUT]](4,0)<1;1,0>
 ; DOUBLE4_V4I64: mov (M1, 16) {{.*}} [[OUTPUT]](6,0)<1;1,0>
-; DOUBLE4_V4I64-DAG: .decl [[OUTPUT]] v_type=G type=uq num_elts=64 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
+; DOUBLE4_V4I64-DAG: .decl [[OUTPUT]] v_type=G type=q num_elts=64 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
 ; DOUBLE4_V4I64-DAG: .decl [[INPUT]] v_type=G type=df num_elts=64 align=wordx32
 
 ; RUN: sed -e 's/INPUT_TYPE/<4 x double>/g' -e 's/OUTPUT_TYPE/<16 x half>/g' \
@@ -2778,7 +2778,7 @@
 ; DOUBLE4_V16HALF: mov (M1, 16) {{.*}} [[OUTPUT]](6,16)<1;1,0>
 ; DOUBLE4_V16HALF: mov (M1, 16) {{.*}} [[OUTPUT]](7,0)<1;1,0>
 ; DOUBLE4_V16HALF: mov (M1, 16) {{.*}} [[OUTPUT]](7,16)<1;1,0>
-; DOUBLE4_V16HALF-DAG: .decl [[OUTPUT]] v_type=G type=uw num_elts=256 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
+; DOUBLE4_V16HALF-DAG: .decl [[OUTPUT]] v_type=G type=hf num_elts=256 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
 ; DOUBLE4_V16HALF-DAG: .decl [[INPUT]] v_type=G type=df num_elts=64 align=wordx32
 
 ; RUN: sed -e 's/INPUT_TYPE/<4 x double>/g' -e 's/OUTPUT_TYPE/<8 x float>/g' \
@@ -2799,7 +2799,7 @@
 ; DOUBLE4_V8FLOAT: mov (M1, 16) {{.*}} [[OUTPUT]](5,0)<1;1,0>
 ; DOUBLE4_V8FLOAT: mov (M1, 16) {{.*}} [[OUTPUT]](6,0)<1;1,0>
 ; DOUBLE4_V8FLOAT: mov (M1, 16) {{.*}} [[OUTPUT]](7,0)<1;1,0>
-; DOUBLE4_V8FLOAT-DAG: .decl [[OUTPUT]] v_type=G type=ud num_elts=128 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
+; DOUBLE4_V8FLOAT-DAG: .decl [[OUTPUT]] v_type=G type=f num_elts=128 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
 ; DOUBLE4_V8FLOAT-DAG: .decl [[INPUT]] v_type=G type=df num_elts=64 align=wordx32
 
 ; RUN: sed -e 's/INPUT_TYPE/<8 x double>/g' -e 's/OUTPUT_TYPE/<16 x i32>/g' \
@@ -2828,7 +2828,7 @@
 ; DOUBLE8_V16I32: mov (M1, 16) {{.*}} [[OUTPUT]](13,0)<1;1,0>
 ; DOUBLE8_V16I32: mov (M1, 16) {{.*}} [[OUTPUT]](14,0)<1;1,0>
 ; DOUBLE8_V16I32: mov (M1, 16) {{.*}} [[OUTPUT]](15,0)<1;1,0>
-; DOUBLE8_V16I32-DAG: .decl [[OUTPUT]] v_type=G type=ud num_elts=256 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
+; DOUBLE8_V16I32-DAG: .decl [[OUTPUT]] v_type=G type=d num_elts=256 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
 ; DOUBLE8_V16I32-DAG: .decl [[INPUT]] v_type=G type=df num_elts=128 align=wordx32
 
 ; RUN: sed -e 's/INPUT_TYPE/<8 x double>/g' -e 's/OUTPUT_TYPE/<8 x i64>/g' \
@@ -2849,7 +2849,7 @@
 ; DOUBLE8_V8I64: mov (M1, 16) {{.*}} [[OUTPUT]](10,0)<1;1,0>
 ; DOUBLE8_V8I64: mov (M1, 16) {{.*}} [[OUTPUT]](12,0)<1;1,0>
 ; DOUBLE8_V8I64: mov (M1, 16) {{.*}} [[OUTPUT]](14,0)<1;1,0>
-; DOUBLE8_V8I64-DAG: .decl [[OUTPUT]] v_type=G type=uq num_elts=128 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
+; DOUBLE8_V8I64-DAG: .decl [[OUTPUT]] v_type=G type=q num_elts=128 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
 ; DOUBLE8_V8I64-DAG: .decl [[INPUT]] v_type=G type=df num_elts=128 align=wordx32
 
 ; RUN: sed -e 's/INPUT_TYPE/<8 x double>/g' -e 's/OUTPUT_TYPE/<16 x float>/g' \
@@ -2878,7 +2878,7 @@
 ; DOUBLE8_V16FLOAT: mov (M1, 16) {{.*}} [[OUTPUT]](13,0)<1;1,0>
 ; DOUBLE8_V16FLOAT: mov (M1, 16) {{.*}} [[OUTPUT]](14,0)<1;1,0>
 ; DOUBLE8_V16FLOAT: mov (M1, 16) {{.*}} [[OUTPUT]](15,0)<1;1,0>
-; DOUBLE8_V16FLOAT-DAG: .decl [[OUTPUT]] v_type=G type=ud num_elts=256 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
+; DOUBLE8_V16FLOAT-DAG: .decl [[OUTPUT]] v_type=G type=f num_elts=256 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
 ; DOUBLE8_V16FLOAT-DAG: .decl [[INPUT]] v_type=G type=df num_elts=128 align=wordx32
 
 ; RUN: sed -e 's/INPUT_TYPE/<16 x double>/g' -e 's/OUTPUT_TYPE/<16 x i64>/g' \
@@ -2907,7 +2907,7 @@
 ; DOUBLE16_V16I64: mov (M1, 16) {{.*}} [[OUTPUT]](26,0)<1;1,0>
 ; DOUBLE16_V16I64: mov (M1, 16) {{.*}} [[OUTPUT]](28,0)<1;1,0>
 ; DOUBLE16_V16I64: mov (M1, 16) {{.*}} [[OUTPUT]](30,0)<1;1,0>
-; DOUBLE16_V16I64-DAG: .decl [[OUTPUT]] v_type=G type=uq num_elts=256 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
+; DOUBLE16_V16I64-DAG: .decl [[OUTPUT]] v_type=G type=q num_elts=256 align=wordx32 alias=<[[INPUT:[a-zA-Z0-9_]+]], 0>
 ; DOUBLE16_V16I64-DAG: .decl [[INPUT]] v_type=G type=df num_elts=256 align=wordx32
 
 target triple = "spir64-unknown-unknown"

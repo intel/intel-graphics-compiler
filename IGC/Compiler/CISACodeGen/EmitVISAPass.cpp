@@ -6974,27 +6974,18 @@ void EmitPass::emitSimdShuffleDown(llvm::Instruction *inst) {
 }
 
 void EmitPass::emitSubgroupBitcastShuffle(llvm::Instruction *inst) {
+  // OpSubgroupBitcastShuffleINTEL is a bit-preserving reinterpret of the operand
+  // to a result with a different component count (see
+  // SPV_INTEL_subgroup_bitcast_shuffle).
+  //
+  // Usually DeSSA aliases the result onto its operand (CoalesceAliasInst) and this
+  // handler is never reached. This is the fallback when that aliasing did not
+  // apply: we must WRITE the result's own register.
   CVariable *pSrc = GetSymbol(inst->getOperand(0));
+  CVariable *pDst = GetSymbol(inst);
 
-  // Determine the destination element type and count from the return type.
-  Type *dstTy = inst->getType();
-  unsigned dstElemSizeInBytes = 0;
-  unsigned dstNumElems = 0;
-  if (auto *vecTy = dyn_cast<FixedVectorType>(dstTy)) {
-    dstElemSizeInBytes = (unsigned)vecTy->getElementType()->getPrimitiveSizeInBits() / 8;
-    dstNumElems = vecTy->getNumElements() * numLanes(m_SimdMode);
-  } else {
-    dstElemSizeInBytes = (unsigned)dstTy->getPrimitiveSizeInBits() / 8;
-    dstNumElems = numLanes(m_SimdMode);
-  }
-
-  VISA_Type dstVisaTy = GetTypeFromSize(dstElemSizeInBytes);
-
-  // Create an alias that reinterprets the source register as the destination
-  // type, e.g. a single i32 lane becomes 4 consecutive i8 elements.
-  // No copy needed - just map the instruction to the alias directly.
-  CVariable *pAlias = m_currShader->GetNewAlias(pSrc, dstVisaTy, 0, (uint16_t)dstNumElems);
-  m_currShader->UpdateSymbolMap(inst, pAlias);
+  CVariable *pSrcAlias = m_currShader->GetNewAlias(pSrc, pDst->GetType(), 0, pDst->GetNumberElement());
+  emitCopyAll(pDst, pSrcAlias, inst->getType());
 }
 
 void EmitPass::emitSimdShuffleXor(llvm::Instruction *inst) {
