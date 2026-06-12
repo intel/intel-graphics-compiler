@@ -587,10 +587,18 @@ half16 __builtin_IB_srnd_ftohf_16(float16 a, short16 r) __attribute__((const));
 uint __builtin_IB_lfsr_b32(uint seed, uint polynomial) __attribute__((const)); // as 1 int
 uint __builtin_IB_lfsr_b16v2(uint seed, uint polynomial) __attribute__((const)); // as 2 shorts
 uint __builtin_IB_lfsr_b8v4(uint seed, uint polynomial) __attribute__((const)); // as 4 chars
-// for sources smaller than 32 bits we have special variants that operate in lower simd
-ushort __builtin_IB_lfsr_b16v2_ushort(ushort seed, ushort polynomial) __attribute__((const));
-ushort __builtin_IB_lfsr_b8v4_ushort(ushort seed, ushort polynomial) __attribute__((const));
-uchar __builtin_IB_lfsr_b8v4_uchar(uchar seed, uchar polynomial) __attribute__((const));
+
+// Vector forms: each element is one packed 32-bit word; the width-suffix is
+// ignored by DpasFuncsResolution (it only matches the b32/b16v2/b8v4 mode).
+uint2  __builtin_IB_lfsr_b32_v2(uint2 seed, uint2 polynomial) __attribute__((const));
+uint4  __builtin_IB_lfsr_b32_v4(uint4 seed, uint4 polynomial) __attribute__((const));
+uint8  __builtin_IB_lfsr_b32_v8(uint8 seed, uint8 polynomial) __attribute__((const));
+uint16 __builtin_IB_lfsr_b32_v16(uint16 seed, uint16 polynomial) __attribute__((const));
+uint2  __builtin_IB_lfsr_b16v2_v2(uint2 seed, uint2 polynomial) __attribute__((const));
+uint4  __builtin_IB_lfsr_b16v2_v4(uint4 seed, uint4 polynomial) __attribute__((const));
+uint8  __builtin_IB_lfsr_b16v2_v8(uint8 seed, uint8 polynomial) __attribute__((const));
+uint2  __builtin_IB_lfsr_b8v4_v2(uint2 seed, uint2 polynomial) __attribute__((const));
+uint4  __builtin_IB_lfsr_b8v4_v4(uint4 seed, uint4 polynomial) __attribute__((const));
 
 enum DNSCL_CONVERT_TO_TYPE {
     DNSCL_CONVERT_TO_E2M1 = 1,  // conversion to E2M1

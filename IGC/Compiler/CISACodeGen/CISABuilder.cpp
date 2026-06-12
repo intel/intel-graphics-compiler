@@ -7268,26 +7268,14 @@ void CEncoder::lfsr(CVariable *dst, CVariable *src0, CVariable *src1, LFSR_FC fu
   IGC_ASSERT(dst->GetNumberElement() == src0->GetNumberElement());
   IGC_ASSERT(dst->GetNumberElement() == src1->GetNumberElement());
 
-  uint16_t minNumElem = dst->GetNumberElement();
-  if (src0->GetNumberElement() < minNumElem)
-    minNumElem = src0->GetNumberElement();
-  if (src1->GetNumberElement() < minNumElem)
-    minNumElem = src1->GetNumberElement();
-
-  SIMDMode simdMode = m_encoderState.m_simdSize;
-  // lower the simd mode in case there isn't enough data in dst/src variables
-  if (minNumElem < numLanes(simdMode)) {
-    simdMode = lanesToSIMDMode(minNumElem);
-  }
-
   VISA_PredOpnd *predOpnd = GetFlagOperand(m_encoderState.m_flag);
   VISA_VectorOpnd *dstOpnd = GetDestinationOperand(dst, m_encoderState.m_dstOperand);
   VISA_VectorOpnd *srcOpnd0 = GetSourceOperand(src0, m_encoderState.m_srcOperand[0]);
   VISA_VectorOpnd *srcOpnd1 = GetSourceOperand(src1, m_encoderState.m_srcOperand[1]);
 
-  V(vKernel->AppendVISALfsrInst(predOpnd, GetAluEMask(dst),
-                                visaExecSize(dst->IsUniform() ? m_encoderState.m_uniformSIMDSize : simdMode), funcCtrl,
-                                dstOpnd, srcOpnd0, srcOpnd1));
+  VISA_Exec_Size execSize =
+      visaExecSize(dst->IsUniform() ? m_encoderState.m_uniformSIMDSize : m_encoderState.m_simdSize);
+  V(vKernel->AppendVISALfsrInst(predOpnd, GetAluEMask(dst), execSize, funcCtrl, dstOpnd, srcOpnd0, srcOpnd1));
 }
 
 void CEncoder::srnd(CVariable *D, CVariable *S0, CVariable *R) {

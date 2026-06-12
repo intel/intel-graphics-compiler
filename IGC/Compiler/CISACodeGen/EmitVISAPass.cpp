@@ -22679,29 +22679,47 @@ void EmitPass::emitfcvt(llvm::GenIntrinsicInst *GII) {
 
 void EmitPass::emitLfsr(llvm::GenIntrinsicInst *GII) {
   CVariable *dst = m_destination;
-  Value *s0 = GII->getOperand(0);
-  Value *s1 = GII->getOperand(1);
-
-  CVariable *cs0 = GetSymbol(s0);
-  CVariable *cs1 = GetSymbol(s1);
+  CVariable *cs0 = GetSymbol(GII->getOperand(0));
+  CVariable *cs1 = GetSymbol(GII->getOperand(1));
   uint64_t funcCtrlValue = cast<ConstantInt>(GII->getOperand(2))->getZExtValue();
   IGC_ASSERT(funcCtrlValue <= (uint64_t)LFSR_FC::B8V4);
+  LFSR_FC fc = (LFSR_FC)funcCtrlValue;
 
-  if (!dst->IsUniform() || !cs0->IsUniform() || !cs1->IsUniform()) {
-    IGC_ASSERT(!dst->IsUniform());
-    cs0 = BroadcastIfUniform(cs0);
-    cs1 = BroadcastIfUniform(cs1);
-  }
-
-  if (dst->GetType() != ISA_TYPE_UD)
+  // Each (scalar or vector) element carries one packed 32-bit word; lfsr needs UD.
+  if (dst->GetType() == ISA_TYPE_D)
     dst = m_currShader->BitCast(dst, ISA_TYPE_UD);
-  if (cs0->GetType() != ISA_TYPE_UD)
+  if (cs0->GetType() == ISA_TYPE_D)
     cs0 = m_currShader->BitCast(cs0, ISA_TYPE_UD);
-  if (cs1->GetType() != ISA_TYPE_UD)
+  if (cs1->GetType() == ISA_TYPE_D)
     cs1 = m_currShader->BitCast(cs1, ISA_TYPE_UD);
 
-  m_encoder->lfsr(dst, cs0, cs1, (LFSR_FC)funcCtrlValue);
-  m_encoder->Push();
+  auto *VecTy = dyn_cast<IGCLLVM::FixedVectorType>(GII->getType());
+  unsigned VectorSize = VecTy ? (unsigned)VecTy->getNumElements() : 1;
+
+  if (dst->IsUniform() && cs0->IsUniform() && cs1->IsUniform()) {
+    // Uniform: the idle SIMD lanes carry the vector elements, so the whole
+    // vector emits as a single instruction at execsize = packed-word count.
+    m_encoder->SetSrcRegion(0, 1, 1, 0);
+    m_encoder->SetSrcRegion(1, 1, 1, 0);
+    m_encoder->SetUniformSIMDSize(lanesToSIMDMode(VectorSize));
+    m_encoder->lfsr(dst, cs0, cs1, fc);
+    m_encoder->Push();
+    return;
+  }
+
+  // Non-uniform: one instruction per packed word. Broadcast any uniform operand
+  // so dst/cs0/cs1 share the same per-element layout (one row of SIMD-width
+  // lanes per element), then address element i with Set*SubVar. This keeps the
+  // element counts of all three operands equal, as CEncoder::lfsr requires.
+  cs0 = BroadcastIfUniform(cs0);
+  cs1 = BroadcastIfUniform(cs1);
+  for (unsigned i = 0; i < VectorSize; ++i) {
+    m_encoder->SetSrcSubVar(0, i);
+    m_encoder->SetSrcSubVar(1, i);
+    m_encoder->SetDstSubVar(i);
+    m_encoder->lfsr(dst, cs0, cs1, fc);
+    m_encoder->Push();
+  }
 }
 
 void EmitPass::emitMaxReduce(llvm::GenIntrinsicInst *GII) {

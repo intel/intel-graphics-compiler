@@ -805,8 +805,7 @@ bool DpasFuncsResolution::processLfsr(CallInst &CI) {
   Type *int32Ty = Type::getInt32Ty(CI.getContext());
   Value *args[3] = {CI.getArgOperand(0), CI.getArgOperand(1), ConstantInt::get(int32Ty, operationMode)};
 
-  Type *ITys[4] = {func->getReturnType(), args[0]->getType(), args[1]->getType(), int32Ty};
-  Function *lfsrFunc = GenISAIntrinsic::getDeclaration(func->getParent(), iid, ITys);
+  Function *lfsrFunc = GenISAIntrinsic::getDeclaration(func->getParent(), iid, {CI.getType()});
   Instruction *lfsrCall = CallInst::Create(lfsrFunc, args, VALUE_NAME("lfsr"), IGCLLVM::insertPosition(&CI));
 
   updateDebugLoc(&CI, lfsrCall);

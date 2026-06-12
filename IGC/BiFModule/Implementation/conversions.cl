@@ -3534,46 +3534,56 @@ INLINE uint __attribute__((overloadable)) __spirv_GenericPtrMemSemantics(const g
 
 // lfsr scalar
 char __attribute__((overloadable)) __spirv_GaloisLFSRINTEL(char seed, char polynomial) {
-    return __builtin_IB_lfsr_b8v4_uchar(seed, polynomial);
+    char4 seed4, poly4;
+    seed4.x     = seed;
+    poly4.x     = polynomial;
+    uint result = __builtin_IB_lfsr_b8v4(as_uint(seed4), as_uint(poly4));
+    return as_char4(result).x;
 }
 short __attribute__((overloadable)) __spirv_GaloisLFSRINTEL(short seed, short polynomial) {
-    return __builtin_IB_lfsr_b16v2_ushort(seed, polynomial);
+    short2 seed2, poly2;
+    seed2.x     = seed;
+    poly2.x     = polynomial;
+    uint result = __builtin_IB_lfsr_b16v2(as_uint(seed2), as_uint(poly2));
+    return as_short2(result).x;
 }
 int __attribute__((overloadable)) __spirv_GaloisLFSRINTEL(int seed, int polynomial) {
     return __builtin_IB_lfsr_b32(seed, polynomial);
 }
 // lfsr vec2
 char2 __attribute__((overloadable)) __spirv_GaloisLFSRINTEL(char2 seed, char polynomial) {
-    char2 poly = {polynomial, polynomial};
-    ushort result = __builtin_IB_lfsr_b8v4_ushort(as_ushort(seed), as_ushort(poly));
-    return as_char2(result);
+    char4 seed4, poly4;
+    seed4.xy    = seed;
+    poly4.xy    = polynomial;
+    uint result = __builtin_IB_lfsr_b8v4(as_uint(seed4), as_uint(poly4));
+    return as_char4(result).xy;
 }
 short2 __attribute__((overloadable)) __spirv_GaloisLFSRINTEL(short2 seed, short polynomial) {
-    short2 poly = {polynomial, polynomial};
-    uint result = __builtin_IB_lfsr_b16v2(as_uint(seed), as_uint(poly));
+    short2 poly   = (short2)polynomial;
+    uint   result = __builtin_IB_lfsr_b16v2(as_uint(seed), as_uint(poly));
     return as_short2(result);
 }
 int2 __attribute__((overloadable)) __spirv_GaloisLFSRINTEL(int2 seed, int polynomial) {
-    uint2 result;
-    result.x = __builtin_IB_lfsr_b32(as_uint(seed.x), as_uint(polynomial));
-    result.y = __builtin_IB_lfsr_b32(as_uint(seed.y), as_uint(polynomial));
-    return as_int2(result);
+    uint2 poly = as_uint2((int2)polynomial);
+    return as_int2(__builtin_IB_lfsr_b32_v2(as_uint2(seed), poly));
 }
 // lfsr vec3
 char3 __attribute__((overloadable)) __spirv_GaloisLFSRINTEL(char3 seed, char polynomial) {
-    char4 poly4 = {polynomial, polynomial, polynomial, polynomial};
-    char4 seed4;
-    seed4.xyz = seed;
+    char4 seed4, poly4;
+    seed4.xyz   = seed;
+    poly4.xyz   = polynomial;
     uint result = __builtin_IB_lfsr_b8v4(as_uint(seed4), as_uint(poly4));
     return as_char4(result).xyz;
 }
 short3 __attribute__((overloadable)) __spirv_GaloisLFSRINTEL(short3 seed, short polynomial) {
-    short2 poly2 = {polynomial, polynomial};
-    uint res_xy = __builtin_IB_lfsr_b16v2(as_uint(seed.xy), as_uint(poly2));
-    ushort res_z = __builtin_IB_lfsr_b16v2_ushort(as_ushort(seed.z), as_ushort(polynomial));
+    short2 poly2  = (short2)polynomial;
+    uint   res_xy = __builtin_IB_lfsr_b16v2(as_uint(seed.xy), as_uint(poly2));
+    short2 seed_z;
+    seed_z.x     = seed.z;
+    uint   res_z = __builtin_IB_lfsr_b16v2(as_uint(seed_z), as_uint(poly2));
     short3 result;
     result.xy = as_short2(res_xy);
-    result.z = as_short(res_z);
+    result.z  = as_short2(res_z).x;
     return result;
 }
 int3 __attribute__((overloadable)) __spirv_GaloisLFSRINTEL(int3 seed, int polynomial) {
@@ -3585,93 +3595,45 @@ int3 __attribute__((overloadable)) __spirv_GaloisLFSRINTEL(int3 seed, int polyno
 }
 // lfsr vec4
 char4 __attribute__((overloadable)) __spirv_GaloisLFSRINTEL(char4 seed, char polynomial) {
-    char4 poly = {polynomial, polynomial, polynomial, polynomial};
+    char4 poly = (char4)polynomial;
     return as_char4(__builtin_IB_lfsr_b8v4(as_uint(seed), as_uint(poly)));
 }
 short4 __attribute__((overloadable)) __spirv_GaloisLFSRINTEL(short4 seed, short polynomial) {
-    short2 poly = {polynomial, polynomial};
-    uint2 result;
-    result.x = __builtin_IB_lfsr_b16v2(as_uint(seed.xy), as_uint(poly));
-    result.y = __builtin_IB_lfsr_b16v2(as_uint(seed.zw), as_uint(poly));
-    return as_short4(result);
+    short4 poly4 = (short4)polynomial;
+    uint2  poly  = as_uint2(poly4);
+    return as_short4(__builtin_IB_lfsr_b16v2_v2(as_uint2(seed), poly));
 }
 int4 __attribute__((overloadable)) __spirv_GaloisLFSRINTEL(int4 seed, int polynomial) {
-    uint4 result;
-    result.x = __builtin_IB_lfsr_b32(as_uint(seed.x), as_uint(polynomial));
-    result.y = __builtin_IB_lfsr_b32(as_uint(seed.y), as_uint(polynomial));
-    result.z = __builtin_IB_lfsr_b32(as_uint(seed.z), as_uint(polynomial));
-    result.w = __builtin_IB_lfsr_b32(as_uint(seed.w), as_uint(polynomial));
-    return as_int4(result);
+    uint4 poly = as_uint4((int4)polynomial);
+    return as_int4(__builtin_IB_lfsr_b32_v4(as_uint4(seed), poly));
 }
 // lfsr vec8
 char8 __attribute__((overloadable)) __spirv_GaloisLFSRINTEL(char8 seed, char polynomial) {
-    char4 poly = {polynomial, polynomial, polynomial, polynomial};
-    uint2 result;
-    result.x = __builtin_IB_lfsr_b8v4(as_uint(seed.s0123), as_uint(poly));
-    result.y = __builtin_IB_lfsr_b8v4(as_uint(seed.s4567), as_uint(poly));
-    return as_char8(result);
+    char8 poly8 = (char8)polynomial;
+    uint2 poly  = as_uint2(poly8);
+    return as_char8(__builtin_IB_lfsr_b8v4_v2(as_uint2(seed), poly));
 }
 short8 __attribute__((overloadable)) __spirv_GaloisLFSRINTEL(short8 seed, short polynomial) {
-    short2 poly = {polynomial, polynomial};
-    uint4 result;
-    result.x = __builtin_IB_lfsr_b16v2(as_uint(seed.s01), as_uint(poly));
-    result.y = __builtin_IB_lfsr_b16v2(as_uint(seed.s23), as_uint(poly));
-    result.z = __builtin_IB_lfsr_b16v2(as_uint(seed.s45), as_uint(poly));
-    result.w = __builtin_IB_lfsr_b16v2(as_uint(seed.s67), as_uint(poly));
-    return as_short8(result);
+    short8 poly8 = (short8)polynomial;
+    uint4  poly  = as_uint4(poly8);
+    return as_short8(__builtin_IB_lfsr_b16v2_v4(as_uint4(seed), poly));
 }
 int8 __attribute__((overloadable)) __spirv_GaloisLFSRINTEL(int8 seed, int polynomial) {
-    uint8 result;
-    result.s0 = __builtin_IB_lfsr_b32(as_uint(seed.s0), as_uint(polynomial));
-    result.s1 = __builtin_IB_lfsr_b32(as_uint(seed.s1), as_uint(polynomial));
-    result.s2 = __builtin_IB_lfsr_b32(as_uint(seed.s2), as_uint(polynomial));
-    result.s3 = __builtin_IB_lfsr_b32(as_uint(seed.s3), as_uint(polynomial));
-    result.s4 = __builtin_IB_lfsr_b32(as_uint(seed.s4), as_uint(polynomial));
-    result.s5 = __builtin_IB_lfsr_b32(as_uint(seed.s5), as_uint(polynomial));
-    result.s6 = __builtin_IB_lfsr_b32(as_uint(seed.s6), as_uint(polynomial));
-    result.s7 = __builtin_IB_lfsr_b32(as_uint(seed.s7), as_uint(polynomial));
-    return as_int8(result);
+    uint8 poly = as_uint8((int8)polynomial);
+    return as_int8(__builtin_IB_lfsr_b32_v8(as_uint8(seed), poly));
 }
 // lfsr vec16
 char16 __attribute__((overloadable)) __spirv_GaloisLFSRINTEL(char16 seed, char polynomial) {
-    char4 poly = {polynomial, polynomial, polynomial, polynomial};
-    uint4 result;
-    result.x = __builtin_IB_lfsr_b8v4(as_uint(seed.s0123), as_uint(poly));
-    result.y = __builtin_IB_lfsr_b8v4(as_uint(seed.s4567), as_uint(poly));
-    result.z = __builtin_IB_lfsr_b8v4(as_uint(seed.s89ab), as_uint(poly));
-    result.w = __builtin_IB_lfsr_b8v4(as_uint(seed.scdef), as_uint(poly));
-    return as_char16(result);
+    char16 poly16 = (char16)polynomial;
+    uint4  poly   = as_uint4(poly16);
+    return as_char16(__builtin_IB_lfsr_b8v4_v4(as_uint4(seed), poly));
 }
 short16 __attribute__((overloadable)) __spirv_GaloisLFSRINTEL(short16 seed, short polynomial) {
-    short2 poly = {polynomial, polynomial};
-    uint8 result;
-    result.s0 = __builtin_IB_lfsr_b16v2(as_uint(seed.s01), as_uint(poly));
-    result.s1 = __builtin_IB_lfsr_b16v2(as_uint(seed.s23), as_uint(poly));
-    result.s2 = __builtin_IB_lfsr_b16v2(as_uint(seed.s45), as_uint(poly));
-    result.s3 = __builtin_IB_lfsr_b16v2(as_uint(seed.s67), as_uint(poly));
-    result.s4 = __builtin_IB_lfsr_b16v2(as_uint(seed.s89), as_uint(poly));
-    result.s5 = __builtin_IB_lfsr_b16v2(as_uint(seed.sab), as_uint(poly));
-    result.s6 = __builtin_IB_lfsr_b16v2(as_uint(seed.scd), as_uint(poly));
-    result.s7 = __builtin_IB_lfsr_b16v2(as_uint(seed.sef), as_uint(poly));
-    return as_short16(result);
+    short16 poly16 = (short16)polynomial;
+    uint8   poly   = as_uint8(poly16);
+    return as_short16(__builtin_IB_lfsr_b16v2_v8(as_uint8(seed), poly));
 }
 int16 __attribute__((overloadable)) __spirv_GaloisLFSRINTEL(int16 seed, int polynomial) {
-    uint16 result;
-    result.s0 = __builtin_IB_lfsr_b32(as_uint(seed.s0), as_uint(polynomial));
-    result.s1 = __builtin_IB_lfsr_b32(as_uint(seed.s1), as_uint(polynomial));
-    result.s2 = __builtin_IB_lfsr_b32(as_uint(seed.s2), as_uint(polynomial));
-    result.s3 = __builtin_IB_lfsr_b32(as_uint(seed.s3), as_uint(polynomial));
-    result.s4 = __builtin_IB_lfsr_b32(as_uint(seed.s4), as_uint(polynomial));
-    result.s5 = __builtin_IB_lfsr_b32(as_uint(seed.s5), as_uint(polynomial));
-    result.s6 = __builtin_IB_lfsr_b32(as_uint(seed.s6), as_uint(polynomial));
-    result.s7 = __builtin_IB_lfsr_b32(as_uint(seed.s7), as_uint(polynomial));
-    result.s8 = __builtin_IB_lfsr_b32(as_uint(seed.s8), as_uint(polynomial));
-    result.s9 = __builtin_IB_lfsr_b32(as_uint(seed.s9), as_uint(polynomial));
-    result.sa = __builtin_IB_lfsr_b32(as_uint(seed.sa), as_uint(polynomial));
-    result.sb = __builtin_IB_lfsr_b32(as_uint(seed.sb), as_uint(polynomial));
-    result.sc = __builtin_IB_lfsr_b32(as_uint(seed.sc), as_uint(polynomial));
-    result.sd = __builtin_IB_lfsr_b32(as_uint(seed.sd), as_uint(polynomial));
-    result.se = __builtin_IB_lfsr_b32(as_uint(seed.se), as_uint(polynomial));
-    result.sf = __builtin_IB_lfsr_b32(as_uint(seed.sf), as_uint(polynomial));
-    return as_int16(result);
+    uint16 poly = as_uint16((int16)polynomial);
+    return as_int16(__builtin_IB_lfsr_b32_v16(as_uint16(seed), poly));
 }

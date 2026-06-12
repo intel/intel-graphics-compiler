@@ -12505,18 +12505,19 @@ intrinsics:
             - !AttributeID "NoUnwind"
     - !<IntrinsicDefinition>
         name: "GenISA_lfsr"
-        comment: "linear feedback shift register with single 32-bit seed/polynomial"
+        comment: "linear feedback shift register with 32-bit seed/polynomial, \
+            scalar i32 or vector of i32 (one packed word per element)"
         return_definition: !<ReturnDefinition>
-            type_definition: *any_int
+            type_definition: *any
             comment: "dst"
         arguments:
             - !<ArgumentDefinition>
                 name: Arg0
-                type_definition: *any_int
+                type_definition: *ref_0_
                 comment: "src0 seed"
             - !<ArgumentDefinition>
                 name: Arg1
-                type_definition: *any_int
+                type_definition: *ref_0_
                 comment: "src1 polynomial"
             - !<ArgumentDefinition>
                 name: Arg2
