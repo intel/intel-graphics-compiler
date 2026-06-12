@@ -9387,7 +9387,8 @@ static bool isDeadInst(FlowGraph &fg, G4_INST *Inst) {
       return false;
 
     // Skip instructions with special attributes.
-    if (Inst->isYieldInst() || Inst->isBreakPointInst())
+    if (Inst->isYieldInst() || Inst->isBreakPointInst()
+    )
       return false;
 
     // Check defs. Assuming acc operands are all locally defined

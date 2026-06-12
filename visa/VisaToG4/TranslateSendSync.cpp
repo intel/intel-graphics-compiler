@@ -791,19 +791,21 @@ int IR_Builder::translateVISASyncInst(ISA_Opcode opcode, unsigned int mask) {
     vISA_ASSERT_UNREACHABLE("incorrect opcode");
   } break;
   case ISA_YIELD: {
-    G4_INST *lastInst = instList.empty() ? nullptr : instList.back();
-    if (lastInst && lastInst->opcode() != G4_label) {
-      lastInst->setOptionOn(InstOpt_Switch);
-    } else {
-      // dummy move to apply the {switch}
-      G4_SrcRegRegion *srcOpnd = createSrc(getBuiltinR0()->getRegVar(), 0, 0,
-                                           getRegionScalar(), Type_UD);
-      G4_DstRegRegion *dstOpnd =
-          createDst(getBuiltinR0()->getRegVar(), 0, 0, 1, Type_UD);
+    {
+      G4_INST *lastInst = instList.empty() ? nullptr : instList.back();
+      if (lastInst && lastInst->opcode() != G4_label) {
+        lastInst->setOptionOn(InstOpt_Switch);
+      } else {
+        // dummy move to apply the {switch}
+        G4_SrcRegRegion *srcOpnd = createSrc(getBuiltinR0()->getRegVar(), 0, 0,
+                                             getRegionScalar(), Type_UD);
+        G4_DstRegRegion *dstOpnd =
+            createDst(getBuiltinR0()->getRegVar(), 0, 0, 1, Type_UD);
 
-      G4_INST *nop =
-          createMov(g4::SIMD1, dstOpnd, srcOpnd, InstOpt_NoOpt, true);
-      nop->setOptionOn(InstOpt_Switch);
+        G4_INST *nop =
+            createMov(g4::SIMD1, dstOpnd, srcOpnd, InstOpt_NoOpt, true);
+        nop->setOptionOn(InstOpt_Switch);
+      }
     }
   } break;
   case ISA_FENCE: {

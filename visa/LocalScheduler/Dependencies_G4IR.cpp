@@ -208,7 +208,8 @@ DepType vISA::CheckBarrier(G4_INST *inst) {
                inst->getMsgDesc()->getSFID() == SFID::SPAWNER) {
       return MSG_BARRIER;
     }
-  } else if (inst->opcode() == G4_wait || inst->isYieldInst()) {
+  } else if (inst->opcode() == G4_wait || inst->isYieldInst()
+  ) {
     return MSG_BARRIER;
   } else if (inst->opcode() == G4_sync_allrd ||
              inst->opcode() == G4_sync_allwr) {
