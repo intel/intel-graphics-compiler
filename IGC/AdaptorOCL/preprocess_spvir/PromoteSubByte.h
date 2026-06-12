@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2022-2026 Intel Corporation
+Copyright (C) 2022 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -18,8 +18,13 @@ SPDX-License-Identifier: MIT
 #include <string>
 #include <queue>
 
+#define VISIT_FUNCTION_IMPL(InstructionType)                                                                           \
+  void visit##InstructionType(llvm::InstructionType &instruction) {                                                    \
+    changed |= !wasPromoted(instruction.getFunction()) && getOrCreatePromotedValue(&instruction) != &instruction;      \
+  }
+
 namespace IGC {
-class PromoteSubByte : public llvm::ModulePass {
+class PromoteSubByte : public llvm::ModulePass, public llvm::InstVisitor<PromoteSubByte> {
 public:
   static char ID;
 
@@ -29,6 +34,15 @@ public:
   virtual llvm::StringRef getPassName() const override { return "PromoteSubByte"; }
 
   virtual bool runOnModule(llvm::Module &module) override;
+
+  VISIT_FUNCTION_IMPL(AllocaInst)
+  VISIT_FUNCTION_IMPL(CallInst)
+  VISIT_FUNCTION_IMPL(GetElementPtrInst)
+  VISIT_FUNCTION_IMPL(LoadInst)
+  VISIT_FUNCTION_IMPL(StoreInst)
+  VISIT_FUNCTION_IMPL(ICmpInst)
+  VISIT_FUNCTION_IMPL(SExtInst)
+  VISIT_FUNCTION_IMPL(ZExtInst)
 
 private:
   bool changed;

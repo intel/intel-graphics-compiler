@@ -21,7 +21,6 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/Module.h>
 #include <llvm/IR/Function.h>
 #include <llvm/IR/InlineAsm.h>
-#include "llvm/IR/InstIterator.h"
 #include <llvm/IR/Instructions.h>
 #include <llvm/Demangle/Demangle.h>
 #include <llvm/IR/Mangler.h>
@@ -85,11 +84,7 @@ bool PromoteSubByte::runOnModule(Module &module) {
     changed |= getOrCreatePromotedValue(&globalVariable) != &globalVariable;
   }
 
-  for (auto &F : module) {
-    for (auto &I : llvm::instructions(F)) {
-      changed |= !wasPromoted(I.getFunction()) && getOrCreatePromotedValue(&I) != &I;
-    }
-  }
+  visit(module);
 
   while (!promotionQueue.empty()) {
     auto value = promotionQueue.front();
@@ -488,11 +483,9 @@ Value *PromoteSubByte::getOrCreatePromotedValue(Value *value) {
     if (!promotionChangedType && typesMatch) {
       value->replaceAllUsesWith(newValue);
     } else {
-      if (!value->use_empty()) {
-        for (const auto &user : value->users()) {
-          if (!wasPromoted(user)) {
-            promotionQueue.push(user);
-          }
+      for (const auto &user : value->users()) {
+        if (!wasPromoted(user)) {
+          promotionQueue.push(user);
         }
       }
     }
