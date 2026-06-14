@@ -1288,7 +1288,6 @@ DECLARE_IGC_REGKEY_ENUM(ForceRegisterAccessBoundsChecks, -1,
                         " 0 - force disabled"
                         " 1 - force enabled",
                         TRIBOOL_OPTIONS, true)
-
 DECLARE_IGC_REGKEY(
     bool, EnableGlobalStateBuffer, true,
     "This key allows stack calls to read implicit args from side buffer. It also emits a relocatable add in VISA.",
@@ -1787,12 +1786,28 @@ DECLARE_IGC_REGKEY(DWORD, MemCpyLoweringUnrollThreshold, 12,
                    "Min number of mem instructions that require non-unrolled loop when lowering memcpy", false)
 DECLARE_IGC_REGKEY(DWORD, EnablePrivMemNewSOATranspose, 1,
                    "0 : disable new algo; 1 and up : enable new algo. "
-                   "1 : enable new algo just for array of struct; "
+                   "1 : enable new algo for structs and scalar (float/int) arrays; "
                    "2 : 1 plus new algo for array of dw[xn]/qw[xn],etc "
                    "3 : 2 plus new algo for array of complicated struct.",
                    true)
+DECLARE_IGC_REGKEY(bool, EnableSOAFallbackToOldAlgorithm, false,
+                   "Enable fallback to old SOA algorithm when new algorithm is not applicable", true)
+DECLARE_IGC_REGKEY(bool, EnableLowerGEPPtrHoisting, false, "Enable hoisting loads past pointer-typed phi instructions",
+                   true)
+DECLARE_IGC_REGKEY(bool, EnablePrivMemNewSOAForScalarArrays, false,
+                   "Enables new SOA algorithm also for scalar float/int arrays.", true)
 DECLARE_IGC_REGKEY(bool, NewSOATransposeForOpenCL, true,
                    "If true, EnablePrivMemNewSOATranspose only applies to OpenCL kernels. For testing purpose", true)
+DECLARE_IGC_REGKEY(bool, EnableSelectOfAllocaPtrSplit, false,
+                   "If true, pre-pass in PrivateMemoryResolution splits select-of-pointer "
+                   "where one operand is alloca-derived (load duplication / store branching). "
+                   "Enables SoA promotion for allocas otherwise blocked by SELECT pattern.",
+                   true)
+DECLARE_IGC_REGKEY(bool, DisablePredicatedLoadForAllocaPtrSelectSplit, false,
+                   "If true, the select-of-alloca-pointer split always emits regular loads, even when "
+                   "private memory is in stateless global, instead of the predicated-load WA. "
+                   "For testing/debugging the WA. May cause OOB reads in stateless global.",
+                   true)
 DECLARE_IGC_REGKEY(bool, EnableSOAPromotionDisablingHeuristic, false,
                    "Enable heuristic to disable SOA promotion when it may be not beneficial", false)
 DECLARE_IGC_REGKEY(bool, DisableSOAPromotion, false,

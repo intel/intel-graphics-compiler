@@ -16,9 +16,11 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CISACodeGen/EmitVISAPass.hpp"
 #include "Compiler/CISACodeGen/GenCodeGenModule.h"
 #include "Compiler/CISACodeGen/LowerGEPForPrivMem.hpp"
+#include "GenISAIntrinsics/GenIntrinsicInst.h"
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "common/LLVMWarningsPush.hpp"
 #include "llvm/Transforms/Utils/Local.h"
+#include "llvm/Transforms/Utils/BasicBlockUtils.h"
 #include "llvm/IR/DataLayout.h"
 #include "llvm/IR/DebugInfo.h"
 #include "llvm/IR/Dominators.h"
@@ -26,7 +28,9 @@ SPDX-License-Identifier: MIT
 #include "llvmWrapper/IR/DebugInfo.h"
 #include "llvmWrapper/IR/IRBuilder.h"
 #include "llvmWrapper/IR/IntrinsicInst.h"
+#include <llvm/IR/Instructions.h>
 #include <llvmWrapper/ADT/Optional.h>
+#include "llvmWrapper/Analysis/ValueTracking.h"
 #include "Probe/Assertion.h"
 
 #include <optional>
@@ -37,6 +41,210 @@ using namespace llvm;
 using namespace IGC;
 
 namespace {
+
+// ============================================================================
+// SELECT-of-pointer pre-pass
+// ----------------------------------------------------------------------------
+// SOALayoutChecker rejects allocas whose pointer flows into a SELECT instruction
+// because TransposePrivMem cannot lower a load/store whose address comes from a
+// runtime SELECT of two heterogeneous pointer chains. To unblock SoA promotion
+// (notably Blender's `cond ? extern_struct_field : stack[index]` idiom), we
+// rewrite each SELECT-of-pointer that has an alloca-derived operand:
+//   - LOAD consumers: duplicate the load on each arm and SELECT the value.
+//     With scratch-backed private memory a plain speculative load is safe (OOB
+//     reads are hardware-masked and the discarded result is selected away).
+//     Without scratch the arm loads are emitted as predicated loads gated on
+//     the (possibly negated) condition so the not-taken arm is never accessed.
+//   - STORE consumers: split the basic block into if/then/else and emit one
+//     store per arm.
+// After this pass the alloca's user chain no longer contains SELECTs, so the
+// downstream SOALayoutChecker can promote it.
+// ============================================================================
+
+// Walk from select to users through a chain of bitcast/addrspacecast collecting the chain.
+// Returns true on success (chain consists only of supported casts).
+static bool collectCastChain(SelectInst *SI, Instruction *LeafUser, SmallVectorImpl<Instruction *> &Chain) {
+  IGC_ASSERT(isa<LoadInst>(LeafUser) || isa<StoreInst>(LeafUser));
+  Value *Cur = isa<LoadInst>(LeafUser) ? cast<LoadInst>(LeafUser)->getPointerOperand()
+                                       : cast<StoreInst>(LeafUser)->getPointerOperand();
+  while (Cur != SI) {
+    if (auto *BC = dyn_cast<BitCastInst>(Cur)) {
+      Chain.push_back(BC);
+      Cur = BC->getOperand(0);
+    } else if (auto *ASC = dyn_cast<AddrSpaceCastInst>(Cur)) {
+      Chain.push_back(ASC);
+      Cur = ASC->getOperand(0);
+    } else {
+      return false;
+    }
+  }
+  std::reverse(Chain.begin(), Chain.end());
+  return true;
+}
+
+// Clone the cast chain at the current builder insertion point, starting from Root.
+// Returns the final pointer value (head of chain, replicated).
+static Value *cloneCastChain(IRBuilder<> &B, Value *Root, ArrayRef<Instruction *> Chain) {
+  Value *Cur = Root;
+  for (Instruction *I : Chain) {
+    if (auto *BC = dyn_cast<BitCastInst>(I))
+      Cur = B.CreateBitCast(Cur, BC->getDestTy());
+    else if (auto *ASC = dyn_cast<AddrSpaceCastInst>(I))
+      Cur = B.CreateAddrSpaceCast(Cur, ASC->getDestTy());
+  }
+  return Cur;
+}
+
+static Instruction *createPredicatedLoad(IRBuilder<> &B, LoadInst *Model, Value *Ptr, Value *Pred) {
+  Module *Mod = B.GetInsertBlock()->getModule();
+  Type *MemType = Model->getType();
+  Type *ITys[3] = {MemType, Ptr->getType(), MemType};
+  Function *PredLoadFunc = GenISAIntrinsic::getDeclaration(Mod, GenISAIntrinsic::GenISA_PredicatedLoad, ITys);
+  Value *AlignV = ConstantInt::get(Type::getInt64Ty(B.getContext()), IGCLLVM::getAlignmentValue(Model));
+  Value *MergeV = PoisonValue::get(MemType);
+  Value *Args[4] = {Ptr, AlignV, Pred, MergeV};
+  Instruction *PredLoad = B.CreateCall(PredLoadFunc, Args);
+  PredLoad->setDebugLoc(Model->getDebugLoc());
+  return PredLoad;
+}
+
+// Transform: %v = load (chain(SI))  ==> %va = load chain(A); %vb = load chain(B); %v = select c, va, vb
+static void splitLoadOfSelectPtr(LoadInst *LI, SelectInst *SI, bool UsePredicatedLoads) {
+  SmallVector<Instruction *, 4> Chain;
+  [[maybe_unused]] bool ChainCollected = collectCastChain(SI, LI, Chain);
+  IGC_ASSERT(ChainCollected);
+  IRBuilder<> B(LI);
+  B.SetCurrentDebugLocation(LI->getDebugLoc());
+  Value *Cond = SI->getCondition();
+  Value *PtrTrue = cloneCastChain(B, SI->getTrueValue(), Chain);
+  Value *PtrFalse = cloneCastChain(B, SI->getFalseValue(), Chain);
+  Value *VTrue = nullptr;
+  Value *VFalse = nullptr;
+  if (UsePredicatedLoads) {
+    Value *NotCond = B.CreateNot(Cond);
+    VTrue = createPredicatedLoad(B, LI, PtrTrue, Cond);
+    VFalse = createPredicatedLoad(B, LI, PtrFalse, NotCond);
+  } else {
+    auto *LTrue = cast<LoadInst>(LI->clone());
+    LTrue->setOperand(LI->getPointerOperandIndex(), PtrTrue);
+    B.Insert(LTrue);
+    auto *LFalse = cast<LoadInst>(LI->clone());
+    LFalse->setOperand(LI->getPointerOperandIndex(), PtrFalse);
+    B.Insert(LFalse);
+    VTrue = LTrue;
+    VFalse = LFalse;
+  }
+  Value *V = B.CreateSelect(Cond, VTrue, VFalse);
+  LI->replaceAllUsesWith(V);
+  LI->eraseFromParent();
+}
+
+// Transform: store v, chain(SI)  ==> if (cond) store v, chain(A); else store v, chain(B);
+static void splitStoreOfSelectPtr(StoreInst *StI, SelectInst *SI) {
+  SmallVector<Instruction *, 4> Chain;
+  [[maybe_unused]] bool ChainCollected = collectCastChain(SI, StI, Chain);
+  IGC_ASSERT(ChainCollected);
+  Instruction *ThenTerm = nullptr;
+  Instruction *ElseTerm = nullptr;
+  SplitBlockAndInsertIfThenElse(SI->getCondition(), StI, &ThenTerm, &ElseTerm);
+  {
+    IRBuilder<> B(ThenTerm);
+    B.SetCurrentDebugLocation(StI->getDebugLoc());
+    Value *PtrTrue = cloneCastChain(B, SI->getTrueValue(), Chain);
+    auto *STrue = cast<StoreInst>(StI->clone());
+    STrue->setOperand(StI->getPointerOperandIndex(), PtrTrue);
+    B.Insert(STrue);
+  }
+  {
+    IRBuilder<> B(ElseTerm);
+    B.SetCurrentDebugLocation(StI->getDebugLoc());
+    Value *PtrFalse = cloneCastChain(B, SI->getFalseValue(), Chain);
+    auto *SFalse = cast<StoreInst>(StI->clone());
+    SFalse->setOperand(StI->getPointerOperandIndex(), PtrFalse);
+    B.Insert(SFalse);
+  }
+  StI->eraseFromParent();
+}
+
+// Walk from SI through bitcast/addrspacecast users, collecting the leaf
+// load/store consumers. Returns false if any non-supported user is encountered
+// (e.g. another SELECT, a GEP, a PHI), in which case the SI is not safe to split.
+static bool collectSelectLeafConsumers(SelectInst *SI, SmallVectorImpl<Instruction *> &Loads,
+                                       SmallVectorImpl<Instruction *> &Stores,
+                                       SmallVectorImpl<Instruction *> &CastsToErase) {
+  SmallVector<Instruction *, 8> Stack;
+  SmallPtrSet<Instruction *, 16> Visited;
+  Stack.push_back(SI);
+  while (!Stack.empty()) {
+    Instruction *Cur = Stack.pop_back_val();
+    if (!Visited.insert(Cur).second) {
+      continue;
+    }
+    for (User *U : Cur->users()) {
+      if (auto *LI = dyn_cast<LoadInst>(U)) {
+        if (!LI->isSimple()) {
+          return false;
+        }
+        Loads.push_back(LI);
+      } else if (auto *St = dyn_cast<StoreInst>(U)) {
+        if (St->getPointerOperand() != Cur || !St->isSimple()) {
+          return false;
+        }
+        Stores.push_back(St);
+      } else if (isa<BitCastInst>(U) || isa<AddrSpaceCastInst>(U)) {
+        CastsToErase.push_back(cast<Instruction>(U));
+        Stack.push_back(cast<Instruction>(U));
+      } else {
+        return false;
+      }
+    }
+  }
+  return true;
+}
+
+static bool splitSelectsOfAllocaPointers(Function &F, bool UsePredicatedLoads) {
+  SmallVector<SelectInst *, 16> WorkList;
+  const DataLayout &DL = F.getParent()->getDataLayout();
+  for (Instruction &I : instructions(F)) {
+    auto *SI = dyn_cast<SelectInst>(&I);
+    if (!SI || !SI->getType()->isPointerTy()) {
+      continue;
+    }
+    if (isa<AllocaInst>(IGCLLVM::getUnderlyingObject(SI->getTrueValue(), DL)) ||
+        isa<AllocaInst>(IGCLLVM::getUnderlyingObject(SI->getFalseValue(), DL))) {
+      WorkList.push_back(SI);
+    }
+  }
+  bool Changed = false;
+  SmallVector<Instruction *, 8> Loads;
+  SmallVector<Instruction *, 4> Stores;
+  SmallVector<Instruction *, 8> CastsToErase;
+  for (SelectInst *SI : WorkList) {
+    Loads.clear();
+    Stores.clear();
+    CastsToErase.clear();
+    if (!collectSelectLeafConsumers(SI, Loads, Stores, CastsToErase)) {
+      continue;
+    }
+    if (Loads.empty() && Stores.empty()) {
+      continue;
+    }
+    for (Instruction *LI : Loads) {
+      splitLoadOfSelectPtr(cast<LoadInst>(LI), SI, UsePredicatedLoads);
+    }
+    for (Instruction *St : Stores) {
+      splitStoreOfSelectPtr(cast<StoreInst>(St), SI);
+    }
+    llvm::for_each(llvm::reverse(CastsToErase), [](Instruction *I) {
+      IGC_ASSERT(I->use_empty());
+      I->eraseFromParent();
+    });
+    IGC_ASSERT(SI->use_empty());
+    SI->eraseFromParent();
+    Changed = true;
+  }
+  return Changed;
+}
 
 /// @brief  PrivateMemoryResolution pass used for resolving private memory alloca instructions.
 ///         This is done by resolving the alloca instructions.
@@ -107,6 +315,7 @@ public:
   void handleLoadInst(LoadInst *pLoad, Value *pScalarizedIdx);
   void handleStoreInst(StoreInst *pStore, Value *pScalarizedIdx);
   void handleLifetimeMark(IntrinsicInst *inst);
+  void handlePredicatedLoadInst(PredicatedLoadIntrinsic *pPredLoad, Value *pScalarizedIdx);
   bool useNewAlgo() { return true; }
 
 private:
@@ -122,6 +331,10 @@ private:
   Value *getChunkNum(IGCLLVM::IRBuilder<> &IRB, Value *OffsetInBytes);
   // Return the offset within chunk that byteOffset points to
   Value *getChunkOff(IGCLLVM::IRBuilder<> &IRB, Value *OFfsetInBytes);
+  // Compute the SoA-transposed private-memory element pointer for an access of
+  // type AccessTy at the given scalarized index. Returns a private-AS pointer
+  // to AccessTy. Shared by the load/store/predicated-load handlers.
+  Value *getTransposedEltPtr(IGCLLVM::IRBuilder<> &IRB, Type *AccessTy, Value *pScalarizedIdx, const Twine &Name);
 };
 
 // helper
@@ -724,11 +937,9 @@ Value *TransposePrivMem::getChunkOff(IGCLLVM::IRBuilder<> &IRB, Value *OffsetInB
   return chunkOffset;
 }
 
-void TransposePrivMem::handleLoadInst(LoadInst *pLoad, Value *pScalarizedIdx) {
-  IGC_ASSERT(nullptr != pLoad);
-  IGC_ASSERT(pLoad->isSimple());
-  IGCLLVM::IRBuilder<> IRB(pLoad);
-  uint32_t bytes = (uint32_t)m_DL.getTypeStoreSize(pLoad->getType());
+Value *TransposePrivMem::getTransposedEltPtr(IGCLLVM::IRBuilder<> &IRB, Type *AccessTy, Value *pScalarizedIdx,
+                                             const Twine &Name) {
+  uint32_t bytes = (uint32_t)m_DL.getTypeStoreSize(AccessTy);
   IGC_ASSERT(bytes <= m_chunkBytes);
   IGC_ASSERT(isPowerOf2_32(bytes));
 
@@ -752,8 +963,20 @@ void TransposePrivMem::handleLoadInst(LoadInst *pLoad, Value *pScalarizedIdx) {
       eltIx = IRB.CreateLShr(chunkOff, IRB.getInt32(lshrAmt));
   }
 
-  Value *addrInElt = convertToPtr(IRB, m_DL, addr, pLoad->getPointerOperandType());
-  Value *gep = IRB.CreateGEP(pLoad->getType(), addrInElt, eltIx, VALUE_NAME(pLoad->getName() + ".SOAPrivMemGEP"));
+  // The SoA buffer lives in private memory. Force a private-AS pointer so that
+  // inttoptr (or bitcast) on the integer address always yields a private
+  // pointer, regardless of the original access's pointer AS (e.g. generic AS4).
+  Type *privatePtrTy = IGCLLVM::PointerType::get(AccessTy, ADDRESS_SPACE_PRIVATE);
+  Value *addrInElt = convertToPtr(IRB, m_DL, addr, privatePtrTy);
+  return IRB.CreateGEP(AccessTy, addrInElt, eltIx, Name);
+}
+
+void TransposePrivMem::handleLoadInst(LoadInst *pLoad, Value *pScalarizedIdx) {
+  IGC_ASSERT(nullptr != pLoad);
+  IGC_ASSERT(pLoad->isSimple());
+  IGCLLVM::IRBuilder<> IRB(pLoad);
+  Value *gep =
+      getTransposedEltPtr(IRB, pLoad->getType(), pScalarizedIdx, VALUE_NAME(pLoad->getName() + ".SOAPrivMemGEP"));
   Value *val =
       IRB.CreateAlignedLoad(cast<GetElementPtrInst>(gep)->getResultElementType(), gep, IGCLLVM::getAlign(*pLoad));
 
@@ -765,34 +988,8 @@ void TransposePrivMem::handleStoreInst(StoreInst *pStore, Value *pScalarizedIdx)
   IGC_ASSERT(nullptr != pStore);
   IGC_ASSERT(pStore->isSimple());
   IGCLLVM::IRBuilder<> IRB(pStore);
-  Type *valTy = pStore->getValueOperand()->getType();
-  uint32_t bytes = (uint32_t)m_DL.getTypeStoreSize(valTy);
-  IGC_ASSERT(bytes <= m_chunkBytes);
-  IGC_ASSERT(isPowerOf2_32(bytes));
-
-  Value *chunkNo = getChunkNum(IRB, pScalarizedIdx);
-  Value *chunkVal = IRB.getInt32(m_chunkBytes);
-  Value *chunkBytesPerWI = IRB.CreateMul(chunkNo, chunkVal);
-  Value *chunkByteOffset = IRB.CreateMul(m_simdSize, chunkBytesPerWI);
-  Value *addr = addOffset(IRB, m_DL, m_bufferBase, chunkByteOffset);
-
-  Value *eltIx;
-  if (bytes == m_chunkBytes) {
-    // Each type is naturally aligned -> chunk offset = 0
-    eltIx = IRB.getInt32(0);
-  } else {
-    // (a / bytes) == (a >> Log2_32(bytes))
-    uint32_t lshrAmt = Log2_32(bytes);
-    Value *chunkOff = getChunkOff(IRB, pScalarizedIdx);
-    if (bytes == 1)
-      eltIx = chunkOff;
-    else
-      eltIx = IRB.CreateLShr(chunkOff, IRB.getInt32(lshrAmt));
-  }
-
-  Value *addrInElt = convertToPtr(IRB, m_DL, addr, pStore->getPointerOperandType());
-  Value *gep = IRB.CreateGEP(pStore->getValueOperand()->getType(), addrInElt, eltIx,
-                             VALUE_NAME(pStore->getName() + ".SOAPrivMemGEP"));
+  Value *gep = getTransposedEltPtr(IRB, pStore->getValueOperand()->getType(), pScalarizedIdx,
+                                   VALUE_NAME(pStore->getName() + ".SOAPrivMemGEP"));
   IRB.CreateAlignedStore(pStore->getValueOperand(), gep, IGCLLVM::getAlign(*pStore));
 
   pStore->eraseFromParent();
@@ -803,6 +1000,27 @@ void TransposePrivMem::handleLifetimeMark(IntrinsicInst *inst) {
   IGC_ASSERT((inst->getIntrinsicID() == llvm::Intrinsic::lifetime_start) ||
              (inst->getIntrinsicID() == llvm::Intrinsic::lifetime_end));
   inst->eraseFromParent();
+}
+
+void TransposePrivMem::handlePredicatedLoadInst(PredicatedLoadIntrinsic *pPredLoad, Value *pScalarizedIdx) {
+  IGC_ASSERT(nullptr != pPredLoad);
+  IGC_ASSERT(pPredLoad->isSimple());
+  // Only scalar predicated loads reach here; vector ones block SoA promotion in
+  // SOALayoutChecker and are resolved on the flat path instead.
+  Type *loadTy = pPredLoad->getType();
+  IGC_ASSERT(!loadTy->isVectorTy());
+  IGCLLVM::IRBuilder<> IRB(pPredLoad);
+  Value *gep = getTransposedEltPtr(IRB, loadTy, pScalarizedIdx, VALUE_NAME(pPredLoad->getName() + ".SOAPrivMemGEP"));
+
+  Module *Mod = pPredLoad->getModule();
+  Type *ITys[3] = {loadTy, gep->getType(), loadTy};
+  Function *predLoadFunc = GenISAIntrinsic::getDeclaration(Mod, GenISAIntrinsic::GenISA_PredicatedLoad, ITys);
+  Value *Args[4] = {gep, pPredLoad->getAlignmentValue(), pPredLoad->getPredicate(), pPredLoad->getMergeValue()};
+  Instruction *newPredLoad = IRB.CreateCall(predLoadFunc, Args);
+  newPredLoad->setDebugLoc(pPredLoad->getDebugLoc());
+
+  pPredLoad->replaceAllUsesWith(newPredLoad);
+  pPredLoad->eraseFromParent();
 }
 
 [[maybe_unused]] bool PrivateMemoryResolution::testTransposedMemory(const Type *pTmpType,
@@ -885,6 +1103,31 @@ bool PrivateMemoryResolution::resolveAllocaInstructions(bool privateOnStack, boo
   if (allocaInsts.empty()) {
     // No alloca instructions to process.
     return false;
+  }
+
+  // Pre-pass: split SELECT-of-pointer with alloca-derived operand so that
+  // SOALayoutChecker sees a clean user chain.
+  // This unblocks SoA promotion for allocas blocked by the conditional
+  // pointer idiom (e.g. `cond ? extern : stack[index]`).
+  // When private memory is backed by scratch space, the duplicated arm loads
+  // can be plain speculative loads (OOB reads are hardware-masked). Otherwise
+  // they must be predicated so the not-taken arm is never dereferenced -- unless
+  // DisablePredicatedLoadForAllocaPtrSelectSplit forces regular loads (for
+  // testing/debugging the WA).
+  if (IGC_IS_FLAG_ENABLED(EnableSelectOfAllocaPtrSplit)) {
+    bool canUsePredicatedLoads = Ctx.platform.hasLSC() && Ctx.platform.LSCEnabled();
+    bool shouldUsePredicatedLoads = !modMD->compOpt.UseScratchSpacePrivateMemory;
+    if (shouldUsePredicatedLoads) {
+      if (canUsePredicatedLoads) {
+        splitSelectsOfAllocaPointers(*m_currFunction, true);
+      } else if (IGC_IS_FLAG_ENABLED(DisablePredicatedLoadForAllocaPtrSelectSplit)) {
+        splitSelectsOfAllocaPointers(*m_currFunction, false);
+      }
+      // private stored in stateless global requiring predicated loads which are unavailable,
+      // and not disabled -> do not split
+    } else {
+      splitSelectsOfAllocaPointers(*m_currFunction, false);
+    }
   }
 
   for (AllocaInst *aInst : allocaInsts) {
@@ -1153,7 +1396,7 @@ bool PrivateMemoryResolution::resolveAllocaInstructions(bool privateOnStack, boo
       Value *privateBufferPTR;
 
       // New Algo handles both 64bit ptr and 32bi ptr.
-      if (!isUniform && SOAInfo.canUseSOALayout && SOAChecker.useNewAlgo(pTypeOfAccessedObject)) {
+      if (!isUniform && SOAInfo.canUseSOALayout && SOAInfo.useNewAlgoTranspose) {
         Value *simdBufferOffset =
             m_ModAllocaInfo->getOffset(builder, pAI, simdSize, simdLaneId, SOAInfo.SOAPartitionBytes);
         Value *bufferBase = addOffset(builder, DL, threadBase, simdBufferOffset);
@@ -1310,7 +1553,7 @@ bool PrivateMemoryResolution::resolveAllocaInstructions(bool privateOnStack, boo
     // If we can use SOA layout transpose the memory
     IGC::SOALayoutChecker SOAChecker(*pAI, Ctx.type == ShaderType::OPENCL_SHADER, OpenCLShaderStrategy);
     IGC::SOALayoutInfo SOAInfo = SOAChecker.getOrGatherInfo();
-    if (!isUniform && SOAInfo.canUseSOALayout && SOAChecker.useNewAlgo(SOAInfo.baseType)) {
+    if (!isUniform && SOAInfo.canUseSOALayout && SOAInfo.useNewAlgoTranspose) {
       uint32_t chunksize = SOAInfo.SOAPartitionBytes;
       Value *SIMDBufferOffset = m_ModAllocaInfo->getOffset(builder, pAI, simdSize, simdLaneId, chunksize);
       Value *totalOffset = addOffset(builder, DL, perThreadOffset, SIMDBufferOffset);
