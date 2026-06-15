@@ -98,7 +98,7 @@ private:
   llvm::PHINode *promotePHI(llvm::PHINode *phi);
   llvm::StoreInst *promoteStore(llvm::StoreInst *store);
   llvm::IntToPtrInst *promoteIntToPtr(llvm::IntToPtrInst *inttoptr);
-  llvm::ExtractElementInst *promoteExtractElement(llvm::ExtractElementInst *extractElement);
+  llvm::Value *promoteExtractElement(llvm::ExtractElementInst *extractElement);
   llvm::Value *promoteInsertElement(llvm::InsertElementInst *insertElement);
   llvm::Value *promoteShuffleVector(llvm::ShuffleVectorInst *shuffleVector);
   llvm::Value *promoteTrunc(llvm::TruncInst *trunc);

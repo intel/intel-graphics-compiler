@@ -992,7 +992,7 @@ IntToPtrInst *PromoteSubByte::promoteIntToPtr(IntToPtrInst *inttoptr) {
   return newIntToPtr;
 }
 
-ExtractElementInst *PromoteSubByte::promoteExtractElement(ExtractElementInst *extractElement) {
+Value *PromoteSubByte::promoteExtractElement(ExtractElementInst *extractElement) {
   if (!extractElement ||
       (!wasPromotedAnyOf(extractElement->operands()) && !typeNeedsPromotion(extractElement->getType()))) {
     return extractElement;
@@ -1003,7 +1003,7 @@ ExtractElementInst *PromoteSubByte::promoteExtractElement(ExtractElementInst *ex
 
   Value *inputVector = promoteAndUnpackInt4Vector(extractElement->getVectorOperand(), builder);
   Value *extractIndex = getOrCreatePromotedValue(extractElement->getIndexOperand());
-  return cast<ExtractElementInst>(builder.CreateExtractElement(inputVector, extractIndex));
+  return builder.CreateExtractElement(inputVector, extractIndex);
 }
 
 Value *PromoteSubByte::promoteInsertElement(InsertElementInst *insertElement) {
