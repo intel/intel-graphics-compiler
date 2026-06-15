@@ -395,8 +395,7 @@ DECLARE_IGC_REGKEY(bool, DisableUniformTypedAccess, false, "Setting this will di
                    false)
 DECLARE_IGC_REGKEY(bool, DisableURBWriteMerge, false,
                    "Setting this to 1/true adds a compiler switch to disable URB write merge", false)
-DECLARE_IGC_REGKEY(DWORD, SetURBFullWriteGranularity, 0,
-                   "Overrides the minimum access granularity for URB full writes.\
+DECLARE_IGC_REGKEY(DWORD, SetURBFullWriteGranularity, 0, "Overrides the minimum access granularity for URB full writes.\
                                                              Valid values are 0, 16 and 32, value 0 means use default for the platform.",
                    true)
 DECLARE_IGC_REGKEY(bool, DisableMatchFloor, false,
@@ -1358,6 +1357,11 @@ DECLARE_IGC_REGKEY(debugString, SelectiveFunctionControlFile, 0,
 DECLARE_IGC_REGKEY(
     bool, EnableStackCallFuncCall, false,
     "If enabled, the default function call mode will be set to stack call. Otherwise, subroutine call is used.", true)
+DECLARE_IGC_REGKEY(bool, ForceStackCallForLargeKernel, true,
+                   "When FunctionControl is default, force functions of kernels whose estimated size exceeds the "
+                   "large-kernel threshold (KernelTotalSizeThreshold * LargeKernelThresholdMultiplier) to use stack "
+                   "calls by default.",
+                   true)
 DECLARE_IGC_REGKEY(bool, EnableByValStructArgPromotion, true,
                    "If enabled, byval/sret struct arguments are promoted to pass-by-value if possible.", true)
 DECLARE_IGC_REGKEY(bool, ForceInlineStackCallWithImplArg, false,
@@ -1422,6 +1426,10 @@ DECLARE_IGC_REGKEY(DWORD, LargeKernelThresholdMultiplier, 12,
                    "Multipler to kernel threshold. When exceeded more agressive trimming will be performed", false)
 DECLARE_IGC_REGKEY(DWORD, LargeKernelSmallFunctionLimit, 50,
                    "Size threshold for small function trimming for large kernels", false)
+DECLARE_IGC_REGKEY(bool, TrimImplicitArgFunctionsForLargeKernels, true,
+                   "When a kernel is still over threshold after trimming, allow trimming "
+                   "functions that use implicit args (overriding their force-inline)",
+                   true)
 DECLARE_IGC_REGKEY(bool, PartitionUnit, false, "Partition compilation unit", true)
 DECLARE_IGC_REGKEY(DWORD, PrintPartitionUnit, 0, "Print information about compilation unit partitioning", true)
 DECLARE_IGC_REGKEY(bool, PartitionWithFastHybridRA, false, "Enable FastRA and HybridRA when partition is enabled", true)

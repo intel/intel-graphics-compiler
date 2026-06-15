@@ -13,10 +13,10 @@
 ;
 ; The test checks that a function with high frequencies is not trimmed but forced-inlined.
 
-; CHECK-DEFAULT-DAG: TrimUnit0x4: Good to trim (Big enough > 10), test_level3_1, Function Attribute: Best effort innline, Function size: 15, Freq: 0.0
-; CHECK-DEFAULT-DAG: TrimUnit0x4: Good to trim (Big enough > 10), test_level3_2, Function Attribute: Best effort innline, Function size: 15, Freq: 0.0
-; CHECK-SPGT-DAG: TrimUnit0x4: Can't trim (Low weight < {{[0-9.eE+-]+}}), test_level3_1, Function Attribute: Best effort innline, Function size: 15, Freq: {{[0-9.eE+-]+}}, Weight: {{[0-9.eE+-]+}}
-; CHECK-SPGT-DAG: TrimUnit0x4: Can't trim (Low weight < {{[0-9.eE+-]+}}), test_level3_2, Function Attribute: Best effort innline, Function size: 15, Freq: {{[0-9.eE+-]+}}, Weight: {{[0-9.eE+-]+}}
+; CHECK-DEFAULT-DAG: TrimUnit0x4: Good to trim (Big enough > 10), test_level3_1, Function Attribute: Best effort inline, Function size: 15, Freq: 0.0
+; CHECK-DEFAULT-DAG: TrimUnit0x4: Good to trim (Big enough > 10), test_level3_2, Function Attribute: Best effort inline, Function size: 15, Freq: 0.0
+; CHECK-SPGT-DAG: TrimUnit0x4: Can't trim (Low weight < {{[0-9.eE+-]+}}), test_level3_1, Function Attribute: Best effort inline, Function size: 15, Freq: {{[0-9.eE+-]+}}, Weight: {{[0-9.eE+-]+}}
+; CHECK-SPGT-DAG: TrimUnit0x4: Can't trim (Low weight < {{[0-9.eE+-]+}}), test_level3_2, Function Attribute: Best effort inline, Function size: 15, Freq: {{[0-9.eE+-]+}}, Weight: {{[0-9.eE+-]+}}
 
 
 define spir_kernel void @test_level3_1() {

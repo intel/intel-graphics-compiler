@@ -66,6 +66,12 @@ public:
   bool isLargeKernelThresholdExceeded() const;
 
 private:
+  struct TotalTrimmingPool {
+    llvm::SmallVector<void *, 64> trimming_pool;
+    llvm::SmallVector<void *, 64> tiny_fn_trimming_pool;
+    llvm::SmallVector<void *, 64> implicit_arg_trimming_pool;
+  };
+
   void analyze();
   void checkSubroutine();
   void clear();
@@ -93,8 +99,7 @@ private:
   void performGreedyTrimming(llvm::Function *head, llvm::SmallVector<void *, 64> &functions_to_trim, uint32_t threshold,
                              bool ignoreStackCallBoundary);
   uint32_t getMaxUnitSize();
-  void getFunctionsToTrim(llvm::Function *root, llvm::SmallVector<void *, 64> &trimming_pool,
-                          llvm::SmallVector<void *, 64> &tiny_fn_trimming_pool, bool ignoreStackCallBoundary,
+  void getFunctionsToTrim(llvm::Function *root, TotalTrimmingPool &pools, bool ignoreStackCallBoundary,
                           uint32_t &func_cnt);
   void updateStaticFuncFreq();
   void estimateTotalLoopIteration(llvm::Function &F, llvm::LoopInfo *LI);
@@ -172,6 +177,7 @@ private:
   bool ForceInlineExternalFunctions;
   bool ForceInlineStackCallWithImplArg;
   bool ControlInlineImplicitArgs;
+  bool TrimImplicitArgFunctionsForLargeKernels;
   unsigned SubroutineThreshold;
   unsigned KernelTotalSizeThreshold;
   unsigned ExpandedUnitSizeThreshold;

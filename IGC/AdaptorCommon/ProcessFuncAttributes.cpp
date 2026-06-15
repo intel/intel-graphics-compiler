@@ -491,6 +491,9 @@ bool ProcessFuncAttributes::runOnModule(Module &M) {
   bool isOptDisable = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData()->compOpt.OptDisable;
   auto FCtrl = getFunctionControl(pCtx);
 
+  bool forceLargeKernelStackCall = IGC_IS_FLAG_ENABLED(ForceStackCallForLargeKernel) && FCtrl == FLAG_FCALL_DEFAULT &&
+                                   efs.isLargeKernelThresholdExceeded();
+
   // For controling inline/noinline on DP math builtin functions.
   pCtx->checkDPEmulationEnabled();
 
@@ -708,7 +711,7 @@ bool ProcessFuncAttributes::runOnModule(Module &M) {
     // control whether a call is a subroutine call or function call.
     // If FunctionControl isn't default, FunctionControl decides and
     // 'defaultStackCall' has no effect.
-    bool defaultStackCall = IGC_IS_FLAG_ENABLED(EnableStackCallFuncCall);
+    bool defaultStackCall = IGC_IS_FLAG_ENABLED(EnableStackCallFuncCall) || forceLargeKernelStackCall;
 
     // Add always attribute if function is a builtin
     if (F->hasFnAttribute("OclBuiltin") || IGCLLVM::starts_with(F->getName(), "__builtin_spirv_")) {

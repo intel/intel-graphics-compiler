@@ -96,6 +96,7 @@ EstimateFunctionSize::EstimateFunctionSize(AnalysisLevel AL, bool EnableStaticPr
   ForceInlineExternalFunctions = IGC_IS_FLAG_ENABLED(ForceInlineExternalFunctions);
   ForceInlineStackCallWithImplArg = IGC_IS_FLAG_ENABLED(ForceInlineStackCallWithImplArg);
   ControlInlineImplicitArgs = IGC_IS_FLAG_ENABLED(ControlInlineImplicitArgs);
+  TrimImplicitArgFunctionsForLargeKernels = IGC_IS_FLAG_ENABLED(TrimImplicitArgFunctionsForLargeKernels);
   SubroutineThreshold = IGC_GET_FLAG_VALUE(SubroutineThreshold);
   KernelTotalSizeThreshold = IGC_GET_FLAG_VALUE(KernelTotalSizeThreshold);
   ExpandedUnitSizeThreshold = IGC_GET_FLAG_VALUE(ExpandedUnitSizeThreshold);
@@ -173,10 +174,12 @@ namespace {
     dbgs() << "ControlKernelTotalSize0x" << hex_val << ": " << contents << "\n";                                       \
   }
 #define PrintTrimUnit(hex_val, contents)                                                                               \
-  if ((IGC_GET_FLAG_VALUE(PrintControlKernelTotalSize) & hex_val) != 0 ||                                              \
-      (IGC_GET_FLAG_VALUE(PrintControlUnitSize) & hex_val) != 0) {                                                     \
-    dbgs() << "TrimUnit0x" << hex_val << ": " << contents << "\n";                                                     \
-  }
+  do {                                                                                                                 \
+    if ((IGC_GET_FLAG_VALUE(PrintControlKernelTotalSize) & hex_val) != 0 ||                                            \
+        (IGC_GET_FLAG_VALUE(PrintControlUnitSize) & hex_val) != 0) {                                                   \
+      dbgs() << "TrimUnit0x" << hex_val << ": " << contents << "\n";                                                   \
+    }                                                                                                                  \
+  } while (0)
 #define PrintFunctionSizeAnalysis(hex_val, contents)                                                                   \
   if ((IGC_GET_FLAG_VALUE(PrintFunctionSizeAnalysis) & hex_val) != 0) {                                                \
     dbgs() << "FunctionSizeAnalysis0x" << hex_val << ": " << contents << "\n";                                         \
@@ -240,7 +243,7 @@ struct FunctionNode {
   FunctionNode(Function *F, std::size_t Size)
       : F(F), InitialSize(Size), UnitSize(Size), ExpandedSize(Size), SizeAfterCollapsing(Size), Inline_cnt(0),
         tmpSize(Size), CallingSubroutine(false), FunctionAttr(0), InMultipleUnit(false), HasImplicitArg(false),
-        staticFuncFreq(0, 0), EntryFreq(0, 0) {}
+        IsSmallLeafFunc(false), staticFuncFreq(0, 0), EntryFreq(0, 0) {}
 
   Function *F;
 
@@ -278,6 +281,7 @@ struct FunctionNode {
   bool InMultipleUnit;
 
   bool HasImplicitArg;
+  bool IsSmallLeafFunc;
 
   Scaled64 EntryFreq;
   std::unordered_map<llvm::BasicBlock *, Scaled64> blockFreqs;
@@ -373,8 +377,14 @@ struct FunctionNode {
     FunctionAttr = FA_TRIMMED;
     return;
   }
+  void setSmallLeafFunc() { IsSmallLeafFunc = true; }
   void unsetTrimmed() {
     IGC_ASSERT(FunctionAttr == FA_TRIMMED); // Only best effort inline function can be trimmed
+    FunctionAttr = FA_BEST_EFFORT_INLINE;
+    return;
+  }
+
+  void setBestEffortInline() {
     FunctionAttr = FA_BEST_EFFORT_INLINE;
     return;
   }
@@ -394,6 +404,10 @@ struct FunctionNode {
   bool isAddrTakenFunc() { return FunctionAttr == FA_ADDR_TAKEN; }
   bool isTrimmed() { return FunctionAttr == FA_TRIMMED; }
   bool isForcedInlined() { return FunctionAttr == FA_FORCE_INLINE; }
+  // True only when the node was force inlined specifically because it has implicit arguments.
+  bool isForcedInlinedForImplicitArg() {
+    return isForcedInlined() && !F->hasFnAttribute(llvm::Attribute::AlwaysInline) && !IsSmallLeafFunc && HasImplicitArg;
+  }
   bool isBestEffortInline() { return FunctionAttr == FA_BEST_EFFORT_INLINE; }
   bool hasNoCaller() { return isAddrTakenFunc() || isEntryFunc(); }
   bool willBeInlined() { return isBestEffortInline() || isForcedInlined(); }
@@ -431,9 +445,9 @@ struct FunctionNode {
   std::string getFuncAttrStr() {
     switch (FunctionAttr) {
     case FA_BEST_EFFORT_INLINE:
-      return "Best effort innline";
+      return "Best effort inline";
     case FA_FORCE_INLINE:
-      return "Force innline";
+      return "Force inline";
     case FA_TRIMMED:
       return "Trimmed";
     case FA_STACKCALL:
@@ -1041,13 +1055,14 @@ void EstimateFunctionSize::checkSubroutine() {
     uint32_t subroutineThreshold = SubroutineThreshold;
     uint32_t expandedMaxSize = getMaxExpandedSize();
 
-    if (AL != AL_Module) // at the second call of EstimationFucntionSize, halve the threshold
+    if (AL != AL_Module) // at the second call of EstimateFunctionSize, halve the threshold
       subroutineThreshold = subroutineThreshold >> 1;
 
     if (expandedMaxSize <= subroutineThreshold) {
       PrintTrimUnit(0x1, "No need to reduce the kernel size. (The max expanded kernel size is small) "
-                             << expandedMaxSize << " < " << subroutineThreshold) if (!HasRecursion) EnableSubroutine =
-          false;
+                             << expandedMaxSize << " < " << subroutineThreshold);
+      if (!HasRecursion)
+        EnableSubroutine = false;
     } else if (AL == AL_Module &&
                IGC_IS_FLAG_DISABLED(DisableAddingAlwaysAttribute)) { // kernel trimming and partitioning only kick in at
                                                                      // the first EstimationFunctionSize
@@ -1068,22 +1083,20 @@ void EstimateFunctionSize::checkSubroutine() {
         } else {
           PrintPartitionUnit(0x1, "Max unit size " << maxUnitSize
                                                    << " is smaller than the threshold (No partitioning needed) "
-                                                   << unitThreshold)
+                                                   << unitThreshold);
         }
         PrintPartitionUnit(0x1, "--------------------------Partition unit end--------------------------\n");
       }
 
       PrintTrimUnit(0x1, "Need to reduce the kernel size. (The max expanded kernel size is large) "
-                             << expandedMaxSize << " > " << subroutineThreshold)
-          PrintTrimUnit(
-              0x1,
-              "-----------------------------Trimming start-----------------------------") if (ControlKernelTotalSize) {
+                             << expandedMaxSize << " > " << subroutineThreshold);
+      PrintTrimUnit(0x1, "-----------------------------Trimming start-----------------------------");
+      if (ControlKernelTotalSize) {
         reduceKernelSize();
-      }
-      else if (ControlUnitSize) {
+      } else if (ControlUnitSize) {
         reduceCompilationUnitSize();
       }
-      PrintTrimUnit(0x1, "-----------------------------Trimming end-----------------------------\n")
+      PrintTrimUnit(0x1, "-----------------------------Trimming end-----------------------------\n");
     }
   }
   IGC_ASSERT(!HasRecursion || EnableSubroutine);
@@ -1289,6 +1302,7 @@ void EstimateFunctionSize::UpdateSizeAfterCollapsing(std::deque<void *> &nodesTo
                                << Node->F->getName().str() << ", Size after Inline: " << Node->SizeAfterCollapsing);
         Node->setForceInline(); // If the node is supposed to have no callee in the end and small size, it should be
                                 // inlined
+        Node->setSmallLeafFunc();
       }
     }
 
@@ -1489,8 +1503,7 @@ void EstimateFunctionSize::reduceCompilationUnitSize() {
 }
 
 // Top down traverse to find and retrieve functions that meet trimming criteria
-void EstimateFunctionSize::getFunctionsToTrim(llvm::Function *root, llvm::SmallVector<void *, 64> &trimming_pool,
-                                              llvm::SmallVector<void *, 64> &tiny_fn_trimming_pool,
+void EstimateFunctionSize::getFunctionsToTrim(llvm::Function *root, TotalTrimmingPool &pools,
                                               bool ignoreStackCallBoundary, uint32_t &func_cnt) {
   FunctionNode *unitHead = get<FunctionNode>(root);
   std::unordered_set<void *> visit;
@@ -1528,38 +1541,40 @@ void EstimateFunctionSize::getFunctionsToTrim(llvm::Function *root, llvm::SmallV
     UpdateSizeAfterCollapsing(bottomUpQueue, visit);
 
   if (EnableGreedyTrimming) {
-    trimming_pool = llvm::SmallVector<void *, 64>(funcsInKernel.size());
+    pools.trimming_pool = llvm::SmallVector<void *, 64>(funcsInKernel.size());
     // Node with best effort and larger size contribution could be trimmed
-    llvm::copy_if(funcsInKernel, std::back_inserter(trimming_pool),
+    llvm::copy_if(funcsInKernel, std::back_inserter(pools.trimming_pool),
                   [](void *node) { return ((FunctionNode *)node)->isBestEffortInline(); });
     return;
   }
 
   // Find all functions that meet trimming criteria
-
   for (FunctionNode *Node : funcsInKernel) {
     uint16_t func_trait = Node->getFunctionTrait(thresholdForTrimming);
     switch (func_trait) {
     case FT_NOT_BEST_EFFORT:
+      if (Node->isForcedInlinedForImplicitArg() && Node->InitialSize > ControlInlineTinySize) {
+        pools.implicit_arg_trimming_pool.push_back(Node);
+      }
       Node->dumpFuncInfo(0x4, "Can't trim (not best effort inline)");
       break;
     case FT_MUL_KERNEL:
       Node->dumpFuncInfo(0x4, "Can't trim (in multiple kernels)");
       break;
     case FT_BIG_ENOUGH: // Functions are big enough to trim
-      trimming_pool.push_back(Node);
+      pools.trimming_pool.push_back(Node);
       Node->dumpFuncInfo(0x4, "Good to trim (Big enough > " + std::to_string(tinySizeThreshold) + ")");
       break;
     case FT_TOO_TINY:
       // Small functions will be trimmed in special case if kernel still far exceeds threshold.
       // We allow inlining of very small functions as they are more costly not no inline.
       if (Node->InitialSize > LargeKernelSmallFunctionLimit) {
-        tiny_fn_trimming_pool.push_back(Node);
+        pools.tiny_fn_trimming_pool.push_back(Node);
       }
       Node->dumpFuncInfo(0x4, "Can't trim (Too tiny < " + std::to_string(tinySizeThreshold) + ")");
       break;
     case FT_HIGHER_WEIGHT:
-      trimming_pool.push_back(Node);
+      pools.trimming_pool.push_back(Node);
       Node->dumpFuncInfo(0x4, "Good to trim (High weight > " + thresholdForTrimming.toString() + ")");
       break;
     case FT_LOWER_WEIGHT:
@@ -1599,15 +1614,17 @@ void EstimateFunctionSize::trimCompilationUnit(llvm::SmallVector<void *, 64> &un
     updateExpandedUnitSize(unitEntry->F, ignoreStackCallBoundary);
     if (unitEntry->ExpandedSize > threshold) {
       PrintTrimUnit(0x2, "Kernel / Unit " << unitEntry->F->getName().str() << " expSize= " << unitEntry->ExpandedSize
-                                          << " > " << threshold) unitsToTrim.push_back(unitEntry);
+                                          << " > " << threshold);
+      unitsToTrim.push_back(unitEntry);
     } else {
       PrintTrimUnit(0x2, "Kernel / Unit " << unitEntry->F->getName().str() << " expSize= " << unitEntry->ExpandedSize
-                                          << " <= " << threshold)
+                                          << " <= " << threshold);
     }
   }
 
   if (unitsToTrim.empty()) {
-    PrintTrimUnit(0x2, "Kernels / Units become no longer big enough to be trimmed (affected by partitioning)") return;
+    PrintTrimUnit(0x2, "Kernels / Units become no longer big enough to be trimmed (affected by partitioning)");
+    return;
   }
 
   std::sort(unitsToTrim.begin(), unitsToTrim.end(), [&](const FunctionNode *LHS, const FunctionNode *RHS) {
@@ -1617,46 +1634,84 @@ void EstimateFunctionSize::trimCompilationUnit(llvm::SmallVector<void *, 64> &un
   // Iterate over units
   for (auto unit : unitsToTrim) {
     size_t expandedUnitSize =
-        updateExpandedUnitSize(unit->F, ignoreStackCallBoundary); // A kernel size can be reduced by a function that is
-                                                                  // trimmed at previous kernels, so recompute it.
-    PrintTrimUnit(0x2, "Trimming kernel / unit " << unit->F->getName().str() << " expanded size= "
-                                                 << expandedUnitSize) if (expandedUnitSize <= threshold) {
+        updateExpandedUnitSize(unit->F, ignoreStackCallBoundary); // A kernel size can be reduced by a function that
+                                                                  // is trimmed at previous kernels, so recompute it.
+    PrintTrimUnit(0x2, "Trimming kernel / unit " << unit->F->getName().str() << " expanded size= " << expandedUnitSize);
+    if (expandedUnitSize <= threshold) {
       PrintTrimUnit(0x2, "Kernel / unit " << unit->F->getName().str() << ": The expanded unit size(" << expandedUnitSize
-                                          << ") is smaller than threshold(" << threshold << ")") continue;
+                                          << ") is smaller than threshold(" << threshold << ")");
+      continue;
     }
-    PrintTrimUnit(0x2, "Kernel size is bigger than threshold")
+    PrintTrimUnit(0x2, "Kernel size is bigger than threshold");
 
-        SmallVector<void *, 64>
-            trimming_pool;
-    SmallVector<void *, 64> tiny_fn_trimming_pool;
+    TotalTrimmingPool pools;
     uint32_t func_cnt = 0;
-    getFunctionsToTrim(unit->F, trimming_pool, tiny_fn_trimming_pool, ignoreStackCallBoundary, func_cnt);
-    PrintTrimUnit(0x2, "Kernel / Unit " << unit->F->getName().str() << " has " << trimming_pool.size()
-                                        << " functions for trimming out of " << func_cnt) if (trimming_pool.empty()) {
+    getFunctionsToTrim(unit->F, pools, ignoreStackCallBoundary, func_cnt);
+    PrintTrimUnit(0x2, "Kernel / Unit " << unit->F->getName().str() << " has " << pools.trimming_pool.size()
+                                        << " functions for trimming out of " << func_cnt);
+    bool canRetryImplicitArg =
+        TrimImplicitArgFunctionsForLargeKernels && ignoreStackCallBoundary && !pools.implicit_arg_trimming_pool.empty();
+    if (pools.trimming_pool.empty() && !canRetryImplicitArg) {
       PrintTrimUnit(0x2, "Kernel / Unit " << unit->F->getName().str() << " size " << unit->ExpandedSize
-                                          << " has no sorted list") continue; // all functions are tiny.
+                                          << " has no sorted list");
+      continue; // all functions are tiny.
     }
     uint64_t size_before_trimming = unit->ExpandedSize;
     if (EnableGreedyTrimming) {
-      performGreedyTrimming(unit->F, trimming_pool, threshold, ignoreStackCallBoundary);
+      performGreedyTrimming(unit->F, pools.trimming_pool, threshold, ignoreStackCallBoundary);
     } else {
-      performTrimming(unit->F, trimming_pool, threshold, ignoreStackCallBoundary);
+      // performTrimming() consumes the pool it is given (pop_back), so keep an untouched copy of
+      // the candidates.
+      SmallVector<void *, 64> trimming_pool_copy = pools.trimming_pool;
+      performTrimming(unit->F, trimming_pool_copy, threshold, ignoreStackCallBoundary);
+
+      // If the kernel is still over large kernel threshold, undo the trimming done so far and retry while also
+      // allowing implicit-arg functions (normally force-inlined) to be trimmed.
+      if (canRetryImplicitArg && unit->ExpandedSize > threshold * LargeKernelThresholdMultiplier) {
+        PrintTrimUnit(0x2, "Kernel / Unit "
+                               << unit->F->getName().str()
+                               << ": still above threshold; untrimming and retrying including implicit-arg functions");
+        llvm::for_each(pools.trimming_pool, [](void *p) { static_cast<FunctionNode *>(p)->setBestEffortInline(); });
+
+        llvm::for_each(pools.implicit_arg_trimming_pool, [](void *p) {
+          FunctionNode *n = static_cast<FunctionNode *>(p);
+          n->setBestEffortInline();
+        });
+
+        updateInlineCnt(unit->F);
+        updateExpandedUnitSize(unit->F, ignoreStackCallBoundary);
+
+        SmallVector<void *, 64> combined_pool;
+        combined_pool.reserve(pools.trimming_pool.size() + pools.implicit_arg_trimming_pool.size());
+        combined_pool.insert(combined_pool.end(), pools.trimming_pool.begin(), pools.trimming_pool.end());
+        combined_pool.insert(combined_pool.end(), pools.implicit_arg_trimming_pool.begin(),
+                             pools.implicit_arg_trimming_pool.end());
+        performTrimming(unit->F, combined_pool, threshold, ignoreStackCallBoundary);
+
+        // Restore force-inline on implicit-arg nodes that didn't get trimmed.
+        for (void *p : pools.implicit_arg_trimming_pool) {
+          FunctionNode *n = static_cast<FunctionNode *>(p);
+          if (n->isBestEffortInline())
+            n->setForceInline();
+        }
+      }
+
       if (ignoreStackCallBoundary && unit->ExpandedSize > threshold * LargeKernelThresholdMultiplier) {
         PrintTrimUnit(0x2, "Kernel / Unit " << unit->F->getName().str() << ": Size: " << unit->ExpandedSize
-                                            << " is much larger than threshold, trimming small functions as well.")
-            performTrimming(unit->F, tiny_fn_trimming_pool, threshold, ignoreStackCallBoundary);
+                                            << " is much larger than threshold, trimming small functions as well.");
+        performTrimming(unit->F, pools.tiny_fn_trimming_pool, threshold, ignoreStackCallBoundary);
       }
     }
     if (unit->ExpandedSize < threshold) {
-      PrintTrimUnit(0x2, "Kernel / Unit " << unit->F->getName().str() << ": The size becomes below threshold")
+      PrintTrimUnit(0x2, "Kernel / Unit " << unit->F->getName().str() << ": The size becomes below threshold");
     } else {
       PrintTrimUnit(0x2, "Kernel / Unit "
                              << unit->F->getName().str()
-                             << ": The size is still above threshold even though all candidates are trimmed")
+                             << ": The size is still above threshold even though all candidates are trimmed");
     }
 
     PrintTrimUnit(0x2, "Kernel / Unit " << unit->F->getName().str() << " final size " << unit->ExpandedSize
-                                        << " reduced from " << size_before_trimming)
+                                        << " reduced from " << size_before_trimming);
   }
 }
 
