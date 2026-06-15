@@ -52,7 +52,7 @@ platforms = config.vc_platform_list.split(";")
 for platform in platforms:
   bif_file_typed_ptrs = '{}/VCBuiltins64_{}.typed.vccg.bc'.format(config.vc_bif_binary_dir, platform)
   bif_file_opaque_ptrs = '{}/VCBuiltins64_{}.opaque.vccg.bc'.format(config.vc_bif_binary_dir, platform)
-  if config.opaque_pointers_enabled == 1:
+  if config.opaque_pointers_enabled:
     bif_file_default = bif_file_opaque_ptrs
   else:
     bif_file_default = bif_file_typed_ptrs
@@ -94,20 +94,27 @@ def _enabled_tool(tool, is_enabled):
   return tool if is_enabled else _NOP
 
 
-command_opt_legacy        = _enabled_tool(_OPT, llvm_ver < 16)
-command_not_legacy        = _enabled_tool(_NOT, llvm_ver < 16)
+# Opaque-pointer BiFs are only built for LLVM >= 15.
+# Typed-pointer BiFs are only built for LLVM < 17.
+opaque_bifs_available = (llvm_ver >= 15)
+typed_bifs_available = (llvm_ver < 17)
+
+command_opt_legacy_typed  = _enabled_tool(_OPT, llvm_ver < 16)
+command_not_legacy_typed  = _enabled_tool(_NOT, llvm_ver < 16)
+command_opt_legacy_opaque = _enabled_tool(_OPT, llvm_ver < 16 and opaque_bifs_available)
+command_not_legacy_opaque = _enabled_tool(_NOT, llvm_ver < 16 and opaque_bifs_available)
 command_opt_new_pm_typed  = _enabled_tool(_OPT, llvm_ver == 16)
 command_not_new_pm_typed  = _enabled_tool(_NOT, llvm_ver == 16)
 command_opt_new_pm_opaque = _enabled_tool(_OPT, llvm_ver >= 16)
 command_not_new_pm_opaque = _enabled_tool(_NOT, llvm_ver >= 16)
 command_opt_typed         = _enabled_tool(_OPT, llvm_ver < 17)
 command_not_typed         = _enabled_tool(_NOT, llvm_ver < 17)
-command_opt_opaque        = _OPT
-command_not_opaque        = _NOT
+command_opt_opaque        = _enabled_tool(_OPT, opaque_bifs_available)
+command_not_opaque        = _enabled_tool(_NOT, opaque_bifs_available)
 command_llc_typed         = _enabled_tool(_LLC, llvm_ver < 17)
-command_llc_opaque        = _LLC
+command_llc_opaque        = _enabled_tool(_LLC, opaque_bifs_available)
 
-command_opt_default = command_opt_new_pm_opaque if llvm_ver >= 16 else command_opt_legacy
+command_opt_default = command_opt_new_pm_opaque if llvm_ver >= 16 else command_opt_legacy_typed
 
 
 # Use one of the %opt version explicitly to override the default setting in the
@@ -116,16 +123,16 @@ command_opt_default = command_opt_new_pm_opaque if llvm_ver >= 16 else command_o
 opt_tool_typed_ptrs = _make_tool_subst('%opt_typed_ptrs', command_opt_typed, extra_args_typed_legacy)
 opt_tool_opaque_ptrs = _make_tool_subst('%opt_opaque_ptrs', command_opt_opaque, extra_args_opaque_legacy)
 
-opt_tool_legacy_typed = _make_tool_subst('%opt_legacy_typed', command_opt_legacy, extra_args_typed_legacy)
-opt_tool_legacy_opaque = _make_tool_subst('%opt_legacy_opaque', command_opt_legacy, extra_args_opaque_legacy)
+opt_tool_legacy_typed = _make_tool_subst('%opt_legacy_typed', command_opt_legacy_typed, extra_args_typed_legacy)
+opt_tool_legacy_opaque = _make_tool_subst('%opt_legacy_opaque', command_opt_legacy_opaque, extra_args_opaque_legacy)
 
 opt_tool_new_pm_typed = _make_tool_subst('%opt_new_pm_typed', command_opt_new_pm_typed, extra_args_typed_new_pm)
 opt_tool_new_pm_opaque = _make_tool_subst('%opt_new_pm_opaque', command_opt_new_pm_opaque, extra_args_opaque_new_pm)
 
 not_opt_tool_typed_ptrs    = ToolSubst('%not_opt_typed_ptrs',    command=command_not_typed,         extra_args=['%opt_typed_ptrs'])
 not_opt_tool_opaque_ptrs   = ToolSubst('%not_opt_opaque_ptrs',   command=command_not_opaque,        extra_args=['%opt_opaque_ptrs'])
-not_opt_tool_legacy_typed  = ToolSubst('%not_opt_legacy_typed',  command=command_not_legacy,        extra_args=['%opt_legacy_typed'])
-not_opt_tool_legacy_opaque = ToolSubst('%not_opt_legacy_opaque', command=command_not_legacy,        extra_args=['%opt_legacy_opaque'])
+not_opt_tool_legacy_typed  = ToolSubst('%not_opt_legacy_typed',  command=command_not_legacy_typed,  extra_args=['%opt_legacy_typed'])
+not_opt_tool_legacy_opaque = ToolSubst('%not_opt_legacy_opaque', command=command_not_legacy_opaque, extra_args=['%opt_legacy_opaque'])
 not_opt_tool_new_pm_typed  = ToolSubst('%not_opt_new_pm_typed',  command=command_not_new_pm_typed,  extra_args=['%opt_new_pm_typed'])
 not_opt_tool_new_pm_opaque = ToolSubst('%not_opt_new_pm_opaque', command=command_not_new_pm_opaque, extra_args=['%opt_new_pm_opaque'])
 
