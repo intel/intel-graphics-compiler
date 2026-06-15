@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2022-2024 Intel Corporation
+; Copyright (C) 2022-2026 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -97,6 +97,17 @@ define spir_kernel void @test_sdiv32(i32 %src1) {
   %1 = sdiv i32 %src1, 2
   %2 = sdiv i32 %1, 4
   call void @use.i32(i32 %2)
+  ret void
+}
+
+define spir_kernel void @test_sdiv32_intmin(i32 %src1) {
+; CHECK-LABEL: @test_sdiv32_intmin(
+; CHECK:    [[TMP1:%.*]] = icmp eq i32 [[SRC1:%.*]], -2147483648
+; CHECK:    [[TMP2:%.*]] = zext i1 [[TMP1]] to i32
+; CHECK:    call void @use.i32(i32 [[TMP2]])
+; CHECK:    ret void
+  %1 = sdiv i32 %src1, -2147483648
+  call void @use.i32(i32 %1)
   ret void
 }
 

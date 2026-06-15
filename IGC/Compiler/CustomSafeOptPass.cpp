@@ -2698,6 +2698,14 @@ void GenSpecificPattern::visitSDiv(llvm::BinaryOperator &I) {
       unsigned int intWidth = divisor->getBitWidth();
       IRBuilder<> builder(&I);
       Value *signedBitOnly = I.getOperand(0);
+      if (log2Div == intWidth - 1) {
+        // Divisor is INT_MIN: result is 1 if dividend == INT_MIN else 0.
+        Value *isMin = builder.CreateICmpEQ(signedBitOnly, divisor);
+        Value *newValue = builder.CreateZExt(isMin, signedBitOnly->getType());
+        I.replaceAllUsesWith(newValue);
+        I.eraseFromParent();
+        return;
+      }
       if (log2Div > 1) {
         signedBitOnly = builder.CreateAShr(signedBitOnly, builder.getIntN(intWidth, intWidth - 1));
       }
