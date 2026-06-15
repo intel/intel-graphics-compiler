@@ -170,7 +170,15 @@ private:
 
         IRB.SetInsertPoint(IGCLLVM::getFirstNonPHI(&key.first->getParent()->getEntryBlock()));
         auto *SMStack = IRB.CreateAlloca(IRB.getRTStack2Ty(), nullptr, VALUE_NAME("CrossBlockLoadSMStackForBlock"));
-        IRB.SetInsertPoint(IGCLLVM::getFirstNonPHI(key.first));
+
+        // sometimes rqObject is an instruction within the same basic block
+        // in such cases, start inserting after it, otherwise the IR won't be valid
+        auto *rqObjectI = dyn_cast<llvm::Instruction>(rqObject);
+        if (rqObjectI && rqObjectI->getParent() == key.first)
+          IRB.SetInsertPoint(rqObjectI->getNextNode());
+        else
+          IRB.SetInsertPoint(IGCLLVM::getFirstNonPHI(key.first));
+
         IRB.CreateMemCpy(SMStack, getStackPtr(IRB, rqObject), IRB.getInt64(DL.getTypeAllocSize(IRB.getRTStack2Ty())),
                          RayDispatchGlobalData::StackChunkSize);
         m_CrossBlockVectorizationStacks[key] = SMStack;
