@@ -317,8 +317,12 @@ inline void moveBefore(llvm::Instruction *I, llvm::Instruction *Pos) {
 #if LLVM_VERSION_MAJOR < 18
   I->moveBefore(Pos);
 #else
+  // Use moveBeforePreserving so that attached DbgRecords (debug records in
+  // LLVM 18+ replacing llvm.dbg.* intrinsics) travel with the instruction,
+  // matching the pre-18 behaviour where debug intrinsics were regular
+  // instructions and were naturally carried along.
   IGC_ASSERT(Pos);
-  I->moveBefore(Pos->getIterator());
+  I->moveBeforePreserving(Pos->getIterator());
 #endif
 }
 
