@@ -12,9 +12,10 @@
 ; REQUIRES: regkeys, llvm-16-plus
 
 ; LLVM with opaque pointers:
-; RUN: igc_opt --opaque-pointers --igc-private-mem-resolution --platformdg2 --regkey EnableOpaquePointersBackend=1 --regkey DumpDbgVarStorageInfo=1 -S %s 2>&1 | FileCheck %s
+; RUN: igc_opt --opaque-pointers --igc-private-mem-resolution --platformdg2 --regkey EnableOpaquePointersBackend=1 --regkey DumpDbgVarStorageInfo=1 -S %s 2>&1 | FileCheck %s --check-prefixes=CHECK,%if llvm-22-plus %{CHECK-DBG-RECORDS%} %else %{CHECK-DBG-INTRINSIC%}
 
-; CHECK: call void @llvm.dbg.declare(metadata ptr %{{[.a-zA-Z0-9]+}}, metadata {{!?[0-9]*}}, metadata !DIExpression(DW_OP_constu, 4, DW_OP_swap, DW_OP_xderef)), !dbg !{{[0-9]+}}
+; CHECK-DBG-INTRINSIC: call void @llvm.dbg.declare(metadata ptr %{{[.a-zA-Z0-9]+}}, metadata {{!?[0-9]*}}, metadata !DIExpression(DW_OP_constu, 4, DW_OP_swap, DW_OP_xderef)), !dbg !{{[0-9]+}}
+; CHECK-DBG-RECORDS: #dbg_declare(ptr %{{[.a-zA-Z0-9]+}}, {{!?[0-9]*}}, !DIExpression(DW_OP_constu, 4, DW_OP_swap, DW_OP_xderef), !{{[0-9]+}})
 ; Storage info for non-stack variables must NOT be recorded in the side-map.
 ; CHECK-NOT: DumpDbgVarStorageInfo
 

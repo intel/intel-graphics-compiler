@@ -38,6 +38,7 @@
 ; CHECK-DBG-INTRINSIC: @llvm.dbg.value(metadata i32 [[PHI1_V]], metadata [[PHI1_MD:![0-9]*]], metadata !DIExpression()), !dbg [[PHI1_LOC]]
 ; CHECK-DBG-RECORDS: #dbg_value(ptr [[PHI0_V]], [[PHI0_MD:![0-9]*]], !DIExpression(), [[PHI0_LOC]])
 ; CHECK-DBG-RECORDS: #dbg_value(i32 [[PHI1_V]], [[PHI1_MD:![0-9]*]], !DIExpression(), [[PHI1_LOC]])
+; CHECK: {{.*}} = load i32{{.*}} !dbg [[LOAD_LOC:![0-9]*]]
 ; CHECK: br {{.*}} !dbg [[PREHEADER_LOC]]
 ;
 ; CHECK: for.if:
@@ -45,7 +46,8 @@
 ;
 ; First line in for.body
 ; CHECK: for.body.backedge:
-; CHECK: br {{.*}} !dbg [[PHI0_LOC]]
+; CHECK-DBG-INTRINSIC: br {{.*}} !dbg [[PHI0_LOC]]
+; CHECK-DBG-RECORDS: br {{.*}} !dbg [[LOAD_LOC]]
 ;
 ; CHECK: for.else:
 ; CHECK: br {{.*}} !dbg [[FORELSE_LOC:![0-9]*]]

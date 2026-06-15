@@ -7,7 +7,7 @@
 ;============================ end_copyright_notice =============================
 ;
 ; REQUIRES: regkeys, llvm-14-plus
-; RUN: igc_opt --opaque-pointers --igc-private-mem-resolution -S < %s | FileCheck %s
+; RUN: igc_opt --opaque-pointers --igc-private-mem-resolution -S < %s | FileCheck %s --check-prefixes=CHECK,%if llvm-22-plus %{CHECK-DBG-RECORDS%} %else %{CHECK-DBG-INTRINSIC%}
 ; RUN: igc_opt --opaque-pointers --igc-private-mem-resolution --regkey DumpDbgVarStorageInfo=1 -S < %s 2>&1 | FileCheck %s --check-prefix=DUMP
 ; ------------------------------------------------
 ; PrivateMemoryResolution
@@ -39,11 +39,14 @@
 
 
 ; CHECK: define{{.*}} @test_pmem{{.*}} !dbg [[KSCOPE:![0-9]*]]
-; CHECK: @llvm.dbg.declare(metadata ptr [[DST_V:%[A-z0-9.]*]], metadata [[DST_MD:![0-9]*]], metadata !DIExpression()), !dbg [[DST_LOC:![0-9]*]]
+; CHECK-DBG-INTRINSIC: @llvm.dbg.declare(metadata ptr [[DST_V:%[A-z0-9.]*]], metadata [[DST_MD:![0-9]*]], metadata !DIExpression()), !dbg [[DST_LOC:![0-9]*]]
+; CHECK-DBG-RECORDS: #dbg_declare(ptr [[DST_V:%[A-z0-9.]*]], [[DST_MD:![0-9]*]], !DIExpression(), [[DST_LOC:![0-9]*]])
 ; CHECK: store ptr addrspace(1) %dst, ptr [[DST_V]], align 8, !dbg [[DST_LOC]]
-; CHECK: @llvm.dbg.declare(metadata ptr [[SRC_V:%[A-z0-9.]*]], metadata [[SRC_MD:![0-9]*]], metadata !DIExpression()), !dbg [[SRC_LOC:![0-9]*]]
+; CHECK-DBG-INTRINSIC: @llvm.dbg.declare(metadata ptr [[SRC_V:%[A-z0-9.]*]], metadata [[SRC_MD:![0-9]*]], metadata !DIExpression()), !dbg [[SRC_LOC:![0-9]*]]
+; CHECK-DBG-RECORDS: #dbg_declare(ptr [[SRC_V:%[A-z0-9.]*]], [[SRC_MD:![0-9]*]], !DIExpression(), [[SRC_LOC:![0-9]*]])
 ; CHECK: store ptr addrspace(1) %src, ptr [[SRC_V]], align 8, !dbg [[SRC_LOC]]
-; CHECK: @llvm.dbg.declare(metadata ptr [[AA_V:%[A-z0-9.]*]], metadata [[AA_MD:![0-9]*]], metadata !DIExpression()), !dbg [[AA_LOC:![0-9]*]]
+; CHECK-DBG-INTRINSIC: @llvm.dbg.declare(metadata ptr [[AA_V:%[A-z0-9.]*]], metadata [[AA_MD:![0-9]*]], metadata !DIExpression()), !dbg [[AA_LOC:![0-9]*]]
+; CHECK-DBG-RECORDS: #dbg_declare(ptr [[AA_V:%[A-z0-9.]*]], [[AA_MD:![0-9]*]], !DIExpression(), [[AA_LOC:![0-9]*]])
 ; CHECK: store i32 {{.*}}, ptr [[AA_V]], align 4, !dbg [[AA_LOC]]
 
 define spir_kernel void @test_pmem(i32 addrspace(1)* %dst, i32 addrspace(1)* %src, <8 x i32> %r0, <8 x i32> %payloadHeader, i8* %privateBase, i32 %bufferOffset, i32 %bufferOffset1) #0 !dbg !33 {
@@ -97,9 +100,11 @@ entry:
 }
 
 ; CHECK: define{{.*}} @test_add{{.*}} !dbg [[FSCOPE:![0-9]*]]
-; CHECK: @llvm.dbg.declare(metadata ptr [[A_V:%[A-z0-9.]*]], metadata [[A_MD:![0-9]*]], metadata !DIExpression()), !dbg [[A_LOC:![0-9]*]]
+; CHECK-DBG-INTRINSIC: @llvm.dbg.declare(metadata ptr [[A_V:%[A-z0-9.]*]], metadata [[A_MD:![0-9]*]], metadata !DIExpression()), !dbg [[A_LOC:![0-9]*]]
+; CHECK-DBG-RECORDS: #dbg_declare(ptr [[A_V:%[A-z0-9.]*]], [[A_MD:![0-9]*]], !DIExpression(), [[A_LOC:![0-9]*]])
 ; CHECK: store i32 {{.*}}, ptr [[A_V]], align 4, !dbg [[A_LOC]]
-; CHECK: @llvm.dbg.declare(metadata ptr [[B_V:%[A-z0-9.]*]], metadata [[B_MD:![0-9]*]], metadata !DIExpression()), !dbg [[B_LOC:![0-9]*]]
+; CHECK-DBG-INTRINSIC: @llvm.dbg.declare(metadata ptr [[B_V:%[A-z0-9.]*]], metadata [[B_MD:![0-9]*]], metadata !DIExpression()), !dbg [[B_LOC:![0-9]*]]
+; CHECK-DBG-RECORDS: #dbg_declare(ptr [[B_V:%[A-z0-9.]*]], [[B_MD:![0-9]*]], !DIExpression(), [[B_LOC:![0-9]*]])
 ; CHECK: store i32 {{.*}}, ptr [[B_V]], align 4, !dbg [[B_LOC]]
 
 ; Function Attrs: convergent noinline nounwind optnone
