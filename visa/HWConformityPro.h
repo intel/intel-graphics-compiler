@@ -122,6 +122,7 @@ private:
 
   void fixMovCvtBetweenFp16AndWordByte(INST_LIST_ITER it, G4_BB *bb);
 
+
   void fixARF(INST_LIST_ITER it, G4_BB *bb);
 
   void fixFbl(INST_LIST_ITER it, G4_BB *bb);

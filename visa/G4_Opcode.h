@@ -43,6 +43,9 @@ SPDX-License-Identifier: MIT
 #define IS_TYPE_FLOAT_ALL(type)                                                \
   (type == Type_F || type == Type_DF || type == Type_HF || type == Type_NF ||  \
    type == Type_BF)
+#define IS_FP16TYPE(x) ((x) == Type_BF || (x) == Type_HF)
+#define IS_FP8TYPE(x) ((x) == Type_BF8 || (x) == Type_HF8)
+#define IS_BYTE_FLOAT(x) (IS_FP8TYPE(x))
 #define IS_TYPE_FLOAT_FOR_ACC(type)                                            \
   (type == Type_F || type == Type_DF || type == Type_HF)
 #define IS_TYPE_LONG(type)                                                     \

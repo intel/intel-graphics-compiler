@@ -1019,6 +1019,27 @@ void vISAVerifier::verifyInstructionMove(const CISA_INST *inst) {
     VISA_Type src0Type = getVectorOperandType(header, src0);
     VISA_Modifier dstModifier = dst.getOperandModifier();
 
+
+    {
+      // Skip raw mov.
+      bool isRawMov =
+          (dstType == src0Type && dst.getOperandModifier() == MODIFIER_NONE &&
+           src0.getOperandModifier() == MODIFIER_NONE);
+      if (isRawMov)
+        break;
+
+      if ((dstType != ISA_TYPE_HF && src0Type == ISA_TYPE_HF8) ||
+          (dstType == ISA_TYPE_HF8 && src0Type != ISA_TYPE_HF)) {
+        REPORT_INSTRUCTION(options, false,
+                           "Unsupported hf8 mov: the other type must be hf.");
+      }
+      if ((dstType == ISA_TYPE_BF8 && src0Type != ISA_TYPE_HF) ||
+          (dstType != ISA_TYPE_HF && src0Type == ISA_TYPE_BF8)) {
+        REPORT_INSTRUCTION(options, false,
+                           "Unsupported bf8 mov: the other type must be hf.");
+      }
+    }
+
     if (OPERAND_PREDICATE == operand_class_src0) {
       REPORT_INSTRUCTION(options, EXEC_SIZE_1 == inst->getExecSize(),
                          "Execution size for a flag copy mov instruction "
@@ -3620,6 +3641,9 @@ void vISAVerifier::verifyBFMixedMode(const CISA_INST *inst) {
 
   // Skip srnd
   if (opcode == ISA_SRND)
+    return;
+  // Skip mov -- verified in verifyInstructionMove()
+  if (opcode == ISA_MOV)
     return;
 
   if (!irBuilder->hasBFMixMode()) {

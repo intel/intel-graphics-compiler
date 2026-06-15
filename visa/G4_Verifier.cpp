@@ -1377,6 +1377,7 @@ void G4Verifier::verifyAccMov(G4_INST *inst) {
   }
 }
 
+
 //
 // Mixed mode instruction allows bfloat16 operands in the following cases:
 //   1. dst, src0, and src1 for 2 source instructions format not involving

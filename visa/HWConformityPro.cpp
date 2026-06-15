@@ -336,6 +336,7 @@ static bool allowTrueRegionOnSrc0(G4_INST *inst) {
   return !(src2->isImm() || src2->asSrcRegRegion()->isScalar());
 }
 
+
 // Alignment rule for down conversion from fp32 to fp16(bf/hf):
 //    1, If dst is packed(stride is 1) with subreg offset .0/.16, src must be
 //    packed(stride is 1) as well with subreg offset .0 only for fp32 and must

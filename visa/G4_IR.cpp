@@ -406,6 +406,17 @@ G4_Type G4_INST::getExecType() const {
     // srnd: src0 is either hf or f
     return srcs[0]->getType();
   }
+
+  if (opcode() == G4_mov) {
+    // special case: HF/BF <-> 8-bit
+    G4_Type dTy = dst->getType();
+    G4_Type sTy = srcs[0]->getType();
+    if (IS_FP16TYPE(dTy) && IS_BYTE_FLOAT(sTy))
+      return dTy;
+    if (IS_FP16TYPE(sTy) && IS_BYTE_FLOAT(dTy))
+      return sTy;
+  }
+
   for (unsigned i = 0, numSrc = getNumSrc(); i < numSrc; i++) {
     G4_Operand *src = getSrc(i);
     if (src) {
@@ -1082,6 +1093,10 @@ bool G4_INST::isFloatInIntegerPipe() const {
     if (dst->getType() == Type_BF && src->getType() == Type_F) {
       return true;
     }
+
+    // All mov instructions involving 8-bit float
+    if (IS_BYTE_FLOAT(src->getType()) || IS_BYTE_FLOAT(dst->getType()))
+      return true;
   }
 
   if (opcode() == G4_srnd) { // srnd only support hf->bf8 and f->hf
