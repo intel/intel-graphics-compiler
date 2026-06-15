@@ -776,7 +776,7 @@ public:
     m_args.push_back(m_pFloatZero); // ai (?)
     m_args.push_back(m_pFloatZero); // minLOD (?)
     preparePairedResource();
-    prepareImageBTI();
+    createGetBufferPtr();
     prepareSamplerValue();
     prepareZeroOffsets();
     Type *types[] = {
@@ -872,7 +872,7 @@ public:
     m_args.push_back(CoordY);
     m_args.push_back(CoordZ);
     m_args.push_back(m_pIntZero); // LOD
-    prepareImageBTI();
+    createGetBufferPtr();
     prepareZeroOffsets();
     Type *types[] = {m_pCallInst->getType(), m_pIntType, m_args[4]->getType()};
     replaceGenISACallInst(GenISAIntrinsic::GenISA_ldmcsptr, types);
@@ -919,7 +919,7 @@ public:
     m_args.push_back(CoordY);
     m_args.push_back(CoordZ);
     m_args.push_back(m_pIntZero); // LOD
-    prepareImageBTI();
+    createGetBufferPtr();
     prepareZeroOffsets();
     replaceGenISACallInst(GenISAIntrinsic::GenISA_ldmsptr, {m_pCallInst->getType(), m_args[7]->getType()});
   }
@@ -939,7 +939,7 @@ public:
     m_args.push_back(CoordY);
     m_args.push_back(CoordZ);
     m_args.push_back(m_pIntZero); // LOD
-    prepareImageBTI();
+    createGetBufferPtr();
     prepareZeroOffsets();
     replaceGenISACallInst(GenISAIntrinsic::GenISA_ldmsptr, {m_pCallInst->getType(), m_args[7]->getType()});
   }
