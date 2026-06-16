@@ -8,6 +8,12 @@
 ; COM: Due to different aa options naming
 ; REQUIRES: llvm-14-plus
 ;
+; COM: LLVM 22 removed the legacy pass-manager wrapper for the alias-analysis
+; COM: accuracy evaluator, so igc_opt's legacy PassManager no longer registers
+; COM: the '-aa-eval' argument this test relies on. Re-porting LLVM's new-PM
+; COM: evaluator into IGC is not worth it for a single test, so disable on LLVM 22+.
+; UNSUPPORTED: llvm-22-plus
+;
 ; RUN: igc_opt %s -S -aa-eval -igc-raytracing-address-space-alias-analysis -igc-aa-wrapper  \
 ; RUN: -disable-basic-aa -print-all-alias-modref-info -disable-output 2>&1 | FileCheck %s
 ; ------------------------------------------------
