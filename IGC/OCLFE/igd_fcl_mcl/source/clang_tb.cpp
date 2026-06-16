@@ -1199,7 +1199,7 @@ bool CClangTranslationBlock::TranslateElf(const STB_TranslateInputArgs *pInputAr
     }
 
     case EH_TYPE_OPENCL_OBJECTS:
-      if (strstr(pInputArgs->pOptions, "-x spir") == NULL) {
+      if (!pInputArgs->pOptions || strstr(pInputArgs->pOptions, "-x spir") == NULL) {
         exceptString = "Unsupported ELF container";
         return false;
       }
