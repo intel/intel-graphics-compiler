@@ -12,6 +12,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CodeGenContextWrapper.hpp"
 
 #include "common/LLVMWarningsPush.hpp"
+#include <llvm/ADT/SetVector.h>
 #include <llvm/Pass.h>
 #include <llvm/IR/DataLayout.h>
 #include <llvm/IR/Function.h>
@@ -25,6 +26,10 @@ class CodeGenContext;
 
 namespace IGC {
 class Legalization : public llvm::FunctionPass, public llvm::InstVisitor<Legalization> {
+public:
+  using InstructionsToRemoveSet = llvm::SmallSetVector<llvm::Instruction *, 32>;
+
+private:
   bool m_preserveNan;
 
   // With option "-finite-math-only", IGC ignores all nans but keeps isnan
@@ -37,7 +42,7 @@ class Legalization : public llvm::FunctionPass, public llvm::InstVisitor<Legaliz
   bool m_preserveNanCheck;
 
   const llvm::DataLayout *m_DL;
-  std::vector<llvm::Instruction *> m_instructionsToRemove;
+  InstructionsToRemoveSet m_instructionsToRemove;
   llvm::IRBuilder<> *m_builder = nullptr;
   IGC::CodeGenContext *m_ctx = nullptr;
 

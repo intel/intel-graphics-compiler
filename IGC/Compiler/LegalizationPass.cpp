@@ -251,7 +251,7 @@ void Legalization::visitUnaryInstruction(UnaryInstruction &I) {
   }
 
   I.replaceAllUsesWith(NewInst);
-  m_instructionsToRemove.push_back(&I);
+  m_instructionsToRemove.insert(&I);
 
   m_ctx->m_instrTypes.numInsts++;
 }
@@ -457,7 +457,7 @@ void Legalization::visitCallInst(llvm::CallInst &I) {
 //
 
 static bool LegalizeGVNBitCastPattern(IRBuilder<> *Builder, const DataLayout *DL, BitCastInst &I,
-                                      std::vector<Instruction *> *m_instructionsToRemove) {
+                                      Legalization::InstructionsToRemoveSet *m_instructionsToRemove) {
   IntegerType *DstTy = dyn_cast<IntegerType>(I.getType());
   VectorType *SrcTy = dyn_cast<VectorType>(I.getOperand(0)->getType());
   if (!DstTy || !SrcTy || DL->isLegalInteger(DstTy->getBitWidth())) {
@@ -606,7 +606,7 @@ static bool LegalizeGVNBitCastPattern(IRBuilder<> *Builder, const DataLayout *DL
         // BO, TI, and BI are dead.
         BI->replaceAllUsesWith(V);
         if (m_instructionsToRemove) {
-          m_instructionsToRemove->push_back(BI);
+          m_instructionsToRemove->insert(BI);
         }
 
         Value *tempUndefValue = UndefValue::get(TI->getType());
@@ -616,7 +616,7 @@ static bool LegalizeGVNBitCastPattern(IRBuilder<> *Builder, const DataLayout *DL
 
         TI->replaceAllUsesWith(tempUndefValue);
         if (m_instructionsToRemove) {
-          m_instructionsToRemove->push_back(TI);
+          m_instructionsToRemove->insert(TI);
         }
       } else {
         IGC_ASSERT(TI->getType()->getPrimitiveSizeInBits() == EltTy->getPrimitiveSizeInBits());
@@ -626,7 +626,7 @@ static bool LegalizeGVNBitCastPattern(IRBuilder<> *Builder, const DataLayout *DL
         // BO and TI are dead.
         TI->replaceAllUsesWith(V);
         if (m_instructionsToRemove) {
-          m_instructionsToRemove->push_back(TI);
+          m_instructionsToRemove->insert(TI);
         }
       }
 
@@ -638,7 +638,7 @@ static bool LegalizeGVNBitCastPattern(IRBuilder<> *Builder, const DataLayout *DL
 
         BO->replaceAllUsesWith(tempUndefValue);
         if (m_instructionsToRemove) {
-          m_instructionsToRemove->push_back(BO);
+          m_instructionsToRemove->insert(BO);
         }
       }
     } else if (match2(U, TI, BI, EEIs)) {
@@ -652,7 +652,7 @@ static bool LegalizeGVNBitCastPattern(IRBuilder<> *Builder, const DataLayout *DL
         }
         EEI->replaceAllUsesWith(V);
         if (m_instructionsToRemove) {
-          m_instructionsToRemove->push_back(EEI);
+          m_instructionsToRemove->insert(EEI);
         }
       }
     } else if (match3(U, BO, TI, Index)) {
@@ -676,7 +676,7 @@ static bool LegalizeGVNBitCastPattern(IRBuilder<> *Builder, const DataLayout *DL
       // BO and TI are dead
       TI->replaceAllUsesWith(EE);
       if (m_instructionsToRemove) {
-        m_instructionsToRemove->push_back(TI);
+        m_instructionsToRemove->insert(TI);
       }
       if (BO) {
         Value *tempUndefValue = UndefValue::get(BO->getType());
@@ -686,7 +686,7 @@ static bool LegalizeGVNBitCastPattern(IRBuilder<> *Builder, const DataLayout *DL
 
         BO->replaceAllUsesWith(tempUndefValue);
         if (m_instructionsToRemove) {
-          m_instructionsToRemove->push_back(BO);
+          m_instructionsToRemove->insert(BO);
         }
       }
     }
@@ -732,7 +732,7 @@ void Legalization::visitBitCastInst(llvm::BitCastInst &I) {
   // modified to use extracts.
   if (LegalizeGVNBitCastPattern(m_builder, m_DL, I, &m_instructionsToRemove)) {
     if (I.use_empty()) {
-      m_instructionsToRemove.push_back(&I);
+      m_instructionsToRemove.insert(&I);
     }
     return;
   }
@@ -1174,6 +1174,10 @@ void Legalization::visitFCmpInstUndorderedFlushNan(FCmpInst &FC) {
 }
 
 void Legalization::visitStoreInst(StoreInst &I) {
+  // skip stores that are scheduled to be removed
+  if (m_instructionsToRemove.contains(&I))
+    return;
+
   m_ctx->m_instrTypes.numInsts++;
   if (ConstantDataVector *vec = dyn_cast<ConstantDataVector>(I.getOperand(0))) {
     Value *newVec = UndefValue::get(vec->getType());
@@ -1229,7 +1233,7 @@ void Legalization::visitStoreInst(StoreInst &I) {
     Value *I8PtrOp = m_builder->CreateBitCast(I.getPointerOperand(), I8PtrTy);
 
     IGC::cloneStore(&I, newVal, I8PtrOp);
-    I.eraseFromParent();
+    m_instructionsToRemove.insert(&I);
   } else if (I.getOperand(0)->getType()->isIntegerTy()) {
     m_builder->SetInsertPoint(&I);
 
@@ -1560,7 +1564,7 @@ void Legalization::RecursivelyChangePointerType(Instruction *oldPtr, llvm::Type 
       cast->replaceAllUsesWith(newCast);
     }
     // We cannot delete any instructions as the visitor
-    m_instructionsToRemove.push_back(cast<Instruction>(*II));
+    m_instructionsToRemove.insert(cast<Instruction>(*II));
   }
 }
 
@@ -1618,7 +1622,7 @@ void Legalization::visitAlloca(AllocaInst &I) {
     // Remaining alloca of i1 need to be promoted
     AllocaInst *newAlloca = new AllocaInst(legalAllocaType, 0, "", IGCLLVM::insertPosition(&I));
     RecursivelyChangePointerType(&I, legalAllocaType, newAlloca);
-    m_instructionsToRemove.push_back(&I);
+    m_instructionsToRemove.insert(&I);
   }
 }
 
@@ -1862,14 +1866,14 @@ void Legalization::visitIntrinsicInst(llvm::IntrinsicInst &I) {
         IGC_ASSERT_MESSAGE(0, "Unexpected index when handling uadd_with_overflow");
       }
 
-      m_instructionsToRemove.push_back(extract);
+      m_instructionsToRemove.insert(extract);
     }
 
-    m_instructionsToRemove.push_back(&I);
+    m_instructionsToRemove.insert(&I);
     break;
   }
   case Intrinsic::assume:
-    m_instructionsToRemove.push_back(&I);
+    m_instructionsToRemove.insert(&I);
     break;
   case Intrinsic::floor:
   case Intrinsic::ceil:
