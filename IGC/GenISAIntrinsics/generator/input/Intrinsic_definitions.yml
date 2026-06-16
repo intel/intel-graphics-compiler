@@ -6941,6 +6941,7 @@ intrinsics:
                 comment: "immediate offset w"
         attributes:
             - !AttributeID "NoUnwind"
+            - !AttributeID "WillReturn"
         memory_effects:
             - !<MemoryRestriction>
                 memory_location: !MemoryLocation ArgMem
@@ -6990,6 +6991,7 @@ intrinsics:
                 comment: "immediate offset w"
         attributes:
             - !AttributeID "NoUnwind"
+            - !AttributeID "WillReturn"
         memory_effects:
             - !<MemoryRestriction>
                 memory_location: !MemoryLocation ArgMem
@@ -7075,6 +7077,7 @@ intrinsics:
                 comment: "byte offset in structure"
         attributes:
             - !AttributeID "NoUnwind"
+            - !AttributeID "WillReturn"
         memory_effects:
             - !<MemoryRestriction>
                 memory_location: !MemoryLocation ArgMem
@@ -8981,6 +8984,7 @@ intrinsics:
                 comment: "LOD"
         attributes:
             - !AttributeID "NoUnwind"
+            - !AttributeID "WillReturn"
         memory_effects:
             - !<MemoryRestriction>
                 memory_location: !MemoryLocation ArgMem
@@ -9014,6 +9018,7 @@ intrinsics:
                 comment: "Sample Idx"
         attributes:
             - !AttributeID "NoUnwind"
+            - !AttributeID "WillReturn"
         memory_effects:
             - !<MemoryRestriction>
                 memory_location: !MemoryLocation ArgMem
@@ -10045,6 +10050,7 @@ intrinsics:
                 comment: "input : address payload to be copied"
         attributes:
             - !AttributeID "NoUnwind"
+            - !AttributeID "WillReturn"
         memory_effects:
             - !<MemoryRestriction>
                 memory_location: !MemoryLocation ArgMem
@@ -12375,6 +12381,7 @@ intrinsics:
                 comment: "Boolean function"
         attributes:
             - !AttributeID "NoUnwind"
+            - !AttributeID "WillReturn"
         memory_effects:
             - !<MemoryRestriction>
                 memory_access: !MemoryAccessType NoModRef
@@ -12423,6 +12430,7 @@ intrinsics:
                 comment: "Immediate value. 0 means zero-extended, 1 means sign-extended."
         attributes:
             - !AttributeID "NoUnwind"
+            - !AttributeID "WillReturn"
         memory_effects:
             - !<MemoryRestriction>
                 memory_access: !MemoryAccessType NoModRef
@@ -12447,6 +12455,7 @@ intrinsics:
                 comment: "<2*N x i8> or <2*N-1 x i8>"
         attributes:
             - !AttributeID "NoUnwind"
+            - !AttributeID "WillReturn"
         memory_effects:
             - !<MemoryRestriction>
                 memory_access: !MemoryAccessType NoModRef
@@ -12493,6 +12502,7 @@ intrinsics:
                     \ in 32 bits"
         attributes:
             - !AttributeID "NoUnwind"
+            - !AttributeID "WillReturn"
         memory_effects:
             - !<MemoryRestriction>
                 memory_access: !MemoryAccessType NoModRef
@@ -12510,6 +12520,7 @@ intrinsics:
                 comment: "source - vector of 32 x i16"
         attributes:
             - !AttributeID "NoUnwind"
+            - !AttributeID "WillReturn"
         memory_effects:
             - !<MemoryRestriction>
                 memory_access: !MemoryAccessType NoModRef
@@ -12534,6 +12545,7 @@ intrinsics:
                 comment: "saturation (true: sat; false: no)"
         attributes:
             - !AttributeID "NoUnwind"
+            - !AttributeID "WillReturn"
         memory_effects:
             - !<MemoryRestriction>
                 memory_access: !MemoryAccessType NoModRef
@@ -12558,6 +12570,7 @@ intrinsics:
                 comment: "saturation (true: sat; false: no)"
         attributes:
             - !AttributeID "NoUnwind"
+            - !AttributeID "WillReturn"
         memory_effects:
             - !<MemoryRestriction>
                 memory_access: !MemoryAccessType NoModRef
@@ -12582,6 +12595,7 @@ intrinsics:
                 comment: "saturation (true: sat; false: no)"
         attributes:
             - !AttributeID "NoUnwind"
+            - !AttributeID "WillReturn"
         memory_effects:
             - !<MemoryRestriction>
                 memory_access: !MemoryAccessType NoModRef
@@ -12639,6 +12653,7 @@ intrinsics:
                     \ rounding1: RNE - round to nearest even"
         attributes:
             - !AttributeID "NoUnwind"
+            - !AttributeID "WillReturn"
         memory_effects:
             - !<MemoryRestriction>
                 memory_access: !MemoryAccessType NoModRef
@@ -12723,6 +12738,7 @@ intrinsics:
                 comment: "immediate value, enum that selects lut returned by this instruction"
         attributes:
             - !AttributeID "NoUnwind"
+            - !AttributeID "WillReturn"
         memory_effects:
             - !<MemoryRestriction>
                 memory_access: !MemoryAccessType NoModRef
@@ -12793,6 +12809,7 @@ intrinsics:
         attributes:
             - !AttributeID "Convergent"
             - !AttributeID "NoUnwind"
+            - !AttributeID "WillReturn"
         memory_effects:
             - !<MemoryRestriction>
                 memory_access: !MemoryAccessType NoModRef
@@ -12805,6 +12822,7 @@ intrinsics:
         arguments: []
         attributes:
             - !AttributeID "NoUnwind"
+            - !AttributeID "WillReturn"
         memory_effects:
             - !<MemoryRestriction>
                 memory_access: !MemoryAccessType NoModRef
@@ -12817,6 +12835,7 @@ intrinsics:
         arguments: []
         attributes:
             - !AttributeID "NoUnwind"
+            - !AttributeID "WillReturn"
         memory_effects:
             - !<MemoryRestriction>
                 memory_access: !MemoryAccessType NoModRef
@@ -12871,6 +12890,7 @@ intrinsics:
                 comment: "src0"
         attributes:
             - !AttributeID "NoUnwind"
+            - !AttributeID "WillReturn"
         memory_effects:
             - !<MemoryRestriction>
                 memory_access: !MemoryAccessType NoModRef
@@ -12887,6 +12907,7 @@ intrinsics:
                 comment: "src0"
         attributes:
             - !AttributeID "NoUnwind"
+            - !AttributeID "WillReturn"
         memory_effects:
             - !<MemoryRestriction>
                 memory_access: !MemoryAccessType NoModRef
@@ -12947,6 +12968,7 @@ intrinsics:
                 comment: "immediate offset w"
         attributes:
             - !AttributeID "NoUnwind"
+            - !AttributeID "WillReturn"
         memory_effects:
             - !<MemoryRestriction>
                 memory_access: !MemoryAccessType NoModRef
@@ -13023,6 +13045,7 @@ intrinsics:
                 comment: "unused immediate offset w"
         attributes:
             - !AttributeID "NoUnwind"
+            - !AttributeID "WillReturn"
         memory_effects:
             - !<MemoryRestriction>
                 memory_access: !MemoryAccessType NoModRef
@@ -13036,6 +13059,7 @@ intrinsics:
         arguments: []
         attributes:
             - !AttributeID "NoUnwind"
+            - !AttributeID "WillReturn"
         memory_effects:
             - !<MemoryRestriction>
                 memory_access: !MemoryAccessType NoModRef
@@ -13127,6 +13151,7 @@ intrinsics:
                 comment: ""
         attributes:
             - !AttributeID "NoUnwind"
+            - !AttributeID "WillReturn"
         memory_effects:
             - !<MemoryRestriction>
                 memory_access: !MemoryAccessType NoModRef
@@ -13147,6 +13172,7 @@ intrinsics:
                 comment: ""
         attributes:
             - !AttributeID "NoUnwind"
+            - !AttributeID "WillReturn"
         memory_effects:
             - !<MemoryRestriction>
                 memory_access: !MemoryAccessType NoModRef
@@ -13164,6 +13190,7 @@ intrinsics:
         attributes:
             - !AttributeID "Convergent"
             - !AttributeID "NoUnwind"
+            - !AttributeID "WillReturn"
         memory_effects:
             - !<MemoryRestriction>
                 memory_access: !MemoryAccessType NoModRef
