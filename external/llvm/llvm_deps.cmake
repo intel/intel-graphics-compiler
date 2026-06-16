@@ -37,7 +37,6 @@ include(llvm_utils)
 if(IGC_OPTION__LLVM_MODE STREQUAL "Prebuilds" AND WIN32)
   set(IGC_OPTION__CLANG_MODE "Prebuilds")
   set(IGC_OPTION__LLD_MODE "Prebuilds")
-  set(IGC_OPTION__SPIRV_TRANSLATOR_MODE "Prebuilds")
 endif()
 
 # Include Source hooks.
