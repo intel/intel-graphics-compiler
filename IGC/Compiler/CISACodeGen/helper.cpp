@@ -27,6 +27,7 @@ SPDX-License-Identifier: MIT
 #include "llvmWrapper/IR/Instructions.h"
 #include "llvmWrapper/IR/Intrinsics.h"
 #include "llvmWrapper/Support/Alignment.h"
+#include "llvmWrapper/Support/MathExtras.h"
 #include "GenISAIntrinsics/GenIntrinsicInst.h"
 #include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
 #include "common/secure_mem.h"
@@ -541,8 +542,23 @@ bool EvalConstantAddress(Value *address, unsigned int &offset, const llvm::DataL
         } else {
           Ty = GTI.getIndexedType();
           if (const ConstantInt *CI = dyn_cast<ConstantInt>(Idx)) {
-            offset += int_cast<int>(pDL->getTypeAllocSize(Ty) * CI->getSExtValue());
-
+            // The element offset is getTypeAllocSize(Ty) * index. A large (or negative) constant
+            // index can make this product exceed the range of the int offset accumulator. Such an
+            // address is not a foldable constant buffer offset, so bail out instead of asserting in
+            // int_cast<>.
+            const int64_t eltSize = static_cast<int64_t>(pDL->getTypeAllocSize(Ty).getFixedValue());
+            const int64_t idxVal = CI->getSExtValue();
+            int64_t eltOffset = 0;
+            if (IGCLLVM::MulOverflow(eltSize, idxVal, eltOffset))
+              return false;
+            // The running offset is always in [0, INT_MAX] (it is either 0 or a value this same
+            // check already accepted), so these bounds never overflow int64_t. Comparing eltOffset
+            // against them keeps the accumulated offset in [0, INT_MAX] without ever performing an
+            // addition that could overflow.
+            const int64_t curOffset = static_cast<int64_t>(offset);
+            if (eltOffset < -curOffset || eltOffset > std::numeric_limits<int>::max() - curOffset)
+              return false;
+            offset = static_cast<unsigned int>(curOffset + eltOffset);
           } else {
             return false;
           }
