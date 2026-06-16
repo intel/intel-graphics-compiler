@@ -15,7 +15,7 @@
 ; cases of fragment emission:
 ;
 ;   var1_reg   — both fragments in registers
-;   var2_const — both fragments are constants (DW_OP_implicit_value)
+;   var2_const — one integer and one float constant fragment (DW_OP_implicit_value)
 ;   var3_mix   — real in register, imag is constant
 ;   var4_undef — real killed by undef mid-range (DW_OP_bit_piece describing empty fragment)
 
@@ -69,10 +69,10 @@ entry:
   store float %imag_add, ptr addrspace(1) %out2, align 4, !dbg !16
   ; CHECK: {{.*}} ({{.*}}DW_OP_stack_value; DW_OP_bit_piece: size: 32 offset: 0 ; {{.*}}DW_OP_stack_value; DW_OP_bit_piece: size: 32 offset: 0 )
 
-  ; var2_const: both values are immediates
+  ; var2_const: two immediate fragments, integer real part and float imaginary part
   call void @llvm.dbg.value(metadata i32 0, metadata !12, metadata !DIExpression(DW_OP_LLVM_fragment, 0, 32)), !dbg !17
-  call void @llvm.dbg.value(metadata i32 1, metadata !12, metadata !DIExpression(DW_OP_LLVM_fragment, 32, 32)), !dbg !17
-  ; CHECK: {{.*}} (DW_OP_implicit_value {{.*}}; DW_OP_piece: 4; DW_OP_implicit_value {{.*}}; DW_OP_piece: 4)
+  call void @llvm.dbg.value(metadata float 2.500000e+00, metadata !12, metadata !DIExpression(DW_OP_LLVM_fragment, 32, 32)), !dbg !17
+  ; CHECK: {{.*}} (DW_OP_implicit_value 4 byte block: 0 0 0 0 ; DW_OP_piece: 4; DW_OP_implicit_value 4 byte block: 0 0 20 40 ; DW_OP_piece: 4)
 
   ; var3_mix: real in register (chained from var1_reg), imag is constant 0
   %real_mix = fadd float %real_add, 3.000000e+00

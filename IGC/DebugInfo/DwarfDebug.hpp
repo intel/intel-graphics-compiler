@@ -651,7 +651,7 @@ private:
     uint64_t end = 0;
     DbgVariable *dbgVar = nullptr;
     const DbgVarInstEntry *dbgEntry = nullptr;
-    const llvm::ConstantInt *imm = nullptr;
+    const llvm::Constant *imm = nullptr;
 
     VISAVariableLocation Loc;
     DbgDecoder::LiveIntervalsVISA visaRange;
@@ -670,7 +670,7 @@ private:
       FragmentInfo = {};
     }
 
-    void setImm(uint64_t s, uint64_t e, DbgVariable *var, const DbgVarInstEntry *entry, const llvm::ConstantInt *val,
+    void setImm(uint64_t s, uint64_t e, DbgVariable *var, const DbgVarInstEntry *entry, const llvm::Constant *val,
                 std::optional<llvm::DIExpression::FragmentInfo> fragInfo = {}) {
       type = Type::Imm;
       start = s;
@@ -712,7 +712,7 @@ private:
     // Immediate range can be extended, when current entry is an immediate and
     // new range extends beyond current end, for identical constant value
     // and same fragment.
-    bool canExtendImm(uint64_t newEnd, const llvm::ConstantInt *val,
+    bool canExtendImm(uint64_t newEnd, const llvm::Constant *val,
                       std::optional<llvm::DIExpression::FragmentInfo> fragInfo = {}) const {
       return isImm() && end < newEnd && imm == val && FragmentInfo == fragInfo;
     }

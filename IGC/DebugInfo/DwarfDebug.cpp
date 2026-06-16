@@ -1512,13 +1512,15 @@ void DwarfDebug::encodeImm(IGC::DotDebugLocEntry &dotLoc, const VarLocation &vl,
   write(dotLoc.loc, (uint8_t)op);
   write(dotLoc.loc, (const unsigned char *)&lebSize, 1);
 
-  if (isUnsignedDIType(this, vl.dbgVar->getType())) {
-    uint64_t constValue = vl.imm->getZExtValue();
-    write(dotLoc.loc, (unsigned char *)&constValue, lebSize);
+  uint64_t constValue = 0;
+  if (const auto *cfp = dyn_cast<ConstantFP>(vl.imm)) {
+    constValue = cfp->getValueAPF().bitcastToAPInt().getZExtValue();
+  } else if (isUnsignedDIType(this, vl.dbgVar->getType())) {
+    constValue = cast<ConstantInt>(vl.imm)->getZExtValue();
   } else {
-    int64_t constValue = vl.imm->getSExtValue();
-    write(dotLoc.loc, (unsigned char *)&constValue, lebSize);
+    constValue = cast<ConstantInt>(vl.imm)->getSExtValue();
   }
+  write(dotLoc.loc, (unsigned char *)&constValue, lebSize);
 
   TempDotDebugLocEntries.push_back(dotLoc);
   // For DWARF v4 offsets, account for start / end + u16 length + expr bytes
@@ -1692,7 +1694,9 @@ void DwarfDebug::encodeCompositeExprs(DbgVariable *RegVar, const std::vector<Var
 
         // DW_OP_implicit_value encodes raw bytes — signedness is described
         // by DW_AT_type in the variable's DIE.
-        uint64_t constValue = vl->imm->getZExtValue();
+        uint64_t constValue = isa<ConstantInt>(vl->imm)
+                                  ? cast<ConstantInt>(vl->imm)->getZExtValue()
+                                  : cast<ConstantFP>(vl->imm)->getValueAPF().bitcastToAPInt().getZExtValue();
         write(CompositeExpr, (unsigned char *)&constValue, writeBytes);
         appendPieceOp(CompositeExpr, Fragment.SizeInBits);
       } else {
@@ -1828,11 +1832,10 @@ void DwarfDebug::resolveRangesToVarLocations(DbgVariable *RegVar, const std::vec
 
     if (CurLoc.IsImmediate()) {
       const Constant *pConstVal = CurLoc.GetImmediate();
-      const ConstantInt *pConstInt = dyn_cast<ConstantInt>(pConstVal);
-      if (!pConstInt)
+      if (!isa<ConstantInt>(pConstVal) && !isa<ConstantFP>(pConstVal))
         continue;
 
-      if (prev.canExtendImm(endIp, pConstInt, FI)) {
+      if (prev.canExtendImm(endIp, pConstVal, FI)) {
         prev.extendTo(endIp);
         continue;
       }
@@ -1843,7 +1846,7 @@ void DwarfDebug::resolveRangesToVarLocations(DbgVariable *RegVar, const std::vec
       if (!prev.isEmpty())
         ResolvedLocations.push_back(prev);
 
-      prev.setImm(startIp, endIp, RegVar, dbgEntry, pConstInt, FI);
+      prev.setImm(startIp, endIp, RegVar, dbgEntry, pConstVal, FI);
     } else if (CurLoc.IsRegister()) {
       const auto regNum = CurLoc.GetRegister();
       const auto *VarInfo = m_pModule->getVarInfo(*VisaDbgInfo, regNum);
