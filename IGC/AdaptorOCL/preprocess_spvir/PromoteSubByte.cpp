@@ -21,6 +21,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/Module.h>
 #include <llvm/IR/Function.h>
 #include <llvm/IR/InlineAsm.h>
+#include "llvm/IR/InstIterator.h"
 #include <llvm/IR/Instructions.h>
 #include <llvm/Demangle/Demangle.h>
 #include <llvm/IR/Mangler.h>
@@ -73,6 +74,16 @@ PromoteSubByte::PromoteSubByte() : ModulePass(ID) { initializePromoteSubBytePass
 bool PromoteSubByte::runOnModule(Module &module) {
   changed = false;
   M = &module;
+
+  // Build a reverse-use map for ConstantData values of promotable types once
+  // per module. ConstantData does not maintain a use-list in LLVM 22+, so we
+  // cannot call users() on them later.
+  constantDataUsers.clear();
+  for (auto &F : module)
+    for (auto &I : llvm::instructions(F))
+      for (auto &Op : I.operands())
+        if (isa<ConstantData>(Op) && typeNeedsPromotion(Op->getType()))
+          constantDataUsers[Op].push_back(&I);
 
   // Promote functions
   for (auto &function : module.functions()) {
@@ -483,9 +494,19 @@ Value *PromoteSubByte::getOrCreatePromotedValue(Value *value) {
     if (!promotionChangedType && typesMatch) {
       value->replaceAllUsesWith(newValue);
     } else {
-      for (const auto &user : value->users()) {
-        if (!wasPromoted(user)) {
-          promotionQueue.push(user);
+      // For ConstantData, use the pre-built reverse-use map since ConstantData
+      // does not maintain a use-list in LLVM 22+.
+      auto usersIt = constantDataUsers.find(value);
+      if (isa<ConstantData>(value)) {
+        if (usersIt != constantDataUsers.end())
+          for (auto *I : usersIt->second)
+            if (!wasPromoted(I))
+              promotionQueue.push(I);
+      } else {
+        for (const auto &user : value->users()) {
+          if (!wasPromoted(user)) {
+            promotionQueue.push(user);
+          }
         }
       }
     }

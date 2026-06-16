@@ -72,6 +72,9 @@ private:
   // Promoting values
   llvm::DenseMap<llvm::Value *, llvm::Value *> promotedValuesCache;
   std::queue<llvm::Value *> promotionQueue;
+  // Reverse-use map for ConstantData values of promotable types, built once
+  // per module. ConstantData does not maintain a use-list in LLVM 22+.
+  llvm::DenseMap<llvm::Value *, llvm::SmallVector<llvm::Instruction *, 4>> constantDataUsers;
   bool wasPromoted(llvm::Value *value);
 
   template <typename Range> bool wasPromotedAnyOf(const Range &range) {
