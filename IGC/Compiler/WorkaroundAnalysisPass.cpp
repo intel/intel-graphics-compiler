@@ -250,8 +250,7 @@ void WorkaroundAnalysis::visitCallInst(llvm::CallInst &I) {
     case GenISAIntrinsic::GenISA_ldmsptr:
       ldmsOffsetWorkaournd(cast<LdMSIntrinsic>(&I));
       break;
-    case llvm::GenISAIntrinsic::GenISA_RenderTargetReadSampleFreq:
-    case llvm::GenISAIntrinsic::GenISA_RenderTargetReadSampleFreqPtr: {
+    case llvm::GenISAIntrinsic::GenISA_RenderTargetReadSampleFreq: {
       // Render target read should return 0 when the sample is outside primitive processed.
       //     R0.xyzw = RTRead(RTi, SampleIndex);
       //     R1 = 1<<SamplexIndex

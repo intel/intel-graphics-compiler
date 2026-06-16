@@ -2114,26 +2114,6 @@ intrinsics:
             - !<MemoryRestriction>
                 memory_access: !MemoryAccessType Ref
     - !<IntrinsicDefinition>
-        name: "GenISA_RenderTargetReadPtr"
-        comment: "Render Target Read for XE3P"
-        return_definition: !<ReturnDefinition>
-            type_definition: *v4_f32_
-            comment: "result"
-        arguments:
-            - !<ArgumentDefinition>
-                name: Arg0
-                type_definition: *p_any_
-                comment: "0: 64bit RTV heap base address"
-            - !<ArgumentDefinition>
-                name: Arg1
-                type_definition: *i32
-                comment: "1: render target slot"
-        attributes:
-            - !AttributeID "NoUnwind"
-        memory_effects:
-            - !<MemoryRestriction>
-                memory_access: !MemoryAccessType Ref
-    - !<IntrinsicDefinition>
         name: "GenISA_RenderTargetReadSampleFreq"
         comment: ""
         return_definition: !<ReturnDefinition>
@@ -2151,30 +2131,6 @@ intrinsics:
         attributes:
             - !AttributeID "NoUnwind"
             - !AttributeID "WillReturn"
-        memory_effects:
-            - !<MemoryRestriction>
-                memory_access: !MemoryAccessType Ref
-    - !<IntrinsicDefinition>
-        name: "GenISA_RenderTargetReadSampleFreqPtr"
-        comment: "Render Target Read with SampleFreq for XE3P"
-        return_definition: !<ReturnDefinition>
-            type_definition: *v4_f32_
-            comment: "result"
-        arguments:
-            - !<ArgumentDefinition>
-                name: Arg0
-                type_definition: *p_any_
-                comment: "0: 64bit RTV heap base address"
-            - !<ArgumentDefinition>
-                name: Arg1
-                type_definition: *i32
-                comment: "1: render target slot"
-            - !<ArgumentDefinition>
-                name: Arg2
-                type_definition: *i32
-                comment: "2: sample index"
-        attributes:
-            - !AttributeID "NoUnwind"
         memory_effects:
             - !<MemoryRestriction>
                 memory_access: !MemoryAccessType Ref

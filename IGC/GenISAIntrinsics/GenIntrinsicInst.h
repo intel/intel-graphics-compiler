@@ -224,28 +224,15 @@ protected:
   void setOperand(unsigned i, Value *v) { return GenIntrinsicInst::setOperand(i, v); }
 
 public:
-  Value *getAddress() const {
-    IGC_ASSERT(!isRegular());
-    return getOperand(0);
-  }
-  Value *getRTIndex() const { return getOperand(operandOffset(0)); }
-  bool hasSampleIndex() const {
-    switch (getIntrinsicID()) {
-    case GenISAIntrinsic::GenISA_RenderTargetReadSampleFreq:
-    case GenISAIntrinsic::GenISA_RenderTargetReadSampleFreqPtr:
-      return true;
-    default:
-      break;
-    }
-    return false;
-  }
+  Value *getRTIndex() const { return getOperand(0); }
+  bool hasSampleIndex() const { return getIntrinsicID() == GenISAIntrinsic::GenISA_RenderTargetReadSampleFreq; }
   Value *getSampleIndex() const {
     IGC_ASSERT(hasSampleIndex());
-    return getOperand(operandOffset(1));
+    return getOperand(1);
   }
   void setSampleIndex(Value *v) {
     IGC_ASSERT(hasSampleIndex());
-    setOperand(operandOffset(1), v);
+    setOperand(1, v);
   }
 
   bool isImmRTIndex() const { return isa<ConstantInt>(getRTIndex()); }
@@ -253,8 +240,6 @@ public:
 
   std::vector<Value *> getArgs() const {
     std::vector<Value *> v;
-    if (isRegular())
-      v.push_back(getOperand(0));
     v.push_back(getRTIndex());
     if (hasSampleIndex())
       v.push_back(getSampleIndex());
@@ -266,30 +251,12 @@ public:
     switch (I->getIntrinsicID()) {
     case GenISAIntrinsic::GenISA_RenderTargetRead:
     case GenISAIntrinsic::GenISA_RenderTargetReadSampleFreq:
-    case GenISAIntrinsic::GenISA_RenderTargetReadPtr:
-    case GenISAIntrinsic::GenISA_RenderTargetReadSampleFreqPtr:
       return true;
     default:
       return false;
     }
   }
   static bool classof(const Value *V) { return isa<GenIntrinsicInst>(V) && classof(cast<GenIntrinsicInst>(V)); }
-
-private:
-  bool isRegular() const {
-    switch (getIntrinsicID()) {
-    case GenISAIntrinsic::GenISA_RenderTargetRead:
-    case GenISAIntrinsic::GenISA_RenderTargetReadSampleFreq:
-      return true;
-    case GenISAIntrinsic::GenISA_RenderTargetReadPtr:
-    case GenISAIntrinsic::GenISA_RenderTargetReadSampleFreqPtr:
-    default:
-      break;
-    }
-    return false;
-  }
-
-  unsigned operandOffset(unsigned offset) const { return offset + (!isRegular() ? 1 : 0); }
 };
 
 class SamplerGatherIntrinsic : public GenIntrinsicInst {
