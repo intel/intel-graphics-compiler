@@ -942,6 +942,9 @@ void HWConformityPro::fixRawMovRegRegionRestrictions(G4_BB *bb) {
       // Skip further check as UQ/UD support full regions.
       if (intType == Type_UQ || intType == Type_UD)
         continue;
+    } else if (IS_BYTE_FLOAT(dstType)) {
+      inst->getDst()->setType(builder, Type_UB);
+      inst->getSrc(0)->asSrcRegRegion()->setType(builder, Type_UB);
     }
 
     // Fix register region restrictions for int pipeline:
