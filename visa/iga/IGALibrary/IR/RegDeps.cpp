@@ -834,6 +834,15 @@ bool DepSetBuilder::DpasMacroBuilder::nextIsNotMacroCandidate(
   if (next_inst.getMaskCtrl() != dpas.getMaskCtrl())
     return true;
 
+  // DPAS with different predicates cannot be in the same macro
+  if (dpas.hasPredication() != next_inst.hasPredication())
+    return true;
+  if (dpas.hasPredication() &&
+      (dpas.getPredication().function != next_inst.getPredication().function ||
+       dpas.getPredication().inverse != next_inst.getPredication().inverse ||
+       dpas.getFlagReg() != next_inst.getFlagReg()))
+    return true;
+
   // DPAS with different execution mask cannot be in the same macro
   if (next_inst.getChannelOffset() != dpas.getChannelOffset())
     return true;

@@ -209,7 +209,7 @@ static bool hasSamePredicator(const G4_INST *inst1, const G4_INST *inst2) {
     return false;
   }
 
-  if (inst1->isWriteEnableInst() || inst2->isWriteEnableInst()) {
+  if (inst1->isWriteEnableInst() ^ inst2->isWriteEnableInst()) {
     return false;
   }
 
@@ -6796,6 +6796,10 @@ bool G4_BB_SB::isLastDpas(SBNode *curNode, SBNode *nextNode,
 
   //  Same execution mask across all instructions
   if (!hasSameExecMask(curInst, nextInst)) {
+    return true;
+  }
+
+  if (!hasSamePredicator(curInst, nextInst)) {
     return true;
   }
 
