@@ -43,6 +43,5 @@ declare spir_func void @_Z42__spirv_CooperativeMatrixStoreCheckedINTELPU3AS1fiiP
 
 !igc.functions = !{!0}
 !0 = !{ptr @test, !1}
-!1 = !{!2, !3}
+!1 = !{!2}
 !2 = !{!"function_type", i32 0}
-!3 = !{!"sub_group_size", i32 16}

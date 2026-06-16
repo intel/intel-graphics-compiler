@@ -59,15 +59,13 @@ SIMDMode IGCLivenessAnalysisBase::bestGuessSIMDSize(Function *F, GenXFunctionGro
 
   // if we can find metadata with stipulations how we should compile we use it
   if (F && MDUtils->findFunctionsInfoItem(F) != MDUtils->end_FunctionsInfo()) {
-    IGC::IGCMD::FunctionInfoMetaDataHandle funcInfoMD = MDUtils->getFunctionsInfoItem(F);
-    unsigned SimdSize = funcInfoMD->getSubGroupSize()->getSIMDSize();
+    unsigned SimdSize = IGC::getSIMDSize(CGCtx->getModuleMetaData(), F);
     if (FGA) {
       llvm::Function *Kernel = F;
       auto *FG = FGA->getGroup(F);
       Kernel = FG ? FG->getHead() : nullptr;
       if (Kernel && MDUtils->findFunctionsInfoItem(F) != MDUtils->end_FunctionsInfo()) {
-        funcInfoMD = MDUtils->getFunctionsInfoItem(Kernel);
-        SimdSize = funcInfoMD->getSubGroupSize()->getSIMDSize();
+        SimdSize = IGC::getSIMDSize(CGCtx->getModuleMetaData(), Kernel);
       }
     }
     if (SimdSize) {

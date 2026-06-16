@@ -73,6 +73,5 @@ declare spir_func <4 x i16> @__builtin_IB_subgroup_block_read_ap_transform_u16_m
 !igc.functions = !{!0}
 
 !0 = !{ptr @test_lsc2DBlock_addressPayload, !1}
-!1 = !{!2, !3}
+!1 = !{!2}
 !2 = !{!"function_type", i32 0}
-!3 = !{!"sub_group_size", i32 16}

@@ -219,7 +219,7 @@ private:
   std::string getKernelArgAddressQualifier(const FunctionMetaData &funcMD, uint argIndex) const;
   std::string getKernelArgAccessQualifier(const FunctionMetaData &funcMD, uint argIndex) const;
   // Helper function to get SIMD size specified in intel_reqd_sub_group_size attribute
-  uint32_t getReqdSubGroupSize(llvm::Function &F, IGC::IGCMD::MetaDataUtils *MDUtils) const;
+  uint32_t getReqdSubGroupSize(llvm::Function &F) const;
   // Effective required SIMD size with its origin.
   struct SIMDSizeRequirement {
     uint32_t Size = 0;
@@ -228,7 +228,7 @@ private:
   };
   // Returns the effective required SIMD size, considering both intel_reqd_sub_group_size
   // attribute and forcedSIMDSize from compute shader info.
-  SIMDSizeRequirement getEffectiveRequiredSIMDSize(llvm::Function &F, IGC::IGCMD::MetaDataUtils *MDUtils) const;
+  SIMDSizeRequirement getEffectiveRequiredSIMDSize(llvm::Function &F) const;
   uint32_t getMaxPressure(llvm::Function &F) const;
   uint32_t getMaxPressureForSIMD(llvm::Function &F, unsigned SimdLanes) const;
   bool isUnusedArg(KernelArg &arg) const;

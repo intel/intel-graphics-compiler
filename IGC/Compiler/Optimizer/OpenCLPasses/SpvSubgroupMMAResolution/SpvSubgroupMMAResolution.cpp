@@ -462,7 +462,7 @@ bool SpvSubgroupMMAResolution::validateScaleType(const Value *Scale, StringRef P
 bool SpvSubgroupMMAResolution::isDoubleSubgroup(CallInst &CI) {
   if (!m_Ctx->platform.hasExecSize16DPAS())
     return false;
-  return IGC::getSIMDSize(getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils(), CI.getParent()->getParent()) == 32;
+  return IGC::getSIMDSize(getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData(), CI.getParent()->getParent()) == 32;
 }
 
 SpvSubgroupMMAResolution::SupportedTable *SpvSubgroupMMAResolution::getSupportedTable() {

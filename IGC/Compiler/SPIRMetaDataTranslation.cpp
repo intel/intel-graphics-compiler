@@ -229,7 +229,6 @@ bool SPIRMetaDataTranslation::runOnModule(Module &M) {
     // Handling Sub Group Size
     SPIRMD::SubGroupDimensionsMetaDataHandle reqdSubGroupSize = spirKernel->getRequiredSubGroupSize();
     if (reqdSubGroupSize->hasValue()) {
-      IGCMD::SubGroupSizeMetaDataHandle sgHandle = fHandle->getSubGroupSize();
       int simd_size = reqdSubGroupSize->getSIMDSize();
       if (!((simd_size == 8) || (simd_size == 16) || (simd_size == 32))) {
         getAnalysis<CodeGenContextWrapper>().getCodeGenContext()->EmitError("Unsupported required sub group size",
@@ -242,7 +241,7 @@ bool SPIRMetaDataTranslation::runOnModule(Module &M) {
             spirKernel->getFunction());
         return false;
       }
-      sgHandle->setSIMDSize(simd_size);
+      funcMD.requiredSubGroupSize = simd_size;
     }
 
     // Handling Sub Group Size

@@ -80,6 +80,12 @@ attributes #2 = { nofree nosync nounwind readnone speculatable willreturn }
 
 !igc.functions = !{!0}
 !0 = !{void ()* @quux, !1}
-!1 = !{!2, !3}
+!1 = !{!2}
 !2 = !{!"function_type", i32 0}
-!3 = !{!"sub_group_size", i32 8}
+
+!3 = !{!"requiredSubGroupSize", i32 8}
+!4 = !{!"FuncMDValue[0]", !3}
+!5 = !{!"FuncMDMap[0]", void ()* @quux}
+!6 = !{!"FuncMD", !5, !4}
+!7 = !{!"ModuleMD", !6}
+!IGCMetadata = !{!7}

@@ -41,6 +41,5 @@ declare void @__builtin_IB_subgroup_block_write_flat_cacheopts_u32_wi8_m8k16v1(i
 
 !igc.functions = !{!0}
 !0 = !{void (i64, <2 x i32>, <8 x i32>)* @test_lsc, !1}
-!1 = !{!2, !3}
+!1 = !{!2}
 !2 = !{!"function_type", i32 0}
-!3 = !{!"sub_group_size", i32 16}

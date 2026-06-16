@@ -103,6 +103,12 @@ declare <8 x float> @llvm.genx.GenISA.sub.group.dpas.v8f32.v8f32.v8i16.v8i32(<8 
 !igc.functions = !{!0}
 
 !0 = distinct !{ptr @test_same_order, !1}
-!1 = distinct !{!2, !3}
+!1 = distinct !{!2}
 !2 = distinct !{!"function_type", i32 0}
-!3 = distinct !{!"sub_group_size", i32 16}
+
+!4 = distinct !{!"requiredSubGroupSize", i32 16}
+!5 = distinct !{!"FuncMDValue[0]", !4}
+!6 = distinct !{!"FuncMDMap[0]", ptr @test_same_order}
+!7 = distinct !{!"FuncMD", !6, !5}
+!8 = distinct !{!"ModuleMD", !7}
+!IGCMetadata = !{!8}

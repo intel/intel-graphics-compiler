@@ -22,6 +22,5 @@ define spir_kernel void @widget() {
 !igc.functions = !{!0}
 
 !0 = !{ptr @widget, !1}
-!1 = !{!2, !3}
+!1 = !{!2}
 !2 = !{!"function_type", i32 0}
-!3 = !{!"sub_group_size", i32 16}

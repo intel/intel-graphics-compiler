@@ -195,6 +195,11 @@ attributes #3 = { nocallback nofree nosync nounwind readnone speculatable willre
 !igc.functions = !{!0}
 
 !0 = !{void (i16)* @snork, !1}
-!1 = !{!2, !29}
+!1 = !{!2}
 !2 = !{!"function_type", i32 0}
-!29 = !{!"sub_group_size", i32 16}
+!30 = !{!"requiredSubGroupSize", i32 16}
+!31 = !{!"FuncMDValue[0]", !30}
+!32 = !{!"FuncMDMap[0]", void (i16)* @snork}
+!33 = !{!"FuncMD", !32, !31}
+!34 = !{!"ModuleMD", !33}
+!IGCMetadata = !{!34}

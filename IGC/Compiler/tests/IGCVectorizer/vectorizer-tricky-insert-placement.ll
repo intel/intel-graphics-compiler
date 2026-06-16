@@ -251,6 +251,11 @@ attributes #3 = { nocallback nofree nosync nounwind readnone speculatable willre
 !igc.functions = !{!0}
 
 !0 = distinct !{void (half addrspace(1)*, half addrspace(1)*, half addrspace(1)*, float addrspace(1)*, i32 addrspace(1)*, i32 addrspace(1)*, i32 addrspace(1)*, i32 addrspace(1)*, half addrspace(1)*, <8 x i32>, <8 x i32>, i16, i16, i16, i8 addrspace(2)*, i8*, i32, i32, i32, i32, i32, i32, i32, i32, i32)* bitcast (void (i16)* @triton_tem_fused_0 to void (half addrspace(1)*, half addrspace(1)*, half addrspace(1)*, float addrspace(1)*, i32 addrspace(1)*, i32 addrspace(1)*, i32 addrspace(1)*, i32 addrspace(1)*, half addrspace(1)*, <8 x i32>, <8 x i32>, i16, i16, i16, i8 addrspace(2)*, i8*, i32, i32, i32, i32, i32, i32, i32, i32, i32)*), !1}
-!1 = distinct !{!2, !3}
-!2 = distinct !{!"sub_group_size", i32 16}
+!1 = distinct !{!3}
 !3 = !{!"function_type", i32 0}
+!4 = !{!"requiredSubGroupSize", i32 16}
+!5 = !{!"FuncMDMap[0]", void (i16)* @triton_tem_fused_0}
+!6 = !{!"FuncMDValue[0]", !4}
+!7 = !{!"FuncMD", !5, !6}
+!8 = !{!"ModuleMD", !7}
+!IGCMetadata = !{!8}

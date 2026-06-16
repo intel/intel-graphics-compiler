@@ -340,9 +340,8 @@ declare spir_func void @_Z33__spirv_CooperativeMatrixStoreKHRPU3AS1iPU3AS140__sp
 !igc.functions = !{!0, !4, !5, !6, !7, !8, !9, !10}
 
 !0 = !{void (i8 addrspace(1)*, i64, float addrspace(1)*)* @mad_builtin_bfloat16_1x64x16, !1}
-!1 = !{!2, !3}
+!1 = !{!2}
 !2 = !{!"function_type", i32 0}
-!3 = !{!"sub_group_size", i32 16}
 !4 = !{void (i8 addrspace(1)*, i64, float addrspace(1)*)* @mad_builtin_bfloat16_1x64x32, !1}
 !5 = !{void (i8 addrspace(1)*, i64, float addrspace(1)*)* @mad_builtin_bfloat16, !1}
 !6 = !{void (i8 addrspace(1)*, i64, float addrspace(1)*)* @mad_builtin_bfloat16_32x64x16, !1}

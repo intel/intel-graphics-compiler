@@ -282,10 +282,9 @@ StatusPrivArr2Reg LowerGEPForPrivMem::CheckIfAllocaPromotable(llvm::AllocaInst *
   allowedAllocaSizeInBytes = (uint32_t)(allowedAllocaSizeInBytes * grfRatio);
 
     if (m_ctx->type == ShaderType::OPENCL_SHADER) {
-      FunctionInfoMetaDataHandle funcInfoMD = pMdUtils->getFunctionsInfoItem(m_pFunc);
-      SubGroupSizeMetaDataHandle subGroupSize = funcInfoMD->getSubGroupSize();
-      if (subGroupSize->hasValue()) {
-        SIMDSize = std::max((uint32_t)subGroupSize->getSIMDSize(), SIMDSize);
+      int subGroupSize = IGC::getSIMDSize(m_ctx->getModuleMetaData(), m_pFunc);
+      if (subGroupSize != 0) {
+        SIMDSize = std::max((uint32_t)subGroupSize, SIMDSize);
       }
 
       allowedAllocaSizeInBytes = (allowedAllocaSizeInBytes * 8) / SIMDSize;

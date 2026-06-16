@@ -22,6 +22,11 @@ declare i16 @llvm.genx.GenISA.simdLaneId()
 
 
 !1 = !{void ()* @test, !2}
-!2 = !{!3, !4}
+!2 = !{!3}
 !3 = !{!"function_type", i32 0}
-!4 = !{!"sub_group_size", i32 16}
+!5 = !{!"requiredSubGroupSize", i32 16}
+!6 = !{!"FuncMDValue[0]", !5}
+!7 = !{!"FuncMDMap[0]", void ()* @test}
+!8 = !{!"FuncMD", !7, !6}
+!9 = !{!"ModuleMD", !8}
+!IGCMetadata = !{!9}

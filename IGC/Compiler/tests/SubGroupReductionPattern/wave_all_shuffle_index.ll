@@ -54,6 +54,11 @@ declare i32 @get_i32()
 !igc.functions = !{!0}
 
 !0 = !{i32 ()* @wave_all_add_i32, !100}
-!100 = !{!101, !102}
+!100 = !{!101}
 !101 = !{!"function_type", i32 0}
-!102 = !{!"sub_group_size", i32 32}
+!103 = !{!"requiredSubGroupSize", i32 32}
+!104 = !{!"FuncMDValue[0]", !103}
+!105 = !{!"FuncMDMap[0]", i32 ()* @wave_all_add_i32}
+!106 = !{!"FuncMD", !105, !104}
+!107 = !{!"ModuleMD", !106}
+!IGCMetadata = !{!107}

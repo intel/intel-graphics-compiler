@@ -69,13 +69,12 @@ declare <8 x i16> @llvm.genx.GenISA.LSC2DBlockRead.v8i16(i64, i32, i32, i32, i32
 !IGCMetadata = !{!16}
 
 !3 = !{void (i16 addrspace(1)*, i64, i32, i32, i32, i32, i32, <8 x i32>, <8 x i32>, <3 x i32>, i16, i16, i16, i32)* @test_emu_transpose, !4}
-!4 = !{!5, !15}
+!4 = !{!5}
 !5 = !{!"function_type", i32 0}
-!15 = !{!"sub_group_size", i32 16}
 !16 = !{!"ModuleMD", !131}
 !131 = !{!"FuncMD", !132, !133}
 !132 = !{!"FuncMDMap[0]", void (i16 addrspace(1)*, i64, i32, i32, i32, i32, i32, <8 x i32>, <8 x i32>, <3 x i32>, i16, i16, i16, i32)* @test_emu_transpose}
-!133 = !{!"FuncMDValue[0]", !166, !237, !260}
+!133 = !{!"FuncMDValue[0]", !166, !237, !260, !261}
 !166 = !{!"resAllocMD", !167, !168, !169, !170, !188}
 !167 = !{!"uavsNumType", i32 0}
 !168 = !{!"srvsNumType", i32 0}
@@ -123,3 +122,4 @@ declare <8 x i16> @llvm.genx.GenISA.LSC2DBlockRead.v8i16(i64, i32, i32, i32, i32
 !258 = !{!"explicitArgNum", i32 0}
 !259 = !{!"implicitArgInfoListVec[6]", !257, !258}
 !260 = !{!"implicitArgInfoList", !246, !248, !250, !252, !254, !256, !259}
+!261 = !{!"requiredSubGroupSize", i32 16}

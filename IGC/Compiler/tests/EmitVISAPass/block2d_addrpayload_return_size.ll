@@ -56,7 +56,7 @@ declare i32 @llvm.genx.GenISA.LSC2DBlockReadAddrPayload.p0i32(i32*, i32, i32, i3
 !0 = !{!"ModuleMD", !1}
 !1 = !{!"FuncMD", !2, !3}
 !2 = !{!"FuncMDMap[0]", void (i64, i32, i32, i32)* @test}
-!3 = !{!"FuncMDValue[0]", !4, !17}
+!3 = !{!"FuncMDValue[0]", !4, !17, !25}
 !4 = !{!"resAllocMD", !5}
 !5 = !{!"argAllocMDList", !6, !10, !11, !14, !15, !16}
 !6 = !{!"argAllocMDListVec[0]", !7, !8, !9}
@@ -75,6 +75,6 @@ declare i32 @llvm.genx.GenISA.LSC2DBlockReadAddrPayload.p0i32(i32*, i32, i32, i3
 !19 = !{!"m_OpenCLArgTypeQualifiersVec[1]", !""}
 !20 = !{!"m_OpenCLArgTypeQualifiersVec[2]", !""}
 !21 = !{void (i64, i32, i32, i32)* @test, !22}
-!22 = !{!23, !24}
+!22 = !{!23}
 !23 = !{!"function_type", i32 0}
-!24 = !{!"sub_group_size", i32 16}
+!25 = !{!"requiredSubGroupSize", i32 16}

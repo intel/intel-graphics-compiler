@@ -247,6 +247,11 @@ attributes #8 = { nounwind readnone willreturn }
 !igc.functions = !{!0}
 
 !0 = distinct !{void (i16)* @quux, !1}
-!1 = distinct !{!2, !29}
+!1 = distinct !{!2}
 !2 = distinct !{!"function_type", i32 0}
-!29 = distinct !{!"sub_group_size", i32 16}
+!30 = !{!"requiredSubGroupSize", i32 16}
+!31 = !{!"FuncMDValue[0]", !30}
+!32 = !{!"FuncMDMap[0]", void (i16)* @quux}
+!33 = !{!"FuncMD", !32, !31}
+!34 = !{!"ModuleMD", !33}
+!IGCMetadata = !{!34}

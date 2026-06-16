@@ -50,6 +50,5 @@ declare spir_func target("spirv.JointMatrixINTEL", float, 32, 64, 3, 3, 2) @_Z27
 
 !igc.functions = !{!0}
 !0 = !{void (i64, float)* @test, !1}
-!1 = !{!2, !3}
+!1 = !{!2}
 !2 = !{!"function_type", i32 0}
-!3 = !{!"sub_group_size", i32 16}

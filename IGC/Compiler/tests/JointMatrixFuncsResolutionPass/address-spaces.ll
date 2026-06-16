@@ -192,6 +192,5 @@ declare void @__builtin_spirv_OpJointMatrixStoreINTELacc_32x64_f32_p1i8_acc_32x6
 !0 = !{ptr @test_generic, !1}
 !4 = !{ptr @test_global, !1}
 !5 = !{ptr @test_local, !1}
-!1 = !{!2, !3}
+!1 = !{!2}
 !2 = !{!"function_type", i32 0}
-!3 = !{!"sub_group_size", i32 16}

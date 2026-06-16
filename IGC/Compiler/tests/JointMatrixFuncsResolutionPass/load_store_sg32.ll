@@ -35,6 +35,12 @@ declare spir_func void @_Z29__spirv_JointMatrixStoreINTELPU3AS1fPU3AS143__spirv_
 
 !igc.functions = !{!0}
 !0 = !{ptr @test, !1}
-!1 = !{!2, !3}
+!1 = !{!2}
 !2 = !{!"function_type", i32 0}
-!3 = !{!"sub_group_size", i32 32}
+
+!3 = !{!"requiredSubGroupSize", i32 32}
+!4 = !{!"FuncMDValue[0]", !3}
+!5 = !{!"FuncMDMap[0]", ptr @test}
+!6 = !{!"FuncMD", !5, !4}
+!7 = !{!"ModuleMD", !6}
+!IGCMetadata = !{!7}

@@ -9,6 +9,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/Optimizer/OpenCLPasses/LSCFuncs/LSCFuncsResolution.hpp"
 #include "Compiler/Optimizer/OCLBIUtils.h"
 #include "Compiler/IGCPassSupport.h"
+#include "Compiler/CISACodeGen/helper.h"
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/Pass.h>
 #include <llvm/IR/InstVisitor.h>
@@ -256,9 +257,8 @@ bool LSCFuncsResolution::runOnFunction(Function &F) {
     break;
   }
 
-  auto m_pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
-  auto funcInfoMD = m_pMdUtils->getFunctionsInfoItem(&F);
-  int actualSimdSize = funcInfoMD->getSubGroupSize()->getSIMDSize();
+  auto modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
+  int actualSimdSize = IGC::getSIMDSize(modMD, &F);
   isHalfSimdMode = defaultSimdSize != actualSimdSize; // SIMD8 on DG2, SIMD16 on PVC
 
   m_changed = false;
@@ -796,9 +796,8 @@ static StringRef consume_number(StringRef name, const std::string &prefix, uint3
 
 Instruction *LSCFuncsResolution::CreateSubGroup2DBlockOperation(llvm::CallInst &CI, llvm::StringRef funcName,
                                                                 bool isRead) {
-  IGC::IGCMD::MetaDataUtils *pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
-  IGC::IGCMD::FunctionInfoMetaDataHandle funcInfoMD = pMdUtils->getFunctionsInfoItem(CI.getParent()->getParent());
-  unsigned int subGrpSize = funcInfoMD->getSubGroupSize()->getSIMDSize();
+  ModuleMetaData *modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
+  unsigned int subGrpSize = IGC::getSIMDSize(modMD, CI.getParent()->getParent());
 
   funcName.consume_front("_flat");
   bool isPrefetch = funcName.consume_front("_prefetch");

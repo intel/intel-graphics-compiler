@@ -258,8 +258,6 @@ bool CodeAssumption::IsSGIdUniform(MetaDataUtils *pMDU, ModuleMetaData *modMD, F
     return false;
   }
 
-  FunctionInfoMetaDataHandle funcInfoMD = pMDU->getFunctionsInfoItem(F);
-
   // WO (Walk Order): it is a triple (d0, d1, d2), where each d0/d1/d2 are 0|1|2.
   // This WO indicates that the work-items are dispatched along d0 first, then d1,
   // at last d2. For example, given work group size (8, 2, 1). With WO(0,1,2),
@@ -292,9 +290,8 @@ bool CodeAssumption::IsSGIdUniform(MetaDataUtils *pMDU, ModuleMetaData *modMD, F
   if (funcMD != modMD->FuncMD.end()) {
     const ThreadGroupSizeMD &threadGroupSize = funcMD->second.threadGroupSize;
     if (threadGroupSize.dim0 || threadGroupSize.dim1 || threadGroupSize.dim2) {
-      SubGroupSizeMetaDataHandle subGroupSize = funcInfoMD->getSubGroupSize();
-      if (subGroupSize->hasValue()) {
-        uint32_t simdSize = (uint32_t)subGroupSize->getSIMDSize();
+      if (funcMD->second.requiredSubGroupSize != 0) {
+        uint32_t simdSize = (uint32_t)funcMD->second.requiredSubGroupSize;
 
         uint32_t X = (uint32_t)threadGroupSize.dim0;
         uint32_t Y = (uint32_t)threadGroupSize.dim1;

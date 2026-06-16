@@ -110,6 +110,12 @@ uselistorder <8 x float> (<8 x float>, <8 x i16>, <8 x i32>, i32, i32, i32, i32,
 
 !igc.functions = !{!0}
 !0 = !{void ()* @quux, !1}
-!1 = !{!2, !3}
+!1 = !{!2}
 !2 = !{!"function_type", i32 0}
-!3 = !{!"sub_group_size", i32 16}
+
+!3 = !{!"requiredSubGroupSize", i32 16}
+!4 = !{!"FuncMDValue[0]", !3}
+!5 = !{!"FuncMDMap[0]", void ()* @quux}
+!6 = !{!"FuncMD", !5, !4}
+!7 = !{!"ModuleMD", !6}
+!IGCMetadata = !{!7}

@@ -88,6 +88,11 @@ declare <8 x i32> @__builtin_IB_subgroup_block_read_flat_cacheopts_transpose_u32
 !igc.functions = !{!0}
 
 !0 = !{void (i64, <2 x i32>)* @test_lsc, !1}
-!1 = !{!2, !3}
+!1 = !{!2}
 !2 = !{!"function_type", i32 0}
-!3 = !{!"sub_group_size", i32 16}
+!4 = !{!"requiredSubGroupSize", i32 16}
+!5 = !{!"FuncMDValue[0]", !4}
+!6 = !{!"FuncMDMap[0]", void (i64, <2 x i32>)* @test_lsc}
+!7 = !{!"FuncMD", !6, !5}
+!8 = !{!"ModuleMD", !7}
+!IGCMetadata = !{!8}

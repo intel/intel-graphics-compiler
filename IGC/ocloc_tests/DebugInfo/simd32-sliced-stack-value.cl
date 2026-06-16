@@ -32,7 +32,7 @@ kernel void test(global int* in, global int* out) {
   int mul = in[gid] * 42;
   out[gid] = mul;
 }
-// CHECK-LLVM-DAG: !{{[0-9]+}} = !{!"sub_group_size", i32 32}
+// CHECK-LLVM-DAG: !{{[0-9]+}} = !{!"requiredSubGroupSize", i32 32}
 //
 // CHECK-LLVM-DAG: ![[GID_DI_VAR_MD]] = !DILocalVariable(name: "gid", {{.+}}, type: ![[SIZE_T_DI_TY_MD:[0-9]+]])
 // CHECK-LLVM-DAG: ![[SIZE_T_DI_TY_MD]] = !DIDerivedType(tag: DW_TAG_typedef, name: "size_t", file: !{{[0-9]+}}, baseType: !{{[0-9]+}})

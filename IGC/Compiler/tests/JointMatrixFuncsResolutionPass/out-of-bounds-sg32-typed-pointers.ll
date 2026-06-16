@@ -47,12 +47,12 @@ define spir_kernel void @matrix_load_checked(i8 addrspace(1)* %src, float addrsp
 !igc.functions = !{!0}
 !IGCMetadata = !{!4}
 !0 = !{void (i8 addrspace(1)*, float addrspace(1)*)* @matrix_load_checked, !1}
-!1 = !{!2, !3}
+!1 = !{!2}
 !2 = !{!"function_type", i32 0}
-!3 = !{!"sub_group_size", i32 32}
 !4 = !{!"ModuleMD", !5}
 !5 = !{!"FuncMD", !6, !7}
 !6 = distinct !{!"FuncMDMap[0]", void (i8 addrspace(1)*, float addrspace(1)*)* @matrix_load_checked}
-!7 = !{!"FuncMDValue[0]", !8, !9}
+!7 = !{!"FuncMDValue[0]", !8, !9, !10}
 !8 = !{!"funcArgs"}
 !9 = !{!"functionType", !"KernelFunction"}
+!10 = !{!"requiredSubGroupSize", i32 32}

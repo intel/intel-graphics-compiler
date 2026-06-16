@@ -380,6 +380,7 @@ enum class ShaderTypeMD
         std::vector<ArgInfoMD> argInfoList{};
         std::vector<ArgInfoMD> implicitArgInfoList{};
         FunctionTypeMD functionType = KernelFunction;
+        int requiredSubGroupSize = 0; // 0 = not specified (intel_reqd_sub_group_size / SIMD size)
         RayTraceShaderInfo rtInfo{};
         ResourceAllocMD resAllocMD{};
         std::vector<unsigned> maxByteOffsets{};

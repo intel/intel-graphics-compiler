@@ -68,9 +68,8 @@ attributes #0 = { convergent noinline nounwind optnone }
 !IGCMetadata = !{!7}
 
 !3 = !{void (%opencl.image2d_t.write_only addrspace(1)*, <2 x i32>, i32)* @test_bwrite, !4}
-!4 = !{!5, !6}
+!4 = !{!5}
 !5 = !{!"function_type", i32 0}
-!6 = !{!"sub_group_size", i32 16}
 !7 = !{!"ModuleMD", !8}
 !8 = !{!"FuncMD", !9, !10}
 !9 = !{!"FuncMDMap[0]", void (%opencl.image2d_t.write_only addrspace(1)*, <2 x i32>, i32)* @test_bwrite}

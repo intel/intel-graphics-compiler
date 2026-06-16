@@ -163,11 +163,11 @@ void LowerInvokeSIMD::fixUniformParamsAndSIMDSize(const llvm::Function *ESIMDFun
 
       int DeducedSIMDSize = (int)llvm::cast<IGCLLVM::FixedVectorType>(*ESIMDParamType)->getNumElements();
       IGC_ASSERT(DeducedSIMDSize == 8 || DeducedSIMDSize == 16 || DeducedSIMDSize == 32);
-      auto MdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
-      if (MdUtils->findFunctionsInfoItem(NewCall.getFunction()) == MdUtils->end_FunctionsInfo())
+      auto modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
+      auto FuncMDItr = modMD->FuncMD.find(NewCall.getFunction());
+      if (FuncMDItr == modMD->FuncMD.end())
         continue;
-      auto FuncInfoMD = MdUtils->getFunctionsInfoItem(NewCall.getFunction());
-      int CurrentSIMDSize = FuncInfoMD->getSubGroupSize()->getSIMDSize();
+      int CurrentSIMDSize = FuncMDItr->second.requiredSubGroupSize;
 
       if (CurrentSIMDSize != 0 && CurrentSIMDSize != DeducedSIMDSize) {
         auto Ctx = static_cast<OpenCLProgramContext *>(getAnalysis<CodeGenContextWrapper>().getCodeGenContext());
@@ -175,7 +175,7 @@ void LowerInvokeSIMD::fixUniformParamsAndSIMDSize(const llvm::Function *ESIMDFun
         return;
       }
 
-      FuncInfoMD->getSubGroupSize()->setSIMDSize(DeducedSIMDSize);
+      FuncMDItr->second.requiredSubGroupSize = DeducedSIMDSize;
     }
   }
 }

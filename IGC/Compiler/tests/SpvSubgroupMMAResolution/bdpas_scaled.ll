@@ -212,10 +212,17 @@ entry:
 
 !igc.functions = !{!0, !4}
 !0 = !{void (<8 x i16>, <8 x i32>, <8 x float>, <8 x i16>, <8 x half>, i8, i8, <2 x i8>, <2 x i8>, i32)* @test, !1}
-!1 = !{!2, !3}
+!1 = !{!2}
 !2 = !{!"function_type", i32 0}
-!3 = !{!"sub_group_size", i32 16}
 
 !4 = !{void (<8 x i16>, <8 x i32>, <8 x float>, i8, i8)* @test_simd32, !5}
-!5 = !{!2, !6}
-!6 = !{!"sub_group_size", i32 32}
+!5 = !{!2}
+!7 = !{!"requiredSubGroupSize", i32 16}
+!8 = !{!"requiredSubGroupSize", i32 32}
+!9 = !{!"FuncMDMap[0]", void (<8 x i16>, <8 x i32>, <8 x float>, <8 x i16>, <8 x half>, i8, i8, <2 x i8>, <2 x i8>, i32)* @test}
+!10 = !{!"FuncMDValue[0]", !7}
+!11 = !{!"FuncMDMap[1]", void (<8 x i16>, <8 x i32>, <8 x float>, i8, i8)* @test_simd32}
+!12 = !{!"FuncMDValue[1]", !8}
+!13 = !{!"FuncMD", !9, !10, !11, !12}
+!14 = !{!"ModuleMD", !13}
+!IGCMetadata = !{!14}

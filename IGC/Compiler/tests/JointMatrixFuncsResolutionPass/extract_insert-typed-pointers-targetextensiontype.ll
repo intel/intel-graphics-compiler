@@ -70,6 +70,5 @@ declare spir_func target("spirv.JointMatrixINTEL", float, 16, 16, 3, 3, 2) @_Z81
 ; CHECK: [[MD]] = !{i1 true}
 !igc.functions = !{!0}
 !0 = !{void (float addrspace(1)*, i64, float addrspace(1)*, i64)* @test, !1}
-!1 = !{!2, !3}
+!1 = !{!2}
 !2 = !{!"function_type", i32 0}
-!3 = !{!"sub_group_size", i32 16}

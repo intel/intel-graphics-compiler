@@ -48,6 +48,5 @@ attributes #0 = { convergent noinline nounwind optnone }
 !igc.functions = !{!3}
 
 !3 = !{void (%"class.sycl::_V1::ext::oneapi::bfloat16" addrspace(3)*, %"class.sycl::_V1::ext::oneapi::bfloat16" addrspace(1)*)* @test_bfloat16, !4}
-!4 = !{!5, !6}
+!4 = !{!5}
 !5 = !{!"function_type", i32 0}
-!6 = !{!"sub_group_size", i32 8}

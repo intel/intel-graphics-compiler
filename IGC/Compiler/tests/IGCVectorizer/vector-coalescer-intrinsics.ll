@@ -126,6 +126,12 @@ attributes #7 = { nounwind willreturn memory(readwrite) }
 !igc.functions = !{!0}
 
 !0 = !{ptr @foo, !1}
-!1 = !{!2, !29}
+!1 = !{!2}
 !2 = !{!"function_type", i32 0}
-!29 = !{!"sub_group_size", i32 16}
+
+!3 = !{!"requiredSubGroupSize", i32 16}
+!4 = !{!"FuncMDValue[0]", !3}
+!5 = !{!"FuncMDMap[0]", ptr @foo}
+!6 = !{!"FuncMD", !5, !4}
+!7 = !{!"ModuleMD", !6}
+!IGCMetadata = !{!7}

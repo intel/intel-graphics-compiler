@@ -471,24 +471,21 @@ std::string COpenCLKernel::getKernelArgAccessQualifier(const FunctionMetaData &f
   return result;
 }
 
-uint32_t COpenCLKernel::getReqdSubGroupSize(llvm::Function &F, MetaDataUtils *MDUtils) const {
-  FunctionInfoMetaDataHandle funcInfoMD = MDUtils->getFunctionsInfoItem(&F);
-  int simd_size = funcInfoMD->getSubGroupSize()->getSIMDSize();
+uint32_t COpenCLKernel::getReqdSubGroupSize(llvm::Function &F) const {
+  int simd_size = IGC::getSIMDSize(m_Context->getModuleMetaData(), &F);
 
   // Finds the kernel and get the group simd size from the kernel
   if (m_FGA) {
     llvm::Function *Kernel = &F;
     auto FG = m_FGA->getGroup(&F);
     Kernel = FG->getHead();
-    funcInfoMD = MDUtils->getFunctionsInfoItem(Kernel);
-    simd_size = funcInfoMD->getSubGroupSize()->getSIMDSize();
+    simd_size = IGC::getSIMDSize(m_Context->getModuleMetaData(), Kernel);
   }
   return simd_size;
 }
 
-COpenCLKernel::SIMDSizeRequirement COpenCLKernel::getEffectiveRequiredSIMDSize(llvm::Function &F,
-                                                                               MetaDataUtils *MDUtils) const {
-  if (uint32_t size = getReqdSubGroupSize(F, MDUtils))
+COpenCLKernel::SIMDSizeRequirement COpenCLKernel::getEffectiveRequiredSIMDSize(llvm::Function &F) const {
+  if (uint32_t size = getReqdSubGroupSize(F))
     return {size, "intel_reqd_sub_group_size"};
   if (uint32_t size = m_Context->getModuleMetaData()->csInfo.forcedSIMDSize)
     return {size, "forced SIMD size"};
@@ -1754,9 +1751,9 @@ void COpenCLKernel::FillZEKernelArgInfo() {
 
 void COpenCLKernel::FillZEUserAttributes(IGC::IGCMD::FunctionInfoMetaDataHandle &funcInfoMD) {
   // intel_reqd_sub_group_size
-  SubGroupSizeMetaDataHandle subGroupSize = funcInfoMD->getSubGroupSize();
-  if (subGroupSize->hasValue()) {
-    m_kernelInfo.m_zeUserAttributes.intel_reqd_sub_group_size = subGroupSize->getSIMDSize();
+  int subGroupSize = IGC::getSIMDSize(m_Context->getModuleMetaData(), entry);
+  if (subGroupSize != 0) {
+    m_kernelInfo.m_zeUserAttributes.intel_reqd_sub_group_size = subGroupSize;
   }
 
   // intel_reqd_workgroup_walk_order
@@ -1859,9 +1856,9 @@ void COpenCLKernel::FillKernel(SIMDMode simdMode) {
     m_kernelInfo.m_executionEnvironment.FixedWorkgroupSize[2] = (*dims)[2];
   }
 
-  SubGroupSizeMetaDataHandle subGroupSize = funcInfoMD->getSubGroupSize();
-  if (subGroupSize->hasValue()) {
-    m_kernelInfo.m_executionEnvironment.CompiledSIMDSize = subGroupSize->getSIMDSize();
+  int subGroupSize = IGC::getSIMDSize(m_Context->getModuleMetaData(), entry);
+  if (subGroupSize != 0) {
+    m_kernelInfo.m_executionEnvironment.CompiledSIMDSize = subGroupSize;
   }
 
   auto *ModMD = m_Context->getModuleMetaData();
@@ -2422,8 +2419,7 @@ void CodeGen(OpenCLProgramContext *ctx) {
           // OOB access on the next try by reducing spill size and thus SS usage.
           ctx->m_retryManager->kernelSet.insert(shader->entry->getName().str());
         } else {
-          auto funcInfoMD = ctx->getMetaDataUtils()->getFunctionsInfoItem(pFunc);
-          int reqdSubGroupSize = funcInfoMD->getSubGroupSize()->getSIMDSize();
+          int reqdSubGroupSize = IGC::getSIMDSize(ctx->getModuleMetaData(), pFunc);
           if (ctx->m_ForceSIMDRPELimit != 0 && !reqdSubGroupSize) {
             ctx->m_ForceSIMDRPELimit = 0;
             ctx->m_retryManager->kernelSet.insert(shader->entry->getName().str());
@@ -2470,8 +2466,7 @@ bool COpenCLKernel::hasReadWriteImage(llvm::Function &F) {
 }
 
 bool COpenCLKernel::CompileSIMDSize(SIMDMode simdMode, EmitPass &EP, llvm::Function &F) {
-  MetaDataUtils *pMdUtils = EP.getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
-  auto simdReq = getEffectiveRequiredSIMDSize(F, pMdUtils);
+  auto simdReq = getEffectiveRequiredSIMDSize(F);
 
   if (!CompileSIMDSizeInCommon(simdMode)) {
     if (simdReq && simdReq.Size == numLanes(simdMode)) {
@@ -2601,8 +2596,7 @@ SIMDStatus COpenCLKernel::checkSIMDCompileCondsForMin16(SIMDMode simdMode, EmitP
   }
 
   MetaDataUtils *pMdUtils = EP.getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
-  FunctionInfoMetaDataHandle funcInfoMD = pMdUtils->getFunctionsInfoItem(&F);
-  auto simdReq = getEffectiveRequiredSIMDSize(F, pMdUtils);
+  auto simdReq = getEffectiveRequiredSIMDSize(F);
   uint32_t requiredSimdSize = simdReq.Size;
 
   // there is a requirement for specific compilation size, we can't abort on simd32
@@ -2622,7 +2616,7 @@ SIMDStatus COpenCLKernel::checkSIMDCompileCondsForMin16(SIMDMode simdMode, EmitP
   if (requiredSimdSize == 0) {
     if (maxPressure >= pCtx->m_ForceSIMDRPELimit && simdMode != SIMDMode::SIMD16) {
       pCtx->SetSIMDInfo(SIMD_SKIP_HW, simdMode, ShaderDispatchMode::NOT_APPLICABLE);
-      funcInfoMD->getSubGroupSize()->setSIMDSize(16);
+      pCtx->getModuleMetaData()->FuncMD[&F].requiredSubGroupSize = 16;
       return SIMDStatus::SIMD_FUNC_FAIL;
     }
     if (hasSubroutine && simdMode != SIMDMode::SIMD16) {
@@ -2750,10 +2744,8 @@ SIMDStatus COpenCLKernel::checkSIMDCompileConds(SIMDMode simdMode, EmitPass &EP,
   }
 
   // Next we check if there is a required sub group size specified
-  MetaDataUtils *pMdUtils = EP.getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
   ModuleMetaData *modMD = pCtx->getModuleMetaData();
-  FunctionInfoMetaDataHandle funcInfoMD = pMdUtils->getFunctionsInfoItem(&F);
-  auto simdReq = getEffectiveRequiredSIMDSize(F, pMdUtils);
+  auto simdReq = getEffectiveRequiredSIMDSize(F);
   uint32_t requiredSimdSize = simdReq.Size;
   uint32_t maxPressure = getMaxPressure(F);
 
@@ -2811,7 +2803,7 @@ SIMDStatus COpenCLKernel::checkSIMDCompileConds(SIMDMode simdMode, EmitPass &EP,
 
     if (maxPressure >= pCtx->m_ForceSIMDRPELimit && simdMode != SIMDMode::SIMD8) {
       pCtx->SetSIMDInfo(SIMD_SKIP_HW, simdMode, ShaderDispatchMode::NOT_APPLICABLE);
-      funcInfoMD->getSubGroupSize()->setSIMDSize(8);
+      pCtx->getModuleMetaData()->FuncMD[&F].requiredSubGroupSize = 8;
       return SIMDStatus::SIMD_FUNC_FAIL;
     }
 

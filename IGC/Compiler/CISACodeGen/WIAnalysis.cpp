@@ -2175,7 +2175,6 @@ void WIAnalysisRunner::checkLocalIdUniform(Function *F, bool &IsLxUniform, bool 
     return;
   }
 
-  FunctionInfoMetaDataHandle funcInfoMD = m_pMdUtils->getFunctionsInfoItem(F);
   ModuleMetaData *modMD = m_CGCtx->getModuleMetaData();
   auto funcMD = modMD->FuncMD.find(F);
 
@@ -2197,9 +2196,8 @@ void WIAnalysisRunner::checkLocalIdUniform(Function *F, bool &IsLxUniform, bool 
   IGC_ASSERT(WO_0 == 0 && WO_1 == 1 && WO_2 == 2);
 
   uint32_t simdSize = 0;
-  SubGroupSizeMetaDataHandle subGroupSize = funcInfoMD->getSubGroupSize();
-  if (subGroupSize->hasValue()) {
-    simdSize = (uint32_t)subGroupSize->getSIMDSize();
+  if (funcMD->second.requiredSubGroupSize != 0) {
+    simdSize = (uint32_t)funcMD->second.requiredSubGroupSize;
   }
   simdSize = simdSize >= 8 ? simdSize : 32;
 

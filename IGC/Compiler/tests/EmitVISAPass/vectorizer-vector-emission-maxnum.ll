@@ -60,13 +60,12 @@ attributes #0 = { nofree nosync nounwind readnone speculatable willreturn }
 !IGCMetadata = !{!4}
 
 !0 = distinct !{void (half addrspace(1)*, half addrspace(1)*, half addrspace(1)*, float, i8 addrspace(1)*, float addrspace(1)*, <8 x i32>, <8 x i32>, i8*, i32, i32, i32, i32, i32)* @_attn_fwd, !1}
-!1 = distinct !{!2, !3}
+!1 = distinct !{!2}
 !2 = distinct !{!"function_type", i32 0}
-!3 = distinct !{!"sub_group_size", i32 16}
 !4 = distinct !{!"ModuleMD", !5}
 !5 = distinct !{!"FuncMD", !6, !7}
 !6 = distinct !{!"FuncMDMap[0]", void (half addrspace(1)*, half addrspace(1)*, half addrspace(1)*, float, i8 addrspace(1)*, float addrspace(1)*, <8 x i32>, <8 x i32>, i8*, i32, i32, i32, i32, i32)* @_attn_fwd}
-!7 = distinct !{!"FuncMDValue[0]", !8}
+!7 = distinct !{!"FuncMDValue[0]", !8, !27}
 !8 = distinct !{!"resAllocMD", !9}
 !9 = distinct !{!"argAllocMDList", !10, !11, !12, !13, !14, !15, !16, !17, !18, !19, !20, !21, !22, !23}
 !10 = !{!"argAllocMDListVec[0]", !24, !25, !26}
@@ -86,5 +85,6 @@ attributes #0 = { nofree nosync nounwind readnone speculatable willreturn }
 !24 = !{!"type", i32 0}
 !25 = !{!"extensionType", i32 -1}
 !26 = !{!"indexType", i32 -1}
+!27 = distinct !{!"requiredSubGroupSize", i32 16}
 
 

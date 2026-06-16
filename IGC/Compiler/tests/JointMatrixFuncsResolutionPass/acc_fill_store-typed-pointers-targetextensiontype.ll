@@ -54,6 +54,5 @@ declare spir_func void @_Z29__spirv_JointMatrixStoreINTELPU3AS1fPU3AS143__spirv_
 
 !igc.functions = !{!0}
 !0 = !{void (float addrspace(1)*, float addrspace(1)*, float addrspace(1)*)* @test_fill_store, !1}
-!1 = !{!2, !3}
+!1 = !{!2}
 !2 = !{!"function_type", i32 0}
-!3 = !{!"sub_group_size", i32 16}

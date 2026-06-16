@@ -51,7 +51,7 @@ public:
   };
 
   bool checkDependencyAndTryToEliminate(VecArr &Slice, unsigned WindowSize);
-  unsigned checkSIMD(llvm::Function &F, IGCMD::MetaDataUtils *MDUtils);
+  unsigned checkSIMD(llvm::Function &F, IGC::ModuleMetaData *modMD);
   void initializeLogFile(Function &F, string Name);
   void writeLog();
 
@@ -72,7 +72,6 @@ public:
   llvm::raw_string_ostream OutputLogStream = raw_string_ostream(LogStr);
 
   CodeGenContext *CGCtx = nullptr;
-  IGCMD::MetaDataUtils *MDUtils = nullptr;
   WIAnalysis *WI = nullptr;
   Module *M = nullptr;
   unsigned SIMDSize = 0;

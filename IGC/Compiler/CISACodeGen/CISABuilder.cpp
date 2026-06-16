@@ -6246,8 +6246,7 @@ void CEncoder::SetKernelRetryState(CodeGenContext *context, vISA::FINALIZER_INFO
     context->m_retryManager->kernelSkip.insert(m_program->entry->getName().str());
   }
   else if (!isStackCallProgram) {
-    auto funcInfoMD = context->getMetaDataUtils()->getFunctionsInfoItem(m_program->entry);
-    int subGrpSize = funcInfoMD->getSubGroupSize()->getSIMDSize();
+    int subGrpSize = IGC::getSIMDSize(context->getModuleMetaData(), m_program->entry);
     bool noRetry =
         (subGrpSize > 0 || jitInfo->stats.spillMemUsed < 1000) && context->m_instrTypes.mayHaveIndirectOperands;
 

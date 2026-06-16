@@ -146,6 +146,5 @@ declare void @llvm.lifetime.end.p0i8(i64 immarg, i8* nocapture)
 
 !igc.functions = !{!0}
 !0 = !{void (i64, i8 addrspace(1)*, i8*)* @test, !1}
-!1 = !{!2, !3}
+!1 = !{!2}
 !2 = !{!"function_type", i32 0}
-!3 = !{!"sub_group_size", i32 16}

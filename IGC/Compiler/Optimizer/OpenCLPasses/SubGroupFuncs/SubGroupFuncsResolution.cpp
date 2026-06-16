@@ -248,13 +248,7 @@ void SubGroupFuncsResolution::BTIHelper(llvm::CallInst &CI) {
   }
 }
 
-int32_t SubGroupFuncsResolution::GetSIMDSize(Function *F) {
-  auto *pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
-  auto funcInfoMD = pMdUtils->getFunctionsInfoItem(F);
-  int32_t simdSize = funcInfoMD->getSubGroupSize()->getSIMDSize();
-
-  return simdSize;
-}
+int32_t SubGroupFuncsResolution::GetSIMDSize(Function *F) { return IGC::getSIMDSize(m_pCtx->getModuleMetaData(), F); }
 
 void SubGroupFuncsResolution::CheckSIMDSize(Instruction &I, StringRef msg) {
   int32_t simdSize = GetSIMDSize(I.getParent()->getParent());
@@ -966,9 +960,7 @@ void SubGroupFuncsResolution::CheckMediaBlockInstError(llvm::GenIntrinsicInst *i
   uint blockHeight = (uint)cast<ConstantInt>(inst->getOperand(5))->getZExtValue();
 
   // Code to extract subgroup size
-  IGC::IGCMD::MetaDataUtils *pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
-  IGC::IGCMD::FunctionInfoMetaDataHandle funcInfoMD = pMdUtils->getFunctionsInfoItem(F);
-  unsigned int subGrpSize = funcInfoMD->getSubGroupSize()->getSIMDSize();
+  unsigned int subGrpSize = IGC::getSIMDSize(m_pCtx->getModuleMetaData(), F);
 
   auto *pFunc = inst->getCalledFunction();
   auto *pDataType = isRead ? pFunc->getReturnType() : inst->getOperand(6)->getType();

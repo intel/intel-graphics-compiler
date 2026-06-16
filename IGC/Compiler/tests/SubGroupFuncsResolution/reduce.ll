@@ -62,6 +62,5 @@ attributes #0 = { convergent noinline nounwind optnone }
 !igc.functions = !{!3}
 
 !3 = !{void (i32 addrspace(1)*, i32)* @test_reduce, !4}
-!4 = !{!5, !6}
+!4 = !{!5}
 !5 = !{!"function_type", i32 0}
-!6 = !{!"sub_group_size", i32 16}

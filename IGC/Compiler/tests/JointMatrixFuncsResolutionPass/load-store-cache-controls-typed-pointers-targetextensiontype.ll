@@ -104,9 +104,8 @@ ret void
 
 !igc.functions = !{!0}
 !0 = !{void (float addrspace(1)*, float addrspace(1)*, float addrspace(1)*, float addrspace(1)*, float addrspace(1)*, float addrspace(1)*, float addrspace(1)*, float addrspace(1)*)* @test_jm, !1}
-!1 = !{!2, !3}
+!1 = !{!2}
 !2 = !{!"function_type", i32 0}
-!3 = !{!"sub_group_size", i32 16}
 
 !IGCMetadata = !{!50}
 !50 = !{!"ModuleMD", !51}

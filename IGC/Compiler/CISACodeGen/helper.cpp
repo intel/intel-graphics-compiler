@@ -2205,9 +2205,10 @@ Function *getUniqueEntryFunc(const IGCMD::MetaDataUtils *pM, IGC::ModuleMetaData
   return entryFunc;
 }
 
-int getSIMDSize(const IGCMD::MetaDataUtils *M, llvm::Function *F) {
-  if (M->findFunctionsInfoItem(F) != M->end_FunctionsInfo()) {
-    return M->getFunctionsInfoItem(F)->getSubGroupSize()->getSIMDSize();
+int getSIMDSize(const IGC::ModuleMetaData *modMD, llvm::Function *F) {
+  auto it = modMD->FuncMD.find(F);
+  if (it != modMD->FuncMD.end()) {
+    return it->second.requiredSubGroupSize;
   }
   return 0;
 }
@@ -2304,9 +2305,7 @@ void KernelSIMDSizeResolver::forceKernelSIMDSize(Function *F, int32_t SIMDSize) 
   Function *EntryFunction = getEntryFunction(F);
   if (EntryFunction) // if can find entry function
   {
-    IGCMD::FunctionInfoMetaDataHandle FuncInfoMD = m_mdUtils->getFunctionsInfoItem(EntryFunction);
-    IGCMD::SubGroupSizeMetaDataHandle SubGroupSize = FuncInfoMD->getSubGroupSize();
-    SubGroupSize->setSIMDSize(SIMDSize);
+    m_Ctx->getModuleMetaData()->FuncMD[EntryFunction].requiredSubGroupSize = SIMDSize;
   }
 }
 
@@ -2328,24 +2327,20 @@ int32_t KernelSIMDSizeResolver::resolve(Function *F) {
   Function *EntryFunction = getEntryFunction(F);
   if (EntryFunction) // if can find entry function
   {
-    IGCMD::FunctionInfoMetaDataHandle FuncInfoMD = m_mdUtils->getFunctionsInfoItem(EntryFunction);
-    IGCMD::SubGroupSizeMetaDataHandle SubGroupSize = FuncInfoMD->getSubGroupSize();
-    if (SubGroupSize->hasValue()) {
-      int32_t KernelSIMDSize = SubGroupSize->getSIMDSize();
-      if (KernelSIMDSize != 0) {
-        if (m_isValid(KernelSIMDSize))
-          return KernelSIMDSize;
-        // if set on entry function level and not ok for this platform exit with error
-        std::string Msg = "Sub group size " + std::to_string(KernelSIMDSize) +
-                          " is forced by attribute but not supported by " + m_featureName.str() + " on this platform.";
-        m_Ctx->EmitError(Msg.c_str(), NoIRContext);
-        return 0;
-      }
+    int32_t KernelSIMDSize = IGC::getSIMDSize(m_Ctx->getModuleMetaData(), EntryFunction);
+    if (KernelSIMDSize != 0) {
+      if (m_isValid(KernelSIMDSize))
+        return KernelSIMDSize;
+      // if set on entry function level and not ok for this platform exit with error
+      std::string Msg = "Sub group size " + std::to_string(KernelSIMDSize) +
+                        " is forced by attribute but not supported by " + m_featureName.str() + " on this platform.";
+      m_Ctx->EmitError(Msg.c_str(), NoIRContext);
+      return 0;
     }
     // if not set on entry function level, define ourselves
     int32_t SIMDSize = m_defineDefault();
     // and set to entry level function
-    SubGroupSize->setSIMDSize(SIMDSize);
+    m_Ctx->getModuleMetaData()->FuncMD[EntryFunction].requiredSubGroupSize = SIMDSize;
     return SIMDSize;
   }
 

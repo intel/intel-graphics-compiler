@@ -766,7 +766,7 @@ bool BIImport::runOnModule(Module &M) {
     // we will have all the information for the variant index in this pass, and will have to move it
     // to later passes. For now, since we only require subgroup size, this should suffice.
     else if (IGCLLVM::starts_with(funcName, "__intel_indirect_call")) {
-      MetaDataUtils *pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
+      ModuleMetaData *modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
       for (auto user : F.users()) {
         if (CallInst *CI = dyn_cast<CallInst>(&*user)) {
           unsigned tableIndex = 0;
@@ -784,8 +784,7 @@ bool BIImport::runOnModule(Module &M) {
             // Get the caller function
             Function *callerF = CI->getParent()->getParent();
             // Assume the caller has explicit subgroup size set, otherwise we cannot determine which variant to use
-            FunctionInfoMetaDataHandle funcInfoMD = pMdUtils->getFunctionsInfoItem(callerF);
-            unsigned subgroup_size = (unsigned)funcInfoMD->getSubGroupSize()->getSIMDSize();
+            unsigned subgroup_size = (unsigned)IGC::getSIMDSize(modMD, callerF);
             IGC_ASSERT(subgroup_size != 0);
 
             // Parse each variant string in the table, stop at the first one that matches subgroup_size

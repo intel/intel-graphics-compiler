@@ -38,9 +38,8 @@ declare spir_func void @_Z29__spirv_JointMatrixStoreINTELPU3AS1iPU3AS140__spirv_
 !igc.functions = !{!0}
 !IGCMetadata = !{!4}
 !0 = !{void (i8 addrspace(1)*, i64, i32 addrspace(1)*)* @load_store_legacy_error, !1}
-!1 = !{!2, !3}
+!1 = !{!2}
 !2 = !{!"function_type", i32 0}
-!3 = !{!"sub_group_size", i32 16}
 !4 = !{!"ModuleMD", !5}
 !5 = !{!"FuncMD", !6, !7}
 !6 = distinct !{!"FuncMDMap[0]", void (i8 addrspace(1)*, i64, i32 addrspace(1)*)* @load_store_legacy_error}

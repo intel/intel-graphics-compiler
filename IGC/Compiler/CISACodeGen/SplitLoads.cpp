@@ -893,12 +893,7 @@ bool Config::initialize(Function *F, CodeGenContext *inCGC, IGCLivenessAnalysisR
     defaultSimd = 32;
     break;
   }
-  actualSimd = 0;
-  IGC::IGCMD::MetaDataUtils *MDUtils = CGC->getMetaDataUtils();
-  if (MDUtils && MDUtils->findFunctionsInfoItem(F) != MDUtils->end_FunctionsInfo()) {
-    IGC::IGCMD::FunctionInfoMetaDataHandle funcInfoMD = MDUtils->getFunctionsInfoItem(F);
-    actualSimd = funcInfoMD->getSubGroupSize()->getSIMDSize();
-  }
+  actualSimd = IGC::getSIMDSize(CGC->getModuleMetaData(), F);
   if (IGC_GET_FLAG_VALUE(ForceOCLSIMDWidth)) {
     actualSimd = IGC_GET_FLAG_VALUE(ForceOCLSIMDWidth);
   }

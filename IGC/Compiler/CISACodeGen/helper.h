@@ -375,7 +375,7 @@ llvm::Function *getUniqueEntryFunc(const IGCMD::MetaDataUtils *pM, IGC::ModuleMe
 
 // Returns a SIMD size for given function from metadata.
 // Returns 0 if function is not in metadata or function has not defined SIMD size.
-int getSIMDSize(const IGCMD::MetaDataUtils *M, llvm::Function *F);
+int getSIMDSize(const IGC::ModuleMetaData *modMD, llvm::Function *F);
 
 // Resolves (and pins) the kernel sub-group/SIMD size for builtin-resolution passes that
 // lower builtins to intrinsics before the backend fixes the SIMD width. The generic

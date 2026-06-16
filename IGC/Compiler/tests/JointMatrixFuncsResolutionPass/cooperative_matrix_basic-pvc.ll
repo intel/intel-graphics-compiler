@@ -89,6 +89,5 @@ declare spir_func void @__spirv_CooperativeMatrixStoreKHR_CooperativeMatrixKHR_b
 
 !igc.functions = !{!0}
 !0 = !{ptr @test_jm, !1}
-!1 = !{!2, !3}
+!1 = !{!2}
 !2 = !{!"function_type", i32 0}
-!3 = !{!"sub_group_size", i32 16}

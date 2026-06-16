@@ -160,16 +160,12 @@ bool SubGroupReductionPattern::runOnFunction(llvm::Function &F) {
     return false;
 
   CGC = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
-  auto MDU = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
-  auto FII = MDU->findFunctionsInfoItem(&F);
-  if (FII == MDU->end_FunctionsInfo())
+  auto modMD = CGC->getModuleMetaData();
+  auto FII = modMD->FuncMD.find(&F);
+  if (FII == modMD->FuncMD.end() || FII->second.requiredSubGroupSize == 0)
     return false;
 
-  auto SubGroupSizeMD = FII->second->getSubGroupSize();
-  if (!SubGroupSizeMD->hasValue())
-    return false;
-
-  SubGroupSize = SubGroupSizeMD->getSIMDSize();
+  SubGroupSize = FII->second.requiredSubGroupSize;
 
   Modified = false;
   Matches.clear();

@@ -61,6 +61,5 @@ declare i32 @get_i32()
 
 !0 = !{float ()* @shuffle_xor_invalid_pattern, !100}
 !1 = !{float ()* @shuffle_index_invalid_pattern, !100}
-!100 = !{!101, !102}
+!100 = !{!101}
 !101 = !{!"function_type", i32 0}
-!102 = !{!"sub_group_size", i32 16}

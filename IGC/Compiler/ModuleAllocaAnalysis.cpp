@@ -166,7 +166,6 @@ bool ModuleAllocaAnalysis::safeToUseScratchSpace() const {
     // Each thread has up to 2 MB scratch space to use. That is, each WI
     // has up to (2*1024*1024 / 8) bytes of scratch space in SIMD8 mode.
     //
-    auto funcInfoMD = pMdUtils->getFunctionsInfoItem(&F);
     bool isGeometryStageShader = Ctx.type == ShaderType::VERTEX_SHADER || Ctx.type == ShaderType::HULL_SHADER ||
                                  Ctx.type == ShaderType::DOMAIN_SHADER || Ctx.type == ShaderType::GEOMETRY_SHADER;
     bool isSimd32Mode = false;
@@ -193,7 +192,7 @@ bool ModuleAllocaAnalysis::safeToUseScratchSpace() const {
                             ? (isSimd32Mode ? numLanes(SIMDMode::SIMD32) : numLanes(Ctx.platform.getMinDispatchMode()))
                             : (Ctx.platform.getMinDispatchMode() == SIMDMode::SIMD8 ? numLanes(SIMDMode::SIMD16)
                                                                                     : numLanes(SIMDMode::SIMD32));
-    const int32_t subGrpSize = funcInfoMD->getSubGroupSize()->getSIMDSize();
+    const int32_t subGrpSize = IGC::getSIMDSize(&modMD, &F);
     if (subGrpSize > simd_size)
       simd_size = std::min(subGrpSize, static_cast<int32_t>(numLanes(SIMDMode::SIMD32)));
     int32_t groupSize = IGCMD::IGCMetaDataHelper::getThreadGroupSize(&modMD, &F);
@@ -580,9 +579,7 @@ unsigned ModuleAllocaAnalysis::getMinSimdSize(llvm::Function *pFunc) const {
   case ShaderType::PIXEL_SHADER:
     break;
   case ShaderType::OPENCL_SHADER: {
-    IGCMD::MetaDataUtils *pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
-    auto funcInfoMD = pMdUtils->getFunctionsInfoItem(pFunc);
-    const int32_t subGrpSize = funcInfoMD->getSubGroupSize()->getSIMDSize();
+    const int32_t subGrpSize = IGC::getSIMDSize(&modMD, pFunc);
     if (subGrpSize > 0 && int_cast<uint16_t>(subGrpSize) > int_cast<uint16_t>(minSimdSize))
       minSimdSize = std::min(int_cast<uint16_t>(subGrpSize), numLanes(SIMDMode::SIMD32));
     int32_t groupSize = IGCMD::IGCMetaDataHelper::getThreadGroupSize(&modMD, pFunc);

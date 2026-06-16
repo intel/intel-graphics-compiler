@@ -63,10 +63,9 @@ bool GenerateBlockMemOpsPass::runOnFunction(Function &F) {
     return false;
 
   // If the subgroup size is not specified, then the maximum subgroup size is used.
-  IGC::IGCMD::FunctionInfoMetaDataHandle FuncInfoMD = MdUtils->getFunctionsInfoItem(&F);
-  IGC::IGCMD::SubGroupSizeMetaDataHandle SubGroupSize = FuncInfoMD->getSubGroupSize();
-  if (SubGroupSize->hasValue()) {
-    SimdSize = SubGroupSize->getSIMDSize();
+  int SubGroupSize = IGC::getSIMDSize(CGCtx->getModuleMetaData(), &F);
+  if (SubGroupSize != 0) {
+    SimdSize = SubGroupSize;
   } else {
     SimdSize = MaxSgSize;
   }
@@ -598,7 +597,6 @@ bool GenerateBlockMemOpsPass::checkVectorizationAlongX(Function *F) {
   if (CGCtx->type != ShaderType::OPENCL_SHADER)
     return false;
 
-  IGC::IGCMD::FunctionInfoMetaDataHandle FuncInfoMD = MdUtils->getFunctionsInfoItem(F);
   ModuleMetaData *ModMD = CGCtx->getModuleMetaData();
   auto FuncMD = ModMD->FuncMD.find(F);
 

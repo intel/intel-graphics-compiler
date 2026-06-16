@@ -42,6 +42,12 @@ declare <8 x i32> @llvm.genx.GenISA.sub.group.dpas.v8f32.v8f32.v8i16.v8i32(<8 x 
 !igc.functions = !{!0}
 
 !0 = !{void ()* @_foo, !1}
-!1 = !{!2, !3}
+!1 = !{!2}
 !2 = !{!"function_type", i32 0}
-!3 = !{!"sub_group_size", i32 16}
+
+!3 = !{!"requiredSubGroupSize", i32 16}
+!4 = !{!"FuncMDValue[0]", !3}
+!5 = !{!"FuncMDMap[0]", void ()* @_foo}
+!6 = !{!"FuncMD", !5, !4}
+!7 = !{!"ModuleMD", !6}
+!IGCMetadata = !{!7}

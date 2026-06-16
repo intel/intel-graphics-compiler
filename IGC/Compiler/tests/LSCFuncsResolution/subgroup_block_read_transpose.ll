@@ -56,6 +56,5 @@ declare <8 x i16> @__builtin_IB_subgroup_block_read_cacheopts_transpose_u16_m16k
 !igc.functions = !{!0}
 
 !0 = !{void (i64, <2 x i32>)* @test_lsc_2dblock_read, !1}
-!1 = !{!2, !3}
+!1 = !{!2}
 !2 = !{!"function_type", i32 0}
-!3 = !{!"sub_group_size", i32 16}

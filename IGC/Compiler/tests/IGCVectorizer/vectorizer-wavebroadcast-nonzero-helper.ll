@@ -114,6 +114,12 @@ declare float @llvm.exp2.f32(float)
 !igc.functions = !{!0}
 
 !0 = distinct !{ptr @test_nonzero_helper, !1}
-!1 = distinct !{!2, !3}
+!1 = distinct !{!2}
 !2 = distinct !{!"function_type", i32 0}
-!3 = distinct !{!"sub_group_size", i32 16}
+
+!3 = distinct !{!"requiredSubGroupSize", i32 16}
+!4 = distinct !{!"FuncMDValue[0]", !3}
+!5 = distinct !{!"FuncMDMap[0]", ptr @test_nonzero_helper}
+!6 = distinct !{!"FuncMD", !5, !4}
+!7 = distinct !{!"ModuleMD", !6}
+!IGCMetadata = !{!7}

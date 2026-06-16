@@ -124,15 +124,14 @@ void ExtensionArgAnalysis::visitCallInst(llvm::CallInst &CI) {
   // those built-ins only work for SIMD16 kernels.
   //
   auto CheckandSetSIMD16 = [&]() {
-    if (IGC::IGCMD::MetaDataUtils *pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils()) {
-      auto funcIter = pMdUtils->findFunctionsInfoItem(CI.getParent()->getParent());
-      if (funcIter != pMdUtils->end_FunctionsInfo()) {
-        IGC::IGCMD::SubGroupSizeMetaDataHandle subGroupSize = funcIter->second->getSubGroupSize();
-        if (subGroupSize->hasValue()) {
-          if (subGroupSize->getSIMDSize() != 16)
+    if (ModuleMetaData *modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData()) {
+      auto funcIter = modMD->FuncMD.find(CI.getParent()->getParent());
+      if (funcIter != modMD->FuncMD.end()) {
+        if (funcIter->second.requiredSubGroupSize != 0) {
+          if (funcIter->second.requiredSubGroupSize != 16)
             getAnalysis<CodeGenContextWrapper>().getCodeGenContext()->EmitError("SIMD16 is expected", &CI);
         } else
-          subGroupSize->setSIMDSize(16);
+          funcIter->second.requiredSubGroupSize = 16;
       }
     }
   };

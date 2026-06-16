@@ -153,6 +153,5 @@ declare spir_func void @_Z33__spirv_CooperativeMatrixStoreKHRPU3AS1iPU3AS140__sp
 !0 = !{ptr @mad_builtin_signed, !3}
 !1 = !{ptr @mad_builtin_unsigned, !3}
 !2 = !{ptr @mad_builtin_unsigned_2, !3}
-!3 = !{!4, !5}
+!3 = !{!4}
 !4 = !{!"function_type", i32 0}
-!5 = !{!"sub_group_size", i32 16}

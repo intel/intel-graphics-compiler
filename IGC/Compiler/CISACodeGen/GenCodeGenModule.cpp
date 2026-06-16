@@ -204,8 +204,7 @@ void GenXCodeGenModule::processFunction(Function &F) {
     unsigned CallersPerSIMD[3] = {0, 0, 0};
     for (const auto &iter : CallerFGs) {
       Function *callerKernel = iter.first->getHead();
-      auto funcInfoMD = pMdUtils->getFunctionsInfoItem(callerKernel);
-      int sz = funcInfoMD->getSubGroupSize()->getSIMDSize();
+      int sz = IGC::getSIMDSize(pCtx->getModuleMetaData(), callerKernel);
       if (sz != 0) {
         if (simd_size == 0)
           simd_size = sz;
@@ -254,18 +253,17 @@ void GenXCodeGenModule::processFunction(Function &F) {
         int req_subgroup = 0;
         for (const auto &FG : CallerFGs) {
           auto FHead = FG.first->getHead();
-          auto subGrpSz = pMdUtils->getFunctionsInfoItem(FHead)->getSubGroupSize();
-          if (subGrpSz->isSIMDSizeHasValue()) {
+          int subGrpSz = IGC::getSIMDSize(pCtx->getModuleMetaData(), FHead);
+          if (subGrpSz != 0) {
             // We can assume all callers have the same subgroup size requirement, otherwise
             // CanMakeIndirectFunc will return false when EnableSIMDVariantCompilation=0
-            req_subgroup = subGrpSz->getSIMDSize();
+            req_subgroup = subGrpSz;
             break;
           }
         }
         if (req_subgroup) {
           auto defaultKernel = IFG->getHead();
-          pMdUtils->getFunctionsInfoItem(defaultKernel)->getSubGroupSize()->setSIMDSize(req_subgroup);
-          pMdUtils->save(pCtx->getModule()->getContext());
+          pCtx->getModuleMetaData()->FuncMD[defaultKernel].requiredSubGroupSize = req_subgroup;
         }
       }
       if (IGC_IS_FLAG_ENABLED(PrintStackCallDebugInfo)) {
@@ -680,7 +678,7 @@ FunctionGroup *GenXFunctionGroupAnalysis::getOrCreateIndirectCallGroup(Module *p
     defaultKernel = pNewFunc;
   }
   // Set the requested sub_group_size value for this kernel
-  pMdUtil->getFunctionsInfoItem(defaultKernel)->getSubGroupSize()->setSIMDSize(SimdSize);
+  ctx->getModuleMetaData()->FuncMD[defaultKernel].requiredSubGroupSize = SimdSize;
   pMdUtil->save(pModule->getContext());
 
   auto FG = getGroup(defaultKernel);
@@ -836,8 +834,7 @@ void GenXFunctionGroupAnalysis::CloneFunctionGroupForMultiSIMDCompile(llvm::Modu
         Function *callerF = inst->getParent()->getParent();
         if (!isIndirectCallGroup(callerF)) {
           auto FG = getGroup(callerF);
-          auto funcInfoMD = pMdUtils->getFunctionsInfoItem(FG->getHead());
-          int sz = funcInfoMD->getSubGroupSize()->getSIMDSize();
+          int sz = IGC::getSIMDSize(pCtx->getModuleMetaData(), FG->getHead());
           if (sz != 0) {
             IGC_ASSERT(sz == 8 || sz == 16 || sz == 32);
             hasReqdSIMD |= sz;

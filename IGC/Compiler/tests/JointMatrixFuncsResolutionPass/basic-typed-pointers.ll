@@ -105,6 +105,5 @@ declare spir_func %spirv.JointMatrixINTEL._float_8_8_3_3_2 addrspace(1)* @_Z26__
 
 !igc.functions = !{!0}
 !0 = !{void (i32, i8*, i32*, i8*, i8*, float addrspace(1)*, float addrspace(1)*)* @test_jm, !1}
-!1 = !{!2, !3}
+!1 = !{!2}
 !2 = !{!"function_type", i32 0}
-!3 = !{!"sub_group_size", i32 8}

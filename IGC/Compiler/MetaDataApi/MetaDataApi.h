@@ -14,8 +14,6 @@ SPDX-License-Identifier: MIT
 // Following classes read/write its own specific structure from/to LLVM metadata.
 
 namespace IGC::IGCMD {
-class SubGroupSizeMetaData;
-using SubGroupSizeMetaDataHandle = MetaObjectHandle<SubGroupSizeMetaData>;
 
 // NOTE: VectorTypeHintMetaData is retained solely for the SPIR-V input metadata
 // layer (SpirMetaDataApi.h aliases it as SPIRMD::VectorTypeHintMetaData). The IGC
@@ -72,47 +70,6 @@ private:
   // data members
   ArgType m_Arg;
   ArgDependencyType m_ArgDependency;
-};
-
-class SubGroupSizeMetaData : public IMetaDataObject {
-public:
-  using _Mybase = IMetaDataObject;
-
-  SubGroupSizeMetaData(const llvm::MDNode *pNode, bool hasId);
-  SubGroupSizeMetaData();
-  SubGroupSizeMetaData(const char *name);
-
-  // Returns true if any of the ArgInfoMetaData`s members has changed
-  bool dirty() const override;
-
-  // Returns true if the structure was loaded from the metadata or was changed
-  bool hasValue() const;
-
-  // Discards the changes done to the ArgInfoMetaData instance
-  void discardChanges() override;
-
-  // Generates the new MDNode hierarchy for the given structure
-  llvm::Metadata *generateNode(llvm::LLVMContext &context) const;
-
-  // Saves the structure changes to the given MDNode
-  void save(llvm::LLVMContext &context, llvm::MDNode *pNode) const;
-
-  //
-  // Data members
-  //
-  using SIMDSizeType = MetaDataValue<int32_t>;
-
-  // SIMDSize
-  SIMDSizeType::value_type getSIMDSize() const { return m_SIMDSize.get(); }
-  void setSIMDSize(const SIMDSizeType::value_type &val) { m_SIMDSize.set(val); }
-  bool isSIMDSizeHasValue() const { return m_SIMDSize.hasValue(); }
-
-private:
-  // parent node
-  const llvm::MDNode *m_pNode;
-
-  // data members
-  SIMDSizeType m_SIMDSize;
 };
 
 // Retained for the SPIR-V input metadata layer only (see SpirMetaDataApi.h).
@@ -200,16 +157,12 @@ public:
   void setType(const TypeType::value_type &val) { m_Type.set(val); }
   bool isTypeHasValue() const { return m_Type.hasValue(); }
 
-  // SubGroupSize
-  SubGroupSizeMetaDataHandle getSubGroupSize() { return m_SubGroupSize; }
-
 private:
   // parent node
   const llvm::MDNode *m_pNode;
 
   // data members
   TypeType m_Type;
-  SubGroupSizeMetaDataHandle m_SubGroupSize;
 };
 
 class MetaDataUtils {

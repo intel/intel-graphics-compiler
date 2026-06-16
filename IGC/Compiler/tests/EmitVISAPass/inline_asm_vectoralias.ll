@@ -61,13 +61,12 @@ entry:
 !IGCMetadata = !{!13}
 
 !0 = !{void (i8 addrspace(1)*, i16 addrspace(1)*, <8 x i32>, <8 x i32>, i8 addrspace(2)*, i32, i32)* @test, !1}
-!1 = !{!2, !3}
+!1 = !{!2}
 !2 = !{!"function_type", i32 0}
-!3 = !{!"sub_group_size", i32 16}
 !13 = !{!"ModuleMD", !14}
 !14 = !{!"FuncMD", !15, !16}
 !15 = !{!"FuncMDMap[0]", void (i8 addrspace(1)*, i16 addrspace(1)*, <8 x i32>, <8 x i32>, i8 addrspace(2)*, i32, i32)* @test}
-!16 = !{!"FuncMDValue[0]", !100, !226}
+!16 = !{!"FuncMDValue[0]", !100, !226, !229}
 !100 = !{!"resAllocMD", !183, !184, !185, !186}
 !183 = !{!"uavsNumType", i32 0}
 !184 = !{!"srvsNumType", i32 0}
@@ -86,4 +85,5 @@ entry:
 !226 = !{!"m_OpenCLArgTypeQualifiers", !227, !228}
 !227 = !{!"m_OpenCLArgTypeQualifiersVec[0]", !""}
 !228 = !{!"m_OpenCLArgTypeQualifiersVec[1]", !""}
+!229 = !{!"requiredSubGroupSize", i32 16}
 

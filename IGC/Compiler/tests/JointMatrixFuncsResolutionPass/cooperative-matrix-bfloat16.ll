@@ -169,9 +169,8 @@ declare spir_func target("spirv.CooperativeMatrixKHR", float, 3, 32, 64, 2) @_Z3
 !igc.functions = !{!0, !4, !5, !6, !7}
 
 !0 = !{ptr @mad_builtin_bfloat16_1x64x16, !1}
-!1 = !{!2, !3}
+!1 = !{!2}
 !2 = !{!"function_type", i32 0}
-!3 = !{!"sub_group_size", i32 16}
 !4 = !{ptr @mad_builtin_bfloat16_1x64x32, !1}
 !5 = !{ptr @mad_builtin_bfloat16, !1}
 !6 = !{ptr @mad_builtin_bfloat16_32x64x16, !1}

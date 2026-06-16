@@ -41,6 +41,11 @@ attributes #2 = { nocallback nofree nosync nounwind readnone speculatable willre
 !igc.functions = !{!0}
 
 !0 = distinct !{void ()* @widget, !1}
-!1 = distinct !{!2, !3}
-!2 = distinct !{!"sub_group_size", i32 16}
+!1 = distinct !{!3}
 !3 = !{!"function_type", i32 0}
+!4 = !{!"requiredSubGroupSize", i32 16}
+!5 = !{!"FuncMDValue[0]", !4}
+!6 = !{!"FuncMDMap[0]", void ()* @widget}
+!7 = !{!"FuncMD", !6, !5}
+!8 = !{!"ModuleMD", !7}
+!IGCMetadata = !{!8}

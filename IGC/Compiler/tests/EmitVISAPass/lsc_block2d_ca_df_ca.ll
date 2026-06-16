@@ -32,9 +32,8 @@ entry:
 !IGCMetadata = !{!13}
 
 !0 = !{void (i8 addrspace(1)*)* @test_no_crash, !1}
-!1 = !{!2, !3}
+!1 = !{!2}
 !2 = !{!"function_type", i32 0}
-!3 = !{!"sub_group_size", i32 16}
 !13 = !{!"ModuleMD", !14}
 !14 = !{!"FuncMD", !15, !16}
 !15 = !{!"FuncMDMap[0]", void (i8 addrspace(1)*)* @test_no_crash}

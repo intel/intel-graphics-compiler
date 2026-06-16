@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 ============================= end_copyright_notice ===========================*/
 
 #include "IGCVectorizer.h"
+#include "Compiler/CISACodeGen/helper.h"
 #include "llvmWrapper/IR/DerivedTypes.h"
 #if LLVM_VERSION_MAJOR >= 22
 #include <queue>
@@ -1724,15 +1725,8 @@ void IGCVectorizer::collectInstructionToProcess(VecArr &ToProcess, Function &F) 
   }
 }
 
-unsigned IGCVectorizerCommon::checkSIMD(llvm::Function &F, IGCMD::MetaDataUtils *MDUtils) {
-
-  unsigned SimdSize = 0;
-  if (MDUtils->findFunctionsInfoItem(&F) != MDUtils->end_FunctionsInfo()) {
-    IGC::IGCMD::FunctionInfoMetaDataHandle funcInfoMD = MDUtils->getFunctionsInfoItem(&F);
-    SimdSize = funcInfoMD->getSubGroupSize()->getSIMDSize();
-  }
-
-  return SimdSize;
+unsigned IGCVectorizerCommon::checkSIMD(llvm::Function &F, IGC::ModuleMetaData *modMD) {
+  return IGC::getSIMDSize(modMD, &F);
 }
 
 bool IGCVectorizer::runOnFunction(llvm::Function &F) {
@@ -1747,8 +1741,7 @@ bool IGCVectorizer::runOnFunction(llvm::Function &F) {
   }
 
   AllowedPlatform = CGCtx->platform.isCoreXE2() || CGCtx->platform.isPVC() || CGCtx->platform.isCoreXE3();
-  MDUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
-  SIMDSize = checkSIMD(F, MDUtils);
+  SIMDSize = checkSIMD(F, getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData());
   // we have DPAS and simd8 for DG2 platforms
   bool SupportedSIMD = SIMDSize == 16 || SIMDSize == 32;
   if (!SupportedSIMD) {
@@ -2039,8 +2032,7 @@ void IGCVectorCoalescer::processMap(std::unordered_map<unsigned int, std::vector
 
 bool IGCVectorCoalescer::runOnFunction(llvm::Function &F) {
 
-  MDUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
-  SIMDSize = checkSIMD(F, MDUtils);
+  SIMDSize = checkSIMD(F, getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData());
   if (SIMDSize != 16)
     return false;
 

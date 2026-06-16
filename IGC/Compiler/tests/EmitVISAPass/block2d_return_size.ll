@@ -62,13 +62,12 @@ declare i32 @llvm.genx.GenISA.LSC2DBlockRead.i32(i64, i32, i32, i32, i32, i32, i
 !IGCMetadata = !{!16}
 
 !3 = !{void (i16 addrspace(1)*, i64, i32, i32, i32, i32, i32, <8 x i32>, <8 x i32>, <3 x i32>, i16, i16, i16, i32)* @test_2dblock_read_zero_padding, !4}
-!4 = !{!5, !15}
+!4 = !{!5}
 !5 = !{!"function_type", i32 0}
-!15 = !{!"sub_group_size", i32 16}
 !16 = !{!"ModuleMD", !131}
 !131 = !{!"FuncMD", !132, !133}
 !132 = !{!"FuncMDMap[0]", void (i16 addrspace(1)*, i64, i32, i32, i32, i32, i32, <8 x i32>, <8 x i32>, <3 x i32>, i16, i16, i16, i32)* @test_2dblock_read_zero_padding}
-!133 = !{!"FuncMDValue[0]", !166, !237, !260}
+!133 = !{!"FuncMDValue[0]", !166, !237, !260, !261}
 !166 = !{!"resAllocMD", !170}
 !170 = !{!"argAllocMDList", !171, !175, !176, !177, !178, !179, !180, !181, !182, !183, !184, !185, !186, !187}
 !171 = !{!"argAllocMDListVec[0]", !172, !173, !174}
@@ -112,3 +111,4 @@ declare i32 @llvm.genx.GenISA.LSC2DBlockRead.i32(i64, i32, i32, i32, i32, i32, i
 !258 = !{!"explicitArgNum", i32 0}
 !259 = !{!"implicitArgInfoListVec[6]", !257, !258}
 !260 = !{!"implicitArgInfoList", !246, !248, !250, !252, !254, !256, !259}
+!261 = !{!"requiredSubGroupSize", i32 16}

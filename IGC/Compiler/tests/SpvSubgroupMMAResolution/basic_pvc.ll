@@ -43,9 +43,8 @@ entry:
 !igc.functions = !{!0}
 !IGCMetadata = !{!4}
 !0 = !{void (<8 x i32>, i32 addrspace(1)*)* @test, !1}
-!1 = !{!2, !3}
+!1 = !{!2}
 !2 = !{!"function_type", i32 0}
-!3 = !{!"sub_group_size", i32 16}
 !4 = !{!"ModuleMD", !5}
 !5 = !{!"FuncMD", !6, !7}
 !6 = distinct !{!"FuncMDMap[0]", void (<8 x i32>, i32 addrspace(1)*)* @test}

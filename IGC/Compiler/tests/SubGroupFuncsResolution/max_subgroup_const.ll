@@ -59,10 +59,13 @@ attributes #2 = { convergent }
 !IGCMetadata = !{!0}
 !igc.functions = !{!3}
 
-!0 = !{!"ModuleMD", !1}
+!0 = !{!"ModuleMD", !1, !10}
 !1 = !{!"msInfo", !2}
 !2 = !{!"SubgroupSize", i32 16}
 !3 = !{void (i32 addrspace(1)*)* @test_sg_max, !4}
-!4 = !{!5, !6}
+!4 = !{!5}
 !5 = !{!"function_type", i32 0}
-!6 = !{!"sub_group_size", i32 16}
+!7 = !{!"requiredSubGroupSize", i32 16}
+!8 = !{!"FuncMDValue[0]", !7}
+!9 = !{!"FuncMDMap[0]", void (i32 addrspace(1)*)* @test_sg_max}
+!10 = !{!"FuncMD", !9, !8}
