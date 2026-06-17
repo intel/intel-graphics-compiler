@@ -62,6 +62,7 @@ enum class DumpType {
 
   CIS_TEXT, //!< Compiler input structure (human readable)
   COS_TEXT, //!< Compiler output structure (human readable)
+  COS_YAML, //!< Compiler output structure (YAML)
 
   ASM_TEXT, //!< Input assembly (human readable)
   ASM_BC,   //!< Input assembly (bitcode)

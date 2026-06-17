@@ -114,6 +114,7 @@ public:
   Dump &operator=(const Dump &) = delete;
 
   llvm::raw_ostream &stream() const;
+  DumpType getDumpType() const;
 
   void flush();
 

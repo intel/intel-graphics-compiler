@@ -357,6 +357,8 @@ bool isText(DumpType type) {
     return true;
   case DumpType::COS_TEXT:
     return true;
+  case DumpType::COS_YAML:
+    return true;
   case DumpType::ASM_TEXT:
     return true;
   case DumpType::ASM_BC:
@@ -404,6 +406,8 @@ const char *commentPrefix(DumpType type) {
     return "// ";
   case DumpType::COS_TEXT:
     return "// ";
+  case DumpType::COS_YAML:
+    return "# ";
   case DumpType::ASM_TEXT:
     return "// ";
   case DumpType::TRANSLATED_IR_TEXT:
@@ -548,6 +552,8 @@ void Dump::flush() {
 Dump::~Dump() { flush(); }
 
 llvm::raw_ostream &Dump::stream() const { return *m_pStream; }
+
+DumpType Dump::getDumpType() const { return m_type; }
 
 void DumpLLVMIRText(llvm::Module *pModule, const DumpName &dumpName,
                     llvm::AssemblyAnnotationWriter *optionalAnnotationWriter /* = nullptr */) {

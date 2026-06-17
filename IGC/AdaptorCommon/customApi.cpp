@@ -129,6 +129,7 @@ EnumStr IGC_DEBUG_API_CALL str(DumpType value) {
   switch (value) {
     CASE(ASM_TEXT);
     CASE(ASM_BC);
+    CASE(COS_YAML);
     CASE(TRANSLATED_IR_TEXT);
     CASE(TRANSLATED_IR_BC);
     CASE(PASS_IR_TEXT);
