@@ -2239,7 +2239,11 @@ bool CodeLoopSinking::isSafeToLoopSinkLoad(Instruction *InstToSink, Loop *L) {
       }
 
       MemoryLocation B = getMemLoc(I);
-      if (!A.Ptr || !B.Ptr || AA->alias(A, B)) {
+      // FIXME: Non-pointer locations (integer typed) aren't analyzed and are treated as can't alias.
+      // On LLVM 17, alias analysis assumes scalars can't alias.
+      // On LLVM 22, scalars can't be queried, so we keep the same behavior.
+      bool BothPointers = A.Ptr && B.Ptr && A.Ptr->getType()->isPointerTy() && B.Ptr->getType()->isPointerTy();
+      if (!A.Ptr || !B.Ptr || (BothPointers && AA->alias(A, B))) {
         PrintDump(VerbosityLevel::High, "May alias\n");
         return false;
       }
