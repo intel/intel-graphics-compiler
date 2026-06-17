@@ -1073,4 +1073,7 @@ bool supportSendAddrScale(bool isSLM, bool isBTS) {
   return false;
 }
 
+bool hasSendPredication() const {
+  return false;
+}
 // end HW capabilities
