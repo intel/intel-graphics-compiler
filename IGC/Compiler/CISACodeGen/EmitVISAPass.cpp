@@ -15389,7 +15389,7 @@ void EmitPass::emitScalarAtomics(llvm::Instruction *pInst, ResourceDescriptor &r
       returnsImmValue ? m_currShader->GetNewVariable(1, pReturnValType, EALIGN_GRF, true, CName::NONE) : nullptr;
 
   if (bitWidth == 16) {
-    if (type == ISA_TYPE_BF) {
+    if (type == ISA_TYPE_HF || type == ISA_TYPE_BF) {
       pFinalAtomicSrcVal = m_currShader->BitCast(pFinalAtomicSrcVal, ISA_TYPE_UW);
     }
     CVariable *pCastAtomicSrcVal = m_currShader->GetNewVariable(1, ISA_TYPE_UD, EALIGN_GRF, true, CName::NONE);
