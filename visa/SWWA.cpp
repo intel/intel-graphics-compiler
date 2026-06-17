@@ -113,17 +113,17 @@ void Optimizer::swapSrc1Src2OfMadForCompaction() {
       // The swap works legally only when src0 aligned with dst. Because src2
       // will be scalar after swapping, which may made the src0 region illegal.
 
-        uint8_t dstTySize = (uint8_t)inst->getDst()->getTypeSize();
-        auto dstStrideInBytes = dstTySize * inst->getDst()->getHorzStride();
-        uint16_t src0Stride = 0;
-        src0->asSrcRegRegion()->getRegion()->isSingleStride(
-            src0->getInst()->getExecSize(), src0Stride);
-        auto src0StrideInBytes = src0Stride * src0->getTypeSize();
+      uint8_t dstTySize = (uint8_t)inst->getDst()->getTypeSize();
+      auto dstStrideInBytes = dstTySize * inst->getDst()->getHorzStride();
+      uint16_t src0Stride = 0;
+      src0->asSrcRegRegion()->getRegion()->isSingleStride(
+          src0->getInst()->getExecSize(), src0Stride);
+      auto src0StrideInBytes = src0Stride * src0->getTypeSize();
 
-        if (dstStrideInBytes != src0StrideInBytes) {
-          ii++;
-          continue;
-        }
+      if (dstStrideInBytes != src0StrideInBytes) {
+        ii++;
+        continue;
+      }
 
       inst->setSrc(src2, 1);
       inst->setSrc(src1, 2);
