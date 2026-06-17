@@ -209,6 +209,7 @@ public:
   void Fence(bool CommitEnable, bool L3_Flush_RW_Data, bool L3_Flush_Constant_Data, bool L3_Flush_Texture_Data,
              bool L3_Flush_Instructions, bool Global_Mem_Fence, bool L1_Flush, bool SWFence);
   void FlushSamplerCache();
+  void ThreadYield();
   void EOT();
   void OWLoadA64(CVariable *dst, CVariable *offset, uint dstSize, uint dstOffset = 0);
   void OWStoreA64(CVariable *dst, CVariable *offset, uint dstSize, uint srcOffset);

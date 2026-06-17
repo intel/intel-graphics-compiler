@@ -2501,6 +2501,8 @@ void CEncoder::Fence(bool CommitEnable, bool L3_Flush_RW_Data, bool L3_Flush_Con
 
 void CEncoder::FlushSamplerCache() { V(vKernel->AppendVISASyncInst(ISA_SAMPLR_CACHE_FLUSH)); }
 
+void CEncoder::ThreadYield() { V(vKernel->AppendVISASyncInst(ISA_YIELD)); }
+
 void CEncoder::EOT() {
   VISA_PredOpnd *predOpnd = GetFlagOperand(m_encoderState.m_flag);
   V(vKernel->AppendVISACFRetInst(predOpnd, vISA_EMASK_M1, EXEC_SIZE_1));
