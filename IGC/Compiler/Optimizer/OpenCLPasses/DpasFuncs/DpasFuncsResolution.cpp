@@ -498,11 +498,10 @@ void DpasFuncsResolution::visitCallInst(CallInst &CI) {
       IGC_ASSERT_MESSAGE(A_BaseTy->isIntegerTy(AbitsPerDepth) || (PA == PrecisionType::TF32 && A_BaseTy->isFloatTy()),
                          "ICE: dpas intrinsic's A has wrong base type!");
       if (isFP8Dpas) {
-        IGC_ASSERT_MESSAGE(DstTy == DSTACC_FLOAT && AccTy == DSTACC_FLOAT, "ICE: wrong type of dst for FP8 dpas!");
-      } else if (PA == PrecisionType::TF32) {
-        if (!(DstTy == DSTACC_FLOAT && AccTy == DSTACC_FLOAT)) {
-          IGC_ASSERT_MESSAGE(false, "ICE: wrong type of dst/acc for TF32 dpas!");
-        }
+        bool typeOK = DstTy == DSTACC_FLOAT && AccTy == DSTACC_FLOAT;
+        IGC_ASSERT_MESSAGE(typeOK, "ICE: wrong type of dst for FP8 dpas!");
+      } else if (PA == PrecisionType::TF32 && (DstTy != DSTACC_FLOAT || AccTy != DSTACC_FLOAT)) {
+        IGC_ASSERT_MESSAGE(false, "ICE: wrong type of dst/acc for TF32 dpas!");
       }
 
       bool typeOK = false;
@@ -886,6 +885,20 @@ bool DpasFuncsResolution::processDnscl(CallInst &CI) {
   return true;
 }
 
+using PrecCheck = bool (*)(int, int);
+using DstAccCheck = bool (*)(int, Type *);
+using ScaleCheck = bool (*)(Type *, Type *);
+
+static inline bool isFloat(int RawTy, Type *ResolvedTy) { return RawTy == DSTACC_FLOAT && ResolvedTy->isFloatTy(); }
+
+static inline bool isFloatOrHalf(int RawTy, Type *ResolvedTy) {
+  return isFloat(RawTy, ResolvedTy) || (RawTy == DSTACC_FP16 && ResolvedTy->isHalfTy());
+};
+
+static inline bool isFloatOrBf16(int RawTy, Type *ResolvedTy) {
+  return isFloat(RawTy, ResolvedTy) || (RawTy == DSTACC_BF16 && ResolvedTy->isIntegerTy(16));
+};
+
 
 bool DpasFuncsResolution::processBdpas(CallInst &CI) {
   Function *Func = CI.getCalledFunction();
@@ -925,8 +938,6 @@ bool DpasFuncsResolution::processBdpas(CallInst &CI) {
   int ACC_nelts = ACCTy->isVectorTy() ? (int)cast<FixedVectorType>(ACCTy)->getNumElements() : 1;
   int A_nelts = ATy->isVectorTy() ? (int)cast<FixedVectorType>(ATy)->getNumElements() : 1;
   int B_nelts = BTy->isVectorTy() ? (int)cast<FixedVectorType>(BTy)->getNumElements() : 1;
-  int ScaleA_nelts = ScaleATy->isVectorTy() ? (int)cast<FixedVectorType>(ScaleATy)->getNumElements() : 1;
-  int ScaleB_nelts = ScaleBTy->isVectorTy() ? (int)cast<FixedVectorType>(ScaleBTy)->getNumElements() : 1;
   Type *D_BaseTy = DTy->getScalarType();
   Type *Acc_BaseTy = ACCTy->getScalarType();
   Type *A_BaseTy = ATy->getScalarType();
@@ -943,51 +954,39 @@ bool DpasFuncsResolution::processBdpas(CallInst &CI) {
   IGC_ASSERT_MESSAGE(ScaleATy->getScalarType()->isIntegerTy(8), "ICE: bdpas scale A shall have base type uchar!");
   IGC_ASSERT_MESSAGE(ScaleBTy->getScalarType()->isIntegerTy(8), "ICE: bdpas scale B shall have base type uchar!");
 
+  PrecCheck CheckPAPB = [](int PA, int PB) { return PA == PB; };
+  DstAccCheck CheckC = isFloat;
+  ScaleCheck CheckScale = [](Type *SA, Type *SB) { return !SA->isVectorTy() || !SB->isVectorTy(); };
+
   if (PA == PrecisionType::FP16) {
-    IGC_ASSERT_MESSAGE(PA == PB, "ICE: bdpas's A and B must have the same type!");
-    IGC_ASSERT_MESSAGE(DstTy == DSTACC_FLOAT || DstTy == DSTACC_FP16, "ICE: wrong type of dst for FP16 bdpas!");
-    IGC_ASSERT_MESSAGE(AccTy == DSTACC_FLOAT || AccTy == DSTACC_FP16, "ICE: wrong type of acc for FP16 bdpas!");
-    IGC_ASSERT_MESSAGE(D_BaseTy->isFloatTy() || D_BaseTy->isHalfTy(), "ICE: wrong type of dst for FP16 bdpas!");
-    IGC_ASSERT_MESSAGE(Acc_BaseTy->isFloatTy() || Acc_BaseTy->isHalfTy(), "ICE: wrong type of acc for FP16 bdpas!");
-    IGC_ASSERT_MESSAGE(!ScaleATy->isVectorTy() || !ScaleBTy->isVectorTy(),
-                       "ICE: scales have to be scalars for FP16 bdpas!");
+    CheckC = isFloatOrHalf;
   } else if (PA == PrecisionType::BF16) {
-    IGC_ASSERT_MESSAGE(PA == PB, "ICE: bdpas's A and B must have the same type!");
-    IGC_ASSERT_MESSAGE(DstTy == DSTACC_FLOAT || DstTy == DSTACC_BF16, "ICE: wrong type of dst for BF16 bdpas!");
-    IGC_ASSERT_MESSAGE(AccTy == DSTACC_FLOAT || AccTy == DSTACC_BF16, "ICE: wrong type of acc for BF16 bdpas!");
-    IGC_ASSERT_MESSAGE(D_BaseTy->isFloatTy() || D_BaseTy->isIntegerTy(16), "ICE: wrong type of dst for BF16 bdpas!");
-    IGC_ASSERT_MESSAGE(Acc_BaseTy->isFloatTy() || Acc_BaseTy->isIntegerTy(16),
-                       "ICE: wrong type of acc for BF16 bdpas!");
-    IGC_ASSERT_MESSAGE(!ScaleATy->isVectorTy() || !ScaleBTy->isVectorTy(),
-                       "ICE: scales have to be scalars for BF16 bdpas!");
+    CheckC = isFloatOrBf16;
   } else if (PA == PrecisionType::BF8 || PA == PrecisionType::HF8) {
-    IGC_ASSERT_MESSAGE(PB == PrecisionType::BF8 || PB == PrecisionType::HF8,
-                       "ICE: bdpas's A and B must be both BF8/HF8 type!");
-    IGC_ASSERT_MESSAGE(DstTy == DSTACC_FLOAT || DstTy == DSTACC_BF16, "ICE: wrong type of dst for BF8/HF8 bdpas!");
-    IGC_ASSERT_MESSAGE(AccTy == DSTACC_FLOAT || AccTy == DSTACC_BF16, "ICE: wrong type of acc for BF8/HF8 bdpas!");
-    IGC_ASSERT_MESSAGE(D_BaseTy->isFloatTy() || D_BaseTy->isIntegerTy(16), "ICE: wrong type of dst for BF8/HF8 bdpas!");
-    IGC_ASSERT_MESSAGE(Acc_BaseTy->isFloatTy() || Acc_BaseTy->isIntegerTy(16),
-                       "ICE: wrong type of acc for BF8/HF8 bdpas!");
-    IGC_ASSERT_MESSAGE(!ScaleATy->isVectorTy() || !ScaleBTy->isVectorTy(),
-                       "ICE: scales have to be scalars for BF8/HF8 bdpas!");
+    CheckPAPB = [](int PA, int PB) { return PB == PrecisionType::BF8 || PB == PrecisionType::HF8; };
+    CheckC = isFloatOrBf16;
   } else if (PA == PrecisionType::E2M1) {
-    IGC_ASSERT_MESSAGE(PB == PrecisionType::E2M1, "ICE: bdpas's A and B must be both E2M1 type!");
-    IGC_ASSERT_MESSAGE(DstTy == DSTACC_FLOAT || DstTy == DSTACC_BF16, "ICE: wrong type of dst for E2M1 bdpas!");
-    IGC_ASSERT_MESSAGE(AccTy == DSTACC_FLOAT || AccTy == DSTACC_BF16, "ICE: wrong type of acc for E2M1 bdpas!");
-    IGC_ASSERT_MESSAGE(D_BaseTy->isFloatTy() || D_BaseTy->isIntegerTy(16), "ICE: wrong type of dst for E2M1 bdpas!");
-    IGC_ASSERT_MESSAGE(Acc_BaseTy->isFloatTy() || Acc_BaseTy->isIntegerTy(16),
-                       "ICE: wrong type of acc for E2M1 bdpas!");
-    IGC_ASSERT_MESSAGE(ScaleA_nelts == 2 && ScaleB_nelts == 2,
-                       "ICE: scales have to be 2 element vectors for E2M1 bdpas!");
+    CheckPAPB = [](int PA, int PB) { return PB == PrecisionType::E2M1; };
+    CheckC = isFloatOrBf16;
+    CheckScale = [](Type *SA, Type *SB) {
+      unsigned NumElemA = SA->isVectorTy() ? cast<FixedVectorType>(SA)->getNumElements() : 1;
+      unsigned NumElemB = SB->isVectorTy() ? cast<FixedVectorType>(SB)->getNumElements() : 1;
+      return NumElemA == 2 && NumElemB == 2;
+    };
   }
+
+  IGC_ASSERT_MESSAGE(CheckPAPB(PA, PB), "ICE: bdpas' A/B type constraints not met!");
+  IGC_ASSERT_MESSAGE(CheckC(DstTy, D_BaseTy), "ICE: wrong bdpas' dst type!");
+  IGC_ASSERT_MESSAGE(CheckC(AccTy, Acc_BaseTy), "ICE: wrong bdpas' acc type!");
+  IGC_ASSERT_MESSAGE(CheckScale(ScaleATy, ScaleBTy), "ICE: bdpas' A/B scale constraints not met!");
 #endif // _DEBUG
 
-  Value *Args[7] = {CI.getArgOperand(0), // Acc
-                    CI.getArgOperand(1), // A
-                    CI.getArgOperand(2), // B
-                    CI.getArgOperand(3), // ScaleA
-                    CI.getArgOperand(4), // ScaleB
-                    ConstantInt::get(IntTy, PA), ConstantInt::get(IntTy, PB)};
+  llvm::SmallVector<Value *> Args = {CI.getArgOperand(0), // Acc
+                                     CI.getArgOperand(1), // A
+                                     CI.getArgOperand(2), // B
+                                     CI.getArgOperand(3), // ScaleA
+                                     CI.getArgOperand(4), // ScaleB
+                                     ConstantInt::get(IntTy, PA), ConstantInt::get(IntTy, PB)};
 
   // ITys: overload types for this intrinsic
   Type *ITys[6] = {Func->getReturnType(), Args[0]->getType(), Args[1]->getType(),

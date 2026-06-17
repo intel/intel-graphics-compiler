@@ -22359,11 +22359,13 @@ void EmitPass::emitBdpas(GenIntrinsicInst *GII) {
   else if (B->GetType() != ISA_TYPE_BF && B->GetType() != ISA_TYPE_HF && B->GetType() != ISA_TYPE_UD)
     B = m_currShader->GetNewAlias(B, ISA_TYPE_UD, 0, 0);
 
-  // scaling visa types
-  if (AScaling->GetType() != ISA_TYPE_UB)
-    AScaling = m_currShader->GetNewAlias(AScaling, ISA_TYPE_UB, 0, 0);
-  if (BScaling->GetType() != ISA_TYPE_UB)
-    BScaling = m_currShader->GetNewAlias(BScaling, ISA_TYPE_UB, 0, 0);
+  VISA_Type AScaleType = ISA_TYPE_UB;
+  VISA_Type BScaleType = ISA_TYPE_UB;
+
+  if (AScaling->GetType() != AScaleType)
+    AScaling = m_currShader->GetNewAlias(AScaling, AScaleType, 0, 0);
+  if (BScaling->GetType() != BScaleType)
+    BScaling = m_currShader->GetNewAlias(BScaling, BScaleType, 0, 0);
 
   m_encoder->bdpas(Dst, Acc, B, PB, A, PA, BScaling, AScaling, systolicDepth, repeatCount);
   m_encoder->Push();
