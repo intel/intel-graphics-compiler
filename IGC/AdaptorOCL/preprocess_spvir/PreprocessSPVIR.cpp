@@ -34,12 +34,14 @@ using namespace IGC;
 #define PASS_DESCRIPTION "Adjust SPV-IR produced by Khronos SPIRV-LLVM Translator to be consumable by IGC BiFModule"
 #define PASS_CFG_ONLY false
 #define PASS_ANALYSIS false
-IGC_INITIALIZE_PASS_BEGIN(PreprocessSPVIR, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
-IGC_INITIALIZE_PASS_END(PreprocessSPVIR, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_BEGIN(PreprocessSPVIRLPM, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_END(PreprocessSPVIRLPM, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
-char PreprocessSPVIR::ID = 0;
+char PreprocessSPVIRLPM::ID = 0;
 
-PreprocessSPVIR::PreprocessSPVIR() : ModulePass(ID) { initializePreprocessSPVIRPass(*PassRegistry::getPassRegistry()); }
+PreprocessSPVIRLPM::PreprocessSPVIRLPM() : ModulePass(ID) {
+  initializePreprocessSPVIRLPMPass(*PassRegistry::getPassRegistry());
+}
 
 void PreprocessSPVIR::createCallAndReplace(CallInst &oldCallInst, StringRef newFuncName, std::vector<Value *> &args) {
   Function *F = oldCallInst.getCalledFunction();
@@ -269,7 +271,7 @@ static void fixKernelArgBaseTypes(Module &M) {
   }
 }
 
-bool PreprocessSPVIR::runOnModule(Module &M) {
+bool PreprocessSPVIR::run(Module &M) {
   m_Module = static_cast<IGCLLVM::Module *>(&M);
   IRBuilder<> builder(M.getContext());
   m_Builder = &builder;
@@ -310,3 +312,10 @@ bool PreprocessSPVIR::runOnModule(Module &M) {
 
   return m_changed;
 }
+
+#if LLVM_VERSION_MAJOR >= 16
+PreservedAnalyses PreprocessSPVIRNPM::run(Module &M, ModuleAnalysisManager &) {
+  bool changed = PreprocessSPVIR().run(M);
+  return changed ? PreservedAnalyses::none() : PreservedAnalyses::all();
+}
+#endif // LLVM_VERSION_MAJOR >= 16

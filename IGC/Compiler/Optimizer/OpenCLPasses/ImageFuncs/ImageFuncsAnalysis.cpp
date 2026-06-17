@@ -20,15 +20,15 @@ using namespace IGC;
 #define PASS_DESCRIPTION "Analyzes image height, width, depth functions"
 #define PASS_CFG_ONLY false
 #define PASS_ANALYSIS false
-IGC_INITIALIZE_PASS_BEGIN(ImageFuncsAnalysis, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_BEGIN(ImageFuncsAnalysisLPM, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 IGC_INITIALIZE_PASS_DEPENDENCY(MetaDataUtilsWrapper)
 IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
-IGC_INITIALIZE_PASS_END(ImageFuncsAnalysis, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_END(ImageFuncsAnalysisLPM, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
-char ImageFuncsAnalysis::ID = 0;
+char ImageFuncsAnalysisLPM::ID = 0;
 
-ImageFuncsAnalysis::ImageFuncsAnalysis() : ModulePass(ID) {
-  initializeImageFuncsAnalysisPass(*PassRegistry::getPassRegistry());
+ImageFuncsAnalysisLPM::ImageFuncsAnalysisLPM() : ModulePass(ID) {
+  initializeImageFuncsAnalysisLPMPass(*PassRegistry::getPassRegistry());
 }
 
 // All image functions needed resolved by implicit arguments
@@ -45,16 +45,17 @@ const llvm::StringRef ImageFuncsAnalysis::GET_SAMPLER_ADDRESS_MODE = "__builtin_
 const llvm::StringRef ImageFuncsAnalysis::GET_SAMPLER_NORMALIZED_COORDS = "__builtin_IB_is_normalized_coords";
 const llvm::StringRef ImageFuncsAnalysis::GET_SAMPLER_SNAP_WA_REQUIRED = "__builtin_IB_get_snap_wa_reqd";
 
-bool ImageFuncsAnalysis::runOnModule(Module &M) {
+bool ImageFuncsAnalysis::run(Module &M, IGCMD::MetaDataUtils *pMdUtils, IGC::CodeGenContext *pCtx) {
   bool changed = false;
-  m_pMDUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
-  CodeGenContext *ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+  m_pMDUtils = pMdUtils;
+  CodeGenContext *ctx = pCtx;
+  m_modMD = ctx->getModuleMetaData();
 
-  m_useAdvancedBindlessMode = ctx->getModuleMetaData()->UseBindlessImage;
+  m_useAdvancedBindlessMode = m_modMD->UseBindlessImage;
 
-  m_useBindlessImageWithSamplerTracking = ctx->getModuleMetaData()->UseBindlessImageWithSamplerTracking;
+  m_useBindlessImageWithSamplerTracking = m_modMD->UseBindlessImageWithSamplerTracking;
 
-  m_useSPVINTELBindlessImages = ctx->getModuleMetaData()->extensions.spvINTELBindlessImages;
+  m_useSPVINTELBindlessImages = m_modMD->extensions.spvINTELBindlessImages;
 
   // Run on all functions defined in this module
   for (Module::iterator I = M.begin(), E = M.end(); I != E; ++I) {
@@ -78,7 +79,7 @@ bool ImageFuncsAnalysis::runOnFunction(Function &F) {
   // Visit the function
   visit(F);
 
-  ImplicitArgs::addImageArgs(F, m_argMap, m_pMDUtils, getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData());
+  ImplicitArgs::addImageArgs(F, m_argMap, m_pMDUtils, m_modMD);
 
   m_argMap.clear();
 
@@ -122,8 +123,7 @@ void ImageFuncsAnalysis::visitCallInst(CallInst &CI) {
     imageFunc = &m_argMap[ImplicitArg::SAMPLER_SNAP_WA];
   } else {
     if (IGCLLVM::ends_with(funcName, "sample_l") && m_useBindlessImageWithSamplerTracking) {
-      Value *callArg = ValueTracker::track(&CI, 1, getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils(),
-                                           getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData());
+      Value *callArg = ValueTracker::track(&CI, 1, m_pMDUtils, m_modMD);
       if (!callArg)
         return;
       if (ConstantInt *ConstInt = dyn_cast<ConstantInt>(callArg)) {
@@ -139,7 +139,7 @@ void ImageFuncsAnalysis::visitCallInst(CallInst &CI) {
         }
 
         // Add metadata for the inline sampler.
-        ModuleMetaData *ModMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
+        ModuleMetaData *ModMD = m_modMD;
         FunctionMetaData &FuncMD = ModMD->FuncMD[CI.getFunction()];
         ResourceAllocMD &ResAllocMD = FuncMD.resAllocMD;
         InlineSamplersMD InlineSamplerMD;
@@ -160,8 +160,8 @@ void ImageFuncsAnalysis::visitCallInst(CallInst &CI) {
 
   // We only care about image and sampler arguments here, inline samplers
   // don't require extra kernel parameters.
-  ModuleMetaData *modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
-  Value *callArg = ValueTracker::track(&CI, 0, getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils(), modMD);
+  ModuleMetaData *modMD = m_modMD;
+  Value *callArg = ValueTracker::track(&CI, 0, m_pMDUtils, modMD);
 
   // Return false when sampler track back to a SYCL bindless image argment,
   // since in this case we don't need implicit args.
@@ -187,3 +187,11 @@ void ImageFuncsAnalysis::visitCallInst(CallInst &CI) {
   IGC_ASSERT(funcName == GET_SAMPLER_ADDRESS_MODE || funcName == GET_SAMPLER_NORMALIZED_COORDS ||
              funcName == GET_SAMPLER_SNAP_WA_REQUIRED);
 }
+
+#if LLVM_VERSION_MAJOR >= 16
+PreservedAnalyses ImageFuncsAnalysisNPM::run(Module &M, ModuleAnalysisManager &AM) {
+  auto &MDU = AM.getResult<MetaDataUtilsAnalysis>(M);
+  bool changed = ImageFuncsAnalysis().run(M, MDU.MdUtils, AM.getResult<CodeGenContextAnalysis>(M).Ctx);
+  return changed ? PreservedAnalyses::none() : PreservedAnalyses::all();
+}
+#endif // LLVM_VERSION_MAJOR >= 16

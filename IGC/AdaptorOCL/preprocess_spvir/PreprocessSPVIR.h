@@ -12,22 +12,23 @@ SPDX-License-Identifier: MIT
 #include <llvm/Pass.h>
 #include <llvm/IR/InstVisitor.h>
 #include <llvm/IR/IRBuilder.h>
+#include <llvm/IR/PassManager.h>
 #include "common/LLVMWarningsPop.hpp"
 #include "llvmWrapper/IR/Module.h"
 
 #include <string>
 
 namespace IGC {
-class PreprocessSPVIR : public llvm::ModulePass, public llvm::InstVisitor<PreprocessSPVIR> {
+// Shared implementation. Holds the logic and is used by both the legacy and the
+// new-pass-manager wrappers below; it is not itself an llvm::Pass.
+class PreprocessSPVIR : public llvm::InstVisitor<PreprocessSPVIR> {
 public:
-  static char ID;
-
-  PreprocessSPVIR();
+  PreprocessSPVIR() {}
   ~PreprocessSPVIR() {}
 
-  virtual llvm::StringRef getPassName() const override { return "PreprocessSPVIR"; }
+  static llvm::StringRef getPassName() { return "PreprocessSPVIR"; }
 
-  virtual bool runOnModule(llvm::Module &F) override;
+  bool run(llvm::Module &F);
   void visitCallInst(llvm::CallInst &CI);
   void visitOpenCLEISPrintf(llvm::CallInst &CI);
 
@@ -44,4 +45,27 @@ private:
   llvm::IRBuilder<> *m_Builder = nullptr;
   bool m_changed = false;
 };
+
+// Legacy Pass Manager wrapper.
+class PreprocessSPVIRLPM : public llvm::ModulePass {
+public:
+  static char ID;
+
+  PreprocessSPVIRLPM();
+  ~PreprocessSPVIRLPM() {}
+
+  llvm::StringRef getPassName() const override { return PreprocessSPVIR::getPassName(); }
+
+  bool runOnModule(llvm::Module &M) override { return PreprocessSPVIR().run(M); }
+};
+
+#if LLVM_VERSION_MAJOR >= 16
+// New Pass Manager wrapper.
+class PreprocessSPVIRNPM : public llvm::PassInfoMixin<PreprocessSPVIRNPM> {
+public:
+  llvm::PreservedAnalyses run(llvm::Module &M, llvm::ModuleAnalysisManager &AM);
+  static llvm::StringRef name() { return "igc-preprocess-spvir"; }
+  static bool isRequired() { return true; }
+};
+#endif // LLVM_VERSION_MAJOR >= 16
 } // namespace IGC

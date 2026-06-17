@@ -23,16 +23,16 @@ using namespace IGC;
 #define PASS_DESCRIPTION "Disable function inlining."
 #define PASS_CFG_ONLY false
 #define PASS_ANALYSIS false
-IGC_INITIALIZE_PASS_BEGIN(DisableInlining, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
-IGC_INITIALIZE_PASS_END(DisableInlining, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_BEGIN(DisableInliningLPM, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_END(DisableInliningLPM, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
-char DisableInlining::ID = 0;
+char DisableInliningLPM::ID = 0;
 
-DisableInlining::DisableInlining() : FunctionPass(ID) {
-  initializeDisableInliningPass(*PassRegistry::getPassRegistry());
+DisableInliningLPM::DisableInliningLPM() : FunctionPass(ID) {
+  initializeDisableInliningLPMPass(*PassRegistry::getPassRegistry());
 }
 
-bool DisableInlining::runOnFunction(llvm::Function &F) {
+bool DisableInlining::run(llvm::Function &F) {
   if (F.isDeclaration() || F.hasFnAttribute(llvm::Attribute::NoInline)) {
     return false;
   }
@@ -51,3 +51,10 @@ bool DisableInlining::runOnFunction(llvm::Function &F) {
 
   return true;
 }
+
+#if LLVM_VERSION_MAJOR >= 16
+PreservedAnalyses DisableInliningNPM::run(Function &F, FunctionAnalysisManager &) {
+  bool changed = DisableInlining().run(F);
+  return changed ? PreservedAnalyses::none() : PreservedAnalyses::all();
+}
+#endif // LLVM_VERSION_MAJOR >= 16

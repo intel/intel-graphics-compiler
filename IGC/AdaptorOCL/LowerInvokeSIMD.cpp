@@ -28,19 +28,21 @@ using namespace IGC;
 #define PASS_DESCRIPTION "Lower calls to invoke_simd DPCPP builtins"
 #define PASS_CFG_ONLY false
 #define PASS_ANALYSIS false
-IGC_INITIALIZE_PASS_BEGIN(LowerInvokeSIMD, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_BEGIN(LowerInvokeSIMDLPM, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
 IGC_INITIALIZE_PASS_DEPENDENCY(MetaDataUtilsWrapper)
-IGC_INITIALIZE_PASS_END(LowerInvokeSIMD, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_END(LowerInvokeSIMDLPM, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
-char LowerInvokeSIMD::ID = 0;
+char LowerInvokeSIMDLPM::ID = 0;
 
 namespace {
 static const char *FNATTR_REFERENCED_INDIRECTLY = "referenced-indirectly";
 static const char *FNATTR_INVOKE_SIMD_TARGET = "invoke_simd_target";
 } // namespace
 
-LowerInvokeSIMD::LowerInvokeSIMD() : ModulePass(ID) { initializeLowerInvokeSIMDPass(*PassRegistry::getPassRegistry()); }
+LowerInvokeSIMDLPM::LowerInvokeSIMDLPM() : ModulePass(ID) {
+  initializeLowerInvokeSIMDLPMPass(*PassRegistry::getPassRegistry());
+}
 
 // Searches for invoke_simd calls and replaces them with calls to
 // function pointer, that is the first arg of the call.
@@ -52,7 +54,7 @@ void LowerInvokeSIMD::visitCallInst(CallInst &CI) {
   if (!F->getName().contains("__builtin_invoke_simd"))
     return;
 
-  auto Ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+  auto Ctx = m_ctx;
   // invoke_simd is allowed only on compute path.
   auto OCLCtx = static_cast<OpenCLProgramContext *>(Ctx);
   bool forceBinaryLinking = false;
@@ -163,14 +165,14 @@ void LowerInvokeSIMD::fixUniformParamsAndSIMDSize(const llvm::Function *ESIMDFun
 
       int DeducedSIMDSize = (int)llvm::cast<IGCLLVM::FixedVectorType>(*ESIMDParamType)->getNumElements();
       IGC_ASSERT(DeducedSIMDSize == 8 || DeducedSIMDSize == 16 || DeducedSIMDSize == 32);
-      auto modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
+      auto modMD = m_ctx->getModuleMetaData();
       auto FuncMDItr = modMD->FuncMD.find(NewCall.getFunction());
       if (FuncMDItr == modMD->FuncMD.end())
         continue;
       int CurrentSIMDSize = FuncMDItr->second.requiredSubGroupSize;
 
       if (CurrentSIMDSize != 0 && CurrentSIMDSize != DeducedSIMDSize) {
-        auto Ctx = static_cast<OpenCLProgramContext *>(getAnalysis<CodeGenContextWrapper>().getCodeGenContext());
+        auto Ctx = static_cast<OpenCLProgramContext *>(m_ctx);
         Ctx->EmitError("SIMD size does not match for invoke_simd calls!", &NewCall);
         return;
       }
@@ -180,7 +182,9 @@ void LowerInvokeSIMD::fixUniformParamsAndSIMDSize(const llvm::Function *ESIMDFun
   }
 }
 
-bool LowerInvokeSIMD::runOnModule(Module &M) {
+bool LowerInvokeSIMD::run(Module &M, IGC::IGCMD::MetaDataUtils *pMdUtils, IGC::CodeGenContext *pCtx) {
+  m_pMdUtils = pMdUtils;
+  m_ctx = pCtx;
   IGCLLVM::IRBuilder<> builder(M.getContext());
   m_Builder = &builder;
   m_changed = false;
@@ -204,3 +208,11 @@ bool LowerInvokeSIMD::runOnModule(Module &M) {
 
   return m_changed;
 }
+
+#if LLVM_VERSION_MAJOR >= 16
+PreservedAnalyses LowerInvokeSIMDNPM::run(Module &M, ModuleAnalysisManager &AM) {
+  auto &MDU = AM.getResult<MetaDataUtilsAnalysis>(M);
+  bool changed = LowerInvokeSIMD().run(M, MDU.MdUtils, AM.getResult<CodeGenContextAnalysis>(M).Ctx);
+  return changed ? PreservedAnalyses::none() : PreservedAnalyses::all();
+}
+#endif // LLVM_VERSION_MAJOR >= 16

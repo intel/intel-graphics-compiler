@@ -17,6 +17,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/Instructions.h>
 #include "llvm/ADT/StringSwitch.h"
 #include <llvm/IR/InstVisitor.h>
+#include <llvm/IR/PassManager.h>
 #include "common/LLVMWarningsPop.hpp"
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include <llvmWrapper/IR/Instructions.h>
@@ -27,15 +28,16 @@ class CodeGenContext;
 }
 
 namespace IGC {
-class BfloatFuncsResolution : public llvm::FunctionPass, public llvm::InstVisitor<BfloatFuncsResolution> {
+// Shared implementation. Holds the logic and is used by both the legacy and the
+// new-pass-manager wrappers below; it is not itself an llvm::Pass.
+class BfloatFuncsResolution : public llvm::InstVisitor<BfloatFuncsResolution> {
 public:
-  static char ID;
+  BfloatFuncsResolution() {}
+  ~BfloatFuncsResolution() {}
 
-  BfloatFuncsResolution();
+  static llvm::StringRef getPassName() { return "BfloatFuncsResolution"; }
 
-  virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override { AU.addRequired<CodeGenContextWrapper>(); }
-
-  virtual bool runOnFunction(llvm::Function &F) override;
+  bool runOnFunction(llvm::Function &F, IGC::CodeGenContext *pCtx);
 
   void visitCallInst(llvm::CallInst &CI);
 
@@ -58,5 +60,38 @@ private:
   llvm::IRBuilder<> *m_builder = nullptr;
   IGC::CodeGenContext *m_ctx = nullptr;
 };
+
+// Legacy Pass Manager wrapper.
+class BfloatFuncsResolutionLPM : public llvm::FunctionPass {
+public:
+  static char ID;
+
+  BfloatFuncsResolutionLPM();
+  ~BfloatFuncsResolutionLPM() {}
+
+  virtual llvm::StringRef getPassName() const override { return BfloatFuncsResolution::getPassName(); }
+
+  virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override { AU.addRequired<CodeGenContextWrapper>(); }
+
+  virtual bool runOnFunction(llvm::Function &F) override {
+    return m_impl.runOnFunction(F, getAnalysis<CodeGenContextWrapper>().getCodeGenContext());
+  }
+
+private:
+  BfloatFuncsResolution m_impl;
+};
+
+#if LLVM_VERSION_MAJOR >= 16
+// New Pass Manager wrapper. Modeled as a module pass that loops over the defined
+// functions (the seeded CodeGenContextAnalysis is module-level; IGC passes never use
+// skipFunction). name() returns the legacy pass argument so PrintBefore/PrintAfter
+// matches under the new pass manager.
+class BfloatFuncsResolutionNPM : public llvm::PassInfoMixin<BfloatFuncsResolutionNPM> {
+public:
+  llvm::PreservedAnalyses run(llvm::Module &M, llvm::ModuleAnalysisManager &AM);
+  static llvm::StringRef name() { return "igc-bfloat-funcs-resolution"; }
+  static bool isRequired() { return true; }
+};
+#endif // LLVM_VERSION_MAJOR >= 16
 
 } // namespace IGC

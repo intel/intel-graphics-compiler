@@ -27,25 +27,23 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPush.hpp"
 #include "llvm/IR/InstVisitor.h"
 #include "common/LLVMWarningsPop.hpp"
+#include "AdaptorCommon/RayTracing/RayTracingPasses.hpp"
 
 using namespace IGC;
 using namespace llvm;
 
 //////////////////////////////////////////////////////////////////////////
 //
-// Pass detects the use of ray tracing intrinsics and prepares them for
-// addition as implicit arguments
-class RayTracingIntrinsicAnalysis : public ModulePass, public InstVisitor<RayTracingIntrinsicAnalysis> {
+// Shared implementation. Detects the use of ray tracing intrinsics and prepares them for
+// addition as implicit arguments. Used by both the legacy and the new-pass-manager wrappers;
+// it is not itself an llvm::Pass. The MetaDataUtils is injected by the caller (run).
+class RayTracingIntrinsicAnalysis : public InstVisitor<RayTracingIntrinsicAnalysis> {
 public:
-  RayTracingIntrinsicAnalysis();
-  bool runOnModule(Module &M) override;
+  RayTracingIntrinsicAnalysis() {}
+  bool run(Module &M, IGCMD::MetaDataUtils *MdUtils, IGC::ModuleMetaData *ModMD);
   bool runOnFunction(Function &F);
-  StringRef getPassName() const override { return "RayTracingIntrinsicAnalysis"; }
-  virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override { AU.addRequired<MetaDataUtilsWrapper>(); }
 
   void visitCallInst(CallInst &CI);
-
-  static char ID;
 
 private:
   bool hasGlobalPointer = false;
@@ -53,21 +51,39 @@ private:
   bool hasStackID = false;
   bool hasInlinedData = false;
   IGCMD::MetaDataUtils *pMdUtils = nullptr;
+  IGC::ModuleMetaData *m_modMD = nullptr;
+};
+
+// Legacy Pass Manager wrapper.
+class RayTracingIntrinsicAnalysisLPM : public ModulePass {
+public:
+  RayTracingIntrinsicAnalysisLPM();
+  bool runOnModule(Module &M) override {
+    return m_impl.run(M, getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils(),
+                      getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData());
+  }
+  StringRef getPassName() const override { return "RayTracingIntrinsicAnalysis"; }
+  void getAnalysisUsage(llvm::AnalysisUsage &AU) const override { AU.addRequired<MetaDataUtilsWrapper>(); }
+
+  static char ID;
+
+private:
+  RayTracingIntrinsicAnalysis m_impl;
 };
 
 #define PASS_FLAG "raytracing-intrinsic-analysis"
 #define PASS_DESCRIPTION "Mark raytracing intrinsics as implicit args"
 #define PASS_CFG_ONLY false
 #define PASS_ANALYSIS false
-IGC_INITIALIZE_PASS_BEGIN(RayTracingIntrinsicAnalysis, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_BEGIN(RayTracingIntrinsicAnalysisLPM, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 IGC_INITIALIZE_PASS_DEPENDENCY(MetaDataUtilsWrapper)
-IGC_INITIALIZE_PASS_END(RayTracingIntrinsicAnalysis, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_END(RayTracingIntrinsicAnalysisLPM, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
-RayTracingIntrinsicAnalysis::RayTracingIntrinsicAnalysis() : ModulePass(ID) {
-  initializeRayTracingIntrinsicAnalysisPass(*PassRegistry::getPassRegistry());
+RayTracingIntrinsicAnalysisLPM::RayTracingIntrinsicAnalysisLPM() : ModulePass(ID) {
+  initializeRayTracingIntrinsicAnalysisLPMPass(*PassRegistry::getPassRegistry());
 }
 
-char RayTracingIntrinsicAnalysis::ID = 0;
+char RayTracingIntrinsicAnalysisLPM::ID = 0;
 
 void RayTracingIntrinsicAnalysis::visitCallInst(CallInst &CI) {
   if (auto *GII = dyn_cast<GenIntrinsicInst>(&CI)) {
@@ -90,9 +106,10 @@ void RayTracingIntrinsicAnalysis::visitCallInst(CallInst &CI) {
   }
 }
 
-bool RayTracingIntrinsicAnalysis::runOnModule(Module &M) {
+bool RayTracingIntrinsicAnalysis::run(Module &M, IGCMD::MetaDataUtils *MdUtils, IGC::ModuleMetaData *ModMD) {
   bool changed = false;
-  pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
+  pMdUtils = MdUtils;
+  m_modMD = ModMD;
   // Run on all functions defined in this module
   for (Function &F : M) {
     if (F.isDeclaration()) {
@@ -138,12 +155,20 @@ bool RayTracingIntrinsicAnalysis::runOnFunction(Function &F) {
 
   if (!implicitArgs.empty()) {
     // Create IGC metadata representing the implicit args needed by this function
-    ImplicitArgs::addImplicitArgsTotally(F, implicitArgs, pMdUtils,
-                                         getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData());
+    ImplicitArgs::addImplicitArgsTotally(F, implicitArgs, pMdUtils, m_modMD);
     changed = true;
   }
   return changed;
 }
 namespace IGC {
-Pass *createRayTracingIntrinsicAnalysisPass() { return new RayTracingIntrinsicAnalysis(); }
+Pass *createRayTracingIntrinsicAnalysisPass() { return new RayTracingIntrinsicAnalysisLPM(); }
+
+#if LLVM_VERSION_MAJOR >= 16
+llvm::PreservedAnalyses RayTracingIntrinsicAnalysisNPM::run(llvm::Module &M, llvm::ModuleAnalysisManager &AM) {
+  RayTracingIntrinsicAnalysis impl;
+  bool changed =
+      impl.run(M, AM.getResult<MetaDataUtilsAnalysis>(M).MdUtils, AM.getResult<MetaDataUtilsAnalysis>(M).ModMD);
+  return changed ? llvm::PreservedAnalyses::none() : llvm::PreservedAnalyses::all();
+}
+#endif // LLVM_VERSION_MAJOR >= 16
 } // namespace IGC

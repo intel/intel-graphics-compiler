@@ -24,19 +24,20 @@ using namespace IGC;
 #define PASS_DESCRIPTION "Mark loads and stores inside assert implementation as nontemporal to avoid caching"
 #define PASS_CFG_ONLY false
 #define PASS_ANALYSIS false
-IGC_INITIALIZE_PASS_BEGIN(NontemporalLoadsAndStoresInAssert, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_BEGIN(NontemporalLoadsAndStoresInAssertLPM, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY,
+                          PASS_ANALYSIS)
 IGC_INITIALIZE_PASS_DEPENDENCY(MetaDataUtilsWrapper)
-IGC_INITIALIZE_PASS_END(NontemporalLoadsAndStoresInAssert, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_END(NontemporalLoadsAndStoresInAssertLPM, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
-char NontemporalLoadsAndStoresInAssert::ID = 0;
+char NontemporalLoadsAndStoresInAssertLPM::ID = 0;
 
 static const char *ASSERT_FUNCTION_NAME = "__devicelib_assert_fail";
 
-NontemporalLoadsAndStoresInAssert::NontemporalLoadsAndStoresInAssert() : ModulePass(ID) {
-  initializeNontemporalLoadsAndStoresInAssertPass(*PassRegistry::getPassRegistry());
+NontemporalLoadsAndStoresInAssertLPM::NontemporalLoadsAndStoresInAssertLPM() : ModulePass(ID) {
+  initializeNontemporalLoadsAndStoresInAssertLPMPass(*PassRegistry::getPassRegistry());
 }
 
-bool NontemporalLoadsAndStoresInAssert::runOnModule(Module &M) {
+bool NontemporalLoadsAndStoresInAssert::run(Module &M) {
   bool changed = false;
   for (Function &F : M) {
 
@@ -54,3 +55,10 @@ bool NontemporalLoadsAndStoresInAssert::runOnModule(Module &M) {
   }
   return changed;
 }
+
+#if LLVM_VERSION_MAJOR >= 16
+PreservedAnalyses NontemporalLoadsAndStoresInAssertNPM::run(Module &M, ModuleAnalysisManager &) {
+  bool changed = NontemporalLoadsAndStoresInAssert().run(M);
+  return changed ? PreservedAnalyses::none() : PreservedAnalyses::all();
+}
+#endif // LLVM_VERSION_MAJOR >= 16

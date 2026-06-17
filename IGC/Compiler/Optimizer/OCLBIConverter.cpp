@@ -23,18 +23,18 @@ using namespace IGC::IGCMD;
 #define PASS_DESCRIPTION "Convert builtin functions from OpenCL to common GenISA"
 #define PASS_CFG_ONLY false
 #define PASS_ANALYSIS false
-IGC_INITIALIZE_PASS_BEGIN(BuiltinsConverter, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_BEGIN(BuiltinsConverterLPM, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 IGC_INITIALIZE_PASS_DEPENDENCY(MetaDataUtilsWrapper)
-IGC_INITIALIZE_PASS_END(BuiltinsConverter, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_END(BuiltinsConverterLPM, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
-char BuiltinsConverter::ID = 0;
+char BuiltinsConverterLPM::ID = 0;
 
-BuiltinsConverter::BuiltinsConverter(void) : FunctionPass(ID) {
-  initializeBuiltinsConverterPass(*PassRegistry::getPassRegistry());
+BuiltinsConverterLPM::BuiltinsConverterLPM(void) : FunctionPass(ID) {
+  initializeBuiltinsConverterLPMPass(*PassRegistry::getPassRegistry());
 }
 
 bool BuiltinsConverter::fillIndexMap(Function &F) {
-  ModuleMetaData *modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
+  ModuleMetaData *modMD = m_pCtx->getModuleMetaData();
   FunctionMetaData *funcMD = &modMD->FuncMD[&F];
   ResourceAllocMD *resAllocMD = &funcMD->resAllocMD;
   for (Function::arg_iterator arg = F.arg_begin(), e = F.arg_end(); arg != e; ++arg) {
@@ -68,15 +68,15 @@ void BuiltinsConverter::visitCallInst(llvm::CallInst &CI) {
   }
 }
 
-bool BuiltinsConverter::runOnFunction(Function &F) {
+bool BuiltinsConverter::runOnFunction(Function &F, CodeGenContext *Ctx) {
   m_argIndexMap.clear();
   m_inlineIndexMap.clear();
+  m_pCtx = Ctx;
 
   // Make sure we are running on a kernel.
-  auto ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
-  ModuleMetaData *modMD = ctx->getModuleMetaData();
+  ModuleMetaData *modMD = m_pCtx->getModuleMetaData();
 
-  if (ctx->getMetaDataUtils()->findFunctionsInfoItem(&F) == ctx->getMetaDataUtils()->end_FunctionsInfo() ||
+  if (m_pCtx->getMetaDataUtils()->findFunctionsInfoItem(&F) == m_pCtx->getMetaDataUtils()->end_FunctionsInfo() ||
       modMD->FuncMD.find(&F) == modMD->FuncMD.end()) {
     return false;
   }
@@ -84,10 +84,28 @@ bool BuiltinsConverter::runOnFunction(Function &F) {
   if (!fillIndexMap(F))
     return false;
 
-  CBuiltinsResolver resolve(&m_argIndexMap, &m_inlineIndexMap, &m_nextSampler, ctx);
+  CBuiltinsResolver resolve(&m_argIndexMap, &m_inlineIndexMap, &m_nextSampler, m_pCtx);
   m_pResolve = &resolve;
   visit(F);
   return true;
 }
 
-extern "C" FunctionPass *createBuiltinsConverterPass(void) { return new BuiltinsConverter(); }
+bool BuiltinsConverterLPM::runOnFunction(Function &F) {
+  return m_impl.runOnFunction(F, getAnalysis<CodeGenContextWrapper>().getCodeGenContext());
+}
+
+#if LLVM_VERSION_MAJOR >= 16
+llvm::PreservedAnalyses BuiltinsConverterNPM::run(llvm::Module &M, llvm::ModuleAnalysisManager &AM) {
+  CodeGenContext *ctx = AM.getResult<CodeGenContextAnalysis>(M).Ctx;
+  BuiltinsConverter impl;
+  bool changed = false;
+  for (Function &F : M) {
+    if (F.isDeclaration())
+      continue;
+    changed |= impl.runOnFunction(F, ctx);
+  }
+  return changed ? llvm::PreservedAnalyses::none() : llvm::PreservedAnalyses::all();
+}
+#endif // LLVM_VERSION_MAJOR >= 16
+
+extern "C" FunctionPass *createBuiltinsConverterPass(void) { return new BuiltinsConverterLPM(); }

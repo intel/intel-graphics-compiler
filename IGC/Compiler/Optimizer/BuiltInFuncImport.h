@@ -13,6 +13,7 @@ SPDX-License-Identifier: MIT
 
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/Pass.h>
+#include <llvm/IR/PassManager.h>
 #include "common/LLVMWarningsPop.hpp"
 
 #include "AdaptorOCL/CLElfLib/ElfReader.h"
@@ -23,27 +24,17 @@ SPDX-License-Identifier: MIT
 
 namespace IGC {
 /// This pass imports built-in functions from source module to destination module.
-class BIImport : public llvm::ModulePass {
+/// Shared implementation. Holds the logic and is used by both the legacy and the new-pass-manager
+/// wrappers below; it is not itself an llvm::Pass. The CodeGenContext and MetaDataUtils are injected
+/// by the caller (run).
+class BIImport {
 public:
-  // Pass identification, replacement for typeid.
-  static char ID;
-
-  /// @brief Constructor
-  BIImport();
-
-  /// @brief analyses used
-  virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override {
-    AU.addRequired<MetaDataUtilsWrapper>();
-    AU.addRequired<CodeGenContextWrapper>();
-  }
-
-  /// @brief Provides name of pass
-  virtual llvm::StringRef getPassName() const override { return "BIImport"; }
+  BIImport() {}
 
   /// @brief Main entry point.
   ///        Find all builtins to import, and import them along with callees and globals.
   /// @param M The destination module.
-  bool runOnModule(llvm::Module &M) override;
+  bool run(llvm::Module &M, CodeGenContext *Ctx, IGC::IGCMD::MetaDataUtils *MdUtils);
 
   static void supportOldManglingSchemes(llvm::Module &M);
   static std::unique_ptr<llvm::Module> Construct(llvm::Module &M, CLElfLib::CElfReader *pElfReader, bool hasSizet);
@@ -81,33 +72,58 @@ protected:
   void addOCLObjectCastFunctionDefinitions(llvm::Module &M);
 };
 
-} // namespace IGC
-
-extern "C" llvm::ModulePass *createBuiltInImportPass();
-
-namespace IGC {
-class PreBIImportAnalysis : public llvm::ModulePass {
+// Legacy Pass Manager wrapper.
+class BIImportLPM : public llvm::ModulePass {
 public:
-  // Pass identification, replacement for typeid
   static char ID;
 
-  /// @brief  Constructor
-  PreBIImportAnalysis();
-
-  /// @brief  Destructor
-  ~PreBIImportAnalysis() {}
-
-  /// @brief  Provides name of pass
-  virtual llvm::StringRef getPassName() const override { return "PreBIImportAnalysis"; }
+  BIImportLPM();
 
   void getAnalysisUsage(llvm::AnalysisUsage &AU) const override {
     AU.addRequired<MetaDataUtilsWrapper>();
     AU.addRequired<CodeGenContextWrapper>();
   }
 
+  llvm::StringRef getPassName() const override { return "BIImport"; }
+
+  bool runOnModule(llvm::Module &M) override {
+    return m_impl.run(M, getAnalysis<CodeGenContextWrapper>().getCodeGenContext(),
+                      getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils());
+  }
+
+private:
+  BIImport m_impl;
+};
+
+#if LLVM_VERSION_MAJOR >= 16
+// New Pass Manager wrapper. name() returns the legacy pass argument so that
+// PrintBefore/PrintAfter=<pass argument> matches under the new pass manager.
+class BIImportNPM : public llvm::PassInfoMixin<BIImportNPM> {
+public:
+  llvm::PreservedAnalyses run(llvm::Module &M, llvm::ModuleAnalysisManager &AM);
+  static llvm::StringRef name() { return "igc-builtin-import"; }
+  static llvm::StringRef getPassName() { return "BIImport"; }
+  static bool isRequired() { return true; }
+};
+#endif // LLVM_VERSION_MAJOR >= 16
+
+} // namespace IGC
+
+extern "C" llvm::ModulePass *createBuiltInImportPass();
+
+namespace IGC {
+// Shared implementation. Holds the logic and is used by both the legacy and the
+// new-pass-manager wrappers below; it is not itself an llvm::Pass.
+class PreBIImportAnalysis {
+public:
+  PreBIImportAnalysis() {}
+  ~PreBIImportAnalysis() {}
+
+  static llvm::StringRef getPassName() { return "PreBIImportAnalysis"; }
+
   /// @brief  Main entry point.
   /// @param  M The destination module.
-  virtual bool runOnModule(llvm::Module &M) override;
+  bool run(llvm::Module &M, IGCMD::MetaDataUtils *pMdUtils, ModuleMetaData *pModMD, CodeGenContext *pCtx);
 
   static const llvm::StringRef OCL_GET_GLOBAL_OFFSET;
   static const llvm::StringRef OCL_GET_LOCAL_ID;
@@ -131,5 +147,45 @@ public:
   static const llvm::StringRef OCL_V8I64_SUFFIX;
   static const llvm::StringRef OCL_V16I64_SUFFIX;
 };
+
+// Legacy Pass Manager wrapper.
+class PreBIImportAnalysisLPM : public llvm::ModulePass {
+public:
+  // Pass identification, replacement for typeid
+  static char ID;
+
+  PreBIImportAnalysisLPM();
+  ~PreBIImportAnalysisLPM() {}
+
+  virtual llvm::StringRef getPassName() const override { return PreBIImportAnalysis::getPassName(); }
+
+  void getAnalysisUsage(llvm::AnalysisUsage &AU) const override {
+    AU.addRequired<MetaDataUtilsWrapper>();
+    AU.addRequired<CodeGenContextWrapper>();
+  }
+
+  virtual bool runOnModule(llvm::Module &M) override {
+    return m_impl.run(M, getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils(),
+                      getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData(),
+                      getAnalysis<CodeGenContextWrapper>().getCodeGenContext());
+  }
+
+private:
+  PreBIImportAnalysis m_impl;
+};
+
+#if LLVM_VERSION_MAJOR >= 16
+// New Pass Manager wrapper. name() returns the legacy pass argument so that
+// PrintBefore/PrintAfter=<pass argument> matches under the new pass manager.
+class PreBIImportAnalysisNPM : public llvm::PassInfoMixin<PreBIImportAnalysisNPM> {
+public:
+  llvm::PreservedAnalyses run(llvm::Module &M, llvm::ModuleAnalysisManager &AM);
+  static llvm::StringRef name() { return "igc-Pre-BIImport-Analysis"; }
+  static bool isRequired() { return true; }
+
+private:
+  PreBIImportAnalysis m_impl;
+};
+#endif // LLVM_VERSION_MAJOR >= 16
 
 } // namespace IGC

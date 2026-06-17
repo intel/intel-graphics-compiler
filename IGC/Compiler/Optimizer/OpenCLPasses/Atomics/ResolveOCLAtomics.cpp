@@ -26,18 +26,17 @@ using namespace IGC;
 #define PASS_DESCRIPTION "Resolve atomic built-ins"
 #define PASS_CFG_ONLY false
 #define PASS_ANALYSIS false
-IGC_INITIALIZE_PASS_BEGIN(ResolveOCLAtomics, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_BEGIN(ResolveOCLAtomicsLPM, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
-IGC_INITIALIZE_PASS_END(ResolveOCLAtomics, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_END(ResolveOCLAtomicsLPM, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
-char ResolveOCLAtomics::ID = 0;
+char ResolveOCLAtomicsLPM::ID = 0;
 
 const llvm::StringRef BUILTIN_GET_LOCAL_LOCK = "__builtin_IB_get_local_lock";
 const llvm::StringRef BUILTIN_GET_GLOBAL_LOCK = "__builtin_IB_get_global_lock";
 
-ResolveOCLAtomics::ResolveOCLAtomics() : ModulePass(ID) {
-  initializeResolveOCLAtomicsPass(*PassRegistry::getPassRegistry());
-  initResolveOCLAtomics();
+ResolveOCLAtomicsLPM::ResolveOCLAtomicsLPM() : ModulePass(ID) {
+  initializeResolveOCLAtomicsLPMPass(*PassRegistry::getPassRegistry());
 }
 
 void ResolveOCLAtomics::initResolveOCLAtomics() { initOCLAtomicsMap(); }
@@ -48,8 +47,9 @@ void ResolveOCLAtomics::initOCLAtomicsMap() {
 #undef DEF_OCL_IGC_ATOMIC
 }
 
-bool ResolveOCLAtomics::runOnModule(Module &M) {
-  m_CGCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+bool ResolveOCLAtomics::run(Module &M, CodeGenContext *pCtx) {
+  initResolveOCLAtomics();
+  m_CGCtx = pCtx;
   m_pModule = static_cast<IGCLLVM::Module *>(&M);
   m_Int32Ty = Type::getInt32Ty(m_pModule->getContext());
 
@@ -66,6 +66,13 @@ bool ResolveOCLAtomics::runOnModule(Module &M) {
 
   return m_changed;
 }
+
+#if LLVM_VERSION_MAJOR >= 16
+PreservedAnalyses ResolveOCLAtomicsNPM::run(Module &M, ModuleAnalysisManager &AM) {
+  bool changed = ResolveOCLAtomics().run(M, AM.getResult<CodeGenContextAnalysis>(M).Ctx);
+  return changed ? PreservedAnalyses::none() : PreservedAnalyses::all();
+}
+#endif // LLVM_VERSION_MAJOR >= 16
 
 void ResolveOCLAtomics::visitCallInst(CallInst &callInst) {
   if (!callInst.getCalledFunction()) {

@@ -15,6 +15,7 @@ SPDX-License-Identifier: MIT
 
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/IR/InstVisitor.h>
+#include <llvm/IR/PassManager.h>
 #include "common/LLVMWarningsPop.hpp"
 
 #include <memory>
@@ -22,23 +23,16 @@ SPDX-License-Identifier: MIT
 namespace IGC {
 struct JointMatrixTypeDescription;
 
-class JointMatrixFuncsResolutionPass final : public llvm::ModulePass,
-                                             public llvm::InstVisitor<JointMatrixFuncsResolutionPass> {
+// Shared implementation. Holds the logic and is used by both the legacy and the
+// new-pass-manager wrappers below; it is not itself an llvm::Pass.
+class JointMatrixFuncsResolutionPass final : public llvm::InstVisitor<JointMatrixFuncsResolutionPass> {
 public:
-  static char ID;
-
-  JointMatrixFuncsResolutionPass();
+  JointMatrixFuncsResolutionPass() {}
   ~JointMatrixFuncsResolutionPass() {}
 
-  virtual llvm::StringRef getPassName() const override { return "JointMatrixFuncsResolutionPass"; }
+  static llvm::StringRef getPassName() { return "JointMatrixFuncsResolutionPass"; }
 
-  virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override {
-    AU.setPreservesCFG();
-    AU.addRequired<IGC::MetaDataUtilsWrapper>();
-    AU.addRequired<IGC::CodeGenContextWrapper>();
-  }
-
-  virtual bool runOnModule(llvm::Module &M) override;
+  bool run(llvm::Module &M, CodeGenContext *pCtx, IGCMD::MetaDataUtils *pMdUtils);
   bool runOnFunction(llvm::Function &F);
   void visitCallInst(llvm::CallInst &CI);
   void visitAllocaInst(llvm::AllocaInst &I);
@@ -151,4 +145,37 @@ private:
   int32_t m_SIMDSize = 0;
   std::unique_ptr<KernelSIMDSizeResolver> m_simdResolver;
 };
+
+// Legacy Pass Manager wrapper.
+class JointMatrixFuncsResolutionPassLPM final : public llvm::ModulePass {
+public:
+  static char ID;
+
+  JointMatrixFuncsResolutionPassLPM();
+  ~JointMatrixFuncsResolutionPassLPM() {}
+
+  llvm::StringRef getPassName() const override { return JointMatrixFuncsResolutionPass::getPassName(); }
+
+  void getAnalysisUsage(llvm::AnalysisUsage &AU) const override {
+    AU.setPreservesCFG();
+    AU.addRequired<IGC::MetaDataUtilsWrapper>();
+    AU.addRequired<IGC::CodeGenContextWrapper>();
+  }
+
+  bool runOnModule(llvm::Module &M) override {
+    return JointMatrixFuncsResolutionPass().run(M, getAnalysis<CodeGenContextWrapper>().getCodeGenContext(),
+                                                getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils());
+  }
+};
+
+#if LLVM_VERSION_MAJOR >= 16
+// New Pass Manager wrapper. name() returns the legacy pass argument so that
+// PrintBefore/PrintAfter=<pass argument> matches under the new pass manager.
+class JointMatrixFuncsResolutionPassNPM : public llvm::PassInfoMixin<JointMatrixFuncsResolutionPassNPM> {
+public:
+  llvm::PreservedAnalyses run(llvm::Module &M, llvm::ModuleAnalysisManager &AM);
+  static llvm::StringRef name() { return "igc-joint-matrix-resolution"; }
+  static bool isRequired() { return true; }
+};
+#endif // LLVM_VERSION_MAJOR >= 16
 }; // namespace IGC

@@ -30,15 +30,16 @@ using namespace llvm;
 #define PASS_DESCRIPTION "Resolve OCL image implicit args for bindless"
 #define PASS_CFG_ONLY false
 #define PASS_ANALYSIS false
-IGC_INITIALIZE_PASS_BEGIN(ResolveImageImplicitArgsForBindless, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY,
+IGC_INITIALIZE_PASS_BEGIN(ResolveImageImplicitArgsForBindlessLPM, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY,
                           PASS_ANALYSIS)
 IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
-IGC_INITIALIZE_PASS_END(ResolveImageImplicitArgsForBindless, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_END(ResolveImageImplicitArgsForBindlessLPM, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY,
+                        PASS_ANALYSIS)
 
-char ResolveImageImplicitArgsForBindless::ID = 0;
+char ResolveImageImplicitArgsForBindlessLPM::ID = 0;
 
-ResolveImageImplicitArgsForBindless::ResolveImageImplicitArgsForBindless() : ModulePass(ID) {
-  initializeResolveImageImplicitArgsForBindlessPass(*PassRegistry::getPassRegistry());
+ResolveImageImplicitArgsForBindlessLPM::ResolveImageImplicitArgsForBindlessLPM() : ModulePass(ID) {
+  initializeResolveImageImplicitArgsForBindlessLPMPass(*PassRegistry::getPassRegistry());
 }
 
 namespace {
@@ -83,10 +84,10 @@ std::map<StringRef, ImageImplicitArgInfo> BuiltinToArgMap = {
 };
 } // namespace
 
-bool ResolveImageImplicitArgsForBindless::runOnModule(Module &M) {
+bool ResolveImageImplicitArgsForBindless::run(Module &M, CodeGenContext *pCtx) {
   mChanged = false;
 
-  auto *Ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+  auto *Ctx = pCtx;
   auto *modMD = Ctx->getModuleMetaData();
   if (!modMD->extensions.spvINTELBindlessImages)
     return false; // Bindless exclusive pass.
@@ -155,3 +156,10 @@ void ResolveImageImplicitArgsForBindless::visitCallInst(CallInst &CI) {
   mInstsToRemove.insert(&CI);
   mChanged = true;
 }
+
+#if LLVM_VERSION_MAJOR >= 16
+PreservedAnalyses ResolveImageImplicitArgsForBindlessNPM::run(Module &M, ModuleAnalysisManager &AM) {
+  bool changed = ResolveImageImplicitArgsForBindless().run(M, AM.getResult<CodeGenContextAnalysis>(M).Ctx);
+  return changed ? PreservedAnalyses::none() : PreservedAnalyses::all();
+}
+#endif // LLVM_VERSION_MAJOR >= 16

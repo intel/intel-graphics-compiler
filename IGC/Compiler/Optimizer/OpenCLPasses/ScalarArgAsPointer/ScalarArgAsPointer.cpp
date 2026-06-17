@@ -31,20 +31,21 @@ using namespace IGC::IGCMD;
 #define PASS_DESCRIPTION "Analyzes scalar kernel arguments used for global memory access"
 #define PASS_CFG_ONLY false
 #define PASS_ANALYSIS false
-IGC_INITIALIZE_PASS_BEGIN(ScalarArgAsPointerAnalysis, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_BEGIN(ScalarArgAsPointerAnalysisLPM, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 IGC_INITIALIZE_PASS_DEPENDENCY(MetaDataUtilsWrapper)
-IGC_INITIALIZE_PASS_END(ScalarArgAsPointerAnalysis, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_END(ScalarArgAsPointerAnalysisLPM, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
-char ScalarArgAsPointerAnalysis::ID = 0;
+char ScalarArgAsPointerAnalysisLPM::ID = 0;
 
-ScalarArgAsPointerAnalysis::ScalarArgAsPointerAnalysis() : ModulePass(ID) {
-  initializeScalarArgAsPointerAnalysisPass(*PassRegistry::getPassRegistry());
+ScalarArgAsPointerAnalysisLPM::ScalarArgAsPointerAnalysisLPM() : ModulePass(ID) {
+  initializeScalarArgAsPointerAnalysisLPMPass(*PassRegistry::getPassRegistry());
 }
 
-bool ScalarArgAsPointerAnalysis::runOnModule(Module &M) {
+bool ScalarArgAsPointerAnalysis::run(Module &M, IGC::IGCMD::MetaDataUtils *pMdUtils, IGC::ModuleMetaData *pModMD) {
   DL = &M.getDataLayout();
 
-  MDU = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
+  MDU = pMdUtils;
+  m_modMD = pModMD;
 
   bool changed = false;
 
@@ -78,7 +79,7 @@ bool ScalarArgAsPointerAnalysis::analyzeFunction(llvm::Function &F) {
   if (m_matchingArgs.empty())
     return false;
 
-  FunctionMetaData &funcMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData()->FuncMD[&F];
+  FunctionMetaData &funcMD = m_modMD->FuncMD[&F];
 
   for (auto it = m_matchingArgs.begin(); it != m_matchingArgs.end(); ++it)
     funcMD.m_OpenCLArgScalarAsPointers.insert((*it)->getArgNo());
@@ -238,7 +239,7 @@ llvm::Argument *ScalarArgAsPointerAnalysis::analyzeGlobal(llvm::GlobalValue *V) 
   if (type->getAddressSpace() != ADDRESS_SPACE_GLOBAL)
     return nullptr;
 
-  ImplicitArgs implicitArgs(*m_currentFunction, MDU, getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData());
+  ImplicitArgs implicitArgs(*m_currentFunction, MDU, m_modMD);
 
   if (!implicitArgs.isImplicitArgExist(ImplicitArg::GLOBAL_BASE))
     return nullptr;
@@ -382,3 +383,11 @@ bool ScalarArgAsPointerAnalysis::findAllocaWithOffset(llvm::Value *V, llvm::Allo
     }
   }
 }
+
+#if LLVM_VERSION_MAJOR >= 16
+PreservedAnalyses ScalarArgAsPointerAnalysisNPM::run(Module &M, ModuleAnalysisManager &AM) {
+  auto &MDU = AM.getResult<MetaDataUtilsAnalysis>(M);
+  bool changed = ScalarArgAsPointerAnalysis().run(M, MDU.MdUtils, MDU.ModMD);
+  return changed ? PreservedAnalyses::none() : PreservedAnalyses::all();
+}
+#endif // LLVM_VERSION_MAJOR >= 16

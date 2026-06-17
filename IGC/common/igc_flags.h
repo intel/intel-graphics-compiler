@@ -213,6 +213,14 @@ DECLARE_IGC_REGKEY(DWORD, SpillCompressionThresholdOverride, 0,
 DECLARE_IGC_REGKEY(bool, EnableRemoveLoopDependency, false,
                    "Enable removing of fantom loop dependency introduced by SROA", true)
 DECLARE_IGC_GROUP("IGC Optimization")
+// Default ON for LLVM 16+ (which has full New Pass Manager support), OFF for LLVM 15
+// and older.
+#if LLVM_VERSION_MAJOR / 16
+DECLARE_IGC_REGKEY(bool, EnableOCLNewPassManager, true, "Enable the LLVM New Pass Manager for compute IGC passes", true)
+#else
+DECLARE_IGC_REGKEY(bool, EnableOCLNewPassManager, false, "Enable the LLVM New Pass Manager for compute IGC passes",
+                   true)
+#endif
 DECLARE_IGC_REGKEY(bool, AllowMem2Reg, false,
                    "Setting this to true makes IGC run mem2reg even when optimizations are disabled", true)
 DECLARE_IGC_REGKEY(bool, DisableIGCOptimizations, false,

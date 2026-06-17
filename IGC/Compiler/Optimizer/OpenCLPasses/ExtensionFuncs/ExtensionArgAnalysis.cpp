@@ -22,13 +22,13 @@ using namespace IGC;
 #define PASS_DESCRIPTION "Analyzes extension functions arguments"
 #define PASS_CFG_ONLY false
 #define PASS_ANALYSIS true
-IGC_INITIALIZE_PASS_BEGIN(ExtensionArgAnalysis, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_BEGIN(ExtensionArgAnalysisLPM, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 IGC_INITIALIZE_PASS_DEPENDENCY(MetaDataUtilsWrapper)
-IGC_INITIALIZE_PASS_END(ExtensionArgAnalysis, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_END(ExtensionArgAnalysisLPM, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
 namespace IGC {
 
-char ExtensionArgAnalysis::ID = 0;
+char ExtensionArgAnalysisLPM::ID = 0;
 
 // VME Functions:
 
@@ -92,10 +92,8 @@ const ResourceExtensionTypeEnum VA_FUNCTION_SAMPLER_TYPES[] = {
 static_assert(sizeof(VA_FUNCTION_SAMPLER_TYPES) / sizeof(*VA_FUNCTION_SAMPLER_TYPES) == NUM_VA_FUNCTIONS,
               "Sampler mapping array needs to be in sync with VA_FUNCTIONS enum, fix me!");
 
-ExtensionArgAnalysis::ExtensionArgAnalysis() : FunctionPass(ID) {
-  m_extensionType = ResourceExtensionTypeEnum::NonExtensionType;
-
-  initializeExtensionArgAnalysisPass(*PassRegistry::getPassRegistry());
+ExtensionArgAnalysisLPM::ExtensionArgAnalysisLPM() : FunctionPass(ID) {
+  initializeExtensionArgAnalysisLPMPass(*PassRegistry::getPassRegistry());
 }
 
 void ExtensionArgAnalysis::visitCallInst(llvm::CallInst &CI) {
@@ -109,7 +107,7 @@ void ExtensionArgAnalysis::visitCallInst(llvm::CallInst &CI) {
     if (auto *pArg = dyn_cast<Argument>(ValueTracker::track(&CI, argIndex))) {
       if (m_ExtensionMap.count(pArg) != 0) {
         if (m_ExtensionMap[pArg] != expected) {
-          getAnalysis<CodeGenContextWrapper>().getCodeGenContext()->EmitError("Inconsistent use of image!", &CI);
+          m_pCtx->EmitError("Inconsistent use of image!", &CI);
           return;
         }
       } else {
@@ -124,12 +122,12 @@ void ExtensionArgAnalysis::visitCallInst(llvm::CallInst &CI) {
   // those built-ins only work for SIMD16 kernels.
   //
   auto CheckandSetSIMD16 = [&]() {
-    if (ModuleMetaData *modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData()) {
+    if (ModuleMetaData *modMD = m_pCtx->getModuleMetaData()) {
       auto funcIter = modMD->FuncMD.find(CI.getParent()->getParent());
       if (funcIter != modMD->FuncMD.end()) {
         if (funcIter->second.requiredSubGroupSize != 0) {
           if (funcIter->second.requiredSubGroupSize != 16)
-            getAnalysis<CodeGenContextWrapper>().getCodeGenContext()->EmitError("SIMD16 is expected", &CI);
+            m_pCtx->EmitError("SIMD16 is expected", &CI);
         } else
           funcIter->second.requiredSubGroupSize = 16;
       }
@@ -161,7 +159,9 @@ void ExtensionArgAnalysis::visitCallInst(llvm::CallInst &CI) {
   }
 }
 
-bool ExtensionArgAnalysis::runOnFunction(Function &F) {
+void ExtensionArgAnalysis::analyze(Function &F, IGC::IGCMD::MetaDataUtils *pMdUtils, IGC::CodeGenContext *pCtx) {
+  m_pMdUtils = pMdUtils;
+  m_pCtx = pCtx;
   m_ExtensionMap.clear();
   m_MediaArgs.clear();
   m_MediaBlockArgs.clear();
@@ -194,8 +194,6 @@ bool ExtensionArgAnalysis::runOnFunction(Function &F) {
       m_extensionType = VA_FUNCTION_SAMPLER_TYPES[func];
     }
   }
-
-  return false;
 }
 
 } // namespace IGC

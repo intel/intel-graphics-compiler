@@ -14,29 +14,28 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/Pass.h>
 #include <llvm/IR/InstVisitor.h>
+#include <llvm/IR/PassManager.h>
 #include "common/LLVMWarningsPop.hpp"
 #include "IGC/common/Types.hpp"
 
 namespace IGC {
 /// @brief  NamedBarriersResolution pass used for resolving OpenCL named barriers functions.
-class NamedBarriersResolution : public llvm::ModulePass, public llvm::InstVisitor<NamedBarriersResolution, void> {
+// Shared implementation. Holds the logic and the pass configuration (m_GFX_CORE) and is
+// used by both the legacy and the new-pass-manager wrappers below; it is not itself an
+// llvm::Pass.
+class NamedBarriersResolution : public llvm::InstVisitor<NamedBarriersResolution, void> {
 public:
-  // Pass identification, replacement for typeid
-  static char ID;
-
   /// @brief  Constructor
-  NamedBarriersResolution();
-  NamedBarriersResolution(GFXCORE_FAMILY GFX_CORE);
+  NamedBarriersResolution() : m_GFX_CORE(IGFX_UNKNOWN_CORE) {}
+  NamedBarriersResolution(GFXCORE_FAMILY GFX_CORE) : m_GFX_CORE(GFX_CORE) {}
 
   /// @brief  Destructor
-  ~NamedBarriersResolution();
+  ~NamedBarriersResolution() {}
 
   /// @brief  Provides name of pass
-  virtual llvm::StringRef getPassName() const override { return "NamedBarriersResolution"; }
+  static llvm::StringRef getPassName() { return "NamedBarriersResolution"; }
 
-  virtual bool runOnModule(llvm::Module &M) override;
-
-  virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override { AU.addRequired<MetaDataUtilsWrapper>(); }
+  bool run(llvm::Module &M, ModuleMetaData *pModMD);
 
   /// @brief  Call instructions visitor.
   ///         Checks for OpenCL Named Barier init  functions and resolves them into appropriate sequence of code
@@ -61,13 +60,13 @@ public:
 
 private:
   GFXCORE_FAMILY m_GFX_CORE;
-  llvm::Type *m_NamedBarrierType;
-  llvm::GlobalVariable *m_NamedBarrierID;
-  llvm::GlobalVariable *m_NamedBarrierArray;
+  llvm::Type *m_NamedBarrierType = nullptr;
+  llvm::GlobalVariable *m_NamedBarrierID = nullptr;
+  llvm::GlobalVariable *m_NamedBarrierArray = nullptr;
   /// @brief  Indicates if the pass changed the processed function
   inline bool IsNamedBarriersAdded() { return m_CountNamedBarriers > 0; }
 
-  int m_CountNamedBarriers;
+  int m_CountNamedBarriers = 0;
 
   bool isNamedBarrierInit(llvm::StringRef &FuncionName);
   bool isNamedBarrierSync(llvm::StringRef &FuncionName);
@@ -87,5 +86,44 @@ private:
   void HandleNamedBarrierInitHW(llvm::CallInst &NBarrierInitCall);
   void HandleNamedBarrierSyncHW(llvm::CallInst &NBarrierSyncCall);
 };
+
+// Legacy Pass Manager wrapper.
+class NamedBarriersResolutionLPM : public llvm::ModulePass {
+public:
+  static char ID;
+
+  NamedBarriersResolutionLPM();
+  NamedBarriersResolutionLPM(GFXCORE_FAMILY GFX_CORE);
+  ~NamedBarriersResolutionLPM() {}
+
+  virtual llvm::StringRef getPassName() const override { return NamedBarriersResolution::getPassName(); }
+
+  virtual bool runOnModule(llvm::Module &M) override {
+    return m_impl.run(M, getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData());
+  }
+
+  virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override { AU.addRequired<MetaDataUtilsWrapper>(); }
+
+private:
+  NamedBarriersResolution m_impl;
+};
+
+#if LLVM_VERSION_MAJOR >= 16
+// New Pass Manager wrapper. Carries the same configuration as the legacy pass via its
+// constructors. name() returns the legacy pass argument so PrintBefore/PrintAfter
+// matches under the new pass manager.
+class NamedBarriersResolutionNPM : public llvm::PassInfoMixin<NamedBarriersResolutionNPM> {
+public:
+  NamedBarriersResolutionNPM() {}
+  NamedBarriersResolutionNPM(GFXCORE_FAMILY GFX_CORE) : m_impl(GFX_CORE) {}
+
+  llvm::PreservedAnalyses run(llvm::Module &M, llvm::ModuleAnalysisManager &AM);
+  static llvm::StringRef name() { return "igc-named-barriers-resolution"; }
+  static bool isRequired() { return true; }
+
+private:
+  NamedBarriersResolution m_impl;
+};
+#endif // LLVM_VERSION_MAJOR >= 16
 
 } // namespace IGC

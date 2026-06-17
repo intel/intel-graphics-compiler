@@ -27,25 +27,26 @@ using namespace IGC::IGCMD;
 #define PASS_DESCRIPTION "Creates annotations for OpenCL program-scope structures"
 #define PASS_CFG_ONLY false
 #define PASS_ANALYSIS false
-IGC_INITIALIZE_PASS_BEGIN(ProgramScopeConstantAnalysis, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_BEGIN(ProgramScopeConstantAnalysisLPM, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 IGC_INITIALIZE_PASS_DEPENDENCY(MetaDataUtilsWrapper)
-IGC_INITIALIZE_PASS_END(ProgramScopeConstantAnalysis, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_END(ProgramScopeConstantAnalysisLPM, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
-char ProgramScopeConstantAnalysis::ID = 0;
+char ProgramScopeConstantAnalysisLPM::ID = 0;
 
-ProgramScopeConstantAnalysis::ProgramScopeConstantAnalysis() : ModulePass(ID) {
-  initializeProgramScopeConstantAnalysisPass(*PassRegistry::getPassRegistry());
+ProgramScopeConstantAnalysisLPM::ProgramScopeConstantAnalysisLPM() : ModulePass(ID) {
+  initializeProgramScopeConstantAnalysisLPMPass(*PassRegistry::getPassRegistry());
 }
 
-bool ProgramScopeConstantAnalysis::runOnModule(Module &M) {
+bool ProgramScopeConstantAnalysis::run(Module &M, IGC::IGCMD::MetaDataUtils *pMdUtils, IGC::CodeGenContext *pCtx,
+                                       IGC::ModuleMetaData *pModMD) {
   BufferOffsetMap inlineProgramScopeOffsets;
 
   LLVMContext &C = M.getContext();
   m_DL = &M.getDataLayout();
 
-  auto Ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
-  MetaDataUtils *mdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
-  m_pModuleMd = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
+  auto Ctx = pCtx;
+  MetaDataUtils *mdUtils = pMdUtils;
+  m_pModuleMd = pModMD;
 
   bool isFirstTry = Ctx->m_retryManager->IsFirstTry();
 
@@ -493,3 +494,12 @@ void ProgramScopeConstantAnalysis::addData(Constant *initializer,
   // end after inserting the actual vector contents (this is due to sizeof(vec3) == 4 * sizeof(scalarType)).
   alignBuffer(inlineProgramScopeBuffer, typeAlignment);
 }
+
+#if LLVM_VERSION_MAJOR >= 16
+PreservedAnalyses ProgramScopeConstantAnalysisNPM::run(Module &M, ModuleAnalysisManager &AM) {
+  auto &MDU = AM.getResult<MetaDataUtilsAnalysis>(M);
+  bool changed =
+      ProgramScopeConstantAnalysis().run(M, MDU.MdUtils, AM.getResult<CodeGenContextAnalysis>(M).Ctx, MDU.ModMD);
+  return changed ? PreservedAnalyses::none() : PreservedAnalyses::all();
+}
+#endif // LLVM_VERSION_MAJOR >= 16

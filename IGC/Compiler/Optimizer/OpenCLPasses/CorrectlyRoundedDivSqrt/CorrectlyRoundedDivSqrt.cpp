@@ -26,25 +26,24 @@ using namespace IGC::IGCMD;
 #define PASS_DESCRIPTION "Ensures single precision divide and sqrt are correctly rounded"
 #define PASS_CFG_ONLY false
 #define PASS_ANALYSIS false
-IGC_INITIALIZE_PASS_BEGIN(CorrectlyRoundedDivSqrt, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_BEGIN(CorrectlyRoundedDivSqrtLPM, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 IGC_INITIALIZE_PASS_DEPENDENCY(MetaDataUtilsWrapper)
-IGC_INITIALIZE_PASS_END(CorrectlyRoundedDivSqrt, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_END(CorrectlyRoundedDivSqrtLPM, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
-char CorrectlyRoundedDivSqrt::ID = 0;
+char CorrectlyRoundedDivSqrtLPM::ID = 0;
 
-CorrectlyRoundedDivSqrt::CorrectlyRoundedDivSqrt()
-    : ModulePass(ID), m_forceCR(false), m_hasHalfTy(false), m_IsCorrectlyRounded(false) {
-  initializeCorrectlyRoundedDivSqrtPass(*PassRegistry::getPassRegistry());
+CorrectlyRoundedDivSqrtLPM::CorrectlyRoundedDivSqrtLPM() : ModulePass(ID), m_impl() {
+  initializeCorrectlyRoundedDivSqrtLPMPass(*PassRegistry::getPassRegistry());
 }
 
-CorrectlyRoundedDivSqrt::CorrectlyRoundedDivSqrt(bool forceCR, bool HasHalf)
-    : ModulePass(ID), m_forceCR(forceCR), m_hasHalfTy(HasHalf), m_IsCorrectlyRounded(false) {
-  initializeCorrectlyRoundedDivSqrtPass(*PassRegistry::getPassRegistry());
+CorrectlyRoundedDivSqrtLPM::CorrectlyRoundedDivSqrtLPM(bool forceCR, bool HasHalf)
+    : ModulePass(ID), m_impl(forceCR, HasHalf) {
+  initializeCorrectlyRoundedDivSqrtLPMPass(*PassRegistry::getPassRegistry());
 }
 
-bool CorrectlyRoundedDivSqrt::runOnModule(Module &M) {
+bool CorrectlyRoundedDivSqrt::run(Module &M, ModuleMetaData *pModMD) {
   // Was the module compiled with the CR flag on?
-  m_IsCorrectlyRounded = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData()->compOpt.CorrectlyRoundedDivSqrt;
+  m_IsCorrectlyRounded = pModMD->compOpt.CorrectlyRoundedDivSqrt;
 
   // Even if it wasn't, it's possible that CR was requested through a build-time option
   // (This is relevant at least for SPIR)
@@ -126,3 +125,10 @@ void CorrectlyRoundedDivSqrt::visitFDiv(BinaryOperator &I) {
     m_changed = true;
   }
 }
+
+#if LLVM_VERSION_MAJOR >= 16
+PreservedAnalyses CorrectlyRoundedDivSqrtNPM::run(Module &M, ModuleAnalysisManager &AM) {
+  bool changed = m_impl.run(M, AM.getResult<MetaDataUtilsAnalysis>(M).ModMD);
+  return changed ? PreservedAnalyses::none() : PreservedAnalyses::all();
+}
+#endif // LLVM_VERSION_MAJOR >= 16

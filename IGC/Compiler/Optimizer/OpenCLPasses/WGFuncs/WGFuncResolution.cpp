@@ -23,16 +23,16 @@ using namespace IGC;
 #define PASS_DESCRIPTION "Resolve WG built-in"
 #define PASS_CFG_ONLY false
 #define PASS_ANALYSIS false
-IGC_INITIALIZE_PASS_BEGIN(WGFuncResolution, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
-IGC_INITIALIZE_PASS_END(WGFuncResolution, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_BEGIN(WGFuncResolutionLPM, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_END(WGFuncResolutionLPM, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
-char WGFuncResolution::ID = 0;
+char WGFuncResolutionLPM::ID = 0;
 
-WGFuncResolution::WGFuncResolution() : ModulePass(ID) {
-  initializeWGFuncResolutionPass(*PassRegistry::getPassRegistry());
+WGFuncResolutionLPM::WGFuncResolutionLPM() : ModulePass(ID) {
+  initializeWGFuncResolutionLPMPass(*PassRegistry::getPassRegistry());
 }
 
-bool WGFuncResolution::runOnModule(Module &M) {
+bool WGFuncResolution::run(Module &M) {
   m_changed = false;
   m_pModule = &M;
 
@@ -64,3 +64,10 @@ void WGFuncResolution::visitCallInst(CallInst &callInst) {
     m_changed = true;
   }
 }
+
+#if LLVM_VERSION_MAJOR >= 16
+PreservedAnalyses WGFuncResolutionNPM::run(Module &M, ModuleAnalysisManager &AM) {
+  bool changed = WGFuncResolution().run(M);
+  return changed ? PreservedAnalyses::none() : PreservedAnalyses::all();
+}
+#endif // LLVM_VERSION_MAJOR >= 16

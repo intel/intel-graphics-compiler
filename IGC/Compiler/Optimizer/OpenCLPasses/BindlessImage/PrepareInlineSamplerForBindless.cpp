@@ -20,24 +20,24 @@ using namespace llvm;
 #define PASS_DESCRIPTION "Prepare OCL inline sampler for bindless"
 #define PASS_CFG_ONLY false
 #define PASS_ANALYSIS false
-IGC_INITIALIZE_PASS_BEGIN(PrepareInlineSamplerForBindless, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_BEGIN(PrepareInlineSamplerForBindlessLPM, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 IGC_INITIALIZE_PASS_DEPENDENCY(MetaDataUtilsWrapper)
 IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
-IGC_INITIALIZE_PASS_END(PrepareInlineSamplerForBindless, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_END(PrepareInlineSamplerForBindlessLPM, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
-char PrepareInlineSamplerForBindless::ID = 0;
+char PrepareInlineSamplerForBindlessLPM::ID = 0;
 
-PrepareInlineSamplerForBindless::PrepareInlineSamplerForBindless() : FunctionPass(ID) {
-  initializePrepareInlineSamplerForBindlessPass(*PassRegistry::getPassRegistry());
+PrepareInlineSamplerForBindlessLPM::PrepareInlineSamplerForBindlessLPM() : FunctionPass(ID) {
+  initializePrepareInlineSamplerForBindlessLPMPass(*PassRegistry::getPassRegistry());
 }
 
-bool PrepareInlineSamplerForBindless::runOnFunction(Function &F) {
+bool PrepareInlineSamplerForBindless::runOnFunction(Function &F, IGC::IGCMD::MetaDataUtils *pMdUtils,
+                                                    IGC::ModuleMetaData *pModMD) {
   mChanged = false;
   mInlineSamplerIndex = 0;
 
-  if (!mMDUtils) {
-    mMDUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
-  }
+  mMDUtils = pMdUtils;
+  mModMD = pModMD;
 
   if (!isEntryFunc(mMDUtils, &F)) {
     // Only entry functions can be assigned implicit args.
@@ -46,7 +46,7 @@ bool PrepareInlineSamplerForBindless::runOnFunction(Function &F) {
 
   visit(F);
 
-  ImplicitArgs::addImageArgs(F, mArgMap, mMDUtils, getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData());
+  ImplicitArgs::addImageArgs(F, mArgMap, mMDUtils, mModMD);
   mArgMap.clear();
 
   if (mChanged) {
@@ -80,7 +80,7 @@ void PrepareInlineSamplerForBindless::visitCallInst(CallInst &CI) {
   }
 
   // Add metadata for the inline sampler.
-  ModuleMetaData *ModMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
+  ModuleMetaData *ModMD = mModMD;
   FunctionMetaData &FuncMD = ModMD->FuncMD[CI.getFunction()];
   ResourceAllocMD &ResAllocMD = FuncMD.resAllocMD;
   InlineSamplersMD InlineSamplerMD;
@@ -89,3 +89,17 @@ void PrepareInlineSamplerForBindless::visitCallInst(CallInst &CI) {
   InlineSamplerMD.index = mInlineSamplerIndex++;
   ResAllocMD.inlineSamplersMD.push_back(InlineSamplerMD);
 }
+
+#if LLVM_VERSION_MAJOR >= 16
+PreservedAnalyses PrepareInlineSamplerForBindlessNPM::run(Module &M, ModuleAnalysisManager &AM) {
+  auto &MDU = AM.getResult<MetaDataUtilsAnalysis>(M);
+  PrepareInlineSamplerForBindless impl;
+  bool changed = false;
+  for (Function &F : M) {
+    if (F.isDeclaration())
+      continue;
+    changed |= impl.runOnFunction(F, MDU.MdUtils, MDU.ModMD);
+  }
+  return changed ? PreservedAnalyses::none() : PreservedAnalyses::all();
+}
+#endif // LLVM_VERSION_MAJOR >= 16

@@ -25,8 +25,8 @@ using namespace IGC;
 #define PASS_DESCRIPTION "Resolve OCL raytracing built-ins"
 #define PASS_CFG_ONLY false
 #define PASS_ANALYSIS false
-IGC_INITIALIZE_PASS_BEGIN(ResolveOCLRaytracingBuiltins, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
-IGC_INITIALIZE_PASS_END(ResolveOCLRaytracingBuiltins, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_BEGIN(ResolveOCLRaytracingBuiltinsLPM, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_END(ResolveOCLRaytracingBuiltinsLPM, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
 namespace {
 std::map<std::string, std::function<void(ResolveOCLRaytracingBuiltins *, CallInst &)>> functionHandlersMap = {
@@ -61,14 +61,14 @@ static Value *castToRTGlobalsTy(RTBuilder &RTB, Value *V) {
   return RTB.CreatePointerCast(V, GlobalPtrTy);
 }
 
-char ResolveOCLRaytracingBuiltins::ID = 0;
+char ResolveOCLRaytracingBuiltinsLPM::ID = 0;
 
-ResolveOCLRaytracingBuiltins::ResolveOCLRaytracingBuiltins() : ModulePass(ID) {
-  initializeResolveOCLRaytracingBuiltinsPass(*PassRegistry::getPassRegistry());
+ResolveOCLRaytracingBuiltinsLPM::ResolveOCLRaytracingBuiltinsLPM() : ModulePass(ID) {
+  initializeResolveOCLRaytracingBuiltinsLPMPass(*PassRegistry::getPassRegistry());
 }
 
-bool ResolveOCLRaytracingBuiltins::runOnModule(Module &M) {
-  m_pCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+bool ResolveOCLRaytracingBuiltins::run(Module &M, CodeGenContext *pCtx) {
+  m_pCtx = pCtx;
   m_callsToReplace.clear();
 
   // Fills up the m_CallsToReplace with all instances of calls to kernels in the functionHandlersMap.
@@ -538,3 +538,10 @@ Value *ResolveOCLRaytracingBuiltins::getIntrinsicValue(GenISAIntrinsic::ID intri
   return m_builder->CreateCall(
       GenISAIntrinsic::getDeclaration(m_builder->GetInsertPoint()->getModule(), intrinsicId, types), args);
 }
+
+#if LLVM_VERSION_MAJOR >= 16
+PreservedAnalyses ResolveOCLRaytracingBuiltinsNPM::run(Module &M, ModuleAnalysisManager &AM) {
+  bool changed = ResolveOCLRaytracingBuiltins().run(M, AM.getResult<CodeGenContextAnalysis>(M).Ctx);
+  return changed ? PreservedAnalyses::none() : PreservedAnalyses::all();
+}
+#endif // LLVM_VERSION_MAJOR >= 16

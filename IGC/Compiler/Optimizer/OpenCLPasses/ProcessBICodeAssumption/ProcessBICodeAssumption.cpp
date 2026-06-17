@@ -26,14 +26,13 @@ using namespace IGC;
 // many workloads use values that fit in i32. This pass checks if there are assumptions on built-in variables and adds
 // trunc/zext intructions to reflect that the upper 32 bits are not used. This helps instcombine to optimize code after
 // BIImport.
-class ProcessBICodeAssumption : public llvm::FunctionPass, public llvm::InstVisitor<ProcessBICodeAssumption> {
+// Shared implementation. Holds the logic and is used by both the legacy and the
+// new-pass-manager wrappers below; it is not itself an llvm::Pass.
+class ProcessBICodeAssumption : public llvm::InstVisitor<ProcessBICodeAssumption> {
 public:
-  static char ID;
-  ProcessBICodeAssumption();
+  ProcessBICodeAssumption() {}
 
-  virtual llvm::StringRef getPassName() const override { return "ProcessBICodeAssumption"; }
-
-  virtual bool runOnFunction(Function &F) override;
+  bool runOnFunction(Function &F);
   void visitCallInst(CallInst &I);
 
 private:
@@ -44,9 +43,21 @@ private:
   SmallPtrSet<Instruction *, 8> ToTruncate;
 };
 
-ProcessBICodeAssumption::ProcessBICodeAssumption() : FunctionPass(ID) {
-  initializeProcessBICodeAssumptionPass(*PassRegistry::getPassRegistry());
-}
+// Legacy Pass Manager wrapper.
+class ProcessBICodeAssumptionLPM : public llvm::FunctionPass {
+public:
+  static char ID;
+  ProcessBICodeAssumptionLPM() : FunctionPass(ID) {
+    initializeProcessBICodeAssumptionLPMPass(*PassRegistry::getPassRegistry());
+  }
+
+  llvm::StringRef getPassName() const override { return "ProcessBICodeAssumption"; }
+
+  bool runOnFunction(Function &F) override { return m_impl.runOnFunction(F); }
+
+private:
+  ProcessBICodeAssumption m_impl;
+};
 
 bool ProcessBICodeAssumption::runOnFunction(Function &F) {
 
@@ -160,9 +171,17 @@ bool ProcessBICodeAssumption::matchBuiltin(Instruction *I) {
 #define PASS_DESCRIPTION "Processes code assumptions assigned to builtin variables"
 #define PASS_CFG_ONLY false
 #define PASS_ANALYSIS false
-IGC_INITIALIZE_PASS_BEGIN(ProcessBICodeAssumption, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
-IGC_INITIALIZE_PASS_END(ProcessBICodeAssumption, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_BEGIN(ProcessBICodeAssumptionLPM, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_END(ProcessBICodeAssumptionLPM, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
-char ProcessBICodeAssumption::ID = 0;
+char ProcessBICodeAssumptionLPM::ID = 0;
 
-FunctionPass *IGC::createProcessBICodeAssumptionPass() { return new ProcessBICodeAssumption(); }
+FunctionPass *IGC::createProcessBICodeAssumptionPass() { return new ProcessBICodeAssumptionLPM(); }
+
+#if LLVM_VERSION_MAJOR >= 16
+llvm::PreservedAnalyses IGC::ProcessBICodeAssumptionNPM::run(llvm::Function &F, llvm::FunctionAnalysisManager &AM) {
+  ProcessBICodeAssumption impl;
+  bool changed = impl.runOnFunction(F);
+  return changed ? llvm::PreservedAnalyses::none() : llvm::PreservedAnalyses::all();
+}
+#endif // LLVM_VERSION_MAJOR >= 16

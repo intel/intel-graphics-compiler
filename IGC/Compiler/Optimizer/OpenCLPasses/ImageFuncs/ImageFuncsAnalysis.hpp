@@ -10,10 +10,12 @@ SPDX-License-Identifier: MIT
 
 #include "AdaptorCommon/ImplicitArgs.hpp"
 #include "Compiler/MetaDataUtilsWrapper.h"
+#include "Compiler/CodeGenContextWrapper.hpp"
 
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/Pass.h>
 #include <llvm/IR/InstVisitor.h>
+#include <llvm/IR/PassManager.h>
 #include "common/LLVMWarningsPop.hpp"
 
 namespace IGC {
@@ -26,32 +28,25 @@ namespace IGC {
 ///         metadata that represents  the implicit image information needded by each function for
 ///         resolving these function calls
 
-class ImageFuncsAnalysis : public llvm::ModulePass, public llvm::InstVisitor<ImageFuncsAnalysis> {
+// Shared implementation. Holds the logic and is used by both the legacy and the
+// new-pass-manager wrappers below; it is not itself an llvm::Pass.
+class ImageFuncsAnalysis : public llvm::InstVisitor<ImageFuncsAnalysis> {
 public:
-  // Pass identification, replacement for typeid
-  static char ID;
-
   /// @brief  Constructor
-  ImageFuncsAnalysis();
+  ImageFuncsAnalysis() {}
 
   /// @brief  Destructor
   ~ImageFuncsAnalysis() {}
 
   /// @brief  Provides name of pass
-  virtual llvm::StringRef getPassName() const override { return "ImageFuncsAnalysis"; }
-
-  virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override {
-    AU.setPreservesCFG();
-    AU.addRequired<MetaDataUtilsWrapper>();
-    AU.addRequired<CodeGenContextWrapper>();
-  }
+  static llvm::StringRef getPassName() { return "ImageFuncsAnalysis"; }
 
   /// @brief  Main entry point.
   ///         Runs on all functions defined in the gven module, finds all OpenCL relevant image
   ///         function calls, analyzes them and creates metadata that represents the implicit image
   ///          information needded by each function for resolving these function calls
   /// @param  M The destination module.
-  virtual bool runOnModule(llvm::Module &M) override;
+  bool run(llvm::Module &M, IGCMD::MetaDataUtils *pMdUtils, IGC::CodeGenContext *pCtx);
 
   /// @brief  Function entry point.
   ///         Finds all OpenCL relevant image dimension function calls in this function, analyzes them
@@ -89,6 +84,8 @@ private:
   ImplicitArg::ArgMap m_argMap;
   /// @brief  MetaData utils used to generate LLVM metadata
   IGCMD::MetaDataUtils *m_pMDUtils = nullptr;
+  /// @brief  Module metadata, cached at run() entry
+  ModuleMetaData *m_modMD = nullptr;
 
   /// @brief Indicate whether advanced bindless mode is used.
   ///        If false, implicit image args for information like width, height, etc.
@@ -110,5 +107,38 @@ private:
   bool m_useBindlessImageWithSamplerTracking{};
   int m_inlineSamplerIndex = 0;
 };
+
+// Legacy Pass Manager wrapper.
+class ImageFuncsAnalysisLPM : public llvm::ModulePass {
+public:
+  static char ID;
+
+  ImageFuncsAnalysisLPM();
+  ~ImageFuncsAnalysisLPM() {}
+
+  virtual llvm::StringRef getPassName() const override { return ImageFuncsAnalysis::getPassName(); }
+
+  virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override {
+    AU.setPreservesCFG();
+    AU.addRequired<MetaDataUtilsWrapper>();
+    AU.addRequired<CodeGenContextWrapper>();
+  }
+
+  virtual bool runOnModule(llvm::Module &M) override {
+    return ImageFuncsAnalysis().run(M, getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils(),
+                                    getAnalysis<CodeGenContextWrapper>().getCodeGenContext());
+  }
+};
+
+#if LLVM_VERSION_MAJOR >= 16
+// New Pass Manager wrapper. name() returns the legacy pass argument so that
+// PrintBefore/PrintAfter=<pass argument> matches under the new pass manager.
+class ImageFuncsAnalysisNPM : public llvm::PassInfoMixin<ImageFuncsAnalysisNPM> {
+public:
+  llvm::PreservedAnalyses run(llvm::Module &M, llvm::ModuleAnalysisManager &AM);
+  static llvm::StringRef name() { return "igc-image-func-analysis"; }
+  static bool isRequired() { return true; }
+};
+#endif // LLVM_VERSION_MAJOR >= 16
 
 } // namespace IGC

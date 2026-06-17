@@ -18,19 +18,13 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPop.hpp"
 
 namespace IGC {
-class DivergentBarrierPass : public llvm::ModulePass {
+// Shared implementation. Holds the logic and is used by both the legacy and the new-pass-manager
+// wrappers below; it is not itself an llvm::Pass. The CodeGenContext and MetaDataUtils are injected
+// by the caller (run) so the engine does not depend on getAnalysis<>.
+class DivergentBarrierPass {
 public:
-  DivergentBarrierPass(void *Ctx = nullptr) : llvm::ModulePass(ID), Ctx(Ctx) {}
-  bool runOnModule(llvm::Module &M) override;
-
-  void getAnalysisUsage(llvm::AnalysisUsage &AU) const override {
-    AU.addRequired<MetaDataUtilsWrapper>();
-    AU.addRequired<CodeGenContextWrapper>();
-  }
-
-  static char ID;
-
-  llvm::StringRef getPassName() const override { return "DivergentBarrierPass"; }
+  DivergentBarrierPass(void *Ctx = nullptr) : Ctx(Ctx) {}
+  bool run(llvm::Module &M, CodeGenContext *CGCtx, IGCMD::MetaDataUtils *MDUtils);
 
 private:
   struct FenceArgs {
@@ -65,6 +59,40 @@ private:
   void *Ctx = nullptr;
 };
 
-void initializeDivergentBarrierPassPass(llvm::PassRegistry &);
+// Legacy Pass Manager wrapper.
+class DivergentBarrierPassLPM : public llvm::ModulePass {
+public:
+  DivergentBarrierPassLPM(void *Ctx = nullptr) : llvm::ModulePass(ID), m_impl(Ctx) {}
+  bool runOnModule(llvm::Module &M) override;
+
+  void getAnalysisUsage(llvm::AnalysisUsage &AU) const override {
+    AU.addRequired<MetaDataUtilsWrapper>();
+    AU.addRequired<CodeGenContextWrapper>();
+  }
+
+  static char ID;
+
+  llvm::StringRef getPassName() const override { return "DivergentBarrierPass"; }
+
+private:
+  DivergentBarrierPass m_impl;
+};
+
+#if LLVM_VERSION_MAJOR >= 16
+// New Pass Manager wrapper. name() returns the legacy pass argument so that
+// PrintBefore/PrintAfter=<pass argument> matches under the new pass manager.
+class DivergentBarrierPassNPM : public llvm::PassInfoMixin<DivergentBarrierPassNPM> {
+public:
+  DivergentBarrierPassNPM(void *Ctx = nullptr) : Ctx(Ctx) {}
+  llvm::PreservedAnalyses run(llvm::Module &M, llvm::ModuleAnalysisManager &AM);
+  static llvm::StringRef name() { return "divergent-barrier-pass"; }
+  static bool isRequired() { return true; }
+
+private:
+  void *Ctx = nullptr;
+};
+#endif // LLVM_VERSION_MAJOR >= 16
+
+void initializeDivergentBarrierPassLPMPass(llvm::PassRegistry &);
 llvm::ModulePass *createDivergentBarrierPass(void *Ctx);
 } // namespace IGC

@@ -24,6 +24,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/Constants.h>
 #include <llvm/IR/DataLayout.h>
 #include <llvm/IR/InstVisitor.h>
+#include <llvm/IR/PassManager.h>
 #include <llvm/ADT/DenseSet.h>
 #include "common/LLVMWarningsPop.hpp"
 #include <set>
@@ -32,6 +33,7 @@ SPDX-License-Identifier: MIT
 namespace IGC {
 
 class CodeGenContextWrapper;
+class CodeGenContext;
 
 // Maximum width supported as input
 #define MAX_INPUT_VECTOR_WIDTH 16
@@ -55,28 +57,20 @@ enum class SelectiveScalarizer {
 ///  Functions are also replaced (similar to instructions), according
 ///  to data received from RuntimeServices.
 
-class ScalarizeFunction : public llvm::FunctionPass, public llvm::InstVisitor<ScalarizeFunction> {
+// Shared implementation. Holds the logic and is used by both the legacy and the new-pass-manager
+// wrappers below; it is not itself an llvm::Pass. The CodeGenContext and DominatorTree are injected
+// by the caller (runOnFunction).
+class ScalarizeFunction : public llvm::InstVisitor<ScalarizeFunction> {
 public:
-  static char ID; // Pass identification, replacement for typeid
-
   // Default value differs from createScalarizerPass to allow control over selective
   // scalarization when pass is directly called from the command line (via igc_opt).
   ScalarizeFunction(SelectiveScalarizer selectiveMode = IGC::SelectiveScalarizer::Auto);
-  ~ScalarizeFunction() override;
+  ~ScalarizeFunction();
   ScalarizeFunction(const ScalarizeFunction &) = delete;
   ScalarizeFunction &operator=(const ScalarizeFunction &) = delete;
 
-  /// @brief Provides name of pass
-  virtual llvm::StringRef getPassName() const override { return "ScalarizeFunction"; }
-
-  virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override {
-    AU.addRequired<CodeGenContextWrapper>();
-    AU.addRequired<llvm::DominatorTreeWrapperPass>();
-    AU.setPreservesCFG();
-  }
-
-  virtual bool doFinalization(llvm::Module &M) override;
-  virtual bool runOnFunction(llvm::Function &F) override;
+  bool doFinalization(llvm::Module &M);
+  bool runOnFunction(llvm::Function &F, CodeGenContext *Ctx, llvm::DominatorTree *DT);
 
   /*! \name Scalarizarion Functions
    *  \{ */
@@ -143,6 +137,10 @@ private:
   void resolveDeferredInstructions();
 
   /*! \} */
+
+  /// @brief Injected analyses (CodeGenContext is module-level, DominatorTree is per-function).
+  CodeGenContext *m_pCtx = nullptr;
+  llvm::DominatorTree *m_DT = nullptr;
 
   /// @brief Pointer to current function's context
   llvm::LLVMContext *m_moduleContext = nullptr;
@@ -256,6 +254,47 @@ private:
   /// @brief This holds all the created dummy functions throughout the lifetime of the pass, and manages their memory
   llvm::MapVector<llvm::Type *, llvm::Function *> createdDummyFunctions;
 };
+
+// Legacy Pass Manager wrapper.
+class ScalarizeFunctionLPM : public llvm::FunctionPass {
+public:
+  static char ID;
+
+  ScalarizeFunctionLPM(SelectiveScalarizer selectiveMode = IGC::SelectiveScalarizer::Auto);
+
+  llvm::StringRef getPassName() const override { return "ScalarizeFunction"; }
+
+  void getAnalysisUsage(llvm::AnalysisUsage &AU) const override {
+    AU.addRequired<CodeGenContextWrapper>();
+    AU.addRequired<llvm::DominatorTreeWrapperPass>();
+    AU.setPreservesCFG();
+  }
+
+  bool doFinalization(llvm::Module &M) override { return m_impl.doFinalization(M); }
+  bool runOnFunction(llvm::Function &F) override;
+
+private:
+  ScalarizeFunction m_impl;
+};
+
+#if LLVM_VERSION_MAJOR >= 16
+// New Pass Manager wrapper. Modeled as a module pass that loops over the defined functions (the
+// seeded CodeGenContextAnalysis is module-level; the DominatorTree is pulled per function from the
+// function analysis manager) and runs doFinalization once at the end. name() returns the legacy
+// pass argument so PrintBefore/PrintAfter matches under the new pass manager.
+class ScalarizeFunctionNPM : public llvm::PassInfoMixin<ScalarizeFunctionNPM> {
+  // The ScalarizeFunction engine is non-copyable/non-movable (owns allocation buffers), so the
+  // wrapper stores only the configuration and constructs the engine inside run().
+  SelectiveScalarizer m_mode;
+
+public:
+  ScalarizeFunctionNPM(SelectiveScalarizer selectiveMode = IGC::SelectiveScalarizer::Auto) : m_mode(selectiveMode) {}
+
+  llvm::PreservedAnalyses run(llvm::Module &M, llvm::ModuleAnalysisManager &AM);
+  static llvm::StringRef name() { return "igc-scalarize"; }
+  static bool isRequired() { return true; }
+};
+#endif // LLVM_VERSION_MAJOR >= 16
 
 } // namespace IGC
 

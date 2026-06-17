@@ -27,13 +27,13 @@ using namespace IGC;
 #define PASS_DESCRIPTION "Break constant expressions into instruction sequences"
 #define PASS_CFG_ONLY false
 #define PASS_ANALYSIS false
-IGC_INITIALIZE_PASS_BEGIN(BreakConstantExpr, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
-IGC_INITIALIZE_PASS_END(BreakConstantExpr, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_BEGIN(BreakConstantExprLPM, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_END(BreakConstantExprLPM, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
-char BreakConstantExpr::ID = 0;
+char BreakConstantExprLPM::ID = 0;
 
-BreakConstantExpr::BreakConstantExpr() : FunctionPass(ID) {
-  initializeBreakConstantExprPass(*PassRegistry::getPassRegistry());
+BreakConstantExprLPM::BreakConstantExprLPM() : FunctionPass(ID) {
+  initializeBreakConstantExprLPMPass(*PassRegistry::getPassRegistry());
 }
 
 bool BreakConstantExpr::hasConstantExpr(ConstantVector *cvec) const {
@@ -76,7 +76,7 @@ bool BreakConstantExpr::hasConstantExpr(ConstantStruct *cstruct) const {
   return false;
 }
 
-bool BreakConstantExpr::runOnFunction(Function &F) {
+bool BreakConstantExpr::run(Function &F) {
   bool changed = false;
   // Go over all the instructions in the function
   for (inst_iterator it = inst_begin(F), e = inst_end(F); it != e; ++it) {
@@ -308,3 +308,10 @@ bool BreakConstantExpr::breakConstantStruct(ConstantStruct *cs, int operandIndex
   }
   return true;
 }
+
+#if LLVM_VERSION_MAJOR >= 16
+PreservedAnalyses BreakConstantExprNPM::run(Function &F, FunctionAnalysisManager &) {
+  bool changed = BreakConstantExpr().run(F);
+  return changed ? PreservedAnalyses::none() : PreservedAnalyses::all();
+}
+#endif // LLVM_VERSION_MAJOR >= 16

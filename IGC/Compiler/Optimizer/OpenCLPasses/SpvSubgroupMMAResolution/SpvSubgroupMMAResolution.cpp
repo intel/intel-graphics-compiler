@@ -31,7 +31,7 @@ using namespace IGC;
 static constexpr StringRef DpasOpName = "__spirv_SubgroupMatrixMultiplyAccumulateINTEL";
 static constexpr StringRef BdpasOpName = "__spirv_SubgroupScaledMatrixMultiplyAccumulateINTEL";
 
-char SpvSubgroupMMAResolution::ID = 0;
+char SpvSubgroupMMAResolutionLPM::ID = 0;
 SpvSubgroupMMAResolution::SupportedTable SpvSubgroupMMAResolution::m_Simd8Table;
 SpvSubgroupMMAResolution::SupportedTable SpvSubgroupMMAResolution::m_Simd16Table;
 SpvSubgroupMMAResolution::SupportedTable SpvSubgroupMMAResolution::m_Simd16ScaledTable;
@@ -42,20 +42,21 @@ SpvSubgroupMMAResolution::SupportedTable SpvSubgroupMMAResolution::m_Simd16Scale
 #define PASS_ANALYSIS false
 #define DEBUG_TYPE "spv-subgroup-mma-resolution"
 
-IGC_INITIALIZE_PASS_BEGIN(SpvSubgroupMMAResolution, PASS_FLAG, PASS_DESC, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_BEGIN(SpvSubgroupMMAResolutionLPM, PASS_FLAG, PASS_DESC, PASS_CFG_ONLY, PASS_ANALYSIS)
 IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
 IGC_INITIALIZE_PASS_DEPENDENCY(MetaDataUtilsWrapper)
-IGC_INITIALIZE_PASS_END(SpvSubgroupMMAResolution, PASS_FLAG, PASS_DESC, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_END(SpvSubgroupMMAResolutionLPM, PASS_FLAG, PASS_DESC, PASS_CFG_ONLY, PASS_ANALYSIS)
 
-SpvSubgroupMMAResolution::SpvSubgroupMMAResolution() : ModulePass(ID) {
-  initializeSpvSubgroupMMAResolutionPass(*PassRegistry::getPassRegistry());
+SpvSubgroupMMAResolutionLPM::SpvSubgroupMMAResolutionLPM() : ModulePass(ID) {
+  initializeSpvSubgroupMMAResolutionLPMPass(*PassRegistry::getPassRegistry());
 }
 
-bool SpvSubgroupMMAResolution::runOnModule(Module &M) {
+bool SpvSubgroupMMAResolution::run(Module &M, CodeGenContext *pCtx, IGCMD::MetaDataUtils *pMdUtils) {
   m_BuiltinsToRemove.clear();
   m_Module = &M;
   m_Changed = false;
-  m_Ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+  m_Ctx = pCtx;
+  m_pMdUtils = pMdUtils;
 
   visit(M);
 
@@ -462,7 +463,7 @@ bool SpvSubgroupMMAResolution::validateScaleType(const Value *Scale, StringRef P
 bool SpvSubgroupMMAResolution::isDoubleSubgroup(CallInst &CI) {
   if (!m_Ctx->platform.hasExecSize16DPAS())
     return false;
-  return IGC::getSIMDSize(getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData(), CI.getParent()->getParent()) == 32;
+  return IGC::getSIMDSize(m_Ctx->getModuleMetaData(), CI.getParent()->getParent()) == 32;
 }
 
 SpvSubgroupMMAResolution::SupportedTable *SpvSubgroupMMAResolution::getSupportedTable() {
@@ -782,3 +783,11 @@ void SpvSubgroupMMAResolution::visitCallInst(CallInst &CI) {
   if (funcName.contains(DpasOpName))
     lowerToDpasBuiltin(CI, F);
 }
+
+#if LLVM_VERSION_MAJOR >= 16
+PreservedAnalyses SpvSubgroupMMAResolutionNPM::run(Module &M, ModuleAnalysisManager &AM) {
+  auto md = AM.getResult<MetaDataUtilsAnalysis>(M);
+  bool changed = SpvSubgroupMMAResolution().run(M, AM.getResult<CodeGenContextAnalysis>(M).Ctx, md.MdUtils);
+  return changed ? PreservedAnalyses::none() : PreservedAnalyses::all();
+}
+#endif // LLVM_VERSION_MAJOR >= 16

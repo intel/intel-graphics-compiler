@@ -27,15 +27,15 @@ using namespace IGC;
 #define PASS_DESCRIPTION "Convert user semantic decorator on functions"
 #define PASS_CFG_ONLY false
 #define PASS_ANALYSIS false
-IGC_INITIALIZE_PASS_BEGIN(ConvertUserSemanticDecoratorOnFunctions, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY,
+IGC_INITIALIZE_PASS_BEGIN(ConvertUserSemanticDecoratorOnFunctionsLPM, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY,
                           PASS_ANALYSIS)
-IGC_INITIALIZE_PASS_END(ConvertUserSemanticDecoratorOnFunctions, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY,
+IGC_INITIALIZE_PASS_END(ConvertUserSemanticDecoratorOnFunctionsLPM, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY,
                         PASS_ANALYSIS)
 
-char ConvertUserSemanticDecoratorOnFunctions::ID = 0;
+char ConvertUserSemanticDecoratorOnFunctionsLPM::ID = 0;
 
-ConvertUserSemanticDecoratorOnFunctions::ConvertUserSemanticDecoratorOnFunctions() : ModulePass(ID) {
-  initializeConvertUserSemanticDecoratorOnFunctionsPass(*PassRegistry::getPassRegistry());
+ConvertUserSemanticDecoratorOnFunctionsLPM::ConvertUserSemanticDecoratorOnFunctionsLPM() : ModulePass(ID) {
+  initializeConvertUserSemanticDecoratorOnFunctionsLPMPass(*PassRegistry::getPassRegistry());
 }
 
 // Some of the metadata may disappear when linking LLVM modules; attributes are much more permament.
@@ -58,9 +58,11 @@ static void convertAnnotationsToAttributes(llvm::Function *function, const std::
   }
 }
 
-bool ConvertUserSemanticDecoratorOnFunctions::runOnModule(Module &M) {
-  auto MD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
+bool ConvertUserSemanticDecoratorOnFunctionsLPM::runOnModule(Module &M) {
+  return ConvertUserSemanticDecoratorOnFunctions().run(M, getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData());
+}
 
+bool ConvertUserSemanticDecoratorOnFunctions::run(Module &M, ModuleMetaData *MD) {
   auto annotations_gv = M.getGlobalVariable("llvm.global.annotations");
   if (!annotations_gv) {
     return false;
@@ -109,3 +111,11 @@ bool ConvertUserSemanticDecoratorOnFunctions::runOnModule(Module &M) {
   IGC::serialize(*MD, &M);
   return true;
 }
+
+#if LLVM_VERSION_MAJOR >= 16
+PreservedAnalyses ConvertUserSemanticDecoratorOnFunctionsNPM::run(Module &M, ModuleAnalysisManager &AM) {
+  MetaDataUtilsResult md = AM.getResult<MetaDataUtilsAnalysis>(M);
+  bool changed = ConvertUserSemanticDecoratorOnFunctions().run(M, md.ModMD);
+  return changed ? PreservedAnalyses::none() : PreservedAnalyses::all();
+}
+#endif // LLVM_VERSION_MAJOR >= 16

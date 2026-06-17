@@ -11,20 +11,45 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
 #include "llvmWrapper/IR/DerivedTypes.h"
 
-FunctionPass *IGC::createStaticGASResolution() { return new StaticGASResolution(); }
+#include "common/LLVMWarningsPush.hpp"
+#include <llvm/Analysis/CallGraph.h>
+#include "common/LLVMWarningsPop.hpp"
 
-char StaticGASResolution::ID = 0;
+FunctionPass *IGC::createStaticGASResolution() { return new StaticGASResolutionLPM(); }
+
+char StaticGASResolutionLPM::ID = 0;
 
 #define PASS_FLAG "static-gas-resolution"
 #define PASS_DESC "Statically resolves memory accesses operating on generic pointers"
 #define PASS_CFG_ONLY false
 #define PASS_ANALYSIS false
-IGC_INITIALIZE_PASS_BEGIN(StaticGASResolution, PASS_FLAG, PASS_DESC, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_BEGIN(StaticGASResolutionLPM, PASS_FLAG, PASS_DESC, PASS_CFG_ONLY, PASS_ANALYSIS)
 IGC_INITIALIZE_PASS_DEPENDENCY(CastToGASAnalysis)
-IGC_INITIALIZE_PASS_END(StaticGASResolution, PASS_FLAG, PASS_DESC, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_END(StaticGASResolutionLPM, PASS_FLAG, PASS_DESC, PASS_CFG_ONLY, PASS_ANALYSIS)
 
-bool StaticGASResolution::runOnFunction(llvm::Function &F) {
-  m_GI = &getAnalysis<CastToGASAnalysis>().getGASInfo();
+#if LLVM_VERSION_MAJOR >= 16
+llvm::PreservedAnalyses StaticGASResolutionNPM::run(llvm::Module &M, llvm::ModuleAnalysisManager &AM) {
+  CodeGenContext *ctx = AM.getResult<CodeGenContextAnalysis>(M).Ctx;
+  CallGraph &CG = AM.getResult<llvm::CallGraphAnalysis>(M);
+
+  // Compute the GASInfo inline (matches the legacy getAnalysis<CastToGASAnalysis>()).
+  CastToGASAnalysis gasAnalysis;
+  gasAnalysis.computeGASInfo(M, CG, ctx);
+  GASInfo &GI = gasAnalysis.getGASInfo();
+
+  StaticGASResolution impl;
+  bool changed = false;
+  for (Function &F : M) {
+    if (F.isDeclaration())
+      continue;
+    changed |= impl.runOnFunction(F, &GI);
+  }
+  return changed ? llvm::PreservedAnalyses::none() : llvm::PreservedAnalyses::all();
+}
+#endif // LLVM_VERSION_MAJOR >= 16
+
+bool StaticGASResolution::runOnFunction(llvm::Function &F, GASInfo *GI) {
+  m_GI = GI;
   // Change GAS inst, such as ld/st, etc to global ld/st, etc.
   if (m_GI->canGenericPointToPrivate(F) || m_GI->canGenericPointToLocal(F))
     return false;

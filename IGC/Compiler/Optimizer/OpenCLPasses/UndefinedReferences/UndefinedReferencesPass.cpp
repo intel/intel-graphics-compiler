@@ -27,13 +27,13 @@ using namespace IGC;
 #define PASS_DESCRIPTION "Emit linker warnings to user"
 #define PASS_CFG_ONLY false
 #define PASS_ANALYSIS true
-IGC_INITIALIZE_PASS_BEGIN(UndefinedReferencesPass, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
-IGC_INITIALIZE_PASS_END(UndefinedReferencesPass, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_BEGIN(UndefinedReferencesPassLPM, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_END(UndefinedReferencesPassLPM, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
-char UndefinedReferencesPass::ID = 0;
+char UndefinedReferencesPassLPM::ID = 0;
 
-UndefinedReferencesPass::UndefinedReferencesPass() : ModulePass(ID) {
-  initializeUndefinedReferencesPassPass(*PassRegistry::getPassRegistry());
+UndefinedReferencesPassLPM::UndefinedReferencesPassLPM() : ModulePass(ID) {
+  initializeUndefinedReferencesPassLPMPass(*PassRegistry::getPassRegistry());
 }
 
 static void ReportUndefinedReference(CodeGenContext *CGC, StringRef name, Value *ctx) {
@@ -97,10 +97,16 @@ static bool ExistUndefinedReferencesInModule(Module &module, CodeGenContext *CGC
   return foundUndef;
 }
 
-bool UndefinedReferencesPass::runOnModule(Module &M) {
+bool UndefinedReferencesPass::run(Module &M, CodeGenContext *pCtx) {
   // At this point all references should have been linked to definitions, any
   // undefined references should generate errors.
-  CodeGenContext *CGC = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
-  ExistUndefinedReferencesInModule(M, CGC);
+  ExistUndefinedReferencesInModule(M, pCtx);
   return false;
 }
+
+#if LLVM_VERSION_MAJOR >= 16
+PreservedAnalyses UndefinedReferencesPassNPM::run(Module &M, ModuleAnalysisManager &AM) {
+  bool changed = UndefinedReferencesPass().run(M, AM.getResult<CodeGenContextAnalysis>(M).Ctx);
+  return changed ? PreservedAnalyses::none() : PreservedAnalyses::all();
+}
+#endif // LLVM_VERSION_MAJOR >= 16

@@ -21,7 +21,7 @@ SPDX-License-Identifier: MIT
 using namespace llvm;
 using namespace IGC;
 
-char SpvPredicatedIOResolution::ID = 0;
+char SpvPredicatedIOResolutionLPM::ID = 0;
 
 #define PASS_FLAG "igc-spv-predicatedio-resolution"
 #define PASS_DESC "Lowering of SPIR-V INTEL Predicated IO instructions"
@@ -29,20 +29,20 @@ char SpvPredicatedIOResolution::ID = 0;
 #define PASS_ANALYSIS false
 #define DEBUG_TYPE "spv-predicatedio-resolution"
 
-IGC_INITIALIZE_PASS_BEGIN(SpvPredicatedIOResolution, PASS_FLAG, PASS_DESC, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_BEGIN(SpvPredicatedIOResolutionLPM, PASS_FLAG, PASS_DESC, PASS_CFG_ONLY, PASS_ANALYSIS)
 IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
-IGC_INITIALIZE_PASS_END(SpvPredicatedIOResolution, PASS_FLAG, PASS_DESC, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_END(SpvPredicatedIOResolutionLPM, PASS_FLAG, PASS_DESC, PASS_CFG_ONLY, PASS_ANALYSIS)
 
-SpvPredicatedIOResolution::SpvPredicatedIOResolution() : ModulePass(ID) {
-  initializeSpvPredicatedIOResolutionPass(*PassRegistry::getPassRegistry());
+SpvPredicatedIOResolutionLPM::SpvPredicatedIOResolutionLPM() : ModulePass(ID) {
+  initializeSpvPredicatedIOResolutionLPMPass(*PassRegistry::getPassRegistry());
 }
 
-bool SpvPredicatedIOResolution::runOnModule(Module &M) {
+bool SpvPredicatedIOResolution::run(Module &M, CodeGenContext *pCtx) {
   m_BuiltinsToRemove.clear();
   m_InstructionsToErase.clear();
   m_Module = &M;
   m_Changed = false;
-  m_Ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+  m_Ctx = pCtx;
 
   visit(M);
 
@@ -214,3 +214,10 @@ void SpvPredicatedIOResolution::visitPredicatedSPVCallInst(CallInst &CI) {
   if (F->getNumUses() == 0)
     m_BuiltinsToRemove.insert(F);
 }
+
+#if LLVM_VERSION_MAJOR >= 16
+PreservedAnalyses SpvPredicatedIOResolutionNPM::run(Module &M, ModuleAnalysisManager &AM) {
+  bool changed = SpvPredicatedIOResolution().run(M, AM.getResult<CodeGenContextAnalysis>(M).Ctx);
+  return changed ? PreservedAnalyses::none() : PreservedAnalyses::all();
+}
+#endif // LLVM_VERSION_MAJOR >= 16

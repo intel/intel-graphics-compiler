@@ -30,15 +30,15 @@ using namespace IGC::IGCMD;
 #define PASS_DESCRIPTION "SPIR to IGC metadata translator"
 #define PASS_CFG_ONLY false
 #define PASS_ANALYSIS false
-IGC_INITIALIZE_PASS_BEGIN(SPIRMetaDataTranslation, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_BEGIN(SPIRMetaDataTranslationLPM, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 IGC_INITIALIZE_PASS_DEPENDENCY(MetaDataUtilsWrapper)
 IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
-IGC_INITIALIZE_PASS_END(SPIRMetaDataTranslation, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_END(SPIRMetaDataTranslationLPM, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
-char SPIRMetaDataTranslation::ID = 0;
+char SPIRMetaDataTranslationLPM::ID = 0;
 
-SPIRMetaDataTranslation::SPIRMetaDataTranslation() : ModulePass(ID) {
-  initializeSPIRMetaDataTranslationPass(*PassRegistry::getPassRegistry());
+SPIRMetaDataTranslationLPM::SPIRMetaDataTranslationLPM() : ModulePass(ID) {
+  initializeSPIRMetaDataTranslationLPMPass(*PassRegistry::getPassRegistry());
 }
 
 bool IGC::isLegalOCLVersion(int major, int minor) {
@@ -162,11 +162,15 @@ void SPIRMetaDataTranslation::translateKernelMetadataIntoOpenCLKernelsMD(Module 
   }
 }
 
-bool SPIRMetaDataTranslation::runOnModule(Module &M) {
-  translateKernelMetadataIntoOpenCLKernelsMD(M);
+bool SPIRMetaDataTranslationLPM::runOnModule(Module &M) {
   MetaDataUtilsWrapper &mduw = getAnalysis<MetaDataUtilsWrapper>();
-  MetaDataUtils *pIgcMDUtils = mduw.getMetaDataUtils();
-  ModuleMetaData *modMD = mduw.getModuleMetaData();
+  CodeGenContext *pCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+  return SPIRMetaDataTranslation().run(M, pCtx, mduw.getMetaDataUtils(), mduw.getModuleMetaData());
+}
+
+bool SPIRMetaDataTranslation::run(Module &M, CodeGenContext *pCtx, MetaDataUtils *pIgcMDUtils, ModuleMetaData *modMD) {
+  m_pCtx = pCtx;
+  translateKernelMetadataIntoOpenCLKernelsMD(M);
   SPIRMD::SpirMetaDataUtils spirMDUtils(&M);
 
   // if no version information is present, check for -std=CLX.X compiler option
@@ -231,14 +235,11 @@ bool SPIRMetaDataTranslation::runOnModule(Module &M) {
     if (reqdSubGroupSize->hasValue()) {
       int simd_size = reqdSubGroupSize->getSIMDSize();
       if (!((simd_size == 8) || (simd_size == 16) || (simd_size == 32))) {
-        getAnalysis<CodeGenContextWrapper>().getCodeGenContext()->EmitError("Unsupported required sub group size",
-                                                                            spirKernel->getFunction());
+        m_pCtx->EmitError("Unsupported required sub group size", spirKernel->getFunction());
         return false;
-      } else if (!getAnalysis<CodeGenContextWrapper>().getCodeGenContext()->platform.hasSIMD8Support() &&
-                 simd_size == 8) {
-        getAnalysis<CodeGenContextWrapper>().getCodeGenContext()->EmitError(
-            "Kernel compiled with required subgroup size 8, which is unsupported on this platform",
-            spirKernel->getFunction());
+      } else if (!m_pCtx->platform.hasSIMD8Support() && simd_size == 8) {
+        m_pCtx->EmitError("Kernel compiled with required subgroup size 8, which is unsupported on this platform",
+                          spirKernel->getFunction());
         return false;
       }
       funcMD.requiredSubGroupSize = simd_size;
@@ -431,3 +432,12 @@ bool SPIRMetaDataTranslation::runOnModule(Module &M) {
 
   return true;
 }
+
+#if LLVM_VERSION_MAJOR >= 16
+PreservedAnalyses SPIRMetaDataTranslationNPM::run(Module &M, ModuleAnalysisManager &AM) {
+  CodeGenContext *pCtx = AM.getResult<CodeGenContextAnalysis>(M).Ctx;
+  MetaDataUtilsResult md = AM.getResult<MetaDataUtilsAnalysis>(M);
+  bool changed = SPIRMetaDataTranslation().run(M, pCtx, md.MdUtils, md.ModMD);
+  return changed ? PreservedAnalyses::none() : PreservedAnalyses::all();
+}
+#endif // LLVM_VERSION_MAJOR >= 16

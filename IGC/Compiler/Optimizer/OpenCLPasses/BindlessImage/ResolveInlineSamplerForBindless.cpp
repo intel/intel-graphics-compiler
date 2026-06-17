@@ -20,23 +20,23 @@ using namespace llvm;
 #define PASS_DESCRIPTION "Resolve OCL inline sampler for bindless"
 #define PASS_CFG_ONLY false
 #define PASS_ANALYSIS false
-IGC_INITIALIZE_PASS_BEGIN(ResolveInlineSamplerForBindless, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_BEGIN(ResolveInlineSamplerForBindlessLPM, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 IGC_INITIALIZE_PASS_DEPENDENCY(MetaDataUtilsWrapper)
 IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
-IGC_INITIALIZE_PASS_END(ResolveInlineSamplerForBindless, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_END(ResolveInlineSamplerForBindlessLPM, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
-char ResolveInlineSamplerForBindless::ID = 0;
+char ResolveInlineSamplerForBindlessLPM::ID = 0;
 
-ResolveInlineSamplerForBindless::ResolveInlineSamplerForBindless() : FunctionPass(ID) {
-  initializeResolveInlineSamplerForBindlessPass(*PassRegistry::getPassRegistry());
+ResolveInlineSamplerForBindlessLPM::ResolveInlineSamplerForBindlessLPM() : FunctionPass(ID) {
+  initializeResolveInlineSamplerForBindlessLPMPass(*PassRegistry::getPassRegistry());
 }
 
-bool ResolveInlineSamplerForBindless::runOnFunction(Function &F) {
+bool ResolveInlineSamplerForBindless::runOnFunction(Function &F, IGC::IGCMD::MetaDataUtils *pMdUtils,
+                                                    IGC::ModuleMetaData *pModMD) {
   mChanged = false;
 
-  if (!mMDUtils) {
-    mMDUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
-  }
+  mMDUtils = pMdUtils;
+  mModMD = pModMD;
 
   if (!isEntryFunc(mMDUtils, &F)) {
     // Only entry functions can be assigned implicit args.
@@ -57,7 +57,7 @@ void ResolveInlineSamplerForBindless::visitCallInst(CallInst &CI) {
   mChanged = true;
 
   // Bindless inline sampler is passed via implicit kernel argument.
-  ImplicitArgs ImplicitArgs(*(CI.getFunction()), mMDUtils, getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData());
+  ImplicitArgs ImplicitArgs(*(CI.getFunction()), mMDUtils, mModMD);
 
   IGC_ASSERT_MESSAGE(isa<ConstantInt>(CI.getArgOperand(0)),
                      "Sampler initializer calls can only be made with const int values!");
@@ -73,3 +73,18 @@ void ResolveInlineSamplerForBindless::visitCallInst(CallInst &CI) {
   CI.replaceAllUsesWith(ArgToPtr);
   CI.eraseFromParent();
 }
+
+#if LLVM_VERSION_MAJOR >= 16
+PreservedAnalyses ResolveInlineSamplerForBindlessNPM::run(Module &M, ModuleAnalysisManager &AM) {
+  auto *pMdUtils = AM.getResult<MetaDataUtilsAnalysis>(M).MdUtils;
+  auto *pModMD = AM.getResult<MetaDataUtilsAnalysis>(M).ModMD;
+  ResolveInlineSamplerForBindless impl;
+  bool changed = false;
+  for (Function &F : M) {
+    if (F.isDeclaration())
+      continue;
+    changed |= impl.runOnFunction(F, pMdUtils, pModMD);
+  }
+  return changed ? PreservedAnalyses::none() : PreservedAnalyses::all();
+}
+#endif // LLVM_VERSION_MAJOR >= 16

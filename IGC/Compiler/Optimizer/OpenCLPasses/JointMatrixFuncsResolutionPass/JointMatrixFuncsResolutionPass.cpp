@@ -42,7 +42,7 @@ SPDX-License-Identifier: MIT
 using namespace llvm;
 using namespace IGC;
 
-char JointMatrixFuncsResolutionPass::ID = 0;
+char JointMatrixFuncsResolutionPassLPM::ID = 0;
 
 #define PASS_FLAG "igc-joint-matrix-resolution"
 #define PASS_DESC "Lowering of INTEL Joint Matrix SPIR-V instructions"
@@ -50,10 +50,10 @@ char JointMatrixFuncsResolutionPass::ID = 0;
 #define PASS_ANALYSIS false
 #define DEBUG_TYPE "joint-matrix-resolution"
 
-IGC_INITIALIZE_PASS_BEGIN(JointMatrixFuncsResolutionPass, PASS_FLAG, PASS_DESC, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_BEGIN(JointMatrixFuncsResolutionPassLPM, PASS_FLAG, PASS_DESC, PASS_CFG_ONLY, PASS_ANALYSIS)
 IGC_INITIALIZE_PASS_DEPENDENCY(MetaDataUtilsWrapper)
 IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
-IGC_INITIALIZE_PASS_END(JointMatrixFuncsResolutionPass, PASS_FLAG, PASS_DESC, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_END(JointMatrixFuncsResolutionPassLPM, PASS_FLAG, PASS_DESC, PASS_CFG_ONLY, PASS_ANALYSIS)
 
 static const char *SPIRVPrefix = "__spirv_";
 static const char *JointMatrixBIPrefix = "__builtin_spirv_OpJointMatrix";
@@ -89,8 +89,8 @@ static const char *AccessChainPrefx = "__spirv_AccessChain";
 // 1) we inspect multiple functions to find entry function to get sub group size
 // 2) we maintain map of functions to entry functions across functions we process
 // so the pass is not local to one function.
-JointMatrixFuncsResolutionPass::JointMatrixFuncsResolutionPass() : ModulePass(ID) {
-  initializeJointMatrixFuncsResolutionPassPass(*PassRegistry::getPassRegistry());
+JointMatrixFuncsResolutionPassLPM::JointMatrixFuncsResolutionPassLPM() : ModulePass(ID) {
+  initializeJointMatrixFuncsResolutionPassLPMPass(*PassRegistry::getPassRegistry());
 }
 
 // Static helper functions for type traversal
@@ -182,9 +182,9 @@ template <typename F> static bool isAnyOperand(const User &U, F &&lambda) {
 }
 
 // Member functions
-bool JointMatrixFuncsResolutionPass::runOnModule(Module &M) {
-  m_Ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
-  m_mdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
+bool JointMatrixFuncsResolutionPass::run(Module &M, CodeGenContext *pCtx, IGCMD::MetaDataUtils *pMdUtils) {
+  m_Ctx = pCtx;
+  m_mdUtils = pMdUtils;
   m_simdResolver = std::make_unique<KernelSIMDSizeResolver>(
       m_Ctx, m_mdUtils, [this](int32_t SIMDSize) { return IsSIMDSizeValid(SIMDSize); },
       [this]() { return DefineKernelSIMDSize(); }, "Joint Matrix");
@@ -3191,3 +3191,11 @@ void JointMatrixFuncsResolutionPass::visitPtrToIntInst(PtrToIntInst &I) {
   ResolveSIMDSize(I.getParent()->getParent());
   ResolveGeneric(&I);
 }
+
+#if LLVM_VERSION_MAJOR >= 16
+PreservedAnalyses JointMatrixFuncsResolutionPassNPM::run(Module &M, ModuleAnalysisManager &AM) {
+  auto md = AM.getResult<MetaDataUtilsAnalysis>(M);
+  bool changed = JointMatrixFuncsResolutionPass().run(M, AM.getResult<CodeGenContextAnalysis>(M).Ctx, md.MdUtils);
+  return changed ? PreservedAnalyses::none() : PreservedAnalyses::all();
+}
+#endif // LLVM_VERSION_MAJOR >= 16

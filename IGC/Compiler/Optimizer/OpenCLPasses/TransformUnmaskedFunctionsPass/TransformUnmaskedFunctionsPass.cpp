@@ -37,12 +37,14 @@ using namespace IGC::IGCMD;
 #define PASS_DESCRIPTION "Handle unmaksed functions."
 #define PASS_CFG_ONLY false
 #define PASS_ANALYSIS false
-IGC_INITIALIZE_PASS_BEGIN(TransformUnmaskedFunctionsPass, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
-IGC_INITIALIZE_PASS_END(TransformUnmaskedFunctionsPass, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_BEGIN(TransformUnmaskedFunctionsPassLPM, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_END(TransformUnmaskedFunctionsPassLPM, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
-char TransformUnmaskedFunctionsPass::ID = 0;
+char TransformUnmaskedFunctionsPassLPM::ID = 0;
 
-TransformUnmaskedFunctionsPass::TransformUnmaskedFunctionsPass() : FunctionPass(ID), MMD(nullptr) {}
+TransformUnmaskedFunctionsPassLPM::TransformUnmaskedFunctionsPassLPM() : FunctionPass(ID) {
+  initializeTransformUnmaskedFunctionsPassLPMPass(*PassRegistry::getPassRegistry());
+}
 
 static void annotateUnmaskedCallSite(CallInst *CI) {
   IRBuilder<> builder(CI);
@@ -213,7 +215,7 @@ static bool isFunctionTriviallyUniform(const Function *F, TrivialUniformity *out
   return result.kind == TrivialUniformity::UNIFORM;
 }
 
-bool TransformUnmaskedFunctionsPass::runOnFunction(llvm::Function &F) {
+bool TransformUnmaskedFunctionsPass::runOnFunction(llvm::Function &F, IGC::CodeGenContext *pCtx) {
   if (!F.hasFnAttribute("sycl-unmasked"))
     return false;
 
@@ -224,7 +226,7 @@ bool TransformUnmaskedFunctionsPass::runOnFunction(llvm::Function &F) {
     stream << "\nDetected non-uniform control flow inside unmasked function '" << F.getName().str() << "': '"
            << result.reason << "'\n";
     std::string errorMessage = stream.str();
-    getAnalysis<CodeGenContextWrapper>().getCodeGenContext()->EmitError(errorMessage.c_str(), &F);
+    pCtx->EmitError(errorMessage.c_str(), &F);
   }
 
   F.removeFnAttr(llvm::Attribute::AlwaysInline);
@@ -237,6 +239,20 @@ bool TransformUnmaskedFunctionsPass::runOnFunction(llvm::Function &F) {
   }
   return true;
 }
+
+#if LLVM_VERSION_MAJOR >= 16
+PreservedAnalyses TransformUnmaskedFunctionsPassNPM::run(Module &M, ModuleAnalysisManager &AM) {
+  CodeGenContext *pCtx = AM.getResult<CodeGenContextAnalysis>(M).Ctx;
+  TransformUnmaskedFunctionsPass impl;
+  bool changed = false;
+  for (Function &F : M) {
+    if (F.isDeclaration())
+      continue;
+    changed |= impl.runOnFunction(F, pCtx);
+  }
+  return changed ? PreservedAnalyses::none() : PreservedAnalyses::all();
+}
+#endif // LLVM_VERSION_MAJOR >= 16
 
 #define IPASS_FLAG "inline-unmasked"
 #define IPASS_DESCRIPTION "Handle unmaksed functions."

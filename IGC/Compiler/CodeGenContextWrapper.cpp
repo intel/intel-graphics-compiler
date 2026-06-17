@@ -34,3 +34,7 @@ CodeGenContextWrapper::CodeGenContextWrapper() : ImmutablePass(ID), m_ctx(nullpt
 }
 
 CodeGenContext *CodeGenContextWrapper::getCodeGenContext() { return m_ctx; }
+
+#if LLVM_VERSION_MAJOR >= 16
+llvm::AnalysisKey CodeGenContextAnalysis::Key;
+#endif // LLVM_VERSION_MAJOR >= 16

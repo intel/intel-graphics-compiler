@@ -32,39 +32,49 @@ namespace {
 ///
 /// Currently this only applies to certain constant data array initializers.
 ///
-class SimplifyConstant : public ModulePass {
+// Legacy Pass Manager wrapper.
+class SimplifyConstantLPM : public ModulePass {
 public:
   static char ID; // Pass identification, replacement for typeid
-  SimplifyConstant() : ModulePass(ID) { initializeSimplifyConstantPass(*PassRegistry::getPassRegistry()); }
-  bool runOnModule(Module &M);
-
-private:
-  bool process(GlobalVariable *GV);
+  SimplifyConstantLPM() : ModulePass(ID) { initializeSimplifyConstantLPMPass(*PassRegistry::getPassRegistry()); }
+  bool runOnModule(Module &M) override;
 };
 
 } // namespace
 
-namespace IGC {
+// Shared implementation. Used by both the legacy and the new-pass-manager wrappers.
+static bool simplifyConstantProcess(GlobalVariable *GV);
 
-IGC_INITIALIZE_PASS_BEGIN(SimplifyConstant, "SimplifyConstant", "SimplifyConstant", false, false)
-IGC_INITIALIZE_PASS_END(SimplifyConstant, "SimplifyConstant", "SimplifyConstant", false, false)
-
-} // namespace IGC
-
-char SimplifyConstant::ID = 0;
-ModulePass *IGC::createSimplifyConstantPass() { return new SimplifyConstant(); }
-
-bool SimplifyConstant::runOnModule(Module &M) {
+static bool simplifyConstants(Module &M) {
   bool Changed = false;
   for (auto I = M.global_begin(); I != M.global_end(); /*empty*/) {
     GlobalVariable *GV = &(*I++);
     if (GV->user_empty() || !GV->isConstant() || !GV->hasInitializer() ||
         GV->getType()->getAddressSpace() != ADDRESS_SPACE_CONSTANT)
       continue;
-    Changed |= process(GV);
+    Changed |= simplifyConstantProcess(GV);
   }
   return Changed;
 }
+
+namespace IGC {
+
+IGC_INITIALIZE_PASS_BEGIN(SimplifyConstantLPM, "SimplifyConstant", "SimplifyConstant", false, false)
+IGC_INITIALIZE_PASS_END(SimplifyConstantLPM, "SimplifyConstant", "SimplifyConstant", false, false)
+
+} // namespace IGC
+
+char SimplifyConstantLPM::ID = 0;
+ModulePass *IGC::createSimplifyConstantPass() { return new SimplifyConstantLPM(); }
+
+bool SimplifyConstantLPM::runOnModule(Module &M) { return simplifyConstants(M); }
+
+#if LLVM_VERSION_MAJOR >= 16
+llvm::PreservedAnalyses IGC::SimplifyConstantNPM::run(llvm::Module &M, llvm::ModuleAnalysisManager &AM) {
+  bool changed = simplifyConstants(M);
+  return changed ? llvm::PreservedAnalyses::none() : llvm::PreservedAnalyses::all();
+}
+#endif // LLVM_VERSION_MAJOR >= 16
 
 namespace {
 
@@ -231,7 +241,7 @@ void ConstantLoader::simplify() {
   }
 }
 
-bool SimplifyConstant::process(GlobalVariable *GV) {
+static bool simplifyConstantProcess(GlobalVariable *GV) {
   ConstantLoader Loader(GV);
   if (Loader.simplified())
     return true;
@@ -243,10 +253,11 @@ namespace {
 
 /// \brief Promote small constant data from global to register.
 ///
-class PromoteConstant : public FunctionPass {
+// Legacy Pass Manager wrapper.
+class PromoteConstantLPM : public FunctionPass {
 public:
   static char ID; // Pass identification, replacement for typeid
-  PromoteConstant() : FunctionPass(ID) { initializePromoteConstantPass(*PassRegistry::getPassRegistry()); }
+  PromoteConstantLPM() : FunctionPass(ID) { initializePromoteConstantLPMPass(*PassRegistry::getPassRegistry()); }
 
   void getAnalysisUsage(AnalysisUsage &AU) const override {
     AU.setPreservesCFG();
@@ -261,14 +272,14 @@ public:
 
 namespace IGC {
 
-IGC_INITIALIZE_PASS_BEGIN(PromoteConstant, "PromoteConstant", "PromoteConstant", false, false)
+IGC_INITIALIZE_PASS_BEGIN(PromoteConstantLPM, "PromoteConstant", "PromoteConstant", false, false)
 IGC_INITIALIZE_PASS_DEPENDENCY(LoopInfoWrapperPass)
-IGC_INITIALIZE_PASS_END(PromoteConstant, "PromoteConstant", "PromoteConstant", false, false)
+IGC_INITIALIZE_PASS_END(PromoteConstantLPM, "PromoteConstant", "PromoteConstant", false, false)
 
 } // namespace IGC
 
-char PromoteConstant::ID = 0;
-FunctionPass *IGC::createPromoteConstantPass() { return new PromoteConstant(); }
+char PromoteConstantLPM::ID = 0;
+FunctionPass *IGC::createPromoteConstantPass() { return new PromoteConstantLPM(); }
 
 // Check uses. Within this function, this GV must be used and only used by
 // in-bound GEPs each of which is also only used by loads.
@@ -656,11 +667,8 @@ static bool isCmpSelProfitable(GlobalVariable *GV) {
   return EltTy->isVectorTy() && NElts <= CmpSelSize * 2;
 }
 
-bool PromoteConstant::runOnFunction(Function &F) {
-  if (skipFunction(F))
-    return false;
-
-  LoopInfo &LI = getAnalysis<LoopInfoWrapperPass>().getLoopInfo();
+// Shared implementation. Used by both the legacy and the new-pass-manager wrappers.
+static bool promoteConstants(Function &F, LoopInfo &LI) {
   Module *M = F.getParent();
   bool Changed = false;
 
@@ -697,3 +705,19 @@ bool PromoteConstant::runOnFunction(Function &F) {
 
   return Changed;
 }
+
+bool PromoteConstantLPM::runOnFunction(Function &F) {
+  if (skipFunction(F))
+    return false;
+
+  LoopInfo &LI = getAnalysis<LoopInfoWrapperPass>().getLoopInfo();
+  return promoteConstants(F, LI);
+}
+
+#if LLVM_VERSION_MAJOR >= 16
+llvm::PreservedAnalyses IGC::PromoteConstantNPM::run(llvm::Function &F, llvm::FunctionAnalysisManager &AM) {
+  LoopInfo &LI = AM.getResult<llvm::LoopAnalysis>(F);
+  bool changed = promoteConstants(F, LI);
+  return changed ? llvm::PreservedAnalyses::none() : llvm::PreservedAnalyses::all();
+}
+#endif // LLVM_VERSION_MAJOR >= 16

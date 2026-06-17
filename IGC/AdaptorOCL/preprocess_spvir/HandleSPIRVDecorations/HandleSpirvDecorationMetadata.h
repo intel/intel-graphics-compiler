@@ -12,6 +12,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/Pass.h>
 #include <llvm/IR/InstVisitor.h>
 #include <llvm/IR/IRBuilder.h>
+#include <llvm/IR/PassManager.h>
 #include "common/LLVMWarningsPop.hpp"
 #include "llvmWrapper/IR/Module.h"
 
@@ -21,22 +22,17 @@ SPDX-License-Identifier: MIT
 #include <string>
 
 namespace IGC {
-class HandleSpirvDecorationMetadata : public llvm::ModulePass, public llvm::InstVisitor<HandleSpirvDecorationMetadata> {
+// Shared implementation. Holds the logic and is used by both the legacy and the
+// new-pass-manager wrappers below; it is not itself an llvm::Pass.
+class HandleSpirvDecorationMetadata : public llvm::InstVisitor<HandleSpirvDecorationMetadata> {
 public:
-  static char ID;
-
-  HandleSpirvDecorationMetadata();
+  HandleSpirvDecorationMetadata() {}
   ~HandleSpirvDecorationMetadata() {}
 
-  virtual llvm::StringRef getPassName() const override { return "HandleSpirvDecorationMetadata"; }
+  static llvm::StringRef getPassName() { return "HandleSpirvDecorationMetadata"; }
 
-  virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override {
-    AU.setPreservesCFG();
-    AU.addRequired<MetaDataUtilsWrapper>();
-    AU.addRequired<CodeGenContextWrapper>();
-  }
-
-  virtual bool runOnModule(llvm::Module &F) override;
+  // Shared implementation used by both the legacy and the new-pass-manager wrappers.
+  bool run(llvm::Module &module, CodeGenContext *pCtx, ModuleMetaData *modMD);
 
   void visitLoadInst(llvm::LoadInst &I);
   void visitStoreInst(llvm::StoreInst &I);
@@ -78,4 +74,33 @@ private:
 
   llvm::Type *getArgumentType(std::string demangledName, size_t argNo, llvm::LLVMContext &ctx);
 };
+
+// Legacy Pass Manager wrapper.
+class HandleSpirvDecorationMetadataLPM : public llvm::ModulePass {
+public:
+  static char ID;
+
+  HandleSpirvDecorationMetadataLPM();
+  ~HandleSpirvDecorationMetadataLPM() {}
+
+  llvm::StringRef getPassName() const override { return HandleSpirvDecorationMetadata::getPassName(); }
+
+  void getAnalysisUsage(llvm::AnalysisUsage &AU) const override {
+    AU.setPreservesCFG();
+    AU.addRequired<MetaDataUtilsWrapper>();
+    AU.addRequired<CodeGenContextWrapper>();
+  }
+
+  bool runOnModule(llvm::Module &M) override;
+};
+
+#if LLVM_VERSION_MAJOR >= 16
+// New Pass Manager wrapper.
+class HandleSpirvDecorationMetadataNPM : public llvm::PassInfoMixin<HandleSpirvDecorationMetadataNPM> {
+public:
+  llvm::PreservedAnalyses run(llvm::Module &M, llvm::ModuleAnalysisManager &AM);
+  static llvm::StringRef name() { return "igc-handle-spirv-decoration-metadata"; }
+  static bool isRequired() { return true; }
+};
+#endif // LLVM_VERSION_MAJOR >= 16
 } // namespace IGC

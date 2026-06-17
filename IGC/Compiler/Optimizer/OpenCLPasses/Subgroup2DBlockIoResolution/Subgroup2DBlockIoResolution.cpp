@@ -33,7 +33,7 @@ SPDX-License-Identifier: MIT
 using namespace llvm;
 using namespace IGC;
 
-char Subgroup2DBlockIoResolution::ID = 0;
+char Subgroup2DBlockIoResolutionLPM::ID = 0;
 
 #define PASS_FLAG "igc-subgroup-2dblockio-resolution"
 #define PASS_DESC "Lowering of 2d block instructions (SPV, OCL, builtins) to intrinsics"
@@ -41,20 +41,29 @@ char Subgroup2DBlockIoResolution::ID = 0;
 #define PASS_ANALYSIS false
 #define DEBUG_TYPE "subgroup-2dblockio-resolution"
 
-IGC_INITIALIZE_PASS_BEGIN(Subgroup2DBlockIoResolution, PASS_FLAG, PASS_DESC, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_BEGIN(Subgroup2DBlockIoResolutionLPM, PASS_FLAG, PASS_DESC, PASS_CFG_ONLY, PASS_ANALYSIS)
 IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
 IGC_INITIALIZE_PASS_DEPENDENCY(MetaDataUtilsWrapper)
-IGC_INITIALIZE_PASS_END(Subgroup2DBlockIoResolution, PASS_FLAG, PASS_DESC, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_END(Subgroup2DBlockIoResolutionLPM, PASS_FLAG, PASS_DESC, PASS_CFG_ONLY, PASS_ANALYSIS)
 
-Subgroup2DBlockIoResolution::Subgroup2DBlockIoResolution() : ModulePass(ID) {
-  initializeSubgroup2DBlockIoResolutionPass(*PassRegistry::getPassRegistry());
+Subgroup2DBlockIoResolutionLPM::Subgroup2DBlockIoResolutionLPM() : ModulePass(ID) {
+  initializeSubgroup2DBlockIoResolutionLPMPass(*PassRegistry::getPassRegistry());
 }
 
-bool Subgroup2DBlockIoResolution::runOnModule(Module &M) {
-  m_Ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+#if LLVM_VERSION_MAJOR >= 16
+PreservedAnalyses Subgroup2DBlockIoResolutionNPM::run(Module &M, ModuleAnalysisManager &AM) {
+  auto *pCtx = AM.getResult<CodeGenContextAnalysis>(M).Ctx;
+  auto *pMdUtils = AM.getResult<MetaDataUtilsAnalysis>(M).MdUtils;
+  bool changed = Subgroup2DBlockIoResolution().run(M, pCtx, pMdUtils);
+  return changed ? PreservedAnalyses::none() : PreservedAnalyses::all();
+}
+#endif // LLVM_VERSION_MAJOR >= 16
+
+bool Subgroup2DBlockIoResolution::run(Module &M, CodeGenContext *pCtx, IGCMD::MetaDataUtils *pMdUtils) {
+  m_Ctx = pCtx;
   m_simdResolver = std::make_unique<KernelSIMDSizeResolver>(
-      m_Ctx, getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils(),
-      [](int32_t SIMDSize) { return SIMDSize == 16 || SIMDSize == 32; }, []() { return 16; }, "2D block IO");
+      m_Ctx, pMdUtils, [](int32_t SIMDSize) { return SIMDSize == 16 || SIMDSize == 32; }, []() { return 16; },
+      "2D block IO");
   m_Changed = false;
   m_BuiltinsToRemove.clear();
 

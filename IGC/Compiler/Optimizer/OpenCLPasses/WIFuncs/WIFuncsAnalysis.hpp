@@ -14,6 +14,7 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/Pass.h>
 #include <llvm/IR/InstVisitor.h>
+#include <llvm/IR/PassManager.h>
 #include <llvm/ADT/StringRef.h>
 #include "common/LLVMWarningsPop.hpp"
 
@@ -22,31 +23,25 @@ namespace IGC {
 ///         are used in the different functions in the module and creating metadata that represents
 ///         the implicit information needed by each function for resolving these function calls
 
-class WIFuncsAnalysis : public llvm::ModulePass, public llvm::InstVisitor<WIFuncsAnalysis> {
+// Shared implementation. Holds the logic and is used by both the legacy and the
+// new-pass-manager wrappers below; it is not itself an llvm::Pass.
+class WIFuncsAnalysis : public llvm::InstVisitor<WIFuncsAnalysis> {
 public:
-  // Pass identification, replacement for typeid
-  static char ID;
-
   /// @brief  Constructor
-  WIFuncsAnalysis();
+  WIFuncsAnalysis() {}
 
   /// @brief  Destructor
   ~WIFuncsAnalysis() {}
 
   /// @brief  Provides name of pass
-  virtual llvm::StringRef getPassName() const override { return "WIFuncsAnalysis"; }
-
-  void getAnalysisUsage(llvm::AnalysisUsage &AU) const override {
-    AU.addRequired<MetaDataUtilsWrapper>();
-    AU.addRequired<CodeGenContextWrapper>();
-  }
+  static llvm::StringRef getPassName() { return "WIFuncsAnalysis"; }
 
   /// @brief  Main entry point.
   ///         Runs on all functions defined in the given module, finds all OpenCL WI function calls,
   ///         analyzes them and creates metadata that represents the implicit information needed
   ///         by each function for resolving these function calls
   /// @param  M The destination module.
-  virtual bool runOnModule(llvm::Module &M) override;
+  bool run(llvm::Module &M, IGCMD::MetaDataUtils *pMdUtils, IGC::CodeGenContext *pCtx);
 
   /// @brief  Call instructions visitor.
   ///         Checks for OpenCL WI functions and analyzes it
@@ -120,5 +115,37 @@ private:
   /// @brief context for compilation
   IGC::CodeGenContext *m_ctx = nullptr;
 };
+
+// Legacy Pass Manager wrapper.
+class WIFuncsAnalysisLPM : public llvm::ModulePass {
+public:
+  static char ID;
+
+  WIFuncsAnalysisLPM();
+  ~WIFuncsAnalysisLPM() {}
+
+  virtual llvm::StringRef getPassName() const override { return WIFuncsAnalysis::getPassName(); }
+
+  void getAnalysisUsage(llvm::AnalysisUsage &AU) const override {
+    AU.addRequired<MetaDataUtilsWrapper>();
+    AU.addRequired<CodeGenContextWrapper>();
+  }
+
+  virtual bool runOnModule(llvm::Module &M) override {
+    return WIFuncsAnalysis().run(M, getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils(),
+                                 getAnalysis<CodeGenContextWrapper>().getCodeGenContext());
+  }
+};
+
+#if LLVM_VERSION_MAJOR >= 16
+// New Pass Manager wrapper. name() returns the legacy pass argument so that
+// PrintBefore/PrintAfter=<pass argument> matches under the new pass manager.
+class WIFuncsAnalysisNPM : public llvm::PassInfoMixin<WIFuncsAnalysisNPM> {
+public:
+  llvm::PreservedAnalyses run(llvm::Module &M, llvm::ModuleAnalysisManager &AM);
+  static llvm::StringRef name() { return "igc-wi-func-analysis"; }
+  static bool isRequired() { return true; }
+};
+#endif // LLVM_VERSION_MAJOR >= 16
 
 } // namespace IGC

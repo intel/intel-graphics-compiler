@@ -64,14 +64,16 @@ static Type *createDemotedType(Type *type) {
 #define PASS_DESCRIPTION "Promote sub byte types"
 #define PASS_CFG_ONLY false
 #define PASS_ANALYSIS false
-IGC_INITIALIZE_PASS_BEGIN(PromoteSubByte, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
-IGC_INITIALIZE_PASS_END(PromoteSubByte, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_BEGIN(PromoteSubByteLPM, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_END(PromoteSubByteLPM, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
-char PromoteSubByte::ID = 0;
+char PromoteSubByteLPM::ID = 0;
 
-PromoteSubByte::PromoteSubByte() : ModulePass(ID) { initializePromoteSubBytePass(*PassRegistry::getPassRegistry()); }
+PromoteSubByteLPM::PromoteSubByteLPM() : ModulePass(ID) {
+  initializePromoteSubByteLPMPass(*PassRegistry::getPassRegistry());
+}
 
-bool PromoteSubByte::runOnModule(Module &module) {
+bool PromoteSubByte::run(Module &module) {
   changed = false;
   M = &module;
 
@@ -1334,3 +1336,10 @@ Constant *PromoteSubByte::packConstantInt4Vector(Value *input) {
 
   return ConstantVector::get(values);
 }
+
+#if LLVM_VERSION_MAJOR >= 16
+PreservedAnalyses PromoteSubByteNPM::run(Module &M, ModuleAnalysisManager &) {
+  bool changed = PromoteSubByte().run(M);
+  return changed ? PreservedAnalyses::none() : PreservedAnalyses::all();
+}
+#endif // LLVM_VERSION_MAJOR >= 16

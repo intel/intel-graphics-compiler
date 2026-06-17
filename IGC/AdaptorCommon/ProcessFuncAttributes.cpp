@@ -30,6 +30,10 @@ SPDX-License-Identifier: MIT
 #include <llvm/Support/raw_ostream.h>
 #include <llvm/Support/Regex.h>
 #include <llvm/Analysis/CallGraph.h>
+#include <llvm/Analysis/LoopInfo.h>
+#include <llvm/Analysis/BlockFrequencyInfo.h>
+#include <llvm/Analysis/ScalarEvolution.h>
+#include <llvm/IR/PassManager.h>
 #include "llvm/ADT/SCCIterator.h"
 #include "common/LLVMWarningsPop.hpp"
 #include <llvmWrapper/IR/Function.h>
@@ -212,10 +216,23 @@ static const std::unordered_set<std::string> OCLExtOpBuiltinNames = {"acos",
                                                                      "u_mul_hi",
                                                                      "u_mad_hi"};
 
-class ProcessFuncAttributes : public ModulePass {
+// Shared implementation. Holds the logic and is used by both the legacy and the new-pass-manager
+// wrappers below; it is not itself an llvm::Pass. The CodeGenContext, MetaDataUtils, CallGraph and
+// the EstimateFunctionSize result are injected by the caller (run).
+class ProcessFuncAttributes {
+public:
+  bool run(Module &M, CodeGenContext *Ctx, IGCMD::MetaDataUtils *MdUtils, llvm::CallGraph &CG,
+           EstimateFunctionSize &efs);
+
+private:
+  bool isGASPointer(Value *arg);
+};
+
+// Legacy Pass Manager wrapper.
+class ProcessFuncAttributesLPM : public ModulePass {
 public:
   static char ID;
-  virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const {
+  void getAnalysisUsage(llvm::AnalysisUsage &AU) const override {
     AU.setPreservesCFG();
     AU.addRequired<MetaDataUtilsWrapper>();
     AU.addRequired<CodeGenContextWrapper>();
@@ -223,16 +240,20 @@ public:
     AU.addRequired<llvm::CallGraphWrapperPass>();
   }
 
-  ProcessFuncAttributes();
+  ProcessFuncAttributesLPM();
 
-  ~ProcessFuncAttributes() {}
+  ~ProcessFuncAttributesLPM() {}
 
-  virtual bool runOnModule(Module &M);
+  bool runOnModule(Module &M) override {
+    return m_impl.run(M, getAnalysis<CodeGenContextWrapper>().getCodeGenContext(),
+                      getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils(),
+                      getAnalysis<llvm::CallGraphWrapperPass>().getCallGraph(), getAnalysis<EstimateFunctionSize>());
+  }
 
-  virtual llvm::StringRef getPassName() const { return "ProcessFuncAttributes"; }
+  llvm::StringRef getPassName() const override { return "ProcessFuncAttributes"; }
 
 private:
-  bool isGASPointer(Value *arg);
+  ProcessFuncAttributes m_impl;
 };
 
 } // namespace
@@ -242,17 +263,17 @@ private:
 #define PASS_DESCRIPTION "Set Functions' linkage and attributes"
 #define PASS_CFG_ONLY false
 #define PASS_ANALYSIS false
-IGC_INITIALIZE_PASS_BEGIN(ProcessFuncAttributes, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_BEGIN(ProcessFuncAttributesLPM, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 IGC_INITIALIZE_PASS_DEPENDENCY(MetaDataUtilsWrapper)
 IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
 IGC_INITIALIZE_PASS_DEPENDENCY(EstimateFunctionSize)
 IGC_INITIALIZE_PASS_DEPENDENCY(CallGraphWrapperPass)
-IGC_INITIALIZE_PASS_END(ProcessFuncAttributes, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_END(ProcessFuncAttributesLPM, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
-char ProcessFuncAttributes::ID = 0;
+char ProcessFuncAttributesLPM::ID = 0;
 
-ProcessFuncAttributes::ProcessFuncAttributes() : ModulePass(ID) {
-  initializeProcessFuncAttributesPass(*PassRegistry::getPassRegistry());
+ProcessFuncAttributesLPM::ProcessFuncAttributesLPM() : ModulePass(ID) {
+  initializeProcessFuncAttributesLPMPass(*PassRegistry::getPassRegistry());
 }
 
 inline bool ProcessFuncAttributes::isGASPointer(Value *V) {
@@ -262,7 +283,33 @@ inline bool ProcessFuncAttributes::isGASPointer(Value *V) {
   return false;
 }
 
-ModulePass *createProcessFuncAttributesPass() { return new ProcessFuncAttributes(); }
+ModulePass *createProcessFuncAttributesPass() { return new ProcessFuncAttributesLPM(); }
+
+#if LLVM_VERSION_MAJOR >= 16
+llvm::PreservedAnalyses ProcessFuncAttributesNPM::run(llvm::Module &M, llvm::ModuleAnalysisManager &AM) {
+  CodeGenContext *ctx = AM.getResult<CodeGenContextAnalysis>(M).Ctx;
+  MetaDataUtils *mdUtils = AM.getResult<MetaDataUtilsAnalysis>(M).MdUtils;
+  CallGraph &CG = AM.getResult<llvm::CallGraphAnalysis>(M);
+  auto &FAM = AM.getResult<llvm::FunctionAnalysisManagerModuleProxy>(M).getManager();
+
+  // Compute the EstimateFunctionSize result inline (it is a pure analysis; the legacy pipeline runs
+  // it as a separate pass and ProcessFuncAttributes queries the cached result). The
+  // StaticProfileGuidedTrimming flag is an OpenCL-context option (matches UnifyIROCL's explicit add).
+  bool enableSPGT = false;
+  if (ctx->type == ShaderType::OPENCL_SHADER)
+    enableSPGT = static_cast<OpenCLProgramContext *>(ctx)->m_Options.StaticProfileGuidedTrimming;
+  EstimateFunctionSize efs(EstimateFunctionSize::AL_Module, enableSPGT);
+  efs.computeInline(
+      M, [&FAM](Function &F) -> LoopInfo & { return FAM.getResult<llvm::LoopAnalysis>(F); },
+      [&FAM](Function &F) -> BlockFrequencyInfo & { return FAM.getResult<llvm::BlockFrequencyAnalysis>(F); },
+      [&FAM](Function &F) -> ScalarEvolution & { return FAM.getResult<llvm::ScalarEvolutionAnalysis>(F); }, mdUtils,
+      ctx);
+
+  ProcessFuncAttributes impl;
+  bool changed = impl.run(M, ctx, mdUtils, CG, efs);
+  return changed ? llvm::PreservedAnalyses::none() : llvm::PreservedAnalyses::all();
+}
+#endif // LLVM_VERSION_MAJOR >= 16
 
 extern bool isSupportedAggregateArgument(Argument *arg);
 
@@ -481,14 +528,13 @@ static void collectGlobalAnnotationsPointers(const Module &M, DenseSet<const Val
   }
 }
 
-bool ProcessFuncAttributes::runOnModule(Module &M) {
-  MetaDataUtilsWrapper &mduw = getAnalysis<MetaDataUtilsWrapper>();
-  MetaDataUtils *pMdUtils = mduw.getMetaDataUtils();
-  ModuleMetaData *modMD = mduw.getModuleMetaData();
+bool ProcessFuncAttributes::run(Module &M, CodeGenContext *Ctx, IGCMD::MetaDataUtils *MdUtils, llvm::CallGraph &CG,
+                                EstimateFunctionSize &efs) {
+  MetaDataUtils *pMdUtils = MdUtils;
+  CodeGenContext *pCtx = Ctx;
+  ModuleMetaData *modMD = pCtx->getModuleMetaData();
   auto MemPoolFuncs = collectMemPoolUsage(M);
-  CodeGenContext *pCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
-  EstimateFunctionSize &efs = getAnalysis<EstimateFunctionSize>();
-  bool isOptDisable = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData()->compOpt.OptDisable;
+  bool isOptDisable = modMD->compOpt.OptDisable;
   auto FCtrl = getFunctionControl(pCtx);
 
   bool forceLargeKernelStackCall = IGC_IS_FLAG_ENABLED(ForceStackCallForLargeKernel) && FCtrl == FLAG_FCALL_DEFAULT &&
@@ -667,8 +713,7 @@ bool ProcessFuncAttributes::runOnModule(Module &M) {
     bool isIndirect = false;
     if (!isKernel) {
       isIndirect =
-          F->hasFnAttribute("referenced-indirectly") ||
-          (getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData()->compOpt.IsLibraryCompilation && NeedsLinking(F));
+          F->hasFnAttribute("referenced-indirectly") || (modMD->compOpt.IsLibraryCompilation && NeedsLinking(F));
 
       if (!isIndirect) {
         // Functions without Export Linkage and does not have the indirect attribute set can still be called indirectly.
@@ -975,7 +1020,6 @@ bool ProcessFuncAttributes::runOnModule(Module &M) {
   }
 
   // Detect recursive calls, and convert them to stack calls, since subroutines does not support recursion
-  CallGraph &CG = getAnalysis<CallGraphWrapperPass>().getCallGraph();
   if (convertRecursionToStackCall(CG)) {
     if (IGC_IS_FLAG_DISABLED(EnableRecursionOpenCL) && !pCtx->m_DriverInfo.AllowRecursion()) {
       IGC_ASSERT_MESSAGE(0, "Recursion detected but not enabled!");
@@ -1034,7 +1078,15 @@ bool ProcessFuncAttributes::runOnModule(Module &M) {
 
 namespace {
 
-class CleanupIndirectlyReferencedFunctions : public ModulePass {
+// Shared implementation. Holds the logic and is used by both the legacy and the new-pass-manager
+// wrappers below; it is not itself an llvm::Pass. The CodeGenContext is injected by the caller.
+class CleanupIndirectlyReferencedFunctions {
+public:
+  bool run(Module &M, CodeGenContext *Ctx);
+};
+
+// Legacy Pass Manager wrapper.
+class CleanupIndirectlyReferencedFunctionsLPM : public ModulePass {
 public:
   static char ID;
   void getAnalysisUsage(llvm::AnalysisUsage &AU) const override {
@@ -1043,12 +1095,17 @@ public:
     AU.addRequired<CodeGenContextWrapper>();
   }
 
-  CleanupIndirectlyReferencedFunctions();
-  ~CleanupIndirectlyReferencedFunctions() {}
+  CleanupIndirectlyReferencedFunctionsLPM();
+  ~CleanupIndirectlyReferencedFunctionsLPM() {}
 
-  bool runOnModule(Module &M) override;
+  bool runOnModule(Module &M) override {
+    return m_impl.run(M, getAnalysis<CodeGenContextWrapper>().getCodeGenContext());
+  }
 
   llvm::StringRef getPassName() const override { return "CleanupIndirectlyReferencedFunctions"; }
+
+private:
+  CleanupIndirectlyReferencedFunctions m_impl;
 };
 
 } // namespace
@@ -1057,25 +1114,32 @@ public:
 #define PASS_DESCRIPTION_CIRF "Remove stale referenced-indirectly attributes after inlining"
 #define PASS_CFG_ONLY_CIRF false
 #define PASS_ANALYSIS_CIRF false
-IGC_INITIALIZE_PASS_BEGIN(CleanupIndirectlyReferencedFunctions, PASS_FLAG_CIRF, PASS_DESCRIPTION_CIRF,
+IGC_INITIALIZE_PASS_BEGIN(CleanupIndirectlyReferencedFunctionsLPM, PASS_FLAG_CIRF, PASS_DESCRIPTION_CIRF,
                           PASS_CFG_ONLY_CIRF, PASS_ANALYSIS_CIRF)
 IGC_INITIALIZE_PASS_DEPENDENCY(MetaDataUtilsWrapper)
 IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
-IGC_INITIALIZE_PASS_END(CleanupIndirectlyReferencedFunctions, PASS_FLAG_CIRF, PASS_DESCRIPTION_CIRF, PASS_CFG_ONLY_CIRF,
-                        PASS_ANALYSIS_CIRF)
+IGC_INITIALIZE_PASS_END(CleanupIndirectlyReferencedFunctionsLPM, PASS_FLAG_CIRF, PASS_DESCRIPTION_CIRF,
+                        PASS_CFG_ONLY_CIRF, PASS_ANALYSIS_CIRF)
 
-char CleanupIndirectlyReferencedFunctions::ID = 0;
+char CleanupIndirectlyReferencedFunctionsLPM::ID = 0;
 
-CleanupIndirectlyReferencedFunctions::CleanupIndirectlyReferencedFunctions() : ModulePass(ID) {
-  initializeCleanupIndirectlyReferencedFunctionsPass(*PassRegistry::getPassRegistry());
+CleanupIndirectlyReferencedFunctionsLPM::CleanupIndirectlyReferencedFunctionsLPM() : ModulePass(ID) {
+  initializeCleanupIndirectlyReferencedFunctionsLPMPass(*PassRegistry::getPassRegistry());
 }
 
-ModulePass *createCleanupIndirectlyReferencedFunctionsPass() { return new CleanupIndirectlyReferencedFunctions(); }
+ModulePass *createCleanupIndirectlyReferencedFunctionsPass() { return new CleanupIndirectlyReferencedFunctionsLPM(); }
 
-bool CleanupIndirectlyReferencedFunctions::runOnModule(Module &M) {
-  auto &mdUW = getAnalysis<MetaDataUtilsWrapper>();
-  auto *modMD = mdUW.getModuleMetaData();
-  auto *pCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+#if LLVM_VERSION_MAJOR >= 16
+llvm::PreservedAnalyses CleanupIndirectlyReferencedFunctionsNPM::run(llvm::Module &M, llvm::ModuleAnalysisManager &AM) {
+  CleanupIndirectlyReferencedFunctions impl;
+  bool changed = impl.run(M, AM.getResult<CodeGenContextAnalysis>(M).Ctx);
+  return changed ? llvm::PreservedAnalyses::none() : llvm::PreservedAnalyses::all();
+}
+#endif // LLVM_VERSION_MAJOR >= 16
+
+bool CleanupIndirectlyReferencedFunctions::run(Module &M, CodeGenContext *Ctx) {
+  auto *modMD = Ctx->getModuleMetaData();
+  auto *pCtx = Ctx;
 
   // If user forces a specific FunctionControl mode we leave attributes as is.
   if (getFunctionControl(pCtx) != FLAG_FCALL_DEFAULT) {
@@ -1138,28 +1202,44 @@ bool CleanupIndirectlyReferencedFunctions::runOnModule(Module &M) {
 
 namespace {
 
-class ProcessBuiltinMetaData : public ModulePass {
+// Shared implementation. Holds the logic and is used by both the legacy and the new-pass-manager
+// wrappers below; it is not itself an llvm::Pass. The CodeGenContext and MetaDataUtils are injected
+// by the caller (run).
+class ProcessBuiltinMetaData {
 public:
-  static char ID;
-  virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const {
-    AU.setPreservesCFG();
-    AU.addRequired<MetaDataUtilsWrapper>();
-    AU.addRequired<CodeGenContextWrapper>();
-  }
-
-  ProcessBuiltinMetaData();
-
-  ~ProcessBuiltinMetaData() {}
-
-  virtual bool runOnModule(Module &M);
-
-  virtual llvm::StringRef getPassName() const { return "ProcessBuiltinMetaData"; }
+  bool run(Module &M, CodeGenContext *Ctx, MetaDataUtils *MdUtils);
 
 private:
   void updateBuiltinFunctionMetaData(llvm::Function *);
   bool removeDeletedFunctionsMetaData(Module &M, MetaDataUtils *MdUtil);
 
-  MetaDataUtils *m_pMdUtil;
+  MetaDataUtils *m_pMdUtil = nullptr;
+  CodeGenContext *m_pCtx = nullptr;
+};
+
+// Legacy Pass Manager wrapper.
+class ProcessBuiltinMetaDataLPM : public ModulePass {
+public:
+  static char ID;
+  void getAnalysisUsage(llvm::AnalysisUsage &AU) const override {
+    AU.setPreservesCFG();
+    AU.addRequired<MetaDataUtilsWrapper>();
+    AU.addRequired<CodeGenContextWrapper>();
+  }
+
+  ProcessBuiltinMetaDataLPM();
+
+  ~ProcessBuiltinMetaDataLPM() {}
+
+  bool runOnModule(Module &M) override {
+    return m_impl.run(M, getAnalysis<CodeGenContextWrapper>().getCodeGenContext(),
+                      getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils());
+  }
+
+  llvm::StringRef getPassName() const override { return "ProcessBuiltinMetaData"; }
+
+private:
+  ProcessBuiltinMetaData m_impl;
 };
 
 } // namespace
@@ -1169,26 +1249,37 @@ private:
 #define PASS_DESCRIPTION2 "Set builtin MetaData"
 #define PASS_CFG_ONLY2 false
 #define PASS_ANALYSIS2 false
-IGC_INITIALIZE_PASS_BEGIN(ProcessBuiltinMetaData, PASS_FLAG2, PASS_DESCRIPTION2, PASS_CFG_ONLY2, PASS_ANALYSIS2)
+IGC_INITIALIZE_PASS_BEGIN(ProcessBuiltinMetaDataLPM, PASS_FLAG2, PASS_DESCRIPTION2, PASS_CFG_ONLY2, PASS_ANALYSIS2)
 IGC_INITIALIZE_PASS_DEPENDENCY(MetaDataUtilsWrapper)
 IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
-IGC_INITIALIZE_PASS_END(ProcessBuiltinMetaData, PASS_FLAG2, PASS_DESCRIPTION2, PASS_CFG_ONLY2, PASS_ANALYSIS2)
+IGC_INITIALIZE_PASS_END(ProcessBuiltinMetaDataLPM, PASS_FLAG2, PASS_DESCRIPTION2, PASS_CFG_ONLY2, PASS_ANALYSIS2)
 
-char ProcessBuiltinMetaData::ID = 0;
+char ProcessBuiltinMetaDataLPM::ID = 0;
 
-ProcessBuiltinMetaData::ProcessBuiltinMetaData() : ModulePass(ID) {
-  initializeProcessBuiltinMetaDataPass(*PassRegistry::getPassRegistry());
+ProcessBuiltinMetaDataLPM::ProcessBuiltinMetaDataLPM() : ModulePass(ID) {
+  initializeProcessBuiltinMetaDataLPMPass(*PassRegistry::getPassRegistry());
 }
 
-ModulePass *createProcessBuiltinMetaDataPass() { return new ProcessBuiltinMetaData(); }
+ModulePass *createProcessBuiltinMetaDataPass() { return new ProcessBuiltinMetaDataLPM(); }
 
-bool ProcessBuiltinMetaData::runOnModule(Module &M) {
-  CodeGenContext *pCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+#if LLVM_VERSION_MAJOR >= 16
+llvm::PreservedAnalyses ProcessBuiltinMetaDataNPM::run(llvm::Module &M, llvm::ModuleAnalysisManager &AM) {
+  ProcessBuiltinMetaData impl;
+  CodeGenContext *ctx = AM.getResult<CodeGenContextAnalysis>(M).Ctx;
+  MetaDataUtils *mdUtils = AM.getResult<MetaDataUtilsAnalysis>(M).MdUtils;
+  bool changed = impl.run(M, ctx, mdUtils);
+  return changed ? llvm::PreservedAnalyses::none() : llvm::PreservedAnalyses::all();
+}
+#endif // LLVM_VERSION_MAJOR >= 16
+
+bool ProcessBuiltinMetaData::run(Module &M, CodeGenContext *Ctx, MetaDataUtils *MdUtils) {
+  m_pCtx = Ctx;
+  CodeGenContext *pCtx = Ctx;
   if (IGC::ForceAlwaysInline(pCtx)) {
     return false;
   }
 
-  m_pMdUtil = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
+  m_pMdUtil = MdUtils;
 
   bool Changed = false;
   for (Module::iterator I = M.begin(), E = M.end(); I != E; ++I) {
@@ -1216,7 +1307,7 @@ bool ProcessBuiltinMetaData::runOnModule(Module &M) {
 
 void ProcessBuiltinMetaData::updateBuiltinFunctionMetaData(llvm::Function *pFunc) {
   IGCMD::FunctionInfoMetaDataHandle fHandle = IGCMD::FunctionInfoMetaDataHandle(new IGCMD::FunctionInfoMetaData());
-  IGC::ModuleMetaData *modMD = getAnalysis<CodeGenContextWrapper>().getCodeGenContext()->getModuleMetaData();
+  IGC::ModuleMetaData *modMD = m_pCtx->getModuleMetaData();
   FunctionMetaData *funcMD = &modMD->FuncMD[pFunc]; // okay to insert if not present
   funcMD->functionType = IGC::FunctionTypeMD::UserFunction;
   fHandle->setType(FunctionTypeMD::UserFunction);
@@ -1265,24 +1356,37 @@ bool ProcessBuiltinMetaData::removeDeletedFunctionsMetaData(Module &M, MetaDataU
 //
 namespace {
 
-class InsertDummyKernelForSymbolTable : public ModulePass {
+// Shared implementation. Holds the logic and is used by both the legacy and the new-pass-manager
+// wrappers below; it is not itself an llvm::Pass. The CodeGenContext and MetaDataUtils are injected
+// by the caller (run).
+class InsertDummyKernelForSymbolTable {
+public:
+  bool run(Module &M, CodeGenContext *Ctx, MetaDataUtils *MdUtils);
+};
+
+// Legacy Pass Manager wrapper.
+class InsertDummyKernelForSymbolTableLPM : public ModulePass {
 public:
   static char ID;
-  virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const {
+  void getAnalysisUsage(llvm::AnalysisUsage &AU) const override {
     AU.setPreservesCFG();
     AU.addRequired<MetaDataUtilsWrapper>();
     AU.addRequired<CodeGenContextWrapper>();
   }
 
-  InsertDummyKernelForSymbolTable();
+  InsertDummyKernelForSymbolTableLPM();
 
-  ~InsertDummyKernelForSymbolTable() {}
+  ~InsertDummyKernelForSymbolTableLPM() {}
 
-  virtual bool runOnModule(Module &M);
+  bool runOnModule(Module &M) override {
+    return m_impl.run(M, getAnalysis<CodeGenContextWrapper>().getCodeGenContext(),
+                      getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils());
+  }
 
-  virtual llvm::StringRef getPassName() const { return "InsertDummyKernelForSymbolTable"; }
+  llvm::StringRef getPassName() const override { return "InsertDummyKernelForSymbolTable"; }
 
 private:
+  InsertDummyKernelForSymbolTable m_impl;
 };
 
 } // namespace
@@ -1292,25 +1396,35 @@ private:
 #define PASS_DESCRIPTION3 "If symbol table is needed, insert a dummy kernel to attach it to"
 #define PASS_CFG_ONLY3 false
 #define PASS_ANALYSIS3 false
-IGC_INITIALIZE_PASS_BEGIN(InsertDummyKernelForSymbolTable, PASS_FLAG3, PASS_DESCRIPTION3, PASS_CFG_ONLY3,
+IGC_INITIALIZE_PASS_BEGIN(InsertDummyKernelForSymbolTableLPM, PASS_FLAG3, PASS_DESCRIPTION3, PASS_CFG_ONLY3,
                           PASS_ANALYSIS3)
 IGC_INITIALIZE_PASS_DEPENDENCY(MetaDataUtilsWrapper)
 IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
-IGC_INITIALIZE_PASS_END(InsertDummyKernelForSymbolTable, PASS_FLAG3, PASS_DESCRIPTION3, PASS_CFG_ONLY3, PASS_ANALYSIS3)
+IGC_INITIALIZE_PASS_END(InsertDummyKernelForSymbolTableLPM, PASS_FLAG3, PASS_DESCRIPTION3, PASS_CFG_ONLY3,
+                        PASS_ANALYSIS3)
 
-char InsertDummyKernelForSymbolTable::ID = 0;
+char InsertDummyKernelForSymbolTableLPM::ID = 0;
 
-InsertDummyKernelForSymbolTable::InsertDummyKernelForSymbolTable() : ModulePass(ID) {
-  initializeInsertDummyKernelForSymbolTablePass(*PassRegistry::getPassRegistry());
+InsertDummyKernelForSymbolTableLPM::InsertDummyKernelForSymbolTableLPM() : ModulePass(ID) {
+  initializeInsertDummyKernelForSymbolTableLPMPass(*PassRegistry::getPassRegistry());
 }
 
-ModulePass *createInsertDummyKernelForSymbolTablePass() { return new InsertDummyKernelForSymbolTable(); }
+ModulePass *createInsertDummyKernelForSymbolTablePass() { return new InsertDummyKernelForSymbolTableLPM(); }
 
-bool InsertDummyKernelForSymbolTable::runOnModule(Module &M) {
-  MetaDataUtilsWrapper &mduw = getAnalysis<MetaDataUtilsWrapper>();
-  MetaDataUtils *pMdUtils = mduw.getMetaDataUtils();
-  ModuleMetaData *modMD = mduw.getModuleMetaData();
-  CodeGenContext *pCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+#if LLVM_VERSION_MAJOR >= 16
+llvm::PreservedAnalyses InsertDummyKernelForSymbolTableNPM::run(llvm::Module &M, llvm::ModuleAnalysisManager &AM) {
+  InsertDummyKernelForSymbolTable impl;
+  CodeGenContext *ctx = AM.getResult<CodeGenContextAnalysis>(M).Ctx;
+  MetaDataUtils *mdUtils = AM.getResult<MetaDataUtilsAnalysis>(M).MdUtils;
+  bool changed = impl.run(M, ctx, mdUtils);
+  return changed ? llvm::PreservedAnalyses::none() : llvm::PreservedAnalyses::all();
+}
+#endif // LLVM_VERSION_MAJOR >= 16
+
+bool InsertDummyKernelForSymbolTable::run(Module &M, CodeGenContext *Ctx, MetaDataUtils *MdUtils) {
+  MetaDataUtils *pMdUtils = MdUtils;
+  ModuleMetaData *modMD = Ctx->getModuleMetaData();
+  CodeGenContext *pCtx = Ctx;
 
   bool needDummyKernel = false;
 

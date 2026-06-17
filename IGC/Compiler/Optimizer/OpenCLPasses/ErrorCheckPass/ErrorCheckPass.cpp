@@ -21,25 +21,29 @@ SPDX-License-Identifier: MIT
 using namespace llvm;
 using namespace IGC;
 
-char ErrorCheck::ID = 0;
+char ErrorCheckLPM::ID = 0;
 
 // Register pass to igc-opt
 #define PASS_FLAG "igc-error-check"
 #define PASS_DESCRIPTION "Check for input errors"
 #define PASS_CFG_ONLY false
 #define PASS_ANALYSIS false
-IGC_INITIALIZE_PASS_BEGIN(ErrorCheck, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_BEGIN(ErrorCheckLPM, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
 IGC_INITIALIZE_PASS_DEPENDENCY(MetaDataUtilsWrapper)
-IGC_INITIALIZE_PASS_END(ErrorCheck, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_END(ErrorCheckLPM, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
-ErrorCheck::ErrorCheck(void) : FunctionPass(ID) { initializeErrorCheckPass(*PassRegistry::getPassRegistry()); }
+ErrorCheckLPM::ErrorCheckLPM() : FunctionPass(ID) { initializeErrorCheckLPMPass(*PassRegistry::getPassRegistry()); }
 
-bool ErrorCheck::runOnFunction(Function &F) {
+bool ErrorCheck::runOnFunction(Function &F, IGC::IGCMD::MetaDataUtils *pMdUtils, IGC::ModuleMetaData *pModMD,
+                               IGC::CodeGenContext *pCtx) {
+  m_pMdUtils = pMdUtils;
+  m_modMD = pModMD;
+  m_ctx = pCtx;
   // add more checks as needed later
   visit(F);
 
-  if (isEntryFunc(getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils(), &F)) {
+  if (isEntryFunc(m_pMdUtils, &F)) {
     checkArgsSize(F);
   }
   checkByValAddrSpace(F);
@@ -47,7 +51,7 @@ bool ErrorCheck::runOnFunction(Function &F) {
 }
 
 void ErrorCheck::checkByValAddrSpace(Function &F) {
-  auto Ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+  auto Ctx = m_ctx;
   for (auto &arg : F.args()) {
     Type *argTy = arg.getType();
     if (arg.hasByValAttr()) {
@@ -63,9 +67,9 @@ void ErrorCheck::checkByValAddrSpace(Function &F) {
 }
 
 void ErrorCheck::checkArgsSize(Function &F) {
-  auto Ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
-  auto MdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
-  auto ModMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
+  auto Ctx = m_ctx;
+  auto MdUtils = m_pMdUtils;
+  auto ModMD = m_modMD;
 
   auto DL = F.getParent()->getDataLayout();
   KernelArgs KernelArgs(F, &DL, MdUtils, ModMD, Ctx->platform.getGRFSize());
@@ -184,7 +188,7 @@ static bool isValidFP64InstructionForDPConvEmu(llvm::Instruction *I) {
 //     1. poison=1              => attr
 //     2. poison=0              => err msg
 void ErrorCheck::handleFP64EmulationMode(llvm::Instruction &I) {
-  auto ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+  auto ctx = m_ctx;
 
   // This is the condition that double emulation is used.
   ctx->checkDPEmulationEnabled();
@@ -271,7 +275,7 @@ void ErrorCheck::visitCallInst(CallInst &CI) {
     case GenISAIntrinsic::GenISA_dp4a_su:
     case GenISAIntrinsic::GenISA_dp4a_us:
     case GenISAIntrinsic::GenISA_dp4a_uu: {
-      CodeGenContext *Ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+      CodeGenContext *Ctx = m_ctx;
       if (!Ctx->platform.hasHWDp4AddSupport()) {
         std::string Msg = "Unsupported call to ";
         Msg += CI.getCalledFunction() ? CI.getCalledFunction()->getName() : "indirect function";
@@ -288,3 +292,18 @@ void ErrorCheck::visitCallInst(CallInst &CI) {
 
   handleFP64EmulationMode(CI);
 }
+
+#if LLVM_VERSION_MAJOR >= 16
+PreservedAnalyses ErrorCheckNPM::run(Module &M, ModuleAnalysisManager &AM) {
+  auto &MDU = AM.getResult<MetaDataUtilsAnalysis>(M);
+  CodeGenContext *pCtx = AM.getResult<CodeGenContextAnalysis>(M).Ctx;
+  ErrorCheck impl;
+  bool changed = false;
+  for (Function &F : M) {
+    if (F.isDeclaration())
+      continue;
+    changed |= impl.runOnFunction(F, MDU.MdUtils, MDU.ModMD, pCtx);
+  }
+  return changed ? PreservedAnalyses::none() : PreservedAnalyses::all();
+}
+#endif // LLVM_VERSION_MAJOR >= 16

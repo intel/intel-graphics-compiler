@@ -25,12 +25,12 @@ using namespace llvm;
 #define PASS_ANALYSIS false
 #define MAX_ARRAY_SIZE_THRESHOLD 8
 
-IGC_INITIALIZE_PASS_BEGIN(TypesLegalizationPass, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
-IGC_INITIALIZE_PASS_END(TypesLegalizationPass, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
-char TypesLegalizationPass::ID = 0;
+IGC_INITIALIZE_PASS_BEGIN(TypesLegalizationPassLPM, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_END(TypesLegalizationPassLPM, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+char TypesLegalizationPassLPM::ID = 0;
 
-TypesLegalizationPass::TypesLegalizationPass() : FunctionPass(TypesLegalizationPass::ID) {
-  initializeTypesLegalizationPassPass(*PassRegistry::getPassRegistry());
+TypesLegalizationPassLPM::TypesLegalizationPassLPM() : FunctionPass(ID) {
+  initializeTypesLegalizationPassLPMPass(*PassRegistry::getPassRegistry());
 }
 
 void TypesLegalizationPass::visitExtractValueInst(ExtractValueInst &ev) { m_ExtractValueInst.push_back(&ev); }
@@ -381,7 +381,7 @@ void TypesLegalizationPass::ResolveStoreInst(StoreInst *storeInst) {
   }
 }
 
-bool TypesLegalizationPass::runOnFunction(Function &function) {
+bool TypesLegalizationPass::run(Function &function) {
   this->visit(function);
   bool shaderModified = LegalizeTypes();
   m_StoreInst.clear();
@@ -405,3 +405,10 @@ bool TypesLegalizationPass::runOnFunction(Function &function) {
   }
   return shaderModified;
 }
+
+#if LLVM_VERSION_MAJOR >= 16
+PreservedAnalyses TypesLegalizationPassNPM::run(Function &F, FunctionAnalysisManager &) {
+  bool changed = TypesLegalizationPass().run(F);
+  return changed ? PreservedAnalyses::none() : PreservedAnalyses::all();
+}
+#endif // LLVM_VERSION_MAJOR >= 16

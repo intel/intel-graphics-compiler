@@ -24,21 +24,21 @@ using namespace IGC;
 #define PASS_DESCRIPTION "Move static allocas to entry basic block of the function"
 #define PASS_CFG_ONLY false
 #define PASS_ANALYSIS false
-IGC_INITIALIZE_PASS_BEGIN(MoveStaticAllocas, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
-IGC_INITIALIZE_PASS_END(MoveStaticAllocas, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_BEGIN(MoveStaticAllocasLPM, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_END(MoveStaticAllocasLPM, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
-char MoveStaticAllocas::ID = 0;
+char MoveStaticAllocasLPM::ID = 0;
 
 // This function is copied from LLVM's InlineFunction.
 static bool allocaWouldBeStaticInEntry(const AllocaInst *AI) {
   return isa<Constant>(AI->getArraySize()) && !AI->isUsedWithInAlloca();
 }
 
-MoveStaticAllocas::MoveStaticAllocas() : FunctionPass(ID) {
-  initializeMoveStaticAllocasPass(*PassRegistry::getPassRegistry());
+MoveStaticAllocasLPM::MoveStaticAllocasLPM() : FunctionPass(ID) {
+  initializeMoveStaticAllocasLPMPass(*PassRegistry::getPassRegistry());
 }
 
-bool MoveStaticAllocas::runOnFunction(llvm::Function &F) {
+bool MoveStaticAllocas::run(llvm::Function &F) {
   std::vector<AllocaInst *> staticAllocas;
 
   // Note: we are also moving static allocas that are already in the entry BB.
@@ -56,3 +56,10 @@ bool MoveStaticAllocas::runOnFunction(llvm::Function &F) {
 
   return staticAllocas.size() > 0;
 }
+
+#if LLVM_VERSION_MAJOR >= 16
+PreservedAnalyses MoveStaticAllocasNPM::run(Function &F, FunctionAnalysisManager &) {
+  bool changed = MoveStaticAllocas().run(F);
+  return changed ? PreservedAnalyses::none() : PreservedAnalyses::all();
+}
+#endif // LLVM_VERSION_MAJOR >= 16

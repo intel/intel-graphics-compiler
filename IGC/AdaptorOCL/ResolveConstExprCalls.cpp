@@ -32,13 +32,13 @@ using namespace IGC;
 #define PASS_DESCRIPTION "Resolve pseudo indirect calls"
 #define PASS_CFG_ONLY false
 #define PASS_ANALYSIS false
-IGC_INITIALIZE_PASS_BEGIN(ResolveConstExprCalls, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
-IGC_INITIALIZE_PASS_END(ResolveConstExprCalls, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_BEGIN(ResolveConstExprCallsLPM, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_END(ResolveConstExprCallsLPM, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
-char ResolveConstExprCalls::ID = 0;
+char ResolveConstExprCallsLPM::ID = 0;
 
-ResolveConstExprCalls::ResolveConstExprCalls() : ModulePass(ID) {
-  initializeResolveConstExprCallsPass(*PassRegistry::getPassRegistry());
+ResolveConstExprCallsLPM::ResolveConstExprCallsLPM() : ModulePass(ID) {
+  initializeResolveConstExprCallsLPMPass(*PassRegistry::getPassRegistry());
 }
 
 /// This function is the simplified version of one from LLVM InstCombineCalls.cpp file
@@ -205,7 +205,7 @@ bool transformConstExprCastCall(CallInst &Call) {
   return true;
 }
 
-bool ResolveConstExprCalls::runOnModule(Module &M) {
+bool ResolveConstExprCalls::run(Module &M) {
   // Process through all functions and transform all constexpr cast calls
   for (Module::iterator I = M.begin(), E = M.end(); I != E; ++I) {
     Function *F = &(*I);
@@ -238,3 +238,10 @@ bool ResolveConstExprCalls::runOnModule(Module &M) {
 
   return true;
 }
+
+#if LLVM_VERSION_MAJOR >= 16
+PreservedAnalyses ResolveConstExprCallsNPM::run(Module &M, ModuleAnalysisManager &) {
+  bool changed = ResolveConstExprCalls().run(M);
+  return changed ? PreservedAnalyses::none() : PreservedAnalyses::all();
+}
+#endif // LLVM_VERSION_MAJOR >= 16

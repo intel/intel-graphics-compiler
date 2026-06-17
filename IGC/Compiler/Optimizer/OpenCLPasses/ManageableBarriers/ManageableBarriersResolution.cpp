@@ -32,11 +32,11 @@ using namespace IGC::IGCMD;
 #define PASS_DESCRIPTION "Resolves manage barriers"
 #define PASS_CFG_ONLY false
 #define PASS_ANALYSIS false
-IGC_INITIALIZE_PASS_BEGIN(ManageableBarriersResolution, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_BEGIN(ManageableBarriersResolutionLPM, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 IGC_INITIALIZE_PASS_DEPENDENCY(MetaDataUtilsWrapper)
-IGC_INITIALIZE_PASS_END(ManageableBarriersResolution, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_END(ManageableBarriersResolutionLPM, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
-char ManageableBarriersResolution::ID = 0;
+char ManageableBarriersResolutionLPM::ID = 0;
 
 ManageableBarriersResolution::MBFuncType ManageableBarriersResolution::getFuncType(Function *pFunc) {
   if (pFunc->getName() == "intel_manageable_barrier_init")
@@ -468,13 +468,11 @@ void ManageableBarriersResolution::emit(CallInst *CI, MBFuncType FuncType) {
 
 /// ManageBarrier emitters END
 
-ManageableBarriersResolution::ManageableBarriersResolution() : ModulePass(ID) {
-  initializeManageableBarriersResolutionPass(*PassRegistry::getPassRegistry());
+ManageableBarriersResolutionLPM::ManageableBarriersResolutionLPM() : ModulePass(ID) {
+  initializeManageableBarriersResolutionLPMPass(*PassRegistry::getPassRegistry());
 }
 
-ManageableBarriersResolution::~ManageableBarriersResolution(void) {}
-
-bool ManageableBarriersResolution::runOnModule(Module &M) {
+bool ManageableBarriersResolution::run(Module &M, ModuleMetaData *pModMD) {
   mModule = &M;
   bool isManageableBarriersAdded = false;
   mCurrentMode = static_cast<MBMode>(IGC_GET_FLAG_VALUE(ManageableBarriersMode));
@@ -514,7 +512,7 @@ bool ManageableBarriersResolution::runOnModule(Module &M) {
 
   if (isManageableBarriersAdded) {
     // Add attribute NBarrierCnt to metadata
-    auto MD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
+    auto MD = pModMD;
     // Adding max as it could be dynamic
     MD->NBarrierCnt = getMaxNamedBarrierCount();
     return true;
@@ -629,3 +627,10 @@ void ManageableBarriersResolution::clearData() {
   mManageBarrierInstructions.clear();
   mManageBarrierInstructionsInitSimple.clear();
 }
+
+#if LLVM_VERSION_MAJOR >= 16
+PreservedAnalyses ManageableBarriersResolutionNPM::run(Module &M, ModuleAnalysisManager &AM) {
+  bool changed = ManageableBarriersResolution().run(M, AM.getResult<MetaDataUtilsAnalysis>(M).ModMD);
+  return changed ? PreservedAnalyses::none() : PreservedAnalyses::all();
+}
+#endif // LLVM_VERSION_MAJOR >= 16

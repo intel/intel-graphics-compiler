@@ -47,14 +47,14 @@ using namespace CLElfLib;
 #define PASS_DESCRIPTION "Built-in function pass"
 #define PASS_CFG_ONLY false
 #define PASS_ANALYSIS false
-IGC_INITIALIZE_PASS_BEGIN(BIImport, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_BEGIN(BIImportLPM, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 IGC_INITIALIZE_PASS_DEPENDENCY(MetaDataUtilsWrapper)
 IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
-IGC_INITIALIZE_PASS_END(BIImport, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_END(BIImportLPM, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
-char BIImport::ID = 0;
+char BIImportLPM::ID = 0;
 
-BIImport::BIImport() : ModulePass(ID) { initializeBIImportPass(*PassRegistry::getPassRegistry()); }
+BIImportLPM::BIImportLPM() : ModulePass(ID) { initializeBIImportLPMPass(*PassRegistry::getPassRegistry()); }
 
 /* We have to run this step of updating mangled SPIR function names
 because of SPIR 1.2 specification issue. There are bugs in
@@ -593,7 +593,7 @@ void BIImport::addOCLObjectCastFunctionDefinitions(llvm::Module &M) {
   }
 }
 
-bool BIImport::runOnModule(Module &M) {
+bool BIImport::run(Module &M, CodeGenContext *Ctx, IGC::IGCMD::MetaDataUtils *MdUtils) {
   fixSPIRFunctionsReturnType(M);
 
   for (auto &F : M) {
@@ -623,7 +623,7 @@ bool BIImport::runOnModule(Module &M) {
 #ifdef BIF_LINK_BC
   // Link all needed Bif instr
   {
-    auto pCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+    auto pCtx = Ctx;
     BiFManager::FuncTimer startTime = [&](COMPILE_TIME_INTERVALS interval) { COMPILER_TIME_START(pCtx, interval); };
     BiFManager::FuncTimer endTime = [&](COMPILE_TIME_INTERVALS interval) { COMPILER_TIME_END(pCtx, interval); };
 
@@ -657,7 +657,7 @@ bool BIImport::runOnModule(Module &M) {
               newV = builder.CreatePtrToInt(CI->getOperand(0), CI->getType());
             }
             else {
-              CodeGenContext *ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+              CodeGenContext *ctx = Ctx;
 
               bool UseBindlessImage = ctx->getModuleMetaData()->UseBindlessImage;
               ctx->getModuleMetaData()->UseBindlessImageWithSamplerTracking = UseBindlessImage;
@@ -728,7 +728,7 @@ bool BIImport::runOnModule(Module &M) {
     // Handles the function pointer SIMD variant functions
     else if (IGCLLVM::starts_with(funcName, "__intel_create_simd_variant")) {
       // If we encounter this call, we need to enable this flag to indicate we need to compile multiple SIMD
-      auto pCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+      auto pCtx = Ctx;
       pCtx->m_enableSimdVariantCompilation = true;
 
       for (auto user : F.users()) {
@@ -766,7 +766,7 @@ bool BIImport::runOnModule(Module &M) {
     // we will have all the information for the variant index in this pass, and will have to move it
     // to later passes. For now, since we only require subgroup size, this should suffice.
     else if (IGCLLVM::starts_with(funcName, "__intel_indirect_call")) {
-      ModuleMetaData *modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
+      ModuleMetaData *modMD = Ctx->getModuleMetaData();
       for (auto user : F.users()) {
         if (CallInst *CI = dyn_cast<CallInst>(&*user)) {
           unsigned tableIndex = 0;
@@ -1017,7 +1017,17 @@ void BIImport::InitializeBIFlags(Module &M) {
   makeVarExternal("__SubDeviceID");
 }
 
-extern "C" llvm::ModulePass *createBuiltInImportPass() { return new BIImport(); }
+extern "C" llvm::ModulePass *createBuiltInImportPass() { return new BIImportLPM(); }
+
+#if LLVM_VERSION_MAJOR >= 16
+llvm::PreservedAnalyses IGC::BIImportNPM::run(llvm::Module &M, llvm::ModuleAnalysisManager &AM) {
+  BIImport impl;
+  CodeGenContext *ctx = AM.getResult<CodeGenContextAnalysis>(M).Ctx;
+  IGCMD::MetaDataUtils *mdUtils = AM.getResult<MetaDataUtilsAnalysis>(M).MdUtils;
+  bool changed = impl.run(M, ctx, mdUtils);
+  return changed ? llvm::PreservedAnalyses::none() : llvm::PreservedAnalyses::all();
+}
+#endif // LLVM_VERSION_MAJOR >= 16
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -1026,11 +1036,11 @@ extern "C" llvm::ModulePass *createBuiltInImportPass() { return new BIImport(); 
 #define PASS_DESCRIPTION2 "searching OCL GetGlobalOffset function"
 #define PASS_CFG_ONLY2 false
 #define PASS_ANALYSIS2 false
-IGC_INITIALIZE_PASS_BEGIN(PreBIImportAnalysis, PASS_FLAG2, PASS_DESCRIPTION2, PASS_CFG_ONLY2, PASS_ANALYSIS2)
+IGC_INITIALIZE_PASS_BEGIN(PreBIImportAnalysisLPM, PASS_FLAG2, PASS_DESCRIPTION2, PASS_CFG_ONLY2, PASS_ANALYSIS2)
 IGC_INITIALIZE_PASS_DEPENDENCY(MetaDataUtilsWrapper)
-IGC_INITIALIZE_PASS_END(PreBIImportAnalysis, PASS_FLAG2, PASS_DESCRIPTION2, PASS_CFG_ONLY2, PASS_ANALYSIS2)
+IGC_INITIALIZE_PASS_END(PreBIImportAnalysisLPM, PASS_FLAG2, PASS_DESCRIPTION2, PASS_CFG_ONLY2, PASS_ANALYSIS2)
 
-char PreBIImportAnalysis::ID = 0;
+char PreBIImportAnalysisLPM::ID = 0;
 
 const llvm::StringRef PreBIImportAnalysis::OCL_GET_GLOBAL_OFFSET = "_Z17get_global_offsetj";
 const llvm::StringRef PreBIImportAnalysis::OCL_GET_LOCAL_ID = "_Z12get_local_idj";
@@ -1041,11 +1051,12 @@ const llvm::StringRef PreBIImportAnalysis::OCL_GET_SUBGROUP_ID = "_Z16get_sub_gr
 const llvm::StringRef PreBIImportAnalysis::OCL_SUBGROUP_BLOCK_PREFIX = "__builtin_spirv_OpSubgroupBlock";
 const llvm::StringRef PreBIImportAnalysis::OCL_SUBGROUP_IMAGE_BLOCK_PREFIX = "__builtin_spirv_OpSubgroupImageBlock";
 
-PreBIImportAnalysis::PreBIImportAnalysis() : ModulePass(ID) {
-  initializeWIFuncsAnalysisPass(*PassRegistry::getPassRegistry());
+PreBIImportAnalysisLPM::PreBIImportAnalysisLPM() : ModulePass(ID) {
+  initializePreBIImportAnalysisLPMPass(*PassRegistry::getPassRegistry());
 }
 
-bool PreBIImportAnalysis::runOnModule(Module &M) {
+bool PreBIImportAnalysis::run(Module &M, IGCMD::MetaDataUtils *pMdUtilsParam, ModuleMetaData *pModMDParam,
+                              CodeGenContext *pCtxParam) {
   // Run on all functions defined in this module
   SmallVector<std::tuple<Instruction *, double, unsigned>, 8> InstToModify;
   SmallVector<std::pair<Instruction *, Instruction *>, 8> CallToReplace;
@@ -1055,8 +1066,8 @@ bool PreBIImportAnalysis::runOnModule(Module &M) {
 
     // To make the behavior predictable, fix the workgroup XYZ walk order here.
     if (IGC_IS_FLAG_ENABLED(ForceXYZworkGroupWalkOrder)) {
-      MetaDataUtils *pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
-      ModuleMetaData *modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
+      MetaDataUtils *pMdUtils = pMdUtilsParam;
+      ModuleMetaData *modMD = pModMDParam;
       if (isEntryFunc(pMdUtils, pFunc)) {
         uint32_t WGSize = IGCMetaDataHelper::getThreadGroupSize(modMD, pFunc);
         uint32_t WGSizeHint = IGCMetaDataHelper::getThreadGroupSizeHint(modMD, pFunc);
@@ -1073,15 +1084,15 @@ bool PreBIImportAnalysis::runOnModule(Module &M) {
                                funcName == OCL_GET_GROUP_ID || funcName == OCL_GET_SUBGROUP_ID_IGC_SPVIR ||
                                funcName == OCL_GET_SUBGROUP_ID_KHR_SPVIR || funcName == OCL_GET_SUBGROUP_ID);
     bool isSubgroupBlockFunc = false;
-    const auto pCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+    const auto pCtx = pCtxParam;
     if (pCtx->platform.hasHWLocalThreadID()) {
       isSubgroupBlockFunc =
           funcName.contains(OCL_SUBGROUP_BLOCK_PREFIX) || funcName.contains(OCL_SUBGROUP_IMAGE_BLOCK_PREFIX);
       isFuncNameToSearch |= isSubgroupBlockFunc;
     }
     if (isFuncNameToSearch) {
-      MetaDataUtils *pMdUtil = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
-      ModuleMetaData *modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
+      MetaDataUtils *pMdUtil = pMdUtilsParam;
+      ModuleMetaData *modMD = pModMDParam;
 
       // Breadth-first search
 
@@ -1182,7 +1193,7 @@ bool PreBIImportAnalysis::runOnModule(Module &M) {
       return false;
     };
 
-    auto modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
+    auto modMD = pModMDParam;
     if ((modMD->compOpt.MatchSinCosPi) && !(modMD->compOpt.FastRelaxedMath) &&
         (IGCLLVM::starts_with(funcName, cosBuiltinName) || IGCLLVM::starts_with(funcName, sinBuiltinName))) {
       for (auto Users : pFunc->users()) {
@@ -1358,3 +1369,11 @@ bool PreBIImportAnalysis::runOnModule(Module &M) {
 
   return true;
 }
+
+#if LLVM_VERSION_MAJOR >= 16
+PreservedAnalyses PreBIImportAnalysisNPM::run(Module &M, ModuleAnalysisManager &AM) {
+  auto &MDU = AM.getResult<MetaDataUtilsAnalysis>(M);
+  bool changed = m_impl.run(M, MDU.MdUtils, MDU.ModMD, AM.getResult<CodeGenContextAnalysis>(M).Ctx);
+  return changed ? PreservedAnalyses::none() : PreservedAnalyses::all();
+}
+#endif // LLVM_VERSION_MAJOR >= 16

@@ -69,6 +69,12 @@ public:
 
   bool runOnModule(llvm::Module &M) override;
 
+  /// @brief  Computes the GASInfo from the given module, call graph and context. This is the body
+  ///         of runOnModule with the analysis dependencies supplied explicitly, so it can be invoked
+  ///         on a stack-constructed instance (e.g. by a new-pass-manager consumer that has its own
+  ///         CallGraph/CodeGenContext) without scheduling this pass.
+  bool computeGASInfo(llvm::Module &M, llvm::CallGraph &CG, CodeGenContext *ctx);
+
   void getAnalysisUsage(llvm::AnalysisUsage &AU) const override {
     AU.setPreservesAll();
     AU.addRequired<llvm::CallGraphWrapperPass>();

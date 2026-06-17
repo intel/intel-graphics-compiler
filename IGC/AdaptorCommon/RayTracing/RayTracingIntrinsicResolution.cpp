@@ -23,54 +23,69 @@ SPDX-License-Identifier: MIT
 #include "llvm/IR/InstVisitor.h"
 #include <llvm/IR/Function.h>
 #include "common/LLVMWarningsPop.hpp"
+#include "AdaptorCommon/RayTracing/RayTracingPasses.hpp"
 
 using namespace IGC;
 using namespace llvm;
 
 //////////////////////////////////////////////////////////////////////////
 //
-// Now that we have implicit args, replace the intrinsics
-class RayTracingIntrinsicResolution : public FunctionPass, public InstVisitor<RayTracingIntrinsicResolution> {
+// Shared implementation. Now that we have implicit args, replace the intrinsics. Used by both the
+// legacy and the new-pass-manager wrappers; it is not itself an llvm::Pass. The MetaDataUtils is
+// injected by the caller (runOnFunction).
+class RayTracingIntrinsicResolution : public InstVisitor<RayTracingIntrinsicResolution> {
 public:
-  RayTracingIntrinsicResolution();
-  bool runOnFunction(Function &F) override;
-  StringRef getPassName() const override { return "RayTracingIntrinsicResolution"; }
-  virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override {
-    AU.addRequired<MetaDataUtilsWrapper>();
-    AU.addRequired<CodeGenContextWrapper>();
-  }
+  RayTracingIntrinsicResolution() {}
+  bool runOnFunction(Function &F, IGCMD::MetaDataUtils *MdUtils, IGC::ModuleMetaData *ModMD);
 
   void visitCallInst(CallInst &CI);
-
-  static char ID;
 
 private:
   Value *getImplicitArg(Function *F, ImplicitArg::ArgType argType);
 
-private:
   ImplicitArgs m_implicitArgs;
-  bool Changed;
-  CodeGenContext *m_CGCtx = nullptr;
+  bool Changed = false;
   IGCMD::MetaDataUtils *m_pMdUtils = nullptr;
+  IGC::ModuleMetaData *m_modMD = nullptr;
+};
+
+// Legacy Pass Manager wrapper.
+class RayTracingIntrinsicResolutionLPM : public FunctionPass {
+public:
+  RayTracingIntrinsicResolutionLPM();
+  bool runOnFunction(Function &F) override {
+    return m_impl.runOnFunction(F, getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils(),
+                                getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData());
+  }
+  StringRef getPassName() const override { return "RayTracingIntrinsicResolution"; }
+  void getAnalysisUsage(llvm::AnalysisUsage &AU) const override {
+    AU.addRequired<MetaDataUtilsWrapper>();
+    AU.addRequired<CodeGenContextWrapper>();
+  }
+
+  static char ID;
+
+private:
+  RayTracingIntrinsicResolution m_impl;
 };
 
 #define PASS_FLAG "raytracing-intrinsic-resolution"
 #define PASS_DESCRIPTION "replace intrinsics with implicit args"
 #define PASS_CFG_ONLY false
 #define PASS_ANALYSIS false
-IGC_INITIALIZE_PASS_BEGIN(RayTracingIntrinsicResolution, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_BEGIN(RayTracingIntrinsicResolutionLPM, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 IGC_INITIALIZE_PASS_DEPENDENCY(MetaDataUtilsWrapper)
-IGC_INITIALIZE_PASS_END(RayTracingIntrinsicResolution, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_END(RayTracingIntrinsicResolutionLPM, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
 Value *RayTracingIntrinsicResolution::getImplicitArg(Function *F, ImplicitArg::ArgType argType) {
   return m_implicitArgs.getImplicitArgValue(*F, argType, m_pMdUtils);
 }
 
-RayTracingIntrinsicResolution::RayTracingIntrinsicResolution() : FunctionPass(ID) {
-  initializeRayTracingIntrinsicResolutionPass(*PassRegistry::getPassRegistry());
+RayTracingIntrinsicResolutionLPM::RayTracingIntrinsicResolutionLPM() : FunctionPass(ID) {
+  initializeRayTracingIntrinsicResolutionLPMPass(*PassRegistry::getPassRegistry());
 }
 
-char RayTracingIntrinsicResolution::ID = 0;
+char RayTracingIntrinsicResolutionLPM::ID = 0;
 
 void RayTracingIntrinsicResolution::visitCallInst(CallInst &CI) {
   Value *Arg = nullptr;
@@ -111,20 +126,36 @@ void RayTracingIntrinsicResolution::visitCallInst(CallInst &CI) {
   Changed = true;
 }
 
-bool RayTracingIntrinsicResolution::runOnFunction(Function &F) {
-  m_pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
-  m_CGCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+bool RayTracingIntrinsicResolution::runOnFunction(Function &F, IGCMD::MetaDataUtils *MdUtils,
+                                                  IGC::ModuleMetaData *ModMD) {
+  m_pMdUtils = MdUtils;
+  m_modMD = ModMD;
 
   if (m_pMdUtils->findFunctionsInfoItem(&F) == m_pMdUtils->end_FunctionsInfo())
     return false;
 
   Changed = false;
-  m_implicitArgs = ImplicitArgs(F, m_pMdUtils, getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData());
+  m_implicitArgs = ImplicitArgs(F, m_pMdUtils, m_modMD);
   visit(F);
 
   return Changed;
 }
 
 namespace IGC {
-Pass *createRayTracingIntrinsicResolutionPass() { return new RayTracingIntrinsicResolution(); }
+Pass *createRayTracingIntrinsicResolutionPass() { return new RayTracingIntrinsicResolutionLPM(); }
+
+#if LLVM_VERSION_MAJOR >= 16
+llvm::PreservedAnalyses RayTracingIntrinsicResolutionNPM::run(llvm::Module &M, llvm::ModuleAnalysisManager &AM) {
+  RayTracingIntrinsicResolution impl;
+  IGCMD::MetaDataUtils *mdUtils = AM.getResult<MetaDataUtilsAnalysis>(M).MdUtils;
+  IGC::ModuleMetaData *modMD = AM.getResult<MetaDataUtilsAnalysis>(M).ModMD;
+  bool changed = false;
+  for (Function &F : M) {
+    if (F.isDeclaration())
+      continue;
+    changed |= impl.runOnFunction(F, mdUtils, modMD);
+  }
+  return changed ? llvm::PreservedAnalyses::none() : llvm::PreservedAnalyses::all();
+}
+#endif // LLVM_VERSION_MAJOR >= 16
 } // namespace IGC

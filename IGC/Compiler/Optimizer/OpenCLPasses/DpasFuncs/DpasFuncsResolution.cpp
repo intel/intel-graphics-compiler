@@ -35,27 +35,15 @@ enum DstAccType {
 
 /// @brief  DpasFuncsTranslation pass : tranlate dpas builtin (__builtin_IB_*dpas*) into igc intrinsic.
 ///         It also may combine several dpas intrinsics into a single one.
-class DpasFuncsResolution : public FunctionPass, public InstVisitor<DpasFuncsResolution> {
+// Shared implementation. Holds the logic and is used by both the legacy and the new-pass-manager
+// wrappers below; it is not itself an llvm::Pass. The CodeGenContext is injected by the caller.
+class DpasFuncsResolution : public InstVisitor<DpasFuncsResolution> {
 public:
-  // Pass identification, replacement for typeid
-  static char ID;
-
-  DpasFuncsResolution();
+  DpasFuncsResolution() {}
 
   ~DpasFuncsResolution() {}
 
-  /// @brief  Provides name of pass
-  virtual StringRef getPassName() const override {
-    // This string was changed from "DpasFuncsTranslation" due to IP leaks concers.
-    return "ArithmeticFuncsTranslation";
-  }
-
-  void getAnalysisUsage(AnalysisUsage &AU) const override {
-    AU.addRequired<CodeGenContextWrapper>();
-    AU.addRequired<MetaDataUtilsWrapper>();
-  }
-
-  virtual bool runOnFunction(Function &F) override;
+  bool runOnFunction(Function &F, CodeGenContext *Ctx);
 
   void visitCallInst(CallInst &CI);
 
@@ -213,7 +201,6 @@ private:
 };
 } // namespace
 
-char DpasFuncsResolution::ID = 0;
 const StringRef DpasFuncsResolution::SG_PREFIX_IDPAS = "__builtin_IB_sub_group_idpas";
 const StringRef DpasFuncsResolution::SG_PREFIX_FDPAS = "__builtin_IB_sub_group_fdpas";
 const StringRef DpasFuncsResolution::WI_PREFIX_IDPAS = "__builtin_IB_idpas";
@@ -239,17 +226,46 @@ const StringRef DpasFuncsResolution::SG_PREFIX_BDPAS16 = "__builtin_IB_sub_group
                                                                // concers.
 #define PASS_CFG_ONLY false
 #define PASS_ANALYSIS false
-IGC_INITIALIZE_PASS_BEGIN(DpasFuncsResolution, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+// Legacy Pass Manager wrapper.
+class DpasFuncsResolutionLPM : public FunctionPass {
+public:
+  static char ID;
+
+  DpasFuncsResolutionLPM();
+
+  ~DpasFuncsResolutionLPM() {}
+
+  StringRef getPassName() const override {
+    // This string was changed from "DpasFuncsTranslation" due to IP leaks concers.
+    return "ArithmeticFuncsTranslation";
+  }
+
+  void getAnalysisUsage(AnalysisUsage &AU) const override {
+    AU.addRequired<CodeGenContextWrapper>();
+    AU.addRequired<MetaDataUtilsWrapper>();
+  }
+
+  bool runOnFunction(Function &F) override {
+    return m_impl.runOnFunction(F, getAnalysis<CodeGenContextWrapper>().getCodeGenContext());
+  }
+
+private:
+  DpasFuncsResolution m_impl;
+};
+
+IGC_INITIALIZE_PASS_BEGIN(DpasFuncsResolutionLPM, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
 IGC_INITIALIZE_PASS_DEPENDENCY(MetaDataUtilsWrapper)
-IGC_INITIALIZE_PASS_END(DpasFuncsResolution, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_END(DpasFuncsResolutionLPM, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
-DpasFuncsResolution::DpasFuncsResolution(void) : FunctionPass(ID) {
-  initializeDpasFuncsResolutionPass(*PassRegistry::getPassRegistry());
+char DpasFuncsResolutionLPM::ID = 0;
+
+DpasFuncsResolutionLPM::DpasFuncsResolutionLPM(void) : FunctionPass(ID) {
+  initializeDpasFuncsResolutionLPMPass(*PassRegistry::getPassRegistry());
 }
 
-bool DpasFuncsResolution::runOnFunction(Function &F) {
-  m_pCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+bool DpasFuncsResolution::runOnFunction(Function &F, CodeGenContext *Ctx) {
+  m_pCtx = Ctx;
   m_changed = false;
 
   visit(F);
@@ -1256,4 +1272,18 @@ int DpasFuncsResolution::parseRCount(StringRef StrRef, size_t &StrPos, size_t &S
   return -1;
 }
 
-FunctionPass *IGC::createDpasFuncsResolutionPass() { return new DpasFuncsResolution(); }
+FunctionPass *IGC::createDpasFuncsResolutionPass() { return new DpasFuncsResolutionLPM(); }
+
+#if LLVM_VERSION_MAJOR >= 16
+llvm::PreservedAnalyses IGC::DpasFuncsResolutionNPM::run(llvm::Module &M, llvm::ModuleAnalysisManager &AM) {
+  CodeGenContext *ctx = AM.getResult<CodeGenContextAnalysis>(M).Ctx;
+  DpasFuncsResolution impl;
+  bool changed = false;
+  for (Function &F : M) {
+    if (F.isDeclaration())
+      continue;
+    changed |= impl.runOnFunction(F, ctx);
+  }
+  return changed ? llvm::PreservedAnalyses::none() : llvm::PreservedAnalyses::all();
+}
+#endif // LLVM_VERSION_MAJOR >= 16

@@ -10,20 +10,23 @@ SPDX-License-Identifier: MIT
 
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/IR/InstVisitor.h>
+#include <llvm/IR/PassManager.h>
 #include "common/LLVMWarningsPop.hpp"
 #include <llvmWrapper/IR/IRBuilder.h>
 #include "Compiler/IGCPassSupport.h"
 
-class TypesLegalizationPass : public llvm::FunctionPass, public llvm::InstVisitor<TypesLegalizationPass> {
+// Shared implementation. Holds the logic and is used by both the legacy and the
+// new-pass-manager wrappers below; it is not itself an llvm::Pass.
+class TypesLegalizationPass : public llvm::InstVisitor<TypesLegalizationPass> {
 
 public:
-  TypesLegalizationPass();
+  TypesLegalizationPass() {}
   ~TypesLegalizationPass() {}
 
-  virtual llvm::StringRef getPassName() const override { return "Types Legalization Pass"; }
+  static llvm::StringRef getPassName() { return "Types Legalization Pass"; }
 
   bool LegalizeTypes();
-  virtual bool runOnFunction(llvm::Function &function) override;
+  bool run(llvm::Function &function);
   void visitStoreInst(llvm::StoreInst &I);
   void visitExtractValueInst(llvm::ExtractValueInst &I);
   void visitPHINode(llvm::PHINode &I);
@@ -38,9 +41,34 @@ public:
   llvm::Value *CreateGEP(IGCLLVM::IRBuilder<> &builder, llvm::Value *ptr, llvm::SmallVector<unsigned, 8> &indices);
   llvm::AllocaInst *CreateAlloca(llvm::Instruction *phi);
 
-  static char ID;
   llvm::SmallVector<llvm::StoreInst *, 10> m_StoreInst;
   llvm::SmallVector<llvm::ExtractValueInst *, 10> m_ExtractValueInst;
   llvm::SmallVector<llvm::PHINode *, 10> m_PhiNodes;
   llvm::SmallVector<unsigned, 8> Indicies;
 };
+
+// Legacy Pass Manager wrapper.
+class TypesLegalizationPassLPM : public llvm::FunctionPass {
+public:
+  static char ID;
+
+  TypesLegalizationPassLPM();
+  ~TypesLegalizationPassLPM() {}
+
+  llvm::StringRef getPassName() const override { return TypesLegalizationPass::getPassName(); }
+
+  bool runOnFunction(llvm::Function &function) override { return TypesLegalizationPass().run(function); }
+};
+
+#if LLVM_VERSION_MAJOR >= 16
+// New Pass Manager wrapper around TypesLegalizationPass. Add it to a module pass
+// manager via createModuleToFunctionPassAdaptor(...). isRequired() so it runs on
+// optnone functions too, matching the legacy path: the pass intentionally
+// legalizes (and cleans up) optnone functions rather than skipping them.
+class TypesLegalizationPassNPM : public llvm::PassInfoMixin<TypesLegalizationPassNPM> {
+public:
+  llvm::PreservedAnalyses run(llvm::Function &F, llvm::FunctionAnalysisManager &AM);
+  static llvm::StringRef name() { return "types-legalization-pass"; }
+  static bool isRequired() { return true; }
+};
+#endif // LLVM_VERSION_MAJOR >= 16

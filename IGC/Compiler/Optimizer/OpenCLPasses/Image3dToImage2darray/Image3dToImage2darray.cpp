@@ -24,15 +24,14 @@ using namespace IGC::IGCMD;
 #define PASS_DESCRIPTION "Converts 3d images access to 2d array image accesses where possible"
 #define PASS_CFG_ONLY false
 #define PASS_ANALYSIS false
-IGC_INITIALIZE_PASS_BEGIN(Image3dToImage2darray, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_BEGIN(Image3dToImage2darrayLPM, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 IGC_INITIALIZE_PASS_DEPENDENCY(MetaDataUtilsWrapper)
-IGC_INITIALIZE_PASS_END(Image3dToImage2darray, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_END(Image3dToImage2darrayLPM, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
-char Image3dToImage2darray::ID = 0;
+char Image3dToImage2darrayLPM::ID = 0;
 
-Image3dToImage2darray::Image3dToImage2darray()
-    : FunctionPass(ID), m_Changed(false), m_MetadataUtils(nullptr), m_modMD(nullptr) {
-  initializeImage3dToImage2darrayPass(*PassRegistry::getPassRegistry());
+Image3dToImage2darrayLPM::Image3dToImage2darrayLPM() : FunctionPass(ID) {
+  initializeImage3dToImage2darrayLPMPass(*PassRegistry::getPassRegistry());
 }
 
 bool Image3dToImage2darray::createImageAnnotations(GenIntrinsicInst *pCall, unsigned imageIdx,
@@ -126,9 +125,9 @@ void Image3dToImage2darray::visitCallInst(CallInst &CI) {
   }
 }
 
-bool Image3dToImage2darray::runOnFunction(Function &F) {
-  m_MetadataUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
-  m_modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
+bool Image3dToImage2darray::runOnFunction(Function &F, IGCMD::MetaDataUtils *pMdUtils, IGC::ModuleMetaData *pModMD) {
+  m_MetadataUtils = pMdUtils;
+  m_modMD = pModMD;
 
   // This pass is not compatible with the SPV_INTEL_bindless_images extension.
   // The incompatibility arises because this pass requires images to be trackable
@@ -150,3 +149,17 @@ bool Image3dToImage2darray::runOnFunction(Function &F) {
 
   return m_Changed;
 }
+
+#if LLVM_VERSION_MAJOR >= 16
+PreservedAnalyses Image3dToImage2darrayNPM::run(Module &M, ModuleAnalysisManager &AM) {
+  auto &MDU = AM.getResult<MetaDataUtilsAnalysis>(M);
+  Image3dToImage2darray impl;
+  bool changed = false;
+  for (Function &F : M) {
+    if (F.isDeclaration())
+      continue;
+    changed |= impl.runOnFunction(F, MDU.MdUtils, MDU.ModMD);
+  }
+  return changed ? PreservedAnalyses::none() : PreservedAnalyses::all();
+}
+#endif // LLVM_VERSION_MAJOR >= 16

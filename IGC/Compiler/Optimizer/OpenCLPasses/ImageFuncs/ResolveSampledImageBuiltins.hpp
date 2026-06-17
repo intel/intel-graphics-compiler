@@ -13,6 +13,7 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/Pass.h>
 #include <llvm/IR/InstVisitor.h>
+#include <llvm/IR/PassManager.h>
 #include "common/LLVMWarningsPop.hpp"
 
 #include <unordered_set>
@@ -24,18 +25,16 @@ namespace IGC {
 ///         pointer to opaque type. Since it's not convenient to allocate global memory within BiFModule, these builtins
 ///         are just declared there and resolved in this pass.
 
-class ResolveSampledImageBuiltins : public llvm::ModulePass, public llvm::InstVisitor<ResolveSampledImageBuiltins> {
+// Shared implementation. Holds the logic and is used by both the legacy and the
+// new-pass-manager wrappers below; it is not itself an llvm::Pass.
+class ResolveSampledImageBuiltins : public llvm::InstVisitor<ResolveSampledImageBuiltins> {
 public:
-  static char ID;
-
-  ResolveSampledImageBuiltins();
+  ResolveSampledImageBuiltins() {}
   ~ResolveSampledImageBuiltins() {}
 
-  virtual llvm::StringRef getPassName() const override { return "ResolveSampledImageBuiltins"; }
+  static llvm::StringRef getPassName() { return "ResolveSampledImageBuiltins"; }
 
-  virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override { AU.addRequired<CodeGenContextWrapper>(); }
-
-  virtual bool runOnModule(llvm::Module &M) override;
+  bool run(llvm::Module &M, CodeGenContext *pCtx);
   void visitCallInst(llvm::CallInst &CI);
 
   static const llvm::StringRef GET_IMAGE;
@@ -49,5 +48,33 @@ private:
   ModuleMetaData *modMD = nullptr;
   std::unordered_set<llvm::CallInst *> m_builtinsToRemove;
 };
+
+// Legacy Pass Manager wrapper.
+class ResolveSampledImageBuiltinsLPM : public llvm::ModulePass {
+public:
+  static char ID;
+
+  ResolveSampledImageBuiltinsLPM();
+  ~ResolveSampledImageBuiltinsLPM() {}
+
+  virtual llvm::StringRef getPassName() const override { return ResolveSampledImageBuiltins::getPassName(); }
+
+  virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override { AU.addRequired<CodeGenContextWrapper>(); }
+
+  virtual bool runOnModule(llvm::Module &M) override {
+    return ResolveSampledImageBuiltins().run(M, getAnalysis<CodeGenContextWrapper>().getCodeGenContext());
+  }
+};
+
+#if LLVM_VERSION_MAJOR >= 16
+// New Pass Manager wrapper. name() returns the legacy pass argument so that
+// PrintBefore/PrintAfter=<pass argument> matches under the new pass manager.
+class ResolveSampledImageBuiltinsNPM : public llvm::PassInfoMixin<ResolveSampledImageBuiltinsNPM> {
+public:
+  llvm::PreservedAnalyses run(llvm::Module &M, llvm::ModuleAnalysisManager &AM);
+  static llvm::StringRef name() { return "igc-image-sampler-resolution"; }
+  static bool isRequired() { return true; }
+};
+#endif // LLVM_VERSION_MAJOR >= 16
 
 } // namespace IGC

@@ -20,21 +20,21 @@ using namespace IGC;
 #define PASS_DESCRIPTION "Analyzes the presence of private memory allocation"
 #define PASS_CFG_ONLY false
 #define PASS_ANALYSIS false
-IGC_INITIALIZE_PASS_BEGIN(PrivateMemoryUsageAnalysis, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_BEGIN(PrivateMemoryUsageAnalysisLPM, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 IGC_INITIALIZE_PASS_DEPENDENCY(MetaDataUtilsWrapper)
 IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
-IGC_INITIALIZE_PASS_END(PrivateMemoryUsageAnalysis, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_END(PrivateMemoryUsageAnalysisLPM, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
-char PrivateMemoryUsageAnalysis::ID = 0;
+char PrivateMemoryUsageAnalysisLPM::ID = 0;
 
-PrivateMemoryUsageAnalysis::PrivateMemoryUsageAnalysis() : ModulePass(ID), m_hasPrivateMem(false) {
-  initializePrivateMemoryUsageAnalysisPass(*PassRegistry::getPassRegistry());
+PrivateMemoryUsageAnalysisLPM::PrivateMemoryUsageAnalysisLPM() : ModulePass(ID) {
+  initializePrivateMemoryUsageAnalysisLPMPass(*PassRegistry::getPassRegistry());
 }
 
-bool PrivateMemoryUsageAnalysis::runOnModule(Module &M) {
+bool PrivateMemoryUsageAnalysis::run(Module &M, IGC::IGCMD::MetaDataUtils *pMdUtils, CodeGenContext *pCtx) {
   bool changed = false;
-  m_pMDUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
-  CodeGenContext *pCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+  m_pMDUtils = pMdUtils;
+  m_pCtx = pCtx;
 
   bool hasStackCall = false;
 
@@ -67,8 +67,7 @@ bool PrivateMemoryUsageAnalysis::runOnModule(Module &M) {
       if (isEntryFunc(m_pMDUtils, &F)) {
         SmallVector<ImplicitArg::ArgType, 1> implicitArgs;
         implicitArgs.push_back(ImplicitArg::PRIVATE_BASE);
-        ImplicitArgs::addImplicitArgs(F, implicitArgs, m_pMDUtils,
-                                      getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData());
+        ImplicitArgs::addImplicitArgs(F, implicitArgs, m_pMDUtils, pCtx->getModuleMetaData());
         changed = true;
       }
     }
@@ -106,7 +105,7 @@ bool PrivateMemoryUsageAnalysis::runOnFunction(Function &F) {
 
   // For double emulation, need to add private base (conservative).
   if (!m_hasPrivateMem) {
-    CodeGenContext *pCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+    CodeGenContext *pCtx = m_pCtx;
 
     // This is the condition that double emulation is used.
     pCtx->checkDPEmulationEnabled();
@@ -123,8 +122,7 @@ bool PrivateMemoryUsageAnalysis::runOnFunction(Function &F) {
   if (m_hasPrivateMem) {
     implicitArgs.push_back(ImplicitArg::PRIVATE_BASE);
   }
-  ImplicitArgs::addImplicitArgs(F, implicitArgs, getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils(),
-                                getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData());
+  ImplicitArgs::addImplicitArgs(F, implicitArgs, m_pMDUtils, m_pCtx->getModuleMetaData());
 
   return true;
 }
@@ -148,7 +146,7 @@ void PrivateMemoryUsageAnalysis::visitAllocaInst(llvm::AllocaInst &AI) {
 
 void PrivateMemoryUsageAnalysis::visitBinaryOperator(llvm::BinaryOperator &I) {
   // If we encountered Alloca, then the function uses private memory
-  CodeGenContext *pCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+  CodeGenContext *pCtx = m_pCtx;
   if (pCtx->platform.Enable32BitIntDivRemEmu()) {
     switch (I.getOpcode()) {
     case Instruction::UDiv:
@@ -209,3 +207,11 @@ void PrivateMemoryUsageAnalysis::visitGetElementPtrInst(GetElementPtrInst &GEP) 
   Type *SrcTy = GEP.getSourceElementType();
   visitType(SrcTy);
 }
+
+#if LLVM_VERSION_MAJOR >= 16
+PreservedAnalyses PrivateMemoryUsageAnalysisNPM::run(Module &M, ModuleAnalysisManager &AM) {
+  bool changed = PrivateMemoryUsageAnalysis().run(M, AM.getResult<MetaDataUtilsAnalysis>(M).MdUtils,
+                                                  AM.getResult<CodeGenContextAnalysis>(M).Ctx);
+  return changed ? PreservedAnalyses::none() : PreservedAnalyses::all();
+}
+#endif // LLVM_VERSION_MAJOR >= 16

@@ -38,16 +38,16 @@ using namespace IGC;
 #define PASS_DESCRIPTION "converts get_local_size() to get_enqueued_local_size()"
 #define PASS_CFG_ONLY false
 #define PASS_ANALYSIS false
-IGC_INITIALIZE_PASS_BEGIN(RewriteLocalSize, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
-IGC_INITIALIZE_PASS_END(RewriteLocalSize, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_BEGIN(RewriteLocalSizeLPM, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_END(RewriteLocalSizeLPM, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
-char RewriteLocalSize::ID = 0;
+char RewriteLocalSizeLPM::ID = 0;
 
-RewriteLocalSize::RewriteLocalSize() : ModulePass(ID) {
-  initializeRewriteLocalSizePass(*PassRegistry::getPassRegistry());
+RewriteLocalSizeLPM::RewriteLocalSizeLPM() : ModulePass(ID) {
+  initializeRewriteLocalSizeLPMPass(*PassRegistry::getPassRegistry());
 }
 
-bool RewriteLocalSize::runOnModule(Module &M) {
+bool RewriteLocalSize::run(Module &M) {
   Function *LS = M.getFunction(WIFuncsAnalysis::GET_LOCAL_SIZE);
   if (!LS)
     return false;
@@ -60,3 +60,10 @@ bool RewriteLocalSize::runOnModule(Module &M) {
 
   return true;
 }
+
+#if LLVM_VERSION_MAJOR >= 16
+PreservedAnalyses RewriteLocalSizeNPM::run(Module &M, ModuleAnalysisManager &AM) {
+  bool changed = RewriteLocalSize().run(M);
+  return changed ? PreservedAnalyses::none() : PreservedAnalyses::all();
+}
+#endif // LLVM_VERSION_MAJOR >= 16

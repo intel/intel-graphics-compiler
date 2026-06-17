@@ -27,7 +27,9 @@ class GenericNullPtrPropagation : public FunctionPass, public InstVisitor<Generi
 public:
   static char ID;
 
-  GenericNullPtrPropagation() : FunctionPass(ID) {}
+  GenericNullPtrPropagation() : FunctionPass(ID) {
+    ::initializeGenericNullPtrPropagationPass(*PassRegistry::getPassRegistry());
+  }
   ~GenericNullPtrPropagation() = default;
 
   StringRef getPassName() const override { return "GenericNullPtrPropagation"; }

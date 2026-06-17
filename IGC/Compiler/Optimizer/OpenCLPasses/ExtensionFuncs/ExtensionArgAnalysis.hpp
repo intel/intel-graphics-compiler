@@ -15,6 +15,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/InstVisitor.h>
 #include "common/LLVMWarningsPop.hpp"
 #include "Compiler/MetaDataUtilsWrapper.h"
+#include "Compiler/CodeGenContextWrapper.hpp"
 
 namespace llvm {
 class Argument;
@@ -24,26 +25,20 @@ namespace IGC {
 /// @brief  ExtensionArgAnalysis pass used for analyzing if VME extension functions arguments.
 ///         This information needed by ResourceAllocator and helps create the right VME/media patch tokens
 
-class ExtensionArgAnalysis : public llvm::FunctionPass, public llvm::InstVisitor<ExtensionArgAnalysis> {
+// Shared implementation. Holds the analysis data + queries and is used both as the legacy
+// FunctionPass result and (computed inline) by the ResourceAllocator new-pass-manager wrapper;
+// it is not itself an llvm::Pass.
+class ExtensionArgAnalysis : public llvm::InstVisitor<ExtensionArgAnalysis> {
 public:
-  // Pass identification, replacement for typeid
-  static char ID;
-
-  /// @brief  Constructor
-  ExtensionArgAnalysis();
-
-  /// @brief  Destructor
+  ExtensionArgAnalysis() {}
   ~ExtensionArgAnalysis() {}
 
-  /// @brief  Provides name of pass
-  virtual llvm::StringRef getPassName() const override { return "ExtensionArgAnalysis"; }
-
-  void getAnalysisUsage(llvm::AnalysisUsage &AU) const override { AU.addRequired<MetaDataUtilsWrapper>(); }
+  static llvm::StringRef getPassName() { return "ExtensionArgAnalysis"; }
 
   /// @brief  Function entry point.
   ///         Checks if this is a VME function and analyzes its function arguments (images, samplers)
   /// @param  F The destination function.
-  bool runOnFunction(llvm::Function &F) override;
+  void analyze(llvm::Function &F, IGC::IGCMD::MetaDataUtils *pMdUtils, IGC::CodeGenContext *pCtx);
 
   /// @brief  Returns true if the given argument is a VME image or sampler argument
   /// @param  arg A function argument
@@ -73,7 +68,43 @@ private:
   llvm::SmallPtrSet<llvm::Argument *, 3> m_MediaSamplerArgs;
   llvm::SmallPtrSet<llvm::Argument *, 3> m_MediaBlockArgs;
   llvm::SmallPtrSet<llvm::Argument *, 2> m_vaArgs;
-  ResourceExtensionTypeEnum m_extensionType;
+  ResourceExtensionTypeEnum m_extensionType = ResourceExtensionTypeEnum::NonExtensionType;
+
+  IGC::IGCMD::MetaDataUtils *m_pMdUtils = nullptr;
+  IGC::CodeGenContext *m_pCtx = nullptr;
+};
+
+// Legacy Pass Manager wrapper. Its per-function result (the shared ExtensionArgAnalysis) is
+// consumed by ResourceAllocator via getAnalysis<ExtensionArgAnalysisLPM>(F).getResult().
+class ExtensionArgAnalysisLPM : public llvm::FunctionPass {
+public:
+  static char ID;
+
+  ExtensionArgAnalysisLPM();
+  ~ExtensionArgAnalysisLPM() {}
+
+  virtual llvm::StringRef getPassName() const override { return ExtensionArgAnalysis::getPassName(); }
+
+  void getAnalysisUsage(llvm::AnalysisUsage &AU) const override { AU.addRequired<MetaDataUtilsWrapper>(); }
+
+  bool runOnFunction(llvm::Function &F) override {
+    // The legacy pass only reached getAnalysis<CodeGenContextWrapper> on error paths inside
+    // visitCallInst, relying on a parent pass (ResourceAllocator) having required the immutable
+    // CodeGenContextWrapper. Declaring an explicit addRequired here would force the (nested) pass
+    // manager to default-construct CodeGenContextWrapper, which asserts. So fetch it lazily: it is
+    // present whenever the error paths can actually fire, and null otherwise (errors not reachable).
+    CodeGenContext *ctx = nullptr;
+    if (auto *cgw = getAnalysisIfAvailable<CodeGenContextWrapper>())
+      ctx = cgw->getCodeGenContext();
+    m_data.analyze(F, getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils(), ctx);
+    return false;
+  }
+
+  /// @brief  The analysis result for the last analyzed function.
+  ExtensionArgAnalysis &getResult() { return m_data; }
+
+private:
+  ExtensionArgAnalysis m_data;
 };
 
 } // namespace IGC

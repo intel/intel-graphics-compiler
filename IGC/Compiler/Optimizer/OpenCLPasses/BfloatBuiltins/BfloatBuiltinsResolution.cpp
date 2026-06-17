@@ -15,19 +15,19 @@ SPDX-License-Identifier: MIT
 
 using namespace llvm;
 using namespace IGC;
-char BfloatBuiltinsResolution::ID = 0;
+char BfloatBuiltinsResolutionLPM::ID = 0;
 
 // Register pass to igc-opt
 #define PASS_FLAG "igc-bfloat-builtins-resolution"
 #define PASS_DESCRIPTION "BfloatBuiltinsResolution"
 #define PASS_CFG_ONLY false
 #define PASS_ANALYSIS false
-IGC_INITIALIZE_PASS_BEGIN(BfloatBuiltinsResolution, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
-IGC_INITIALIZE_PASS_END(BfloatBuiltinsResolution, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_BEGIN(BfloatBuiltinsResolutionLPM, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_END(BfloatBuiltinsResolutionLPM, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
 
-BfloatBuiltinsResolution::BfloatBuiltinsResolution(void) : FunctionPass(ID) {
-  initializeBfloatBuiltinsResolutionPass(*PassRegistry::getPassRegistry());
+BfloatBuiltinsResolutionLPM::BfloatBuiltinsResolutionLPM() : FunctionPass(ID) {
+  initializeBfloatBuiltinsResolutionLPMPass(*PassRegistry::getPassRegistry());
 }
 
 // Array with supported function names
@@ -52,7 +52,7 @@ static const std::array FuncNames = {"__builtin_spirv_ClampConvertBF16ToE4M3INTE
                                      "__builtin_spirv_StochasticRoundBF16ToE5M2INTEL",
                                      "__spirv_FSigmoidINTEL"};
 
-bool BfloatBuiltinsResolution::runOnFunction(Function &F) {
+bool BfloatBuiltinsResolution::run(Function &F) {
   visit(F);
 
   bool Changed = !CallInstPairs.empty();
@@ -63,6 +63,13 @@ bool BfloatBuiltinsResolution::runOnFunction(Function &F) {
 
   return Changed;
 }
+
+#if LLVM_VERSION_MAJOR >= 16
+PreservedAnalyses BfloatBuiltinsResolutionNPM::run(Function &F, FunctionAnalysisManager &) {
+  bool changed = BfloatBuiltinsResolution().run(F);
+  return changed ? PreservedAnalyses::none() : PreservedAnalyses::all();
+}
+#endif // LLVM_VERSION_MAJOR >= 16
 
 // Helper function to replace all occurrences of a substring
 static std::string replaceAll(StringRef input, StringRef search, StringRef replacement) {

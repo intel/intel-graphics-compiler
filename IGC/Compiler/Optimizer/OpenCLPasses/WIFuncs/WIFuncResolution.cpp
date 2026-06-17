@@ -29,21 +29,19 @@ using namespace IGC;
 #define PASS_DESCRIPTION "Resolves work item functions"
 #define PASS_CFG_ONLY false
 #define PASS_ANALYSIS false
-IGC_INITIALIZE_PASS_BEGIN(WIFuncResolution, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_BEGIN(WIFuncResolutionLPM, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 IGC_INITIALIZE_PASS_DEPENDENCY(MetaDataUtilsWrapper)
 IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
 IGC_INITIALIZE_PASS_DEPENDENCY(GenXFunctionGroupAnalysis)
-IGC_INITIALIZE_PASS_END(WIFuncResolution, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_END(WIFuncResolutionLPM, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
-char WIFuncResolution::ID = 0;
+char WIFuncResolutionLPM::ID = 0;
 
-WIFuncResolution::WIFuncResolution() : FunctionPass(ID), m_implicitArgs() {
-  initializeWIFuncResolutionPass(*PassRegistry::getPassRegistry());
+WIFuncResolutionLPM::WIFuncResolutionLPM() : FunctionPass(ID) {
+  initializeWIFuncResolutionLPMPass(*PassRegistry::getPassRegistry());
 }
 
 void WIFuncResolution::storeImplicitBufferPtrs(llvm::Function &F) {
-  CodeGenContext *m_ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
-
   if (isEntryFunc(m_pMdUtils, &F) && !m_ctx->platform.isProductChildOf(IGFX_XE_HP_SDV)) {
     if (m_implicitArgs.isImplicitArgExist(ImplicitArg::ArgType::IMPLICIT_ARG_BUFFER_PTR)) {
       IGCLLVM::IRBuilder<> Builder(&(*F.getEntryBlock().getFirstInsertionPt()));
@@ -86,10 +84,11 @@ void WIFuncResolution::storeImplicitBufferPtrs(llvm::Function &F) {
   }
 }
 
-bool WIFuncResolution::runOnFunction(Function &F) {
+bool WIFuncResolution::runOnFunction(Function &F, IGCMD::MetaDataUtils *pMdUtils, IGC::CodeGenContext *pCtx) {
   m_changed = false;
-  m_pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
-  m_implicitArgs = ImplicitArgs(F, m_pMdUtils, getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData());
+  m_pMdUtils = pMdUtils;
+  m_ctx = pCtx;
+  m_implicitArgs = ImplicitArgs(F, m_pMdUtils, m_ctx->getModuleMetaData());
 
   visit(F);
 
@@ -517,9 +516,7 @@ Value *WIFuncResolution::getGlobalOffset(CallInst &CI) {
   // Creates:
   // %globalOffset = extractelement <8 x i32> %payloadHeader, i32 %dim
 
-  auto Ty = AllowShortImplicitPayloadHeader(getAnalysis<CodeGenContextWrapper>().getCodeGenContext())
-                ? ImplicitArg::GLOBAL_OFFSET
-                : ImplicitArg::PAYLOAD_HEADER;
+  auto Ty = AllowShortImplicitPayloadHeader(m_ctx) ? ImplicitArg::GLOBAL_OFFSET : ImplicitArg::PAYLOAD_HEADER;
 
   auto F = CI.getFunction();
   Value *V = m_implicitArgs.getImplicitArgValue(*F, Ty, m_pMdUtils);
@@ -628,7 +625,7 @@ Value *WIFuncResolution::getRegionGroupSize(CallInst &CI) {
 
   // Creates:
   // %regionGroupSize1 = extractelement <3 x i32> %regionGroupSize, i32 %dim
-  CodeGenContext *Ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+  CodeGenContext *Ctx = m_ctx;
   if (!Ctx->platform.supportsQuantumDispatch()) {
 
     Ctx->EmitError("region_group_size is not supported on this platform!", &CI);
@@ -651,7 +648,7 @@ Value *WIFuncResolution::getRegionGroupWGCount(CallInst &CI) {
 
   // Creates:
   // %regionGroupWGCount
-  CodeGenContext *Ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+  CodeGenContext *Ctx = m_ctx;
   if (!Ctx->platform.supportsQuantumDispatch()) {
 
     Ctx->EmitError("region_group_wg_count is not supported on this platform!", &CI);
@@ -669,7 +666,7 @@ Value *WIFuncResolution::getRegionGroupBarrierBufferPtr(CallInst &CI) {
 
   // Creates:
   // i8 addrspace(1)* %regionBuffer
-  CodeGenContext *Ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+  CodeGenContext *Ctx = m_ctx;
   if (!Ctx->platform.supportsQuantumDispatch()) {
 
     Ctx->EmitError("region_group_barrier_buffer is not supported on this platform!", &CI);
@@ -680,6 +677,21 @@ Value *WIFuncResolution::getRegionGroupBarrierBufferPtr(CallInst &CI) {
 
   return regionBuffer;
 }
+
+#if LLVM_VERSION_MAJOR >= 16
+PreservedAnalyses WIFuncResolutionNPM::run(Module &M, ModuleAnalysisManager &AM) {
+  auto *pMdUtils = AM.getResult<MetaDataUtilsAnalysis>(M).MdUtils;
+  CodeGenContext *pCtx = AM.getResult<CodeGenContextAnalysis>(M).Ctx;
+  WIFuncResolution impl;
+  bool changed = false;
+  for (Function &F : M) {
+    if (F.isDeclaration())
+      continue;
+    changed |= impl.runOnFunction(F, pMdUtils, pCtx);
+  }
+  return changed ? PreservedAnalyses::none() : PreservedAnalyses::all();
+}
+#endif // LLVM_VERSION_MAJOR >= 16
 
 // Register pass to igc-opt
 #define PASS_FLAG2 "igc-lower-implicit-arg-intrinsic"

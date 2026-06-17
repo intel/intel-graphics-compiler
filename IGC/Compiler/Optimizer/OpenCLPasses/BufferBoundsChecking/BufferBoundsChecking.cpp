@@ -32,22 +32,23 @@ using namespace IGC;
 #define PASS_DESCRIPTION "Buffer bounds checking"
 #define PASS_CFG_ONLY false
 #define PASS_ANALYSIS false
-IGC_INITIALIZE_PASS_BEGIN(BufferBoundsChecking, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_BEGIN(BufferBoundsCheckingLPM, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 IGC_INITIALIZE_PASS_DEPENDENCY(MetaDataUtilsWrapper)
-IGC_INITIALIZE_PASS_END(BufferBoundsChecking, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_END(BufferBoundsCheckingLPM, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
-char BufferBoundsChecking::ID = 0;
+char BufferBoundsCheckingLPM::ID = 0;
 
-BufferBoundsChecking::BufferBoundsChecking() : ModulePass(ID) {
-  initializeBufferBoundsCheckingPass(*PassRegistry::getPassRegistry());
+BufferBoundsCheckingLPM::BufferBoundsCheckingLPM() : ModulePass(ID) {
+  initializeBufferBoundsCheckingLPMPass(*PassRegistry::getPassRegistry());
 }
 
-bool BufferBoundsChecking::runOnModule(Module &M) {
+bool BufferBoundsChecking::run(Module &M, IGCMD::MetaDataUtils *pMdUtils, ModuleMetaData *pModMD,
+                               CodeGenContext *pCtx) {
   modified = false;
 
-  metadataUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
-  moduleMetadata = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
-  auto context = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+  metadataUtils = pMdUtils;
+  moduleMetadata = pModMD;
+  auto context = pCtx;
 
   compileUnit = nullptr;
   if (M.debug_compile_units().begin() != M.debug_compile_units().end()) {
@@ -371,3 +372,11 @@ Value *BufferBoundsChecking::createBufferSizePlaceholder(uint32_t implicitArgBuf
   result->setCallingConv(CallingConv::SPIR_FUNC);
   return result;
 }
+
+#if LLVM_VERSION_MAJOR >= 16
+PreservedAnalyses BufferBoundsCheckingNPM::run(Module &M, ModuleAnalysisManager &AM) {
+  auto &MDU = AM.getResult<MetaDataUtilsAnalysis>(M);
+  bool changed = BufferBoundsChecking().run(M, MDU.MdUtils, MDU.ModMD, AM.getResult<CodeGenContextAnalysis>(M).Ctx);
+  return changed ? PreservedAnalyses::none() : PreservedAnalyses::all();
+}
+#endif // LLVM_VERSION_MAJOR >= 16

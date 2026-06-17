@@ -23,23 +23,21 @@ using namespace IGC::IGCMD;
 #define PASS_DESCRIPTION "Breakdown intrinsics into simpler operations to enable better optimization"
 #define PASS_CFG_ONLY false
 #define PASS_ANALYSIS true
-IGC_INITIALIZE_PASS_BEGIN(BreakdownIntrinsicPass, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
-IGC_INITIALIZE_PASS_END(BreakdownIntrinsicPass, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_BEGIN(BreakdownIntrinsicPassLPM, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_END(BreakdownIntrinsicPassLPM, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
-char BreakdownIntrinsicPass::ID = 0;
+char BreakdownIntrinsicPassLPM::ID = 0;
 
-BreakdownIntrinsicPass::BreakdownIntrinsicPass()
-    : FunctionPass(ID), m_changed(false), m_pMdUtils(nullptr), modMD(nullptr) {
-  initializeBreakdownIntrinsicPassPass(*PassRegistry::getPassRegistry());
+BreakdownIntrinsicPassLPM::BreakdownIntrinsicPassLPM() : FunctionPass(ID) {
+  initializeBreakdownIntrinsicPassLPMPass(*PassRegistry::getPassRegistry());
 }
 
 void BreakdownIntrinsicPass::visitIntrinsicInst(llvm::IntrinsicInst &I) {
-  // const MetaDataUtils &mdUtils = *(getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils());
-  ModuleMetaData &modMD = *(getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData());
+  ModuleMetaData &modMD = *this->modMD;
   llvm::IRBuilder<> builder(&I);
   bool md_added = false;
 
-  auto pCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+  auto pCtx = m_pCtx;
 
   if (I.getIntrinsicID() == llvm::Intrinsic::fmuladd ||
       // For FMA only break it up if unsafe math optimizations are set
@@ -58,8 +56,26 @@ void BreakdownIntrinsicPass::visitIntrinsicInst(llvm::IntrinsicInst &I) {
   }
 }
 
-bool BreakdownIntrinsicPass::runOnFunction(llvm::Function &F) {
-  m_pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
+bool BreakdownIntrinsicPass::runOnFunction(llvm::Function &F, IGC::IGCMD::MetaDataUtils *pMdUtils,
+                                           IGC::ModuleMetaData *pModMD, IGC::CodeGenContext *pCtx) {
+  m_pMdUtils = pMdUtils;
+  modMD = pModMD;
+  m_pCtx = pCtx;
   visit(F);
   return m_changed;
 }
+
+#if LLVM_VERSION_MAJOR >= 16
+PreservedAnalyses BreakdownIntrinsicPassNPM::run(Module &M, ModuleAnalysisManager &AM) {
+  auto &MDU = AM.getResult<MetaDataUtilsAnalysis>(M);
+  CodeGenContext *pCtx = AM.getResult<CodeGenContextAnalysis>(M).Ctx;
+  BreakdownIntrinsicPass impl;
+  bool changed = false;
+  for (Function &F : M) {
+    if (F.isDeclaration())
+      continue;
+    changed |= impl.runOnFunction(F, MDU.MdUtils, MDU.ModMD, pCtx);
+  }
+  return changed ? PreservedAnalyses::none() : PreservedAnalyses::all();
+}
+#endif // LLVM_VERSION_MAJOR >= 16

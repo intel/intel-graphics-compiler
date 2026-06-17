@@ -23,32 +23,28 @@ SPDX-License-Identifier: MIT
 #include <common/LLVMWarningsPush.hpp>
 #include <llvm/Pass.h>
 #include <llvm/IR/InstVisitor.h>
+#include <llvm/IR/PassManager.h>
 #include <common/LLVMWarningsPop.hpp>
 
 namespace IGC {
 
-class PrepareInlineSamplerForBindless : public llvm::FunctionPass,
-                                        public llvm::InstVisitor<PrepareInlineSamplerForBindless> {
+// Shared implementation. Holds the logic and is used by both the legacy and the
+// new-pass-manager wrappers below; it is not itself an llvm::Pass.
+class PrepareInlineSamplerForBindless : public llvm::InstVisitor<PrepareInlineSamplerForBindless> {
 public:
-  static char ID;
+  PrepareInlineSamplerForBindless() {}
+  ~PrepareInlineSamplerForBindless() {}
 
-  PrepareInlineSamplerForBindless();
-  ~PrepareInlineSamplerForBindless() override = default;
-
-  llvm::StringRef getPassName() const override { return "PrepareInlineSamplerForBindless"; }
-
-  void getAnalysisUsage(llvm::AnalysisUsage &AU) const override {
-    AU.setPreservesCFG();
-    AU.addRequired<MetaDataUtilsWrapper>();
-    AU.addRequired<CodeGenContextWrapper>();
-  }
+  static llvm::StringRef getPassName() { return "PrepareInlineSamplerForBindless"; }
 
   void visitCallInst(llvm::CallInst &CI);
 
-  bool runOnFunction(llvm::Function &F) override;
+  bool runOnFunction(llvm::Function &F, IGC::IGCMD::MetaDataUtils *pMdUtils, IGC::ModuleMetaData *pModMD);
 
 private:
   IGC::IGCMD::MetaDataUtils *mMDUtils = nullptr;
+
+  IGC::ModuleMetaData *mModMD = nullptr;
 
   ImplicitArg::ArgMap mArgMap{};
 
@@ -56,5 +52,42 @@ private:
 
   bool mChanged = false;
 };
+
+// Legacy Pass Manager wrapper.
+class PrepareInlineSamplerForBindlessLPM : public llvm::FunctionPass {
+public:
+  static char ID;
+
+  PrepareInlineSamplerForBindlessLPM();
+  ~PrepareInlineSamplerForBindlessLPM() override = default;
+
+  llvm::StringRef getPassName() const override { return PrepareInlineSamplerForBindless::getPassName(); }
+
+  void getAnalysisUsage(llvm::AnalysisUsage &AU) const override {
+    AU.setPreservesCFG();
+    AU.addRequired<MetaDataUtilsWrapper>();
+    AU.addRequired<CodeGenContextWrapper>();
+  }
+
+  bool runOnFunction(llvm::Function &F) override {
+    return m_impl.runOnFunction(F, getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils(),
+                                getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData());
+  }
+
+private:
+  PrepareInlineSamplerForBindless m_impl;
+};
+
+#if LLVM_VERSION_MAJOR >= 16
+// New Pass Manager wrapper. Modeled as a module pass that loops over the defined functions
+// (the seeded MetaDataUtilsAnalysis is module-level; IGC passes never use skipFunction). name()
+// returns the legacy pass argument so PrintBefore/PrintAfter matches under the new pass manager.
+class PrepareInlineSamplerForBindlessNPM : public llvm::PassInfoMixin<PrepareInlineSamplerForBindlessNPM> {
+public:
+  llvm::PreservedAnalyses run(llvm::Module &M, llvm::ModuleAnalysisManager &AM);
+  static llvm::StringRef name() { return "prepare-inline-sampler-for-bindless"; }
+  static bool isRequired() { return true; }
+};
+#endif // LLVM_VERSION_MAJOR >= 16
 
 } // namespace IGC

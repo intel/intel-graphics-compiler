@@ -28,17 +28,20 @@ using namespace IGC;
 #define PASS_DESCRIPTION "Insert calls to stack overflow detection builtins."
 #define PASS_CFG_ONLY false
 #define PASS_ANALYSIS false
-IGC_INITIALIZE_PASS_BEGIN(StackOverflowDetectionPass, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_BEGIN(StackOverflowDetectionPassLPM, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 IGC_INITIALIZE_PASS_DEPENDENCY(MetaDataUtilsWrapper)
-IGC_INITIALIZE_PASS_END(StackOverflowDetectionPass, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_END(StackOverflowDetectionPassLPM, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
-char StackOverflowDetectionPass::ID = 0;
+char StackOverflowDetectionPassLPM::ID = 0;
 
-StackOverflowDetectionPass::StackOverflowDetectionPass() : ModulePass(ID) {
-  initializeStackOverflowDetectionPassPass(*PassRegistry::getPassRegistry());
+StackOverflowDetectionPassLPM::StackOverflowDetectionPassLPM() : ModulePass(ID) {
+  initializeStackOverflowDetectionPassLPMPass(*PassRegistry::getPassRegistry());
 }
 
-StackOverflowDetectionPass::StackOverflowDetectionPass(Mode mode_) : StackOverflowDetectionPass() { mode = mode_; }
+StackOverflowDetectionPassLPM::StackOverflowDetectionPassLPM(StackOverflowDetectionPass::Mode mode_)
+    : ModulePass(ID), m_impl(mode_) {
+  initializeStackOverflowDetectionPassLPMPass(*PassRegistry::getPassRegistry());
+}
 
 bool StackOverflowDetectionPass::removeDummyCalls(Module &M) {
   std::vector<llvm::Instruction *> ToDeleteInstructions;
@@ -95,15 +98,13 @@ bool StackOverflowDetectionPass::removeCallsAndFunctionsIfNoStackCallsOrVLA(Modu
   return changed;
 }
 
-bool StackOverflowDetectionPass::runOnModule(Module &M) {
+bool StackOverflowDetectionPass::run(Module &M, IGCMD::MetaDataUtils *pMdUtils, ModuleMetaData *pModMD,
+                                     CodeGenContext *pCtx) {
   if (IGC_IS_FLAG_DISABLED(StackOverflowDetection)) {
     return false;
   }
 
   bool changed = false;
-  auto &MDUWAnalysis = getAnalysis<MetaDataUtilsWrapper>();
-  auto pMdUtils = MDUWAnalysis.getMetaDataUtils();
-  auto pModMD = MDUWAnalysis.getModuleMetaData();
   const bool isLibraryCompilation = pModMD->compOpt.IsLibraryCompilation;
 
   // The pass is designed to be run at least two times.
@@ -130,7 +131,7 @@ bool StackOverflowDetectionPass::runOnModule(Module &M) {
     }
 
     if (changed) {
-      CodeGenContext *pContext = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+      CodeGenContext *pContext = pCtx;
       pMdUtils->save(*pContext->getLLVMContext());
     }
 
@@ -254,3 +255,11 @@ bool StackOverflowDetectionPass::attachDebugInfo(Module &M) {
 
   return changed;
 }
+
+#if LLVM_VERSION_MAJOR >= 16
+PreservedAnalyses StackOverflowDetectionPassNPM::run(Module &M, ModuleAnalysisManager &AM) {
+  auto &MDU = AM.getResult<MetaDataUtilsAnalysis>(M);
+  bool changed = m_impl.run(M, MDU.MdUtils, MDU.ModMD, AM.getResult<CodeGenContextAnalysis>(M).Ctx);
+  return changed ? PreservedAnalyses::none() : PreservedAnalyses::all();
+}
+#endif // LLVM_VERSION_MAJOR >= 16

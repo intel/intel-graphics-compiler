@@ -15,6 +15,7 @@ SPDX-License-Identifier: MIT
 
 #include <llvm/Pass.h>
 #include <llvm/IR/InstVisitor.h>
+#include <llvm/IR/PassManager.h>
 #include "common/LLVMWarningsPop.hpp"
 #include <llvmWrapper/IR/Module.h>
 
@@ -36,29 +37,19 @@ struct SPrintfArgDescriptor {
 ///         that writes printf data into the printf output buffer.
 ///         The format of printf output buffer is shown in OpenCLPrintfResolution.cpp
 ///         and in the "IGC Printf Implementation" whitepaper.
-class OpenCLPrintfResolution : public llvm::FunctionPass, public llvm::InstVisitor<OpenCLPrintfResolution> {
+// Shared implementation. Holds the logic and is used by both the legacy and the
+// new-pass-manager wrappers below; it is not itself an llvm::Pass.
+class OpenCLPrintfResolution : public llvm::InstVisitor<OpenCLPrintfResolution> {
 public:
-  // Pass identification, replacement for typeid
-  static char ID;
-
-  /// @brief  Constructor
-  OpenCLPrintfResolution();
-
-  /// @brief  Destructor
+  OpenCLPrintfResolution() {}
   ~OpenCLPrintfResolution() {}
 
-  /// @brief  Provides name of pass
-  virtual llvm::StringRef getPassName() const override { return "OpenCLPrintfResolution"; }
+  static llvm::StringRef getPassName() { return "OpenCLPrintfResolution"; }
 
-  void getAnalysisUsage(llvm::AnalysisUsage &AU) const override {
-    AU.addRequired<MetaDataUtilsWrapper>();
-    AU.addRequired<CodeGenContextWrapper>();
-  }
-
-  virtual bool doInitialization(llvm::Module &M) override;
+  bool doInitialization(llvm::Module &M);
 
   /// @brief  Pass entry point.
-  virtual bool runOnFunction(llvm::Function &F) override;
+  bool runOnFunction(llvm::Function &F, IGC::CodeGenContext *pCtx, IGC::IGCMD::MetaDataUtils *pMdUtils);
 
   void visitCallInst(llvm::CallInst &callInst);
 
@@ -133,10 +124,52 @@ private:
   llvm::IntegerType *m_int32Type = nullptr;
   llvm::DebugLoc m_DL{};
   IGC::CodeGenContext *m_CGContext = nullptr;
+  IGC::IGCMD::MetaDataUtils *m_pMdUtils = nullptr;
   bool m_fp64Supported{};
 
   std::vector<llvm::CallInst *> m_printfCalls;
   std::vector<SPrintfArgDescriptor> m_argDescriptors;
 };
+
+// Legacy Pass Manager wrapper.
+class OpenCLPrintfResolutionLPM : public llvm::FunctionPass {
+public:
+  // Pass identification, replacement for typeid
+  static char ID;
+
+  OpenCLPrintfResolutionLPM();
+  ~OpenCLPrintfResolutionLPM() {}
+
+  virtual llvm::StringRef getPassName() const override { return OpenCLPrintfResolution::getPassName(); }
+
+  void getAnalysisUsage(llvm::AnalysisUsage &AU) const override {
+    AU.addRequired<MetaDataUtilsWrapper>();
+    AU.addRequired<CodeGenContextWrapper>();
+  }
+
+  virtual bool doInitialization(llvm::Module &M) override { return m_impl.doInitialization(M); }
+
+  virtual bool runOnFunction(llvm::Function &F) override {
+    return m_impl.runOnFunction(F, getAnalysis<CodeGenContextWrapper>().getCodeGenContext(),
+                                getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils());
+  }
+
+private:
+  OpenCLPrintfResolution m_impl;
+};
+
+#if LLVM_VERSION_MAJOR >= 16
+// New Pass Manager wrapper. Modeled as a module pass that does the one-time module setup
+// (doInitialization) and then loops over the defined functions; the accumulating string state
+// is shared by a single impl instance across the module (the seeded context analyses are
+// module-level; IGC passes never use skipFunction). name() returns the legacy pass argument so
+// PrintBefore/PrintAfter matches under the new pass manager.
+class OpenCLPrintfResolutionNPM : public llvm::PassInfoMixin<OpenCLPrintfResolutionNPM> {
+public:
+  llvm::PreservedAnalyses run(llvm::Module &M, llvm::ModuleAnalysisManager &AM);
+  static llvm::StringRef name() { return "igc-opencl-printf-resolution"; }
+  static bool isRequired() { return true; }
+};
+#endif // LLVM_VERSION_MAJOR >= 16
 
 } // namespace IGC

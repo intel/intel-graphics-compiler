@@ -18,38 +18,61 @@ using namespace llvm;
 
 namespace IGC {
 
-class FreezeIntDiv : public FunctionPass, public InstVisitor<FreezeIntDiv> {
+// Shared implementation. Holds the logic and is used by both the legacy and the
+// new-pass-manager wrappers below; it is not itself an llvm::Pass.
+class FreezeIntDiv : public InstVisitor<FreezeIntDiv> {
 public:
-  static char ID;
+  FreezeIntDiv() {}
+  ~FreezeIntDiv() {}
 
-  FreezeIntDiv() : FunctionPass(ID), changed(false) { initializeFreezeIntDivPass(*PassRegistry::getPassRegistry()); }
+  static StringRef getPassName() { return "FreezeIntDiv"; }
 
-  bool runOnFunction(Function &F) override;
-
-  StringRef getPassName() const override { return "FreezeIntDiv"; }
-
-  void getAnalysisUsage(AnalysisUsage &AU) const override { AU.setPreservesCFG(); }
+  bool run(Function &F);
 
   void visitBinaryOperator(BinaryOperator &I);
   void freezeIntDiv(BinaryOperator &I);
 
 private:
-  bool changed;
+  bool changed = false;
 };
 
-char FreezeIntDiv::ID = 0;
+// Legacy Pass Manager wrapper.
+class FreezeIntDivLPM : public FunctionPass {
+public:
+  static char ID;
+
+  FreezeIntDivLPM() : FunctionPass(ID) { initializeFreezeIntDivLPMPass(*PassRegistry::getPassRegistry()); }
+
+  bool runOnFunction(Function &F) override { return m_impl.run(F); }
+
+  StringRef getPassName() const override { return FreezeIntDiv::getPassName(); }
+
+  void getAnalysisUsage(AnalysisUsage &AU) const override { AU.setPreservesCFG(); }
+
+private:
+  FreezeIntDiv m_impl;
+};
+
+char FreezeIntDivLPM::ID = 0;
 
 #define PASS_FLAG "igc-freeze-int-div-pass"
 #define PASS_DESCRIPTION "Freeze integer division"
 #define PASS_CFG_ONLY false
 #define PASS_ANALYSIS false
-IGC_INITIALIZE_PASS_BEGIN(FreezeIntDiv, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
-IGC_INITIALIZE_PASS_END(FreezeIntDiv, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_BEGIN(FreezeIntDivLPM, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_END(FreezeIntDivLPM, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
-FunctionPass *createFreezeIntDivPass() { return new FreezeIntDiv(); }
+FunctionPass *createFreezeIntDivPass() { return new FreezeIntDivLPM(); }
+
+#if LLVM_VERSION_MAJOR >= 16
+PreservedAnalyses FreezeIntDivNPM::run(Function &F, FunctionAnalysisManager &AM) {
+  bool changed = FreezeIntDiv().run(F);
+  return changed ? PreservedAnalyses::none() : PreservedAnalyses::all();
+}
+#endif // LLVM_VERSION_MAJOR >= 16
 
 ////////////////////////////////////////////////////////////////////////////
-bool FreezeIntDiv::runOnFunction(Function &F) {
+bool FreezeIntDiv::run(Function &F) {
   changed = false;
   visit(F);
   return changed;

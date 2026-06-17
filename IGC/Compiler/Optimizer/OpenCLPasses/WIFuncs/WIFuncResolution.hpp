@@ -15,6 +15,7 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/Pass.h>
 #include <llvm/IR/InstVisitor.h>
+#include <llvm/IR/PassManager.h>
 #include "common/LLVMWarningsPop.hpp"
 
 namespace IGC {
@@ -23,29 +24,23 @@ class WIFuncsAnalysis;
 /// @brief  WIFuncResolution pass used for resolving OpenCL WI (work item) functions.
 ///         This pass depends on the WIFuncAnalysis and AddImplicitArgs passes running before it
 
-class WIFuncResolution : public llvm::FunctionPass, public llvm::InstVisitor<WIFuncResolution> {
+// Shared implementation. Holds the logic and is used by both the legacy and the
+// new-pass-manager wrappers below; it is not itself an llvm::Pass.
+class WIFuncResolution : public llvm::InstVisitor<WIFuncResolution> {
 public:
-  // Pass identification, replacement for typeid
-  static char ID;
-
   /// @brief  Constructor
-  WIFuncResolution();
+  WIFuncResolution() {}
 
   /// @brief  Destructor
   ~WIFuncResolution() {}
 
   /// @brief  Provides name of pass
-  virtual llvm::StringRef getPassName() const override { return "WIFuncResolution"; }
-
-  void getAnalysisUsage(llvm::AnalysisUsage &AU) const override {
-    AU.addRequired<MetaDataUtilsWrapper>();
-    AU.addRequired<CodeGenContextWrapper>();
-  }
+  static llvm::StringRef getPassName() { return "WIFuncResolution"; }
 
   /// @brief  Main entry point.
   ///         Finds all OpenCL WI (Work item) function calls and resolve them into an llvm sequence
   /// @param  F The destination function.
-  virtual bool runOnFunction(llvm::Function &F) override;
+  bool runOnFunction(llvm::Function &F, IGCMD::MetaDataUtils *pMdUtils, IGC::CodeGenContext *pCtx);
 
   /// @brief  Call instructions visitor.
   ///         Checks for OpenCL WI functions and resolves them into appropriate sequence of code
@@ -163,7 +158,46 @@ private:
   /// @brief  Indicates if the pass changed the processed function
   bool m_changed = false;
   IGCMD::MetaDataUtils *m_pMdUtils = nullptr;
+  /// @brief  Compilation context, cached at runOnFunction() entry.
+  IGC::CodeGenContext *m_ctx = nullptr;
 };
+
+// Legacy Pass Manager wrapper.
+class WIFuncResolutionLPM : public llvm::FunctionPass {
+public:
+  static char ID;
+
+  WIFuncResolutionLPM();
+  ~WIFuncResolutionLPM() {}
+
+  virtual llvm::StringRef getPassName() const override { return WIFuncResolution::getPassName(); }
+
+  void getAnalysisUsage(llvm::AnalysisUsage &AU) const override {
+    AU.addRequired<MetaDataUtilsWrapper>();
+    AU.addRequired<CodeGenContextWrapper>();
+  }
+
+  virtual bool runOnFunction(llvm::Function &F) override {
+    return m_impl.runOnFunction(F, getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils(),
+                                getAnalysis<CodeGenContextWrapper>().getCodeGenContext());
+  }
+
+private:
+  WIFuncResolution m_impl;
+};
+
+#if LLVM_VERSION_MAJOR >= 16
+// New Pass Manager wrapper. Modeled as a module pass that loops over the defined
+// functions (the seeded context analyses are module-level; IGC passes never use
+// skipFunction). name() returns the legacy pass argument so PrintBefore/PrintAfter
+// matches under the new pass manager.
+class WIFuncResolutionNPM : public llvm::PassInfoMixin<WIFuncResolutionNPM> {
+public:
+  llvm::PreservedAnalyses run(llvm::Module &M, llvm::ModuleAnalysisManager &AM);
+  static llvm::StringRef name() { return "igc-wi-func-resolution"; }
+  static bool isRequired() { return true; }
+};
+#endif // LLVM_VERSION_MAJOR >= 16
 
 } // namespace IGC
 

@@ -31,16 +31,16 @@ using namespace IGC::IGCMD;
 #define PASS_DESCRIPTION "Resolves references to inline constants"
 #define PASS_CFG_ONLY false
 #define PASS_ANALYSIS false
-IGC_INITIALIZE_PASS_BEGIN(ProgramScopeConstantResolution, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_BEGIN(ProgramScopeConstantResolutionLPM, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 IGC_INITIALIZE_PASS_DEPENDENCY(MetaDataUtilsWrapper)
 IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
-IGC_INITIALIZE_PASS_END(ProgramScopeConstantResolution, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_END(ProgramScopeConstantResolutionLPM, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
-char ProgramScopeConstantResolution::ID = 0;
+char ProgramScopeConstantResolutionLPM::ID = 0;
 
-ProgramScopeConstantResolution::ProgramScopeConstantResolution(bool Conservatively)
-    : ModulePass(ID), RunCautiously(Conservatively) {
-  initializeProgramScopeConstantResolutionPass(*PassRegistry::getPassRegistry());
+ProgramScopeConstantResolutionLPM::ProgramScopeConstantResolutionLPM(bool RunCautiously)
+    : ModulePass(ID), m_impl(RunCautiously) {
+  initializeProgramScopeConstantResolutionLPMPass(*PassRegistry::getPassRegistry());
 }
 
 static bool needRunConservatively(const Module &M) {
@@ -65,11 +65,11 @@ static bool isLoweredToRelocation(const GlobalVariable *GV) {
   return false;
 }
 
-bool ProgramScopeConstantResolution::runOnModule(Module &M) {
+bool ProgramScopeConstantResolution::run(Module &M, IGC::IGCMD::MetaDataUtils *pMdUtils, ModuleMetaData *pModMD) {
   LLVMContext &C = M.getContext();
 
-  MetaDataUtils *mdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
-  ModuleMetaData *modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
+  MetaDataUtils *mdUtils = pMdUtils;
+  ModuleMetaData *modMD = pModMD;
   if (modMD->inlineProgramScopeOffsets.empty()) {
     // There are no constants, or no constants are used, so we have nothing to do.
     return false;
@@ -155,7 +155,7 @@ bool ProgramScopeConstantResolution::runOnModule(Module &M) {
         continue;
       }
 
-      ImplicitArgs implicitArgs(*userFunc, mdUtils, getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData());
+      ImplicitArgs implicitArgs(*userFunc, mdUtils, pModMD);
 
       // Skip if this function does not have the implicit arg
       if (!implicitArgs.isImplicitArgExist(argType))
@@ -220,3 +220,11 @@ bool ProgramScopeConstantResolution::runOnModule(Module &M) {
 
   return true;
 }
+
+#if LLVM_VERSION_MAJOR >= 16
+PreservedAnalyses ProgramScopeConstantResolutionNPM::run(Module &M, ModuleAnalysisManager &AM) {
+  auto &MDU = AM.getResult<MetaDataUtilsAnalysis>(M);
+  bool changed = m_impl.run(M, MDU.MdUtils, MDU.ModMD);
+  return changed ? PreservedAnalyses::none() : PreservedAnalyses::all();
+}
+#endif // LLVM_VERSION_MAJOR >= 16

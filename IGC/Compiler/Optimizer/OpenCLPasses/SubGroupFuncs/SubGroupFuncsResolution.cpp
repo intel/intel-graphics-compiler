@@ -25,12 +25,12 @@ using namespace IGC::IGCMD;
 #define PASS_DESCRIPTION "Resolves sub group functions"
 #define PASS_CFG_ONLY false
 #define PASS_ANALYSIS false
-IGC_INITIALIZE_PASS_BEGIN(SubGroupFuncsResolution, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_BEGIN(SubGroupFuncsResolutionLPM, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
 IGC_INITIALIZE_PASS_DEPENDENCY(MetaDataUtilsWrapper)
-IGC_INITIALIZE_PASS_END(SubGroupFuncsResolution, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_END(SubGroupFuncsResolutionLPM, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
-char SubGroupFuncsResolution::ID = 0;
+char SubGroupFuncsResolutionLPM::ID = 0;
 
 const llvm::StringRef SubGroupFuncsResolution::SUB_GROUP_BARRIER = "__builtin_IB_sub_group_barrier";
 const llvm::StringRef SubGroupFuncsResolution::GET_MAX_SUB_GROUP_SIZE = "__builtin_IB_get_simd_size";
@@ -211,12 +211,15 @@ const std::array<std::pair<std::string, WaveOps>, 13> SubGroupFuncsResolution::m
      {"Or", WaveOps::OR},
      {"Xor", WaveOps::XOR}}};
 
-SubGroupFuncsResolution::SubGroupFuncsResolution(void) : FunctionPass(ID) {
-  initializeSubGroupFuncsResolutionPass(*PassRegistry::getPassRegistry());
+SubGroupFuncsResolutionLPM::SubGroupFuncsResolutionLPM() : FunctionPass(ID) {
+  initializeSubGroupFuncsResolutionLPMPass(*PassRegistry::getPassRegistry());
 }
 
-bool SubGroupFuncsResolution::runOnFunction(Function &F) {
-  m_pCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+bool SubGroupFuncsResolution::runOnFunction(Function &F, IGC::IGCMD::MetaDataUtils *pMdUtils,
+                                            IGC::ModuleMetaData *pModMD, IGC::CodeGenContext *pCtx) {
+  m_pCtx = pCtx;
+  m_pMdUtils = pMdUtils;
+  m_modMD = pModMD;
 
   m_argIndexMap.clear();
   m_instsToDelete.clear();
@@ -235,7 +238,7 @@ bool SubGroupFuncsResolution::runOnFunction(Function &F) {
 // This index will be used during codegen to resolve BTIs for Images (SRVs and UAVs).
 void SubGroupFuncsResolution::BTIHelper(llvm::CallInst &CI) {
   Function *F = CI.getParent()->getParent();
-  ModuleMetaData *modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
+  ModuleMetaData *modMD = m_modMD;
 
   for (Function::arg_iterator arg = F->arg_begin(), e = F->arg_end(); arg != e; ++arg) {
     int argNo = (*arg).getArgNo();
@@ -928,7 +931,7 @@ void SubGroupFuncsResolution::visitCallInst(CallInst &CI) {
   } else if (IGCLLVM::starts_with(funcName, SubGroupFuncsResolution::SUB_GROUP_CLUSTERED_SCAN)) {
     return subGroupArithmetic(CI, GetWaveOp(funcName), GroupOperationClusteredScan);
   } else if (IGCLLVM::starts_with(funcName, SubGroupFuncsResolution::SUB_GROUP_BARRIER)) {
-    ModuleMetaData *modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
+    ModuleMetaData *modMD = m_modMD;
 
     // Subgroup barrier is a no-op in HW.
     // For -O0 a dummy instruction is generated in order to preserve debug info.
@@ -1036,3 +1039,18 @@ void SubGroupFuncsResolution::CheckMediaBlockInstError(llvm::GenIntrinsicInst *i
     }
   }
 }
+
+#if LLVM_VERSION_MAJOR >= 16
+PreservedAnalyses SubGroupFuncsResolutionNPM::run(Module &M, ModuleAnalysisManager &AM) {
+  auto &MDU = AM.getResult<MetaDataUtilsAnalysis>(M);
+  CodeGenContext *pCtx = AM.getResult<CodeGenContextAnalysis>(M).Ctx;
+  SubGroupFuncsResolution impl;
+  bool changed = false;
+  for (Function &F : M) {
+    if (F.isDeclaration())
+      continue;
+    changed |= impl.runOnFunction(F, MDU.MdUtils, MDU.ModMD, pCtx);
+  }
+  return changed ? PreservedAnalyses::none() : PreservedAnalyses::all();
+}
+#endif // LLVM_VERSION_MAJOR >= 16

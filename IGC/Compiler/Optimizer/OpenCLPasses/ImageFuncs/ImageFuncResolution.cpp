@@ -25,21 +25,23 @@ using namespace IGC::IGCMD;
 #define PASS_DESCRIPTION "Resolves image height, width, depth functions"
 #define PASS_CFG_ONLY false
 #define PASS_ANALYSIS false
-IGC_INITIALIZE_PASS_BEGIN(ImageFuncResolution, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_BEGIN(ImageFuncResolutionLPM, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 IGC_INITIALIZE_PASS_DEPENDENCY(MetaDataUtilsWrapper)
 IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
-IGC_INITIALIZE_PASS_END(ImageFuncResolution, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_END(ImageFuncResolutionLPM, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
-char ImageFuncResolution::ID = 0;
+char ImageFuncResolutionLPM::ID = 0;
 
-ImageFuncResolution::ImageFuncResolution() : FunctionPass(ID), m_implicitArgs() {
-  initializeImageFuncResolutionPass(*PassRegistry::getPassRegistry());
+ImageFuncResolutionLPM::ImageFuncResolutionLPM() : FunctionPass(ID) {
+  initializeImageFuncResolutionLPMPass(*PassRegistry::getPassRegistry());
 }
 
-bool ImageFuncResolution::runOnFunction(Function &F) {
-  const MetaDataUtils *pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
-  m_implicitArgs = ImplicitArgs(F, pMdUtils, getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData());
-  m_pCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+bool ImageFuncResolution::runOnFunction(Function &F, IGC::IGCMD::MetaDataUtils *pMdUtils, IGC::ModuleMetaData *pModMD,
+                                        IGC::CodeGenContext *pCtx) {
+  m_pMdUtils = pMdUtils;
+  m_modMD = pModMD;
+  m_implicitArgs = ImplicitArgs(F, pMdUtils, pModMD);
+  m_pCtx = pCtx;
   m_changed = false;
   visit(F);
   return m_changed;
@@ -148,8 +150,8 @@ Value *ImageFuncResolution::getImageNumSamples(CallInst &CI) {
 }
 
 template <ImplicitArg::ArgType ArgTy> Value *ImageFuncResolution::getSamplerProperty(CallInst &CI) {
-  MetaDataUtils *pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
-  ModuleMetaData *modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
+  MetaDataUtils *pMdUtils = m_pMdUtils;
+  ModuleMetaData *modMD = m_modMD;
 
   if (ArgTy == ImplicitArg::SAMPLER_SNAP_WA && modMD->extensions.spvINTELBindlessImages) {
     // The snap_wa workaround is disabled for bindless images from the SPV_INTEL_bindless_images extension.
@@ -250,3 +252,18 @@ Argument *ImageFuncResolution::getImplicitImageArg(CallInst &CI, ImplicitArg::Ar
 
   return std::next(pFunc->arg_begin(), implicitArgIndexInFunc);
 }
+
+#if LLVM_VERSION_MAJOR >= 16
+PreservedAnalyses ImageFuncResolutionNPM::run(Module &M, ModuleAnalysisManager &AM) {
+  auto &MDU = AM.getResult<MetaDataUtilsAnalysis>(M);
+  CodeGenContext *pCtx = AM.getResult<CodeGenContextAnalysis>(M).Ctx;
+  ImageFuncResolution impl;
+  bool changed = false;
+  for (Function &F : M) {
+    if (F.isDeclaration())
+      continue;
+    changed |= impl.runOnFunction(F, MDU.MdUtils, MDU.ModMD, pCtx);
+  }
+  return changed ? PreservedAnalyses::none() : PreservedAnalyses::all();
+}
+#endif // LLVM_VERSION_MAJOR >= 16

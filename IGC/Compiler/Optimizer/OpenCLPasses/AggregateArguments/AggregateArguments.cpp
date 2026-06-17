@@ -24,23 +24,23 @@ using namespace IGC::IGCMD;
 #define PASS_DESCRIPTION1 "Analyze aggregate arguments"
 #define PASS_CFG_ONLY1 false
 #define PASS_ANALYSIS1 false
-IGC_INITIALIZE_PASS_BEGIN(AggregateArgumentsAnalysis, PASS_FLAG1, PASS_DESCRIPTION1, PASS_CFG_ONLY1, PASS_ANALYSIS1)
+IGC_INITIALIZE_PASS_BEGIN(AggregateArgumentsAnalysisLPM, PASS_FLAG1, PASS_DESCRIPTION1, PASS_CFG_ONLY1, PASS_ANALYSIS1)
 IGC_INITIALIZE_PASS_DEPENDENCY(MetaDataUtilsWrapper)
 IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
-IGC_INITIALIZE_PASS_END(AggregateArgumentsAnalysis, PASS_FLAG1, PASS_DESCRIPTION1, PASS_CFG_ONLY1, PASS_ANALYSIS1)
+IGC_INITIALIZE_PASS_END(AggregateArgumentsAnalysisLPM, PASS_FLAG1, PASS_DESCRIPTION1, PASS_CFG_ONLY1, PASS_ANALYSIS1)
 
 // Register pass to igc-opt
 #define PASS_FLAG2 "igc-agg-arg"
 #define PASS_DESCRIPTION2 "Resolve aggregate arguments"
 #define PASS_CFG_ONLY2 false
 #define PASS_ANALYSIS2 false
-IGC_INITIALIZE_PASS_BEGIN(ResolveAggregateArguments, PASS_FLAG2, PASS_DESCRIPTION2, PASS_CFG_ONLY2, PASS_ANALYSIS2)
+IGC_INITIALIZE_PASS_BEGIN(ResolveAggregateArgumentsLPM, PASS_FLAG2, PASS_DESCRIPTION2, PASS_CFG_ONLY2, PASS_ANALYSIS2)
 IGC_INITIALIZE_PASS_DEPENDENCY(MetaDataUtilsWrapper)
 IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
-IGC_INITIALIZE_PASS_END(ResolveAggregateArguments, PASS_FLAG2, PASS_DESCRIPTION2, PASS_CFG_ONLY2, PASS_ANALYSIS2)
+IGC_INITIALIZE_PASS_END(ResolveAggregateArgumentsLPM, PASS_FLAG2, PASS_DESCRIPTION2, PASS_CFG_ONLY2, PASS_ANALYSIS2)
 
-char AggregateArgumentsAnalysis::ID = 0;
-char ResolveAggregateArguments::ID = 0;
+char AggregateArgumentsAnalysisLPM::ID = 0;
+char ResolveAggregateArgumentsLPM::ID = 0;
 
 bool isSupportedAggregateArgument(Argument *arg) {
   if (arg->getType()->isPointerTy() && arg->hasByValAttr()) {
@@ -53,8 +53,8 @@ bool isSupportedAggregateArgument(Argument *arg) {
   return false;
 }
 
-AggregateArgumentsAnalysis::AggregateArgumentsAnalysis() : ModulePass(ID) {
-  initializeAggregateArgumentsAnalysisPass(*PassRegistry::getPassRegistry());
+AggregateArgumentsAnalysisLPM::AggregateArgumentsAnalysisLPM() : ModulePass(ID) {
+  initializeAggregateArgumentsAnalysisLPMPass(*PassRegistry::getPassRegistry());
 }
 
 //
@@ -62,9 +62,9 @@ AggregateArgumentsAnalysis::AggregateArgumentsAnalysis() : ModulePass(ID) {
 // arguments into multiple implicit basic type arguments.  This pass
 // must be run after function inlining.
 //
-bool AggregateArgumentsAnalysis::runOnModule(Module &M) {
+bool AggregateArgumentsAnalysis::run(Module &M, IGCMD::MetaDataUtils *pMdUtils, IGC::CodeGenContext *pCtx) {
   bool changed = false;
-  m_pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
+  m_pMdUtils = pMdUtils;
 
   for (Function &F : M) {
     if (F.isDeclaration()) {
@@ -84,16 +84,14 @@ bool AggregateArgumentsAnalysis::runOnModule(Module &M) {
       // According to level-zero documentation https://spec.oneapi.io/level-zero/latest/core/SPIRV.html#kernel-arguments
       // Array type is not allowed as a kernel argument
       if (arg->getType()->isArrayTy()) {
-        getAnalysis<CodeGenContextWrapper>().getCodeGenContext()->EmitError(
-            "Array type is not allowed as a kernel argument", arg);
+        pCtx->EmitError("Array type is not allowed as a kernel argument", arg);
       }
       // Handling case where array is passed as a pointer with byVal attribute
       else if (arg->getType()->isPointerTy() && arg->hasByValAttr()) {
         Type *type = arg->getParamByValType();
 
         if (isa<ArrayType>(type)) {
-          getAnalysis<CodeGenContextWrapper>().getCodeGenContext()->EmitError(
-              "Array type is not allowed as a kernel argument", arg);
+          pCtx->EmitError("Array type is not allowed as a kernel argument", arg);
         }
       }
 
@@ -105,8 +103,7 @@ bool AggregateArgumentsAnalysis::runOnModule(Module &M) {
       Type *type = arg->getParamByValType();
       IGC_ASSERT(m_pDL->getStructLayout(cast<StructType>(type))->getSizeInBytes() < UINT_MAX);
       addImplictArgs(type, 0);
-      ImplicitArgs::addStructArgs(F, arg, m_argList, m_pMdUtils,
-                                  getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData());
+      ImplicitArgs::addStructArgs(F, arg, m_argList, m_pMdUtils, pCtx->getModuleMetaData());
       changed = true;
     }
   }
@@ -222,17 +219,17 @@ void AggregateArgumentsAnalysis::addImplictArgs(Type *type, uint64_t baseAllocaO
   }
 }
 
-ResolveAggregateArguments::ResolveAggregateArguments() : FunctionPass(ID) {
-  initializeResolveAggregateArgumentsPass(*PassRegistry::getPassRegistry());
+ResolveAggregateArgumentsLPM::ResolveAggregateArgumentsLPM() : FunctionPass(ID) {
+  initializeResolveAggregateArgumentsLPMPass(*PassRegistry::getPassRegistry());
 }
 
-bool ResolveAggregateArguments::runOnFunction(Function &F) {
-  if (!isEntryFunc(getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils(), &F)) {
+bool ResolveAggregateArguments::runOnFunction(Function &F, IGCMD::MetaDataUtils *pMdUtils,
+                                              IGC::ModuleMetaData *pModMD) {
+  if (!isEntryFunc(pMdUtils, &F)) {
     return false;
   }
 
-  m_implicitArgs = ImplicitArgs(F, getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils(),
-                                getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData());
+  m_implicitArgs = ImplicitArgs(F, pMdUtils, pModMD);
 
   m_pFunction = &F;
 
@@ -314,3 +311,24 @@ void ResolveAggregateArguments::getImplicitArg(unsigned int explicitArgNo, unsig
   }
   endArgNo = implicitAtgIndex;
 }
+
+#if LLVM_VERSION_MAJOR >= 16
+PreservedAnalyses AggregateArgumentsAnalysisNPM::run(Module &M, ModuleAnalysisManager &AM) {
+  bool changed = AggregateArgumentsAnalysis().run(M, AM.getResult<MetaDataUtilsAnalysis>(M).MdUtils,
+                                                  AM.getResult<CodeGenContextAnalysis>(M).Ctx);
+  return changed ? PreservedAnalyses::none() : PreservedAnalyses::all();
+}
+
+PreservedAnalyses ResolveAggregateArgumentsNPM::run(Module &M, ModuleAnalysisManager &AM) {
+  auto *pMdUtils = AM.getResult<MetaDataUtilsAnalysis>(M).MdUtils;
+  auto *pModMD = AM.getResult<MetaDataUtilsAnalysis>(M).ModMD;
+  ResolveAggregateArguments impl;
+  bool changed = false;
+  for (Function &F : M) {
+    if (F.isDeclaration())
+      continue;
+    changed |= impl.runOnFunction(F, pMdUtils, pModMD);
+  }
+  return changed ? PreservedAnalyses::none() : PreservedAnalyses::all();
+}
+#endif // LLVM_VERSION_MAJOR >= 16

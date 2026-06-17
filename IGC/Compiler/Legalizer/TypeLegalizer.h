@@ -116,6 +116,11 @@ public:
 
   bool runOnFunction(Function &F) override;
 
+  // Shared entry point used by both the legacy pass (runOnFunction) and the new
+  // pass manager wrapper (TypeLegalizerNPM). The dominator tree is injected by
+  // the caller so the engine does not depend on getAnalysis<>.
+  bool runImpl(Function &F, DominatorTree &DTref);
+
   static bool isLegalInteger(unsigned width) {
     switch (width) {
     case 8:

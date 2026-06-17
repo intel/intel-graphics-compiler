@@ -29,12 +29,12 @@ using namespace IGC;
 #define PASS_DESCRIPTION "Optimize GenericCastToPtrExplicit casts"
 #define PASS_CFG_ONLY false
 #define PASS_ANALYSIS false
-IGC_INITIALIZE_PASS_BEGIN(GenericCastToPtrOpt, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_BEGIN(GenericCastToPtrOptLPM, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 IGC_INITIALIZE_PASS_DEPENDENCY(CastToGASAnalysis)
 IGC_INITIALIZE_PASS_DEPENDENCY(CallGraphWrapperPass)
-IGC_INITIALIZE_PASS_END(GenericCastToPtrOpt, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_END(GenericCastToPtrOptLPM, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
-char GenericCastToPtrOpt::ID = 0;
+char GenericCastToPtrOptLPM::ID = 0;
 
 constexpr std::string_view GENERIC_CAST_TO_PTR_FN_NAME = "spirv_GenericCastToPtrExplicit_ToGlobal";
 
@@ -64,24 +64,18 @@ static void replaceGenericCastToPtrCall(CallInst *TargetFnCall) {
   }
 }
 
-GenericCastToPtrOpt::GenericCastToPtrOpt() : ModulePass(ID) {
-  initializeGenericCastToPtrOptPass(*PassRegistry::getPassRegistry());
+GenericCastToPtrOptLPM::GenericCastToPtrOptLPM() : ModulePass(ID) {
+  initializeGenericCastToPtrOptLPMPass(*PassRegistry::getPassRegistry());
 }
 
-void GenericCastToPtrOpt::getAnalysisUsage(llvm::AnalysisUsage &AU) const {
+void GenericCastToPtrOptLPM::getAnalysisUsage(llvm::AnalysisUsage &AU) const {
   AU.addRequired<CastToGASAnalysis>();
   AU.addRequired<CallGraphWrapperPass>();
 
   AU.setPreservesCFG();
 }
 
-bool GenericCastToPtrOpt::runOnModule(Module &M) {
-  if (skipModule(M)) {
-    return false;
-  }
-
-  CallGraph &CG = getAnalysis<CallGraphWrapperPass>().getCallGraph();
-  GASInfo &GI = getAnalysis<CastToGASAnalysis>().getGASInfo();
+bool GenericCastToPtrOpt::run(Module &M, GASInfo &GI, CallGraph &CG) {
   const bool noGenericPtToLocalOrPrivate =
       GI.isNoLocalToGenericOptionEnabled() && GI.isPrivateAllocatedInGlobalMemory();
 
@@ -114,3 +108,14 @@ bool GenericCastToPtrOpt::runOnModule(Module &M) {
   }
   return modified;
 }
+
+#if LLVM_VERSION_MAJOR >= 16
+PreservedAnalyses GenericCastToPtrOptNPM::run(Module &M, ModuleAnalysisManager &AM) {
+  CallGraph &CG = AM.getResult<CallGraphAnalysis>(M);
+  // CastToGASAnalysis depends only on the module + call graph + context, so compute it inline.
+  CastToGASAnalysis cgas;
+  cgas.computeGASInfo(M, CG, AM.getResult<CodeGenContextAnalysis>(M).Ctx);
+  bool changed = m_impl.run(M, cgas.getGASInfo(), CG);
+  return changed ? PreservedAnalyses::none() : PreservedAnalyses::all();
+}
+#endif // LLVM_VERSION_MAJOR >= 16

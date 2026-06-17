@@ -25,24 +25,38 @@ using namespace IGC;
 #define PASS_DESCRIPTION "Resolves extension function"
 #define PASS_CFG_ONLY false
 #define PASS_ANALYSIS false
-IGC_INITIALIZE_PASS_BEGIN(ExtensionFuncsResolution, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_BEGIN(ExtensionFuncsResolutionLPM, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 IGC_INITIALIZE_PASS_DEPENDENCY(MetaDataUtilsWrapper)
 IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
-IGC_INITIALIZE_PASS_END(ExtensionFuncsResolution, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_END(ExtensionFuncsResolutionLPM, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
-char ExtensionFuncsResolution::ID = 0;
+char ExtensionFuncsResolutionLPM::ID = 0;
 
-ExtensionFuncsResolution::ExtensionFuncsResolution() : FunctionPass(ID), m_implicitArgs() {
-  initializeExtensionFuncsResolutionPass(*PassRegistry::getPassRegistry());
+ExtensionFuncsResolutionLPM::ExtensionFuncsResolutionLPM() : FunctionPass(ID) {
+  initializeExtensionFuncsResolutionLPMPass(*PassRegistry::getPassRegistry());
 }
 
-bool ExtensionFuncsResolution::runOnFunction(Function &F) {
+bool ExtensionFuncsResolution::runOnFunction(Function &F, IGCMD::MetaDataUtils *pMdUtils, IGC::ModuleMetaData *pModMD) {
   m_changed = false;
-  m_implicitArgs = ImplicitArgs(F, getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils(),
-                                getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData());
+  m_implicitArgs = ImplicitArgs(F, pMdUtils, pModMD);
   visit(F);
   return m_changed;
 }
+
+#if LLVM_VERSION_MAJOR >= 16
+PreservedAnalyses ExtensionFuncsResolutionNPM::run(Module &M, ModuleAnalysisManager &AM) {
+  auto *pMdUtils = AM.getResult<MetaDataUtilsAnalysis>(M).MdUtils;
+  auto *pModMD = AM.getResult<MetaDataUtilsAnalysis>(M).ModMD;
+  ExtensionFuncsResolution impl;
+  bool changed = false;
+  for (Function &F : M) {
+    if (F.isDeclaration())
+      continue;
+    changed |= impl.runOnFunction(F, pMdUtils, pModMD);
+  }
+  return changed ? PreservedAnalyses::none() : PreservedAnalyses::all();
+}
+#endif // LLVM_VERSION_MAJOR >= 16
 
 void ExtensionFuncsResolution::visitCallInst(CallInst &CI) {
   if (!CI.getCalledFunction()) {

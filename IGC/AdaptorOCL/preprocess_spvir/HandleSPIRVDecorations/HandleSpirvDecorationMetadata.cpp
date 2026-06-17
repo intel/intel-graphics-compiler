@@ -35,14 +35,14 @@ using namespace IGC;
 #define PASS_DESCRIPTION "Handle spirv.Decoration metadata"
 #define PASS_CFG_ONLY false
 #define PASS_ANALYSIS false
-IGC_INITIALIZE_PASS_BEGIN(HandleSpirvDecorationMetadata, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_BEGIN(HandleSpirvDecorationMetadataLPM, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
-IGC_INITIALIZE_PASS_END(HandleSpirvDecorationMetadata, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_END(HandleSpirvDecorationMetadataLPM, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
-char HandleSpirvDecorationMetadata::ID = 0;
+char HandleSpirvDecorationMetadataLPM::ID = 0;
 
-HandleSpirvDecorationMetadata::HandleSpirvDecorationMetadata() : ModulePass(ID) {
-  initializeHandleSpirvDecorationMetadataPass(*PassRegistry::getPassRegistry());
+HandleSpirvDecorationMetadataLPM::HandleSpirvDecorationMetadataLPM() : ModulePass(ID) {
+  initializeHandleSpirvDecorationMetadataLPMPass(*PassRegistry::getPassRegistry());
 }
 
 // Get type from demangled name for both typed and opaque pointers
@@ -85,9 +85,14 @@ Type *HandleSpirvDecorationMetadata::getArgumentType(std::string demangledName, 
   return nullptr;
 }
 
-bool HandleSpirvDecorationMetadata::runOnModule(Module &module) {
-  m_Metadata = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
-  m_pCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+bool HandleSpirvDecorationMetadataLPM::runOnModule(Module &module) {
+  return HandleSpirvDecorationMetadata().run(module, getAnalysis<CodeGenContextWrapper>().getCodeGenContext(),
+                                             getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData());
+}
+
+bool HandleSpirvDecorationMetadata::run(Module &module, CodeGenContext *pCtx, ModuleMetaData *modMD) {
+  m_Metadata = modMD;
+  m_pCtx = pCtx;
   m_Module = &module;
   m_BuiltinsToRemove.clear();
 
@@ -99,6 +104,15 @@ bool HandleSpirvDecorationMetadata::runOnModule(Module &module) {
 
   return m_changed;
 }
+
+#if LLVM_VERSION_MAJOR >= 16
+PreservedAnalyses HandleSpirvDecorationMetadataNPM::run(Module &M, ModuleAnalysisManager &AM) {
+  CodeGenContext *pCtx = AM.getResult<CodeGenContextAnalysis>(M).Ctx;
+  MetaDataUtilsResult md = AM.getResult<MetaDataUtilsAnalysis>(M);
+  bool changed = HandleSpirvDecorationMetadata().run(M, pCtx, md.ModMD);
+  return changed ? PreservedAnalyses::none() : PreservedAnalyses::all();
+}
+#endif // LLVM_VERSION_MAJOR >= 16
 
 void HandleSpirvDecorationMetadata::handleInstructionsDecorations() { visit(m_Module); }
 

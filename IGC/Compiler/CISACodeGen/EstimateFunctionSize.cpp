@@ -123,6 +123,30 @@ void EstimateFunctionSize::getAnalysisUsage(AnalysisUsage &AU) const {
 }
 
 bool EstimateFunctionSize::runOnModule(Module &Mod) {
+  // Legacy path: back the injected getters with getAnalysis<...>(F) and fetch MetaDataUtils.
+  m_getLI = [this](Function &F) -> LoopInfo & { return getAnalysis<LoopInfoWrapperPass>(F).getLoopInfo(); };
+  m_getBFI = [this](Function &F) -> BlockFrequencyInfo & {
+    return getAnalysis<BlockFrequencyInfoWrapperPass>(F).getBFI();
+  };
+  m_getSE = [this](Function &F) -> ScalarEvolution & { return getAnalysis<ScalarEvolutionWrapperPass>(F).getSE(); };
+  auto *MdWrapper = getAnalysisIfAvailable<MetaDataUtilsWrapper>();
+  m_pMdUtils = MdWrapper ? MdWrapper->getMetaDataUtils() : nullptr;
+  auto *CGW = getAnalysisIfAvailable<CodeGenContextWrapper>();
+  m_pCtx = CGW ? CGW->getCodeGenContext() : nullptr;
+  return runAnalysis(Mod);
+}
+
+bool EstimateFunctionSize::computeInline(Module &Mod, LoopInfoGetter LIG, BFIGetter BFIG, SEGetter SEG,
+                                         IGC::IGCMD::MetaDataUtils *MdUtils, IGC::CodeGenContext *Ctx) {
+  m_getLI = std::move(LIG);
+  m_getBFI = std::move(BFIG);
+  m_getSE = std::move(SEG);
+  m_pMdUtils = MdUtils;
+  m_pCtx = Ctx;
+  return runAnalysis(Mod);
+}
+
+bool EstimateFunctionSize::runAnalysis(Module &Mod) {
   clear();
   M = &Mod;
   analyze();
@@ -694,7 +718,7 @@ void EstimateFunctionSize::runStaticAnalysis() {
       0x1, "------------------Static analysis start------------------") for (auto &F : M->getFunctionList()) {
     if (F.empty())
       continue;
-    auto &BFI = getAnalysis<BlockFrequencyInfoWrapperPass>(F).getBFI();
+    auto &BFI = m_getBFI(F);
     FunctionNode *Node = get<FunctionNode>(&F);
     Node->setEntryFrequency(IGCLLVM::getFrequency(BFI.getEntryFreq()), 0);
 
@@ -808,7 +832,7 @@ void EstimateFunctionSize::runStaticAnalysis() {
 }
 
 void EstimateFunctionSize::estimateTotalLoopIteration(llvm::Function &F, LoopInfo *LI) {
-  auto &SE = getAnalysis<ScalarEvolutionWrapperPass>(F).getSE();
+  auto &SE = m_getSE(F);
   for (Loop *L : LI->getLoopsInPreorder()) {
     Scaled64 ParentLCnt = Scaled64::getOne();
     Loop *ParentL = L->getParentLoop();
@@ -869,15 +893,14 @@ void EstimateFunctionSize::analyze() {
     return Size;
   };
 
-  auto MdWrapper = getAnalysisIfAvailable<MetaDataUtilsWrapper>();
-  auto pMdUtils = MdWrapper->getMetaDataUtils();
+  auto pMdUtils = m_pMdUtils;
   // Initialize the data structure. find all noinline and stackcall properties
   for (auto &F : M->getFunctionList()) {
     if (F.empty())
       continue;
     FunctionNode *node = nullptr;
     if (LoopCountAwareTrimming) {
-      auto &LI = getAnalysis<LoopInfoWrapperPass>(F).getLoopInfo();
+      auto &LI = m_getLI(F);
       estimateTotalLoopIteration(F, &LI);
       size_t FuncSize = getSize(F);
       size_t FuncSizeWithLoopCnt = getSizeWithLoopCnt(F, LI);
@@ -918,7 +941,7 @@ void EstimateFunctionSize::analyze() {
     if (F.empty())
       continue;
     FunctionNode *Node = get<FunctionNode>(&F);
-    auto &LI = getAnalysis<LoopInfoWrapperPass>(F).getLoopInfo();
+    auto &LI = m_getLI(F);
     for (auto U : F.users()) {
       // Other users (like bitcast/store) are ignored.
       if (auto *CI = dyn_cast<CallInst>(U)) {
@@ -1041,12 +1064,11 @@ std::size_t EstimateFunctionSize::getMaxExpandedSize() const {
 }
 
 void EstimateFunctionSize::checkSubroutine() {
-  auto CGW = getAnalysisIfAvailable<CodeGenContextWrapper>();
-  if (!CGW)
+  if (!m_pCtx)
     return;
 
   EnableSubroutine = true;
-  CodeGenContext *pContext = CGW->getCodeGenContext();
+  CodeGenContext *pContext = m_pCtx;
   if (pContext->type != ShaderType::OPENCL_SHADER && pContext->type != ShaderType::COMPUTE_SHADER &&
       pContext->type != ShaderType::RAYTRACING_SHADER)
     EnableSubroutine = false;
@@ -1126,9 +1148,8 @@ bool EstimateFunctionSize::onlyCalledOnce(const Function *F, const Function *Cal
       return true;
     }
     // OpenCL specific, called once by passed kernel
-    auto *MdWrapper = getAnalysisIfAvailable<MetaDataUtilsWrapper>();
-    if (MdWrapper) {
-      auto *pMdUtils = MdWrapper->getMetaDataUtils();
+    if (m_pMdUtils) {
+      auto *pMdUtils = m_pMdUtils;
       for (const auto &[Caller, CallCount] : Node->CallerList) {
         if (CallCount > 1 && Caller->F == CallerF) {
           return false;

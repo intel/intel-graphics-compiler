@@ -10,7 +10,9 @@ SPDX-License-Identifier: MIT
 
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/Analysis/AliasAnalysis.h>
+#include <llvm/Analysis/LoopInfo.h>
 #include "llvm/ADT/PostOrderIterator.h"
+#include <llvm/IR/PassManager.h>
 #include "common/LLVMWarningsPop.hpp"
 
 #define DEBUG_TYPE "gas-resolver"
@@ -24,27 +26,21 @@ namespace IGC {
 
 llvm::FunctionPass *createResolveGASPass();
 
-class GASResolving : public FunctionPass {
+// Shared implementation. Holds the logic and is used by both the legacy and the new-pass-manager
+// wrappers below; it is not itself an llvm::Pass. The LoopInfo, MetaDataUtils and AliasAnalysis are
+// injected by the caller (runOnFunction) so the engine does not depend on getAnalysis<>.
+class GASResolving {
   const unsigned GAS = ADDRESS_SPACE_GENERIC;
 
-  BuilderType *IRB;
-  GASPropagator *Propagator;
+  BuilderType *IRB = nullptr;
+  GASPropagator *Propagator = nullptr;
+  IGCMD::MetaDataUtils *m_pMdUtils = nullptr;
+  llvm::AAResults *m_AA = nullptr;
 
 public:
-  static char ID;
+  GASResolving() {}
 
-  GASResolving() : FunctionPass(ID), IRB(nullptr), Propagator(nullptr) {
-    initializeGASResolvingPass(*PassRegistry::getPassRegistry());
-  }
-
-  bool runOnFunction(Function &) override;
-
-  void getAnalysisUsage(AnalysisUsage &AU) const override {
-    AU.setPreservesCFG();
-    AU.addRequired<LoopInfoWrapperPass>();
-    AU.addRequired<AAResultsWrapperPass>();
-    AU.addRequired<MetaDataUtilsWrapper>();
-  }
+  bool runOnFunction(Function &F, llvm::LoopInfo &LI, IGCMD::MetaDataUtils *MdUtils, llvm::AAResults *AA);
 
 private:
   bool resolveOnFunction(Function *) const;
@@ -58,4 +54,41 @@ private:
 
   bool canonicalizeAddrSpaceCasts(Function &F) const;
 };
+
+// Legacy Pass Manager wrapper.
+class GASResolvingLPM : public FunctionPass {
+public:
+  static char ID;
+
+  GASResolvingLPM() : FunctionPass(ID) { initializeGASResolvingLPMPass(*PassRegistry::getPassRegistry()); }
+
+  bool runOnFunction(Function &F) override {
+    return m_impl.runOnFunction(F, getAnalysis<LoopInfoWrapperPass>().getLoopInfo(),
+                                getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils(),
+                                &getAnalysis<AAResultsWrapperPass>().getAAResults());
+  }
+
+  void getAnalysisUsage(AnalysisUsage &AU) const override {
+    AU.setPreservesCFG();
+    AU.addRequired<LoopInfoWrapperPass>();
+    AU.addRequired<AAResultsWrapperPass>();
+    AU.addRequired<MetaDataUtilsWrapper>();
+  }
+
+private:
+  GASResolving m_impl;
+};
+
+#if LLVM_VERSION_MAJOR >= 16
+// New Pass Manager wrapper. Modeled as a module pass that pulls the seeded MetaDataUtilsAnalysis
+// and, per defined function, the LoopInfo + AAManager results from the function analysis manager
+// (the IGCNewPassManager registers the default AA pipeline). name() returns the legacy pass
+// argument so PrintBefore/PrintAfter matches under the new pass manager.
+class GASResolvingNPM : public llvm::PassInfoMixin<GASResolvingNPM> {
+public:
+  llvm::PreservedAnalyses run(llvm::Module &M, llvm::ModuleAnalysisManager &AM);
+  static llvm::StringRef name() { return "igc-gas-resolve"; }
+  static bool isRequired() { return true; }
+};
+#endif // LLVM_VERSION_MAJOR >= 16
 } // End namespace IGC

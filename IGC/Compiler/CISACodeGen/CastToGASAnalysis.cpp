@@ -128,7 +128,12 @@ void CastToGASAnalysis::setInfoForGroup(llvm::SmallPtrSetImpl<const llvm::Functi
 }
 
 bool CastToGASAnalysis::runOnModule(Module &M) {
-  m_ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+  return computeGASInfo(M, getAnalysis<CallGraphWrapperPass>().getCallGraph(),
+                        getAnalysis<CodeGenContextWrapper>().getCodeGenContext());
+}
+
+bool CastToGASAnalysis::computeGASInfo(Module &M, CallGraph &CG, CodeGenContext *ctx) {
+  m_ctx = ctx;
   GI.noLocalToGenericOptionEnabled = m_ctx->noLocalToGenericOptionEnabled();
   GI.allocatePrivateAsGlobalBuffer = m_ctx->allocatePrivateAsGlobalBuffer();
 
@@ -136,7 +141,6 @@ bool CastToGASAnalysis::runOnModule(Module &M) {
     return false;
 
   castInfoCache.clear();
-  CallGraph &CG = getAnalysis<CallGraphWrapperPass>().getCallGraph();
   for (auto &F : M.functions()) {
     if (F.getCallingConv() != llvm::CallingConv::SPIR_KERNEL)
       continue;

@@ -27,25 +27,25 @@ using namespace IGC;
 #define PASS_DESCRIPTION "Buffer bounds checking - patcher"
 #define PASS_CFG_ONLY false
 #define PASS_ANALYSIS false
-IGC_INITIALIZE_PASS_BEGIN(BufferBoundsCheckingPatcher, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_BEGIN(BufferBoundsCheckingPatcherLPM, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 IGC_INITIALIZE_PASS_DEPENDENCY(MetaDataUtilsWrapper)
-IGC_INITIALIZE_PASS_END(BufferBoundsCheckingPatcher, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_END(BufferBoundsCheckingPatcherLPM, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
-char BufferBoundsCheckingPatcher::ID = 0;
+char BufferBoundsCheckingPatcherLPM::ID = 0;
 
-BufferBoundsCheckingPatcher::BufferBoundsCheckingPatcher() : ModulePass(ID) {
-  initializeBufferBoundsCheckingPatcherPass(*PassRegistry::getPassRegistry());
+BufferBoundsCheckingPatcherLPM::BufferBoundsCheckingPatcherLPM() : ModulePass(ID) {
+  initializeBufferBoundsCheckingPatcherLPMPass(*PassRegistry::getPassRegistry());
 }
 
-bool BufferBoundsCheckingPatcher::runOnModule(Module &M) {
-  metadataUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
+bool BufferBoundsCheckingPatcher::run(Module &M, IGCMD::MetaDataUtils *pMdUtils, IGC::ModuleMetaData *pModMD) {
+  metadataUtils = pMdUtils;
+  m_modMD = pModMD;
   for (auto &function : M) {
     if (function.isDeclaration()) {
       continue;
     }
 
-    implicitArgs = std::make_unique<ImplicitArgs>(function, metadataUtils,
-                                                  getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData());
+    implicitArgs = std::make_unique<ImplicitArgs>(function, metadataUtils, m_modMD);
     if (!isEntryFunc(metadataUtils, &function)) {
       return false;
     }
@@ -88,3 +88,11 @@ Argument *BufferBoundsCheckingPatcher::getBufferSizeArg(Function *function, uint
 
   return IGCLLVM::getArg(*function, function->arg_size() - implicitArgs->size() + index);
 }
+
+#if LLVM_VERSION_MAJOR >= 16
+PreservedAnalyses BufferBoundsCheckingPatcherNPM::run(Module &M, ModuleAnalysisManager &AM) {
+  bool changed = BufferBoundsCheckingPatcher().run(M, AM.getResult<MetaDataUtilsAnalysis>(M).MdUtils,
+                                                   AM.getResult<MetaDataUtilsAnalysis>(M).ModMD);
+  return changed ? PreservedAnalyses::none() : PreservedAnalyses::all();
+}
+#endif // LLVM_VERSION_MAJOR >= 16

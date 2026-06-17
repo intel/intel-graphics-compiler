@@ -31,14 +31,16 @@ using namespace IGC;
 #define PASS_DESCRIPTION "Fix the usage of GetBufferPtr, no combination of GetBufferPtr and GetResourcePtr"
 #define PASS_CFG_ONLY false
 #define PASS_ANALYSIS false
-IGC_INITIALIZE_PASS_BEGIN(FixResourcePtr, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
-IGC_INITIALIZE_PASS_END(FixResourcePtr, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_BEGIN(FixResourcePtrLPM, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_END(FixResourcePtrLPM, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
-char FixResourcePtr::ID = 0;
+char FixResourcePtrLPM::ID = 0;
 
-FixResourcePtr::FixResourcePtr() : FunctionPass(ID) { initializeFixResourcePtrPass(*PassRegistry::getPassRegistry()); }
+FixResourcePtrLPM::FixResourcePtrLPM() : FunctionPass(ID) {
+  initializeFixResourcePtrLPMPass(*PassRegistry::getPassRegistry());
+}
 
-bool FixResourcePtr::runOnFunction(llvm::Function &F) {
+bool FixResourcePtr::run(llvm::Function &F) {
   llvm::IRBuilder<> __builder(F.getContext());
   builder = &__builder;
   DL = &F.getParent()->getDataLayout();
@@ -307,3 +309,10 @@ Value *FixResourcePtr::ResolveBufferIndex(Value *bufferIndex, Value *vectorIndex
 
   return bufferIndex;
 }
+
+#if LLVM_VERSION_MAJOR >= 16
+PreservedAnalyses FixResourcePtrNPM::run(Function &F, FunctionAnalysisManager &AM) {
+  bool changed = FixResourcePtr().run(F);
+  return changed ? PreservedAnalyses::none() : PreservedAnalyses::all();
+}
+#endif // LLVM_VERSION_MAJOR >= 16

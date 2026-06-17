@@ -13,8 +13,10 @@ SPDX-License-Identifier: MIT
 
 #include "common/LLVMWarningsPush.hpp"
 #include "llvm/Analysis/CallGraph.h"
+#include "llvm/Analysis/LoopInfo.h"
 #include "llvm/ADT/PostOrderIterator.h"
 #include "llvm/BinaryFormat/Dwarf.h"
+#include <llvm/IR/Dominators.h>
 #include "common/LLVMWarningsPop.hpp"
 #include "llvmWrapper/IR/Function.h"
 #include "llvmWrapper/IR/DerivedTypes.h"
@@ -25,28 +27,42 @@ SPDX-License-Identifier: MIT
 #define PASS_DESC "Resolve generic pointer return value"
 #define PASS_CFG_ONLY false
 #define PASS_ANALYSIS false
-IGC_INITIALIZE_PASS_BEGIN(GASRetValuePropagator, PASS_FLAG, PASS_DESC, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_BEGIN(GASRetValuePropagatorLPM, PASS_FLAG, PASS_DESC, PASS_CFG_ONLY, PASS_ANALYSIS)
 IGC_INITIALIZE_PASS_DEPENDENCY(MetaDataUtilsWrapper)
 IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
 IGC_INITIALIZE_PASS_DEPENDENCY(CallGraphWrapperPass)
 IGC_INITIALIZE_PASS_DEPENDENCY(LoopInfoWrapperPass)
-IGC_INITIALIZE_PASS_END(GASRetValuePropagator, PASS_FLAG, PASS_DESC, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_END(GASRetValuePropagatorLPM, PASS_FLAG, PASS_DESC, PASS_CFG_ONLY, PASS_ANALYSIS)
 
-ModulePass *IGC::createGASRetValuePropagatorPass() { return new GASRetValuePropagator(); }
+ModulePass *IGC::createGASRetValuePropagatorPass() { return new GASRetValuePropagatorLPM(); }
 
-char GASRetValuePropagator::ID = 0;
+char GASRetValuePropagatorLPM::ID = 0;
 
-bool GASRetValuePropagator::runOnModule(Module &M) {
+#if LLVM_VERSION_MAJOR >= 16
+llvm::PreservedAnalyses GASRetValuePropagatorNPM::run(llvm::Module &M, llvm::ModuleAnalysisManager &AM) {
+  GASRetValuePropagator impl;
+  CodeGenContext *ctx = AM.getResult<CodeGenContextAnalysis>(M).Ctx;
+  IGCMD::MetaDataUtils *mdUtils = AM.getResult<MetaDataUtilsAnalysis>(M).MdUtils;
+  CallGraph &CG = AM.getResult<llvm::CallGraphAnalysis>(M);
+  bool changed = impl.run(M, ctx, mdUtils, CG);
+  return changed ? llvm::PreservedAnalyses::none() : llvm::PreservedAnalyses::all();
+}
+#endif // LLVM_VERSION_MAJOR >= 16
+
+bool GASRetValuePropagator::run(llvm::Module &M, CodeGenContext *Ctx, IGCMD::MetaDataUtils *MdUtils,
+                                llvm::CallGraph &CG) {
   bool changed = false;
   m_module = &M;
-  m_mdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
-  m_ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+  m_mdUtils = MdUtils;
+  m_ctx = Ctx;
 
-  CallGraph &CG = getAnalysis<CallGraphWrapperPass>().getCallGraph();
   std::vector<Function *> candidates = findCandidates(CG);
 
   for (auto *F : candidates) {
-    LoopInfo &LI = getAnalysis<LoopInfoWrapperPass>(*F).getLoopInfo();
+    // Compute LoopInfo on demand for the candidate (matches legacy
+    // getAnalysis<LoopInfoWrapperPass>(F), which lazily recomputes it).
+    DominatorTree DT(*F);
+    LoopInfo LI(DT);
     GASPropagator ThePropagator(F->getContext(), &LI);
     m_Propagator = &ThePropagator;
 

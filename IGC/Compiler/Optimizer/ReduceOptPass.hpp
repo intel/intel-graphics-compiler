@@ -11,6 +11,7 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/Pass.h>
 #include <llvm/IR/InstVisitor.h>
+#include <llvm/IR/PassManager.h>
 #include "common/LLVMWarningsPop.hpp"
 #include "Compiler/CISACodeGen/WIAnalysis.hpp"
 
@@ -22,15 +23,15 @@ namespace IGC {
 //  An optimized reduce uses non-zero work items less than a regular one.
 //  Applies to workspace dimension equals 3 only.
 
-class ReduceOptPass : public llvm::FunctionPass {
+// Shared implementation. Holds the logic and is used by both the legacy and the
+// new-pass-manager wrappers below; it is not itself an llvm::Pass.
+class ReduceOptPass {
 public:
-  static char ID;
+  ReduceOptPass() {}
 
-  ReduceOptPass();
+  static llvm::StringRef getPassName() { return "Reduce Optimisation Pass"; }
 
-  virtual llvm::StringRef getPassName() const override { return "Reduce Optimisation Pass"; }
-
-  virtual bool runOnFunction(llvm::Function &F) override;
+  bool run(llvm::Function &F);
 
 private:
   // This function recursively checks if the result of the reduce
@@ -51,5 +52,28 @@ private:
   bool Changed = false;
   llvm::Module *M = nullptr;
 };
+
+// Legacy Pass Manager wrapper.
+class ReduceOptPassLPM : public llvm::FunctionPass {
+public:
+  static char ID;
+
+  ReduceOptPassLPM();
+
+  llvm::StringRef getPassName() const override { return ReduceOptPass::getPassName(); }
+
+  bool runOnFunction(llvm::Function &F) override { return ReduceOptPass().run(F); }
+};
+
+#if LLVM_VERSION_MAJOR >= 16
+// New Pass Manager wrapper. name() returns the legacy pass argument so that
+// PrintBefore/PrintAfter=<pass argument> matches under the new pass manager.
+class ReduceOptPassNPM : public llvm::PassInfoMixin<ReduceOptPassNPM> {
+public:
+  llvm::PreservedAnalyses run(llvm::Function &F, llvm::FunctionAnalysisManager &AM);
+  static llvm::StringRef name() { return "opt-reduce-pass"; }
+  static bool isRequired() { return true; }
+};
+#endif // LLVM_VERSION_MAJOR >= 16
 
 } // namespace IGC

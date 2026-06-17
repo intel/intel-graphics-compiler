@@ -22,7 +22,7 @@ using namespace std;
 using namespace CLElfLib;
 
 char DebugInfoPass::ID = 0;
-char CatchAllLineNumber::ID = 0;
+char CatchAllLineNumberLPM::ID = 0;
 
 // Register pass to igc-opt
 #define PASS_FLAG1 "igc-debug-finalize"
@@ -431,16 +431,16 @@ CVariable *DebugInfoData::getMapping(const llvm::Function &F, const llvm::Value 
 #define PASS_DESCRIPTION "CatchAllLineNumber pass"
 #define PASS_CFG_ONLY false
 #define PASS_ANALYSIS false
-IGC_INITIALIZE_PASS_BEGIN(CatchAllLineNumber, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
-IGC_INITIALIZE_PASS_END(CatchAllLineNumber, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_BEGIN(CatchAllLineNumberLPM, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_END(CatchAllLineNumberLPM, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
-CatchAllLineNumber::CatchAllLineNumber() : FunctionPass(ID) {
-  initializeMetaDataUtilsWrapperPass(*PassRegistry::getPassRegistry());
+CatchAllLineNumberLPM::CatchAllLineNumberLPM() : FunctionPass(ID) {
+  initializeCatchAllLineNumberLPMPass(*PassRegistry::getPassRegistry());
 }
 
-CatchAllLineNumber::~CatchAllLineNumber() {}
+CatchAllLineNumberLPM::~CatchAllLineNumberLPM() {}
 
-bool CatchAllLineNumber::runOnFunction(llvm::Function &F) {
+bool CatchAllLineNumber::run(llvm::Function &F) {
   // Insert placeholder intrinsic instruction in each kernel/stack call function.
   if (!F.getSubprogram() || F.isDeclaration() || IGC_IS_FLAG_ENABLED(NoCatchAllDebugLine))
     return false;
@@ -465,3 +465,10 @@ bool CatchAllLineNumber::runOnFunction(llvm::Function &F) {
 
   return true;
 }
+
+#if LLVM_VERSION_MAJOR >= 16
+PreservedAnalyses CatchAllLineNumberNPM::run(Function &F, FunctionAnalysisManager &AM) {
+  bool changed = CatchAllLineNumber().run(F);
+  return changed ? PreservedAnalyses::none() : PreservedAnalyses::all();
+}
+#endif // LLVM_VERSION_MAJOR >= 16

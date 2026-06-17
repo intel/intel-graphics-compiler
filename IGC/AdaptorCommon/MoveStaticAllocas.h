@@ -25,17 +25,40 @@ This pass searches for "static" alloca instructions in function that are not
 in the entry block and moves them. This prevents llvm from inserting
 @llvm.stacksave and @llvm.stackrestore that are not handled by IGC.
 */
-class MoveStaticAllocas : public llvm::FunctionPass {
+// Shared implementation. Holds the logic and is used by both the legacy and the
+// new-pass-manager wrappers below; it is not itself an llvm::Pass.
+class MoveStaticAllocas {
+public:
+  MoveStaticAllocas() {}
+  ~MoveStaticAllocas() {}
+
+  static llvm::StringRef getPassName() { return "MoveStaticAllocasPass"; }
+
+  bool run(llvm::Function &F);
+};
+
+// Legacy Pass Manager wrapper.
+class MoveStaticAllocasLPM : public llvm::FunctionPass {
 public:
   static char ID;
 
-  MoveStaticAllocas();
+  MoveStaticAllocasLPM();
+  ~MoveStaticAllocasLPM() {}
 
-  ~MoveStaticAllocas() {}
+  llvm::StringRef getPassName() const override { return MoveStaticAllocas::getPassName(); }
 
-  virtual llvm::StringRef getPassName() const override { return "MoveStaticAllocasPass"; }
-
-  virtual bool runOnFunction(llvm::Function &F) override;
+  bool runOnFunction(llvm::Function &F) override { return MoveStaticAllocas().run(F); }
 };
+
+#if LLVM_VERSION_MAJOR >= 16
+// New Pass Manager wrapper. name() returns the legacy pass argument so that
+// PrintBefore/PrintAfter=<pass argument> matches under the new pass manager.
+class MoveStaticAllocasNPM : public llvm::PassInfoMixin<MoveStaticAllocasNPM> {
+public:
+  llvm::PreservedAnalyses run(llvm::Function &F, llvm::FunctionAnalysisManager &AM);
+  static llvm::StringRef name() { return "igc-move-static-allocas"; }
+  static bool isRequired() { return true; }
+};
+#endif // LLVM_VERSION_MAJOR >= 16
 
 } // namespace IGC

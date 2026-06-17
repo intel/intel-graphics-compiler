@@ -26,12 +26,12 @@ using namespace IGC;
 #define PASS_DESCRIPTION "Analyzes work item functions"
 #define PASS_CFG_ONLY false
 #define PASS_ANALYSIS false
-IGC_INITIALIZE_PASS_BEGIN(WIFuncsAnalysis, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_BEGIN(WIFuncsAnalysisLPM, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 IGC_INITIALIZE_PASS_DEPENDENCY(MetaDataUtilsWrapper)
 IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
-IGC_INITIALIZE_PASS_END(WIFuncsAnalysis, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_END(WIFuncsAnalysisLPM, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
-char WIFuncsAnalysis::ID = 0;
+char WIFuncsAnalysisLPM::ID = 0;
 
 const llvm::StringRef WIFuncsAnalysis::GET_LOCAL_ID_X = "__builtin_IB_get_local_id_x";
 const llvm::StringRef WIFuncsAnalysis::GET_LOCAL_ID_Y = "__builtin_IB_get_local_id_y";
@@ -52,11 +52,13 @@ const llvm::StringRef WIFuncsAnalysis::GET_REGION_GROUP_SIZE = "__builtin_IB_get
 const llvm::StringRef WIFuncsAnalysis::GET_REGION_GROUP_WG_COUNT = "__builtin_IB_get_region_group_wg_count";
 const llvm::StringRef WIFuncsAnalysis::GET_REGION_GROUP_BARRIER_BUFFER = "__builtin_IB_get_region_group_barrier_buffer";
 
-WIFuncsAnalysis::WIFuncsAnalysis() : ModulePass(ID) { initializeWIFuncsAnalysisPass(*PassRegistry::getPassRegistry()); }
+WIFuncsAnalysisLPM::WIFuncsAnalysisLPM() : ModulePass(ID) {
+  initializeWIFuncsAnalysisLPMPass(*PassRegistry::getPassRegistry());
+}
 
-bool WIFuncsAnalysis::runOnModule(Module &M) {
-  m_pMDUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
-  m_ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+bool WIFuncsAnalysis::run(Module &M, IGCMD::MetaDataUtils *pMdUtils, IGC::CodeGenContext *pCtx) {
+  m_pMDUtils = pMdUtils;
+  m_ctx = pCtx;
   // Run on all functions defined in this module
   for (Module::iterator I = M.begin(), E = M.end(); I != E; ++I) {
     Function *pFunc = &(*I);
@@ -186,7 +188,7 @@ bool WIFuncsAnalysis::runOnFunction(Function &F) {
   }
 
   // Create the metadata representing the implicit args needed by this function
-  ImplicitArgs::addImplicitArgs(F, implicitArgs, m_pMDUtils, getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData());
+  ImplicitArgs::addImplicitArgs(F, implicitArgs, m_pMDUtils, m_ctx->getModuleMetaData());
 
   return true;
 }
@@ -238,3 +240,11 @@ void WIFuncsAnalysis::visitCallInst(CallInst &CI) {
     m_hasRegionGroupBarrierBuffer = true;
   }
 }
+
+#if LLVM_VERSION_MAJOR >= 16
+PreservedAnalyses WIFuncsAnalysisNPM::run(Module &M, ModuleAnalysisManager &AM) {
+  auto &MDU = AM.getResult<MetaDataUtilsAnalysis>(M);
+  bool changed = WIFuncsAnalysis().run(M, MDU.MdUtils, AM.getResult<CodeGenContextAnalysis>(M).Ctx);
+  return changed ? PreservedAnalyses::none() : PreservedAnalyses::all();
+}
+#endif // LLVM_VERSION_MAJOR >= 16

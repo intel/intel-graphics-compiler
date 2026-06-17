@@ -12,6 +12,7 @@ SPDX-License-Identifier: MIT
 
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/Pass.h>
+#include <llvm/IR/PassManager.h>
 #include "common/LLVMWarningsPop.hpp"
 
 namespace llvm {
@@ -25,25 +26,19 @@ class ConstantStruct;
 namespace IGC {
 /// @brief  This pass breaks constant expressions appearing
 ///         in instructions into instruction sequences.
-class BreakConstantExpr : public llvm::FunctionPass {
+// Shared implementation. Holds the logic and is used by both the legacy and the
+// new-pass-manager wrappers below; it is not itself an llvm::Pass.
+class BreakConstantExpr {
 public:
-  // Pass identification, replacement for typeid
-  static char ID;
-
-  /// @brief  Constructor
-  BreakConstantExpr();
-
-  /// @brief  Destructor
+  BreakConstantExpr() {}
   ~BreakConstantExpr() {}
 
   /// @brief  Provides name of pass
-  virtual llvm::StringRef getPassName() const override { return "BreakConstantExprPass"; }
+  static llvm::StringRef getPassName() { return "BreakConstantExprPass"; }
 
   /// @brief  Main entry point.
   /// @param  F The destination function.
-  virtual bool runOnFunction(llvm::Function &F) override;
-
-  virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override { AU.setPreservesCFG(); }
+  bool run(llvm::Function &F);
 
 protected:
   /// @brief  Recursively break up a constant expression by creating instructions
@@ -82,5 +77,31 @@ private:
   bool hasConstantExpr(llvm::ConstantVector *cvec) const;
   bool hasConstantExpr(llvm::ConstantStruct *cstruct) const;
 };
+
+// Legacy Pass Manager wrapper.
+class BreakConstantExprLPM : public llvm::FunctionPass {
+public:
+  static char ID;
+
+  BreakConstantExprLPM();
+  ~BreakConstantExprLPM() {}
+
+  llvm::StringRef getPassName() const override { return BreakConstantExpr::getPassName(); }
+
+  bool runOnFunction(llvm::Function &F) override { return BreakConstantExpr().run(F); }
+
+  void getAnalysisUsage(llvm::AnalysisUsage &AU) const override { AU.setPreservesCFG(); }
+};
+
+#if LLVM_VERSION_MAJOR >= 16
+// New Pass Manager wrapper. name() returns the legacy pass argument so that
+// PrintBefore/PrintAfter=<pass argument> matches under the new pass manager.
+class BreakConstantExprNPM : public llvm::PassInfoMixin<BreakConstantExprNPM> {
+public:
+  llvm::PreservedAnalyses run(llvm::Function &F, llvm::FunctionAnalysisManager &AM);
+  static llvm::StringRef name() { return "igc-break-const-expr"; }
+  static bool isRequired() { return true; }
+};
+#endif // LLVM_VERSION_MAJOR >= 16
 
 } // namespace IGC

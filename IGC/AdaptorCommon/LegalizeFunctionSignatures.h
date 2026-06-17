@@ -14,23 +14,22 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/Pass.h>
 #include <llvm/IR/InstVisitor.h>
+#include <llvm/IR/PassManager.h>
 #include "common/LLVMWarningsPop.hpp"
 #include <llvmWrapper/IR/IRBuilder.h>
 
 #include <map>
 
-class LegalizeFunctionSignatures : public llvm::ModulePass {
+// Shared implementation. Holds the logic and is used by both the legacy and the
+// new-pass-manager wrappers below; it is not itself an llvm::Pass.
+class LegalizeFunctionSignatures {
 public:
-  static char ID;
+  LegalizeFunctionSignatures() {}
+  ~LegalizeFunctionSignatures() {}
 
-  LegalizeFunctionSignatures();
+  static llvm::StringRef getPassName() { return "LegalizeFunctionSignatures"; }
 
-  virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const {
-    AU.addRequired<IGC::CodeGenContextWrapper>();
-    AU.addRequired<IGC::MetaDataUtilsWrapper>();
-  }
-
-  virtual bool runOnModule(llvm::Module &M);
+  bool run(llvm::Module &M, IGC::IGCMD::MetaDataUtils *pMdUtils, IGC::CodeGenContext *pCtx);
 
   void FixFunctionSignatures(llvm::Module &M);
   void FixFunctionBody(llvm::Module &M);
@@ -39,8 +38,46 @@ public:
   void CopyAttributesAndAdjustForSkippedFunctionArgs(llvm::Function *pFunc, llvm::Function *pNewFunc,
                                                      bool functionHasPromotableSRetArg);
 
-  virtual llvm::StringRef getPassName() const { return "LegalizeFunctionSignatures"; }
-
 private:
   llvm::MapVector<llvm::Function *, llvm::Function *> oldToNewFuncMap;
+
+  IGC::IGCMD::MetaDataUtils *m_pMdUtils = nullptr;
+  IGC::CodeGenContext *m_pCtx = nullptr;
 };
+
+// Legacy Pass Manager wrapper.
+class LegalizeFunctionSignaturesLPM : public llvm::ModulePass {
+public:
+  static char ID;
+
+  LegalizeFunctionSignaturesLPM();
+
+  virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const {
+    AU.addRequired<IGC::CodeGenContextWrapper>();
+    AU.addRequired<IGC::MetaDataUtilsWrapper>();
+  }
+
+  virtual bool runOnModule(llvm::Module &M) {
+    return m_impl.run(M, getAnalysis<IGC::MetaDataUtilsWrapper>().getMetaDataUtils(),
+                      getAnalysis<IGC::CodeGenContextWrapper>().getCodeGenContext());
+  }
+
+  virtual llvm::StringRef getPassName() const { return LegalizeFunctionSignatures::getPassName(); }
+
+private:
+  LegalizeFunctionSignatures m_impl;
+};
+
+#if LLVM_VERSION_MAJOR >= 16
+// New Pass Manager wrapper. name() returns the legacy pass argument so that
+// PrintBefore/PrintAfter=<pass argument> matches under the new pass manager.
+class LegalizeFunctionSignaturesNPM : public llvm::PassInfoMixin<LegalizeFunctionSignaturesNPM> {
+public:
+  llvm::PreservedAnalyses run(llvm::Module &M, llvm::ModuleAnalysisManager &AM);
+  static llvm::StringRef name() { return "igc-legalize-function-signatures"; }
+  static bool isRequired() { return true; }
+
+private:
+  LegalizeFunctionSignatures m_impl;
+};
+#endif // LLVM_VERSION_MAJOR >= 16

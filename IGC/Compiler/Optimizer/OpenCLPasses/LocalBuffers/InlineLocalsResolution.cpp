@@ -34,15 +34,15 @@ using namespace IGC::IGCMD;
 #define PASS_DESCRIPTION "Resolve inline local variables/buffers"
 #define PASS_CFG_ONLY false
 #define PASS_ANALYSIS false
-IGC_INITIALIZE_PASS_BEGIN(InlineLocalsResolution, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_BEGIN(InlineLocalsResolutionLPM, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 IGC_INITIALIZE_PASS_DEPENDENCY(MetaDataUtilsWrapper)
-IGC_INITIALIZE_PASS_END(InlineLocalsResolution, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_END(InlineLocalsResolutionLPM, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
-char InlineLocalsResolution::ID = 0;
+char InlineLocalsResolutionLPM::ID = 0;
 const llvm::StringRef BUILTIN_MEMPOOL = "__builtin_IB_AllocLocalMemPool";
 
-InlineLocalsResolution::InlineLocalsResolution() : ModulePass(ID), m_pGV(nullptr) {
-  initializeInlineLocalsResolutionPass(*PassRegistry::getPassRegistry());
+InlineLocalsResolutionLPM::InlineLocalsResolutionLPM() : ModulePass(ID) {
+  initializeInlineLocalsResolutionLPMPass(*PassRegistry::getPassRegistry());
 }
 
 static bool useAsPointerOnly(Value *V) {
@@ -92,9 +92,14 @@ static bool useAsPointerOnly(Value *V) {
   return true;
 }
 
-bool InlineLocalsResolution::runOnModule(Module &M) {
-  MetaDataUtils *pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
-  ModuleMetaData *modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
+bool InlineLocalsResolution::run(Module &M, IGC::IGCMD::MetaDataUtils *pMdUtilsParam, ModuleMetaData *pModMD,
+                                 IGC::CodeGenContext *pCtx, CallGraph &CG) {
+  m_pMdUtils = pMdUtilsParam;
+  m_modMD = pModMD;
+  m_pCtx = pCtx;
+  m_CG = &CG;
+  MetaDataUtils *pMdUtils = m_pMdUtils;
+  ModuleMetaData *modMD = m_modMD;
   if (!modMD->compOpt.OptDisable)
     filterGlobals(M);
   // Compute the offset of each inline local in the kernel,
@@ -275,7 +280,7 @@ bool InlineLocalsResolution::unusedGlobal(Value *V, std::unordered_set<Value *> 
 }
 
 void InlineLocalsResolution::collectInfoOnSharedLocalMem(Module &M) {
-  const auto pCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+  const auto pCtx = m_pCtx;
   // first we collect SLM usage on GET_MEMPOOL_PTR
   if (M.getFunction(BUILTIN_MEMPOOL) != nullptr) {
     const GT_SYSTEM_INFO platform = pCtx->platform.GetGTSystemInfo();
@@ -407,8 +412,7 @@ void InlineLocalsResolution::collectInfoOnSharedLocalMem(Module &M) {
       }
       if (parentF->hasFnAttribute("referenced-indirectly") && emitError) {
         IGC_ASSERT_MESSAGE(0, "Cannot reference localSLM in indirectly-called functions");
-        getAnalysis<CodeGenContextWrapper>().getCodeGenContext()->EmitError(
-            "Cannot reference localSLM in indirectly-called functions", globalVar);
+        m_pCtx->EmitError("Cannot reference localSLM in indirectly-called functions", globalVar);
         return;
       }
       m_FuncToVarsMap[parentF].insert(globalVar);
@@ -428,10 +432,10 @@ void InlineLocalsResolution::collectInfoOnSharedLocalMem(Module &M) {
 
 void InlineLocalsResolution::computeOffsetList(Module &M, llvm::MapVector<Function *, unsigned int> &sizeMap) {
   llvm::MapVector<Function *, llvm::MapVector<GlobalVariable *, unsigned int>> offsetMap;
-  MetaDataUtils *pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
-  ModuleMetaData *modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
+  MetaDataUtils *pMdUtils = m_pMdUtils;
+  ModuleMetaData *modMD = m_modMD;
   DataLayout DL = M.getDataLayout();
-  CallGraph &CG = getAnalysis<CallGraphWrapperPass>().getCallGraph();
+  CallGraph &CG = *m_CG;
 
   if (m_FuncToVarsMap.empty()) {
     return;
@@ -546,3 +550,12 @@ void InlineLocalsResolution::traverseCGN(const llvm::CallGraphNode &CGN) {
     }
   }
 }
+
+#if LLVM_VERSION_MAJOR >= 16
+PreservedAnalyses InlineLocalsResolutionNPM::run(Module &M, ModuleAnalysisManager &AM) {
+  auto &MDU = AM.getResult<MetaDataUtilsAnalysis>(M);
+  bool changed = m_impl.run(M, MDU.MdUtils, MDU.ModMD, AM.getResult<CodeGenContextAnalysis>(M).Ctx,
+                            AM.getResult<CallGraphAnalysis>(M));
+  return changed ? PreservedAnalyses::none() : PreservedAnalyses::all();
+}
+#endif // LLVM_VERSION_MAJOR >= 16

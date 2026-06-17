@@ -16,26 +16,22 @@ SPDX-License-Identifier: MIT
 #include <llvm/Pass.h>
 #include <llvm/IR/InstVisitor.h>
 #include <llvm/IR/IRBuilder.h>
+#include <llvm/IR/PassManager.h>
 #include "common/LLVMWarningsPop.hpp"
 #include <memory>
 #include "llvmWrapper/IR/Module.h"
 
 namespace IGC {
-class BufferBoundsChecking : public llvm::ModulePass, public llvm::InstVisitor<BufferBoundsChecking> {
+// Shared implementation. Holds the logic and is used by both the legacy and the
+// new-pass-manager wrappers below; it is not itself an llvm::Pass.
+class BufferBoundsChecking : public llvm::InstVisitor<BufferBoundsChecking> {
 public:
-  static char ID;
-
-  BufferBoundsChecking();
+  BufferBoundsChecking() {}
   ~BufferBoundsChecking() = default;
 
-  virtual void getAnalysisUsage(llvm::AnalysisUsage &analysisUsage) const override {
-    analysisUsage.addRequired<MetaDataUtilsWrapper>();
-    analysisUsage.addRequired<CodeGenContextWrapper>();
-  }
+  static llvm::StringRef getPassName() { return "BufferBoundsChecking"; }
 
-  virtual llvm::StringRef getPassName() const override { return "BufferBoundsChecking"; }
-
-  virtual bool runOnModule(llvm::Module &M) override;
+  bool run(llvm::Module &M, IGCMD::MetaDataUtils *pMdUtils, ModuleMetaData *pModMD, CodeGenContext *pCtx);
 
   void visitLoadInst(llvm::LoadInst &load);
   void visitStoreInst(llvm::StoreInst &store);
@@ -89,4 +85,40 @@ private:
 
   llvm::Value *createBufferSizePlaceholder(uint32_t implicitArgBufferSizeIndex, llvm::Instruction *insertBefore);
 };
+
+// Legacy Pass Manager wrapper.
+class BufferBoundsCheckingLPM : public llvm::ModulePass {
+public:
+  static char ID;
+
+  BufferBoundsCheckingLPM();
+  ~BufferBoundsCheckingLPM() = default;
+
+  virtual void getAnalysisUsage(llvm::AnalysisUsage &analysisUsage) const override {
+    analysisUsage.addRequired<MetaDataUtilsWrapper>();
+    analysisUsage.addRequired<CodeGenContextWrapper>();
+  }
+
+  virtual llvm::StringRef getPassName() const override { return BufferBoundsChecking::getPassName(); }
+
+  virtual bool runOnModule(llvm::Module &M) override {
+    auto &MDUWAnalysis = getAnalysis<MetaDataUtilsWrapper>();
+    return m_impl.run(M, MDUWAnalysis.getMetaDataUtils(), MDUWAnalysis.getModuleMetaData(),
+                      getAnalysis<CodeGenContextWrapper>().getCodeGenContext());
+  }
+
+private:
+  BufferBoundsChecking m_impl;
+};
+
+#if LLVM_VERSION_MAJOR >= 16
+// New Pass Manager wrapper. name() returns the legacy pass argument so that
+// PrintBefore/PrintAfter=<pass argument> matches under the new pass manager.
+class BufferBoundsCheckingNPM : public llvm::PassInfoMixin<BufferBoundsCheckingNPM> {
+public:
+  llvm::PreservedAnalyses run(llvm::Module &M, llvm::ModuleAnalysisManager &AM);
+  static llvm::StringRef name() { return "igc-buffer-bounds-checking"; }
+  static bool isRequired() { return true; }
+};
+#endif // LLVM_VERSION_MAJOR >= 16
 } // namespace IGC

@@ -36,10 +36,10 @@ using namespace IGC;
 #define PASS_DESCRIPTION "Drop target functions."
 #define PASS_CFG_ONLY false
 #define PASS_ANALYSIS false
-IGC_INITIALIZE_PASS_BEGIN(DropTargetFunctions, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_BEGIN(DropTargetFunctionsLPM, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
 IGC_INITIALIZE_PASS_DEPENDENCY(MetaDataUtilsWrapper)
-IGC_INITIALIZE_PASS_END(DropTargetFunctions, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_END(DropTargetFunctionsLPM, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
 #define DROP_FN_DEBUG(msg)                                                                                             \
   do {                                                                                                                 \
@@ -48,12 +48,13 @@ IGC_INITIALIZE_PASS_END(DropTargetFunctions, PASS_FLAG, PASS_DESCRIPTION, PASS_C
     }                                                                                                                  \
   } while (0)
 
-char DropTargetFunctions::ID = 0;
+char DropTargetFunctionsLPM::ID = 0;
 
-DropTargetFunctions::DropTargetFunctions()
-    : ModulePass(ID), VerboseLog(IGC_GET_FLAG_VALUE(VerboseDropTargetFunctions)) {
-  initializeDropTargetFunctionsPass(*PassRegistry::getPassRegistry());
+DropTargetFunctionsLPM::DropTargetFunctionsLPM() : ModulePass(ID) {
+  initializeDropTargetFunctionsLPMPass(*PassRegistry::getPassRegistry());
 }
+
+DropTargetFunctions::DropTargetFunctions() : VerboseLog(IGC_GET_FLAG_VALUE(VerboseDropTargetFunctions)) {}
 
 static llvm::Function *getPlaceholderFn(llvm::Function *F) {
   llvm::Function *NewF =
@@ -84,9 +85,8 @@ static llvm::Function *getPlaceholderFn(llvm::Function *F) {
   return NewF;
 }
 
-bool DropTargetFunctions::runOnModule(llvm::Module &M) {
+bool DropTargetFunctions::run(llvm::Module &M, IGCMD::MetaDataUtils *MdUtils) {
 
-  IGCMD::MetaDataUtils *MdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
   DROP_FN_DEBUG("DropTargetFunctions: Starting ...");
 
   // Find kernel function
@@ -148,3 +148,10 @@ bool DropTargetFunctions::runOnModule(llvm::Module &M) {
 
   return FnsToDrop.size() > 0;
 }
+
+#if LLVM_VERSION_MAJOR >= 16
+PreservedAnalyses DropTargetFunctionsNPM::run(Module &M, ModuleAnalysisManager &AM) {
+  bool changed = DropTargetFunctions().run(M, AM.getResult<MetaDataUtilsAnalysis>(M).MdUtils);
+  return changed ? PreservedAnalyses::none() : PreservedAnalyses::all();
+}
+#endif // LLVM_VERSION_MAJOR >= 16

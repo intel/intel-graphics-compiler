@@ -9,10 +9,12 @@ SPDX-License-Identifier: MIT
 #pragma once
 
 #include "Compiler/MetaDataUtilsWrapper.h"
+#include "Compiler/CodeGenContextWrapper.hpp"
 
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/Pass.h>
 #include <llvm/IR/DataLayout.h>
+#include <llvm/IR/PassManager.h>
 #include <llvm/ADT/MapVector.h>
 #include "common/LLVMWarningsPop.hpp"
 
@@ -20,31 +22,25 @@ namespace IGC {
 /// @brief  This pass creates annotations for OpenCL program-scope structures.
 //          Currently this is program-scope constants, but for OpenCL 2.0, it should
 //          also support program-scope globals.
-class ProgramScopeConstantAnalysis : public llvm::ModulePass {
+// Shared implementation. Holds the logic and is used by both the legacy and the
+// new-pass-manager wrappers below; it is not itself an llvm::Pass.
+class ProgramScopeConstantAnalysis {
 public:
-  // Pass identification, replacement for typeid
-  static char ID;
-
   /// @brief  Constructor
-  ProgramScopeConstantAnalysis();
+  ProgramScopeConstantAnalysis() {}
 
   /// @brief  Destructor
   ~ProgramScopeConstantAnalysis() {}
 
   /// @brief  Provides name of pass
-  virtual llvm::StringRef getPassName() const override { return "ProgramScopeConstantAnalysisPass"; }
-
-  virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override {
-    AU.setPreservesCFG();
-    AU.addRequired<MetaDataUtilsWrapper>();
-    AU.addRequired<CodeGenContextWrapper>();
-  }
+  static llvm::StringRef getPassName() { return "ProgramScopeConstantAnalysisPass"; }
 
   /// @brief  Main entry point.
   ///         Runs on all GlobalVariables in this module, finds the constants, and
   ///         generates annotations for them.
   /// @param  M The destination module.
-  virtual bool runOnModule(llvm::Module &M) override;
+  bool run(llvm::Module &M, IGC::IGCMD::MetaDataUtils *pMdUtils, IGC::CodeGenContext *pCtx,
+           IGC::ModuleMetaData *pModMD);
 
 protected:
   typedef std::vector<unsigned char> DataVector;
@@ -67,5 +63,39 @@ protected:
   const llvm::DataLayout *m_DL = nullptr;
   ModuleMetaData *m_pModuleMd = nullptr;
 };
+
+// Legacy Pass Manager wrapper.
+class ProgramScopeConstantAnalysisLPM : public llvm::ModulePass {
+public:
+  static char ID;
+
+  ProgramScopeConstantAnalysisLPM();
+  ~ProgramScopeConstantAnalysisLPM() {}
+
+  virtual llvm::StringRef getPassName() const override { return ProgramScopeConstantAnalysis::getPassName(); }
+
+  virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override {
+    AU.setPreservesCFG();
+    AU.addRequired<MetaDataUtilsWrapper>();
+    AU.addRequired<CodeGenContextWrapper>();
+  }
+
+  virtual bool runOnModule(llvm::Module &M) override {
+    return ProgramScopeConstantAnalysis().run(M, getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils(),
+                                              getAnalysis<CodeGenContextWrapper>().getCodeGenContext(),
+                                              getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData());
+  }
+};
+
+#if LLVM_VERSION_MAJOR >= 16
+// New Pass Manager wrapper. name() returns the legacy pass argument so that
+// PrintBefore/PrintAfter=<pass argument> matches under the new pass manager.
+class ProgramScopeConstantAnalysisNPM : public llvm::PassInfoMixin<ProgramScopeConstantAnalysisNPM> {
+public:
+  llvm::PreservedAnalyses run(llvm::Module &M, llvm::ModuleAnalysisManager &AM);
+  static llvm::StringRef name() { return "igc-programscope-constant-analysis"; }
+  static bool isRequired() { return true; }
+};
+#endif // LLVM_VERSION_MAJOR >= 16
 
 } // namespace IGC

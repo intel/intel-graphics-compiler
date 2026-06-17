@@ -22,23 +22,19 @@ using namespace llvm;
 
 namespace {
 
-class BIFTransforms : public ModulePass {
+// Legacy Pass Manager wrapper.
+class BIFTransformsLPM : public ModulePass {
 public:
   static char ID;
   virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const { AU.setPreservesCFG(); }
 
-  BIFTransforms();
+  BIFTransformsLPM();
 
-  ~BIFTransforms() {}
+  ~BIFTransformsLPM() {}
 
   virtual bool runOnModule(Module &M);
 
   virtual llvm::StringRef getPassName() const { return "BIFTransforms"; }
-
-private:
-  // Replace some BI Functions with faster versions, such as
-  // length --> fast_length, etc.
-  bool replaceBIF(Function &F);
 };
 
 } // namespace
@@ -48,14 +44,18 @@ private:
 #define PASS_DESCRIPTION "Perform BIF-related transformations, such as replacing length with fast_length, etc"
 #define PASS_CFG_ONLY false
 #define PASS_ANALYSIS false
-IGC_INITIALIZE_PASS_BEGIN(BIFTransforms, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
-IGC_INITIALIZE_PASS_END(BIFTransforms, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_BEGIN(BIFTransformsLPM, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_END(BIFTransformsLPM, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
-char BIFTransforms::ID = 0;
+char BIFTransformsLPM::ID = 0;
 
-BIFTransforms::BIFTransforms() : ModulePass(ID) { initializeBIFTransformsPass(*PassRegistry::getPassRegistry()); }
+BIFTransformsLPM::BIFTransformsLPM() : ModulePass(ID) {
+  initializeBIFTransformsLPMPass(*PassRegistry::getPassRegistry());
+}
 
-bool BIFTransforms::replaceBIF(Function &F) {
+// Shared implementation. Used by both the legacy and the new-pass-manager wrappers.
+// Replace some BI Functions with faster versions, such as length --> fast_length, etc.
+static bool replaceBIF(Function &F) {
   // replace
   //    length --> fast_length
   //    normalize --> fast_normaliez
@@ -93,7 +93,7 @@ bool BIFTransforms::replaceBIF(Function &F) {
   return changed;
 }
 
-bool BIFTransforms::runOnModule(Module &M) {
+static bool runBIFTransforms(Module &M) {
   // OCL builtin uses SPIR name mangling (Itanium C++ ABI + extension)
   //  mangledName (n) = _Z<lengthof(n)><n><type>
   bool changed = false;
@@ -107,5 +107,14 @@ bool BIFTransforms::runOnModule(Module &M) {
   return changed;
 }
 
+bool BIFTransformsLPM::runOnModule(Module &M) { return runBIFTransforms(M); }
+
+#if LLVM_VERSION_MAJOR >= 16
+llvm::PreservedAnalyses BIFTransformsNPM::run(llvm::Module &M, llvm::ModuleAnalysisManager &AM) {
+  bool changed = runBIFTransforms(M);
+  return changed ? llvm::PreservedAnalyses::none() : llvm::PreservedAnalyses::all();
+}
+#endif // LLVM_VERSION_MAJOR >= 16
+
 // Public interface to this pass
-ModulePass *createBIFTransformsPass() { return new BIFTransforms(); }
+ModulePass *createBIFTransformsPass() { return new BIFTransformsLPM(); }

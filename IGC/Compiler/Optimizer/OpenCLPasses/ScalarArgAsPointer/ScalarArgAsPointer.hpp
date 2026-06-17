@@ -13,6 +13,7 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/Pass.h>
 #include <llvm/IR/InstVisitor.h>
+#include <llvm/IR/PassManager.h>
 #include "common/LLVMWarningsPop.hpp"
 
 namespace IGC {
@@ -35,28 +36,25 @@ namespace IGC {
 /// IMPORTANT!!!
 /// Please bump up INDIRECT_ACCESS_DETECTION_VERSION when introducing any functional fixes in this pass.
 
-class ScalarArgAsPointerAnalysis : public llvm::ModulePass, public llvm::InstVisitor<ScalarArgAsPointerAnalysis> {
+// Shared implementation. Holds the logic and is used by both the legacy and the
+// new-pass-manager wrappers below; it is not itself an llvm::Pass.
+class ScalarArgAsPointerAnalysis : public llvm::InstVisitor<ScalarArgAsPointerAnalysis> {
 public:
-  // Pass identification, replacement for typeid
-  static char ID;
-
   /// @brief  Constructor
-  ScalarArgAsPointerAnalysis();
+  ScalarArgAsPointerAnalysis() {}
 
   /// @brief  Destructor
   ~ScalarArgAsPointerAnalysis() {}
 
   /// @brief  Provides name of pass
-  virtual llvm::StringRef getPassName() const override { return "ScalarArgAsPointerAnalysis"; }
-
-  void getAnalysisUsage(llvm::AnalysisUsage &AU) const override { AU.addRequired<MetaDataUtilsWrapper>(); }
+  static llvm::StringRef getPassName() { return "ScalarArgAsPointerAnalysis"; }
 
   /// @brief   Main entry point. Runs on all kernel functions in the given module, analyzes them and
   ///          creates metadata with scalar kernel arguments (both explicit and implicit) used to
   ///          access global memory.
   /// @param   M module to analyze.
   /// @returns True if metadata was modified.
-  virtual bool runOnModule(llvm::Module &M) override;
+  bool run(llvm::Module &M, IGC::IGCMD::MetaDataUtils *pMdUtils, IGC::ModuleMetaData *pModMD);
 
   void visitStoreInst(llvm::StoreInst &I);
   void visitLoadInst(llvm::LoadInst &I);
@@ -132,7 +130,39 @@ private:
 
   IGC::IGCMD::MetaDataUtils *MDU = nullptr;
 
+  /// @brief Module metadata, cached at run() entry.
+  IGC::ModuleMetaData *m_modMD = nullptr;
+
   llvm::Function *m_currentFunction = nullptr;
 };
+
+// Legacy Pass Manager wrapper.
+class ScalarArgAsPointerAnalysisLPM : public llvm::ModulePass {
+public:
+  static char ID;
+
+  ScalarArgAsPointerAnalysisLPM();
+  ~ScalarArgAsPointerAnalysisLPM() {}
+
+  virtual llvm::StringRef getPassName() const override { return ScalarArgAsPointerAnalysis::getPassName(); }
+
+  void getAnalysisUsage(llvm::AnalysisUsage &AU) const override { AU.addRequired<MetaDataUtilsWrapper>(); }
+
+  virtual bool runOnModule(llvm::Module &M) override {
+    return ScalarArgAsPointerAnalysis().run(M, getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils(),
+                                            getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData());
+  }
+};
+
+#if LLVM_VERSION_MAJOR >= 16
+// New Pass Manager wrapper. name() returns the legacy pass argument so that
+// PrintBefore/PrintAfter=<pass argument> matches under the new pass manager.
+class ScalarArgAsPointerAnalysisNPM : public llvm::PassInfoMixin<ScalarArgAsPointerAnalysisNPM> {
+public:
+  llvm::PreservedAnalyses run(llvm::Module &M, llvm::ModuleAnalysisManager &AM);
+  static llvm::StringRef name() { return "igc-scalar-arg-as-pointer-analysis"; }
+  static bool isRequired() { return true; }
+};
+#endif // LLVM_VERSION_MAJOR >= 16
 
 } // namespace IGC

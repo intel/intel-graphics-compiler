@@ -12,9 +12,11 @@ SPDX-License-Identifier: MIT
 #include "llvm/Analysis/PostDominators.h"
 #include "llvm/Analysis/ProfileSummaryInfo.h"
 #include "llvm/Analysis/TargetTransformInfo.h"
+#include "llvm/Analysis/TargetLibraryInfo.h"
 #include "llvm/Analysis/InlineCost.h"
 #include "llvm/Analysis/ValueTracking.h"
 #include "llvm/Analysis/BasicAliasAnalysis.h"
+#include "llvm/IR/LegacyPassManager.h"
 #include "llvm/Transforms/IPO.h"
 
 #include "common/LLVMWarningsPop.hpp"
@@ -130,6 +132,21 @@ Pass *createLegacyWrappedSimpleInlinerPass(unsigned OptLevel, unsigned SizeOptLe
   return llvm::createFunctionInliningPass(OptLevel, SizeOptLevel, DisableInlineHotCallSite);
 #endif
 }
+
+#if LLVM_VERSION_MAJOR >= 16
+llvm::PreservedAnalyses SimpleInlinerNPMWrapper::run(llvm::Module &M, llvm::ModuleAnalysisManager &) {
+  // Run the legacy SCC inliner through a nested legacy pass manager so the inlining decisions are
+  // identical to the legacy pipeline. The legacy pass manager auto-schedules the inliner's required
+  // analyses (CallGraph, AssumptionCacheTracker, ProfileSummaryInfo, TTI); the TargetLibraryInfo is
+  // seeded explicitly (when provided) to match the caller's configuration.
+  llvm::legacy::PassManager PM;
+  if (TLII)
+    PM.add(new llvm::TargetLibraryInfoWrapperPass(*TLII));
+  PM.add(new SimpleInlinerLegacyPassWrapper(Params));
+  PM.run(M);
+  return llvm::PreservedAnalyses::none();
+}
+#endif // LLVM_VERSION_MAJOR >= 16
 
 } // namespace IGCLLVM
 

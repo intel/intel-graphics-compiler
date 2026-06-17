@@ -15,6 +15,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
 #include "Compiler/IGCPassSupport.h"
 #include "Compiler/MetaDataUtilsWrapper.h"
+#include "Compiler/Optimizer/OpenCLPasses/KernelFunctionCloning/KernelFunctionCloning.h"
 
 using namespace llvm;
 using namespace IGC;
@@ -53,14 +54,21 @@ using namespace IGC::IGCMD;
 // called.
 //
 
+static bool cloneKernelFunctions(Module &M, MetaDataUtils *MDU);
+
 namespace {
-class KernelFunctionCloning : public ModulePass {
+// Legacy Pass Manager wrapper.
+class KernelFunctionCloningLPM : public ModulePass {
 public:
   static char ID;
 
-  KernelFunctionCloning() : ModulePass(ID) {}
+  KernelFunctionCloningLPM() : ModulePass(ID) {
+    initializeKernelFunctionCloningLPMPass(*PassRegistry::getPassRegistry());
+  }
 
-  bool runOnModule(Module &) override;
+  bool runOnModule(Module &M) override {
+    return cloneKernelFunctions(M, getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils());
+  }
 
   llvm::StringRef getPassName() const override { return "KernelFunctionCloning"; }
 
@@ -76,20 +84,27 @@ private:
 
 namespace IGC {
 
-ModulePass *createKernelFunctionCloningPass() { return new KernelFunctionCloning(); }
+ModulePass *createKernelFunctionCloningPass() { return new KernelFunctionCloningLPM(); }
 
 #define PASS_FLAG "igc-kernel-function-cloning"
 #define PASS_DESC "Clone kernel functions if it's called."
 #define PASS_CFG_ONLY false
 #define PASS_ANALYSIS false
-IGC_INITIALIZE_PASS_BEGIN(KernelFunctionCloning, PASS_FLAG, PASS_DESC, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_BEGIN(KernelFunctionCloningLPM, PASS_FLAG, PASS_DESC, PASS_CFG_ONLY, PASS_ANALYSIS)
 IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
 IGC_INITIALIZE_PASS_DEPENDENCY(MetaDataUtilsWrapper)
-IGC_INITIALIZE_PASS_END(KernelFunctionCloning, PASS_FLAG, PASS_DESC, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_END(KernelFunctionCloningLPM, PASS_FLAG, PASS_DESC, PASS_CFG_ONLY, PASS_ANALYSIS)
+
+#if LLVM_VERSION_MAJOR >= 16
+PreservedAnalyses KernelFunctionCloningNPM::run(Module &M, ModuleAnalysisManager &AM) {
+  bool changed = cloneKernelFunctions(M, AM.getResult<MetaDataUtilsAnalysis>(M).MdUtils);
+  return changed ? PreservedAnalyses::none() : PreservedAnalyses::all();
+}
+#endif // LLVM_VERSION_MAJOR >= 16
 
 } // namespace IGC
 
-char KernelFunctionCloning::ID = 0;
+char KernelFunctionCloningLPM::ID = 0;
 
 template <typename PatternTypeFirst, typename... PatternTypeRest> struct PatternChecker {
   template <typename Checker> static bool run(User *user, Checker check) {
@@ -108,9 +123,7 @@ template <typename PatternTypeFirst, typename... PatternTypeRest> struct Pattern
   }
 };
 
-bool KernelFunctionCloning::runOnModule(Module &M) {
-  MetaDataUtils *MDU = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
-
+static bool cloneKernelFunctions(Module &M, MetaDataUtils *MDU) {
   // Collect kernel functions being called.
   SmallVector<Function *, 8> KernelsToClone;
   for (auto &F : M) {

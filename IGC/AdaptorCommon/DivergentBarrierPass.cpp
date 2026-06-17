@@ -43,7 +43,7 @@ SPDX-License-Identifier: MIT
 using namespace llvm;
 using namespace IGC;
 
-char DivergentBarrierPass::ID = 0;
+char DivergentBarrierPassLPM::ID = 0;
 
 void DivergentBarrierPass::updateFenceArgs(const GenIntrinsicInst *I, FenceArgs &Args) const {
   IGC_ASSERT(I->getIntrinsicID() == GenISAIntrinsic::GenISA_memoryfence);
@@ -588,10 +588,10 @@ bool DivergentBarrierPass::processShader(Function *F) {
   return true;
 }
 
-bool DivergentBarrierPass::runOnModule(Module &M) {
+bool DivergentBarrierPass::run(Module &M, CodeGenContext *CGCtx, IGCMD::MetaDataUtils *MDUtils) {
   bool Changed = false;
-  m_CGCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
-  m_MDUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
+  m_CGCtx = CGCtx;
+  m_MDUtils = MDUtils;
 
   SmallVector<Function *, 4> Shaders;
   for (auto &F : M) {
@@ -631,11 +631,26 @@ namespace IGC {
 #define PASS_DESCRIPTION "Splits shader into continuations to make barriers uniform"
 #define PASS_CFG_ONLY false
 #define PASS_ANALYSIS false
-IGC_INITIALIZE_PASS_BEGIN(DivergentBarrierPass, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_BEGIN(DivergentBarrierPassLPM, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
 IGC_INITIALIZE_PASS_DEPENDENCY(MetaDataUtilsWrapper)
-IGC_INITIALIZE_PASS_END(DivergentBarrierPass, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_END(DivergentBarrierPassLPM, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
-ModulePass *createDivergentBarrierPass(void *Ctx) { return new DivergentBarrierPass(Ctx); }
+bool DivergentBarrierPassLPM::runOnModule(Module &M) {
+  return m_impl.run(M, getAnalysis<CodeGenContextWrapper>().getCodeGenContext(),
+                    getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils());
+}
+
+#if LLVM_VERSION_MAJOR >= 16
+llvm::PreservedAnalyses DivergentBarrierPassNPM::run(llvm::Module &M, llvm::ModuleAnalysisManager &AM) {
+  DivergentBarrierPass impl(Ctx);
+  CodeGenContext *ctx = AM.getResult<CodeGenContextAnalysis>(M).Ctx;
+  IGCMD::MetaDataUtils *mdUtils = AM.getResult<MetaDataUtilsAnalysis>(M).MdUtils;
+  bool changed = impl.run(M, ctx, mdUtils);
+  return changed ? llvm::PreservedAnalyses::none() : llvm::PreservedAnalyses::all();
+}
+#endif // LLVM_VERSION_MAJOR >= 16
+
+ModulePass *createDivergentBarrierPass(void *Ctx) { return new DivergentBarrierPassLPM(Ctx); }
 
 } // namespace IGC

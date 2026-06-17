@@ -12,26 +12,22 @@ SPDX-License-Identifier: MIT
 #include <llvm/ADT/StringRef.h>
 #include <llvm/IR/InstVisitor.h>
 #include <llvm/Pass.h>
+#include <llvm/IR/PassManager.h>
 #include "common/LLVMWarningsPop.hpp"
 
 #include "Compiler/CodeGenContextWrapper.hpp"
 
 namespace IGC {
-class SpvPredicatedIOResolution final : public llvm::ModulePass, public llvm::InstVisitor<SpvPredicatedIOResolution> {
+// Shared implementation. Holds the logic and is used by both the legacy and the
+// new-pass-manager wrappers below; it is not itself an llvm::Pass.
+class SpvPredicatedIOResolution final : public llvm::InstVisitor<SpvPredicatedIOResolution> {
 public:
-  static char ID;
-
-  SpvPredicatedIOResolution();
+  SpvPredicatedIOResolution() {}
   ~SpvPredicatedIOResolution() {}
 
-  virtual llvm::StringRef getPassName() const override { return "SpvPredicatedIOResolution"; }
+  static llvm::StringRef getPassName() { return "SpvPredicatedIOResolution"; }
 
-  virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override {
-    AU.setPreservesCFG();
-    AU.addRequired<CodeGenContextWrapper>();
-  }
-
-  virtual bool runOnModule(llvm::Module &M) override;
+  bool run(llvm::Module &M, CodeGenContext *pCtx);
   void visitCallInst(llvm::CallInst &CI);
 
 private:
@@ -50,4 +46,36 @@ private:
   IGC::CodeGenContext *m_Ctx = nullptr;
   llvm::Module *m_Module = nullptr;
 };
+
+// Legacy Pass Manager wrapper.
+class SpvPredicatedIOResolutionLPM final : public llvm::ModulePass {
+public:
+  static char ID;
+
+  SpvPredicatedIOResolutionLPM();
+  ~SpvPredicatedIOResolutionLPM() {}
+
+  llvm::StringRef getPassName() const override { return SpvPredicatedIOResolution::getPassName(); }
+
+  void getAnalysisUsage(llvm::AnalysisUsage &AU) const override {
+    AU.setPreservesCFG();
+    AU.addRequired<CodeGenContextWrapper>();
+  }
+
+  bool runOnModule(llvm::Module &M) override {
+    return SpvPredicatedIOResolution().run(M, getAnalysis<CodeGenContextWrapper>().getCodeGenContext());
+  }
+};
+
+#if LLVM_VERSION_MAJOR >= 16
+// New Pass Manager wrapper. name() returns the legacy pass argument so that
+// PrintBefore/PrintAfter=<pass argument> matches under the new pass manager.
+class SpvPredicatedIOResolutionNPM : public llvm::PassInfoMixin<SpvPredicatedIOResolutionNPM> {
+public:
+  llvm::PreservedAnalyses run(llvm::Module &M, llvm::ModuleAnalysisManager &AM);
+  static llvm::StringRef name() { return "igc-spv-predicatedio-resolution"; }
+  static llvm::StringRef getPassName() { return "SpvPredicatedIOResolution"; }
+  static bool isRequired() { return true; }
+};
+#endif // LLVM_VERSION_MAJOR >= 16
 }; // namespace IGC

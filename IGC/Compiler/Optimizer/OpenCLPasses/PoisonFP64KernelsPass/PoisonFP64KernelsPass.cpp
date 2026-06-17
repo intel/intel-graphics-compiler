@@ -20,19 +20,19 @@ SPDX-License-Identifier: MIT
 using namespace llvm;
 using namespace IGC;
 
-char PoisonFP64Kernels::ID = 0;
+char PoisonFP64KernelsLPM::ID = 0;
 const char *PoisonFP64Kernels::attributeName = "invalid_kernel(\"uses-fp64-math\")";
 // Register pass to igc-opt
 #define PASS_FLAG "igc-poison-fp64-kernels"
 #define PASS_DESCRIPTION "Poison kernels using FP64 on unsupported platforms."
 #define PASS_CFG_ONLY false
 #define PASS_ANALYSIS false
-IGC_INITIALIZE_PASS_BEGIN(PoisonFP64Kernels, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_BEGIN(PoisonFP64KernelsLPM, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
-IGC_INITIALIZE_PASS_END(PoisonFP64Kernels, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_END(PoisonFP64KernelsLPM, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
-PoisonFP64Kernels::PoisonFP64Kernels(void) : CallGraphSCCPass(ID) {
-  initializePoisonFP64KernelsPass(*PassRegistry::getPassRegistry());
+PoisonFP64KernelsLPM::PoisonFP64KernelsLPM() : CallGraphSCCPass(ID) {
+  initializePoisonFP64KernelsLPMPass(*PassRegistry::getPassRegistry());
 }
 
 void PoisonFP64Kernels::markForRemoval(Function *F) {
@@ -43,14 +43,12 @@ void PoisonFP64Kernels::markForRemoval(Function *F) {
   fp64Functions.insert(F);
 }
 
-bool PoisonFP64Kernels::doInitialization(CallGraph &CG) {
+void PoisonFP64Kernels::reset() {
   fp64Functions.clear();
   fp64FunctionsOrder.clear();
-  return false;
 }
 
-bool PoisonFP64Kernels::runOnSCC(CallGraphSCC &SCC) {
-  auto ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+bool PoisonFP64Kernels::runOnSCCNodes(const std::vector<CallGraphNode *> &SCC, CodeGenContext *ctx) {
   // If DP emu is enabled we don't need poison fp64 pass
   if (ctx->m_hasDPEmu) {
     return false;
@@ -99,9 +97,9 @@ static void poisonKernel(Function *Kernel) {
   ReturnInst::Create(Ctx, EntryBB);
 }
 
-bool PoisonFP64Kernels::doFinalization(CallGraph &CG) {
-  CodeGenContext *CGC = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
-  IGCMD::MetaDataUtils *MDUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
+bool PoisonFP64Kernels::finalize(CodeGenContext *ctx, IGCMD::MetaDataUtils *pMdUtils) {
+  CodeGenContext *CGC = ctx;
+  IGCMD::MetaDataUtils *MDUtils = pMdUtils;
 
   bool modified = false;
   for (Function *F : reverse(fp64FunctionsOrder)) {
@@ -118,3 +116,23 @@ bool PoisonFP64Kernels::doFinalization(CallGraph &CG) {
 
   return modified;
 }
+
+bool PoisonFP64Kernels::run(Module &M, CallGraph &CG, CodeGenContext *ctx, IGCMD::MetaDataUtils *pMdUtils) {
+  reset();
+  bool modified = false;
+  // Walk the call-graph SCCs bottom-up, the same order the CallGraphSCCPass framework uses.
+  for (auto I = scc_begin(&CG); !I.isAtEnd(); ++I) {
+    const std::vector<CallGraphNode *> &SCCNodes = *I;
+    modified |= runOnSCCNodes(SCCNodes, ctx);
+  }
+  modified |= finalize(ctx, pMdUtils);
+  return modified;
+}
+
+#if LLVM_VERSION_MAJOR >= 16
+PreservedAnalyses PoisonFP64KernelsNPM::run(Module &M, ModuleAnalysisManager &AM) {
+  bool changed = m_impl.run(M, AM.getResult<CallGraphAnalysis>(M), AM.getResult<CodeGenContextAnalysis>(M).Ctx,
+                            AM.getResult<MetaDataUtilsAnalysis>(M).MdUtils);
+  return changed ? PreservedAnalyses::none() : PreservedAnalyses::all();
+}
+#endif // LLVM_VERSION_MAJOR >= 16

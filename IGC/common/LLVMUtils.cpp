@@ -530,12 +530,11 @@ Pass number Pass name                                         Pass occurrence
 Build succeeded.
 */
 
-void displayAllPasses(const Pass *P) {
+void displayAllPasses(const std::string &currentPassName) {
   // Using std::cerr caused crashes in SYCL environment so we use fprintf instead as a work around.
   std::ostringstream debugOutputStream;
 
   static unsigned int countPass = 0;
-  const std::string currentPassName = P->getPassName().str();
   static std::unordered_map<std::string, int> passesOccuranceCountToDisplay;
 
   auto result = passesOccuranceCountToDisplay.try_emplace(currentPassName, 1);
@@ -554,6 +553,64 @@ void displayAllPasses(const Pass *P) {
   countPass++;
 
   fprintf(stderr, "%s", debugOutputStream.str().c_str());
+}
+
+void displayAllPasses(const Pass *P) { displayAllPasses(P->getPassName().str()); }
+
+// New Pass Manager counterpart of the per-pass skip handling in IGCPassManager::add.
+// Returns true if the pass named `passName` (the next one to be added to a New Pass
+// Manager pipeline named `pmName`) should be skipped. Reuses the same machinery as
+// the legacy path (toggles, ShaderPassDisable, ShaderDisableOptPassesAfter,
+// ShaderDumpTranslationOnly, ShaderDisplayAllPassesNames) so the behavior matches.
+bool shouldSkipPassNewPM(CodeGenContext *ctx, llvm::StringRef passName, llvm::StringRef pmName) {
+  if (IGC_IS_FLAG_ENABLED(ShaderDumpTranslationOnly))
+    return true;
+
+  static bool checkedToggles = false;
+  static bool hasToggles = false;
+  static std::bitset<1024> toggles;
+  if (!checkedToggles) {
+    checkedToggles = true;
+    hasToggles = getPassToggles(toggles);
+  }
+  if (hasToggles && ctx->m_numPasses < 1024 && toggles[ctx->m_numPasses]) {
+    errs() << "Skipping pass: '" << passName << "\n";
+    ctx->m_numPasses++;
+    return true;
+  }
+
+  if (IGC_IS_FLAG_ENABLED(ShaderDisableOptPassesAfter) &&
+      ctx->m_numPasses > IGC_GET_FLAG_VALUE(ShaderDisableOptPassesAfter) && pmName == "OPT") {
+    errs() << "Skipping optimization pass: '" << passName
+           << "' (threshold: " << IGC_GET_FLAG_VALUE(ShaderDisableOptPassesAfter) << ").\n";
+    return true;
+  }
+
+  if (IGC_IS_FLAG_ENABLED(ShaderPassDisable)) {
+    // Parse Flag Input once in PassDisableConfig constructor
+    static PassDisableConfig pdc;
+    const std::string currentPassName = passName.str();
+
+    auto result = pdc.passesOccuranceCount.try_emplace(currentPassName, 1);
+    if (!result.second) {
+      result.first->second += 1;
+    }
+
+    const SkipCommand *skippedByCommand = findApplicableSkipCommand(pdc, currentPassName);
+    if (skippedByCommand) {
+      displaySkippedPass(pdc, currentPassName, skippedByCommand);
+      ctx->m_numPasses++;
+      pdc.passCount++;
+      return true;
+    }
+    pdc.passCount++;
+  }
+
+  if (IGC_IS_FLAG_ENABLED(ShaderDisplayAllPassesNames) && !IGC_IS_FLAG_ENABLED(ShaderPassDisable)) {
+    displayAllPasses(passName.str());
+  }
+
+  return false;
 }
 
 void IGCPassManager::add(Pass *P) {

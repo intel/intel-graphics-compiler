@@ -18,14 +18,14 @@ using namespace IGC;
 #define PASS_DESCRIPTION "Analyzes extension functions"
 #define PASS_CFG_ONLY false
 #define PASS_ANALYSIS false
-IGC_INITIALIZE_PASS_BEGIN(ExtensionFuncsAnalysis, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_BEGIN(ExtensionFuncsAnalysisLPM, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 IGC_INITIALIZE_PASS_DEPENDENCY(MetaDataUtilsWrapper)
-IGC_INITIALIZE_PASS_END(ExtensionFuncsAnalysis, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_END(ExtensionFuncsAnalysisLPM, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
-char ExtensionFuncsAnalysis::ID = 0;
+char ExtensionFuncsAnalysisLPM::ID = 0;
 
-ExtensionFuncsAnalysis::ExtensionFuncsAnalysis() : ModulePass(ID) {
-  initializeExtensionFuncsAnalysisPass(*PassRegistry::getPassRegistry());
+ExtensionFuncsAnalysisLPM::ExtensionFuncsAnalysisLPM() : ModulePass(ID) {
+  initializeExtensionFuncsAnalysisLPMPass(*PassRegistry::getPassRegistry());
 }
 
 const StringRef ExtensionFuncsAnalysis::VME_MB_BLOCK_TYPE = "__builtin_IB_vme_mb_block_type";
@@ -35,9 +35,10 @@ const StringRef ExtensionFuncsAnalysis::VME_SEARCH_PATH_TYPE = "__builtin_IB_vme
 const StringRef ExtensionFuncsAnalysis::VME_HELPER_GET_HANDLE = "__builtin_IB_vme_helper_get_handle";
 const StringRef ExtensionFuncsAnalysis::VME_HELPER_GET_AS = "__builtin_IB_vme_helper_get_as";
 
-bool ExtensionFuncsAnalysis::runOnModule(Module &M) {
+bool ExtensionFuncsAnalysis::run(Module &M, IGCMD::MetaDataUtils *pMdUtils, IGC::ModuleMetaData *pModMD) {
   bool changed = false;
-  m_pMDUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
+  m_pMDUtils = pMdUtils;
+  m_modMD = pModMD;
   // Run on all functions defined in this module
   for (Module::iterator I = M.begin(), E = M.end(); I != E; ++I) {
     Function *pFunc = &(*I);
@@ -75,7 +76,7 @@ bool ExtensionFuncsAnalysis::runOnFunction(Function &F) {
   implicitArgs.push_back(ImplicitArg::VME_SEARCH_PATH_TYPE);
 
   // Create the metadata representing the VME implicit args needed by this function
-  ImplicitArgs::addImplicitArgs(F, implicitArgs, m_pMDUtils, getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData());
+  ImplicitArgs::addImplicitArgs(F, implicitArgs, m_pMDUtils, m_modMD);
 
   return true;
 }
@@ -91,3 +92,11 @@ void ExtensionFuncsAnalysis::visitCallInst(CallInst &CI) {
     }
   }
 }
+
+#if LLVM_VERSION_MAJOR >= 16
+PreservedAnalyses ExtensionFuncsAnalysisNPM::run(Module &M, ModuleAnalysisManager &AM) {
+  bool changed = ExtensionFuncsAnalysis().run(M, AM.getResult<MetaDataUtilsAnalysis>(M).MdUtils,
+                                              AM.getResult<MetaDataUtilsAnalysis>(M).ModMD);
+  return changed ? PreservedAnalyses::none() : PreservedAnalyses::all();
+}
+#endif // LLVM_VERSION_MAJOR >= 16

@@ -44,10 +44,10 @@ using namespace IGC::IGCMD;
 #define PASS_DESCRIPTION "Add implicit args to all functions in the module and adjusts call to these functions"
 #define PASS_CFG_ONLY false
 #define PASS_ANALYSIS false
-IGC_INITIALIZE_PASS_BEGIN(AddImplicitArgs, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_BEGIN(AddImplicitArgsLPM, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
 IGC_INITIALIZE_PASS_DEPENDENCY(MetaDataUtilsWrapper)
-IGC_INITIALIZE_PASS_END(AddImplicitArgs, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_END(AddImplicitArgsLPM, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
 struct ImplicitStructArgument {
   union {
@@ -60,15 +60,18 @@ struct ImplicitStructArgument {
   } DW0;
 };
 
-char AddImplicitArgs::ID = 0;
+char AddImplicitArgsLPM::ID = 0;
 
-AddImplicitArgs::AddImplicitArgs() : ModulePass(ID) { initializeAddImplicitArgsPass(*PassRegistry::getPassRegistry()); }
+AddImplicitArgsLPM::AddImplicitArgsLPM() : ModulePass(ID) {
+  initializeAddImplicitArgsLPMPass(*PassRegistry::getPassRegistry());
+}
 
-bool AddImplicitArgs::runOnModule(Module &M) {
+bool AddImplicitArgs::run(Module &M, IGC::IGCMD::MetaDataUtils *pMdUtils, IGC::CodeGenContext *pCtx) {
   MapList<Function *, Function *> funcsMapping;
   MapList<Function *, Function *> funcsMappingForReplacement;
-  m_pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
-  CodeGenContext *ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+  m_pMdUtils = pMdUtils;
+  m_ctx = pCtx;
+  CodeGenContext *ctx = m_ctx;
 
   // Update function signatures
   // Create new functions with implicit args
@@ -141,7 +144,7 @@ bool AddImplicitArgs::runOnModule(Module &M) {
   m_pMdUtils->save(M.getContext());
 
   // Return if any error
-  if (getAnalysis<CodeGenContextWrapper>().getCodeGenContext()->HasError()) {
+  if (m_ctx->HasError()) {
     return false;
   }
   // Go over all changed functions
@@ -194,7 +197,7 @@ void AddImplicitArgs::updateNewFuncArgs(llvm::Function *pFunc, llvm::Function *p
   std::vector<std::pair<llvm::Instruction *, unsigned int>> newAddr;
   bool fullDebugInfo = false;
   bool lineNumbersOnly = false;
-  CodeGenContext *ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+  CodeGenContext *ctx = m_ctx;
   DebugMetadataInfo::hasAnyDebugInfo(ctx, fullDebugInfo, lineNumbersOnly);
 
   if (fullDebugInfo) {
@@ -265,11 +268,7 @@ void AddImplicitArgs::updateNewFuncArgs(llvm::Function *pFunc, llvm::Function *p
     if ((argId >= ImplicitArg::ArgType::STRUCT_START && argId <= ImplicitArg::IMAGES_END) ||
         argId == ImplicitArg::ArgType::GET_OBJECT_ID || argId == ImplicitArg::ArgType::GET_BLOCK_SIMD_SIZE) {
       // struct, image
-      const auto &argInfo = getAnalysis<CodeGenContextWrapper>()
-                                .getCodeGenContext()
-                                ->getModuleMetaData()
-                                ->FuncMD[pFunc]
-                                .implicitArgInfoList[i];
+      const auto &argInfo = m_ctx->getModuleMetaData()->FuncMD[pFunc].implicitArgInfoList[i];
       IGC_ASSERT_MESSAGE(argInfo.explicitArgNum != -1, "wrong data in MetaData");
 
       argImpToExpNum[&(*currArg)] = info.DW0.All.argExplicitNum = argInfo.explicitArgNum;
@@ -285,11 +284,7 @@ void AddImplicitArgs::updateNewFuncArgs(llvm::Function *pFunc, llvm::Function *p
 void AddImplicitArgs::replaceAllUsesWithNewOCLBuiltinFunction(llvm::Function *old_func, llvm::Function *new_func) {
   IGC_ASSERT(!old_func->use_empty());
 
-  auto &subFuncImplicitArgs = getAnalysis<CodeGenContextWrapper>()
-                                  .getCodeGenContext()
-                                  ->getModuleMetaData()
-                                  ->FuncMD[old_func]
-                                  .implicitArgInfoList;
+  auto &subFuncImplicitArgs = m_ctx->getModuleMetaData()->FuncMD[old_func].implicitArgInfoList;
 
   std::vector<Instruction *> list_delete;
   old_func->removeDeadConstantUsers();
@@ -324,11 +319,11 @@ void AddImplicitArgs::replaceAllUsesWithNewOCLBuiltinFunction(llvm::Function *ol
 
     if (!cInst) {
       IGC_ASSERT_MESSAGE(0, "Unknown function usage");
-      getAnalysis<CodeGenContextWrapper>().getCodeGenContext()->EmitError(" undefined reference to `jmp()' ", U);
+      m_ctx->EmitError(" undefined reference to `jmp()' ", U);
       return;
     }
     // Return if any error
-    if (getAnalysis<CodeGenContextWrapper>().getCodeGenContext()->HasError()) {
+    if (m_ctx->HasError()) {
       return;
     }
 
@@ -428,22 +423,22 @@ llvm::Value *AddImplicitArgs::coerce(llvm::Value *arg, llvm::Type *type, llvm::I
 #define PASS_DESCRIPTION2 "Analyzes CallGraphSCC"
 #define PASS_CFG_ONLY2 false
 #define PASS_ANALYSIS2 false
-IGC_INITIALIZE_PASS_BEGIN(BuiltinCallGraphAnalysis, PASS_FLAG2, PASS_DESCRIPTION2, PASS_CFG_ONLY2, PASS_ANALYSIS2)
+IGC_INITIALIZE_PASS_BEGIN(BuiltinCallGraphAnalysisLPM, PASS_FLAG2, PASS_DESCRIPTION2, PASS_CFG_ONLY2, PASS_ANALYSIS2)
 IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
 IGC_INITIALIZE_PASS_DEPENDENCY(MetaDataUtilsWrapper)
 IGC_INITIALIZE_PASS_DEPENDENCY(CallGraphWrapperPass)
-IGC_INITIALIZE_PASS_END(BuiltinCallGraphAnalysis, PASS_FLAG2, PASS_DESCRIPTION2, PASS_CFG_ONLY2, PASS_ANALYSIS2)
+IGC_INITIALIZE_PASS_END(BuiltinCallGraphAnalysisLPM, PASS_FLAG2, PASS_DESCRIPTION2, PASS_CFG_ONLY2, PASS_ANALYSIS2)
 
-char BuiltinCallGraphAnalysis::ID = 0;
+char BuiltinCallGraphAnalysisLPM::ID = 0;
 
-BuiltinCallGraphAnalysis::BuiltinCallGraphAnalysis() : ModulePass(ID) {
-  initializeBuiltinCallGraphAnalysisPass(*PassRegistry::getPassRegistry());
+BuiltinCallGraphAnalysisLPM::BuiltinCallGraphAnalysisLPM() : ModulePass(ID) {
+  initializeBuiltinCallGraphAnalysisLPMPass(*PassRegistry::getPassRegistry());
 }
 
-bool BuiltinCallGraphAnalysis::runOnModule(Module &M) {
-  m_pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
-  CallGraph &CG = getAnalysis<CallGraphWrapperPass>().getCallGraph();
-  CodeGenContext *pCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+bool BuiltinCallGraphAnalysis::run(Module &M, IGC::IGCMD::MetaDataUtils *pMdUtils, IGC::CodeGenContext *pCtx,
+                                   CallGraph &CG) {
+  m_pMdUtils = pMdUtils;
+  m_ctx = pCtx;
 
   if (IGC::ForceAlwaysInline(pCtx)) {
     return false;
@@ -471,11 +466,7 @@ bool BuiltinCallGraphAnalysis::pruneCallGraphForStackCalls(CallGraph &CG) {
   for (auto IT = df_begin(&CG), EI = df_end(&CG); IT != EI; IT++) {
     Function *F = IT->getFunction();
     if (F && !F->isDeclaration() && F->hasFnAttribute("visaStackCall")) {
-      if (!getAnalysis<CodeGenContextWrapper>()
-               .getCodeGenContext()
-               ->getModuleMetaData()
-               ->FuncMD[F]
-               .implicitArgInfoList.empty()) {
+      if (!m_ctx->getModuleMetaData()->FuncMD[F].implicitArgInfoList.empty()) {
         for (unsigned i = 0; i < IT.getPathLength(); i++) {
           Function *pFuncOnPath = IT.getPath(i)->getFunction();
           if (pFuncOnPath && !isEntryFunc(m_pMdUtils, pFuncOnPath)) {
@@ -497,7 +488,7 @@ bool BuiltinCallGraphAnalysis::pruneCallGraphForStackCalls(CallGraph &CG) {
     // We can only remove the "visaStackCall" attribute if the function isn't called indirectly,
     // since these attributes are always coupled together.
     if (pF->hasFnAttribute("referenced-indirectly")) {
-      CodeGenContext *pCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+      CodeGenContext *pCtx = m_ctx;
       bool emitError = false;
       if (pCtx->type == ShaderType::OPENCL_SHADER) {
         // If this option is passed, emit error when extern functions use implicit arg buffer
@@ -507,8 +498,7 @@ bool BuiltinCallGraphAnalysis::pruneCallGraphForStackCalls(CallGraph &CG) {
       if (IGC_IS_FLAG_DISABLED(EnableGlobalStateBuffer) && emitError) {
         IGC_ASSERT_MESSAGE(
             0, "Cannot force inline indirect calls! Requires IA Buffer support, i.e. EnableGlobalStateBuffer = 1");
-        getAnalysis<CodeGenContextWrapper>().getCodeGenContext()->EmitError(
-            "Exported functions does not support implicit arguments", pF);
+        m_ctx->EmitError("Exported functions does not support implicit arguments", pF);
       }
       continue;
     }
@@ -536,7 +526,7 @@ void BuiltinCallGraphAnalysis::traverseCallGraphSCC(const std::vector<CallGraphN
       std::string Msg = "Invalid user defined function being processed: ";
       Msg += f->getName();
       Msg += "()\n";
-      getAnalysis<CodeGenContextWrapper>().getCodeGenContext()->EmitError(Msg.c_str(), f);
+      m_ctx->EmitError(Msg.c_str(), f);
       return;
     }
     if (argData == nullptr) {
@@ -563,8 +553,7 @@ void BuiltinCallGraphAnalysis::traverseCallGraphSCC(const std::vector<CallGraphN
     Function *f = CGN->getFunction();
     if (!f || f->isDeclaration())
       continue;
-    auto &implList =
-        getAnalysis<CodeGenContextWrapper>().getCodeGenContext()->getModuleMetaData()->FuncMD[f].implicitArgInfoList;
+    auto &implList = m_ctx->getModuleMetaData()->FuncMD[f].implicitArgInfoList;
     // calculate implicit args from function metadata
 
     // build everything
@@ -629,7 +618,7 @@ void BuiltinCallGraphAnalysis::combineTwoArgDetail(ImplicitArgumentDetail &retD,
       CallInst *cInst = dyn_cast<CallInst>(v);
       if (!cInst) {
         IGC_ASSERT_MESSAGE(0, " Not supported");
-        getAnalysis<CodeGenContextWrapper>().getCodeGenContext()->EmitError(" undefined reference to `jmp()' ", v);
+        m_ctx->EmitError(" undefined reference to `jmp()' ", v);
         return;
       }
 
@@ -655,7 +644,7 @@ void BuiltinCallGraphAnalysis::combineTwoArgDetail(ImplicitArgumentDetail &retD,
 }
 
 void BuiltinCallGraphAnalysis::writeBackAllIntoMetaData(const ImplicitArgumentDetail &data, Function *f) {
-  CodeGenContext *pCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+  CodeGenContext *pCtx = m_ctx;
   auto &argList = pCtx->getModuleMetaData()->FuncMD[f].implicitArgInfoList;
   argList.clear();
 
@@ -718,3 +707,19 @@ void BuiltinCallGraphAnalysis::writeBackAllIntoMetaData(const ImplicitArgumentDe
     argList.push_back(argMD);
   }
 }
+
+#if LLVM_VERSION_MAJOR >= 16
+PreservedAnalyses AddImplicitArgsNPM::run(Module &M, ModuleAnalysisManager &AM) {
+  AddImplicitArgs impl;
+  bool changed =
+      impl.run(M, AM.getResult<MetaDataUtilsAnalysis>(M).MdUtils, AM.getResult<CodeGenContextAnalysis>(M).Ctx);
+  return changed ? PreservedAnalyses::none() : PreservedAnalyses::all();
+}
+
+PreservedAnalyses BuiltinCallGraphAnalysisNPM::run(Module &M, ModuleAnalysisManager &AM) {
+  BuiltinCallGraphAnalysis impl;
+  bool changed = impl.run(M, AM.getResult<MetaDataUtilsAnalysis>(M).MdUtils,
+                          AM.getResult<CodeGenContextAnalysis>(M).Ctx, AM.getResult<CallGraphAnalysis>(M));
+  return changed ? PreservedAnalyses::none() : PreservedAnalyses::all();
+}
+#endif // LLVM_VERSION_MAJOR >= 16

@@ -26,18 +26,14 @@ using namespace IGC;
 using namespace IGC::IGCMD;
 
 namespace {
-class AddrSpaceCastFixing : public FunctionPass {
+// Shared implementation. Holds the logic and is used by both the legacy and the new-pass-manager
+// wrappers below; it is not itself an llvm::Pass. It has no analysis dependencies.
+class AddrSpaceCastFixing {
   const unsigned GAS = ADDRESS_SPACE_GENERIC;
   const unsigned PrivateAS = ADDRESS_SPACE_PRIVATE;
 
 public:
-  static char ID;
-
-  AddrSpaceCastFixing() : FunctionPass(ID) { initializeAddrSpaceCastFixingPass(*PassRegistry::getPassRegistry()); }
-
-  bool runOnFunction(Function &) override;
-
-  void getAnalysisUsage(AnalysisUsage &AU) const override { AU.setPreservesCFG(); }
+  bool runOnFunction(Function &);
 
 private:
   bool fixOnBasicBlock(BasicBlock *) const;
@@ -45,19 +41,44 @@ private:
   bool fixCase1(Instruction *I, BasicBlock::iterator &BI) const;
   bool fixCase2(Instruction *I, BasicBlock::iterator &BI) const;
 };
+
+// Legacy Pass Manager wrapper.
+class AddrSpaceCastFixingLPM : public FunctionPass {
+public:
+  static char ID;
+
+  AddrSpaceCastFixingLPM() : FunctionPass(ID) {
+    initializeAddrSpaceCastFixingLPMPass(*PassRegistry::getPassRegistry());
+  }
+
+  bool runOnFunction(Function &F) override { return m_impl.runOnFunction(F); }
+
+  void getAnalysisUsage(AnalysisUsage &AU) const override { AU.setPreservesCFG(); }
+
+private:
+  AddrSpaceCastFixing m_impl;
+};
 } // End anonymous namespace
 
-FunctionPass *IGC::createFixAddrSpaceCastPass() { return new AddrSpaceCastFixing(); }
+FunctionPass *IGC::createFixAddrSpaceCastPass() { return new AddrSpaceCastFixingLPM(); }
 
-char AddrSpaceCastFixing::ID = 0;
+char AddrSpaceCastFixingLPM::ID = 0;
 
 #define PASS_FLAG "igc-addrspacecast-fix"
 #define PASS_DESC "Fix invalid addrspacecast-relevant patterns"
 #define PASS_CFG_ONLY false
 #define PASS_ANALYSIS false
 namespace IGC {
-IGC_INITIALIZE_PASS_BEGIN(AddrSpaceCastFixing, PASS_FLAG, PASS_DESC, PASS_CFG_ONLY, PASS_ANALYSIS)
-IGC_INITIALIZE_PASS_END(AddrSpaceCastFixing, PASS_FLAG, PASS_DESC, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_BEGIN(AddrSpaceCastFixingLPM, PASS_FLAG, PASS_DESC, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_END(AddrSpaceCastFixingLPM, PASS_FLAG, PASS_DESC, PASS_CFG_ONLY, PASS_ANALYSIS)
+
+#if LLVM_VERSION_MAJOR >= 16
+llvm::PreservedAnalyses AddrSpaceCastFixingNPM::run(llvm::Function &F, llvm::FunctionAnalysisManager &AM) {
+  AddrSpaceCastFixing impl;
+  bool changed = impl.runOnFunction(F);
+  return changed ? llvm::PreservedAnalyses::none() : llvm::PreservedAnalyses::all();
+}
+#endif // LLVM_VERSION_MAJOR >= 16
 } // namespace IGC
 
 static bool hasPHIDifferentAddrSpacesOperands(PHINode *PHI) {

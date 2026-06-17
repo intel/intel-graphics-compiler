@@ -12,6 +12,7 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/Pass.h>
 #include <llvm/IR/InstVisitor.h>
+#include <llvm/IR/PassManager.h>
 #include "common/LLVMWarningsPop.hpp"
 
 #include "Compiler/CodeGenContextWrapper.hpp"
@@ -25,19 +26,17 @@ class RTBuilder;
 
 namespace IGC {
 
-class ResolveOCLRaytracingBuiltins : public llvm::ModulePass, public llvm::InstVisitor<ResolveOCLRaytracingBuiltins> {
+// Shared implementation. Holds the logic and is used by both the legacy and the
+// new-pass-manager wrappers below; it is not itself an llvm::Pass.
+class ResolveOCLRaytracingBuiltins : public llvm::InstVisitor<ResolveOCLRaytracingBuiltins> {
 
 public:
-  // Pass identification, replacement for typeid
-  static char ID;
+  ResolveOCLRaytracingBuiltins() {}
+  ~ResolveOCLRaytracingBuiltins() {}
 
-  ResolveOCLRaytracingBuiltins();
+  static llvm::StringRef getPassName() { return "ResolveOCLRaytracingBuiltins"; }
 
-  virtual llvm::StringRef getPassName() const override { return "ResolveOCLRaytracingBuiltins"; }
-
-  void getAnalysisUsage(llvm::AnalysisUsage &AU) const override { AU.addRequired<CodeGenContextWrapper>(); }
-
-  virtual bool runOnModule(llvm::Module &M) override;
+  bool run(llvm::Module &M, CodeGenContext *pCtx);
 
   void visitCallInst(llvm::CallInst &callInst);
 
@@ -65,4 +64,33 @@ private:
   llvm::Value *getIntrinsicValue(llvm::GenISAIntrinsic::ID intrinsicId,
                                  llvm::ArrayRef<llvm::Value *> args = llvm::ArrayRef<llvm::Value *>());
 };
+
+// Legacy Pass Manager wrapper.
+class ResolveOCLRaytracingBuiltinsLPM : public llvm::ModulePass {
+public:
+  static char ID;
+
+  ResolveOCLRaytracingBuiltinsLPM();
+  ~ResolveOCLRaytracingBuiltinsLPM() {}
+
+  virtual llvm::StringRef getPassName() const override { return ResolveOCLRaytracingBuiltins::getPassName(); }
+
+  void getAnalysisUsage(llvm::AnalysisUsage &AU) const override { AU.addRequired<CodeGenContextWrapper>(); }
+
+  virtual bool runOnModule(llvm::Module &M) override {
+    return ResolveOCLRaytracingBuiltins().run(M, getAnalysis<CodeGenContextWrapper>().getCodeGenContext());
+  }
+};
+
+#if LLVM_VERSION_MAJOR >= 16
+// New Pass Manager wrapper. name() returns the legacy pass argument so that
+// PrintBefore/PrintAfter=<pass argument> matches under the new pass manager.
+class ResolveOCLRaytracingBuiltinsNPM : public llvm::PassInfoMixin<ResolveOCLRaytracingBuiltinsNPM> {
+public:
+  llvm::PreservedAnalyses run(llvm::Module &M, llvm::ModuleAnalysisManager &AM);
+  static llvm::StringRef name() { return "igc-resolve-ocl-raytracing-builtins"; }
+  static bool isRequired() { return true; }
+};
+#endif // LLVM_VERSION_MAJOR >= 16
+
 } // namespace IGC

@@ -29,21 +29,25 @@ using namespace IGC;
 #define PASS_DESCRIPTION "Minimum valid address checking"
 #define PASS_CFG_ONLY false
 #define PASS_ANALYSIS false
-IGC_INITIALIZE_PASS_BEGIN(MinimumValidAddressChecking, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
-IGC_INITIALIZE_PASS_END(MinimumValidAddressChecking, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_BEGIN(MinimumValidAddressCheckingLPM, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_END(MinimumValidAddressCheckingLPM, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
-char MinimumValidAddressChecking::ID = 0;
+char MinimumValidAddressCheckingLPM::ID = 0;
 
 static cl::opt<unsigned long long> MinimumValidAddressCheckingArg("igc-minimum-valid-address-checking_arg",
                                                                   cl::desc("Set minimum valid address (default 0)"),
                                                                   cl::init(0), cl::Hidden);
 
-MinimumValidAddressChecking::MinimumValidAddressChecking(uint64_t minimumValidAddress) : ModulePass(ID) {
+MinimumValidAddressChecking::MinimumValidAddressChecking(uint64_t minimumValidAddress) {
   this->minimumValidAddress = std::max(uint64_t(MinimumValidAddressCheckingArg), minimumValidAddress);
-  initializeMinimumValidAddressCheckingPass(*PassRegistry::getPassRegistry());
 }
 
-bool MinimumValidAddressChecking::runOnModule(Module &M) {
+MinimumValidAddressCheckingLPM::MinimumValidAddressCheckingLPM(uint64_t minimumValidAddress)
+    : ModulePass(ID), m_impl(minimumValidAddress) {
+  initializeMinimumValidAddressCheckingLPMPass(*PassRegistry::getPassRegistry());
+}
+
+bool MinimumValidAddressChecking::run(Module &M) {
   // No reason to run the pass because all accesses are valid.
   if (minimumValidAddress == 0) {
     return false;
@@ -218,3 +222,10 @@ GlobalVariable *MinimumValidAddressChecking::getOrCreateGlobalConstantString(Mod
 
   return stringsCache[str];
 }
+
+#if LLVM_VERSION_MAJOR >= 16
+PreservedAnalyses MinimumValidAddressCheckingNPM::run(Module &M, ModuleAnalysisManager &AM) {
+  bool changed = m_impl.run(M);
+  return changed ? PreservedAnalyses::none() : PreservedAnalyses::all();
+}
+#endif // LLVM_VERSION_MAJOR >= 16

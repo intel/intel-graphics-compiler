@@ -15,6 +15,7 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/IR/DataLayout.h>
 #include <llvm/IR/InstVisitor.h>
+#include <llvm/IR/PassManager.h>
 #include <llvm/Pass.h>
 #include "common/LLVMWarningsPop.hpp"
 
@@ -29,23 +30,16 @@ SPDX-License-Identifier: MIT
 namespace IGC {
 /// @brief  BIFFlagCtrlResolution pass used for resolving BIF flag controls in
 /// kernel.
-class BIFFlagCtrlResolution : public llvm::ModulePass {
+// Shared implementation. Holds the logic and is used by both the legacy and the
+// new-pass-manager wrappers below; it is not itself an llvm::Pass.
+class BIFFlagCtrlResolution {
 public:
-  // Pass identification, replacement for typeid
-  static char ID;
+  BIFFlagCtrlResolution() {}
+  ~BIFFlagCtrlResolution() {}
 
-  /// @brief  Constructor
-  BIFFlagCtrlResolution();
+  static llvm::StringRef getPassName() { return "BIFFlagCtrlResolution"; }
 
-  BIFFlagCtrlResolution(CodeGenContext *ptrCGC);
-
-  /// @brief  Destructor
-  ~BIFFlagCtrlResolution();
-
-  /// @brief  Provides name of pass
-  virtual llvm::StringRef getPassName() const override { return "BIFFlagCtrlResolution"; }
-
-  virtual bool runOnModule(llvm::Module &M) override;
+  bool run(llvm::Module &M, CodeGenContext *pCtx);
 
 private:
   CodeGenContext *PtrCGC = nullptr;
@@ -57,5 +51,45 @@ private:
 
   void FillFlagCtrl();
 };
+
+// Legacy Pass Manager wrapper.
+class BIFFlagCtrlResolutionLPM : public llvm::ModulePass {
+public:
+  // Pass identification, replacement for typeid
+  static char ID;
+
+  /// @brief  Constructor
+  BIFFlagCtrlResolutionLPM();
+
+  BIFFlagCtrlResolutionLPM(CodeGenContext *ptrCGC);
+
+  /// @brief  Destructor
+  ~BIFFlagCtrlResolutionLPM() {}
+
+  /// @brief  Provides name of pass
+  virtual llvm::StringRef getPassName() const override { return BIFFlagCtrlResolution::getPassName(); }
+
+  virtual bool runOnModule(llvm::Module &M) override { return m_impl.run(M, m_ctorCtx); }
+
+private:
+  BIFFlagCtrlResolution m_impl;
+  CodeGenContext *m_ctorCtx = nullptr;
+};
+
+#if LLVM_VERSION_MAJOR >= 16
+// New Pass Manager wrapper. The CodeGenContext comes from the seeded
+// CodeGenContextAnalysis. name() returns the legacy pass argument so PrintBefore/PrintAfter
+// matches under the new pass manager.
+class BIFFlagCtrlResolutionNPM : public llvm::PassInfoMixin<BIFFlagCtrlResolutionNPM> {
+public:
+  llvm::PreservedAnalyses run(llvm::Module &M, llvm::ModuleAnalysisManager &AM);
+  static llvm::StringRef name() { return "igc-bif-flag-control-resolution"; }
+  static llvm::StringRef getPassName() { return "BIFFlagCtrlResolution"; }
+  static bool isRequired() { return true; }
+
+private:
+  BIFFlagCtrlResolution m_impl;
+};
+#endif // LLVM_VERSION_MAJOR >= 16
 
 } // namespace IGC

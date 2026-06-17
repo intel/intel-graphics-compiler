@@ -17,24 +17,31 @@ using namespace IGC;
 #define PASS_DESCRIPTION "PurgeMetaDataUtilsImport"
 #define PASS_CFG_ONLY false
 #define PASS_ANALYSIS false
-IGC_INITIALIZE_PASS_BEGIN(PurgeMetaDataUtils, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_BEGIN(PurgeMetaDataUtilsLPM, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 IGC_INITIALIZE_PASS_DEPENDENCY(MetaDataUtilsWrapper)
 IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
-IGC_INITIALIZE_PASS_END(PurgeMetaDataUtils, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_END(PurgeMetaDataUtilsLPM, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
-char PurgeMetaDataUtils::ID = 0;
+char PurgeMetaDataUtilsLPM::ID = 0;
 
-PurgeMetaDataUtils::PurgeMetaDataUtils() : ModulePass(ID) {
-  initializePurgeMetaDataUtilsPass(*PassRegistry::getPassRegistry());
+PurgeMetaDataUtilsLPM::PurgeMetaDataUtilsLPM() : ModulePass(ID) {
+  initializePurgeMetaDataUtilsLPMPass(*PassRegistry::getPassRegistry());
 }
 
 // Remove metadata entries in metadata utils for inlined or dead functions.
 // TODO: get rid of this step if we do not keep any non-kernel function in the
 // metadata util object.
-bool PurgeMetaDataUtils::runOnModule(Module &M) { return purgeMetaDataUtils(M, &getAnalysis<MetaDataUtilsWrapper>()); }
+bool PurgeMetaDataUtils::run(Module &M, IGCMD::MetaDataUtils *pMdUtils, ModuleMetaData *pModMD) {
+  return purgeMetaDataUtils(M, pMdUtils, pModMD);
+}
 
+// Legacy entry point taking the wrapper (kept for external callers such as GenCodeGenModule).
 bool IGC::purgeMetaDataUtils(Module &M, MetaDataUtilsWrapper *MDUW) {
-  IGCMD::MetaDataUtils *MDUtils = MDUW->getMetaDataUtils();
+  return purgeMetaDataUtils(M, MDUW->getMetaDataUtils(), MDUW->getModuleMetaData());
+}
+
+bool IGC::purgeMetaDataUtils(Module &M, IGCMD::MetaDataUtils *MDUtilsParam, ModuleMetaData *ModMDParam) {
+  IGCMD::MetaDataUtils *MDUtils = MDUtilsParam;
   auto shouldRemoveFunction = [=](llvm::Module &M, void *ptr) {
     llvm::Function *F = nullptr;
 
@@ -87,7 +94,7 @@ bool IGC::purgeMetaDataUtils(Module &M, MetaDataUtilsWrapper *MDUW) {
     }
   };
 
-  auto &FuncMD = MDUW->getModuleMetaData()->FuncMD;
+  auto &FuncMD = ModMDParam->FuncMD;
   checkFuncRange(MDUtils->begin_FunctionsInfo(), MDUtils->end_FunctionsInfo());
   checkFuncRange(FuncMD.begin(), FuncMD.end());
 
@@ -110,3 +117,11 @@ bool IGC::purgeMetaDataUtils(Module &M, MetaDataUtilsWrapper *MDUW) {
 
   return !ToBeDeleted.empty();
 }
+
+#if LLVM_VERSION_MAJOR >= 16
+PreservedAnalyses PurgeMetaDataUtilsNPM::run(Module &M, ModuleAnalysisManager &AM) {
+  auto &MDU = AM.getResult<MetaDataUtilsAnalysis>(M);
+  bool changed = m_impl.run(M, MDU.MdUtils, MDU.ModMD);
+  return changed ? PreservedAnalyses::none() : PreservedAnalyses::all();
+}
+#endif // LLVM_VERSION_MAJOR >= 16

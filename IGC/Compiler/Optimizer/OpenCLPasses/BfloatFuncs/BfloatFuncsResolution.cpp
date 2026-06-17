@@ -17,15 +17,15 @@ SPDX-License-Identifier: MIT
 using namespace llvm;
 using namespace IGC;
 
-char BfloatFuncsResolution::ID = 0;
+char BfloatFuncsResolutionLPM::ID = 0;
 
 // Register pass to igc-opt
 #define PASS_FLAG "igc-bfloat-funcs-resolution"
 #define PASS_DESCRIPTION "BfloatFuncsResolution"
 #define PASS_CFG_ONLY false
 #define PASS_ANALYSIS false
-IGC_INITIALIZE_PASS_BEGIN(BfloatFuncsResolution, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
-IGC_INITIALIZE_PASS_END(BfloatFuncsResolution, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_BEGIN(BfloatFuncsResolutionLPM, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_END(BfloatFuncsResolutionLPM, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
 // This pass lowers validation functions for bfloat operations from OpenCL-C level.
 // This is only needed for validation efforts, no declarations are provided in our headers,
@@ -33,15 +33,15 @@ IGC_INITIALIZE_PASS_END(BfloatFuncsResolution, PASS_FLAG, PASS_DESCRIPTION, PASS
 //
 // Full list of supported functions is at the bottom of the file.
 
-BfloatFuncsResolution::BfloatFuncsResolution(void) : FunctionPass(ID) {
-  initializeBfloatFuncsResolutionPass(*PassRegistry::getPassRegistry());
+BfloatFuncsResolutionLPM::BfloatFuncsResolutionLPM() : FunctionPass(ID) {
+  initializeBfloatFuncsResolutionLPMPass(*PassRegistry::getPassRegistry());
 }
 
-bool BfloatFuncsResolution::runOnFunction(Function &F) {
+bool BfloatFuncsResolution::runOnFunction(Function &F, IGC::CodeGenContext *pCtx) {
   llvm::IRBuilder<> builder(F.getContext());
   m_builder = &builder;
   m_changed = false;
-  m_ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+  m_ctx = pCtx;
 
   visit(F);
 
@@ -53,6 +53,20 @@ bool BfloatFuncsResolution::runOnFunction(Function &F) {
 
   return m_changed;
 }
+
+#if LLVM_VERSION_MAJOR >= 16
+PreservedAnalyses BfloatFuncsResolutionNPM::run(Module &M, ModuleAnalysisManager &AM) {
+  CodeGenContext *pCtx = AM.getResult<CodeGenContextAnalysis>(M).Ctx;
+  BfloatFuncsResolution impl;
+  bool changed = false;
+  for (Function &F : M) {
+    if (F.isDeclaration())
+      continue;
+    changed |= impl.runOnFunction(F, pCtx);
+  }
+  return changed ? PreservedAnalyses::none() : PreservedAnalyses::all();
+}
+#endif // LLVM_VERSION_MAJOR >= 16
 
 void BfloatFuncsResolution::visitCallInst(CallInst &CI) {
   // The functions that we are about to resolve are in mangled form.

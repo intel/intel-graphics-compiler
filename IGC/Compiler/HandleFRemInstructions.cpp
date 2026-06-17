@@ -24,13 +24,13 @@ using namespace IGC;
 #define PASS_DESCRIPTION "Replace FRem instructions with proper builtin calls"
 #define PASS_CFG_ONLY false
 #define PASS_ANALYSIS false
-IGC_INITIALIZE_PASS_BEGIN(HandleFRemInstructions, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
-IGC_INITIALIZE_PASS_END(HandleFRemInstructions, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_BEGIN(HandleFRemInstructionsLPM, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_END(HandleFRemInstructionsLPM, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
-char HandleFRemInstructions::ID = 0;
+char HandleFRemInstructionsLPM::ID = 0;
 
-HandleFRemInstructions::HandleFRemInstructions() : ModulePass(ID) {
-  initializeHandleFRemInstructionsPass(*PassRegistry::getPassRegistry());
+HandleFRemInstructionsLPM::HandleFRemInstructionsLPM() : ModulePass(ID) {
+  initializeHandleFRemInstructionsLPMPass(*PassRegistry::getPassRegistry());
 }
 
 void HandleFRemInstructions::visitFRem(llvm::BinaryOperator &I) {
@@ -90,7 +90,7 @@ void HandleFRemInstructions::visitFRem(llvm::BinaryOperator &I) {
   m_changed = true;
 }
 
-bool HandleFRemInstructions::runOnModule(llvm::Module &M) {
+bool HandleFRemInstructions::run(llvm::Module &M) {
   m_changed = false;
   m_module = &M;
 
@@ -99,3 +99,10 @@ bool HandleFRemInstructions::runOnModule(llvm::Module &M) {
   m_module = nullptr;
   return m_changed;
 }
+
+#if LLVM_VERSION_MAJOR >= 16
+PreservedAnalyses HandleFRemInstructionsNPM::run(Module &M, ModuleAnalysisManager &) {
+  bool changed = HandleFRemInstructions().run(M);
+  return changed ? PreservedAnalyses::none() : PreservedAnalyses::all();
+}
+#endif // LLVM_VERSION_MAJOR >= 16

@@ -23,11 +23,11 @@ using namespace IGC::IGCMD;
 #define PASS_DESCRIPTION "Resolves bif flag controls"
 #define PASS_CFG_ONLY false
 #define PASS_ANALYSIS false
-IGC_INITIALIZE_PASS_BEGIN(BIFFlagCtrlResolution, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_BEGIN(BIFFlagCtrlResolutionLPM, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 IGC_INITIALIZE_PASS_DEPENDENCY(MetaDataUtilsWrapper)
-IGC_INITIALIZE_PASS_END(BIFFlagCtrlResolution, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_END(BIFFlagCtrlResolutionLPM, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
-char BIFFlagCtrlResolution::ID = 0;
+char BIFFlagCtrlResolutionLPM::ID = 0;
 
 void BIFFlagCtrlResolution::FillFlagCtrl() {
   // Here we can add more flags
@@ -122,7 +122,8 @@ void BIFFlagCtrlResolution::FillFlagCtrl() {
 
 #undef BIF_FLAG_CTRL_SET
 
-bool BIFFlagCtrlResolution::runOnModule(Module &M) {
+bool BIFFlagCtrlResolution::run(Module &M, CodeGenContext *pCtx) {
+  PtrCGC = pCtx;
   if (PtrCGC == nullptr) {
     IGC_ASSERT_EXIT_MESSAGE(0, "[BIF_IGC] Not propper initialized BIFFlagCtrlResolution pass");
   }
@@ -176,8 +177,17 @@ template <typename T> bool BIFFlagCtrlResolution::replace(T Value, llvm::GlobalV
   return Changed;
 }
 
-BIFFlagCtrlResolution::BIFFlagCtrlResolution() : ModulePass(ID) { PtrCGC = nullptr; }
+BIFFlagCtrlResolutionLPM::BIFFlagCtrlResolutionLPM() : ModulePass(ID) {
+  initializeBIFFlagCtrlResolutionLPMPass(*PassRegistry::getPassRegistry());
+}
 
-BIFFlagCtrlResolution::BIFFlagCtrlResolution(CodeGenContext *PtrCGC) : ModulePass(ID) { this->PtrCGC = PtrCGC; }
+BIFFlagCtrlResolutionLPM::BIFFlagCtrlResolutionLPM(CodeGenContext *ptrCGC) : ModulePass(ID), m_ctorCtx(ptrCGC) {
+  initializeBIFFlagCtrlResolutionLPMPass(*PassRegistry::getPassRegistry());
+}
 
-BIFFlagCtrlResolution::~BIFFlagCtrlResolution(void) {}
+#if LLVM_VERSION_MAJOR >= 16
+PreservedAnalyses BIFFlagCtrlResolutionNPM::run(Module &M, ModuleAnalysisManager &AM) {
+  bool changed = m_impl.run(M, AM.getResult<CodeGenContextAnalysis>(M).Ctx);
+  return changed ? PreservedAnalyses::none() : PreservedAnalyses::all();
+}
+#endif // LLVM_VERSION_MAJOR >= 16

@@ -43,3 +43,7 @@ MetaDataUtilsWrapper::~MetaDataUtilsWrapper() {
 MetaDataUtils *MetaDataUtilsWrapper::getMetaDataUtils() { return m_pMdUtils; }
 
 ModuleMetaData *MetaDataUtilsWrapper::getModuleMetaData() { return modMD; }
+
+#if LLVM_VERSION_MAJOR >= 16
+llvm::AnalysisKey MetaDataUtilsAnalysis::Key;
+#endif // LLVM_VERSION_MAJOR >= 16

@@ -60,6 +60,27 @@ Pass *createLegacyWrappedSimpleInlinerPass();
 Pass *createLegacyWrappedSimpleInlinerPass(int Threshold);
 Pass *createLegacyWrappedSimpleInlinerPass(unsigned OptLevel, unsigned SizeOptLevel, bool DisableInlineHotCallSite);
 
+#if LLVM_VERSION_MAJOR >= 16
+// New Pass Manager wrapper that preserves IGC's legacy SCC inlining algorithm by running the legacy
+// SimpleInlinerLegacyPassWrapper through a nested legacy pass manager. This keeps the inlining
+// decisions identical to the legacy OCL Unify pipeline (the LLVM NPM inliner uses a different,
+// advisor-based algorithm). The optional TargetLibraryInfoImpl seeds the inner
+// TargetLibraryInfoWrapperPass so the inliner sees the same library configuration (the OCL pipeline
+// disables all library functions). name() returns the legacy pass argument for dump/skip matching.
+class SimpleInlinerNPMWrapper : public llvm::PassInfoMixin<SimpleInlinerNPMWrapper> {
+  llvm::InlineParams Params;
+  const llvm::TargetLibraryInfoImpl *TLII;
+
+public:
+  SimpleInlinerNPMWrapper(llvm::InlineParams Params, const llvm::TargetLibraryInfoImpl *tlii = nullptr)
+      : Params(Params), TLII(tlii) {}
+
+  llvm::PreservedAnalyses run(llvm::Module &M, llvm::ModuleAnalysisManager &AM);
+  static llvm::StringRef name() { return "inline-legacy-wrapped"; }
+  static bool isRequired() { return true; }
+};
+#endif // LLVM_VERSION_MAJOR >= 16
+
 } // end namespace IGCLLVM
 
 #endif // IGCLLVM_TRANSFORMS_IPO_SIMPLEINLINER_LEGACY_H

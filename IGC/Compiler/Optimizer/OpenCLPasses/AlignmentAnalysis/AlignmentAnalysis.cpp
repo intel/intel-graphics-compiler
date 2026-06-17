@@ -29,15 +29,15 @@ using namespace IGC;
 #define PASS_DESCRIPTION "Fix argument alignments ad alignments of instructions according to OpenCL rules"
 #define PASS_CFG_ONLY false
 #define PASS_ANALYSIS false
-IGC_INITIALIZE_PASS_BEGIN(AlignmentAnalysis, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
-IGC_INITIALIZE_PASS_END(AlignmentAnalysis, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_BEGIN(AlignmentAnalysisLPM, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_END(AlignmentAnalysisLPM, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
-char AlignmentAnalysis::ID = 0;
+char AlignmentAnalysisLPM::ID = 0;
 
 static const Align MinimumAlignment = Align(1);
 
-AlignmentAnalysis::AlignmentAnalysis() : FunctionPass(ID) {
-  initializeAlignmentAnalysisPass(*PassRegistry::getPassRegistry());
+AlignmentAnalysisLPM::AlignmentAnalysisLPM() : FunctionPass(ID) {
+  initializeAlignmentAnalysisLPMPass(*PassRegistry::getPassRegistry());
 }
 
 // Check if the function has OpenCL metadata that specifies the alignment of
@@ -128,7 +128,7 @@ void AlignmentAnalysis::setArgumentAlignmentBasedOnOptionalMetadata(Function &F)
   }
 }
 
-bool AlignmentAnalysis::runOnFunction(Function &F) {
+bool AlignmentAnalysis::run(Function &F) {
 
   setArgumentAlignmentBasedOnOptionalMetadata(F);
 
@@ -179,6 +179,18 @@ bool AlignmentAnalysis::runOnFunction(Function &F) {
   }
   return Changed;
 }
+
+#if LLVM_VERSION_MAJOR >= 16
+PreservedAnalyses AlignmentAnalysisNPM::run(Module &M, ModuleAnalysisManager &) {
+  bool changed = false;
+  for (Function &F : M) {
+    if (F.isDeclaration())
+      continue;
+    changed |= AlignmentAnalysis().run(F);
+  }
+  return changed ? PreservedAnalyses::none() : PreservedAnalyses::all();
+}
+#endif // LLVM_VERSION_MAJOR >= 16
 
 Align AlignmentAnalysis::getConstantAlignment(uint64_t C) const {
   if (C == 0) {

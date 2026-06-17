@@ -26,10 +26,10 @@ using namespace IGC::IGCMD;
 #define PASS_DESCRIPTION "Allocates UAV and SRV numbers to kernel arguments"
 #define PASS_CFG_ONLY false
 #define PASS_ANALYSIS false
-IGC_INITIALIZE_PASS_BEGIN(ResourceAllocator, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_BEGIN(ResourceAllocatorLPM, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 IGC_INITIALIZE_PASS_DEPENDENCY(MetaDataUtilsWrapper)
-IGC_INITIALIZE_PASS_DEPENDENCY(ExtensionArgAnalysis)
-IGC_INITIALIZE_PASS_END(ResourceAllocator, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_DEPENDENCY(ExtensionArgAnalysisLPM)
+IGC_INITIALIZE_PASS_END(ResourceAllocatorLPM, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
 enum class AllocationTypeEnum { BindlessImage, BindlessSampler, Image, Sampler, Other, None };
 
@@ -39,13 +39,13 @@ enum class BindlessAllocationMode {
   Preferred    // Bindless resources are supported, enabled and preferred over bindful alterntives.
 };
 
-char ResourceAllocator::ID = 0;
+char ResourceAllocatorLPM::ID = 0;
 
-ResourceAllocator::ResourceAllocator() : ModulePass(ID) {
-  initializeResourceAllocatorPass(*PassRegistry::getPassRegistry());
+ResourceAllocatorLPM::ResourceAllocatorLPM() : ModulePass(ID) {
+  initializeResourceAllocatorLPMPass(*PassRegistry::getPassRegistry());
 }
 
-bool ResourceAllocator::runOnModule(Module &M) {
+bool ResourceAllocatorLPM::runOnModule(Module &M) {
   // There are two places resources can come from:
   // 1) Images and samplers passed as kernel arguments.
   // 2) Samplers declared inline in kernel scope or program scope.
@@ -55,11 +55,15 @@ bool ResourceAllocator::runOnModule(Module &M) {
   // since finding all inline samplers requires going through the
   // actual calls.
   MetaDataUtils *pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
+  ModuleMetaData *modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
+  CodeGenContext *ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
   // FunctionsInfo contains kernels only.
   for (auto i = pMdUtils->begin_FunctionsInfo(), e = pMdUtils->end_FunctionsInfo(); i != e; ++i) {
-    if (i->first->isDeclaration())
+    Function *F = i->first;
+    if (F->isDeclaration())
       continue;
-    runOnFunction(*(i->first));
+    ExtensionArgAnalysis &EAA = getAnalysis<ExtensionArgAnalysisLPM>(*F).getResult();
+    m_impl.runOnFunction(*F, pMdUtils, modMD, ctx, EAA);
   }
 
   pMdUtils->save(M.getContext());
@@ -200,22 +204,22 @@ static int getSamplerExtensionType(ExtensionArgAnalysis &EAA, const llvm::Argume
   return ResourceExtensionTypeEnum::NonExtensionType;
 }
 
-bool ResourceAllocator::runOnFunction(llvm::Function &F) {
+bool ResourceAllocator::runOnFunction(llvm::Function &F, IGC::IGCMD::MetaDataUtils *pMdUtils, ModuleMetaData *pModMD,
+                                      IGC::CodeGenContext *pCtx, ExtensionArgAnalysis &EAA) {
   // This does two things:
   // * Count the number of UAVs/SRVs/Samplers used by the kernels
   // * Allocate a UAV/SRV/Sampler number to each argument, to be compatible with DX.
   // This is then written to the metadata.
 
-  CodeGenContext *ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+  CodeGenContext *ctx = pCtx;
   IGC_ASSERT(ctx);
 
-  MetaDataUtils *MDU = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
-  ModuleMetaData *MMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
+  MetaDataUtils *MDU = pMdUtils;
+  ModuleMetaData *MMD = pModMD;
 
   KernelArgs kernelArgs(F, &(F.getParent()->getDataLayout()), MDU, MMD, ctx->platform.getGRFSize());
-  ExtensionArgAnalysis &EAA = getAnalysis<ExtensionArgAnalysis>(F);
 
-  ModuleMetaData *const modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
+  ModuleMetaData *const modMD = pModMD;
   IGC_ASSERT(nullptr != modMD);
   IGC_ASSERT_MESSAGE(modMD->FuncMD.find(&F) != modMD->FuncMD.end(), "Function was not found.");
 
@@ -328,3 +332,26 @@ bool ResourceAllocator::runOnFunction(llvm::Function &F) {
 
   return true;
 }
+
+#if LLVM_VERSION_MAJOR >= 16
+PreservedAnalyses ResourceAllocatorNPM::run(Module &M, ModuleAnalysisManager &AM) {
+  auto &MDU = AM.getResult<MetaDataUtilsAnalysis>(M);
+  MetaDataUtils *pMdUtils = MDU.MdUtils;
+  ModuleMetaData *modMD = MDU.ModMD;
+  CodeGenContext *ctx = AM.getResult<CodeGenContextAnalysis>(M).Ctx;
+
+  // FunctionsInfo contains kernels only.
+  for (auto i = pMdUtils->begin_FunctionsInfo(), e = pMdUtils->end_FunctionsInfo(); i != e; ++i) {
+    Function *F = i->first;
+    if (F->isDeclaration())
+      continue;
+    // ExtensionArgAnalysis depends only on the function + MetaDataUtils, so compute it inline.
+    ExtensionArgAnalysis EAA;
+    EAA.analyze(*F, pMdUtils, ctx);
+    m_impl.runOnFunction(*F, pMdUtils, modMD, ctx, EAA);
+  }
+
+  pMdUtils->save(M.getContext());
+  return PreservedAnalyses::none();
+}
+#endif // LLVM_VERSION_MAJOR >= 16

@@ -47,16 +47,24 @@ static void SetDebugLocBy(Instruction *I, const Instruction *setBy) {
 #define PASS_DESCRIPTION "Scalarize functions"
 #define PASS_CFG_ONLY false
 #define PASS_ANALYSIS false
-IGC_INITIALIZE_PASS_BEGIN(ScalarizeFunction, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_BEGIN(ScalarizeFunctionLPM, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
 IGC_INITIALIZE_PASS_DEPENDENCY(DominatorTreeWrapperPass)
-IGC_INITIALIZE_PASS_END(ScalarizeFunction, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_END(ScalarizeFunctionLPM, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
-char ScalarizeFunction::ID = 0;
+char ScalarizeFunctionLPM::ID = 0;
 
-ScalarizeFunction::ScalarizeFunction(IGC::SelectiveScalarizer selectiveMode) : FunctionPass(ID) {
-  initializeScalarizeFunctionPass(*PassRegistry::getPassRegistry());
+ScalarizeFunctionLPM::ScalarizeFunctionLPM(IGC::SelectiveScalarizer selectiveMode)
+    : FunctionPass(ID), m_impl(selectiveMode) {
+  initializeScalarizeFunctionLPMPass(*PassRegistry::getPassRegistry());
+}
 
+bool ScalarizeFunctionLPM::runOnFunction(Function &F) {
+  return m_impl.runOnFunction(F, getAnalysis<CodeGenContextWrapper>().getCodeGenContext(),
+                              &getAnalysis<DominatorTreeWrapperPass>().getDomTree());
+}
+
+ScalarizeFunction::ScalarizeFunction(IGC::SelectiveScalarizer selectiveMode) {
   for (int i = 0; i < Instruction::OtherOpsEnd; i++)
     m_transposeCtr[i] = 0;
 
@@ -93,8 +101,10 @@ bool ScalarizeFunction::doFinalization(llvm::Module &M) {
   return true;
 }
 
-bool ScalarizeFunction::runOnFunction(Function &F) {
-  CodeGenContext *pCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+bool ScalarizeFunction::runOnFunction(Function &F, CodeGenContext *Ctx, DominatorTree *DT) {
+  m_pCtx = Ctx;
+  m_DT = DT;
+  CodeGenContext *pCtx = Ctx;
   if (!IGC::ForceAlwaysInline(pCtx)) {
     if (F.isDeclaration())
       return false;
@@ -129,8 +139,7 @@ bool ScalarizeFunction::runOnFunction(Function &F) {
   // Scalarization. Iterate over all the instructions
   // Always hold the iterator at the instruction following the one being scalarized (so the
   // iterator will "skip" any instructions that are going to be added in the scalarization work)
-  auto DT = &getAnalysis<DominatorTreeWrapperPass>().getDomTree();
-  for (auto dfi = df_begin(DT->getRootNode()), dfe = df_end(DT->getRootNode()); dfi != dfe; ++dfi) {
+  for (auto dfi = df_begin(m_DT->getRootNode()), dfe = df_end(m_DT->getRootNode()); dfi != dfe; ++dfi) {
     BasicBlock *bb = (*dfi)->getBlock();
     auto sI = bb->begin();
     auto sE = bb->end();
@@ -180,8 +189,7 @@ void ScalarizeFunction::buildExclusiveSet() {
 
   auto isAddToWeb = [](Value *V) -> bool { return isa<PHINode, BitCastInst>(V); };
 
-  auto DT = &getAnalysis<DominatorTreeWrapperPass>().getDomTree();
-  for (auto dfi = df_begin(DT->getRootNode()), dfe = df_end(DT->getRootNode()); dfi != dfe; ++dfi) {
+  for (auto dfi = df_begin(m_DT->getRootNode()), dfe = df_end(m_DT->getRootNode()); dfi != dfe; ++dfi) {
     BasicBlock *bb = (*dfi)->getBlock();
     auto sI = bb->begin();
     auto sE = bb->end();
@@ -1318,5 +1326,22 @@ void ScalarizeFunction::resolveDeferredInstructions() {
 }
 
 extern "C" FunctionPass *createScalarizerPass(IGC::SelectiveScalarizer selectiveMode) {
-  return new ScalarizeFunction(selectiveMode);
+  return new ScalarizeFunctionLPM(selectiveMode);
 }
+
+#if LLVM_VERSION_MAJOR >= 16
+llvm::PreservedAnalyses IGC::ScalarizeFunctionNPM::run(llvm::Module &M, llvm::ModuleAnalysisManager &AM) {
+  CodeGenContext *ctx = AM.getResult<CodeGenContextAnalysis>(M).Ctx;
+  auto &FAM = AM.getResult<llvm::FunctionAnalysisManagerModuleProxy>(M).getManager();
+  ScalarizeFunction impl(m_mode);
+  bool changed = false;
+  for (Function &F : M) {
+    if (F.isDeclaration())
+      continue;
+    DominatorTree &DT = FAM.getResult<llvm::DominatorTreeAnalysis>(F);
+    changed |= impl.runOnFunction(F, ctx, &DT);
+  }
+  impl.doFinalization(M);
+  return changed ? llvm::PreservedAnalyses::none() : llvm::PreservedAnalyses::all();
+}
+#endif // LLVM_VERSION_MAJOR >= 16

@@ -21,19 +21,38 @@ SPDX-License-Identifier: MIT
 #define PASS_DESC "Resolve generic address space"
 #define PASS_CFG_ONLY false
 #define PASS_ANALYSIS false
-IGC_INITIALIZE_PASS_BEGIN(GASResolving, PASS_FLAG, PASS_DESC, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_BEGIN(GASResolvingLPM, PASS_FLAG, PASS_DESC, PASS_CFG_ONLY, PASS_ANALYSIS)
 IGC_INITIALIZE_PASS_DEPENDENCY(LoopInfoWrapperPass)
 IGC_INITIALIZE_PASS_DEPENDENCY(AAResultsWrapperPass)
 IGC_INITIALIZE_PASS_DEPENDENCY(MetaDataUtilsWrapper)
-IGC_INITIALIZE_PASS_END(GASResolving, PASS_FLAG, PASS_DESC, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_END(GASResolvingLPM, PASS_FLAG, PASS_DESC, PASS_CFG_ONLY, PASS_ANALYSIS)
 
-FunctionPass *IGC::createResolveGASPass() { return new GASResolving(); }
+FunctionPass *IGC::createResolveGASPass() { return new GASResolvingLPM(); }
 
-char GASResolving::ID = 0;
+char GASResolvingLPM::ID = 0;
 
-bool GASResolving::runOnFunction(Function &F) {
+#if LLVM_VERSION_MAJOR >= 16
+llvm::PreservedAnalyses GASResolvingNPM::run(llvm::Module &M, llvm::ModuleAnalysisManager &AM) {
+  IGCMD::MetaDataUtils *mdUtils = AM.getResult<MetaDataUtilsAnalysis>(M).MdUtils;
+  auto &FAM = AM.getResult<llvm::FunctionAnalysisManagerModuleProxy>(M).getManager();
+
+  GASResolving impl;
+  bool changed = false;
+  for (Function &F : M) {
+    if (F.isDeclaration())
+      continue;
+    llvm::LoopInfo &LI = FAM.getResult<llvm::LoopAnalysis>(F);
+    llvm::AAResults &AA = FAM.getResult<llvm::AAManager>(F);
+    changed |= impl.runOnFunction(F, LI, mdUtils, &AA);
+  }
+  return changed ? llvm::PreservedAnalyses::none() : llvm::PreservedAnalyses::all();
+}
+#endif // LLVM_VERSION_MAJOR >= 16
+
+bool GASResolving::runOnFunction(Function &F, llvm::LoopInfo &LI, IGCMD::MetaDataUtils *MdUtils, llvm::AAResults *AA) {
   LLVMContext &Ctx = F.getContext();
-  LoopInfo &LI = getAnalysis<LoopInfoWrapperPass>().getLoopInfo();
+  m_pMdUtils = MdUtils;
+  m_AA = AA;
   BuilderType TheBuilder(Ctx);
   GASPropagator ThePropagator(Ctx, &LI);
   IRB = &TheBuilder;
@@ -129,7 +148,7 @@ bool GASResolving::resolveOnBasicBlock(BasicBlock *BB) const {
 }
 
 bool GASResolving::resolveMemoryFromHost(Function &F) const {
-  MetaDataUtils *pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
+  MetaDataUtils *pMdUtils = m_pMdUtils;
 
   // skip all non-entry functions
   if (!isEntryFunc(pMdUtils, &F))
@@ -141,7 +160,7 @@ bool GASResolving::resolveMemoryFromHost(Function &F) const {
 
   SmallVector<StoreInst *, 32> Stores;
   SmallVector<LoadInst *, 32> Loads;
-  AliasAnalysis *AA = &getAnalysis<AAResultsWrapperPass>().getAAResults();
+  AliasAnalysis *AA = m_AA;
 
   // collect load candidates and in parallel check for unsafe instructions
   // visitor may be a more beautiful way to do this

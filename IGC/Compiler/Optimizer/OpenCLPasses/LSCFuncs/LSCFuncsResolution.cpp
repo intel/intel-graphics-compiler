@@ -39,22 +39,13 @@ struct LscTypeInfo {
 ///
 /// This is not automated like the usual builtins because we have to do type
 /// inference and do extra sanity checking here on inputs.
-class LSCFuncsResolution : public FunctionPass, public InstVisitor<LSCFuncsResolution> {
+// Shared implementation. Holds the logic and is used by both the legacy and the new-pass-manager
+// wrappers below; it is not itself an llvm::Pass. The CodeGenContext is injected by the caller.
+class LSCFuncsResolution : public InstVisitor<LSCFuncsResolution> {
 public:
-  // Pass identification, replacement for typeid
-  static char ID;
+  LSCFuncsResolution() {}
 
-  LSCFuncsResolution();
-
-  /// @brief  Provides name of pass
-  virtual StringRef getPassName() const override { return "LSCFuncsResolution"; }
-
-  void getAnalysisUsage(AnalysisUsage &AU) const override {
-    AU.addRequired<CodeGenContextWrapper>();
-    AU.addRequired<MetaDataUtilsWrapper>();
-  }
-
-  virtual bool runOnFunction(Function &F) override;
+  bool runOnFunction(Function &F, CodeGenContext *Ctx);
 
   void visitCallInst(CallInst &CI);
 
@@ -198,9 +189,31 @@ private:
   static const StringRef PREFIX_LSC_PREFETCH;
   static const StringRef PREFIX_LSC_SIMD_BLOCK_PREFETCH;
 };
+// Legacy Pass Manager wrapper.
+class LSCFuncsResolutionLPM : public FunctionPass {
+public:
+  static char ID;
+
+  LSCFuncsResolutionLPM();
+
+  StringRef getPassName() const override { return "LSCFuncsResolution"; }
+
+  void getAnalysisUsage(AnalysisUsage &AU) const override {
+    AU.addRequired<CodeGenContextWrapper>();
+    AU.addRequired<MetaDataUtilsWrapper>();
+  }
+
+  bool runOnFunction(Function &F) override {
+    return m_impl.runOnFunction(F, getAnalysis<CodeGenContextWrapper>().getCodeGenContext());
+  }
+
+private:
+  LSCFuncsResolution m_impl;
+};
+
 } // namespace
 
-char LSCFuncsResolution::ID = 0;
+char LSCFuncsResolutionLPM::ID = 0;
 
 const StringRef LSCFuncsResolution::PREFIX_LSC_STORE_local = "__builtin_IB_lsc_store_local_";
 const StringRef LSCFuncsResolution::PREFIX_LSC_STORE_global = "__builtin_IB_lsc_store_global_";
@@ -232,17 +245,17 @@ const StringRef LSCFuncsResolution::PREFIX_LSC_SIMD_BLOCK_PREFETCH = "__builtin_
 #define PASS_DESCRIPTION "Translate lsc builtin functions into igc intrinsics"
 #define PASS_CFG_ONLY false
 #define PASS_ANALYSIS false
-IGC_INITIALIZE_PASS_BEGIN(LSCFuncsResolution, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_BEGIN(LSCFuncsResolutionLPM, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
 IGC_INITIALIZE_PASS_DEPENDENCY(MetaDataUtilsWrapper)
-IGC_INITIALIZE_PASS_END(LSCFuncsResolution, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_END(LSCFuncsResolutionLPM, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
-LSCFuncsResolution::LSCFuncsResolution() : FunctionPass(ID) {
-  initializeLSCFuncsResolutionPass(*PassRegistry::getPassRegistry());
+LSCFuncsResolutionLPM::LSCFuncsResolutionLPM() : FunctionPass(ID) {
+  initializeLSCFuncsResolutionLPMPass(*PassRegistry::getPassRegistry());
 }
 
-bool LSCFuncsResolution::runOnFunction(Function &F) {
-  m_pCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+bool LSCFuncsResolution::runOnFunction(Function &F, CodeGenContext *Ctx) {
+  m_pCtx = Ctx;
 
   int defaultSimdSize = 0;
 
@@ -257,7 +270,7 @@ bool LSCFuncsResolution::runOnFunction(Function &F) {
     break;
   }
 
-  auto modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
+  auto modMD = m_pCtx->getModuleMetaData();
   int actualSimdSize = IGC::getSIMDSize(modMD, &F);
   isHalfSimdMode = defaultSimdSize != actualSimdSize; // SIMD8 on DG2, SIMD16 on PVC
 
@@ -796,7 +809,7 @@ static StringRef consume_number(StringRef name, const std::string &prefix, uint3
 
 Instruction *LSCFuncsResolution::CreateSubGroup2DBlockOperation(llvm::CallInst &CI, llvm::StringRef funcName,
                                                                 bool isRead) {
-  ModuleMetaData *modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
+  ModuleMetaData *modMD = m_pCtx->getModuleMetaData();
   unsigned int subGrpSize = IGC::getSIMDSize(modMD, CI.getParent()->getParent());
 
   funcName.consume_front("_flat");
@@ -1325,7 +1338,7 @@ Instruction *LSCFuncsResolution::CreateLSCStoreCmaskIntrinsicCallInst(bool isLoc
 Instruction *LSCFuncsResolution::CreateLSCFenceIntrinsicCallInst(CallInst &CI) {
   LSC_SFID memPort = decodeSfidFromName();
 
-  auto context = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+  auto context = m_pCtx;
 
   if (hasError()) {
     return nullptr;
@@ -1364,7 +1377,7 @@ Instruction *LSCFuncsResolution::CreateLSCFenceIntrinsicCallInst(CallInst &CI) {
 // For XE platforms it is represented by the sequence of
 // evict followed by lush_l3 calls.
 Instruction *LSCFuncsResolution::CreateLSCFenceEvictToMemory() {
-  auto context = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+  auto context = m_pCtx;
 
   if (hasError()) {
     return nullptr;
@@ -1774,4 +1787,18 @@ void LSCFuncsResolution::reportError(const char *what) {
   m_ErrorMsg << m_pCurrInstFunc->getName().str() << ": " << what;
 }
 
-FunctionPass *IGC::createLSCFuncsResolutionPass() { return new LSCFuncsResolution(); }
+FunctionPass *IGC::createLSCFuncsResolutionPass() { return new LSCFuncsResolutionLPM(); }
+
+#if LLVM_VERSION_MAJOR >= 16
+llvm::PreservedAnalyses IGC::LSCFuncsResolutionNPM::run(llvm::Module &M, llvm::ModuleAnalysisManager &AM) {
+  CodeGenContext *ctx = AM.getResult<CodeGenContextAnalysis>(M).Ctx;
+  LSCFuncsResolution impl;
+  bool changed = false;
+  for (Function &F : M) {
+    if (F.isDeclaration())
+      continue;
+    changed |= impl.runOnFunction(F, ctx);
+  }
+  return changed ? llvm::PreservedAnalyses::none() : llvm::PreservedAnalyses::all();
+}
+#endif // LLVM_VERSION_MAJOR >= 16

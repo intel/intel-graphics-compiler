@@ -21,34 +21,70 @@ using namespace IGC;
 using namespace IGCMD;
 
 namespace IGC {
-class FoldKnownWorkGroupSizes : public llvm::FunctionPass, public llvm::InstVisitor<FoldKnownWorkGroupSizes> {
+// Shared implementation. Holds the logic and is used by both the legacy and the
+// new-pass-manager wrappers below; it is not itself an llvm::Pass.
+class FoldKnownWorkGroupSizes : public llvm::InstVisitor<FoldKnownWorkGroupSizes> {
 private:
   CodeGenContext *ctx = nullptr;
   bool RequirePayloadHeader = true;
 
 public:
-  static char ID;
-  FoldKnownWorkGroupSizes() : FunctionPass(ID) {}
-  bool runOnFunction(llvm::Function &F) override;
+  FoldKnownWorkGroupSizes() {}
+  ~FoldKnownWorkGroupSizes() {}
+
+  bool runOnFunction(llvm::Function &F, CodeGenContext *pCtx);
   void visitCallInst(llvm::CallInst &I);
 
-  llvm::StringRef getPassName() const override { return "FoldKnownWorkGroupSizes"; }
+  static llvm::StringRef getPassName() { return "FoldKnownWorkGroupSizes"; }
+};
+
+// Legacy Pass Manager wrapper.
+class FoldKnownWorkGroupSizesLPM : public llvm::FunctionPass {
+public:
+  static char ID;
+  FoldKnownWorkGroupSizesLPM() : FunctionPass(ID) {
+    initializeFoldKnownWorkGroupSizesLPMPass(*PassRegistry::getPassRegistry());
+  }
+
+  bool runOnFunction(llvm::Function &F) override {
+    return m_impl.runOnFunction(F, getAnalysis<CodeGenContextWrapper>().getCodeGenContext());
+  }
+
+  llvm::StringRef getPassName() const override { return FoldKnownWorkGroupSizes::getPassName(); }
 
   void getAnalysisUsage(llvm::AnalysisUsage &AU) const override { AU.addRequired<IGC::CodeGenContextWrapper>(); }
+
+private:
+  FoldKnownWorkGroupSizes m_impl;
 };
+
 bool m_changed = false;
-char FoldKnownWorkGroupSizes::ID = 0;
+char FoldKnownWorkGroupSizesLPM::ID = 0;
 
 #define PASS_FLAG "igc-fold-workgroup-sizes"
 #define PASS_DESCRIPTION "Fold global offset and enqueued local sizes"
 #define PASS_CFG_ONLY false
 #define PASS_ANALYSIS false
-IGC_INITIALIZE_PASS_BEGIN(FoldKnownWorkGroupSizes, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
-IGC_INITIALIZE_PASS_END(FoldKnownWorkGroupSizes, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_BEGIN(FoldKnownWorkGroupSizesLPM, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_END(FoldKnownWorkGroupSizesLPM, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+
+#if LLVM_VERSION_MAJOR >= 16
+llvm::PreservedAnalyses FoldKnownWorkGroupSizesNPM::run(llvm::Module &M, llvm::ModuleAnalysisManager &AM) {
+  CodeGenContext *pCtx = AM.getResult<CodeGenContextAnalysis>(M).Ctx;
+  FoldKnownWorkGroupSizes impl;
+  bool changed = false;
+  for (Function &F : M) {
+    if (F.isDeclaration())
+      continue;
+    changed |= impl.runOnFunction(F, pCtx);
+  }
+  return changed ? llvm::PreservedAnalyses::none() : llvm::PreservedAnalyses::all();
+}
+#endif // LLVM_VERSION_MAJOR >= 16
 } // namespace IGC
 
-bool FoldKnownWorkGroupSizes::runOnFunction(Function &F) {
-  ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+bool FoldKnownWorkGroupSizes::runOnFunction(Function &F, CodeGenContext *pCtx) {
+  ctx = pCtx;
   RequirePayloadHeader = ctx->m_DriverInfo.RequirePayloadHeader();
   visit(F);
   return m_changed;
@@ -92,5 +128,5 @@ void FoldKnownWorkGroupSizes::visitCallInst(llvm::CallInst &I) {
 }
 
 namespace IGC {
-llvm::FunctionPass *CreateFoldKnownWorkGroupSizes() { return new FoldKnownWorkGroupSizes(); }
+llvm::FunctionPass *CreateFoldKnownWorkGroupSizes() { return new FoldKnownWorkGroupSizesLPM(); }
 } // namespace IGC

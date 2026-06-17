@@ -341,7 +341,7 @@ void AddAnalysisPasses(CodeGenContext &ctx, IGCPassManager &mpm) {
     // Newly created memcpy intrinsic are lowered
     mpm.add(createReplaceUnsupportedIntrinsicsPass());
     // Split complex constant expression into 2 simple ones
-    mpm.add(new BreakConstantExpr());
+    mpm.add(new BreakConstantExprLPM());
     // Expand newly created allocas
     mpm.add(createSROAPass());
     // Run legalization pass to expand non-supported instructions
@@ -351,7 +351,7 @@ void AddAnalysisPasses(CodeGenContext &ctx, IGCPassManager &mpm) {
     mpm.add(new Legalization(preserveNan));
     // Some clean up passes.
     mpm.add(llvm::createEarlyCSEPass());
-    mpm.add(new BreakConstantExpr());
+    mpm.add(new BreakConstantExprLPM());
     mpm.add(llvm::createCFGSimplificationPass());
     mpm.add(createDeadCodeEliminationPass());
     // Create functions groups after unmasked functions inlining
@@ -398,7 +398,7 @@ void AddAnalysisPasses(CodeGenContext &ctx, IGCPassManager &mpm) {
   mpm.add(createEvaluateFreezePass());
 
   // clean up constexpressions after EarlyCSE
-  mpm.add(new BreakConstantExpr());
+  mpm.add(new BreakConstantExprLPM());
 
   // This is for dumping register pressure info
   if (IGC_IS_FLAG_ENABLED(ForceRPE)) {
@@ -415,7 +415,7 @@ void AddAnalysisPasses(CodeGenContext &ctx, IGCPassManager &mpm) {
   }
 
   if (IGC_IS_FLAG_ENABLED(StackOverflowDetection)) {
-    mpm.add(new StackOverflowDetectionPass(StackOverflowDetectionPass::Mode::RemoveDummyCalls));
+    mpm.add(new StackOverflowDetectionPassLPM(StackOverflowDetectionPass::Mode::RemoveDummyCalls));
   }
 
   if (ctx.platform.hasEfficient64bEnabled()) {
@@ -491,7 +491,7 @@ static void UpdateInstTypeHint(CodeGenContext &ctx) {
   bool hasUnmaskedRegion = ctx.m_instrTypes.hasUnmaskedRegion;
   IGCPassManager mpm(&ctx, "UpdateOptPre");
   mpm.add(new CodeGenContextWrapper(&ctx));
-  mpm.add(new BreakConstantExpr());
+  mpm.add(new BreakConstantExprLPM());
   mpm.add(new CheckInstrTypes(false, false));
   mpm.run(*ctx.getModule());
   ctx.m_instrTypes.numBB = numBB;
@@ -602,8 +602,8 @@ void AddLegalizationPasses(CodeGenContext &ctx, IGCPassManager &mpm, PSSignature
   if (ctx.m_DriverInfo.NeedLoweringInlinedConstants()) {
     // Run additional constant breaking which is assumed by the constant
     // resolver.
-    mpm.add(new BreakConstantExpr());
-    mpm.add(new ProgramScopeConstantResolution());
+    mpm.add(new BreakConstantExprLPM());
+    mpm.add(new ProgramScopeConstantResolutionLPM());
   }
 
   // This is the condition that double emulation is used.
@@ -644,7 +644,7 @@ void AddLegalizationPasses(CodeGenContext &ctx, IGCPassManager &mpm, PSSignature
 
   if (theEmuKind > 0 || IGC_IS_FLAG_ENABLED(EnableTestIGCBuiltin)) {
     // Need to break constant expr as PreCompiledFuncImport does not handle it.
-    mpm.add(new BreakConstantExpr());
+    mpm.add(new BreakConstantExprLPM());
     mpm.add(new PreCompiledFuncImport(&ctx, theEmuKind));
     mpm.add(createAlwaysInlinerLegacyPass());
 
@@ -659,7 +659,7 @@ void AddLegalizationPasses(CodeGenContext &ctx, IGCPassManager &mpm, PSSignature
     // TODO: we probably should be running other passes on the result
 
     if (!IGC::ForceAlwaysInline(&ctx)) {
-      mpm.add(new PurgeMetaDataUtils());
+      mpm.add(new PurgeMetaDataUtilsLPM());
     }
   }
 
@@ -673,7 +673,7 @@ void AddLegalizationPasses(CodeGenContext &ctx, IGCPassManager &mpm, PSSignature
 
   if (IGC_IS_FLAG_DISABLED(DisablePromoteToDirectAS) && !ctx.getModuleMetaData()->compOpt.IsLibraryCompilation) {
     // Promotes indirect resource access to direct
-    mpm.add(new BreakConstantExpr());
+    mpm.add(new BreakConstantExprLPM());
     mpm.add(new PromoteResourceToDirectAS());
   }
 
@@ -743,13 +743,13 @@ void AddLegalizationPasses(CodeGenContext &ctx, IGCPassManager &mpm, PSSignature
 
   if (IGC_IS_FLAG_ENABLED(StackOverflowDetection)) {
     // Cleanup stack overflow detection calls if necessary.
-    mpm.add(new StackOverflowDetectionPass(StackOverflowDetectionPass::Mode::AnalyzeAndCleanup));
+    mpm.add(new StackOverflowDetectionPassLPM(StackOverflowDetectionPass::Mode::AnalyzeAndCleanup));
   }
 
   if (ctx.enableFunctionCall() || ctx.type == ShaderType::RAYTRACING_SHADER) {
     // Sort functions if subroutine/indirect fcall is enabled.
     mpm.add(IGCLLVM::createLegacyWrappedGlobalDCEPass());
-    mpm.add(new PurgeMetaDataUtils());
+    mpm.add(new PurgeMetaDataUtilsLPM());
     mpm.add(createGenXCodeGenModulePass());
   }
 
@@ -880,7 +880,7 @@ void AddLegalizationPasses(CodeGenContext &ctx, IGCPassManager &mpm, PSSignature
   // Create Gen IR lowering.
   //   To replace SLM pointer if they are constants, break constants first.
   if (ctx.m_instrTypes.hasLocalLoadStore) {
-    mpm.add(new BreakConstantExpr());
+    mpm.add(new BreakConstantExprLPM());
   }
 
   bool KeepGEPs;
@@ -898,7 +898,7 @@ void AddLegalizationPasses(CodeGenContext &ctx, IGCPassManager &mpm, PSSignature
     mpm.add(createSeparateConstOffsetFromGEPPass());
   } else {
     // Also break and lower GEP constexpr.
-    mpm.add(new BreakConstantExpr());
+    mpm.add(new BreakConstantExprLPM());
     mpm.add(createGEPLoweringPass());
   }
 
@@ -1062,7 +1062,7 @@ void AddLegalizationPasses(CodeGenContext &ctx, IGCPassManager &mpm, PSSignature
   bool preserveNan = !ctx.getCompilerOption().NoNaNs;
 
   // Legalizer does not handle constant expressions
-  mpm.add(new BreakConstantExpr());
+  mpm.add(new BreakConstantExprLPM());
   mpm.add(new Legalization(preserveNan));
 
   // Scalarizer in codegen to handle the vector instructions
@@ -1105,7 +1105,7 @@ void AddLegalizationPasses(CodeGenContext &ctx, IGCPassManager &mpm, PSSignature
        (IGC_GET_FLAG_VALUE(Enable64BitEmulation) ||
         (IGC_GET_FLAG_VALUE(Enable64BitEmulationOnSelectedPlatform) && ctx.platform.need64BitEmulation()))) ||
       ctx.platform.hasPartialInt64Support()) {
-    mpm.add(new BreakConstantExpr());
+    mpm.add(new BreakConstantExprLPM());
 
     // Emu64OpsPass requires that we are working on legal types, specifically
     // that i128 uses are expanded to i64. This is why we need to run PeepholeTypeLegalizer
@@ -1160,7 +1160,7 @@ void AddLegalizationPasses(CodeGenContext &ctx, IGCPassManager &mpm, PSSignature
   mpm.add(createVectorProcessPass());
 
   // handling constant expressions created by vectorProcess pass
-  mpm.add(new BreakConstantExpr());
+  mpm.add(new BreakConstantExprLPM());
 
   mpm.add(new LowPrecisionOpt());
 
@@ -1279,7 +1279,7 @@ static void alwaysInlineForNoOpt(CodeGenContext *pContext, bool NoOpt) {
     mpm.add(new MetaDataUtilsWrapper(pMdUtils, pContext->getModuleMetaData()));
     mpm.add(new CodeGenContextWrapper(pContext));
     mpm.add(createAlwaysInlinerLegacyPass());
-    mpm.add(new PurgeMetaDataUtils());
+    mpm.add(new PurgeMetaDataUtilsLPM());
     mpm.run(*pContext->getModule());
   }
 }
@@ -1413,7 +1413,7 @@ void OptimizeIR(CodeGenContext *const pContext) {
       mpm.add(IGCLLVM::createLegacyWrappedCorrelatedValuePropagationPass());
     }
 
-    mpm.add(new BreakConstantExpr());
+    mpm.add(new BreakConstantExprLPM());
     mpm.add(new IGCConstProp());
     GFX_ONLY_PASS { mpm.add(createTranslateToProgrammableOffsetsPass()); }
 
@@ -1620,7 +1620,7 @@ void OptimizeIR(CodeGenContext *const pContext) {
       if (!extensiveShader(pContext))
         mpm.add(IGCLLVM::createLegacyWrappedADCEPass());
 
-      mpm.add(new BreakConstantExpr());
+      mpm.add(new BreakConstantExprLPM());
       mpm.add(new IGCConstProp(IGC_IS_FLAG_ENABLED(EnableSimplifyGEP)));
       // Now that constant propagation is largely complete, perform
       // initial evaluation of freeze instructions. We need this to make
@@ -1849,7 +1849,7 @@ void OptimizeIR(CodeGenContext *const pContext) {
     GFX_ONLY_PASS { mpm.add(CreateGatingSimilarSamples()); }
 
     if (!IGC::ForceAlwaysInline(pContext)) {
-      mpm.add(new PurgeMetaDataUtils());
+      mpm.add(new PurgeMetaDataUtilsLPM());
     }
        // mpm.add(llvm::createDeadCodeEliminationPass()); // this should be done both before/after constant propagation
 

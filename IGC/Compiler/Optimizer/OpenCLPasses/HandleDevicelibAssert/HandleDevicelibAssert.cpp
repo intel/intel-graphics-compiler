@@ -23,18 +23,18 @@ using namespace IGC;
   "Remove definition of __devicelib_assert_fail if provided by DPCPP, so that IGC builtin is used."
 #define PASS_CFG_ONLY false
 #define PASS_ANALYSIS false
-IGC_INITIALIZE_PASS_BEGIN(HandleDevicelibAssert, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
-IGC_INITIALIZE_PASS_END(HandleDevicelibAssert, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_BEGIN(HandleDevicelibAssertLPM, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_END(HandleDevicelibAssertLPM, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
-char HandleDevicelibAssert::ID = 0;
+char HandleDevicelibAssertLPM::ID = 0;
 
 static const char *ASSERT_FUNCTION_NAME = "__devicelib_assert_fail";
 
-HandleDevicelibAssert::HandleDevicelibAssert() : ModulePass(ID) {
-  initializeHandleDevicelibAssertPass(*PassRegistry::getPassRegistry());
+HandleDevicelibAssertLPM::HandleDevicelibAssertLPM() : ModulePass(ID) {
+  initializeHandleDevicelibAssertLPMPass(*PassRegistry::getPassRegistry());
 }
 
-bool HandleDevicelibAssert::runOnModule(Module &M) {
+bool HandleDevicelibAssert::run(Module &M) {
   bool changed = false;
   for (Function &F : M) {
 
@@ -49,3 +49,10 @@ bool HandleDevicelibAssert::runOnModule(Module &M) {
   }
   return changed;
 }
+
+#if LLVM_VERSION_MAJOR >= 16
+PreservedAnalyses HandleDevicelibAssertNPM::run(Module &M, ModuleAnalysisManager &) {
+  bool changed = HandleDevicelibAssert().run(M);
+  return changed ? PreservedAnalyses::none() : PreservedAnalyses::all();
+}
+#endif // LLVM_VERSION_MAJOR >= 16

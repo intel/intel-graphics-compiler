@@ -14,6 +14,7 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/Pass.h>
 #include <llvm/Analysis/CallGraph.h>
+#include <llvm/IR/PassManager.h>
 #include "common/LLVMWarningsPop.hpp"
 
 #include <set>
@@ -35,31 +36,25 @@ typedef std::map<llvm::Function *, ImpArgToExpNum> FuncImpToExpNumMap;
 ///         the implicit arguments needed by each function and passed from the OpenCL runtime
 ///         This pass depdends on the WIFuncAnalysis pass runing before it
 /// @Author Marina Yatsina
-class AddImplicitArgs : public llvm::ModulePass {
+// Shared implementation. Holds the logic and is used by both the legacy and the
+// new-pass-manager wrappers below; it is not itself an llvm::Pass.
+class AddImplicitArgs {
 public:
-  // Pass identification, replacement for typeid
-  static char ID;
-
   /// @brief  Constructor
-  AddImplicitArgs();
+  AddImplicitArgs() {}
 
   /// @brief  Destructor
   ~AddImplicitArgs() {}
 
   /// @brief  Provides name of pass
-  virtual llvm::StringRef getPassName() const override { return "AddImplicitArgs"; }
-
-  virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override {
-    AU.addRequired<CodeGenContextWrapper>();
-    AU.addRequired<MetaDataUtilsWrapper>();
-  }
+  static llvm::StringRef getPassName() { return "AddImplicitArgs"; }
 
   /// @brief  Main entry point.
   ///         Goes over all functions and changes their signature to contain the implicit arguments
   ///         needed by each function, goes over all function calls and adds the implicit arguments
   ///         to the function calls
   /// @param  M The destination module.
-  virtual bool runOnModule(llvm::Module &M) override;
+  bool run(llvm::Module &M, IGC::IGCMD::MetaDataUtils *pMdUtils, IGC::CodeGenContext *pCtx);
 
   /// @brief  Check if a function has a stackcall in its call path to
   ///         decide whether implicit args should be added
@@ -86,11 +81,49 @@ private:
   static llvm::Value *coerce(llvm::Value *arg, llvm::Type *type, llvm::Instruction *insertBefore);
 
   /// @brief  Metadata API object.
-  IGC::IGCMD::MetaDataUtils *m_pMdUtils;
+  IGC::IGCMD::MetaDataUtils *m_pMdUtils = nullptr;
+  /// @brief  Compilation context, cached at run() entry.
+  IGC::CodeGenContext *m_ctx = nullptr;
 
   FuncInfoToImpArgMap m_FuncInfoToImpArgMap;
   FuncImpToExpNumMap m_FuncImpToExpNumMap;
 };
+
+// Legacy Pass Manager wrapper.
+class AddImplicitArgsLPM : public llvm::ModulePass {
+public:
+  // Pass identification, replacement for typeid
+  static char ID;
+
+  AddImplicitArgsLPM();
+  ~AddImplicitArgsLPM() {}
+
+  virtual llvm::StringRef getPassName() const override { return AddImplicitArgs::getPassName(); }
+
+  virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override {
+    AU.addRequired<CodeGenContextWrapper>();
+    AU.addRequired<MetaDataUtilsWrapper>();
+  }
+
+  virtual bool runOnModule(llvm::Module &M) override {
+    return m_impl.run(M, getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils(),
+                      getAnalysis<CodeGenContextWrapper>().getCodeGenContext());
+  }
+
+private:
+  AddImplicitArgs m_impl;
+};
+
+#if LLVM_VERSION_MAJOR >= 16
+// New Pass Manager wrapper. name() returns the legacy pass argument so that
+// PrintBefore/PrintAfter=<pass argument> matches under the new pass manager.
+class AddImplicitArgsNPM : public llvm::PassInfoMixin<AddImplicitArgsNPM> {
+public:
+  llvm::PreservedAnalyses run(llvm::Module &M, llvm::ModuleAnalysisManager &AM);
+  static llvm::StringRef name() { return "igc-add-implicit-args"; }
+  static bool isRequired() { return true; }
+};
+#endif // LLVM_VERSION_MAJOR >= 16
 
 } // namespace IGC
 
@@ -102,22 +135,16 @@ struct ImplicitArgumentDetail {
   std::set<unsigned int> StructArgSet;
 };
 
-class BuiltinCallGraphAnalysis : public llvm::ModulePass {
+// Shared implementation. Holds the logic and is used by both the legacy and the
+// new-pass-manager wrappers below; it is not itself an llvm::Pass.
+class BuiltinCallGraphAnalysis {
 public:
-  static char ID;
-
-  BuiltinCallGraphAnalysis();
+  BuiltinCallGraphAnalysis() {}
   ~BuiltinCallGraphAnalysis() {}
 
-  virtual llvm::StringRef getPassName() const override { return "BuiltinCallGraphAnalysis"; }
+  static llvm::StringRef getPassName() { return "BuiltinCallGraphAnalysis"; }
 
-  void getAnalysisUsage(llvm::AnalysisUsage &AU) const override {
-    AU.addRequired<MetaDataUtilsWrapper>();
-    AU.addRequired<CodeGenContextWrapper>();
-    AU.addRequired<llvm::CallGraphWrapperPass>();
-  }
-
-  virtual bool runOnModule(llvm::Module &M) override;
+  bool run(llvm::Module &M, IGC::IGCMD::MetaDataUtils *pMdUtils, IGC::CodeGenContext *pCtx, llvm::CallGraph &CG);
 
   void traverseCallGraphSCC(const std::vector<llvm::CallGraphNode *> &SCCNodes);
   void combineTwoArgDetail(ImplicitArgumentDetail &, const ImplicitArgumentDetail &, llvm::Value *) const;
@@ -126,9 +153,48 @@ public:
   bool pruneCallGraphForStackCalls(llvm::CallGraph &CG);
 
 private:
-  IGC::IGCMD::MetaDataUtils *m_pMdUtils;
+  IGC::IGCMD::MetaDataUtils *m_pMdUtils = nullptr;
+  IGC::CodeGenContext *m_ctx = nullptr;
   llvm::SmallDenseMap<llvm::Function *, ImplicitArgumentDetail *> argMap;
   llvm::SmallVector<std::unique_ptr<ImplicitArgumentDetail>, 4> argDetails;
 };
+
+// Legacy Pass Manager wrapper.
+class BuiltinCallGraphAnalysisLPM : public llvm::ModulePass {
+public:
+  static char ID;
+
+  BuiltinCallGraphAnalysisLPM();
+  ~BuiltinCallGraphAnalysisLPM() {}
+
+  virtual llvm::StringRef getPassName() const override { return BuiltinCallGraphAnalysis::getPassName(); }
+
+  void getAnalysisUsage(llvm::AnalysisUsage &AU) const override {
+    AU.addRequired<MetaDataUtilsWrapper>();
+    AU.addRequired<CodeGenContextWrapper>();
+    AU.addRequired<llvm::CallGraphWrapperPass>();
+  }
+
+  virtual bool runOnModule(llvm::Module &M) override {
+    return m_impl.run(M, getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils(),
+                      getAnalysis<CodeGenContextWrapper>().getCodeGenContext(),
+                      getAnalysis<llvm::CallGraphWrapperPass>().getCallGraph());
+  }
+
+private:
+  BuiltinCallGraphAnalysis m_impl;
+};
+
+#if LLVM_VERSION_MAJOR >= 16
+// New Pass Manager wrapper. The call graph comes from LLVM's standard CallGraphAnalysis
+// (registered by PassBuilder::registerModuleAnalyses in IGCNewPassManager). name() returns
+// the legacy pass argument so PrintBefore/PrintAfter matches under the new pass manager.
+class BuiltinCallGraphAnalysisNPM : public llvm::PassInfoMixin<BuiltinCallGraphAnalysisNPM> {
+public:
+  llvm::PreservedAnalyses run(llvm::Module &M, llvm::ModuleAnalysisManager &AM);
+  static llvm::StringRef name() { return "igc-callgraphscc-analysis"; }
+  static bool isRequired() { return true; }
+};
+#endif // LLVM_VERSION_MAJOR >= 16
 
 } // namespace IGC

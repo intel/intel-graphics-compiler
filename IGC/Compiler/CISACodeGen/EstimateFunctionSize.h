@@ -18,13 +18,24 @@ SPDX-License-Identifier: MIT
 #include "Probe/Assertion.h"
 #include <cstddef>
 #include <deque>
+#include <functional>
 #include <unordered_map>
 #include <unordered_set>
 
 namespace llvm {
 class Loop;
 class LoopInfo;
+class BlockFrequencyInfo;
+class ScalarEvolution;
 } // namespace llvm
+
+namespace IGC {
+namespace IGCMD {
+class MetaDataUtils;
+}
+class CodeGenContext;
+} // namespace IGC
+
 namespace IGC {
 
 /// \brief Estimate function size after complete inlining.
@@ -44,6 +55,19 @@ public:
   llvm::StringRef getPassName() const override { return "Estimate Function Sizes"; }
   void getAnalysisUsage(llvm::AnalysisUsage &AU) const override;
   bool runOnModule(llvm::Module &M) override;
+
+  // Per-function analyses (LoopInfo/BlockFrequencyInfo/ScalarEvolution) and the MetaDataUtils are
+  // injected by the caller so the engine works under both pass managers. The legacy runOnModule
+  // wires the getters to getAnalysis<...>(F); the new pass manager consumer calls computeInline()
+  // with getters backed by the function analysis manager. This avoids renaming the pass, which is
+  // required because it is also consumed by codegen passes (GenCodeGenModule, CallMergerPass).
+  using LoopInfoGetter = std::function<llvm::LoopInfo &(llvm::Function &)>;
+  using BFIGetter = std::function<llvm::BlockFrequencyInfo &(llvm::Function &)>;
+  using SEGetter = std::function<llvm::ScalarEvolution &(llvm::Function &)>;
+
+  // Compute the analysis on a stack-constructed instance (outside any pass manager).
+  bool computeInline(llvm::Module &M, LoopInfoGetter LIG, BFIGetter BFIG, SEGetter SEG,
+                     IGC::IGCMD::MetaDataUtils *MdUtils, IGC::CodeGenContext *Ctx);
 
   /// \brief Return the estimated maximal function size after complete inlining.
   std::size_t getMaxExpandedSize() const;
@@ -104,8 +128,18 @@ private:
   void updateStaticFuncFreq();
   void estimateTotalLoopIteration(llvm::Function &F, llvm::LoopInfo *LI);
 
+  /// \brief Run the core analysis once the getters/MetaDataUtils are set up.
+  bool runAnalysis(llvm::Module &Mod);
+
   /// \brief The module being analyzed.
   llvm::Module *M;
+
+  /// \brief Injected per-function analysis getters and MetaDataUtils (see computeInline).
+  LoopInfoGetter m_getLI;
+  BFIGetter m_getBFI;
+  SEGetter m_getSE;
+  IGC::IGCMD::MetaDataUtils *m_pMdUtils = nullptr;
+  IGC::CodeGenContext *m_pCtx = nullptr;
 
   /// \brief The analysis level to be performed.
   AnalysisLevel AL;

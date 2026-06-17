@@ -12,6 +12,7 @@ SPDX-License-Identifier: MIT
 
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/Pass.h>
+#include <llvm/IR/PassManager.h>
 #include "common/LLVMWarningsPop.hpp"
 #include "common/MDFrameWork.h"
 
@@ -59,5 +60,35 @@ private:
   IGC::ModuleMetaData *modMD;
   bool m_isUtilsOwner;
 };
+
+#if LLVM_VERSION_MAJOR >= 16
+// Result of MetaDataUtilsAnalysis: the same pointers held by the legacy
+// MetaDataUtilsWrapper ImmutablePass.
+struct MetaDataUtilsResult {
+  IGCMD::MetaDataUtils *MdUtils = nullptr;
+  ModuleMetaData *ModMD = nullptr;
+};
+
+// New Pass Manager analysis exposing the MetaDataUtils/ModuleMetaData to ported
+// passes. Seeded externally (does not compute anything from the module); register
+// it with a ModuleAnalysisManager via:
+//   MAM.registerPass([Md, ModMD] { return MetaDataUtilsAnalysis(Md, ModMD); });
+// and retrieve it in an NPM pass via:
+//   MetaDataUtilsResult md = AM.getResult<MetaDataUtilsAnalysis>(M);
+class MetaDataUtilsAnalysis : public llvm::AnalysisInfoMixin<MetaDataUtilsAnalysis> {
+  friend llvm::AnalysisInfoMixin<MetaDataUtilsAnalysis>;
+  static llvm::AnalysisKey Key;
+
+  MetaDataUtilsResult m_result;
+
+public:
+  using Result = MetaDataUtilsResult;
+
+  MetaDataUtilsAnalysis() = default;
+  MetaDataUtilsAnalysis(IGCMD::MetaDataUtils *Md, ModuleMetaData *ModMD) : m_result{Md, ModMD} {}
+
+  Result run(llvm::Module &, llvm::ModuleAnalysisManager &) { return m_result; }
+};
+#endif // LLVM_VERSION_MAJOR >= 16
 
 } // namespace IGC

@@ -25,12 +25,13 @@ using namespace llvm;
 #define PASS_DESCRIPTION "Accuracy decorated calls BiF resolution"
 #define PASS_CFG_ONLY false
 #define PASS_ANALYSIS false
-IGC_INITIALIZE_PASS_BEGIN(AccuracyDecoratedCallsBiFResolution, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY,
+IGC_INITIALIZE_PASS_BEGIN(AccuracyDecoratedCallsBiFResolutionLPM, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY,
                           PASS_ANALYSIS)
 IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
-IGC_INITIALIZE_PASS_END(AccuracyDecoratedCallsBiFResolution, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_END(AccuracyDecoratedCallsBiFResolutionLPM, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY,
+                        PASS_ANALYSIS)
 
-char AccuracyDecoratedCallsBiFResolution::ID = 0;
+char AccuracyDecoratedCallsBiFResolutionLPM::ID = 0;
 
 static inline const char *toString(Accuracy a) {
   switch (a) {
@@ -47,8 +48,8 @@ static inline const char *toString(Accuracy a) {
   }
 }
 
-AccuracyDecoratedCallsBiFResolution::AccuracyDecoratedCallsBiFResolution() : ModulePass(ID) {
-  initializeAccuracyDecoratedCallsBiFResolutionPass(*PassRegistry::getPassRegistry());
+AccuracyDecoratedCallsBiFResolutionLPM::AccuracyDecoratedCallsBiFResolutionLPM() : ModulePass(ID) {
+  initializeAccuracyDecoratedCallsBiFResolutionLPMPass(*PassRegistry::getPassRegistry());
 }
 
 void AccuracyDecoratedCallsBiFResolution::initNameToBuiltinMap() {
@@ -57,8 +58,9 @@ void AccuracyDecoratedCallsBiFResolution::initNameToBuiltinMap() {
 #undef DEF_NAME_TO_BUILTIN
 }
 
-bool AccuracyDecoratedCallsBiFResolution::runOnModule(Module &M) {
+bool AccuracyDecoratedCallsBiFResolution::run(Module &M, CodeGenContext *pCtx) {
   m_Module = static_cast<Module *>(&M);
+  m_pCtx = pCtx;
 
   initNameToBuiltinMap();
 
@@ -184,7 +186,7 @@ std::string AccuracyDecoratedCallsBiFResolution::getFunctionName(const StringRef
   if (!m_nameToBuiltin.at(oldFuncName.str()).count(accuracy)) {
     std::string warningMessage = "Built-in function not found for " + oldFuncName.str() + " at " + toString(accuracy) +
                                  ". Choosing higher precision.";
-    getAnalysis<CodeGenContextWrapper>().getCodeGenContext()->EmitWarning(warningMessage.c_str(), currInst);
+    m_pCtx->EmitWarning(warningMessage.c_str(), currInst);
 
     switch (accuracy) {
     default:
@@ -219,8 +221,7 @@ Accuracy AccuracyDecoratedCallsBiFResolution::getAccuracy(double maxError, doubl
     if (isSqrt(currInst))
       return CORRECTLY_ROUNDED;
 
-    getAnalysis<CodeGenContextWrapper>().getCodeGenContext()->EmitError(
-        "fpbuiltin-max-error with values below 1.0 is only supported for sqrt and division", currInst);
+    m_pCtx->EmitError("fpbuiltin-max-error with values below 1.0 is only supported for sqrt and division", currInst);
   }
   if (maxError < 4.0)
     return HIGH_ACCURACY;
@@ -230,3 +231,10 @@ Accuracy AccuracyDecoratedCallsBiFResolution::getAccuracy(double maxError, doubl
 
   return ENHANCED_PERFORMANCE;
 }
+
+#if LLVM_VERSION_MAJOR >= 16
+PreservedAnalyses AccuracyDecoratedCallsBiFResolutionNPM::run(Module &M, ModuleAnalysisManager &AM) {
+  bool changed = AccuracyDecoratedCallsBiFResolution().run(M, AM.getResult<CodeGenContextAnalysis>(M).Ctx);
+  return changed ? PreservedAnalyses::none() : PreservedAnalyses::all();
+}
+#endif // LLVM_VERSION_MAJOR >= 16

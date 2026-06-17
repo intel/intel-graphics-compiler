@@ -14,6 +14,8 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPush.hpp"
 #include "llvm/ADT/PostOrderIterator.h"
 #include <llvm/IR/DIBuilder.h>
+#include <llvm/IR/Dominators.h>
+#include <llvm/Analysis/LoopInfo.h>
 #include "common/LLVMWarningsPop.hpp"
 #include "llvmWrapper/IR/Function.h"
 #include "llvmWrapper/IR/DerivedTypes.h"
@@ -44,27 +46,37 @@ SPDX-License-Identifier: MIT
 //   a cast from private to GAS. If there is no such cast, GAS inst (such as
 //   ld/st, etc, can be converted safely to ld/st on globals.
 
-ModulePass *IGC::createLowerGPCallArg() { return new LowerGPCallArg(); }
+ModulePass *IGC::createLowerGPCallArg() { return new LowerGPCallArgLPM(); }
 
-char LowerGPCallArg::ID = 0;
+char LowerGPCallArgLPM::ID = 0;
 
 #define PASS_FLAG "igc-lower-gp-arg"
 #define PASS_DESC "Lower generic pointers in call arguments"
 #define PASS_CFG_ONLY false
 #define PASS_ANALYSIS false
-IGC_INITIALIZE_PASS_BEGIN(LowerGPCallArg, PASS_FLAG, PASS_DESC, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_BEGIN(LowerGPCallArgLPM, PASS_FLAG, PASS_DESC, PASS_CFG_ONLY, PASS_ANALYSIS)
 IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
 IGC_INITIALIZE_PASS_DEPENDENCY(MetaDataUtilsWrapper)
 IGC_INITIALIZE_PASS_DEPENDENCY(CallGraphWrapperPass)
 IGC_INITIALIZE_PASS_DEPENDENCY(LoopInfoWrapperPass)
-IGC_INITIALIZE_PASS_END(LowerGPCallArg, PASS_FLAG, PASS_DESC, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_END(LowerGPCallArgLPM, PASS_FLAG, PASS_DESC, PASS_CFG_ONLY, PASS_ANALYSIS)
 
-bool LowerGPCallArg::runOnModule(llvm::Module &M) {
-  m_ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
-  m_mdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
+#if LLVM_VERSION_MAJOR >= 16
+llvm::PreservedAnalyses LowerGPCallArgNPM::run(llvm::Module &M, llvm::ModuleAnalysisManager &AM) {
+  LowerGPCallArg impl;
+  CodeGenContext *ctx = AM.getResult<CodeGenContextAnalysis>(M).Ctx;
+  IGCMD::MetaDataUtils *mdUtils = AM.getResult<MetaDataUtilsAnalysis>(M).MdUtils;
+  CallGraph &CG = AM.getResult<llvm::CallGraphAnalysis>(M);
+  bool changed = impl.run(M, ctx, mdUtils, CG);
+  return changed ? llvm::PreservedAnalyses::none() : llvm::PreservedAnalyses::all();
+}
+#endif // LLVM_VERSION_MAJOR >= 16
+
+bool LowerGPCallArg::run(llvm::Module &M, CodeGenContext *Ctx, IGCMD::MetaDataUtils *MdUtils, llvm::CallGraph &CG) {
+  m_ctx = Ctx;
+  m_mdUtils = MdUtils;
   m_module = &M;
 
-  CallGraph &CG = getAnalysis<CallGraphWrapperPass>().getCallGraph();
   std::vector<Function *> candidates = findCandidates(CG);
   bool changed = false;
   for (auto F : reverse(candidates)) {
@@ -214,7 +226,10 @@ void LowerGPCallArg::updateFunctionArgs(Function *oldFunc, Function *newFunc) {
                          IGCLLVM::insertPosition(IGCLLVM::getFirstNonPHI(&newFunc->getEntryBlock())));
     oldArg->replaceAllUsesWith(NewArgToGeneric);
 
-    LoopInfo &LI = getAnalysis<LoopInfoWrapperPass>(*newFunc).getLoopInfo();
+    // Compute LoopInfo on demand for the new function (matches legacy
+    // getAnalysis<LoopInfoWrapperPass>(F), which lazily recomputes it).
+    DominatorTree DT(*newFunc);
+    LoopInfo LI(DT);
     GASPropagator Propagator(newFunc->getContext(), &LI);
     Propagator.propagate(newArg);
   }

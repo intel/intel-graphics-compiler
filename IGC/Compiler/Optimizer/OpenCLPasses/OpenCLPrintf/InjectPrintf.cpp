@@ -21,14 +21,14 @@ SPDX-License-Identifier: MIT
 using namespace IGC;
 using namespace llvm;
 
-char InjectPrintf::ID = 0;
+char InjectPrintfLPM::ID = 0;
 
 #define PASS_FLAG "inject-printf"
 #define PASS_DESCRIPTION "Inject printf before load and store operations for ptr Pass."
 #define PASS_CFG_ONLY false
 #define PASS_ANALYSIS false
-IGC_INITIALIZE_PASS_BEGIN(InjectPrintf, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
-IGC_INITIALIZE_PASS_END(InjectPrintf, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_BEGIN(InjectPrintfLPM, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_END(InjectPrintfLPM, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
 enum class InjectPrintfFlagType {
 #define INJECT_PRINTF_OPTION(Name, Val) Name = Val,
@@ -38,7 +38,9 @@ enum class InjectPrintfFlagType {
 #undef INJECT_PRINTF_OPTIONS
 };
 
-InjectPrintf::InjectPrintf() : FunctionPass(ID) { initializeInjectPrintfPass(*PassRegistry::getPassRegistry()); }
+InjectPrintfLPM::InjectPrintfLPM() : FunctionPass(ID) {
+  initializeInjectPrintfLPMPass(*PassRegistry::getPassRegistry());
+}
 
 GlobalVariable *InjectPrintf::createGlobalFormatStr(Module *Module, LLVMContext &Context) {
   IGC_ASSERT(Module != nullptr);
@@ -83,7 +85,7 @@ void InjectPrintf::insertPrintf(IRBuilder<> &Builder, FunctionCallee PrintfFunc,
   Builder.CreateCall(PrintfFunc, {FormatStr, PointerOperand, TypeStrGlobal});
 }
 
-bool InjectPrintf::runOnFunction(Function &F) {
+bool InjectPrintf::run(Function &F) {
   LLVMContext &Context = F.getContext();
   Module *Module = F.getParent();
   if (!Module) {
@@ -119,3 +121,10 @@ bool InjectPrintf::runOnFunction(Function &F) {
 
   return true;
 }
+
+#if LLVM_VERSION_MAJOR >= 16
+PreservedAnalyses InjectPrintfNPM::run(Function &F, FunctionAnalysisManager &) {
+  bool changed = InjectPrintf().run(F);
+  return changed ? PreservedAnalyses::none() : PreservedAnalyses::all();
+}
+#endif // LLVM_VERSION_MAJOR >= 16

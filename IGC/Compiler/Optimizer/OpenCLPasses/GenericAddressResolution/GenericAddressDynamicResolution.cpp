@@ -37,7 +37,9 @@ class GenericAddressDynamicResolution : public FunctionPass {
 public:
   static char ID;
 
-  GenericAddressDynamicResolution() : FunctionPass(ID) {}
+  GenericAddressDynamicResolution() : FunctionPass(ID) {
+    ::initializeGenericAddressDynamicResolutionPass(*PassRegistry::getPassRegistry());
+  }
   ~GenericAddressDynamicResolution() = default;
 
   StringRef getPassName() const override { return "GenericAddressDynamicResolution"; }

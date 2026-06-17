@@ -19,22 +19,23 @@ using namespace IGC;
 #define PASS_DESCRIPTION "Analyzes device enqueue functions"
 #define PASS_CFG_ONLY false
 #define PASS_ANALYSIS false
-IGC_INITIALIZE_PASS_BEGIN(DeviceEnqueueFuncsAnalysis, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_BEGIN(DeviceEnqueueFuncsAnalysisLPM, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 IGC_INITIALIZE_PASS_DEPENDENCY(MetaDataUtilsWrapper)
 IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
-IGC_INITIALIZE_PASS_END(DeviceEnqueueFuncsAnalysis, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_END(DeviceEnqueueFuncsAnalysisLPM, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
 // Register pass to igc-opt
 #define PASS_FLAG2 "igc-device-enqueue-func-resolution"
 #define PASS_DESCRIPTION2 "Resolve device enqueue functions"
 #define PASS_CFG_ONLY2 false
 #define PASS_ANALYSIS2 false
-IGC_INITIALIZE_PASS_BEGIN(DeviceEnqueueFuncsResolution, PASS_FLAG2, PASS_DESCRIPTION2, PASS_CFG_ONLY2, PASS_ANALYSIS2)
+IGC_INITIALIZE_PASS_BEGIN(DeviceEnqueueFuncsResolutionLPM, PASS_FLAG2, PASS_DESCRIPTION2, PASS_CFG_ONLY2,
+                          PASS_ANALYSIS2)
 IGC_INITIALIZE_PASS_DEPENDENCY(MetaDataUtilsWrapper)
 IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
-IGC_INITIALIZE_PASS_END(DeviceEnqueueFuncsResolution, PASS_FLAG2, PASS_DESCRIPTION2, PASS_CFG_ONLY2, PASS_ANALYSIS2)
+IGC_INITIALIZE_PASS_END(DeviceEnqueueFuncsResolutionLPM, PASS_FLAG2, PASS_DESCRIPTION2, PASS_CFG_ONLY2, PASS_ANALYSIS2)
 
-char DeviceEnqueueFuncsAnalysis::ID = 0;
+char DeviceEnqueueFuncsAnalysisLPM::ID = 0;
 
 const llvm::StringRef GET_DEFAULT_DEVICE_QUEUE = "__builtin_IB_get_default_device_queue";
 const llvm::StringRef GET_EVENT_POOL = "__builtin_IB_get_event_pool";
@@ -44,13 +45,14 @@ const llvm::StringRef GET_PREFERED_WORKGROUP_MULTIPLE = "__builtin_IB_get_prefer
 const llvm::StringRef GET_OBJECT_ID = "__builtin_IB_get_object_id";
 const llvm::StringRef GET_BLOCK_SIMD_SIZE = "__builtin_IB_get_block_simd_size";
 
-DeviceEnqueueFuncsAnalysis::DeviceEnqueueFuncsAnalysis() : ModulePass(ID), m_hasDeviceEnqueue(false) {
-  initializeDeviceEnqueueFuncsAnalysisPass(*PassRegistry::getPassRegistry());
+DeviceEnqueueFuncsAnalysisLPM::DeviceEnqueueFuncsAnalysisLPM() : ModulePass(ID) {
+  initializeDeviceEnqueueFuncsAnalysisLPMPass(*PassRegistry::getPassRegistry());
 }
 
-bool DeviceEnqueueFuncsAnalysis::runOnModule(Module &M) {
+bool DeviceEnqueueFuncsAnalysis::run(Module &M, IGCMD::MetaDataUtils *pMdUtils, IGC::ModuleMetaData *pModMD) {
   bool changed = false;
-  m_pMDUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
+  m_pMDUtils = pMdUtils;
+  m_modMD = pModMD;
   // Run on all functions defined in this module
   for (Module::iterator I = M.begin(), E = M.end(); I != E; ++I) {
     Function *pFunc = &(*I);
@@ -76,10 +78,8 @@ bool DeviceEnqueueFuncsAnalysis::runOnFunction(Function &F) {
   // Visit the function
   visit(F);
 
-  ImplicitArgs::addImplicitArgs(F, m_newImplicitArgs, m_pMDUtils,
-                                getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData());
-  ImplicitArgs::addNumberedArgs(F, m_newNumberedImplicitArgs, m_pMDUtils,
-                                getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData());
+  ImplicitArgs::addImplicitArgs(F, m_newImplicitArgs, m_pMDUtils, m_modMD);
+  ImplicitArgs::addNumberedArgs(F, m_newNumberedImplicitArgs, m_pMDUtils, m_modMD);
 
   return m_hasDeviceEnqueue;
 }
@@ -138,17 +138,17 @@ void DeviceEnqueueFuncsAnalysis::visitCallInst(CallInst &CI) {
   }
 }
 
-char DeviceEnqueueFuncsResolution::ID = 0;
+char DeviceEnqueueFuncsResolutionLPM::ID = 0;
 
-DeviceEnqueueFuncsResolution::DeviceEnqueueFuncsResolution() : FunctionPass(ID), m_Changed(false) {
-  initializeDeviceEnqueueFuncsResolutionPass(*PassRegistry::getPassRegistry());
+DeviceEnqueueFuncsResolutionLPM::DeviceEnqueueFuncsResolutionLPM() : FunctionPass(ID) {
+  initializeDeviceEnqueueFuncsResolutionLPMPass(*PassRegistry::getPassRegistry());
 }
 
-bool DeviceEnqueueFuncsResolution::runOnFunction(Function &F) {
+bool DeviceEnqueueFuncsResolution::runOnFunction(Function &F, IGCMD::MetaDataUtils *pMdUtils,
+                                                 IGC::ModuleMetaData *pModMD) {
   m_Changed = false;
 
-  m_implicitArgs = ImplicitArgs(F, getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils(),
-                                getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData());
+  m_implicitArgs = ImplicitArgs(F, pMdUtils, pModMD);
 
   visit(F);
 
@@ -198,3 +198,24 @@ void DeviceEnqueueFuncsResolution::visitCallInst(CallInst &CI) {
     m_Changed = true;
   }
 }
+
+#if LLVM_VERSION_MAJOR >= 16
+PreservedAnalyses DeviceEnqueueFuncsAnalysisNPM::run(Module &M, ModuleAnalysisManager &AM) {
+  bool changed = DeviceEnqueueFuncsAnalysis().run(M, AM.getResult<MetaDataUtilsAnalysis>(M).MdUtils,
+                                                  AM.getResult<MetaDataUtilsAnalysis>(M).ModMD);
+  return changed ? PreservedAnalyses::none() : PreservedAnalyses::all();
+}
+
+PreservedAnalyses DeviceEnqueueFuncsResolutionNPM::run(Module &M, ModuleAnalysisManager &AM) {
+  auto *pMdUtils = AM.getResult<MetaDataUtilsAnalysis>(M).MdUtils;
+  auto *pModMD = AM.getResult<MetaDataUtilsAnalysis>(M).ModMD;
+  DeviceEnqueueFuncsResolution impl;
+  bool changed = false;
+  for (Function &F : M) {
+    if (F.isDeclaration())
+      continue;
+    changed |= impl.runOnFunction(F, pMdUtils, pModMD);
+  }
+  return changed ? PreservedAnalyses::none() : PreservedAnalyses::all();
+}
+#endif // LLVM_VERSION_MAJOR >= 16

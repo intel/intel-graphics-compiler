@@ -45,6 +45,13 @@ private:
 void DumpLLVMIR(IGC::CodeGenContext *pContext, const char *dumpName);
 void DumpHashToOptions(const ShaderHash &, const ShaderType);
 
+// New Pass Manager counterpart of the per-pass skip handling in IGCPassManager::add.
+// Returns true if the next pass (named `passName`) added to a New Pass Manager
+// pipeline named `pmName` should be skipped, honoring the same registry keys as the
+// legacy pass manager (DisablePassToggles, ShaderPassDisable,
+// ShaderDisableOptPassesAfter, ShaderDumpTranslationOnly, ShaderDisplayAllPassesNames).
+bool shouldSkipPassNewPM(IGC::CodeGenContext *ctx, llvm::StringRef passName, llvm::StringRef pmName);
+
 class InlineHelper {
 private:
   // create a map of (type, array size, address space to alloca instructions)

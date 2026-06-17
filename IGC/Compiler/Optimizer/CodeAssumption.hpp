@@ -15,6 +15,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/IR/Instructions.h"
 #include <llvm/IR/Function.h>
 #include "llvm/IR/Module.h"
+#include <llvm/IR/PassManager.h>
 #include <llvm/Analysis/AssumptionCache.h>
 #include "common/LLVMWarningsPop.hpp"
 
@@ -32,21 +33,16 @@ class MetaDataUtils;
 // value is positive or not). Currently, value tracking is used
 // by StatelessToStateful optimization.
 //
-class CodeAssumption : public llvm::ModulePass {
+// Shared implementation. Holds the logic and is used by both the legacy and the
+// new-pass-manager wrappers below; it is not itself an llvm::Pass.
+class CodeAssumption {
 public:
-  static char ID;
+  CodeAssumption() {}
+  ~CodeAssumption() {}
 
-  CodeAssumption() : ModulePass(ID), m_changed(false) {}
+  static llvm::StringRef getPassName() { return "CodeAssumption"; }
 
-  llvm::StringRef getPassName() const override { return "CodeAssumption"; }
-
-  bool runOnModule(llvm::Module &) override;
-
-  void getAnalysisUsage(llvm::AnalysisUsage &AU) const override {
-    AU.setPreservesCFG();
-    AU.addRequired<MetaDataUtilsWrapper>();
-    AU.addRequired<CodeGenContextWrapper>();
-  }
+  bool run(llvm::Module &M, IGCMD::MetaDataUtils *pMdUtils, ModuleMetaData *pModMD);
 
   // APIs used directly
   static bool addAssumption(llvm::Function *F, llvm::AssumptionCache *AC);
@@ -57,6 +53,7 @@ private:
   bool m_changed{};
 
   IGCMD::MetaDataUtils *m_pMDUtils = nullptr;
+  ModuleMetaData *m_modMD = nullptr;
 
   // Simple change to help uniform analysis (later).
   void uniformHelper(llvm::Module *M);
@@ -67,4 +64,42 @@ private:
   // helpers
   static bool isPositiveIndVar(llvm::PHINode *PN, const llvm::DataLayout *DL, llvm::AssumptionCache *AC);
 };
+
+// Legacy Pass Manager wrapper.
+class CodeAssumptionLPM : public llvm::ModulePass {
+public:
+  static char ID;
+
+  CodeAssumptionLPM() : ModulePass(ID) {}
+
+  llvm::StringRef getPassName() const override { return CodeAssumption::getPassName(); }
+
+  bool runOnModule(llvm::Module &M) override {
+    return m_impl.run(M, getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils(),
+                      getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData());
+  }
+
+  void getAnalysisUsage(llvm::AnalysisUsage &AU) const override {
+    AU.setPreservesCFG();
+    AU.addRequired<MetaDataUtilsWrapper>();
+    AU.addRequired<CodeGenContextWrapper>();
+  }
+
+private:
+  CodeAssumption m_impl;
+};
+
+#if LLVM_VERSION_MAJOR >= 16
+// New Pass Manager wrapper. name() returns the legacy pass argument so that
+// PrintBefore/PrintAfter=<pass argument> matches under the new pass manager.
+class CodeAssumptionNPM : public llvm::PassInfoMixin<CodeAssumptionNPM> {
+public:
+  llvm::PreservedAnalyses run(llvm::Module &M, llvm::ModuleAnalysisManager &AM);
+  static llvm::StringRef name() { return "igc-codeassumption"; }
+  static bool isRequired() { return true; }
+
+private:
+  CodeAssumption m_impl;
+};
+#endif // LLVM_VERSION_MAJOR >= 16
 } // namespace IGC

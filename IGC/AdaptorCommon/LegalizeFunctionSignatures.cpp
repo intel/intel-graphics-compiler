@@ -33,15 +33,15 @@ using namespace IGC;
 #define PASS_DESCRIPTION "Legalize calls to functions/subroutines and their signatures"
 #define PASS_CFG_ONLY false
 #define PASS_ANALYSIS false
-IGC_INITIALIZE_PASS_BEGIN(LegalizeFunctionSignatures, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_BEGIN(LegalizeFunctionSignaturesLPM, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 IGC_INITIALIZE_PASS_DEPENDENCY(MetaDataUtilsWrapper)
 IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
-IGC_INITIALIZE_PASS_END(LegalizeFunctionSignatures, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_END(LegalizeFunctionSignaturesLPM, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
-char LegalizeFunctionSignatures::ID = 0;
+char LegalizeFunctionSignaturesLPM::ID = 0;
 
-LegalizeFunctionSignatures::LegalizeFunctionSignatures() : ModulePass(ID) {
-  initializeLegalizeFunctionSignaturesPass(*PassRegistry::getPassRegistry());
+LegalizeFunctionSignaturesLPM::LegalizeFunctionSignaturesLPM() : ModulePass(ID) {
+  initializeLegalizeFunctionSignaturesLPMPass(*PassRegistry::getPassRegistry());
 }
 
 //*********************** PASS DESCRIPTION ***********************//
@@ -78,8 +78,10 @@ static const unsigned int MAX_SUBROUTINE_STRUCT_SIZE_IN_BITS = 512;
 
 enum ReturnOpt { RETURN_DEFAULT = 0, RETURN_BY_REF, RETURN_STRUCT_PROMOTED, RETURN_LEGAL_INT, RETURN_STRUCT };
 
-bool LegalizeFunctionSignatures::runOnModule(Module &M) {
-  auto pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
+bool LegalizeFunctionSignatures::run(Module &M, IGC::IGCMD::MetaDataUtils *pMdUtilsParam, IGC::CodeGenContext *pCtx) {
+  m_pMdUtils = pMdUtilsParam;
+  m_pCtx = pCtx;
+  auto pMdUtils = m_pMdUtils;
 
   // Creates a new function declaration with modified signature
   FixFunctionSignatures(M);
@@ -251,8 +253,8 @@ inline Value *LoadFromStruct(IGCLLVM::IRBuilder<> &builder, Value *strPtr, Type 
 }
 
 void LegalizeFunctionSignatures::FixFunctionSignatures(Module &M) {
-  auto pContext = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
-  auto pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
+  auto pContext = m_pCtx;
+  auto pMdUtils = m_pMdUtils;
 
   for (auto &FI : M) {
     Function *pFunc = &FI;
@@ -688,3 +690,11 @@ void LegalizeFunctionSignatures::FixCallInstruction(Module &M, CallInst *callIns
     callInst->eraseFromParent();
   }
 }
+
+#if LLVM_VERSION_MAJOR >= 16
+llvm::PreservedAnalyses LegalizeFunctionSignaturesNPM::run(llvm::Module &M, llvm::ModuleAnalysisManager &AM) {
+  auto &MDU = AM.getResult<IGC::MetaDataUtilsAnalysis>(M);
+  bool changed = m_impl.run(M, MDU.MdUtils, AM.getResult<IGC::CodeGenContextAnalysis>(M).Ctx);
+  return changed ? llvm::PreservedAnalyses::none() : llvm::PreservedAnalyses::all();
+}
+#endif // LLVM_VERSION_MAJOR >= 16

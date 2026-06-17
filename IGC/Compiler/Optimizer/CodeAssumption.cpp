@@ -34,15 +34,16 @@ const StringRef OCLBIF_GET_GROUP_ID = "_Z12get_group_idj";
 #define PASS_DESCRIPTION "Generate llvm.assume"
 #define PASS_CFG_ONLY false
 #define PASS_ANALYSIS false
-IGC_INITIALIZE_PASS_BEGIN(CodeAssumption, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_BEGIN(CodeAssumptionLPM, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 IGC_INITIALIZE_PASS_DEPENDENCY(MetaDataUtilsWrapper)
 IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
-IGC_INITIALIZE_PASS_END(CodeAssumption, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_END(CodeAssumptionLPM, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
-char CodeAssumption::ID = 0;
+char CodeAssumptionLPM::ID = 0;
 
-bool CodeAssumption::runOnModule(Module &M) {
-  m_pMDUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
+bool CodeAssumption::run(Module &M, IGCMD::MetaDataUtils *pMdUtils, ModuleMetaData *pModMD) {
+  m_pMDUtils = pMdUtils;
+  m_modMD = pModMD;
   // Add code assist uniform analysis.
   uniformHelper(&M);
 
@@ -54,7 +55,7 @@ bool CodeAssumption::runOnModule(Module &M) {
 }
 
 void CodeAssumption::uniformHelper(Module *M) {
-  ModuleMetaData *modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
+  ModuleMetaData *modMD = m_modMD;
 
   for (Module::iterator I = M->begin(), E = M->end(); I != E; ++I) {
     Function *F = &(*I);
@@ -309,3 +310,11 @@ bool CodeAssumption::IsSGIdUniform(MetaDataUtils *pMDU, ModuleMetaData *modMD, F
   }
   return false;
 }
+
+#if LLVM_VERSION_MAJOR >= 16
+PreservedAnalyses CodeAssumptionNPM::run(Module &M, ModuleAnalysisManager &AM) {
+  auto &MDU = AM.getResult<MetaDataUtilsAnalysis>(M);
+  bool changed = m_impl.run(M, MDU.MdUtils, MDU.ModMD);
+  return changed ? PreservedAnalyses::none() : PreservedAnalyses::all();
+}
+#endif // LLVM_VERSION_MAJOR >= 16

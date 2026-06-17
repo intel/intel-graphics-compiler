@@ -51,6 +51,15 @@ void TypeLegalizer::getAnalysisUsage(AnalysisUsage &AU) const {
 
 FunctionPass *createTypeLegalizerPass() { return new TypeLegalizer(); }
 
+#if LLVM_VERSION_MAJOR >= 16
+llvm::PreservedAnalyses TypeLegalizerNPM::run(llvm::Function &F, llvm::FunctionAnalysisManager &AM) {
+  TypeLegalizer Legalizer;
+  DominatorTree &DT = AM.getResult<llvm::DominatorTreeAnalysis>(F);
+  bool changed = Legalizer.runImpl(F, DT);
+  return changed ? llvm::PreservedAnalyses::none() : llvm::PreservedAnalyses::all();
+}
+#endif // LLVM_VERSION_MAJOR >= 16
+
 #define PASS_FLAG "igc-type-legalizer"
 #define PASS_DESC "IGC Type Legalizer"
 #define PASS_CFG_ONLY false
@@ -63,8 +72,12 @@ IGC_INITIALIZE_PASS_END(TypeLegalizer, PASS_FLAG, PASS_DESC, PASS_CFG_ONLY, PASS
 const unsigned int MAX_LEGAL_INT_SIZE_IN_BITS = 64;
 
 bool TypeLegalizer::runOnFunction(Function &F) {
+  return runImpl(F, getAnalysis<DominatorTreeWrapperPass>().getDomTree());
+}
+
+bool TypeLegalizer::runImpl(Function &F, DominatorTree &DTref) {
   DL = &F.getParent()->getDataLayout();
-  DT = &getAnalysis<DominatorTreeWrapperPass>().getDomTree();
+  DT = &DTref;
 
   IGC_ASSERT_MESSAGE(DL->isLittleEndian(), "ONLY SUPPORT LITTLE ENDIANNESS!");
 

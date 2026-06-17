@@ -14,13 +14,16 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/Pass.h>
 #include <llvm/IR/InstVisitor.h>
+#include <llvm/IR/PassManager.h>
 #include "common/LLVMWarningsPop.hpp"
 #include "IGC/common/Types.hpp"
 
 namespace IGC {
 /// @brief  ManageableBarriersResolution pass used for resolving OpenCL named barriers functions.
-class ManageableBarriersResolution : public llvm::ModulePass,
-                                     public llvm::InstVisitor<ManageableBarriersResolution, void> {
+//
+// Shared implementation. Holds the logic and is used by both the legacy and the
+// new-pass-manager wrappers below; it is not itself an llvm::Pass.
+class ManageableBarriersResolution : public llvm::InstVisitor<ManageableBarriersResolution, void> {
 private:
   enum class MBFuncType {
     InitProdCons,
@@ -123,21 +126,16 @@ private:
   llvm::Value *getFreeID();
 
 public:
-  // Pass identification, replacement for typeid
-  static char ID;
-
   /// @brief  Constructor
-  ManageableBarriersResolution();
+  ManageableBarriersResolution() {}
 
   /// @brief  Destructor
-  ~ManageableBarriersResolution();
+  ~ManageableBarriersResolution() {}
 
   /// @brief  Provides name of pass
-  virtual llvm::StringRef getPassName() const override { return "ManageableBarriersResolution"; }
+  static llvm::StringRef getPassName() { return "ManageableBarriersResolution"; }
 
-  virtual bool runOnModule(llvm::Module &M) override;
-
-  virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override { AU.addRequired<MetaDataUtilsWrapper>(); }
+  bool run(llvm::Module &M, ModuleMetaData *pModMD);
 
   /// @brief  Call instructions visitor.
   ///         Checks for OpenCL Named Barier init  functions and resolves them into appropriate sequence of code
@@ -146,5 +144,34 @@ public:
 
   static bool HasHWSupport(GFXCORE_FAMILY GFX_CORE);
 };
+
+// Legacy Pass Manager wrapper.
+class ManageableBarriersResolutionLPM : public llvm::ModulePass {
+public:
+  static char ID;
+
+  ManageableBarriersResolutionLPM();
+  ~ManageableBarriersResolutionLPM() {}
+
+  llvm::StringRef getPassName() const override { return ManageableBarriersResolution::getPassName(); }
+
+  void getAnalysisUsage(llvm::AnalysisUsage &AU) const override { AU.addRequired<MetaDataUtilsWrapper>(); }
+
+  bool runOnModule(llvm::Module &M) override {
+    return ManageableBarriersResolution().run(M, getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData());
+  }
+};
+
+#if LLVM_VERSION_MAJOR >= 16
+// New Pass Manager wrapper. name() returns the legacy pass argument so that
+// PrintBefore/PrintAfter=<pass argument> matches under the new pass manager.
+class ManageableBarriersResolutionNPM : public llvm::PassInfoMixin<ManageableBarriersResolutionNPM> {
+public:
+  llvm::PreservedAnalyses run(llvm::Module &M, llvm::ModuleAnalysisManager &AM);
+  static llvm::StringRef name() { return "igc-manage-barriers-resolution"; }
+  static llvm::StringRef getPassName() { return "ManageableBarriersResolution"; }
+  static bool isRequired() { return true; }
+};
+#endif // LLVM_VERSION_MAJOR >= 16
 
 } // namespace IGC

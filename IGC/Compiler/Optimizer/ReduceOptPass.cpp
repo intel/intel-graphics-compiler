@@ -19,14 +19,14 @@ using namespace llvm;
 using namespace IGC;
 using namespace llvm::PatternMatch;
 
-char ReduceOptPass::ID = 0;
+char ReduceOptPassLPM::ID = 0;
 
 #define PASS_FLAG "opt-reduce-pass"
 #define PASS_DESCRIPTION "Optimization of the reduce instruction used by work item 0"
 #define PASS_CFG_ONLY false
 #define PASS_ANALYSIS false
-IGC_INITIALIZE_PASS_BEGIN(ReduceOptPass, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
-IGC_INITIALIZE_PASS_END(ReduceOptPass, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_BEGIN(ReduceOptPassLPM, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_END(ReduceOptPassLPM, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
 #define GlobalSizeName "__spirv_BuiltInGlobalSize"
 #define GlobalInvocationIdName "__spirv_BuiltInGlobalInvocationId"
@@ -35,7 +35,9 @@ IGC_INITIALIZE_PASS_END(ReduceOptPass, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONL
 #define LocalInvocationIdName "__spirv_BuiltInLocalInvocationId"
 #define ReduceWorkGroupName "__spirv_Group"
 
-ReduceOptPass::ReduceOptPass() : FunctionPass(ID) { initializeReduceOptPassPass(*PassRegistry::getPassRegistry()); }
+ReduceOptPassLPM::ReduceOptPassLPM() : FunctionPass(ID) {
+  initializeReduceOptPassLPMPass(*PassRegistry::getPassRegistry());
+}
 
 bool ReduceOptPass::createReduceWI0(Instruction *ReduceInstr) {
   CallInst *Call = cast<CallInst>(ReduceInstr);
@@ -348,7 +350,7 @@ bool ReduceOptPass::checkUsers(Value *MainVal, Value *Val, BasicBlock *Bb) {
   return true;
 }
 
-bool ReduceOptPass::runOnFunction(Function &F) {
+bool ReduceOptPass::run(Function &F) {
   Changed = false;
   M = F.getParent();
   SmallVector<Instruction *, 8> ReduceToProcess;
@@ -381,3 +383,10 @@ bool ReduceOptPass::runOnFunction(Function &F) {
 
   return Changed;
 }
+
+#if LLVM_VERSION_MAJOR >= 16
+PreservedAnalyses ReduceOptPassNPM::run(Function &F, FunctionAnalysisManager &) {
+  bool changed = ReduceOptPass().run(F);
+  return changed ? PreservedAnalyses::none() : PreservedAnalyses::all();
+}
+#endif // LLVM_VERSION_MAJOR >= 16

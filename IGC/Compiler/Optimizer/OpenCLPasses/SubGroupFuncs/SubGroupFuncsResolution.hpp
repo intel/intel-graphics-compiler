@@ -14,35 +14,31 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/Pass.h>
 #include <llvm/IR/InstVisitor.h>
+#include <llvm/IR/PassManager.h>
 #include "common/LLVMWarningsPop.hpp"
 #include "IGC/common/Types.hpp"
 
 namespace IGC {
 
 /// @brief  SubGroupFuncsResolution pass used for resolving OpenCL Sub Group functions.
-class SubGroupFuncsResolution : public llvm::FunctionPass, public llvm::InstVisitor<SubGroupFuncsResolution, void> {
+// Shared implementation. Holds the logic and is used by both the legacy and the
+// new-pass-manager wrappers below; it is not itself an llvm::Pass.
+class SubGroupFuncsResolution : public llvm::InstVisitor<SubGroupFuncsResolution, void> {
 public:
-  // Pass identification, replacement for typeid
-  static char ID;
-
   /// @brief  Constructor
-  SubGroupFuncsResolution();
+  SubGroupFuncsResolution() {}
 
   /// @brief  Destructor
   ~SubGroupFuncsResolution() {}
 
   /// @brief  Provides name of pass
-  virtual llvm::StringRef getPassName() const override { return "SubGroupFuncsResolution"; }
-
-  void getAnalysisUsage(llvm::AnalysisUsage &AU) const override {
-    AU.addRequired<CodeGenContextWrapper>();
-    AU.addRequired<MetaDataUtilsWrapper>();
-  }
+  static llvm::StringRef getPassName() { return "SubGroupFuncsResolution"; }
 
   /// @brief  Main entry point.
   ///         Finds all OpenCL Sub Group function calls and resolve them into an llvm sequence
   /// @param  F The destination function.
-  virtual bool runOnFunction(llvm::Function &F) override;
+  bool runOnFunction(llvm::Function &F, IGC::IGCMD::MetaDataUtils *pMdUtils, IGC::ModuleMetaData *pModMD,
+                     IGC::CodeGenContext *pCtx);
 
   /// @brief  Call instructions visitor.
   ///         Checks for OpenCL Sub Group  functions and resolves them into appropriate sequence of code
@@ -231,6 +227,12 @@ private:
 
   CodeGenContext *m_pCtx = nullptr;
 
+  /// @brief  MetaData utils, cached at runOnFunction() entry.
+  IGC::IGCMD::MetaDataUtils *m_pMdUtils = nullptr;
+
+  /// @brief  Module metadata, cached at runOnFunction() entry.
+  IGC::ModuleMetaData *m_modMD = nullptr;
+
   /// @brief examine metadata for intel_reqd_sub_group_size
   int32_t GetSIMDSize(llvm::Function *F);
 
@@ -242,5 +244,43 @@ private:
   //        and map it to vISA operation type
   WaveOps GetWaveOp(llvm::StringRef funcName);
 };
+
+// Legacy Pass Manager wrapper.
+class SubGroupFuncsResolutionLPM : public llvm::FunctionPass {
+public:
+  static char ID;
+
+  SubGroupFuncsResolutionLPM();
+  ~SubGroupFuncsResolutionLPM() {}
+
+  virtual llvm::StringRef getPassName() const override { return SubGroupFuncsResolution::getPassName(); }
+
+  void getAnalysisUsage(llvm::AnalysisUsage &AU) const override {
+    AU.addRequired<CodeGenContextWrapper>();
+    AU.addRequired<MetaDataUtilsWrapper>();
+  }
+
+  virtual bool runOnFunction(llvm::Function &F) override {
+    return m_impl.runOnFunction(F, getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils(),
+                                getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData(),
+                                getAnalysis<CodeGenContextWrapper>().getCodeGenContext());
+  }
+
+private:
+  SubGroupFuncsResolution m_impl;
+};
+
+#if LLVM_VERSION_MAJOR >= 16
+// New Pass Manager wrapper. Modeled as a module pass that loops over the defined
+// functions (the seeded context analyses are module-level; IGC passes never use
+// skipFunction). name() returns the legacy pass argument so PrintBefore/PrintAfter
+// matches under the new pass manager.
+class SubGroupFuncsResolutionNPM : public llvm::PassInfoMixin<SubGroupFuncsResolutionNPM> {
+public:
+  llvm::PreservedAnalyses run(llvm::Module &M, llvm::ModuleAnalysisManager &AM);
+  static llvm::StringRef name() { return "igc-sub-group-func-resolution"; }
+  static bool isRequired() { return true; }
+};
+#endif // LLVM_VERSION_MAJOR >= 16
 
 } // namespace IGC

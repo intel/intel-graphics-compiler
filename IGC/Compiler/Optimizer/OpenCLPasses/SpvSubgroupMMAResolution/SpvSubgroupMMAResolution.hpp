@@ -17,6 +17,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/InstVisitor.h>
 #include <llvm/IR/Module.h>
 #include <llvm/Pass.h>
+#include <llvm/IR/PassManager.h>
 #include "common/LLVMWarningsPop.hpp"
 
 #include "Compiler/CodeGenContextWrapper.hpp"
@@ -24,7 +25,9 @@ SPDX-License-Identifier: MIT
 
 namespace IGC {
 
-class SpvSubgroupMMAResolution final : public llvm::ModulePass, public llvm::InstVisitor<SpvSubgroupMMAResolution> {
+// Shared implementation. Holds the logic and is used by both the legacy and the
+// new-pass-manager wrappers below; it is not itself an llvm::Pass.
+class SpvSubgroupMMAResolution final : public llvm::InstVisitor<SpvSubgroupMMAResolution> {
 public:
   enum ElType {
     Unknown = 0,
@@ -34,20 +37,12 @@ public:
     F16,
   };
 
-  static char ID;
+  SpvSubgroupMMAResolution() {}
+  ~SpvSubgroupMMAResolution() = default;
 
-  SpvSubgroupMMAResolution();
-  ~SpvSubgroupMMAResolution() override = default;
+  static llvm::StringRef getPassName() { return "SpvSubgroupMMAResolution"; }
 
-  llvm::StringRef getPassName() const override { return "SpvSubgroupMMAResolution"; }
-
-  void getAnalysisUsage(llvm::AnalysisUsage &AU) const override {
-    AU.setPreservesCFG();
-    AU.addRequired<MetaDataUtilsWrapper>();
-    AU.addRequired<CodeGenContextWrapper>();
-  }
-
-  bool runOnModule(llvm::Module &M) override;
+  bool run(llvm::Module &M, CodeGenContext *pCtx, IGCMD::MetaDataUtils *pMdUtils);
   void visitCallInst(llvm::CallInst &CI);
 
 private:
@@ -104,9 +99,43 @@ private:
   llvm::DenseSet<llvm::Function *> m_BuiltinsToRemove;
   bool m_Changed = false;
   IGC::CodeGenContext *m_Ctx = nullptr;
+  IGC::IGCMD::MetaDataUtils *m_pMdUtils = nullptr;
   llvm::Module *m_Module = nullptr;
   static SupportedTable m_Simd8Table;
   static SupportedTable m_Simd16Table;
   static SupportedTable m_Simd16ScaledTable;
 };
+
+// Legacy Pass Manager wrapper.
+class SpvSubgroupMMAResolutionLPM final : public llvm::ModulePass {
+public:
+  static char ID;
+
+  SpvSubgroupMMAResolutionLPM();
+  ~SpvSubgroupMMAResolutionLPM() override = default;
+
+  llvm::StringRef getPassName() const override { return SpvSubgroupMMAResolution::getPassName(); }
+
+  void getAnalysisUsage(llvm::AnalysisUsage &AU) const override {
+    AU.setPreservesCFG();
+    AU.addRequired<MetaDataUtilsWrapper>();
+    AU.addRequired<CodeGenContextWrapper>();
+  }
+
+  bool runOnModule(llvm::Module &M) override {
+    return SpvSubgroupMMAResolution().run(M, getAnalysis<CodeGenContextWrapper>().getCodeGenContext(),
+                                          getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils());
+  }
+};
+
+#if LLVM_VERSION_MAJOR >= 16
+// New Pass Manager wrapper. name() returns the legacy pass argument so that
+// PrintBefore/PrintAfter=<pass argument> matches under the new pass manager.
+class SpvSubgroupMMAResolutionNPM : public llvm::PassInfoMixin<SpvSubgroupMMAResolutionNPM> {
+public:
+  llvm::PreservedAnalyses run(llvm::Module &M, llvm::ModuleAnalysisManager &AM);
+  static llvm::StringRef name() { return "igc-spv-subgroup-mma-resolution"; }
+  static bool isRequired() { return true; }
+};
+#endif // LLVM_VERSION_MAJOR >= 16
 } // namespace IGC

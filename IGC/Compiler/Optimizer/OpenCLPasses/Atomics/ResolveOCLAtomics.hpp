@@ -13,6 +13,7 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/Pass.h>
 #include <llvm/IR/InstVisitor.h>
+#include <llvm/IR/PassManager.h>
 #include <llvm/ADT/StringRef.h>
 #include "common/LLVMWarningsPop.hpp"
 #include "llvmWrapper/IR/Module.h"
@@ -29,24 +30,18 @@ struct OCLAtomicAttrs {
 // A pass that walks over call instructions and replaces all __builtin_IB_atomic calls
 // with corresponding GenISA intrinsics.
 //
-class ResolveOCLAtomics : public llvm::ModulePass, public llvm::InstVisitor<ResolveOCLAtomics> {
+// Shared implementation. Holds the logic and is used by both the legacy and the
+// new-pass-manager wrappers below; it is not itself an llvm::Pass.
+class ResolveOCLAtomics : public llvm::InstVisitor<ResolveOCLAtomics> {
 public:
-  // Pass identification, replacement for typeid
-  static char ID;
-
-  /// @brief  Constructor
-  ResolveOCLAtomics();
-
-  /// @brief  Destructor
+  ResolveOCLAtomics() {}
   ~ResolveOCLAtomics() {}
 
   /// @brief  Provides name of pass
-  virtual llvm::StringRef getPassName() const override { return "ResolveOCLAtomics"; }
-
-  virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override { AU.addRequired<CodeGenContextWrapper>(); }
+  static llvm::StringRef getPassName() { return "ResolveOCLAtomics"; }
 
   // Entry point of the pass.
-  virtual bool runOnModule(llvm::Module &M) override;
+  bool run(llvm::Module &M, CodeGenContext *pCtx);
 
   // Call instructions visitor.
   void visitCallInst(llvm::CallInst &callInst);
@@ -114,4 +109,32 @@ protected:
   /// @brief  Indicates if the pass changed the processed function
   bool m_changed = false;
 };
+
+// Legacy Pass Manager wrapper.
+class ResolveOCLAtomicsLPM : public llvm::ModulePass {
+public:
+  static char ID;
+
+  ResolveOCLAtomicsLPM();
+  ~ResolveOCLAtomicsLPM() {}
+
+  llvm::StringRef getPassName() const override { return ResolveOCLAtomics::getPassName(); }
+
+  void getAnalysisUsage(llvm::AnalysisUsage &AU) const override { AU.addRequired<CodeGenContextWrapper>(); }
+
+  bool runOnModule(llvm::Module &M) override {
+    return ResolveOCLAtomics().run(M, getAnalysis<CodeGenContextWrapper>().getCodeGenContext());
+  }
+};
+
+#if LLVM_VERSION_MAJOR >= 16
+// New Pass Manager wrapper. name() returns the legacy pass argument so that
+// PrintBefore/PrintAfter=<pass argument> matches under the new pass manager.
+class ResolveOCLAtomicsNPM : public llvm::PassInfoMixin<ResolveOCLAtomicsNPM> {
+public:
+  llvm::PreservedAnalyses run(llvm::Module &M, llvm::ModuleAnalysisManager &AM);
+  static llvm::StringRef name() { return "igc-resolve-atomics"; }
+  static bool isRequired() { return true; }
+};
+#endif // LLVM_VERSION_MAJOR >= 16
 } // namespace IGC

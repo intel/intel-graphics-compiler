@@ -13,6 +13,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/ADT/MapVector.h>
 #include <llvm/IR/DataLayout.h>
 #include <llvm/IR/InstVisitor.h>
+#include <llvm/IR/PassManager.h>
 #include "common/LLVMWarningsPop.hpp"
 #include "llvmWrapper/Support/Alignment.h"
 
@@ -27,24 +28,18 @@ namespace IGC {
 ///         are always aligned on their data type.
 ///         The result is an underapproximation of the actual alignment, so it
 ///         is always safe.
-class AlignmentAnalysis : public llvm::FunctionPass, public llvm::InstVisitor<AlignmentAnalysis, llvm::Align> {
+// Shared implementation. Holds the logic and is used by both the legacy and the
+// new-pass-manager wrappers below; it is not itself an llvm::Pass.
+class AlignmentAnalysis : public llvm::InstVisitor<AlignmentAnalysis, llvm::Align> {
 public:
-  // Pass identification, replacement for typeid
-  static char ID;
-
-  /// @brief  Constructor
-  AlignmentAnalysis();
-
-  /// @brief  Destructor
+  AlignmentAnalysis() {}
   ~AlignmentAnalysis() {}
 
   /// @brief  Provides name of pass
-  virtual llvm::StringRef getPassName() const override { return "AlignmentAnalysisPass"; }
-
-  virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override { AU.setPreservesCFG(); }
+  static llvm::StringRef getPassName() { return "AlignmentAnalysisPass"; }
 
   /// @brief  Main entry point.
-  virtual bool runOnFunction(llvm::Function &F) override;
+  bool run(llvm::Function &F);
 
   // @ brief Instruction visitors
   llvm::Align visitInstruction(llvm::Instruction &I);
@@ -98,5 +93,34 @@ protected:
 
   const llvm::DataLayout *m_DL = nullptr;
 };
+
+// Legacy Pass Manager wrapper.
+class AlignmentAnalysisLPM : public llvm::FunctionPass {
+public:
+  static char ID;
+
+  AlignmentAnalysisLPM();
+  ~AlignmentAnalysisLPM() {}
+
+  llvm::StringRef getPassName() const override { return AlignmentAnalysis::getPassName(); }
+
+  void getAnalysisUsage(llvm::AnalysisUsage &AU) const override { AU.setPreservesCFG(); }
+
+  bool runOnFunction(llvm::Function &F) override { return AlignmentAnalysis().run(F); }
+};
+
+#if LLVM_VERSION_MAJOR >= 16
+// New Pass Manager wrapper. Modeled as a module pass that loops over the defined functions (the pass
+// has no analysis dependencies) so that it is added directly to the module pass manager and gets the
+// same per-pass IR dump as the legacy pass. name() returns the legacy pass argument so that
+// PrintBefore/PrintAfter=<pass argument> matches under the new pass manager.
+class AlignmentAnalysisNPM : public llvm::PassInfoMixin<AlignmentAnalysisNPM> {
+public:
+  llvm::PreservedAnalyses run(llvm::Module &M, llvm::ModuleAnalysisManager &AM);
+  static llvm::StringRef name() { return "igc-fix-alignment"; }
+  static llvm::StringRef getPassName() { return "AlignmentAnalysisPass"; }
+  static bool isRequired() { return true; }
+};
+#endif // LLVM_VERSION_MAJOR >= 16
 
 } // namespace IGC

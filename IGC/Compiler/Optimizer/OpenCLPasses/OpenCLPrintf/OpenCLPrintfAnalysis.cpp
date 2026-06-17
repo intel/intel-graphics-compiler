@@ -27,14 +27,14 @@ using namespace IGC::IGCMD;
 #define PASS_DESCRIPTION "Analyzes OpenCL printf calls"
 #define PASS_CFG_ONLY false
 #define PASS_ANALYSIS false
-IGC_INITIALIZE_PASS_BEGIN(OpenCLPrintfAnalysis, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_BEGIN(OpenCLPrintfAnalysisLPM, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 IGC_INITIALIZE_PASS_DEPENDENCY(MetaDataUtilsWrapper)
-IGC_INITIALIZE_PASS_END(OpenCLPrintfAnalysis, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_END(OpenCLPrintfAnalysisLPM, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
-char OpenCLPrintfAnalysis::ID = 0;
+char OpenCLPrintfAnalysisLPM::ID = 0;
 
-OpenCLPrintfAnalysis::OpenCLPrintfAnalysis() : ModulePass(ID) {
-  initializeOpenCLPrintfAnalysisPass(*PassRegistry::getPassRegistry());
+OpenCLPrintfAnalysisLPM::OpenCLPrintfAnalysisLPM() : ModulePass(ID) {
+  initializeOpenCLPrintfAnalysisLPMPass(*PassRegistry::getPassRegistry());
 }
 
 // TODO: move to a common place
@@ -55,8 +55,9 @@ bool OpenCLPrintfAnalysis::isBuiltinPrintf(const llvm::Function *F) {
   return F->getName() == BUILTIN_PRINTF_FUNCTION_NAME;
 }
 
-bool OpenCLPrintfAnalysis::runOnModule(Module &M) {
-  m_pMDUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
+bool OpenCLPrintfAnalysis::run(Module &M, IGCMD::MetaDataUtils *pMdUtils, ModuleMetaData *pModMD) {
+  m_pMDUtils = pMdUtils;
+  m_modMD = pModMD;
 
   visit(M);
   bool changed = false;
@@ -66,9 +67,6 @@ bool OpenCLPrintfAnalysis::runOnModule(Module &M) {
         addPrintfBufferArgs(func);
         changed = true;
 
-        if (m_modMD == nullptr) {
-          m_modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
-        }
         m_modMD->FuncMD[&func].hasPrintfCalls = true;
       }
     }
@@ -86,9 +84,6 @@ void OpenCLPrintfAnalysis::visitCallInst(CallInst &callInst) {
   if (!callInst.getCalledFunction() || m_hasPrintfs.find(pF) != m_hasPrintfs.end()) {
 
     if (callInst.isIndirectCall()) {
-      if (m_modMD == nullptr) {
-        m_modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
-      }
       m_modMD->FuncMD[pF].hasIndirectCalls = true;
     }
     return;
@@ -104,7 +99,7 @@ void OpenCLPrintfAnalysis::visitCallInst(CallInst &callInst) {
 void OpenCLPrintfAnalysis::addPrintfBufferArgs(Function &F) {
   SmallVector<ImplicitArg::ArgType, 1> implicitArgs;
   implicitArgs.push_back(ImplicitArg::PRINTF_BUFFER);
-  ImplicitArgs::addImplicitArgs(F, implicitArgs, m_pMDUtils, getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData());
+  ImplicitArgs::addImplicitArgs(F, implicitArgs, m_pMDUtils, m_modMD);
 }
 
 bool isPrintfStringConstantImpl(const llvm::Value *v, std::set<const llvm::User *> &visited) {
@@ -177,3 +172,11 @@ bool OpenCLPrintfAnalysis::isPrintfStringConstant(const llvm::GlobalVariable *GV
 
   return false;
 }
+
+#if LLVM_VERSION_MAJOR >= 16
+PreservedAnalyses OpenCLPrintfAnalysisNPM::run(Module &M, ModuleAnalysisManager &AM) {
+  auto &MDU = AM.getResult<MetaDataUtilsAnalysis>(M);
+  bool changed = OpenCLPrintfAnalysis().run(M, MDU.MdUtils, MDU.ModMD);
+  return changed ? PreservedAnalyses::none() : PreservedAnalyses::all();
+}
+#endif // LLVM_VERSION_MAJOR >= 16

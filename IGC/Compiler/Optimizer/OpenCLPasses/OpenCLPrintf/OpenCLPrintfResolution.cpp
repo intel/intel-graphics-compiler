@@ -30,11 +30,11 @@ using namespace IGC::IGCMD;
 #define PASS_DESCRIPTION "Resolves OpenCL printf calls"
 #define PASS_CFG_ONLY false
 #define PASS_ANALYSIS false
-IGC_INITIALIZE_PASS_BEGIN(OpenCLPrintfResolution, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_BEGIN(OpenCLPrintfResolutionLPM, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 IGC_INITIALIZE_PASS_DEPENDENCY(MetaDataUtilsWrapper)
-IGC_INITIALIZE_PASS_END(OpenCLPrintfResolution, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_END(OpenCLPrintfResolutionLPM, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
-char OpenCLPrintfResolution::ID = 0;
+char OpenCLPrintfResolutionLPM::ID = 0;
 
 //
 // FORMAT OF PRINTF OUTPUT BUFFER:
@@ -103,8 +103,8 @@ char OpenCLPrintfResolution::ID = 0;
 // |      < vec_element_3 >       |
 // |------------------------------|
 
-OpenCLPrintfResolution::OpenCLPrintfResolution() : FunctionPass(ID), m_atomicAddFunc(nullptr) {
-  initializeOpenCLPrintfResolutionPass(*PassRegistry::getPassRegistry());
+OpenCLPrintfResolutionLPM::OpenCLPrintfResolutionLPM() : FunctionPass(ID) {
+  initializeOpenCLPrintfResolutionLPMPass(*PassRegistry::getPassRegistry());
 }
 
 bool IGC::OpenCLPrintfResolution::doInitialization(Module &M) {
@@ -115,14 +115,15 @@ bool IGC::OpenCLPrintfResolution::doInitialization(Module &M) {
   m_ptrSizeIntType = M.getDataLayout().getIntPtrType(*m_context, ADDRESS_SPACE_GLOBAL);
   m_int32Type = Type::getInt32Ty(*m_context);
 
-  return FunctionPass::doInitialization(M);
+  // The legacy llvm::FunctionPass::doInitialization() base is a no-op returning false.
+  return false;
 }
 
-bool OpenCLPrintfResolution::runOnFunction(Function &F) {
-  if (m_CGContext == nullptr) {
-    m_CGContext = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
-    m_fp64Supported = !m_CGContext->platform.hasNoFP64Inst();
-  }
+bool OpenCLPrintfResolution::runOnFunction(Function &F, IGC::CodeGenContext *pCtx,
+                                           IGC::IGCMD::MetaDataUtils *pMdUtils) {
+  m_CGContext = pCtx;
+  m_fp64Supported = !m_CGContext->platform.hasNoFP64Inst();
+  m_pMdUtils = pMdUtils;
 
   // Gather all found printf calls into the m_printfCalls vector.
   visit(F);
@@ -422,8 +423,8 @@ void OpenCLPrintfResolution::expandPrintfCall(CallInst &printfCall, Function &F)
 
      ----------------------------------------------------------------------
   */
-  MetaDataUtils *MdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
-  ImplicitArgs implicitArgs(F, MdUtils, getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData());
+  MetaDataUtils *MdUtils = m_pMdUtils;
+  ImplicitArgs implicitArgs(F, MdUtils, m_CGContext->getModuleMetaData());
   bool isPrintfBuiltin = OpenCLPrintfAnalysis::isBuiltinPrintf(printfCall.getCalledFunction());
 
   BasicBlock *currentBBlock = printfCall.getParent();
@@ -848,3 +849,19 @@ Instruction *OpenCLPrintfResolution::generateCastToPtr(SPrintfArgDescriptor *arg
 
   return CastInst::Create(Instruction::CastOps::IntToPtr, writeOffset, castedType, "write_offset_ptr", bblock);
 }
+
+#if LLVM_VERSION_MAJOR >= 16
+PreservedAnalyses OpenCLPrintfResolutionNPM::run(Module &M, ModuleAnalysisManager &AM) {
+  auto &MDU = AM.getResult<MetaDataUtilsAnalysis>(M);
+  CodeGenContext *pCtx = AM.getResult<CodeGenContextAnalysis>(M).Ctx;
+  OpenCLPrintfResolution impl;
+  impl.doInitialization(M);
+  bool changed = false;
+  for (Function &F : M) {
+    if (F.isDeclaration())
+      continue;
+    changed |= impl.runOnFunction(F, pCtx, MDU.MdUtils);
+  }
+  return changed ? PreservedAnalyses::none() : PreservedAnalyses::all();
+}
+#endif // LLVM_VERSION_MAJOR >= 16

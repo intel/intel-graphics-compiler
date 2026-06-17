@@ -24,38 +24,35 @@ using namespace IGC::IGCMD;
 #define PASS_DESCRIPTION "Set llvm fast math flags according to compiler options"
 #define PASS_CFG_ONLY false
 #define PASS_ANALYSIS false
-IGC_INITIALIZE_PASS_BEGIN(SetFastMathFlags, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_BEGIN(SetFastMathFlagsLPM, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 IGC_INITIALIZE_PASS_DEPENDENCY(MetaDataUtilsWrapper)
-IGC_INITIALIZE_PASS_END(SetFastMathFlags, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_END(SetFastMathFlagsLPM, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
-char SetFastMathFlags::ID = 0;
+char SetFastMathFlagsLPM::ID = 0;
 
 // Function where we intentionally skip fast math optimizations
 static const std::array UnoptimizedFuncNames = {"__ocl_svml_cos", "__ocl_svml_sin", "__spirv_ocl_exp",
                                                 "__spirv_ocl_native_exp", "__spirv_ocl_erf"};
 
-SetFastMathFlags::SetFastMathFlags() : ModulePass(ID) {
-  m_Mask.setFast();
-  initializeSetFastMathFlagsPass(*PassRegistry::getPassRegistry());
+SetFastMathFlagsLPM::SetFastMathFlagsLPM() : ModulePass(ID), m_impl() {
+  initializeSetFastMathFlagsLPMPass(*PassRegistry::getPassRegistry());
 }
 
-SetFastMathFlags::SetFastMathFlags(FastMathFlags Mask) : ModulePass(ID) {
-  m_Mask = Mask;
-  initializeSetFastMathFlagsPass(*PassRegistry::getPassRegistry());
+SetFastMathFlagsLPM::SetFastMathFlagsLPM(FastMathFlags Mask) : ModulePass(ID), m_impl(Mask) {
+  initializeSetFastMathFlagsLPMPass(*PassRegistry::getPassRegistry());
 }
 
-SetFastMathFlags::SetFastMathFlags(FastMathFlags Mask, bool skipUnsafeFpMathAttr) : ModulePass(ID) {
-  m_Mask = Mask;
-  m_skipUnsafeFpMathAttr = skipUnsafeFpMathAttr;
-  initializeSetFastMathFlagsPass(*PassRegistry::getPassRegistry());
+SetFastMathFlagsLPM::SetFastMathFlagsLPM(FastMathFlags Mask, bool skipUnsafeFpMathAttr)
+    : ModulePass(ID), m_impl(Mask, skipUnsafeFpMathAttr) {
+  initializeSetFastMathFlagsLPMPass(*PassRegistry::getPassRegistry());
 }
 
-bool SetFastMathFlags::runOnModule(Module &M) {
+bool SetFastMathFlags::run(Module &M, ModuleMetaData *pModMD) {
   auto hasFnAttributeSet = [](Function &F, StringRef Attr) {
     return F.hasFnAttribute(Attr) && F.getFnAttribute(Attr).getValueAsString() == "true";
   };
 
-  const ModuleMetaData &modMD = *(getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData());
+  const ModuleMetaData &modMD = *pModMD;
   bool changed = false;
   for (Function &F : M) {
     FastMathFlags fmfs;
@@ -164,3 +161,10 @@ bool SetFastMathFlags::setFlags(Function &F, FastMathFlags fmfs) {
   }
   return changed;
 }
+
+#if LLVM_VERSION_MAJOR >= 16
+PreservedAnalyses SetFastMathFlagsNPM::run(Module &M, ModuleAnalysisManager &AM) {
+  bool changed = m_impl.run(M, AM.getResult<MetaDataUtilsAnalysis>(M).ModMD);
+  return changed ? PreservedAnalyses::none() : PreservedAnalyses::all();
+}
+#endif // LLVM_VERSION_MAJOR >= 16

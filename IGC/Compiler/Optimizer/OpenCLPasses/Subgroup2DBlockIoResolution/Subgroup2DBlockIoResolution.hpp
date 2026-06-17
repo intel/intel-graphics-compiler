@@ -15,6 +15,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/Instructions.h>
 #include <llvm/IR/Type.h>
 #include <llvm/Pass.h>
+#include <llvm/IR/PassManager.h>
 #include <llvm/IR/InstVisitor.h>
 #include "common/LLVMWarningsPop.hpp"
 
@@ -27,22 +28,16 @@ SPDX-License-Identifier: MIT
 #include <sstream>
 
 namespace IGC {
-class Subgroup2DBlockIoResolution final : public llvm::ModulePass,
-                                          public llvm::InstVisitor<Subgroup2DBlockIoResolution> {
+// Shared implementation. Holds the core logic and is used by both the legacy
+// and the new-pass-manager wrappers below; it is not itself an llvm::Pass.
+class Subgroup2DBlockIoResolution final : public llvm::InstVisitor<Subgroup2DBlockIoResolution> {
 public:
-  static char ID;
-
-  Subgroup2DBlockIoResolution();
+  Subgroup2DBlockIoResolution() = default;
   ~Subgroup2DBlockIoResolution() = default;
 
-  virtual llvm::StringRef getPassName() const override { return "Subgroup2DBlockIoResolution"; }
+  static llvm::StringRef getPassName() { return "Subgroup2DBlockIoResolution"; }
 
-  virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override {
-    AU.setPreservesCFG();
-    AU.addRequired<MetaDataUtilsWrapper>();
-    AU.addRequired<CodeGenContextWrapper>();
-  }
-  virtual bool runOnModule(llvm::Module &M) override;
+  bool run(llvm::Module &M, CodeGenContext *pCtx, IGCMD::MetaDataUtils *pMdUtils);
   void visitCallInst(llvm::CallInst &CI);
 
 private:
@@ -116,4 +111,36 @@ private:
   std::unique_ptr<KernelSIMDSizeResolver> m_simdResolver;
   llvm::DenseSet<llvm::Function *> m_BuiltinsToRemove;
 };
+
+// Legacy Pass Manager wrapper.
+class Subgroup2DBlockIoResolutionLPM final : public llvm::ModulePass {
+public:
+  static char ID;
+
+  Subgroup2DBlockIoResolutionLPM();
+  ~Subgroup2DBlockIoResolutionLPM() = default;
+
+  llvm::StringRef getPassName() const override { return Subgroup2DBlockIoResolution::getPassName(); }
+
+  void getAnalysisUsage(llvm::AnalysisUsage &AU) const override {
+    AU.setPreservesCFG();
+    AU.addRequired<MetaDataUtilsWrapper>();
+    AU.addRequired<CodeGenContextWrapper>();
+  }
+
+  bool runOnModule(llvm::Module &M) override {
+    return Subgroup2DBlockIoResolution().run(M, getAnalysis<CodeGenContextWrapper>().getCodeGenContext(),
+                                             getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils());
+  }
+};
+
+#if LLVM_VERSION_MAJOR >= 16
+// New Pass Manager wrapper.
+class Subgroup2DBlockIoResolutionNPM : public llvm::PassInfoMixin<Subgroup2DBlockIoResolutionNPM> {
+public:
+  llvm::PreservedAnalyses run(llvm::Module &M, llvm::ModuleAnalysisManager &AM);
+  static llvm::StringRef name() { return "igc-subgroup-2dblockio-resolution"; }
+  static bool isRequired() { return true; }
+};
+#endif // LLVM_VERSION_MAJOR >= 16
 } // namespace IGC

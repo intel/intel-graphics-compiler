@@ -12,6 +12,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/Pass.h>
 #include <llvm/IR/InstVisitor.h>
 #include <llvm/IR/IRBuilder.h>
+#include <llvm/IR/PassManager.h>
 #include "common/LLVMWarningsPop.hpp"
 #include "llvmWrapper/IR/DerivedTypes.h"
 
@@ -24,16 +25,16 @@ SPDX-License-Identifier: MIT
   }
 
 namespace IGC {
-class PromoteSubByte : public llvm::ModulePass, public llvm::InstVisitor<PromoteSubByte> {
+// Shared implementation. Holds the logic and is used by both the legacy and the
+// new-pass-manager wrappers below; it is not itself an llvm::Pass.
+class PromoteSubByte : public llvm::InstVisitor<PromoteSubByte> {
 public:
-  static char ID;
-
-  PromoteSubByte();
+  PromoteSubByte() {}
   ~PromoteSubByte() {}
 
-  virtual llvm::StringRef getPassName() const override { return "PromoteSubByte"; }
+  static llvm::StringRef getPassName() { return "PromoteSubByte"; }
 
-  virtual bool runOnModule(llvm::Module &module) override;
+  bool run(llvm::Module &module);
 
   VISIT_FUNCTION_IMPL(AllocaInst)
   VISIT_FUNCTION_IMPL(CallInst)
@@ -117,4 +118,27 @@ private:
   // Promoting values - helping vars
   llvm::DenseSet<llvm::PHINode *> visitedPHINodes;
 };
+
+// Legacy Pass Manager wrapper.
+class PromoteSubByteLPM : public llvm::ModulePass {
+public:
+  static char ID;
+
+  PromoteSubByteLPM();
+  ~PromoteSubByteLPM() {}
+
+  llvm::StringRef getPassName() const override { return PromoteSubByte::getPassName(); }
+
+  bool runOnModule(llvm::Module &M) override { return PromoteSubByte().run(M); }
+};
+
+#if LLVM_VERSION_MAJOR >= 16
+// New Pass Manager wrapper.
+class PromoteSubByteNPM : public llvm::PassInfoMixin<PromoteSubByteNPM> {
+public:
+  llvm::PreservedAnalyses run(llvm::Module &M, llvm::ModuleAnalysisManager &AM);
+  static llvm::StringRef name() { return "igc-promote-sub-byte"; }
+  static bool isRequired() { return true; }
+};
+#endif // LLVM_VERSION_MAJOR >= 16
 } // namespace IGC

@@ -19,7 +19,7 @@ SPDX-License-Identifier: MIT
 using namespace llvm;
 using namespace IGC;
 
-char SpvSubgroupBitcastShuffleResolution::ID = 0;
+char SpvSubgroupBitcastShuffleResolutionLPM::ID = 0;
 
 #define PASS_FLAG "igc-spv-subgroup-bitcast-shuffle-resolution"
 #define PASS_DESC "Lowering of SPV_INTEL_subgroup_bitcast_shuffle calls to intrinsics"
@@ -27,22 +27,29 @@ char SpvSubgroupBitcastShuffleResolution::ID = 0;
 #define PASS_ANALYSIS false
 #define DEBUG_TYPE "spv-subgroup-bitcast-shuffle-resolution"
 
-IGC_INITIALIZE_PASS_BEGIN(SpvSubgroupBitcastShuffleResolution, PASS_FLAG, PASS_DESC, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_BEGIN(SpvSubgroupBitcastShuffleResolutionLPM, PASS_FLAG, PASS_DESC, PASS_CFG_ONLY, PASS_ANALYSIS)
 IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
-IGC_INITIALIZE_PASS_END(SpvSubgroupBitcastShuffleResolution, PASS_FLAG, PASS_DESC, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_END(SpvSubgroupBitcastShuffleResolutionLPM, PASS_FLAG, PASS_DESC, PASS_CFG_ONLY, PASS_ANALYSIS)
 
-SpvSubgroupBitcastShuffleResolution::SpvSubgroupBitcastShuffleResolution() : ModulePass(ID) {
-  initializeSpvSubgroupBitcastShuffleResolutionPass(*PassRegistry::getPassRegistry());
+SpvSubgroupBitcastShuffleResolutionLPM::SpvSubgroupBitcastShuffleResolutionLPM() : ModulePass(ID) {
+  initializeSpvSubgroupBitcastShuffleResolutionLPMPass(*PassRegistry::getPassRegistry());
 }
 
-bool SpvSubgroupBitcastShuffleResolution::runOnModule(Module &M) {
+bool SpvSubgroupBitcastShuffleResolution::run(Module &M, CodeGenContext *pCtx) {
   m_Changed = false;
-  m_Ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+  m_Ctx = pCtx;
 
   visit(M);
 
   return m_Changed;
 }
+
+#if LLVM_VERSION_MAJOR >= 16
+PreservedAnalyses SpvSubgroupBitcastShuffleResolutionNPM::run(Module &M, ModuleAnalysisManager &AM) {
+  bool changed = SpvSubgroupBitcastShuffleResolution().run(M, AM.getResult<CodeGenContextAnalysis>(M).Ctx);
+  return changed ? PreservedAnalyses::none() : PreservedAnalyses::all();
+}
+#endif // LLVM_VERSION_MAJOR >= 16
 
 void SpvSubgroupBitcastShuffleResolution::visitCallInst(CallInst &CI) {
   Function *F = CI.getCalledFunction();

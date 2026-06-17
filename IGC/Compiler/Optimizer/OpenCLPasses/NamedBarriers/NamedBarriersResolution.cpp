@@ -27,11 +27,11 @@ using namespace IGC::IGCMD;
 #define PASS_DESCRIPTION "Resolves named barriers"
 #define PASS_CFG_ONLY false
 #define PASS_ANALYSIS false
-IGC_INITIALIZE_PASS_BEGIN(NamedBarriersResolution, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_BEGIN(NamedBarriersResolutionLPM, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 IGC_INITIALIZE_PASS_DEPENDENCY(MetaDataUtilsWrapper)
-IGC_INITIALIZE_PASS_END(NamedBarriersResolution, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_END(NamedBarriersResolutionLPM, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
-char NamedBarriersResolution::ID = 0;
+char NamedBarriersResolutionLPM::ID = 0;
 
 const char *NamedBarriersResolution::NAMED_BARRIERS_INIT = "_Z18named_barrier_initi";
 const char *NamedBarriersResolution::NAMED_BARRIERS_BARRIER_ARG2 =
@@ -48,25 +48,13 @@ const int NamedBarriersResolution::GetMaxNamedBarriers() {
   return 8;
 }
 
-NamedBarriersResolution::NamedBarriersResolution() : ModulePass(ID) {
-  m_CountNamedBarriers = 0;
-  m_GFX_CORE = IGFX_UNKNOWN_CORE; // sentinel until setRenderCore runs
-  m_NamedBarrierType = nullptr;
-  m_NamedBarrierID = nullptr;
-  m_NamedBarrierArray = nullptr;
-  initializeNamedBarriersResolutionPass(*PassRegistry::getPassRegistry());
+NamedBarriersResolutionLPM::NamedBarriersResolutionLPM() : ModulePass(ID), m_impl() {
+  initializeNamedBarriersResolutionLPMPass(*PassRegistry::getPassRegistry());
 }
 
-NamedBarriersResolution::NamedBarriersResolution(GFXCORE_FAMILY GFX_CORE) : ModulePass(ID) {
-  m_CountNamedBarriers = 0;
-  m_GFX_CORE = GFX_CORE;
-  m_NamedBarrierType = nullptr;
-  m_NamedBarrierID = nullptr;
-  m_NamedBarrierArray = nullptr;
-  initializeNamedBarriersResolutionPass(*PassRegistry::getPassRegistry());
+NamedBarriersResolutionLPM::NamedBarriersResolutionLPM(GFXCORE_FAMILY GFX_CORE) : ModulePass(ID), m_impl(GFX_CORE) {
+  initializeNamedBarriersResolutionLPMPass(*PassRegistry::getPassRegistry());
 }
-
-NamedBarriersResolution::~NamedBarriersResolution(void) {}
 
 void NamedBarriersResolution::initGlobalVariables(llvm::Module *Module, llvm::Type *NamedBarrierStructType) {
 #ifndef DX_ONLY_IGC
@@ -86,7 +74,7 @@ void NamedBarriersResolution::initGlobalVariables(llvm::Module *Module, llvm::Ty
 #endif // #ifndef DX_ONLY_IGC
 }
 
-bool NamedBarriersResolution::runOnModule(Module &M) {
+bool NamedBarriersResolution::run(Module &M, ModuleMetaData *pModMD) {
   Function *nbarrierInitF = nullptr;
   Function *nbarrierBarrierF = nullptr;
 
@@ -115,7 +103,7 @@ bool NamedBarriersResolution::runOnModule(Module &M) {
       barrierData.threadGroupNBarrierInit->eraseFromParent();
     }
     // Add attribute NBarrierCnt to metadata
-    auto MD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
+    auto MD = pModMD;
     MD->NBarrierCnt = m_CountNamedBarriers;
   }
   if (IsNamedBarriersAdded()) {
@@ -399,3 +387,10 @@ void NamedBarriersResolution::CallWait(llvm::Value *barrierID, llvm::Instruction
   GenIntrinsicInst::Create(GenISAIntrinsic::getDeclaration(pM, GenISAIntrinsic::GenISA_threadgroupnamedbarriers_wait),
                            {getIDInt8}, "", IGCLLVM::insertPosition(pInsertBefore));
 }
+
+#if LLVM_VERSION_MAJOR >= 16
+PreservedAnalyses NamedBarriersResolutionNPM::run(Module &M, ModuleAnalysisManager &AM) {
+  bool changed = m_impl.run(M, AM.getResult<MetaDataUtilsAnalysis>(M).ModMD);
+  return changed ? PreservedAnalyses::none() : PreservedAnalyses::all();
+}
+#endif // LLVM_VERSION_MAJOR >= 16

@@ -28,22 +28,22 @@ using namespace IGC;
 #define PASS_DESCRIPTION "Resolves getter builtins operating on VMEImageIntel/SampledImage objects"
 #define PASS_CFG_ONLY false
 #define PASS_ANALYSIS false
-IGC_INITIALIZE_PASS_BEGIN(ResolveSampledImageBuiltins, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_BEGIN(ResolveSampledImageBuiltinsLPM, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
-IGC_INITIALIZE_PASS_END(ResolveSampledImageBuiltins, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_END(ResolveSampledImageBuiltinsLPM, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
-char ResolveSampledImageBuiltins::ID = 0;
+char ResolveSampledImageBuiltinsLPM::ID = 0;
 
 const llvm::StringRef ResolveSampledImageBuiltins::GET_IMAGE = "__builtin_IB_get_image";
 const llvm::StringRef ResolveSampledImageBuiltins::GET_SAMPLER = "__builtin_IB_get_sampler";
 
-ResolveSampledImageBuiltins::ResolveSampledImageBuiltins() : ModulePass(ID) {
-  initializeResolveSampledImageBuiltinsPass(*PassRegistry::getPassRegistry());
+ResolveSampledImageBuiltinsLPM::ResolveSampledImageBuiltinsLPM() : ModulePass(ID) {
+  initializeResolveSampledImageBuiltinsLPMPass(*PassRegistry::getPassRegistry());
 }
 
-bool ResolveSampledImageBuiltins::runOnModule(Module &M) {
+bool ResolveSampledImageBuiltins::run(Module &M, CodeGenContext *pCtx) {
   m_changed = false;
-  modMD = getAnalysis<CodeGenContextWrapper>().getCodeGenContext()->getModuleMetaData();
+  modMD = pCtx->getModuleMetaData();
   visit(M);
 
   for (auto builtin : m_builtinsToRemove) {
@@ -226,3 +226,10 @@ Value *ResolveSampledImageBuiltins::lowerGetSampler(CallInst &CI) {
   }
   return samplerOffset;
 }
+
+#if LLVM_VERSION_MAJOR >= 16
+PreservedAnalyses ResolveSampledImageBuiltinsNPM::run(Module &M, ModuleAnalysisManager &AM) {
+  bool changed = ResolveSampledImageBuiltins().run(M, AM.getResult<CodeGenContextAnalysis>(M).Ctx);
+  return changed ? PreservedAnalyses::none() : PreservedAnalyses::all();
+}
+#endif // LLVM_VERSION_MAJOR >= 16
