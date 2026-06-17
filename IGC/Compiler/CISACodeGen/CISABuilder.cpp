@@ -4350,7 +4350,20 @@ void CEncoder::InitVISABuilderOptions(TARGET_PLATFORM VISAPlatform, bool canAbor
 
   const auto *modMD = context->getModuleMetaData();
   auto funcMDIter = modMD->FuncMD.find(m_program->entry);
-  uint32_t MaxRegPressure = (funcMDIter != modMD->FuncMD.end()) ? funcMDIter->second.maxRegPressure : 0;
+
+  // #TODO: this is a failsafe, we must propagate actual tried SIMD value
+  // from EmitVISAPass through dispatch size that is known
+  // the heuristic will likely need an update as well
+  unsigned int SIMD = IGC::getSIMDSize(modMD, m_program->entry);
+  bool MDPresent = funcMDIter != modMD->FuncMD.end();
+  unsigned int bestGuessSimd = MDPresent ? funcMDIter->second.bestGuessSimd : 0;
+  SIMD = SIMD ? SIMD : bestGuessSimd;
+  unsigned int RegPressure =
+      (MDPresent) ? (funcMDIter->second.maxRegUniformPressure + funcMDIter->second.maxRegNonUniformPressure * SIMD) : 0;
+
+  unsigned RegSize = context->platform.getGRFSize();
+  unsigned MaxRegPressure = llvm::divideCeil(RegPressure, RegSize);
+
   uint32_t RegPressureThreshold = (uint32_t)(context->getNumGRFPerThread(true) * 0.6);
 
   if (context->type == ShaderType::OPENCL_SHADER &&

@@ -133,8 +133,13 @@ public:
     this->FGA = FGA;
   }
 
-  void publishRegPressureMetadata(llvm::Function &F, unsigned int MaxPressure) {
-    CGCtx->getModuleMetaData()->FuncMD[&F].maxRegPressure = MaxPressure;
+  // this function expects pressurePair NORMALIZED (non uniform part is divided by SIMD) and in BYTES
+  void publishNormalizedPressurePair(llvm::Function &F, PressurePair MaxPressure, unsigned int SimdLanes) {
+    PressurePair PairInRegsNormalized = {MaxPressure.Uniform,
+                                         (unsigned int)llvm::divideCeil(MaxPressure.NonUniform, SimdLanes)};
+    CGCtx->getModuleMetaData()->FuncMD[&F].maxRegUniformPressure = PairInRegsNormalized.Uniform;
+    CGCtx->getModuleMetaData()->FuncMD[&F].maxRegNonUniformPressure = PairInRegsNormalized.NonUniform;
+    CGCtx->getModuleMetaData()->FuncMD[&F].bestGuessSimd = SimdLanes;
   }
 
   void publishRegPressureMetadataForSIMD(llvm::Function &F, unsigned int SimdLanes, unsigned int MaxPressure) {
@@ -147,7 +152,6 @@ public:
       FuncMDEntry.maxRegPressureSimd32 = MaxPressure;
       break;
     default:
-      FuncMDEntry.maxRegPressure = MaxPressure;
       break;
     }
   }
@@ -155,7 +159,7 @@ public:
   unsigned checkPublishRegPressureMetadata(llvm::Function &F) {
     const auto *modMD = CGCtx->getModuleMetaData();
     auto it = modMD->FuncMD.find(&F);
-    return (it != modMD->FuncMD.end()) ? it->second.maxRegPressure : 0;
+    return (it != modMD->FuncMD.end()) ? it->second.maxRegNonUniformPressure + it->second.maxRegUniformPressure : 0;
   }
 
   PressurePair getMaxPressurePairForBB(llvm::BasicBlock &BB, unsigned int SIMD, WIAnalysisRunner *WI = nullptr) {

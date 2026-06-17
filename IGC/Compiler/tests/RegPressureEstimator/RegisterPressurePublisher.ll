@@ -14,7 +14,6 @@
 ; Test checks that RegisterPressurePublisher writes maxRegPressure and the per-SIMD
 ; maxRegPressureSimd16 / maxRegPressureSimd32 entries in FuncMD metadata.
 
-; CHECK: "maxRegPressure", i32 {{[0-9]+}}
 ; CHECK: "maxRegPressureSimd16", i32 {{[0-9]+}}
 ; CHECK: "maxRegPressureSimd32", i32 {{[0-9]+}}
 

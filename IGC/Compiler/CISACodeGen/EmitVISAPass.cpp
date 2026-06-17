@@ -394,11 +394,14 @@ bool EmitPass::IsUndefOrZeroImmediate(const Value *value) {
 // to find the one with the highest register pressure
 unsigned int EmitPass::getMaxRegPressureInFunctionGroup(llvm::Function *F) {
   const auto *modMD = m_pCtx->getModuleMetaData();
-  unsigned int MaxRegPressure = 0;
+  unsigned int MaxPressure = 0;
   if (!m_FGA) {
     auto it = modMD->FuncMD.find(F);
     if (it != modMD->FuncMD.end())
-      MaxRegPressure = it->second.maxRegPressure;
+      MaxPressure = (it->second.maxRegUniformPressure + it->second.maxRegNonUniformPressure * numLanes(m_SimdMode));
+
+    unsigned RegSize = m_pCtx->platform.getGRFSize();
+    unsigned MaxRegPressure = llvm::divideCeil(MaxPressure, RegSize);
     return MaxRegPressure;
   }
 
@@ -411,8 +414,13 @@ unsigned int EmitPass::getMaxRegPressureInFunctionGroup(llvm::Function *F) {
     auto fit = modMD->FuncMD.find(PtrF);
     if (fit == modMD->FuncMD.end())
       continue;
-    MaxRegPressure = std::max(MaxRegPressure, fit->second.maxRegPressure);
+
+    unsigned int RegPressure =
+        (fit->second.maxRegUniformPressure + fit->second.maxRegNonUniformPressure * numLanes(m_SimdMode));
+    MaxPressure = std::max(MaxPressure, RegPressure);
   }
+  unsigned RegSize = m_pCtx->platform.getGRFSize();
+  unsigned MaxRegPressure = llvm::divideCeil(MaxPressure, RegSize);
   return MaxRegPressure;
 }
 
