@@ -27,10 +27,8 @@ label_3:
 ; CHECK-NEXT:                  = phi
 ; CHECK-NEXT:                  = phi
 ; CHECK-DBG-INTRINSIC-NEXT:    call void @llvm.dbg.value(
-; CHECK-NEXT:                  ret void
-; CHECK-DBG-RECORDS:         label_2:
 ; CHECK-DBG-RECORDS-NEXT:      #dbg_value(
-; CHECK-DBG-RECORDS-NEXT:      ret void
+; CHECK-NEXT:                  ret void
 ; CHECK-NOT:         = phi
 ._crit_edge:
   %.sroa.2 = phi i32 [ 0, %label_3 ], [ 0, %.exit ]

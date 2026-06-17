@@ -36,6 +36,7 @@ See LICENSE.TXT for details.
 #include "Compiler/IGCPassSupport.h"
 #include "Probe/Assertion.h"
 #include "llvmWrapper/IR/Instructions.h"
+#include "DebugInfo/DbgVariableTypes.hpp"
 
 using namespace llvm;
 using namespace IGC::Debug;
@@ -46,42 +47,36 @@ namespace IGC {
 /// Common functions for code sinking ///
 /// ================================= ///
 
-// Move referenced DbgValueInst intrinsics calls after defining instructions
-// it is required for correct work of LiveVariables analysis and other
+// Move referenced debug values after their defining instructions; required for
+// correct work of LiveVariables analysis and others. Version-agnostic: handles
+// llvm.dbg.value intrinsics (LLVM <22) and DbgVariableRecords (>=22) uniformly
+// through the DbgVariableTypes wrappers.
 static void ProcessDbgValueInst(BasicBlock &blk, DominatorTree *DT) {
-  llvm::DenseMap<Instruction *, Instruction *> PositionMap;
-  for (auto I = blk.rbegin(), E = blk.rend(); I != E; ++I) {
-    Instruction *inst = cast<Instruction>(&*I);
-    if (auto *DVI = dyn_cast<DbgValueInst>(inst)) {
-      // As debug intrinsics are not specified as users of an llvm instructions,
-      // it may happen during transformation/optimization the first argument is
-      // malformed (actually is dead). Not to chase each possible optimzation
-      // let's do a general check here.
-      if (DVI->getValue() != nullptr) {
-        if (auto *def = dyn_cast<Instruction>(DVI->getValue())) {
-          if (!DT->dominates(def, inst)) {
-            if (isa<PHINode>(def)) {
-              // If the instruction is a PHI node, insert the new instruction at the beginning of the block.
-              PositionMap[inst] = &*def->getParent()->getFirstInsertionPt();
-            } else {
-              // Otherwise, insert the new instruction after the defining instruction.
-              PositionMap[inst] = IGCLLVM::getNextNonDebugInstruction(def);
-              IGC_ASSERT(!isa<BranchInst>(def));
-            }
-          }
-        }
-      } else {
-        // The intrinsic is actually unneeded and will be removed later. Thus the type of the
-        // first argument is not important now.
-        Value *undef = UndefValue::get(llvm::Type::getInt32Ty(inst->getContext()));
-        MetadataAsValue *MAV = MetadataAsValue::get(inst->getContext(), ValueAsMetadata::get(undef));
-        cast<CallInst>(inst)->setArgOperand(0, MAV);
+  llvm::SmallVector<std::pair<DbgVarInstEntry *, Instruction *>, 8> ToMove;
+  for (Instruction &I : blk) {
+    forEachDbgVar(I, [&](DbgVarInstEntry *E) {
+      if (!dbgVarIsValue(E))
+        return;
+      Value *val = dbgVarGetValue(E);
+      if (!val) {
+        // Empty/dead location; normalize to a kill, it is removed later anyway.
+        dbgVarSetKillLocation(E);
+        return;
       }
-    }
+      auto *def = dyn_cast<Instruction>(val);
+      if (!def || DT->dominates(def, dbgVarAnchorInst(E)))
+        return;
+      if (isa<PHINode>(def)) {
+        // PHIs must stay first in the block: target the first insertion point.
+        ToMove.emplace_back(E, &*def->getParent()->getFirstInsertionPt());
+      } else {
+        ToMove.emplace_back(E, IGCLLVM::getNextNonDebugInstruction(def));
+        IGC_ASSERT(!isa<BranchInst>(def));
+      }
+    });
   }
-  for (auto &[I, Pos] : PositionMap) {
-    IGCLLVM::moveBefore(I, Pos);
-  }
+  for (auto &[E, Pos] : ToMove)
+    dbgVarMoveBefore(E, Pos);
 }
 
 // Check the instruction is a 2d block read
@@ -319,7 +314,6 @@ bool CodeSinking::processBlock(BasicBlock &blk) {
   BasicBlock::iterator I = blk.end();
   --I;
   bool processedBegin = false;
-  bool metDbgValueIntrinsic = false;
   SmallPtrSet<Instruction *, 16> stores;
   UndoLocas.clear();
   MovedInsts.clear();
@@ -338,9 +332,6 @@ bool CodeSinking::processBlock(BasicBlock &blk) {
     }
     // intrinsic like discard has no explict use, gets skipped here
     else if (isa<DbgInfoIntrinsic>(inst) || inst->isTerminator() || isa<PHINode>(inst) || inst->use_empty()) {
-      if (isa<DbgValueInst>(inst)) {
-        metDbgValueIntrinsic = true;
-      }
       prevLoca = inst;
     } else {
       Instruction *undoLoca = prevLoca;
@@ -369,7 +360,9 @@ bool CodeSinking::processBlock(BasicBlock &blk) {
       }
     }
   }
-  if ((madeChange || metDbgValueIntrinsic) && CTX->m_instrTypes.hasDebugInfo) {
+  // Run the debug-value sink fixup if anything was sunk, or the block carries
+  // debug values (intrinsics on LLVM <22, records on >=22).
+  if ((madeChange || blockHasDbgValues(blk)) && CTX->m_instrTypes.hasDebugInfo) {
     ProcessDbgValueInst(blk, DT);
   }
 

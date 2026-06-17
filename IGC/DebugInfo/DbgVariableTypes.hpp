@@ -10,6 +10,7 @@ SPDX-License-Identifier: MIT
 
 #include "llvm/Config/llvm-config.h"
 #include "common/LLVMWarningsPush.hpp"
+#include "llvm/IR/BasicBlock.h"
 #include "llvm/IR/Instruction.h"
 #if LLVM_VERSION_MAJOR >= 22
 #include "llvm/IR/DebugProgramInstruction.h"
@@ -18,6 +19,7 @@ SPDX-License-Identifier: MIT
 #endif
 #include "common/LLVMWarningsPop.hpp"
 
+#include "llvmWrapper/IR/Instructions.h"
 #include "llvmWrapper/IR/IntrinsicInst.h"
 
 namespace IGC {
@@ -95,6 +97,29 @@ inline bool dbgVarIsEquivalentTo(const DbgVarInstEntry *A, const DbgVarInstEntry
 #else
   return A->isIdenticalTo(B);
 #endif
+}
+
+// Move a debug variable entry to just before instruction Pos.
+//   LLVM <  22: it is an Instruction, moved within the instruction stream.
+//   LLVM >= 22: it is a record, detached from its host and reinserted at Pos.
+inline void dbgVarMoveBefore(DbgVarInstEntry *E, llvm::Instruction *Pos) {
+#if LLVM_VERSION_MAJOR >= 22
+  E->removeFromParent();
+  Pos->getParent()->insertDbgRecordBefore(E, Pos->getIterator());
+#else
+  IGCLLVM::moveBefore(E, Pos);
+#endif
+}
+
+// True if the block carries any dbg.value (intrinsic on <22, record on >=22).
+inline bool blockHasDbgValues(llvm::BasicBlock &blk) {
+  for (llvm::Instruction &I : blk) {
+    bool found = false;
+    forEachDbgVar(I, [&](DbgVarInstEntry *E) { found |= dbgVarIsValue(E); });
+    if (found)
+      return true;
+  }
+  return false;
 }
 
 } // namespace IGC
