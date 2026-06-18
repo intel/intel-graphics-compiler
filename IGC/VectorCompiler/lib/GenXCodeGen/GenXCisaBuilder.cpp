@@ -496,12 +496,14 @@ private:
   VISA_VectorOpnd *createDestination(Value *Dest, genx::Signedness Signed,
                                      unsigned Mod, const DstOpndDesc &DstDesc,
                                      genx::Signedness *SignedRes,
-                                     unsigned *Offset, bool IsBF);
+                                     unsigned *Offset, bool IsBF,
+                                     unsigned ExplicitVisaType);
 
   VISA_VectorOpnd *createDestination(Value *Dest, genx::Signedness Signed,
                                      unsigned Mod, const DstOpndDesc &DstDesc,
                                      genx::Signedness *SignedRes = nullptr,
-                                     unsigned *Offset = nullptr);
+                                     unsigned *Offset = nullptr,
+                                     unsigned ExplicitVisaType = ISA_TYPE_NUM);
 
   VISA_VectorOpnd *createDestination(Value *Dest, genx::Signedness Signed,
                                      unsigned *Offset = nullptr);
@@ -909,6 +911,7 @@ static Signedness getISatSrcSign(Value *V) {
 static Signedness getISatDstSign(Value *V) {
   return getISatDstSign(GenXIntrinsic::getGenXIntrinsicID(V));
 }
+
 
 // isExtOperandBaled : check whether a sext/zext operand is baled.
 static bool isExtOperandBaled(Instruction *Inst, unsigned OpIdx,
@@ -1608,23 +1611,26 @@ VISA_VectorOpnd *GenXKernelBuilder::createState(Register *Reg, unsigned Offset,
 VISA_VectorOpnd *GenXKernelBuilder::createDestination(Value *Dest,
                                                       genx::Signedness Signed,
                                                       unsigned *Offset) {
-  return createDestination(Dest, Signed, 0, DstOpndDesc(), nullptr, Offset);
-}
-
-VISA_VectorOpnd *
-GenXKernelBuilder::createDestination(Value *Dest, genx::Signedness Signed,
-                                     unsigned Mod, const DstOpndDesc &DstDesc,
-                                     Signedness *SignedRes, unsigned *Offset) {
-  auto ID = vc::getAnyIntrinsicID(Dest);
-  bool IsBF = ID == vc::InternalIntrinsic::cast_to_bf16;
-  return createDestination(Dest, Signed, Mod, DstDesc, SignedRes, Offset, IsBF);
+  return createDestination(Dest, Signed, 0, DstOpndDesc(), nullptr, Offset,
+                           ISA_TYPE_NUM);
 }
 
 VISA_VectorOpnd *
 GenXKernelBuilder::createDestination(Value *Dest, genx::Signedness Signed,
                                      unsigned Mod, const DstOpndDesc &DstDesc,
                                      Signedness *SignedRes, unsigned *Offset,
-                                     bool IsBF) {
+                                     unsigned ExplicitVisaType) {
+  auto ID = vc::getAnyIntrinsicID(Dest);
+  bool IsBF = ID == vc::InternalIntrinsic::cast_to_bf16;
+  return createDestination(Dest, Signed, Mod, DstDesc, SignedRes, Offset, IsBF,
+                           ExplicitVisaType);
+}
+
+VISA_VectorOpnd *
+GenXKernelBuilder::createDestination(Value *Dest, genx::Signedness Signed,
+                                     unsigned Mod, const DstOpndDesc &DstDesc,
+                                     Signedness *SignedRes, unsigned *Offset,
+                                     bool IsBF, unsigned ExplicitVisaType) {
   auto ID = vc::getAnyIntrinsicID(Dest);
   bool IsRdtsc = ID == Intrinsic::readcyclecounter;
 
@@ -1681,8 +1687,8 @@ GenXKernelBuilder::createDestination(Value *Dest, genx::Signedness Signed,
     if (IsRdtsc)
       OverrideType = IGCLLVM::FixedVectorType::get(
           Type::getInt32Ty(Dest->getContext()), 2);
-    Register *Reg =
-        getRegForValueAndSaveAlias(Dest, Signed, OverrideType, IsBF);
+    Register *Reg = getRegForValueAndSaveAlias(Dest, Signed, OverrideType, IsBF,
+                                               ExplicitVisaType);
     if (SignedRes)
       *SignedRes = RegAlloc->getSigned(Reg);
     // Write the vISA general operand:
@@ -1710,7 +1716,8 @@ GenXKernelBuilder::createDestination(Value *Dest, genx::Signedness Signed,
     IGC_ASSERT_MESSAGE(GV, "out of sync");
     if (OverrideType == nullptr)
       OverrideType = DstDesc.GStore->getOperand(0)->getType();
-    Reg = getRegForValueAndSaveAlias(GV, Signed, OverrideType, IsBF);
+    Reg = getRegForValueAndSaveAlias(GV, Signed, OverrideType, IsBF,
+                                     ExplicitVisaType);
     V = GV;
   } else {
     V = DstDesc.WrPredefReg ? DstDesc.WrPredefReg : DstDesc.WrRegion;
@@ -2535,6 +2542,7 @@ void GenXKernelBuilder::buildLoneWrRegion(const DstOpndDesc &DstDesc) {
   Value *Input = DstDesc.WrRegion->getOperand(OperandNum);
   if (isa<UndefValue>(Input))
     return; // No code if input is undef
+  unsigned ExplicitVisaType = ISA_TYPE_NUM;
   VISA_Exec_Size ExecSize = EXEC_SIZE_1;
   if (auto *VT = dyn_cast<IGCLLVM::FixedVectorType>(Input->getType()))
     ExecSize = getExecSizeFromValue(VT->getNumElements());
@@ -2542,11 +2550,11 @@ void GenXKernelBuilder::buildLoneWrRegion(const DstOpndDesc &DstDesc) {
   VISA_EMask_Ctrl ExecMask = getExecMaskFromWrRegion(DstDesc);
 
   // TODO: fix signedness of the source
-  auto *Src =
-      createSource(Input, DONTCARESIGNED,
-                   DstDesc.WrRegion->getModule()->getDataLayout(), false, 0);
+  auto *Src = createSource(
+      Input, DONTCARESIGNED, DstDesc.WrRegion->getModule()->getDataLayout(),
+      false, 0, nullptr, 16, nullptr, false, false, ExplicitVisaType);
   auto *Dst = createDestination(Input, DONTCARESIGNED, 0, DstDesc, nullptr,
-                                nullptr, false);
+                                nullptr, false, ExplicitVisaType);
   appendVISADataMovementInst(ISA_MOV, createPredFromWrRegion(DstDesc), false,
                              ExecMask, ExecSize, Dst, Src);
 }
@@ -3429,9 +3437,11 @@ void GenXKernelBuilder::buildIntrinsic(CallInst *CI, unsigned IntrinID,
     else if (AI.needsUnsigned())
       Signed = UNSIGNED;
     if (AI.isRet()) {
+      unsigned ExplicitVisaType = ISA_TYPE_NUM;
       if (AI.getSaturation() == II::SATURATION_SATURATE)
         Mod |= MODIFIER_SAT;
-      ResultOperand = createDestination(CI, Signed, Mod, DstDesc);
+      ResultOperand = createDestination(CI, Signed, Mod, DstDesc, nullptr,
+                                        nullptr, ExplicitVisaType);
     } else {
       unsigned MaxWidth = 16;
       unsigned ExplicitVisaType = ISA_TYPE_NUM;
