@@ -250,7 +250,7 @@ static unsigned getBitsFromFragments(const uint64_t *qws,
     if (ff[i].length == 0) {
       break;
     }
-    auto frag = (unsigned)getBits(qws, ff[i].offset, ff[i].length);
+    auto frag = (unsigned)getBits<uint64_t, 2>(qws, ff[i].offset, ff[i].length);
     bits |= frag << off;
     off += ff[i].length;
   }
