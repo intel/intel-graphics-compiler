@@ -22519,6 +22519,20 @@ void EmitPass::emitfcvt(llvm::GenIntrinsicInst *GII) {
       id == GenISAIntrinsic::GenISA_hftohf8 || id == GenISAIntrinsic::GenISA_hf8tohf ||
       id == GenISAIntrinsic::GenISA_ftotf32) {
     CVariable *tDst = nullptr, *tSrc = nullptr;
+    // fcvt does not accept an immediate source operand. When immSrc is an
+    // immediate, copy it into a uniform temporary of the same type and
+    // return that temporary.
+    auto materializeImmSrc = [&](CVariable *immSrc) -> CVariable * {
+      if (!immSrc->IsImmediate())
+        return immSrc;
+      CVariable *tfSrc = m_currShader->GetNewVariable(
+          1, immSrc->GetType(), m_encoder->GetCISADataTypeAlignment(immSrc->GetType()), true /*uniform*/, "tmp_cvt");
+      m_encoder->SetNoMask();
+      m_encoder->Copy(tfSrc, immSrc);
+      m_encoder->Push();
+      return tfSrc;
+    };
+
     if (id == GenISAIntrinsic::GenISA_ftobf) {
       tDst = m_currShader->GetNewAlias(dst, ISA_TYPE_BF, 0, 0);
       tSrc = src;
@@ -22529,24 +22543,13 @@ void EmitPass::emitfcvt(llvm::GenIntrinsicInst *GII) {
     /// Use UB as we are not exposing BF8, UD for TF32
     else if (id == GenISAIntrinsic::GenISA_hftobf8) {
       tDst = m_currShader->GetNewAlias(dst, ISA_TYPE_UB, 0, 0);
-      tSrc = src;
+      tSrc = materializeImmSrc(src);
     } else if (id == GenISAIntrinsic::GenISA_bf8tohf) {
       tDst = dst;
       tSrc = m_currShader->GetNewAlias(src, ISA_TYPE_UB, 0, 0);
     } else if (id == GenISAIntrinsic::GenISA_ftotf32) {
       tDst = m_currShader->GetNewAlias(dst, ISA_TYPE_UD, 0, 0);
-      // Does not support immediate source of type float, therefore we
-      // need a temporary "general" variable and copy the immediate
-      // value to that temporary variable first.  Then we can use this
-      // temporary as an operand of fcvt.
-      if (src->IsImmediate()) {
-        CVariable *tfSrc = m_currShader->GetNewVariable(1, ISA_TYPE_F, EALIGN_GRF, true /*uniform*/, "tmp_cvt");
-        m_encoder->Copy(tfSrc, src);
-        m_encoder->Push();
-        tSrc = tfSrc;
-      } else {
-        tSrc = src;
-      }
+      tSrc = materializeImmSrc(src);
     }
     // Use Type_B for HF8
     else if (id == GenISAIntrinsic::GenISA_hf8tohf) {
@@ -22554,7 +22557,7 @@ void EmitPass::emitfcvt(llvm::GenIntrinsicInst *GII) {
       tSrc = m_currShader->GetNewAlias(src, ISA_TYPE_B, 0, 0);
     } else if (id == GenISAIntrinsic::GenISA_hftohf8) {
       tDst = m_currShader->GetNewAlias(dst, ISA_TYPE_B, 0, 0);
-      tSrc = src;
+      tSrc = materializeImmSrc(src);
     } else {
       IGC_ASSERT_EXIT_MESSAGE(0, "Something wrong in cvt!");
     }
