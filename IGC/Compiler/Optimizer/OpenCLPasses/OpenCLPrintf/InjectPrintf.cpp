@@ -12,11 +12,10 @@ SPDX-License-Identifier: MIT
 
 #include "common/LLVMWarningsPush.hpp"
 #include "llvm/IR/IRBuilder.h"
-#if LLVM_VERSION_MAJOR >= 22
 #include "llvm/IR/Module.h"
-#endif
 #include "common/LLVMWarningsPop.hpp"
 #include "llvmWrapper/IR/DerivedTypes.h"
+#include "llvmWrapper/IR/IRBuilder.h"
 #include "llvmWrapper/IR/Instructions.h"
 
 using namespace IGC;
@@ -80,11 +79,7 @@ void InjectPrintf::insertPrintf(IRBuilder<> &Builder, FunctionCallee PrintfFunc,
   std::string TypeStr;
   raw_string_ostream RSO(TypeStr);
   ValueType->print(RSO);
-#if LLVM_VERSION_MAJOR >= 22
-  Value *TypeStrGlobal = Builder.CreateGlobalString(RSO.str());
-#else
-  Value *TypeStrGlobal = Builder.CreateGlobalStringPtr(RSO.str());
-#endif
+  Value *TypeStrGlobal = IGCLLVM::CreateGlobalStringPtr(Builder, RSO.str());
   Builder.CreateCall(PrintfFunc, {FormatStr, PointerOperand, TypeStrGlobal});
 }
 

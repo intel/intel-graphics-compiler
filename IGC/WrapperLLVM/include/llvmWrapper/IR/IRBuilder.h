@@ -142,15 +142,25 @@ public:
   inline llvm::CallInst *CreateMemSet(llvm::Value *Ptr, llvm::Value *Val, uint64_t Size, unsigned Alignment,
                                       bool isVolatile = false, llvm::MDNode *TBAATag = nullptr,
                                       llvm::MDNode *ScopeTag = nullptr, llvm::MDNode *NoAliasTag = nullptr) {
+#if LLVM_VERSION_MAJOR >= 22
+    return llvm::IRBuilder<T, InserterTy>::CreateMemSet(Ptr, Val, Size, getCorrectAlign(Alignment), isVolatile,
+                                                        makeAAMDNodes(TBAATag, nullptr, ScopeTag, NoAliasTag));
+#else
     return llvm::IRBuilder<T, InserterTy>::CreateMemSet(Ptr, Val, Size, getCorrectAlign(Alignment), isVolatile, TBAATag,
                                                         ScopeTag, NoAliasTag);
+#endif
   }
 
   inline llvm::CallInst *CreateMemSet(llvm::Value *Ptr, llvm::Value *Val, llvm::Value *Size, unsigned Alignment,
                                       bool isVolatile = false, llvm::MDNode *TBAATag = nullptr,
                                       llvm::MDNode *ScopeTag = nullptr, llvm::MDNode *NoAliasTag = nullptr) {
+#if LLVM_VERSION_MAJOR >= 22
+    return llvm::IRBuilder<T, InserterTy>::CreateMemSet(Ptr, Val, Size, getCorrectAlign(Alignment), isVolatile,
+                                                        makeAAMDNodes(TBAATag, nullptr, ScopeTag, NoAliasTag));
+#else
     return llvm::IRBuilder<T, InserterTy>::CreateMemSet(Ptr, Val, Size, getCorrectAlign(Alignment), isVolatile, TBAATag,
                                                         ScopeTag, NoAliasTag);
+#endif
   }
 
   using llvm::IRBuilder<T, InserterTy>::CreateMemMove;
@@ -280,6 +290,16 @@ inline llvm::PointerType *getPtrTy(llvm::IRBuilderBase &Builder, unsigned AddrSp
 /// Delegates to IGCLLVM::getPtrTy for mechanical call-site migration.
 inline llvm::PointerType *getInt8PtrTy(llvm::IRBuilderBase &Builder, unsigned AddrSpace = 0) {
   return IGCLLVM::getPtrTy(Builder, AddrSpace);
+}
+
+inline llvm::Constant *CreateGlobalStringPtr(llvm::IRBuilderBase &Builder, llvm::StringRef Str,
+                                             const llvm::Twine &Name = "", unsigned AddressSpace = 0,
+                                             llvm::Module *M = nullptr) {
+#if LLVM_VERSION_MAJOR >= 22
+  return Builder.CreateGlobalString(Str, Name, AddressSpace, M);
+#else
+  return Builder.CreateGlobalStringPtr(Str, Name, AddressSpace, M);
+#endif
 }
 
 } // namespace IGCLLVM

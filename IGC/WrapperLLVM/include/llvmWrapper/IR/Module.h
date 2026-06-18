@@ -50,6 +50,14 @@ inline std::string getTargetTriple(const llvm::Module &M) {
   return M.getTargetTriple();
 #endif
 }
+
+inline void setTargetTriple(llvm::Module &M, const std::string &TripleStr) {
+#if LLVM_VERSION_MAJOR >= 22
+  M.setTargetTriple(llvm::Triple(TripleStr));
+#else
+  M.setTargetTriple(TripleStr);
+#endif
+}
 } // namespace IGCLLVM
 
 #endif

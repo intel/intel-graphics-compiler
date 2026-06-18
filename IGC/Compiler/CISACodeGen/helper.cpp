@@ -26,6 +26,7 @@ SPDX-License-Identifier: MIT
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/IR/Instructions.h"
 #include "llvmWrapper/IR/Intrinsics.h"
+#include "llvmWrapper/IR/Module.h"
 #include "llvmWrapper/Support/Alignment.h"
 #include "llvmWrapper/Support/MathExtras.h"
 #include "GenISAIntrinsics/GenIntrinsicInst.h"

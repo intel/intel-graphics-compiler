@@ -30,6 +30,15 @@ inline llvm::KnownBits computeKnownBits(const llvm::Value *V, const llvm::DataLa
 #endif
 }
 
+inline llvm::KnownBits computeKnownBits(const llvm::Value *V, const llvm::DataLayout &DL, llvm::AssumptionCache *AC,
+                                        const llvm::Instruction *CxtI, const llvm::DominatorTree *DT) {
+#if LLVM_VERSION_MAJOR >= 22
+  return llvm::computeKnownBits(V, DL, AC, CxtI, DT);
+#else
+  return llvm::computeKnownBits(V, DL, 0, AC, CxtI, DT);
+#endif
+}
+
 inline bool haveNoCommonBitsSet(const llvm::Value *V1, const llvm::Value *V2, const llvm::DataLayout &DL,
                                 llvm::AssumptionCache *AC = nullptr, const llvm::Instruction *CxtI = nullptr,
                                 const llvm::DominatorTree *DT = nullptr) {
