@@ -17,9 +17,6 @@ using namespace vISA;
 
 namespace {
 
-const unsigned FullyConvertibleMaxInsts = 5;
-const unsigned PartialConvertibleMaxInsts = 3;
-
 enum IfConvertKind {
   FullConvert,
   // Both 'if' and 'else' (if present) branches could be predicated.
@@ -69,6 +66,8 @@ struct IfConvertible {
 // Trivial if-conversion.
 class IfConverter {
   FlowGraph &fg;
+  unsigned FullyConvertibleMaxInsts;
+  unsigned PartialConvertibleMaxInsts;
 
   /// getSinglePredecessor - Get the single predecessor or null
   /// otherwise.
@@ -445,7 +444,12 @@ class IfConverter {
   void partialConvert(IfConvertible &);
 
 public:
-  IfConverter(FlowGraph &g) : fg(g) {}
+  IfConverter(FlowGraph &g) : fg(g) {
+    FullyConvertibleMaxInsts =
+        fg.builder->getuint32Option(vISA_ifCvtFullyConvertibleMaxInsts);
+    PartialConvertibleMaxInsts =
+        fg.builder->getuint32Option(vISA_ifCvtPartialConvertibleMaxInsts);
+  }
 
   void analyze(std::vector<IfConvertible> &);
 

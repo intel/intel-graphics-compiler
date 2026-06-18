@@ -181,6 +181,12 @@ DEF_VISA_OPTION(vISA_hasDoubleAcc, ET_BOOL, "-hasDoubleAcc", UNUSED, false)
 DEF_VISA_OPTION(vISA_finiteMathOnly, ET_BOOL, "-finiteMathOnly",
                 "If set, float operands do not have NaN/Inf", false)
 DEF_VISA_OPTION(vISA_ifCvt, ET_BOOL, "-noifcvt", UNUSED, true)
+DEF_VISA_OPTION(vISA_ifCvtFullyConvertibleMaxInsts, ET_INT32,
+                "-ifCvtFullyConvertibleMaxInsts",
+                "Max instructions for full if-conversion", 5)
+DEF_VISA_OPTION(vISA_ifCvtPartialConvertibleMaxInsts, ET_INT32,
+                "-ifCvtPartialConvertibleMaxInsts",
+                "Max instructions for partial if-conversion", 3)
 DEF_VISA_OPTION(vISA_AutoGRFSelection, ET_BOOL_TRUE, "-autoGRFSelection",
                 "Enable compiler heuristics for GRF selection", false)
 DEF_VISA_OPTION(
