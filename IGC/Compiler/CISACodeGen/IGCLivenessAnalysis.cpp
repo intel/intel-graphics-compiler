@@ -57,21 +57,17 @@ SIMDMode IGCLivenessAnalysisBase::bestGuessSIMDSize(Function *F, GenXFunctionGro
     return SIMDMode::SIMD32;
   }
 
-  // if we can find metadata with stipulations how we should compile we use it
-  if (F && MDUtils->findFunctionsInfoItem(F) != MDUtils->end_FunctionsInfo()) {
-    unsigned SimdSize = IGC::getSIMDSize(CGCtx->getModuleMetaData(), F);
-    if (FGA) {
-      llvm::Function *Kernel = F;
-      auto *FG = FGA->getGroup(F);
-      Kernel = FG ? FG->getHead() : nullptr;
-      if (Kernel && MDUtils->findFunctionsInfoItem(F) != MDUtils->end_FunctionsInfo()) {
-        SimdSize = IGC::getSIMDSize(CGCtx->getModuleMetaData(), Kernel);
-      }
-    }
-    if (SimdSize) {
-      return lanesToSIMDMode(SimdSize);
-    }
+  // simd size of the kernel has the priority, if we can do that
+  unsigned SimdSize = IGC::getSIMDSize(CGCtx->getModuleMetaData(), F);
+  if (FGA) {
+    llvm::Function *Kernel = F;
+    auto *FG = FGA->getGroup(F);
+    Kernel = FG ? FG->getHead() : nullptr;
+    if (Kernel)
+      SimdSize = IGC::getSIMDSize(CGCtx->getModuleMetaData(), Kernel);
   }
+  if (SimdSize)
+    return lanesToSIMDMode(SimdSize);
 
   // rule for pvc
   if (CGCtx->platform.isProductChildOf(IGFX_PVC)) {
