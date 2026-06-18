@@ -223,13 +223,7 @@ Value *PromoteSubByte::castTo(Value *value, Type *desiredType, IRBuilder<> &buil
 }
 
 void PromoteSubByte::cleanUp(Module &module) {
-  auto erase = [](auto v) {
-    // Replace all v uses by undef. It allows us not to worry about
-    // the order in which we delete unpromoted values.
-    v->replaceAllUsesWith(UndefValue::get(v->getType()));
-    v->eraseFromParent();
-  };
-
+  SmallVector<Value *, 8> deadValues;
   for (auto &it : promotedValuesCache) {
     // Workaround. If there's a ConstantExpr cast of a function/globalVariable
     // and the function/globalVariable has been promoted (so the cast has beed promoted too)
@@ -243,12 +237,26 @@ void PromoteSubByte::cleanUp(Module &module) {
 
     if (auto function = dyn_cast<Function>(it.first)) {
       swapNames(function, it.second);
-      erase(function);
+      deadValues.push_back(it.first);
     } else if (auto globalVariable = dyn_cast<GlobalVariable>(it.first)) {
       swapNames(globalVariable, it.second);
-      erase(globalVariable);
-    } else if (auto instruction = dyn_cast<Instruction>(it.first)) {
-      erase(instruction);
+      deadValues.push_back(it.first);
+    } else if (isa<Instruction>(it.first)) {
+      deadValues.push_back(it.first);
+    }
+  }
+
+  for (auto &v : deadValues) {
+    // Replace all v uses with poison. It allows us not to worry about
+    // the order in which we delete unpromoted values.
+    v->replaceAllUsesWith(PoisonValue::get(v->getType()));
+
+    if (auto *GV = dyn_cast<GlobalValue>(v)) {
+      // Functions and Global Variables inherit from GlobalValue
+      // So both of them will be handled by this branch
+      GV->eraseFromParent();
+    } else if (auto *I = dyn_cast<Instruction>(v)) {
+      I->eraseFromParent();
     }
   }
 
@@ -273,7 +281,10 @@ void PromoteSubByte::cleanUp(Module &module) {
   }
 
   for (auto &instruction : deadInstructions) {
-    erase(instruction);
+    // Replace all instruction uses with poison. It allows us not to worry about
+    // the order in which we delete unpromoted values.
+    instruction->replaceAllUsesWith(PoisonValue::get(instruction->getType()));
+    instruction->eraseFromParent();
   }
 }
 
