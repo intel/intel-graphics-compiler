@@ -1035,17 +1035,16 @@ bool CClangTranslationBlock::TranslateClang(const TranslateClangArgs *pInputArgs
     }
   }
 
-#if LLVM_VERSION_MAJOR < 17
+#if LLVM_VERSION_MAJOR < 17 && defined(IGC_DEBUG_VARIABLES)
   // Allow to dynamically switch from typed to opaque pointers on
   // LLVM < 17. Disabling opaque pointers dynamically is not possible.
   if (IGC_IS_FLAG_ENABLED(EnableOpaquePointersBackend)) {
-    optionsEx += " -opaque-pointers ";
+    optionsEx += " -opaque-pointers";
   } else {
 #endif
     optionsEx += " ";
     optionsEx += __IGC_OPAQUE_POINTERS_DEFAULT_ARG_CLANG;
-    optionsEx += " ";
-#if LLVM_VERSION_MAJOR < 17
+#if LLVM_VERSION_MAJOR < 17 && defined(IGC_DEBUG_VARIABLES)
   }
 #endif
 

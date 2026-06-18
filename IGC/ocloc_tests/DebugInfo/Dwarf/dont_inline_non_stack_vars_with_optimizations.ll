@@ -9,7 +9,7 @@
 ; Tests that non stack variables on O2 aren't inlined.
 ; With optimizations disabled there's no guarantee that the offsets in registers will live throughout the entire variable lifetime.
 
-; REQUIRES: regkeys, oneapi-readelf, llvm-17-plus
+; REQUIRES: regkeys, oneapi-readelf, llvm-16-plus
 
 ; LLVM with opaque pointers:
 ; RUN: llvm-as %OPAQUE_PTR_FLAG% %s -o %t

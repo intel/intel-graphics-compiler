@@ -15,16 +15,19 @@
 // RUN: llvm-as %OPAQUE_PTR_FLAG% %t/overriden.ll -o %t/overriden.bc
 
 // Compile original shader
-// RUN: ocloc compile -device bmg -file %t/original.bc -llvm_input -options "-igc_opts 'EnableOpaquePointersBackend=1, VISAOptions=-asmToConsole, EnableKernelNamesBasedHash=1, ShaderDumpEnable=1, DumpToCustomDir=%t.dump_dir'" | FileCheck %s
+// RUN: IGC_EnableKernelNamesBasedHash=1 IGC_ShaderDumpEnable=1 \
+// RUN: IGC_DumpToCustomDir=%t.dump_dir \
+// RUN: ocloc compile -device bmg -file %t/original.bc -llvm_input -options "-igc_opts 'EnableOpaquePointersBackend=1, VISAOptions=-asmToConsole'" | FileCheck %s
 
 // So that we don't try to override using binary or llvm-ir
-// RUN: cp %t.dump_dir/%SYS_PATH%/*.visaasm %t.override_dir/
+// RUN: cp %t.dump_dir/*.visaasm %t.override_dir/
 
 // Override:
-// RUN: ocloc compile -device bmg -file %t/overriden.bc -llvm_input  -options "-igc_opts 'EnableOpaquePointersBackend=1, VISAOptions=-asmToConsole, EnableKernelNamesBasedHash=1, ShaderOverride=1, ShaderDumpEnable=1, DumpToCustomDir=%t.overriden_dir, ShaderOverrideFromDir=%t.override_dir'" | FileCheck %s
-// RUN: FileCheck %s --input-file %t.override_dir/OverrideLog.txt -check-prefix=OVERRIDE-LOG-CHECK-PATTERN
-// RUN: FileCheck %s --input-file %t.override_dir/OverrideLog.txt -check-prefix=OVERRIDE-LOG-CHECK-FOLDER
-// RUN: FileCheck %s --input-file %t.override_dir/OverrideLog.txt -check-prefix=OVERRIDE-LOG-CHECK-FILE
+// RUN: IGC_EnableKernelNamesBasedHash=1 IGC_ShaderOverride=1 \
+// RUN: IGC_ShaderDumpEnable=1 IGC_DumpToCustomDir=%t.overriden_dir \
+// RUN: IGC_ShaderOverrideFromDir=%t.override_dir \
+// RUN: ocloc compile -device bmg -file %t/overriden.bc -llvm_input  -options "-igc_opts 'EnableOpaquePointersBackend=1, VISAOptions=-asmToConsole'" | FileCheck %s
+// RUN: FileCheck %s --input-file %t.override_dir/OverrideLog.txt -check-prefix=OVERRIDE-LOG-CHECK
 
 // Expect that both resulting asm store same value (42)
 //
@@ -32,9 +35,7 @@
 // CHECK: store.ugm.{{.*}} [{{.*}}]     [[REG]]:1
 
 // Check log for overriden shader location
-// OVERRIDE-LOG-CHECK-PATTERN: OVERRIDEN:
-// OVERRIDE-LOG-CHECK-FOLDER: .overriden_dir
-// OVERRIDE-LOG-CHECK-FILE: OCL_{{.*}}.visaasm
+// OVERRIDE-LOG-CHECK: OVERRIDEN: {{.*}}overriden_dir/OCL_{{.*}}.visaasm
 
 //--- original.ll
 define spir_kernel void @shader_override_visaasm(ptr addrspace(1) align 4 %out) {

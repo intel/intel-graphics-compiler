@@ -10,7 +10,6 @@
 
 import os
 import subprocess
-import sys
 import lit.formats
 import lit.util
 
@@ -114,7 +113,7 @@ if llvm_ver <= 15:
 if llvm_ver >= 15:
   config.available_features.add('llvm-15-plus')
 
-if int(config.llvm_version_major) >= 16:
+if llvm_ver >= 16 and config.igc_llvm_opaque_pointers == '1':
   config.available_features.add('llvm-16-plus')
 
 if llvm_ver >= 17:
@@ -132,17 +131,6 @@ else:
   config.substitutions.append(('%OPAQUE_PTR_FLAG%', '-opaque-pointers=1'))
   config.substitutions.append(('%TYPED_PTR_FLAG%', '-opaque-pointers=0'))
 
-if int(config.llvm_version_major) == 16:
-  if config.igc_llvm_opaque_pointers == '1':
-    config.substitutions.append(('%TYPED_OPAQUE_PTR_FLAG%', '-opaque-pointers=1'))
-    config.substitutions.append(('%OPAQUE_KEY_FLAG%', 'EnableOpaquePointersBackend=1,'))
-  else:
-    config.substitutions.append(('%TYPED_OPAQUE_PTR_FLAG%', '-opaque-pointers=0'))
-    config.substitutions.append(('%OPAQUE_KEY_FLAG%', ''))
-else:
-    config.substitutions.append(('%TYPED_OPAQUE_PTR_FLAG%', ''))
-    config.substitutions.append(('%OPAQUE_KEY_FLAG%', ''))
-
 config.substitutions.append(('%LLVM_DEPENDENT_CHECK_PREFIX%', f'CHECK-LLVM-{config.llvm_version_major}'))
 
 if config.llvm_spirv_enabled:
@@ -154,10 +142,4 @@ if config.is32b == "1":
 
 if config.debug_build:
   config.available_features.add('debug')
-
-if sys.platform == "win32":
-  config.substitutions.append(('%SYS_PATH%', '*/'))
-else:
-  config.substitutions.append(('%SYS_PATH%', ''))
-
 
