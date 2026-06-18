@@ -1203,7 +1203,22 @@ SBFootprint *G4_BB_SB::getFootprintForGRF(G4_Operand *opnd,
       if (builder.byteGranularitySendDep()) {
         mustBeWholeGRF = false;
         if (opnd_num == Opnd_src0) {
-          RB = LB + inst->getMsgDesc()->getSrc0LenBytes() - 1;
+          G4_SendDesc *desc = inst->getMsgDesc();
+          size_t src0Bytes = desc->getSrc0LenBytes();
+          // For LSC transpose load/store, src0 holds addresses whose actual
+          // size is smaller than the GRF-aligned src0Len. Use the precise size
+          // to avoid overly conservative dependence tracking.
+          // FIXME: The change can be applied in getSrc0LenBytes. But the
+          // function is used in right bound computation, which may impact many
+          // other components.
+          if (desc->isLSC()) {
+            const auto *gDesc = static_cast<const G4_SendgDesc *>(desc);
+            if (gDesc->isOp(MsgOp::LOAD, MsgOp::STORE) &&
+                !gDesc->isDataOrderNonTranspose()) {
+              src0Bytes = gDesc->getAddrSizeBytes();
+            }
+          }
+          RB = LB + src0Bytes - 1;
         }
         if (inst->isSplitSend() && opnd_num == Opnd_src1) {
           RB = LB + inst->getMsgDesc()->getSrc1LenBytes() - 1;
