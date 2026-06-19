@@ -2095,10 +2095,6 @@ void CustomSafeOptPass::visitTruncInst(TruncInst &I) {
   %335 = call i16 @llvm.genx.GenISA.WaveShuffleIndex.i16(i16 %orig, i32 %333, i32 0)
   */
 
-  if (IGC_IS_FLAG_ENABLED(EnableEmitMoreMoviCases))
-  {
-    return;
-  }
 
   if (I.getSrcTy()->isIntegerTy(32) && I.getDestTy()->isIntegerTy(16)) {
     // We know all variants of shuffle from zext are safe to demote. (unlike WaveAll which might not be)
