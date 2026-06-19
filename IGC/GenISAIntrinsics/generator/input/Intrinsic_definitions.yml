@@ -6897,19 +6897,19 @@ intrinsics:
             - !<ArgumentDefinition>
                 name: Arg0
                 type_definition: *i32
-                comment: "coordinates x"
+                comment: "coordinate U"
             - !<ArgumentDefinition>
                 name: Arg1
                 type_definition: *i32
-                comment: "coordinates y"
+                comment: "coordinate V"
             - !<ArgumentDefinition>
                 name: Arg2
                 type_definition: *i32
-                comment: "coordinates z"
+                comment: "LOD"
             - !<ArgumentDefinition>
                 name: Arg3
                 type_definition: *i32
-                comment: "lod"
+                comment: "coordinate R"
             - !<ArgumentDefinition>
                 name: Arg4
                 type_definition: *p_any_

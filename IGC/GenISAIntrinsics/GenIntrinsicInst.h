@@ -419,7 +419,7 @@ class SamplerLoadIntrinsic : public GenIntrinsicInst {
 public:
   inline unsigned int getCoordinateIndex(unsigned int i) const {
     if (i == 2) {
-      return 3;
+      return getIntrinsicID() == GenISAIntrinsic::GenISA_ldptr ? 3 : 2;
     } else if (i < 2) {
       return i;
     } else {

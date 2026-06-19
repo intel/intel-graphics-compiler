@@ -910,15 +910,13 @@ template <> struct TranslateIntrinsicImpl<GenISAIntrinsic::GenISA_ldptr> {
     IRBuilder<> builder(loadIntr->getContext());
     builder.SetInsertPoint(loadIntr);
 
-    uint immOffsetIndex = loadIntr->getImmediateOffsetsIndex();
-    uint coordIndex = loadIntr->getCoordinateIndex(0);
-
     // Clamp the offsets and add them to the coordinates.
     for (uint i = 0; i < 3; i++) {
-      llvm::Value *offset = loadIntr->getArgOperand(immOffsetIndex + i);
+      llvm::Value *coord = loadIntr->getCoordinateValue(i);
+      llvm::Value *offset = loadIntr->getImmediateOffsetsValue(i);
       llvm::Value *clampedOffset = builder.CreateAShr(builder.CreateShl(offset, 28), 28);
-      llvm::Value *newCoord = builder.CreateAdd(loadIntr->getArgOperand(coordIndex + i), clampedOffset);
-      loadIntr->setArgOperand(coordIndex + i, newCoord);
+      llvm::Value *newCoord = builder.CreateAdd(coord, clampedOffset);
+      loadIntr->setCoordinateValue(i, newCoord);
     }
 
     TranslateIntrinsicBase::ZeroImmediateOffsets(loadIntr);
