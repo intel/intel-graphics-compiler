@@ -313,6 +313,14 @@ inline llvm::Instruction *getPrevNonDebugInstruction(llvm::Instruction *I, bool 
 #endif
 }
 
+inline const llvm::Instruction *getPrevNonDebugInstruction(const llvm::Instruction *I, bool SkipPseudoOp = false) {
+#if LLVM_VERSION_MAJOR >= 22
+  return I->getPrevNode();
+#else
+  return I->getPrevNonDebugInstruction(SkipPseudoOp);
+#endif
+}
+
 inline void moveBefore(llvm::Instruction *I, llvm::Instruction *Pos) {
 #if LLVM_VERSION_MAJOR < 18
   I->moveBefore(Pos);
