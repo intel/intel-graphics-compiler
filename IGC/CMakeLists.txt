@@ -1544,20 +1544,11 @@ if(LLVM_ON_WIN32)
     )
 endif()
 
-if (WIN32)
-  include_directories(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../../../SPIRV-LLVM-Translator_${IGC_OPTION__LLVM_PREFERRED_VERSION}/include"
-    "${CMAKE_CURRENT_SOURCE_DIR}/../../../SPIRV-LLVM-Translator_${IGC_OPTION__LLVM_PREFERRED_VERSION}/lib/SPIRV"
-    "${CMAKE_CURRENT_SOURCE_DIR}/../../../SPIRV-LLVM-Translator_${IGC_OPTION__LLVM_PREFERRED_VERSION}/lib/SPIRV/Mangler"
-    )
-endif (WIN32)
-if (NOT WIN32)
-  include_directories(
-    "${CMAKE_CURRENT_SOURCE_DIR}/../../../SPIRV-LLVM-Translator/include"
-    "${CMAKE_CURRENT_SOURCE_DIR}/../../../SPIRV-LLVM-Translator/lib/SPIRV"
-    "${CMAKE_CURRENT_SOURCE_DIR}/../../../SPIRV-LLVM-Translator/lib/SPIRV/Mangler"
-    )
-endif (NOT WIN32)
+include_directories(
+  "${IGC_OPTION__SPIRV_TRANSLATOR_SOURCE_DIR}/include"
+  "${IGC_OPTION__SPIRV_TRANSLATOR_SOURCE_DIR}/lib/SPIRV"
+  "${IGC_OPTION__SPIRV_TRANSLATOR_SOURCE_DIR}/lib/SPIRV/Mangler"
+  )
 
 # ==================================== ZE Binary Writer ================================================
 
