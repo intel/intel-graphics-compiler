@@ -168,7 +168,7 @@ bool HoistCongruentPHI::checkCongruent(const llvm::DominatorTree &DT, std::vecto
     Value *v0, *v1;
     Instruction *iv0, *iv1;
     v0 = src0->getOperand(i);
-    v1 = src1->getOperand(1 - i);
+    v1 = src1->getOperand(src0->getNumOperands() - 1 - i);
     iv0 = dyn_cast<Instruction>(v0);
     iv1 = dyn_cast<Instruction>(v1);
 

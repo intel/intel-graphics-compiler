@@ -77,8 +77,8 @@ bool igcIsPrintAfter(StringRef PN) {
 
 // Dump callbacks operate on module IR. Function passes run via a module adaptor and
 // reuse the adaptor's module callback, remapped to the configured inner pass name.
-const Module *igcUnwrapModule(Any IR) {
-  if (const auto **M = any_cast<const Module *>(&IR))
+const Module *igcUnwrapModule(const Any &IR) {
+  if (const Module *const *M = any_cast<const Module *>(&IR))
     return *M;
   return nullptr;
 }
@@ -112,7 +112,7 @@ void igcDumpModuleIR(CodeGenContext *ctx, StringRef pmName, const Module &M, Str
 
 } // namespace
 
-std::string IGCNewPassManager::remapPassIDBefore(StringRef passID, Any IR) {
+std::string IGCNewPassManager::remapPassIDBefore(StringRef passID, const Any &IR) {
   if (passID != "ModuleToFunctionPassAdaptor" || !igcUnwrapModule(IR))
     return passID.str();
 
@@ -123,7 +123,7 @@ std::string IGCNewPassManager::remapPassIDBefore(StringRef passID, Any IR) {
   return *m_ActiveModuleToFunctionPassName;
 }
 
-std::string IGCNewPassManager::remapPassIDAfter(StringRef passID, Any IR) {
+std::string IGCNewPassManager::remapPassIDAfter(StringRef passID, const Any &IR) {
   if (passID != "ModuleToFunctionPassAdaptor" || !igcUnwrapModule(IR) || !m_ActiveModuleToFunctionPassName)
     return passID.str();
 

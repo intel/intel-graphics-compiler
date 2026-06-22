@@ -144,8 +144,8 @@ private:
     return it == m_passToggleAlias.end() ? llvm::StringRef() : llvm::StringRef(it->second);
   }
 
-  std::string remapPassIDBefore(llvm::StringRef passID, llvm::Any IR);
-  std::string remapPassIDAfter(llvm::StringRef passID, llvm::Any IR);
+  std::string remapPassIDBefore(llvm::StringRef passID, const llvm::Any &IR);
+  std::string remapPassIDAfter(llvm::StringRef passID, const llvm::Any &IR);
 };
 } // namespace IGC
 

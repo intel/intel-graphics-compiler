@@ -426,7 +426,7 @@ void SpillFillPropagation::processBBForward(G4_BB *bb) {
         BBEntryState state;
         state.offsetToGRFs = offsetToGRFs;
         state.grfToDeclare = grfToDeclare;
-        bbEntryState[ftBB] = state;
+        bbEntryState[ftBB] = std::move(state);
       }
     }
   }

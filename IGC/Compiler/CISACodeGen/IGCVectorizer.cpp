@@ -1698,7 +1698,7 @@ void IGCVectorizer::collectInstructionToProcess(VecArr &ToProcess, Function &F) 
           continue;
         auto *InsertionIndex = InsertEl->getOperand(2);
         unsigned int Index = getConstantValueAsInt(InsertionIndex);
-        if ((Index + 1) == getVectorSize(InsertEl))
+        if ((static_cast<uint64_t>(Index) + 1) == getVectorSize(InsertEl))
           ToProcess.push_back(InsertEl);
       } else {
 

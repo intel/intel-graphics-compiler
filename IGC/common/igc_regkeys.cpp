@@ -762,6 +762,7 @@ static void declareIGCKey(const std::string &line, const char *dataType, const c
   debugString value = {0};
   setRegkeyFromOption(line, dataType, regkeyName, &value, isSet);
   if (isSet && !hashes.empty()) {
+    const std::ios_base::fmtflags coutFlags = std::cout.flags();
     std::cout << std::endl << "** hashes ";
     for (size_t i = 0; i < hashes.size(); i++) {
       memcpy_s(hashes[i].m_string, sizeof(value), value, sizeof(value));
@@ -771,6 +772,7 @@ static void declareIGCKey(const std::string &line, const char *dataType, const c
       else
         std::cout << std::hex << std::showbase << hashes[i].start << "-" << hashes[i].end << ", ";
     }
+    std::cout.flags(coutFlags);
     std::cout << std::endl;
 
     std::cout << "** regkey " << line << std::endl;

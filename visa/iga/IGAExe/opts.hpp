@@ -805,6 +805,7 @@ public:
                           const std::vector<std::unique_ptr<Group<O>>> &groups,
                           const std::vector<Opt<O>> &args, const char *exeName,
                           const char *examples) {
+    const std::ios_base::fmtflags osFlags = os.flags();
     os << "usage: " << exeName << " OPTIONS ARGS\n";
     os << "where OPTIONS:\n";
     // autoscale all options
@@ -837,6 +838,7 @@ public:
          << "EXAMPLES:\n"
          << examples;
     }
+    os.flags(osFlags);
   }
 }; // class CmdlineSpec
 

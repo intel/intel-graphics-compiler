@@ -179,7 +179,7 @@ IGC::CodeGenContext *CreateCodeGenContext() {
     IGC_ASSERT(false && "Unsupported shader stage");
   }
 
-  if (HasEmu64BitInsts)
+  if (pCtx && HasEmu64BitInsts)
     pCtx->m_hasEmu64BitInsts = true;
 
   return pCtx;
