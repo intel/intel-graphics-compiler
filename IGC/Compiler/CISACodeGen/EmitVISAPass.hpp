@@ -525,17 +525,7 @@ public:
 
   static PreemptionEncoding getEncoderPreemptionMode(EPreemptionMode preemptionMode);
 
-  void emitBTD(CVariable *GlobalBufferPtr, CVariable *StackID, CVariable *ShaderRecord, CVariable *Flag,
-               bool releaseStackID);
 
-  void emitBTDEff64(CVariable *globalBufferPtr, CVariable *stackID, CVariable *shaderRecord, CVariable *flag,
-                    bool releaseStackID
-  );
-
-  void emitBindlessThreadDispatch(llvm::BTDIntrinsic *I);
-
-
-  void emitStackIDRelease(llvm::StackIDReleaseIntrinsic *I);
   void emitExtendedCacheControl(llvm::ExtendedCacheControl *I);
   void emitPostProcessRayQueryReturn(llvm::PostProcessRayQueryReturn *I);
   void emitGetShaderRecordPtr(llvm::GetShaderRecordPtrIntrinsic *I);

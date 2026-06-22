@@ -2012,16 +2012,6 @@ void CEncoder::TraceRay(CVariable *destination, TRACE_RAY_OPCODE opcode, CVariab
   }
 }
 
-void CEncoder::BTD(BTD_OPCODE opcode, CVariable *globalBufferPointer, CVariable *stackId,
-                   CVariable *shaderRecordIdentifier
-) {
-  [[maybe_unused]] VISA_PredOpnd *predOpnd = GetFlagOperand(m_encoderState.m_flag);
-  [[maybe_unused]] VISA_EMask_Ctrl emask = ConvertMaskToVisaType(m_encoderState.m_mask, false);
-  [[maybe_unused]] VISA_Exec_Size executionSize = visaExecSize(m_encoderState.m_simdSize);
-  [[maybe_unused]] VISA_RawOpnd *stackIdOpnd = GetRawSource(stackId);
-  [[maybe_unused]] VISA_RawOpnd *shaderRecordIdentifierOpnd = GetRawSource(shaderRecordIdentifier);
-  [[maybe_unused]] VISA_VectorOpnd *globalBufferPointerOpnd = GetSourceOperandNoModifier(globalBufferPointer);
-}
 
 void CEncoder::ExtendedCacheControl(LSC_CACHE_OPTS cacheControlPolicy, LSC_CACHE_CTRL_OPERATION cacheControlOperation,
                                     LSC_CACHE_CTRL_SIZE cacheControlSize, CVariable *cacheLineAddresses,
