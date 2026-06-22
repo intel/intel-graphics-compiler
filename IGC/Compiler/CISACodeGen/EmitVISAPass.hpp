@@ -718,6 +718,7 @@ public:
   CVariable *UniformCopy(CVariable *var, bool doSub = false);
   CVariable *UniformCopy(CVariable *var, CVariable *&LaneOffset, CVariable *eMask = nullptr, bool doSub = false,
                          bool safeGuard = false, CVariable *predicate = nullptr);
+  CVariable *MaterializeImmToGRF(CVariable *immSrc, const char *name);
 
   // generate loop header to process sample instruction with varying resource/sampler
   bool ResourceLoopHeader(const CVariable *destination, ResourceDescriptor &resource, SamplerDescriptor &sampler,

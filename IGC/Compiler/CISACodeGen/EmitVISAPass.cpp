@@ -13644,6 +13644,17 @@ CVariable *EmitPass::UniformCopy(CVariable *var, CVariable *&off, CVariable *eMa
   return exVal;
 }
 
+CVariable *EmitPass::MaterializeImmToGRF(CVariable *immSrc, const char *name) {
+  if (!immSrc->IsImmediate())
+    return immSrc;
+  CVariable *tmp = m_currShader->GetNewVariable(
+      1, immSrc->GetType(), m_encoder->GetCISADataTypeAlignment(immSrc->GetType()), true /*uniform*/, name);
+  m_encoder->SetNoMask();
+  m_encoder->Copy(tmp, immSrc);
+  m_encoder->Push();
+  return tmp;
+}
+
 CVariable *EmitPass::ExtendVariable(CVariable *pVar, e_alignment uniformAlign) {
   if (pVar->GetElemSize() >= 4) {
     // There's no need to extend the operand. But, if the variable holding
@@ -22508,19 +22519,6 @@ void EmitPass::emitfcvt(llvm::GenIntrinsicInst *GII) {
       id == GenISAIntrinsic::GenISA_hftohf8 || id == GenISAIntrinsic::GenISA_hf8tohf ||
       id == GenISAIntrinsic::GenISA_ftotf32) {
     CVariable *tDst = nullptr, *tSrc = nullptr;
-    // fcvt does not accept an immediate source operand. When immSrc is an
-    // immediate, copy it into a uniform temporary of the same type and
-    // return that temporary.
-    auto materializeImmSrc = [&](CVariable *immSrc) -> CVariable * {
-      if (!immSrc->IsImmediate())
-        return immSrc;
-      CVariable *tfSrc = m_currShader->GetNewVariable(
-          1, immSrc->GetType(), m_encoder->GetCISADataTypeAlignment(immSrc->GetType()), true /*uniform*/, "tmp_cvt");
-      m_encoder->SetNoMask();
-      m_encoder->Copy(tfSrc, immSrc);
-      m_encoder->Push();
-      return tfSrc;
-    };
 
     if (id == GenISAIntrinsic::GenISA_ftobf) {
       tDst = m_currShader->GetNewAlias(dst, ISA_TYPE_BF, 0, 0);
@@ -22532,21 +22530,21 @@ void EmitPass::emitfcvt(llvm::GenIntrinsicInst *GII) {
     /// Use UB as we are not exposing BF8, UD for TF32
     else if (id == GenISAIntrinsic::GenISA_hftobf8) {
       tDst = m_currShader->GetNewAlias(dst, ISA_TYPE_UB, 0, 0);
-      tSrc = materializeImmSrc(src);
+      tSrc = MaterializeImmToGRF(src, "tmp_cvt");
     } else if (id == GenISAIntrinsic::GenISA_bf8tohf) {
       tDst = dst;
-      tSrc = m_currShader->GetNewAlias(src, ISA_TYPE_UB, 0, 0);
+      tSrc = m_currShader->GetNewAlias(MaterializeImmToGRF(src, "tmp_cvt"), ISA_TYPE_UB, 0, 0);
     } else if (id == GenISAIntrinsic::GenISA_ftotf32) {
       tDst = m_currShader->GetNewAlias(dst, ISA_TYPE_UD, 0, 0);
-      tSrc = materializeImmSrc(src);
+      tSrc = MaterializeImmToGRF(src, "tmp_cvt");
     }
     // Use Type_B for HF8
     else if (id == GenISAIntrinsic::GenISA_hf8tohf) {
       tDst = dst;
-      tSrc = m_currShader->GetNewAlias(src, ISA_TYPE_B, 0, 0);
+      tSrc = m_currShader->GetNewAlias(MaterializeImmToGRF(src, "tmp_cvt"), ISA_TYPE_B, 0, 0);
     } else if (id == GenISAIntrinsic::GenISA_hftohf8) {
       tDst = m_currShader->GetNewAlias(dst, ISA_TYPE_B, 0, 0);
-      tSrc = materializeImmSrc(src);
+      tSrc = MaterializeImmToGRF(src, "tmp_cvt");
     } else {
       IGC_ASSERT_EXIT_MESSAGE(0, "Something wrong in cvt!");
     }
@@ -22684,6 +22682,9 @@ void EmitPass::emitLfsr(llvm::GenIntrinsicInst *GII) {
     cs0 = m_currShader->BitCast(cs0, ISA_TYPE_UD);
   if (cs1->GetType() == ISA_TYPE_D)
     cs1 = m_currShader->BitCast(cs1, ISA_TYPE_UD);
+
+  // src0 (seed) has to be a GRF operand
+  cs0 = MaterializeImmToGRF(cs0, "lfsr_seed");
 
   auto *VecTy = dyn_cast<IGCLLVM::FixedVectorType>(GII->getType());
   unsigned VectorSize = VecTy ? (unsigned)VecTy->getNumElements() : 1;
@@ -22867,6 +22868,9 @@ void EmitPass::emitSrnd(llvm::GenIntrinsicInst *GII) {
     if (dst->GetType() != ISA_TYPE_B) // Use B for hf8
       dst = m_currShader->GetNewAlias(dst, ISA_TYPE_B, 0, 0);
   }
+
+  // src0 has to be a GRF operand
+  src0 = MaterializeImmToGRF(src0, "tmp_srnd");
 
   // set src0 types
   if (GID == GenISAIntrinsic::GenISA_srnd_ftohf) {
