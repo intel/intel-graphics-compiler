@@ -20,15 +20,28 @@
 
 ; CHECK: define spir_kernel void @test_earlyout{{.*}} !dbg [[SCOPE:![0-9]*]]
 ; CHECK: entry:
-; CHECK-DAG: [[VAL1_V:%[A-z0-9]*]] = uitofp i32 %a {{.*}}, !dbg [[VAL1_LOC:![0-9]*]]
-; CHECK-DAG: [[VAL2_V:%[A-z0-9]*]] = uitofp i32 %b {{.*}}, !dbg [[VAL2_LOC:![0-9]*]]
-; CHECK-DAG: [[VAL3_V:%[A-z0-9]*]] = uitofp i32 %c {{.*}}, !dbg [[VAL3_LOC:![0-9]*]]
-; CHECK-DAG: [[VAL4_V:%[A-z0-9]*]] = fmul {{.*}}, !dbg [[VAL4_LOC:![0-9]*]]
-; CHECK-DAG: [[VAL5_V:%[A-z0-9]*]] = fmul {{.*}}, !dbg [[VAL5_LOC:![0-9]*]]
-; CHECK-DAG: [[VAL6_V:%[A-z0-9]*]] = fmul {{.*}}, !dbg [[VAL6_LOC:![0-9]*]]
-; CHECK-DAG: [[VAL7_V:%[A-z0-9]*]] = fadd {{.*}}, !dbg [[VAL7_LOC:![0-9]*]]
-; CHECK-DAG: [[VAL8_V:%[A-z0-9]*]] = fadd {{.*}}, !dbg [[VAL8_LOC:![0-9]*]]
-; CHECK-DAG: [[VAL9_V:%[A-z0-9]*]] = fcmp {{.*}}, !dbg [[VAL9_LOC:![0-9]*]]
+; In the debug-records model (LLVM 22+) each #dbg_value stays adjacent to the
+; instruction that defines its value, so they are interleaved here in program
+; order. In the intrinsic model the dbg.value calls are sunk into a cluster,
+; checked separately below.
+; CHECK: [[VAL1_V:%[A-z0-9]*]] = uitofp i32 %a {{.*}}, !dbg [[VAL1_LOC:![0-9]*]]
+; CHECK-DBG-RECORDS: #dbg_value(float [[VAL1_V]], [[VAL1_MD:![0-9]*]], !DIExpression(), [[VAL1_LOC]])
+; CHECK: [[VAL4_V:%[A-z0-9]*]] = fmul {{.*}}, !dbg [[VAL4_LOC:![0-9]*]]
+; CHECK-DBG-RECORDS: #dbg_value(float [[VAL4_V]], [[VAL4_MD:![0-9]*]], !DIExpression(), [[VAL4_LOC]])
+; CHECK: [[VAL2_V:%[A-z0-9]*]] = uitofp i32 %b {{.*}}, !dbg [[VAL2_LOC:![0-9]*]]
+; CHECK-DBG-RECORDS: #dbg_value(float [[VAL2_V]], [[VAL2_MD:![0-9]*]], !DIExpression(), [[VAL2_LOC]])
+; CHECK: [[VAL5_V:%[A-z0-9]*]] = fmul {{.*}}, !dbg [[VAL5_LOC:![0-9]*]]
+; CHECK-DBG-RECORDS: #dbg_value(float [[VAL5_V]], [[VAL5_MD:![0-9]*]], !DIExpression(), [[VAL5_LOC]])
+; CHECK: [[VAL3_V:%[A-z0-9]*]] = uitofp i32 %c {{.*}}, !dbg [[VAL3_LOC:![0-9]*]]
+; CHECK-DBG-RECORDS: #dbg_value(float [[VAL3_V]], [[VAL3_MD:![0-9]*]], !DIExpression(), [[VAL3_LOC]])
+; CHECK: [[VAL6_V:%[A-z0-9]*]] = fmul {{.*}}, !dbg [[VAL6_LOC:![0-9]*]]
+; CHECK-DBG-RECORDS: #dbg_value(float [[VAL6_V]], [[VAL6_MD:![0-9]*]], !DIExpression(), [[VAL6_LOC]])
+; CHECK: [[VAL7_V:%[A-z0-9]*]] = fadd {{.*}}, !dbg [[VAL7_LOC:![0-9]*]]
+; CHECK-DBG-RECORDS: #dbg_value(float [[VAL7_V]], [[VAL7_MD:![0-9]*]], !DIExpression(), [[VAL7_LOC]])
+; CHECK: [[VAL8_V:%[A-z0-9]*]] = fadd {{.*}}, !dbg [[VAL8_LOC:![0-9]*]]
+; CHECK-DBG-RECORDS: #dbg_value(float [[VAL8_V]], [[VAL8_MD:![0-9]*]], !DIExpression(), [[VAL8_LOC]])
+; CHECK: [[VAL9_V:%[A-z0-9]*]] = fcmp {{.*}}, !dbg [[VAL9_LOC:![0-9]*]]
+; CHECK-DBG-RECORDS: #dbg_value(i1 [[VAL9_V]], [[VAL9_MD:![0-9]*]], !DIExpression(), [[VAL9_LOC]])
 
 ; CHECK-DBG-INTRINSIC: {{.*}}:
 ; CHECK-DBG-INTRINSIC: void @llvm.dbg.value(metadata float [[VAL1_V]], metadata [[VAL1_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL1_LOC]]
@@ -56,21 +69,12 @@
 ; CHECK-DBG-INTRINSIC: [[VAL17_V:%[A-z0-9]*]] = fmul {{.*}}, !dbg [[VAL17_LOC]]
 ; CHECK-DBG-INTRINSIC: void @llvm.dbg.value(metadata float {{0.0.*}}, metadata [[VAL17_MD]], metadata !DIExpression()), !dbg [[VAL17_LOC]]
 
-; CHECK-DBG-RECORDS: #dbg_value(float [[VAL1_V]], [[VAL1_MD:![0-9]*]], !DIExpression(), [[VAL1_LOC]])
-; CHECK-DBG-RECORDS: #dbg_value(float [[VAL2_V]], [[VAL2_MD:![0-9]*]], !DIExpression(), [[VAL2_LOC]])
-; CHECK-DBG-RECORDS: #dbg_value(float [[VAL3_V]], [[VAL3_MD:![0-9]*]], !DIExpression(), [[VAL3_LOC]])
-; CHECK-DBG-RECORDS: #dbg_value(float [[VAL4_V]], [[VAL4_MD:![0-9]*]], !DIExpression(), [[VAL4_LOC]])
-; CHECK-DBG-RECORDS: #dbg_value(float [[VAL5_V]], [[VAL5_MD:![0-9]*]], !DIExpression(), [[VAL5_LOC]])
-; CHECK-DBG-RECORDS: #dbg_value(float [[VAL6_V]], [[VAL6_MD:![0-9]*]], !DIExpression(), [[VAL6_LOC]])
-; CHECK-DBG-RECORDS: #dbg_value(float [[VAL7_V]], [[VAL7_MD:![0-9]*]], !DIExpression(), [[VAL7_LOC]])
-; CHECK-DBG-RECORDS: #dbg_value(float [[VAL8_V]], [[VAL8_MD:![0-9]*]], !DIExpression(), [[VAL8_LOC]])
-; CHECK-DBG-RECORDS: #dbg_value(i1 [[VAL9_V]], [[VAL9_MD:![0-9]*]], !DIExpression(), [[VAL9_LOC]])
 ; CHECK-DBG-RECORDS: {{.*}}:
 ; CHECK-DBG-RECORDS: [[VAL17_V:%[A-z0-9]*]] = fmul {{.*}}, !dbg [[VAL17_LOC:![0-9]*]]
 ; CHECK-DBG-RECORDS: #dbg_value(float [[VAL17_V]], [[VAL17_MD:![0-9]*]], !DIExpression(), [[VAL17_LOC]])
 ; CHECK-DBG-RECORDS: {{.*}}:
 ; CHECK-DBG-RECORDS: {{.*}} = fmul {{.*}}, !dbg [[VAL17_LOC]]
-; CHECK-DBG-RECORDS: #dbg_value(float {{.*}}, [[VAL17_MD]], !DIExpression(), [[VAL17_LOC]])
+; CHECK-DBG-RECORDS: #dbg_value(float {{0.0.*}}, [[VAL17_MD]], !DIExpression(), [[VAL17_LOC]])
 
 define spir_kernel void @test_earlyout(i32 %a, i32 %b, i32 %c, float* %d) !dbg !6 {
 entry:

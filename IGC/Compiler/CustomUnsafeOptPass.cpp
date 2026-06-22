@@ -3079,6 +3079,21 @@ bool EarlyOutPatterns::canOptimizeNdotL(SmallVector<Instruction *, 4> &Values, F
   Instruction *InsertPos = &*BB->getFirstInsertionPt();
   safeScheduleUp(BB, cast<Value>(FC), InsertPos, std::move(Scheduled));
 
+#if LLVM_VERSION_MAJOR >= 22
+  // safeScheduleUp reorders instructions; in the debug-records model that
+  // strands the #dbg_values onto one instruction. Re-pair each record with the
+  // instruction defining its value so every value keeps its own adjacent.
+  for (Instruction &Inst : *BB) {
+    SmallVector<DbgVariableRecord *, 2> DbgValues;
+    findDbgValues(&Inst, DbgValues);
+    // Reverse so multiple records for one value keep their original order.
+    for (auto *DVR : reverse(DbgValues)) {
+      DVR->removeFromParent();
+      BB->insertDbgRecordAfter(DVR, &Inst);
+    }
+  }
+#endif
+
   return true;
 }
 
@@ -3429,8 +3444,15 @@ BasicBlock *EarlyOutPatterns::SplitBasicBlock(Instruction *inst, const DenseSet<
   ifBlock->setName(VALUE_NAME("EO_IF"));
   IGCLLVM::insertBasicBlock(currentBB->getParent(), endifBlock->getIterator(), ifBlock);
 
-  for (auto &Inst : *ifBlock)
+  for (auto &Inst : *ifBlock) {
     RemapInstruction(&Inst, VMap, RF_NoModuleLevelChanges | RF_IgnoreMissingLocals);
+#if LLVM_VERSION_MAJOR >= 22
+    // RemapInstruction skips attached #dbg_value records; remap them too so
+    // they track the cloned values and fold with them below.
+    RemapDbgRecordRange(ifBlock->getModule(), Inst.getDbgRecordRange(), VMap,
+                        RF_NoModuleLevelChanges | RF_IgnoreMissingLocals);
+#endif
+  }
 
   // create phi instruction
   for (auto II = elseBlock->begin(), IE = elseBlock->end(); II != IE; ++II) {
