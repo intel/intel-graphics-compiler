@@ -2193,10 +2193,20 @@ static void doHoisting(FlowGraph &fg, G4_BB *bb, INST_LIST_RITER revIter) {
       // defInst[opnd_pred].
       inst->transferDef(defInst, Opnd_pred, Opnd_pred);
     }
-    if (inst->getSrc(0)->asSrcRegRegion()->isScalar() &&
-        inst->getExecSize() > g4::SIMD1) {
-      defInst->setExecSize(
-          G4_ExecSize(defInst->getExecSize() * inst->getExecSize()));
+    // If every lane of the use reads the same single source element (a
+    // broadcast), the def, which produces one element, must be expanded to
+    // write all of the use's lanes. A stride of 0 over the use's exec size
+    // identifies a broadcast for both the canonical scalar region <0;1,0> and
+    // effectively-scalar regions like <1;N,0>; isScalar() only recognizes the
+    // former.
+    G4_ExecSize useExecSize = inst->getExecSize();
+    uint16_t useSrcStride = 0;
+    bool useSrcIsBroadcast =
+        inst->getSrc(0)->asSrcRegRegion()->getRegion()->isSingleStride(
+            useExecSize, useSrcStride) &&
+        useSrcStride == 0;
+    if (useSrcIsBroadcast && useExecSize > g4::SIMD1) {
+      defInst->setExecSize(G4_ExecSize(defInst->getExecSize() * useExecSize));
     }
     defInst->setSaturate(inst->getSaturate() || defInst->getSaturate());
     if (!bb->isAllLaneActive()) {
