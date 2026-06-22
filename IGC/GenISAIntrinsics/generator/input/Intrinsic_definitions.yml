@@ -113,6 +113,15 @@ types:
         ID: !TypeID "Vector"
         num_elements: 0
         element_type: *any
+    - &v_any_int !<TypeDefinition>
+        ID: !TypeID "Vector"
+        num_elements: 0
+        element_type: *any_int
+    - &tl_anyint__v_anyint !<TypeDefinition>
+        ID: !TypeID "TypeList"
+        type_list:
+            - *any_int
+            - *v_any_int
     - &p_any_ !<TypeDefinition>
         ID: !TypeID "Pointer"
         address_space: !AddressSpace "Undefined"
@@ -1240,7 +1249,7 @@ intrinsics:
         name: "GenISA_MediaBlockRead"
         comment: ""
         return_definition: !<ReturnDefinition>
-            type_definition: *any_int
+            type_definition: *tl_anyint__v_anyint
             comment: ""
         arguments:
             - !<ArgumentDefinition>
@@ -1339,7 +1348,7 @@ intrinsics:
                 comment: "height"
             - !<ArgumentDefinition>
                 name: Arg6
-                type_definition: *any_int
+                type_definition: *tl_anyint__v_anyint
                 comment: "pixels"
         attributes:
             - !AttributeID "NoUnwind"
