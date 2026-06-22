@@ -437,7 +437,9 @@ public:
 
   void createTraceRayInlinePrologue(StackPointerVal *StackPtr, Value *RayInfo, Value *RootNodePtr, Value *RayFlags,
                                     Value *InstanceInclusionMask, Value *ComparisonValue, Value *TMax,
-                                    bool updateFlags = true, bool initialDoneBitValue = false);
+                                    bool updateFlags = true, bool initialDoneBitValue = false,
+                                    Value *MissShaderIndex = nullptr, Value *HitGroupIndex = nullptr,
+                                    Value *ShaderIndexMultiplier = nullptr);
 
   void emitSingleRQMemRayWrite(SyncStackPointerVal *HWStackPtr, SyncStackPointerVal *SMStackPtr, bool singleRQProceed);
 

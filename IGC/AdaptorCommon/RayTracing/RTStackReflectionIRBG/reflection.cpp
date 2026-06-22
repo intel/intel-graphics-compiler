@@ -668,6 +668,7 @@ CREATE_PRIVATE void _createTraceRayInlinePrologue_Xe(RTSAS RTStack2<Xe> *__restr
   }
 
   ray0.instLeafPtr = 0;
+  ray0.flagsFromTraceRay.rayFlags = RayFlags & RTStackFormat::RayFlagsMask;
   ray0.rayMask = InstanceInclusionMask;
   ray0.pad2 = 0;
 
@@ -700,7 +701,9 @@ CREATE_PRIVATE void _createTraceRayInlinePrologue_Xe(RTSAS RTStack2<Xe> *__restr
 template <typename RTStackT>
 IMPL void _createTraceRayInlinePrologue(RTSAS RTStackT *__restrict__ StackPtr, _float8 RayInfo, uint64_t RootNodePtr,
                                         uint32_t RayFlags, uint32_t InstanceInclusionMask, uint32_t ComparisonValue,
-                                        float TMax, bool updateFlags, bool initialDoneBitValue) {
+                                        float TMax, bool updateFlags, bool initialDoneBitValue,
+                                        uint32_t MissShaderIndex = 0, uint32_t HitGroupIndex = 0,
+                                        uint32_t ShaderIndexMultiplier = 0) {
   *((RTSAS _float8 *)&StackPtr->ray0.org) = RayInfo;
 
   auto &ray0 = StackPtr->ray0;
@@ -716,10 +719,10 @@ IMPL void _createTraceRayInlinePrologue(RTSAS RTStackT *__restrict__ StackPtr, _
   ray0.ComparisonValue = ComparisonValue;
   ray0.pad1 = 0;
 
-  ray0.hitGroupIndex = 0;
+  ray0.hitGroupIndex = HitGroupIndex;
 
-  ray0.missShaderIndex = 0;
-  ray0.shaderIndexMultiplier = 0;
+  ray0.missShaderIndex = MissShaderIndex;
+  ray0.shaderIndexMultiplier = ShaderIndexMultiplier;
   ray0.pad2 = 0;
   ray0.internalRayFlags = 0;
 
@@ -758,17 +761,23 @@ IMPL void _createTraceRayInlinePrologue(RTSAS RTStackT *__restrict__ StackPtr, _
 CREATE_PRIVATE void _createTraceRayInlinePrologue_Xe3(RTSAS RTStack2<Xe3> *__restrict__ StackPtr, _float8 RayInfo,
                                                       uint64_t RootNodePtr, uint32_t RayFlags,
                                                       uint32_t InstanceInclusionMask, uint32_t ComparisonValue,
-                                                      float TMax, bool updateFlags, bool initialDoneBitValue) {
+                                                      float TMax, bool updateFlags, bool initialDoneBitValue,
+                                                      uint32_t MissShaderIndex = 0, uint32_t HitGroupIndex = 0,
+                                                      uint32_t ShaderIndexMultiplier = 0) {
   _createTraceRayInlinePrologue(StackPtr, RayInfo, RootNodePtr, RayFlags, InstanceInclusionMask, ComparisonValue, TMax,
-                                updateFlags, initialDoneBitValue);
+                                updateFlags, initialDoneBitValue, MissShaderIndex, HitGroupIndex,
+                                ShaderIndexMultiplier);
 }
 
 CREATE_PRIVATE void _createTraceRayInlinePrologue_Xe3PEff64(RTSAS RTStack2<Xe3PEff64> *__restrict__ StackPtr,
                                                             _float8 RayInfo, uint64_t RootNodePtr, uint32_t RayFlags,
                                                             uint32_t InstanceInclusionMask, uint32_t ComparisonValue,
-                                                            float TMax, bool updateFlags, bool initialDoneBitValue) {
+                                                            float TMax, bool updateFlags, bool initialDoneBitValue,
+                                                            uint32_t MissShaderIndex = 0, uint32_t HitGroupIndex = 0,
+                                                            uint32_t ShaderIndexMultiplier = 0) {
   _createTraceRayInlinePrologue(StackPtr, RayInfo, RootNodePtr, RayFlags, InstanceInclusionMask, ComparisonValue, TMax,
-                                updateFlags, initialDoneBitValue);
+                                updateFlags, initialDoneBitValue, MissShaderIndex, HitGroupIndex,
+                                ShaderIndexMultiplier);
 }
 
 

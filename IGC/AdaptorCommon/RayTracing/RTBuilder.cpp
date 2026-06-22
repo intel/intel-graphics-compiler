@@ -1886,7 +1886,15 @@ void RTBuilder::createPotentialHit2CommittedHit(StackPointerVal *StackPtr) {
 
 void RTBuilder::createTraceRayInlinePrologue(StackPointerVal *StackPtr, Value *RayInfo, Value *RootNodePtr,
                                              Value *RayFlags, Value *InstanceInclusionMask, Value *ComparisonValue,
-                                             Value *TMax, bool updateFlags, bool initialDoneBitValue) {
+                                             Value *TMax, bool updateFlags, bool initialDoneBitValue,
+                                             Value *MissShaderIndex, Value *HitGroupIndex,
+                                             Value *ShaderIndexMultiplier) {
+  if (!MissShaderIndex)
+    MissShaderIndex = getInt32(0);
+  if (!HitGroupIndex)
+    HitGroupIndex = getInt32(0);
+  if (!ShaderIndexMultiplier)
+    ShaderIndexMultiplier = getInt32(0);
   switch (getMemoryStyle()) {
   case RTMemoryStyle::Xe:
     _createTraceRayInlinePrologue_Xe(StackPtr, RayInfo, RootNodePtr, RayFlags, InstanceInclusionMask, ComparisonValue,
@@ -1894,12 +1902,14 @@ void RTBuilder::createTraceRayInlinePrologue(StackPointerVal *StackPtr, Value *R
     break;
   case RTMemoryStyle::Xe3:
     _createTraceRayInlinePrologue_Xe3(StackPtr, RayInfo, RootNodePtr, RayFlags, InstanceInclusionMask, ComparisonValue,
-                                      TMax, VAdapt{*this, updateFlags}, VAdapt{*this, initialDoneBitValue});
+                                      TMax, VAdapt{*this, updateFlags}, VAdapt{*this, initialDoneBitValue},
+                                      MissShaderIndex, HitGroupIndex, ShaderIndexMultiplier);
     break;
   case RTMemoryStyle::Xe3PEff64:
     _createTraceRayInlinePrologue_Xe3PEff64(StackPtr, RayInfo, RootNodePtr, RayFlags, InstanceInclusionMask,
                                             ComparisonValue, TMax, VAdapt{*this, updateFlags},
-                                            VAdapt{*this, initialDoneBitValue});
+                                            VAdapt{*this, initialDoneBitValue}, MissShaderIndex, HitGroupIndex,
+                                            ShaderIndexMultiplier);
     break;
   }
 }
