@@ -8,7 +8,7 @@
 
 ; FIXME: make this test work without shader type
 ; REQUIRES: shader-types
-; RUN: igc_opt -igc-early-out-patterns-pass -S -inputcs < %s | FileCheck %s
+; RUN: igc_opt -igc-early-out-patterns-pass -S -inputcs < %s | FileCheck %s --check-prefixes=CHECK,%if llvm-22-plus %{CHECK-DBG-RECORDS%} %else %{CHECK-DBG-INTRINSIC%}
 ; ------------------------------------------------
 ; EarlyOutPatterns
 ; ------------------------------------------------
@@ -30,33 +30,47 @@
 ; CHECK-DAG: [[VAL8_V:%[A-z0-9]*]] = fadd {{.*}}, !dbg [[VAL8_LOC:![0-9]*]]
 ; CHECK-DAG: [[VAL9_V:%[A-z0-9]*]] = fcmp {{.*}}, !dbg [[VAL9_LOC:![0-9]*]]
 
-; CHECK: {{.*}}:
-; CHECK: void @llvm.dbg.value(metadata float [[VAL1_V]], metadata [[VAL1_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL1_LOC]]
-; CHECK: void @llvm.dbg.value(metadata float [[VAL2_V]], metadata [[VAL2_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL2_LOC]]
-; CHECK: void @llvm.dbg.value(metadata float [[VAL3_V]], metadata [[VAL3_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL3_LOC]]
-; CHECK: void @llvm.dbg.value(metadata float [[VAL4_V]], metadata [[VAL4_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL4_LOC]]
-; CHECK: void @llvm.dbg.value(metadata float [[VAL5_V]], metadata [[VAL5_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL5_LOC]]
-; CHECK: void @llvm.dbg.value(metadata float [[VAL6_V]], metadata [[VAL6_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL6_LOC]]
-; CHECK: void @llvm.dbg.value(metadata float [[VAL7_V]], metadata [[VAL7_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL7_LOC]]
-; CHECK: void @llvm.dbg.value(metadata float [[VAL8_V]], metadata [[VAL8_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL8_LOC]]
-; CHECK: void @llvm.dbg.value(metadata i1 [[VAL9_V]], metadata [[VAL9_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL9_LOC]]
+; CHECK-DBG-INTRINSIC: {{.*}}:
+; CHECK-DBG-INTRINSIC: void @llvm.dbg.value(metadata float [[VAL1_V]], metadata [[VAL1_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL1_LOC]]
+; CHECK-DBG-INTRINSIC: void @llvm.dbg.value(metadata float [[VAL2_V]], metadata [[VAL2_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL2_LOC]]
+; CHECK-DBG-INTRINSIC: void @llvm.dbg.value(metadata float [[VAL3_V]], metadata [[VAL3_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL3_LOC]]
+; CHECK-DBG-INTRINSIC: void @llvm.dbg.value(metadata float [[VAL4_V]], metadata [[VAL4_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL4_LOC]]
+; CHECK-DBG-INTRINSIC: void @llvm.dbg.value(metadata float [[VAL5_V]], metadata [[VAL5_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL5_LOC]]
+; CHECK-DBG-INTRINSIC: void @llvm.dbg.value(metadata float [[VAL6_V]], metadata [[VAL6_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL6_LOC]]
+; CHECK-DBG-INTRINSIC: void @llvm.dbg.value(metadata float [[VAL7_V]], metadata [[VAL7_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL7_LOC]]
+; CHECK-DBG-INTRINSIC: void @llvm.dbg.value(metadata float [[VAL8_V]], metadata [[VAL8_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL8_LOC]]
+; CHECK-DBG-INTRINSIC: void @llvm.dbg.value(metadata i1 [[VAL9_V]], metadata [[VAL9_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL9_LOC]]
+; CHECK-DBG-INTRINSIC: [[VAL17_V:%[A-z0-9]*]] = fmul {{.*}}, !dbg [[VAL17_LOC:![0-9]*]]
+; CHECK-DBG-INTRINSIC: void @llvm.dbg.value(metadata float [[VAL17_V]], metadata [[VAL17_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL17_LOC]]
 
-; CHECK: [[VAL17_V:%[A-z0-9]*]] = fmul {{.*}}, !dbg [[VAL17_LOC:![0-9]*]]
-; CHECK: void @llvm.dbg.value(metadata float [[VAL17_V]], metadata [[VAL17_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL17_LOC]]
+; CHECK-DBG-INTRINSIC: {{.*}}:
+; CHECK-DBG-INTRINSIC: void @llvm.dbg.value(metadata float [[VAL1_V]], metadata [[VAL1_MD]], metadata !DIExpression()), !dbg [[VAL1_LOC]]
+; CHECK-DBG-INTRINSIC: void @llvm.dbg.value(metadata float [[VAL2_V]], metadata [[VAL2_MD]], metadata !DIExpression()), !dbg [[VAL2_LOC]]
+; CHECK-DBG-INTRINSIC: void @llvm.dbg.value(metadata float [[VAL3_V]], metadata [[VAL3_MD]], metadata !DIExpression()), !dbg [[VAL3_LOC]]
+; CHECK-DBG-INTRINSIC: void @llvm.dbg.value(metadata float [[VAL4_V]], metadata [[VAL4_MD]], metadata !DIExpression()), !dbg [[VAL4_LOC]]
+; CHECK-DBG-INTRINSIC: void @llvm.dbg.value(metadata float [[VAL5_V]], metadata [[VAL5_MD]], metadata !DIExpression()), !dbg [[VAL5_LOC]]
+; CHECK-DBG-INTRINSIC: void @llvm.dbg.value(metadata float [[VAL6_V]], metadata [[VAL6_MD]], metadata !DIExpression()), !dbg [[VAL6_LOC]]
+; CHECK-DBG-INTRINSIC: void @llvm.dbg.value(metadata float [[VAL7_V]], metadata [[VAL7_MD]], metadata !DIExpression()), !dbg [[VAL7_LOC]]
+; CHECK-DBG-INTRINSIC: void @llvm.dbg.value(metadata float [[VAL8_V]], metadata [[VAL8_MD]], metadata !DIExpression()), !dbg [[VAL8_LOC]]
+; CHECK-DBG-INTRINSIC: void @llvm.dbg.value(metadata i1 [[VAL9_V]], metadata [[VAL9_MD]], metadata !DIExpression()), !dbg [[VAL9_LOC]]
+; CHECK-DBG-INTRINSIC: [[VAL17_V:%[A-z0-9]*]] = fmul {{.*}}, !dbg [[VAL17_LOC]]
+; CHECK-DBG-INTRINSIC: void @llvm.dbg.value(metadata float {{0.0.*}}, metadata [[VAL17_MD]], metadata !DIExpression()), !dbg [[VAL17_LOC]]
 
-; CHECK: {{.*}}:
-; CHECK: void @llvm.dbg.value(metadata float [[VAL1_V]], metadata [[VAL1_MD]], metadata !DIExpression()), !dbg [[VAL1_LOC]]
-; CHECK: void @llvm.dbg.value(metadata float [[VAL2_V]], metadata [[VAL2_MD]], metadata !DIExpression()), !dbg [[VAL2_LOC]]
-; CHECK: void @llvm.dbg.value(metadata float [[VAL3_V]], metadata [[VAL3_MD]], metadata !DIExpression()), !dbg [[VAL3_LOC]]
-; CHECK: void @llvm.dbg.value(metadata float [[VAL4_V]], metadata [[VAL4_MD]], metadata !DIExpression()), !dbg [[VAL4_LOC]]
-; CHECK: void @llvm.dbg.value(metadata float [[VAL5_V]], metadata [[VAL5_MD]], metadata !DIExpression()), !dbg [[VAL5_LOC]]
-; CHECK: void @llvm.dbg.value(metadata float [[VAL6_V]], metadata [[VAL6_MD]], metadata !DIExpression()), !dbg [[VAL6_LOC]]
-; CHECK: void @llvm.dbg.value(metadata float [[VAL7_V]], metadata [[VAL7_MD]], metadata !DIExpression()), !dbg [[VAL7_LOC]]
-; CHECK: void @llvm.dbg.value(metadata float [[VAL8_V]], metadata [[VAL8_MD]], metadata !DIExpression()), !dbg [[VAL8_LOC]]
-; CHECK: void @llvm.dbg.value(metadata i1 [[VAL9_V]], metadata [[VAL9_MD]], metadata !DIExpression()), !dbg [[VAL9_LOC]]
-
-; CHECK: [[VAL17_V:%[A-z0-9]*]] = fmul {{.*}}, !dbg [[VAL17_LOC]]
-; CHECK: void @llvm.dbg.value(metadata float {{0.0.*}}, metadata [[VAL17_MD]], metadata !DIExpression()), !dbg [[VAL17_LOC]]
+; CHECK-DBG-RECORDS: #dbg_value(float [[VAL1_V]], [[VAL1_MD:![0-9]*]], !DIExpression(), [[VAL1_LOC]])
+; CHECK-DBG-RECORDS: #dbg_value(float [[VAL2_V]], [[VAL2_MD:![0-9]*]], !DIExpression(), [[VAL2_LOC]])
+; CHECK-DBG-RECORDS: #dbg_value(float [[VAL3_V]], [[VAL3_MD:![0-9]*]], !DIExpression(), [[VAL3_LOC]])
+; CHECK-DBG-RECORDS: #dbg_value(float [[VAL4_V]], [[VAL4_MD:![0-9]*]], !DIExpression(), [[VAL4_LOC]])
+; CHECK-DBG-RECORDS: #dbg_value(float [[VAL5_V]], [[VAL5_MD:![0-9]*]], !DIExpression(), [[VAL5_LOC]])
+; CHECK-DBG-RECORDS: #dbg_value(float [[VAL6_V]], [[VAL6_MD:![0-9]*]], !DIExpression(), [[VAL6_LOC]])
+; CHECK-DBG-RECORDS: #dbg_value(float [[VAL7_V]], [[VAL7_MD:![0-9]*]], !DIExpression(), [[VAL7_LOC]])
+; CHECK-DBG-RECORDS: #dbg_value(float [[VAL8_V]], [[VAL8_MD:![0-9]*]], !DIExpression(), [[VAL8_LOC]])
+; CHECK-DBG-RECORDS: #dbg_value(i1 [[VAL9_V]], [[VAL9_MD:![0-9]*]], !DIExpression(), [[VAL9_LOC]])
+; CHECK-DBG-RECORDS: {{.*}}:
+; CHECK-DBG-RECORDS: [[VAL17_V:%[A-z0-9]*]] = fmul {{.*}}, !dbg [[VAL17_LOC:![0-9]*]]
+; CHECK-DBG-RECORDS: #dbg_value(float [[VAL17_V]], [[VAL17_MD:![0-9]*]], !DIExpression(), [[VAL17_LOC]])
+; CHECK-DBG-RECORDS: {{.*}}:
+; CHECK-DBG-RECORDS: {{.*}} = fmul {{.*}}, !dbg [[VAL17_LOC]]
+; CHECK-DBG-RECORDS: #dbg_value(float {{.*}}, [[VAL17_MD]], !DIExpression(), [[VAL17_LOC]])
 
 define spir_kernel void @test_earlyout(i32 %a, i32 %b, i32 %c, float* %d) !dbg !6 {
 entry:

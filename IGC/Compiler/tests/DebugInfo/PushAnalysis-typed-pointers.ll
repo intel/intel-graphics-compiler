@@ -8,7 +8,7 @@
 ;
 ; FIXME: make this test work without shader type
 ; REQUIRES: shader-types
-; RUN: igc_opt --igc-push-analysis --inputds --igc-collect-domain-shader-properties -S < %s | FileCheck %s
+; RUN: igc_opt --igc-push-analysis --inputds --igc-collect-domain-shader-properties -S < %s | FileCheck %s --check-prefixes=CHECK,%if llvm-22-plus %{CHECK-DBG-RECORDS%} %else %{CHECK-DBG-INTRINSIC%}
 ; ------------------------------------------------
 ; PushAnalysis
 ; ------------------------------------------------
@@ -19,23 +19,34 @@
 ; ------------------------------------------------
 ;
 ; CHECK: @test_pusha{{.*}} !dbg [[SCOPE:![0-9]*]]
-; CHECK: @llvm.dbg.value(metadata float [[DS_V:%[A-z0-9_]*]], metadata [[DS_MD:![0-9]*]], metadata !DIExpression()), !dbg [[DS_LOC:![0-9]*]]
+; CHECK-DBG-INTRINSIC: @llvm.dbg.value(metadata float [[DS_V:%[A-z0-9_]*]], metadata [[DS_MD:![0-9]*]], metadata !DIExpression()), !dbg [[DS_LOC:![0-9]*]]
+; CHECK-DBG-RECORDS: #dbg_value(float [[DS_V:%[A-z0-9_]*]], [[DS_MD:![0-9]*]], !DIExpression(), [[DS_LOC:![0-9]*]])
 ; CHECK: [[UI1_V:%[A-z0-9]*]] = fptoui float [[DS_V]]{{.*}} !dbg [[UI1_LOC:![0-9]*]]
-; CHECK: @llvm.dbg.value(metadata i32 [[UI1_V]], metadata [[UI1_MD:![0-9]*]], metadata !DIExpression()), !dbg [[UI1_LOC]]
-; CHECK: @llvm.dbg.value(metadata float [[IN_V:%[A-z0-9_]*]], metadata [[IN_MD:![0-9]*]], metadata !DIExpression()), !dbg [[IN_LOC:![0-9]*]]
+; CHECK-DBG-INTRINSIC: @llvm.dbg.value(metadata i32 [[UI1_V]], metadata [[UI1_MD:![0-9]*]], metadata !DIExpression()), !dbg [[UI1_LOC]]
+; CHECK-DBG-RECORDS: #dbg_value(i32 [[UI1_V]], [[UI1_MD:![0-9]*]], !DIExpression(), [[UI1_LOC]])
+; CHECK-DBG-INTRINSIC: @llvm.dbg.value(metadata float [[IN_V:%[A-z0-9_]*]], metadata [[IN_MD:![0-9]*]], metadata !DIExpression()), !dbg [[IN_LOC:![0-9]*]]
+; CHECK-DBG-RECORDS: #dbg_value(float [[IN_V:%[A-z0-9_]*]], [[IN_MD:![0-9]*]], !DIExpression(), [[IN_LOC:![0-9]*]])
 ; CHECK: [[UI2_V:%[A-z0-9]*]] = fptoui float [[IN_V]]{{.*}} !dbg [[UI2_LOC:![0-9]*]]
-; CHECK: @llvm.dbg.value(metadata i32 [[UI2_V]], metadata [[UI2_MD:![0-9]*]], metadata !DIExpression()), !dbg [[UI2_LOC]]
+; CHECK-DBG-INTRINSIC: @llvm.dbg.value(metadata i32 [[UI2_V]], metadata [[UI2_MD:![0-9]*]], metadata !DIExpression()), !dbg [[UI2_LOC]]
+; CHECK-DBG-RECORDS: #dbg_value(i32 [[UI2_V]], [[UI2_MD:![0-9]*]], !DIExpression(), [[UI2_LOC]])
 ; this value is essentially dead and vectors are not salvagable yet
-; CHECK: @llvm.dbg.value(metadata {{.*}}, metadata [[IVEC_MD:![0-9]*]], metadata !DIExpression()), !dbg [[IVEC_LOC:![0-9]*]]
-; CHECK: @llvm.dbg.value(metadata float [[PI_V:%[A-z0-9_]*]], metadata [[PI_MD:![0-9]*]], metadata !DIExpression()), !dbg [[PI_LOC:![0-9]*]]
+; CHECK-DBG-INTRINSIC: @llvm.dbg.value(metadata {{.*}}, metadata [[IVEC_MD:![0-9]*]], metadata !DIExpression()), !dbg [[IVEC_LOC:![0-9]*]]
+; CHECK-DBG-RECORDS: #dbg_value({{.*}}, [[IVEC_MD:![0-9]*]], !DIExpression(), [[IVEC_LOC:![0-9]*]])
+; CHECK-DBG-INTRINSIC: @llvm.dbg.value(metadata float [[PI_V:%[A-z0-9_]*]], metadata [[PI_MD:![0-9]*]], metadata !DIExpression()), !dbg [[PI_LOC:![0-9]*]]
+; CHECK-DBG-RECORDS: #dbg_value(float [[PI_V:%[A-z0-9_]*]], [[PI_MD:![0-9]*]], !DIExpression(), [[PI_LOC:![0-9]*]])
 ; CHECK: [[UI3_V:%[A-z0-9]*]] = fptoui float [[PI_V]]{{.*}} !dbg [[UI3_LOC:![0-9]*]]
-; CHECK: @llvm.dbg.value(metadata i32 [[UI3_V]], metadata [[UI3_MD:![0-9]*]], metadata !DIExpression()), !dbg [[UI3_LOC]]
-; CHECK: @llvm.dbg.value(metadata float [[RT_V:%[A-z0-9_]*]], metadata [[RT_MD:![0-9]*]], metadata !DIExpression()), !dbg [[RT_LOC:![0-9]*]]
+; CHECK-DBG-INTRINSIC: @llvm.dbg.value(metadata i32 [[UI3_V]], metadata [[UI3_MD:![0-9]*]], metadata !DIExpression()), !dbg [[UI3_LOC]]
+; CHECK-DBG-RECORDS: #dbg_value(i32 [[UI3_V]], [[UI3_MD:![0-9]*]], !DIExpression(), [[UI3_LOC]])
+; CHECK-DBG-INTRINSIC: @llvm.dbg.value(metadata float [[RT_V:%[A-z0-9_]*]], metadata [[RT_MD:![0-9]*]], metadata !DIExpression()), !dbg [[RT_LOC:![0-9]*]]
+; CHECK-DBG-RECORDS: #dbg_value(float [[RT_V:%[A-z0-9_]*]], [[RT_MD:![0-9]*]], !DIExpression(), [[RT_LOC:![0-9]*]])
 ; CHECK: [[UI4_V:%[A-z0-9]*]] = fptoui float [[RT_V]]{{.*}} !dbg [[UI4_LOC:![0-9]*]]
-; CHECK: @llvm.dbg.value(metadata i32 [[UI4_V]], metadata [[UI4_MD:![0-9]*]], metadata !DIExpression()), !dbg [[UI4_LOC]]
+; CHECK-DBG-INTRINSIC: @llvm.dbg.value(metadata i32 [[UI4_V]], metadata [[UI4_MD:![0-9]*]], metadata !DIExpression()), !dbg [[UI4_LOC]]
+; CHECK-DBG-RECORDS: #dbg_value(i32 [[UI4_V]], [[UI4_MD:![0-9]*]], !DIExpression(), [[UI4_LOC]])
 ; dead
-; CHECK: @llvm.dbg.value(metadata {{.*}}, metadata [[ADDR_MD:![0-9]*]], metadata !DIExpression()), !dbg [[ADDR_LOC:![0-9]*]]
-; CHECK: @llvm.dbg.value(metadata i32 [[CB_V:%[A-z0-9_]*]], metadata [[CB_MD:![0-9]*]], metadata !DIExpression()), !dbg [[CB_LOC:![0-9]*]]
+; CHECK-DBG-INTRINSIC: @llvm.dbg.value(metadata {{.*}}, metadata [[ADDR_MD:![0-9]*]], metadata !DIExpression()), !dbg [[ADDR_LOC:![0-9]*]]
+; CHECK-DBG-RECORDS: #dbg_value({{.*}}, [[ADDR_MD:![0-9]*]], !DIExpression(), [[ADDR_LOC:![0-9]*]])
+; CHECK-DBG-INTRINSIC: @llvm.dbg.value(metadata i32 [[CB_V:%[A-z0-9_]*]], metadata [[CB_MD:![0-9]*]], metadata !DIExpression()), !dbg [[CB_LOC:![0-9]*]]
+; CHECK-DBG-RECORDS: #dbg_value(i32 [[CB_V:%[A-z0-9_]*]], [[CB_MD:![0-9]*]], !DIExpression(), [[CB_LOC:![0-9]*]])
 ; CHECK: store i32 [[CB_V]]{{.*}} [[STORE_LOC:![0-9]*]]
 ;
 
