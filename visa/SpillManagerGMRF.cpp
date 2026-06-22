@@ -632,8 +632,7 @@ bool SpillManagerGRF::isUnalignedRegion(REGION_TYPE *region,
           (regionByteSize < bytePerGRF || regionDisp % bytePerGRF)) {
         return true;
       }
-      return regionByteSize / OWORD_BYTE_SIZE != 1 &&
-             regionByteSize / OWORD_BYTE_SIZE != 2 &&
+      return regionByteSize / OWORD_BYTE_SIZE != 2 &&
              regionByteSize / OWORD_BYTE_SIZE != 4;
     } else
       return true;
