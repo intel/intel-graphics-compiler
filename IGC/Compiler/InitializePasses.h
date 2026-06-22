@@ -140,6 +140,7 @@ void initializeInsertDummyKernelForSymbolTableLPMPass(llvm::PassRegistry &);
 void initializeCleanupIndirectlyReferencedFunctionsLPMPass(llvm::PassRegistry &);
 void initializeProgramScopeConstantAnalysisLPMPass(llvm::PassRegistry &);
 void initializeProgramScopeConstantResolutionLPMPass(llvm::PassRegistry &);
+void initializePromotePhiToSourceWidthPass(llvm::PassRegistry &);
 void initializePromoteResourceToDirectASPass(llvm::PassRegistry &);
 void initializePromoteStatelessToBindlessPass(llvm::PassRegistry &);
 void initializePruneUnusedArgumentsPass(llvm::PassRegistry &);

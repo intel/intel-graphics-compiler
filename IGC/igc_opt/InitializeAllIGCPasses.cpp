@@ -166,6 +166,7 @@ void initializeAllIGCPasses(llvm::PassRegistry &Registry) {
   initializeSPIRMetaDataTranslationLPMPass(Registry);
   initializeSplitStructurePhisPassPass(Registry);
   initializeMergeScalarPhisPassPass(Registry);
+  initializePromotePhiToSourceWidthPass(Registry);
   initializeTypeLegalizerPass(Registry);
   initializeVectorPreProcessPass(Registry);
   initializeVectorProcessPass(Registry);

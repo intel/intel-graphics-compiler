@@ -25,6 +25,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CISACodeGen/HoistCongruentPhi.hpp"
 #include "Compiler/CISACodeGen/CodeScheduling.hpp"
 #include "Compiler/CISACodeGen/CodeSinking.hpp"
+#include "Compiler/CISACodeGen/PromotePhiToSourceWidth.hpp"
 #include "Compiler/CISACodeGen/LatencyHidingAnalysis.hpp"
 #include "Compiler/CISACodeGen/AddressArithmeticSinking.hpp"
 #include "Compiler/CISACodeGen/StateIndexAddrChainCanonicalize.hpp"
@@ -272,6 +273,13 @@ void AddAnalysisPasses(CodeGenContext &ctx, IGCPassManager &mpm) {
   if (!isOptDisabled && ctx.type == ShaderType::OPENCL_SHADER) {
     mpm.add(createSplitLoadsPass());
   }
+
+  // PromotePhiToSourceWidth widens a zero-guarded merge PHI to its narrowing cast's
+  // source width; the MergeScalarPhis pass that runs right after merges the promoted
+  // scalar PHIs so they reuse the same registers as the PHI's source (usually a loop
+  // accumulator), removing the cross-width register interference that caused spills.
+  if (IGC_IS_FLAG_ENABLED(EnablePromotePhiToSourceWidth) && ctx.type == ShaderType::OPENCL_SHADER)
+    mpm.add(createPromotePhiToSourceWidthPass());
 
   if (IGC_IS_FLAG_ENABLED(EnableScalarPhisMerger) && ctx.type == ShaderType::OPENCL_SHADER) {
     mpm.add(new MergeScalarPhisPass());
