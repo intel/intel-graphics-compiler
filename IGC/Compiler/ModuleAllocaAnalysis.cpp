@@ -140,7 +140,7 @@ bool ModuleAllocaAnalysis::safeToUseScratchSpace() const {
       }
     }
 
-    if (!isEntryFunc(pMdUtils, &F))
+    if (!isEntryFunc(Ctx.getModuleMetaData(), &F))
       continue;
 
     //

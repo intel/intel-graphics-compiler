@@ -255,7 +255,7 @@ bool CodeAssumption::addAssumption(Function *F, AssumptionCache *AC) {
 
 // Return true if SubGroupID is uniform
 bool CodeAssumption::IsSGIdUniform(MetaDataUtils *pMDU, ModuleMetaData *modMD, Function *F) {
-  if (!isEntryFunc(pMDU, F)) {
+  if (!isEntryFunc(modMD, F)) {
     return false;
   }
 

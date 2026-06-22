@@ -352,7 +352,7 @@ void CShader::CreateImplicitArgs() {
   // Push Args are only for entry function
   const unsigned numPushArgsEntry = m_ModuleMetadata->pushInfo.pushAnalysisWIInfos.size();
   const unsigned numPushArgs =
-      (isEntryFunc(m_pMdUtils, entry) && !isNonEntryMultirateShader(entry) ? numPushArgsEntry : 0);
+      (isEntryFunc(m_ctx->getModuleMetaData(), entry) && !isNonEntryMultirateShader(entry) ? numPushArgsEntry : 0);
   const int numFuncArgs = entry->arg_size() - numImplicitArgs - numPushArgs;
   IGC_ASSERT_MESSAGE(0 <= numFuncArgs, "Function arg size does not match meta data and push args.");
 
@@ -2612,7 +2612,8 @@ CVariable *CShader::getOrCreateArgumentSymbol(Argument *Arg, bool ArgInCallee, b
     ImplicitArgs implicitArgs(*F, m_pMdUtils, m_ctx->getModuleMetaData());
     unsigned numImplicitArgs = implicitArgs.size();
     unsigned numPushArgsEntry = m_ModuleMetadata->pushInfo.pushAnalysisWIInfos.size();
-    unsigned numPushArgs = (isEntryFunc(m_pMdUtils, F) && !isNonEntryMultirateShader(F) ? numPushArgsEntry : 0);
+    unsigned numPushArgs =
+        (isEntryFunc(m_ctx->getModuleMetaData(), F) && !isNonEntryMultirateShader(F) ? numPushArgsEntry : 0);
     IGC_ASSERT_MESSAGE(F->arg_size() >= (numImplicitArgs + numPushArgs),
                        "Function arg size does not match meta data and push args.");
     unsigned numFuncArgs = F->arg_size() - numImplicitArgs - numPushArgs;
@@ -2638,7 +2639,7 @@ CVariable *CShader::getOrCreateArgumentSymbol(Argument *Arg, bool ArgInCallee, b
           uint32_t nIAs = (uint32_t)IAs.size();
           uint32_t iArgIx = IAs.getArgIndex(ArgType);
           uint32_t argIx = (uint32_t)K.arg_size() - nIAs + iArgIx;
-          if (isEntryFunc(m_pMdUtils, &K) && !isNonEntryMultirateShader(&K)) {
+          if (isEntryFunc(m_ctx->getModuleMetaData(), &K) && !isNonEntryMultirateShader(&K)) {
             argIx = argIx - numPushArgsEntry;
           }
           Function::arg_iterator arg = std::next(K.arg_begin(), argIx);

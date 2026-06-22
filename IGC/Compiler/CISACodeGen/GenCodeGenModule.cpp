@@ -105,7 +105,6 @@ inline Function *getCallerFunc(Value *user) {
 }
 
 void GenXCodeGenModule::detectUnpromotableFunctions(Module *pM) {
-  auto pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
   SmallSet<Function *, 32> tempFuncs;
 
   // Find functions that have uses of "localSLM" globals
@@ -115,7 +114,7 @@ void GenXCodeGenModule::detectUnpromotableFunctions(Module *pM) {
       for (auto user : GV->users()) {
         if (Instruction *U = dyn_cast<Instruction>(user)) {
           Function *pF = U->getParent()->getParent();
-          if (!isEntryFunc(pMdUtils, pF))
+          if (!isEntryFunc(getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData(), pF))
             tempFuncs.insert(pF);
         }
       }
@@ -125,7 +124,8 @@ void GenXCodeGenModule::detectUnpromotableFunctions(Module *pM) {
   // Find functions that uses instructions that can't be handled for indirect call
   for (auto &F : *pM) {
     // Only look at non-entry functions
-    if (F.isDeclaration() || isEntryFunc(pMdUtils, &F) || tempFuncs.count(&F) != 0)
+    if (F.isDeclaration() || isEntryFunc(getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData(), &F) ||
+        tempFuncs.count(&F) != 0)
       continue;
 
     for (inst_iterator I = inst_begin(F), E = inst_end(F); I != E; ++I) {
@@ -141,7 +141,7 @@ void GenXCodeGenModule::detectUnpromotableFunctions(Module *pM) {
 
   // Recursively add callers, as the whole chain of calls cannot be promoted
   std::function<void(Function *)> AddCallerRecursive = [&](Function *F) {
-    if (isEntryFunc(pMdUtils, F))
+    if (isEntryFunc(getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData(), F))
       return;
 
     m_UnpromotableFuncs.insert(F);
@@ -482,7 +482,7 @@ bool GenXCodeGenModule::runOnModule(Module &M) {
       if (FGA->isIndirectCallGroup(F))
         continue;
 
-      if (isEntryFunc(pMdUtils, F)) {
+      if (isEntryFunc(getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData(), F)) {
         FGA->setSubGroupMap(F, F);
         FGA->createFunctionGroup(F);
       } else if (SCCNodes->size() == 1) {
@@ -673,7 +673,6 @@ FunctionGroup *GenXFunctionGroupAnalysis::getOrCreateIndirectCallGroup(Module *p
     IGCMD::FunctionInfoMetaDataHandle fHandle = IGCMD::FunctionInfoMetaDataHandle(new IGCMD::FunctionInfoMetaData());
     FunctionMetaData *funcMD = &pModMD->FuncMD[pNewFunc];
     funcMD->functionType = IGC::FunctionTypeMD::KernelFunction;
-    fHandle->setType(FunctionTypeMD::KernelFunction);
     pMdUtil->setFunctionsInfoItem(pNewFunc, fHandle);
     defaultKernel = pNewFunc;
   }
@@ -693,7 +692,6 @@ FunctionGroup *GenXFunctionGroupAnalysis::getOrCreateIndirectCallGroup(Module *p
 bool GenXFunctionGroupAnalysis::useStackCall(llvm::Function *F) { return (F->hasFnAttribute("visaStackCall")); }
 
 void GenXFunctionGroupAnalysis::setGroupAttributes() {
-  auto pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
 
   for (auto FG : Groups) {
     if (isIndirectCallGroup(FG)) {
@@ -719,7 +717,7 @@ void GenXFunctionGroupAnalysis::setGroupAttributes() {
         if (!isLeafFunc(F)) {
           FG->m_hasNestedCall = true;
         }
-      } else if (!isEntryFunc(pMdUtils, F)) {
+      } else if (!isEntryFunc(getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData(), F)) {
         FG->m_hasSubroutine = true;
       }
 
@@ -763,7 +761,8 @@ void GenXFunctionGroupAnalysis::setGroupAttributes() {
           }
 
           FG->m_hasStackCall |= hasStackCall;
-          FG->m_hasNestedCall |= (!isEntryFunc(pMdUtils, F) && hasStackCall);
+          FG->m_hasNestedCall |=
+              (!isEntryFunc(getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData(), F) && hasStackCall);
         }
       }
     }
@@ -771,13 +770,12 @@ void GenXFunctionGroupAnalysis::setGroupAttributes() {
 }
 
 void GenXFunctionGroupAnalysis::addIndirectFuncsToKernelGroup(llvm::Module *pModule) {
-  auto pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
 
   // Find all indirectly called functions that require a symbol
   SmallVector<Function *, 16> indirectFunctions;
   for (auto I = pModule->begin(), E = pModule->end(); I != E; ++I) {
     Function *F = &(*I);
-    if (F->isDeclaration() || isEntryFunc(pMdUtils, F))
+    if (F->isDeclaration() || isEntryFunc(getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData(), F))
       continue;
 
     if (F->hasFnAttribute("referenced-indirectly") || F->hasFnAttribute("variant-function-def")) {
@@ -926,7 +924,6 @@ void GenXFunctionGroupAnalysis::CloneFunctionGroupForMultiSIMDCompile(llvm::Modu
 
 bool GenXFunctionGroupAnalysis::rebuild(llvm::Module *Mod) {
   clear();
-  auto pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
 
   // Re-add all indirect functions to the default kernel group
   addIndirectFuncsToKernelGroup(Mod);
@@ -949,7 +946,7 @@ bool GenXFunctionGroupAnalysis::rebuild(llvm::Module *Mod) {
     if (isIndirectCallGroup(F))
       continue;
 
-    if (isEntryFunc(pMdUtils, F)) {
+    if (isEntryFunc(getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData(), F)) {
       CurFG = createFunctionGroup(F);
       CurSubGrpH = F;
     } else {

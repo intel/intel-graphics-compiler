@@ -58,8 +58,7 @@ bool GenerateBlockMemOpsPass::runOnFunction(Function &F) {
   SE = &getAnalysis<ScalarEvolutionWrapperPass>().getSE();
   WI = &getAnalysis<WIAnalysis>();
 
-  IGCMD::FunctionInfoMetaDataHandle Info = MdUtils->getFunctionsInfoItem(&F);
-  if (Info->getType() != FunctionTypeMD::KernelFunction)
+  if (!isEntryFunc(CGCtx->getModuleMetaData(), &F))
     return false;
 
   // If the subgroup size is not specified, then the maximum subgroup size is used.
@@ -664,7 +663,7 @@ bool GenerateBlockMemOpsPass::isLocalIdX(const Value *InputVal) {
     return false;
   Function *F = const_cast<Function *>(A->getParent());
   ImplicitArgs implicitArgs(*F, MdUtils, CGCtx->getModuleMetaData());
-  Value *localIdX = implicitArgs.getImplicitArgValue(*F, ImplicitArg::LOCAL_ID_X, MdUtils);
+  Value *localIdX = implicitArgs.getImplicitArgValue(*F, ImplicitArg::LOCAL_ID_X, CGCtx->getModuleMetaData());
 
   return A == localIdX;
 }
@@ -675,7 +674,7 @@ bool GenerateBlockMemOpsPass::isR0(const Value *InputVal) {
     return false;
   Function *F = const_cast<Function *>(A->getParent());
   ImplicitArgs implicitArgs(*F, MdUtils, CGCtx->getModuleMetaData());
-  Value *R0 = implicitArgs.getImplicitArgValue(*F, ImplicitArg::R0, MdUtils);
+  Value *R0 = implicitArgs.getImplicitArgValue(*F, ImplicitArg::R0, CGCtx->getModuleMetaData());
 
   return A == R0;
 }

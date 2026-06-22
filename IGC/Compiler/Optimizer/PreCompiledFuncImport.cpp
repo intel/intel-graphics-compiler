@@ -2095,7 +2095,7 @@ bool PreCompiledFuncImport::usePrivateMemory(Function *F) {
 void PreCompiledFuncImport::addMDFuncEntryForEmulationFunc(Function *F) {
   ModuleMetaData *modMD = m_pCtx->getModuleMetaData();
   FunctionInfoMetaDataHandle FH = FunctionInfoMetaDataHandle(new FunctionInfoMetaData());
-  FH->setType(FunctionTypeMD::UserFunction);
+  modMD->FuncMD[F].functionType = FunctionTypeMD::UserFunction;
   for (auto arg = F->arg_begin(); arg != F->arg_end(); ++arg) {
     IGC::ArgInfoMD a;
     a.explicitArgNum = arg->getArgNo();

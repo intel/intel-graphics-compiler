@@ -56,6 +56,7 @@ declare void @llvm.dbg.value(metadata, metadata, metadata) #0
 
 attributes #0 = { nofree nosync nounwind readnone speculatable willreturn }
 
+!IGCMetadata = !{!13}
 !igc.functions = !{!0, !3}
 !0 = !{void (i32*)* @test_estimate, !1}
 !1 = !{!2}
@@ -63,4 +64,12 @@ attributes #0 = { nofree nosync nounwind readnone speculatable willreturn }
 !3 = !{i32 (i32*)* @foo, !4}
 !4 = !{!5}
 !5 = !{!"function_type", i32 2}
+!6 = !{!"functionType", !"KernelFunction"}
+!7 = !{!"FuncMDMap[0]", void (i32*)* @test_estimate}
+!8 = !{!"FuncMDValue[0]", !6}
+!9 = !{!"functionType", !"UserFunction"}
+!10 = !{!"FuncMDMap[1]", i32 (i32*)* @foo}
+!11 = !{!"FuncMDValue[1]", !9}
+!12 = !{!"FuncMD", !7, !8, !10, !11}
+!13 = !{!"ModuleMD", !12}
 

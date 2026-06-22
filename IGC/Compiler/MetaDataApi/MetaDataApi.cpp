@@ -100,18 +100,17 @@ void VectorTypeHintMetaData::save(llvm::LLVMContext &context, llvm::MDNode *pNod
 }
 
 FunctionInfoMetaData::FunctionInfoMetaData(const llvm::MDNode *pNode, bool hasId)
-    : _Mybase(pNode, hasId), m_Type(getNamedNode(pNode, "function_type")), m_pNode(pNode) {}
+    : _Mybase(pNode, hasId), m_pNode(pNode) {}
 
-FunctionInfoMetaData::FunctionInfoMetaData() : m_Type("function_type"), m_pNode(nullptr) {}
+FunctionInfoMetaData::FunctionInfoMetaData() : m_pNode(nullptr) {}
 
-FunctionInfoMetaData::FunctionInfoMetaData(const char *name)
-    : _Mybase(name), m_Type("function_type"), m_pNode(nullptr) {}
+FunctionInfoMetaData::FunctionInfoMetaData(const char *name) : _Mybase(name), m_pNode(nullptr) {}
 
-bool FunctionInfoMetaData::hasValue() const { return m_Type.hasValue() || nullptr != m_pNode || dirty(); }
+bool FunctionInfoMetaData::hasValue() const { return nullptr != m_pNode || dirty(); }
 
-bool FunctionInfoMetaData::dirty() const { return m_Type.dirty(); }
+bool FunctionInfoMetaData::dirty() const { return false; }
 
-void FunctionInfoMetaData::discardChanges() { m_Type.discardChanges(); }
+void FunctionInfoMetaData::discardChanges() {}
 
 llvm::Metadata *FunctionInfoMetaData::generateNode(llvm::LLVMContext &context) const {
   llvm::SmallVector<llvm::Metadata *, 5> args;
@@ -121,18 +120,15 @@ llvm::Metadata *FunctionInfoMetaData::generateNode(llvm::LLVMContext &context) c
     args.push_back(pIDNode);
   }
 
-  args.push_back(m_Type.generateNode(context));
   return llvm::MDNode::get(context, args);
 }
 
-void FunctionInfoMetaData::save(llvm::LLVMContext &context, llvm::MDNode *pNode) const {
+void FunctionInfoMetaData::save(llvm::LLVMContext & /*context*/, llvm::MDNode *pNode) const {
   IGC_ASSERT_MESSAGE(nullptr != pNode, "The target node should be valid pointer");
 
   // we assume that underlying metadata node has not changed under our foot
   if (pNode == m_pNode && !dirty()) {
     return;
   }
-
-  m_Type.save(context, getNamedNode(pNode, "function_type"));
 }
 } // namespace IGC::IGCMD

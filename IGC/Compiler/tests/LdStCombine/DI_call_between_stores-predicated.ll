@@ -100,6 +100,7 @@ declare void @llvm.genx.GenISA.PredicatedStore.p1.f32(ptr addrspace(1), float, i
 declare void @llvm.genx.GenISA.PredicatedStore.p1.i8(ptr addrspace(1), i8, i64, i1)
 declare void @llvm.genx.GenISA.PredicatedStore.p1.i32(ptr addrspace(1), i32, i64, i1)
 
+!IGCMetadata = !{!19}
 !igc.functions = !{!12}
 !llvm.dbg.cu = !{!0}
 !llvm.debugify = !{!3, !4}
@@ -120,3 +121,8 @@ declare void @llvm.genx.GenISA.PredicatedStore.p1.i32(ptr addrspace(1), i32, i64
 !12 = !{ptr @f0, !13}
 !13 = !{!14}
 !14 = !{!"function_type", i32 0}
+!15 = !{!"functionType", !"KernelFunction"}
+!16 = !{!"FuncMDMap[0]", ptr @f0}
+!17 = !{!"FuncMDValue[0]", !15}
+!18 = !{!"FuncMD", !16, !17}
+!19 = !{!"ModuleMD", !18}

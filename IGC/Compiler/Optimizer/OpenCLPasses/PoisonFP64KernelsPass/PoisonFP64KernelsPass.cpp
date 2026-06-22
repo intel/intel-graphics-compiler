@@ -99,14 +99,13 @@ static void poisonKernel(Function *Kernel) {
 
 bool PoisonFP64Kernels::finalize(CodeGenContext *ctx, IGCMD::MetaDataUtils *pMdUtils) {
   CodeGenContext *CGC = ctx;
-  IGCMD::MetaDataUtils *MDUtils = pMdUtils;
 
   bool modified = false;
   for (Function *F : reverse(fp64FunctionsOrder)) {
     std::string msg = "Removing unsupported FP64 function: '" + F->getName().str() + "'";
     CGC->EmitWarning(msg.c_str(), F);
 
-    if (isEntryFunc(MDUtils, F)) {
+    if (isEntryFunc(CGC->getModuleMetaData(), F)) {
       poisonKernel(F);
     } else {
       F->eraseFromParent();

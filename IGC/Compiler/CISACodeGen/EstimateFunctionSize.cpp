@@ -893,7 +893,7 @@ void EstimateFunctionSize::analyze() {
     return Size;
   };
 
-  auto pMdUtils = m_pMdUtils;
+  auto *pModMD = m_pCtx->getModuleMetaData();
   // Initialize the data structure. find all noinline and stackcall properties
   for (auto &F : M->getFunctionList()) {
     if (F.empty())
@@ -923,7 +923,7 @@ void EstimateFunctionSize::analyze() {
       }
     }
     ECG[&F] = node;
-    if (isEntryFunc(pMdUtils, node->F)) { /// Entry function
+    if (isEntryFunc(pModMD, node->F)) { /// Entry function
       node->setKernelEntry();
       kernelEntries.push_back(node);
     } else if (F.hasFnAttribute("igc-force-stackcall")) {
@@ -1148,13 +1148,13 @@ bool EstimateFunctionSize::onlyCalledOnce(const Function *F, const Function *Cal
       return true;
     }
     // OpenCL specific, called once by passed kernel
-    if (m_pMdUtils) {
-      auto *pMdUtils = m_pMdUtils;
+    if (m_pCtx) {
+      auto *pModMD = m_pCtx->getModuleMetaData();
       for (const auto &[Caller, CallCount] : Node->CallerList) {
         if (CallCount > 1 && Caller->F == CallerF) {
           return false;
         }
-        if (!isEntryFunc(pMdUtils, Caller->F)) {
+        if (!isEntryFunc(pModMD, Caller->F)) {
           return false;
         }
       }

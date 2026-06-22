@@ -16,11 +16,17 @@ define spir_kernel void @kernel(i32 addrspace(1)* %input) nounwind {
   ret void
 }
 
+!IGCMetadata = !{!7}
 !igc.functions = !{!0}
 
 !0 = !{void (i32 addrspace(1)*)* @kernel, !1}
 !1 = !{!2}
 !2 = !{!"function_type", i32 0}
+!3 = !{!"functionType", !"KernelFunction"}
+!4 = !{!"FuncMDMap[0]", void (i32 addrspace(1)*)* @kernel}
+!5 = !{!"FuncMDValue[0]", !3}
+!6 = !{!"FuncMD", !4, !5}
+!7 = !{!"ModuleMD", !6}
 
 ; CHECK:          [[BASE_ADDRESS:%[0-9]+]] = ptrtoint i32 addrspace(1)* %input to i64
 ; CHECK-NEXT:     [[ADDRESS:%[0-9]+]] = ptrtoint i32 addrspace(1)* %1 to i64

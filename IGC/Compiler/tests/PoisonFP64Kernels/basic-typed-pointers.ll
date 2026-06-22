@@ -41,6 +41,7 @@ define double @test_func(double %src) #0 {
 attributes #0 = { "uses-fp64-math" }
 declare void @use.i64(i64)
 
+!IGCMetadata = !{!10}
 !igc.functions = !{!0}
 
 !0 = !{void (double, double*)* @test_kernel, !1}
@@ -49,4 +50,9 @@ declare void @use.i64(i64)
 !3 = !{double (double)* @test_func, !4}
 !4 = !{!5}
 !5 = !{!"function_type", i32 2}
+!6 = !{!"functionType", !"KernelFunction"}
+!7 = !{!"FuncMDMap[0]", void (double, double*)* @test_kernel}
+!8 = !{!"FuncMDValue[0]", !6}
+!9 = !{!"FuncMD", !7, !8}
+!10 = !{!"ModuleMD", !9}
 

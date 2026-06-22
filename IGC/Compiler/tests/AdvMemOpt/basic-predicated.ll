@@ -67,9 +67,15 @@ attributes #0 = { nounwind readonly }
 
 ; CHECK: [[TRUE_MD]] = !{i1 true}
 
+!IGCMetadata = !{!9}
 !igc.functions = !{!0}
 
 !0 = !{void (i32, i32*)* @test, !1}
 !1 = !{!2}
 !2 = !{!"function_type", i32 0}
 !4 = !{i1 true}
+!5 = !{!"functionType", !"KernelFunction"}
+!6 = !{!"FuncMDMap[0]", void (i32, i32*)* @test}
+!7 = !{!"FuncMDValue[0]", !5}
+!8 = !{!"FuncMD", !6, !7}
+!9 = !{!"ModuleMD", !8}
