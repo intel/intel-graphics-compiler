@@ -33,6 +33,7 @@ SPDX-License-Identifier: MIT
 #include <charconv>
 #include <chrono>
 #include <fstream>
+#include <iomanip>
 #include <iostream>
 #include <list>
 #include <mutex>
@@ -543,6 +544,7 @@ static void setRegkeyFromOption(const std::string &optionValue, const char *data
 }
 
 static const std::string GetOptionFilePath() {
+
 #if defined(_WIN64) || defined(_WIN32)
   char path[256] = "c:\\Intel\\IGC\\debugFlags\\";
   std::string testFilename = std::string(path) + "testfile";
@@ -575,9 +577,10 @@ static std::optional<std::pair<HashRange::Type, llvm::StringRef>> parseHashType(
     return {};
 
   auto Ty = StringSwitch<std::optional<HashRange::Type>>(line.substr(0, Loc))
-                .Case("hash", HashRange::Type::Asm)
                 .Case("asmhash", HashRange::Type::Asm)
+                .Case("hash", HashRange::Type::Asm)
                 .Case("psohash", HashRange::Type::Pso)
+                .Case("pipelinehash", HashRange::Type::Pipeline)
                 .Default({});
   if (!Ty)
     return {};
@@ -602,9 +605,10 @@ static std::optional<std::pair<bool, llvm::StringRef>> detectEntryPoints(llvm::S
 
 // parses this syntax:
 // Each hash may be optionally prefixed with "0x" (e.g., 0xaaaaaaaaaaaaaaaa)
-// hash:abcdabcdabcdabcd-ffffffffffffffff,aaaaaaaaaaaaaaaa
 // asmhash:abcdabcdabcdabcd-ffffffffffffffff,aaaaaaaaaaaaaaaa
 // psohash:abcdabcdabcdabcd-ffffffffffffffff,aaaaaaaaaaaaaaaa
+// pipelinehash:abcdabcdabcdabcd-ffffffffffffffff,aaaaaaaaaaaaaaaa
+// hash:  (deprecated alias for asmhash:)
 static void ParseHashRange(llvm::StringRef line, std::vector<HashRange> &ranges) {
   using namespace llvm;
   auto Result = parseHashType(line);
@@ -657,8 +661,10 @@ static void ParseEntryPoint(llvm::StringRef line, std::vector<EntryPoint> &entry
 
 static void setIGCKeyOnHash(std::vector<HashRange> &hashes, const unsigned value, IGCFlag *var) {
   // hashes can be empty if the var is not set via Options.txt
-  for (size_t i = 0; i < hashes.size(); i++)
+  for (size_t i = 0; i < hashes.size(); i++) {
     var->hashes.push_back(hashes[i]);
+    var->hashes.back().implied = true;
+  }
   var->isSet = true;
   var->m_Value = value;
 }
@@ -892,12 +898,18 @@ bool CheckHashRange(IGCFlag &varname) {
   for (auto &it : varname.hashes) {
     unsigned long long CurrHash = it.getHashVal(g_CurrentShaderHash);
     if (CurrHash >= it.start && CurrHash <= it.end) {
-      varname.m_Value = it.m_Value;
-      constexpr uint32_t Len = 100;
-      char msg[Len];
-      int size = snprintf(msg, Len, "Shader %#0llx: %s=%d", CurrHash, varname.name, it.m_Value);
-      if (size >= 0 && size < Len) {
-        appendToOptionsLogFile(msg);
+      memcpy_s(varname.m_string, sizeof(debugString), it.m_string, sizeof(debugString));
+      if (!it.implied) {
+        std::ostringstream oss;
+        oss << "[apply] pHash=0x" << std::hex << std::setfill('0') << std::setw(16)
+            << g_CurrentShaderHash.getPipelineHash() << ", aHash=0x" << std::setw(16)
+            << g_CurrentShaderHash.getAsmHash() << std::dec << ": " << varname.name << "=";
+        if (varname.IsString()) {
+          oss << it.m_string;
+        } else {
+          oss << it.m_Value;
+        }
+        appendToOptionsLogFile(oss.str());
       }
 
       return true;
@@ -930,7 +942,7 @@ bool CheckEntryPoint(IGCFlag &varname) {
       for (std::string &CurrEntryPoint : g_CurrentEntryPointNames)
       {
         if (CurrEntryPoint == it.entry_point_name) {
-          varname.m_Value = it.m_Value;
+          memcpy_s(varname.m_string, sizeof(debugString), it.m_string, sizeof(debugString));
           return true;
         }
       }

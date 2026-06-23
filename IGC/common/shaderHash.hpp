@@ -31,16 +31,19 @@ public:
 
 class ShaderHash : public ShaderHash3D {
 public:
-  ShaderHash() : ShaderHash3D(), nosHash(0), psoHash(0) {}
-  ShaderHash(const ShaderHash3D &spec) : ShaderHash3D(spec), nosHash(0), psoHash(0) {}
-  ShaderHash(const ShaderHashBase &base) : ShaderHash3D(base), nosHash(0), psoHash(0) {}
+  ShaderHash() : ShaderHash3D(), nosHash(0), psoHash(0), pipelineHash(0) {}
+  ShaderHash(const ShaderHash3D &spec) : ShaderHash3D(spec), nosHash(0), psoHash(0), pipelineHash(0) {}
+  ShaderHash(const ShaderHashBase &base) : ShaderHash3D(base), nosHash(0), psoHash(0), pipelineHash(0) {}
   QWORD getNosHash() const { return nosHash; }
   QWORD getPsoHash() const { return psoHash; }
+  QWORD getPipelineHash() const { return pipelineHash; }
 
   bool is_set() const {
-    return ((asmHash | nosHash | psoHash | perShaderPsoHash | rtlHash | dcHash | ltoHash | stateHash) != 0);
+    return ((asmHash | nosHash | psoHash | perShaderPsoHash | rtlHash | dcHash | ltoHash | stateHash | pipelineHash) !=
+            0);
   }
 
   QWORD nosHash;
   QWORD psoHash;
+  QWORD pipelineHash;
 };

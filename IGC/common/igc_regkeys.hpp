@@ -30,14 +30,12 @@ typedef char debugString[1024];
 #include <vector>
 #if defined(IGC_DEBUG_VARIABLES)
 struct HashRange {
-  enum class Type {
-    Asm, // asmhash:, hash:
-    Pso  // psohash:
-  };
+  enum class Type { Asm, Pso, Pipeline };
 
   unsigned long long start;
   unsigned long long end;
   Type Ty;
+  bool implied = false;
   union {
     unsigned m_Value;
     debugString m_string;
@@ -49,6 +47,8 @@ struct HashRange {
       return Hash.getAsmHash();
     case Type::Pso:
       return Hash.getPsoHash();
+    case Type::Pipeline:
+      return Hash.getPipelineHash();
     }
     return {};
   }
