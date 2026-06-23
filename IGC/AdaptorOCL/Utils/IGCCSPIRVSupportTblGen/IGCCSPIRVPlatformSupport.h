@@ -14,6 +14,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/ADT/StringRef.h"
 #include "llvm/ADT/SmallVector.h"
 #include "llvm/ADT/StringMap.h"
+#include "llvm/ADT/STLExtras.h"
 #include "llvm/TableGen/Record.h"
 #include "llvm/TableGen/Error.h"
 #include "llvm/Support/SourceMgr.h"
@@ -229,6 +230,15 @@ static SPIRVExtensions collectSPIRVExtensionSupport(const RecordKeeper &Records)
       (IsExperimental ? CapEntry->ExperimentalSupport : CapEntry->ProductionSupport) = Effective;
     }
   }
+
+  // Pin the extension order for byte-identical output across LLVM versions:
+  // getAllDerivedDefinitions returns RecordKeeper map order on LLVM <17 but
+  // compare_numeric order on LLVM >=17, so relying on it churns the committed
+  // .md files. Match LLVM >=17 by sorting with compare_numeric here.
+  llvm::sort(Result, [](const ExtensionEntry &LHS, const ExtensionEntry &RHS) {
+    return LHS.Name.compare_numeric(RHS.Name) < 0;
+  });
+
   return Result;
 }
 
