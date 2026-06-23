@@ -94,7 +94,7 @@ void __bufferoutofbounds_assert(const char* file, int line, int column, const ch
            "   Global ID:     [%d, %d, %d]\n",
            file, line, column, bufferName, bufferOffsetInBytes, bufferSize, localId0, localId1, localId2, globalId0, globalId1, globalId2);
 
-    AssertBufferHeader* header = __builtin_IB_get_assert_buffer();
+    AssertBufferHeader* header = (AssertBufferHeader*) __builtin_IB_get_assert_buffer();
     header->flag = ERROR_TYPE_BUFFER_OUTOFBOUNDS;
     __builtin_IB_software_exception();
 }
@@ -107,7 +107,7 @@ void __bufferoutofbounds_assert_nodebug(long bufferAddress, long bufferOffsetInB
            "   Global ID:     [%d, %d, %d]\n",
            bufferAddress, bufferOffsetInBytes, bufferSize, localId0, localId1, localId2, globalId0, globalId1, globalId2);
 
-    AssertBufferHeader* header = __builtin_IB_get_assert_buffer();
+    AssertBufferHeader* header = (AssertBufferHeader*) __builtin_IB_get_assert_buffer();
     header->flag = ERROR_TYPE_BUFFER_OUTOFBOUNDS;
     __builtin_IB_software_exception();
 }
@@ -118,7 +118,7 @@ void __minimumvalidaddresschecking_assert(const char* file, int line, int column
            "   Address:       0x%X\n",
            file, line, column, address);
 
-    AssertBufferHeader* header = __builtin_IB_get_assert_buffer();
+    AssertBufferHeader* header = (AssertBufferHeader*) __builtin_IB_get_assert_buffer();
     header->flag = ERROR_TYPE_ASSERT;
     __builtin_IB_software_exception();
 }
@@ -128,7 +128,7 @@ void __minimumvalidaddresschecking_assert_nodebug(long address) {
            "   Address:       0x%X\n",
            address);
 
-    AssertBufferHeader* header = __builtin_IB_get_assert_buffer();
+    AssertBufferHeader* header = (AssertBufferHeader*) __builtin_IB_get_assert_buffer();
     header->flag = ERROR_TYPE_ASSERT;
     __builtin_IB_software_exception();
 }

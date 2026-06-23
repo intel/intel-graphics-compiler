@@ -233,7 +233,7 @@ INLINE int OVERLOADABLE work_group_all(int predicate)
 int __read_pipe_2( read_only pipe int pipe_, __generic void* data, uint bytes, uint alignment )
 {
     long id = (long)__builtin_IB_cast_object_to_generic_ptr(pipe_);
-    return __spirv_ReadPipe(__builtin_IB_convert_object_type_to_spirv_pipe_wo((void*)id), data, bytes);
+    return __spirv_ReadPipe(__builtin_IB_convert_object_type_to_spirv_pipe_ro((void*)id), data, bytes);
 }
 
 int __write_pipe_2( write_only pipe int pipe_, __generic const void* data, uint bytes, uint alignment)

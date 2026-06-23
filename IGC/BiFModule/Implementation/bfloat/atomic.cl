@@ -123,36 +123,36 @@ INLINE bfloat __attribute__((overloadable)) __spirv_AtomicFMaxEXT(private bfloat
 
 INLINE bfloat __attribute__((overloadable)) __spirv_AtomicFAddEXT( global bfloat* Pointer, int Scope, int Semantics, bfloat Value)
 {
-    atomic_operation_1op_as_bfloat16( __builtin_IB_atomic_add_global_bf16, short, Pointer, Scope, Semantics, Value, true )
+    atomic_operation_1op_as_bfloat16( __builtin_IB_atomic_add_global_bf16, short, (__global ushort*)Pointer, Scope, Semantics, Value, true )
 }
 INLINE bfloat __attribute__((overloadable)) __spirv_AtomicFSubEXT( global bfloat* Pointer, int Scope, int Semantics, bfloat Value)
 {
-    atomic_operation_1op_as_bfloat16( __builtin_IB_atomic_sub_global_bf16, short, Pointer, Scope, Semantics, Value, true )
+    atomic_operation_1op_as_bfloat16( __builtin_IB_atomic_sub_global_bf16, short, (__global ushort*)Pointer, Scope, Semantics, Value, true )
 }
 INLINE bfloat __attribute__((overloadable)) __spirv_AtomicFMinEXT( global bfloat* Pointer, int Scope, int Semantics, bfloat Value)
 {
-    atomic_operation_1op_as_bfloat16( __builtin_IB_atomic_min_global_bf16, short, Pointer, Scope, Semantics, Value, true )
+    atomic_operation_1op_as_bfloat16( __builtin_IB_atomic_min_global_bf16, short, (__global ushort*)Pointer, Scope, Semantics, Value, true )
 }
 INLINE bfloat __attribute__((overloadable)) __spirv_AtomicFMaxEXT( global bfloat* Pointer, int Scope, int Semantics, bfloat Value)
 {
-    atomic_operation_1op_as_bfloat16( __builtin_IB_atomic_max_global_bf16, short, Pointer, Scope, Semantics, Value, true )
+    atomic_operation_1op_as_bfloat16( __builtin_IB_atomic_max_global_bf16, short, (__global ushort*)Pointer, Scope, Semantics, Value, true )
 }
 
 INLINE bfloat __attribute__((overloadable)) __spirv_AtomicFAddEXT( local bfloat* Pointer, int Scope, int Semantics, bfloat Value)
 {
-    atomic_operation_1op_as_bfloat16( __builtin_IB_atomic_add_local_bf16, short, Pointer, Scope, Semantics, Value, false )
+    atomic_operation_1op_as_bfloat16( __builtin_IB_atomic_add_local_bf16, short, (__local ushort*)Pointer, Scope, Semantics, Value, false )
 }
 INLINE bfloat __attribute__((overloadable)) __spirv_AtomicFSubEXT( local bfloat* Pointer, int Scope, int Semantics, bfloat Value)
 {
-    atomic_operation_1op_as_bfloat16( __builtin_IB_atomic_sub_local_bf16, short, Pointer, Scope, Semantics, Value, false )
+    atomic_operation_1op_as_bfloat16( __builtin_IB_atomic_sub_local_bf16, short, (__local ushort*)Pointer, Scope, Semantics, Value, false )
 }
 INLINE bfloat __attribute__((overloadable)) __spirv_AtomicFMinEXT( local bfloat* Pointer, int Scope, int Semantics, bfloat Value)
 {
-    atomic_operation_1op_as_bfloat16( __builtin_IB_atomic_min_local_bf16, short, Pointer, Scope, Semantics, Value, false )
+    atomic_operation_1op_as_bfloat16( __builtin_IB_atomic_min_local_bf16, short, (__local ushort*)Pointer, Scope, Semantics, Value, false )
 }
 INLINE bfloat __attribute__((overloadable)) __spirv_AtomicFMaxEXT( local bfloat* Pointer, int Scope, int Semantics, bfloat Value)
 {
-    atomic_operation_1op_as_bfloat16( __builtin_IB_atomic_max_local_bf16, short, Pointer, Scope, Semantics, Value, false )
+    atomic_operation_1op_as_bfloat16( __builtin_IB_atomic_max_local_bf16, short, (__local ushort*)Pointer, Scope, Semantics, Value, false )
 }
 
 #if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)

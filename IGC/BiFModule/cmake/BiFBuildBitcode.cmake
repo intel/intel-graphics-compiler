@@ -192,13 +192,6 @@ function(igc_bif_build_bc)
       list(APPEND LLVM_VERSION_DEPENDENT_ARGS "-fpreserve-vec3-type")
     endif()
 
-    # TODO:
-    # Temporary workaround to enable BiF compilation
-    # Needs to be removed ASAP if possible
-    if(LLVM_VERSION_MAJOR GREATER_EQUAL 22)
-      list(APPEND LLVM_VERSION_DEPENDENT_ARGS "-Wno-incompatible-pointer-types")
-    endif()
-
     # OpenCL source compilation is triggered by CLANG change, change of source files, change of precompiled header, change of
     # forcibly included headers or change of additional dependencies.
     execute_process(

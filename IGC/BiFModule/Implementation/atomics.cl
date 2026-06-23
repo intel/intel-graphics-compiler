@@ -1149,7 +1149,7 @@ long __attribute__((overloadable)) __spirv_AtomicIIncrement( __private long *Poi
 
 long __attribute__((overloadable)) __spirv_AtomicIIncrement( __global long *Pointer, int Scope, int Semantics )
 {
-    atomic_operation_0op( __builtin_IB_atomic_inc_global_i64, ulong, (global int*)Pointer, Scope, Semantics, true );
+    atomic_operation_0op( __builtin_IB_atomic_inc_global_i64, ulong, (global long*)Pointer, Scope, Semantics, true );
 }
 
 

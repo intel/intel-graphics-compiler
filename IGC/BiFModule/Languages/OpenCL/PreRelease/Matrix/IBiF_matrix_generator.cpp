@@ -630,8 +630,8 @@ static string ImplementSmallLoadVector(MatrixSpec spec, AddrSpace addr) {
 
     s += "for (int i = 0; i < Rows; i++) {\n";
     for (int iter = 0; iter < iterationCount; iter++) {
-      s += "ElemType rowIterIndex = VecFunc(src + (IterCount * i + IterIndex) * "
-           "packed_stride);\n";
+      s += "ElemType rowIterIndex = VecFunc((__" + ToString(addr) +
+           " ElemType *)(src + (IterCount * i + IterIndex) * packed_stride));\n";
       s = Replace(s, "IterIndex", to_string(iter));
     }
 
@@ -1239,9 +1239,9 @@ static string ImplementLargeLoadVectorContinuous(MatrixSpec spec, AddrSpace addr
       s = Replace(s, "ReadFunc", readFunc);
     } else {
       s += "for (int i = 0; i < Rows; i++) {\n";
-      s += "  ushort4 row0 = intel_sub_group_block_read_us4((AddrSpace uint *)(mem "
+      s += "  ushort4 row0 = intel_sub_group_block_read_us4((AddrSpace ushort *)(mem "
            "+ (2*i    ) * stride * ElemByteWidth));\n";
-      s += "  ushort4 row1 = intel_sub_group_block_read_us4((AddrSpace uint *)(mem "
+      s += "  ushort4 row1 = intel_sub_group_block_read_us4((AddrSpace ushort *)(mem "
            "+ (2*i + 1) * stride * ElemByteWidth));\n";
       s += "  *((__private uint *)(dst +  i           * ContribByteWidth)) = "
            "as_int((ushort2)(row0.x, row1.x));\n";
