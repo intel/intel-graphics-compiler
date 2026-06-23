@@ -1018,8 +1018,8 @@ DECLARE_IGC_REGKEY(bool, DisableMergeStore, false,
 DECLARE_IGC_REGKEY(DWORD, MaxLiveOutThreshold, 0, "Max LiveOut Threshold in MemOpt2", false)
 DECLARE_IGC_REGKEY(bool, DisableScalarAtomics, false, "Disable the Scalar Atomics optimization", false)
 DECLARE_IGC_REGKEY(bool, EnableScalarTypedAtomics, true, "Enable the Scalar Typed Atomics optimization", false)
-DECLARE_IGC_REGKEY(bool, EnablePromotePhiToSourceWidth, false,
-                   "Promote a zero-guarded merge PHI to its narrowing cast's source (accumulator) "
+DECLARE_IGC_REGKEY(bool, EnablePromotePhiToSourceWidth, true,
+                   "Promote a constant-guarded merge PHI to its narrowing cast's source (accumulator) "
                    "width to avoid cross-width register interference",
                    true)
 DECLARE_IGC_REGKEY(bool, EnableScalarPhisMerger, true,
