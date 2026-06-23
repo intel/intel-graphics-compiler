@@ -137,6 +137,7 @@ void IncrementalRA::registerNextIter(G4_RegFileKind rf,
     lr->setUnconstrained(false);
     lr->setDegree(0);
     lr->setRefCount(0);
+    lr->resetRawRefCount();
     lr->setBitFieldUnionValue(0);
     lr->setCandidate(true);
     lr->setSpillCost(0);

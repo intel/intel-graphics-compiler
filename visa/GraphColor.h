@@ -165,6 +165,7 @@ class LiveRange final {
   unsigned numRegNeeded;
   unsigned degree = 0;
   unsigned refCount = 0;
+  unsigned rawRefCount = 0;
   unsigned parentLRID = 0;
   AssignedReg reg;
   float spillCost = 0.0f;
@@ -235,6 +236,10 @@ public:
 
   unsigned getRefCount() const { return refCount; }
   void setRefCount(unsigned count) { refCount = count; }
+
+  unsigned getRawRefCount() const { return rawRefCount; }
+  void incRawRefCount() { rawRefCount++; }
+  void resetRawRefCount() { rawRefCount = 0; }
 
   float getSpillCost() const { return spillCost; }
   void setSpillCost(float cost) { spillCost = cost; }

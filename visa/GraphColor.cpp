@@ -1596,8 +1596,8 @@ void LiveRange::checkForInfiniteSpillCost(
   const std::list<G4_INST *>::reverse_iterator rbegin = bb->rbegin();
   if (this->isCandidate == true && it != rbegin) {
     G4_INST *nextInst = NULL;
-    if (this->getRefCount() != 2 || (this->getRegKind() == G4_GRF &&
-                                     this->getDcl()->getAddressed() == true)) {
+    if (this->getRawRefCount() != 2 || (this->getRegKind() == G4_GRF &&
+                                        this->getDcl()->getAddressed() == true)) {
       // If a liverange has > 2 refs then it
       // cannot be a candidate.
       // Also an address taken GRF is not a candidate.
@@ -2595,6 +2595,7 @@ void Interference::setupLRs(G4_BB *bb) {
         if (!inst->isPseudoKill() && !inst->isLifeTimeEnd()) {
           lrs[id]->setRefCount(lrs[id]->getRefCount() +
                                refCount); // update reference count
+          lrs[id]->incRawRefCount();
         }
         lrs[id]->checkForInfiniteSpillCost(bb, i);
       } else if (dst->isIndirect() && liveAnalysis->livenessClass(G4_GRF)) {
@@ -2607,6 +2608,7 @@ void Interference::setupLRs(G4_BB *bb) {
 
           lrs[pt.var->getId()]->setRefCount(
               lrs[pt.var->getId()]->getRefCount() + refCount);
+          lrs[pt.var->getId()]->incRawRefCount();
         }
       }
     }
@@ -2621,6 +2623,7 @@ void Interference::setupLRs(G4_BB *bb) {
           ret->getRegVar()->isRegAllocPartaker()) {
         unsigned id = static_cast<const G4_RegVar *>(ret->getRegVar())->getId();
         lrs[id]->setRefCount(lrs[id]->getRefCount() + refCount);
+        lrs[id]->incRawRefCount();
       }
     }
 
@@ -2683,6 +2686,7 @@ void Interference::setupLRs(G4_BB *bb) {
         unsigned id = ((G4_RegVar *)(srcRegion)->getBase())->getId();
 
         lrs[id]->setRefCount(lrs[id]->getRefCount() + refCount);
+        lrs[id]->incRawRefCount();
         if (inst->isEOT() && liveAnalysis->livenessClass(G4_GRF)) {
           // mark the liveRange as the EOT source
           lrs[id]->setEOTSrc();
@@ -2705,6 +2709,7 @@ void Interference::setupLRs(G4_BB *bb) {
 
           lrs[pt.var->getId()]->setRefCount(
               lrs[pt.var->getId()]->getRefCount() + refCount);
+          lrs[pt.var->getId()]->incRawRefCount();
         }
       }
     }
@@ -2718,6 +2723,7 @@ void Interference::setupLRs(G4_BB *bb) {
         unsigned id = flagReg->asRegVar()->getId();
         if (flagReg->asRegVar()->isRegAllocPartaker()) {
           lrs[id]->setRefCount(lrs[id]->getRefCount() + refCount);
+          lrs[id]->incRawRefCount();
           lrs[id]->checkForInfiniteSpillCost(bb, i);
         }
       } else {
@@ -2735,6 +2741,7 @@ void Interference::setupLRs(G4_BB *bb) {
       unsigned id = flagReg->asRegVar()->getId();
       if (flagReg->asRegVar()->isRegAllocPartaker()) {
         lrs[id]->setRefCount(lrs[id]->getRefCount() + refCount);
+        lrs[id]->incRawRefCount();
       }
     }
   }
