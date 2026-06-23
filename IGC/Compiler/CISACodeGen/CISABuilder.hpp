@@ -949,6 +949,7 @@ inline void CEncoder::EndForcedNoMaskRegion() {
 
 inline void CEncoder::SetNoMask() { m_encoderState.m_noMask = true; }
 
+
 inline void CEncoder::SetMask(e_mask mask) { m_encoderState.m_mask = mask; }
 
 inline void CEncoder::SetSimdSize(SIMDMode size) { m_encoderState.m_simdSize = size; }

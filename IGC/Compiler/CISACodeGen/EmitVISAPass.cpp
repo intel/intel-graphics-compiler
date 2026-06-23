@@ -8662,6 +8662,7 @@ ResourceDescriptor EmitPass::GetSampleResourceHelper(SampleIntrinsic *inst) {
   return resource;
 }
 
+
 void EmitPass::emitSampleInstruction(SampleIntrinsic *inst) {
   EOPCODE opCode = GetOpCode(inst);
 

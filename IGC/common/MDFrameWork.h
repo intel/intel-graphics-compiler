@@ -433,6 +433,7 @@ enum class ShaderTypeMD
     // original function instead of clone helps emit out correct debug
     // info.
 
+
     //new structure to replace old Metatdata framework's CompilerOptions
     struct CompOptions
     {
