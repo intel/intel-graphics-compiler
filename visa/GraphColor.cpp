@@ -12603,6 +12603,7 @@ void GraphColor::dumpRegisterPressure(std::ostream &OS) {
   uint32_t max = 0;
   std::vector<G4_INST *> maxInst;
   rpe.run();
+  rpe.runLoops();
 
   for (auto bb : builder.kernel.fg) {
     OS << "BB " << bb->getId() << ": (Pred: ";
@@ -12614,6 +12615,14 @@ void GraphColor::dumpRegisterPressure(std::ostream &OS) {
       OS << succ->getId() << ",";
     }
     OS << ")\n";
+    // Build outermost-to-innermost loop chain for this BB (computed once,
+    // reused for every instruction in the BB).
+    std::vector<Loop *> loopChain;
+    for (Loop *l = builder.kernel.fg.getLoops().getInnerMostLoop(bb);
+         l != nullptr; l = l->parent)
+      loopChain.push_back(l);
+    std::reverse(loopChain.begin(), loopChain.end());
+
     for (auto instIt = bb->begin(); instIt != bb->end(); ++instIt) {
       auto *inst = *instIt;
       uint32_t pressure = rpe.getRegisterPressure(inst);
@@ -12628,6 +12637,8 @@ void GraphColor::dumpRegisterPressure(std::ostream &OS) {
       if (kernel.getOption(vISA_EmitSrcFileLineToRPE))
         bb->emitInstructionSourceLineMapping(OS, instIt);
       OS << "[" << pressure << "] ";
+      for (Loop *l : loopChain)
+        OS << "[" << rpe.getLoopInstRP(l, inst) << "] ";
       inst->print(OS);
     }
   }
@@ -12635,6 +12646,8 @@ void GraphColor::dumpRegisterPressure(std::ostream &OS) {
   for (auto inst : maxInst) {
     inst->print(OS);
   }
+
+  rpe.dumpLoops(OS);
 }
 
 void GlobalRA::fixAlignment() {

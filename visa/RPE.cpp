@@ -9,6 +9,7 @@ SPDX-License-Identifier: MIT
 // This file contains implementation of Register Pressure Estimator.
 
 #include "GraphColor.h"
+#include "LoopAnalysis.h"
 #include "PointsToAnalysis.h"
 #include "RPE.h"
 #include "Timer.h"
@@ -225,6 +226,175 @@ void RPE::recomputeMaxRP() {
   }
 }
 
+SparseBitVector RPE::computeLoopVars(Loop *loop) const {
+  SparseBitVector loopVars;
+  for (G4_BB *bb : loop->getBBs()) {
+    for (G4_INST *inst : *bb) {
+      auto dst = inst->getDst();
+      if (dst && dst->getTopDcl()) {
+        G4_RegVar *rv = dst->getTopDcl()->getRegVar();
+        if (rv && rv->isRegAllocPartaker())
+          loopVars.set(rv->getId());
+      }
+      for (unsigned i = 0, n = inst->getNumSrc(); i < n; i++) {
+        auto src = inst->getSrc(i);
+        if (!src || !src->isSrcRegRegion() || !src->getTopDcl())
+          continue;
+        if (src->asSrcRegRegion()->isIndirect()) {
+          const REGVAR_VECTOR &pts =
+              liveAnalysis->getPointsToAnalysis().getAllInPointsToOrIndrUse(
+                  src, bb);
+          for (const auto &pt : pts)
+            if (pt.var->isRegAllocPartaker())
+              loopVars.set(pt.var->getId());
+        } else {
+          G4_RegVar *rv = src->getTopDcl()->getRegVar();
+          if (rv && rv->isRegAllocPartaker())
+            loopVars.set(rv->getId());
+        }
+      }
+    }
+  }
+  return loopVars;
+}
+
+void RPE::runBBForLoop(G4_BB *bb, const SparseBitVector &loopVars, Loop *loop) {
+  G4_Declare *topdcl = nullptr;
+  TotalGRFAligned = 0;
+  TotalSubGRF = 0;
+
+  // Initialise filtered live set at BB exit: only variables in loopVars.
+  live.clear();
+  live = liveAnalysis->use_out[bb->getId()];
+  live &= liveAnalysis->def_out[bb->getId()];
+  live &= loopVars;
+
+  // Compute initial register pressure from the filtered live set.
+  regPressure = 0;
+  unsigned int numScalarBytes = 0;
+  for (auto LI = live.begin(), LE = live.end(); LI != LE; ++LI) {
+    unsigned i = *LI;
+    G4_Declare *rootDcl = vars[i]->getDeclare()->getRootDeclare();
+    if (isSpilled(rootDcl) || isStackPseudoVar(rootDcl))
+      continue;
+    if (rootDcl->getNumElems() > 1) {
+      regPressure += rootDcl->getNumRows();
+    } else {
+      auto dclSize = rootDcl->getByteSize();
+      auto alignBytes = static_cast<uint32_t>(rootDcl->getSubRegAlign()) * 2;
+      if (dclSize < gra.builder.getGRFSize() && dclSize < alignBytes)
+        dclSize = handleSubGRFPressure(dclSize, alignBytes);
+      numScalarBytes += dclSize;
+    }
+  }
+  regPressure += (double)numScalarBytes / gra.builder.getGRFSize();
+
+  auto updateLivenessForLLR = [this](LocalLiveRange *LLR, bool val) {
+    int numRows = LLR->getTopDcl()->getNumRows();
+    int sreg;
+    G4_VarBase *preg = LLR->getPhyReg(sreg);
+    int startGRF = preg->asGreg()->getRegNum();
+    for (int i = startGRF; i < startGRF + numRows; ++i) {
+      G4_Declare *GRFDcl = gra.getGRFDclForHRA(i);
+      updateLiveness(live, GRFDcl->getRegVar()->getId(), val);
+    }
+  };
+
+  // Walk instructions bottom-up, mirroring runBB but:
+  //   - only tracking variables present in loopVars
+  //   - storing per-instruction filtered pressure in loopInstRP[loop]
+  auto &instMap = loopInstRP[loop];
+  for (auto rInst = bb->rbegin(), rEnd = bb->rend(); rInst != rEnd; ++rInst) {
+    auto inst = *rInst;
+    instMap[inst] = (uint32_t)regPressure;
+
+    auto dst = inst->getDst();
+    LocalLiveRange *LLR = nullptr;
+    if (dst && (topdcl = dst->getTopDcl())) {
+      if (topdcl->getRegVar()->isRegAllocPartaker()) {
+        unsigned id = topdcl->getRegVar()->getId();
+        if (loopVars.test(id) &&
+            (liveAnalysis->writeWholeRegion(bb, inst, dst) ||
+             inst->isPseudoKill()))
+          updateLiveness(live, id, false);
+      } else if ((LLR = gra.getLocalLR(topdcl)) && LLR->getAssigned()) {
+        uint32_t firstRefIdx;
+        if (LLR->getFirstRef(firstRefIdx) == inst ||
+            liveAnalysis->writeWholeRegion(bb, inst, dst))
+          updateLivenessForLLR(LLR, false);
+      }
+    }
+
+    for (unsigned j = 0, numSrc = inst->getNumSrc(); j < numSrc; j++) {
+      auto src = inst->getSrc(j);
+      if (!src || !src->isSrcRegRegion() || !src->getTopDcl())
+        continue;
+      if (!src->asSrcRegRegion()->isIndirect()) {
+        G4_RegVar *rv = src->getTopDcl()->getRegVar();
+        if (rv && rv->isRegAllocPartaker()) {
+          if (loopVars.test(rv->getId()))
+            updateLiveness(live, rv->getId(), true);
+        } else if ((LLR = gra.getLocalLR(src->getTopDcl())) &&
+                   LLR->getAssigned()) {
+          updateLivenessForLLR(LLR, true);
+        }
+      } else {
+        const REGVAR_VECTOR &pts =
+            liveAnalysis->getPointsToAnalysis().getAllInPointsToOrIndrUse(src,
+                                                                          bb);
+        for (const auto &pt : pts)
+          if (pt.var->isRegAllocPartaker() && loopVars.test(pt.var->getId()))
+            updateLiveness(live, pt.var->getId(), true);
+      }
+    }
+  }
+}
+
+void RPE::runLoop(Loop *loop) {
+  SparseBitVector loopVars = computeLoopVars(loop);
+
+  for (G4_BB *bb : loop->getBBs())
+    runBBForLoop(bb, loopVars, loop);
+
+  // Derive the loop-wide max from the per-instruction data.
+  uint32_t loopMaxRP = 0;
+  for (auto &[inst, pressure] : loopInstRP[loop])
+    loopMaxRP = std::max(loopMaxRP, pressure);
+  loopRP[loop] = loopMaxRP;
+}
+
+void RPE::runLoopHierarchy(Loop *loop) {
+  runLoop(loop);
+  for (Loop *nested : *loop)
+    runLoopHierarchy(nested);
+}
+
+void RPE::runLoops() {
+  if (vars.empty())
+    return;
+  auto &loopDetection = gra.kernel.fg.getLoops();
+  loopDetection.recomputeIfStale();
+  for (Loop *top : loopDetection.getTopLoops())
+    runLoopHierarchy(top);
+}
+
+unsigned int RPE::getLoopMaxRP(const Loop *loop) const {
+  auto it = loopRP.find(loop);
+  if (it == loopRP.end())
+    return 0;
+  return it->second;
+}
+
+unsigned int RPE::getLoopInstRP(const Loop *loop, G4_INST *inst) const {
+  auto loopIt = loopInstRP.find(loop);
+  if (loopIt == loopInstRP.end())
+    return 0;
+  auto instIt = loopIt->second.find(inst);
+  if (instIt == loopIt->second.end())
+    return 0;
+  return instIt->second;
+}
+
 void RPE::dump() const {
   std::cerr << "Max pressure = " << maxRP << "\n";
   for (auto &bb : gra.kernel.fg) {
@@ -240,5 +410,25 @@ void RPE::dump() const {
     }
     std::cerr << "\n";
   }
+}
+
+void RPE::dumpLoops(std::ostream &os) const {
+  os << "\nLoop Register Pressure:\n";
+
+  std::function<void(Loop *, unsigned)> dumpLoop = [&](Loop *loop,
+                                                        unsigned indent) {
+    auto it = loopRP.find(loop);
+    unsigned pressure = (it != loopRP.end()) ? it->second : 0;
+    for (unsigned i = 0; i < indent; i++)
+      os << "  ";
+    os << "Loop (header BB" << loop->getHeader()->getId()
+       << ", nesting=" << loop->getNestingLevel()
+       << "): max RP = " << pressure << "\n";
+    for (Loop *nested : *loop)
+      dumpLoop(nested, indent + 1);
+  };
+
+  for (Loop *top : gra.kernel.fg.getLoops().getTopLoops())
+    dumpLoop(top, 0);
 }
 } // namespace vISA

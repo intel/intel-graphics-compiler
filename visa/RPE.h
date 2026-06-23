@@ -12,6 +12,8 @@ SPDX-License-Identifier: MIT
 #include "RegAlloc.h"
 #include <unordered_map>
 
+class Loop;
+
 namespace vISA {
 class RPE {
 public:
@@ -20,6 +22,16 @@ public:
 
   void run();
   void runBB(G4_BB *);
+
+  // Run RPE independently for every loop in the kernel, considering only
+  // variables referenced within each loop's BBs.  Results are stored in the
+  // loopRP map and can be queried with getLoopMaxRP().
+  void runLoops();
+  unsigned int getLoopMaxRP(const Loop *loop) const;
+  // Per-instruction filtered RPE for a specific loop (0 if not in the loop or
+  // runLoops() not yet called).
+  unsigned int getLoopInstRP(const Loop *loop, G4_INST *inst) const;
+
   unsigned int getRegisterPressure(G4_INST *inst) {
     auto it = rp.find(inst);
     if (it == rp.end())
@@ -35,12 +47,18 @@ public:
   void recomputeMaxRP();
 
   void dump() const;
+  void dumpLoops(std::ostream &os = std::cerr) const;
 
 private:
   const GlobalRA &gra;
   const FlowGraph &fg;
   const LivenessAnalysis *const liveAnalysis;
   std::unordered_map<G4_INST *, unsigned int> rp;
+  // Per-loop, per-instruction filtered RPE (only loop-referenced variables).
+  std::unordered_map<const Loop *, std::unordered_map<G4_INST *, unsigned int>>
+      loopInstRP;
+  // Per-loop max of loopInstRP values (derived after runLoop).
+  std::unordered_map<const Loop *, unsigned int> loopRP;
   double regPressure = 0;
   uint32_t maxRP = 0;
   const Options *options;
@@ -69,6 +87,17 @@ private:
   void regPressureBBExit(G4_BB *);
   void updateRegisterPressure(bool change, bool clean, unsigned int);
   void updateLiveness(SparseBitVector &, uint32_t, bool);
+
+  // Collect the IDs of all reg-alloc-partaker variables referenced (def or
+  // use) in the BBs belonging to loop.
+  SparseBitVector computeLoopVars(Loop *loop) const;
+  // Like runBB but restricts liveness tracking to loopVars.  Writes
+  // per-instruction filtered pressure into loopInstRP[loop].
+  void runBBForLoop(G4_BB *bb, const SparseBitVector &loopVars, Loop *loop);
+  // Compute and store loopRP for a single loop.
+  void runLoop(Loop *loop);
+  // Recursively call runLoop for loop and all of its nested loops.
+  void runLoopHierarchy(Loop *loop);
 
   bool isSpilled(const G4_Declare *dcl) const {
     auto it = spilledVars.find(dcl);
