@@ -29,9 +29,9 @@ class GenIntrinsicsTTIImpl : public IGCLLVM::TTIImplCRTPBase<GenIntrinsicsTTIImp
 public:
   GenIntrinsicsTTIImpl(IGC::CodeGenContext *pCtx) : BaseT(pCtx->getModule()->getDataLayout()), ctx(pCtx) {}
 
-  DenseMap<Value *, bool> isGEPLoopInduction;
+  mutable DenseMap<Value *, bool> isGEPLoopInduction;
 
-  bool shouldBuildLookupTables();
+  bool shouldBuildLookupTables() const;
   bool enablePromoteLoopUnrollwithAlloca() const;
 
   bool isLoweredToCall(const Function *F) const;
@@ -41,16 +41,16 @@ public:
   // [POC] Implemented to use InferAddressSpaces pass after
   // PrivateMemoryToSLM pass to propagate ADDRESS_SPACE_PRIVATE
   // from variables to memory operations.
-  unsigned getFlatAddressSpace();
+  unsigned getFlatAddressSpace() const;
 
-  bool isGEPLoopConstDerived(GetElementPtrInst *GEP, const Loop *L, ScalarEvolution &SE);
+  bool isGEPLoopConstDerived(GetElementPtrInst *GEP, const Loop *L, ScalarEvolution &SE) const;
 
   void getUnrollingPreferences(Loop *L, ScalarEvolution &SE, TTI::UnrollingPreferences &UP,
-                               OptimizationRemarkEmitter *ORE);
+                               OptimizationRemarkEmitter *ORE) const;
 
-  void getPeelingPreferences(Loop *L, ScalarEvolution &SE, TTI::PeelingPreferences &PP);
+  void getPeelingPreferences(Loop *L, ScalarEvolution &SE, TTI::PeelingPreferences &PP) const;
 
-  bool isProfitableToHoist(Instruction *I);
+  bool isProfitableToHoist(Instruction *I) const;
 
   llvm::InstructionCost getUserCost(const User *U, ArrayRef<const Value *> Operands,
                                     TTI::TargetCostKind CostKind) const;

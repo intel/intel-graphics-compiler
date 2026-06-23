@@ -43,7 +43,7 @@ bool GenIntrinsicsTTIImpl::isLoweredToCall(const Function *F) const {
 
 // CFG simplification may produce illegal integer types while simplifying switch
 // instructions. Set this to false unless IGC legalization can fix them.
-bool GenIntrinsicsTTIImpl::shouldBuildLookupTables() { return false; }
+bool GenIntrinsicsTTIImpl::shouldBuildLookupTables() const { return false; }
 
 bool GenIntrinsicsTTIImpl::enablePromoteLoopUnrollwithAlloca() const {
   const IGC::TriboolFlag RK_PromoteLoopUnrollwithAlloca =
@@ -103,9 +103,9 @@ unsigned countTotalInstructions(const Function *F, bool CheckSendMsg = true) {
   return EstimatedInstCnt;
 }
 
-unsigned GenIntrinsicsTTIImpl::getFlatAddressSpace() { return ADDRESS_SPACE_PRIVATE; }
+unsigned GenIntrinsicsTTIImpl::getFlatAddressSpace() const { return ADDRESS_SPACE_PRIVATE; }
 
-bool GenIntrinsicsTTIImpl::isGEPLoopConstDerived(GetElementPtrInst *GEP, const Loop *L, ScalarEvolution &SE) {
+bool GenIntrinsicsTTIImpl::isGEPLoopConstDerived(GetElementPtrInst *GEP, const Loop *L, ScalarEvolution &SE) const {
   if (!GEP)
     return false;
 
@@ -187,7 +187,7 @@ static TargetTransformInfo createTargetTransformInfo(const GenIntrinsicsTTIImpl 
 }
 
 void GenIntrinsicsTTIImpl::getUnrollingPreferences(Loop *L, ScalarEvolution &SE, TTI::UnrollingPreferences &UP,
-                                                   OptimizationRemarkEmitter *ORE) {
+                                                   OptimizationRemarkEmitter *ORE) const {
   bool IsJointMatrixApplyLoop = false;
   for (auto BB : L->blocks()) {
     for (auto &I : *BB) {
@@ -648,7 +648,7 @@ void GenIntrinsicsTTIImpl::getUnrollingPreferences(Loop *L, ScalarEvolution &SE,
 // https://github.com/llvm/llvm-project/commit/e541e1b757237172c247904b670c9894d6b3759d
 
 void GenIntrinsicsTTIImpl::getPeelingPreferences(Loop *L, ScalarEvolution &SE,
-                                                 llvm::TargetTransformInfo::PeelingPreferences &PP) {
+                                                 llvm::TargetTransformInfo::PeelingPreferences &PP) const {
   if (MDNode *LoopID = L->getLoopID()) {
     const llvm::StringRef peelCountMetadataNames = "spv.loop.peel.count";
 
@@ -665,7 +665,7 @@ void GenIntrinsicsTTIImpl::getPeelingPreferences(Loop *L, ScalarEvolution &SE,
   }
 }
 
-bool GenIntrinsicsTTIImpl::isProfitableToHoist(Instruction *I) {
+bool GenIntrinsicsTTIImpl::isProfitableToHoist(Instruction *I) const {
   if (auto *CI = dyn_cast<CallInst>(I)) {
     if (CI->isConvergent() && CI->onlyAccessesInaccessibleMemory()) {
       return false;
