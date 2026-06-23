@@ -154,7 +154,7 @@ public:
 
   // Drops the "IGFX_" prefix for markdown readability; pass-through otherwise.
   static StringRef dropIgfxPrefix(StringRef Name) {
-    Name.consume_front("IGFX_");
+    (void)Name.consume_front("IGFX_");
     return Name;
   }
 

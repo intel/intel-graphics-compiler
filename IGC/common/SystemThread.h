@@ -25,6 +25,7 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPop.hpp"
 
 #include <vector>
+#include <memory>
 #include <stdint.h>
 
 #include "usc.h"
@@ -117,6 +118,10 @@ protected:
   void *m_StateSaveHeaderAddress;
   unsigned int m_ProgramSize;
   void *m_LinearAddress;
+  // Owns the SIP binary loaded via the SIPOverrideFilePath dev override so that
+  // m_LinearAddress (which points into this buffer) stays valid for the lifetime
+  // of this object and is released when the object is destroyed.
+  std::unique_ptr<llvm::MemoryBuffer> m_pSIPOverrideBuffer;
 };
 
 } // namespace SIP

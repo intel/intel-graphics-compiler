@@ -1881,6 +1881,7 @@ CGenSystemInstructionKernelProgram *CGenSystemInstructionKernelProgram::Create(c
     if (!sipFile.empty()) {
       llvm::MemoryBuffer *pBuffer = LoadFile(sipFile);
       if (pBuffer) {
+        m_pSIPOverrideBuffer.reset(pBuffer);
         m_LinearAddress = (void *)pBuffer->getBuffer().data();
         m_ProgramSize = pBuffer->getBufferSize();
       } else {
