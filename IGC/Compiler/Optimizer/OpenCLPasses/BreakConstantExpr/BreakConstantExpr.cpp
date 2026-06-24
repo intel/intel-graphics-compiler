@@ -18,6 +18,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/InstIterator.h>
 #include "common/LLVMWarningsPop.hpp"
 #include "llvmWrapper/IR/Instructions.h"
+#include "DebugInfo/DbgVariableTypes.hpp"
 
 using namespace llvm;
 using namespace IGC;
@@ -78,35 +79,41 @@ bool BreakConstantExpr::hasConstantExpr(ConstantStruct *cstruct) const {
 
 bool BreakConstantExpr::run(Function &F) {
   bool changed = false;
+
+  // Break a constant expression referenced as the address operand of a
+  // dbg.declare. forEachDbgVar covers both llvm.dbg.declare intrinsics
+  // (LLVM <22) and DbgVariableRecords (>=22); records are attached to real
+  // instructions rather than living in the instruction stream, so a plain
+  // dyn_cast<DbgDeclareInst> over the stream would miss them.
+  auto breakDbgDeclareAddr = [&](DbgVarInstEntry *E) {
+    if (!dbgVarIsDecl(E))
+      return;
+    ConstantExpr *expr = dyn_cast_or_null<ConstantExpr>(dbgVarGetValue(E));
+    if (!expr)
+      return;
+    Instruction *anchor = dbgVarAnchorInstMutable(E);
+    Instruction *newInst = expr->getAsInstruction();
+    newInst->setDebugLoc(anchor->getDebugLoc());
+    IGCLLVM::insertBefore(newInst, anchor);
+    breakNewInstOperands(newInst);
+    E->replaceVariableLocationOp(expr, newInst);
+    if (expr->use_empty())
+      expr->destroyConstant();
+    changed = true;
+  };
+
   // Go over all the instructions in the function
   for (inst_iterator it = inst_begin(F), e = inst_end(F); it != e; ++it) {
     Instruction *pInst = &*it;
-    if (DbgDeclareInst *DbgDclInst = dyn_cast<DbgDeclareInst>(pInst)) {
-      // For DbgDeclareInst, the operand is a metadata that might
-      // contain a constant expression.
-      Value *op = DbgDclInst->getAddress();
-      // If the debug adress is a constant expression, recursively break it up.
-      if (ConstantExpr *expr = dyn_cast_or_null<ConstantExpr>(op)) {
-        breakExpressions(expr, 0, pInst);
-        changed = true;
-      }
+
+    // Handle dbg.declare entries attached to (>=22) or being (<22) this
+    // instruction. On <22 forEachDbgVar is a no-op for non-debug instructions.
+    forEachDbgVar(*pInst, breakDbgDeclareAddr);
+#if LLVM_VERSION_MAJOR < 22
+    // The debug intrinsic is itself an instruction; skip the generic operand
+    // walk (its operands are metadata, not breakable constant expressions).
+    if (isa<DbgInfoIntrinsic>(pInst))
       continue;
-    }
-#if 0
-        //Disable handling of llvm.dbg.value instruction as it needs
-        //proper handling of metadata.
-        if (DbgValueInst * DbgValInst = dyn_cast<DbgValueInst>(pInst)) {
-            // For DbgValueInst, the operand is a metadata that might
-            // contain a constant expression.
-            Value* op = DbgValInst->getValue();
-            // If the debug value operand is a constant expression, recursively break it up.
-            if (ConstantExpr * expr = dyn_cast_or_null<ConstantExpr>(op))
-            {
-                breakExpressions(expr, 0, pInst);
-                changed = true;
-            }
-            continue;
-        }
 #endif
 
     // And all the operands of each instruction
@@ -159,8 +166,12 @@ void BreakConstantExpr::breakExpressions(llvm::ConstantExpr *expr, int operandIn
 
   replaceConstantWith(expr, newInst, operandIndex, user);
 
-  // Thew new instruction may itself reference constant expressions.
-  // So, recursively process all of its arguments.
+  breakNewInstOperands(newInst);
+}
+
+// Thew new instruction may itself reference constant expressions.
+// So, recursively process all of its arguments.
+void BreakConstantExpr::breakNewInstOperands(llvm::Instruction *newInst) {
   int numOperands = newInst->getNumOperands();
   for (int i = 0; i < numOperands; ++i) {
     Value *op = newInst->getOperand(i);

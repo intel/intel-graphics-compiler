@@ -67,8 +67,6 @@ private:
   bool visitMemMoveInst(MemMoveInst &);
   bool visitMemSetInst(MemSetInst &);
   bool visitCallInst(CallInst &);
-  bool visitDbgDeclareInst(DbgDeclareInst &);
-  bool visitDbgValueInst(DbgValueInst &);
   bool handlePredicatedMemoryIntrinsic(CallInst &, PointerType *);
 };
 } // End namespace IGC

@@ -26,11 +26,13 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPop.hpp"
 #include "llvmWrapper/IR/Function.h"
 #include "llvmWrapper/IR/DIBuilder.h"
+#include "llvmWrapper/IR/DebugInfo.h"
 #include <llvmWrapper/ADT/STLExtras.h>
 #include <llvmWrapper/IR/Instructions.h>
 
 #include "common/debug/Debug.hpp"
 #include "DebugInfo/VISADebugEmitter.hpp"
+#include "DebugInfo/DbgVariableTypes.hpp"
 #include <map>
 #include <utility>
 #include "Probe/Assertion.h"
@@ -194,37 +196,22 @@ void AddImplicitArgs::updateNewFuncArgs(llvm::Function *pFunc, llvm::Function *p
                                         const ImplicitArgs &implicitArgs) {
   // Loop over the argument list, transferring uses of the old arguments over to
   // the new arguments, also transferring over the names as well.
-  std::vector<std::pair<llvm::Instruction *, unsigned int>> newAddr;
+  std::vector<std::pair<DbgVarInstEntry *, unsigned int>> newAddr;
   bool fullDebugInfo = false;
   bool lineNumbersOnly = false;
   CodeGenContext *ctx = m_ctx;
   DebugMetadataInfo::hasAnyDebugInfo(ctx, fullDebugInfo, lineNumbersOnly);
 
   if (fullDebugInfo) {
-    // Create a map storing function arguments of pFunc with their position
-    // of occurrence.
-    std::map<const llvm::Argument *, unsigned int> argMap;
+    // For each argument of the old function, pFunc, find the dbg.declare
+    // entries (intrinsics on LLVM <22, debug records on >=22) that reference it
+    // as their address operand and remember the argument's position so we can
+    // fix them later. Discovery goes through findDbgDeclareUses because debug
+    // records are not part of the instruction stream.
     unsigned int i = 0;
     for (auto arg = pFunc->arg_begin(); arg != pFunc->arg_end(); ++arg, ++i) {
-      argMap.insert(std::make_pair(&(*arg), i));
-    }
-
-    // Iterate over each dbg.declare intrinsic call. If the address operand
-    // matches with any argument from old function, pFunc, store it in a
-    // data structure so we can fix it later.
-    for (auto &bb : *pNewFunc) {
-      for (auto &inst : bb) {
-        auto DIInst = dyn_cast_or_null<DbgDeclareInst>(&inst);
-        if (DIInst) {
-          auto addr = dyn_cast_or_null<Argument>(DIInst->getAddress());
-          if (addr) {
-            auto it = argMap.find(addr);
-            if (it != argMap.end()) {
-              newAddr.push_back(std::make_pair(DIInst, it->second));
-            }
-          }
-        }
-      }
+      for (auto *DDI : IGCLLVM::findDbgDeclareUses(&(*arg)))
+        newAddr.push_back(std::make_pair(DDI, i));
     }
   }
 
@@ -242,7 +229,7 @@ void AddImplicitArgs::updateNewFuncArgs(llvm::Function *pFunc, llvm::Function *p
   // mapping of argument to dbg.declare and elf file comes up with empty
   // storage location for the variable.
   for (const auto &toReplace : newAddr) {
-    auto d = dyn_cast<DbgDeclareInst>(toReplace.first);
+    auto *d = toReplace.first;
 
     IGCLLVM::DIBuilder Builder(*pNewFunc->getParent());
     auto DIVar = d->getVariable();
@@ -250,7 +237,7 @@ void AddImplicitArgs::updateNewFuncArgs(llvm::Function *pFunc, llvm::Function *p
 
     IGC_ASSERT(toReplace.second < pNewFunc->arg_size());
     Value *v = pNewFunc->arg_begin() + toReplace.second;
-    Builder.insertDeclare(v, DIVar, DIExpr, d->getDebugLoc().get(), d);
+    Builder.insertDeclare(v, DIVar, DIExpr, d->getDebugLoc().get(), IGC::dbgVarAnchorInstMutable(d));
     d->eraseFromParent();
   }
 

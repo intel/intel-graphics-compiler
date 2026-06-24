@@ -9,6 +9,7 @@ SPDX-License-Identifier: MIT
 #include "llvmWrapper/IR/Intrinsics.h"
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/IR/Instructions.h"
+#include "DebugInfo/DbgVariableTypes.hpp"
 
 using namespace IGC;
 
@@ -468,18 +469,6 @@ bool GASPropagator::visitCallInst(CallInst &I) {
   return false;
 }
 
-bool GASPropagator::visitDbgDeclareInst(DbgDeclareInst &I) {
-  MetadataAsValue *MAV = MetadataAsValue::get(TheVal->getContext(), ValueAsMetadata::get(TheVal));
-  I.replaceVariableLocationOp(I.getVariableLocationOp(0), MAV);
-  return true;
-}
-
-bool GASPropagator::visitDbgValueInst(DbgValueInst &I) {
-  MetadataAsValue *MAV = MetadataAsValue::get(TheVal->getContext(), ValueAsMetadata::get(TheVal));
-  I.replaceVariableLocationOp(I.getVariableLocationOp(0), MAV);
-  return true;
-}
-
 bool GASPropagator::propagateToAllUsers(AddrSpaceCastInst *I) {
   // Since %49 is used twice in a phi instruction like the one below:
   // %56 = phi %"class.someclass" addrspace(4)* [ %49, %53 ], [ %49, %742 ]
@@ -495,16 +484,34 @@ bool GASPropagator::propagateToAllUsers(AddrSpaceCastInst *I) {
     }
   }
 
-  if (auto *L = LocalAsMetadata::getIfExists(I))
-    if (auto *MDV = MetadataAsValue::getIfExists(I->getContext(), L))
-      for (auto &Use : MDV->uses())
-        Uses.push_back(&Use);
-
   bool Changed = false;
-  // Propagate that source through all users of this cast.
+  // Propagate that source through all (instruction) users of this cast.
   for (Use *U : Uses) {
     Changed |= propagateToUser(U, I->getOperand(0));
   }
+
+  // dbg.value/dbg.declare users reference I through metadata, so they are not in
+  // I->uses(); on LLVM >=22 they are debug records, not instructions, and are
+  // invisible to I->users(). IGC::findDbgUsers surfaces them on both versions.
+  llvm::SmallVector<IGC::DbgVarInstEntry *, 4> DbgUsers;
+  IGC::findDbgUsers(DbgUsers, I);
+  for (auto *E : DbgUsers) {
+#if LLVM_VERSION_MAJOR < 22
+    // Legacy intrinsic path: redirect the variable to the cast source so it keeps
+    // a live location once the cast is removed.
+    E->replaceVariableLocationOp(I, I->getOperand(0));
+    Changed = true;
+#else
+    // Debug-record path, once its non-debug users have been propagated, a dead cast is erased, so the
+    // variable has no live location and is set to poison. A cast that still has
+    // real users survives, so its record is left pointing at it.
+    if (I->use_empty()) {
+      E->replaceVariableLocationOp(I, llvm::PoisonValue::get(I->getType()));
+      Changed = true;
+    }
+#endif
+  }
+
   return Changed;
 }
 

@@ -22,6 +22,7 @@ SPDX-License-Identifier: MIT
 #include <optional>
 #include "llvmWrapper/IR/Instructions.h"
 #include "llvmWrapper/IR/DIBuilder.h"
+#include "DebugInfo/DbgVariableTypes.hpp"
 
 // (1)
 // Optimization pass to lower generic pointers in function arguments.
@@ -244,30 +245,28 @@ void LowerGPCallArg::updateFunctionArgs(Function *oldFunc, Function *newFunc) {
 // addrspace used in Old/New values are different and this is interpreted as different
 // types by LLVM and RAUW on different types is forbidden.
 void replaceValueInDbgInfoIntrinsic(llvm::Value *Old, llvm::Value *New, llvm::Module &M) {
-  if (Old->isUsedByMetadata()) {
-    auto localAsMD = ValueAsMetadata::getIfExists(Old);
-    auto addrSpaceMD = MetadataAsValue::getIfExists(Old->getContext(), localAsMD);
-    if (addrSpaceMD) {
-      IGCLLVM::DIBuilder DIB(M);
-      std::vector<llvm::DbgInfoIntrinsic *> DbgInfoInstToDelete;
-      for (auto *User : addrSpaceMD->users()) {
-        if (cast<DbgInfoIntrinsic>(User)) {
-          // User->dump();
-          if (auto DbgV = cast<DbgValueInst>(User)) {
-            DIB.insertDbgValueIntrinsic(New, DbgV->getVariable(), DbgV->getExpression(), DbgV->getDebugLoc().get(),
-                                        cast<llvm::Instruction>(User));
-          } else if (auto DbgD = cast<DbgDeclareInst>(User)) {
-            DIB.insertDeclare(New, DbgD->getVariable(), DbgD->getExpression(), DbgD->getDebugLoc().get(),
-                              cast<llvm::Instruction>(User));
-          }
-          DbgInfoInstToDelete.push_back(cast<llvm::DbgInfoIntrinsic>(User));
-        }
-      }
+  if (!Old->isUsedByMetadata())
+    return;
 
-      for (auto DbgInfoInst : DbgInfoInstToDelete)
-        DbgInfoInst->eraseFromParent();
-    }
+  // Collect every debug user (dbg.value / dbg.declare; intrinsic on LLVM <22,
+  // debug record on >=22) referencing Old. IGC::findDbgUsers surfaces them on
+  // both versions because records are not part of Old's metadata-user list.
+  llvm::SmallVector<IGC::DbgVarInstEntry *, 4> DbgUsers;
+  IGC::findDbgUsers(DbgUsers, Old);
+  if (DbgUsers.empty())
+    return;
+
+  IGCLLVM::DIBuilder DIB(M);
+  for (auto *E : DbgUsers) {
+    llvm::Instruction *InsertPt = IGC::dbgVarAnchorInstMutable(E);
+    if (IGC::dbgVarIsValue(E))
+      DIB.insertDbgValueIntrinsic(New, E->getVariable(), E->getExpression(), E->getDebugLoc().get(), InsertPt);
+    else if (IGC::dbgVarIsDecl(E))
+      DIB.insertDeclare(New, E->getVariable(), E->getExpression(), E->getDebugLoc().get(), InsertPt);
   }
+
+  for (auto *E : DbgUsers)
+    E->eraseFromParent();
 }
 
 void LowerGPCallArg::updateAllUsesWithNewFunction(Function *oldFunc, Function *newFunc) {

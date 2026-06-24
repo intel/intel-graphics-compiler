@@ -49,6 +49,11 @@ protected:
   /// @param  user          The original user of the expression.
   void breakExpressions(llvm::ConstantExpr *expr, int operandIndex, llvm::Instruction *user);
 
+  /// @brief  Recursively break up any constant expressions referenced by the
+  ///         operands of a freshly created instruction.
+  /// @param  newInst       The instruction whose operands to process.
+  void breakNewInstOperands(llvm::Instruction *newInst);
+
   /// @brief  Break up constant expressions in a ConstantVector elements by creating instructions
   ///         for each sub-expression.
   ///         The newly created instructions are placed before the user, and replace all constant

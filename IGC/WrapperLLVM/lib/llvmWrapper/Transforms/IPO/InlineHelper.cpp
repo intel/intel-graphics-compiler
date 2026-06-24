@@ -20,9 +20,11 @@ SPDX-License-Identifier: MIT
 #include "llvm/Analysis/CallGraphSCCPass.h"
 
 #include "common/LLVMWarningsPop.hpp"
+#include "DebugInfo/DbgVariableTypes.hpp"
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/Analysis/CallGraph.h"
 #include "llvmWrapper/IR/Instructions.h"
+#include "llvmWrapper/IR/DebugInfo.h"
 
 using namespace llvm;
 
@@ -184,16 +186,12 @@ void mergeInlinedArrayAllocas(Function *Caller, InlineFunctionInfo &IFI, Inlined
       LLVM_DEBUG(dbgs() << "    ***MERGED ALLOCA: " << *AI << "\n\t\tINTO: " << *AvailableAlloca << '\n');
 
       // Move affected dbg.declare calls immediately after the new alloca to
-      // avoid the situation when a dbg.declare precedes its alloca.
-      if (auto *L = LocalAsMetadata::getIfExists(AI))
-        if (auto *MDV = MetadataAsValue::getIfExists(AI->getContext(), L))
-          for (User *U : MDV->users())
-            if (DbgDeclareInst *DDI = dyn_cast<DbgDeclareInst>(U))
-#if LLVM_VERSION_MAJOR >= 22
-              DDI->moveBeforePreserving(AvailableAlloca->getNextNode()->getIterator());
-#else
-              IGCLLVM::moveBefore(DDI, AvailableAlloca->getNextNode());
-#endif
+      // avoid the situation when a dbg.declare precedes its alloca. Discovery
+      // goes through findDbgDeclareUses because debug records (LLVM >=22) are
+      // not part of AI's user list.
+      for (auto *DDI : IGCLLVM::findDbgDeclareUses(AI))
+        IGC::dbgVarMoveBefore(DDI, AvailableAlloca->getNextNode());
+
       AI->replaceAllUsesWith(AvailableAlloca);
 
       if (Align1 > Align2)

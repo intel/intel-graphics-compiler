@@ -10,7 +10,9 @@ SPDX-License-Identifier: MIT
 
 #include "llvm/Config/llvm-config.h"
 #include "common/LLVMWarningsPush.hpp"
+#include "llvm/ADT/SmallVector.h"
 #include "llvm/IR/BasicBlock.h"
+#include "llvm/IR/DebugInfo.h"
 #include "llvm/IR/Instruction.h"
 #if LLVM_VERSION_MAJOR >= 22
 #include "llvm/IR/DebugProgramInstruction.h"
@@ -88,6 +90,20 @@ inline const llvm::Instruction *dbgVarAnchorInst(const DbgVarInstEntry *E) {
 #endif
 }
 
+// Returns a mutable instruction to insert before. Same anchor as
+// dbgVarAnchorInst, but non-const for use as a DIBuilder insert position.
+// Reaches the host through the record's non-const marker link
+// (DbgRecord::getInstruction() is const-only in LLVM 22), which is
+// const-correct — no const_cast. MarkedInstr is set for any record attached to
+// the IR, which is the only context this is called in.
+inline llvm::Instruction *dbgVarAnchorInstMutable(DbgVarInstEntry *E) {
+#if LLVM_VERSION_MAJOR >= 22
+  return E->getMarker()->MarkedInstr;
+#else
+  return E;
+#endif
+}
+
 // Returns true if two debug variable entries have identical/equivalent content.
 // DbgVariableRecord (>= 22) exposes isEquivalentTo(); DbgVariableIntrinsic (< 22)
 // inherits Instruction::isIdenticalTo().
@@ -120,6 +136,17 @@ inline bool blockHasDbgValues(llvm::BasicBlock &blk) {
       return true;
   }
   return false;
+}
+
+// Collect all debug-variable users of V (dbg.value / dbg.declare; intrinsics on
+// <22, records on >=22). Normalizes the llvm::findDbgUsers argument order, which
+// was swapped in LLVM 22 (Value first instead of the result vector first).
+inline void findDbgUsers(llvm::SmallVectorImpl<DbgVarInstEntry *> &Users, llvm::Value *V) {
+#if LLVM_VERSION_MAJOR >= 22
+  llvm::findDbgUsers(V, Users);
+#else
+  llvm::findDbgUsers(Users, V);
+#endif
 }
 
 } // namespace IGC
