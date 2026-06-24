@@ -1,0 +1,77 @@
+; REQUIRES: regkeys, spirv-as, dg2-supported, pvc-supported
+; RUN: spirv-as --target-env spv1.0 -o %t.spv %s
+; RUN: ocloc compile -spirv_input -file %t.spv -device dg2 -options " -igc_opts 'ShaderDumpTranslationOnly=1'" 2>&1 | FileCheck %s --check-prefix=CHECK-TRANSLATE
+;
+; DG2: no native i64 add - verify emulation via igc-emu64ops
+; RUN: ocloc compile -spirv_input -file %t.spv -device dg2 -options " -igc_opts 'PrintToConsole=1 PrintAfter=igc-emu64ops'" 2>&1 | FileCheck %s --check-prefix=CHECK-EMU64
+; RUN: ocloc compile -spirv_input -file %t.spv -device dg2 -options " -igc_opts 'DumpVISAASMToConsole=1'" | FileCheck %s --check-prefix=CHECK-VISA
+;
+; PVC: native i64 add - verify it stays as i64 through to EmitPass
+; RUN: ocloc compile -spirv_input -file %t.spv -device pvc -options " -igc_opts 'PrintToConsole=1 PrintBefore=EmitPass'" 2>&1 | FileCheck %s --check-prefix=CHECK-NATIVE64
+; RUN: ocloc compile -spirv_input -file %t.spv -device pvc -options " -igc_opts 'DumpVISAASMToConsole=1'" | FileCheck %s --check-prefix=CHECK-VISA-PVC
+
+               OpCapability Addresses
+               OpCapability Int64
+               OpCapability Kernel
+               OpMemoryModel Physical64 OpenCL
+               OpEntryPoint Kernel %main "test_IAddCarry"
+               OpName %a32 "a32"
+               OpName %b32 "b32"
+               OpName %a64 "a64"
+               OpName %b64 "b64"
+               OpName %out "out"
+       %void = OpTypeVoid
+       %uint = OpTypeInt 32 0
+      %ulong = OpTypeInt 64 0
+ %uint_struct = OpTypeStruct %uint %uint
+%ulong_struct = OpTypeStruct %ulong %ulong
+   %ptr_uint = OpTypePointer CrossWorkgroup %uint
+          %9 = OpTypeFunction %void %uint %uint %ulong %ulong %ptr_uint
+     %uint_0 = OpConstant %uint 0
+     %uint_1 = OpConstant %uint 1
+       %main = OpFunction %void None %9
+        %a32 = OpFunctionParameter %uint
+        %b32 = OpFunctionParameter %uint
+        %a64 = OpFunctionParameter %ulong
+        %b64 = OpFunctionParameter %ulong
+        %out = OpFunctionParameter %ptr_uint
+      %entry = OpLabel
+     %res32  = OpIAddCarry %uint_struct %a32 %b32
+    %sum32   = OpCompositeExtract %uint %res32 0
+  %carry32   = OpCompositeExtract %uint %res32 1
+     %res64  = OpIAddCarry %ulong_struct %a64 %b64
+    %sum64   = OpCompositeExtract %ulong %res64 0
+  %carry64   = OpCompositeExtract %ulong %res64 1
+ %carry64_32 = OpUConvert %uint %carry64
+    %total   = OpIAdd %uint %sum32 %carry32
+   %total2   = OpIAdd %uint %total %carry64_32
+               OpStore %out %total2
+               OpReturn
+               OpFunctionEnd
+
+; CHECK-TRANSLATE: call { i32, i1 } @llvm.uadd.with.overflow.i32(i32 %a32, i32 %b32)
+; CHECK-TRANSLATE: zext i1 {{%[0-9]+}} to i32
+; CHECK-TRANSLATE: call { i64, i1 } @llvm.uadd.with.overflow.i64(i64 %a64, i64 %b64)
+; CHECK-TRANSLATE: zext i1 {{%[0-9]+}} to i64
+
+; DG2: after igc-emu64ops, i64 add is emulated via GenISA.add.pair
+; i32 overflow: add + icmp ult
+; CHECK-EMU64: define spir_kernel void @test_IAddCarry
+; CHECK-EMU64: %[[ADD32:[0-9]+]] = add i32 %a32, %b32
+; CHECK-EMU64-NEXT: %[[OVF32:[0-9]+]] = icmp ult i32 %[[ADD32]], %a32
+; CHECK-EMU64-NEXT: %{{[0-9]+}} = zext i1 %[[OVF32]] to i32
+; i64 overflow: emulated via GenISA.add.pair + multi-word compare
+; CHECK-EMU64: call { i32, i32 } @llvm.genx.GenISA.add.pair(i32 %{{[0-9]+}}, i32 %{{[0-9]+}}, i32 %{{[0-9]+}}, i32 %{{[0-9]+}})
+; CHECK-EMU64-NOT: add i64
+; CHECK-EMU64-NOT: call {{.*}} @llvm.uadd.with.overflow
+
+; CHECK-VISA: .kernel "test_IAddCarry"
+
+; PVC: native i64 add survives to EmitPass
+; CHECK-NATIVE64: define spir_kernel void @test_IAddCarry
+; CHECK-NATIVE64: %[[ADD32:[0-9]+]] = add i32 %a32, %b32
+; CHECK-NATIVE64: icmp ult i32 %[[ADD32]], %a32
+; CHECK-NATIVE64: add i64 %a64, %b64
+; CHECK-NATIVE64-NOT: call {{.*}} @llvm.uadd.with.overflow
+
+; CHECK-VISA-PVC: .kernel "test_IAddCarry"
