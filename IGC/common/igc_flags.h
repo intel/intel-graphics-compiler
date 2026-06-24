@@ -1790,15 +1790,15 @@ DECLARE_IGC_REGKEY(DWORD, EnablePrivMemNewSOATranspose, 1,
                    "2 : 1 plus new algo for array of dw[xn]/qw[xn],etc "
                    "3 : 2 plus new algo for array of complicated struct.",
                    true)
-DECLARE_IGC_REGKEY(bool, EnableSOAFallbackToOldAlgorithm, false,
+DECLARE_IGC_REGKEY(bool, EnableSOAFallbackToOldAlgorithm, true,
                    "Enable fallback to old SOA algorithm when new algorithm is not applicable", true)
-DECLARE_IGC_REGKEY(bool, EnableLowerGEPPtrHoisting, false, "Enable hoisting loads past pointer-typed phi instructions",
+DECLARE_IGC_REGKEY(bool, EnableLowerGEPPtrHoisting, true, "Enable hoisting loads past pointer-typed phi instructions",
                    true)
-DECLARE_IGC_REGKEY(bool, EnablePrivMemNewSOAForScalarArrays, false,
+DECLARE_IGC_REGKEY(bool, EnablePrivMemNewSOAForScalarArrays, true,
                    "Enables new SOA algorithm also for scalar float/int arrays.", true)
 DECLARE_IGC_REGKEY(bool, NewSOATransposeForOpenCL, true,
                    "If true, EnablePrivMemNewSOATranspose only applies to OpenCL kernels. For testing purpose", true)
-DECLARE_IGC_REGKEY(bool, EnableSelectOfAllocaPtrSplit, false,
+DECLARE_IGC_REGKEY(bool, EnableSelectOfAllocaPtrSplit, true,
                    "If true, pre-pass in PrivateMemoryResolution splits select-of-pointer "
                    "where one operand is alloca-derived (load duplication / store branching). "
                    "Enables SoA promotion for allocas otherwise blocked by SELECT pattern.",
