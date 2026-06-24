@@ -843,14 +843,8 @@ bool CodeLoopSinking::loopSink(Function &F) {
       Changed |= loopSink(L, SinkMode);
   }
 
-  PressurePair ExternalPair = FRPE->getExternalPressurePairForFunction(&F);
-  // unsigned int MaxPressure = getMaxRegCountForFunction(&F);
-  // RPE->publishRegPressureMetadata(F, MaxPressure + RPE->bytesToRegisters(ExternalPair));
-  // #TODO: this is a stub for publishing known pressure
-  unsigned SIMD = numLanes(RPE->bestGuessSIMDSize(&F, FGA));
-  PressurePair Pair = RPE->getMaxPressurePairForFunction(F, SIMD, WI);
-  RPE->publishNormalizedPressurePair(F, Pair + ExternalPair, SIMD);
-
+  unsigned int MaxPressure = getMaxRegCountForFunction(&F);
+  RPE->publishRegPressureMetadata(F, MaxPressure + FRPE->getExternalPressureForFunction(&F));
   return Changed;
 }
 

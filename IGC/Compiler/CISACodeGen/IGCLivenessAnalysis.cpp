@@ -685,8 +685,8 @@ bool IGCRegisterPressurePublisher::runOnModule(llvm::Module &M) {
     WI.run();
 
     if (!LegacyPublished || RepublishLate) {
-      PressurePair Pair = RPE.getMaxPressurePairForFunction(F, SimdSize, &WI);
-      RPE.publishNormalizedPressurePair(F, Pair + ExternalPressurePair, SimdSize);
+      unsigned int MaxPressureInFunction = RPE.getMaxRegCountForFunction(F, SimdSize, &WI);
+      RPE.publishRegPressureMetadata(F, MaxPressureInFunction + RPE.bytesToRegisters(ExternalPressurePair));
     }
 
     if (!PerSIMDPublished) {

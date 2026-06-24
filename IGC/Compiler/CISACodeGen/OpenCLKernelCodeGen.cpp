@@ -492,26 +492,19 @@ COpenCLKernel::SIMDSizeRequirement COpenCLKernel::getEffectiveRequiredSIMDSize(l
   return {};
 }
 
-uint32_t COpenCLKernel::getMaxPressure(llvm::Function &F, unsigned int SIMD) const {
+uint32_t COpenCLKernel::getMaxPressure(llvm::Function &F) const {
   const auto *modMD = m_Context->getModuleMetaData();
   auto it = modMD->FuncMD.find(&F);
-  unsigned int maxPressure =
-      (it != modMD->FuncMD.end()) ? (it->second.maxRegUniformPressure + it->second.maxRegNonUniformPressure * SIMD) : 0;
+  unsigned int maxPressure = (it != modMD->FuncMD.end()) ? it->second.maxRegPressure : 0;
 
   if (m_FGA) {
     llvm::Function *Kernel = &F;
     auto FG = m_FGA->getGroup(&F);
     Kernel = FG->getHead();
     auto kit = modMD->FuncMD.find(Kernel);
-    maxPressure = (kit != modMD->FuncMD.end())
-                      ? (kit->second.maxRegUniformPressure + kit->second.maxRegNonUniformPressure * SIMD)
-                      : 0;
+    maxPressure = (kit != modMD->FuncMD.end()) ? kit->second.maxRegPressure : 0;
   }
-
-  // now we store in bytes and convert to register pressure
-  unsigned regSize = GetContext()->platform.getGRFSize();
-  unsigned pressureInRegs = llvm::divideCeil(maxPressure, regSize);
-  return pressureInRegs;
+  return maxPressure;
 }
 
 uint32_t COpenCLKernel::getMaxPressureForSIMD(llvm::Function &F, unsigned SimdLanes) const {
@@ -523,7 +516,7 @@ uint32_t COpenCLKernel::getMaxPressureForSIMD(llvm::Function &F, unsigned SimdLa
     case 32:
       return funcMD.maxRegPressureSimd32;
     default:
-      return (unsigned)0;
+      return funcMD.maxRegPressure;
     }
   };
   auto it = modMD->FuncMD.find(&F);
@@ -2611,7 +2604,7 @@ SIMDStatus COpenCLKernel::checkSIMDCompileCondsForMin16(SIMDMode simdMode, EmitP
     EP.m_canAbortOnSpill = false;
   }
   bool hasSubGroupForce = hasSubGroupIntrinsicPVC(F);
-  uint32_t maxPressure = getMaxPressure(F, numLanes(simdMode));
+  uint32_t maxPressure = getMaxPressure(F);
 
   auto FG = m_FGA ? m_FGA->getGroup(&F) : nullptr;
   bool hasStackCall = FG && FG->hasStackCall();
@@ -2754,7 +2747,7 @@ SIMDStatus COpenCLKernel::checkSIMDCompileConds(SIMDMode simdMode, EmitPass &EP,
   ModuleMetaData *modMD = pCtx->getModuleMetaData();
   auto simdReq = getEffectiveRequiredSIMDSize(F);
   uint32_t requiredSimdSize = simdReq.Size;
-  uint32_t maxPressure = getMaxPressure(F, numLanes(simdMode));
+  uint32_t maxPressure = getMaxPressure(F);
 
   // For simd variant functions, detect which SIMD sizes are needed
   if (compileFunctionVariants && F.hasFnAttribute("variant-function-def")) {

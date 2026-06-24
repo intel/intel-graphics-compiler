@@ -15,7 +15,7 @@
 ; publisher sees the existing value and skips republishing; the serializer
 ; re-emits FuncMD intact.
 
-; CHECK: "maxRegNonUniformPressure", i32 42
+; CHECK: "maxRegPressure", i32 42
 
 define spir_kernel void @kernel(ptr addrspace(1) %out) {
 entry:
@@ -30,7 +30,7 @@ entry:
 !1 = !{!"FuncMD", !2, !3}
 !2 = !{!"FuncMDMap[0]", ptr @kernel}
 !3 = !{!"FuncMDValue[0]", !4}
-!4 = !{!"maxRegNonUniformPressure", i32 42}
+!4 = !{!"maxRegPressure", i32 42}
 
 !10 = !{ptr @kernel, !11}
 !11 = !{!12}
