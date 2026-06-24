@@ -247,7 +247,7 @@ DEF_VISA_OPTION(vISA_CoalesceScalarMoves, ET_BOOL, "-enableCoalesceScalarMoves",
 DEF_VISA_OPTION(vISA_OptimizeRedundantS0Movs, ET_BOOL_TRUE, "-optimizeRedundantS0Movs",
                 UNUSED, true)
 DEF_VISA_OPTION(vISA_enableSamplerLSCCaching, ET_BOOL_TRUE, "-samplerLSCCaching",
-                "global flag [0|1] to control LSC caching for sampler", true)
+                "global flag [0|1] to control LSC caching for sampler", false)
 DEF_VISA_OPTION(vISA_samplerLSCCachingThreshold, ET_INT32,
                 "-samplerLSCCachingThreshold",
                 "spill size threshold to disable LSC caching for sampler", 0)

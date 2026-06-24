@@ -4838,9 +4838,9 @@ void CEncoder::InitVISABuilderOptions(TARGET_PLATFORM VISAPlatform, bool canAbor
   }
   if (m_program->m_Platform->isCoreChildOf(IGFX_XE3P_CORE)) {
     auto ShaderTypeBit = (1 << static_cast<unsigned int>(context->type));
-    if ((IGC_GET_FLAG_VALUE(DisableSamplerBackingByLSC) & ShaderTypeBit) ||
-        (context->getModuleMetaData()->compOpt.DisableSamplerBackingByLSC & ShaderTypeBit)) {
-      SaveOption(vISA_enableSamplerLSCCaching, false);
+    if ((IGC_GET_FLAG_VALUE(EnableSamplerBackingByLSC) & ShaderTypeBit) ||
+        (context->getModuleMetaData()->compOpt.EnableSamplerBackingByLSC & ShaderTypeBit)) {
+      SaveOption(vISA_enableSamplerLSCCaching, true);
     }
   }
 } // InitVISABuilderOptions

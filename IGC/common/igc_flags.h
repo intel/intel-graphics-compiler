@@ -663,8 +663,8 @@ DECLARE_IGC_REGKEY(bool, GuardDivRemIncrementDividendOverflow, false,
                    "Check for no unsigned wrap flag on increment/decrement operation before optimizing", false)
 DECLARE_IGC_REGKEY(bool, EnableResourceLoopDestLifeTimeStart, true,
                    "Enable lifetime_start set for destination in resource loop", false)
-DECLARE_IGC_REGKEY(DWORD, DisableSamplerBackingByLSC, 0x400,
-                   "Bit mask to disable sampler backing by LSC per shader. bit0 = All, Bit 1 = VS, Bit 2 = HS, Bit 3 = "
+DECLARE_IGC_REGKEY(DWORD, EnableSamplerBackingByLSC, 0x0,
+                   "Bit mask to enable sampler backing by LSC per shader. Bit 1 = VS, Bit 2 = HS, Bit 3 = "
                    "DS, Bit 4 = GS, Bit 5 = TS, BIT 6 = MESH, BIT 7 = PS, BIT 8 = CS, BIT 9 = OCL, BIT 10 = RT",
                    false)
 DECLARE_IGC_REGKEY(bool, EnableSinkPointerConstAdd, true,

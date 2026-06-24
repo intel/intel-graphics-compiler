@@ -556,7 +556,7 @@ enum class ShaderTypeMD
         bool UseInstructionHoistingOptimization         = false;
         bool DisableResourceLoopDestLifeTimeStart       = false;
         unsigned ForceVRTGRFCeiling                     = 0;
-        unsigned DisableSamplerBackingByLSC             = 0;
+        unsigned EnableSamplerBackingByLSC              = 0;
         bool UseLinearScanRA                            = false;
         bool DisableConvertingAtomicIAddToIncDec        = false;
         bool ZeroInitRegistersBeforeExecution = false;
