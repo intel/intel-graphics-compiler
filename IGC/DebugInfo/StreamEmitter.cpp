@@ -133,6 +133,8 @@ public:
 #if LLVM_VERSION_MAJOR >= 22
   void applyFixup(const MCFragment &F, const MCFixup &fixup, const MCValue &Target, uint8_t *Data, uint64_t value,
                   bool IsResolved) override {
+    // LLVM 22 moved relocation recording out of the ELF object writer and into the backend's applyFixup.
+    maybeAddReloc(F, fixup, Target, value, IsResolved);
     unsigned size = 1 << getFixupKindLog2Size(fixup.getKind());
 
     IGC_ASSERT_MESSAGE(fixup.getOffset() + size <= F.getSize(), "Invalid fixup offset!");
