@@ -920,9 +920,11 @@ void HWConformityPro::fixRawMovRegRegionRestrictions(G4_BB *bb) {
       continue;
 
     bool invalidPureBfInst = inst->isPureBFInst() && !builder.supportPureBF();
-
+    auto dstType = inst->getDst()->getType();
+    // mov for byte float needs to be done with ub type. Cannot skip.
     if (!inst->getSrc(0)->isSrcRegRegion() ||
-        (inst->getSrc(0)->asSrcRegRegion()->isScalar() && !invalidPureBfInst))
+        (!IS_BYTE_FLOAT(dstType) &&
+         inst->getSrc(0)->asSrcRegRegion()->isScalar() && !invalidPureBfInst))
       continue;
 
     // For conversions in float pipeline, change datatype to corresponding
@@ -931,7 +933,6 @@ void HWConformityPro::fixRawMovRegRegionRestrictions(G4_BB *bb) {
     // HF/BF->HF/BF: UW->UW. Need further check the int pipeline restrictions.
     // F->F: UD->UD. Skip further check as UD support full regions.
     // DF->DF: UQ->UQ. Skip further check as UQ support full regions.
-    auto dstType = inst->getDst()->getType();
     if (IS_TYPE_FLOAT_ALL(dstType)) {
       auto intType = TypeSize(dstType) == 8
                          ? Type_UQ
