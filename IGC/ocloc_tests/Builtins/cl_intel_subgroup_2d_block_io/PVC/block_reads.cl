@@ -336,6 +336,6 @@ __attribute__((intel_reqd_sub_group_size(16)))
 kernel void test_default(global INPUT_TYPE* input, const global int2* coord, global OUTPUT_TYPE* output) {
     const int tid = get_global_id(0);
     DST_ARRAY_EL_TYPE dst[DST_ARRAY_EL_NUM];
-    FUNCTION(input, 512, 46, 512, *coord, dst);
+    FUNCTION(input, 512, 46, 512, *coord, (private OUTPUT_TYPE *)dst);
     output[tid] = *(private OUTPUT_TYPE*)dst;
 }
