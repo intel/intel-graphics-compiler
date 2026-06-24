@@ -458,6 +458,7 @@ DEF_VISA_OPTION(vISA_NewAugmentation, ET_BOOL_TRUE, "-newaugmentation",
                 "USAGE: -newaugmentation "
                 "enable using augmentation with holes",
                 true)
+DEF_VISA_OPTION(vISA_UseRelaxedDegree, ET_BOOL_TRUE, "-relaxedDegree", UNUSED, false)
 
 
 // clang-format off

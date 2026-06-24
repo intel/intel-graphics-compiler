@@ -1089,9 +1089,12 @@ class GraphColor {
   // Reserved GRF count for fail-safe RA
   unsigned reserveSpillGRFCount = 0;
 
-  template<bool Support4GRFAlign>
+  bool UseRelaxedDegree = false;
+
+  template <bool Support4GRFAlign, bool UseRelaxedDegreeV>
   unsigned edgeWeightGRF(const LiveRange *lr1, const LiveRange *lr2);
   unsigned edgeWeightARF(const LiveRange *lr1, const LiveRange *lr2);
+  template <bool UseRelaxedDegreeV>
   static unsigned edgeWeightGRF(bool lr1EvenAlign, bool lr2EvenAlign,
                                 unsigned lr1_nreg, unsigned lr2_nreg) {
     unsigned sum = lr1_nreg + lr2_nreg;
@@ -1102,13 +1105,20 @@ class GraphColor {
     if (!lr2EvenAlign)
       return sum + 1 - ((sum) % 2);
 
+    if constexpr (UseRelaxedDegreeV) {
+      if (lr1_nreg == 2 && lr2_nreg == 2)
+        return 2;
+    }
+
     return sum - 1 + (lr1_nreg % 2) + (lr2_nreg % 2);
   }
 
+  template <bool UseRelaxedDegreeV>
   static unsigned edgeWeightWith4GRF(int lr1Align, int lr2Align,
                                      unsigned lr1_nreg, unsigned lr2_nreg) {
     if (lr1Align < 4 && lr2Align < 4)
-      return edgeWeightGRF(lr1Align == 2, lr2Align == 2, lr1_nreg, lr2_nreg);
+      return edgeWeightGRF<UseRelaxedDegreeV>(lr1Align == 2, lr2Align == 2,
+                                             lr1_nreg, lr2_nreg);
 
     auto roundUpToMultipleOf4 = [](unsigned int N) {
       return ((N + 3) / 4) * 4;
@@ -1184,8 +1194,7 @@ class GraphColor {
     }
   }
 
-  template <bool Support4GRFAlign>
-  void computeDegreeForGRF();
+  template <bool Support4GRFAlign> void computeDegreeForGRF();
   void computeDegreeForARF();
   void computeSpillCosts(bool useSplitLLRHeuristic, const RPE *rpe);
   void determineColorOrdering();

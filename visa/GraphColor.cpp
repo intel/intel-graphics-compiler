@@ -6583,6 +6583,7 @@ GraphColor::GraphColor(LivenessAnalysis &live, bool hybrid, bool forceSpill_)
 {
   spAddrRegSig.resize(builder.getNumAddrRegisters(), 0);
   m_options = builder.getOptions();
+  UseRelaxedDegree = m_options->getOption(vISA_UseRelaxedDegree);
 }
 
 //
@@ -6615,7 +6616,11 @@ void GraphColor::computeDegreeForGRF() {
 
       auto computeDegree = [&](LiveRange *lr1) {
         if (!lr1->getIsPartialDcl()) {
-          unsigned edgeDegree = edgeWeightGRF<Support4GRFAlign>(lrs[i], lr1);
+          unsigned edgeDegree = 0;
+          if (UseRelaxedDegree)
+            edgeDegree = edgeWeightGRF<Support4GRFAlign, true>(lrs[i], lr1);
+          else
+            edgeDegree = edgeWeightGRF<Support4GRFAlign, false>(lrs[i], lr1);
 
           degree += edgeDegree;
 
@@ -6962,8 +6967,13 @@ void GraphColor::relaxNeighborDegreeGRF(LiveRange *lr) {
           !(lr1->getIsPartialDcl())) {
         unsigned lr1_nreg = lr1->getNumRegNeeded();
         unsigned int lr1AugAlign = gra.getAugAlign(lr1->getDcl());
-        auto w =
-            edgeWeightWith4GRF(lr1AugAlign, lr2AugAlign, lr1_nreg, lr2_nreg);
+        unsigned int w = 0;
+        if (UseRelaxedDegree)
+          w = edgeWeightWith4GRF<true>(lr1AugAlign, lr2AugAlign, lr1_nreg,
+                                       lr2_nreg);
+        else
+          w = edgeWeightWith4GRF<false>(lr1AugAlign, lr2AugAlign, lr1_nreg,
+                                        lr2_nreg);
         relax(lr1, w);
       }
     }
@@ -6979,7 +6989,11 @@ void GraphColor::relaxNeighborDegreeGRF(LiveRange *lr) {
       unsigned lr1_nreg = lr1->getNumRegNeeded();
       unsigned w = 0;
       bool lr1EvenAlign = gra.isEvenAligned(lr1->getDcl());
-      w = edgeWeightGRF(lr1EvenAlign, lr2EvenAlign, lr1_nreg, lr2_nreg);
+      if (UseRelaxedDegree)
+        w = edgeWeightGRF<true>(lr1EvenAlign, lr2EvenAlign, lr1_nreg, lr2_nreg);
+      else
+        w = edgeWeightGRF<false>(lr1EvenAlign, lr2EvenAlign, lr1_nreg,
+                                 lr2_nreg);
       relax(lr1, w);
     }
   }
@@ -6995,7 +7009,13 @@ void GraphColor::relaxNeighborDegreeGRF(LiveRange *lr) {
           !(lr1->getIsPartialDcl())) {
         unsigned lr1_nreg = lr1->getNumRegNeeded();
         bool lr1EvenAlign = gra.isEvenAligned(lr1->getDcl());
-        auto w = edgeWeightGRF(lr1EvenAlign, lr2EvenAlign, lr1_nreg, lr2_nreg);
+        unsigned int w = 0;
+        if (UseRelaxedDegree)
+          w = edgeWeightGRF<true>(lr1EvenAlign, lr2EvenAlign, lr1_nreg,
+                                  lr2_nreg);
+        else
+          w = edgeWeightGRF<false>(lr1EvenAlign, lr2EvenAlign, lr1_nreg,
+                                   lr2_nreg);
         relax(lr1, w);
       }
     }
@@ -13144,21 +13164,22 @@ void GlobalRA::insertRestoreAddr(G4_BB *bb) {
 // weight computation and later during simplification is necessary for
 // correctness.
 //
-template <bool Support4GRFAlign>
+template <bool Support4GRFAlign, bool UseRelaxedDegreeV>
 unsigned GraphColor::edgeWeightGRF(const LiveRange *lr1, const LiveRange *lr2) {
   unsigned lr1_nreg = lr1->getNumRegNeeded();
   unsigned lr2_nreg = lr2->getNumRegNeeded();
-
   if constexpr (Support4GRFAlign) {
     auto lr1Align = gra.getAugAlign(lr1->getDcl());
     auto lr2Align = gra.getAugAlign(lr2->getDcl());
 
-    return edgeWeightWith4GRF(lr1Align, lr2Align, lr1_nreg, lr2_nreg);
+    return edgeWeightWith4GRF<UseRelaxedDegreeV>(lr1Align, lr2Align, lr1_nreg,
+                                                 lr2_nreg);
   } else {
     bool lr1EvenAlign = gra.isEvenAligned<false>(lr1->getDcl());
     bool lr2EvenAlign = gra.isEvenAligned<false>(lr2->getDcl());
 
-    return edgeWeightGRF(lr1EvenAlign, lr2EvenAlign, lr1_nreg, lr2_nreg);
+    return edgeWeightGRF<UseRelaxedDegreeV>(lr1EvenAlign, lr2EvenAlign,
+                                            lr1_nreg, lr2_nreg);
   }
 }
 
@@ -13246,9 +13267,8 @@ unsigned GraphColor::edgeWeightARF(const LiveRange *lr1, const LiveRange *lr2) {
           "Found unsupported subRegAlignment in address register allocation!");
       return 0;
     }
-  }
-  else if (lr1->getRegKind() == G4_SCALAR) {
-    return edgeWeightGRF<false>(lr1, lr2); // treat scalar just like GRF
+  } else if (lr1->getRegKind() == G4_SCALAR) {
+    return edgeWeightGRF<false, false>(lr1, lr2); // treat scalar just like GRF
   }
   vISA_ASSERT_UNREACHABLE(
       "Found unsupported ARF reg type in register allocation!");
