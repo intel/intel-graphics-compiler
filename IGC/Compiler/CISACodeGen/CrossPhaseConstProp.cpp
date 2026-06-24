@@ -52,7 +52,8 @@ FunctionPass *IGC::createCrossPhaseConstPropPass(IGC::PSSignature *signature) {
 }
 
 bool CrossPhaseConstProp::runOnFunction(Function &F) {
-  if (!IGC::isEntryFunc(getAnalysis<IGC::MetaDataUtilsWrapper>().getModuleMetaData(), &F) || m_signature == nullptr) {
+  IGC::IGCMD::MetaDataUtils *pMdUtils = getAnalysis<IGC::MetaDataUtilsWrapper>().getMetaDataUtils();
+  if (!IGC::isEntryFunc(pMdUtils, &F) || m_signature == nullptr) {
     return false;
   }
 

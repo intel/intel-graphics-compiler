@@ -78,7 +78,7 @@ IGC_INITIALIZE_PASS_DEPENDENCY(MetaDataUtilsWrapper)
 IGC_INITIALIZE_PASS_END(RayTracingIntrinsicResolutionLPM, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
 Value *RayTracingIntrinsicResolution::getImplicitArg(Function *F, ImplicitArg::ArgType argType) {
-  return m_implicitArgs.getImplicitArgValue(*F, argType, m_modMD);
+  return m_implicitArgs.getImplicitArgValue(*F, argType, m_pMdUtils);
 }
 
 RayTracingIntrinsicResolutionLPM::RayTracingIntrinsicResolutionLPM() : FunctionPass(ID) {

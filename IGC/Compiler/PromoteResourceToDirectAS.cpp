@@ -190,7 +190,7 @@ void PromoteResourceToDirectAS::PromoteSamplerTextureToDirectAS(GenIntrinsicInst
       // We only promote if the argument comes from the entry function.
       // Default to bindless if sampler called from subroutine.
       Function *function = argPtr->getParent();
-      if (isEntryFunc(m_pCodeGenContext->getModuleMetaData(), function)) {
+      if (isEntryFunc(m_pMdUtils, function)) {
         IGC_ASSERT(m_pCodeGenContext->type == ShaderType::OPENCL_SHADER);
         ModuleMetaData *modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
         if (modMD->FuncMD.find(function) != modMD->FuncMD.end()) {

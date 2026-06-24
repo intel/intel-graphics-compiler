@@ -14,7 +14,7 @@
 ;
 ; RUN: igc_opt --opaque-pointers -platformPtl --igc-simple-alu-vectorizer -S < %s | FileCheck %s
 ;
-; CHECK: %valu = sub <2 x i32> %{{[0-9]+}}, %{{[0-9]+}}, !igc.simple.alu.vectorized {{![0-9]+}}
+; CHECK: %valu = sub <2 x i32> %{{[0-9]+}}, %{{[0-9]+}}, !igc.simple.alu.vectorized !3
 ; CHECK: extractelement <2 x i32> %valu, i32 0
 ; CHECK: extractelement <2 x i32> %valu, i32 1
 ; CHECK-NOT: %r0 = sub i32
@@ -38,13 +38,7 @@ entry:
 
 attributes #0 = { nounwind }
 
-!IGCMetadata = !{!7}
 !igc.functions = !{!0}
 !0 = !{ptr @test_pair_sub, !1}
 !1 = !{!2}
 !2 = !{!"function_type", i32 0}
-!3 = !{!"functionType", !"KernelFunction"}
-!4 = !{!"FuncMDMap[0]", ptr @test_pair_sub}
-!5 = !{!"FuncMDValue[0]", !3}
-!6 = !{!"FuncMD", !4, !5}
-!7 = !{!"ModuleMD", !6}

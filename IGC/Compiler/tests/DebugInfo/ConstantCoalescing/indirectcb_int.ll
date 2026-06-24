@@ -83,7 +83,6 @@ declare void @llvm.dbg.value(metadata, metadata, metadata) #0
 
 attributes #0 = { nounwind readnone speculatable }
 
-!IGCMetadata = !{!46}
 !igc.functions = !{!0}
 !llvm.dbg.cu = !{!4}
 !llvm.debugify = !{!7, !8}
@@ -130,8 +129,3 @@ attributes #0 = { nounwind readnone speculatable }
 !39 = !DILocation(line: 14, column: 1, scope: !10)
 !40 = !DILocation(line: 15, column: 1, scope: !10)
 !41 = !DILocation(line: 16, column: 1, scope: !10)
-!42 = !{!"functionType", !"KernelFunction"}
-!43 = !{!"FuncMDMap[0]", void (i32, float*)* @test_constcoal}
-!44 = !{!"FuncMDValue[0]", !42}
-!45 = !{!"FuncMD", !43, !44}
-!46 = !{!"ModuleMD", !45}

@@ -12,7 +12,7 @@
 ;
 ; RUN: igc_opt --opaque-pointers -platformPtl --igc-simple-alu-vectorizer -S < %s | FileCheck %s
 ;
-; CHECK: %valu = add <4 x i32> %{{[0-9]+}}, %{{[0-9]+}}, !igc.simple.alu.vectorized {{![0-9]+}}
+; CHECK: %valu = add <4 x i32> %{{[0-9]+}}, %{{[0-9]+}}, !igc.simple.alu.vectorized !3
 ; CHECK-NOT: %r0 = add i32
 ; CHECK-NOT: %r1 = add i32
 ; CHECK-NOT: %r2 = add i32
@@ -40,13 +40,7 @@ entry:
 
 attributes #0 = { nounwind }
 
-!IGCMetadata = !{!7}
 !igc.functions = !{!0}
 !0 = !{ptr @test_four, !1}
 !1 = !{!2}
 !2 = !{!"function_type", i32 0}
-!3 = !{!"functionType", !"KernelFunction"}
-!4 = !{!"FuncMDMap[0]", ptr @test_four}
-!5 = !{!"FuncMDValue[0]", !3}
-!6 = !{!"FuncMD", !4, !5}
-!7 = !{!"ModuleMD", !6}

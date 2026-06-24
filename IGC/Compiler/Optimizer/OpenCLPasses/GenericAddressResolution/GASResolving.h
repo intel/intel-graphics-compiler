@@ -35,14 +35,12 @@ class GASResolving {
   BuilderType *IRB = nullptr;
   GASPropagator *Propagator = nullptr;
   IGCMD::MetaDataUtils *m_pMdUtils = nullptr;
-  IGC::ModuleMetaData *m_modMD = nullptr;
   llvm::AAResults *m_AA = nullptr;
 
 public:
   GASResolving() {}
 
-  bool runOnFunction(Function &F, llvm::LoopInfo &LI, IGCMD::MetaDataUtils *MdUtils, llvm::AAResults *AA,
-                     IGC::ModuleMetaData *ModMD);
+  bool runOnFunction(Function &F, llvm::LoopInfo &LI, IGCMD::MetaDataUtils *MdUtils, llvm::AAResults *AA);
 
 private:
   bool resolveOnFunction(Function *) const;
@@ -65,9 +63,9 @@ public:
   GASResolvingLPM() : FunctionPass(ID) { initializeGASResolvingLPMPass(*PassRegistry::getPassRegistry()); }
 
   bool runOnFunction(Function &F) override {
-    return m_impl.runOnFunction(
-        F, getAnalysis<LoopInfoWrapperPass>().getLoopInfo(), getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils(),
-        &getAnalysis<AAResultsWrapperPass>().getAAResults(), getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData());
+    return m_impl.runOnFunction(F, getAnalysis<LoopInfoWrapperPass>().getLoopInfo(),
+                                getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils(),
+                                &getAnalysis<AAResultsWrapperPass>().getAAResults());
   }
 
   void getAnalysisUsage(AnalysisUsage &AU) const override {

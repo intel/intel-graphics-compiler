@@ -20,16 +20,10 @@ define i32 @foo(i32 %dim) nounwind {
   ret i32 %id
 }
 
-!IGCMetadata = !{!7}
 !igc.functions = !{!0}
 !0 = !{i32 (i32)* @foo, !1}
 !1 = !{!2}
 !2 = !{!"function_type", i32 0}
-!3 = !{!"functionType", !"KernelFunction"}
-!4 = !{!"FuncMDMap[0]", i32 (i32)* @foo}
-!5 = !{!"FuncMDValue[0]", !3}
-!6 = !{!"FuncMD", !4, !5}
-!7 = !{!"ModuleMD", !6}
 
 ; The second implicit arg differs by payload config: PAYLOAD_HEADER (argId 1) for
 ; the long header, GLOBAL_OFFSET (argId 2) for the short header.

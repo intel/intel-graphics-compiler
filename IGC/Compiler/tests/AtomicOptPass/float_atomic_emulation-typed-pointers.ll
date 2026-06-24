@@ -27,7 +27,6 @@ exit:
   ret void
 }
 
-!IGCMetadata = !{!13}
 !igc.functions = !{!0}
 !0 = !{void (i32 addrspace(1)*)* @kernel1, !1}
 !1 = !{!2}
@@ -73,14 +72,6 @@ exit:
 !3 = !{void (i32 addrspace(1)*)* @kernel2, !4}
 !4 = !{!5}
 !5 = !{!"function_type", i32 0}
-!6 = !{!"functionType", !"KernelFunction"}
-!7 = !{!"FuncMDMap[0]", void (i32 addrspace(1)*)* @kernel1}
-!8 = !{!"FuncMDValue[0]", !6}
-!9 = !{!"functionType", !"KernelFunction"}
-!10 = !{!"FuncMDMap[1]", void (i32 addrspace(1)*)* @kernel2}
-!11 = !{!"FuncMDValue[1]", !9}
-!12 = !{!"FuncMD", !7, !8, !10, !11}
-!13 = !{!"ModuleMD", !12}
 
 ; Optimization should not be applied in this case. Since the flag for fast math was not passed.
 ;

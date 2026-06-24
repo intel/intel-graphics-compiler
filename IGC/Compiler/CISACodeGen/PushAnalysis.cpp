@@ -1315,7 +1315,7 @@ bool PushAnalysis::runOnModule(llvm::Module &M) {
     Function *pFunc = &(*I);
 
     // Only handle functions defined in this module
-    if (pFunc->isDeclaration() || !isEntryFunc(m_context->getModuleMetaData(), pFunc))
+    if (pFunc->isDeclaration() || !isEntryFunc(m_pMdUtils, pFunc))
       continue;
 
     m_pFuncUpgrade.SetFunctionToUpgrade(pFunc);

@@ -38,7 +38,6 @@ declare half @llvm.genx.GenISA.ldraw.indexed.f16.p2490373(ptr addrspace(2490373)
 declare <2 x half> @llvm.genx.GenISA.ldraw.indexed.v2f16.p2490373(ptr addrspace(2490373), i32, i32, i1) argmemonly nounwind readonly willreturn
 
 
-!IGCMetadata = !{!7}
 !igc.functions = !{!0}
 
 !0 = !{ptr @f0, !1}
@@ -46,9 +45,4 @@ declare <2 x half> @llvm.genx.GenISA.ldraw.indexed.v2f16.p2490373(ptr addrspace(
 
 !1 = !{!2}
 !2 = !{!"function_type", i32 0}
-!3 = !{!"functionType", !"KernelFunction"}
-!4 = !{!"FuncMDMap[0]", ptr @f0}
-!5 = !{!"FuncMDValue[0]", !3}
-!6 = !{!"FuncMD", !4, !5}
-!7 = !{!"ModuleMD", !6}
 

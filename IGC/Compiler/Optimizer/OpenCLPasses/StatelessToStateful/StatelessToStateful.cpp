@@ -167,7 +167,7 @@ void StatelessToStateful::handleFunction(llvm::Function &F) {
   }
 
   // skip non-entry functions
-  if (!isEntryFunc(modMD, &F)) {
+  if (!isEntryFunc(pMdUtils, &F)) {
     return;
   }
 
