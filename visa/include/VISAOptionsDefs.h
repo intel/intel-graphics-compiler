@@ -110,9 +110,6 @@ DEF_VISA_OPTION(
 DEF_VISA_OPTION(vISA_EnableAlways, ET_BOOL, NULLSTR, UNUSED, true)
 DEF_VISA_OPTION(vISA_EnableSendFusion, ET_BOOL, "-enableSendFusion", UNUSED,
                 false)
-DEF_VISA_OPTION(vISA_EnableSendPredication, ET_BOOL, "-noSendPredication",
-                "Disable predication of send instructions in if-conversion",
-                true)
 DEF_VISA_OPTION(vISA_EnableWriteFusion, ET_BOOL, "-enableWriteFusion", UNUSED,
                 false)
 DEF_VISA_OPTION(vISA_EnableAtomicFusion, ET_BOOL, "-enableAtomicFusion", UNUSED,
