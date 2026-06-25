@@ -872,6 +872,14 @@ bool Analyzer::doInitialValidation(GetElementPtrInst *GEP) {
       return false;
   }
 
+  // 1st optimization kind applies to constant GEPs.
+  // Also avoids iterating over Constant's users(),
+  // on LLVM >= 22, it's not allowed
+  // on LLVM < 22, it introduces undeterministic results, constants are unique module-wide,
+  // which means they might contain completely unrelated instructions
+  if (isa<ConstantData>(Index))
+    return true;
+
   // Don't reduce if index is used outside of loop to access the same pointer.
   // TODO: These accesses could be modified to also use pointer induction variable
   // added by this pass.
