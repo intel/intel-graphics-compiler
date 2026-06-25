@@ -30,6 +30,28 @@ else()
   set(IGC_SPIRV_AS_DIR "")
 endif()
 
+function(_igc_get_ocloc_binary_name binary_dir output_name)
+  set(_igc_ocloc_names ocloc)
+
+  foreach(_igc_ocloc_name IN LISTS _igc_ocloc_names)
+    if(EXISTS "${binary_dir}/${_igc_ocloc_name}${CMAKE_EXECUTABLE_SUFFIX}")
+      set(${output_name} "${_igc_ocloc_name}${CMAKE_EXECUTABLE_SUFFIX}" PARENT_SCOPE)
+      return()
+    endif()
+  endforeach()
+
+  file(GLOB _igc_ocloc_versioned LIST_DIRECTORIES false "${binary_dir}/ocloc-[0-9][0-9].[0-9][0-9].[0-9]*${CMAKE_EXECUTABLE_SUFFIX}")
+  if(_igc_ocloc_versioned)
+    if(CMAKE_VERSION VERSION_GREATER_EQUAL "3.18")
+      list(SORT _igc_ocloc_versioned COMPARE NATURAL ORDER DESCENDING)
+    else()
+      list(SORT _igc_ocloc_versioned ORDER DESCENDING)
+    endif()
+    list(GET _igc_ocloc_versioned 0 _igc_ocloc_path)
+    get_filename_component(_igc_ocloc_name "${_igc_ocloc_path}" NAME)
+    set(${output_name} "${_igc_ocloc_name}" PARENT_SCOPE)
+  endif()
+endfunction()
 
   # Variables set here are used by `configure_file` call and by
   # `add_lit_testsuite` later on.
@@ -60,6 +82,37 @@ endif()
     "${IGC_BUILD__PROJ__llvm_spirv}"
     "${COMMON_CLANG}"
     )
+
+# Path overrides
+set(IGC_OPTION__OCLOC_TEST_BIN_DIR "" CACHE PATH
+ "Directory containing the ocloc binary used by the offline compilation tests")
+set(IGC_OPTION__OCLOC_TEST_OCLOC_LIB_DIR "" CACHE PATH
+ "Directory containing the ocloc_lib library used by the offline compilation tests")
+set(IGC_OPTION__OCLOC_TEST_IGC_LIB_DIR "" CACHE PATH
+ "Directory containing the igc library used by the offline compilation tests")
+set(IGC_OPTION__OCLOC_TEST_CCLANG_LIB_DIR "" CACHE PATH
+ "Directory containing the opencl-clang library used by the offline compilation tests")
+
+if(IGC_OPTION__OCLOC_TEST_BIN_DIR)
+  file(TO_CMAKE_PATH "${IGC_OPTION__OCLOC_TEST_BIN_DIR}" IGC_OCLOC_BINARY_DIR)
+  _igc_get_ocloc_binary_name("${IGC_OCLOC_BINARY_DIR}" _igc_ocloc_override_name)
+  if(_igc_ocloc_override_name)
+    set(IGC_OCLOC_BINARY_NAME "${_igc_ocloc_override_name}")
+    list(REMOVE_ITEM IGC_OCLOC_TEST_DEPENDS "${IGC_BUILD__PROJ__ocloc}")
+  endif()
+endif()
+if(IGC_OPTION__OCLOC_TEST_OCLOC_LIB_DIR)
+  file(TO_CMAKE_PATH "${IGC_OPTION__OCLOC_TEST_OCLOC_LIB_DIR}" IGC_OCLOC_LIBRARY_DIR)
+  list(REMOVE_ITEM IGC_OCLOC_TEST_DEPENDS "${IGC_BUILD__PROJ__ocloc_lib}")
+endif()
+if(IGC_OPTION__OCLOC_TEST_IGC_LIB_DIR)
+  file(TO_CMAKE_PATH "${IGC_OPTION__OCLOC_TEST_IGC_LIB_DIR}" IGC_LIBRARY_DIR)
+  list(REMOVE_ITEM IGC_OCLOC_TEST_DEPENDS "${IGC_BUILD__PROJ__igc_dll}" "${IGC_BUILD__PROJ__fcl_dll}")
+endif()
+if(IGC_OPTION__OCLOC_TEST_CCLANG_LIB_DIR)
+  file(TO_CMAKE_PATH "${IGC_OPTION__OCLOC_TEST_CCLANG_LIB_DIR}" OPENCL_CLANG_LIB_DIR)
+  list(REMOVE_ITEM IGC_OCLOC_TEST_DEPENDS "${COMMON_CLANG}")
+endif()
 
 # Expose the optional igc-clang prebuild directory to the lit loader search path
 # so the IGC_LibClangOverride tests can load it by name.
