@@ -245,13 +245,44 @@ class IfConverter {
       break;
     case InstTypeCompare:
     case InstTypeFlow:
-    case InstTypeMisc:
-      // TODO: G4_send, G4_sendc, G4_sends, and G4_sendsc need
-      // investigating whether they are profitable to be predicated.
     case InstTypePseudoLogic:
     case InstTypeReserved:
     default:
       return false;
+    case InstTypeMisc:
+      // Only send instructions support predication; nop/wait/illegal do not.
+      if (!I->isSend())
+        return false;
+      // Send predication is only supported on dedicated platforms.
+      if (!fg.builder->hasSendPredication())
+        return false;
+      // Send predication is gated by option.
+      if (!fg.builder->getOption(vISA_EnableSendPredication))
+        return false;
+      // EOT send: predication would make thread termination conditional.
+      if (I->isEOT())
+        return false;
+      // Only non-2D LSC loads, stores, and atomics support safe per-lane
+      // predication. Sampler (derivative/LOD uniformity), gateway barriers,
+      // fences, block 2D (whole-group), RTW, BTD, and RTA are excluded.
+      {
+        G4_SendDesc *desc = I->getMsgDesc();
+        if (!desc->isLSC())
+          return false;
+
+        MsgOp op;
+        if (desc->isGeneralized()) {
+          op = static_cast<const G4_SendgDesc *>(desc)->getOp();
+        } else {
+          const auto *rawDesc = static_cast<const G4_SendDescRaw *>(desc);
+          if (!rawDesc->isLscOp())
+            return false;
+          op = MsgOpDecode(desc->getSFID(), (uint32_t)rawDesc->getLscOp());
+        }
+        if (!MsgOpIsLoadStoreAtomic(op) || MsgOpIs2D(op))
+          return false;
+      }
+      break;
     }
 
     // BF<->F conversion doesn't allow predication
