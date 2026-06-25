@@ -880,11 +880,6 @@ bool Analyzer::doInitialValidation(GetElementPtrInst *GEP) {
     if (Visited.insert(V).second == false)
       return false;
 
-    // A constant index can't really be re-used outside of loop
-    // and accessing ConstantData users() asserts in LLVM 22.
-    if (isa<Constant>(V))
-      return false;
-
     for (auto It = V->users().begin(); It != V->users().end(); ++It) {
       if (auto *Phi = dyn_cast<PHINode>(*It)) {
         if (CheckOutsideAccess(Phi))
