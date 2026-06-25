@@ -802,6 +802,13 @@ Value *PromoteInt8Type::getI16Value(Value *V, bool IsZExt) {
     return UndefValue::get(i16Ty);
   }
 
+  if (isa<ConstantAggregateZero>(V)) {
+    IGC_ASSERT(dyn_cast<IGCLLVM::FixedVectorType>(V->getType()) != nullptr);
+    auto *VTy = cast<IGCLLVM::FixedVectorType>(V->getType());
+    auto *nVTy = IGCLLVM::FixedVectorType::get(i16Ty, (unsigned)VTy->getNumElements());
+    return ConstantAggregateZero::get(nVTy);
+  }
+
   if (isa<Argument, Instruction>(V)) {
     auto II = m_valInfoMap.find(V);
     IGC_ASSERT(II != m_valInfoMap.end());

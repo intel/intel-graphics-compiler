@@ -871,7 +871,7 @@ public:
     if (!vectorIO && pLoad->getType()->isVectorTy()) {
       Type *scalarType = pLoad->getType()->getScalarType();
       IGC_ASSERT(nullptr != scalarType);
-      Type *scalarptrTy = IGCLLVM::PointerType::get(scalarType, pLoad->getPointerAddressSpace());
+      Type *scalarptrTy = IGCLLVM::PointerType::get(scalarType, ADDRESS_SPACE_PRIVATE);
       IGC_ASSERT(scalarType->getPrimitiveSizeInBits() / 8 == elementSize);
       Value *vec = UndefValue::get(pLoad->getType());
       auto pLoadVT = cast<IGCLLVM::FixedVectorType>(pLoad->getType());
@@ -884,7 +884,8 @@ public:
       pLoad->replaceAllUsesWith(vec);
       pLoad->eraseFromParent();
     } else {
-      Value *ptr = IRB.CreateIntToPtr(address, pLoad->getPointerOperand()->getType());
+      Type *ptrTy = IGCLLVM::PointerType::get(pLoad->getType(), ADDRESS_SPACE_PRIVATE);
+      Value *ptr = IRB.CreateIntToPtr(address, ptrTy);
       pLoad->setOperand(0, ptr);
     }
   }
@@ -903,7 +904,7 @@ public:
     if (!vectorIO && pStore->getValueOperand()->getType()->isVectorTy()) {
       Type *scalarType = pStore->getValueOperand()->getType()->getScalarType();
       IGC_ASSERT(nullptr != scalarType);
-      Type *scalarptrTy = IGCLLVM::PointerType::get(scalarType, pStore->getPointerAddressSpace());
+      Type *scalarptrTy = IGCLLVM::PointerType::get(scalarType, ADDRESS_SPACE_PRIVATE);
       IGC_ASSERT(scalarType->getPrimitiveSizeInBits() / 8 == elementSize);
       Value *vec = pStore->getValueOperand();
 
@@ -915,7 +916,8 @@ public:
       }
       pStore->eraseFromParent();
     } else {
-      Value *ptr = IRB.CreateIntToPtr(address, pStore->getPointerOperand()->getType());
+      Type *ptrTy = IGCLLVM::PointerType::get(pStore->getValueOperand()->getType(), ADDRESS_SPACE_PRIVATE);
+      Value *ptr = IRB.CreateIntToPtr(address, ptrTy);
       pStore->setOperand(1, ptr);
     }
   }
