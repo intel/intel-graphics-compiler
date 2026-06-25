@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2024 Intel Corporation
+Copyright (C) 2017-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -2261,8 +2261,9 @@ bool CodeGenPatternMatch::CanMatchMad(llvm::BinaryOperator &I) const {
     return false;
   }
 
-  if (m_ctx->type == ShaderType::VERTEX_SHADER && m_ctx->m_DriverInfo.PreventZFighting() &&
-      !(m_ctx->getModuleMetaData()->allowMatchMadOptimizationforVS ||
+  if ((m_ctx->type == ShaderType::VERTEX_SHADER || m_ctx->type == ShaderType::MESH_SHADER) &&
+      m_ctx->m_DriverInfo.PreventZFighting() &&
+      !(m_ctx->getModuleMetaData()->allowMatchMadOptimizationforPosition ||
         IGC_IS_FLAG_ENABLED(WaAllowMatchMadOptimizationforVS))) {
     if (m_PosDep->PositionDependsOnInst(&I)) {
       return false;
