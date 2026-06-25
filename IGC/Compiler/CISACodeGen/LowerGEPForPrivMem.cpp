@@ -686,6 +686,9 @@ bool SOALayoutChecker::visitGetElementPtrInst(GetElementPtrInst &GEP) {
 
   if (pInfo && pInfo->baseType) {
     Type *gepSrcEltTy = GEP.getSourceElementType();
+    if (MismatchDetectionStrategy == DefaultLowerGEPStrategy)
+      while (gepSrcEltTy->isArrayTy())
+        gepSrcEltTy = gepSrcEltTy->getArrayElementType();
     if (!gepSrcEltTy->isAggregateType() && !gepSrcEltTy->isVectorTy()) {
       uint64_t gepBits = pDL->getTypeStoreSizeInBits(gepSrcEltTy);
       uint64_t baseBits = pDL->getTypeStoreSizeInBits(pInfo->baseType->getScalarType());
