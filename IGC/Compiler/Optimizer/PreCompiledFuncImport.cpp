@@ -2212,7 +2212,27 @@ void PreCompiledFuncImport::replaceFunc(Function *old_func, Function *new_func) 
       ImplicitArg::ArgType argId = (ImplicitArg::ArgType)newImplicitArgInfoList[cImpCount].argId;
       Argument *iArgVal = parentIA->getImplicitArg(*parent_func, argId);
 
-      new_args.push_back(iArgVal);
+      // After the ArgInfoList/ImplicitArgInfoList migration to FuncMD,
+      // parentIA is a by-value snapshot of FuncMD[parent].implicitArgInfoList. When that
+      // snapshot does not list this implicit arg (e.g. a non-entry parent under
+      // EnableImplicitArgAsIntrinsic, where R0/PRIVATE_BASE are materialized as intrinsics
+      // rather than added to the signature), getImplicitArg() returns null. The
+      // pre-migration code read the list live and resolved a real argument; here we resolve
+      // the same value through the canonical getImplicitArgValue(), which returns the
+      // existing argument when present and otherwise materializes the intrinsic for a
+      // non-entry function. This keeps the non-null path byte-identical and never pushes a
+      // null operand (which would produce a malformed call and abort vISA emission).
+      llvm::Value *iArgValOrIntrinsic =
+          iArgVal ? llvm::cast<llvm::Value>(iArgVal) : parentIA->getImplicitArgValue(*parent_func, argId, m_pMdUtils);
+      IGC_ASSERT_MESSAGE(iArgValOrIntrinsic, "replaceFunc: could not resolve implicit argument for emulation call");
+      if (!iArgValOrIntrinsic) {
+        m_pCtx->EmitError("Internal error: missing implicit argument while linking an emulation function; "
+                          "compilation cannot continue.",
+                          cInst);
+        return;
+      }
+
+      new_args.push_back(iArgValOrIntrinsic);
       ++new_arg_iter;
       ++cImpCount;
     }
