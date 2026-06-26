@@ -20872,6 +20872,13 @@ void EmitPass::emitLLVMbswap(IntrinsicInst *inst) {
         // swap bytes[i] and bytes[j]
         uint32_t j = 3 - i;
         if (split && !srcUniform) {
+          // SIMD16 is emitted as two SIMD8 halves; the second half (Q2) addresses
+          // lanes 8..15. These offsets advance the byte-aliased operands past the
+          // first 8 lanes and are therefore lane_count * element_size,
+          // independent of the GRF size.
+          const unsigned q2SrcByteOffset = numLanes(SIMDMode::SIMD8) * nBytes; // i64 source: nBytes/lane
+          const unsigned q2DstByteOffset = numLanes(SIMDMode::SIMD8) * 4;      // 32-bit DstH/DstL: 4B/lane
+
           m_encoder->SetSrcSubReg(0, 4 * n + i);
           m_encoder->SetSrcRegion(0, 8, 1, 0);
           m_encoder->SetDstSubReg(j);
@@ -20881,9 +20888,9 @@ void EmitPass::emitLLVMbswap(IntrinsicInst *inst) {
           m_encoder->Copy(n == 0 ? DstHB : DstLB, SrcB);
           m_encoder->Push();
 
-          m_encoder->SetSrcSubReg(0, 2 * getGRFSize() + 4 * n + i);
+          m_encoder->SetSrcSubReg(0, q2SrcByteOffset + 4 * n + i);
           m_encoder->SetSrcRegion(0, 8, 1, 0);
-          m_encoder->SetDstSubReg(getGRFSize() + j);
+          m_encoder->SetDstSubReg(q2DstByteOffset + j);
           m_encoder->SetDstRegion(4);
           m_encoder->SetSimdSize(SIMDMode::SIMD8);
           m_encoder->SetMask(EMASK_Q2);
