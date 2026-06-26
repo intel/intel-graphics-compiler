@@ -32,9 +32,7 @@ entry:
 
 ; CHECK-DAG: !igc.functions = !{[[TEST_MD:![0-9]*]], [[USER_MD:![0-9]*]]}
 ; CHECK-DAG: [[TEST_MD]] = !{void (i32*, i32*)* @test_processmd
-; CHECK-DAG: [[USER_MD]] = !{void (i32*, i32*)* @user_processmd, [[USER_FT:![0-9]*]]}
-; CHECK-DAG: [[USER_FT]] = !{[[USER_FT1:![0-9]*]]}
-; CHECK-DAG: [[USER_FT1]] = !{!"function_type", i32 2}
+; CHECK-DAG: [[USER_MD]] = !{void (i32*, i32*)* @user_processmd
 ; CHECK-DAG: !{!"FuncMDMap[1]", void (i32*, i32*)* @user_processmd}
 ; CHECK-DAG: [[FUNC_MD_FT:![0-9]*]] = !{!"functionType", !"UserFunction"}
 ; CHECK-DAG: [[FUNC_MD_AQ:![0-9]*]] = !{!"m_OpenCLArgAccessQualifiers", [[FUNC_MD_AQ0:![0-9]*]], [[FUNC_MD_AQ1:![0-9]*]]}

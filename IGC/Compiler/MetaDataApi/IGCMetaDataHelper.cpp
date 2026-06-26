@@ -13,11 +13,16 @@ SPDX-License-Identifier: MIT
 using namespace IGC;
 using namespace IGC::IGCMD;
 
-void IGCMetaDataHelper::addFunction(MetaDataUtils &mdUtils, llvm::Function *pFunc, FunctionTypeMD type) {
+void IGCMetaDataHelper::addFunction(MetaDataUtils &mdUtils, ModuleMetaData &MD, llvm::Function *pFunc,
+                                    FunctionTypeMD type) {
   auto finfo = FunctionInfoMetaDataHandle(new FunctionInfoMetaData());
-  finfo->setType(type);
   mdUtils.setFunctionsInfoItem(pFunc, finfo);
   mdUtils.save(pFunc->getContext());
+  // Establish the FuncMD entry and its functionType. If the caller already
+  // populated FuncMD[pFunc] (e.g. RT marks a function as CallableShader before
+  // registering it), preserve that explicit type rather than overwriting it.
+  if (MD.FuncMD.find(pFunc) == MD.FuncMD.end())
+    MD.FuncMD[pFunc].functionType = type;
 }
 
 void IGCMetaDataHelper::moveFunction(MetaDataUtils &mdUtils, ModuleMetaData &MD, llvm::Function *OldFunc,

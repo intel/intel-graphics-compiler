@@ -6350,7 +6350,7 @@ void CEncoder::SetKernelRetryState(CodeGenContext *context, vISA::FINALIZER_INFO
         !context->m_retryManager->PerFuncRetrySet.empty()) {
       if (auto FG = pFGA->getGroupForHead(m_program->entry)) {
         for (auto F : *FG) {
-          if (F->hasFnAttribute("visaStackCall") || isEntryFunc(context->getMetaDataUtils(), F))
+          if (F->hasFnAttribute("visaStackCall") || isEntryFunc(context->getModuleMetaData(), F))
             continue;
 
           Function *SGH = pFGA->getSubGroupMap(F);

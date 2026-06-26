@@ -98,12 +98,11 @@ void CoalescingEngine::dump() const { print(ods()); }
 
 /// \brief Entry point.
 bool CoalescingEngine::runOnFunction(Function &MF) {
-  MetaDataUtils *pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
   m_ModuleMetadata = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
   m_CodeGenContext = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
   m_Platform = m_CodeGenContext->platform;
   m_PayloadMapping = PayloadMapping(m_CodeGenContext);
-  if (!isEntryFunc(pMdUtils, &MF)) {
+  if (!isEntryFunc(m_CodeGenContext->getModuleMetaData(), &MF)) {
     return false;
   }
   DT = &getAnalysis<DominatorTreeWrapperPass>().getDomTree();

@@ -55,7 +55,13 @@ entry:
 declare spir_func %spirv.JointMatrixINTEL._float_16_16_3_3_2 addrspace(1)* @_Z26__spirv_CompositeConstructf(float)
 declare spir_func void @_Z29__spirv_JointMatrixStoreINTELPU3AS1fPU3AS143__spirv_JointMatrixINTEL__float_16_16_3_3_2liii(float addrspace(1)*, %spirv.JointMatrixINTEL._float_16_16_3_3_2 addrspace(1)*, i64, i32, i32, i32)
 
+!IGCMetadata = !{!7}
 !igc.functions = !{!0}
 !0 = !{void (float addrspace(1)*)* @main, !1}
 !1 = !{!2}
 !2 = !{!"function_type", i32 0}
+!3 = !{!"functionType", !"KernelFunction"}
+!4 = !{!"FuncMDMap[0]", void (float addrspace(1)*)* @main}
+!5 = !{!"FuncMDValue[0]", !3}
+!6 = !{!"FuncMD", !4, !5}
+!7 = !{!"ModuleMD", !6}

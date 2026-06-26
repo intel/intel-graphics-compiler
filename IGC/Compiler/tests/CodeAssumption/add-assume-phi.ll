@@ -38,7 +38,13 @@ end:
   ret void
 }
 
+!IGCMetadata = !{!8}
 !igc.functions = !{!1}
 !1 = !{void (i32*)* @test_phiassume, !2}
 !2 = !{!3}
 !3 = !{!"function_type", i32 0}
+!4 = !{!"functionType", !"KernelFunction"}
+!5 = !{!"FuncMDMap[0]", void (i32*)* @test_phiassume}
+!6 = !{!"FuncMDValue[0]", !4}
+!7 = !{!"FuncMD", !5, !6}
+!8 = !{!"ModuleMD", !7}

@@ -267,15 +267,15 @@ bool PrivateMemoryToSLM::runOnModule(Module &M) {
         Value *localIdZ = nullptr;
 
         if (CodeGenCtx->type == ShaderType::OPENCL_SHADER) {
-          localIdX =
-              ZExtInst::CreateIntegerCast(implicitArgs.getImplicitArgValue(*F, ImplicitArg::LOCAL_ID_X, MD), typeInt32,
-                                          false, VALUE_NAME("localIdX"), IGCLLVM::insertPosition(pEntryPoint));
-          localIdY =
-              ZExtInst::CreateIntegerCast(implicitArgs.getImplicitArgValue(*F, ImplicitArg::LOCAL_ID_Y, MD), typeInt32,
-                                          false, VALUE_NAME("localIdY"), IGCLLVM::insertPosition(pEntryPoint));
-          localIdZ =
-              ZExtInst::CreateIntegerCast(implicitArgs.getImplicitArgValue(*F, ImplicitArg::LOCAL_ID_Z, MD), typeInt32,
-                                          false, VALUE_NAME("localIdZ"), IGCLLVM::insertPosition(pEntryPoint));
+          localIdX = ZExtInst::CreateIntegerCast(
+              implicitArgs.getImplicitArgValue(*F, ImplicitArg::LOCAL_ID_X, CodeGenCtx->getModuleMetaData()), typeInt32,
+              false, VALUE_NAME("localIdX"), IGCLLVM::insertPosition(pEntryPoint));
+          localIdY = ZExtInst::CreateIntegerCast(
+              implicitArgs.getImplicitArgValue(*F, ImplicitArg::LOCAL_ID_Y, CodeGenCtx->getModuleMetaData()), typeInt32,
+              false, VALUE_NAME("localIdY"), IGCLLVM::insertPosition(pEntryPoint));
+          localIdZ = ZExtInst::CreateIntegerCast(
+              implicitArgs.getImplicitArgValue(*F, ImplicitArg::LOCAL_ID_Z, CodeGenCtx->getModuleMetaData()), typeInt32,
+              false, VALUE_NAME("localIdZ"), IGCLLVM::insertPosition(pEntryPoint));
         }
 
         Value *xOffset = localIdX;

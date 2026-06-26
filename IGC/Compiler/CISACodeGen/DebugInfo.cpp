@@ -103,8 +103,7 @@ bool DebugInfoPass::runOnModule(llvm::Module &M) {
     // Look for the right CShaderProgram instance
     m_currShader = currShader;
 
-    MetaDataUtils *pMdUtils = m_currShader->GetMetaDataUtils();
-    if (!isEntryFunc(pMdUtils, m_currShader->entry))
+    if (!isEntryFunc(m_currShader->GetContext()->getModuleMetaData(), m_currShader->entry))
       continue;
 
     bool finalize = false;

@@ -212,7 +212,7 @@ bool SPIRMetaDataTranslation::run(Module &M, CodeGenContext *pCtx, MetaDataUtils
     if (spirKernel->getFunction() == nullptr)
       continue;
     IGC::FunctionMetaData &funcMD = modMD->FuncMD[spirKernel->getFunction()];
-    fHandle->setType(FunctionTypeMD::KernelFunction);
+    funcMD.functionType = FunctionTypeMD::KernelFunction;
 
     // Handling Thread Group Size
     SPIRMD::WorkGroupDimensionsMetaDataHandle reqdWorkGroupSize = spirKernel->getRequiredWorkGroupSize();

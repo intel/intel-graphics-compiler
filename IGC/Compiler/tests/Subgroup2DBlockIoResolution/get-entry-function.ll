@@ -48,7 +48,13 @@ entry:
 
 declare spir_func void @_Z32__spirv_Subgroup2DBlockLoadINTELiiiiPU3AS1KviiiDv2_iPv(i32, i32, i32, i32, i8 addrspace(1)*, i32, i32, i32, <2 x i32>, i8*)
 
+!IGCMetadata = !{!7}
 !igc.functions = !{!0}
 !0 = !{ptr @main, !1}
 !1 = !{!2}
 !2 = !{!"function_type", i32 0}
+!3 = !{!"functionType", !"KernelFunction"}
+!4 = !{!"FuncMDMap[0]", ptr @main}
+!5 = !{!"FuncMDValue[0]", !3}
+!6 = !{!"FuncMD", !4, !5}
+!7 = !{!"ModuleMD", !6}

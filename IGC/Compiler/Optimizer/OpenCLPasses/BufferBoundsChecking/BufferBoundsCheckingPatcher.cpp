@@ -46,7 +46,7 @@ bool BufferBoundsCheckingPatcher::run(Module &M, IGCMD::MetaDataUtils *pMdUtils,
     }
 
     implicitArgs = std::make_unique<ImplicitArgs>(function, metadataUtils, m_modMD);
-    if (!isEntryFunc(metadataUtils, &function)) {
+    if (!isEntryFunc(m_modMD, &function)) {
       return false;
     }
 

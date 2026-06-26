@@ -16,10 +16,16 @@ define i32 @foo() nounwind {
   ret i32 %id
 }
 
+!IGCMetadata = !{!7}
 !igc.functions = !{!0}
 !0 = !{i32 ()* @foo, !1}
 !1 = !{!2}
 !2 = !{!"function_type", i32 0}
+!3 = !{!"functionType", !"KernelFunction"}
+!4 = !{!"FuncMDMap[0]", i32 ()* @foo}
+!5 = !{!"FuncMDValue[0]", !3}
+!6 = !{!"FuncMD", !4, !5}
+!7 = !{!"ModuleMD", !6}
 
 ;CHECK: !{!"implicitArgInfoList"
 ;CHECK: !{!"argId", i32 0}

@@ -32,8 +32,14 @@ entry:
 
 declare <8 x float> @llvm.genx.GenISA.sub.group.dpas.v8f32.v8f32.v8i16.v8i32(<8 x float>, <8 x i16>, <8 x i32>, i32, i32, i32, i32, i1)
 
+!IGCMetadata = !{!7}
 !igc.functions = !{!0}
 
 !0 = distinct !{ptr @widget, !1}
 !1 = distinct !{!2}
 !2 = distinct !{!"function_type", i32 0}
+!3 = !{!"functionType", !"KernelFunction"}
+!4 = !{!"FuncMDMap[0]", ptr @widget}
+!5 = !{!"FuncMDValue[0]", !3}
+!6 = !{!"FuncMD", !4, !5}
+!7 = !{!"ModuleMD", !6}

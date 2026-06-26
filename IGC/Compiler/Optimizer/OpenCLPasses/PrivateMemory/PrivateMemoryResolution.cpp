@@ -476,7 +476,7 @@ bool PrivateMemoryResolution::runOnModule(llvm::Module &M) {
     }
 
     // Initialize the stack mem usage per function group to the kernel's privateMemPerWI
-    if (isEntryFunc(m_pMdUtils, m_currFunction)) {
+    if (isEntryFunc(m_pCtx->getModuleMetaData(), m_currFunction)) {
       auto funcMD = modMD.FuncMD.find(m_currFunction);
       if (funcMD != modMD.FuncMD.end()) {
         modMD.PrivateMemoryPerFG[m_currFunction] = funcMD->second.privateMemoryPerWI;
@@ -1331,7 +1331,7 @@ bool PrivateMemoryResolution::resolveAllocaInstructions(bool privateOnStack, boo
         // surface slot#0, NOT the offset into the surface.
         privateBase = entryBuilder.getInt32(0);
       } else { // the old mechanism
-        Value *r0Val = implicitArgs.getImplicitArgValue(*m_currFunction, ImplicitArg::R0, m_pMdUtils);
+        Value *r0Val = implicitArgs.getImplicitArgValue(*m_currFunction, ImplicitArg::R0, modMD);
         Value *r0_5 = entryBuilder.CreateExtractElement(r0Val, ConstantInt::get(typeInt32, 5), VALUE_NAME("r0.5"));
         privateBase = entryBuilder.CreateAnd(r0_5, ConstantInt::get(typeInt32, 0xFFFFFC00), VALUE_NAME("privateBase"));
       }
@@ -1483,8 +1483,8 @@ bool PrivateMemoryResolution::resolveAllocaInstructions(bool privateOnStack, boo
   }
 
   // Find the implicit argument representing r0 and the private memory base.
-  Value *r0Val = implicitArgs.getImplicitArgValue(*m_currFunction, ImplicitArg::R0, m_pMdUtils);
-  Value *privateMemPtr = implicitArgs.getImplicitArgValue(*m_currFunction, ImplicitArg::PRIVATE_BASE, m_pMdUtils);
+  Value *r0Val = implicitArgs.getImplicitArgValue(*m_currFunction, ImplicitArg::R0, modMD);
+  Value *privateMemPtr = implicitArgs.getImplicitArgValue(*m_currFunction, ImplicitArg::PRIVATE_BASE, modMD);
 
   // Restore insert point saved before getImplicitArgValue()
   entryBuilder.SetInsertPoint(pointInstr);

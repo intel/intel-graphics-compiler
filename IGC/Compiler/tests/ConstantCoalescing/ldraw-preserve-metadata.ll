@@ -30,12 +30,13 @@ entry:
 
  ; CHECK-LABEL: define <4 x float> @f0
  ; CHECK: %0 = inttoptr i32 %src to ptr addrspace(2490368)
- ; CHECK: %1 = call <4 x float> @llvm.genx.GenISA.ldrawvector.indexed.v4f32.p2490368(ptr addrspace(2490368) %0, i32 %src, i32 8, i1 false), !lsc.cache.ctrl !3
+ ; CHECK: %1 = call <4 x float> @llvm.genx.GenISA.ldrawvector.indexed.v4f32.p2490368(ptr addrspace(2490368) %0, i32 %src, i32 8, i1 false), !lsc.cache.ctrl {{![0-9]+}}
  ; CHECK: ret <4 x float> %1
 
 ; Function Attrs: argmemonly nounwind readonly
 declare <2 x float> @llvm.genx.GenISA.ldrawvector.indexed.v2f32.p2490368(ptr addrspace(2490368), i32, i32, i1) #1
 
+!IGCMetadata = !{!8}
 !igc.functions = !{!0}
 
 !0 = !{ptr @f0, !1}
@@ -43,4 +44,9 @@ declare <2 x float> @llvm.genx.GenISA.ldrawvector.indexed.v2f32.p2490368(ptr add
 !1 = !{!2}
 !2 = !{!"function_type", i32 0}
 !3 = !{i32 9}
+!4 = !{!"functionType", !"KernelFunction"}
+!5 = !{!"FuncMDMap[0]", ptr @f0}
+!6 = !{!"FuncMDValue[0]", !4}
+!7 = !{!"FuncMD", !5, !6}
+!8 = !{!"ModuleMD", !7}
 

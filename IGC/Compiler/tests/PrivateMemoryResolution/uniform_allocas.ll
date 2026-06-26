@@ -93,9 +93,15 @@ entry:
 ; CHECK-NEXT: ret void
 }
 
+!IGCMetadata = !{!8}
 !igc.functions = !{!1}
 
 !0 = !{i1 true}
 !1 = !{void ()* @entry, !2}
 !2 = !{!3}
 !3 = !{!"function_type", i32 0}
+!4 = !{!"functionType", !"KernelFunction"}
+!5 = !{!"FuncMDMap[0]", void ()* @entry}
+!6 = !{!"FuncMDValue[0]", !4}
+!7 = !{!"FuncMD", !5, !6}
+!8 = !{!"ModuleMD", !7}

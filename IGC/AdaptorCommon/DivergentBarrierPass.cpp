@@ -598,7 +598,7 @@ bool DivergentBarrierPass::run(Module &M, CodeGenContext *CGCtx, IGCMD::MetaData
     if (F.isDeclaration())
       continue;
 
-    if (!isEntryFunc(m_MDUtils, &F))
+    if (!isEntryFunc(m_CGCtx->getModuleMetaData(), &F))
       continue;
 
     Shaders.push_back(&F);

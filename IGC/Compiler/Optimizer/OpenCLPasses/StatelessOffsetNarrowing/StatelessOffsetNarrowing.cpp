@@ -49,7 +49,7 @@ bool StatelessOffsetNarrowing::runOnFunction(Function &F) {
     return false;
 
   auto *MDUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
-  if (!isEntryFunc(MDUtils, &F))
+  if (!isEntryFunc(ModuleMD, &F))
     return false;
 
   bool Changed = false;
