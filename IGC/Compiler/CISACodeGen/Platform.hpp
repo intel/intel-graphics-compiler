@@ -1499,6 +1499,22 @@ public:
   bool allowProceedBasedApproachForRayQueryDynamicRayManagementMechanism() const {
     return IGC_IS_FLAG_DISABLED(DisableProceedBasedApproachForRayQueryDynamicRayManagementMechanism);
   }
+  bool allowEmitMoreMoviCases() const {
+    bool status = false;
+    const IGC::TriboolFlag EnableEmitMoreMoviCases =
+        static_cast<IGC::TriboolFlag>(IGC_GET_FLAG_VALUE(SupportEmitMoreMoviCases));
+    switch (EnableEmitMoreMoviCases) {
+    case IGC::TriboolFlag::Enabled:
+      status = true;
+      break;
+    case IGC::TriboolFlag::Disabled:
+      status = false;
+      break;
+    case IGC::TriboolFlag::Default:
+      break;
+    }
+    return status;
+  }
 
   bool allowsMoviForType(VISA_Type type) const { return (type == ISA_TYPE_UD || type == ISA_TYPE_D); }
 

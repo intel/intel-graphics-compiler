@@ -849,6 +849,10 @@ public:
   /// checks FunctionInfo metadata and returns highest register pressure in the func group
   /// metadata is stored so subroutines have combined pressure (theirs & calling context)
   unsigned int getMaxRegPressureInFunctionGroup(llvm::Function *F);
+  /// Number of shuffle sites in F that can actually take a movi path (int32
+  /// WaveShuffleIndex). Memoized per function -- the result is function-constant
+  /// but queried once per shuffle, so it must not rescan the function each time.
+  unsigned int getNumMoviEligibleShuffleSites(llvm::Function *F);
 
   /// check if symbol table is needed
   bool isSymbolTableRequired(llvm::Function *F);
@@ -913,6 +917,13 @@ private:
   uint m_labelForDMaskJmp = 0;
 
   llvm::DenseMap<llvm::Instruction *, bool> instrMap;
+
+  // Memoized count of movi-eligible (int32 WaveShuffleIndex) shuffle sites per
+  // function, used by the EmitMoreMoviCases register-pressure gate. Keyed by
+  // Function* so each function in the group is computed at most once.
+  unsigned int getNumMoviEligibleShuffleSitesImpl(llvm::Function *F);
+  unsigned int getNumMoviEligibleShuffleSitesInFunctionGroup(llvm::Function *F);
+  llvm::DenseMap<llvm::Function *, unsigned> m_moviShuffleSiteCount;
 
   // Map from sub-dword load destination (byte/word-typed) to the dword-typed
   // LSC gatherDst variable (d8u32/d16u32) and the load's BasicBlock.
