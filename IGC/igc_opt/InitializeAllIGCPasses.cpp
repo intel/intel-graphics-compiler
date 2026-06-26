@@ -331,7 +331,6 @@ void initializeAllIGCPasses(llvm::PassRegistry &Registry) {
   initializeBufferBoundsCheckingPatcherLPMPass(Registry);
   initializeFPRoundingModeCoalescingPass(Registry);
   initializeMinimumValidAddressCheckingLPMPass(Registry);
-  initializeTranslateToProgrammableOffsetsPassPass(Registry);
   initializeDynamicRayManagementPassPass(Registry);
   IGC::initializeFreezeIntDivLPMPass(Registry);
   IGC::initializeEvaluateFreezePass(Registry);

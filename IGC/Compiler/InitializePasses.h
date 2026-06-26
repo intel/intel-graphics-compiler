@@ -231,7 +231,6 @@ void initializeRayTracingAddressSpaceAAWrapperPassPass(llvm::PassRegistry &);
 void initializeRayTracingMemDSEPassPass(llvm::PassRegistry &);
 void initializeOverrideTMaxPassPass(llvm::PassRegistry &);
 void initializeAtomicPullSWWalkWrapperLoopImplementationPass(llvm::PassRegistry &);
-void initializeTranslateToProgrammableOffsetsPassPass(llvm::PassRegistry &);
 void initializeDynamicRayManagementPassPass(llvm::PassRegistry &);
 void initializeVectorBitCastOptPass(llvm::PassRegistry &);
 void initializeVectorPreProcessPass(llvm::PassRegistry &);
