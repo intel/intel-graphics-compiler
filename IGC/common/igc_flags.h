@@ -1276,26 +1276,6 @@ DECLARE_IGC_REGKEY(bool, LscForceSpillNonStackcall, false, "Non-stack call kerne
                    true)
 DECLARE_IGC_REGKEY(bool, EnableEmitMoreMoviCases, false,
                    "Enables emitting movi for waveShuffle cases using And to keep index within single register.", true)
-DECLARE_IGC_REGKEY_ENUM(SupportEmitMoreMoviCases, -1,
-                        "Controls the behavior of emitSimdShuffle to emit more movi for waveShuffle cases "
-                        "using And to keep index within single register."
-                        "-1 - default behavior, the pass is enabled based on the platform choice"
-                        " 0 - force disabled"
-                        " 1 - force enabled",
-                        TRIBOOL_OPTIONS, true)
-DECLARE_IGC_REGKEY(
-    DWORD, EmitMoreMoviCasesRegPressureThreshold, 128,
-    "Register-pressure gate for EnableEmitMoreMoviCases. When non-zero, emitSimdShuffle skips movi "
-    "promotion if the function-group max register pressure (GRF units) is larger than this value, avoiding "
-    "spill/fill regressions in high-pressure shaders. Default 128 (= default GRF count); 0 disables "
-    "the gate (movi promotion unchanged). For compute shaders this also schedules the register-pressure "
-    "publisher so the estimate is available at Emit time.",
-    true)
-DECLARE_IGC_REGKEY(DWORD, EmitMoreMoviCasesMinShuffleSites, 2,
-                   "Minimum number of movi-eligible int32 WaveShuffleIndex sites for EnableEmitMoreMoviCases. "
-                   "Shaders with fewer sites skip movi promotion to avoid the NoMask preamble overhead. "
-                   "Default 2; 0 disables the gate.",
-                   true)
 DECLARE_IGC_REGKEY(bool, ConvergentGradientsOnGenISA, false,
                    "Force-enable the ConvergentGradientsOnGenISA AIL: mark GenISA gradient intrinsics convergent so "
                    "code-motion passes cannot sink them across divergent branches. Useful for testing the workaround "

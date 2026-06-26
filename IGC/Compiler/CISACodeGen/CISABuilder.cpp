@@ -4172,16 +4172,8 @@ void CEncoder::InitVISABuilderOptions(TARGET_PLATFORM VISAPlatform, bool canAbor
     SaveOption(vISA_ALTMode, true);
   }
 
-  // Set the vISA option only when EmitPass enabled movi promotion for this
-  // shader (m_emitMoreMoviCases, decided in EmitPass::runOnFunction before the
-  // encoder is initialized). That flag already folds in EnableEmitMoreMoviCases,
-  // the movi-eligible site count, and the register-pressure gate, so the option
-  // stays consistent with the movi sequences EmitPass actually emits. Setting it
-  // otherwise changes canPromoteToMovi() in the vISA optimizer, perturbing hoisting/RA
-  // for shaders that emit no movi sequence. (Computed in EmitPass, not rescanned here,
-  // because this runs at encoder init -- before emitSimdShuffle -- but after the gate
-  // decision was stored.)
-  if (m_program->GetEmitMoreMoviCases()) {
+  if (IGC_GET_FLAG_VALUE(EnableEmitMoreMoviCases))
+  {
     SaveOption(vISA_emitMoreMoviCases, true);
   }
 
