@@ -4345,19 +4345,17 @@ void CEncoder::InitVISABuilderOptions(TARGET_PLATFORM VISAPlatform, bool canAbor
 
   if (context->type == ShaderType::OPENCL_SHADER &&
       m_program->m_Platform->getPlatformInfo().eProductFamily != IGFX_DG2 &&
-      m_program->m_Platform->getPlatformInfo().eProductFamily != IGFX_CRI &&
       (m_program->m_Platform->limitedBCR() || (MaxRegPressure > 0 && MaxRegPressure < RegPressureThreshold))) {
     SaveOption(vISA_enableBCR, true);
     if (m_program->GetParent()->getLLVMFunction()->size() == 1 &&
         m_program->m_Platform->getMinDispatchMode() != SIMDMode::SIMD8) {
       SaveOption(vISA_forceBCR, true);
-      if (context->supportsVRT() && m_program->m_Platform->GetPlatformFamily() == IGFX_XE3_CORE)
+      if (context->supportsVRT())
         SaveOption(vISA_bumpGRFForForceBCR, true);
     }
     // For OCL shader with very low register pressure, it is safe to enable vISA_bumpGRFForForceBCR on platform with VRT
     // support.
-    if (MaxRegPressure > 0 && MaxRegPressure < 32 && context->supportsVRT() &&
-        m_program->m_Platform->GetPlatformFamily() == IGFX_XE3_CORE) {
+    if (MaxRegPressure > 0 && MaxRegPressure < 32 && context->supportsVRT()) {
       SaveOption(vISA_forceBCR, true);
       SaveOption(vISA_bumpGRFForForceBCR, true);
       // For shader with very low register pressure, we want to restrict the RP
