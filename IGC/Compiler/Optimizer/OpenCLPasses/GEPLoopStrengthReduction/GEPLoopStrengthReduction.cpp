@@ -240,9 +240,9 @@ private:
 //   2. Estimates increase in register pressure.
 class Scorer {
 public:
-  Scorer(const DataLayout &DL, ModuleMetaData &MMD, IGCLivenessAnalysisRunner &RPE, WIAnalysisRunner &WI,
-         GenXFunctionGroupAnalysis *FGA)
-      : DL(DL), MMD(MMD), RPE(RPE), WI(WI), FGA(FGA) {}
+  Scorer(const DataLayout &DL, ModuleMetaData &MMD, CodeGenContext &CGC, IGCLivenessAnalysisRunner &RPE,
+         WIAnalysisRunner &WI, GenXFunctionGroupAnalysis *FGA)
+      : DL(DL), CGC(CGC), RPE(RPE), MMD(MMD), WI(WI), FGA(FGA) {}
 
   void score(SmallVectorImpl<ReductionCandidateGroup> &Candidates);
 
@@ -256,6 +256,7 @@ private:
   int estimatePointerAddition(ReductionCandidateGroup &Candidate);
 
   const DataLayout &DL;
+  CodeGenContext &CGC;
   IGCLivenessAnalysisRunner &RPE;
   ModuleMetaData &MMD;
   WIAnalysisRunner &WI;
@@ -304,6 +305,7 @@ private:
   unsigned MaxAllowedPressure;
   unsigned FunctionExternalPressure;
 
+  CodeGenContext &CGC;
   IGCLivenessAnalysisRunner &RPE;
   WIAnalysisRunner &WI;
   GenXFunctionGroupAnalysis *FGA;
@@ -737,7 +739,7 @@ void Scorer::scoreRegisterPressure(ReductionCandidateGroup &Candidate) {
 
   auto *L = Candidate.getLoop();
   auto *F = Cheapest.GEP->getParent()->getParent();
-  uint SIMD = numLanes(RPE.bestGuessSIMDSize(F, FGA));
+  uint SIMD = numLanes(IGC::bestGuessSIMDSize(&CGC, F, FGA));
 
   ValueSet Instructions;
 
@@ -930,7 +932,7 @@ bool Analyzer::isValidDeconstructedSCEV(const DeconstructedSCEV &Result) {
 RegisterPressureTracker::RegisterPressureTracker(Function &F, CodeGenContext &CGC, IGCLivenessAnalysisRunner &RPE,
                                                  IGCFunctionExternalRegPressureAnalysis &FRPE, WIAnalysisRunner &WI,
                                                  GenXFunctionGroupAnalysis *FGA)
-    : RPE(RPE), WI(WI), FGA(FGA) {
+    : CGC(CGC), RPE(RPE), WI(WI), FGA(FGA) {
   MaxAllowedPressure =
       static_cast<unsigned>(CGC.getNumGRFPerThread() * IGC_GET_FLAG_VALUE(GEPLSRThresholdRatio) / 100.0f);
 
@@ -955,7 +957,7 @@ void RegisterPressureTracker::trackDeletedInstruction(Value *V) {
 bool RegisterPressureTracker::fitsPressureThreshold(ReductionCandidateGroup &C) {
   BasicBlock *Preheader = C.getLoop()->getLoopPreheader();
   auto *F = Preheader->getParent();
-  uint SIMD = numLanes(RPE.bestGuessSIMDSize(F, FGA));
+  uint SIMD = numLanes(IGC::bestGuessSIMDSize(&CGC, F, FGA));
 
   unsigned MaxLoopPressure = RPE.getMaxRegCountForLoop(*C.getLoop(), SIMD, &WI);
   unsigned AdditionalPressure = C.getScore().RegisterPressure;
@@ -1166,7 +1168,7 @@ bool GEPLoopStrengthReduction::runOnFunction(llvm::Function &F) {
   if (Candidates.empty())
     return false;
 
-  Scorer(DL, MMD, RPE, *WI, FGA).score(Candidates);
+  Scorer(DL, MMD, CGC, RPE, *WI, FGA).score(Candidates);
 
   IGCLLVM::IRBuilder<> IRB(F.getContext());
 

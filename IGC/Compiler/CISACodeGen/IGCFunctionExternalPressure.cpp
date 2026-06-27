@@ -55,7 +55,7 @@ void IGCFunctionExternalRegPressureAnalysis::generateTableOfPressure(llvm::Modul
     if (F.isDeclaration())
       continue;
 
-    unsigned int SIMD = numLanes(bestGuessSIMDSize(&F, FGA));
+    unsigned int SIMD = numLanes(IGC::bestGuessSIMDSize(CGCtx, &F, FGA));
     livenessAnalysis(F);
     auto WI = getWIAnalysis(&F);
 

@@ -45,47 +45,6 @@ unsigned int IGCLivenessAnalysisBase::registerSizeInBytes() {
   return 32;
 }
 
-SIMDMode IGCLivenessAnalysisBase::bestGuessSIMDSize(Function *F, GenXFunctionGroupAnalysis *FGA) {
-  switch (IGC_GET_FLAG_VALUE(ForceOCLSIMDWidth)) {
-  case 0:
-    break;
-  case 8:
-    return SIMDMode::SIMD8;
-  case 16:
-    return SIMDMode::SIMD16;
-  case 32:
-    return SIMDMode::SIMD32;
-  }
-
-  // simd size of the kernel has the priority, if we can do that
-  unsigned SimdSize = IGC::getSIMDSize(CGCtx->getModuleMetaData(), F);
-  if (FGA) {
-    llvm::Function *Kernel = F;
-    auto *FG = FGA->getGroup(F);
-    Kernel = FG ? FG->getHead() : nullptr;
-    if (Kernel)
-      SimdSize = IGC::getSIMDSize(CGCtx->getModuleMetaData(), Kernel);
-  }
-  if (SimdSize)
-    return lanesToSIMDMode(SimdSize);
-
-  // rule for pvc
-  if (CGCtx->platform.isProductChildOf(IGFX_PVC)) {
-    bool abortOnSpills =
-        IGC_GET_FLAG_VALUE(AllowSIMD16DropForXE2Plus) && (CGCtx->platform.isCoreXE2() || CGCtx->platform.isCoreXE3());
-    auto FG = FGA ? FGA->getGroup(F) : nullptr;
-    bool hasStackCall = (FG && FG->hasStackCall()) || (F && F->hasFnAttribute("visaStackCall"));
-    bool isIndirectGroup = FG && FGA->isIndirectCallGroup(FG);
-    bool hasSubroutine = FG && !FG->isSingle() && !hasStackCall && !isIndirectGroup;
-    if (abortOnSpills || hasSubroutine) {
-      return SIMDMode::SIMD16;
-    }
-    return SIMDMode::SIMD32;
-  }
-
-  return SIMDMode::SIMD8;
-}
-
 ValueSet IGCLivenessAnalysisBase::getDefs(llvm::BasicBlock &BB) {
 
   ValueSet &BBIn = In[&BB];
@@ -586,7 +545,7 @@ bool IGCRegisterPressurePrinter::runOnFunction(llvm::Function &F) {
   MaxPressurePair = {};
   FGA = getAnalysisIfAvailable<GenXFunctionGroupAnalysis>();
 
-  unsigned int SIMD = numLanes(RPE->bestGuessSIMDSize(&F, FGA));
+  unsigned int SIMD = numLanes(IGC::bestGuessSIMDSize(CGCtx, &F, FGA));
 
   if (DumpToFile) {
     dumpRegPressure(F, SIMD);
@@ -650,7 +609,7 @@ bool IGCRegisterPressurePublisher::runOnModule(llvm::Module &M) {
 
     IGCLivenessAnalysisRunner RPE(CGCtx, MDUtils, FGA);
 
-    unsigned int SimdSize = numLanes(RPE.bestGuessSIMDSize(&F, FGA));
+    unsigned int SimdSize = numLanes(IGC::bestGuessSIMDSize(CGCtx, &F, FGA));
     unsigned int Existing = RPE.checkPublishRegPressureMetadata(F);
     bool LegacyPublished = (Existing != 0);
     bool PerSIMDPublished = false;

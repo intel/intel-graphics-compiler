@@ -56,6 +56,7 @@ typedef unsigned int uint;
 
 namespace IGC {
 class CodeGenContext;
+class GenXFunctionGroupAnalysis;
 struct SProgramOutput;
 
 static const char *const INTEL_SYMBOL_TABLE_VOID_PROGRAM = "Intel_Symbol_Table_Void_Program";
@@ -375,7 +376,13 @@ llvm::Function *getUniqueEntryFunc(const IGCMD::MetaDataUtils *pM, IGC::ModuleMe
 
 // Returns a SIMD size for given function from metadata.
 // Returns 0 if function is not in metadata or function has not defined SIMD size.
-int getSIMDSize(const IGC::ModuleMetaData *modMD, llvm::Function *F);
+int getSIMDSize(const IGC::ModuleMetaData *modMD, const llvm::Function *F);
+
+// Best-effort guess of the SIMD width a function will be compiled for, based on
+// required sub-group size metadata and the platform. Used by register-pressure
+// estimates before the backend fixes the final width.
+SIMDMode bestGuessSIMDSize(const CodeGenContext *CTX, const llvm::Function *F = nullptr,
+                           GenXFunctionGroupAnalysis *FGA = nullptr);
 
 // Resolves (and pins) the kernel sub-group/SIMD size for builtin-resolution passes that
 // lower builtins to intrinsics before the backend fixes the SIMD width. The generic

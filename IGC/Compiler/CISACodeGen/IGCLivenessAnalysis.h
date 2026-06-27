@@ -97,8 +97,6 @@ public:
   void collectPressureForBB(llvm::BasicBlock &BB, InsideBlockPressureMap &BBListing, unsigned int SIMD,
                             WIAnalysisRunner *WI = nullptr);
 
-  SIMDMode bestGuessSIMDSize(Function *F = nullptr, GenXFunctionGroupAnalysis *FGA = nullptr);
-
   PressurePair bytesToRegisters(PressurePair Pair) {
     PressurePair Result = {};
     unsigned int RegisterSizeInBytes = registerSizeInBytes();

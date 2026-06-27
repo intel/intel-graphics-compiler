@@ -9,6 +9,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CodeGenPublic.h"
 #include "Compiler/CISACodeGen/helper.h"
 #include "Compiler/CISACodeGen/CISACodeGen.h"
+#include "Compiler/CISACodeGen/GenCodeGenModule.h"
 #include "Compiler/CISACodeGen/OpenCLKernelCodeGen.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/KernelArgs/KernelArgs.hpp"
 #include "common/LLVMWarningsPush.hpp"
@@ -2222,12 +2223,51 @@ Function *getUniqueEntryFunc(const IGCMD::MetaDataUtils *pM, IGC::ModuleMetaData
   return entryFunc;
 }
 
-int getSIMDSize(const IGC::ModuleMetaData *modMD, llvm::Function *F) {
-  auto it = modMD->FuncMD.find(F);
+int getSIMDSize(const IGC::ModuleMetaData *modMD, const llvm::Function *F) {
+  auto it = modMD->FuncMD.find(const_cast<llvm::Function *>(F));
   if (it != modMD->FuncMD.end()) {
     return it->second.requiredSubGroupSize;
   }
   return 0;
+}
+
+SIMDMode bestGuessSIMDSize(const CodeGenContext *CTX, const llvm::Function *F, GenXFunctionGroupAnalysis *FGA) {
+  switch (IGC_GET_FLAG_VALUE(ForceOCLSIMDWidth)) {
+  case 0:
+    break;
+  case 8:
+    return SIMDMode::SIMD8;
+  case 16:
+    return SIMDMode::SIMD16;
+  case 32:
+    return SIMDMode::SIMD32;
+  }
+
+  // simd size of the kernel has the priority, if we can do that
+  unsigned SimdSize = IGC::getSIMDSize(CTX->getModuleMetaData(), F);
+  if (FGA) {
+    const llvm::Function *Kernel = F;
+    auto *FG = FGA->getGroup(F);
+    Kernel = FG ? FG->getHead() : nullptr;
+    if (Kernel)
+      SimdSize = IGC::getSIMDSize(CTX->getModuleMetaData(), Kernel);
+  }
+  if (SimdSize)
+    return lanesToSIMDMode(SimdSize);
+
+  if (!CTX->platform.isProductChildOf(IGFX_PVC))
+    return SIMDMode::SIMD8;
+
+  bool abortOnSpills =
+      IGC_GET_FLAG_VALUE(AllowSIMD16DropForXE2Plus) && (CTX->platform.isCoreXE2() || CTX->platform.isCoreXE3());
+  auto FG = FGA ? FGA->getGroup(F) : nullptr;
+  bool hasStackCall = (FG && FG->hasStackCall()) || (F && F->hasFnAttribute("visaStackCall"));
+  bool isIndirectGroup = FG && FGA->isIndirectCallGroup(FG);
+  bool hasSubroutine = FG && !FG->isSingle() && !hasStackCall && !isIndirectGroup;
+  if (abortOnSpills || hasSubroutine) {
+    return SIMDMode::SIMD16;
+  }
+  return SIMDMode::SIMD32;
 }
 
 #define DEBUG_TYPE "kernel-simd-resolver"

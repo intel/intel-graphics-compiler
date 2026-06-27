@@ -230,7 +230,7 @@ public:
       : BB(BB), RPE(RPE), FRPE(FRPE), VSA(VSA), RCA(RCA), WI(WI), CTX(CTX), C(Config), LogStream(LogStream), FGA(FGA) {
     F = BB->getParent();
     SIMD = C->get(SchedulingConfig::Option::ForceSIMDSize) > 0 ? C->get(SchedulingConfig::Option::ForceSIMDSize)
-                                                               : numLanes(RPE->bestGuessSIMDSize(F));
+                                                               : numLanes(IGC::bestGuessSIMDSize(CTX, F));
     PrintDump("SIMD: " << SIMD << "\n");
     DL = &(F->getParent()->getDataLayout());
 
@@ -251,7 +251,7 @@ public:
 
     F = BB->getParent();
     SIMD = C->get(SchedulingConfig::Option::ForceSIMDSize) > 0 ? C->get(SchedulingConfig::Option::ForceSIMDSize)
-                                                               : numLanes(RPE->bestGuessSIMDSize(F, FGA));
+                                                               : numLanes(IGC::bestGuessSIMDSize(CTX, F, FGA));
     DL = &(F->getParent()->getDataLayout());
 
     // copy the state
@@ -3287,7 +3287,7 @@ bool CodeScheduling::runOnFunction(Function &F) {
   // CodeScheduling preserves CFG and only reorders within BBs, so the cached
   // In/Out sets in RPE remain valid; we just need to re-walk per-BB pressure.
   if (Changed) {
-    unsigned int SIMD = numLanes(RPE->bestGuessSIMDSize(&F, FGA));
+    unsigned int SIMD = numLanes(IGC::bestGuessSIMDSize(CTX, &F, FGA));
     unsigned int MaxPressure = RPE->getMaxRegCountForFunction(F, SIMD, WI);
     unsigned int ExternalPressure = FRPE->getExternalPressureForFunction(&F);
     RPE->publishRegPressureMetadata(F, MaxPressure + ExternalPressure);
