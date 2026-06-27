@@ -334,6 +334,7 @@ struct SInstrTypes {
   bool hasSLM{};
   bool hasWorkgroupBarrier{};
   bool hasSplitBarrier{};
+  bool hasDPAS{};
   unsigned int numCall{};
   unsigned int numBarrier{};
   unsigned int numLoadStore{};

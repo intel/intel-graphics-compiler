@@ -401,6 +401,7 @@ enum class ShaderTypeMD
         // This is true if the function has any sync raytracing functionality
         bool hasSyncRTCalls = false;
         bool hasPrintfCalls = false;
+        bool hasDPAS = false;
         bool requireAssertBuffer = false;
         bool requireSyncBuffer = false;
         bool hasIndirectCalls = false;

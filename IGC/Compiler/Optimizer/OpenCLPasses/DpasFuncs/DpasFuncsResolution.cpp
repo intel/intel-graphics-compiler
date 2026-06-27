@@ -9,6 +9,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/Optimizer/OpenCLPasses/DpasFuncs/DpasFuncsResolution.hpp"
 #include "Compiler/Optimizer/OCLBIUtils.h"
 #include "Compiler/IGCPassSupport.h"
+#include "GenISAIntrinsics/GenIntrinsicInst.h"
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/Pass.h>
 #include <llvm/IR/InstVisitor.h>
@@ -59,6 +60,9 @@ private:
 
   /// Indicates if the pass changed the processed function
   bool m_changed{};
+
+  /// Indicates if the function lowers to or already contains a DPAS intrinsic.
+  bool m_hasDpas{};
 
   CodeGenContext *m_pCtx = nullptr;
   std::string m_ErrorMsg{};
@@ -264,11 +268,26 @@ DpasFuncsResolutionLPM::DpasFuncsResolutionLPM(void) : FunctionPass(ID) {
   initializeDpasFuncsResolutionLPMPass(*PassRegistry::getPassRegistry());
 }
 
+static bool isDpasIntrinsicID(GenISAIntrinsic::ID ID) {
+  switch (ID) {
+  case GenISAIntrinsic::GenISA_dpas:
+  case GenISAIntrinsic::GenISA_sub_group_dpas:
+  case GenISAIntrinsic::GenISA_sub_group_bdpas:
+    return true;
+  default:
+    return false;
+  }
+}
+
 bool DpasFuncsResolution::runOnFunction(Function &F, CodeGenContext *Ctx) {
   m_pCtx = Ctx;
   m_changed = false;
+  m_hasDpas = false;
 
   visit(F);
+
+  if (m_hasDpas)
+    m_pCtx->getModuleMetaData()->FuncMD[&F].hasDPAS = true;
 
   if (!m_ErrorMsg.empty()) {
     m_pCtx->EmitError(m_ErrorMsg.c_str(), &F);
@@ -282,6 +301,12 @@ void DpasFuncsResolution::visitCallInst(CallInst &CI) {
   if (!m_ErrorMsg.empty()) {
     return;
   }
+
+  // Catch DPAS intrinsics that reached this pass already lowered; the builtins
+  // this pass lowers itself set m_hasDpas at their creation sites below.
+  if (const GenIntrinsicInst *Intr = dyn_cast<GenIntrinsicInst>(&CI))
+    if (isDpasIntrinsicID(Intr->getIntrinsicID()))
+      m_hasDpas = true;
 
   if (processSrnd(CI)) {
     return;
@@ -548,6 +573,7 @@ void DpasFuncsResolution::visitCallInst(CallInst &CI) {
   CI.eraseFromParent();
 
   m_changed = true;
+  m_hasDpas = true;
 }
 
 bool DpasFuncsResolution::processCvt(CallInst &CI) {
@@ -1002,6 +1028,7 @@ bool DpasFuncsResolution::processBdpas(CallInst &CI) {
   CI.eraseFromParent();
 
   m_changed = true;
+  m_hasDpas = true;
   return true;
 }
 
