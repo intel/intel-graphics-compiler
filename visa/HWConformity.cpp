@@ -8138,18 +8138,24 @@ bool HWConformity::fixBFMove(INST_LIST_ITER i, G4_BB *bb) {
     // we will change their type to HF later
     vISA_ASSERT((src0->getType() == Type_F || src0->getType() == Type_BF),
            "Only F->BF conversion is supported");
-    vISA_ASSERT(!inst->getPredicate() && !inst->getCondMod() &&
-           !inst->getSaturate(),
-           "F->BF move does not support pred/cond mod/sat");
     if (src0->isSrcRegRegion()) {
       vISA_ASSERT(src0->asSrcRegRegion()->getModifier() == Mod_src_undef,
              "F->BF move does not support source modifier");
     }
     if (src0->getType() == Type_BF) {
+      // A BF->BF copy is lowered to a uw copy, which may legally carry a
+      // predicate.
+      vISA_ASSERT(!inst->getCondMod() && !inst->getSaturate(),
+             "BF->BF move does not support cond mod/sat");
       // change type of copy move to uw
       inst->getDst()->setType(builder, Type_UW);
       src0->asSrcRegRegion()->setType(builder, Type_UW);
+      return false;
     }
+    // F->BF conversion move
+    vISA_ASSERT(!inst->getPredicate() && !inst->getCondMod() &&
+           !inst->getSaturate(),
+           "F->BF move does not support pred/cond mod/sat");
     return false;
   }
 
