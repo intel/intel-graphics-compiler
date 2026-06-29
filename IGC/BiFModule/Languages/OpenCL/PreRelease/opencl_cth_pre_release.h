@@ -67,11 +67,15 @@ atomic_cmpxchg(volatile __local float* p, float cmp, float val);
 #endif
 
 // Planar YUV.
+#ifndef cl_intel_planar_yuv
 #define cl_intel_planar_yuv 0x1
+#endif
 #define CLK_NV12_INTEL 0x410E
 
 // Packed YUV
+#ifndef cl_intel_packed_yuv
 #define cl_intel_packed_yuv 0x1
+#endif
 #define CLK_YUYV_INTEL 0x4076
 #define CLK_UYVY_INTEL 0x4077
 #define CLK_YVYU_INTEL 0x4078

@@ -331,6 +331,26 @@ execute_process( COMMAND ${CMAKE_COMMAND} -E compare_files ${BiFModule_PREBUILD_
 
 # This env variable allows developer to prevent BiF from being created/recreated and is intended for debug/experimental purposes only.
 
+# Generate the CT header that is embedded as the FCL resource (force-included as
+# CTHeader.h into user kernels). It mirrors the opencl_cth.h concatenation but
+# substitutes the slim Intel header (opencl-c-intel.h) for the released CTH; the
+# standard OpenCL built-ins come from the Clang default header via opencl-clang.
+# Generated unconditionally (independent of the BiF source-vs-cache decision and
+# of IGC_DBG_SKIP_BIF_GENERATION) because the embedder always consumes it and it
+# is a declared output of this script's custom command. concat.py appends a
+# trailing NUL, which the FCL resource loader requires (see EnsureProperPCH /
+# clang_tb.cpp).
+set(IGC_BUILD__BIF_OCL_INTEL_CTH "${IGC_BUILD__BIF_DIR}/opencl_cth_intel.h")
+message("[IGC\\BiFModule] - Generating opencl_cth_intel.h")
+execute_process(
+    COMMAND "${CMAKE_COMMAND}" -E make_directory "${IGC_BUILD__BIF_DIR}"
+    COMMAND ${PYTHON_EXECUTABLE} "${IGC_SOURCE_DIR}/BiFModule/concat.py" -new
+            "${IGC_BUILD__BIF_OCL_INTEL_CTH}"
+            "${IGC_OPTION__BIF_SRC_OCL_DIR}/Languages/OpenCL/opencl-c-intel.h"
+            ${IGC_BUILD__BIF_OCL_SHARED_INC_PRE_RELEASE}
+  COMMAND_ECHO STDOUT
+    )
+
 if($ENV{IGC_DBG_SKIP_BIF_GENERATION})
   message("[IGC\\BiFModuleCache] Skipping BiF building/rebuilding due to env. variable ['IGC_DBG_SKIP_BIF_GENERATION'] being set. This is intended for debug/experimental purposes only, use with caution.")
   return()

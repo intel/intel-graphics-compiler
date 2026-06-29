@@ -9,7 +9,7 @@ SPDX-License-Identifier: MIT
 // REQUIRES: regkeys, cri-supported
 
 // RUN: ocloc compile -file %s -device cri -options "-igc_opts 'DumpVISAASMToConsole=1' -DTYPE_A=short -DTYPE_RES=float" \
-// RUN: -internal_options "-cl-ext=-all,+cl_intel_subgroup_matrix_multiply_accumulate_fp8" \
+// RUN: -internal_options "-cl-ext=-all,+cl_khr_subgroups,+cl_intel_subgroup_matrix_multiply_accumulate_fp8" \
 // RUN: | FileCheck %s --check-prefix=CHECK-VISAASM-SIZE-1_OUTPUT-FLOAT
 
 // CHECK-VISAASM-SIZE-1_OUTPUT-FLOAT-DAG: dpas.bf8.bf8.8.1 (M1, 16) [[OUT1:V[0-9]+]].0 {{.*}} {{.*}} {{.*}}
@@ -22,7 +22,7 @@ SPDX-License-Identifier: MIT
 // CHECK-VISAASM-SIZE-1_OUTPUT-FLOAT-DAG: .decl [[OUT4]] v_type=G type=f num_elts=16 align=wordx32
 
 // RUN: ocloc compile -file %s -device cri -options "-igc_opts 'DumpVISAASMToConsole=1' -DTYPE_A=short2 -DTYPE_RES=float2" \
-// RUN: -internal_options "-cl-ext=-all,+cl_intel_subgroup_matrix_multiply_accumulate_fp8" \
+// RUN: -internal_options "-cl-ext=-all,+cl_khr_subgroups,+cl_intel_subgroup_matrix_multiply_accumulate_fp8" \
 // RUN: | FileCheck %s --check-prefix=CHECK-VISAASM-SIZE-2_OUTPUT-FLOAT
 
 // CHECK-VISAASM-SIZE-2_OUTPUT-FLOAT-DAG: dpas.bf8.bf8.8.2 (M1, 16) [[OUT1:V[0-9]+]].0 {{.*}} {{.*}} {{.*}}
@@ -35,7 +35,7 @@ SPDX-License-Identifier: MIT
 // CHECK-VISAASM-SIZE-2_OUTPUT-FLOAT-DAG: .decl [[OUT4]] v_type=G type=f num_elts=32 align=wordx32
 
 // RUN: ocloc compile -file %s -device cri -options "-igc_opts 'DumpVISAASMToConsole=1' -DTYPE_A=short4 -DTYPE_RES=float4" \
-// RUN: -internal_options "-cl-ext=-all,+cl_intel_subgroup_matrix_multiply_accumulate_fp8" \
+// RUN: -internal_options "-cl-ext=-all,+cl_khr_subgroups,+cl_intel_subgroup_matrix_multiply_accumulate_fp8" \
 // RUN: | FileCheck %s --check-prefix=CHECK-VISAASM-SIZE-4_OUTPUT-FLOAT
 
 // CHECK-VISAASM-SIZE-4_OUTPUT-FLOAT-DAG: dpas.bf8.bf8.8.4 (M1, 16) [[OUT1:V[0-9]+]].0 {{.*}} {{.*}} {{.*}}
@@ -48,7 +48,7 @@ SPDX-License-Identifier: MIT
 // CHECK-VISAASM-SIZE-4_OUTPUT-FLOAT-DAG: .decl [[OUT4]] v_type=G type=f num_elts=64 align=wordx32
 
 // RUN: ocloc compile -file %s -device cri -options "-igc_opts 'DumpVISAASMToConsole=1' -DTYPE_A=short8 -DTYPE_RES=float8" \
-// RUN: -internal_options "-cl-ext=-all,+cl_intel_subgroup_matrix_multiply_accumulate_fp8" \
+// RUN: -internal_options "-cl-ext=-all,+cl_khr_subgroups,+cl_intel_subgroup_matrix_multiply_accumulate_fp8" \
 // RUN: | FileCheck %s --check-prefix=CHECK-VISAASM-SIZE-8_OUTPUT-FLOAT
 
 // CHECK-VISAASM-SIZE-8_OUTPUT-FLOAT-DAG: dpas.bf8.bf8.8.8 (M1, 16) [[OUT1:V[0-9]+]].0 {{.*}} {{.*}} {{.*}}
@@ -62,7 +62,7 @@ SPDX-License-Identifier: MIT
 
 
 // RUN: ocloc compile -file %s -device cri -options "-igc_opts 'DumpVISAASMToConsole=1' -DTYPE_A=short -DTYPE_RES=short" \
-// RUN: -internal_options "-cl-ext=-all,+cl_intel_subgroup_matrix_multiply_accumulate_fp8" \
+// RUN: -internal_options "-cl-ext=-all,+cl_khr_subgroups,+cl_intel_subgroup_matrix_multiply_accumulate_fp8" \
 // RUN: | FileCheck %s --check-prefix=CHECK-VISAASM-SIZE-1_OUTPUT-BFLOAT
 
 // CHECK-VISAASM-SIZE-1_OUTPUT-BFLOAT-DAG: dpas.bf8.bf8.8.1 (M1, 16) [[OUT1:V[0-9]+]].0 {{.*}} {{.*}} {{.*}}
@@ -75,7 +75,7 @@ SPDX-License-Identifier: MIT
 // CHECK-VISAASM-SIZE-1_OUTPUT-BFLOAT-DAG: .decl [[OUT4]] v_type=G type=bf num_elts=16 align=wordx32
 
 // RUN: ocloc compile -file %s -device cri -options "-igc_opts 'DumpVISAASMToConsole=1' -DTYPE_A=short2 -DTYPE_RES=short2" \
-// RUN: -internal_options "-cl-ext=-all,+cl_intel_subgroup_matrix_multiply_accumulate_fp8" \
+// RUN: -internal_options "-cl-ext=-all,+cl_khr_subgroups,+cl_intel_subgroup_matrix_multiply_accumulate_fp8" \
 // RUN: | FileCheck %s --check-prefix=CHECK-VISAASM-SIZE-2_OUTPUT-BFLOAT
 
 // CHECK-VISAASM-SIZE-2_OUTPUT-BFLOAT-DAG: dpas.bf8.bf8.8.2 (M1, 16) [[OUT1:V[0-9]+]].0 {{.*}} {{.*}} {{.*}}
@@ -88,7 +88,7 @@ SPDX-License-Identifier: MIT
 // CHECK-VISAASM-SIZE-2_OUTPUT-BFLOAT-DAG: .decl [[OUT4]] v_type=G type=bf num_elts=32 align=wordx32
 
 // RUN: ocloc compile -file %s -device cri -options "-igc_opts 'DumpVISAASMToConsole=1' -DTYPE_A=short4 -DTYPE_RES=short4" \
-// RUN: -internal_options "-cl-ext=-all,+cl_intel_subgroup_matrix_multiply_accumulate_fp8" \
+// RUN: -internal_options "-cl-ext=-all,+cl_khr_subgroups,+cl_intel_subgroup_matrix_multiply_accumulate_fp8" \
 // RUN: | FileCheck %s --check-prefix=CHECK-VISAASM-SIZE-4_OUTPUT-BFLOAT
 
 // CHECK-VISAASM-SIZE-4_OUTPUT-BFLOAT-DAG: dpas.bf8.bf8.8.4 (M1, 16) [[OUT1:V[0-9]+]].0 {{.*}} {{.*}} {{.*}}
@@ -101,7 +101,7 @@ SPDX-License-Identifier: MIT
 // CHECK-VISAASM-SIZE-4_OUTPUT-BFLOAT-DAG: .decl [[OUT4]] v_type=G type=bf num_elts=64 align=wordx32
 
 // RUN: ocloc compile -file %s -device cri -options "-igc_opts 'DumpVISAASMToConsole=1' -DTYPE_A=short8 -DTYPE_RES=short8" \
-// RUN: -internal_options "-cl-ext=-all,+cl_intel_subgroup_matrix_multiply_accumulate_fp8" \
+// RUN: -internal_options "-cl-ext=-all,+cl_khr_subgroups,+cl_intel_subgroup_matrix_multiply_accumulate_fp8" \
 // RUN: | FileCheck %s --check-prefix=CHECK-VISAASM-SIZE-8_OUTPUT-BFLOAT
 
 // CHECK-VISAASM-SIZE-8_OUTPUT-BFLOAT-DAG: dpas.bf8.bf8.8.8 (M1, 16) [[OUT1:V[0-9]+]].0 {{.*}} {{.*}} {{.*}}
