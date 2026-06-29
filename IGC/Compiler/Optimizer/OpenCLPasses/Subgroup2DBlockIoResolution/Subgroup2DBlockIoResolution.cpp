@@ -320,7 +320,8 @@ bool Subgroup2DBlockIoResolution::validateHWConstraints(const BlockDescription &
     if (ElemBitwidth != C.ElemBitwidth)
       continue;
     if (isPowerOf2AndInRange(Width, C.MinWidth, C.MaxWidth) && isPowerOf2AndInRange(Height, C.MinHeight, C.MaxHeight) &&
-        isPowerOf2AndInRange(NumBlocksV, C.MinBlocksV, C.MaxBlocksV) && Width * NumBlocksV <= C.MaxElements)
+        isPowerOf2AndInRange(NumBlocksV, C.MinBlocksV, C.MaxBlocksV) && Width * NumBlocksV <= C.MaxElements &&
+        Width * NumBlocksV >= C.MinElements)
       return true;
   }
   return false;
