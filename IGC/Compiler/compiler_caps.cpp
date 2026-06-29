@@ -84,6 +84,13 @@ static void CreateCompilerCapsString(const GT_SYSTEM_INFO *sysinfo, PLATFORM pla
 
 
   std::stringstream ss;
+  outputString.append("RenderGmdId \t\t= \t");
+  ss << GFX_GET_GMD_ARCH_VERSION_RENDER(platformInfo) << '.';
+  ss << GFX_GET_GMD_RELEASE_VERSION_RENDER(platformInfo) << '.';
+  ss << GFX_GET_GMD_REV_ID_RENDER(platformInfo);
+  outputString.append(ss.str());
+  outputString.append("\n");
+  ss.str(std::string());
   outputString.append("UsDeviceID \t\t= \t");
   ss << "0x" << std::hex << platformInfo.usDeviceID;
   outputString.append(ss.str());
