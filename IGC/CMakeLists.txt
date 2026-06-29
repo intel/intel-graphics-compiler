@@ -1398,12 +1398,6 @@ if(IGC_OPTION__BIF_LINK_BC)
   )
 endif()
 
-if(DEFINED VME_TYPES_DEFINED)
-add_compile_definitions(
-      VME_TYPES_DEFINED=${VME_TYPES_DEFINED}
-    )
-endif()
-
 #SPIRV consumption flag
 if(IGC_BUILD__SPIRV_ENABLED)
   add_compile_definitions(

@@ -113,7 +113,6 @@ function(build_bif_bitcode bifModuleDepends)
             -DIGC_OPTION__BIF_SRC_OCL_DIR="${IGC_OPTION__BIF_SRC_OCL_DIR}"
             -DIGC_OPTION__ENABLE_BF16_BIF="${IGC_OPTION__ENABLE_BF16_BIF}"
             -DIGC_OPTION__BIF_UPDATE_IR="${IGC_OPTION__BIF_UPDATE_IR}"
-            -DVME_TYPES_DEFINED="${VME_TYPES_DEFINED}"
             -D_PRE_RELEASE_CL="${_PRE_RELEASE_CL}"
             -DIGC_SOURCE_DIR="${IGC_SOURCE_DIR}"
             -DIGC_BUILD__BIF_DIR="${IGC_BUILD__BIF_DIR}"
@@ -123,7 +122,6 @@ function(build_bif_bitcode bifModuleDepends)
             -Dclang-tool=$<TARGET_FILE:clang-tool>
             -DBiFManager-bin=$<TARGET_FILE:BiFManager-bin>
             -DIGC_BUILD__BIF_ROOT_DIR="${IGC_BUILD__BIF_ROOT_DIR}"
-            -DVME_TYPES_DEFINED="${VME_TYPES_DEFINED}"
             -DBIF_BINARY_DIR="${CMAKE_CURRENT_BINARY_DIR}"
             -DLLVM_VERSION_MAJOR="${LLVM_VERSION_MAJOR}"
             -DIGC_BUILD__BIF_DIR="${IGC_BUILD__BIF_DIR}"

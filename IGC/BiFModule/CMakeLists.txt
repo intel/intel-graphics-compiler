@@ -15,11 +15,6 @@
 add_subdirectory(Languages/OpenCL/PreRelease/Matrix)
 include(BiFModuleCache)
 
-# In new Clang versions VME types are built-in. Keep this flag until all OS's update Clang version to 8
-if(NOT DEFINED VME_TYPES_DEFINED)
-  set(VME_TYPES_DEFINED TRUE)
-endif()
-
 if(UNIX)
   if(NOT ${CCLANG_BUILD_INTREE_LLVM})
     # Get common clang library soname

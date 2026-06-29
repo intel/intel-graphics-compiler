@@ -343,18 +343,6 @@ static bool IsBuildingFor32bit(const char *pInternalOptions) {
   return !is64bit;
 }
 
-// Returns true if CommonClang used on current OS has VME types defined.
-static bool AreVMETypesDefined() {
-#ifdef VME_TYPES_DEFINED
-#if VME_TYPES_DEFINED
-  return true;
-#else
-  return false;
-#endif
-#endif
-  return true;
-}
-
 // Returns true if the input is SYCL source, indicated by the '-x sycl' option.
 // For SYCL input the OpenCL-specific options (extension/feature macro defines,
 // the custom OpenCL header, etc.) must not be passed into the frontend.
@@ -595,13 +583,6 @@ static std::string GetCDefinesForEnableList(llvm::StringRef enableListStr, unsig
   for (auto ext : v) {
     if (ext.consume_front("+")) {
       ext = ext.trim();
-      if (ext == "cl_intel_device_side_avc_motion_estimation") {
-        // If the user provided -cl-std option we need to add the define only if it's 1.2 and above.
-        // This is because clang will not allow declarations of extension's functions which use avc types otherwise.
-        if (!(oclStd >= 120 || oclStd == 0))
-          continue;
-      }
-
       // Only collect extensions needed for manual feature macro generation
       if (ext == "cl_khr_integer_dot_product") {
         enabledExtensions.integerDotProduct = true;
@@ -966,11 +947,6 @@ std::string CClangTranslationBlock::GetOpenCLOptions(const TranslateClangArgs *p
   // Clang always defines __IMAGE_SUPPORT__ macro for SPIR target, even if device doesn't support it.
   if (optionsEx.find("__IMAGE_SUPPORT__") == std::string::npos) {
     optionsEx += " -U__IMAGE_SUPPORT__";
-  }
-
-  // FIXME: do we still support VME?
-  if (AreVMETypesDefined()) {
-    optionsEx += " -D__VME_TYPES_DEFINED__";
   }
 
   optionsEx += " -D__LLVM_VERSION_MAJOR__=" + to_string(LLVM_VERSION_MAJOR);
