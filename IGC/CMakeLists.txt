@@ -1857,6 +1857,7 @@ endif()
 add_dependencies("${IGC_BUILD__PROJ__igc_objs}" RTStackReflectionIRBG)
 add_dependencies("${IGC_BUILD__PROJ__igc_objs}" RenderSurfaceStateIRBG)
 add_dependencies("${IGC_BUILD__PROJ__igc_objs}" SPIRVExtensionsSupportGen)
+add_dependencies("${IGC_BUILD__PROJ__igc_objs}" IGCOptionsTablegen)
 
 # Main library targets: they consume the shared .obj set via
 # $<TARGET_OBJECTS:...> and only differ by output type + resources.
