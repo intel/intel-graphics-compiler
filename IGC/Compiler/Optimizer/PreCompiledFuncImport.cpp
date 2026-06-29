@@ -2178,7 +2178,9 @@ void PreCompiledFuncImport::createFuncWithIA() {
 
 void PreCompiledFuncImport::replaceFunc(Function *old_func, Function *new_func) {
   ModuleMetaData *modMD = m_pCtx->getModuleMetaData();
-  auto &newImplicitArgInfoList = modMD->FuncMD[new_func].implicitArgInfoList;
+  // Copy, not a reference: the loop below can grow the FuncMD MapVector and dangle a reference into it
+  // (HSD-13015825703).
+  auto newImplicitArgInfoList = modMD->FuncMD[new_func].implicitArgInfoList;
   std::vector<Instruction *> list_delete;
   for (auto U = old_func->user_begin(), UE = old_func->user_end(); U != UE; ++U) {
     std::vector<Value *> new_args;
