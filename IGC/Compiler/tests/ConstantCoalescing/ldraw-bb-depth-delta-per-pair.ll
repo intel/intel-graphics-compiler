@@ -25,8 +25,13 @@
 ;   * cb[0] survives unmerged as a <4 x float> in entry
 ;   * cb[16] and cb[32] DO coalesce into one wider load (chunk2) at bb_far
 
-; REQUIRES: llvm-14-plus, regkeys
-; RUN: igc_opt --opaque-pointers %s -S -o - -ocl -platformdg2 --regkey ConstantCoalescingMaxBBDepthDelta=1 -igc-constant-coalescing | FileCheck %s
+; The chunk-size gate is disabled (ConstantCoalescingDepthCheckMinBytes=0) so the
+; depth-delta check fires on every candidate, regardless of merged-chunk size.
+; This isolates the per-PAIR behavior we are testing here.
+
+; REQUIRES: llvm-14-plus, regkeys, shader-types
+; Run as a compute shader: the guard is shader-type-agnostic, not RT-gated.
+; RUN: igc_opt --opaque-pointers %s -S -o - -inputcs -platformdg2 --regkey ConstantCoalescingMaxBBDepthDelta=1,ConstantCoalescingDepthCheckMinBytes=0 -igc-constant-coalescing | FileCheck %s
 
 target datalayout = "e-p:64:64:64-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64-f32:32:32-f64:64:64-v16:16:16-v24:32:32-v32:32:32-v48:64:64-v64:64:64-v96:128:128-v128:128:128-v192:256:256-v256:256:256-v512:512:512-v1024:1024:1024-n8:16:32"
 target triple = "spir64-unknown-unknown"

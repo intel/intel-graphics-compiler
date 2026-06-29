@@ -67,6 +67,21 @@ bool ConstantCoalescing::runOnFunction(Function &func) {
   return true;
 }
 
+unsigned ConstantCoalescing::getBBLevel(BasicBlock *bb) {
+  if (!bb)
+    return 0;
+  DominatorTree &domTree = getAnalysis<DominatorTreeWrapperPass>().getDomTree();
+  if (auto *node = domTree.getNode(bb))
+    return node->getLevel();
+  return 0;
+}
+
+void ConstantCoalescing::setChunkDeepestLvl(BufChunk *cur_chunk, BasicBlock *bb) {
+  const unsigned lvl = getBBLevel(bb);
+  if (lvl > cur_chunk->deepestLvl)
+    cur_chunk->deepestLvl = lvl;
+}
+
 void ConstantCoalescing::ProcessFunction(Function *function) {
   curFunc = function;
   irBuilder = new IRBuilderWrapper(function->getContext(), m_TT);
@@ -592,6 +607,7 @@ void ConstantCoalescing::MergeScatterLoad(Instruction *load, Value *bufIdxV, uin
       cov_chunk->chunkSize = RoundChunkSize(maxEltPlus, scalarSizeInBytes);
       const alignment_t chunkAlignment = std::max<alignment_t>(alignment, 4);
       cov_chunk->chunkIO = CreateChunkLoad(load, cov_chunk, eltid, chunkAlignment, Extension);
+      cov_chunk->deepestLvl = getBBLevel(load->getParent());
 
       // Update load alignment if needed, set it to DWORD aligned
       if (alignment < 4) {
@@ -604,6 +620,7 @@ void ConstantCoalescing::MergeScatterLoad(Instruction *load, Value *bufIdxV, uin
     // combine the initial scalar loads with this incoming load (which can be a vector-load),
     // then add extracts
     CombineTwoLoads(cov_chunk, load, eltid, maxEltPlus, Extension);
+    setChunkDeepestLvl(cov_chunk, load->getParent());
   } else if (load->getType()->isVectorTy()) {
     // just to modify all the extract, and connect it to the chunk-load
     uint64_t lb = std::min(eltid, cov_chunk->chunkStart);
@@ -618,6 +635,7 @@ void ConstantCoalescing::MergeScatterLoad(Instruction *load, Value *bufIdxV, uin
       AdjustChunk(cov_chunk, start_adj, size_adj, Extension);
     }
     MoveExtracts(cov_chunk, load, static_cast<uint>(eltid - cov_chunk->chunkStart));
+    setChunkDeepestLvl(cov_chunk, load->getParent());
   } else {
     Instruction *splitter = nullptr;
     uint start_adj = 0;
@@ -639,6 +657,7 @@ void ConstantCoalescing::MergeScatterLoad(Instruction *load, Value *bufIdxV, uin
     }
     wiAns->incUpdateDepend(splitter, WIAnalysis::RANDOM);
     load->replaceAllUsesWith(splitter);
+    setChunkDeepestLvl(cov_chunk, load->getParent());
   }
 }
 
@@ -886,40 +905,52 @@ void ConstantCoalescing::MergeUniformLoad(Instruction *load, Value *bufIdxV, uin
       ((offsetInBytes % 4) == 0 && (alignment >= 4 || eltIdxV == nullptr || IsDwordAligned(eltIdxV)));
 
   auto shouldMerge = [&](const BufChunk *cur_chunk) {
-    // Do not merge two loads of the same buffer whose defining basic blocks
-    // are far apart in the dominator tree. The chunk's defining BB always
-    // dominates the new load's BB (ProcessFunction pops chunks whose
-    // def-BB no longer dominates the current block), so the depth delta is
-    // measures how far the chunk would have to stretch. Merging across a large depth
-    // can cause a long live GRF hurting register pressure.
+    if (!(CompareBufferBase(cur_chunk->bufIdxV, cur_chunk->addrSpace, bufIdxV, addrSpace) &&
+          cur_chunk->baseIdxV == eltIdxV && cur_chunk->chunkIO->getType()->getScalarType() == loadEltTy &&
+          CompareMetadata(cur_chunk->chunkIO, load) && !CheckForAliasingWrites(addrSpace, cur_chunk->chunkIO, load) &&
+          cur_chunk->extensionKind == Extension))
+      return false;
+
+    const uint64_t lb = std::min(eltid, cur_chunk->chunkStart);
+    const uint64_t ub = std::max(eltid + (uint64_t)maxEltPlus, cur_chunk->chunkStart + (uint64_t)cur_chunk->chunkSize);
+    const uint64_t chunkRange = ub - lb;
+    if (chunkRange > UINT32_MAX || !profitableChunkSize(static_cast<uint32_t>(chunkRange), scalarSizeInBytes) ||
+        !(isDwordAligned || eltid >= cur_chunk->chunkStart))
+      return false;
+
+    // Do not merge two loads of the same buffer when the merge would stretch the
+    // chunk's live range across many basic blocks. The dom-tree depth delta from
+    // the chunk's *deepest already-absorbed BB* (`cur_chunk->deepestLvl`) to the
+    // candidate load's BB. It tracks how far down the chunk's existing
+    // consumers actually reach. The delta from there to the candidate
+    // measures the incremental stretch this merge would add.
+    //
+    // Target wide loads with ConstantCoalescingDepthCheckMinBytes guard
     const uint32_t maxDepthDelta = IGC_GET_FLAG_VALUE(ConstantCoalescingMaxBBDepthDelta);
-    if (maxDepthDelta > 0) {
-      DominatorTree &domTree = getAnalysis<DominatorTreeWrapperPass>().getDomTree();
-      if (auto *chunkNode = domTree.getNode(cur_chunk->chunkIO->getParent())) {
+    if (m_ctx->m_DriverInfo.EnableConstCoalesceBBDepthDelta() && maxDepthDelta > 0) {
+      const uint64_t mergedChunkBytes = chunkRange * (uint64_t)scalarSizeInBytes;
+      const uint32_t minBytesForDepthCheck = IGC_GET_FLAG_VALUE(ConstantCoalescingDepthCheckMinBytes);
+      if (mergedChunkBytes >= minBytesForDepthCheck) {
+        DominatorTree &domTree = getAnalysis<DominatorTreeWrapperPass>().getDomTree();
+        LoopInfo &LI = getAnalysis<LoopInfoWrapperPass>().getLoopInfo();
         if (auto *loadNode = domTree.getNode(load->getParent())) {
-          const unsigned cLvl = chunkNode->getLevel();
           const unsigned lLvl = loadNode->getLevel();
-          const unsigned delta = (lLvl > cLvl) ? (lLvl - cLvl) : (cLvl - lLvl);
-          if (delta > maxDepthDelta)
-            return false;
+          const unsigned dLvl = cur_chunk->deepestLvl;
+          const unsigned delta = (lLvl > dLvl) ? (lLvl - dLvl) : 0;
+          if (delta > maxDepthDelta) {
+            // Allow coalescing if both BBs are in the same innermost loop.
+            // Loads in the same loop body are re-executed every iteration;
+            // the merged value's live range does not extend across iterations.
+            const Loop *chunkLoop = LI.getLoopFor(cur_chunk->chunkIO->getParent());
+            const Loop *loadLoop = LI.getLoopFor(load->getParent());
+            if (!chunkLoop || chunkLoop != loadLoop)
+              return false;
+          }
         }
       }
     }
 
-    if (CompareBufferBase(cur_chunk->bufIdxV, cur_chunk->addrSpace, bufIdxV, addrSpace) &&
-        cur_chunk->baseIdxV == eltIdxV && cur_chunk->chunkIO->getType()->getScalarType() == loadEltTy &&
-        CompareMetadata(cur_chunk->chunkIO, load) && !CheckForAliasingWrites(addrSpace, cur_chunk->chunkIO, load) &&
-        cur_chunk->extensionKind == Extension) {
-      uint64_t lb = std::min(eltid, cur_chunk->chunkStart);
-      uint64_t ub = std::max(eltid + (uint64_t)maxEltPlus, cur_chunk->chunkStart + (uint64_t)cur_chunk->chunkSize);
-      uint64_t chunkRange = ub - lb;
-      if (chunkRange <= UINT32_MAX && profitableChunkSize(static_cast<uint32_t>(chunkRange), scalarSizeInBytes) &&
-          (isDwordAligned || eltid >= cur_chunk->chunkStart)) {
-        return true;
-      }
-    }
-
-    return false;
+    return true;
   };
 
   BufChunk *cov_chunk = nullptr;
@@ -960,6 +991,7 @@ void ConstantCoalescing::MergeUniformLoad(Instruction *load, Value *bufIdxV, uin
       cov_chunk->extensionKind = Extension;
       const alignment_t chunkAlignment = std::max<alignment_t>(alignment, 4);
       cov_chunk->chunkIO = CreateChunkLoad(load, cov_chunk, eltid, chunkAlignment, Extension);
+      cov_chunk->deepestLvl = getBBLevel(load->getParent());
       chunk_vec.push_back(cov_chunk);
     }
   } else {
@@ -1015,6 +1047,7 @@ void ConstantCoalescing::MergeUniformLoad(Instruction *load, Value *bufIdxV, uin
       load->replaceAllUsesWith(splitter);
       wiAns->incUpdateDepend(splitter, wiAns->whichDepend(load));
     }
+    setChunkDeepestLvl(cov_chunk, load->getParent());
   }
 }
 
@@ -2031,9 +2064,11 @@ void ConstantCoalescing::ScatterToSampler(Instruction *load, Value *bufIdxV, uin
 
       ld = CreateSamplerLoad(dataAddress, bufIdxV, addrSpace);
       cov_chunk->chunkIO = ld;
+      cov_chunk->deepestLvl = getBBLevel(load->getParent());
       chunk_vec.push_back(cov_chunk);
     } else {
       ld = cov_chunk->chunkIO;
+      setChunkDeepestLvl(cov_chunk, load->getParent());
     }
 
     ReplaceLoadWithSamplerLoad(load, ld, (offsetInBytes % samplerLoadSizeInBytes));

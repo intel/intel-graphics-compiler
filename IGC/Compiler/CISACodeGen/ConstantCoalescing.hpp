@@ -51,6 +51,7 @@ struct BufChunk {
   llvm::Instruction *chunkIO; // coalesced load
   uint loadOrder;             // direct CB used order.
   ExtensionKind extensionKind;
+  unsigned deepestLvl; // deepest BB absorbed so far; for BB-depth-delta guard
 };
 
 class ConstantCoalescing : public llvm::FunctionPass {
@@ -62,16 +63,25 @@ public:
     AU.setPreservesCFG();
     AU.addPreservedID(WIAnalysis::ID);
     AU.addRequired<DominatorTreeWrapperPass>();
+    AU.addRequired<llvm::LoopInfoWrapperPass>();
     AU.addRequired<WIAnalysis>();
     AU.addRequired<MetaDataUtilsWrapper>();
     AU.addRequired<CodeGenContextWrapper>();
     AU.addRequired<TranslationTable>();
     AU.addPreservedID(TranslationTable::ID);
+    AU.addPreserved<llvm::LoopInfoWrapperPass>();
   }
 
   void ProcessBlock(llvm::BasicBlock *blk, std::vector<BufChunk *> &dircb_owlds, std::vector<BufChunk *> &indcb_owlds,
                     std::vector<BufChunk *> &indcb_gathers);
   void ProcessFunction(llvm::Function *function);
+
+  // Dom-tree depth of a basic block
+  // 0 = function entry, or if the block has no dom-tree node (e.g. unreachable).
+  // Used to maintain BufChunk::deepestLvl.
+  unsigned getBBLevel(llvm::BasicBlock *bb);
+  // Bump cur_chunk->deepestLvl to max(current, level(bb)).
+  void setChunkDeepestLvl(BufChunk *cur_chunk, llvm::BasicBlock *bb);
 
   virtual bool runOnFunction(llvm::Function &func) override;
 

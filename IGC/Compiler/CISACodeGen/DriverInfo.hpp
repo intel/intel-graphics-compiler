@@ -93,6 +93,9 @@ public:
   /// do code sinking before CFGSimplification, helps some workloads
   virtual bool CodeSinkingBeforeCFGSimplification() const { return false; }
 
+  /// Enable the ConstantCoalescing BB-depth-delta guard
+  virtual bool EnableConstCoalesceBBDepthDelta() const { return true; }
+
   /// allow executing constant buffer on the CPU
   virtual bool AllowGenUpdateCB(ShaderType shaderType) const {
     IGC_UNUSED(shaderType);

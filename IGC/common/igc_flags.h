@@ -1891,9 +1891,13 @@ DECLARE_IGC_REGKEY(bool, DisableEarlyRemat, false, "Disable quick remats to avoi
 DECLARE_IGC_REGKEY(bool, DisableLateRemat, false, "Disable quick remats to avoid some spills", true)
 DECLARE_IGC_REGKEY(DWORD, RematThreshold, 6, "Tunes how aggresively we should remat values into continuations", true)
 DECLARE_IGC_REGKEY(DWORD, ConstantCoalescingMaxBBDepthDelta, 0,
-                   "Allowed distance in the dominator tree where two constant-buffer loads can be before "
-                   "ConstantCoalescing refuses to merge them. 0 (default, disabled). Non-zero values bound how "
-                   "many BB levels the merged chunk is allowed to stretch across, avoiding wide-load coalescing",
+                   "How many basic block levels the merged chunk is allowed to stretch across, avoiding wide-load "
+                   "coalescing. 0 disables the check. Gated on ConstantCoalescingDepthCheckMinBytes",
+                   true)
+DECLARE_IGC_REGKEY(DWORD, ConstantCoalescingDepthCheckMinBytes, 0,
+                   "Minimum merged-chunk size (in bytes) at which ConstantCoalescingMaxBBDepthDelta starts "
+                   "rejecting cross-BB merges. Below this size the depth check is skipped on narrow merges. "
+                   "0 disables the size gate.",
                    true)
 DECLARE_IGC_REGKEY(bool, AllowSpillCompactionOnRetry, false, "Allow spill compaction on retry - may increase spills",
                    true)
