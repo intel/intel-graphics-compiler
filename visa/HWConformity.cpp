@@ -6698,6 +6698,7 @@ bool HWConformity::canSplitByteDst(G4_opcode op) {
   case G4_line:
   case G4_send:
   case G4_sendc:
+  case G4_math:
     return false;
   default:
     return true;
