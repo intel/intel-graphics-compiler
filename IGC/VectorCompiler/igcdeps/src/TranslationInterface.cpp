@@ -129,67 +129,123 @@ std::unique_ptr<llvm::MemoryBuffer> getVCModuleBuffer() {
                                           false /* RequiresNullTerminator */);
 }
 
-static std::pair<std::string, unsigned>
-getPlatformName(const PLATFORM &Platform) {
-  constexpr unsigned ComputeTileMaskPVC = 7;
-  auto Core = Platform.eRenderCoreFamily;
+std::string getPlatformNameByProductId(const PLATFORM &Platform) {
   auto Product = Platform.eProductFamily;
-  unsigned DevId = Platform.usDeviceID;
-  unsigned RevId = Platform.usRevId;
+  auto DeviceId = Platform.usDeviceID;
 
-  switch (Core) {
-  case IGFX_GEN12_CORE:
-  case IGFX_GEN12LP_CORE:
-    return {"XeLP", RevId};
-  case IGFX_XE_HPG_CORE:
-    if (Product == IGFX_DG2)
-      return {"XeHPG", RevId};
-    if (Product == IGFX_METEORLAKE)
-      return {"XeLPG", RevId};
-    if (Product == IGFX_ARROWLAKE) {
-      if (GFX_IS_ARL_S(DevId))
-        return {"XeLPG", RevId};
-      return {"XeLPGPlus", RevId};
-    }
-    break;
-  case IGFX_XE_HPC_CORE:
-    if (Product == IGFX_PVC) {
-      if (GFX_IS_VG_CONFIG(DevId))
-        return {"XeHPCVG", RevId & ComputeTileMaskPVC};
-      return {"XeHPC", RevId & ComputeTileMaskPVC};
-    }
-    break;
-  case IGFX_XE2_HPG_CORE:
-    if (Product == IGFX_LUNARLAKE)
-      return {"Xe2", RevId};
-    if (Product == IGFX_BMG)
-      return {"Xe2", RevId};
-    break;
-  case IGFX_XE3_CORE:
-    if (Product == IGFX_PTL)
-      return {"Xe3", RevId};
-    if (Product == IGFX_NVL_XE3G)
-      return {"Xe3", RevId};
-    LLVM_FALLTHROUGH;
-  case IGFX_XE3P_CORE:
-    if (Product == IGFX_CRI)
-      return {"Xe3P", RevId};
-    if (Product == IGFX_NVL)
-      return {"Xe3PLPG", RevId};
-    break;
+  switch (Product) {
+  case IGFX_TIGERLAKE_LP:
+  case IGFX_ROCKETLAKE:
+  case IGFX_ALDERLAKE_S:
+  case IGFX_ALDERLAKE_P:
+  case IGFX_ALDERLAKE_N:
+  case IGFX_DG1:
+    return "XeLP";
+  case IGFX_DG2:
+    return "XeHPG";
+  case IGFX_PVC:
+    if (GFX_IS_VG_CONFIG(DeviceId))
+      return "XeHPCVG";
+    return "XeHPC";
+  case IGFX_METEORLAKE:
+    return "XeLPG";
+  case IGFX_ARROWLAKE:
+    if (GFX_IS_ARL_S(DeviceId))
+      return "XeLPG";
+    return "XeLPGPlus";
+  case IGFX_BMG:
+  case IGFX_LUNARLAKE:
+    return "Xe2";
+  case IGFX_PTL:
+  case IGFX_NVL_XE3G:
+    return "Xe3";
+  case IGFX_CRI:
+    return "Xe3P";
+  case IGFX_NVL:
+    return "Xe3PLPG";
   default:
-    break;
+    llvm::errs() << "Unsupported platform, Product:" << Product
+                 << " DeviceId: " << DeviceId << "\n";
+    IGC_ASSERT_EXIT_MESSAGE(0, "Unsupported Platform");
+    return "Invalid";
   }
-  IGC_ASSERT_EXIT_MESSAGE(0, "Unsupported platform");
-  return {"Invalid", -1};
+}
+
+std::string getPlatformNameByGmdId(const PLATFORM &Platform) {
+  unsigned GmdArch = GFX_GET_GMD_ARCH_VERSION_RENDER(Platform);
+  unsigned GmdRelease = GFX_GET_GMD_RELEASE_VERSION_RENDER(Platform);
+
+  auto reportUnsupported = [&]() -> std::string {
+    llvm::errs() << "Unsupported platform, GMD Arch:" << GmdArch
+                 << " Release: " << GmdRelease
+                 << " Revision: " << GFX_GET_GMD_REV_ID_RENDER(Platform)
+                 << "\n";
+    IGC_ASSERT_EXIT_MESSAGE(0, "Unsupported GMD ID");
+    return "Invalid";
+  };
+
+  switch (GmdArch) {
+  case 12:
+    switch (GmdRelease) {
+    case 0:  // TGL
+    case 1:  // RKL
+    case 2:  // ADL-S
+    case 3:  // ADL-P
+    case 4:  // ADL-N
+    case 10: // DG1
+      return "XeLP";
+    case 55: // DG2-G10
+    case 56: // DG2-G11
+    case 57: // DG2-G12
+      return "XeHPG";
+    case 60: // PVC
+      return "XeHPC";
+    case 61: // PVC-VG
+      return "XeHPCVG";
+    case 70: // MTL-U
+    case 71: // MTL-H
+      return "XeLPG";
+    case 74: // ARL-H
+      return "XeLPGPlus";
+    default:
+      return reportUnsupported();
+    }
+  case 20: // XE2
+    return "Xe2";
+  case 30: // XE3
+    return "Xe3";
+  case 35:
+    switch (GmdRelease) {
+    case 10: // NVL-P
+      return "Xe3PLPG";
+    case 11: // CRI
+      return "Xe3P";
+    default:
+      return reportUnsupported();
+    }
+  default:
+    return reportUnsupported();
+  }
+}
+
+std::string getPlatformName(const PLATFORM &Platform) {
+  auto GmdId = Platform.sRenderBlockID;
+
+  if (GmdId.Value != 0) {
+    // If GdmId is defined, use it to get the platform name.
+    return getPlatformNameByGmdId(Platform);
+  }
+
+  // if GdmId is not defined, fallback to product id scheme
+  return getPlatformNameByProductId(Platform);
 }
 
 static void adjustPlatform(const IGC::CPlatform &IGCPlatform,
                            vc::CompileOptions &Opts) {
   auto &PlatformInfo = IGCPlatform.getPlatformInfo();
 
-  std::tie(Opts.CPUStr, Opts.RevId) = getPlatformName(PlatformInfo);
-
+  Opts.CPUStr = getPlatformName(PlatformInfo);
+  Opts.RevId = GFX_GET_GMD_REV_ID_RENDER(PlatformInfo);
   Opts.HasL1ReadOnlyCache = IGCPlatform.hasL1ReadOnlyCache();
   Opts.HasLocalMemFenceSupress = IGCPlatform.localMemFenceSupress();
   Opts.HasMultiTile = IGCPlatform.hasMultiTile();
