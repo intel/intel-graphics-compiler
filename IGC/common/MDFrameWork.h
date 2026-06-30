@@ -561,6 +561,8 @@ enum class ShaderTypeMD
         bool DisableConvertingAtomicIAddToIncDec        = false;
         bool ZeroInitRegistersBeforeExecution = false;
         unsigned VISASpillAllowed                       = 0;
+        unsigned ConstantCoalescingMaxBBDepthDelta      = 0;
+        unsigned ConstantCoalescingDepthCheckMinBytes   = 0;
     };
 
     enum class ThreadIDLayout

@@ -26,8 +26,7 @@
 ; delta vs chunk = 3, > maxDepthDelta(1) -> depth check rejects if size gate
 ; lets it through.
 
-; The depth-delta heuristic is shader-type-agnostic (gated only by
-; DriverInfo::EnableConstCoaleseBBDepthDelta() + regkey, not by shader type),
+; The depth-delta heuristic is shader-type-agnostic,
 ; so these RUN lines deliberately mix RT, pixel, and compute contexts.
 
 ; REQUIRES: llvm-14-plus, regkeys, shader-types

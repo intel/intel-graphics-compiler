@@ -926,10 +926,17 @@ void ConstantCoalescing::MergeUniformLoad(Instruction *load, Value *bufIdxV, uin
     // measures the incremental stretch this merge would add.
     //
     // Target wide loads with ConstantCoalescingDepthCheckMinBytes guard
-    const uint32_t maxDepthDelta = IGC_GET_FLAG_VALUE(ConstantCoalescingMaxBBDepthDelta);
+    // Precedence: explicit regkey > per-title override (compOpt) > regkey default
+    uint32_t maxDepthDelta = IGC_GET_FLAG_VALUE(ConstantCoalescingMaxBBDepthDelta);
+    if (!IGC_IS_FLAG_SET(ConstantCoalescingMaxBBDepthDelta) &&
+        m_ctx->getModuleMetaData()->compOpt.ConstantCoalescingMaxBBDepthDelta)
+      maxDepthDelta = m_ctx->getModuleMetaData()->compOpt.ConstantCoalescingMaxBBDepthDelta;
     if (m_ctx->m_DriverInfo.EnableConstCoalesceBBDepthDelta() && maxDepthDelta > 0) {
       const uint64_t mergedChunkBytes = chunkRange * (uint64_t)scalarSizeInBytes;
-      const uint32_t minBytesForDepthCheck = IGC_GET_FLAG_VALUE(ConstantCoalescingDepthCheckMinBytes);
+      uint32_t minBytesForDepthCheck = IGC_GET_FLAG_VALUE(ConstantCoalescingDepthCheckMinBytes);
+      if (!IGC_IS_FLAG_SET(ConstantCoalescingDepthCheckMinBytes) &&
+          m_ctx->getModuleMetaData()->compOpt.ConstantCoalescingDepthCheckMinBytes)
+        minBytesForDepthCheck = m_ctx->getModuleMetaData()->compOpt.ConstantCoalescingDepthCheckMinBytes;
       if (mergedChunkBytes >= minBytesForDepthCheck) {
         DominatorTree &domTree = getAnalysis<DominatorTreeWrapperPass>().getDomTree();
         LoopInfo &LI = getAnalysis<LoopInfoWrapperPass>().getLoopInfo();
