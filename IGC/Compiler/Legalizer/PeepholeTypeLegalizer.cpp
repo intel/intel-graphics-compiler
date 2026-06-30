@@ -262,6 +262,57 @@ void PeepholeTypeLegalizer::legalizeExtractElement(Instruction &I) {
 
   unsigned elementWidth = extract->getType()->getScalarSizeInBits();
   unsigned numElements = (unsigned)cast<IGCLLVM::FixedVectorType>(extract->getOperand(0)->getType())->getNumElements();
+
+  // Extract of a sub-byte integer element (e.g. <32 x i4>): reinterpret the
+  // vector as a vector of legal-width integer chunks and pull the element out
+  // with a shift and mask. Promotion is unusable here as it would change the
+  // total bit width.
+  if (extract->getType()->isIntegerTy() && elementWidth > 1 && elementWidth < 8 && !isLegalInteger(elementWidth) &&
+      isa<ConstantInt>(extract->getOperand(1))) {
+    unsigned totalBits = elementWidth * numElements;
+    unsigned chunkWidth = 0;
+    for (unsigned w : {32u, 16u, 8u, 64u}) {
+      if (totalBits % w == 0 && w % elementWidth == 0) {
+        chunkWidth = w;
+        break;
+      }
+    }
+    if (chunkWidth) {
+      m_builder->SetInsertPoint(&I);
+      unsigned numChunks = totalBits / chunkWidth;
+      unsigned elemsPerChunk = chunkWidth / elementWidth;
+      Type *chunkTy = Type::getIntNTy(I.getContext(), chunkWidth);
+
+      // Look through a feeding bitcast (e.g. <4 x float> -> <32 x i4>) so the
+      // illegal vector type is never recreated; reinterpret the original value.
+      Value *vecSrc = extract->getOperand(0);
+      BitCastInst *srcBC = dyn_cast<BitCastInst>(vecSrc);
+      if (srcBC)
+        vecSrc = srcBC->getOperand(0);
+      Value *legalVec = m_builder->CreateBitCast(vecSrc, IGCLLVM::FixedVectorType::get(chunkTy, numChunks));
+
+      // The requested element lives in chunk (extractIndex / elemsPerChunk) at bit
+      // offset (extractIndex % elemsPerChunk) * elementWidth within that chunk.
+      unsigned extractIndex = (unsigned)cast<ConstantInt>(extract->getOperand(1))->getZExtValue();
+      unsigned chunkIdx = extractIndex / elemsPerChunk;
+      unsigned within = extractIndex % elemsPerChunk;
+      Value *chunk = m_builder->CreateExtractElement(legalVec, m_builder->getInt32(chunkIdx));
+      if (within)
+        chunk = m_builder->CreateLShr(chunk, ConstantInt::get(chunkTy, (uint64_t)within * elementWidth));
+      Value *masked = m_builder->CreateAnd(chunk, ConstantInt::get(chunkTy, ((uint64_t)1 << elementWidth) - 1));
+      Value *result = m_builder->CreateTrunc(masked, extract->getType());
+
+      extract->replaceAllUsesWith(result);
+      extract->eraseFromParent();
+      // Drop the now-dead source bitcast so the illegal <M x i4> type does not
+      // linger into EmitVISAPass.
+      if (srcBC && srcBC->use_empty())
+        srcBC->eraseFromParent();
+      Changed = true;
+      return;
+    }
+  }
+
   unsigned quotient = 0, promoteToInt = 0;
   if (elementWidth > 0)
     promoteInt(elementWidth, quotient, promoteToInt, DL->getLargestLegalIntTypeSizeInBits());
