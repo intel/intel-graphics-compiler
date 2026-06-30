@@ -299,27 +299,77 @@ Value *GenXLscAddrCalcFolding::applyLscAddrFolding(Value *Offsets, APInt &Scale,
 
   auto *BinOp = cast<BinaryOperator>(Offsets);
 
-  unsigned ConstIdx;
+  Value *NewOffsets = nullptr;
+  APInt Imm;
+  auto Opcode = BinOp->getOpcode();
+
+  // Operands used to lazily materialize a reassociated base address. They are
+  // only set when the immediate constant is exposed through reassociation (see
+  // below), in which case the new base "ReassocLHS + ReassocRHS" is created
+  // after all folding checks have succeeded.
+  Value *ReassocLHS = nullptr;
+  Value *ReassocRHS = nullptr;
+
+  unsigned ConstIdx = 2;
   if (isa<Constant>(BinOp->getOperand(0)))
     ConstIdx = 0;
   else if (isa<Constant>(BinOp->getOperand(1)))
     ConstIdx = 1;
-  else
+
+  if (ConstIdx != 2) {
+    auto *ConstOp = cast<Constant>(BinOp->getOperand(ConstIdx));
+    if (!isa<ConstantInt>(ConstOp) &&
+        (!ConstOp->getType()->isVectorTy() || !ConstOp->getSplatValue()))
+      return nullptr;
+
+    NewOffsets = BinOp->getOperand(1 - ConstIdx);
+    Imm = ConstOp->getUniqueInteger();
+  } else if (Opcode == Instruction::Add) {
+    // Neither operand is constant. LLVM's reassociate pass may transform an
+    // address like "(Base + Index) + Const" into "(Base + Const) + Index",
+    // which both hides the immediate offset from folding and prevents the
+    // common "Base + Index" subexpression from being shared across unrolled
+    // accesses. Reassociate it back:
+    //
+    //   (X +/- C) + Y  ==>  (X + Y) +/- C
+    //
+    // so that the constant C can be folded into the message immediate offset
+    // and the "X + Y" base becomes a common subexpression (later cleaned up by
+    // EarlyCSE). The inner add/sub must have a single use to avoid increasing
+    // the instruction count.
+    for (unsigned I = 0; I != 2 && !ReassocLHS; ++I) {
+      auto *Inner = dyn_cast<BinaryOperator>(BinOp->getOperand(I));
+      if (!Inner || !Inner->hasOneUse())
+        continue;
+
+      auto InnerOpcode = Inner->getOpcode();
+      if (InnerOpcode != Instruction::Add && InnerOpcode != Instruction::Sub)
+        continue;
+
+      // For a subtraction only "X - C" can be reassociated; "C - X" cannot.
+      unsigned InnerConstIdx;
+      if (isa<ConstantInt>(Inner->getOperand(1)))
+        InnerConstIdx = 1;
+      else if (InnerOpcode == Instruction::Add &&
+               isa<ConstantInt>(Inner->getOperand(0)))
+        InnerConstIdx = 0;
+      else
+        continue;
+
+      ReassocLHS = Inner->getOperand(1 - InnerConstIdx);
+      ReassocRHS = BinOp->getOperand(1 - I);
+      Imm = cast<ConstantInt>(Inner->getOperand(InnerConstIdx))->getValue();
+      Opcode = InnerOpcode;
+    }
+    if (!ReassocLHS)
+      return nullptr;
+  } else {
     return nullptr;
+  }
 
-  auto *ConstOp = cast<Constant>(BinOp->getOperand(ConstIdx));
-  if (!isa<ConstantInt>(ConstOp) &&
-      (!ConstOp->getType()->isVectorTy() || !ConstOp->getSplatValue()))
-    return nullptr;
-
-  Value *NewOffsets = BinOp->getOperand(1 - ConstIdx);
-
-  auto Imm = ConstOp->getUniqueInteger();
   auto NewScale(Scale);
   auto NewOffset(Offset);
   bool Overflow = false;
-
-  const auto Opcode = BinOp->getOpcode();
 
   switch (Opcode) {
   default:
@@ -388,6 +438,15 @@ Value *GenXLscAddrCalcFolding::applyLscAddrFolding(Value *Offsets, APInt &Scale,
 
   Scale = std::move(NewScale);
   Offset = std::move(NewOffset);
+
+  // The reassociated base "X + Y" is materialized only now, after all folding
+  // checks have passed, so no dead instruction is left behind on failure.
+  if (ReassocLHS) {
+    IGC_ASSERT(ReassocRHS);
+    IRBuilder<> Builder(Inst);
+    NewOffsets = Builder.CreateAdd(ReassocLHS, ReassocRHS,
+                                   Offsets->getName() + ".lscbase");
+  }
 
   return NewOffsets;
 }
