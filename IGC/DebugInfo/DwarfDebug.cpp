@@ -2576,6 +2576,7 @@ void DwarfDebug::endFunction(const Function *MF) {
   LabelsBeforeInsn.clear();
   LabelsAfterInsn.clear();
   PrevLabel = NULL;
+  SameIATInsts.clear();
 }
 
 // Register a source line with debug info. Returns the  unique label that was
