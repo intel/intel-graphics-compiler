@@ -3063,7 +3063,7 @@ void intel_subgroup_block_write_cacheopts_u16_m8k16v1(
 
 // Configurations marked with:
 //  `*` - are not implemented yet
-//  `^` - are implemented in opencl_cth_released.h
+//  `^` - are implemented in opencl-c-intel.h
 
 ////////////////////////////////////////////////////////////////
 // 2D Block Load / Prefetch, 8-bit data, Rows in [1, 2, 4, 8, 16, 32], Columns in [32]:
@@ -3455,7 +3455,7 @@ void __attribute__((overloadable)) intel_sub_group_2d_block_prefetch_32b_32r8x2c
 ////////////////////////////////////////////////////////////////
 // 2D Block Load with VNNI Transform, 8-bit data, Rows in [32^], Columns in [16]:
 
-// Implemented in opencl_cth_released.h
+// Implemented in opencl-c-intel.h
 
 ////////////////////////////////////////////////////////////////
 
@@ -3524,7 +3524,7 @@ void __attribute__((overloadable)) intel_sub_group_2d_block_read_transform_16b_3
 ////////////////////////////////////////////////////////////////
 // 2D Block Load with Transpose, 32-bit data, Rows in [16], Columns in [1*, 2*, 4*, 8^]:
 
-// 8 columns version implemented in opencl_cth_released.h
+// 8 columns version implemented in opencl-c-intel.h
 
 // 1, 2 and 4 columns version TBD
 
@@ -3587,7 +3587,7 @@ void __attribute__((overloadable)) intel_sub_group_2d_block_write_8b_8r16x1c(
 ////////////////////////////////////////////////////////////////
 // 2D Block Store, 16-bit data, Rows in [1*, 2*, 4*, 8*], Columns in [16]:
 
-// Implemented in opencl_cth_released.h
+// Implemented in opencl-c-intel.h
 
 ////////////////////////////////////////////////////////////////
 

@@ -10,13 +10,12 @@ SPDX-License-Identifier: MIT
 // opencl-c-intel.h
 //
 // Intel-specific OpenCL built-in declarations that are NOT provided by the
-// stock Clang OpenCL header (opencl-c.h) shipped with LLVM 14. The standard
-// OpenCL built-ins are supplied by the Clang default header through the
-// opencl-clang flow; this file only supplements it with the Intel extensions
-// that Clang does not declare.
-//
-// Sliced verbatim from opencl_cth_released.h. Do not hand-edit declarations
-// here; update opencl_cth_released.h and re-slice instead.
+// stock Clang OpenCL header (opencl-c.h / opencl-c-base.h) shipped with LLVM 14.
+// The standard OpenCL built-ins are supplied by the Clang default header through
+// the opencl-clang flow; this file only supplements it with the Intel extensions
+// that Clang does not declare. It is the canonical Intel CT header (it replaced
+// the legacy opencl_cth_released.h) and is concatenated with the pre-release CTH
+// to form the embedded FCL resource and the BiF builtins force-include.
 //
 // Version gating:
 //   - Blocks below are Intel-exclusive across stock Clang 14/16/17.
@@ -29,7 +28,7 @@ SPDX-License-Identifier: MIT
 #define _OPENCL_C_INTEL_H_
 
 // Enable the optional FP extensions used by some declarations below (half /
-// double by-value parameters and return types). Mirrors opencl_cth_released.h.
+// double by-value parameters and return types).
 #if defined(cl_khr_fp16)
 #pragma OPENCL EXTENSION cl_khr_fp16 : enable
 #endif
@@ -43,8 +42,8 @@ SPDX-License-Identifier: MIT
 #endif // cl_khr_kernel_clock
 
 // Internal helper macros used by the Intel sub-group reduce/scan declarations
-// below. Copied from opencl_cth_released.h (these are CTH-internal and are not
-// provided by the stock Clang OpenCL header).
+// below. These are CTH-internal and are not provided by the stock Clang OpenCL
+// header.
 #define DECL_GROUP_ADD_MIN_MAX(prefix, type)                 \
     type __attribute__((overloadable)) prefix##_add(type x); \
     type __attribute__((overloadable)) prefix##_min(type x); \
