@@ -651,8 +651,7 @@ bool PrivateMemoryResolution::runOnModule(llvm::Module &M) {
     llvm::dbgs() << "[DumpDbgVarStorageInfo] DbgVarStorageMap entries:\n";
     for (const auto &KV : m_pCtx->m_DbgVarStorageMap) {
       llvm::dbgs() << "  variable=" << KV.first->getVariable()->getName() << " StorageOffset=" << KV.second.offset
-                   << " StorageSize=" << (KV.second.size.has_value() ? std::to_string(*KV.second.size) : "none")
-                   << "\n";
+                   << " StorageStride=" << KV.second.stride << " IsStackBased=" << KV.second.isStackBased << "\n";
     }
   }
 
@@ -1293,11 +1292,10 @@ bool PrivateMemoryResolution::resolveAllocaInstructions(bool privateOnStack, boo
         auto DbgDcls = IGCLLVM::findDbgDeclareUses(pAI);
         for (auto DbgDcl : DbgDcls) {
           unsigned scalarBufferOffset = m_ModAllocaInfo->getBufferOffset(pAI);
-          unsigned bufferSize = m_ModAllocaInfo->getBufferStride(pAI);
+          unsigned bufferStride = m_ModAllocaInfo->getBufferStride(pAI);
 
-          // Record storage offset/size so DwarfCompileUnit can interpret this as a
-          // stack-based location and safely inline it even with optimizations disabled (O0).
-          Ctx.m_DbgVarStorageMap[DbgDcl] = {scalarBufferOffset, bufferSize};
+          // Record stack based location which we can inline even with optimizations disabled (O0).
+          Ctx.m_DbgVarStorageMap[DbgDcl] = {scalarBufferOffset, bufferStride, /*isStackBased=*/true};
         }
       }
       // Replace all uses of original alloca with the bitcast
@@ -1590,9 +1588,9 @@ bool PrivateMemoryResolution::resolveAllocaInstructions(bool privateOnStack, boo
     if (modMD->compOpt.OptDisable) {
       auto DbgDcls = IGCLLVM::findDbgDeclareUses(pAI);
       for (auto DbgDcl : DbgDcls) {
-        // Record in the cross-pass side-map (offset only; no size needed here).
         unsigned int scalarBufferOffset = m_ModAllocaInfo->getBufferOffset(pAI);
-        Ctx.m_DbgVarStorageMap[DbgDcl] = {scalarBufferOffset, std::nullopt};
+        unsigned int bufferStride = m_ModAllocaInfo->getBufferStride(pAI);
+        Ctx.m_DbgVarStorageMap[DbgDcl] = {scalarBufferOffset, bufferStride, /*isStackBased=*/false};
       }
     }
 

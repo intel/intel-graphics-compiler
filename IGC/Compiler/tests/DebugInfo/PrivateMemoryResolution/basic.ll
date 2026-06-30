@@ -138,12 +138,15 @@ entry:
 ; CHECK-DAG: [[B_MD]] = !DILocalVariable(name: "b", arg: 2, scope: [[FSCOPE]], file: [[FILE]], line: 2
 ; CHECK-DAG: [[B_LOC]] = !DILocation(line: 2, column: 43, scope: [[FSCOPE]])
 
-; Storage offset/size are no longer attached as IR metadata; verify the side-map instead.
-; DUMP-DAG: variable=dst StorageOffset=24 StorageSize=none
-; DUMP-DAG: variable=src StorageOffset=32 StorageSize=none
-; DUMP-DAG: variable=aa StorageOffset=0 StorageSize=none
-; DUMP-DAG: variable=a StorageOffset=0 StorageSize=4
-; DUMP-DAG: variable=b StorageOffset=4 StorageSize=4
+; Storage offset/stride are no longer attached as IR metadata; verify the side-map instead.
+; StorageStride is the per-lane storage stride: dst/src are 8-byte pointers, the i32s are 4.
+; IsStackBased=0 marks private-base (O0) locations; IsStackBased=1 marks FP-relative
+; stack-call locations (test_add args a/b).
+; DUMP-DAG: variable=dst StorageOffset=24 StorageStride=8 IsStackBased=0
+; DUMP-DAG: variable=src StorageOffset=32 StorageStride=8 IsStackBased=0
+; DUMP-DAG: variable=aa StorageOffset=0 StorageStride=4 IsStackBased=0
+; DUMP-DAG: variable=a StorageOffset=0 StorageStride=4 IsStackBased=1
+; DUMP-DAG: variable=b StorageOffset=4 StorageStride=4 IsStackBased=1
 
 
 ; Function Attrs: nounwind readnone speculatable

@@ -135,11 +135,11 @@ entry:
 ; CHECK-DAG: [[B_LOC]] = !DILocation(line: 2, column: 43, scope: [[FSCOPE]])
 
 ; Storage offset/size are no longer attached as IR metadata; verify the side-map instead.
-; DUMP-DAG: variable=dst StorageOffset=24 StorageSize=none
-; DUMP-DAG: variable=src StorageOffset=32 StorageSize=none
-; DUMP-DAG: variable=aa StorageOffset=0 StorageSize=none
-; DUMP-DAG: variable=a StorageOffset=0 StorageSize=4
-; DUMP-DAG: variable=b StorageOffset=4 StorageSize=4
+; DUMP-DAG: variable=dst StorageOffset=24 StorageStride=8 IsStackBased=0
+; DUMP-DAG: variable=src StorageOffset=32 StorageStride=8 IsStackBased=0
+; DUMP-DAG: variable=aa StorageOffset=0 StorageStride=4 IsStackBased=0
+; DUMP-DAG: variable=a StorageOffset=0 StorageStride=4 IsStackBased=1
+; DUMP-DAG: variable=b StorageOffset=4 StorageStride=4 IsStackBased=1
 
 
 ; Function Attrs: nounwind readnone speculatable

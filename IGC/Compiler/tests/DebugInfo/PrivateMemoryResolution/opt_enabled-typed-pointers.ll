@@ -138,8 +138,8 @@ entry:
 
 ; Storage offset/size are no longer attached as IR metadata; verify the side-map instead.
 ; The opt-enabled path only records storage for visaStackCall functions (test_add).
-; DUMP-DAG: variable=a StorageOffset=0 StorageSize=4
-; DUMP-DAG: variable=b StorageOffset=4 StorageSize=4
+; DUMP-DAG: variable=a StorageOffset=0 StorageStride=4 IsStackBased=1
+; DUMP-DAG: variable=b StorageOffset=4 StorageStride=4 IsStackBased=1
 
 ; Function Attrs: nounwind readnone speculatable
 declare void @llvm.dbg.declare(metadata, metadata, metadata) #2

@@ -513,11 +513,19 @@ std::optional<uint32_t> ScalarVisaModule::getStorageOffset(DbgVarStorageKey dbgK
   return std::nullopt;
 }
 
-std::optional<uint32_t> ScalarVisaModule::getStorageSize(DbgVarStorageKey dbgKey) const {
+std::optional<uint32_t> ScalarVisaModule::getStorageStride(DbgVarStorageKey dbgKey) const {
   const auto &storageMap = m_pShader->GetContext()->m_DbgVarStorageMap;
   auto it = storageMap.find(dbgKey);
   if (it != storageMap.end())
-    return it->second.size;
+    return it->second.stride;
+  return std::nullopt;
+}
+
+std::optional<bool> ScalarVisaModule::getStorageIsStackBased(DbgVarStorageKey dbgKey) const {
+  const auto &storageMap = m_pShader->GetContext()->m_DbgVarStorageMap;
+  auto it = storageMap.find(dbgKey);
+  if (it != storageMap.end())
+    return it->second.isStackBased;
   return std::nullopt;
 }
 

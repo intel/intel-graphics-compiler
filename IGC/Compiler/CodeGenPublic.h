@@ -982,11 +982,13 @@ public:
   bool m_hasLegacyDebugInfo = false;
   bool m_hasEmu64BitInsts = false;
 
-  // Side-map for debug variable storage info (offset + size) computed by
-  // PrivateMemoryResolution and consumed by DwarfCompileUnit.
+  // Side-map for debug variable storage info (buffer offset + per-lane stride)
+  // computed by PrivateMemoryResolution and consumed by DwarfCompileUnit.
   struct DbgVarStorageInfo {
     uint32_t offset = 0;
-    std::optional<uint32_t> size;
+    uint32_t stride = 0;
+    // True for FP-relative stack-call locations, false for private-base locations.
+    bool isStackBased = false;
   };
   llvm::DenseMap<DbgVarStorageKey, DbgVarStorageInfo> m_DbgVarStorageMap;
   bool m_hasDPEmu = false;

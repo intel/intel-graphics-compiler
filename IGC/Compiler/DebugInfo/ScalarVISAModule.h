@@ -56,7 +56,8 @@ public:
   VISAVariableLocation GetVariableLocation(const DbgVarInstEntry *pEntry) const override;
 
   std::optional<uint32_t> getStorageOffset(DbgVarStorageKey dbgKey) const override;
-  std::optional<uint32_t> getStorageSize(DbgVarStorageKey dbgKey) const override;
+  std::optional<uint32_t> getStorageStride(DbgVarStorageKey dbgKey) const override;
+  std::optional<bool> getStorageIsStackBased(DbgVarStorageKey dbgKey) const override;
 
   void UpdateVisaId() override;
   void ValidateVisaId() override;

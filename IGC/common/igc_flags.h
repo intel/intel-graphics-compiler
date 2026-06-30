@@ -948,7 +948,7 @@ DECLARE_IGC_REGKEY(bool, DebugInfoEnforceAmd64EM, false,
 DECLARE_IGC_REGKEY(bool, DebugInfoValidation, false,
                    "Enable optional (strict) checks to detect debug information inconsistencies", false)
 DECLARE_IGC_REGKEY(bool, DumpDbgVarStorageInfo, false,
-                   "Dump StorageOffset/StorageSize entries from the debug-variable storage map", false)
+                   "Dump StorageOffset/StorageStride/IsStackBased entries from the debug-variable storage map", false)
 DECLARE_IGC_REGKEY(bool, deadLoopForFloatException, false, "enable a dead loop if float exception happened", false)
 DECLARE_IGC_REGKEY(bool, EnableIEEEFloatExceptionTrap, false, "Enable CR0 IEEE float exception trap bit", true)
 DECLARE_IGC_REGKEY(debugString, ExtraOCLOptions, 0, "Extra options for OpenCL", true)

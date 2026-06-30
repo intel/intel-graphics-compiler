@@ -499,7 +499,8 @@ public:
   /// @brief Look up the StorageOffset recorded by PrivateMemoryResolution.
   /// @return nullopt if no entry found (variable is not stack-based private memory).
   virtual std::optional<uint32_t> getStorageOffset(DbgVarStorageKey dbgKey) const { return std::nullopt; }
-  virtual std::optional<uint32_t> getStorageSize(DbgVarStorageKey dbgKey) const { return std::nullopt; }
+  virtual std::optional<uint32_t> getStorageStride(DbgVarStorageKey dbgKey) const { return std::nullopt; }
+  virtual std::optional<bool> getStorageIsStackBased(DbgVarStorageKey dbgKey) const { return std::nullopt; }
 
   /// @brief Updates VISA instruction id to current instruction number.
   virtual void UpdateVisaId() = 0;
