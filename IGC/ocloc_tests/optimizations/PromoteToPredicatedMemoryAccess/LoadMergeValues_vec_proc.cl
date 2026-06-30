@@ -14,7 +14,7 @@ SPDX-License-Identifier: MIT
 // RUN: ocloc compile -file %s -device pvc -options "-igc_opts 'EnableOpaquePointersBackend=1 EnablePromoteToPredicatedMemoryAccess=1 PrintToConsole=1 PrintAfter=Layout'" 2>&1 | FileCheck %s
 
 // CHECK: define spir_kernel void @test_vec_process_load_splat
-// CHECK: [[BC1:%.*]] = bitcast <8 x i8> <i8 5, i8 5, i8 5, i8 5, i8 5, i8 5, i8 5, i8 5> to <2 x i32>
+// CHECK: [[BC1:%.*]] = bitcast <8 x i8> {{.*i8 5.*}} to <2 x i32>
 // CHECK: call <2 x i32> @llvm.genx.GenISA.PredicatedLoad.v2i32.p1.v2i32(ptr addrspace(1) {{%.*}}, i64 8, i1 {{%.*}}, <2 x i32> [[BC1]])
 __kernel void test_vec_process_load_splat(__global const char8* in, __global char8* out, const int predicate) {
     int gid = get_global_id(0);

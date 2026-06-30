@@ -64,13 +64,13 @@ test_intty_with_fp_out_of_range(long, float, POS_INF)
 // CHECK: store <2 x i32> <i32 -1, i32 2147483647>, ptr addrspace(1) %dst
 test_intty_with_fp_out_of_range(long, double, POS_INF)
 // CHECK-LABEL: define spir_kernel void @test_ulong_half_POS_INF
-// CHECK: store <2 x i32> <i32 -1, i32 -1>, ptr addrspace(1) %dst
+// CHECK: store {{<2 x i32> (<i32 -1, i32 -1>|splat \(i32 -1\))}}, ptr addrspace(1) %dst
 test_intty_with_fp_out_of_range(ulong, half, POS_INF)
 // CHECK-LABEL: define spir_kernel void @test_ulong_float_POS_INF
-// CHECK: store <2 x i32> <i32 -1, i32 -1>, ptr addrspace(1) %dst
+// CHECK: store {{<2 x i32> (<i32 -1, i32 -1>|splat \(i32 -1\))}}, ptr addrspace(1) %dst
 test_intty_with_fp_out_of_range(ulong, float, POS_INF)
 // CHECK-LABEL: define spir_kernel void @test_ulong_double_POS_INF
-// CHECK: store <2 x i32> <i32 -1, i32 -1>, ptr addrspace(1) %dst
+// CHECK: store {{<2 x i32> (<i32 -1, i32 -1>|splat \(i32 -1\))}}, ptr addrspace(1) %dst
 test_intty_with_fp_out_of_range(ulong, double, POS_INF)
 
 /*////////////////////
