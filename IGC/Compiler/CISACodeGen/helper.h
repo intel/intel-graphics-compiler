@@ -563,10 +563,20 @@ inline void updateDebugLoc(llvm::Instruction *pOrigin, llvm::Instruction *pNew) 
   pNew->setDebugLoc(pOrigin->getDebugLoc());
 }
 
+inline bool isDebugInst(const llvm::Instruction *I) {
+#if LLVM_VERSION_MAJOR < 22
+  return llvm::isa<llvm::DbgInfoIntrinsic>(I);
+#else
+  // On LLVM >= 22 debug variables are stored as DbgVariableRecord non-instruction
+  // objects; no instruction in the stream can be a debug intrinsic.
+  return false;
+#endif
+}
+
 inline bool isDbgIntrinsic(const llvm::Instruction *I) {
   if (auto *GXI = llvm::dyn_cast<llvm::GenIntrinsicInst>(I))
     return GXI->getIntrinsicID() == llvm::GenISAIntrinsic::GenISA_CatchAllDebugLine;
-  return llvm::isa<llvm::DbgInfoIntrinsic>(I);
+  return isDebugInst(I);
 }
 
 llvm::ConstantInt *getConstantSInt(llvm::IRBuilder<> &Builder, const int bitSize, int64_t val);

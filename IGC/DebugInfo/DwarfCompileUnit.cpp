@@ -1275,38 +1275,6 @@ void CompileUnit::constructTypeDIE(DIE &Buffer, DIDerivedType *DTy) {
   }
 }
 
-/// Return true if the type is appropriately scoped to be contained inside
-/// its own type unit.
-static bool isTypeUnitScoped(DIType *Ty, const DwarfDebug *DD) {
-  DIScope *Parent = DD->resolve(Ty->getScope());
-  while (Parent) {
-    // Don't generate a hash for anything scoped inside a function.
-    if (isa<DISubprogram>(Parent))
-      return false;
-
-    Parent = DD->resolve(Parent->getScope());
-  }
-  return true;
-}
-
-/// Return true if the type should be split out into a type unit.
-static bool shouldCreateTypeUnit(DICompositeType *CTy, const DwarfDebug *DD) {
-  uint16_t Tag = (uint16_t)CTy->getTag();
-
-  switch (Tag) {
-  case dwarf::DW_TAG_structure_type:
-  case dwarf::DW_TAG_union_type:
-  case dwarf::DW_TAG_enumeration_type:
-  case dwarf::DW_TAG_class_type:
-    // If this is a class, structure, union, or enumeration type
-    // that is a definition (not a declaration), and not scoped
-    // inside a function then separate this out as a type unit.
-    return !CTy->isForwardDecl() && isTypeUnitScoped(CTy, DD);
-  default:
-    return false;
-  }
-}
-
 void CompileUnit::constructTypeDIE(DIE &Buffer, DISubroutineType *STy) {
   DITypeRefArray Elements = cast<DISubroutineType>(STy)->getTypeArray();
   DIType *RTy = resolve(Elements[0]);
@@ -1464,12 +1432,6 @@ void CompileUnit::constructTypeDIE(DIE &Buffer, DICompositeType *CTy) {
       addSourceLine(&Buffer, CTy);
     }
   }
-  // If this is a type applicable to a type unit it then add it to the
-  // list of types we'll compute a hash for later.
-  if (shouldCreateTypeUnit(CTy, DD)) {
-    DD->addTypeUnitType(&Buffer);
-  }
-
   // Add flags if available
   if (CTy->isTypePassByValue())
     addUInt(&Buffer, dwarf::DW_AT_calling_convention, dwarf::DW_FORM_data1, dwarf::DW_CC_pass_by_value);

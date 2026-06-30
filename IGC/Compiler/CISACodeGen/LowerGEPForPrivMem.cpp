@@ -406,8 +406,7 @@ static bool hasMultiPartitionVectorAccess(llvm::AllocaInst &AI, uint32_t partiti
     for (llvm::User *U : V->users()) {
       if (auto *II = llvm::dyn_cast<llvm::IntrinsicInst>(U)) {
         llvm::Intrinsic::ID IID = II->getIntrinsicID();
-        if (IID == llvm::Intrinsic::lifetime_start || IID == llvm::Intrinsic::lifetime_end ||
-            llvm::isa<llvm::DbgInfoIntrinsic>(II))
+        if (IID == llvm::Intrinsic::lifetime_start || IID == llvm::Intrinsic::lifetime_end || isDebugInst(II))
           continue;
       }
 

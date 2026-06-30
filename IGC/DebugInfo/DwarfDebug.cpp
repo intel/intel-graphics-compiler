@@ -23,21 +23,15 @@ See LICENSE.TXT for details.
 #include "llvm/ADT/STLExtras.h"
 #include "llvm/BinaryFormat/Dwarf.h"
 #include "llvm/IR/Constants.h"
-#include "llvm/IR/DIBuilder.h"
 #include "llvm/IR/DebugInfo.h"
 #include "llvm/IR/DebugInfoMetadata.h"
 #include "llvm/IR/Function.h"
 #include "llvm/IR/InstIterator.h"
-#include "llvm/IR/Instructions.h"
 #include "llvm/IR/IntrinsicInst.h"
 #include "llvm/IR/Module.h"
-#include "llvm/MC/MCAsmInfo.h"
-#include "llvm/MC/MCDwarf.h"
 #include "llvm/MC/MCSection.h"
-#include "llvm/MC/MCStreamer.h"
 #include "llvm/MC/MCSymbol.h"
 #include "llvm/Support/Debug.h"
-#include "llvm/Support/FormattedStream.h"
 #include "llvm/Support/LEB128.h"
 #include "llvm/Support/MD5.h"
 #include "common/LLVMWarningsPop.hpp"
@@ -54,8 +48,8 @@ See LICENSE.TXT for details.
 #include "VISADebugInfo.hpp"
 #include "VISAModule.hpp"
 
-#include <list>
 #include <optional>
+#include <set>
 #include <unordered_set>
 
 #include "Probe/Assertion.h"
@@ -67,36 +61,8 @@ using namespace IGC;
 
 //===----------------------------------------------------------------------===//
 
-// Configuration values for initial hash set sizes (log2).
-//
-static const unsigned InitAbbreviationsSetSize = 9; // log2(512)
-
 const char *beginSymbol = ".begin";
 const char *endSymbol = ".end";
-
-bool DbgVariable::isBlockByrefVariable() const {
-  // isBlockByrefStruct is no more support by LLVM10 IR - more info in this
-  // commit below:
-  // https://github.com/llvm/llvm-project/commit/0779dffbd4a927d7bf9523482481248c51796907
-  return false;
-}
-
-#if LLVM_VERSION_MAJOR < 22
-static bool IsDebugInst(const llvm::Instruction *Inst) {
-  if (!isa<DbgInfoIntrinsic>(Inst))
-    return false;
-#ifndef NDEBUG
-  if (!DbgVariable::IsSupportedDebugInst(cast<DbgVariableIntrinsic>(Inst))) {
-    LLVM_DEBUG(dbgs() << "WARNING! Unsupported DbgInfo Instruction detected:\n"; DbgVariable::dumpDbgInst(Inst));
-  }
-#endif // NDEBUG
-  return true;
-}
-#else
-// On LLVM >= 22 debug variables are stored as DbgVariableRecord non-instruction
-// objects; no instruction in the stream can be a debug intrinsic.
-static bool IsDebugInst(const llvm::Instruction *) { return false; }
-#endif
 
 bool DbgVariable::IsSupportedDebugInst(const DbgVarInstEntry *Inst) {
   IGC_ASSERT(Inst);
@@ -333,9 +299,7 @@ DwarfDISubprogramCache::DISubprogramNodes DwarfDISubprogramCache::findNodes(cons
 }
 DwarfDebug::DwarfDebug(StreamEmitter *A, VISAModule *M)
     : Asm(A), EmitSettings(Asm->GetEmitterSettings()), m_pModule(M), DISPCache(nullptr), FirstCU(0),
-      // AbbreviationsSet(InitAbbreviationsSetSize),
-      SourceIdMap(DIEValueAllocator), PrevLabel(nullptr), GlobalCUIndexCount(0), StringPool(DIEValueAllocator),
-      NextStringPoolNumber(0), StringPref("info_string") {
+      SourceIdMap(DIEValueAllocator), GlobalCUIndexCount(0) {
 
   DwarfVersion = getDwarfVersionFromModule(M->GetModule());
   // Currently the maximum version of dwarf that LLVM should emit is 4
@@ -343,16 +307,6 @@ DwarfDebug::DwarfDebug(StreamEmitter *A, VISAModule *M)
     Asm->SetDwarfVersion(DwarfVersion);
 }
 
-MCSymbol *DwarfDebug::getStringPoolSym() { return Asm->GetTempSymbol(StringPref); }
-
-MCSymbol *DwarfDebug::getStringPoolEntry(StringRef Str) {
-  std::pair<MCSymbol *, unsigned> &Entry = StringPool[Str];
-  if (!Entry.first) {
-    Entry.second = StringPool.size() - 1;
-    Entry.first = Asm->GetTempSymbol(StringPref, Entry.second);
-  }
-  return Entry.first;
-}
 void DwarfDebug::registerVISA(IGC::VISAModule *M) {
   IGC_ASSERT(M);
   IGC_ASSERT_MESSAGE(M->getPointerSize() == DwarfDebug::PointerSize, "only 64-bit platforms supported");
@@ -1399,9 +1353,6 @@ void DwarfDebug::endModule() {
   // Finalize the debug info for the module.
   finalizeModuleInfo();
 
-  // Emit visible names into a debug str section.
-  emitDebugStr();
-
   // Emit all the DIEs into a debug info section.
   emitDebugInfo();
 
@@ -2214,116 +2165,6 @@ IGC::DwarfDebug::DebugLocRef DwarfDebug::CopyDebugLoc(unsigned int o, bool reloc
   return LocRef;
 }
 
-// Process beginning of an instruction.
-void DwarfDebug::beginInstruction(const Instruction *MI, bool recordSrcLine) {
-  // Check if source location changes, but ignore DBG_VALUE locations.
-  if (!IsDebugInst(MI) && recordSrcLine) {
-    DebugLoc DL = MI->getDebugLoc();
-    if (DL && DL != PrevInstLoc) {
-      unsigned Flags = 0;
-      PrevInstLoc = DL;
-      if (DL == PrologEndLoc) {
-        Flags |= DWARF2_FLAG_PROLOGUE_END;
-        PrologEndLoc = DebugLoc();
-      }
-      if (!PrologEndLoc) {
-        bool setIsStmt = true;
-        auto line = DL.getLine();
-        auto inlinedAt = DL.getInlinedAt();
-        auto it = isStmtSet.find(line);
-
-        if (it != isStmtSet.end()) {
-          // is_stmt is set only if line#,
-          // inlinedAt combination is
-          // never seen before.
-          auto &iat = (*it).second;
-          for (auto &item : iat) {
-            if (item == inlinedAt) {
-              setIsStmt = false;
-              break;
-            }
-          }
-        }
-
-        if (setIsStmt) {
-          Flags |= DWARF2_FLAG_IS_STMT;
-
-          isStmtSet[line].push_back(inlinedAt);
-        }
-      }
-
-      const MDNode *Scope = DL.getScope();
-      recordSourceLine(DL.getLine(), DL.getCol(), Scope, Flags);
-    }
-  }
-
-  // Insert labels where requested.
-  DenseMap<const Instruction *, MCSymbol *>::iterator I = LabelsBeforeInsn.find(MI);
-
-  // No label needed or Label already assigned.
-  if (I == LabelsBeforeInsn.end() || I->second)
-    return;
-
-  if (!PrevLabel) {
-    PrevLabel = Asm->CreateTempSymbol();
-    Asm->EmitLabel(PrevLabel);
-  }
-  I->second = PrevLabel;
-}
-
-// Process end of an instruction.
-void DwarfDebug::endInstruction(const Instruction *MI) {
-  // Don't create a new label after DBG_VALUE entries.
-  // They don't generate code.
-  if (!IsDebugInst(MI))
-    PrevLabel = 0;
-
-  DenseMap<const Instruction *, MCSymbol *>::iterator I = LabelsAfterInsn.find(MI);
-
-  // No label needed or Label already assigned.
-  if (I == LabelsAfterInsn.end() || I->second)
-    return;
-
-  // We need a label after this instruction.
-  if (!PrevLabel) {
-    PrevLabel = Asm->CreateTempSymbol();
-    Asm->EmitLabel(PrevLabel);
-  }
-  I->second = PrevLabel;
-}
-
-// Each LexicalScope has first instruction and last instruction to mark
-// beginning and end of a scope respectively. Create an inverse map that list
-// scopes starts (and ends) with an instruction. One instruction may start (or
-// end) multiple scopes. Ignore scopes that are not reachable.
-void DwarfDebug::identifyScopeMarkers() {
-  SmallVector<LexicalScope *, 4> WorkList;
-  WorkList.push_back(LScopes.getCurrentFunctionScope());
-  while (!WorkList.empty()) {
-    LexicalScope *S = WorkList.pop_back_val();
-
-    const SmallVectorImpl<LexicalScope *> &Children = S->getChildren();
-    if (!Children.empty()) {
-      for (SmallVectorImpl<LexicalScope *>::const_iterator SI = Children.begin(), SE = Children.end(); SI != SE; ++SI) {
-        WorkList.push_back(*SI);
-      }
-    }
-
-    if (S->isAbstractScope())
-      continue;
-
-    const SmallVectorImpl<InsnRange> &Ranges = S->getRanges();
-    if (Ranges.empty())
-      continue;
-    for (SmallVectorImpl<InsnRange>::const_iterator RI = Ranges.begin(), RE = Ranges.end(); RI != RE; ++RI) {
-      IGC_ASSERT_MESSAGE(RI->first, "InsnRange does not have first instruction!");
-      IGC_ASSERT_MESSAGE(RI->second, "InsnRange does not have second instruction!");
-      requestLabelBeforeInsn(RI->first);
-      requestLabelAfterInsn(RI->second);
-    }
-  }
-}
-
 // Walk up the scope chain of given debug loc and find line number info
 // for the function.
 static DebugLoc getFnDebugLoc(DebugLoc DL, const LLVMContext &Ctx) {
@@ -2371,9 +2212,6 @@ void DwarfDebug::beginFunction(const Function *MF, IGC::VISAModule *v) {
   IGC_ASSERT_MESSAGE(UserVariables.empty(), "Maps weren't cleaned");
   IGC_ASSERT_MESSAGE(DbgValues.empty(), "Maps weren't cleaned");
 
-  // Make sure that each lexical scope will have a begin/end label.
-  identifyScopeMarkers();
-
   // Set DwarfCompileUnitID in MCContext to the Compile Unit this function
   // belongs to so that we add to the correct per-cu line table in the
   // non-asm case.
@@ -2404,12 +2242,6 @@ void DwarfDebug::beginFunction(const Function *MF, IGC::VISAModule *v) {
       DbgVarEntryList &History = DbgValues[Var];
       if (History.empty()) {
         UserVariables.push_back(Var);
-        // The first mention of a function argument gets the FunctionBeginSym
-        // label, so arguments are visible when breaking at function entry.
-        const DIVariable *DV = cast_or_null<DIVariable>(Var);
-        if (DV && DV->getTag() == dwarf::DW_TAG_formal_parameter && getDISubprogram(DV->getScope())->describes(MF)) {
-          LabelsBeforeInsn[MI] = FunctionBeginSym;
-        }
       } else {
         // We have seen this variable before. Try to coalesce DBG_VALUEs.
         // Coalesce identical entries at the end of History.
@@ -2430,21 +2262,6 @@ void DwarfDebug::beginFunction(const Function *MF, IGC::VISAModule *v) {
       }
     }
   }
-
-  // TODO: fixup non-deterministic traversal
-  for (const auto &HistoryInfo : DbgValues) {
-    const DbgVarEntryList &History = HistoryInfo.second;
-    if (History.empty())
-      continue;
-
-    // Request labels for the full history.
-    for (const DbgVarInstEntry *entry : History) {
-      requestLabelBeforeInsn(dbgVarAnchorInst(entry));
-    }
-  }
-
-  PrevInstLoc = DebugLoc();
-  PrevLabel = FunctionBeginSym;
 
   // Record beginning of function.
   if (PrologEndLoc) {
@@ -2573,9 +2390,6 @@ void DwarfDebug::endFunction(const Function *MF) {
   UserVariables.clear();
   DbgValues.clear();
   AbstractVariables.clear();
-  LabelsBeforeInsn.clear();
-  LabelsAfterInsn.clear();
-  PrevLabel = NULL;
   SameIATInsts.clear();
 }
 
@@ -2726,7 +2540,7 @@ void DwarfDebug::emitSectionLabels() {
   DwarfInfoSectionSym = emitSectionSym(Asm, Asm->GetDwarfInfoSection(), "section_info");
   DwarfAbbrevSectionSym = emitSectionSym(Asm, Asm->GetDwarfAbbrevSection(), "section_abbrev");
 
-  DwarfFrameSectionSym = emitSectionSym(Asm, Asm->GetDwarfFrameSection(), "dwarf_frame");
+  emitSectionSym(Asm, Asm->GetDwarfFrameSection(), "dwarf_frame");
 
   if (const MCSection *MacroInfo = Asm->GetDwarfMacroInfoSection()) {
     emitSectionSym(Asm, MacroInfo);
@@ -2735,18 +2549,18 @@ void DwarfDebug::emitSectionLabels() {
   DwarfLineSectionSym = emitSectionSym(Asm, Asm->GetDwarfLineSection(), "section_line");
   emitSectionSym(Asm, Asm->GetDwarfLocSection());
 
-  DwarfStrSectionSym = emitSectionSym(Asm, Asm->GetDwarfStrSection(), "info_string");
+  emitSectionSym(Asm, Asm->GetDwarfStrSection(), "info_string");
 
   if (DwarfVersion >= 5) {
     emitSectionSym(Asm, Asm->GetDwarfAddrSection(), "debug_addr");
   } else {
-    DwarfDebugRangeSectionSym = emitSectionSym(Asm, Asm->GetDwarfRangesSection(), "debug_range");
-    DwarfDebugLocSectionSym = emitSectionSym(Asm, Asm->GetDwarfLocSection(), "section_debug_loc");
+    emitSectionSym(Asm, Asm->GetDwarfRangesSection(), "debug_range");
+    emitSectionSym(Asm, Asm->GetDwarfLocSection(), "section_debug_loc");
   }
 
   emitSectionSym(Asm, Asm->GetDataSection());
 
-  TextSectionSym = emitSectionSym(Asm, Asm->GetTextSection(), "text_begin");
+  emitSectionSym(Asm, Asm->GetTextSection(), "text_begin");
 }
 
 unsigned AddressPool::getIndex(const MCSymbol *Sym) {
@@ -2793,34 +2607,6 @@ void AddressPool::emit(StreamEmitter &Asm, unsigned DwarfVersion) {
   }
 
   Asm.EmitLabel(EndLabel);
-}
-
-// Emit visible names into a debug str section.
-void DwarfDebug::emitDebugStr() {
-  const MCSection *StrSection = Asm->GetDwarfStrSection();
-  if (StringPool.empty())
-    return;
-
-  // Start the dwarf str section.
-  Asm->SwitchSection(StrSection);
-
-  // Get all of the string pool entries and put them in an array by their ID so
-  // we can sort them.
-  SmallVector<std::pair<unsigned, StringMapEntry<std::pair<MCSymbol *, unsigned>> *>, 64> Entries;
-
-  for (StringMap<std::pair<MCSymbol *, unsigned>>::iterator I = StringPool.begin(), E = StringPool.end(); I != E; ++I) {
-    Entries.push_back(std::make_pair(I->second.second, &*I));
-  }
-
-  array_pod_sort(Entries.begin(), Entries.end());
-
-  for (unsigned i = 0, e = Entries.size(); i != e; ++i) {
-    // Emit a label for reference from debug information entries.
-    Asm->EmitLabel(Entries[i].second->getValue().first);
-
-    // Emit the string itself with a terminating null byte.
-    Asm->EmitBytes(StringRef(Entries[i].second->getKeyData(), Entries[i].second->getKeyLength() + 1));
-  }
 }
 
 // Recursively emits a debug information entry.
@@ -3967,8 +3753,7 @@ void DbgVariable::print(raw_ostream &O, bool NestedAbstract) const {
       O << Prefix << "DbgEntry: " << *m_DbgEntry << "\n";
 #endif
   } else
-    O << Prefix << "DbgEntry: "
-      << "none;\n";
+    O << Prefix << "DbgEntry: " << "none;\n";
 
   if (hasFragmentExprs()) {
     O << Prefix << "Fragments (" << FragmentExprs.size() << "): [";
@@ -4001,12 +3786,4 @@ void DbgVariable::printDbgInst(llvm::raw_ostream &O, const llvm::Instruction *In
 
 #ifndef NDEBUG
 void DbgVariable::dump() const { print(dbgs(), false); }
-
-// Debug intrinsics were replaced with non-instruction records in LLVM 22.
-#if LLVM_VERSION_MAJOR < 22
-void DbgVariable::dumpDbgInst(const llvm::Instruction *Inst) {
-  IGC_ASSERT(Inst);
-  printDbgInst(dbgs(), Inst);
-}
-#endif // LLVM_VERSION_MAJOR < 22
 #endif // NDEBUG

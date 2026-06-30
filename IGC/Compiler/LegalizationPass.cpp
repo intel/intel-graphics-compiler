@@ -151,7 +151,7 @@ void Legalization::unifyReturnInsts(llvm::Function &F) {
 }
 
 void Legalization::visitInstruction(llvm::Instruction &I) {
-  if (!llvm::isa<llvm::DbgInfoIntrinsic>(&I))
+  if (!isDebugInst(&I))
     m_ctx->m_instrTypes.numInsts++;
 
   BasicBlock *dBB = I.getParent();

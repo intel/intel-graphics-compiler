@@ -200,7 +200,7 @@ void CheckInstrTypes::checkGlobalLocal(llvm::Instruction &I) {
 }
 
 void CheckInstrTypes::visitInstruction(llvm::Instruction &I) {
-  if (!llvm::isa<llvm::DbgInfoIntrinsic>(&I)) {
+  if (!isDebugInst(&I)) {
     g_InstrTypes.numInsts++;
     checkGlobalLocal(I);
   }

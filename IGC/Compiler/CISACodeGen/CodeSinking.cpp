@@ -331,7 +331,7 @@ bool CodeSinking::processBlock(BasicBlock &blk) {
       prevLoca = inst;
     }
     // intrinsic like discard has no explict use, gets skipped here
-    else if (isa<DbgInfoIntrinsic>(inst) || inst->isTerminator() || isa<PHINode>(inst) || inst->use_empty()) {
+    else if (isDebugInst(inst) || inst->isTerminator() || isa<PHINode>(inst) || inst->use_empty()) {
       prevLoca = inst;
     } else {
       Instruction *undoLoca = prevLoca;
@@ -613,7 +613,7 @@ uint CodeSinking::estimateLiveOutPressure(BasicBlock *blk, const DataLayout *DL)
     if (!processedBegin)
       --I;
 
-    if (isa<DbgInfoIntrinsic>(inst))
+    if (isDebugInst(inst))
       continue;
     // intrinsic like discard has no explicit use, get skipped here
     if (inst->use_empty())

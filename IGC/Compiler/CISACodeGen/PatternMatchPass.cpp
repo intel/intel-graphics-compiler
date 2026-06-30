@@ -152,7 +152,7 @@ inline Value *SkipCanonicalize(Value *v) {
 }
 
 bool CodeGenPatternMatch::IsDbgInst(llvm::Instruction &inst) const {
-  if (llvm::isa<llvm::DbgInfoIntrinsic>(&inst)) {
+  if (isDebugInst(&inst)) {
     // FIXME: We probably don't need that.
     return true;
   }
