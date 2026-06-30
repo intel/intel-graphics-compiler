@@ -480,6 +480,49 @@ void PeepholeTypeLegalizer::legalizeBinaryOperator(Instruction &I) {
         }
         break;
       }
+      case Instruction::Shl: {
+        if (auto val = dyn_cast<ConstantInt>(Src2)) {
+          int64_t ShiftAmt = val->getSExtValue();
+          IGC_ASSERT(ShiftAmt >= 0 && ShiftAmt < (int64_t)Src1width);
+          int64_t EltShift = ShiftAmt / promoteToInt;
+          uint64_t NewShiftAmt = ShiftAmt % promoteToInt;
+          // The element at position Idx of the result is built from the source
+          // element shifted up by EltShift whole elements.
+          int64_t SrcIdx = (int64_t)Idx - EltShift;
+
+          auto getElt = [&](Value *Vec, int64_t i) -> Value * {
+            // if the source index is out of bounds (shifted in from below or
+            // above the vector), the contribution is 0
+            if (i >= 0 && i < (int64_t)cast<IGCLLVM::FixedVectorType>(Vec->getType())->getNumElements())
+              return m_builder->CreateExtractElement(Vec, (uint64_t)i);
+            else
+              return ConstantInt::get(IntegerType::get(I.getContext(), promoteToInt), 0, false);
+          };
+
+          if (NewShiftAmt == 0) {
+            // Simple case: we can just move whole elements up
+            NewInst = getElt(NewLargeSrc1VecForm, SrcIdx);
+          } else {
+            auto lshr = [&](Value *Op0, uint64_t ShiftAmt) -> Value * {
+              if (auto *C = dyn_cast<Constant>(Op0); C && C->isNullValue())
+                return C;
+              return m_builder->CreateLShr(Op0, ShiftAmt);
+            };
+            auto shl = [&](Value *Op0, uint64_t ShiftAmt) -> Value * {
+              if (auto *C = dyn_cast<Constant>(Op0); C && C->isNullValue())
+                return C;
+              return m_builder->CreateShl(Op0, ShiftAmt);
+            };
+            // V[Idx] = (V[SrcIdx] << NewShiftAmt) | (V[SrcIdx - 1] >> (promoteToInt - NewShiftAmt))
+            NewInst = m_builder->CreateOr(shl(getElt(NewLargeSrc1VecForm, SrcIdx), NewShiftAmt),
+                                          lshr(getElt(NewLargeSrc1VecForm, SrcIdx - 1), promoteToInt - NewShiftAmt));
+          }
+        } else {
+          instSupported = false;
+          IGC_ASSERT_MESSAGE(0, "Shift by amount is not a constant.");
+        }
+        break;
+      }
       case Instruction::Mul:
         if (Idx == 0) {
           NewInst = m_builder->CreateMul(m_builder->CreateExtractElement(NewLargeSrc1VecForm, Idx),
