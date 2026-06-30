@@ -405,6 +405,27 @@ void PeepholeTypeLegalizer::legalizeBinaryOperator(Instruction &I) {
 
   Src1width = Src1->getType()->getScalarSizeInBits();
 
+  if (Src1width == 1 && isa<BinaryOperator>(&I)) {
+    Value *NewVal = nullptr;
+    switch (I.getOpcode()) {
+    case Instruction::Add:
+    case Instruction::Sub:
+      NewVal = m_builder->CreateXor(Src1, Src2);
+      break;
+    case Instruction::Mul:
+      NewVal = m_builder->CreateAnd(Src1, Src2);
+      break;
+    default:
+      break;
+    }
+    if (NewVal) {
+      I.replaceAllUsesWith(NewVal);
+      I.eraseFromParent();
+      Changed = true;
+      return;
+    }
+  }
+
   if (isLegalInteger(Src1width) || Src1width == 1) // nothing to legalize
     return;
 

@@ -43,3 +43,30 @@ define <2 x float> @test_2i32_to_i64_to_2f(<2 x i32> %src) {
   %2 = bitcast i64 %1 to <2 x float>
   ret <2 x float> %2
 }
+
+define i1 @test_add_i1_to_xor(i1 %src0, i1 %src1) {
+; CHECK-LABEL: @test_add_i1_to_xor(
+; CHECK:    [[TMP1:%.*]] = xor i1 [[SRC0:%.*]], [[SRC1:%.*]]
+; CHECK:    ret i1 [[TMP1]]
+
+  %1 = add i1 %src0, %src1
+  ret i1 %1
+}
+
+define i1 @test_sub_i1_to_xor(i1 %src0, i1 %src1) {
+; CHECK-LABEL: @test_sub_i1_to_xor(
+; CHECK:    [[TMP1:%.*]] = xor i1 [[SRC0:%.*]], [[SRC1:%.*]]
+; CHECK:    ret i1 [[TMP1]]
+
+  %1 = sub i1 %src0, %src1
+  ret i1 %1
+}
+
+define i1 @test_mul_i1_to_and(i1 %src0, i1 %src1) {
+; CHECK-LABEL: @test_mul_i1_to_and(
+; CHECK:    [[TMP1:%.*]] = and i1 [[SRC0:%.*]], [[SRC1:%.*]]
+; CHECK:    ret i1 [[TMP1]]
+
+  %1 = mul i1 %src0, %src1
+  ret i1 %1
+}
