@@ -1033,7 +1033,7 @@ bool LivenessAnalysis::writeWholeRegion(const G4_BB *bb, const G4_INST *inst,
     return false;
   }
 
-  if (inst->isFCall())
+  if (inst->isFCall() || inst->isCall())
     return true;
 
   // Flags may be partially written when used as the destination
