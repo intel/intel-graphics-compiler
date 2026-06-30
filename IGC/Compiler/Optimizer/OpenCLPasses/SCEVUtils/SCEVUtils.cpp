@@ -147,6 +147,21 @@ static bool deconstructSCEVImpl(const SCEV *S, ScalarEvolution &SE, Loop *L, SCE
                                 DeconstructedSCEV &Result) {
   // In case of ext instruction analyze nested content.
   if (isa<SCEVZeroExtendExpr, SCEVSignExtendExpr>(S)) {
+
+    // Type extension can avoid expected iteration wrap-around. We need to prevent it.
+    const SCEV *DES = SCEVUtils::dropExt(S);
+    unsigned SizeDES = DES->getType()->getScalarSizeInBits();
+    // By default we recognize 32bit->64bit extension as type legalization, not part of algorithm.
+    if (SE.containsAddRecurrence(S) && (IGC_IS_FLAG_ENABLED(EnableGEPLSRStrictWrapAroundCheck) ||
+                                        (S->getType()->getScalarSizeInBits() != 64 || SizeDES != 32))) {
+      if (const SCEVAddRecExpr *AR = dyn_cast<SCEVAddRecExpr>(DES)) {
+        if (!(AR->hasNoUnsignedWrap() || AR->hasNoSignedWrap()))
+          return false;
+      } else {
+        return false;
+      }
+    }
+
     if (!deconstructSCEVImpl(dyn_cast<SCEVCastExpr>(S)->getOperand(), SE, L, E, Result))
       return false;
 
