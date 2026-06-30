@@ -441,8 +441,10 @@ VISAVariableLocation ScalarVisaModule::GetVariableLocation(const DbgVarInstEntry
     }
   }
 
-  // SLM global variable
-  if (isa<GlobalVariable>(pVal)) {
+  // SLM global variable.
+  // Only variables in local address space are SLM-mapped;
+  // constant/global address-space globals are also GlobalVariables but are not in the locals map.
+  if (isa<GlobalVariable>(pVal) && pType->isPointerTy() && pType->getPointerAddressSpace() == ADDRESS_SPACE_LOCAL) {
     unsigned int offset = m_pShader->GetSLMMappingValue(pVal);
     offset |= VALID_LOCAL_HIGH_BITS;
     return VISAVariableLocation(offset, true, this);
