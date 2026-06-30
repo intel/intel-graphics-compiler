@@ -433,6 +433,24 @@ define spir_kernel void @test_udiv_max(i32 %src1) {
   ret void
 }
 
+define spir_func void @test_udiv_zero(i64 %a) {
+; CHECK-LABEL: @test_udiv_zero
+; CHECK:    call void @use.i64(i64 poison)
+; CHECK:    ret void
+  %c = udiv i64 %a, 0
+  call void @use.i64(i64 %c)
+  ret void
+}
+
+define spir_func void @test_sdiv_zero(i64 %a) {
+; CHECK-LABEL: @test_sdiv_zero
+; CHECK:    call void @use.i64(i64 poison)
+; CHECK:    ret void
+  %c = sdiv i64 %a, 0
+  call void @use.i64(i64 %c)
+  ret void
+}
+
 declare void @use.i16(i16)
 declare void @use.i32(i32)
 declare void @use.i64(i64)

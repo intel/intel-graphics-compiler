@@ -129,6 +129,8 @@ struct IntDivConstantReduction : public FunctionPass {
       result = expandPowerOf2Signed(B, isMod, divRem, dividend, divisorValue);
     } else if (!isSigned && divisorValue.isPowerOf2()) {
       result = expandPowerOf2Unsigned(B, dividend, divisorValue, isMod);
+    } else if (divisor->isZero()) {
+      result = PoisonValue::get(dividend->getType());
     } else {
       // non-power of twos require multiplication by a shifted reciprocal
       result = expandNonPowerOf2(F, divRem, B, dividend, divisor, isSigned, isMod);
