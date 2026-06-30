@@ -16,7 +16,8 @@ include_directories("${CMAKE_CURRENT_SOURCE_DIR}")
 # SPIR-V capability names to numeric opcodes for the YAML returned to NEO via
 # GetCompilerSupportedSPIRVExtensionsYAML (consumed by cl_khr_spirv_queries /
 # ze_khr_spirv_queries).
-set(IGC_OCL_SPIRV_HEADERS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../SPIRV-Headers-OCL")
+string(REGEX MATCH "^[0-9]+" _ocl_spirv_llvm_major "${IGC_OPTION__LLVM_PREFERRED_VERSION}")
+set(IGC_OCL_SPIRV_HEADERS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../SPIRV-Headers-OCL-${_ocl_spirv_llvm_major}")
 include_directories(BEFORE "${IGC_OCL_SPIRV_HEADERS_DIR}/include")
 
 #include_directories("${CMAKE_CURRENT_SOURCE_DIR}/ocl_igc_shared/executable_format")
