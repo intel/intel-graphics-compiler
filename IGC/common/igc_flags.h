@@ -624,6 +624,8 @@ DECLARE_IGC_REGKEY(bool, EnableGEPLSRMulExpr, true,
                    true)
 DECLARE_IGC_REGKEY(bool, EnableGEPLSRUnknownConstantStep, false,
                    "Experimental: Enables reduction with constant, but unknown step.", true)
+DECLARE_IGC_REGKEY(bool, EnableGEPLSRStrictWrapAroundCheck, false,
+                   "Experimental: Enable strict Wrap-around check, relaxed by default", true)
 DECLARE_IGC_REGKEY(bool, PrintWaveClusteredInterleave, false,
                    "(Debug) Print if WaveClusteredInterleave pattern was found.", true)
 DECLARE_IGC_REGKEY(DWORD, FPRoundingModeCoalescingMaxDistance, 20,
