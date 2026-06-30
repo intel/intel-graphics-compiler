@@ -74,9 +74,141 @@ float16 __attribute__((overloadable))
 intel_convert_as_bfloat1616_float16(ushort16 source);
 #endif // defined(cl_intel_bfloat16_conversions)
 
+// ===== native_* half / double overloads =====
+// The OpenCL spec only mandates the native_* fast-math builtins for float, and
+// stock Clang's opencl-c.h declares them for float only. IGC additionally
+// provides half and double variants; supplement them here (Clang provides none).
+#define DECL_NATIVE_UNARY(NAME, T)                    \
+    T __attribute__((overloadable))     NAME(T x);    \
+    T##2 __attribute__((overloadable))  NAME(T##2 x); \
+    T##3 __attribute__((overloadable))  NAME(T##3 x); \
+    T##4 __attribute__((overloadable))  NAME(T##4 x); \
+    T##8 __attribute__((overloadable))  NAME(T##8 x); \
+    T##16 __attribute__((overloadable)) NAME(T##16 x);
+
+#define DECL_NATIVE_BINARY(NAME, T)                           \
+    T __attribute__((overloadable))     NAME(T x, T y);       \
+    T##2 __attribute__((overloadable))  NAME(T##2 x, T##2 y); \
+    T##3 __attribute__((overloadable))  NAME(T##3 x, T##3 y); \
+    T##4 __attribute__((overloadable))  NAME(T##4 x, T##4 y); \
+    T##8 __attribute__((overloadable))  NAME(T##8 x, T##8 y); \
+    T##16 __attribute__((overloadable)) NAME(T##16 x, T##16 y);
+
+#if defined(cl_khr_fp16)
+DECL_NATIVE_UNARY(native_exp, half)
+DECL_NATIVE_UNARY(native_exp2, half)
+DECL_NATIVE_UNARY(native_exp10, half)
+DECL_NATIVE_UNARY(native_log, half)
+DECL_NATIVE_UNARY(native_log2, half)
+DECL_NATIVE_BINARY(native_powr, half)
+DECL_NATIVE_UNARY(native_recip, half)
+DECL_NATIVE_UNARY(native_rsqrt, half)
+DECL_NATIVE_UNARY(native_sqrt, half)
+#endif // defined(cl_khr_fp16)
+
+#if defined(cl_khr_fp64)
+DECL_NATIVE_UNARY(native_cos, double)
+DECL_NATIVE_BINARY(native_divide, double)
+DECL_NATIVE_UNARY(native_exp, double)
+DECL_NATIVE_UNARY(native_exp2, double)
+DECL_NATIVE_UNARY(native_exp10, double)
+DECL_NATIVE_UNARY(native_log, double)
+DECL_NATIVE_UNARY(native_log2, double)
+DECL_NATIVE_UNARY(native_log10, double)
+DECL_NATIVE_BINARY(native_powr, double)
+DECL_NATIVE_UNARY(native_recip, double)
+DECL_NATIVE_UNARY(native_rsqrt, double)
+DECL_NATIVE_UNARY(native_sin, double)
+DECL_NATIVE_UNARY(native_sqrt, double)
+DECL_NATIVE_UNARY(native_tan, double)
+#endif // defined(cl_khr_fp64)
+
+#undef DECL_NATIVE_UNARY
+#undef DECL_NATIVE_BINARY
+
+// ===== convert_double*_sat* (double-destination saturating conversions) =====
+// The OpenCL spec only defines saturating (_sat) conversions for integer
+// destination types, so neither stock Clang's opencl-c.h nor its Tablegen
+// builtins declare convert_double*_sat*. IGC historically provides them;
+// supplement them here (guarded by cl_khr_fp64, since the result is double).
+#if defined(cl_khr_fp64)
+#define DECL_CVT_DOUBLE_SAT(SRC, SAT)                                    \
+    double __attribute__((overloadable))   convert_double##SAT(SRC);     \
+    double2 __attribute__((overloadable))  convert_double2##SAT(SRC##2); \
+    double3 __attribute__((overloadable))  convert_double3##SAT(SRC##3); \
+    double4 __attribute__((overloadable))  convert_double4##SAT(SRC##4); \
+    double8 __attribute__((overloadable))  convert_double8##SAT(SRC##8); \
+    double16 __attribute__((overloadable)) convert_double16##SAT(SRC##16);
+
+#define DECL_CVT_DOUBLE_SAT_ALLROUND(SRC) \
+    DECL_CVT_DOUBLE_SAT(SRC, _sat)        \
+    DECL_CVT_DOUBLE_SAT(SRC, _sat_rte)    \
+    DECL_CVT_DOUBLE_SAT(SRC, _sat_rtn)    \
+    DECL_CVT_DOUBLE_SAT(SRC, _sat_rtp)    \
+    DECL_CVT_DOUBLE_SAT(SRC, _sat_rtz)
+
+DECL_CVT_DOUBLE_SAT_ALLROUND(char)
+DECL_CVT_DOUBLE_SAT_ALLROUND(uchar)
+DECL_CVT_DOUBLE_SAT_ALLROUND(short)
+DECL_CVT_DOUBLE_SAT_ALLROUND(ushort)
+DECL_CVT_DOUBLE_SAT_ALLROUND(int)
+DECL_CVT_DOUBLE_SAT_ALLROUND(uint)
+DECL_CVT_DOUBLE_SAT_ALLROUND(long)
+DECL_CVT_DOUBLE_SAT_ALLROUND(ulong)
+DECL_CVT_DOUBLE_SAT_ALLROUND(float)
+DECL_CVT_DOUBLE_SAT_ALLROUND(double)
+
+#undef DECL_CVT_DOUBLE_SAT_ALLROUND
+#undef DECL_CVT_DOUBLE_SAT
+#endif // defined(cl_khr_fp64)
+
+// ===== ctz =====
+// The OpenCL spec only requires ctz() starting with OpenCL C 2.0, and stock
+// Clang's opencl-c.h guards its declarations accordingly. IGC has always
+// provided ctz() unconditionally (regardless of the OpenCL C version), so
+// supplement it here for the pre-2.0 / default case that Clang skips.
+#if !(defined(__OPENCL_CPP_VERSION__) || (__OPENCL_C_VERSION__ >= CL_VERSION_2_0))
+#define DECL_CTZ(T)                                  \
+    T __attribute__((overloadable))     ctz(T x);    \
+    T##2 __attribute__((overloadable))  ctz(T##2 x); \
+    T##3 __attribute__((overloadable))  ctz(T##3 x); \
+    T##4 __attribute__((overloadable))  ctz(T##4 x); \
+    T##8 __attribute__((overloadable))  ctz(T##8 x); \
+    T##16 __attribute__((overloadable)) ctz(T##16 x);
+
+DECL_CTZ(char)
+DECL_CTZ(uchar)
+DECL_CTZ(short)
+DECL_CTZ(ushort)
+DECL_CTZ(int)
+DECL_CTZ(uint)
+DECL_CTZ(long)
+DECL_CTZ(ulong)
+
+#undef DECL_CTZ
+#endif // !(__OPENCL_CPP_VERSION__ || __OPENCL_C_VERSION__ >= CL_VERSION_2_0)
+
+// ===== cl_intel_subgroups =====
+// Stock Clang's opencl-c.h declares intel_sub_group_block_write_ui only for the
+// read_only and read_write image2d_t overloads (plus the global pointer one), but
+// it is missing the write_only image2d_t overloads that the plain
+// intel_sub_group_block_write provides. Supplement them here.
+#ifdef cl_intel_subgroups
+#ifdef __IMAGE_SUPPORT__
+void __attribute__((overloadable))
+intel_sub_group_block_write_ui(write_only image2d_t image, int2 coord, uint data);
+void __attribute__((overloadable))
+intel_sub_group_block_write_ui2(write_only image2d_t image, int2 coord, uint2 data);
+void __attribute__((overloadable))
+intel_sub_group_block_write_ui4(write_only image2d_t image, int2 coord, uint4 data);
+void __attribute__((overloadable))
+intel_sub_group_block_write_ui8(write_only image2d_t image, int2 coord, uint8 data);
+#endif // __IMAGE_SUPPORT__
+#endif // cl_intel_subgroups
+
 // ===== cl_intel_subgroups_half =====
 #ifdef cl_intel_subgroups_half
-#ifdef __opencl_c_images
+#ifdef __IMAGE_SUPPORT__
 ushort __attribute__((overloadable))
 intel_sub_group_block_read_half(read_only image2d_t image, int2 coord);
 ushort2 __attribute__((overloadable))
@@ -111,7 +243,7 @@ intel_sub_group_block_write8(read_write image2d_t image, int2 coord, ushort8 dat
 void __attribute__((overloadable))
 intel_sub_group_block_write16(read_write image2d_t image, int2 coord, ushort16 data);
 #endif // __opencl_c_read_write_images
-#endif //__opencl_c_images
+#endif //__IMAGE_SUPPORT__
 
 ushort __attribute__((overloadable)) intel_sub_group_block_read(const __global ushort *p);
 ushort2 __attribute__((overloadable))
@@ -123,7 +255,7 @@ intel_sub_group_block_read8(const __global ushort *p);
 ushort16 __attribute__((overloadable))
 intel_sub_group_block_read16(const __global ushort *p);
 
-#ifdef __opencl_c_images
+#ifdef __IMAGE_SUPPORT__
 void __attribute__((overloadable))
 intel_sub_group_block_write(image2d_t image, int2 coord, ushort data);
 void __attribute__((overloadable))
@@ -134,7 +266,7 @@ void __attribute__((overloadable))
 intel_sub_group_block_write8(image2d_t image, int2 coord, ushort8 data);
 void __attribute__((overloadable))
 intel_sub_group_block_write16(image2d_t image, int2 coord, ushort16 data);
-#endif //__opencl_c_images
+#endif //__IMAGE_SUPPORT__
 
 void __attribute__((overloadable))
 intel_sub_group_block_write(__global ushort *p, ushort data);
@@ -253,7 +385,7 @@ ushort16 __attribute__((overloadable)) intel_sub_group_shuffle_xor(ushort16 x, u
 DECL_GROUP_REDUCE_SCAN(intel_sub_group, short)
 DECL_GROUP_REDUCE_SCAN(intel_sub_group, ushort)
 
-#ifdef __opencl_c_images
+#ifdef __IMAGE_SUPPORT__
 ushort __attribute__((overloadable))
 intel_sub_group_block_read_us(read_only image2d_t image, int2 coord);
 ushort2 __attribute__((overloadable))
@@ -288,7 +420,7 @@ intel_sub_group_block_write_us8(read_write image2d_t image, int2 coord, ushort8 
 void __attribute__((overloadable))
 intel_sub_group_block_write_us16(read_write image2d_t image, int2 coord, ushort16 data);
 #endif // __opencl_c_read_write_images
-#endif //__opencl_c_images
+#endif //__IMAGE_SUPPORT__
 
 ushort __attribute__((overloadable))
 intel_sub_group_block_read_us(const __global ushort *p);
@@ -301,7 +433,7 @@ intel_sub_group_block_read_us8(const __global ushort *p);
 ushort16 __attribute__((overloadable))
 intel_sub_group_block_read_us16(const __global ushort *p);
 
-#ifdef __opencl_c_images
+#ifdef __IMAGE_SUPPORT__
 void __attribute__((overloadable))
 intel_sub_group_block_write_us(write_only image2d_t image, int2 coord, ushort data);
 void __attribute__((overloadable))
@@ -312,7 +444,7 @@ void __attribute__((overloadable))
 intel_sub_group_block_write_us8(write_only image2d_t image, int2 coord, ushort8 data);
 void __attribute__((overloadable))
 intel_sub_group_block_write_us16(write_only image2d_t image, int2 coord, ushort16 data);
-#endif //__opencl_c_images
+#endif //__IMAGE_SUPPORT__
 
 void __attribute__((overloadable))
 intel_sub_group_block_write_us(__global ushort *p, ushort data);
@@ -434,7 +566,7 @@ uchar16 __attribute__((overloadable)) intel_sub_group_shuffle_xor(uchar16 x, uin
 DECL_GROUP_REDUCE_SCAN(intel_sub_group, char)
 DECL_GROUP_REDUCE_SCAN(intel_sub_group, uchar)
 
-#ifdef __opencl_c_images
+#ifdef __IMAGE_SUPPORT__
 uchar __attribute__((overloadable))
 intel_sub_group_block_read_uc(read_only image2d_t image, int2 coord);
 uchar2 __attribute__((overloadable))
@@ -469,7 +601,7 @@ intel_sub_group_block_write_uc8(read_write image2d_t image, int2 coord, uchar8 d
 void __attribute__((overloadable))
 intel_sub_group_block_write_uc16(read_write image2d_t image, int2 coord, uchar16 data);
 #endif // __opencl_c_read_write_images
-#endif //__opencl_c_images
+#endif //__IMAGE_SUPPORT__
 
 uchar __attribute__((overloadable))
 intel_sub_group_block_read_uc(const __global uchar *p);
@@ -482,7 +614,7 @@ intel_sub_group_block_read_uc8(const __global uchar *p);
 uchar16 __attribute__((overloadable))
 intel_sub_group_block_read_uc16(const __global uchar *p);
 
-#ifdef __opencl_c_images
+#ifdef __IMAGE_SUPPORT__
 void __attribute__((overloadable))
 intel_sub_group_block_write_uc(write_only image2d_t image, int2 coord, uchar data);
 void __attribute__((overloadable))
@@ -493,7 +625,7 @@ void __attribute__((overloadable))
 intel_sub_group_block_write_uc8(write_only image2d_t image, int2 coord, uchar8 data);
 void __attribute__((overloadable))
 intel_sub_group_block_write_uc16(write_only image2d_t image, int2 coord, uchar16 data);
-#endif //__opencl_c_images
+#endif //__IMAGE_SUPPORT__
 
 void __attribute__((overloadable))
 intel_sub_group_block_write_uc(__global uchar *p, uchar data);
@@ -510,7 +642,7 @@ intel_sub_group_block_write_uc16(__global uchar *p, uchar16 data);
 
 // ===== cl_intel_subgroups_long =====
 #ifdef cl_intel_subgroups_long
-#ifdef __opencl_c_images
+#ifdef __IMAGE_SUPPORT__
 ulong __attribute__((overloadable))
 intel_sub_group_block_read_ul(read_only image2d_t image, int2 coord);
 ulong2 __attribute__((overloadable))
@@ -539,7 +671,7 @@ intel_sub_group_block_write_ul4(read_write image2d_t image, int2 coord, ulong4 d
 void __attribute__((overloadable))
 intel_sub_group_block_write_ul8(read_write image2d_t image, int2 coord, ulong8 data);
 #endif // __opencl_c_read_write_images
-#endif //__opencl_c_images
+#endif //__IMAGE_SUPPORT__
 
 ulong __attribute__((overloadable))
 intel_sub_group_block_read_ul(const __global ulong *p);
@@ -550,7 +682,7 @@ intel_sub_group_block_read_ul4(const __global ulong *p);
 ulong8 __attribute__((overloadable))
 intel_sub_group_block_read_ul8(const __global ulong *p);
 
-#ifdef __opencl_c_images
+#ifdef __IMAGE_SUPPORT__
 void __attribute__((overloadable))
 intel_sub_group_block_write_ul(write_only image2d_t image, int2 coord, ulong data);
 void __attribute__((overloadable))
@@ -559,7 +691,7 @@ void __attribute__((overloadable))
 intel_sub_group_block_write_ul4(write_only image2d_t image, int2 coord, ulong4 data);
 void __attribute__((overloadable))
 intel_sub_group_block_write_ul8(write_only image2d_t image, int2 coord, ulong8 data);
-#endif //__opencl_c_images
+#endif //__IMAGE_SUPPORT__
 
 void __attribute__((overloadable))
 intel_sub_group_block_write_ul(__global ulong *p, ulong data);
@@ -588,6 +720,22 @@ void __attribute__((overloadable))
 intel_sub_group_block_write4(__local uint *p, uint4 data);
 void __attribute__((overloadable))
 intel_sub_group_block_write8(__local uint *p, uint8 data);
+
+// Clang's opencl-c.h declares the _ui block read/write only for image and global
+// pointer overloads; the __local pointer overloads are supplemented here.
+uint __attribute__((overloadable))  intel_sub_group_block_read_ui(const __local uint *p);
+uint2 __attribute__((overloadable)) intel_sub_group_block_read_ui2(const __local uint *p);
+uint4 __attribute__((overloadable)) intel_sub_group_block_read_ui4(const __local uint *p);
+uint8 __attribute__((overloadable)) intel_sub_group_block_read_ui8(const __local uint *p);
+
+void __attribute__((overloadable))
+intel_sub_group_block_write_ui(__local uint *p, uint data);
+void __attribute__((overloadable))
+intel_sub_group_block_write_ui2(__local uint *p, uint2 data);
+void __attribute__((overloadable))
+intel_sub_group_block_write_ui4(__local uint *p, uint4 data);
+void __attribute__((overloadable))
+intel_sub_group_block_write_ui8(__local uint *p, uint8 data);
 
 ushort __attribute__((overloadable))
 intel_sub_group_block_read_us(const __local ushort *p);
@@ -700,7 +848,7 @@ intel_sub_group_block_prefetch_ul8(const __global ulong *p);
 // Media Block read/write extension
 
 //read
-#ifdef __opencl_c_images
+#ifdef __IMAGE_SUPPORT__
 uchar __attribute__((overloadable)) intel_sub_group_media_block_read_uc(
     int2 src_offset, int width, int height, read_only image2d_t image);
 uchar2 __attribute__((overloadable)) intel_sub_group_media_block_read_uc2(
@@ -830,7 +978,7 @@ void __attribute__((overloadable)) intel_sub_group_media_block_write_ui4(
 void __attribute__((overloadable)) intel_sub_group_media_block_write_ui8(
     int2 src_offset, int width, int height, uint8 pixels, read_write image2d_t image);
 #endif // __opencl_c_read_write_images
-#endif //__opencl_c_images
+#endif //__IMAGE_SUPPORT__
 
 #endif // cl_intel_media_block_io
 
