@@ -583,7 +583,7 @@ bool CloneAddressArithmetic::isRegPressureLow(Function &F) {
 
   RPE = &getAnalysis<IGCLivenessAnalysis>().getLivenessRunner();
   SIMD = numLanes(IGC::bestGuessSIMDSize(CGCtx, &F, FGA));
-  unsigned int GRFSize = CGCtx->getNumGRFPerThread();
+  unsigned int GRFSize = CGCtx->getNumGRFPerThread(true, &F);
   unsigned int PressureLimit = 0.01f * (float)IGC_GET_FLAG_VALUE(RematRPELimit) * (float)GRFSize;
   MaxPressure = RPE->getMaxRegCountForFunction(F, SIMD, &WI->Runner);
   bool Result = MaxPressure < PressureLimit;

@@ -299,7 +299,7 @@ bool CodeSinking::processBlock(BasicBlock &blk) {
   if (blk.empty())
     return false;
 
-  uint32_t registerPressureThreshold = CTX->getNumGRFPerThread();
+  uint32_t registerPressureThreshold = CTX->getNumGRFPerThread(true, blk.getParent());
 
   uint pressure0 = 0;
   if (registerPressureThreshold) {
@@ -857,7 +857,7 @@ LoopSinkMode CodeLoopSinking::needLoopSink(Loop *L) {
 
   Function *F = Preheader->getParent();
   uint GRFThresholdDelta = IGC_GET_FLAG_VALUE(LoopSinkThresholdDelta);
-  uint NGRF = CTX->getNumGRFPerThread();
+  uint NGRF = CTX->getNumGRFPerThread(true, F);
   uint SIMD = numLanes(IGC::bestGuessSIMDSize(CTX, F, FGA));
 
   PrintDump(VerbosityLevel::Low, "\n");
@@ -966,7 +966,7 @@ bool CodeLoopSinking::loopSink(Loop *L, LoopSinkMode Mode) {
   PrintDump(VerbosityLevel::Low, ">> Sinking in the loop with preheader " << Preheader->getName() << "\n");
 
   Function *F = Preheader->getParent();
-  uint NGRF = CTX->getNumGRFPerThread();
+  uint NGRF = CTX->getNumGRFPerThread(true, F);
 
   uint InitialLoopPressure = getMaxRegCountForLoop(L);
   uint MaxLoopPressure = InitialLoopPressure;

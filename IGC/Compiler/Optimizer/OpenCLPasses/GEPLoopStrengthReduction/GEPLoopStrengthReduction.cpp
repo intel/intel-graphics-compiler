@@ -934,7 +934,7 @@ RegisterPressureTracker::RegisterPressureTracker(Function &F, CodeGenContext &CG
                                                  GenXFunctionGroupAnalysis *FGA)
     : CGC(CGC), RPE(RPE), WI(WI), FGA(FGA) {
   MaxAllowedPressure =
-      static_cast<unsigned>(CGC.getNumGRFPerThread() * IGC_GET_FLAG_VALUE(GEPLSRThresholdRatio) / 100.0f);
+      static_cast<unsigned>(CGC.getNumGRFPerThread(true, &F) * IGC_GET_FLAG_VALUE(GEPLSRThresholdRatio) / 100.0f);
 
   FunctionExternalPressure = FRPE.getExternalPressureForFunction(&F);
 }

@@ -290,7 +290,7 @@ StatusPrivArr2Reg LowerGEPForPrivMem::CheckIfAllocaPromotable(llvm::AllocaInst *
   allowedAllocaSizeInBytes = allowedAllocaSizeInBytes * m_ctx->platform.getGRFSize() / 32;
 
   // scale alloc size based on the number of GRFs we have
-  float grfRatio = m_ctx->getNumGRFPerThread() / 128.0f;
+  float grfRatio = m_ctx->getNumGRFPerThread(true, m_pFunc) / 128.0f;
   allowedAllocaSizeInBytes = (uint32_t)(allowedAllocaSizeInBytes * grfRatio);
 
     if (m_ctx->type == ShaderType::OPENCL_SHADER) {

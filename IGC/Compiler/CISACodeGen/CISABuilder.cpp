@@ -4159,7 +4159,7 @@ void CEncoder::InitVISABuilderOptions(TARGET_PLATFORM VISAPlatform, bool canAbor
   }
 
   uint32_t NumGRFSetting =
-          context->getNumGRFPerThread(/*returnDefault*/ false);
+          context->getNumGRFPerThread(/*returnDefault*/ false, m_program->entry);
   if (IGC_GET_FLAG_VALUE(ReservedRegisterNum) != 0) {
     IGC_ASSERT_MESSAGE(NumGRFSetting == 0, "ReservedRegisterNum and TotalGRFNum registry keys "
                                            "cannot be used at the same time");
@@ -4341,7 +4341,7 @@ void CEncoder::InitVISABuilderOptions(TARGET_PLATFORM VISAPlatform, bool canAbor
   const auto *modMD = context->getModuleMetaData();
   auto funcMDIter = modMD->FuncMD.find(m_program->entry);
   uint32_t MaxRegPressure = (funcMDIter != modMD->FuncMD.end()) ? funcMDIter->second.maxRegPressure : 0;
-  uint32_t RegPressureThreshold = (uint32_t)(context->getNumGRFPerThread(true) * 0.6);
+  uint32_t RegPressureThreshold = (uint32_t)(context->getNumGRFPerThread(true, m_program->entry) * 0.6);
 
   if (context->type == ShaderType::OPENCL_SHADER &&
       m_program->m_Platform->getPlatformInfo().eProductFamily != IGFX_DG2 &&

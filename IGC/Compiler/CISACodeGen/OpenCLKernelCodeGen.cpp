@@ -74,7 +74,7 @@ uint32_t OpenCLProgramContext::getExpGRFSize() const {
   return 0;
 }
 
-uint32_t OpenCLProgramContext::getNumGRFPerThread(bool returnDefault) {
+uint32_t OpenCLProgramContext::getNumGRFPerThread(bool returnDefault, const llvm::Function *F) {
   if (platform.supportsStaticRegSharing()) {
     if (m_InternalOptions.Intel128GRFPerThread || m_Options.Intel128GRFPerThread) {
       return 128;
@@ -85,7 +85,7 @@ uint32_t OpenCLProgramContext::getNumGRFPerThread(bool returnDefault) {
       return 512;
     }
   }
-  return CodeGenContext::getNumGRFPerThread(returnDefault);
+  return CodeGenContext::getNumGRFPerThread(returnDefault, F);
 }
 
 bool OpenCLProgramContext::isAutoGRFSelectionEnabled() const {
@@ -1451,7 +1451,7 @@ void COpenCLKernel::AllocatePayload() {
           CVariable *var = GetSymbol(const_cast<Argument *>(A));
           for (int i = 0; i < numAllocInstances; ++i) {
             uint totalOffset = offset + (allocSize * i);
-            if ((totalOffset / getGRFSize()) >= m_Context->getNumGRFPerThread()) {
+            if ((totalOffset / getGRFSize()) >= m_Context->getNumGRFPerThread(true, entry)) {
               m_Context->EmitError("Kernel inputs exceed total register size!", A);
               return;
             }
@@ -2549,13 +2549,13 @@ static bool shouldDropToSIMD16(uint32_t maxPressure, uint32_t simd16Pressure, ui
   // pressure exceeds the budget -- the forced GRF count, otherwise 128 (256 in
   // auto large-GRF mode).
   if (pCtx->platform.isCoreXE2()) {
-    uint32_t grfBudget = pCtx->getNumGRFPerThread(false);
+    uint32_t grfBudget = pCtx->getNumGRFPerThread(false, F);
     if (grfBudget == 0)
       grfBudget = autoGRF ? 256 : 128;
     return simd32Pressure > grfBudget;
   }
 
-  if (!autoGRF || pCtx->getNumGRFPerThread(false) != 0) {
+  if (!autoGRF || pCtx->getNumGRFPerThread(false, F) != 0) {
     return false;
   }
 

@@ -367,7 +367,7 @@ private:
       CodeGenContext *context = nullptr;
       context = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
       uint32_t BBPresure = m_RPE->getMaxLiveGRFAtBB(BB, m_SimdSize);
-      if (BBPresure <= context->getNumGRFPerThread())
+      if (BBPresure <= context->getNumGRFPerThread(true, BB->getParent()))
         m_IsBlockPressureLow = Status::True;
       else
         m_IsBlockPressureLow = Status::False;

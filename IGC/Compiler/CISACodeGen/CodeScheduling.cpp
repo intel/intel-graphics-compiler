@@ -285,7 +285,7 @@ public:
   ~RegisterPressureTracker() = default;
 
   int getNumGRF() {
-    int NGRF = static_cast<int>(CTX->getNumGRFPerThread(false));
+    int NGRF = static_cast<int>(CTX->getNumGRFPerThread(false, F));
     if (NGRF == 0) { // GRF info is not set, using the default value
       if (CTX->isAutoGRFSelectionEnabled()) {
         NGRF = C->get(SchedulingConfig::Option::DefaultNumGRFAuto);

@@ -795,9 +795,10 @@ void PushAnalysis::BlockPushConstants() {
                                       [](inputPairType a, inputPairType b) { return a.second.index < b.second.index; });
   largestIndex = largestPair != inputs.end() ? largestPair->second.index : 0;
 
-  uint32_t maxPushedGRFs = m_context->getNumGRFPerThread(false) ? (3 * m_context->getNumGRFPerThread(false)) / 4
-                           : m_context->platform.supportsVRT()  ? ((3 * 256) / 4)
-                                                                : ((3 * 128) / 4);
+  uint32_t maxPushedGRFs = m_context->getNumGRFPerThread(false, m_pFunction)
+                               ? (3 * m_context->getNumGRFPerThread(false, m_pFunction)) / 4
+                           : m_context->platform.supportsVRT() ? ((3 * 256) / 4)
+                                                               : ((3 * 128) / 4);
 
   if (largestIndex >= maxPushedGRFs) {
     return;

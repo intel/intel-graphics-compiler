@@ -830,8 +830,11 @@ bool CodeGenContext::allowATOB() {
 }
 
 /// parameter "returnDefault" controls what to return when
-/// there is no user-forced setting
-uint32_t CodeGenContext::getNumGRFPerThread(bool returnDefault) {
+/// there is no user-forced setting.
+/// the optional Function identifies the kernel the query is for; the base
+/// implementation ignores it, overrides may use it to derive a per-kernel GRF
+/// number.
+uint32_t CodeGenContext::getNumGRFPerThread(bool returnDefault, const llvm::Function *) {
   if (m_NumGRFPerThread)
     return m_NumGRFPerThread;
 

@@ -115,7 +115,7 @@ void GenericShaderState::setScratchUsage(CodeGenContext &Ctx, SProgramOutput &Pr
 void GenericShaderState::setScratchUsage(SProgramOutput &Prog) { setScratchUsage(Ctx, Prog); }
 
 uint32_t GenericShaderState::GetShaderThreadUsageRate() {
-  uint32_t grfNum = GetContext().getNumGRFPerThread();
+  uint32_t grfNum = GetContext().getNumGRFPerThread(true, &Entry);
   // prevent callee divide by zero
   return std::max<uint32_t>(1, grfNum / CodeGenContext::DEFAULT_TOTAL_GRF_NUM);
 }

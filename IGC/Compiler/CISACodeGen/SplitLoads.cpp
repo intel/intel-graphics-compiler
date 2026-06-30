@@ -901,7 +901,7 @@ bool Config::initialize(Function *F, CodeGenContext *inCGC, IGCLivenessAnalysisR
   isLegitW8 = false;
   isLegitW8 = CGC->platform.supports2dBlockTranspose64ByteWidth();
   sizeOfRegs_B = CGC->platform.isProductChildOf(IGFX_PVC) ? 64 : 32;
-  numOfRegs = CGC->getNumGRFPerThread();
+  numOfRegs = CGC->getNumGRFPerThread(true, F);
 
   minSplitSize_B = minSplitSize_GRF * sizeOfRegs_B;
   splitThreshold_B = (static_cast<int>(numOfRegs) + splitThresholdDelta_GRF) * sizeOfRegs_B;

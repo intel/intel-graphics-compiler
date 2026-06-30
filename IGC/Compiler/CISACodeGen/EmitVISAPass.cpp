@@ -567,7 +567,7 @@ bool EmitPass::shouldForceEarlyRecompile(MetaDataUtils *pMdUtils, llvm::Function
     return false;
 
   auto Threshold = IGC_GET_FLAG_VALUE(EarlyRetryLargeGRFThreshold);
-  auto GRFPerThread = m_pCtx->getNumGRFPerThread();
+  auto GRFPerThread = m_pCtx->getNumGRFPerThread(true, F);
   // If we are not in large GRF mode and auto GRF is disabled we use
   // threshold set for default GRF size if it is lower. We also, as a workaround
   // skip lowering the threshold if we have indirect operands in the kernel to

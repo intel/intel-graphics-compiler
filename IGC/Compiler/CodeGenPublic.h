@@ -1151,7 +1151,7 @@ public:
   virtual void resetOnRetry(bool isSubmodule = false);
   virtual int32_t getNumThreadsPerEU() const;
   virtual uint32_t getExpGRFSize() const;
-  virtual uint32_t getNumGRFPerThread(bool returnDefault = true);
+  virtual uint32_t getNumGRFPerThread(bool returnDefault = true, const llvm::Function *F = nullptr);
   virtual void setNumGRFPerThread(uint32_t value) { m_NumGRFPerThread = value; }
   virtual bool isAutoGRFSelectionEnabled() const { return false; };
   virtual bool forceGlobalMemoryAllocation() const;
