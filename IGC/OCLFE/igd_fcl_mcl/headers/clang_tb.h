@@ -53,6 +53,7 @@ struct CCModuleStruct {
 
   void *pModule = nullptr;
   PFcnCCCompile pCompile = nullptr;
+  bool isDynamicallyLoaded = false;
 };
 
 /***************************************************************************\

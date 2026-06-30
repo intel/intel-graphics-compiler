@@ -167,6 +167,7 @@ bool CClangTranslationBlock::Create(const STB_CreateArgs *pCreateArgs, STB_Trans
 #ifdef _WIN32
       moduleName = overrideName;
 #else
+      CCModule.isDynamicallyLoaded = true;
       CCModule.pModule = dlopen(overrideName, RTLD_LAZY | RTLD_LOCAL);
       if (CCModule.pModule) {
         CCModule.pCompile = (CCModuleStruct::PFcnCCCompile)dlsym(CCModule.pModule, "Compile");
@@ -190,6 +191,7 @@ bool CClangTranslationBlock::Create(const STB_CreateArgs *pCreateArgs, STB_Trans
       // Load the Common Clang library
       // Both Win32 and Win64
       // load dependency only on RS
+      CCModule.isDynamicallyLoaded = true;
       if (GetWinVer() >= OS_WIN_RS) {
         CCModule.pModule = LoadDependency(moduleName);
       } else {
@@ -980,6 +982,11 @@ static std::string GetSpirvExtensionsOption() {
 // Translates from CL to LL/BC
 bool CClangTranslationBlock::TranslateClang(const TranslateClangArgs *pInputArgs, STB_TranslateOutputArgs *pOutputArgs,
                                             std::string &exceptString, const char *pInternalOptions) {
+  if (m_CCModule.isDynamicallyLoaded && !m_CCModule.pCompile) {
+    SetErrorString("Error: TranslateClang is called after dynamic load of compile function failed.", pOutputArgs);
+    return false;
+  }
+
   // additional clang options
   std::string optionsEx = pInputArgs->optionsEx;
   std::string options = pInputArgs->options;
