@@ -1065,6 +1065,12 @@ public:
       VISA_RawOpnd *r, VISA_RawOpnd *lod, VISA_RawOpnd *src0,
       VISA_RawOpnd *src1, VISA_RawOpnd *dst) override;
 
+  VISA_BUILDER_API int AppendVISATraceRay(
+      VISA_PredOpnd *pred, VISA_EMask_Ctrl emask, VISA_Exec_Size executionSize,
+      TRACE_RAY_OPCODE subOp, VISA_VectorOpnd *globalBufferPointer,
+      uint8_t stackAddressMode, VISA_RawOpnd *payload,
+      VISA_RawOpnd *dstData) override;
+
   /********** APPEND 3D Instructions END ******************/
 
   /********** MISC APIs START *************************/

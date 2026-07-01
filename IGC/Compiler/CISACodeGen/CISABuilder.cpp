@@ -2010,6 +2010,8 @@ void CEncoder::TraceRay(CVariable *destination, TRACE_RAY_OPCODE opcode, CVariab
   if (payload != nullptr) {
     payloadOpnd = GetRawSource(payload);
   }
+  V(vKernel->AppendVISATraceRay(predOpnd, emask, executionSize, opcode, globalBufferPointerOpnd,
+                                (uint8_t)stackAddressMode, payloadOpnd, dstOpnd));
 }
 
 

@@ -9871,6 +9871,66 @@ bool enableSrcLine(void *buf) {
   auto gtpin_init_data = (gtpin::igc::igc_init_t *)buf;
   return gtpin_init_data->srcline_mapping != 0;
 }
+int VISAKernelImpl::AppendVISATraceRay(
+    VISA_PredOpnd *pred, VISA_EMask_Ctrl emask, VISA_Exec_Size executionSize,
+    TRACE_RAY_OPCODE subOp, VISA_VectorOpnd *globalBufferPointer,
+    uint8_t stackAddressMode, VISA_RawOpnd *payload, VISA_RawOpnd *dstData) {
+
+  // This is a wrapper around AppendVISARawSendg
+  // Prepare the operands and send it to AppendVISARawSendg
+  // TODO: Subsequent changes will introduce a dedicated vISA instruction and
+  // translate function for trace ray
+
+  // [46:14] MBZ
+  // [13:12] Spawn type (not exercised)
+  // [11:6] MBZ
+  // [5:4] Message family -- 1 for BTD_SPAWN ray
+  // [3:0] Message type
+
+  // create descriptor
+  uint64_t desc = 0;
+  // message type
+  desc |= static_cast<int>(subOp);
+
+  VISA_VectorOpnd* ind0 = globalBufferPointer;
+
+  VISA_RawOpnd* dst = nullptr;
+  unsigned int dstLengthInBytes = 0;
+  unsigned int srcLengthInBytes = 0;
+
+  if (payload != nullptr)
+  {
+      srcLengthInBytes = (executionSize == EXEC_SIZE_16) ?
+          getIRBuilder()->getGRFSize() : 2 * getIRBuilder()->getGRFSize();
+  }
+  else
+  {
+      srcLengthInBytes = getIRBuilder()->getGRFSize();
+  }
+
+  if (subOp == TRACE_RAY_OPCODE::OP_TRACE_RAY_SYNC || subOp == TRACE_RAY_OPCODE::OP_TRACE_BOX_SYNC) {
+    // only these subops allow for destination
+    dst = dstData;
+    // the return data is a single GRF
+    dstLengthInBytes = getIRBuilder()->getGRFSize();
+  }
+
+  // 0x8 is the sfid RTHW
+  const unsigned sfid = SFIDtoInt(SFID::RTHW);
+
+  return AppendVISAMiscRawSendg(
+    sfid,
+    pred,
+    emask,
+    executionSize,
+    dst, dstLengthInBytes,
+    payload, srcLengthInBytes,
+    nullptr, 0,
+    ind0,
+    nullptr,
+    desc, false, false);
+}
+
 int VISAKernelImpl::AppendVISAShflIdx4Inst(
     ISA_Opcode opcode, VISA_PredOpnd *pred, VISA_EMask_Ctrl emask,
     VISA_Exec_Size executionSize, VISA_RawOpnd *dst, VISA_VectorOpnd *src0,
