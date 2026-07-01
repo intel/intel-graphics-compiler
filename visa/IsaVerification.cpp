@@ -4198,6 +4198,37 @@ struct LscInstVerifier {
     }
   }
 
+  // A real Src0 address payload register's .decl type must match the address
+  // size: :a64 addresses are 64b (Q/UQ) and :a32/:a32u/:a32s addresses are
+  // 32b (D/UD). %null is typeless and is exempt (e.g. a base-only
+  // access with a null per-lane offset is legal for any address size).
+  void verifyAddrPayloadType(int addrOpIx, LSC_ADDR_SIZE addrSize) {
+    if (opInfo.isApndCtrAtomic())
+      return; // append-counter atomics carry no address payload
+    if (getOperandType(inst, addrOpIx) != CISA_OPND_RAW)
+      return; // malformed operand shape is diagnosed elsewhere
+    const raw_opnd &addr = getRawOperand(inst, addrOpIx);
+    if (addr.index == 0)
+      return; // %null is typeless: permit it for any address size
+    VISA_Type ty = getRawOperandType(header, addr);
+    switch (addrSize) {
+    case LSC_ADDR_SIZE_64b:
+      verify(ty == ISA_TYPE_Q || ty == ISA_TYPE_UQ,
+             ":a64 address payload must have Q/UQ type, but decl type is ",
+             CISATypeTable[ty].typeName);
+      break;
+    case LSC_ADDR_SIZE_32b:
+    case LSC_ADDR_SIZE_32bU:
+    case LSC_ADDR_SIZE_32bS:
+      verify(ty == ISA_TYPE_D || ty == ISA_TYPE_UD,
+             ":a32* address payload must have D/UD type, but decl type is ",
+             CISATypeTable[ty].typeName);
+      break;
+    default:
+      break;
+    }
+  }
+
   bool verifyRawOperand(const char *which, int absIx) {
     if (getOperandType(inst, absIx) != CISA_OPND_RAW) {
       error(which, ": expected vISA RawOperand");
@@ -4520,6 +4551,7 @@ struct LscInstVerifier {
       src1DataIx = currOpIx + 5;
     const char *src0Name = opInfo.isStrided() ? "Src0AddrBase" : "Src0Addr";
     verifyRawOperand(src0Name, src0Ix); // Src0Addr
+    verifyAddrPayloadType(src0Ix, addrSize);
     if (opInfo.isStrided()) {
       if (verifyVectorOperand("Src0AddrStride", currOpIx + 4)) {
         const auto &vo = getVectorOperand(inst, currOpIx + 4);

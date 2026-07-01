@@ -770,19 +770,19 @@ int IR_Builder::translateLscUntypedInstUnified(
   TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
 
 
-  // This enforces a64 payloads to have .decl type Q/UQ
-  // and a32* to have D/UD.  We would do this in the parent function,
-  // but it's unclear how much code is out there that would break.
-  // Hence, we restrict it to the newer API only for now.
-  vISA_ASSERT_INPUT(addrInfo.size != LSC_ADDR_SIZE_64b ||
-              IS_QTYPE(src0Addr->getType()),
-              ":a64 expects Q/UQ");
+  // A real address payload's .decl type must match the address size (:a64 ->
+  // Q/UQ, :a32/:a32u/:a32s -> D/UD); %null is typeless and exempt.  Normally
+  // LscInstVerifier::verifyAddrPayloadType catches this first, but in
+  // VISA_BUILDER_BOTH mode GEN translation runs during parsing before
+  // verifyVISAIR, so bail out gracefully here rather than asserting.
   bool isA32 =
     addrInfo.size == LSC_ADDR_SIZE_32b ||
     addrInfo.size == LSC_ADDR_SIZE_32bS ||
     addrInfo.size == LSC_ADDR_SIZE_32bU;
-  vISA_ASSERT_INPUT(!isA32 ||
-                    IS_DTYPE(src0Addr->getType()), ":a32* expects D/UD");
+  if (!src0Addr->isNullReg() &&
+      ((addrInfo.size == LSC_ADDR_SIZE_64b && !IS_QTYPE(src0Addr->getType())) ||
+       (isA32 && !IS_DTYPE(src0Addr->getType()))))
+    return VISA_FAILURE;
 
   int status = VISA_SUCCESS;
   auto check = [&](bool z, const char *what) {
