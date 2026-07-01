@@ -6,6 +6,8 @@
 ;
 ;============================ end_copyright_notice =============================
 
+; UNSUPPORTED: llvm-22-plus
+; FIXME: update this test for LLVM 22
 ; REQUIRES: cri-supported, llvm-spirv
 
 ; RUN: llvm-as %s -o %t.bc

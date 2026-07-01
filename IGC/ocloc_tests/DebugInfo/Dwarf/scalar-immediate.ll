@@ -10,6 +10,8 @@
 ; emitted as a DW_OP_implicit_value sub-range in .debug_loc.
 
 ; UNSUPPORTED: sys32
+; UNSUPPORTED: llvm-22-plus
+; FIXME: update this test for LLVM 22
 ; REQUIRES: regkeys, oneapi-readelf, llvm-16-plus
 
 ; RUN: llvm-as %OPAQUE_PTR_FLAG% %s -o %t

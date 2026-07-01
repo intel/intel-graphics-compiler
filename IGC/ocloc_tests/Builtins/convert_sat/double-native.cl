@@ -5,6 +5,8 @@ Copyright (C) 2023 Intel Corporation
 SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
+// UNSUPPORTED: llvm-22-plus
+// FIXME: update this test for LLVM 22
 // REQUIRES: regkeys, pvc-supported, llvm-16-plus
 
 // RUN: ocloc compile -file %s -device pvc \

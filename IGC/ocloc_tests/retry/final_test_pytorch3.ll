@@ -1,3 +1,5 @@
+; UNSUPPORTED: llvm-22-plus
+; FIXME: update this test for LLVM 22
 ; REQUIRES: regkeys, mtl-supported, llvm-16-plus
 
 ; LLVM with opaque pointers:

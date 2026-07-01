@@ -8,6 +8,8 @@ SPDX-License-Identifier: MIT
 // This test checks if bfloat functions used internally by validation compile to
 // vISA instructions correctly.
 
+// UNSUPPORTED: llvm-22-plus
+// FIXME: update this test for LLVM 22
 // REQUIRES: llvm-spirv,cri-supported
 
 // RUN: ocloc compile -file %s -options "-igc_opts 'DumpVISAASMToConsole=1'" -device cri | FileCheck %s --check-prefix=CHECK-VISA

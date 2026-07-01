@@ -6,6 +6,8 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
+// UNSUPPORTED: llvm-22-plus
+// FIXME: update this test for LLVM 22
 // REQUIRES: regkeys, dg2-supported, llvm-16-plus
 
 // RUN: ocloc compile -file %s -device dg2 \

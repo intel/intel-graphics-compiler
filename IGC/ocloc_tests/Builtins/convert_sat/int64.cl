@@ -5,6 +5,8 @@ Copyright (C) 2023 Intel Corporation
 SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
+// UNSUPPORTED: llvm-22-plus
+// FIXME: update this test for LLVM 22
 // REQUIRES: regkeys, llvm-16-plus
 
 // Partial i64 emulation

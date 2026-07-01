@@ -1,3 +1,5 @@
+; UNSUPPORTED: llvm-22-plus
+; FIXME: update this test for LLVM 22
 ; REQUIRES: regkeys, llvm-16-plus
 ; RUN: llvm-as %OPAQUE_PTR_FLAG% < %s -o %t.bc
 

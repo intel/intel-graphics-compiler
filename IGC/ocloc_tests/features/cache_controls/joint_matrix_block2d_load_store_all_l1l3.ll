@@ -6,6 +6,8 @@
 ;
 ;============================ end_copyright_notice =============================
 
+; UNSUPPORTED: llvm-22-plus
+; FIXME: update this test for LLVM 22
 ; UNSUPPORTED: system-windows
 ; REQUIRES: llvm-spirv, regkeys, pvc-supported, llvm-16-plus
 

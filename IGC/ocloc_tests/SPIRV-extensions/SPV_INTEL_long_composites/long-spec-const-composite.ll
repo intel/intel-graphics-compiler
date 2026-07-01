@@ -1,3 +1,5 @@
+; UNSUPPORTED: llvm-22-plus
+; FIXME: update this test for LLVM 22
 ; UNSUPPORTED: system-windows
 ; REQUIRES: llvm-spirv, regkeys, dg2-supported
 

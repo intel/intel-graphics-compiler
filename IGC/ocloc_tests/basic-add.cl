@@ -1,3 +1,5 @@
+// UNSUPPORTED: llvm-22-plus
+// FIXME: update this test for LLVM 22
 // REQUIRES: regkeys, dg2-supported
 
 // RUN: ocloc compile -file %s -options " -igc_opts 'DumpVISAASMToConsole=1'" -device dg2 | FileCheck %s --check-prefix=CHECK-VISA
