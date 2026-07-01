@@ -4958,6 +4958,14 @@ void CEncoder::InitEncoder(bool canAbortOnSpill, bool hasStackCall, bool hasInli
     }
   }
 
+  // On OCL recompilation, raise the ceiling to 512 for an eligible kernel from its final SIMD
+  // width and DPAS state; VRT still picks the count.
+  if (context->type == ShaderType::OPENCL_SHADER) {
+    auto *clCtx = static_cast<OpenCLProgramContext *>(context);
+    if (clCtx->kernelQualifiesFor512(m_program->m_State.GetHasDPAS(), m_program->m_State.m_dispatchSize))
+      userVRTGRFCeiling = 512;
+  }
+
   // For UMD AIL config specific, such as GRF 512, override the default
   if (context->getModuleMetaData()->compOpt.ForceVRTGRFCeiling) {
     userVRTGRFCeiling = context->getModuleMetaData()->compOpt.ForceVRTGRFCeiling;

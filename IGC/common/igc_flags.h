@@ -1692,6 +1692,14 @@ DECLARE_IGC_REGKEY(DWORD, EarlyRetryDefaultGRFThreshold, 190,
                    "Cutoff value for register estimation, when highter than that kernel skips first compilation stage "
                    "and goes to retry immediately for default GRF.",
                    false)
+DECLARE_IGC_REGKEY(bool, EnableOCL512GRFForDPAS, true,
+                   "On OCL recompilation, lift the GRF ceiling to 512 for SIMD16 (not forced-SIMD32) DPAS "
+                   "kernels",
+                   true)
+DECLARE_IGC_REGKEY(bool, EnableOCL512GRFForSIMD16, false,
+                   "On OCL recompilation, lift the GRF ceiling to 512 for SIMD16 kernels: required/forced "
+                   "sub-group size 16, or high register pressure that drops to SIMD16",
+                   true)
 DECLARE_IGC_REGKEY(bool, ForceNoFP64bRegioning, false, "force regioning rules for FP and 64b FPU instructions", false)
 DECLARE_IGC_REGKEY(bool, EnableA64WA, true, "Guarantee A64 load/store addres-hi is uniform", true)
 DECLARE_IGC_REGKEY(bool, EnableSamplerSplit, false, "Split Sampler 3d message to odd and even", false)

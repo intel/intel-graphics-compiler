@@ -85,7 +85,37 @@ uint32_t OpenCLProgramContext::getNumGRFPerThread(bool returnDefault, const llvm
       return 512;
     }
   }
+
+  // On recompilation, report the lifted 512 budget so RP optimizations plan for it.
+  if (F && m_retryManager && !m_retryManager->IsFirstTry()) {
+    unsigned forcedSIMD = getModuleMetaData()->csInfo.forcedSIMDSize;
+    SIMDMode simd = forcedSIMD ? lanesToSIMDMode(forcedSIMD) : IGC::bestGuessSIMDSize(this, F);
+    const auto &funcMD = getModuleMetaData()->FuncMD;
+    auto it = funcMD.find(const_cast<llvm::Function *>(F));
+    bool hasDPAS = it != funcMD.end() && it->second.hasDPAS;
+    if (kernelQualifiesFor512(hasDPAS, simd))
+      return 512;
+  }
+
   return CodeGenContext::getNumGRFPerThread(returnDefault, F);
+}
+
+bool OpenCLProgramContext::kernelQualifiesFor512(bool hasDPAS, SIMDMode simd) const {
+  if (!platform.supports512GRFPerThread())
+    return false;
+
+  if (!isAutoGRFSelectionEnabled() || m_Options.IntelLargeRegisterFile || getExpGRFSize() != 0 ||
+      getModuleMetaData()->compOpt.forceTotalGRFNum != 0)
+    return false;
+
+  if (!m_retryManager || m_retryManager->IsFirstTry())
+    return false;
+
+  // Only SIMD16 for now as for SIMD32 we should first try lower SIMD
+  if (simd != SIMDMode::SIMD16)
+    return false;
+
+  return (IGC_IS_FLAG_ENABLED(EnableOCL512GRFForDPAS) && hasDPAS) || IGC_IS_FLAG_ENABLED(EnableOCL512GRFForSIMD16);
 }
 
 bool OpenCLProgramContext::isAutoGRFSelectionEnabled() const {
