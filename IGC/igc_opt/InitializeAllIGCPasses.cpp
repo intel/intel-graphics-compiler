@@ -209,6 +209,7 @@ void initializeAllIGCPasses(llvm::PassRegistry &Registry) {
   initializeLowerGPCallArgLPMPass(Registry);
   IGC::initializePredefinedConstantResolvingLPMPass(Registry);
   initializePromoteToPredicatedMemoryAccessPass(Registry);
+  initializeBranchToSelectPass(Registry);
   initializeHoistConvOpToDomPass(Registry);
   initializeFixResourcePtrLPMPass(Registry);
   IGC::initializePushAnalysisPass(Registry);

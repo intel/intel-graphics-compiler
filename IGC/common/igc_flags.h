@@ -672,6 +672,17 @@ DECLARE_IGC_REGKEY(DWORD, WaveShuffleIndexSinkingMaxIterations, 3,
 DECLARE_IGC_REGKEY(bool, EnableWaveAllJointReduction, false, "Enable Joint Reduction Optimization.", false)
 DECLARE_IGC_REGKEY(bool, EnablePromoteToPredicatedMemoryAccess, false, "Enable predicated load/store if conversion.",
                    true)
+DECLARE_IGC_REGKEY(bool, EnableBranchToSelect, false,
+                   "Enable flattening of small speculatable branch regions into selects", false)
+DECLARE_IGC_REGKEY(DWORD, BranchToSelectMaxSpeculatedCost, 10,
+                   "Max speculatable-instruction count of a single branch successor BranchToSelect will hoist; bounds "
+                   "the inst count of one speculated branch.",
+                   false)
+DECLARE_IGC_REGKEY(DWORD, BranchToSelectMaxRegionCost, 40,
+                   "Max cumulative speculatable-instruction count accrued into one linearized region across folds "
+                   "(including bodies absorbed by merging); bounds register pressure. Set to 2 times "
+                   "BranchToSelectMaxSpeculatedCost at minimum to allow folding diamond patterns.",
+                   false)
 DECLARE_IGC_REGKEY(bool, EnableIntDivRemIncrementReduction, true,
                    "Enable consecutive Int DivRem increment by constant optimization", false)
 DECLARE_IGC_REGKEY(

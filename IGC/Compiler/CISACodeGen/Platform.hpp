@@ -1604,6 +1604,8 @@ public:
 
   bool supportIntDivRemIncrementReduction() const { return isCoreChildOf(IGFX_XE_HP_CORE); }
 
+
+  bool supportBranchToSelect() const { return isCoreChildOf(IGFX_XE2_HPG_CORE); }
 };
 
 } // namespace IGC

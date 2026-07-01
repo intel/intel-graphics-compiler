@@ -30,6 +30,7 @@ void initializePromoteToPredicatedMemoryAccessPass(llvm::PassRegistry &);
 void initializeBIImportLPMPass(llvm::PassRegistry &);
 void initializeBlockCoalescingPass(llvm::PassRegistry &);
 void initializeBlockMemOpAddrScalarizationPassPass(llvm::PassRegistry &);
+void initializeBranchToSelectPass(llvm::PassRegistry &);
 void initializeBreakConstantExprLPMPass(llvm::PassRegistry &);
 void initializeBuiltinCallGraphAnalysisLPMPass(llvm::PassRegistry &);
 void initializeBuiltinsConverterLPMPass(llvm::PassRegistry &);
