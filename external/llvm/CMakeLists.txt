@@ -50,7 +50,7 @@ if(IGC_OPTION__LLVM_PREFERRED_VERSION VERSION_GREATER_EQUAL 22)
   elseif(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/../../llvm-project/third-party/siphash/include)
     include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../llvm-project/third-party/siphash/include)
   else()
-    include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../llvm-project_${IGC_OPTION__LLVM_PREFERRED_VERSION}/third-party/siphash/include)
+    include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../llvm-project_${IGC_OPTION__LLVM_WORKSPACE_VERSION}/third-party/siphash/include)
   endif()
 endif()
 

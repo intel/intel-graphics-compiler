@@ -9,15 +9,15 @@
 # Use LLVM sources stored at fixed location
 message(STATUS "[LLVM] Current value of CMAKE_CURRENT_SOURCE_DIR : ${CMAKE_CURRENT_SOURCE_DIR}")
 list(APPEND IGC_LLVM_PATHS
-  ${CMAKE_CURRENT_SOURCE_DIR}/../../llvm-project-full_${IGC_OPTION__LLVM_PREFERRED_VERSION}
+  ${CMAKE_CURRENT_SOURCE_DIR}/../../llvm-project-full_${IGC_OPTION__LLVM_WORKSPACE_VERSION}
   ${CMAKE_CURRENT_SOURCE_DIR}/../../llvm-project
   ${CMAKE_CURRENT_SOURCE_DIR}/../../llvm-project_interim
   ${CMAKE_CURRENT_SOURCE_DIR}/../../../llvm-project_interim
-  /opt/src/llvm-project_${IGC_OPTION__LLVM_PREFERRED_VERSION}
-  ${CMAKE_CURRENT_SOURCE_DIR}/../../llvm-project_${IGC_OPTION__LLVM_PREFERRED_VERSION}
-  ${CMAKE_CURRENT_SOURCE_DIR}/../../../llvm-project_${IGC_OPTION__LLVM_PREFERRED_VERSION}
-  ${CMAKE_CURRENT_SOURCE_DIR}/../../../../llvm-project_${IGC_OPTION__LLVM_PREFERRED_VERSION}
-  ${CMAKE_CURRENT_SOURCE_DIR}/../../../../../llvm-project_${IGC_OPTION__LLVM_PREFERRED_VERSION}
+  /opt/src/llvm-project_${IGC_OPTION__LLVM_WORKSPACE_VERSION}
+  ${CMAKE_CURRENT_SOURCE_DIR}/../../llvm-project_${IGC_OPTION__LLVM_WORKSPACE_VERSION}
+  ${CMAKE_CURRENT_SOURCE_DIR}/../../../llvm-project_${IGC_OPTION__LLVM_WORKSPACE_VERSION}
+  ${CMAKE_CURRENT_SOURCE_DIR}/../../../../llvm-project_${IGC_OPTION__LLVM_WORKSPACE_VERSION}
+  ${CMAKE_CURRENT_SOURCE_DIR}/../../../../../llvm-project_${IGC_OPTION__LLVM_WORKSPACE_VERSION}
   ${CMAKE_CURRENT_SOURCE_DIR}/../../../../../llvm-project_interim
   )
 
