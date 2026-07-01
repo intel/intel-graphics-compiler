@@ -281,6 +281,185 @@ const char* DnsclModeEnumeration[5] =
 }; // DnsclModeEnumeration[]
 #endif // GED_DNSCL_MODE_HIDDEN
 
+#ifndef GED_DP64_CACHE_ATOMIC_HIDDEN
+const char* DP64CacheAtomicEnumeration[5] =
+{
+    "DEFAULT", // 0
+    "L1UC_L2UC_L3UC", // 1
+    "L1UC_L2UC_L3WB", // 2
+    "L1UC_L2WB_L3UC", // 3
+    NULL // 4
+}; // DP64CacheAtomicEnumeration[]
+#endif // GED_DP64_CACHE_ATOMIC_HIDDEN
+
+#ifndef GED_DP64_CACHE_LOAD_HIDDEN
+const char* DP64CacheLoadEnumeration[11] =
+{
+    "USE_DEFAULT", // 0
+    "L1UC_L3UC", // 1
+    "L1UC_L3C", // 2
+    "L1UC_L3CC", // 3
+    "L1C_L3UC", // 4
+    "L1C_L3C", // 5
+    "L1C_L3CC", // 6
+    "L1S_L3UC", // 7
+    "L1S_L3C", // 8
+    "L1IAR_L3IAR", // 9
+    NULL // 10
+}; // DP64CacheLoadEnumeration[]
+#endif // GED_DP64_CACHE_LOAD_HIDDEN
+
+#ifndef GED_DP64_CACHE_STORE_HIDDEN
+const char* DP64CacheStoreEnumeration[9] =
+{
+    "DEFAULT", // 0
+    "L1UC_L3UC", // 1
+    "L1UC_L3WB", // 2
+    "L1WT_L3UC", // 3
+    "L1WT_L3WB", // 4
+    "L1S_L3UC", // 5
+    "L1S_L3WB", // 6
+    "L1WB_L3WB", // 7
+    NULL // 8
+}; // DP64CacheStoreEnumeration[]
+#endif // GED_DP64_CACHE_STORE_HIDDEN
+
+#ifndef GED_DP64_CMASK_HIDDEN
+const char* DP64CmaskEnumeration[16] =
+{
+    "X", // 0
+    "Y", // 1
+    "XY", // 2
+    "Z", // 3
+    "XZ", // 4
+    "YZ", // 5
+    "XYZ", // 6
+    "W", // 7
+    "XW", // 8
+    "YW", // 9
+    "XYW", // 10
+    "ZW", // 11
+    "XZW", // 12
+    "YZW", // 13
+    "XYZW", // 14
+    NULL // 15
+}; // DP64CmaskEnumeration[]
+#endif // GED_DP64_CMASK_HIDDEN
+
+#ifndef GED_DP64_DATA_SIZE_HIDDEN
+const char* DP64DataSizeEnumeration[7] =
+{
+    "D8", // 0
+    "D16", // 1
+    "D32", // 2
+    "D64", // 3
+    "D8U32", // 4
+    "D16U32", // 5
+    NULL // 6
+}; // DP64DataSizeEnumeration[]
+#endif // GED_DP64_DATA_SIZE_HIDDEN
+
+#ifndef GED_DP64_FENCE_SCOPE_HIDDEN
+const char* DP64FenceScopeEnumeration[6] =
+{
+    "THREADGROUP", // 0
+    "LOCAL", // 1
+    "TILE", // 2
+    "GPU", // 3
+    "SYSTEM_RELEASE", // 4
+    NULL // 5
+}; // DP64FenceScopeEnumeration[]
+#endif // GED_DP64_FENCE_SCOPE_HIDDEN
+
+#ifndef GED_DP64_FLUSH_TYPE_HIDDEN
+const char* DP64FlushTypeEnumeration[6] =
+{
+    "NONE", // 0
+    "EVICT", // 1
+    "INVALIDATE", // 2
+    "DISCARD", // 3
+    "CLEAN", // 4
+    NULL // 5
+}; // DP64FlushTypeEnumeration[]
+#endif // GED_DP64_FLUSH_TYPE_HIDDEN
+
+#ifndef GED_DP64_GLOBAL_ADDRESS_TYPE_SIZE_HIDDEN
+const char* DP64GlobalAddressTypeSizeEnumeration[5] =
+{
+    "FLAT_A64_A32U", // 0
+    "FLAT_A64_A32S", // 1
+    "FLAT_A64_A64", // 2
+    "STATEFUL_A32", // 3
+    NULL // 4
+}; // DP64GlobalAddressTypeSizeEnumeration[]
+#endif // GED_DP64_GLOBAL_ADDRESS_TYPE_SIZE_HIDDEN
+
+#ifndef GED_DP64_OPCODE_HIDDEN
+const char* DP64OpcodeEnumeration[36] =
+{
+    "LOAD", // 0
+    "LOAD_CMASK", // 1
+    "LOAD_2DBLOCK", // 2
+    "STORE", // 3
+    "STORE_CMASK", // 4
+    "STORE_2DBLOCK", // 5
+    "ATOMIC_INC", // 6
+    "ATOMIC_DEC", // 7
+    "ATOMIC_LOAD", // 8
+    "ATOMIC_STORE", // 9
+    "ATOMIC_ADD", // 10
+    "ATOMIC_SUB", // 11
+    "ATOMIC_MIN", // 12
+    "ATOMIC_MAX", // 13
+    "ATOMIC_UMIN", // 14
+    "ATOMIC_UMAX", // 15
+    "ATOMIC_CMPXCHG", // 16
+    "ATOMIC_FADD", // 17
+    "ATOMIC_FSUB", // 18
+    "ATOMIC_FMIN", // 19
+    "ATOMIC_FMAX", // 20
+    "ATOMIC_FCMPXCHG", // 21
+    "ATOMIC_AND", // 22
+    "ATOMIC_OR", // 23
+    "ATOMIC_XOR", // 24
+    "LOAD_STATUS", // 25
+    "LOAD_CMASK_STATUS", // 26
+    "RSI", // 27
+    "FENCE", // 28
+    "ATOMIC_BFADD", // 29
+    "ATOMIC_BFSUB", // 30
+    "ATOMIC_BFMIN", // 31
+    "ATOMIC_BFMAX", // 32
+    "ATOMIC_BFCMPXCHG", // 33
+    "CCTRL", // 34
+    NULL // 35
+}; // DP64OpcodeEnumeration[]
+#endif // GED_DP64_OPCODE_HIDDEN
+
+#ifndef GED_DP64_SCALE_OFFSET_HIDDEN
+const char* DP64ScaleOffsetEnumeration[3] =
+{
+    "NO_SCALING", // 0
+    "SCALE_1X", // 1
+    NULL // 2
+}; // DP64ScaleOffsetEnumeration[]
+#endif // GED_DP64_SCALE_OFFSET_HIDDEN
+
+#ifndef GED_DP64_VECTOR_SIZE_HIDDEN
+const char* DP64VectorSizeEnumeration[9] =
+{
+    "V1", // 0
+    "V2", // 1
+    "V3", // 2
+    "V4", // 3
+    "V8", // 4
+    "V16", // 5
+    "V32", // 6
+    "V64", // 7
+    NULL // 8
+}; // DP64VectorSizeEnumeration[]
+#endif // GED_DP64_VECTOR_SIZE_HIDDEN
+
 #ifndef GED_DPADDR_REG_SIZE_HIDDEN
 const char* DPAddrRegSizeEnumeration[7] =
 {

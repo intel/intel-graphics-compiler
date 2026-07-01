@@ -6216,6 +6216,335 @@ extern GED_MESSAGE_TYPE GED_CALLCONV GED_GetMessageTypeDP_CONST(const uint32_t m
 extern GED_RETURN_VALUE GED_CALLCONV GED_SetMessageTypeDP_CONST(uint32_t* msgDesc, const GED_MODEL modelId, const GED_MESSAGE_TYPE
                                                                 messageType);
 
+/*!
+ * Get the value of the DP64Opcode field from the given  (as obtained by @ref GED_GetMsgDesc64). The function returns an enumeration
+ * value. To obtain the enum entry's string representation, use @ref GED_GetDP64OpcodeString. See @ref GED_PSEUDO_FIELD_DP64Opcode for
+ * the field's description.
+ *
+ * @param[in]       msgDesc64  The .
+ * @param[in]       modelId    The GED model by which to interpret.
+ * @param[out]      result     If non-null, the function stores the @ref GED_RETURN_VALUE result indicating success or the specific
+ *                             error which caused the failure.
+ *
+ * @return      DP64Opcode's enumeration if the field is valid, GED_DP64_OPCODE_INVALID otherwise.
+ */
+extern GED_DP64_OPCODE GED_CALLCONV GED_GetDP64Opcode(const uint64_t msgDesc64, const GED_MODEL modelId, GED_RETURN_VALUE* result);
+
+/*!
+ * Set the value of the DP64Opcode field in the given . The latter can then be set to its appropriate field (@ref GED_SetMsgDesc64).
+ * See @ref GED_PSEUDO_FIELD_DP64Opcode for the field's description.
+ *
+ * @param[in,out]   msgDesc64  The .
+ * @param[in]       modelId    The GED model by which to interpret.
+ * @param[in]       Opcode     The .
+ *
+ * @return      GED_RETURN_VALUE indicating success or encoding error.
+ */
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetDP64Opcode(uint64_t* msgDesc64, const GED_MODEL modelId, const GED_DP64_OPCODE Opcode);
+
+/*!
+ * Get the value of the DP64Cmask field from the given  (as obtained by @ref GED_GetMsgDesc64). The function returns an enumeration
+ * value. To obtain the enum entry's string representation, use @ref GED_GetDP64CmaskString. See @ref GED_PSEUDO_FIELD_DP64Cmask for
+ * the field's description.
+ *
+ * @param[in]       msgDesc64  The .
+ * @param[in]       modelId    The GED model by which to interpret.
+ * @param[out]      result     If non-null, the function stores the @ref GED_RETURN_VALUE result indicating success or the specific
+ *                             error which caused the failure.
+ *
+ * @return      DP64Cmask's enumeration if the field is valid, GED_DP64_CMASK_INVALID otherwise.
+ */
+extern GED_DP64_CMASK GED_CALLCONV GED_GetDP64Cmask(const uint64_t msgDesc64, const GED_MODEL modelId, GED_RETURN_VALUE* result);
+
+/*!
+ * Set the value of the DP64Cmask field in the given . The latter can then be set to its appropriate field (@ref GED_SetMsgDesc64).
+ * See @ref GED_PSEUDO_FIELD_DP64Cmask for the field's description.
+ *
+ * @param[in,out]   msgDesc64  The .
+ * @param[in]       modelId    The GED model by which to interpret.
+ * @param[in]       Cmask      The .
+ *
+ * @return      GED_RETURN_VALUE indicating success or encoding error.
+ */
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetDP64Cmask(uint64_t* msgDesc64, const GED_MODEL modelId, const GED_DP64_CMASK Cmask);
+
+/*!
+ * Get the value of the DP64DataSize field from the given  (as obtained by @ref GED_GetMsgDesc64). The function returns an enumeration
+ * value. To obtain the enum entry's string representation, use @ref GED_GetDP64DataSizeString. See @ref GED_PSEUDO_FIELD_DP64DataSize
+ * for the field's description.
+ *
+ * @param[in]       msgDesc64  The .
+ * @param[in]       modelId    The GED model by which to interpret.
+ * @param[out]      result     If non-null, the function stores the @ref GED_RETURN_VALUE result indicating success or the specific
+ *                             error which caused the failure.
+ *
+ * @return      DP64DataSize's enumeration if the field is valid, GED_DP64_DATA_SIZE_INVALID otherwise.
+ */
+extern GED_DP64_DATA_SIZE GED_CALLCONV GED_GetDP64DataSize(const uint64_t msgDesc64, const GED_MODEL modelId, GED_RETURN_VALUE*
+                                                           result);
+
+/*!
+ * Set the value of the DP64DataSize field in the given . The latter can then be set to its appropriate field (@ref GED_SetMsgDesc64).
+ * See @ref GED_PSEUDO_FIELD_DP64DataSize for the field's description.
+ *
+ * @param[in,out]   msgDesc64  The .
+ * @param[in]       modelId    The GED model by which to interpret.
+ * @param[in]       DataSize   The .
+ *
+ * @return      GED_RETURN_VALUE indicating success or encoding error.
+ */
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetDP64DataSize(uint64_t* msgDesc64, const GED_MODEL modelId, const GED_DP64_DATA_SIZE
+                                                         DataSize);
+
+/*!
+ * Get the value of the DP64FenceScope field from the given  (as obtained by @ref GED_GetMsgDesc64). The function returns an
+ * enumeration value. To obtain the enum entry's string representation, use @ref GED_GetDP64FenceScopeString. See @ref
+ * GED_PSEUDO_FIELD_DP64FenceScope for the field's description.
+ *
+ * @param[in]       msgDesc64  The .
+ * @param[in]       modelId    The GED model by which to interpret.
+ * @param[out]      result     If non-null, the function stores the @ref GED_RETURN_VALUE result indicating success or the specific
+ *                             error which caused the failure.
+ *
+ * @return      DP64FenceScope's enumeration if the field is valid, GED_DP64_FENCE_SCOPE_INVALID otherwise.
+ */
+extern GED_DP64_FENCE_SCOPE GED_CALLCONV GED_GetDP64FenceScope(const uint64_t msgDesc64, const GED_MODEL modelId, GED_RETURN_VALUE*
+                                                               result);
+
+/*!
+ * Set the value of the DP64FenceScope field in the given . The latter can then be set to its appropriate field (@ref
+ * GED_SetMsgDesc64). See @ref GED_PSEUDO_FIELD_DP64FenceScope for the field's description.
+ *
+ * @param[in,out]   msgDesc64  The .
+ * @param[in]       modelId    The GED model by which to interpret.
+ * @param[in]       FenceScope The .
+ *
+ * @return      GED_RETURN_VALUE indicating success or encoding error.
+ */
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetDP64FenceScope(uint64_t* msgDesc64, const GED_MODEL modelId, const GED_DP64_FENCE_SCOPE
+                                                           FenceScope);
+
+/*!
+ * Get the value of the DP64CacheStore field from the given  (as obtained by @ref GED_GetMsgDesc64). The function returns an
+ * enumeration value. To obtain the enum entry's string representation, use @ref GED_GetDP64CacheStoreString. See @ref
+ * GED_PSEUDO_FIELD_DP64CacheStore for the field's description.
+ *
+ * @param[in]       msgDesc64  The .
+ * @param[in]       modelId    The GED model by which to interpret.
+ * @param[out]      result     If non-null, the function stores the @ref GED_RETURN_VALUE result indicating success or the specific
+ *                             error which caused the failure.
+ *
+ * @return      DP64CacheStore's enumeration if the field is valid, GED_DP64_CACHE_STORE_INVALID otherwise.
+ */
+extern GED_DP64_CACHE_STORE GED_CALLCONV GED_GetDP64CacheStore(const uint64_t msgDesc64, const GED_MODEL modelId, GED_RETURN_VALUE*
+                                                               result);
+
+/*!
+ * Set the value of the DP64CacheStore field in the given . The latter can then be set to its appropriate field (@ref
+ * GED_SetMsgDesc64). See @ref GED_PSEUDO_FIELD_DP64CacheStore for the field's description.
+ *
+ * @param[in,out]   msgDesc64  The .
+ * @param[in]       modelId    The GED model by which to interpret.
+ * @param[in]       CacheStore The .
+ *
+ * @return      GED_RETURN_VALUE indicating success or encoding error.
+ */
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetDP64CacheStore(uint64_t* msgDesc64, const GED_MODEL modelId, const GED_DP64_CACHE_STORE
+                                                           CacheStore);
+
+/*!
+ * Get the value of the DP64CacheLoad field from the given  (as obtained by @ref GED_GetMsgDesc64). The function returns an
+ * enumeration value. To obtain the enum entry's string representation, use @ref GED_GetDP64CacheLoadString. See @ref
+ * GED_PSEUDO_FIELD_DP64CacheLoad for the field's description.
+ *
+ * @param[in]       msgDesc64  The .
+ * @param[in]       modelId    The GED model by which to interpret.
+ * @param[out]      result     If non-null, the function stores the @ref GED_RETURN_VALUE result indicating success or the specific
+ *                             error which caused the failure.
+ *
+ * @return      DP64CacheLoad's enumeration if the field is valid, GED_DP64_CACHE_LOAD_INVALID otherwise.
+ */
+extern GED_DP64_CACHE_LOAD GED_CALLCONV GED_GetDP64CacheLoad(const uint64_t msgDesc64, const GED_MODEL modelId, GED_RETURN_VALUE*
+                                                             result);
+
+/*!
+ * Set the value of the DP64CacheLoad field in the given . The latter can then be set to its appropriate field (@ref
+ * GED_SetMsgDesc64). See @ref GED_PSEUDO_FIELD_DP64CacheLoad for the field's description.
+ *
+ * @param[in,out]   msgDesc64  The .
+ * @param[in]       modelId    The GED model by which to interpret.
+ * @param[in]       CacheLoad  The .
+ *
+ * @return      GED_RETURN_VALUE indicating success or encoding error.
+ */
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetDP64CacheLoad(uint64_t* msgDesc64, const GED_MODEL modelId, const GED_DP64_CACHE_LOAD
+                                                          CacheLoad);
+
+/*!
+ * Get the value of the DP64CacheAtomic field from the given  (as obtained by @ref GED_GetMsgDesc64). The function returns an
+ * enumeration value. To obtain the enum entry's string representation, use @ref GED_GetDP64CacheAtomicString. See @ref
+ * GED_PSEUDO_FIELD_DP64CacheAtomic for the field's description.
+ *
+ * @param[in]       msgDesc64  The .
+ * @param[in]       modelId    The GED model by which to interpret.
+ * @param[out]      result     If non-null, the function stores the @ref GED_RETURN_VALUE result indicating success or the specific
+ *                             error which caused the failure.
+ *
+ * @return      DP64CacheAtomic's enumeration if the field is valid, GED_DP64_CACHE_ATOMIC_INVALID otherwise.
+ */
+extern GED_DP64_CACHE_ATOMIC GED_CALLCONV GED_GetDP64CacheAtomic(const uint64_t msgDesc64, const GED_MODEL modelId, GED_RETURN_VALUE*
+                                                                 result);
+
+/*!
+ * Set the value of the DP64CacheAtomic field in the given . The latter can then be set to its appropriate field (@ref
+ * GED_SetMsgDesc64). See @ref GED_PSEUDO_FIELD_DP64CacheAtomic for the field's description.
+ *
+ * @param[in,out]   msgDesc64      The .
+ * @param[in]       modelId        The GED model by which to interpret.
+ * @param[in]       CacheAtomic    The .
+ *
+ * @return      GED_RETURN_VALUE indicating success or encoding error.
+ */
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetDP64CacheAtomic(uint64_t* msgDesc64, const GED_MODEL modelId, const GED_DP64_CACHE_ATOMIC
+                                                            CacheAtomic);
+
+/*!
+ * Get the value of the DP64VectorSize field from the given  (as obtained by @ref GED_GetMsgDesc64). The function returns an
+ * enumeration value. To obtain the enum entry's string representation, use @ref GED_GetDP64VectorSizeString. See @ref
+ * GED_PSEUDO_FIELD_DP64VectorSize for the field's description.
+ *
+ * @param[in]       msgDesc64  The .
+ * @param[in]       modelId    The GED model by which to interpret.
+ * @param[out]      result     If non-null, the function stores the @ref GED_RETURN_VALUE result indicating success or the specific
+ *                             error which caused the failure.
+ *
+ * @return      DP64VectorSize's enumeration if the field is valid, GED_DP64_VECTOR_SIZE_INVALID otherwise.
+ */
+extern GED_DP64_VECTOR_SIZE GED_CALLCONV GED_GetDP64VectorSize(const uint64_t msgDesc64, const GED_MODEL modelId, GED_RETURN_VALUE*
+                                                               result);
+
+/*!
+ * Set the value of the DP64VectorSize field in the given . The latter can then be set to its appropriate field (@ref
+ * GED_SetMsgDesc64). See @ref GED_PSEUDO_FIELD_DP64VectorSize for the field's description.
+ *
+ * @param[in,out]   msgDesc64  The .
+ * @param[in]       modelId    The GED model by which to interpret.
+ * @param[in]       VectorSize The .
+ *
+ * @return      GED_RETURN_VALUE indicating success or encoding error.
+ */
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetDP64VectorSize(uint64_t* msgDesc64, const GED_MODEL modelId, const GED_DP64_VECTOR_SIZE
+                                                           VectorSize);
+
+/*!
+ * Get the value of the DP64Transpose field from the given  (as obtained by @ref GED_GetMsgDesc64). See @ref
+ * GED_PSEUDO_FIELD_DP64Transpose for the field's description.
+ *
+ * @param[in]       msgDesc64  The .
+ * @param[in]       modelId    The GED model by which to interpret.
+ * @param[out]      result     If non-null, the function stores the @ref GED_RETURN_VALUE result indicating success or the specific
+ *                             error which caused the failure.
+ *
+ * @return      The  if the field is valid, the unchanged msgDesc64 value otherwise.
+ */
+extern uint64_t GED_CALLCONV GED_GetDP64Transpose(const uint64_t msgDesc64, const GED_MODEL modelId, GED_RETURN_VALUE* result);
+
+/*!
+ * Set the value of the DP64Transpose field in the given . The latter can then be set to its appropriate field (@ref
+ * GED_SetMsgDesc64). See @ref GED_PSEUDO_FIELD_DP64Transpose for the field's description.
+ *
+ * @param[in,out]   msgDesc64  The .
+ * @param[in]       modelId    The GED model by which to interpret.
+ * @param[in]       Transpose  The .
+ *
+ * @return      GED_RETURN_VALUE indicating success or encoding error.
+ */
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetDP64Transpose(uint64_t* msgDesc64, const GED_MODEL modelId, const uint64_t Transpose);
+
+/*!
+ * Get the value of the DP64GlobalAddressTypeSize field from the given  (as obtained by @ref GED_GetMsgDesc64). The function returns
+ * an enumeration value. To obtain the enum entry's string representation, use @ref GED_GetDP64GlobalAddressTypeSizeString. See @ref
+ * GED_PSEUDO_FIELD_DP64GlobalAddressTypeSize for the field's description.
+ *
+ * @param[in]       msgDesc64  The .
+ * @param[in]       modelId    The GED model by which to interpret.
+ * @param[out]      result     If non-null, the function stores the @ref GED_RETURN_VALUE result indicating success or the specific
+ *                             error which caused the failure.
+ *
+ * @return      DP64GlobalAddressTypeSize's enumeration if the field is valid, GED_DP64_GLOBAL_ADDRESS_TYPE_SIZE_INVALID otherwise.
+ */
+extern GED_DP64_GLOBAL_ADDRESS_TYPE_SIZE GED_CALLCONV GED_GetDP64GlobalAddressTypeSize(const uint64_t msgDesc64, const GED_MODEL
+                                                                                       modelId, GED_RETURN_VALUE* result);
+
+/*!
+ * Set the value of the DP64GlobalAddressTypeSize field in the given . The latter can then be set to its appropriate field (@ref
+ * GED_SetMsgDesc64). See @ref GED_PSEUDO_FIELD_DP64GlobalAddressTypeSize for the field's description.
+ *
+ * @param[in,out]   msgDesc64              The .
+ * @param[in]       modelId                The GED model by which to interpret.
+ * @param[in]       GlobalAddressTypeSize  The .
+ *
+ * @return      GED_RETURN_VALUE indicating success or encoding error.
+ */
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetDP64GlobalAddressTypeSize(uint64_t* msgDesc64, const GED_MODEL modelId, const
+                                                                      GED_DP64_GLOBAL_ADDRESS_TYPE_SIZE GlobalAddressTypeSize);
+
+/*!
+ * Get the value of the DP64ScaleOffset field from the given  (as obtained by @ref GED_GetMsgDesc64). The function returns an
+ * enumeration value. To obtain the enum entry's string representation, use @ref GED_GetDP64ScaleOffsetString. See @ref
+ * GED_PSEUDO_FIELD_DP64ScaleOffset for the field's description.
+ *
+ * @param[in]       msgDesc64  The .
+ * @param[in]       modelId    The GED model by which to interpret.
+ * @param[out]      result     If non-null, the function stores the @ref GED_RETURN_VALUE result indicating success or the specific
+ *                             error which caused the failure.
+ *
+ * @return      DP64ScaleOffset's enumeration if the field is valid, GED_DP64_SCALE_OFFSET_INVALID otherwise.
+ */
+extern GED_DP64_SCALE_OFFSET GED_CALLCONV GED_GetDP64ScaleOffset(const uint64_t msgDesc64, const GED_MODEL modelId, GED_RETURN_VALUE*
+                                                                 result);
+
+/*!
+ * Set the value of the DP64ScaleOffset field in the given . The latter can then be set to its appropriate field (@ref
+ * GED_SetMsgDesc64). See @ref GED_PSEUDO_FIELD_DP64ScaleOffset for the field's description.
+ *
+ * @param[in,out]   msgDesc64      The .
+ * @param[in]       modelId        The GED model by which to interpret.
+ * @param[in]       ScaleOffset    The .
+ *
+ * @return      GED_RETURN_VALUE indicating success or encoding error.
+ */
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetDP64ScaleOffset(uint64_t* msgDesc64, const GED_MODEL modelId, const GED_DP64_SCALE_OFFSET
+                                                            ScaleOffset);
+
+/*!
+ * Get the value of the DP64FlushType field from the given  (as obtained by @ref GED_GetMsgDesc64). The function returns an
+ * enumeration value. To obtain the enum entry's string representation, use @ref GED_GetDP64FlushTypeString. See @ref
+ * GED_PSEUDO_FIELD_DP64FlushType for the field's description.
+ *
+ * @param[in]       msgDesc64  The .
+ * @param[in]       modelId    The GED model by which to interpret.
+ * @param[out]      result     If non-null, the function stores the @ref GED_RETURN_VALUE result indicating success or the specific
+ *                             error which caused the failure.
+ *
+ * @return      DP64FlushType's enumeration if the field is valid, GED_DP64_FLUSH_TYPE_INVALID otherwise.
+ */
+extern GED_DP64_FLUSH_TYPE GED_CALLCONV GED_GetDP64FlushType(const uint64_t msgDesc64, const GED_MODEL modelId, GED_RETURN_VALUE*
+                                                             result);
+
+/*!
+ * Set the value of the DP64FlushType field in the given . The latter can then be set to its appropriate field (@ref
+ * GED_SetMsgDesc64). See @ref GED_PSEUDO_FIELD_DP64FlushType for the field's description.
+ *
+ * @param[in,out]   msgDesc64  The .
+ * @param[in]       modelId    The GED model by which to interpret.
+ * @param[in]       FlushType  The .
+ *
+ * @return      GED_RETURN_VALUE indicating success or encoding error.
+ */
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetDP64FlushType(uint64_t* msgDesc64, const GED_MODEL modelId, const GED_DP64_FLUSH_TYPE
+                                                          FlushType);
+
 #if GED_EXPERIMENTAL
 
 /*!
@@ -6430,6 +6759,117 @@ extern const char* GED_CALLCONV GED_GetDepCtrlString(GED_DEP_CTRL DepCtrlValue);
  * @return      The requested string.
  */
 extern const char* GED_CALLCONV GED_GetDnsclModeString(GED_DNSCL_MODE DnsclModeValue);
+
+/*!
+ * Get the string representation for the given GED_DP64_CACHE_ATOMIC enumerator. The function returns a NULL pointer for
+ * GED_DP64_CACHE_ATOMIC_INVALID.
+ *
+ * @param[in]       DP64CacheAtomicValue   The given GED_DP64_CACHE_ATOMIC enumerator.
+ *
+ * @return      The requested string.
+ */
+extern const char* GED_CALLCONV GED_GetDP64CacheAtomicString(GED_DP64_CACHE_ATOMIC DP64CacheAtomicValue);
+
+/*!
+ * Get the string representation for the given GED_DP64_CACHE_LOAD enumerator. The function returns a NULL pointer for
+ * GED_DP64_CACHE_LOAD_INVALID.
+ *
+ * @param[in]       DP64CacheLoadValue The given GED_DP64_CACHE_LOAD enumerator.
+ *
+ * @return      The requested string.
+ */
+extern const char* GED_CALLCONV GED_GetDP64CacheLoadString(GED_DP64_CACHE_LOAD DP64CacheLoadValue);
+
+/*!
+ * Get the string representation for the given GED_DP64_CACHE_STORE enumerator. The function returns a NULL pointer for
+ * GED_DP64_CACHE_STORE_INVALID.
+ *
+ * @param[in]       DP64CacheStoreValue    The given GED_DP64_CACHE_STORE enumerator.
+ *
+ * @return      The requested string.
+ */
+extern const char* GED_CALLCONV GED_GetDP64CacheStoreString(GED_DP64_CACHE_STORE DP64CacheStoreValue);
+
+/*!
+ * Get the string representation for the given GED_DP64_CMASK enumerator. The function returns a NULL pointer for
+ * GED_DP64_CMASK_INVALID.
+ *
+ * @param[in]       DP64CmaskValue The given GED_DP64_CMASK enumerator.
+ *
+ * @return      The requested string.
+ */
+extern const char* GED_CALLCONV GED_GetDP64CmaskString(GED_DP64_CMASK DP64CmaskValue);
+
+/*!
+ * Get the string representation for the given GED_DP64_DATA_SIZE enumerator. The function returns a NULL pointer for
+ * GED_DP64_DATA_SIZE_INVALID.
+ *
+ * @param[in]       DP64DataSizeValue  The given GED_DP64_DATA_SIZE enumerator.
+ *
+ * @return      The requested string.
+ */
+extern const char* GED_CALLCONV GED_GetDP64DataSizeString(GED_DP64_DATA_SIZE DP64DataSizeValue);
+
+/*!
+ * Get the string representation for the given GED_DP64_FENCE_SCOPE enumerator. The function returns a NULL pointer for
+ * GED_DP64_FENCE_SCOPE_INVALID.
+ *
+ * @param[in]       DP64FenceScopeValue    The given GED_DP64_FENCE_SCOPE enumerator.
+ *
+ * @return      The requested string.
+ */
+extern const char* GED_CALLCONV GED_GetDP64FenceScopeString(GED_DP64_FENCE_SCOPE DP64FenceScopeValue);
+
+/*!
+ * Get the string representation for the given GED_DP64_FLUSH_TYPE enumerator. The function returns a NULL pointer for
+ * GED_DP64_FLUSH_TYPE_INVALID.
+ *
+ * @param[in]       DP64FlushTypeValue The given GED_DP64_FLUSH_TYPE enumerator.
+ *
+ * @return      The requested string.
+ */
+extern const char* GED_CALLCONV GED_GetDP64FlushTypeString(GED_DP64_FLUSH_TYPE DP64FlushTypeValue);
+
+/*!
+ * Get the string representation for the given GED_DP64_GLOBAL_ADDRESS_TYPE_SIZE enumerator. The function returns a NULL pointer for
+ * GED_DP64_GLOBAL_ADDRESS_TYPE_SIZE_INVALID.
+ *
+ * @param[in]       DP64GlobalAddressTypeSizeValue The given GED_DP64_GLOBAL_ADDRESS_TYPE_SIZE enumerator.
+ *
+ * @return      The requested string.
+ */
+extern const char* GED_CALLCONV GED_GetDP64GlobalAddressTypeSizeString(GED_DP64_GLOBAL_ADDRESS_TYPE_SIZE
+                                                                       DP64GlobalAddressTypeSizeValue);
+
+/*!
+ * Get the string representation for the given GED_DP64_OPCODE enumerator. The function returns a NULL pointer for
+ * GED_DP64_OPCODE_INVALID.
+ *
+ * @param[in]       DP64OpcodeValue    The given GED_DP64_OPCODE enumerator.
+ *
+ * @return      The requested string.
+ */
+extern const char* GED_CALLCONV GED_GetDP64OpcodeString(GED_DP64_OPCODE DP64OpcodeValue);
+
+/*!
+ * Get the string representation for the given GED_DP64_SCALE_OFFSET enumerator. The function returns a NULL pointer for
+ * GED_DP64_SCALE_OFFSET_INVALID.
+ *
+ * @param[in]       DP64ScaleOffsetValue   The given GED_DP64_SCALE_OFFSET enumerator.
+ *
+ * @return      The requested string.
+ */
+extern const char* GED_CALLCONV GED_GetDP64ScaleOffsetString(GED_DP64_SCALE_OFFSET DP64ScaleOffsetValue);
+
+/*!
+ * Get the string representation for the given GED_DP64_VECTOR_SIZE enumerator. The function returns a NULL pointer for
+ * GED_DP64_VECTOR_SIZE_INVALID.
+ *
+ * @param[in]       DP64VectorSizeValue    The given GED_DP64_VECTOR_SIZE enumerator.
+ *
+ * @return      The requested string.
+ */
+extern const char* GED_CALLCONV GED_GetDP64VectorSizeString(GED_DP64_VECTOR_SIZE DP64VectorSizeValue);
 
 /*!
  * Get the string representation for the given GED_DPADDR_REG_SIZE enumerator. The function returns a NULL pointer for

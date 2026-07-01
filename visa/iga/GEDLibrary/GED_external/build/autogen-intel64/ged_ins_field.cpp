@@ -348,7 +348,7 @@ const char* fieldNameByField[162] =
     "Src4RegNum8" // 161
 }; // fieldNameByField[]
 #endif // GED_VALIDATION_API
-GED_FIELD_TYPE pseudoFieldTypesByField[51] =
+GED_FIELD_TYPE pseudoFieldTypesByField[63] =
 {
     0x103, // 0
     0x100, // 1
@@ -400,11 +400,23 @@ GED_FIELD_TYPE pseudoFieldTypesByField[51] =
     0x103, // 47
     0x103, // 48
     0x103, // 49
-    0x103 // 50
+    0x103, // 50
+    0x103, // 51
+    0x103, // 52
+    0x103, // 53
+    0x103, // 54
+    0x103, // 55
+    0x103, // 56
+    0x103, // 57
+    0x103, // 58
+    0x100, // 59
+    0x103, // 60
+    0x103, // 61
+    0x103 // 62
 }; // pseudoFieldTypesByField[]
 
 #if GED_VALIDATION_API
-const char* fieldNameByPseudoField[51] =
+const char* fieldNameByPseudoField[63] =
 {
     "ArchReg", // 0
     "ArchRegNum", // 1
@@ -456,6 +468,18 @@ const char* fieldNameByPseudoField[51] =
     "DPAddrRegSize", // 47
     "DPOneAddrReg", // 48
     "DPCmask", // 49
-    "MessageTypeDP_CONST" // 50
+    "MessageTypeDP_CONST", // 50
+    "DP64Opcode", // 51
+    "DP64Cmask", // 52
+    "DP64DataSize", // 53
+    "DP64FenceScope", // 54
+    "DP64CacheStore", // 55
+    "DP64CacheLoad", // 56
+    "DP64CacheAtomic", // 57
+    "DP64VectorSize", // 58
+    "DP64Transpose", // 59
+    "DP64GlobalAddressTypeSize", // 60
+    "DP64ScaleOffset", // 61
+    "DP64FlushType" // 62
 }; // fieldNameByPseudoField[]
 #endif // GED_VALIDATION_API

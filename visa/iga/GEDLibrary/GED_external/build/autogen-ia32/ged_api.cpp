@@ -66,7 +66,7 @@ ModelData ModelsArray[17] =
     { GED_MODEL_NS_XE_LPG_MD::Opcodes, GED_MODEL_NAME_STRING("xe.lpg.md"), 162, (const ged_field_enum_table_t)OpcodeTable7, 45, PositionInterpreterTable8, 3, EnumInterpretersTable5, 0, NULL }, // 13
     { GED_MODEL_NS_XE2::Opcodes, GED_MODEL_NAME_STRING("xe2"), 162, (const ged_field_enum_table_t)OpcodeTable6, 51, PositionInterpreterTable10, 3, EnumInterpretersTable7, 0, NULL }, // 14
     { GED_MODEL_NS_XE3::Opcodes, GED_MODEL_NAME_STRING("xe3"), 162, (const ged_field_enum_table_t)OpcodeTable8, 50, PositionInterpreterTable11, 3, EnumInterpretersTable0, 0, NULL }, // 15
-    { GED_MODEL_NS_XE3P_CRI::Opcodes, GED_MODEL_NAME_STRING("xe3p.cri"), 162, (const ged_field_enum_table_t)OpcodeTable9, 2, PositionInterpreterTable12, 3, EnumInterpretersTable0, 0, NULL } // 16
+    { GED_MODEL_NS_XE3P_CRI::Opcodes, GED_MODEL_NAME_STRING("xe3p.cri"), 162, (const ged_field_enum_table_t)OpcodeTable9, 63, PositionInterpreterTable12, 3, EnumInterpretersTable0, 0, NULL } // 16
 }; // ModelsArray[]
 #endif // GED_MODELS_ARRAY_HIDDEN
 const unsigned int numOfSupportedModels = 17;
@@ -2681,6 +2681,139 @@ GED_RETURN_VALUE GED_SetMessageTypeDP_CONST(uint32_t* msgDesc, const GED_MODEL m
 {
     return GEDInterpreter::SetInterpretedPosition(*msgDesc, GED_PSEUDO_FIELD_MessageTypeDP_CONST, modelId, messageType);
 }
+GED_DP64_OPCODE GED_GetDP64Opcode(const uint64_t msgDesc64, const GED_MODEL modelId, GED_RETURN_VALUE* result)
+{
+    GED_RETURN_VALUE localResult = GED_RETURN_VALUE_INVALID_FIELD;
+    if (NULL == result) result = &localResult;
+    const uint64_t value = GEDInterpreter::InterpretPosition(msgDesc64, GED_PSEUDO_FIELD_DP64Opcode, modelId, *result);
+    return (GED_RETURN_VALUE_SUCCESS == *result) ? (GED_DP64_OPCODE)value : GED_DP64_OPCODE_INVALID;
+}
+GED_RETURN_VALUE GED_SetDP64Opcode(uint64_t* msgDesc64, const GED_MODEL modelId, const GED_DP64_OPCODE Opcode)
+{
+    return GEDInterpreter::SetInterpretedPosition(*msgDesc64, GED_PSEUDO_FIELD_DP64Opcode, modelId, Opcode);
+}
+GED_DP64_CMASK GED_GetDP64Cmask(const uint64_t msgDesc64, const GED_MODEL modelId, GED_RETURN_VALUE* result)
+{
+    GED_RETURN_VALUE localResult = GED_RETURN_VALUE_INVALID_FIELD;
+    if (NULL == result) result = &localResult;
+    const uint64_t value = GEDInterpreter::InterpretPosition(msgDesc64, GED_PSEUDO_FIELD_DP64Cmask, modelId, *result);
+    return (GED_RETURN_VALUE_SUCCESS == *result) ? (GED_DP64_CMASK)value : GED_DP64_CMASK_INVALID;
+}
+GED_RETURN_VALUE GED_SetDP64Cmask(uint64_t* msgDesc64, const GED_MODEL modelId, const GED_DP64_CMASK Cmask)
+{
+    return GEDInterpreter::SetInterpretedPosition(*msgDesc64, GED_PSEUDO_FIELD_DP64Cmask, modelId, Cmask);
+}
+GED_DP64_DATA_SIZE GED_GetDP64DataSize(const uint64_t msgDesc64, const GED_MODEL modelId, GED_RETURN_VALUE* result)
+{
+    GED_RETURN_VALUE localResult = GED_RETURN_VALUE_INVALID_FIELD;
+    if (NULL == result) result = &localResult;
+    const uint64_t value = GEDInterpreter::InterpretPosition(msgDesc64, GED_PSEUDO_FIELD_DP64DataSize, modelId, *result);
+    return (GED_RETURN_VALUE_SUCCESS == *result) ? (GED_DP64_DATA_SIZE)value : GED_DP64_DATA_SIZE_INVALID;
+}
+GED_RETURN_VALUE GED_SetDP64DataSize(uint64_t* msgDesc64, const GED_MODEL modelId, const GED_DP64_DATA_SIZE DataSize)
+{
+    return GEDInterpreter::SetInterpretedPosition(*msgDesc64, GED_PSEUDO_FIELD_DP64DataSize, modelId, DataSize);
+}
+GED_DP64_FENCE_SCOPE GED_GetDP64FenceScope(const uint64_t msgDesc64, const GED_MODEL modelId, GED_RETURN_VALUE* result)
+{
+    GED_RETURN_VALUE localResult = GED_RETURN_VALUE_INVALID_FIELD;
+    if (NULL == result) result = &localResult;
+    const uint64_t value = GEDInterpreter::InterpretPosition(msgDesc64, GED_PSEUDO_FIELD_DP64FenceScope, modelId, *result);
+    return (GED_RETURN_VALUE_SUCCESS == *result) ? (GED_DP64_FENCE_SCOPE)value : GED_DP64_FENCE_SCOPE_INVALID;
+}
+GED_RETURN_VALUE GED_SetDP64FenceScope(uint64_t* msgDesc64, const GED_MODEL modelId, const GED_DP64_FENCE_SCOPE FenceScope)
+{
+    return GEDInterpreter::SetInterpretedPosition(*msgDesc64, GED_PSEUDO_FIELD_DP64FenceScope, modelId, FenceScope);
+}
+GED_DP64_CACHE_STORE GED_GetDP64CacheStore(const uint64_t msgDesc64, const GED_MODEL modelId, GED_RETURN_VALUE* result)
+{
+    GED_RETURN_VALUE localResult = GED_RETURN_VALUE_INVALID_FIELD;
+    if (NULL == result) result = &localResult;
+    const uint64_t value = GEDInterpreter::InterpretPosition(msgDesc64, GED_PSEUDO_FIELD_DP64CacheStore, modelId, *result);
+    return (GED_RETURN_VALUE_SUCCESS == *result) ? (GED_DP64_CACHE_STORE)value : GED_DP64_CACHE_STORE_INVALID;
+}
+GED_RETURN_VALUE GED_SetDP64CacheStore(uint64_t* msgDesc64, const GED_MODEL modelId, const GED_DP64_CACHE_STORE CacheStore)
+{
+    return GEDInterpreter::SetInterpretedPosition(*msgDesc64, GED_PSEUDO_FIELD_DP64CacheStore, modelId, CacheStore);
+}
+GED_DP64_CACHE_LOAD GED_GetDP64CacheLoad(const uint64_t msgDesc64, const GED_MODEL modelId, GED_RETURN_VALUE* result)
+{
+    GED_RETURN_VALUE localResult = GED_RETURN_VALUE_INVALID_FIELD;
+    if (NULL == result) result = &localResult;
+    const uint64_t value = GEDInterpreter::InterpretPosition(msgDesc64, GED_PSEUDO_FIELD_DP64CacheLoad, modelId, *result);
+    return (GED_RETURN_VALUE_SUCCESS == *result) ? (GED_DP64_CACHE_LOAD)value : GED_DP64_CACHE_LOAD_INVALID;
+}
+GED_RETURN_VALUE GED_SetDP64CacheLoad(uint64_t* msgDesc64, const GED_MODEL modelId, const GED_DP64_CACHE_LOAD CacheLoad)
+{
+    return GEDInterpreter::SetInterpretedPosition(*msgDesc64, GED_PSEUDO_FIELD_DP64CacheLoad, modelId, CacheLoad);
+}
+GED_DP64_CACHE_ATOMIC GED_GetDP64CacheAtomic(const uint64_t msgDesc64, const GED_MODEL modelId, GED_RETURN_VALUE* result)
+{
+    GED_RETURN_VALUE localResult = GED_RETURN_VALUE_INVALID_FIELD;
+    if (NULL == result) result = &localResult;
+    const uint64_t value = GEDInterpreter::InterpretPosition(msgDesc64, GED_PSEUDO_FIELD_DP64CacheAtomic, modelId, *result);
+    return (GED_RETURN_VALUE_SUCCESS == *result) ? (GED_DP64_CACHE_ATOMIC)value : GED_DP64_CACHE_ATOMIC_INVALID;
+}
+GED_RETURN_VALUE GED_SetDP64CacheAtomic(uint64_t* msgDesc64, const GED_MODEL modelId, const GED_DP64_CACHE_ATOMIC CacheAtomic)
+{
+    return GEDInterpreter::SetInterpretedPosition(*msgDesc64, GED_PSEUDO_FIELD_DP64CacheAtomic, modelId, CacheAtomic);
+}
+GED_DP64_VECTOR_SIZE GED_GetDP64VectorSize(const uint64_t msgDesc64, const GED_MODEL modelId, GED_RETURN_VALUE* result)
+{
+    GED_RETURN_VALUE localResult = GED_RETURN_VALUE_INVALID_FIELD;
+    if (NULL == result) result = &localResult;
+    const uint64_t value = GEDInterpreter::InterpretPosition(msgDesc64, GED_PSEUDO_FIELD_DP64VectorSize, modelId, *result);
+    return (GED_RETURN_VALUE_SUCCESS == *result) ? (GED_DP64_VECTOR_SIZE)value : GED_DP64_VECTOR_SIZE_INVALID;
+}
+GED_RETURN_VALUE GED_SetDP64VectorSize(uint64_t* msgDesc64, const GED_MODEL modelId, const GED_DP64_VECTOR_SIZE VectorSize)
+{
+    return GEDInterpreter::SetInterpretedPosition(*msgDesc64, GED_PSEUDO_FIELD_DP64VectorSize, modelId, VectorSize);
+}
+uint64_t GED_GetDP64Transpose(const uint64_t msgDesc64, const GED_MODEL modelId, GED_RETURN_VALUE* result)
+{
+    GED_RETURN_VALUE localResult = GED_RETURN_VALUE_INVALID_FIELD;
+    if (NULL == result) result = &localResult;
+    return GEDInterpreter::InterpretPosition(msgDesc64, GED_PSEUDO_FIELD_DP64Transpose, modelId, *result);
+}
+GED_RETURN_VALUE GED_SetDP64Transpose(uint64_t* msgDesc64, const GED_MODEL modelId, const uint64_t Transpose)
+{
+    return GEDInterpreter::SetInterpretedPosition(*msgDesc64, GED_PSEUDO_FIELD_DP64Transpose, modelId, Transpose);
+}
+GED_DP64_GLOBAL_ADDRESS_TYPE_SIZE GED_GetDP64GlobalAddressTypeSize(const uint64_t msgDesc64, const GED_MODEL modelId,
+                                                                   GED_RETURN_VALUE* result)
+{
+    GED_RETURN_VALUE localResult = GED_RETURN_VALUE_INVALID_FIELD;
+    if (NULL == result) result = &localResult;
+    const uint64_t value = GEDInterpreter::InterpretPosition(msgDesc64, GED_PSEUDO_FIELD_DP64GlobalAddressTypeSize, modelId, *result);
+    return (GED_RETURN_VALUE_SUCCESS == *result) ? (GED_DP64_GLOBAL_ADDRESS_TYPE_SIZE)value : GED_DP64_GLOBAL_ADDRESS_TYPE_SIZE_INVALID;
+}
+GED_RETURN_VALUE GED_SetDP64GlobalAddressTypeSize(uint64_t* msgDesc64, const GED_MODEL modelId, const
+                                                  GED_DP64_GLOBAL_ADDRESS_TYPE_SIZE GlobalAddressTypeSize)
+{
+    return GEDInterpreter::SetInterpretedPosition(*msgDesc64, GED_PSEUDO_FIELD_DP64GlobalAddressTypeSize, modelId, GlobalAddressTypeSize);
+}
+GED_DP64_SCALE_OFFSET GED_GetDP64ScaleOffset(const uint64_t msgDesc64, const GED_MODEL modelId, GED_RETURN_VALUE* result)
+{
+    GED_RETURN_VALUE localResult = GED_RETURN_VALUE_INVALID_FIELD;
+    if (NULL == result) result = &localResult;
+    const uint64_t value = GEDInterpreter::InterpretPosition(msgDesc64, GED_PSEUDO_FIELD_DP64ScaleOffset, modelId, *result);
+    return (GED_RETURN_VALUE_SUCCESS == *result) ? (GED_DP64_SCALE_OFFSET)value : GED_DP64_SCALE_OFFSET_INVALID;
+}
+GED_RETURN_VALUE GED_SetDP64ScaleOffset(uint64_t* msgDesc64, const GED_MODEL modelId, const GED_DP64_SCALE_OFFSET ScaleOffset)
+{
+    return GEDInterpreter::SetInterpretedPosition(*msgDesc64, GED_PSEUDO_FIELD_DP64ScaleOffset, modelId, ScaleOffset);
+}
+GED_DP64_FLUSH_TYPE GED_GetDP64FlushType(const uint64_t msgDesc64, const GED_MODEL modelId, GED_RETURN_VALUE* result)
+{
+    GED_RETURN_VALUE localResult = GED_RETURN_VALUE_INVALID_FIELD;
+    if (NULL == result) result = &localResult;
+    const uint64_t value = GEDInterpreter::InterpretPosition(msgDesc64, GED_PSEUDO_FIELD_DP64FlushType, modelId, *result);
+    return (GED_RETURN_VALUE_SUCCESS == *result) ? (GED_DP64_FLUSH_TYPE)value : GED_DP64_FLUSH_TYPE_INVALID;
+}
+GED_RETURN_VALUE GED_SetDP64FlushType(uint64_t* msgDesc64, const GED_MODEL modelId, const GED_DP64_FLUSH_TYPE FlushType)
+{
+    return GEDInterpreter::SetInterpretedPosition(*msgDesc64, GED_PSEUDO_FIELD_DP64FlushType, modelId, FlushType);
+}
 
 #if GED_EXPERIMENTAL
 GED_RETURN_VALUE GED_SetRawBits(ged_ins_t* ins, uint8_t low, uint8_t high, const uint64_t value)
@@ -2848,6 +2981,94 @@ const char* GED_GetDnsclModeString(GED_DNSCL_MODE DnsclModeValue)
 
 }
 #endif // GED_DNSCL_MODE_HIDDEN
+
+#ifndef GED_DP64_CACHE_ATOMIC_HIDDEN
+const char* GED_GetDP64CacheAtomicString(GED_DP64_CACHE_ATOMIC DP64CacheAtomicValue)
+{
+    return DP64CacheAtomicEnumeration[DP64CacheAtomicValue];
+
+}
+#endif // GED_DP64_CACHE_ATOMIC_HIDDEN
+
+#ifndef GED_DP64_CACHE_LOAD_HIDDEN
+const char* GED_GetDP64CacheLoadString(GED_DP64_CACHE_LOAD DP64CacheLoadValue)
+{
+    return DP64CacheLoadEnumeration[DP64CacheLoadValue];
+
+}
+#endif // GED_DP64_CACHE_LOAD_HIDDEN
+
+#ifndef GED_DP64_CACHE_STORE_HIDDEN
+const char* GED_GetDP64CacheStoreString(GED_DP64_CACHE_STORE DP64CacheStoreValue)
+{
+    return DP64CacheStoreEnumeration[DP64CacheStoreValue];
+
+}
+#endif // GED_DP64_CACHE_STORE_HIDDEN
+
+#ifndef GED_DP64_CMASK_HIDDEN
+const char* GED_GetDP64CmaskString(GED_DP64_CMASK DP64CmaskValue)
+{
+    return DP64CmaskEnumeration[DP64CmaskValue];
+
+}
+#endif // GED_DP64_CMASK_HIDDEN
+
+#ifndef GED_DP64_DATA_SIZE_HIDDEN
+const char* GED_GetDP64DataSizeString(GED_DP64_DATA_SIZE DP64DataSizeValue)
+{
+    return DP64DataSizeEnumeration[DP64DataSizeValue];
+
+}
+#endif // GED_DP64_DATA_SIZE_HIDDEN
+
+#ifndef GED_DP64_FENCE_SCOPE_HIDDEN
+const char* GED_GetDP64FenceScopeString(GED_DP64_FENCE_SCOPE DP64FenceScopeValue)
+{
+    return DP64FenceScopeEnumeration[DP64FenceScopeValue];
+
+}
+#endif // GED_DP64_FENCE_SCOPE_HIDDEN
+
+#ifndef GED_DP64_FLUSH_TYPE_HIDDEN
+const char* GED_GetDP64FlushTypeString(GED_DP64_FLUSH_TYPE DP64FlushTypeValue)
+{
+    return DP64FlushTypeEnumeration[DP64FlushTypeValue];
+
+}
+#endif // GED_DP64_FLUSH_TYPE_HIDDEN
+
+#ifndef GED_DP64_GLOBAL_ADDRESS_TYPE_SIZE_HIDDEN
+const char* GED_GetDP64GlobalAddressTypeSizeString(GED_DP64_GLOBAL_ADDRESS_TYPE_SIZE DP64GlobalAddressTypeSizeValue)
+{
+    return DP64GlobalAddressTypeSizeEnumeration[DP64GlobalAddressTypeSizeValue];
+
+}
+#endif // GED_DP64_GLOBAL_ADDRESS_TYPE_SIZE_HIDDEN
+
+#ifndef GED_DP64_OPCODE_HIDDEN
+const char* GED_GetDP64OpcodeString(GED_DP64_OPCODE DP64OpcodeValue)
+{
+    return DP64OpcodeEnumeration[DP64OpcodeValue];
+
+}
+#endif // GED_DP64_OPCODE_HIDDEN
+
+#ifndef GED_DP64_SCALE_OFFSET_HIDDEN
+const char* GED_GetDP64ScaleOffsetString(GED_DP64_SCALE_OFFSET DP64ScaleOffsetValue)
+{
+    return DP64ScaleOffsetEnumeration[DP64ScaleOffsetValue];
+
+}
+#endif // GED_DP64_SCALE_OFFSET_HIDDEN
+
+#ifndef GED_DP64_VECTOR_SIZE_HIDDEN
+const char* GED_GetDP64VectorSizeString(GED_DP64_VECTOR_SIZE DP64VectorSizeValue)
+{
+    return DP64VectorSizeEnumeration[DP64VectorSizeValue];
+
+}
+#endif // GED_DP64_VECTOR_SIZE_HIDDEN
 
 #ifndef GED_DPADDR_REG_SIZE_HIDDEN
 const char* GED_GetDPAddrRegSizeString(GED_DPADDR_REG_SIZE DPAddrRegSizeValue)

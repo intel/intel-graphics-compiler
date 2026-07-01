@@ -1,9 +1,9 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2019-2022 Intel Corporation
+Copyright (C) 2019 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
-const char* gedVersion = "1e3b2c31";
+const char* gedVersion = "a60b4e0b";

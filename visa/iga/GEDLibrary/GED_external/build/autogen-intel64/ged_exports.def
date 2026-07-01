@@ -488,6 +488,30 @@ EXPORTS
   GED_SetDPCmask
   GED_GetMessageTypeDP_CONST
   GED_SetMessageTypeDP_CONST
+  GED_GetDP64Opcode
+  GED_SetDP64Opcode
+  GED_GetDP64Cmask
+  GED_SetDP64Cmask
+  GED_GetDP64DataSize
+  GED_SetDP64DataSize
+  GED_GetDP64FenceScope
+  GED_SetDP64FenceScope
+  GED_GetDP64CacheStore
+  GED_SetDP64CacheStore
+  GED_GetDP64CacheLoad
+  GED_SetDP64CacheLoad
+  GED_GetDP64CacheAtomic
+  GED_SetDP64CacheAtomic
+  GED_GetDP64VectorSize
+  GED_SetDP64VectorSize
+  GED_GetDP64Transpose
+  GED_SetDP64Transpose
+  GED_GetDP64GlobalAddressTypeSize
+  GED_SetDP64GlobalAddressTypeSize
+  GED_GetDP64ScaleOffset
+  GED_SetDP64ScaleOffset
+  GED_GetDP64FlushType
+  GED_SetDP64FlushType
   GED_SetRawBits
   GED_GetAccessModeString
   GED_GetAccWrCtrlString
@@ -509,6 +533,17 @@ EXPORTS
   GED_GetDebugCtrlString
   GED_GetDepCtrlString
   GED_GetDnsclModeString
+  GED_GetDP64CacheAtomicString
+  GED_GetDP64CacheLoadString
+  GED_GetDP64CacheStoreString
+  GED_GetDP64CmaskString
+  GED_GetDP64DataSizeString
+  GED_GetDP64FenceScopeString
+  GED_GetDP64FlushTypeString
+  GED_GetDP64GlobalAddressTypeSizeString
+  GED_GetDP64OpcodeString
+  GED_GetDP64ScaleOffsetString
+  GED_GetDP64VectorSizeString
   GED_GetDPAddrRegSizeString
   GED_GetDpAddrSizeString
   GED_GetDpAddrSurfaceTypeString

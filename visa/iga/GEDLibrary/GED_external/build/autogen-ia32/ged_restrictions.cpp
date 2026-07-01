@@ -271,6 +271,17 @@ static ged_field_restriction_t RestrictionVar253 = { GED_FIELD_RESTRICTIONS_TYPE
 static ged_field_restriction_t RestrictionVar254 = { GED_FIELD_RESTRICTIONS_TYPE_FIELD_TYPE, { /* { 42, unsigned, not duplicated,  } */ (void*)(g_uintptr_t)0x2a } };
 static ged_field_restriction_t RestrictionVar255 = { GED_FIELD_RESTRICTIONS_TYPE_ENUM,       { DataTypeScaleTable0 } };
 static ged_field_restriction_t RestrictionVar256 = { GED_FIELD_RESTRICTIONS_TYPE_ENUM,       { DataTypeTable41 } };
+static ged_field_restriction_t RestrictionVar257 = { GED_FIELD_RESTRICTIONS_TYPE_ENUM,       { DP64OpcodeTable0 } };
+static ged_field_restriction_t RestrictionVar258 = { GED_FIELD_RESTRICTIONS_TYPE_ENUM,       { DP64CmaskTable0 } };
+static ged_field_restriction_t RestrictionVar259 = { GED_FIELD_RESTRICTIONS_TYPE_ENUM,       { DP64DataSizeTable0 } };
+static ged_field_restriction_t RestrictionVar260 = { GED_FIELD_RESTRICTIONS_TYPE_ENUM,       { DP64FenceScopeTable0 } };
+static ged_field_restriction_t RestrictionVar261 = { GED_FIELD_RESTRICTIONS_TYPE_ENUM,       { DP64CacheStoreTable0 } };
+static ged_field_restriction_t RestrictionVar262 = { GED_FIELD_RESTRICTIONS_TYPE_ENUM,       { DP64CacheLoadTable0 } };
+static ged_field_restriction_t RestrictionVar263 = { GED_FIELD_RESTRICTIONS_TYPE_ENUM,       { DP64CacheAtomicTable0 } };
+static ged_field_restriction_t RestrictionVar264 = { GED_FIELD_RESTRICTIONS_TYPE_ENUM,       { DP64VectorSizeTable0 } };
+static ged_field_restriction_t RestrictionVar265 = { GED_FIELD_RESTRICTIONS_TYPE_ENUM,       { DP64GlobalAddressTypeSizeTable0 } };
+static ged_field_restriction_t RestrictionVar266 = { GED_FIELD_RESTRICTIONS_TYPE_ENUM,       { DP64ScaleOffsetTable0 } };
+static ged_field_restriction_t RestrictionVar267 = { GED_FIELD_RESTRICTIONS_TYPE_ENUM,       { DP64FlushTypeTable0 } };
 const ged_field_restriction_t* RestrictionTable0[2] =
 {
     &RestrictionVar0, // 0
@@ -1556,3 +1567,58 @@ const ged_field_restriction_t* RestrictionTable256[2] =
     &RestrictionVar256, // 0
     NULL // 1
 }; // RestrictionTable256[]
+const ged_field_restriction_t* RestrictionTable257[2] =
+{
+    &RestrictionVar257, // 0
+    NULL // 1
+}; // RestrictionTable257[]
+const ged_field_restriction_t* RestrictionTable258[2] =
+{
+    &RestrictionVar258, // 0
+    NULL // 1
+}; // RestrictionTable258[]
+const ged_field_restriction_t* RestrictionTable259[2] =
+{
+    &RestrictionVar259, // 0
+    NULL // 1
+}; // RestrictionTable259[]
+const ged_field_restriction_t* RestrictionTable260[2] =
+{
+    &RestrictionVar260, // 0
+    NULL // 1
+}; // RestrictionTable260[]
+const ged_field_restriction_t* RestrictionTable261[2] =
+{
+    &RestrictionVar261, // 0
+    NULL // 1
+}; // RestrictionTable261[]
+const ged_field_restriction_t* RestrictionTable262[2] =
+{
+    &RestrictionVar262, // 0
+    NULL // 1
+}; // RestrictionTable262[]
+const ged_field_restriction_t* RestrictionTable263[2] =
+{
+    &RestrictionVar263, // 0
+    NULL // 1
+}; // RestrictionTable263[]
+const ged_field_restriction_t* RestrictionTable264[2] =
+{
+    &RestrictionVar264, // 0
+    NULL // 1
+}; // RestrictionTable264[]
+const ged_field_restriction_t* RestrictionTable265[2] =
+{
+    &RestrictionVar265, // 0
+    NULL // 1
+}; // RestrictionTable265[]
+const ged_field_restriction_t* RestrictionTable266[2] =
+{
+    &RestrictionVar266, // 0
+    NULL // 1
+}; // RestrictionTable266[]
+const ged_field_restriction_t* RestrictionTable267[2] =
+{
+    &RestrictionVar267, // 0
+    NULL // 1
+}; // RestrictionTable267[]

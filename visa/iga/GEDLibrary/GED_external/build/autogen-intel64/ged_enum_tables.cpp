@@ -1718,6 +1718,309 @@ const GED_DNSCL_MODE* DnsclModeTable0[4] =
     &DnsclModeVar2, // 2
     &DnsclModeVar3 // 3
 }; // DnsclModeTable0[]
+static GED_DP64_CACHE_ATOMIC DP64CacheAtomicVar0 = (GED_DP64_CACHE_ATOMIC)0;
+static GED_DP64_CACHE_ATOMIC DP64CacheAtomicVar1 = (GED_DP64_CACHE_ATOMIC)1;
+static GED_DP64_CACHE_ATOMIC DP64CacheAtomicVar2 = (GED_DP64_CACHE_ATOMIC)2;
+static GED_DP64_CACHE_ATOMIC DP64CacheAtomicVar3 = (GED_DP64_CACHE_ATOMIC)3;
+const GED_DP64_CACHE_ATOMIC* DP64CacheAtomicTable0[16] =
+{
+    &DP64CacheAtomicVar0, // 0
+    NULL, // 1
+    &DP64CacheAtomicVar1, // 2
+    &DP64CacheAtomicVar2, // 3
+    &DP64CacheAtomicVar3, // 4
+    NULL, // 5
+    NULL, // 6
+    NULL, // 7
+    NULL, // 8
+    NULL, // 9
+    NULL, // 10
+    NULL, // 11
+    NULL, // 12
+    NULL, // 13
+    NULL, // 14
+    NULL // 15
+}; // DP64CacheAtomicTable0[]
+static GED_DP64_CACHE_LOAD DP64CacheLoadVar0 = (GED_DP64_CACHE_LOAD)0;
+static GED_DP64_CACHE_LOAD DP64CacheLoadVar1 = (GED_DP64_CACHE_LOAD)1;
+static GED_DP64_CACHE_LOAD DP64CacheLoadVar2 = (GED_DP64_CACHE_LOAD)2;
+static GED_DP64_CACHE_LOAD DP64CacheLoadVar3 = (GED_DP64_CACHE_LOAD)3;
+static GED_DP64_CACHE_LOAD DP64CacheLoadVar4 = (GED_DP64_CACHE_LOAD)4;
+static GED_DP64_CACHE_LOAD DP64CacheLoadVar5 = (GED_DP64_CACHE_LOAD)5;
+static GED_DP64_CACHE_LOAD DP64CacheLoadVar6 = (GED_DP64_CACHE_LOAD)6;
+static GED_DP64_CACHE_LOAD DP64CacheLoadVar7 = (GED_DP64_CACHE_LOAD)7;
+static GED_DP64_CACHE_LOAD DP64CacheLoadVar8 = (GED_DP64_CACHE_LOAD)8;
+static GED_DP64_CACHE_LOAD DP64CacheLoadVar9 = (GED_DP64_CACHE_LOAD)9;
+const GED_DP64_CACHE_LOAD* DP64CacheLoadTable0[16] =
+{
+    &DP64CacheLoadVar0, // 0
+    NULL, // 1
+    &DP64CacheLoadVar1, // 2
+    NULL, // 3
+    &DP64CacheLoadVar2, // 4
+    &DP64CacheLoadVar3, // 5
+    &DP64CacheLoadVar4, // 6
+    NULL, // 7
+    &DP64CacheLoadVar5, // 8
+    &DP64CacheLoadVar6, // 9
+    &DP64CacheLoadVar7, // 10
+    NULL, // 11
+    &DP64CacheLoadVar8, // 12
+    NULL, // 13
+    &DP64CacheLoadVar9, // 14
+    NULL // 15
+}; // DP64CacheLoadTable0[]
+static GED_DP64_CACHE_STORE DP64CacheStoreVar0 = (GED_DP64_CACHE_STORE)0;
+static GED_DP64_CACHE_STORE DP64CacheStoreVar1 = (GED_DP64_CACHE_STORE)1;
+static GED_DP64_CACHE_STORE DP64CacheStoreVar2 = (GED_DP64_CACHE_STORE)2;
+static GED_DP64_CACHE_STORE DP64CacheStoreVar3 = (GED_DP64_CACHE_STORE)3;
+static GED_DP64_CACHE_STORE DP64CacheStoreVar4 = (GED_DP64_CACHE_STORE)4;
+static GED_DP64_CACHE_STORE DP64CacheStoreVar5 = (GED_DP64_CACHE_STORE)5;
+static GED_DP64_CACHE_STORE DP64CacheStoreVar6 = (GED_DP64_CACHE_STORE)6;
+static GED_DP64_CACHE_STORE DP64CacheStoreVar7 = (GED_DP64_CACHE_STORE)7;
+const GED_DP64_CACHE_STORE* DP64CacheStoreTable0[16] =
+{
+    &DP64CacheStoreVar0, // 0
+    NULL, // 1
+    &DP64CacheStoreVar1, // 2
+    NULL, // 3
+    &DP64CacheStoreVar2, // 4
+    NULL, // 5
+    &DP64CacheStoreVar3, // 6
+    NULL, // 7
+    &DP64CacheStoreVar4, // 8
+    NULL, // 9
+    &DP64CacheStoreVar5, // 10
+    NULL, // 11
+    &DP64CacheStoreVar6, // 12
+    NULL, // 13
+    &DP64CacheStoreVar7, // 14
+    NULL // 15
+}; // DP64CacheStoreTable0[]
+static GED_DP64_CMASK DP64CmaskVar0 = (GED_DP64_CMASK)0;
+static GED_DP64_CMASK DP64CmaskVar1 = (GED_DP64_CMASK)1;
+static GED_DP64_CMASK DP64CmaskVar2 = (GED_DP64_CMASK)2;
+static GED_DP64_CMASK DP64CmaskVar3 = (GED_DP64_CMASK)3;
+static GED_DP64_CMASK DP64CmaskVar4 = (GED_DP64_CMASK)4;
+static GED_DP64_CMASK DP64CmaskVar5 = (GED_DP64_CMASK)5;
+static GED_DP64_CMASK DP64CmaskVar6 = (GED_DP64_CMASK)6;
+static GED_DP64_CMASK DP64CmaskVar7 = (GED_DP64_CMASK)7;
+static GED_DP64_CMASK DP64CmaskVar8 = (GED_DP64_CMASK)8;
+static GED_DP64_CMASK DP64CmaskVar9 = (GED_DP64_CMASK)9;
+static GED_DP64_CMASK DP64CmaskVar10 = (GED_DP64_CMASK)10;
+static GED_DP64_CMASK DP64CmaskVar11 = (GED_DP64_CMASK)11;
+static GED_DP64_CMASK DP64CmaskVar12 = (GED_DP64_CMASK)12;
+static GED_DP64_CMASK DP64CmaskVar13 = (GED_DP64_CMASK)13;
+static GED_DP64_CMASK DP64CmaskVar14 = (GED_DP64_CMASK)14;
+const GED_DP64_CMASK* DP64CmaskTable0[16] =
+{
+    NULL, // 0
+    &DP64CmaskVar0, // 1
+    &DP64CmaskVar1, // 2
+    &DP64CmaskVar2, // 3
+    &DP64CmaskVar3, // 4
+    &DP64CmaskVar4, // 5
+    &DP64CmaskVar5, // 6
+    &DP64CmaskVar6, // 7
+    &DP64CmaskVar7, // 8
+    &DP64CmaskVar8, // 9
+    &DP64CmaskVar9, // 10
+    &DP64CmaskVar10, // 11
+    &DP64CmaskVar11, // 12
+    &DP64CmaskVar12, // 13
+    &DP64CmaskVar13, // 14
+    &DP64CmaskVar14 // 15
+}; // DP64CmaskTable0[]
+static GED_DP64_DATA_SIZE DP64DataSizeVar0 = (GED_DP64_DATA_SIZE)0;
+static GED_DP64_DATA_SIZE DP64DataSizeVar1 = (GED_DP64_DATA_SIZE)1;
+static GED_DP64_DATA_SIZE DP64DataSizeVar2 = (GED_DP64_DATA_SIZE)2;
+static GED_DP64_DATA_SIZE DP64DataSizeVar3 = (GED_DP64_DATA_SIZE)3;
+static GED_DP64_DATA_SIZE DP64DataSizeVar4 = (GED_DP64_DATA_SIZE)4;
+static GED_DP64_DATA_SIZE DP64DataSizeVar5 = (GED_DP64_DATA_SIZE)5;
+const GED_DP64_DATA_SIZE* DP64DataSizeTable0[8] =
+{
+    &DP64DataSizeVar0, // 0
+    &DP64DataSizeVar1, // 1
+    &DP64DataSizeVar2, // 2
+    &DP64DataSizeVar3, // 3
+    &DP64DataSizeVar4, // 4
+    &DP64DataSizeVar5, // 5
+    NULL, // 6
+    NULL // 7
+}; // DP64DataSizeTable0[]
+static GED_DP64_FENCE_SCOPE DP64FenceScopeVar0 = (GED_DP64_FENCE_SCOPE)0;
+static GED_DP64_FENCE_SCOPE DP64FenceScopeVar1 = (GED_DP64_FENCE_SCOPE)1;
+static GED_DP64_FENCE_SCOPE DP64FenceScopeVar2 = (GED_DP64_FENCE_SCOPE)2;
+static GED_DP64_FENCE_SCOPE DP64FenceScopeVar3 = (GED_DP64_FENCE_SCOPE)3;
+static GED_DP64_FENCE_SCOPE DP64FenceScopeVar4 = (GED_DP64_FENCE_SCOPE)4;
+const GED_DP64_FENCE_SCOPE* DP64FenceScopeTable0[8] =
+{
+    &DP64FenceScopeVar0, // 0
+    &DP64FenceScopeVar1, // 1
+    &DP64FenceScopeVar2, // 2
+    &DP64FenceScopeVar3, // 3
+    NULL, // 4
+    &DP64FenceScopeVar4, // 5
+    NULL, // 6
+    NULL // 7
+}; // DP64FenceScopeTable0[]
+static GED_DP64_FLUSH_TYPE DP64FlushTypeVar0 = (GED_DP64_FLUSH_TYPE)0;
+static GED_DP64_FLUSH_TYPE DP64FlushTypeVar1 = (GED_DP64_FLUSH_TYPE)1;
+static GED_DP64_FLUSH_TYPE DP64FlushTypeVar2 = (GED_DP64_FLUSH_TYPE)2;
+static GED_DP64_FLUSH_TYPE DP64FlushTypeVar3 = (GED_DP64_FLUSH_TYPE)3;
+static GED_DP64_FLUSH_TYPE DP64FlushTypeVar4 = (GED_DP64_FLUSH_TYPE)4;
+const GED_DP64_FLUSH_TYPE* DP64FlushTypeTable0[8] =
+{
+    &DP64FlushTypeVar0, // 0
+    &DP64FlushTypeVar1, // 1
+    &DP64FlushTypeVar2, // 2
+    &DP64FlushTypeVar3, // 3
+    &DP64FlushTypeVar4, // 4
+    NULL, // 5
+    NULL, // 6
+    NULL // 7
+}; // DP64FlushTypeTable0[]
+static GED_DP64_GLOBAL_ADDRESS_TYPE_SIZE DP64GlobalAddressTypeSizeVar0 = (GED_DP64_GLOBAL_ADDRESS_TYPE_SIZE)0;
+static GED_DP64_GLOBAL_ADDRESS_TYPE_SIZE DP64GlobalAddressTypeSizeVar1 = (GED_DP64_GLOBAL_ADDRESS_TYPE_SIZE)1;
+static GED_DP64_GLOBAL_ADDRESS_TYPE_SIZE DP64GlobalAddressTypeSizeVar2 = (GED_DP64_GLOBAL_ADDRESS_TYPE_SIZE)2;
+static GED_DP64_GLOBAL_ADDRESS_TYPE_SIZE DP64GlobalAddressTypeSizeVar3 = (GED_DP64_GLOBAL_ADDRESS_TYPE_SIZE)3;
+const GED_DP64_GLOBAL_ADDRESS_TYPE_SIZE* DP64GlobalAddressTypeSizeTable0[4] =
+{
+    &DP64GlobalAddressTypeSizeVar0, // 0
+    &DP64GlobalAddressTypeSizeVar1, // 1
+    &DP64GlobalAddressTypeSizeVar2, // 2
+    &DP64GlobalAddressTypeSizeVar3 // 3
+}; // DP64GlobalAddressTypeSizeTable0[]
+static GED_DP64_OPCODE DP64OpcodeVar0 = (GED_DP64_OPCODE)0;
+static GED_DP64_OPCODE DP64OpcodeVar1 = (GED_DP64_OPCODE)1;
+static GED_DP64_OPCODE DP64OpcodeVar2 = (GED_DP64_OPCODE)2;
+static GED_DP64_OPCODE DP64OpcodeVar3 = (GED_DP64_OPCODE)3;
+static GED_DP64_OPCODE DP64OpcodeVar4 = (GED_DP64_OPCODE)4;
+static GED_DP64_OPCODE DP64OpcodeVar5 = (GED_DP64_OPCODE)5;
+static GED_DP64_OPCODE DP64OpcodeVar6 = (GED_DP64_OPCODE)6;
+static GED_DP64_OPCODE DP64OpcodeVar7 = (GED_DP64_OPCODE)7;
+static GED_DP64_OPCODE DP64OpcodeVar8 = (GED_DP64_OPCODE)8;
+static GED_DP64_OPCODE DP64OpcodeVar9 = (GED_DP64_OPCODE)9;
+static GED_DP64_OPCODE DP64OpcodeVar10 = (GED_DP64_OPCODE)10;
+static GED_DP64_OPCODE DP64OpcodeVar11 = (GED_DP64_OPCODE)11;
+static GED_DP64_OPCODE DP64OpcodeVar12 = (GED_DP64_OPCODE)12;
+static GED_DP64_OPCODE DP64OpcodeVar13 = (GED_DP64_OPCODE)13;
+static GED_DP64_OPCODE DP64OpcodeVar14 = (GED_DP64_OPCODE)14;
+static GED_DP64_OPCODE DP64OpcodeVar15 = (GED_DP64_OPCODE)15;
+static GED_DP64_OPCODE DP64OpcodeVar16 = (GED_DP64_OPCODE)16;
+static GED_DP64_OPCODE DP64OpcodeVar17 = (GED_DP64_OPCODE)17;
+static GED_DP64_OPCODE DP64OpcodeVar18 = (GED_DP64_OPCODE)18;
+static GED_DP64_OPCODE DP64OpcodeVar19 = (GED_DP64_OPCODE)19;
+static GED_DP64_OPCODE DP64OpcodeVar20 = (GED_DP64_OPCODE)20;
+static GED_DP64_OPCODE DP64OpcodeVar21 = (GED_DP64_OPCODE)21;
+static GED_DP64_OPCODE DP64OpcodeVar22 = (GED_DP64_OPCODE)22;
+static GED_DP64_OPCODE DP64OpcodeVar23 = (GED_DP64_OPCODE)23;
+static GED_DP64_OPCODE DP64OpcodeVar24 = (GED_DP64_OPCODE)24;
+static GED_DP64_OPCODE DP64OpcodeVar25 = (GED_DP64_OPCODE)25;
+static GED_DP64_OPCODE DP64OpcodeVar26 = (GED_DP64_OPCODE)26;
+static GED_DP64_OPCODE DP64OpcodeVar27 = (GED_DP64_OPCODE)27;
+static GED_DP64_OPCODE DP64OpcodeVar28 = (GED_DP64_OPCODE)28;
+static GED_DP64_OPCODE DP64OpcodeVar29 = (GED_DP64_OPCODE)29;
+static GED_DP64_OPCODE DP64OpcodeVar30 = (GED_DP64_OPCODE)30;
+static GED_DP64_OPCODE DP64OpcodeVar31 = (GED_DP64_OPCODE)31;
+static GED_DP64_OPCODE DP64OpcodeVar32 = (GED_DP64_OPCODE)32;
+static GED_DP64_OPCODE DP64OpcodeVar33 = (GED_DP64_OPCODE)33;
+static GED_DP64_OPCODE DP64OpcodeVar34 = (GED_DP64_OPCODE)34;
+const GED_DP64_OPCODE* DP64OpcodeTable0[64] =
+{
+    &DP64OpcodeVar0, // 0
+    NULL, // 1
+    &DP64OpcodeVar1, // 2
+    &DP64OpcodeVar2, // 3
+    &DP64OpcodeVar3, // 4
+    NULL, // 5
+    &DP64OpcodeVar4, // 6
+    &DP64OpcodeVar5, // 7
+    &DP64OpcodeVar6, // 8
+    &DP64OpcodeVar7, // 9
+    &DP64OpcodeVar8, // 10
+    &DP64OpcodeVar9, // 11
+    &DP64OpcodeVar10, // 12
+    &DP64OpcodeVar11, // 13
+    &DP64OpcodeVar12, // 14
+    &DP64OpcodeVar13, // 15
+    &DP64OpcodeVar14, // 16
+    &DP64OpcodeVar15, // 17
+    &DP64OpcodeVar16, // 18
+    &DP64OpcodeVar17, // 19
+    &DP64OpcodeVar18, // 20
+    &DP64OpcodeVar19, // 21
+    &DP64OpcodeVar20, // 22
+    &DP64OpcodeVar21, // 23
+    &DP64OpcodeVar22, // 24
+    &DP64OpcodeVar23, // 25
+    &DP64OpcodeVar24, // 26
+    &DP64OpcodeVar25, // 27
+    &DP64OpcodeVar26, // 28
+    NULL, // 29
+    &DP64OpcodeVar27, // 30
+    &DP64OpcodeVar28, // 31
+    NULL, // 32
+    &DP64OpcodeVar29, // 33
+    &DP64OpcodeVar30, // 34
+    &DP64OpcodeVar31, // 35
+    &DP64OpcodeVar32, // 36
+    &DP64OpcodeVar33, // 37
+    NULL, // 38
+    NULL, // 39
+    NULL, // 40
+    NULL, // 41
+    NULL, // 42
+    NULL, // 43
+    NULL, // 44
+    NULL, // 45
+    NULL, // 46
+    NULL, // 47
+    NULL, // 48
+    NULL, // 49
+    NULL, // 50
+    &DP64OpcodeVar34, // 51
+    NULL, // 52
+    NULL, // 53
+    NULL, // 54
+    NULL, // 55
+    NULL, // 56
+    NULL, // 57
+    NULL, // 58
+    NULL, // 59
+    NULL, // 60
+    NULL, // 61
+    NULL, // 62
+    NULL // 63
+}; // DP64OpcodeTable0[]
+static GED_DP64_SCALE_OFFSET DP64ScaleOffsetVar0 = (GED_DP64_SCALE_OFFSET)0;
+static GED_DP64_SCALE_OFFSET DP64ScaleOffsetVar1 = (GED_DP64_SCALE_OFFSET)1;
+const GED_DP64_SCALE_OFFSET* DP64ScaleOffsetTable0[4] =
+{
+    &DP64ScaleOffsetVar0, // 0
+    &DP64ScaleOffsetVar1, // 1
+    NULL, // 2
+    NULL // 3
+}; // DP64ScaleOffsetTable0[]
+static GED_DP64_VECTOR_SIZE DP64VectorSizeVar0 = (GED_DP64_VECTOR_SIZE)0;
+static GED_DP64_VECTOR_SIZE DP64VectorSizeVar1 = (GED_DP64_VECTOR_SIZE)1;
+static GED_DP64_VECTOR_SIZE DP64VectorSizeVar2 = (GED_DP64_VECTOR_SIZE)2;
+static GED_DP64_VECTOR_SIZE DP64VectorSizeVar3 = (GED_DP64_VECTOR_SIZE)3;
+static GED_DP64_VECTOR_SIZE DP64VectorSizeVar4 = (GED_DP64_VECTOR_SIZE)4;
+static GED_DP64_VECTOR_SIZE DP64VectorSizeVar5 = (GED_DP64_VECTOR_SIZE)5;
+static GED_DP64_VECTOR_SIZE DP64VectorSizeVar6 = (GED_DP64_VECTOR_SIZE)6;
+static GED_DP64_VECTOR_SIZE DP64VectorSizeVar7 = (GED_DP64_VECTOR_SIZE)7;
+const GED_DP64_VECTOR_SIZE* DP64VectorSizeTable0[8] =
+{
+    &DP64VectorSizeVar0, // 0
+    &DP64VectorSizeVar1, // 1
+    &DP64VectorSizeVar2, // 2
+    &DP64VectorSizeVar3, // 3
+    &DP64VectorSizeVar4, // 4
+    &DP64VectorSizeVar5, // 5
+    &DP64VectorSizeVar6, // 6
+    &DP64VectorSizeVar7 // 7
+}; // DP64VectorSizeTable0[]
 static GED_DPADDR_REG_SIZE DPAddrRegSizeVar0 = (GED_DPADDR_REG_SIZE)0;
 static GED_DPADDR_REG_SIZE DPAddrRegSizeVar1 = (GED_DPADDR_REG_SIZE)1;
 static GED_DPADDR_REG_SIZE DPAddrRegSizeVar2 = (GED_DPADDR_REG_SIZE)2;

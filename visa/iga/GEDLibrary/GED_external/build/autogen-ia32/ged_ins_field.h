@@ -2224,6 +2224,90 @@ typedef enum
      *
      * @par     Models:     XE2
      */
-    GED_PSEUDO_FIELD_MessageTypeDP_CONST
+    GED_PSEUDO_FIELD_MessageTypeDP_CONST,
+
+    /*!
+     *
+     *
+     * @par     Models:     XE3P.CRI
+     */
+    GED_PSEUDO_FIELD_DP64Opcode,
+
+    /*!
+     *
+     *
+     * @par     Models:     XE3P.CRI
+     */
+    GED_PSEUDO_FIELD_DP64Cmask,
+
+    /*!
+     *
+     *
+     * @par     Models:     XE3P.CRI
+     */
+    GED_PSEUDO_FIELD_DP64DataSize,
+
+    /*!
+     *
+     *
+     * @par     Models:     XE3P.CRI
+     */
+    GED_PSEUDO_FIELD_DP64FenceScope,
+
+    /*!
+     *
+     *
+     * @par     Models:     XE3P.CRI
+     */
+    GED_PSEUDO_FIELD_DP64CacheStore,
+
+    /*!
+     *
+     *
+     * @par     Models:     XE3P.CRI
+     */
+    GED_PSEUDO_FIELD_DP64CacheLoad,
+
+    /*!
+     *
+     *
+     * @par     Models:     XE3P.CRI
+     */
+    GED_PSEUDO_FIELD_DP64CacheAtomic,
+
+    /*!
+     *
+     *
+     * @par     Models:     XE3P.CRI
+     */
+    GED_PSEUDO_FIELD_DP64VectorSize,
+
+    /*!
+     *
+     *
+     * @par     Models:     XE3P.CRI
+     */
+    GED_PSEUDO_FIELD_DP64Transpose,
+
+    /*!
+     *
+     *
+     * @par     Models:     XE3P.CRI
+     */
+    GED_PSEUDO_FIELD_DP64GlobalAddressTypeSize,
+
+    /*!
+     *
+     *
+     * @par     Models:     XE3P.CRI
+     */
+    GED_PSEUDO_FIELD_DP64ScaleOffset,
+
+    /*!
+     *
+     *
+     * @par     Models:     XE3P.CRI
+     */
+    GED_PSEUDO_FIELD_DP64FlushType
 } GED_PSEUDO_FIELD;
 #endif // GED_INS_FIELD_H

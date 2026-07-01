@@ -883,5 +883,5 @@ extern const ged_ins_field_entry_t PositionInterpreterTable8[45];
 extern const ged_ins_field_entry_t PositionInterpreterTable9[45];
 extern const ged_ins_field_entry_t PositionInterpreterTable10[51];
 extern const ged_ins_field_entry_t PositionInterpreterTable11[50];
-extern const ged_ins_field_entry_t PositionInterpreterTable12[2];
+extern const ged_ins_field_entry_t PositionInterpreterTable12[63];
 #endif // GED_DECODING_TABLES_H
