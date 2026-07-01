@@ -307,7 +307,7 @@ class WaveShuffleIndexSinkingImpl {
       }
 
       for (auto &instChain : InstChains) {
-        for (unsigned i = 0; i < HoistOrAnchorInstsIdx.size(); i++) {
+        for (int i = static_cast<int>(HoistOrAnchorInstsIdx.size()) - 1; i >= 0; i--) {
           if (HoistOrAnchorInstsIdx[i])
             instChain[i]->eraseFromParent();
         }
