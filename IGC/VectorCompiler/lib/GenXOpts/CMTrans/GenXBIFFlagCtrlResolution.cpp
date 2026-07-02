@@ -84,6 +84,7 @@ void GenXBIFFlagCtrlResolution::FillFlagCtrl() {
   BIF_FLAG_CTRL_SET(OptDisable, false);
   BIF_FLAG_CTRL_SET(UseNativeFP32GlobalAtomicAdd, false);
   BIF_FLAG_CTRL_SET(UseNativeFP16AtomicMinMax, false);
+  BIF_FLAG_CTRL_SET(UseNativeBF16Conversion, false);
   BIF_FLAG_CTRL_SET(UseNativeFP64GlobalAtomicAdd, false);
   BIF_FLAG_CTRL_SET(HasThreadPauseSupport, false);
   BIF_FLAG_CTRL_SET(hasHWLocalThreadID, false);

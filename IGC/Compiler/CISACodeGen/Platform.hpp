@@ -596,6 +596,11 @@ public:
   bool hasBFTFDenormMode() const {
     return isCoreChildOf(IGFX_XE2_HPG_CORE);
   }
+
+  // True if the platform has native HW float<->bfloat16 conversion.
+  bool hasBF16Conversion() const {
+    return isCoreChildOf(IGFX_XE_HPG_CORE) && m_platformInfo.eProductFamily != IGFX_METEORLAKE;
+  }
   bool hasWideMulMad() const {
     return isCoreChildOf(IGFX_XE3P_CORE) &&
            IGC_IS_FLAG_ENABLED(EnableWideMulMad);

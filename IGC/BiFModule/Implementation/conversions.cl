@@ -861,64 +861,149 @@ long  __attribute__((overloadable)) __spirv_SatConvertUToS_Rlong(ulong UnsignedV
     return (UnsignedValue >= LONG_MAX) ? LONG_MAX : __spirv_SConvert_Rlong((long)UnsignedValue);
 }
 
-short  __attribute__((overloadable)) __spirv_ConvertFToBF16INTEL(float Value)
+short __attribute__((overloadable)) __spirv_ConvertFToBF16INTEL(float Value)
 {
-  return __builtin_IB_ftobf_1(Value);
+  if (BIF_FLAG_CTRL_GET(UseNativeBF16Conversion))
+    return __builtin_IB_ftobf_1(Value);
+  // Round to nearest even, then truncate to the high 16 bits.
+  if (__spirv_IsNan(Value))
+    return 0xFFC1; // quiet NaN
+  uint bits = as_uint(Value);
+  uint bias = ((bits >> 16) & 0x1u) + 0x00007FFFu;
+  return (short)((bits + bias) >> 16);
 }
 
-short2  __attribute__((overloadable)) __spirv_ConvertFToBF16INTEL(float2 Value)
+float __attribute__((overloadable)) __spirv_ConvertBF16ToFINTEL(short Value)
 {
-  return __builtin_IB_ftobf_2(Value);
+  if (BIF_FLAG_CTRL_GET(UseNativeBF16Conversion))
+    return __builtin_IB_bftof_1(Value);
+  return as_float((uint)as_ushort(Value) << 16);
 }
 
-short3  __attribute__((overloadable)) __spirv_ConvertFToBF16INTEL(float3 Value)
+short2 __attribute__((overloadable)) __spirv_ConvertFToBF16INTEL(float2 Value)
 {
-  return __builtin_IB_ftobf_3(Value);
+  if (BIF_FLAG_CTRL_GET(UseNativeBF16Conversion))
+    return __builtin_IB_ftobf_2(Value);
+  return (short2)(__spirv_ConvertFToBF16INTEL(Value.s0),
+                  __spirv_ConvertFToBF16INTEL(Value.s1));
 }
 
-short4  __attribute__((overloadable)) __spirv_ConvertFToBF16INTEL(float4 Value)
+short3 __attribute__((overloadable)) __spirv_ConvertFToBF16INTEL(float3 Value)
 {
-  return __builtin_IB_ftobf_4(Value);
+  if (BIF_FLAG_CTRL_GET(UseNativeBF16Conversion))
+    return __builtin_IB_ftobf_3(Value);
+  return (short3)(__spirv_ConvertFToBF16INTEL(Value.s0),
+                  __spirv_ConvertFToBF16INTEL(Value.s1),
+                  __spirv_ConvertFToBF16INTEL(Value.s2));
 }
 
-short8  __attribute__((overloadable)) __spirv_ConvertFToBF16INTEL(float8 Value)
+short4 __attribute__((overloadable)) __spirv_ConvertFToBF16INTEL(float4 Value)
 {
-  return __builtin_IB_ftobf_8(Value);
+  if (BIF_FLAG_CTRL_GET(UseNativeBF16Conversion))
+    return __builtin_IB_ftobf_4(Value);
+  return (short4)(__spirv_ConvertFToBF16INTEL(Value.s0),
+                  __spirv_ConvertFToBF16INTEL(Value.s1),
+                  __spirv_ConvertFToBF16INTEL(Value.s2),
+                  __spirv_ConvertFToBF16INTEL(Value.s3));
 }
 
-short16  __attribute__((overloadable)) __spirv_ConvertFToBF16INTEL(float16 Value)
+short8 __attribute__((overloadable)) __spirv_ConvertFToBF16INTEL(float8 Value)
 {
-  return __builtin_IB_ftobf_16(Value);
+  if (BIF_FLAG_CTRL_GET(UseNativeBF16Conversion))
+    return __builtin_IB_ftobf_8(Value);
+  return (short8)(__spirv_ConvertFToBF16INTEL(Value.s0),
+                  __spirv_ConvertFToBF16INTEL(Value.s1),
+                  __spirv_ConvertFToBF16INTEL(Value.s2),
+                  __spirv_ConvertFToBF16INTEL(Value.s3),
+                  __spirv_ConvertFToBF16INTEL(Value.s4),
+                  __spirv_ConvertFToBF16INTEL(Value.s5),
+                  __spirv_ConvertFToBF16INTEL(Value.s6),
+                  __spirv_ConvertFToBF16INTEL(Value.s7));
 }
 
-float  __attribute__((overloadable)) __spirv_ConvertBF16ToFINTEL(short Value)
+short16 __attribute__((overloadable)) __spirv_ConvertFToBF16INTEL(float16 Value)
 {
-  return __builtin_IB_bftof_1(Value);
+  if (BIF_FLAG_CTRL_GET(UseNativeBF16Conversion))
+    return __builtin_IB_ftobf_16(Value);
+  return (short16)(__spirv_ConvertFToBF16INTEL(Value.s0),
+                   __spirv_ConvertFToBF16INTEL(Value.s1),
+                   __spirv_ConvertFToBF16INTEL(Value.s2),
+                   __spirv_ConvertFToBF16INTEL(Value.s3),
+                   __spirv_ConvertFToBF16INTEL(Value.s4),
+                   __spirv_ConvertFToBF16INTEL(Value.s5),
+                   __spirv_ConvertFToBF16INTEL(Value.s6),
+                   __spirv_ConvertFToBF16INTEL(Value.s7),
+                   __spirv_ConvertFToBF16INTEL(Value.s8),
+                   __spirv_ConvertFToBF16INTEL(Value.s9),
+                   __spirv_ConvertFToBF16INTEL(Value.sa),
+                   __spirv_ConvertFToBF16INTEL(Value.sb),
+                   __spirv_ConvertFToBF16INTEL(Value.sc),
+                   __spirv_ConvertFToBF16INTEL(Value.sd),
+                   __spirv_ConvertFToBF16INTEL(Value.se),
+                   __spirv_ConvertFToBF16INTEL(Value.sf));
 }
 
-float2  __attribute__((overloadable)) __spirv_ConvertBF16ToFINTEL(short2 Value)
+float2 __attribute__((overloadable)) __spirv_ConvertBF16ToFINTEL(short2 Value)
 {
-  return __builtin_IB_bftof_2(Value);
+  if (BIF_FLAG_CTRL_GET(UseNativeBF16Conversion))
+    return __builtin_IB_bftof_2(Value);
+  return (float2)(__spirv_ConvertBF16ToFINTEL(Value.s0),
+                  __spirv_ConvertBF16ToFINTEL(Value.s1));
 }
 
-float3  __attribute__((overloadable)) __spirv_ConvertBF16ToFINTEL(short3 Value)
+float3 __attribute__((overloadable)) __spirv_ConvertBF16ToFINTEL(short3 Value)
 {
-  return __builtin_IB_bftof_3(Value);
+  if (BIF_FLAG_CTRL_GET(UseNativeBF16Conversion))
+    return __builtin_IB_bftof_3(Value);
+  return (float3)(__spirv_ConvertBF16ToFINTEL(Value.s0),
+                  __spirv_ConvertBF16ToFINTEL(Value.s1),
+                  __spirv_ConvertBF16ToFINTEL(Value.s2));
 }
 
-float4  __attribute__((overloadable)) __spirv_ConvertBF16ToFINTEL(short4 Value)
+float4 __attribute__((overloadable)) __spirv_ConvertBF16ToFINTEL(short4 Value)
 {
-  return __builtin_IB_bftof_4(Value);
+  if (BIF_FLAG_CTRL_GET(UseNativeBF16Conversion))
+    return __builtin_IB_bftof_4(Value);
+  return (float4)(__spirv_ConvertBF16ToFINTEL(Value.s0),
+                  __spirv_ConvertBF16ToFINTEL(Value.s1),
+                  __spirv_ConvertBF16ToFINTEL(Value.s2),
+                  __spirv_ConvertBF16ToFINTEL(Value.s3));
 }
 
-float8  __attribute__((overloadable)) __spirv_ConvertBF16ToFINTEL(short8 Value)
+float8 __attribute__((overloadable)) __spirv_ConvertBF16ToFINTEL(short8 Value)
 {
-  return __builtin_IB_bftof_8(Value);
+  if (BIF_FLAG_CTRL_GET(UseNativeBF16Conversion))
+    return __builtin_IB_bftof_8(Value);
+  return (float8)(__spirv_ConvertBF16ToFINTEL(Value.s0),
+                  __spirv_ConvertBF16ToFINTEL(Value.s1),
+                  __spirv_ConvertBF16ToFINTEL(Value.s2),
+                  __spirv_ConvertBF16ToFINTEL(Value.s3),
+                  __spirv_ConvertBF16ToFINTEL(Value.s4),
+                  __spirv_ConvertBF16ToFINTEL(Value.s5),
+                  __spirv_ConvertBF16ToFINTEL(Value.s6),
+                  __spirv_ConvertBF16ToFINTEL(Value.s7));
 }
 
-float16  __attribute__((overloadable)) __spirv_ConvertBF16ToFINTEL(short16 Value)
+float16 __attribute__((overloadable)) __spirv_ConvertBF16ToFINTEL(short16 Value)
 {
-  return __builtin_IB_bftof_16(Value);
+  if (BIF_FLAG_CTRL_GET(UseNativeBF16Conversion))
+    return __builtin_IB_bftof_16(Value);
+  return (float16)(__spirv_ConvertBF16ToFINTEL(Value.s0),
+                   __spirv_ConvertBF16ToFINTEL(Value.s1),
+                   __spirv_ConvertBF16ToFINTEL(Value.s2),
+                   __spirv_ConvertBF16ToFINTEL(Value.s3),
+                   __spirv_ConvertBF16ToFINTEL(Value.s4),
+                   __spirv_ConvertBF16ToFINTEL(Value.s5),
+                   __spirv_ConvertBF16ToFINTEL(Value.s6),
+                   __spirv_ConvertBF16ToFINTEL(Value.s7),
+                   __spirv_ConvertBF16ToFINTEL(Value.s8),
+                   __spirv_ConvertBF16ToFINTEL(Value.s9),
+                   __spirv_ConvertBF16ToFINTEL(Value.sa),
+                   __spirv_ConvertBF16ToFINTEL(Value.sb),
+                   __spirv_ConvertBF16ToFINTEL(Value.sc),
+                   __spirv_ConvertBF16ToFINTEL(Value.sd),
+                   __spirv_ConvertBF16ToFINTEL(Value.se),
+                   __spirv_ConvertBF16ToFINTEL(Value.sf));
 }
 
 float  __attribute__((overloadable)) __spirv_RoundFToTF32INTEL(float Value)

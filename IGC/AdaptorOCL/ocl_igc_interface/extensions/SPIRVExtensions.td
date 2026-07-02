@@ -410,6 +410,16 @@ def SPV_INTEL_bfloat16_conversion : Extension<
   AllOf<[isCoreChildOf<IGFX_XE_HPG_CORE>, Not<ExactPlatform<IGFX_METEORLAKE>>]>
 >;
 
+def SPV_INTEL_bfloat16_conversion_experimental : ExperimentalExtension<
+  "SPV_INTEL_bfloat16_conversion",
+  [ Capability<"BFloat16ConversionINTEL"> ],
+  "https://github.khronos.org/SPIRV-Registry/extensions/INTEL/SPV_INTEL_bfloat16_conversion.html",
+  // Platforms without native bfloat16 conversion HW (pre-XE_HPG cores and
+  // METEORLAKE) emulate the conversions in the BiF. This is the exact complement
+  // of the production set above, matching CPlatform::hasBF16Conversion().
+  AnyOf<[Not<isCoreChildOf<IGFX_XE_HPG_CORE>>, ExactPlatform<IGFX_METEORLAKE>]>
+>;
+
 def SPV_INTEL_int4 : ExperimentalExtension<
   "SPV_INTEL_int4",
   [ Capability<"Int4TypeINTEL", isCoreChildOf<IGFX_XE3P_CORE>>,

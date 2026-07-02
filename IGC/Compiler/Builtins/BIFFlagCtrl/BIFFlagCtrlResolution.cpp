@@ -48,6 +48,7 @@ void BIFFlagCtrlResolution::FillFlagCtrl() {
   BIF_FLAG_CTRL_SET(UseMathWithLUT, IGC_IS_FLAG_ENABLED(UseMathWithLUT));
   BIF_FLAG_CTRL_SET(UseNativeFP32GlobalAtomicAdd, PtrCGC->platform.hasFP32GlobalAtomicAdd());
   BIF_FLAG_CTRL_SET(UseNativeFP16AtomicMinMax, PtrCGC->platform.hasFP16AtomicMinMax());
+  BIF_FLAG_CTRL_SET(UseNativeBF16Conversion, PtrCGC->platform.hasBF16Conversion());
   BIF_FLAG_CTRL_SET(HasInt64SLMAtomicCAS, PtrCGC->platform.hasInt64SLMAtomicCAS());
   BIF_FLAG_CTRL_SET(UseNativeFP64GlobalAtomicAdd, PtrCGC->platform.hasFP64GlobalAtomicAdd());
   BIF_FLAG_CTRL_SET(UseNative64BitIntBuiltin, !PtrCGC->platform.hasNoFullI64Support());
