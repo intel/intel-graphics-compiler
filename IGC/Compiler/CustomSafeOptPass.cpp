@@ -380,6 +380,78 @@ bool CustomSafeOptPass::packVecI32ToVecI64(BinaryOperator &OrInst) {
   return true;
 }
 
+// Fold WaveAll intrinsics with constant operands where the result is
+// statically known regardless of wave size:
+//   WaveAll(C, MIN/MAX/AND/OR) -> C   (idempotent ops)
+//   WaveAll(C, FMIN/FMAX)      -> C
+//   WaveAll(0, SUM/FSUM/XOR)   -> 0   (identity element as input)
+//   WaveAll(0, PROD/FPROD)     -> 0   (absorbing element)
+//   WaveAll(1, PROD/FPROD)     -> 1   (identity element as input)
+void CustomSafeOptPass::visitWaveAllConstant(llvm::CallInst *I) {
+  Value *src = I->getOperand(0);
+
+  // Source must be a constant (int or float).
+  Constant *constSrc = dyn_cast<Constant>(src);
+  if (!constSrc)
+    return;
+
+  // Vectors from joint-reduction are not handled here.
+  if (src->getType()->isVectorTy())
+    return;
+
+  ConstantInt *opVal = dyn_cast<ConstantInt>(I->getOperand(1));
+  if (!opVal)
+    return;
+
+  WaveOps op = static_cast<WaveOps>(opVal->getZExtValue());
+  Value *replacement = nullptr;
+
+  if (ConstantInt *CI = dyn_cast<ConstantInt>(constSrc)) {
+    switch (op) {
+    case WaveOps::UMIN:
+    case WaveOps::UMAX:
+    case WaveOps::IMIN:
+    case WaveOps::IMAX:
+    case WaveOps::AND:
+    case WaveOps::OR:
+      replacement = CI;
+      break;
+    case WaveOps::SUM:
+    case WaveOps::XOR:
+      if (CI->isZero())
+        replacement = CI;
+      break;
+    case WaveOps::PROD:
+      if (CI->isZero() || CI->isOne())
+        replacement = CI;
+      break;
+    default:
+      break;
+    }
+  } else if (ConstantFP *CF = dyn_cast<ConstantFP>(constSrc)) {
+    switch (op) {
+    case WaveOps::FMIN:
+    case WaveOps::FMAX:
+      replacement = CF;
+      break;
+    case WaveOps::FSUM:
+      if (CF->isZero())
+        replacement = CF;
+      break;
+    case WaveOps::FPROD:
+      if (CF->isExactlyValue(0.0) || CF->isExactlyValue(1.0))
+        replacement = CF;
+      break;
+    default:
+      break;
+    }
+  }
+
+  if (replacement) {
+    I->replaceAllUsesWith(replacement);
+    I->eraseFromParent();
+  }
+}
 // Replace sub_group shuffle with index = sub_group_id ^ xor_value,
 // where xor_value is a compile-time constant to intrinsic,
 // which will produce sequence of movs instead of using indirect access
@@ -1138,6 +1210,12 @@ void CustomSafeOptPass::visitCallInst(CallInst &C) {
       visitShuffleIndex(inst);
       break;
     }
+
+    case GenISAIntrinsic::GenISA_WaveAll: {
+      visitWaveAllConstant(inst);
+      break;
+    }
+
 
     case GenISAIntrinsic::GenISA_dp4a_ss:
     case GenISAIntrinsic::GenISA_dp4a_uu: {
