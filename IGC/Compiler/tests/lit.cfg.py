@@ -10,10 +10,18 @@
 
 import lit.formats
 import lit.util
+import os
+import sys
 
 from lit.llvm import llvm_config
 from lit.llvm.subst import ToolSubst
 from lit.llvm.subst import FindTool
+
+if config.igc_lit_common_dir:
+    sys.path.append(config.igc_lit_common_dir)
+    from igc_lit_helpers import VerboseUnsupportedShTest
+else:
+    VerboseUnsupportedShTest = lit.formats.ShTest
 
 # Configuration file for the 'lit' test runner.
 
@@ -21,7 +29,7 @@ from lit.llvm.subst import FindTool
 config.name = 'IGC'
 
 # testFormat: The test format to use to interpret tests.
-config.test_format = lit.formats.ShTest(not llvm_config.use_lit_shell)
+config.test_format = VerboseUnsupportedShTest(not llvm_config.use_lit_shell)
 
 # suffixes: A list of file extensions to treat as test files.
 config.suffixes = ['.ll']

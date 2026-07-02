@@ -8,6 +8,9 @@
 
 include_guard(DIRECTORY)
 
+# Absolute path to the shared Python helper imported by IGC lit suites
+get_filename_component(IGC_LIT_COMMON_DIR "${CMAKE_CURRENT_LIST_DIR}/../lit_common" ABSOLUTE)
+
 # Convenience function to get list of LLVM components for
 # target_link_library. If LLVM was configured with llvm dylib, then
 # included in dylib llvm targets should be replaced with LLVM

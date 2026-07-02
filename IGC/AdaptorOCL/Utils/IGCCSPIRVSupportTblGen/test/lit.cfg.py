@@ -10,13 +10,20 @@
 
 import lit.formats
 import os
+import sys
 
 from lit.llvm import llvm_config
 from lit.llvm.subst import ToolSubst
 
+if config.igc_lit_common_dir:
+    sys.path.append(config.igc_lit_common_dir)
+    from igc_lit_helpers import VerboseUnsupportedShTest
+else:
+    VerboseUnsupportedShTest = lit.formats.ShTest
+
 config.name = 'spirv-extension-support-tblgen'
 
-config.test_format = lit.formats.ShTest(not llvm_config.use_lit_shell)
+config.test_format = VerboseUnsupportedShTest(not llvm_config.use_lit_shell)
 
 config.suffixes = ['.td']
 
