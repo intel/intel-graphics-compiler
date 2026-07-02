@@ -2484,6 +2484,8 @@ elseif (WIN32)
   if(TARGET igc-clang-lib AND NOT "${PRODUCTION_BUILD}" STREQUAL "True")
     install(FILES $<TARGET_FILE:igc-clang-lib>
             DESTINATION Debug/bin            CONFIGURATIONS Debug)
+    install(FILES $<TARGET_FILE:igc-clang-lib>
+            DESTINATION ../Test_Tools/Debug/x64/Standalones            CONFIGURATIONS Debug)
   endif()
 
   install(FILES $<TARGET_PDB_FILE:${IGC_BUILD__PROJ__igc_dll}>
