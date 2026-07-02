@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
+// UNSUPPORTED: lib-igc-clang
 // REQUIRES: regkeys, cri-supported
 
 // Core positive test for the 512-GRF OCL retry gate (DPAS category).

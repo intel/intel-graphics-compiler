@@ -15,6 +15,7 @@ SPDX-License-Identifier: MIT
 // switching to a smaller SIMD width.
 // The spill warning format is: "compiled SIMD<N> allocated <X> regs and spilled around <Y>"
 
+// UNSUPPORTED: lib-igc-clang
 // REQUIRES: pvc-supported, regkeys
 // RUN: ocloc compile -file %s -options "-igc_opts 'TotalGRFNum=32, ForceSIMDRPELimit=2000'" -device pvc 2>&1 | FileCheck %s
 

@@ -6,6 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
+; UNSUPPORTED: lib-igc-clang
 ; REQUIRES: pvc-supported, regkeys, llvm-14-plus
 
 ; LLVM with opaque pointers:

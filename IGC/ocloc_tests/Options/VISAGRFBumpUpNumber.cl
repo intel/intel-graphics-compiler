@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
+// UNSUPPORTED: lib-igc-clang
 // REQUIRES: regkeys
 
 // RUN: ocloc compile -file %s -device dg2 -options "-igc_opts 'DumpVISAASMToConsole=1'" | FileCheck %s --check-prefixes=GRFBUMP2

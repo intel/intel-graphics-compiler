@@ -30,8 +30,10 @@ config.suffixes = ['.cl', '.ll', '.spvasm']
 # test_source_root: The root path where tests are located.
 config.test_source_root = os.path.dirname(__file__)
 
-# test_exec_root: The root path where tests should be run.
-config.test_exec_root = os.path.join(config.test_run_dir, 'test_output')
+# test_exec_root: where tests run. Overridable so a re-run pass
+# (e.g. check-ocloc-igc-clang) writes to its own dir.
+test_output_subdir = lit_config.params.get('test_output_subdir', 'test_output')
+config.test_exec_root = os.path.join(config.test_run_dir, test_output_subdir)
 
 shared_library_path_env = 'PATH' if 'system-windows' in config.available_features else 'LD_LIBRARY_PATH'
 
@@ -44,6 +46,16 @@ if igc_clang_lib_dir:
     lib_dirs.append(igc_clang_lib_dir)
 
 llvm_config.with_environment(shared_library_path_env, lib_dirs, append_path=True)
+
+# For check-ocloc-igc-clang - force FCL to load igc-clang via
+# IGC_LibClangOverride env variable. Default = clear the flag.
+igc_libclang_override = lit_config.params.get('igc_libclang_override', '')
+if igc_libclang_override:
+    llvm_config.with_environment('IGC_LibClangOverride', igc_libclang_override)
+    config.name += '-igc-clang'
+    # Tests known to fail under the igc-clang library are tagged
+    # with "UNSUPPORTED: lib-igc-clang".
+    config.available_features.add('lib-igc-clang')
 
 
 tool_dirs = [config.ocloc_dir, config.llvm_tools_dir, config.spirv_as_dir, config.llvm_spirv_dir]

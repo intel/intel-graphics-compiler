@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
+// UNSUPPORTED: lib-igc-clang
 // REQUIRES: regkeys, cri-supported
 
 // A SIMD16 DPAS kernel with low register pressure that fits comfortably in 256

@@ -6,7 +6,7 @@
 //
 //=========================== end_copyright_notice =============================
 
-// UNSUPPORTED: sys32
+// UNSUPPORTED: sys32, lib-igc-clang
 // REQUIRES: oneapi-readelf
 
 // For this scenario we should verify that all members of a struct are emitted to DWARF

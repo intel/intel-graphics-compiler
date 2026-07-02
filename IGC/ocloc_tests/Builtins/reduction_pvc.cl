@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
+// UNSUPPORTED: lib-igc-clang
 // UNSUPPORTED: llvm-22-plus
 // FIXME: update this test for LLVM 22
 // REQUIRES: regkeys

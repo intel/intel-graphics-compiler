@@ -12,6 +12,7 @@ SPDX-License-Identifier: MIT
 // Since `tmp` variable's size is 4 bytes, "private_size" is expected to be
 // set to 4 * 32 = 128.
 
+// UNSUPPORTED: lib-igc-clang
 // REQUIRES: regkeys, pvc-supported
 
 // RUN: ocloc compile -file %s -options "-igc_opts 'DumpZEInfoToConsole=1'" \

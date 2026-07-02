@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
+// UNSUPPORTED: lib-igc-clang
 // REQUIRES: cri-supported
 // RUN: ocloc compile -file %s -options "-cl-std=CL2.0" -device cri 2>&1 | FileCheck %s
 

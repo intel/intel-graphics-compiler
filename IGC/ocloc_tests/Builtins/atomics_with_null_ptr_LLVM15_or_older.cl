@@ -5,6 +5,7 @@ Copyright (C) 2023 Intel Corporation
 SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
+// UNSUPPORTED: lib-igc-clang
 // REQUIRES: dg2-supported, llvm-15-or-older
 // RUN: ocloc compile -file %s -device dg2 -options "-cl-std=CL2.0" 2>&1 | FileCheck %s
 

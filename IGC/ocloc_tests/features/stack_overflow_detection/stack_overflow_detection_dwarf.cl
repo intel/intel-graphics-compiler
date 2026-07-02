@@ -11,7 +11,7 @@ SPDX-License-Identifier: MIT
 // This allows gdb-oneapi to show a message that software exception
 // was triggered due to stack overflow detection
 
-// UNSUPPORTED: sys32
+// UNSUPPORTED: sys32, lib-igc-clang
 // REQUIRES: regkeys, dg2-supported
 
 // RUN: ocloc compile -file %s -options " -g -igc_opts 'ElfDumpEnable=1, DumpUseShorterName=0, DebugDumpNamePrefix=%t_, StackOverflowDetection=1'" -device dg2

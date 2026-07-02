@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
+// UNSUPPORTED: lib-igc-clang
 // REQUIRES: regkeys, dg2-supported
 // RUN: ocloc compile -file %s -options "-cl-std=CL3.0 -igc_opts 'DumpVISAASMToConsole=1'" \
 // RUN:       -internal_options "-cl-intel-use-bindless-mode -cl-intel-use-bindless-advanced-mode" -device dg2 2>&1 \

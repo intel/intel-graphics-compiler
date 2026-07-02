@@ -5,6 +5,7 @@ Copyright (C) 2024 Intel Corporation
 SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
+// UNSUPPORTED: lib-igc-clang
 // REQUIRES: regkeys, pvc-supported
 // RUN: ocloc compile -file %s -options "  -cl-intel-enable-auto-large-GRF-mode -igc_opts 'VISAOptions=-asmToConsole'" -device pvc | FileCheck %s --check-prefix=CHECK-ASM
 

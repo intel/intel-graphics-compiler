@@ -8,6 +8,7 @@ SPDX-License-Identifier: MIT
 
 // The test checks if a call to __builtin_IB_get_sr0 returns proper sr0 subregister.
 
+// UNSUPPORTED: lib-igc-clang
 // REQUIRES: regkeys, pvc-supported
 
 // RUN: ocloc compile -file %s -options " -igc_opts 'VISAOptions=-asmToConsole'" -device pvc 2>&1 | FileCheck %s

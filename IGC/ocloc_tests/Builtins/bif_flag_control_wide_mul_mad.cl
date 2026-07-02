@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
+// UNSUPPORTED: lib-igc-clang
 // RUN: %if pvc-supported %{ ocloc compile -file %s -options " -igc_opts 'PrintToConsole=1 PrintMDBeforeModule=1 PrintAfter=BIFFlagCtrlResolution'" -device pvc 2>&1 | FileCheck %s --check-prefix=CHECK-BASE %}
 // RUN: %if cri-supported %{ ocloc compile -file %s -options " -igc_opts 'EnableWideMulMad=1 PrintToConsole=1 PrintMDBeforeModule=1 PrintAfter=BIFFlagCtrlResolution'" -device cri 2>&1 | FileCheck %s --check-prefix=CHECK-HasWideMulMad %}
 

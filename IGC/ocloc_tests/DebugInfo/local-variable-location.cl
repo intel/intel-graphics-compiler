@@ -10,7 +10,7 @@
 // We should verify presence of DW_AT_address_class and DW_AT_location along with DW_OP_addr operation.
 // We verify actual value passed to DW_OP_addr to confirm that it has 0x10000000 high bit added.
 
-// UNSUPPORTED: sys32
+// UNSUPPORTED: sys32, lib-igc-clang
 // REQUIRES: oneapi-readelf
 
 constant float gb_float = 100500;

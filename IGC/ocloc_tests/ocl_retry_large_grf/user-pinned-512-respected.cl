@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
+// UNSUPPORTED: lib-igc-clang
 // REQUIRES: regkeys, cri-supported
 
 // The first-attempt asm should show -maxGRFNum 512 (the user's pin) and the

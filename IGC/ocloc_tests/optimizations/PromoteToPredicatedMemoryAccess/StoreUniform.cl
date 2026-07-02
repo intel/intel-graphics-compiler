@@ -8,6 +8,7 @@ SPDX-License-Identifier: MIT
 
 // Test verifies uniform predicated store
 
+// UNSUPPORTED: lib-igc-clang
 // REQUIRES: regkeys,pvc-supported,llvm-14-plus
 
 // RUN: ocloc compile -file %s -device pvc -options "-igc_opts 'EnablePromoteToPredicatedMemoryAccess=1 DumpVISAASMToConsole=1'" 2>&1 | FileCheck %s --implicit-check-not goto

@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
+// UNSUPPORTED: lib-igc-clang
 // REQUIRES: dg2-supported
 // RUN: not ocloc compile -file %s -options "-cl-opt-disable -igc_opts 'MaxPerThreadScratchSpaceOverride=1024'" -device dg2 2>&1 | FileCheck %s
 

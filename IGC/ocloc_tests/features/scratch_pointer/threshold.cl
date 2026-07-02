@@ -8,6 +8,7 @@ SPDX-License-Identifier: MIT
 
 // Verify RemoveImplicitScratchPointerInstThreshold.
 
+// UNSUPPORTED: lib-igc-clang
 // REQUIRES: cri-supported
 // RUN: ocloc compile -file %s -options "-igc_opts 'DumpZEInfoToConsole=1, RemoveUnusedIdImplicitArguments=1, RemoveImplicitScratchPointer=1, RemoveImplicitScratchPointerInstThreshold=1000'" -device cri | FileCheck %s --check-prefix=CHECK-BELOW-THRESHOLD
 // RUN: ocloc compile -file %s -options "-igc_opts 'DumpZEInfoToConsole=1, RemoveUnusedIdImplicitArguments=1, RemoveImplicitScratchPointer=1, RemoveImplicitScratchPointerInstThreshold=10'"   -device cri | FileCheck %s --check-prefix=CHECK-ABOVE-THRESHOLD

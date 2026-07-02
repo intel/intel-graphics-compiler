@@ -10,6 +10,7 @@ SPDX-License-Identifier: MIT
 // name, so users can tell which kernel triggered the warning when compiling
 // multiple kernels for multiple architectures.
 
+// UNSUPPORTED: lib-igc-clang
 // REQUIRES: dg2-supported
 // RUN: ocloc compile -file %s -device dg2 2>&1 | FileCheck %s
 

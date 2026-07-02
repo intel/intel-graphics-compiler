@@ -8,6 +8,7 @@ SPDX-License-Identifier: MIT
 
 // Verify that scratch_pointer is not removed if kernel uses stackcalls.
 
+// UNSUPPORTED: lib-igc-clang
 // REQUIRES: cri-supported
 // RUN: ocloc compile -file %s -options "-igc_opts 'DumpZEInfoToConsole=1, RemoveUnusedIdImplicitArguments=1, RemoveImplicitScratchPointer=1, EnableStackCallFuncCall=1'" -device cri | FileCheck %s --check-prefix=CHECK
 

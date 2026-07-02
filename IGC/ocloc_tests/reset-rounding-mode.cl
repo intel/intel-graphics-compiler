@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 ============================= end_copyright_notice ===========================*/
 
 
+// UNSUPPORTED: lib-igc-clang
 // REQUIRES: bmg-supported
 // RUN: ocloc compile -device bmg -options "-igc_opts 'DumpVISAASMToConsole=1'" -file %s > %t
 // RUN: FileCheck %s < %t

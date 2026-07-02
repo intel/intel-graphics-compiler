@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
+// UNSUPPORTED: lib-igc-clang
 // REQUIRES: regkeys
 
 // This test ensures successful compilation on three platforms: DG2, NVL-P-B0, and PTL-H.

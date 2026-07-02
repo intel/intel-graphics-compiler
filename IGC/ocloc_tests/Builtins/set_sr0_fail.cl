@@ -9,6 +9,7 @@ SPDX-License-Identifier: MIT
 // The test checks if we return compilation error, when the subregister passed
 // as an argument to __builtin_IB_set_sr0 is not a compile-time constant.
 
+// UNSUPPORTED: lib-igc-clang
 // REQUIRES: regkeys, pvc-supported
 
 // RUN: ocloc compile -file %s -options " -igc_opts 'VISAOptions=-asmToConsole'" -device pvc 2>&1 | FileCheck %s

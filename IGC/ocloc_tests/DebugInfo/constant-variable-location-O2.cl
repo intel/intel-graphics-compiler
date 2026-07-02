@@ -10,6 +10,7 @@
 // passsed in register will have an entry in location list for the O2 compilation.
 
 // UNSUPPORTED: sys32
+// UNSUPPORTED: lib-igc-clang
 // UNSUPPORTED: llvm-22-plus
 // FIXME: update this test for LLVM 22
 // REQUIRES: oneapi-readelf

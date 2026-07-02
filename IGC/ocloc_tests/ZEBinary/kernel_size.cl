@@ -9,6 +9,7 @@ SPDX-License-Identifier: MIT
 // This test checks if the size of kernel in debug info and .symtab match when there is a stack call function call in the kernel.
 
 // UNSUPPORTED: sys32
+// UNSUPPORTED: lib-igc-clang
 // UNSUPPORTED: llvm-22-plus
 // FIXME: update this test for LLVM 22
 // REQUIRES: pvc-supported, oneapi-readelf

@@ -8,7 +8,7 @@
 
 // For global address space variables, verify location expression emitted (should contain special operations that IGC emits)
 
-// UNSUPPORTED: sys32
+// UNSUPPORTED: sys32, lib-igc-clang
 // REQUIRES: oneapi-readelf
 
 global int *f1(global int *f1_arg1) {

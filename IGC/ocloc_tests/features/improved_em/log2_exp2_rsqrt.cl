@@ -8,6 +8,7 @@ SPDX-License-Identifier: MIT
 // This test checks if log2, exp2 and rsqrt calls use native math functions on
 // platforms with appropriate accuracy in the hardware.
 
+// UNSUPPORTED: lib-igc-clang
 // RUN: %if xe3p-lpg-supported %{ ocloc compile -file %s -options "-igc_opts 'VISAOptions=-asmToConsole'" -device xe3p-lpg | FileCheck %s --check-prefix=CHECK-XE3PLPG %}
 // RUN: %if cri-supported %{ ocloc compile -file %s -options "-igc_opts 'VISAOptions=-asmToConsole'" -device cri | FileCheck %s --check-prefix=CHECK-XE3P %}
 

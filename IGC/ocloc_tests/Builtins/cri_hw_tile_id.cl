@@ -10,6 +10,7 @@ SPDX-License-Identifier: MIT
 // that support HW TileID (>=XE3P). Before XE3P platform,
 // physical TileID was missing, and it had to be patched by SW (additional memory reads).
 
+// UNSUPPORTED: lib-igc-clang
 // REQUIRES: cri-supported
 
 // RUN: ocloc compile -file %s -device cri \

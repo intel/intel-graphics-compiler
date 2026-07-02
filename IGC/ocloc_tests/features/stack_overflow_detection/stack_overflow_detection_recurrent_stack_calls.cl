@@ -9,7 +9,7 @@ SPDX-License-Identifier: MIT
 // in the generated vISA for a kernel with stack calls.
 
 // 32bit unsupported due to issues on windows 32bit build, to be debugged.
-// UNSUPPORTED: sys32
+// UNSUPPORTED: sys32, lib-igc-clang
 // REQUIRES: regkeys, dg2-supported
 
 // RUN: ocloc compile -file %s -options " -igc_opts 'DumpVISAASMToConsole=1,StackOverflowDetection=1'" -device dg2 | FileCheck %s --check-prefix=CHECK-VISA

@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
-// UNSUPPORTED: sys32
+// UNSUPPORTED: sys32, lib-igc-clang
 // REQUIRES: regkeys, pvc-supported
 
 // RUN: ocloc compile -file %s -device pvc -options "-igc_opts 'DumpVISAASMToConsole=1,EnableEmitMoreMoviCases=0'" | FileCheck %s

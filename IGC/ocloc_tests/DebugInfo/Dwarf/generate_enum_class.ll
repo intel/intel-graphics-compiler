@@ -8,7 +8,7 @@
 
 ; Test generates DWARF with class enum (adds DW_AT_enum_class field)
 
-; UNSUPPORTED: sys32
+; UNSUPPORTED: sys32, lib-igc-clang
 
 ; REQUIRES: regkeys, oneapi-readelf, dg2-supported, llvm-14-plus
 

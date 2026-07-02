@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
-// UNSUPPORTED: sys32
+// UNSUPPORTED: sys32, lib-igc-clang
 // REQUIRES: cri-supported
 
 // RUN: ocloc compile -file %s -device cri -options "-cl-fp32-correctly-rounded-divide-sqrt -cl-std=CL3.0" \

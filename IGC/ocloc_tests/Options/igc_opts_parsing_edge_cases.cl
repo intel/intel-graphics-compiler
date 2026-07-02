@@ -10,6 +10,7 @@ SPDX-License-Identifier: MIT
 // Number flags support both comma and whitespace separators.
 // String flags require comma separators; they cannot contain '='.
 
+// UNSUPPORTED: lib-igc-clang
 // REQUIRES: regkeys, dg2-supported
 
 // Comma-separated: numbers and strings in mixed order.

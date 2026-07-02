@@ -8,6 +8,7 @@ SPDX-License-Identifier: MIT
 
 // Tests verify predicated load for subDW types
 
+// UNSUPPORTED: lib-igc-clang
 // UNSUPPORTED: llvm-22-plus
 // FIXME: update this test for LLVM 22
 // REQUIRES: regkeys,pvc-supported,llvm-14-plus

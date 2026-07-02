@@ -1,3 +1,4 @@
+// UNSUPPORTED: lib-igc-clang
 // UNSUPPORTED: llvm-22-plus
 // FIXME: update this test for LLVM 22
 // REQUIRES: regkeys, dg2-supported

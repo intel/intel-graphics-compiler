@@ -28,7 +28,7 @@
 // Along with DW_TAG_subprogram we should also check for presence of formal arguments and local variables.
 // No need to check for actual location, just presence of all DIEs and presence of DW_AT_location is enough.
 
-// UNSUPPORTED: sys32
+// UNSUPPORTED: sys32, lib-igc-clang
 // REQUIRES: oneapi-readelf
 
 extern int extern_func_decl(global int *in);

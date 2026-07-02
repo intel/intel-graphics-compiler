@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
+// UNSUPPORTED: lib-igc-clang
 // REQUIRES: regkeys
 
 // RUN: %if tgllp-supported %{ ocloc compile -file %s -options " -igc_opts 'PrintToConsole=1 PrintMDBeforeModule=1 PrintAfter=BIFFlagCtrlResolution'" -device tgllp 2>&1 | FileCheck %s --check-prefix=CHECK-BASE %}
