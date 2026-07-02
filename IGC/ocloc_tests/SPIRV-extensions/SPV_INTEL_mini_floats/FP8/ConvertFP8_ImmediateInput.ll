@@ -37,14 +37,15 @@
 ; CHECK-SPV: TypeVector [[V2E5M2:[0-9]+]] [[E5M2]] 2
 ; CHECK-SPV: FConvert [[E4M3]]
 ; CHECK-SPV: FConvert [[E5M2]]
-; CHECK-SPV: ClampConvertFToFINTEL [[E4M3]]
-; CHECK-SPV: ClampConvertFToFINTEL [[E5M2]]
+; FIXME: tighten the 4 clamp lines below to FConvert for https://github.com/KhronosGroup/SPIRV-LLVM-Translator/pull/3767 and /pull/3782
+; CHECK-SPV: {{ClampConvertFToFINTEL|FConvert}} [[E4M3]]
+; CHECK-SPV: {{ClampConvertFToFINTEL|FConvert}} [[E5M2]]
 ; CHECK-SPV: FConvert [[HALF]]
 ; CHECK-SPV: FConvert [[HALF]]
 ; CHECK-SPV: FConvert [[V2E4M3]]
 ; CHECK-SPV: FConvert [[V2E5M2]]
-; CHECK-SPV: ClampConvertFToFINTEL [[V2E4M3]]
-; CHECK-SPV: ClampConvertFToFINTEL [[V2E5M2]]
+; CHECK-SPV: {{ClampConvertFToFINTEL|FConvert}} [[V2E4M3]]
+; CHECK-SPV: {{ClampConvertFToFINTEL|FConvert}} [[V2E5M2]]
 ; CHECK-SPV: FConvert [[V2BFLOAT]]
 ; CHECK-SPV: FConvert [[V2BFLOAT]]
 
