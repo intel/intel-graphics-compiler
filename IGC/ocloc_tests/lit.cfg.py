@@ -65,7 +65,7 @@ if igc_libclang_override:
     config.available_features.add('lib-igc-clang')
 
 
-tool_dirs = [config.ocloc_dir, config.llvm_tools_dir, config.spirv_as_dir, config.llvm_spirv_dir]
+tool_dirs = [config.ocloc_dir, config.llvm_tools_dir]
 
 asan_runtime_lib = getattr(config, 'asan_runtime_lib', '') if 'system-windows' not in config.available_features else ''
 
@@ -126,7 +126,7 @@ llvm_ver = int(config.llvm_version_major)
 
 if config.spirv_as_enabled:
   config.available_features.add('spirv-as')
-  llvm_config.add_tool_substitutions([ToolSubst('spirv-as', unresolved='fatal')], tool_dirs)
+  llvm_config.add_tool_substitutions([ToolSubst('spirv-as', unresolved='fatal')], config.spirv_as_dir)
 
 if llvm_ver <= 15:
   config.available_features.add('llvm-15-or-older')
@@ -156,7 +156,7 @@ config.substitutions.append(('%LLVM_DEPENDENT_CHECK_PREFIX%', f'CHECK-LLVM-{conf
 
 if config.llvm_spirv_enabled:
   config.available_features.add('llvm-spirv')
-  llvm_config.add_tool_substitutions([ToolSubst('llvm-spirv', unresolved='fatal')], tool_dirs)
+  llvm_config.add_tool_substitutions([ToolSubst('llvm-spirv', unresolved='fatal')], config.llvm_spirv_dir)
 
 if config.is32b == "1":
   config.available_features.add('sys32')
