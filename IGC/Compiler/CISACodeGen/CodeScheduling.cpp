@@ -69,21 +69,6 @@ static bool is2dBlockPrefetch(Instruction *I) {
   return false;
 }
 
-static bool isDPAS(Value *V) {
-  GenIntrinsicInst *Intr = dyn_cast<GenIntrinsicInst>(V);
-  if (!Intr)
-    return false;
-  switch (Intr->getIntrinsicID()) {
-  case GenISAIntrinsic::GenISA_dpas:
-  case GenISAIntrinsic::GenISA_sub_group_dpas:
-  case GenISAIntrinsic::GenISA_sub_group_bdpas:
-    return true;
-  default:
-    break;
-  }
-  return false;
-};
-
 // Get Value name as string for debug purposes
 // Can have side effect of assigning a name to the value if it has no name
 // Under a debug flag CodeSchedulingRenameAll
@@ -2076,7 +2061,6 @@ private:
           }
         }
       }
-
 
       return Checkpoint;
     }

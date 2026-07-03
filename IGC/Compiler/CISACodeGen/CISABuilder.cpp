@@ -9,6 +9,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CISACodeGen/CISABuilder.hpp"
 #include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
 #include "Compiler/CISACodeGen/OpenCLKernelCodeGen.hpp"
+#include "Compiler/CISACodeGen/helper.h"
 #include "Compiler/Optimizer/OpenCLPasses/NamedBarriers/NamedBarriersResolution.hpp"
 #include "common/allocator.h"
 #include "common/Types.hpp"
@@ -3594,6 +3595,38 @@ void CEncoder::SetAbortOnSpillThreshold(bool canAbortOnSpill, bool AllowSpill) {
   }
 }
 
+// Fraction of instructions that are ALU ops reading at least two register
+// operands (add/mul/and/or/xor/mad/dpas/cmp/select/...) - the ops that can incur
+// GRF bank conflicts.
+static float getBankConflictALUDensity(const llvm::Function *F) {
+  if (!F)
+    return 0.0f;
+  unsigned Total = 0, Candidates = 0;
+  for (const llvm::BasicBlock &BB : *F) {
+    for (const llvm::Instruction &I : BB) {
+      if (llvm::isa<llvm::DbgInfoIntrinsic>(&I))
+        continue;
+      ++Total;
+      bool IsALU =
+          llvm::isa<llvm::BinaryOperator>(&I) || llvm::isa<llvm::CmpInst>(&I) || llvm::isa<llvm::SelectInst>(&I);
+      if (const auto *II = llvm::dyn_cast<llvm::IntrinsicInst>(&I)) {
+        auto Id = II->getIntrinsicID();
+        IsALU |= (Id == llvm::Intrinsic::fma || Id == llvm::Intrinsic::fmuladd);
+      }
+      IsALU |= isDPAS(&I);
+      if (!IsALU)
+        continue;
+      unsigned RegOperands = 0;
+      for (unsigned i = 0, e = I.getNumOperands(); i < e; ++i)
+        if (!llvm::isa<llvm::Constant>(I.getOperand(i)))
+          ++RegOperands;
+      if (RegOperands >= 2)
+        ++Candidates;
+    }
+  }
+  return Total ? (float)Candidates / (float)Total : 0.0f;
+}
+
 void CEncoder::InitVISABuilderOptions(TARGET_PLATFORM VISAPlatform, bool canAbortOnSpill, bool hasStackCall,
                                       bool enableVISA_IR) {
   CodeGenContext *context = m_program->GetContext();
@@ -4349,7 +4382,12 @@ void CEncoder::InitVISABuilderOptions(TARGET_PLATFORM VISAPlatform, bool canAbor
       m_program->m_Platform->getPlatformInfo().eProductFamily != IGFX_DG2 &&
       (m_program->m_Platform->limitedBCR() || (MaxRegPressure > 0 && MaxRegPressure < RegPressureThreshold))) {
     SaveOption(vISA_enableBCR, true);
-    if (m_program->GetParent()->getLLVMFunction()->size() == 1 &&
+    // Force BCR only when there are enough bank-conflict-prone ALU ops, else it
+    // just perturbs the schedule. Decided here (pre-emission) because the
+    // GRF-mode bump is baked when the G4 kernel is built during emission.
+    bool ForceBCRWorthwhile = getBankConflictALUDensity(m_program->GetParent()->getLLVMFunction()) * 100.0f >=
+                              IGC_GET_FLAG_VALUE(BCRAluDensityThreshold);
+    if (ForceBCRWorthwhile && m_program->GetParent()->getLLVMFunction()->size() == 1 &&
         m_program->m_Platform->getMinDispatchMode() != SIMDMode::SIMD8) {
       SaveOption(vISA_forceBCR, true);
       if (context->supportsVRT())
@@ -4357,7 +4395,7 @@ void CEncoder::InitVISABuilderOptions(TARGET_PLATFORM VISAPlatform, bool canAbor
     }
     // For OCL shader with very low register pressure, it is safe to enable vISA_bumpGRFForForceBCR on platform with VRT
     // support.
-    if (MaxRegPressure > 0 && MaxRegPressure < 32 && context->supportsVRT()) {
+    if (ForceBCRWorthwhile && MaxRegPressure > 0 && MaxRegPressure < 32 && context->supportsVRT()) {
       SaveOption(vISA_forceBCR, true);
       SaveOption(vISA_bumpGRFForForceBCR, true);
       // For shader with very low register pressure, we want to restrict the RP

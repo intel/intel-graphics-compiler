@@ -218,21 +218,6 @@ static unsigned numInsts(const Function &F) {
   return std::count_if(llvm::inst_begin(F), llvm::inst_end(F), [](const auto &I) { return !isDbgIntrinsic(&I); });
 }
 
-static bool isDPAS(Value *V) {
-  GenIntrinsicInst *Intr = dyn_cast<GenIntrinsicInst>(V);
-  if (!Intr)
-    return false;
-  switch (Intr->getIntrinsicID()) {
-  case GenISAIntrinsic::GenISA_dpas:
-  case GenISAIntrinsic::GenISA_sub_group_dpas:
-  case GenISAIntrinsic::GenISA_sub_group_bdpas:
-    return true;
-  default:
-    break;
-  }
-  return false;
-};
-
 /// ===================== ///
 /// Non-loop code sinking ///
 /// ===================== ///

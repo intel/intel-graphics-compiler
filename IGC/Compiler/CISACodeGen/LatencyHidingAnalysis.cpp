@@ -72,21 +72,6 @@ static bool is2dBlockRead(Instruction *I) {
   return false;
 }
 
-static bool isDPAS(Value *V) {
-  GenIntrinsicInst *Intr = dyn_cast<GenIntrinsicInst>(V);
-  if (!Intr)
-    return false;
-  switch (Intr->getIntrinsicID()) {
-  case GenISAIntrinsic::GenISA_dpas:
-  case GenISAIntrinsic::GenISA_sub_group_dpas:
-  case GenISAIntrinsic::GenISA_sub_group_bdpas:
-    return true;
-  default:
-    break;
-  }
-  return false;
-}
-
 static bool isSetFieldInst(Instruction *I) {
   if (auto *Intr = dyn_cast<GenIntrinsicInst>(I))
     return Intr->getIntrinsicID() == GenISAIntrinsic::GenISA_LSC2DBlockSetAddrPayloadField;

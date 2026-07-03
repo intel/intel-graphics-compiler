@@ -107,6 +107,10 @@ DECLARE_IGC_REGKEY(bool, DisableGatherRSFusionSyncWA, false,
 DECLARE_IGC_REGKEY(bool, EnableBCR, false, "Enable bank conflict reduction.", true)
 DECLARE_IGC_REGKEY(bool, ForceBCR, false, "Force bank conflict reduction, no matter spill or not.", true)
 DECLARE_IGC_REGKEY(bool, BumpGRFForForceBCR, false, "Bump up GRF mode for force BCR.", true)
+DECLARE_IGC_REGKEY(DWORD, BCRAluDensityThreshold, 10,
+                   "Min percent of bank-conflict-candidate ALU instructions (2-/3-source ops) required to force BCR "
+                   "for low register pressure OCL shaders. 0 disables the check.",
+                   true)
 DECLARE_IGC_REGKEY(bool, EnableForceDebugSWSB, false,
                    "Enable force debugging functionality for software scoreboard generation", true)
 DECLARE_IGC_REGKEY(DWORD, EnableSWSBInstStall, 0,

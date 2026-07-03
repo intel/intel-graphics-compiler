@@ -184,6 +184,9 @@ bool hasSubGroupIntrinsicPVC(llvm::Function &F);
 
 bool isBarrierIntrinsic(const llvm::Instruction *I);
 
+// Returns true if V is a DPAS GenISA intrinsic (dpas / sub_group_dpas / bdpas).
+bool isDPAS(const llvm::Value *V);
+
 bool isUserFunctionCall(const llvm::Instruction *I);
 
 bool isHidingComplexControlFlow(const llvm::Instruction *I);

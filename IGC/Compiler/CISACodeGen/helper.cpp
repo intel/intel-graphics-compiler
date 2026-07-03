@@ -1291,6 +1291,21 @@ bool isBarrierIntrinsic(const llvm::Instruction *I) {
   }
 }
 
+bool isDPAS(const llvm::Value *V) {
+  const GenIntrinsicInst *GII = dyn_cast<GenIntrinsicInst>(V);
+  if (!GII)
+    return false;
+
+  switch (GII->getIntrinsicID()) {
+  case GenISAIntrinsic::GenISA_dpas:
+  case GenISAIntrinsic::GenISA_sub_group_dpas:
+  case GenISAIntrinsic::GenISA_sub_group_bdpas:
+    return true;
+  default:
+    return false;
+  }
+}
+
 bool isUserFunctionCall(const llvm::Instruction *I) {
   const CallInst *callInst = dyn_cast<CallInst>(I);
 
