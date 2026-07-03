@@ -2767,20 +2767,116 @@ INLINE double libclc_lgamma_f64(double x) {
 /*################################## libclc_tgamma_f64 ###############################################*/
 
 INLINE double libclc_tgamma_f64(double x) {
-    const double pi = 3.1415926535897932384626433832795;
     double ax = fabs(x);
-    double lg = libclc_lgamma_f64(ax);
-    double g = exp(lg);
+    double ret;
 
-    if (x < 0.0) {
-        double z = sinpi(x);
-        g = g * ax * z;
-        g = pi / g;
-        g = g == 0 ? as_double(PINFBITPATT_DP64) : g;
-        g = z == 0 ? as_double(QNANBITPATT_DP64) : g;
+    if (ax < 16.0)
+    {
+        double n, d;
+        double y = x;
+        if (x > 0.0)
+        {
+            n = 1.0;
+            while (y > 2.5)
+            {
+                n = mad(n, y, -n);
+                y = y - 1.0;
+                n = mad(n, y, -n);
+                y = y - 1.0;
+            }
+
+            if (y > 1.5)
+            {
+                n = mad(n, y, -n);
+                y = y - 1.0;
+            }
+
+            if (x >= 0.5) y = y - 1.0;
+
+            d = x < 0.5 ? x : 1.0;
+        }
+        else
+        {
+            d = x;
+
+            while (y < -1.5)
+            {
+                d = mad(d, y, d);
+                y = y + 1.0;
+                d = mad(d, y, d);
+                y = y + 1.0;
+            }
+
+            if (y < -0.5)
+            {
+                d = mad(d, y, d);
+                y = y + 1.0;
+            }
+
+            n = 1.0;
+        }
+
+        double t0  = mad(y, -0x1.aed75feec7b9ap-23, 0x1.31854a0be3cd3p-20);
+        double t1  = mad(y, t0, -0x1.5037d6a97a8b7p-20);
+        double t2  = mad(y, t1, -0x1.51d67f2cdbcfbp-16);
+        double t3  = mad(y, t2, 0x1.0c8ab2ac5112dp-13);
+        double t4  = mad(y, t3, -0x1.c364ce9b5e149p-13);
+        double t5  = mad(y, t4, -0x1.317113a39f929p-10);
+        double t6  = mad(y, t5, 0x1.d919c501178a3p-8);
+        double t7  = mad(y, t6, -0x1.3b4af282da690p-7);
+        double t8  = mad(y, t7, -0x1.59af103bf2cd0p-5);
+        double t9  = mad(y, t8, 0x1.5512320b432ccp-3);
+        double t10 = mad(y, t9, -0x1.5815e8fa28886p-5);
+        double t11 = mad(y, t10, -0x1.4fcf4026afa24p-1);
+        double qt  = mad(y, t11, 0x1.2788cfc6fb61cp-1);
+
+        ret = n / mad(d, y * qt, d);
+        ret = x == 0.0 ? copysign(as_double(PINFBITPATT_DP64), x) : ret;
+        ret = (x < 0.0 && x == trunc(x)) ? as_double(QNANBITPATT_DP64) : ret;
+    }
+    else
+    {
+        const double sqrt2pi   = 0x1.40d931ff62706p+1;
+        const double sqrtpiby2 = 0x1.40d931ff62706p+0;
+
+        double t1 = powr(ax, mad(ax, 0.5, -0.25));
+        double t2 = exp(-ax);
+        double xr = 1.0 / ax;
+
+        double p0 = mad(xr, -0x1.2b04c5ea74bbfp-11, 0x1.14869344f1d9bp-14);
+        double p1 = mad(xr, p0, 0x1.9b3457156ffefp-11);
+        double p2 = mad(xr, p1, -0x1.e1427e86ee097p-13);
+        double p3 = mad(xr, p2, -0x1.5f7266f67c4e0p-9);
+        double p4 = mad(xr, p3, 0x1.c71c71c0f96adp-9);
+        double pt = mad(xr, p4, 0x1.5555555555a28p-4);
+
+        if (x > 0.0)
+        {
+            double gt = sqrt2pi * t2 * t1 * t1;
+            double g  = mad(gt, xr * pt, gt);
+            ret       = x > 0x1.573fae561f646p+7 ? as_double(PINFBITPATT_DP64) : g;
+        }
+        else
+        {
+            double s = -x * sinpi(x);
+            if (x > -170.5)
+            {
+                double d = s * t2 * t1 * t1;
+                ret      = sqrtpiby2 / mad(d, xr * pt, d);
+            }
+            else if (x > -184.0)
+            {
+                double d = t2 * t1;
+                ret      = (sqrtpiby2 / mad(d, xr * pt, d)) / (s * t1);
+            }
+            else
+                ret = copysign(0.0, s);
+
+            ret = (x == trunc(x)) || isnan(x) ? as_double(QNANBITPATT_DP64) : ret;
+        }
     }
 
-    return g;
+    return ret;
 }
 
 #endif // defined(cl_khr_fp64)
