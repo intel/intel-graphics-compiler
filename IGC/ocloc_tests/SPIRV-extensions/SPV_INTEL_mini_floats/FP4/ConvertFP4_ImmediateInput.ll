@@ -16,17 +16,10 @@
 ; RUN: FileCheck %s -check-prefix=CHECK-E2M1HF < %t.visaasm
 ; RUN: FileCheck %s -check-prefix=CHECK-E2M1BF < %t.visaasm
 
-; Test if conversion opcodes are present in spirv disassembly.
+; Verify opcode lowering; _builtin_spirv* functions shouldn't be called directly
 ; RUN: llvm-spirv --to-text %t.spv -o %t.spt
-; RUN: FileCheck < %t.spt %s -check-prefix=CHECK-SPV
-; CHECK-SPV: TypeFloat [[HALF:[0-9]+]] 16
-; CHECK-SPV: TypeFloat [[E2M1:[0-9]+]] 4 6214
-; CHECK-SPV: TypeVector [[E2M1V:[0-9]+]] [[E2M1]] 4
-; CHECK-SPV: TypeFloat [[BFLOAT:[0-9]+]] 16 0
-; CHECK-SPV: FConvert [[E2M1V]]
-; CHECK-SPV: FConvert [[E2M1V]]
-; CHECK-SPV: FConvert [[HALF]]
-; CHECK-SPV: FConvert [[BFLOAT]]
+; RUN: FileCheck < %t.spt %s -check-prefix=CHECK-SPIRV
+; CHECK-SPIRV-NOT: __builtin_spirv_
 
 target datalayout = "e-p:64:64:64-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64-f32:32:32-f64:64:64-v16:16:16-v24:32:32-v32:32:32-v48:64:64-v64:64:64-v96:128:128-v128:128:128-v192:256:256-v256:256:256-v512:512:512-v1024:1024:1024"
 target triple = "spir64-unknown-unknown"

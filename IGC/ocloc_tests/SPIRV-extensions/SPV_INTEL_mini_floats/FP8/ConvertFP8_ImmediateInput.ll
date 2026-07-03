@@ -26,28 +26,10 @@
 ; RUN: FileCheck %s -check-prefix=CHECK-E4M32BF < %t.visaasm
 ; RUN: FileCheck %s -check-prefix=CHECK-E5M22BF < %t.visaasm
 
+; Verify opcode lowering; _builtin_spirv* functions shouldn't be called directly
 ; RUN: llvm-spirv --to-text %t.spv -o %t.spt
-; RUN: FileCheck < %t.spt %s -check-prefix=CHECK-SPV
-; CHECK-SPV: TypeFloat [[HALF:[0-9]+]] 16
-; CHECK-SPV: TypeFloat [[E4M3:[0-9]+]] 8 4214
-; CHECK-SPV: TypeFloat [[E5M2:[0-9]+]] 8 4215
-; CHECK-SPV: TypeFloat [[BFLOAT:[0-9]+]] 16 0
-; CHECK-SPV: TypeVector [[V2BFLOAT:[0-9]+]] [[BFLOAT]] 2
-; CHECK-SPV: TypeVector [[V2E4M3:[0-9]+]] [[E4M3]] 2
-; CHECK-SPV: TypeVector [[V2E5M2:[0-9]+]] [[E5M2]] 2
-; CHECK-SPV: FConvert [[E4M3]]
-; CHECK-SPV: FConvert [[E5M2]]
-; FIXME: tighten the 4 clamp lines below to FConvert for https://github.com/KhronosGroup/SPIRV-LLVM-Translator/pull/3767 and /pull/3782
-; CHECK-SPV: {{ClampConvertFToFINTEL|FConvert}} [[E4M3]]
-; CHECK-SPV: {{ClampConvertFToFINTEL|FConvert}} [[E5M2]]
-; CHECK-SPV: FConvert [[HALF]]
-; CHECK-SPV: FConvert [[HALF]]
-; CHECK-SPV: FConvert [[V2E4M3]]
-; CHECK-SPV: FConvert [[V2E5M2]]
-; CHECK-SPV: {{ClampConvertFToFINTEL|FConvert}} [[V2E4M3]]
-; CHECK-SPV: {{ClampConvertFToFINTEL|FConvert}} [[V2E5M2]]
-; CHECK-SPV: FConvert [[V2BFLOAT]]
-; CHECK-SPV: FConvert [[V2BFLOAT]]
+; RUN: FileCheck < %t.spt %s -check-prefix=CHECK-SPIRV
+; CHECK-SPIRV-NOT: __builtin_spirv_
 
 target datalayout = "e-p:64:64:64-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64-f32:32:32-f64:64:64-v16:16:16-v24:32:32-v32:32:32-v48:64:64-v64:64:64-v96:128:128-v128:128:128-v192:256:256-v256:256:256-v512:512:512-v1024:1024:1024"
 target triple = "spir64-unknown-unknown"
