@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2024 Intel Corporation
+Copyright (C) 2017-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -125,6 +125,28 @@ static BasicBlock *findLowestSinkTarget(Instruction *inst, SmallPtrSetImpl<Instr
       if (useBlock == inst->getParent()) {
         return nullptr;
       }
+    }
+    // Skip uses in blocks that are unreachable from the entry. Such blocks are
+    // not present in the dominator tree, so querying them via
+    // findNearestCommonDominator()/getNode() below would dereference a null
+    // DomTreeNode and crash. Skipping the use keeps tgtBlk built only
+    // from reachable blocks, so the instruction can still sink towards its
+    // remaining live uses in the mixed case. If every use is unreachable
+    // the value is dead and tgtBlk stays null, so nothing is sunk.
+    // Example (%p is defined in a reachable block but used only in the
+    // unreachable OutputsFlush block):
+    //   GlobalScopeInitialization:         ; reachable, has a successor
+    //     %p = inttoptr i64 %v to i64 addrspace(1)*
+    //     br label %body
+    //   body:
+    //     call void @llvm.genx.GenISA.discard(i1 true)
+    //     ret void
+    //   dead.exit:                         ; No predecessors! -> unreachable
+    //     br label %OutputsFlush
+    //   OutputsFlush:                      ; reachable only from %dead.exit
+    //     call void @llvm.genx.GenISA.OUTPUTPS.f32.p1i64(..., i64 addrspace(1)* %p)
+    if (!DT->isReachableFromEntry(useBlock)) {
+      continue;
     }
     if (tgtBlk == nullptr) {
       tgtBlk = useBlock;
