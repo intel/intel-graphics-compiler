@@ -19131,8 +19131,12 @@ void EmitPass::emitLSCVectorLoad(Instruction *inst, Value *Ptr, Value *uniformBa
           m_encoder->Push();
 
           if (needTemp) {
-            emitVectorCopy(destCVar, gatherDst, instElts, eltOff, 0, false,
-                           (predicatedLoad && isDestReplacedWithMerge) ? pred : nullptr);
+            // For a predicated load the destination already holds the merge/default value before this
+            // copy (either pre-initialized above when !isDestReplacedWithMerge, or because the
+            // destination *is* the merge variable). The predicated load only wrote the temp for
+            // predicate-true lanes, so the temp->dest copy MUST be predicated; otherwise predicate-false
+            // lanes get uninitialized temp data instead of the merge value.
+            emitVectorCopy(destCVar, gatherDst, instElts, eltOff, 0, false, predicatedLoad ? pred : nullptr);
           }
         }
       },
