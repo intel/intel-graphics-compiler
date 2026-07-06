@@ -581,6 +581,8 @@ public:
 
   bool hasFP4DPAS() const { return isCoreChildOf(IGFX_XE3P_CORE) && IGC_IS_FLAG_ENABLED(EnableFP4Dpas); }
 
+  bool hasFP8Dpas() const { return isCoreChildOf(IGFX_XE3P_CORE); }
+
   bool hasExecSize16DPAS() const { return isCoreChildOf(IGFX_XE_HPC_CORE); }
 
   bool LSCSimd1NeedFullPayload() const {

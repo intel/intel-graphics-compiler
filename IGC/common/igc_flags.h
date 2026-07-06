@@ -424,8 +424,9 @@ DECLARE_IGC_REGKEY(bool, DisableUniformTypedAccess, false, "Setting this will di
                    false)
 DECLARE_IGC_REGKEY(bool, DisableURBWriteMerge, false,
                    "Setting this to 1/true adds a compiler switch to disable URB write merge", false)
-DECLARE_IGC_REGKEY(DWORD, SetURBFullWriteGranularity, 0, "Overrides the minimum access granularity for URB full writes.\
-                                                             Valid values are 0, 16 and 32, value 0 means use default for the platform.",
+DECLARE_IGC_REGKEY(DWORD, SetURBFullWriteGranularity, 0,
+                   "Overrides the minimum access granularity for URB full writes."
+                   "Valid values are 0, 16 and 32, value 0 means use default for the platform.",
                    true)
 DECLARE_IGC_REGKEY(bool, DisableMatchFloor, false,
                    "Setting this to 1/true adds a compiler switch to disable sub-frc = floor optimization", false)
