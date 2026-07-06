@@ -1445,9 +1445,10 @@ void writeULEB128(std::vector<unsigned char> &vec, uint64_t data) {
   free(buf);
 }
 
-// Check whether a dbg.declare describes an FE_FP-based stack location
+// Check whether a dbg.declare describes a private-memory location
 // (StorageOffset recorded by PrivateMemoryResolution, no surface/SLM binding).
-static bool isFpBased(const DbgVarInstEntry *dbgEntry, const VISAVariableLocation &Loc, const VISAModule *Module) {
+// Such a location is emitted relative to the private-base register or the frame pointer.
+static bool isMem(const DbgVarInstEntry *dbgEntry, const VISAVariableLocation &Loc, const VISAModule *Module) {
   if (Loc.HasSurface() || Loc.IsSLM())
     return false;
   return dbgVarIsDecl(dbgEntry) && Module->getStorageOffset(dbgEntry).has_value();
@@ -1478,7 +1479,7 @@ void DwarfDebug::encodeImm(IGC::DotDebugLocEntry &dotLoc, const VarLocation &vl,
   offset += PointerSize * 2 + 2 + dotLoc.loc.size();
 }
 
-void DwarfDebug::encodeFpBased(IGC::DotDebugLocEntry &dotLoc, const VarLocation &vl, uint32_t &offset) {
+void DwarfDebug::encodeMem(IGC::DotDebugLocEntry &dotLoc, const VarLocation &vl, uint32_t &offset) {
   dotLoc.start = vl.start;
   dotLoc.end = vl.end;
 
@@ -1754,11 +1755,12 @@ void DwarfDebug::resolveRangesToVarLocations(DbgVariable *RegVar, const std::vec
     LLVM_DEBUG(dbgs() << "  Processing Location at IP Range: [0x"; dbgs().write_hex(startIp) << "; " << "0x";
                dbgs().write_hex(endIp) << "]\n"; CurLoc.print(dbgs()););
 
-    if (isFpBased(dbgEntry, CurLoc, m_pModule)) {
+    if (isMem(dbgEntry, CurLoc, m_pModule)) {
       uint64_t fpStart = startIp;
       uint64_t fpEnd = endIp;
 
-      // FP-based variable lives on stack while BE_FP is valid.
+      // Memory-based variable lives at its private-memory offset while the base
+      // (private-base reg or BE_FP) is valid.
       // Kernel: from dbg.declare position (startIp) to end of range.
       // Stack-call (-O0): from after prologue to epilogue start.
       if (FPFuncInfo.setFunctionIPRange) {
@@ -1772,9 +1774,9 @@ void DwarfDebug::resolveRangesToVarLocations(DbgVariable *RegVar, const std::vec
       // We expect one dbg.declare for variable, so it doesn't have to go through
       // prev-based merge/extend logic.
       ResolvedLocations.emplace_back();
-      ResolvedLocations.back().setFpBased(fpStart, fpEnd, RegVar, dbgEntry, CurLoc, FI);
+      ResolvedLocations.back().setMem(fpStart, fpEnd, RegVar, dbgEntry, CurLoc, FI);
 
-      LLVM_DEBUG(dbgs() << "  FP-based Resolved IP Range: [0x"; dbgs().write_hex(fpStart) << ",0x";
+      LLVM_DEBUG(dbgs() << " Memory based Resolved IP Range: [0x"; dbgs().write_hex(fpStart) << ",0x";
                  dbgs().write_hex(fpEnd) << ")\n";);
       continue;
     }
@@ -1861,12 +1863,12 @@ bool DwarfDebug::canInlineToDIE(const DbgVarInstEntry *dbgEntry, const VISAVaria
   if (dbgVarIsDecl(dbgEntry) && (Loc.HasSurface() || Loc.IsSLM()))
     return true;
 
-  // FP-based locations in non-outermost scopes can be inlined, since
-  // FE_FP is valid throughout the inlined scope. Outermost-scope
-  // FP-based must go through .debug_loc so that the emitted range
-  // is limited to the interval where FE_FP is valid.
+  // Memory-based locations in non-outermost scopes can be inlined, since
+  // the base (private-base reg or BE_FP) is valid throughout the inlined scope.
+  // Outermost-scope ones must go through .debug_loc so that the emitted range
+  // is limited to the interval where the base is valid.
   bool IsOutermostScope = Scope == LScopes.getCurrentFunctionScope();
-  if (isFpBased(dbgEntry, Loc, m_pModule) && !IsOutermostScope)
+  if (isMem(dbgEntry, Loc, m_pModule) && !IsOutermostScope)
     return true;
 
   return false;
@@ -2059,8 +2061,8 @@ void DwarfDebug::collectVariableInfo(const Function *MF, SmallPtrSet<const MDNod
           // entry.
           vl.dbgVar->setDbgEntry(vl.dbgEntry);
 
-          if (vl.isFpBased()) {
-            encodeFpBased(dotLoc, vl, offset);
+          if (vl.isMem()) {
+            encodeMem(dotLoc, vl, offset);
           } else if (vl.isImm()) {
             encodeImm(dotLoc, vl, offset);
           } else if (vl.isReg()) {

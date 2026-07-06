@@ -601,7 +601,7 @@ private:
   /// \brief Represents a pending location entry for .debug_loc encoding.
   /// Used to merge consecutive identical locations before emitting.
   struct VarLocation {
-    enum class Type { Empty = 0, Imm = 1, Reg = 2, FpBased = 3 };
+    enum class Type { Empty = 0, Imm = 1, Reg = 2, Mem = 3 };
     Type type = Type::Empty;
     uint64_t start = 0;
     uint64_t end = 0;
@@ -618,7 +618,7 @@ private:
     bool isEmpty() const { return type == Type::Empty; }
     bool isImm() const { return type == Type::Imm; }
     bool isReg() const { return type == Type::Reg; }
-    bool isFpBased() const { return type == Type::FpBased; }
+    bool isMem() const { return type == Type::Mem; }
 
     void setImm(uint64_t s, uint64_t e, DbgVariable *var, const DbgVarInstEntry *entry, const llvm::Constant *val,
                 std::optional<llvm::DIExpression::FragmentInfo> fragInfo = {}) {
@@ -631,9 +631,9 @@ private:
       FragmentInfo = fragInfo;
     }
 
-    void setFpBased(uint64_t s, uint64_t e, DbgVariable *var, const DbgVarInstEntry *entry,
-                    const VISAVariableLocation &loc, std::optional<llvm::DIExpression::FragmentInfo> fragInfo = {}) {
-      type = Type::FpBased;
+    void setMem(uint64_t s, uint64_t e, DbgVariable *var, const DbgVarInstEntry *entry, const VISAVariableLocation &loc,
+                std::optional<llvm::DIExpression::FragmentInfo> fragInfo = {}) {
+      type = Type::Mem;
       start = s;
       end = e;
       dbgVar = var;
@@ -694,9 +694,9 @@ private:
   /// location in a GRF register. Handles caller-save.
   void encodeReg(IGC::DotDebugLocEntry &dotLoc, const VarLocation &vl, uint32_t &offset);
 
-  /// \brief Encode an FE_FP-based (StorageOffset) location into .debug_loc.
+  /// \brief Encode a Memory location (private-base or FP relative) into .debug_loc.
   /// Uses buildGeneral with IR-derived ranges (no VISA register liveness).
-  void encodeFpBased(IGC::DotDebugLocEntry &dotLoc, const VarLocation &vl, uint32_t &offset);
+  void encodeMem(IGC::DotDebugLocEntry &dotLoc, const VarLocation &vl, uint32_t &offset);
 
   /// \brief Build composite DWARF location expressions for fragmented variables.
   /// For each IP sub-interval, assembles a single .debug_loc entry describing
