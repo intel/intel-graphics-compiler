@@ -273,6 +273,27 @@ public:
     return llvm::IRBuilder<T, InserterTy>::CreateLifetimeEnd(Ptr, Size);
 #endif
   }
+
+  using llvm::IRBuilder<T, InserterTy>::CreateIntrinsic;
+
+#if LLVM_VERSION_MAJOR >= 22
+  inline llvm::CallInst *CreateIntrinsicWithoutFolding(llvm::Intrinsic::ID ID, llvm::ArrayRef<llvm::Type *> Types,
+                                                       llvm::ArrayRef<llvm::Value *> Args,
+                                                       llvm::FMFSource FMFSource = {}, const llvm::Twine &Name = "") {
+#if LLVM_VERSION_MAJOR >= 23
+    return llvm::IRBuilder<T, InserterTy>::CreateIntrinsicWithoutFolding(ID, Types, Args, FMFSource, Name);
+#else
+    return llvm::IRBuilder<T, InserterTy>::CreateIntrinsic(ID, Types, Args, FMFSource, Name);
+#endif
+  }
+#else
+  inline llvm::CallInst *CreateIntrinsicWithoutFolding(llvm::Intrinsic::ID ID, llvm::ArrayRef<llvm::Type *> Types,
+                                                       llvm::ArrayRef<llvm::Value *> Args,
+                                                       llvm::Instruction *FMFSource = nullptr,
+                                                       const llvm::Twine &Name = "") {
+    return llvm::IRBuilder<T, InserterTy>::CreateIntrinsic(ID, Types, Args, FMFSource, Name);
+  }
+#endif
 };
 
 /// Version portable pointer type accessor. With older LLVM versions opaque pointer support

@@ -14,9 +14,9 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/Instructions.h>
 #include <llvm/IR/BasicBlock.h>
 #include <llvm/IR/Function.h>
-#include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/PatternMatch.h>
 #include "common/LLVMWarningsPop.hpp"
+#include "llvmWrapper/IR/IRBuilder.h"
 
 using namespace llvm;
 using namespace IGC;
@@ -252,14 +252,14 @@ void GenRotate::matchRotate(Instruction *I) {
   }
 
   // Replace I with llvm.fshl or llvm.fshr
-  IRBuilder<> Builder(I);
+  IGCLLVM::IRBuilder<> Builder(I);
   // Create zext in case Amt has smaller width than V
   Amt = Builder.CreateZExt(Amt, V->getType());
 
   Intrinsic::ID rotateID = isROL ? Intrinsic::fshl : Intrinsic::fshr;
   Value *Args[3] = {V, V, Amt};
   Type *Ty = V->getType();
-  CallInst *rotateCall = Builder.CreateIntrinsic(rotateID, Ty, Args, nullptr, "rotate");
+  CallInst *rotateCall = Builder.CreateIntrinsicWithoutFolding(rotateID, Ty, Args, nullptr, "rotate");
   rotateCall->setDebugLoc(I->getDebugLoc());
   I->replaceAllUsesWith(rotateCall);
   I->eraseFromParent();

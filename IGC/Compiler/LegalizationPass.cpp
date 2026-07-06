@@ -1661,9 +1661,9 @@ void Legalization::visitIntrinsicInst(llvm::IntrinsicInst &I) {
     Type *ScalarType = OpType->getScalarType();
     int BitWidth = ScalarType->getIntegerBitWidth();
 
-    auto OverFlowIntrin =
-        Builder.CreateIntrinsic(OverflowIntrinID, {I.getArgOperand(0)->getType(), I.getArgOperand(1)->getType()},
-                                {I.getArgOperand(0), I.getArgOperand(1)});
+    auto *OverFlowIntrin = Builder.CreateIntrinsicWithoutFolding(
+        OverflowIntrinID, {I.getArgOperand(0)->getType(), I.getArgOperand(1)->getType()},
+        {I.getArgOperand(0), I.getArgOperand(1)});
     Value *Result = Builder.CreateExtractValue(OverFlowIntrin, (uint64_t)0);
     Value *Overflow = Builder.CreateExtractValue(OverFlowIntrin, (uint64_t)1);
 
