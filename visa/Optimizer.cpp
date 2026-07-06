@@ -4225,8 +4225,21 @@ bool Optimizer::foldCmpSel(G4_BB *BB, G4_INST *selInst,
     // C = (+P) sel A, B  => C = sel.ne A, B
     //
     if (IsEqual(sel_src0, cmp_src0, builder) &&
-        IsEqual(sel_src1, cmp_src1, builder))
-      return true;
+        IsEqual(sel_src1, cmp_src1, builder)) {
+        // A sel with an (lt) or (ge) cond mod has special NaN handling: if
+        // exactly one source is NaN, the non-NaN source (which may be src0) is
+        // selected. In contrast, cmp performs an ordered compare (false when any
+        // operand is NaN), so cmp + predicated sel selects src1 when a NaN is
+        // present. The two therefore disagree for float operands that may be
+        // NaN, so don't fold cmp.lt/cmp.ge into sel in that case.
+        // (Other cond mods select src1 on NaN for both forms, so they are safe.)
+        G4_CondModifier mod = condMod->getMod();
+        if (!builder.getOption(vISA_finiteMathOnly) &&
+            IS_TYPE_FLOAT_ALL(cmp_src0->getType()) &&
+            (mod == Mod_l || mod == Mod_ge))
+            return false;
+        return true;
+    }
 
     // Sel operands are reversed.
     // P = cmp.gt A, B
