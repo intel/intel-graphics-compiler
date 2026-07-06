@@ -6,7 +6,6 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; UNSUPPORTED: lib-igc-clang
 ; REQUIRES: cri-supported
 
 ; RUN: llvm-as %s -o %t.bc
