@@ -7,7 +7,6 @@
 ;============================ end_copyright_notice =============================
 
 ; REQUIRES: llvm-spirv, cri-supported
-; UNSUPPORTED: llvm-22-plus
 ; RUN: llvm-as %s -o %t.bc
 ; RUN: llvm-spirv %t.bc -o %t.spv --spirv-ext=+SPV_INTEL_float4,+SPV_INTEL_int4,+SPV_INTEL_fp_conversions
 ; RUN: ocloc compile -spirv_input -file %t.spv -device cri -options "-igc_opts 'ForceOCLSIMDWidth=32,DumpVISAASMToConsole=1,AddVISADumpDeclarationsToEnd=1'" | FileCheck %s
