@@ -63,6 +63,7 @@ SPDX-License-Identifier: MIT
 #include "llvmWrapper/IR/IntrinsicInst.h"
 #include "llvmWrapper/IR/Function.h"
 #include "llvmWrapper/IR/Instructions.h"
+#include "llvmWrapper/IR/Constants.h"
 #include "Probe/Assertion.h"
 
 using namespace llvm;
@@ -234,8 +235,8 @@ void CustomUnsafeOptPass::visitFPToSIInst(llvm::FPToSIInst &I) {
               } else if (dyn_cast<SelectInst>(inst)) {
                 ConstantFP *c1 = dyn_cast<ConstantFP>(inst->getOperand(1));
                 ConstantFP *c2 = dyn_cast<ConstantFP>(inst->getOperand(2));
-                if (!c1 || !c2 || (!c1->isZeroValue() && !c1->isExactlyValue(1.0f)) ||
-                    (!c2->isZeroValue() && !c2->isExactlyValue(1.0f))) {
+                if (!c1 || !c2 || (!IGCLLVM::Constant::isNullValue(c1) && !c1->isExactlyValue(1.0f)) ||
+                    (!IGCLLVM::Constant::isNullValue(c2) && !c2->isExactlyValue(1.0f))) {
                   allowOpt = false;
                 }
               } else {
@@ -1130,7 +1131,7 @@ bool CustomUnsafeOptPass::visitBinaryOperatorTwoConstants(BinaryOperator &I) {
   if (dyn_cast<ConstantFP>(prevInst->getOperand(0)) || dyn_cast<ConstantFP>(prevInst->getOperand(1))) {
     if (!prevInst->hasOneUse() && I.getOpcode() == Instruction::FSub) {
       ConstantFP *ConstantZero = dyn_cast<ConstantFP>(I.getOperand(0));
-      if (ConstantZero && ConstantZero->isZeroValue()) {
+      if (ConstantZero && IGCLLVM::Constant::isNullValue(ConstantZero)) {
         return patternFound;
       }
     }
@@ -1200,7 +1201,7 @@ bool CustomUnsafeOptPass::visitBinaryOperatorTwoConstants(BinaryOperator &I) {
 
     ++Stat_FloatRemoved;
     Constant *newConstant = ConstantFP::get(C1->getContext(), newConstantFloat);
-    if (newConstant->isZeroValue() && !orderConstantFirst) {
+    if (IGCLLVM::Constant::isNullValue(newConstant) && !orderConstantFirst) {
       if (opcode == Instruction::FAdd || opcode == Instruction::FSub) {
         I.replaceAllUsesWith(prevInstOp);
         patternFound = true;
@@ -1890,7 +1891,7 @@ bool CustomUnsafeOptPass::visitFMulFCmpOp(FCmpInst &FC) {
         break;
       }
     } else if (ConstantFP *fmulConstant = dyn_cast<ConstantFP>(prevInst[1 - i]->getOperand(1))) {
-      if (fmulConstant->isZeroValue()) {
+      if (IGCLLVM::Constant::isNullValue(fmulConstant)) {
         continue;
       }
       // Optimize:
@@ -2035,7 +2036,7 @@ void CustomUnsafeOptPass::visitSelectInst(SelectInst &I) {
   if (llvm::FCmpInst *cmpInst = llvm::dyn_cast<llvm::FCmpInst>(I.getOperand(0))) {
     if (dyn_cast<FCmpInst>(cmpInst)->getPredicate() == FCmpInst::FCMP_OEQ) {
       if (ConstantFP *cmpConstant = dyn_cast<ConstantFP>(cmpInst->getOperand(1))) {
-        if (cmpConstant->isZeroValue()) {
+        if (IGCLLVM::Constant::isNullValue(cmpConstant)) {
           /*
           %16 = fmul float %15, %0
           %17 = fadd float %16, %14

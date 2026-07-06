@@ -18,6 +18,7 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPop.hpp"
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/Support/Alignment.h"
+#include "llvmWrapper/IR/Constants.h"
 #include "ShaderTypesEnum.h"
 #include "Probe/Assertion.h"
 
@@ -289,7 +290,7 @@ bool OpenCLPrintfResolution::argIsString(Value *arg) {
       return false;
     }
     Constant *initializer = formatString->getInitializer();
-    if (initializer->isZeroValue() && initializer->getType()->isArrayTy()) {
+    if (IGCLLVM::Constant::isNullValue(initializer) && initializer->getType()->isArrayTy()) {
       // Is zeroinitializer; can't be casted to ConstantDataArray.
       // This caused zeroinitializers to be treated as non-strings,
       // which caused assertion errors.
@@ -346,7 +347,7 @@ void OpenCLPrintfResolution::removeExcessArgs() {
     unsigned int numFormatSpecifiers = 0;
 
     Constant *initializer = GV->getInitializer();
-    if (initializer->isZeroValue() && initializer->getType()->isArrayTy())
+    if (IGCLLVM::Constant::isNullValue(initializer) && initializer->getType()->isArrayTy())
       // The string literal is empty, can't be casted to ConstantDataArray
       // and there is no way it contains any format specifiers.
       numFormatSpecifiers = 0;

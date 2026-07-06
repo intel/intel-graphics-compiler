@@ -11,6 +11,7 @@ SPDX-License-Identifier: MIT
 #include "llvmWrapper/IR/Intrinsics.h"
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/IR/IRBuilder.h"
+#include "llvmWrapper/IR/Constants.h"
 #include "common/LLVMWarningsPush.hpp"
 #include "llvm/Support/Debug.h"
 #include "llvm/IR/Dominators.h"
@@ -598,7 +599,8 @@ bool InstPromoter::visitInsertElementInst(InsertElementInst &I) {
       const uint32_t ShiftFactor = IndexImm * IllegalElemTyWidth;
       Promoted = (IndexImm > 0) ? IRB->CreateShl(ZExt, ShiftFactor) : ZExt;
 
-      if (!isa<UndefValue>(VecVal) && !(isa<Constant>(VecVal) && dyn_cast<Constant>(VecVal)->isZeroValue())) {
+      if (!isa<UndefValue>(VecVal) &&
+          !(isa<Constant>(VecVal) && IGCLLVM::Constant::isNullValue(dyn_cast<Constant>(VecVal)))) {
         // Generate 'and' instruction to merge value returned by another insert element instruction
         // with value to be inserted.
         IGC_ASSERT(VecVal->getType()->isIntegerTy());

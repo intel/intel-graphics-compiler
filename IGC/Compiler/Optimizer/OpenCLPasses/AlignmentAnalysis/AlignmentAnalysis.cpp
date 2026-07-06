@@ -17,6 +17,7 @@ SPDX-License-Identifier: MIT
 #include "llvmWrapper/Support/MathExtras.h"
 #include "llvmWrapper/Support/Alignment.h"
 #include "llvmWrapper/IR/Argument.h"
+#include "llvmWrapper/IR/Constants.h"
 #include <deque>
 #include <set>
 #include "Probe/Assertion.h"
@@ -520,7 +521,7 @@ bool AlignmentAnalysis::SetInstAlignment(MemCpyInst &I) {
         return false;
 
       if (auto *initializer = GV->getInitializer())
-        return initializer->isZeroValue();
+        return IGCLLVM::Constant::isNullValue(initializer);
     }
 
     return false;

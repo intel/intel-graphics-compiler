@@ -97,6 +97,7 @@ cmp+sel to avoid expensive VxH mov.
 #include "llvmWrapper/IR/IRBuilder.h"
 #include <llvmWrapper/IR/CmpPredicate.h>
 #include "llvmWrapper/Analysis/TargetLibraryInfo.h"
+#include "llvmWrapper/IR/Constants.h"
 #include "common/secure_mem.h"
 #include "Probe/Assertion.h"
 
@@ -1321,7 +1322,7 @@ void CustomSafeOptPass::visitBfi(llvm::CallInst *inst) {
       inst->replaceAllUsesWith(dst);
       inst->eraseFromParent();
     }
-  } else if (widthV && widthV->isZeroValue()) {
+  } else if (widthV && IGCLLVM::Constant::isNullValue(widthV)) {
     inst->replaceAllUsesWith(inst->getOperand(3));
     inst->eraseFromParent();
   }
@@ -2145,13 +2146,13 @@ void IGC::CustomSafeOptPass::visitLdptr(llvm::SamplerLoadIntrinsic *inst) {
   Constant *src3 = dyn_cast<Constant>(inst->getOperand(3));
 
   // src2 and src3 has to be zero
-  if (!src2 || !src3 || !src2->isZeroValue() || !src3->isZeroValue()) {
+  if (!src2 || !src3 || !IGCLLVM::Constant::isNullValue(src2) || !IGCLLVM::Constant::isNullValue(src3)) {
     return;
   }
 
   // if only doing the opt on buffers, make sure src1 is zero too
   if (!IGC_IS_FLAG_ENABLED(UseHDCTypedReadForAllTextures) && IGC_IS_FLAG_ENABLED(UseHDCTypedReadForAllTypedBuffers)) {
-    if (!src1 || !src1->isZeroValue())
+    if (!src1 || !IGCLLVM::Constant::isNullValue(src1))
       return;
   }
 
@@ -2321,7 +2322,7 @@ std::optional<bool> CustomSafeOptPass::getSignIfIdentityMatrix(ExtractElementIns
         return std::nullopt;
       // we are assuming that the identity matrix does not have mixed values ones
       PositiveSign = !((FpC && FpC->isNegative()) || (IntC && IntC->isNegative()));
-    } else if (!C->getAggregateElement(i)->isZeroValue())
+    } else if (!IGCLLVM::Constant::isNullValue(C->getAggregateElement(i)))
       return std::nullopt;
   }
 
@@ -3677,7 +3678,8 @@ void GenSpecificPattern::visitBitCastInst(BitCastInst &I) {
           InsertElementInst *insertElementInst = cast<InsertElementInst>(bitCastInst->getOperand(0));
 
           if (isa<Constant>(insertElementInst->getOperand(0)) &&
-              cast<Constant>(insertElementInst->getOperand(0))->getAggregateElement((unsigned int)0)->isZeroValue() &&
+              IGCLLVM::Constant::isNullValue(
+                  cast<Constant>(insertElementInst->getOperand(0))->getAggregateElement((unsigned int)0)) &&
               cast<ConstantInt>(insertElementInst->getOperand(2))->getZExtValue() == 1) {
             IRBuilder<> builder(&I);
             Value *vectorValue = UndefValue::get(bitCastInst->getOperand(0)->getType());
@@ -4196,7 +4198,7 @@ Constant *IGCConstProp::ConstantFoldCallInstruction(CallInst *inst) {
     case llvm_ubfe: {
       Constant *C1 = dyn_cast<Constant>(inst->getOperand(1));
       Constant *C2 = dyn_cast<Constant>(inst->getOperand(2));
-      if (C0 && C0->isZeroValue()) {
+      if (C0 && IGCLLVM::Constant::isNullValue(C0)) {
         C = llvm::ConstantInt::get(inst->getType(), 0);
       } else if (C0 && C1 && C2) {
         C = constantFolder.CreateUbfe(C0, C1, C2);
@@ -4205,7 +4207,7 @@ Constant *IGCConstProp::ConstantFoldCallInstruction(CallInst *inst) {
     case llvm_ibfe: {
       Constant *C1 = dyn_cast<Constant>(inst->getOperand(1));
       Constant *C2 = dyn_cast<Constant>(inst->getOperand(2));
-      if (C0 && C0->isZeroValue()) {
+      if (C0 && IGCLLVM::Constant::isNullValue(C0)) {
         C = llvm::ConstantInt::get(inst->getType(), 0);
       } else if (C0 && C1 && C2) {
         C = constantFolder.CreateIbfe(C0, C1, C2);
@@ -4248,7 +4250,7 @@ Constant *IGCConstProp::ConstantFoldCallInstruction(CallInst *inst) {
       Constant *C1 = dyn_cast<Constant>(inst->getOperand(1));
       Constant *C2 = dyn_cast<Constant>(inst->getOperand(2));
       Constant *C3 = dyn_cast<Constant>(inst->getOperand(3));
-      if (C0 && C0->isZeroValue() && C3) {
+      if (C0 && IGCLLVM::Constant::isNullValue(C0) && C3) {
         C = C3;
       } else if (C0 && C1 && C2 && C3) {
         C = constantFolder.CreateBfi(C0, C1, C2, C3);

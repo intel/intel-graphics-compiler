@@ -18,6 +18,7 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPop.hpp"
 #include <llvmWrapper/IR/DerivedTypes.h>
 #include "llvmWrapper/IR/Instructions.h"
+#include "llvmWrapper/IR/Constants.h"
 
 using namespace llvm;
 using namespace IGC;
@@ -175,7 +176,7 @@ bool MergeScalarPhisPass::makeChanges(Function *F) {
 
     for (unsigned i = 0; i < NumIncValues; ++i) {
       Value *Incoming = FirstPN->getIncomingValue(i);
-      if (isa<Constant>(Incoming) && cast<Constant>(Incoming)->isZeroValue()) {
+      if (isa<Constant>(Incoming) && IGCLLVM::Constant::isNullValue(cast<Constant>(Incoming))) {
         NewPhi->addIncoming(ConstantAggregateZero::get(VectorType), FirstPN->getIncomingBlock(i));
         continue;
       }
@@ -212,7 +213,7 @@ bool MergeScalarPhisPass::makeChanges(Function *F) {
 
 bool MergeScalarPhisPass::isIncomingValueZero(PHINode *pPN, unsigned IncomingIndex) {
   Value *pIncVal = pPN->getIncomingValue(IncomingIndex);
-  return isa<Constant>(pIncVal) && cast<Constant>(pIncVal)->isZeroValue();
+  return isa<Constant>(pIncVal) && IGCLLVM::Constant::isNullValue(cast<Constant>(pIncVal));
 }
 
 Value *MergeScalarPhisPass::getVectorOperandForPhiNode(PHINode *PN, unsigned IncomingIndex) {
@@ -241,7 +242,7 @@ void MergeScalarPhisPass::collectPhiNodes(Function &F) {
   auto getFirstVectorIncomingValForPhiNode = [](PHINode *PN) -> Value * {
     for (unsigned i = 0; i < PN->getNumIncomingValues(); ++i) {
       Value *IncVal = PN->getIncomingValue(i);
-      if (isa<Constant>(IncVal) && cast<Constant>(IncVal)->isZeroValue())
+      if (isa<Constant>(IncVal) && IGCLLVM::Constant::isNullValue(cast<Constant>(IncVal)))
         continue;
 
       auto *EEI = cast<ExtractElementInst>(IncVal);

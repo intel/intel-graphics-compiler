@@ -16,6 +16,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/ADT/StringRef.h>
 #include <llvm/Demangle/Demangle.h>
 #include "common/LLVMWarningsPop.hpp"
+#include "llvmWrapper/IR/Constants.h"
 #include <set>
 
 using namespace llvm;
@@ -162,7 +163,7 @@ bool OpenCLPrintfAnalysis::isPrintfStringConstant(const llvm::GlobalVariable *GV
     }
   }
 
-  bool IsZeroInitCharArray = Initializer->isZeroValue() && isa<ArrayType>(Initializer->getType()) &&
+  bool IsZeroInitCharArray = IGCLLVM::Constant::isNullValue(Initializer) && isa<ArrayType>(Initializer->getType()) &&
                              Initializer->getType()->getArrayElementType()->isIntegerTy(8);
 
   if (IsNullTerminatedString || IsZeroInitCharArray) {

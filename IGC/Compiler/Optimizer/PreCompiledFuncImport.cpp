@@ -21,6 +21,7 @@ SPDX-License-Identifier: MIT
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/IR/IRBuilder.h"
 #include "llvmWrapper/IR/Function.h"
+#include "llvmWrapper/IR/Constants.h"
 #include "AdaptorCommon/ImplicitArgs.hpp"
 #include "AdaptorCommon/AddImplicitArgs.hpp"
 #include "Compiler/Optimizer/PreCompiledFuncImport.hpp"
@@ -1293,7 +1294,7 @@ void PreCompiledFuncImport::processFPBinaryOperator(Instruction &I, FunctionIDs 
     constDouble = cast<ConstantFP>(I.getOperand(0));
   }
 
-  if (constDouble && constDouble->isZeroValue()) // turn the fsub into an and/xor/and/or operation
+  if (constDouble && IGCLLVM::Constant::isNullValue(constDouble)) // turn the fsub into an and/xor/and/or operation
   {
     Type *intTy = Type::getInt32Ty(m_pModule->getContext());
     Type *DoubleTy = Type::getDoubleTy(m_pModule->getContext());

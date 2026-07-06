@@ -5975,7 +5975,7 @@ bool CodeGenPatternMatch::MatchDp4a(GenIntrinsicInst &I) {
       wavesrc2 = llvm::dyn_cast<llvm::Constant>(waveInst[0]->getOperand(2));
     }
 
-    if (wavesrc1 && wavesrc2 && wavesrc1->isZeroValue() && wavesrc2->isZeroValue()) {
+    if (wavesrc1 && wavesrc2 && IGCLLVM::Constant::isNullValue(wavesrc1) && IGCLLVM::Constant::isNullValue(wavesrc2)) {
       if (llvm::isa<llvm::ExtractElementInst>(waveInst[0]->getOperand(0))) {
         llvm::ExtractElementInst *extractInst[4];
 
@@ -6878,7 +6878,8 @@ inline bool isMinOrMax(llvm::Value *inst, llvm::Value *&source0, llvm::Value *&s
         ConstantInt *c1 = dyn_cast<ConstantInt>(max->getOperand(1));
         ConstantInt *c2 = dyn_cast<ConstantInt>(max->getOperand(2));
         Instruction *op = dyn_cast<Instruction>(max->getOperand(idx));
-        if (((c1 && c1->isZeroValue()) || (c2 && c2->isZeroValue())) && (op && op->getOpcode() == Instruction::AShr)) {
+        if (((c1 && IGCLLVM::Constant::isNullValue(c1)) || (c2 && IGCLLVM::Constant::isNullValue(c2))) &&
+            (op && op->getOpcode() == Instruction::AShr)) {
           return op->getOperand(0);
         }
         return max->getOperand(idx);

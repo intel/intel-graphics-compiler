@@ -59,6 +59,14 @@ namespace Constant {
 inline llvm::Constant *getSplatValue(llvm::Constant *C, bool AllowUndefs = false) {
   return C->getSplatValue(AllowUndefs);
 }
+
+inline bool isNullValue(const llvm::Constant *C) {
+#if LLVM_VERSION_MAJOR >= 23
+  return C->isNullValue();
+#else
+  return C->isZeroValue();
+#endif
+}
 } // namespace Constant
 
 namespace PoisonValue {

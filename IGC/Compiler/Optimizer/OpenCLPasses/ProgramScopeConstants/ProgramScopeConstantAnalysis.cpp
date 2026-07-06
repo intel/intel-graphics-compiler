@@ -16,6 +16,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/Function.h>
 #include <llvm/Analysis/ValueTracking.h>
 #include "common/LLVMWarningsPop.hpp"
+#include "llvmWrapper/IR/Constants.h"
 #include "Probe/Assertion.h"
 
 using namespace llvm;
@@ -143,7 +144,7 @@ bool ProgramScopeConstantAnalysis::run(Module &M, IGC::IGCMD::MetaDataUtils *pMd
       }
     }
 
-    if (initializer->isZeroValue() && !isZebinPrintfStringConst) {
+    if (IGCLLVM::Constant::isNullValue(initializer) && !isZebinPrintfStringConst) {
       zeroInitializedGlobals.push_back(globalVar);
       continue;
     }
