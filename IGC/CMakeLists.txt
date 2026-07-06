@@ -1261,6 +1261,14 @@ igc_config_flag_apply_settings(
       "/ignore:4197"
     )
 
+igc_config_flag_apply_settings(
+    LinkerOptions
+    CMAKE_EXE_LINKER_FLAGS
+    ALL_PATTERN ""
+    SET_RAW
+      "/ignore:4099"
+    )
+
 set(IGC_BUILD__EXPORT_SYMBOLS_LINK_FLAGS_DEBUG
   "${IGC_BUILD__EXPORT_SYMBOLS_LINK_FLAGS_DEBUG}"
   "/ignore:4099")
