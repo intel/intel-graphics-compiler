@@ -11,7 +11,6 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/Analysis/AliasAnalysis.h>
 #include <llvm/Analysis/LoopInfo.h>
-#include "llvm/ADT/PostOrderIterator.h"
 #include <llvm/IR/PassManager.h>
 #include "common/LLVMWarningsPop.hpp"
 
@@ -47,9 +46,13 @@ private:
   bool resolveOnBasicBlock(BasicBlock *) const;
 
   bool resolveMemoryFromHost(Function &) const;
+  bool resolveKernelByValArgs(Function &) const;
+  bool isKernelArgByValPtrCandidate(llvm::Instruction *I) const;
 
   bool checkGenericArguments(Function &F) const;
+  bool checkByValArguments(Function &F) const;
   void convertLoadToGlobal(LoadInst *LI) const;
+  void convertGenericToGlobal(llvm::Instruction *GenericPtr) const;
   bool isLoadGlobalCandidate(LoadInst *LI) const;
 
   bool canonicalizeAddrSpaceCasts(Function &F) const;

@@ -1096,6 +1096,8 @@ DECLARE_IGC_REGKEY(DWORD, LICMStatThreshold, 70, "LICM stat threshold to avoid r
 DECLARE_IGC_REGKEY(bool, EnableTypeDemotion, true, "Enable Type Demotion", false)
 DECLARE_IGC_REGKEY(bool, EnablePreRARematFlag, true, "Enable PreRA Rematerialization of Flag", false)
 DECLARE_IGC_REGKEY(bool, EnableGASResolver, true, "Enable GAS Resolver", false)
+DECLARE_IGC_REGKEY(bool, EnableGASKernelByValArgPtrInference, true,
+                   "Infer the global address space for pointers contained by-value kernel args.", false)
 DECLARE_IGC_REGKEY(bool, EnableLowerGPCallArg, true, "Enable pass to lower generic pointers in function arguments",
                    false)
 DECLARE_IGC_REGKEY(bool, EnableGenericCastToPtrOpt, true,

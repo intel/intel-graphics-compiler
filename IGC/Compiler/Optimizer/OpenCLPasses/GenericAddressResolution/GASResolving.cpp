@@ -8,9 +8,17 @@ SPDX-License-Identifier: MIT
 
 #include "GASResolving.h"
 
+#include "CodeGenPublicEnums.h"
 #include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
+#include "common/igc_regkeys.hpp"
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/IR/Argument.h"
+#include "Probe/Assertion.h"
+
+#include "common/LLVMWarningsPush.hpp"
+#include "llvm/IR/DataLayout.h"
+#include "llvm/ADT/PostOrderIterator.h"
+#include "common/LLVMWarningsPop.hpp"
 
 // Generic address space (GAS) pointer resolving is done in two steps:
 // 1) Find cast from non-GAS pointer to GAS pointer
@@ -61,6 +69,7 @@ bool GASResolving::runOnFunction(Function &F, llvm::LoopInfo &LI, IGCMD::MetaDat
 
   Changed |= canonicalizeAddrSpaceCasts(F);
   Changed |= resolveMemoryFromHost(F);
+  Changed |= resolveKernelByValArgs(F);
 
   bool LocalChanged = false;
   do {
@@ -250,17 +259,20 @@ bool GASResolving::isLoadGlobalCandidate(LoadInst *LI) const {
   return true;
 }
 
-void GASResolving::convertLoadToGlobal(LoadInst *LI) const {
-  // create two addressspace casts: generic -> global -> generic
-  // the next scalar phase of this pass will propagate global to all uses of the load
+void GASResolving::convertLoadToGlobal(LoadInst *LI) const { convertGenericToGlobal(LI); }
 
-  PointerType *PtrTy = cast<PointerType>(LI->getType());
-  IRB->SetInsertPoint(LI->getNextNode());
+void GASResolving::convertGenericToGlobal(Instruction *GenericPtr) const {
+  // create two addressspace casts: generic -> global -> generic
+  // the next scalar phase of this pass will propagate global to all uses
+
+  PointerType *PtrTy = cast<PointerType>(GenericPtr->getType());
+  IGC_ASSERT(PtrTy->getAddressSpace() == GAS);
+  IRB->SetInsertPoint(GenericPtr->getNextNode());
   PointerType *GlobalPtrTy = IGCLLVM::PointerType::get(PtrTy, ADDRESS_SPACE_GLOBAL);
-  Value *GlobalAddr = IRB->CreateAddrSpaceCast(LI, GlobalPtrTy);
+  Value *GlobalAddr = IRB->CreateAddrSpaceCast(GenericPtr, GlobalPtrTy);
   Value *GenericCopyAddr = IRB->CreateAddrSpaceCast(GlobalAddr, PtrTy);
 
-  for (auto UI = LI->use_begin(), UE = LI->use_end(); UI != UE; /*EMPTY*/) {
+  for (auto UI = GenericPtr->use_begin(), UE = GenericPtr->use_end(); UI != UE; /*EMPTY*/) {
     Use &U = *UI++;
     if (U.getUser() == GlobalAddr)
       continue;
@@ -298,4 +310,151 @@ bool GASResolving::checkGenericArguments(Function &F) const {
     }
   }
   return false;
+}
+
+static bool typeContainsPointer(Type *Ty, unsigned int AddressSpace, unsigned Depth = 0) {
+  if (Ty == nullptr || Depth > 8) {
+    return false;
+  }
+  auto *PtrTy = dyn_cast<PointerType>(Ty);
+  if (PtrTy && PtrTy->getAddressSpace() == AddressSpace) {
+    return true;
+  }
+  if (auto *STy = dyn_cast<StructType>(Ty)) {
+    for (Type *ETy : STy->elements())
+      if (typeContainsPointer(ETy, AddressSpace, Depth + 1)) {
+        return true;
+      }
+    return false;
+  }
+  if (auto *ATy = dyn_cast<ArrayType>(Ty)) {
+    return typeContainsPointer(ATy->getElementType(), AddressSpace, Depth + 1);
+  }
+  if (auto *VTy = dyn_cast<VectorType>(Ty)) {
+    return typeContainsPointer(VTy->getElementType(), AddressSpace, Depth + 1);
+  }
+  return false;
+}
+
+bool GASResolving::checkByValArguments(Function &F) const {
+  auto *FT = F.getFunctionType();
+  for (unsigned p = 0; p < FT->getNumParams(); ++p) {
+    auto Arg = F.getArg(p);
+    if (!Arg->hasByValAttr()) {
+      continue;
+    }
+    auto PteeTy = IGCLLVM::getArgAttrEltTy(Arg);
+    if (PteeTy == nullptr) {
+      continue;
+    }
+    if (auto STy = dyn_cast<StructType>(PteeTy)) {
+      if (typeContainsPointer(STy, ADDRESS_SPACE_GENERIC)) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+// DPC++ passes a SYCL kernel struct arguments by value.
+// Raw pointers contained inside structs are read by the SPIR-V reader as a plain integers and
+// reconstructed as the pointer in the *generic* address space.
+bool GASResolving::resolveKernelByValArgs(Function &F) const {
+  if (!IGC_IS_FLAG_ENABLED(EnableGASKernelByValArgPtrInference)) {
+    return false;
+  }
+  if (!isEntryFunc(m_pMdUtils, &F)) {
+    return false;
+  }
+
+  if (!checkByValArguments(F)) {
+    return false;
+  }
+
+  SmallVector<Instruction *, 8> Candidates;
+  SmallVector<Instruction *, 32> MayWrite;
+  for (Instruction &I : llvm::instructions(F)) {
+    if (auto *I2P = dyn_cast<IntToPtrInst>(&I)) {
+      // Pointer reconstructed from a by-value aggregate member via inttoptr.
+      if (isKernelArgByValPtrCandidate(I2P)) {
+        Candidates.push_back(I2P);
+      }
+    } else if (auto *LI = dyn_cast<LoadInst>(&I)) {
+      // Pointer loaded directly (typed) from a by-value aggregate, e.g. an
+      // array element.
+      if (isKernelArgByValPtrCandidate(LI)) {
+        Candidates.push_back(LI);
+      }
+    } else if (I.mayWriteToMemory()) {
+      MayWrite.push_back(&I);
+    }
+  }
+
+  if (Candidates.empty()) {
+    return false;
+  }
+
+  bool Changed = false;
+  for (auto &Cand : Candidates) {
+    LoadInst *LI = isa<LoadInst>(Cand) ? cast<LoadInst>(Cand) : cast<LoadInst>(Cand->getOperand(0));
+    MemoryLocation Loc = MemoryLocation::get(LI);
+    bool Clobbers = false;
+    for (Instruction *W : MayWrite) {
+      if (isModSet(m_AA->getModRefInfo(W, Loc))) {
+        Clobbers = true;
+        break;
+      }
+    }
+    if (Clobbers) {
+      continue;
+    }
+    convertGenericToGlobal(Cand);
+    Changed = true;
+  }
+  return Changed;
+}
+
+// Verify that access matches expected pattern. Example for struct elements:
+//   %bc = bitcast %struct.__generated_S* %5 to %structtype*
+//   %gep = getelementptr inbounds %structtype, %structtype* %bc, i64 0, i32 0
+//   %li = load i64, i64* %gep, align 8
+//   %res = inttoptr i64 %li to i32 addrspace(4)*
+//   and for array elements:
+//   %gep = getelementptr inbounds %struct.__wrapper_class, ptr %5, i64 0, i32 0, i64 K
+//   %p   = load ptr addrspace(4), ptr %gep, align 8
+bool GASResolving::isKernelArgByValPtrCandidate(Instruction *I) const {
+  auto *PtrTy = dyn_cast<PointerType>(I->getType());
+  if (!PtrTy || PtrTy->getAddressSpace() != ADDRESS_SPACE_GENERIC) {
+    return false;
+  }
+  auto *LI = isa<LoadInst>(I)                  ? cast<LoadInst>(I)
+             : isa<LoadInst>(I->getOperand(0)) ? cast<LoadInst>(I->getOperand(0))
+                                               : nullptr;
+  if (isa<IntToPtrInst>(I)) {
+    if (!LI || !LI->hasOneUse()) {
+      return false;
+    }
+
+    auto *IntTy = dyn_cast<IntegerType>(LI->getType());
+    if (!IntTy) {
+      return false;
+    }
+    const DataLayout &DL = LI->getModule()->getDataLayout();
+    if (IntTy->getBitWidth() != DL.getPointerSizeInBits(ADDRESS_SPACE_GENERIC)) {
+      return false;
+    }
+  }
+  Value *Base = LI->getPointerOperand()->stripInBoundsOffsets();
+  Base = Base->stripPointerCasts();
+  auto *Arg = dyn_cast<Argument>(Base);
+  if (!Arg || !Arg->hasByValAttr()) {
+    return false;
+  }
+
+  auto *ArgEltTy = IGCLLVM::getArgAttrEltTy(Arg);
+  if (!isa<StructType>(ArgEltTy) || !typeContainsPointer(ArgEltTy, ADDRESS_SPACE_GENERIC)) {
+    return false;
+  }
+
+  return true;
 }
