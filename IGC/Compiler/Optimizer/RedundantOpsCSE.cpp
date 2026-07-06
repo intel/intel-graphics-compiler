@@ -119,7 +119,7 @@ bool RedundantOpsCSEPass::processRedundantOpsInBB(BasicBlock &BB) {
       if (RemoveSet.count(EarlierInst))
         continue;
 
-      if (CurrentInst->isIdenticalToWhenDefined(EarlierInst) && CurrentInst->hasSameSubclassOptionalData(EarlierInst)) {
+      if (CurrentInst->isIdenticalTo(EarlierInst)) {
         // Distance guard: skip CSE if the two instructions are too far apart
         // within the BB.  Merging distant identical operations extends the
         // result's live range, which increases register pressure and can cause
@@ -212,8 +212,7 @@ bool RedundantOpsCSEPass::processRedundantOpsAcrossBBs(ReversePostOrderTraversal
           continue;
       }
 
-      if (CurrentInst->isIdenticalToWhenDefined(EarlierInst) && CurrentInst->hasSameSubclassOptionalData(EarlierInst) &&
-          DT.dominates(EarlierInst, CurrentInst)) {
+      if (CurrentInst->isIdenticalTo(EarlierInst) && DT.dominates(EarlierInst, CurrentInst)) {
         CurrentInst->replaceAllUsesWith(EarlierInst);
         RemoveSet.insert(CurrentInst);
         modified = true;
