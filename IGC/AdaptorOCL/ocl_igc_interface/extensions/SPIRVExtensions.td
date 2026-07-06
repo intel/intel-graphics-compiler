@@ -472,19 +472,21 @@ def SPV_INTEL_16bit_atomics : Extension<
   InheritFromCapabilities
 >;
 
-// Pure support only for isCoreChildOf<IGFX_XE3P_CORE>>, other platforms have partial native support which requires emulation
-def SPV_KHR_bfloat16 : ExperimentalExtension<
+def SPV_KHR_bfloat16 : Extension<
   "SPV_KHR_bfloat16",
-  [ Capability<"BFloat16TypeKHR">,
-    Capability<"BFloat16DotProductKHR">,
-    Capability<"BFloat16CooperativeMatrixKHR"> ],
+  [ Capability<"BFloat16TypeKHR",       isCoreChildOf<IGFX_XE3P_CORE>>,
+    Capability<"BFloat16DotProductKHR", isCoreChildOf<IGFX_XE3P_CORE>> ],
   "https://github.khronos.org/SPIRV-Registry/extensions/KHR/SPV_KHR_bfloat16.html",
-  // isCoreChildOf<IGFX_XE3P_CORE>
-  // This extension has been mainly implemented for XE3P, but there are existing LIT tests for some functionality from
-  // this extension for PVC and DG2. We may consider supporting those platforms fully in the future. Since the support
-  // for this extension is still experimental, we define support for broader set of platforms for now to avoid fails
-  // on existing PVC and DG2 tests.
-  AllOf<[isCoreChildOf<IGFX_XE_HPG_CORE>, Not<ExactPlatform<IGFX_METEORLAKE>>]>
+  InheritFromCapabilities
+>;
+
+def SPV_KHR_bfloat16_experimental : ExperimentalExtension<
+  "SPV_KHR_bfloat16",
+  [ Capability<"BFloat16TypeKHR",              AllOf<[isCoreChildOf<IGFX_XE_HPG_CORE>, Not<ExactPlatform<IGFX_METEORLAKE>>]>>,
+    Capability<"BFloat16DotProductKHR",        AllOf<[isCoreChildOf<IGFX_XE_HPG_CORE>, Not<ExactPlatform<IGFX_METEORLAKE>>]>>,
+    Capability<"BFloat16CooperativeMatrixKHR", AllOf<[isCoreChildOf<IGFX_XE_HPG_CORE>, Not<ExactPlatform<IGFX_METEORLAKE>>]>> ],
+  "https://github.khronos.org/SPIRV-Registry/extensions/KHR/SPV_KHR_bfloat16.html",
+  InheritFromCapabilities
 >;
 
 def SPV_INTEL_subgroup_scaled_matrix_multiply_accumulate : ExperimentalExtension<

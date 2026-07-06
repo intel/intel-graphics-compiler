@@ -597,13 +597,16 @@ This document lists all SPIR-V extensions supported by IGC and their platform re
 
 **Specification**: https://github.khronos.org/SPIRV-Registry/extensions/KHR/SPV_KHR_bfloat16.html
 
-> **Experimentally supported on**: XE_HPG+ except METEORLAKE (DG2, PVC, ARROWLAKE, BMG, LUNARLAKE, PTL, NVL_XE3G, NVL, CRI)
-
 **Capabilities**:
 
 - **BFloat16TypeKHR**
+  > **Supported On**: XE3P+ (NVL, CRI)
+  > **Experimentally supported on**: XE_HPG+ except METEORLAKE (DG2, PVC, ARROWLAKE, BMG, LUNARLAKE, PTL, NVL_XE3G, NVL, CRI)
 - **BFloat16DotProductKHR**
+  > **Supported On**: XE3P+ (NVL, CRI)
+  > **Experimentally supported on**: XE_HPG+ except METEORLAKE (DG2, PVC, ARROWLAKE, BMG, LUNARLAKE, PTL, NVL_XE3G, NVL, CRI)
 - **BFloat16CooperativeMatrixKHR**
+  > **Experimentally supported on**: XE_HPG+ except METEORLAKE (DG2, PVC, ARROWLAKE, BMG, LUNARLAKE, PTL, NVL_XE3G, NVL, CRI)
 
 ---
 

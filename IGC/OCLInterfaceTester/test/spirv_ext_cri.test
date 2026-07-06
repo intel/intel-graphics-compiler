@@ -1,0 +1,21 @@
+#=========================== begin_copyright_notice ============================
+#
+# Copyright (C) 2026 Intel Corporation
+#
+# SPDX-License-Identifier: MIT
+#
+#============================ end_copyright_notice =============================
+
+# RUN: IGCOCLInterfaceTester spirv_ext --platform cri 2>&1 | FileCheck %s
+
+# TODO: extend this test to cover the full set of extensions and capabilities
+# enabled for CRI.
+
+# CHECK-LABEL: - name: SPV_KHR_bfloat16
+# CHECK-NEXT:    spec_url: 'https://github.khronos.org/SPIRV-Registry/extensions/KHR/SPV_KHR_bfloat16.html'
+# CHECK-NEXT:    supported_capabilities:
+# CHECK-NEXT:      - id: 5116
+# CHECK-NEXT:        name: BFloat16TypeKHR
+# CHECK-NEXT:      - id: 5117
+# CHECK-NEXT:        name: BFloat16DotProductKHR
+# CHECK-NOT:     BFloat16CooperativeMatrixKHR
