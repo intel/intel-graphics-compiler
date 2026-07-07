@@ -199,24 +199,6 @@ uchar8 __attribute__((overloadable)) __builtin_spirv_ConvertBF16ToInt4INTEL(shor
 }
 
 // ClampConvert wrappers
-uchar __attribute__((overloadable)) __builtin_spirv_ClampConvertFP16ToE2M1INTEL(half a) {
-  return __builtin_spirv_ConvertFP16ToE2M1INTEL(a);
-}
-uchar1 __attribute__((overloadable)) __builtin_spirv_ClampConvertFP16ToE2M1INTEL(half2 a) {
-  return __builtin_spirv_ConvertFP16ToE2M1INTEL(a);
-}
-uchar2 __attribute__((overloadable)) __builtin_spirv_ClampConvertFP16ToE2M1INTEL(half3 a) {
-  return __builtin_spirv_ConvertFP16ToE2M1INTEL(a);
-}
-uchar2 __attribute__((overloadable)) __builtin_spirv_ClampConvertFP16ToE2M1INTEL(half4 a) {
-  return __builtin_spirv_ConvertFP16ToE2M1INTEL(a);
-}
-uchar4 __attribute__((overloadable)) __builtin_spirv_ClampConvertFP16ToE2M1INTEL(half8 a) {
-  return __builtin_spirv_ConvertFP16ToE2M1INTEL(a);
-}
-uchar8 __attribute__((overloadable)) __builtin_spirv_ClampConvertFP16ToE2M1INTEL(half16 a) {
-  return __builtin_spirv_ConvertFP16ToE2M1INTEL(a);
-}
 uchar __attribute__((overloadable)) __builtin_spirv_ClampConvertFP16ToInt4INTEL(half a) {
   return __builtin_spirv_ConvertFP16ToInt4INTEL(a);
 }
@@ -234,24 +216,6 @@ uchar4 __attribute__((overloadable)) __builtin_spirv_ClampConvertFP16ToInt4INTEL
 }
 uchar8 __attribute__((overloadable)) __builtin_spirv_ClampConvertFP16ToInt4INTEL(half16 a) {
   return __builtin_spirv_ConvertFP16ToInt4INTEL(a);
-}
-uchar __attribute__((overloadable)) __builtin_spirv_ClampConvertBF16ToE2M1INTEL(short a) {
-  return __builtin_spirv_ConvertBF16ToE2M1INTEL(a);
-}
-uchar1 __attribute__((overloadable)) __builtin_spirv_ClampConvertBF16ToE2M1INTEL(short2 a) {
-  return __builtin_spirv_ConvertBF16ToE2M1INTEL(a);
-}
-uchar2 __attribute__((overloadable)) __builtin_spirv_ClampConvertBF16ToE2M1INTEL(short3 a) {
-  return __builtin_spirv_ConvertBF16ToE2M1INTEL(a);
-}
-uchar2 __attribute__((overloadable)) __builtin_spirv_ClampConvertBF16ToE2M1INTEL(short4 a) {
-  return __builtin_spirv_ConvertBF16ToE2M1INTEL(a);
-}
-uchar4 __attribute__((overloadable)) __builtin_spirv_ClampConvertBF16ToE2M1INTEL(short8 a) {
-  return __builtin_spirv_ConvertBF16ToE2M1INTEL(a);
-}
-uchar8 __attribute__((overloadable)) __builtin_spirv_ClampConvertBF16ToE2M1INTEL(short16 a) {
-  return __builtin_spirv_ConvertBF16ToE2M1INTEL(a);
 }
 uchar __attribute__((overloadable)) __builtin_spirv_ClampConvertBF16ToInt4INTEL(short a) {
   return __builtin_spirv_ConvertBF16ToInt4INTEL(a);

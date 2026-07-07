@@ -45,7 +45,6 @@ static const std::array FuncNames = {"__builtin_spirv_ClampConvertBF16ToE4M3INTE
                                      "__builtin_spirv_ConvertE4M3ToBF16EXT",
                                      "__builtin_spirv_ConvertE5M2ToBF16EXT",
                                      "__builtin_spirv_ConvertInt4ToBF16INTEL",
-                                     "__builtin_spirv_ClampConvertBF16ToE2M1INTEL",
                                      "__builtin_spirv_ClampConvertBF16ToInt4INTEL",
                                      "__builtin_spirv_StochasticRoundBF16ToE2M1INTEL",
                                      "__builtin_spirv_StochasticRoundBF16ToE4M3INTEL",
