@@ -85,8 +85,7 @@ void IGCFunctionExternalRegPressureAnalysis::generateTableOfPressure(llvm::Modul
 
   CallGraph &CG = getAnalysis<CallGraphWrapperPass>().getCallGraph();
   auto ExtNode = CG.getExternalCallingNode();
-  for (auto I = po_begin(ExtNode), E = po_end(ExtNode); I != E; ++I) {
-    auto CGNode = *I;
+  for (auto *CGNode : llvm::post_order(ExtNode)) {
 
     if (auto F = CGNode->getFunction()) {
       if (F->isDeclaration())

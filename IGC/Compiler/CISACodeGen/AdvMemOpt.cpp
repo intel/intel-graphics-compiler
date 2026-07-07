@@ -243,25 +243,14 @@ class RegionSubgraph {
 public:
   RegionSubgraph(BasicBlock *E) : Exit(E) {}
 
-  bool preVisit(IGCLLVM::optional<BasicBlock *> From, BasicBlock *To) {
+  // Visited-set for post_order_ext; false prunes the walk at Exit.
+  std::pair<SmallPtrSet<BasicBlock *, 32>::iterator, bool> insert(BasicBlock *To) {
     if (To == Exit)
-      return false;
-    return Visited.insert(To).second;
+      return {Visited.end(), false};
+    return Visited.insert(To);
   }
 };
 } // End anonymous namespace
-
-namespace llvm {
-template <> class po_iterator_storage<RegionSubgraph, true> {
-  RegionSubgraph &RSG;
-
-public:
-  po_iterator_storage(RegionSubgraph &G) : RSG(G) {}
-
-  bool insertEdge(IGCLLVM::optional<BasicBlock *> From, BasicBlock *To) { return RSG.preVisit(From, To); }
-  void finishPostorder(BasicBlock *) {}
-};
-} // namespace llvm
 
 bool AdvMemOpt::hasMemoryWrite(BasicBlock *BB) const {
   for (auto II = BB->begin(), IE = BB->end(); II != IE; ++II)
@@ -278,8 +267,8 @@ bool AdvMemOpt::hasMemoryWrite(BasicBlock *Entry, BasicBlock *Exit) const {
   IGC_ASSERT(PDT->dominates(Exit, Entry));
 
   RegionSubgraph RSG(Exit);
-  for (auto SI = po_ext_begin(Entry, RSG), SE = po_ext_end(Entry, RSG); SI != SE; ++SI)
-    if (*SI != Entry && hasMemoryWrite(*SI))
+  for (auto *SI : post_order_ext(Entry, RSG))
+    if (SI != Entry && hasMemoryWrite(SI))
       return true;
   return false;
 }

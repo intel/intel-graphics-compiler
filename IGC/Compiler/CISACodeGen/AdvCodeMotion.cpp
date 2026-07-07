@@ -251,27 +251,16 @@ class RegionSubgraph {
 public:
   RegionSubgraph(BasicBlock *E) : Exit(E) {}
 
-  bool preVisit(IGCLLVM::optional<BasicBlock *> From, BasicBlock *To) {
-    if (To == Exit)
-      return false;
-    return Visited.insert(To).second;
+  // Visited-set for post_order_ext; false prunes the walk at Exit.
+  std::pair<SmallPtrSet<BasicBlock *, 32>::iterator, bool> insert(BasicBlock *BB) {
+    if (BB == Exit)
+      return {Visited.end(), false};
+    return Visited.insert(BB);
   }
 
   SmallPtrSet<BasicBlock *, 32> Visited;
 };
 } // End anonymous namespace
-
-namespace llvm {
-template <> class po_iterator_storage<RegionSubgraph, true> {
-  RegionSubgraph &RSG;
-
-public:
-  po_iterator_storage(RegionSubgraph &G) : RSG(G) {}
-
-  bool insertEdge(IGCLLVM::optional<BasicBlock *> From, BasicBlock *To) { return RSG.preVisit(From, To); }
-  void finishPostorder(BasicBlock *) {}
-};
-} // namespace llvm
 
 static bool hasMemoryWrite(BasicBlock *BB) {
   for (auto II = BB->begin(), IE = BB->end(); II != IE; ++II)
@@ -330,8 +319,8 @@ bool AdvCodeMotion::hoistMost(bool InvPred, BasicBlock *IfBB, BasicBlock *TBB, B
   auto Cond = cast<BranchInst>(Pos)->getCondition();
   RegionSubgraph RSG(JBB);
   // Check if there's any memory write.
-  for (auto SI = po_ext_begin(TBB, RSG), SE = po_ext_end(TBB, RSG); SI != SE; ++SI)
-    if (hasMemoryWrite(*SI))
+  for (auto *SI : post_order_ext(TBB, RSG))
+    if (hasMemoryWrite(SI))
       return false;
   // Check whether Cond is used in that region.
   SmallPtrSet<BasicBlock *, 8> UserBlocks;

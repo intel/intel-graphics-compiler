@@ -62,8 +62,7 @@ bool PruneUnusedArguments::runOnModule(Module &M) {
   // Visit functions in a post order DFS, i.e. reversed topological ordering. If
   // an argument is not used then let its callers pass undef.
   bool Changed = false;
-  for (auto I = po_begin(CG.getExternalCallingNode()), E = po_end(CG.getExternalCallingNode()); I != E; ++I) {
-    auto CGNode = *I;
+  for (auto *CGNode : llvm::post_order(CG.getExternalCallingNode())) {
     // Skip external and indirect nodes.
     if (auto F = CGNode->getFunction()) {
       // Conservatively declarations use all arguments.

@@ -56,9 +56,7 @@ bool AddressArithmeticSinking::runOnFunction(Function &F) {
   DT = &getAnalysis<DominatorTreeWrapperPass>().getDomTree();
 
   bool changed = false;
-  for (po_iterator<DomTreeNode *> domIter = po_begin(DT->getRootNode()), domEnd = po_end(DT->getRootNode());
-       domIter != domEnd; ++domIter) {
-
+  for (DomTreeNode *domIter : llvm::post_order(DT->getRootNode())) {
     BasicBlock *BB = domIter->getBlock();
     changed |= ProcessBB(BB);
   }

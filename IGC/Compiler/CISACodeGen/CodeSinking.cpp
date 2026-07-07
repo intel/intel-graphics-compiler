@@ -247,8 +247,7 @@ bool CodeSinking::treeSink(Function &F) {
   do {
     IterChanged = false;
     // Process all basic blocks in dominator-tree post-order
-    for (po_iterator<DomTreeNode *> domIter = po_begin(DT->getRootNode()), domEnd = po_end(DT->getRootNode());
-         domIter != domEnd; ++domIter) {
+    for (DomTreeNode *domIter : llvm::post_order(DT->getRootNode())) {
       IterChanged |= processBlock(*(domIter->getBlock()));
     }
   } while (IterChanged);

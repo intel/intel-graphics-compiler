@@ -39,29 +39,14 @@ class DominatedSubgraph {
 public:
   DominatedSubgraph(DominatorTreeBasicBlock *D, BasicBlock *N) : DT(D), Entry(N) {}
 
-  bool preVisit(std::optional<BasicBlock *> From, BasicBlock *To) {
-    // Skip BB not dominated by the specified entry.
+  // Visited-set for post_order_ext; false prunes BBs not dominated by Entry.
+  std::pair<SmallPtrSet<BasicBlock *, 32>::iterator, bool> insert(BasicBlock *To) {
     if (!DT->dominates(Entry, To))
-      return false;
-    return Visited.insert(To).second;
+      return {Visited.end(), false};
+    return Visited.insert(To);
   }
-  void postVisit(BasicBlock *) {}
 };
 } // End anonymous namespace
-
-namespace llvm {
-template <> class po_iterator_storage<DominatedSubgraph, true> {
-  DominatedSubgraph &DSG;
-
-public:
-  po_iterator_storage(DominatedSubgraph &G) : DSG(G) {}
-
-  bool insertEdge(IGCLLVM::optional<BasicBlock *> From, BasicBlock *To) {
-    return DSG.preVisit(IGCLLVM::makeOptional(From), To);
-  }
-  void finishPostorder(BasicBlock *BB) { DSG.postVisit(BB); }
-};
-} // namespace llvm
 
 namespace {
 
@@ -151,8 +136,8 @@ private:
 
       // Check reachability under the dominance of `Def`.
       DominatedSubgraph DSG(DT, Def);
-      for (auto SI = po_ext_begin(From, DSG), SE = po_ext_end(From, DSG); SI != SE; ++SI)
-        if (*SI == To)
+      for (auto *SI : post_order_ext(From, DSG))
+        if (SI == To)
           return true;
 
       return false;
