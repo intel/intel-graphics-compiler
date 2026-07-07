@@ -16,7 +16,7 @@ define i32 @atomicUmax(i32 %mem, i32 %val) {
 ; CHECK-LABEL: @atomicUmax(
 ; CHECK-NEXT:    [[ADDBEFORE:%.*]] = add i32 [[MEM:%.*]], 10
 ; CHECK-NEXT:    [[SOMEUNKOWN:%.*]] = add i32 [[VAL:%.*]], 10
-; CHECK-NEXT:    [[TMP1:%.*]] = call <4 x float> @llvm.genx.GenISA.ldptr.v4f32.p131073v4f32.p131073v4f32(i32 [[MEM]], i32 0, i32 0, i32 0, <4 x float> addrspace(131073)* undef, <4 x float> addrspace(131073)* null, i32 0, i32 0, i32 0)
+; CHECK-NEXT:    [[TMP1:%.*]] = call <4 x float> @llvm.genx.GenISA.ldrawvector.indexed.v4f32.p131073v4f32(<4 x float> addrspace(131073)* null, i32 [[MEM]], i32 4, i1 true)
 ; CHECK-NEXT:    [[TMP2:%.*]] = extractelement <4 x float> [[TMP1]], i64 0
 ; CHECK-NEXT:    [[TMP3:%.*]] = bitcast float [[TMP2]] to i32
 ; CHECK-NEXT:    [[TMP4:%.*]] = icmp ugt i32 [[SOMEUNKOWN]], [[TMP3]]

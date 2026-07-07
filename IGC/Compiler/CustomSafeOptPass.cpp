@@ -7241,19 +7241,19 @@ void InsertBranchOpt::ThreeWayLoadSpiltOpt(Function &F) {
 
 void InsertBranchOpt::atomicSplitOpt(Function &F, int mode) {
   enum Mode {
-    Disable = 0x0,           // Disabled IGC\EnableAtomicBranch = 0x0
-    ZeroAdd = BIT(0),        // Enabled IGC\EnableAtomicBranch = 0x1
-    UMax = BIT(1),           // Enabled IGC\EnableAtomicBranch = 0x2
-    UMin = BIT(2),           // Enabled IGC\EnableAtomicBranch = 0x4
-    UntypedUgmLoad = BIT(3), // Enabled IGC\EnableAtomicBranch = 0x8
-    StatelessAtomic = BIT(4) // Enabled IGC\EnableAtomicBranch = 0x10
+    Disable = 0x0,            // Disabled IGC\EnableAtomicBranch = 0x0
+    ZeroAdd = BIT(0),         // Enabled IGC\EnableAtomicBranch = 0x1
+    UMax = BIT(1),            // Enabled IGC\EnableAtomicBranch = 0x2
+    UMin = BIT(2),            // Enabled IGC\EnableAtomicBranch = 0x4
+    UntypedSmplLoad = BIT(3), // Enabled IGC\EnableAtomicBranch = 0x8
+    StatelessAtomic = BIT(4)  // Enabled IGC\EnableAtomicBranch = 0x10
   };
 
   // Allow several modes to be applied
   const bool zeroAddMode = ((mode & ZeroAdd) == ZeroAdd);
   const bool umaxMode = ((mode & UMax) == UMax);
   const bool uminMode = ((mode & UMin) == UMin);
-  const bool untypedUgmLoadMode = ((mode & UntypedUgmLoad) == UntypedUgmLoad);
+  const bool untypedSmplLoadMode = ((mode & UntypedSmplLoad) == UntypedSmplLoad);
   const bool statelessMode = ((mode & StatelessAtomic) == StatelessAtomic);
 
   auto createReadFromAtomic = [=](IRBuilder<> &builder, Instruction *inst, bool isTyped) {
@@ -7282,22 +7282,8 @@ void InsertBranchOpt::atomicSplitOpt(Function &F, int mode) {
       Function *pLdIntrinsic;
       Value *resourcePtr = inst->getOperand(0);
 
-      // Generate load.ugm instruction
-      if (untypedUgmLoadMode) {
-        alignment_t alignment = (alignment_t)(inst->getType()->getScalarSizeInBits() / 8);
-
-        types.push_back(IGCLLVM::FixedVectorType::get(builder.getFloatTy(), 4));
-        types.push_back(resourcePtr->getType());
-        pLdIntrinsic =
-            GenISAIntrinsic::getDeclaration(inst->getModule(), GenISAIntrinsic::GenISA_ldrawvector_indexed, types);
-
-        ld_FunctionArgList.push_back(resourcePtr);
-        ld_FunctionArgList.push_back(inst->getOperand(1));
-        ld_FunctionArgList.push_back(builder.getInt32((uint32_t)alignment)); // alignment
-        ld_FunctionArgList.push_back(builder.getInt1(true));                 // volatile
-      }
       // Generate send.smpl ld_lz instruction
-      else {
+      if (untypedSmplLoadMode) {
         types.push_back(IGCLLVM::FixedVectorType::get(builder.getFloatTy(), 4));
         types.push_back(resourcePtr->getType()); // Paired resource
         types.push_back(resourcePtr->getType()); // Resource
@@ -7313,6 +7299,20 @@ void InsertBranchOpt::atomicSplitOpt(Function &F, int mode) {
         ld_FunctionArgList.push_back(zero);        // immediate offset u
         ld_FunctionArgList.push_back(zero);        // immediate offset v
         ld_FunctionArgList.push_back(zero);        // immediate offset w
+      }
+      // Generate load.ugm instruction
+      else {
+        alignment_t alignment = (alignment_t)(inst->getType()->getScalarSizeInBits() / 8);
+
+        types.push_back(IGCLLVM::FixedVectorType::get(builder.getFloatTy(), 4));
+        types.push_back(resourcePtr->getType());
+        pLdIntrinsic =
+            GenISAIntrinsic::getDeclaration(inst->getModule(), GenISAIntrinsic::GenISA_ldrawvector_indexed, types);
+
+        ld_FunctionArgList.push_back(resourcePtr);
+        ld_FunctionArgList.push_back(inst->getOperand(1));
+        ld_FunctionArgList.push_back(builder.getInt32((uint32_t)alignment)); // alignment
+        ld_FunctionArgList.push_back(builder.getInt1(true));                 // volatile
       }
 
       NewInst = builder.CreateCall(pLdIntrinsic, ld_FunctionArgList);

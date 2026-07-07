@@ -521,7 +521,7 @@ DECLARE_IGC_REGKEY(
 DECLARE_IGC_REGKEY(DWORD, EnableAtomicBranch, 0,
                    "Bitmask to enable Atomic branch optimization that predicates atomic with if/else. 1: if Val == 0 "
                    "ignore iadd/sub/umax 0. 2: checks if memory is lower than Val for umax. 4: checks if memory if "
-                   "greater than Val for umin. 8: generate load_ugm for untyped atomics, otherwise ld_lz",
+                   "greater than Val for umin. 8: generate ld_lz for untyped atomics, otherwise load_ugm",
                    false)
 DECLARE_IGC_REGKEY(bool, EnableThreeWayLoadSpiltOpt, false, "Enable three way load spilt opt.", false)
 DECLARE_IGC_REGKEY(bool, DisableTypedWriteZeroStoreCheck, false,

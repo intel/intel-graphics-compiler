@@ -20,7 +20,7 @@ define i32 @atomicIadd0Raw(i32 %mem, i32 %val) {
 ; CHECK-NEXT:    [[ATOMIC:%.*]] = call i32 @llvm.genx.GenISA.intatomicraw.i32.p131073(ptr addrspace(131073) null, i32 [[MEM]], i32 [[SOMEUNKNOWN]], i32 0)
 ; CHECK-NEXT:    br label [[ATOMIC_IF_END:%.*]]
 ; CHECK:       atomic.if.false:
-; CHECK-NEXT:    [[TMP2:%.*]] = call <4 x float> @llvm.genx.GenISA.ldptr.v4f32.p131073.p131073(i32 [[MEM]], i32 0, i32 0, i32 0, ptr addrspace(131073) undef, ptr addrspace(131073) null, i32 0, i32 0, i32 0)
+; CHECK-NEXT:    [[TMP2:%.*]] = call <4 x float> @llvm.genx.GenISA.ldrawvector.indexed.v4f32.p131073(ptr addrspace(131073) null, i32 [[MEM]], i32 4, i1 true)
 ; CHECK-NEXT:    [[TMP3:%.*]] = extractelement <4 x float> [[TMP2]], i64 0
 ; CHECK-NEXT:    [[TMP4:%.*]] = bitcast float [[TMP3]] to i32
 ; CHECK-NEXT:    br label [[ATOMIC_IF_END]]
@@ -78,7 +78,7 @@ define i32 @atomicUmax(i32 %mem, i32 %val) {
 ; CHECK-NEXT:    [[ATOMIC:%.*]] = call i32 @llvm.genx.GenISA.intatomicraw.i32.p131073(ptr addrspace(131073) null, i32 [[MEM]], i32 [[SOMEUNKOWN]], i32 13)
 ; CHECK-NEXT:    br label [[ATOMIC_IF_END:%.*]]
 ; CHECK:       atomic.if.false:
-; CHECK-NEXT:    [[TMP2:%.*]] = call <4 x float> @llvm.genx.GenISA.ldptr.v4f32.p131073.p131073(i32 [[MEM]], i32 0, i32 0, i32 0, ptr addrspace(131073) undef, ptr addrspace(131073) null, i32 0, i32 0, i32 0)
+; CHECK-NEXT:    [[TMP2:%.*]] = call <4 x float> @llvm.genx.GenISA.ldrawvector.indexed.v4f32.p131073(ptr addrspace(131073) null, i32 [[MEM]], i32 4, i1 true)
 ; CHECK-NEXT:    [[TMP3:%.*]] = extractelement <4 x float> [[TMP2]], i64 0
 ; CHECK-NEXT:    [[TMP4:%.*]] = bitcast float [[TMP3]] to i32
 ; CHECK-NEXT:    br label [[ATOMIC_IF_END]]
