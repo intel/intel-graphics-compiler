@@ -45,6 +45,8 @@ public:
 #endif
   );
 
+  using BaseT::getModRefInfo;
+
   llvm::ModRefInfo getModRefInfo(const llvm::CallBase *Call, const llvm::MemoryLocation &Loc, llvm::AAQueryInfo &AAQI);
 
   llvm::ModRefInfo getModRefInfo(const llvm::CallBase *Call1, const llvm::CallBase *Call2, llvm::AAQueryInfo &AAQI);

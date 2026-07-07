@@ -14,6 +14,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/Analysis/PostDominators.h>
 #include <llvm/IR/Dominators.h>
 #include <llvm/IR/Instructions.h>
+#include <set>
 #include "common/LLVMWarningsPop.hpp"
 
 namespace IGC {

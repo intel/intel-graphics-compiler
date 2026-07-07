@@ -123,8 +123,12 @@ Pass *createLegacyWrappedSimpleInlinerPass(int Threshold) {
 #endif
 }
 Pass *createLegacyWrappedSimpleInlinerPass(unsigned OptLevel, unsigned SizeOptLevel, bool DisableInlineHotCallSite) {
-#if LLVM_VERSION_MAJOR >= 16
+#if LLVM_VERSION_MAJOR >= 23
+  auto Param = llvm::getInlineParamsFromOptLevel(OptLevel);
+#elif LLVM_VERSION_MAJOR >= 16
   auto Param = llvm::getInlineParams(OptLevel, SizeOptLevel);
+#endif
+#if LLVM_VERSION_MAJOR >= 16
   if (DisableInlineHotCallSite)
     Param.HotCallSiteThreshold = 0;
   return new SimpleInlinerLegacyPassWrapper(Param);

@@ -28,6 +28,19 @@ inline bool InlineFunction(llvm::CallBase &CB, llvm::InlineFunctionInfo &IFI, ll
 
 using llvm::CloneFunctionChangeType;
 using llvm::CloneFunctionInto;
+
+inline void CloneAndPruneFunctionInto(llvm::Function *NewFunc, const llvm::Function *OldFunc,
+                                      llvm::ValueToValueMapTy &VMap, bool ModuleLevelChanges,
+                                      llvm::SmallVectorImpl<llvm::ReturnInst *> &Returns, const char *NameSuffix = "",
+                                      llvm::ClonedCodeInfo *CodeInfo = nullptr) {
+#if LLVM_VERSION_MAJOR >= 23
+  llvm::ClonedCodeInfo DefaultCodeInfo;
+  llvm::CloneAndPruneFunctionInto(NewFunc, OldFunc, VMap, ModuleLevelChanges, Returns, NameSuffix,
+                                  CodeInfo ? *CodeInfo : DefaultCodeInfo);
+#else
+  llvm::CloneAndPruneFunctionInto(NewFunc, OldFunc, VMap, ModuleLevelChanges, Returns, NameSuffix, CodeInfo);
+#endif
+}
 } // namespace IGCLLVM
 
 #endif

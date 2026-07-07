@@ -29,7 +29,11 @@ inline void replaceUsesWithIf(llvm::Value *V, llvm::Value *New, llvm::function_r
 
 inline uint64_t getPointerDereferenceableBytes(const llvm::Value *Ptr, const llvm::DataLayout &DL, bool &CanBeNull,
                                                bool &CanBeFreed) {
+#if LLVM_VERSION_MAJOR >= 23
+  return Ptr->getPointerDereferenceableBytes(DL, CanBeNull, &CanBeFreed);
+#else
   return Ptr->getPointerDereferenceableBytes(DL, CanBeNull, CanBeFreed);
+#endif
 }
 
 inline llvm::User *getUniqueUndroppableUser(llvm::Value *V) { return V->getUniqueUndroppableUser(); }
