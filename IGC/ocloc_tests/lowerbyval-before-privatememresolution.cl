@@ -6,7 +6,6 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
-// UNSUPPORTED: lib-igc-clang
 // REQUIRES: regkeys, dg2-supported
 
 // RUN: ocloc compile -file %s -options " -igc_opts 'ShaderDisplayAllPassesNames=1 EnableExplicitCopyForByVal=1'"  -device dg2 2>&1 | FileCheck %s

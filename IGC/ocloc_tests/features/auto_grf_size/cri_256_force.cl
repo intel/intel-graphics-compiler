@@ -9,7 +9,6 @@ SPDX-License-Identifier: MIT
 // Test that the regkey/option TotalGRFNum is correctly passed to finalizer
 // to force a GRF number for the compilation.
 
-// UNSUPPORTED: lib-igc-clang
 // REQUIRES: regkeys, cri-supported
 // RUN: ocloc compile -file %s -options "-igc_opts 'TotalGRFNum=256,VISAOptions=-asmToConsole'" -device cri | FileCheck %s --check-prefix=CHECK-ASM
 

@@ -6,7 +6,6 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
-// UNSUPPORTED: lib-igc-clang
 // REQUIRES: dg2-supported
 // RUN: ocloc compile -file %s -options "-igc_opts 'DumpVISAASMToConsole=1'" -device dg2 | FileCheck --check-prefix CHECK-VISA %s
 

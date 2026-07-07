@@ -11,7 +11,6 @@ SPDX-License-Identifier: MIT
 //
 
 
-// UNSUPPORTED: lib-igc-clang
 // REQUIRES: regkeys, dg2-supported
 
 // RUN: ocloc compile -file %s -options "-igc_opts 'DumpZEInfoToConsole=1'" \

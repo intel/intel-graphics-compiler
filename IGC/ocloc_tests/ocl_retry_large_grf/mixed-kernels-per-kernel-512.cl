@@ -6,7 +6,6 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
-// UNSUPPORTED: lib-igc-clang
 // REQUIRES: regkeys, cri-supported
 
 // Per-kernel 512-GRF lift: two SIMD16 high-pressure kernels in one module that

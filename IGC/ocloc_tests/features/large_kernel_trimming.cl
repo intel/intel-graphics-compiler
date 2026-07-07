@@ -6,7 +6,6 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
-// UNSUPPORTED: lib-igc-clang
 // REQUIRES: regkeys, dg2-supported
 
 // Test checks that in case, kernel is above the large kernel kernel threshold small functions will be trimmed as well.

@@ -10,7 +10,6 @@ SPDX-License-Identifier: MIT
 // that support HW EngineID (>=XE3P). This value is set by HW.
 // For other platforms, we should set 0x0 value.
 
-// UNSUPPORTED: lib-igc-clang
 // REQUIRES: cri-supported
 
 // RUN: ocloc compile -file %s -device cri \

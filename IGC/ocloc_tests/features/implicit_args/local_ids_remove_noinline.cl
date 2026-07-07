@@ -6,7 +6,6 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
-// UNSUPPORTED: lib-igc-clang
 // REQUIRES: regkeys,bmg-supported,llvm-14-plus
 
 // Verify that local IDs are not removed when subroutines/stackcalls are used.

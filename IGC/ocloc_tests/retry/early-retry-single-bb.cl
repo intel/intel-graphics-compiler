@@ -6,7 +6,6 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
-// UNSUPPORTED: lib-igc-clang
 // REQUIRES: regkeys
 // RUN: ocloc compile -file %s -options "-igc_opts 'EarlyRetryDefaultGRFThreshold=5,EarlyRetryLargeGRFThreshold=5'" \
 // RUN: -device mtl | FileCheck %s --check-prefix=CHECK

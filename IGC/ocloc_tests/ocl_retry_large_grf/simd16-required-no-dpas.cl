@@ -6,7 +6,6 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
-// UNSUPPORTED: lib-igc-clang
 // REQUIRES: regkeys, cri-supported
 
 // Tests the SIMD16 category (B) of the 512-GRF OCL retry gate for a no-DPAS

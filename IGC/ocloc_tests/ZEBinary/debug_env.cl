@@ -9,7 +9,6 @@ SPDX-License-Identifier: MIT
 // The test checks if zeinfo "debug_env" and it fields are not set. Runtime does
 // not require bti 0 and bindless offset is managed by driver.
 
-// UNSUPPORTED: lib-igc-clang
 // REQUIRES: regkeys, pvc-supported
 
 // RUN: ocloc compile -file %s -options "-igc_opts 'DumpZEInfoToConsole=1'" \

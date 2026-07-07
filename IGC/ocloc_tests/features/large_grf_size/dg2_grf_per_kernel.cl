@@ -5,7 +5,6 @@ Copyright (C) 2024 Intel Corporation
 SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
-// UNSUPPORTED: lib-igc-clang
 // REQUIRES: regkeys, dg2-supported
 
 // RUN: ocloc compile -file %s -options " -ze-opt-large-grf-kernel foo -ze-opt-large-grf-kernel baz -igc_opts 'VISAOptions=-asmToConsole'" -device dg2 | FileCheck %s --check-prefix=CHECK-LARGE-GRF-PER-KERNEL

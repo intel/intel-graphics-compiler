@@ -6,7 +6,6 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; UNSUPPORTED: lib-igc-clang
 ; REQUIRES: llvm-spirv, regkeys, pvc-supported
 
 ; RUN: llvm-as %s -o %t.bc

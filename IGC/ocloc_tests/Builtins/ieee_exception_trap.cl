@@ -9,7 +9,6 @@ SPDX-License-Identifier: MIT
 // The test checks if a call to __builtin_IB_enable_ieee_exception_trap enables
 // bit 9 (IEEE Exception Trap Enable) in CR0.0
 
-// UNSUPPORTED: lib-igc-clang
 // REQUIRES: regkeys, pvc-supported
 
 // RUN: ocloc compile -file %s -options " -igc_opts 'VISAOptions=-asmToConsole'" -device pvc | FileCheck %s --check-prefix=CHECK-ASM

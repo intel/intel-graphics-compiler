@@ -8,7 +8,6 @@ SPDX-License-Identifier: MIT
 
 // This test checks if -ze-exp-register-file-size flag is respected for OpenCL-C kernels
 
-// UNSUPPORTED: lib-igc-clang
 // REQUIRES: regkeys, pvc-supported
 
 // RUN: ocloc compile -file %s -device pvc -options " -ze-exp-register-file-size 64 -igc_opts 'DumpVISAASMToConsole=1'" 2>&1 | FileCheck %s --check-prefixes=CHECK64
