@@ -6,7 +6,6 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
-// UNSUPPORTED: lib-igc-clang
 // REQUIRES: regkeys
 // RUN: %if ptl-supported %{ ocloc compile -file %s -options "-cl-std=CL3.0 -igc_opts 'VISAOptions=-asmToConsole'" -device ptl | FileCheck %s %}
 // RUN: %if cri-supported %{ ocloc compile -file %s -options "-cl-std=CL3.0 -igc_opts 'VISAOptions=-asmToConsole'" -device cri | FileCheck %s %}

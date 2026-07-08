@@ -9,7 +9,7 @@
 ; Verify new DWARF v5 sections: .debug_loclists, .debug_rnglists, .debug_addr and
 ; relocation reduction.
 
-; UNSUPPORTED: sys32, lib-igc-clang
+; UNSUPPORTED: sys32
 ; REQUIRES: regkeys, oneapi-readelf, dg2-supported, llvm-14-plus
 
 ; RUN: llvm-as %OPAQUE_PTR_FLAG% %s -o %t

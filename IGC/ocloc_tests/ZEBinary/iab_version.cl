@@ -9,7 +9,7 @@ SPDX-License-Identifier: MIT
 // This test checks if "iab_version" field is present in the .note.intelgt.compat
 // section of the ZEBinary.
 
-// UNSUPPORTED: sys32, lib-igc-clang
+// UNSUPPORTED: sys32
 // REQUIRES: pvc-supported, oneapi-readelf
 
 // RUN: ocloc compile -file %s -device pvc -output %t -output_no_suffix

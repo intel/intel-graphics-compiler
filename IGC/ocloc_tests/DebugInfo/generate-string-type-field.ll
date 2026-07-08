@@ -8,7 +8,7 @@
 
 ; Test whether DW_TAG_string_type is generated in DWARF
 
-; UNSUPPORTED: sys32, lib-igc-clang
+; UNSUPPORTED: sys32
 
 ; REQUIRES: regkeys, oneapi-readelf, dg2-supported
 

@@ -9,7 +9,7 @@
 ; Test checks if DW_AT_string_length is correctly generated for
 ; vla fortran string array (DIStringType)
 
-; UNSUPPORTED: sys32, lib-igc-clang
+; UNSUPPORTED: sys32
 
 ; REQUIRES: regkeys, oneapi-readelf, llvm-14-plus, dg2-supported
 

@@ -6,7 +6,6 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
-// UNSUPPORTED: lib-igc-clang
 // REQUIRES: regkeys,pvc-supported,llvm-14-plus
 
 // Verify that implicit kernel arguments are not removed for kernels with subroutines.

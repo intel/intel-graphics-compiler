@@ -8,7 +8,7 @@ SPDX-License-Identifier: MIT
 
 // REQUIRES: regkeys, pvc-supported
 
-// UNSUPPORTED: sys32, lib-igc-clang
+// UNSUPPORTED: sys32
 
 // RUN: ocloc compile -file %s -device pvc -options "-igc_opts 'DumpVISAASMToConsole=1'" \
 // RUN: -internal_options "-cl-ext=-all,+cl_intel_subgroup_buffer_prefetch" | FileCheck %s

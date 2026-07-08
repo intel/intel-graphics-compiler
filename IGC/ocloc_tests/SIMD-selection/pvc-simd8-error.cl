@@ -6,7 +6,6 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
-// UNSUPPORTED: lib-igc-clang
 // REQUIRES: regkeys, pvc-supported
 
 // RUN: ocloc compile -file %s -device pvc -options " -igc_opts 'ForceOCLSIMDWidth=8'" 2>&1 | FileCheck %s

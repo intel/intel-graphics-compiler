@@ -8,7 +8,7 @@ SPDX-License-Identifier: MIT
 
 // The test checks if zeinfo "has_printf_calls" and "has_indirect_calls" and it fields are set.
 
-// UNSUPPORTED: sys32, lib-igc-clang
+// UNSUPPORTED: sys32
 // REQUIRES: pvc-supported, regkeys
 
 // RUN: ocloc compile -file %s -options "-igc_opts 'DumpZEInfoToConsole=1'" \

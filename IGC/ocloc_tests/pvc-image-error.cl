@@ -6,7 +6,6 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
-// UNSUPPORTED: lib-igc-clang
 // REQUIRES: pvc-supported
 // RUN: ocloc compile -file %s -options "-cl-std=CL2.0" -device pvc 2>&1 | FileCheck %s
 

@@ -14,7 +14,7 @@
 // 2. Non-outermost-scope FP-based variable ("*inner") is inlined directly
 //    into the DIE, since FE_FP is valid throughout the scope.
 
-// UNSUPPORTED: sys32, lib-igc-clang
+// UNSUPPORTED: sys32
 // REQUIRES: regkeys, oneapi-readelf, dg2-supported
 
 // RUN: ocloc compile -file %s -options " -g -cl-opt-disable -igc_opts 'ElfDumpEnable=1, DumpUseShorterName=0, DebugDumpNamePrefix=%t_'" -device dg2

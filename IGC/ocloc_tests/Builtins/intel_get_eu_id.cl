@@ -8,7 +8,7 @@ SPDX-License-Identifier: MIT
 
 // The test checks if a call to intel_get_eu_id returns correct sequence of instructions for PVC
 
-// UNSUPPORTED: sys32, lib-igc-clang
+// UNSUPPORTED: sys32
 // REQUIRES: regkeys, pvc-supported
 // RUN: ocloc compile -file %s -options " -igc_opts 'DumpVISAASMToConsole=1'" -device pvc | FileCheck %s --check-prefix=CHECK-VISA
 

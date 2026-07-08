@@ -5,7 +5,6 @@ Copyright (C) 2025 Intel Corporation
 SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
-// UNSUPPORTED: lib-igc-clang
 // REQUIRES: bmg-supported
 
 // RUN: ocloc compile -file %s -device bmg -options "-cl-std=CL1.2" 2>&1 | FileCheck %s --check-prefixes=CHECK-CL12
