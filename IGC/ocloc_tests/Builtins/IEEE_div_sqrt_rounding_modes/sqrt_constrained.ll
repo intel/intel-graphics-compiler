@@ -8,7 +8,12 @@
 
 ; REQUIRES: cri-supported
 
-; RUN: llvm-as %s -o %t.bc
+; LLVM with opaque pointers:
+; RUN: llvm-as %OPAQUE_PTR_FLAG% %s -o %t.bc
+; RUN: ocloc compile -llvm_input -file %t.bc -device cri -options " -igc_opts 'EnableOpaquePointersBackend=1,DumpVISAASMToConsole=1'" | FileCheck %s
+
+; LLVM with typed pointers:
+; RUN: llvm-as %TYPED_PTR_FLAG% %s -o %t.bc
 ; RUN: ocloc compile -llvm_input -file %t.bc -device cri -options " -igc_opts 'DumpVISAASMToConsole=1'" | FileCheck %s
 
 target triple = "spir64-unknown-unknown"

@@ -1064,7 +1064,7 @@ bool CClangTranslationBlock::TranslateClang(const TranslateClangArgs *pInputArgs
   // (extension list, feature/extension macro defines, the custom OpenCL
   // header, etc.), which only apply to OpenCL C source.
   if (!IsSYCL)
-    optionsEx += GetOpenCLOptions(pInputArgs, pInternalOptions, exceptString);
+    optionsEx += " " + GetOpenCLOptions(pInputArgs, pInternalOptions, exceptString);
 
   // Pass the list of supported SPIR-V extensions from IGC to opencl-clang.
   optionsEx += GetSpirvExtensionsOption();
