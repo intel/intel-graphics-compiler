@@ -15966,10 +15966,24 @@ void EmitPass::emitAtomicRaw(llvm::GenIntrinsicInst *pInst, Value *dstAddr, Cons
   }
 
   {
-    CVariable *pDst = returnsImmValue ? m_currShader->GetNewVariable(numLanes(m_currShader->m_SIMDSize),
-                                                                     bitwidth != 64 ? ISA_TYPE_UD : ISA_TYPE_UQ,
-                                                                     EALIGN_GRF, CName::NONE)
-                                      : nullptr;
+    // When the atomic's return value is used, avoid routing it through
+    // a fresh temp followed by a redundant "vanilla mov" into m_destination. That
+    // extra copy otherwise sits inside loops (e.g. same-address atomic increment
+    // micros) and serializes every iteration on the atomic's return latency. Let
+    // the send write m_destination directly whenever no repack is required (only
+    // 16-bit atomics need one) and the destination has the same shape as the send
+    // writeback; the dst-dependency then lands on the real post-loop use
+    // instead of the loop back-edge. Fall back to the temp otherwise.
+    const bool forcedSIMD1 = (F->hasFnAttribute("KMPLOCK") && m_currShader->GetIsUniform(pInst)) ||
+                             IID == GenISAIntrinsic::GenISA_intatomicrawsinglelane;
+    const bool writeDstDirectly = returnsImmValue && !is16Bit && !forcedSIMD1 && !m_destination->IsUniform() &&
+                                  m_destination->GetElemSize() == (bitwidth / 8u);
+    CVariable *pDst =
+        !returnsImmValue ? nullptr
+        : writeDstDirectly
+            ? m_currShader->GetNewAlias(m_destination, GetUnsignedIntegerType(m_destination->GetType()), 0, 0)
+            : m_currShader->GetNewVariable(numLanes(m_currShader->m_SIMDSize),
+                                           bitwidth != 64 ? ISA_TYPE_UD : ISA_TYPE_UQ, EALIGN_GRF, CName::NONE);
 
     bool extendPointer = (bitwidth == 64 && !isA64);
     // DG2 onward with LSC we do not have to extend an A32 pointer to an
@@ -15994,8 +16008,9 @@ void EmitPass::emitAtomicRaw(llvm::GenIntrinsicInst *pInst, Value *dstAddr, Cons
         m_encoder->Push();
       }
 
-      if (returnsImmValue) // This is needed for repacking of 16bit atomics
-                           // otherwise it will be a vanilla mov
+      if (returnsImmValue && !writeDstDirectly) // This is needed for repacking of
+                                                // 16bit atomics; otherwise it
+                                                // would be a vanilla mov
       {
         m_encoder->Cast(m_currShader->BitCast(m_destination, GetUnsignedIntegerType(m_destination->GetType())), pDst);
         m_encoder->Push();
@@ -16035,7 +16050,7 @@ void EmitPass::emitAtomicRaw(llvm::GenIntrinsicInst *pInst, Value *dstAddr, Cons
         m_encoder->DwordAtomicRaw(atomic_op, resource, pDst, pDstAddr, pSrc0, pSrc1, is16Bit);
       }
       m_encoder->Push();
-      if (returnsImmValue) {
+      if (returnsImmValue && !writeDstDirectly) {
         m_encoder->Cast(m_currShader->BitCast(m_destination, GetUnsignedIntegerType(m_destination->GetType())), pDst);
         m_encoder->Push();
       }
