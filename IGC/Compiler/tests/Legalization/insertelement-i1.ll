@@ -21,8 +21,9 @@ define i1 @test_insertelem_i1(<8 x i1> %src1, i1 %src2, i32 %src3) {
 ; CHECK:    [[TMP2:%.*]] = insertelement <8 x i32> undef, i32 [[TMP1]], i32 7
 ; CHECK:    [[TMP3:%.*]] = insertelement <8 x i32> [[TMP2]], i32 -1, i32 1
 ; CHECK:    [[TMP4:%.*]] = extractelement <8 x i32> [[TMP3]], i32 [[SRC3]]
-; CHECK:    [[TMP5:%.*]] = trunc i32 [[TMP4]] to i1
-; CHECK:    ret i1 [[TMP5]]
+; CHECK:    [[TMP5:%.*]] = and i32 [[TMP4]], 1
+; CHECK:    [[TMP6:%.*]] = trunc i32 [[TMP5]] to i1
+; CHECK:    ret i1 [[TMP6]]
 ;
   %1 = insertelement <8 x i1> %src1, i1 %src2, i32 7
   %2 = insertelement <8 x i1> %1, i1 true, i32 1

@@ -2141,6 +2141,19 @@ void Legalization::PromoteFp16ToFp32OnGenSampleCall(llvm::CallInst &I) {
 }
 
 void Legalization::visitTruncInst(llvm::TruncInst &I) {
+  // A (trunc iN X to i1) selects bit 0 of X. IGC lowers an i1 predicate as
+  // "X != 0", which only matches bit 0 for a canonical boolean; for an arbitrary
+  // integer a bare trunc-to-i1 miscompiles.
+  if (I.getDestTy()->isIntegerTy(1)) {
+    Value *Src = I.getOperand(0);
+    if (Src->getType()->isIntegerTy() && Src->getType()->getIntegerBitWidth() > 1) {
+      m_builder->SetInsertPoint(&I);
+      Value *Masked = m_builder->CreateAnd(Src, ConstantInt::get(Src->getType(), 1));
+      I.setOperand(0, Masked);
+    }
+    return;
+  }
+
   // Legalize
   //
   //  (trunc (bitcast <3 x i16> to i48) i32)
