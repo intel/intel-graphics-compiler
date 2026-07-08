@@ -509,6 +509,9 @@ struct ExtensionsRequiringManualFeatureMacros {
   // Dependency flags - control which macros are enabled
   bool fp16 = false; // cl_khr_fp16 (dependency for atomic macros)
   bool fp64 = false; // cl_khr_fp64 (dependency for atomic macros)
+
+  // Whether image support (__IMAGE_SUPPORT__) is enabled for this compilation
+  bool imageSupport = false;
 };
 
 static std::string GetFeatureMacrosForExtensions(const ExtensionsRequiringManualFeatureMacros &enabledExtensions,
@@ -517,6 +520,28 @@ static std::string GetFeatureMacrosForExtensions(const ExtensionsRequiringManual
   std::string featureMacros;
 
   IGC_ASSERT_MESSAGE(oclStd < 300, "This function should only be called for OpenCL C versions older than 3.0");
+
+  // The standard OpenCL header gates the image support built-ins behind the __opencl_c_images
+  // feature macro (and, for OpenCL C 2.0, a few more OpenCL C 3.0 optional-feature macros that
+  // OpenCL C 2.0 already provides equivalent core functionality for), so define them manually.
+  if (enabledExtensions.imageSupport) {
+    featureMacros += " -D__opencl_c_images";
+    if (oclStd >= 200) {
+      featureMacros += " -D__opencl_c_3d_image_writes";
+      featureMacros += " -D__opencl_c_read_write_images";
+    }
+  }
+
+  if (oclStd >= 200) {
+    featureMacros += " -D__opencl_c_atomic_order_acq_rel";
+    featureMacros += " -D__opencl_c_atomic_order_seq_cst";
+    featureMacros += " -D__opencl_c_atomic_scope_device";
+    featureMacros += " -D__opencl_c_atomic_scope_all_devices";
+    featureMacros += " -D__opencl_c_generic_address_space";
+    featureMacros += " -D__opencl_c_program_scope_global_variables";
+    featureMacros += " -D__opencl_c_subgroups";
+    featureMacros += " -D__opencl_c_work_group_collective_functions";
+  }
 
   // Integer dot product macros (OpenCL C 1.2+)
   if (enabledExtensions.integerDotProduct && oclStd >= 120) {
@@ -560,47 +585,47 @@ static std::string GetFeatureMacrosForExtensions(const ExtensionsRequiringManual
 // The expected extensions input string is in a form:
 // -cl-ext=-all,+supported_ext_name,+second_supported_ext_name
 // -cl-feature=+__opencl_c_3d_image_writes,+__opencl_c_atomic_order_acq_rel
-static std::string GetCDefinesForEnableList(llvm::StringRef enableListStr, unsigned int oclStd,
-                                            const StringRef prefix) {
+static std::string GetCDefinesForEnableList(llvm::StringRef enableListStr, unsigned int oclStd, const StringRef prefix,
+                                            bool imageSupport) {
 
   std::string definesStr;
+  ExtensionsRequiringManualFeatureMacros enabledExtensions;
+  enabledExtensions.imageSupport = imageSupport;
 
   // check for the last occurence of prefix, as it invalidates previous occurances.
   size_t pos = enableListStr.rfind(prefix);
-  if (pos == llvm::StringRef::npos) {
-    // If this string does not exist the input string does not contain valid extension list
-    // or it has all extensions disabled (-all without colon afterwards).
-    return definesStr;
-  }
+  if (pos != llvm::StringRef::npos) {
+    llvm::StringRef enabledExtList = enableListStr.substr(pos + prefix.size());
 
-  enableListStr = enableListStr.substr(pos + prefix.size());
+    // string with defines should be similar in size, ",+" will change to "-D".
+    definesStr.reserve(enabledExtList.size());
 
-  // string with defines should be similar in size, ",+" will change to "-D".
-  definesStr.reserve(enableListStr.size());
+    llvm::SmallVector<StringRef, 0> v;
+    enabledExtList.split(v, ',');
 
-  llvm::SmallVector<StringRef, 0> v;
-  enableListStr.split(v, ',');
+    for (auto ext : v) {
+      if (ext.consume_front("+")) {
+        ext = ext.trim();
+        // Only collect extensions needed for manual feature macro generation
+        if (ext == "cl_khr_integer_dot_product") {
+          enabledExtensions.integerDotProduct = true;
+        } else if (ext == "cl_ext_float_atomics") {
+          enabledExtensions.extFloatAtomics = true;
+        } else if (ext == "cl_khr_fp16") {
+          enabledExtensions.fp16 = true;
+        } else if (ext == "cl_khr_fp64") {
+          enabledExtensions.fp64 = true;
+        } else if (ext == "cl_khr_kernel_clock") {
+          enabledExtensions.kernelClock = true;
+        }
 
-  ExtensionsRequiringManualFeatureMacros enabledExtensions;
-  for (auto ext : v) {
-    if (ext.consume_front("+")) {
-      ext = ext.trim();
-      // Only collect extensions needed for manual feature macro generation
-      if (ext == "cl_khr_integer_dot_product") {
-        enabledExtensions.integerDotProduct = true;
-      } else if (ext == "cl_ext_float_atomics") {
-        enabledExtensions.extFloatAtomics = true;
-      } else if (ext == "cl_khr_fp16") {
-        enabledExtensions.fp16 = true;
-      } else if (ext == "cl_khr_fp64") {
-        enabledExtensions.fp64 = true;
-      } else if (ext == "cl_khr_kernel_clock") {
-        enabledExtensions.kernelClock = true;
+        definesStr.append(" -D").append(ext.str());
       }
-
-      definesStr.append(" -D").append(ext.str());
     }
   }
+  // If the prefix was not found, the input string does not contain a valid extension list
+  // (or it has all extensions disabled, "-all" without a colon afterwards); the feature
+  // macros below don't depend on the per-extension enable list, so still generate them.
 
   // For OpenCL C versions older than 3.0, manually enable feature macros for specific extensions.
   // This is required because some extensions (like cl_khr_integer_dot_product) were implemented
@@ -943,11 +968,15 @@ std::string CClangTranslationBlock::GetOpenCLOptions(const TranslateClangArgs *p
 
   // get additional -D flags from internal options
   optionsEx += " " + GetCDefinesFromInternalOptions(pInternalOptions);
-  optionsEx += " " + GetCDefinesForEnableList(extensions, oclStd, "-cl-ext=-all,");
 
-  // Workaround for Clang issue.
-  // Clang always defines __IMAGE_SUPPORT__ macro for SPIR target, even if device doesn't support it.
-  if (optionsEx.find("__IMAGE_SUPPORT__") == std::string::npos) {
+  // Clang always defines __IMAGE_SUPPORT__ macro for SPIR target, even if device doesn't support it, so the
+  // presence of __IMAGE_SUPPORT__ in optionsEx at this point (from internal options) is what tells us whether
+  // image support should actually be enabled.
+  bool imageSupport = optionsEx.find("__IMAGE_SUPPORT__") != std::string::npos;
+  optionsEx += " " + GetCDefinesForEnableList(extensions, oclStd, "-cl-ext=-all,", imageSupport);
+
+  // Workaround for Clang issue: undefine __IMAGE_SUPPORT__ if the device doesn't support images.
+  if (!imageSupport) {
     optionsEx += " -U__IMAGE_SUPPORT__";
   }
 
