@@ -50,6 +50,7 @@ list(APPEND IGC_BUILD__SRC__FCL ${CIF_SOURCES_EXPORT_ABSOLUTE_PATH}
   "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/ocl_igc_interface/impl/fcl_ocl_device_ctx_impl.cpp"
   "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/ocl_igc_interface/impl/ocl_translation_output_impl.cpp"
   "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/ocl_igc_interface/impl/platform_impl.cpp"
+  "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/ocl_igc_interface/extensions/SPIRVExtensionsSupport.cpp"
   )
 list(APPEND IGC_BUILD__HDR__FCL ${CIF_HEADERS_ABSOLUTE_PATH}
   "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/ocl_igc_interface/impl/fcl_ocl_translation_ctx_impl.h"

@@ -1510,6 +1510,12 @@ include_directories(
 include_directories("${IGC_BUILD__IGC_SRC_DIR}/AdaptorOCL/ocl_igc_interface/extensions")
 include_directories("${IGC_BUILD__IGC_BIN_DIR}/AdaptorOCL/ocl_igc_interface/extensions")
 
+string(REGEX MATCH "^[0-9]+" _ocl_spirv_llvm_major "${IGC_OPTION__LLVM_PREFERRED_VERSION}")
+set(_igc_ocl_spirv_headers_dir "${IGC_BUILD__IGC_SRC_DIR}/../SPIRV-Headers-OCL-${_ocl_spirv_llvm_major}")
+set_source_files_properties(
+    "${IGC_BUILD__IGC_SRC_DIR}/AdaptorOCL/ocl_igc_interface/extensions/SPIRVExtensionsSupport.cpp"
+    PROPERTIES INCLUDE_DIRECTORIES "${_igc_ocl_spirv_headers_dir}/include")
+
 
 include_directories(
   "${IGC_BUILD__COMMON_COMPILER_DIR}/common"
