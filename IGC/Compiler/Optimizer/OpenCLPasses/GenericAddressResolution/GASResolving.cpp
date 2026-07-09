@@ -356,9 +356,10 @@ bool GASResolving::checkByValArguments(Function &F) const {
   return false;
 }
 
-// DPC++ passes a SYCL kernel struct arguments by value.
-// Raw pointers contained inside structs are read by the SPIR-V reader as a plain integers and
-// reconstructed as the pointer in the *generic* address space.
+// DPC++ passes a SYCL kernel struct/array arguments by value.
+// Raw pointers from structs are read as plain integers and converted back with I2P back to pointers while pointers from
+// arrays are loaded using GEP/LOAD. By default these pointers are in generic address space, but they are safe to
+// promote to global address space.
 bool GASResolving::resolveKernelByValArgs(Function &F) const {
   if (!IGC_IS_FLAG_ENABLED(EnableGASKernelByValArgPtrInference)) {
     return false;
@@ -423,6 +424,7 @@ bool GASResolving::resolveKernelByValArgs(Function &F) const {
 //   %gep = getelementptr inbounds %struct.__wrapper_class, ptr %5, i64 0, i32 0, i64 K
 //   %p   = load ptr addrspace(4), ptr %gep, align 8
 bool GASResolving::isKernelArgByValPtrCandidate(Instruction *I) const {
+  IGC_ASSERT(isa<LoadInst>(I) || isa<IntToPtrInst>(I));
   auto *PtrTy = dyn_cast<PointerType>(I->getType());
   if (!PtrTy || PtrTy->getAddressSpace() != ADDRESS_SPACE_GENERIC) {
     return false;
@@ -430,8 +432,12 @@ bool GASResolving::isKernelArgByValPtrCandidate(Instruction *I) const {
   auto *LI = isa<LoadInst>(I)                  ? cast<LoadInst>(I)
              : isa<LoadInst>(I->getOperand(0)) ? cast<LoadInst>(I->getOperand(0))
                                                : nullptr;
+  if (!LI) {
+    return false;
+  }
+
   if (isa<IntToPtrInst>(I)) {
-    if (!LI || !LI->hasOneUse()) {
+    if (!LI->hasOneUse()) {
       return false;
     }
 

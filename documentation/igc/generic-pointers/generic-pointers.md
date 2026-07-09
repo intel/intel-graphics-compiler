@@ -161,8 +161,9 @@ This is the moment when all the dots connect. The sequence above represents a sw
 
 It should be acknowledged that such an expanded switch statement described in the section [Resolving Generic Address Space Pointer Accesses At Runtime](#resolving-generic-address-space-pointer-accesses-at-runtime) must get generated for each generic address space memory operation. One memory operation is transformed into three branches, so the negative performance overhead is huge. IGC tries its best to avoid the necessity to generate the switch statement by implementing several optimizations:
 
-- Propagating named address space from `addrspacecast` instructions to their users to eliminate as many generic pointer uses as possible. This optimization is spread across multiple passes: `InferAddressSpacesPass`, `ResolveGASPass`, `createLowerGPCallArg`, `GASRetValuePropagatorPass`. More details in [Resolving Generic Address Space Pointer At Compile-Time](#resolving-generic-address-space-pointer-at-compile-time) section,
+- Propagating named address space from `addrspacecast` instructions to their users to eliminate as many generic pointer uses as possible. This optimization is spread across multiple passes: `InferAddressSpacesPass`, `ResolveGASPass`, `createLowerGPCallArg`, `GASRetValuePropagatorPass`. More details in [Resolving Generic Address Space Pointer At Compile-Time](#resolving-generic-address-space-pointer-at-compile-time) section.
 - Allocating private memory in a global buffer, so there is no need to distinguish between memory accesses to private and global memory. More details in [Private Memory Allocated In A Global Buffer](#private-memory-allocated-in-a-global-buffer).
+- IGC also promotes pointers contained in kernel arguments from generic address space to global address space. This optimization is contained in `ResolveGASPass`. More details in [Resolving Generic Pointers Originating From Kernel Arguments](#resolving-generic-pointers-originating-from-kernel-arguments) section.
 
 #### Resolving Generic Address Space Pointer At Compile-Time
 
@@ -235,6 +236,37 @@ If both conditions are met, IGC can resolve all generic pointer memory accesses 
 %global_ptr = addrspacecast i32 addrspace(4)* %generic_ptr to i32 addrspace(1)*
 %v = load i32, i32 addrspace(1)* %global_ptr, align 4
 ```
+
+#### Resolving Generic Pointers Originating From Kernel Arguments
+
+A pointer that is supplied by the host as a kernel argument can never point to a kernel's local or private memory, which does not exist until the kernel runs. IGC uses this fact to promote those pointers to the global address space, so their accesses are resolved statically to global instead of paying for the runtime switch statement described in [Resolving Generic Address Space Pointer Accesses At Runtime](#resolving-generic-address-space-pointer-accesses-at-runtime).
+
+The optimization is implemented in `ResolveGASPass` and covers two ways a host pointer reaches a kernel:
+
+- **Pointers loaded from a global kernel-argument**. A generic pointer that is loaded from memory pointed to by a global address space pointer.
+- **Raw pointers embedded in a by-value struct argument.**
+
+For the by-value case, the reconstructed pointer typically appears either as an `inttoptr` of an integer loaded from the by-value slot (a scalar struct member), or as a typed `load` of a generic pointer (e.g. an array member):
+
+```llvm
+; %s is a by-value struct kernel argument that contains a raw pointer.
+%slot = getelementptr inbounds %structtype, %structtype* %s, i64 0, i32 0
+%bits = load i64, i64* %slot, align 8
+%p    = inttoptr i64 %bits to i32 addrspace(4)*      ; rebuilt as generic
+%v    = load i32, i32 addrspace(4)* %p, align 4      ; would need runtime resolution
+```
+
+The promotion inserts an `addrspacecast` from generic to global, and the address space propagation described in [Resolving Generic Address Space Pointer At Compile-Time](#resolving-generic-address-space-pointer-at-compile-time) then rewrites the memory accesses to operate on the global pointer:
+
+```llvm
+%slot = getelementptr inbounds %structtype, %structtype* %s, i64 0, i32 0
+%bits = load i64, i64* %slot, align 8
+%p    = inttoptr i64 %bits to i32 addrspace(4)*
+%pg   = addrspacecast i32 addrspace(4)* %p to i32 addrspace(1)*   ; promoted to global
+%v    = load i32, i32 addrspace(1)* %pg, align 4                  ; resolved statically
+```
+
+The promotion is only valid if the loaded value can be traced back to the kernel argument and there are no instructions potentially writing to the same memory location.
 
 ### Generic Address Space Explicit Casts
 
