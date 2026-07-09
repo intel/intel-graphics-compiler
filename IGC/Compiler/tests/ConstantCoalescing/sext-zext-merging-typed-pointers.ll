@@ -57,17 +57,8 @@ define void @test_zext_coalescing(i32 addrspace(2)* %ca, i16 %offset) {
 
 declare void @use.i32(i32)
 
-!IGCMetadata = !{!12}
 !igc.functions = !{!0, !4}
 !0 = !{void (i32 addrspace(2)*, i16)* @test_sext_zext, !1}
 !1 = !{!2}
 !2 = !{!"function_type", i32 0}
 !4 = !{void (i32 addrspace(2)*, i16)* @test_zext_coalescing, !1}
-!5 = !{!"functionType", !"KernelFunction"}
-!6 = !{!"FuncMDMap[0]", void (i32 addrspace(2)*, i16)* @test_sext_zext}
-!7 = !{!"FuncMDValue[0]", !5}
-!8 = !{!"functionType", !"KernelFunction"}
-!9 = !{!"FuncMDMap[1]", void (i32 addrspace(2)*, i16)* @test_zext_coalescing}
-!10 = !{!"FuncMDValue[1]", !8}
-!11 = !{!"FuncMD", !6, !7, !9, !10}
-!12 = !{!"ModuleMD", !11}

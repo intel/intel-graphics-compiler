@@ -2476,7 +2476,7 @@ void CodeGen(OpenCLProgramContext *ctx) {
 }
 
 bool COpenCLKernel::hasReadWriteImage(llvm::Function &F) {
-  if (!isEntryFunc(m_ModuleMetadata, &F)) {
+  if (!isEntryFunc(m_pMdUtils, &F)) {
     // Ignore read/write flags for subroutines for now.
     // TODO: get access types for subroutines without using kernel args
     return false;
@@ -2568,7 +2568,7 @@ bool COpenCLKernel::CompileSIMDSize(SIMDMode simdMode, EmitPass &EP, llvm::Funct
 
 static bool shouldDropToSIMD16(uint32_t maxPressure, uint32_t simd16Pressure, uint32_t simd32Pressure,
                                SIMDMode simdMode, CodeGenContext *pCtx, MetaDataUtils *pMdUtils, llvm::Function *F) {
-  if (simdMode != SIMDMode::SIMD32 || !isEntryFunc(pCtx->getModuleMetaData(), F)) {
+  if (simdMode != SIMDMode::SIMD32 || !isEntryFunc(pMdUtils, F)) {
     return false;
   }
 

@@ -456,7 +456,7 @@ bool BuiltinCallGraphAnalysis::pruneCallGraphForStackCalls(CallGraph &CG) {
       if (!m_ctx->getModuleMetaData()->FuncMD[F].implicitArgInfoList.empty()) {
         for (unsigned i = 0; i < IT.getPathLength(); i++) {
           Function *pFuncOnPath = IT.getPath(i)->getFunction();
-          if (pFuncOnPath && !isEntryFunc(m_ctx->getModuleMetaData(), pFuncOnPath)) {
+          if (pFuncOnPath && !isEntryFunc(m_pMdUtils, pFuncOnPath)) {
             if (pFuncOnPath->hasFnAttribute("hasRecursion")) {
               IGC_ASSERT_MESSAGE(0, "Cannot inline for recursion!");
               return false;
@@ -635,7 +635,7 @@ void BuiltinCallGraphAnalysis::writeBackAllIntoMetaData(const ImplicitArgumentDe
   auto &argList = pCtx->getModuleMetaData()->FuncMD[f].implicitArgInfoList;
   argList.clear();
 
-  bool isEntry = isEntryFunc(pCtx->getModuleMetaData(), f);
+  bool isEntry = isEntryFunc(m_pMdUtils, f);
 
   // Check if DP emulation is used and the function uses DP operations. Emulation needs r0 and private_base
   // implicit args, so these args have to exist. r0 and private_base args are adding by analysis passes.

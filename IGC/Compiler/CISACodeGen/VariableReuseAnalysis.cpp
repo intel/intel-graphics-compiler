@@ -1066,7 +1066,8 @@ void VariableReuseAnalysis::InsertElementAliasing(Function *F) {
   // To avoid increasing GRF pressure, skip if F is too large or not an entry
   const int32_t NumBBThreshold = IGC_GET_FLAG_VALUE(VectorAliasBBThreshold);
   bool OnlySameBB = getNumBBs(F) > NumBBThreshold;
-  if (control == 0 || !isEntryFunc(m_pCtx->getModuleMetaData(), F)) {
+  MetaDataUtils *pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
+  if (control == 0 || !isEntryFunc(pMdUtils, F)) {
     return;
   }
   for (auto BI = F->begin(), BE = F->end(); BI != BE; ++BI) {

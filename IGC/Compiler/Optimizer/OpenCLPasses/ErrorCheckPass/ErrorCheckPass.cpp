@@ -43,7 +43,7 @@ bool ErrorCheck::runOnFunction(Function &F, IGC::IGCMD::MetaDataUtils *pMdUtils,
   // add more checks as needed later
   visit(F);
 
-  if (isEntryFunc(m_modMD, &F)) {
+  if (isEntryFunc(m_pMdUtils, &F)) {
     checkArgsSize(F);
   }
   checkByValAddrSpace(F);

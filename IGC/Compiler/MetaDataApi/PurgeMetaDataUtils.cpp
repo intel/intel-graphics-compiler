@@ -42,7 +42,6 @@ bool IGC::purgeMetaDataUtils(Module &M, MetaDataUtilsWrapper *MDUW) {
 
 bool IGC::purgeMetaDataUtils(Module &M, IGCMD::MetaDataUtils *MDUtilsParam, ModuleMetaData *ModMDParam) {
   IGCMD::MetaDataUtils *MDUtils = MDUtilsParam;
-  IGC::ModuleMetaData *ModMD = ModMDParam;
   auto shouldRemoveFunction = [=](llvm::Module &M, void *ptr) {
     llvm::Function *F = nullptr;
 
@@ -59,7 +58,7 @@ bool IGC::purgeMetaDataUtils(Module &M, IGCMD::MetaDataUtils *MDUtilsParam, Modu
       return true;
     }
 
-    if (F->use_empty() && !isEntryFunc(ModMD, F)) {
+    if (F->use_empty() && !isEntryFunc(MDUtils, F)) {
       if (F->hasFnAttribute("referenced-indirectly") && GlobalValue::isExternalLinkage(F->getLinkage())) {
         // Do not delete externally linked functions, even if there are no uses in the current module.
         // However if it's only used internally, and we somehow resolve the indirect call, we can remove it.

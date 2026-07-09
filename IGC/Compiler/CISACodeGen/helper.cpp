@@ -2219,18 +2219,15 @@ void InsertOptsMetadata(CodeGenContext *pCtx, llvm::Function *F) {
     OptDisableSet->insert(IGCOpts::AllowSimd32Slicing);
 }
 
-Function *getUniqueEntryFunc(const IGC::ModuleMetaData *pModMD) {
+Function *getUniqueEntryFunc(const IGCMD::MetaDataUtils *pM, IGC::ModuleMetaData *pModMD) {
   Function *entryFunc = nullptr;
-  for (const auto &i : pModMD->FuncMD) {
-    // An entry is any KernelFunction or CallableShader (ray tracing shaders);
-    // see isEntryFunc. This matches the legacy MetaDataApi query, which treated
-    // the CallableShader RT shaders as KernelFunction entries here.
-    if (i.second.functionType != FunctionTypeMD::KernelFunction &&
-        i.second.functionType != FunctionTypeMD::CallableShader) {
+  for (auto i = pM->begin_FunctionsInfo(), e = pM->end_FunctionsInfo(); i != e; ++i) {
+    IGCMD::FunctionInfoMetaDataHandle Info = i->second;
+    if (Info->getType() != FunctionTypeMD::KernelFunction) {
       continue;
     }
 
-    Function *F = i.first;
+    Function *F = i->first;
     if (!entryFunc) {
       entryFunc = F;
     } else {
@@ -2312,7 +2309,7 @@ Function *KernelSIMDSizeResolver::getEntryFunction(Function *F) {
     return Cached->second;
   }
 
-  if (isEntryFunc(m_Ctx->getModuleMetaData(), F)) {
+  if (isEntryFunc(m_mdUtils, F)) {
     m_entryCache[F] = F;
     LLVM_DEBUG(dbgs() << " - FUNCTION IS ENTRY FUNCTION\n");
     return F;
@@ -2336,7 +2333,7 @@ Function *KernelSIMDSizeResolver::getEntryFunction(Function *F) {
 
       if (m_entryCache.count(ParentFunction) > 0) {
         EntryFunc = m_entryCache[ParentFunction];
-      } else if (isEntryFunc(m_Ctx->getModuleMetaData(), ParentFunction)) {
+      } else if (isEntryFunc(m_mdUtils, ParentFunction)) {
         EntryFunc = ParentFunction;
       }
 

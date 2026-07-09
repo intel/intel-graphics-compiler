@@ -544,7 +544,7 @@ void CodeGenContext::CheckEnableSubroutine(llvm::Module &M) {
   bool EnableSubroutine = false;
   bool EnableStackFuncs = false;
   for (auto &F : M) {
-    if (F.isDeclaration() || F.use_empty() || isEntryFunc(getModuleMetaData(), &F)) {
+    if (F.isDeclaration() || F.use_empty() || isEntryFunc(getMetaDataUtils(), &F)) {
       continue;
     }
 
@@ -941,7 +941,7 @@ void CodeGenContext::createFunctionIDs() {
     for (auto i = m_pMdUtils->begin_FunctionsInfo(), e = m_pMdUtils->end_FunctionsInfo(); i != e; ++i) {
       Function *pFunc = i->first;
       // Skip non-entry functions.
-      if (!isEntryFunc(getModuleMetaData(), pFunc)) {
+      if (!isEntryFunc(m_pMdUtils, pFunc)) {
         continue;
       }
 

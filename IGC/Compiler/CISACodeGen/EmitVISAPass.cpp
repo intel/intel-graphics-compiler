@@ -526,7 +526,8 @@ bool EmitPass::isSymbolTableRequired(llvm::Function *F) {
     // If the current function is the dummy kernel, we can attach the symbol
     // table to it
     canOutputSymbolTable = true;
-  } else if (m_pCtx->type != ShaderType::OPENCL_SHADER && F == IGC::getUniqueEntryFunc(m_moduleMD)) {
+  } else if (m_pCtx->type != ShaderType::OPENCL_SHADER &&
+             F == IGC::getUniqueEntryFunc(m_pCtx->getMetaDataUtils(), m_moduleMD)) {
     // For non-OCL shaders, we can still output a symbol table for the unique
     // entry function
     canOutputSymbolTable = true;
@@ -585,7 +586,7 @@ void EmitPass::CreateKernelShaderMap(CodeGenContext *ctx, MetaDataUtils *pMdUtil
       for (auto i = pMdUtils->begin_FunctionsInfo(), e = pMdUtils->end_FunctionsInfo(); i != e; ++i) {
         Function *pFunc = i->first;
         // Skip non-kernel functions.
-        if (!isEntryFunc(ctx->getModuleMetaData(), pFunc))
+        if (!isEntryFunc(pMdUtils, pFunc))
           continue;
 
         if (ctx->m_retryManager->kernelSet.empty() || ctx->m_retryManager->kernelSet.count(pFunc->getName().str())) {
@@ -599,7 +600,7 @@ void EmitPass::CreateKernelShaderMap(CodeGenContext *ctx, MetaDataUtils *pMdUtil
       for (auto i = pMdUtils->begin_FunctionsInfo(), e = pMdUtils->end_FunctionsInfo(); i != e; ++i) {
         Function *pFunc = i->first;
         // Skip non-entry functions.
-        if (!isEntryFunc(ctx->getModuleMetaData(), pFunc)) {
+        if (!isEntryFunc(pMdUtils, pFunc)) {
           continue;
         }
         m_shaders[pFunc] = new CShaderProgram(ctx, pFunc);
@@ -613,8 +614,8 @@ bool EmitPass::shouldForceEarlyRecompile(MetaDataUtils *pMdUtils, llvm::Function
   // we only skip first compilation stage, if compilation pipeline
   // was configured to start from retry already, otherwise we do nothing
   bool IsFirstStage = m_pCtx->m_retryManager->GetRetryId() == 0;
-  if (!isEntryFunc(m_pCtx->getModuleMetaData(), F) || IGC_GET_FLAG_VALUE(DisableRecompilation) ||
-      !m_pCtx->m_retryManager->IsEnabled() || !IsFirstStage) {
+  if (!isEntryFunc(pMdUtils, F) || IGC_GET_FLAG_VALUE(DisableRecompilation) || !m_pCtx->m_retryManager->IsEnabled() ||
+      !IsFirstStage) {
     return false;
   }
   if (m_currShader->IsRecompilationRequestForced()) {
@@ -12001,9 +12002,10 @@ void EmitPass::emitCall(llvm::CallInst *inst) {
 
 void EmitPass::emitReturn(llvm::ReturnInst *inst) {
   llvm::Function *F = inst->getParent()->getParent();
+  MetaDataUtils *pMdUtils = m_currShader->GetMetaDataUtils();
 
   // return from a function (not a kernel)
-  if (!isEntryFunc(m_pCtx->getModuleMetaData(), F)) {
+  if (!isEntryFunc(pMdUtils, F)) {
     if (m_FGA && m_FGA->useStackCall(F)) {
       emitStackFuncExit(inst);
       return;
@@ -22368,7 +22370,7 @@ void EmitPass::emitImplicitArgIntrinsic(llvm::GenIntrinsicInst *I) {
     groupHead = m_FGA->getSubGroupMap(parentFunc);
   }
 
-  if (isEntryFunc(m_pCtx->getModuleMetaData(), groupHead)) {
+  if (isEntryFunc(pMdUtils, groupHead)) {
     // Map to the root kernel's implicit arg symbol
     ImplicitArgs IAS(*groupHead, pMdUtils, m_pCtx->getModuleMetaData());
     ImplicitArg::ArgType IAtype = ImplicitArgs::getArgType(I->getIntrinsicID());

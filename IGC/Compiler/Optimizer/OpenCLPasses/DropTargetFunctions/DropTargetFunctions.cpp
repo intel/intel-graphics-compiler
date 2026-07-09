@@ -85,7 +85,7 @@ static llvm::Function *getPlaceholderFn(llvm::Function *F) {
   return NewF;
 }
 
-bool DropTargetFunctions::run(llvm::Module &M, IGCMD::MetaDataUtils *MdUtils, IGC::ModuleMetaData *ModMD) {
+bool DropTargetFunctions::run(llvm::Module &M, IGCMD::MetaDataUtils *MdUtils) {
 
   DROP_FN_DEBUG("DropTargetFunctions: Starting ...");
 
@@ -93,7 +93,7 @@ bool DropTargetFunctions::run(llvm::Module &M, IGCMD::MetaDataUtils *MdUtils, IG
   Function *Kernel = nullptr;
   for (auto i = MdUtils->begin_FunctionsInfo(), e = MdUtils->end_FunctionsInfo(); i != e; ++i) {
     auto *KernelFunc = i->first;
-    if (isEntryFunc(ModMD, KernelFunc)) {
+    if (isEntryFunc(MdUtils, KernelFunc)) {
       if (Kernel != nullptr) {
         DROP_FN_DEBUG("DropTargetFunctions: File with multiple kernels... SKIPPING ...");
         return false;
@@ -151,8 +151,7 @@ bool DropTargetFunctions::run(llvm::Module &M, IGCMD::MetaDataUtils *MdUtils, IG
 
 #if LLVM_VERSION_MAJOR >= 16
 PreservedAnalyses DropTargetFunctionsNPM::run(Module &M, ModuleAnalysisManager &AM) {
-  bool changed = DropTargetFunctions().run(M, AM.getResult<MetaDataUtilsAnalysis>(M).MdUtils,
-                                           AM.getResult<MetaDataUtilsAnalysis>(M).ModMD);
+  bool changed = DropTargetFunctions().run(M, AM.getResult<MetaDataUtilsAnalysis>(M).MdUtils);
   return changed ? PreservedAnalyses::none() : PreservedAnalyses::all();
 }
 #endif // LLVM_VERSION_MAJOR >= 16

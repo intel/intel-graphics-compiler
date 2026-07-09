@@ -308,24 +308,18 @@ inline bool isOptDisabledForFunction(ModuleMetaData *modMD, llvm::StringRef optS
 void InsertOptsMetadata(CodeGenContext *pCtx, llvm::Function *F = nullptr);
 
 /// Return true if F is an entry function of a kernel or a shader.
-///    An entry function must have an entry in ModuleMetaData::FuncMD with
-///       functionType KernelFunction or CallableShader. Ray tracing shaders
-///       are marked CallableShader yet are still compiled as entries (their
-///       own function-group heads); this mirrors the legacy MetaDataApi
-///       behavior, where such shaders carried a KernelFunction type for this
-///       query even while FuncMD held CallableShader.
+///    A entry function must have an entry in FunctionInfoMetaData
+///       with type KernelFunction;
 ///    A non-entry function may have an entry, if so, that entry in
-///       FuncMD must have functionType UserFunction.
-inline bool isEntryFunc(const IGC::ModuleMetaData *modMD, const llvm::Function *CF) {
+///       FunctionInfoMetaData must have type UserFunction.
+inline bool isEntryFunc(const IGCMD::MetaDataUtils *pM, const llvm::Function *CF) {
   llvm::Function *F = const_cast<llvm::Function *>(CF);
-  if (F == nullptr || F->empty())
+  if (F == nullptr || F->empty() || pM->findFunctionsInfoItem(F) == pM->end_FunctionsInfo())
     return false;
 
-  auto Info = modMD->FuncMD.find(F);
-  if (Info == modMD->FuncMD.end())
-    return false;
-  return Info->second.functionType == FunctionTypeMD::KernelFunction ||
-         Info->second.functionType == FunctionTypeMD::CallableShader;
+  IGCMD::FunctionInfoMetaDataHandle Info = pM->getFunctionsInfoItem(F);
+  IGC_ASSERT_MESSAGE(Info->isTypeHasValue(), "FunctionInfoMetaData missing type!");
+  return Info->getType() == FunctionTypeMD::KernelFunction;
 }
 
 inline bool isPixelShaderPhaseFunction(const llvm::Function *CF) {
@@ -381,7 +375,7 @@ inline bool isNonEntryMultirateShader(const llvm::Function *CF) {
 // Return a unique entry function.
 // If more than one entry exists, return the first and and set it as unique.
 // All subsequent calls to this function will get the entry set by the first call.
-llvm::Function *getUniqueEntryFunc(const IGC::ModuleMetaData *pModMD);
+llvm::Function *getUniqueEntryFunc(const IGCMD::MetaDataUtils *pM, IGC::ModuleMetaData *pModMD);
 
 // Returns a SIMD size for given function from metadata.
 // Returns 0 if function is not in metadata or function has not defined SIMD size.

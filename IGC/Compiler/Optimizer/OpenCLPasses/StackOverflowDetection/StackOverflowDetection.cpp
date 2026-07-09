@@ -146,7 +146,7 @@ bool StackOverflowDetectionPass::run(Module &M, IGCMD::MetaDataUtils *pMdUtils, 
 
   IGC_ASSERT(mode == Mode::Initialize);
   for (Function &F : M) {
-    const bool isEntryFunction = isEntryFunc(pModMD, &F);
+    const bool isEntryFunction = isEntryFunc(pMdUtils, &F);
     if (isEntryFunction || isLibraryCompilation) {
       if (F.isDeclaration())
         continue;

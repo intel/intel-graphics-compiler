@@ -39,7 +39,7 @@ bool PrepareInlineSamplerForBindless::runOnFunction(Function &F, IGC::IGCMD::Met
   mMDUtils = pMdUtils;
   mModMD = pModMD;
 
-  if (!isEntryFunc(mModMD, &F)) {
+  if (!isEntryFunc(mMDUtils, &F)) {
     // Only entry functions can be assigned implicit args.
     return false;
   }
