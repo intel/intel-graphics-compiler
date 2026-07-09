@@ -21,7 +21,7 @@
 ; CHECK-SAME: !dbg [[SCOPE:![0-9]*]]
 ;
 ; CHECK-DBG-INTRINSIC: call void @llvm.dbg.value(metadata ptr addrspace(1) [[DST_V:%[A-z0-9]*]], metadata [[DST_MD:![0-9]*]], metadata !DIExpression()), !dbg [[DST_LOC:![0-9]*]]
-; CHECK-DBG-RECORDS:   #dbg_value(ptr addrspace(4) poison, [[DST_MD:![0-9]*]], !DIExpression(), [[DST_LOC:![0-9]*]])
+; CHECK-DBG-RECORDS:   #dbg_value(ptr addrspace(1) [[DST_V:%[A-z0-9]*]], [[DST_MD:![0-9]*]], !DIExpression(), [[DST_LOC:![0-9]*]])
 ;
 ; CHECK: call void {{.*}}_to_private{{.*}} !dbg [[PRIV_LOC:![0-9]*]]
 ; CHECK: call void {{.*}} !dbg [[GLOB_LOC:![0-9]*]]

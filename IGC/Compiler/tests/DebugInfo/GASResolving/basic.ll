@@ -22,7 +22,7 @@
 ;
 ; CHECK: [[ACAST_V:%[0-9]*]] = addrspacecast {{.*}} !dbg [[ACAST_LOC:![0-9]*]]
 ; CHECK-DBG-INTRINSIC: call void @llvm.dbg.value(metadata ptr addrspace(1) %src, metadata [[ACAST_MD:![0-9]*]], metadata !DIExpression()), !dbg [[ACAST_LOC]]
-; CHECK-DBG-RECORDS:   #dbg_value(ptr addrspace(4) [[ACAST_V]], [[ACAST_MD:![0-9]*]], !DIExpression(), [[ACAST_LOC]])
+; CHECK-DBG-RECORDS:   #dbg_value(ptr addrspace(1) %src, [[ACAST_MD:![0-9]*]], !DIExpression(), [[ACAST_LOC]])
 ;
 ; CHECK: store float {{.*}} !dbg [[STORE_LOC:![0-9]*]]
 ;
@@ -31,7 +31,7 @@
 ; CHECK-DBG-RECORDS:   #dbg_value(float [[LOAD_V]], [[LOAD_MD:![0-9]*]], !DIExpression(), [[LOAD_LOC]])
 ;
 ; CHECK-DBG-INTRINSIC: call void @llvm.dbg.value(metadata ptr addrspace(1) %src, metadata [[BCAST_MD:![0-9]*]], metadata !DIExpression()), !dbg [[BCAST_LOC:![0-9]*]]
-; CHECK-DBG-RECORDS:   #dbg_value(ptr addrspace(4) poison, [[BCAST_MD:![0-9]*]], !DIExpression(), [[BCAST_LOC:![0-9]*]])
+; CHECK-DBG-RECORDS:   #dbg_value(ptr addrspace(1) %src, [[BCAST_MD:![0-9]*]], !DIExpression(), [[BCAST_LOC:![0-9]*]])
 ;
 ; CHECK: [[LOAD_V:%[A-z0-9]*]] = load <2 x i16>, {{.*}} !dbg [[LOADV_LOC:![0-9]*]]
 ; CHECK-DBG-INTRINSIC: call void @llvm.dbg.value(metadata <2 x i16> [[LOAD_V]], metadata [[LOADV_MD:![0-9]*]], metadata !DIExpression()), !dbg [[LOADV_LOC]]

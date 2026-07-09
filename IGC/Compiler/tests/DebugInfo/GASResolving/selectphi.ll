@@ -21,10 +21,10 @@
 ; CHECK-SAME: !dbg [[SCOPE:![0-9]*]]
 ;
 ; CHECK-DBG-INTRINSIC: call void @llvm.dbg.value(metadata ptr addrspace(1) [[SRC_V:%[A-z0-9]*]], metadata [[SRC_MD:![0-9]*]], metadata !DIExpression()), !dbg [[SRC_LOC:![0-9]*]]
-; CHECK-DBG-RECORDS:   #dbg_value(ptr addrspace(4) poison, [[SRC_MD:![0-9]*]], !DIExpression(), [[SRC_LOC:![0-9]*]])
+; CHECK-DBG-RECORDS:   #dbg_value(ptr addrspace(1) [[SRC_V:%[A-z0-9]*]], [[SRC_MD:![0-9]*]], !DIExpression(), [[SRC_LOC:![0-9]*]])
 ;
 ; CHECK-DBG-INTRINSIC: call void @llvm.dbg.value(metadata ptr addrspace(1) [[DST_V:%[A-z0-9]*]], metadata [[DST_MD:![0-9]*]], metadata !DIExpression()), !dbg [[DST_LOC:![0-9]*]]
-; CHECK-DBG-RECORDS:   #dbg_value(ptr addrspace(4) poison, [[DST_MD:![0-9]*]], !DIExpression(), [[DST_LOC:![0-9]*]])
+; CHECK-DBG-RECORDS:   #dbg_value(ptr addrspace(1) [[DST_V:%[A-z0-9]*]], [[DST_MD:![0-9]*]], !DIExpression(), [[DST_LOC:![0-9]*]])
 ;
 ; CHECK: [[CMP_V:%[A-z0-9]*]] = icmp {{.*}} !dbg [[CMP_LOC:![0-9]*]]
 ; CHECK-DBG-INTRINSIC: call void @llvm.dbg.value(metadata i1 [[CMP_V]], metadata [[CMP_MD:![0-9]*]], metadata !DIExpression()), !dbg [[CMP_LOC]]
@@ -37,7 +37,7 @@
 ; CHECK: lbl:
 ; CHECK: [[PHI_V:%[A-z0-9]*]] = phi {{.*}} !dbg [[PHI_LOC:![0-9]*]]
 ; CHECK-DBG-INTRINSIC: call void @llvm.dbg.value(metadata ptr addrspace(1) [[PHI_V]], metadata [[PHI_MD:![0-9]*]], metadata !DIExpression()), !dbg [[PHI_LOC]]
-; CHECK-DBG-RECORDS:   #dbg_value(ptr addrspace(4) poison, [[PHI_MD:![0-9]*]], !DIExpression(), [[PHI_LOC]])
+; CHECK-DBG-RECORDS:   #dbg_value(ptr addrspace(1) [[PHI_V]], [[PHI_MD:![0-9]*]], !DIExpression(), [[PHI_LOC]])
 
 define spir_kernel void @test_kernel(i32 addrspace(1)* %src, i32 addrspace(1)* %dst) !dbg !10 {
 entry:

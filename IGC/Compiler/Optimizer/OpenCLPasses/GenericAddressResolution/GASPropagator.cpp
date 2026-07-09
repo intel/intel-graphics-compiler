@@ -493,23 +493,15 @@ bool GASPropagator::propagateToAllUsers(AddrSpaceCastInst *I) {
   // dbg.value/dbg.declare users reference I through metadata, so they are not in
   // I->uses(); on LLVM >=22 they are debug records, not instructions, and are
   // invisible to I->users(). IGC::findDbgUsers surfaces them on both versions.
+  // Redirect them to the cast source so the variable keeps a live location once
+  // a dead cast is erased. addrspacecast is a debug no-op (same numeric address),
+  // so the DIExpression stays valid; this mirrors the non-debug users repointed
+  // at the source above.
   llvm::SmallVector<IGC::DbgVarInstEntry *, 4> DbgUsers;
   IGC::findDbgUsers(DbgUsers, I);
   for (auto *E : DbgUsers) {
-#if LLVM_VERSION_MAJOR < 22
-    // Legacy intrinsic path: redirect the variable to the cast source so it keeps
-    // a live location once the cast is removed.
     E->replaceVariableLocationOp(I, I->getOperand(0));
     Changed = true;
-#else
-    // Debug-record path, once its non-debug users have been propagated, a dead cast is erased, so the
-    // variable has no live location and is set to poison. A cast that still has
-    // real users survives, so its record is left pointing at it.
-    if (I->use_empty()) {
-      E->replaceVariableLocationOp(I, llvm::PoisonValue::get(I->getType()));
-      Changed = true;
-    }
-#endif
   }
 
   return Changed;
