@@ -15,6 +15,9 @@ SPDX-License-Identifier: MIT
 #include <algorithm>
 #include "llvmWrapper/IR/Instructions.h"
 #include "llvmWrapper/IR/Intrinsics.h"
+#include "common/LLVMWarningsPush.hpp"
+#include <llvm/Support/Regex.h>
+#include "common/LLVMWarningsPop.hpp"
 //
 // IGCVectorizer pass currently looks for insert elements instructions
 // that are going inside LSC2DBlockWrite & sub_group_dpas
@@ -1287,8 +1290,8 @@ void IGCVectorizer::buildTree(VecArr &V, VecOfSlices &Chain) {
     unsigned ParentIndex = BFSQ.front();
     BFSQ.pop();
 
-    Slice *CurSlice = &Chain[ParentIndex];
-    auto First = CurSlice->Vector.front();
+    auto CurSliceVector = Chain[ParentIndex].Vector;
+    auto First = CurSliceVector.front();
 
     PRINT_LOG_NL("");
     PRINT_LOG("Start: ");
@@ -1313,7 +1316,7 @@ void IGCVectorizer::buildTree(VecArr &V, VecOfSlices &Chain) {
 
       VecArr LocalVector;
 
-      for (auto &El : CurSlice->Vector) {
+      for (auto &El : CurSliceVector) {
         auto Operand = llvm::dyn_cast<Instruction>(El->getOperand(OpNum));
 
         if (!Operand) {
@@ -1729,7 +1732,21 @@ unsigned IGCVectorizerCommon::checkSIMD(llvm::Function &F, IGC::ModuleMetaData *
   return IGC::getSIMDSize(modMD, &F);
 }
 
+static bool matchesNameFilter(const llvm::Function &F) {
+  const char *Filter = IGC_GET_REGKEYSTRING(VectorizerNameFilter);
+  if (!Filter || *Filter == '\0')
+    return true;
+  llvm::Regex NameRegex(Filter);
+  std::string RegexErr;
+  if (!NameRegex.isValid(RegexErr))
+    return false;
+  return NameRegex.match(F.getName());
+}
+
 bool IGCVectorizer::runOnFunction(llvm::Function &F) {
+
+  if (!matchesNameFilter(F))
+    return false;
 
   M = F.getParent();
   CGCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
