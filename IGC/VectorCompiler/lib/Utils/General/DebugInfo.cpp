@@ -11,6 +11,7 @@ SPDX-License-Identifier: MIT
 #include "vc/Utils/GenX/TypeSize.h"
 
 #include <llvm/BinaryFormat/Dwarf.h>
+#include <llvm/IR/DIBuilder.h>
 #include <llvm/IR/DebugInfoMetadata.h>
 #include <llvm/IR/GlobalVariable.h>
 #include <llvm/IR/IRBuilder.h>
@@ -143,7 +144,11 @@ DIType *vc::DIBuilder::translateTypeToDIType(Type &Ty) const {
   auto *CompositeTypeDI = DICompositeType::get(
       Ctx, dwarf::DW_TAG_array_type, "" /*Name*/, nullptr /*File*/, 0 /*Line*/,
       nullptr /*Scope*/, ScalarDI, SizeInBits, 0 /*AlignInBits*/,
-      0 /*OfffsetInBits*/, DINode::FlagVector, Subscripts, 0, nullptr);
+      0 /*OfffsetInBits*/, DINode::FlagVector, Subscripts, 0,
+#if LLVM_VERSION_MAJOR >= 22
+      std::nullopt /*EnumKind*/,
+#endif
+      nullptr);
   return CompositeTypeDI;
 }
 
@@ -171,6 +176,14 @@ llvm::DbgDeclareInst *
 vc::DIBuilder::createDbgDeclare(Value &Address, DILocalVariable &LocalVar,
                                 DIExpression &Expr, DILocation &Loc,
                                 Instruction &InsertPt) const {
+#if LLVM_VERSION_MAJOR >= 22
+  // In LLVM 22 debug info is stored as records (#dbg_declare). Manually
+  // creating an @llvm.dbg.declare intrinsic call corrupts a record-mode module
+  // (dangling references at print time), so emit it via the DIBuilder API.
+  llvm::DIBuilder DIB(M);
+  DIB.insertDeclare(&Address, &LocalVar, &Expr, &Loc, &InsertPt);
+  return nullptr;
+#else
   auto &Ctx = M.getContext();
 
   Value *DeclareArgs[] = {
@@ -183,6 +196,7 @@ vc::DIBuilder::createDbgDeclare(Value &Address, DILocalVariable &LocalVar,
   Builder.SetCurrentDebugLocation(&Loc);
   auto *DeclareInst = Builder.CreateCall(DbgDeclareFn, DeclareArgs);
   return cast<DbgDeclareInst>(DeclareInst);
+#endif
 }
 
 llvm::DILocalVariable *vc::DIBuilder::createLocalVariable(

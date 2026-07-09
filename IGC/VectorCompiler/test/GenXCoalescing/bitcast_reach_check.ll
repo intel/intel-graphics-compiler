@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2023-2024 Intel Corporation
+; Copyright (C) 2023-2026 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -61,7 +61,7 @@ if.else:
   %call.i61.esimd = tail call <1 x double> @llvm.genx.rdregionf.v1f64.v16f64.i16(<16 x double> %sycl_load.double, i32 0, i32 1, i32 1, i16 120, i32 0)
 
   ; COM: No twoaddrcopy.
-  ; CHECK: call.i65.esimd = tail call <16 x double> @llvm.genx.wrregionf.v16f64.v1f64.i16.v1i1(<16 x double> %bitcast.0, <1 x double> %call.i61.esimd, i32 0, i32 1, i32 1, i16 0, i32 0, <1 x i1> <i1 true>)
+  ; CHECK: call.i65.esimd = tail call <16 x double> @llvm.genx.wrregionf.v16f64.v1f64.i16.v1i1(<16 x double> %bitcast.0, <1 x double> %call.i61.esimd, i32 0, i32 1, i32 1, i16 0, i32 0, <1 x i1> {{(splat \(i1 true\)|<i1 true(, i1 true)*>)}})
   %call.i65.esimd = tail call <16 x double> @llvm.genx.wrregionf.v16f64.v1f64.i16.v1i1(<16 x double> %bitcast.0, <1 x double> %call.i61.esimd, i32 0, i32 1, i32 1, i16 0, i32 0, <1 x i1> <i1 true>)
   %bitcast.1.0 = bitcast <16 x double> %call.i65.esimd to <16 x i64>
   %call.i66.esimd = tail call <16 x double> @llvm.genx.wrregionf.v16f64.v1f64.i16.v1i1(<16 x double> %sycl_load.double, <1 x double> %call.i55.esimd, i32 0, i32 1, i32 1, i16 120, i32 0, <1 x i1> <i1 true>)

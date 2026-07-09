@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2021-2025 Intel Corporation
+; Copyright (C) 2021-2026 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -36,7 +36,7 @@ define <8 x i16> @test_bitreverse_v8i16(<8 x i16> %input)
 {
 ; CHECK: [[ZEXT:%[^ ]+]] = zext <8 x i16> %input to <8 x i32>
 ; CHECK-NEXT: [[BFREF:%[^ ]+]] = call <8 x i32> @llvm.genx.bfrev.v8i32(<8 x i32> [[ZEXT]])
-; CHECK-NEXT: [[LSH:%[^ ]+]] = lshr <8 x i32> [[BFREF]], <i32 16, i32 16, i32 16, i32 16, i32 16, i32 16, i32 16, i32 16>
+; CHECK-NEXT: [[LSH:%[^ ]+]] = lshr <8 x i32> [[BFREF]], {{(splat \(i32 16\)|<i32 16(, i32 16)*>)}}
 ; CHECK-NEXT: [[BCAST:%[^ ]+]] = bitcast <8 x i32> [[LSH]] to <16 x i16>
 ; CHECK-NEXT: [[RES:%[^ ]+]] = call <8 x i16> @llvm.genx.rdregioni.v8i16.v16i16.i16(<16 x i16> [[BCAST]], i32 16, i32 8, i32 2, i16 0, i32 undef)
   %ret = call <8 x i16> @llvm.bitreverse.v8i16(<8 x i16> %input);
@@ -130,8 +130,8 @@ define internal spir_func <8 x i64> @cttz_vec64(<8 x i64> %arg) {
 ; CHECK: [[REV_HI:%.*]] = call <8 x i32> @llvm.genx.bfrev.v8i32(<8 x i32> [[HI_SPLIT]])
 ; CHECK: [[CTLZ_LO:%.*]] = call <8 x i32> @llvm.ctlz.v8i32(<8 x i32> [[REV_LO]], i1 false)
 ; CHECK: [[CTLZ_HI:%.*]] = call <8 x i32> @llvm.ctlz.v8i32(<8 x i32> [[REV_HI]], i1 false)
-; CHECK: [[CMP:%.*]] = icmp ult <8 x i32> [[CTLZ_LO]], <i32 32, i32 32, i32 32, i32 32, i32 32, i32 32, i32 32, i32 32>
-; CHECK: [[ADD:%.*]] = add <8 x i32> [[CTLZ_HI]], <i32 32, i32 32, i32 32, i32 32, i32 32, i32 32, i32 32, i32 32>
+; CHECK: [[CMP:%.*]] = icmp ult <8 x i32> [[CTLZ_LO]], {{(splat \(i32 32\)|<i32 32(, i32 32)*>)}}
+; CHECK: [[ADD:%.*]] = add <8 x i32> [[CTLZ_HI]], {{(splat \(i32 32\)|<i32 32(, i32 32)*>)}}
 ; CHECK: [[SELECT:%.*]] = select <8 x i1> [[CMP]], <8 x i32> [[CTLZ_LO]], <8 x i32> [[ADD]]
 ; CHECK: [[ZEXT:%.*]] = zext <8 x i32> [[SELECT]] to <8 x i64>
 ; CHECK: ret <8 x i64> [[ZEXT]]
@@ -150,8 +150,8 @@ define internal spir_func i64 @cttz_64(i64 %arg) {
 ; CHECK: [[REV_HI:%.*]] = call <1 x i32> @llvm.genx.bfrev.v1i32(<1 x i32> [[HI_SPLIT]])
 ; CHECK: [[CTLZ_LO:%.*]] = call <1 x i32> @llvm.ctlz.v1i32(<1 x i32> [[REV_LO]], i1 false)
 ; CHECK: [[CTLZ_HI:%.*]] = call <1 x i32> @llvm.ctlz.v1i32(<1 x i32> [[REV_HI]], i1 false)
-; CHECK: [[CMP:%.*]] = icmp ult <1 x i32> [[CTLZ_LO]], <i32 32>
-; CHECK: [[ADD:%.*]] = add <1 x i32> [[CTLZ_HI]], <i32 32>
+; CHECK: [[CMP:%.*]] = icmp ult <1 x i32> [[CTLZ_LO]], {{(splat \(i32 32\)|<i32 32(, i32 32)*>)}}
+; CHECK: [[ADD:%.*]] = add <1 x i32> [[CTLZ_HI]], {{(splat \(i32 32\)|<i32 32(, i32 32)*>)}}
 ; CHECK: [[SELECT:%.*]] = select <1 x i1> [[CMP]], <1 x i32> [[CTLZ_LO]], <1 x i32> [[ADD]]
 ; CHECK: [[RDREG:%.*]] = call i32 @llvm.genx.rdregioni.i32.v1i32.i16(<1 x i32> [[SELECT]], i32 0, i32 1, i32 1, i16 0, i32 0)
 ; CHECK: [[RET:%.*]] = zext i32 [[RDREG]] to i64
@@ -169,13 +169,13 @@ define internal spir_func void @cttz_ctlz_vi8(<3 x i8> %arg) {
 ; CHECK: [[REV:%.*]] = call <3 x i32> @llvm.genx.bfrev.v3i32(<3 x i32> [[ZEXT]])
 ; ...
 ; CHECK: [[CTTZ:%.*]] = call <3 x i32> @llvm.ctlz.v3i32({{.*}}, i1 false)
-; CHECK: [[SUB:%.*]] = sub <3 x i32> [[CTTZ]], <i32 24, i32 24, i32 24>
+; CHECK: [[SUB:%.*]] = sub <3 x i32> [[CTTZ]], {{(splat \(i32 24\)|<i32 24(, i32 24)*>)}}
 ; CHECK: bitcast <3 x i32> [[SUB]] to <12 x i8>
 ; ...
   %1 = call <3 x i8>  @llvm.cttz.v3i8(<3 x i8> %arg, i1 false)
 ; CHECK: [[ZEXT:%.*]] = zext <3 x i8> %arg to <3 x i32>
 ; CHECK: [[CTLZ:%.*]] = call <3 x i32> @llvm.ctlz.v3i32(<3 x i32> [[ZEXT]], i1 false)
-; CHECK: [[SUB:%.*]] = sub <3 x i32> [[CTLZ]], <i32 24, i32 24, i32 24>
+; CHECK: [[SUB:%.*]] = sub <3 x i32> [[CTLZ]], {{(splat \(i32 24\)|<i32 24(, i32 24)*>)}}
 ; CHECK: [[CAST:%.*]] = bitcast <3 x i32> [[SUB]] to <12 x i8>
 ; CHECK: call <3 x i8> @llvm.genx.rdregioni.v3i8.v12i8.i16(<12 x i8> [[CAST]], i32 12, i32 3, i32 4, i16 0, i32 undef)
   %2 = call <3 x i8>  @llvm.ctlz.v3i8(<3 x i8> %arg, i1 false)

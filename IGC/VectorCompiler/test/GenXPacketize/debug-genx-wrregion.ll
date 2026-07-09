@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2022 Intel Corporation
+; Copyright (C) 2022-2026 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -30,7 +30,7 @@ define void @test_packetize() !dbg !6 {
 ; CHECK: [[VAL3_V:%[A-z0-9]*]] = {{.*}}, !dbg [[VAL3_LOC:![0-9]*]]
 ;
 ; Value Dbg info cannot be preserved since the wrregion size has changed.
-; CHECK: void @llvm.dbg.value(metadata {{.*}}, metadata [[VAL3_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL3_LOC]]
+; CHECK: {{(#dbg_value\(|call void @llvm\.dbg\.value\(metadata )}}{{.*}}{{(, |, metadata )}}[[VAL3_MD:![0-9]*]]{{(, |, metadata )}}!DIExpression(){{(, |\), !dbg )}}[[VAL3_LOC]]{{\)?}}
 
 declare void @test_use(<1 x i32>)
 

@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2022 Intel Corporation
+; Copyright (C) 2022-2026 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -32,11 +32,11 @@ define void @test_packetize(float %a) !dbg !6 {
 
 ; CHECK: define internal void @test_vectorize{{.*}} !dbg [[SCOPE:![0-9]*]]
 ; CHECK: [[VAL1_V:%[A-z0-9]*]] = {{.*}}, !dbg [[VAL1_LOC:![0-9]*]]
-; CHECK: call void @llvm.dbg.value
+; CHECK: {{(#dbg_value|call void @llvm\.dbg\.value)}}
 ; CHECK: [[VAL2_V:%[A-z0-9]*]] = {{.*}}, !dbg [[VAL2_LOC:![0-9]*]]
-; CHECK: call void @llvm.dbg.value
+; CHECK: {{(#dbg_value|call void @llvm\.dbg\.value)}}
 ; CHECK: [[VAL3_V:%[A-z0-9]*]] = {{.*}}, !dbg [[VAL3_LOC:![0-9]*]]
-; CHECK: call void @llvm.dbg.value
+; CHECK: {{(#dbg_value|call void @llvm\.dbg\.value)}}
 ; CHECK: [[VAL4_V:%[A-z0-9]*]] = {{.*}}, !dbg [[VAL4_LOC:![0-9]*]]
 
 define internal void @test_vectorize(<8 x float> %a) #0 !dbg !14 {

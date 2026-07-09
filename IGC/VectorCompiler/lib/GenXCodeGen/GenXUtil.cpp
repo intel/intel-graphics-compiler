@@ -30,6 +30,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/ADT/MapVector.h"
 #include "llvm/ADT/PostOrderIterator.h"
 #include "llvm/ADT/StringExtras.h"
+#include "llvm/Analysis/ConstantFolding.h"
 #include "llvm/Analysis/ValueTracking.h"
 #include "llvm/GenXIntrinsics/GenXIntrinsics.h"
 #include "llvm/IR/Constants.h"
@@ -1157,9 +1158,13 @@ Region IVSplitter::createSplitRegion(Type *SrcTy, IVSplitter::RegionType RT) {
 }
 
 // function takes 64-bit constant value (vector or scalar) and splits it
-// into an equivalent vector of 32-bit constant (as if it was Bitcast-ed)
-static void convertI64ToI32(Constant &K, SmallVectorImpl<Constant *> &K32) {
-  auto I64To32 = [](Constant &K) {
+// into an equivalent vector of 32-bit constant (as if it was Bitcast-ed).
+// Returns false if the constant cannot be split into constants (e.g. an
+// unfoldable ConstantExpr), in which case K32 content must be ignored.
+static bool convertI64ToI32(Constant &K, SmallVectorImpl<Constant *> &K32,
+                            const DataLayout &DL) {
+  bool Ok = true;
+  auto I64To32 = [&DL, &Ok](Constant &K) -> std::pair<Constant *, Constant *> {
     // we expect only scalar types here
     IGC_ASSERT(!isa<VectorType>(K.getType()));
     IGC_ASSERT(K.getType()->isIntegerTy(64));
@@ -1171,7 +1176,15 @@ static void convertI64ToI32(Constant &K, SmallVectorImpl<Constant *> &K32) {
     if (isa<ConstantExpr>(K)) {
       auto *Lo = ConstantExpr::getTrunc(&K, Ty32);
       auto *Amount = ConstantInt::get(K.getType(), 32);
-      auto *Shift = ConstantExpr::getLShr(&K, Amount);
+      auto *Shift =
+          llvm::ConstantFoldBinaryOpOperands(Instruction::LShr, &K, Amount, DL);
+      // In LLVM 22 a logical shift of an unfoldable ConstantExpr (e.g. a
+      // ptrtoint of a global) can no longer be represented as a constant
+      // expression. Bail out so the caller emits real instructions instead.
+      if (!Shift) {
+        Ok = false;
+        return std::make_pair(Lo, Lo);
+      }
       auto *Hi = ConstantExpr::getTrunc(Shift, Ty32);
       return std::make_pair(Lo, Hi);
     }
@@ -1190,7 +1203,7 @@ static void convertI64ToI32(Constant &K, SmallVectorImpl<Constant *> &K32) {
     auto V32 = I64To32(K);
     K32.push_back(V32.first);
     K32.push_back(V32.second);
-    return;
+    return Ok;
   }
   unsigned ElNum =
       cast<IGCLLVM::FixedVectorType>(K.getType())->getNumElements();
@@ -1200,6 +1213,7 @@ static void convertI64ToI32(Constant &K, SmallVectorImpl<Constant *> &K32) {
     K32.push_back(V32.first);
     K32.push_back(V32.second);
   }
+  return Ok;
 }
 
 std::pair<Value *, Value *>
@@ -1212,10 +1226,13 @@ IVSplitter::splitValue(Value &Val, RegionType RT1, const Twine &Name1,
 
   if (FoldConstants && isa<Constant>(Val)) {
     SmallVector<Constant *, 32> KV32;
-    convertI64ToI32(cast<Constant>(Val), KV32);
-    Value *V1 = splitConstantVector(KV32, RT1);
-    Value *V2 = splitConstantVector(KV32, RT2);
-    return {V1, V2};
+    if (convertI64ToI32(cast<Constant>(Val), KV32,
+                        Inst.getModule()->getDataLayout())) {
+      Value *V1 = splitConstantVector(KV32, RT1);
+      Value *V2 = splitConstantVector(KV32, RT2);
+      return {V1, V2};
+    }
+    // Constant could not be split into constants; emit instructions below.
   }
   auto *ShreddedVal =
       new BitCastInst(&Val, VI32Ty, BaseName + ".iv32cast", &Inst);

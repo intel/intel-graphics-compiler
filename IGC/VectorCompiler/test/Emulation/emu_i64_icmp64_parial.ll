@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2020-2025 Intel Corporation
+; Copyright (C) 2020-2026 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -24,10 +24,10 @@ declare <16 x i1> @llvm.genx.wrpredregion.v16i1.v8i1(<16 x i1>, <8 x i1>, i32)
 ; CHECK-NEXT: [[Hi_r:%[^.]+.HiSplit[0-9]*]] = call <[[ET]]> [[rgn]](<[[CT]]> [[IV2]], [[high_reg]]
 ; CHECK-NEXT: [[Slo:%[^ ]+]] = icmp eq <[[ET]]> [[Lo_l]], [[Lo_r]]
 ; CHECK-NEXT: [[Shi:%[^ ]+]] = icmp eq <[[ET]]> [[Hi_l]], [[Hi_r]]
-; CHECK-NEXT: [[Sel1:%[^ ]+]] = select <8 x i1> [[Slo]], <8 x i32> <[[ONES:i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1]]>, <8 x i32> zeroinitializer
-; CHECK-NEXT: [[Sel2:%[^ ]+]] = select <8 x i1> [[Shi]], <8 x i32> <[[ONES]]>, <8 x i32> zeroinitializer
+; CHECK-NEXT: [[Sel1:%[^ ]+]] = select <8 x i1> [[Slo]], <8 x i32> {{(splat \(|<)}}[[ONES:i32 -1(, i32 -1)*]]{{(\)|>)}}, <8 x i32> zeroinitializer
+; CHECK-NEXT: [[Sel2:%[^ ]+]] = select <8 x i1> [[Shi]], <8 x i32> {{(splat \(|<)}}[[ONES]]{{(\)|>)}}, <8 x i32> zeroinitializer
 ; CHECK-NEXT: [[Res:%[^ ]+]]  = and <8 x i32> [[Sel1]], [[Sel2]]
-; CHECK-NEXT: [[PRED:%[^ ]+]]  = icmp eq <8 x i32> [[Res]], <[[ONES]]>
+; CHECK-NEXT: [[PRED:%[^ ]+]]  = icmp eq <8 x i32> [[Res]], {{(splat \(|<)}}[[ONES]]{{(\)|>)}}
 ; COM: just check that the result is used
 ; CHECK: %part = call <16 x i1> @llvm.genx.wrpredregion.v16i1.v8i1(<16 x i1> undef, <8 x i1> [[PRED]], i32 8)
 
@@ -47,10 +47,10 @@ define dllexport spir_kernel void @test_icmp_eq_partial(<8 x i64> %left, <8 x i6
 ; CHECK-NEXT: [[Hi_r:%[^.]+.HiSplit[0-9]*]] = call <[[ET]]> [[rgn]](<[[CT]]> [[IV2]], [[high_reg]]
 ; CHECK-NEXT: [[Slo:%[^ ]+]] = icmp ne <[[ET]]> [[Lo_l]], [[Lo_r]]
 ; CHECK-NEXT: [[Shi:%[^ ]+]] = icmp ne <[[ET]]> [[Hi_l]], [[Hi_r]]
-; CHECK-NEXT: [[Sel1:%[^ ]+]] = select <8 x i1> [[Slo]], <8 x i32> <[[ONES:i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1]]>, <8 x i32> zeroinitializer
-; CHECK-NEXT: [[Sel2:%[^ ]+]] = select <8 x i1> [[Shi]], <8 x i32> <[[ONES]]>, <8 x i32> zeroinitializer
+; CHECK-NEXT: [[Sel1:%[^ ]+]] = select <8 x i1> [[Slo]], <8 x i32> {{(splat \(|<)}}[[ONES:i32 -1(, i32 -1)*]]{{(\)|>)}}, <8 x i32> zeroinitializer
+; CHECK-NEXT: [[Sel2:%[^ ]+]] = select <8 x i1> [[Shi]], <8 x i32> {{(splat \(|<)}}[[ONES]]{{(\)|>)}}, <8 x i32> zeroinitializer
 ; CHECK-NEXT: [[Res:%[^ ]+]]  = or <8 x i32> [[Sel1]], [[Sel2]]
-; CHECK-NEXT: [[PRED:%[^ ]+]]  = icmp eq <8 x i32> [[Res]], <[[ONES]]>
+; CHECK-NEXT: [[PRED:%[^ ]+]]  = icmp eq <8 x i32> [[Res]], {{(splat \(|<)}}[[ONES]]{{(\)|>)}}
 ; COM: just check that the result is used
 ; CHECK: %part = call <16 x i1> @llvm.genx.wrpredregion.v16i1.v8i1(<16 x i1> undef, <8 x i1> [[PRED]], i32 8)
 
@@ -70,10 +70,10 @@ define dllexport spir_kernel void @test_icmp_ne_partial(<8 x i64> %left, <8 x i6
 ; CHECK-NEXT: [[Hi_r:%[^.]+.HiSplit[0-9]*]] = call <[[ET]]> [[rgn]](<[[CT]]> [[IV2]], [[high_reg]]
 ; CHECK-NEXT: [[Slo:%[^ ]+]] = icmp eq <[[ET]]> [[Lo_l]], [[Lo_r]]
 ; CHECK-NEXT: [[Shi:%[^ ]+]] = icmp eq <[[ET]]> [[Hi_l]], [[Hi_r]]
-; CHECK-NEXT: [[Sel1:%[^ ]+]] = select <8 x i1> [[Slo]], <[[ET]]> <[[ONES:i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1]]>, <[[ET]]> zeroinitializer
-; CHECK-NEXT: [[Sel2:%[^ ]+]] = select <8 x i1> [[Shi]], <[[ET]]> <[[ONES]]>, <[[ET]]> zeroinitializer
+; CHECK-NEXT: [[Sel1:%[^ ]+]] = select <8 x i1> [[Slo]], <[[ET]]> {{(splat \(|<)}}[[ONES:i32 -1(, i32 -1)*]]{{(\)|>)}}, <[[ET]]> zeroinitializer
+; CHECK-NEXT: [[Sel2:%[^ ]+]] = select <8 x i1> [[Shi]], <[[ET]]> {{(splat \(|<)}}[[ONES]]{{(\)|>)}}, <[[ET]]> zeroinitializer
 ; CHECK-NEXT: [[Res:%[^ ]+]]  = and <[[ET]]> [[Sel1]], [[Sel2]]
-; CHECK-NEXT: [[PRED:%[^ ]+]]  = icmp eq <[[ET]]> [[Res]], <[[ONES]]>
+; CHECK-NEXT: [[PRED:%[^ ]+]]  = icmp eq <[[ET]]> [[Res]], {{(splat \(|<)}}[[ONES]]{{(\)|>)}}
 ; COM: just check that the result is used
 ; CHECK: %part = call <16 x i1> @llvm.genx.wrpredregion.v16i1.v8i1(<16 x i1> undef, <8 x i1> [[PRED]], i32 8)
 

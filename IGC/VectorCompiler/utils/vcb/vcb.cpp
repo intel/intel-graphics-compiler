@@ -79,10 +79,14 @@ createTargetMachine(Triple &TheTriple, std::string CPUStr) {
   IGC_ASSERT_MESSAGE(TheTarget, "vc target was not registered");
 
   const TargetOptions Options;
-  CodeGenOpt::Level OptLevel = CodeGenOpt::Default;
+  IGCLLVM::CodeGenOptLevel OptLevel = IGCLLVM::CodeGenOptLevel::Default;
 
   std::unique_ptr<TargetMachine> TM{TheTarget->createTargetMachine(
+#if LLVM_VERSION_MAJOR >= 22
+      TheTriple, CPUStr, FeaturesStr, Options, /*RelocModel=*/{},
+#else
       TheTriple.getTriple(), CPUStr, FeaturesStr, Options, /*RelocModel=*/{},
+#endif
       /*CodeModel=*/{}, OptLevel)};
   if (!TM)
     return make_error<vc::TargetMachineError>();
@@ -99,7 +103,11 @@ void vcbCompileModule(std::unique_ptr<Module> &M, std::string Platform) {
   // Target configuration.
   Triple TheTriple{Is32Bit ? "genx32-unknown-unknown"
                            : "genx64-unknown-unknown"};
+#if LLVM_VERSION_MAJOR >= 22
+  M->setTargetTriple(TheTriple);
+#else
   M->setTargetTriple(TheTriple.getTriple());
+#endif
   auto ExpTargetMachine = createTargetMachine(TheTriple, std::move(Platform));
   if (!ExpTargetMachine) {
     errs() << ExpTargetMachine.takeError();
@@ -111,7 +119,7 @@ void vcbCompileModule(std::unique_ptr<Module> &M, std::string Platform) {
   // Fill/initialize VC Codegen pipeline.
   legacy::PassManager PM;
   llvm::raw_null_ostream NOS;
-  auto FileType = IGCLLVM::TargetMachine::CodeGenFileType::CGFT_AssemblyFile;
+  auto FileType = IGCLLVM::CGFT_AssemblyFile;
   bool DisableIrVerifier = true;
   PM.add(new GenXBackendConfig{std::move(Options), GenXBackendData()});
   [[maybe_unused]] bool AddPasses =

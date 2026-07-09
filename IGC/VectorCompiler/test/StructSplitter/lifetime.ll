@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2021-2025 Intel Corporation
+; Copyright (C) 2021-2026 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -34,8 +34,8 @@ entry:
 ; CHECK-TYPED-PTRS-DAG: call void @llvm.lifetime.start.p0i8(i64 4, i8* %[[BC_F_S]])
 ; CHECK-OPAQUE-PTRS:     %[[BC1:[^ ]+]] = bitcast ptr %f1 to ptr
 ; CHECK-OPAQUE-PTRS:     %[[BC2:[^ ]+]] = bitcast ptr %f2 to ptr
-; CHECK-OPAQUE-PTRS-DAG: call void @llvm.lifetime.start.p0(i64 4, ptr %[[I_A]])
-; CHECK-OPAQUE-PTRS-DAG: call void @llvm.lifetime.start.p0(i64 4, ptr %[[F_A]])
+; CHECK-OPAQUE-PTRS-DAG: call void @llvm.lifetime.start.p0({{(i64 -?[0-9]+, )?}}ptr %[[I_A]])
+; CHECK-OPAQUE-PTRS-DAG: call void @llvm.lifetime.start.p0({{(i64 -?[0-9]+, )?}}ptr %[[F_A]])
   %bc1 = bitcast %F* %f1 to i8*
   %bc2 = bitcast %F* %f2 to i8*
   call void @llvm.lifetime.start.p0i8(i64 8, i8* %bc1)
@@ -68,8 +68,8 @@ entry:
 ; CHECK-TYPED-PTRS-DAG: call void @llvm.lifetime.end.p0i8(i64 4, i8* %[[BC_I_E]])
 ; CHECK-TYPED-PTRS-DAG: %[[BC_F_E:[^ ]+]] = bitcast float* %[[F_A]] to i8*
 ; CHECK-TYPED-PTRS-DAG: call void @llvm.lifetime.end.p0i8(i64 4, i8* %[[BC_F_E]])
-; CHECK-OPAQUE-PTRS-DAG: call void @llvm.lifetime.end.p0(i64 4, ptr %[[I_A]])
-; CHECK-OPAQUE-PTRS-DAG: call void @llvm.lifetime.end.p0(i64 4, ptr %[[F_A]])
+; CHECK-OPAQUE-PTRS-DAG: call void @llvm.lifetime.end.p0({{(i64 -?[0-9]+, )?}}ptr %[[I_A]])
+; CHECK-OPAQUE-PTRS-DAG: call void @llvm.lifetime.end.p0({{(i64 -?[0-9]+, )?}}ptr %[[F_A]])
   call void @llvm.lifetime.end.p0i8(i64 8, i8* %bc1)
   call void @llvm.lifetime.end.p0i8(i64 8, i8* %bc2)
 

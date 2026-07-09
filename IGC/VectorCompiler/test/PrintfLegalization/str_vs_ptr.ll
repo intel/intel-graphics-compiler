@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2021-2025 Intel Corporation
+; Copyright (C) 2021-2026 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -30,8 +30,8 @@ define dllexport void @str_vs_ptr(<1 x i64> %addr) {
 ; CHECK-OPAQUE-PTRS: %idx.direct = tail call i32 @llvm.vc.internal.print.format.index.p0i8({{.*}}ptr @str.indexed
   tail call void @llvm.genx.svm.scatter.v1i1.v1i64.v1i32(<1 x i1> <i1 true>, i32 0, <1 x i64> %addr, <1 x i32> <i32 extractelement (<2 x i32> bitcast (i64 ptrtoint ([5 x i8]* @str to i64) to <2 x i32>), i16 0)>)
 ; COM: non-print.format.index use should stay the same
-; CHECK-TYPED-PTRS: tail call void @llvm.genx.svm.scatter.v1i1.v1i64.v1i32(<1 x i1> <i1 true>, i32 0, <1 x i64> %addr, <1 x i32> <i32 extractelement (<2 x i32> bitcast (i64 ptrtoint ([5 x i8]* @str to i64) to <2 x i32>), i16 0)>)
-; CHECK-OPAQUE-PTRS: tail call void @llvm.genx.svm.scatter.v1i1.v1i64.v1i32(<1 x i1> <i1 true>, i32 0, <1 x i64> %addr, <1 x i32> <i32 extractelement (<2 x i32> bitcast (i64 ptrtoint (ptr @str to i64) to <2 x i32>), i16 0)>)
+; CHECK-TYPED-PTRS: tail call void @llvm.genx.svm.scatter.v1i1.v1i64.v1i32(<1 x i1> {{(splat \(i1 true\)|<i1 true(, i1 true)*>)}}, i32 0, <1 x i64> %addr, <1 x i32> <i32 extractelement (<2 x i32> bitcast (i64 ptrtoint ([5 x i8]* @str to i64) to <2 x i32>), i16 0)>)
+; CHECK-OPAQUE-PTRS: tail call void @llvm.genx.svm.scatter.v1i1.v1i64.v1i32(<1 x i1> {{(splat \(i1 true\)|<i1 true(, i1 true)*>)}}, i32 0, <1 x i64> %addr, <1 x i32> <i32 extractelement (<2 x i32> bitcast (i64 ptrtoint (ptr @str to i64) to <2 x i32>), i16 0)>)
   ret void
 }
 

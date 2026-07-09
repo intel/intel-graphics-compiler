@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2020-2025 Intel Corporation
+; Copyright (C) 2020-2026 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -22,7 +22,7 @@
 
 ; CHECK: @kernel_not
 ; CHECK: [[IV1:%[^ ]*.cast[0-9]*]] = bitcast <[[ET:8 x i64]]> %val to <[[CT:16 x i32]]>
-; CHECK: [[IV2:%[^ ]*.not[0-9]*]] = xor <[[CT]]> [[IV1]], <i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1>
+; CHECK: [[IV2:%[^ ]*.not[0-9]*]] = xor <[[CT]]> [[IV1]], {{(splat \(i32 -1\)|<i32 -1(, i32 -1)*>)}}
 ; CHECK: [[IV3:%[^ ]*.cast[0-9]*]] = bitcast <[[CT]]> [[IV2]] to <[[ET]]>
 
 define dllexport spir_kernel void @kernel_not(i32 %0, i32 %1, i32 %2) {
@@ -36,7 +36,7 @@ define dllexport spir_kernel void @kernel_not(i32 %0, i32 %1, i32 %2) {
 ; COM: ===============================
 ; CHECK: @kernel_not_reversed
 ; CHECK: [[IV1:%[^ ]*.cast[0-9]*]] = bitcast <[[ET:8 x i64]]> %val to <[[CT:16 x i32]]>
-; CHECK: [[IV2:%[^ ]*.not[0-9]*]] = xor <[[CT]]> <i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1>, [[IV1]]
+; CHECK: [[IV2:%[^ ]*.not[0-9]*]] = xor <[[CT]]> {{(splat \(i32 -1\)|<i32 -1(, i32 -1)*>)}}, [[IV1]]
 ; CHECK: [[IV3:%[^ ]*.cast[0-9]*]] = bitcast <[[CT]]> [[IV2]] to <[[ET]]>
 define dllexport spir_kernel void @kernel_not_reversed(i32 %0, i32 %1, i32 %2) {
   %val = tail call <8 x i64> @llvm.genx.oword.ld.v8i64(i32 0, i32 %1, i32 0)

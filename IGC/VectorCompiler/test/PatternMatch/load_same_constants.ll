@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2020-2025 Intel Corporation
+; Copyright (C) 2020-2026 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -10,7 +10,7 @@
 ; RUN: %opt_opaque_ptrs %use_old_pass_manager% -GenXPatternMatch -march=genx64 -mcpu=Xe2 -mtriple=spir64-unknown-unknown -S < %s | FileCheck %s --check-prefixes=CHECK,CHECK-OPAQUE-PTRS
 
 define dllexport spir_kernel void @test(<16 x i32>* %val, i1 %cond) {
-; CHECK: [[CONSTANT:%.*]] = call <1 x i32> @llvm.genx.constanti.v1i32(<1 x i32> <i32 1>)
+; CHECK: [[CONSTANT:%.*]] = call <1 x i32> @llvm.genx.constanti.v1i32(<1 x i32> {{(splat \(i32 1\)|<i32 1(, i32 1)*>)}})
 ; CHECK-NEXT: [[CONSTANT_SPLAT:%.*]] = call <16 x i32> @llvm.genx.rdregioni.v16i32.v1i32.i16(<1 x i32> [[CONSTANT]], i32 0, i32 16, i32 0, i16 0, i32 undef)
   br i1 %cond, label %bb1, label %bb2
 

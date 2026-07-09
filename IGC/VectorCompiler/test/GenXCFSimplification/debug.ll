@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2022-2025 Intel Corporation
+; Copyright (C) 2022-2026 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -18,32 +18,32 @@
 ;
 ; CHECK: void @test_cfsimplify{{.*}} !dbg [[SCOPE:![0-9]*]]
 ; CHECK: [[VAL1_V:%[A-z0-9.]*]] = load {{.*}}, !dbg [[VAL1_LOC:![0-9]*]]
-; CHECK: void @llvm.dbg.value(metadata i32 [[VAL1_V]], metadata [[VAL1_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL1_LOC]]
+; CHECK: {{(#dbg_value\(|call void @llvm\.dbg\.value\(metadata )}}i32 [[VAL1_V]]{{(, |, metadata )}}[[VAL1_MD:![0-9]*]]{{(, |, metadata )}}!DIExpression(){{(, |\), !dbg )}}[[VAL1_LOC]]{{\)?}}
 ; CHECK: [[VAL2_V:%[A-z0-9.]*]] = {{.*}}, !dbg [[VAL2_LOC:![0-9]*]]
-; CHECK: void @llvm.dbg.value(metadata i1 [[VAL2_V]], metadata [[VAL2_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL2_LOC]]
+; CHECK: {{(#dbg_value\(|call void @llvm\.dbg\.value\(metadata )}}i1 [[VAL2_V]]{{(, |, metadata )}}[[VAL2_MD:![0-9]*]]{{(, |, metadata )}}!DIExpression(){{(, |\), !dbg )}}[[VAL2_LOC]]{{\)?}}
 ; CHECK: [[VAL3_V:%[A-z0-9.]*]] = {{.*}}, !dbg [[VAL3_LOC:![0-9]*]]
-; CHECK: void @llvm.dbg.value(metadata i32 [[VAL3_V]], metadata [[VAL3_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL3_LOC]]
+; CHECK: {{(#dbg_value\(|call void @llvm\.dbg\.value\(metadata )}}i32 [[VAL3_V]]{{(, |, metadata )}}[[VAL3_MD:![0-9]*]]{{(, |, metadata )}}!DIExpression(){{(, |\), !dbg )}}[[VAL3_LOC]]{{\)?}}
 ; CHECK: [[VAL4_V:%[A-z0-9.]*]] = {{.*}}, !dbg [[VAL4_LOC:![0-9]*]]
-; CHECK-TYPED-PTRS: void @llvm.dbg.value(metadata i32* [[VAL4_V]], metadata [[VAL4_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL4_LOC]]
-; CHECK-OPAQUE-PTRS: void @llvm.dbg.value(metadata ptr [[VAL4_V]], metadata [[VAL4_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL4_LOC]]
+; CHECK-TYPED-PTRS: {{(#dbg_value\(|call void @llvm\.dbg\.value\(metadata )}}i32* [[VAL4_V]]{{(, |, metadata )}}[[VAL4_MD:![0-9]*]]{{(, |, metadata )}}!DIExpression(){{(, |\), !dbg )}}[[VAL4_LOC]]{{\)?}}
+; CHECK-OPAQUE-PTRS: {{(#dbg_value\(|call void @llvm\.dbg\.value\(metadata )}}ptr [[VAL4_V]]{{(, |, metadata )}}[[VAL4_MD:![0-9]*]]{{(, |, metadata )}}!DIExpression(){{(, |\), !dbg )}}[[VAL4_LOC]]{{\)?}}
 ; CHECK: [[VAL5_V:%[A-z0-9.]*]] = {{.*}}, !dbg [[VAL5_LOC:![0-9]*]]
-; CHECK: void @llvm.dbg.value(metadata i32 [[VAL5_V]], metadata [[VAL5_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL5_LOC]]
+; CHECK: {{(#dbg_value\(|call void @llvm\.dbg\.value\(metadata )}}i32 [[VAL5_V]]{{(, |, metadata )}}[[VAL5_MD:![0-9]*]]{{(, |, metadata )}}!DIExpression(){{(, |\), !dbg )}}[[VAL5_LOC]]{{\)?}}
 ; CHECK: [[VAL6_V:%[A-z0-9.]*]] = {{.*}}, !dbg [[VAL6_LOC:![0-9]*]]
-; CHECK: void @llvm.dbg.value(metadata <32 x i1> [[VAL6_V]], metadata [[VAL6_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL6_LOC]]
+; CHECK: {{(#dbg_value\(|call void @llvm\.dbg\.value\(metadata )}}<32 x i1> [[VAL6_V]]{{(, |, metadata )}}[[VAL6_MD:![0-9]*]]{{(, |, metadata )}}!DIExpression(){{(, |\), !dbg )}}[[VAL6_LOC]]{{\)?}}
 ; CHECK: [[VAL7_V:%[A-z0-9.]*]] = {{.*}}, !dbg [[VAL7_LOC:![0-9]*]]
-; CHECK: void @llvm.dbg.value(metadata i1 [[VAL7_V]], metadata [[VAL7_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL7_LOC]]
+; CHECK: {{(#dbg_value\(|call void @llvm\.dbg\.value\(metadata )}}i1 [[VAL7_V]]{{(, |, metadata )}}[[VAL7_MD:![0-9]*]]{{(, |, metadata )}}!DIExpression(){{(, |\), !dbg )}}[[VAL7_LOC]]{{\)?}}
 ; CHECK: [[VAL8_V:%[A-z0-9.]*]] = {{.*}}, !dbg [[VAL8_LOC:![0-9]*]]
-; CHECK: void @llvm.dbg.value(metadata i32 [[VAL8_V]], metadata [[VAL8_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL8_LOC]]
+; CHECK: {{(#dbg_value\(|call void @llvm\.dbg\.value\(metadata )}}i32 [[VAL8_V]]{{(, |, metadata )}}[[VAL8_MD:![0-9]*]]{{(, |, metadata )}}!DIExpression(){{(, |\), !dbg )}}[[VAL8_LOC]]{{\)?}}
 ; CHECK: [[VAL9_V:%[A-z0-9.]*]] = {{.*}}, !dbg [[VAL9_LOC:![0-9]*]]
-; CHECK: void @llvm.dbg.value(metadata i32 [[VAL9_V]], metadata [[VAL9_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL9_LOC]]
+; CHECK: {{(#dbg_value\(|call void @llvm\.dbg\.value\(metadata )}}i32 [[VAL9_V]]{{(, |, metadata )}}[[VAL9_MD:![0-9]*]]{{(, |, metadata )}}!DIExpression(){{(, |\), !dbg )}}[[VAL9_LOC]]{{\)?}}
 ; CHECK: [[VAL10_V:%[A-z0-9.]*]] = {{.*}}, !dbg [[VAL10_LOC:![0-9]*]]
-; CHECK: void @llvm.dbg.value(metadata i32 [[VAL10_V]], metadata [[VAL10_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL10_LOC]]
+; CHECK: {{(#dbg_value\(|call void @llvm\.dbg\.value\(metadata )}}i32 [[VAL10_V]]{{(, |, metadata )}}[[VAL10_MD:![0-9]*]]{{(, |, metadata )}}!DIExpression(){{(, |\), !dbg )}}[[VAL10_LOC]]{{\)?}}
 ;
 ; other br are opt out
 ;
 ; CHECK: br {{.*}}, !dbg [[BR_LOC:![0-9]*]]
 ; CHECK: [[VAL11_V:%[A-z0-9.]*]] = {{.*}}, !dbg [[VAL11_LOC:![0-9]*]]
-; CHECK: void @llvm.dbg.value(metadata i32 [[VAL11_V]], metadata [[VAL11_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL11_LOC]]
+; CHECK: {{(#dbg_value\(|call void @llvm\.dbg\.value\(metadata )}}i32 [[VAL11_V]]{{(, |, metadata )}}[[VAL11_MD:![0-9]*]]{{(, |, metadata )}}!DIExpression(){{(, |\), !dbg )}}[[VAL11_LOC]]{{\)?}}
 
 define void @test_cfsimplify(i32* %a) !dbg !6 {
 entry:

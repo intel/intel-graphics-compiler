@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2021-2025 Intel Corporation
+; Copyright (C) 2021-2026 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -17,13 +17,13 @@ target datalayout = "e-p:64:64-i64:64-n8:16:32"
 ; CHECK: target datalayout = "e-p:64:64-i64:64-n8:16:32"
 
 declare spir_func i32 @_Z17__spirv_Unordereddd(double, double)
-; CHECK-DAG: define internal spir_func {{(noundef )?}}i32 @_Z17__spirv_Unordereddd(double {{(noundef )?}}%{{[^ ,]+}}, double {{(noundef )?}}%{{[^ )]+}})
+; CHECK-DAG: define internal spir_func {{.*}}i32 @_Z17__spirv_Unordereddd(double {{(noundef )?}}%{{[^ ,]+}}, double {{(noundef )?}}%{{[^ )]+}})
 declare spir_func i32 @_Z17__spirv_Unorderedff(float, float)
-; CHECK-DAG: define internal spir_func {{(noundef )?}}i32 @_Z17__spirv_Unorderedff(float {{(noundef )?}}%{{[^ ,]+}}, float {{(noundef )?}}%{{[^ )]+}})
+; CHECK-DAG: define internal spir_func {{.*}}i32 @_Z17__spirv_Unorderedff(float {{(noundef )?}}%{{[^ ,]+}}, float {{(noundef )?}}%{{[^ )]+}})
 declare spir_func i32 @_Z15__spirv_Ordereddd(double, double)
-; CHECK-DAG: define internal spir_func {{(noundef )?}}i32 @_Z15__spirv_Ordereddd(double {{(noundef )?}}%{{[^ ,]+}}, double {{(noundef )?}}%{{[^ )]+}})
+; CHECK-DAG: define internal spir_func {{.*}}i32 @_Z15__spirv_Ordereddd(double {{(noundef )?}}%{{[^ ,]+}}, double {{(noundef )?}}%{{[^ )]+}})
 declare spir_func i32 @_Z15__spirv_Orderedff(float, float)
-; CHECK-DAG: define internal spir_func {{(noundef )?}}i32 @_Z15__spirv_Orderedff(float {{(noundef )?}}%{{[^ ,]+}}, float {{(noundef )?}}%{{[^ )]+}})
+; CHECK-DAG: define internal spir_func {{.*}}i32 @_Z15__spirv_Orderedff(float {{(noundef )?}}%{{[^ ,]+}}, float {{(noundef )?}}%{{[^ )]+}})
 
 define spir_func i32 @is_unordered_dbl(double %arg.1, double %arg.2) {
   %res = call spir_func i32 @_Z17__spirv_Unordereddd(double %arg.1, double %arg.2)

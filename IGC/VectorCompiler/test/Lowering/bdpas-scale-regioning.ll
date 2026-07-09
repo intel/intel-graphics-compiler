@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2024 Intel Corporation
+; Copyright (C) 2024-2026 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -70,7 +70,7 @@ define <128 x float> @test3(<128 x float> %acc, <128 x i32> %b, <64 x i32> %a, <
   %1 = call <128 x float> @llvm.genx.bdpas.v128f32.v128f32.v128i32.v64i32.v32i8.v16i8(<128 x float> %acc, <128 x i32> %b, <64 x i32> %a, <32 x i8> %xbscale, <16 x i8> undef, i32 15, i32 15, i32 8, i32 8)
 
 ; CHECK: [[BSCALE2:%.*]] = call <48 x i8> @llvm.genx.rdregioni.v48i8.v64i8.i16(<64 x i8> %bscale, i32 1, i32 1, i32 0, i16 0, i32 undef)
-; CHECK: [[ACC2:%.*]] = call <128 x float> @llvm.genx.bdpas.v128f32.v128f32.v128i32.v64i32.v48i8.v16i8(<128 x float> [[ACC1]], <128 x i32> %b, <64 x i32> %a, <48 x i8> [[BSCALE2]], <16 x i8> <i8 127, i8 127, i8 127, i8 127, i8 127, i8 127, i8 127, i8 127, i8 127, i8 127, i8 127, i8 127, i8 127, i8 127, i8 127, i8 127>, i32 15, i32 15, i32 8, i32 8)
+; CHECK: [[ACC2:%.*]] = call <128 x float> @llvm.genx.bdpas.v128f32.v128f32.v128i32.v64i32.v48i8.v16i8(<128 x float> [[ACC1]], <128 x i32> %b, <64 x i32> %a, <48 x i8> [[BSCALE2]], <16 x i8> {{(splat \(i8 127\)|<i8 127(, i8 127)*>)}}, i32 15, i32 15, i32 8, i32 8)
   %2 = call <128 x float> @llvm.genx.bdpas.v128f32.v128f32.v128i32.v64i32.v32i8.v16i8(<128 x float> %1, <128 x i32> %b, <64 x i32> %a, <32 x i8> %xbscale, <16 x i8> <i8 127, i8 127, i8 127, i8 127, i8 127, i8 127, i8 127, i8 127, i8 127, i8 127, i8 127, i8 127, i8 127, i8 127, i8 127, i8 127>, i32 15, i32 15, i32 8, i32 8)
 
 ; CHECK: [[BSCALE3:%.*]] = call <48 x i8> @llvm.genx.rdregioni.v48i8.v64i8.i16(<64 x i8> %bscale, i32 1, i32 1, i32 0, i16 0, i32 undef)

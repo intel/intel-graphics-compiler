@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2021 Intel Corporation
+; Copyright (C) 2021-2026 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -10,7 +10,7 @@
 
 define <4 x i8> @test_xor(<4 x i8> %op)  {
   ; CHECK: %.extend.mask.op = bitcast <4 x i8> %op to <1 x i32>
-  ; CHECK: %1 = xor <1 x i32> %.extend.mask.op, <i32 -1>
+  ; CHECK: %1 = xor <1 x i32> %.extend.mask.op, {{(splat \(i32 -1\)|<i32 -1(, i32 -1)*>)}}
   ; CHECK: %.extend.mask.trunc = bitcast <1 x i32> %1 to <4 x i8>
   ; CHECK: ret <4 x i8> %.extend.mask.trunc
   %1 = xor <4 x i8> %op, <i8 -1, i8 -1, i8 -1, i8 -1>
@@ -19,7 +19,7 @@ define <4 x i8> @test_xor(<4 x i8> %op)  {
 
 define <4 x i8> @test_or(<4 x i8> %op)  {
   ; CHECK: %.extend.mask.op = bitcast <4 x i8> %op to <1 x i32>
-  ; CHECK: %1 = or <1 x i32> %.extend.mask.op, <i32 1>
+  ; CHECK: %1 = or <1 x i32> %.extend.mask.op, {{(splat \(i32 1\)|<i32 1(, i32 1)*>)}}
   ; CHECK: %.extend.mask.trunc = bitcast <1 x i32> %1 to <4 x i8>
   ; CHECK: ret <4 x i8> %.extend.mask.trunc
   %1 = or <4 x i8> %op, <i8 1, i8 0, i8 0, i8 0>
@@ -28,7 +28,7 @@ define <4 x i8> @test_or(<4 x i8> %op)  {
 
 define <4 x i8> @test_and(<4 x i8> %op)  {
   ; CHECK: %.extend.mask.op = bitcast <4 x i8> %op to <1 x i32>
-  ; CHECK: %1 = and <1 x i32> %.extend.mask.op, <i32 1>
+  ; CHECK: %1 = and <1 x i32> %.extend.mask.op, {{(splat \(i32 1\)|<i32 1(, i32 1)*>)}}
   ; CHECK: %.extend.mask.trunc = bitcast <1 x i32> %1 to <4 x i8>
   ; CHECK: ret <4 x i8> %.extend.mask.trunc
   %1 = and <4 x i8> %op, <i8 1, i8 0, i8 0, i8 0>

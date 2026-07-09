@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -65,6 +65,9 @@ SPDX-License-Identifier: MIT
 #include "llvm/Analysis/LoopInfo.h"
 #include "llvm/CodeGen/TargetPassConfig.h"
 #include "llvm/IR/BasicBlock.h"
+#if LLVM_VERSION_MAJOR >= 22
+#include "llvm/IR/DebugProgramInstruction.h"
+#endif
 #include "llvm/IR/CFG.h"
 #include "llvm/IR/Function.h"
 #include "llvm/IR/Instructions.h"
@@ -150,12 +153,29 @@ FunctionPass *llvm::createGenXTidyControlFlowPass() {
  */
 static void moveDbgBeforeBlockRemoval(BasicBlock *BB, Instruction *InsertBefore,
                                       bool MakeUndef = false) {
-
+#if LLVM_VERSION_MAJOR >= 22
+  // LLVM 22 keeps debug info as DbgRecords attached to instructions rather than
+  // as dbg.value/dbg.declare intrinsics. Move the records out of BB so they are
+  // not lost together with the erased block.
+  SmallVector<DbgRecord *, 8> Records;
+  for (Instruction &I : *BB)
+    for (DbgRecord &DR : I.getDbgRecordRange())
+      Records.push_back(&DR);
+  for (DbgRecord *DR : Records) {
+    DR->removeFromParent();
+    InsertBefore->getParent()->insertDbgRecordBefore(
+        DR, InsertBefore->getIterator());
+    if (MakeUndef)
+      if (auto *DVR = dyn_cast<DbgVariableRecord>(DR))
+        DVR->setKillLocation();
+  }
+#else
   while (auto *DBG = dyn_cast<llvm::DbgVariableIntrinsic>(BB->begin())) {
     IGCLLVM::moveBefore(DBG, InsertBefore);
     if (MakeUndef)
       IGCLLVM::setKillLocation(DBG);
   }
+#endif
   IGC_ASSERT_MESSAGE(BB->front().isTerminator(),
                      "Expected that only terminator instruction remains");
 }

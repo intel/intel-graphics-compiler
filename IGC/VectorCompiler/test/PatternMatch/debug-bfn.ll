@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2022-2024 Intel Corporation
+; Copyright (C) 2022-2026 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -18,12 +18,12 @@
 
 ; CHECK: void @test_patternmatch{{.*}} !dbg [[SCOPE:![0-9]*]]
 ; CHECK: [[VAL1_V:%[A-z0-9.]*]] = {{.*}}, !dbg [[VAL1_LOC:![0-9]*]]
-; CHECK: void @llvm.dbg.value(metadata <16 x i16> [[VAL1_V]], metadata [[VAL1_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL1_LOC]]
+; CHECK: {{(#dbg_value\(|call void @llvm\.dbg\.value\(metadata )}}<16 x i16> [[VAL1_V]]{{(, |, metadata )}}[[VAL1_MD:![0-9]*]]{{(, |, metadata )}}!DIExpression(){{(, |\), !dbg )}}[[VAL1_LOC]]{{\)?}}
 ; CHECK: [[VAL2_V:%[A-z0-9.]*]] = {{.*}}, !dbg [[VAL2_LOC:![0-9]*]]
-; CHECK: void @llvm.dbg.value(metadata <16 x i16> [[VAL2_V]], metadata [[VAL2_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL2_LOC]]
+; CHECK: {{(#dbg_value\(|call void @llvm\.dbg\.value\(metadata )}}<16 x i16> [[VAL2_V]]{{(, |, metadata )}}[[VAL2_MD:![0-9]*]]{{(, |, metadata )}}!DIExpression(){{(, |\), !dbg )}}[[VAL2_LOC]]{{\)?}}
 ; and is opt out
 ; CHECK: [[VAL4_V:%[A-z0-9.]*]] = {{.*}}, !dbg [[VAL4_LOC:![0-9]*]]
-; CHECK: void @llvm.dbg.value(metadata <16 x i16> [[VAL4_V]], metadata [[VAL4_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL4_LOC]]
+; CHECK: {{(#dbg_value\(|call void @llvm\.dbg\.value\(metadata )}}<16 x i16> [[VAL4_V]]{{(, |, metadata )}}[[VAL4_MD:![0-9]*]]{{(, |, metadata )}}!DIExpression(){{(, |\), !dbg )}}[[VAL4_LOC]]{{\)?}}
 
 define void @test_patternmatch(<16 x i16>* %a, <16 x i16>* %b) !dbg !6 {
   %1 = load <16 x i16>, <16 x i16>* %a, !dbg !14

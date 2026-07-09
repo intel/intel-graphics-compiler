@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2021-2025 Intel Corporation
+; Copyright (C) 2021-2026 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -29,5 +29,5 @@ define spir_func i64 @test_num_workgroups() {
   ret i64 %res
 }
 
-; CHECK: define internal spir_func {{(noundef )?}}i64 @_Z33__spirv_BuiltInGlobalInvocationIdi(i32
-; CHECK: define internal spir_func {{(noundef )?}}i64 @_Z28__spirv_BuiltInNumWorkgroupsi(i32
+; CHECK: define internal spir_func {{.*}}i64 @_Z33__spirv_BuiltInGlobalInvocationIdi(i32
+; CHECK: define internal spir_func {{.*}}i64 @_Z28__spirv_BuiltInNumWorkgroupsi(i32

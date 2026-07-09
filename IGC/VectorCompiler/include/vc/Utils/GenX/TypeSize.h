@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2021-2024 Intel Corporation
+Copyright (C) 2021-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -36,8 +36,10 @@ public:
   using SzType = uint64_t;
 
   using DLTypeSize = llvm::TypeSize;
-  static DLTypeSize InvalidDLSize() { return DLTypeSize::Fixed(0); }
-  static DLTypeSize FixedDLSize(uint64_t SZ) { return DLTypeSize::Fixed(SZ); }
+  static DLTypeSize InvalidDLSize() { return DLTypeSize::getFixed(0); }
+  static DLTypeSize FixedDLSize(uint64_t SZ) {
+    return DLTypeSize::getFixed(SZ);
+  }
 
   TypeSizeWrapper() = default;
   TypeSizeWrapper(DLTypeSize TS) : TS(TS) {};

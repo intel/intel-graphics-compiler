@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2022-2025 Intel Corporation
+; Copyright (C) 2022-2026 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -18,7 +18,7 @@
 
 ; CHECK: void @test_promote{{.*}} !dbg [[SCOPE:![0-9]*]]
 ; CHECK: [[VAL1_V:%[A-z0-9.]*]] = call <8 x i32> {{.*}}, !dbg [[VAL1_LOC:![0-9]*]]
-; CHECK: void @llvm.dbg.value(metadata <8 x i32> [[VAL1_V]], metadata [[VAL1_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL1_LOC]]
+; CHECK: {{(#dbg_value\(|call void @llvm\.dbg\.value\(metadata )}}<8 x i32> [[VAL1_V]]{{(, |, metadata )}}[[VAL1_MD:![0-9]*]]{{(, |, metadata )}}!DIExpression(){{(, |\), !dbg )}}[[VAL1_LOC]]{{\)?}}
 ; CHECK: oword.st{{.*}}, !dbg [[STORE1_LOC:![0-9]*]]
 
 define dllexport spir_kernel void @test_promote(i32 %surf, i32 %local_size) !dbg !11 {

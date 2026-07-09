@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2021-2024 Intel Corporation
+Copyright (C) 2021-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -422,12 +422,28 @@ GatherScatterOperands getGatherScatterOperands(IntrinsicInst &I) {
   default:
     IGC_ASSERT_MESSAGE(0, "unsupported intrinsic");
     return {false, nullptr, nullptr, nullptr, nullptr};
+#if LLVM_VERSION_MAJOR >= 22
+  // LLVM 22 dropped the explicit i32 alignment operand from masked
+  // gather/scatter; the alignment is now an align attribute on the
+  // pointer-vector operand. Operands became:
+  //   masked_gather (ptrs, mask, passthru)
+  //   masked_scatter(value, ptrs, mask)
+  case Intrinsic::masked_gather:
+    return {true, I.getArgOperand(1), I.getArgOperand(0), I.getArgOperand(2),
+            ConstantInt::get(Type::getInt32Ty(I.getContext()),
+                             I.getParamAlign(0).valueOrOne().value())};
+  case Intrinsic::masked_scatter:
+    return {false, I.getArgOperand(2), I.getArgOperand(1), I.getArgOperand(0),
+            ConstantInt::get(Type::getInt32Ty(I.getContext()),
+                             I.getParamAlign(1).valueOrOne().value())};
+#else
   case Intrinsic::masked_gather:
     return {true, I.getArgOperand(2), I.getArgOperand(0), I.getArgOperand(3),
             cast<ConstantInt>(I.getArgOperand(1))};
   case Intrinsic::masked_scatter:
     return {false, I.getArgOperand(3), I.getArgOperand(1), I.getArgOperand(0),
             cast<ConstantInt>(I.getArgOperand(2))};
+#endif
   }
 }
 } // namespace

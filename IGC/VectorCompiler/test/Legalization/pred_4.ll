@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2024 Intel Corporation
+; Copyright (C) 2024-2026 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -17,9 +17,9 @@ declare <8 x i64> @llvm.genx.rdregioni.v8i64.v32i64.i16(<32 x i64>, i32, i32, i3
 ; CHECK-XeHPC-NOT: call <8 x i1> @llvm.genx.wrpredregion
 ; CHECK-XeHPC: icmp eq <8 x i64>
 
-; CHECK-XeLP: [[CMP_SPLIT_0:%[^ ]+]] = icmp eq <4 x i64> %{{.*}}, <i64 4, i64 4, i64 4, i64 4>
+; CHECK-XeLP: [[CMP_SPLIT_0:%[^ ]+]] = icmp eq <4 x i64> %{{.*}}, {{(splat \(i64 4\)|<i64 4(, i64 4)*>)}}
 ; CHECK-XeLP: [[CMP_SPLIT_JOIN_0:%[^ ]+]] = call <8 x i1> @llvm.genx.wrpredregion.v8i1.v4i1(<8 x i1> undef, <4 x i1> [[CMP_SPLIT_0]], i32 0)
-; CHECK-XeLP: [[CMP_SPLIT_1:%[^ ]+]] = icmp eq <4 x i64> %{{.*}}, <i64 4, i64 4, i64 4, i64 4>
+; CHECK-XeLP: [[CMP_SPLIT_1:%[^ ]+]] = icmp eq <4 x i64> %{{.*}}, {{(splat \(i64 4\)|<i64 4(, i64 4)*>)}}
 ; CHECK-XeLP: call <8 x i1> @llvm.genx.wrpredregion.v8i1.v4i1(<8 x i1> [[CMP_SPLIT_JOIN_0]], <4 x i1> [[CMP_SPLIT_1]], i32 4)
 
 define spir_func void @foo(<32 x i64> %src)  {

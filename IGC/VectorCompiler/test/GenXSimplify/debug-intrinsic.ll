@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2022-2025 Intel Corporation
+; Copyright (C) 2022-2026 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -21,10 +21,10 @@
 ;
 ; CHECK: void @test_simplify{{.*}} !dbg [[SCOPE:![0-9]*]]
 ; CHECK: [[VAL1_V:%[A-z0-9.]*]] = {{.*}}, !dbg [[VAL1_LOC:![0-9]*]]
-; CHECK: void @llvm.dbg.value(metadata <4 x i32> [[VAL1_V]], metadata [[VAL1_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL1_LOC]]
+; CHECK: {{(#dbg_value\(|call void @llvm\.dbg\.value\(metadata )}}<4 x i32> [[VAL1_V]]{{(, |, metadata )}}[[VAL1_MD:![0-9]*]]{{(, |, metadata )}}!DIExpression(){{(, |\), !dbg )}}[[VAL1_LOC]]{{\)?}}
 ; Rd and wr calls are opt out, check that values are preserved
-; CHECK: void @llvm.dbg.value(metadata <4 x i32> %{{[A-z0-9.]*}}, metadata [[VAL2_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL2_LOC:![0-9]*]]
-; CHECK: void @llvm.dbg.value(metadata <4 x i32> %{{[A-z0-9.]*}}, metadata [[VAL3_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL3_LOC:![0-9]*]]
+; CHECK: {{(#dbg_value\(|call void @llvm\.dbg\.value\(metadata )}}<4 x i32> %{{[A-z0-9.]*}}{{(, |, metadata )}}[[VAL2_MD:![0-9]*]]{{(, |, metadata )}}!DIExpression(){{(, |\), !dbg )}}[[VAL2_LOC:![0-9]*]]{{\)?}}
+; CHECK: {{(#dbg_value\(|call void @llvm\.dbg\.value\(metadata )}}<4 x i32> %{{[A-z0-9.]*}}{{(, |, metadata )}}[[VAL3_MD:![0-9]*]]{{(, |, metadata )}}!DIExpression(){{(, |\), !dbg )}}[[VAL3_LOC:![0-9]*]]{{\)?}}
 
 define void @test_simplify(<4 x i32>* %a, <4 x i32> %b) !dbg !6 {
   %1 = load <4 x i32>, <4 x i32>* %a, !dbg !13

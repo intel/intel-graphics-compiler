@@ -39,6 +39,10 @@ See LICENSE.TXT for details.
 #include "llvmWrapper/Support/TypeSize.h"
 #include "llvmWrapper/Support/MathExtras.h"
 
+#include <algorithm>
+#include <cstring>
+#include <tuple>
+
 using namespace llvm;
 using namespace vc;
 
@@ -243,8 +247,13 @@ DecodeIITType(unsigned &NextElt, ArrayRef<unsigned char> Infos,
   }
   case IIT_HALF_VEC_ARG: {
     unsigned ArgInfo = (NextElt == Infos.size() ? 0 : Infos[NextElt++]);
+#if LLVM_VERSION_MAJOR >= 22
+    OutputTable.push_back(
+        IITDescriptor::get(IITDescriptor::OneNthEltsVecArgument, 2, ArgInfo));
+#else
     OutputTable.push_back(
         IITDescriptor::get(IITDescriptor::HalfVecArgument, ArgInfo));
+#endif
     return;
   }
   case IIT_SAME_VEC_WIDTH_ARG: {
@@ -319,7 +328,11 @@ static Type *DecodeFixedType(ArrayRef<Intrinsic::IITDescriptor> &Infos,
   case IITDescriptor::VarArg:
     return Type::getVoidTy(Context);
   case IITDescriptor::MMX:
+#if LLVM_VERSION_MAJOR >= 22
+    return llvm::FixedVectorType::get(llvm::IntegerType::get(Context, 64), 1);
+#else
     return Type::getX86_MMXTy(Context);
+#endif
   case IITDescriptor::Token:
     return Type::getTokenTy(Context);
   case IITDescriptor::Metadata:
@@ -365,9 +378,15 @@ static Type *DecodeFixedType(ArrayRef<Intrinsic::IITDescriptor> &Infos,
     IGC_ASSERT(ITy->getBitWidth() % 2 == 0);
     return IntegerType::get(Context, ITy->getBitWidth() / 2);
   }
+#if LLVM_VERSION_MAJOR >= 22
+  case IITDescriptor::OneNthEltsVecArgument:
+    return VectorType::getOneNthElementsVectorType(
+        cast<VectorType>(Tys[D.getRefArgNumber()]), D.getVectorDivisor());
+#else
   case IITDescriptor::HalfVecArgument:
     return VectorType::getHalfElementsVectorType(
         cast<VectorType>(Tys[D.getArgumentNumber()]));
+#endif
   case IITDescriptor::SameVecWidthArgument: {
     Type *EltTy = DecodeFixedType(Infos, Tys, Context);
     Type *Ty = Tys[D.getArgumentNumber()];
@@ -551,9 +570,41 @@ static ArrayRef<const char *> findTargetSubtable(StringRef Name) {
   return ArrayRef(&InternalIntrinsicNameTable[1] + TI.Offset, TI.Count);
 }
 
+// Binary search over a sorted table of intrinsic names. This mirrors the
+// llvm::Intrinsic::lookupLLVMIntrinsicByName helper that operated on a
+// const char* name table, which was removed from the public LLVM API (LLVM
+// switched its own tables to an offset-based representation).
+static int lookupInternalIntrinsicByName(ArrayRef<const char *> NameTable,
+                                         StringRef Name) {
+  size_t CmpEnd = 4; // Skip the "llvm" component.
+  const char *const *Low = NameTable.begin();
+  const char *const *High = NameTable.end();
+  const char *const *LastLow = Low;
+  while (CmpEnd < Name.size() && High - Low > 0) {
+    size_t CmpStart = CmpEnd;
+    CmpEnd = Name.find('.', CmpStart + 1);
+    CmpEnd = CmpEnd == StringRef::npos ? Name.size() : CmpEnd;
+    auto Cmp = [CmpStart, CmpEnd](const char *LHS, const char *RHS) {
+      return strncmp(LHS + CmpStart, RHS + CmpStart, CmpEnd - CmpStart) < 0;
+    };
+    LastLow = Low;
+    std::tie(Low, High) = std::equal_range(Low, High, Name.data(), Cmp);
+  }
+  if (High - Low > 0)
+    LastLow = Low;
+  if (LastLow == NameTable.end())
+    return -1;
+  StringRef NameFound = *LastLow;
+  if (Name == NameFound || (Name.size() > NameFound.size() &&
+                            Name.take_front(NameFound.size()) == NameFound &&
+                            Name[NameFound.size()] == '.'))
+    return LastLow - NameTable.begin();
+  return -1;
+}
+
 static InternalIntrinsic::ID lookupInternalIntrinsicID(StringRef Name) {
   ArrayRef<const char *> NameTable = findTargetSubtable(Name);
-  int Idx = Intrinsic::lookupLLVMIntrinsicByName(NameTable, Name);
+  int Idx = lookupInternalIntrinsicByName(NameTable, Name);
   if (Idx == -1) {
     return InternalIntrinsic::not_internal_intrinsic;
   }

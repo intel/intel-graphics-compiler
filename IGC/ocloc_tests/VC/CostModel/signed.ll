@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2024-2025 Intel Corporation
+; Copyright (C) 2024-2026 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -8,15 +8,21 @@
 
 ; REQUIRES: regkeys, pvc-supported, llvm-14-plus
 
+; COM: The cost-model loop analysis diverges on LLVM 22+: the loops are collapsed
+; COM: so only one arg symbol and one loop-count expression remain (NEW), whereas
+; COM: earlier LLVM keeps all six loops (OLD).
+
 ; LLVM with opaque pointers:
 ; RUN: llvm-as %OPAQUE_PTR_FLAG% %s -o %t.bc
 ; RUN: ocloc -device pvc -llvm_input -options "-vc-codegen -ze-collect-cost-info -igc_opts 'EnableOpaquePointersBackend=1, ShaderDumpEnable=1, DumpToCustomDir=%t'" -output_no_suffix -file %t.bc
-; RUN: cat %t/*.zeinfo | FileCheck %s
+; RUN: %if !(llvm-22-plus) %{ cat %t/*.zeinfo | FileCheck %s --check-prefixes=CHECK,OLD %}
+; RUN: %if llvm-22-plus %{ cat %t/*.zeinfo | FileCheck %s --check-prefixes=CHECK,NEW %}
 
 ; LLVM with typed pointers:
 ; RUN: llvm-as %TYPED_PTR_FLAG% %s -o %t.bc
 ; RUN: ocloc -device pvc -llvm_input -options "-vc-codegen -ze-collect-cost-info -igc_opts 'ShaderDumpEnable=1, DumpToCustomDir=%t'" -output_no_suffix -file %t.bc
-; RUN: cat %t/*.zeinfo | FileCheck %s
+; RUN: %if !(llvm-22-plus) %{ cat %t/*.zeinfo | FileCheck %s --check-prefixes=CHECK,OLD %}
+; RUN: %if llvm-22-plus %{ cat %t/*.zeinfo | FileCheck %s --check-prefixes=CHECK,NEW %}
 
 target datalayout = "e-p:64:64-p3:32:32-p6:32:32-i64:64-n8:16:32:64"
 target triple = "genx64-unknown-unknown"
@@ -25,38 +31,45 @@ target triple = "genx64-unknown-unknown"
 ; CHECK-NEXT:     - name:            kernel
 
 ; CHECK:          kcm_args_sym:
-; CHECK-NEXT:      - argNo:           3
-; CHECK-NEXT:        byteOffset:      0
-; CHECK-NEXT:        sizeInBytes:     4
-; CHECK-NEXT:        isInDirect:      false
-; CHECK-NEXT:      - argNo:           2
-; CHECK-NEXT:        byteOffset:      0
-; CHECK-NEXT:        sizeInBytes:     4
-; CHECK-NEXT:        isInDirect:      false
-; CHECK-NEXT:      - argNo:           1
-; CHECK-NEXT:        byteOffset:      120
-; CHECK-NEXT:        sizeInBytes:     8
-; CHECK-NEXT:        isInDirect:      true
+; OLD-NEXT:      - argNo:           3
+; OLD-NEXT:        byteOffset:      0
+; OLD-NEXT:        sizeInBytes:     4
+; OLD-NEXT:        isInDirect:      false
+; OLD-NEXT:      - argNo:           2
+; OLD-NEXT:        byteOffset:      0
+; OLD-NEXT:        sizeInBytes:     4
+; OLD-NEXT:        isInDirect:      false
+; OLD-NEXT:      - argNo:           1
+; OLD-NEXT:        byteOffset:      120
+; OLD-NEXT:        sizeInBytes:     8
+; OLD-NEXT:        isInDirect:      true
+; NEW-NEXT:      - argNo:           1
+; NEW-NEXT:        byteOffset:      120
+; NEW-NEXT:        sizeInBytes:     8
+; NEW-NEXT:        isInDirect:      true
 
 ; CHECK:          kcm_loop_count_exps:
-; CHECK-NEXT:      - factor:          1
-; CHECK-NEXT:        argsym_index:    0
-; CHECK-NEXT:        C:               0
-; CHECK-NEXT:      - factor:          -0.25
-; CHECK-NEXT:        argsym_index:    1
-; CHECK-NEXT:        C:               3.75
-; CHECK-NEXT:      - factor:          -1
-; CHECK-NEXT:        argsym_index:    1
-; CHECK-NEXT:        C:               -20
-; CHECK-NEXT:      - factor:          1
-; CHECK-NEXT:        argsym_index:    2
-; CHECK-NEXT:        C:               0
-; CHECK-NEXT:      - factor:          0
-; CHECK-NEXT:        argsym_index:    -1
-; CHECK-NEXT:        C:               127
-; CHECK-NEXT:      - factor:          0
-; CHECK-NEXT:        argsym_index:    -1
-; CHECK-NEXT:        C:               0
+; OLD-NEXT:      - factor:          1
+; OLD-NEXT:        argsym_index:    0
+; OLD-NEXT:        C:               0
+; OLD-NEXT:      - factor:          -0.25
+; OLD-NEXT:        argsym_index:    1
+; OLD-NEXT:        C:               3.75
+; OLD-NEXT:      - factor:          -1
+; OLD-NEXT:        argsym_index:    1
+; OLD-NEXT:        C:               -20
+; OLD-NEXT:      - factor:          1
+; OLD-NEXT:        argsym_index:    2
+; OLD-NEXT:        C:               0
+; OLD-NEXT:      - factor:          0
+; OLD-NEXT:        argsym_index:    -1
+; OLD-NEXT:        C:               127
+; OLD-NEXT:      - factor:          0
+; OLD-NEXT:        argsym_index:    -1
+; OLD-NEXT:        C:               0
+; NEW-NEXT:      - factor:          1
+; NEW-NEXT:        argsym_index:    0
+; NEW-NEXT:        C:               0
 
 ; COM: The loop costs are estimated by finalizer. Only verify that
 ; COM: that the number of blocks equals the number of loops + 1.
@@ -65,7 +78,8 @@ target triple = "genx64-unknown-unknown"
 ; CHECK-NEXT:        bytes_loaded:    {{.*}}
 ; CHECK-NEXT:        bytes_stored:    {{.*}}
 ; CHECK-NEXT:        num_loops:       {{.*}}
-; CHECK-COUNT-6:   - cycle:           {{.*}}
+; OLD-COUNT-6:   - cycle:           {{.*}}
+; NEW-COUNT-1:   - cycle:           {{.*}}
 
 ; COM: IR represents the following kernel:
 ; COM:  kernel(__global int *A, __global int *B, int C, int D) {

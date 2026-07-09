@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2022-2023 Intel Corporation
+Copyright (C) 2022-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -28,6 +28,9 @@ SPDX-License-Identifier: MIT
 #include "llvm/IR/Function.h"
 #include "llvm/IR/Instructions.h"
 #include "llvm/IR/DIBuilder.h"
+#if LLVM_VERSION_MAJOR >= 22
+#include "llvm/IR/DebugProgramInstruction.h"
+#endif
 #include "llvm/InitializePasses.h"
 #include "llvm/Pass.h"
 #include "llvm/Support/Debug.h"
@@ -79,30 +82,46 @@ void GenXDebugLegalization::getAnalysisUsage(AnalysisUsage &AU) const {
 // Detect instructions with an address class pattern. Then remove all opcodes of
 // this pattern from this instruction's last operand (metadata of DIExpression).
 // Pattern: !DIExpression(DW_OP_constu, 4, DW_OP_swap, DW_OP_xderef)
+static DIExpression *stripAddressClass(const DIExpression *DIExpr,
+                                       DIBuilder &di) {
+  llvm::SmallVector<uint64_t, 5> newElements;
+  for (auto I = DIExpr->expr_op_begin(), E = DIExpr->expr_op_end(); I != E;
+       ++I) {
+    if (I->getOp() == dwarf::DW_OP_constu) {
+      auto patternI = I;
+      if (++patternI != E && patternI->getOp() == dwarf::DW_OP_swap &&
+          ++patternI != E && patternI->getOp() == dwarf::DW_OP_xderef) {
+        I = patternI;
+        continue;
+      }
+    }
+    I->appendToVector(newElements);
+  }
+
+  if (newElements.size() < DIExpr->getNumElements())
+    return di.createExpression(newElements);
+  return nullptr;
+}
+
 bool GenXDebugLegalization::extractAddressClass(Function &F) {
   bool Modified = false;
   DIBuilder di(*F.getParent());
 
   for (auto &bb : F) {
     for (auto &pInst : bb) {
-      if (auto *DI = dyn_cast<DbgVariableIntrinsic>(&pInst)) {
-        const DIExpression *DIExpr = DI->getExpression();
-        llvm::SmallVector<uint64_t, 5> newElements;
-        for (auto I = DIExpr->expr_op_begin(), E = DIExpr->expr_op_end();
-             I != E; ++I) {
-          if (I->getOp() == dwarf::DW_OP_constu) {
-            auto patternI = I;
-            if (++patternI != E && patternI->getOp() == dwarf::DW_OP_swap &&
-                ++patternI != E && patternI->getOp() == dwarf::DW_OP_xderef) {
-              I = patternI;
-              continue;
-            }
-          }
-          I->appendToVector(newElements);
+#if LLVM_VERSION_MAJOR >= 22
+      for (llvm::DbgVariableRecord &DVR :
+           llvm::filterDbgVars(pInst.getDbgRecordRange())) {
+        if (DIExpression *newDIExpr =
+                stripAddressClass(DVR.getExpression(), di)) {
+          DVR.setExpression(newDIExpr);
+          Modified = true;
         }
-
-        if (newElements.size() < DIExpr->getNumElements()) {
-          DIExpression *newDIExpr = di.createExpression(newElements);
+      }
+#endif
+      if (auto *DI = dyn_cast<DbgVariableIntrinsic>(&pInst)) {
+        if (DIExpression *newDIExpr =
+                stripAddressClass(DI->getExpression(), di)) {
           DI->setExpression(newDIExpr);
           Modified = true;
         }
@@ -118,6 +137,15 @@ bool GenXDebugLegalization::removeDIArgList(Function &F) {
   bool Modified = false;
   for (auto &BB : F) {
     for (auto &I : BB) {
+#if LLVM_VERSION_MAJOR >= 22
+      for (llvm::DbgVariableRecord &DVR :
+           llvm::filterDbgVars(I.getDbgRecordRange())) {
+        if (DVR.getNumVariableLocationOps() > 1) {
+          DVR.setKillLocation();
+          Modified = true;
+        }
+      }
+#endif
       if (auto *dbgInst = dyn_cast<DbgVariableIntrinsic>(&I)) {
         if (dbgInst->getNumVariableLocationOps() > 1) {
           IGCLLVM::setKillLocation(dbgInst);

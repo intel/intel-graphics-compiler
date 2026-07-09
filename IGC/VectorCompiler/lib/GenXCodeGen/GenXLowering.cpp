@@ -5572,7 +5572,9 @@ bool GenXLowering::widenByteOp(Instruction *Inst) {
     Value *Opnd = Inst->getOperand(Idx);
     if (Idx >= StartIdx) {
       if (auto C = dyn_cast<Constant>(Opnd))
-        Opnd = ConstantExpr::getCast(ExtOpcode, C, ExtTy);
+        Opnd = ExtOpcode == Instruction::SExt
+                   ? IGCLLVM::ConstantExpr::getSExt(C, ExtTy)
+                   : IGCLLVM::ConstantExpr::getZExt(C, ExtTy);
       else {
         auto NewExt = CastInst::Create(ExtOpcode, Opnd, ExtTy,
                                        Inst->getName() + ".byteext", Inst);

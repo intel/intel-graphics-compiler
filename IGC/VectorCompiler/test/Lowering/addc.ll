@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2024 Intel Corporation
+; Copyright (C) 2024-2026 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -57,7 +57,7 @@
 ; CHECK-ADD3: [[RESULT_X_:%.*]] = call <32 x i32> @llvm.genx.wrregioni.v32i32.v16i32.i16.i1(<32 x i32> [[PART_RESULT_X]], <16 x i32> [[ADD3C_A_B_C_LO_X]], i32 0, i32 16, i32 2, i16 4, i32 undef, i1 true)
 ; CHECK-ADD3: [[RESULT_X:%.*]] = bitcast <32 x i32> [[RESULT_X_]] to <16 x i64>
 ; CHECK-ADD3: [[ADD3C_A_B_C_LO_C:%.*]] = extractvalue { <16 x i1>, <16 x i32> } [[ADD3C_A_B_C_LO]], 0
-; CHECK-ADD3: [[RESULT_C_:%.*]] = select <16 x i1> [[ADD3C_A_B_C_LO_C]], <16 x i64> <i64 1, i64 1, i64 1, i64 1, i64 1, i64 1, i64 1, i64 1, i64 1, i64 1, i64 1, i64 1, i64 1, i64 1, i64 1, i64 1>, <16 x i64> zeroinitializer
+; CHECK-ADD3: [[RESULT_C_:%.*]] = select <16 x i1> [[ADD3C_A_B_C_LO_C]], <16 x i64> {{(splat \(i64 1\)|<i64 1(, i64 1)*>)}}, <16 x i64> zeroinitializer
 ; CHECK-ADD3: [[RESULT_:%.*]] = insertvalue { <16 x i64>, <16 x i64> } undef, <16 x i64> [[RESULT_X]], 1
 ; CHECK-ADD3: [[RESULT:%.*]] = insertvalue { <16 x i64>, <16 x i64> } [[RESULT_]], <16 x i64> [[RESULT_C_]], 0
 

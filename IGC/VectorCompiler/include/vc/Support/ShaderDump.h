@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2020-2023 Intel Corporation
+Copyright (C) 2020-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -66,6 +66,15 @@ inline void produceAuxiliaryShaderDumpFile(const llvm::GenXBackendConfig &BC,
                                            const llvm::StringRef Blob) {
   return produceAuxiliaryShaderDumpFile(BC, OutputName,
                                         {Blob.begin(), Blob.end()});
+}
+
+// Explicit std::string overload to avoid ambiguity between the ArrayRef<char>
+// and StringRef overloads (LLVM's ArrayRef gained a std::string constructor).
+inline void produceAuxiliaryShaderDumpFile(const llvm::GenXBackendConfig &BC,
+                                           const llvm::Twine &OutputName,
+                                           const std::string &Blob) {
+  return produceAuxiliaryShaderDumpFile(
+      BC, OutputName, llvm::ArrayRef<char>{Blob.data(), Blob.size()});
 }
 
 } // namespace vc

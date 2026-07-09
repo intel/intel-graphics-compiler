@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2023 Intel Corporation
+; Copyright (C) 2023-2026 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -12,7 +12,7 @@
 define spir_kernel void @test_fdiv(<4 x float> %arg) {
 ; CHECK-LABEL: @test_fdiv
 ; CHECK: (<4 x float> [[ARG:%[A-Za-z0-9_.]+]])
-; CHECK-NEXT: [[V0:%[A-Za-z0-9_.]+]] = fmul <4 x float> [[ARG]], <
+; CHECK-NEXT: [[V0:%[A-Za-z0-9_.]+]] = fmul <4 x float> [[ARG]], {{(splat \(|<)}}
 ; CHECK-NEXT: [[V1:%[A-Za-z0-9_.]+]] = tail call <4 x float> @llvm.genx.wrregionf.v4f32.v1f32.i16.i1(<4 x float> [[V0]]
 ; CHECK-NEXT: [[V2:%[A-Za-z0-9_.]+]] = call <4 x float> @llvm.genx.inv.v4f32(<4 x float> [[V1]])
 ; CHECK-NEXT: [[V3:%[A-Za-z0-9_.]+]] = call <4 x float> @llvm.genx.rsqrt.v4f32(<4 x float> [[V1]])

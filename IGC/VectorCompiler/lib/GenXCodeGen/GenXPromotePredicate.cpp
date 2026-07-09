@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2024 Intel Corporation
+Copyright (C) 2017-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -301,7 +301,15 @@ bool GenXPromotePredicate::runOnFunction(Function &F) {
 
   // Put every predicate instruction into its own equivalence class.
   long Idx = 0;
+#if LLVM_VERSION_MAJOR >= 22
+  // Dropping the comparator in the >= 22 path is safe — iteration stays
+  // deterministic and instruction-ordered, which is exactly what the Comparator
+  // was there to guarantee. It is not byte-for-byte the same order as pre‑22,
+  // but it is never the pointer-address order the comment above warns about.
+  llvm::EquivalenceClasses<Instruction *> PredicateWebs;
+#else
   llvm::EquivalenceClasses<Instruction *, Comparator> PredicateWebs;
+#endif
   for (auto &I : instructions(F)) {
     if (!genx::isPredicate(&I))
       continue;
@@ -315,7 +323,11 @@ bool GenXPromotePredicate::runOnFunction(Function &F) {
   }
   // Connect data-flow related instructions together.
   for (auto &EC : PredicateWebs) {
+#if LLVM_VERSION_MAJOR >= 22
+    Instruction *Inst = EC->getData();
+#else
     Instruction *Inst = EC.getData();
+#endif
     for (auto &Op : Inst->operands()) {
       Instruction *In = dyn_cast<Instruction>(Op);
 
@@ -327,10 +339,17 @@ bool GenXPromotePredicate::runOnFunction(Function &F) {
   // Promote web if it is big enough (likely to cause flag spills).
   bool Modified = false;
   for (auto I = PredicateWebs.begin(), E = PredicateWebs.end(); I != E; ++I) {
+#if LLVM_VERSION_MAJOR >= 22
+    if (!(*I)->isLeader())
+      continue;
+    PredicateWeb Web(PredicateWebs.member_begin(**I),
+                     PredicateWebs.member_end(), AllowScalarAllAny);
+#else
     if (!I->isLeader())
       continue;
     PredicateWeb Web(PredicateWebs.member_begin(I), PredicateWebs.member_end(),
                      AllowScalarAllAny);
+#endif
     LLVM_DEBUG(dbgs() << "Predicate web:\n"; Web.dump());
     ++NumCollectedPredicateWebs;
     if (!Web.isBeneficialToPromote())

@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2022-2025 Intel Corporation
+; Copyright (C) 2022-2026 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -28,61 +28,61 @@ declare !genx_intrinsic_id !21 <64 x i32> @llvm.genx.wrregioni.v64i32.v16i32.i16
 declare <16 x i32> @llvm.genx.gather.masked.scaled2.v16i32.v16i32.v16i1(i32, i16, i32, i32, <16 x i32>, <16 x i1>) #1
 
 ; CHECK: define internal spir_func <64 x i32> @IP_AlphaBlendRound{{.*}} !dbg [[SCOPE1:![0-9]*]]
-; CHECK-DAG: void @llvm.dbg.value(metadata <16 x i32> [[VAL1_V:%[A-z0-9\.]*]], metadata [[VAL1_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL1_LOC:![0-9]*]]
+; CHECK-DAG: {{(#dbg_value\(|call void @llvm\.dbg\.value\(metadata )}}<16 x i32> [[VAL1_V:%[A-z0-9\.]*]]{{(, |, metadata )}}[[VAL1_MD:![0-9]*]]{{(, |, metadata )}}!DIExpression(){{(, |\), !dbg )}}[[VAL1_LOC:![0-9]*]]{{\)?}}
 ; CHECK-DAG: [[VAL1_V]] = {{.*}}, !dbg [[VAL1_LOC]]
-; CHECK-DAG: void @llvm.dbg.value(metadata <16 x i32> [[VAL2_V:%[A-z0-9\.]*]], metadata [[VAL2_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL2_LOC:![0-9]*]]
+; CHECK-DAG: {{(#dbg_value\(|call void @llvm\.dbg\.value\(metadata )}}<16 x i32> [[VAL2_V:%[A-z0-9\.]*]]{{(, |, metadata )}}[[VAL2_MD:![0-9]*]]{{(, |, metadata )}}!DIExpression(){{(, |\), !dbg )}}[[VAL2_LOC:![0-9]*]]{{\)?}}
 ; CHECK-DAG: [[VAL2_V]] = {{.*}}, !dbg [[VAL2_LOC]]
-; CHECK-DAG: void @llvm.dbg.value(metadata <16 x i32> [[VAL3_V:%[A-z0-9\.]*]], metadata [[VAL3_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL3_LOC:![0-9]*]]
+; CHECK-DAG: {{(#dbg_value\(|call void @llvm\.dbg\.value\(metadata )}}<16 x i32> [[VAL3_V:%[A-z0-9\.]*]]{{(, |, metadata )}}[[VAL3_MD:![0-9]*]]{{(, |, metadata )}}!DIExpression(){{(, |\), !dbg )}}[[VAL3_LOC:![0-9]*]]{{\)?}}
 ; CHECK-DAG: [[VAL3_V]] = {{.*}}, !dbg [[VAL3_LOC]]
-; CHECK-DAG: void @llvm.dbg.value(metadata <16 x i32> [[VAL4_V:%[A-z0-9\.]*]], metadata [[VAL4_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL4_LOC:![0-9]*]]
+; CHECK-DAG: {{(#dbg_value\(|call void @llvm\.dbg\.value\(metadata )}}<16 x i32> [[VAL4_V:%[A-z0-9\.]*]]{{(, |, metadata )}}[[VAL4_MD:![0-9]*]]{{(, |, metadata )}}!DIExpression(){{(, |\), !dbg )}}[[VAL4_LOC:![0-9]*]]{{\)?}}
 ; CHECK-DAG: [[VAL4_V]] = {{.*}}, !dbg [[VAL4_LOC]]
-; CHECK-DAG: void @llvm.dbg.value(metadata <16 x i32> [[VAL5_V:%[A-z0-9\.]*]], metadata [[VAL5_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL5_LOC:![0-9]*]]
+; CHECK-DAG: {{(#dbg_value\(|call void @llvm\.dbg\.value\(metadata )}}<16 x i32> [[VAL5_V:%[A-z0-9\.]*]]{{(, |, metadata )}}[[VAL5_MD:![0-9]*]]{{(, |, metadata )}}!DIExpression(){{(, |\), !dbg )}}[[VAL5_LOC:![0-9]*]]{{\)?}}
 ; CHECK-DAG: [[VAL5_V]] = {{.*}}, !dbg [[VAL5_LOC]]
-; CHECK-DAG: void @llvm.dbg.value(metadata <16 x i32> [[VAL6_V:%[A-z0-9\.]*]], metadata [[VAL6_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL6_LOC:![0-9]*]]
+; CHECK-DAG: {{(#dbg_value\(|call void @llvm\.dbg\.value\(metadata )}}<16 x i32> [[VAL6_V:%[A-z0-9\.]*]]{{(, |, metadata )}}[[VAL6_MD:![0-9]*]]{{(, |, metadata )}}!DIExpression(){{(, |\), !dbg )}}[[VAL6_LOC:![0-9]*]]{{\)?}}
 ; CHECK-DAG: [[VAL6_V]] = {{.*}}, !dbg [[VAL6_LOC]]
-; CHECK-DAG: void @llvm.dbg.value(metadata <16 x i32> [[VAL7_V:%[A-z0-9\.]*]], metadata [[VAL7_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL7_LOC:![0-9]*]]
+; CHECK-DAG: {{(#dbg_value\(|call void @llvm\.dbg\.value\(metadata )}}<16 x i32> [[VAL7_V:%[A-z0-9\.]*]]{{(, |, metadata )}}[[VAL7_MD:![0-9]*]]{{(, |, metadata )}}!DIExpression(){{(, |\), !dbg )}}[[VAL7_LOC:![0-9]*]]{{\)?}}
 ; CHECK-DAG: [[VAL7_V]] = {{.*}}, !dbg [[VAL7_LOC]]
-; CHECK-DAG: void @llvm.dbg.value(metadata <16 x i32> [[VAL8_V:%[A-z0-9\.]*]], metadata [[VAL8_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL8_LOC:![0-9]*]]
+; CHECK-DAG: {{(#dbg_value\(|call void @llvm\.dbg\.value\(metadata )}}<16 x i32> [[VAL8_V:%[A-z0-9\.]*]]{{(, |, metadata )}}[[VAL8_MD:![0-9]*]]{{(, |, metadata )}}!DIExpression(){{(, |\), !dbg )}}[[VAL8_LOC:![0-9]*]]{{\)?}}
 ; CHECK-DAG: [[VAL8_V]] = {{.*}}, !dbg [[VAL8_LOC]]
-; CHECK-DAG: void @llvm.dbg.value(metadata <16 x i32> [[VAL9_V:%[A-z0-9\.]*]], metadata [[VAL9_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL9_LOC:![0-9]*]]
+; CHECK-DAG: {{(#dbg_value\(|call void @llvm\.dbg\.value\(metadata )}}<16 x i32> [[VAL9_V:%[A-z0-9\.]*]]{{(, |, metadata )}}[[VAL9_MD:![0-9]*]]{{(, |, metadata )}}!DIExpression(){{(, |\), !dbg )}}[[VAL9_LOC:![0-9]*]]{{\)?}}
 ; CHECK-DAG: [[VAL9_V]] = {{.*}}, !dbg [[VAL9_LOC]]
-; CHECK-DAG: void @llvm.dbg.value(metadata <16 x i32> [[VAL10_V:%[A-z0-9\.]*]], metadata [[VAL10_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL10_LOC:![0-9]*]]
+; CHECK-DAG: {{(#dbg_value\(|call void @llvm\.dbg\.value\(metadata )}}<16 x i32> [[VAL10_V:%[A-z0-9\.]*]]{{(, |, metadata )}}[[VAL10_MD:![0-9]*]]{{(, |, metadata )}}!DIExpression(){{(, |\), !dbg )}}[[VAL10_LOC:![0-9]*]]{{\)?}}
 ; CHECK-DAG: [[VAL10_V]] = {{.*}}, !dbg [[VAL10_LOC]]
-; CHECK-DAG: void @llvm.dbg.value(metadata <16 x i32> [[VAL11_V:%[A-z0-9\.]*]], metadata [[VAL11_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL11_LOC:![0-9]*]]
+; CHECK-DAG: {{(#dbg_value\(|call void @llvm\.dbg\.value\(metadata )}}<16 x i32> [[VAL11_V:%[A-z0-9\.]*]]{{(, |, metadata )}}[[VAL11_MD:![0-9]*]]{{(, |, metadata )}}!DIExpression(){{(, |\), !dbg )}}[[VAL11_LOC:![0-9]*]]{{\)?}}
 ; CHECK-DAG: [[VAL11_V]] = {{.*}}, !dbg [[VAL11_LOC]]
-; CHECK-DAG: void @llvm.dbg.value(metadata <16 x i32> [[VAL12_V:%[A-z0-9\.]*]], metadata [[VAL12_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL12_LOC:![0-9]*]]
+; CHECK-DAG: {{(#dbg_value\(|call void @llvm\.dbg\.value\(metadata )}}<16 x i32> [[VAL12_V:%[A-z0-9\.]*]]{{(, |, metadata )}}[[VAL12_MD:![0-9]*]]{{(, |, metadata )}}!DIExpression(){{(, |\), !dbg )}}[[VAL12_LOC:![0-9]*]]{{\)?}}
 ; CHECK-DAG: [[VAL12_V]] = {{.*}}, !dbg [[VAL12_LOC]]
-; CHECK-DAG: void @llvm.dbg.value(metadata <16 x i32> [[VAL13_V:%[A-z0-9\.]*]], metadata [[VAL13_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL13_LOC:![0-9]*]]
+; CHECK-DAG: {{(#dbg_value\(|call void @llvm\.dbg\.value\(metadata )}}<16 x i32> [[VAL13_V:%[A-z0-9\.]*]]{{(, |, metadata )}}[[VAL13_MD:![0-9]*]]{{(, |, metadata )}}!DIExpression(){{(, |\), !dbg )}}[[VAL13_LOC:![0-9]*]]{{\)?}}
 ; CHECK-DAG: [[VAL13_V]] = {{.*}}, !dbg [[VAL13_LOC]]
-; CHECK-DAG: void @llvm.dbg.value(metadata <16 x i32> [[VAL14_V:%[A-z0-9\.]*]], metadata [[VAL14_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL14_LOC:![0-9]*]]
+; CHECK-DAG: {{(#dbg_value\(|call void @llvm\.dbg\.value\(metadata )}}<16 x i32> [[VAL14_V:%[A-z0-9\.]*]]{{(, |, metadata )}}[[VAL14_MD:![0-9]*]]{{(, |, metadata )}}!DIExpression(){{(, |\), !dbg )}}[[VAL14_LOC:![0-9]*]]{{\)?}}
 ; CHECK-DAG: [[VAL14_V]] = {{.*}}, !dbg [[VAL14_LOC]]
-; CHECK-DAG: void @llvm.dbg.value(metadata <16 x i32> [[VAL15_V:%[A-z0-9\.]*]], metadata [[VAL15_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL15_LOC:![0-9]*]]
+; CHECK-DAG: {{(#dbg_value\(|call void @llvm\.dbg\.value\(metadata )}}<16 x i32> [[VAL15_V:%[A-z0-9\.]*]]{{(, |, metadata )}}[[VAL15_MD:![0-9]*]]{{(, |, metadata )}}!DIExpression(){{(, |\), !dbg )}}[[VAL15_LOC:![0-9]*]]{{\)?}}
 ; CHECK-DAG: [[VAL15_V]] = {{.*}}, !dbg [[VAL15_LOC]]
-; CHECK-DAG: void @llvm.dbg.value(metadata <16 x i32> [[VAL16_V:%[A-z0-9\.]*]], metadata [[VAL16_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL16_LOC:![0-9]*]]
+; CHECK-DAG: {{(#dbg_value\(|call void @llvm\.dbg\.value\(metadata )}}<16 x i32> [[VAL16_V:%[A-z0-9\.]*]]{{(, |, metadata )}}[[VAL16_MD:![0-9]*]]{{(, |, metadata )}}!DIExpression(){{(, |\), !dbg )}}[[VAL16_LOC:![0-9]*]]{{\)?}}
 ; CHECK-DAG: [[VAL16_V]] = {{.*}}, !dbg [[VAL16_LOC]]
-; CHECK-DAG: void @llvm.dbg.value(metadata <16 x i32> [[VAL17_V:%[A-z0-9\.]*]], metadata [[VAL17_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL17_LOC:![0-9]*]]
+; CHECK-DAG: {{(#dbg_value\(|call void @llvm\.dbg\.value\(metadata )}}<16 x i32> [[VAL17_V:%[A-z0-9\.]*]]{{(, |, metadata )}}[[VAL17_MD:![0-9]*]]{{(, |, metadata )}}!DIExpression(){{(, |\), !dbg )}}[[VAL17_LOC:![0-9]*]]{{\)?}}
 ; CHECK-DAG: [[VAL17_V]] = {{.*}}, !dbg [[VAL17_LOC]]
-; CHECK-DAG: void @llvm.dbg.value(metadata <16 x i32> [[VAL18_V:%[A-z0-9\.]*]], metadata [[VAL18_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL18_LOC:![0-9]*]]
+; CHECK-DAG: {{(#dbg_value\(|call void @llvm\.dbg\.value\(metadata )}}<16 x i32> [[VAL18_V:%[A-z0-9\.]*]]{{(, |, metadata )}}[[VAL18_MD:![0-9]*]]{{(, |, metadata )}}!DIExpression(){{(, |\), !dbg )}}[[VAL18_LOC:![0-9]*]]{{\)?}}
 ; CHECK-DAG: [[VAL18_V]] = {{.*}}, !dbg [[VAL18_LOC]]
-; CHECK-DAG: void @llvm.dbg.value(metadata <64 x i32> [[VAL19_V:%[A-z0-9\.]*]], metadata [[VAL19_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL19_LOC:![0-9]*]]
+; CHECK-DAG: {{(#dbg_value\(|call void @llvm\.dbg\.value\(metadata )}}<64 x i32> [[VAL19_V:%[A-z0-9\.]*]]{{(, |, metadata )}}[[VAL19_MD:![0-9]*]]{{(, |, metadata )}}!DIExpression(){{(, |\), !dbg )}}[[VAL19_LOC:![0-9]*]]{{\)?}}
 ; CHECK-DAG: [[VAL19_V]] = {{.*}}, !dbg [[VAL19_LOC]]
-; CHECK-DAG: void @llvm.dbg.value(metadata <16 x i32> [[VAL20_V:%[A-z0-9\.]*]], metadata [[VAL20_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL20_LOC:![0-9]*]]
+; CHECK-DAG: {{(#dbg_value\(|call void @llvm\.dbg\.value\(metadata )}}<16 x i32> [[VAL20_V:%[A-z0-9\.]*]]{{(, |, metadata )}}[[VAL20_MD:![0-9]*]]{{(, |, metadata )}}!DIExpression(){{(, |\), !dbg )}}[[VAL20_LOC:![0-9]*]]{{\)?}}
 ; CHECK-DAG: [[VAL20_V]] = {{.*}}, !dbg [[VAL20_LOC]]
-; CHECK-DAG: void @llvm.dbg.value(metadata <16 x i32> [[VAL21_V:%[A-z0-9\.]*]], metadata [[VAL21_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL21_LOC:![0-9]*]]
+; CHECK-DAG: {{(#dbg_value\(|call void @llvm\.dbg\.value\(metadata )}}<16 x i32> [[VAL21_V:%[A-z0-9\.]*]]{{(, |, metadata )}}[[VAL21_MD:![0-9]*]]{{(, |, metadata )}}!DIExpression(){{(, |\), !dbg )}}[[VAL21_LOC:![0-9]*]]{{\)?}}
 ; CHECK-DAG: [[VAL21_V]] = {{.*}}, !dbg [[VAL21_LOC]]
-; CHECK-DAG: void @llvm.dbg.value(metadata <64 x i32> [[VAL22_V:%[A-z0-9\.]*]], metadata [[VAL22_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL22_LOC:![0-9]*]]
+; CHECK-DAG: {{(#dbg_value\(|call void @llvm\.dbg\.value\(metadata )}}<64 x i32> [[VAL22_V:%[A-z0-9\.]*]]{{(, |, metadata )}}[[VAL22_MD:![0-9]*]]{{(, |, metadata )}}!DIExpression(){{(, |\), !dbg )}}[[VAL22_LOC:![0-9]*]]{{\)?}}
 ; CHECK-DAG: [[VAL22_V]] = {{.*}}, !dbg [[VAL22_LOC]]
-; CHECK-DAG: void @llvm.dbg.value(metadata <16 x i32> [[VAL23_V:%[A-z0-9\.]*]], metadata [[VAL23_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL23_LOC:![0-9]*]]
+; CHECK-DAG: {{(#dbg_value\(|call void @llvm\.dbg\.value\(metadata )}}<16 x i32> [[VAL23_V:%[A-z0-9\.]*]]{{(, |, metadata )}}[[VAL23_MD:![0-9]*]]{{(, |, metadata )}}!DIExpression(){{(, |\), !dbg )}}[[VAL23_LOC:![0-9]*]]{{\)?}}
 ; CHECK-DAG: [[VAL23_V]] = {{.*}}, !dbg [[VAL23_LOC]]
-; CHECK-DAG: void @llvm.dbg.value(metadata <16 x i32> [[VAL24_V:%[A-z0-9\.]*]], metadata [[VAL24_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL24_LOC:![0-9]*]]
+; CHECK-DAG: {{(#dbg_value\(|call void @llvm\.dbg\.value\(metadata )}}<16 x i32> [[VAL24_V:%[A-z0-9\.]*]]{{(, |, metadata )}}[[VAL24_MD:![0-9]*]]{{(, |, metadata )}}!DIExpression(){{(, |\), !dbg )}}[[VAL24_LOC:![0-9]*]]{{\)?}}
 ; CHECK-DAG: [[VAL24_V]] = {{.*}}, !dbg [[VAL24_LOC]]
-; CHECK-DAG: void @llvm.dbg.value(metadata <64 x i32> [[VAL25_V:%[A-z0-9\.]*]], metadata [[VAL25_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL25_LOC:![0-9]*]]
+; CHECK-DAG: {{(#dbg_value\(|call void @llvm\.dbg\.value\(metadata )}}<64 x i32> [[VAL25_V:%[A-z0-9\.]*]]{{(, |, metadata )}}[[VAL25_MD:![0-9]*]]{{(, |, metadata )}}!DIExpression(){{(, |\), !dbg )}}[[VAL25_LOC:![0-9]*]]{{\)?}}
 ; CHECK-DAG: [[VAL25_V]] = {{.*}}, !dbg [[VAL25_LOC]]
-; CHECK-DAG: void @llvm.dbg.value(metadata <16 x i32> [[VAL26_V:%[A-z0-9\.]*]], metadata [[VAL26_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL26_LOC:![0-9]*]]
+; CHECK-DAG: {{(#dbg_value\(|call void @llvm\.dbg\.value\(metadata )}}<16 x i32> [[VAL26_V:%[A-z0-9\.]*]]{{(, |, metadata )}}[[VAL26_MD:![0-9]*]]{{(, |, metadata )}}!DIExpression(){{(, |\), !dbg )}}[[VAL26_LOC:![0-9]*]]{{\)?}}
 ; CHECK-DAG: [[VAL26_V]] = {{.*}}, !dbg [[VAL26_LOC]]
-; CHECK-DAG: void @llvm.dbg.value(metadata <16 x i32> [[VAL27_V:%[A-z0-9\.]*]], metadata [[VAL27_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL27_LOC:![0-9]*]]
+; CHECK-DAG: {{(#dbg_value\(|call void @llvm\.dbg\.value\(metadata )}}<16 x i32> [[VAL27_V:%[A-z0-9\.]*]]{{(, |, metadata )}}[[VAL27_MD:![0-9]*]]{{(, |, metadata )}}!DIExpression(){{(, |\), !dbg )}}[[VAL27_LOC:![0-9]*]]{{\)?}}
 ; CHECK-DAG: [[VAL27_V]] = {{.*}}, !dbg [[VAL27_LOC]]
-; CHECK-DAG: void @llvm.dbg.value(metadata <64 x i32> [[VAL28_V:%[A-z0-9\.]*]], metadata [[VAL28_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL28_LOC:![0-9]*]]
+; CHECK-DAG: {{(#dbg_value\(|call void @llvm\.dbg\.value\(metadata )}}<64 x i32> [[VAL28_V:%[A-z0-9\.]*]]{{(, |, metadata )}}[[VAL28_MD:![0-9]*]]{{(, |, metadata )}}!DIExpression(){{(, |\), !dbg )}}[[VAL28_LOC:![0-9]*]]{{\)?}}
 ; CHECK-DAG: [[VAL28_V]] = {{.*}}, !dbg [[VAL28_LOC]]
 
 ; Function Attrs: noinline norecurse nounwind readnone
@@ -148,7 +148,7 @@ define internal spir_func <64 x i32> @IP_AlphaBlendRound(<64 x i32> %arg, <64 x 
 
 ; CHECK: dllexport spir_kernel void @Compute_2D_STD_UV{{.*}} !dbg [[SCOPE2:![0-9]*]]
 ; CHECK: [[CALL_V:%[A-z0-9.]*]] = {{.*}}call <64 x i32> @IP_AlphaBlendRound{{.*}}, !dbg [[CALL_LOC:![0-9]*]]
-; CHECK: void @llvm.dbg.value(metadata <64 x i32> [[CALL_V]], metadata [[CALL_MD:![0-9]*]], metadata !DIExpression()), !dbg [[CALL_LOC]]
+; CHECK: {{(#dbg_value\(|call void @llvm\.dbg\.value\(metadata )}}<64 x i32> [[CALL_V]]{{(, |, metadata )}}[[CALL_MD:![0-9]*]]{{(, |, metadata )}}!DIExpression(){{(, |\), !dbg )}}[[CALL_LOC]]{{\)?}}
 
 ; Function Attrs: noinline nounwind
 define dllexport spir_kernel void @Compute_2D_STD_UV() local_unnamed_addr #3 !dbg !84 {

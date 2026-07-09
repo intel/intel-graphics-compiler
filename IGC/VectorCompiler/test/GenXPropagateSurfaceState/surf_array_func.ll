@@ -26,7 +26,7 @@ declare !internal_intrinsic_id !19 void @llvm.vc.internal.lsc.store.bti.v1i1.v3i
 define internal spir_func <8 x i32> @_Z3baru2CMvb8_15cm_surfaceindexi(<8 x i32> %0) unnamed_addr #2 {
 ; CHECK: [[RDREG:%[^ ]+]] = call i64 @llvm.genx.rdregioni.i64.v8i64.i16(<8 x i64> %0, i32 0, i32 1, i32 1, i16 40, i32 0)
 ; CHECK: [[TRUNC:%[^ ]+]] = trunc i64 [[RDREG]] to i32
-; CHECK: call <8 x i32> @llvm.vc.internal.lsc.load.bti.v8i32.v1i1.v3i8.i32(<1 x i1> <i1 true>, i8 2, i8 3, i8 5, <3 x i8> zeroinitializer, i32 [[TRUNC]], i32 32, i16 1, i32 0, <8 x i32> undef)
+; CHECK: call <8 x i32> @llvm.vc.internal.lsc.load.bti.v8i32.v1i1.v3i8.i32(<1 x i1> {{(splat \(i1 true\)|<i1 true(, i1 true)*>)}}, i8 2, i8 3, i8 5, <3 x i8> zeroinitializer, i32 [[TRUNC]], i32 32, i16 1, i32 0, <8 x i32> undef)
   %sev.cast.14.regioncollapsed = tail call i32 @llvm.genx.rdregioni.i32.v8i32.i16(<8 x i32> %0, i32 0, i32 1, i32 1, i16 20, i32 0)
   %2 = call <8 x i32> @llvm.vc.internal.lsc.load.bti.v8i32.v1i1.v3i8.i32(<1 x i1> <i1 true>, i8 2, i8 3, i8 5, <3 x i8> zeroinitializer, i32 %sev.cast.14.regioncollapsed, i32 32, i16 1, i32 0, <8 x i32> undef)
   ret <8 x i32> %2

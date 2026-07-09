@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2020-2021 Intel Corporation
+Copyright (C) 2020-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -47,7 +47,7 @@ inline llvm::Align getCorrectAlign(alignment_t Val) {
 // interface.
 template <typename TValue, std::enable_if_t<std::is_base_of_v<llvm::GlobalObject, TValue>, int> = 0>
 llvm::Align getAlign(const TValue &Val) {
-  return llvm::Align(Val.getAlignment());
+  return Val.getAlign().valueOrOne();
 }
 
 template <typename TValue, std::enable_if_t<std::is_base_of_v<llvm::Instruction, TValue>, int> = 0>

@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2021-2025 Intel Corporation
+; Copyright (C) 2021-2026 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -26,7 +26,7 @@ define  <8 x i8> @test_uuadd_sat(<8 x i64> %op0, <8 x i64> %op1) {
   ; CHECK-NEXT:  [[CARRY_OR:%.*]] = or <8 x i32> [[HI_OR]], [[CARRY]]
   ; CHECK-NEXT:  [[SAT:%.*]] = icmp ne <8 x i32> [[CARRY_OR]], zeroinitializer
 
-  ; CHECK-NEXT:  [[SELECT_SAT:%.*]] = select <8 x i1> [[SAT]], <8 x i32> <i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1>, <8 x i32> [[ADDC_LO]]
+  ; CHECK-NEXT:  [[SELECT_SAT:%.*]] = select <8 x i1> [[SAT]], <8 x i32> {{(splat \(i32 -1\)|<i32 -1(, i32 -1)*>)}}, <8 x i32> [[ADDC_LO]]
   ; CHECK-NEXT:  [[TRUNC:%.*]] = call <8 x i8> @llvm.genx.uutrunc.sat.v8i8.v8i32(<8 x i32> [[SELECT_SAT]])
   ; CHECK-NEXT:  ret <8 x i8> [[TRUNC]]
   %1 = call <8 x i8> @llvm.genx.uuadd.sat.v8i8.v8i64(<8 x i64> %op0, <8 x i64> %op1)
@@ -50,7 +50,7 @@ define i8 @test_scalar_uuadd_sat(i64 %op0, i64 %op1) {
   ; CHECK-NEXT:  [[CARRY_OR:%.*]] = or <1 x i32> [[HI_OR]], [[CARRY]]
   ; CHECK-NEXT:  [[SAT:%.*]] = icmp ne <1 x i32> [[CARRY_OR]], zeroinitializer
 
-  ; CHECK-NEXT:  [[SELECT_SAT:%.*]] = select <1 x i1> [[SAT]], <1 x i32> <i32 -1>, <1 x i32> [[ADDC_LO]]
+  ; CHECK-NEXT:  [[SELECT_SAT:%.*]] = select <1 x i1> [[SAT]], <1 x i32> {{(splat \(i32 -1\)|<i32 -1(, i32 -1)*>)}}, <1 x i32> [[ADDC_LO]]
   ; CHECK-NEXT:  [[TRUNC:%.*]] = call i8 @llvm.genx.uutrunc.sat.i8.v1i32(<1 x i32> [[SELECT_SAT]])
   ; CHECK-NEXT:  ret i8 [[TRUNC]]
   %1 = call i8 @llvm.genx.uuadd.sat.i8.i64(i64 %op0, i64 %op1)

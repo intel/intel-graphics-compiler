@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2022-2025 Intel Corporation
+; Copyright (C) 2022-2026 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -21,8 +21,8 @@ entry:
 }
 
 
-; CHECK: void @llvm.dbg.value(metadata i32 %0, metadata ![[MD_NUM:[0-9]+]], metadata !DIExpression())
-; CHECK: void @llvm.dbg.value(metadata i32 %1, metadata ![[MD2_NUM:[0-9]+]], metadata !DIExpression(DW_OP_plus_uconst, 50, DW_OP_stack_value))
+; CHECK: {{(#dbg_value\(|call void @llvm\.dbg\.value\(metadata )}}i32 %0{{(, |, metadata )}}![[MD_NUM:[0-9]+]]{{(, |, metadata )}}!DIExpression(){{(, |\))}}
+; CHECK: {{(#dbg_value\(|call void @llvm\.dbg\.value\(metadata )}}i32 %1{{(, |, metadata )}}![[MD2_NUM:[0-9]+]]{{(, |, metadata )}}!DIExpression(DW_OP_plus_uconst, 50, DW_OP_stack_value){{(, |\))}}
 ; CHECK: %rv = add i32 %0, %1
 ; CHECK: [[MD_NUM]] = !DILocalVariable(name: "i1",
 ; CHECK: [[MD2_NUM]] = !DILocalVariable(name: "i2",

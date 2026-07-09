@@ -6,8 +6,8 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; RUN: %opt_typed_ptrs %use_old_pass_manager% -GenXModule -GenXLateSimdCFConformanceWrapper -march=genx64 -mtriple=spir64-unknown-unknown -mcpu=Xe2 -S < %s | FileCheck %s
-; RUN: %opt_opaque_ptrs %use_old_pass_manager% -GenXModule -GenXLateSimdCFConformanceWrapper -march=genx64 -mtriple=spir64-unknown-unknown -mcpu=Xe2 -S < %s | FileCheck %s
+; RUN: %opt_typed_ptrs %use_old_pass_manager% -GenXModule -GenXLateSimdCFConformanceWrapper -march=genx64 -mtriple=spir64-unknown-unknown -mcpu=Xe2 -S < %s | FileCheck %s --check-prefixes=CHECK%if !llvm_18_or_greater %{,OLD%}
+; RUN: %opt_opaque_ptrs %use_old_pass_manager% -GenXModule -GenXLateSimdCFConformanceWrapper -march=genx64 -mtriple=spir64-unknown-unknown -mcpu=Xe2 -S < %s | FileCheck %s --check-prefixes=CHECK%if !llvm_18_or_greater %{,OLD%}
 ; ------------------------------------------------
 ; GenXLateSimdCFConformance
 ; ------------------------------------------------
@@ -20,16 +20,16 @@
 ; CHECK: define dllexport void @test_kernel{{.*}} !dbg [[SCOPE:![0-9]*]]
 ; CHECK: entry:
 ; CHECK: [[VAL1_V:%[A-z0-9]*]] = {{.*}}, !dbg [[VAL1_LOC:![0-9]*]]
-; CHECK: void @llvm.dbg.value(metadata <32 x i32> [[VAL1_V]], metadata [[VAL1_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL1_LOC]]
+; CHECK: {{(#dbg_value\(|call void @llvm\.dbg\.value\(metadata )}}<32 x i32> [[VAL1_V]]{{(, |, metadata )}}[[VAL1_MD:![0-9]*]]{{(, |, metadata )}}!DIExpression(){{(, |\), !dbg )}}[[VAL1_LOC]]{{\)?}}
 ; CHECK: br {{.*}}, !dbg [[BR1_LOC:![0-9]*]]
 ;
 ; CHECK: lbl:
-; CHECK-DAG: void @llvm.dbg.value(metadata { <32 x i1>, <32 x i1>, i1 } [[VAL2_V:%[A-z0-9]*]], metadata [[VAL2_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL2_LOC:![0-9]*]]
-; CHECK-DAG: void @llvm.dbg.value(metadata <32 x i32> [[VAL3_V:%[A-z0-9]*]], metadata [[VAL3_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL3_LOC:![0-9]*]]
-; CHECK-DAG: void @llvm.dbg.value(metadata <32 x i32> [[VAL4_V:%[A-z0-9]*]], metadata [[VAL4_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL4_LOC:![0-9]*]]
-; CHECK-DAG: void @llvm.dbg.value(metadata <32 x i1> [[VAL5_V:%[A-z0-9]*]], metadata [[VAL5_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL5_LOC:![0-9]*]]
-; CHECK-DAG: void @llvm.dbg.value(metadata <32 x i1> [[VAL6_V:%[A-z0-9]*]], metadata [[VAL6_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL6_LOC:![0-9]*]]
-; CHECK-DAG: void @llvm.dbg.value(metadata i1 [[VAL7_V:%[A-z0-9]*]], metadata [[VAL7_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL7_LOC:![0-9]*]]
+; CHECK-DAG: {{(#dbg_value\(|call void @llvm\.dbg\.value\(metadata )}}{ <32 x i1>, <32 x i1>, i1 } [[VAL2_V:%[A-z0-9]*]]{{(, |, metadata )}}[[VAL2_MD:![0-9]*]]{{(, |, metadata )}}!DIExpression(){{(, |\), !dbg )}}[[VAL2_LOC:![0-9]*]]{{\)?}}
+; CHECK-DAG: {{(#dbg_value\(|call void @llvm\.dbg\.value\(metadata )}}<32 x i32> [[VAL3_V:%[A-z0-9]*]]{{(, |, metadata )}}[[VAL3_MD:![0-9]*]]{{(, |, metadata )}}!DIExpression(){{(, |\), !dbg )}}[[VAL3_LOC:![0-9]*]]{{\)?}}
+; CHECK-DAG: {{(#dbg_value\(|call void @llvm\.dbg\.value\(metadata )}}<32 x i32> [[VAL4_V:%[A-z0-9]*]]{{(, |, metadata )}}[[VAL4_MD:![0-9]*]]{{(, |, metadata )}}!DIExpression(){{(, |\), !dbg )}}[[VAL4_LOC:![0-9]*]]{{\)?}}
+; CHECK-DAG: {{(#dbg_value\(|call void @llvm\.dbg\.value\(metadata )}}<32 x i1> [[VAL5_V:%[A-z0-9]*]]{{(, |, metadata )}}[[VAL5_MD:![0-9]*]]{{(, |, metadata )}}!DIExpression(){{(, |\), !dbg )}}[[VAL5_LOC:![0-9]*]]{{\)?}}
+; CHECK-DAG: {{(#dbg_value\(|call void @llvm\.dbg\.value\(metadata )}}<32 x i1> [[VAL6_V:%[A-z0-9]*]]{{(, |, metadata )}}[[VAL6_MD:![0-9]*]]{{(, |, metadata )}}!DIExpression(){{(, |\), !dbg )}}[[VAL6_LOC:![0-9]*]]{{\)?}}
+; CHECK-DAG: {{(#dbg_value\(|call void @llvm\.dbg\.value\(metadata )}}i1 [[VAL7_V:%[A-z0-9]*]]{{(, |, metadata )}}[[VAL7_MD:![0-9]*]]{{(, |, metadata )}}!DIExpression(){{(, |\), !dbg )}}[[VAL7_LOC:![0-9]*]]{{\)?}}
 ; CHECK-DAG: [[VAL2_V]] = {{.*}}, !dbg [[VAL2_LOC]]
 ; CHECK-DAG: [[VAL3_V]] = {{.*}}, !dbg [[VAL3_LOC]]
 ; CHECK-DAG: [[VAL4_V]] = {{.*}}, !dbg [[VAL4_LOC]]
@@ -39,9 +39,9 @@
 ; CHECK: br i1 {{.*}}, !dbg [[BR2_LOC:![0-9]*]]
 
 ; CHECK: exit:
-; CHECK: void @llvm.dbg.value(metadata <32 x i32> [[PHI1_V:%[A-z0-9]*]], metadata [[PHI1_MD:![0-9]*]], metadata !DIExpression()), !dbg [[PHI1_LOC:![0-9]*]]
-; CHECK-DAG: void @llvm.dbg.value(metadata <32 x i32> [[VAL8_V:%[A-z0-9]*]], metadata [[VAL8_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL8_LOC:![0-9]*]]
-; CHECK-DAG: void @llvm.dbg.value(metadata { <32 x i1>, i1 } [[VAL9_V:%[A-z0-9]*]], metadata [[VAL9_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL9_LOC:![0-9]*]]
+; OLD-DAG: {{(#dbg_value\(|call void @llvm\.dbg\.value\(metadata )}}<32 x i32> [[PHI1_V:%[A-z0-9]*]]{{(, |, metadata )}}[[PHI1_MD:![0-9]*]]{{(, |, metadata )}}!DIExpression(){{(, |\), !dbg )}}[[PHI1_LOC:![0-9]*]]{{\)?}}
+; CHECK-DAG: {{(#dbg_value\(|call void @llvm\.dbg\.value\(metadata )}}<32 x i32> [[VAL8_V:%[A-z0-9]*]]{{(, |, metadata )}}[[VAL8_MD:![0-9]*]]{{(, |, metadata )}}!DIExpression(){{(, |\), !dbg )}}[[VAL8_LOC:![0-9]*]]{{\)?}}
+; CHECK-DAG: {{(#dbg_value\(|call void @llvm\.dbg\.value\(metadata )}}{ <32 x i1>, i1 } [[VAL9_V:%[A-z0-9]*]]{{(, |, metadata )}}[[VAL9_MD:![0-9]*]]{{(, |, metadata )}}!DIExpression(){{(, |\), !dbg )}}[[VAL9_LOC:![0-9]*]]{{\)?}}
 ; CHECK-DAG: [[VAL8_V]] = {{.*}}, !dbg [[VAL8_LOC]]
 ; CHECK-DAG: [[VAL9_V]] = {{.*}}, !dbg [[VAL9_LOC]]
 ; CHECK-DAG: store{{.*}}, !dbg [[STORE1_LOC:![0-9]*]]
@@ -99,8 +99,8 @@ exit:                                             ; preds = %lbl2
 ; CHECK-DAG: [[VAL7_MD]] = !DILocalVariable(name: "7", scope: [[SCOPE]], file: [[FILE]], line: 8
 ; CHECK-DAG: [[VAL7_LOC]] = !DILocation(line: 8, column: 1, scope: [[SCOPE]])
 ; CHECK-DAG: [[BR2_LOC]] = !DILocation(line: 9, column: 1, scope: [[SCOPE]])
-; CHECK-DAG: [[PHI1_MD]] = !DILocalVariable(name: "8", scope: [[SCOPE]], file: [[FILE]], line: 10
-; CHECK-DAG: [[PHI1_LOC]] = !DILocation(line: 10, column: 1, scope: [[SCOPE]])
+; OLD-DAG: [[PHI1_MD]] = !DILocalVariable(name: "8", scope: [[SCOPE]], file: [[FILE]], line: 10
+; OLD-DAG: [[PHI1_LOC]] = !DILocation(line: 10, column: 1, scope: [[SCOPE]])
 ; CHECK-DAG: [[VAL8_MD]] = !DILocalVariable(name: "9", scope: [[SCOPE]], file: [[FILE]], line: 12
 ; CHECK-DAG: [[VAL8_LOC]] = !DILocation(line: 12, column: 1, scope: [[SCOPE]])
 ; CHECK-DAG: [[STORE1_LOC]] = !DILocation(line: 13, column: 1, scope: [[SCOPE]])

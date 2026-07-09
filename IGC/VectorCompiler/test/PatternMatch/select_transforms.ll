@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2020-2025 Intel Corporation
+; Copyright (C) 2020-2026 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -22,7 +22,7 @@ declare <16 x i16> @llvm.genx.wrregioni.v16i16(<16 x i16>, <4 x i16>, i32, i32, 
 
 define <16 x i16> @test2(<16 x i16> %rgn, <4 x i16> %val, <4 x i1> %cond) {
 ; CHECK-LABEL: test2
-; CHECK:  %cond.inv = xor <4 x i1> %cond, <i1 true, i1 true, i1 true, i1 true>
+; CHECK:  %cond.inv = xor <4 x i1> %cond, {{(splat \(i1 true\)|<i1 true(, i1 true)*>)}}
 ; CHECK-NEXT: %1 = call <4 x i16> @llvm.genx.rdregioni.v4i16.v16i16(<16 x i16> %rgn, i32 0, i32 4, i32 1, i16 0, i32 undef)
 ; CHECK-NEXT:  %2 = call <16 x i16> @llvm.genx.wrregioni.v16i16.v4i16.i16.v4i1(<16 x i16> %rgn, <4 x i16> %val, i32 0, i32 4, i32 1, i16 0, i32 undef, <4 x i1> %cond.inv)
   %1 = call <4 x i16> @llvm.genx.rdregioni.v4i16.v16i16(<16 x i16> %rgn, i32 0, i32 4, i32 1, i16 0, i32 undef)
@@ -33,7 +33,7 @@ define <16 x i16> @test2(<16 x i16> %rgn, <4 x i16> %val, <4 x i1> %cond) {
 
 define <16 x i16> @test3(<16 x i16> %rgn, <4 x i16> %val, <4 x i1> %cond) {
 ; CHECK-LABEL: test3
-; CHECK:  %cond.inv = xor <4 x i1> %cond, <i1 true, i1 true, i1 true, i1 true>
+; CHECK:  %cond.inv = xor <4 x i1> %cond, {{(splat \(i1 true\)|<i1 true(, i1 true)*>)}}
 ; CHECK-NEXT: %1 = call <4 x i16> @llvm.genx.rdregioni.v4i16.v16i16(<16 x i16> %rgn, i32 0, i32 4, i32 1, i16 0, i32 undef)
 ; CHECK-NEXT:  %2 = call <16 x i16> @llvm.genx.wrregioni.v16i16.v4i16.i16.v4i1(<16 x i16> %rgn, <4 x i16> %val, i32 0, i32 4, i32 1, i16 0, i32 undef, <4 x i1> %cond.inv)
   %1 = call <4 x i16> @llvm.genx.rdregioni.v4i16.v16i16(<16 x i16> %rgn, i32 0, i32 4, i32 1, i16 0, i32 undef)

@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2022 Intel Corporation
+; Copyright (C) 2022-2026 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -29,14 +29,14 @@ define spir_func i16 @scalar_16(i16 %arg) {
 ; CHECK-ROTATE-SAME: (i16 %[[ARG_I16:[^ )]+]])
 ; CHECK-ROTATE-NOT: call i16 @llvm.bswap.16
 ; CHECK-ROTATE: %[[CAST_V1I16:[^ )]+]] = bitcast i16 %[[ARG_I16]] to <1 x i16>
-; CHECK-ROTATE: %[[ROL_V1I16:[^ )]+]] = call <1 x i16> @llvm.genx.rol.v1i16.v1i16(<1 x i16> %[[CAST_V1I16]], <1 x i16> <i16 8>)
+; CHECK-ROTATE: %[[ROL_V1I16:[^ )]+]] = call <1 x i16> @llvm.genx.rol.v1i16.v1i16(<1 x i16> %[[CAST_V1I16]], <1 x i16> {{(splat \(i16 8\)|<i16 8(, i16 8)*>)}})
 ; CHECK-ROTATE: %[[CAST_I16:[^ )]+]] = bitcast <1 x i16> %[[ROL_V1I16]] to i16
 ; CHECK-ROTATE: ret i16 %[[CAST_I16]]
 ; CHECK-ROTATE64-LABEL: define spir_func i16 @scalar_16
 ; CHECK-ROTATE64-SAME: (i16 %[[ARG_I16:[^ )]+]])
 ; CHECK-ROTATE64-NOT: call i16 @llvm.bswap.16
 ; CHECK-ROTATE64: %[[CAST_V1I16:[^ )]+]] = bitcast i16 %[[ARG_I16]] to <1 x i16>
-; CHECK-ROTATE64: %[[ROL_V1I16:[^ )]+]] = call <1 x i16> @llvm.genx.rol.v1i16.v1i16(<1 x i16> %[[CAST_V1I16]], <1 x i16> <i16 8>)
+; CHECK-ROTATE64: %[[ROL_V1I16:[^ )]+]] = call <1 x i16> @llvm.genx.rol.v1i16.v1i16(<1 x i16> %[[CAST_V1I16]], <1 x i16> {{(splat \(i16 8\)|<i16 8(, i16 8)*>)}})
 ; CHECK-ROTATE64: %[[CAST_I16:[^ )]+]] = bitcast <1 x i16> %[[ROL_V1I16]] to i16
 ; CHECK-ROTATE64: ret i16 %[[CAST_I16]]
   %res = tail call i16 @llvm.bswap.i16(i16 %arg)
@@ -71,9 +71,9 @@ define spir_func i64 @scalar_64(i64 %arg) {
 ; CHECK-ROTATE-SAME: (i64 %[[ARG_I64:[^ )]+]])
 ; CHECK-ROTATE-NOT: call i64 @llvm.bswap.i64
 ; CHECK-ROTATE: %[[CAST_V4I16:[^ )]+]] = bitcast i64 %[[ARG_I64]] to <4 x i16>
-; CHECK-ROTATE: %[[ROL_V4I16:[^ )]+]] = call <4 x i16> @llvm.genx.rol.v4i16.v4i16(<4 x i16> %[[CAST_V4I16]], <4 x i16> <i16 8, i16 8, i16 8, i16 8>)
+; CHECK-ROTATE: %[[ROL_V4I16:[^ )]+]] = call <4 x i16> @llvm.genx.rol.v4i16.v4i16(<4 x i16> %[[CAST_V4I16]], <4 x i16> {{(splat \(i16 8\)|<i16 8(, i16 8)*>)}})
 ; CHECK-ROTATE: %[[CAST_V2I32:[^ )]+]] = bitcast <4 x i16> %[[ROL_V4I16]] to <2 x i32>
-; CHECK-ROTATE: %[[ROL_V2I32:[^ )]+]] = call <2 x i32> @llvm.genx.rol.v2i32.v2i32(<2 x i32> %[[CAST_V2I32]], <2 x i32> <i32 16, i32 16>)
+; CHECK-ROTATE: %[[ROL_V2I32:[^ )]+]] = call <2 x i32> @llvm.genx.rol.v2i32.v2i32(<2 x i32> %[[CAST_V2I32]], <2 x i32> {{(splat \(i32 16\)|<i32 16(, i32 16)*>)}})
 ; CHECK-ROTATE: %[[CAST_V1I64:[^ )]+]] = bitcast <2 x i32> %[[ROL_V2I32]] to <1 x i64>
 ; CHECK-ROTATE: %[[CAST_V2I32:[^ )]+]] = bitcast <1 x i64> %[[CAST_V1I64]] to <2 x i32>
 ; CHECK-ROTATE: %[[READ_V1I32LO:[^ )]+]] = call <1 x i32> @llvm.genx.rdregioni.v1i32.v2i32.i16(<2 x i32> %[[CAST_V2I32]], i32 2, i32 1, i32 0, i16 0, i32 undef)
@@ -86,11 +86,11 @@ define spir_func i64 @scalar_64(i64 %arg) {
 ; CHECK-ROTATE64-SAME: (i64 %[[ARG_I64:[^ )]+]])
 ; CHECK-ROTATE64-NOT: call i64 @llvm.bswap.i64
 ; CHECK-ROTATE64: %[[CAST_V4I16:[^ )]+]] = bitcast i64 %[[ARG_I64]] to <4 x i16>
-; CHECK-ROTATE64: %[[ROL_V4I16:[^ )]+]] = call <4 x i16> @llvm.genx.rol.v4i16.v4i16(<4 x i16> %[[CAST_V4I16]], <4 x i16> <i16 8, i16 8, i16 8, i16 8>)
+; CHECK-ROTATE64: %[[ROL_V4I16:[^ )]+]] = call <4 x i16> @llvm.genx.rol.v4i16.v4i16(<4 x i16> %[[CAST_V4I16]], <4 x i16> {{(splat \(i16 8\)|<i16 8(, i16 8)*>)}})
 ; CHECK-ROTATE64: %[[CAST_V2I32:[^ )]+]] = bitcast <4 x i16> %[[ROL_V4I16]] to <2 x i32>
-; CHECK-ROTATE64: %[[ROL_V2I32:[^ )]+]] = call <2 x i32> @llvm.genx.rol.v2i32.v2i32(<2 x i32> %[[CAST_V2I32]], <2 x i32> <i32 16, i32 16>)
+; CHECK-ROTATE64: %[[ROL_V2I32:[^ )]+]] = call <2 x i32> @llvm.genx.rol.v2i32.v2i32(<2 x i32> %[[CAST_V2I32]], <2 x i32> {{(splat \(i32 16\)|<i32 16(, i32 16)*>)}})
 ; CHECK-ROTATE64: %[[CAST_V1I64:[^ )]+]] = bitcast <2 x i32> %[[ROL_V2I32]] to <1 x i64>
-; CHECK-ROTATE64: %[[ROL_V1I64:[^ )]+]] = call <1 x i64> @llvm.genx.rol.v1i64.v1i64(<1 x i64> %[[CAST_V1I64]], <1 x i64> <i64 32>)
+; CHECK-ROTATE64: %[[ROL_V1I64:[^ )]+]] = call <1 x i64> @llvm.genx.rol.v1i64.v1i64(<1 x i64> %[[CAST_V1I64]], <1 x i64> {{(splat \(i64 32\)|<i64 32(, i64 32)*>)}})
 ; CHECK-ROTATE64: %[[CAST_I64:[^ )]+]] = bitcast <1 x i64> %[[ROL_V1I64]] to i64
 ; CHECK-ROTATE64: ret i64 %[[CAST_I64]]
   %res = tail call i64 @llvm.bswap.i64(i64 %arg)
@@ -119,17 +119,17 @@ define spir_func <3 x i32> @vector_32(<3 x i32> %arg) {
 ; CHECK-ROTATE-SAME: (<3 x i32> %[[ARG_V3I32:[^ )]+]])
 ; CHECK-ROTATE-NOT: call <3 x i32> @llvm.bswap.i64
 ; CHECK-ROTATE: %[[CAST_V6I16:[^ )]+]] = bitcast <3 x i32> %[[ARG_I64]] to <6 x i16>
-; CHECK-ROTATE: %[[ROL_V6I16:[^ )]+]] = call <6 x i16> @llvm.genx.rol.v6i16.v6i16(<6 x i16> %[[CAST_V6I16]], <6 x i16> <i16 8, i16 8, i16 8, i16 8, i16 8, i16 8>)
+; CHECK-ROTATE: %[[ROL_V6I16:[^ )]+]] = call <6 x i16> @llvm.genx.rol.v6i16.v6i16(<6 x i16> %[[CAST_V6I16]], <6 x i16> {{(splat \(i16 8\)|<i16 8(, i16 8)*>)}})
 ; CHECK-ROTATE: %[[CAST_V3I32:[^ )]+]] = bitcast <6 x i16> %[[ROL_V6I16]] to <3 x i32>
-; CHECK-ROTATE: %[[ROL_V3I32:[^ )]+]] = call <3 x i32> @llvm.genx.rol.v3i32.v3i32(<3 x i32> %[[CAST_V3I32]], <3 x i32> <i32 16, i32 16, i32 16>)
+; CHECK-ROTATE: %[[ROL_V3I32:[^ )]+]] = call <3 x i32> @llvm.genx.rol.v3i32.v3i32(<3 x i32> %[[CAST_V3I32]], <3 x i32> {{(splat \(i32 16\)|<i32 16(, i32 16)*>)}})
 ; CHECK-ROTATE: ret <3 x i32> %[[ROL_V3I32]]
 ; CHECK-ROTATE64-LABEL: define spir_func <3 x i32> @vector_32
 ; CHECK-ROTATE64-SAME: (<3 x i32> %[[ARG_V3I32:[^ )]+]])
 ; CHECK-ROTATE64-NOT: call <3 x i32> @llvm.bswap.i64
 ; CHECK-ROTATE64: %[[CAST_V6I16:[^ )]+]] = bitcast <3 x i32> %[[ARG_I64]] to <6 x i16>
-; CHECK-ROTATE64: %[[ROL_V6I16:[^ )]+]] = call <6 x i16> @llvm.genx.rol.v6i16.v6i16(<6 x i16> %[[CAST_V6I16]], <6 x i16> <i16 8, i16 8, i16 8, i16 8, i16 8, i16 8>)
+; CHECK-ROTATE64: %[[ROL_V6I16:[^ )]+]] = call <6 x i16> @llvm.genx.rol.v6i16.v6i16(<6 x i16> %[[CAST_V6I16]], <6 x i16> {{(splat \(i16 8\)|<i16 8(, i16 8)*>)}})
 ; CHECK-ROTATE64: %[[CAST_V3I32:[^ )]+]] = bitcast <6 x i16> %[[ROL_V6I16]] to <3 x i32>
-; CHECK-ROTATE64: %[[ROL_V3I32:[^ )]+]] = call <3 x i32> @llvm.genx.rol.v3i32.v3i32(<3 x i32> %[[CAST_V3I32]], <3 x i32> <i32 16, i32 16, i32 16>)
+; CHECK-ROTATE64: %[[ROL_V3I32:[^ )]+]] = call <3 x i32> @llvm.genx.rol.v3i32.v3i32(<3 x i32> %[[CAST_V3I32]], <3 x i32> {{(splat \(i32 16\)|<i32 16(, i32 16)*>)}})
 ; CHECK-ROTATE64: ret <3 x i32> %[[ROL_V3I32]]
   %res = tail call <3 x i32> @llvm.bswap.v3i32(<3 x i32> %arg)
   ret <3 x i32> %res

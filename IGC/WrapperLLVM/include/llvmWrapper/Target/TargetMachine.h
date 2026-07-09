@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2020-2021 Intel Corporation
+Copyright (C) 2020-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -15,7 +15,22 @@ SPDX-License-Identifier: MIT
 #include "llvm/CodeGen/MachineModuleInfo.h"
 #include "llvm/Support/CodeGen.h"
 #include "llvm/Target/TargetMachine.h"
+#if LLVM_VERSION_MAJOR >= 22
+#include "llvm/CodeGen/CodeGenTargetMachineImpl.h"
+#endif
 #include "IGC/common/LLVMWarningsPop.hpp"
+
+#include "llvmWrapper/Support/CodeGen.h"
+
+// LLVM 22 renamed llvm::LLVMTargetMachine to llvm::CodeGenTargetMachineImpl and
+// moved it to llvm/CodeGen/CodeGenTargetMachineImpl.h.
+namespace IGCLLVM {
+#if LLVM_VERSION_MAJOR >= 22
+using LLVMTargetMachineBase = llvm::CodeGenTargetMachineImpl;
+#else
+using LLVMTargetMachineBase = llvm::LLVMTargetMachine;
+#endif
+} // namespace IGCLLVM
 
 #if LLVM_VERSION_MAJOR < 15
 #define LLVM_GET_TTI_API_QUAL
@@ -52,15 +67,15 @@ public:
   }
 };
 
-class LLVMTargetMachine : public llvm::LLVMTargetMachine {
+class LLVMTargetMachine : public LLVMTargetMachineBase {
 public:
   using CodeGenFileType = llvm::CodeGenFileType;
 
 protected:
   LLVMTargetMachine(const llvm::Target &T, llvm::StringRef DataLayoutString, const llvm::Triple &TargetTriple,
                     llvm::StringRef CPU, llvm::StringRef FS, const llvm::TargetOptions &Options, llvm::Reloc::Model RM,
-                    llvm::CodeModel::Model CM, llvm::CodeGenOpt::Level OL)
-      : llvm::LLVMTargetMachine(T, DataLayoutString, TargetTriple, CPU, FS, Options, RM, CM, OL) {}
+                    llvm::CodeModel::Model CM, IGCLLVM::CodeGenOptLevel OL)
+      : LLVMTargetMachineBase(T, DataLayoutString, TargetTriple, CPU, FS, Options, RM, CM, OL) {}
 
 private:
   bool addPassesToEmitFile(llvm::PassManagerBase &PM, llvm::raw_pwrite_stream &o, llvm::raw_pwrite_stream *pi,

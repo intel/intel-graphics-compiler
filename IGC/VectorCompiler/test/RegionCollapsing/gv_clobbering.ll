@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2023-2025 Intel Corporation
+; Copyright (C) 2023-2026 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -120,7 +120,7 @@ define spir_kernel void @chkRdr0AndRdr1_Wrr0AndWrr1_Collapse() #1 {
   call void @llvm.genx.vstore.v4i32.p0v4i32(<4 x i32> zeroinitializer, <4 x i32>* @g1)
   %wrr0 = call <4 x i32> @llvm.genx.wrregioni.v4i32.v1i32.i16.i1(<4 x i32> %rdr1, <1 x i32> <i32 42>, i32 0, i32 1, i32 0, i16 0, i32 0, i1 true)
   %wrr1 = call <4 x i32> @llvm.genx.wrregioni.v4i32.v4i32.i16.i1(<4 x i32> %rdr0 , <4 x i32> %wrr0, i32 0, i32 4, i32 1, i16 0, i32 0, i1 true)
-; CHECK: %wrr0 = call <4 x i32> @llvm.genx.wrregioni.v4i32.v1i32.i16.i1(<4 x i32> %rdr0, <1 x i32> <i32 42>, i32 0, i32 1, i32 0, i16 0, i32 0, i1 true)
+; CHECK: %wrr0 = call <4 x i32> @llvm.genx.wrregioni.v4i32.v1i32.i16.i1(<4 x i32> %rdr0, <1 x i32> {{(splat \(i32 42\)|<i32 42(, i32 42)*>)}}, i32 0, i32 1, i32 0, i16 0, i32 0, i1 true)
 ; CHECK-TYPED-PTRS-NEXT:  call void @llvm.genx.vstore.v4i32.p0v4i32(<4 x i32> %wrr0, <4 x i32>* @g1)
 ; CHECK-OPAQUE-PTRS-NEXT:  call void @llvm.genx.vstore.v4i32.p0v4i32(<4 x i32> %wrr0, ptr @g1)
   call void @llvm.genx.vstore.v4i32.p0v4i32(<4 x i32> %wrr0, <4 x i32>* @g1)

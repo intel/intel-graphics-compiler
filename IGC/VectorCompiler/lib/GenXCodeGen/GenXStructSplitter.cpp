@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2021-2025 Intel Corporation
+Copyright (C) 2021-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -457,6 +457,15 @@ public:
   void printGeneration(raw_ostream &os) const;
 };
 
+// Minimal debug-declare description used to regenerate DI for split allocas.
+// Works both with the legacy dbg.declare intrinsic and the LLVM 22 debug
+// records.
+struct DbgDeclareInfo {
+  llvm::DILocalVariable *Var = nullptr;
+  llvm::DIExpression *Expr = nullptr;
+  llvm::DILocation *Loc = nullptr;
+};
+
 // This class handles all instructions that use split structs.
 struct Substituter : public InstVisitor<Substituter> {
   // Aliases for types.
@@ -483,7 +492,7 @@ private:
   bool processAlloca(AllocaInst &Alloca);
 
   void updateDbgInfo(ArrayRef<Type *> TypesToGenerateDI, AllocaInst &AI,
-                     AllocaInst &NewAI, DbgDeclareInst &DbgDeclare);
+                     AllocaInst &NewAI, const DbgDeclareInfo &DbgDeclare);
   TypeToInstrMap generateNewAllocas(AllocaInst &OldInst);
   AllocaInst *generateAlloca(AllocaInst &AI,
                              const DependencyGraph::SElement &TyElem);
@@ -1126,6 +1135,7 @@ Substituter::generateNewAllocas(AllocaInst &OldInst) {
 }
 
 // Help function to print info about unsupported debug intrinsics.
+#if LLVM_VERSION_MAJOR < 22
 static void reportUnsupportedDbgIntrinsics(
     raw_ostream &Os, StringRef Reason,
     const SmallVectorImpl<DbgVariableIntrinsic *> &DbgIntrinsics) {
@@ -1133,18 +1143,32 @@ static void reportUnsupportedDbgIntrinsics(
   for (auto *DbgIntrinsic : DbgIntrinsics)
     Os << '\t' << *DbgIntrinsic << '\n';
 }
+#endif
 
 // Finds DbgDeclareInst in mix of debug intrinsics
 // that Val points to. Can return only one dbg.declare.
-// Returns nullptr it there is no any dbg.declare or more than one.
-static DbgDeclareInst *getDbgDeclare(Value &Val) {
+// Returns nullopt if there is no any dbg.declare or more than one.
+static std::optional<DbgDeclareInfo> getDbgDeclare(Value &Val) {
+#if LLVM_VERSION_MAJOR >= 22
+  // LLVM 22 stores debug info as DbgVariableRecords instead of intrinsics.
+  SmallVector<DbgVariableRecord *, 4> DbgUsers;
+  findDbgUsers(&Val, DbgUsers);
+  SmallVector<DbgVariableRecord *, 4> DbgDeclares;
+  llvm::copy_if(DbgUsers, std::back_inserter(DbgDeclares),
+                [](DbgVariableRecord *DVR) { return DVR->isDbgDeclare(); });
+  if (DbgDeclares.size() != 1)
+    return std::nullopt;
+  auto *DVR = DbgDeclares.front();
+  return DbgDeclareInfo{DVR->getVariable(), DVR->getExpression(),
+                        DVR->getDebugLoc().get()};
+#else
   // Gets the mix of dbg.declare and dbg.addr.
   SmallVector<DbgVariableIntrinsic *, 4> DbgIntrinsics;
   findDbgUsers(DbgIntrinsics, &Val);
 
   // If there is no DI at all, returns nullptr without warning.
   if (DbgIntrinsics.empty())
-    return nullptr;
+    return std::nullopt;
 
   SmallVector<DbgVariableIntrinsic *, 4> DbgDeclares;
   llvm::copy_if(
@@ -1155,17 +1179,20 @@ static DbgDeclareInst *getDbgDeclare(Value &Val) {
   if (DbgDeclares.empty()) {
     LLVM_DEBUG(reportUnsupportedDbgIntrinsics(
         dbgs(), "No dbg.declare for value", DbgIntrinsics));
-    return nullptr;
+    return std::nullopt;
   }
 
   // Returns nullptr if there are more than one dbg.declares.
   if (DbgDeclares.size() > 1) {
     LLVM_DEBUG(reportUnsupportedDbgIntrinsics(
         dbgs(), "Too many dbg.declare for value", DbgDeclares));
-    return nullptr;
+    return std::nullopt;
   }
 
-  return cast<DbgDeclareInst>(DbgDeclares.front());
+  auto *DDI = cast<DbgDeclareInst>(DbgDeclares.front());
+  return DbgDeclareInfo{DDI->getVariable(), DDI->getExpression(),
+                        DDI->getDebugLoc().get()};
+#endif
 }
 
 //
@@ -1182,7 +1209,7 @@ Substituter::generateAlloca(AllocaInst &AI,
       NewTy, 0, AI.getName() + "." + getTypePrefix(*getBaseTy(NewTy)));
   NewAI->setAlignment(IGCLLVM::getAlign(AI));
 
-  DbgDeclareInst *DbgDeclare = getDbgDeclare(AI);
+  auto DbgDeclare = getDbgDeclare(AI);
   if (!DbgDeclare)
     return NewAI;
 
@@ -1293,11 +1320,11 @@ static auto findRecord(const DependencyGraph::ElemMapping &IdxMap, Type *Ty,
 //
 void Substituter::updateDbgInfo(ArrayRef<Type *> TypesToGenerateDI,
                                 AllocaInst &AI, AllocaInst &NewAI,
-                                DbgDeclareInst &DbgDeclare) {
+                                const DbgDeclareInfo &DbgDeclare) {
   LLVM_DEBUG(dbgs() << "Rewritting dbg info about: " << AI << "\n");
-  DILocalVariable &Var = *DbgDeclare.getVariable();
-  DIExpression &Expr = *DbgDeclare.getExpression();
-  DILocation &DbgLoc = *DbgDeclare.getDebugLoc();
+  DILocalVariable &Var = *DbgDeclare.Var;
+  DIExpression &Expr = *DbgDeclare.Expr;
+  DILocation &DbgLoc = *DbgDeclare.Loc;
 
   Type *NewTy = NewAI.getAllocatedType();
   StructType &STy = *cast<StructType>(AI.getAllocatedType());
@@ -1341,10 +1368,8 @@ void Substituter::updateDbgInfo(ArrayRef<Type *> TypesToGenerateDI,
 
     IGC_ASSERT_MESSAGE(FragExpr.has_value(), "Failed to create new expression");
 
-    Instruction &NewDbgDeclare =
-        *DIB.createDbgDeclare(NewAI, Var, *FragExpr.value(), DbgLoc, AI);
-    LLVM_DEBUG(dbgs() << "New dbg.declare is created: " << NewDbgDeclare
-                      << '\n';);
+    DIB.createDbgDeclare(NewAI, Var, *FragExpr.value(), DbgLoc, AI);
+    LLVM_DEBUG(dbgs() << "New dbg.declare is created for: " << NewAI << '\n';);
   }
 }
 
@@ -1529,7 +1554,12 @@ Substituter::getInstUses(Instruction &I) {
       UsesGEP.push_back(GEP);
     else if (PtrToIntInst *PTI = dyn_cast<PtrToIntInst>(U.getUser()))
       UsesPTI.push_back(PTI);
-    else if (BitCastInst *BC = dyn_cast<BitCastInst>(U.getUser())) {
+    else if (auto IID = vc::getAnyIntrinsicID(U.getUser());
+             IID == llvm::Intrinsic::lifetime_start ||
+             IID == llvm::Intrinsic::lifetime_end) {
+      // Lifetime intrinsics applied directly to the pointer (opaque pointers)
+      // are handled during substitution and do not prevent splitting.
+    } else if (BitCastInst *BC = dyn_cast<BitCastInst>(U.getUser())) {
       auto UnsupportedBCUser = llvm::find_if_not(BC->users(), [](User *BCU) {
         auto IID = vc::getAnyIntrinsicID(BCU);
         return IID == llvm::Intrinsic::lifetime_start ||
@@ -2118,8 +2148,10 @@ const char *getTypePrefix(Type &Ty) {
     return "l";
   case Type::MetadataTyID:
     return "m";
+#if LLVM_VERSION_MAJOR < 22
   case Type::X86_MMXTyID:
     return "mmx";
+#endif
   case Type::TokenTyID:
     return "t";
   case Type::IntegerTyID:

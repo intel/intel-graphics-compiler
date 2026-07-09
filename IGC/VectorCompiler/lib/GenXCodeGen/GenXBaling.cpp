@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2024 Intel Corporation
+Copyright (C) 2017-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -1531,22 +1531,26 @@ void GenXBaling::processMainInst(Instruction *Inst, int IntrinID) {
       Simplified = IGCLLVM::simplifyInstruction(Inst, SimplifyQuery(DL));
     } else {
       // SimplifyInstruction does not work on abs, so we roll our own for now.
+      const DataLayout &DL = Inst->getModule()->getDataLayout();
       if (auto C = dyn_cast<Constant>(Inst->getOperand(0))) {
-        if (C->getType()->isIntOrIntVectorTy()) {
-          if (!ConstantExpr::getICmp(CmpInst::ICMP_SLT, C,
-                                     Constant::getNullValue(C->getType()))
-                   ->isNullValue())
-
-            C = ConstantExpr::getNeg(C);
-        } else {
-          if (!ConstantExpr::getFCmp(CmpInst::FCMP_OLT, C,
-                                     Constant::getNullValue(C->getType()))
-                   ->isNullValue()) {
-            C = llvm::ConstantFoldUnaryOpOperand(
-                llvm::Instruction::FNeg, C, Inst->getModule()->getDataLayout());
+        // ConstantFoldCompareInstOperands may fail to fold (returns nullptr),
+        // e.g. for a denormal FP constant when the denormal mode is unknown.
+        // In that case we cannot determine the sign, so we must not simplify.
+        Constant *IsNeg = llvm::ConstantFoldCompareInstOperands(
+            C->getType()->isIntOrIntVectorTy() ? CmpInst::ICMP_SLT
+                                               : CmpInst::FCMP_OLT,
+            C, Constant::getNullValue(C->getType()), DL);
+        if (IsNeg) {
+          if (!IsNeg->isNullValue()) {
+            if (C->getType()->isIntOrIntVectorTy())
+              C = ConstantExpr::getNeg(C);
+            else
+              C = llvm::ConstantFoldUnaryOpOperand(
+                  llvm::Instruction::FNeg, C,
+                  Inst->getModule()->getDataLayout());
           }
+          Simplified = C;
         }
-        Simplified = C;
       }
     }
     if (Simplified) {

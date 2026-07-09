@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2021 Intel Corporation
+Copyright (C) 2021-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -13,6 +13,10 @@ SPDX-License-Identifier: MIT
 #include "llvm/Support/TypeSize.h"
 #include "llvm/Config/llvm-config.h"
 #include "llvm/IR/Constants.h"
+#if LLVM_VERSION_MAJOR >= 22
+#include "llvm/Analysis/ConstantFolding.h"
+#include "llvm/IR/DataLayout.h"
+#endif
 #include "IGC/common/LLVMWarningsPop.hpp"
 
 namespace IGCLLVM {
@@ -27,21 +31,25 @@ inline llvm::Constant *getZExt(llvm::Constant *C, llvm::Type *Ty, bool OnlyIfRed
 #if LLVM_VERSION_MAJOR < 22
   return llvm::ConstantExpr::getZExt(C, Ty, OnlyIfReduced);
 #else
-  return llvm::ConstantExpr::getCast(llvm::Instruction::ZExt, C, Ty, OnlyIfReduced);
+  // LLVM 22 no longer supports ZExt as a constant expression; fold it.
+  llvm::DataLayout DL("");
+  return llvm::ConstantFoldCastOperand(llvm::Instruction::ZExt, C, Ty, DL);
 #endif
 }
 inline llvm::Constant *getSExt(llvm::Constant *C, llvm::Type *Ty, bool OnlyIfReduced = false) {
 #if LLVM_VERSION_MAJOR < 22
   return llvm::ConstantExpr::getSExt(C, Ty, OnlyIfReduced);
 #else
-  return llvm::ConstantExpr::getCast(llvm::Instruction::SExt, C, Ty, OnlyIfReduced);
+  llvm::DataLayout DL("");
+  return llvm::ConstantFoldCastOperand(llvm::Instruction::SExt, C, Ty, DL);
 #endif
 }
 inline llvm::Constant *getUIToFP(llvm::Constant *C, llvm::Type *Ty, bool OnlyIfReduced = false) {
 #if LLVM_VERSION_MAJOR < 22
   return llvm::ConstantExpr::getUIToFP(C, Ty, OnlyIfReduced);
 #else
-  return llvm::ConstantExpr::getCast(llvm::Instruction::UIToFP, C, Ty, OnlyIfReduced);
+  llvm::DataLayout DL("");
+  return llvm::ConstantFoldCastOperand(llvm::Instruction::UIToFP, C, Ty, DL);
 #endif
 }
 } // namespace ConstantExpr

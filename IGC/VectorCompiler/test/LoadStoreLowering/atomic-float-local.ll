@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2024 Intel Corporation
+; Copyright (C) 2024-2026 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -18,7 +18,7 @@ define float @fmin_float(float addrspace(3)* %ptr, float %arg) {
   ; CHECK: [[FMIN_VADDR:%[^ ]+]] = bitcast i32 [[FMIN_ADDR]] to <1 x i32>
   ; CHECK: [[FMIN_VDATA:%[^ ]+]] = bitcast float %arg to <1 x float>
   ; CHECK: call void @llvm.genx.lsc.fence.i1(i1 true, i8 3, i8 0, i8 0)
-  ; CHECK: [[FMIN_RESULT:%[^ ]+]] = call <1 x float> @llvm.vc.internal.lsc.atomic.slm.v1f32.v1i1.v2i8.v1i32(<1 x i1> <i1 true>, i8 21, i8 2, i8 3, <2 x i8> zeroinitializer, i32 0, <1 x i32> [[FMIN_VADDR]], i16 1, i32 0, <1 x float> [[FMIN_VDATA]], <1 x float> undef, <1 x float> undef)
+  ; CHECK: [[FMIN_RESULT:%[^ ]+]] = call <1 x float> @llvm.vc.internal.lsc.atomic.slm.v1f32.v1i1.v2i8.v1i32(<1 x i1> {{(splat \(i1 true\)|<i1 true(, i1 true)*>)}}, i8 21, i8 2, i8 3, <2 x i8> zeroinitializer, i32 0, <1 x i32> [[FMIN_VADDR]], i16 1, i32 0, <1 x float> [[FMIN_VDATA]], <1 x float> undef, <1 x float> undef)
   %res = call float @llvm.vc.internal.atomic.fmin.f32.p3f32.f32(float addrspace(3)* %ptr, i32 3, i32 16, float %arg) ; "Subgroup", "SequentiallyConsistent"
   ; CHECK: call void @llvm.genx.lsc.fence.i1(i1 true, i8 3, i8 0, i8 0)
   ; CHECK: %res = bitcast <1 x float> [[FMIN_RESULT]] to float
@@ -31,7 +31,7 @@ define float @fmax_float(float addrspace(3)* %ptr, float %arg) {
   ; CHECK: [[FMAX_VADDR:%[^ ]+]] = bitcast i32 [[FMAX_ADDR]] to <1 x i32>
   ; CHECK: [[FMAX_VDATA:%[^ ]+]] = bitcast float %arg to <1 x float>
   ; CHECK: call void @llvm.genx.lsc.fence.i1(i1 true, i8 3, i8 0, i8 0)
-  ; CHECK: [[FMAX_RESULT:%[^ ]+]] = call <1 x float> @llvm.vc.internal.lsc.atomic.slm.v1f32.v1i1.v2i8.v1i32(<1 x i1> <i1 true>, i8 22, i8 2, i8 3, <2 x i8> zeroinitializer, i32 0, <1 x i32> [[FMAX_VADDR]], i16 1, i32 0, <1 x float> [[FMAX_VDATA]], <1 x float> undef, <1 x float> undef)
+  ; CHECK: [[FMAX_RESULT:%[^ ]+]] = call <1 x float> @llvm.vc.internal.lsc.atomic.slm.v1f32.v1i1.v2i8.v1i32(<1 x i1> {{(splat \(i1 true\)|<i1 true(, i1 true)*>)}}, i8 22, i8 2, i8 3, <2 x i8> zeroinitializer, i32 0, <1 x i32> [[FMAX_VADDR]], i16 1, i32 0, <1 x float> [[FMAX_VDATA]], <1 x float> undef, <1 x float> undef)
   %res = call float @llvm.vc.internal.atomic.fmax.f32.p3f32.f32(float addrspace(3)* %ptr, i32 2, i32 256, float %arg) ; "Workgroup", "WorkgroupMemory"
   ; CHECK: call void @llvm.genx.lsc.fence.i1(i1 true, i8 3, i8 0, i8 0)
   ; CHECK: %res = bitcast <1 x float> [[FMAX_RESULT]] to float

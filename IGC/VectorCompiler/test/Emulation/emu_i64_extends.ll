@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2020-2025 Intel Corporation
+; Copyright (C) 2020-2026 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -74,7 +74,7 @@ define dllexport spir_kernel void @test_zext3(i32 %0, i8 %op) {
 ; COM: 2. combine(low, sign_hi)
 
 ; CHECK: @test_sext1
-; CHECK: [[SIGN_PART:[^ ]+]] = ashr <[[ET:2 x i32]]> %op, <i32 31, i32 31>
+; CHECK: [[SIGN_PART:[^ ]+]] = ashr <[[ET:2 x i32]]> %op, {{(splat \(i32 31\)|<i32 31(, i32 31)*>)}}
 ; CHECK-NEXT: [[P_JOIN:%[^ ]+]] = call <[[CT:4 x i32]]> @llvm.genx.wrregioni.{{[^(]+}}(<[[CT]]> undef, <[[ET]]> %op, [[WR_ARGS:i32 0, i32 2, i32 2]], i16 0
 ; CHECK-NEXT: %{{[^ ]+}} = call <[[CT]]> @llvm.genx.wrregioni.{{[^(]+}}(<[[CT]]> [[P_JOIN]], <[[ET]]> [[SIGN_PART]], [[WR_ARGS]], i16 4
 
@@ -93,7 +93,7 @@ define dllexport spir_kernel void @test_sext1(i32 %0, <2 x i32> %op) {
 
 ; CHECK: @test_sext2
 ; CHECK: [[EXT32:%[^ ]+]] = sext <2 x i8> %op to <[[ET:2 x i32]]>
-; CHECK-NEXT: [[SIGN_PART:[^ ]+]] = ashr <[[ET:2 x i32]]> [[EXT32]], <i32 31, i32 31>
+; CHECK-NEXT: [[SIGN_PART:[^ ]+]] = ashr <[[ET:2 x i32]]> [[EXT32]], {{(splat \(i32 31\)|<i32 31(, i32 31)*>)}}
 ; CHECK-NEXT: [[P_JOIN:%[^ ]+]] = call <[[CT:4 x i32]]> @llvm.genx.wrregioni.{{[^(]+}}(<[[CT]]> undef, <[[ET]]> [[EXT32]], [[WR_ARGS:i32 0, i32 2, i32 2]], i16 0
 ; CHECK-NEXT: %{{[^ ]+}} = call <[[CT]]> @llvm.genx.wrregioni.{{[^(]+}}(<[[CT]]> [[P_JOIN]], <[[ET]]> [[SIGN_PART]], [[WR_ARGS]], i16 4
 
@@ -115,7 +115,7 @@ define dllexport spir_kernel void @test_sext2(i32 %0, <2 x i8> %op) {
 ; CHECK: @test_sext3
 ; CHECK: [[CASTED:[^ ]+]] = bitcast i8 %op to <1 x i8>
 ; CHECK-NEXT: [[EXT32:%[^ ]+]] = sext <1 x i8> [[CASTED]] to <[[ET:1 x i32]]>
-; CHECK-NEXT: [[SIGN_PART:%[^ ]+]] = ashr <1 x i32> [[EXT32]], <i32 31>
+; CHECK-NEXT: [[SIGN_PART:%[^ ]+]] = ashr <1 x i32> [[EXT32]], {{(splat \(i32 31\)|<i32 31(, i32 31)*>)}}
 ; CHECK-NEXT: [[P_JOIN:%[^ ]+]] = call <[[CT:2 x i32]]> @llvm.genx.wrregioni.{{[^(]+}}(<[[CT]]> undef, <[[ET]]> [[EXT32]], [[WR_ARGS:i32 0, i32 1, i32 2]], i16 0
 ; CHECK-NEXT: [[JOINED:%[^ ]+]] = call <[[CT]]> @llvm.genx.wrregioni.{{[^(]+}}(<[[CT]]> [[P_JOIN]], <[[ET]]> [[SIGN_PART]], [[WR_ARGS]], i16 4
 ; CHECK-NEXT: [[CASTVI64:%[^ ]+]] = bitcast <[[CT]]> [[JOINED]] to <1 x i64>

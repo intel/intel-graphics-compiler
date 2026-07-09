@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2022-2025 Intel Corporation
+; Copyright (C) 2022-2026 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -18,10 +18,10 @@
 
 ; CHECK: define dllexport void @test_kernel{{.*}} !dbg [[SCOPE:![0-9]*]]
 ; CHECK: exit:
-; CHECK-DAG: void @llvm.dbg.value(metadata <32 x i1> [[BCAST_V:%[A-z0-9]*]], metadata [[BCAST_MD:![0-9]*]], metadata !DIExpression()), !dbg [[BCAST_LOC:![0-9]*]]
+; CHECK-DAG: {{(#dbg_value\(|call void @llvm\.dbg\.value\(metadata )}}<32 x i1> [[BCAST_V:%[A-z0-9]*]]{{(, |, metadata )}}[[BCAST_MD:![0-9]*]]{{(, |, metadata )}}!DIExpression(){{(, |\), !dbg )}}[[BCAST_LOC:![0-9]*]]{{\)?}}
 ; And/or results are opted out
-; CHECK-DAG: void @llvm.dbg.value(metadata <32 x i32> [[SELECT1_V:%[A-z0-9]*]], metadata [[SELECT1_MD:![0-9]*]], metadata !DIExpression()), !dbg [[SELECT1_LOC:![0-9]*]]
-; CHECK-DAG: void @llvm.dbg.value(metadata <32 x i32> [[SELECT2_V:%[A-z0-9]*]], metadata [[SELECT2_MD:![0-9]*]], metadata !DIExpression()), !dbg [[SELECT2_LOC:![0-9]*]]
+; CHECK-DAG: {{(#dbg_value\(|call void @llvm\.dbg\.value\(metadata )}}<32 x i32> [[SELECT1_V:%[A-z0-9]*]]{{(, |, metadata )}}[[SELECT1_MD:![0-9]*]]{{(, |, metadata )}}!DIExpression(){{(, |\), !dbg )}}[[SELECT1_LOC:![0-9]*]]{{\)?}}
+; CHECK-DAG: {{(#dbg_value\(|call void @llvm\.dbg\.value\(metadata )}}<32 x i32> [[SELECT2_V:%[A-z0-9]*]]{{(, |, metadata )}}[[SELECT2_MD:![0-9]*]]{{(, |, metadata )}}!DIExpression(){{(, |\), !dbg )}}[[SELECT2_LOC:![0-9]*]]{{\)?}}
 ; CHECK-DAG: [[BCAST_V]] = {{.*}}, !dbg [[BCAST_LOC]]
 ; CHECK-DAG: [[SELECT1_V]] = {{.*}}, !dbg [[SELECT1_LOC]]
 ; CHECK-DAG: [[SELECT2_V]] = {{.*}}, !dbg [[SELECT2_LOC]]

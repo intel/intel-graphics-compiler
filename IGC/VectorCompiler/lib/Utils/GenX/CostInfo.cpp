@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2024 Intel Corporation
+Copyright (C) 2024-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -23,8 +23,12 @@ static ConstantAsMetadata *getFloatAsMetadata(float Val, LLVMContext &Ctx) {
 
 static ConstantAsMetadata *getIntAsMetadata(int Val, unsigned NumBits,
                                             LLVMContext &Ctx) {
+  // For a 1-bit value, `1` is not a valid signed representation (only 0/-1
+  // fit), so store it as unsigned; the bit pattern is identical to the old
+  // behavior and reads back the same via getSExtValue.
+  bool IsSigned = NumBits > 1;
   return ConstantAsMetadata::get(
-      ConstantInt::get(Ctx, APInt(NumBits, Val, true)));
+      ConstantInt::get(Ctx, APInt(NumBits, Val, IsSigned)));
 }
 
 static float extractConstantFloatMD(const MDOperand &Op) {

@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2021-2025 Intel Corporation
+; Copyright (C) 2021-2026 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -23,6 +23,6 @@ define void @test(float* %RET) {
 
 ; CHECK-TYPED-PTRS: [[ADDR:%.*]] = ptrtoint <8 x i16>* %ipt to i64
 ; CHECK-OPAQUE-PTRS: [[ADDR:%.*]] = ptrtoint ptr %ipt to i64
-; CHECK: call void @llvm.vc.internal.lsc.store.ugm.v1i1.v2i8.i64.v2i64(<1 x i1> <i1 true>, i8 3, i8 4, i8 2, <2 x i8> zeroinitializer, i64 0, i64 [[ADDR]], i16 1, i32 0, <2 x i64> bitcast (<8 x i16> <i16 2, i16 3, i16 4, i16 5, i16 6, i16 7, i16 8, i16 9> to <2 x i64>))
+; CHECK: call void @llvm.vc.internal.lsc.store.ugm.v1i1.v2i8.i64.v2i64(<1 x i1> {{(splat \(i1 true\)|<i1 true(, i1 true)*>)}}, i8 3, i8 4, i8 2, <2 x i8> zeroinitializer, i64 0, i64 [[ADDR]], i16 1, i32 0, <2 x i64> bitcast (<8 x i16> <i16 2, i16 3, i16 4, i16 5, i16 6, i16 7, i16 8, i16 9> to <2 x i64>))
   ret void
 }

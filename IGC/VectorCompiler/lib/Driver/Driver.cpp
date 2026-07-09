@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2020-2025 Intel Corporation
+Copyright (C) 2020-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -63,6 +63,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/Transforms/IPO/PassManagerBuilder.h>
 #endif
 #include <llvm/Transforms/Scalar.h>
+#include <llvm/Support/ManagedStatic.h>
 
 #include "llvmWrapper/IR/LLVMContext.h"
 #include "llvmWrapper/Option/OptTable.h"
@@ -205,10 +206,11 @@ static std::string getSubtargetFeatureString(const vc::CompileOptions &Opts) {
   return Features.getString();
 }
 
-static CodeGenOpt::Level getCodeGenOptLevel(const vc::CompileOptions &Opts) {
+static IGCLLVM::CodeGenOptLevel
+getCodeGenOptLevel(const vc::CompileOptions &Opts) {
   if (Opts.CodegenOptLevel == vc::OptimizerLevel::None)
-    return CodeGenOpt::None;
-  return CodeGenOpt::Default;
+    return IGCLLVM::CodeGenOptLevel::None;
+  return IGCLLVM::CodeGenOptLevel::Default;
 }
 
 static TargetOptions getTargetOptions(const vc::CompileOptions &Opts) {
@@ -356,7 +358,7 @@ createTargetMachine(const vc::CompileOptions &Opts,
 
   const TargetOptions Options = getTargetOptions(Opts);
 
-  CodeGenOpt::Level OptLevel = getCodeGenOptLevel(Opts);
+  IGCLLVM::CodeGenOptLevel OptLevel = getCodeGenOptLevel(Opts);
   auto BC = std::make_unique<GenXBackendConfig>(
       createBackendOptions(Opts),
       createBackendData(ExtData, vc::is32BitArch(TheTriple) ? 32 : 64));
@@ -494,7 +496,7 @@ static void populateCodeGenPassManager(const vc::CompileOptions &Opts,
   constexpr bool DisableIrVerifier = true;
 #endif
 
-  auto FileType = IGCLLVM::TargetMachine::CodeGenFileType::CGFT_AssemblyFile;
+  auto FileType = IGCLLVM::CGFT_AssemblyFile;
 
   llvm::raw_null_ostream NOS;
   [[maybe_unused]] bool AddPasses =
@@ -574,7 +576,12 @@ struct DiagnosticContext {
   bool Failed;
 };
 
+#if LLVM_VERSION_MAJOR >= 22
+void diagnosticHandlerCallback(const DiagnosticInfo *DIPtr, void *Context) {
+  const DiagnosticInfo &DI = *DIPtr;
+#else
 void diagnosticHandlerCallback(const DiagnosticInfo &DI, void *Context) {
+#endif
   auto *DiagCtx = static_cast<DiagnosticContext *>(Context);
   auto Severity = DI.getSeverity();
 
@@ -634,8 +641,16 @@ vc::Compile(ArrayRef<char> Input, const vc::CompileOptions &Opts,
     return make_error<vc::OutputBinaryCreationError>(
         "Compiler error emitted in IR adaptors");
 
+#if LLVM_VERSION_MAJOR >= 22
+  Triple TheTriple = overrideTripleWithVC(M.getTargetTriple().str());
+#else
   Triple TheTriple = overrideTripleWithVC(M.getTargetTriple());
+#endif
+#if LLVM_VERSION_MAJOR >= 22
+  M.setTargetTriple(TheTriple);
+#else
   M.setTargetTriple(TheTriple.getTriple());
+#endif
 
   auto ExpTargetMachine = createTargetMachine(Opts, ExtData, TheTriple);
   if (!ExpTargetMachine)
@@ -731,7 +746,7 @@ parseApiOptions(StringSaver &Saver, StringRef ApiOptions, bool IsStrictMode) {
                        [&Opt](const char *ArgStr) { return Opt == ArgStr; });
   };
   const std::string VCCodeGenOptName =
-      Options.getOption(OPT_vc_codegen).getPrefixedName();
+      std::string(Options.getOption(OPT_vc_codegen).getPrefixedName());
   if (HasOption(VCCodeGenOptName)) {
     const unsigned FlagsToInclude =
         IGC::options::VCApiOption | IGC::options::IGCApiOption;
@@ -740,7 +755,7 @@ parseApiOptions(StringSaver &Saver, StringRef ApiOptions, bool IsStrictMode) {
   }
   // Deprecated -cmc parsing just for compatibility.
   const std::string IgcmcOptName =
-      Options.getOption(OPT_igcmc).getPrefixedName();
+      std::string(Options.getOption(OPT_igcmc).getPrefixedName());
   if (HasOption(IgcmcOptName)) {
     llvm::errs()
         << "'" << IgcmcOptName

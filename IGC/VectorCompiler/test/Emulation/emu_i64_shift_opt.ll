@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2020-2021 Intel Corporation
+; Copyright (C) 2020-2026 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -90,7 +90,7 @@ define dllexport spir_kernel void @test_shl_opt_small(<2 x i64> %vop) {
 ; CHECK: [[IV1:%[^.]+.iv32cast[0-9]*]] = bitcast <[[OT:2 x i64]]> %vop to <[[CT:4 x i32]]>
 ; CHECK-NEXT: [[Lo:%[^.]+.LoSplit[0-9]*]] = call <[[ET:2 x i32]]> [[rgn:@llvm.genx.rdregioni.[^(]+]](<[[CT]]> [[IV1]], [[low_reg:i32 0, i32 2, i32 2, i16 0,]]
 ; CHECK-NEXT: [[SrcHi:%[^.]+.HiSplit[0-9]*]] = call <[[ET]]> [[rgn]](<[[CT]]> [[IV1]], [[high_reg:i32 0, i32 2, i32 2, i16 4,]]
-; CHECK-NEXT: [[Hi2:%[^ ]+]] = ashr <[[ET]]> [[SrcHi]], <i32 31, i32 31>
+; CHECK-NEXT: [[Hi2:%[^ ]+]] = ashr <[[ET]]> [[SrcHi]], {{(splat \(i32 31\)|<i32 31(, i32 31)*>)}}
 ; CHECK-NEXT: [[Partial:%[^ ]+]] = call <[[CT]]> [[wrgn:@llvm.genx.wrregioni.[^(]+]](<4 x i32> undef, <2 x i32> [[SrcHi]], [[low_reg]]
 ; CHECK-NEXT: [[Joined:%[^ ]+]] = call <[[CT]]> [[wrgn]](<[[CT]]> [[Partial]], <[[ET]]> [[Hi2]], [[high_reg]]
 ; CHECK-NEXT: [[Result:%[^ ]+]] = bitcast <[[CT]]> [[Joined]] to <[[OT]]>
@@ -108,7 +108,7 @@ define dllexport spir_kernel void @test_ashr_opt32(<2 x i64> %vop) {
 ; CHECK-NEXT: [[SrcLo:%[^.]+.LoSplit[0-9]*]] = call <[[ET:2 x i32]]> [[rgn:@llvm.genx.rdregioni.[^(]+]](<[[CT]]> [[IV1]], [[low_reg:i32 0, i32 2, i32 2, i16 0,]]
 ; CHECK-NEXT: [[SrcHi:%[^.]+.HiSplit[0-9]*]] = call <[[ET]]> [[rgn]](<[[CT]]> [[IV1]], [[high_reg:i32 0, i32 2, i32 2, i16 4,]]
 ; CHECK-NEXT: [[Lo:%[^ ]+]] = ashr <[[ET]]> [[SrcHi]], <i32 31, i32 1>
-; CHECK-NEXT: [[Hi:%[^ ]+]] = ashr <[[ET]]> [[SrcHi]], <i32 31, i32 31>
+; CHECK-NEXT: [[Hi:%[^ ]+]] = ashr <[[ET]]> [[SrcHi]], {{(splat \(i32 31\)|<i32 31(, i32 31)*>)}}
 ; CHECK-NEXT: [[Partial:%[^ ]+]] = call <[[CT]]> [[wrgn:@llvm.genx.wrregioni.[^(]+]](<4 x i32> undef, <2 x i32> [[Lo]], [[low_reg]]
 ; CHECK-NEXT: [[Joined:%[^ ]+]] = call <[[CT]]> [[wrgn]](<[[CT]]> [[Partial]], <[[ET]]> [[Hi]], [[high_reg]]
 ; CHECK-NEXT: [[Result:%[^ ]+]] = bitcast <[[CT]]> [[Joined]] to <[[OT]]>

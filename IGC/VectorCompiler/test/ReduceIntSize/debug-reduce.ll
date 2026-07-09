@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2021-2025 Intel Corporation
+; Copyright (C) 2021-2026 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -26,11 +26,11 @@ entry:
 }
 
 
-; CHECK: void @llvm.dbg.value(metadata{{( <4 x i32>)?}} [[EMPTY_MD_1:![0-9]*|undef]]
-; CHECK: void @llvm.dbg.value(metadata{{( <4 x i32>)?}} [[EMPTY_MD_2:![0-9]*|undef]]
+; CHECK: {{(#dbg_value\(|void @llvm\.dbg\.value\(metadata )}}{{(<4 x i32> )?}}[[EMPTY_MD_1:![0-9]*|undef|poison]]
+; CHECK: {{(#dbg_value\(|void @llvm\.dbg\.value\(metadata )}}{{(<4 x i32> )?}}[[EMPTY_MD_2:![0-9]*|undef|poison]]
 ; CHECK: [[OP_V:%[A-z0-9.]*]] = xor <4 x i16> %a, %b, !dbg [[OP_LOC:![0-9]*]]
-; CHECK: [[EXT_V:%[A-z0-9.]*]] = sext <4 x i16> [[OP_V]] {{.*}}, !dbg [[EXT_LOC:![0-9]*]]
-; CHECK: void @llvm.dbg.value(metadata <4 x i32> [[EXT_V]], metadata [[EXT_MD:![0-9]*]], metadata !DIExpression()), !dbg [[EXT_LOC]]
+; CHECK-DAG: {{(#dbg_value\(|call void @llvm\.dbg\.value\(metadata )}}<4 x i32> [[EXT_V:%[A-z0-9.]*]]{{(, |, metadata )}}[[EXT_MD:![0-9]*]]{{(, |, metadata )}}!DIExpression(){{(, |\), !dbg )}}[[EXT_LOC:![0-9]*]]{{\)?}}
+; CHECK-DAG: [[EXT_V]] = sext <4 x i16> [[OP_V]] {{.*}}, !dbg [[EXT_LOC]]
 ; CHECK: store <4 x i32> [[EXT_V]]
 
 ; CHECK-NOT: [[EMPTY_MD_1]] = !DILocalVariable

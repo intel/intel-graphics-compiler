@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2022 Intel Corporation
+Copyright (C) 2022-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -10,6 +10,7 @@ SPDX-License-Identifier: MIT
 #define VC_LIB_GENXCODEGEN_TARGETMACHINE_H
 
 #include "llvmWrapper/ADT/Optional.h"
+#include "llvmWrapper/Support/CodeGen.h"
 #include "llvmWrapper/Support/TargetRegistry.h"
 
 #include "vc/Support/BackendConfig.h"
@@ -20,7 +21,7 @@ std::unique_ptr<llvm::TargetMachine> createGenXTargetMachine(
     const llvm::Target &T, llvm::Triple TT, llvm::StringRef CPU,
     llvm::StringRef Features, const llvm::TargetOptions &Options,
     IGCLLVM::optional<llvm::Reloc::Model> RM,
-    IGCLLVM::optional<llvm::CodeModel::Model> CM, llvm::CodeGenOpt::Level OL,
+    IGCLLVM::optional<llvm::CodeModel::Model> CM, IGCLLVM::CodeGenOptLevel OL,
     std::unique_ptr<llvm::GenXBackendConfig> BC);
 
 inline bool is32BitArch(llvm::Triple TT) {

@@ -77,7 +77,7 @@ define dllexport spir_kernel void @foo(%intel.buffer_rw_t addrspace(1)* %0, %int
   %sev.cast.32.regioncollapsed = tail call i32 @llvm.genx.rdregioni.i32.v8i32.i16(<8 x i32> %18, i32 0, i32 1, i32 1, i16 %21, i32 0)
   %22 = shl i32 %.031, 5
 ; CHECK: [[SURF32_PTR:%[^ ]+]] = trunc i64 [[SURF64_PTR]] to i32
-; CHECK: call <8 x i32> @llvm.vc.internal.lsc.load.bti.v8i32.v1i1.v3i8.i32(<1 x i1> <i1 true>, i8 2, i8 3, i8 5, <3 x i8> zeroinitializer, i32 [[SURF32_PTR]], i32 %{{.+}}, i16 1, i32 0, <8 x i32> undef)
+; CHECK: call <8 x i32> @llvm.vc.internal.lsc.load.bti.v8i32.v1i1.v3i8.i32(<1 x i1> {{(splat \(i1 true\)|<i1 true(, i1 true)*>)}}, i8 2, i8 3, i8 5, <3 x i8> zeroinitializer, i32 [[SURF32_PTR]], i32 %{{.+}}, i16 1, i32 0, <8 x i32> undef)
   %23 = call <8 x i32> @llvm.vc.internal.lsc.load.bti.v8i32.v1i1.v3i8.i32(<1 x i1> <i1 true>, i8 2, i8 3, i8 5, <3 x i8> zeroinitializer, i32 %sev.cast.32.regioncollapsed, i32 %22, i16 1, i32 0, <8 x i32> undef)
   %24 = shl i32 %.031, 4
   call void @llvm.vc.internal.lsc.store.bti.v1i1.v3i8.i32.v8i32(<1 x i1> <i1 true>, i8 2, i8 3, i8 5, <3 x i8> zeroinitializer, i32 %10, i32 %24, i16 1, i32 0, <8 x i32> %23)

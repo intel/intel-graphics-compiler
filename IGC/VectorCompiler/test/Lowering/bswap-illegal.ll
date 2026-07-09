@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2024 Intel Corporation
+; Copyright (C) 2024-2026 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -32,7 +32,7 @@ define spir_func <4 x i48> @vector_48(<4 x i48> %arg) {
 ; CHECK-LABEL: define spir_func <4 x i48> @vector_48
 ; CHECK-NOT: call <4 x i48> @llvm.bswap.v4i48
 ; CHECK: %[[VZEXT48:[^ )]+]] = zext <4 x i48> %{{[^ )]+}} to <4 x i64>
-; CHECK: %[[VLSHR48:[^ )]+]] = lshr <4 x i64> %{{[^ )]+}}, <i64 16, i64 16, i64 16, i64 16>
+; CHECK: %[[VLSHR48:[^ )]+]] = lshr <4 x i64> %{{[^ )]+}}, {{(splat \(i64 16\)|<i64 16(, i64 16)*>)}}
 ; CHECK: %[[VTRUNC48:[^ )]+]] = trunc <4 x i64> %[[VLSHR48]] to <4 x i48>
 ; CHECK: ret <4 x i48> %[[VTRUNC48]]
   %res = tail call <4 x i48> @llvm.bswap.v4i48(<4 x i48> %arg)

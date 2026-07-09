@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2023 Intel Corporation
+Copyright (C) 2023-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -117,7 +117,11 @@ bool GenXBuiltinFunctions::runOnModule(Module &M) {
             .getGenXSubtarget();
 
   auto &Ctx = M.getContext();
+#if LLVM_VERSION_MAJOR >= 22
+  auto Lib = loadBuiltinLib(Ctx, M.getDataLayout(), M.getTargetTriple().str());
+#else
   auto Lib = loadBuiltinLib(Ctx, M.getDataLayout(), M.getTargetTriple());
+#endif
   if (Lib && Linker::linkModules(M, std::move(Lib))) {
     vc::diagnose(Ctx, "GenXBuiltinFunctions",
                  "Error linking built-in functions");
@@ -529,7 +533,11 @@ GenXBuiltinFunctions::loadBuiltinLib(LLVMContext &Ctx, const DataLayout &DL,
   auto BiFModule = vc::getBiFModuleOrReportError(BiFBuffer, Ctx);
 
   BiFModule->setDataLayout(DL);
+#if LLVM_VERSION_MAJOR >= 22
+  BiFModule->setTargetTriple(llvm::Triple(Triple));
+#else
   BiFModule->setTargetTriple(Triple);
+#endif
 
   return BiFModule;
 }

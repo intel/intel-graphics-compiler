@@ -201,6 +201,41 @@ static bool GenXUnifyReturnBlocks(Function &F) {
   return true;
 }
 
+// Reimplementation of the legacy RegToMem pass. The
+// createDemoteRegisterToMemoryPass() factory was removed together with the
+// legacy pass, so demote escaping registers and PHI nodes to stack slots
+// directly using the still-available DemoteRegToStack/DemotePHIToStack helpers.
+static bool demoteRegisterToMemory(Function &F) {
+  auto ValueEscapes = [](const Instruction &Inst) {
+    const BasicBlock *BB = Inst.getParent();
+    for (const User *U : Inst.users()) {
+      const auto *UI = cast<Instruction>(U);
+      if (UI->getParent() != BB || isa<PHINode>(UI))
+        return true;
+    }
+    return false;
+  };
+
+  BasicBlock &BBEntry = F.getEntryBlock();
+  SmallVector<Instruction *, 16> WorkList;
+  for (BasicBlock &BB : F)
+    for (Instruction &I : BB)
+      if (!(isa<AllocaInst>(I) && I.getParent() == &BBEntry) && ValueEscapes(I))
+        WorkList.push_back(&I);
+  bool Changed = !WorkList.empty();
+  for (Instruction *I : WorkList)
+    DemoteRegToStack(*I);
+
+  WorkList.clear();
+  for (BasicBlock &BB : F)
+    for (PHINode &P : BB.phis())
+      WorkList.push_back(&P);
+  Changed |= !WorkList.empty();
+  for (Instruction *I : WorkList)
+    DemotePHIToStack(cast<PHINode>(I));
+  return Changed;
+}
+
 bool GenXPacketize::runOnModule(Module &Module) {
   M = &Module;
   // find all the SIMT enntry-functions
@@ -255,10 +290,9 @@ bool GenXPacketize::runOnModule(Module &Module) {
   delete B;
   // perform reg-to-mem in order to generate simd-control-flow without phi
   // we then perform mem-to-reg after generating simd-control-flow.
-  std::unique_ptr<FunctionPass> DemotePass(createDemoteRegisterToMemoryPass());
   for (auto *F : SIMTFuncs) {
     GenXUnifyReturnBlocks(*F);
-    DemotePass->runOnFunction(*F);
+    demoteRegisterToMemory(*F);
   }
   // lower the SIMD control-flow
   lowerControlFlowAfter(SIMTFuncs);
@@ -300,7 +334,7 @@ Function *GenXPacketize::vectorizeSIMTFunction(Function *F, unsigned Width) {
                        VecFName + Suffix[Width / 8], F->getParent());
   ClonedFunc->setCallingConv(F->getCallingConv());
   ClonedFunc->setAttributes(F->getAttributes());
-  if (F->getAlignment() > 0)
+  if (F->getAlign())
     ClonedFunc->setAlignment(IGCLLVM::getAlign(*F));
   // then use CloneFunctionInto
   ValueToValueMapTy ArgMap;
@@ -1675,8 +1709,13 @@ Value *GenXPacketize::packetizeInstruction(Instruction *Inst) {
     // When the resulting instruction has the same type
     // Debug values can be preserved
     if (Result->getType() == Inst->getType()) {
+#if LLVM_VERSION_MAJOR >= 22
+      SmallVector<DbgVariableRecord *, 1> DbgUsers;
+      llvm::findDbgUsers(Inst, DbgUsers);
+#else
       SmallVector<DbgVariableIntrinsic *, 1> DbgUsers;
       llvm::findDbgUsers(DbgUsers, Inst);
+#endif
       for (auto *DII : DbgUsers)
         DII->replaceVariableLocationOp(Inst, Result);
     }

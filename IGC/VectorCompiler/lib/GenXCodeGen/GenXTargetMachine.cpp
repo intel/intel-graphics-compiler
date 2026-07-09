@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2024 Intel Corporation
+Copyright (C) 2017-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -65,7 +65,11 @@ SPDX-License-Identifier: MIT
 #include "llvm/Pass.h"
 #include "llvm/PassRegistry.h"
 #include "llvm/Passes/PassBuilder.h"
+#if LLVM_VERSION_MAJOR >= 22
+#include "llvm/Plugins/PassPlugin.h"
+#else
 #include "llvm/Passes/PassPlugin.h"
+#endif
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Transforms/IPO.h"
 #include "llvm/Transforms/IPO/AlwaysInliner.h"
@@ -426,7 +430,7 @@ GenXTargetMachine::GenXTargetMachine(const Target &T, const Triple &TT,
                                      const TargetOptions &Options,
                                      IGCLLVM::optional<Reloc::Model> RM,
                                      IGCLLVM::optional<CodeModel::Model> CM,
-                                     CodeGenOpt::Level OL, bool Is64Bit,
+                                     IGCLLVM::CodeGenOptLevel OL, bool Is64Bit,
                                      std::unique_ptr<GenXBackendConfig> BC)
     : IGCLLVM::LLVMTargetMachine(
           T, getDL(Is64Bit), TT, CPU, FS, Options,
@@ -451,7 +455,7 @@ GenXTargetMachine32::GenXTargetMachine32(const Target &T, const Triple &TT,
                                          const TargetOptions &Options,
                                          IGCLLVM::optional<Reloc::Model> RM,
                                          IGCLLVM::optional<CodeModel::Model> CM,
-                                         CodeGenOpt::Level OL, bool JIT,
+                                         IGCLLVM::CodeGenOptLevel OL, bool JIT,
                                          std::unique_ptr<GenXBackendConfig> BC)
     : GenXTargetMachine(T, TT, CPU, FS, Options, RM, CM, OL, false,
                         std::move(BC)) {}
@@ -461,7 +465,7 @@ GenXTargetMachine64::GenXTargetMachine64(const Target &T, const Triple &TT,
                                          const TargetOptions &Options,
                                          IGCLLVM::optional<Reloc::Model> RM,
                                          IGCLLVM::optional<CodeModel::Model> CM,
-                                         CodeGenOpt::Level OL, bool JIT,
+                                         IGCLLVM::CodeGenOptLevel OL, bool JIT,
                                          std::unique_ptr<GenXBackendConfig> BC)
     : GenXTargetMachine(T, TT, CPU, FS, Options, RM, CM, OL, true,
                         std::move(BC)) {}
@@ -470,7 +474,7 @@ namespace vc {
 std::unique_ptr<llvm::TargetMachine> createGenXTargetMachine(
     const Target &T, Triple TT, StringRef CPU, StringRef Features,
     const TargetOptions &Options, IGCLLVM::optional<Reloc::Model> RM,
-    IGCLLVM::optional<CodeModel::Model> CM, CodeGenOpt::Level OL,
+    IGCLLVM::optional<CodeModel::Model> CM, IGCLLVM::CodeGenOptLevel OL,
     std::unique_ptr<GenXBackendConfig> BC) {
   if (is32BitArch(TT))
     return std::make_unique<GenXTargetMachine32>(T, TT, CPU, Features, Options,
@@ -505,8 +509,8 @@ bool GenXTargetMachine::addPassesToEmitFile(
   // We can consider the .isa file to be an object file, or an assembly file
   // which may later be converted to GenX code by the Finalizer. If we're
   // asked to produce any other type of file return true to indicate an error.
-  if ((FileType != IGCLLVM::TargetMachine::CodeGenFileType::CGFT_ObjectFile) &&
-      (FileType != IGCLLVM::TargetMachine::CodeGenFileType::CGFT_AssemblyFile))
+  if ((FileType != IGCLLVM::CGFT_ObjectFile) &&
+      (FileType != IGCLLVM::CGFT_AssemblyFile))
     return true;
 
   GenXPassConfig *PassConfig = createGenXPassConfig(*this, PM);
@@ -1175,8 +1179,12 @@ void GenXTargetMachine::registerPassBuilderCallbacks(PassBuilder &PB) {
       // TODO: Check LICM-options
       PM.addPass(createModuleToFunctionPassAdaptor(
           createFunctionToLoopPassAdaptor(LICMPass(100, 250, false),
+#if LLVM_VERSION_MAJOR >= 22
+                                          /*UseMemorySSA=*/true)));
+#else
                                           /*UseMemorySSA=*/true,
                                           /*UseBlockFrequencyInfo=*/true)));
+#endif
       PM.addPass(createModuleToFunctionPassAdaptor(EarlyCSEPass(true)));
 
       PM.addPass(createModuleToFunctionPassAdaptor(InstCombinePass()));

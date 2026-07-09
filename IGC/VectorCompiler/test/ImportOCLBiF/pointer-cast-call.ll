@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2023-2025 Intel Corporation
+; Copyright (C) 2023-2026 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -77,7 +77,7 @@ if.end:
 }
 
 ; CHECK-LABEL: ftrunc.4
-; CHECK: trunc <2 x i32> <i32 16, i32 16> to <2 x i8>
+; CHECK: trunc <2 x i32> {{(splat \(i32 16\)|<i32 16(, i32 16)*>)}} to <2 x i8>
 define spir_func <2 x i32> @ftrunc() {
   ret <2 x i32> <i32 16, i32 16>
 }

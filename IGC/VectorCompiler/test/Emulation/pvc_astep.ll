@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2020-2021 Intel Corporation
+; Copyright (C) 2020-2026 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -17,7 +17,7 @@
 ; CHECK-NEXT: %xor64 = xor i64 %scalar_left, %scalar_right
 ; CHECK-NEXT: %or64 = or i64 %scalar_left, %scalar_right
 ; CHECK-NEXT: %and64 = and i64 %scalar_left, %scalar_right
-; CHECK-NEXT: %not64 = xor <8 x i64> %left, <i64 -1, i64 -1, i64 -1, i64 -1, i64 -1, i64 -1, i64 -1, i64 -1>
+; CHECK-NEXT: %not64 = xor <8 x i64> %left, {{(splat \(i64 -1\)|<i64 -1(, i64 -1)*>)}}
 
 define dllexport spir_kernel void @test_kernel(i32 %0, i32 %1, i32 %2) {
   %left = tail call <8 x i64> @llvm.genx.oword.ld.v8i64(i32 0, i32 %0, i32 0)

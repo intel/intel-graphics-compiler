@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2021-2025 Intel Corporation
+; Copyright (C) 2021-2026 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -25,7 +25,7 @@ entry:
   ret void
 }
 
-; CHECK-DAG: void @llvm.dbg.value(metadata float [[T1:%[0-9a-zA-Z\.]*]], metadata [[T1_MD:![0-9]*]], metadata !DIExpression()), !dbg [[T1_LOC:![0-9]*]]
+; CHECK-DAG: {{(#dbg_value\(|call void @llvm\.dbg\.value\(metadata )}}float [[T1:%[0-9a-zA-Z\.]*]]{{(, |, metadata )}}[[T1_MD:![0-9]*]]{{(, |, metadata )}}!DIExpression(){{(, |\), !dbg )}}[[T1_LOC:![0-9]*]]{{\)?}}
 ; CHECK-DAG: [[T1]] = call float @llvm.fma.f32{{.*}} !dbg [[T1_LOC]]
 
 ; CHECK: store float{{.*}}, !dbg [[T2_LOC:![0-9]*]]

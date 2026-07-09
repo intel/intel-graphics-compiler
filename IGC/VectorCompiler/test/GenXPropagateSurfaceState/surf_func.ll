@@ -39,7 +39,7 @@ define dllexport spir_kernel void @"lsc_test<unsigned int, 8>"(i8 addrspace(1)* 
 
 ; CHECK: void @_Z3barIjLi8EL15ChannelMaskType1ELi0EEvy15cm_surfaceindexyy(i64 %0, i64 %1, i64 %2)
 ; CHECK: [[SURF32_PTR:%[^ ]+]] = trunc i64 %1 to i32
-; CHECK: tail call void @llvm.vc.internal.lsc.store.quad.bti.v8i1.v2i8.v8i32.v8i32(<8 x i1> <i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true>, i8 2, i8 3, i8 1, <2 x i8> zeroinitializer, i32 [[SURF32_PTR]], <8 x i32> %10, i16 1, i32 0, <8 x i32> %8)
+; CHECK: tail call void @llvm.vc.internal.lsc.store.quad.bti.v8i1.v2i8.v8i32.v8i32(<8 x i1> {{(splat \(i1 true\)|<i1 true(, i1 true)*>)}}, i8 2, i8 3, i8 1, <2 x i8> zeroinitializer, i32 [[SURF32_PTR]], <8 x i32> %10, i16 1, i32 0, <8 x i32> %8)
 ; Function Attrs: noinline nounwind
 define internal spir_func void @_Z3barIjLi8EL15ChannelMaskType1ELi0EEvy15cm_surfaceindexyy(i64 %0, i32 %1, i64 %2) unnamed_addr #1 {
   %4 = call <4 x i64> @llvm.vc.internal.lsc.load.ugm.v4i64.v1i1.v3i8.i64(<1 x i1> <i1 true>, i8 3, i8 4, i8 4, <3 x i8> zeroinitializer, i64 0, i64 %2, i16 1, i32 0, <4 x i64> undef)
@@ -54,7 +54,7 @@ define internal spir_func void @_Z3barIjLi8EL15ChannelMaskType1ELi0EEvy15cm_surf
 
 ; CHECK: void @_Z3barIjLi8EL15ChannelMaskType3ELi1EEvy15cm_surfaceindexyy(i64 %0, i64 %1, i64 %2)
 ; CHECK: [[SURF32_PTR:%[^ ]+]] = trunc i64 %1 to i32
-; CHECK: call void @llvm.vc.internal.lsc.store.quad.bti.v16i1.v2i8.v16i32.v32i32(<16 x i1> %13, i8 2, i8 3, i8 3, <2 x i8> <i8 1, i8 1>, i32 [[SURF32_PTR]], <16 x i32> %14, i16 1, i32 0, <32 x i32> %15)
+; CHECK: call void @llvm.vc.internal.lsc.store.quad.bti.v16i1.v2i8.v16i32.v32i32(<16 x i1> %13, i8 2, i8 3, i8 3, <2 x i8> {{(splat \(i8 1\)|<i8 1(, i8 1)*>)}}, i32 [[SURF32_PTR]], <16 x i32> %14, i16 1, i32 0, <32 x i32> %15)
 ; Function Attrs: noinline nounwind
 define internal spir_func void @_Z3barIjLi8EL15ChannelMaskType3ELi1EEvy15cm_surfaceindexyy(i64 %0, i32 %1, i64 %2) unnamed_addr #1 {
   %4 = add i64 %2, 32

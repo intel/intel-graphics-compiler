@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2023-2025 Intel Corporation
+; Copyright (C) 2023-2026 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -11,9 +11,9 @@
 
 ; Test checks DIArgList WA that replaces Arglist values with undef (if multiple).
 ;
-; CHECK:  call void @llvm.dbg.value(metadata !DIArgList(i32 %a)
-; CHECK-NEXT:  call void @llvm.dbg.value(metadata !DIArgList(i32 %b)
-; CHECK-NEXT:  call void @llvm.dbg.value(metadata !DIArgList(i32 {{(undef)?(poison)?}}, i32 {{(undef)?(poison)?}})
+; CHECK:  {{(#dbg_value\(|call void @llvm\.dbg\.value\(metadata )}}!DIArgList(i32 %a)
+; CHECK-NEXT:  {{(#dbg_value\(|call void @llvm\.dbg\.value\(metadata )}}!DIArgList(i32 %b)
+; CHECK-NEXT:  {{(#dbg_value\(|call void @llvm\.dbg\.value\(metadata )}}!DIArgList(i32 {{(undef)?(poison)?}}, i32 {{(undef)?(poison)?}})
 
 define spir_kernel void @test_arglist(i32 %a, i32 %b) !dbg !5 {
 entry:

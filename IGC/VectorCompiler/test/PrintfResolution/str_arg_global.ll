@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2022-2025 Intel Corporation
+; Copyright (C) 2022-2026 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -62,4 +62,4 @@ define spir_kernel void @global_fmt() {
 ; CHECK-DAG: define internal spir_func <4 x i32> @__vc_printf_fmt(<4 x i32>
 ; CHECK-DAG: define internal spir_func <4 x i32> @__vc_printf_fmt_global(<4 x i32>
 ; CHECK-DAG: define internal spir_func <4 x i32> @__vc_printf_arg_str_global(<4 x i32>
-; CHECK-DAG: define internal spir_func i32 @__vc_printf_ret(<4 x i32>
+; CHECK-DAG: define internal spir_func {{(noundef )?}}i32 @__vc_printf_ret(<4 x i32>

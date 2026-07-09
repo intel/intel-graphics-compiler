@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2021-2025 Intel Corporation
+; Copyright (C) 2021-2026 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -19,7 +19,7 @@ entry:
   ret i1 %0
 }
 
-; CHECK-DAG: void @llvm.dbg.value(metadata i1 [[FCMP:%[0-9a-zA-Z\.]*]], metadata [[FCMP_MD:![0-9]*]], metadata !DIExpression()), !dbg [[FCMP_LOC:![0-9]*]]
+; CHECK-DAG: {{(#dbg_value\(|call void @llvm\.dbg\.value\(metadata )}}i1 [[FCMP:%[0-9a-zA-Z\.]*]]{{(, |, metadata )}}[[FCMP_MD:![0-9]*]]{{(, |, metadata )}}!DIExpression(){{(, |\), !dbg )}}[[FCMP_LOC:![0-9]*]]{{\)?}}
 ; CHECK-DAG: [[INVERSE:%[0-9a-zA-Z\.]*]] = fcmp oge {{.*}} !dbg [[FCMP_LOC]]
 ; CHECK-DAG: [[FCMP]] = xor i1 [[INVERSE]], {{.*}} !dbg [[FCMP_LOC]]
 

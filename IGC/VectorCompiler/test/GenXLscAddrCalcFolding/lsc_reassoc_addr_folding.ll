@@ -21,7 +21,7 @@ declare <2 x i64> @llvm.vc.internal.lsc.load.ugm.v2i64.i1.v2i8.i64(i1, i8, i8, i
 ; CHECK-LABEL: test_reassoc_add_rhs
 define <2 x i64> @test_reassoc_add_rhs(i64 %base, i64 %index) {
 ; CHECK: %[[BASE:[a-zA-Z0-9._]+]] = add i64 %base, %index
-; CHECK: tail call <2 x i64> @llvm.vc.internal.lsc.load.ugm.v2i64.i1.v2i8.i64(i1 true, i8 3, i8 4, i8 2, <2 x i8> <i8 2, i8 2>, i64 0, i64 %[[BASE]], i16 1, i32 32, <2 x i64> undef)
+; CHECK: tail call <2 x i64> @llvm.vc.internal.lsc.load.ugm.v2i64.i1.v2i8.i64(i1 true, i8 3, i8 4, i8 2, <2 x i8> {{(splat \(i8 2\)|<i8 2(, i8 2)*>)}}, i64 0, i64 %[[BASE]], i16 1, i32 32, <2 x i64> undef)
   %inner = add i64 %base, 32
   %addr = add i64 %inner, %index
   %data = tail call <2 x i64> @llvm.vc.internal.lsc.load.ugm.v2i64.i1.v2i8.i64(i1 true, i8 3, i8 4, i8 2, <2 x i8> <i8 2, i8 2>, i64 0, i64 %addr, i16 1, i32 0, <2 x i64> undef)
@@ -32,7 +32,7 @@ define <2 x i64> @test_reassoc_add_rhs(i64 %base, i64 %index) {
 ; CHECK-LABEL: test_reassoc_add_lhs
 define <2 x i64> @test_reassoc_add_lhs(i64 %base, i64 %index) {
 ; CHECK: %[[BASE:[a-zA-Z0-9._]+]] = add i64 %base, %index
-; CHECK: tail call <2 x i64> @llvm.vc.internal.lsc.load.ugm.v2i64.i1.v2i8.i64(i1 true, i8 3, i8 4, i8 2, <2 x i8> <i8 2, i8 2>, i64 0, i64 %[[BASE]], i16 1, i32 32, <2 x i64> undef)
+; CHECK: tail call <2 x i64> @llvm.vc.internal.lsc.load.ugm.v2i64.i1.v2i8.i64(i1 true, i8 3, i8 4, i8 2, <2 x i8> {{(splat \(i8 2\)|<i8 2(, i8 2)*>)}}, i64 0, i64 %[[BASE]], i16 1, i32 32, <2 x i64> undef)
   %inner = add i64 32, %base
   %addr = add i64 %inner, %index
   %data = tail call <2 x i64> @llvm.vc.internal.lsc.load.ugm.v2i64.i1.v2i8.i64(i1 true, i8 3, i8 4, i8 2, <2 x i8> <i8 2, i8 2>, i64 0, i64 %addr, i16 1, i32 0, <2 x i64> undef)
@@ -43,7 +43,7 @@ define <2 x i64> @test_reassoc_add_lhs(i64 %base, i64 %index) {
 ; CHECK-LABEL: test_reassoc_sub
 define <2 x i64> @test_reassoc_sub(i64 %base, i64 %index) {
 ; CHECK: %[[BASE:[a-zA-Z0-9._]+]] = add i64 %base, %index
-; CHECK: tail call <2 x i64> @llvm.vc.internal.lsc.load.ugm.v2i64.i1.v2i8.i64(i1 true, i8 3, i8 4, i8 2, <2 x i8> <i8 2, i8 2>, i64 0, i64 %[[BASE]], i16 1, i32 -32, <2 x i64> undef)
+; CHECK: tail call <2 x i64> @llvm.vc.internal.lsc.load.ugm.v2i64.i1.v2i8.i64(i1 true, i8 3, i8 4, i8 2, <2 x i8> {{(splat \(i8 2\)|<i8 2(, i8 2)*>)}}, i64 0, i64 %[[BASE]], i16 1, i32 -32, <2 x i64> undef)
   %inner = sub i64 %base, 32
   %addr = add i64 %inner, %index
   %data = tail call <2 x i64> @llvm.vc.internal.lsc.load.ugm.v2i64.i1.v2i8.i64(i1 true, i8 3, i8 4, i8 2, <2 x i8> <i8 2, i8 2>, i64 0, i64 %addr, i16 1, i32 0, <2 x i64> undef)
@@ -56,7 +56,7 @@ define <2 x i64> @test_reassoc_sub(i64 %base, i64 %index) {
 define <2 x i64> @test_no_reassoc_multiuse(i64 %base, i64 %index, i64* %p) {
 ; CHECK: %inner = add i64 %base, 32
 ; CHECK: %addr = add i64 %inner, %index
-; CHECK: tail call <2 x i64> @llvm.vc.internal.lsc.load.ugm.v2i64.i1.v2i8.i64(i1 true, i8 3, i8 4, i8 2, <2 x i8> <i8 2, i8 2>, i64 0, i64 %addr, i16 1, i32 0, <2 x i64> undef)
+; CHECK: tail call <2 x i64> @llvm.vc.internal.lsc.load.ugm.v2i64.i1.v2i8.i64(i1 true, i8 3, i8 4, i8 2, <2 x i8> {{(splat \(i8 2\)|<i8 2(, i8 2)*>)}}, i64 0, i64 %addr, i16 1, i32 0, <2 x i64> undef)
   %inner = add i64 %base, 32
   %addr = add i64 %inner, %index
   store i64 %inner, i64* %p
@@ -69,7 +69,7 @@ define <2 x i64> @test_no_reassoc_multiuse(i64 %base, i64 %index, i64* %p) {
 define <2 x i64> @test_no_reassoc_const_minus_x(i64 %base, i64 %index) {
 ; CHECK: %inner = sub i64 32, %base
 ; CHECK: %addr = add i64 %inner, %index
-; CHECK: tail call <2 x i64> @llvm.vc.internal.lsc.load.ugm.v2i64.i1.v2i8.i64(i1 true, i8 3, i8 4, i8 2, <2 x i8> <i8 2, i8 2>, i64 0, i64 %addr, i16 1, i32 0, <2 x i64> undef)
+; CHECK: tail call <2 x i64> @llvm.vc.internal.lsc.load.ugm.v2i64.i1.v2i8.i64(i1 true, i8 3, i8 4, i8 2, <2 x i8> {{(splat \(i8 2\)|<i8 2(, i8 2)*>)}}, i64 0, i64 %addr, i16 1, i32 0, <2 x i64> undef)
   %inner = sub i64 32, %base
   %addr = add i64 %inner, %index
   %data = tail call <2 x i64> @llvm.vc.internal.lsc.load.ugm.v2i64.i1.v2i8.i64(i1 true, i8 3, i8 4, i8 2, <2 x i8> <i8 2, i8 2>, i64 0, i64 %addr, i16 1, i32 0, <2 x i64> undef)

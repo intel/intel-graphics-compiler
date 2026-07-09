@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2022-2025 Intel Corporation
+; Copyright (C) 2022-2026 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -17,16 +17,16 @@
 ; Debug MD for this test was created with debugify pass.
 
 ; CHECK: void @test_patternmatch{{.*}} !dbg [[SCOPE:![0-9]*]]
-; CHECK-DAG: void @llvm.dbg.value(metadata <4 x i32> [[VAL1_V:%[A-z0-9.]*]], metadata [[VAL1_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL1_LOC:![0-9]*]]
+; CHECK-DAG: {{(#dbg_value\(|call void @llvm\.dbg\.value\(metadata )}}<4 x i32> [[VAL1_V:%[A-z0-9.]*]]{{(, |, metadata )}}[[VAL1_MD:![0-9]*]]{{(, |, metadata )}}!DIExpression(){{(, |\), !dbg )}}[[VAL1_LOC:![0-9]*]]{{\)?}}
 ; CHECK-DAG: [[VAL1_V]] = {{.*}}, !dbg [[VAL1_LOC:![0-9]*]]
-; CHECK-DAG: void @llvm.dbg.value(metadata <4 x i32> [[VAL3_V:%[A-z0-9.]*]], metadata [[VAL3_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL3_LOC:![0-9]*]]
+; CHECK-DAG: {{(#dbg_value\(|call void @llvm\.dbg\.value\(metadata )}}<4 x i32> [[VAL3_V:%[A-z0-9.]*]]{{(, |, metadata )}}[[VAL3_MD:![0-9]*]]{{(, |, metadata )}}!DIExpression(){{(, |\), !dbg )}}[[VAL3_LOC:![0-9]*]]{{\)?}}
 ; Note: VAL2 loc is ok, but id went with VAL3
 ; CHECK-DAG: [[VAL3_V]] = {{.*}}, !dbg [[VAL2_LOC:![0-9]*]]
 ; CHECK: store {{.*}}, !dbg [[STORE1_LOC:![0-9]*]]
 ; CHECK: merge:
 ; rdregion and select are opted out
 ; CHECK-DAG: store <4 x i32> [[VAL6_V:%[A-z0-9.]*]]{{.*}}, !dbg [[STORE2_LOC:![0-9]*]]
-; CHECK-DAG: void @llvm.dbg.value(metadata <4 x i32> [[VAL6_V]], metadata [[VAL6_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL6_LOC:![0-9]*]]
+; CHECK-DAG: {{(#dbg_value\(|call void @llvm\.dbg\.value\(metadata )}}<4 x i32> [[VAL6_V]]{{(, |, metadata )}}[[VAL6_MD:![0-9]*]]{{(, |, metadata )}}!DIExpression(){{(, |\), !dbg )}}[[VAL6_LOC:![0-9]*]]{{\)?}}
 ; CHECK-DAG: [[VAL6_V]] = {{.*}}, !dbg [[VAL6_LOC]]
 
 define void @test_patternmatch(<4 x i32>* %a, <4 x i1> %b) !dbg !6 {

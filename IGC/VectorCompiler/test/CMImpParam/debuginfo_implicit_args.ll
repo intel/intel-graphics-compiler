@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2021-2025 Intel Corporation
+; Copyright (C) 2021-2026 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -76,7 +76,7 @@ define dllexport spir_kernel void @test_kernel() #0 !dbg !6 {
   ret void
 }
 
-; CHECK_LOCAL_ID:       @__imparg_llvm.genx.local.id16 = internal global <3 x i16> undef, !dbg ![[#EXPR_NODE:]]
+; CHECK_LOCAL_ID:       @__imparg_llvm.genx.local.id16 = internal {{(addrspace\(1\) )?}}global <3 x i16> undef, !dbg ![[#EXPR_NODE:]]
 ; CHECK_LOCAL_ID:       @test_kernel
 ; CHECK_LOCAL_ID-DAG:   [[#EXPR_NODE]] = !DIGlobalVariableExpression(var: ![[#VAR_NODE:]], expr: !DIExpression())
 ; CHECK_LOCAL_ID-DAG:   [[#VAR_NODE]]  = distinct !DIGlobalVariable(name: "__llvm_genx_local_id16", linkageName: "__llvm_genx_local_id16", scope: ![[#]], file: ![[#]], type: ![[#TYPE_NODE:]]
@@ -85,7 +85,7 @@ define dllexport spir_kernel void @test_kernel() #0 !dbg !6 {
 ; CHECK_LOCAL_ID-DAG:   [[#ELEMENTS]] = !{![[#SUBRANGE:]]}
 ; CHECK_LOCAL_ID-DAG:   [[#SUBRANGE]] = !DISubrange(count: 3{{(, lowerBound: 0)?}})
 
-; CHECK_LOCAL_SIZE:     @__imparg_llvm.genx.local.size = internal global <3 x i32> undef, !dbg ![[#EXPR_NODE:]]
+; CHECK_LOCAL_SIZE:     @__imparg_llvm.genx.local.size = internal {{(addrspace\(1\) )?}}global <3 x i32> undef, !dbg ![[#EXPR_NODE:]]
 ; CHECK_LOCAL_SIZE:     @test_kernel
 ; CHECK_LOCAL_SIZE-DAG: [[#EXPR_NODE]] = !DIGlobalVariableExpression(var: ![[#VAR_NODE:]], expr: !DIExpression())
 ; CHECK_LOCAL_SIZE-DAG: [[#VAR_NODE]]  = distinct !DIGlobalVariable(name: "__llvm_genx_local_size", linkageName: "__llvm_genx_local_size", scope: ![[#]], file: ![[#]], type: ![[#TYPE_NODE:]]
@@ -94,7 +94,7 @@ define dllexport spir_kernel void @test_kernel() #0 !dbg !6 {
 ; CHECK_LOCAL_SIZE-DAG: [[#ELEMENTS]] = !{![[#SUBRANGE:]]}
 ; CHECK_LOCAL_SIZE-DAG: [[#SUBRANGE]] = !DISubrange(count: 3{{(, lowerBound: 0)?}})
 
-; CHECK_GROUP_COUNT:     @__imparg_llvm.genx.group.count = internal global <3 x i32> undef, !dbg ![[#EXPR_NODE:]]
+; CHECK_GROUP_COUNT:     @__imparg_llvm.genx.group.count = internal {{(addrspace\(1\) )?}}global <3 x i32> undef, !dbg ![[#EXPR_NODE:]]
 ; CHECK_GROUP_COUNT:     @test_kernel
 ; CHECK_GROUP_COUNT-DAG: [[#EXPR_NODE]] = !DIGlobalVariableExpression(var: ![[#VAR_NODE:]], expr: !DIExpression())
 ; CHECK_GROUP_COUNT-DAG: [[#VAR_NODE]]  = distinct !DIGlobalVariable(name: "__llvm_genx_group_count", linkageName: "__llvm_genx_group_count", scope: ![[#]], file: ![[#]], type: ![[#TYPE_NODE:]]
@@ -103,7 +103,7 @@ define dllexport spir_kernel void @test_kernel() #0 !dbg !6 {
 ; CHECK_GROUP_COUNT-DAG: [[#ELEMENTS]] = !{![[#SUBRANGE:]]}
 ; CHECK_GROUP_COUNT-DAG: [[#SUBRANGE]] = !DISubrange(count: 3{{(, lowerBound: 0)?}})
 
-; CHECK_PRINT_BUFFER:     @__imparg_llvm.vc.internal.print.buffer = internal global i64 undef, !dbg ![[#EXPR_NODE:]]
+; CHECK_PRINT_BUFFER:     @__imparg_llvm.vc.internal.print.buffer = internal {{(addrspace\(1\) )?}}global i64 undef, !dbg ![[#EXPR_NODE:]]
 ; CHECK_PRINT_BUFFER:     @test_kernel
 ; CHECK_PRINT_BUFFER-DAG: [[#EXPR_NODE]] = !DIGlobalVariableExpression(var: ![[#VAR_NODE:]], expr: !DIExpression())
 ; CHECK_PRINT_BUFFER-DAG: [[#VAR_NODE]]  = distinct !DIGlobalVariable(name: "__llvm_vc_internal_print_buffer", linkageName: "__llvm_vc_internal_print_buffer", scope: ![[#]], file: ![[#]], type: ![[#TYPE_NODE:]]

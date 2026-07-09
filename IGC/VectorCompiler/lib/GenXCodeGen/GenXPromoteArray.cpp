@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2019-2025 Intel Corporation
+Copyright (C) 2019-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -28,6 +28,7 @@ SPDX-License-Identifier: MIT
 #include "vc/Utils/General/Types.h"
 
 #include "Probe/Assertion.h"
+#include "llvm/Analysis/ConstantFolding.h"
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/IR/IRBuilder.h"
 #include "llvmWrapper/IR/Type.h"
@@ -362,10 +363,18 @@ void TransposeHelper::handleAllocaSources(Instruction &Inst,
         handleLifetimeEnd(II, Idx);
         break;
       case Intrinsic::masked_gather:
+#if LLVM_VERSION_MAJOR >= 22
+        handleGather(II, Idx, 1, 2);
+#else
         handleGather(II, Idx, 2, 3);
+#endif
         break;
       case Intrinsic::masked_scatter:
+#if LLVM_VERSION_MAJOR >= 22
+        handleScatter(II, Idx, 2, 0);
+#else
         handleScatter(II, Idx, 3, 0);
+#endif
         break;
       case GenXIntrinsic::genx_svm_gather:
         handleGather(II, Idx, 0, 3);
@@ -590,12 +599,13 @@ void TransposeHelper::handleStoreInst(StoreInst *Store,
           ScalarizedIdx, Type::getInt16Ty(Store->getContext()));
     }
     if (auto *ConstIdx = dyn_cast<Constant>(ScalarizedIdx))
-      R.Indirect = ConstantExpr::getMul(
-          ConstIdx,
+      R.Indirect = llvm::ConstantFoldBinaryOpOperands(
+          Instruction::Mul, ConstIdx,
           ConstantInt::get(
               IRB.getInt16Ty(),
               DL->getTypeSizeInBits(NewStoreVal->getType()->getScalarType()) /
-                  genx::ByteBits));
+                  genx::ByteBits),
+          *DL);
     else
       R.Indirect = ScalarizedIdx;
     WriteOut =
@@ -895,12 +905,22 @@ bool GenXPromoteArray::checkPtrToIntCandidate(PtrToIntInst *PTI,
     default:
       return false;
     case Intrinsic::masked_gather:
+#if LLVM_VERSION_MAJOR >= 22
+      Pred = MemOp->getOperand(1);
+      Input = MemOp->getOperand(2);
+#else
       Pred = MemOp->getOperand(2);
       Input = MemOp->getOperand(3);
+#endif
       break;
     case Intrinsic::masked_scatter:
+#if LLVM_VERSION_MAJOR >= 22
+      Pred = MemOp->getOperand(2);
+      Input = MemOp->getOperand(0);
+#else
       Pred = MemOp->getOperand(3);
       Input = MemOp->getOperand(0);
+#endif
       break;
     case GenXIntrinsic::genx_svm_gather:
     case GenXIntrinsic::genx_svm_scatter: {

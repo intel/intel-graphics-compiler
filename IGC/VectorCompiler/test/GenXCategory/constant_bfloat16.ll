@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2024 Intel Corporation
+; Copyright (C) 2024-2026 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -46,7 +46,7 @@ define dllexport spir_kernel void @const_cmp(i32 %buf) local_unnamed_addr #0 {
 }
 
 ; CHECK-LABEL: @const_one
-; CHECK: [[CONST:%[^ ]+]] = call <1 x i16> @llvm.genx.constanti.v1i16(<1 x i16> <i16 16256>)
+; CHECK: [[CONST:%[^ ]+]] = call <1 x i16> @llvm.genx.constanti.v1i16(<1 x i16> {{(splat \(i16 16256\)|<i16 16256(, i16 16256)*>)}})
 ; CHECK: [[CAST:%[^ ]+]] = bitcast <1 x i16> [[CONST]] to <1 x bfloat>
 ; CHECK: [[SPLAT:%[^ ]+]] = call <16 x bfloat> @llvm.genx.rdregionf.v16bf16.v1bf16.i16(<1 x bfloat> [[CAST]], i32 0, i32 16, i32 0, i16 0, i32 undef)
 ; CHECK: %res = fadd <16 x bfloat> %src, [[SPLAT]]
@@ -58,15 +58,15 @@ define dllexport spir_kernel void @const_one(i32 %buf) local_unnamed_addr #0 {
 }
 
 ; CHECK-LABEL: @const_vector
-; CHECK: [[SCALAR:%[^ ]+]] = call <1 x i32> @llvm.genx.constanti.v1i32(<1 x i32> <i32 -1049607840>)
+; CHECK: [[SCALAR:%[^ ]+]] = call <1 x i32> @llvm.genx.constanti.v1i32(<1 x i32> {{(splat \(i32 -1049607840\)|<i32 -1049607840(, i32 -1049607840)*>)}})
 ; CHECK: [[SPLAT:%[^ ]+]] = call <8 x i32> @llvm.genx.rdregioni.v8i32.v1i32.i16(<1 x i32> [[SCALAR]], i32 0, i32 8, i32 0, i16 0, i32 undef)
-; CHECK: [[INS0:%[^ ]+]] = call <8 x i32> @llvm.genx.wrconstregion.v8i32.v1i32.i16.i1(<8 x i32> [[SPLAT]], <1 x i32> <i32 -1051705024>, i32 1, i32 1, i32 1, i16 24, i32 undef, i1 true)
-; CHECK: [[INS1:%[^ ]+]] = call <8 x i32> @llvm.genx.wrconstregion.v8i32.v1i32.i16.i1(<8 x i32> [[INS0]], <1 x i32> <i32 -1053802208>, i32 1, i32 1, i32 1, i16 20, i32 undef, i1 true)
-; CHECK: [[INS2:%[^ ]+]] = call <8 x i32> @llvm.genx.wrconstregion.v8i32.v1i32.i16.i1(<8 x i32> [[INS1]], <1 x i32> <i32 -1055899392>, i32 1, i32 1, i32 1, i16 16, i32 undef, i1 true)
-; CHECK: [[INS3:%[^ ]+]] = call <8 x i32> @llvm.genx.wrconstregion.v8i32.v1i32.i16.i1(<8 x i32> [[INS2]], <1 x i32> <i32 -1059045184>, i32 1, i32 1, i32 1, i16 12, i32 undef, i1 true)
-; CHECK: [[INS4:%[^ ]+]] = call <8 x i32> @llvm.genx.wrconstregion.v8i32.v1i32.i16.i1(<8 x i32> [[INS3]], <1 x i32> <i32 -1063239552>, i32 1, i32 1, i32 1, i16 8, i32 undef, i1 true)
-; CHECK: [[INS5:%[^ ]+]] = call <8 x i32> @llvm.genx.wrconstregion.v8i32.v1i32.i16.i1(<8 x i32> [[INS4]], <1 x i32> <i32 -1069531136>, i32 1, i32 1, i32 1, i16 4, i32 undef, i1 true)
-; CHECK: [[INS6:%[^ ]+]] = call <8 x i32> @llvm.genx.wrconstregion.v8i32.v1i32.i16.i1(<8 x i32> [[INS5]], <1 x i32> <i32 -1082130432>, i32 1, i32 1, i32 1, i16 0, i32 undef, i1 true)
+; CHECK: [[INS0:%[^ ]+]] = call <8 x i32> @llvm.genx.wrconstregion.v8i32.v1i32.i16.i1(<8 x i32> [[SPLAT]], <1 x i32> {{(splat \(i32 -1051705024\)|<i32 -1051705024(, i32 -1051705024)*>)}}, i32 1, i32 1, i32 1, i16 24, i32 undef, i1 true)
+; CHECK: [[INS1:%[^ ]+]] = call <8 x i32> @llvm.genx.wrconstregion.v8i32.v1i32.i16.i1(<8 x i32> [[INS0]], <1 x i32> {{(splat \(i32 -1053802208\)|<i32 -1053802208(, i32 -1053802208)*>)}}, i32 1, i32 1, i32 1, i16 20, i32 undef, i1 true)
+; CHECK: [[INS2:%[^ ]+]] = call <8 x i32> @llvm.genx.wrconstregion.v8i32.v1i32.i16.i1(<8 x i32> [[INS1]], <1 x i32> {{(splat \(i32 -1055899392\)|<i32 -1055899392(, i32 -1055899392)*>)}}, i32 1, i32 1, i32 1, i16 16, i32 undef, i1 true)
+; CHECK: [[INS3:%[^ ]+]] = call <8 x i32> @llvm.genx.wrconstregion.v8i32.v1i32.i16.i1(<8 x i32> [[INS2]], <1 x i32> {{(splat \(i32 -1059045184\)|<i32 -1059045184(, i32 -1059045184)*>)}}, i32 1, i32 1, i32 1, i16 12, i32 undef, i1 true)
+; CHECK: [[INS4:%[^ ]+]] = call <8 x i32> @llvm.genx.wrconstregion.v8i32.v1i32.i16.i1(<8 x i32> [[INS3]], <1 x i32> {{(splat \(i32 -1063239552\)|<i32 -1063239552(, i32 -1063239552)*>)}}, i32 1, i32 1, i32 1, i16 8, i32 undef, i1 true)
+; CHECK: [[INS5:%[^ ]+]] = call <8 x i32> @llvm.genx.wrconstregion.v8i32.v1i32.i16.i1(<8 x i32> [[INS4]], <1 x i32> {{(splat \(i32 -1069531136\)|<i32 -1069531136(, i32 -1069531136)*>)}}, i32 1, i32 1, i32 1, i16 4, i32 undef, i1 true)
+; CHECK: [[INS6:%[^ ]+]] = call <8 x i32> @llvm.genx.wrconstregion.v8i32.v1i32.i16.i1(<8 x i32> [[INS5]], <1 x i32> {{(splat \(i32 -1082130432\)|<i32 -1082130432(, i32 -1082130432)*>)}}, i32 1, i32 1, i32 1, i16 0, i32 undef, i1 true)
 ; CHECK: [[CAST:%[^ ]+]] = bitcast <8 x i32> [[INS6]] to <16 x bfloat>
 ; CHECK: %res = fadd <16 x bfloat> %src, [[CAST]]
 define dllexport spir_kernel void @const_vector(i32 %buf) local_unnamed_addr #0 {

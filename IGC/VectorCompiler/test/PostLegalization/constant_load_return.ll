@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2020-2025 Intel Corporation
+; Copyright (C) 2020-2026 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -42,7 +42,7 @@ define <3 x i8*> @legalize_return_nullptr_vec() {
 
 define { <4 x i32> } @const_struct_return() {
 ; CHECK-LABEL: @const_struct_return
-; CHECK-NEXT: [[CONST:%.+]] = call <1 x i32> @llvm.genx.constanti.v1i32(<1 x i32> <i32 1>)
+; CHECK-NEXT: [[CONST:%.+]] = call <1 x i32> @llvm.genx.constanti.v1i32(<1 x i32> {{(splat \(i32 1\)|<i32 1(, i32 1)*>)}})
 ; CHECK-NEXT: [[SPLAT:%.+]] = call <4 x i32> @llvm.genx.rdregioni.v4i32.v1i32.i16(<1 x i32> [[CONST]], i32 0, i32 4, i32 0, i16 0, i32 undef)
 ; CHECK-NEXT: [[STRUCT:%.+]] = insertvalue { <4 x i32> } undef, <4 x i32> [[SPLAT]], 0
 ; CHECK-NEXT: ret { <4 x i32> } [[STRUCT]]
@@ -65,7 +65,7 @@ define { <16 x i32> } @const_struct_add_return_big() {
 ; CHECK-LABEL: @const_struct_add_return_big
 ; CHECK-NEXT: [[CONST1:%.+]] = call <8 x i32> @llvm.genx.constanti.v8i32(<8 x i32> <i32 0, i32 1, i32 2, i32 3, i32 4, i32 5, i32 6, i32 7>)
 ; CHECK-NEXT: [[SPLIT1:%.+]] = call <16 x i32> @llvm.genx.wrregioni.v16i32.v8i32.i16.i1(<16 x i32> undef, <8 x i32> [[CONST1]], i32 8, i32 8, i32 1, i16 0, i32 undef, i1 true)
-; CHECK-NEXT: [[ADD:%.+]] = add <8 x i32> [[CONST1]], <i32 8, i32 8, i32 8, i32 8, i32 8, i32 8, i32 8, i32 8>
+; CHECK-NEXT: [[ADD:%.+]] = add <8 x i32> [[CONST1]], {{(splat \(i32 8\)|<i32 8(, i32 8)*>)}}
 ; CHECK-NEXT: [[SPLIT2:%.+]] = call <16 x i32> @llvm.genx.wrregioni.v16i32.v8i32.i16.i1(<16 x i32> [[SPLIT1]], <8 x i32> [[ADD]], i32 8, i32 8, i32 1, i16 32, i32 undef, i1 true)
 ; CHECK-NEXT: [[VAL:%.+]] = insertvalue { <16 x i32> } undef, <16 x i32> [[SPLIT2]], 0
 ; CHECK-NEXT: ret { <16 x i32> } [[VAL]]
@@ -85,7 +85,7 @@ define { <3 x i32> } @legalize_struct_const_return() {
 ; COM: Though, the goal is archived, since ret does not have a constant as
 ; COM: it's operand
 ; CHECK-LABEL: @legalize_struct_const_return
-; CHECK-NEXT: [[STRUCT:%.+]] = insertvalue { <3 x i32> } undef, <3 x i32> <i32 1, i32 1, i32 1>, 0
+; CHECK-NEXT: [[STRUCT:%.+]] = insertvalue { <3 x i32> } undef, <3 x i32> {{(splat \(i32 1\)|<i32 1(, i32 1)*>)}}, 0
 ; CHECK-NEXT: ret { <3 x i32> } [[STRUCT]]
   ret { <3 x i32> } { <3 x i32> <i32 1, i32 1, i32 1> }
 }

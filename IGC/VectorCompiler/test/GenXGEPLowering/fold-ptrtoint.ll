@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2023-2025 Intel Corporation
+; Copyright (C) 2023-2026 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -31,7 +31,7 @@ define <32 x i32> @test_fold_itp(i64 %a) {
 entry:
   %itp = inttoptr i64 %a to double addrspace(1)*
   %pti = ptrtoint double addrspace(1)* %itp to i64
-  ; CHECK: %res = call <32 x i32> @llvm.vc.internal.lsc.load.ugm.v32i32.v1i1.i64(<1 x i1> <i1 true>, i8 3, i8 3, i8 7, i8 0, i8 0, i64 0, i64 %a, i16 1, i32 0, <32 x i32> undef)
+  ; CHECK: %res = call <32 x i32> @llvm.vc.internal.lsc.load.ugm.v32i32.v1i1.i64(<1 x i1> {{(splat \(i1 true\)|<i1 true(, i1 true)*>)}}, i8 3, i8 3, i8 7, i8 0, i8 0, i64 0, i64 %a, i16 1, i32 0, <32 x i32> undef)
   %res = call <32 x i32> @llvm.vc.internal.lsc.load.ugm.v32i32.v1i1.i64(<1 x i1> <i1 true>, i8 3, i8 3, i8 7, i8 0, i8 0, i64 0, i64 %pti, i16 1, i32 0, <32 x i32> undef)
   ret <32 x i32> %res
 }
@@ -45,7 +45,7 @@ entry:
   ; CHECK: [[ADD:%[^ ]+]] = add i64 [[PTI]], 1024
   %gep = getelementptr double, double addrspace(1)* %bitcast, i32 128
   %pti = ptrtoint double addrspace(1)* %gep to i64
-  ; CHECK: %res = call <32 x i32> @llvm.vc.internal.lsc.load.ugm.v32i32.v1i1.i64(<1 x i1> <i1 true>, i8 3, i8 3, i8 7, i8 0, i8 0, i64 0, i64 [[ADD]], i16 1, i32 0, <32 x i32> undef)
+  ; CHECK: %res = call <32 x i32> @llvm.vc.internal.lsc.load.ugm.v32i32.v1i1.i64(<1 x i1> {{(splat \(i1 true\)|<i1 true(, i1 true)*>)}}, i8 3, i8 3, i8 7, i8 0, i8 0, i64 0, i64 [[ADD]], i16 1, i32 0, <32 x i32> undef)
   %res = call <32 x i32> @llvm.vc.internal.lsc.load.ugm.v32i32.v1i1.i64(<1 x i1> <i1 true>, i8 3, i8 3, i8 7, i8 0, i8 0, i64 0, i64 %pti, i16 1, i32 0, <32 x i32> undef)
   ret <32 x i32> %res
 }

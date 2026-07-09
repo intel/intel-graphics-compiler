@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2023-2025 Intel Corporation
+; Copyright (C) 2023-2026 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -125,7 +125,7 @@ entry:
 ; CHECK-OPAQUE-PTRS: %call.i.i.i8.i.esimd6 = load volatile <4 x i32>, ptr @_ZL8g_global
 ; CHECK-NEXT:  %vecext.i.i1.regioncollapsed = tail call i32 @llvm.genx.rdregioni.i32.v4i32.i16(<4 x i32> %call.i.i.i8.i.esimd6, i32 0, i32 1, i32 1, i16 0, i32 undef)
 ; COM: store interference is directly detected in this function.
-; CHECK-NEXT:  %call4.i.i.i.i.i.i.esimd = tail call <4 x i32> @llvm.genx.wrregioni.v4i32.v1i32.i16.v1i1(<4 x i32> %call.i.i.i8.i.esimd6, <1 x i32> <i32 42>, i32 0, i32 1, i32 1, i16 0, i32 0, <1 x i1> <i1 true>)
+; CHECK-NEXT:  %call4.i.i.i.i.i.i.esimd = tail call <4 x i32> @llvm.genx.wrregioni.v4i32.v1i32.i16.v1i1(<4 x i32> %call.i.i.i8.i.esimd6, <1 x i32> {{(splat \(i32 42\)|<i32 42(, i32 42)*>)}}, i32 0, i32 1, i32 1, i16 0, i32 0, <1 x i1> {{(splat \(i1 true\)|<i1 true(, i1 true)*>)}})
 ; CHECK-TYPED-PTRS-NEXT: store volatile <4 x i32> %call4.i.i.i.i.i.i.esimd, <4 x i32>* @_ZL8g_global
 ; CHECK-OPAQUE-PTRS-NEXT: store volatile <4 x i32> %call4.i.i.i.i.i.i.esimd, ptr @_ZL8g_global
 ; CHECK-NOT:  %vecext.i.i1.regioncollapsed = tail call i32 @llvm.genx.rdregioni.i32.v4i32.i16(<4 x i32> %call.i.i.i8.i.esimd6, i32 0, i32 1, i32 1, i16 0, i32 undef)
@@ -166,7 +166,7 @@ while.body.i.while.body.i_crit_edge:              ; preds = %while.body.i
 
 ; CHECK: %dec.i = add nsw i32 %p2.0.i2, -1
 ; CHECK-NOT:  %vecext.i.i3.regioncollapsed = call <1 x i32> @llvm.genx.rdregioni.v1i32.v4i32.i16(<4 x i32> %call.i.i.i17.i.esimd8, i32 0, i32 1, i32 1, i16 0, i32 undef)
-; CHECK-NEXT: call void @llvm.genx.svm.scatter.v1i1.v1i64.v1i32(<1 x i1> <i1 true>, i32 0, <1 x i64> %.splatinsert35, <1 x i32> %vecext.i.i3.regioncollapsed)
+; CHECK-NEXT: call void @llvm.genx.svm.scatter.v1i1.v1i64.v1i32(<1 x i1> {{(splat \(i1 true\)|<i1 true(, i1 true)*>)}}, i32 0, <1 x i64> %.splatinsert35, <1 x i32> %vecext.i.i3.regioncollapsed)
 
 declare i32 @llvm.genx.rdregioni.i32.v4i32.i16(<4 x i32>, i32, i32, i32, i16, i32)
 declare void @llvm.genx.svm.scatter.v1i1.v1i64.v1i32(<1 x i1>, i32, <1 x i64>, <1 x i32>)

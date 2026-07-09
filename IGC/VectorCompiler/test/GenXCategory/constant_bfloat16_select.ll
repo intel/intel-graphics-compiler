@@ -29,7 +29,7 @@ declare void @llvm.genx.oword.st.v16bf16(i32, i32, <16 x bfloat>)
 ; CHECK-LABEL: @select_true_const
 ; Bfloat constant 1.0 (0xR3F80 = i16 16256) in the TRUE operand (operand 1) of
 ; select must be loaded: constanti on i16, bitcast to bfloat, rdregion to splat.
-; CHECK: [[CONST_T:%[^ ]+]] = call <1 x i16> @llvm.genx.constanti.v1i16(<1 x i16> <i16 16256>)
+; CHECK: [[CONST_T:%[^ ]+]] = call <1 x i16> @llvm.genx.constanti.v1i16(<1 x i16> {{(splat \(i16 16256\)|<i16 16256(, i16 16256)*>)}})
 ; CHECK: [[CAST_T:%[^ ]+]] = bitcast <1 x i16> [[CONST_T]] to <1 x bfloat>
 ; CHECK: [[SPLAT_T:%[^ ]+]] = call <16 x bfloat> @llvm.genx.rdregionf.v16bf16.v1bf16.i16(<1 x bfloat> [[CAST_T]], i32 0, i32 16, i32 0, i16 0, i32 undef)
 ; CHECK: %res = select <16 x i1> %pred, <16 x bfloat> [[SPLAT_T]], <16 x bfloat> %src
@@ -50,7 +50,7 @@ define dllexport spir_kernel void @select_true_const(i32 %buf) local_unnamed_add
 ; CHECK-LABEL: @select_both_const
 ; Both the TRUE operand (bfloat 1.0 splat) and FALSE operand (zeroinitializer)
 ; of the select are bfloat constants. Both must be loaded separately.
-; CHECK: [[CONST_T2:%[^ ]+]] = call <1 x i16> @llvm.genx.constanti.v1i16(<1 x i16> <i16 16256>)
+; CHECK: [[CONST_T2:%[^ ]+]] = call <1 x i16> @llvm.genx.constanti.v1i16(<1 x i16> {{(splat \(i16 16256\)|<i16 16256(, i16 16256)*>)}})
 ; CHECK: [[CAST_T2:%[^ ]+]] = bitcast <1 x i16> [[CONST_T2]] to <1 x bfloat>
 ; CHECK: [[SPLAT_T2:%[^ ]+]] = call <16 x bfloat> @llvm.genx.rdregionf.v16bf16.v1bf16.i16(<1 x bfloat> [[CAST_T2]], i32 0, i32 16, i32 0, i16 0, i32 undef)
 ; CHECK: [[CONST_F2:%[^ ]+]] = call <1 x i16> @llvm.genx.constanti.v1i16(<1 x i16> zeroinitializer)

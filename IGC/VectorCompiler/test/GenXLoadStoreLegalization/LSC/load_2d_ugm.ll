@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2025-2025 Intel Corporation
+; Copyright (C) 2025-2026 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -38,7 +38,7 @@ define <32 x i16> @test_load_whole_grf(i64 %base, i32 %width, i32 %height, i32 %
 ; CHECK-LABEL: test_load_desc(
 define <16 x i8> @test_load_desc(<16 x i32> %addr) {
 ; CHECK: [[WRREG:%[^ ]+]] = call <64 x i8> @llvm.genx.wrregioni.v64i8.v16i8.i16.i1(<64 x i8> undef, <16 x i8> zeroinitializer, i32 1, i32 1, i32 0, i16 0, i32 undef, i1 true)
-; CHECK: [[LOAD:%[^ ]+]] = call <64 x i8> @llvm.vc.internal.lsc.load.2d.ugm.desc.v64i8.v2i8(i1 true, <2 x i8> <i8 2, i8 2>, i8 1, i16 16, i16 1, <16 x i32> %addr, i32 0, i32 0, <64 x i8> [[WRREG]])
+; CHECK: [[LOAD:%[^ ]+]] = call <64 x i8> @llvm.vc.internal.lsc.load.2d.ugm.desc.v64i8.v2i8(i1 true, <2 x i8> {{(splat \(i8 2\)|<i8 2(, i8 2)*>)}}, i8 1, i16 16, i16 1, <16 x i32> %addr, i32 0, i32 0, <64 x i8> [[WRREG]])
 ; CHECK: [[RDREG:%[^ ]+]] = call <16 x i8> @llvm.genx.rdregioni.v16i8.v64i8.i16(<64 x i8> [[LOAD]], i32 1, i32 1, i32 0, i16 0, i32 undef)
 ; CHECK: ret <16 x i8> [[RDREG]]
 
@@ -48,7 +48,7 @@ define <16 x i8> @test_load_desc(<16 x i32> %addr) {
 
 ; CHECK-LABEL: test_load_desc_whole_grf(
 define <16 x i32> @test_load_desc_whole_grf(<16 x i32> %addr) {
-; CHECK: [[LOAD:%[^ ]+]] = call <16 x i32> @llvm.vc.internal.lsc.load.2d.ugm.desc.v16i32.v2i8(i1 true, <2 x i8> <i8 2, i8 2>, i8 1, i16 16, i16 1, <16 x i32> %addr, i32 0, i32 0, <16 x i32> zeroinitializer)
+; CHECK: [[LOAD:%[^ ]+]] = call <16 x i32> @llvm.vc.internal.lsc.load.2d.ugm.desc.v16i32.v2i8(i1 true, <2 x i8> {{(splat \(i8 2\)|<i8 2(, i8 2)*>)}}, i8 1, i16 16, i16 1, <16 x i32> %addr, i32 0, i32 0, <16 x i32> zeroinitializer)
 ; CHECK: ret <16 x i32> [[LOAD]]
 
   %load = call <16 x i32> @llvm.vc.internal.lsc.load.2d.ugm.desc.v16i32.v2i8(i1 true, <2 x i8> <i8 2, i8 2>, i8 1, i16 16, i16 1, <16 x i32> %addr, i32 0, i32 0, <16 x i32> zeroinitializer)
@@ -57,7 +57,7 @@ define <16 x i32> @test_load_desc_whole_grf(<16 x i32> %addr) {
 
 ; CHECK-LABEL: test_load_desc_transpose_undef(
 define <65 x i8> @test_load_desc_transpose_undef(<16 x i32> %addr) {
-; CHECK: [[LOAD:%[^ ]+]] = call <128 x i8> @llvm.vc.internal.lsc.load.2d.ugm.desc.transpose.v128i8.v2i8(i1 true, <2 x i8> <i8 2, i8 2>, i8 1, i16 13, i16 5, <16 x i32> %addr, i32 0, i32 0, <128 x i8> undef)
+; CHECK: [[LOAD:%[^ ]+]] = call <128 x i8> @llvm.vc.internal.lsc.load.2d.ugm.desc.transpose.v128i8.v2i8(i1 true, <2 x i8> {{(splat \(i8 2\)|<i8 2(, i8 2)*>)}}, i8 1, i16 13, i16 5, <16 x i32> %addr, i32 0, i32 0, <128 x i8> undef)
 ; CHECK: [[RDREG:%[^ ]+]] = call <65 x i8> @llvm.genx.rdregioni.v65i8.v128i8.i16(<128 x i8> %1, i32 1, i32 1, i32 0, i16 0, i32 undef)
 ; CHECK: ret <65 x i8> [[RDREG]]
 

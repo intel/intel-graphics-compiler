@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2021-2025 Intel Corporation
+; Copyright (C) 2021-2026 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -27,7 +27,7 @@ define internal spir_func void @test_pseudoscalar_splat(<1 x i32> %l, <1 x i32> 
 
 ; CHECK-LABEL: @test_vector_splat
 ; CHECK-NEXT: [[CMP:%[^ ]+]] = icmp eq <8 x i32> %l, %r
-; CHECK-NEXT: [[SEL:%[^ ]+]] = select <8 x i1> [[CMP]], <8 x i16> <i16 1, i16 1, i16 1, i16 1, i16 1, i16 1, i16 1, i16 1>, <8 x i16> zeroinitializer
+; CHECK-NEXT: [[SEL:%[^ ]+]] = select <8 x i1> [[CMP]], <8 x i16> {{(splat \(i16 1\)|<i16 1(, i16 1)*>)}}, <8 x i16> zeroinitializer
 ; CHECK-NEXT: [[SPLAT:%[^ ]+]] = call <8 x i16> @llvm.genx.rdregioni.v8i16.v8i16.i16(<8 x i16> [[SEL]], i32 0, i32 8, i32 0, i16 0, i32 undef)
 ; CHECK-NEXT: [[NZ:%[^ ]+]] = icmp ne <8 x i16> [[SPLAT]], zeroinitializer
 ; CHECK-NEXT: [[RES:%[^ ]+]] = tail call i1 @llvm.genx.all.v8i1(<8 x i1> [[NZ]]
@@ -52,7 +52,7 @@ define internal spir_func void @test_vector_splat_width_not_equal(<8 x i32> %l, 
 }
 
 ; CHECK-LABEL: @test_vector_splat_width_not_equal_no_icmp
-; CHECK-NEXT: [[SELECT:%[^ ]+]] = select <8 x i1> %val, <8 x i16> <i16 1, i16 1, i16 1, i16 1, i16 1, i16 1, i16 1, i16 1>, <8 x i16> zeroinitializer
+; CHECK-NEXT: [[SELECT:%[^ ]+]] = select <8 x i1> %val, <8 x i16> {{(splat \(i16 1\)|<i16 1(, i16 1)*>)}}, <8 x i16> zeroinitializer
 ; CHECK-NEXT: [[RDREGION:%[^ ]+]] = call i16 @llvm.genx.rdregioni.i16.v8i16.i16(<8 x i16> [[SELECT]], i32 0, i32 1, i32 1, i16 6, i32 0)
 ; CHECK-NEXT: [[ICMP:%[^ ]+]] = icmp ne i16 [[RDREGION]], 0
 ; CHECK-NEXT: [[SELECT1:%[^ ]+]] = select i1 [[ICMP]], i16 1, i16 0

@@ -987,29 +987,18 @@ public:
     return std::make_tuple(UseInst->getOperand(RdNumOp), std::move(Offsets));
   }
 
+  // Shared implementation for both the DbgVariableIntrinsic (LLVM < 22) and
+  // DbgVariableRecord (LLVM >= 22) location queries. Takes the variable
+  // descriptor and the raw location value extracted from the debug entry.
   IGC::VISAVariableLocation
-  GetVariableLocation(const Instruction *DbgInst) const override {
+  computeVariableLocation(const DIVariable *VarDescr,
+                          const Value *DbgValue) const {
     using Location = IGC::VISAVariableLocation;
     auto EmptyLoc = [this](StringRef Reason) {
       LLVM_DEBUG(dbgs() << "  Empty Location Returned (" << Reason
                         << ")\n <<<\n");
       return Location(this);
     };
-
-    IGC_ASSERT(isa<DbgInfoIntrinsic>(DbgInst));
-
-    LLVM_DEBUG(dbgs() << " >>>\n  GetVariableLocation for " << *DbgInst
-                      << "\n");
-    const DIVariable *VarDescr = nullptr;
-    if (const auto *PDbgAddrInst = dyn_cast<DbgDeclareInst>(DbgInst)) {
-      VarDescr = PDbgAddrInst->getVariable();
-    } else if (const auto *PDbgValInst = dyn_cast<DbgValueInst>(DbgInst)) {
-      VarDescr = PDbgValInst->getVariable();
-    } else {
-      return EmptyLoc("unsupported Debug Intrinsic");
-    }
-    const Value *DbgValue =
-        IGCLLVM::getVariableLocation(cast<DbgVariableIntrinsic>(DbgInst));
 
     OffsetsVector Offsets;
     if (auto *UseInst = dyn_cast_or_null<CallInst>(DbgValue)) {
@@ -1043,6 +1032,43 @@ public:
 
     return Location(Reg->Num, std::move(Offsets), this);
   }
+
+  IGC::VISAVariableLocation
+  GetVariableLocation(const Instruction *DbgInst) const override {
+    using Location = IGC::VISAVariableLocation;
+
+    IGC_ASSERT(isa<DbgInfoIntrinsic>(DbgInst));
+
+    LLVM_DEBUG(dbgs() << " >>>\n  GetVariableLocation for " << *DbgInst
+                      << "\n");
+    const DIVariable *VarDescr = nullptr;
+    if (const auto *PDbgAddrInst = dyn_cast<DbgDeclareInst>(DbgInst)) {
+      VarDescr = PDbgAddrInst->getVariable();
+    } else if (const auto *PDbgValInst = dyn_cast<DbgValueInst>(DbgInst)) {
+      VarDescr = PDbgValInst->getVariable();
+    } else {
+      LLVM_DEBUG(dbgs() << "  Empty Location Returned (unsupported Debug "
+                           "Intrinsic)\n <<<\n");
+      return Location(this);
+    }
+    const Value *DbgValue =
+        IGCLLVM::getVariableLocation(cast<DbgVariableIntrinsic>(DbgInst));
+    return computeVariableLocation(VarDescr, DbgValue);
+  }
+
+#if LLVM_VERSION_MAJOR >= 22
+  // In LLVM 22 debug info is carried by DbgVariableRecords (attached to
+  // instructions) rather than dbg.value/dbg.declare intrinsics. DwarfDebug
+  // queries locations through this overload; without it every variable would
+  // get an empty location (no DW_AT_location).
+  IGC::VISAVariableLocation
+  GetVariableLocation(const IGC::DbgVarInstEntry *DbgRec) const override {
+    LLVM_DEBUG(dbgs() << " >>>\n  GetVariableLocation for debug record\n");
+    const DIVariable *VarDescr = DbgRec->getVariable();
+    const Value *DbgValue = IGC::dbgVarGetValue(DbgRec);
+    return computeVariableLocation(VarDescr, DbgValue);
+  }
+#endif
 
   void UpdateVisaId() override {
     // do nothing (the moment we need to advance index is controlled explicitly)

@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2021-2024 Intel Corporation
+; Copyright (C) 2021-2026 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -25,7 +25,7 @@ declare <2 x i8*> @llvm.genx.rdregioni.v2p0i8.v2p0i8.i16(<2 x i8*>, i32, i32, i3
 ; CHECK-OPAQUE-PTRS-NEXT: [[ICAST:%[^ ]+]] = inttoptr i32 1 to ptr addrspace(1)
 ; CHECK-OPAQUE-PTRS-NEXT: [[INTVAL:%[^ ]+]] = ptrtoint ptr addrspace(1) [[ICAST]] to i64
 ; CHECK-NEXT: [[V1CAST:%[^ ]+]] = bitcast i64 [[INTVAL]] to <1 x i64>
-; CHECK-NEXT: call void @llvm.genx.svm.scatter.v1i1.v1i64.v1i64(<1 x i1> <i1 true>, i32 0, <1 x i64> %address, <1 x i64> [[V1CAST]])
+; CHECK-NEXT: call void @llvm.genx.svm.scatter.v1i1.v1i64.v1i64(<1 x i1> {{(splat \(i1 true\)|<i1 true(, i1 true)*>)}}, i32 0, <1 x i64> %address, <1 x i64> [[V1CAST]])
 define void @splat_test(<1 x i64> %address) {
   call void @llvm.genx.svm.scatter.v1i1.v1i64.v1i64(<1 x i1> <i1 true>, i32 0, <1 x i64> %address, <1 x i64> <i64 ptrtoint (i16 addrspace(1)* inttoptr (i32 1 to i16 addrspace(1)*) to i64)>)
   ret void
@@ -38,7 +38,7 @@ define void @splat_test(<1 x i64> %address) {
 ; CHECK-OPAQUE-PTRS-NEXT: [[INTVAL:%[^ ]+]] = ptrtoint ptr addrspace(1) [[ICAST]] to i64
 ; CHECK-NEXT: [[V1CAST:%[^ ]+]] = bitcast i64 [[INTVAL]] to <1 x i64>
 ; CHECK-NEXT: [[SPLAT:%[^ ]+]] = call <2 x i64> @llvm.genx.rdregioni.{{[^(]+}}(<1 x i64> [[V1CAST]], i32 0, i32 1, i32 0, i16 0, i32 undef)
-; CHECK-NEXT: call void @llvm.genx.svm.scatter.v2i1.v2i64.v2i64(<2 x i1> <i1 true, i1 true>, i32 0, <2 x i64> %address, <2 x i64> [[SPLAT]])
+; CHECK-NEXT: call void @llvm.genx.svm.scatter.v2i1.v2i64.v2i64(<2 x i1> {{(splat \(i1 true\)|<i1 true(, i1 true)*>)}}, i32 0, <2 x i64> %address, <2 x i64> [[SPLAT]])
 define void @constexpr_vect_splat(<2 x i64> %address) {
   call void @llvm.genx.svm.scatter.v2i1.v2i64.v2i64(<2 x i1> <i1 true, i1 true>, i32 0, <2 x i64> %address, <2 x i64> <i64 ptrtoint (i16 addrspace(1)* inttoptr (i32 2 to i16 addrspace(1)*) to i64), i64 ptrtoint (i16 addrspace(1)* inttoptr (i32 2 to i16 addrspace(1)*) to i64)>)
   ret void

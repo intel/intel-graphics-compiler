@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2021-2025 Intel Corporation
+; Copyright (C) 2021-2026 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -25,7 +25,7 @@ entry:
 ; CHECK: br {{.*}} %select{{.*}} !dbg [[SEL_LOC:![0-9]*]]
 ; CHECK: br {{.*}} %select{{.*}} !dbg [[SEL_LOC]]
 ; CHECK: br {{.*}} %select{{.*}} !dbg [[SEL_LOC]]
-; CHECK-DAG: void @llvm.dbg.value(metadata <32 x i1> [[SEL:%[0-9a-zA-Z\.]*]], metadata [[SEL_MD:![0-9]*]], metadata !DIExpression()), !dbg [[SEL_LOC]]
+; CHECK-DAG: {{(#dbg_value\(|call void @llvm\.dbg\.value\(metadata )}}<32 x i1> [[SEL:%[0-9a-zA-Z\.]*]]{{(, |, metadata )}}[[SEL_MD:![0-9]*]]{{(, |, metadata )}}!DIExpression(){{(, |\), !dbg )}}[[SEL_LOC]]{{\)?}}
 ; CHECK-DAG: [[SEL]] = phi {{.*}} !dbg [[SEL_LOC]]
 
 ; CHECK-DAG: [[SEL_MD]] = !DILocalVariable(name:

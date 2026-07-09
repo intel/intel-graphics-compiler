@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2021-2025 Intel Corporation
+; Copyright (C) 2021-2026 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -24,7 +24,7 @@
 ; Ensures that when we replace intrinsics with a read from a global location
 ; is preserved
 ; CHECK-TYPED-PTRS: <3 x i16>* @__imparg_llvm.genx.local.id16{{(, align 1)?}}, !dbg
-; CHECK-OPAQUE-PTRS: ptr @__imparg_llvm.genx.local.id16{{(, align 1)?}}, !dbg
+; CHECK-OPAQUE-PTRS: ptr {{(addrspace\(1\) )?}}@__imparg_llvm.genx.local.id16{{(, align 1)?}}, !dbg
 define dllexport spir_kernel void @test_implicit_line() #0 !dbg !6 {
   %1 = call <3 x i32> @llvm.genx.local.id.v3i32(), !dbg !5
   ret void

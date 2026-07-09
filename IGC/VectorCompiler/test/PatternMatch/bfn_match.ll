@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2021-2024 Intel Corporation
+; Copyright (C) 2021-2026 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -135,7 +135,7 @@ define i32 @test_unmatch_flag(<32 x i1> %a, <32 x i1> %b, <32 x i1> %c) {
 
 ; CHECK-LABEL: @test_match_combine_by_mask_inv_vector(
 define <4 x i16> @test_match_combine_by_mask_inv_vector(<4 x i16> %mag, <4 x i16> %sgn) {
-; CHECK: %res = call <4 x i16> @llvm.genx.bfn.v4i16.v4i16(<4 x i16> %mag, <4 x i16> %sgn, <4 x i16> <i16 32767, i16 32767, i16 32767, i16 32767>, i8 -84)
+; CHECK: %res = call <4 x i16> @llvm.genx.bfn.v4i16.v4i16(<4 x i16> %mag, <4 x i16> %sgn, <4 x i16> {{(splat \(i16 32767\)|<i16 32767(, i16 32767)*>)}}, i8 -84)
   %abs = and <4 x i16> %mag, <i16 32767, i16 32767, i16 32767, i16 32767>
   %sign = and <4 x i16> %sgn, <i16 -32768, i16 -32768, i16 -32768, i16 -32768>
   %res = or <4 x i16> %abs, %sign

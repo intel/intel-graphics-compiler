@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2020-2024 Intel Corporation
+; Copyright (C) 2020-2026 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -13,9 +13,9 @@
 
 define dllexport spir_kernel void @test_kernel1()  {
   ;COM:    ===--vector operands test--===
-  ;CHECK:  xor <4 x i32> %conv, <i32 -69136, i32 -69136, i32 -69136, i32 -69136>
-  ;CHECK:  xor <4 x i16> %conv.reduceintsize, <i16 1, i16 1, i16 1, i16 1>
-  ;CHECK:  xor <4 x i32> %conv, <i32 131071, i32 131071, i32 131071, i32 131071>
+  ;CHECK:  xor <4 x i32> %conv, {{(splat \(i32 -69136\)|<i32 -69136(, i32 -69136)*>)}}
+  ;CHECK:  xor <4 x i16> %conv.reduceintsize, {{(splat \(i16 1\)|<i16 1(, i16 1)*>)}}
+  ;CHECK:  xor <4 x i32> %conv, {{(splat \(i32 131071\)|<i32 131071(, i32 131071)*>)}}
 
   %g = call <4 x i8> @llvm.genx.vload.v4i8.p0v4i8(<4 x i8>* nonnull @b)
   %conv = sext <4 x i8> %g to <4 x i32>

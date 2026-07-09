@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2021-2021 Intel Corporation
+; Copyright (C) 2021-2026 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -12,7 +12,7 @@ declare <16 x i8> @some.intrinsic()
 declare void @another.intrinsic(<16 x i32>)
 
 ;CHECK:  %3 = sext <16 x i8> %2 to <16 x i16>
-;CHECK:  %4 = and <16 x i16> %3, <i16 -13449, i16 -13449, i16 -13449, i16 -13449, i16 -13449, i16 -13449, i16 -13449, i16 -13449, i16 -13449, i16 -13449, i16 -13449, i16 -13449, i16 -13449, i16 -13449, i16 -13449, i16 -13449>
+;CHECK:  %4 = and <16 x i16> %3, {{(splat \(i16 -13449\)|<i16 -13449(, i16 -13449)*>)}}
 ;CHECK:  %.cast = zext <16 x i16> %4 to <16 x i32>
 
 ; Function Attrs: noinline nounwind

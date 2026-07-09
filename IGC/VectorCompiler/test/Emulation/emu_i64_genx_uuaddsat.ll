@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2020-2025 Intel Corporation
+; Copyright (C) 2020-2026 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -41,8 +41,8 @@ declare i16 @llvm.genx.uuadd.sat.i16.i64(i64, i64)
 
 ; CHECK-NEXT: [[SAT:%[^ ]+]] = or <[[ET]]> [[HiADDC_1_CARRY]], [[HiADDC_2_CARRY]]
 ; CHECK-NEXT: [[CMP_SAT:%[^ ]+]] = icmp ne <[[ET]]> [[SAT]], zeroinitializer
-; CHECK-NEXT: [[Lo:%[^ ]+]] = select <2 x i1> [[CMP_SAT]], <2 x i32> <i32 -1, i32 -1>, <[[ET]]> [[LoADDC_ADD]]
-; CHECK-NEXT: [[Hi:%[^ ]+]] = select <2 x i1> [[CMP_SAT]], <2 x i32> <i32 -1, i32 -1>, <[[ET]]> [[HiADDC_2_ADD]]
+; CHECK-NEXT: [[Lo:%[^ ]+]] = select <2 x i1> [[CMP_SAT]], <2 x i32> {{(splat \(i32 -1\)|<i32 -1(, i32 -1)*>)}}, <[[ET]]> [[LoADDC_ADD]]
+; CHECK-NEXT: [[Hi:%[^ ]+]] = select <2 x i1> [[CMP_SAT]], <2 x i32> {{(splat \(i32 -1\)|<i32 -1(, i32 -1)*>)}}, <[[ET]]> [[HiADDC_2_ADD]]
 
 ; CHECK-NEXT: [[P_JOIN:%[^ ]+]] = call <[[CT]]> @llvm.genx.wrregioni.{{[^(]+}}(<[[CT]]> undef, <[[ET]]> [[Lo]], [[low_reg]]
 ; CHECK-NEXT: [[JOINED:%[^ ]+]] = call <[[CT]]> @llvm.genx.wrregioni.{{[^(]+}}(<[[CT]]> [[P_JOIN]], <[[ET]]> [[Hi]], [[high_reg]]
@@ -78,8 +78,8 @@ define dllexport spir_kernel void @test_uuaddsat_vi64(<2 x i64> %lvop, <2 x i64>
 
 ; CHECK-NEXT: [[SAT:%[^ ]+]] = or <[[ET]]> [[HiADDC_1_CARRY]], [[HiADDC_2_CARRY]]
 ; CHECK-NEXT: [[CMP_SAT:%[^ ]+]] = icmp ne <[[ET]]> [[SAT]], zeroinitializer
-; CHECK-NEXT: [[Lo:%[^ ]+]] = select <1 x i1> [[CMP_SAT]], <1 x i32> <i32 -1>, <[[ET]]> [[LoADDC_ADD]]
-; CHECK-NEXT: [[Hi:%[^ ]+]] = select <1 x i1> [[CMP_SAT]], <1 x i32> <i32 -1>, <[[ET]]> [[HiADDC_2_ADD]]
+; CHECK-NEXT: [[Lo:%[^ ]+]] = select <1 x i1> [[CMP_SAT]], <1 x i32> {{(splat \(i32 -1\)|<i32 -1(, i32 -1)*>)}}, <[[ET]]> [[LoADDC_ADD]]
+; CHECK-NEXT: [[Hi:%[^ ]+]] = select <1 x i1> [[CMP_SAT]], <1 x i32> {{(splat \(i32 -1\)|<i32 -1(, i32 -1)*>)}}, <[[ET]]> [[HiADDC_2_ADD]]
 
 ; CHECK-NEXT: [[P_JOIN:%[^ ]+]] = call <[[CT]]> @llvm.genx.wrregioni.{{[^(]+}}(<[[CT]]> undef, <[[ET]]> [[Lo]], [[low_reg]]
 ; CHECK-NEXT: [[JOINED:%[^ ]+]] = call <[[CT]]> @llvm.genx.wrregioni.{{[^(]+}}(<[[CT]]> [[P_JOIN]], <[[ET]]> [[Hi]], [[high_reg]]
@@ -109,7 +109,7 @@ define dllexport spir_kernel void @test_uuaddsat_si64(i64 %lsop, i64 %rsop) {
 ; CHECK-NEXT: [[HI_BITS:[^ ]+]] = or <[[ET]]> [[Hi_l]], [[Hi_r]]
 ; CHECK-NEXT: [[HI_BITS_CARRY:[^ ]+]] = or <[[ET]]> [[HI_BITS]], [[LoADDC_CARRY]]
 ; CHECK-NEXT: [[IS_SAT:[^ ]+]] = icmp ne <[[ET]]> [[HI_BITS_CARRY]], zeroinitializer
-; CHECK-NEXT: [[I32_SATURATED:[^ ]+]] = select <2 x i1> [[IS_SAT]], <[[ET]]> <i32 -1, i32 -1>, <[[ET]]> [[LoADDC_ADD]]
+; CHECK-NEXT: [[I32_SATURATED:[^ ]+]] = select <2 x i1> [[IS_SAT]], <[[ET]]> {{(splat \(i32 -1\)|<i32 -1(, i32 -1)*>)}}, <[[ET]]> [[LoADDC_ADD]]
 ; CHECK-NEXT: [[RESULT:[^ ]+]] = call <2 x i16> @llvm.genx.uutrunc.sat.v2i16.v2i32(<[[ET]]> [[I32_SATURATED]])
 ; CHECK-NEXT: [[USER:[^ ]+]] = bitcast <2 x i16> [[RESULT]] to <2 x i16>
 ; CHECK-NEXT: ret void
@@ -136,7 +136,7 @@ define dllexport spir_kernel void @test_uuaddsat_vi16(<2 x i64> %lvop, <2 x i64>
 ; CHECK-NEXT: [[HI_BITS:[^ ]+]] = or <[[ET]]> [[Hi_l]], [[Hi_r]]
 ; CHECK-NEXT: [[HI_BITS_CARRY:[^ ]+]] = or <[[ET]]> [[HI_BITS]], [[LoADDC_CARRY]]
 ; CHECK-NEXT: [[IS_SAT:[^ ]+]] = icmp ne <[[ET]]> [[HI_BITS_CARRY]], zeroinitializer
-; CHECK-NEXT: [[I32_SATURATED:[^ ]+]] = select <1 x i1> [[IS_SAT]], <[[ET]]> <i32 -1>, <[[ET]]> [[LoADDC_ADD]]
+; CHECK-NEXT: [[I32_SATURATED:[^ ]+]] = select <1 x i1> [[IS_SAT]], <[[ET]]> {{(splat \(i32 -1\)|<i32 -1(, i32 -1)*>)}}, <[[ET]]> [[LoADDC_ADD]]
 ; CHECK-NEXT: [[I16_SATURATE:[^ ]+]] = call i16 @llvm.genx.uutrunc.sat.i16.v1i32(<[[ET]]> [[I32_SATURATED]])
 ; CHECK-NEXT: [[USER:[^ ]+]] = bitcast i16 [[I16_SATURATE]] to <1 x i16>
 ; CHECK-NEXT: ret void

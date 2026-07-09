@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2020-2025 Intel Corporation
+; Copyright (C) 2020-2026 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -29,7 +29,7 @@ ret void
 
 ; CHECK-LABEL: test2
 ; CHECK:  %val.splat = call <8 x i32> @llvm.genx.rdregioni.v8i32.v1i32.i16(<1 x i32> %val, i32 0, i32 8, i32 0, i16 0, i32 undef)
-; CHECK:  %.splat = icmp sgt <8 x i32> %val.splat, <i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1>
+; CHECK:  %.splat = icmp sgt <8 x i32> %val.splat, {{(splat \(i32 -1\)|<i32 -1(, i32 -1)*>)}}
 ; CHECK:  ret <8 x i1> %.splat
 define <8 x i1> @test2(<1 x i32> %val) {
   %1 = icmp sgt <1 x i32> %val, <i32 -1>

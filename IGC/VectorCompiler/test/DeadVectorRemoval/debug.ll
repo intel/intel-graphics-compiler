@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2022-2025 Intel Corporation
+; Copyright (C) 2022-2026 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -20,13 +20,13 @@
 
 ; CHECK: void @test_dead{{.*}} !dbg [[SCOPE:![0-9]*]]
 ; CHECK: [[VAL1_V:%[A-z0-9]*]] = {{.*}}, !dbg [[VAL1_LOC:![0-9]*]]
-; CHECK-TYPED-PTRS: void @llvm.dbg.value(metadata <4 x i32>* [[VAL1_V]], metadata [[VAL1_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL1_LOC]]
+; CHECK-TYPED-PTRS: {{(#dbg_value\(|call void @llvm\.dbg\.value\(metadata )}}<4 x i32>* [[VAL1_V]]{{(, |, metadata )}}[[VAL1_MD:![0-9]*]]{{(, |, metadata )}}!DIExpression(){{(, |\), !dbg )}}[[VAL1_LOC]]{{\)?}}
 ; CHECK-TYPED-PTRS-DAG: store <4 x i32> [[VAL6_V:%[A-z0-9]*]], <4 x i32>* [[VAL1_V]]{{.*}}, !dbg [[STORE_LOC:![0-9]*]]
-; CHECK-OPAQUE-PTRS: void @llvm.dbg.value(metadata ptr [[VAL1_V]], metadata [[VAL1_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL1_LOC]]
+; CHECK-OPAQUE-PTRS: {{(#dbg_value\(|call void @llvm\.dbg\.value\(metadata )}}ptr [[VAL1_V]]{{(, |, metadata )}}[[VAL1_MD:![0-9]*]]{{(, |, metadata )}}!DIExpression(){{(, |\), !dbg )}}[[VAL1_LOC]]{{\)?}}
 ; CHECK-OPAQUE-PTRS-DAG: store <4 x i32> [[VAL6_V:%[A-z0-9]*]], ptr [[VAL1_V]]{{.*}}, !dbg [[STORE_LOC:![0-9]*]]
-; CHECK-DAG: void @llvm.dbg.value(metadata <4 x i32> [[VAL6_V]], metadata [[VAL6_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL6_LOC:![0-9]*]]
+; CHECK-DAG: {{(#dbg_value\(|call void @llvm\.dbg\.value\(metadata )}}<4 x i32> [[VAL6_V]]{{(, |, metadata )}}[[VAL6_MD:![0-9]*]]{{(, |, metadata )}}!DIExpression(){{(, |\), !dbg )}}[[VAL6_LOC:![0-9]*]]{{\)?}}
 ; CHECK-DAG: [[VAL6_V]] = {{.*}}(<4 x i32> [[VAL5_V:%[A-z0-9.]*]],{{.*}}, !dbg [[VAL6_LOC]]
-; CHECK-DAG: void @llvm.dbg.value(metadata <4 x i32> [[VAL5_V]], metadata [[VAL5_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL5_LOC:![0-9]*]]
+; CHECK-DAG: {{(#dbg_value\(|call void @llvm\.dbg\.value\(metadata )}}<4 x i32> [[VAL5_V]]{{(, |, metadata )}}[[VAL5_MD:![0-9]*]]{{(, |, metadata )}}!DIExpression(){{(, |\), !dbg )}}[[VAL5_LOC:![0-9]*]]{{\)?}}
 
 define void @test_dead(<4 x i32> %b) !dbg !6 {
 entry:

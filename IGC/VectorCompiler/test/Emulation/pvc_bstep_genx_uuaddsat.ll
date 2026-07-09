@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2020-2021 Intel Corporation
+; Copyright (C) 2020-2026 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -38,8 +38,8 @@ declare <2 x i64> @llvm.genx.uuadd.sat.v2i64(<2 x i64>, <2 x i64>)
 
 ; CHECK-NEXT: [[SAT:%[^ ]+]] = or <[[ET]]> [[HiADDC_1_CARRY]], [[HiADDC_2_CARRY]]
 ; CHECK-NEXT: [[CMP_SAT:%[^ ]+]] = icmp ne <[[ET]]> [[SAT]], zeroinitializer
-; CHECK-NEXT: [[Lo:%[^ ]+]] = select <2 x i1> [[CMP_SAT]], <2 x i32> <i32 -1, i32 -1>, <[[ET]]> [[LoADDC_ADD]]
-; CHECK-NEXT: [[Hi:%[^ ]+]] = select <2 x i1> [[CMP_SAT]], <2 x i32> <i32 -1, i32 -1>, <[[ET]]> [[HiADDC_2_ADD]]
+; CHECK-NEXT: [[Lo:%[^ ]+]] = select <2 x i1> [[CMP_SAT]], <2 x i32> {{(splat \(i32 -1\)|<i32 -1(, i32 -1)*>)}}, <[[ET]]> [[LoADDC_ADD]]
+; CHECK-NEXT: [[Hi:%[^ ]+]] = select <2 x i1> [[CMP_SAT]], <2 x i32> {{(splat \(i32 -1\)|<i32 -1(, i32 -1)*>)}}, <[[ET]]> [[HiADDC_2_ADD]]
 
 ; CHECK-NEXT: [[P_JOIN:%[^ ]+]] = call <[[CT]]> @llvm.genx.wrregioni.{{[^(]+}}(<[[CT]]> undef, <[[ET]]> [[Lo]], [[low_reg]]
 ; CHECK-NEXT: [[JOINED:%[^ ]+]] = call <[[CT]]> @llvm.genx.wrregioni.{{[^(]+}}(<[[CT]]> [[P_JOIN]], <[[ET]]> [[Hi]], [[high_reg]]

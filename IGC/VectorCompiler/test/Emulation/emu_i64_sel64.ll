@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2020-2025 Intel Corporation
+; Copyright (C) 2020-2026 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -82,7 +82,7 @@ define dllexport spir_kernel void @kernel_select_vector_cond(i32 %0, i32 %1, i32
 
 ; CHECK: @kernel_select_scalar_cond_const
 
-; CHECK-NEXT: %sel.lo = select i1 %pred, <[[ET:1 x i32]]> <i32 1>, <[[ET]]> zeroinitializer
+; CHECK-NEXT: %sel.lo = select i1 %pred, <[[ET:1 x i32]]> {{(splat \(i32 1\)|<i32 1(, i32 1)*>)}}, <1 x i32> zeroinitializer
 ; CHECK-NEXT: %sel.hi = select i1 %pred, <[[ET]]> zeroinitializer, <[[ET]]> zeroinitializer
 
 ; CHECK-NEXT: [[P_JOIN:%[^ ]+]] = call <[[CT:2 x i32]]> @llvm.genx.wrregioni.{{[^(]+}}(<[[CT]]> undef, <[[ET]]> %sel.lo, i32 0, i32 1, i32 2, i16 0,
@@ -103,7 +103,7 @@ define dllexport spir_kernel void @kernel_select_scalar_cond_const(i32 %0, i32 %
 
 ; CHECK: @kernel_select_vector_cond_const
 
-; CHECK-NEXT: %sel.lo = select <[[COND_TYPE:8 x i1]]> %pred, <[[ET:8 x i32]]> <i32 1, i32 1, i32 1, i32 1, i32 1, i32 1, i32 1, i32 1>, <[[ET]]> zeroinitializer
+; CHECK-NEXT: %sel.lo = select <[[COND_TYPE:8 x i1]]> %pred, <[[ET:8 x i32]]> {{(splat \(i32 1\)|<i32 1(, i32 1)*>)}}, <8 x i32> zeroinitializer
 ; CHECK-NEXT: %sel.hi = select <[[COND_TYPE]]> %pred, <[[ET]]> zeroinitializer, <[[ET]]> zeroinitializer
 
 ; CHECK-NEXT: [[P_JOIN:%[^ ]+]] = call <[[CT:16 x i32]]> @llvm.genx.wrregioni.{{[^(]+}}(<[[CT]]> undef, <[[ET]]> %sel.lo, [[low_reg]]

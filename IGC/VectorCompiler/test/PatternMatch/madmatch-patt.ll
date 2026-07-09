@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2023 Intel Corporation
+; Copyright (C) 2023-2026 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -113,12 +113,12 @@ define spir_kernel void @test_madmatch_broadcast(i8 %scalar, <16 x i32> %i0) {
 ; CHECK: [[VAL4:%[A-Za-z0-9_.]+]] = sext i8 [[SCALAR]] to i16
 ; CHECK-NEXT: [[VAL5:%[A-Za-z0-9_.]+]] = bitcast i16 [[VAL4]] to <1 x i16>
 ; CHECK-NEXT: [[SPLAT:%[A-Za-z0-9_.]+]] = call <16 x i16> @llvm.genx.rdregioni.v16i16.v1i16.i16(<1 x i16> [[VAL5]], i32 0, i32 1, i32 0, i16 0, i32 undef)
-; CHECK-NEXT: [[MUL6:%[A-Za-z0-9_.]+]] = call <16 x i32> @llvm.genx.ssmul.v16i32.v16i16(<16 x i16> [[SPLAT]], <16 x i16> <i16 1122, i16 1122, i16 1122, i16 1122, i16 1122, i16 1122, i16 1122, i16 1122, i16 1122, i16 1122, i16 1122, i16 1122, i16 1122, i16 1122, i16 1122, i16 1122>)
+; CHECK-NEXT: [[MUL6:%[A-Za-z0-9_.]+]] = call <16 x i32> @llvm.genx.ssmul.v16i32.v16i16(<16 x i16> [[SPLAT]], <16 x i16> {{(splat \(i16 1122\)|<i16 1122(, i16 1122)*>)}})
 ; CHECK-NEXT: [[VAL6:%[A-Za-z0-9_.]+]] = bitcast i8 [[SCALAR]] to <1 x i8>
 ; CHECK-NEXT: [[SPLAT7:%[A-Za-z0-9_.]+]] = call <16 x i8> @llvm.genx.rdregioni.v16i8.v1i8.i16(<1 x i8> [[VAL6]], i32 0, i32 1, i32 0, i16 0, i32 undef)
 ; CHECK-NEXT: [[VAL7:%[A-Za-z0-9_.]+]] = sext <16 x i8> [[SPLAT7]] to <16 x i32>
 ; CHECK-NEXT: [[NEG8:%[A-Za-z0-9_.]+]] = sub <16 x i32> zeroinitializer, [[MUL6]]
-; CHECK-NEXT: [[MAD9:%[A-Za-z0-9_.]+]] = call <16 x i32> @llvm.genx.ssmad.v16i32.v16i32(<16 x i32> [[VAL7]], <16 x i32> <i32 1122, i32 1122, i32 1122, i32 1122, i32 1122, i32 1122, i32 1122, i32 1122, i32 1122, i32 1122, i32 1122, i32 1122, i32 1122, i32 1122, i32 1122, i32 1122>, <16 x i32> [[NEG8]])
+; CHECK-NEXT: [[MAD9:%[A-Za-z0-9_.]+]] = call <16 x i32> @llvm.genx.ssmad.v16i32.v16i32(<16 x i32> [[VAL7]], <16 x i32> {{(splat \(i32 1122\)|<i32 1122(, i32 1122)*>)}}, <16 x i32> [[NEG8]])
 ; CHECK-NEXT: call <16 x i32> @llvm.genx.wrregioni.v16i32.v16i32.i32.i16.i1(<16 x i32> [[MAD9]], i32 0, i32 0, i32 0, i32 1, i16 0, i32 0, i1 true)
 case1:
   ; broadcast Op0, isSub
@@ -134,11 +134,11 @@ case1:
 ; CHECK: [[VAL8:%[A-Za-z0-9_.]+]] = sext i8 [[SCALAR]] to i16
 ; CHECK-NEXT: [[VAL9:%[A-Za-z0-9_.]+]] = bitcast i16 [[VAL8]] to <1 x i16>
 ; CHECK-NEXT: [[SPLAT10:%[A-Za-z0-9_.]+]] = call <16 x i16> @llvm.genx.rdregioni.v16i16.v1i16.i16(<1 x i16> [[VAL9]], i32 0, i32 1, i32 0, i16 0, i32 undef)
-; CHECK-NEXT: [[MUL11:%[A-Za-z0-9_.]+]] = call <16 x i32> @llvm.genx.ssmul.v16i32.v16i16(<16 x i16> [[SPLAT10]], <16 x i16> <i16 1122, i16 1122, i16 1122, i16 1122, i16 1122, i16 1122, i16 1122, i16 1122, i16 1122, i16 1122, i16 1122, i16 1122, i16 1122, i16 1122, i16 1122, i16 1122>)
+; CHECK-NEXT: [[MUL11:%[A-Za-z0-9_.]+]] = call <16 x i32> @llvm.genx.ssmul.v16i32.v16i16(<16 x i16> [[SPLAT10]], <16 x i16> {{(splat \(i16 1122\)|<i16 1122(, i16 1122)*>)}})
 ; CHECK-NEXT: [[VAL10:%[A-Za-z0-9_.]+]] = bitcast i8 [[SCALAR]] to <1 x i8>
 ; CHECK-NEXT: [[SPLAT12:%[A-Za-z0-9_.]+]] = call <16 x i8> @llvm.genx.rdregioni.v16i8.v1i8.i16(<1 x i8> [[VAL10]], i32 0, i32 1, i32 0, i16 0, i32 undef)
 ; CHECK-NEXT: [[VAL11:%[A-Za-z0-9_.]+]] = sext <16 x i8> [[SPLAT12]] to <16 x i32>
-; CHECK-NEXT: [[MAD13:%[A-Za-z0-9_.]+]] = call <16 x i32> @llvm.genx.ssmad.v16i32.v16i32(<16 x i32> [[VAL11]], <16 x i32> <i32 1122, i32 1122, i32 1122, i32 1122, i32 1122, i32 1122, i32 1122, i32 1122, i32 1122, i32 1122, i32 1122, i32 1122, i32 1122, i32 1122, i32 1122, i32 1122>, <16 x i32> [[MUL11]])
+; CHECK-NEXT: [[MAD13:%[A-Za-z0-9_.]+]] = call <16 x i32> @llvm.genx.ssmad.v16i32.v16i32(<16 x i32> [[VAL11]], <16 x i32> {{(splat \(i32 1122\)|<i32 1122(, i32 1122)*>)}}, <16 x i32> [[MUL11]])
 ; CHECK-NEXT: call <16 x i32> @llvm.genx.wrregioni.v16i32.v16i32.i32.i16.i1(<16 x i32> [[MAD13]], i32 0, i32 0, i32 0, i32 1, i16 0, i32 0, i1 true)
 case2:
   ; broadcast Op0, isAdd
@@ -154,7 +154,7 @@ case2:
 ; CHECK: [[VAL12:%[A-Za-z0-9_.]+]] = bitcast i8 [[SCALAR]] to <1 x i8>
 ; CHECK-NEXT: [[SPLAT14:%[A-Za-z0-9_.]+]] = call <16 x i8> @llvm.genx.rdregioni.v16i8.v1i8.i16(<1 x i8> [[VAL12]], i32 0, i32 1, i32 0, i16 0, i32 undef)
 ; CHECK-NEXT: [[VAL13:%[A-Za-z0-9_.]+]] = sext <16 x i8> [[SPLAT14]] to <16 x i32>
-; CHECK-NEXT: [[MAD15:%[A-Za-z0-9_.]+]] = call <16 x i32> @llvm.genx.ssmad.v16i32.v16i32(<16 x i32> [[VAL13]], <16 x i32> <i32 -1122, i32 -1122, i32 -1122, i32 -1122, i32 -1122, i32 -1122, i32 -1122, i32 -1122, i32 -1122, i32 -1122, i32 -1122, i32 -1122, i32 -1122, i32 -1122, i32 -1122, i32 -1122>, <16 x i32> [[I0]])
+; CHECK-NEXT: [[MAD15:%[A-Za-z0-9_.]+]] = call <16 x i32> @llvm.genx.ssmad.v16i32.v16i32(<16 x i32> [[VAL13]], <16 x i32> {{(splat \(i32 -1122\)|<i32 -1122(, i32 -1122)*>)}}, <16 x i32> [[I0]])
 ; CHECK-NEXT: call <16 x i32> @llvm.genx.wrregioni.v16i32.v16i32.i32.i16.i1(<16 x i32> [[MAD15]], i32 0, i32 0, i32 0, i32 1, i16 0, i32 0, i1 true)
 case3:
   ; broadcast Op1, isSub
@@ -170,7 +170,7 @@ case3:
 ; CHECK: [[VAL14:%[A-Za-z0-9_.]+]] = bitcast i8 [[SCALAR]] to <1 x i8>
 ; CHECK-NEXT: [[SPLAT16:%[A-Za-z0-9_.]+]] = call <16 x i8> @llvm.genx.rdregioni.v16i8.v1i8.i16(<1 x i8> [[VAL14]], i32 0, i32 1, i32 0, i16 0, i32 undef)
 ; CHECK-NEXT: [[VAL15:%[A-Za-z0-9_.]+]] = sext <16 x i8> [[SPLAT16]] to <16 x i32>
-; CHECK-NEXT: [[MAD17:%[A-Za-z0-9_.]+]] = call <16 x i32> @llvm.genx.ssmad.v16i32.v16i32(<16 x i32> [[VAL15]], <16 x i32> <i32 1122, i32 1122, i32 1122, i32 1122, i32 1122, i32 1122, i32 1122, i32 1122, i32 1122, i32 1122, i32 1122, i32 1122, i32 1122, i32 1122, i32 1122, i32 1122>, <16 x i32> [[I0]])
+; CHECK-NEXT: [[MAD17:%[A-Za-z0-9_.]+]] = call <16 x i32> @llvm.genx.ssmad.v16i32.v16i32(<16 x i32> [[VAL15]], <16 x i32> {{(splat \(i32 1122\)|<i32 1122(, i32 1122)*>)}}, <16 x i32> [[I0]])
 ; CHECK-NEXT: call <16 x i32> @llvm.genx.wrregioni.v16i32.v16i32.i32.i16.i1(<16 x i32> [[MAD17]], i32 0, i32 0, i32 0, i32 1, i16 0, i32 0, i1 true)
 case4:
   ; broadcast Op1, isAdd
@@ -240,7 +240,7 @@ case5:
 ; CHECK: <16 x i32> [[I0:%[A-Za-z0-9_.]+]], <16 x i32> [[I1:%[A-Za-z0-9_.]+]]
 define spir_kernel void @test_madmatch_shift(<16 x i32> %i0, <16 x i32> %i1) {
 ; CHECK-NEXT: [[NEG18:%[A-Za-z0-9_.]+]] = sub <16 x i32> zeroinitializer, [[I1]]
-; CHECK-NEXT: [[MAD19:%[A-Za-z0-9_.]+]] = call <16 x i32> @llvm.genx.ssmad.v16i32.v16i32(<16 x i32> [[I0]], <16 x i32> <i32 4, i32 4, i32 4, i32 4, i32 4, i32 4, i32 4, i32 4, i32 4, i32 4, i32 4, i32 4, i32 4, i32 4, i32 4, i32 4>, <16 x i32> [[NEG18]])
+; CHECK-NEXT: [[MAD19:%[A-Za-z0-9_.]+]] = call <16 x i32> @llvm.genx.ssmad.v16i32.v16i32(<16 x i32> [[I0]], <16 x i32> {{(splat \(i32 4\)|<i32 4(, i32 4)*>)}}, <16 x i32> [[NEG18]])
 ; CHECK-NEXT: tail call <16 x i32> @llvm.genx.wrregioni.v16i32.v16i32.v16i32.i16.i1(<16 x i32> [[MAD19]], <16 x i32> zeroinitializer, i32 0, i32 0, i32 1, i16 0, i32 0, i1 true)
   %shl = shl <16 x i32> %i0, <i32 2, i32 2, i32 2, i32 2, i32 2, i32 2, i32 2, i32 2, i32 2, i32 2, i32 2, i32 2, i32 2, i32 2, i32 2, i32 2>
   %sub = sub <16 x i32> %shl, %i1

@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2021-2025 Intel Corporation
+; Copyright (C) 2021-2026 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -18,7 +18,7 @@ define <32 x i64> @test2(i8 addrspace(1)* %base, <32 x i64> %index) {
   %vbase = bitcast i64 %ibase to <1 x i64>
   %broadcast = call <32 x i64> @llvm.genx.rdregioni.v32i64.v1i64.i16(<1 x i64> %vbase, i32 0, i32 32, i32 0, i16 0, i32 undef)
   %addr = add <32 x i64> %broadcast, %index
-; CHECK: %data = tail call <32 x i64> @llvm.vc.internal.lsc.load.ugm.v32i64.v32i1.v2i8.v32i64(<32 x i1> {{<(i1 true(, )?){32}>}}, i8 3, i8 4, i8 1, <2 x i8> zeroinitializer, i64 %ibase, <32 x i64> %index, i16 1, i32 0, <32 x i64> undef)
+; CHECK: %data = tail call <32 x i64> @llvm.vc.internal.lsc.load.ugm.v32i64.v32i1.v2i8.v32i64(<32 x i1> {{(splat \(i1 true\)|<i1 true(, i1 true)*>)}}, i8 3, i8 4, i8 1, <2 x i8> zeroinitializer, i64 %ibase, <32 x i64> %index, i16 1, i32 0, <32 x i64> undef)
   %data = tail call <32 x i64> @llvm.vc.internal.lsc.load.ugm.v32i64.v32i1.v2i8.v32i64(<32 x i1> <i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true>, i8 3, i8 4, i8 1, <2 x i8> zeroinitializer, i64 0, <32 x i64> %addr, i16 1, i32 0, <32 x i64> undef)
   ret <32 x i64> %data
 }
@@ -30,7 +30,7 @@ define <32 x i64> @test3(i8 addrspace(1)* %base, <32 x i32> %index) {
   %broadcast = call <32 x i64> @llvm.genx.rdregioni.v32i64.v1i64.i16(<1 x i64> %vbase, i32 0, i32 32, i32 0, i16 0, i32 undef)
   %ext = zext <32 x i32> %index to <32 x i64>
   %addr = add <32 x i64> %broadcast, %ext
-; CHECK: %data = tail call <32 x i64> @llvm.vc.internal.lsc.load.ugm.v32i64.v32i1.v2i8.v32i32(<32 x i1> {{<(i1 true(, )?){32}>}}, i8 4, i8 4, i8 1, <2 x i8> zeroinitializer, i64 %ibase, <32 x i32> %index, i16 1, i32 0, <32 x i64> undef)
+; CHECK: %data = tail call <32 x i64> @llvm.vc.internal.lsc.load.ugm.v32i64.v32i1.v2i8.v32i32(<32 x i1> {{(splat \(i1 true\)|<i1 true(, i1 true)*>)}}, i8 4, i8 4, i8 1, <2 x i8> zeroinitializer, i64 %ibase, <32 x i32> %index, i16 1, i32 0, <32 x i64> undef)
   %data = tail call <32 x i64> @llvm.vc.internal.lsc.load.ugm.v32i64.v32i1.v2i8.v32i64(<32 x i1> <i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true>, i8 3, i8 4, i8 1, <2 x i8> zeroinitializer, i64 0, <32 x i64> %addr, i16 1, i32 0, <32 x i64> undef)
   ret <32 x i64> %data
 }
@@ -42,7 +42,7 @@ define <32 x i64> @test4(i8 addrspace(1)* %base, <32 x i32> %index) {
   %broadcast = call <32 x i64> @llvm.genx.rdregioni.v32i64.v1i64.i16(<1 x i64> %vbase, i32 0, i32 32, i32 0, i16 0, i32 undef)
   %ext = sext <32 x i32> %index to <32 x i64>
   %addr = add <32 x i64> %broadcast, %ext
-; CHECK: %data = tail call <32 x i64> @llvm.vc.internal.lsc.load.ugm.v32i64.v32i1.v2i8.v32i32(<32 x i1> {{<(i1 true(, )?){32}>}}, i8 5, i8 4, i8 1, <2 x i8> zeroinitializer, i64 %ibase, <32 x i32> %index, i16 1, i32 0, <32 x i64> undef)
+; CHECK: %data = tail call <32 x i64> @llvm.vc.internal.lsc.load.ugm.v32i64.v32i1.v2i8.v32i32(<32 x i1> {{(splat \(i1 true\)|<i1 true(, i1 true)*>)}}, i8 5, i8 4, i8 1, <2 x i8> zeroinitializer, i64 %ibase, <32 x i32> %index, i16 1, i32 0, <32 x i64> undef)
   %data = tail call <32 x i64> @llvm.vc.internal.lsc.load.ugm.v32i64.v32i1.v2i8.v32i64(<32 x i1> <i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true>, i8 3, i8 4, i8 1, <2 x i8> zeroinitializer, i64 0, <32 x i64> %addr, i16 1, i32 0, <32 x i64> undef)
   ret <32 x i64> %data
 }
@@ -55,7 +55,7 @@ define <32 x i64> @test5(i8 addrspace(1)* %base, <32 x i32> %index) {
   %scale = mul <32 x i32> %index, <i32 8, i32 8, i32 8, i32 8, i32 8, i32 8, i32 8, i32 8, i32 8, i32 8, i32 8, i32 8, i32 8, i32 8, i32 8, i32 8, i32 8, i32 8, i32 8, i32 8, i32 8, i32 8, i32 8, i32 8, i32 8, i32 8, i32 8, i32 8, i32 8, i32 8, i32 8, i32 8>
   %ext = sext <32 x i32> %scale to <32 x i64>
   %addr = add <32 x i64> %broadcast, %ext
-; CHECK: %data = tail call <32 x i64> @llvm.vc.internal.lsc.load.ugm.v32i64.v32i1.v2i8.v32i32(<32 x i1> {{<(i1 true(, )?){32}>}}, i8 5, i8 4, i8 1, <2 x i8> zeroinitializer, i64 %ibase, <32 x i32> %index, i16 8, i32 0, <32 x i64> undef)
+; CHECK: %data = tail call <32 x i64> @llvm.vc.internal.lsc.load.ugm.v32i64.v32i1.v2i8.v32i32(<32 x i1> {{(splat \(i1 true\)|<i1 true(, i1 true)*>)}}, i8 5, i8 4, i8 1, <2 x i8> zeroinitializer, i64 %ibase, <32 x i32> %index, i16 8, i32 0, <32 x i64> undef)
   %data = tail call <32 x i64> @llvm.vc.internal.lsc.load.ugm.v32i64.v32i1.v2i8.v32i64(<32 x i1> <i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true>, i8 3, i8 4, i8 1, <2 x i8> zeroinitializer, i64 0, <32 x i64> %addr, i16 1, i32 0, <32 x i64> undef)
   ret <32 x i64> %data
 }
@@ -69,7 +69,7 @@ define <32 x i64> @test6(i8 addrspace(1)* %base, <32 x i32> %index) {
   %offset = add <32 x i32> <i32 256, i32 256, i32 256, i32 256, i32 256, i32 256, i32 256, i32 256, i32 256, i32 256, i32 256, i32 256, i32 256, i32 256, i32 256, i32 256, i32 256, i32 256, i32 256, i32 256, i32 256, i32 256, i32 256, i32 256, i32 256, i32 256, i32 256, i32 256, i32 256, i32 256, i32 256, i32 256>, %scale
   %ext = sext <32 x i32> %offset to <32 x i64>
   %addr = add <32 x i64> %broadcast, %ext
-; CHECK: %data = tail call <32 x i64> @llvm.vc.internal.lsc.load.ugm.v32i64.v32i1.v2i8.v32i32(<32 x i1> {{<(i1 true(, )?){32}>}}, i8 5, i8 4, i8 1, <2 x i8> zeroinitializer, i64 %ibase, <32 x i32> %index, i16 8, i32 256, <32 x i64> undef)
+; CHECK: %data = tail call <32 x i64> @llvm.vc.internal.lsc.load.ugm.v32i64.v32i1.v2i8.v32i32(<32 x i1> {{(splat \(i1 true\)|<i1 true(, i1 true)*>)}}, i8 5, i8 4, i8 1, <2 x i8> zeroinitializer, i64 %ibase, <32 x i32> %index, i16 8, i32 256, <32 x i64> undef)
   %data = tail call <32 x i64> @llvm.vc.internal.lsc.load.ugm.v32i64.v32i1.v2i8.v32i64(<32 x i1> <i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true>, i8 3, i8 4, i8 1, <2 x i8> zeroinitializer, i64 0, <32 x i64> %addr, i16 1, i32 0, <32 x i64> undef)
   ret <32 x i64> %data
 }
@@ -83,7 +83,7 @@ define <32 x i64> @test7(i8 addrspace(1)* %base, <32 x i32> %index) {
   %scale = shl <32 x i64> %ext, <i64 3, i64 3, i64 3, i64 3, i64 3, i64 3, i64 3, i64 3, i64 3, i64 3, i64 3, i64 3, i64 3, i64 3, i64 3, i64 3, i64 3, i64 3, i64 3, i64 3, i64 3, i64 3, i64 3, i64 3, i64 3, i64 3, i64 3, i64 3, i64 3, i64 3, i64 3, i64 3>
   %offset = add <32 x i64> %scale, <i64 256, i64 256, i64 256, i64 256, i64 256, i64 256, i64 256, i64 256, i64 256, i64 256, i64 256, i64 256, i64 256, i64 256, i64 256, i64 256, i64 256, i64 256, i64 256, i64 256, i64 256, i64 256, i64 256, i64 256, i64 256, i64 256, i64 256, i64 256, i64 256, i64 256, i64 256, i64 256>
   %addr = add <32 x i64> %broadcast, %offset
-; CHECK: %data = tail call <32 x i64> @llvm.vc.internal.lsc.load.ugm.v32i64.v32i1.v2i8.v32i32(<32 x i1> {{<(i1 true(, )?){32}>}}, i8 5, i8 4, i8 1, <2 x i8> zeroinitializer, i64 %ibase, <32 x i32> %index, i16 8, i32 256, <32 x i64> undef)
+; CHECK: %data = tail call <32 x i64> @llvm.vc.internal.lsc.load.ugm.v32i64.v32i1.v2i8.v32i32(<32 x i1> {{(splat \(i1 true\)|<i1 true(, i1 true)*>)}}, i8 5, i8 4, i8 1, <2 x i8> zeroinitializer, i64 %ibase, <32 x i32> %index, i16 8, i32 256, <32 x i64> undef)
   %data = tail call <32 x i64> @llvm.vc.internal.lsc.load.ugm.v32i64.v32i1.v2i8.v32i64(<32 x i1> <i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true>, i8 3, i8 4, i8 1, <2 x i8> zeroinitializer, i64 0, <32 x i64> %addr, i16 1, i32 0, <32 x i64> undef)
   ret <32 x i64> %data
 }
@@ -97,7 +97,7 @@ define <32 x i64> @test8(i8 addrspace(1)* %base, <32 x i32> %index) {
   %scale = shl <32 x i64> %ext, <i64 3, i64 3, i64 3, i64 3, i64 3, i64 3, i64 3, i64 3, i64 3, i64 3, i64 3, i64 3, i64 3, i64 3, i64 3, i64 3, i64 3, i64 3, i64 3, i64 3, i64 3, i64 3, i64 3, i64 3, i64 3, i64 3, i64 3, i64 3, i64 3, i64 3, i64 3, i64 3>
   %offset = sub <32 x i64> %scale, <i64 256, i64 256, i64 256, i64 256, i64 256, i64 256, i64 256, i64 256, i64 256, i64 256, i64 256, i64 256, i64 256, i64 256, i64 256, i64 256, i64 256, i64 256, i64 256, i64 256, i64 256, i64 256, i64 256, i64 256, i64 256, i64 256, i64 256, i64 256, i64 256, i64 256, i64 256, i64 256>
   %addr = add <32 x i64> %broadcast, %offset
-; CHECK: %data = tail call <32 x i64> @llvm.vc.internal.lsc.load.ugm.v32i64.v32i1.v2i8.v32i32(<32 x i1> {{<(i1 true(, )?){32}>}}, i8 5, i8 4, i8 1, <2 x i8> zeroinitializer, i64 %ibase, <32 x i32> %index, i16 8, i32 -256, <32 x i64> undef)
+; CHECK: %data = tail call <32 x i64> @llvm.vc.internal.lsc.load.ugm.v32i64.v32i1.v2i8.v32i32(<32 x i1> {{(splat \(i1 true\)|<i1 true(, i1 true)*>)}}, i8 5, i8 4, i8 1, <2 x i8> zeroinitializer, i64 %ibase, <32 x i32> %index, i16 8, i32 -256, <32 x i64> undef)
   %data = tail call <32 x i64> @llvm.vc.internal.lsc.load.ugm.v32i64.v32i1.v2i8.v32i64(<32 x i1> <i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true>, i8 3, i8 4, i8 1, <2 x i8> zeroinitializer, i64 0, <32 x i64> %addr, i16 1, i32 0, <32 x i64> undef)
   ret <32 x i64> %data
 }
@@ -122,14 +122,14 @@ define void @vadd(i8 addrspace(1)* %0, i8 addrspace(1)* %1, i8 addrspace(1)* %2,
   %scale = shl i32 %index, 7
   %ext = zext i32 %scale to i64
   %addr0 = add i64 %ext, %ibase0
-  ; CHECK: %a = call <32 x i32> @llvm.vc.internal.lsc.load.ugm.v32i32.v1i1.v2i8.i32(<1 x i1> <i1 true>, i8 4, i8 3, i8 7, <2 x i8> zeroinitializer, i64 %ibase0, i32 %scale, i16 1, i32 0, <32 x i32> undef)
+  ; CHECK: %a = call <32 x i32> @llvm.vc.internal.lsc.load.ugm.v32i32.v1i1.v2i8.i32(<1 x i1> {{(splat \(i1 true\)|<i1 true(, i1 true)*>)}}, i8 4, i8 3, i8 7, <2 x i8> zeroinitializer, i64 %ibase0, i32 %scale, i16 1, i32 0, <32 x i32> undef)
   %a = call <32 x i32> @llvm.vc.internal.lsc.load.ugm.v32i32.v1i1.v2i8.i64(<1 x i1> <i1 true>, i8 3, i8 3, i8 7, <2 x i8> zeroinitializer, i64 0, i64 %addr0, i16 1, i32 0, <32 x i32> undef)
   %addr1 = add i64 %ext, %ibase1
-  ; CHECK: %b = call <32 x i32> @llvm.vc.internal.lsc.load.ugm.v32i32.v1i1.v2i8.i32(<1 x i1> <i1 true>, i8 4, i8 3, i8 7, <2 x i8> zeroinitializer, i64 %ibase1, i32 %scale, i16 1, i32 0, <32 x i32> undef)
+  ; CHECK: %b = call <32 x i32> @llvm.vc.internal.lsc.load.ugm.v32i32.v1i1.v2i8.i32(<1 x i1> {{(splat \(i1 true\)|<i1 true(, i1 true)*>)}}, i8 4, i8 3, i8 7, <2 x i8> zeroinitializer, i64 %ibase1, i32 %scale, i16 1, i32 0, <32 x i32> undef)
   %b = call <32 x i32> @llvm.vc.internal.lsc.load.ugm.v32i32.v1i1.v2i8.i64(<1 x i1> <i1 true>, i8 3, i8 3, i8 7, <2 x i8> zeroinitializer, i64 0, i64 %addr1, i16 1, i32 0, <32 x i32> undef)
   %c = add <32 x i32> %a, %b
   %addr2 = add i64 %ext, %ibase2
-  ; CHECK: call void @llvm.vc.internal.lsc.store.ugm.v1i1.v2i8.i32.v32i32(<1 x i1> <i1 true>, i8 4, i8 3, i8 7, <2 x i8> zeroinitializer, i64 %ibase2, i32 %scale, i16 1, i32 0, <32 x i32> %c)
+  ; CHECK: call void @llvm.vc.internal.lsc.store.ugm.v1i1.v2i8.i32.v32i32(<1 x i1> {{(splat \(i1 true\)|<i1 true(, i1 true)*>)}}, i8 4, i8 3, i8 7, <2 x i8> zeroinitializer, i64 %ibase2, i32 %scale, i16 1, i32 0, <32 x i32> %c)
   call void @llvm.vc.internal.lsc.store.ugm.v1i1.v2i8.i64.v32i32(<1 x i1> <i1 true>, i8 3, i8 3, i8 7, <2 x i8> zeroinitializer, i64 0, i64 %addr2, i16 1, i32 0, <32 x i32> %c)
   ret void
 }
@@ -144,7 +144,7 @@ define <16 x i64> @fold_base_offset(i8 addrspace(1)* %ptr, <16 x i64> %index) {
   %vbaseoff = bitcast i64 %baseoff to <1 x i64>
   %broadcast = call <16 x i64> @llvm.genx.rdregioni.v16i64.v1i64.i16(<1 x i64> %vbaseoff, i32 0, i32 16, i32 0, i16 0, i32 undef)
   %addr = add <16 x i64> %broadcast, %index
-; CHECK: %data = tail call <16 x i64> @llvm.vc.internal.lsc.load.ugm.v16i64.v16i1.v2i8.v16i64(<16 x i1> {{<(i1 true(, )?){16}>}}, i8 3, i8 4, i8 1, <2 x i8> zeroinitializer, i64 %base, <16 x i64> %index, i16 1, i32 128, <16 x i64> undef)
+; CHECK: %data = tail call <16 x i64> @llvm.vc.internal.lsc.load.ugm.v16i64.v16i1.v2i8.v16i64(<16 x i1> {{(splat \(i1 true\)|<i1 true(, i1 true)*>)}}, i8 3, i8 4, i8 1, <2 x i8> zeroinitializer, i64 %base, <16 x i64> %index, i16 1, i32 128, <16 x i64> undef)
   %data = tail call <16 x i64> @llvm.vc.internal.lsc.load.ugm.v16i64.v16i1.v2i8.v16i64(<16 x i1> <i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true>, i8 3, i8 4, i8 1, <2 x i8> zeroinitializer, i64 0, <16 x i64> %addr, i16 1, i32 0, <16 x i64> undef)
   ret <16 x i64> %data
 }
@@ -156,7 +156,7 @@ define <16 x i64> @fold_base_offset_shuffle(i8 addrspace(1)* %ptr, <16 x i64> %i
   %vbaseoff = insertelement <16 x i64> undef, i64 %baseoff, i32 0
   %broadcast = shufflevector <16 x i64> %vbaseoff, <16 x i64> undef, <16 x i32> zeroinitializer
   %addr = add <16 x i64> %broadcast, %index
-; CHECK: %data = tail call <16 x i64> @llvm.vc.internal.lsc.load.ugm.v16i64.v16i1.v2i8.v16i64(<16 x i1> {{<(i1 true(, )?){16}>}}, i8 3, i8 4, i8 1, <2 x i8> zeroinitializer, i64 %base, <16 x i64> %index, i16 1, i32 128, <16 x i64> undef)
+; CHECK: %data = tail call <16 x i64> @llvm.vc.internal.lsc.load.ugm.v16i64.v16i1.v2i8.v16i64(<16 x i1> {{(splat \(i1 true\)|<i1 true(, i1 true)*>)}}, i8 3, i8 4, i8 1, <2 x i8> zeroinitializer, i64 %base, <16 x i64> %index, i16 1, i32 128, <16 x i64> undef)
   %data = tail call <16 x i64> @llvm.vc.internal.lsc.load.ugm.v16i64.v16i1.v2i8.v16i64(<16 x i1> <i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true>, i8 3, i8 4, i8 1, <2 x i8> zeroinitializer, i64 0, <16 x i64> %addr, i16 1, i32 0, <16 x i64> undef)
   ret <16 x i64> %data
 }
@@ -167,7 +167,7 @@ define <16 x i64> @fold_const_index(i8 addrspace(1)* %ptr) {
   %vbase = bitcast i64 %base to <1 x i64>
   %broadcast = call <16 x i64> @llvm.genx.rdregioni.v16i64.v1i64.i16(<1 x i64> %vbase, i32 0, i32 16, i32 0, i16 0, i32 undef)
   %addr = add <16 x i64> %broadcast, <i64 8, i64 16, i64 24, i64 32, i64 40, i64 48, i64 56, i64 64, i64 72, i64 80, i64 88, i64 96, i64 104, i64 112, i64 120, i64 128>
-; CHECK: %data = tail call <16 x i64> @llvm.vc.internal.lsc.load.ugm.v16i64.v16i1.v2i8.v16i32(<16 x i1> {{<(i1 true(, )?){16}>}}, i8 5, i8 4, i8 1, <2 x i8> zeroinitializer, i64 %base, <16 x i32> <i32 0, i32 1, i32 2, i32 3, i32 4, i32 5, i32 6, i32 7, i32 8, i32 9, i32 10, i32 11, i32 12, i32 13, i32 14, i32 15>, i16 8, i32 8, <16 x i64> undef)
+; CHECK: %data = tail call <16 x i64> @llvm.vc.internal.lsc.load.ugm.v16i64.v16i1.v2i8.v16i32(<16 x i1> {{(splat \(i1 true\)|<i1 true(, i1 true)*>)}}, i8 5, i8 4, i8 1, <2 x i8> zeroinitializer, i64 %base, <16 x i32> <i32 0, i32 1, i32 2, i32 3, i32 4, i32 5, i32 6, i32 7, i32 8, i32 9, i32 10, i32 11, i32 12, i32 13, i32 14, i32 15>, i16 8, i32 8, <16 x i64> undef)
   %data = tail call <16 x i64> @llvm.vc.internal.lsc.load.ugm.v16i64.v16i1.v2i8.v16i64(<16 x i1> <i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true>, i8 3, i8 4, i8 1, <2 x i8> zeroinitializer, i64 0, <16 x i64> %addr, i16 1, i32 0, <16 x i64> undef)
   ret <16 x i64> %data
 }

@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2022 Intel Corporation
+; Copyright (C) 2022-2026 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -14,9 +14,9 @@
 
 ; CHECK-LABEL: @urem_a_np2_v4i32
 define <4 x i32> @urem_a_np2_v4i32(<4 x i32> %op0)  {
-  ;CHECK:  [[MULH:%[^ ]+]] = call <4 x i32> @llvm.genx.umulh.v4i32.v4i32(<4 x i32> %op0, <4 x i32> <i32 -98358029, i32 -98358029, i32 -98358029, i32 -98358029>)
-  ;CHECK-NEXT: [[SHIFT:%[^ ]+]] = lshr <4 x i32> [[MULH]], <i32 7, i32 7, i32 7, i32 7>
-  ;CHECK-NEXT: [[MUL:%[^ ]+]] = mul <4 x i32> <i32 131, i32 131, i32 131, i32 131>, [[SHIFT]]
+  ;CHECK:  [[MULH:%[^ ]+]] = call <4 x i32> @llvm.genx.umulh.v4i32.v4i32(<4 x i32> %op0, <4 x i32> {{(splat \(i32 -98358029\)|<i32 -98358029(, i32 -98358029)*>)}})
+  ;CHECK-NEXT: [[SHIFT:%[^ ]+]] = lshr <4 x i32> [[MULH]], {{(splat \(i32 7\)|<i32 7(, i32 7)*>)}}
+  ;CHECK-NEXT: [[MUL:%[^ ]+]] = mul <4 x i32> {{(splat \(i32 131\)|<i32 131(, i32 131)*>)}}, [[SHIFT]]
   ;CHECK-NEXT: [[RES:%[^ ]+]] = sub <4 x i32> %op0, [[MUL]]
   ;CHECK-NEXT: ret <4 x i32> [[RES]]
 
@@ -27,7 +27,7 @@ define <4 x i32> @urem_a_np2_v4i32(<4 x i32> %op0)  {
 
 ; CHECK-LABEL: @urem_b_np2_v4i32
 define <4 x i32> @urem_b_np2_v4i32(<4 x i32> %op0)  {
-  ;CHECK: %out = urem <4 x i32> %op0, <i32 -131, i32 -131, i32 -131, i32 -131>
+  ;CHECK: %out = urem <4 x i32> %op0, {{(splat \(i32 -131\)|<i32 -131(, i32 -131)*>)}}
   ;CHECK-NEXT: ret <4 x i32> %out
 
   %out = urem <4 x i32> %op0, <i32 -131, i32 -131, i32 -131, i32 -131>

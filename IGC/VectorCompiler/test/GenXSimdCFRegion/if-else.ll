@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2023-2025 Intel Corporation
+; Copyright (C) 2023-2026 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -57,7 +57,7 @@ if.then:                                          ; preds = %entry
 ; CHECK: [[AFTERTHEN]]: ; preds = %[[IF_THEN]], %[[IF_THEN]], %[[IF_AFTER_ENTRY]]
 ; CHECK-DAG: %[[AFTERTHEN_PHI_X:[A-z0-9.]*]] = phi <16 x i32> [ %add.masked{{.*}}, %[[IF_THEN]] ], [ %add.masked{{.*}}, %[[IF_THEN]] ]
 ; CHECK-DAG: %[[AFTERTHEN_PHI_Y:[A-z0-9.]*]] = phi <16 x i32> [ %add2.masked{{.*}}, %[[IF_THEN]] ], [ %add2.masked{{.*}}, %[[IF_THEN]] ]
-; CHECK-SAME: <i32 1, i32 1, i32 1, i32 1,
+; CHECK-SAME: {{(splat \(i32 1\)|<i32 1(, i32 1)*>)}}
 ; CHECK: [[JOIN_CALL:%[A-z0-9.]*]] = tail call { <32 x i1>, i1 } @llvm.genx.simdcf.join
 ; CHECK: %{{.*}} = extractvalue { <32 x i1>, i1 } [[JOIN_CALL]]
 

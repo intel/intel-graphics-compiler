@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2021-2025 Intel Corporation
+; Copyright (C) 2021-2026 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -14,8 +14,8 @@ define void @test_lowergep(<2 x %struct.st*> %arg) {
   %1 = getelementptr %struct.st, <2 x %struct.st*> %arg, <2 x i32> <i32 1, i32 1>, <2 x i32> <i32 1, i32 1>
 ; CHECK-TYPED-PTRS: [[V1:%.*]] = ptrtoint <2 x %struct.st*> %arg to <2 x i64>
 ; CHECK-OPAQUE-PTRS: [[V1:%.*]] = ptrtoint <2 x ptr> %arg to <2 x i64>
-; CHECK-NEXT: [[V2:%.*]] = add <2 x i64> [[V1]], <i64 48, i64 48>
-; CHECK-NEXT: [[V3:%.*]] = add <2 x i64> [[V2]], <i64 16, i64 16>
+; CHECK-NEXT: [[V2:%.*]] = add <2 x i64> [[V1]], {{(splat \(i64 48\)|<i64 48(, i64 48)*>)}}
+; CHECK-NEXT: [[V3:%.*]] = add <2 x i64> [[V2]], {{(splat \(i64 16\)|<i64 16(, i64 16)*>)}}
 ; CHECK-TYPED-PTRS-NEXT: [[V4:%.*]] = inttoptr <2 x i64> [[V3]] to <2 x <4 x float>*>
 ; CHECK-OPAQUE-PTRS-NEXT: [[V4:%.*]] = inttoptr <2 x i64> [[V3]] to <2 x ptr>
   ret void

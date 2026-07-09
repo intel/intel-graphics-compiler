@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2022-2025 Intel Corporation
+; Copyright (C) 2022-2026 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -18,20 +18,20 @@
 ;
 ; CHECK: void @test_extvec{{.*}} !dbg [[SCOPE:![0-9]*]]
 ; CHECK: [[VAL1_V:%[A-z0-9.]*]] = load {{.*}}, !dbg [[VAL1_LOC:![0-9]*]]
-; CHECK: void @llvm.dbg.value(metadata <4 x i32> [[VAL1_V]], metadata [[VAL1_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL1_LOC]]
+; CHECK: {{(#dbg_value\(|call void @llvm\.dbg\.value\(metadata )}}<4 x i32> [[VAL1_V]]{{(, |, metadata )}}[[VAL1_MD:![0-9]*]]{{(, |, metadata )}}!DIExpression(){{(, |\), !dbg )}}[[VAL1_LOC]]{{\)?}}
 ;
 ; Note: 4 values are optimized out and not salvageble
 ;
 ; CHECK-DAG: [[VAL6_V:%[A-z0-9.]*]] = call i16 {{.*}}, !dbg [[VAL6_LOC:![0-9]*]]
-; CHECK-DAG: void @llvm.dbg.value(metadata i16 [[VAL6_V]], metadata [[VAL6_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL6_LOC]]
+; CHECK-DAG: {{(#dbg_value\(|call void @llvm\.dbg\.value\(metadata )}}i16 [[VAL6_V]]{{(, |, metadata )}}[[VAL6_MD:![0-9]*]]{{(, |, metadata )}}!DIExpression(){{(, |\), !dbg )}}[[VAL6_LOC]]{{\)?}}
 ; CHECK-DAG: [[VAL7_V:%[A-z0-9.]*]] = call i16 {{.*}}, !dbg [[VAL7_LOC:![0-9]*]]
-; CHECK-DAG: void @llvm.dbg.value(metadata i16 [[VAL7_V]], metadata [[VAL7_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL7_LOC]]
+; CHECK-DAG: {{(#dbg_value\(|call void @llvm\.dbg\.value\(metadata )}}i16 [[VAL7_V]]{{(, |, metadata )}}[[VAL7_MD:![0-9]*]]{{(, |, metadata )}}!DIExpression(){{(, |\), !dbg )}}[[VAL7_LOC]]{{\)?}}
 ; CHECK-DAG: [[VAL8_V:%[A-z0-9.]*]] = call i16 {{.*}}, !dbg [[VAL8_LOC:![0-9]*]]
-; CHECK-DAG: void @llvm.dbg.value(metadata i16 [[VAL8_V]], metadata [[VAL8_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL8_LOC]]
+; CHECK-DAG: {{(#dbg_value\(|call void @llvm\.dbg\.value\(metadata )}}i16 [[VAL8_V]]{{(, |, metadata )}}[[VAL8_MD:![0-9]*]]{{(, |, metadata )}}!DIExpression(){{(, |\), !dbg )}}[[VAL8_LOC]]{{\)?}}
 ; CHECK-DAG: [[VAL9_V:%[A-z0-9.]*]] = call i16 {{.*}}, !dbg [[VAL9_LOC:![0-9]*]]
-; CHECK-DAG: void @llvm.dbg.value(metadata i16 [[VAL9_V]], metadata [[VAL9_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL9_LOC]]
+; CHECK-DAG: {{(#dbg_value\(|call void @llvm\.dbg\.value\(metadata )}}i16 [[VAL9_V]]{{(, |, metadata )}}[[VAL9_MD:![0-9]*]]{{(, |, metadata )}}!DIExpression(){{(, |\), !dbg )}}[[VAL9_LOC]]{{\)?}}
 ; CHECK-DAG: [[VAL10_V:%[A-z0-9.]*]] = add i16 {{.*}}, !dbg [[VAL10_LOC:![0-9]*]]
-; CHECK-DAG: void @llvm.dbg.value(metadata i16 [[VAL10_V]], metadata [[VAL10_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL10_LOC]]
+; CHECK-DAG: {{(#dbg_value\(|call void @llvm\.dbg\.value\(metadata )}}i16 [[VAL10_V]]{{(, |, metadata )}}[[VAL10_MD:![0-9]*]]{{(, |, metadata )}}!DIExpression(){{(, |\), !dbg )}}[[VAL10_LOC]]{{\)?}}
 
 define void @test_extvec(<4 x i32>* %a, i32* %b) !dbg !6 {
 entry:

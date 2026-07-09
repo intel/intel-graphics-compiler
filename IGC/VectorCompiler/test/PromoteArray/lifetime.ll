@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2023-2025 Intel Corporation
+; Copyright (C) 2023-2026 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -32,7 +32,7 @@ loop:
   ; CHECK-TYPED-PTRS: [[SCAST:%[^ ]+]] = bitcast <32 x i32>* [[ALLOCA]] to i8*
   ; CHECK-TYPED-PTRS: call void @llvm.lifetime.start.p0i8(i64 128, i8* [[SCAST]])
   ; CHECK-TYPED-PTRS: store <32 x i32> undef, <32 x i32>* [[ALLOCA]]
-  ; CHECK-OPAQUE-PTRS: call void @llvm.lifetime.start.p0(i64 128, ptr [[ALLOCA]])
+  ; CHECK-OPAQUE-PTRS: call void @llvm.lifetime.start.p0({{(i64 -?[0-9]+, )?}}ptr [[ALLOCA]])
   ; CHECK-OPAQUE-PTRS: store <32 x i32> undef, ptr [[ALLOCA]]
   call void @llvm.lifetime.start.p0i8(i64 128, i8* nonnull %lifetime)
   store <16 x i32> <i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1>, <16 x i32>* %stype1.split, align 64
@@ -40,7 +40,7 @@ loop:
   call void @llvm.lifetime.end.p0i8(i64 128, i8* nonnull %lifetime)
   ; CHECK-TYPED-PTRS: [[ECAST:%[^ ]+]] = bitcast <32 x i32>* [[ALLOCA]] to i8*
   ; CHECK-TYPED-PTRS: call void @llvm.lifetime.end.p0i8(i64 128, i8* [[ECAST]])
-  ; CHECK-OPAQUE-PTRS: call void @llvm.lifetime.end.p0(i64 128, ptr [[ALLOCA]])
+  ; CHECK-OPAQUE-PTRS: call void @llvm.lifetime.end.p0({{(i64 -?[0-9]+, )?}}ptr [[ALLOCA]])
 
   %x.next = sub i32 %x.curr, 1
   %cond.loop = icmp ne i32 %x, 0

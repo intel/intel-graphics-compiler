@@ -21,47 +21,47 @@
 ; CHECK: void @test_lowerloadstore{{.*}} !dbg [[SCOPE:![0-9]*]]
 ; CHECK: bbi16:
 ; CHECK: [[VAL1_V:%[A-z0-9.]*]] = inttoptr {{.*}}, !dbg [[VAL1_LOC:![0-9]*]]
-; CHECK-TYPED-PTRS: void @llvm.dbg.value(metadata i16* [[VAL1_V]], metadata [[VAL1_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL1_LOC]]
-; CHECK-OPAQUE-PTRS: void @llvm.dbg.value(metadata ptr [[VAL1_V]], metadata [[VAL1_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL1_LOC]]
+; CHECK-TYPED-PTRS: {{(#dbg_value\(|call void @llvm\.dbg\.value\(metadata )}}i16* [[VAL1_V]]{{(, |, metadata )}}[[VAL1_MD:![0-9]*]]{{(, |, metadata )}}!DIExpression(){{(, |\), !dbg )}}[[VAL1_LOC]]{{\)?}}
+; CHECK-OPAQUE-PTRS: {{(#dbg_value\(|call void @llvm\.dbg\.value\(metadata )}}ptr [[VAL1_V]]{{(, |, metadata )}}[[VAL1_MD:![0-9]*]]{{(, |, metadata )}}!DIExpression(){{(, |\), !dbg )}}[[VAL1_LOC]]{{\)?}}
 ; CHECK: bitcast
 ; CHECK: [[VAL2_V:%[A-z0-9.]*]] = bitcast {{.*}}, !dbg [[VAL2_LOC:![0-9]*]]
-; CHECK: void @llvm.dbg.value(metadata i16 [[VAL2_V]], metadata [[VAL2_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL2_LOC]]
+; CHECK: {{(#dbg_value\(|call void @llvm\.dbg\.value\(metadata )}}i16 [[VAL2_V]]{{(, |, metadata )}}[[VAL2_MD:![0-9]*]]{{(, |, metadata )}}!DIExpression(){{(, |\), !dbg )}}[[VAL2_LOC]]{{\)?}}
 ; CHECK: scatter{{.*}}, !dbg [[STORE1_LOC:![0-9]*]]
 ; CHECK: bbi64:
 ; CHECK: [[VAL3_V:%[A-z0-9.]*]] = inttoptr {{.*}}, !dbg [[VAL3_LOC:![0-9]*]]
-; CHECK-TYPED-PTRS: void @llvm.dbg.value(metadata i64* [[VAL3_V]], metadata [[VAL3_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL3_LOC]]
-; CHECK-OPAQUE-PTRS: void @llvm.dbg.value(metadata ptr [[VAL3_V]], metadata [[VAL3_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL3_LOC]]
+; CHECK-TYPED-PTRS: {{(#dbg_value\(|call void @llvm\.dbg\.value\(metadata )}}i64* [[VAL3_V]]{{(, |, metadata )}}[[VAL3_MD:![0-9]*]]{{(, |, metadata )}}!DIExpression(){{(, |\), !dbg )}}[[VAL3_LOC]]{{\)?}}
+; CHECK-OPAQUE-PTRS: {{(#dbg_value\(|call void @llvm\.dbg\.value\(metadata )}}ptr [[VAL3_V]]{{(, |, metadata )}}[[VAL3_MD:![0-9]*]]{{(, |, metadata )}}!DIExpression(){{(, |\), !dbg )}}[[VAL3_LOC]]{{\)?}}
 ; CHECK: [[VAL4_V:%[A-z0-9.]*]] = bitcast {{.*}}, !dbg [[VAL4_LOC:![0-9]*]]
-; CHECK: void @llvm.dbg.value(metadata i64 [[VAL4_V]], metadata [[VAL4_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL4_LOC]]
+; CHECK: {{(#dbg_value\(|call void @llvm\.dbg\.value\(metadata )}}i64 [[VAL4_V]]{{(, |, metadata )}}[[VAL4_MD:![0-9]*]]{{(, |, metadata )}}!DIExpression(){{(, |\), !dbg )}}[[VAL4_LOC]]{{\)?}}
 ; CHECK: scatter{{.*}}, !dbg [[STORE2_LOC:![0-9]*]]
 ; CHECK: bbfptr:
 ; CHECK: [[VAL5_V:%[A-z0-9.]*]] = inttoptr {{.*}}, !dbg [[VAL5_LOC:![0-9]*]]
-; CHECK-TYPED-PTRS: void @llvm.dbg.value(metadata void (i32*)** [[VAL5_V]], metadata [[VAL5_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL5_LOC]]
-; CHECK-OPAQUE-PTRS: void @llvm.dbg.value(metadata ptr [[VAL5_V]], metadata [[VAL5_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL5_LOC]]
+; CHECK-TYPED-PTRS: {{(#dbg_value\(|call void @llvm\.dbg\.value\(metadata )}}void (i32*)** [[VAL5_V]]{{(, |, metadata )}}[[VAL5_MD:![0-9]*]]{{(, |, metadata )}}!DIExpression(){{(, |\), !dbg )}}[[VAL5_LOC]]{{\)?}}
+; CHECK-OPAQUE-PTRS: {{(#dbg_value\(|call void @llvm\.dbg\.value\(metadata )}}ptr [[VAL5_V]]{{(, |, metadata )}}[[VAL5_MD:![0-9]*]]{{(, |, metadata )}}!DIExpression(){{(, |\), !dbg )}}[[VAL5_LOC]]{{\)?}}
 ; CHECK: [[VAL6_V:%[A-z0-9.]*]] = bitcast {{.*}}, !dbg [[VAL6_LOC:![0-9]*]]
-; CHECK-TYPED-PTRS: void @llvm.dbg.value(metadata void (i32*)* [[VAL6_V]], metadata [[VAL6_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL6_LOC]]
-; CHECK-OPAQUE-PTRS: void @llvm.dbg.value(metadata ptr [[VAL6_V]], metadata [[VAL6_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL6_LOC]]
+; CHECK-TYPED-PTRS: {{(#dbg_value\(|call void @llvm\.dbg\.value\(metadata )}}void (i32*)* [[VAL6_V]]{{(, |, metadata )}}[[VAL6_MD:![0-9]*]]{{(, |, metadata )}}!DIExpression(){{(, |\), !dbg )}}[[VAL6_LOC]]{{\)?}}
+; CHECK-OPAQUE-PTRS: {{(#dbg_value\(|call void @llvm\.dbg\.value\(metadata )}}ptr [[VAL6_V]]{{(, |, metadata )}}[[VAL6_MD:![0-9]*]]{{(, |, metadata )}}!DIExpression(){{(, |\), !dbg )}}[[VAL6_LOC]]{{\)?}}
 ; CHECK: scatter{{.*}}, !dbg [[STORE3_LOC:![0-9]*]]
 ;
 ; STRICT: bbi16:
 ; STRICT: , !dbg [[VAL1_LOC:![0-9]*]]
-; STRICT: , !dbg [[VAL1_LOC]]
+; STRICT: {{(, !dbg |, )}}[[VAL1_LOC]]
 ; STRICT: , !dbg [[VAL2_LOC:![0-9]*]]
-; STRICT-COUNT-8: , !dbg [[VAL2_LOC]]
+; STRICT-COUNT-8: {{(, !dbg |, )}}[[VAL2_LOC]]
 ; STRICT: , !dbg [[STORE1_LOC:![0-9]*]]
 ; STRICT-COUNT-7: , !dbg [[STORE1_LOC]]
 ; STRICT: bbi64:
 ; STRICT: , !dbg [[VAL3_LOC:![0-9]*]]
-; STRICT: , !dbg [[VAL3_LOC]]
+; STRICT: {{(, !dbg |, )}}[[VAL3_LOC]]
 ; STRICT: , !dbg [[VAL4_LOC:![0-9]*]]
-; STRICT-COUNT-6: , !dbg [[VAL4_LOC]]
+; STRICT-COUNT-6: {{(, !dbg |, )}}[[VAL4_LOC]]
 ; STRICT: , !dbg [[STORE2_LOC:![0-9]*]]
 ; STRICT-COUNT-5: , !dbg [[STORE2_LOC]]
 ; STRICT: bbfptr:
 ; STRICT: , !dbg [[VAL5_LOC:![0-9]*]]
-; STRICT: , !dbg [[VAL5_LOC]]
+; STRICT: {{(, !dbg |, )}}[[VAL5_LOC]]
 ; STRICT: , !dbg [[VAL6_LOC:![0-9]*]]
-; STRICT-COUNT-7: , !dbg [[VAL6_LOC]]
+; STRICT-COUNT-7: {{(, !dbg |, )}}[[VAL6_LOC]]
 ; STRICT: , !dbg [[STORE3_LOC:![0-9]*]]
 ; STRICT-COUNT-6: , !dbg [[STORE3_LOC]]
 

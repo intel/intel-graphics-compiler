@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2023-2025 Intel Corporation
+; Copyright (C) 2023-2026 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -19,14 +19,14 @@
 ; CHECK-NEXT: tail call <16 x i32> @llvm.genx.wrregionf.v16i32.v1i32.i16.v16i1(<16 x i32> [[VEC]], <1 x i32> zeroinitializer, i32 0, i32 0, i32 0, i16 0, i32 0, <16 x i1> [[CMP_UGE]])
 
 ; CHECK-LABEL: case2:
-; CHECK-NEXT: [[XOR:%[A-Za-z0-9_.]+]] = xor <16 x i1> [[FLAG1]], <i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true>
+; CHECK-NEXT: [[XOR:%[A-Za-z0-9_.]+]] = xor <16 x i1> [[FLAG1]], {{(splat \(i1 true\)|<i1 true(, i1 true)*>)}}
 ; CHECK-NEXT: [[OR:%[A-Za-z0-9_.]+]] = or <16 x i1> [[FLAG2]], [[XOR]]
 ; CHECK-NEXT: [[AND:%[A-Za-z0-9_.]+]] = and <16 x i1> [[OR]], [[FLAG3]]
 ; CHECK-NEXT: tail call <16 x i32> @llvm.genx.wrregionf.v16i32.v1i32.i16.v16i1(<16 x i32> [[VEC]], <1 x i32> zeroinitializer, i32 0, i32 0, i32 0, i16 0, i32 0, <16 x i1> [[AND]])
 
 ; CHECK-LABEL: case3:
 ; CHECK-NEXT: [[CMP_SGT:%[A-Za-z0-9_.]+]] = icmp sgt <2 x i32> [[INS]], zeroinitializer
-; CHECK-NEXT: [[SEL_SGT:%[A-Za-z0-9_.]+]] = select <2 x i1> [[CMP_SGT]], <2 x i32> <i32 1, i32 1>, <2 x i32> zeroinitializer
+; CHECK-NEXT: [[SEL_SGT:%[A-Za-z0-9_.]+]] = select <2 x i1> [[CMP_SGT]], <2 x i32> {{(splat \(i32 1\)|<i32 1(, i32 1)*>)}}, <2 x i32> zeroinitializer
 ; CHECK-NEXT: tail call <16 x i32> @llvm.genx.wrregionf.v16i32.v2i32.i16.v2i1(<16 x i32> zeroinitializer, <2 x i32> [[SEL_SGT]], i32 2, i32 2, i32 1, i16 0, i32 0, <2 x i1> <i1 true, i1 false>)
 ; CHECK-NEXT: [[CMP_SLE:%[A-Za-z0-9_.]+]] = icmp sle <2 x i32> [[INS]], zeroinitializer
 ; CHECK-NEXT: [[ALL:%[A-Za-z0-9_.]+]] = call i1 @llvm.genx.all.v2i1(<2 x i1> [[CMP_SLE]])
@@ -34,9 +34,9 @@
 
 ; CHECK-LABEL: case4:
 ; CHECK-NEXT: [[CMP_SGT2:%[A-Za-z0-9_.]+]] = icmp sgt <2 x i32> [[INS]], zeroinitializer
-; CHECK-NEXT: [[SEL_SGT2:%[A-Za-z0-9_.]+]] = select <2 x i1> [[CMP_SGT2]], <2 x i32> <i32 1, i32 1>, <2 x i32> zeroinitializer
+; CHECK-NEXT: [[SEL_SGT2:%[A-Za-z0-9_.]+]] = select <2 x i1> [[CMP_SGT2]], <2 x i32> {{(splat \(i32 1\)|<i32 1(, i32 1)*>)}}, <2 x i32> zeroinitializer
 ; CHECK-NEXT: [[WRREG_ZERO2:%[A-Za-z0-9_.]+]] = tail call <16 x i32> @llvm.genx.wrregionf.v16i32.v2i32.i16.v2i1(<16 x i32> [[VEC]], <2 x i32> [[SEL_SGT2]], i32 2, i32 2, i32 1, i16 0, i32 0, <2 x i1> <i1 true, i1 false>)
-; CHECK-NEXT: [[AND_C2:%[A-Za-z0-9_.]+]] = and <16 x i32> [[WRREG_ZERO2]], <i32 1, i32 1, i32 1, i32 1, i32 1, i32 1, i32 1, i32 1, i32 1, i32 1, i32 1, i32 1, i32 1, i32 1, i32 1, i32 1>
+; CHECK-NEXT: [[AND_C2:%[A-Za-z0-9_.]+]] = and <16 x i32> [[WRREG_ZERO2]], {{(splat \(i32 1\)|<i32 1(, i32 1)*>)}}
 ; CHECK-NEXT: [[CMP_SGT3:%[A-Za-z0-9_.]+]] = icmp sle <16 x i32> [[AND_C2]], zeroinitializer
 ; CHECK-NEXT: [[ALL2:%[A-Za-z0-9_.]+]] = call i1 @llvm.genx.all.v16i1(<16 x i1> [[CMP_SGT3]])
 ; CHECK-NEXT: [[WRREG4:%[A-Za-z0-9_.]+]] = tail call <16 x i32> @llvm.genx.wrregionf.v16i32.v1i32.i16.i1(<16 x i32> [[VEC]], <1 x i32> zeroinitializer, i32 0, i32 0, i32 0, i16 0, i32 0, i1 [[ALL2]])

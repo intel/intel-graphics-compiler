@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2020-2025 Intel Corporation
+; Copyright (C) 2020-2026 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -14,7 +14,7 @@
 
 ; CHECK-LABEL: @sdiv_a_np2_v4i32
 define <4 x i32> @sdiv_a_np2_v4i32(<4 x i32> %op0)  {
-  ;CHECK: %out = sdiv <4 x i32> %op0, <i32 131, i32 131, i32 131, i32 131>
+  ;CHECK: %out = sdiv <4 x i32> %op0, {{(splat \(i32 131\)|<i32 131(, i32 131)*>)}}
 
   %out = sdiv <4 x i32> %op0, <i32 131, i32 131, i32 131, i32 131>
 
@@ -23,7 +23,7 @@ define <4 x i32> @sdiv_a_np2_v4i32(<4 x i32> %op0)  {
 
 ; CHECK-LABEL: @sdiv_b_np2_v4i32
 define <4 x i32> @sdiv_b_np2_v4i32(<4 x i32> %op0)  {
-  ;CHECK: %out = sdiv <4 x i32> %op0, <i32 -131, i32 -131, i32 -131, i32 -131>
+  ;CHECK: %out = sdiv <4 x i32> %op0, {{(splat \(i32 -131\)|<i32 -131(, i32 -131)*>)}}
 
   %out = sdiv <4 x i32> %op0, <i32 -131, i32 -131, i32 -131, i32 -131>
 
@@ -41,7 +41,7 @@ define <4 x i32> @sdiv_b_p2_v4i32(<4 x i32> %op0)  {
 
 ; CHECK-LABEL: @sdiv_a_p2_v4i32
 define <4 x i32> @sdiv_a_p2_v4i32(<4 x i32> %op0)  {
-  ;CHECK: [[VSIGN:%[^ ]+]] = ashr <4 x i32> %op0, <i32 31, i32 31, i32 31, i32 31>
+  ;CHECK: [[VSIGN:%[^ ]+]] = ashr <4 x i32> %op0, {{(splat \(i32 31\)|<i32 31(, i32 31)*>)}}
   ;CHECK-NEXT: [[VADDOP:%[^ ]+]] = lshr <4 x i32> [[VSIGN]], <i32 25, i32 26, i32 27, i32 28>
   ;CHECK-NEXT: [[VTMP:%[^ ]+]] = add <4 x i32> %op0, [[VADDOP]]
   ;CHECK-NEXT: [[VRES:%[^ ]+]] = ashr <4 x i32> [[VTMP:%[^ ]+]], <i32 7, i32 6, i32 5, i32 4>
@@ -54,7 +54,7 @@ define <4 x i32> @sdiv_a_p2_v4i32(<4 x i32> %op0)  {
 
 ; CHECK-LABEL: @sdiv_a_p2_v4i16
 define <4 x i16> @sdiv_a_p2_v4i16(<4 x i16> %op0)  {
-  ;CHECK: [[VSIGN:%[^ ]+]] = ashr <4 x i16> %op0, <i16 15, i16 15, i16 15, i16 15>
+  ;CHECK: [[VSIGN:%[^ ]+]] = ashr <4 x i16> %op0, {{(splat \(i16 15\)|<i16 15(, i16 15)*>)}}
   ;CHECK-NEXT: [[VADDOP:%[^ ]+]] = lshr <4 x i16> [[VSIGN]], <i16 9, i16 10, i16 11, i16 12>
   ;CHECK-NEXT: [[VTMP:%[^ ]+]] = add <4 x i16> %op0, [[VADDOP]]
   ;CHECK-NEXT: [[VRES:%[^ ]+]] = ashr <4 x i16> [[VTMP:%[^ ]+]], <i16 7, i16 6, i16 5, i16 4>
@@ -67,7 +67,7 @@ define <4 x i16> @sdiv_a_p2_v4i16(<4 x i16> %op0)  {
 
 ; CHECK-LABEL: @sdiv_a_p2_v4i64
 define <4 x i64> @sdiv_a_p2_v4i64(<4 x i64> %op0)  {
-  ;CHECK: [[VSIGN:%[^ ]+]] = ashr <4 x i64> %op0, <i64 63, i64 63, i64 63, i64 63>
+  ;CHECK: [[VSIGN:%[^ ]+]] = ashr <4 x i64> %op0, {{(splat \(i64 63\)|<i64 63(, i64 63)*>)}}
   ;CHECK-NEXT: [[VADDOP:%[^ ]+]] = lshr <4 x i64> [[VSIGN]], <i64 57, i64 58, i64 59, i64 60>
   ;CHECK-NEXT: [[VTMP:%[^ ]+]] = add <4 x i64> %op0, [[VADDOP]]
   ;CHECK-NEXT: [[VRES:%[^ ]+]] = ashr <4 x i64> [[VTMP:%[^ ]+]], <i64 7, i64 6, i64 5, i64 4>

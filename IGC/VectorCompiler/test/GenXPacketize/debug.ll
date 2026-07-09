@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2021-2025 Intel Corporation
+; Copyright (C) 2021-2026 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -20,17 +20,14 @@
 ;
 ; CHECK: void @test_packetize{{.*}} !dbg [[SCOPE:![0-9]*]]
 ; CHECK: [[VAL1_V:%[A-z0-9.]*]] = {{.*}}, !dbg [[VAL1_LOC:![0-9]*]]
-; CHECK: call void @llvm.dbg.declare({{.*}} [[VAL1_V]], metadata [[VAL1_MD:![0-9]*]], metadata !DIExpression()), !dbg [[VAL1_LOC]]
-; CHECK: call void @llvm.dbg.{{addr|value}}({{.*}} [[VAL1_V]], metadata [[VAL1_MD]], metadata !DIExpression({{.*}})), !dbg [[VAL1_LOC]]
+; CHECK: {{(#dbg_value\(|call void @llvm\.dbg\.value\(metadata )}}{{.*}} [[VAL1_V]]{{(, |, metadata )}}[[VAL1_MD:![0-9]*]]{{(, |, metadata )}}!DIExpression(){{(, |\), !dbg )}}[[VAL1_LOC]]{{\)?}}
 ; CHECK: [[VAL2_V:%[A-z0-9.]*]] = call <8 x float> @llvm.sqrt.v8f32(<8 x float> [[VAL1_V]])
 
 
 define void @test_packetize(<8 x float>* %a) #0 !dbg !6 {
 entry:
   %0 = load <8 x float>, <8 x float>* %a, !dbg !10
-  call void @llvm.dbg.declare(metadata <8 x float> %0, metadata !9,
-                             metadata !DIExpression()), !dbg !10
-  call void @llvm.dbg.addr(metadata <8 x float> %0, metadata !9,
+  call void @llvm.dbg.value(metadata <8 x float> %0, metadata !9,
                              metadata !DIExpression()), !dbg !10
 
   %1 = call <8 x float> @sqrtf(<8 x float> %0)

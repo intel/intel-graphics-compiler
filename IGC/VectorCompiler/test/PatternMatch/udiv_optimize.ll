@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2022 Intel Corporation
+; Copyright (C) 2022-2026 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -14,8 +14,8 @@
 
 ; CHECK-LABEL: @udiv_a_np2_v4i32_3
 define <4 x i32> @udiv_a_np2_v4i32_3(<4 x i32> %op0)  {
-  ;CHECK: [[MULH:%[^ ]+]] = call <4 x i32> @llvm.genx.umulh.v4i32.v4i32(<4 x i32> %op0, <4 x i32> <i32 -1431655765, i32 -1431655765, i32 -1431655765, i32 -1431655765>)
-  ;CHECK-NEXT: [[SHIFT:%[^ ]+]] = lshr <4 x i32> [[MULH]], <i32 1, i32 1, i32 1, i32 1>
+  ;CHECK: [[MULH:%[^ ]+]] = call <4 x i32> @llvm.genx.umulh.v4i32.v4i32(<4 x i32> %op0, <4 x i32> {{(splat \(i32 -1431655765\)|<i32 -1431655765(, i32 -1431655765)*>)}})
+  ;CHECK-NEXT: [[SHIFT:%[^ ]+]] = lshr <4 x i32> [[MULH]], {{(splat \(i32 1\)|<i32 1(, i32 1)*>)}}
   ;CHECK-NEXT: ret <4 x i32> [[SHIFT]]
 
   %out = udiv <4 x i32> %op0, <i32 3, i32 3, i32 3, i32 3>
@@ -25,11 +25,11 @@ define <4 x i32> @udiv_a_np2_v4i32_3(<4 x i32> %op0)  {
 
 ; CHECK-LABEL: @udiv_a_np2_v4i32_7
 define <4 x i32> @udiv_a_np2_v4i32_7(<4 x i32> %op0)  {
-  ;CHECK: [[MULH:%[^ ]+]] = call <4 x i32> @llvm.genx.umulh.v4i32.v4i32(<4 x i32> %op0, <4 x i32> <i32 613566757, i32 613566757, i32 613566757, i32 613566757>)
+  ;CHECK: [[MULH:%[^ ]+]] = call <4 x i32> @llvm.genx.umulh.v4i32.v4i32(<4 x i32> %op0, <4 x i32> {{(splat \(i32 613566757\)|<i32 613566757(, i32 613566757)*>)}})
   ;CHECK-NEXT: [[SUB:%[^ ]+]] = sub <4 x i32> %op0, [[MULH]]
-  ;CHECK-NEXT: [[LSHIFT1:%[^ ]+]] = lshr <4 x i32> [[SUB]], <i32 1, i32 1, i32 1, i32 1>
+  ;CHECK-NEXT: [[LSHIFT1:%[^ ]+]] = lshr <4 x i32> [[SUB]], {{(splat \(i32 1\)|<i32 1(, i32 1)*>)}}
   ;CHECK-NEXT: [[ADD:%[^ ]+]] = add <4 x i32> [[LSHIFT1]], %opt
-  ;CHECK-NEXT: [[RES:%[^ ]+]] = lshr <4 x i32> [[ADD]], <i32 2, i32 2, i32 2, i32 2>
+  ;CHECK-NEXT: [[RES:%[^ ]+]] = lshr <4 x i32> [[ADD]], {{(splat \(i32 2\)|<i32 2(, i32 2)*>)}}
   ;CHECK-NEXT: ret <4 x i32> [[RES]]
 
   %out = udiv <4 x i32> %op0, <i32 7, i32 7, i32 7, i32 7>
@@ -39,7 +39,7 @@ define <4 x i32> @udiv_a_np2_v4i32_7(<4 x i32> %op0)  {
 
 ; CHECK-LABEL: @udiv_b_np2_v4i32
 define <4 x i32> @udiv_b_np2_v4i32(<4 x i32> %op0)  {
-  ;CHECK: %out = udiv <4 x i32> %op0, <i32 -131, i32 -131, i32 -131, i32 -131>
+  ;CHECK: %out = udiv <4 x i32> %op0, {{(splat \(i32 -131\)|<i32 -131(, i32 -131)*>)}}
   ;CHECK-NEXT: ret <4 x i32> %out
 
   %out = udiv <4 x i32> %op0, <i32 -131, i32 -131, i32 -131, i32 -131>

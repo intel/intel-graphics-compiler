@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2021-2025 Intel Corporation
+; Copyright (C) 2021-2026 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -175,7 +175,7 @@ declare { <8 x i32>, <8 x i32> } @llvm.genx.simad.v8i32(<8 x i32>, <8 x i32>, <8
 ; CHECK-LABEL @test_convert_simad_to_mul64_and_add_Sz8
 define { <8 x i32>, <8 x i32> } @test_convert_simad_to_mul64_and_add_Sz8(<8 x i32> %op0, <8 x i32> %op1) {
 ; CHECK_WITH_MUL_DDQ-DAG:  [[MUL64:%.*]] = call <8 x i64> @llvm.genx.ssmul.v8i64.v8i32(<8 x i32> %op0, <8 x i32> %op1)
-; CHECK_WITH_MUL_DDQ-DAG:  [[SEXT:%.*]]  = sext <8 x i32> <i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1, i32 -1> to <8 x i64>
+; CHECK_WITH_MUL_DDQ-DAG:  [[SEXT:%.*]]  = sext <8 x i32> {{(splat \(i32 -1\)|<i32 -1(, i32 -1)*>)}} to <8 x i64>
 ; CHECK_WITH_MUL_DDQ-DAG:  [[ADD64:%.*]] = add <8 x i64> [[MUL64]], [[SEXT]]
 
 ; CHECK_WITH_MUL_DDQ-DAG:  [[RES_BITCAST:%.*]] = bitcast <8 x i64> [[ADD64]] to <16 x i32>

@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2021-2024 Intel Corporation
+; Copyright (C) 2021-2026 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -16,7 +16,7 @@
 ; CHECK: void @test_debug{{.*}}
 ; CHECK: [[AND:%.*]] = and <31 x i[[AND_SIZE:[0-9]*]]> {{.*}} !dbg [[AND_LOC:![0-9]*]]
 ; CHECK: [[TRUNC:%.*]] = icmp ne <31 x i[[AND_SIZE]]> [[AND]], zeroinitializer, !dbg [[AND_LOC]]
-; CHECK: void @llvm.dbg.value(metadata <31 x i1> [[TRUNC]], metadata [[TRUNC_MD:![0-9]*]], {{.*}}, !dbg [[AND_LOC]]
+; CHECK: {{(#dbg_value\(|call void @llvm\.dbg\.value\(metadata )}}<31 x i1> [[TRUNC]]{{(, |, metadata )}}[[TRUNC_MD:![0-9]*]]{{(, |, metadata )}}{{.*}}{{(, |\), !dbg )}}[[AND_LOC]]{{\)?}}
 ;
 
 define void @test_debug(<31 x float> %src1, <31 x i32> %src2, <31 x i32>* %dst) {

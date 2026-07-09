@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -94,7 +94,7 @@ bool GenXModule::runOnModule(Module &M) {
 
   InlineAsm = CheckForInlineAsm(M);
 
-  DisableFinalizerOpts = TM.getOptLevel() == CodeGenOpt::Level::None;
+  DisableFinalizerOpts = TM.getOptLevel() == IGCLLVM::CodeGenOptLevel::None;
   EmitDebugInformation =
       BC->emitDWARFDebugInfo() && vc::DIBuilder::checkIfModuleHasDebugInfo(M);
   ImplicitArgsBufferIsUsed = isImplicitArgsBufferUsed(M);

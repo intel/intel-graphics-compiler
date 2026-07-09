@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2020-2025 Intel Corporation
+; Copyright (C) 2020-2026 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -14,7 +14,7 @@ define dllexport spir_kernel void @test(<16 x i32>* %val, i1 %cond) {
 
 bb1:
 ; CHECK: bb1:
-; CHECK-NEXT: [[CONSTANT1:%.*]] = call <1 x i32> @llvm.genx.constanti.v1i32(<1 x i32> <i32 1>)
+; CHECK-NEXT: [[CONSTANT1:%.*]] = call <1 x i32> @llvm.genx.constanti.v1i32(<1 x i32> {{(splat \(i32 1\)|<i32 1(, i32 1)*>)}})
   br label %bb3
 
 bb2:

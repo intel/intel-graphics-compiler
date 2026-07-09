@@ -185,6 +185,12 @@ if llvm_ver >= 15:
 if llvm_ver >= 16:
   config.available_features.add('llvm_16_or_greater')
 
+# Features for newer LLVM versions (used to gate LITs whose IR output structure
+# genuinely diverges, e.g. constant materialization or debug-record differences).
+for _llvm_feature_ver in range(17, 30):
+  if llvm_ver >= _llvm_feature_ver:
+    config.available_features.add('llvm_%d_or_greater' % _llvm_feature_ver)
+
 if config.oneapi_readelf_dir:
   config.available_features.add('oneapi-readelf')
 

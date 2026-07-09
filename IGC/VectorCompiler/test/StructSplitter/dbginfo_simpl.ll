@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2022-2025 Intel Corporation
+; Copyright (C) 2022-2026 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -18,11 +18,11 @@ define void @test_split(<8 x i32> %a, <8 x i32> %b) !dbg !6 {
   call void @llvm.dbg.declare(metadata %st0* %1, metadata !9, metadata !DIExpression()), !dbg !27
 
   ; CHECK-DAG:  %[[F_AL:[^ ]+]] = alloca <8 x float>, align 16
-  ; CHECK-TYPED-PTRS-DAG:  call void @llvm.dbg.declare(metadata <8 x float>* %[[F_AL]], metadata ![[MET:[^ ]+]], metadata !DIExpression(DW_OP_LLVM_fragment, 0, 256))
-  ; CHECK-OPAQUE-PTRS-DAG:  call void @llvm.dbg.declare(metadata ptr %[[F_AL]], metadata ![[MET:[^ ]+]], metadata !DIExpression(DW_OP_LLVM_fragment, 0, 256))
+  ; CHECK-TYPED-PTRS-DAG:  {{(#dbg_declare\(|call void @llvm\.dbg\.declare\(metadata )}}<8 x float>* %[[F_AL]]{{(, |, metadata )}}![[MET:[^ ]+]]{{(, |, metadata )}}!DIExpression(DW_OP_LLVM_fragment, 0, 256){{(, |\), !dbg )}}{{.*}}{{\)?}}
+  ; CHECK-OPAQUE-PTRS-DAG:  {{(#dbg_declare\(|call void @llvm\.dbg\.declare\(metadata )}}ptr %[[F_AL]]{{(, |, metadata )}}![[MET:[^ ]+]]{{(, |, metadata )}}!DIExpression(DW_OP_LLVM_fragment, 0, 256){{(, |\), !dbg )}}{{.*}}{{\)?}}
   ; CHECK-DAG:  %[[I_AL:[^ ]+]] = alloca %st0, align 16, !dbg !28
-  ; CHECK-TYPED-PTRS-DAG:  call void @llvm.dbg.declare(metadata %st0* %[[I_AL]], metadata ![[MET]], metadata !DIExpression(DW_OP_LLVM_fragment, 256, 512))
-  ; CHECK-OPAQUE-PTRS-DAG:  call void @llvm.dbg.declare(metadata ptr %[[I_AL]], metadata ![[MET]], metadata !DIExpression(DW_OP_LLVM_fragment, 256, 512))
+  ; CHECK-TYPED-PTRS-DAG:  {{(#dbg_declare\(|call void @llvm\.dbg\.declare\(metadata )}}%st0* %[[I_AL]]{{(, |, metadata )}}![[MET]]{{(, |, metadata )}}!DIExpression(DW_OP_LLVM_fragment, 256, 512){{(, |\), !dbg )}}{{.*}}{{\)?}}
+  ; CHECK-OPAQUE-PTRS-DAG:  {{(#dbg_declare\(|call void @llvm\.dbg\.declare\(metadata )}}ptr %[[I_AL]]{{(, |, metadata )}}![[MET]]{{(, |, metadata )}}!DIExpression(DW_OP_LLVM_fragment, 256, 512){{(, |\), !dbg )}}{{.*}}{{\)?}}
 
   %2 = alloca %st1, align 16, !dbg !28
   call void @llvm.dbg.declare(metadata %st1* %2, metadata !21, metadata !DIExpression()), !dbg !28

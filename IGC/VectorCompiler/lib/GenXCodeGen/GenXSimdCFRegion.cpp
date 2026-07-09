@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2022-2023 Intel Corporation
+Copyright (C) 2022-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -1489,10 +1489,21 @@ void GenXPredToSimdCF::removeMask(SimdCFIfRegion *R) {
     std::swap(ElseReg, ThenReg);
 
   SmallVector<Use *, 4> Uses;
-  for (auto Ui = CurrMask->use_begin(), Ue = CurrMask->use_end(); Ui != Ue;
-       ++Ui) {
-    Uses.push_back(&*Ui);
-  }
+#if LLVM_VERSION_MAJOR >= 22
+  if (!CurrMask->hasUseList()) {
+    // In LLVM 22 ConstantData has no use list; scan the function's operands.
+    Function *F = R->getExit()->getParent();
+    for (auto &BB : *F)
+      for (auto &I : BB)
+        for (Use &U : I.operands())
+          if (U.get() == CurrMask)
+            Uses.push_back(&U);
+  } else
+#endif
+    for (auto Ui = CurrMask->use_begin(), Ue = CurrMask->use_end(); Ui != Ue;
+         ++Ui) {
+      Uses.push_back(&*Ui);
+    }
 
   // Iterate by index to have posibility to insert in back
   for (unsigned i = 0; i < Uses.size(); ++i) {

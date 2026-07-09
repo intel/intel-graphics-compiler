@@ -27,8 +27,8 @@ target triple = "genx64-unknown-unknown"
 ; CHECK-TYPED-PTRS-NEXT: [[BITCAST:%[^ ]+]] = bitcast %struct.hoge addrspace(4)* [[RECAST]] to %struct.bar addrspace(4)*
 ; CHECK-TYPED-PTRS-NEXT: [[RDREGION:%[^ ]+]] = bitcast %struct.bar addrspace(4)* [[BITCAST]] to <1 x %struct.bar addrspace(4)*>
 ; CHECK-TYPED-PTRS-NEXT: [[ICAST:%[^ ]+]] = ptrtoint <1 x %struct.bar addrspace(4)*> [[RDREGION]] to <1 x i64>
-; CHECK-TYPED-PTRS-NEXT:  call void @llvm.genx.svm.scatter.v1i1.v1i64.v1i64(<1 x i1> <i1 true>, i32 0, <1 x i64> undef, <1 x i64> [[ICAST]])
-; CHECK-OPAQUE-PTRS-NEXT:  call void @llvm.genx.svm.scatter.v1i1.v1i64.v1i64(<1 x i1> <i1 true>, i32 0, <1 x i64> undef, <1 x i64> %arg)
+; CHECK-TYPED-PTRS-NEXT:  call void @llvm.genx.svm.scatter.v1i1.v1i64.v1i64(<1 x i1> {{(splat \(i1 true\)|<i1 true(, i1 true)*>)}}, i32 0, <1 x i64> undef, <1 x i64> [[ICAST]])
+; CHECK-OPAQUE-PTRS-NEXT:  call void @llvm.genx.svm.scatter.v1i1.v1i64.v1i64(<1 x i1> {{(splat \(i1 true\)|<i1 true(, i1 true)*>)}}, i32 0, <1 x i64> undef, <1 x i64> %arg)
 
 define internal spir_func void @wobble(<1 x i64> %arg) #0 {
   %tmp = inttoptr <1 x i64> %arg to <1 x %struct.hoge addrspace(4)*>

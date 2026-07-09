@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2021-2025 Intel Corporation
+; Copyright (C) 2021-2026 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -21,13 +21,13 @@ entry:
   ret i16 %1
 }
 
-; CHECK: void @llvm.dbg.value(metadata{{( i16)?}} [[EMPTY_MD:![0-9]*|undef]]
+; CHECK: {{(#dbg_value\(|void @llvm\.dbg\.value\(metadata )}}{{(i16 )?}}[[EMPTY_MD:![0-9]*|undef|poison]]
 ; COM: shl/ashr gets lowered to trunc+sext
 ; COM: trunc gets lowered to bitcast/rdregion
 ; CHECK: [[CAST_V:%[A-z0-9.]*]] = bitcast i16 %a to <2 x i8>, !dbg [[FINAL_LOC:![0-9]*]]
 ; CHECK: [[READ_V:%[A-z0-9.]*]] = call i8 @llvm.genx.rdregioni.i8.v2i8.i16(<2 x i8> [[CAST_V]], {{.*}}, !dbg [[FINAL_LOC]]
 ; CHECK: [[SEXT_V:%[A-z0-9.]*]] = sext i8 [[READ_V]] to i16, !dbg [[FINAL_LOC]]
-; CHECK: void @llvm.dbg.value(metadata i16 [[SEXT_V]], metadata [[SEXT_MD:![0-9]*]], metadata !DIExpression()), !dbg [[FINAL_LOC]]
+; CHECK: {{(#dbg_value\(|call void @llvm\.dbg\.value\(metadata )}}i16 [[SEXT_V]]{{(, |, metadata )}}[[SEXT_MD:![0-9]*]]{{(, |, metadata )}}!DIExpression(){{(, |\), !dbg )}}[[FINAL_LOC]]{{\)?}}
 
 ; CHECK-NOT: [[EMPTY_MD]] = !DILocalVariable
 ; CHECK-DAG: [[SEXT_MD]] = !DILocalVariable(name: "7"

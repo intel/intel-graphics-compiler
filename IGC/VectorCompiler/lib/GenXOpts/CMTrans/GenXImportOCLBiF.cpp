@@ -519,7 +519,11 @@ bool GenXImportOCLBiF::runOnModule(Module &M) {
   {
     IGC::BiFManager::BiFManagerHandler bifLinker(M.getContext());
 
+#if LLVM_VERSION_MAJOR >= 22
+    bifLinker.SetTargetTriple(M.getTargetTriple().str());
+#else
     bifLinker.SetTargetTriple(M.getTargetTriple());
+#endif
     bifLinker.SetDataLayout(M.getDataLayout());
     bifLinker.SetCallbackLinker([](Module &M, const StringSet<> &GVS) {
       internalizeModule(M, [&GVS](const GlobalValue &GV) {

@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2023 Intel Corporation
+; Copyright (C) 2023-2026 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -61,7 +61,7 @@ define <4 x i32> @send_scalar_pred_nonconst(i1 %pred, <4 x i32> %src, i32 %arg1,
 
 ; CHECK-LABEL: @send_vector_pred
 define <4 x i32> @send_vector_pred(<4 x i32> %src, i32 %arg1, i32 %arg2, <4 x i32> %passthru) {
-  ; CHECK: %res = call <4 x i32> @llvm.genx.raw.send.v4i32.v4i1.v4i32(i32 0, <4 x i1> <i1 true, i1 true, i1 true, i1 true>, i32 %arg1, i32 %arg2, <4 x i32> %src, <4 x i32> undef)
+  ; CHECK: %res = call <4 x i32> @llvm.genx.raw.send.v4i32.v4i1.v4i32(i32 0, <4 x i1> {{(splat \(i1 true\)|<i1 true(, i1 true)*>)}}, i32 %arg1, i32 %arg2, <4 x i32> %src, <4 x i32> undef)
   %res = call <4 x i32> @llvm.genx.raw.send.v4i32.v4i1.v4i32(i32 0, <4 x i1> <i1 true, i1 true, i1 true, i1 true>, i32 %arg1, i32 %arg2, <4 x i32> %src, <4 x i32> %passthru)
   ret <4 x i32> %res
 }

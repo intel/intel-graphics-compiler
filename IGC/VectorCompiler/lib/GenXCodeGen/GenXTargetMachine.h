@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2024 Intel Corporation
+Copyright (C) 2017-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -52,7 +52,7 @@ public:
                     StringRef FS, const TargetOptions &Options,
                     IGCLLVM::optional<Reloc::Model> RM,
                     IGCLLVM::optional<CodeModel::Model> CM,
-                    CodeGenOpt::Level OL, bool Is64Bit)
+                    IGCLLVM::CodeGenOptLevel OL, bool Is64Bit)
       : GenXTargetMachine(T, TT, CPU, FS, Options, RM, CM, OL, Is64Bit,
                           std::make_unique<GenXBackendConfig>()) {}
 
@@ -60,7 +60,7 @@ public:
                     StringRef FS, const TargetOptions &Options,
                     IGCLLVM::optional<Reloc::Model> RM,
                     IGCLLVM::optional<CodeModel::Model> CM,
-                    CodeGenOpt::Level OL, bool Is64Bit,
+                    IGCLLVM::CodeGenOptLevel OL, bool Is64Bit,
                     std::unique_ptr<GenXBackendConfig> BC);
 
   ~GenXTargetMachine() override;
@@ -108,7 +108,7 @@ public:
                       StringRef FS, const TargetOptions &Options,
                       IGCLLVM::optional<Reloc::Model> RM,
                       IGCLLVM::optional<CodeModel::Model> CM,
-                      CodeGenOpt::Level OL, bool JIT)
+                      IGCLLVM::CodeGenOptLevel OL, bool JIT)
       : GenXTargetMachine32(T, TT, CPU, FS, Options, RM, CM, OL, JIT,
                             std::make_unique<GenXBackendConfig>()) {}
 
@@ -116,7 +116,7 @@ public:
                       StringRef FS, const TargetOptions &Options,
                       IGCLLVM::optional<Reloc::Model> RM,
                       IGCLLVM::optional<CodeModel::Model> CM,
-                      CodeGenOpt::Level OL, bool JIT,
+                      IGCLLVM::CodeGenOptLevel OL, bool JIT,
                       std::unique_ptr<GenXBackendConfig> BC);
 };
 
@@ -126,7 +126,7 @@ public:
                       StringRef FS, const TargetOptions &Options,
                       IGCLLVM::optional<Reloc::Model> RM,
                       IGCLLVM::optional<CodeModel::Model> CM,
-                      CodeGenOpt::Level OL, bool JIT)
+                      IGCLLVM::CodeGenOptLevel OL, bool JIT)
       : GenXTargetMachine64(T, TT, CPU, FS, Options, RM, CM, OL, JIT,
                             std::make_unique<GenXBackendConfig>()) {}
 
@@ -134,7 +134,7 @@ public:
                       StringRef FS, const TargetOptions &Options,
                       IGCLLVM::optional<Reloc::Model> RM,
                       IGCLLVM::optional<CodeModel::Model> CM,
-                      CodeGenOpt::Level OL, bool JIT,
+                      IGCLLVM::CodeGenOptLevel OL, bool JIT,
                       std::unique_ptr<GenXBackendConfig> BC);
 };
 
@@ -162,7 +162,7 @@ public:
       : BaseT(DL), BC(BC), ST(ST) {}
 
   bool shouldBuildLookupTables() { return false; }
-  unsigned getFlatAddressSpace() { return vc::AddrSpace::Generic; }
+  unsigned getFlatAddressSpace() const { return vc::AddrSpace::Generic; }
 
   InstructionCost getUserCost(const User *U, ArrayRef<const Value *> Operands,
                               TTI::TargetCostKind CostKind) {

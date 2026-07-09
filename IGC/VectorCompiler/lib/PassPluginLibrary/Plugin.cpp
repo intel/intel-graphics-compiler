@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2024-2025 Intel Corporation
+Copyright (C) 2024-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -9,7 +9,11 @@ SPDX-License-Identifier: MIT
 #include "llvmWrapper/TargetParser/Triple.h"
 #include "llvm/CodeGen/CommandFlags.h"
 #include "llvm/Passes/PassBuilder.h"
+#if LLVM_VERSION_MAJOR >= 22
+#include "llvm/Plugins/PassPlugin.h"
+#else
 #include "llvm/Passes/PassPlugin.h"
+#endif
 #include "llvm/Target/TargetOptions.h"
 
 #include "vc/GenXCodeGen/GenXLowerAggrCopies.h"
@@ -40,9 +44,13 @@ static TargetMachine *GetTargetMachine(Triple TheTriple, StringRef CPUStr,
   }
 
   return TheTarget->createTargetMachine(
+#if LLVM_VERSION_MAJOR >= 22
+      TheTriple, codegen::getCPUStr(), codegen::getFeaturesStr(),
+#else
       TheTriple.getTriple(), codegen::getCPUStr(), codegen::getFeaturesStr(),
+#endif
       Options, codegen::getExplicitRelocModel(),
-      codegen::getExplicitCodeModel(), CodeGenOpt::Default);
+      codegen::getExplicitCodeModel(), IGCLLVM::CodeGenOptLevel::Default);
 }
 
 void registerPluginPasses(PassBuilder &PB) {

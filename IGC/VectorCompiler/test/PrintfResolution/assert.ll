@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2023-2025 Intel Corporation
+; Copyright (C) 2023-2026 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -32,6 +32,6 @@ define dllexport spir_kernel void @hello_world() {
 
 ; CHECK-DAG: define internal spir_func <4 x i32> @__vc_assert_init(<5 x i32>
 ; CHECK-DAG: define internal spir_func <4 x i32> @__vc_printf_fmt(<4 x i32>
-; CHECK-DAG: define internal spir_func i32 @__vc_printf_ret(<4 x i32>
+; CHECK-DAG: define internal spir_func {{(noundef )?}}i32 @__vc_printf_ret(<4 x i32>
 
 ; CHECK: attributes #[[STR_ATTR]] = { "VCPrintfStringVariable" }

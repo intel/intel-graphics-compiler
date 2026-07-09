@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2020-2025 Intel Corporation
+; Copyright (C) 2020-2026 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -30,19 +30,19 @@
 ; CHECK-NEXT: [[Lo_r:%[^ ]+.LoSplit[0-9]*]] = call <[[ET]]> [[rgn]](<[[CT]]> [[IV2]], [[low_reg]]
 ; CHECK-NEXT: [[Hi_r:%[^ ]+.HiSplit[0-9]*]] = call <[[ET]]> [[rgn]](<[[CT]]> [[IV2]], [[high_reg]]
 
-; CHECK-NEXT: [[SHA:%[^ ]+]] = and <[[ET]]> [[Lo_r]], <i32 63, i32 63>
-; CHECK-NEXT: [[SH32:%[^ ]+]] = sub <[[ET]]> <i32 32, i32 32>, [[SHA]]
-; CHECK-NEXT: [[CND_MASK1:%[^ ]+]] = icmp uge <[[ET]]> [[SHA]], <i32 32, i32 32>
+; CHECK-NEXT: [[SHA:%[^ ]+]] = and <[[ET]]> [[Lo_r]], {{(splat \(i32 63\)|<i32 63(, i32 63)*>)}}
+; CHECK-NEXT: [[SH32:%[^ ]+]] = sub <[[ET]]> {{(splat \(i32 32\)|<i32 32(, i32 32)*>)}}, [[SHA]]
+; CHECK-NEXT: [[CND_MASK1:%[^ ]+]] = icmp uge <[[ET]]> [[SHA]], {{(splat \(i32 32\)|<i32 32(, i32 32)*>)}}
 ; CHECK-NEXT: [[CND_MASK0:%[^ ]+]] = icmp eq <[[ET]]> [[SHA]], zeroinitializer
-; CHECK-NEXT: [[MASK1:%[^ ]+]] = select <2 x i1> %1, <[[ET]]> zeroinitializer, <[[ET]]> <i32 -1, i32 -1>
-; CHECK-NEXT: [[MASK0:%[^ ]+]] = select <2 x i1> %2, <[[ET]]> zeroinitializer, <[[ET]]> <i32 -1, i32 -1>
+; CHECK-NEXT: [[MASK1:%[^ ]+]] = select <2 x i1> %1, <[[ET]]> zeroinitializer, <[[ET]]> {{(splat \(i32 -1\)|<i32 -1(, i32 -1)*>)}}
+; CHECK-NEXT: [[MASK0:%[^ ]+]] = select <2 x i1> %2, <[[ET]]> zeroinitializer, <[[ET]]> {{(splat \(i32 -1\)|<i32 -1(, i32 -1)*>)}}
 
 ; CHECK-NEXT: [[T1:%[^ ]+]] = and <[[ET]]> [[Hi_l]], [[MASK0]]
 ; CHECK-NEXT: [[TMP_H1_:%[^ ]+]] = shl <[[ET]]> [[T1]], [[SH32]]
 ; CHECK-NEXT: [[TMP_H1:%[^ ]+]] = and <[[ET]]> [[TMP_H1_]], [[MASK1]]
-; CHECK-NEXT: [[T2:%[^ ]+]] = sub <[[ET]]> [[SHA]], <i32 32, i32 32>
+; CHECK-NEXT: [[T2:%[^ ]+]] = sub <[[ET]]> [[SHA]], {{(splat \(i32 32\)|<i32 32(, i32 32)*>)}}
 ; CHECK-NEXT: [[T3:%[^ ]+]] = lshr  <[[ET]]> [[Hi_l]], [[T2]]
-; CHECK-NEXT: [[NMASK1:%[^ ]+]] = xor <[[ET]]> [[MASK1]], <i32 -1, i32 -1>
+; CHECK-NEXT: [[NMASK1:%[^ ]+]] = xor <[[ET]]> [[MASK1]], {{(splat \(i32 -1\)|<i32 -1(, i32 -1)*>)}}
 ; CHECK-NEXT: [[TMP_H2:%[^ ]+]] = and <[[ET]]> [[T3]], [[NMASK1]]
 ; CHECK-NEXT: [[T4:%[^ ]+]] = lshr <[[ET]]> [[Lo_l]], [[SHA]]
 ; CHECK-NEXT: [[TMPL:%[^ ]+]] = and <[[ET]]> [[T4]], [[MASK1]]
@@ -53,14 +53,14 @@
 ; CHECK-NEXT: [[Hi_:%[^ ]+]] = lshr <[[ET]]> [[Hi_l]], [[SHA]]
 ; CHECK-NEXT: [[Hi1:%[^ ]+]] = and <[[ET]]> [[Hi_]], [[MASK1]]
 
-; CHECK-NEXT: [[SMASK:%[^ ]+]] = ashr <[[ET]]> [[Hi_l]], <i32 31, i32 31>
+; CHECK-NEXT: [[SMASK:%[^ ]+]] = ashr <[[ET]]> [[Hi_l]], {{(splat \(i32 31\)|<i32 31(, i32 31)*>)}}
 ; CHECK-NEXT: [[T5:%[^ ]+]] = and <[[ET]]> [[SH32]], [[MASK1]]
 ; CHECK-NEXT: [[AUX_HI_:%[^ ]+]] = shl <[[ET]]> [[SMASK]], [[T5]]
 ; CHECK-NEXT: [[AUX_HI:%[^ ]+]] = and <[[ET]]> [[AUX_HI_]], [[MASK0]]
 
-; CHECK-NEXT: [[RSHA:%[^ ]+]] = sub <[[ET]]> <i32 63, i32 63>, [[SHA]]
+; CHECK-NEXT: [[RSHA:%[^ ]+]] = sub <[[ET]]> {{(splat \(i32 63\)|<i32 63(, i32 63)*>)}}, [[SHA]]
 ; CHECK-NEXT: [[T6:%[^ ]+]] = shl <[[ET]]> [[SMASK]], [[RSHA]]
-; CHECK-NEXT: [[NMASK1:%[^ ]+]] = xor <[[ET]]> [[MASK1]], <i32 -1, i32 -1>
+; CHECK-NEXT: [[NMASK1:%[^ ]+]] = xor <[[ET]]> [[MASK1]], {{(splat \(i32 -1\)|<i32 -1(, i32 -1)*>)}}
 ; CHECK-NEXT: [[AUX_LO:%[^ ]+]] = and <[[ET]]> [[T6]], [[NMASK1]]
 
 ; CHECK-NEXT: [[Lo:%[^ ]+]] = or <[[ET]]> [[Lo1]], [[AUX_LO]]

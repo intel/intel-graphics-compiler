@@ -2159,7 +2159,8 @@ static void diagnoseInlineAsm(llvm::LLVMContext &Context,
                               DiagnosticSeverity DS_type) {
   auto *CI = cast<CallInst>(Inst);
   const InlineAsm *IA = cast<InlineAsm>(IGCLLVM::getCalledValue(CI));
-  const std::string Message = '"' + IA->getAsmString() + '"' + Suffix;
+  const std::string Message =
+      '"' + std::string(IA->getAsmString()) + '"' + Suffix;
   vc::diagnose(Context, "GenXCisaBuilder", Message.c_str(), DS_type,
                vc::WarningName::Generic, Inst);
 }

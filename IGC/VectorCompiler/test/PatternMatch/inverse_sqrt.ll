@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2021-2025 Intel Corporation
+; Copyright (C) 2021-2026 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -187,7 +187,7 @@ define <2 x float> @test_sqrt_inv_constant_vector() {
 
 ; CHECK-LABEL: @test_sqrt_inv_constant_vector_zero
 define <2 x float> @test_sqrt_inv_constant_vector_zero() {
-; CHECK: ret <2 x float> <float 0x7FF0000000000000, float 0x7FF0000000000000>
+; CHECK: ret <2 x float> {{(splat \(float 0x7FF0000000000000\)|<float 0x7FF0000000000000(, float 0x7FF0000000000000)*>)}}
   %sqrt = call <2 x float> @llvm.genx.sqrt.v2f32(<2 x float> zeroinitializer)
   %inv = call <2 x float> @llvm.genx.inv.v2f32(<2 x float> %sqrt)
   ret <2 x float> %inv

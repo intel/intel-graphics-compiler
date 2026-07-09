@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2022-2025 Intel Corporation
+; Copyright (C) 2022-2026 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -80,8 +80,8 @@ entry:
 ; CHECK-LABEL: loop
 loop:
   %i = phi i32 [ 0, %entry ], [ %i.next, %loop ]
-; CHECK-TYPED-PTRS: [[STACK:[^ ]+]] = tail call i8* @llvm.stacksave()
-; CHECK-OPAQUE-PTRS: [[STACK:[^ ]+]] = tail call ptr @llvm.stacksave()
+; CHECK-TYPED-PTRS: [[STACK:[^ ]+]] = tail call i8* @llvm.stacksave{{(\.p0)?}}()
+; CHECK-OPAQUE-PTRS: [[STACK:[^ ]+]] = tail call ptr @llvm.stacksave{{(\.p0)?}}()
   %stack = tail call i8* @llvm.stacksave()
   %i.next = add i32 %i, 1
 ; CHECK:       [[A4_0:[^ ]+]] = call <1 x i64> @llvm.genx.read.predef.reg.v1i64.i64(i32 10, i64 undef)
@@ -127,8 +127,8 @@ loop:
 ; CHECK-OPAQUE-PTRS-NEXT: [[A5:[^ ]+]] = inttoptr i64 [[A5_13]] to ptr
   %a5 = alloca %struct, align 32
   %cond = icmp slt i32 %i.next, %n3
-; CHECK-TYPED-PTRS: tail call void @llvm.stackrestore(i8* [[STACK]])
-; CHECK-OPAQUE-PTRS: tail call void @llvm.stackrestore(ptr [[STACK]])
+; CHECK-TYPED-PTRS: tail call void @llvm.stackrestore{{(\.p0)?}}(i8* [[STACK]])
+; CHECK-OPAQUE-PTRS: tail call void @llvm.stackrestore{{(\.p0)?}}(ptr [[STACK]])
   tail call void @llvm.stackrestore(i8* %stack)
   br i1 %cond, label %loop, label %exit
 

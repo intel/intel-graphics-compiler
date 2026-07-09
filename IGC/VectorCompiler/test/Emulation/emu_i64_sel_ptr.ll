@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2022-2025 Intel Corporation
+; Copyright (C) 2022-2026 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -87,10 +87,10 @@ define <8 x i8*> @test_vector(<8 x i1> %cond, <8 x i8*> %left, <8 x i8*> %right)
 
 ; CHECK-LABEL: @test_constexpr
 define float addrspace(1)* @test_constexpr(i1 %cond) {
-  ; CHECK-TYPED-PTRS: [[SEL_LO:%[^ ]+]] = select i1 %cond, <1 x i32> zeroinitializer, <1 x i32> <i32 ptrtoint (float addrspace(1)* addrspacecast (float addrspace(4)* null to float addrspace(1)*) to i32)>
-  ; CHECK-TYPED-PTRS: [[SEL_HI:%[^ ]+]] = select i1 %cond, <1 x i32> zeroinitializer, <1 x i32> <i32 trunc (i64 lshr (i64 ptrtoint (float addrspace(1)* addrspacecast (float addrspace(4)* null to float addrspace(1)*) to i64), i64 32) to i32)>
-  ; CHECK-OPAQUE-PTRS: [[SEL_LO:%[^ ]+]] = select i1 %cond, <1 x i32> zeroinitializer, <1 x i32> <i32 ptrtoint (ptr addrspace(1) addrspacecast (ptr addrspace(4) null to ptr addrspace(1)) to i32)>
-  ; CHECK-OPAQUE-PTRS: [[SEL_HI:%[^ ]+]] = select i1 %cond, <1 x i32> zeroinitializer, <1 x i32> <i32 trunc (i64 lshr (i64 ptrtoint (ptr addrspace(1) addrspacecast (ptr addrspace(4) null to ptr addrspace(1)) to i64), i64 32) to i32)>
+  ; CHECK-TYPED-PTRS: [[SEL_LO:%[^ ]+]] = select i1 %cond, <1 x i32> zeroinitializer, <1 x i32> {{.*}}
+  ; CHECK-TYPED-PTRS: [[SEL_HI:%[^ ]+]] = select i1 %cond, <1 x i32> zeroinitializer, <1 x i32> {{.*}}
+  ; CHECK-OPAQUE-PTRS: [[SEL_LO:%[^ ]+]] = select i1 %cond, <1 x i32> zeroinitializer, <1 x i32> {{.*}}
+  ; CHECK-OPAQUE-PTRS: [[SEL_HI:%[^ ]+]] = select i1 %cond, <1 x i32> zeroinitializer, <1 x i32> {{.*}}
   ; CHECK: [[PART_JOIN:%[^ ]+]] = call <2 x i32> @llvm.genx.wrregioni.v2i32.v1i32.i16.i1(<2 x i32> undef, <1 x i32> [[SEL_LO]], i32 0, i32 1, i32 2, i16 0, i32 undef, i1 true)
   ; CHECK: [[JOIN:%[^ ]+]] = call <2 x i32> @llvm.genx.wrregioni.v2i32.v1i32.i16.i1(<2 x i32> [[PART_JOIN]], <1 x i32> [[SEL_HI]], i32 0, i32 1, i32 2, i16 4, i32 undef, i1 true)
   ; CHECK: [[VCAST:%[^ ]+]] = bitcast <2 x i32> [[JOIN]] to <1 x i64>

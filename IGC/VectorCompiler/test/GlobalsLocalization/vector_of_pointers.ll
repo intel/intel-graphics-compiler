@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2021-2025 Intel Corporation
+; Copyright (C) 2021-2026 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -34,11 +34,11 @@ define dllexport void @simple_case(<8 x i64> %offsets) {
 ; CHECK-TYPED-PTRS-NEXT: %bc = bitcast <8 x i32*> %gep to <8 x float*>
 ; CHECK-OPAQUE-PTRS-NEXT: %bc = bitcast <8 x ptr> %gep to <8 x ptr>
   %val = call <8 x float> @llvm.masked.gather.v8f32.v8p0f32(<8 x float*> %bc, i32 4, <8 x i1> <i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true>, <8 x float> undef)
-; CHECK-TYPED-PTRS-NEXT: %val = call <8 x float> @llvm.masked.gather.v8f32.v8p0f32(<8 x float*> %bc, i32 4, <8 x i1> <i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true>, <8 x float> undef)
-; CHECK-OPAQUE-PTRS-NEXT: %val = call <8 x float> @llvm.masked.gather.v8f32.v8p0(<8 x ptr> %bc, i32 4, <8 x i1> <i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true>, <8 x float> undef)
+; CHECK-TYPED-PTRS-NEXT: %val = call <8 x float> @llvm.masked.gather.v8f32.v8p0f32(<8 x float*> {{(align 4 )?}}%bc{{(, i32 4)?}}, <8 x i1> {{(splat \(i1 true\)|<i1 true(, i1 true)*>)}}, <8 x float> undef)
+; CHECK-OPAQUE-PTRS-NEXT: %val = call <8 x float> @llvm.masked.gather.v8f32.v8p0(<8 x ptr> {{(align 4 )?}}%bc{{(, i32 4)?}}, <8 x i1> {{(splat \(i1 true\)|<i1 true(, i1 true)*>)}}, <8 x float> undef)
   call void @llvm.masked.scatter.v8f32.v8p0f32(<8 x float> %val, <8 x float*> %bc, i32 4, <8 x i1> <i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true>)
-; CHECK-TYPED-PTRS-NEXT: call void @llvm.masked.scatter.v8f32.v8p0f32(<8 x float> %val, <8 x float*> %bc, i32 4, <8 x i1> <i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true>)
-; CHECK-OPAQUE-PTRS-NEXT: call void @llvm.masked.scatter.v8f32.v8p0(<8 x float> %val, <8 x ptr> %bc, i32 4, <8 x i1> <i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true>)
+; CHECK-TYPED-PTRS-NEXT: call void @llvm.masked.scatter.v8f32.v8p0f32(<8 x float> %val, <8 x float*> {{(align 4 )?}}%bc{{(, i32 4)?}}, <8 x i1> {{(splat \(i1 true\)|<i1 true(, i1 true)*>)}})
+; CHECK-OPAQUE-PTRS-NEXT: call void @llvm.masked.scatter.v8f32.v8p0(<8 x float> %val, <8 x ptr> {{(align 4 )?}}%bc{{(, i32 4)?}}, <8 x i1> {{(splat \(i1 true\)|<i1 true(, i1 true)*>)}})
   %user = fadd <8 x float> %val, zeroinitializer
 ; CHECK-NEXT: %user = fadd <8 x float> %val, zeroinitializer
 ; CHECK-NOT: @table

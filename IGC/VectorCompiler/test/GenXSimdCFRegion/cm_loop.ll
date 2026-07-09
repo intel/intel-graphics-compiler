@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2023-2025 Intel Corporation
+; Copyright (C) 2023-2026 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -27,11 +27,7 @@ define dllexport spir_kernel void @vadd(i8 addrspace(1)* nocapture readnone %ibu
 entry:
 ; COM: Initialize execution mask by allone
 ; CHECK: %[[EM:EM.*]] = alloca
-; CHECK-DAG: store <32 x i1> <
-; CHECK-SAME: i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true,
-; CHECK-SAME: i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true,
-; CHECK-SAME: i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true,
-; CHECK-SAME: i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true, i1 true>,
+; CHECK-DAG: store <32 x i1> {{(splat \(i1 true\)|<i1 true(, i1 true)*>)}},
 ; CHECK-TYPED-PTRS-SAME: <32 x i1>* %[[EM]]
 ; CHECK-OPAQUE-PTRS-SAME: ptr %[[EM]]
   br label %while.cond

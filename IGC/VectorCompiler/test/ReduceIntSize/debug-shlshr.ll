@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2021-2025 Intel Corporation
+; Copyright (C) 2021-2026 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -23,10 +23,10 @@ entry:
   ret void
 }
 
-; CHECK: void @llvm.dbg.value(metadata{{( <4 x i32>)?}} [[EMPTY_MD:![0-9]*|undef]]
+; CHECK: {{(#dbg_value\(|void @llvm\.dbg\.value\(metadata )}}{{(<4 x i32> )?}}[[EMPTY_MD:![0-9]*|undef|poison]]
 ; CHECK: [[TRUNC_V:%[A-z0-9.]*]] = trunc <4 x i32> %a to <4 x i16>{{.*}} !dbg [[TRUNC_LOC:![0-9]*]]
 ; CHECK: [[EXT_V:%[A-z0-9.]*]] = zext <4 x i16> [[TRUNC_V]] {{.*}}, !dbg [[TRUNC_LOC]]
-; CHECK: void @llvm.dbg.value(metadata <4 x i32> [[EXT_V]], metadata [[EXT_MD:![0-9]*]], metadata !DIExpression()), !dbg [[TRUNC_LOC]]
+; CHECK: {{(#dbg_value\(|call void @llvm\.dbg\.value\(metadata )}}<4 x i32> [[EXT_V]]{{(, |, metadata )}}[[EXT_MD:![0-9]*]]{{(, |, metadata )}}!DIExpression(){{(, |\), !dbg )}}[[TRUNC_LOC]]{{\)?}}
 
 ; CHECK-NOT: [[EMPTY_MD]] = !DILocalVariable
 ; CHECK-DAG: [[EXT_MD]] = !DILocalVariable(name:

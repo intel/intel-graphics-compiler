@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2021 Intel Corporation
+; Copyright (C) 2021-2026 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -41,8 +41,8 @@ define internal spir_func void @test_fshl1(<2 x i32> %op1, <2 x i32> %op2) {
 
 ; CHECK-LABEL: test_fshl2
 define internal spir_func void @test_fshl2(<2 x i32> %op1, <2 x i32> %op2, <2 x i32> %op3) {
-; CHECK-DAG: %shiftamnt = and <2 x i32> %op3, <i32 31, i32 31>
-; CHECK-DAG: %complementshiftamnt = sub <2 x i32> <i32 32, i32 32>, %shiftamnt
+; CHECK-DAG: %shiftamnt = and <2 x i32> %op3, {{(splat \(i32 31\)|<i32 31(, i32 31)*>)}}
+; CHECK-DAG: %complementshiftamnt = sub <2 x i32> {{(splat \(i32 32\)|<i32 32(, i32 32)*>)}}, %shiftamnt
 ; CHECK-DAG: %fstpart = shl <2 x i32> %op1, %shiftamnt
 ; CHECK-DAG: %sndpart = lshr <2 x i32> %op2, %complementshiftamnt
 ; CHECK-DAG: %funnelshift = or <2 x i32> %fstpart, %sndpart
@@ -61,8 +61,8 @@ define internal spir_func void @test_fshr1(<2 x i32> %op1, <2 x i32> %op2) {
 
 ; CHECK-LABEL: test_fshr2
 define internal spir_func void @test_fshr2(<2 x i32> %op1, <2 x i32> %op2, <2 x i32> %op3) {
-; CHECK-DAG: %shiftamnt = and <2 x i32> %op3, <i32 31, i32 31>
-; CHECK-DAG: %complementshiftamnt = sub <2 x i32> <i32 32, i32 32>, %shiftamnt
+; CHECK-DAG: %shiftamnt = and <2 x i32> %op3, {{(splat \(i32 31\)|<i32 31(, i32 31)*>)}}
+; CHECK-DAG: %complementshiftamnt = sub <2 x i32> {{(splat \(i32 32\)|<i32 32(, i32 32)*>)}}, %shiftamnt
 ; CHECK-DAG: %fstpart = shl <2 x i32> %op1, %complementshiftamnt
 ; CHECK-DAG: %sndpart = lshr <2 x i32> %op2, %shiftamnt
 ; CHECK-DAG: %funnelshift = or <2 x i32> %fstpart, %sndpart
@@ -72,8 +72,8 @@ define internal spir_func void @test_fshr2(<2 x i32> %op1, <2 x i32> %op2, <2 x 
 
 ; CHECK-LABEL: test_long
 define internal spir_func void @test_long(<2 x i64> %op1, <2 x i64> %op2) {
-; CHECK-DAG: %shiftamnt = and <2 x i64> %op2, <i64 63, i64 63>
-; CHECK-DAG: %complementshiftamnt = sub <2 x i64> <i64 64, i64 64>, %shiftamnt
+; CHECK-DAG: %shiftamnt = and <2 x i64> %op2, {{(splat \(i64 63\)|<i64 63(, i64 63)*>)}}
+; CHECK-DAG: %complementshiftamnt = sub <2 x i64> {{(splat \(i64 64\)|<i64 64(, i64 64)*>)}}, %shiftamnt
 ; CHECK-DAG: %fstpart = shl <2 x i64> %op1, %shiftamnt
 ; CHECK-DAG: %sndpart = lshr <2 x i64> %op1, %complementshiftamnt
 ; CHECK-DAG: %funnelshift = or <2 x i64> %fstpart, %sndpart

@@ -287,6 +287,11 @@ public:
   bool isInternalIntrinsicSupported(unsigned ID) const;
 
 public:
+  // GenX does not use the target-independent code generator, so it has no
+  // register information. LLVM 22 made getRegisterInfo() a pure virtual, so
+  // provide a trivial override.
+  const TargetRegisterInfo *getRegisterInfo() const override { return nullptr; }
+
   /// * translateMediaWalker - true if translate media walker APIs
   bool translateMediaWalker() const { return !HasMediaWalker; }
 

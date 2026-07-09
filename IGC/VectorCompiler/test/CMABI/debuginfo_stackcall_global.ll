@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2021-2025 Intel Corporation
+; Copyright (C) 2021-2026 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -24,8 +24,8 @@ target triple = "spir64-unknown-unknown"
 ; CHECK_S1-LABEL: @S1
 ; CHECK_S1-SAME: (i32 %0, i32 %x.in)
 ; CHECK_S1: [[S1_ALLOCA:%[^ ]+]] = alloca i32
-; CHECK_S1-TYPED-PTRS: call void @llvm.dbg.declare(metadata i32* [[S1_ALLOCA]], metadata ![[#S1VAR:]], metadata !DIExpression()), !dbg ![[#S1LOC:]]
-; CHECK_S1-OPAQUE-PTRS: call void @llvm.dbg.declare(metadata ptr [[S1_ALLOCA]], metadata ![[#S1VAR:]], metadata !DIExpression()), !dbg ![[#S1LOC:]]
+; CHECK_S1-TYPED-PTRS: {{(#dbg_declare\(|call void @llvm\.dbg\.declare\(metadata )}}i32* [[S1_ALLOCA]]{{(, |, metadata )}}![[#S1VAR:]]{{(, |, metadata )}}!DIExpression(){{(, |\), !dbg )}}![[#S1LOC:]]{{\)?}}
+; CHECK_S1-OPAQUE-PTRS: {{(#dbg_declare\(|call void @llvm\.dbg\.declare\(metadata )}}ptr [[S1_ALLOCA]]{{(, |, metadata )}}![[#S1VAR:]]{{(, |, metadata )}}!DIExpression(){{(, |\), !dbg )}}![[#S1LOC:]]{{\)?}}
 ; CHECK_S1-DAG: ![[#S1_SP:]] = distinct !DISubprogram(name: "S1",
 ; CHECK_S1-DAG: ![[#S1VAR]] = !DILocalVariable(name: "x", scope: ![[#S1_SP]], file: ![[#]], type: ![[#S1TYPE:]], flags: DIFlagArtificial)
 ; CHECK_S1-DAG: ![[#S1TYPE]] = !DIBasicType(name: "unsigned int", size: 32, encoding: DW_ATE_unsigned)
@@ -39,8 +39,8 @@ define internal spir_func <8 x i32> @S1(i32 %0) #1 !dbg !17 {
 ; CHECK_K1-LABEL: @K1
 ; CHECK_K1-SAME: (i32 %0, i64 %privBase)
 ; CHECK_K1: [[K1_ALLOCA:%[^ ]+]] = alloca i32
-; CHECK_K1-TYPED-PTRS: call void @llvm.dbg.declare(metadata i32* [[K1_ALLOCA]], metadata ![[#K1VAR:]], metadata !DIExpression()), !dbg ![[#K1LOC:]]
-; CHECK_K1-OPAQUE-PTRS: call void @llvm.dbg.declare(metadata ptr [[K1_ALLOCA]], metadata ![[#K1VAR:]], metadata !DIExpression()), !dbg ![[#K1LOC:]]
+; CHECK_K1-TYPED-PTRS: {{(#dbg_declare\(|call void @llvm\.dbg\.declare\(metadata )}}i32* [[K1_ALLOCA]]{{(, |, metadata )}}![[#K1VAR:]]{{(, |, metadata )}}!DIExpression(){{(, |\), !dbg )}}![[#K1LOC:]]{{\)?}}
+; CHECK_K1-OPAQUE-PTRS: {{(#dbg_declare\(|call void @llvm\.dbg\.declare\(metadata )}}ptr [[K1_ALLOCA]]{{(, |, metadata )}}![[#K1VAR:]]{{(, |, metadata )}}!DIExpression(){{(, |\), !dbg )}}![[#K1LOC:]]{{\)?}}
 ; CHECK_K1-DAG: ![[#K1_SP:]] = distinct !DISubprogram(name: "K1",
 ; CHECK_K1-DAG: ![[#K1VAR]] = !DILocalVariable(name: "x", scope: ![[#K1_SP]], file: ![[#]], type: ![[#K1TYPE:]], flags: DIFlagArtificial)
 ; CHECK_K1-DAG: ![[#K1TYPE]] = !DIBasicType(name: "unsigned int", size: 32, encoding: DW_ATE_unsigned)

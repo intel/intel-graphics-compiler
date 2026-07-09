@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2021-2025 Intel Corporation
+; Copyright (C) 2021-2026 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -31,7 +31,7 @@ define internal spir_func void @lzd32(i32 %op) #0 {
 ; CHECK-NEXT: [[LZD64_LO:%[^ ]+]] = call <[[ET]]> @llvm.genx.lzd.v1i32(<[[ET]]> [[LO_ARG]])
 ; CHECK-NEXT: [[LZD64_HI:%[^ ]+]] = call <[[ET]]> @llvm.genx.lzd.v1i32(<[[ET]]> [[HI_ARG]])
 ; CHECK-NEXT: [[FLAG:%[^ ]+]] = icmp eq <[[ET]]> [[HI_ARG]], zeroinitializer
-; CHECK-NEXT: [[LORES:%[^ ]+]] = add <[[ET]]> [[LZD64_LO]], <i32 32>
+; CHECK-NEXT: [[LORES:%[^ ]+]] = add <[[ET]]> [[LZD64_LO]], {{(splat \(i32 32\)|<i32 32(, i32 32)*>)}}
 ; CHECK-NEXT: [[RES:%[^ ]+]] = select <1 x i1> [[FLAG]], <[[ET]]> [[LORES]], <[[ET]]> [[LZD64_HI]]
 ; CHECK-NEXT: [[RES64:%[^ ]+]] = zext <1 x i32> [[RES]] to <1 x i64>
 ; CHECK-NEXT: [[RES_CAST:%[^ ]+]] = bitcast <1 x i64> [[RES64]] to i64
@@ -48,7 +48,7 @@ define internal spir_func void @lzd64(i64 %op) #0 {
 ; CHECK-NEXT: [[LZD64_LO:%[^ ]+]] = call <[[ET]]> @llvm.genx.lzd.v2i32(<[[ET]]> [[LO_ARG]])
 ; CHECK-NEXT: [[LZD64_HI:%[^ ]+]] = call <[[ET]]> @llvm.genx.lzd.v2i32(<[[ET]]> [[HI_ARG]])
 ; CHECK-NEXT: [[FLAG:%[^ ]+]] = icmp eq <[[ET]]> [[HI_ARG]], zeroinitializer
-; CHECK-NEXT: [[LORES:%[^ ]+]] = add <[[ET]]> [[LZD64_LO]], <i32 32, i32 32>
+; CHECK-NEXT: [[LORES:%[^ ]+]] = add <[[ET]]> [[LZD64_LO]], {{(splat \(i32 32\)|<i32 32(, i32 32)*>)}}
 ; CHECK-NEXT: [[RES:%[^ ]+]] = select <2 x i1> [[FLAG]], <[[ET]]> [[LORES]], <[[ET]]> [[LZD64_HI]]
 ; CHECK-NEXT: [[RES64:%[^ ]+]] = zext <2 x i32> [[RES]] to <2 x i64>
 ; CHECK-NEXT: ret void

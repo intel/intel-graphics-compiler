@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2023 Intel Corporation
+; Copyright (C) 2023-2026 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -22,7 +22,7 @@ define spir_kernel void @test_analyze_shift_within_few_ULPs() {
 ; CHECK-LABEL: @test_analyze_shift_splat_value(
 ; CHECK-NEXT: [[CONSTANT2:%[A-Za-z0-9_.]+]] = call <8 x float> @llvm.genx.constantf.v8f32(<8 x float> <float 1.000000e+00, float 0.000000e+00, float 0.000000e+00, float 0.000000e+00, float 1.000000e+00, float 0.000000e+00, float 0.000000e+00, float 0.000000e+00>)
 ; CHECK-NEXT: [[VAL4:%[A-Za-z0-9_.]+]] = call <16 x float> @llvm.genx.wrregionf.v16f32.v8f32.i16.i1(<16 x float> undef, <8 x float> [[CONSTANT2]], i32 8, i32 8, i32 1, i16 0, i32 undef, i1 true)
-; CHECK-NEXT: [[VAL5:%[A-Za-z0-9_.]+]] = fadd <8 x float> [[CONSTANT2]], <float 1.000000e+00, float 1.000000e+00, float 1.000000e+00, float 1.000000e+00, float 1.000000e+00, float 1.000000e+00, float 1.000000e+00, float 1.000000e+00>
+; CHECK-NEXT: [[VAL5:%[A-Za-z0-9_.]+]] = fadd <8 x float> [[CONSTANT2]], {{(splat \(float 1\.000000e\+00\)|<float 1\.000000e\+00(, float 1\.000000e\+00)*>)}}
 ; CHECK-NEXT: [[VAL6:%[A-Za-z0-9_.]+]] = call <16 x float> @llvm.genx.wrregionf.v16f32.v8f32.i16.i1(<16 x float> [[VAL4]], <8 x float> [[VAL5]], i32 8, i32 8, i32 1, i16 32, i32 undef, i1 true)
 ; CHECK-NEXT: tail call <16 x float> @llvm.genx.wrregionf.v16f32.v16f32.i16.i1(<16 x float> undef, <16 x float> [[VAL6]], i32 0, i32 0, i32 1, i16 0, i32 0, i1 true)
 define spir_kernel void @test_analyze_shift_splat_value() {
