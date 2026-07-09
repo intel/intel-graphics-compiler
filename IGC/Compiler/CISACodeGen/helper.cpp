@@ -3240,9 +3240,10 @@ ExtractBoundsResult ExtractBounds(llvm::Use &U, llvm::AssumptionCache &AC, llvm:
       U.set(Operand);
 
       if (MaybeLaunder->user_empty()) {
-        CRFromErasedLaunder = llvm::computeConstantRange(MaybeLaunder, /*ForSigned=*/false,
-                                                         /*UseInstrInfo=*/true, &AC, CtxI,
-                                                         /*DT=*/nullptr, /*Depth=*/0);
+        CRFromErasedLaunder =
+            IGCLLVM::computeConstantRange(MaybeLaunder, /*ForSigned=*/false, MaybeLaunder->getModule()->getDataLayout(),
+                                          /*UseInstrInfo=*/true, &AC, CtxI,
+                                          /*DT=*/nullptr, /*Depth=*/0);
         MaybeLaunder->eraseFromParent();
         V = nullptr;
       }
@@ -3255,16 +3256,17 @@ ExtractBoundsResult ExtractBounds(llvm::Use &U, llvm::AssumptionCache &AC, llvm:
 
   const llvm::DataLayout &DL = CtxI->getModule()->getDataLayout();
 
-  llvm::ConstantRange CRFromOperand = llvm::computeConstantRange(
-      Result.SourceValue, /*ForSigned=*/false, /*UseInstrInfo=*/true, &AC, CtxI, /*DT=*/nullptr, /*Depth=*/0);
+  llvm::ConstantRange CRFromOperand = IGCLLVM::computeConstantRange(
+      Result.SourceValue, /*ForSigned=*/false, DL, /*UseInstrInfo=*/true, &AC, CtxI, /*DT=*/nullptr, /*Depth=*/0);
   llvm::KnownBits KB = IGCLLVM::computeKnownBits(Result.SourceValue, DL, &AC, CtxI);
   llvm::ConstantRange Combined = CRFromOperand.intersectWith(llvm::ConstantRange::fromKnownBits(KB, false));
 
   if (CRFromErasedLaunder.has_value()) {
     Combined = Combined.intersectWith(*CRFromErasedLaunder);
   } else if (V && V != Result.SourceValue) {
-    llvm::ConstantRange CRFromV = llvm::computeConstantRange(V, /*ForSigned=*/false, /*UseInstrInfo=*/true, &AC, CtxI,
-                                                             /*DT=*/nullptr, /*Depth=*/0);
+    llvm::ConstantRange CRFromV =
+        IGCLLVM::computeConstantRange(V, /*ForSigned=*/false, DL, /*UseInstrInfo=*/true, &AC, CtxI,
+                                      /*DT=*/nullptr, /*Depth=*/0);
     Combined = Combined.intersectWith(CRFromV);
   }
 
