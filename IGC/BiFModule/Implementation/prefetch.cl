@@ -1020,6 +1020,9 @@ void __attribute__((overloadable)) OPTNONE __spirv_ocl_prefetch( global half16* 
 #endif // cl_intel_pvc_lsc_validation
 }
 
+// As of LLVM22 and up all overloads above this comment are obsolete.
+// When the appropriate change is backported from the translator or
+// support for LLVM versions lower than 22 is dropped they can be removed.
 
 #if defined(cl_khr_fp64)
 void __attribute__((overloadable)) OPTNONE __spirv_ocl_prefetch( global double* p, long num_elements)
@@ -1083,3 +1086,431 @@ void __attribute__((overloadable)) OPTNONE __spirv_ocl_prefetch( global double16
 }
 #endif // defined(cl_khr_fp64)
 
+void __attribute__((overloadable)) OPTNONE __spirv_ocl_prefetch( const global char* p, size_t num_elements)
+{
+#ifdef cl_intel_pvc_lsc_validation
+    if (BIF_FLAG_CTRL_GET(UseLSC))
+    {
+        LSC_PREFETCH((global char*)p, num_elements);
+    }
+#endif // cl_intel_pvc_lsc_validation
+}
+
+void __attribute__((overloadable)) OPTNONE __spirv_ocl_prefetch( const global char2* p, size_t num_elements)
+{
+#ifdef cl_intel_pvc_lsc_validation
+    if (BIF_FLAG_CTRL_GET(UseLSC))
+    {
+        LSC_PREFETCH((global char2*)p, num_elements);
+    }
+#endif // cl_intel_pvc_lsc_validation
+}
+
+void __attribute__((overloadable)) OPTNONE __spirv_ocl_prefetch( const global char3* p, size_t num_elements)
+{
+#ifdef cl_intel_pvc_lsc_validation
+    if (BIF_FLAG_CTRL_GET(UseLSC))
+    {
+        LSC_PREFETCH((global char3*)p, 3 * num_elements);
+    }
+#endif // cl_intel_pvc_lsc_validation
+}
+
+void __attribute__((overloadable)) OPTNONE __spirv_ocl_prefetch( const global char4* p, size_t num_elements)
+{
+#ifdef cl_intel_pvc_lsc_validation
+    if (BIF_FLAG_CTRL_GET(UseLSC))
+    {
+        LSC_PREFETCH((global char4*)p, num_elements);
+    }
+#endif // cl_intel_pvc_lsc_validation
+}
+
+void __attribute__((overloadable)) OPTNONE __spirv_ocl_prefetch( const global char8* p, size_t num_elements)
+{
+#ifdef cl_intel_pvc_lsc_validation
+    if (BIF_FLAG_CTRL_GET(UseLSC))
+    {
+        LSC_PREFETCH((global char8*)p, num_elements);
+    }
+#endif // cl_intel_pvc_lsc_validation
+}
+
+void __attribute__((overloadable)) OPTNONE __spirv_ocl_prefetch( const global char16* p, size_t num_elements)
+{
+#ifdef cl_intel_pvc_lsc_validation
+    if (BIF_FLAG_CTRL_GET(UseLSC))
+    {
+        LSC_PREFETCH((global char16*)p, num_elements);
+    }
+#endif // cl_intel_pvc_lsc_validation
+}
+
+
+void __attribute__((overloadable)) OPTNONE __spirv_ocl_prefetch( const global short* p, size_t num_elements)
+{
+#ifdef cl_intel_pvc_lsc_validation
+    if (BIF_FLAG_CTRL_GET(UseLSC))
+    {
+        LSC_PREFETCH((global short*)p, num_elements);
+    }
+#endif // cl_intel_pvc_lsc_validation
+}
+
+void __attribute__((overloadable)) OPTNONE __spirv_ocl_prefetch( const global short2* p, size_t num_elements)
+{
+#ifdef cl_intel_pvc_lsc_validation
+    if (BIF_FLAG_CTRL_GET(UseLSC))
+    {
+        LSC_PREFETCH((global short2*)p, num_elements);
+    }
+#endif // cl_intel_pvc_lsc_validation
+}
+
+void __attribute__((overloadable)) OPTNONE __spirv_ocl_prefetch( const global short3* p, size_t num_elements)
+{
+#ifdef cl_intel_pvc_lsc_validation
+    if (BIF_FLAG_CTRL_GET(UseLSC))
+    {
+        LSC_PREFETCH((global short3*)p, 3 * num_elements);
+    }
+#endif // cl_intel_pvc_lsc_validation
+}
+
+void __attribute__((overloadable)) OPTNONE __spirv_ocl_prefetch( const global short4* p, size_t num_elements)
+{
+#ifdef cl_intel_pvc_lsc_validation
+    if (BIF_FLAG_CTRL_GET(UseLSC))
+    {
+        LSC_PREFETCH((global short4*)p, num_elements);
+    }
+#endif // cl_intel_pvc_lsc_validation
+}
+
+void __attribute__((overloadable)) OPTNONE __spirv_ocl_prefetch( const global short8* p, size_t num_elements)
+{
+#ifdef cl_intel_pvc_lsc_validation
+    if (BIF_FLAG_CTRL_GET(UseLSC))
+    {
+        LSC_PREFETCH((global short8*)p, num_elements);
+    }
+#endif // cl_intel_pvc_lsc_validation
+}
+
+void __attribute__((overloadable)) OPTNONE __spirv_ocl_prefetch( const global short16* p, size_t num_elements)
+{
+#ifdef cl_intel_pvc_lsc_validation
+    if (BIF_FLAG_CTRL_GET(UseLSC))
+    {
+        LSC_PREFETCH((global short16*)p, num_elements);
+    }
+#endif // cl_intel_pvc_lsc_validation
+}
+
+
+void __attribute__((overloadable)) OPTNONE __spirv_ocl_prefetch( const global int* p, size_t num_elements)
+{
+#ifdef cl_intel_pvc_lsc_validation
+    if (BIF_FLAG_CTRL_GET(UseLSC))
+    {
+        LSC_PREFETCH((global int*)p, num_elements);
+    }
+#endif // cl_intel_pvc_lsc_validation
+}
+
+void __attribute__((overloadable)) OPTNONE __spirv_ocl_prefetch( const global int2* p, size_t num_elements)
+{
+#ifdef cl_intel_pvc_lsc_validation
+    if (BIF_FLAG_CTRL_GET(UseLSC))
+    {
+        LSC_PREFETCH((global int2*)p, num_elements);
+    }
+#endif // cl_intel_pvc_lsc_validation
+}
+
+void __attribute__((overloadable)) OPTNONE __spirv_ocl_prefetch( const global int3* p, size_t num_elements)
+{
+#ifdef cl_intel_pvc_lsc_validation
+    if (BIF_FLAG_CTRL_GET(UseLSC))
+    {
+        LSC_PREFETCH((global int3*)p, num_elements);
+    }
+#endif // cl_intel_pvc_lsc_validation
+}
+
+void __attribute__((overloadable)) OPTNONE __spirv_ocl_prefetch( const global int4* p, size_t num_elements)
+{
+#ifdef cl_intel_pvc_lsc_validation
+    if (BIF_FLAG_CTRL_GET(UseLSC))
+    {
+        LSC_PREFETCH((global int4*)p, num_elements);
+    }
+#endif // cl_intel_pvc_lsc_validation
+}
+
+void __attribute__((overloadable)) OPTNONE __spirv_ocl_prefetch( const global int8* p, size_t num_elements)
+{
+#ifdef cl_intel_pvc_lsc_validation
+    if (BIF_FLAG_CTRL_GET(UseLSC))
+    {
+        LSC_PREFETCH((global int8*)p, num_elements);
+    }
+#endif // cl_intel_pvc_lsc_validation
+}
+
+void __attribute__((overloadable)) OPTNONE __spirv_ocl_prefetch( const global int16* p, size_t num_elements)
+{
+#ifdef cl_intel_pvc_lsc_validation
+    if (BIF_FLAG_CTRL_GET(UseLSC))
+    {
+        LSC_PREFETCH((global int16*)p, 2 * num_elements);
+    }
+#endif // cl_intel_pvc_lsc_validation
+}
+
+
+void __attribute__((overloadable)) OPTNONE __spirv_ocl_prefetch( const global long* p, size_t num_elements)
+{
+#ifdef cl_intel_pvc_lsc_validation
+    if (BIF_FLAG_CTRL_GET(UseLSC))
+    {
+        LSC_PREFETCH((global long*)p, num_elements);
+    }
+#endif // cl_intel_pvc_lsc_validation
+}
+
+void __attribute__((overloadable)) OPTNONE __spirv_ocl_prefetch( const global long2* p, size_t num_elements)
+{
+#ifdef cl_intel_pvc_lsc_validation
+    if (BIF_FLAG_CTRL_GET(UseLSC))
+    {
+        LSC_PREFETCH((global long2*)p, num_elements);
+    }
+#endif // cl_intel_pvc_lsc_validation
+}
+
+void __attribute__((overloadable)) OPTNONE __spirv_ocl_prefetch( const global long3* p, size_t num_elements)
+{
+#ifdef cl_intel_pvc_lsc_validation
+    if (BIF_FLAG_CTRL_GET(UseLSC))
+    {
+        LSC_PREFETCH((global long3*)p, num_elements);
+    }
+#endif // cl_intel_pvc_lsc_validation
+}
+
+void __attribute__((overloadable)) OPTNONE __spirv_ocl_prefetch( const global long4* p, size_t num_elements)
+{
+#ifdef cl_intel_pvc_lsc_validation
+    if (BIF_FLAG_CTRL_GET(UseLSC))
+    {
+        LSC_PREFETCH((global long4*)p, num_elements);
+    }
+#endif // cl_intel_pvc_lsc_validation
+}
+
+void __attribute__((overloadable)) OPTNONE __spirv_ocl_prefetch( const global long8* p, size_t num_elements)
+{
+#ifdef cl_intel_pvc_lsc_validation
+    if (BIF_FLAG_CTRL_GET(UseLSC))
+    {
+        LSC_PREFETCH((global long8*)p, num_elements);
+    }
+#endif // cl_intel_pvc_lsc_validation
+}
+
+void __attribute__((overloadable)) OPTNONE __spirv_ocl_prefetch( const global long16* p, size_t num_elements)
+{
+#ifdef cl_intel_pvc_lsc_validation
+    if (BIF_FLAG_CTRL_GET(UseLSC))
+    {
+        LSC_PREFETCH((global long16*)p, 2 * num_elements);
+    }
+#endif // cl_intel_pvc_lsc_validation
+}
+
+
+void __attribute__((overloadable)) OPTNONE __spirv_ocl_prefetch( const global float* p, size_t num_elements)
+{
+#ifdef cl_intel_pvc_lsc_validation
+    if (BIF_FLAG_CTRL_GET(UseLSC))
+    {
+        LSC_PREFETCH((global float*)p, num_elements);
+    }
+#endif // cl_intel_pvc_lsc_validation
+}
+
+void __attribute__((overloadable)) OPTNONE __spirv_ocl_prefetch( const global float2* p, size_t num_elements)
+{
+#ifdef cl_intel_pvc_lsc_validation
+    if (BIF_FLAG_CTRL_GET(UseLSC))
+    {
+        LSC_PREFETCH((global float2*)p, num_elements);
+    }
+#endif // cl_intel_pvc_lsc_validation
+}
+
+void __attribute__((overloadable)) OPTNONE __spirv_ocl_prefetch( const global float3* p, size_t num_elements)
+{
+#ifdef cl_intel_pvc_lsc_validation
+    if (BIF_FLAG_CTRL_GET(UseLSC))
+    {
+        LSC_PREFETCH((global float3*)p, num_elements);
+    }
+#endif // cl_intel_pvc_lsc_validation
+}
+
+void __attribute__((overloadable)) OPTNONE __spirv_ocl_prefetch( const global float4* p, size_t num_elements)
+{
+#ifdef cl_intel_pvc_lsc_validation
+    if (BIF_FLAG_CTRL_GET(UseLSC))
+    {
+        LSC_PREFETCH((global float4*)p, num_elements);
+    }
+#endif // cl_intel_pvc_lsc_validation
+}
+
+void __attribute__((overloadable)) OPTNONE __spirv_ocl_prefetch( const global float8* p, size_t num_elements)
+{
+#ifdef cl_intel_pvc_lsc_validation
+    if (BIF_FLAG_CTRL_GET(UseLSC))
+    {
+        LSC_PREFETCH((global float8*)p, num_elements);
+    }
+#endif // cl_intel_pvc_lsc_validation
+}
+
+void __attribute__((overloadable)) OPTNONE __spirv_ocl_prefetch( const global float16* p, size_t num_elements)
+{
+#ifdef cl_intel_pvc_lsc_validation
+    if (BIF_FLAG_CTRL_GET(UseLSC))
+    {
+        LSC_PREFETCH((global float16*)p, 2 * num_elements);
+    }
+#endif // cl_intel_pvc_lsc_validation
+}
+
+
+void __attribute__((overloadable)) OPTNONE __spirv_ocl_prefetch( const global half* p, size_t num_elements)
+{
+#ifdef cl_intel_pvc_lsc_validation
+    if (BIF_FLAG_CTRL_GET(UseLSC))
+    {
+        LSC_PREFETCH((global half*)p, num_elements);
+    }
+#endif // cl_intel_pvc_lsc_validation
+}
+
+void __attribute__((overloadable)) OPTNONE __spirv_ocl_prefetch( const global half2* p, size_t num_elements)
+{
+#ifdef cl_intel_pvc_lsc_validation
+    if (BIF_FLAG_CTRL_GET(UseLSC))
+    {
+        LSC_PREFETCH((global half2*)p, num_elements);
+    }
+#endif // cl_intel_pvc_lsc_validation
+}
+
+void __attribute__((overloadable)) OPTNONE __spirv_ocl_prefetch( const global half3* p, size_t num_elements)
+{
+#ifdef cl_intel_pvc_lsc_validation
+    if (BIF_FLAG_CTRL_GET(UseLSC))
+    {
+        LSC_PREFETCH((global half3*)p, 3 * num_elements);
+    }
+#endif // cl_intel_pvc_lsc_validation
+}
+
+void __attribute__((overloadable)) OPTNONE __spirv_ocl_prefetch( const global half4* p, size_t num_elements)
+{
+#ifdef cl_intel_pvc_lsc_validation
+    if (BIF_FLAG_CTRL_GET(UseLSC))
+    {
+        LSC_PREFETCH((global half4*)p, num_elements);
+    }
+#endif // cl_intel_pvc_lsc_validation
+}
+
+void __attribute__((overloadable)) OPTNONE __spirv_ocl_prefetch( const global half8* p, size_t num_elements)
+{
+#ifdef cl_intel_pvc_lsc_validation
+    if (BIF_FLAG_CTRL_GET(UseLSC))
+    {
+        LSC_PREFETCH((global half8*)p, num_elements);
+    }
+#endif // cl_intel_pvc_lsc_validation
+}
+
+void __attribute__((overloadable)) OPTNONE __spirv_ocl_prefetch( const global half16* p, size_t num_elements)
+{
+#ifdef cl_intel_pvc_lsc_validation
+    if (BIF_FLAG_CTRL_GET(UseLSC))
+    {
+        LSC_PREFETCH((global half16*)p, num_elements);
+    }
+#endif // cl_intel_pvc_lsc_validation
+}
+
+
+#if defined(cl_khr_fp64)
+void __attribute__((overloadable)) OPTNONE __spirv_ocl_prefetch( const global double* p, size_t num_elements)
+{
+#ifdef cl_intel_pvc_lsc_validation
+    if (BIF_FLAG_CTRL_GET(UseLSC))
+    {
+        LSC_PREFETCH((global double*)p, num_elements);
+    }
+#endif // cl_intel_pvc_lsc_validation
+}
+
+void __attribute__((overloadable)) OPTNONE __spirv_ocl_prefetch( const global double2* p, size_t num_elements)
+{
+#ifdef cl_intel_pvc_lsc_validation
+    if (BIF_FLAG_CTRL_GET(UseLSC))
+    {
+        LSC_PREFETCH((global double2*)p, num_elements);
+    }
+#endif // cl_intel_pvc_lsc_validation
+}
+
+void __attribute__((overloadable)) OPTNONE __spirv_ocl_prefetch( const global double3* p, size_t num_elements)
+{
+#ifdef cl_intel_pvc_lsc_validation
+    if (BIF_FLAG_CTRL_GET(UseLSC))
+    {
+        LSC_PREFETCH((global double3*)p, num_elements);
+    }
+#endif // cl_intel_pvc_lsc_validation
+}
+
+void __attribute__((overloadable)) OPTNONE __spirv_ocl_prefetch( const global double4* p, size_t num_elements)
+{
+#ifdef cl_intel_pvc_lsc_validation
+    if (BIF_FLAG_CTRL_GET(UseLSC))
+    {
+        LSC_PREFETCH((global double4*)p, num_elements);
+    }
+#endif // cl_intel_pvc_lsc_validation
+}
+
+void __attribute__((overloadable)) OPTNONE __spirv_ocl_prefetch( const global double8* p, size_t num_elements)
+{
+#ifdef cl_intel_pvc_lsc_validation
+    if (BIF_FLAG_CTRL_GET(UseLSC))
+    {
+        LSC_PREFETCH((global double8*)p, num_elements);
+    }
+#endif // cl_intel_pvc_lsc_validation
+}
+
+void __attribute__((overloadable)) OPTNONE __spirv_ocl_prefetch( const global double16* p, size_t num_elements)
+{
+#ifdef cl_intel_pvc_lsc_validation
+    if (BIF_FLAG_CTRL_GET(UseLSC))
+    {
+        LSC_PREFETCH((global double16*)p, 2 * num_elements);
+    }
+#endif // cl_intel_pvc_lsc_validation
+}
+
+#endif // defined(cl_khr_fp64)

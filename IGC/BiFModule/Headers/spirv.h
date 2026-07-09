@@ -7908,6 +7908,103 @@ void __attribute__((overloadable))
 __spirv_ocl_prefetch(global double16 *p, long num_elements);
 #endif // defined(cl_khr_fp64)
 
+// As of LLVM22 all prefetch overloads above this comment are obsolete.
+// When the appropriate change is backported from the translator or
+// support for LLVM versions lower than 22 is dropped they can be removed.
+
+void __attribute__((overloadable))
+__spirv_ocl_prefetch(const global char *p, size_t num_elements);
+void __attribute__((overloadable))
+__spirv_ocl_prefetch(const global char2 *p, size_t num_elements);
+void __attribute__((overloadable))
+__spirv_ocl_prefetch(const global char3 *p, size_t num_elements);
+void __attribute__((overloadable))
+__spirv_ocl_prefetch(const global char4 *p, size_t num_elements);
+void __attribute__((overloadable))
+__spirv_ocl_prefetch(const global char8 *p, size_t num_elements);
+void __attribute__((overloadable))
+__spirv_ocl_prefetch(const global char16 *p, size_t num_elements);
+
+void __attribute__((overloadable))
+__spirv_ocl_prefetch(const global short *p, size_t num_elements);
+void __attribute__((overloadable))
+__spirv_ocl_prefetch(const global short2 *p, size_t num_elements);
+void __attribute__((overloadable))
+__spirv_ocl_prefetch(const global short3 *p, size_t num_elements);
+void __attribute__((overloadable))
+__spirv_ocl_prefetch(const global short4 *p, size_t num_elements);
+void __attribute__((overloadable))
+__spirv_ocl_prefetch(const global short8 *p, size_t num_elements);
+void __attribute__((overloadable))
+__spirv_ocl_prefetch(const global short16 *p, size_t num_elements);
+
+void __attribute__((overloadable))
+__spirv_ocl_prefetch(const global int *p, size_t num_elements);
+void __attribute__((overloadable))
+__spirv_ocl_prefetch(const global int2 *p, size_t num_elements);
+void __attribute__((overloadable))
+__spirv_ocl_prefetch(const global int3 *p, size_t num_elements);
+void __attribute__((overloadable))
+__spirv_ocl_prefetch(const global int4 *p, size_t num_elements);
+void __attribute__((overloadable))
+__spirv_ocl_prefetch(const global int8 *p, size_t num_elements);
+void __attribute__((overloadable))
+__spirv_ocl_prefetch(const global int16 *p, size_t num_elements);
+
+void __attribute__((overloadable))
+__spirv_ocl_prefetch(const global long *p, size_t num_elements);
+void __attribute__((overloadable))
+__spirv_ocl_prefetch(const global long2 *p, size_t num_elements);
+void __attribute__((overloadable))
+__spirv_ocl_prefetch(const global long3 *p, size_t num_elements);
+void __attribute__((overloadable))
+__spirv_ocl_prefetch(const global long4 *p, size_t num_elements);
+void __attribute__((overloadable))
+__spirv_ocl_prefetch(const global long8 *p, size_t num_elements);
+void __attribute__((overloadable))
+__spirv_ocl_prefetch(const global long16 *p, size_t num_elements);
+
+void __attribute__((overloadable))
+__spirv_ocl_prefetch(const global float *p, size_t num_elements);
+void __attribute__((overloadable))
+__spirv_ocl_prefetch(const global float2 *p, size_t num_elements);
+void __attribute__((overloadable))
+__spirv_ocl_prefetch(const global float3 *p, size_t num_elements);
+void __attribute__((overloadable))
+__spirv_ocl_prefetch(const global float4 *p, size_t num_elements);
+void __attribute__((overloadable))
+__spirv_ocl_prefetch(const global float8 *p, size_t num_elements);
+void __attribute__((overloadable))
+__spirv_ocl_prefetch(const global float16 *p, size_t num_elements);
+
+void __attribute__((overloadable))
+__spirv_ocl_prefetch(const global half *p, size_t num_elements);
+void __attribute__((overloadable))
+__spirv_ocl_prefetch(const global half2 *p, size_t num_elements);
+void __attribute__((overloadable))
+__spirv_ocl_prefetch(const global half3 *p, size_t num_elements);
+void __attribute__((overloadable))
+__spirv_ocl_prefetch(const global half4 *p, size_t num_elements);
+void __attribute__((overloadable))
+__spirv_ocl_prefetch(const global half8 *p, size_t num_elements);
+void __attribute__((overloadable))
+__spirv_ocl_prefetch(const global half16 *p, size_t num_elements);
+
+#if defined(cl_khr_fp64)
+void __attribute__((overloadable))
+__spirv_ocl_prefetch(const global double *p, size_t num_elements);
+void __attribute__((overloadable))
+__spirv_ocl_prefetch(const global double2 *p, size_t num_elements);
+void __attribute__((overloadable))
+__spirv_ocl_prefetch(const global double3 *p, size_t num_elements);
+void __attribute__((overloadable))
+__spirv_ocl_prefetch(const global double4 *p, size_t num_elements);
+void __attribute__((overloadable))
+__spirv_ocl_prefetch(const global double8 *p, size_t num_elements);
+void __attribute__((overloadable))
+__spirv_ocl_prefetch(const global double16 *p, size_t num_elements);
+#endif // defined(cl_khr_fp64)
+
 ulong __attribute__((overloadable)) __spirv_ReadClockKHR_Rulong(int scope);
 uint2 __attribute__((overloadable)) __spirv_ReadClockKHR_Ruint2(int scope);
 
