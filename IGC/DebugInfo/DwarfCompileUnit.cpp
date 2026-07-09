@@ -21,19 +21,13 @@ See LICENSE.TXT for details.
 #include "common/LLVMWarningsPush.hpp"
 #include "llvm/ADT/APFloat.h"
 #include "llvm/IR/Constants.h"
-#include "llvm/IR/DIBuilder.h"
 #include "llvm/IR/GlobalValue.h"
 #include "llvm/IR/Instruction.h"
 #include "llvm/Support/Debug.h"
 #include "llvm/Demangle/Demangle.h"
-#include "llvm/CodeGen/DIE.h"
-#include "llvm/IR/IntrinsicInst.h"
 #include "llvm/MC/MCSection.h"
 #include "llvm/MC/MCSymbol.h"
-#include "llvm/MC/MCSymbolELF.h"
-#include "llvm/MC/MachineLocation.h"
 #include "common/LLVMWarningsPop.hpp"
-#include "llvmWrapper/IR/IntrinsicInst.h"
 #include <cmath>
 #include <optional>
 // clang-format on
@@ -49,7 +43,6 @@ See LICENSE.TXT for details.
 #include "Compiler/CISACodeGen/messageEncoding.hpp"
 
 #include "Probe/Assertion.h"
-#include <cmath>
 #include <variant>
 #define DEBUG_TYPE "dwarfdebug"
 
@@ -275,13 +268,6 @@ void CompileUnit::addString(DIE *Die, dwarf::Attribute Attribute, StringRef Stri
   Die->addValue(Attribute, dwarf::DW_FORM_string, Str);
 }
 
-/// addExpr - Add a Dwarf expression attribute data and value.
-///
-void CompileUnit::addExpr(IGC::DIEBlock *Die, dwarf::Form Form, const MCExpr *Expr) {
-  DIEValue *Value = new (DIEValueAllocator) DIEExpr(Expr);
-  Die->addValue((dwarf::Attribute)0, Form, Value);
-}
-
 /// addLabel - Add a Dwarf label attribute data and value.
 ///
 void CompileUnit::addLabel(DIE *Die, dwarf::Attribute Attribute, dwarf::Form Form, const MCSymbol *Label) {
@@ -484,18 +470,6 @@ void CompileUnit::addRegisterOp(IGC::DIEBlock *TheDie, unsigned DWReg) {
     addUInt(TheDie, dwarf::DW_FORM_data1, dwarf::DW_OP_regx);
     addUInt(TheDie, dwarf::DW_FORM_udata, DWRegEncoded);
   }
-}
-
-/// addRegisterOffset - Add register offset.
-void CompileUnit::addRegisterOffset(IGC::DIEBlock *TheDie, unsigned DWReg, int64_t Offset) {
-  auto DWRegEncoded = GetEncodedRegNum<RegisterNumbering::GRFBase>(DWReg);
-  if (DWRegEncoded < 32) {
-    addUInt(TheDie, dwarf::DW_FORM_data1, dwarf::DW_OP_breg0 + DWRegEncoded);
-  } else {
-    addUInt(TheDie, dwarf::DW_FORM_data1, dwarf::DW_OP_bregx);
-    addUInt(TheDie, dwarf::DW_FORM_udata, DWRegEncoded);
-  }
-  addSInt(TheDie, dwarf::DW_FORM_sdata, Offset);
 }
 
 /// isTypeSigned - Return true if the type is signed.
@@ -1149,46 +1123,6 @@ void CompileUnit::addSimdLaneRegionBase(IGC::DIEBlock *Block, const DbgVariable 
   }
 }
 
-/// getParentContextString - Walks the metadata parent chain in a language
-/// specific manner (using the compile unit language) and returns
-/// it as a string. This is done at the metadata level because DIEs may
-/// not currently have been added to the parent context and walking the
-/// DIEs looking for names is more expensive than walking the metadata.
-std::string CompileUnit::getParentContextString(DIScope *Context) const {
-  if (!Context)
-    return "";
-
-  // FIXME: Decide whether to implement this for non-C++ languages.
-  if (getLanguage() != dwarf::DW_LANG_C_plus_plus)
-    return "";
-
-  std::string CS;
-
-  SmallVector<DIScope *, 1> Parents;
-  while (!isa<DICompileUnit>(Context)) {
-    Parents.push_back(Context);
-    if (Context->getScope())
-      Context = resolve(Context->getScope());
-    else
-      // Structure, etc types will have a NULL context if they're at the top
-      // level.
-      break;
-  }
-
-  // Reverse iterate over our list to go from the outermost construct to the
-  // innermost.
-  for (SmallVectorImpl<DIScope *>::reverse_iterator I = Parents.rbegin(), E = Parents.rend(); I != E; ++I) {
-    DIScope *Ctx = *I;
-    StringRef Name = Ctx->getName();
-    if (!Name.empty()) {
-      CS += Name;
-      CS += "::";
-    }
-  }
-
-  return CS;
-}
-
 /// constructTypeDIE - Construct basic type die from DIBasicType.
 void CompileUnit::constructTypeDIE(DIE &Buffer, DIBasicType *BTy) {
   // Get core information.
@@ -1757,12 +1691,6 @@ IGC::DIE *CompileUnit::getOrCreateModuleDIE(DIModule *MD) {
 DIEDwarfExpression::DIEDwarfExpression(const StreamEmitter &AP, CompileUnit &CU, DIEBlock &DIE)
     : DwarfExpression(CU), AP(AP), OutDIE(DIE) {}
 
-void DwarfExpression::addExpression(DIExpressionCursor &&ExprCursor) {
-  addExpression(std::move(ExprCursor), [](unsigned Idx, DIExpressionCursor &Cursor) -> bool {
-    llvm_unreachable("unhandled opcode found in expression");
-  });
-}
-
 void DIEDwarfExpression::emitOp(uint8_t Op, const char *Comment) {
   CU.addUInt(&getActiveDIE(), dwarf::DW_FORM_data1, Op);
 }
@@ -1791,7 +1719,6 @@ void CompileUnit::constructSubrangeDIE(DIE &Buffer, DISubrange *SR, DIE *IndexTy
     } else if (auto *BE = Bound.dyn_cast<DIExpression *>()) {
       DIEBlock *Loc = new (DIEValueAllocator) DIEBlock;
       IGC::DIEDwarfExpression DwarfExpr(*Asm, getCU(), *Loc);
-      // DwarfExpr.setMemoryLocationKind();
       DwarfExpr.addExpression(BE);
       addBlock(DW_Subrange, Attr, DwarfExpr.finalize());
     } else if (auto *BI = Bound.dyn_cast<ConstantInt *>()) {
@@ -1826,7 +1753,6 @@ void CompileUnit::constructArrayTypeDIE(DIE &Buffer, DICompositeType *CTy) {
   } else if (DIExpression *Expr = CTy->getDataLocationExp()) {
     DIEBlock *Loc = new (DIEValueAllocator) DIEBlock;
     IGC::DIEDwarfExpression DwarfExpr(*Asm, getCU(), *Loc);
-    // DwarfExpr.setMemoryLocationKind();
     DwarfExpr.addExpression(Expr);
     addBlock(&Buffer, dwarf::DW_AT_data_location, DwarfExpr.finalize());
   }
@@ -1840,7 +1766,6 @@ void CompileUnit::constructArrayTypeDIE(DIE &Buffer, DICompositeType *CTy) {
   } else if (DIExpression *Expr = CTy->getAssociatedExp()) {
     DIEBlock *Loc = new (DIEValueAllocator) DIEBlock;
     DIEDwarfExpression DwarfExpr(*Asm, getCU(), *Loc);
-    // DwarfExpr.setMemoryLocationKind();
     DwarfExpr.addExpression(Expr);
     addBlock(&Buffer, dwarf::DW_AT_associated, DwarfExpr.finalize());
   }
@@ -1854,7 +1779,6 @@ void CompileUnit::constructArrayTypeDIE(DIE &Buffer, DICompositeType *CTy) {
   } else if (DIExpression *Expr = CTy->getAllocatedExp()) {
     DIEBlock *Loc = new (DIEValueAllocator) DIEBlock;
     DIEDwarfExpression DwarfExpr(*Asm, getCU(), *Loc);
-    // DwarfExpr.setMemoryLocationKind();
     DwarfExpr.addExpression(Expr);
     addBlock(&Buffer, dwarf::DW_AT_allocated, DwarfExpr.finalize());
   }

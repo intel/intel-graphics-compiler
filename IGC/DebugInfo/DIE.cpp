@@ -19,15 +19,10 @@ See LICENSE.TXT for details.
 
 // clang-format off
 #include "common/LLVMWarningsPush.hpp"
-#include "llvm/ADT/Twine.h"
-#include "llvm/MC/MCAsmInfo.h"
 #include "llvm/MC/MCExpr.h"
-#include "llvm/MC/MCStreamer.h"
 #include "llvm/MC/MCSymbol.h"
-#include "llvm/Support/Allocator.h"
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/Format.h"
-#include "llvm/Support/FormattedStream.h"
 #include "llvm/Support/LEB128.h"
 #include "common/LLVMWarningsPop.hpp"
 // clang-format on
@@ -289,33 +284,6 @@ void DIEInteger::print(raw_ostream &O) const {
 #endif
 
 //===----------------------------------------------------------------------===//
-// DIEExpr Implementation
-//===----------------------------------------------------------------------===//
-
-/// EmitValue - Emit expression value.
-///
-void DIEExpr::EmitValue(StreamEmitter *AP, dwarf::Form Form) const { AP->EmitValue(Expr, SizeOf(AP, Form)); }
-
-/// SizeOf - Determine size of expression value in bytes.
-///
-unsigned DIEExpr::SizeOf(StreamEmitter *AP, dwarf::Form Form) const {
-  if (Form == dwarf::DW_FORM_data4)
-    return 4;
-  if (Form == dwarf::DW_FORM_sec_offset)
-    return 4;
-  if (Form == dwarf::DW_FORM_strp)
-    return 4;
-  return AP->GetPointerSize();
-}
-
-#ifndef NDEBUG
-void DIEExpr::print(raw_ostream &O) const {
-  O << "Expr: ";
-  // Expr->print(O);
-}
-#endif
-
-//===----------------------------------------------------------------------===//
 // DIELabel Implementation
 //===----------------------------------------------------------------------===//
 
@@ -365,25 +333,6 @@ unsigned DIEDelta::SizeOf(StreamEmitter *AP, dwarf::Form Form) const {
 
 #ifndef NDEBUG
 void DIEDelta::print(raw_ostream &O) const { O << "Del: " << LabelHi->getName() << "-" << LabelLo->getName(); }
-#endif
-
-//===----------------------------------------------------------------------===//
-// DIEString Implementation
-//===----------------------------------------------------------------------===//
-
-/// EmitValue - Emit string value.
-///
-void DIEString::EmitValue(StreamEmitter *AP, dwarf::Form Form) const { Access->EmitValue(AP, Form); }
-
-/// SizeOf - Determine size of delta value in bytes.
-///
-unsigned DIEString::SizeOf(StreamEmitter *AP, dwarf::Form Form) const { return Access->SizeOf(AP, Form); }
-
-#ifndef NDEBUG
-void DIEString::print(raw_ostream &O) const {
-  O << "String: " << Str << "\tSymbol: ";
-  Access->print(O);
-}
 #endif
 
 //===----------------------------------------------------------------------===//

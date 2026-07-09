@@ -37,7 +37,6 @@ See LICENSE.TXT for details.
 #include "llvmWrapper/MC/MCStreamer.h"
 #include "llvmWrapper/ADT/Optional.h"
 #include "llvmWrapper/Support/Endian.h"
-#include "llvmWrapper/Support/TargetRegistry.h"
 // clang-format on
 
 #include "StreamEmitter.hpp"
@@ -322,12 +321,6 @@ void StreamEmitter::SwitchSection(const MCSection *pSection, const MCExpr *pSubs
 }
 
 MCSymbol *StreamEmitter::GetSymbol(const GlobalValue *pGV) const {
-  /*
-  //Original code (as reference)
-  SmallString<60> NameStr;
-  M.getNameWithPrefix(NameStr, pGV, false);
-  return m_pContext->GetOrCreateSymbol(NameStr.str());
-  */
   IGC_ASSERT_MESSAGE(pGV->hasName(), "TODO: fix this case");
   return m_pContext->getOrCreateSymbol(Twine(m_pAsmInfo->getPrivateGlobalPrefix()) + pGV->getName());
 }
@@ -397,31 +390,6 @@ void StreamEmitter::EmitLabelDifference(const MCSymbol *pHi, const MCSymbol *pLo
   m_pMCStreamer->emitSymbolValue(pSetLabel, size);
 }
 
-void StreamEmitter::EmitLabelOffsetDifference(const MCSymbol *pHi, uint64_t Offset, const MCSymbol *pLo,
-                                              unsigned size) const {
-  const MCExpr *pHiExpr = MCSymbolRefExpr::create(pHi, *m_pContext);
-  const MCExpr *pLoExpr = MCSymbolRefExpr::create(pLo, *m_pContext);
-  const MCExpr *pOffsetExpr = MCConstantExpr::create(Offset, *m_pContext);
-
-  // Emit pHi+Offset - pLo
-  // Get the pHi+Offset expression.
-  const MCExpr *pPlus = MCBinaryExpr::createAdd(pHiExpr, pOffsetExpr, *m_pContext);
-
-  // Get the pHi+Offset-pLo expression.
-  const MCExpr *pDiff = MCBinaryExpr::createSub(pPlus, pLoExpr, *m_pContext);
-
-  if (!m_pAsmInfo->doesSetDirectiveSuppressReloc()) {
-    m_pMCStreamer->emitValue(pDiff, size);
-    return;
-  }
-  // Otherwise, emit with .set (aka assignment).
-  MCSymbol *pSetLabel = GetTempSymbol("set", m_setCounter++);
-
-  m_pMCStreamer->emitAssignment(pSetLabel, pDiff);
-
-  m_pMCStreamer->emitSymbolValue(pSetLabel, size);
-}
-
 void StreamEmitter::EmitLabelPlusOffset(const MCSymbol *pLabel, uint64_t Offset, unsigned size,
                                         bool /*isSectionRelative*/) const {
   // Emit pLabel+Offset (or just pLabel if Offset is zero)
@@ -460,44 +428,12 @@ void StreamEmitter::EmitSectionOffset(const MCSymbol *pLabel, const MCSymbol *pS
   IGC_ASSERT_MESSAGE((!pLabel->isInSection() || &pLabel->getSection() == &section),
                      "section offset using wrong section base for label");
 
-  // If the section in question will end up with an address of 0 anyway, we can
-  // just emit an absolute reference to save a relocation.
-#if 0
-    if (section.isBaseAddressKnownZero())
-    {
-        m_pMCStreamer->EmitSymbolValue(pLabel, 4);
-        return;
-    }
-#endif
-
   // Otherwise, emit it as a label difference from the start of the section.
   EmitLabelDifference(pLabel, pSectionLabel, 4);
 }
 
 MCSymbol *StreamEmitter::EmitDwarfUnitLength(const Twine &Prefix, const Twine &Comment) const {
   return m_pMCStreamer->emitDwarfUnitLength(Prefix, Comment);
-}
-
-void StreamEmitter::EmitDwarfRegOp(unsigned reg, unsigned offset, bool indirect) const {
-  auto regEncoded = GetEncodedRegNum<RegisterNumbering::GRFBase>(reg);
-  if (indirect) {
-    if (regEncoded < 32) {
-      EmitInt8(dwarf::DW_OP_breg0 + regEncoded);
-    } else {
-      // Emit ("DW_OP_bregx");
-      EmitInt8(dwarf::DW_OP_bregx);
-      EmitULEB128(regEncoded);
-    }
-    EmitSLEB128(offset);
-  } else {
-    if (regEncoded < 32) {
-      EmitInt8(dwarf::DW_OP_reg0 + regEncoded);
-    } else {
-      // Emit ("DW_OP_regx");
-      EmitInt8(dwarf::DW_OP_regx);
-      EmitULEB128(regEncoded);
-    }
-  }
 }
 
 bool StreamEmitter::EmitDwarfFileDirective(unsigned fileNo, llvm::StringRef directory, llvm::StringRef filename,
@@ -516,10 +452,6 @@ void StreamEmitter::EmitDwarfFile0Directive(unsigned fileNo, StringRef directory
 void StreamEmitter::EmitDwarfLocDirective(unsigned fileNo, unsigned line, unsigned column, unsigned flags, unsigned isa,
                                           unsigned discriminator, StringRef fileName) const {
   m_pMCStreamer->emitDwarfLocDirective(fileNo, line, column, flags, isa, discriminator, fileName);
-}
-
-void StreamEmitter::SetMCLineTableSymbol(MCSymbol *pSym, unsigned id) const {
-  //    m_pContext->setMCLineTableSymbol(pSym, id);
 }
 
 void StreamEmitter::Finalize() const {

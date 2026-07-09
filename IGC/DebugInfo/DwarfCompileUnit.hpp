@@ -39,10 +39,8 @@ See LICENSE.TXT for details.
 #include "Utils.hpp"
 
 namespace llvm {
-class MachineLocation;
 class ConstantInt;
 class ConstantFP;
-class MCExpr;
 } // namespace llvm
 
 namespace IGC {
@@ -137,21 +135,12 @@ public:
   // Accessors.
   unsigned getUniqueID() const { return UniqueID; }
   uint16_t getLanguage() const { return getSourceLanguage(Node, DD->GetVISAModule()->GetModule()); }
-  llvm::DICompileUnit *getNode() const { return Node; }
   DIE *getCUDie() const { return CUDie; }
 
   CompileUnit &getCU() { return *this; }
 
   unsigned getDebugInfoOffset() const { return DebugInfoOffset; }
   void setDebugInfoOffset(unsigned DbgInfoOff) { DebugInfoOffset = DbgInfoOff; }
-
-  /// hasContent - Return true if this compile unit has something to write out.
-  ///
-  bool hasContent() const { return !CUDie->getChildren().empty(); }
-
-  /// getParentContextString - Get a string containing the language specific
-  /// context for a global name.
-  std::string getParentContextString(llvm::DIScope *Context) const;
 
   /// getDIE - Returns the debug information entry map slot for the
   /// specified debug variable. We delegate the request to DwarfDebug
@@ -174,10 +163,6 @@ public:
   /// kept in DwarfDebug.
   void insertDIE(llvm::MDNode *Desc, DIE *D);
 
-  /// addDie - Adds or interns the DIE to the compile unit.
-  ///
-  void addDie(DIE *Buffer) { CUDie->addChild(Buffer); }
-
   /// addFlag - Add a flag that is true to the DIE.
   void addFlag(DIE *Die, llvm::dwarf::Attribute Attribute);
 
@@ -198,10 +183,6 @@ public:
   /// addString - Add a string attribute data and value.
   ///
   void addString(DIE *Die, llvm::dwarf::Attribute Attribute, const llvm::StringRef Str);
-
-  /// addExpr - Add a Dwarf expression attribute data and value.
-  ///
-  void addExpr(DIEBlock *Die, llvm::dwarf::Form Form, const llvm::MCExpr *Expr);
 
   /// addLabel - Add a Dwarf label attribute data and value.
   ///
@@ -272,9 +253,6 @@ public:
 
   /// addRegisterOp - Add register operand.
   void addRegisterOp(DIEBlock *TheDie, unsigned Reg);
-
-  /// addRegisterOffset - Add register offset.
-  void addRegisterOffset(DIEBlock *TheDie, unsigned Reg, int64_t Offset);
 
   /// addType - Add a new type attribute to the specified entity. This takes
   /// and attribute parameter because DW_AT_friend attributes are also

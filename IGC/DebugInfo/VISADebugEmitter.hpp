@@ -39,7 +39,6 @@ class StreamEmitter;
 class VISAModule;
 class DwarfDebug;
 class DwarfDISubprogramCache;
-class CodeGenContext;
 class VISADebugInfo;
 
 class DebugEmitter : public IDebugEmitter {

@@ -40,7 +40,6 @@ public:
   using CallFrameInfo = IGC::DbgDecoder::CallFrameInfo;
   using SubroutinesList = decltype(CompiledObjectInfo::subs);
   using RelocOffsetTy = decltype(CompiledObjectInfo::relocOffset);
-  using CisaIndexLUT = decltype(CompiledObjectInfo::CISAIndexMap);
   using VISAVariablesList = decltype(CompiledObjectInfo::Vars);
 
   using GenIsaToSizeMapping = llvm::DenseMap<unsigned, unsigned>;
@@ -63,8 +62,6 @@ public:
 
   const SubroutinesList &getSubroutines() const { return CO.subs; }
   const VISAVariablesList &getVISAVariables() const { return CO.Vars; }
-
-  const CisaIndexLUT &getCISAIndexLUT() const { return CO.CISAIndexMap; }
 
   const VisaToGenMapping &getVisaToGenLUT() const { return VISAIndexToAllGenISAOff; }
 

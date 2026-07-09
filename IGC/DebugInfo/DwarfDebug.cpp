@@ -61,9 +61,6 @@ using namespace IGC;
 
 //===----------------------------------------------------------------------===//
 
-const char *beginSymbol = ".begin";
-const char *endSymbol = ".end";
-
 bool DbgVariable::IsSupportedDebugInst(const DbgVarInstEntry *Inst) {
   IGC_ASSERT(Inst);
   return dbgVarIsDecl(Inst) || dbgVarIsValue(Inst);
@@ -331,13 +328,6 @@ const llvm::Function *DwarfDebug::GetPrimaryEntry() const {
   return FoundIt->second;
 }
 
-llvm::Function *DwarfDebug::GetFunction(const VISAModule *M) const {
-  auto it = VISAModToFunc.find(M);
-  if (it != VISAModToFunc.end())
-    return (*it).second;
-  return nullptr;
-}
-
 VISAModule *DwarfDebug::GetVISAModule(const llvm::Function *F) const {
   for (auto &p : VISAModToFunc) {
     if (p.second == F)
@@ -467,9 +457,6 @@ bool DwarfDebug::isLexicalScopeDIENull(LexicalScope *Scope) {
   const SmallVectorImpl<InsnRange> &Ranges = Scope->getRanges();
   if (Ranges.empty())
     return true;
-
-  if (Ranges.size() > 1)
-    return false;
 
   return false;
 }

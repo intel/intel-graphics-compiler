@@ -260,7 +260,7 @@ class DIEValue {
   virtual void anchor() {}
 
 public:
-  enum { isInteger, isString, isExpr, isLabel, isDelta, isEntry, isBlock, isInlinedString };
+  enum { isInteger, isLabel, isDelta, isEntry, isBlock, isInlinedString };
 
 protected:
   /// Type - Type of data stored in the value.
@@ -340,35 +340,6 @@ public:
 };
 
 //===--------------------------------------------------------------------===//
-/// DIEExpr - An expression DIE.
-//
-class DIEExpr : public DIEValue {
-  const llvm::MCExpr *Expr;
-
-public:
-  explicit DIEExpr(const llvm::MCExpr *E) : DIEValue(isExpr), Expr(E) {}
-
-  /// EmitValue - Emit expression value.
-  ///
-  virtual void EmitValue(StreamEmitter *AP, llvm::dwarf::Form Form) const;
-
-  /// getValue - Get llvm::MCExpr.
-  ///
-  const llvm::MCExpr *getValue() const { return Expr; }
-
-  /// SizeOf - Determine size of expression value in bytes.
-  ///
-  virtual unsigned SizeOf(StreamEmitter *AP, llvm::dwarf::Form Form) const;
-
-  // Implement isa/cast/dyncast.
-  static bool classof(const DIEValue *E) { return E->getType() == isExpr; }
-
-#ifndef NDEBUG
-  virtual void print(llvm::raw_ostream &O) const;
-#endif
-};
-
-//===--------------------------------------------------------------------===//
 /// DIELabel - A label DIE.
 //
 class DIELabel : public DIEValue {
@@ -417,35 +388,6 @@ public:
 
   // Implement isa/cast/dyncast.
   static bool classof(const DIEValue *D) { return D->getType() == isDelta; }
-
-#ifndef NDEBUG
-  virtual void print(llvm::raw_ostream &O) const;
-#endif
-};
-
-//===--------------------------------------------------------------------===//
-/// DIEString - A container for string values.
-///
-class DIEString : public DIEValue {
-  const DIEValue *Access;
-  const llvm::StringRef Str;
-
-public:
-  DIEString(const DIEValue *Acc, const llvm::StringRef S) : DIEValue(isString), Access(Acc), Str(S) {}
-
-  /// getString - Grab the string out of the object.
-  llvm::StringRef getString() const { return Str; }
-
-  /// EmitValue - Emit delta value.
-  ///
-  virtual void EmitValue(StreamEmitter *AP, llvm::dwarf::Form Form) const;
-
-  /// SizeOf - Determine size of delta value in bytes.
-  ///
-  virtual unsigned SizeOf(StreamEmitter *AP, llvm::dwarf::Form Form) const;
-
-  // Implement isa/cast/dyncast.
-  static bool classof(const DIEValue *D) { return D->getType() == isString; }
 
 #ifndef NDEBUG
   virtual void print(llvm::raw_ostream &O) const;

@@ -100,16 +100,6 @@ public:
       return false;
     }
 
-    bool isSpillOnStack() const {
-      if (!isSpill())
-        return false;
-
-      if (var.mapping.m.isBaseOffBEFP == 0)
-        return true;
-
-      return false;
-    }
-
     Mapping::Register getGRF() const { return var.mapping.r; }
 
     Mapping::Memory getSpillOffset() const { return var.mapping.m; }

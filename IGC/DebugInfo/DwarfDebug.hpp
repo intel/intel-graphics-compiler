@@ -117,9 +117,6 @@ public:
   uint64_t end = 0;
 
   DotDebugLocEntry() : m_DbgEntry(nullptr), Variable(nullptr) {}
-  DotDebugLocEntry(const llvm::MCSymbol *B, const llvm::MCSymbol *E, const DbgVarInstEntry *dbgEntry,
-                   const llvm::MDNode *V)
-      : m_DbgEntry(dbgEntry), Variable(V) {}
   DotDebugLocEntry(const uint64_t s, const uint64_t e, const DbgVarInstEntry *dbgEntry, const llvm::MDNode *V)
       : start(s), end(e), m_DbgEntry(dbgEntry), Variable(V) {}
 
@@ -807,7 +804,6 @@ public:
   void registerVISA(IGC::VISAModule *M);
 
   const llvm::Function *GetPrimaryEntry() const;
-  llvm::Function *GetFunction(const VISAModule *M) const;
   VISAModule *GetVISAModule(const llvm::Function *F) const;
 
   using DataVector = std::vector<unsigned char>;

@@ -8,13 +8,9 @@ SPDX-License-Identifier: MIT
 
 #include "DwarfDebug.hpp"
 #include "StreamEmitter.hpp"
-#include "llvm/ADT/ArrayRef.h"
-#include "llvmWrapper/ADT/Optional.h"
-#include "llvm/ADT/SmallVector.h"
 #include "llvm/IR/DebugInfoMetadata.h"
 #include <cassert>
 #include <cstdint>
-#include <iterator>
 #include <optional>
 
 using namespace llvm;
@@ -36,10 +32,6 @@ public:
     End = Expr->expr_op_end();
   }
 
-  DIExpressionCursor(ArrayRef<uint64_t> Expr) : Start(Expr.begin()), End(Expr.end()) {}
-
-  DIExpressionCursor(const DIExpressionCursor &) = default;
-
   /// Consume one operation.
   std::optional<DIExpression::ExprOperand> take() {
     if (Start == End)
@@ -47,38 +39,8 @@ public:
     return *(Start++);
   }
 
-  /// Consume N operations.
-  void consume(unsigned N) { std::advance(Start, N); }
-
-  /// Return the current operation.
-  std::optional<DIExpression::ExprOperand> peek() const {
-    if (Start == End)
-      return std::nullopt;
-    return *(Start);
-  }
-
-  /// Return the next operation.
-  std::optional<DIExpression::ExprOperand> peekNext() const {
-    if (Start == End)
-      return std::nullopt;
-
-    auto Next = Start.getNext();
-    if (Next == End)
-      return std::nullopt;
-
-    return *Next;
-  }
-
   /// Determine whether there are any operations left in this expression.
   operator bool() const { return Start != End; }
-
-  DIExpression::expr_op_iterator begin() const { return Start; }
-  DIExpression::expr_op_iterator end() const { return End; }
-
-  /// Retrieve the fragment information, if any.
-  IGCLLVM::optional<DIExpression::FragmentInfo> getFragmentInfo() const {
-    return DIExpression::getFragmentInfo(Start, End);
-  }
 };
 
 class DwarfExpression {
@@ -103,18 +65,8 @@ protected:
 public:
   DwarfExpression(CompileUnit &CU) : CU(CU) {};
 
-  /// This needs to be called last to commit any pending changes.
-  void finalize();
-
-  /// Emit all remaining operations in the DIExpressionCursor. The
-  /// cursor must not contain any DW_OP_LLVM_arg operations.
-  void addExpression(DIExpressionCursor &&Expr);
-
   /// Emit all remaining operations in the DIExpressionCursor.
-  /// DW_OP_LLVM_arg operations are resolved by calling (\p InsertArg).
-  //
-  /// \return false if any call to (\p InsertArg) returns false.
-  bool addExpression(DIExpressionCursor &&Expr, llvm::function_ref<bool(unsigned, DIExpressionCursor &)> InsertArg);
+  void addExpression(DIExpressionCursor &&Expr);
 
   ~DwarfExpression() = default;
 };
@@ -122,11 +74,9 @@ public:
 class DIEDwarfExpression final : public DwarfExpression {
   const StreamEmitter &AP;
   DIEBlock &OutDIE;
-  DIEBlock TmpDIE;
-  bool IsBuffering = false;
 
   /// Return the DIE that currently is being emitted to.
-  DIEBlock &getActiveDIE() { return IsBuffering ? TmpDIE : OutDIE; }
+  DIEBlock &getActiveDIE() { return OutDIE; }
 
   void emitOp(uint8_t Op, const char *Comment = nullptr) override;
   void emitSigned(int64_t Value) override;
@@ -136,10 +86,7 @@ class DIEDwarfExpression final : public DwarfExpression {
 public:
   DIEDwarfExpression(const StreamEmitter &AP, CompileUnit &CU, DIEBlock &DIE);
 
-  DIEBlock *finalize() {
-    DwarfExpression::finalize();
-    return &OutDIE;
-  }
+  DIEBlock *finalize() { return &OutDIE; }
 };
 
 } // namespace IGC

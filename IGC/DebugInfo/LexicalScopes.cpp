@@ -118,25 +118,6 @@ void LexicalScopes::extractLexicalScopes(SmallVectorImpl<InsnRange> &MIRanges,
   }
 }
 
-/// findLexicalScope - Find lexical scope, either regular or inlined, for the
-/// given DebugLoc. Return NULL if not found.
-LexicalScope *LexicalScopes::findLexicalScope(const DILocation *DL) {
-  DILocalScope *Scope = DL->getScope();
-  if (!Scope)
-    return nullptr;
-
-  // The scope that we were created with could have an extra file - which
-  // isn't what we care about in this case.
-  if (auto *File = dyn_cast<DILexicalBlockFile>(Scope))
-    Scope = File->getScope();
-
-  if (auto *IA = DL->getInlinedAt()) {
-    auto I = InlinedLexicalScopeMap.find(std::make_pair(Scope, IA));
-    return I != InlinedLexicalScopeMap.end() ? &I->second : nullptr;
-  }
-  return findLexicalScope(Scope);
-}
-
 /// getOrCreateLexicalScope - Find lexical scope for the given DebugLoc. If
 /// not available then create new lexical scope.
 LexicalScope *LexicalScopes::getOrCreateLexicalScope(const DILocalScope *Scope, const DILocation *IA) {

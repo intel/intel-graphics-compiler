@@ -63,8 +63,6 @@ public:
   virtual ~LexicalScope() {}
 
   // Accessors.
-  LexicalScope *getParent() const { return Parent; }
-  const llvm::MDNode *getDesc() const { return Desc; }
   const llvm::MDNode *getInlinedAt() const { return InlinedAtLocation; }
   const llvm::MDNode *getScopeNode() const { return Desc; }
   bool isAbstractScope() const { return AbstractScope; }
@@ -167,10 +165,6 @@ public:
 
   /// getCurrentFunctionScope - Return lexical scope for the current function.
   LexicalScope *getCurrentFunctionScope() const { return CurrentFnLexicalScope; }
-
-  /// findLexicalScope - Find lexical scope, either regular or inlined, for the
-  /// given DebugLoc. Return NULL if not found.
-  LexicalScope *findLexicalScope(const llvm::DILocation *DL);
 
   /// getAbstractScopesList - Return a reference to list of abstract scopes.
   llvm::ArrayRef<LexicalScope *> getAbstractScopesList() const { return AbstractScopesList; }

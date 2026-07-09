@@ -32,7 +32,6 @@ namespace IGC {
 
 struct DebugEmitterOpts;
 
-class CShader;
 class VISAModule;
 class DwarfDISubprogramCache;
 class VISADebugInfo;
