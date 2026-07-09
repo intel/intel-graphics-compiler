@@ -33,14 +33,23 @@ TransformSimd1LoadsStores::TransformSimd1LoadsStores() : FunctionPass(ID) {
 bool TransformSimd1LoadsStores::runOnFunction(Function &F) {
   mCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
 
-  bool enableLoads = IGC_IS_FLAG_ENABLED(EnableTransformSimd1Loads) &&
+  unsigned loadFlagValue = IGC_GET_FLAG_VALUE(EnableTransformSimd1Loads);
+  unsigned storeFlagValue = IGC_GET_FLAG_VALUE(EnableTransformSimd1Stores);
+
+  bool isDualKSPPS = mCtx->type == ShaderType::PIXEL_SHADER && mCtx->platform.hasDualKSPPS();
+
+  // bit4 (16) - allow pixel shader with dual KSP
+  bool loadAllowPS = (loadFlagValue & 16) != 0;
+  bool storeAllowPS = (storeFlagValue & 16) != 0;
+
+  bool enableLoads = loadFlagValue != 0 &&
                      mCtx->m_retryManager->GetLastSpillSize() < IGC_GET_FLAG_VALUE(TransformSimd1LoadsSpillThreshold) &&
-                     !(mCtx->type == ShaderType::PIXEL_SHADER && mCtx->platform.hasDualKSPPS());
+                     (loadAllowPS || !isDualKSPPS);
 
   bool enableStores =
-      IGC_IS_FLAG_ENABLED(EnableTransformSimd1Stores) &&
+      storeFlagValue != 0 &&
       mCtx->m_retryManager->GetLastSpillSize() < IGC_GET_FLAG_VALUE(TransformSimd1StoresSpillThreshold) &&
-      !(mCtx->type == ShaderType::PIXEL_SHADER && mCtx->platform.hasDualKSPPS());
+      (storeAllowPS || !isDualKSPPS);
 
   if (!enableLoads && !enableStores)
     return false;
@@ -50,15 +59,13 @@ bool TransformSimd1LoadsStores::runOnFunction(Function &F) {
 
   mChanged = false;
   mDeferredClusterUGMLoads.clear();
+  mDeferredStores.clear();
   mBBWaveInfoMap.clear();
 
-  // Read load config
-  mLoadType = enableLoads ? IGC_GET_FLAG_VALUE(EnableTransformSimd1Loads) : 0;
+  mLoadType = enableLoads ? loadFlagValue : 0;
+  mStoreType = enableStores ? storeFlagValue : 0;
 
-  // Read store config
-  mStoreType = enableStores ? IGC_GET_FLAG_VALUE(EnableTransformSimd1Stores) : 0;
-
-  // bit3 (8) - allow runtime uniformity check (from either flag)
+  // bit3 (8) - allow runtime uniformity check
   mAllowLoadRuntimeUniformCheck = (mLoadType & 8) != 0;
   mAllowStoreRuntimeUniformCheck = (mStoreType & 8) != 0;
 
@@ -72,6 +79,12 @@ bool TransformSimd1LoadsStores::runOnFunction(Function &F) {
     for (LdRawIntrinsic *I : mDeferredClusterUGMLoads)
       multiversionLoadUGM(I);
     mDeferredClusterUGMLoads.clear();
+  }
+
+  if (mDeferredStores.size() > 0) {
+    for (Instruction *I : mDeferredStores)
+      multiversionStore(I);
+    mDeferredStores.clear();
   }
 
   return mChanged;
@@ -283,6 +296,143 @@ void TransformSimd1LoadsStores::multiversionLoadUGM(LdRawIntrinsic *I) {
   // Replace all remaining uses of the original load with the PHI
   // (the WaveShuffleIndex in uniformBB still references I directly, so exclude it)
   I->replaceUsesWithIf(phi, [&](Use &U) { return U.getUser() != cast<CallInst>(broadcastVal); });
+
+  mChanged = true;
+}
+
+// Builds the per-lane fusing condition used by multiversionStore: it is true on
+// lanes whose address operand(s) match the first active lane's address(es).
+// Only nonuniform operands are compared; uniform ones are trivially equal.
+// Mirrors AtomicWaveFuse::GenerateFusingCondition.
+Value *TransformSimd1LoadsStores::createStoreFuseCondition(Instruction &I, ArrayRef<Value *> addrs) {
+  IRBuilder<> builder(&I);
+  Value *cond = nullptr;
+  for (Value *a : addrs) {
+    if (isUniform(a))
+      continue;
+    Value *addrInt = a;
+    if (a->getType()->isPointerTy())
+      addrInt = builder.CreatePtrToInt(a, builder.getInt32Ty(), "AddrAsInt");
+    Value *shuffled = createWaveShuffleIdx(I, addrInt);
+    Value *cmp = builder.CreateICmpEQ(addrInt, shuffled, "FuseMatch");
+    cond = cond ? builder.CreateAnd(cond, cmp, "FuseAnd") : cmp;
+  }
+  // All address operands uniform: nothing to gate on (should not normally reach
+  // here since we only defer nonuniform-address stores).
+  if (!cond)
+    cond = builder.getTrue();
+  return cond;
+}
+
+// clang-format off
+// Branch-based store coalescing, following the AtomicWaveFuse (no-return) pattern
+// (see multiversionAtomicSingleMsg / atomic_add_ret_not_used). For a store whose
+// address is nonuniform across the wave, only a SINGLE store instruction is kept
+// (the original one, moved into store-fused) - there is no cloned store.
+//
+// Original:
+//   store value, addr        ; addr nonuniform
+//
+// Transformed:
+//   %match = <addr == WaveShuffleIndex(addr, firstActiveLane)>   ; per-lane
+//   br %match, label %store-match, label %store-decider
+//
+// store-match:                ; lanes sharing the first active lane's address
+//   %isFirst = simdLaneId == firstActiveLane
+//   br label %store-decider
+//
+// store-decider:
+//   %shouldStore = phi [true, entry], [%isFirst, store-match]
+//   dummyInst()                ; convergent, blocks jump threading
+//   br %shouldStore, label %store-fused, label %store-merge
+//
+// store-fused:                 ; non-matching lanes (shouldStore==true) and the
+//   store value, addr          ; first active lane of each matching group
+//   br label %store-merge
+//
+// store-merge:
+//   ...
+//
+// Lanes whose address differs from the first active lane's take the entry->
+// decider edge with shouldStore==true, so they store individually. Matching
+// lanes store only from the first active lane; since they all target the same
+// address, letting the first active lane store its own value is a valid
+// resolution of the otherwise racing writes.
+// clang-format on
+void TransformSimd1LoadsStores::multiversionStore(Instruction *I) {
+  // Determine the address operands whose runtime uniformity gates coalescing.
+  SmallVector<Value *, 4> addrs;
+  if (auto *SI = dyn_cast<StoreInst>(I)) {
+    addrs.push_back(SI->getPointerOperand());
+  } else if (auto *GI = dyn_cast<GenIntrinsicInst>(I)) {
+    switch (GI->getIntrinsicID()) {
+    case GenISAIntrinsic::GenISA_typedwrite:
+      addrs.push_back(GI->getOperand(1)); // u
+      addrs.push_back(GI->getOperand(2)); // v
+      addrs.push_back(GI->getOperand(3)); // r
+      addrs.push_back(GI->getOperand(4)); // LOD
+      break;
+    case GenISAIntrinsic::GenISA_storeraw_indexed:
+    case GenISAIntrinsic::GenISA_storerawvector_indexed:
+      addrs.push_back(cast<StoreRawIntrinsic>(GI)->getOffsetValue());
+      break;
+    default:
+      return;
+    }
+  } else {
+    return;
+  }
+
+  BasicBlock *BB = I->getParent();
+  LLVMContext &context = BB->getContext();
+
+  // Ensure WaveBallot/Lane are set up for this BB and activate them.
+  ensureBBWaveInfo(BB, *I);
+
+  // Per-lane condition: does this lane's address match the first active lane's?
+  Value *fuseCond = createStoreFuseCondition(*I, addrs);
+
+  // --- Split: BB -> [store-match / store-decider] -> store-fused -> store-merge ---
+  // store-merge holds everything after the store; the store itself is moved
+  // into store-fused so exactly one store instruction remains.
+  BasicBlock *mergeBB = BB->splitBasicBlock(I, "store-merge");
+
+  BasicBlock *matchBB = BasicBlock::Create(context, "store-match", BB->getParent(), mergeBB);
+  BasicBlock *deciderBB = BasicBlock::Create(context, "store-decider", BB->getParent(), mergeBB);
+  BasicBlock *fusedBB = BasicBlock::Create(context, "store-fused", BB->getParent(), mergeBB);
+
+  // BB: branch on whether this lane matches the first active lane's address.
+  // Non-matching lanes go straight to the decider (shouldStore == true).
+  BB->getTerminator()->eraseFromParent();
+  IRBuilder<> builderBB(BB);
+  builderBB.CreateCondBr(fuseCond, matchBB, deciderBB);
+
+  // store-match: among matching lanes, elect the first active lane to store.
+  IRBuilder<> builderMatch(matchBB);
+  Function *laneFn = GenISAIntrinsic::getDeclaration(mMod, GenISAIntrinsic::GenISA_simdLaneId);
+  Value *simdLaneId = builderMatch.CreateCall(laneFn, {}, "simdLaneId");
+  Value *simdLaneId32 = builderMatch.CreateZExt(simdLaneId, builderMatch.getInt32Ty());
+  Value *isFirstLane = builderMatch.CreateICmpEQ(simdLaneId32, mLane, "isFirstLane");
+  builderMatch.CreateBr(deciderBB);
+
+  // store-decider: pick who performs the (single) store.
+  IRBuilder<> builderDecider(deciderBB);
+  PHINode *shouldStore = builderDecider.CreatePHI(builderDecider.getInt1Ty(), 2, "shouldStore");
+  shouldStore->addIncoming(builderDecider.getTrue(), BB);
+  shouldStore->addIncoming(isFirstLane, matchBB);
+  // Convergent dummy to keep jump threading / SimplifyCFG from collapsing this
+  // wave region (mirrors AtomicWaveFuse).
+  Function *dummyFn =
+      GenISAIntrinsic::getDeclaration(mMod, GenISAIntrinsic::GenISA_dummyInstID, {builderDecider.getInt32Ty()});
+  CallInst *dummyInst = builderDecider.CreateCall(dummyFn, {builderDecider.getInt32(0)});
+  dummyInst->setConvergent();
+  builderDecider.CreateCondBr(shouldStore, fusedBB, mergeBB);
+
+  // store-fused: the single store (original instruction moved here).
+  IRBuilder<> builderFused(fusedBB);
+  Instruction *brFused = builderFused.CreateBr(mergeBB);
+  I->removeFromParent();
+  IGCLLVM::insertBefore(I, brFused);
 
   mChanged = true;
 }
@@ -507,40 +657,18 @@ void TransformSimd1LoadsStores::visitStoreInst(StoreInst &I) {
   if (!destUniform && !mAllowStoreRuntimeUniformCheck)
     return;
 
+  // Nonuniform dest: defer for branch-based multiversioning (see multiversionStore).
+  if (!destUniform) {
+    mDeferredStores.push_back(&I);
+    return;
+  }
+
+  // Original case: dest uniform, value nonuniform
   BasicBlock *bb = I.getParent();
   ensureBBWaveInfo(bb, I);
 
-  if (destUniform) {
-    // Original case: dest uniform, value nonuniform
-    Value *waveShuffleIndex = createWaveShuffleIdx(I, value);
-    useWaveShuffleIdx(I, 0, waveShuffleIndex);
-  } else {
-    // Branchless runtime uniformity check for nonuniform dest.
-    // Check if all active lanes have the same dest pointer.
-    // If so, use shuffled (uniform) value; otherwise keep original.
-    //
-    // IR produced:
-    //   %DestAsInt = ptrtoint dest to i32
-    //   %ShufDest  = WaveShuffleIndex(%DestAsInt, Lane, 0)
-    //   %CmpDest   = icmp eq %DestAsInt, %ShufDest
-    //   %BallotCmp = WaveBallot(%CmpDest, 0)
-    //   %AllSame   = icmp eq %BallotCmp, %WaveBallot
-    //   %ShufVal   = WaveShuffleIndex(value, Lane, 0)
-    //   %FinalVal  = select %AllSame, %ShufVal, value
-    //   store %FinalVal, dest
-
-    IRBuilder<> builder(&I);
-
-    Value *destInt = builder.CreatePtrToInt(dest, builder.getInt32Ty(), "DestAsInt");
-
-    Value *shuffledDestInt = nullptr;
-    Value *allDestSame = createRuntimeUniformCheck(I, destInt, shuffledDestInt);
-
-    Value *shuffledValue = createWaveShuffleIdx(I, value);
-
-    Value *finalValue = builder.CreateSelect(allDestSame, shuffledValue, value, "SelUniformVal");
-    useWaveShuffleIdx(I, 0, finalValue);
-  }
+  Value *waveShuffleIndex = createWaveShuffleIdx(I, value);
+  useWaveShuffleIdx(I, 0, waveShuffleIndex);
 
   mChanged = true;
 }
@@ -571,70 +699,16 @@ void TransformSimd1LoadsStores::storeTGM(GenIntrinsicInst *I) {
   if (!isNonuniform(x, y, z, w))
     return;
 
+  // Nonuniform coords: defer for branch-based multiversioning (see multiversionStore).
+  if (!coordsUniform) {
+    mDeferredStores.push_back(I);
+    return;
+  }
+
   BasicBlock *bb = I->getParent();
   ensureBBWaveInfo(bb, *I);
 
-  if (coordsUniform) {
-    createWaveShuffleIdx4TGM(*I, 5, 6, 7, 8);
-  } else {
-    // Branchless runtime uniformity check for nonuniform coords (u/v/r/LOD).
-    // Check if all active lanes have the same u, v, r, LOD values.
-    // If so, use shuffled (uniform) source values; otherwise keep originals.
-    //
-    // This avoids the cluster-leader + BB-split approach, which generates IR
-    // that does not map to the expected vISA <4;4,0> regioning pattern.
-    // Instead, we use per-coord WaveShuffleIndex + WaveBallot comparison
-    // with a branchless select, which EmitVISAPass can lower efficiently.
-    //
-    // IR produced:
-    //   %ShufU     = WaveShuffleIndex(u, Lane, 0)
-    //   %CmpU      = icmp eq u, %ShufU
-    //   %BallotU   = WaveBallot(%CmpU, 0)
-    //   %AllSameU  = icmp eq %BallotU, %WaveBallot
-    //   ... (same for v, r, LOD)
-    //   %AllCoords = and %AllSameU, %AllSameV, %AllSameR, %AllSameLOD
-    //   %ShufX/Y/Z/W = WaveShuffleIndex(x/y/z/w, Lane, 0)
-    //   %FinalX    = select %AllCoords, %ShufX, x
-    //   ...
-    //   typedwrite(dest, u, v, r, LOD, %FinalX, %FinalY, %FinalZ, %FinalW)
-
-    IRBuilder<> builder(I);
-
-    // Runtime uniformity check across all four coordinate operands
-    Value *shuffledU = nullptr;
-    Value *allSameU = createRuntimeUniformCheck(*I, u, shuffledU);
-
-    Value *shuffledV = nullptr;
-    Value *allSameV = createRuntimeUniformCheck(*I, v, shuffledV);
-
-    Value *shuffledR = nullptr;
-    Value *allSameR = createRuntimeUniformCheck(*I, r, shuffledR);
-
-    Value *shuffledLOD = nullptr;
-    Value *allSameLOD = createRuntimeUniformCheck(*I, LOD, shuffledLOD);
-
-    // All coords must be uniform across lanes
-    Value *allCoordsUniform = builder.CreateAnd(allSameU, allSameV, "AllUV");
-    allCoordsUniform = builder.CreateAnd(allCoordsUniform, allSameR, "AllUVR");
-    allCoordsUniform = builder.CreateAnd(allCoordsUniform, allSameLOD, "AllCoordsSame");
-
-    // Shuffle source values from elected lane
-    Value *shuffledX = createWaveShuffleIdx(*I, x);
-    Value *shuffledY = createWaveShuffleIdx(*I, y);
-    Value *shuffledZ = createWaveShuffleIdx(*I, z);
-    Value *shuffledW = createWaveShuffleIdx(*I, w);
-
-    // Branchless: pick shuffled values only when all coords are the same
-    Value *finalX = builder.CreateSelect(allCoordsUniform, shuffledX, x, "SelX");
-    Value *finalY = builder.CreateSelect(allCoordsUniform, shuffledY, y, "SelY");
-    Value *finalZ = builder.CreateSelect(allCoordsUniform, shuffledZ, z, "SelZ");
-    Value *finalW = builder.CreateSelect(allCoordsUniform, shuffledW, w, "SelW");
-
-    I->setOperand(5, finalX);
-    I->setOperand(6, finalY);
-    I->setOperand(7, finalZ);
-    I->setOperand(8, finalW);
-  }
+  createWaveShuffleIdx4TGM(*I, 5, 6, 7, 8);
 
   mChanged = true;
 }
@@ -669,6 +743,12 @@ void TransformSimd1LoadsStores::storeUGM(StoreRawIntrinsic *I) {
   if (!offsetUniform && !mAllowStoreRuntimeUniformCheck)
     return;
 
+  // Nonuniform offset: defer for branch-based multiversioning (see multiversionStore).
+  if (!offsetUniform) {
+    mDeferredStores.push_back(I);
+    return;
+  }
+
   auto *VTy = dyn_cast<IGCLLVM::FixedVectorType>(value->getType());
   InsertElementInst *IE = dyn_cast<InsertElementInst>(value);
   GenIntrinsicInst *gen = dyn_cast<GenIntrinsicInst>(value); // default dyn_cast for scalar value
@@ -686,8 +766,8 @@ void TransformSimd1LoadsStores::storeUGM(StoreRawIntrinsic *I) {
   BasicBlock *bb = I->getParent();
   ensureBBWaveInfo(bb, *I);
 
-  if (offsetUniform) {
-    // Original case: dest+offset uniform, value nonuniform
+  // dest+offset uniform, value nonuniform
+  {
     IRBuilder<> builder(I);
     if (VTy) {
       unsigned elemCount = int_cast<unsigned>(VTy->getNumElements());
@@ -721,67 +801,6 @@ void TransformSimd1LoadsStores::storeUGM(StoreRawIntrinsic *I) {
     } else {
       Value *waveShuffleIndex = createWaveShuffleIdx(*I, value);
       useWaveShuffleIdx(*I, 2, waveShuffleIndex);
-    }
-  } else {
-    // Branchless runtime uniformity check for nonuniform offset.
-    // Check if all active lanes have the same offset value.
-    // If so, use shuffled (uniform) source values; otherwise keep originals.
-    //
-    // IR produced:
-    //   %ShufOff   = WaveShuffleIndex(offset, Lane, 0)
-    //   %CmpOff    = icmp eq offset, %ShufOff
-    //   %BallotCmp = WaveBallot(%CmpOff, 0)
-    //   %AllSame   = icmp eq %BallotCmp, %WaveBallot
-    //   %ShufVal   = WaveShuffleIndex(value, Lane, 0)
-    //   %FinalVal  = select %AllSame, %ShufVal, value
-    //   storeraw(dest, offset, %FinalVal, ...)
-
-    IRBuilder<> builder(I);
-
-    Value *shuffledOffset = nullptr;
-    Value *allOffsetSame = createRuntimeUniformCheck(*I, offset, shuffledOffset);
-
-    if (VTy) {
-      unsigned elemCount = int_cast<unsigned>(VTy->getNumElements());
-
-      if (elemCount > maxElemSize)
-        return;
-
-      Value *insertEShuf = nullptr;
-      Value *insertEOrig = nullptr;
-      SmallVector<Value *, maxElemSize> vExtracts;
-      SmallVector<Value *, maxElemSize> vWaveShufs;
-      for (unsigned e = 0; e < elemCount; e++) {
-        Value *extractE = builder.CreateExtractElement(value, builder.getInt32(e), "Extract" + std::to_string(e));
-        vExtracts.push_back(extractE);
-      }
-
-      for (unsigned e = 0; e < elemCount; e++) {
-        Value *waveShuffleIndex = createWaveShuffleIdx(*I, vExtracts[e]);
-        vWaveShufs.push_back(waveShuffleIndex);
-      }
-
-      for (unsigned e = 0; e < elemCount; e++) {
-        if (e == 0) {
-          insertEShuf = builder.CreateInsertElement(PoisonValue::get(IE->getType()), vWaveShufs[e], builder.getInt32(e),
-                                                    "InsertShuf" + std::to_string(e));
-          insertEOrig = builder.CreateInsertElement(PoisonValue::get(IE->getType()), vExtracts[e], builder.getInt32(e),
-                                                    "InsertOrig" + std::to_string(e));
-        } else {
-          insertEShuf = builder.CreateInsertElement(insertEShuf, vWaveShufs[e], builder.getInt32(e),
-                                                    "InsertShuf" + std::to_string(e));
-          insertEOrig = builder.CreateInsertElement(insertEOrig, vExtracts[e], builder.getInt32(e),
-                                                    "InsertOrig" + std::to_string(e));
-        }
-      }
-
-      // Branchless: pick shuffled vector only when all offsets are the same
-      Value *finalVec = builder.CreateSelect(allOffsetSame, insertEShuf, insertEOrig, "SelUniformVec");
-      useWaveShuffleIdx(*I, 2, finalVec);
-    } else {
-      Value *shuffledValue = createWaveShuffleIdx(*I, value);
-      Value *finalValue = builder.CreateSelect(allOffsetSame, shuffledValue, value, "SelUniformVal");
-      useWaveShuffleIdx(*I, 2, finalValue);
     }
   }
 

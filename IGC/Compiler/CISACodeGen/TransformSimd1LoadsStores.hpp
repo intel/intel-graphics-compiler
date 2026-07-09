@@ -75,6 +75,7 @@ private:
   Value *mClusterActiveLeader = nullptr;
   Value *mAmILeader = nullptr;
   SmallVector<LdRawIntrinsic *, 8> mDeferredClusterUGMLoads;
+  SmallVector<Instruction *, 8> mDeferredStores;
 
   // --- Shared helpers (single implementation) ---
   void ensureBBWaveInfo(BasicBlock *BB, Instruction &InsertBefore);
@@ -92,6 +93,8 @@ private:
   // --- Store-specific helpers ---
   void storeTGM(GenIntrinsicInst *I);
   void storeUGM(StoreRawIntrinsic *I);
+  void multiversionStore(Instruction *I);
+  Value *createStoreFuseCondition(Instruction &I, llvm::ArrayRef<Value *> addrs);
 
   // --- Load-specific helpers ---
   void loadTGM(GenIntrinsicInst *I);
