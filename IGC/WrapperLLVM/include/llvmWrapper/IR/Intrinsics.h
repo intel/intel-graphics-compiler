@@ -27,6 +27,17 @@ inline llvm::Function *getOrInsertDeclaration(llvm::Module *M, llvm::Intrinsic::
 #endif
 }
 
+inline bool isSignatureValid(llvm::Intrinsic::ID ID, llvm::FunctionType *FTy,
+                             llvm::ArrayRef<llvm::Intrinsic::IITDescriptor> &Infos,
+                             llvm::SmallVectorImpl<llvm::Type *> &OverloadTys) {
+#if LLVM_VERSION_MAJOR >= 23
+  return llvm::Intrinsic::isSignatureValid(ID, FTy, OverloadTys);
+#else
+  return llvm::Intrinsic::matchIntrinsicSignature(FTy, Infos, OverloadTys) ==
+         llvm::Intrinsic::MatchIntrinsicTypes_Match;
+#endif
+}
+
 } // namespace IGCLLVM
 
 #endif

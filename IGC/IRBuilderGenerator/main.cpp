@@ -63,6 +63,7 @@ SPDX-License-Identifier: MIT
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/IR/Type.h"
 #include "llvmWrapper/IR/Instructions.h"
+#include "llvmWrapper/IR/Intrinsics.h"
 #include "llvmWrapper/Support/YAMLParser.h"
 #include "llvmWrapper/IR/LLVMContext.h"
 
@@ -910,7 +911,7 @@ bool processCreate(const Function &F, raw_ostream &OS, const AnnotationMap &Anno
           getIntrinsicInfoTableEntries(II->getIntrinsicID(), Table);
           ArrayRef<Intrinsic::IITDescriptor> TableRef = Table;
 
-          if (Intrinsic::matchIntrinsicSignature(FTy, TableRef, ArgTys)) {
+          if (!IGCLLVM::isSignatureValid(II->getIntrinsicID(), FTy, TableRef, ArgTys)) {
             assert(0 && "unhandled?");
           }
 
