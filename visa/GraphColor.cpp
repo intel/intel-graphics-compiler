@@ -5592,7 +5592,11 @@ Augmentation::RetValType Augmentation::computeRetValType(FuncInfo *func,
   const auto *uses = refs.getUses(retVal);
   if (uses) {
     for (const auto &use : *uses) {
-      auto *predBBC = &bbCache[std::get<1>(use)->getPhysicalPred()->getId()];
+      // Handle the case where use is in entry BB of kernel
+      auto *phyPred = std::get<1>(use)->getPhysicalPred();
+      if (!phyPred)
+        return Augmentation::RetValType::Unknown;
+      auto *predBBC = &bbCache[phyPred->getId()];
       if (predBBC->bb->isSpecialEmptyBB())
         predBBC = &bbCache[predBBC->bb->getPhysicalPred()->getId()];
       if (!predBBC->endsWithCall || predBBC->calleeInfo != func)
