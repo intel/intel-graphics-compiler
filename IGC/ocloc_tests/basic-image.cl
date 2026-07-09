@@ -1,6 +1,4 @@
 // UNSUPPORTED: system-windows
-// UNSUPPORTED: llvm-22-plus
-// FIXME: update this test for LLVM 22
 // REQUIRES: dg2-supported
 // RUN: ocloc compile -file %s -options "-g" -internal_options "-cl-intel-use-bindless-mode" -device dg2 2>&1 | FileCheck %s
 

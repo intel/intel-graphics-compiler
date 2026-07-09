@@ -21,8 +21,6 @@
 
 ; UNSUPPORTED: sys32
 
-; UNSUPPORTED: llvm-22-plus
-; FIXME: update this test for LLVM 22
 ; REQUIRES: regkeys, oneapi-readelf, llvm-16-plus
 
 ; LLVM with opaque pointers:

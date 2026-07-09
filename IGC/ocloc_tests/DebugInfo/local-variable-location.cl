@@ -157,6 +157,3 @@ __kernel void foo(local int *foo_param, global char *foo_param1) {
 // CHECK-CRI: .debug_loc
 // CHECK-CRI: (DW_OP_const1u: 143; DW_OP_const2u: 256; DW_OP_INTEL_regval_bits: 64; DW_OP_plus_uconst: 16; DW_OP_INTEL_push_simd_lane; DW_OP_lit8; DW_OP_mul; DW_OP_plus; DW_OP_plus_uconst: [[#]])
 // CHECK-CRI: (DW_OP_const1u: 143; DW_OP_const2u: 256; DW_OP_INTEL_regval_bits: 64; DW_OP_plus_uconst: 16; DW_OP_INTEL_push_simd_lane; DW_OP_lit4; DW_OP_mul; DW_OP_plus; DW_OP_plus_uconst: [[#]])
-
-// UNSUPPORTED: llvm-22-plus
-// FIXME: update this test for LLVM 22

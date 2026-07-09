@@ -728,6 +728,14 @@ private:
   ::IGC::LexicalScope *resolveVariableScope(llvm::DIVariable *DV, const DbgVarInstEntry *dbgEntry,
                                             const llvm::Function *MF);
 
+#if LLVM_VERSION_MAJOR >= 22
+  /// \brief True if DV's enclosing subprogram is the current function's, matched
+  /// by name to cover the clang 22 wrapper/impl kernel split (both DISubprograms
+  /// share the kernel name). Such variables belong to the current function's
+  /// non-inlined scope tree, not the impl's abstract inline scope.
+  bool isCurrentFunctionVariable(const llvm::DIVariable *DV) const;
+#endif
+
   /// \brief Process the history of debug values for a single variable.
   /// Analyzes all debug variable entries associated with a variable and builds
   /// a mapping of DbgVariable instances to their GenISA IP.
@@ -827,6 +835,13 @@ private:
 
   // store all instructions corresponding to same InlinedAt MDNode
   llvm::DenseMap<llvm::MDNode *, std::vector<const llvm::Instruction *>> SameIATInsts;
+
+#if LLVM_VERSION_MAJOR >= 22
+  // Instructions carrying a VISA offset, grouped by InlinedAt, in program order.
+  // Used to extend a single-entry variable's range to the next live point
+  // without rescanning the whole function.
+  llvm::DenseMap<llvm::MDNode *, std::vector<const llvm::Instruction *>> VisaOffInstsByIAT;
+#endif
 
   // Store label for each %ip
   llvm::DenseMap<unsigned int, llvm::MCSymbol *> LabelsBeforeIp;

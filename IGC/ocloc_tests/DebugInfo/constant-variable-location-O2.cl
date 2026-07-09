@@ -11,8 +11,6 @@
 
 // UNSUPPORTED: sys32
 // UNSUPPORTED: lib-igc-clang
-// UNSUPPORTED: llvm-22-plus
-// FIXME: update this test for LLVM 22
 // REQUIRES: oneapi-readelf
 
 __kernel void foo(__global int* result) {

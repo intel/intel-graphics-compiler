@@ -9,7 +9,7 @@
 // For private address space variables, verify location expression emitted (should contain special operations that IGC emits)
 // We should verify DW_AT_location of kernel, function arguments as well as variables.
 
-// UNSUPPORTED: sys32, lib-igc-clang, llvm-22-plus
+// UNSUPPORTED: sys32, lib-igc-clang
 // REQUIRES: regkeys, oneapi-readelf, dg2-supported
 
 // RUN: ocloc compile -file %s -options " -g -cl-opt-disable -igc_opts 'ElfDumpEnable=1, DumpUseShorterName=0, DebugDumpNamePrefix=%t_'" -device dg2

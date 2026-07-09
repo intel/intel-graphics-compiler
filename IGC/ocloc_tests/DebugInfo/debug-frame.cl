@@ -30,8 +30,6 @@ __kernel void foo(uint threadCount, uint numDestItems, volatile __global atomic_
   test_atomic_function(tid, threadCount, numDestItems, destMemory, oldValues);
 }
 
-// UNSUPPORTED: llvm-22-plus
-// FIXME: update this test for LLVM 22
 // RUN: %if dg2-supported %{ ocloc compile -file %s -options " -g -cl-opt-disable -cl-std=CL3.0 -igc_opts 'ElfDumpEnable=1, DumpUseShorterName=0, DebugDumpNamePrefix=%t_dg2_'" -device dg2 %}
 // RUN: %if dg2-supported %{ llvm-dwarfdump -a %t_dg2_OCL_simd8_foo.elf &> %t_dg2_OCL_simd8_foo.dwarf %}
 // RUN: %if dg2-supported %{ FileCheck %s --input-file=%t_dg2_OCL_simd8_foo.dwarf --check-prefixes=CHECK,CHECK-KERNEL %}

@@ -104,6 +104,18 @@ inline llvm::Instruction *dbgVarAnchorInstMutable(DbgVarInstEntry *E) {
 #endif
 }
 
+inline llvm::DebugLoc dbgVarScopeLoc(const DbgVarInstEntry *E) {
+#if LLVM_VERSION_MAJOR >= 22
+  if (llvm::DebugLoc DL = E->getDebugLoc())
+    return DL;
+  if (const llvm::Instruction *I = dbgVarAnchorInst(E))
+    return I->getDebugLoc();
+  return {};
+#else
+  return E->getDebugLoc();
+#endif
+}
+
 // Returns true if two debug variable entries have identical/equivalent content.
 // DbgVariableRecord (>= 22) exposes isEquivalentTo(); DbgVariableIntrinsic (< 22)
 // inherits Instruction::isIdenticalTo().

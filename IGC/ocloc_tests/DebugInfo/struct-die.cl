@@ -225,6 +225,3 @@ __kernel void test(int i) {
 
 // CHECK: The File Name Table (offset {{.+}}):
 // CHECK: [[#DECL_FILE]] [[#]] 0 0 struct-die.cl
-
-// UNSUPPORTED: llvm-22-plus
-// FIXME: update this test for LLVM 22
