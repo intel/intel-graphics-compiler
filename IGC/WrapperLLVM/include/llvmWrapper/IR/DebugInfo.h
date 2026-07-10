@@ -11,9 +11,16 @@ SPDX-License-Identifier: MIT
 
 #include "IGC/common/LLVMWarningsPush.hpp"
 #include "llvm/IR/DebugInfo.h"
+#include "llvm/IR/DebugInfoMetadata.h"
 #include "IGC/common/LLVMWarningsPop.hpp"
 
 namespace IGCLLVM {
+
+#if LLVM_VERSION_MAJOR >= 23
+using DITypeRefArray = llvm::DITypeArray;
+#else
+using DITypeRefArray = llvm::DITypeRefArray;
+#endif
 
 inline auto findDbgDeclareUses(llvm::Value *V) {
 #if LLVM_VERSION_MAJOR >= 22

@@ -20,6 +20,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/DebugInfoMetadata.h>
 #include "common/LLVMWarningsPop.hpp"
 #include "llvmWrapper/ADT/StringRef.h"
+#include "llvmWrapper/IR/DebugInfo.h"
 using namespace llvm;
 using namespace IGC;
 
@@ -224,7 +225,8 @@ bool StackOverflowDetectionPass::attachDebugInfo(Module &M) {
       continue;
 
     // Create a DISubroutineType for a void() function.
-    DISubroutineType *SubroutineType = DISubroutineType::get(M.getContext(), DINode::FlagZero, 0, DITypeRefArray());
+    DISubroutineType *SubroutineType =
+        DISubroutineType::get(M.getContext(), DINode::FlagZero, 0, IGCLLVM::DITypeRefArray());
 
     // Create a DISubprogram with the debugger-visible name.
     // Using FlagArtificial to indicate this is compiler-generated.

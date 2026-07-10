@@ -37,6 +37,7 @@ See LICENSE.TXT for details.
 #include "common/LLVMWarningsPop.hpp"
 #include "llvmWrapper/ADT/StringExtras.h"
 #include "llvmWrapper/ADT/StringRef.h"
+#include "llvmWrapper/IR/DebugInfo.h"
 // clang-format on
 
 #include <llvmWrapper/ADT/Optional.h>
@@ -398,7 +399,7 @@ DIE *DwarfDebug::updateSubprogramScopeDIE(CompileUnit *SPCU, DISubprogram *SP) {
         // Add arguments.
         DISubroutineType *SPTy = SP->getType();
         if (SPTy) {
-          DITypeRefArray Args = SPTy->getTypeArray();
+          IGCLLVM::DITypeRefArray Args = SPTy->getTypeArray();
           uint16_t SPTag = (uint16_t)SPTy->getTag();
           if (SPTag == dwarf::DW_TAG_subroutine_type) {
             for (unsigned i = 1, N = Args.size(); i < N; ++i) {

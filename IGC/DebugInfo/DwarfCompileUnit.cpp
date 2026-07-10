@@ -28,6 +28,7 @@ See LICENSE.TXT for details.
 #include "llvm/MC/MCSection.h"
 #include "llvm/MC/MCSymbol.h"
 #include "common/LLVMWarningsPop.hpp"
+#include "llvmWrapper/IR/DebugInfo.h"
 #include <cmath>
 #include <optional>
 // clang-format on
@@ -1210,7 +1211,7 @@ void CompileUnit::constructTypeDIE(DIE &Buffer, DIDerivedType *DTy) {
 }
 
 void CompileUnit::constructTypeDIE(DIE &Buffer, DISubroutineType *STy) {
-  DITypeRefArray Elements = cast<DISubroutineType>(STy)->getTypeArray();
+  IGCLLVM::DITypeRefArray Elements = cast<DISubroutineType>(STy)->getTypeArray();
   DIType *RTy = resolve(Elements[0]);
   if (RTy)
     addType(&Buffer, RTy);
@@ -1258,7 +1259,7 @@ void CompileUnit::constructTypeDIE(DIE &Buffer, DICompositeType *CTy) {
     break;
   case dwarf::DW_TAG_subroutine_type: {
     // Add return type. A void return won't have a type.
-    DITypeRefArray Elements = cast<DISubroutineType>(CTy)->getTypeArray();
+    IGCLLVM::DITypeRefArray Elements = cast<DISubroutineType>(CTy)->getTypeArray();
     DIType *RTy = resolve(Elements[0]);
     if (RTy)
       addType(&Buffer, RTy);
@@ -1615,7 +1616,7 @@ IGC::DIE *CompileUnit::getOrCreateSubprogramDIE(DISubprogram *SP) {
   IGC_ASSERT_MESSAGE(SPTy->getTag() == dwarf::DW_TAG_subroutine_type,
                      "the type of a subprogram should be a subroutine");
 
-  DITypeRefArray Args = SPTy->getTypeArray();
+  IGCLLVM::DITypeRefArray Args = SPTy->getTypeArray();
   // Add a return type. If this is a type like a C/C++ void type we don't add a
   // return type.
   if (Args.size() > 0 && resolve(Args[0]))

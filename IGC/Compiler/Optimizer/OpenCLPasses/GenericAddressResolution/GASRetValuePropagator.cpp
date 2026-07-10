@@ -20,6 +20,7 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPop.hpp"
 #include "llvmWrapper/IR/Function.h"
 #include "llvmWrapper/IR/DerivedTypes.h"
+#include "llvmWrapper/IR/DebugInfo.h"
 #include "DebugInfo/DwarfDebug.hpp"
 #include <optional>
 
@@ -295,7 +296,7 @@ void GASRetValuePropagator::updateDwarfAddressSpace(Function *F) {
   DISubroutineType *subtype = subprogram->getType();
   IGC_ASSERT_MESSAGE(subtype, "Type field must point at DISubroutineType");
 
-  DITypeRefArray functionTypes = subtype->getTypeArray();
+  IGCLLVM::DITypeRefArray functionTypes = subtype->getTypeArray();
 
   // The Dwarf metadata may not contain the necessary information about the
   //  returned type. That is why this check is added to prevent possible crash.
