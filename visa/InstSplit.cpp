@@ -99,7 +99,12 @@ INST_LIST_ITER InstSplitPass::splitInstruction(INST_LIST_ITER it,
     }
     uint32_t leftBound = 0, rightBound = 0;
     computeSrcBounds(src, leftBound, rightBound);
-    return (rightBound - leftBound) > (m_builder->getGRFSize() * 2u);
+    uint32_t grfSize = m_builder->getGRFSize();
+    // Compare the GRF indices touched by [leftBound, rightBound] rather than
+    // the raw span size: a region whose leftBound is not itself GRF-aligned
+    // (e.g. a sub-register offset within a GRF-aligned declare) can touch 3
+    // GRFs even when rightBound - leftBound <= 2 * grfSize.
+    return (rightBound / grfSize) - (leftBound / grfSize) + 1 > 2u;
   };
 
   auto cross2GRFDst = [inst, this](G4_DstRegRegion *dst) {
@@ -112,7 +117,12 @@ INST_LIST_ITER InstSplitPass::splitInstruction(INST_LIST_ITER it,
     }
     uint32_t leftBound = 0, rightBound = 0;
     computeDstBounds(dst, leftBound, rightBound);
-    return (rightBound - leftBound) > (m_builder->getGRFSize() * 2u);
+    uint32_t grfSize = m_builder->getGRFSize();
+    // Compare the GRF indices touched by [leftBound, rightBound] rather than
+    // the raw span size: a region whose leftBound is not itself GRF-aligned
+    // (e.g. a sub-register offset within a GRF-aligned declare) can touch 3
+    // GRFs even when rightBound - leftBound <= 2 * grfSize.
+    return (rightBound / grfSize) - (leftBound / grfSize) + 1 > 2u;
   };
 
   auto useTmpForSrc = [&](G4_SrcRegRegion *src) -> G4_SrcRegRegion * {

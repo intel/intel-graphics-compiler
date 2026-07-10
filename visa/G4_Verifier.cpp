@@ -520,12 +520,14 @@ void G4Verifier::verifyOpnd(G4_Operand *opnd, G4_INST *inst) {
         vISA_ASSERT((opnd->getRightBound() - opnd->getLeftBound()) <
                         (4u * kernel.numEltPerGRF<Type_UB>()),
                     "Src cannot span more than 4 GRFs!");
-      } else if ((opnd->getRightBound() - opnd->getLeftBound()) >
-                 (2u * kernel.numEltPerGRF<Type_UB>())) {
+      } else if ((opnd->getRightBound() / kernel.numEltPerGRF<Type_UB>()) -
+                     (opnd->getLeftBound() / kernel.numEltPerGRF<Type_UB>()) +
+                     1 >
+                 2u) {
         if (!(inst->opcode() == G4_pln && inst->getSrc(1) == opnd)) {
           DEBUG_VERBOSE(
-              "Difference between left/right bound is greater than 2 GRF for "
-              "src region. Single non-send opnd cannot span 2 GRFs. lb = "
+              "Src region spans more than 2 GRF indices. Single non-send "
+              "opnd cannot span more than 2 GRFs. lb = "
               << opnd->getLeftBound() << ", rb = " << opnd->getRightBound()
               << "\n");
           inst->emit(std::cerr);
@@ -610,12 +612,15 @@ void G4Verifier::verifyOpnd(G4_Operand *opnd, G4_INST *inst) {
         vISA_ASSERT((opnd->getRightBound() - opnd->getLeftBound()) <
                         (4u * kernel.numEltPerGRF<Type_UB>()),
                     "Dst cannot span more than 4 GRFs!");
-      } else if ((opnd->getRightBound() - opnd->getLeftBound()) >
-                     (2u * kernel.numEltPerGRF<Type_UB>()) &&
+      } else if ((opnd->getRightBound() / kernel.numEltPerGRF<Type_UB>()) -
+                         (opnd->getLeftBound() /
+                          kernel.numEltPerGRF<Type_UB>()) +
+                         1 >
+                     2u &&
                  (inst->opcode() != G4_madw && inst->opcode() != G4_mullh)) {
         DEBUG_VERBOSE(
-            "Difference between left/right bound is greater than 2 GRF for dst "
-            "region. Single non-send opnd cannot span 2 GRFs. lb = "
+            "Dst region spans more than 2 GRF indices. Single non-send "
+            "opnd cannot span more than 2 GRFs. lb = "
             << opnd->getLeftBound() << ", rb = " << opnd->getRightBound()
             << "\n");
         inst->emit(std::cerr);
