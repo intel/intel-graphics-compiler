@@ -275,16 +275,22 @@ public:
   }
 #endif
 
+#if LLVM_VERSION_MAJOR >= 23
+  inline llvm::Value *FoldSelect(llvm::Value *C, llvm::Value *True, llvm::Value *False,
+                                 llvm::FastMathFlags FMF = llvm::FastMathFlags()) const override {
+    return m_baseConstantFolder.FoldSelect(C, True, False, FMF);
+  }
+#else
   inline llvm::Value *FoldSelect(llvm::Value *C, llvm::Value *True, llvm::Value *False) const override {
     return m_baseConstantFolder.FoldSelect(C, True, False);
   }
+#endif
 
 #if LLVM_VERSION_MAJOR < 22
   inline llvm::Value *FoldGEP(llvm::Type *Ty, llvm::Value *Ptr, llvm::ArrayRef<llvm::Value *> IdxList,
                               bool IsInBounds = false) const override {
     return m_baseConstantFolder.FoldGEP(Ty, Ptr, IdxList, IsInBounds);
   }
-
   inline llvm::Constant *CreateCast(llvm::Instruction::CastOps Op, llvm::Constant *C,
                                     llvm::Type *DestTy) const override {
     return m_baseConstantFolder.CreateCast(Op, C, DestTy);
@@ -294,11 +300,17 @@ public:
                               llvm::GEPNoWrapFlags NW) const override {
     return m_baseConstantFolder.FoldGEP(Ty, Ptr, IdxList, NW);
   }
-
   inline llvm::Value *FoldCast(llvm::Instruction::CastOps Op, llvm::Value *V, llvm::Type *DestTy) const override {
     return m_baseConstantFolder.FoldCast(Op, V, DestTy);
   }
+#endif
 
+#if LLVM_VERSION_MAJOR >= 23
+  inline llvm::Value *FoldIntrinsic(llvm::Intrinsic::ID ID, llvm::ArrayRef<llvm::Value *> Ops, llvm::Type *Ty,
+                                    llvm::FastMathFlags FMF = {}, llvm::Function *CtxF = nullptr) const override {
+    return m_baseConstantFolder.FoldIntrinsic(ID, Ops, Ty, FMF, CtxF);
+  }
+#elif LLVM_VERSION_MAJOR >= 22
   inline llvm::Value *FoldBinaryIntrinsic(llvm::Intrinsic::ID ID, llvm::Value *LHS, llvm::Value *RHS, llvm::Type *Ty,
                                           llvm::Instruction *FMFSource = nullptr) const override {
     return m_baseConstantFolder.FoldBinaryIntrinsic(ID, LHS, RHS, Ty, FMFSource);
