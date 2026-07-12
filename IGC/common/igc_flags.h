@@ -1415,6 +1415,12 @@ DECLARE_IGC_REGKEY(DWORD, FunctionCloningThreshold, 0,
                    "address relocation instead."
                    "Setting this to '0' allows IGC to choose the default threshold.",
                    true)
+DECLARE_IGC_REGKEY(bool, EnableFastInstCombineForLargeKernels, false,
+                   "If enabled, skip expensive InstCombine after MemOpt on large kernels and run cheaper cleanup "
+                   "passes instead.",
+                   true)
+DECLARE_IGC_REGKEY(DWORD, FastInstCombineLargeKernelThreshold, 300000,
+                   "Instruction-count threshold to trigger fast InstCombine fallback after MemOpt.", true)
 DECLARE_IGC_REGKEY(bool, ForceLowestSIMDForStackCalls, true,
                    "If enabled, compile to the lowest allowed SIMD mode when stack calls or indirect calls are present",
                    true)

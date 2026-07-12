@@ -817,7 +817,14 @@ void AddLegalizationPasses(CodeGenContext &ctx, IGCPassManager &mpm, PSSignature
       mpm.add(createLSCCacheOptimizationPass());
     }
 
-    mpm.add(createIGCInstructionCombiningPass());
+    if (IGC_IS_FLAG_ENABLED(EnableFastInstCombineForLargeKernels) &&
+        ctx.m_instrTypes.numInsts >= IGC_GET_FLAG_VALUE(FastInstCombineLargeKernelThreshold)) {
+      // For very large kernels, prefer cheaper cleanup over a full InstCombine here.
+      mpm.add(createDeadCodeEliminationPass());
+      mpm.add(createEarlyCSEPass());
+    } else {
+      mpm.add(createIGCInstructionCombiningPass());
+    }
   }
 
   if (IGC_GET_FLAG_VALUE(ExpandNonUniformInsertElementThreshold) > 0) {
@@ -917,7 +924,14 @@ void AddLegalizationPasses(CodeGenContext &ctx, IGCPassManager &mpm, PSSignature
     // Removing code assumptions can enable some InstructionCombining optimizations.
     // Last instruction combining pass needs to be before Legalization pass, as it can produce illegal instructions.
     mpm.add(new RemoveCodeAssumptions());
-    mpm.add(createIGCInstructionCombiningPass());
+    if (IGC_IS_FLAG_ENABLED(EnableFastInstCombineForLargeKernels) &&
+        ctx.m_instrTypes.numInsts >= IGC_GET_FLAG_VALUE(FastInstCombineLargeKernelThreshold)) {
+      // For very large kernels, prefer cheaper cleanup over a full InstCombine here.
+      mpm.add(createDeadCodeEliminationPass());
+      mpm.add(createEarlyCSEPass());
+    } else {
+      mpm.add(createIGCInstructionCombiningPass());
+    }
     if (ctx.platform.doIntegerMad() && ctx.m_DriverInfo.EnableIntegerMad()) {
       mpm.add(createCanonicalizeMulAddPass());
     }

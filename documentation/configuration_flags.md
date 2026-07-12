@@ -746,6 +746,7 @@ $ export IGC_ShaderDumpEnable=1
 | `EnableDropTargetFunctions` | Enables pass for dropping targeted functions | Available |
 | `EnableEvaluateSamplerSplit` | Split evaluate messages to sampler into either SIMD8 or SIMD1 messages | - |
 | `EnableExtractMask` | When enabled, it is mostly for reducing response size of send messages. | - |
+| `EnableFastInstCombineForLargeKernels` | If enabled, skip expensive InstCombine after MemOpt on large kernels and run cheaper cleanup passes instead. | Available |
 | `EnableFastestSingleCSSIMD` | Enable selecting single CS SIMD in staged compilation. | - |
 | `EnableForceGroupSize` | Enable forcing thread Group Size ForceGroupSizeX and ForceGroupSizeY | - |
 | `EnableForceThreadCombining` | Enable forcing Thread Combining with thread Group Size ForceGroupSizeX and ForceGroupSizeY | - |
@@ -787,6 +788,7 @@ $ export IGC_ShaderDumpEnable=1
 | `ExcludeIRFromZEBinary` | Exclude IR sections from ZE binary | Available |
 | `ExpandedUnitSizeThreshold` | Trimming target of compilation unit size | Available |
 | `ExtraRetrySIMD16` | Enable extra simd16 with retry for STAGE1_BEST_PREF | - |
+| `FastInstCombineLargeKernelThreshold` | Instruction-count threshold to trigger fast InstCombine fallback after MemOpt. | Available |
 | `FastCompileRA` | Provide the fast compilatoin path for RA, fail safe at first iteration | - |
 | `FastSpill` | fast spill code gen. This may produce worse equality code for the spilling shader | - |
 | `FastestS1Experiments` | Select configs for fastest compilation by bits. | - |
