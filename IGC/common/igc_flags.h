@@ -714,6 +714,8 @@ DECLARE_IGC_REGKEY(DWORD, FunctionCloningThreshold,     0,
     "Limits the number of cloned functions when called from multiple function groups." \
     "If number of cloned functions exceeds the threshold, compile the function only once and use address relocation instead." \
     "Setting this to '0' allows IGC to choose the default threshold.", true)
+DECLARE_IGC_REGKEY(bool, EnableFastInstCombineForLargeKernels, false, "If enabled, skip expensive InstCombine after MemOpt on large kernels and run cheaper cleanup passes instead.", true)
+DECLARE_IGC_REGKEY(DWORD, FastInstCombineLargeKernelThreshold, 300000, "Instruction-count threshold to trigger fast InstCombine fallback after MemOpt.", true)
 DECLARE_IGC_REGKEY(bool, ForceLowestSIMDForStackCalls,  true, "If enabled, compile to the lowest allowed SIMD mode when stack calls or indirect calls are present", true)
 DECLARE_IGC_REGKEY(DWORD, OCLInlineThreshold,           512,  "Setting OCL inline thershold", true)
 DECLARE_IGC_REGKEY(bool, DisableAddingAlwaysAttribute,  false, "Disable adding always attribute", true)
