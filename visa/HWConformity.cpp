@@ -3758,7 +3758,12 @@ void HWConformity::fixMulSrc1(INST_LIST_ITER i, G4_BB *bb) {
     // create a new opnd with type UW
     unsigned short scale = TypeSize(Type_D) / TypeSize(Type_UW);
     unsigned short newHS = rd->horzStride * scale;
-    unsigned short newVS = rd->vertStride * scale;
+    // When Width == ExecSize, the region has a single row and VertStride is
+    // never applied, so scaling it can overflow the legal VertStride range
+    // (max 32) without changing behavior. Use 0 in that case to keep the
+    // region legal.
+    unsigned short newVS =
+        rd->width == (uint16_t)inst->getExecSize() ? 0 : rd->vertStride * scale;
     const RegionDesc *new_rd =
         builder.createRegionDesc(newVS, rd->width, newHS);
     short subRegOff = srcRegion->getSubRegOff();
