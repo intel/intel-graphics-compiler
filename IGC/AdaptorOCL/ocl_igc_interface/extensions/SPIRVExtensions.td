@@ -225,10 +225,10 @@ def SPV_INTEL_memory_access_aliasing : ExperimentalExtension<
   "https://github.com/intel/llvm/pull/3426/files"
 >;
 
-def SPV_INTEL_predicated_io : ExperimentalExtension<
+def SPV_INTEL_predicated_io : Extension<
   "SPV_INTEL_predicated_io",
   [ Capability<"PredicatedIOINTEL"> ],
-  "https://github.com/intel/llvm/blob/sycl/sycl/doc/design/spirv-extensions/SPV_INTEL_predicated_io.asciidoc"
+  "https://github.khronos.org/SPIRV-Registry/extensions/INTEL/SPV_INTEL_predicated_io.html"
 >;
 
 // Some SPIR-V producers may emit arbitrary precision integer types, often as a result of LLVM optimizations in frontends.

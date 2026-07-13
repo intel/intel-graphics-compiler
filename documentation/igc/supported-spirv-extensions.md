@@ -383,9 +383,9 @@ This document lists all SPIR-V extensions supported by IGC and their platform re
 
 ## SPV_INTEL_predicated_io
 
-**Specification**: https://github.com/intel/llvm/blob/sycl/sycl/doc/design/spirv-extensions/SPV_INTEL_predicated_io.asciidoc
+**Specification**: https://github.khronos.org/SPIRV-Registry/extensions/INTEL/SPV_INTEL_predicated_io.html
 
-> **Experimentally supported on**: All platforms
+> **Supported on**: All platforms
 
 **Capabilities**:
 
