@@ -11,14 +11,9 @@ SPDX-License-Identifier: MIT
 
 // REQUIRES: regkeys, pvc-supported
 
-// RUN: ocloc compile -file %s -options " -igc_opts 'VISAOptions=-asmToConsole'" -device pvc 2>&1 | FileCheck %s
+// RUN: not ocloc compile -file %s -options " -igc_opts 'VISAOptions=-asmToConsole'" -device pvc 2>&1 | FileCheck %s
 
-// CHECK-LABEL: .kernel wrongkernel
-// CHECK: error: GenISA_setSR0 intrinsic expects operand 0 value in the range [1-3]sss
-// XFAIL: *
-int __builtin_IB_set_sr0(uint SubReg, uint Value);
-__kernel void wrongkernel(__global int *output)
-{
-    output[0] = __builtin_IB_set_sr0(0, 0x12345678);
-}
+// CHECK: error{{.*}}: GenISA_setSR0 intrinsic expects operand 0 value to be 1 or 2
 
+void __builtin_IB_set_sr0(uint SubReg, uint Value);
+__kernel void wrongkernel() { __builtin_IB_set_sr0(0, 0x12345678); }

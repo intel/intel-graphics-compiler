@@ -11,11 +11,10 @@ SPDX-License-Identifier: MIT
 
 // REQUIRES: regkeys, pvc-supported
 
-// RUN: ocloc compile -file %s -options " -igc_opts 'VISAOptions=-asmToConsole'" -device pvc 2>&1 | FileCheck %s
+// RUN: not ocloc compile -file %s -options " -igc_opts 'VISAOptions=-asmToConsole'" -device pvc 2>&1 | FileCheck %s
 
-// CHECK-LABEL: .kernel wrongkernel
-// CHECK: error: Expected constant operand for GenISA_getSR0 intrinsic.
-// XFAIL: *
+// CHECK: error{{.*}}: Expected constant operand 0 for GenISA_getSR0 intrinsic.
+
 int __builtin_IB_get_sr0(int DWNumber);
 __kernel void wrongkernel(int idx,
                           __global int *output)
