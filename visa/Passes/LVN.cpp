@@ -267,6 +267,17 @@ bool LVN::canReplaceUses(INST_LIST_ITER inst_it, UseList &uses,
       }
     }
 
+    if (use->isAccRegValid()) {
+      // IEEE math macros (invm/rsqtm) and madm encode an mme channel select
+      // on their operands, which requires the operand to remain
+      // GRF-aligned. Since lvnDst would replace use while keeping its mme
+      // channel select (see replaceAllUses), it must be GRF-aligned too.
+      if (!builder.tryToAlignOperand(lvnDst, builder.numEltPerGRF<Type_UB>())) {
+        canReplace = false;
+        break;
+      }
+    }
+
     if (useInst->isSplitSend()) {
       // Ensure both src opnds of split are not the same
       if ((opndNum == Opnd_src0 &&
