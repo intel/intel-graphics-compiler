@@ -1495,6 +1495,7 @@ WIAnalysis::WIDependancy WIAnalysisRunner::calculate_dep(const CallInst *inst) {
       GII_id == GenISAIntrinsic::GenISA_dual_subslice_id || GII_id == GenISAIntrinsic::GenISA_eu_id ||
       GII_id == GenISAIntrinsic::GenISA_eu_thread_id || GII_id == GenISAIntrinsic::GenISA_movcr ||
       GII_id == GenISAIntrinsic::GenISA_hw_thread_id || GII_id == GenISAIntrinsic::GenISA_hw_thread_id_alloca ||
+      GII_id == GenISAIntrinsic::GenISA_hw_tile_id || GII_id == GenISAIntrinsic::GenISA_hw_engine_id ||
       GII_id == GenISAIntrinsic::GenISA_StackAlloca || GII_id == GenISAIntrinsic::GenISA_vectorUniform ||
       GII_id == GenISAIntrinsic::GenISA_getR0 || GII_id == GenISAIntrinsic::GenISA_getPayloadHeader ||
       GII_id == GenISAIntrinsic::GenISA_getGlobalOffset || GII_id == GenISAIntrinsic::GenISA_getWorkDim ||
@@ -1526,7 +1527,12 @@ WIAnalysis::WIDependancy WIAnalysisRunner::calculate_dep(const CallInst *inst) {
     case GenISAIntrinsic::GenISA_getSR0:
     case GenISAIntrinsic::GenISA_getSR0_0:
     case GenISAIntrinsic::GenISA_eu_id:
+    case GenISAIntrinsic::GenISA_eu_thread_id:
     case GenISAIntrinsic::GenISA_hw_thread_id:
+    case GenISAIntrinsic::GenISA_hw_thread_id_alloca:
+    case GenISAIntrinsic::GenISA_hw_tile_id:
+    case GenISAIntrinsic::GenISA_hw_engine_id:
+    case GenISAIntrinsic::GenISA_movcr:
       return WIAnalysis::UNIFORM_THREAD;
     case GenISAIntrinsic::GenISA_slice_id:
     case GenISAIntrinsic::GenISA_subslice_id:

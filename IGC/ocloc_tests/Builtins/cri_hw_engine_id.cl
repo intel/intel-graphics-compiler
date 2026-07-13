@@ -19,7 +19,7 @@ SPDX-License-Identifier: MIT
 // CHECK: and (M1_NM, 1) [[HWENGINEID1:.*]](0,0)<1> [[HWENGINEID]](0,0)<0;1,0> 0x0:d
 // CHECK: asr (M1_NM, 1) [[HWENGINEID0:.*]](0,0)<1> [[HWENGINEID]](0,0)<0;1,0> 0x10:d
 // CHECK: bfn.xf8 (M1_NM, 1) [[HWENGINEID]](0,0)<1> [[HWENGINEID0]](0,0)<0;1,0> 0xffffffff:d [[HWENGINEID1]](0,0)<0;1,0>
-// CHECK: mov (M1, 32) [[A:.*]](0,0)<1> [[HWENGINEID]](0,0)<0;1,0>
+// CHECK: mov (M1_NM, 1) [[A:.*]](0,0)<1> [[HWENGINEID]](0,0)<0;1,0>
 
 uint __builtin_IB_hw_engine_id(void) __attribute__((const));
 

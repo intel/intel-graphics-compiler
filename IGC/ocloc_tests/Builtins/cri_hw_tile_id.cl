@@ -19,7 +19,7 @@ SPDX-License-Identifier: MIT
 // CHECK: and (M1_NM, 1) [[HWTILEID1:.*]](0,0)<1> [[HWTILEID]](0,0)<0;1,0> 0x0:d
 // CHECK: asr (M1_NM, 1) [[HWTILEID0:.*]](0,0)<1> [[HWTILEID]](0,0)<0;1,0> 0x8:d
 // CHECK: bfn.xf8 (M1_NM, 1) [[HWTILEID]](0,0)<1> [[HWTILEID0]](0,0)<0;1,0> 0xffffffff:d [[HWTILEID1]](0,0)<0;1,0>
-// CHECK: mov (M1, 32) [[A:.*]](0,0)<1> [[HWTILEID]](0,0)<0;1,0>
+// CHECK: mov (M1_NM, 1) [[A:.*]](0,0)<1> [[HWTILEID]](0,0)<0;1,0>
 
 uint __attribute__((overloadable)) intel_get_tile_id(void);
 
