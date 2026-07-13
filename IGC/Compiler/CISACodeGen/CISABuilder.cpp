@@ -3952,7 +3952,10 @@ void CEncoder::InitVISABuilderOptions(TARGET_PLATFORM VISAPlatform, bool canAbor
   if (IGC_IS_FLAG_SET(VISAGRFBumpUpNumber))
     SaveOption(vISA_GRFBumpUpNumber, IGC_GET_FLAG_VALUE(VISAGRFBumpUpNumber));
 
-  if (m_program->m_Platform->isCoreChildOf(IGFX_XE3_CORE)) {
+  // vISA supports the GRF-selection spill threshold on PVC and newer. Forward
+  // the spill-allowed budget so a small spill keeps the kernel at the lower GRF
+  // (full occupancy) instead of bumping the GRF number (halving occupancy).
+  if (m_program->m_Platform->isCoreChildOf(IGFX_XE_HPC_CORE)) {
     uint Val = IGC_GET_FLAG_VALUE(VISASpillAllowed);
     if (!IGC_IS_FLAG_SET(VISASpillAllowed) && pCtx->getModuleMetaData()->compOpt.VISASpillAllowed) {
       // Use the driver value if reg key is not set
@@ -3966,6 +3969,9 @@ void CEncoder::InitVISABuilderOptions(TARGET_PLATFORM VISAPlatform, bool canAbor
       context->m_spillAllowedFor256GRF = Val;
       SaveOption(vISA_SpillAllowed256GRF, Val);
     }
+  }
+
+  if (m_program->m_Platform->isCoreChildOf(IGFX_XE3_CORE)) {
     if (uint Val = IGC_GET_FLAG_VALUE(ForceGRFModeUp)) {
       SaveOption(vISA_ForceGRFModeUp, Val);
     }

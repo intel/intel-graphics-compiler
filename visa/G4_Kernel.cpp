@@ -2330,14 +2330,14 @@ unsigned GRFMode::getSpillThreshold(unsigned mode) const {
   const auto &config = configs[mode];
   uint32_t numGRF = config.numGRF;
 
-  // Platforms pre Xe3 do not support spill threshold
-  if (platform < Xe3)
+  // Platforms pre PVC do not support spill threshold
+  if (platform < Xe_PVC)
     return 0;
 
-  // Xe3 supports spill threshold only if GRF >= 128 unless there is an
-  // adjusted RPE bonus from per-BB heuristics (sampler-heavy/cold BBs).
-  if (platform == Xe3 && numGRF < 128 &&
-      spillThresholdBonusInGRFs == 0)
+  // PVC through Xe3 support the spill threshold only for GRF >= 128 (their
+  // smallest GRF-selection config), unless there is an adjusted RPE bonus from
+  // per-BB heuristics (sampler-heavy/cold BBs).
+  if (platform <= Xe3 && numGRF < 128 && spillThresholdBonusInGRFs == 0)
     return 0;
 
   // Platforms after Xe3 support spilling only if GRF >= 96
