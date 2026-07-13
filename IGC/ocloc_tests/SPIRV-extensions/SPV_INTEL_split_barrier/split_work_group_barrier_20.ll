@@ -24,7 +24,8 @@
 ;;     intel_work_group_barrier_wait(CLK_LOCAL_MEM_FENCE, memory_scope_sub_group);
 ;;}
 
-; UNSUPPORTED: system-windows
+; ShaderDumpTranslationOnly is unavailable in Linux Release builds.
+; UNSUPPORTED: system-windows, release
 ; REQUIRES: llvm-spirv, regkeys, dg2-supported
 
 ; RUN: llvm-as %s -o %t.bc

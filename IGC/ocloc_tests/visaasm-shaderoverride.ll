@@ -1,3 +1,5 @@
+// EnableKernelNamesBasedHash and ShaderOverride are unavailable in Release builds.
+// UNSUPPORTED: release
 // REQUIRES: regkeys, bmg-supported, llvm-16-plus
 
 // Test checks visaasm ShaderOverride

@@ -16,11 +16,11 @@ kernel void test_sub_group_non_uniform_broadcast_non_immediate_sub_group_local_i
     size_t gid = get_global_id(0);
     int x = in[gid];
     uint which_sub_group_local_id = ids[gid];
-// CHECK-LABEL: .kernel "test_sub_group_non_uniform_broadcast_non_immediate_sub_group_local_id_simd16"
-// CHECK: shl (M1, 16) ShuffleTmp(0,0)<1> {{.+}}(0,0)<16;8,2> 0x2:uw
-// CHECK: addr_add (M1, 16) A0(0)<1> &{{V[0-9]+}} ShuffleTmp(0,0)<1;1,0>
-// CHECK: mov (M1, 16) simdShuffle(0,0)<1> r[A0(0),0]<1,0>:d
-// CHECK: lsc_store.ugm (M1, 16)  flat[{{.+}}]:a64  simdShuffle:d32
+    // CHECK-LABEL: .kernel "test_sub_group_non_uniform_broadcast_non_immediate_sub_group_local_id_simd16"
+    // CHECK: shl (M1, 16) [[SHUFFLETMP:(ShuffleTmp|V[0-9]+)]](0,0)<1> {{.+}}(0,0)<16;8,2> 0x2:uw
+    // CHECK: addr_add (M1, 16) A0(0)<1> &{{V[0-9]+}} [[SHUFFLETMP]](0,0)<1;1,0>
+    // CHECK: mov (M1, 16) [[SIMDSHUFFLE:(simdShuffle|V[0-9]+)]](0,0)<1> r[A0(0),0]<1,0>:d
+    // CHECK: lsc_store.ugm (M1, 16)  flat[{{.+}}]:a64  [[SIMDSHUFFLE]]:d32
     bool isOddLane = get_sub_group_local_id() % 2 == 1;
     if (isOddLane)
     {
@@ -33,13 +33,13 @@ kernel void test_sub_group_non_uniform_broadcast_non_immediate_sub_group_local_i
     size_t gid = get_global_id(0);
     int x = in[gid];
     uint which_sub_group_local_id = ids[gid];
-// CHECK-LABEL: .kernel "test_sub_group_non_uniform_broadcast_non_immediate_sub_group_local_id_simd32"
-// CHECK: shl (M1, 32) ShuffleTmp(0,0)<1> {{.+}}(0,0)<16;8,2> 0x2:uw
-// CHECK: addr_add (M1, 16) A0(0)<1> &{{V[0-9]+}} ShuffleTmp(0,0)<1;1,0>
-// CHECK: mov (M1, 16) simdShuffle(0,0)<1> r[A0(0),0]<1,0>:d
-// CHECK: addr_add (M5, 16) A0(0)<1> &{{V[0-9]+}} ShuffleTmp(0,16)<1;1,0>
-// CHECK: mov (M5, 16) simdShuffle(1,0)<1> r[A0(0),0]<1,0>:d
-// CHECK: lsc_store.ugm (M1, 32)  flat[{{.+}}]:a64  simdShuffle:d32
+    // CHECK-LABEL: .kernel "test_sub_group_non_uniform_broadcast_non_immediate_sub_group_local_id_simd32"
+    // CHECK: shl (M1, 32) [[SHUFFLETMP:(ShuffleTmp|V[0-9]+)]](0,0)<1> {{.+}}(0,0)<16;8,2> 0x2:uw
+    // CHECK: addr_add (M1, 16) A0(0)<1> &{{V[0-9]+}} [[SHUFFLETMP]](0,0)<1;1,0>
+    // CHECK: mov (M1, 16) [[SIMDSHUFFLE:(simdShuffle|V[0-9]+)]](0,0)<1> r[A0(0),0]<1,0>:d
+    // CHECK: addr_add (M5, 16) A0(0)<1> &{{V[0-9]+}} [[SHUFFLETMP]](0,16)<1;1,0>
+    // CHECK: mov (M5, 16) [[SIMDSHUFFLE]](1,0)<1> r[A0(0),0]<1,0>:d
+    // CHECK: lsc_store.ugm (M1, 32)  flat[{{.+}}]:a64  [[SIMDSHUFFLE]]:d32
     bool isOddLane = get_sub_group_local_id() % 2 == 1;
     if (isOddLane)
     {
@@ -52,10 +52,10 @@ kernel void test_sub_group_non_uniform_broadcast_immediate_sub_group_local_id_si
     size_t gid = get_global_id(0);
     int x = in[gid];
     uint which_sub_group_local_id = 15;
-// CHECK-LABEL: .kernel "test_sub_group_non_uniform_broadcast_immediate_sub_group_local_id_simd16"
-// CHECK: mov (M1_NM, 1) simdShuffle(0,0)<1> {{V[0-9]+}}(0,15)<0;1,0>
-// CHECK: mov (M1, 16) simdShuffleBroadcast(0,0)<1> simdShuffle(0,0)<0;1,0>
-// CHECK: lsc_store.ugm (M1, 16)  flat[{{.+}}]:a64  simdShuffleBroadcast:d32
+    // CHECK-LABEL: .kernel "test_sub_group_non_uniform_broadcast_immediate_sub_group_local_id_simd16"
+    // CHECK: mov (M1_NM, 1) [[SIMDSHUFFLE:(simdShuffle|V[0-9]+)]](0,0)<1> {{V[0-9]+}}(0,15)<0;1,0>
+    // CHECK: mov (M1, 16) [[SIMDSHUFFLEBROADCAST:(simdShuffleBroadcast|V[0-9]+)]](0,0)<1> [[SIMDSHUFFLE]](0,0)<0;1,0>
+    // CHECK: lsc_store.ugm (M1, 16)  flat[{{.+}}]:a64  [[SIMDSHUFFLEBROADCAST]]:d32
     bool isOddLane = get_sub_group_local_id() % 2 == 1;
     if (isOddLane)
     {
@@ -68,10 +68,10 @@ kernel void test_sub_group_non_uniform_broadcast_immediate_sub_group_local_id_si
     size_t gid = get_global_id(0);
     int x = in[gid];
     uint which_sub_group_local_id = 31;
-// CHECK-LABEL: .kernel "test_sub_group_non_uniform_broadcast_immediate_sub_group_local_id_simd32"
-// CHECK: mov (M5_NM, 1) simdShuffle(0,0)<1> {{V[0-9]+}}(1,15)<0;1,0>
-// CHECK: mov (M1, 32) simdShuffleBroadcast(0,0)<1> simdShuffle(0,0)<0;1,0>
-// CHECK: lsc_store.ugm (M1, 32)  flat[{{.+}}]:a64  simdShuffleBroadcast:d32
+    // CHECK-LABEL: .kernel "test_sub_group_non_uniform_broadcast_immediate_sub_group_local_id_simd32"
+    // CHECK: mov (M5_NM, 1) [[SIMDSHUFFLE:(simdShuffle|V[0-9]+)]](0,0)<1> {{V[0-9]+}}(1,15)<0;1,0>
+    // CHECK: mov (M1, 32) [[SIMDSHUFFLEBROADCAST:(simdShuffleBroadcast|V[0-9]+)]](0,0)<1> [[SIMDSHUFFLE]](0,0)<0;1,0>
+    // CHECK: lsc_store.ugm (M1, 32)  flat[{{.+}}]:a64  [[SIMDSHUFFLEBROADCAST]]:d32
     bool isOddLane = get_sub_group_local_id() % 2 == 1;
     if (isOddLane)
     {

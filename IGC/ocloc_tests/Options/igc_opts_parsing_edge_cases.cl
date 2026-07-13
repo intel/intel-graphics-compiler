@@ -10,6 +10,8 @@ SPDX-License-Identifier: MIT
 // Number flags support both comma and whitespace separators.
 // String flags require comma separators; they cannot contain '='.
 
+// PrintDebugSettings and SetLoopUnrollThreshold are unavailable in Release builds.
+// UNSUPPORTED: release
 // REQUIRES: regkeys, dg2-supported
 
 // Comma-separated: numbers and strings in mixed order.

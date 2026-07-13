@@ -6,7 +6,8 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
-// UNSUPPORTED: system-windows
+// LoopSinkRegpressureMargin, ForceLoopSink, CodeLoopSinkingMinSize, and ForceSIMDRPELimit are unavailable in Release builds.
+// UNSUPPORTED: system-windows, release
 // REQUIRES: regkeys, pvc-supported
 // RUN: ocloc compile -file %s -options "-igc_opts 'VISAOptions=-asmToConsole, LoopSinkRegpressureMargin=128, ForceLoopSink=1, CodeLoopSinkingMinSize=4, ForceSIMDRPELimit=3'" -device pvc | FileCheck %s --check-prefix=CHECK-ASM
 

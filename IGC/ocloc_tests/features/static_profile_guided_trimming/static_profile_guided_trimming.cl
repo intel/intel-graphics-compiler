@@ -6,9 +6,10 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
-// UNSUPPORTED: lib-igc-clang
+// UNSUPPORTED: lib-igc-clang, release
 // UNSUPPORTED: llvm-22-plus
 // FIXME: update this test for LLVM 22
+// SubroutineThreshold is unavailable in Linux Release builds.
 // REQUIRES: regkeys, dg2-supported
 
 // RUN: ocloc compile -file %s -device dg2 -options "-igc_opts 'SubroutineThreshold=1,KernelTotalSizeThreshold=1,ControlInlineTinySize=1,PrintControlKernelTotalSize=15'" 2>&1 | FileCheck %s --check-prefix=CHECK-DEFAULT

@@ -9,7 +9,7 @@ SPDX-License-Identifier: MIT
 // REQUIRES: regkeys, cri-supported
 // RUN: ocloc compile -64 -file %s -options "-igc_opts 'DumpVISAASMToConsole=1'" -device cri | FileCheck %s --check-prefix=CHECK-VISA
 
-// CHECK-VISA: .input regionGroupBarrierBuffer offset={{.*}} size=8
+// CHECK-VISA: .input {{(regionGroupBarrierBuffer|V[0-9]+)}} offset={{.*}} size=8
 
 __global volatile uchar* __builtin_IB_get_region_group_barrier_buffer();
 kernel void test(__global volatile uchar* out) {

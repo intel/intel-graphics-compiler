@@ -17,10 +17,10 @@ kernel void test_sub_group_broadcast_non_immediate_sub_group_local_id_simd16(glo
     int x = in[gid];
     uint which_sub_group_local_id = ids[gid];
 // CHECK-LABEL: .kernel "test_sub_group_broadcast_non_immediate_sub_group_local_id_simd16"
-// CHECK: shl (M1_NM, 1) ShuffleTmp(0,0)<1> {{.+}}(0,0)<0;1,0> 0x2:uw
-// CHECK: addr_add (M1_NM, 1) A0(0)<1> &{{V[0-9]+}} ShuffleTmp(0,0)<0;1,0>
-// CHECK: mov (M1, 16) simdBroadcast(0,0)<1> r[A0(0),0]<0;1,0>:d
-// CHECK: lsc_store.ugm (M1, 16)  flat[{{.+}}]:a64  simdBroadcast:d32
+// CHECK: shl (M1_NM, 1) [[SHUFFLETMP:(ShuffleTmp|V[0-9]+)]](0,0)<1> {{.+}}(0,0)<0;1,0> 0x2:uw
+// CHECK: addr_add (M1_NM, 1) A0(0)<1> &{{V[0-9]+}} [[SHUFFLETMP]](0,0)<0;1,0>
+// CHECK: mov (M1, 16) [[SIMDBROADCAST:(simdBroadcast|V[0-9]+)]](0,0)<1> r[A0(0),0]<0;1,0>:d
+// CHECK: lsc_store.ugm (M1, 16)  flat[{{.+}}]:a64  [[SIMDBROADCAST]]:d32
     out[gid] = sub_group_broadcast(x, which_sub_group_local_id);
 }
 
@@ -30,10 +30,10 @@ kernel void test_sub_group_broadcast_non_immediate_sub_group_local_id_simd32(glo
     int x = in[gid];
     uint which_sub_group_local_id = ids[gid];
 // CHECK-LABEL: .kernel "test_sub_group_broadcast_non_immediate_sub_group_local_id_simd32"
-// CHECK: shl (M1_NM, 1) ShuffleTmp(0,0)<1> {{.+}}(0,0)<0;1,0> 0x2:uw
-// CHECK: addr_add (M1_NM, 1) A0(0)<1> &{{V[0-9]+}} ShuffleTmp(0,0)<0;1,0>
-// CHECK: mov (M1, 32) simdBroadcast(0,0)<1> r[A0(0),0]<0;1,0>:d
-// CHECK: lsc_store.ugm (M1, 32)  flat[{{.+}}]:a64  simdBroadcast:d32
+// CHECK: shl (M1_NM, 1) [[SHUFFLETMP:(ShuffleTmp|V[0-9]+)]](0,0)<1> {{.+}}(0,0)<0;1,0> 0x2:uw
+// CHECK: addr_add (M1_NM, 1) A0(0)<1> &{{V[0-9]+}} [[SHUFFLETMP]](0,0)<0;1,0>
+// CHECK: mov (M1, 32) [[SIMDBROADCAST:(simdBroadcast|V[0-9]+)]](0,0)<1> r[A0(0),0]<0;1,0>:d
+// CHECK: lsc_store.ugm (M1, 32)  flat[{{.+}}]:a64  [[SIMDBROADCAST]]:d32
     out[gid] = sub_group_broadcast(x, which_sub_group_local_id);
 }
 
@@ -43,9 +43,9 @@ kernel void test_sub_group_broadcast_immediate_sub_group_local_id_simd16(global 
     int x = in[gid];
     uint which_sub_group_local_id = 15;
 // CHECK-LABEL: .kernel "test_sub_group_broadcast_immediate_sub_group_local_id_simd16"
-// CHECK: mov (M1_NM, 1) simdBroadcast(0,0)<1> {{V[0-9]+}}(0,15)<0;1,0>
-// CHECK: mov (M1, 16) simdBroadcastBroadcast(0,0)<1> simdBroadcast(0,0)<0;1,0>
-// CHECK: lsc_store.ugm (M1, 16)  flat[{{.+}}]:a64  simdBroadcastBroadcast:d32
+// CHECK: mov (M1_NM, 1) [[SIMDBROADCAST:(simdBroadcast|V[0-9]+)]](0,0)<1> {{V[0-9]+}}(0,15)<0;1,0>
+    // CHECK: mov (M1, 16) [[SIMDBROADCASTBROADCAST:(simdBroadcastBroadcast|V[0-9]+)]](0,0)<1> [[SIMDBROADCAST]](0,0)<0;1,0>
+    // CHECK: lsc_store.ugm (M1, 16)  flat[{{.+}}]:a64  [[SIMDBROADCASTBROADCAST]]:d32
     out[gid] = sub_group_broadcast(x, which_sub_group_local_id);
 }
 
@@ -54,9 +54,9 @@ kernel void test_sub_group_broadcast_immediate_sub_group_local_id_simd32(global 
     size_t gid = get_global_id(0);
     int x = in[gid];
     uint which_sub_group_local_id = 31;
-// CHECK-LABEL: .kernel "test_sub_group_broadcast_immediate_sub_group_local_id_simd32"
-// CHECK: mov (M5_NM, 1) simdBroadcast(0,0)<1> {{V[0-9]+}}(1,15)<0;1,0>
-// CHECK: mov (M1, 32) simdBroadcastBroadcast(0,0)<1> simdBroadcast(0,0)<0;1,0>
-// CHECK: lsc_store.ugm (M1, 32)  flat[{{.+}}]:a64  simdBroadcastBroadcast:d32
+    // CHECK-LABEL: .kernel "test_sub_group_broadcast_immediate_sub_group_local_id_simd32"
+    // CHECK: mov (M5_NM, 1) [[SIMDBROADCAST:(simdBroadcast|V[0-9]+)]](0,0)<1> {{V[0-9]+}}(1,15)<0;1,0>
+    // CHECK: mov (M1, 32) [[SIMDBROADCASTBROADCAST:(simdBroadcastBroadcast|V[0-9]+)]](0,0)<1> [[SIMDBROADCAST]](0,0)<0;1,0>
+    // CHECK: lsc_store.ugm (M1, 32)  flat[{{.+}}]:a64  [[SIMDBROADCASTBROADCAST]]:d32
     out[gid] = sub_group_broadcast(x, which_sub_group_local_id);
 }

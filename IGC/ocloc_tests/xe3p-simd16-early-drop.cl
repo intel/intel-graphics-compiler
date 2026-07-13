@@ -7,7 +7,8 @@ SPDX-License-Identifier: MIT
 ============================= end_copyright_notice ===========================*/
 
 // This tests checks for xe3p we drop to SIMD16 instead increasing to LargeGRF.
-// UNSUPPORTED: system-windows
+// AllowSIMD16DropForXE2Plus and EarlySIMD16DropForXE3Threshold are unavailable in Release builds.
+// UNSUPPORTED: system-windows, release
 // REQUIRES: regkeys, cri-supported
 
 // RUN: ocloc compile -file %s -device cri -options "-igc_opts 'ShaderDumpEnable=1, DumpToCustomDir=%t, AllowSIMD16DropForXE2Plus=1, EarlySIMD16DropForXE3Threshold=90'"

@@ -6,6 +6,8 @@
 ;
 ;============================ end_copyright_notice =============================
 
+; The large-function merging and subroutine threshold controls are unavailable in Linux Release builds.
+; UNSUPPORTED: release
 ; REQUIRES: regkeys,pvc-supported,llvm-14-plus
 
 ; Check that mutually exclusive calls to large functions can be merged to a single call so that they can be inlined.

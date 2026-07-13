@@ -17,10 +17,10 @@ kernel void test_intel_sub_group_shuffle_immediate_index_simd32(global int* in, 
     size_t gid = get_global_id(0);
     int x = in[gid];
 
-// CHECK: mov (M5_NM, 1) simdShuffle(0,0)<1> {{V[0-9]+}}(1,15)<0;1,0>
+    // CHECK: mov (M5_NM, 1) [[SIMDSHUFFLE:(simdShuffle|V[0-9]+)]](0,0)<1> {{V[0-9]+}}(1,15)<0;1,0>
 
-// CHECK: mov (M1, 32) simdShuffleBroadcast(0,0)<1> simdShuffle(0,0)<0;1,0>
-// CHECK: lsc_store.ugm (M1, 32)  flat[{{V[0-9]+}}]:a64  simdShuffleBroadcast:d32
+    // CHECK: mov (M1, 32) [[SIMDSHUFFLEBROADCAST:(simdShuffleBroadcast|V[0-9]+)]](0,0)<1> [[SIMDSHUFFLE]](0,0)<0;1,0>
+    // CHECK: lsc_store.ugm (M1, 32)  flat[{{V[0-9]+}}]:a64  [[SIMDSHUFFLEBROADCAST]]:d32
     out[gid] = intel_sub_group_shuffle(x, 31);
 }
 
@@ -30,12 +30,12 @@ kernel void test_intel_sub_group_shuffle_uniform_non_immediate_index_simd32(glob
     size_t gid = get_global_id(0);
     int x = in[gid];
 
-// CHECK: shl (M1_NM, 1) ShuffleTmp(0,0)<1> which_sub_group_local_id{{.*}}(0,0)<0;1,0> 0x2:uw
-// CHECK-NEXT: addr_add (M1_NM, 1) A0(0)<1> &{{V[0-9]+}} ShuffleTmp(0,0)<0;1,0>
-// CHECK-NEXT: mov (M1_NM, 1) simdShuffle(0,0)<1> r[A0(0),0]<0;1,0>:d
+    // CHECK: shl (M1_NM, 1) [[SHUFFLETMP:(ShuffleTmp|V[0-9]+)]](0,0)<1> {{(which_sub_group_local_id.*|V[0-9]+)}}(0,0)<0;1,0> 0x2:uw
+    // CHECK-NEXT: addr_add (M1_NM, 1) A0(0)<1> &{{V[0-9]+}} [[SHUFFLETMP]](0,0)<0;1,0>
+    // CHECK-NEXT: mov (M1_NM, 1) [[SIMDSHUFFLE:(simdShuffle|V[0-9]+)]](0,0)<1> r[A0(0),0]<0;1,0>:d
 
-// CHECK: mov (M1, 32) simdShuffleBroadcast(0,0)<1> simdShuffle(0,0)<0;1,0>
-// CHECK: lsc_store.ugm (M1, 32)  flat[{{.+}}]:a64  simdShuffleBroadcast:d32
+    // CHECK: mov (M1, 32) [[SIMDSHUFFLEBROADCAST:(simdShuffleBroadcast|V[0-9]+)]](0,0)<1> [[SIMDSHUFFLE]](0,0)<0;1,0>
+    // CHECK: lsc_store.ugm (M1, 32)  flat[{{.+}}]:a64  [[SIMDSHUFFLEBROADCAST]]:d32
     out[gid] = intel_sub_group_shuffle(x, which_sub_group_local_id);
 }
 
@@ -46,15 +46,15 @@ kernel void test_intel_sub_group_shuffle_non_uniform_non_immediate_index_simd32(
     int x = in[gid];
     uint which_sub_group_local_id = ids[gid];
 
-// CHECK: shl (M1, 32) ShuffleTmp(0,0)<1> {{V[0-9]+}}(0,0)<16;8,2> 0x2:uw
-// CHECK-NEXT: mov (M1_NM, 16) A0(0)<1> 0x0:uw
-// CHECK-NEXT: addr_add (M1, 16) A0(0)<1> &[[X:V[0-9]+]] ShuffleTmp(0,0)<1;1,0>
-// CHECK-NEXT: mov (M1, 16) simdShuffle(0,0)<1> r[A0(0),0]<1,0>:d
-// CHECK-NEXT: mov (M5_NM, 16) A0(0)<1> 0x0:uw
-// CHECK-NEXT: addr_add (M5, 16) A0(0)<1> &[[X]] ShuffleTmp(0,16)<1;1,0>
-// CHECK-NEXT: mov (M5, 16) simdShuffle(1,0)<1> r[A0(0),0]<1,0>:d
+    // CHECK: shl (M1, 32) [[SHUFFLETMP:(ShuffleTmp|V[0-9]+)]](0,0)<1> {{V[0-9]+}}(0,0)<16;8,2> 0x2:uw
+    // CHECK-NEXT: mov (M1_NM, 16) A0(0)<1> 0x0:uw
+    // CHECK-NEXT: addr_add (M1, 16) A0(0)<1> &[[X:V[0-9]+]] [[SHUFFLETMP]](0,0)<1;1,0>
+    // CHECK-NEXT: mov (M1, 16) [[SIMDSHUFFLE:(simdShuffle|V[0-9]+)]](0,0)<1> r[A0(0),0]<1,0>:d
+    // CHECK-NEXT: mov (M5_NM, 16) A0(0)<1> 0x0:uw
+    // CHECK-NEXT: addr_add (M5, 16) A0(0)<1> &[[X]] [[SHUFFLETMP]](0,16)<1;1,0>
+    // CHECK-NEXT: mov (M5, 16) [[SIMDSHUFFLE]](1,0)<1> r[A0(0),0]<1,0>:d
 
-// CHECK: lsc_store.ugm (M1, 32)  flat[{{.+}}]:a64  simdShuffle:d32
+    // CHECK: lsc_store.ugm (M1, 32)  flat[{{.+}}]:a64  [[SIMDSHUFFLE]]:d32
     out[gid] = intel_sub_group_shuffle(x, which_sub_group_local_id);
 }
 
@@ -67,15 +67,15 @@ kernel void test_intel_sub_group_shuffle_non_uniform_non_immediate_index_src_the
 
     for (uint i = 0; i < num_iterations; ++i)
     {
-// CHECK: shl (M1, 32) ShuffleTmp(0,0)<1> {{V[0-9]+}}(0,0)<16;8,2> 0x2:uw
-// CHECK-NEXT: mov (M1_NM, 16) A0(0)<1> 0x0:uw
-// CHECK-NEXT: addr_add (M1, 16) A0(0)<1> &[[X:V[0-9]+]] ShuffleTmp(0,0)<1;1,0>
-// CHECK-NEXT: mov (M1, 16) first16LanesResult(0,0)<1> r[A0(0),0]<1,0>:d
-// CHECK-NEXT: mov (M5_NM, 16) A0(0)<1> 0x0:uw
-// CHECK-NEXT: addr_add (M5, 16) A0(0)<1> &[[X]] ShuffleTmp(0,16)<1;1,0>
-// CHECK-NEXT: mov (M5, 16) [[X]](1,0)<1> r[A0(0),0]<1,0>:d
-// CHECK-NEXT: mov (M1, 16) [[X]](0,0)<1> first16LanesResult(0,0)<1;1,0>
-        x = intel_sub_group_shuffle(x, which_sub_group_local_id);
+      // CHECK: shl (M1, 32) [[SHUFFLETMP:(ShuffleTmp|V[0-9]+)]](0,0)<1> {{V[0-9]+}}(0,0)<16;8,2> 0x2:uw
+      // CHECK-NEXT: mov (M1_NM, 16) A0(0)<1> 0x0:uw
+      // CHECK-NEXT: addr_add (M1, 16) A0(0)<1> &[[X:V[0-9]+]] [[SHUFFLETMP]](0,0)<1;1,0>
+      // CHECK-NEXT: mov (M1, 16) [[FIRST16LANESRESULT:(first16LanesResult|V[0-9]+)]](0,0)<1> r[A0(0),0]<1,0>:d
+      // CHECK-NEXT: mov (M5_NM, 16) A0(0)<1> 0x0:uw
+      // CHECK-NEXT: addr_add (M5, 16) A0(0)<1> &[[X]] [[SHUFFLETMP]](0,16)<1;1,0>
+      // CHECK-NEXT: mov (M5, 16) [[X]](1,0)<1> r[A0(0),0]<1,0>:d
+      // CHECK-NEXT: mov (M1, 16) [[X]](0,0)<1> [[FIRST16LANESRESULT]](0,0)<1;1,0>
+      x = intel_sub_group_shuffle(x, which_sub_group_local_id);
     }
 
 // CHECK: lsc_store.ugm (M1, 32)  flat[{{.+}}]:a64  [[X]]:d32

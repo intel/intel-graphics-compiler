@@ -7,6 +7,7 @@
 ;============================ end_copyright_notice =============================
 
 ; REQUIRES: false
+; UNSUPPORTED: release
 ; REQUIRES: regkeys,pvc-supported,llvm-16-plus
 
 ; Check that specifed BB is removed from the function.

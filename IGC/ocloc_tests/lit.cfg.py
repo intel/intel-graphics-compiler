@@ -164,3 +164,6 @@ if config.is32b == "1":
 if config.debug_build:
   config.available_features.add('debug')
 
+if getattr(config, 'release_build', False):
+  config.available_features.add('release')
+

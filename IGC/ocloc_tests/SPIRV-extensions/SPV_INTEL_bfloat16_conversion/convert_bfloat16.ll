@@ -21,7 +21,7 @@
 ; RUN: llvm-spirv %t.bc --spirv-ext=+SPV_INTEL_bfloat16_conversion -o %t.spv
 
 ; Translation: the bfloat16 conversion builtins are restored from SPIR-V.
-; RUN: %if cri-supported %{ ocloc compile -spirv_input -file %t.spv -device cri -options " -igc_opts 'ShaderDumpTranslationOnly=1'" 2>&1 | FileCheck %s --check-prefixes=CHECK-LLVM %}
+; RUN: %if cri-supported && !release %{ ocloc compile -spirv_input -file %t.spv -device cri -options " -igc_opts 'ShaderDumpTranslationOnly=1'" 2>&1 | FileCheck %s --check-prefixes=CHECK-LLVM %}
 
 ; Native codegen (CRI): HW conversion declares a bfloat (type=bf) variable, no emulation constant.
 ; RUN: %if cri-supported %{ ocloc compile -spirv_input -file %t.spv -device cri -options " -igc_opts 'DumpVISAASMToConsole=1'" 2>&1 | FileCheck %s --check-prefixes=CHECK-NATIVE %}

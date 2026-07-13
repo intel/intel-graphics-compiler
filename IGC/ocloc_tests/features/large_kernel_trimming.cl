@@ -6,6 +6,8 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
+// The subroutine and small-function thresholds are unavailable in Linux Release builds.
+// UNSUPPORTED: release
 // REQUIRES: regkeys, dg2-supported
 
 // Test checks that in case, kernel is above the large kernel kernel threshold small functions will be trimmed as well.

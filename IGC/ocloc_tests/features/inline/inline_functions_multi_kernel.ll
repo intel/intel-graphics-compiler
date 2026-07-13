@@ -6,6 +6,8 @@
 ;
 ;============================ end_copyright_notice =============================
 
+; The subroutine threshold controls are unavailable in Linux Release builds.
+; UNSUPPORTED: release
 ; REQUIRES: regkeys, pvc-supported, llvm-14-plus
 
 ; Check that functions called once from kernel are inlined in it even if they are called multiple times from other kernels.

@@ -24,7 +24,8 @@
 ;;    __spirv_ControlBarrierWaitINTEL(2, 3, 258);    // local, subgroup
 ;;}
 
-; UNSUPPORTED: system-windows
+; ShaderDumpTranslationOnly is unavailable in Linux Release builds.
+; UNSUPPORTED: system-windows, release
 ; REQUIRES: llvm-spirv, regkeys, dg2-supported
 
 ; RUN: llvm-as %s -o %t.bc

@@ -1,4 +1,5 @@
-; UNSUPPORTED: llvm-22-plus
+; RematSingleFlowRematEnabled is unavailable in Release builds.
+; UNSUPPORTED: llvm-22-plus, release
 ; FIXME: update this test for LLVM 22
 ; REQUIRES: regkeys, llvm-16-plus
 ; RUN: llvm-as %OPAQUE_PTR_FLAG% < %s -o %t.bc

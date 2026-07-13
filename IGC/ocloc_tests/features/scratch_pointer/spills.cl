@@ -9,8 +9,8 @@ SPDX-License-Identifier: MIT
 // Verify that scratch_pointer is removed from implicit kernel arguments if it is beneficial and kernel has no spills.
 
 // REQUIRES: cri-supported, regkeys
-// RUN: ocloc compile -file %s -options "-igc_opts 'DumpZEInfoToConsole=1, RemoveUnusedIdImplicitArguments=1, RemoveImplicitScratchPointer=1, TotalGRFNum=32, AllowSIMD16DropForXE2Plus=0'" -device cri | FileCheck %s --check-prefix=CHECK-SPILL
-// RUN: ocloc compile -file %s -options "-igc_opts 'DumpZEInfoToConsole=1, RemoveUnusedIdImplicitArguments=1, RemoveImplicitScratchPointer=1, TotalGRFNum=512, AllowSIMD16DropForXE2Plus=0'" -device cri | FileCheck %s --check-prefix=CHECK-NO-SPILL
+// RUN: %if !release %{ ocloc compile -file %s -options "-igc_opts 'DumpZEInfoToConsole=1, RemoveUnusedIdImplicitArguments=1, RemoveImplicitScratchPointer=1, TotalGRFNum=32, AllowSIMD16DropForXE2Plus=0'" -device cri | FileCheck %s --check-prefix=CHECK-SPILL %}
+// RUN: ocloc compile -file %s -options "-igc_opts 'DumpZEInfoToConsole=1, RemoveUnusedIdImplicitArguments=1, RemoveImplicitScratchPointer=1, TotalGRFNum=512'" -device cri | FileCheck %s --check-prefix=CHECK-NO-SPILL
 
 // CHECK-SPILL:      payload_arguments:
 // CHECK-SPILL-NEXT: - arg_type:        indirect_data_pointer

@@ -6,6 +6,8 @@
 ;
 ;============================ end_copyright_notice =============================
 
+; DisableInlining is unavailable in Linux Release builds.
+; UNSUPPORTED: release
 ; REQUIRES: regkeys,pvc-supported,llvm-14-plus
 
 ; Check that no inline prevents function inlining.

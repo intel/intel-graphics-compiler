@@ -1,6 +1,7 @@
 ; UNSUPPORTED: llvm-22-plus
 ; FIXME: update this test for LLVM 22
-; UNSUPPORTED: system-windows
+; ShaderDumpTranslationOnly is unavailable in Linux Release builds.
+; UNSUPPORTED: system-windows, release
 ; REQUIRES: llvm-spirv, regkeys, dg2-supported
 
 ; RUN: llvm-as %s -o %t.bc

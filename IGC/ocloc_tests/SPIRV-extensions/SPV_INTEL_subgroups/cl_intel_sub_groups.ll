@@ -43,7 +43,8 @@
 ;    intel_sub_group_block_write_us16(sp, us16);
 ;}
 
-; UNSUPPORTED: system-windows
+; ShaderDumpTranslationOnly is unavailable in Linux Release builds.
+; UNSUPPORTED: system-windows, release
 ; REQUIRES: llvm-spirv, regkeys, dg2-supported, llvm-16-plus
 
 ; LLVM with opaque pointers:

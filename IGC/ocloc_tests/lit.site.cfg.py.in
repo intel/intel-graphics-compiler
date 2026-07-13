@@ -27,7 +27,7 @@ config.cclang_lib_dir = "@OPENCL_CLANG_LIB_DIR@"
 config.igc_clang_lib_dir = "@IGC_CLANG_LIB_DIR@"
 # Mimic the c++ (define) IGC_DEBUG_VARIABLES
 # so the regkeys are supported on Linux release build too
-config.regkeys_disabled = $<AND:$<CONFIG:Release>,$<BOOL:"@MSVC@">>
+config.regkeys_disabled = $<AND:$<CONFIG:Release>,$<BOOL:@MSVC@>>
 config.spirv_as_enabled = "@IGC_BUILD__PROJ__spirv_as@"
 config.spirv_as_dir = "@IGC_SPIRV_AS_DIR@"
 config.llvm_spirv_enabled = "@IGC_BUILD__PROJ__llvm_spirv@"
@@ -35,6 +35,7 @@ config.llvm_spirv_dir = "@IGC_LLVM_SPIRV_DIR@"
 config.llvm_version_major = "@LLVM_VERSION_MAJOR@"
 config.is32b = "$<BOOL:$<EQUAL:@CMAKE_SIZEOF_VOID_P@,4>>"
 config.debug_build = $<CONFIG:Debug>
+config.release_build = $<CONFIG:Release>
 config.igc_llvm_opaque_pointers = "@IGC_LIT_ENABLE_OPAQUE_POINTERS@"
 config.has_vc =  "$<BOOL:@IGC_ENABLE_VC_OCLOC_TESTS@>"
 

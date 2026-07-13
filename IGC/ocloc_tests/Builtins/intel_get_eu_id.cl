@@ -17,8 +17,8 @@ SPDX-License-Identifier: MIT
 // CHECK-VISA: and (M1_NM, 1) [[VAR2:V[0-9]+]](0,0)<1> [[VAR1]](0,0)<0;1,0> 0x3:d
 // CHECK-VISA: asr (M1_NM, 1) [[VAR3:V[0-9]+]](0,0)<1> [[VAR1]](0,0)<0;1,0> 0x2:d
 // CHECK-VISA: bfn.xf8 (M1_NM, 1) [[EUID:V[0-9]+]](0,0)<1> [[VAR3]](0,0)<0;1,0> 0xfffffffc:d [[VAR2]](0,0)<0;1,0>
-// CHECK-VISA: mov (M1, 32) Broadcast(0,0)<1> [[EUID]](0,0)<0;1,0>
-// CHECK-VISA: lsc_store.ugm (M1, 32)  flat[{{.*}}]:a64  Broadcast:d32
+// CHECK-VISA: mov (M1, 32) [[BROADCAST:(Broadcast|V[0-9]+)]](0,0)<1> [[EUID]](0,0)<0;1,0>
+// CHECK-VISA: lsc_store.ugm (M1, 32)  flat[{{.*}}]:a64  [[BROADCAST]]:d32
 
 /* Returns GPU EU ID for current subslice */
 uint __attribute__((overloadable)) intel_get_eu_id(void);
