@@ -116,7 +116,7 @@ def SPV_INTEL_global_variable_decorations : ExperimentalExtension<
   "https://github.khronos.org/SPIRV-Registry/extensions/INTEL/SPV_INTEL_global_variable_host_access.html"
 >;
 
-def SPV_INTEL_inline_assembly : ExperimentalExtension<
+def SPV_INTEL_inline_assembly : Extension<
   "SPV_INTEL_inline_assembly",
   [ Capability<"AsmINTEL"> ],
   "https://github.com/intel/llvm/blob/sycl/sycl/doc/design/spirv-extensions/SPV_INTEL_inline_assembly.asciidoc"

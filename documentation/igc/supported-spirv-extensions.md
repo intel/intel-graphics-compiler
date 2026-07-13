@@ -278,7 +278,7 @@ This document lists all SPIR-V extensions supported by IGC and their platform re
 
 **Specification**: https://github.com/intel/llvm/blob/sycl/sycl/doc/design/spirv-extensions/SPV_INTEL_inline_assembly.asciidoc
 
-> **Experimentally supported on**: All platforms
+> **Supported on**: All platforms
 
 **Capabilities**:
 
