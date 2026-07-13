@@ -254,6 +254,10 @@ DECLARE_IGC_REGKEY(bool, DisableCodeSinkingInputVec, false,
 DECLARE_IGC_REGKEY(
     bool, DisableCodeSinkingLongLatencyInsts, false,
     "Setting this to 1/true disable sinking long latency instructions. (Currently, Sample instructions only)", false)
+DECLARE_IGC_REGKEY(bool, EnableSampleResultLatencySink, false,
+                   "Sink the consumer chain of a long-latency sampler/ld/gather send toward its distant use to hide "
+                   "send latency, leaving the send in place. May increase register pressure.",
+                   true)
 DECLARE_IGC_REGKEY(DWORD, CodeSinkingMinSize, 32, "Don't sink if the number of instructions in the kernel is less",
                    false)
 

@@ -22,6 +22,7 @@ See LICENSE.TXT for details.
 #include "Compiler/CodeGenContextWrapper.hpp"
 #include "Compiler/MetaDataUtilsWrapper.h"
 #include "Compiler/MetaDataApi/MetaDataApi.h"
+#include "common/igc_regkeys.hpp"
 
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/Analysis/PostDominators.h>
@@ -51,6 +52,10 @@ public:
     AU.addRequired<llvm::LoopInfoWrapperPass>();
     AU.addRequired<MetaDataUtilsWrapper>();
     AU.addRequired<CodeGenContextWrapper>();
+    if (IGC_IS_FLAG_ENABLED(EnableSampleResultLatencySink)) {
+      AU.addRequired<IGCLivenessAnalysis>();
+      AU.addRequired<IGCFunctionExternalRegPressureAnalysis>();
+    }
 
     AU.addPreserved<llvm::DominatorTreeWrapperPass>();
     AU.addPreserved<llvm::PostDominatorTreeWrapperPass>();
@@ -69,6 +74,7 @@ private:
   void rollbackSinking(BasicBlock *BB);
 
   uint estimateLiveOutPressure(llvm::BasicBlock *blk, const llvm::DataLayout *DL);
+  bool hasRegPressureHeadroomForLatencySink() const { return latencySinkHasHeadroom; }
 
   /// data members for local-sinking
   llvm::SmallPtrSet<llvm::BasicBlock *, 8> LocalBlkSet;
@@ -79,6 +85,10 @@ private:
   /// counting the number of gradient/sample operation sinked into CF
   unsigned totalGradientMoved = 0;
   unsigned numGradientMovedOutBB = 0;
+
+  /// There's enough GRF headroom to apply the latency-hiding sink
+  /// (EnableSampleResultLatencySink) without risking spills.
+  bool latencySinkHasHeadroom = false;
 };
 
 void initializeCodeSinkingPass(llvm::PassRegistry &);

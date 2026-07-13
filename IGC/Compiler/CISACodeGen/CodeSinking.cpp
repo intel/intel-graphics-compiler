@@ -183,6 +183,44 @@ static BasicBlock *findLowestSinkTarget(Instruction *inst, SmallPtrSetImpl<Instr
   return nullptr;
 }
 
+// Latency-hiding sink heuristic (regkey EnableSampleResultLatencySink).
+// Returns true if 'inst's operands trace back through extractelement/extractvalue
+// and simple ALU/casts to a long-latency send (sample/gather4/ld/resinfo/sampler-
+// load) pinned above it in the same block. Sinking such a consumer delays the send
+// result read, hiding the send latency.
+static bool isLongLatencySendConsumer(Instruction *inst) {
+  auto isLongLatencySend = [](Instruction *I) {
+    return isSampleInstruction(I) || isGather4Instruction(I) || isInfoInstruction(I) || isLdInstruction(I) ||
+           isa<SamplerLoadIntrinsic>(I);
+  };
+
+  BasicBlock *BB = inst->getParent();
+  SmallPtrSet<Instruction *, 16> Visited;
+  SmallVector<Instruction *, 16> WorkList;
+  auto pushOperands = [&](Instruction *I) {
+    for (Value *Op : I->operands())
+      if (auto *OpI = dyn_cast<Instruction>(Op))
+        WorkList.push_back(OpI);
+  };
+
+  pushOperands(inst);
+  while (!WorkList.empty()) {
+    Instruction *Cur = WorkList.pop_back_val();
+    if (!Visited.insert(Cur).second)
+      continue;
+    // Only follow the chain while it stays pinned above 'inst' in the same block.
+    if (Cur->getParent() != BB)
+      continue;
+    if (isLongLatencySend(Cur))
+      return true;
+    // Forward only through cheap, side-effect-free value-forwarding ops so we do not
+    // accidentally classify an unrelated memory/side-effecting op as a hideable chain.
+    if (isa<ExtractElementInst>(Cur) || isa<ExtractValueInst>(Cur) || isa<BinaryOperator>(Cur) || isa<CastInst>(Cur))
+      pushOperands(Cur);
+  }
+  return false;
+}
+
 static bool isCastInstrReducingPressure(Instruction *Inst, bool FlagPressureAware) {
   if (auto CI = dyn_cast<CastInst>(Inst)) {
     unsigned SrcSize = (unsigned int)CI->getSrcTy()->getPrimitiveSizeInBits();
@@ -233,6 +271,8 @@ IGC_INITIALIZE_PASS_DEPENDENCY(PostDominatorTreeWrapperPass)
 IGC_INITIALIZE_PASS_DEPENDENCY(LoopInfoWrapperPass)
 IGC_INITIALIZE_PASS_DEPENDENCY(TargetLibraryInfoWrapperPass)
 IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
+IGC_INITIALIZE_PASS_DEPENDENCY(IGCLivenessAnalysis)
+IGC_INITIALIZE_PASS_DEPENDENCY(IGCFunctionExternalRegPressureAnalysis)
 IGC_INITIALIZE_PASS_END(CodeSinking, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
 char CodeSinking::ID = 0;
@@ -286,6 +326,26 @@ bool CodeSinking::runOnFunction(Function &F) {
   PDT = &getAnalysis<PostDominatorTreeWrapperPass>().getPostDomTree();
   LI = &getAnalysis<LoopInfoWrapperPass>().getLoopInfo();
   DL = &F.getParent()->getDataLayout();
+
+  // Compute once whether the function has GRF headroom for the latency-hiding sink.
+  // Extending a long-latency send result's live range spills in shaders already near
+  // the GRF budget (observed as large spill regressions), so gate the whole feature on
+  // the function's max register pressure staying under a fraction of the budget.
+  latencySinkHasHeadroom = false;
+  if (IGC_IS_FLAG_ENABLED(EnableSampleResultLatencySink)) {
+    auto &RPE = getAnalysis<IGCLivenessAnalysis>().getLivenessRunner();
+    auto &FRPE = getAnalysis<IGCFunctionExternalRegPressureAnalysis>();
+    WIAnalysisRunner *WI = &FRPE.getWIAnalysis(&F);
+    GenXFunctionGroupAnalysis *FGA = getAnalysisIfAvailable<GenXFunctionGroupAnalysis>();
+    unsigned simd = numLanes(IGC::bestGuessSIMDSize(CTX, &F, FGA));
+    unsigned funcMaxPressure = RPE.getMaxRegCountForFunction(F, simd, WI) + FRPE.getExternalPressureForFunction(&F);
+    unsigned budget = CTX->getNumGRFPerThread(true, &F);
+    // Max register-pressure headroom, as a percent of the GRF budget, below which the
+    // latency sink is allowed. Fixed at 50 for now
+    const unsigned maxPercent = 50;
+    // Budget unknown (0): stay permissive for LIT tests
+    latencySinkHasHeadroom = (budget == 0) || ((uint64_t)funcMaxPressure * 100 <= (uint64_t)budget * maxPercent);
+  }
 
   bool Changed = treeSink(F);
 
@@ -387,6 +447,7 @@ bool CodeSinking::sinkInstruction(Instruction *InstToSink, SmallPtrSetImpl<Instr
   // decide.
   BasicBlock *SuccToSinkTo = nullptr;
   SmallPtrSet<Instruction *, 16> UsesInBB;
+  bool LatencySink = false;
 
   if (!HasAliasConcern) {
     // find the lowest common dominator of all uses
@@ -394,7 +455,14 @@ bool CodeSinking::sinkInstruction(Instruction *InstToSink, SmallPtrSetImpl<Instr
     if (BasicBlock *TgtBB = findLowestSinkTarget(InstToSink, UsesInBB, IsOuterLoop, false, DT, LI)) {
       // heuristic, avoid code-motion that does not reduce execution frequency
       // but may increase register usage
-      if (ReducePressure || (TgtBB && (IsOuterLoop || !PDT->dominates(TgtBB, InstToSink->getParent())))) {
+      bool ReducesFrequency = TgtBB && (IsOuterLoop || !PDT->dominates(TgtBB, InstToSink->getParent()));
+      // Latency-hiding sink: sink a long-latency send's consumer chain even with no RP
+      // or frequency win. Gated on register-pressure headroom: extending the send
+      // result's live range spills in shaders already near the GRF budget, so only fire
+      // when the block has room (see hasRegPressureHeadroomForLatencySink).
+      LatencySink = !ReducePressure && !ReducesFrequency && IGC_IS_FLAG_ENABLED(EnableSampleResultLatencySink) &&
+                    hasRegPressureHeadroomForLatencySink() && isLongLatencySendConsumer(InstToSink);
+      if (ReducePressure || ReducesFrequency || LatencySink) {
         SuccToSinkTo = TgtBB;
       }
     } else {
@@ -435,6 +503,13 @@ bool CodeSinking::sinkInstruction(Instruction *InstToSink, SmallPtrSetImpl<Instr
 
   if (!ReducePressure || HasAliasConcern) {
     IGCLLVM::moveBefore(InstToSink, &(*SuccToSinkTo->getFirstInsertionPt()));
+    // For latency-hiding sinks, additionally schedule a local sink so the consumer
+    // lands right before its use inside the target block instead of at the block top,
+    // maximizing the independent work between the pinned send and this result read.
+    if (LatencySink && !UsesInBB.empty()) {
+      LocalBlkSet.insert(SuccToSinkTo);
+      LocalInstSet.insert(InstToSink);
+    }
   }
   // when alasing is not an issue and reg-pressure is not an issue
   // move it as close to the uses as possible
