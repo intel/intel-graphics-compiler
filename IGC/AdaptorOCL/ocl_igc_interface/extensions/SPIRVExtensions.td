@@ -79,7 +79,7 @@ def SPV_INTEL_cache_controls : Extension<
   "https://github.com/KhronosGroup/SPIRV-Registry/blob/main/extensions/INTEL/SPV_INTEL_cache_controls.asciidoc"
 >;
 
-def SPV_INTEL_fp_fast_math_mode : ExperimentalExtension<
+def SPV_INTEL_fp_fast_math_mode : Extension<
   "SPV_INTEL_fp_fast_math_mode",
   [ Capability<"FPFastMathModeINTEL"> ],
   "https://github.khronos.org/SPIRV-Registry/extensions/INTEL/SPV_INTEL_fp_fast_math_mode.html"

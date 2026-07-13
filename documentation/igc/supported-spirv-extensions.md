@@ -217,7 +217,7 @@ This document lists all SPIR-V extensions supported by IGC and their platform re
 
 **Specification**: https://github.khronos.org/SPIRV-Registry/extensions/INTEL/SPV_INTEL_fp_fast_math_mode.html
 
-> **Experimentally supported on**: All platforms
+> **Supported on**: All platforms
 
 **Capabilities**:
 
