@@ -1427,6 +1427,8 @@ bool SupportsModifier(llvm::Instruction *inst, const IGC::CPlatform &platform) {
   case Instruction::URem:
     // neg mod is negative. Disable it as URem must have positive operands,
     return false;
+  case Instruction::SExt:
+    return false;
   default:
     break;
   }

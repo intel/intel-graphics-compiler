@@ -2392,6 +2392,14 @@ bool G4_INST::canPropagateTo(G4_INST *useInst, Gen4_Operand_Number opndNum,
     return false;
   }
 
+  if (hasModifier && IS_TYPE_INT(srcType)) {
+    G4_SrcModifier srcMod = src->asSrcRegRegion()->getModifier();
+    if ((srcMod == Mod_Abs || srcMod == Mod_Minus || srcMod == Mod_Minus_Abs) &&
+        TypeSize(useInst->getDst()->getType()) > TypeSize(dstType)) {
+      return false;
+    }
+  }
+
   // Check 'dst' of MOV and 'use' are the same variable. Otherwise, it's not
   // legal to be propagated.
   G4_CmpRelation rel = dst->compareOperand(use, getBuilder());
