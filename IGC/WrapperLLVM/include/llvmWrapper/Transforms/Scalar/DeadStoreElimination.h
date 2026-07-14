@@ -26,13 +26,6 @@ struct DSELegacyPassWrapper : public FunctionPass {
   bool runOnFunction(llvm::Function &F) override;
   void getAnalysisUsage(AnalysisUsage &AU) const override;
   virtual llvm::StringRef getPassName() const override { return "LegacyWrappedDSE"; }
-
-private:
-  LoopAnalysisManager LAM;
-  FunctionAnalysisManager FAM;
-  CGSCCAnalysisManager CGAM;
-  ModuleAnalysisManager MAM;
-  PassBuilder PB;
 };
 
 FunctionPass *createLegacyWrappedDeadStoreEliminationPass();

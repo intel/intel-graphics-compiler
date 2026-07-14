@@ -35,7 +35,15 @@ MemCpyOptLegacyPassWrapper::MemCpyOptLegacyPassWrapper() : FunctionPass(ID) {
   initializeMemCpyOptLegacyPassWrapperPass(*PassRegistry::getPassRegistry());
 }
 
-void MemCpyOptLegacyPassWrapper::initializeAnalysisManagers() {
+bool MemCpyOptLegacyPassWrapper::runOnFunction(Function &F) {
+  if (skipFunction(F))
+    return false;
+  LoopAnalysisManager LAM;
+  FunctionAnalysisManager FAM;
+  CGSCCAnalysisManager CGAM;
+  ModuleAnalysisManager MAM;
+  PassBuilder PB;
+
   FAM.registerPass([]() {
     TargetLibraryInfoImpl TLII(llvm::Triple{});
     TLII.disableAllFunctions();
@@ -47,13 +55,7 @@ void MemCpyOptLegacyPassWrapper::initializeAnalysisManagers() {
   PB.registerCGSCCAnalyses(CGAM);
   PB.registerModuleAnalyses(MAM);
   PB.crossRegisterProxies(LAM, FAM, CGAM, MAM);
-}
 
-bool MemCpyOptLegacyPassWrapper::runOnFunction(Function &F) {
-  if (skipFunction(F))
-    return false;
-
-  initializeAnalysisManagers();
   // Run the New Pass Manager implementation of the pass.
   MemCpyOptPass Implementation;
   Implementation.run(F, FAM);

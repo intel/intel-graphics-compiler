@@ -27,16 +27,21 @@ namespace IGCLLVM {
 
 DSELegacyPassWrapper::DSELegacyPassWrapper() : FunctionPass(ID) {
   initializeDSELegacyPassWrapperPass(*PassRegistry::getPassRegistry());
-  PB.registerLoopAnalyses(LAM);
-  PB.registerFunctionAnalyses(FAM);
-  PB.registerCGSCCAnalyses(CGAM);
-  PB.registerModuleAnalyses(MAM);
-  PB.crossRegisterProxies(LAM, FAM, CGAM, MAM);
 }
 
 bool DSELegacyPassWrapper::runOnFunction(Function &F) {
   if (skipFunction(F))
     return false;
+  LoopAnalysisManager LAM;
+  FunctionAnalysisManager FAM;
+  CGSCCAnalysisManager CGAM;
+  ModuleAnalysisManager MAM;
+  PassBuilder PB;
+  PB.registerModuleAnalyses(MAM);
+  PB.registerCGSCCAnalyses(CGAM);
+  PB.registerFunctionAnalyses(FAM);
+  PB.registerLoopAnalyses(LAM);
+  PB.crossRegisterProxies(LAM, FAM, CGAM, MAM);
 
   // Run the New Pass Manager implementation of the pass.
   DSEPass Implementation;
