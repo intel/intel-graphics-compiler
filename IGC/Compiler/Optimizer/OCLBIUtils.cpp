@@ -86,7 +86,15 @@ void CCommand::replaceGenISACallInst(GenISAIntrinsic::ID intrinsicName, ArrayRef
   Function *func = getFunctionDeclaration(intrinsicName, Tys);
   Instruction *newCall = CallInst::Create(func, m_args, m_pCallInst->getName(), IGCLLVM::insertPosition(m_pCallInst));
   newCall->setDebugLoc(m_DL);
-  m_pCallInst->replaceAllUsesWith(newCall);
+  if (m_pCallInst->getType()->isVoidTy()) {
+    IGC_ASSERT_MESSAGE(newCall->getType()->isVoidTy(), "Wrong type");
+  } else {
+    if (newCall->getType()->isVoidTy()) {
+      IGC_ASSERT_MESSAGE(m_pCallInst->getNumUses() == 0, "invalid intrinsic replacement");
+    } else {
+      m_pCallInst->replaceAllUsesWith(newCall);
+    }
+  }
 }
 
 void CCommand::emitError(const char *ErrorStr, const Value *Context) {

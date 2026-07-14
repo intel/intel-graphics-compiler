@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2024 Intel Corporation
+Copyright (C) 2017-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -602,6 +602,12 @@ bool PreCompiledFuncImport::runOnModule(Module &M) {
                 createIntrinsicCall(CI, GenISAIntrinsic::GenISA_mul_rtz);
               } else if (IGCLLVM::starts_with(calledFunc->getName(), "GenISA_uitof_rtz")) {
                 createIntrinsicCall(CI, GenISAIntrinsic::GenISA_uitof_rtz);
+              } else if (IGCLLVM::starts_with(calledFunc->getName(), "GenISA_getSR0")) {
+                createIntrinsicCall(CI, GenISAIntrinsic::GenISA_getSR0);
+              } else if (IGCLLVM::starts_with(calledFunc->getName(), "GenISA_setSR0")) {
+                createIntrinsicCall(CI, GenISAIntrinsic::GenISA_setSR0);
+              } else if (IGCLLVM::starts_with(calledFunc->getName(), "GenISA_movcr")) {
+                createIntrinsicCall(CI, GenISAIntrinsic::GenISA_movcr);
               }
             }
           }
