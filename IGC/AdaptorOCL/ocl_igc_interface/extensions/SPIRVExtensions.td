@@ -244,7 +244,7 @@ def SPV_INTEL_arbitrary_precision_integers : ExperimentalExtension<
 
 // This extension is supported to allow SPIR-V modules containing non-semantic debug info to be compiled successfully.
 // (https://github.khronos.org/SPIRV-Registry/nonsemantic/NonSemantic.Shader.DebugInfo.100.html)
-def SPV_KHR_non_semantic_info : ExperimentalExtension<
+def SPV_KHR_non_semantic_info : Extension<
   "SPV_KHR_non_semantic_info",
   [],
   "https://github.khronos.org/SPIRV-Registry/extensions/KHR/SPV_KHR_non_semantic_info.html"

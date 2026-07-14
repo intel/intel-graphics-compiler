@@ -652,7 +652,7 @@ This document lists all SPIR-V extensions supported by IGC and their platform re
 
 **Specification**: https://github.khronos.org/SPIRV-Registry/extensions/KHR/SPV_KHR_non_semantic_info.html
 
-> **Experimentally supported on**: All platforms
+> **Supported on**: All platforms
 
 **Capabilities**:
 
