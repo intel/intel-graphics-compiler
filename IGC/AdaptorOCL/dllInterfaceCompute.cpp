@@ -1425,7 +1425,8 @@ bool TranslateBuildSPMD(const STB_TranslateInputArgs *pInputArgs, STB_TranslateO
   if (IGC_IS_FLAG_ENABLED(ShaderDumpEnable))
     dumpOCLProgramBinary(oclContext, pOutputArgs->Output.data(), pOutputArgs->Output.size());
 
-  if (const char *progbinCustomFN = IGC_GET_REGKEYSTRING(ProgbinDumpFileName))
+  const char *progbinCustomFN = IGC_GET_REGKEYSTRING(ProgbinDumpFileName);
+  if (progbinCustomFN[0] != '\0')
     dumpOCLProgramBinary(progbinCustomFN, pOutputArgs->Output.data(), pOutputArgs->Output.size());
 
   if (IGC_IS_FLAG_ENABLED(ShaderOverride))

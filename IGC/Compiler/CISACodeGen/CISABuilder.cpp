@@ -3694,7 +3694,8 @@ void CEncoder::InitVISABuilderOptions(TARGET_PLATFORM VISAPlatform, bool canAbor
 
   if (IGC_IS_FLAG_ENABLED(ShaderDataBaseStats)) {
     SaveOption(vISA_ShaderDataBaseStats, true);
-    if (auto *filePath = IGC_GET_REGKEYSTRING(ShaderDataBaseStatsFilePath)) {
+    auto *filePath = IGC_GET_REGKEYSTRING(ShaderDataBaseStatsFilePath);
+    if (filePath[0] != '\0') {
       SaveOption(vISA_ShaderDataBaseStatsFilePath, filePath);
     }
   }
@@ -4183,18 +4184,19 @@ void CEncoder::InitVISABuilderOptions(TARGET_PLATFORM VISAPlatform, bool canAbor
     SaveOption(vISA_Compaction, false);
   }
 
-  if (auto *regex = IGC_GET_REGKEYSTRING(ShaderDumpRegexFilter)) {
+  auto *regex = IGC_GET_REGKEYSTRING(ShaderDumpRegexFilter);
+  if (regex[0] != '\0') {
     SaveOption(vISA_ShaderDumpRegexFilter, regex);
   }
 
   auto *forceSpillVaraibles = IGC_GET_REGKEYSTRING(ForceSpillVariables);
-  std::string fSVStr(forceSpillVaraibles);
-  if (!fSVStr.empty()) {
+  if (forceSpillVaraibles[0] != '\0') {
     SaveOption(vISA_ForceSpillVariables, forceSpillVaraibles);
     SaveOption(vISA_LocalRA, false);
   }
 
-  if (auto *str = IGC_GET_REGKEYSTRING(ForceAssignRhysicalReg)) {
+  auto *str = IGC_GET_REGKEYSTRING(ForceAssignRhysicalReg);
+  if (str[0] != '\0') {
     SaveOption(vISA_ForceAssignRhysicalReg, str);
   }
 
