@@ -19,6 +19,8 @@ SPDX-License-Identifier: MIT
 namespace llvm {
 class Type;
 class Module;
+class FunctionType;
+class Function;
 } // namespace llvm
 
 namespace IGC {
@@ -34,5 +36,9 @@ llvm::GenISAIntrinsic::IntrinsicComments GetIntrinsicComments(llvm::GenISAIntrin
 llvm::Function *GetDeclaration(llvm::Module *pModule, llvm::GenISAIntrinsic::ID id,
                                llvm::ArrayRef<llvm::Type *> overloadedTys,
                                llvm::ArrayRef<llvm::Type *> overloadedPointeeTys);
+
+llvm::Function *RemangleDeclaration(llvm::Module &M, llvm::GenISAIntrinsic::ID Id, llvm::FunctionType *NewFuncTy,
+                                    const llvm::Function &OrigFunc,
+                                    llvm::ArrayRef<llvm::GenISAIntrinsic::PointeeTyOverride> Overrides = {});
 
 } // namespace IGC

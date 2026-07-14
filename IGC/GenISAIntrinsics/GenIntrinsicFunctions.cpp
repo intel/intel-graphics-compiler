@@ -20,6 +20,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/Type.h>
 #include <llvm/IR/Function.h>
 #include <llvm/IR/Operator.h>
+#include <llvm/ADT/SmallVector.h>
 #include <llvm/ADT/StringExtras.h>
 #include <llvm/CodeGen/ValueTypes.h>
 #include "common/LLVMWarningsPop.hpp"
@@ -233,6 +234,56 @@ public:
     return result;
   }
 
+  // Infer the overloaded types from NewFuncTy using the definition tables and
+  // return the correctly-mangled canonical declaration for this intrinsic ID.
+  // Pointee types for overloadable byref/byval/elementtype attrs are extracted
+  // from OrigFunc (base), then Overrides replace individual entries by arg index.
+  static llvm::Function *Remangle(llvm::Module &M, llvm::FunctionType *NewFuncTy, const llvm::Function &OrigFunc,
+                                  llvm::ArrayRef<llvm::GenISAIntrinsic::PointeeTyOverride> Overrides) {
+    constexpr uint8_t NumArguments = static_cast<uint8_t>(Argument::Count);
+    std::vector<llvm::Type *> OverloadedTys;
+
+    auto Collect = [&OverloadedTys](const TypeDescription &Desc, llvm::Type *Actual) {
+      if (Desc.m_ID != TypeID::ArgumentReference && Desc.IsOverloadable())
+        OverloadedTys.push_back(Actual);
+    };
+
+    Collect(IntrinsicDefinitionT::scResTypes, NewFuncTy->getReturnType());
+    if constexpr (NumArguments > 0) {
+      for (unsigned I = 0; I < NumArguments && I < NewFuncTy->getNumParams(); ++I)
+        Collect(IntrinsicDefinitionT::scArguments[I].m_Type, NewFuncTy->getParamType(I));
+    }
+
+    // Build overloadedPointeeTys for overloadable type-attr args only, matching
+    // GetAttributeList's overloadedTypeIndex advancement (IsOverloadable() gating).
+    llvm::SmallVector<llvm::Type *, 4> OverloadedPointeeTys;
+    if constexpr (NumArguments > 0) {
+      const llvm::AttributeList &AL = OrigFunc.getAttributes();
+      for (unsigned I = 0; I < NumArguments && I < OrigFunc.arg_size(); ++I) {
+        const auto &ArgDesc = IntrinsicDefinitionT::scArguments[I];
+        if (ArgDesc.m_AttrKind == llvm::Attribute::None || !llvm::Attribute::isTypeAttrKind(ArgDesc.m_AttrKind) ||
+            !ArgDesc.m_Type.IsOverloadable())
+          continue;
+        llvm::Type *PointeeTy = nullptr;
+        for (const auto &O : Overrides) {
+          if (O.ArgIndex == I) {
+            PointeeTy = O.PointeeTy;
+            break;
+          }
+        }
+        if (!PointeeTy) {
+          llvm::Attribute A = AL.getParamAttr(I, ArgDesc.m_AttrKind);
+          if (A.isValid())
+            PointeeTy = A.getValueAsType();
+        }
+        if (PointeeTy)
+          OverloadedPointeeTys.push_back(PointeeTy);
+      }
+    }
+
+    return GetDeclaration(M, OverloadedTys, OverloadedPointeeTys);
+  }
+
 private:
   static llvm::Function *GetOrInsert(llvm::Module &module, const llvm::ArrayRef<llvm::Type *> &overloadedTypes,
                                      const llvm::ArrayRef<llvm::Type *> &overloadedPointeeTys) {
@@ -388,6 +439,25 @@ llvm::Function *GetDeclaration(llvm::Module *pModule, llvm::GenISAIntrinsic::ID 
     pResult = funcArray[index](*pModule, overloadedTys, overloadedPointeeTys);
   }
   return pResult;
+}
+
+template <uint32_t... Is> static constexpr auto GetRemangleFuncArrayImpl(std::integer_sequence<uint32_t, Is...>) {
+  return std::array{
+      &(IntrinsicFunctionImp<static_cast<llvm::GenISAIntrinsic::ID>(Is + scBeginIntrinsicIndex)>::Remangle)...};
+}
+
+static constexpr auto GetRemangleFuncArray() {
+  return GetRemangleFuncArrayImpl(std::make_integer_sequence<uint32_t, scNumIntrinsics>());
+}
+
+llvm::Function *RemangleDeclaration(llvm::Module &M, llvm::GenISAIntrinsic::ID Id, llvm::FunctionType *NewFuncTy,
+                                    const llvm::Function &OrigFunc,
+                                    llvm::ArrayRef<llvm::GenISAIntrinsic::PointeeTyOverride> Overrides) {
+  constexpr auto funcArray = GetRemangleFuncArray();
+  const uint32_t index = static_cast<uint32_t>(Id) - scBeginIntrinsicIndex;
+  if (index < funcArray.size())
+    return funcArray[index](M, NewFuncTy, OrigFunc, Overrides);
+  return nullptr;
 }
 
 template <uint32_t... Is> static constexpr auto GetNameFuncArrayImp(std::integer_sequence<uint32_t, Is...>) {

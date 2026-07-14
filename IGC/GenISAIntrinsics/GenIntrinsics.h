@@ -62,6 +62,13 @@ inline const char *getGenIntrinsicPrefix() { return "llvm.genx."; }
 inline bool isIntrinsic(const Function *CF) { return (IGCLLVM::starts_with(CF->getName(), getGenIntrinsicPrefix())); }
 ID getIntrinsicID(const Function *F, bool useContextWrapper = true);
 
+struct PointeeTyOverride {
+  unsigned ArgIndex;
+  Type *PointeeTy;
+};
+
+Function *remangleDeclaration(Function &F, FunctionType *NewFuncTy, ArrayRef<PointeeTyOverride> Overrides = {});
+
 } // namespace GenISAIntrinsic
 
 } // namespace llvm

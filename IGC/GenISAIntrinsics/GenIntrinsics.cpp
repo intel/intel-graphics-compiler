@@ -72,5 +72,9 @@ ID getIntrinsicID(const Function *F, bool useContextWrapper /*= true*/) {
   return ID::no_intrinsic;
 }
 
+Function *remangleDeclaration(Function &F, FunctionType *NewFuncTy, ArrayRef<PointeeTyOverride> Overrides) {
+  return IGC::RemangleDeclaration(*F.getParent(), getIntrinsicID(&F), NewFuncTy, F, Overrides);
+}
+
 } // namespace GenISAIntrinsic
 } // namespace llvm
