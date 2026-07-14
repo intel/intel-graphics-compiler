@@ -2359,30 +2359,40 @@ void DwarfDebug::beginFunction(const Function *MF, IGC::VISAModule *v) {
 #if LLVM_VERSION_MAJOR >= 22
   // Pattern-based ISel only marks pattern-root instructions (m_instList), so a
   // DbgVariableRecord attached to a folded, non-root instruction never enters
-  // that list and is missed by the loop above. Re-scan the emitted basic blocks
-  // in full to recover any variable that was dropped entirely, so it still gets
-  // a location instead of being demoted to optimized-out. Ranges for such a
-  // variable are anchored via snapStartToVisaOffset in processVariableHistory.
+  // that list and is missed by the loop above. Re-scan every basic block of the
+  // covered function(s) in full to recover any variable that was dropped
+  // entirely, so it still gets a location instead of being demoted to
+  // optimized-out. Ranges for such a variable are anchored via
+  // snapStartToVisaOffset in processVariableHistory.
+  //
+  // Discover the functions from m_pModule but iterate their blocks directly: a
+  // block whose instructions were all folded away (e.g. a branch-only OpenMP
+  // directive block) contributes nothing to m_pModule, so deriving the block
+  // set from m_pModule would skip it and lose the records attached there.
   {
-    SmallPtrSet<const BasicBlock *, 16> SeenBBs;
+    SmallPtrSet<const Function *, 4> Funcs;
+    for (auto II = m_pModule->begin(), IE = m_pModule->end(); II != IE; ++II)
+      if (const BasicBlock *BB = (*II)->getParent())
+        if (const Function *F = BB->getParent())
+          Funcs.insert(F);
+
     SmallPtrSet<const MDNode *, 8> Recovered;
-    for (auto II = m_pModule->begin(), IE = m_pModule->end(); II != IE; ++II) {
-      const BasicBlock *BB = (*II)->getParent();
-      if (!BB || !SeenBBs.insert(BB).second)
-        continue;
-      for (const Instruction &I : *BB) {
-        forEachDbgVar(const_cast<Instruction &>(I), [&](DbgVarInstEntry *DVR) {
-          if (!DbgVariable::IsSupportedDebugInst(DVR))
-            return;
-          const MDNode *Var = DVR->getVariable();
-          // Skip variables already collected from m_instList; only append the
-          // full history of variables first discovered in this recovery scan.
-          if (DbgValues.count(Var) && !Recovered.count(Var))
-            return;
-          if (Recovered.insert(Var).second)
-            UserVariables.push_back(Var);
-          DbgValues[Var].push_back(DVR);
-        });
+    for (const Function *F : Funcs) {
+      for (const BasicBlock &BB : *F) {
+        for (const Instruction &I : BB) {
+          forEachDbgVar(const_cast<Instruction &>(I), [&](DbgVarInstEntry *DVR) {
+            if (!DbgVariable::IsSupportedDebugInst(DVR))
+              return;
+            const MDNode *Var = DVR->getVariable();
+            // Skip variables already collected from m_instList; only append the
+            // full history of variables first discovered in this recovery scan.
+            if (DbgValues.count(Var) && !Recovered.count(Var))
+              return;
+            if (Recovered.insert(Var).second)
+              UserVariables.push_back(Var);
+            DbgValues[Var].push_back(DVR);
+          });
+        }
       }
     }
   }
