@@ -6,7 +6,12 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 // UNSUPPORTED: llvm-22-plus
-// FIXME: update this test for LLVM 22
+// FIXME: LLVM22 regression. With EnableWideMulMad=0, mul_hi() on 64-bit types
+// drives the mul-emulation path in legalizeBinaryOperator
+// (Compiler/Legalizer/PeepholeTypeLegalizer.cpp:564), which aborts ocloc with
+// "assertion failed: 0, Mul legalization for width > 64 (quotient => 3) is not
+// fully supported". Wide-on RUNs pass; the WIDEOFF RUNs ICE. Keep UNSUPPORTED
+// until the >64-bit mul legalization path is fixed.
 // REQUIRES: cri-supported
 
 // RUN: ocloc compile -file %s -device cri \

@@ -1,5 +1,8 @@
 ; UNSUPPORTED: llvm-22-plus
-; FIXME: update this test for LLVM 22
+; FIXME: LLVM22 regression. The RetryManager retry no longer removes the spill: on
+; -device pvc, `//.spill size 2048` appears in both the initial and the retry compile
+; (with a `spilled around` warning and `Used previous version of the kernel`), so the
+; retry copy's no-spill assertion fails. Keep disabled until fixed.
 ; REQUIRES: regkeys, pvc-supported, llvm-14-plus
 
 ; LLVM with opaque pointers:

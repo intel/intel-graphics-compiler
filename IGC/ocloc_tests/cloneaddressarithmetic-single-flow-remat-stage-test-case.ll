@@ -1,19 +1,21 @@
 ; RematSingleFlowRematEnabled is unavailable in Release builds.
-; UNSUPPORTED: llvm-22-plus, release
-; FIXME: update this test for LLVM 22
+; UNSUPPORTED: release
 ; REQUIRES: regkeys, llvm-16-plus
 ; RUN: llvm-as %OPAQUE_PTR_FLAG% < %s -o %t.bc
 
 ; RUN: ocloc compile -llvm_input -file %t.bc -device bmg -options " -igc_opts 'RematSingleFlowRematEnabled=0, DumpASMToConsole=1, EnableOpaquePointersBackend=1, PrintToConsole=1, ' -cl-intel-256-GRF-per-thread" &> %t_output.ll
 ; RUN: echo "NEXT STAGE!!!!!" >> %t_output.ll
 ; RUN: ocloc compile -llvm_input -file %t.bc -device bmg -options " -igc_opts 'RematSingleFlowRematEnabled=1, DumpASMToConsole=1, EnableOpaquePointersBackend=1, PrintToConsole=1, ' -cl-intel-256-GRF-per-thread" &>> %t_output.ll
-; RUN: FileCheck --input-file %t_output.ll %s
+; RUN: FileCheck --input-file %t_output.ll %s --check-prefixes=CHECK%if !llvm-22-plus %{,CHECK-PRE-LLVM22%}
 
 ; CHECK: //.kernel foo
 ; CHECK: //.platform XE2
 ; CHECK: //.thread_config numGRF=256, numAcc=8, numSWSB=32
-; CHECK: //.spill size
-; CHECK: //.spill GRF est. ref count
+; The first stage disables single-flow remat. On LLVM17 it spills; LLVM22's register
+; allocator no longer spills this kernel even without remat, so the spill lines are
+; LLVM17-only (LLVM22 exercises the no-spill path in both stages).
+; CHECK-PRE-LLVM22: //.spill size
+; CHECK-PRE-LLVM22: //.spill GRF est. ref count
 
 ; CHECK-LABEL: Build succeeded.
 ; CHECK-LABEL: NEXT STAGE!!!!!

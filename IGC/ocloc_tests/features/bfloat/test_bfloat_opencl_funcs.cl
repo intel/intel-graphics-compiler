@@ -9,7 +9,11 @@ SPDX-License-Identifier: MIT
 // vISA instructions correctly.
 
 // UNSUPPORTED: llvm-22-plus
-// FIXME: update this test for LLVM 22
+// FIXME: LLVM22 regression. Lowering the internal __builtin_bf16_* functions
+// aborts ocloc in CreateVISAVar (Compiler/CISACodeGen/CISABuilder.cpp:5844) with
+// "assertion failed: var->GetType() != ISA_TYPE_BOOL, boolean cannot have alias"
+// - a bf16 builtin creates a vISA variable aliased onto a boolean (i1) value.
+// Keep UNSUPPORTED until the bf16 lowering stops aliasing a bool var.
 // REQUIRES: llvm-spirv,cri-supported
 
 // RUN: ocloc compile -file %s -options "-igc_opts 'DumpVISAASMToConsole=1'" -device cri | FileCheck %s --check-prefix=CHECK-VISA

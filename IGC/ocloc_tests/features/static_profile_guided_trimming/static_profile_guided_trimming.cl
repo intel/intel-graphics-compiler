@@ -7,16 +7,15 @@ SPDX-License-Identifier: MIT
 ============================= end_copyright_notice ===========================*/
 
 // UNSUPPORTED: lib-igc-clang, release
-// UNSUPPORTED: llvm-22-plus
-// FIXME: update this test for LLVM 22
 // SubroutineThreshold is unavailable in Linux Release builds.
 // REQUIRES: regkeys, dg2-supported
 
 // RUN: ocloc compile -file %s -device dg2 -options "-igc_opts 'SubroutineThreshold=1,KernelTotalSizeThreshold=1,ControlInlineTinySize=1,PrintControlKernelTotalSize=15'" 2>&1 | FileCheck %s --check-prefix=CHECK-DEFAULT
-// RUN: ocloc compile -file %s -device dg2 -options "-ze-opt-static-profile-guided-trimming -igc_opts 'SubroutineThreshold=1,KernelTotalSizeThreshold=1,ControlInlineTinySize=1,ControlInlineTinySizeForSPGT=150,PrintControlKernelTotalSize=15'" 2>&1 | FileCheck %s --check-prefix=CHECK-SPGT
+// RUN: ocloc compile -file %s -device dg2 -options "-ze-opt-static-profile-guided-trimming -igc_opts 'SubroutineThreshold=1,KernelTotalSizeThreshold=1,ControlInlineTinySize=1,ControlInlineTinySizeForSPGT=150,PrintControlKernelTotalSize=15'" 2>&1 | FileCheck %s --check-prefixes=%if llvm-22-plus %{CHECK-LLVM22%} %else %{CHECK-PRE-LLVM22%}
 
 // CHECK-DEFAULT: Good to trim (Big enough > 1), bar3, Function Attribute: Best effort inline, Function size: 13, Freq: 0.0
-// CHECK-SPGT: Can't trim (Low weight < 0.03218650818), bar3, Function Attribute: Best effort inline, Function size: 163, Size after collapsing: 163, Size contribution: 652, Freq: 327680.0, Weight: 0.002581326365
+// CHECK-PRE-LLVM22: Can't trim (Low weight < 0.03218650818), bar3, Function Attribute: Best effort inline, Function size: 163, Size after collapsing: 163, Size contribution: 652, Freq: 327680.0, Weight: 0.002581326365
+// CHECK-LLVM22: Can't trim (Low weight < 0.005348530873), bar3, Function Attribute: Best effort inline, Function size: 163, Size after collapsing: 163, Size contribution: 652, Freq: 803840.0, Weight: 0.0004289469266
 
 int bar3(__global int *c) {
     int k = 10;

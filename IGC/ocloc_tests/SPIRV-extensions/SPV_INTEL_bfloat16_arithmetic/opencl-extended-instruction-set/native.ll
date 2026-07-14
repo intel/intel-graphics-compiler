@@ -6,20 +6,18 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; UNSUPPORTED: llvm-22-plus
-; FIXME: update this test for LLVM 22
 ; REQUIRES: cri-supported, llvm-spirv
 
 ; RUN: llvm-as %TYPED_PTR_FLAG% %s -o %t.bc
 ; RUN: llvm-spirv %t.bc %TYPED_PTR_FLAG% --spirv-ext=+SPV_KHR_bfloat16,+SPV_INTEL_bfloat16_arithmetic -o %t.spv
 
 ; LLVM with opaque pointers:
-; RUN: %if llvm-16-plus %{ocloc compile -spirv_input -file %t.spv -device cri -options "-igc_opts 'EnableOpaquePointersBackend=1,DumpVISAASMToConsole=1,AddVISADumpDeclarationsToEnd=1,ForceOCLSIMDWidth=16' -cl-intel-library-compilation" | FileCheck %s %}
+; RUN: %if llvm-16-plus %{ocloc compile -spirv_input -file %t.spv -device cri -options "-igc_opts 'EnableOpaquePointersBackend=1,DumpVISAASMToConsole=1,AddVISADumpDeclarationsToEnd=1,ForceOCLSIMDWidth=16' -cl-intel-library-compilation" | FileCheck %s --check-prefixes=CHECK,%if llvm-22-plus %{CHECK-LLVM22%} %else %{CHECK-PRE-LLVM22%} %}
 ; COM: Execute ocloc second time, this time without DumpVISAASMToConsole flag, to ensure that E2E compilation does not crash.
 ; RUN: %if llvm-16-plus %{ocloc compile -spirv_input -file %t.spv -device cri -options "-igc_opts 'EnableOpaquePointersBackend=1,ForceOCLSIMDWidth=16' -cl-intel-library-compilation" %}
 
 ; LLVM with typed pointers:
-; RUN: ocloc compile -spirv_input -file %t.spv -device cri -options "-igc_opts 'EnableOpaquePointersBackend=0,DumpVISAASMToConsole=1,AddVISADumpDeclarationsToEnd=1,ForceOCLSIMDWidth=16' -cl-intel-library-compilation" | FileCheck %s
+; RUN: ocloc compile -spirv_input -file %t.spv -device cri -options "-igc_opts 'EnableOpaquePointersBackend=0,DumpVISAASMToConsole=1,AddVISADumpDeclarationsToEnd=1,ForceOCLSIMDWidth=16' -cl-intel-library-compilation" | FileCheck %s --check-prefixes=CHECK,%if llvm-22-plus %{CHECK-LLVM22%} %else %{CHECK-PRE-LLVM22%}
 ; COM: Execute ocloc second time, this time without DumpVISAASMToConsole flag, to ensure that E2E compilation does not crash.
 ; RUN: ocloc compile -spirv_input -file %t.spv -device cri -options "-igc_opts 'EnableOpaquePointersBackend=0,ForceOCLSIMDWidth=16' -cl-intel-library-compilation"
 
@@ -144,7 +142,8 @@ define spir_func bfloat @test_spirv_ocl_exp2(bfloat %data1, bfloat %data2, bfloa
 
 ; CHECK-LABEL: .function "test_spirv_ocl_fabs
 define spir_func bfloat @test_spirv_ocl_fabs(bfloat %data1, bfloat %data2, bfloat %data3) {
-  ; CHECK: and (M1, 16) [[DST:.*]](0,0)<1> [[SRC:.*]](0,0)<1;1,0> 0x7fff:w
+  ; CHECK-PRE-LLVM22: and (M1, 16) [[DST:.*]](0,0)<1> [[SRC:.*]](0,0)<1;1,0> 0x7fff:w
+  ; CHECK-LLVM22: mov (M1, 16) [[DST:.*]](0,0)<1> (abs)[[SRC:.*]](0,0)<1;1,0>
   %result = call spir_func bfloat @_Z16__spirv_ocl_fabsDF16b(bfloat %data1)
   ret bfloat %result
 }
@@ -237,7 +236,8 @@ define spir_func bfloat @test_spirv_ocl_native_cos(bfloat %data1, bfloat %data2,
 ; CHECK-LABEL: .function "test_spirv_ocl_native_divide
 define spir_func bfloat @test_spirv_ocl_native_divide(bfloat %data1, bfloat %data2, bfloat %data3) {
   ; CHECK: inv (M1, 16) [[DST0:.*]](0,0)<1> [[SRC0:.*]]({{.*}})<1;1,0>
-  ; CHECK: mul (M1, 16) [[DST1:.*]](0,0)<1> [[DST0]]({{.*}})<1;1,0> [[SRC1:.*]]({{.*}})<1;1,0>
+  ; CHECK-PRE-LLVM22: mul (M1, 16) [[DST1:.*]](0,0)<1> [[DST0]]({{.*}})<1;1,0> [[SRC1:.*]]({{.*}})<1;1,0>
+  ; CHECK-LLVM22: mul (M1, 16) [[DST1:.*]](0,0)<1> [[SRC1:.*]]({{.*}})<1;1,0> [[DST0]]({{.*}})<1;1,0>
   ; CHECK-DAG: .decl [[SRC0]] v_type=G type=bf
   ; CHECK-DAG: .decl [[DST0]] v_type=G type=bf
   ; CHECK-DAG: .decl [[SRC1]] v_type=G type=bf

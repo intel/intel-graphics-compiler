@@ -1,19 +1,19 @@
-; UNSUPPORTED: llvm-22-plus
-; FIXME: update this test for LLVM 22
 ; REQUIRES: regkeys, mtl-supported, llvm-16-plus
 
 ; LLVM with opaque pointers:
 ; RUN: llvm-as %OPAQUE_PTR_FLAG% %s -o %t.bc
 ; RUN: ocloc compile -llvm_input -file %t.bc -device mtl -options "-igc_opts 'EnableOpaquePointersBackend=1,DisableCodeScheduling=1'" &> %t_output.ll
-; RUN: FileCheck --input-file %t_output.ll %s
+; RUN: FileCheck --input-file %t_output.ll %s --check-prefixes=CHECK%if !llvm-22-plus %{,CHECK-PRE-LLVM22%}
 
 ; LLVM with typed pointers:
 ; RUN: llvm-as %TYPED_PTR_FLAG% %s -o %t.bc
 ; RUN: ocloc compile -llvm_input -file %t.bc -device mtl -options "-igc_opts 'DisableCodeScheduling=1'" &> %t_output.ll
-; RUN: FileCheck --input-file %t_output.ll %s
+; RUN: FileCheck --input-file %t_output.ll %s --check-prefixes=CHECK%if !llvm-22-plus %{,CHECK-PRE-LLVM22%}
 
-; This test checks that after kernel recompilation there is no more spills
-; CHECK: warning: {{.*}} [RetryManager] Start recompilation of the kernel
+; This test checks that after kernel recompilation there is no more spills.
+; LLVM22 allocates the kernel without spilling on the first attempt, so no retry
+; is triggered; the RetryManager recompilation warning is therefore LLVM17-only.
+; CHECK-PRE-LLVM22: warning: {{.*}} [RetryManager] Start recompilation of the kernel
 ; CHECK-NOT: warning: kernel {{.*}} compiled SIMD32 allocated 128 regs and spilled around {{.*}}
 ; CHECK: Build succeeded.
 

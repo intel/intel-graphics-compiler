@@ -6,13 +6,11 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; UNSUPPORTED: llvm-22-plus
-; FIXME: update this test for LLVM 22
 ; REQUIRES: cri-supported, llvm-spirv
 
 ; RUN: llvm-as %s -o %t.bc
 ; RUN: llvm-spirv %t.bc --spirv-ext=+SPV_KHR_bfloat16,+SPV_INTEL_bfloat16_arithmetic -o %t.spv
-; RUN: ocloc compile -spirv_input -file %t.spv -device cri -options "-igc_opts 'DumpVISAASMToConsole=1,AddVISADumpDeclarationsToEnd=1,ForceOCLSIMDWidth=16' -cl-intel-library-compilation" | FileCheck %s --check-prefixes=CHECK,%LLVM_DEPENDENT_CHECK_PREFIX%
+; RUN: ocloc compile -spirv_input -file %t.spv -device cri -options "-igc_opts 'DumpVISAASMToConsole=1,AddVISADumpDeclarationsToEnd=1,ForceOCLSIMDWidth=16' -cl-intel-library-compilation" | FileCheck %s --check-prefixes=CHECK,%if llvm-22-plus %{CHECK-LLVM22%} %else %{%if llvm-17-plus %{CHECK-PRE-LLVM22%} %else %{CHECK-PRE-LLVM17%}%}
 ; COM: Execute ocloc second time, this time without DumpVISAASMToConsole flag, to ensure that E2E compilation does not crash.
 ; RUN: ocloc compile -spirv_input -file %t.spv -device cri -options "-igc_opts 'ForceOCLSIMDWidth=16' -cl-intel-library-compilation"
 
@@ -38,42 +36,44 @@ define spir_func i1 @OpIsNan(bfloat %data1) {
 
 ; CHECK-LABEL: .function "OpIsInf
 define spir_func i1 @OpIsInf(bfloat %data1) {
-  ; CHECK: cmp.eq (M1, 16) {{.*}}(0,0)<1> [[SRC:.*]](0,0)<1;1,0> 0x7f800000:f
-  ; CHECK-DAG: .decl [[SRC]] v_type=G type=bf
+  ; CHECK-PRE-LLVM22: cmp.eq (M1, 16) {{.*}}(0,0)<1> [[SRC:.*]](0,0)<1;1,0> 0x7f800000:f
+  ; CHECK-PRE-LLVM22-DAG: .decl [[SRC]] v_type=G type=bf
+  ; CHECK-LLVM22: cmp.eq (M1, 16) {{.*}}(0,0)<1> (abs)[[SRC:.*]](0,0)<1;1,0> 0x7f800000:f
+  ; CHECK-LLVM22-DAG: .decl [[SRC]] v_type=G type=bf
   %result = call spir_func i1 @_Z13__spirv_IsInfDF16b(bfloat %data1)
   ret i1 %result
 }
 
 ; CHECK-LABEL: .function "OpIsFinite
 define spir_func i1 @OpIsFinite(bfloat %data1) {
-  ; CHECK: cmp.lt (M1, 16) {{.*}}(0,0)<1> [[SRC:.*]](0,0)<1;1,0> 0x7f800000:f
-  ; CHECK-DAG: .decl [[SRC]] v_type=G type=bf
+  ; CHECK-PRE-LLVM22: cmp.lt (M1, 16) {{.*}}(0,0)<1> [[SRC:.*]](0,0)<1;1,0> 0x7f800000:f
+  ; CHECK-PRE-LLVM22-DAG: .decl [[SRC]] v_type=G type=bf
+  ; CHECK-LLVM22: cmp.ne (M1, 16) {{P[0-9]+}} (abs)[[SRC:.*]](0,0)<1;1,0> 0x7f800000:f
+  ; CHECK-LLVM22: cmp.eq (M1, 16) {{P[0-9]+}} (abs)[[SRC]](0,0)<1;1,0> (abs)[[SRC]](0,0)<1;1,0>
+  ; CHECK-LLVM22: and (M1, 16) {{P[0-9]+}} {{P[0-9]+}} {{P[0-9]+}}
+  ; CHECK-LLVM22-DAG: .decl [[SRC]] v_type=G type=bf
   %result = call spir_func i1 @_Z16__spirv_IsFiniteDF16b(bfloat %data1)
   ret i1 %result
 }
 
 ; CHECK-LABEL: .function "OpIsNormal
 define spir_func i1 @OpIsNormal(bfloat %data1) {
-  ; CHECK-LLVM-14: cmp.ge (M1, 16) {{.*}} [[SRC:.*]](0,0)<1;1,0> 0x800000:f
-  ; CHECK-LLVM-14: cmp.lt (M1, 16) {{.*}} [[SRC]](0,0)<1;1,0> 0x7f800000:f
-  ; CHECK-LLVM-14: and (M1, 16) {{.*}} {{P[0-9]+}} {{P[0-9]+}}
-  ; CHECK-LLVM-14-DAG: .decl [[SRC]] v_type=G type=bf
+  ; CHECK-PRE-LLVM17: cmp.ge (M1, 16) {{.*}} [[SRC:.*]](0,0)<1;1,0> 0x800000:f
+  ; CHECK-PRE-LLVM17: cmp.lt (M1, 16) {{.*}} [[SRC]](0,0)<1;1,0> 0x7f800000:f
+  ; CHECK-PRE-LLVM17: and (M1, 16) {{.*}} {{P[0-9]+}} {{P[0-9]+}}
+  ; CHECK-PRE-LLVM17-DAG: .decl [[SRC]] v_type=G type=bf
 
-  ; CHECK-LLVM-15: cmp.ge (M1, 16) {{.*}} [[SRC:.*]](0,0)<1;1,0> 0x800000:f
-  ; CHECK-LLVM-15: cmp.lt (M1, 16) {{.*}} [[SRC]](0,0)<1;1,0> 0x7f800000:f
-  ; CHECK-LLVM-15: and (M1, 16) {{.*}} {{P[0-9]+}} {{P[0-9]+}}
-  ; CHECK-LLVM-15-DAG: .decl [[SRC]] v_type=G type=bf
+  ; CHECK-PRE-LLVM22: add (M1, 16) [[ADD:.*]](0,0)<1> [[ADD]](0,0)<1;1,0> 0xffffff80:w
+  ; CHECK-PRE-LLVM22: cmp.lt (M1, 16) [[FIRST:.*]](0,0)<1> [[SECOND:.*]](0,0)<1;1,0> 0x7f00:uw
+  ; CHECK-PRE-LLVM22: bfn.xd8 (M1, 16) [[THIRD:.*]](0,0)<1> [[FOURTH:.*]](0,0)<1;1,0> 0xffffffff:w 0x0:w
+  ; CHECK-PRE-LLVM22: mov (M1, 16) [[SIXTH:.*]](0,0)<1> (-)[[THIRD]](0,0)<1;1,0>
+  ; CHECK-PRE-LLVM22-DAG: .decl [[SECOND]] v_type=G type=uw
 
-  ; CHECK-LLVM-16: cmp.ge (M1, 16) {{.*}} [[SRC:.*]](0,0)<1;1,0> 0x800000:f
-  ; CHECK-LLVM-16: cmp.lt (M1, 16) {{.*}} [[SRC]](0,0)<1;1,0> 0x7f800000:f
-  ; CHECK-LLVM-16: and (M1, 16) {{.*}} {{P[0-9]+}} {{P[0-9]+}}
-  ; CHECK-LLVM-16-DAG: .decl [[SRC]] v_type=G type=bf
-
-  ; CHECK-LLVM-17: add (M1, 16) [[ADD:.*]](0,0)<1> [[ADD]](0,0)<1;1,0> 0xffffff80:w
-  ; CHECK-LLVM-17: cmp.lt (M1, 16) [[FIRST:.*]](0,0)<1> [[SECOND:.*]](0,0)<1;1,0> 0x7f00:uw
-  ; CHECK-LLVM-17: bfn.xd8 (M1, 16) [[THIRD:.*]](0,0)<1> [[FOURTH:.*]](0,0)<1;1,0> 0xffffffff:w 0x0:w
-  ; CHECK-LLVM-17: mov (M1, 16) [[SIXTH:.*]](0,0)<1> (-)[[THIRD]](0,0)<1;1,0>
-  ; CHECK-LLVM-17-DAG: .decl [[SECOND]] v_type=G type=uw
+  ; CHECK-LLVM22: add (M1, 16) {{.*}}(0,0)<1> {{.*}}(0,0)<1;1,0> 0xffffff80:w
+  ; CHECK-LLVM22: cmp.lt (M1, 16) [[FIRST:.*]](0,0)<1> [[SECOND:.*]](0,0)<1;1,0> 0x7f00:uw
+  ; CHECK-LLVM22: bfn.xd8 (M1, 16) [[THIRD:.*]](0,0)<1> [[FOURTH:.*]](0,0)<1;1,0> 0xffffffff:w 0x0:w
+  ; CHECK-LLVM22: mov (M1, 16) [[SIXTH:.*]](0,0)<1> (-)[[THIRD]](0,0)<1;1,0>
+  ; CHECK-LLVM22-DAG: .decl [[SECOND]] v_type=G type=uw
 
   %result = call spir_func i1 @_Z16__spirv_IsNormalDF16b(bfloat %data1)
   ret i1 %result
@@ -117,9 +117,12 @@ define spir_func i1 @OpUnordered(bfloat %data1, bfloat %data2) {
 
 ; CHECK-LABEL: .function "OpSelect
 define spir_func bfloat @OpSelect(i1 %cond, bfloat %data1, bfloat %data2) {
-  ; CHECK: sel (M1, 16) [[DST:.*]](0,0)<1> [[SRC:.*]](2,0)<1;1,0> [[SRC]](1,0)<1;1,0>
-  ; CHECK-DAG: .decl [[SRC]] v_type=G type=bf
-  ; CHECK-DAG: .decl [[DST]] v_type=G type=bf
+  ; CHECK-PRE-LLVM22: sel (M1, 16) [[DST:.*]](0,0)<1> [[SRC:.*]](2,0)<1;1,0> [[SRC]](1,0)<1;1,0>
+  ; CHECK-PRE-LLVM22-DAG: .decl [[SRC]] v_type=G type=bf
+  ; CHECK-PRE-LLVM22-DAG: .decl [[DST]] v_type=G type=bf
+  ; CHECK-LLVM22: sel (M1, 16) [[DST:.*]](0,0)<1> [[SRC:.*]](1,0)<1;1,0> [[SRC]](2,0)<1;1,0>
+  ; CHECK-LLVM22-DAG: .decl [[SRC]] v_type=G type=bf
+  ; CHECK-LLVM22-DAG: .decl [[DST]] v_type=G type=bf
   %result = select i1 %cond, bfloat %data1, bfloat %data2
   ret bfloat %result
 }

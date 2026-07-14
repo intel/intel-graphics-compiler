@@ -1,11 +1,11 @@
-; UNSUPPORTED: llvm-22-plus
-; FIXME: update this test for LLVM 22
 ; ShaderDumpTranslationOnly is unavailable in Linux Release builds.
 ; UNSUPPORTED: system-windows, release
 ; REQUIRES: llvm-spirv, regkeys, dg2-supported
 
 ; RUN: llvm-as %s -o %t.bc
-; RUN: llvm-spirv %t.bc --spirv-ext=+SPV_INTEL_long_constant_composite -o %t.spv
+; The extension was renamed SPV_INTEL_long_constant_composite -> SPV_INTEL_long_composites;
+; the new spelling is accepted by both the LLVM17 and LLVM22 translators.
+; RUN: llvm-spirv %t.bc --spirv-ext=+SPV_INTEL_long_composites -o %t.spv
 ; RUN: ocloc compile -spirv_input -file %t.spv -device dg2 -options " -igc_opts 'ShaderDumpTranslationOnly=1'" 2>&1 | FileCheck %s --check-prefixes=CHECK-LLVM
 
 target datalayout = "e-i64:64-v16:16-v24:32-v32:32-v48:64-v96:128-v192:256-v256:256-v512:512-v1024:1024-n8:16:32:64"

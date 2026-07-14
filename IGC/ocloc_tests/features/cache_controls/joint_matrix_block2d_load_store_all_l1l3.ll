@@ -6,24 +6,36 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; UNSUPPORTED: llvm-22-plus
-; FIXME: update this test for LLVM 22
+; This test exercises SPV_INTEL_cache_controls on joint-matrix block2d load/store.
+;
+; On LLVM 22+ the SPIRV-LLVM-Translator removed the SPV_INTEL_joint_matrix type
+; (KhronosGroup/SPIRV-LLVM-Translator#3438:
+; https://github.com/KhronosGroup/SPIRV-LLVM-Translator/pull/3438
+; superseded by cooperative matrix per
+; intel/llvm#12497). llvm-spirv can no longer encode target("spirv.JointMatrixINTEL",..)
+; and emits malformed SPIR-V that crashes the reader. Until this test is ported to the
+; cooperative-matrix representation, the LLVM 22+ runs skip llvm-spirv and feed the
+; bitcode directly to ocloc via -llvm_input. Pre-LLVM22 keeps the
+; original SPIR-V path.
+;
 ; UNSUPPORTED: system-windows
-; REQUIRES: llvm-spirv, regkeys, pvc-supported, llvm-16-plus
+; REQUIRES: llvm-spirv, regkeys, pvc-supported, xe2-hpg-supported, llvm-16-plus
 
 ; LLVM with opaque pointers:
 ; RUN: llvm-as %OPAQUE_PTR_FLAG% %s -o %t.bc
-; RUN: llvm-spirv %t.bc %OPAQUE_PTR_FLAG% --spirv-ext=+SPV_INTEL_cache_controls,+SPV_INTEL_joint_matrix -o %t.spv
-; RUN: ocloc compile -spirv_input -file %t.spv -device pvc -options " -igc_opts 'EnableOpaquePointersBackend=1,DumpVISAASMToConsole=1'" 2>&1 | FileCheck %s --check-prefixes=CHECK,CHECK-PVC
-; REQUIRES: xe2-hpg-supported
-; RUN: ocloc compile -spirv_input -file %t.spv -device xe2-hpg -options " -igc_opts 'EnableOpaquePointersBackend=1,DumpVISAASMToConsole=1'" 2>&1 | FileCheck %s --check-prefixes=CHECK,CHECK-BMG
+; RUN: %if !llvm-22-plus %{ llvm-spirv %t.bc %OPAQUE_PTR_FLAG% --spirv-ext=+SPV_INTEL_cache_controls,+SPV_INTEL_joint_matrix -o %t.spv %}
+; RUN: %if !llvm-22-plus %{ ocloc compile -spirv_input -file %t.spv -device pvc     -options " -igc_opts 'EnableOpaquePointersBackend=1,DumpVISAASMToConsole=1'" 2>&1 | FileCheck %s --check-prefixes=CHECK,CHECK-PVC %}
+; RUN: %if  llvm-22-plus %{ ocloc compile -llvm_input  -file %t.bc  -device pvc     -options " -igc_opts 'EnableOpaquePointersBackend=1,DumpVISAASMToConsole=1'" 2>&1 | FileCheck %s --check-prefixes=CHECK,CHECK-PVC %}
+; RUN: %if !llvm-22-plus %{ ocloc compile -spirv_input -file %t.spv -device xe2-hpg -options " -igc_opts 'EnableOpaquePointersBackend=1,DumpVISAASMToConsole=1'" 2>&1 | FileCheck %s --check-prefixes=CHECK,CHECK-BMG %}
+; RUN: %if  llvm-22-plus %{ ocloc compile -llvm_input  -file %t.bc  -device xe2-hpg -options " -igc_opts 'EnableOpaquePointersBackend=1,DumpVISAASMToConsole=1'" 2>&1 | FileCheck %s --check-prefixes=CHECK,CHECK-BMG %}
 
 ; LLVM with typed pointers/default pointer typing:
 ; RUN: llvm-as %TYPED_PTR_FLAG% %s -o %t.bc
-; RUN: llvm-spirv %t.bc %TYPED_PTR_FLAG% --spirv-ext=+SPV_INTEL_cache_controls,+SPV_INTEL_joint_matrix -o %t.spv
-; RUN: ocloc compile -spirv_input -file %t.spv -device pvc -options " -igc_opts 'DumpVISAASMToConsole=1'" 2>&1 | FileCheck %s --check-prefixes=CHECK,CHECK-PVC
-; REQUIRES: xe2-hpg-supported
-; RUN: ocloc compile -spirv_input -file %t.spv -device xe2-hpg -options " -igc_opts 'DumpVISAASMToConsole=1'" 2>&1 | FileCheck %s --check-prefixes=CHECK,CHECK-BMG
+; RUN: %if !llvm-22-plus %{ llvm-spirv %t.bc %TYPED_PTR_FLAG% --spirv-ext=+SPV_INTEL_cache_controls,+SPV_INTEL_joint_matrix -o %t.spv %}
+; RUN: %if !llvm-22-plus %{ ocloc compile -spirv_input -file %t.spv -device pvc     -options " -igc_opts 'DumpVISAASMToConsole=1'" 2>&1 | FileCheck %s --check-prefixes=CHECK,CHECK-PVC %}
+; RUN: %if  llvm-22-plus %{ ocloc compile -llvm_input  -file %t.bc  -device pvc     -options " -igc_opts 'DumpVISAASMToConsole=1'" 2>&1 | FileCheck %s --check-prefixes=CHECK,CHECK-PVC %}
+; RUN: %if !llvm-22-plus %{ ocloc compile -spirv_input -file %t.spv -device xe2-hpg -options " -igc_opts 'DumpVISAASMToConsole=1'" 2>&1 | FileCheck %s --check-prefixes=CHECK,CHECK-BMG %}
+; RUN: %if  llvm-22-plus %{ ocloc compile -llvm_input  -file %t.bc  -device xe2-hpg -options " -igc_opts 'DumpVISAASMToConsole=1'" 2>&1 | FileCheck %s --check-prefixes=CHECK,CHECK-BMG %}
 
 target triple = "spir64-unknown-unknown"
 
