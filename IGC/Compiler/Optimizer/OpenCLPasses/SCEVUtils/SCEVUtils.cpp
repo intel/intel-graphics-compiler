@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 ============================= end_copyright_notice ===========================*/
 
 #include "Compiler/Optimizer/OpenCLPasses/SCEVUtils/SCEVUtils.hpp"
+#include "llvmWrapper/Analysis/ScalarEvolution.h"
 #include "llvmWrapper/Transforms/Utils/ScalarEvolutionExpander.h"
 #include "Probe/Assertion.h"
 #include "common/igc_regkeys.hpp"
@@ -89,7 +90,7 @@ SCEVAddBuilder &SCEVAddBuilder::add(const SCEV *S, bool Negative) {
     S = dropExt(S);
 
   if (auto *Expr = dyn_cast<SCEVAddExpr>(S)) {
-    for (auto *Op : Expr->operands())
+    for (const SCEV *Op : Expr->operands())
       add(Op, Negative);
     return *this;
   }
@@ -115,7 +116,7 @@ const SCEV *SCEVAddBuilder::build() {
     FinalOps.push_back(It->Negative ? SE.getNegativeSCEV(S) : S);
   }
 
-  return SE.getAddExpr(FinalOps);
+  return IGCLLVM::getAddExpr(SE, FinalOps);
 }
 
 SCEVMulBuilder &SCEVMulBuilder::add(const SCEV *S) {
@@ -139,7 +140,7 @@ const SCEV *SCEVMulBuilder::build() {
     FinalOps.push_back(S->getType() == T ? S : SE.getSignExtendExpr(S, T));
   }
 
-  return SE.getMulExpr(FinalOps);
+  return IGCLLVM::getMulExpr(SE, FinalOps);
 }
 
 // Recursive helper function for deconstructSCEV
@@ -222,7 +223,7 @@ static bool deconstructSCEVImpl(const SCEV *S, ScalarEvolution &SE, Loop *L, SCE
 
     SCEVAddBuilder Builder(SE);
 
-    for (auto *Op : Add->operands()) {
+    for (const SCEV *Op : Add->operands()) {
       DeconstructedSCEV OpResult;
 
       if (!deconstructSCEVImpl(Op, SE, L, E, OpResult))
@@ -250,7 +251,7 @@ static bool deconstructSCEVImpl(const SCEV *S, ScalarEvolution &SE, Loop *L, SCE
     bool FoundAddRec = false;
     SCEVMulBuilder StartBuilder(SE), StepBuilder(SE);
 
-    for (auto *Op : Mul->operands()) {
+    for (const SCEV *Op : Mul->operands()) {
       DeconstructedSCEV OpResult;
       if (!deconstructSCEVImpl(Op, SE, L, E, OpResult))
         return false;
