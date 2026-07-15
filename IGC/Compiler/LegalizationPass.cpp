@@ -1878,6 +1878,27 @@ void Legalization::visitIntrinsicInst(llvm::IntrinsicInst &I) {
   case Intrinsic::assume:
     m_instructionsToRemove.insert(&I);
     break;
+  case Intrinsic::minnum:
+  case Intrinsic::maxnum: {
+    // bfloat has no native min/max ALU op ("BF opnd is not allowed on this
+    // instruction"), so promote to FP32 and demote back. half min/max is
+    // supported natively and is left unchanged. InstCombine can narrow an
+    // fptrunc(minnum.f32(fpext, fpext)) idiom into a bfloat minnum, which
+    // this undoes before emit.
+    if (IGCLLVM::isBFloatTy(I.getType()->getScalarType())) {
+      Type *promotedTy = Builder.getFloatTy();
+      if (auto *vecTy = dyn_cast<IGCLLVM::FixedVectorType>(I.getType())) {
+        promotedTy = IGCLLVM::FixedVectorType::get(promotedTy, (unsigned)vecTy->getNumElements());
+      }
+      Value *arg0 = Builder.CreateFPExt(I.getOperand(0), promotedTy);
+      Value *arg1 = Builder.CreateFPExt(I.getOperand(1), promotedTy);
+      Value *Callee = IGCLLVM::getOrInsertDeclaration(I.getParent()->getParent()->getParent(), intrinsicID, promotedTy);
+      Value *Val = Builder.CreateCall(Callee, {arg0, arg1});
+      Val = Builder.CreateFPTrunc(Val, I.getType());
+      I.replaceAllUsesWith(Val);
+      I.eraseFromParent();
+    }
+  } break;
   case Intrinsic::floor:
   case Intrinsic::ceil:
   case Intrinsic::trunc: {
