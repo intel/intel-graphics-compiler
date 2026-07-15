@@ -684,7 +684,16 @@ void G4Verifier::verifyOpnd(G4_Operand *opnd, G4_INST *inst) {
       newRgn.setLeftBound(0);
       newRgn.computeRightBound(execSize);
 
-      if (inst->getMaskOffset() > 0) {
+      // ".any"/".all" whole-flag reduction predicates (PRED_ANY_WHOLE /
+      // PRED_ALL_WHOLE, used when the platform lacks predicate-control group
+      // width) always cover the entire flag declare starting at bit 0 (see
+      // G4_Predicate::computeRightBound), independent of the instruction's
+      // mask offset, so their bounds must not be shifted by the mask offset.
+      G4_Predicate_Control predCtrl = newRgn.getControl();
+      bool isWholeFlagReduction =
+          predCtrl == PRED_ANY_WHOLE || predCtrl == PRED_ALL_WHOLE;
+
+      if (inst->getMaskOffset() > 0 && !isWholeFlagReduction) {
         // Update left/right bound as per inst mask offset, eg Q2
         // has offset 8
         newRgn.setLeftBound(newRgn.getLeftBound() + inst->getMaskOffset());

@@ -5819,7 +5819,7 @@ unsigned G4_Predicate::computeRightBound(uint8_t exec_size) {
 
   if (control == PRED_ALL_WHOLE || control == PRED_ANY_WHOLE) {
     // If control is "all" or "any", the left bound is 0 and the right
-    // bound is the the declare size
+    // bound is the declare size.
     left_bound = 0;
     uint16_t totalBits = getTopDcl()->getNumberFlagElements();
     right_bound = totalBits - 1;
