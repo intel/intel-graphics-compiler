@@ -1123,10 +1123,22 @@ void AddLegalizationPasses(CodeGenContext &ctx, IGCPassManager &mpm, PSSignature
     // beforehand.
     mpm.add(new Legalizer::PeepholeTypeLegalizer());
     // Lower all GEPs now as Emu64 doesn't know how to handle them.
+#if LLVM_VERSION_MAJOR >= 22
+    // LLVM 22+ InstCombine canonicalizes inttoptr(add(ptrtoint p, off)) back into
+    // getelementptr i8, so a GEP can reappear after the earlier GEP lowering and reach
+    // Emu64Ops (which does not expand GEPs and would drop the 64-bit index to undef).
+    // Always re-lower GEPs here to guarantee none reaches Emu64Ops. EarlyCSE stays
+    // scoped to the KeepGEPs path (its original behavior) to avoid perturbing codegen
+    // on the default path.
+    mpm.add(createGEPLoweringPass());
+    if (KeepGEPs)
+      mpm.add(llvm::createEarlyCSEPass());
+#else
     if (KeepGEPs) {
       mpm.add(createGEPLoweringPass());
       mpm.add(llvm::createEarlyCSEPass());
     }
+#endif
     // Run dead code elimination pass right before Emu64OpsPass,
     // as legalization passes do not always clear unused (operating
     // on illegal types) instructions.
