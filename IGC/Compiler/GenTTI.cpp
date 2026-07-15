@@ -70,7 +70,8 @@ void *GenIntrinsicsTTIImpl::getAdjustedAnalysisPointer(const void *ID) {
 }
 
 bool isSendMessage(const llvm::GenIntrinsicInst *inst) {
-  if (isa<SamplerLoadIntrinsic, SampleIntrinsic, LdRawIntrinsic, InfoIntrinsic, SamplerGatherIntrinsic>(inst)) {
+  if (isa<SamplerLoadIntrinsic, SampleIntrinsic, LdRawIntrinsic, InfoIntrinsic, SamplerGatherIntrinsic,
+          AtomicRawIntrinsic>(inst)) {
     return true;
   }
 
@@ -620,7 +621,7 @@ void GenIntrinsicsTTIImpl::getUnrollingPreferences(Loop *L, ScalarEvolution &SE,
   } else if (runtimeUnroll == 0) {
     // do not enable runtime unrolling if the loop is long or trip count is already known.
     // skip this check if RuntimeLoopUnrolling is set to force on.
-    if (instCount > 35 || TripCount) {
+    if (instCount > 40 || TripCount) {
       return;
     }
   }

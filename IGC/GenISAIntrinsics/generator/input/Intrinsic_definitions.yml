@@ -3556,6 +3556,7 @@ intrinsics:
                 comment: "src1"
         attributes:
             - !AttributeID "NoUnwind"
+            - !AttributeID "WillReturn"
     - !<IntrinsicDefinition>
         name: "GenISA_fcmpxchgatomicrawA64"
         comment: ""
@@ -3581,6 +3582,7 @@ intrinsics:
                 comment: "src1"
         attributes:
             - !AttributeID "NoUnwind"
+            - !AttributeID "WillReturn"
         memory_effects:
             - !<MemoryRestriction>
                 memory_location: !MemoryLocation ArgMem
@@ -3692,6 +3694,7 @@ intrinsics:
                 comment: "Instruction type (add, or, xor etc)"
         attributes:
             - !AttributeID "NoUnwind"
+            - !AttributeID "WillReturn"
         memory_effects:
             - !<MemoryRestriction>
                 memory_location: !MemoryLocation ArgMem
@@ -3720,6 +3723,7 @@ intrinsics:
                 comment: "Instruction type (add, or, xor etc)"
         attributes:
             - !AttributeID "NoUnwind"
+            - !AttributeID "WillReturn"
         memory_effects:
             - !<MemoryRestriction>
                 memory_location: !MemoryLocation ArgMem
@@ -6384,6 +6388,7 @@ intrinsics:
                 comment: "src1"
         attributes:
             - !AttributeID "NoUnwind"
+            - !AttributeID "WillReturn"
     - !<IntrinsicDefinition>
         name: "GenISA_icmpxchgatomicrawA64"
         comment: ""
@@ -6409,6 +6414,7 @@ intrinsics:
                 comment: "src1"
         attributes:
             - !AttributeID "NoUnwind"
+            - !AttributeID "WillReturn"
         memory_effects:
             - !<MemoryRestriction>
                 memory_location: !MemoryLocation ArgMem
@@ -6530,6 +6536,7 @@ intrinsics:
                 comment: "Instruction type (add, or, xor etc)"
         attributes:
             - !AttributeID "NoUnwind"
+            - !AttributeID "WillReturn"
         memory_effects:
             - !<MemoryRestriction>
                 memory_location: !MemoryLocation ArgMem
@@ -6558,6 +6565,7 @@ intrinsics:
                 comment: "Instruction type (add, or, xor etc)"
         attributes:
             - !AttributeID "NoUnwind"
+            - !AttributeID "WillReturn"
         memory_effects:
             - !<MemoryRestriction>
                 memory_location: !MemoryLocation ArgMem
@@ -6586,6 +6594,7 @@ intrinsics:
                 comment: "Instruction type (add, or, xor etc)"
         attributes:
             - !AttributeID "NoUnwind"
+            - !AttributeID "WillReturn"
         memory_effects:
             - !<MemoryRestriction>
                 memory_location: !MemoryLocation ArgMem
