@@ -12451,7 +12451,9 @@ int GlobalRA::coloringRegAlloc() {
       }
 
       if (kernel.getOption(vISA_GRFPostRASpillCodeCleanup)) {
-        spillFillPropagation();
+        unsigned maxSpillArea = spillFillPropagation();
+        if (maxSpillArea < nextSpillOffset)
+          nextSpillOffset = maxSpillArea;
       }
 
       kernel.dumpToFile("after.spillFillPropagation");

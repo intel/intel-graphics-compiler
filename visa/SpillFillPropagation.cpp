@@ -10,6 +10,7 @@ SPDX-License-Identifier: MIT
 #include "BuildIR.h"
 #include "FlowGraph.h"
 
+#include <algorithm>
 #include <unordered_set>
 
 using namespace vISA;
@@ -416,20 +417,136 @@ void SpillFillPropagation::processBBForward(G4_BB *bb) {
     ++it;
   }
 
-  // Propagate table to fall-through successor if the BB ends with a
-  // conditional goto and the fall-through BB's only predecessor is this BB.
-  if (!offsetToGRFs.empty() && !bb->empty()) {
-    G4_INST *lastInst = bb->back();
-    if (lastInst->opcode() == G4_goto && lastInst->getPredicate()) {
-      G4_BB *ftBB = bb->Succs.empty() ? nullptr : bb->Succs.front();
-      if (ftBB && ftBB->Preds.size() == 1 && ftBB->Preds.front() == bb) {
-        BBEntryState state;
-        state.offsetToGRFs = offsetToGRFs;
-        state.grfToDeclare = grfToDeclare;
-        bbEntryState[ftBB] = std::move(state);
-      }
-    }
+  propagateFallThrough(bb);
+  snapshotDiamondTopExit(bb);
+  applyDiamondMidIntersection(bb);
+}
+
+// Propagate exit state to a single-pred fall-through successor.
+void SpillFillPropagation::propagateFallThrough(G4_BB *bb) {
+  if (offsetToGRFs.empty() || bb->empty() || !isPredicatedBranch(bb->back()))
+    return;
+  G4_BB *ftBB = bb->Succs.empty() ? nullptr : bb->Succs.front();
+  if (!ftBB || ftBB->Preds.size() != 1 || ftBB->Preds.front() != bb)
+    return;
+  BBEntryState state;
+  state.offsetToGRFs = offsetToGRFs;
+  state.grfToDeclare = grfToDeclare;
+  bbEntryState[ftBB] = std::move(state);
+}
+
+// If bb is a diamond top, cache its exit state keyed by BB_bot.
+void SpillFillPropagation::snapshotDiamondTopExit(G4_BB *bb) {
+  if (offsetToGRFs.empty())
+    return;
+  G4_BB *mid = nullptr;
+  G4_BB *bot = nullptr;
+  if (!isDiamondTop(bb, mid, bot))
+    return;
+  BBEntryState snap;
+  snap.offsetToGRFs = offsetToGRFs;
+  snap.grfToDeclare = grfToDeclare;
+  diamondTopExitState[bot] = std::move(snap);
+}
+
+// If bb is a diamond middle, intersect its exit with the cached BB_top exit
+// and store as BB_bot's entry state. A GRF survives only when its dcl set is
+// identical on both paths so setForceGlobal at BB_bot covers both paths.
+void SpillFillPropagation::applyDiamondMidIntersection(G4_BB *bb) {
+  G4_BB *top = nullptr, *bot = nullptr;
+  if (!isDiamondMid(bb, top, bot))
+    return;
+  auto snapIt = diamondTopExitState.find(bot);
+  if (snapIt == diamondTopExitState.end())
+    return;
+  BBEntryState &topSnap = snapIt->second;
+
+  auto sameDclSet = [&](unsigned grf) {
+    auto midIt = grfToDeclare.find(grf);
+    auto topIt = topSnap.grfToDeclare.find(grf);
+    bool midHas = midIt != grfToDeclare.end() && !midIt->second.empty();
+    bool topHas =
+        topIt != topSnap.grfToDeclare.end() && !topIt->second.empty();
+    if (!midHas && !topHas)
+      return true;
+    if (!midHas || !topHas)
+      return false;
+    return midIt->second == topIt->second;
+  };
+
+  BBEntryState isect;
+  for (const auto &[off, midGrfs] : offsetToGRFs) {
+    auto topIt = topSnap.offsetToGRFs.find(off);
+    if (topIt == topSnap.offsetToGRFs.end())
+      continue;
+    for (unsigned grf : midGrfs)
+      if (topIt->second.count(grf) && sameDclSet(grf))
+        isect.offsetToGRFs[off].insert(grf);
   }
+  std::unordered_set<unsigned> liveGRFs;
+  for (const auto &[off, grfs] : isect.offsetToGRFs)
+    for (unsigned grf : grfs)
+      liveGRFs.insert(grf);
+  for (unsigned grf : liveGRFs) {
+    auto midIt = grfToDeclare.find(grf);
+    if (midIt != grfToDeclare.end())
+      isect.grfToDeclare[grf] = midIt->second;
+  }
+  if (!isect.offsetToGRFs.empty())
+    bbEntryState[bot] = std::move(isect);
+  diamondTopExitState.erase(snapIt);
+}
+
+// Predicated cross-BB branch terminator (goto or jmpi).
+bool SpillFillPropagation::isPredicatedBranch(G4_INST *inst) {
+  if (!inst || !inst->getPredicate())
+    return false;
+  auto op = inst->opcode();
+  return op == G4_goto || op == G4_jmpi;
+}
+
+// Diamond shape: BB_top has a predicated branch to BB_bot and falls through
+// to BB_mid; BB_mid has 1 pred (BB_top), 1 succ (BB_bot), no predicated
+// branch terminator; BB_bot's preds are exactly {BB_top, BB_mid}.
+bool SpillFillPropagation::isDiamondTop(G4_BB *bb, G4_BB *&mid, G4_BB *&bot) {
+  if (bb->empty() || bb->Succs.size() != 2)
+    return false;
+  if (!isPredicatedBranch(bb->back()))
+    return false;
+  // Succs order is [fall-through, branch-target] (see addPredSuccEdges).
+  mid = bb->Succs.front();
+  bot = bb->Succs.back();
+  if (!mid || !bot || mid == bot)
+    return false;
+  if (mid->Preds.size() != 1 || mid->Preds.front() != bb)
+    return false;
+  if (mid->Succs.size() != 1 || mid->Succs.front() != bot)
+    return false;
+  if (!mid->empty() && isPredicatedBranch(mid->back()))
+    return false;
+  if (bot->Preds.size() != 2)
+    return false;
+  bool hasTop = false, hasMid = false;
+  for (G4_BB *p : bot->Preds) {
+    if (p == bb)
+      hasTop = true;
+    else if (p == mid)
+      hasMid = true;
+  }
+  return hasTop && hasMid;
+}
+
+bool SpillFillPropagation::isDiamondMid(G4_BB *bb, G4_BB *&top, G4_BB *&bot) {
+  if (bb->Preds.size() != 1 || bb->Succs.size() != 1)
+    return false;
+  top = bb->Preds.front();
+  bot = bb->Succs.front();
+  if (!top || !bot)
+    return false;
+  G4_BB *topMid = nullptr, *topBot = nullptr;
+  if (!isDiamondTop(top, topMid, topBot))
+    return false;
+  return topMid == bb && topBot == bot;
 }
 
 // Returns true if [aStart, aEnd] overlaps [bStart, bEnd] (inclusive ranges).
@@ -847,4 +964,28 @@ void SpillFillPropagation::run() {
   removeRedundantSpills();
 
   removeSpillWithoutFill();
+}
+
+// Scan remaining spill/fill intrinsics and return max byte end offset
+// (offsetInBytes + numRows * grfSize). Returns 0 if none found.
+unsigned SpillFillPropagation::getMaxSpillAreaOffset() {
+  unsigned maxEnd = 0;
+  for (G4_BB *bb : kernel.fg) {
+    for (G4_INST *inst : *bb) {
+      if (inst->isSpillIntrinsic()) {
+        auto *spill = inst->asSpillIntrinsic();
+        if (!spill->isOffsetValid())
+          continue;
+        maxEnd = std::max(maxEnd, spill->getOffsetInBytes() +
+                                      spill->getNumRows() * grfSize);
+      } else if (inst->isFillIntrinsic()) {
+        auto *fill = inst->asFillIntrinsic();
+        if (!fill->isOffsetValid())
+          continue;
+        maxEnd = std::max(maxEnd, fill->getOffsetInBytes() +
+                                      fill->getNumRows() * grfSize);
+      }
+    }
+  }
+  return maxEnd;
 }

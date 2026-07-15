@@ -1459,7 +1459,7 @@ private:
   void markSlot1HwordSpillFill(G4_BB *);
   void expandSpillIntrinsic(G4_BB *);
   void expandFillIntrinsic(G4_BB *);
-  void spillFillPropagation();
+  unsigned spillFillPropagation();
   void expandSpillFillIntrinsics(unsigned);
   void expandSpillFillIntrinsicsXE3P(unsigned int);
   void saveRestoreA0(G4_BB *);

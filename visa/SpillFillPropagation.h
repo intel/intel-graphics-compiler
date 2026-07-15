@@ -55,6 +55,8 @@ class SpillFillPropagation {
   std::unordered_map<unsigned, std::set<G4_Declare *>> grfToDeclare;
   // Per-BB entry state for fall-through propagation
   std::unordered_map<G4_BB *, BBEntryState> bbEntryState;
+  // BB_top's exit state, keyed by diamond BB_bot; consumed at BB_mid.
+  std::unordered_map<G4_BB *, BBEntryState> diamondTopExitState;
 
   void clearTable();
   void addEntry(unsigned scratchOffset, unsigned grfNum, bool clearOld = false);
@@ -72,6 +74,12 @@ class SpillFillPropagation {
                       std::unordered_map<unsigned, PendingFill> &pendingFills);
   void processBBForward(G4_BB *bb);
   void processBBBackward(G4_BB *bb);
+  static bool isPredicatedBranch(G4_INST *inst);
+  static bool isDiamondTop(G4_BB *bb, G4_BB *&mid, G4_BB *&bot);
+  static bool isDiamondMid(G4_BB *bb, G4_BB *&top, G4_BB *&bot);
+  void propagateFallThrough(G4_BB *bb);
+  void snapshotDiamondTopExit(G4_BB *bb);
+  void applyDiamondMidIntersection(G4_BB *bb);
   void removeRedundantSpills();
   void removeSpillWithoutFill();
   bool replaceFillWithMovsAfter(G4_BB *bb, INST_LIST_RITER &rit,
@@ -86,6 +94,8 @@ class SpillFillPropagation {
 public:
   SpillFillPropagation(G4_Kernel &k, IR_Builder &b, GlobalRA &g);
   void run();
+  // Max scratch byte end offset over remaining spill/fill intrinsics.
+  unsigned getMaxSpillAreaOffset();
 };
 
 } // namespace vISA

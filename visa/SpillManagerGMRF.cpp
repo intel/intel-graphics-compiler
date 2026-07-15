@@ -5971,12 +5971,13 @@ void GlobalRA::expandSpillFillIntrinsicsXE3P(unsigned int spillSizeInBytes) {
   }
 }
 
-void GlobalRA::spillFillPropagation() {
+unsigned GlobalRA::spillFillPropagation() {
   if (useLscForScatterSpill)
-    return;
+    return 0;
 
   SpillFillPropagation sfp(kernel, builder, *this);
   sfp.run();
+  return sfp.getMaxSpillAreaOffset();
 }
 
 void GlobalRA::expandSpillFillIntrinsics(unsigned int spillSizeInBytes) {
