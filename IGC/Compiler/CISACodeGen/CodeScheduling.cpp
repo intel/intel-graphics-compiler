@@ -3272,9 +3272,9 @@ bool CodeScheduling::runOnFunction(Function &F) {
   // In/Out sets in RPE remain valid; we just need to re-walk per-BB pressure.
   if (Changed) {
     unsigned int SIMD = numLanes(IGC::bestGuessSIMDSize(CTX, &F, FGA));
-    unsigned int MaxPressure = RPE->getMaxRegCountForFunction(F, SIMD, WI);
-    unsigned int ExternalPressure = FRPE->getExternalPressureForFunction(&F);
-    RPE->publishRegPressureMetadata(F, MaxPressure + ExternalPressure);
+    PressurePair MaxPressurePair = RPE->getMaxPressurePairForFunction(F, SIMD, WI);
+    PressurePair ExternalPressure = FRPE->getExternalPressurePairForFunction(&F);
+    RPE->publishNormalizedPressurePair(F, MaxPressurePair + ExternalPressure, SIMD);
   }
 
   return Changed;

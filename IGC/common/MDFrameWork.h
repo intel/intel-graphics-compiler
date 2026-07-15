@@ -387,9 +387,11 @@ enum class ShaderTypeMD
         bool IsInitializer = false;
         bool IsFinalizer = false;
         unsigned CompiledSubGroupsNumber = 0;
-        unsigned maxRegPressure = 0;       // 0 = not specified
         unsigned maxRegPressureSimd16 = 0; // 0 = not specified
         unsigned maxRegPressureSimd32 = 0; // 0 = not specified
+        unsigned maxRegUniformPressure = 0; // 0 = not specified, IN BYTES
+        unsigned maxRegNonUniformPressure = 0; // 0 = not specified, IN BYTES
+        unsigned bestGuessSimd = 0; // this is a failsafe, should be removed
         bool hasInlineVmeSamplers = false;
         int localSize = 0;
         bool localIDPresent = false;
