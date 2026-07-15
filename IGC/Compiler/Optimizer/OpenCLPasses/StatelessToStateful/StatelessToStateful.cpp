@@ -968,6 +968,22 @@ void StatelessToStateful::addToPromotionMap(Instruction &I, Value *Ptr,
       m_promotionMap.size() < maxPromotionCount &&
       pointerIsPositiveOffsetFromKernelArgument(m_F, Ptr, offset, baseArgNumber, true, OriginalInstructionAlignment);
 
+  // Keep regular load path stateless for bindless+buffer_offset when compiling
+  // in no-large mode. This must be checked on the final promotability path,
+  // not only in visitors.
+  if (isPromotable) {
+    ModuleMetaData *modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
+    const bool skipLoadPromotionForBindlessBufferOffset = modMD->compOpt.UseBindlessMode &&
+                                                          modMD->compOpt.HasBufferOffsetArg &&
+                                                          !modMD->compOpt.GreaterThan4GBBufferRequired;
+
+    const bool isLoadPromotionCandidate = I.getOpcode() == Instruction::Load;
+
+    if (skipLoadPromotionForBindlessBufferOffset && isLoadPromotionCandidate) {
+      return;
+    }
+  }
+
   if (isPromotable) {
     InstructionInfo II(&I, Ptr, offset);
     m_promotionMap[baseArgNumber].push_back(II);
@@ -1066,6 +1082,17 @@ void StatelessToStateful::visitCallInst(CallInst &I) {
 
 void StatelessToStateful::visitLoadInst(LoadInst &I) {
   Value *ptr = I.getPointerOperand();
+
+  ModuleMetaData *modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
+  const bool skipLoadPromotionForBindlessBufferOffset = modMD->compOpt.UseBindlessMode &&
+                                                        modMD->compOpt.HasBufferOffsetArg &&
+                                                        !modMD->compOpt.GreaterThan4GBBufferRequired;
+
+  // Keep bindless+buffer_offset load path stateless in no-large mode.
+  if (skipLoadPromotionForBindlessBufferOffset && ptr != nullptr && pointerIsFromKernelArgument(*ptr)) {
+    return;
+  }
+
   addToPromotionMap(I, ptr, I.getAlign());
 
   // check if there's non-kernel-arg load/store
