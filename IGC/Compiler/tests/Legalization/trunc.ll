@@ -29,6 +29,29 @@ define i32 @test_trunc(<3 x i16> %src1) {
   ret i32 %2
 }
 
+define i8 @test_trunc_i1_with_phi(i64 %val, i1 %p) {
+; CHECK-LABEL: define i8 @test_trunc_i1_with_phi(
+; CHECK-SAME: i64 [[VAL:%.*]], i1 [[P:%.*]])
+entry:
+  br i1 %p, label %trunc.bb, label %merge
+
+trunc.bb:                                         ; preds = %entry
+  ; CHECK: [[TMP1:%.*]] = and i64 [[VAL]], 1
+  ; CHECK: [[TMP2:%.*]] = icmp ne i64 [[TMP1]], 0
+  ; CHECK: [[TMP3:%.*]] = sext i1 [[TMP2]] to i32
+  %t = trunc i64 %val to i1
+  br label %merge
+
+merge:                                            ; preds = %trunc.bb, %entry
+  ; CHECK: [[X:%.*]] = phi i32 [ [[TMP3]], %trunc.bb ], [ 0, %entry ]
+  ; CHECK: [[TMP4:%.*]] = icmp ne i32 [[X]], 0
+  ; CHECK: [[RET:%.*]] = zext i1 [[TMP4]] to i8
+  ; CHECK: ret i8 [[RET]]
+  %x = phi i1 [ %t, %trunc.bb ], [ 0, %entry ]
+  %ret = zext i1 %x to i8
+  ret i8 %ret
+}
+
 define i32 @test_trunc_shr16(<3 x i16> %src1) {
 ; CHECK-LABEL: define i32 @test_trunc_shr16(
 ; CHECK-SAME: <3 x i16> [[SRC1:%.*]]) {
@@ -92,11 +115,12 @@ define i32 @test_trunc_lshr8(<3 x i16> %src1) {
   ret i32 %3
 }
 
-!igc.functions = !{!0, !1, !2, !3, !4}
+!igc.functions = !{!0, !1, !2, !3, !4, !5}
 
 !0 = !{i32 (<3 x i16>)* @test_trunc, !10}
 !1 = !{i32 (<3 x i16>)* @test_trunc_shr16, !10}
 !2 = !{i32 (<3 x i16>)* @test_trunc_shr32, !10}
 !3 = !{i32 (<3 x i16>)* @test_trunc_ashr, !10}
 !4 = !{i32 (<3 x i16>)* @test_trunc_lshr8, !10}
+!5 = !{i8 (i64, i1)* @test_trunc_i1_with_phi, !10}
 !10 = !{}

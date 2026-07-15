@@ -38,7 +38,8 @@ define spir_kernel void @test_insert(i32 %src1, <3 x i1> %src2) !dbg !7 {
 ; CHECK: [[SEXT_V:%[0-9]*]] = sext i1 [[EXTR_V]] to i32
 ; CHECK-NEXT: [[INS_EL32_V:%[0-9]*]] = insertelement <3 x i32> undef, i32 [[SEXT_V]], i32 1
 ; CHECK: [[EXTR32_V:%[0-9]*]] = extractelement <3 x i32> [[INS_EL32_V]], i32 1
-; CHECK: [[EXTR1_V:%[0-9]*]] = trunc i32 {{.*}} to i1, !dbg [[EXTR1_LOC:![0-9]*]]
+; CHECK: [[AND32_V:%[0-9]*]] = and i32 [[EXTR32_V]], 1, !dbg [[AND32_LOC:![0-9]*]]
+; CHECK: [[EXTR1_V:%[0-9]*]] = icmp ne i32 [[AND32_V]], 0, !dbg [[EXTR1_LOC:![0-9]*]]
 ; CHECK-DBG-INTRINSIC: [[DBG_VALUE_CALL]] i1 [[EXTR1_V]], metadata [[EXTR1_MD:![0-9]*]], metadata !DIExpression()), !dbg [[EXTR1_LOC]]
 ; CHECK-DBG-RECORDS: #dbg_value(i1 [[EXTR1_V]], [[EXTR1_MD:![0-9]*]], !DIExpression(), [[EXTR1_LOC]])
 

@@ -1336,6 +1336,7 @@ void Legalization::PromoteInsertElement(Value *I, Value *newVec) {
                                                                             "", IGCLLVM::insertPosition(EEinst));
         pSrc1ZExt->setDebugLoc(EEinst->getDebugLoc());
         I->replaceAllUsesWith(pSrc1ZExt);
+        PromoteTruncToI1(*cast<TruncInst>(pSrc1ZExt));
       }
     }
   }
@@ -2140,17 +2141,25 @@ void Legalization::PromoteFp16ToFp32OnGenSampleCall(llvm::CallInst &I) {
   llvm::ReplaceInstWithInst(&I, I0);
 }
 
+void Legalization::PromoteTruncToI1(llvm::TruncInst &I) {
+  IGC_ASSERT(I.getDestTy()->isIntegerTy(1));
+  Value *Src = I.getOperand(0);
+  if (Src->getType()->isIntegerTy() && Src->getType()->getIntegerBitWidth() > 1) {
+    m_builder->SetInsertPoint(&I);
+    Value *Masked = m_builder->CreateAnd(Src, ConstantInt::get(Src->getType(), 1));
+    Value *Cmp = m_builder->CreateICmpNE(Masked, ConstantInt::get(Src->getType(), 0));
+    I.replaceAllUsesWith(Cmp);
+    m_instructionsToRemove.insert(&I);
+  }
+  return;
+}
+
 void Legalization::visitTruncInst(llvm::TruncInst &I) {
   // A (trunc iN X to i1) selects bit 0 of X. IGC lowers an i1 predicate as
   // "X != 0", which only matches bit 0 for a canonical boolean; for an arbitrary
   // integer a bare trunc-to-i1 miscompiles.
   if (I.getDestTy()->isIntegerTy(1)) {
-    Value *Src = I.getOperand(0);
-    if (Src->getType()->isIntegerTy() && Src->getType()->getIntegerBitWidth() > 1) {
-      m_builder->SetInsertPoint(&I);
-      Value *Masked = m_builder->CreateAnd(Src, ConstantInt::get(Src->getType(), 1));
-      I.setOperand(0, Masked);
-    }
+    PromoteTruncToI1(I);
     return;
   }
 
