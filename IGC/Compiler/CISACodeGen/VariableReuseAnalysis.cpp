@@ -14,6 +14,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/Support/Debug.h>
 #include "common/LLVMWarningsPop.hpp"
 #include "llvmWrapper/IR/DerivedTypes.h"
+#include "llvmWrapper/IR/BasicBlock.h"
 #include <algorithm>
 #include "Probe/Assertion.h"
 
@@ -1606,6 +1607,6 @@ bool VariableReuseAnalysis::checkSubAlign(e_alignment &BaseAlign, Value *SubVec,
 bool VariableReuseAnalysis::skipScalarAliaser(BasicBlock *BB, Value *ScalarVal) const {
   Instruction *I = dyn_cast<Instruction>(ScalarVal);
   // Don't count dbg instructions in BB
-  unsigned InstCountInBB = BB->sizeWithoutDebug();
+  unsigned InstCountInBB = IGCLLVM::sizeWithoutDebug(BB);
   return ((InstCountInBB > m_BBSizeThreshold) || !I || I->getParent() != BB);
 }

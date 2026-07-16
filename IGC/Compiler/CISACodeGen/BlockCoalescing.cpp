@@ -11,6 +11,7 @@ SPDX-License-Identifier: MIT
 #include "common/igc_regkeys.hpp"
 #include "Compiler/IGCPassSupport.h"
 #include "Probe/Assertion.h"
+#include "llvmWrapper/IR/BasicBlock.h"
 
 using namespace llvm;
 using namespace IGC;
@@ -59,7 +60,7 @@ bool BlockCoalescing::runOnFunction(Function &F) {
     // phi instructions, which we can ignore here (phis are ignored during add instruction to m_dags).
     uint dbgInstrInBB = 0;
     if (!Ctx->getModuleMetaData()->compOpt.OptDisable) {
-      dbgInstrInBB = block.bb->size() - block.bb->sizeWithoutDebug();
+      dbgInstrInBB = block.bb->size() - IGCLLVM::sizeWithoutDebug(block.bb);
     }
 
     // An empty block would have only one pattern matching the branch instruction

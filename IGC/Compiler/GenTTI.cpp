@@ -25,6 +25,7 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPop.hpp"
 
 #include "llvmWrapper/Transforms/Utils/LoopUtils.h"
+#include "llvmWrapper/IR/BasicBlock.h"
 
 #include <algorithm>
 #include "llvmWrapper/IR/Instructions.h"
@@ -467,7 +468,7 @@ void GenIntrinsicsTTIImpl::getUnrollingPreferences(Loop *L, ScalarEvolution &SE,
     if (IGC_IS_FLAG_ENABLED(EnableAdvRuntimeUnroll) && IGCLLVM::isInnermost(L)) {
       auto countNonPHI = [](BasicBlock *BB) {
         // Count the number of instructions in the basic block without dbg instructions
-        unsigned InstCountInBB = BB->sizeWithoutDebug();
+        unsigned InstCountInBB = IGCLLVM::sizeWithoutDebug(BB);
         unsigned PHIs = 0;
         for (auto BI = BB->begin(), BE = BB->end(); BI != BE; ++BI) {
           if (!isa<PHINode>(&*BI))
@@ -523,8 +524,7 @@ void GenIntrinsicsTTIImpl::getUnrollingPreferences(Loop *L, ScalarEvolution &SE,
 
   llvm::BasicBlock::InstListType::iterator I;
   llvm::BasicBlock *loopBlock = L->getBlocks()[0];
-  int instCount =
-      std::distance(loopBlock->instructionsWithoutDebug().begin(), loopBlock->instructionsWithoutDebug().end());
+  int instCount = (int)IGCLLVM::sizeWithoutDebug(loopBlock);
 
   // Check if the specific basic block has block read or write.
   auto hasBlockReadWrite = [](BasicBlock *BB) {

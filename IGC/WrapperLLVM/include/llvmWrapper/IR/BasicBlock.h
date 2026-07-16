@@ -15,10 +15,12 @@ SPDX-License-Identifier: MIT
 #include "IGC/common/LLVMWarningsPop.hpp"
 
 namespace IGCLLVM {
-inline llvm::filter_iterator<llvm::BasicBlock::const_iterator,
-                             std::function<bool(const llvm::Instruction &)>>::difference_type
-sizeWithoutDebug(const llvm::BasicBlock *BB) {
-  return std::distance(BB->instructionsWithoutDebug().begin(), BB->instructionsWithoutDebug().end());
+inline size_t sizeWithoutDebug(const llvm::BasicBlock *BB) {
+#if LLVM_VERSION_MAJOR >= 22
+  return BB->size();
+#else
+  return BB->sizeWithoutDebug();
+#endif
 }
 
 inline void pushFrontInstruction(llvm::BasicBlock *BB, llvm::Instruction *I) {
@@ -53,6 +55,7 @@ inline void splice(llvm::BasicBlock *to, llvm::BasicBlock::iterator it, llvm::Ba
   to->splice(to->begin(), from, start, end);
 #endif
 }
+
 } // namespace IGCLLVM
 
 #endif
