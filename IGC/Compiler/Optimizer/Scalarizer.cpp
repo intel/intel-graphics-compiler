@@ -874,10 +874,13 @@ void ScalarizeFunction::ScalarizeIntrinsic(IntrinsicInst &II) {
   unsigned NumOperands = II.arg_size();
 
   SmallVector<SmallVector<Value *, MAX_INPUT_VECTOR_WIDTH>, MAX_INTRINSIC_OPERANDS> Operands(NumOperands);
-  SmallVector<bool, MAX_INTRINSIC_OPERANDS> IsOpConst(NumOperands);
-
-  for (unsigned i = 0; i < NumOperands; i++)
-    obtainScalarizedValues(Operands[i], &IsOpConst[i], II.getOperand(i), II);
+  SmallVector<bool, MAX_INTRINSIC_OPERANDS> IsVectorOperand(NumOperands);
+  for (unsigned i = 0; i < NumOperands; i++) {
+    Value *Operand = II.getArgOperand(i);
+    IsVectorOperand[i] = isa<IGCLLVM::FixedVectorType>(Operand->getType());
+    if (IsVectorOperand[i])
+      obtainScalarizedValues(Operands[i], nullptr, Operand, II);
+  }
 
   SmallVector<Value *, MAX_INPUT_VECTOR_WIDTH> NewScalarizedInsts(NumElements);
   for (unsigned i = 0; i < NumElements; i++) {
@@ -885,7 +888,7 @@ void ScalarizeFunction::ScalarizeIntrinsic(IntrinsicInst &II) {
 
     SmallVector<Value *, MAX_INTRINSIC_OPERANDS> ScalarOperands(NumOperands);
     for (unsigned j = 0; j < NumOperands; j++)
-      ScalarOperands[j] = Operands[j][i];
+      ScalarOperands[j] = IsVectorOperand[j] ? Operands[j][i] : II.getArgOperand(j);
 
     auto *ScalarIntr =
         CallInst::Create(IGCLLVM::getOrInsertDeclaration(II.getModule(), II.getIntrinsicID(), ScalarType),
@@ -906,12 +909,86 @@ void ScalarizeFunction::visitIntrinsicInst(IntrinsicInst &II) {
   case Intrinsic::smax:
   case Intrinsic::umin:
   case Intrinsic::umax:
+  case Intrinsic::experimental_constrained_fdiv:
+  case Intrinsic::experimental_constrained_sqrt:
     ScalarizeIntrinsic(II);
     break;
   default:
     recoverNonScalarizableInst(&II);
     break;
   }
+}
+
+void ScalarizeFunction::ScalarizeGenIntrinsicRoundingMode(GenIntrinsicInst &GII) {
+  V_PRINT(scalarizer, "\t\tGenISA rounding-mode intrinsic\n");
+
+  auto *InstType = cast<IGCLLVM::FixedVectorType>(GII.getType());
+  SCMEntry *NewEntry = getSCMEntry(&GII);
+
+  unsigned NumElements = int_cast<unsigned>(InstType->getNumElements());
+  unsigned NumOperands = GII.arg_size();
+
+  SmallVector<SmallVector<Value *, MAX_INPUT_VECTOR_WIDTH>, MAX_INTRINSIC_OPERANDS> Operands(NumOperands);
+  SmallVector<bool, MAX_INTRINSIC_OPERANDS> IsVectorOperand(NumOperands);
+  for (unsigned j = 0; j < NumOperands; j++) {
+    Value *Operand = GII.getArgOperand(j);
+    IsVectorOperand[j] = isa<IGCLLVM::FixedVectorType>(Operand->getType());
+    if (IsVectorOperand[j])
+      obtainScalarizedValues(Operands[j], nullptr, Operand, GII);
+  }
+
+  SmallVector<Type *, 2> OverloadTypes;
+  OverloadTypes.push_back(InstType->getElementType());
+  switch (GII.getIntrinsicID()) {
+  case GenISAIntrinsic::GenISA_ftof_rte:
+  case GenISAIntrinsic::GenISA_ftof_rtn:
+  case GenISAIntrinsic::GenISA_ftof_rtp:
+  case GenISAIntrinsic::GenISA_ftof_rtz:
+    OverloadTypes.push_back(GII.getArgOperand(0)->getType()->getScalarType());
+    break;
+  default:
+    break;
+  }
+  Function *ScalarFunc = GenISAIntrinsic::getDeclaration(GII.getModule(), GII.getIntrinsicID(), OverloadTypes);
+
+  SmallVector<Value *, MAX_INPUT_VECTOR_WIDTH> NewScalarizedInsts(NumElements);
+  for (unsigned i = 0; i < NumElements; i++) {
+    SmallVector<Value *, MAX_INTRINSIC_OPERANDS> ScalarOperands(NumOperands);
+    for (unsigned j = 0; j < NumOperands; j++)
+      ScalarOperands[j] = IsVectorOperand[j] ? Operands[j][i] : GII.getArgOperand(j);
+
+    auto *ScalarIntr =
+        CallInst::Create(ScalarFunc, ScalarOperands, GII.getName() + ".scalar", IGCLLVM::insertPosition(&GII));
+    ScalarIntr->copyMetadata(GII);
+    ScalarIntr->copyFastMathFlags(&GII);
+    NewScalarizedInsts[i] = ScalarIntr;
+  }
+
+  updateSCMEntryWithValues(NewEntry, &(NewScalarizedInsts[0]), &GII, true);
+
+  m_removedInsts.insert(&GII);
+}
+
+void ScalarizeFunction::visitCallInst(CallInst &CI) {
+  if (GenIntrinsicInst *GII = dyn_cast<GenIntrinsicInst>(&CI)) {
+    switch (GII->getIntrinsicID()) {
+    case GenISAIntrinsic::GenISA_ftof_rte:
+    case GenISAIntrinsic::GenISA_ftof_rtn:
+    case GenISAIntrinsic::GenISA_ftof_rtp:
+    case GenISAIntrinsic::GenISA_ftof_rtz:
+    case GenISAIntrinsic::GenISA_IEEE_Divide_rm:
+    case GenISAIntrinsic::GenISA_IEEE_Sqrt_rm:
+      if (isa<IGCLLVM::FixedVectorType>(GII->getType())) {
+        ScalarizeGenIntrinsicRoundingMode(*GII);
+        return;
+      }
+      break;
+    default:
+      break;
+    }
+  }
+
+  recoverNonScalarizableInst(&CI);
 }
 
 void ScalarizeFunction::visitGetElementPtrInst(GetElementPtrInst &GI) {

@@ -3638,6 +3638,29 @@ static float getBankConflictALUDensity(const llvm::Function *F) {
   return Total ? (float)Candidates / (float)Total : 0.0f;
 }
 
+static bool hasIEEEArithmeticMacro(const llvm::Module &M) {
+  for (const llvm::Function &F : M) {
+    for (const llvm::BasicBlock &BB : F) {
+      for (const llvm::Instruction &I : BB) {
+        const auto *GII = llvm::dyn_cast<llvm::GenIntrinsicInst>(&I);
+        if (!GII)
+          continue;
+
+        switch (GII->getIntrinsicID()) {
+        case llvm::GenISAIntrinsic::GenISA_IEEE_Divide:
+        case llvm::GenISAIntrinsic::GenISA_IEEE_Divide_rm:
+        case llvm::GenISAIntrinsic::GenISA_IEEE_Sqrt:
+        case llvm::GenISAIntrinsic::GenISA_IEEE_Sqrt_rm:
+          return true;
+        default:
+          break;
+        }
+      }
+    }
+  }
+  return false;
+}
+
 void CEncoder::InitVISABuilderOptions(TARGET_PLATFORM VISAPlatform, bool canAbortOnSpill, bool hasStackCall,
                                       bool enableVISA_IR) {
   CodeGenContext *context = m_program->GetContext();
@@ -3761,8 +3784,12 @@ void CEncoder::InitVISABuilderOptions(TARGET_PLATFORM VISAPlatform, bool canAbor
       (context->getModuleMetaData()->compOpt.FloatDenormMode64 == FLOAT_DENORM_FLUSH_TO_ZERO) ||
       (m_program->m_Platform->hasBFTFDenormMode() &&
        context->getModuleMetaData()->compOpt.FloatDenormModeBFTF == FLOAT_DENORM_FLUSH_TO_ZERO);
+  bool needsCRSetupForIEEEArithmetic = hasIEEEArithmeticMacro(*context->getModule());
 
-  if (m_program->m_Platform->hasCorrectlyRoundedMacros() && needsDenormRetainForMathInstructions) {
+  // IEEE arithmetic macros require RNE for their intermediate MADM operations.
+  // Let vISA save and configure CR0 even when the shader otherwise retains denorms.
+  if (m_program->m_Platform->hasCorrectlyRoundedMacros() &&
+      (needsCRSetupForIEEEArithmetic || needsDenormRetainForMathInstructions)) {
     SaveOption(vISA_hasRNEandDenorm, false);
   } else {
     SaveOption(vISA_hasRNEandDenorm, true);

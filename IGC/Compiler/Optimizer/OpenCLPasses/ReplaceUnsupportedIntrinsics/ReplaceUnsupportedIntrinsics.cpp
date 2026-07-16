@@ -1172,9 +1172,9 @@ void ReplaceUnsupportedIntrinsics::replaceI1MinMax(IntrinsicInst *I) {
 /*
   Replaces half-precision llvm.experimental.constrained.fdiv and
   llvm.experimental.constrained.sqrt intrinsics by promoting operands to float,
-  performing the operation in float with RNE rounding via GenISA intrinsics,
-  and converting the result back to half with the original rounding mode
-  using GenISA_ftof_rt{e,z,p,n}.
+  performing the operation with RNE rounding via GenISA intrinsics, and
+  converting the result back to half with the requested rounding mode using
+  GenISA_ftof_rt{e,z,p,n}.
 
   E.g. for fdiv:
   %r = call half @llvm.experimental.constrained.fdiv.f16(half %a, half %b,
@@ -1197,18 +1197,22 @@ void ReplaceUnsupportedIntrinsics::replaceHalvesDivsSqrts(IntrinsicInst *I) {
   auto *CFP = cast<ConstrainedFPIntrinsic>(I);
   Type *OrigTy = I->getType();
 
-  // Only replace half-precision operations.
-  if (!OrigTy->getScalarType()->isHalfTy())
+  bool IsHalf = OrigTy->getScalarType()->isHalfTy();
+  if (!IsHalf)
     return;
+
+  auto OrigRounding = CFP->getRoundingMode();
 
   Intrinsic::ID IID = I->getIntrinsicID();
   IGC_ASSERT(IID == Intrinsic::experimental_constrained_fdiv || IID == Intrinsic::experimental_constrained_sqrt);
 
-  Type *FloatTy = Type::getFloatTy(I->getContext());
+  Type *ComputeScalarTy = Type::getFloatTy(I->getContext());
+  Type *ComputeTy = ComputeScalarTy;
+  if (auto *VectorTy = dyn_cast<IGCLLVM::FixedVectorType>(OrigTy))
+    ComputeTy = IGCLLVM::FixedVectorType::get(ComputeScalarTy, VectorTy->getNumElements());
   Module *M = I->getModule();
 
   // Map LLVM constrained rounding mode to GenISA ftof intrinsic.
-  auto OrigRounding = CFP->getRoundingMode();
   GenISAIntrinsic::ID FtofID = GenISAIntrinsic::GenISA_ftof_rte; // default RNE
   if (OrigRounding) {
     switch (*OrigRounding) {
@@ -1235,23 +1239,22 @@ void ReplaceUnsupportedIntrinsics::replaceHalvesDivsSqrts(IntrinsicInst *I) {
       ConstantInt::get(Type::getInt32Ty(I->getContext()), static_cast<uint32_t>(ERoundingMode::ROUND_TO_NEAREST_EVEN));
 
   IGCLLVM::IRBuilder<> Builder(I);
+  GenISAIntrinsic::ID ComputeID = IID == Intrinsic::experimental_constrained_fdiv
+                                      ? GenISAIntrinsic::GenISA_IEEE_Divide_rm
+                                      : GenISAIntrinsic::GenISA_IEEE_Sqrt_rm;
+  Function *ComputeFn = GenISAIntrinsic::getDeclaration(M, ComputeID, {ComputeTy});
+
   Value *ComputeResult = nullptr;
-
   if (IID == Intrinsic::experimental_constrained_fdiv) {
-    Value *LHS = Builder.CreateFPExt(I->getArgOperand(0), FloatTy, "fdiv.lhs.ext");
-    Value *RHS = Builder.CreateFPExt(I->getArgOperand(1), FloatTy, "fdiv.rhs.ext");
-
-    Function *DivFn = GenISAIntrinsic::getDeclaration(M, GenISAIntrinsic::GenISA_IEEE_Divide_rm, {FloatTy});
-    ComputeResult = Builder.CreateCall(DivFn, {LHS, RHS, RNE}, "div_rm");
+    Value *LHS = Builder.CreateFPExt(I->getArgOperand(0), ComputeTy, "fdiv.lhs.ext");
+    Value *RHS = Builder.CreateFPExt(I->getArgOperand(1), ComputeTy, "fdiv.rhs.ext");
+    ComputeResult = Builder.CreateCall(ComputeFn, {LHS, RHS, RNE}, "div_rm");
   } else {
-    Value *Op = Builder.CreateFPExt(I->getArgOperand(0), FloatTy, "fsqrt.op.ext");
-
-    Function *SqrtFn = GenISAIntrinsic::getDeclaration(M, GenISAIntrinsic::GenISA_IEEE_Sqrt_rm, {FloatTy});
-    ComputeResult = Builder.CreateCall(SqrtFn, {Op, RNE}, "sqrt_rm");
+    Value *Op = Builder.CreateFPExt(I->getArgOperand(0), ComputeTy, "fsqrt.op.ext");
+    ComputeResult = Builder.CreateCall(ComputeFn, {Op, RNE}, "sqrt_rm");
   }
 
-  // Truncate float result back to half with the original rounding mode.
-  Type *OverloadTypes[] = {OrigTy, FloatTy};
+  Type *OverloadTypes[] = {OrigTy, ComputeTy};
   Function *FtofFn = GenISAIntrinsic::getDeclaration(M, FtofID, OverloadTypes);
   Value *Result = Builder.CreateCall(FtofFn, {ComputeResult}, "ftof_rm");
   cast<Instruction>(Result)->setDebugLoc(I->getDebugLoc());

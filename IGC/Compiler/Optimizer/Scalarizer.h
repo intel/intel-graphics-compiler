@@ -30,6 +30,10 @@ SPDX-License-Identifier: MIT
 #include <set>
 #include <utility>
 
+namespace llvm {
+class GenIntrinsicInst;
+}
+
 namespace IGC {
 
 class CodeGenContextWrapper;
@@ -87,6 +91,7 @@ public:
   void visitShuffleVectorInst(llvm::ShuffleVectorInst &SI);
   void visitGetElementPtrInst(llvm::GetElementPtrInst &GI);
   void visitIntrinsicInst(llvm::IntrinsicInst &II);
+  void visitCallInst(llvm::CallInst &CI);
   void visitInstruction(llvm::Instruction &I);
 
 private:
@@ -105,6 +110,11 @@ private:
 
   /// @brief scalarize Intrinsic Instruction based on numer of operands
   void ScalarizeIntrinsic(llvm::IntrinsicInst &II);
+
+  /// @brief scalarize a vector floating-point rounding-mode GenISA intrinsic
+  ///  (ftof / IEEE_Divide_rm / IEEE_Sqrt_rm). Vector operands are scalarized;
+  ///  scalar operands (e.g. the i32 rounding mode) are forwarded unchanged.
+  void ScalarizeGenIntrinsicRoundingMode(llvm::GenIntrinsicInst &GII);
 
   /*! \name Scalarizarion Utility Functions
    *  \{ */

@@ -337,7 +337,7 @@ void HandleSpirvDecorationMetadata::visitCallInst(CallInst &I) {
   static const Regex pattern1DBlockPrefetch("_Z[0-9]+__spirv_SubgroupBlockPrefetchINTEL");
   static const Regex patternPredicatedReadSPV("_Z[0-9]+__spirv_PredicatedLoadINTEL.+");
   static const Regex patternPredicatedWriteSPV("_Z[0-9]+__spirv_PredicatedStoreINTEL.+");
-  static const Regex patternSpirvSqrt("_Z[0-9]+__spirv_ocl_sqrt(f|d|Dh)");
+  static const Regex patternSpirvSqrt("_Z[0-9]+__spirv_ocl_sqrt(Dv[0-9]+_)?(f|d|Dh)");
 
   SmallVector<StringRef, 4> Matches;
   StringRef FuncName = F->getName();
@@ -689,14 +689,18 @@ void HandleSpirvDecorationMetadata::handleFPRoundingMode(Instruction &I, SmallPt
   uint64_t InternalRM = SpirvToInternal[RoundingMode];
 
   Type *OpType = I.getType();
-
-  // Only fp16, fp32, and fp64 are supported
-  if (!OpType->isHalfTy() && !OpType->isFloatTy() && !OpType->isDoubleTy())
+  Type *ScalarTy = OpType->getScalarType();
+  if (!ScalarTy->isHalfTy() && !ScalarTy->isFloatTy() && !ScalarTy->isDoubleTy())
     return;
 
-  // For half types, emulate: fpext to float -> compute in RNE -> ftof back to half
-  bool IsHalf = OpType->isHalfTy();
-  Type *ComputeType = IsHalf ? Type::getFloatTy(I.getContext()) : OpType;
+  bool IsHalf = ScalarTy->isHalfTy();
+  Type *ComputeType = OpType;
+  if (IsHalf) {
+    Type *ComputeScalarTy = Type::getFloatTy(I.getContext());
+    ComputeType = ComputeScalarTy;
+    if (auto *VecTy = dyn_cast<IGCLLVM::FixedVectorType>(OpType))
+      ComputeType = IGCLLVM::FixedVectorType::get(ComputeScalarTy, VecTy->getNumElements());
+  }
   uint64_t ComputeRM = IsHalf ? 0 /* RNE */ : InternalRM;
 
   IGCLLVM::IRBuilder<> Builder(&I);
@@ -729,7 +733,7 @@ void HandleSpirvDecorationMetadata::handleFPRoundingMode(Instruction &I, SmallPt
   NewCall->copyFastMathFlags(&I);
   NewCall->setDebugLoc(I.getDebugLoc());
 
-  // For half: truncate float result back to half with the desired rounding mode
+  // For half: truncate the float result with the desired rounding mode.
   Value *Result = NewCall;
   if (IsHalf) {
     constexpr GenISAIntrinsic::ID SpirvRMToFtof[] = {

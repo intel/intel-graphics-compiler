@@ -1474,6 +1474,8 @@ WIAnalysis::WIDependancy WIAnalysisRunner::calculate_dep(const CallInst *inst) {
       intrinsic_name == llvm_ptr_to_pair || intrinsic_name == llvm_pair_to_ptr || intrinsic_name == llvm_fma ||
       intrinsic_name == llvm_canonicalize || GII_id == GenISAIntrinsic::GenISA_uitof_rtz ||
       GII_id == GenISAIntrinsic::GenISA_ftobf || GII_id == GenISAIntrinsic::GenISA_bftof ||
+      GII_id == GenISAIntrinsic::GenISA_ftof_rte || GII_id == GenISAIntrinsic::GenISA_ftof_rtz ||
+      GII_id == GenISAIntrinsic::GenISA_ftof_rtp || GII_id == GenISAIntrinsic::GenISA_ftof_rtn ||
       GII_id == GenISAIntrinsic::GenISA_2fto2bf || GII_id == GenISAIntrinsic::GenISA_dual_subslice_id ||
       GII_id == GenISAIntrinsic::GenISA_hftobf8 || GII_id == GenISAIntrinsic::GenISA_bf8tohf ||
       GII_id == GenISAIntrinsic::GenISA_srnd_ftohf || GII_id == GenISAIntrinsic::GenISA_srnd_hftobf8 ||

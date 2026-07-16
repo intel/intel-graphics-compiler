@@ -117,11 +117,20 @@ types:
         ID: !TypeID "Vector"
         num_elements: 0
         element_type: *any_int
+    - &v_any_float !<TypeDefinition>
+        ID: !TypeID "Vector"
+        num_elements: 0
+        element_type: *any_float
     - &tl_anyint__v_anyint !<TypeDefinition>
         ID: !TypeID "TypeList"
         type_list:
             - *any_int
             - *v_any_int
+    - &tl_anyfloat__v_anyfloat !<TypeDefinition>
+        ID: !TypeID "TypeList"
+        type_list:
+            - *any_float
+            - *v_any_float
     - &p_any_ !<TypeDefinition>
         ID: !TypeID "Pointer"
         address_space: !AddressSpace "Undefined"
@@ -1080,7 +1089,7 @@ intrinsics:
         name: "GenISA_IEEE_Divide_rm"
         comment: "Correctly Rounded divide instrinsic with specified rounding mode -> produces ISA_DIVM"
         return_definition: !<ReturnDefinition>
-            type_definition: *any_float
+            type_definition: *tl_anyfloat__v_anyfloat
             comment: "output"
         arguments:
             - !<ArgumentDefinition>
@@ -1122,7 +1131,7 @@ intrinsics:
         name: "GenISA_IEEE_Sqrt_rm"
         comment: "Correctly Rounded sqrt instrinsic with round to nearest even -> produces ISA_SQRTM"
         return_definition: !<ReturnDefinition>
-            type_definition: *any_float
+            type_definition: *tl_anyfloat__v_anyfloat
             comment: "output"
         arguments:
             - !<ArgumentDefinition>
@@ -3923,12 +3932,12 @@ intrinsics:
         name: "GenISA_ftof_rte"
         comment: ""
         return_definition: !<ReturnDefinition>
-            type_definition: *any_float
+            type_definition: *tl_anyfloat__v_anyfloat
             comment: "result"
         arguments:
             - !<ArgumentDefinition>
                 name: Arg0
-                type_definition: *any_float
+                type_definition: *tl_anyfloat__v_anyfloat
                 comment: "input"
         attributes:
             - !AttributeID "NoUnwind"
@@ -3940,12 +3949,12 @@ intrinsics:
         name: "GenISA_ftof_rtn"
         comment: ""
         return_definition: !<ReturnDefinition>
-            type_definition: *any_float
+            type_definition: *tl_anyfloat__v_anyfloat
             comment: "result"
         arguments:
             - !<ArgumentDefinition>
                 name: Arg0
-                type_definition: *any_float
+                type_definition: *tl_anyfloat__v_anyfloat
                 comment: "input"
         attributes:
             - !AttributeID "NoUnwind"
@@ -3957,12 +3966,12 @@ intrinsics:
         name: "GenISA_ftof_rtp"
         comment: ""
         return_definition: !<ReturnDefinition>
-            type_definition: *any_float
+            type_definition: *tl_anyfloat__v_anyfloat
             comment: "result"
         arguments:
             - !<ArgumentDefinition>
                 name: Arg0
-                type_definition: *any_float
+                type_definition: *tl_anyfloat__v_anyfloat
                 comment: "input"
         attributes:
             - !AttributeID "NoUnwind"
@@ -3974,12 +3983,12 @@ intrinsics:
         name: "GenISA_ftof_rtz"
         comment: ""
         return_definition: !<ReturnDefinition>
-            type_definition: *any_float
+            type_definition: *tl_anyfloat__v_anyfloat
             comment: "result"
         arguments:
             - !<ArgumentDefinition>
                 name: Arg0
-                type_definition: *any_float
+                type_definition: *tl_anyfloat__v_anyfloat
                 comment: "input"
         attributes:
             - !AttributeID "NoUnwind"
