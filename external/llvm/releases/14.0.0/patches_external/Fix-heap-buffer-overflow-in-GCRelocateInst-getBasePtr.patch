@@ -1,0 +1,79 @@
+/*========================== begin_copyright_notice ============================
+
+Copyright (C) 2026 Intel Corporation
+
+SPDX-License-Identifier: MIT
+
+============================= end_copyright_notice ===========================*/
+
+Backport of LLVM commit 7bb9626d5ab9 "[LLVM][Verifier] Fix buffer overflow when
+verifying gc.statepoint" (llvm/llvm-project#208278, Fixes #199191).
+
+GCRelocateInst::getBasePtr()/getDerivedPtr() dereferenced
+'Inputs.begin() + get{Base,Derived}PtrIndex()' (or 'arg_begin() + index')
+without validating the index against the number of gc.live operand-bundle
+inputs / statepoint arguments. A malformed gc.relocate that references a
+gc.statepoint with an out-of-bounds index (for example produced by
+llvm-opt-fuzzer with -passes=gvn) therefore read past the end of the Use array,
+notably while the IR verifier prints the offending instruction.
+
+This applies the upstream fix: add a bounds check that returns nullptr for an
+out-of-bounds index, and make AssemblyWriter::printGCRelocateComment print
+"invalid" when the pointer cannot be resolved. In this LLVM version
+GCRelocateInst::getBasePtr()/getDerivedPtr() access the statepoint through
+getStatepoint() directly, so the bounds check is adapted accordingly.
+
+diff --git a/llvm/lib/IR/AsmWriter.cpp b/llvm/lib/IR/AsmWriter.cpp
+--- a/llvm/lib/IR/AsmWriter.cpp
++++ b/llvm/lib/IR/AsmWriter.cpp
+@@ -3993,7 +3993,13 @@ void AssemblyWriter::printGCRelocateComment(const GCRelocateInst &Relocate) {
+ void AssemblyWriter::printGCRelocateComment(const GCRelocateInst &Relocate) {
+   Out << " ; (";
+-  writeOperand(Relocate.getBasePtr(), false);
++  if (Value *BasePtr = Relocate.getBasePtr())
++    writeOperand(BasePtr, false);
++  else
++    Out << "invalid";
+   Out << ", ";
+-  writeOperand(Relocate.getDerivedPtr(), false);
++  if (Value *DerivedPtr = Relocate.getDerivedPtr())
++    writeOperand(DerivedPtr, false);
++  else
++    Out << "invalid";
+   Out << ")";
+ }
+diff --git a/llvm/lib/IR/IntrinsicInst.cpp b/llvm/lib/IR/IntrinsicInst.cpp
+--- a/llvm/lib/IR/IntrinsicInst.cpp
++++ b/llvm/lib/IR/IntrinsicInst.cpp
+@@ -645,11 +645,25 @@ Value *GCRelocateInst::getBasePtr() const {
+ Value *GCRelocateInst::getBasePtr() const {
+-  if (auto Opt = getStatepoint()->getOperandBundle(LLVMContext::OB_gc_live))
+-    return *(Opt->Inputs.begin() + getBasePtrIndex());
+-  return *(getStatepoint()->arg_begin() + getBasePtrIndex());
++  // Handle too few (bundle) arguments to avoid crashes when printing invalid
++  // IR, e.g. in the verifier.
++  if (auto Opt = getStatepoint()->getOperandBundle(LLVMContext::OB_gc_live)) {
++    if (getBasePtrIndex() > Opt->Inputs.size())
++      return nullptr;
++    return *(Opt->Inputs.begin() + getBasePtrIndex());
++  }
++  if (getBasePtrIndex() > getStatepoint()->arg_size())
++    return nullptr;
++  return *(getStatepoint()->arg_begin() + getBasePtrIndex());
+ }
+ 
+ Value *GCRelocateInst::getDerivedPtr() const {
+-  if (auto Opt = getStatepoint()->getOperandBundle(LLVMContext::OB_gc_live))
+-    return *(Opt->Inputs.begin() + getDerivedPtrIndex());
+-  return *(getStatepoint()->arg_begin() + getDerivedPtrIndex());
++  // Handle too few (bundle) arguments to avoid crashes when printing invalid
++  // IR, e.g. in the verifier.
++  if (auto Opt = getStatepoint()->getOperandBundle(LLVMContext::OB_gc_live)) {
++    if (getDerivedPtrIndex() > Opt->Inputs.size())
++      return nullptr;
++    return *(Opt->Inputs.begin() + getDerivedPtrIndex());
++  }
++  if (getDerivedPtrIndex() > getStatepoint()->arg_size())
++    return nullptr;
++  return *(getStatepoint()->arg_begin() + getDerivedPtrIndex());
+ }
