@@ -170,6 +170,8 @@ public:
 
   unsigned getSpillThreshold(unsigned mode) const;
   unsigned getSpillThreshold() const { return getSpillThreshold(currentMode); }
+  void setDynamicSpillThreshold(unsigned val) { dynamicSpillThreshold = val; }
+  unsigned getDynamicSpillThreshold() const { return dynamicSpillThreshold; }
 
   bool canUpdateMode() const;
   unsigned getCurrentMode() const { return currentMode; }
@@ -298,8 +300,12 @@ private:
   // Per-BB spill threshold bonus in GRFs. Set explicitly by the pre-RA
   // scheduler via setSpillThresholdBonusInGRFs() to reflect BBs where spills
   // are cheap (sampler-heavy or cold BBs). Read by getSpillThreshold() to
-  // augment the platform base threshold.
+  // augment the base threshold.
   unsigned spillThresholdBonusInGRFs = 0;
+  // Dynamic base spill threshold (in bytes), pre-computed once before RA via
+  // setDynamicSpillThreshold(). Used by getSpillThreshold() as the base when
+  // no explicit vISA_SpillAllowed option is set.
+  unsigned dynamicSpillThreshold = 0;
 };
 
 // NoMask WA Information

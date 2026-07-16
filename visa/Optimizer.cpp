@@ -206,6 +206,65 @@ void Optimizer::preRegAlloc() {
   forceSpillVars();
 }
 
+// Estimate how much spilling this kernel can tolerate without hurting
+// performance and record it as the dynamic spill threshold (in bytes) consumed
+// by GRFMode::getSpillThreshold() when vISA_DynamicSpillThreshold is set.
+//
+// The intuition: spill/fill sends compete with the kernel's real memory
+// traffic for LSC/data-port bandwidth, so the more memory-bound a kernel
+// already is, the fewer spills it can afford. We model that with a single
+// weighted tally, weightedLSCOps:
+//   - each LSC send  -> +1  (consumes memory bandwidth; shrinks the budget)
+//   - each sampler   -> samplerWeight (default -1) (frees the memory path;
+//                       grows the budget)
+//
+// samplerWeight (vISA_DynamicSpillSamplerWeight) is negative by default because
+// a sampler-heavy kernel exercises the sampler pipeline rather than the
+// LSC/data-port path, so it has spare memory bandwidth to absorb the spill/fill
+// traffic. Counting each sampler op against the LSC op tally therefore *raises*
+// the spill budget instead of lowering it.
+void Optimizer::computeDynamicSpillThreshold() {
+  const int32_t samplerWeight = static_cast<int32_t>(
+      builder.getOptions()->getuInt32Option(vISA_DynamicSpillSamplerWeight));
+  // Percentage of the kernel's instructions allowed to be spill/fill traffic.
+  const int32_t thresholdPercent = static_cast<int32_t>(
+      builder.getOptions()->getuInt32Option(vISA_DynamicSpillThresholdPercent));
+
+  uint32_t totalInst = 0;
+  int32_t weightedLSCOps = 0;
+  for (auto *bb : kernel.fg) {
+    for (auto *inst : *bb) {
+      if (inst->isLabel())
+        continue;
+      ++totalInst;
+      if (!inst->isSend())
+        continue;
+      auto *desc = inst->getMsgDesc();
+      if (!desc)
+        continue;
+      if (desc->isLSC()) {
+        ++weightedLSCOps;
+      } else if (desc->isSampler()) {
+        weightedLSCOps = weightedLSCOps + samplerWeight;
+      }
+    }
+  }
+  // Budget in spill instructions: allow spill traffic up to ~thresholdPercent%
+  // of the kernel's instructions, then discount the memory pressure already
+  // present (weightedLSCOps). Convert that to spilled GRFs assuming each spilled
+  // GRF costs ~2 instructions (1 spill store + 1 fill load), so
+  //   allowed spilled GRFs = (totalInst * thresholdPercent% - weightedLSCOps) / 2.
+  float allowedSpiilledGRF =
+      (totalInst * (thresholdPercent / 100.0f) -
+       static_cast<float>(weightedLSCOps)) /
+      2;
+  // The threshold is expressed in bytes, so scale the GRF count by the GRF size
+  // (clamped at 0 for kernels that can afford no spills).
+  unsigned char grfSize = kernel.getGRFSize();
+  kernel.grfMode.setDynamicSpillThreshold(static_cast<unsigned>(
+      allowedSpiilledGRF > 0.0f ? allowedSpiilledGRF * grfSize : 0.0f));
+}
+
 void Optimizer::regAlloc() {
 
   fg.prepareTraversal();
@@ -682,6 +741,8 @@ void Optimizer::initOptimizations() {
                       TimerID::HW_CONFORMITY);
   OPT_INITIALIZE_PASS(HWConformityChk, vISA_EnableAlways,
                       TimerID::HW_CONFORMITY);
+  OPT_INITIALIZE_PASS(computeDynamicSpillThreshold, vISA_DynamicSpillThreshold,
+                      TimerID::MISC_OPTS);
   OPT_INITIALIZE_PASS(preRA_Schedule, vISA_preRA_Schedule,
                       TimerID::PRERA_SCHEDULING);
   OPT_INITIALIZE_PASS(preRA_HWWorkaround, vISA_EnableAlways,
@@ -974,6 +1035,14 @@ int Optimizer::optimization() {
   runPass(PI_split4GRFVars);
 
   runPass(PI_insertFenceBeforeEOT);
+
+  // Pre-compute dynamic spill threshold for GRFMode::getSpillThreshold.
+  // Only runs when vISA_DynamicSpillThreshold is set (the pass is the sole
+  // producer of the value consumed by getSpillThreshold under that option;
+  // computing it otherwise would be wasted work). Must run before
+  // preRA_Schedule (consumes it via setModeByRegPressure) and regAlloc
+  // (consumes it via GraphColor).
+  runPass(PI_computeDynamicSpillThreshold);
 
   // PreRA scheduling
   runPass(PI_preRA_Schedule);

@@ -36,7 +36,24 @@ DECLARE_IGC_REGKEY(DWORD, VISAScheduleStartBBID, 0, "The ID of BB which will be 
 DECLARE_IGC_REGKEY(DWORD, VISAScheduleEndBBID, 0, "The ID of BB which will be last scheduled", false)
 DECLARE_IGC_REGKEY(DWORD, VISAPostScheduleStartBBID, 0, "The ID of BB which will be first scheduled", false)
 DECLARE_IGC_REGKEY(DWORD, VISAPostScheduleEndBBID, 0, "The ID of BB which will be last scheduled", false)
-DECLARE_IGC_REGKEY(DWORD, VISASpillAllowed, 256, "Spill size allowed without increasing GRF number in VRT", false)
+DECLARE_IGC_REGKEY(DWORD, VISASpillAllowed, 256,
+                   "Spill size allowed without increasing GRF number in VRT. Overridden by VISADynamicSpillAllowed.",
+                   false)
+DECLARE_IGC_REGKEY(bool, VISADynamicSpillAllowed, false,
+                   "Let finalizer decide spill size allowed to not increase GRF number in VRT. "
+                   "Enabling this option overrides VISASpillAllowed and increase the spill threshold "
+                   "for simdness by VISADynamicSpillThresholdPercent. ",
+                   false)
+DECLARE_IGC_REGKEY(DWORD, VISADynamicSpillThresholdPercent, 5,
+                   "Percentage of the kernel's total instructions allowed to be spill/fill traffic "
+                   "when VISADynamicSpillAllowed is set. Also used as the multiplier applied to the "
+                   "SIMD spill threshold for simdness selection.",
+                   false)
+DECLARE_IGC_REGKEY(DWORD, VISADynamicSpillSamplerWeight, -1,
+                   "Weight applied to each non-LSC sampler send when estimating memory pressure for "
+                   "the dynamic spill threshold. Negative values raise the spill budget for "
+                   "sampler-heavy kernels.",
+                   false)
 DECLARE_IGC_REGKEY(DWORD, VISASpillAllowed256GRF, 0, "Spill size allowed specifically for 256 GRF case", false)
 DECLARE_IGC_REGKEY(DWORD, VISAGRFBumpUpNumber, 1,
                    "Sets the number of steps/configs which the RA will try to use (during retry) to compile the kernel",

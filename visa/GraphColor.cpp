@@ -12569,6 +12569,7 @@ int GlobalRA::coloringRegAlloc() {
     // We will summarize the final stack size of entire vISA module into
     // the main functions (ref: CISA_IR_Builder::summarizeFunctionInfo)
     jitInfo->stats.spillMemUsed = spillMemUsed;
+    jitInfo->stats.dynamicSpillThreshold = kernel.grfMode.getDynamicSpillThreshold();
     kernel.getGTPinData()->setScratchNextFree(spillMemUsed +
                                               globalScratchOffset);
     jitInfo->stats.numGRFSpillFillWeighted = GRFSpillFillCount;

@@ -119,6 +119,7 @@ class Optimizer {
   void cselPeepHoleOpt();
   void forceAssignRegs();
   void forceSpillVars();
+  void computeDynamicSpillThreshold();
   void preRegAlloc();
   void regAlloc();
   void insertFallThroughJump();
@@ -385,6 +386,7 @@ public:
     PI_HWConformityChk,     // always
     PI_preRA_HWWorkaround,  // always, each WA under specific control
     PI_postRA_HWWorkaround, // always, each WA under specific control
+    PI_computeDynamicSpillThreshold, // always
     PI_preRA_Schedule,
     PI_preRegAlloc,           // always
     PI_regAlloc,              // always

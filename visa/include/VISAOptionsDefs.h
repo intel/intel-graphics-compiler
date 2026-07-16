@@ -195,6 +195,24 @@ DEF_VISA_OPTION(
     "Spill size allowed without increasing GRF number in VRT."
     "0 means VRT will always bump up the GRF number to avoid spills",
     256)
+DEF_VISA_OPTION(vISA_DynamicSpillThreshold, ET_BOOL,
+                "-dynamicSpillThreshold",
+                "When enabled, use the compiler-computed dynamic spill threshold. "
+                "Enable this option will ignore any spillallowed option",
+                false)
+DEF_VISA_OPTION(vISA_DynamicSpillThresholdPercent, ET_INT32,
+                "-dynamicSpillThresholdPercent",
+                "USAGE: -dynamicSpillThresholdPercent <percent>.\n"
+                "Percentage of the kernel's total instructions allowed to be "
+                "spill/fill traffic when computing the dynamic spill threshold.",
+                5)
+DEF_VISA_OPTION(vISA_DynamicSpillSamplerWeight, ET_INT32,
+                "-dynamicSpillSamplerWeight",
+                "USAGE: -dynamicSpillSamplerWeight <weight>.\n"
+                "Weight applied to each non-LSC sampler send when estimating the "
+                "memory pressure for the dynamic spill threshold. Negative values "
+                "raise the spill budget for sampler-heavy kernels.",
+                -1)
 DEF_VISA_OPTION(vISA_SpillAllowed256GRF, ET_INT32, "-spillAllowed256GRF",
                 "USAGE: -spillAllowed256GRF <spillSize>.\n"
                 "Override spill threshold for 256GRF config. If shader has "

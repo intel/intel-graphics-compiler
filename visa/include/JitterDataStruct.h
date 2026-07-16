@@ -67,6 +67,7 @@ public:
   // within the same vISABuilder, but it does not consider recursive or
   // indirect calls.
   uint32_t spillMemUsed = 0;
+  uint32_t dynamicSpillThreshold = 0;
 
   // Unweighted cycles count estimated by the scheduler.
   uint32_t numCycles = 0;

@@ -1547,6 +1547,12 @@ void G4_Kernel::emitDeviceAsmHeaderComment(std::ostream &os) {
     if (jitInfo->stats.spillMemUsed > 0) {
       os << "\n"
          << "//.spill size " << jitInfo->stats.spillMemUsed;
+      if (getPlatform() >= Xe3 &&
+          m_options->getOption(vISA_DynamicSpillThreshold)) {
+        os << "\n"
+           << "//.dynamic spill threshold "
+           << grfMode.getDynamicSpillThreshold();
+      }
     }
     if (jitInfo->stats.numGRFSpillFillWeighted > 0) {
       os << "\n"
@@ -2263,9 +2269,8 @@ unsigned GRFMode::setModeByRegPressure(unsigned maxRP, unsigned largestInputReg,
     if (configs[i].VRTEnable && configs[i].numGRF >= lowerBoundGRF &&
         configs[i].numGRF <= upperBoundGRF) {
       currentMode = i;
-      unsigned spillThreshold = getSpillThreshold();
-      unsigned spillThresholdInRegs = spillThreshold / grfSize;
-      bool spillAllowed = spillThreshold > 0;
+      unsigned spillThresholdInRegs = getSpillThreshold() / grfSize;
+      bool spillAllowed = spillThresholdInRegs > 0;
       if (maxRP <= configs[i].numGRF &&
           // Check that we've at least 8 GRFs over and above
           // those blocked for kernel input. This helps cases
@@ -2336,8 +2341,9 @@ unsigned GRFMode::getSpillThreshold(unsigned mode) const {
 
   // PVC through Xe3 support the spill threshold only for GRF >= 128 (their
   // smallest GRF-selection config), unless there is an adjusted RPE bonus from
-  // per-BB heuristics (sampler-heavy/cold BBs).
-  if (platform <= Xe3 && numGRF < 128 && spillThresholdBonusInGRFs == 0)
+  // per-BB heuristics (sampler-heavy/cold BBs) or a dyanmic spill budget.
+  if (platform <= Xe3 && numGRF < 128 &&
+      spillThresholdBonusInGRFs == 0 && dynamicSpillThreshold == 0)
     return 0;
 
   // Platforms after Xe3 support spilling only if GRF >= 96
@@ -2352,11 +2358,17 @@ unsigned GRFMode::getSpillThreshold(unsigned mode) const {
       return spill256Option;
   }
 
-  // Default spill threshold
-  unsigned baseThreshold = options->getuInt32Option(vISA_SpillAllowed);
+  // Base spill threshold: when the dedicated regkey is enabled, use the
+  // dynamic threshold pre-computed before RA via setDynamicSpillThreshold();
+  // otherwise use the explicit vISA_SpillAllowed option.
+  unsigned baseThreshold =
+      options->getOption(vISA_DynamicSpillThreshold)
+          ? dynamicSpillThreshold
+          : options->getuInt32Option(vISA_SpillAllowed);
   if (baseThreshold == 0)
     return 0;
 
+  // Augment the base threshold with the per-BB bonus (sampler-heavy/cold BBs).
   return baseThreshold + spillThresholdBonusInGRFs * grfSize;
 }
 

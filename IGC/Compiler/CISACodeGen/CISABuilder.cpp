@@ -3475,6 +3475,7 @@ unsigned int CEncoder::GetSpillThreshold(SIMDMode simdmode) {
   CodeGenContext *context = m_program->GetContext();
   ShaderType shaderType = context->type;
   unsigned int value = 0;
+  unsigned dynspill = IGC_GET_FLAG_VALUE(VISADynamicSpillThresholdPercent);
 
   if (shaderType == ShaderType::COMPUTE_SHADER) {
     switch (simdmode) {
@@ -3487,6 +3488,11 @@ unsigned int CEncoder::GetSpillThreshold(SIMDMode simdmode) {
     default:
       break;
     }
+    if (m_program->m_Platform->isCoreChildOf(IGFX_XE3_CORE) && IGC_IS_FLAG_ENABLED(VISADynamicSpillAllowed)) {
+      if (dynspill > value)
+        value = dynspill;
+    }
+
     return value;
   }
 
@@ -3518,6 +3524,11 @@ unsigned int CEncoder::GetSpillThreshold(SIMDMode simdmode) {
     break;
   default:
     break;
+  }
+
+  if (m_program->m_Platform->isCoreChildOf(IGFX_XE3_CORE) && IGC_IS_FLAG_ENABLED(VISADynamicSpillAllowed)) {
+    if (dynspill > value)
+      value = dynspill;
   }
 
   if (AILvalue)
@@ -3972,6 +3983,12 @@ void CEncoder::InitVISABuilderOptions(TARGET_PLATFORM VISAPlatform, bool canAbor
   }
 
   if (m_program->m_Platform->isCoreChildOf(IGFX_XE3_CORE)) {
+    if (IGC_IS_FLAG_ENABLED(VISADynamicSpillAllowed)) {
+      SaveOption(vISA_DynamicSpillThreshold, true);
+      SaveOption(vISA_DynamicSpillThresholdPercent, (uint32_t)IGC_GET_FLAG_VALUE(VISADynamicSpillThresholdPercent));
+      SaveOption(vISA_DynamicSpillSamplerWeight, (uint32_t)IGC_GET_FLAG_VALUE(VISADynamicSpillSamplerWeight));
+    }
+
     if (uint Val = IGC_GET_FLAG_VALUE(ForceGRFModeUp)) {
       SaveOption(vISA_ForceGRFModeUp, Val);
     }
@@ -4785,6 +4802,11 @@ void CEncoder::InitVISABuilderOptions(TARGET_PLATFORM VISAPlatform, bool canAbor
   if (IGC_IS_FLAG_ENABLED(NewSpillCostFunction) || context->getCompilerOption().NewSpillCostFunction ||
       (context->type == ShaderType::COMPUTE_SHADER &&
        context->getModuleMetaData()->csInfo.enableNewSpillCostFunction)) {
+    SaveOption(vISA_NewSpillCostFunction, true);
+  }
+
+  // Force enabling vISA_NewSpillCostFunction with VISADynamicSpillAllowed
+  if (IGC_IS_FLAG_ENABLED(VISADynamicSpillAllowed) && m_program->m_Platform->isCoreChildOf(IGFX_XE3_CORE)) {
     SaveOption(vISA_NewSpillCostFunction, true);
   }
 
@@ -5862,6 +5884,7 @@ void CEncoder::Compile(bool hasSymbolTable, GenXFunctionGroupAnalysis *&pFGA) {
   if (jitInfo->stats.numGRFSpillFillWeighted) {
     context->m_retryManager->SetSpillSize(jitInfo->stats.numGRFSpillFillWeighted);
     m_program->m_spillSize = jitInfo->stats.numGRFSpillFillWeighted;
+    m_program->m_spillThreshold = jitInfo->stats.dynamicSpillThreshold / getGRFSize();
     m_program->m_spillCost = float(jitInfo->stats.numGRFSpillFillWeighted) / jitInfo->stats.numAsmCountUnweighted;
 
     context->m_retryManager->numInstructions = jitInfo->stats.numAsmCountUnweighted;

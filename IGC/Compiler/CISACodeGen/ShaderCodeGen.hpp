@@ -395,6 +395,7 @@ public:
   uint m_loopNestedStallCycle = 0;
   uint m_loopNestedCycle = 0;
   unsigned m_spillSize = 0;
+  unsigned m_spillThreshold = 0;
   float m_spillCost = 0; // num weighted spill inst / total inst
   uint m_asmInstrCount = 0;
 
