@@ -17,6 +17,7 @@ SPDX-License-Identifier: MIT
 
 #include "llvmWrapper/TargetParser/Triple.h"
 #include "llvmWrapper/ADT/None.h"
+#include "llvmWrapper/IR/Module.h"
 #include <llvm/Bitcode/BitcodeWriterPass.h>
 #include <llvm/CodeGen/TargetSubtargetInfo.h>
 #include <llvm/IR/DiagnosticInfo.h>
@@ -103,11 +104,7 @@ void vcbCompileModule(std::unique_ptr<Module> &M, std::string Platform) {
   // Target configuration.
   Triple TheTriple{Is32Bit ? "genx32-unknown-unknown"
                            : "genx64-unknown-unknown"};
-#if LLVM_VERSION_MAJOR >= 22
-  M->setTargetTriple(TheTriple);
-#else
-  M->setTargetTriple(TheTriple.getTriple());
-#endif
+  IGCLLVM::setTargetTriple(*M, TheTriple.getTriple());
   auto ExpTargetMachine = createTargetMachine(TheTriple, std::move(Platform));
   if (!ExpTargetMachine) {
     errs() << ExpTargetMachine.takeError();
