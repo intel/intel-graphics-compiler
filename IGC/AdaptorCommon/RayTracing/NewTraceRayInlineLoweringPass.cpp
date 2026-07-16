@@ -36,6 +36,8 @@ namespace llvm {
 template <> struct DenseMapInfo<IGC::AllocationLivenessAnalyzer::LivenessData::Edge> {
   using Edge = IGC::AllocationLivenessAnalyzer::LivenessData::Edge;
 
+// Removed in LLVM 23
+#if LLVM_VERSION_MAJOR < 23
   static inline Edge getEmptyKey() {
     return Edge{DenseMapInfo<BasicBlock *>::getEmptyKey(), DenseMapInfo<BasicBlock *>::getEmptyKey()};
   }
@@ -43,6 +45,7 @@ template <> struct DenseMapInfo<IGC::AllocationLivenessAnalyzer::LivenessData::E
   static inline Edge getTombstoneKey() {
     return Edge{DenseMapInfo<BasicBlock *>::getTombstoneKey(), DenseMapInfo<BasicBlock *>::getTombstoneKey()};
   }
+#endif
 
   static unsigned getHashValue(const Edge &E) { return (unsigned)hash_combine(E.from, E.to); }
 
