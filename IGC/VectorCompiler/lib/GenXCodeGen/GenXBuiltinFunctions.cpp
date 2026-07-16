@@ -314,14 +314,17 @@ bool GenXBuiltinFunctions::isHandleUgmAtomics(const CallInst &II) const {
   switch (Opcode->getZExtValue()) {
   case LSC_ATOMIC_FADD:
   case LSC_ATOMIC_FSUB:
-    return (Ty->isDoubleTy() && !ST->hasGlobalAtomicAddF64()) ||
+    // Double-precision emulation relies on fp64 arithmetic in the BiF library,
+    // which GenXBiFPrepare removes on targets without fp64 support.
+    return (Ty->isDoubleTy() && ST->hasFP64() &&
+            !ST->hasGlobalAtomicAddF64()) ||
            (cast<ConstantInt>(II.getArgOperand(3))->getZExtValue() ==
                 LSC_DATA_SIZE_16c32b &&
             !ST->hasInstrAtomicHF16());
   case LSC_ATOMIC_FMIN:
   case LSC_ATOMIC_FMAX:
   case LSC_ATOMIC_FCAS:
-    return Ty->isDoubleTy();
+    return Ty->isDoubleTy() && ST->hasFP64();
   default:
     return false;
   }
@@ -339,7 +342,9 @@ bool GenXBuiltinFunctions::isHandleSlmAtomics(const CallInst &II) const {
     return false;
   case LSC_ATOMIC_FADD:
   case LSC_ATOMIC_FSUB:
-    return (Ty->isDoubleTy() && ST->hasLocalIntegerCas64()) ||
+    // Double-precision emulation relies on fp64 arithmetic in the BiF library,
+    // which GenXBiFPrepare removes on targets without fp64 support.
+    return (Ty->isDoubleTy() && ST->hasFP64() && ST->hasLocalIntegerCas64()) ||
            (Ty->isFloatTy() && !ST->hasInstrLocalAtomicAddF32()) ||
            (cast<ConstantInt>(II.getArgOperand(3))->getZExtValue() ==
                 LSC_DATA_SIZE_16c32b &&
@@ -351,7 +356,7 @@ bool GenXBuiltinFunctions::isHandleSlmAtomics(const CallInst &II) const {
   case LSC_ATOMIC_BFCAS:
     return false;
   default:
-    return (Ty->isIntegerTy(64) || Ty->isDoubleTy()) &&
+    return (Ty->isIntegerTy(64) || (Ty->isDoubleTy() && ST->hasFP64())) &&
            ST->hasLocalIntegerCas64();
   }
 }
