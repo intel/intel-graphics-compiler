@@ -416,67 +416,6 @@ unsigned int EmitPass::getMaxRegPressureInFunctionGroup(llvm::Function *F) {
   return MaxRegPressure;
 }
 
-unsigned int EmitPass::getNumMoviEligibleShuffleSites(llvm::Function *F) {
-  auto it = m_moviShuffleSiteCount.find(F);
-  if (it != m_moviShuffleSiteCount.end())
-    return it->second;
-  return getNumMoviEligibleShuffleSitesImpl(F);
-}
-
-// Count int32 WaveShuffleIndex intrinsics in a single function.
-unsigned int EmitPass::getNumMoviEligibleShuffleSitesImpl(llvm::Function *F) {
-  unsigned count = 0;
-  for (auto &BB : *F) {
-    for (auto &I : BB) {
-      if (auto *GII = dyn_cast<GenIntrinsicInst>(&I)) {
-        if (GII->getIntrinsicID() == GenISAIntrinsic::GenISA_WaveShuffleIndex ||
-            GII->getIntrinsicID() == GenISAIntrinsic::GenISA_WaveBroadcast) {
-          // Only int32 shuffles take a movi path (allowsMoviForType accepts D/UD), so
-          // they are the only sites that allocate the movi temporaries the gate
-          // accounts for. i16/float shuffles and uniform WaveBroadcast do not, and
-          // must not inflate the estimate -- in particular the i16 shuffles demoted
-          // by CustomSafeOptPass::visitTruncInst. (Uniform-channel int32 shuffles are
-          // still counted: channel uniformity isn't available here, but that residual
-          // over-count is far smaller than counting every i16/broadcast site.)
-          if (GII->getType()->isIntegerTy(32))
-            ++count;
-        }
-      }
-    }
-  }
-  m_moviShuffleSiteCount[F] = count;
-  return count;
-}
-
-// Count movi-eligible sites across the entire function group reachable from F.
-// This is the group-wide counterpart to getNumMoviEligibleShuffleSites (which
-// scans only the entry function).  Using the group-wide count makes the RP
-// gate's effectiveRP estimate consistent with getMaxRegPressureInFunctionGroup,
-// which already scans all group members.
-unsigned int EmitPass::getNumMoviEligibleShuffleSitesInFunctionGroup(llvm::Function *F) {
-  if (!m_FGA) {
-    // No function-group analysis available -- fall back to single-function count.
-    return getNumMoviEligibleShuffleSites(F);
-  }
-
-  FunctionGroup *Group = m_FGA->getGroup(F);
-  if (!Group)
-    return getNumMoviEligibleShuffleSites(F);
-
-  unsigned totalCount = 0;
-  for (auto it = Group->begin(), ie = Group->end(); it != ie; ++it) {
-    Function *PtrF = *it;
-    // Reuse per-function cache and counting logic.
-    auto cached = m_moviShuffleSiteCount.find(PtrF);
-    if (cached != m_moviShuffleSiteCount.end()) {
-      totalCount += cached->second;
-    } else {
-      totalCount += getNumMoviEligibleShuffleSitesImpl(PtrF);
-    }
-  }
-  return totalCount;
-}
-
 bool EmitPass::setCurrentShader(llvm::Function *F) {
   llvm::Function *Kernel = F;
   if (m_FGA) {
@@ -637,8 +576,6 @@ bool EmitPass::shouldForceEarlyRecompile(MetaDataUtils *pMdUtils, llvm::Function
       !m_pCtx->m_instrTypes.mayHaveIndirectOperands) {
     Threshold = std::min(Threshold, IGC_GET_FLAG_VALUE(EarlyRetryDefaultGRFThreshold));
   }
-  if (m_pCtx->type != ShaderType::OPENCL_SHADER)
-    return false;
   auto MaxRegPressure = getMaxRegPressureInFunctionGroup(F);
   bool PassedThreshold = MaxRegPressure >= Threshold;
   return PassedThreshold;
@@ -854,71 +791,6 @@ bool EmitPass::runOnFunction(llvm::Function &F) {
     if (F.hasFnAttribute("num-thread-per-eu")) {
       numThreadsPerEU = std::stoi(F.getFnAttribute("num-thread-per-eu").getValueAsString().str());
     }
-    // Decide EmitMoreMoviCases movi promotion once, before InitEncoder: the
-    // register-pressure gate inputs (maxRegPressure metadata, movi-eligible
-    // shuffle count, threshold) are function-constant, and InitVISABuilderOptions
-    // (reached by InitEncoder below) needs the result to set vISA_emitMoreMoviCases
-    // consistently with what emitSimdShuffle will emit. The movi paths add NoMask
-    // address-calc temps; in high-pressure shaders that tips allocation into
-    // spill/fill, so back off there. Threshold 0 leaves promotion ungated; when
-    // maxRegPressure is unpublished it reads 0 and the gate stays inert.
-    {
-      bool moviEnabled = m_pCtx->platform.allowEmitMoreMoviCases() && m_pCtx->type != ShaderType::OPENCL_SHADER;
-      if (moviEnabled) {
-        // Gate invariant: each gate below may only DISABLE movi (set
-        // moviEnabled = false), never re-enable it. The `if (moviEnabled)`
-        // guards short-circuit remaining gates once movi is off. A future gate
-        // that re-enables movi would break this ordering -- add it before the
-        // site-count gate, not between gates.
-        // Count movi-eligible sites in the entry function for the minimum-site
-        // gate (only entry-function sites are emitted by this shader instance),
-        // but use the group-wide count for the RP gate so the overhead estimate
-        // is consistent with the group-wide maxRegPressure from
-        // getMaxRegPressureInFunctionGroup.
-        unsigned numSites = getNumMoviEligibleShuffleSites(m_currShader->entry);
-        unsigned numSitesGroup = getNumMoviEligibleShuffleSitesInFunctionGroup(m_currShader->entry);
-        if (numSites == 0) {
-          moviEnabled = false;
-        } else if (auto minSites = IGC_GET_FLAG_VALUE(EmitMoreMoviCasesMinShuffleSites)) {
-          // Minimum-site-count gate: shaders with fewer movi-eligible
-          // sites than this threshold pay the NoMask preamble overhead
-          // (AND+SHL+ADDR_ADD per site) without enough sites for
-          // movi's address-scheduling benefit to amortize the cost.
-          // Default 2; 0 disables the gate.
-          if (numSites < minSites)
-            moviEnabled = false;
-        }
-        // Register-pressure gate (applied after site-count gate so
-        // shaders that passed the site-count check are still filtered
-        // when RP is high).
-        if (moviEnabled) {
-          if (auto moviRPThreshold = IGC_GET_FLAG_VALUE(EmitMoreMoviCasesRegPressureThreshold)) {
-            unsigned perSiteOverhead = 4; // base: SIMD16 on Xe2
-            if (m_currShader->m_SIMDSize == SIMDMode::SIMD32)
-              perSiteOverhead = 7; // 2-GRF index + 2-GRF shift + addr overhead
-            if (!m_currShader->m_Platform->supportsOutOfBoundsGrfAccess())
-              perSiteOverhead += 2; // additive NoMask on top of OOB AND
-
-            // Leave the gate inert there -- unknown pressure is not high
-            // pressure, so promotion stays enabled, matching the documented
-            // design above. Only a published value high enough to cross the
-            // threshold backs movi off.  Use group-wide site count so the
-            // overhead estimate covers callee WaveShuffleIndex sites that
-            // contribute to the function group's register pressure.
-            unsigned effectiveRP =
-                getMaxRegPressureInFunctionGroup(m_currShader->entry) + numSitesGroup * perSiteOverhead;
-            if (effectiveRP >= moviRPThreshold)
-              moviEnabled = false;
-          }
-        }
-        if (moviEnabled && m_currShader->m_SIMDSize == SIMDMode::SIMD32 &&
-            !m_currShader->m_DriverInfo->allowMoreMoviCasesSimd32()) {
-          moviEnabled = false;
-        }
-      }
-      m_currShader->SetEmitMoreMoviCases(moviEnabled);
-    }
-
     // call builder after pre-analysis pass where scratchspace offset to VISA is
     // calculated
     m_encoder->InitEncoder(m_canAbortOnSpill, m_currShader->HasStackCalls(), hasInlineAsmCall,
@@ -6497,11 +6369,7 @@ void EmitPass::emitSimdShuffle(llvm::Instruction *inst) {
     // Enabling movi requires that first lane even inactive will be within
     // bounds of register we want. It also is limited to accessing single GRF.
     // For uniform channel which will be simd1 there's probably no gain in movi.
-    // Movi promotion (incl. the register-pressure gate) is decided once per
-    // shader in runOnFunction; see CShader::m_emitMoreMoviCases. Reusing it here
-    // keeps emit consistent with the vISA_emitMoreMoviCases option CISABuilder
-    // sets from the same flag.
-    bool moviPromotionEnabled = m_currShader->GetEmitMoreMoviCases();
+    bool moviPromotionEnabled = IGC_GET_FLAG_VALUE(EnableEmitMoreMoviCases);
     const uint srcGRFSize = (data->GetSize() + getGRFSize() - 1) / getGRFSize();
     const uint dstGRFSize = (m_destination->GetSize() + getGRFSize() - 1) / getGRFSize();
     bool isSingleGrf = (srcGRFSize == 1);
@@ -6516,24 +6384,8 @@ void EmitPass::emitSimdShuffle(llvm::Instruction *inst) {
     bool split4Movi = twoGrfSimd32 && m_currShader->m_Platform->canDoMultipleLineMOVOpt() && !doAdvMovi;
     bool keep1Movi = twoGrfSimd32 && doAdvMovi;
 
-    bool moviLegacyPath = false;
-
-    CVariable *lowerLaneFlag = nullptr;
     if (defaultConditions || forcePreventOOB || split4Movi || keep1Movi) {
       uint maskOfValidLanes = numLanes(m_currShader->m_State.m_dispatchSize) - 1;
-
-      // split4Movi's lower-lane predicate must be derived from the *original*
-      // (unmasked) channel. The movi paths below mask in place with NoMask,
-      // which clobbers the original channel, so compute the compare first.
-      // Doing it here also lets the masking below run in place instead of
-      // allocating a sanitized-index copy (2 GRFs in SIMD32) just to keep the
-      // original channel alive for this compare.
-      if (split4Movi && !moviLegacyPath) {
-        lowerLaneFlag =
-            m_currShader->GetNewVariable(numLanes(m_SimdMode), ISA_TYPE_BOOL, EALIGN_BYTE, false, "LowerLane");
-        m_encoder->Cmp(EPREDICATE_LT, lowerLaneFlag, simdChannelOrig, m_currShader->ImmToVariable(16, ISA_TYPE_UD));
-        m_encoder->Push();
-      }
 
       // To support conversion to movi we need to make all calculations (shl, addr_add) of address NoMask.
       // to avoid random data from previous execution in divergent CF.
@@ -6552,41 +6404,17 @@ void EmitPass::emitSimdShuffle(llvm::Instruction *inst) {
             bAllowLVNMatchingForAnd = false;
       }
 
-      // Index sanitization for the SIMD32 movi paths differs by path:
-      //  - keep1Movi masks with 0x1F, which is idempotent on a valid 0-31 index
-      //    and needs no lower-lane predicate, so it may mask simdChannelUW in
-      //    place and save the extra 2-GRF sanitized-index live range.
-      //  - split4Movi masks to 0-15 (0xF), which is *destructive* to the
-      //    original 0-31 index, and its lower-lane predicate (cmp vs 16) is
-      //    derived from that original. When one shuffle index feeds multiple
-      //    WaveShuffleIndex sites, masking in place corrupts the shared index
-      //    for later sites -- their lower-lane compare then reads an already
-      //    clamped (0-15) index, collapses to "always lower half", and reads
-      //    wrong data (see VK subgroupShuffle conformance failures). So
-      //    split4Movi always sanitizes into a fresh temp and leaves
-      //    simdChannel/simdChannelOrig intact for this site's compare and for
-      //    any later shuffle reusing the same index.
-      // The single-GRF (forcePreventOOB) and non-movi OOB-protection paths also
-      // keep a fresh full-width temp: it is only 1 GRF there (no pressure win to
-      // gain) and the temp lets vISA LVN CSE the sanitized index across shuffles.
-      const bool moviPath = (split4Movi || keep1Movi) && !moviLegacyPath;
-      if (!moviPath && bAllowLVNMatchingForAnd) {
+      if (bAllowLVNMatchingForAnd) {
         CVariable *tempCopy = m_currShader->GetNewVariable(simdChannel, "SanitizedIndexShuffleTmp");
         m_encoder->And(tempCopy, simdChannel, m_currShader->ImmToVariable(maskOfValidLanes, ISA_TYPE_UW));
         simdChannelUW = m_currShader->BitCast(tempCopy, ISA_TYPE_UW); // clamped channel 0-15
       } else if (split4Movi) {
-        // Sanitize into a fresh temp so the original 0-31 index survives for the
-        // lower-lane compare of this site and of any later shuffle that reuses
-        // the same index. Masking in place here would clamp the shared index to
-        // 0-15 and break those later compares.
-        CVariable *tempCopy = m_currShader->GetNewVariable(simdChannel, "SanitizedIndexShuffleTmp");
+        CVariable *tempCopy = m_currShader->GetNewVariable(simdChannel, "SanitizedIndexShuffleTmpWA");
         m_encoder->SetSrcRegion(0, 2, 1, 0);
         m_encoder->SetDstRegion(2);
         m_encoder->And(tempCopy, simdChannelUW, m_currShader->ImmToVariable(maskOfValidLanes, ISA_TYPE_UW));
         simdChannelUW = m_currShader->BitCast(tempCopy, ISA_TYPE_UW); // clamped channel 0-15
       } else {
-        // keep1Movi (and the non-movi fadd-f32 case): idempotent 0x1F mask, safe
-        // in place.
         m_encoder->SetSrcRegion(0, 2, 1, 0);
         m_encoder->SetDstRegion(2);
         m_encoder->And(simdChannelUW, simdChannelUW, m_currShader->ImmToVariable(maskOfValidLanes, ISA_TYPE_UW));
@@ -6605,7 +6433,8 @@ void EmitPass::emitSimdShuffle(llvm::Instruction *inst) {
     m_encoder->Push();
 
     CVariable *src = data;
-    if (split4Movi && moviLegacyPath) {
+    CVariable *lowerLaneFlag = nullptr;
+    if (split4Movi) {
       lowerLaneFlag =
           m_currShader->GetNewVariable(numLanes(m_SimdMode), ISA_TYPE_BOOL, EALIGN_BYTE, false, "LowerLane");
       m_encoder->Cmp(EPREDICATE_LT, lowerLaneFlag, simdChannelOrig, m_currShader->ImmToVariable(16, ISA_TYPE_UD));

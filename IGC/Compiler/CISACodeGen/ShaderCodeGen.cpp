@@ -471,12 +471,10 @@ void AddAnalysisPasses(CodeGenContext &ctx, IGCPassManager &mpm) {
   if (IGC_IS_FLAG_SET(DumpRegPressureEstimate))
     mpm.add(new IGCRegisterPressurePrinter("final"));
 
-  // Save RPE results in metadata.  Previously restricted to OpenCL only, but
-  // the register-pressure gate for movi promotion (EmitMoreMoviCases) needs
-  // maxRegPressure for all shader types.  The publisher's built-in early-exit
-  // guards (IGCRegisterPressurePublisher::runOnModule) skip re-analysis for
-  // low-pressure functions, bounding compile-time overhead.
-  mpm.add(new IGCRegisterPressurePublisher());
+  // save RPE results in metadata
+  if (ctx.type == ShaderType::OPENCL_SHADER) {
+    mpm.add(new IGCRegisterPressurePublisher());
+  }
 
   // Let Layout be the last pass before Emit Pass
   mpm.add(new Layout());

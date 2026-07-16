@@ -434,8 +434,6 @@ public:
 
   virtual bool UsesUnsafeFpMathAttribute() const { return false; }
 
-  virtual bool allowMoreMoviCasesSimd32() const { return false; }
-
 protected:
   bool autoGRFSelection = false;
   uint8_t surfaceStateSize = 64;
