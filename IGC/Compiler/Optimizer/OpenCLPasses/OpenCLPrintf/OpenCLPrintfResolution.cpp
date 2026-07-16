@@ -15,6 +15,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/Module.h>
 #include <llvm/IR/Instruction.h>
 #include <llvm/IR/Instructions.h>
+#include <llvm/IR/IRBuilder.h>
 #include "common/LLVMWarningsPop.hpp"
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/Support/Alignment.h"
@@ -334,12 +335,61 @@ static StoreInst *genStoreInternal(Value *Val, Value *Ptr, BasicBlock *InsertAtE
   return SI;
 }
 
+Value *OpenCLPrintfResolution::emitInlineFormatString(Value *writeOffset, SPrintfArgDescriptor *argDesc,
+                                                      Value *inlineFmtLenWithNull, Value *inlineFmtAlignedLen,
+                                                      BasicBlock *bblockTrue, bool isPrintfBuiltin) {
+  Type *i64Ty = Type::getInt64Ty(*m_context);
+  Type *i8Ty = Type::getInt8Ty(*m_context);
+  Value *constVal8 = ConstantInt::get(m_ptrSizeIntType, 8);
+
+  // *write_offset = INLINE_STRING_FLAG | length; write_offset += 8
+  Value *lenI64 = CastInst::Create(Instruction::CastOps::ZExt, inlineFmtLenWithNull, i64Ty, "", bblockTrue);
+  Value *slotVal = BinaryOperator::CreateOr(lenI64, ConstantInt::get(i64Ty, SHADER_PRINTF_INLINE_STRING_FLAG),
+                                            "fmt_inline_slot", bblockTrue);
+  Instruction *writeOffsetPtr =
+      CastInst::Create(Instruction::CastOps::IntToPtr, writeOffset,
+                       IGCLLVM::PointerType::get(i64Ty, ADDRESS_SPACE_GLOBAL), "write_offset_ptr", bblockTrue);
+  writeOffsetPtr->setDebugLoc(m_DL);
+  genStoreInternal(slotVal, writeOffsetPtr, bblockTrue, m_DL, isPrintfBuiltin);
+  writeOffset = BinaryOperator::CreateAdd(writeOffset, constVal8, "write_offset", bblockTrue);
+  cast<Instruction>(writeOffset)->setDebugLoc(m_DL);
+
+  // memcpy(write_offset, formatString, byteLength); write_offset += alignedLen
+  unsigned srcAS = cast<PointerType>(argDesc->value->getType())->getAddressSpace();
+  Instruction *dstPtr =
+      CastInst::Create(Instruction::CastOps::IntToPtr, writeOffset,
+                       IGCLLVM::PointerType::get(i8Ty, ADDRESS_SPACE_GLOBAL), "write_offset_ptr", bblockTrue);
+  dstPtr->setDebugLoc(m_DL);
+  Value *srcPtr = argDesc->value;
+  Type *srcI8PtrTy = IGCLLVM::PointerType::get(i8Ty, srcAS);
+  if (srcPtr->getType() != srcI8PtrTy)
+    srcPtr = CastInst::CreatePointerCast(srcPtr, srcI8PtrTy, "", bblockTrue);
+  IRBuilder<> memcpyBuilder(bblockTrue);
+  memcpyBuilder.SetCurrentDebugLocation(m_DL);
+  memcpyBuilder.CreateMemCpy(dstPtr, IGCLLVM::getCorrectAlign(1), srcPtr, IGCLLVM::getCorrectAlign(1),
+                             inlineFmtLenWithNull);
+
+  Value *alignedLenOffset = inlineFmtAlignedLen;
+  if (m_ptrSizeIntType != m_int32Type)
+    alignedLenOffset =
+        CastInst::Create(Instruction::CastOps::ZExt, inlineFmtAlignedLen, m_ptrSizeIntType, "", bblockTrue);
+  writeOffset = BinaryOperator::CreateAdd(writeOffset, alignedLenOffset, "write_offset", bblockTrue);
+  cast<Instruction>(writeOffset)->setDebugLoc(m_DL);
+
+  return writeOffset;
+}
+
 void OpenCLPrintfResolution::removeExcessArgs() {
   SPrintfArgDescriptor *formatStringArgDesc = &m_argDescriptors[0];
 
   Value *formatString = formatStringArgDesc->value;
   [[maybe_unused]] IGC::SHADER_PRINTF_TYPE dataType = formatStringArgDesc->argType;
   IGC_ASSERT(dataType == SHADER_PRINTF_STRING_LITERAL);
+
+  // Inline format strings have unknown content here (including globals without a
+  // constant-string initializer, e.g. SLM), so we cannot count specifiers.
+  if (formatStringArgDesc->inlineFmtString)
+    return;
 
   if (auto GV = dyn_cast<GlobalVariable>(formatString)) {
     IGC_ASSERT(GV->hasInitializer());
@@ -351,8 +401,11 @@ void OpenCLPrintfResolution::removeExcessArgs() {
       // The string literal is empty, can't be casted to ConstantDataArray
       // and there is no way it contains any format specifiers.
       numFormatSpecifiers = 0;
+    else if (auto *formatStringConst = dyn_cast<ConstantDataArray>(initializer))
+      numFormatSpecifiers = getNumFormatSpecifiers(formatStringConst);
     else
-      numFormatSpecifiers = getNumFormatSpecifiers(cast<ConstantDataArray>(GV->getInitializer()));
+      // Not a constant string we can parse; leave the arg list untouched.
+      return;
 
     if (m_argDescriptors.size() > numFormatSpecifiers + 1)
       m_argDescriptors.erase(m_argDescriptors.begin() + numFormatSpecifiers + 1, m_argDescriptors.end());
@@ -428,19 +481,39 @@ void OpenCLPrintfResolution::expandPrintfCall(CallInst &printfCall, Function &F)
   ImplicitArgs implicitArgs(F, MdUtils, m_CGContext->getModuleMetaData());
   bool isPrintfBuiltin = OpenCLPrintfAnalysis::isBuiltinPrintf(printfCall.getCalledFunction());
 
-  BasicBlock *currentBBlock = printfCall.getParent();
-
   // Put all printf argument into m_argDescriptors vector.
   // Scalarize vector arguments and substitute string arguments by their indices.
   preprocessPrintfArgs(printfCall);
 
   removeExcessArgs();
 
+  // An inline format string needs a runtime length to size the record and the
+  // copy. emitStrlenWithNull() splits the block, so capture 'currentBBlock' after.
+  SPrintfArgDescriptor *fmtDesc = &m_argDescriptors[0];
+  bool inlineFmtString = fmtDesc->inlineFmtString;
+  Value *inlineFmtLenWithNull = nullptr;
+  Value *inlineFmtAlignedLen = nullptr;
+
+  Value *dataSizeVal = ConstantInt::get(m_int32Type, getTotalDataSize());
+  if (inlineFmtString) {
+    inlineFmtLenWithNull = emitStrlenWithNull(fmtDesc->value, &printfCall);
+    // alignedLen = (lenWithNull + 3) & ~3
+    Value *lenPlus3 = BinaryOperator::CreateAdd(inlineFmtLenWithNull, ConstantInt::get(m_int32Type, 3), "",
+                                                IGCLLVM::insertPosition(&printfCall));
+    inlineFmtAlignedLen = BinaryOperator::CreateAnd(lenPlus3, ConstantInt::get(m_int32Type, ~3u), "fmt_aligned_len",
+                                                    IGCLLVM::insertPosition(&printfCall));
+    // The flag|length slot is the 8 bytes already counted by getTotalDataSize();
+    // only the padded string bytes are extra.
+    dataSizeVal =
+        BinaryOperator::CreateAdd(dataSizeVal, inlineFmtAlignedLen, "data_size", IGCLLVM::insertPosition(&printfCall));
+  }
+
+  BasicBlock *currentBBlock = printfCall.getParent();
+
   // writeOffset = atomic_add(bufferPtr, dataSize)
   Value *basebufferPtr = isPrintfBuiltin ? printfCall.getArgOperand(0)
                                          : implicitArgs.getImplicitArgValue(F, ImplicitArg::PRINTF_BUFFER, MdUtils);
 
-  Value *dataSizeVal = ConstantInt::get(m_int32Type, getTotalDataSize());
   Value *currentOffsetPtr = isPrintfBuiltin ? printfCall.getArgOperand(1) : basebufferPtr;
   Instruction *writeOffsetStart = genAtomicAdd(currentOffsetPtr, dataSizeVal, printfCall, "write_offset");
   writeOffsetStart->setDebugLoc(m_DL);
@@ -497,6 +570,13 @@ void OpenCLPrintfResolution::expandPrintfCall(CallInst &printfCall, Function &F)
     SPrintfArgDescriptor *argDesc = &m_argDescriptors[i];
     Value *printfArg = argDesc->value;
     IGC::SHADER_PRINTF_TYPE dataType = argDesc->argType;
+
+    // Inline format string: [marker:u64][byteLength:u32][bytes padded to 4].
+    if (i == 0 && argDesc->inlineFmtString) {
+      writeOffset = cast<Instruction>(emitInlineFormatString(writeOffset, argDesc, inlineFmtLenWithNull,
+                                                             inlineFmtAlignedLen, bblockTrue, isPrintfBuiltin));
+      continue;
+    }
 
     // We don't store the dataType for format string (which is the first entry in m_argDescriptors).
     if (i != 0) {
@@ -678,13 +758,26 @@ void OpenCLPrintfResolution::preprocessPrintfArgs(CallInst &printfCall) {
   for (int numArgs = IGCLLVM::getNumArgOperands(&printfCall); i < numArgs; ++i) {
     Value *arg = printfCall.getOperand(i);
     Type *argType = arg->getType();
+    // The first collected descriptor is always the format string.
+    bool isFormatString = m_argDescriptors.empty();
     IGC::SHADER_PRINTF_TYPE argDataType = getPrintfArgDataType(arg);
-    arg = fixupPrintfArg(printfCall, arg, argDataType);
+    bool inlineFmtString = false;
+
+    // SPV_EXT_relaxed_printf_string_address_space: a format string not resolving
+    // to a compile-time global is emitted inline into the buffer. Keep the raw
+    // pointer and skip fixupPrintfArg, which would assert on a non-global. OCL only.
+    if (isFormatString && m_CGContext->type == ShaderType::OPENCL_SHADER &&
+        argDataType != IGC::SHADER_PRINTF_STRING_LITERAL && argType->isPointerTy()) {
+      argDataType = IGC::SHADER_PRINTF_STRING_LITERAL;
+      inlineFmtString = true;
+    } else {
+      arg = fixupPrintfArg(printfCall, arg, argDataType);
+    }
     uint vecSize = 0;
     if (auto argVType = dyn_cast<IGCLLVM::FixedVectorType>(argType)) {
       vecSize = (uint)argVType->getNumElements();
     }
-    m_argDescriptors.push_back(SPrintfArgDescriptor(argDataType, arg, vecSize));
+    m_argDescriptors.push_back(SPrintfArgDescriptor(argDataType, arg, vecSize, inlineFmtString));
   }
 }
 
@@ -849,6 +942,43 @@ Instruction *OpenCLPrintfResolution::generateCastToPtr(SPrintfArgDescriptor *arg
   }
 
   return CastInst::Create(Instruction::CastOps::IntToPtr, writeOffset, castedType, "write_offset_ptr", bblock);
+}
+
+Value *OpenCLPrintfResolution::emitStrlenWithNull(Value *strPtr, Instruction *insertBefore) {
+  // Scan bytes from strPtr until the null terminator and return the index past
+  // it (length including null). doneBB is reached only from the loop, so the
+  // returned value dominates it.
+  Type *i8Ty = Type::getInt8Ty(*m_context);
+  BasicBlock *entryBB = insertBefore->getParent();
+  Function *F = entryBB->getParent();
+  BasicBlock *doneBB = entryBB->splitBasicBlock(insertBefore->getIterator(), "strlen.done");
+  BasicBlock *loopBB = BasicBlock::Create(*m_context, "strlen.loop", F, doneBB);
+
+  // Normalize the format pointer to i8* in its own address space.
+  unsigned strAS = cast<PointerType>(strPtr->getType())->getAddressSpace();
+  Type *i8PtrTy = IGCLLVM::PointerType::get(i8Ty, strAS);
+  if (strPtr->getType() != i8PtrTy)
+    strPtr =
+        CastInst::CreatePointerCast(strPtr, i8PtrTy, "fmt_i8ptr", IGCLLVM::insertPosition(entryBB->getTerminator()));
+
+  // Redirect entry's fallthrough (created by splitBasicBlock) to the loop.
+  entryBB->getTerminator()->eraseFromParent();
+  BranchInst *toLoop = BranchInst::Create(loopBB, entryBB);
+  toLoop->setDebugLoc(m_DL);
+
+  IRBuilder<> B(loopBB);
+  B.SetCurrentDebugLocation(m_DL);
+  PHINode *idx = B.CreatePHI(m_int32Type, 2, "strlen_idx");
+  idx->addIncoming(ConstantInt::get(m_int32Type, 0), entryBB);
+  Value *gepIndices[] = {idx};
+  Value *elemPtr = B.CreateGEP(i8Ty, strPtr, gepIndices, "strlen_ptr");
+  Value *ch = B.CreateLoad(i8Ty, elemPtr, "strlen_ch");
+  Value *idxNext = B.CreateAdd(idx, ConstantInt::get(m_int32Type, 1), "strlen_idx_next");
+  idx->addIncoming(idxNext, loopBB);
+  Value *isNull = B.CreateICmpEQ(ch, ConstantInt::get(i8Ty, 0), "strlen_is_null");
+  B.CreateCondBr(isNull, doneBB, loopBB);
+
+  return idxNext;
 }
 
 #if LLVM_VERSION_MAJOR >= 16

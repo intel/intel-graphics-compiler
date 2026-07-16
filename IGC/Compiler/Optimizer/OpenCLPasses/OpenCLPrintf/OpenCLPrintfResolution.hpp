@@ -26,11 +26,15 @@ struct SPrintfArgDescriptor {
   IGC::SHADER_PRINTF_TYPE argType;
   uint vecSize;
   llvm::Value *value;
+  // Format string that does not resolve to a compile-time global: 'value' is the
+  // raw i8* and its bytes are emitted inline into the printf buffer at runtime.
+  bool inlineFmtString;
 
-  SPrintfArgDescriptor(IGC::SHADER_PRINTF_TYPE _argType, llvm::Value *_value, uint _vecSize = 0)
-      : argType(_argType), vecSize(_vecSize), value(_value) {};
+  SPrintfArgDescriptor(IGC::SHADER_PRINTF_TYPE _argType, llvm::Value *_value, uint _vecSize = 0,
+                       bool _inlineFmtString = false)
+      : argType(_argType), vecSize(_vecSize), value(_value), inlineFmtString(_inlineFmtString) {};
 
-  SPrintfArgDescriptor() : argType(IGC::SHADER_PRINTF_INVALID), value(nullptr) {};
+  SPrintfArgDescriptor() : argType(IGC::SHADER_PRINTF_INVALID), vecSize(0), value(nullptr), inlineFmtString(false) {};
 };
 
 /// @brief  This pass expands all printf calls into a sequence of instructions
@@ -113,6 +117,16 @@ private:
   // corresponding to the arg type.
   llvm::Instruction *generateCastToPtr(SPrintfArgDescriptor *argDesc, llvm::Value *writeOffset,
                                        llvm::BasicBlock *bblock);
+
+  // Emit a runtime strlen loop over 'strPtr'; returns the length including the
+  // null terminator as i32. Splits the block containing 'insertBefore'.
+  llvm::Value *emitStrlenWithNull(llvm::Value *strPtr, llvm::Instruction *insertBefore);
+
+  // Emit an inline format-string record ([flag|length : u64][bytes padded to 4])
+  // at 'writeOffset' in the printf output buffer and return the advanced offset.
+  llvm::Value *emitInlineFormatString(llvm::Value *writeOffset, SPrintfArgDescriptor *argDesc,
+                                      llvm::Value *inlineFmtLenWithNull, llvm::Value *inlineFmtAlignedLen,
+                                      llvm::BasicBlock *bblockTrue, bool isPrintfBuiltin);
 
 private:
   IGCLLVM::Module *m_module = nullptr;

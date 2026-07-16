@@ -1160,6 +1160,12 @@ enum SHADER_PRINTF_TYPE
     NUM_SHADER_PRINTF_TYPES
 };
 
+// Format-string slot value for a printf record whose format string is stored
+// inline ([flag|length : u64][bytes]) instead of as a pointer. The top bit flags
+// the inline case (a canonical pointer never sets it); the low bits hold the
+// length. Shared ABI with the runtime (SPV_EXT_relaxed_printf_string_address_space).
+const unsigned long long SHADER_PRINTF_INLINE_STRING_FLAG = 0x8000000000000000ull;
+
 enum GSHADER_INPUT_PRIMITIVE_TYPE
 {
     GSHADER_INPUT_POINT,
