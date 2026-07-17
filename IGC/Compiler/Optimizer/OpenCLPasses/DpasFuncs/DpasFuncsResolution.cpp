@@ -665,7 +665,8 @@ bool DpasFuncsResolution::processCvt(CallInst &CI) {
     args[0] = CI.getArgOperand(0);            // value to be converted
     args[1] = ConstantInt::get(intTy, FP_RM); // rounding mode
     argslen = 2;
-  } else {
+  }
+  else {
     return false;
   }
 
@@ -871,7 +872,8 @@ bool DpasFuncsResolution::processDnscl(CallInst &CI) {
     isHalf = true;
   } else if (funcName.consume_front("bf16")) {
     isHalf = false;
-  } else {
+  }
+  else {
     IGC_ASSERT_MESSAGE(false, "Unknown dnscl builtin type");
     return false;
   }
@@ -891,9 +893,11 @@ bool DpasFuncsResolution::processDnscl(CallInst &CI) {
 
   GenISAIntrinsic::ID iid = GenISAIntrinsic::GenISA_dnscl;
   Type *int32Ty = Type::getInt32Ty(CI.getContext());
+  Value *src0 = CI.getArgOperand(0);
+  Value *src1 = CI.getArgOperand(1);
   Value *args[6] = {
-      CI.getArgOperand(0),
-      CI.getArgOperand(1),                                                          // src0, src1
+      src0,
+      src1,
       (stochastic ? CI.getArgOperand(argIndexBias) : ConstantInt::get(int32Ty, 0)), // bias
       ConstantInt::get(int32Ty, fullConversionType),                                // conversion type
       ConstantInt::get(int32Ty, packingMode),                                       // packing mode

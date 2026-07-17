@@ -7383,7 +7383,6 @@ void CEncoder::srnd(CVariable *D, CVariable *S0, CVariable *R) {
 
 void CEncoder::emitDnscl(CVariable *dst, CVariable *src0, CVariable *src1, CVariable *bias, DNSCL_CONVERT_TYPE convType,
                          DNSCL_MODE packMode, DNSCL_RND_MODE roundMode) {
-  IGC_ASSERT((unsigned)convType <= (unsigned)DNSCL_CONVERT_TYPE::HFTOINT4);
   IGC_ASSERT((unsigned)packMode <= (unsigned)DNSCL_MODE::MODE3);
   IGC_ASSERT((unsigned)roundMode <= (unsigned)DNSCL_RND_MODE::RNE);
 

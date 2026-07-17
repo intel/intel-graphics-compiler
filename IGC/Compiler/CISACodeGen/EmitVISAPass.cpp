@@ -22559,10 +22559,13 @@ void EmitPass::emitfcvt(llvm::GenIntrinsicInst *GII) {
     return;
   }
 
+  bool isExtraDownFcvt = false;
+  bool isExtraFcvt = false;
+
   if (id == GenISAIntrinsic::GenISA_ftobf || id == GenISAIntrinsic::GenISA_bftof ||
       id == GenISAIntrinsic::GenISA_hftobf8 || id == GenISAIntrinsic::GenISA_bf8tohf ||
       id == GenISAIntrinsic::GenISA_hftohf8 || id == GenISAIntrinsic::GenISA_hf8tohf ||
-      id == GenISAIntrinsic::GenISA_ftotf32) {
+      id == GenISAIntrinsic::GenISA_ftotf32 || isExtraFcvt) {
     CVariable *tDst = nullptr, *tSrc = nullptr;
 
     if (id == GenISAIntrinsic::GenISA_ftobf) {
@@ -22590,7 +22593,8 @@ void EmitPass::emitfcvt(llvm::GenIntrinsicInst *GII) {
     } else if (id == GenISAIntrinsic::GenISA_hftohf8) {
       tDst = m_currShader->GetNewAlias(dst, ISA_TYPE_B, 0, 0);
       tSrc = MaterializeImmToGRF(src, "tmp_cvt");
-    } else {
+    }
+    else {
       IGC_ASSERT_EXIT_MESSAGE(0, "Something wrong in cvt!");
     }
 
@@ -22616,7 +22620,7 @@ void EmitPass::emitfcvt(llvm::GenIntrinsicInst *GII) {
         }
         if (id == GenISAIntrinsic::GenISA_hftobf8 || id == GenISAIntrinsic::GenISA_bf8tohf ||
             id == GenISAIntrinsic::GenISA_hftohf8 || id == GenISAIntrinsic::GenISA_hf8tohf ||
-            id == GenISAIntrinsic::GenISA_ftotf32) {
+            id == GenISAIntrinsic::GenISA_ftotf32 || isExtraFcvt) {
           m_encoder->fcvt(tDst, tSrc);
         } else {
           m_encoder->Cast(tDst, tSrc);
@@ -22633,16 +22637,10 @@ void EmitPass::emitfcvt(llvm::GenIntrinsicInst *GII) {
         m_encoder->SetSrcSubReg(0, srcOff);
         if (id == GenISAIntrinsic::GenISA_hftobf8 || id == GenISAIntrinsic::GenISA_bf8tohf ||
             id == GenISAIntrinsic::GenISA_hftohf8 || id == GenISAIntrinsic::GenISA_hf8tohf ||
-            id == GenISAIntrinsic::GenISA_ftotf32) {
-          switch (id) {
-          case GenISAIntrinsic::GenISA_hftobf8:
-          case GenISAIntrinsic::GenISA_hftohf8: {
-            // HW requires NoMask
+            id == GenISAIntrinsic::GenISA_ftotf32 || isExtraFcvt) {
+          if (id == GenISAIntrinsic::GenISA_hftobf8 || id == GenISAIntrinsic::GenISA_hftohf8 || isExtraDownFcvt) {
+            // HW requires NoMask for down-conversion to FP8
             m_encoder->SetNoMask();
-            break;
-          }
-          default:
-            break;
           }
           m_encoder->fcvt(tDst, tSrc);
         } else {
