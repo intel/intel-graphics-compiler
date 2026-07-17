@@ -4197,7 +4197,7 @@ bool CodeGenPatternMatch::MatchBinaryUnpack4i8(Instruction &I) {
         if (isUnpack) {
           pattern->sources[i].region_set = true;
           pattern->sources[i].elementOffset = subreg;
-          pattern->sources[i].region[0] = 4;
+          pattern->sources[i].region[0] = (m_WI->isUniform(source) ? 0 : 4);
           pattern->sources[i].region[1] = 1;
           pattern->sources[i].region[2] = 0;
           pattern->sources[i].type = isUnsigned ? ISA_TYPE_UB : ISA_TYPE_B;
