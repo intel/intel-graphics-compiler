@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2019-2021 Intel Corporation
+Copyright (C) 2019-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -13,6 +13,7 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/IR/Function.h>
 #include <llvm/IR/Instructions.h>
+#include <llvm/Transforms/Utils/Local.h>
 #include "common/LLVMWarningsPop.hpp"
 #include <llvmWrapper/IR/BasicBlock.h>
 
@@ -60,12 +61,17 @@ void IGC::UnreachableHandling::replaceUnreachable(llvm::UnreachableInst *I) {
 }
 
 bool UnreachableHandling::runOnFunction(Function &F) {
+  // Drop blocks unreachable from the entry (left by switch lowering) before the
+  // rest of the pipeline sees them. This pass runs right after LowerSwitch.
+  bool changed = removeUnreachableBlocks(F);
+
   m_instsToReplace.clear();
   visit(F);
 
   for (auto I : m_instsToReplace) {
     replaceUnreachable(I);
+    changed = true;
   }
 
-  return m_instsToReplace.size() > 0;
+  return changed;
 }

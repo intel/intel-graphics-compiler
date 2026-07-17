@@ -172,6 +172,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/Transforms/IPO/FunctionAttrs.h>
 #include <llvm/Transforms/Utils.h>
 #include <llvm/Transforms/Scalar.h>
+#include <llvm/CodeGen/Passes.h>
 #include <llvm/Bitcode/BitcodeWriter.h>
 #include "common/LLVMWarningsPop.hpp"
 
@@ -884,6 +885,9 @@ void AddLegalizationPasses(CodeGenContext &ctx, IGCPassManager &mpm, PSSignature
   }
   // Since we don't support switch statements, switch lowering is needed after the last CFG simplication
   mpm.add(llvm::createLowerSwitchPass());
+  // This is the last switch lowering with no CFG simplification after it, so drop
+  // any blocks left unreachable from the entry before they reach codegen.
+  mpm.add(llvm::createUnreachableBlockEliminationPass());
 
   // This pass can create constant expression
   if (ctx.m_DriverInfo.HasDoubleLoadStore()) {

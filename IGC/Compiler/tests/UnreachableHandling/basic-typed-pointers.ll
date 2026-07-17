@@ -30,14 +30,13 @@ b:
   ret void
 }
 
-; Some instructions after unreachable are present
+; Instructions after unreachable live in a block with no entry-reachable
+; predecessor, so it is dropped and the function collapses to a single ret.
 
 define void @test_unreachable_inst_after(i1 %src) {
 ; CHECK-LABEL: @test_unreachable_inst_after(
 ; CHECK-NEXT:    ret void
-; CHECK:       1:
-; CHECK-NEXT:    [[TMP2:%.*]] = add i1 [[SRC:%.*]], [[SRC]]
-; CHECK-NEXT:    ret void
+; CHECK-NOT:     add
 
   unreachable
   %2 = add i1 %src, %src
