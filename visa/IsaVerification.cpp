@@ -1547,7 +1547,90 @@ void vISAVerifier::verifyInstructionMisc(const CISA_INST *inst) {
   }
   case ISA_DPAS:
   case ISA_DPASW:
-  {
+  case ISA_BDPAS:
+    verifyInstructionDpas(inst, i);
+    break;
+  case ISA_LIFETIME: {
+    uint8_t properties = getPrimitiveOperand<uint8_t>(inst, i++);
+    getPrimitiveOperand<uint32_t>(inst, i++); // uint32_t varId
+
+    unsigned char type = (properties >> 4) & 0x3;
+
+    if (type != OPERAND_GENERAL && type != OPERAND_ADDRESS &&
+        type != OPERAND_PREDICATE) {
+      REPORT_INSTRUCTION(options, false, "Invalid encoding for register file");
+    }
+
+    break;
+  }
+  case ISA_BREAKPOINT:
+    break;
+  default:
+    REPORT_INSTRUCTION(options, false,
+                       "Illegal Miscellaneous Flow Instruction Opcode: %d, %s.",
+                       opcode, ISA_Inst_Table[opcode].str);
+  }
+}
+
+void vISAVerifier::verifyInstructionDpas(const CISA_INST *inst, unsigned i) {
+  ISA_Opcode opcode = (ISA_Opcode)inst->opcode;
+  // No predicate
+  REPORT_INSTRUCTION(options, inst->pred.isNullPred(),
+                     "%s inst does not support predicate",
+                     ISA_Inst_Table[opcode].str);
+
+  if (opcode == ISA_BDPAS) {
+    auto IsLegalDstOrSrc0Ty = [](VISA_Type Ty) -> bool {
+      return Ty == ISA_TYPE_F || Ty == ISA_TYPE_BF || Ty == ISA_TYPE_HF;
+    };
+    auto IsLegalSrc1OrSrc2Ty = [](VISA_Type Ty) -> bool {
+      return Ty == ISA_TYPE_BF || Ty == ISA_TYPE_HF || Ty == ISA_TYPE_UD;
+    };
+
+    // execsize must be simd16
+    REPORT_INSTRUCTION(options, inst->getExecSize() == EXEC_SIZE_16,
+                       "Only execution size of 16 is supported for %s",
+                       ISA_Inst_Table[opcode].str);
+    // dst
+    verifyRawOperand(inst, i);
+    const raw_opnd &dst = getRawOperand(inst, i);
+    verifyRawOperandType(inst, dst, IsLegalDstOrSrc0Ty);
+    ++i;
+    // src0
+    verifyRawOperand(inst, i);
+    const raw_opnd &src0 = getRawOperand(inst, i);
+    verifyRawOperandType(inst, src0, IsLegalDstOrSrc0Ty);
+    ++i;
+    // src1
+    verifyRawOperand(inst, i);
+    const raw_opnd &src1 = getRawOperand(inst, i);
+    verifyRawOperandType(inst, src1, IsLegalSrc1OrSrc2Ty);
+    ++i;
+    // src2
+    verifyRawOperand(inst, i);
+    const raw_opnd &src2 = getRawOperand(inst, i);
+    verifyRawOperandType(inst, src2, IsLegalSrc1OrSrc2Ty);
+    ++i;
+    // TODO: Check src3/src4 subreg offset.
+    // src3
+    const vector_opnd &src3 = getVectorOperand(inst, i);
+    VISA_Type src3Ty = ISA_TYPE_UB;
+    if (src3.opnd_val.gen_opnd.index != 0) {
+      src3Ty = getVectorOperandType(header, src3);
+      REPORT_INSTRUCTION(options, src3Ty == ISA_TYPE_UB,
+                         "Only UB src3 allowed for %s",
+                         ISA_Inst_Table[opcode].str);
+    }
+    ++i;
+    // src4
+    const vector_opnd &src4 = getVectorOperand(inst, i);
+    if (src4.opnd_val.gen_opnd.index != 0) {
+      VISA_Type src4Ty = getVectorOperandType(header, src4);
+      REPORT_INSTRUCTION(options, src4Ty == ISA_TYPE_UB,
+                         "Only UB src4 allowed for %s",
+                         ISA_Inst_Table[opcode].str);
+    }
+  } else {
     auto FNIsInt = [](VISA_Type Ty) -> bool {
       return (Ty == ISA_TYPE_UD || Ty == ISA_TYPE_D);
     };
@@ -1562,10 +1645,6 @@ void vISAVerifier::verifyInstructionMisc(const CISA_INST *inst) {
       return (Ty == ISA_TYPE_UD || Ty == ISA_TYPE_D || Ty == ISA_TYPE_F ||
               isHFOrBF);
     };
-    // No predicate
-    REPORT_INSTRUCTION(options, inst->pred.isNullPred(),
-                       "%s inst does not support predicate",
-                       ISA_Inst_Table[opcode].str);
 
     // dst
     verifyRawOperand(inst, i);
@@ -1627,89 +1706,6 @@ void vISAVerifier::verifyInstructionMisc(const CISA_INST *inst) {
           "Only execution size of 8 is supported for %s on platform %s",
           ISA_Inst_Table[opcode].str, irBuilder->getGenxPlatformString());
     }
-
-    break;
-  }
-  case ISA_BDPAS: {
-    auto IsLegalDstOrSrc0Ty = [](VISA_Type Ty) -> bool {
-      return Ty == ISA_TYPE_F || Ty == ISA_TYPE_BF || Ty == ISA_TYPE_HF;
-    };
-    auto IsLegalSrc1OrSrc2Ty = [](VISA_Type Ty) -> bool {
-      return Ty == ISA_TYPE_BF || Ty == ISA_TYPE_HF || Ty == ISA_TYPE_UD;
-    };
-    // No predicate
-    REPORT_INSTRUCTION(options, inst->pred.isNullPred(),
-                       "%s inst does not support predicate",
-                       ISA_Inst_Table[opcode].str);
-    // execsize must be simd16
-    REPORT_INSTRUCTION(
-        options, inst->getExecSize() == EXEC_SIZE_16,
-        "Only execution size of 16 is supported for %s",
-        ISA_Inst_Table[opcode].str);
-    // dst
-    verifyRawOperand(inst, i);
-    const raw_opnd &dst = getRawOperand(inst, i);
-    verifyRawOperandType(inst, dst, IsLegalDstOrSrc0Ty);
-    ++i;
-    // src0
-    verifyRawOperand(inst, i);
-    const raw_opnd &src0 = getRawOperand(inst, i);
-    verifyRawOperandType(inst, src0, IsLegalDstOrSrc0Ty);
-    ++i;
-    // src1
-    verifyRawOperand(inst, i);
-    const raw_opnd &src1 = getRawOperand(inst, i);
-    verifyRawOperandType(inst, src1, IsLegalSrc1OrSrc2Ty);
-    ++i;
-    // src2
-    verifyRawOperand(inst, i);
-    const raw_opnd &src2 = getRawOperand(inst, i);
-    verifyRawOperandType(inst, src2, IsLegalSrc1OrSrc2Ty);
-    ++i;
-    // TODO: Check src3/src4 subreg offset.
-    // src3
-    const vector_opnd &src3 = getVectorOperand(inst, i);
-    VISA_Type src3Ty = ISA_TYPE_UB;
-    if (src3.opnd_val.gen_opnd.index != 0) {
-      src3Ty = getVectorOperandType(header, src3);
-      REPORT_INSTRUCTION(
-          options,
-          src3Ty == ISA_TYPE_UB,
-          "Only UB src3 allowed for %s",
-          ISA_Inst_Table[opcode].str);
-    }
-    ++i;
-    // src4
-    const vector_opnd &src4 = getVectorOperand(inst, i);
-    if (src4.opnd_val.gen_opnd.index != 0) {
-      VISA_Type src4Ty = getVectorOperandType(header, src4);
-      REPORT_INSTRUCTION(
-          options,
-          src4Ty == ISA_TYPE_UB,
-          "Only UB src4 allowed for %s",
-          ISA_Inst_Table[opcode].str);
-    }
-    break;
-  }
-  case ISA_LIFETIME: {
-    uint8_t properties = getPrimitiveOperand<uint8_t>(inst, i++);
-    getPrimitiveOperand<uint32_t>(inst, i++); // uint32_t varId
-
-    unsigned char type = (properties >> 4) & 0x3;
-
-    if (type != OPERAND_GENERAL && type != OPERAND_ADDRESS &&
-        type != OPERAND_PREDICATE) {
-      REPORT_INSTRUCTION(options, false, "Invalid encoding for register file");
-    }
-
-    break;
-  }
-  case ISA_BREAKPOINT:
-    break;
-  default:
-    REPORT_INSTRUCTION(options, false,
-                       "Illegal Miscellaneous Flow Instruction Opcode: %d, %s.",
-                       opcode, ISA_Inst_Table[opcode].str);
   }
 }
 

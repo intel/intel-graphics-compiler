@@ -77,6 +77,7 @@ private:
   void verifyInstructionSync(const CISA_INST *inst);
   void verifyInstructionControlFlow(const CISA_INST *inst);
   void verifyInstructionMisc(const CISA_INST *inst);
+  void verifyInstructionDpas(const CISA_INST *inst, unsigned i);
   void verifyInstructionArith(const CISA_INST *inst);
   void verifyInstructionLogic(const CISA_INST *inst);
   void verifyInstructionCompare(const CISA_INST *inst);
