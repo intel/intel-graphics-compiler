@@ -2500,6 +2500,15 @@ elseif (WIN32)
             DESTINATION Debug/bin            CONFIGURATIONS Debug)
     install(FILES $<TARGET_FILE:igc-clang-lib>
             DESTINATION ../Test_Tools/Debug/x64/Standalones            CONFIGURATIONS Debug)
+
+    # Imported target, so reference the prebuild PDB directly
+    # ($<TARGET_PDB_FILE> is unavailable); guarded on its presence.
+    get_filename_component(_igc_clang_pdb_name "${IGC_CLANG_LIB_PATH}" NAME_WE)
+    set(_igc_clang_pdb "${IGC_CLANG_PREBUILD_DIR}/${_igc_clang_pdb_name}.pdb")
+    if(EXISTS "${_igc_clang_pdb}")
+      install(FILES "${_igc_clang_pdb}"
+              DESTINATION Debug/pdb            CONFIGURATIONS Debug)
+    endif()
   endif()
 
   install(FILES $<TARGET_PDB_FILE:${IGC_BUILD__PROJ__igc_dll}>
