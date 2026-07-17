@@ -410,7 +410,8 @@ bool IGCVectorizer::handlePHI(VecArr &Slice) {
       IsInstOperand &= Inst && InstCmp;
       if (IsInstOperand) {
         ForVector.push_back(Inst);
-        IsVectorized &= ScalarToVector.count(Inst) && (ScalarToVector[Inst] == ScalarToVector[InstCmp]);
+        IsVectorized &= ScalarToVector.count(Inst) && ScalarToVector.count(InstCmp) &&
+                        (ScalarToVector[Inst] == ScalarToVector[InstCmp]);
       } else {
         IsVectorized = false;
       }
@@ -1433,6 +1434,9 @@ bool IGCVectorizer::checkIsSameOrder(VecVal &Slice, InsertElementInst *Vectorize
 
 Value *IGCVectorizer::checkOperandsToBeVectorized(Instruction *First, unsigned int OperNum, VecArr &Slice) {
 
+  if (!ScalarToVector.count(First->getOperand(OperNum)))
+    return nullptr;
+
   Value *Compare = ScalarToVector[First->getOperand(OperNum)];
   if (!Compare) {
     PRINT_LOG_NL(" Operand num: " << OperNum << " is not vectorized");
@@ -1443,6 +1447,11 @@ Value *IGCVectorizer::checkOperandsToBeVectorized(Instruction *First, unsigned i
   if (!InsElInst) {
     for (auto &El : Slice) {
       Value *Val = El->getOperand(OperNum);
+      if (!ScalarToVector.count(Val)) {
+        PRINT_INST(Val);
+        PRINT_LOG_NL(" --> wasn't vectorized at all ");
+        return nullptr;
+      }
       Value *ValCompare = ScalarToVector[Val];
       if (ValCompare != Compare) {
         PRINT_LOG("Compare: ");
