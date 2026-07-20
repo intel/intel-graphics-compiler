@@ -1,0 +1,42 @@
+#=========================== begin_copyright_notice ============================
+#
+# Copyright (C) 2026 Intel Corporation
+#
+# SPDX-License-Identifier: MIT
+#
+#============================ end_copyright_notice =============================
+
+# Full set of SPIR-V extensions for DG2
+
+# RUN: IGCOCLInterfaceTester spirv_ext --platform dg2 2>&1 | FileCheck %s
+
+# CHECK-DAG: - name: SPV_EXT_optnone
+# CHECK-DAG: - name: SPV_EXT_shader_atomic_float_add
+# CHECK-DAG: - name: SPV_EXT_shader_atomic_float_min_max
+# CHECK-DAG: - name: SPV_INTEL_bfloat16_conversion
+# CHECK-DAG: - name: SPV_INTEL_cache_controls
+# CHECK-DAG: - name: SPV_INTEL_fp_fast_math_mode
+# CHECK-DAG: - name: SPV_INTEL_global_variable_host_access
+# CHECK-DAG: - name: SPV_INTEL_inline_assembly
+# CHECK-DAG: - name: SPV_INTEL_long_composites
+# CHECK-DAG: - name: SPV_INTEL_media_block_io
+# CHECK-DAG: - name: SPV_INTEL_predicated_io
+# CHECK-DAG: - name: SPV_INTEL_split_barrier
+# CHECK-DAG: - name: SPV_INTEL_subgroup_buffer_prefetch
+# CHECK-DAG: - name: SPV_INTEL_subgroup_matrix_multiply_accumulate
+# CHECK-DAG: - name: SPV_INTEL_subgroups
+# CHECK-DAG: - name: SPV_INTEL_unstructured_loop_controls
+# CHECK-DAG: - name: SPV_KHR_bit_instructions
+# CHECK-DAG: - name: SPV_KHR_expect_assume
+# CHECK-DAG: - name: SPV_KHR_integer_dot_product
+# CHECK-DAG: - name: SPV_KHR_linkonce_odr
+# CHECK-DAG: - name: SPV_KHR_no_integer_wrap_decoration
+# CHECK-DAG: - name: SPV_KHR_non_semantic_info
+# CHECK-DAG: - name: SPV_KHR_shader_clock
+
+
+# Count all extentions supported on DG2
+
+# RUN: IGCOCLInterfaceTester spirv_ext --platform dg2 | grep -c "^- name:" | FileCheck --check-prefix=COUNT %s
+
+# COUNT: {{^23$}}

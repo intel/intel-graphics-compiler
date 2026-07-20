@@ -1,0 +1,23 @@
+#=========================== begin_copyright_notice ============================
+#
+# Copyright (C) 2026 Intel Corporation
+#
+# SPDX-License-Identifier: MIT
+#
+#============================ end_copyright_notice =============================
+
+# The gtsysinfo is a sub-interface of Interface No. 1.
+
+# RUN: IGCOCLInterfaceTester gtsysinfo < %s 2>&1 | FileCheck %s
+
+EUCount=512
+L3CacheSizeInKb=4096
+IsL3HashModeEnabled=1
+MaxDualSubSlicesSupported=32
+SLMSizeInKb=64
+
+# CHECK: EUCount=512
+# CHECK-NEXT: L3CacheSizeInKb=4096
+# CHECK-NEXT: IsL3HashModeEnabled=1
+# CHECK-NEXT: MaxDualSubSlicesSupported=32
+# CHECK-NEXT: SLMSizeInKb=64

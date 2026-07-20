@@ -1,0 +1,18 @@
+#=========================== begin_copyright_notice ============================
+#
+# Copyright (C) 2026 Intel Corporation
+#
+# SPDX-License-Identifier: MIT
+#
+#============================ end_copyright_notice =============================
+
+# 'builtins' requires `items`, `rangeSize` and `valueTypeSizeInBytes` on stdin. Omitting
+# any of them must fail with a clear error and a non-zero exit code (here `rangeSize`
+# is missing).
+
+# RUN: not IGCOCLInterfaceTester builtins < %s 2>&1 | FileCheck %s
+
+items=2048
+valueTypeSizeInBytes=4
+
+# CHECK: error: missing required input 'rangeSize'

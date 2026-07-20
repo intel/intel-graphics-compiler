@@ -1,0 +1,14 @@
+#=========================== begin_copyright_notice ============================
+#
+# Copyright (C) 2026 Intel Corporation
+#
+# SPDX-License-Identifier: MIT
+#
+#============================ end_copyright_notice =============================
+
+REQUIRES: regkeys
+
+# RUN: env IGC_EnableVISANoSchedule=1 IGC_ForceOCLSIMDWidth=8 \
+# RUN: IGCOCLInterfaceTester regkey 2>&1 | FileCheck %s
+
+# CHECK: EnableVISANoSchedule=1,EnableOCLSIMD16=0,EnableOCLSIMD32=0,ForceOCLSIMDWidth=8

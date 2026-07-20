@@ -2433,6 +2433,12 @@ if(IGC_OPTION__ENABLE_OCLOC_LIT_TESTS)
   add_subdirectory(ocloc_tests)
 endif()
 
+# ========================================= INTERFACE LIT TESTS =======================================
+
+if(IGC_OPTION__ENABLE_LIT_TESTS)
+  add_subdirectory(OCLInterfaceTester)
+endif()
+
 # ======================================================================================================
 
 # Workaround for MSVS10 to avoid the "Dialog Hell"

@@ -1,0 +1,17 @@
+#=========================== begin_copyright_notice ============================
+#
+# Copyright (C) 2026 Intel Corporation
+#
+# SPDX-License-Identifier: MIT
+#
+#============================ end_copyright_notice =============================
+
+# systemRoutineBytes can be change if you pick another platform, a different routine type
+# or the SIP source code changes, so it is matched with a regex, not pinned
+# This test uses routine type = debug and bindless = 1 which returns the 'tssarea' magic in stateSaveAreaMagic
+
+# RUN: IGCOCLInterfaceTester system_routine --platform pvc 2>&1 | FileCheck %s
+
+# CHECK: supported=1
+# CHECK: systemRoutineBytes={{[1-9][0-9]*}}
+# CHECK: stateSaveAreaMagic=tssarea

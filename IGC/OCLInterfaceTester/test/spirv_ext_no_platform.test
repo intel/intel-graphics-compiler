@@ -1,0 +1,14 @@
+#=========================== begin_copyright_notice ============================
+#
+# Copyright (C) 2026 Intel Corporation
+#
+# SPDX-License-Identifier: MIT
+#
+#============================ end_copyright_notice =============================
+
+# spirv_ext is platform-dependent: without --platform it must fail with a clear
+# error and a non-zero exit code.
+
+# RUN: not IGCOCLInterfaceTester spirv_ext 2>&1 | FileCheck %s
+
+# CHECK: error: check 'spirv_ext' requires --platform
