@@ -33,6 +33,7 @@ public:
     // start offset of this alloca in top level alloca (if any)
     std::size_t offset;
     bool isUniform;
+    bool isVLA;
   };
 
   MergeAllocas(char &pid) : AllocationLivenessAnalyzer(pid) {}

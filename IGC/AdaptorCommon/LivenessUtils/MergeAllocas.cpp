@@ -57,7 +57,8 @@ static MergeAllocas::AllocaInfo GetAllocaInfo(AllocaInst *allocaI, AllocationLiv
           allocationSize,
           static_cast<size_t>(DL->getPrefTypeAlign(allocaI->getAllocatedType()).value()),
           0,
-          allocaI->getMetadata("uniform") != nullptr};
+          allocaI->getMetadata("uniform") != nullptr,
+          !isa<ConstantInt>(allocaI->getArraySize())};
 }
 
 static size_t GetStartingOffset(size_t startOffset, size_t alignment) {
@@ -69,6 +70,9 @@ static size_t GetStartingOffset(size_t startOffset, size_t alignment) {
 }
 
 static bool AddNonOverlappingAlloca(MergeAllocas::AllocaInfo *MergableAlloca, MergeAllocas::AllocaInfo *NewAlloca) {
+  if (MergableAlloca->isVLA || NewAlloca->isVLA) {
+    return false;
+  }
   if (MergableAlloca->isUniform != NewAlloca->isUniform) {
     return false;
   }
@@ -234,7 +238,7 @@ bool MergeAllocas::runOnFunction(Function &F) {
     }
     // Alloca overlaps with all of the current ones so it will be added as new
     // element.
-    if (!added && AllocaInfo.allocationSize != 0) {
+    if (!added && AllocaInfo.allocationSize != 0 && !AllocaInfo.isVLA) {
       MergableAllocas.push_back(&AllocaInfo);
     }
   }
