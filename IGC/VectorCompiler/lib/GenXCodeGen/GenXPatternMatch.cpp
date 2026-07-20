@@ -76,7 +76,6 @@ SPDX-License-Identifier: MIT
 #include "llvm/Transforms/Utils/Local.h"
 
 #include "llvmWrapper/ADT/APInt.h"
-#include "llvmWrapper/IR/CmpPredicate.h"
 #include "llvmWrapper/IR/Constants.h"
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/IR/Intrinsics.h"
@@ -103,7 +102,13 @@ using namespace llvm::PatternMatch;
 using namespace genx;
 using namespace vc;
 
-using MatchCmpPredicate = IGCLLVM::ICmpInstPredicate;
+// LLVM 20 changed PatternMatch's m_ICmp to bind an llvm::CmpPredicate instead
+// of an llvm::CmpInst::Predicate.
+#if LLVM_VERSION_MAJOR >= 20
+using MatchCmpPredicate = llvm::CmpPredicate;
+#else
+using MatchCmpPredicate = llvm::ICmpInst::Predicate;
+#endif
 
 #define DEBUG_TYPE "genx-pattern-match"
 

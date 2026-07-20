@@ -66,8 +66,6 @@ SPDX-License-Identifier: MIT
 #include <llvm/Support/ManagedStatic.h>
 
 #include "llvmWrapper/IR/LLVMContext.h"
-#include "llvmWrapper/IR/DiagnosticInfo.h"
-#include "llvmWrapper/IR/Module.h"
 #include "llvmWrapper/Option/OptTable.h"
 #include "llvmWrapper/Support/TargetRegistry.h"
 #include "llvmWrapper/Target/TargetMachine.h"
@@ -578,9 +576,12 @@ struct DiagnosticContext {
   bool Failed;
 };
 
-void diagnosticHandlerCallback(IGCLLVM::DiagnosticInfoParamTy DIArg,
-                               void *Context) {
-  const DiagnosticInfo &DI = IGCLLVM::getDiagnosticInfo(DIArg);
+#if LLVM_VERSION_MAJOR >= 22
+void diagnosticHandlerCallback(const DiagnosticInfo *DIPtr, void *Context) {
+  const DiagnosticInfo &DI = *DIPtr;
+#else
+void diagnosticHandlerCallback(const DiagnosticInfo &DI, void *Context) {
+#endif
   auto *DiagCtx = static_cast<DiagnosticContext *>(Context);
   auto Severity = DI.getSeverity();
 
@@ -640,8 +641,16 @@ vc::Compile(ArrayRef<char> Input, const vc::CompileOptions &Opts,
     return make_error<vc::OutputBinaryCreationError>(
         "Compiler error emitted in IR adaptors");
 
-  Triple TheTriple = overrideTripleWithVC(IGCLLVM::getTargetTriple(M));
-  IGCLLVM::setTargetTriple(M, TheTriple.getTriple());
+#if LLVM_VERSION_MAJOR >= 22
+  Triple TheTriple = overrideTripleWithVC(M.getTargetTriple().str());
+#else
+  Triple TheTriple = overrideTripleWithVC(M.getTargetTriple());
+#endif
+#if LLVM_VERSION_MAJOR >= 22
+  M.setTargetTriple(TheTriple);
+#else
+  M.setTargetTriple(TheTriple.getTriple());
+#endif
 
   auto ExpTargetMachine = createTargetMachine(Opts, ExtData, TheTriple);
   if (!ExpTargetMachine)

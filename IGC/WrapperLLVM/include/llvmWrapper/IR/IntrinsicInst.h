@@ -14,7 +14,6 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/Constants.h>
 #include <llvm/IR/IntrinsicInst.h>
 #include "llvm/IR/DebugInfoMetadata.h"
-#include <llvm/Support/Alignment.h>
 #include "IGC/common/LLVMWarningsPop.hpp"
 
 #include "Probe/Assertion.h"
@@ -46,75 +45,6 @@ inline llvm::ConstantInt *getLifetimeIntrinsicSize(llvm::IntrinsicInst *II) {
   return nullptr;
 #else
   return llvm::cast<llvm::ConstantInt>(II->getArgOperand(0));
-#endif
-}
-
-/// Masked gather/scatter operand-layout helpers.
-///
-/// LLVM 22 dropped the explicit i32 alignment operand from
-/// llvm.masked.gather / llvm.masked.scatter; the alignment is now an align
-/// attribute on the pointer-vector operand. The operand layout changed from:
-///   masked_gather (ptrs, i32 align, mask, passthru)
-///   masked_scatter(value, ptrs, i32 align, mask)
-/// to:
-///   masked_gather (ptrs, mask, passthru)
-///   masked_scatter(value, ptrs, mask)
-/// The gather pointer operand (op0), the scatter pointer operand (op1) and the
-/// scatter value operand (op0) keep the same index across versions.
-
-/// Operand index of the mask for llvm.masked.gather.
-inline unsigned getMaskedGatherMaskOperandNo() {
-#if LLVM_VERSION_MAJOR >= 22
-  return 1;
-#else
-  return 2;
-#endif
-}
-
-/// Operand index of the passthru for llvm.masked.gather.
-inline unsigned getMaskedGatherPassThruOperandNo() {
-#if LLVM_VERSION_MAJOR >= 22
-  return 2;
-#else
-  return 3;
-#endif
-}
-
-/// Operand index of the mask for llvm.masked.scatter.
-inline unsigned getMaskedScatterMaskOperandNo() {
-#if LLVM_VERSION_MAJOR >= 22
-  return 2;
-#else
-  return 3;
-#endif
-}
-
-/// Returns the mask (predicate) operand of a masked gather/scatter intrinsic.
-inline llvm::Value *getMaskedGatherScatterMask(const llvm::IntrinsicInst *II) {
-  IGC_ASSERT(II);
-  IGC_ASSERT(II->getIntrinsicID() == llvm::Intrinsic::masked_gather ||
-             II->getIntrinsicID() == llvm::Intrinsic::masked_scatter);
-  return II->getArgOperand(II->getIntrinsicID() == llvm::Intrinsic::masked_gather ? getMaskedGatherMaskOperandNo()
-                                                                                  : getMaskedScatterMaskOperandNo());
-}
-
-/// Returns the passthru operand of a masked gather intrinsic.
-inline llvm::Value *getMaskedGatherPassThru(const llvm::IntrinsicInst *II) {
-  IGC_ASSERT(II);
-  IGC_ASSERT(II->getIntrinsicID() == llvm::Intrinsic::masked_gather);
-  return II->getArgOperand(getMaskedGatherPassThruOperandNo());
-}
-
-/// Returns the alignment of a masked gather/scatter intrinsic.
-inline llvm::Align getMaskedGatherScatterAlign(const llvm::IntrinsicInst *II) {
-  IGC_ASSERT(II);
-  bool IsGather = II->getIntrinsicID() == llvm::Intrinsic::masked_gather;
-  IGC_ASSERT(IsGather || II->getIntrinsicID() == llvm::Intrinsic::masked_scatter);
-#if LLVM_VERSION_MAJOR >= 22
-  return II->getParamAlign(IsGather ? 0 : 1).valueOrOne();
-#else
-  unsigned AlignOpNo = IsGather ? 1 : 2;
-  return llvm::assumeAligned(llvm::cast<llvm::ConstantInt>(II->getArgOperand(AlignOpNo))->getZExtValue());
 #endif
 }
 

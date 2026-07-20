@@ -12,7 +12,6 @@ SPDX-License-Identifier: MIT
 #include "Probe/Assertion.h"
 #include "llvmWrapper/Support/Alignment.h"
 #include "llvmWrapper/IR/Intrinsics.h"
-#include "llvmWrapper/IR/IntrinsicInst.h"
 #include "llvmWrapper/IR/Type.h"
 
 #include <llvm/ADT/ArrayRef.h>
@@ -33,7 +32,12 @@ static Type *getIntrinsicRetTypeBasedOnArgs(Intrinsic::ID IID,
   switch (IID) {
   case Intrinsic::masked_gather:
     // "Pass through" operand.
-    return ArgTys[IGCLLVM::getMaskedGatherPassThruOperandNo()];
+#if LLVM_VERSION_MAJOR >= 22
+    // LLVM 22 dropped the alignment operand: (ptrs, mask, passthru).
+    return ArgTys[2];
+#else
+    return ArgTys[3];
+#endif
   case Intrinsic::masked_scatter:
     return Type::getVoidTy(C);
   default:
