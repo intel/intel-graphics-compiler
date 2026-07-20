@@ -1686,7 +1686,9 @@ void OptimizeIR(CodeGenContext *const pContext) {
         mpm.add(new PromoteToPredicatedMemoryAccess());
       }
 
-      if (IGC_IS_FLAG_ENABLED(EnableJumpThreading) && !extensiveShader(pContext)) {
+      if (IGC_IS_FLAG_ENABLED(EnableJumpThreading) &&
+          !(!pContext->platform.isCoreChildOf(IGFX_XE2_HPG_CORE) && pContext->m_instrTypes.hasAtomics) &&
+          !extensiveShader(pContext)) {
         if (pContext->type == ShaderType::OPENCL_SHADER) {
           // Add CFGSimplification for clean-up before JumpThreading.
           mpm.add(llvm::createCFGSimplificationPass());
@@ -1731,7 +1733,9 @@ void OptimizeIR(CodeGenContext *const pContext) {
       // to benefit from unreachable instruction when it's in default switch case
       mpm.add(new UnreachableHandling());
 
-      if (IGC_IS_FLAG_ENABLED(EnableJumpThreading) && !extensiveShader(pContext)) {
+      if (IGC_IS_FLAG_ENABLED(EnableJumpThreading) &&
+          !(!pContext->platform.isCoreChildOf(IGFX_XE2_HPG_CORE) && pContext->m_instrTypes.hasAtomics) &&
+          !extensiveShader(pContext)) {
         // After lowering 'switch', run jump threading to remove redundant jumps.
         mpm.add(IGCLLVM::createLegacyWrappedJumpThreadingPass());
       }
