@@ -1588,6 +1588,11 @@ DECLARE_IGC_REGKEY(
     false)
 DECLARE_IGC_REGKEY(bool, DisableDynamicPolyPackingPolicies, true,
                    "Disable dynamic poly packing policies for Xe3+ platforms", false)
+DECLARE_IGC_REGKEY(bool, EnableUnifiedCoarseAndPixelDispatchRates, false,
+                   "Enable unification of coarse and pixel dispatch rates on Xe3+ (HSD-14015289391): "
+                   "consume the HW source-depth (PosZPixel) payload instead of the legacy manual "
+                   "source-depth interpolation.",
+                   false)
 DECLARE_IGC_REGKEY(bool, RequestStage2, true, "Enable staged compilation via requesting stage 2", false)
 
 DECLARE_IGC_REGKEY(bool, ExtraRetrySIMD16, false, "Enable extra simd16 with retry for STAGE1_BEST_PREF", false)

@@ -280,7 +280,8 @@ public:
 
   bool SupportCPS() const { return (m_platformInfo.eRenderCoreFamily >= IGFX_GEN10_CORE); }
   bool hasUnifiedCoarseAndPixelDispatchRates() const {
-    return /*(m_platformInfo.eRenderCoreFamily >= IGFX_XE3_CORE);*/ false;
+    // HSD-14015289391: Unify coarse and pixel dispatch rates.
+    return isCoreChildOf(IGFX_XE3_CORE) && IGC_IS_FLAG_ENABLED(EnableUnifiedCoarseAndPixelDispatchRates);
   }
   bool supportsSIMD32forCPS() const { return (m_platformInfo.eProductFamily >= IGFX_METEORLAKE); }
 
