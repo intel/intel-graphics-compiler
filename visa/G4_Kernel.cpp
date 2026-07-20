@@ -2356,6 +2356,12 @@ unsigned GRFMode::getSpillThreshold(unsigned mode) const {
         options->getuInt32Option(vISA_SpillAllowed256GRF);
     if (spill256Option > 0)
       return spill256Option;
+
+    // On PVC/Xe2 the 256-GRF config is the top GRF-selection config. Applying
+    // the base spill budget there yields no occupancy benefit.
+    // Xe3+ keeps its established behavior.
+    if (platform < Xe3)
+      return 0;
   }
 
   // Base spill threshold: when the dedicated regkey is enabled, use the
