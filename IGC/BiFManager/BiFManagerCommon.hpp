@@ -46,6 +46,8 @@ public:
 struct BiFDataRecord {
   // Section ID
   BiFSectionID ID;
+  // Explicit padding to initialize for reproducible builds
+  int32_t padding;
   // Beginning of section in the stream
   int64_t bufferStart;
   // Size of the section in the stream
@@ -53,6 +55,7 @@ struct BiFDataRecord {
 
   BiFDataRecord(BiFSectionID ID, int64_t bufferStart, int64_t bufferSize) {
     this->ID = ID;
+    this->padding = 0;
     this->bufferStart = bufferStart;
     this->bufferSize = bufferSize;
   }
