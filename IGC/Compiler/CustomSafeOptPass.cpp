@@ -2173,8 +2173,9 @@ void CustomSafeOptPass::visitTruncInst(TruncInst &I) {
   To:
   %335 = call i16 @llvm.genx.GenISA.WaveShuffleIndex.i16(i16 %orig, i32 %333, i32 0)
   */
-
-  if (IGC_IS_FLAG_ENABLED(EnableEmitMoreMoviCases))
+  auto pCGCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+  bool EmitMoreMoviCasesEnabled = pCGCtx->platform.allowEmitMoreMoviCases();
+  if (EmitMoreMoviCasesEnabled)
   {
     return;
   }

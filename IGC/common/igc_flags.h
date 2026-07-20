@@ -1303,7 +1303,16 @@ DECLARE_IGC_REGKEY_ENUM(TgmStoreCacheControlOverride, 0,
 DECLARE_IGC_REGKEY(bool, LscForceSpillNonStackcall, false, "Non-stack call kernels that spill will use LSC on DG2+",
                    true)
 DECLARE_IGC_REGKEY(bool, EnableEmitMoreMoviCases, false,
-                   "Enables emitting movi for waveShuffle cases using And to keep index within single register.", true)
+                   "Enables emitting movi for waveShuffle cases using And to keep index within single register. "
+                   "Temporarily kept for legacy tests use. Will be removed later.",
+                   true)
+DECLARE_IGC_REGKEY_ENUM(SupportEmitMoreMoviCases, 0,
+                        "Controls the behavior of emitSimdShuffle to emit more movi for waveShuffle cases "
+                        "using And to keep index within single register."
+                        "-1 - enabled based on the platform choice"
+                        " 0 - default disabled"
+                        " 1 - force enabled",
+                        TRIBOOL_OPTIONS, true)
 DECLARE_IGC_REGKEY(bool, ConvergentGradientsOnGenISA, false,
                    "Force-enable the ConvergentGradientsOnGenISA AIL: mark GenISA gradient intrinsics convergent so "
                    "code-motion passes cannot sink them across divergent branches. Useful for testing the workaround "

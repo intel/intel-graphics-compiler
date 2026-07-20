@@ -326,6 +326,9 @@ public:
   int PrivateMemoryPerWI() const { return m_PrivateMemoryPerWI; }
   bool TryNoScratchPointer() const { return m_TryNoScratchPointer; }
 
+  void SetEmitMoreMoviCases(bool value) { m_EmitMoreMoviCases = value; }
+  bool GetEmitMoreMoviCases() const { return m_EmitMoreMoviCases; }
+
   IGCMD::MetaDataUtils *GetMetaDataUtils() { return m_pMdUtils; }
 
   virtual void SetShaderSpecificHelper(EmitPass *emitPass) { IGC_UNUSED(emitPass); }
@@ -709,6 +712,13 @@ protected:
   bool m_HasNestedCall = false;
   bool m_HasIndirectCall = false;
   bool m_IsIntelSymbolTableVoidProgram = false;
+  // Whether EmitMoreMoviCases movi promotion is enabled for this shader.
+  // Computed once per shader in EmitPass before the
+  // encoder is initialized, then consumed by emitSimdShuffle (as
+  // moviPromotionEnabled) and by CISABuilder (to decide vISA_emitMoreMoviCases).
+  // Computing it once keeps both consumers consistent: CISABuilder runs at
+  // encoder init, before emitSimdShuffle, so it can't observe an emit-time value.
+  bool m_EmitMoreMoviCases = false;
   int m_PrivateMemoryPerWI = 0;
 };
 

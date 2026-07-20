@@ -4232,8 +4232,10 @@ void CEncoder::InitVISABuilderOptions(TARGET_PLATFORM VISAPlatform, bool canAbor
     SaveOption(vISA_ALTMode, true);
   }
 
-  if (IGC_GET_FLAG_VALUE(EnableEmitMoreMoviCases))
-  {
+  // Set the vISA option only when EmitPass enabled movi promotion for this
+  // shader (m_emitMoreMoviCases, decided in EmitPass::runOnFunction before the
+  // encoder is initialized).
+  if (m_program->GetEmitMoreMoviCases()) {
     SaveOption(vISA_emitMoreMoviCases, true);
   }
 

@@ -791,6 +791,13 @@ bool EmitPass::runOnFunction(llvm::Function &F) {
     if (F.hasFnAttribute("num-thread-per-eu")) {
       numThreadsPerEU = std::stoi(F.getFnAttribute("num-thread-per-eu").getValueAsString().str());
     }
+
+    // Decide EmitMoreMoviCases movi promotion once, before InitEncoder.
+    {
+      bool moviEnabled = m_pCtx->platform.allowEmitMoreMoviCases();
+      m_currShader->SetEmitMoreMoviCases(moviEnabled);
+    }
+
     // call builder after pre-analysis pass where scratchspace offset to VISA is
     // calculated
     m_encoder->InitEncoder(m_canAbortOnSpill, m_currShader->HasStackCalls(), hasInlineAsmCall,
@@ -6369,7 +6376,7 @@ void EmitPass::emitSimdShuffle(llvm::Instruction *inst) {
     // Enabling movi requires that first lane even inactive will be within
     // bounds of register we want. It also is limited to accessing single GRF.
     // For uniform channel which will be simd1 there's probably no gain in movi.
-    bool moviPromotionEnabled = IGC_GET_FLAG_VALUE(EnableEmitMoreMoviCases);
+    bool moviPromotionEnabled = m_currShader->GetEmitMoreMoviCases();
     const uint srcGRFSize = (data->GetSize() + getGRFSize() - 1) / getGRFSize();
     const uint dstGRFSize = (m_destination->GetSize() + getGRFSize() - 1) / getGRFSize();
     bool isSingleGrf = (srcGRFSize == 1);
