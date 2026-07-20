@@ -8,30 +8,31 @@ SPDX-License-Identifier: MIT
 
 // REQUIRES: regkeys, cri-supported
 
-// Core positive test for the 512-GRF OCL retry gate (DPAS category).
-//
-// A SIMD16 DPAS kernel with 24 independent accumulator chains generates enough
-// live-range pressure to spill at the 256-GRF Xe3p ceiling.  On OCL retry the
-// DPAS category (enabled by default) lifts the VRT ceiling to 512 GRF so the
-// spill clears.
-//
+// On CRI the default VRT GRF ceiling is 512, so a high-pressure SIMD16 DPAS
+// kernel with 24 independent accumulator chains reaches 512 GRF by default with
+// no 512-GRF regkey set. An explicit ForceVRTGRFCeiling override is honored over
+// the raised default, in either direction.
 
-// Default (DPAS category on): the retry lifts the ceiling and VRT picks 512 GRF.
-// RUN: ocloc compile -file %s -device cri -options "-igc_opts 'EnableCRIDefault512GRF=0,EnableOCL512GRFForDPAS=1,DumpASMToConsole=1'" \
-// RUN: 2>&1 | FileCheck %s --check-prefix=COMPILE
+// Default (no override): VRT picks the raised 512 ceiling.
+// RUN: ocloc compile -file %s -device cri -options "-igc_opts 'DumpASMToConsole=1'" \
+// RUN: 2>&1 | FileCheck %s --check-prefix=DEFAULT
 
-// COMPILE: numGRF=256
-// COMPILE: numGRF=512
-// COMPILE: [RetryManager] Start recompilation of the kernel
-// COMPILE: Build succeeded.
+// DEFAULT: numGRF=512
+// DEFAULT: Build succeeded.
 
-// Negative: both categories off. The retry still fires but the ceiling is not
-// lifted - the kernel stays at 256 GRF.
-// RUN: ocloc compile -file %s -device cri -options "-igc_opts 'EnableCRIDefault512GRF=0,EnableOCL512GRFForDPAS=0,EnableOCL512GRFForSIMD16=0,DumpASMToConsole=1'" \
-// RUN: 2>&1 | FileCheck %s --check-prefix=NOLIFT --implicit-check-not "numGRF=512"
+// Forcing the ceiling to 256 wins over the raised default: held at 256 GRF.
+// RUN: ocloc compile -file %s -device cri -options "-igc_opts 'ForceVRTGRFCeiling=256,DumpASMToConsole=1'" \
+// RUN: 2>&1 | FileCheck %s --check-prefix=FORCE256 --implicit-check-not "numGRF=512"
 
-// NOLIFT: [RetryManager] Start recompilation of the kernel
-// NOLIFT: Build succeeded.
+// FORCE256: numGRF=256
+// FORCE256: Build succeeded.
+
+// Forcing the ceiling to 512 is honored.
+// RUN: ocloc compile -file %s -device cri -options "-igc_opts 'ForceVRTGRFCeiling=512,DumpASMToConsole=1'" \
+// RUN: 2>&1 | FileCheck %s --check-prefix=FORCE512
+
+// FORCE512: numGRF=512
+// FORCE512: Build succeeded.
 
 #define MM(N) acc##N = intel_sub_group_i8_i8_matrix_mad_k32(a##N, b##N, acc##N);
 

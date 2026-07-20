@@ -1726,6 +1726,7 @@ DECLARE_IGC_REGKEY(bool, EnableOCL512GRFForSIMD16, false,
                    "On OCL recompilation, lift the GRF ceiling to 512 for SIMD16 kernels: required/forced "
                    "sub-group size 16, or high register pressure that drops to SIMD16",
                    true)
+DECLARE_IGC_REGKEY(bool, EnableCRIDefault512GRF, true, "Raise the default VRT GRF ceiling to 512 on CRI", true)
 DECLARE_IGC_REGKEY(bool, ForceNoFP64bRegioning, false, "force regioning rules for FP and 64b FPU instructions", false)
 DECLARE_IGC_REGKEY(bool, EnableA64WA, true, "Guarantee A64 load/store addres-hi is uniform", true)
 DECLARE_IGC_REGKEY(bool, EnableSamplerSplit, false, "Split Sampler 3d message to odd and even", false)
@@ -1882,9 +1883,9 @@ DECLARE_IGC_REGKEY(int, RemoveImplicitScratchPointerInstThreshold, 2000,
                    "Maximum number of instructions in kernel for which scratch pointer is considered for removal.",
                    true)
 DECLARE_IGC_REGKEY(DWORD, ForceVRTGRFCeiling, 0,
-                   "Override to set maximum GRF of VRT ceiling number for vISA (default is 256). "
-                   "The value can be from { 320, 448, 512 }",
-                   false)
+                   "Override to set maximum GRF of VRT ceiling number for vISA. "
+                   "The value can be from { 256, 320, 448, 512 }",
+                   true)
 
 DECLARE_IGC_REGKEY(bool, AllowCrossBlockMatchMad, false,
                    "Enable cross basic block matching of mad instructions. This may lead to increased register "
