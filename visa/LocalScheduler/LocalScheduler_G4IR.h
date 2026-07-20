@@ -328,6 +328,8 @@ public:
   NodeAlloc NodeAllocator;
   void moveDeps(Node *fromNode, Node *toNode);
   void pairTypedWriteOrURBWriteNodes(G4_BB *bb);
+  // Bundle each page-fault WA wait (mov) with its write into one node.
+  void bundlePageFaultWANodes();
 
   bool hasReadSuppression(G4_INST *curInst, G4_INST *nextInst, BitSet &liveDst,
                           BitSet &liveSrc) const;
