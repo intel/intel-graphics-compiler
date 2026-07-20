@@ -269,32 +269,20 @@ void G4_BB::emitInstructionSourceLineMapping(std::ostream &output,
   // emitted only when there's a change.
   // Using global variables is ok here since this function is for shader dumps
   // (i.e., debugging) only.
-  static const char *prevFilename = nullptr;
+  static std::string prevFilename;
   static int prevSrcLineNo = 0;
-  static bool resetOnEntry = false;
 
   const char *curFilename = (*it)->getSrcFilename();
   int curSrcLineNo = (*it)->getLineNo();
 
-  // Reset source locations for each function so that we will always emit them
-  // at function entry.
-  if (getParent().getEntryBB() == this && !resetOnEntry) {
-    prevFilename = nullptr;
+  if (getParent().getEntryBB() == this && *it == getFirstInst()) {
+    prevFilename.clear();
     prevSrcLineNo = 0;
-    // First time we process entry BB, we must reset state
-    resetOnEntry = true;
-  }
-
-  if (getParent().getEntryBB() != this) {
-    // Once we see some other BB, we should reset state only when we see entry
-    // again next time.
-    resetOnEntry = false;
   }
 
   if ((*it)->isLabel())
     return;
-  bool emitFile = curFilename && (prevFilename == nullptr ||
-                                  strcmp(prevFilename, curFilename) != 0);
+  bool emitFile = curFilename && prevFilename != curFilename;
   bool emitLineNo = prevSrcLineNo != curSrcLineNo && curSrcLineNo != 0;
 
   if (emitFile)
