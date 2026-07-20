@@ -1,0 +1,307 @@
+/*========================== begin_copyright_notice ============================
+
+Copyright (C) 2026 Intel Corporation
+
+SPDX-License-Identifier: MIT
+
+============================= end_copyright_notice ===========================*/
+
+/*========================== begin_copyright_notice ============================
+
+Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
+See https://llvm.org/LICENSE.txt for license information.
+SPDX-License-Identifier: Apache-2.0 with LLVM-exception
+
+============================= end_copyright_notice ===========================*/
+
+diff --git a/llvm/docs/LangRef.rst b/llvm/docs/LangRef.rst
+index 81694139fcea2..b09c1d7e56320 100644
+--- a/llvm/docs/LangRef.rst
++++ b/llvm/docs/LangRef.rst
+@@ -3476,6 +3476,16 @@ as follows:
+     The ``0`` address space cannot be specified as non-integral.
+     It is only supported for backwards compatibility, the flags of the ``p``
+     specifier should be used instead for new code.
++``as:<address space0>:<address space1>:<address space2>...``
++    This declares a group of address spaces whose mutual ``addrspacecast``\ s
++    are guaranteed to be no-ops, i.e. each such cast preserves both the bit
++    pattern and the represented address. Optimizations may look through these
++    casts when reasoning about, for example, pointer dereferenceability. A
++    group must list at least two address spaces, and an address space may
++    appear in at most one group. An ``addrspacecast`` between two address
++    spaces that are not in a common group (and are not equal) is not assumed to
++    be a no-op. Multiple ``as`` specifiers may be given to declare independent
++    groups.
+ 
+ ``<abi>`` is a lower bound on what is required for a type to be considered
+ aligned. This is used in various places, such as:
+diff --git a/llvm/include/llvm/IR/DataLayout.h b/llvm/include/llvm/IR/DataLayout.h
+index 934c838782417..b3a04378f7ba5 100644
+--- a/llvm/include/llvm/IR/DataLayout.h
++++ b/llvm/include/llvm/IR/DataLayout.h
+@@ -144,6 +144,12 @@ class DataLayout {
+   /// Pointer type specifications. Sorted and uniqued by address space number.
+   SmallVector<PointerSpec, 8> PointerSpecs;
+ 
++  /// Groups of address spaces whose mutual `addrspacecast`s are guaranteed to
++  /// be no-ops, i.e. the cast preserves both the bit pattern and the
++  /// represented address. Declared via the "as:<as0>:<as1>..." specifier. An
++  /// address space not listed in any group is only no-op-castable to itself.
++  SmallVector<SmallVector<unsigned, 4>, 1> NoopAddrSpaceCastGroups;
++
+   /// The string representation used to create this DataLayout
+   std::string StringRepresentation;
+ 
+@@ -184,6 +190,9 @@ class DataLayout {
+   Error parsePointerSpec(StringRef Spec,
+                          SmallDenseSet<StringRef, 8> &AddrSpaceNames);
+ 
++  /// Attempts to parse an address space cast group specification ("as").
++  Error parseAddrSpaceCastGroup(StringRef Spec);
++
+   /// Attempts to parse a single specification.
+   Error parseSpecification(StringRef Spec,
+                            SmallVectorImpl<unsigned> &NonIntegralAddressSpaces,
+@@ -271,6 +280,14 @@ class DataLayout {
+     return DefaultGlobalsAddrSpace;
+   }
+ 
++  /// Returns true if casting a pointer from \p SrcAS to \p DstAS via
++  /// `addrspacecast` is guaranteed to be a no-op, i.e. it preserves both the
++  /// bit pattern and the represented address. Such casts can be looked through
++  /// when reasoning about dereferenceability. An address space is always a
++  /// no-op cast to itself; for differing address spaces this is true only when
++  /// they are declared in the same "as:..." group in the data layout string.
++  LLVM_ABI bool isNoopAddrSpaceCast(unsigned SrcAS, unsigned DstAS) const;
++
+   bool hasMicrosoftFastStdCallMangling() const {
+     return ManglingMode == MM_WinCOFFX86;
+   }
+diff --git a/llvm/lib/Analysis/Loads.cpp b/llvm/lib/Analysis/Loads.cpp
+index 797d18325c336..7888bc8f7548a 100644
+--- a/llvm/lib/Analysis/Loads.cpp
++++ b/llvm/lib/Analysis/Loads.cpp
+@@ -200,10 +200,18 @@ static bool isDereferenceableAndAlignedPointer(
+                                               Alignment, Size, DL, CtxI, AC, DT,
+                                               TLI, Visited, MaxDepth);
+ 
+-  if (const AddrSpaceCastOperator *ASC = dyn_cast<AddrSpaceCastOperator>(V))
+-    return isDereferenceableAndAlignedPointer(ASC->getOperand(0), Alignment,
+-                                              Size, DL, CtxI, AC, DT, TLI,
+-                                              Visited, MaxDepth);
++  if (const AddrSpaceCastOperator *ASC = dyn_cast<AddrSpaceCastOperator>(V)) {
++    // Only look through the cast if it is known to preserve the represented
++    // address (and therefore dereferenceability). For a non-noop cast the
++    // result may refer to an entirely different location, so the source's
++    // dereferenceability tells us nothing about the casted pointer.
++    if (DL.isNoopAddrSpaceCast(ASC->getSrcAddressSpace(),
++                               ASC->getDestAddressSpace()))
++      return isDereferenceableAndAlignedPointer(ASC->getOperand(0), Alignment,
++                                                Size, DL, CtxI, AC, DT, TLI,
++                                                Visited, MaxDepth);
++    return false;
++  }
+ 
+   return AC && isDereferenceableAndAlignedPointerViaAssumption(
+                    V, Alignment,
+diff --git a/llvm/lib/IR/DataLayout.cpp b/llvm/lib/IR/DataLayout.cpp
+index 82b33887b81f2..647f3680382e1 100644
+--- a/llvm/lib/IR/DataLayout.cpp
++++ b/llvm/lib/IR/DataLayout.cpp
+@@ -17,6 +17,7 @@
+ 
+ #include "llvm/IR/DataLayout.h"
+ #include "llvm/ADT/DenseMap.h"
++#include "llvm/ADT/STLExtras.h"
+ #include "llvm/ADT/StringExtras.h"
+ #include "llvm/ADT/StringRef.h"
+ #include "llvm/IR/Constants.h"
+@@ -221,6 +222,7 @@ DataLayout &DataLayout::operator=(const DataLayout &Other) {
+   FloatSpecs = Other.FloatSpecs;
+   VectorSpecs = Other.VectorSpecs;
+   PointerSpecs = Other.PointerSpecs;
++  NoopAddrSpaceCastGroups = Other.NoopAddrSpaceCastGroups;
+   StructABIAlignment = Other.StructABIAlignment;
+   StructPrefAlignment = Other.StructPrefAlignment;
+   return *this;
+@@ -240,6 +242,7 @@ bool DataLayout::operator==(const DataLayout &Other) const {
+          LegalIntWidths == Other.LegalIntWidths && IntSpecs == Other.IntSpecs &&
+          FloatSpecs == Other.FloatSpecs && VectorSpecs == Other.VectorSpecs &&
+          PointerSpecs == Other.PointerSpecs &&
++         NoopAddrSpaceCastGroups == Other.NoopAddrSpaceCastGroups &&
+          StructABIAlignment == Other.StructABIAlignment &&
+          StructPrefAlignment == Other.StructPrefAlignment;
+ }
+@@ -527,6 +530,40 @@ Error DataLayout::parsePointerSpec(
+   return Error::success();
+ }
+ 
++Error DataLayout::parseAddrSpaceCastGroup(StringRef Spec) {
++  // as:<address space>:<address space>[:<address space>]...
++  // Declares a group of address spaces whose mutual addrspacecasts are no-ops,
++  // i.e. the cast preserves both the bit pattern and the represented address.
++  assert(Spec.starts_with("as"));
++  StringRef Rest = Spec.drop_front(2);
++  if (!Rest.consume_front(":"))
++    return createSpecFormatError(
++        "as:<address space>:<address space>[:<address space>]...");
++
++  SmallVector<unsigned, 4> Group;
++  for (StringRef Str : split(Rest, ':')) {
++    unsigned AddrSpace;
++    if (Error Err = parseAddrSpace(Str, AddrSpace))
++      return Err;
++    // An address space may belong to at most one no-op cast group, otherwise
++    // group membership would no longer define an equivalence relation.
++    for (const SmallVectorImpl<unsigned> &Existing : NoopAddrSpaceCastGroups)
++      if (is_contained(Existing, AddrSpace))
++        return createStringError("address space " + Twine(AddrSpace) +
++                                 " is already in a no-op cast group");
++    if (is_contained(Group, AddrSpace))
++      return createStringError("address space " + Twine(AddrSpace) +
++                               " listed more than once in a no-op cast group");
++    Group.push_back(AddrSpace);
++  }
++  if (Group.size() < 2)
++    return createStringError(
++        "a no-op address space cast group must list at least two address "
++        "spaces");
++  NoopAddrSpaceCastGroups.push_back(std::move(Group));
++  return Error::success();
++}
++
+ Error DataLayout::parseSpecification(
+     StringRef Spec, SmallVectorImpl<unsigned> &NonIntegralAddressSpaces,
+     SmallDenseSet<StringRef, 8> &AddrSpaceNames) {
+@@ -555,6 +592,12 @@ Error DataLayout::parseSpecification(
+     return Error::success();
+   }
+ 
++  // Address space cast group: a set of address spaces whose mutual
++  // addrspacecasts are no-ops. Handled before the single-character dispatch
++  // since it also starts with 'a' (cf. the 'a' aggregate specifier).
++  if (Spec.starts_with("as"))
++    return parseAddrSpaceCastGroup(Spec);
++
+   // The rest of the specifiers are single-character.
+   assert(!Spec.empty() && "Empty specification is handled by the caller");
+   char Specifier = Spec.front();
+@@ -777,6 +820,15 @@ void DataLayout::setPointerSpec(uint32_t AddrSpace, uint32_t BitWidth,
+   }
+ }
+ 
++bool DataLayout::isNoopAddrSpaceCast(unsigned SrcAS, unsigned DstAS) const {
++  if (SrcAS == DstAS)
++    return true;
++  for (const SmallVectorImpl<unsigned> &Group : NoopAddrSpaceCastGroups)
++    if (is_contained(Group, SrcAS) && is_contained(Group, DstAS))
++      return true;
++  return false;
++}
++
+ Align DataLayout::getIntegerAlignment(uint32_t BitWidth,
+                                       bool abi_or_pref) const {
+   auto I = IntSpecs.begin();
+diff --git a/llvm/test/Transforms/LICM/hoist-bitcast-load.ll b/llvm/test/Transforms/LICM/hoist-bitcast-load.ll
+index 16d1c0e775ed4..202dccb09f01b 100644
+--- a/llvm/test/Transforms/LICM/hoist-bitcast-load.ll
++++ b/llvm/test/Transforms/LICM/hoist-bitcast-load.ll
+@@ -1,7 +1,10 @@
+ ; RUN: opt -aa-pipeline=basic-aa -passes='require<opt-remark-emit>,loop-mssa(loop-simplifycfg,licm)' -S < %s | FileCheck %s
+ ; RUN: opt -S -passes=licm -verify-memoryssa < %s | FileCheck %s
+ 
+-target datalayout = "e-m:e-i64:64-f80:128-n8:16:32:64-S128"
++; The addrspacecast 0->1 in @test2_addrspacecast is a no-op on this target, so
++; declare address spaces 0 and 1 as a no-op cast group to allow looking through
++; it when proving dereferenceability for hoisting.
++target datalayout = "e-m:e-i64:64-f80:128-n8:16:32:64-S128-as:0:1"
+ target triple = "x86_64-unknown-linux-gnu"
+ 
+ ; Make sure the basic alloca pointer hoisting works:
+diff --git a/llvm/test/Transforms/SROA/addrspacecast.ll b/llvm/test/Transforms/SROA/addrspacecast.ll
+index 74201d56a9783..9008026493434 100644
+--- a/llvm/test/Transforms/SROA/addrspacecast.ll
++++ b/llvm/test/Transforms/SROA/addrspacecast.ll
+@@ -2,7 +2,10 @@
+ ; RUN: opt < %s -passes='sroa<preserve-cfg>' -S | FileCheck %s --check-prefixes=CHECK,CHECK-PRESERVE-CFG
+ ; RUN: opt < %s -passes='sroa<modify-cfg>' -S | FileCheck %s --check-prefixes=CHECK,CHECK-MODIFY-CFG
+ 
+-target datalayout = "e-p:64:64:64-p1:16:16:16-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:32:64-f32:32:32-f64:64:64-v64:64:64-v128:128:128-a0:0:64-n8:16:32:64"
++; Address spaces 0, 1 and 2 are no-op-castable on this target; declare them as
++; a no-op cast group so SROA can look through addrspacecasts when proving that
++; speculated loads are dereferenceable.
++target datalayout = "e-p:64:64:64-p1:16:16:16-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:32:64-f32:32:32-f64:64:64-v64:64:64-v128:128:128-a0:0:64-n8:16:32:64-as:0:1:2"
+ 
+ declare void @llvm.memcpy.p0.p1.i32(ptr nocapture writeonly, ptr addrspace(1) nocapture readonly, i32, i1 immarg) #0
+ declare void @llvm.memcpy.p1.p0.i32(ptr addrspace(1) nocapture writeonly, ptr nocapture readonly, i32, i1 immarg) #0
+diff --git a/llvm/test/Transforms/SimplifyCFG/speculate-addrspacecast-load.ll b/llvm/test/Transforms/SimplifyCFG/speculate-addrspacecast-load.ll
+new file mode 100644
+index 0000000000000..5cd0ca1fc8577
+--- /dev/null
++++ b/llvm/test/Transforms/SimplifyCFG/speculate-addrspacecast-load.ll
+@@ -0,0 +1,65 @@
++; RUN: opt -S -passes=simplifycfg < %s | FileCheck %s
++
++; SimplifyCFG may only speculate a load through an addrspacecast when the cast
++; is a no-op, i.e. it preserves the represented address. Whether a cast is a
++; no-op is encoded in the data layout via the "as:<as>:<as>..." specifier,
++; which lists address spaces whose mutual addrspacecasts are no-ops.
++;
++; Here generic(4) and global(1) are in the same no-op group, but local(3) is
++; not. So a load reached through addrspacecast 4->1 is dereferenceable and can
++; be speculated, while one reached through 4->3 must not be.
++
++target datalayout = "e-p:64:64-p1:64:64-p3:64:64-p4:64:64-as:1:4"
++
++; The local cast (4->3) is not a no-op, so the dereferenceable(4) fact on the
++; generic pointer does not carry over and neither load may be speculated. The
++; conditional branch must be preserved.
++define i32 @no_speculate_local(ptr addrspace(4) dereferenceable(4) %p, i1 %c) {
++; CHECK-LABEL: define i32 @no_speculate_local(
++; CHECK:       entry:
++; CHECK-NOT:     load
++; CHECK:         br i1
++; CHECK:       then:
++; CHECK:         load i32, ptr addrspace(3)
++; CHECK:       else:
++; CHECK:         load i32, ptr addrspace(1)
++entry:
++  br i1 %c, label %then, label %else
++
++then:
++  %as3 = addrspacecast ptr addrspace(4) %p to ptr addrspace(3)
++  %v1 = load i32, ptr addrspace(3) %as3, align 1
++  br label %exit
++
++else:
++  %as1 = addrspacecast ptr addrspace(4) %p to ptr addrspace(1)
++  %v2 = load i32, ptr addrspace(1) %as1, align 1
++  br label %exit
++
++exit:
++  %res = phi i32 [ %v1, %then ], [ %v2, %else ]
++  ret i32 %res
++}
++
++; The global cast (4->1) is a no-op per the data layout, so the load is known
++; dereferenceable and SimplifyCFG can speculate it, folding the branch into a
++; select.
++define i32 @speculate_global(ptr addrspace(4) dereferenceable(4) %p, i1 %c) {
++; CHECK-LABEL: define i32 @speculate_global(
++; CHECK:         [[AS1:%.*]] = addrspacecast ptr addrspace(4) %p to ptr addrspace(1)
++; CHECK:         [[V:%.*]] = load i32, ptr addrspace(1) [[AS1]]
++; CHECK:         [[RES:%.*]] = select i1 %c, i32 [[V]], i32 0
++; CHECK:         ret i32 [[RES]]
++; CHECK-NOT:     br i1
++entry:
++  br i1 %c, label %load, label %exit
++
++load:
++  %as1 = addrspacecast ptr addrspace(4) %p to ptr addrspace(1)
++  %v = load i32, ptr addrspace(1) %as1, align 1
++  br label %exit
++
++exit:
++  %res = phi i32 [ %v, %load ], [ 0, %entry ]
++  ret i32 %res
++}

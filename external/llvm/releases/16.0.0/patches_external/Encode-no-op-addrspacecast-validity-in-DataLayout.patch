@@ -1,0 +1,141 @@
+/*========================== begin_copyright_notice ============================
+
+Copyright (C) 2026 Intel Corporation
+
+SPDX-License-Identifier: MIT
+
+============================= end_copyright_notice ===========================*/
+
+/*========================== begin_copyright_notice ============================
+
+Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
+See https://llvm.org/LICENSE.txt for license information.
+SPDX-License-Identifier: Apache-2.0 with LLVM-exception
+
+============================= end_copyright_notice ===========================*/
+
+--- a/llvm/include/llvm/IR/DataLayout.h
++++ b/llvm/include/llvm/IR/DataLayout.h
+@@ -165,6 +165,11 @@
+   using PointersTy = SmallVector<PointerAlignElem, 8>;
+   PointersTy Pointers;
+ 
++  /// Groups of address spaces whose mutual `addrspacecast`s are guaranteed to
++  /// be no-ops, i.e. the cast preserves both the bit pattern and the
++  /// represented address.
++  SmallVector<SmallVector<unsigned, 4>, 1> NoopAddrSpaceCastGroups;
++
+   const PointerAlignElem &getPointerAlignElem(uint32_t AddressSpace) const;
+ 
+   // The StructType -> StructLayout map.
+@@ -225,6 +230,7 @@
+     LegalIntWidths = DL.LegalIntWidths;
+     Alignments = DL.Alignments;
+     Pointers = DL.Pointers;
++    NoopAddrSpaceCastGroups = DL.NoopAddrSpaceCastGroups;
+     NonIntegralAddressSpaces = DL.NonIntegralAddressSpaces;
+     return *this;
+   }
+@@ -298,6 +304,10 @@
+     return DefaultGlobalsAddrSpace;
+   }
+ 
++  /// Returns true if casting a pointer from SrcAS to DstAS via addrspacecast
++  /// is guaranteed to preserve both bit pattern and represented address.
++  bool isNoopAddrSpaceCast(unsigned SrcAS, unsigned DstAS) const;
++
+   bool hasMicrosoftFastStdCallMangling() const {
+     return ManglingMode == MM_WinCOFFX86;
+   }
+--- a/llvm/lib/IR/DataLayout.cpp
++++ b/llvm/lib/IR/DataLayout.cpp
+@@ -288,6 +288,34 @@
+       continue;
+     }
+ 
++    if (Tok == "as") {
++      if (Rest.empty())
++        return reportError("Missing address space list for no-op cast group");
++
++      SmallVector<unsigned, 4> Group;
++      do {
++        if (Error Err = ::split(Rest, ':', Split))
++          return Err;
++        Rest = Split.second;
++        unsigned AS;
++        if (Error Err = getAddrSpace(Split.first, AS))
++          return Err;
++        for (const auto &Existing : NoopAddrSpaceCastGroups)
++          if (is_contained(Existing, AS))
++            return reportError("Address space appears in multiple no-op cast groups");
++        if (is_contained(Group, AS))
++          return reportError("Address space is duplicated in no-op cast group");
++        Group.push_back(AS);
++      } while (!Rest.empty());
++
++      if (Group.size() < 2)
++        return reportError(
++            "No-op address space cast group must contain at least two spaces");
++
++      NoopAddrSpaceCastGroups.push_back(std::move(Group));
++      continue;
++    }
++
+     char Specifier = Tok.front();
+     Tok = Tok.substr(1);
+ 
+@@ -550,7 +578,8 @@
+              TheFunctionPtrAlignType == Other.TheFunctionPtrAlignType &&
+              ManglingMode == Other.ManglingMode &&
+              LegalIntWidths == Other.LegalIntWidths &&
+-             Alignments == Other.Alignments && Pointers == Other.Pointers;
++             Alignments == Other.Alignments && Pointers == Other.Pointers &&
++             NoopAddrSpaceCastGroups == Other.NoopAddrSpaceCastGroups;
+   // Note: getStringRepresentation() might differs, it is not canonicalized
+   return Ret;
+ }
+@@ -631,6 +660,15 @@
+   return Error::success();
+ }
+ 
++bool DataLayout::isNoopAddrSpaceCast(unsigned SrcAS, unsigned DstAS) const {
++  if (SrcAS == DstAS)
++    return true;
++  for (const auto &Group : NoopAddrSpaceCastGroups)
++    if (is_contained(Group, SrcAS) && is_contained(Group, DstAS))
++      return true;
++  return false;
++}
++
+ Align DataLayout::getIntegerAlignment(uint32_t BitWidth,
+                                       bool abi_or_pref) const {
+   auto I = findAlignmentLowerBound(INTEGER_ALIGN, BitWidth);
+@@ -670,6 +708,7 @@
+   LegalIntWidths.clear();
+   Alignments.clear();
+   Pointers.clear();
++  NoopAddrSpaceCastGroups.clear();
+   delete static_cast<StructLayoutMap *>(LayoutMap);
+   LayoutMap = nullptr;
+ }
+--- a/llvm/lib/Analysis/Loads.cpp
++++ b/llvm/lib/Analysis/Loads.cpp
+@@ -152,10 +152,14 @@
+                                               Alignment, Size, DL, CtxI, AC, DT,
+                                               TLI, Visited, MaxDepth);
+ 
+-  if (const AddrSpaceCastOperator *ASC = dyn_cast<AddrSpaceCastOperator>(V))
+-    return isDereferenceableAndAlignedPointer(ASC->getOperand(0), Alignment,
+-                                              Size, DL, CtxI, AC, DT, TLI,
+-                                              Visited, MaxDepth);
++  if (const AddrSpaceCastOperator *ASC = dyn_cast<AddrSpaceCastOperator>(V)) {
++    if (DL.isNoopAddrSpaceCast(ASC->getSrcAddressSpace(),
++                               ASC->getDestAddressSpace()))
++      return isDereferenceableAndAlignedPointer(ASC->getOperand(0), Alignment,
++                                                Size, DL, CtxI, AC, DT, TLI,
++                                                Visited, MaxDepth);
++    return false;
++  }
+ 
+   if (CtxI) {
+     /// Look through assumes to see if both dereferencability and alignment can
