@@ -31,6 +31,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/Analysis/ConstantFolding.h"
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/IR/IRBuilder.h"
+#include "llvmWrapper/IR/IntrinsicInst.h"
 #include "llvmWrapper/IR/Type.h"
 #include "llvmWrapper/Support/Alignment.h"
 #include "llvmWrapper/Support/TypeSize.h"
@@ -363,18 +364,11 @@ void TransposeHelper::handleAllocaSources(Instruction &Inst,
         handleLifetimeEnd(II, Idx);
         break;
       case Intrinsic::masked_gather:
-#if LLVM_VERSION_MAJOR >= 22
-        handleGather(II, Idx, 1, 2);
-#else
-        handleGather(II, Idx, 2, 3);
-#endif
+        handleGather(II, Idx, IGCLLVM::getMaskedGatherMaskOperandNo(),
+                     IGCLLVM::getMaskedGatherPassThruOperandNo());
         break;
       case Intrinsic::masked_scatter:
-#if LLVM_VERSION_MAJOR >= 22
-        handleScatter(II, Idx, 2, 0);
-#else
-        handleScatter(II, Idx, 3, 0);
-#endif
+        handleScatter(II, Idx, IGCLLVM::getMaskedScatterMaskOperandNo(), 0);
         break;
       case GenXIntrinsic::genx_svm_gather:
         handleGather(II, Idx, 0, 3);
@@ -905,22 +899,12 @@ bool GenXPromoteArray::checkPtrToIntCandidate(PtrToIntInst *PTI,
     default:
       return false;
     case Intrinsic::masked_gather:
-#if LLVM_VERSION_MAJOR >= 22
-      Pred = MemOp->getOperand(1);
-      Input = MemOp->getOperand(2);
-#else
-      Pred = MemOp->getOperand(2);
-      Input = MemOp->getOperand(3);
-#endif
+      Pred = MemOp->getOperand(IGCLLVM::getMaskedGatherMaskOperandNo());
+      Input = MemOp->getOperand(IGCLLVM::getMaskedGatherPassThruOperandNo());
       break;
     case Intrinsic::masked_scatter:
-#if LLVM_VERSION_MAJOR >= 22
-      Pred = MemOp->getOperand(2);
+      Pred = MemOp->getOperand(IGCLLVM::getMaskedScatterMaskOperandNo());
       Input = MemOp->getOperand(0);
-#else
-      Pred = MemOp->getOperand(3);
-      Input = MemOp->getOperand(0);
-#endif
       break;
     case GenXIntrinsic::genx_svm_gather:
     case GenXIntrinsic::genx_svm_scatter: {

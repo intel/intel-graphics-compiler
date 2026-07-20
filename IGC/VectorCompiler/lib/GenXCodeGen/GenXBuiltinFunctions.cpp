@@ -30,6 +30,8 @@ SPDX-License-Identifier: MIT
 #include <llvm/Linker/Linker.h>
 #include <llvm/Pass.h>
 
+#include "llvmWrapper/IR/Module.h"
+
 #include <string>
 
 #define DEBUG_TYPE "genx-builtin-functions"
@@ -117,11 +119,8 @@ bool GenXBuiltinFunctions::runOnModule(Module &M) {
             .getGenXSubtarget();
 
   auto &Ctx = M.getContext();
-#if LLVM_VERSION_MAJOR >= 22
-  auto Lib = loadBuiltinLib(Ctx, M.getDataLayout(), M.getTargetTriple().str());
-#else
-  auto Lib = loadBuiltinLib(Ctx, M.getDataLayout(), M.getTargetTriple());
-#endif
+  auto Lib =
+      loadBuiltinLib(Ctx, M.getDataLayout(), IGCLLVM::getTargetTriple(M));
   if (Lib && Linker::linkModules(M, std::move(Lib))) {
     vc::diagnose(Ctx, "GenXBuiltinFunctions",
                  "Error linking built-in functions");
@@ -538,11 +537,7 @@ GenXBuiltinFunctions::loadBuiltinLib(LLVMContext &Ctx, const DataLayout &DL,
   auto BiFModule = vc::getBiFModuleOrReportError(BiFBuffer, Ctx);
 
   BiFModule->setDataLayout(DL);
-#if LLVM_VERSION_MAJOR >= 22
-  BiFModule->setTargetTriple(llvm::Triple(Triple));
-#else
-  BiFModule->setTargetTriple(Triple);
-#endif
+  IGCLLVM::setTargetTriple(*BiFModule, Triple);
 
   return BiFModule;
 }
