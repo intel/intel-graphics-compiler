@@ -15,6 +15,18 @@ This document lists all SPIR-V extensions supported by IGC and their platform re
 
 ---
 
+## SPV_EXT_ocp_microscaling_types
+
+**Specification**: https://github.khronos.org/SPIRV-Registry/extensions/EXT/SPV_EXT_ocp_microscaling_types.html
+
+> **Experimentally supported on**: XE3P+ (NVL, CRI)
+
+**Capabilities**:
+
+- **Float4EXT**
+
+---
+
 ## SPV_EXT_optnone
 
 **Specification**: https://github.khronos.org/SPIRV-Registry/extensions/EXT/SPV_EXT_optnone.html

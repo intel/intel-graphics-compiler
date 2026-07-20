@@ -489,4 +489,11 @@ def SPV_INTEL_rounded_divide_sqrt : ExperimentalExtension<
   isCoreChildOf<IGFX_XE_HP_CORE>
 >;
 
+def SPV_EXT_ocp_microscaling_types : ExperimentalExtension<
+  "SPV_EXT_ocp_microscaling_types",
+  [ Capability<"Float4EXT"> ],
+  "https://github.khronos.org/SPIRV-Registry/extensions/EXT/SPV_EXT_ocp_microscaling_types.html",
+  isCoreChildOf<IGFX_XE3P_CORE>
+>;
+
 // ----------------------------------------------
