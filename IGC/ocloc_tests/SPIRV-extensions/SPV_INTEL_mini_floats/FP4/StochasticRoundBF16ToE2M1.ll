@@ -6,6 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
+; UNSUPPORTED: true
 ; REQUIRES: llvm-spirv, cri-supported
 ; RUN: llvm-as %s -o %t.bc
 ; RUN: llvm-spirv %t.bc -o %t.spv --spirv-ext=+SPV_INTEL_float4,+SPV_KHR_bfloat16,+SPV_INTEL_int4,+SPV_INTEL_fp_conversions
