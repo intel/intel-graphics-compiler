@@ -10,8 +10,8 @@ SPDX-License-Identifier: MIT
 
 // RUN: ocloc compile -file %s -device pvc -options "-Xfinalizer -enableBarrierWA -igc_opts 'VISAOptions=-asmToConsole'" 2>&1 | FileCheck %s --check-prefix=CHECK-ASM
 
-// CHECK-ASM: (W)     load.ugm.d32x1t.a64 (1|M0)  r{{[0-9:]+}}:1        [[ADDR:\[r[0-9]+:[0-9]+\]]]
-// CHECK-ASM: sync.allrd
+// CHECK-ASM: (W)     load.ugm.d32x1t.a64 (1|M0)  [[PD:r[0-9]+]]:1        [[ADDR:\[r[0-9]+:[0-9]+\]]]
+// CHECK-ASM: (W){{.*}}mov (1|M0){{.*}}null<1>:ud{{.*}}[[PD]].0
 // CHECK-ASM: (W)     store.ugm.d32x1t.a64 (1|M0)  [[ADDR]]     r{{[0-9:]+}}:1
 // CHECK-ASM-NOT: fence.ugm.evict.tile
 // CHECK-ASM: EOT

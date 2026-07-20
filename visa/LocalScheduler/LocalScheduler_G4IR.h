@@ -330,6 +330,8 @@ public:
   void moveDeps(Node *fromNode, Node *toNode);
   void pairTypedWriteOrURBWriteNodes(G4_BB *bb);
   void pair2xDpasNodes();
+  // Bundle each page-fault WA wait (mov) with its write into one node.
+  void bundlePageFaultWANodes();
   bool hasMultipleDpasNodes() const { return NumDpasNodes > 1; }
 
   bool hasReadSuppression(G4_INST *curInst, G4_INST *nextInst, BitSet &liveDst,

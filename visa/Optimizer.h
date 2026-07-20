@@ -267,6 +267,9 @@ private:
   void insertPageFaultWA();
   void insertPageFaultWAforLSC(G4_BB *bb, INST_LIST_ITER it);
   void insertPageFaultWAforHDC(G4_BB *bb, INST_LIST_ITER it);
+  // Insert the page-fault WA data-return wait (dummy mov) before the write.
+  void insertPageFaultWAWait(G4_BB *bb, INST_LIST_ITER it,
+                             G4_Declare *probeDstDcl, G4_InstSend *sendInst);
   // Compute the response-GRF count for a no-return LSC atomic.
   unsigned getLscUntypedAtomicRspLen(G4_ExecSize execSize,
                                      const G4_SendDescRaw *msgDesc) const;

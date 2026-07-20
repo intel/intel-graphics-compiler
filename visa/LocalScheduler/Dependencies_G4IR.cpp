@@ -211,11 +211,6 @@ DepType vISA::CheckBarrier(G4_INST *inst) {
   } else if (inst->opcode() == G4_wait || inst->isYieldInst()
   ) {
     return MSG_BARRIER;
-  } else if (inst->opcode() == G4_sync_allrd ||
-             inst->opcode() == G4_sync_allwr) {
-    // sync.allrd/sync.allwr wait for all outstanding reads/writes; treat as
-    // a scheduling barrier to prevent sends from being reordered across them.
-    return MSG_BARRIER;
   } else if (inst->isFlowControl()) {
     // All control flow instructions are scheduling barriers
     return CONTROL_FLOW_BARRIER;

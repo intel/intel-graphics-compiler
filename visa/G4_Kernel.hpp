@@ -611,6 +611,9 @@ private:
   // separate class (G4_IRInfo?).
   std::unordered_map<G4_INST *, G4_SrcRegRegion *> instImplicitAccSrc;
   std::unordered_map<G4_INST *, G4_DstRegRegion *> instImplicitAccDef;
+  // Page-fault WA: the data-return wait (mov) and its write; the local
+  // scheduler bundles each pair into one node to keep them adjacent.
+  std::unordered_set<G4_INST *> pageFaultWAInsts;
 
   // Kernel cost model
   std::unique_ptr<KernelCostInfo> m_kernelCost;
@@ -880,6 +883,10 @@ public:
   G4_DstRegRegion *getImplicitAccDef(G4_INST *inst) const {
     auto iter = instImplicitAccDef.find(inst);
     return iter == instImplicitAccDef.end() ? nullptr : iter->second;
+  }
+  void addPageFaultWAInst(G4_INST *inst) { pageFaultWAInsts.insert(inst); }
+  bool isPageFaultWAInst(const G4_INST *inst) const {
+    return pageFaultWAInsts.count(const_cast<G4_INST *>(inst)) != 0;
   }
   void setImplicitAccSrc(G4_INST *inst, G4_SrcRegRegion *accSrc) {
     // Do not allow null implicit acc operand.

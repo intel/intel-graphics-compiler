@@ -224,6 +224,8 @@ G4_BB_Schedule::G4_BB_Schedule(G4_Kernel *k, G4_BB *block,
        getOptions()->getOption(vISA_ScheduleFor2xDpas))) {
     ddd.pair2xDpasNodes();
   }
+  // Keep each page-fault WA wait adjacent to its write.
+  ddd.bundlePageFaultWANodes();
 
   if ((ddd.getIs2xFPBlock()) && getOptions()->getOption(vISA_ScheduleFor2xSP)) {
     lastCycle = ddd.listScheduleFor2xFP(this);
@@ -2047,6 +2049,39 @@ void DDD::pair2xDpasNodes() {
     fwdDst->clear();
   }
 }
+
+void DDD::bundlePageFaultWANodes() {
+  // Only the page-fault WA records nodes to bundle; skip otherwise.
+  if (!getBuilder()->needBarrierWA())
+    return;
+  // Merge each recorded (wait mov, write) pair into one node so they stay
+  // adjacent (needed for correct gdb source-line attribution).
+  // allNodes is in reverse program order, so rbegin()..rend() is forward:
+  // the wait mov is seen before its write.
+  Node *waitNode = nullptr;
+  for (auto it = allNodes.rbegin(), ite = allNodes.rend(); it != ite; ++it) {
+    Node *node = *it;
+    if (node->getInstructions()->empty())
+      continue;
+    G4_INST *inst = node->getInstructions()->front();
+    if (!kernel->isPageFaultWAInst(inst))
+      continue;
+    if (inst->isSend()) {
+      // The write: bundle with the preceding wait mov.
+      if (waitNode && canAvoidDepCycles(waitNode, node, true)) {
+        moveDeps(node, waitNode);
+        waitNode->instVec.insert(waitNode->instVec.end(),
+                                 node->instVec.begin(), node->instVec.end());
+        node->clear();
+      }
+      waitNode = nullptr;
+    } else {
+      // The wait mov.
+      waitNode = node;
+    }
+  }
+}
+
 void DDD::collectRoots() {
   Roots.clear();
   for (auto N : allNodes) {

@@ -9682,8 +9682,8 @@ void Optimizer::insertPageFaultWAforLSC(G4_BB *bb, INST_LIST_ITER it) {
     return;
   }
 
-  // Pure store: insert probe load + sync.allrd before the write to
-  // force address translation.
+  // Pure store: insert probe load + data-return wait before the write
+  // to force address translation.
   unsigned dataSrcLen = (unsigned)msgDesc->getSrc1LenRegs();
   if (dataSrcLen == 0)
     return;
@@ -9703,8 +9703,8 @@ void Optimizer::insertPageFaultWAforLSC(G4_BB *bb, INST_LIST_ITER it) {
       sfid, probeDescVal, probeExtDescVal, 0, SendAccess::READ_ONLY,
       const_cast<G4_Operand *>(msgDesc->getBti()), LdStAttrs::NONE);
 
-  // Probe destination: a fresh temporary; its value is never read,
-  // only the SBID completion (sync.allrd) matters.
+  // Probe destination: a fresh temporary; its loaded value is unused -
+  // the wait mov reads it only to create the data-return dependency.
   G4_Declare *probeDstDcl = builder.createTempVar(
       dataSrcLen * builder.getGRFSize() / TypeSize(Type_UD), Type_UD,
       builder.getGRFAlign());
@@ -9737,8 +9737,7 @@ void Optimizer::insertPageFaultWAforLSC(G4_BB *bb, INST_LIST_ITER it) {
     probeExDescOp = builder.duplicateOperand(writeExDescOp);
   }
 
-  // Propagate the write's predicate so the probe fires only when the
-  // write would execute (avoids spurious faults when pred is false).
+  // Predicate the probe like the write (no probe when it is masked off).
   G4_Predicate *writePred = sendInst->getPredicate();
   G4_Predicate *probePred =
       writePred ? builder.duplicateOperand(writePred) : nullptr;
@@ -9747,15 +9746,30 @@ void Optimizer::insertPageFaultWAforLSC(G4_BB *bb, INST_LIST_ITER it) {
       probePred, G4_sends, execSize, probeDst, probeAddrSrc,
       builder.createNullSrc(Type_UD), builder.createImm(probeDescVal, Type_UD),
       opts, probeDesc, probeExDescOp, false);
-  // Probe load and sync are generated on behalf of the store; give
-  // them the same VISA ID so debuggers map them to the same source.
+  // Give the probe the store's VISA ID so debuggers map it to the same
+  // source line.
   probeLoad->setVISAId(sendInst->getVISAId());
   bb->insertBefore(it, probeLoad);
 
-  G4_INST *syncInst =
-      builder.createSync(G4_sync_allrd, builder.createNullSrc(Type_UD));
-  syncInst->setVISAId(sendInst->getVISAId());
-  bb->insertBefore(it, syncInst);
+  insertPageFaultWAWait(bb, it, probeDstDcl, sendInst);
+}
+
+// Insert the data-return wait before the write at `it`: a dummy
+// "mov null, probeDst" whose RAW on probeDst makes SWSB emit a precise
+// {$probe.dst} wait (a null-dst mov survives DCE/removeRedundMov).  Record
+// the wait and write so the local scheduler bundles them adjacently.
+void Optimizer::insertPageFaultWAWait(G4_BB *bb, INST_LIST_ITER it,
+                                      G4_Declare *probeDstDcl,
+                                      G4_InstSend *sendInst) {
+  G4_SrcRegRegion *probeDstSrc =
+      builder.createSrcRegRegion(probeDstDcl, builder.getRegionScalar());
+  G4_INST *waitInst =
+      builder.createMov(g4::SIMD1, builder.createNullDst(Type_UD), probeDstSrc,
+                        InstOpt_WriteEnable, false);
+  waitInst->setVISAId(sendInst->getVISAId());
+  kernel.addPageFaultWAInst(waitInst);
+  bb->insertBefore(it, waitInst);
+  kernel.addPageFaultWAInst(sendInst);
 }
 
 void Optimizer::insertPageFaultWAforHDC(G4_BB *bb, INST_LIST_ITER it) {
@@ -9843,7 +9857,7 @@ void Optimizer::insertPageFaultWAforHDC(G4_BB *bb, INST_LIST_ITER it) {
   }
   // HDC non-atomic write: build a probe-load descriptor by converting
   // the write opcode to its read counterpart, then insert probe load
-  // + sync.allrd before the write.
+  // + data-return wait before the write.
   unsigned dataSrcLen = msgDesc->getWriteDataLenRegs();
   if (dataSrcLen == 0)
     return;
@@ -9930,8 +9944,8 @@ void Optimizer::insertPageFaultWAforHDC(G4_BB *bb, INST_LIST_ITER it) {
   //       (W) add (1) a0.0<1>:ud  r0.0<0;1,0>:ud  0x20a0000:ud
   //       (W) add (1) a0.0<1>:ud  a0.0<0;1,0>:ud  0xe0000:ud
   //       (W) sends.dc0 (4) TV5(0,0):ud M2(0,0) null 0xa:ud a0.0<0;1,0>:ud
-  //       sync_allrd (1) null:ud
   //       (W) add (1) a0.0<1>:ud  a0.0<0;1,0>:ud  0xfff20000:ud
+  //       (W) mov (1) null:ud  TV5(0,0)<0;1,0>:ud
   //       (W) sends.dc0 (4) null:ud M2(0,0) r1 0x4a:ud a0.0<0;1,0>:ud
   //
   //   (b) Regular BTI folded into an immediate descriptor:
@@ -9945,7 +9959,7 @@ void Optimizer::insertPageFaultWAforHDC(G4_BB *bb, INST_LIST_ITER it) {
   //       (W) sends.dc0 (4) null:ud M2(0,0) r0 0x4a:ud 0x20a0006:ud
   //       =>
   //       (W) sends.dc0 (4) TV12(0,0):ud M2(0,0) null 0xa:ud 0x2180006:ud
-  //       sync_allrd (1) null:ud
+  //       (W) mov (1) null:ud  TV12(0,0)<0;1,0>:ud
   //       (W) sends.dc0 (4) null:ud M2(0,0) r0 0x4a:ud 0x20a0006:ud
   //
   //   (c) T252/scratch ExBSO (PVC+ extended-descriptor format):
@@ -9963,7 +9977,7 @@ void Optimizer::insertPageFaultWAforHDC(G4_BB *bb, INST_LIST_ITER it) {
   //       (W) mov (1) ExDesc3(0,0)<1>:ud  %bss(0,0)<0;1,0>:ud
   //       (W) sends.dc0 (4) TV6(0,0):ud M3(0,0) null ExDesc3(0,0)<0;1,0>:ud
   //                         0x21800fc:ud
-  //       sync_allrd (1) null:ud
+  //       (W) mov (1) null:ud  TV6(0,0)<0;1,0>:ud
   //       (W) sends.dc0 (4) null:ud M3(0,0) r3 ExDesc3(0,0)<0;1,0>:ud
   //       0x20a00fc:ud
   const G4_Operand *origBti = msgDesc->getBti();
@@ -10010,12 +10024,12 @@ void Optimizer::insertPageFaultWAforHDC(G4_BB *bb, INST_LIST_ITER it) {
   // Instead, derive the probe descriptor by adding a delta:
   //   probe_a0 = a0.0 + delta,  delta = probeDescVal - writeDescVal
   //   => probe_a0 = BTI + writeDescVal + delta = BTI + probeDescVal ✓
-  // After sync.allrd restore a0.0 = probe_a0 - delta = BTI +
+  // After the wait, restore a0.0 = probe_a0 - delta = BTI +
   // writeDescVal so the original write send sees the correct
   // descriptor. ✓
   //
   // restoreDescInst is set here when a restore is needed and inserted
-  // after the sync below.
+  // after the wait below.
   G4_INST *restoreDescInst = nullptr;
 
   // Helper: insert "add a0.0, a0.0, imm" with the given immediate and
@@ -10033,8 +10047,7 @@ void Optimizer::insertPageFaultWAforHDC(G4_BB *bb, INST_LIST_ITER it) {
                                       builder.getRegionScalar());
   };
 
-  // Propagate the write's predicate so the probe fires only when the
-  // write would execute (avoids spurious faults when pred is false).
+  // Predicate the probe like the write (no probe when it is masked off).
   G4_Predicate *writePred = sendInst->getPredicate();
   G4_Predicate *probePred =
       writePred ? builder.duplicateOperand(writePred) : nullptr;
@@ -10052,7 +10065,7 @@ void Optimizer::insertPageFaultWAforHDC(G4_BB *bb, INST_LIST_ITER it) {
           false);
       probeLoad->setVISAId(sendInst->getVISAId());
       bb->insertBefore(it, probeLoad);
-      // Restore a0.0 to write descriptor after sync.
+      // Restore a0.0 to write descriptor after the wait.
       restoreDescInst = builder.createBinOp(
           G4_add, g4::SIMD1,
           builder.createDstRegRegion(builder.getBuiltinA0(), 1),
@@ -10115,24 +10128,20 @@ void Optimizer::insertPageFaultWAforHDC(G4_BB *bb, INST_LIST_ITER it) {
     bb->insertBefore(it, probeLoad);
   }
 
-  G4_INST *syncInst =
-      builder.createSync(G4_sync_allrd, builder.createNullSrc(Type_UD));
-  syncInst->setVISAId(sendInst->getVISAId());
-  bb->insertBefore(it, syncInst);
-
-  // Insert the a0 restore instruction (if needed) between sync and the
-  // original write so the write sees the correct descriptor value.
+  // Restore a0 to the write descriptor (if needed) BEFORE the wait mov, so
+  // the wait stays immediately before the store even when local scheduling
+  // is disabled (the restore only touches a0, which the wait does not).
   if (restoreDescInst) {
     restoreDescInst->setVISAId(sendInst->getVISAId());
     bb->insertBefore(it, restoreDescInst);
   }
+
+  insertPageFaultWAWait(bb, it, probeDstDcl, sendInst);
 }
 
 void Optimizer::insertPageFaultWA() {
   if (!(builder.needBarrierWA() &&
         (builder.getPlatform() == Xe_PVC || builder.getPlatform() == Xe_PVCXT)))
-    return;
-  if (!kernel.fg.builder->getIsKernel())
     return;
 
   for (auto bb : kernel.fg) {
