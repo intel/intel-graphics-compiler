@@ -4816,9 +4816,19 @@ void CEncoder::InitVISABuilderOptions(TARGET_PLATFORM VISAPlatform, bool canAbor
   if (uint32_t Val = IGC_GET_FLAG_VALUE(EnableScalarPipe)) {
     SaveOption(vISA_ScalarPipe, Val);
   }
-  if (IGC_IS_FLAG_ENABLED(NewSpillCostFunction) || context->getCompilerOption().NewSpillCostFunction ||
-      (context->type == ShaderType::COMPUTE_SHADER &&
-       context->getModuleMetaData()->csInfo.enableNewSpillCostFunction)) {
+
+  // The new spill cost function improves spill-victim selection when register
+  // pressure forces spills (e.g. under VRT/adjusted-RPE GRF reduction), so it is
+  // enabled by default for 3D (graphics pipeline) shaders. It can  still be
+  // force-enabled for any shader via the NewSpillCostFunction regkey  compiler
+  // option or the compute-shader metadata opt-in, and the default-on behavior
+  // can be turned off via the DisableNewSpillCostFunction kill-switch.
+  const bool newSpillCostForcedOn =
+      IGC_IS_FLAG_ENABLED(NewSpillCostFunction) || context->getCompilerOption().NewSpillCostFunction ||
+      (context->type == ShaderType::COMPUTE_SHADER && context->getModuleMetaData()->csInfo.enableNewSpillCostFunction);
+  const bool newSpillCostDefaultOnFor3D =
+      context->isGraphicsShaderType() && !IGC_IS_FLAG_ENABLED(DisableNewSpillCostFunction);
+  if (newSpillCostForcedOn || newSpillCostDefaultOnFor3D) {
     SaveOption(vISA_NewSpillCostFunction, true);
   }
 
