@@ -958,14 +958,6 @@ void vISAVerifier::verifyVectorOperand(const CISA_INST *inst, unsigned i) {
 }
 
 void vISAVerifier::verifyOperand(const CISA_INST *inst, unsigned i) {
-  // skip verifying bdpas like other dpas variant as it is verified in
-  // verifyInstructionMisc().
-  if (inst->opcode == ISA_BDPAS)
-    return;
-  if (inst->opcode == ISA_DPAS || inst->opcode == ISA_DPASW) {
-    // skip, as dpas is verified in verifyInstructionMisc().
-    return;
-  }
   vISA_ASSERT(header, "Argument Exception: argument header is NULL.");
   vISA_ASSERT(inst, "Argument Exception: argument inst   is NULL.");
   vISA_ASSERT(inst->opnd_num > i,
@@ -1573,6 +1565,9 @@ void vISAVerifier::verifyInstructionMisc(const CISA_INST *inst) {
 }
 
 void vISAVerifier::verifyInstructionDpas(const CISA_INST *inst, unsigned i) {
+  // verifyOperand() has been invoked already from verifyInstruction() before
+  // reaching to this function. Thus, we can assume that operands are correct
+  // at this point.
   ISA_Opcode opcode = (ISA_Opcode)inst->opcode;
   // No predicate
   REPORT_INSTRUCTION(options, inst->pred.isNullPred(),
@@ -1592,22 +1587,18 @@ void vISAVerifier::verifyInstructionDpas(const CISA_INST *inst, unsigned i) {
                        "Only execution size of 16 is supported for %s",
                        ISA_Inst_Table[opcode].str);
     // dst
-    verifyRawOperand(inst, i);
     const raw_opnd &dst = getRawOperand(inst, i);
     verifyRawOperandType(inst, dst, IsLegalDstOrSrc0Ty);
     ++i;
     // src0
-    verifyRawOperand(inst, i);
     const raw_opnd &src0 = getRawOperand(inst, i);
     verifyRawOperandType(inst, src0, IsLegalDstOrSrc0Ty);
     ++i;
     // src1
-    verifyRawOperand(inst, i);
     const raw_opnd &src1 = getRawOperand(inst, i);
     verifyRawOperandType(inst, src1, IsLegalSrc1OrSrc2Ty);
     ++i;
     // src2
-    verifyRawOperand(inst, i);
     const raw_opnd &src2 = getRawOperand(inst, i);
     verifyRawOperandType(inst, src2, IsLegalSrc1OrSrc2Ty);
     ++i;
@@ -1647,7 +1638,6 @@ void vISAVerifier::verifyInstructionDpas(const CISA_INST *inst, unsigned i) {
     };
 
     // dst
-    verifyRawOperand(inst, i);
     const raw_opnd &dst = getRawOperand(inst, i);
     if (irBuilder->getPlatform() < Xe_PVC) {
       verifyRawOperandType(inst, dst, FNIsIntOrFloat);
@@ -1658,8 +1648,7 @@ void vISAVerifier::verifyInstructionDpas(const CISA_INST *inst, unsigned i) {
     }
 
     // src0
-    verifyRawOperand(inst, ++i);
-    const raw_opnd &src0 = getRawOperand(inst, i);
+    const raw_opnd &src0 = getRawOperand(inst, ++i);
     if (irBuilder->getPlatform() < Xe_PVC) {
       verifyRawOperandType(inst, src0, FNIsIntOrFloat);
     }
@@ -1668,8 +1657,7 @@ void vISAVerifier::verifyInstructionDpas(const CISA_INST *inst, unsigned i) {
     }
 
     // src1
-    verifyRawOperand(inst, ++i);
-    const raw_opnd &src1 = getRawOperand(inst, i);
+    const raw_opnd &src1 = getRawOperand(inst, ++i);
     {
       verifyRawOperandType(inst, src1, FNIsInt);
     }
