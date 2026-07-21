@@ -1,0 +1,66 @@
+;=========================== begin_copyright_notice ============================
+;
+; Copyright (C) 2025 Intel Corporation
+;
+; SPDX-License-Identifier: MIT
+;
+;============================ end_copyright_notice =============================
+
+; REQUIRES: cri-supported
+; RUN: cp %S/ConvertInt4ToE4M3.spv %t.spv
+; RUN: ocloc compile -spirv_input -file %t.spv -device cri -options "-igc_opts 'ForceOCLSIMDWidth=32,DumpVISAASMToConsole=1,AddVISADumpDeclarationsToEnd=1'" | FileCheck %s
+
+; CHECK-LABEL: .kernel "Int4_to_E4M3_scalar"
+; CHECK: mov ({{.*}}, 1) [[LUT:[A-z0-9.]*]](0,0)<1> 0x3838383800000000:q
+; CHECK: mov ({{.*}}, 1) [[LUT]](0,1)<1> 0x4444444440404040:q
+; CHECK: mov ({{.*}}, 1) [[LUT]](0,2)<1> 0x4a4a4a4a48484848:q
+; CHECK: mov ({{.*}}, 1) [[LUT]](0,3)<1> 0x4e4e4e4e4c4c4c4c:q
+; CHECK: mov ({{.*}}, 1) [[LUT]](0,4)<1> 0xcecececed0d0d0d0:q
+; CHECK: mov ({{.*}}, 1) [[LUT]](0,5)<1> 0xcacacacacccccccc:q
+; CHECK: mov ({{.*}}, 1) [[LUT]](0,6)<1> 0xc4c4c4c4c8c8c8c8:q
+; CHECK: mov ({{.*}}, 1) [[LUT]](0,7)<1> 0xb8b8b8b8c0c0c0c0:q
+
+; CHECK: shfl_idx4 ({{.*}}, 32) [[DST:[A-z0-9]*]].0 [[LUT_SRC:[A-z0-9]*]](0,0)<0;16,1> [[INPUT:[A-z0-9]*]](0,0)<2;1,0>
+; CHECK-NOT: shfl_idx4
+; CHECK-DAG: // .decl [[DST]] v_type=G type=ud num_elts=32
+; CHECK-DAG: // .decl [[LUT_SRC]] v_type=G type=ud num_elts=16
+; CHECK-DAG: // .decl [[INPUT]] v_type=G type=uw num_elts=64
+
+; CHECK-LABEL: .kernel "Int4_to_E4M3_vector2"
+; CHECK: shfl_idx4 ({{.*}}, 32) [[DST:[A-z0-9]*]].0 [[LUT_SRC:[A-z0-9]*]](0,0)<0;16,1> [[INPUT:[A-z0-9]*]](0,0)<2;1,0>
+; CHECK-NOT: shfl_idx4
+; CHECK-DAG: // .decl [[DST]] v_type=G type=ud num_elts=32
+; CHECK-DAG: // .decl [[LUT_SRC]] v_type=G type=ud num_elts=16
+; CHECK-DAG: // .decl [[INPUT]] v_type=G type=uw num_elts=64
+
+; CHECK-LABEL: .kernel "Int4_to_E4M3_vector3"
+; CHECK: shfl_idx4 ({{.*}}, 32) [[DST:[A-z0-9]*]].0 [[LUT_SRC:[A-z0-9]*]](0,0)<0;16,1> [[INPUT:[A-z0-9]*]](0,0)<2;1,0>
+; CHECK-NOT: shfl_idx4
+; CHECK-DAG: // .decl [[DST]] v_type=G type=ud num_elts=32
+; CHECK-DAG: // .decl [[LUT_SRC]] v_type=G type=ud num_elts=16
+; CHECK-DAG: // .decl [[INPUT]] v_type=G type=uw num_elts=64
+
+; CHECK-LABEL: .kernel "Int4_to_E4M3_vector4"
+; CHECK: shfl_idx4 ({{.*}}, 32) [[DST:[A-z0-9]*]].0 [[LUT_SRC:[A-z0-9]*]](0,0)<0;16,1> [[INPUT:[A-z0-9]*]](0,0)<2;1,0>
+; CHECK-NOT: shfl_idx4
+; CHECK-DAG: // .decl [[DST]] v_type=G type=ud num_elts=32
+; CHECK-DAG: // .decl [[LUT_SRC]] v_type=G type=ud num_elts=16
+; CHECK-DAG: // .decl [[INPUT]] v_type=G type=uw num_elts=64
+
+; CHECK-LABEL: .kernel "Int4_to_E4M3_vector8"
+; CHECK: shfl_idx4 ({{.*}}, 32) [[DST:[A-z0-9]*]].0 [[LUT_SRC:[A-z0-9]*]](0,0)<0;16,1> [[INPUT:[A-z0-9]*]](0,0)<2;1,0>
+; CHECK: shfl_idx4 ({{.*}}, 32) [[DST]].0 [[LUT_SRC]](0,0)<0;16,1> [[INPUT]](0,0)<2;1,0>
+; CHECK-NOT: shfl_idx4
+; CHECK-DAG: // .decl [[DST]] v_type=G type=ud num_elts=32
+; CHECK-DAG: // .decl [[LUT_SRC]] v_type=G type=ud num_elts=16
+; CHECK-DAG: // .decl [[INPUT]] v_type=G type=uw num_elts=64
+
+; CHECK-LABEL: .kernel "Int4_to_E4M3_vector16"
+; CHECK: shfl_idx4 ({{.*}}, 32) [[DST:[A-z0-9]*]].0 [[LUT_SRC:[A-z0-9]*]](0,0)<0;16,1> [[INPUT:[A-z0-9]*]](0,0)<2;1,0>
+; CHECK: shfl_idx4 ({{.*}}, 32) [[DST]].0 [[LUT_SRC]](0,0)<0;16,1> [[INPUT]](0,0)<2;1,0>
+; CHECK: shfl_idx4 ({{.*}}, 32) [[DST]].0 [[LUT_SRC]](0,0)<0;16,1> [[INPUT]](0,0)<2;1,0>
+; CHECK: shfl_idx4 ({{.*}}, 32) [[DST]].0 [[LUT_SRC]](0,0)<0;16,1> [[INPUT]](0,0)<2;1,0>
+; CHECK-NOT: shfl_idx4
+; CHECK-DAG: // .decl [[DST]] v_type=G type=ud num_elts=32
+; CHECK-DAG: // .decl [[LUT_SRC]] v_type=G type=ud num_elts=16
+; CHECK-DAG: // .decl [[INPUT]] v_type=G type=uw num_elts=64
