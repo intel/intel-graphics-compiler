@@ -808,6 +808,7 @@ static int BuildOptionsAreValid(const std::string &options, std::string &exceptS
               (strcmp(pParam, "-Werror") == 0) || (strcmp(pParam, "-cl-std=CL1.1") == 0) ||
               (strcmp(pParam, "-cl-std=CL1.2") == 0) || (strcmp(pParam, "-cl-std=CL2.0") == 0) ||
               (strcmp(pParam, "-cl-std=CL2.1") == 0) || (strcmp(pParam, "-cl-std=CL3.0") == 0) ||
+              (strcmp(pParam, "-cl-std=CL3.1") == 0) ||
               (strcmp(pParam, "-cl-uniform-work-group-size") == 0) || // it's work only for OCL version greater than 1.2
               (strcmp(pParam, "-cl-kernel-arg-info") == 0) || (strncmp(pParam, "-x", 2) == 0) ||
               (strncmp(pParam, "-D", 2) == 0) || (strncmp(pParam, "-I", 2) == 0) ||
