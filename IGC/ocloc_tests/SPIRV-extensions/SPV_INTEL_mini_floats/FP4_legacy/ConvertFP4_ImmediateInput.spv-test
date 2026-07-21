@@ -1,0 +1,36 @@
+;=========================== begin_copyright_notice ============================
+;
+; Copyright (C) 2026 Intel Corporation
+;
+; SPDX-License-Identifier: MIT
+;
+;============================ end_copyright_notice =============================
+
+; REQUIRES: cri-supported
+; RUN: cp %S/ConvertFP4_ImmediateInput.spv %t.spv
+; RUN: ocloc compile -spirv_input -file %t.spv -device cri
+; RUN: ocloc compile -spirv_input -file %t.spv -device cri -options "-igc_opts 'ForceOCLSIMDWidth=32,DumpVISAASMToConsole=1,AddVISADumpDeclarationsToEnd=1'" > %t.visaasm
+; RUN: FileCheck %s -check-prefix=CHECK-FP16DN < %t.visaasm
+; RUN: FileCheck %s -check-prefix=CHECK-BF16DN < %t.visaasm
+; RUN: FileCheck %s -check-prefix=CHECK-E2M1HF < %t.visaasm
+; RUN: FileCheck %s -check-prefix=CHECK-E2M1BF < %t.visaasm
+
+; CHECK-FP16DN-LABEL: .kernel "FP16_to_E2M1_immediate"
+; CHECK-FP16DN-DAG: dnscl.hftoe2m1.mode0.rne (M1_NM, 1) [[DST:[A-z0-9]*]].0 [[INPUT0:[A-z0-9]*]].0 [[INPUT1:[A-z0-9]*]].0 %null.0
+; CHECK-FP16DN-DAG: mov (M1_NM, 1) [[INPUT0]](0,0)<1> 0x3c003800:ud
+; CHECK-FP16DN-DAG: mov (M1_NM, 1) [[INPUT1]](0,0)<1> 0x41333e00:ud
+; CHECK-FP16DN-DAG: // .decl [[INPUT0]] v_type=G type=ud num_elts=1
+; CHECK-FP16DN-DAG: // .decl [[INPUT1]] v_type=G type=ud num_elts=1
+; CHECK-FP16DN-DAG: // .decl [[DST]] v_type=G type=ud num_elts=1
+
+; CHECK-BF16DN-LABEL: .kernel "BF16_to_E2M1_immediate"
+; CHECK-BF16DN-DAG: dnscl.bftoe2m1.mode0.rne (M1_NM, 1) [[DST:[A-z0-9]*]].0 [[INPUT0:[A-z0-9]*]].0 [[INPUT1:[A-z0-9]*]].0 %null.0
+; CHECK-BF16DN-DAG: // .decl [[INPUT0]] v_type=G type=ud num_elts=1
+; CHECK-BF16DN-DAG: // .decl [[INPUT1]] v_type=G type=ud num_elts=1
+; CHECK-BF16DN-DAG: // .decl [[DST]] v_type=G type=ud num_elts=1
+
+; CHECK-E2M1HF-LABEL: .kernel "E2M1_to_FP16_immediate"
+; CHECK-E2M1HF: shfl_idx4
+
+; CHECK-E2M1BF-LABEL: .kernel "E2M1_to_BF16_immediate"
+; CHECK-E2M1BF: shfl_idx4

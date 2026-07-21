@@ -6,10 +6,9 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; UNSUPPORTED: true
 ; REQUIRES: llvm-spirv, cri-supported
 ; RUN: llvm-as %s -o %t.bc
-; RUN: llvm-spirv %t.bc -o %t.spv --spirv-ext=+SPV_INTEL_float4,+SPV_INTEL_int4,+SPV_INTEL_fp_conversions
+; RUN: llvm-spirv %t.bc -o %t.spv --spirv-ext=+SPV_INTEL_float4,+SPV_INTEL_int4,+SPV_INTEL_fp_conversions,+SPV_EXT_ocp_microscaling_types
 ; RUN: ocloc compile -spirv_input -file %t.spv -device cri -options "-igc_opts 'ForceOCLSIMDWidth=32,DumpVISAASMToConsole=1,AddVISADumpDeclarationsToEnd=1'" | FileCheck %s
 
 ; Verify opcode lowering; _builtin_spirv* functions shouldn't be called directly

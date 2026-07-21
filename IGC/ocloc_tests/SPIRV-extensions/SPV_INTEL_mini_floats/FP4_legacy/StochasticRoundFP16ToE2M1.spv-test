@@ -1,0 +1,160 @@
+;=========================== begin_copyright_notice ============================
+;
+; Copyright (C) 2025 Intel Corporation
+;
+; SPDX-License-Identifier: MIT
+;
+;============================ end_copyright_notice =============================
+
+; UNSUPPORTED: true
+; REQUIRES: cri-supported
+; RUN: cp %S/StochasticRoundFP16ToE2M1.spv %t.spv
+; RUN: ocloc compile -spirv_input -file %t.spv -device cri -options "-igc_opts 'ForceOCLSIMDWidth=32,DumpVISAASMToConsole=1,AddVISADumpDeclarationsToEnd=1'" | FileCheck %s
+
+;
+; Variants without pointers
+;
+
+; CHECK-LABEL: .kernel "FP16_to_E2M1_scalar"
+; CHECK: lfsr.b8v4 (M1, 32) [[RAND:[A-z0-9]*]](0,0)<1> {{.*}}(0,0)<1;1,0> {{.*}}(0,0)<1;1,0>
+; CHECK-NOT: lfsr.b8v4
+; CHECK-DAG: dnscl.hftoe2m1.mode0.srnd (M1, 32) [[DST:[A-z0-9]*]].0 [[INPUT0:[A-z0-9]*]].0 [[INPUT1:[A-z0-9]*]].0 [[RAND]].0
+; CHECK-DAG: mov (M1, 32) [[INPUT1]](0,0)<1> 0x0:ud
+; CHECK-DAG: // .decl [[RAND]] v_type=G type=ud num_elts=32
+; CHECK-DAG: // .decl [[INPUT0]] v_type=G type=ud num_elts=32
+; CHECK-DAG: // .decl [[INPUT1]] v_type=G type=ud num_elts=32
+; CHECK-DAG: // .decl [[DST]] v_type=G type=ud num_elts=32
+
+; CHECK-LABEL: .kernel "FP16_to_E2M1_vector2"
+; CHECK: lfsr.b8v4 (M1, 32) [[RAND:[A-z0-9]*]](0,0)<1> {{.*}}(0,0)<1;1,0> {{.*}}(0,0)<1;1,0>
+; CHECK-NOT: lfsr.b8v4
+; CHECK-DAG: dnscl.hftoe2m1.mode0.srnd (M1, 32) [[DST:[A-z0-9]*]].0 [[INPUT0:[A-z0-9]*]].0 [[INPUT1:[A-z0-9]*]].0 [[RAND]].0
+; CHECK-DAG: mov (M1, 32) [[INPUT1]](0,0)<1> 0x0:ud
+; CHECK-DAG: // .decl [[RAND]] v_type=G type=ud num_elts=32
+; CHECK-DAG: // .decl [[INPUT0]] v_type=G type=ud num_elts=32
+; CHECK-DAG: // .decl [[INPUT1]] v_type=G type=ud num_elts=32
+; CHECK-DAG: // .decl [[DST]] v_type=G type=ud num_elts=32
+
+; CHECK-LABEL: .kernel "FP16_to_E2M1_vector3"
+; CHECK: lfsr.b8v4 (M1, 32) [[RAND:[A-z0-9]*]](0,0)<1> {{.*}}(0,0)<1;1,0> {{.*}}(0,0)<1;1,0>
+; CHECK-NOT: lfsr.b8v4
+; CHECK: dnscl.hftoe2m1.mode0.srnd (M1, 32) [[DST:[A-z0-9]*]].0 [[INPUT0:[A-z0-9]*]].0 [[INPUT1:[A-z0-9]*]].0 [[RAND]].0
+; CHECK-NOT: dnscl.hftoe2m1
+; CHECK-DAG: // .decl [[RAND]] v_type=G type=ud num_elts=32
+; CHECK-DAG: // .decl [[INPUT0]] v_type=G type=ud num_elts=32
+; CHECK-DAG: // .decl [[INPUT1]] v_type=G type=ud num_elts=32
+; CHECK-DAG: // .decl [[DST]] v_type=G type=ud num_elts=32
+
+; CHECK-LABEL: .kernel "FP16_to_E2M1_vector4"
+; CHECK: lfsr.b8v4 (M1, 32) [[RAND:[A-z0-9]*]](0,0)<1> {{.*}}(0,0)<1;1,0> {{.*}}(0,0)<1;1,0>
+; CHECK-NOT: lfsr.b8v4
+; CHECK: dnscl.hftoe2m1.mode0.srnd (M1, 32) [[DST:[A-z0-9]*]].0 [[INPUT:[A-z0-9]*]].0 [[INPUT]].128 [[RAND]].0
+; CHECK-NOT: dnscl.hftoe2m1
+; CHECK-DAG: // .decl [[RAND]] v_type=G type=ud num_elts=32
+; CHECK-DAG: // .decl [[INPUT]] v_type=G type=ud num_elts=64
+; CHECK-DAG: // .decl [[DST]] v_type=G type=ud num_elts=32
+
+; CHECK-LABEL: .kernel "FP16_to_E2M1_vector8"
+; CHECK: lfsr.b8v4 (M1, 32) [[RAND0:[A-z0-9]*]](0,0)<1> {{.*}}(0,0)<1;1,0> {{.*}}(0,0)<1;1,0>
+; CHECK: lfsr.b8v4 (M1, 32) [[RAND1:[A-z0-9]*]](0,0)<1> {{.*}}(0,0)<1;1,0> {{.*}}(0,0)<1;1,0>
+; CHECK-NOT: lfsr.b8v4
+; CHECK: dnscl.hftoe2m1.mode0.srnd (M1, 32) [[DST0:[A-z0-9]*]].0 [[INPUT:[A-z0-9]*]].0 [[INPUT]].256 [[RAND0]].0
+; CHECK: dnscl.hftoe2m1.mode2.srnd (M1, 32) [[DST1:[A-z0-9]*]].0 [[INPUT]].128 [[INPUT]].384 [[RAND1]].0
+; CHECK-NOT: dnscl.hftoe2m1
+; CHECK-DAG: // .decl [[RAND0]] v_type=G type=ud num_elts=32
+; CHECK-DAG: // .decl [[RAND1]] v_type=G type=ud num_elts=32
+; CHECK-DAG: // .decl [[INPUT]] v_type=G type=ud num_elts=128
+; CHECK-DAG: // .decl [[DST0]] v_type=G type=ud num_elts=32
+; CHECK-DAG: // .decl [[DST1]] v_type=G type=ud num_elts=32
+
+; CHECK-LABEL: .kernel "FP16_to_E2M1_vector16"
+; CHECK: lfsr.b8v4 (M1, 32) [[RAND0:[A-z0-9]*]](0,0)<1> {{.*}}(0,0)<1;1,0> {{.*}}(0,0)<1;1,0>
+; CHECK: lfsr.b8v4 (M1, 32) [[RAND1:[A-z0-9]*]](0,0)<1> {{.*}}(0,0)<1;1,0> {{.*}}(0,0)<1;1,0>
+; CHECK: lfsr.b8v4 (M1, 32) [[RAND2:[A-z0-9]*]](0,0)<1> {{.*}}(0,0)<1;1,0> {{.*}}(0,0)<1;1,0>
+; CHECK: lfsr.b8v4 (M1, 32) [[RAND3:[A-z0-9]*]](0,0)<1> {{.*}}(0,0)<1;1,0> {{.*}}(0,0)<1;1,0>
+; CHECK-NOT: lfsr.b8v4
+; CHECK: dnscl.hftoe2m1.mode0.srnd (M1, 32) [[DST0:[A-z0-9]*]].0 [[INPUT:[A-z0-9]*]].0 [[INPUT]].256 [[RAND0]].0
+; CHECK: dnscl.hftoe2m1.mode2.srnd (M1, 32) [[DST1:[A-z0-9]*]].0 [[INPUT]].128 [[INPUT]].384 [[RAND1]].0
+; CHECK: dnscl.hftoe2m1.mode0.srnd (M1, 32) [[DST2:[A-z0-9]*]].0 [[INPUT]].512 [[INPUT]].768 [[RAND2]].0
+; CHECK: dnscl.hftoe2m1.mode2.srnd (M1, 32) [[DST3:[A-z0-9]*]].0 [[INPUT]].640 [[INPUT]].896 [[RAND3]].0
+; CHECK-NOT: dnscl.hftoe2m1
+; CHECK-DAG: // .decl [[RAND0]] v_type=G type=ud num_elts=32
+; CHECK-DAG: // .decl [[RAND1]] v_type=G type=ud num_elts=32
+; CHECK-DAG: // .decl [[RAND2]] v_type=G type=ud num_elts=32
+; CHECK-DAG: // .decl [[RAND3]] v_type=G type=ud num_elts=32
+; CHECK-DAG: // .decl [[INPUT]] v_type=G type=ud num_elts=256
+; CHECK-DAG: // .decl [[DST0]] v_type=G type=ud num_elts=32
+; CHECK-DAG: // .decl [[DST1]] v_type=G type=ud num_elts=32
+; CHECK-DAG: // .decl [[DST2]] v_type=G type=ud num_elts=32
+; CHECK-DAG: // .decl [[DST3]] v_type=G type=ud num_elts=32
+
+;
+; Variants with pointers
+;
+
+; CHECK-LABEL: .kernel "FP16_to_E2M1_ptr_scalar"
+; CHECK: lfsr.b8v4 (M1, 32) [[RAND:[A-z0-9]*]](0,0)<1> {{.*}}(0,0)<1;1,0> {{.*}}(0,0)<1;1,0>
+; CHECK-NOT: lfsr.b8v4
+; CHECK-DAG: dnscl.hftoe2m1.mode0.srnd (M1, 32) [[DST:[A-z0-9]*]].0 [[INPUT0:[A-z0-9]*]].0 [[INPUT1:[A-z0-9]*]].0 [[RAND]].0
+; CHECK-DAG: mov (M1, 32) [[INPUT1]](0,0)<1> 0x0:ud
+; CHECK-DAG: // .decl [[INPUT0]] v_type=G type=ud num_elts=32
+; CHECK-DAG: // .decl [[INPUT1]] v_type=G type=ud num_elts=32
+; CHECK-DAG: // .decl [[DST]] v_type=G type=ud num_elts=32
+
+; CHECK-LABEL: .kernel "FP16_to_E2M1_ptr_vector2"
+; CHECK: lfsr.b8v4 (M1, 32) [[RAND:[A-z0-9]*]](0,0)<1> {{.*}}(0,0)<1;1,0> {{.*}}(0,0)<1;1,0>
+; CHECK-NOT: lfsr.b8v4
+; CHECK-DAG: dnscl.hftoe2m1.mode0.srnd (M1, 32) [[DST:[A-z0-9]*]].0 [[INPUT0:[A-z0-9]*]].0 [[INPUT1:[A-z0-9]*]].0 [[RAND]].0
+; CHECK-DAG: mov (M1, 32) [[INPUT1]](0,0)<1> 0x0:ud
+; CHECK-DAG: // .decl [[INPUT0]] v_type=G type=ud num_elts=32
+; CHECK-DAG: // .decl [[INPUT1]] v_type=G type=ud num_elts=32
+; CHECK-DAG: // .decl [[DST]] v_type=G type=ud num_elts=32
+
+; CHECK-LABEL: .kernel "FP16_to_E2M1_ptr_vector3"
+; CHECK: lfsr.b8v4 (M1, 32) [[RAND:[A-z0-9]*]](0,0)<1> {{.*}}(0,0)<1;1,0> {{.*}}(0,0)<1;1,0>
+; CHECK-NOT: lfsr.b8v4
+; CHECK: dnscl.hftoe2m1.mode0.srnd (M1, 32) [[DST:[A-z0-9]*]].0 [[INPUT0:[A-z0-9]*]].0 [[INPUT1:[A-z0-9]*]].0 [[RAND]].0
+; CHECK-NOT: dnscl.hftoe2m1
+; CHECK-DAG: // .decl [[INPUT0]] v_type=G type=ud num_elts=32
+; CHECK-DAG: // .decl [[INPUT1]] v_type=G type=ud num_elts=32
+; CHECK-DAG: // .decl [[DST]] v_type=G type=ud num_elts=32
+
+; CHECK-LABEL: .kernel "FP16_to_E2M1_ptr_vector4"
+; CHECK: lfsr.b8v4 (M1, 32) [[RAND:[A-z0-9]*]](0,0)<1> {{.*}}(0,0)<1;1,0> {{.*}}(0,0)<1;1,0>
+; CHECK-NOT: lfsr.b8v4
+; CHECK: dnscl.hftoe2m1.mode0.srnd (M1, 32) [[DST:[A-z0-9]*]].0 [[INPUT:[A-z0-9]*]].0 [[INPUT]].128 [[RAND]].0
+; CHECK-NOT: dnscl.hftoe2m1
+; CHECK-DAG: // .decl [[INPUT]] v_type=G type=ud num_elts=64
+; CHECK-DAG: // .decl [[DST]] v_type=G type=ud num_elts=32
+
+; CHECK-LABEL: .kernel "FP16_to_E2M1_ptr_vector8"
+; CHECK: lfsr.b8v4 (M1, 32) [[RAND0:[A-z0-9]*]](0,0)<1> {{.*}}(0,0)<1;1,0> {{.*}}(0,0)<1;1,0>
+; CHECK: lfsr.b8v4 (M1, 32) [[RAND1:[A-z0-9]*]](0,0)<1> {{.*}}(0,0)<1;1,0> {{.*}}(0,0)<1;1,0>
+; CHECK-NOT: lfsr.b8v4
+; CHECK: dnscl.hftoe2m1.mode0.srnd (M1, 32) [[DST0:[A-z0-9]*]].0 [[INPUT:[A-z0-9]*]].0 [[INPUT]].256 [[RAND0]].0
+; CHECK: dnscl.hftoe2m1.mode2.srnd (M1, 32) [[DST1:[A-z0-9]*]].0 [[INPUT]].128 [[INPUT]].384 [[RAND1]].0
+; CHECK-NOT: dnscl.hftoe2m1
+; CHECK-DAG: // .decl [[INPUT]] v_type=G type=ud num_elts=128
+; CHECK-DAG: // .decl [[DST0]] v_type=G type=ud num_elts=32
+; CHECK-DAG: // .decl [[DST1]] v_type=G type=ud num_elts=32
+
+; CHECK-LABEL: .kernel "FP16_to_E2M1_ptr_vector16"
+; CHECK: lfsr.b8v4 (M1, 32) [[RAND0:[A-z0-9]*]](0,0)<1> {{.*}}(0,0)<1;1,0> {{.*}}(0,0)<1;1,0>
+; CHECK: lfsr.b8v4 (M1, 32) [[RAND1:[A-z0-9]*]](0,0)<1> {{.*}}(0,0)<1;1,0> {{.*}}(0,0)<1;1,0>
+; CHECK: lfsr.b8v4 (M1, 32) [[RAND2:[A-z0-9]*]](0,0)<1> {{.*}}(0,0)<1;1,0> {{.*}}(0,0)<1;1,0>
+; CHECK: lfsr.b8v4 (M1, 32) [[RAND3:[A-z0-9]*]](0,0)<1> {{.*}}(0,0)<1;1,0> {{.*}}(0,0)<1;1,0>
+; CHECK-NOT: lfsr.b8v4
+; CHECK: dnscl.hftoe2m1.mode0.srnd (M1, 32) [[DST0:[A-z0-9]*]].0 [[INPUT:[A-z0-9]*]].0 [[INPUT]].256 [[RAND0]].0
+; CHECK: dnscl.hftoe2m1.mode2.srnd (M1, 32) [[DST1:[A-z0-9]*]].0 [[INPUT]].128 [[INPUT]].384 [[RAND1]].0
+; CHECK: dnscl.hftoe2m1.mode0.srnd (M1, 32) [[DST2:[A-z0-9]*]].0 [[INPUT]].512 [[INPUT]].768 [[RAND2]].0
+; CHECK: dnscl.hftoe2m1.mode2.srnd (M1, 32) [[DST3:[A-z0-9]*]].0 [[INPUT]].640 [[INPUT]].896 [[RAND3]].0
+; CHECK-NOT: dnscl.hftoe2m1
+; CHECK-DAG: // .decl [[RAND0]] v_type=G type=ud num_elts=32
+; CHECK-DAG: // .decl [[RAND1]] v_type=G type=ud num_elts=32
+; CHECK-DAG: // .decl [[RAND2]] v_type=G type=ud num_elts=32
+; CHECK-DAG: // .decl [[RAND3]] v_type=G type=ud num_elts=32
+; CHECK-DAG: // .decl [[INPUT]] v_type=G type=ud num_elts=256
+; CHECK-DAG: // .decl [[DST0]] v_type=G type=ud num_elts=32
+; CHECK-DAG: // .decl [[DST1]] v_type=G type=ud num_elts=32
+; CHECK-DAG: // .decl [[DST2]] v_type=G type=ud num_elts=32
+; CHECK-DAG: // .decl [[DST3]] v_type=G type=ud num_elts=32
