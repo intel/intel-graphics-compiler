@@ -2174,10 +2174,19 @@ RetryType NeedsRetry(OpenCLProgramContext *ctx, COpenCLKernel *pShader, CShaderP
     return RetryType::YES_Retry;
   } else if (isWorstThanPrv) {
     return RetryType::NO_Retry_Pick_Prv;
-  } else if (!ctx->hasSpills(pOutput->m_scratchSpaceUsedBySpills, pOutput->m_numGRFTotal, pOutput->m_spillThreshold) ||
-             ctx->getModuleMetaData()->compOpt.OptDisable || ctx->m_retryManager->IsLastTry() ||
-             (!ctx->m_retryManager->kernelSkip.empty() &&
-              ctx->m_retryManager->kernelSkip.count(pFunc->getName().str()))) {
+  }
+
+  // Keep retry sensitive to heavy spilling even if vISA raised per-kernel
+  // dynamic spill threshold (m_spillThreshold).
+  uint baseSpillBudget = (pOutput->m_numGRFTotal == 256 && ctx->m_spillAllowedFor256GRF) ? ctx->m_spillAllowedFor256GRF
+                                                                                         : ctx->m_spillAllowed;
+  bool exceedsBaseSpillBudget = pOutput->m_scratchSpaceUsedBySpills > baseSpillBudget;
+  bool hasRetryRelevantSpills =
+      ctx->hasSpills(pOutput->m_scratchSpaceUsedBySpills, pOutput->m_numGRFTotal, pOutput->m_spillThreshold) ||
+      exceedsBaseSpillBudget;
+
+  if (!hasRetryRelevantSpills || ctx->getModuleMetaData()->compOpt.OptDisable || ctx->m_retryManager->IsLastTry() ||
+      (!ctx->m_retryManager->kernelSkip.empty() && ctx->m_retryManager->kernelSkip.count(pFunc->getName().str()))) {
     return RetryType::NO_Retry;
   } else {
     return RetryType::YES_Retry;
