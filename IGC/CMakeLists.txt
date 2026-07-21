@@ -1716,7 +1716,15 @@ if(IGC_BUILD__VC_ENABLED)
         endforeach()
         set(IGC_BUILD__CMOPT_DEFAULT_DIR "${IGC_BUILD__CMOPT_DEFAULT_DIR}/usr")
       else()
-        message(WARNING "LLVM packages directory not found: ${LLVM_PACKAGES_DIR}")
+        message(FATAL_ERROR
+          "Pre-built shared linked opt and llc are required for VC LIT testing, "
+          "but the LLVM packages directory was not found: ${LLVM_PACKAGES_DIR}\n"
+          "VC LIT tests must run against the SharedRelease LLVM prebuild matching "
+          "IGC_OPTION__LLVM_PREFERRED_VERSION=${IGC_OPTION__LLVM_PREFERRED_VERSION}; "
+          "otherwise the build silently falls back to the system LLVM 'opt', which "
+          "cannot load the VC backend plugin.\n"
+          "Provide the prebuild at the path above, or disable VC LIT tests with "
+          "-DIGC_BUILD__CMLIT_ENABLE=OFF.")
       endif()
     endif()
 
