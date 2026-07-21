@@ -6393,12 +6393,12 @@ void LogicalAndToBranch::convertAndToBranch(Instruction *opAnd, Instruction *con
   bbEnd = bbElse->splitBasicBlock(opAnd, "if.end");
 
   bb->getTerminator()->eraseFromParent();
-  BranchInst *br = BranchInst::Create(bbThen, bbElse, cond0, bb);
-  br->setDebugLoc(splitBefore->getDebugLoc());
+  IGCLLVM::CondBrInst *condBr = IGCLLVM::CondBrInst::Create(cond0, bbThen, bbElse, bb);
+  condBr->setDebugLoc(splitBefore->getDebugLoc());
 
   bbThen->getTerminator()->eraseFromParent();
-  br = BranchInst::Create(bbEnd, bbThen);
-  br->setDebugLoc(opAnd->getDebugLoc());
+  IGCLLVM::UncondBrInst *uncondBr = IGCLLVM::UncondBrInst::Create(bbEnd, bbThen);
+  uncondBr->setDebugLoc(opAnd->getDebugLoc());
 
   PHINode *phi = PHINode::Create(opAnd->getType(), 2, "", IGCLLVM::insertPosition(opAnd));
   phi->addIncoming(cond1, bbThen);
@@ -6768,7 +6768,7 @@ void MergeMemFromBranchOpt::visitTypedWrite(llvm::CallInst *inst) {
       if (!succBB->hasNPredecessors(callSet.size())) {
         mergeBB = BasicBlock::Create(succBB->getContext(), VALUE_NAME(succBB->getName() + ".mergemem"),
                                      succBB->getParent(), succBB);
-        BranchInst::Create(succBB, mergeBB);
+        IGCLLVM::UncondBrInst::Create(succBB, mergeBB);
 
         // Collect the set of blocks being redirected.
         SmallPtrSet<BasicBlock *, 4> redirectedBlocks;

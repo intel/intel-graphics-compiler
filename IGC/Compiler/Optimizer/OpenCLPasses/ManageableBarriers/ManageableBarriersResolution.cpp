@@ -261,13 +261,14 @@ void ManageableBarriersResolution::emitInit(CallInst *pInsertPoint) {
     BasicBlock *bbInitSection = BasicBlock::Create(builder.getContext(), "", pInsertPoint->getFunction(), bbAfter);
 
     // Prepare branch instructions
-    BranchInst *instrJumpbbBefore2bbAfter = dyn_cast<BranchInst>(bbBefore->getTerminator());
+    IGCLLVM::UncondBrInst *instrJumpbbBefore2bbAfter = dyn_cast<IGCLLVM::UncondBrInst>(bbBefore->getTerminator());
 
     CallInst *getLocalID = WIFuncResolution::CallGetLocalID(instrJumpbbBefore2bbAfter);
     ICmpInst *checkLocalThreadID = new ICmpInst(IGCLLVM::insertPosition(instrJumpbbBefore2bbAfter), ICmpInst::ICMP_EQ,
                                                 getLocalID, builder.getInt32(0));
     // Setup new branch conditional instruction
-    BranchInst *chekForSingleLane = BranchInst::Create(bbInitSection, bbAfter, checkLocalThreadID, bbBefore);
+    IGCLLVM::CondBrInst *chekForSingleLane =
+        IGCLLVM::CondBrInst::Create(checkLocalThreadID, bbInitSection, bbAfter, bbBefore);
     // Remove old branch non-conditional instruction
     instrJumpbbBefore2bbAfter->eraseFromParent();
 
@@ -280,7 +281,7 @@ void ManageableBarriersResolution::emitInit(CallInst *pInsertPoint) {
     Value *ptrToBarrierSlot = getManageableBarrierstructDataPtr(pInsertPoint, getFirstFreeID, chekForSingleLane);
 
     // Fill the basic block section for the Init function of barriers
-    Instruction *instrJump = BranchInst::Create(bbAfter, bbInitSection);
+    IGCLLVM::UncondBrInst *instrJump = IGCLLVM::UncondBrInst::Create(bbAfter, bbInitSection);
 
     storeManageableBarrierstructData(ptrToBarrierSlot, MBDynamicStructFields::BarrierID, getFirstFreeID, instrJump);
 

@@ -146,7 +146,7 @@ void Legalization::unifyReturnInsts(llvm::Function &F) {
       PN->addIncoming(BB->getTerminator()->getOperand(0), BB);
 
     IGCLLVM::popBackInstruction(BB); // Remove the return inst.
-    BranchInst::Create(NewRetBlock, BB);
+    IGCLLVM::UncondBrInst::Create(NewRetBlock, BB);
   }
 }
 

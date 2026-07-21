@@ -17,6 +17,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/Instructions.h>
 #include "common/LLVMWarningsPop.hpp"
 #include "llvmWrapper/IR/DerivedTypes.h"
+#include "llvmWrapper/IR/Instructions.h"
 #include "llvmWrapper/Support/Alignment.h"
 #include "llvmWrapper/IR/Constants.h"
 #include "ShaderTypesEnum.h"
@@ -485,8 +486,8 @@ void OpenCLPrintfResolution::expandPrintfCall(CallInst &printfCall, Function &F)
   BasicBlock *bblockFalse = BasicBlock::Create(*m_context, "write_offset_false", &F, bblockJoin);
 
   currentBBlock->getTerminator()->eraseFromParent();
-  BranchInst *brInst = BranchInst::Create(bblockTrue, bblockFalse, cmp1, currentBBlock);
-  brInst->setDebugLoc(m_DL);
+  IGCLLVM::CondBrInst *condBrInst = IGCLLVM::CondBrInst::Create(cmp1, bblockTrue, bblockFalse, currentBBlock);
+  condBrInst->setDebugLoc(m_DL);
 
   //  ----------- Fill "true" block ----------------
 
@@ -544,8 +545,8 @@ void OpenCLPrintfResolution::expandPrintfCall(CallInst &printfCall, Function &F)
     writeOffset->setDebugLoc(m_DL);
   } // for (SPrintfArgDescriptor *argDesc : m_argDescriptors)
 
-  brInst = BranchInst::Create(bblockJoin, bblockTrue);
-  brInst->setDebugLoc(m_DL);
+  IGCLLVM::UncondBrInst *uncondBrInst = IGCLLVM::UncondBrInst::Create(bblockJoin, bblockTrue);
+  uncondBrInst->setDebugLoc(m_DL);
 
   //  ----------- Fill "false" block ----------------
   // end_offset = write_offset + 4
@@ -560,8 +561,8 @@ void OpenCLPrintfResolution::expandPrintfCall(CallInst &printfCall, Function &F)
   BasicBlock *bblockErrorString = BasicBlock::Create(*m_context, "write_error_string", &F, bblockJoin);
   BasicBlock *bblockFalseJoin = BasicBlock::Create(*m_context, "bblockFalseJoin", &F, bblockJoin);
 
-  brInst = BranchInst::Create(bblockErrorString, bblockFalseJoin, cmp2, bblockFalse);
-  brInst->setDebugLoc(m_DL);
+  condBrInst = IGCLLVM::CondBrInst::Create(cmp2, bblockErrorString, bblockFalseJoin, bblockFalse);
+  condBrInst->setDebugLoc(m_DL);
 
   // *writeOffset = -1;
   Value *constValErrStringIdx = ConstantInt::get(m_int32Type, -1);
@@ -570,13 +571,13 @@ void OpenCLPrintfResolution::expandPrintfCall(CallInst &printfCall, Function &F)
                                     bblockErrorString);
   writeOffsetPtr->setDebugLoc(m_DL);
   genStoreInternal(constValErrStringIdx, writeOffsetPtr, bblockErrorString, m_DL, isPrintfBuiltin);
-  brInst = BranchInst::Create(bblockFalseJoin, bblockErrorString);
-  brInst->setDebugLoc(m_DL);
+  uncondBrInst = IGCLLVM::UncondBrInst::Create(bblockFalseJoin, bblockErrorString);
+  uncondBrInst->setDebugLoc(m_DL);
 
   // bblockFalseJoin is an empty basic block,
   // it is needed to assure bblockJoin have only 2 predecessors.
-  brInst = BranchInst::Create(bblockJoin, bblockFalseJoin);
-  brInst->setDebugLoc(m_DL);
+  uncondBrInst = IGCLLVM::UncondBrInst::Create(bblockJoin, bblockFalseJoin);
+  uncondBrInst->setDebugLoc(m_DL);
 
   // return_val = select cmp1, 0, -1
   Value *constVal0 = ConstantInt::get(m_int32Type, 0);

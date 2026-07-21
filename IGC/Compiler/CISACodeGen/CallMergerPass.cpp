@@ -12,6 +12,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CISACodeGen/helper.h"
 #include "Compiler/IGCPassSupport.h"
 #include "llvmWrapper/IR/BasicBlock.h"
+#include "llvmWrapper/IR/Instructions.h"
 
 #include "Probe/Assertion.h"
 #include "common/LLVMWarningsPush.hpp"
@@ -60,7 +61,7 @@ CallSiteMap collectAllCallSites(Function &F) {
 void setNewTerminator(BasicBlock *oldBB, BasicBlock *newBB) {
   auto *oldTerminator = oldBB->getTerminator();
   oldTerminator->eraseFromParent();
-  IGCLLVM::pushBackInstruction(oldBB, BranchInst::Create(newBB));
+  IGCLLVM::pushBackInstruction(oldBB, IGCLLVM::UncondBrInst::Create(newBB));
 }
 
 // We assume that BBs with call instructions have terminator with single successor

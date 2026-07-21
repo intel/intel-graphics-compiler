@@ -531,7 +531,7 @@ bool CustomLoopVersioning::processLoop(Loop *loop) {
   linkLoops(loopSeg2, loopSeg3, afterLoop);
 
   bbSeg3->getTerminator()->eraseFromParent();
-  BranchInst::Create(afterLoop, bbSeg3);
+  IGCLLVM::UncondBrInst::Create(afterLoop, bbSeg3);
 
   rewriteLoopSeg3(bbSeg3, var_range_y);
 
@@ -648,7 +648,7 @@ static BasicBlock *insertUniqueBackedgeBlock(Loop *L, BasicBlock *Preheader, Dom
 
   // Create and insert the new backedge block...
   BasicBlock *BEBlock = BasicBlock::Create(Header->getContext(), Header->getName() + ".backedge", F);
-  BranchInst *BETerminator = BranchInst::Create(Header, BEBlock);
+  IGCLLVM::UncondBrInst *BETerminator = IGCLLVM::UncondBrInst::Create(Header, BEBlock);
   BETerminator->setDebugLoc(IGCLLVM::getFirstNonPHI(Header)->getDebugLoc());
 
   // Move the new backedge block to right after the last backedge block.

@@ -2127,7 +2127,7 @@ inline SampleD_DC_FromCubeParams LLVM3DBuilder<T, Inserter>::Prepare_SAMPLE_D_DC
     phi_face_id->addIncoming(float_face_zm_id, block_zm);
 
     if (shouldSplitBB) {
-      llvm::BranchInst *brInst = this->CreateBr(splitBlock);
+      IGCLLVM::UncondBrInst *brInst = this->CreateBr(splitBlock);
       this->SetInsertPoint(brInst);
     }
 
