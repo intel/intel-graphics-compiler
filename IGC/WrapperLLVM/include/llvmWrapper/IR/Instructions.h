@@ -15,6 +15,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/IR/IntrinsicInst.h"
 #include "llvm/IR/Instructions.h"
 #include "llvm/IR/User.h"
+#include "llvm/Support/Casting.h"
 #include "IGC/common/LLVMWarningsPop.hpp"
 #include "llvmWrapper/Support/ModRef.h"
 
@@ -348,6 +349,85 @@ inline llvm::Type *getGEPIndexedType(llvm::Type *Ty, llvm::SmallVectorImpl<unsig
 inline llvm::Type *getGEPIndexedType(llvm::Type *Ty, llvm::ArrayRef<llvm::Value *> indices) {
   return llvm::GetElementPtrInst::getIndexedType(Ty, indices);
 }
+
+#if LLVM_VERSION_MAJOR >= 23
+using CondBrInst = llvm::CondBrInst;
+using UncondBrInst = llvm::UncondBrInst;
+#else
+
+class CondBrInst : public llvm::BranchInst {
+  CondBrInst() = delete;
+
+  // Hide methods.
+  using BranchInst::isConditional;
+  using BranchInst::isUnconditional;
+
+public:
+  static inline CondBrInst *Create(llvm::Value *Cond, llvm::BasicBlock *IfTrue, llvm::BasicBlock *IfFalse,
+                                   llvm::Instruction *InsertBefore = nullptr) {
+    if (!InsertBefore)
+      return llvm::cast<CondBrInst>(llvm::BranchInst::Create(IfTrue, IfFalse, Cond));
+    return llvm::cast<CondBrInst>(
+        llvm::BranchInst::Create(IfTrue, IfFalse, Cond, IGCLLVM::insertPosition(InsertBefore)));
+  }
+
+  static inline CondBrInst *Create(llvm::Value *Cond, llvm::BasicBlock *IfTrue, llvm::BasicBlock *IfFalse,
+                                   llvm::BasicBlock *InsertAtEnd) {
+    return llvm::cast<CondBrInst>(llvm::BranchInst::Create(IfTrue, IfFalse, Cond, InsertAtEnd));
+  }
+
+#if LLVM_VERSION_MAJOR >= 18
+  static inline CondBrInst *Create(llvm::Value *Cond, llvm::BasicBlock *IfTrue, llvm::BasicBlock *IfFalse,
+                                   llvm::BasicBlock::iterator InsertBefore) {
+    return llvm::cast<CondBrInst>(llvm::BranchInst::Create(IfTrue, IfFalse, Cond, InsertBefore));
+  }
+#endif
+
+  // Methods for support type inquiry through isa, cast, and dyn_cast:
+  static bool classof(const llvm::Instruction *I) {
+    return I->getOpcode() == llvm::Instruction::Br && llvm::cast<llvm::BranchInst>(I)->isConditional();
+  }
+  static bool classof(const llvm::Value *V) {
+    return llvm::isa<llvm::Instruction>(V) && classof(llvm::cast<llvm::Instruction>(V));
+  }
+};
+
+class UncondBrInst : public llvm::BranchInst {
+  UncondBrInst() = delete;
+
+  // Hide methods.
+  using BranchInst::getCondition;
+  using BranchInst::isConditional;
+  using BranchInst::isUnconditional;
+  using BranchInst::setCondition;
+  using BranchInst::swapSuccessors;
+
+public:
+  static inline UncondBrInst *Create(llvm::BasicBlock *Dest, llvm::Instruction *InsertBefore = nullptr) {
+    if (!InsertBefore)
+      return llvm::cast<UncondBrInst>(llvm::BranchInst::Create(Dest));
+    return llvm::cast<UncondBrInst>(llvm::BranchInst::Create(Dest, IGCLLVM::insertPosition(InsertBefore)));
+  }
+
+  static inline UncondBrInst *Create(llvm::BasicBlock *Dest, llvm::BasicBlock *InsertAtEnd) {
+    return llvm::cast<UncondBrInst>(llvm::BranchInst::Create(Dest, InsertAtEnd));
+  }
+
+#if LLVM_VERSION_MAJOR >= 18
+  static inline UncondBrInst *Create(llvm::BasicBlock *Dest, llvm::BasicBlock::iterator InsertBefore) {
+    return llvm::cast<UncondBrInst>(llvm::BranchInst::Create(Dest, InsertBefore));
+  }
+#endif
+
+  // Methods for support type inquiry through isa, cast, and dyn_cast:
+  static bool classof(const llvm::Instruction *I) {
+    return I->getOpcode() == llvm::Instruction::Br && llvm::cast<llvm::BranchInst>(I)->isUnconditional();
+  }
+  static bool classof(const llvm::Value *V) {
+    return llvm::isa<llvm::Instruction>(V) && classof(llvm::cast<llvm::Instruction>(V));
+  }
+};
+#endif
 
 #if LLVM_VERSION_MAJOR <= 16
 constexpr int PoisonMaskElem = llvm::UndefMaskElem;

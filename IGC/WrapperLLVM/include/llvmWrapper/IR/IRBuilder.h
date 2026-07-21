@@ -13,6 +13,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/Config/llvm-config.h"
 #include "llvm/IR/IRBuilder.h"
 #include "IGC/common/LLVMWarningsPop.hpp"
+#include "llvmWrapper/IR/Instructions.h"
 #include "llvmWrapper/IR/Type.h"
 #include "llvmWrapper/Support/Alignment.h"
 
@@ -294,6 +295,21 @@ public:
     return llvm::IRBuilder<T, InserterTy>::CreateIntrinsic(ID, Types, Args, FMFSource, Name);
   }
 #endif
+  inline IGCLLVM::CondBrInst *CreateCondBr(llvm::Value *Cond, llvm::BasicBlock *True, llvm::BasicBlock *False,
+                                           llvm::MDNode *BranchWeights = nullptr,
+                                           llvm::MDNode *Unpredictable = nullptr) {
+    return llvm::cast<IGCLLVM::CondBrInst>(
+        llvm::IRBuilder<T, InserterTy>::CreateCondBr(Cond, True, False, BranchWeights, Unpredictable));
+  }
+
+  inline IGCLLVM::CondBrInst *CreateCondBr(llvm::Value *Cond, llvm::BasicBlock *True, llvm::BasicBlock *False,
+                                           llvm::Instruction *MDSrc) {
+    return llvm::cast<IGCLLVM::CondBrInst>(llvm::IRBuilder<T, InserterTy>::CreateCondBr(Cond, True, False, MDSrc));
+  }
+
+  inline IGCLLVM::UncondBrInst *CreateBr(llvm::BasicBlock *Dest) {
+    return llvm::cast<IGCLLVM::UncondBrInst>(llvm::IRBuilder<T, InserterTy>::CreateBr(Dest));
+  }
 };
 
 /// Version portable pointer type accessor. With older LLVM versions opaque pointer support

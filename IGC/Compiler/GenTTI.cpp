@@ -27,6 +27,7 @@ SPDX-License-Identifier: MIT
 #include "llvmWrapper/Transforms/Utils/LoopUtils.h"
 
 #include <algorithm>
+#include "llvmWrapper/IR/Instructions.h"
 
 using namespace llvm;
 using namespace IGC;
@@ -419,7 +420,7 @@ void GenIntrinsicsTTIImpl::getUnrollingPreferences(Loop *L, ScalarEvolution &SE,
   if (ExitingBlock) {
     if (UP.Partial) {
       IGCLLVM::TerminatorInst *Term = ExitingBlock->getTerminator();
-      if (BranchInst *BI = dyn_cast<BranchInst>(Term)) {
+      if (IGCLLVM::CondBrInst *BI = dyn_cast<IGCLLVM::CondBrInst>(Term)) {
         if (dyn_cast<FCmpInst>(BI->getCondition())) {
           UP.Partial = false;
           return;

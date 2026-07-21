@@ -286,7 +286,7 @@ void Legalization::visitBinaryOperator(llvm::BinaryOperator &I) {
       // check all uses are select or branch
       bool flippable = true;
       for (auto U = I.user_begin(), E = I.user_end(); U != E; ++U) {
-        if (!isa<SelectInst>(*U) && !isa<BranchInst>(*U)) {
+        if (!isa<SelectInst, IGCLLVM::CondBrInst, IGCLLVM::UncondBrInst>(*U)) {
           flippable = false;
           break;
         }
@@ -319,10 +319,11 @@ void Legalization::visitBinaryOperator(llvm::BinaryOperator &I) {
             s->setOperand(1, falseValue);
             s->setOperand(2, trueValue);
             s->setOperand(0, invert);
-          } else if (BranchInst *br = dyn_cast<BranchInst>(U)) {
-            IGC_ASSERT(br->isConditional());
+          } else if (IGCLLVM::CondBrInst *br = dyn_cast<IGCLLVM::CondBrInst>(U)) {
             br->swapSuccessors();
             br->setCondition(invert);
+          } else if (dyn_cast<IGCLLVM::UncondBrInst>(U)) {
+            IGC_ASSERT(0);
           }
         }
         IGC_ASSERT(I.user_empty() && "Instruction should have no remaining uses after transformation");
@@ -1067,10 +1068,11 @@ void Legalization::visitFCmpInstUndorderedPredicate(FCmpInst &FC) {
         } else {
           break;
         }
-      } else if (BranchInst *br = dyn_cast<BranchInst>(*I)) {
-        IGC_ASSERT(br->isConditional());
+      } else if (IGCLLVM::CondBrInst *br = dyn_cast<IGCLLVM::CondBrInst>(*I)) {
         br->swapSuccessors();
         br->setCondition(invertedOrderedInst);
+      } else if (dyn_cast<IGCLLVM::UncondBrInst>(*I)) {
+        IGC_ASSERT(0);
       } else {
         break;
       }

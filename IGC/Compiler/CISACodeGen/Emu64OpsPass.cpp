@@ -24,6 +24,7 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPop.hpp"
 #include "llvmWrapper/IR/Intrinsics.h"
 #include "llvmWrapper/IR/Instructions.h"
+#include "llvmWrapper/IR/InstVisitor.h"
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/IR/Instructions.h"
 #include "llvmWrapper/IR/Intrinsics.h"
@@ -168,8 +169,9 @@ private:
   bool eraseInstrFromInt64InstrList(Instruction *inst) { return Int64Insts.erase(inst); }
 };
 
-class InstExpander : public InstVisitor<InstExpander, bool> {
-  friend class InstVisitor<InstExpander, bool>;
+class InstExpander : public IGCLLVM::InstVisitor<InstExpander, bool> {
+  friend class IGCLLVM::InstVisitor<InstExpander, bool>;
+  friend class llvm::InstVisitor<InstExpander, bool>;
 
   Emu64Ops *Emu;
   BuilderType *IRB;
@@ -183,7 +185,8 @@ private:
   bool visitInstruction(Instruction &);
 
   bool visitRet(ReturnInst &);
-  bool visitBr(BranchInst &) { return false; }
+  bool visitUncondBrInst(IGCLLVM::UncondBrInst &) { return false; }
+  bool visitCondBrInst(IGCLLVM::CondBrInst &) { return false; }
   bool visitSwitch(SwitchInst &) { return false; }
   bool visitIndirectBr(IndirectBrInst &) { return false; }
   bool visitInvoke(InvokeInst &) { return false; }
