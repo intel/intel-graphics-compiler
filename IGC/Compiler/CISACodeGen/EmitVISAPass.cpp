@@ -22734,16 +22734,17 @@ void EmitPass::emitLfsr(llvm::GenIntrinsicInst *GII) {
     return;
   }
 
-  // Non-uniform: one instruction per packed word. Broadcast any uniform operand
-  // so dst/cs0/cs1 share the same per-element layout (one row of SIMD-width
-  // lanes per element), then address element i with Set*SubVar. This keeps the
-  // element counts of all three operands equal, as CEncoder::lfsr requires.
+  // Non-uniform: one instruction per packed word. Broadcast uniform operands so
+  // all three share one SIMD-width row per element (equal element counts, as
+  // CEncoder::lfsr requires); element i then starts numLanes(SIMD) sub-registers
+  // in.
   cs0 = BroadcastIfUniform(cs0);
   cs1 = BroadcastIfUniform(cs1);
+  const unsigned nsimdsize = numLanes(m_currShader->m_SIMDSize);
   for (unsigned i = 0; i < VectorSize; ++i) {
-    m_encoder->SetSrcSubVar(0, i);
-    m_encoder->SetSrcSubVar(1, i);
-    m_encoder->SetDstSubVar(i);
+    m_encoder->SetSrcSubReg(0, i * nsimdsize);
+    m_encoder->SetSrcSubReg(1, i * nsimdsize);
+    m_encoder->SetDstSubReg(i * nsimdsize);
     m_encoder->lfsr(dst, cs0, cs1, fc);
     m_encoder->Push();
   }
