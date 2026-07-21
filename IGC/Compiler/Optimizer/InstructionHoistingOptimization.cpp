@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2021-2025 Intel Corporation
+Copyright (C) 2021-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -8,13 +8,21 @@ SPDX-License-Identifier: MIT
 
 #include "InstructionHoistingOptimization.hpp"
 #include "Compiler/CISACodeGen/helper.h"
+#include "Compiler/CISACodeGen/IGCLivenessAnalysis.h"
 #include "Compiler/IGCPassSupport.h"
 #include "GenISAIntrinsics/GenIntrinsicInst.h"
 #include "IGC/Compiler/CodeGenPublic.h"
+#include "common/igc_regkeys.hpp"
 #include "LLVM3DBuilder/BuiltinsFrontend.hpp"
 #include "Probe/Assertion.h"
+#include "common/Types.hpp"
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/Analysis/LoopInfo.h>
+#include <llvm/Analysis/PostDominators.h>
+#include <llvm/ADT/SmallPtrSet.h>
+#include <llvm/ADT/SmallVector.h>
+#include "llvm/IR/CFG.h"
+#include "llvm/IR/Metadata.h"
 #include "llvm/PassInfo.h"
 #include "llvm/PassRegistry.h"
 #include "llvm/IR/InstVisitor.h"
@@ -104,14 +112,78 @@ private:
   bool ProcessHoistableInstructions();
 
   ////////////////////////////////////////////////////////////////////////
+  // PS-only per-sampler bounded hoist (replaces the global single-point batch
+  // hoist for pixel shaders). See definitions for the rationale.
+  bool hoistSamplersPS(llvm::Function &F);
+  llvm::BasicBlock *findBoundedHoistTarget(llvm::Instruction *sampler, unsigned maxBlocks) const;
+  bool collectCluster(llvm::Instruction *root, llvm::BasicBlock *target,
+                      llvm::SmallVectorImpl<llvm::Instruction *> &cluster,
+                      llvm::SmallPtrSetImpl<llvm::Instruction *> &visited) const;
+  void collectHoistRegion(llvm::BasicBlock *target, llvm::BasicBlock *sampBB,
+                          llvm::SmallPtrSetImpl<llvm::BasicBlock *> &region) const;
+
+  ////////////////////////////////////////////////////////////////////////
   CodeGenContext *m_pCGCtxt = nullptr;
   DominatorTree *m_pDT = nullptr;
+  // PS-only: non-null when the function still has loops (survived unroll). Used
+  // to keep the pass out of loop bodies instead of bailing the whole function.
+  llvm::LoopInfo *m_pLI = nullptr;
+  llvm::PostDominatorTree *m_pPDT = nullptr;
+  IGCLivenessAnalysisRunner *m_pRPE = nullptr;
+  // Uniformity, so the pressure estimate counts uniform values once (not at full
+  // SIMD width). Without it the gate over-counts and rejects safe hoists on SIMD32.
+  WIAnalysisRunner *m_pWI = nullptr;
+
+  // Pixel shaders are opt-in and require the extra gating below; non-PS keeps
+  // the original (unconditional) hoisting behavior.
+  bool m_isPS = false;
+  // Injected from the call site (PS-only effect):
+  // allow hoisting a sampler across a conditional branch (speculative)...
+  bool m_allowSpeculative = false;
+  // ...and GRF slack added to the no-new-spills pressure budget.
+  unsigned m_rpMargin = 12;
 
   std::vector<llvm::Instruction *> m_SamplerInstructions;
   std::vector<llvm::Instruction *> m_HoistableInstructions;
 
   llvm::Instruction *m_InsertHoistBack = nullptr;
   llvm::BasicBlock *m_HoistBasicBlock = nullptr;
+
+  // PS-only (m_pLI is null otherwise, so this is inert on the non-PS path):
+  // true if BB belongs to any loop that survived unroll.
+  bool isInLoop(llvm::BasicBlock *BB) const { return m_pLI && m_pLI->getLoopFor(BB) != nullptr; }
+
+  // True if `I` is a raw buffer load that is value-invariant AND backed by a
+  // read-only constant buffer. Such a load may ride up with a hoisted sampler:
+  // relocating it (even speculatively across a branch) changes neither the
+  // loaded value nor the fault behavior, because a constant buffer is resident
+  // on every path. UAV / writable / generic loads are excluded (aliasing and
+  // fault risk). This lets a sampler whose coordinates are computed from
+  // constant-buffer reads hoist together with those reads.
+  bool isSpeculatableInvariantLoad(const llvm::Instruction *I) const {
+    const auto *LR = llvm::dyn_cast<LdRawIntrinsic>(I);
+    if (!LR || LR->isVolatile())
+      return false;
+    switch (DecodeBufferType(LR->getResourceValue()->getType()->getPointerAddressSpace())) {
+    case CONSTANT_BUFFER:
+    case BINDLESS_CONSTANT_BUFFER:
+    case SSH_BINDLESS_CONSTANT_BUFFER:
+    case STATELESS_READONLY:
+      return true;
+    default:
+      return false;
+    }
+  }
+
+  // True if `I` is a sample whose LOD/gradients come from implicit screen-space
+  // derivatives across the pixel quad (SampleIntrinsic::IsDerivative). Such
+  // samples are unsafe to hoist SPECULATIVELY: a divergent branch changes the
+  // quad's active lanes and thus the derivatives. Explicit-LOD (sampleL*) and
+  // explicit-gradient (sampleD*) samples are not derivative and stay speculatable.
+  bool sampleNeedsImplicitDerivatives(const llvm::Instruction *I) const {
+    const auto *SI = llvm::dyn_cast<SampleIntrinsic>(I);
+    return SI && SI->IsDerivative();
+  }
 
   inline bool traceOperandInHoistBB(Value *operand, BasicBlock *hoistBB) {
     if (Instruction *inst = dyn_cast<Instruction>(operand)) {
@@ -169,10 +241,28 @@ InstructionHoistingOptimization::InstructionHoistingOptimization() : llvm::Funct
 bool InstructionHoistingOptimization::runOnFunction(llvm::Function &F) {
   m_pCGCtxt = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
   m_pDT = &getAnalysis<DominatorTreeWrapperPass>().getDomTree();
+  LoopInfo &LI = getAnalysis<LoopInfoWrapperPass>().getLoopInfo();
 
-  // should be no loop, all loop is unrolled
-  if (!getAnalysis<LoopInfoWrapperPass>().getLoopInfo().empty()) {
-    return false;
+  m_isPS = (m_pCGCtxt->type == ShaderType::PIXEL_SHADER);
+
+  // Non-PS keeps the original premise (all loops unrolled): bail if any loop
+  // remains. PS may still hoist samplers that live in loop-free regions of a
+  // function whose loops survived unroll (e.g. dynamic trip counts), so keep
+  // LoopInfo and gate per-region below (isInLoop + loop-free hoist point).
+  if (!m_isPS) {
+    if (!LI.empty()) {
+      return false;
+    }
+  } else {
+    m_pLI = &LI;
+    // PS path needs speculation control + register-pressure gating. The driver
+    // injects these via the constructor; also honor the regkeys directly so the
+    // pass is configurable in standalone tools (igc_opt / IGCStandalone), where
+    // the pass is created with default ctor args. This is a no-op for the driver
+    // path, where the ctor value already equals the regkey.
+    m_pPDT = &getAnalysis<PostDominatorTreeWrapperPass>().getPostDomTree();
+    m_pRPE = &getAnalysis<IGCLivenessAnalysis>().getLivenessRunner();
+    m_pWI = &getAnalysis<WIAnalysis>().Runner;
   }
 
   InvalidateMembers();
@@ -224,6 +314,8 @@ void InstructionHoistingOptimization::CollectHoistableInstructions() {
 
   m_HoistBasicBlock = m_InsertHoistBack->getParent();
 
+  // Note: this path runs for non-PS only (PS is routed to hoistSamplersPS before
+  // this is reached), so no PS-specific gating is needed here.
   for (auto *pSI : m_SamplerInstructions) {
     bool canInstrHoisted = true;
 
@@ -269,19 +361,254 @@ bool InstructionHoistingOptimization::ProcessHoistableInstructions() {
   if (m_HoistableInstructions.empty())
     return false;
 
+  // Non-PS only: original unconditional hoisting to the global single point.
+  // (PS is routed to hoistSamplersPS, which does per-sampler bounded hoisting.)
   auto *hoist_point = m_InsertHoistBack;
-
   for (auto *I : m_HoistableInstructions) {
     I->moveAfter(hoist_point);
     hoist_point = I;
   }
-
   return true;
+}
+
+////////////////////////////////////////////////////////////////////////
+// Walk up the dominator tree from the sampler's block, at most maxBlocks steps,
+// and return the furthest ancestor that is a legal hoist target: loop-free and
+// (unless speculative hoisting is allowed) post-dominated by the sampler's block
+// so the sampler is not executed more often than today. nullptr if none qualify.
+llvm::BasicBlock *InstructionHoistingOptimization::findBoundedHoistTarget(llvm::Instruction *sampler,
+                                                                          unsigned maxBlocks) const {
+  BasicBlock *SampBB = sampler->getParent();
+  DomTreeNode *Node = m_pDT->getNode(SampBB);
+  if (!Node)
+    return nullptr;
+
+  // Implicit-derivative samples must never be hoisted speculatively (a divergent
+  // branch would change the quad's active lanes and thus the derivatives), so
+  // confine them to non-speculative (control-equivalent) targets even when
+  // speculative hoisting is enabled. Explicit-LOD/gradient samples are exempt.
+  const bool AllowSpec = m_allowSpeculative && !sampleNeedsImplicitDerivatives(sampler);
+
+  BasicBlock *Best = nullptr;
+  for (unsigned step = 0; step < maxBlocks; ++step) {
+    Node = Node->getIDom();
+    if (!Node)
+      break;
+    BasicBlock *Cand = Node->getBlock();
+    if (!Cand || isInLoop(Cand))
+      break;
+    // Speculation: hoisting to Cand runs the sampler whenever Cand runs, which is
+    // safe (non-speculative) only if SampBB post-dominates Cand.
+    if (!AllowSpec && !m_pPDT->dominates(SampBB, Cand))
+      break;
+    Best = Cand;
+  }
+  return Best;
+}
+
+////////////////////////////////////////////////////////////////////////
+// Gather, in def-before-use order into `cluster`, the operand-chain instructions
+// that must move together with `root` so it can be placed high in `target`.
+// Returns false if `root` cannot be legally hoisted to `target`: a PHI operand, a
+// memory/latency op that must stay put, a loop-body value, or an operand defined
+// off the dominator path between `target` and `root`.
+bool InstructionHoistingOptimization::collectCluster(llvm::Instruction *root, llvm::BasicBlock *target,
+                                                     llvm::SmallVectorImpl<llvm::Instruction *> &cluster,
+                                                     llvm::SmallPtrSetImpl<llvm::Instruction *> &visited) const {
+  for (Value *Op : root->operands()) {
+    if (isa<PHINode>(Op))
+      return false;
+    Instruction *I = dyn_cast<Instruction>(Op);
+    if (!I)
+      continue; // constant / argument / global -> available everywhere
+    BasicBlock *Ibb = I->getParent();
+    // Already available at the insertion point and doesn't need to move: defined
+    // above target, or in target itself (we insert the cluster AFTER the latest
+    // in-target operand, so it is visible).
+    if (Ibb == target || m_pDT->dominates(Ibb, target))
+      continue;
+    // Otherwise it must sit strictly between target and root (target dominates it).
+    if (!m_pDT->dominates(target, Ibb))
+      return false;
+    if (isInLoop(Ibb))
+      return false;
+    // Never relocate another sampler. A load may ride along ONLY when it is an
+    // invariant read-only constant-buffer read (value- and fault-safe to move,
+    // even speculatively); every other load stays put.
+    if (isa<SampleIntrinsic>(I))
+      return false;
+    if (isa<LoadInst, LdRawIntrinsic>(I) && !isSpeculatableInvariantLoad(I))
+      return false;
+    if (!visited.insert(I).second)
+      continue; // already queued
+    if (!collectCluster(I, target, cluster, visited))
+      return false;
+    cluster.push_back(I); // pushed after its own operands -> def-before-use order
+  }
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////
+// Collect the CFG region whose liveness a hoist from `sampBB` up to `target`
+// can change. A def only ever moves UP to `target` (which dominates it) and SSA
+// guarantees the def dominates all its uses, so the only blocks whose live sets
+// change are those on a path from `target` to `sampBB`. A backward walk from
+// `sampBB` (stopping at `target`, which dominates it) collects exactly those,
+// letting the liveness recompute be scoped instead of whole-function.
+void InstructionHoistingOptimization::collectHoistRegion(llvm::BasicBlock *target, llvm::BasicBlock *sampBB,
+                                                         llvm::SmallPtrSetImpl<llvm::BasicBlock *> &region) const {
+  region.insert(target);
+  region.insert(sampBB);
+  llvm::SmallVector<llvm::BasicBlock *, 8> worklist;
+  worklist.push_back(sampBB);
+  while (!worklist.empty()) {
+    llvm::BasicBlock *bb = worklist.pop_back_val();
+    if (bb == target)
+      continue; // don't expand above the (dominating) target
+    for (llvm::BasicBlock *pred : llvm::predecessors(bb))
+      if (region.insert(pred).second)
+        worklist.push_back(pred);
+  }
+}
+
+////////////////////////////////////////////////////////////////////////
+// PS latency hoist: move each sampler up by a bounded number of dominating
+// blocks (enough to expose independent work between the send and its first use)
+// rather than to a single function-wide point. Each sampler's cluster is moved
+// and pressure re-measured at the widest PS SIMD (SIMD32); a move that would
+// exceed the "no new spills" budget is rolled back individually, so one
+// expensive sampler never blocks the others and no SIMD variant is spilled.
+bool InstructionHoistingOptimization::hoistSamplersPS(llvm::Function &F) {
+  if (m_SamplerInstructions.empty())
+    return false;
+
+  const unsigned SIMD = m_pCGCtxt->platform.getMaxSimdSize();
+
+  // Baseline function-wide pressure at the widest SIMD. Computed first because it
+  // also drives the dynamic budget below.
+  unsigned Running = m_pRPE->getMaxRegCountForFunction(F, SIMD, m_pWI);
+
+  // Dynamic, dispatch-mode-agnostic budget.
+  const unsigned Default128 = m_pCGCtxt->getNumGRFPerThread(true);
+  unsigned GrfCeiling = Default128;
+  unsigned PayloadReserve = 24; // default
+  if (m_pCGCtxt->platform.isCoreChildOf(IGFX_XE3P_CORE)) {
+    if (Running > 192) {
+      GrfCeiling = 256;
+      PayloadReserve /= 2;
+    } else if (Running > 128) {
+      GrfCeiling = 192;
+    }
+  }
+  const unsigned Reserved = PayloadReserve + m_rpMargin;
+  const unsigned Budget = (Reserved < GrfCeiling) ? (GrfCeiling - Reserved) : (GrfCeiling / 2);
+
+  if (Running >= Budget)
+    return false;
+
+  // How many dominating blocks a sampler may travel. Kept minimal (1) so the
+  // hoisted result's live range stays short (bounded SIMD32 pressure) while
+  // still crossing a block boundary to expose independent latency work. A future
+  // refinement could try decreasing distances when the furthest overshoots budget.
+  const unsigned MaxHoistBlocks = 1;
+
+  bool Changed = false;
+
+  for (auto *pSI : m_SamplerInstructions) {
+    BasicBlock *SampBB = pSI->getParent();
+    if (isInLoop(SampBB))
+      continue;
+
+    BasicBlock *Target = findBoundedHoistTarget(pSI, MaxHoistBlocks);
+    if (!Target)
+      continue;
+
+    SmallVector<Instruction *, 16> cluster;
+    SmallPtrSet<Instruction *, 16> visited;
+    if (!collectCluster(pSI, Target, cluster, visited))
+      continue;
+
+    // Blocks whose liveness this hoist can change (target..sampBB); used to scope
+    // the recompute below. Depends only on the CFG, which the moves don't alter.
+    SmallPtrSet<BasicBlock *, 32> Region;
+    collectHoistRegion(Target, SampBB, Region);
+
+    // Insertion point in `target`: as early as possible (top, after PHIs) so
+    // target's body runs AFTER the send and hides its latency, but never before
+    // an operand that already lives in `target` (the send must see it). So pick
+    // the point just after the latest in-target operand of the sampler/cluster,
+    // or the top when there is none.
+    Instruction *InsertPt = &*Target->getFirstInsertionPt();
+    {
+      Instruction *LatestDep = nullptr;
+      auto considerUser = [&](Instruction *user) {
+        for (Value *op : user->operands())
+          if (auto *opI = dyn_cast<Instruction>(op))
+            if (opI->getParent() == Target && (!LatestDep || LatestDep->comesBefore(opI)))
+              LatestDep = opI;
+      };
+      considerUser(pSI);
+      for (Instruction *I : cluster)
+        considerUser(I);
+      if (LatestDep)
+        InsertPt = LatestDep->getNextNode();
+    }
+
+    // Move the operand cluster (def-before-use) then the sampler before insertPt.
+    // Record originals for rollback.
+    SmallVector<std::pair<Instruction *, Instruction *>, 16> Undo;
+    Undo.reserve(cluster.size() + 1);
+    for (Instruction *I : cluster) {
+      Undo.push_back({I, I->getNextNode()});
+      IGCLLVM::moveBefore(I, InsertPt);
+    }
+    Undo.push_back({pSI, pSI->getNextNode()});
+    IGCLLVM::moveBefore(pSI, InsertPt);
+
+    // Scoped liveness recompute: only `Region` In/Out sets can change, so this is
+    // equivalent to a full rerun but skips the whole-function dataflow fixpoint.
+    m_pRPE->rerunLivenessAnalysis(F, &Region);
+
+    // Pressure changes only within Region (that's why the recompute above is
+    // scoped there), and Running holds the full-function baseline, so the region
+    // max is enough: non-region blocks are <= Running and can't trip the gate.
+    // Equivalent to a full-function max here, but O(region) not O(function).
+    unsigned AfterHoist = 0;
+    for (BasicBlock *BB : Region)
+      AfterHoist = std::max(AfterHoist, m_pRPE->getMaxRegCountForBB(*BB, SIMD, m_pWI));
+
+    // Allow pressure to grow up to the GRF budget; never past the running peak
+    // once that already exceeds the budget (don't worsen an over-budget shader).
+    if (AfterHoist > std::max(Running, Budget)) {
+      for (auto it = Undo.rbegin(); it != Undo.rend(); ++it)
+        IGCLLVM::moveBefore(it->first, it->second);
+      m_pRPE->rerunLivenessAnalysis(F, &Region);
+      continue;
+    }
+
+    // Update Running to the post-hoist function-wide max (which may be the
+    // region max or the original global max, whichever is larger).
+    Running = std::max(Running, AfterHoist); // accept
+    Changed = true;
+    // Pin against CodeSinking: it runs again after OptimizeIR and would sink the
+    // sample back toward its consumer to relieve pressure, undoing this latency
+    // hoist. The marker tells CodeSinking to leave THIS sample where we put it
+    // (targeted, unlike the global DisableCodeSinkingLongLatencyInsts key).
+    pSI->setMetadata(MD_LATENCY_HOISTED_SAMPLE, llvm::MDNode::get(F.getContext(), {}));
+  }
+
+  return Changed;
 }
 
 ////////////////////////////////////////////////////////////////////////
 bool InstructionHoistingOptimization::ProcessFunction(llvm::Function &F) {
   visit(F);
+
+  // PS uses a per-sampler bounded hoist with incremental SIMD32 pressure gating;
+  // non-PS keeps the original global single-point batch hoist.
+  if (m_isPS) {
+    return hoistSamplersPS(F);
+  }
 
   CollectHoistableInstructions();
 
@@ -293,6 +620,10 @@ void InstructionHoistingOptimization::getAnalysisUsage(llvm::AnalysisUsage &AU) 
   AU.addRequired<CodeGenContextWrapper>();
   AU.addRequired<DominatorTreeWrapperPass>();
   AU.addRequired<LoopInfoWrapperPass>();
+  // Used by the PS path for speculation control and register-pressure gating.
+  AU.addRequired<PostDominatorTreeWrapperPass>();
+  AU.addRequired<IGCLivenessAnalysis>();
+  AU.addRequired<WIAnalysis>();
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -317,4 +648,7 @@ IGC_INITIALIZE_PASS_BEGIN(InstructionHoistingOptimization, PASS_FLAG, PASS_DESCR
 IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
 IGC_INITIALIZE_PASS_DEPENDENCY(DominatorTreeWrapperPass)
 IGC_INITIALIZE_PASS_DEPENDENCY(LoopInfoWrapperPass)
+IGC_INITIALIZE_PASS_DEPENDENCY(PostDominatorTreeWrapperPass)
+IGC_INITIALIZE_PASS_DEPENDENCY(IGCLivenessAnalysis)
+IGC_INITIALIZE_PASS_DEPENDENCY(WIAnalysis)
 IGC_INITIALIZE_PASS_END(InstructionHoistingOptimization, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)

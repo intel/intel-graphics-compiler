@@ -57,9 +57,44 @@ end:
   ret void
 }
 
+;
+;;;;;; A sampler tagged !igc.latencyHoisted (by InstructionHoistingOptimization)
+;;;;;; must NOT be sunk, even with DisableCodeSinkingLongLatencyInsts=0 (the
+;;;;;; targeted pin overrides the global default).
+;
+; CHECK-SINK-LABEL: @test_marked_sample_not_sunk(
+; CHECK-SINK:       entry:
+; CHECK-SINK:         call <4 x float> @llvm.genx.GenISA.sampleLptr{{.*}}!igc.latencyHoisted
+; CHECK-SINK:         br i1 %cond
+; CHECK-SINK:       then:
+; CHECK-SINK-NOT:     call <4 x float> @llvm.genx.GenISA.sampleLptr
+;
+; CHECK-NO-SINK-LABEL: @test_marked_sample_not_sunk(
+; CHECK-NO-SINK:       entry:
+; CHECK-NO-SINK:         call <4 x float> @llvm.genx.GenISA.sampleLptr{{.*}}!igc.latencyHoisted
+;
+define void @test_marked_sample_not_sunk(i8 addrspace(196608)* %tex, i8 addrspace(524293)* %samp, float %coord, i1 %cond, float addrspace(1)* %out) {
+entry:
+  %sample_result = call <4 x float> @llvm.genx.GenISA.sampleLptr.v4f32.f32.p196608i8.p524293i8.p0i8(float 0.0, float %coord, float %coord, float 0.0, float 0.0, i8 addrspace(196608)* %tex, i8 addrspace(524293)* %samp, i8* null, i32 0, i32 0, i32 0), !igc.latencyHoisted !3
+  br i1 %cond, label %then, label %else
+
+then:
+  %elem = extractelement <4 x float> %sample_result, i32 0
+  store float %elem, float addrspace(1)* %out
+  br label %end
+
+else:
+  br label %end
+
+end:
+  ret void
+}
+
 attributes #1 = { nounwind readnone willreturn }
 
-!igc.functions = !{!0}
+!igc.functions = !{!0, !4}
 !0 = !{void (i8 addrspace(196608)*, i8 addrspace(524293)*, float, i1, float addrspace(1)*)* @test_sample_sinking, !1}
 !1 = !{!2}
 !2 = !{!"function_type", i32 0}
+!3 = !{}
+!4 = !{void (i8 addrspace(196608)*, i8 addrspace(524293)*, float, i1, float addrspace(1)*)* @test_marked_sample_not_sunk, !1}

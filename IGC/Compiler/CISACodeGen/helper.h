@@ -61,6 +61,11 @@ struct SProgramOutput;
 
 static const char *const INTEL_SYMBOL_TABLE_VOID_PROGRAM = "Intel_Symbol_Table_Void_Program";
 
+// Metadata marker set by InstructionHoistingOptimization on a sampler it hoisted
+// for latency; CodeSinking honors it to avoid sinking the sample back toward its
+// consumer, which would undo the hoist.
+static const char *const MD_LATENCY_HOISTED_SAMPLE = "igc.latencyHoisted";
+
 #ifdef _DEBUG
 template <typename T, size_t N> using smallvector = std::vector<T>;
 #else
