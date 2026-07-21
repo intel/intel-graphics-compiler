@@ -5428,8 +5428,11 @@ void HWConformity::avoidDstSrcOverlap(PointsToAnalysis &p) {
   }
 }
 
-// Second half of a source operand must not point to the same register as the
-// first half of destination operand in a compressed instruction.
+// HW restriction: A compressed instruction spans across 2 adjacent destination
+// registers and is split into 2 parts. The split point is where the
+// destination crosses its GRF boundary. The source operand of the second part
+// must not overlap with the destination operand of the first part at DW
+// granularity.
 // Avoid the dst and src overlap when they are using the same variable by
 // inserting a mov instruction add(8)  var1<2>, var2, var1<0, 1, 0>
 void HWConformity::avoidInstDstSrcOverlap(INST_LIST_ITER it, G4_BB *bb,
@@ -5454,7 +5457,6 @@ void HWConformity::avoidInstDstSrcOverlap(INST_LIST_ITER it, G4_BB *bb,
         ((dstRgn->getSubRegOff() * dstRgn->getTypeSize()) % grfSize +
          (dstRgn->getLinearizedEnd() - dstRgn->getLinearizedStart()) + 1) >
         grfSize;
-    int dstFirstHalf = dst->getLinearizedStart() / grfSize;
 
     bool srcOverlap = false;
     for (int i = 0, nSrcs = inst->getNumSrc(); i < nSrcs; i++) {
@@ -5469,59 +5471,39 @@ void HWConformity::avoidInstDstSrcOverlap(INST_LIST_ITER it, G4_BB *bb,
         G4_SrcRegRegion *srcRgn = src->asSrcRegRegion();
         if (srcDcl == dstDcl && srcRgn->getRegAccess() == Direct &&
             srcRgn->getBase()->isRegVar()) {
-          bool srcCrossGRF =
-              ((srcRgn->getSubRegOff() * srcRgn->getTypeSize()) % grfSize +
-               (srcRgn->getLinearizedEnd() - srcRgn->getLinearizedStart()) +
-               1) > grfSize;
-          // The half define in region rule "second half of a source operand
-          // must not point to the same register as the first half of
-          // destination operand in a compressed instruction" is exactly size
-          // half, not GRF boundary based half.
-          int srcSecondHalf = 0;
-          if (srcRgn->getRegion()->isContiguous(
-                  inst->getExecSize())) { // For contiguous region, linear
-                                          // start/end can be used to calculate
-                                          // the start GRF of half size of
-                                          // region
-            srcSecondHalf = (srcRgn->getLinearizedStart() +
-                             ((srcRgn->getLinearizedEnd() -
-                               srcRgn->getLinearizedStart() + 1) /
-                              2)) /
-                            grfSize;
-          } else { // For non-congtiguous region, there are holes in the region,
-                   // the start of second half elements need be calcauted in
-                   // stride and elemement sizes at same time.
-            // Such as in following cases, there is no first/second half overlap issues.
-            // add(M1, 32) V146(0,1)<2> V146(0,1)<2;1,0> V146(0,0)<2;1,0>
-            // add(M1, 16) V147(0,2)<4> V147(0,2)<4;1,0> V147(0,1)<4;1,0>
-            // add(M1, 16) V148(0,3)<4> V148(0,3)<4;1,0> V148(0,1)<4;1,0>
-            const RegionDesc *regionDesc = srcRgn->getRegion();
-            uint16_t vertSize = regionDesc->vertStride * srcRgn->getElemSize();
-            uint16_t execTypeSize =
-                regionDesc->horzStride == 0
-                    ? srcRgn->getElemSize()
-                    : regionDesc->horzStride * srcRgn->getElemSize();
-            uint16_t rowSize = regionDesc->horzStride == 0
-                                   ? execTypeSize
-                                   : regionDesc->width * execTypeSize,
-                     numRows = regionDesc->vertStride == 0
-                                   ? 1
-                                   : inst->getExecSize() / regionDesc->width,
-                     numElePerRow = rowSize / execTypeSize,
-                     numExecEmePerRow =
-                         regionDesc->horzStride == 0 ? 1 : regionDesc->width;
-            uint16_t totalNumEle = (regionDesc->vertStride >= numElePerRow)
-                                       ? (numRows * numExecEmePerRow)
-                                       : (srcRgn->getLinearizedEnd() -
-                                          srcRgn->getLinearizedStart() + 1) /
-                                             execTypeSize;
-            srcSecondHalf =
-                (srcRgn->getLinearizedStart() + (totalNumEle / 2) * vertSize) /
-                grfSize;
-          }
+          if (dstCrossGRF) {
+            unsigned dstStartByte = dstRgn->getLinearizedStart();
+            unsigned dstPitch = dstRgn->getHorzStride() * dstRgn->getTypeSize();
+            unsigned bytesToGRFBoundary = grfSize - (dstStartByte % grfSize);
+            // Round up: bytesToGRFBoundary may not be an exact multiple of
+            // dstPitch (e.g. when dst is strided, horzStride > 1), so K can
+            // land a few bytes past the actual GRF boundary rather than
+            // exactly on it. Either way, K is the smallest channel index
+            // whose byte offset is at or past the boundary -- i.e. the first
+            // channel of the destination's second part.
+            unsigned K = (bytesToGRFBoundary + dstPitch - 1) / dstPitch;
 
-          if (dstCrossGRF || srcCrossGRF) {
-            if (dstFirstHalf == srcSecondHalf) {
+            const RegionDesc *regionDesc = srcRgn->getRegion();
+            unsigned row = K / regionDesc->width;
+            unsigned col = K % regionDesc->width;
+            unsigned srcKthOffset =
+                srcRgn->getLinearizedStart() +
+                row * regionDesc->vertStride * srcRgn->getElemSize() +
+                col * regionDesc->horzStride * srcRgn->getElemSize();
+
+            // Note: we use coarse range check here with GRF granularity instead
+            // of DW-channel granularity. It flags overlap whenever the source's
+            // tail *span* touches dst's first GRF at all, rather than checking
+            // whether the source's tail bytes actually coincide with dst's
+            // (possibly strided, non-contiguous) first-part bytes at DW
+            // granularity. So, some strided cases (e.g. dst horzStride > 1)
+            // have no true DW-granularity overlap here but still get the
+            // (unnecessary but safe) temp-copy. For example:
+            //   bfrev (4|M16)  r12.8<4>:ud  r12.11<2;1,0>:ud
+            unsigned dstFirstGRFStart = (dstStartByte / grfSize) * grfSize;
+            unsigned srcSecondPartEnd = srcRgn->getLinearizedEnd();
+            if (srcKthOffset <= dstFirstGRFStart + grfSize - 1 &&
+                srcSecondPartEnd >= dstStartByte) {
               srcOverlap = true;
               break;
             }

@@ -485,8 +485,6 @@ void HWConformityPro::fixMovCvtBetweenFp16AndWordByte(INST_LIST_ITER it,
 // Restrictions for int pipeline:
 // 1, src0 restrictions:
 //    a, If opcode is non-mul and src2 is not broadcast, true region is allowed.
-//       Need to follow the bspec psedo code for allowed regioning patterns:
-//       https://gfxspecs.intel.com/Predator/Home/Index/73578
 //    b, Otherwise, must be flat region except that src is broadcast of a
 //       single channel from GRF register.
 // 2, src1/src2 restrictions:
@@ -3229,73 +3227,53 @@ void HWConformityPro::fixDstSrcOverlap(INST_LIST_ITER it, G4_BB *bb) {
     G4_Declare *srcDcl = src->getTopDcl();
     if (srcDcl == dstDcl && srcRg->getRegAccess() == Direct &&
         srcRg->getBase()->isRegVar()) {
-      bool srcCrossGRF =
-          ((srcRg->getSubRegOff() * srcRg->getTypeSize()) % grfSize +
-           (srcRg->getLinearizedEnd() - srcRg->getLinearizedStart()) + 1) >
-          grfSize;
       bool srcCross2GRF =
           ((srcRg->getSubRegOff() * srcRg->getTypeSize()) % grfSize +
            (srcRg->getLinearizedEnd() - srcRg->getLinearizedStart()) + 1) >
           grfSize * 2;
 
-      // The half define in region rule "second half of a source operand
-      // must not point to the same register as the first half of
-      // destination operand in a compressed instruction" is exactly size
-      // half, not GRF boundary based half.
-      int srcSecondHalf = 0;
-      if (srcRg->getRegion()->isContiguous(
-              inst->getExecSize())) { // For contiguous region, linear
-                                      // start/end can be used to calculate
-                                      // the start GRF of half size of
-                                      // region
-        srcSecondHalf =
-            (srcRg->getLinearizedStart() +
-             ((srcRg->getLinearizedEnd() - srcRg->getLinearizedStart() + 1) /
-              2)) /
-            grfSize;
-      } else {
-        // For non-congtiguous region, there are holes in the region,
-        // the start of second half elements need be calcauted in
-        // stride and elemement sizes at same time.
-        // Such as in following cases, there is no first/second half overlap
-        // issues.
-        // add(M1, 32) V146(0,1)<2> V146(0,1)<2;1,0> V146(0,0)<2;1,0>
-        // add(M1, 16) V147(0,2)<4> V147(0,2)<4;1,0> V147(0,1)<4;1,0>
-        // add(M1, 16) V148(0,3)<4> V148(0,3)<4;1,0> V148(0,1)<4;1,0>
-        const RegionDesc *regionDesc = srcRg->getRegion();
-        uint16_t vertSize = regionDesc->vertStride * srcRg->getElemSize();
-        uint16_t execTypeSize =
-            regionDesc->horzStride == 0
-                ? srcRg->getElemSize()
-                : regionDesc->horzStride * srcRg->getElemSize();
-        uint16_t rowSize = regionDesc->horzStride == 0
-                               ? execTypeSize
-                               : regionDesc->width * execTypeSize,
-                 numRows = regionDesc->vertStride == 0
-                               ? 1
-                               : inst->getExecSize() / regionDesc->width,
-                 numElePerRow = rowSize / execTypeSize,
-                 numExecEmePerRow =
-                     regionDesc->horzStride == 0 ? 1 : regionDesc->width;
-        uint16_t totalNumEle = (regionDesc->vertStride >= numElePerRow)
-                                   ? (numRows * numExecEmePerRow)
-                                   : (srcRg->getLinearizedEnd() -
-                                      srcRg->getLinearizedStart() + 1) /
-                                         execTypeSize;
-        srcSecondHalf =
-            (srcRg->getLinearizedStart() + (totalNumEle / 2) * vertSize) /
-            grfSize;
-      }
+      // The destination's first/second "part" split happens
+      // where the destination physically crosses its GRF boundary -- 1 GRF
+      // in for the 2-GRF case, 2 GRFs in for the 4-GRF case -- not
+      // necessarily at execSize/2. Use that channel index (rather than the
+      // source's own span midpoint) to locate the source bytes that must
+      // not overlap the destination's first part.
+      unsigned dstStartByte = dst->getLinearizedStart();
+      unsigned dstPitch = dst->getHorzStride() * dst->getTypeSize();
+      unsigned dstFirstGRFStart = (dstStartByte / grfSize) * grfSize;
+      const RegionDesc *regionDesc = srcRg->getRegion();
+      // Byte offset of the source element that lines up with the
+      // destination channel `numGRFs` GRFs past dstFirstGRFStart.
+      auto srcOffsetAtBoundary = [&](unsigned numGRFs) {
+        unsigned dstHalfBoundary = dstFirstGRFStart + numGRFs * grfSize;
+        unsigned bytesToGRFBoundary = dstHalfBoundary - dstStartByte;
+        // Round up: bytesToGRFBoundary may not be an exact multiple of
+        // dstPitch (e.g. when dst is strided, horzStride > 1), so K can
+        // land a few bytes past the actual GRF boundary rather than
+        // exactly on it. Either way, K is the smallest channel index
+        // whose byte offset is at or past the boundary -- i.e. the first
+        // channel of the destination's second part.
+        unsigned K = (bytesToGRFBoundary + dstPitch - 1) / dstPitch;
+        unsigned row = K / regionDesc->width;
+        unsigned col = K % regionDesc->width;
+        return srcRg->getLinearizedStart() +
+               row * regionDesc->vertStride * srcRg->getElemSize() +
+               col * regionDesc->horzStride * srcRg->getElemSize();
+      };
 
       if (dstCross2GRF || srcCross2GRF) {
         if (inst->opcode() == G4_mullh || inst->opcode() == G4_madw) {
           // Special case for SIMD32 mullh/madw instruction:
-          // The dst occupies 4 contiguous GRFs and src occupies 2 contiguous
-          // GRFs. But the first phase will write to the 1st and 3rd GRF of
-          // dst. For example:
+          // The dst is a wide-dst SOA operand: low result in the 1st/2nd
+          // GRF, high result in the 3rd/4th. dstCross2GRF reflects that
+          // combined 4-GRF span and is always true here -- it is NOT the
+          // per-phase split point. The first phase always writes only the
+          // 1st and 3rd GRF of dst, i.e. the split is always exactly 1 GRF
+          // into each half, regardless of dstCross2GRF. For example:
           // mullh (32|M0)  r6.0<1>:ud  -(abs)r7.0<1;1,0>:ud  -r19.0<1;1,0>:d
           // The 1st phase will write r6 and r8, and the 2nd phase will read
           // r8 as source. So, dst and src are overlapped.
+          int srcSecondHalf = srcOffsetAtBoundary(1) / grfSize;
           if (dstFirstHalf == srcSecondHalf ||
               (dstFirstHalf + 2) == srcSecondHalf) {
             srcOverlap = true;
@@ -3309,20 +3287,42 @@ void HWConformityPro::fixDstSrcOverlap(INST_LIST_ITER it, G4_BB *bb) {
           // add (32|M0) r6.0<1>:q  r4.0<1;1,0>:q  r10.0<0;1,0>:q
           // add (32|M0) r6.0<1>:q  r5.0<1;1,0>:q  r10.0<0;1,0>:q
           // Above instructions all have dst and src0 overlapped
-          int dstFisrtHalfLeftBound = dstFirstHalf;
+          int srcSecondHalf =
+              srcOffsetAtBoundary(dstCross2GRF ? 2u : 1u) / grfSize;
+          int dstFirstHalfLeftBound = dstFirstHalf;
           int dstFirstHalfRightBound =
               dstCross2GRF ? (dstFirstHalf + 1) : dstFirstHalf;
           int srcSecondHalfLeftBound = srcSecondHalf;
           int srcSecondHalfRightBound =
               srcCross2GRF ? (srcSecondHalf + 1) : srcSecondHalf;
           if (srcSecondHalfLeftBound <= dstFirstHalfRightBound &&
-              srcSecondHalfRightBound >= dstFisrtHalfLeftBound) {
+              srcSecondHalfRightBound >= dstFirstHalfLeftBound) {
             srcOverlap = true;
             break;
           }
         }
-      } else if (dstCrossGRF || srcCrossGRF) {
-        if (dstFirstHalf == srcSecondHalf) {
+      } else if (dstCrossGRF) {
+        // HW restriction: "A compressed instruction spans across 2 adjacent
+        // destination registers and is split into 2 parts. The source
+        // operand of the second part must not overlap with the destination
+        // operand of the first part." The split point is where the
+        // destination crosses its GRF boundary, which only coincides with
+        // execSize/2 when dst is GRF-aligned. dstCross2GRF is false here, so
+        // boundary=1 is exactly the 1-GRF boundary this branch cares about.
+        //
+        // Note: this is a coarse range check with GRF granularity instead
+        // of DW-channel granularity -- it flags overlap whenever the source's
+        // tail *span* touches dst's first GRF at all, rather than checking
+        // whether the source's tail bytes actually coincide with dst's
+        // (possibly strided, non-contiguous) first-part bytes at DW
+        // granularity. So, some strided cases (e.g. dst horzStride > 1) have
+        // no true DW-granularity overlap here but still get the (unnecessary
+        // but safe) temp-copy. For example:
+        //   bfrev (4|M16)  r12.8<4>:ud  r12.11<2;1,0>:ud
+        unsigned srcKthOffset = srcOffsetAtBoundary(1);
+        unsigned srcSecondPartEnd = srcRg->getLinearizedEnd();
+        if (srcKthOffset <= dstFirstGRFStart + grfSize - 1 &&
+            srcSecondPartEnd >= dstStartByte) {
           srcOverlap = true;
           break;
         }

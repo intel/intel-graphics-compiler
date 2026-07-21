@@ -230,16 +230,18 @@ bool G4Verifier::dataHazardCheck(G4_Operand *dst, G4_Operand *src) {
     return false;
   }
 
-  int dstReg = dstStart / kernel.numEltPerGRF<Type_UB>();
-  int dstRegNum = (dstEnd - dstStart + kernel.numEltPerGRF<Type_UB>()) /
-                  kernel.numEltPerGRF<Type_UB>();
-  int srcReg = srcStart / kernel.numEltPerGRF<Type_UB>();
-  int srcRegNum = (srcEnd - srcStart + kernel.numEltPerGRF<Type_UB>()) /
-                  kernel.numEltPerGRF<Type_UB>();
+  unsigned grfSize = kernel.numEltPerGRF<Type_UB>();
+  int dstReg = dstStart / (int)grfSize;
+  // Number of GRFs an operand spans, computed from its absolute start/end
+  // register indices. (end - start + grfSize) / grfSize undercounts when
+  // start is not GRF-aligned.
+  int dstRegNum = dstEnd / (int)grfSize - dstStart / (int)grfSize + 1;
+  int srcReg = srcStart / (int)grfSize;
+  int srcRegNum = srcEnd / (int)grfSize - srcStart / (int)grfSize + 1;
   int srcReg2 = -1;
 
   if (srcRegNum > 1) {
-    srcReg2 = srcReg + 1;
+    srcReg2 = srcEnd / (int)grfSize;
   }
 
   if (dstRegNum >= 2 && srcRegNum == 1) {
