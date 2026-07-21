@@ -621,7 +621,7 @@ void GenIntrinsicsTTIImpl::getUnrollingPreferences(Loop *L, ScalarEvolution &SE,
   } else if (runtimeUnroll == 0) {
     // do not enable runtime unrolling if the loop is long or trip count is already known.
     // skip this check if RuntimeLoopUnrolling is set to force on.
-    if (instCount > 40 || TripCount) {
+    if (instCount > 36 || TripCount) {
       return;
     }
   }
