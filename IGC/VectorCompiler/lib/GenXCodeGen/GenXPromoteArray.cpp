@@ -229,6 +229,18 @@ Type *getBaseType(Type *Ty, Type *BaseTy) {
   return Ty;
 }
 
+// Returns true if \p Ty (or, for aggregates and vectors, its base element
+// type) is a (data) pointer type that the array promotion transpose logic
+// cannot handle. Such element types are sized with
+// Type::getScalarSizeInBits(), which returns 0 for pointers and leads to a
+// division by zero, and they cannot be represented in the promoted
+// integer/byte vector. Function pointers are handled separately (getBaseType
+// maps them to i64), so they are intentionally not reported here.
+bool hasUnpromotablePointerType(Type *Ty) {
+  auto *BaseTy = getBaseType(Ty, nullptr);
+  return BaseTy && BaseTy->isPointerTy();
+}
+
 template <typename FolderT>
 void GenericVectorIndex::adjust(Type *Ty, IRBuilder<FolderT> &IRB) {
   auto *BaseTy = getBaseType(Ty, nullptr);
@@ -962,6 +974,8 @@ bool GenXPromoteArray::checkAllocaUsesInternal(Instruction *I, Type *CurBaseTy,
     if (auto *GEP = dyn_cast<GetElementPtrInst>(*UseIt)) {
       if (NeedCheckTypes && !checkTypes(CurBaseTy, GEP->getSourceElementType()))
         return false;
+      if (hasUnpromotablePointerType(GEP->getSourceElementType()))
+        return false;
       auto *PtrV = GEP->getPointerOperand();
       // we cannot support a vector of pointers as the base of the GEP
       if (!PtrV->getType()->isPointerTy() ||
@@ -971,11 +985,15 @@ bool GenXPromoteArray::checkAllocaUsesInternal(Instruction *I, Type *CurBaseTy,
     } else if (auto *Load = dyn_cast<LoadInst>(*UseIt)) {
       if (NeedCheckTypes && !checkTypes(CurBaseTy, Load->getType()))
         return false;
+      if (hasUnpromotablePointerType(Load->getType()))
+        return false;
       if (!Load->isSimple())
         return false;
     } else if (auto *Store = dyn_cast<StoreInst>(*UseIt)) {
       if (NeedCheckTypes &&
           !checkTypes(CurBaseTy, Store->getValueOperand()->getType()))
+        return false;
+      if (hasUnpromotablePointerType(Store->getValueOperand()->getType()))
         return false;
       if (!Store->isSimple())
         return false;
@@ -999,10 +1017,14 @@ bool GenXPromoteArray::checkAllocaUsesInternal(Instruction *I, Type *CurBaseTy,
       case Intrinsic::masked_gather:
         if (NeedCheckTypes && !checkTypes(CurBaseTy, II->getType()))
           return false;
+        if (hasUnpromotablePointerType(II->getType()))
+          return false;
         break;
       case Intrinsic::masked_scatter:
         if (NeedCheckTypes &&
             !checkTypes(CurBaseTy, II->getOperand(0)->getType()))
+          return false;
+        if (hasUnpromotablePointerType(II->getOperand(0)->getType()))
           return false;
         break;
       default:
