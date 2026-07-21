@@ -13,6 +13,7 @@ SPDX-License-Identifier: MIT
 #include "AdaptorCommon/ImplicitArgs.hpp"
 #include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
 #include "Compiler/CISACodeGen/DeSSA.hpp"
+#include "Compiler/CISACodeGen/IGCLivenessAnalysis.h"
 #include "Compiler/CISACodeGen/GenCodeGenModule.h"
 #include "Compiler/CISACodeGen/messageEncoding.hpp"
 #include "Compiler/CISACodeGen/VariableReuseAnalysis.hpp"
@@ -2562,6 +2563,10 @@ void CShader::BeginFunction(llvm::Function *F) {
   ccTupleMapping.clear();
   ConstantPool.clear();
 
+  // EnableSampleTailDeAlias: clear the per-function decision cache. Keyed by
+  // instruction pointer so it is only cleared to bound growth across a group.
+  m_sampleTailDeAliasCache.clear();
+
   bool useStackCall = m_FGA && m_FGA->useStackCall(F);
   if (useStackCall) {
     // Clear cached variables.
@@ -3230,6 +3235,14 @@ CVariable *CShader::GetSymbol(llvm::Value *value, bool fromConstantPool, e_align
 /// treating extract-element as alias in order to reduce the complexity of
 /// the problem
 bool CShader::CanTreatAsAlias(llvm::ExtractElementInst *inst) {
+  // EnableSampleTailDeAlias optimization: refuse the sub-register alias for a
+  // long-lived sample/ld tail component under high pressure. emitExtract() then
+  // emits a copy into a fresh variable, so the payload response variable's live
+  // range ends early and its dead sibling GRFs are reclaimed.
+  if (isSampleTailToDeAlias(inst)) {
+    return false;
+  }
+
   llvm::Value *idxSrc = inst->getIndexOperand();
   if (!isa<llvm::ConstantInt>(idxSrc)) {
     return false;
@@ -3260,6 +3273,181 @@ bool CShader::CanTreatAsAlias(llvm::ExtractElementInst *inst) {
       return false;
   }
   return true;
+}
+
+// EnableSampleTailDeAlias optimization. See header comment on the declaration and
+// the NOTE below on the layer/heuristic.
+bool CShader::isSampleTailToDeAlias(llvm::ExtractElementInst *inst) {
+  if (!IGC_IS_FLAG_ENABLED(EnableSampleTailDeAlias))
+    return false;
+
+  // XE3P+ for now. Extended to earlier platforms when the optimization is proven to be safe and beneficial.
+  if (!m_Platform->isCoreChildOf(IGFX_XE3P_CORE))
+    return false;
+
+  // Register pressure gate: only de-alias when pressure is high enough to
+  // benefit from freeing payload GRFs. Uses the maxRegPressure metadata
+  // published by IGCLivenessAnalysis, following the pattern established by
+  // the EmitMoreMoviCases RP gate (EmitVISAPass.cpp) and BCR gate
+  // (CISABuilder.cpp). When threshold is 0 or pressure metadata is
+  // unavailable, the gate is inert (optimization fires unconditionally).
+  if (unsigned RpThresholdPct = IGC_GET_FLAG_VALUE(SampleTailDeAliasRPThreshold)) {
+    unsigned MaxPressure = 0;
+    auto funcMDItr = m_ModuleMetadata->FuncMD.find(entry);
+    if (funcMDItr != m_ModuleMetadata->FuncMD.end())
+      MaxPressure =
+          (funcMDItr->second.maxRegUniformPressure + funcMDItr->second.maxRegNonUniformPressure * numLanes(m_SIMDSize));
+
+    if (MaxPressure > 0) {
+      unsigned MaxPressureGRF = llvm::divideCeil(MaxPressure, getGRFSize());
+      unsigned NumGRF = GetContext()->getNumGRFPerThread(true, entry);
+      unsigned RpThreshold = (NumGRF * RpThresholdPct) / 100;
+      if (MaxPressureGRF < RpThreshold)
+        return false;
+    }
+  }
+
+  // Guard: skip for RT continuation shaders. Continuations have resource-loop
+  // BB structure with many tiny BBs that cause sample components to trivially
+  // "escape" their block, triggering the optimization on short-span uses.
+  // Additionally, 128-GRF BTD continuations have insufficient headroom for
+  // the MOV copies at the 95%+ pressure range.
+  {
+    auto funcMDItr = m_ModuleMetadata->FuncMD.find(entry);
+    if (funcMDItr != m_ModuleMetadata->FuncMD.end() && IGC::isContinuation(funcMDItr->second))
+      return false;
+  }
+
+  auto cached = m_sampleTailDeAliasCache.find(inst);
+  if (cached != m_sampleTailDeAliasCache.end())
+    return cached->second != 0;
+  auto memo = [&](bool v) {
+    m_sampleTailDeAliasCache[inst] = v ? 1 : 0;
+    return v;
+  };
+
+  // Only a constant-index extract of a sample/ld payload is a candidate.
+  if (!isa<llvm::ConstantInt>(inst->getIndexOperand()))
+    return memo(false);
+  llvm::Instruction *vec = llvm::dyn_cast<llvm::Instruction>(inst->getVectorOperand());
+  if (!vec || !(isSampleInstruction(vec) || isLdInstruction(vec)))
+    return memo(false);
+
+  // Detect the non-uniform resource/sampler exactly as ResourceLoopHeader and
+  // AdvMemOpt do, via WIAnalysis. GetIsUniform() fails safe (returns non-uniform)
+  // when WI is unavailable, so the de-alias is skipped rather than misapplied.
+  if (IGC_IS_FLAG_ENABLED(SampleTailDeAliasSuppressNonUniform)) {
+    llvm::Value *tex = nullptr;
+    llvm::Value *smp = nullptr;
+    if (auto *SI = llvm::dyn_cast<SampleIntrinsic>(vec)) {
+      tex = SI->getTextureValue();
+      smp = SI->getSamplerValue();
+    } else if (auto *LI = llvm::dyn_cast<SamplerLoadIntrinsic>(vec)) {
+      tex = LI->getTextureValue();
+    }
+    if ((tex && !GetIsUniform(tex)) || (smp && !GetIsUniform(smp)))
+      return memo(false);
+  }
+
+  // Cross-block-span heuristic (no register-pressure estimate). The sample/ld
+  // response is a single variable; keeping a component aliased that outlives the
+  // sample's block pins the whole payload live to that far use. De-alias a
+  // component that ESCAPES the sample's block (has a use in another BB) when at
+  // least one sibling component dies inside the block -- splitting this one lets
+  // the payload (and the dead siblings' GRFs) be reclaimed early.
+  llvm::BasicBlock *defBB = inst->getParent();
+  auto escapesBlock = [&](llvm::Value *V) {
+    for (auto *U : V->users())
+      if (auto *UI = llvm::dyn_cast<llvm::Instruction>(U))
+        if (UI->getParent() != defBB)
+          return true;
+    return false;
+  };
+  // True if V has at least one use and all of them are inside defBB (dies local).
+  auto diesInBlock = [&](llvm::Value *V) {
+    bool hasUse = false;
+    for (auto *U : V->users())
+      if (auto *UI = llvm::dyn_cast<llvm::Instruction>(U)) {
+        hasUse = true;
+        if (UI->getParent() != defBB)
+          return false;
+      }
+    return hasUse;
+  };
+
+  // This component must escape the block (long-lived tail).
+  if (!escapesBlock(inst))
+    return memo(false);
+
+  // Lone-escaping-component constraint: only de-alias when this is the SOLE
+  // escaping component. When multiple components escape, de-aliasing all of
+  // them creates N MOV copies to free only the dying siblings' GRFs -- the
+  // copies themselves consume GRFs, cancelling the savings (H6).
+  for (auto *U : vec->users()) {
+    if (U == inst)
+      continue;
+    auto *sib = llvm::dyn_cast<llvm::ExtractElementInst>(U);
+    if (!sib)
+      return memo(false); // non-extractelement use of the response -> can't prove it dies early; bail
+    if (escapesBlock(sib))
+      return memo(false); // another component also escapes
+  }
+
+  // Count dying sibling components. The de-alias copy costs 1 GRF; the benefit is
+  // freeing the dying siblings' GRFs. When dyingSiblingCount < 2 the benefit is at
+  // most 1 GRF, which equals the copy cost -- net zero or negative. Require >= 2
+  // dying siblings so the freed GRFs strictly exceed the copy cost. (2-component
+  // samples, e.g. sample_lz.rg/ld.rg, can have at most 1 dying sibling and are thus
+  // fully excluded; 3-4 component samples with >=2 dying siblings are unaffected.)
+  unsigned dyingSiblingCount = 0;
+  for (auto *U : vec->users()) {
+    auto *sib = llvm::dyn_cast<llvm::ExtractElementInst>(U);
+    if (!sib || sib == inst)
+      continue;
+    if (diesInBlock(sib))
+      ++dyingSiblingCount;
+  }
+  if (dyingSiblingCount < 2)
+    return memo(false);
+
+  // Peak-aware gate (experiment), evaluated lazily now that this is a genuine
+  // de-alias candidate -- so candidate-free shaders never pay the liveness cost.
+  // The de-alias copy is materialized at the sample/ld def site and lives across
+  // the whole def block, so if the def block is the function's register-pressure
+  // peak the copy just adds its footprint on top of the still-live payload at the
+  // peak -- a strict loss that regresses spill. The benefit exists only when the
+  // payload is freed at the peak, i.e. the peak is downstream in the escaping-use
+  // region, not in the def block.
+  if (IGC_IS_FLAG_ENABLED(SampleTailDeAliasSuppressAtPeakBlock)) {
+    llvm::BasicBlock *peakBB = getSampleTailPeakBB();
+    if (peakBB && defBB == peakBB)
+      return memo(false);
+  }
+  return memo(true);
+}
+
+// EnableSampleTailDeAlias peak-aware experiment (lazy): return the function's
+// highest register-pressure basic block. Computed on first call via a local
+// IGCLivenessAnalysisRunner (a full-function liveness run) and cached on the
+// SIMD-shared CShaderProgram, keyed by the function -- so it runs at most once
+// per function regardless of how many SIMD widths are compiled, and never for
+// shaders that never reach a de-alias candidate. Returns nullptr if unavailable.
+llvm::BasicBlock *CShader::getSampleTailPeakBB() {
+  // entry is the DenseMap key; nullptr is DenseMap's empty-key sentinel, so bail
+  // before touching the cache when it is unavailable (fail-open: no gate).
+  if (!entry || entry->empty())
+    return nullptr;
+
+  CShaderProgram *program = GetParent();
+  if (program && program->hasSampleTailPeakBB(entry))
+    return program->getSampleTailPeakBB(entry);
+
+  IGCLivenessAnalysisRunner LR(GetContext(), m_pMdUtils, m_FGA);
+  LR.livenessAnalysis(*entry);
+  llvm::BasicBlock *peakBB = LR.getMaxRegCountBBForFunction(*entry);
+  if (program)
+    program->setSampleTailPeakBB(entry, peakBB);
+  return peakBB;
 }
 
 static bool isUsedInPHINode(llvm::Instruction *I) {

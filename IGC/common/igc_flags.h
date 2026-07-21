@@ -1557,6 +1557,29 @@ DECLARE_IGC_REGKEY(
 DECLARE_IGC_REGKEY(bool, EnableExtractMask, false,
                    "When enabled, it is mostly for reducing response size of send messages.", false)
 DECLARE_IGC_REGKEY(DWORD, VariableReuseByteSize, 64, "The byte size threshold for variable reuse", false)
+DECLARE_IGC_REGKEY(bool, EnableSampleTailDeAlias, false,
+                   "When a sample-ld return component escapes the sample's basic block (a long-lived tail) while "
+                   "a sibling component dies inside the block, keep the tail in its own variable (do not "
+                   "payload-coalesce it) so the payload declare dies early and its dead sibling GRFs are reclaimed.",
+                   true)
+DECLARE_IGC_REGKEY(DWORD, SampleTailDeAliasRPThreshold, 100,
+                   "Minimum register pressure as a percentage of the GRF file size to enable "
+                   "sample tail de-aliasing. 0 disables the pressure gate (always fire when the "
+                   "flag is enabled). Default 100 means fire only when maxRegPressure -GE- 100 percent of GRFs.",
+                   true)
+DECLARE_IGC_REGKEY(bool, SampleTailDeAliasSuppressAtPeakBlock, true,
+                   "Peak-aware gate for sample tail de-aliasing. When enabled, suppress de-aliasing a sample/ld "
+                   "tail whose def block is the function's highest register-pressure basic block, since the "
+                   "de-alias copy would add its footprint on top of the still-live payload at the peak (a strict "
+                   "loss). Disable to fire regardless of where the peak is.",
+                   true)
+DECLARE_IGC_REGKEY(bool, SampleTailDeAliasSuppressNonUniform, true,
+                   "Resource-loop gate for sample tail de-aliasing. When enabled, suppress de-aliasing a sample/ld "
+                   "tail whose resource (or, for a sample, sampler) is non-uniform: such sends are emitted wrapped "
+                   "in a resource loop that keeps the whole response payload loop-carried live, so the de-alias copy "
+                   "frees nothing and is pure additive pressure. Narrower than a loop-membership guard (targets loop "
+                   "generators, not samples merely fused into a neighbor's loop). Disable to fire regardless.",
+                   true)
 DECLARE_IGC_REGKEY(bool, EnableGather4cpoWA, true, "Enable WA transforming gather4cpo/gather4po into gather4c/gather4",
                    false)
 DECLARE_IGC_REGKEY(bool, EnableIntelFast, false, "Enable intel fast, experimental flag.", false)

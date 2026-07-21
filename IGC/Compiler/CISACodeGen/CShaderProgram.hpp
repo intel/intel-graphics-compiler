@@ -15,6 +15,10 @@ SPDX-License-Identifier: MIT
 #include <common/allocator.h>
 #include <common/Stats.hpp>
 
+namespace llvm {
+class BasicBlock;
+}
+
 namespace IGC {
 class CShader;
 class CodeGenContext;
@@ -46,6 +50,18 @@ public:
 
   void ClearShaderPtr(SIMDMode simd);
 
+  // EnableSampleTailDeAlias peak-aware experiment: cache the function's highest
+  // register-pressure basic block (the block ranking is SIMD-independent), so
+  // EmitPass computes it once per function instead of once per SIMD EmitPass
+  // instance. Keyed by Function* to stay correct for multi-function groups.
+  // Presence in the map means "computed" (value may be null for a trivial fn).
+  bool hasSampleTailPeakBB(llvm::Function *F) const { return m_sampleTailPeakBB.count(F) != 0; }
+  llvm::BasicBlock *getSampleTailPeakBB(llvm::Function *F) const {
+    auto It = m_sampleTailPeakBB.find(F);
+    return It != m_sampleTailPeakBB.end() ? It->second : nullptr;
+  }
+  void setSampleTailPeakBB(llvm::Function *F, llvm::BasicBlock *BB) { m_sampleTailPeakBB[F] = BB; }
+
 protected:
   CShader *&GetShaderPtr(SIMDMode simd, ShaderDispatchMode mode);
   CShader *CreateNewShader(SIMDMode simd);
@@ -53,6 +69,8 @@ protected:
   CodeGenContext *m_context = nullptr;
   llvm::Function *m_kernel = nullptr;
   std::array<CShader *, 10> m_SIMDshaders;
+  // EnableSampleTailDeAlias peak-aware experiment: see hasSampleTailPeakBB().
+  llvm::DenseMap<llvm::Function *, llvm::BasicBlock *> m_sampleTailPeakBB;
 
 public:
   typedef std::unique_ptr<CShaderProgram> UPtr;
