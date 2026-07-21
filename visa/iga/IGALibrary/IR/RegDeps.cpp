@@ -875,10 +875,13 @@ bool DepSetBuilder::DpasMacroBuilder::nextIsNotMacroCandidate(
 
 bool DepSetBuilder::DpasMacroBuilder::isValidMixedTypes(Type curType,
                                                         Type nextType) const {
+  if (m_model.platform <= Platform::XE3)
+    return false;
   // bf16 and fp32 can be mixed
-  return m_model.platform > Platform::XE3 &&
-         (curType == Type::BF || curType == Type::F) &&
-         (nextType == Type::BF || nextType == Type::F);
+  auto isBfOrF = [](Type t) { return t == Type::BF || t == Type::F; };
+  if (isBfOrF(curType) && isBfOrF(nextType))
+    return true;
+  return false;
 }
 
 // set register range from start_reg to upper_reg into bit_set
@@ -1055,7 +1058,8 @@ bool DepSetBuilder::DpasMacroBuilder::canFwd(
   //    Fwd is allowd as long as current's dst type is the same as next's src0's
   Type dstType = cur.getDestination().getType();
   // The valid types are fp32, int32, bf16
-  if (dstType != Type::BF && TypeSizeInBits(dstType) != 32)
+  bool validDstType = dstType == Type::BF || TypeSizeInBits(dstType) == 32;
+  if (!validDstType)
     return false;
   if (dstType != next.getSource(0).getType())
     return false;
