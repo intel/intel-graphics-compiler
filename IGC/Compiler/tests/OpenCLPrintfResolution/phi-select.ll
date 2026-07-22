@@ -53,6 +53,7 @@ exit:
 ; CHECK-LABEL: define spir_kernel void @printf_test(
 ; CHECK-SAME:      i64 %[[ENUM_VAL:[A-Za-z0-9]+]], i8 addrspace(1)* %printfBuffer)
 ; CHECK: entry:
+; CHECK-NEXT: %printfBufferPtr = call i8 addrspace(1)* @llvm.genx.GenISA.getPrintfBuffer.p1i8()
 ; CHECK-NEXT: %[[CMP:.+]] = icmp eq i64 %[[ENUM_VAL]], 1
 ; CHECK-NEXT: %[[STR1_GEP:.+]] = getelementptr inbounds [9 x i8], [9 x i8] addrspace(2)* @.str.1, i64 0, i64 0
 ; CHECK-NEXT: %[[STR2_GEP:.+]] = getelementptr inbounds [9 x i8], [9 x i8] addrspace(2)* @.str.2, i64 0, i64 0
@@ -68,30 +69,27 @@ exit:
 ; CHECK-NEXT: br label %switch_b2
 ;
 ; CHECK: switch_b1:
-; CHECK-NEXT: %[[STR1_STR2_SEL:.+]] = select i1 %[[CMP]], [9 x i8] addrspace(2)* @.str.1, [9 x i8] addrspace(2)* @.str.2
-; TODO: Clean up old sels/phis directly within the pass & make next line CHECK-NEXT
-; CHECK:      br label %printf_bb
+; CHECK-NEXT: %[[STR1_STR2_SEL:.+]] = select i1 %[[CMP]], i8 addrspace(2)* %[[STR1_GEP]], i8 addrspace(2)* %[[STR2_GEP]]
+; CHECK-NEXT: br label %printf_bb
 ;
 ; CHECK: switch_b2:
-; CHECK-NEXT: %[[STR2_STR3_PHI:.+]] = phi [9 x i8] addrspace(2)* [ @.str.3, %switch_b0 ], [ @.str.2, %entry ]
-; TODO: Clean up old sels/phis directly within the pass & make next line CHECK-NEXT
-; CHECK:      br label %printf_bb
+; CHECK-NEXT: %[[STR2_STR3_PHI:.+]] = phi i8 addrspace(2)* [ %[[STR3_GEP]], %switch_b0 ], [ %[[STR2_GEP]], %entry ]
+; CHECK-NEXT: br label %printf_bb
 ;
 ; CHECK: printf_bb:
-; CHECK-NEXT: %[[JOIN_PHI:.+]] = phi [9 x i8] addrspace(2)* [ %[[STR1_STR2_SEL]], %switch_b1 ], [ %[[STR2_STR3_PHI]], %switch_b2 ], [ @.str.1, %entry ]
-; TODO: Clean up old sels/phis directly within the pass & make next line CHECK-NEXT
-; CHECK:      %ptrBC = bitcast i8 addrspace(1)* %printfBuffer to i32 addrspace(1)*
+; CHECK-NEXT: %[[JOIN_PHI:.+]] = phi i8 addrspace(2)* [ %[[STR1_STR2_SEL]], %switch_b1 ], [ %[[STR2_STR3_PHI]], %switch_b2 ], [ %[[STR1_GEP]], %entry ]
+; CHECK-NEXT: %ptrBC = bitcast i8 addrspace(1)* %printfBufferPtr to i32 addrspace(1)*
 ; CHECK-NEXT: %write_offset = call i32 @__builtin_IB_atomic_add_global_i32(i32 addrspace(1)* %ptrBC, i32 8)
 ; CHECK-NEXT: %end_offset = add i32 %write_offset, 8
 ; CHECK-NEXT: %[[WRITE_OFFSET_EXT:write_offset.*]] = zext i32 %write_offset to i64
-; CHECK-NEXT: %buffer_ptr = ptrtoint i8 addrspace(1)* %printfBuffer to i64
+; CHECK-NEXT: %buffer_ptr = ptrtoint i8 addrspace(1)* %printfBufferPtr to i64
 ; CHECK-NEXT: %[[WRITE_OFFSET_ADD:write_offset.*]] = add i64 %buffer_ptr, %[[WRITE_OFFSET_EXT]]
 ; CHECK-NEXT: %[[BUF_CHECK:.+]] = icmp ule i32 %end_offset, 4194304
 ; CHECK-NEXT: br i1 %[[BUF_CHECK]], label %write_offset_true, label %write_offset_false
 ;
 ; CHECK: write_offset_true:
 ; CHECK-NEXT: %write_offset_ptr = inttoptr i64 %[[WRITE_OFFSET_ADD]] to i64 addrspace(1)*
-; CHECK-NEXT: %[[PTRCAST:.+]] = ptrtoint [9 x i8] addrspace(2)* %[[JOIN_PHI]] to i64
+; CHECK-NEXT: %[[PTRCAST:.+]] = ptrtoint i8 addrspace(2)* %[[JOIN_PHI]] to i64
 ; CHECK-NEXT: store i64 %[[PTRCAST]], i64 addrspace(1)* %write_offset_ptr, align 4
 ; TODO: Fix the extra, unused offset increment (add i64 %[[WRITE_OFFSET_ADD]], 8)
 ;       and make next line CHECK-NEXT

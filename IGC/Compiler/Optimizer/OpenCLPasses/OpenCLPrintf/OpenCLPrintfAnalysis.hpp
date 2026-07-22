@@ -40,17 +40,10 @@ public:
   void visitCallInst(llvm::CallInst &callInst);
 
   static const llvm::StringRef OPENCL_PRINTF_FUNCTION_NAME;
-  static const llvm::StringRef ONEAPI_PRINTF_FUNCTION_NAME;
   static const llvm::StringRef BUILTIN_PRINTF_FUNCTION_NAME;
 
   static bool isOpenCLPrintf(const llvm::Function *F);
-  static bool isOneAPIPrintf(const llvm::Function *F);
   static bool isBuiltinPrintf(const llvm::Function *F);
-
-  // Return true if every top level user of a string literal is a printf
-  // call. Note that the function is expected to work only before printf
-  // expansion.
-  static bool isPrintfStringConstant(const llvm::GlobalVariable *GV);
 
 private:
   /// @brief  Adds an implicit argument for address of printf output buffer
