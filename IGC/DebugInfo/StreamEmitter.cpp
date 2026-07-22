@@ -28,7 +28,9 @@ See LICENSE.TXT for details.
 #include "llvm/MC/MCRegisterInfo.h"
 #include "llvm/MC/MCSection.h"
 #include "llvm/MC/MCStreamer.h"
+#include "llvm/MC/MCSubtargetInfo.h"
 #include "llvm/MC/MCSymbol.h"
+#include "llvm/MC/MCTargetOptions.h"
 #include "llvm/MC/MCValue.h"
 #include "llvm/Support/SourceMgr.h"
 #include "llvm/Support/MD5.h"
@@ -59,7 +61,12 @@ namespace IGC {
 
 class VISAMCAsmInfo : public MCAsmInfoELF {
 public:
-  VISAMCAsmInfo(unsigned int pointerSize) : MCAsmInfoELF() {
+  VISAMCAsmInfo(unsigned int pointerSize, const MCTargetOptions *Options = nullptr)
+#if LLVM_VERSION_MAJOR >= 23
+      : MCAsmInfoELF(*Options){
+#else
+      : MCAsmInfoELF() {
+#endif
     DwarfUsesRelocationsAcrossSections = true;
     CodePointerSize = pointerSize;
   }
@@ -225,15 +232,23 @@ StreamEmitter::StreamEmitter(raw_pwrite_stream &outStream, const std::string &da
     : m_targetTriple(targetTriple), m_setCounter(0), StreamOptions(Options) {
   m_pDataLayout = new DataLayout(dataLayout);
   m_pSrcMgr = new SourceMgr();
-  m_pAsmInfo = new VISAMCAsmInfo(GetPointerSize());
   m_pObjFileInfo = new IGCLLVM::MCObjectFileInfo();
 
-  MCRegisterInfo *regInfo = nullptr;
   Triple triple = Triple(GetTargetTriple());
 
+#if LLVM_VERSION_MAJOR >= 23
+  m_pTargetOptions = new MCTargetOptions();
+  m_pRegInfo = new MCRegisterInfo();
+  m_pSubtargetInfo =
+      new MCSubtargetInfo(triple, "", "", "", "", ArrayRef<SubtargetFeatureKV>(), ArrayRef<SubtargetSubTypeKV>(),
+                          nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr);
+#endif
+
+  m_pAsmInfo = new VISAMCAsmInfo(GetPointerSize(), m_pTargetOptions);
+
   // Create new MC context
-  m_pContext =
-      IGCLLVM::CreateMCContext(triple, (const llvm::MCAsmInfo *)m_pAsmInfo, regInfo, m_pObjFileInfo, m_pSrcMgr);
+  m_pContext = IGCLLVM::CreateMCContext(triple, (const llvm::MCAsmInfo *)m_pAsmInfo, m_pRegInfo, m_pSubtargetInfo,
+                                        m_pObjFileInfo, m_pSrcMgr);
 
   m_pObjFileInfo->InitMCObjectFileInfo(triple, false, *m_pContext);
 
@@ -274,8 +289,11 @@ StreamEmitter::StreamEmitter(raw_pwrite_stream &outStream, const std::string &da
 StreamEmitter::~StreamEmitter() {
   delete m_pMCStreamer;
   delete m_pContext;
+  delete m_pRegInfo;
+  delete m_pSubtargetInfo;
   delete m_pSrcMgr;
   delete m_pAsmInfo;
+  delete m_pTargetOptions;
   delete m_pObjFileInfo;
   delete m_pDataLayout;
 }

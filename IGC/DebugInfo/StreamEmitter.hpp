@@ -37,6 +37,9 @@ namespace llvm {
 class MCStreamer;
 class SourceMgr;
 class MCAsmInfo;
+class MCRegisterInfo;
+class MCSubtargetInfo;
+class MCTargetOptions;
 } // namespace llvm
 
 namespace IGC {
@@ -239,6 +242,9 @@ private:
   llvm::MCContext *m_pContext;
   llvm::SourceMgr *m_pSrcMgr;
   llvm::MCAsmInfo *m_pAsmInfo;
+  llvm::MCRegisterInfo *m_pRegInfo = nullptr;
+  llvm::MCSubtargetInfo *m_pSubtargetInfo = nullptr;
+  llvm::MCTargetOptions *m_pTargetOptions = nullptr;
   IGCLLVM::MCObjectFileInfo *m_pObjFileInfo;
   const llvm::DataLayout *m_pDataLayout;
   const std::string &m_targetTriple;
