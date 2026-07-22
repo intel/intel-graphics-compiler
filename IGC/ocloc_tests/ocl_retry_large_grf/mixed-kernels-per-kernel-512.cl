@@ -17,7 +17,7 @@ SPDX-License-Identifier: MIT
 // the module.
 //
 // RUN: ocloc compile -file %s -device cri \
-// RUN: -options "-igc_opts 'EnableCRIDefault512GRF=0,EnableOCL512GRFForDPAS=1,EnableOCL512GRFForSIMD16=0,DumpASMToConsole=1'" \
+// RUN: -options "-igc_opts 'EnableOCL512GRFForDPAS=1,EnableOCL512GRFForSIMD16=0,DumpASMToConsole=1'" \
 // RUN: 2>&1 | FileCheck %s
 
 // kA_dpas is the DPAS kernel: its retry is compiled with the 512-GRF ceiling.

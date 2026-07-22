@@ -17,7 +17,7 @@ SPDX-License-Identifier: MIT
 //
 
 // Default (DPAS category on): the retry lifts the ceiling and VRT picks 512 GRF.
-// RUN: ocloc compile -file %s -device cri -options "-igc_opts 'EnableCRIDefault512GRF=0,EnableOCL512GRFForDPAS=1,DumpASMToConsole=1'" \
+// RUN: ocloc compile -file %s -device cri -options "-igc_opts 'EnableOCL512GRFForDPAS=1,DumpASMToConsole=1'" \
 // RUN: 2>&1 | FileCheck %s --check-prefix=COMPILE
 
 // COMPILE: numGRF=256
@@ -27,7 +27,7 @@ SPDX-License-Identifier: MIT
 
 // Negative: both categories off. The retry still fires but the ceiling is not
 // lifted - the kernel stays at 256 GRF.
-// RUN: ocloc compile -file %s -device cri -options "-igc_opts 'EnableCRIDefault512GRF=0,EnableOCL512GRFForDPAS=0,EnableOCL512GRFForSIMD16=0,DumpASMToConsole=1'" \
+// RUN: ocloc compile -file %s -device cri -options "-igc_opts 'EnableOCL512GRFForDPAS=0,EnableOCL512GRFForSIMD16=0,DumpASMToConsole=1'" \
 // RUN: 2>&1 | FileCheck %s --check-prefix=NOLIFT --implicit-check-not "numGRF=512"
 
 // NOLIFT: [RetryManager] Start recompilation of the kernel

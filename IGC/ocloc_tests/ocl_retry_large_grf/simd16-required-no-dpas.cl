@@ -17,7 +17,7 @@ SPDX-License-Identifier: MIT
 // The kernel has no DPAS, so the DPAS category does not apply.
 
 // SIMD16 category on: category B lifts the ceiling and VRT picks 512 GRF.
-// RUN: ocloc compile -file %s -device cri -options "-igc_opts 'EnableCRIDefault512GRF=0,EnableOCL512GRFForSIMD16=1,DumpASMToConsole=1'" \
+// RUN: ocloc compile -file %s -device cri -options "-igc_opts 'EnableOCL512GRFForSIMD16=1,DumpASMToConsole=1'" \
 // RUN: 2>&1 | FileCheck %s --check-prefix=COMPILE
 
 // COMPILE: numGRF=512
@@ -26,7 +26,7 @@ SPDX-License-Identifier: MIT
 
 // Negative: SIMD16 category off (default). No DPAS, so neither category applies;
 // the retry still fires but the ceiling is not lifted - the kernel stays at 256.
-// RUN: ocloc compile -file %s -device cri -options "-igc_opts 'EnableCRIDefault512GRF=0,EnableOCL512GRFForSIMD16=0,DumpASMToConsole=1'" \
+// RUN: ocloc compile -file %s -device cri -options "-igc_opts 'EnableOCL512GRFForSIMD16=0,DumpASMToConsole=1'" \
 // RUN: 2>&1 | FileCheck %s --check-prefix=NOLIFT --implicit-check-not "numGRF=512"
 
 // NOLIFT: [RetryManager] Start recompilation of the kernel
