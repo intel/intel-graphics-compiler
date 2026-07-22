@@ -2302,7 +2302,8 @@ public:
       G4_SrcRegRegion **opndArray);
 
   int translateVISALoad3DInstUnified(
-      VISASampler3DSubOpCode actualop, bool pixelNullMask, G4_Predicate *pred,
+      VISASampler3DSubOpCode actualop, bool pixelNullMask,
+      G4_Predicate *pred,
       VISA_Exec_Size exeuctionSize, VISA_EMask_Ctrl em, ChannelMask channelMask,
       G4_Operand *aoffimmi, G4_Operand *samplerBase, unsigned int samplerIdx,
       G4_Operand *surfaceBase, unsigned int surfaceIdx,

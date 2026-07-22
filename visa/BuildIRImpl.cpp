@@ -2916,6 +2916,7 @@ G4_SendgDesc *IR_Builder::createRenderTargetDesc(
 }
 
 // sampler descriptor construction
+
 G4_SendgDesc *IR_Builder::createSamplerDesc(
     MsgOp op, ChannelMask chMask, bool FP16Return, bool FP16Input,
     bool pixelNullMask, bool feedbackMessage,
@@ -2972,8 +2973,7 @@ G4_SendgDesc *IR_Builder::createSamplerDesc(
   // data return type
   desc |= (FP16Return) ? 1 << 15 : 0 << 15;
 
-  // cache options are MBZ
-  desc |= (uint64_t)0 << 16;
+    desc |= (uint64_t)0 << 16;
 
   // trtt_null
   desc |= (uint64_t)pixelNullMask << 20;

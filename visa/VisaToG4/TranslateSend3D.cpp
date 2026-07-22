@@ -2881,7 +2881,8 @@ int IR_Builder::translateVISASampler3DInstUnified(
 }
 
 int IR_Builder::translateVISALoad3DInstUnified(
-    VISASampler3DSubOpCode actualop, bool pixelNullMask, G4_Predicate *pred,
+    VISASampler3DSubOpCode actualop, bool pixelNullMask,
+    G4_Predicate *pred,
     VISA_Exec_Size executionSize, VISA_EMask_Ctrl em, ChannelMask channelMask,
     G4_Operand *aoffimmi, G4_Operand *samplerBase, unsigned int samplerIdx,
     G4_Operand *surfaceBase, unsigned int surfaceIdx, G4_Operand *pairedSurface,

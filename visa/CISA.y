@@ -1456,13 +1456,10 @@ CPSEnableOpt: %empty {$$ = false;} | CPS  {$$ = true;}
 
 NonUniformSamplerEnableOpt: %empty {$$ = false;} | NON_UNIFORM_SAMPLER {$$ = true;}
 
-           //      1         2          3                      4
-Load3dInstruction: Predicate LOAD_3D_OP PixelNullMaskEnableOpt SAMPLER_CHANNEL
-           //      5        6                     7                 8
+Load3dInstruction: Predicate LOAD_3D_OP PixelNullMaskEnableOpt
+                 SAMPLER_CHANNEL
                  ExecSize VecSrcOperand_G_I_IMM SamplerAddrOperand RawOperand
-           //      9
                    RawOperand
-           //      10
                    RawOperandArray
    {
        const bool success = pBuilder->create3DLoadInstruction(

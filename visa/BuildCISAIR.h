@@ -429,7 +429,8 @@ public:
 
   bool create3DLoadInstruction(VISA_opnd *pred,
                                VISASampler3DSubOpCode subOpcode,
-                               bool pixelNullMask, ChannelMask channels,
+                               bool pixelNullMask,
+                               ChannelMask channels,
                                VISA_EMask_Ctrl emask, unsigned exec_size,
                                VISA_opnd *aoffimmi, const char *surface_name,
                                unsigned int surfaceIndex,

@@ -483,6 +483,7 @@ typedef enum {
   VISA_3D_TOTAL_NUM_OPS,
 } VISASampler3DSubOpCode;
 
+
 typedef enum {
   CHANNEL_MASK_NOMASK = 0x0,
   CHANNEL_MASK_R = 0x1,

@@ -1879,7 +1879,8 @@ static void readInstructionSampler(unsigned &bytePos, const char *buf,
     kernelBuilder->CreateVISAStateOperandHandle(
         surfaceHnd, container.surfaceVarDecls[surface]);
     kernelBuilderImpl->AppendVISA3dLoad(
-        op.opcode, op.pixelNullMask, pred, emask, esize,
+        op.opcode, op.pixelNullMask,
+        pred, emask, esize,
         ChannelMask::createAPIFromBinary(opcode, channelMask), aoffimmi,
         surfaceHnd, 0,
         pairedSurface,

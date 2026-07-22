@@ -3487,7 +3487,8 @@ bool CISA_IR_Builder::create3DLoadInstruction(
 
   VISA_Exec_Size executionSize = Get_VISA_Exec_Size_From_Raw_Size(exec_size);
   int status = m_kernel->AppendVISA3dLoad(
-      subOpcode, pixelNullMask, (VISA_PredOpnd *)pred, emask, executionSize,
+      subOpcode, pixelNullMask,
+      (VISA_PredOpnd *)pred, emask, executionSize,
       channels.getAPI(), (VISA_VectorOpnd *)aoffimmi, surface, surfaceIndex,
       (VISA_RawOpnd *)pairedSurface, (VISA_RawOpnd *)dst, numParameters,
       params);

@@ -910,10 +910,10 @@ struct VISA3DSamplerOp {
       return op;
     }
 
-    // Bit 0-7: subOpcode
-    // Bit 8  : pixelNullMask
-    // Bit 9  : cpsEnable
-    // Bit 10 : non-uniform sampler
+    // Bit 0-7 : subOpcode
+    // Bit 8   : pixelNullMask
+    // Bit 9   : cpsEnable
+    // Bit 10  : non-uniform sampler
     VISA3DSamplerOp op;
     op.pixelNullMask = (val & (1 << 8)) != 0;
     op.cpsEnable = (val & (1 << 9)) != 0;

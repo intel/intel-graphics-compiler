@@ -1493,6 +1493,7 @@ static VISA3DSamplerOp getSamplerSubOpcode(uint16_t majorV,
              : VISA3DSamplerOp::extractSamplerOp<uint8_t>(val);
 }
 
+
 constexpr const char *mmf_enable_mode[3] = {"VA_MINMAX_ENABLE", "VA_MAX_ENABLE",
                                             "VA_MIN_ENABLE"};
 

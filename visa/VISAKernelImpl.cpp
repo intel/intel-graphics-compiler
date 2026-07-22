@@ -5561,7 +5561,8 @@ int VISAKernelImpl::AppendVISA3dSamplerMsgGeneric(
       if (m_options->getOption(vISA_enableEfficient64b)) {
         // check if sampler and surface are VISA_VectorOpnd
         status = m_builder->translateVISALoad3DInstUnified(
-            subOpcode, pixelNullMask, g4Pred, executionSize, emask, srcChannel,
+            subOpcode, pixelNullMask,
+            g4Pred, executionSize, emask, srcChannel,
             aoffimmi->g4opnd, nullptr, 0, surface->g4opnd, surfaceIdx,
             pairedSurface->g4opnd, dst->g4opnd->asDstRegRegion(),
             (uint8_t)numMsgSpecificOpnds, g4params);
@@ -5743,13 +5744,15 @@ int VISAKernelImpl::AppendVISA3dLoad(
     VISAChannelMask srcChannel, VISA_VectorOpnd *aoffimmi,
     VISA_StateOpndHandle *surface, VISA_RawOpnd *pairedSurface,
     VISA_RawOpnd *dst, int numMsgSpecificOpnds, VISA_RawOpnd **opndArray) {
-  return AppendVISA3dLoad(subOpcode, pixelNullMask, pred, emask, executionSize,
+  return AppendVISA3dLoad(subOpcode, pixelNullMask,
+                          pred, emask, executionSize,
                           srcChannel, aoffimmi, surface, 0, pairedSurface, dst,
                           numMsgSpecificOpnds, opndArray);
 }
 
 int VISAKernelImpl::AppendVISA3dLoad(
-    VISASampler3DSubOpCode subOpcode, bool pixelNullMask, VISA_PredOpnd *pred,
+    VISASampler3DSubOpCode subOpcode, bool pixelNullMask,
+    VISA_PredOpnd *pred,
     VISA_EMask_Ctrl emask, VISA_Exec_Size executionSize,
     VISAChannelMask srcChannel, VISA_VectorOpnd *aoffimmi,
     VISA_StateOpndHandle *surface, unsigned int surfaceIndex,
