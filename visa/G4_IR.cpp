@@ -8593,6 +8593,14 @@ bool G4_InstDpas::isDstAndSrc0MixOfBF16AndFP32() const {
          (IS_FTYPE(src0Ty) || IS_BFTYPE(src0Ty));
 }
 
+
+bool G4_InstDpas::isMixedDstAndSrc0TypesAllowed(const G4_InstDpas &next) const {
+  if (builder.allowsMixedDstAndSrc0TypesInMacro() &&
+      isDstAndSrc0MixOfBF16AndFP32() && next.isDstAndSrc0MixOfBF16AndFP32())
+    return true;
+  return false;
+}
+
 // TODO: Note that this function only checks if "type" information is identical.
 // Check if we could merge the code that checks dst/src0 footprints in scheduler
 // and SWSB.
@@ -8604,10 +8612,9 @@ bool G4_InstDpas::isDstAndSrc0MixOfBF16AndFP32() const {
 bool G4_InstDpas::checksFwdTypes(const G4_InstDpas &next) const {
   vASSERT(checksMacroTypes(next));
 
-  // bdpas: FWD sequences will support BF16 and F as forwarding datatypes.
-  // dpas: src0, dst types are fp32 or int32 (type size is 32b), or bf16
-  if (builder.allowsMixedDstAndSrc0TypesInMacro() &&
-      isDstAndSrc0MixOfBF16AndFP32() && next.isDstAndSrc0MixOfBF16AndFP32())
+  // When dst/src0 form a permitted mix, the next DPAS's src0 datatype must be
+  // identical to the current DPAS's dst.
+  if (isMixedDstAndSrc0TypesAllowed(next))
     return getDst()->getType() == next.getSrc(0)->getType();
 
   // FIXME: Remove this handling for bdpas after we can allow mixed dst and src0
@@ -8629,10 +8636,8 @@ bool G4_InstDpas::checksMacroTypes(const G4_InstDpas &next) const {
   // instructions.
   if (getDst()->getType() != next.getDst()->getType() ||
       getSrc(0)->getType() != next.getSrc(0)->getType()) {
-    // Except for src0 and dst which can accept having a mix of bf16 and fp32
-    // data types.
-    if (!builder.allowsMixedDstAndSrc0TypesInMacro() ||
-        !isDstAndSrc0MixOfBF16AndFP32() || !next.isDstAndSrc0MixOfBF16AndFP32())
+    // Except for src0 and dst which can accept having mix types
+    if (!isMixedDstAndSrc0TypesAllowed(next))
       return false;
   }
 

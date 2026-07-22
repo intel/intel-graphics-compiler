@@ -712,6 +712,7 @@ bool allowsMixedDstAndSrc0TypesInMacro() const {
   return getPlatform() > Xe3;
 }
 
+
 bool hasDpasFP4() const {
   return getPlatform() > Xe3;
 }

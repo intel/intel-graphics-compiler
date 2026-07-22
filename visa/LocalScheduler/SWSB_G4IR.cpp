@@ -6660,11 +6660,10 @@ bool G4_BB_SB::dpasCanFwd(SBNode &curNode, SBNode &nextNode) const {
   if (!nextSrc0)
     return false;
 
-  if (builder.allowsMixedDstAndSrc0TypesInMacro() &&
-      cur.isDstAndSrc0MixOfBF16AndFP32() &&
-      next.isDstAndSrc0MixOfBF16AndFP32()) {
-    // When next and current DPAS src0 and dst are fp32 or bf16, the register of
-    // the next DPAS’s src0 and dst are both identical to the current DPAS’s dst
+  if (cur.isMixedDstAndSrc0TypesAllowed(next)) {
+    // When next and current DPAS src0 and dst are a permitted mix, the register
+    // of the next DPAS’s src0 and dst are both identical to the current DPAS’s
+    // dst.
     if (curDst->LeftB != nextSrc0->LeftB || curDst->LeftB != nextDst->LeftB)
       return false;
   } else if (curDst->LeftB != nextSrc0->LeftB ||

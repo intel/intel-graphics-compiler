@@ -1217,6 +1217,9 @@ public:
   void setMayNeedWA(bool b) { mayNeedRSWA = b; }
   bool mayNeedWA() const { return mayNeedRSWA; }
   bool isDstAndSrc0MixOfBF16AndFP32() const;
+  // Returns true if this and next DPAS have a dst/src0 datatype combination that
+  // is a permitted mix within a FWD block
+  bool isMixedDstAndSrc0TypesAllowed(const G4_InstDpas &next) const;
   // The function checks if both dpas instructions satisfy fwd rules for
   // dst/src0 types.
   bool checksFwdTypes(const G4_InstDpas &next) const;
