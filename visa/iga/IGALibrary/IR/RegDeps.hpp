@@ -222,7 +222,8 @@ private:
   //              dpas/macro internal dependency
   void getDpasSrcDependency(const Instruction &inst,
                             RegRangeListType &reg_range,
-                            RegRangeListType &extra_regs, const Model &model);
+                            RegRangeListType &extra_regs, const Model &model,
+                            SWSB_ENCODE_MODE enc_mode);
 
   // get the used dst registers of given dpas inst
   // Return: in reg_range denotes the start and upper grf reg number
@@ -233,7 +234,8 @@ private:
                                 uint32_t lowBound, uint32_t systolicDepth,
                                 uint32_t repeatCount, uint32_t opsPerChan);
   // helper function to get dpas OPS_PER_CHAN
-  uint32_t getDPASOpsPerChan(Type src1_ty, Type src2_ty, bool isDF);
+  uint32_t getDPASOpsPerChan(Type src1_ty, Type src2_ty, bool isDF,
+                             SWSB_ENCODE_MODE enc_mode);
 
 private:
   Instruction *m_instruction = nullptr;

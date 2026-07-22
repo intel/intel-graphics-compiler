@@ -426,7 +426,8 @@ DepSet::DepSet(const InstIDs &instIdCntr, const DepSetBuilder &dsb)
   bits = new BitSet<>(dsb.getTOTAL_BITS());
 }
 
-uint32_t DepSet::getDPASOpsPerChan(Type src1_ty, Type src2_ty, bool isDF) {
+uint32_t DepSet::getDPASOpsPerChan(Type src1_ty, Type src2_ty, bool isDF,
+                                   SWSB_ENCODE_MODE enc_mode) {
   // get OPS_PER_CHAN, the number of dot product operations per dword channel,
   // depending on element type
   if (isDF)
@@ -494,7 +495,8 @@ uint32_t DepSet::getDPASSrcDepUpBound(unsigned idx, Type srcType,
 void DepSet::getDpasSrcDependency(const Instruction &inst,
                                   RegRangeListType &reg_range,
                                   RegRangeListType &extra_regs,
-                                  const Model &model) {
+                                  const Model &model,
+                                  SWSB_ENCODE_MODE enc_mode) {
   uint32_t execSize = static_cast<uint32_t>(inst.getExecSize());
 
   IGA_ASSERT((!inst.isDF() && execSize == (m_DB.getGRF_BYTES_PER_REG() / 4)) ||
@@ -505,7 +507,8 @@ void DepSet::getDpasSrcDependency(const Instruction &inst,
   uint32_t repeatCount = GetDpasRepeatCount(inst.getDpasFc());
   uint32_t systolicDepth = GetDpasSystolicDepth(inst.getDpasFc());
   uint32_t ops_per_chan = getDPASOpsPerChan(
-      inst.getSource(1).getType(), inst.getSource(2).getType(), inst.isDF());
+      inst.getSource(1).getType(), inst.getSource(2).getType(), inst.isDF(),
+      enc_mode);
 
   for (unsigned srcIx = 0; srcIx < inst.getSourceCount(); ++srcIx) {
     const Operand &op = inst.getSource(srcIx);
@@ -674,7 +677,8 @@ size_t DepSetBuilder::DpasMacroBuilder::formSrcSuppressionBlock(
   while (it != m_instList.end()) {
     SrcRegRangeType src_range, src_extra_range;
     DstRegRangeType dst_range;
-    m_inps.getDpasSrcDependency(**it, src_range, src_extra_range, m_model);
+    m_inps.getDpasSrcDependency(**it, src_range, src_extra_range, m_model,
+                                m_encMode);
     m_inps.getDpasDstDependency(**it, dst_range);
     if (hasInternalDep(**it, dst_range, src_range,
                        GetDpasSystolicDepth((*it)->getDpasFc()) == 8))
@@ -774,7 +778,8 @@ Instruction &DepSetBuilder::DpasMacroBuilder::formMacro(size_t &dpasCnt) {
 
   SrcRegRangeType src_range, src_extra_range;
   DstRegRangeType dst_range;
-  m_inps.getDpasSrcDependency(**cur, src_range, src_extra_range, m_model);
+  m_inps.getDpasSrcDependency(**cur, src_range, src_extra_range, m_model,
+                              m_encMode);
   m_inps.getDpasDstDependency(**cur, dst_range);
   InstListIterator next = cur;
   next++;
@@ -976,7 +981,8 @@ size_t DepSetBuilder::DpasMacroBuilder::formFwdBlock(InstListIterator first) {
   InstListIterator cur = first;
   SrcRegRangeType src_range, src_extra_range;
   DstRegRangeType dst_range;
-  m_inps.getDpasSrcDependency(**cur, src_range, src_extra_range, m_model);
+  m_inps.getDpasSrcDependency(**cur, src_range, src_extra_range, m_model,
+                              m_encMode);
   m_inps.getDpasDstDependency(**cur, dst_range);
   if (hasInternalDep(**cur, dst_range, src_range,
                      GetDpasSystolicDepth((*cur)->getDpasFc()) == 8))
@@ -991,7 +997,7 @@ size_t DepSetBuilder::DpasMacroBuilder::formFwdBlock(InstListIterator first) {
     SrcRegRangeType next_src_range, next_src_extra_range;
     DstRegRangeType next_dst_range;
     m_inps.getDpasSrcDependency(**next, next_src_range, next_src_extra_range,
-                                m_model);
+                                m_model, m_encMode);
     m_inps.getDpasDstDependency(**next, next_dst_range);
     // no need to check the producer-consumer dependency (leave
     // allDstBits/allSrcBits as 0) since if FWD block can be formed, add the dst
