@@ -803,11 +803,9 @@ bool EmitPass::runOnFunction(llvm::Function &F) {
       numThreadsPerEU = std::stoi(F.getFnAttribute("num-thread-per-eu").getValueAsString().str());
     }
 
-    // Decide EmitMoreMoviCases movi promotion once, before InitEncoder.
-    {
-      bool moviEnabled = m_pCtx->platform.allowEmitMoreMoviCases();
-      m_currShader->SetEmitMoreMoviCases(moviEnabled);
-    }
+    // Decide EmitMoreMoviCases movi promotion once, before InitEncoder, so the
+    // stored value is consistent for emitSimdShuffle and CISABuilder.
+    m_currShader->SetEmitMoreMoviCases(shouldEmitMoreMoviCases(m_pCtx));
 
     // call builder after pre-analysis pass where scratchspace offset to VISA is
     // calculated

@@ -2173,12 +2173,10 @@ void CustomSafeOptPass::visitTruncInst(TruncInst &I) {
   To:
   %335 = call i16 @llvm.genx.GenISA.WaveShuffleIndex.i16(i16 %orig, i32 %333, i32 0)
   */
-  auto pCGCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
-  bool EmitMoreMoviCasesEnabled = pCGCtx->platform.allowEmitMoreMoviCases();
-  if (EmitMoreMoviCasesEnabled)
-  {
+  // Note: temporarily disable this (visitTruncInst) opt if we can capture EmitMovi scenarios.
+  // It will be removed in future and for Int16 types we will just zext them back to int32.
+  if (shouldEmitMoreMoviCases(getAnalysis<CodeGenContextWrapper>().getCodeGenContext()))
     return;
-  }
 
   if (I.getSrcTy()->isIntegerTy(32) && I.getDestTy()->isIntegerTy(16)) {
     // We know all variants of shuffle from zext are safe to demote. (unlike WaveAll which might not be)

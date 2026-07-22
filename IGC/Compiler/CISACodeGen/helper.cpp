@@ -1227,6 +1227,15 @@ bool isSubGroupShuffleVariant(const llvm::Instruction *I) {
   }
 }
 
+bool shouldEmitMoreMoviCases(CodeGenContext *ctx) {
+  bool enabled = ctx->platform.allowEmitMoreMoviCases();
+  // Disable movi promotion on retry when spilling occurred, to reduce
+  // register pressure from NoMask sanitization temporaries.
+  if (enabled && ctx->m_retryManager && !ctx->m_retryManager->IsFirstTry())
+    enabled = false;
+  return enabled;
+}
+
 bool subgroupIntrinsicHasHelperLanes(const Instruction &I) {
   const GenIntrinsicInst *GII = dyn_cast<GenIntrinsicInst>(&I);
   if (!GII)

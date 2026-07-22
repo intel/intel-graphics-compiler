@@ -179,6 +179,10 @@ bool IsSIMDBlockIntrinsic(const llvm::Instruction *inst);
 bool isSubGroupIntrinsic(const llvm::Instruction *I);
 bool isSubGroupIntrinsicPVC(const llvm::Instruction *I);
 bool isSubGroupShuffleVariant(const llvm::Instruction *I);
+// Decides whether EmitMoreMoviCases movi promotion is enabled for the shader.
+// Shared by EmitPass (which stores the result on the shader) and CustomSafeOptPass
+// (which skips its trunc demotion when movi is enabled) so both stay consistent.
+bool shouldEmitMoreMoviCases(CodeGenContext *ctx);
 bool subgroupIntrinsicHasHelperLanes(const llvm::Instruction &I);
 bool hasSubGroupIntrinsicPVC(llvm::Function &F);
 
