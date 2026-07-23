@@ -913,6 +913,16 @@ TypeDetails::TypeDetails(const DataLayout &DL, Type *Ty, Signedness Signed,
       break;
     default:
       VisaType = Signed == UNSIGNED ? ISA_TYPE_UQ : ISA_TYPE_Q;
+      // Integers wider than a qword (i128, i256, i512, ...) have no dedicated
+      // vISA element type. Represent them as a vector of qwords so the
+      // declaration spans the whole value. Otherwise a single Q element (8
+      // bytes) under-sizes the variable and aliased views of the full value
+      // exceed their base variable.
+      if (BytesPerElement > QWordBytes) {
+        IGC_ASSERT(BytesPerElement % QWordBytes == 0);
+        NumElements *= BytesPerElement / QWordBytes;
+        BytesPerElement = QWordBytes;
+      }
       break;
     }
   } else if (ElementTy->isHalfTy()) {
