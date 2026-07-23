@@ -63,16 +63,6 @@ def SPV_EXT_optnone : Extension<
   "https://github.khronos.org/SPIRV-Registry/extensions/EXT/SPV_EXT_optnone.html"
 >;
 
-// Relaxes the address space of the printf format string. Format strings that
-// resolve to a compile-time global use the existing relocation path; others are
-// emitted inline into the printf buffer at runtime. No new capability.
-// Experimental: accepted by the SPIR-V reader but not advertised.
-def SPV_EXT_relaxed_printf_string_address_space : ExperimentalExtension<
-  "SPV_EXT_relaxed_printf_string_address_space",
-  [],
-  "https://github.com/KhronosGroup/SPIRV-Registry/blob/main/extensions/EXT/SPV_EXT_relaxed_printf_string_address_space.asciidoc"
->;
-
 // SPV_INTEL_optnone is an old name for the same extension as SPV_EXT_optnone.
 // We must keep it for compatibility with SPIRV produced by older frontends.
 // By marking it as ExperimentalExtension we avoid advertising it in the list of supported extensions,

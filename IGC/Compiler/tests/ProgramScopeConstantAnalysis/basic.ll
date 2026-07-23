@@ -32,7 +32,9 @@ entry:
 !igc.functions = !{!3}
 !IGCMetadata = !{!0}
 
-!0 = !{!"ModuleMD"}
+!0 = !{!"ModuleMD", !1}
+!1 = !{!"stringConstants", !2}
+!2 = !{!"stringConstantsSet[0]", i32 addrspace(1)* @c}
 !3 = !{void (i32 addrspace(1)*)* @test_program, !4}
 !4 = !{!4}
 !5 = !{!"function_type", i32 0}

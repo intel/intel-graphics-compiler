@@ -7,14 +7,14 @@
 ;============================ end_copyright_notice =============================
 ; REQUIRES: regkeys
 ; UNSUPPORTED: llvm-17-plus
-; RUN: igc_opt --typed-pointers -igc-opencl-printf-resolution -igc-serialize-metadata \
+; RUN: igc_opt --typed-pointers -igc-programscope-constant-analysis -igc-serialize-metadata \
 ; RUN:   -S < %s | FileCheck %s
 ; ------------------------------------------------
-; OpenCLPrintfResolution
+; ProgramScopeConstantAnalysis
 ; ------------------------------------------------
 
-; A printf string is classified by traceability, so a wrapper that never reaches
-; printf (unsupported) is skipped.
+; Test checks that metadata is updated with correct string constants
+; (this tested the case with EnableZEBinary=1 which is the default now)
 
 ; CHECK:     !{!"stringConstants",
 ; CHECK-DAG: !{!"stringConstantsSet{{[[][0-9][]]}}", [3 x i8] addrspace(2)* @opencl_printf_str}
@@ -32,25 +32,16 @@
 ; decl of opencl printf
 declare spir_func i32 @printf(i8 addrspace(2)*, ...)
 
-; oneAPI printf wrappers forward to printf, so their strings are traceable.
-define internal spir_func i32 @_ZN4sycl3_V13ext6oneapi12experimental6printfIU3AS2cJEEEiPKT_DpT0_(i8 addrspace(2)* %fmt) {
-  %r = call spir_func i32 (i8 addrspace(2)*, ...) @printf(i8 addrspace(2)* %fmt)
-  ret i32 %r
-}
+; decl of sycl v1 oneapi printf
+declare spir_func i32 @_ZN4sycl3_V13ext6oneapi12experimental6printfIU3AS2cJEEEiPKT_DpT0_(i8 addrspace(2)*)
 
-; future sycl v2 oneapi printf wrapper
-define internal spir_func i32 @_ZN4sycl3_V23ext6oneapi12experimental6printfIU3AS2cJEEEiPKT_DpT0_(i8 addrspace(2)* %fmt) {
-  %r = call spir_func i32 (i8 addrspace(2)*, ...) @printf(i8 addrspace(2)* %fmt)
-  ret i32 %r
-}
+; decl of future sycl v2 oneapi printf
+declare spir_func i32 @_ZN4sycl3_V23ext6oneapi12experimental6printfIU3AS2cJEEEiPKT_DpT0_(i8 addrspace(2)*)
 
-; deprecated cl sycl oneapi printf wrapper
-define internal spir_func i32 @_ZN2cl4sycl3ext6oneapi12experimental6printfIU3AS2cJEEEiPKT_DpT0_(i8 addrspace(2)* %fmt) {
-  %r = call spir_func i32 (i8 addrspace(2)*, ...) @printf(i8 addrspace(2)* %fmt)
-  ret i32 %r
-}
+; decl of deprecated cl sycl oneapi printf
+declare spir_func i32 @_ZN2cl4sycl3ext6oneapi12experimental6printfIU3AS2cJEEEiPKT_DpT0_(i8 addrspace(2)*)
 
-; unsupported wrapper: never reaches printf, so its string is not classified.
+; decl of unsupported printf wrapper
 declare spir_func i32 @_unsupported_printf(i8 addrspace(2)*, ...)
 
 ; Function Attrs: convergent noinline nounwind optnone
