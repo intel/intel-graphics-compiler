@@ -271,6 +271,14 @@ def SPV_INTEL_vector_compute : ExperimentalExtension<
   "https://github.com/intel/llvm/pull/1612"
 >;
 
+// Ultimately meant to replace SPV_INTEL_vector_compute (above), which should never be
+// supported on the scalar compilation path.
+def SPV_EXT_long_vector : ExperimentalExtension<
+  "SPV_EXT_long_vector",
+  [ Capability<"LongVectorEXT"> ],
+  "https://github.khronos.org/SPIRV-Registry/extensions/EXT/SPV_EXT_long_vector.html"
+>;
+
 // This extension adds a new instruction that enables rotating values across invocations within a subgroup.
 def SPV_KHR_subgroup_rotate : ExperimentalExtension<
   "SPV_KHR_subgroup_rotate",

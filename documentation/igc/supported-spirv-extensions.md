@@ -15,6 +15,18 @@ This document lists all SPIR-V extensions supported by IGC and their platform re
 
 ---
 
+## SPV_EXT_long_vector
+
+**Specification**: https://github.khronos.org/SPIRV-Registry/extensions/EXT/SPV_EXT_long_vector.html
+
+> **Experimentally supported on**: All platforms
+
+**Capabilities**:
+
+- **LongVectorEXT**
+
+---
+
 ## SPV_EXT_ocp_microscaling_types
 
 **Specification**: https://github.khronos.org/SPIRV-Registry/extensions/EXT/SPV_EXT_ocp_microscaling_types.html
