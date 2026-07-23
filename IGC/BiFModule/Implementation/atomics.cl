@@ -552,8 +552,8 @@ ulong OVERLOADABLE __intel_atomic_binary( enum IntAtomicOp atomicOp, volatile __
             orig = *Pointer;
             switch (atomicOp)
             {
-                case ATOMIC_UMIN64: newVal = ( orig < Value ) ? orig : Value; break;
-                case ATOMIC_UMAX64: newVal = ( orig > Value ) ? orig : Value; break;
+                case ATOMIC_UMIN64: newVal = min(orig, Value); break;
+                case ATOMIC_UMAX64: newVal = max(orig, Value); break;
                 default: break; // What should we do here? OCL doesn't have assert
             }
         } while (__builtin_IB_atomic_cmpxchg_local_i64(Pointer, orig, newVal) != orig);
@@ -567,8 +567,8 @@ ulong OVERLOADABLE __intel_atomic_binary( enum IntAtomicOp atomicOp, volatile __
     orig = *Pointer;
     switch (atomicOp)
     {
-        case ATOMIC_UMIN64: *Pointer = ( orig < Value ) ? orig : Value; break;
-        case ATOMIC_UMAX64: *Pointer = ( orig > Value ) ? orig : Value; break;
+        case ATOMIC_UMIN64: *Pointer = min(orig, Value); break;
+        case ATOMIC_UMAX64: *Pointer = max(orig, Value); break;
         default: break; // What should we do here? OCL doesn't have assert
     }
     LOCAL_SPINLOCK_END();
@@ -596,8 +596,8 @@ long OVERLOADABLE __intel_atomic_binary( enum IntAtomicOp atomicOp, volatile __l
                 case ATOMIC_OR64:   newVal |= Value; break;
                 case ATOMIC_XOR64:  newVal ^= Value; break;
                 case ATOMIC_XCHG64: newVal = Value; break;
-                case ATOMIC_IMIN64: newVal = ( orig < Value ) ? orig : Value; break;
-                case ATOMIC_IMAX64: newVal = ( orig > Value ) ? orig : Value; break;
+                case ATOMIC_IMIN64: newVal = min(orig, Value); break;
+                case ATOMIC_IMAX64: newVal = max(orig, Value); break;
                 default: break; // What should we do here? OCL doesn't have assert
             }
         } while (__builtin_IB_atomic_cmpxchg_local_i64(Pointer, orig, newVal) != orig);
@@ -617,8 +617,8 @@ long OVERLOADABLE __intel_atomic_binary( enum IntAtomicOp atomicOp, volatile __l
         case ATOMIC_OR64:   *Pointer |= Value; break;
         case ATOMIC_XOR64:  *Pointer ^= Value; break;
         case ATOMIC_XCHG64: *Pointer = Value; break;
-        case ATOMIC_IMIN64: *Pointer = ( orig < Value ) ? orig : Value; break;
-        case ATOMIC_IMAX64: *Pointer = ( orig > Value ) ? orig : Value; break;
+        case ATOMIC_IMIN64: *Pointer = min(orig, Value); break;
+        case ATOMIC_IMAX64: *Pointer = max(orig, Value); break;
         default: break; // What should we do here? OCL doesn't have assert
     }
     LOCAL_SPINLOCK_END()
@@ -1438,7 +1438,7 @@ long __attribute__((overloadable)) __spirv_AtomicISub( __generic long *Pointer, 
 int __attribute__((overloadable)) __spirv_AtomicSMin( __private int *Pointer, int Scope, int Semantics, int Value)
 {
     int orig = *Pointer;
-    *Pointer = ( orig < Value ) ? orig : Value;
+    *Pointer = min(orig, Value);
     return orig;
 }
 
@@ -1478,7 +1478,7 @@ int __attribute__((overloadable)) __spirv_AtomicSMin( __generic int *Pointer, in
 long __attribute__((overloadable)) __spirv_AtomicSMin( __private long *Pointer, int Scope, int Semantics, long Value)
 {
     long orig = *Pointer;
-    *Pointer = ( orig < Value ) ? orig : Value;
+    *Pointer = min(orig, Value);
     return orig;
 }
 
@@ -1519,7 +1519,7 @@ uint __attribute__((overloadable)) __spirv_AtomicUMin( __private uint *Pointer, 
 {
     uint orig = *Pointer;
 
-    *Pointer = ( orig < Value ) ? orig : Value;
+    *Pointer = min(orig, Value);
 
     return orig;
 }
@@ -1560,7 +1560,7 @@ uint __attribute__((overloadable)) __spirv_AtomicUMin( __generic uint *Pointer, 
 ulong __attribute__((overloadable)) __spirv_AtomicUMin( __private ulong *Pointer, int Scope, int Semantics, ulong Value )
 {
     ulong orig = *Pointer;
-    *Pointer = ( orig < Value ) ? orig : Value;
+    *Pointer = min(orig, Value);
     return orig;
 }
 
@@ -1603,7 +1603,7 @@ ulong __attribute__((overloadable)) __spirv_AtomicUMin( __generic ulong *Pointer
 int __attribute__((overloadable)) __spirv_AtomicSMax( __private int *Pointer, int Scope, int Semantics, int Value)
 {
     int orig = *Pointer;
-    *Pointer = ( orig > Value ) ? orig : Value;
+    *Pointer = max(orig, Value);
     return orig;
 }
 
@@ -1643,7 +1643,7 @@ int __attribute__((overloadable)) __spirv_AtomicSMax( __generic int *Pointer, in
 long __attribute__((overloadable)) __spirv_AtomicSMax( __private long *Pointer, int Scope, int Semantics, long Value)
 {
     long orig = *Pointer;
-    *Pointer = ( orig > Value ) ? orig : Value;
+    *Pointer = max(orig, Value);
     return orig;
 }
 
@@ -1687,7 +1687,7 @@ uint __attribute__((overloadable)) __spirv_AtomicUMax( __private uint *Pointer, 
 {
     uint orig = *Pointer;
 
-    *Pointer = ( orig > Value ) ? orig : Value;
+    *Pointer = max(orig, Value);
 
     return orig;
 }
@@ -1728,7 +1728,7 @@ uint __attribute__((overloadable)) __spirv_AtomicUMax( __generic uint *Pointer, 
 ulong __attribute__((overloadable)) __spirv_AtomicUMax( __private ulong *Pointer, int Scope, int Semantics, ulong Value )
 {
     ulong orig = *Pointer;
-    *Pointer = ( orig > Value ) ? orig : Value;
+    *Pointer = max(orig, Value);
     return orig;
 }
 
@@ -2254,7 +2254,7 @@ double __attribute__((overloadable)) __spirv_AtomicFAddEXT( __generic double *Po
 half __attribute__((overloadable)) __spirv_AtomicFMinEXT( private half* Pointer, int Scope, int Semantics, half Value)
 {
     half orig = *Pointer;
-    *Pointer = (orig < Value) ? orig : Value;
+    *Pointer = fmin(orig, Value);
     return orig;
 }
 
@@ -2268,7 +2268,7 @@ half __attribute__((overloadable)) __spirv_AtomicFMinEXT( global half* Pointer, 
     FENCE_PRE_OP(Scope, Semantics, true)
     GLOBAL_SPINLOCK_START()
     orig = *Pointer;
-    *Pointer = (orig < Value) ? orig : Value;
+    *Pointer = fmin(orig,Value);
     GLOBAL_SPINLOCK_END()
     FENCE_POST_OP(Scope, Semantics, true)
     return orig;
@@ -2284,7 +2284,7 @@ half __attribute__((overloadable)) __spirv_AtomicFMinEXT( local half* Pointer, i
     FENCE_PRE_OP(Scope, Semantics, false)
     LOCAL_SPINLOCK_START()
     orig = *Pointer;
-    *Pointer = (orig < Value) ? orig : Value;
+    *Pointer = fmin(orig,Value);
     LOCAL_SPINLOCK_END()
     FENCE_POST_OP(Scope, Semantics, false)
     return orig;
@@ -2348,7 +2348,7 @@ half __attribute__((overloadable)) __spirv_AtomicFAddEXT( __generic half *Pointe
 float __attribute__((overloadable)) __spirv_AtomicFMinEXT( private float* Pointer, int Scope, int Semantics, float Value)
 {
     float orig = *Pointer;
-    *Pointer = (orig < Value) ? orig : Value;
+    *Pointer = fmin(orig,Value);
     return orig;
 }
 
@@ -2384,7 +2384,7 @@ float __attribute__((overloadable)) __spirv_AtomicFMinEXT( generic float* Pointe
 double __attribute__((overloadable)) __spirv_AtomicFMinEXT( private double* Pointer, int Scope, int Semantics, double Value)
 {
     double orig = *Pointer;
-    *Pointer = (orig < Value) ? orig : Value;
+    *Pointer = fmin(orig,Value);
     return orig;
 }
 
@@ -2401,7 +2401,7 @@ double __attribute__((overloadable)) __spirv_AtomicFMinEXT( global double* Point
     double desired;
     do {
         orig = as_double(__spirv_AtomicLoad((__global long*)Pointer, Scope, Semantics));
-        desired = ( orig < Value ) ? orig : Value;
+        desired = fmin(orig, Value);
     } while(as_long(orig) != __spirv_AtomicCompareExchange(
                                 (__global long*)Pointer, Scope, Semantics, Semantics,
                                 as_long(desired), as_long(orig)));
@@ -2414,7 +2414,7 @@ double __attribute__((overloadable)) __spirv_AtomicFMinEXT( local double* Pointe
     double desired;
     do {
         orig = as_double(__spirv_AtomicLoad((__local long*)Pointer, Scope, Semantics));
-        desired = ( orig < Value ) ? orig : Value;
+        desired = fmin(orig, Value);
     } while(as_long(orig) != __spirv_AtomicCompareExchange(
                                 (__local long*)Pointer, Scope, Semantics, Semantics,
                                 as_long(desired), as_long(orig)));
@@ -2443,7 +2443,7 @@ double __attribute__((overloadable)) __spirv_AtomicFMinEXT( generic double* Poin
 half __attribute__((overloadable)) __spirv_AtomicFMaxEXT( private half* Pointer, int Scope, int Semantics, half Value)
 {
     half orig = *Pointer;
-    *Pointer = (orig > Value) ? orig : Value;
+    *Pointer = fmax(orig, Value);
     return orig;
 }
 
@@ -2457,7 +2457,7 @@ half __attribute__((overloadable)) __spirv_AtomicFMaxEXT( global half* Pointer, 
     FENCE_PRE_OP(Scope, Semantics, true)
     GLOBAL_SPINLOCK_START()
     orig = *Pointer;
-    *Pointer = (orig > Value) ? orig : Value;
+    *Pointer = fmax(orig, Value);
     GLOBAL_SPINLOCK_END()
     FENCE_POST_OP(Scope, Semantics, true)
     return orig;
@@ -2473,7 +2473,7 @@ half __attribute__((overloadable)) __spirv_AtomicFMaxEXT( local half* Pointer, i
     FENCE_PRE_OP(Scope, Semantics, false)
     LOCAL_SPINLOCK_START()
     orig = *Pointer;
-    *Pointer = (orig > Value) ? orig : Value;
+    *Pointer = fmax(orig, Value);
     LOCAL_SPINLOCK_END()
     FENCE_POST_OP(Scope, Semantics, false)
     return orig;
@@ -2501,7 +2501,7 @@ half __attribute__((overloadable)) __spirv_AtomicFMaxEXT( generic half* Pointer,
 float __attribute__((overloadable)) __spirv_AtomicFMaxEXT( private float* Pointer, int Scope, int Semantics, float Value)
 {
     float orig = *Pointer;
-    *Pointer = (orig > Value) ? orig : Value;
+    *Pointer = fmax(orig, Value);
     return orig;
 }
 
@@ -2537,7 +2537,7 @@ float __attribute__((overloadable)) __spirv_AtomicFMaxEXT( generic float* Pointe
 double __attribute__((overloadable)) __spirv_AtomicFMaxEXT( private double* Pointer, int Scope, int Semantics, double Value)
 {
     double orig = *Pointer;
-    *Pointer = (orig > Value) ? orig : Value;
+    *Pointer = fmax(orig, Value);
     return orig;
 }
 
@@ -2554,7 +2554,7 @@ double __attribute__((overloadable)) __spirv_AtomicFMaxEXT( global double* Point
     double desired;
     do {
         orig = as_double(__spirv_AtomicLoad((__global long*)Pointer, Scope, Semantics));
-        desired = ( orig > Value ) ? orig : Value;
+        desired = fmax(orig, Value);
     } while(as_long(orig) != __spirv_AtomicCompareExchange(
                                 (__global long*)Pointer, Scope, Semantics, Semantics,
                                 as_long(desired), as_long(orig)));
@@ -2567,7 +2567,7 @@ double __attribute__((overloadable)) __spirv_AtomicFMaxEXT( local double* Pointe
     double desired;
     do {
         orig = as_double(__spirv_AtomicLoad((__local long*)Pointer, Scope, Semantics));
-        desired = ( orig > Value ) ? orig : Value;
+        desired = fmax(orig, Value);
     } while(as_long(orig) != __spirv_AtomicCompareExchange(
                                 (__local long*)Pointer, Scope, Semantics, Semantics,
                                 as_long(desired), as_long(orig)));
