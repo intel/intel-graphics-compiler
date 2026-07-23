@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2022-2024 Intel Corporation
+; Copyright (C) 2022-2026 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -115,6 +115,21 @@ define void @test_vector(<2 x i64> %src1) {
   ret void
 }
 
+define void @test_vector_ptr(<2 x ptr addrspace(1)> %src1, <2 x i64> %src2) {
+; CHECK-LABEL: @test_vector_ptr(
+; CHECK-NEXT:    [[TMP1:%.*]] = ptrtoint <2 x ptr addrspace(1)> [[SRC1:%.*]] to <2 x i64>
+; CHECK-NEXT:    call void @use.2i64(<2 x i64> [[TMP1]])
+; CHECK-NEXT:    [[TMP2:%.*]] = inttoptr <2 x i64> [[SRC2:%.*]] to <2 x ptr addrspace(1)>
+; CHECK-NEXT:    call void @use.2p1(<2 x ptr addrspace(1)> [[TMP2]])
+; CHECK-NEXT:    ret void
+;
+  %1 = ptrtoint <2 x ptr addrspace(1)> %src1 to <2 x i64>
+  call void @use.2i64(<2 x i64> %1)
+  %2 = inttoptr <2 x i64> %src2 to <2 x ptr addrspace(1)>
+  call void @use.2p1(<2 x ptr addrspace(1)> %2)
+  ret void
+}
+
 define void @test_switch(i64 %src1) {
 ; CHECK-LABEL: @test_switch(
 ; CHECK-NEXT:  entry:
@@ -157,11 +172,12 @@ end:                                              ; preds = %br3, %br2, %br1
 declare void @use.f64(double)
 declare void @use.f32(float)
 declare void @use.2i64(<2 x i64>)
+declare void @use.2p1(<2 x ptr addrspace(1)>)
 declare void @use.i64(i64)
 declare void @use.i32(i32)
 declare void @use.i1(i1)
 
-!igc.functions = !{!0, !3, !4, !5}
+!igc.functions = !{!0, !3, !4, !5, !6}
 
 !0 = !{void (double, double)* @test_double, !1}
 !1 = !{!2}
@@ -169,3 +185,4 @@ declare void @use.i1(i1)
 !3 = !{void (i64)* @test_shift_trunc, !1}
 !4 = !{void (<2 x i64>)* @test_vector, !1}
 !5 = !{void (i64)* @test_switch, !1}
+!6 = !{void (<2 x ptr addrspace(1)>, <2 x i64>)* @test_vector_ptr, !1}

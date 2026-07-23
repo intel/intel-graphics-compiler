@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2020-2021 Intel Corporation
+Copyright (C) 2020-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -403,8 +403,8 @@ public:
           case Instruction::IntToPtr: {
             IntToPtrInst *I2P = cast<IntToPtrInst>(BI);
             Value *Src = I2P->getOperand(0);
-            PointerType *PtrTy = cast<PointerType>(I2P->getType());
-            if (!Emu->isPtr64(PtrTy) && !Emu->isInt64(Src))
+            PointerType *PtrTy = dyn_cast<PointerType>(I2P->getType());
+            if (!PtrTy || (!Emu->isPtr64(PtrTy) && !Emu->isInt64(Src)))
               continue;
 
             IRB->SetInsertPoint(I2P);
@@ -419,8 +419,8 @@ public:
           case Instruction::PtrToInt: {
             PtrToIntInst *P2I = cast<PtrToIntInst>(BI);
             Value *Src = P2I->getOperand(0);
-            PointerType *PtrTy = cast<PointerType>(Src->getType());
-            if (!Emu->isPtr64(PtrTy) || Emu->isInt64(Src))
+            PointerType *PtrTy = dyn_cast<PointerType>(Src->getType());
+            if (!PtrTy || !Emu->isPtr64(PtrTy) || Emu->isInt64(Src))
               continue;
 
             IRB->SetInsertPoint(P2I);

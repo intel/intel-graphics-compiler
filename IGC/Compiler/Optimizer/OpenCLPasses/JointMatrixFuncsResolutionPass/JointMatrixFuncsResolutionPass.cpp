@@ -1322,7 +1322,10 @@ Type *JointMatrixFuncsResolutionPass::ResolveType(Type *inputType, JointMatrixTy
   return resolvedType;
 }
 
-static uint64_t constIntValue(const Value *v) { return cast<ConstantInt>(v)->getLimitedValue(); }
+static uint64_t constIntValue(const Value *v) {
+  IGC_ASSERT_MESSAGE(isa<ConstantInt>(v), "Unexpected value type. Expected ConstantInt.");
+  return cast<ConstantInt>(v)->getLimitedValue();
+}
 
 // create value {type, type} with val0 and val1 as values of each element
 template <class BuilderT> static Value *createPair(BuilderT *builder, Type *type, Value *val0, Value *val1) {
@@ -1884,6 +1887,8 @@ Instruction *JointMatrixFuncsResolutionPass::ResolveMad(CallInst *CI, unsigned O
   PrecisionType PB = PrecisionType::PRECISION_UNUSED;
   if (OperationType == CooperativeOp) {
     const unsigned MulAddArgSize = CI->arg_size();
+    IGC_ASSERT_MESSAGE(MulAddArgSize < 4 || isa<ConstantInt>(CI->getArgOperand(3)),
+                       "Unexpected argument type for OpCooperativeMatrixMulAddKHR.");
     const auto OperandsMask = MulAddArgSize > 3 ? cast<ConstantInt>(CI->getArgOperand(3))->getZExtValue() : 0;
     PA = getCoopMatrixElementPrecison(&aDesc, OperandsMask, UseMatrixA, floatMad);
     PB = getCoopMatrixElementPrecison(&bDesc, OperandsMask, UseMatrixB, floatMad);
