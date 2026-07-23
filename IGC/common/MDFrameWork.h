@@ -530,6 +530,7 @@ enum class ShaderTypeMD
         bool EnableUndefAlphaOutputAsRed                = true;
         bool WaEnableALTModeVisaWA                      = false;
         bool WaConvergentGradientsOnGenISA              = false;
+        bool WaDisableDualSIMD8                         = false;
         bool EnableLdStCombineforLoad                   = false;
         bool EnableLdStCombinewithDummyLoad             = false;
         bool ForceUniformBuffer                         = false;

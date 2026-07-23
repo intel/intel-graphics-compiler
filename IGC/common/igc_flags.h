@@ -1187,7 +1187,12 @@ DECLARE_IGC_REGKEY(bool, EnableEmuFolding, true, "Enable emulation folding optim
 DECLARE_IGC_REGKEY(bool, EnableAggresiveEmuFolding, false, "Enable aggressive folding optimizations", false)
 DECLARE_IGC_REGKEY(bool, EnableGen11TwoStackTSG, false, "Enable Two stack TSG gen11 feature", false)
 DECLARE_IGC_REGKEY(bool, Enable16BitLDMCS, true, "Enable 16-bit ld_mcs on supported platforms", true)
-DECLARE_IGC_REGKEY(bool, EnableDualSIMD8, true, "enable dual SIMD8 on supported platforms", true)
+DECLARE_IGC_REGKEY_ENUM(EnableDualSIMD8, -1,
+                        "Enable dual SIMD8 on supported platforms. "
+                        "-1 - default behavior (platform default; an AIL may force-disable), "
+                        "0 - force disabled, "
+                        "1 - force enabled",
+                        TRIBOOL_OPTIONS, true)
 DECLARE_IGC_REGKEY(bool, RemoveLegacyOCLStatelessPrivateMemoryCases, false,
                    "Remove cases where OCL uses stateless private memory. XeHP and above only! [OCL only]", true)
 DECLARE_IGC_REGKEY(bool, EnablePostCullPatchFIFOLP, true, "Enable Post-Cull Patch Decoupling FIFO. GEN12LP.", true)

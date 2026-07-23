@@ -844,9 +844,7 @@ public:
             m_platformInfo.eProductFamily == IGFX_ARROWLAKE);
   }
 
-  bool supportDualSimd8PS() const {
-    return IGC_IS_FLAG_ENABLED(EnableDualSIMD8) && (m_platformInfo.eRenderCoreFamily >= IGFX_GEN12_CORE);
-  }
+  bool supportDualSimd8PS() const { return (m_platformInfo.eRenderCoreFamily >= IGFX_GEN12_CORE); }
 
   bool hasDualSimd8Payload() const {
     return (m_platformInfo.eRenderCoreFamily >= IGFX_GEN12_CORE) && !isCoreChildOf(IGFX_XE2_HPG_CORE);
