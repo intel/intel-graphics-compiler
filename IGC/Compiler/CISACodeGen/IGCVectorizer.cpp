@@ -995,8 +995,6 @@ bool IGCVectorizer::handleWaveBroadcast(VecArr &Slice) {
   PRINT_LOG("Intrinsic instruction created: ");
   PRINT_INST_NL(CreatedInst);
 
-  replaceSliceInstructionsWithExtract(Slice, CreatedInst);
-
   for (auto &el : Slice) {
     if (ScalarToVector.count(el)) {
       PRINT_LOG_NL("Vectorized version already present");
