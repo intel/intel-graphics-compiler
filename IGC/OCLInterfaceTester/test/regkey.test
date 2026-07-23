@@ -11,4 +11,4 @@ REQUIRES: regkeys
 # RUN: env IGC_EnableVISANoSchedule=1 IGC_ForceOCLSIMDWidth=8 \
 # RUN: IGCOCLInterfaceTester regkey 2>&1 | FileCheck %s
 
-# CHECK: EnableVISANoSchedule=1,EnableOCLSIMD16=0,EnableOCLSIMD32=0,ForceOCLSIMDWidth=8
+# CHECK: EnableVISANoSchedule=1,ForceOCLSIMDWidth=8

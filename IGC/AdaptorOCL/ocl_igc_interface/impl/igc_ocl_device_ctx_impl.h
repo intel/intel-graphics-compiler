@@ -123,10 +123,8 @@ CIF_DECLARE_INTERFACE_PIMPL(IgcOclDeviceCtx) : CIF::PimplBase {
     if (outIgcRegKeysBuffer == nullptr) {
       return;
     }
-    std::lock_guard<std::mutex> lock(this->mutex);
-    LoadRegistryKeys();
     std::string igcRegKeysPairs;
-    GetKeysSetExplicitly(nullptr, &igcRegKeysPairs);
+    LoadIGCFlagsFromRegistryAndGetString(igcRegKeysPairs);
     outIgcRegKeysBuffer->Clear();
     outIgcRegKeysBuffer->PushBackRawBytes(igcRegKeysPairs.c_str(), igcRegKeysPairs.size());
   }

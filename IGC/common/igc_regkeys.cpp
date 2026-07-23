@@ -963,13 +963,27 @@ IGCFlag *FindIGCFlagByName(const char *name) {
   return nullptr;
 }
 
+namespace {
+// Shared by LoadRegistryKeys() and LoadIGCFlagsFromRegistryAndGetString(); both write
+// g_IGCFlagsArray, so they must serialize on this single lock.
+std::mutex g_loadFlagsMutex;
+} // namespace
+
+// Reads registry/env values into g_IGCFlagsArray exactly once per process.
+// Caller must hold g_loadFlagsMutex.
 static void LoadIGCFlagsFromRegistry(const std::string &options = "", bool *RegFlagNameError = nullptr) {
-  for (IGCFlag &igcFlag : g_IGCFlagsArray) {
-    debugString value = {0};
-    bool registryValueFound = ReadIGCRegistry(igcFlag.name, &value, sizeof(value), igcFlag.type);
-    if (registryValueFound) {
-      memcpy_s(igcFlag.m_string, sizeof(value), value, sizeof(value));
-      igcFlag.isSet = true;
+  // Guards LoadIGCFlagsFromRegistry() so the registry/env values are read into
+  // g_IGCFlagsArray at most once per process.
+  static bool registryLoaded = false;
+  if (!registryLoaded) {
+    registryLoaded = true;
+    for (IGCFlag &igcFlag : g_IGCFlagsArray) {
+      debugString value = {0};
+      bool registryValueFound = ReadIGCRegistry(igcFlag.name, &value, sizeof(value), igcFlag.type);
+      if (registryValueFound) {
+        memcpy_s(igcFlag.m_string, sizeof(value), value, sizeof(value));
+        igcFlag.isSet = true;
+      }
     }
   }
 }
@@ -1112,11 +1126,20 @@ static std::string ExtractIGCOptsFromOptions(const std::string &options, std::st
   return result;
 }
 
+// Get all keys that have been set explicitly with a non-default value
+// This is used only to read  and use via IGC-NEO interfaces
+void LoadIGCFlagsFromRegistryAndGetString(std::string &outToken) {
+  std::lock_guard<std::mutex> lock(g_loadFlagsMutex);
+  LoadIGCFlagsFromRegistry();
+  GetKeysSetExplicitly(nullptr, &outToken);
+}
+
 void LoadRegistryKeys(const std::string &options, std::string *optionsParseError) {
   // only load the debug flags once before compiling to avoid any multi-threading issue
-  static std::mutex loadFlags;
+  // g_loadFlagsMutex is shared with LoadIGCFlagsFromRegistryAndGetString() on purpose:
+  // both write g_IGCFlagsArray, so they must serialize on the same lock.
   static volatile bool flagsSet = false;
-  std::lock_guard<std::mutex> lock(loadFlags);
+  std::lock_guard<std::mutex> lock(g_loadFlagsMutex);
 
   if (!flagsSet) {
     flagsSet = true;
