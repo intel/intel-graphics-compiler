@@ -90,6 +90,9 @@ struct MemTravStack {
 static_assert(sizeof(MemTravStack) == 32, "Wrong MemTravStack size");
 
 struct alignas(32) RTDispatchGlobals {
+  // Used in 'flags'
+  static constexpr uint32_t depthTestLessEqualFlag = 1u << 0;
+
   // Cached by HW
 public:
   uint64_t rtMemBasePtr; // base address of the allocated stack memory
@@ -98,12 +101,10 @@ public:
   uint32_t stackSizePerRay; // maximal stack size of a ray in 64 byte blocks
   uint32_t numDSSRTStacks : 16;     // number of stacks per DSS (async-RT)
   uint32_t syncNumDSSRTStacks : 16; // number of stacks per DSS (sync-RT)
-  // TODO: update with:
-  // uint32_t maxBVHLevels       : 3;      // the maximal number of supported instancing levels, 0->8, 1->1, 2->2, etc.
-  // uint32_t hitGroupStride     : 13;    // stride of hit group shader records (16-bytes alignment)
-  // uint32_t missShaderStride   : 13;    // stride of miss shader records (8-bytes alignment)
-  // uint32_t _pad2_mbz          : 3;
-  uint32_t maxBVHLevels;
+  uint32_t maxBVHLevels : 3;        // the maximal number of supported instancing levels, 0->8, 1->1, 2->2, etc.
+  uint32_t hitGroupStride : 13;     // stride of hit group shader records (16-bytes alignment)
+  uint32_t missShaderStride : 13;   // stride of miss shader records (8-bytes alignment)
+  uint32_t _pad2_mbz : 3;
   uint32_t flags : 1;
   uint32_t pad_mbz : 31;
 
