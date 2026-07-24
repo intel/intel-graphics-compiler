@@ -12,7 +12,7 @@ SPDX-License-Identifier: MIT
 // Test that shader dumps work when using environment variables.
 
 // RUN: rm -rf %t.env_dump_dir
-// RUN: IGC_ShaderDumpEnable=1 IGC_DumpToCustomDir=%t.env_dump_dir ocloc compile -device bmg -file %s
+// RUN: env IGC_ShaderDumpEnable=1 IGC_DumpToCustomDir=%t.env_dump_dir ocloc compile -device bmg -file %s
 // RUN: ls %t.env_dump_dir/*.cl
 // RUN: ls %t.env_dump_dir/*beforeUnification*.ll
 // RUN: rm -rf %t.env_dump_dir

@@ -29,7 +29,7 @@ else:
 config.name = 'OfflineCompilationTests'
 
 # testFormat: The test format to use to interpret tests.
-config.test_format = VerboseUnsupportedShTest(not llvm_config.use_lit_shell)
+config.test_format = VerboseUnsupportedShTest(False)
 
 # suffixes: A list of file extensions to treat as test files.
 config.suffixes = ['.cl', '.ll', '.spvasm', '.spv-test']
@@ -142,6 +142,9 @@ if llvm_ver >= 17:
 
 if llvm_ver >= 22:
   config.available_features.add('llvm-22-plus')
+
+if llvm_ver >= 23:
+  config.available_features.add('llvm-23-plus')
 
 # On LLVM 17 tools like llvm-as do not have "opaque-pointers" flag, so in order to keep tests working on all LLVMs
 # on 17 tools we just provide empty string

@@ -3,9 +3,9 @@
 ; REQUIRES: regkeys, llvm-16-plus
 ; RUN: llvm-as %OPAQUE_PTR_FLAG% < %s -o %t.bc
 
-; RUN: ocloc compile -llvm_input -file %t.bc -device bmg -options " -igc_opts 'RematSingleFlowRematEnabled=0, DumpASMToConsole=1, EnableOpaquePointersBackend=1, PrintToConsole=1, ' -cl-intel-256-GRF-per-thread" &> %t_output.ll
+; RUN: ocloc compile -llvm_input -file %t.bc -device bmg -options " -igc_opts 'RematSingleFlowRematEnabled=0, DumpASMToConsole=1, EnableOpaquePointersBackend=1, PrintToConsole=1, ' -cl-intel-256-GRF-per-thread" > %t_output.ll 2>&1
 ; RUN: echo "NEXT STAGE!!!!!" >> %t_output.ll
-; RUN: ocloc compile -llvm_input -file %t.bc -device bmg -options " -igc_opts 'RematSingleFlowRematEnabled=1, DumpASMToConsole=1, EnableOpaquePointersBackend=1, PrintToConsole=1, ' -cl-intel-256-GRF-per-thread" &>> %t_output.ll
+; RUN: ocloc compile -llvm_input -file %t.bc -device bmg -options " -igc_opts 'RematSingleFlowRematEnabled=1, DumpASMToConsole=1, EnableOpaquePointersBackend=1, PrintToConsole=1, ' -cl-intel-256-GRF-per-thread" >> %t_output.ll 2>&1
 ; RUN: FileCheck --input-file %t_output.ll %s --check-prefixes=CHECK%if !llvm-22-plus %{,CHECK-PRE-LLVM22%}
 
 ; CHECK: //.kernel foo

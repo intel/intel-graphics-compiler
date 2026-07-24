@@ -12,7 +12,10 @@ SPDX-License-Identifier: MIT
 
 // RUN: rm -rf %t && mkdir %t
 // RUN: ocloc compile -file %s -options "-igc_opts 'ShaderDumpEnableAll=1, DumpToCustomDir=%t, EnableStackCallFuncCall=1'" -device pvc
-// RUN: test -z "$(find %t -type f -name "*.ll" -size 0c -print -quit 2>/dev/null)"
+// RUN: find %t -type f -name "*.ll" -size 0c -print -quit > %t.empty_ll.txt
+// RUN: FileCheck %s --check-prefix=NO-EMPTY-LL --allow-empty --input-file %t.empty_ll.txt
+
+// NO-EMPTY-LL-NOT: {{.}}
 
 __attribute__((noinline))
 double no_inline_func(double a) {

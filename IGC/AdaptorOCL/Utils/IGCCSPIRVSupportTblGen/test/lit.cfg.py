@@ -23,7 +23,7 @@ else:
 
 config.name = 'spirv-extension-support-tblgen'
 
-config.test_format = VerboseUnsupportedShTest(not llvm_config.use_lit_shell)
+config.test_format = VerboseUnsupportedShTest(False)
 
 config.suffixes = ['.td']
 

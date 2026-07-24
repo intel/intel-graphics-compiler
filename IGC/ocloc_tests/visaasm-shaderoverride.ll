@@ -17,7 +17,7 @@
 // RUN: llvm-as %OPAQUE_PTR_FLAG% %t/overriden.ll -o %t/overriden.bc
 
 // Compile original shader
-// RUN: IGC_EnableKernelNamesBasedHash=1 IGC_ShaderDumpEnable=1 \
+// RUN: env IGC_EnableKernelNamesBasedHash=1 IGC_ShaderDumpEnable=1 \
 // RUN: IGC_DumpToCustomDir=%t.dump_dir \
 // RUN: ocloc compile -device bmg -file %t/original.bc -llvm_input -options "-igc_opts 'EnableOpaquePointersBackend=1, VISAOptions=-asmToConsole'" | FileCheck %s
 
@@ -25,7 +25,7 @@
 // RUN: cp %t.dump_dir/*.visaasm %t.override_dir/
 
 // Override:
-// RUN: IGC_EnableKernelNamesBasedHash=1 IGC_ShaderOverride=1 \
+// RUN: env IGC_EnableKernelNamesBasedHash=1 IGC_ShaderOverride=1 \
 // RUN: IGC_ShaderDumpEnable=1 IGC_DumpToCustomDir=%t.overriden_dir \
 // RUN: IGC_ShaderOverrideFromDir=%t.override_dir \
 // RUN: ocloc compile -device bmg -file %t/overriden.bc -llvm_input  -options "-igc_opts 'EnableOpaquePointersBackend=1, VISAOptions=-asmToConsole'" | FileCheck %s
