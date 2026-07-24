@@ -148,21 +148,12 @@ public:
   //
   // Data members
   //
-  using TypeType = NamedMetaDataValue<int32_t>;
   using PrivateMemoryPerWIType = NamedMetaDataValue<int32_t>;
   using NeedBindlessHandleType = NamedMetaDataValue<int32_t>;
-
-  // Type
-  TypeType::value_type getType() const { return m_Type.get(); }
-  void setType(const TypeType::value_type &val) { m_Type.set(val); }
-  bool isTypeHasValue() const { return m_Type.hasValue(); }
 
 private:
   // parent node
   const llvm::MDNode *m_pNode;
-
-  // data members
-  TypeType m_Type;
 };
 
 class MetaDataUtils {

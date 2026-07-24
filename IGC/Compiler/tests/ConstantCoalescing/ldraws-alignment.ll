@@ -97,6 +97,7 @@ attributes #0 = { argmemonly nounwind readonly }
 attributes #1 = { argmemonly nounwind writeonly }
 attributes #2 = { argmemonly nounwind readonly willreturn }
 
+!IGCMetadata = !{!19}
 !igc.functions = !{!0, !3, !6}
 
 !0 = !{ptr @f0, !1}
@@ -110,3 +111,14 @@ attributes #2 = { argmemonly nounwind readonly willreturn }
 !6 = !{ptr @f2, !7}
 !7 = !{!8}
 !8 = !{!"function_type", i32 0}
+!9 = !{!"functionType", !"KernelFunction"}
+!10 = !{!"FuncMDMap[0]", ptr @f0}
+!11 = !{!"FuncMDValue[0]", !9}
+!12 = !{!"functionType", !"KernelFunction"}
+!13 = !{!"FuncMDMap[1]", ptr @f1}
+!14 = !{!"FuncMDValue[1]", !12}
+!15 = !{!"functionType", !"KernelFunction"}
+!16 = !{!"FuncMDMap[2]", ptr @f2}
+!17 = !{!"FuncMDValue[2]", !15}
+!18 = !{!"FuncMD", !10, !11, !13, !14, !16, !17}
+!19 = !{!"ModuleMD", !18}

@@ -75,6 +75,7 @@ define spir_kernel void @byval_struct_ptr_clobbered_by_call(ptr addrspace(1) %g,
 
 declare void @clobber(ptr)
 
+!IGCMetadata = !{!16}
 !igc.functions = !{!0, !3, !4, !5}
 !0 = !{ptr @byval_struct_ptr, !1}
 !1 = !{!2}
@@ -82,3 +83,14 @@ declare void @clobber(ptr)
 !3 = !{ptr @byval_struct_ptr_clobbered, !1}
 !4 = !{ptr @not_from_kernel_arg, !1}
 !5 = !{ptr @byval_struct_ptr_clobbered_by_call, !1}
+!6 = !{!"functionType", !"KernelFunction"}
+!7 = !{!"FuncMDMap[0]", ptr @byval_struct_ptr}
+!8 = !{!"FuncMDValue[0]", !6}
+!9 = !{!"FuncMDMap[1]", ptr @byval_struct_ptr_clobbered}
+!10 = !{!"FuncMDValue[1]", !6}
+!11 = !{!"FuncMDMap[2]", ptr @not_from_kernel_arg}
+!12 = !{!"FuncMDValue[2]", !6}
+!13 = !{!"FuncMDMap[3]", ptr @byval_struct_ptr_clobbered_by_call}
+!14 = !{!"FuncMDValue[3]", !6}
+!15 = !{!"FuncMD", !7, !8, !9, !10, !11, !12, !13, !14}
+!16 = !{!"ModuleMD", !15}

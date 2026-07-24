@@ -47,8 +47,16 @@ define spir_kernel void @byval_array_ptr_clobbered(ptr addrspace(1) %g, ptr byva
   ret void
 }
 
+!IGCMetadata = !{!10}
 !igc.functions = !{!0, !3}
 !0 = !{ptr @byval_array_ptr, !1}
 !1 = !{!2}
 !2 = !{!"function_type", i32 0}
 !3 = !{ptr @byval_array_ptr_clobbered, !1}
+!4 = !{!"functionType", !"KernelFunction"}
+!5 = !{!"FuncMDMap[0]", ptr @byval_array_ptr}
+!6 = !{!"FuncMDValue[0]", !4}
+!7 = !{!"FuncMDMap[1]", ptr @byval_array_ptr_clobbered}
+!8 = !{!"FuncMDValue[1]", !4}
+!9 = !{!"FuncMD", !5, !6, !7, !8}
+!10 = !{!"ModuleMD", !9}

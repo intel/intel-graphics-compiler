@@ -62,9 +62,19 @@ define spir_kernel void @not_from_kernel_arg(i32 addrspace(1)* %g, i1 %c, i64 %x
   ret void
 }
 
+!IGCMetadata = !{!13}
 !igc.functions = !{!0, !3, !4}
 !0 = !{void (i32 addrspace(1)*, %struct.S*, i1)* @byval_struct_ptr, !1}
 !1 = !{!2}
 !2 = !{!"function_type", i32 0}
 !3 = !{void (i32 addrspace(1)*, %struct.S*, i1, i64)* @byval_struct_ptr_clobbered, !1}
 !4 = !{void (i32 addrspace(1)*, i1, i64)* @not_from_kernel_arg, !1}
+!5 = !{!"functionType", !"KernelFunction"}
+!6 = !{!"FuncMDMap[0]", void (i32 addrspace(1)*, %struct.S*, i1)* @byval_struct_ptr}
+!7 = !{!"FuncMDValue[0]", !5}
+!8 = !{!"FuncMDMap[1]", void (i32 addrspace(1)*, %struct.S*, i1, i64)* @byval_struct_ptr_clobbered}
+!9 = !{!"FuncMDValue[1]", !5}
+!10 = !{!"FuncMDMap[2]", void (i32 addrspace(1)*, i1, i64)* @not_from_kernel_arg}
+!11 = !{!"FuncMDValue[2]", !5}
+!12 = !{!"FuncMD", !6, !7, !8, !9, !10, !11}
+!13 = !{!"ModuleMD", !12}

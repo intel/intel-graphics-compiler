@@ -16,7 +16,7 @@ SPDX-License-Identifier: MIT
 namespace IGC::IGCMD {
 class IGCMetaDataHelper {
 public:
-  static void addFunction(MetaDataUtils &mdUtils, llvm::Function *pFunc,
+  static void addFunction(MetaDataUtils &mdUtils, ModuleMetaData &MD, llvm::Function *pFunc,
                           IGC::FunctionTypeMD type = IGC::FunctionTypeMD::KernelFunction);
   static void moveFunction(MetaDataUtils &mdUtils, ModuleMetaData &MD, llvm::Function *OldFunc,
                            llvm::Function *NewFunc);

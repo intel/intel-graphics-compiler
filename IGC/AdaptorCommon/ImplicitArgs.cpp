@@ -540,7 +540,7 @@ void ImplicitArgs::addBufferOffsetArgs(llvm::Function &F, const IGCMD::MetaDataU
   IGC_ASSERT(modMD->FuncMD.find(&F) != modMD->FuncMD.end());
 
   // StatelessToStateful optimization is not applied on non-kernel functions.
-  if (!isEntryFunc(pMdUtils, &F))
+  if (!isEntryFunc(modMD, &F))
     return;
 
   FunctionMetaData *funcMD = &modMD->FuncMD.find(&F)->second;
@@ -579,7 +579,7 @@ void ImplicitArgs::addBindlessOffsetArgs(llvm::Function &F, const IGCMD::MetaDat
   IGC_ASSERT(modMD->FuncMD.find(&F) != modMD->FuncMD.end());
 
   // StatelessToStateful optimization is not applied on non-kernel functions.
-  if (!isEntryFunc(pMdUtils, &F))
+  if (!isEntryFunc(modMD, &F))
     return;
 
   FunctionMetaData *funcMD = &modMD->FuncMD.find(&F)->second;
@@ -711,7 +711,7 @@ Argument *ImplicitArgs::getImplicitArg(llvm::Function &F, ImplicitArg::ArgType a
 }
 
 Value *ImplicitArgs::getImplicitArgValue(llvm::Function &F, ImplicitArg::ArgType argType,
-                                         const IGCMD::MetaDataUtils *pMdUtils) {
+                                         const IGC::ModuleMetaData *modMD) {
   Value *funcArg = getImplicitArg(F, argType);
 
   if (funcArg) {
@@ -719,7 +719,7 @@ Value *ImplicitArgs::getImplicitArgValue(llvm::Function &F, ImplicitArg::ArgType
     return funcArg;
   }
 
-  if (!isEntryFunc(pMdUtils, &F)) {
+  if (!isEntryFunc(modMD, &F)) {
     ImplicitArg iArg = IMPLICIT_ARGS[argType];
     GenISAIntrinsic::ID genID = iArg.getGenIntrinsicID();
     if (genID != GenISAIntrinsic::ID::no_intrinsic) {

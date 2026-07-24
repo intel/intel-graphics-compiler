@@ -217,7 +217,7 @@ bool RayTracingShaderLowering::runOnModule(Module &M) {
       EntryPreemptionVal = RTB.CreateICmpNE(Val, RTB.getInt32(0));
       return EntryPreemptionVal;
     };
-    const bool isFunc = !isEntryFunc(CGCtx->getMetaDataUtils(), &F);
+    const bool isFunc = !isEntryFunc(CGCtx->getModuleMetaData(), &F);
 
     if (ForcePreemptionDisable) {
       auto &rtInfo = CGCtx->getModuleMetaData()->FuncMD[&F].rtInfo;

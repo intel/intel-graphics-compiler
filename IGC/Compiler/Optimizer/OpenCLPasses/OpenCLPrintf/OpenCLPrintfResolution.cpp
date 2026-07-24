@@ -551,7 +551,7 @@ void OpenCLPrintfResolution::expandPrintfCall(CallInst &printfCall, Function &F)
   else if (m_CGContext->type == ShaderType::OPENCL_SHADER)
     basebufferPtr = genPrintfBufferPtr(F);
   else
-    basebufferPtr = implicitArgs.getImplicitArgValue(F, ImplicitArg::PRINTF_BUFFER, MdUtils);
+    basebufferPtr = implicitArgs.getImplicitArgValue(F, ImplicitArg::PRINTF_BUFFER, m_CGContext->getModuleMetaData());
 
   Value *currentOffsetPtr = isPrintfBuiltin ? printfCall.getArgOperand(1) : basebufferPtr;
   Instruction *writeOffsetStart = genAtomicAdd(currentOffsetPtr, dataSizeVal, printfCall, "write_offset");

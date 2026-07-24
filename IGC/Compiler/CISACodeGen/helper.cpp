@@ -2229,19 +2229,17 @@ void InsertOptsMetadata(CodeGenContext *pCtx, llvm::Function *F) {
     OptDisableSet->insert(IGCOpts::AllowSimd32Slicing);
 }
 
-Function *getUniqueEntryFunc(const IGCMD::MetaDataUtils *pM, IGC::ModuleMetaData *pModMD) {
+Function *getUniqueEntryFunc(const IGC::ModuleMetaData *pModMD) {
   Function *entryFunc = nullptr;
-  for (auto i = pM->begin_FunctionsInfo(), e = pM->end_FunctionsInfo(); i != e; ++i) {
-    IGCMD::FunctionInfoMetaDataHandle Info = i->second;
-    if (Info->getType() != FunctionTypeMD::KernelFunction) {
+  for (const auto &i : pModMD->FuncMD) {
+    Function *F = i.first;
+    if (!isEntryFunc(pModMD, F))
       continue;
-    }
 
-    Function *F = i->first;
     if (!entryFunc) {
       entryFunc = F;
     } else {
-      // Multiple entries found, return null since there is no unique entry
+      // More than one entry-typed function: there is no unique entry.
       return nullptr;
     }
   }
@@ -2319,7 +2317,7 @@ Function *KernelSIMDSizeResolver::getEntryFunction(Function *F) {
     return Cached->second;
   }
 
-  if (isEntryFunc(m_mdUtils, F)) {
+  if (isEntryFunc(m_Ctx->getModuleMetaData(), F)) {
     m_entryCache[F] = F;
     LLVM_DEBUG(dbgs() << " - FUNCTION IS ENTRY FUNCTION\n");
     return F;
@@ -2343,7 +2341,7 @@ Function *KernelSIMDSizeResolver::getEntryFunction(Function *F) {
 
       if (m_entryCache.count(ParentFunction) > 0) {
         EntryFunc = m_entryCache[ParentFunction];
-      } else if (isEntryFunc(m_mdUtils, ParentFunction)) {
+      } else if (isEntryFunc(m_Ctx->getModuleMetaData(), ParentFunction)) {
         EntryFunc = ParentFunction;
       }
 

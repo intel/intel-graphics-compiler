@@ -530,7 +530,6 @@ static void collectGlobalAnnotationsPointers(const Module &M, DenseSet<const Val
 
 bool ProcessFuncAttributes::run(Module &M, CodeGenContext *Ctx, IGCMD::MetaDataUtils *MdUtils, llvm::CallGraph &CG,
                                 EstimateFunctionSize &efs) {
-  MetaDataUtils *pMdUtils = MdUtils;
   CodeGenContext *pCtx = Ctx;
   ModuleMetaData *modMD = pCtx->getModuleMetaData();
   auto MemPoolFuncs = collectMemPoolUsage(M);
@@ -699,7 +698,7 @@ bool ProcessFuncAttributes::run(Module &M, CodeGenContext *Ctx, IGCMD::MetaDataU
     }
 
     // Set for kernel functions
-    const bool isKernel = isEntryFunc(pMdUtils, F);
+    const bool isKernel = isEntryFunc(pCtx->getModuleMetaData(), F);
 
     // Functions that have the spir_kernel calling convention
     // This may be true even if isEntryFunc returns false, for invoke kernels and cloned callable kernels
@@ -942,7 +941,7 @@ bool ProcessFuncAttributes::run(Module &M, CodeGenContext *Ctx, IGCMD::MetaDataU
       std::ofstream outputFile(IGC::Debug::GetFunctionDebugFile());
       if (outputFile.is_open()) {
         for (auto &F : M) {
-          if (!F.isDeclaration() && !isEntryFunc(pMdUtils, &F))
+          if (!F.isDeclaration() && !isEntryFunc(pCtx->getModuleMetaData(), &F))
             outputFile << F.getName().str() << std::endl;
         }
       }
@@ -1310,7 +1309,6 @@ void ProcessBuiltinMetaData::updateBuiltinFunctionMetaData(llvm::Function *pFunc
   IGC::ModuleMetaData *modMD = m_pCtx->getModuleMetaData();
   FunctionMetaData *funcMD = &modMD->FuncMD[pFunc]; // okay to insert if not present
   funcMD->functionType = IGC::FunctionTypeMD::UserFunction;
-  fHandle->setType(FunctionTypeMD::UserFunction);
   for (auto arg = pFunc->arg_begin(); arg != pFunc->arg_end(); ++arg) {
     std::string typeStr;
     llvm::raw_string_ostream x(typeStr);
@@ -1437,7 +1435,7 @@ bool InsertDummyKernelForSymbolTable::run(Module &M, CodeGenContext *Ctx, MetaDa
     } else if (!modMD->inlineProgramScopeOffsets.empty()) {
       // Create one also if global variables are present and require symbols
       needDummyKernel = true;
-    } else if (pCtx->m_hasStackCalls && !getUniqueEntryFunc(pMdUtils, modMD)) {
+    } else if (pCtx->m_hasStackCalls && !getUniqueEntryFunc(modMD)) {
       // If there are stackcalls and multiple kernels from which it could be called, conservatively create a
       // dummy kernel in case we need to transform them into indirect calls to avoid cloning in GenCodeGenModule.cpp
       needDummyKernel = true;
@@ -1459,7 +1457,6 @@ bool InsertDummyKernelForSymbolTable::run(Module &M, CodeGenContext *Ctx, MetaDa
     IGCMD::FunctionInfoMetaDataHandle fHandle = IGCMD::FunctionInfoMetaDataHandle(new IGCMD::FunctionInfoMetaData());
     FunctionMetaData *funcMD = &modMD->FuncMD[pNewFunc];
     funcMD->functionType = IGC::FunctionTypeMD::KernelFunction;
-    fHandle->setType(FunctionTypeMD::KernelFunction);
 
     pMdUtils->setFunctionsInfoItem(pNewFunc, fHandle);
     pMdUtils->save(M.getContext());

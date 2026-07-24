@@ -28,7 +28,7 @@ public:
 
   static llvm::StringRef getPassName() { return "DropTargetFunctions"; }
 
-  bool run(llvm::Module &M, IGCMD::MetaDataUtils *MdUtils);
+  bool run(llvm::Module &M, IGCMD::MetaDataUtils *MdUtils, IGC::ModuleMetaData *ModMD);
 
 private:
   bool VerboseLog = false;
@@ -50,7 +50,8 @@ public:
   }
 
   bool runOnModule(llvm::Module &M) override {
-    return DropTargetFunctions().run(M, getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils());
+    return DropTargetFunctions().run(M, getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils(),
+                                     getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData());
   }
 };
 

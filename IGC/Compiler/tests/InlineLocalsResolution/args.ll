@@ -39,8 +39,14 @@ define spir_kernel void @test_inline(i32 addrspace(3)* %a, i32 addrspace(3)* %b)
   ret void
 }
 
+!IGCMetadata = !{!7}
 !igc.functions = !{!0}
 
 !0 = !{void (i32 addrspace(3)*, i32 addrspace(3)*)* @test_inline, !1}
 !1 = !{!2}
 !2 = !{!"function_type", i32 0}
+!3 = !{!"functionType", !"KernelFunction"}
+!4 = !{!"FuncMDMap[0]", void (i32 addrspace(3)*, i32 addrspace(3)*)* @test_inline}
+!5 = !{!"FuncMDValue[0]", !3}
+!6 = !{!"FuncMD", !4, !5}
+!7 = !{!"ModuleMD", !6}

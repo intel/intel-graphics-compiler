@@ -53,7 +53,7 @@ bool ScalarArgAsPointerAnalysis::run(Module &M, IGC::IGCMD::MetaDataUtils *pMdUt
     if (F.isDeclaration())
       continue;
 
-    if (!isEntryFunc(MDU, &F))
+    if (!isEntryFunc(pModMD, &F))
       continue;
 
     changed |= analyzeFunction(F);

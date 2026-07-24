@@ -178,7 +178,10 @@ bool TraceRayInlineLoweringPass::LowerAllocateRayQuery(Function &F, unsigned num
   ModuleMetaData *modMD = m_CGCtx->getModuleMetaData();
   if (modMD->FuncMD.find(&F) == modMD->FuncMD.end()) {
     IGC::FunctionMetaData funcMd;
-    funcMd.functionType = FunctionTypeMD::KernelFunction;
+    // A ray_query function with no FuncMD entry yet is a helper, not a shader
+    // entry (real entries are enrolled with their type before this pass runs);
+    // KernelFunction here would make getUniqueEntryFunc miscount it as an entry.
+    funcMd.functionType = FunctionTypeMD::UserFunction;
     modMD->FuncMD.insert(std::make_pair(&F, funcMd));
   }
   modMD->FuncMD[&F].hasSyncRTCalls = true;

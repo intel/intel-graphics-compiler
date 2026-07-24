@@ -64,7 +64,7 @@ bool PrivateMemoryUsageAnalysis::run(Module &M, IGC::IGCMD::MetaDataUtils *pMdUt
   if (hasStackCall || pCtx->m_enableFunctionPointer || IGC_IS_FLAG_ENABLED(ForceAddingStackcallKernelPrerequisites) ||
       IGC_IS_FLAG_ENABLED(StackOverflowDetection)) {
     for (Function &F : M) {
-      if (isEntryFunc(m_pMDUtils, &F)) {
+      if (isEntryFunc(pCtx->getModuleMetaData(), &F)) {
         SmallVector<ImplicitArg::ArgType, 1> implicitArgs;
         implicitArgs.push_back(ImplicitArg::PRIVATE_BASE);
         ImplicitArgs::addImplicitArgs(F, implicitArgs, m_pMDUtils, pCtx->getModuleMetaData());

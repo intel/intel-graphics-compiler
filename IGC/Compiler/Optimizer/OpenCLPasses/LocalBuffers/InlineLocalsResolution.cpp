@@ -98,7 +98,6 @@ bool InlineLocalsResolution::run(Module &M, IGC::IGCMD::MetaDataUtils *pMdUtilsP
   m_modMD = pModMD;
   m_pCtx = pCtx;
   m_CG = &CG;
-  MetaDataUtils *pMdUtils = m_pMdUtils;
   ModuleMetaData *modMD = m_modMD;
   if (!modMD->compOpt.OptDisable)
     filterGlobals(M);
@@ -111,7 +110,7 @@ bool InlineLocalsResolution::run(Module &M, IGC::IGCMD::MetaDataUtils *pMdUtilsP
   LLVMContext &C = M.getContext();
 
   for (Function &F : M) {
-    if (F.isDeclaration() || !isEntryFunc(pMdUtils, &F)) {
+    if (F.isDeclaration() || !isEntryFunc(modMD, &F)) {
       continue;
     }
 
@@ -479,7 +478,7 @@ void InlineLocalsResolution::computeOffsetList(Module &M, llvm::MapVector<Functi
   // Ok, we've collected the information, now write it into the MD.
   for (auto &iter : sizeMap) {
     // ignore non-entry functions.
-    if (!isEntryFunc(pMdUtils, iter.first)) {
+    if (!isEntryFunc(modMD, iter.first)) {
       continue;
     }
 

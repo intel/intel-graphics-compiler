@@ -235,6 +235,7 @@ define i32 addrspace(1)* @edge_case_check(i32 addrspace(4)* addrspace(1)* %src) 
 
 declare void @llvm.memcpy.p0.p0.i32(i32 addrspace(4)* addrspace(1)*, i32 addrspace(4)* addrspace(1)*, i32 , i1)
 
+!IGCMetadata = !{!43}
 !igc.functions = !{!0, !3, !4, !5, !6, !7, !8, !9, !10, !11}
 !0 = !{i32 addrspace(4)* (i32 addrspace(4)* addrspace(1)*)* @should_not_add_addrspacecast, !1}
 !1 = !{!2}
@@ -248,3 +249,35 @@ declare void @llvm.memcpy.p0.p0.i32(i32 addrspace(4)* addrspace(1)*, i32 addrspa
 !9 = !{i32 addrspace(4)* (i32 addrspace(4)* addrspace(1)*)* @should_add_addrspacecast_since_store_uses_different_pointer_2, !1}
 !10 = !{i32 addrspace(1)* (i32 addrspace(4)* addrspace(1)*)* @edge_case_check, !1}
 !11 = !{i32 addrspace(4)* (%struct.with.pointer addrspace(1)*)* @should_add_addrspacecast_with_struct_2, !1}
+!12 = !{!"functionType", !"KernelFunction"}
+!13 = !{!"FuncMDMap[0]", i32 addrspace(4)* (i32 addrspace(4)* addrspace(1)*)* @should_not_add_addrspacecast}
+!14 = !{!"FuncMDValue[0]", !12}
+!15 = !{!"functionType", !"KernelFunction"}
+!16 = !{!"FuncMDMap[1]", i32 addrspace(4)* (i32 addrspace(4)* addrspace(1)*)* @should_add_addrspacecast}
+!17 = !{!"FuncMDValue[1]", !15}
+!18 = !{!"functionType", !"KernelFunction"}
+!19 = !{!"FuncMDMap[2]", i32 addrspace(4)* (%struct.with.pointer addrspace(1)*)* @should_add_addrspacecast_with_struct}
+!20 = !{!"FuncMDValue[2]", !18}
+!21 = !{!"functionType", !"KernelFunction"}
+!22 = !{!"FuncMDMap[3]", i32 addrspace(4)* (i32 addrspace(4)* addrspace(1)*)* @should_add_addrspacecast_since_store_uses_different_pointer}
+!23 = !{!"FuncMDValue[3]", !21}
+!24 = !{!"functionType", !"KernelFunction"}
+!25 = !{!"FuncMDMap[4]", i32 addrspace(4)* (i32 addrspace(4)* addrspace(1)*)* @should_not_add_addrspacecast_when_call_modifies_pointer}
+!26 = !{!"FuncMDValue[4]", !24}
+!27 = !{!"functionType", !"KernelFunction"}
+!28 = !{!"FuncMDMap[5]", i32 addrspace(4)* (i32 addrspace(4)* addrspace(1)*)* @should_not_add_addrspacecast_when_instruction_may_modify_pointer}
+!29 = !{!"FuncMDValue[5]", !27}
+!30 = !{!"functionType", !"KernelFunction"}
+!31 = !{!"FuncMDMap[6]", i32 addrspace(4)* (i32 addrspace(4)* addrspace(1)*)* @should_not_add_addrspacecast_2}
+!32 = !{!"FuncMDValue[6]", !30}
+!33 = !{!"functionType", !"KernelFunction"}
+!34 = !{!"FuncMDMap[7]", i32 addrspace(4)* (i32 addrspace(4)* addrspace(1)*)* @should_add_addrspacecast_since_store_uses_different_pointer_2}
+!35 = !{!"FuncMDValue[7]", !33}
+!36 = !{!"functionType", !"KernelFunction"}
+!37 = !{!"FuncMDMap[8]", i32 addrspace(1)* (i32 addrspace(4)* addrspace(1)*)* @edge_case_check}
+!38 = !{!"FuncMDValue[8]", !36}
+!39 = !{!"functionType", !"KernelFunction"}
+!40 = !{!"FuncMDMap[9]", i32 addrspace(4)* (%struct.with.pointer addrspace(1)*)* @should_add_addrspacecast_with_struct_2}
+!41 = !{!"FuncMDValue[9]", !39}
+!42 = !{!"FuncMD", !13, !14, !16, !17, !19, !20, !22, !23, !25, !26, !28, !29, !31, !32, !34, !35, !37, !38, !40, !41}
+!43 = !{!"ModuleMD", !42}

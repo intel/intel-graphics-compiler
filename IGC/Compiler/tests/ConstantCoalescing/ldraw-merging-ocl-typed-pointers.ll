@@ -38,7 +38,13 @@ declare void @llvm.genx.GenISA.storeraw.indexed.p2490368v4i64.i64(<4 x i64> addr
 attributes #0 = { argmemonly nounwind readonly }
 attributes #1 = { argmemonly nounwind writeonly }
 
+!IGCMetadata = !{!7}
 !igc.functions = !{!0}
 !0 = !{void (<8 x i32> addrspace(1)*, <3 x i64> addrspace(1)*, <8 x i32>, <8 x i32>, i32, i32, i32, i32)* @test_kernel, !1}
 !1 = !{!2}
 !2 = !{!"function_type", i32 0}
+!3 = !{!"functionType", !"KernelFunction"}
+!4 = !{!"FuncMDMap[0]", void (<8 x i32> addrspace(1)*, <3 x i64> addrspace(1)*, <8 x i32>, <8 x i32>, i32, i32, i32, i32)* @test_kernel}
+!5 = !{!"FuncMDValue[0]", !3}
+!6 = !{!"FuncMD", !4, !5}
+!7 = !{!"ModuleMD", !6}
