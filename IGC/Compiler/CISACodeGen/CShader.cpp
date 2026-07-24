@@ -841,6 +841,42 @@ CVariable *CShader::GetHWTID() {
         return m_HW_TID;
       }
 
+      if (m_Platform->getPlatformInfo().eProductFamily == IGFX_CRI) {
+       // msg0.0:
+       // [7:0] : LogicalSSID
+       // sr0.0:
+       // [6:4] : EUID
+       // [3:0] : TID
+       //
+       // HWTID is calculated using a concatenation of TID[2:0]:EUID:LogicalSSID
+       // TID is [3:0] but TID value for CRI can be 0-7, so we can remove bit 3.
+
+        m_HW_TID = GetNewVariable(1, ISA_TYPE_UD, EALIGN_DWORD, true, 1, "HWTID");
+        encoder.SetNoMask();
+        encoder.SetSrcSubReg(0, 0);
+
+        // m_HW_TID = msg0 & BITMASK(8)
+        encoder.And(m_HW_TID, GetMSG0(), ImmToVariable(BITMASK(8), ISA_TYPE_UD));
+        encoder.Push();
+
+        CVariable *srID = GetNewVariable(1, ISA_TYPE_UD, EALIGN_DWORD, true, 1, "SR_0_6");
+        // euID = sr0 & BITMASK(7)
+        encoder.And(srID, GetSR0(), ImmToVariable(BITMASK(7), ISA_TYPE_UD));
+        encoder.Push();
+
+        // m_HW_TID  = m_HW_TID << 7
+        encoder.Shl(m_HW_TID, m_HW_TID, ImmToVariable(7, ISA_TYPE_UD));
+        encoder.Push();
+
+        // m_HW_TID = m_HW_TID | srID
+        encoder.Or(m_HW_TID, m_HW_TID, srID);
+        encoder.Push();
+
+        // Remove bit [3]
+        RemoveBitRange(m_HW_TID, 3, 1);
+
+        return m_HW_TID;
+      }
       if (m_Platform->getPlatformInfo().eRenderCoreFamily == IGFX_XE3_CORE ||
           m_Platform->getPlatformInfo().eRenderCoreFamily >= IGFX_XE3P_CORE) {
        // msg0.0:
