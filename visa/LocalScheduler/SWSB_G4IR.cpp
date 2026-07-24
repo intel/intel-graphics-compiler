@@ -1028,6 +1028,9 @@ void SBNode::finalizeDistanceType3(IR_Builder &builder,
 
 // Add a node into bucket
 void LiveGRFBuckets::add(SBBucketNode *bucketNode, int bucket) {
+  if (bucket < 0 || bucket >= numOfBuckets) {
+    return;
+  }
   SBBUCKET_VECTOR &nodeVec = nodeBucketsArray[bucket];
   if (std::find(nodeVec.begin(), nodeVec.end(), bucketNode) == nodeVec.end()) {
     nodeVec.push_back(bucketNode);
@@ -8394,7 +8397,11 @@ void G4_BB_SB::getLiveBucketsFromFootprint(
 
     int startBucket = footprint->LeftB / builder.numEltPerGRF<Type_UB>();
     int endBucket = footprint->RightB / builder.numEltPerGRF<Type_UB>();
+    const int maxBucket = send_use_kills->getNumOfBuckets();
     for (int j = startBucket; j < endBucket + 1; j++) {
+      if (j < 0 || j >= maxBucket) {
+        continue;
+      }
       send_use_kills->add(sBucketNode, j);
     }
   }
@@ -8486,6 +8493,9 @@ void SWSB::addGlobalDependence(unsigned globalSendNum,
       // For all bucket descriptors of curInst
       for (const SBBucketDesc &BD : BDvec) {
         const int &curBucket = BD.bucket;
+        if (curBucket < 0 || curBucket >= globalRegisterNum) {
+          continue;
+        }
         const Gen4_Operand_Number &curOpnd = BD.opndNum;
         const SBFootprint *curFootprint = BD.footprint;
 
@@ -8875,6 +8885,9 @@ void SWSB::addGlobalDependenceWithReachingDef(
       // For all bucket descriptors of curInst
       for (const SBBucketDesc &BD : BDvec) {
         const int &curBucket = BD.bucket;
+        if (curBucket < 0 || curBucket >= globalRegisterNum) {
+          continue;
+        }
         const Gen4_Operand_Number &curOpnd = BD.opndNum;
         const SBFootprint *curFootprint = BD.footprint;
 
