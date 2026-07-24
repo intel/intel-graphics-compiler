@@ -1315,11 +1315,11 @@ DECLARE_IGC_REGKEY(bool, EnableEmitMoreMoviCases, false,
                    "Enables emitting movi for waveShuffle cases using And to keep index within single register. "
                    "Temporarily kept for legacy tests use. Will be removed later.",
                    true)
-DECLARE_IGC_REGKEY_ENUM(SupportEmitMoreMoviCases, 0,
+DECLARE_IGC_REGKEY_ENUM(SupportEmitMoreMoviCases, -1,
                         "Controls the behavior of emitSimdShuffle to emit more movi for waveShuffle cases "
                         "using And to keep index within single register."
-                        "-1 - enabled based on the platform choice"
-                        " 0 - default disabled"
+                        "-1 - default enabled based on the platform choice"
+                        " 0 - disabled"
                         " 1 - force enabled",
                         TRIBOOL_OPTIONS, true)
 DECLARE_IGC_REGKEY(bool, ConvergentGradientsOnGenISA, false,
