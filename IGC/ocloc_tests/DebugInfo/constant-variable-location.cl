@@ -9,7 +9,7 @@
 // Verify that variables with constant values have correct constant value emitted
 // In OpenCL, verify that `const uint lc_const_uint = 1357` results in either constant value (-O2) or a DW_AT_location expression (in -O0).
 
-// UNSUPPORTED: sys32, lib-igc-clang
+// UNSUPPORTED: sys32
 // REQUIRES: oneapi-readelf, llvm-16-plus
 
 constant float gb_float = 100500;
@@ -24,7 +24,7 @@ __kernel void foo(global int *res) {
 
 // RUN: %if dg2-supported %{ ocloc compile -file %s -options " -g -cl-opt-disable -igc_opts 'EnableOpaquePointersBackend=1, ElfDumpEnable=1, DumpUseShorterName=0, DebugDumpNamePrefix=%t_dg2_'" -device dg2 %}
 // RUN: %if dg2-supported %{ oneapi-readelf --debug-dump %t_dg2_OCL_simd8_foo.elf | \
-// RUN: FileCheck %s --check-prefixes=CHECK,CHECKO0,CHECKO0-DG2,%if llvm-22-plus %{CHECKO0-LLVM22%} %else %{CHECKO0-PRELLVM22%} %}
+// RUN: FileCheck %s --check-prefixes=CHECK,CHECKO0,CHECKO0-DG2,%if llvm-22-plus || lib-igc-clang %{CHECKO0-LLVM22%} %else %{CHECKO0-PRELLVM22%} %}
 
 // RUN: %if dg2-supported %{ ocloc compile -file %s -options " -g -igc_opts 'EnableOpaquePointersBackend=1, ElfDumpEnable=1, DumpUseShorterName=0, DebugDumpNamePrefix=%t_dg2_'" -device dg2 %}
 // RUN: %if dg2-supported %{ oneapi-readelf --debug-dump %t_dg2_OCL_simd32_foo.elf | \
@@ -32,7 +32,7 @@ __kernel void foo(global int *res) {
 
 // RUN: %if cri-supported %{ ocloc compile -file %s -options " -g -cl-opt-disable -igc_opts 'EnableOpaquePointersBackend=1, ElfDumpEnable=1, DumpUseShorterName=0, DebugDumpNamePrefix=%t_cri_, ShortImplicitPayloadHeader=0, RemoveUnusedIdImplicitArguments=0'" -device cri %}
 // RUN: %if cri-supported %{ oneapi-readelf --debug-dump %t_cri_OCL_simd16_foo.elf | \
-// RUN: FileCheck %s --check-prefixes=CHECK,CHECKO0,CHECKO0-CRI,%if llvm-22-plus %{CHECKO0-LLVM22%} %else %{CHECKO0-PRELLVM22%} %}
+// RUN: FileCheck %s --check-prefixes=CHECK,CHECKO0,CHECKO0-CRI,%if llvm-22-plus || lib-igc-clang %{CHECKO0-LLVM22%} %else %{CHECKO0-PRELLVM22%} %}
 
 // RUN: %if cri-supported %{ ocloc compile -file %s -options " -g -igc_opts 'EnableOpaquePointersBackend=1, ElfDumpEnable=1, DumpUseShorterName=0, DebugDumpNamePrefix=%t_cri_, ShortImplicitPayloadHeader=0, RemoveUnusedIdImplicitArguments=0'" -device cri %}
 // RUN: %if cri-supported %{ oneapi-readelf --debug-dump %t_cri_OCL_simd32_foo.elf | \

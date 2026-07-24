@@ -10,7 +10,7 @@
 // We should verify presence of DW_AT_address_class and DW_AT_location along with DW_OP_addr operation.
 // We verify actual value passed to DW_OP_addr to confirm that it has 0x10000000 high bit added.
 
-// UNSUPPORTED: sys32, lib-igc-clang
+// UNSUPPORTED: sys32
 // REQUIRES: oneapi-readelf
 
 constant float gb_float = 100500;
@@ -85,8 +85,9 @@ __kernel void foo(local int *foo_param, global char *foo_param1) {
 // Add check for gb_char_ar when supported.
 
 // SLM lc_ptr variable.
-// CHECK: Abbrev Number: [[#]] (DW_TAG_variable)
-// CHECK-NEXT: DW_AT_name : lc_ptr
+// __clang_ocl_kern_imp_foo repeats gb_float at a version-dependent position,
+// so anchor by name.
+// CHECK: DW_AT_name : lc_ptr
 // CHECK-NEXT: DW_AT_decl_file : [[#DECL_FILE]]
 // CHECK-NEXT: DW_AT_decl_line : 34
 // CHECK-NEXT: DW_AT_type :
