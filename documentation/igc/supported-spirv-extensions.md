@@ -51,6 +51,18 @@ This document lists all SPIR-V extensions supported by IGC and their platform re
 
 ---
 
+## SPV_EXT_relaxed_printf_string_address_space
+
+**Specification**: https://github.com/KhronosGroup/SPIRV-Registry/blob/main/extensions/EXT/SPV_EXT_relaxed_printf_string_address_space.asciidoc
+
+> **Experimentally supported on**: All platforms
+
+**Capabilities**:
+
+- No capabilities defined
+
+---
+
 ## SPV_EXT_shader_atomic_float16_add
 
 **Specification**: https://github.khronos.org/SPIRV-Registry/extensions/EXT/SPV_EXT_shader_atomic_float16_add.html
