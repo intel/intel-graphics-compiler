@@ -1557,7 +1557,7 @@ DECLARE_IGC_REGKEY(
 DECLARE_IGC_REGKEY(bool, EnableExtractMask, false,
                    "When enabled, it is mostly for reducing response size of send messages.", false)
 DECLARE_IGC_REGKEY(DWORD, VariableReuseByteSize, 64, "The byte size threshold for variable reuse", false)
-DECLARE_IGC_REGKEY(bool, EnableSampleTailDeAlias, false,
+DECLARE_IGC_REGKEY(bool, EnableSampleTailDeAlias, true,
                    "When a sample-ld return component escapes the sample's basic block (a long-lived tail) while "
                    "a sibling component dies inside the block, keep the tail in its own variable (do not "
                    "payload-coalesce it) so the payload declare dies early and its dead sibling GRFs are reclaimed.",
