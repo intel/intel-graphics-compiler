@@ -1228,7 +1228,8 @@ bool isSubGroupShuffleVariant(const llvm::Instruction *I) {
 }
 
 bool shouldEmitMoreMoviCases(CodeGenContext *ctx) {
-  bool enabled = ctx->platform.allowEmitMoreMoviCases();
+  // exclude OCL shaders from movi promotion currently.
+  bool enabled = ctx->platform.allowEmitMoreMoviCases() && ctx->type != ShaderType::OPENCL_SHADER;
   // Disable movi promotion on retry when spilling occurred, to reduce
   // register pressure from NoMask sanitization temporaries.
   if (enabled && ctx->m_retryManager && !ctx->m_retryManager->IsFirstTry())
