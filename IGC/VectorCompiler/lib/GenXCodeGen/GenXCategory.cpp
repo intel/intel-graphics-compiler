@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2024 Intel Corporation
+Copyright (C) 2017-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -809,6 +809,24 @@ static vc::RegCategory intrinsicCategoryToRegCategory(unsigned ICat) {
 }
 
 /***********************************************************************
+ * getArgLogAlignment : get the log2 byte alignment to use for an intrinsic
+ *    arg/ret's live range
+ *
+ * Normally this is simply derived from the arg's declared ALIGNMENT.
+ * However, an arg marked with the FORCE_GRF_BASE restriction needs its live
+ * range's base decl to be GRF-aligned even though its declared ALIGNMENT is
+ * narrower (which instead controls the legal in-value region offset for
+ * baling purposes, see GenXBaling::isRegionOKForIntrinsic). For those, force
+ * GRF alignment here.
+ */
+static unsigned getArgLogAlignment(GenXIntrinsicInfo::ArgInfo AI,
+                                   unsigned GRFWidth) {
+  if (AI.getRestriction() == GenXIntrinsicInfo::FORCE_GRF_BASE)
+    return getLogAlignment(VISA_Align::ALIGN_GRF, GRFWidth);
+  return getLogAlignment(AI.getAlignment(), GRFWidth);
+}
+
+/***********************************************************************
  * getCategoryAndAlignmentForDef : get register category and alignment for a def
  *
  * This returns RegCategory:: value, or RegCategory::None if no category
@@ -880,9 +898,8 @@ GenXCategory::getCategoryAndAlignmentForDef(Value *V) const {
         auto AI = II.getRetInfo();
         return CategoryAndAlignment(
             intrinsicCategoryToRegCategory(AI.getCategory()),
-            getLogAlignment(AI.getAlignment(), Subtarget
-                                                   ? Subtarget->getGRFByteSize()
-                                                   : defaultGRFByteSize));
+            getArgLogAlignment(AI, Subtarget ? Subtarget->getGRFByteSize()
+                                             : defaultGRFByteSize));
       } else if (GenXIntrinsic::isRdRegion(IntrinsicID)) {
         // Add this to avoid conversion in case of read-region on SurfaceIndex
         // or SamplerIndex type
@@ -1012,9 +1029,8 @@ GenXCategory::getCategoryAndAlignmentForUse(Value::use_iterator U) const {
         auto AI = II.getArgInfo(U->getOperandNo());
         return CategoryAndAlignment(
             intrinsicCategoryToRegCategory(AI.getCategory()),
-            getLogAlignment(AI.getAlignment(), Subtarget
-                                                   ? Subtarget->getGRFByteSize()
-                                                   : defaultGRFByteSize));
+            getArgLogAlignment(AI, Subtarget ? Subtarget->getGRFByteSize()
+                                             : defaultGRFByteSize));
       } break;
       }
     }

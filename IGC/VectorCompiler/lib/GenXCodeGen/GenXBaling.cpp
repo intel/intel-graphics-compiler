@@ -298,6 +298,7 @@ bool GenXBaling::isRegionOKForIntrinsic(unsigned ArgInfoBits,
     // fall through...
   case GenXIntrinsicInfo::FIXED4:
   case GenXIntrinsicInfo::CONTIGUOUS:
+  case GenXIntrinsicInfo::FORCE_GRF_BASE:
     return R.isContiguous();
   case GenXIntrinsicInfo::STRIDE1:
     // For the dot product instructions, the vISA spec just says that the

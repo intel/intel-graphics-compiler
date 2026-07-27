@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2024 Intel Corporation
+Copyright (C) 2017-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -171,6 +171,15 @@ public:
     ONLY_LEGAL_REGION =
         GENX_ITR_FLAGENUM(4, 6), // instruction can be baled with only legal
                                  // region that won`t be splitted
+    // Like CONTIGUOUS (operand must be contiguous), but additionally forces
+    // the operand's base decl/live-range to be GRF-aligned (see
+    // GenXCategory), regardless of the operand's declared ALIGNMENT (see
+    // above), which continues to control the legal in-value region offset
+    // granularity for baling purposes (e.g. OWALIGNED/QWALIGNED). Used by
+    // bdpas block-scaling operands (Src3/Src4), whose base decl must be
+    // GRF-aligned even though HW allows a narrower (oword/qword) in-register
+    // sub-offset.
+    FORCE_GRF_BASE = GENX_ITR_FLAGENUM(4, 7),
     // Modifiers for destination only, 2 bits used
     SATURATION = GENX_ITR_FLAGMASK(7, 2),
     SATURATION_DEFAULT =
