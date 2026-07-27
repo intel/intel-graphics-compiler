@@ -1,0 +1,167 @@
+#=========================== begin_copyright_notice ============================
+#
+# Copyright (C) 2026 Intel Corporation
+#
+# SPDX-License-Identifier: MIT
+#
+#============================ end_copyright_notice =============================
+
+# RUN: IGCOCLInterfaceTester spirv_ext --platform bmg | FileCheck %s
+# CHECK:      ---
+#
+# CHECK-NEXT: - name: SPV_EXT_optnone
+# CHECK-NEXT:   spec_url: 'https://github.khronos.org/SPIRV-Registry/extensions/EXT/SPV_EXT_optnone.html'
+# CHECK-NEXT:   supported_capabilities:
+# CHECK-NEXT:     - id: 6094
+# CHECK-NEXT:       name: OptNoneEXT
+#
+# CHECK-NEXT: - name: SPV_EXT_shader_atomic_float_add
+# CHECK-NEXT:   spec_url: 'https://github.khronos.org/SPIRV-Registry/extensions/EXT/SPV_EXT_shader_atomic_float_add.html'
+# CHECK-NEXT:   supported_capabilities:
+# CHECK-NEXT:     - id: 6033
+# CHECK-NEXT:       name: AtomicFloat32AddEXT
+# CHECK-NEXT:     - id: 6034
+# CHECK-NEXT:       name: AtomicFloat64AddEXT
+#
+# CHECK-NEXT: - name: SPV_EXT_shader_atomic_float_min_max
+# CHECK-NEXT:   spec_url: 'https://github.khronos.org/SPIRV-Registry/extensions/EXT/SPV_EXT_shader_atomic_float_min_max.html'
+# CHECK-NEXT:   supported_capabilities:
+# CHECK-NEXT:     - id: 5612
+# CHECK-NEXT:       name: AtomicFloat32MinMaxEXT
+# CHECK-NEXT:     - id: 5613
+# CHECK-NEXT:       name: AtomicFloat64MinMaxEXT
+#
+# CHECK-NEXT: - name: SPV_INTEL_2d_block_io
+# CHECK-NEXT:   spec_url: 'https://github.com/KhronosGroup/SPIRV-Registry/blob/main/extensions/INTEL/SPV_INTEL_2d_block_io.asciidoc'
+# CHECK-NEXT:   supported_capabilities:
+# CHECK-NEXT:     - id: 6228
+# CHECK-NEXT:       name: Subgroup2DBlockIOINTEL
+# CHECK-NEXT:     - id: 6229
+# CHECK-NEXT:       name: Subgroup2DBlockTransformINTEL
+# CHECK-NEXT:     - id: 6230
+# CHECK-NEXT:       name: Subgroup2DBlockTransposeINTEL
+#
+# CHECK-NEXT: - name: SPV_INTEL_bfloat16_conversion
+# CHECK-NEXT:   spec_url: 'https://github.khronos.org/SPIRV-Registry/extensions/INTEL/SPV_INTEL_bfloat16_conversion.html'
+# CHECK-NEXT:   supported_capabilities:
+# CHECK-NEXT:     - id: 6115
+# CHECK-NEXT:       name: BFloat16ConversionINTEL
+#
+# CHECK-NEXT: - name: SPV_INTEL_cache_controls
+# CHECK-NEXT:   spec_url: 'https://github.com/KhronosGroup/SPIRV-Registry/blob/main/extensions/INTEL/SPV_INTEL_cache_controls.asciidoc'
+# CHECK-NEXT:   supported_capabilities:
+# CHECK-NEXT:     - id: 6441
+# CHECK-NEXT:       name: CacheControlsINTEL
+#
+# CHECK-NEXT: - name: SPV_INTEL_fp_fast_math_mode
+# CHECK-NEXT:   spec_url: 'https://github.khronos.org/SPIRV-Registry/extensions/INTEL/SPV_INTEL_fp_fast_math_mode.html'
+# CHECK-NEXT:   supported_capabilities:
+# CHECK-NEXT:     - id: 5837
+# CHECK-NEXT:       name: FPFastMathModeINTEL
+#
+# CHECK-NEXT: - name: SPV_INTEL_global_variable_host_access
+# CHECK-NEXT:   spec_url: 'https://github.khronos.org/SPIRV-Registry/extensions/INTEL/SPV_INTEL_global_variable_host_access.html'
+# CHECK-NEXT:   supported_capabilities:
+# CHECK-NEXT:     - id: 6187
+# CHECK-NEXT:       name: GlobalVariableHostAccessINTEL
+#
+# CHECK-NEXT: - name: SPV_INTEL_inline_assembly
+# CHECK-NEXT:   spec_url: 'https://github.com/intel/llvm/blob/sycl/sycl/doc/design/spirv-extensions/SPV_INTEL_inline_assembly.asciidoc'
+# CHECK-NEXT:   supported_capabilities:
+# CHECK-NEXT:     - id: 5606
+# CHECK-NEXT:       name: AsmINTEL
+#
+# CHECK-NEXT: - name: SPV_INTEL_long_composites
+# CHECK-NEXT:   spec_url: 'https://github.khronos.org/SPIRV-Registry/extensions/INTEL/SPV_INTEL_long_composites.html'
+# CHECK-NEXT:   supported_capabilities:
+# CHECK-NEXT:     - id: 6089
+# CHECK-NEXT:       name: LongCompositesINTEL
+#
+# CHECK-NEXT: - name: SPV_INTEL_predicated_io
+# CHECK-NEXT:   spec_url: 'https://github.khronos.org/SPIRV-Registry/extensions/INTEL/SPV_INTEL_predicated_io.html'
+# CHECK-NEXT:   supported_capabilities:
+# CHECK-NEXT:     - id: 6257
+# CHECK-NEXT:       name: PredicatedIOINTEL
+#
+# CHECK-NEXT: - name: SPV_INTEL_split_barrier
+# CHECK-NEXT:   spec_url: 'https://github.khronos.org/SPIRV-Registry/extensions/INTEL/SPV_INTEL_split_barrier.html'
+# CHECK-NEXT:   supported_capabilities:
+# CHECK-NEXT:     - id: 6141
+# CHECK-NEXT:       name: SplitBarrierINTEL
+#
+# CHECK-NEXT: - name: SPV_INTEL_subgroup_buffer_prefetch
+# CHECK-NEXT:   spec_url: 'https://github.khronos.org/SPIRV-Registry/extensions/INTEL/SPV_INTEL_subgroup_buffer_prefetch.html'
+# CHECK-NEXT:   supported_capabilities:
+# CHECK-NEXT:     - id: 6220
+# CHECK-NEXT:       name: SubgroupBufferPrefetchINTEL
+#
+# CHECK-NEXT: - name: SPV_INTEL_subgroup_matrix_multiply_accumulate
+# CHECK-NEXT:   spec_url: 'https://github.khronos.org/SPIRV-Registry/extensions/INTEL/SPV_INTEL_subgroup_matrix_multiply_accumulate.html'
+# CHECK-NEXT:   supported_capabilities:
+# CHECK-NEXT:     - id: 6236
+# CHECK-NEXT:       name: SubgroupMatrixMultiplyAccumulateINTEL
+#
+# CHECK-NEXT: - name: SPV_INTEL_subgroups
+# CHECK-NEXT:   spec_url: 'https://github.khronos.org/SPIRV-Registry/extensions/INTEL/SPV_INTEL_subgroups.html'
+# CHECK-NEXT:   supported_capabilities:
+# CHECK-NEXT:     - id: 5568
+# CHECK-NEXT:       name: SubgroupShuffleINTEL
+# CHECK-NEXT:     - id: 5569
+# CHECK-NEXT:       name: SubgroupBufferBlockIOINTEL
+# CHECK-NEXT:     - id: 5570
+# CHECK-NEXT:       name: SubgroupImageBlockIOINTEL
+#
+# CHECK-NEXT: - name: SPV_INTEL_tensor_float32_conversion
+# CHECK-NEXT:   spec_url: 'https://github.khronos.org/SPIRV-Registry/extensions/INTEL/SPV_INTEL_tensor_float32_conversion.html'
+# CHECK-NEXT:   supported_capabilities:
+# CHECK-NEXT:     - id: 6425
+# CHECK-NEXT:       name: TensorFloat32RoundingINTEL
+#
+# CHECK-NEXT: - name: SPV_INTEL_unstructured_loop_controls
+# CHECK-NEXT:   spec_url: 'https://github.khronos.org/SPIRV-Registry/extensions/INTEL/SPV_INTEL_unstructured_loop_controls.html'
+# CHECK-NEXT:   supported_capabilities:
+# CHECK-NEXT:     - id: 5886
+# CHECK-NEXT:       name: UnstructuredLoopControlsINTEL
+#
+# CHECK-NEXT: - name: SPV_KHR_bit_instructions
+# CHECK-NEXT:   spec_url: 'https://github.khronos.org/SPIRV-Registry/extensions/KHR/SPV_KHR_bit_instructions.html'
+# CHECK-NEXT:   supported_capabilities:
+# CHECK-NEXT:     - id: 6025
+# CHECK-NEXT:       name: BitInstructions
+#
+# CHECK-NEXT: - name: SPV_KHR_expect_assume
+# CHECK-NEXT:   spec_url: 'https://github.khronos.org/SPIRV-Registry/extensions/KHR/SPV_KHR_expect_assume.html'
+# CHECK-NEXT:   supported_capabilities:
+# CHECK-NEXT:     - id: 5629
+# CHECK-NEXT:       name: ExpectAssumeKHR
+#
+# CHECK-NEXT: - name: SPV_KHR_integer_dot_product
+# CHECK-NEXT:   spec_url: 'https://github.khronos.org/SPIRV-Registry/extensions/KHR/SPV_KHR_integer_dot_product.html'
+# CHECK-NEXT:   supported_capabilities:
+# CHECK-NEXT:     - id: 6019
+# CHECK-NEXT:       name: DotProductKHR
+# CHECK-NEXT:     - id: 6017
+# CHECK-NEXT:       name: DotProductInput4x8BitKHR
+# CHECK-NEXT:     - id: 6018
+# CHECK-NEXT:       name: DotProductInput4x8BitPackedKHR
+#
+# CHECK-NEXT: - name: SPV_KHR_linkonce_odr
+# CHECK-NEXT:   spec_url: 'https://github.khronos.org/SPIRV-Registry/extensions/KHR/SPV_KHR_linkonce_odr.html'
+# CHECK-NEXT:   supported_capabilities:
+# CHECK-NEXT:     - id: 5
+# CHECK-NEXT:       name: Linkage
+#
+# CHECK-NEXT: - name: SPV_KHR_no_integer_wrap_decoration
+# CHECK-NEXT:   spec_url: 'https://github.khronos.org/SPIRV-Registry/extensions/KHR/SPV_KHR_no_integer_wrap_decoration.html'
+# CHECK-NEXT:   supported_capabilities: []
+#
+# CHECK-NEXT: - name: SPV_KHR_non_semantic_info
+# CHECK-NEXT:   spec_url: 'https://github.khronos.org/SPIRV-Registry/extensions/KHR/SPV_KHR_non_semantic_info.html'
+# CHECK-NEXT:   supported_capabilities: []
+#
+# CHECK-NEXT: - name: SPV_KHR_shader_clock
+# CHECK-NEXT:   spec_url: 'https://github.khronos.org/SPIRV-Registry/extensions/KHR/SPV_KHR_shader_clock.html'
+# CHECK-NEXT:   supported_capabilities:
+# CHECK-NEXT:     - id: 5055
+# CHECK-NEXT:       name: ShaderClockKHR
+# CHECK-NEXT: ...
