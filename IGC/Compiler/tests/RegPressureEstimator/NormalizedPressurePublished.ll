@@ -9,8 +9,7 @@
 ; REQUIRES: llvm-14-plus, regkeys
 ; RUN: igc_opt -opaque-pointers -S --regkey=ForceOCLSIMDWidth=16 --igc-code-loop-sinking -igc-serialize-metadata < %s 2>&1 | FileCheck %s
 
-; CHECK: !{!"maxRegUniformPressure", i32 32
-; CHECK: !{!"maxRegNonUniformPressure", i32 320
+; CHECK: !{!"maxRegUniformPressure", i32 5152
 ; CHECK: !{!"bestGuessSimd", i32 16
 
 target datalayout = "e-p:64:64:64-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64-f32:32:32-f64:64:64-v16:16:16-v24:32:32-v32:32:32-v48:64:64-v64:64:64-v96:128:128-v128:128:128-v192:256:256-v256:256:256-v512:512:512-v1024:1024:1024-n8:16:32"
