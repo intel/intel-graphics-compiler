@@ -7,6 +7,14 @@ SPDX-License-Identifier: MIT
 ============================= end_copyright_notice ===========================*/
 
 #    Description                  : Refactor getPreviousDefRecursive to getPreviousDefIterative
+#
+#    Upstreamed to LLVM: llvm/llvm-project PR #205159, commit
+#    c991dbda3184943378b115699f60f51cca0af1fa
+#    "[MemorySSA] Make getPreviousDef iterative to avoid stack overflow".
+#    The fix is available upstream starting from LLVM 24.0.0. This LLVM line
+#    will not get a release that contains it, so this patch must stay until
+#    IGC drops support for this LLVM version. Do NOT copy it to LLVM 24+
+#    (the fix is already there).
 
 diff --git a/llvm/include/llvm/Analysis/MemorySSAUpdater.h b/llvm/include/llvm/Analysis/MemorySSAUpdater.h
 --- a/llvm/include/llvm/Analysis/MemorySSAUpdater.h
