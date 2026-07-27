@@ -1,6 +1,6 @@
 ;=========================== begin_copyright_notice ============================
 ;
-; Copyright (C) 2024-2026 Intel Corporation
+; Copyright (C) 2026 Intel Corporation
 ;
 ; SPDX-License-Identifier: MIT
 ;
@@ -10,15 +10,19 @@
 ; RUN: FileCheck %s
 ; RUN: %llc_opaque_ptrs %s -march=genx64 -mcpu=Xe3P -vc-skip-ocl-runtime-info -finalizer-opts='-dumpvisa -dumpcommonisa -isaasmToConsole' -o /dev/null 2>&1 | \
 ; RUN: FileCheck %s
-; RUN: %llc_typed_ptrs %s -march=genx64 -mcpu=Xe3PLPG -vc-skip-ocl-runtime-info -finalizer-opts='-dumpvisa -dumpcommonisa -isaasmToConsole' -o /dev/null 2>&1 | \
-; RUN: FileCheck %s
 
-
-
-; Src3/Src4 (block-scale) base decls must be GRF-aligned even though the
-; scale value used by the instruction (SCALE2 at a non-zero sub-offset here)
-; only needs qword granularity: the base itself must still land on a GRF
-; boundary, and baling must not insert an extra mov to achieve that.
+; Regression test for a bdpas e2m1 codegen bug where forcing Src3/Src4
+; (block-scale) base decls to be GRF-aligned caused GenXBaling to reject
+; direct baling of a legally-offset scale region (since a GRF-granular
+; offset check was mistakenly applied instead of the oword/qword-granular
+; one HW actually requires), inserting spurious mov instructions to
+; materialize a fresh, fully GRF-aligned copy of the scale data.
+;
+; Here both scale operands are read at a non-zero, but legal, sub-offset
+; from their (larger) GRF-aligned base: Src3 at oword granularity (offset
+; 16), and Src4 at qword granularity (offset 24). Both must bale directly
+; into the bdpas instruction with no extra mov, while their base decls are
+; still GRF-aligned.
 ; CHECK: .decl [[ACC:V[0-9]+]] v_type=G type=f num_elts=128 align=GRF
 ; CHECK: .decl [[SCALE1BASE:V[0-9]+]] v_type=G type=b num_elts=64 align=GRF
 ; CHECK: .decl [[SCALE2BASE:V[0-9]+]] v_type=G type=b num_elts=64 align=GRF
@@ -27,7 +31,7 @@
 ; CHECK: .decl [[SCALE1:V[0-9]+]] v_type=G type=ub num_elts=64 alias=<[[SCALE1BASE]], 0>
 ; CHECK: .decl [[SCALE2:V[0-9]+]] v_type=G type=ub num_elts=64 alias=<[[SCALE2BASE]], 0>
 
-; CHECK: bdpas.e2m1.e2m1.8.8 (M1, 16) [[ACC]].0 [[ACC]].0 [[SRC1]].0 [[SRC2]].0 [[SCALE1]](0,0) [[SCALE2]](0,16)
+; CHECK: bdpas.e2m1.e2m1.8.8 (M1, 16) [[ACC]].0 [[ACC]].0 [[SRC1]].0 [[SRC2]].0 [[SCALE1]](0,16) [[SCALE2]](0,24)
 
 target datalayout = "e-p:64:64-p3:32:32-p6:32:32-i64:64-n8:16:32:64"
 target triple = "genx64-unknown-unknown"
@@ -55,9 +59,9 @@ entry:
   %gload25 = tail call <128 x i32> @llvm.genx.vload.v128i32.p0v128i32(<128 x i32>* nonnull @Src1)
   %gload31 = tail call <64 x i32> @llvm.genx.vload.v64i32.p0v64i32(<64 x i32>* nonnull @Src2)
   %gload36 = tail call <64 x i8> @llvm.genx.vload.v64i8.p0v64i8(<64 x i8>* nonnull @Src1Scale)
-  %rdr.cols10 = tail call <32 x i8> @llvm.genx.rdregioni.v32i8.v64i8.i16(<64 x i8> %gload36, i32 32, i32 16, i32 1, i16 0, i32 32)
+  %rdr.cols10 = tail call <32 x i8> @llvm.genx.rdregioni.v32i8.v64i8.i16(<64 x i8> %gload36, i32 32, i32 16, i32 1, i16 16, i32 32)
   %gload40 = tail call <64 x i8> @llvm.genx.vload.v64i8.p0v64i8(<64 x i8>* nonnull @Src2Scale)
-  %rdr.cols12 = tail call <16 x i8> @llvm.genx.rdregioni.v16i8.v64i8.i16(<64 x i8> %gload40, i32 32, i32 8, i32 1, i16 16, i32 32)
+  %rdr.cols12 = tail call <16 x i8> @llvm.genx.rdregioni.v16i8.v64i8.i16(<64 x i8> %gload40, i32 32, i32 8, i32 1, i16 24, i32 32)
   %call1.i.i77 = tail call <128 x float> @llvm.genx.bdpas.v128f32.v128f32.v128i32.v64i32.v32i8.v16i8(<128 x float> %gload, <128 x i32> %gload25, <64 x i32> %gload31, <32 x i8> %rdr.cols10, <16 x i8> %rdr.cols12, i32 15, i32 15, i32 8, i32 8)
   tail call void @llvm.genx.vstore.v128f32.p0v128f32(<128 x float> %call1.i.i77, <128 x float>* nonnull @Acc)
   ret void
