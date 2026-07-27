@@ -5,8 +5,8 @@
 ; SPDX-License-Identifier: MIT
 ;
 ;============================ end_copyright_notice =============================
-; REQUIRES: llvm-14-plus
-; RUN: igc_opt --opaque-pointers -igc-opencl-printf-resolution -S < %s | FileCheck %s
+; REQUIRES: llvm-14-plus, regkeys
+; RUN: igc_opt --opaque-pointers --regkey DisableDynamicPrintfFormatStringAbort=1 -igc-opencl-printf-resolution -S < %s | FileCheck %s
 
 ; A format string in private memory (an alloca) does not resolve to a global, so
 ; it is lowered inline: runtime strlen, marker, memcpy from the private source.
