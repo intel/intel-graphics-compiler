@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2022 Intel Corporation
+Copyright (C) 2017-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -446,6 +446,8 @@ void PeepholeTypeLegalizer::legalizeBinaryOperator(Instruction &I) {
     Value *NewLargeResVecForm =
         UndefValue::get(IGCLLVM::FixedVectorType::get(llvm::Type::getIntNTy(I.getContext(), promoteToInt), quotient));
 
+    SmallVector<Value *, 4> MulResult;
+
     bool instSupported = true;
     for (unsigned Idx = 0; Idx < quotient; Idx++) {
       Value *NewInst = NULL;
@@ -544,36 +546,61 @@ void PeepholeTypeLegalizer::legalizeBinaryOperator(Instruction &I) {
         }
         break;
       }
-      case Instruction::Mul:
-        if (Idx == 0) {
-          NewInst = m_builder->CreateMul(m_builder->CreateExtractElement(NewLargeSrc1VecForm, Idx),
-                                         m_builder->CreateExtractElement(NewLargeSrc2VecForm, Idx));
-        } else if (Idx == 1) {
-          Type *type = llvm::Type::getIntNTy(I.getContext(), promoteToInt);
+      case Instruction::Mul: {
+        auto computeMulResult = [&]() -> SmallVector<Value *, 4> {
+          Type *ChunkTy = llvm::Type::getIntNTy(I.getContext(), promoteToInt);
           Function *MulHFunc = llvm::GenISAIntrinsic::getDeclaration(
-              m_builder->GetInsertBlock()->getParent()->getParent(), llvm::GenISAIntrinsic::GenISA_umulH, type);
+              m_builder->GetInsertBlock()->getParent()->getParent(), llvm::GenISAIntrinsic::GenISA_umulH, ChunkTy);
+          Value *Zero = ConstantInt::get(ChunkTy, 0);
 
-          Value *Lo1 = m_builder->CreateExtractElement(NewLargeSrc1VecForm, uint64_t(0));
-          Value *Hi1 = m_builder->CreateExtractElement(NewLargeSrc1VecForm, uint64_t(1));
-          Value *Lo2 = m_builder->CreateExtractElement(NewLargeSrc2VecForm, uint64_t(0));
-          Value *Hi2 = m_builder->CreateExtractElement(NewLargeSrc2VecForm, uint64_t(1));
-
-          Value *MulHiLo1Lo2 = m_builder->CreateCall(MulHFunc, {Lo1, Lo2});
-          Value *MulLo1Hi2 = m_builder->CreateMul(Lo1, Hi2);
-          Value *MulLo2Hi1 = m_builder->CreateMul(Lo2, Hi1);
-          Value *AddLoHi = m_builder->CreateAdd(MulLo1Hi2, MulLo2Hi1);
-          Value *AddMulHi = m_builder->CreateAdd(AddLoHi, MulHiLo1Lo2);
-          if (Src1width < promoteToInt * 2) {
-            uint64_t mask = (1ULL << (Src1width - promoteToInt)) - 1;
-            NewInst = m_builder->CreateAnd(AddMulHi, mask);
-          } else {
-            NewInst = AddMulHi;
+          // Split value into chunks
+          SmallVector<Value *, 4> A(quotient), B(quotient);
+          for (unsigned i = 0; i < quotient; ++i) {
+            A[i] = m_builder->CreateExtractElement(NewLargeSrc1VecForm, i);
+            B[i] = m_builder->CreateExtractElement(NewLargeSrc2VecForm, i);
           }
-        } else {
-          IGC_ASSERT_MESSAGE(0, "Mul legalization for width > 64 (quotient => 3) is not fully supported");
-          NewInst = ConstantInt::get(IntegerType::get(I.getContext(), promoteToInt), 0, false);
-        }
+
+          // Result vector
+          SmallVector<Value *, 4> R(quotient, Zero);
+
+          // Accumulate `V` into chunk `Pos`, propagating the unsigned carry up to the
+          // most-significant kept chunk (any carry out of that chunk is discarded).
+          auto addWithCarry = [&](unsigned Pos, Value *V) {
+            for (unsigned k = Pos; k < quotient; ++k) {
+              if (auto *C = dyn_cast<Constant>(R[k]); C && C->isNullValue()) {
+                // Adding a single value into an empty chunk cannot carry.
+                R[k] = V;
+                return;
+              }
+              Value *Old = R[k];
+              R[k] = m_builder->CreateAdd(Old, V);
+              if (k + 1 >= quotient)
+                return; // no kept chunk left to receive the carry
+              V = m_builder->CreateZExt(m_builder->CreateICmpULT(R[k], Old), ChunkTy);
+            }
+          };
+
+          for (unsigned i = 0; i < quotient; ++i) {
+            for (unsigned j = 0; i + j < quotient; ++j) {
+              unsigned Pos = i + j;
+              addWithCarry(Pos, m_builder->CreateMul(A[i], B[j]));
+              if (Pos + 1 < quotient)
+                addWithCarry(Pos + 1, m_builder->CreateCall(MulHFunc, {A[i], B[j]}));
+            }
+          }
+          if (Src1width < promoteToInt * quotient) {
+            unsigned ValidBits = Src1width - promoteToInt * (quotient - 1);
+            R[quotient - 1] = m_builder->CreateAnd(R[quotient - 1], (uint64_t(1) << ValidBits) - 1);
+          }
+
+          return R;
+        };
+
+        if (MulResult.empty())
+          MulResult = computeMulResult();
+        NewInst = MulResult[Idx];
         break;
+      }
       case Instruction::Add:
         instSupported = false;
         IGC_ASSERT_MESSAGE(0, "Add Instruction seen with 'large' illegal int type. Legalization support missing.");
