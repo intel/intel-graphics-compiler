@@ -1843,6 +1843,7 @@ void OptimizeIR(CodeGenContext *const pContext) {
       mpm.add(IGCLLVM::createLegacyWrappedDeadStoreEliminationPass());
       mpm.add(IGCLLVM::createLegacyWrappedMemCpyOptPass());
       mpm.add(createLdShrinkPass());
+      mpm.add(IGCLLVM::createLegacyWrappedDeadStoreEliminationPass());
     }
 
     mpm.add(llvm::createDeadCodeEliminationPass());
