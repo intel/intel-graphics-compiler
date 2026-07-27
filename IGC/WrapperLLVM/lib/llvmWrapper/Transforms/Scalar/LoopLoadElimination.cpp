@@ -12,6 +12,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/Analysis/GlobalsModRef.h"
 #include "llvm/Analysis/LazyBlockFrequencyInfo.h"
 #include "llvm/IR/Dominators.h"
+#include "llvm/IR/LLVMContext.h"
 #include "llvm/IR/PassManager.h"
 #include "llvm/Transforms/Utils.h"
 #include "llvm/Transforms/Utils/SizeOpts.h"
@@ -40,6 +41,15 @@ LoopLoadEliminationLegacyPassWrapper::LoopLoadEliminationLegacyPassWrapper() : F
 bool LoopLoadEliminationLegacyPassWrapper::runOnFunction(Function &F) {
   if (skipFunction(F))
     return false;
+#if LLVM_VERSION_MAJOR == 14
+  // LLVM 14's LoopAccessAnalysis (used by LoopLoadEliminationPass) still relies
+  // on typed pointers (Type::getPointerElementType) to compute access strides,
+  // which asserts when the module uses opaque pointers. Opaque pointers are
+  // supported by this analysis starting from LLVM 15, so simply skip the
+  // optimization in that configuration.
+  if (!F.getContext().supportsTypedPointers())
+    return false;
+#endif
   LoopLoadEliminationPass Implementation;
   Implementation.run(F, FAM);
   return true;

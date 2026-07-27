@@ -91,7 +91,7 @@ public:
   bool needsDivergentBarrierHandling() const;
   unsigned GetSlmSizePerSubslice();
   float GetSpillThreshold(SIMDMode dispatchSize);
-  bool isAutoGRFSelectionEnabled() const override;
+  bool isAutoGRFSelectionEnabled(const llvm::Function *F = nullptr) const override;
   uint64_t getMinimumValidAddress() const override;
 
   void clearBeforeRetry() { m_programOutput.clearBeforeRetry(); }

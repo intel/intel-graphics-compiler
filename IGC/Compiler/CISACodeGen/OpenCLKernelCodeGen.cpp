@@ -118,7 +118,7 @@ bool OpenCLProgramContext::kernelQualifiesFor512(bool hasDPAS, SIMDMode simd) co
   return (IGC_IS_FLAG_ENABLED(EnableOCL512GRFForDPAS) && hasDPAS) || IGC_IS_FLAG_ENABLED(EnableOCL512GRFForSIMD16);
 }
 
-bool OpenCLProgramContext::isAutoGRFSelectionEnabled() const {
+bool OpenCLProgramContext::isAutoGRFSelectionEnabled(const llvm::Function *F) const {
   if (getNumThreadsPerEU() == 0)
     return true;
 
@@ -131,6 +131,13 @@ bool OpenCLProgramContext::isAutoGRFSelectionEnabled() const {
       !m_InternalOptions.Intel512GRFPerThread && !m_Options.Intel512GRFPerThread) {
     return true;
   }
+
+  // Per-kernel "num-thread-per-eu 0" annotation requests auto (large) GRF
+  // selection independently of any module-level option, provided the platform
+  // supports auto GRF selection.
+  if (platform.supportsAutoGRFSelection() && F && F->hasFnAttribute("num-thread-per-eu") &&
+      F->getFnAttribute("num-thread-per-eu").getValueAsString() == "0")
+    return true;
 
   return false;
 }
@@ -2588,7 +2595,7 @@ static bool shouldDropToSIMD16(uint32_t maxPressure, uint32_t simd16Pressure, ui
     return false;
   }
 
-  bool autoGRF = pCtx->isAutoGRFSelectionEnabled();
+  bool autoGRF = pCtx->isAutoGRFSelectionEnabled(F);
 
   // Non-VRT platforms have no VRT GRF step-up: SIMD32 is only profitable when
   // its register pressure fits the GRF budget. Drop to SIMD16 when SIMD32

@@ -1549,7 +1549,7 @@ bool CodeLoopSinking::loopSink(Loop *L, LoopSinkMode Mode) {
   // more GRF will be enough to eliminate spills and we would degrade performance
   // if we sinked. So we rollback the changes if autoGRF is provided
   if (Mode == LoopSinkMode::SinkWhileRegpressureIsHigh && !AchievedNeededRegpressure &&
-      (NGRF <= 128 && CTX->isAutoGRFSelectionEnabled()) &&
+      (NGRF <= 128 && CTX->isAutoGRFSelectionEnabled(F)) &&
       MaxLoopPressure >= (NGRF + IGC_GET_FLAG_VALUE(LoopSinkRollbackThreshold))) {
     PrintDump(VerbosityLevel::Low, "AutoGRF is enabled and the needed regpressure is not achieved:\n");
     PrintDump(VerbosityLevel::Low, "New max loop pressure = " << MaxLoopPressure << "\n");

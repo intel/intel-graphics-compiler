@@ -583,7 +583,7 @@ bool EmitPass::shouldForceEarlyRecompile(MetaDataUtils *pMdUtils, llvm::Function
   // threshold set for default GRF size if it is lower. We also, as a workaround
   // skip lowering the threshold if we have indirect operands in the kernel to
   // avoid cases where recompilaton has higher spill count.
-  if (GRFPerThread <= CodeGenContext::DEFAULT_TOTAL_GRF_NUM && !m_pCtx->isAutoGRFSelectionEnabled() &&
+  if (GRFPerThread <= CodeGenContext::DEFAULT_TOTAL_GRF_NUM && !m_pCtx->isAutoGRFSelectionEnabled(F) &&
       !m_pCtx->m_instrTypes.mayHaveIndirectOperands) {
     Threshold = std::min(Threshold, IGC_GET_FLAG_VALUE(EarlyRetryDefaultGRFThreshold));
   }

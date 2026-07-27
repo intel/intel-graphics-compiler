@@ -4301,7 +4301,7 @@ void CEncoder::InitVISABuilderOptions(TARGET_PLATFORM VISAPlatform, bool canAbor
       } else if (ClContext->getNumThreadsPerEU() > 0) {
         // Number of threads per EU is set per module (by compiler option)
         SaveOption(vISA_HWThreadNumberPerEU, unsigned(ClContext->getNumThreadsPerEU()));
-      } else if (ClContext->isAutoGRFSelectionEnabled()) {
+      } else if (ClContext->isAutoGRFSelectionEnabled(m_program->GetParent()->getLLVMFunction())) {
         // "Auto" mode per module (by compiler option) - use compiler heuristics
         // to determine number of threads per EU
         SaveOption(vISA_AutoGRFSelection, true);
