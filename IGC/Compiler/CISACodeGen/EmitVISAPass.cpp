@@ -12123,13 +12123,17 @@ void EmitPass::emitCopyGRFBlock(CVariable *Dst, CVariable *Src, Type *type, uint
   if (isWriteToBlk) {
     IGC_ASSERT(Dst->GetNumberInstance() == 1);
     IGC_ASSERT(!Dst->IsUniform());
-    IGC_ASSERT(dataType == Src->GetType());
+    IGC_ASSERT(m_encoder->GetCISADataTypeSize(dataType) == m_encoder->GetCISADataTypeSize(Src->GetType()));
+    if (Src->GetType() != dataType)
+      Src = m_currShader->BitCast(Src, dataType);
     if (BlkOffset != 0 || Dst->GetType() != dataType)
       Dst = m_currShader->GetNewAlias(Dst, dataType, BlkOffset, nElts * numInstance, false);
   } else {
     IGC_ASSERT(Src->GetNumberInstance() == 1);
     IGC_ASSERT(!Src->IsUniform() && !Dst->IsUniform());
-    IGC_ASSERT(dataType == Dst->GetType());
+    IGC_ASSERT(m_encoder->GetCISADataTypeSize(dataType) == m_encoder->GetCISADataTypeSize(Dst->GetType()));
+    if (Dst->GetType() != dataType)
+      Dst = m_currShader->BitCast(Dst, dataType);
     if (BlkOffset != 0 || Src->GetType() != dataType)
       Src = m_currShader->GetNewAlias(Src, dataType, BlkOffset, nElts * numInstance, false);
   }
