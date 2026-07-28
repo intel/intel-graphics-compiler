@@ -88,12 +88,17 @@ class ProductCoreTable {
   StringMap<PRODUCT_FAMILY> NameToProduct;
   StringMap<GFXCORE_FAMILY> NameToCore;
   std::map<PRODUCT_FAMILY, StringRef> ProductToName;
+  std::map<GFXCORE_FAMILY, StringRef> CoreToName;
+
+  // Max exclusions before a "<family>+ except ..." stem reads worse than a bare list.
+  static constexpr size_t kMaxStemExclusions = 3;
 
   void initLookups() {
     for (const Row &R : Rows) {
       NameToProduct.insert({R.Name, R.Product});
       NameToCore.insert({R.CoreName, R.RenderCore});
       ProductToName.insert({R.Product, R.Name});
+      CoreToName.insert({R.RenderCore, R.CoreName});
     }
   }
 
@@ -207,38 +212,45 @@ public:
     return expandProducts([T](const Row &R) { return R.Product >= T; }, Excluded);
   }
 
-  // Resolve a CoreChildOf or ProductChildOf support record into a
-  // human-readable stem (e.g. "XE3P+") and expanded product list.
-  // Returns {Stem, Expansion}. Both empty when the support kind is
-  // not a core/product range.
-  struct StemExpansion {
-    std::string Stem;
-    std::string Expansion;
-  };
-  StemExpansion formatStemWithExpansion(const Record *Support,
-                                        const std::set<PRODUCT_FAMILY> *Excluded = nullptr) const {
-    switch (classifyPlatformSupport(Support)) {
-    case PlatformSupportKind::CoreChildOf: {
-      StringRef N = Support->getValueAsDef("BaseCore")->getValueAsString("RenderCoreFamily");
-      StringRef Short = dropIgfxPrefix(N);
-      Short.consume_back("_CORE");
-      std::string Stem = (Short + "+").str();
-      std::string Exp;
-      if (auto CF = lookupCoreFamily(N))
-        Exp = expandProductsForCore(*CF, Excluded);
-      return {Stem, Exp};
-    }
-    case PlatformSupportKind::ProductChildOf: {
-      StringRef N = Support->getValueAsDef("BasePlatform")->getValueAsString("ProductFamily");
-      std::string Stem = (dropIgfxPrefix(N) + "+").str();
-      std::string Exp;
-      if (auto PF = lookupProductFamily(N))
-        Exp = expandProductsForProduct(*PF, Excluded);
-      return {Stem, Exp};
-    }
-    default:
-      return {};
-    }
+  // Renders a platform set for the docs, prepending a "<family>+ [except ...]"
+  // stem derived from and verified against the set when it fits.
+  std::string describePlatforms(const std::set<PRODUCT_FAMILY> &Supported) const {
+    if (Supported.empty())
+      return "Not supported";
+    if (Supported.size() == ProductToName.size())
+      return "All platforms";
+
+    std::string List = stringifyPlatforms(Supported);
+
+    // Everything at or above the oldest core family present in Supported.
+    GFXCORE_FAMILY Base = IGFX_MAX_CORE;
+    for (const Row &R : Rows)
+      if (Supported.count(R.Product) && R.RenderCore < Base)
+        Base = R.RenderCore;
+
+    std::set<PRODUCT_FAMILY> Superset;
+    for (const Row &R : Rows)
+      if (R.RenderCore >= Base)
+        Superset.insert(R.Product);
+
+    std::set<PRODUCT_FAMILY> Excluded;
+    std::set_difference(Superset.begin(), Superset.end(), Supported.begin(), Supported.end(),
+                        std::inserter(Excluded, Excluded.begin()));
+    if (Excluded.size() > kMaxStemExclusions)
+      return List;
+
+    if (Superset.size() == ProductToName.size())
+      return "All platforms except " + stringifyPlatforms(Excluded) + " (" + List + ")";
+
+    auto It = CoreToName.find(Base);
+    if (It == CoreToName.end())
+      return List;
+    StringRef Short = dropIgfxPrefix(It->second);
+    Short.consume_back("_CORE");
+    std::string Stem = (Short + "+").str();
+    if (!Excluded.empty())
+      Stem += " except " + stringifyPlatforms(Excluded);
+    return Stem + " (" + List + ")";
   }
 
   // Evaluate a platform-support predicate against all known platforms,
@@ -262,9 +274,6 @@ class SPIRVSupportDocsEmitter {
   const ProductCoreTable Table;
   bool shouldShowCapabilityPlatformSupport(const ExtensionEntry &Ext, const CapabilityEntry &Cap) const;
   std::string formatPlatformSupport(const Record *Support);
-  void accumulatePlatformTokens(const Record *Support, std::set<std::string> &Tokens, bool &HasAll);
-  std::string formatAggregatedTokens(const std::set<std::string> &Tokens, bool HasAll) const;
-  bool tryFormatAllOfExclusion(const Record *Support, std::set<std::string> &Tokens, bool &HasAll);
   std::string formatAdditionalExperimentalPlatforms(const Record *ExpSupport, const Record *ProdSupport);
 
 public:
@@ -328,8 +337,7 @@ bool SPIRVSupportDocsEmitter::shouldShowCapabilityPlatformSupport(const Extensio
 }
 
 std::string SPIRVSupportDocsEmitter::formatPlatformSupport(const Record *Support) {
-  PlatformSupportKind K = classifyPlatformSupport(Support);
-  switch (K) {
+  switch (classifyPlatformSupport(Support)) {
   case PlatformSupportKind::All:
     return "All platforms";
   case PlatformSupportKind::NotSupported:
@@ -339,13 +347,9 @@ std::string SPIRVSupportDocsEmitter::formatPlatformSupport(const Record *Support
   case PlatformSupportKind::Unknown:
     return "Unknown platform support";
   default:
-    break; // aggregate below
+    break;
   }
-
-  bool HasAll = false;
-  std::set<std::string> Tokens;
-  accumulatePlatformTokens(Support, Tokens, HasAll);
-  return formatAggregatedTokens(Tokens, HasAll);
+  return Table.describePlatforms(Table.evaluateSupport(Support));
 }
 
 std::string SPIRVSupportDocsEmitter::formatAdditionalExperimentalPlatforms(const Record *ExpSupport,
@@ -360,165 +364,6 @@ std::string SPIRVSupportDocsEmitter::formatAdditionalExperimentalPlatforms(const
   return Table.stringifyPlatforms(ExpOnly);
 }
 
-std::string SPIRVSupportDocsEmitter::formatAggregatedTokens(const std::set<std::string> &Tokens, bool HasAll) const {
-  if (HasAll || Tokens.empty())
-    return "All platforms";
-  std::string Out;
-  for (const auto &Token : Tokens) {
-    if (!Out.empty())
-      Out += ", ";
-    Out += Token;
-  }
-  return Out;
-}
-
-bool SPIRVSupportDocsEmitter::tryFormatAllOfExclusion(const Record *Support, std::set<std::string> &Tokens,
-                                                      bool &HasAll) {
-  auto Conds = Support->getValueAsListOfDefs("Conditions");
-  if (Conds.size() < 2)
-    return false;
-
-  const Record *Base = nullptr;
-  std::vector<std::string> ExcludedNames;
-  for (const Record *C : Conds) {
-    if (classifyPlatformSupport(C) == PlatformSupportKind::Not) {
-      const Record *Inner = C->getValueAsDef("Condition");
-      if (classifyPlatformSupport(Inner) != PlatformSupportKind::ExactPlatform)
-        return false;
-      ExcludedNames.push_back(Inner->getValueAsDef("TargetPlatform")->getValueAsString("ProductFamily").str());
-    } else if (!Base) {
-      Base = C;
-    } else {
-      return false; // more than one positive condition
-    }
-  }
-  if (!Base || ExcludedNames.empty())
-    return false;
-
-  // Resolve the positive base into a "<stem>" + filtered product expansion.
-  std::set<PRODUCT_FAMILY> ExcludedValues;
-  for (const std::string &N : ExcludedNames)
-    if (auto V = Table.lookupProductFamily(N))
-      ExcludedValues.insert(*V);
-
-  auto SE = Table.formatStemWithExpansion(Base, &ExcludedValues);
-  std::string Stem, Expansion;
-  if (!SE.Stem.empty()) {
-    Stem = SE.Stem;
-    Expansion = SE.Expansion;
-  } else if (classifyPlatformSupport(Base) == PlatformSupportKind::All) {
-    // No stem to lead with, so list the supported platforms rather than
-    // stating the rule purely as "All platforms except <N platforms>".
-    std::string Supported = Table.stringifyPlatforms(Table.evaluateSupport(Support));
-    if (Supported.empty())
-      return false; // nothing matches; let the caller describe it
-    Tokens.insert(std::move(Supported));
-    return true;
-  } else {
-    return false; // let caller fall back to generic AND formatting
-  }
-
-  std::vector<std::string> ExcludedDisplay;
-  ExcludedDisplay.reserve(ExcludedNames.size());
-  for (const std::string &N : ExcludedNames)
-    ExcludedDisplay.push_back(ProductCoreTable::dropIgfxPrefix(N).str());
-
-  std::string Rule = Stem + " except " + llvm::join(ExcludedDisplay, ", ");
-  std::string Token = !Expansion.empty() ? Rule + " (" + Expansion + ")" : Rule;
-  Tokens.insert(std::move(Token));
-  return true;
-}
-
-void SPIRVSupportDocsEmitter::accumulatePlatformTokens(const Record *Support, std::set<std::string> &Tokens,
-                                                       bool &HasAll) {
-  switch (classifyPlatformSupport(Support)) {
-  case PlatformSupportKind::All:
-    HasAll = true;
-    return;
-  case PlatformSupportKind::NotSupported:
-  case PlatformSupportKind::InheritFromExtension:
-    return; // no contribution
-  case PlatformSupportKind::CoreChildOf:
-  case PlatformSupportKind::ProductChildOf: {
-    auto [Stem, Products] = Table.formatStemWithExpansion(Support);
-    Tokens.insert(!Products.empty() ? Stem + " (" + Products + ")" : Stem);
-    return;
-  }
-  case PlatformSupportKind::ExactCoreFamily: {
-    const Record *Core = Support->getValueAsDef("TargetCore");
-    std::string Token = ProductCoreTable::dropIgfxPrefix(Core->getValueAsString("RenderCoreFamily")).str();
-    Tokens.insert(Token);
-    return;
-  }
-  case PlatformSupportKind::ExactPlatform: {
-    const Record *Plat = Support->getValueAsDef("TargetPlatform");
-    std::string Token = ProductCoreTable::dropIgfxPrefix(Plat->getValueAsString("ProductFamily")).str();
-    Tokens.insert(Token);
-    return;
-  }
-  case PlatformSupportKind::InGroup: {
-    const Record *Group = Support->getValueAsDef("TargetGroup");
-    auto Ps = Group->getValueAsListOfDefs("Platforms");
-    for (const Record *P : Ps) {
-      std::string Token = ProductCoreTable::dropIgfxPrefix(P->getValueAsString("ProductFamily")).str();
-      Tokens.insert(Token);
-    }
-    return;
-  }
-  case PlatformSupportKind::AnyOf: {
-    auto Conds = Support->getValueAsListOfDefs("Conditions");
-    for (const Record *C : Conds)
-      accumulatePlatformTokens(C, Tokens, HasAll);
-    return;
-  }
-  case PlatformSupportKind::AllOf: {
-    // Try smart exclusion pattern first
-    if (tryFormatAllOfExclusion(Support, Tokens, HasAll))
-      return;
-
-    // Otherwise, standard AND formatting
-    auto Conds = Support->getValueAsListOfDefs("Conditions");
-    std::set<std::string> SubTokens;
-    bool SubHasAll = false;
-    for (const Record *C : Conds) {
-      accumulatePlatformTokens(C, SubTokens, SubHasAll);
-    }
-    if (SubHasAll) {
-      HasAll = true;
-      return;
-    }
-    if (!SubTokens.empty()) {
-      std::string CombinedToken = "(";
-      bool First = true;
-      for (const auto &T : SubTokens) {
-        if (!First)
-          CombinedToken += " AND ";
-        CombinedToken += T;
-        First = false;
-      }
-      CombinedToken += ")";
-      Tokens.insert(CombinedToken);
-    }
-    return;
-  }
-  case PlatformSupportKind::Not: {
-    const Record *InnerCond = Support->getValueAsDef("Condition");
-    std::set<std::string> SubTokens;
-    bool SubHasAll = false;
-    accumulatePlatformTokens(InnerCond, SubTokens, SubHasAll);
-    if (SubHasAll) {
-      // NOT(All) means nothing is supported
-      return;
-    }
-    for (const auto &T : SubTokens) {
-      Tokens.insert("NOT " + T);
-    }
-    return;
-  }
-  case PlatformSupportKind::Unknown:
-    return; // ignore unknown in aggregation
-  }
-}
 // ===== SPIRVSupportDocsEmitter implementation end =====
 
 // ===== SPIRVSupportQueriesEmitter implementation begin =====

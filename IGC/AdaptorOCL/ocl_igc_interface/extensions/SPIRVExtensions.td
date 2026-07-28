@@ -51,8 +51,7 @@ def IGFX_XE3P_CORE      : CoreFamily<"IGFX_XE3P_CORE">;
 def CUSTOM_GROUP : PlatformGroup<[IGFX_DG2, IGFX_PVC]>;
 
 // Platforms with FP64 HW support. Mirrors Platform::hasNoFP64Inst().
-def AllPlatformsWithFP64Support : AllOf<[AllPlatformSupport,
-                                         Not<ExactPlatform<IGFX_TIGERLAKE_LP>>,
+def AllPlatformsWithFP64Support : AllOf<[Not<ExactPlatform<IGFX_TIGERLAKE_LP>>,
                                          Not<ExactPlatform<IGFX_DG1>>,
                                          Not<ExactPlatform<IGFX_ROCKETLAKE>>,
                                          Not<ExactPlatform<IGFX_ALDERLAKE_S>>,
@@ -214,10 +213,10 @@ def SPV_INTEL_unstructured_loop_controls : Extension<
 
 def SPV_KHR_integer_dot_product : Extension<
   "SPV_KHR_integer_dot_product",
-  [ Capability<"DotProductKHR", AllPlatformSupport>,
+  [ Capability<"DotProductKHR", Not<ExactPlatform<IGFX_ALDERLAKE_N>>>,
     Capability<"DotProductInputAllKHR", NotSupported>,
-    Capability<"DotProductInput4x8BitKHR", AllPlatformSupport>,
-    Capability<"DotProductInput4x8BitPackedKHR", AllPlatformSupport> ],
+    Capability<"DotProductInput4x8BitKHR", Not<ExactPlatform<IGFX_ALDERLAKE_N>>>,
+    Capability<"DotProductInput4x8BitPackedKHR", Not<ExactPlatform<IGFX_ALDERLAKE_N>>> ],
   "https://github.khronos.org/SPIRV-Registry/extensions/KHR/SPV_KHR_integer_dot_product.html",
   InheritFromCapabilities
 >;
@@ -314,7 +313,7 @@ def SPV_INTEL_media_block_io : Extension<
   "SPV_INTEL_media_block_io",
   [ Capability<"SubgroupImageMediaBlockIOINTEL"> ],
   "https://github.khronos.org/SPIRV-Registry/extensions/INTEL/SPV_INTEL_media_block_io.html",
-  AnyOf<[ExactCoreFamily<IGFX_GEN12LP_CORE>, ExactCoreFamily<IGFX_XE_HPG_CORE>]>
+  Not<isCoreChildOf<IGFX_XE_HPC_CORE>>
 >;
 
 def SPV_INTEL_kernel_attributes : ExperimentalExtension<

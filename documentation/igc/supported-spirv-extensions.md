@@ -84,7 +84,7 @@ This document lists all SPIR-V extensions supported by IGC and their platform re
 - **AtomicFloat32AddEXT**
   > **Supported On**: All platforms
 - **AtomicFloat64AddEXT**
-  > **Supported On**: PVC, METEORLAKE, ARROWLAKE, BMG, LUNARLAKE, PTL, NVL_XE3G, NVL, CRI
+  > **Supported On**: XE_HPG+ except DG2 (PVC, METEORLAKE, ARROWLAKE, BMG, LUNARLAKE, PTL, NVL_XE3G, NVL, CRI)
 
 ---
 
@@ -99,7 +99,7 @@ This document lists all SPIR-V extensions supported by IGC and their platform re
 - **AtomicFloat32MinMaxEXT**
   > **Supported On**: All platforms
 - **AtomicFloat64MinMaxEXT**
-  > **Supported On**: PVC, METEORLAKE, ARROWLAKE, BMG, LUNARLAKE, PTL, NVL_XE3G, NVL, CRI
+  > **Supported On**: XE_HPG+ except DG2 (PVC, METEORLAKE, ARROWLAKE, BMG, LUNARLAKE, PTL, NVL_XE3G, NVL, CRI)
 
 ---
 
@@ -385,7 +385,7 @@ This document lists all SPIR-V extensions supported by IGC and their platform re
 
 **Specification**: https://github.khronos.org/SPIRV-Registry/extensions/INTEL/SPV_INTEL_media_block_io.html
 
-> **Supported on**: GEN12LP_CORE, XE_HPG_CORE
+> **Supported on**: TIGERLAKE_LP, ROCKETLAKE, ALDERLAKE_S, ALDERLAKE_P, ALDERLAKE_N, DG1, XE_HP_SDV, DG2, METEORLAKE, ARROWLAKE
 
 **Capabilities**:
 
@@ -653,13 +653,13 @@ This document lists all SPIR-V extensions supported by IGC and their platform re
 **Capabilities**:
 
 - **DotProductKHR**
-  > **Supported On**: All platforms
+  > **Supported On**: All platforms except ALDERLAKE_N (TIGERLAKE_LP, ROCKETLAKE, ALDERLAKE_S, ALDERLAKE_P, DG1, XE_HP_SDV, DG2, PVC, METEORLAKE, ARROWLAKE, BMG, LUNARLAKE, PTL, NVL_XE3G, NVL, CRI)
 - **DotProductInputAllKHR**
   > **Supported On**: Not supported
 - **DotProductInput4x8BitKHR**
-  > **Supported On**: All platforms
+  > **Supported On**: All platforms except ALDERLAKE_N (TIGERLAKE_LP, ROCKETLAKE, ALDERLAKE_S, ALDERLAKE_P, DG1, XE_HP_SDV, DG2, PVC, METEORLAKE, ARROWLAKE, BMG, LUNARLAKE, PTL, NVL_XE3G, NVL, CRI)
 - **DotProductInput4x8BitPackedKHR**
-  > **Supported On**: All platforms
+  > **Supported On**: All platforms except ALDERLAKE_N (TIGERLAKE_LP, ROCKETLAKE, ALDERLAKE_S, ALDERLAKE_P, DG1, XE_HP_SDV, DG2, PVC, METEORLAKE, ARROWLAKE, BMG, LUNARLAKE, PTL, NVL_XE3G, NVL, CRI)
 
 ---
 

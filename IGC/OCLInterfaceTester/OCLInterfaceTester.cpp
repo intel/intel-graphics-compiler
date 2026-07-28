@@ -26,6 +26,7 @@ SPDX-License-Identifier: MIT
 // Supported platforms. Add a line here to support a new platform
 static const PlatformEntry platforms[] = {
     {"tgl", IGFX_TIGERLAKE_LP, IGFX_GEN12LP_CORE},
+    {"adln", IGFX_ALDERLAKE_N, IGFX_GEN12LP_CORE},
     {"dg2", IGFX_DG2, IGFX_XE_HPG_CORE},
     {"pvc", IGFX_PVC, IGFX_XE_HPC_CORE},
     {"mtl", IGFX_METEORLAKE, IGFX_XE_HPG_CORE},
