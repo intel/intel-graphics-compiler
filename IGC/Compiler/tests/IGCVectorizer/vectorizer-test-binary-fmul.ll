@@ -2,15 +2,15 @@
 ; RUN: igc_opt -S  --igc-vectorizer -dce --regkey=VectorizerAllowEXP2=0 --regkey=VectorizerEnablePartialVectorization=0 --platformbmg < %s 2>&1 | FileCheck %s
 
 ; CHECK: %vectorized_phi
-; CHECK: %vector = insertelement <8 x float> undef
-; CHECK: %vector1 = insertelement <8 x float> %vector
-; CHECK: %vector2 = insertelement <8 x float> %vector1
-; CHECK: %vector3 = insertelement <8 x float> %vector2
-; CHECK: %vector4 = insertelement <8 x float> %vector3
-; CHECK: %vector5 = insertelement <8 x float> %vector4
-; CHECK: %vector6 = insertelement <8 x float> %vector5
-; CHECK: %vector7 = insertelement <8 x float> %vector6
-; CHECK: %vectorized_binary = fmul fast <8 x float> %vector7, %vectorized_phi
+; CHECK: [[V0:%.*]] = insertelement <8 x float> undef
+; CHECK: [[V1:%.*]] = insertelement <8 x float> [[V0]]
+; CHECK: [[V2:%.*]] = insertelement <8 x float> [[V1]]
+; CHECK: [[V3:%.*]] = insertelement <8 x float> [[V2]]
+; CHECK: [[V4:%.*]] = insertelement <8 x float> [[V3]]
+; CHECK: [[V5:%.*]] = insertelement <8 x float> [[V4]]
+; CHECK: [[V6:%.*]] = insertelement <8 x float> [[V5]]
+; CHECK: [[V7:%.*]] = insertelement <8 x float> [[V6]]
+; CHECK: %vectorized_binary = fmul fast <8 x float> [[V7]], %vectorized_phi
 ; CHECK: call <8 x float> @llvm.genx.GenISA.sub.group.dpas.v8f32.v8f32.v8i16.v8i32(<8 x float> %vectorized_binary
 
 ; ModuleID = 'reduced.ll'

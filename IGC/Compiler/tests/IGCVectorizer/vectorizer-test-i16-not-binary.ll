@@ -10,9 +10,6 @@
 ; RUN: igc_opt -S  --igc-vectorizer -dce  --regkey=VectorizerAllowADD=1 --regkey=VectorizerAllowMUL=1 --regkey=VectorizerLog=1 --regkey=VectorizerLogToErr=1 --platformbmg < %s 2>&1 | FileCheck %s
 
 ; CHECK: Candidate:   %32 = insertelement <8 x i16> %31, i16 %24, i64 7
-; CHECK: Chain:   %32 = insertelement <8 x i16> %31, i16 %24, i64 7
-; CHECK: --------------------------
-; CHECK: Insert:   %32 = insertelement <8 x i16> %31, i16 %24, i64 7
 ; CHECK: fin:   %32 = insertelement <8 x i16> %31, i16 %24, i64 7
 ; CHECK: vec:   %25 = insertelement <8 x i16> zeroinitializer, i16 %17, i64 0
 ; CHECK: vec:   %26 = insertelement <8 x i16> %25, i16 %18, i64 1

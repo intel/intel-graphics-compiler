@@ -1101,10 +1101,6 @@ DECLARE_IGC_REGKEY(bool, VectorizerAllowADD, true, "Allow ADD instructions insid
 DECLARE_IGC_REGKEY(bool, VectorizerAllowSUB, true, "Allow SUB instructions inside vectorizer", true)
 DECLARE_IGC_REGKEY(bool, VectorizerUniformValueVectorizationEnabled, true,
                    "Vector Emitter emits vectorized instruction for uniform values", true)
-DECLARE_IGC_REGKEY(
-    bool, VectorizerEnablePartialVectorization, true,
-    "Not fully tested option, allows to substitute scalar part with partially vectorized through extract elements",
-    true)
 DECLARE_IGC_REGKEY(DWORD, CoalescerDepWindowSize, 100, "Window size to account for vectorizer dependency check window",
                    true)
 DECLARE_IGC_REGKEY(bool, CoalescerAllowBinary, true, "Allow binary instructions inside coalescer", true)

@@ -42,14 +42,6 @@ public:
   typedef llvm::SmallVector<VecOfSlices, 3> Tree;
   typedef std::unordered_map<Instruction *, VecArr *> InstructionToSliceMap;
 
-  struct InsertStruct {
-    Instruction *Final = nullptr;
-    // contains insert elements
-    VecArr Vec;
-    // contains slices of vector tree
-    VecOfSlices SlChain;
-  };
-
   bool checkDependencyAndTryToEliminate(VecArr &Slice, unsigned WindowSize);
   unsigned checkSIMD(llvm::Function &F, IGC::ModuleMetaData *modMD);
   void initializeLogFile(Function &F, string Name);
@@ -96,13 +88,15 @@ private:
   bool isSafeToVectorizeSIMD16(llvm::Instruction *I);
   bool isSafeToVectorizeSIMD32(llvm::Instruction *I);
 
-  void findInsertElementsInDataFlow(llvm::Instruction *I, VecArr &Chain);
-  bool checkSlice(VecArr &Slice, InsertStruct &InSt);
-  bool processChain(InsertStruct &InSt);
-  void clusterInsertElement(InsertStruct &InSt);
+  bool checkSlice(VecArr &Slice, InsertElementInst *Final);
+
+  void processSeed(VecArr &ToProcess);
+  bool processChain(InsertElementInst *FinalInsert, VecOfSlices &SlChain);
+  void clusterInsertElement(InsertElementInst *Insert, VecArr &SliceOfInserts);
   void collectInstructionToProcess(VecArr &ToProcess, Function &F);
   void buildTree(VecArr &V, VecOfSlices &Chain);
   void printSlice(Slice *S);
+  void printSlices(VecOfSlices &Chain);
 
   Instruction *getInsertPointForVector(VecArr &Arr);
   Instruction *getInsertPointForCreatedInstruction(VecVal &Arr, VecArr &Slice);
@@ -112,7 +106,7 @@ private:
   bool handleStub(VecArr &Slice);
   bool handlePHI(VecArr &Slice);
   bool checkInsertElement(Instruction *First, VecArr &Slice);
-  bool handleInsertElement(VecArr &Slice, Instruction *Final);
+  bool handleInsertElement(VecArr &Slice, InsertElementInst *Final);
   bool checkExtractElement(Instruction *Compare, VecArr &Slice);
   bool handleExtractElement(VecArr &Slice);
   bool handleCastInstruction(VecArr &Slice);
@@ -135,6 +129,7 @@ private:
   bool compareOperands(Value *A, Value *B);
   InsertElementInst *createVector(VecArr &Slice, Instruction *InsertPoint);
   void replaceSliceInstructionsWithExtract(VecArr &Slice, Instruction *CreatedInst);
+  void remapSliceToVector(VecArr &Slice, Value *Vectorized, Value *PrevVectorization = nullptr);
 
 public:
   llvm::StringRef getPassName() const override { return "IGCVectorizer"; }

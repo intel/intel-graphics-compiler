@@ -2,16 +2,16 @@
 ; RUN: igc_opt -S  --igc-vectorizer -dce --regkey=VectorizerEnablePartialVectorization=0 --platformbmg < %s 2>&1 | FileCheck %s
 
 ; CHECK: %vectorized_phi
-; CHECK: %vector = insertelement <8 x float> undef
-; CHECK: %vector1 = insertelement <8 x float> %vector
-; CHECK: %vector2 = insertelement <8 x float> %vector1
-; CHECK: %vector3 = insertelement <8 x float> %vector2
-; CHECK: %vector4 = insertelement <8 x float> %vector3
-; CHECK: %vector5 = insertelement <8 x float> %vector4
+; CHECK: [[V0:%.*]] = insertelement <8 x float> undef
+; CHECK: [[V1:%.*]] = insertelement <8 x float> [[V0]]
+; CHECK: [[V2:%.*]] = insertelement <8 x float> [[V1]]
+; CHECK: [[V3:%.*]] = insertelement <8 x float> [[V2]]
+; CHECK: [[V4:%.*]] = insertelement <8 x float> [[V3]]
+; CHECK: [[V5:%.*]] = insertelement <8 x float> [[V4]]
 ; we use the same variable twice in original IR, vectorizer must process it correctly
-; CHECK: %vector6 = insertelement <8 x float> %vector5, float [[REPEATED:%.*]], i32 6
-; CHECK: %vector7 = insertelement <8 x float> %vector6, float [[REPEATED]], i32 7
-; CHECK: %vectorized_binary = fmul fast <8 x float> %vector7, %vectorized_phi
+; CHECK: [[V6:%.*]] = insertelement <8 x float> [[V5]], float [[REPEATED:%.*]], i32 6
+; CHECK: [[V7:%.*]] = insertelement <8 x float> [[V6]], float [[REPEATED]], i32 7
+; CHECK: %vectorized_binary = fmul fast <8 x float> [[V7]], %vectorized_phi
 ; CHECK: call <8 x float> @llvm.genx.GenISA.sub.group.dpas.v8f32.v8f32.v8i16.v8i32(<8 x float> %vectorized_binary
 
 ; ModuleID = 'reduced.ll'
