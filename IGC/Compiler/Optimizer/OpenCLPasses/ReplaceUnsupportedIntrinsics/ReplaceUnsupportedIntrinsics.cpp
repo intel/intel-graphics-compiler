@@ -111,6 +111,7 @@ private:
   void replaceI1MinMax(IntrinsicInst *I);
   void replaceI64MinMax(IntrinsicInst *I);
   void replaceHalvesDivsSqrts(IntrinsicInst *I);
+  void replaceVectorReduce(IntrinsicInst *I);
 #if LLVM_VERSION_MAJOR >= 15
   void replaceIsFpClass(IntrinsicInst *I);
 #endif
@@ -154,6 +155,19 @@ const std::map<Intrinsic::ID, ReplaceUnsupportedIntrinsics::MemFuncPtr_t>
 #if LLVM_VERSION_MAJOR >= 15
     { Intrinsic::is_fpclass,                    &ReplaceUnsupportedIntrinsics::replaceIsFpClass },
 #endif
+    { Intrinsic::vector_reduce_and,             &ReplaceUnsupportedIntrinsics::replaceVectorReduce },
+    { Intrinsic::vector_reduce_or,              &ReplaceUnsupportedIntrinsics::replaceVectorReduce },
+    { Intrinsic::vector_reduce_xor,             &ReplaceUnsupportedIntrinsics::replaceVectorReduce },
+    { Intrinsic::vector_reduce_add,             &ReplaceUnsupportedIntrinsics::replaceVectorReduce },
+    { Intrinsic::vector_reduce_mul,             &ReplaceUnsupportedIntrinsics::replaceVectorReduce },
+    { Intrinsic::vector_reduce_smax,            &ReplaceUnsupportedIntrinsics::replaceVectorReduce },
+    { Intrinsic::vector_reduce_smin,            &ReplaceUnsupportedIntrinsics::replaceVectorReduce },
+    { Intrinsic::vector_reduce_umax,            &ReplaceUnsupportedIntrinsics::replaceVectorReduce },
+    { Intrinsic::vector_reduce_umin,            &ReplaceUnsupportedIntrinsics::replaceVectorReduce },
+    { Intrinsic::vector_reduce_fadd,            &ReplaceUnsupportedIntrinsics::replaceVectorReduce },
+    { Intrinsic::vector_reduce_fmul,            &ReplaceUnsupportedIntrinsics::replaceVectorReduce },
+    { Intrinsic::vector_reduce_fmax,            &ReplaceUnsupportedIntrinsics::replaceVectorReduce },
+    { Intrinsic::vector_reduce_fmin,            &ReplaceUnsupportedIntrinsics::replaceVectorReduce },
         // clang-format on
 };
 
@@ -1445,6 +1459,89 @@ void ReplaceUnsupportedIntrinsics::replaceCountTheTrailingZeros(IntrinsicInst *I
   }
 
   I->replaceAllUsesWith(OutputVal);
+  I->eraseFromParent();
+}
+/*
+  Replaces calls to @llvm.vector.reduce.OP with a sequence of extractelement and OP instructions.
+  E.g. for vector_reduce_add:
+  %1 = call <4 x i32> @llvm.vector.reduce.add.v4i32(<4 x i32> %0)
+  =>
+  %2 = extractelement <4 x i32> %0, i32 0
+  %3 = extractelement <4 x i32> %0, i32 1
+  %4 = add i32 %2, %3
+  %5 = extractelement <4 x i32> %0, i32 2
+  %6 = add i32 %4, %5
+  %7 = extractelement <4 x i32> %0, i32 3
+  %8 = add i32 %6, %7
+*/
+void ReplaceUnsupportedIntrinsics::replaceVectorReduce(IntrinsicInst *I) {
+  const Intrinsic::ID IID = I->getIntrinsicID();
+
+  // fadd and fmul are the only intrinsics that takes scalar instead of vector as an input
+  const bool HasStartValue = (IID == Intrinsic::vector_reduce_fadd || IID == Intrinsic::vector_reduce_fmul);
+  Value *Vec = I->getArgOperand(HasStartValue ? 1 : 0);
+
+  auto *VecTy = cast<IGCLLVM::FixedVectorType>(Vec->getType());
+  const unsigned NumElts = (unsigned)VecTy->getNumElements();
+  IGC_ASSERT_MESSAGE(NumElts > 0, "vector reduce on an empty vector");
+
+  IGCLLVM::IRBuilder<> Builder(I);
+  Builder.SetCurrentDebugLocation(I->getDebugLoc());
+  // Propagate fast-math flags to new FP instructions
+  if (isa<FPMathOperator>(I))
+    Builder.setFastMathFlags(I->getFastMathFlags());
+
+  auto Combine = [&](Value *Acc, Value *Elt) -> Value * {
+    switch (IID) {
+    case Intrinsic::vector_reduce_and:
+      return Builder.CreateAnd(Acc, Elt);
+    case Intrinsic::vector_reduce_or:
+      return Builder.CreateOr(Acc, Elt);
+    case Intrinsic::vector_reduce_xor:
+      return Builder.CreateXor(Acc, Elt);
+    case Intrinsic::vector_reduce_add:
+      return Builder.CreateAdd(Acc, Elt);
+    case Intrinsic::vector_reduce_mul:
+      return Builder.CreateMul(Acc, Elt);
+    case Intrinsic::vector_reduce_fadd:
+      return Builder.CreateFAdd(Acc, Elt);
+    case Intrinsic::vector_reduce_fmul:
+      return Builder.CreateFMul(Acc, Elt);
+    case Intrinsic::vector_reduce_fmax:
+      return Builder.CreateBinaryIntrinsic(Intrinsic::maxnum, Acc, Elt, I);
+    case Intrinsic::vector_reduce_fmin:
+      return Builder.CreateBinaryIntrinsic(Intrinsic::minnum, Acc, Elt, I);
+    case Intrinsic::vector_reduce_smax:
+    case Intrinsic::vector_reduce_smin:
+    case Intrinsic::vector_reduce_umax:
+    case Intrinsic::vector_reduce_umin: {
+      CmpInst::Predicate Pred = (IID == Intrinsic::vector_reduce_smax)   ? CmpInst::ICMP_SGT
+                                : (IID == Intrinsic::vector_reduce_smin) ? CmpInst::ICMP_SLT
+                                : (IID == Intrinsic::vector_reduce_umax) ? CmpInst::ICMP_UGT
+                                                                         : CmpInst::ICMP_ULT;
+      return Builder.CreateSelect(Builder.CreateICmp(Pred, Acc, Elt), Acc, Elt);
+    }
+    default:
+      IGC_ASSERT_MESSAGE(0, "unexpected vector reduce intrinsic");
+      return nullptr;
+    }
+  };
+
+  Value *Acc = nullptr;
+  unsigned StartIdx = 0;
+  if (HasStartValue) {
+    Acc = I->getArgOperand(0);
+  } else {
+    Acc = Builder.CreateExtractElement(Vec, Builder.getInt32(0));
+    StartIdx = 1;
+  }
+
+  for (unsigned Idx = StartIdx; Idx < NumElts; ++Idx) {
+    Value *Elt = Builder.CreateExtractElement(Vec, Builder.getInt32(Idx));
+    Acc = Combine(Acc, Elt);
+  }
+
+  I->replaceAllUsesWith(Acc);
   I->eraseFromParent();
 }
 

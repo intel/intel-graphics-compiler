@@ -102,12 +102,25 @@ IGC_IR_LLVM_INTRINSIC(smax)
 IGC_IR_LLVM_INTRINSIC(smin)
 IGC_IR_LLVM_INTRINSIC(umax)
 IGC_IR_LLVM_INTRINSIC(umin)
-#if LLVM_VERSION_MAJOR >= 15
-IGC_IR_LLVM_INTRINSIC(is_fpclass)
-#endif
 IGC_IR_LLVM_INTRINSIC(experimental_noalias_scope_decl)
 IGC_IR_LLVM_INTRINSIC(experimental_constrained_fdiv)
 IGC_IR_LLVM_INTRINSIC(experimental_constrained_sqrt)
+IGC_IR_LLVM_INTRINSIC(vector_reduce_and)
+IGC_IR_LLVM_INTRINSIC(vector_reduce_or)
+IGC_IR_LLVM_INTRINSIC(vector_reduce_xor)
+IGC_IR_LLVM_INTRINSIC(vector_reduce_add)
+IGC_IR_LLVM_INTRINSIC(vector_reduce_mul)
+IGC_IR_LLVM_INTRINSIC(vector_reduce_fadd)
+IGC_IR_LLVM_INTRINSIC(vector_reduce_fmul)
+IGC_IR_LLVM_INTRINSIC(vector_reduce_fmax)
+IGC_IR_LLVM_INTRINSIC(vector_reduce_fmin)
+IGC_IR_LLVM_INTRINSIC(vector_reduce_smax)
+IGC_IR_LLVM_INTRINSIC(vector_reduce_smin)
+IGC_IR_LLVM_INTRINSIC(vector_reduce_umax)
+IGC_IR_LLVM_INTRINSIC(vector_reduce_umin)
+#if LLVM_VERSION_MAJOR >= 15
+IGC_IR_LLVM_INTRINSIC(is_fpclass)
+#endif
 
 // LLVM instructions allowed in IGC IR
 //------------------------------------
