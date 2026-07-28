@@ -873,7 +873,10 @@ DECLARE_IGC_REGKEY(bool, EnableCosDump, false, "Enable cos dump", true)
 DECLARE_IGC_REGKEY(bool, DumpLLVMIR, false, "dump LLVM IR", true)
 DECLARE_IGC_REGKEY(bool, QualityMetricsEnable, false, "Enable Quality Metrics for IGC", true)
 DECLARE_IGC_REGKEY(bool, ShaderDumpEnable, false, "dump LLVM IR, visaasm, and GenISA", true)
-DECLARE_IGC_REGKEY(bool, ShaderDumpEnableAll, false, "dump all LLVM IR passes, visaasm, and GenISA", true)
+DECLARE_IGC_REGKEY(bool, ShaderDumpEnableAll, false,
+                   "dump all LLVM IR passes, visaasm, and GenISA; force recomputation of analysis passes at the "
+                   "beginning of every pass. ",
+                   true)
 DECLARE_IGC_REGKEY(DWORD, ShaderDumpEnableG4, false,
                    "same as ShaderDumpEnable but adds G4 dumps (0 = off, 1 = some, 2 = all)", 0)
 DECLARE_IGC_REGKEY(DWORD, ShaderDumpEnableIGAJSON, false,

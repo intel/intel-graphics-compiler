@@ -55,7 +55,6 @@ There are also additional products that are not a part of compilation pipeline:
     | Skip | Detects the override attempt and skips overriding the product. A warning is issued instead. |
     | No | IGC **does not attempt to override** the product. Dumps with this status are ignored by the ShaderOverride mechanism. |
 4. Main dump products generated during recompilation are distinguished by an additional numeric identifier in the filename (for example: `*_1_beforeUnification.ll`). Hovever, individual compilation passes continue their numbering sequence (for example the first unification pass may start from `*_0321_Unify_after_PreprocessSPVIR.ll`).
-
 ### Additional options
 
 To customize the process use configuration flags. Here are some of them:
@@ -63,7 +62,7 @@ To customize the process use configuration flags. Here are some of them:
 |Flag|Description|
 |-|-|
 |`IGC_DumpToCustomDir`| Path to a directory to produce dumps to. |
-|`IGC_ShaderDumpEnableAll`| Dump LLVM passes between stages. |
+|`IGC_ShaderDumpEnableAll`| Dump LLVM passes between stages. Force recomputation of analysis passes at the beginning of every pass.  |
 |`IGC_ShaderDumpPidDisable`| Do not append PID to dumps directory. |
 
 You can learn more about dumping options in configuration flags documentation [here](https://github.com/intel/intel-graphics-compiler/blob/master/documentation/configuration_flags.md).
