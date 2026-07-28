@@ -198,7 +198,41 @@ define void @struct_array_struct_array_nesting(float %val) {
   ret void
 }
 
-!igc.functions = !{!0, !5, !6, !7, !8, !9, !10, !11, !12, !13, !14, !15}
+; ---
+; 13. Dynamic GEP strides the alloca in vector-sized steps: source <4 x float>
+;     (128 bits) vs alloca element float (32 bits). Lane width matches (as
+;     emitted for a vectorized memset). Promoted.
+; ---
+; CHECK-LABEL: @dynamic_gep_vector_stride(
+; CHECK: alloca <8 x float>
+; CHECK-NOT: alloca [8 x float]
+; CHECK: ret void
+define void @dynamic_gep_vector_stride(i64 %idx) {
+  %a = alloca [8 x float], align 4, !uniform !4
+  %gep = getelementptr <4 x float>, ptr %a, i64 %idx
+  store <4 x float> zeroinitializer, ptr %gep, align 4
+  ret void
+}
+
+; ---
+; 14. Two GEP users on one alloca: a benign vector-stride GEP (case 13) plus a
+;     genuine sub-lane-width dynamic GEP (i16 into float array). All users are
+;     scanned, so the second still blocks promotion. Not promoted.
+; ---
+; CHECK-LABEL: @vector_stride_plus_mismatch_gep(
+; CHECK: alloca [8 x float]
+; CHECK-NOT: alloca <8 x float>
+; CHECK: ret void
+define void @vector_stride_plus_mismatch_gep(i64 %idx, i64 %idx2) {
+  %a = alloca [8 x float], align 4, !uniform !4
+  %gep1 = getelementptr <4 x float>, ptr %a, i64 %idx
+  store <4 x float> zeroinitializer, ptr %gep1, align 4
+  %gep2 = getelementptr i16, ptr %a, i64 %idx2
+  %v = load i16, ptr %gep2, align 2
+  ret void
+}
+
+!igc.functions = !{!0, !5, !6, !7, !8, !9, !10, !11, !12, !13, !14, !15, !16, !17}
 
 !0 = !{ptr @nested_array_peel, !1}
 !1 = !{!2}
@@ -215,3 +249,5 @@ define void @struct_array_struct_array_nesting(float %val) {
 !13 = !{ptr @direct_load_size_mismatch, !1}
 !14 = !{ptr @multi_field_struct_not_promoted, !1}
 !15 = !{ptr @struct_array_struct_array_nesting, !1}
+!16 = !{ptr @dynamic_gep_vector_stride, !1}
+!17 = !{ptr @vector_stride_plus_mismatch_gep, !1}

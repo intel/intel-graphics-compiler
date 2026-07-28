@@ -820,7 +820,7 @@ bool IGC::SOALayoutChecker::MismatchDetected(Instruction &I) {
   // a mismatch and leave them untouched.
   for (User *U : allocaRef.users()) {
     if (auto *GEP = dyn_cast<GetElementPtrInst>(U)) {
-      auto gepBitsSize = pDL->getTypeStoreSizeInBits(GEP->getSourceElementType());
+      auto gepBitsSize = pDL->getTypeStoreSizeInBits(extractArrayOrVecEleType(GEP->getSourceElementType()));
       if (allocaEltBitsSize != gepBitsSize && GEP->getNumOperands() > 1 && !isa<ConstantInt>(GEP->getOperand(1))) {
         pInfo->canUseSOALayout = false;
         return true;
