@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2024 Intel Corporation
+Copyright (C) 2017-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -188,7 +188,7 @@ Alignment AlignmentInfo::get(Value *V) {
             static_cast<unsigned>(
                 CI->getType()->getScalarType()->getPrimitiveSizeInBits()));
         if (LogAlign < 32)
-          ExtraBits &= (1 << LogAlign) - 1;
+          ExtraBits &= maskTrailingOnes<unsigned>(LogAlign);
         A = Alignment(LogAlign, ExtraBits);
       } else if (!CI->isIntegerCast()) {
         // For no-only-integer cast instructions - FPToUI, FPToSI
@@ -347,12 +347,13 @@ Alignment Alignment::merge(Alignment Other) const {
   unsigned MinLogAlign = std::min(LogAlign, Other.LogAlign);
   if (MinLogAlign) {
     unsigned DisagreeExtraBits =
-        (ExtraBits ^ Other.ExtraBits) & ((1 << MinLogAlign) - 1);
+        (ExtraBits ^ Other.ExtraBits) & maskTrailingOnes<unsigned>(MinLogAlign);
     MinLogAlign = std::min(MinLogAlign,
                            (unsigned)IGCLLVM::countr_zero(DisagreeExtraBits));
   }
   IGC_ASSERT_EXIT(MinLogAlign < 32);
-  return Alignment(MinLogAlign, ExtraBits & ((1 << MinLogAlign) - 1));
+  return Alignment(MinLogAlign,
+                   ExtraBits & maskTrailingOnes<unsigned>(MinLogAlign));
 }
 
 /***********************************************************************
@@ -365,12 +366,14 @@ Alignment Alignment::add(Alignment Other) const {
   unsigned MinLogAlign = std::min(LogAlign, Other.LogAlign);
   unsigned ExtraBits2 = 0;
   if (MinLogAlign) {
-    ExtraBits2 = (ExtraBits + Other.ExtraBits) & ((1 << MinLogAlign) - 1);
+    ExtraBits2 =
+        (ExtraBits + Other.ExtraBits) & maskTrailingOnes<unsigned>(MinLogAlign);
     MinLogAlign =
         std::min(MinLogAlign, (unsigned)IGCLLVM::countr_zero(ExtraBits2));
   }
   IGC_ASSERT_EXIT(MinLogAlign < 32);
-  return Alignment(MinLogAlign, ExtraBits2 & ((1 << MinLogAlign) - 1));
+  return Alignment(MinLogAlign,
+                   ExtraBits2 & maskTrailingOnes<unsigned>(MinLogAlign));
 }
 
 /***********************************************************************
@@ -389,12 +392,14 @@ Alignment Alignment::mul(Alignment Other) const {
     MinLogAlign = Other.LogAlign;
   unsigned ExtraBits2 = 0;
   if (MinLogAlign) {
-    ExtraBits2 = (ExtraBits * Other.ExtraBits) & ((1 << MinLogAlign) - 1);
+    ExtraBits2 =
+        (ExtraBits * Other.ExtraBits) & maskTrailingOnes<unsigned>(MinLogAlign);
     MinLogAlign =
         std::min(MinLogAlign, (unsigned)IGCLLVM::countr_zero(ExtraBits2));
   }
   IGC_ASSERT_EXIT(MinLogAlign < 32);
-  return Alignment(MinLogAlign, ExtraBits2 & ((1 << MinLogAlign) - 1));
+  return Alignment(MinLogAlign,
+                   ExtraBits2 & maskTrailingOnes<unsigned>(MinLogAlign));
 }
 
 /***********************************************************************
@@ -414,7 +419,7 @@ Alignment Alignment::logicalOp(ConstantInt *CI, SelectFunction F) const {
   // Chop off constant bits according to log align
   unsigned NewLogAlign = F(ValLSB, LogAlign);
   IGC_ASSERT_EXIT(NewLogAlign < 32);
-  return Alignment(NewLogAlign, UVal & ((1 << NewLogAlign) - 1));
+  return Alignment(NewLogAlign, UVal & maskTrailingOnes<unsigned>(NewLogAlign));
 }
 
 /***********************************************************************

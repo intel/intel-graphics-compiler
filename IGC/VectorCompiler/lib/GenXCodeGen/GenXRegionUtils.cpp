@@ -457,7 +457,7 @@ unsigned genx::getLegalRegionSizeForTarget(const GenXSubtarget &ST,
             unsigned LogAlign = Align.getLogAlign();
             unsigned ExtraBits = Align.getExtraBits();
             ExtraBits += (R.Offset + RealIdx * R.ElementBytes);
-            ExtraBits &= ((1 << LogAlign) - 1);
+            ExtraBits &= maskTrailingOnes<unsigned>(LogAlign);
             if (LogAlign >= LogGRFWidth && !ExtraBits) {
               // Start is GRF aligned, so legal width is 1 GRF for <=BDW or
               // 2 GRFs for >=SKL.

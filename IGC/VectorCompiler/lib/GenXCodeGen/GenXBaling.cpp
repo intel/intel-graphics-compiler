@@ -17,6 +17,7 @@ SPDX-License-Identifier: MIT
 #include "GenXLiveness.h"
 #include "GenXUtil.h"
 
+#include "vc/Support/GenXDiagnostic.h"
 #include "vc/Utils/GenX/GlobalVariable.h"
 #include "vc/Utils/GenX/IntrinsicsWrapper.h"
 
@@ -280,7 +281,7 @@ bool GenXBaling::isRegionOKForIntrinsic(unsigned ArgInfoBits,
 
   if (Log2Align > 0) {
     IGC_ASSERT_EXIT(Log2Align < 32);
-    const auto ElementsPerAlign = (1 << Log2Align) / R.ElementBytes;
+    const auto ElementsPerAlign = (1U << Log2Align) / R.ElementBytes;
 
     if (R.Indirect) {
       // Instructions that cannot be splitted also cannot allow indirect
@@ -1809,7 +1810,7 @@ void GenXBaling::processTwoAddrSend(CallInst *CI) {
  * setBaleInfo : set BaleInfo for an instruction
  */
 void GenXBaling::setBaleInfo(const Instruction *Inst, genx::BaleInfo BI) {
-  IGC_ASSERT(BI.Bits < 1 << Inst->getNumOperands());
+  IGC_ASSERT(BI.areBaledOperandsBelow(Inst->getNumOperands()));
   LLVM_DEBUG(llvm::dbgs() << "Adding InstMap entry for " << *Inst
                           << "; BI type: " << BI.getTypeString() << "\n");
   InstMap[Inst] = BI;
@@ -1833,8 +1834,22 @@ void GenXBaling::setBaleInfo(const Instruction *Inst, genx::BaleInfo BI) {
  */
 void GenXBaling::setOperandBaled(Instruction *Inst, unsigned OperandNum,
                                  BaleInfo *BI) {
-  // Set the bit.
-  BI->Bits |= 1 << OperandNum;
+  // Set the bit. Inline asm calls can have more operands than BaleInfo can
+  // track. If the operand does not fit in the bitmap it stays unbaled.
+  if (!BI->setOperandBaled(OperandNum)) {
+    IGC_ASSERT_MESSAGE(
+        isa<CallInst>(Inst) && cast<CallInst>(Inst)->isInlineAsm(),
+        "only inline asm is expected to have more operands than the baling "
+        "bitmap can track");
+    vc::warn(Inst->getContext(), "Inline asm baling",
+             "operand #" + Twine(OperandNum) + " is not baled, at most " +
+                 Twine(BaleInfo::MaxBaledOperands) +
+                 " operands can be baled. A large number of inline asm "
+                 "operands may degrade performance because not all "
+                 "optimizations can be applied",
+             Inst);
+    return;
+  }
   // Check whether the operand has more than one use.
   Instruction *BaledInst = cast<Instruction>(Inst->getOperand(OperandNum));
   if (!BaledInst->hasOneUse()) {
@@ -2129,12 +2144,11 @@ void GenXBaling::buildBaleSub(Instruction *Inst, Bale *B,
     }
   }
 
-  IGC_ASSERT(BI.Bits < (1 << Inst->getNumOperands()) ||
-             Inst->getNumOperands() > 16);
+  IGC_ASSERT(BI.areBaledOperandsBelow(Inst->getNumOperands()));
 
   while (BI.Bits) {
     unsigned Idx = genx::log2(BI.Bits);
-    BI.Bits &= ~(1 << Idx);
+    BI.clearOperandBaled(Idx);
     if (Instruction *Op = dyn_cast<Instruction>(Inst->getOperand(Idx)))
       buildBaleSub(Op, B, IncludeAddr);
   }
@@ -2177,7 +2191,7 @@ int GenXBaling::getAddrOperandNum(unsigned IID) const {
  * It is used by GenXLegalization to unbale.
  */
 void GenXBaling::store(BaleInst BI) {
-  IGC_ASSERT(BI.Info.Bits < 1 << BI.Inst->getNumOperands());
+  IGC_ASSERT(BI.Info.areBaledOperandsBelow(BI.Inst->getNumOperands()));
   InstMap[BI.Inst] = BI.Info;
 }
 

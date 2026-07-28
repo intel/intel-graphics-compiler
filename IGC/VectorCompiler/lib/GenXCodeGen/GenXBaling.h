@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2023 Intel Corporation
+Copyright (C) 2017-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -240,6 +240,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/ADT/Hashing.h"
 #include "llvm/IR/Dominators.h"
 #include "llvm/Pass.h"
+#include "llvm/Support/MathExtras.h"
 
 #include <string>
 
@@ -283,15 +284,41 @@ struct BaleInfo {
   };
   uint16_t Type;
   uint16_t Bits; // bitmap of which operands are baled in
+
+  // Width of the Bits bitmap, i.e. how many operands baling can track.
+  static constexpr unsigned MaxBaledOperands = 8 * sizeof(uint16_t);
+
   BaleInfo(int Type = MAININST, unsigned Bits = 0) : Type(Type), Bits(Bits) {}
   // isOperandBaled() : read Bits to see if operand is baled
   bool isOperandBaled(unsigned OperandNum) const {
+    if (OperandNum >= MaxBaledOperands)
+      return false; // the bitmap cannot record it, so it is not baled
     return (Bits >> OperandNum) & 1;
   }
   // clearOperandBaled() : clear bit that says that operand is baled
-  void clearOperandBaled(unsigned OperandNum) { Bits &= ~(1 << OperandNum); }
+  void clearOperandBaled(unsigned OperandNum) {
+    if (OperandNum >= MaxBaledOperands)
+      return; // no bit to clear
+    Bits &= ~(1U << OperandNum);
+  }
   // setOperandBaled() : set bit that says that operand is baled
-  void setOperandBaled(unsigned OperandNum) { Bits |= 1 << OperandNum; }
+  //
+  // Returns false if OperandNum is outside the bitmap, in which case nothing
+  // is recorded and the operand stays unbaled.
+  bool setOperandBaled(unsigned OperandNum) {
+    if (OperandNum >= MaxBaledOperands)
+      return false;
+    Bits |= 1U << OperandNum;
+    return true;
+  }
+  // areBaledOperandsBelow() : check the invariant that every operand recorded
+  // as baled has a number below NumOperands.
+  //
+  bool areBaledOperandsBelow(unsigned NumOperands) const {
+    if (!Bits)
+      return true;
+    return llvm::Log2_32(Bits) < NumOperands;
+  }
   // getTypeString : get string for BaleInfo type
   const char *getTypeString() const;
 };

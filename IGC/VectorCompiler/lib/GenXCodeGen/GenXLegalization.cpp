@@ -1644,7 +1644,7 @@ LegalPredSize GenXLegalization::getLegalPredSize(Value *Pred, unsigned StartIdx,
   // or 16.
   LogMax = std::min(LogMax, IGCLLVM::findFirstSet(StartIdx - PP.Offset));
   IGC_ASSERT_EXIT(LogMax < 32);
-  Ret.Max = 1 << LogMax;
+  Ret.Max = 1U << LogMax;
   // If Min>Max, then we're at the end of that part and we don't need to ensure
   // that the next split in the same part is legally aligned.
   Ret.Min = std::min(Ret.Min, Ret.Max);
