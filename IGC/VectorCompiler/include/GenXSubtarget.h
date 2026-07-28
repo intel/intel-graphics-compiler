@@ -82,6 +82,7 @@ private:
   // HasMxfp - True if subtarget supports mxfp* operations
   bool HasMxfp = false;
 
+
   // HasIEEEDivSqrt - True if subtarget supports IEEE-754 div and sqrt
   bool HasIEEEDivSqrt = false;
 
@@ -355,6 +356,7 @@ public:
 
   /// * hasMxfp - true if target supports mxfp* operations
   bool hasMxfp() const { return HasMxfp; }
+
 
   /// * hasIEEEDivSqrt - true if target supports IEEE-754 div and sqrt
   bool hasIEEEDivSqrt() const { return HasIEEEDivSqrt; }

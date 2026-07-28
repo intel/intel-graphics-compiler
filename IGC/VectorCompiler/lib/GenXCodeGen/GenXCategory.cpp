@@ -146,6 +146,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/Intrinsics.h>
 #include <llvm/IR/Metadata.h>
 #include <llvm/Support/Debug.h>
+#include <llvm/Support/MathExtras.h>
 
 #define DEBUG_TYPE "GENX_CATEGORY"
 
@@ -1027,6 +1028,10 @@ GenXCategory::getCategoryAndAlignmentForUse(Value::use_iterator U) const {
         // For any other intrinsic, look up the argument class.
         GenXIntrinsicInfo II(IntrinID);
         auto AI = II.getArgInfo(U->getOperandNo());
+        if (AI.hasDpasSrc2Align())
+          return CategoryAndAlignment(
+              intrinsicCategoryToRegCategory(AI.getCategory()),
+              Log2_32(genx::getDpasSrc2AlignmentBytes(CI, Subtarget)));
         return CategoryAndAlignment(
             intrinsicCategoryToRegCategory(AI.getCategory()),
             getArgLogAlignment(AI, Subtarget ? Subtarget->getGRFByteSize()
