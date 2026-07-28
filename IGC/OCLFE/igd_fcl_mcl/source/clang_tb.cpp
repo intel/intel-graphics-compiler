@@ -1061,6 +1061,10 @@ bool CClangTranslationBlock::TranslateClang(const TranslateClangArgs *pInputArgs
   }
 #endif
 
+  // FIXME: remove this line when downstream apps have fixed this error.
+  // This is workaround for an error on clang 22+, temporarily allow it.
+  optionsEx += " -Wno-error=incompatible-pointer-types";
+
   // SYCL input is compiled without the OpenCL-specific options
   // (extension list, feature/extension macro defines, the custom OpenCL
   // header, etc.), which only apply to OpenCL C source.
