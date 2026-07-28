@@ -62,6 +62,13 @@ endif()
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED TRUE)
 
+# GFX_DEVELOPMENT_DIR shall be provided by UFO build system. Must be set
+# before including bs_dir_names.cmake, which requires it to already be
+# defined (see Tools/bldsys/include/bs_dir_names.cmake).
+if(NOT GFX_DEVELOPMENT_DIR)
+  get_filename_component(GFX_DEVELOPMENT_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../../ ABSOLUTE)
+endif()
+
 # ======================================================================================================
 # ================================================ UTILS ===============================================
 # ======================================================================================================
@@ -200,10 +207,6 @@ unset(_targetArchitecture)
 unset(_hostArchitecture)
 
 
-# GFX_DEVELOPMENT_DIR shall be provided by UFO build system
-if(NOT GFX_DEVELOPMENT_DIR)
-  get_filename_component(GFX_DEVELOPMENT_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../../ ABSOLUTE)
-endif()
 
 find_program(PYTHON_EXECUTABLE NAMES "python3" "python")
 
