@@ -407,7 +407,13 @@ bool SPIRVSupportDocsEmitter::tryFormatAllOfExclusion(const Record *Support, std
     Stem = SE.Stem;
     Expansion = SE.Expansion;
   } else if (classifyPlatformSupport(Base) == PlatformSupportKind::All) {
-    Stem = "All platforms";
+    // No stem to lead with, so list the supported platforms rather than
+    // stating the rule purely as "All platforms except <N platforms>".
+    std::string Supported = Table.stringifyPlatforms(Table.evaluateSupport(Support));
+    if (Supported.empty())
+      return false; // nothing matches; let the caller describe it
+    Tokens.insert(std::move(Supported));
+    return true;
   } else {
     return false; // let caller fall back to generic AND formatting
   }
@@ -603,13 +609,15 @@ std::string SPIRVSupportQueriesEmitter::emitTierColumn(const Record *Support) {
   return flattenPredicate(Support);
 }
 
-// Returns the TD class/def name driving this PlatformSupport record:
-// the def name itself for non-anonymous records (singletons like
-// AllPlatformSupport), or the immediate base class name for anonymous
-// instantiations (e.g. isCoreChildOf<...>).
+// Returns the TD class/def name driving this PlatformSupport record: the def
+// name itself for the singletons (AllPlatformSupport, NotSupported, ...), or
+// the immediate base class name otherwise - which covers both anonymous
+// instantiations (isCoreChildOf<...>) and named defs (def X : AllOf<[...]>).
 static StringRef predicateKind(const Record *R) {
-  if (!R->isAnonymous())
-    return R->getName();
+  StringRef Name = R->getName();
+  if (Name == "AllPlatformSupport" || Name == "NotSupported" || Name == "InheritFromExtension" ||
+      Name == "InheritFromCapabilities")
+    return Name;
 #if LLVM_VERSION_MAJOR >= 22
   // LLVM 22+: returns ArrayRef<pair<const Record *, SMRange>>.
   auto Sups = R->getDirectSuperClasses();

@@ -20,12 +20,18 @@
 # CHECK-NEXT:   supported_capabilities:
 # CHECK-NEXT:     - id: 6033
 # CHECK-NEXT:       name: AtomicFloat32AddEXT
+# CHECK-NEXT:     - id: 6034
+# CHECK-NEXT:       name: AtomicFloat64AddEXT
 #
 # CHECK-NEXT: - name: SPV_EXT_shader_atomic_float_min_max
 # CHECK-NEXT:   spec_url: 'https://github.khronos.org/SPIRV-Registry/extensions/EXT/SPV_EXT_shader_atomic_float_min_max.html'
 # CHECK-NEXT:   supported_capabilities:
+# CHECK-NEXT:     - id: 5616
+# CHECK-NEXT:       name: AtomicFloat16MinMaxEXT
 # CHECK-NEXT:     - id: 5612
 # CHECK-NEXT:       name: AtomicFloat32MinMaxEXT
+# CHECK-NEXT:     - id: 5613
+# CHECK-NEXT:       name: AtomicFloat64MinMaxEXT
 #
 # CHECK-NEXT: - name: SPV_INTEL_2d_block_io
 # CHECK-NEXT:   spec_url: 'https://github.com/KhronosGroup/SPIRV-Registry/blob/main/extensions/INTEL/SPV_INTEL_2d_block_io.asciidoc'

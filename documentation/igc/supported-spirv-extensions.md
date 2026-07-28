@@ -84,7 +84,7 @@ This document lists all SPIR-V extensions supported by IGC and their platform re
 - **AtomicFloat32AddEXT**
   > **Supported On**: All platforms
 - **AtomicFloat64AddEXT**
-  > **Supported On**: METEORLAKE+ (METEORLAKE, ARROWLAKE, BMG, LUNARLAKE, PTL, NVL_XE3G, NVL, CRI)
+  > **Supported On**: PVC, METEORLAKE, ARROWLAKE, BMG, LUNARLAKE, PTL, NVL_XE3G, NVL, CRI
 
 ---
 
@@ -95,11 +95,11 @@ This document lists all SPIR-V extensions supported by IGC and their platform re
 **Capabilities**:
 
 - **AtomicFloat16MinMaxEXT**
-  > **Supported On**: XE3P+ (NVL, CRI)
+  > **Supported On**: All platforms
 - **AtomicFloat32MinMaxEXT**
   > **Supported On**: All platforms
 - **AtomicFloat64MinMaxEXT**
-  > **Supported On**: METEORLAKE+ (METEORLAKE, ARROWLAKE, BMG, LUNARLAKE, PTL, NVL_XE3G, NVL, CRI)
+  > **Supported On**: PVC, METEORLAKE, ARROWLAKE, BMG, LUNARLAKE, PTL, NVL_XE3G, NVL, CRI
 
 ---
 

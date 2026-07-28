@@ -6,7 +6,8 @@
 #
 #============================ end_copyright_notice =============================
 
-# RUN: IGCOCLInterfaceTester spirv_ext --platform mtl | FileCheck %s
+
+# RUN: IGCOCLInterfaceTester spirv_ext --platform nvl | FileCheck %s
 # CHECK:      ---
 #
 # CHECK-NEXT: - name: SPV_EXT_optnone
@@ -14,6 +15,12 @@
 # CHECK-NEXT:   supported_capabilities:
 # CHECK-NEXT:     - id: 6094
 # CHECK-NEXT:       name: OptNoneEXT
+#
+# CHECK-NEXT: - name: SPV_EXT_shader_atomic_float16_add
+# CHECK-NEXT:   spec_url: 'https://github.khronos.org/SPIRV-Registry/extensions/EXT/SPV_EXT_shader_atomic_float16_add.html'
+# CHECK-NEXT:   supported_capabilities:
+# CHECK-NEXT:     - id: 6095
+# CHECK-NEXT:       name: AtomicFloat16AddEXT
 #
 # CHECK-NEXT: - name: SPV_EXT_shader_atomic_float_add
 # CHECK-NEXT:   spec_url: 'https://github.khronos.org/SPIRV-Registry/extensions/EXT/SPV_EXT_shader_atomic_float_add.html'
@@ -32,6 +39,40 @@
 # CHECK-NEXT:       name: AtomicFloat32MinMaxEXT
 # CHECK-NEXT:     - id: 5613
 # CHECK-NEXT:       name: AtomicFloat64MinMaxEXT
+#
+# CHECK-NEXT: - name: SPV_INTEL_2d_block_io
+# CHECK-NEXT:   spec_url: 'https://github.com/KhronosGroup/SPIRV-Registry/blob/main/extensions/INTEL/SPV_INTEL_2d_block_io.asciidoc'
+# CHECK-NEXT:   supported_capabilities:
+# CHECK-NEXT:     - id: 6228
+# CHECK-NEXT:       name: Subgroup2DBlockIOINTEL
+# CHECK-NEXT:     - id: 6229
+# CHECK-NEXT:       name: Subgroup2DBlockTransformINTEL
+# CHECK-NEXT:     - id: 6230
+# CHECK-NEXT:       name: Subgroup2DBlockTransposeINTEL
+#
+# CHECK-NEXT: - name: SPV_INTEL_16bit_atomics
+# CHECK-NEXT:   spec_url: 'https://github.com/intel/llvm/pull/20009'
+# CHECK-NEXT:   supported_capabilities:
+# CHECK-NEXT:     - id: 6260
+# CHECK-NEXT:       name: AtomicInt16CompareExchangeINTEL
+# CHECK-NEXT:     - id: 6262
+# CHECK-NEXT:       name: AtomicBFloat16LoadStoreINTEL
+# CHECK-NEXT:     - id: 6255
+# CHECK-NEXT:       name: AtomicBFloat16AddINTEL
+# CHECK-NEXT:     - id: 6256
+# CHECK-NEXT:       name: AtomicBFloat16MinMaxINTEL
+#
+# CHECK-NEXT: - name: SPV_INTEL_bfloat16_arithmetic
+# CHECK-NEXT:   spec_url: 'https://github.com/intel/llvm/blob/sycl/sycl/doc/design/spirv-extensions/SPV_INTEL_bfloat16_arithmetic.asciidoc'
+# CHECK-NEXT:   supported_capabilities:
+# CHECK-NEXT:     - id: 6226
+# CHECK-NEXT:       name: BFloat16ArithmeticINTEL
+#
+# CHECK-NEXT: - name: SPV_INTEL_bfloat16_conversion
+# CHECK-NEXT:   spec_url: 'https://github.khronos.org/SPIRV-Registry/extensions/INTEL/SPV_INTEL_bfloat16_conversion.html'
+# CHECK-NEXT:   supported_capabilities:
+# CHECK-NEXT:     - id: 6115
+# CHECK-NEXT:       name: BFloat16ConversionINTEL
 #
 # CHECK-NEXT: - name: SPV_INTEL_cache_controls
 # CHECK-NEXT:   spec_url: 'https://github.com/KhronosGroup/SPIRV-Registry/blob/main/extensions/INTEL/SPV_INTEL_cache_controls.asciidoc'
@@ -63,12 +104,6 @@
 # CHECK-NEXT:     - id: 6089
 # CHECK-NEXT:       name: LongCompositesINTEL
 #
-# CHECK-NEXT: - name: SPV_INTEL_media_block_io
-# CHECK-NEXT:   spec_url: 'https://github.khronos.org/SPIRV-Registry/extensions/INTEL/SPV_INTEL_media_block_io.html'
-# CHECK-NEXT:   supported_capabilities:
-# CHECK-NEXT:     - id: 5579
-# CHECK-NEXT:       name: SubgroupImageMediaBlockIOINTEL
-#
 # CHECK-NEXT: - name: SPV_INTEL_predicated_io
 # CHECK-NEXT:   spec_url: 'https://github.khronos.org/SPIRV-Registry/extensions/INTEL/SPV_INTEL_predicated_io.html'
 # CHECK-NEXT:   supported_capabilities:
@@ -87,6 +122,12 @@
 # CHECK-NEXT:     - id: 6220
 # CHECK-NEXT:       name: SubgroupBufferPrefetchINTEL
 #
+# CHECK-NEXT: - name: SPV_INTEL_subgroup_matrix_multiply_accumulate
+# CHECK-NEXT:   spec_url: 'https://github.khronos.org/SPIRV-Registry/extensions/INTEL/SPV_INTEL_subgroup_matrix_multiply_accumulate.html'
+# CHECK-NEXT:   supported_capabilities:
+# CHECK-NEXT:     - id: 6236
+# CHECK-NEXT:       name: SubgroupMatrixMultiplyAccumulateINTEL
+#
 # CHECK-NEXT: - name: SPV_INTEL_subgroups
 # CHECK-NEXT:   spec_url: 'https://github.khronos.org/SPIRV-Registry/extensions/INTEL/SPV_INTEL_subgroups.html'
 # CHECK-NEXT:   supported_capabilities:
@@ -97,11 +138,25 @@
 # CHECK-NEXT:     - id: 5570
 # CHECK-NEXT:       name: SubgroupImageBlockIOINTEL
 #
+# CHECK-NEXT: - name: SPV_INTEL_tensor_float32_conversion
+# CHECK-NEXT:   spec_url: 'https://github.khronos.org/SPIRV-Registry/extensions/INTEL/SPV_INTEL_tensor_float32_conversion.html'
+# CHECK-NEXT:   supported_capabilities:
+# CHECK-NEXT:     - id: 6425
+# CHECK-NEXT:       name: TensorFloat32RoundingINTEL
+#
 # CHECK-NEXT: - name: SPV_INTEL_unstructured_loop_controls
 # CHECK-NEXT:   spec_url: 'https://github.khronos.org/SPIRV-Registry/extensions/INTEL/SPV_INTEL_unstructured_loop_controls.html'
 # CHECK-NEXT:   supported_capabilities:
 # CHECK-NEXT:     - id: 5886
 # CHECK-NEXT:       name: UnstructuredLoopControlsINTEL
+#
+# CHECK-NEXT: - name: SPV_KHR_bfloat16
+# CHECK-NEXT:   spec_url: 'https://github.khronos.org/SPIRV-Registry/extensions/KHR/SPV_KHR_bfloat16.html'
+# CHECK-NEXT:   supported_capabilities:
+# CHECK-NEXT:     - id: 5116
+# CHECK-NEXT:       name: BFloat16TypeKHR
+# CHECK-NEXT:     - id: 5117
+# CHECK-NEXT:       name: BFloat16DotProductKHR
 #
 # CHECK-NEXT: - name: SPV_KHR_bit_instructions
 # CHECK-NEXT:   spec_url: 'https://github.khronos.org/SPIRV-Registry/extensions/KHR/SPV_KHR_bit_instructions.html'

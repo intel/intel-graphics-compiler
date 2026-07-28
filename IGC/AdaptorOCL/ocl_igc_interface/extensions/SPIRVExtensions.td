@@ -50,6 +50,17 @@ def IGFX_XE3P_CORE      : CoreFamily<"IGFX_XE3P_CORE">;
 // Define Platform Groups for common use cases
 def CUSTOM_GROUP : PlatformGroup<[IGFX_DG2, IGFX_PVC]>;
 
+// Platforms with FP64 HW support. Mirrors Platform::hasNoFP64Inst().
+def AllPlatformsWithFP64Support : AllOf<[AllPlatformSupport,
+                                         Not<ExactPlatform<IGFX_TIGERLAKE_LP>>,
+                                         Not<ExactPlatform<IGFX_DG1>>,
+                                         Not<ExactPlatform<IGFX_ROCKETLAKE>>,
+                                         Not<ExactPlatform<IGFX_ALDERLAKE_S>>,
+                                         Not<ExactPlatform<IGFX_ALDERLAKE_P>>,
+                                         Not<ExactPlatform<IGFX_ALDERLAKE_N>>,
+                                         Not<ExactPlatform<IGFX_XE_HP_SDV>>,
+                                         Not<ExactPlatform<IGFX_DG2>>]>;
+
 // NOTE: The list of extensions below is INCOMPLETE and will be expanded
 // incrementally in future commits. Current entries may have provisional or
 // incorrect PlatformSupport assignments; they are included now to demonstrate
@@ -325,7 +336,7 @@ def SPV_INTEL_tensor_float32_conversion : Extension<
 def SPV_EXT_shader_atomic_float_add : Extension<
   "SPV_EXT_shader_atomic_float_add",
   [ Capability<"AtomicFloat32AddEXT", AllPlatformSupport>,
-    Capability<"AtomicFloat64AddEXT", isProductChildOf<IGFX_METEORLAKE>> ],
+    Capability<"AtomicFloat64AddEXT", AllPlatformsWithFP64Support> ],
   "https://github.khronos.org/SPIRV-Registry/extensions/EXT/SPV_EXT_shader_atomic_float_add.html",
   InheritFromCapabilities
 >;
@@ -397,9 +408,9 @@ def SPV_EXT_shader_atomic_float16_add : Extension<
 
 def SPV_EXT_shader_atomic_float_min_max : Extension<
   "SPV_EXT_shader_atomic_float_min_max",
-  [ Capability<"AtomicFloat16MinMaxEXT", isCoreChildOf<IGFX_XE3P_CORE>>,
+  [ Capability<"AtomicFloat16MinMaxEXT", AllPlatformSupport>,
     Capability<"AtomicFloat32MinMaxEXT", AllPlatformSupport>,
-    Capability<"AtomicFloat64MinMaxEXT", isProductChildOf<IGFX_METEORLAKE>> ],
+    Capability<"AtomicFloat64MinMaxEXT", AllPlatformsWithFP64Support> ],
   "https://github.khronos.org/SPIRV-Registry/extensions/EXT/SPV_EXT_shader_atomic_float_min_max.html",
   InheritFromCapabilities
 >;
