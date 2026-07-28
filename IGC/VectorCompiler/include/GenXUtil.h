@@ -640,6 +640,20 @@ VISA_Align getVISA_Align(unsigned LogAlignment, unsigned GRFWidth);
 // chooses suitable log alignment which is convertible to VISA_Align.
 unsigned ceilLogAlignment(unsigned LogAlignment, unsigned GRFWidth);
 
+// getDpasSrc2AlignmentBytes : required Src2 base-decl/offset alignment (in
+// bytes) for a genx_dpas/genx_dpasw/genx_dpas2/genx_dpas_nosrc0/
+// genx_dpasw_nosrc0 call, computed from the actual Src1Precision,
+// Src2Precision and SystolicDepth immediates at this particular call site.
+// The result is always one of {8, 16, 32}. This mirrors the vISA verifier's
+// src2Align formula (see verifyInstructionDpas in IsaVerification.cpp):
+//   src2Align = SystolicDepth * OpsPerChannel(Src1, Src2) *
+//               PrecisionSizeInBits(Src2Precision) / 8
+// CI is expected to be a call to one of the intrinsics above; all of their
+// Src1Precision/Src2Precision/SystolicDepth operands are compile-time
+// constants.
+unsigned getDpasSrc2AlignmentBytes(const CallInst *CI,
+                                   const GenXSubtarget *ST = nullptr);
+
 // Checks whether provided wrpredregion intrinsic can be encoded
 // as legal SETP instruction.
 bool isWrPredRegionLegalSetP(const CallInst &WrPredRegion);

@@ -37,6 +37,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/InitializePasses.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/Debug.h"
+#include "llvm/Support/MathExtras.h"
 #include "llvm/Transforms/Utils/Local.h"
 
 #include "llvmWrapper/Analysis/InstructionSimplify.h"
@@ -254,8 +255,8 @@ void GenXBaling::processInst(Instruction *Inst) {
  * we may have illegal standalone read-region.
  */
 bool GenXBaling::isRegionOKForIntrinsic(unsigned ArgInfoBits,
-                                        const vc::Region &R,
-                                        bool CanSplitBale) {
+                                        const vc::Region &R, bool CanSplitBale,
+                                        const Instruction *Inst) {
   GenXIntrinsicInfo::ArgInfo AI(ArgInfoBits);
   if (!AI.isGeneral())
     return false;
@@ -266,12 +267,16 @@ bool GenXBaling::isRegionOKForIntrinsic(unsigned ArgInfoBits,
   if (R.Indirect && (AI.isDirectOnly()))
     return false;
   unsigned Restriction = AI.getRestriction();
-  if (!Restriction)
-    return true;
 
   const unsigned GRFWidth = ST ? ST->getGRFByteSize() : defaultGRFByteSize;
-  const auto Align = AI.getAlignment();
-  const auto Log2Align = getLogAlignment(Align, GRFWidth * ByteBits);
+  unsigned Log2Align = 0;
+  if (AI.hasDpasSrc2Align() && Inst) {
+    auto *CI = cast<CallInst>(Inst);
+    Log2Align = Log2_32(genx::getDpasSrc2AlignmentBytes(CI, ST));
+  } else if (Restriction) {
+    const auto Align = AI.getAlignment();
+    Log2Align = getLogAlignment(Align, GRFWidth * ByteBits);
+  }
 
   if (Log2Align > 0) {
     IGC_ASSERT_EXIT(Log2Align < 32);
@@ -544,7 +549,7 @@ bool GenXBaling::operandCanBeBaled(
     // intrinsic, since in that case AI is initialized to a state
     // where there are no region restrictions.)
     Region RdR = makeRegionFromBaleInfo(Opnd, BaleInfo());
-    if (!isRegionOKForIntrinsic(AI.Info, RdR, canSplitBale(Inst)) ||
+    if (!isRegionOKForIntrinsic(AI.Info, RdR, canSplitBale(Inst), Inst) ||
         !genx::isSafeToSink_CheckAVLoadKill(Opnd, Inst, this))
       return false;
 

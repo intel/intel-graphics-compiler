@@ -525,7 +525,8 @@ private:
                          unsigned ArgInfoBits);
 
   bool isRegionOKForIntrinsic(unsigned ArgInfoBits, const vc::Region &R,
-                              bool CanSplitBale);
+                              bool CanSplitBale,
+                              const Instruction *Inst = nullptr);
   bool isSafeToMove(Instruction *Op, Instruction *From, Instruction *To);
 
   // Cleanup and optimization before do baling on a function.
