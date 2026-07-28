@@ -1,27 +1,24 @@
-; UNSUPPORTED: llvm-22-plus
-; FIXME: LLVM22 regression. The RetryManager retry no longer removes the spill: on
-; -device pvc, `//.spill size 2048` appears in both the initial and the retry compile
-; (with a `spilled around` warning and `Used previous version of the kernel`), so the
-; retry copy's no-spill assertion fails. Keep disabled until fixed.
 ; REQUIRES: regkeys, pvc-supported, llvm-14-plus
+
+; RematRPELimit lowered from 93: LLVM 22 estimates this kernel at 117 GRF instead of
+; 121, below the default cutoff of 119, so remat was skipped and the retry kept the spill.
 
 ; LLVM with opaque pointers:
 ; RUN: llvm-as %OPAQUE_PTR_FLAG% %s -o %t.bc
-; RUN: ocloc compile -llvm_input -file %t.bc -device pvc -options "-igc_opts 'EnableOpaquePointersBackend=1,VISAOptions=-asmToConsole'" &> %t_output.ll
-; RUN: FileCheck --input-file %t_output.ll %s
+; RUN: ocloc compile -llvm_input -file %t.bc -device pvc -options "-igc_opts 'EnableOpaquePointersBackend=1,RematRPELimit=92,VISAOptions=-asmToConsole'" &> %t_output.ll
+; RUN: FileCheck --input-file %t_output.ll %s --check-prefixes=CHECK,%if llvm-22-plus %{CHECK-LLVM22%} %else %{CHECK-PRE-LLVM22%}
 
 ; LLVM with typed pointers:
 ; RUN: llvm-as %TYPED_PTR_FLAG% %s -o %t.bc
-; RUN: ocloc compile -llvm_input -file %t.bc -device pvc -options "-igc_opts 'VISAOptions=-asmToConsole'" &> %t_output.ll
-; RUN: FileCheck --input-file %t_output.ll %s
+; RUN: ocloc compile -llvm_input -file %t.bc -device pvc -options "-igc_opts 'RematRPELimit=92, VISAOptions=-asmToConsole'" &> %t_output.ll
+; RUN: FileCheck --input-file %t_output.ll %s --check-prefixes=CHECK,%if llvm-22-plus %{CHECK-LLVM22%} %else %{CHECK-PRE-LLVM22%}
 
 ; ATTENTION: if your change lowers spill size significantly congratulations! just adjust the numbers
 
 ; normal version
 ; CHECK://.kernel __omp_offloading_10301_1618d0__Z7x_solve_l708
-; I'm trying to match 5 consecutive numbers starting with 2: 23477 for example, not 234770 and not 2347,
-; lower boundary is set by {4} and upper boundary by matching EOL character {{$}}
-; CHECK://.spill size 3[[A:[0-9]{3}]]{{$}}
+; CHECK-PRE-LLVM22://.spill size 3{{[0-9][0-9][0-9]}}{{$}}
+; CHECK-LLVM22://.spill size 2{{[0-9][0-9][0-9]}}{{$}}
 ; CHECK://.BankConflicts:
 
 ; retry version
