@@ -2206,6 +2206,8 @@ unsigned genx::getLogAlignment(VISA_Align Align, unsigned GRFWidth) {
     return Log2_32(QWordBytes);
   case ALIGN_OWORD:
     return Log2_32(OWordBytes);
+  case ALIGN_HWORD:
+    return Log2_32(HWordBytes);
   case ALIGN_GRF:
     return Log2_32(GRFWidth);
   case ALIGN_2_GRF:
@@ -2233,6 +2235,11 @@ VISA_Align genx::getVISA_Align(unsigned LogAlignment, unsigned GRFWidth) {
     if (LogAlignment == Log2_32(GRFWidth) + 1)
       return ALIGN_2_GRF;
   }
+  // Checked after GRF/2_GRF above: on subtargets with a 32-byte GRF, HWord
+  // and GRF alignment coincide numerically, and ALIGN_GRF should win since
+  // it is target-dependent.
+  if (LogAlignment == Log2_32(HWordBytes))
+    return ALIGN_HWORD;
   report_fatal_error("Unknown log alignment");
 }
 
@@ -2247,6 +2254,13 @@ unsigned genx::ceilLogAlignment(unsigned LogAlignment, unsigned GRFWidth) {
     return Log2_32(QWordBytes);
   if (LogAlignment <= Log2_32(OWordBytes))
     return Log2_32(OWordBytes);
+  // Checked before GRF: this must be the smallest tier that is still >=
+  // LogAlignment, and HWord (32 bytes) is smaller than a typical 64-byte
+  // GRF. On subtargets with a 32-byte GRF this ties with the GRF tier below,
+  // which is fine since this function returns a plain log-byte-count, not
+  // a VISA_Align enum (no GRF-vs-HWord ambiguity here).
+  if (LogAlignment <= Log2_32(HWordBytes))
+    return Log2_32(HWordBytes);
   if (GRFWidth > 0) {
     if (LogAlignment <= Log2_32(GRFWidth))
       return Log2_32(GRFWidth);
@@ -2254,6 +2268,89 @@ unsigned genx::ceilLogAlignment(unsigned LogAlignment, unsigned GRFWidth) {
       return Log2_32(GRFWidth) + 1;
   }
   report_fatal_error("Unknown log alignment");
+}
+
+// getDpasPrecisionBits : bit width of a GenPrecision-encoded dpas operand
+// precision.
+static unsigned getDpasPrecisionBits(unsigned Precision) {
+  switch (static_cast<GenPrecision>(Precision)) {
+  case GenPrecision::U1:
+  case GenPrecision::S1:
+    return 1;
+  case GenPrecision::U2:
+  case GenPrecision::S2:
+    return 2;
+  case GenPrecision::U4:
+  case GenPrecision::S4:
+    return 4;
+  case GenPrecision::U8:
+  case GenPrecision::S8:
+  case GenPrecision::BF8:
+  case GenPrecision::HF8:
+    return 8;
+  case GenPrecision::BF16:
+  case GenPrecision::FP16:
+    return 16;
+  case GenPrecision::TF32:
+    return 32;
+  case GenPrecision::E2M1:
+    return 4;
+  default:
+    return 8;
+  }
+}
+
+// getDpasOpsPerChannel : mirrors G4_InstDpas::getOpsPerChan() /
+// verifyInstructionDpas's getDpasOpsPerChan lambda (IsaVerification.cpp),
+// expressed in terms of the Src1/Src2 precision bit widths.
+static unsigned getDpasOpsPerChannel(unsigned Src1Bits, unsigned Src2Bits,
+                                     const GenXSubtarget *ST) {
+  if (Src1Bits == 32)
+    return 1;
+  if (Src1Bits == 16)
+    return 2;
+  if (Src1Bits == 8 || Src2Bits == 8)
+    return 4;
+  return 8;
+}
+
+unsigned genx::getDpasSrc2AlignmentBytes(const CallInst *CI,
+                                         const GenXSubtarget *ST) {
+  unsigned IID = GenXIntrinsic::getGenXIntrinsicID(CI);
+  unsigned Src1Precision = 0;
+  unsigned Src2Precision = 0;
+  unsigned SystolicDepth = 0;
+  auto GetPacked = [CI](unsigned ArgIdx, unsigned &Src1P, unsigned &Src2P,
+                        unsigned &Depth) {
+    uint64_t Packed =
+        cast<ConstantInt>(CI->getArgOperand(ArgIdx))->getZExtValue();
+    Src1P = Packed & 0xff;
+    Src2P = (Packed >> 8) & 0xff;
+    Depth = (Packed >> 16) & 0xff;
+  };
+  switch (IID) {
+  case GenXIntrinsic::genx_dpas:
+  case GenXIntrinsic::genx_dpasw:
+    GetPacked(3, Src1Precision, Src2Precision, SystolicDepth);
+    break;
+  case GenXIntrinsic::genx_dpas_nosrc0:
+  case GenXIntrinsic::genx_dpasw_nosrc0:
+    GetPacked(2, Src1Precision, Src2Precision, SystolicDepth);
+    break;
+  case GenXIntrinsic::genx_dpas2:
+    Src1Precision = cast<ConstantInt>(CI->getArgOperand(3))->getZExtValue();
+    Src2Precision = cast<ConstantInt>(CI->getArgOperand(4))->getZExtValue();
+    SystolicDepth = cast<ConstantInt>(CI->getArgOperand(5))->getZExtValue();
+    break;
+  default:
+    IGC_ASSERT_EXIT_MESSAGE(0, "not a dpas-family intrinsic");
+  }
+  unsigned Src1Bits = getDpasPrecisionBits(Src1Precision);
+  unsigned Src2Bits = getDpasPrecisionBits(Src2Precision);
+  unsigned OpsPerChannel = getDpasOpsPerChannel(Src1Bits, Src2Bits, ST);
+  unsigned AlignBits = SystolicDepth * OpsPerChannel * Src2Bits;
+  IGC_ASSERT(AlignBits % 8 == 0);
+  return AlignBits / 8;
 }
 
 bool genx::isWrPredRegionLegalSetP(const CallInst &WrPredRegion) {

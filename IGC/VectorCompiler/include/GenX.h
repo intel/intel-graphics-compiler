@@ -182,6 +182,10 @@ constexpr unsigned WordBytes = WordBits / ByteBits;
 constexpr unsigned DWordBytes = DWordBits / ByteBits;
 constexpr unsigned QWordBytes = QWordBits / ByteBits;
 constexpr unsigned OWordBytes = OWordBits / ByteBits;
+// HWord (half-oword-of-owords, i.e. 32 bytes) matches VISA_Align::ALIGN_HWORD;
+// unlike Byte/Word/DWord/QWord/OWord above it has no vc:: counterpart yet.
+constexpr unsigned HWordBits = 256;
+constexpr unsigned HWordBytes = HWordBits / ByteBits;
 
 constexpr unsigned SurfaceElementBytes = 4;
 constexpr unsigned SamplerElementBytes = 4;
