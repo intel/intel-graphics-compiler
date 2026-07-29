@@ -2059,8 +2059,6 @@ DECLARE_IGC_REGKEY_ENUM(RTConstantBufferCacheCtrl, 0, "Constant Buffer Load Cach
 DECLARE_IGC_REGKEY(
     bool, ForceGenMemDefaultCacheCtrl, false,
     "If enabled, no message specific cache ctrls are set on memory outside of RTStack, SWStack, and SWHotZone", true)
-DECLARE_IGC_REGKEY(bool, DisableDynamicPrintfFormatStringAbort, false,
-                   "TEMPORARY: set to 1 to skip the abort on the inline dynamic printf format-string path.", true)
 DECLARE_IGC_REGKEY(bool, DisableRayQueryReturnOptimization, false, "RayQuery Return Optimization", true)
 DECLARE_IGC_REGKEY(bool, DisableRayQueryReturnOptimizationPackedStatus, false,
                    "RayQuery Return Optimization - Packed Status Return", true)

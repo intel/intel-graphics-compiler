@@ -25,10 +25,7 @@ SPDX-License-Identifier: MIT
 #include "llvmWrapper/IR/Constants.h"
 #include "ShaderTypesEnum.h"
 #include "Probe/Assertion.h"
-#include "common/igc_regkeys.hpp"
 #include <climits>
-#include <cstdio>
-#include <cstdlib>
 
 using namespace llvm;
 using namespace IGC;
@@ -824,14 +821,6 @@ SmallVector<GlobalVariable *, 2> OpenCLPrintfResolution::appendPrintfFormatArg(C
   // (SPV_EXT_relaxed_printf_string_address_space); other APIs are always static.
   bool isDynamicFormatString = argType->isPointerTy() && argDataType != IGC::SHADER_PRINTF_STRING_LITERAL;
   if (isOCL && isDynamicFormatString) {
-    // TEMPORARY GUARD: abort() to confirm that no compile-time known
-    // format string goes through dynamic resolution here instead of the more efficient
-    // stringGlobals path. Tests exercising the dynamic path set the regkey to opt out.
-    if (!IGC_IS_FLAG_ENABLED(DisableDynamicPrintfFormatStringAbort)) {
-      fprintf(stderr, "IGC printf guard: unexpected dynamic format string path taken; "
-                      "constant-format cases must resolve via stringGlobals. Aborting.\n");
-      abort();
-    }
     addArgDescriptor(arg, IGC::SHADER_PRINTF_STRING_LITERAL, argType, /*inlineFmtString=*/true);
   } else {
     arg = lowerPrintfArgToBufferValue(printfCall, arg, argDataType, stringGlobals);
