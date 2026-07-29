@@ -1662,6 +1662,19 @@ void vISAVerifier::verifyInstructionDpas(const CISA_INST *inst, unsigned i) {
     return GenPrecisionTable[(int)P].BitSize;
   };
 
+  // Return input_info_t if var_info_t base is input; nullptr otherwise.
+  auto getKernelInputDecl = [&](const var_info_t *base) {
+    for (unsigned idx = 0; idx < header->getInputCount(); ++idx) {
+      const input_info_t *in = header->getInput(idx);
+      if (in->getInputClass() == INPUT_GENERAL &&
+          in->index >= numPreDefinedVars &&
+          header->getVar(in->index - numPreDefinedVars) == base) {
+        return in;
+      }
+    }
+    return (const input_info_t *)nullptr;
+  };
+
   // Common dst/src0/src1/src2 alignment check: the operand's base declare
   // must itself be aligned at least as strictly as required, and the
   // operand's offset within that base must also be a multiple of it. Skipped
@@ -1672,6 +1685,11 @@ void vISAVerifier::verifyInstructionDpas(const CISA_INST *inst, unsigned i) {
     if (!base)
       return;
     unsigned baseAlignBytes = getAlignInBytes(base->getAlignment(), grfSize);
+    if (const input_info_t *iit = getKernelInputDecl(base)) {
+      // For input decl, check the alignment using its offset
+      baseAlignBytes = iit->offset;
+    }
+
     bool isBaseAligned = (baseAlignBytes % align) == 0;
     bool isAligned = isBaseAligned && (offset % align) == 0;
     if (align == grfSize) {
