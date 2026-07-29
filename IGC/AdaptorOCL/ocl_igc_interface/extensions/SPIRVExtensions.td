@@ -296,6 +296,14 @@ def SPV_KHR_subgroup_rotate : ExperimentalExtension<
   "https://github.khronos.org/SPIRV-Registry/extensions/KHR/SPV_KHR_subgroup_rotate.html"
 >;
 
+// Platforms without native bfloat16 conversion HW (pre-XE_HPG cores and
+// METEORLAKE) emulate the conversions in the BiF.
+def SPV_INTEL_bfloat16_conversion : Extension<
+  "SPV_INTEL_bfloat16_conversion",
+  [ Capability<"BFloat16ConversionINTEL"> ],
+  "https://github.khronos.org/SPIRV-Registry/extensions/INTEL/SPV_INTEL_bfloat16_conversion.html"
+>;
+
 // ---------------------------------------------
 
 // --- Extensions not supported on all platforms ---
@@ -429,23 +437,6 @@ def SPV_INTEL_bfloat16_arithmetic_experimental : ExperimentalExtension<
   // older platforms (XE_HPG_CORE and newer, excluding METEORLAKE) to maintain compatibility with existing LIT tests
   // for PVC and DG2. We may consider promoting those platforms to full support in the future.
   AllOf<[isCoreChildOf<IGFX_XE_HPG_CORE>, Not<ExactPlatform<IGFX_METEORLAKE>>]>
->;
-
-def SPV_INTEL_bfloat16_conversion : Extension<
-  "SPV_INTEL_bfloat16_conversion",
-  [ Capability<"BFloat16ConversionINTEL"> ],
-  "https://github.khronos.org/SPIRV-Registry/extensions/INTEL/SPV_INTEL_bfloat16_conversion.html",
-  AllOf<[isCoreChildOf<IGFX_XE_HPG_CORE>, Not<ExactPlatform<IGFX_METEORLAKE>>]>
->;
-
-def SPV_INTEL_bfloat16_conversion_experimental : ExperimentalExtension<
-  "SPV_INTEL_bfloat16_conversion",
-  [ Capability<"BFloat16ConversionINTEL"> ],
-  "https://github.khronos.org/SPIRV-Registry/extensions/INTEL/SPV_INTEL_bfloat16_conversion.html",
-  // Platforms without native bfloat16 conversion HW (pre-XE_HPG cores and
-  // METEORLAKE) emulate the conversions in the BiF. This is the exact complement
-  // of the production set above, matching CPlatform::hasBF16Conversion().
-  AnyOf<[Not<isCoreChildOf<IGFX_XE_HPG_CORE>>, ExactPlatform<IGFX_METEORLAKE>]>
 >;
 
 def SPV_INTEL_int4 : ExperimentalExtension<

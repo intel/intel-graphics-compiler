@@ -166,9 +166,7 @@ This document lists all SPIR-V extensions supported by IGC and their platform re
 
 **Specification**: https://github.khronos.org/SPIRV-Registry/extensions/INTEL/SPV_INTEL_bfloat16_conversion.html
 
-> **Supported on**: XE_HPG+ except METEORLAKE (DG2, PVC, ARROWLAKE, BMG, LUNARLAKE, PTL, NVL_XE3G, NVL, CRI)
-
-> **Additionally experimentally supported on**: TIGERLAKE_LP, ROCKETLAKE, ALDERLAKE_S, ALDERLAKE_P, ALDERLAKE_N, DG1, XE_HP_SDV, METEORLAKE
+> **Supported on**: All platforms
 
 **Capabilities**:
 
