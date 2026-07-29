@@ -833,6 +833,10 @@ void CustomSafeOptPass::visitUDiv(BinaryOperator &I) {
     return;
   }
 
+  // ConstantData don't have users, nothing to do.
+  if (isa<ConstantData>(I.getOperand(0)))
+    return;
+
   // Can try hoisting UDiv to common ancestor to speculatively execute if enabled
   SmallVector<Instruction *> ToReplace;
   for (auto u : I.getOperand(0)->users()) {
@@ -863,6 +867,9 @@ void CustomSafeOptPass::visitUDiv(BinaryOperator &I) {
 }
 
 void CustomSafeOptPass::visitURem(BinaryOperator &I) {
+  if (isa<ConstantData>(I.getOperand(0)))
+    return;
+
   // Can try hoisting URem to common ancestor to speculatively execute if enabled
   DenseSet<BasicBlock *> ExistingUDivAvailable;
   SmallVector<Instruction *> MatchingURems;

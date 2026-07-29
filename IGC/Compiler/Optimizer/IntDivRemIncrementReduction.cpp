@@ -510,6 +510,10 @@ Instruction *IntDivRemIncrementReductionImpl::getRemForDiv(Instruction *div) {
   IGC_ASSERT(div);
   // Find corresponding urem for a udiv instruction
   // Just return the first one, multiple urem with same dividend/divisor should have been CSE'ed away
+
+  // ConstantData doesn't have uses, nothing to do.
+  if (isa<ConstantData>(div->getOperand(0)))
+    return nullptr;
   for (auto *user : div->getOperand(0)->users()) {
     if (auto *inst = dyn_cast<Instruction>(user)) {
       if (inst->getParent() != div->getParent())
