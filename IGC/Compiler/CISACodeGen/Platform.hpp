@@ -22,6 +22,8 @@ SPDX-License-Identifier: MIT
 #include "iStdLib/utility.h"
 #include "visa_igc_common_header.h"
 
+#include <initializer_list>
+
 namespace IGC {
 
 class CPlatform {
@@ -936,6 +938,51 @@ public:
   }
 
   uint32_t getMinNumGRF() const { return supportsVRT() ? 32 : 128; }
+
+  llvm::SmallVector<uint32_t, 16> getSupportedGRFSizes() const {
+    llvm::SmallVector<uint32_t, 16> list;
+
+    if (!supportsStaticRegSharing()) {
+      // Pre-XeHP: a single, fixed configuration.
+      list.push_back(128);
+      return list;
+    }
+
+    if (!supportsVRT()) {
+      // XeHP..Xe2: static register sharing with two configurations.
+      list.push_back(128);
+      list.push_back(256);
+      return list;
+    }
+
+    // Xe3+: variable register targeting.
+    for (uint32_t numGRF : {32, 64, 96, 128, 160, 192, 256})
+      list.push_back(numGRF);
+
+    bool has320And448 = supports320And448GRFWithoutSendg();
+    if (has320And448) {
+      list.push_back(320);
+      list.push_back(448);
+    }
+
+    if (supports512GRFPerThread())
+      list.push_back(512);
+
+    return list;
+  }
+
+  uint32_t legalizeNumGRF(uint32_t numGRF) const {
+    if (numGRF == 0)
+      return 0;
+
+    auto supported = getSupportedGRFSizes();
+    uint32_t legalized = supported.front();
+    for (uint32_t candidate : supported) {
+      if (numGRF >= candidate && candidate > legalized)
+        legalized = candidate;
+    }
+    return legalized;
+  }
 
   uint32_t getInlineDataSize() const {
     if (!supportInlineData())
