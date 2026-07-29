@@ -1183,9 +1183,6 @@ CREATE_PRIVATE uint32_t _getSyncStackID_Xe3p() {
 }
 
 CREATE_PRIVATE uint32_t _getSyncStackID_Xe3pEff64() {
-  // SyncStackID = (EUID[2:0] * maxThreadsPerEU * maxSIMDSize) +
-  //               (ThreadID[3:0] *maxSIMDSize) +
-  //                SIMDLaneID[3:0]; // Xe3pv2
   auto sr0 = [](uint32_t Start, uint32_t End) { return emitStateRegID(Start, End); };
 
   uint32_t EUID = sr0(4, 6);

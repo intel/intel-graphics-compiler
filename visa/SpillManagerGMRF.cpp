@@ -5945,8 +5945,6 @@ void GlobalRA::expandSpillFillIntrinsicsXE3P(unsigned int spillSizeInBytes) {
   //           for the spill header; this suffices all spill locations
   //           within [0..256k]; addresses outside of this range will insert
   //           extra emulation
-  //  Xe3p.v2: we can use the null register with :1 to generate 0's
-  //           "src0 null means zero"
   vASSERT(builder.isEfficient64bEnabled());
 
   auto globalScratchOffset =
