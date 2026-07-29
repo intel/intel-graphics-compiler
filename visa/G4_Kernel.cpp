@@ -2339,15 +2339,21 @@ unsigned GRFMode::getSpillThreshold(unsigned mode) const {
   if (platform < Xe_PVC)
     return 0;
 
-  // PVC through Xe3 support the spill threshold only for GRF >= 128 (their
-  // smallest GRF-selection config), unless there is an adjusted RPE bonus from
-  // per-BB heuristics (sampler-heavy/cold BBs) or a dyanmic spill budget.
-  if (platform <= Xe3 && numGRF < 128 &&
+  if (platform <= Xe2 && numGRF < 128)
+    return 0;
+
+  // Xe3 floors at 128 because of the regression in HSD-18043576923, even though
+  // 96 is still a full-occupancy config there.
+  // Two opt-in heuristics may lower that floor to 96 for perf experiments:
+  //   spillThresholdBonusInGRFs -- adjusted RPE bonus (-adjustedrpe)
+  //   dynamicSpillThreshold     -- dynamic budget (vISA_DynamicSpillThreshold)
+  // Neither may go below 96; the next check enforces that.
+  if (platform == Xe3 && numGRF < 128 &&
       spillThresholdBonusInGRFs == 0 && dynamicSpillThreshold == 0)
     return 0;
 
   // Platforms after Xe3 support spilling only if GRF >= 96
-  if (platform > Xe3 && numGRF < 96)
+  if (platform >= Xe3 && numGRF < 96)
     return 0;
 
   // Special case: 256 GRF with specific spill option
