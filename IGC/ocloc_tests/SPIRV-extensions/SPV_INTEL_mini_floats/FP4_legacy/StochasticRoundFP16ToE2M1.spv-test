@@ -6,7 +6,6 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; UNSUPPORTED: true
 ; REQUIRES: cri-supported
 ; RUN: cp %S/StochasticRoundFP16ToE2M1.spv %t.spv
 ; RUN: ocloc compile -spirv_input -file %t.spv -device cri -options "-igc_opts 'ForceOCLSIMDWidth=32,DumpVISAASMToConsole=1,AddVISADumpDeclarationsToEnd=1'" | FileCheck %s
