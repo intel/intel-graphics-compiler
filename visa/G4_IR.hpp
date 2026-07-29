@@ -1534,6 +1534,8 @@ public:
       : G4_INST(builder, prd, op, conMod, sat, execSize, dst, src0, src1, opt),
         shflOp(shflOp) {}
 
+  G4_INST *cloneInst(const IR_Builder *b = nullptr) override;
+
   G4_ShflOp getShflFCtrl() const { return shflOp; }
 
 private:
@@ -1548,6 +1550,8 @@ public:
       : G4_INST(builder, prd, G4_lfsr, nullptr, g4::NOSAT, execSize, dst, src0,
                 src1, opt),
         funcCtrl(fCtrl) {}
+
+  G4_INST *cloneInst(const IR_Builder *b = nullptr) override;
 
   LFSR_FC getLfsrFCtrl() const { return funcCtrl; }
 
@@ -1564,6 +1568,8 @@ public:
       : G4_INST(builder, prd, G4_dnscl, nullptr, g4::NOSAT, execSize, dst, src0,
                 src1, src2, opt),
         type(t), mode(m), rndMode(rm) {}
+
+  G4_INST *cloneInst(const IR_Builder *b = nullptr) override;
 
   DNSCL_CONVERT_TYPE getDnsclConvertType() const { return type; }
   DNSCL_MODE getDnsclMode() const { return mode; }

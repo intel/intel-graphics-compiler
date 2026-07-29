@@ -8456,6 +8456,46 @@ G4_INST *G4_InstDpas::cloneInst(const IR_Builder *b) {
       getRepeatCount(), false, pred);
 }
 
+G4_INST *G4_InstShfl::cloneInst(const IR_Builder *b) {
+  if (!b)
+    b = &builder;
+  auto nonConstBuilder = const_cast<IR_Builder *>(b);
+  auto prd = nonConstBuilder->duplicateOperand(getPredicate());
+  auto dst = nonConstBuilder->duplicateOperand(getDst());
+  auto src0 = nonConstBuilder->duplicateOperand(getSrc(0));
+  auto src1 = nonConstBuilder->duplicateOperand(getSrc(1));
+  return nonConstBuilder->createShflInst(prd, getSaturate(), getExecSize(),
+                                         dst, src0, src1, getShflFCtrl(),
+                                         option, false);
+}
+
+G4_INST *G4_InstDnscl::cloneInst(const IR_Builder *b) {
+  if (!b)
+    b = &builder;
+  auto nonConstBuilder = const_cast<IR_Builder *>(b);
+  auto prd = nonConstBuilder->duplicateOperand(getPredicate());
+  auto dst = nonConstBuilder->duplicateOperand(getDst());
+  auto src0 = nonConstBuilder->duplicateOperand(getSrc(0));
+  auto src1 = nonConstBuilder->duplicateOperand(getSrc(1));
+  auto src2 = nonConstBuilder->duplicateOperand(getSrc(2));
+  return nonConstBuilder->createDnsclInst(prd, getExecSize(), dst, src0, src1,
+                                          src2, getDnsclConvertType(),
+                                          getDnsclMode(), getDnsclRoundMode(),
+                                          option, false);
+}
+
+G4_INST *G4_InstLfsr::cloneInst(const IR_Builder *b) {
+  if (!b)
+    b = &builder;
+  auto nonConstBuilder = const_cast<IR_Builder *>(b);
+  auto prd = nonConstBuilder->duplicateOperand(getPredicate());
+  auto dst = nonConstBuilder->duplicateOperand(getDst());
+  auto src0 = nonConstBuilder->duplicateOperand(getSrc(0));
+  auto src1 = nonConstBuilder->duplicateOperand(getSrc(1));
+  return nonConstBuilder->createLfsrInst(prd, getExecSize(), dst, src0, src1,
+                                         getLfsrFCtrl(), option, false);
+}
+
 bool G4_InstDpas::isInt() const {
   // Check Src1 is enough.
   switch (Src1Precision) {
