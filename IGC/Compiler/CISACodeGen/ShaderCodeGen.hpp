@@ -493,7 +493,10 @@ public:
         } else if (bufType == UAV) {
           m_State.m_uavLoaded |= QWBIT(typeBti);
         } else if (bufType == RENDER_TARGET) {
-          m_State.m_renderTargetLoaded |= BIT(typeBti);
+          constexpr uint32_t numRenderTargetBits = sizeof(m_State.m_renderTargetLoaded) * 8;
+          if (typeBti < numRenderTargetBits) {
+            m_State.m_renderTargetLoaded |= BIT(typeBti);
+          }
         }
       } else {
         // Indirect addressing, set the maximum BTI.
