@@ -5534,6 +5534,15 @@ void HWConformity::avoidInstDstSrcOverlap(INST_LIST_ITER it, G4_BB *bb,
       newDst->setAccRegSel(accSel);
       inst->setDest(newDst);
 
+      // The copy has the same type on both ends, so a BF dst gives a pure BF
+      // mov, which HW does not support. fixBFMove() already ran, so lower it
+      // to a uw copy here.
+      auto movIt = std::next(it);
+      if (!builder.supportPureBF() &&
+          (*movIt)->getDst()->getType() == Type_BF) {
+        fixBFMove(movIt, bb);
+      }
+
       // After inserting temp to avoid dst/src overlapping, need to check
       // additional region rules to ensure both the new instruction and the
       // inserted mov instruction are legitimate. For example:
