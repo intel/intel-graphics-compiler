@@ -4861,6 +4861,11 @@ void G4_DstRegRegion::setDstBitVec(uint8_t exec_size) {
   uint64_t bit_seq = TypeFootprint(type);
   for (uint8_t i = 0; i < exec_size; ++i) {
     int eltOffset = i * s_size;
+    // bitVec only represents the first 128 bytes of the operand.
+    // Wider operands are handled conservatively using their left and right bounds.
+    if (eltOffset >= 128)
+      break;
+
     // no element can cross 64-byte boundary
     if (eltOffset >= 64) {
       footprint1 |= bit_seq << (eltOffset - 64);
@@ -6860,8 +6865,11 @@ void G4_Operand::updateFootPrint(BitSet &footprint, bool isSet,
           footprint.set(j, isSet);
       }
     }
-    while (j++ <= rb)
+    // Beyond the bytes covered by bitVec we assume every byte is touched.
+    while (j <= rb) {
       footprint.set(j, isSet);
+      ++j;
+    }
   }
 }
 
