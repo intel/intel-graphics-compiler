@@ -126,6 +126,7 @@ set(IGC_BUILD__SRC__Compiler
     "${IGC_BUILD__GFX_DEV_SRC_DIR}/skuwa/igt_35_10_hw_wa.c"
     "${IGC_BUILD__GFX_DEV_SRC_DIR}/skuwa/igt_35_00_sw_wa.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/SamplerPerfOptPass.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/TranslateToProgrammableOffsetsPass.cpp"
     ${IGC_BUILD__SRC__Compiler_CISACodeGen}
     ${IGC_BUILD__SRC__Compiler_DebugInfo}
     ${IGC_BUILD__SRC__Compiler_Legalizer}
@@ -186,6 +187,7 @@ set(IGC_BUILD__HDR__Compiler
     "${CMAKE_CURRENT_SOURCE_DIR}/RemoveCodeAssumptions.hpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/ModuleAllocaAnalysis.hpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/ShrinkArrayAlloca.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/TranslateToProgrammableOffsetsPass.hpp"
     ${IGC_BUILD__HDR__Compiler_CISACodeGen}
     ${IGC_BUILD__HDR__Compiler_DebugInfo}
     ${IGC_BUILD__HDR__Compiler_Legalizer}

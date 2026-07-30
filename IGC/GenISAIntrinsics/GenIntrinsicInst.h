@@ -649,13 +649,6 @@ public:
     return true;
   }
 
-  inline void setImmediateOffsetsValue(unsigned int coordIndex, Value *val) {
-    if (hasImmediateOffsets()) {
-      unsigned int operandCoordIndex = getImmediateOffsetsIndex() + coordIndex;
-      setOperand(operandCoordIndex, val);
-    }
-  }
-
   inline Value *getSamplerValue() const {
     unsigned int index = getSamplerIndex();
     return getOperand(index);

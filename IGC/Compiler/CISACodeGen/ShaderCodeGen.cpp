@@ -213,6 +213,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CISACodeGen/AnnotateUniformAllocas.h"
 #include "Probe/Assertion.h"
 #include "Compiler/CISACodeGen/PartialEmuI64OpsPass.h"
+#include "Compiler/TranslateToProgrammableOffsetsPass.hpp"
 #include "Compiler/CISACodeGen/RemoveLoopDependency.hpp"
 
 #include <filesystem>
@@ -1454,6 +1455,7 @@ void OptimizeIR(CodeGenContext *const pContext) {
 
     mpm.add(new BreakConstantExprLPM());
     mpm.add(new IGCConstProp());
+    GFX_ONLY_PASS { mpm.add(createTranslateToProgrammableOffsetsPass()); }
 
     mpm.add(new CustomSafeOptPass());
     if (!pContext->m_DriverInfo.WADisableCustomPass()) {
