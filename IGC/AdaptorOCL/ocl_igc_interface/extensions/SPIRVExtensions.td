@@ -290,7 +290,7 @@ def SPV_EXT_long_vector : ExperimentalExtension<
 >;
 
 // This extension adds a new instruction that enables rotating values across invocations within a subgroup.
-def SPV_KHR_subgroup_rotate : ExperimentalExtension<
+def SPV_KHR_subgroup_rotate : Extension<
   "SPV_KHR_subgroup_rotate",
   [ Capability<"GroupNonUniformRotateKHR"> ],
   "https://github.khronos.org/SPIRV-Registry/extensions/KHR/SPV_KHR_subgroup_rotate.html"

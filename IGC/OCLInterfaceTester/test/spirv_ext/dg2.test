@@ -152,4 +152,10 @@
 # CHECK-NEXT:   supported_capabilities:
 # CHECK-NEXT:     - id: 5055
 # CHECK-NEXT:       name: ShaderClockKHR
+#
+# CHECK-NEXT: - name: SPV_KHR_subgroup_rotate
+# CHECK-NEXT:   spec_url: 'https://github.khronos.org/SPIRV-Registry/extensions/KHR/SPV_KHR_subgroup_rotate.html'
+# CHECK-NEXT:   supported_capabilities:
+# CHECK-NEXT:     - id: 6026
+# CHECK-NEXT:       name: GroupNonUniformRotateKHR
 # CHECK-NEXT: ...
