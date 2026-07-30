@@ -2319,6 +2319,94 @@ void Optimizer::localDefHoisting() {
   });
 }
 
+// reassociateConst() folds
+//    def: add D, S, K1
+//    use: add U, D, K2
+// into
+//    use: add U, S, K1 + K2
+// by substituting def's src0 (S) into the use. S keeps its region but is now
+// evaluated at the use's lane indices, so the fold only preserves values if
+// use lane k reads exactly the element that def lane k wrote.
+static bool preservesLaneMapping(G4_INST *def, G4_INST *use) {
+  // A uniform def src0 yields the same value in every lane, so it may be
+  // substituted no matter how use's lanes map onto def's lanes. This keeps the
+  // scalar-broadcast fold working, e.g.
+  //    add (1)  D<1>:d  S<0;1,0>:d  K1
+  //    add (16) U<1>:d  D<0;1,0>:d  K2
+  if (def->getSrc(0)->isScalarSrc())
+    return true;
+
+  // If use has a larger execSize than def (no need to consider the case that
+  // def has a larger execSize as it has been excluded by footprint check),
+  // substituting def's src0 region into use may create an illegal source region
+  // that HWConformity can't resolve or can only resolve by generating
+  // inefficient code.
+  // For example:
+  //   add (4)  v14<1>:ud  v6<4;2,4>:ud  0x73
+  //   add (16) v15<1>:ub  v14<1;4,0>:ud 0xf8a24a6b
+  // Folding would produce:
+  //   add (16) v15<1>:ub  v6<4;2,4>:ud  0xF8A24ADE
+  // <4;2,4>:ud is illegal for execSize=16 as it violates the HW restriction
+  // that elements within a width cannot cross register boundaries (row 7's
+  // width elements span two GRFs).
+  //
+  // For another example:
+  //   (W) add (2)  v5th<4>:uw    v4th<8;1,0>:d    0x34bdc424:d
+  //   add (32) v9th<4>:b     v5th<4;16,0>:uw  0xce61:w
+  // Folding would produce:
+  //   add (32) v9th<4>:b     v4th<8;1,0>:d    0x34bd9285:d
+  // <8;1,0> region at execSize 32 is illegal as it spans far more than 2 GRFs.
+  // HWConformity can't fix it as it needs to keep halving the exec size until
+  // it needs a SIMD4 emask that platforms without NibCtrl cannot encode.
+  if (def->getExecSize() != use->getExecSize())
+    return false;
+
+  // Matching execSizes still do not imply an identity mapping, so the per-lane
+  // walk is required. For example:
+  //   add (4) v14th<1>:ud  v6th<1;1,0>:ud  0x73
+  //   add (4) v15th<1>:ud  v14th<1;2,2>:ud  0x100:ud
+  // Folding would produce:
+  //   add (4) v9th<1>:ud  v4th<1;1,0>:ud  0x173:w
+  // lane      original reads       folded reads    result
+  //  0      v14th[0] → v6th[0]        v6th[0]      correct
+  //  1      v14th[2] → v6th[2]        v6th[1]      wrong
+  //  2      v14th[1] → v6th[1]        v6th[2]      wrong
+  //  3      v14th[3] → v6th[3]        v6th[3]      correct
+  G4_DstRegRegion *defDst = def->getDst();
+  G4_SrcRegRegion *useSrc = use->getSrc(0)->asSrcRegRegion();
+  if (defDst->isIndirect() || useSrc->isIndirect())
+    return false;
+
+  // Element indices are only comparable if both operands start at the same
+  // address. The caller's Rel_eq normally guarantees this, but not on the
+  // ARF path, which can report Rel_eq from the register kind alone.
+  if (defDst->getLeftBound() != useSrc->getLeftBound())
+    return false;
+
+  // Only <v;w,h> regions have a closed-form lane->element mapping; bail out on
+  // VxH/Vx1 and other special forms. These aren't limited to the indirect
+  // operands excluded above: RegionV/RegionWH are also used for direct
+  // Align16 operands (see G4_SrcRegRegion::getMaxExecSize(), which checks
+  // isRegionV() as a case separate from acc != Direct), so this check must
+  // stay independent of the isIndirect() check.
+  const RegionDesc *rd = useSrc->getRegion();
+  if (rd->vertStride == UNDEFINED_SHORT || rd->width == UNDEFINED_SHORT ||
+      rd->horzStride == UNDEFINED_SHORT)
+    return false;
+
+  // def's dst and use's src0 have the same type size (checked by the caller),
+  // so comparing element indices is equivalent to comparing byte offsets.
+  const uint16_t dstHS = defDst->getHorzStride();
+  for (uint16_t k = 0, e = use->getExecSize(); k < e; ++k) {
+    unsigned defElt = k * dstHS;
+    unsigned useElt =
+        (k / rd->width) * rd->vertStride + (k % rd->width) * rd->horzStride;
+    if (defElt != useElt)
+      return false;
+  }
+  return true;
+}
+
 //
 // Do very simple const only reassociation to fold const values
 // e.g.,
@@ -2393,31 +2481,12 @@ void Optimizer::reassociateConst() {
           return false;
         }
 
-        // When use has a larger execSize than def, substituting def's src0
-        // region into use may create an illegal source region: a 2D source
-        // region valid for def's smaller execSize can access more rows under
-        // use's larger execSize and produce a region that violates the
-        // restriction "elements within a width cannot cross register
-        // boundaries". Skip reassociation if def's src0 is not single-stride
-        // when evaluated under use's execSize.
-        //
-        // Example (would be incorrectly folded without this guard):
-        //   add (4)  v14<1>:ud  v6<4;2,4>:ud  0x73      // def, execSize=4
-        //   add (16) v15<1>:ub  v14<1;4,0>:ud 0xf8a24a6b // use, execSize=16
-        // Folding would produce:
-        //   add (16) v15<1>:ub  v6<4;2,4>:ud  0xF8A24ADE
-        // <4;2,4>:ud is legal for execSize=4 but causes GRF boundary crossing
-        // for execSize=16 (row 7's width elements span two GRFs).
-        // If leaving this illegal region to be fixed by HWConformity, there
-        // will be more instructions generated which is very inefficient.
-        if (def->getExecSize() < use->getExecSize()) {
-          auto *srcToSub = def->getSrc(0);
-          if (srcToSub->isSrcRegRegion()) {
-            uint16_t stride;
-            if (!srcToSub->asSrcRegRegion()->getRegion()->isSingleStride(
-                    use->getExecSize().value, stride))
-              return false;
-          }
+        // The Rel_eq check above only proves that def's dst and use's src0
+        // cover the same byte footprint, not that use lane k reads what def
+        // lane k wrote. Substituting def's src0 is only value-preserving when
+        // that per-lane correspondence holds.
+        if (!preservesLaneMapping(def, use)) {
+          return false;
         }
 
         return true;
