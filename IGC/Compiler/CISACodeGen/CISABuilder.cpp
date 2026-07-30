@@ -4944,7 +4944,7 @@ CName CEncoder::CreateVisaLabelName(const llvm::StringRef &L) {
 #else  // IGC_MAP_LLVM_NAMES_TO_VISA
   static const size_t MAX_LLVM_NAME = 250;
 
-  auto sanitizeChar = [](char c) { return isalnum(c) || c == '_' ? c : '_'; };
+  auto sanitizeChar = [](unsigned char c) -> char { return isalnum(c) || c == '_' ? c : '_'; };
 
   // The vISA backend constrains this to around 256 characters.
   // (1) Function names can be extremely long (currFunctionName).
