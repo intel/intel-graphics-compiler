@@ -658,6 +658,10 @@ bool HWConformity::fixMathInst(INST_LIST_ITER it, G4_BB *bb) {
     //       math.inv (16|M0)         r6.0<1>:hf    r1.8<0;1,0>:hf
     //       mov (1|M0)               r4.8<1>:hf    r6.0<0;1,0>:hf
     G4_ExecSize currES = inst->getExecSize();
+    // The nativeES-wide temp init/math don't need inst's original mask
+    // offset (it can push ChanOff + nativeES past the HW limit of 32, e.g.
+    // offset 24 + execsize 16); only the movs touching the real src/dst do.
+    G4_InstOpts origOpt = inst->getOption();
 
     for (int i = 0, sz = 2; i < sz; ++i) {
       G4_Operand *S = inst->getSrc(i);
@@ -675,12 +679,12 @@ bool HWConformity::fixMathInst(INST_LIST_ITER it, G4_BB *bb) {
           builder.createDst(sDcl->getRegVar(), 0, 0, 1, Type_UW);
       G4_Imm *inf = builder.createImm(0x7C00, Type_UW);
       G4_INST *I0 =
-          builder.createMov(nativeES, tD0, inf, inst->getOption(), false);
+          builder.createMov(nativeES, tD0, inf, InstOpt_WriteEnable, false);
 
       G4_DstRegRegion *tD1 =
           builder.createDst(sDcl->getRegVar(), 0, 0, 1, Type_HF);
       G4_INST *I1 =
-          builder.createMov(currES, tD1, rS, inst->getOption(), false);
+          builder.createMov(currES, tD1, rS, origOpt, false);
 
       G4_SrcRegRegion *nS0 =
           builder.createSrcRegRegion(sDcl, builder.getRegionStride1());
@@ -695,11 +699,12 @@ bool HWConformity::fixMathInst(INST_LIST_ITER it, G4_BB *bb) {
     G4_DstRegRegion *nD = builder.createDstRegRegion(dDcl, 1);
     inst->setDest(nD); // dst: still original
     inst->setExecSize(nativeES);
+    inst->setOptions(InstOpt_WriteEnable);
 
     G4_SrcRegRegion *nSrc =
         builder.createSrcRegRegion(dDcl, builder.getRegionStride1());
     G4_INST *nMov =
-        builder.createMov(currES, dst, nSrc, inst->getOption(), false);
+        builder.createMov(currES, dst, nSrc, origOpt, false);
     bb->insertAfter(it, nMov);
 
     // Update dst/src0/src1 as it needs further check on other restrictions.
