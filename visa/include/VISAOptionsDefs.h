@@ -488,6 +488,11 @@ DEF_VISA_OPTION(vISA_enableBundleCR, ET_INT32, "-enableBundleCR",
                 "instructions, 2 non-dpas instructions, 3 all",
                 1)
 DEF_VISA_OPTION(vISA_LraFFWindowSize, ET_INT32, "-lraFFWindowSize", UNUSED, 12)
+// In-RA anti-dependency breaking for SLM load destinations. RA rotates the free
+// registers sets on targetd load blocks. The value is the rotation depth. 0
+// (and 1) disables the optimization.
+DEF_VISA_OPTION(vISA_RAAntiDepRecolorRotation, ET_INT32,
+                "-raAntiDepRecolorRotation", UNUSED, 0)
 DEF_VISA_OPTION(vISA_SplitGRFAlignedScalar, ET_BOOL, "-nosplitGRFalignedscalar",
                 UNUSED, true)
 DEF_VISA_OPTION(vISA_DoSplitOnSpill, ET_BOOL, "-nosplitonspill", UNUSED, true)

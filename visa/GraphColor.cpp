@@ -7242,6 +7242,189 @@ void PhyRegUsage::updateRegUsage(LiveRange *lr) {
   }
 }
 
+// Identify the SLM load-send destinations that FIRST_FIT packed onto a shared
+// physical GRF -- the WAR hazard breakSLMLoadSendAntiDep targets. Returns
+// per-(BB, size) groups of >= 2 roots (program order) whose shared GRF carries
+// >= 2 SLM loads.
+std::vector<std::vector<GraphColor::SLMLoadRecolorCand>>
+GraphColor::collectSLMLoadAntiDepCandidates() {
+  // Physical GRF number assigned to dcl's live range, or ~0u if none/non-GRF.
+  auto regOf = [&](G4_Declare *dcl) -> unsigned {
+    G4_RegVar *rv = dcl->getRegVar();
+    if (!rv || !rv->isRegAllocPartaker())
+      return ~0u;
+    G4_VarBase *pr = lrs[rv->getId()]->getPhyReg();
+    return (pr && pr->isGreg()) ? pr->asGreg()->getRegNum() : ~0u;
+  };
+
+  // Collect GRF-assigned load-send dests per BB in program order and count the
+  // loads landing on each physical GRF (a reg with >= 2 loads is a WAR hazard).
+  struct RawLoad {
+    G4_Declare *root;
+    unsigned reg;
+    unsigned rows;
+  };
+  std::unordered_map<G4_BB *, std::vector<RawLoad>> bbLoads;
+  std::unordered_map<unsigned, unsigned> regLoadCount;
+  unsigned numLoads = 0;
+  for (G4_BB *bb : kernel.fg) {
+    for (G4_INST *inst : *bb) {
+      if (!inst->isSend())
+        continue;
+      G4_SendDesc *desc = inst->getMsgDesc();
+      if (!desc || !desc->isSLM() || desc->getDstLenRegs() == 0)
+        continue; // loads into GRF only
+      G4_DstRegRegion *dst = inst->getDst();
+      if (!dst || dst->isNullReg() || !dst->getTopDcl())
+        continue;
+      G4_Declare *root = dst->getTopDcl()->getRootDeclare();
+      unsigned reg = regOf(root);
+      if (reg == ~0u)
+        continue; // only GRF-assigned dests are recolor candidates
+      bbLoads[bb].push_back({root, reg, root->getNumRows()});
+      ++regLoadCount[reg];
+      ++numLoads;
+    }
+  }
+
+  std::vector<std::vector<SLMLoadRecolorCand>> groups;
+  if (numLoads < 2)
+    return groups;
+
+  // Bucket each BB's loads by destination size; keep only WAR regs (>= 2 loads)
+  // and buckets with >= 2 roots to rotate.
+  for (G4_BB *bb : kernel.fg) {
+    auto bbIt = bbLoads.find(bb);
+    if (bbIt == bbLoads.end())
+      continue;
+    std::map<unsigned, std::vector<SLMLoadRecolorCand>> bySize;
+    for (const RawLoad &ld : bbIt->second)
+      if (regLoadCount[ld.reg] >= 2)
+        bySize[ld.rows].push_back({ld.root, ld.rows});
+    for (auto &kv : bySize)
+      if (kv.second.size() >= 2)
+        groups.push_back(std::move(kv.second));
+  }
+  return groups;
+}
+
+// Anti-dependency breaking for SLM load-send destinations
+//
+// Target block: SLM load-send destinations that FIRST_FIT packed onto a shared
+// physical GRF (>= 2 loads on one reg) -- a WAR hazard that SWSB otherwise
+// serializes with a sync before every reload.
+//
+// Flow: recognize the reused load dests (per BB, bucketed by destination size),
+// then rotate each across K registers by re-running `assignColor` with the other
+// rotation slots forbidden, so consecutive loads land on distinct registers and
+// SWSB drops the WAR chain. `parms`/`assignColor` are the caller's, so the
+// re-color reuses the allocator's own state and coloring routine.
+//
+// Spill-free and register-pressure-neutral: it only relabels already-allocated
+// loads onto other free GRFs -- a load that cannot move keeps its color.
+void GraphColor::breakSLMLoadSendAntiDep(
+    ColorHeuristic colorHeuristicGRF, PhyRegAllocationState &parms,
+    const std::function<bool(LiveRange *)> &assignColor) {
+  if (!liveAnalysis.livenessClass(G4_GRF) || colorHeuristicGRF != FIRST_FIT ||
+      !spilledLRs.empty())
+    return;
+  // Rotation depth K; 0 disables the pass, 1 leaves no room to rotate.
+  const unsigned K = builder.getuint32Option(vISA_RAAntiDepRecolorRotation);
+  if (K < 2)
+    return;
+
+  // Physical GRF number of the given LiveRange, or ~0u if none/non-GRF.
+  auto gregNum = [&](LiveRange *lr) -> unsigned {
+    G4_VarBase *pr = lr ? lr->getPhyReg() : nullptr;
+    return (pr && pr->isGreg()) ? pr->asGreg()->getRegNum() : ~0u;
+  };
+
+  std::vector<std::vector<SLMLoadRecolorCand>> groups =
+      collectSLMLoadAntiDepCandidates();
+
+  // Rotate each (BB, size) group across K registers: for each load, forbid the
+  // regs the other rotation slots hold so it lands on a distinct GRF, dropping
+  // the WAR chain SWSB would otherwise insert.
+  unsigned totalMoved = 0, numCands = 0;
+  for (std::vector<SLMLoadRecolorCand> &group : groups) {
+    numCands += group.size();
+    // Register last assigned to each rotation slot (~0u == none yet).
+    std::vector<unsigned> slotReg(K, ~0u);
+
+    unsigned i = 0;
+    for (const SLMLoadRecolorCand &cand : group) {
+      G4_RegVar *rv = cand.root->getRegVar();
+      LiveRange *lr =
+          (rv && rv->isRegAllocPartaker()) ? lrs[rv->getId()] : nullptr;
+      if (!lr)
+        continue;
+      unsigned slot = i++ % K;
+      unsigned rows = cand.rows;
+
+      // Snapshot assignment + trial-only state in case recolor fails (causes
+      // spills) and we need to fallback.
+      G4_VarBase *savedReg = lr->getPhyReg();
+      unsigned savedOff = lr->getPhyRegOff();
+      BitSet *savedForbidden = lr->getForbiddenPtr();
+      forbiddenKind savedForbiddenKind = lr->getForbiddenType();
+      bool savedUnconstrained = lr->getIsUnconstrained();
+      // Candidates are GRF-assigned. Enforced during candidate collection in
+      // collectSLMLoadAntiDepCandidates
+      vISA_ASSERT(savedReg && savedReg->isGreg(),
+                  "SLM load-send dest candidate must be GRF-assigned");
+      unsigned oldReg = savedReg->asGreg()->getRegNum();
+
+      // Forbid the other slots' regs so this load lands on a distinct one:
+      // Count the previously assigned regs for other slots as forbidden.
+      BitSet trialForbidden(gra.getForbiddenVectorSize(G4_GRF), false);
+      bool anyForbidden = false;
+      for (unsigned j = 0; j < K; ++j) {
+        if (j != slot && slotReg[j] != ~0u) {
+          for (unsigned r = 0; r < rows; ++r)
+            trialForbidden.set(slotReg[j] + r, true);
+          anyForbidden = true;
+        }
+      }
+      if (anyForbidden) {
+        if (savedForbidden)
+          trialForbidden |= *savedForbidden;
+        lr->restoreForbidden(&trialForbidden, savedForbiddenKind);
+      }
+
+      // Trial recolor via the allocator; setUnconstrained keeps the startGRF
+      // hint from being reset to 0 under vISA_GCRRInFF.
+      lr->resetPhyReg();
+      lr->setUnconstrained(true);
+      parms.setStartGRF(oldReg);
+      assignColor(lr);
+      unsigned newReg = gregNum(lr);
+
+      // Recolor causes spill. Fall back to the original color.
+      if (newReg == ~0u || !spilledLRs.empty()) {
+        if (!spilledLRs.empty() && spilledLRs.back() == lr) {
+          spilledLRs.pop_back();
+          lr->setSpilled(false);
+        }
+        lr->setPhyReg(savedReg, savedOff);
+        newReg = oldReg;
+      }
+
+      // Restore trial-only state so later RA iterations see the LR untouched.
+      lr->restoreForbidden(savedForbidden, savedForbiddenKind);
+      lr->setUnconstrained(savedUnconstrained);
+
+      slotReg[slot] = newReg;
+      if (newReg != oldReg)
+        ++totalMoved;
+    }
+  }
+
+  VISA_DEBUG({
+    std::cerr << "RA anti-dep recolor: moved " << totalMoved << " of "
+              << numCands << " rotation candidates\n";
+  });
+}
+
 bool GraphColor::assignColors(ColorHeuristic colorHeuristicGRF,
                               bool doBankConflict, bool highInternalConflict,
                               bool doBundleConflict) {
@@ -7474,6 +7657,8 @@ bool GraphColor::assignColors(ColorHeuristic colorHeuristicGRF,
     if (!ret)
       return false;
   }
+
+  breakSLMLoadSendAntiDep(colorHeuristicGRF, parms, assignColor);
 
   if (failSafeIter) {
     // As per spec, EOT has to be allocated to r112+.

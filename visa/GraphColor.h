@@ -24,6 +24,7 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPop.hpp"
 // clang-format on
 
+#include <functional>
 #include <limits>
 #include <list>
 #include <map>
@@ -50,6 +51,7 @@ enum BankConflict {
 
 class VarSplit;
 class SpillAnalysis;
+class PhyRegAllocationState;
 
 class BankConflictPass {
 private:
@@ -280,6 +282,15 @@ public:
   void markForbidden(vISA::Mem_Manager &GCMem, int reg, int numReg);
   const BitSet *getForbidden();
   int getNumForbidden();
+
+  // Snapshot / restore the forbidden set. Called by
+  // GraphColor::breakSLMLoadSendAntiDep for fallback path.
+  BitSet *getForbiddenPtr() const { return forbidden; }
+  forbiddenKind getForbiddenType() const { return forbiddenType; }
+  void restoreForbidden(BitSet *bs, forbiddenKind k) {
+    forbidden = bs;
+    forbiddenType = k;
+  }
   G4_RegVar *getVar() const { return var; }
   G4_Declare *getDcl() const { return dcl; }
   G4_RegFileKind getRegKind() const { return regKind; }
@@ -1208,6 +1219,18 @@ class GraphColor {
     // Do graph coloring without bank conflict reduction.
     return assignColors(h, false, false);
   }
+  // In-RA anti-dependency breaking for SLM load-send destinations.
+  void breakSLMLoadSendAntiDep(
+      ColorHeuristic colorHeuristicGRF, PhyRegAllocationState &parms,
+      const std::function<bool(LiveRange *)> &assignColor);
+  // SLMLoadRecolorCand: an SLM load-send destination root and its size.
+  struct SLMLoadRecolorCand {
+      G4_Declare* root;
+      // destination size in GRFs
+      unsigned rows;
+  };
+  // Helper function for breakSLMLoadSendAntiDep
+  std::vector<std::vector<SLMLoadRecolorCand>> collectSLMLoadAntiDepCandidates();
 
   void clearSpillAddrLocSignature() {
     std::fill(spAddrRegSig.begin(), spAddrRegSig.end(), 0);
