@@ -341,7 +341,6 @@ message("[IGC\\BiFModuleCache] - Buidling from source start")
 
 set(_concatScript   "${IGC_SOURCE_DIR}/BiFModule/concat.py")
 set(IGC_BUILD__BIF_OCL_FORCE_INC "${IGC_BUILD__BIF_DIR}/opencl_cth.h")
-list(APPEND IGC_BUILD__BIF_OCL_INCLUDES ${IGC_BUILD__BIF_OCL_FORCE_INC})
 
 message("[IGC\\BiFModule] - Generating opencl_cth.h")
 
@@ -350,7 +349,6 @@ execute_process(
     COMMAND ${PYTHON_EXECUTABLE} ${_concatScript} -new ${IGC_BUILD__BIF_OCL_FORCE_INC} ${IGC_BUILD__BIF_OCL_SHARED_INC} ${IGC_BUILD__BIF_OCL_SHARED_INC_PRE_RELEASE}
   COMMAND_ECHO STDOUT
     )
-
 
 set(IGC_BUILD__BIF_OCL_COMMON_INC_DIRS
     "${IGC_OPTION__BIF_SRC_OCL_DIR}/Languages/OpenCL"
