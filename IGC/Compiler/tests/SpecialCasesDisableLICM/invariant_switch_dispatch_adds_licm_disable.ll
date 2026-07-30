@@ -6,8 +6,8 @@
 ;
 ;============================ end_copyright_notice =============================
 ;
-; REQUIRES: llvm-14-plus
-; RUN: igc_opt --opaque-pointers --igc-special-cases-disable-licm -S < %s | FileCheck %s
+; REQUIRES: llvm-14-plus, regkeys
+; RUN: igc_opt --opaque-pointers --regkey EnableLICMInvariantSwitchDispatchDetection --igc-special-cases-disable-licm -S < %s | FileCheck %s
 ; ------------------------------------------------
 ; SpecialCasesDisableLICM : LoopHasInvariantSwitchDispatch
 ; ------------------------------------------------

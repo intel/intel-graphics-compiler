@@ -1099,6 +1099,9 @@ bool SpecialCasesDisableLICM::runOnFunction(llvm::Function &F) {
 }
 
 bool SpecialCasesDisableLICM::LoopHasInvariantSwitchDispatch(const Loop &L) {
+  if (IGC_IS_FLAG_DISABLED(EnableLICMInvariantSwitchDispatchDetection)) {
+    return false;
+  }
   // Switches are lowered to a BST of icmp+br before this pass runs.
   // When the dispatch value is loop-invariant, LICM hoists each arm's
   // independent computations to the preheader.
