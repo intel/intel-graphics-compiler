@@ -157,6 +157,14 @@ public:
     initLookups();
   }
 
+  static StringRef displayProductName(StringRef Name) {
+    if (Name == "IGFX_NVL_XE3G")
+      return "NVL S";
+    if (Name == "IGFX_NVL")
+      return "NVL P";
+    return dropIgfxPrefix(Name);
+  }
+
   // Drops the "IGFX_" prefix for markdown readability; pass-through otherwise.
   static StringRef dropIgfxPrefix(StringRef Name) {
     (void)Name.consume_front("IGFX_");
@@ -189,7 +197,7 @@ public:
     SmallVector<std::string, 8> Names;
     for (PRODUCT_FAMILY PF : Platforms)
       if (auto Name = stringifyProductFamily(PF))
-        Names.push_back(dropIgfxPrefix(*Name).str());
+        Names.push_back(displayProductName(*Name).str());
     return llvm::join(Names, ", ");
   }
 
