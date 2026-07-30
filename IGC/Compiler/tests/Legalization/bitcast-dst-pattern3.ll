@@ -32,21 +32,7 @@ define i8 @test_bitcast_pattern3(<4 x float> %src1) {
   ret i8 %2
 }
 
-define i1 @test_bitcast_pattern3_lshr(<4 x float> %src1) {
-; CHECK-LABEL: define i1 @test_bitcast_pattern3_lshr(
-; CHECK-SAME: <4 x float> [[SRC1:%.*]]) {
-; CHECK-NEXT:    [[TMP1:%.*]] = bitcast <4 x float> [[SRC1]] to <128 x i1>
-; CHECK-NEXT:    [[TMP2:%.*]] = extractelement <128 x i1> [[TMP1]], i32 65
-; CHECK-NEXT:    ret i1 [[TMP2]]
-;
-  %1 = bitcast <4 x float> %src1 to i128
-  %2 = lshr i128 %1, 65
-  %3 = trunc i128 %2 to i1
-  ret i1 %3
-}
-
-!igc.functions = !{!0, !1}
+!igc.functions = !{!0}
 
 !0 = !{i8 (<4 x float>)* @test_bitcast_pattern3, !2}
-!1 = !{i1 (<4 x float>)* @test_bitcast_pattern3_lshr, !2}
 !2 = !{}

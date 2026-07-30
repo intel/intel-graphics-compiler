@@ -696,6 +696,54 @@ static bool LegalizeGVNBitCastPattern(IRBuilder<> *Builder, const DataLayout *DL
   return true;
 }
 
+// InstCombine can fold a trunc-to-i1 of an extracted element into a bitcast to
+// a bool vector followed by an extractelement:
+//   %bc = bitcast <8 x i32> %v to <256 x i1>
+//   %b  = extractelement <256 x i1> %bc, i64 65
+// IGC represents i1 as a HW flag and cannot alias a wide vector as a i1 vector.
+// Rewrite each constant-index extractelement back into:
+//   %extract = extractelement <8 x i32> %v, i32 2
+//   %shift   = lshr i32 %extract, 1 ; optional, here index is 65 and not divisible by 32
+//   %and     = and i32 %shift, 1
+//   %trunc   = trunc i32 %and to i1
+void Legalization::visitExtractElementInst(ExtractElementInst &I) {
+  auto *BC = dyn_cast<BitCastInst>(I.getVectorOperand());
+  ConstantInt *CIdx = dyn_cast<ConstantInt>(I.getIndexOperand());
+  if (!BC || !CIdx || !I.getType()->isIntegerTy(1))
+    return;
+
+  auto *SrcVecTy = dyn_cast<IGCLLVM::FixedVectorType>(BC->getSrcTy());
+  Type *SrcEltTy = SrcVecTy ? SrcVecTy->getElementType() : nullptr;
+  if (!SrcEltTy || !(SrcEltTy->isIntegerTy() || SrcEltTy->isFloatingPointTy()))
+    return;
+
+  unsigned SrcEltBits = (unsigned)SrcEltTy->getPrimitiveSizeInBits();
+  IntegerType *SrcEltIntTy = Type::getIntNTy(I.getContext(), SrcEltBits);
+  uint64_t bitIdx = CIdx->getZExtValue();
+  unsigned srcIdx = (unsigned)(bitIdx / SrcEltBits);
+  unsigned bitPos = (unsigned)(bitIdx % SrcEltBits);
+
+  m_builder->SetInsertPoint(&I);
+  Value *elt = m_builder->CreateExtractElement(BC->getOperand(0), m_builder->getInt32(srcIdx));
+  if (elt->getType() != SrcEltIntTy)
+    elt = m_builder->CreateBitCast(elt, SrcEltIntTy);
+  if (bitPos)
+    elt = m_builder->CreateLShr(elt, ConstantInt::get(SrcEltIntTy, bitPos));
+  // Codegen lowers trunc-to-i1 as "!= 0", testing every bit, so isolate the
+  // wanted bit first; otherwise higher bits of the element leak into the flag.
+  elt = m_builder->CreateAnd(elt, ConstantInt::get(SrcEltIntTy, 1));
+  Value *bit = m_builder->CreateTrunc(elt, I.getType());
+  I.replaceAllUsesWith(bit);
+  m_instructionsToRemove.insert(&I);
+
+  // Drop only once all its extractelement users are scheduled for removal.
+  if (llvm::all_of(BC->users(), [&](User *U) {
+        auto *Inst = dyn_cast<Instruction>(U);
+        return Inst && m_instructionsToRemove.count(Inst);
+      }))
+    m_instructionsToRemove.insert(BC);
+}
+
 void Legalization::visitBitCastInst(llvm::BitCastInst &I) {
   m_ctx->m_instrTypes.numInsts++;
   // This is the pass that folds 2x Float into a Double replacing the bitcast instruction

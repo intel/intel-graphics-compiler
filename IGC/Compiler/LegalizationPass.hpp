@@ -71,6 +71,7 @@ public:
   void visitFCmpInstUndorderedPredicate(llvm::FCmpInst &FC);
   void visitFCmpInstUndorderedFlushNan(llvm::FCmpInst &FC);
   void visitInsertElementInst(llvm::InsertElementInst &I);
+  void visitExtractElementInst(llvm::ExtractElementInst &I);
   void visitShuffleVectorInst(llvm::ShuffleVectorInst &I);
   void visitStoreInst(llvm::StoreInst &I);
   void visitLoadInst(llvm::LoadInst &I);
