@@ -2624,36 +2624,61 @@ bool HWConformity::fixMULInst(INST_LIST_ITER &i, G4_BB *bb) {
     bb->insertBefore(iter, movInst);
 
     G4_DstRegRegion *origDst = dst;
-    bool needsExtraMov =
+    // A non-packed dst, a cond mod, or a saturate can only be applied
+    // correctly by the final combining mov below, since none of those can be
+    // folded into the low/high dword writes themselves.
+    bool needsCombiningMov =
         origDst->getHorzStride() > 1 || condmod != NULL || satMod;
 
-    G4_Declare *dstAlias = builder.createTempVar(execSize * 2, Type_D, Any);
-    if (!needsExtraMov) {
+    G4_DstRegRegion *dstLowRgn = nullptr;
+    G4_DstRegRegion *dstHiRgn = nullptr;
+    G4_Declare *dstAlias = nullptr;
+    if (needsCombiningMov) {
+      // Write the low/high dwords into a temp and combine them into the
+      // real (possibly indirect) dst with one final mov below.
+      dstAlias = builder.createTempVar(execSize * 2, Type_D, Any);
+      dstLowRgn = builder.createDstRegRegion(dstAlias, 2);
+      dstHiRgn = builder.createDst(dstAlias->getRegVar(), 0, 1, 2,
+                                   dstAlias->getElemType());
+    } else if (origDst->isIndirect()) {
+      // Write the low/high dwords directly into the two dword halves of the
+      // indirect dst; no temp or combining mov needed.
+      dstLowRgn = builder.createIndirectDst(
+          origDst->getBase(), origDst->getSubRegOff(), 2, Type_D,
+          origDst->getAddrImm());
+      dstHiRgn = builder.createIndirectDst(
+          origDst->getBase(), origDst->getSubRegOff(), 2, Type_D,
+          origDst->getAddrImm() + TypeSize(Type_D));
+    } else {
+      // Alias a temp directly onto the real dst location; no combining mov
+      // needed.
+      dstAlias = builder.createTempVar(execSize * 2, Type_D, Any);
       uint32_t aliasOffset =
           origDst->getRegOff() * kernel.numEltPerGRF<Type_UB>() +
           origDst->getSubRegOff() * 8;
       dstAlias->setAliasDeclare(origDst->getBase()->asRegVar()->getDeclare(),
                                 aliasOffset);
+      dstLowRgn = builder.createDstRegRegion(dstAlias, 2);
+      dstHiRgn = builder.createDst(dstAlias->getRegVar(), 0, 1, 2,
+                                   dstAlias->getElemType());
     }
+
     G4_INST *lowMove = builder.createMov(
-        execSize, builder.createDstRegRegion(dstAlias, 2),
+        execSize, dstLowRgn,
         builder.createSrcRegRegion(low32BitDcl, builder.getRegionStride1()),
         inst_opt, false);
     lowMove->setPredicate(pred);
-
     bb->insertBefore(iter, lowMove);
 
     vISA_ASSERT(high32BitDcl != NULL, "mach dst must not be null");
     G4_INST *highMove = builder.createMov(
-        execSize,
-        builder.createDst(dstAlias->getRegVar(), 0, 1, 2,
-                          dstAlias->getElemType()),
+        execSize, dstHiRgn,
         builder.createSrcRegRegion(high32BitDcl, builder.getRegionStride1()),
         inst_opt, false);
     highMove->setPredicate(pred);
     bb->insertBefore(iter, highMove);
 
-    if (needsExtraMov) {
+    if (needsCombiningMov) {
       // this will take care of non-packed dst/cond mod/saturate
       G4_Declare *dstAliasAsQ = builder.createTempVar(execSize, Type_Q, Any);
       dstAliasAsQ->setAliasDeclare(dstAlias, 0);
