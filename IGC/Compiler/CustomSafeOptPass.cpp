@@ -461,6 +461,16 @@ void CustomSafeOptPass::visitWaveAllConstant(llvm::CallInst *I) {
 //   r = select_from_group(sg, x, other_id);
 void CustomSafeOptPass::visitShuffleIndex(llvm::CallInst *I) {
   using namespace llvm::PatternMatch;
+
+  // Check if the first operand is a constant, if so, we can replace the intrinsic with the constant value
+  // as this will be the same regardless of index.
+  if (isa<ConstantInt>(I->getOperand(0)) || isa<ConstantFP>(I->getOperand(0))) {
+    Constant *C = cast<Constant>(I->getOperand(0));
+    I->replaceAllUsesWith(C);
+    I->eraseFromParent();
+    return;
+  }
+
   /*
   Pattern match
   %simdLaneId16 = call i16 @llvm.genx.GenISA.simdLaneId()
