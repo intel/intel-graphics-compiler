@@ -45,8 +45,10 @@ SPDX-License-Identifier: MIT
 #include "common/SIPKernels/wmtp/XE2_config_160.h"
 #include "common/SIPKernels/wmtp/XE3PLPG_wmtp_e64.h"
 #include "common/SIPKernels/wmtp/XE3PLPG_wmtp_legacy.h"
+#include "common/SIPKernels/wmtp/XE3p64b_XPC_wmtp.h"
 #include "common/SIPKernels/Xe3PLPGSIPDebug64b_config1.h"
 #include "common/SIPKernels/Xe3PLPGSIPDebug64b_config2.h"
+
 
 using namespace llvm;
 using namespace USC;
@@ -1654,6 +1656,11 @@ void populateSIPKernelInfo(
     }
   }
   { // WMTP SIP
+    // CRI E64 WMTP SIP
+    SIPKernelInfo[XE3P_XPC_CSR_64B] = std::make_tuple((void *)&XE3p64b_XPC_wmtp, (int)sizeof(XE3p64b_XPC_wmtp),
+                                                      (void *)&Xe3PSIP_WMTP_E64_CSRDebugBindlessDebugHeader,
+                                                      (int)sizeof(Xe3PSIP_WMTP_E64_CSRDebugBindlessDebugHeader));
+
     // E64 wmtp SIP
     SIPKernelInfo[XE3P_CSR_DEBUG_E64] = std::make_tuple((void *)&XE3P_wmtp_e64, (int)sizeof(XE3P_wmtp_e64),
                                                         (void *)&Xe3PSIP_WMTP_E64_CSRDebugBindlessDebugHeader,
@@ -1849,7 +1856,7 @@ CGenSystemInstructionKernelProgram *CGenSystemInstructionKernelProgram::Create(c
     } else if (mode == SYSTEM_THREAD_MODE_CSR) {
       const auto ProductFamily = platform.getPlatformInfo().eProductFamily;
       if (ProductFamily == IGFX_CRI) {
-        SIPIndex = !bindlessMode ? XE3P_CSR_DEBUG_E64 : XE3P_CSR_DEBUG_LEGACY;
+        SIPIndex = XE3P_XPC_CSR_64B;
       }
       else {
         SIPIndex = !bindlessMode ? XE3PLPG_CSR_DEBUG_E64 : XE3PLPG_CSR_DEBUG_LEGACY;
