@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2017-2021 Intel Corporation
+Copyright (C) 2017-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -66,6 +66,7 @@ enum SIP_ID {
   XE3P_DEBUG_BINDLESS_LEGACY,
   XE3P_CSR_DEBUG_LEGACY,
   XE3P_CSR_DEBUG_E64,
+  XE3P_XPC_CSR_64B,
   XE3PLPG_DEBUG_E64,
   XE3PLPG_CSR_DEBUG_LEGACY,
   XE3PLPG_CSR_DEBUG_E64,
