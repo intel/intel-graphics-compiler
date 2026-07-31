@@ -1725,6 +1725,50 @@ void EstimateFunctionSize::trimCompilationUnit(llvm::SmallVector<void *, 64> &un
     }
     if (unit->ExpandedSize < threshold) {
       PrintTrimUnit(0x2, "Kernel / Unit " << unit->F->getName().str() << ": The size becomes below threshold");
+    } else if (IGC_IS_FLAG_ENABLED(UndoIneffectiveKernelTrimming) &&
+               size_before_trimming <= (uint64_t)threshold * LargeKernelThresholdMultiplier) {
+      // Trimming consumed every candidate and the unit still misses <threshold>, so its noinline
+      // decisions buy nothing while turning on subroutine mode for the whole module (a trimmed
+      // function loses the alwaysinline attribute ProcessFuncAttributes would give it), deferring
+      // inlining to SubroutineInliner at the end of OptimizeIR and raising register pressure enough
+      // to spill and rerun the pipeline in RetryManager. Roll the decisions back: every pool member
+      // was FA_BEST_EFFORT_INLINE when pooled (FA_FORCE_INLINE for the implicit-arg pool, restored
+      // above where untrimmed), so isTrimmed() identifies exactly this attempt's decisions.
+      // Two exclusions keep their trimming because it pays even when it undershoots: units above the
+      // large-kernel threshold (guard above, the same notion of large as
+      // isLargeKernelThresholdExceeded) and units whose trimmed functions are reachable from another
+      // compilation unit, where keeping a subroutine removes whole duplicate copies from the module.
+      const llvm::SmallVectorImpl<void *> *poolList[] = {&pools.trimming_pool, &pools.tiny_fn_trimming_pool,
+                                                         &pools.implicit_arg_trimming_pool};
+      FunctionNode *shared = nullptr;
+      for (auto *pool : poolList)
+        for (void *p : *pool) {
+          FunctionNode *n = static_cast<FunctionNode *>(p);
+          if (!shared && n->isTrimmed() && n->InMultipleUnit)
+            shared = n;
+        }
+      if (shared) {
+        PrintTrimUnit(0x2, "Kernel / Unit " << unit->F->getName().str() << ": keeping the trimming, "
+                                            << shared->F->getName().str()
+                                            << " is shared with another compilation unit");
+      } else {
+        uint64_t bestAchievable = unit->ExpandedSize;
+        uint32_t restoredCnt = 0;
+        for (auto *pool : poolList)
+          for (void *p : *pool) {
+            FunctionNode *n = static_cast<FunctionNode *>(p);
+            if (!n->isTrimmed())
+              continue;
+            pool == &pools.implicit_arg_trimming_pool ? n->setForceInline() : n->unsetTrimmed();
+            ++restoredCnt;
+          }
+        updateInlineCnt(unit->F);
+        updateExpandedUnitSize(unit->F, ignoreStackCallBoundary);
+        PrintTrimUnit(0x2, "Kernel / Unit " << unit->F->getName().str() << ": trimming cannot reach the threshold ("
+                                            << threshold << "); the best achievable size was " << bestAchievable
+                                            << ". Rolling back " << restoredCnt
+                                            << " trimming decision(s) and keeping the unit inlined.");
+      }
     } else {
       PrintTrimUnit(0x2, "Kernel / Unit "
                              << unit->F->getName().str()

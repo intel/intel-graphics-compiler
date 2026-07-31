@@ -1543,6 +1543,12 @@ DECLARE_IGC_REGKEY(bool, TrimImplicitArgFunctionsForLargeKernels, true,
                    "When a kernel is still over threshold after trimming, allow trimming "
                    "functions that use implicit args (overriding their force-inline)",
                    true)
+DECLARE_IGC_REGKEY(bool, UndoIneffectiveKernelTrimming, true,
+                   "When kernel trimming has consumed every candidate and the unit is still above "
+                   "KernelTotalSizeThreshold, roll the trimming back instead of keeping subroutines that "
+                   "cost compile time and register pressure for a size target that is missed anyway. "
+                   "Units above the large-kernel threshold are left trimmed.",
+                   true)
 DECLARE_IGC_REGKEY(bool, PartitionUnit, false, "Partition compilation unit", true)
 DECLARE_IGC_REGKEY(DWORD, PrintPartitionUnit, 0, "Print information about compilation unit partitioning", true)
 DECLARE_IGC_REGKEY(bool, PartitionWithFastHybridRA, false, "Enable FastRA and HybridRA when partition is enabled", true)
