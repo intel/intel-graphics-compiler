@@ -327,6 +327,7 @@ void GenIntrinsicsTTIImpl::getUnrollingPreferences(Loop *L, ScalarEvolution &SE,
   } else // for high registry pressure shaders, limit the unrolling to small loops and only fully unroll
   {
     UP.Threshold = IGC_GET_FLAG_VALUE(SetLoopUnrollThresholdForHighRegPressure);
+    UP.PartialThreshold = IGC_GET_FLAG_VALUE(SetLoopUnrollThresholdForHighRegPressure);
     // This is similiar to LLVM OptForSize scenario in LoopUnrollPass
     UP.MaxPercentThresholdBoost = IGC_GET_FLAG_VALUE(SetLoopUnrollMaxPercentThresholdBoostForHighRegPressure);
   }
@@ -527,21 +528,35 @@ void GenIntrinsicsTTIImpl::getUnrollingPreferences(Loop *L, ScalarEvolution &SE,
       bool HasCall = false;
       bool HasStore = false;
       bool MayHasLoadInHeaderOnly = true;
+      unsigned SamplerCount = 0;
+      bool HasDisallowedSamplerLoopSideEffect = false;
       for (auto BI = L->block_begin(), BE = L->block_end(); BI != BE; ++BI) {
         Count += countNonPHI(*BI);
         HasCall |= hasCall(*BI);
         HasStore |= hasStore(*BI);
         if (L->getHeader() != *BI)
           MayHasLoadInHeaderOnly &= !hasLoad(*BI);
+        for (Instruction &I : **BI) {
+          if (isa<SampleIntrinsic>(&I)) {
+            ++SamplerCount;
+            continue;
+          }
+          HasDisallowedSamplerLoopSideEffect |= I.mayHaveSideEffects();
+        }
       }
+
+      const bool ForceSamplerLoopUnroll =
+          IGC_IS_FLAG_ENABLED(EnableSamplerLoopSpeculation) && SamplerCount == 1 && !HasDisallowedSamplerLoopSideEffect;
+
       // Runtime unroll it.
-      if (!HasCall && !HasStore && MayHasLoadInHeaderOnly && Count < 100) {
+      if (((!HasCall && !HasStore && MayHasLoadInHeaderOnly) || ForceSamplerLoopUnroll) && Count < 100) {
         unsigned C = IGC_GET_FLAG_VALUE(AdvRuntimeUnrollCount);
         if (C == 0)
           C = 4;
         UP.Runtime = true;
         UP.Count = C;
         UP.MaxCount = UP.Count;
+        UP.Force |= ForceSamplerLoopUnroll;
         // The following is only available and required from LLVM 3.7+.
         UP.AllowExpensiveTripCount = true;
       }

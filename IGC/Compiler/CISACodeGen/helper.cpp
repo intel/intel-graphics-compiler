@@ -836,6 +836,7 @@ void ChangePtrTypeInIntrinsic(llvm::GenIntrinsicInst *&pIntr, llvm::Value *oldPt
   pNewIntr = llvm::GenISAIntrinsic::getDeclaration(pModule, id, overloadedTys);
 
   llvm::CallInst *pNewCall = llvm::CallInst::Create(pNewIntr, args, "", IGCLLVM::insertPosition(pIntr));
+  pNewCall->copyMetadata(*pIntr);
   pNewCall->setDebugLoc(pIntr->getDebugLoc());
 
   pIntr->replaceAllUsesWith(pNewCall);

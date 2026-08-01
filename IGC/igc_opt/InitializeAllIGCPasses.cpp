@@ -355,6 +355,7 @@ void initializeAllIGCPasses(llvm::PassRegistry &Registry) {
   initializeWaveShuffleIndexSinkingPass(Registry);
   IGC::initializeAddRequiredMemoryFencesPass(Registry);
   initializeInstructionHoistingOptimizationPass(Registry);
+  initializeSamplerLoopSpeculationPass(Registry);
   initializeSinkPointerConstAddPassPass(Registry);
   initializeWaveBallotCSEPass(Registry);
   initializeSpvPredicatedIOResolutionLPMPass(Registry);

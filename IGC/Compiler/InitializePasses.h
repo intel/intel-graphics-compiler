@@ -322,6 +322,7 @@ void initializeResourceLoopUnrollPass(llvm::PassRegistry &);
 void initializeInjectPrintfLPMPass(llvm::PassRegistry &);
 void initializeWaveShuffleIndexSinkingPass(llvm::PassRegistry &);
 void initializeInstructionHoistingOptimizationPass(llvm::PassRegistry &);
+void initializeSamplerLoopSpeculationPass(llvm::PassRegistry &);
 void initializeWaveBallotCSEPass(llvm::PassRegistry &);
 void initializeProcessBICodeAssumptionLPMPass(llvm::PassRegistry &);
 void initializeSimpleAluVectorizerPass(llvm::PassRegistry &);

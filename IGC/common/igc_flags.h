@@ -720,6 +720,8 @@ DECLARE_IGC_REGKEY(bool, SanitizeDivRemIncrementDivisorIsZero, false,
                    false)
 DECLARE_IGC_REGKEY(bool, GuardDivRemIncrementDividendOverflow, false,
                    "Check for no unsigned wrap flag on increment/decrement operation before optimizing", false)
+DECLARE_IGC_REGKEY(bool, EnableSamplerLoopSpeculation, false,
+                   "Enable forced partial unrolling and speculative clustering of sampler loop iterations", false)
 DECLARE_IGC_REGKEY(bool, EnableResourceLoopDestLifeTimeStart, true,
                    "Enable lifetime_start set for destination in resource loop", false)
 DECLARE_IGC_REGKEY(DWORD, EnableSamplerBackingByLSC, 0x0,

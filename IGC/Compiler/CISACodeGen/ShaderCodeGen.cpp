@@ -119,6 +119,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/Optimizer/SinkPointerConstAdd.h"
 #include "Compiler/Optimizer/WaveAllJointReduction.hpp"
 #include "Compiler/Optimizer/InstructionHoistingOptimization.hpp"
+#include "Compiler/Optimizer/SamplerLoopSpeculation.hpp"
 #include "Compiler/Optimizer/WaveBallotCSE.hpp"
 #include "Compiler/Optimizer/RedundantOpsCSE.hpp"
 #include "Compiler/MetaDataApi/PurgeMetaDataUtils.hpp"
@@ -1949,6 +1950,13 @@ void OptimizeIR(CodeGenContext *const pContext) {
       mpm.add(IGCLLVM::createLegacyWrappedADCEPass());
     }
 
+
+    // Speculatively cluster the sampler iterations produced by the forced
+    // partial unroll of a data-dependent sampler loop (GenTTI UP.Force gate).
+    // This runs while the cloned-iteration structure is still recognizable.
+    if (pContext->m_instrTypes.numOfLoop && IGC_IS_FLAG_ENABLED(EnableSamplerLoopSpeculation)) {
+      mpm.add(createSamplerLoopSpeculation());
+    }
 
     mpm.run(*pContext->getModule());
   } // end scope
