@@ -968,9 +968,8 @@ void StatelessToStateful::addToPromotionMap(Instruction &I, Value *Ptr,
       m_promotionMap.size() < maxPromotionCount &&
       pointerIsPositiveOffsetFromKernelArgument(m_F, Ptr, offset, baseArgNumber, true, OriginalInstructionAlignment);
 
-  // Keep regular load path stateless for bindless+buffer_offset when compiling
-  // in no-large mode. This must be checked on the final promotability path,
-  // not only in visitors.
+  // Skip only bindful a32 promotions in bindless+buffer_offset no-large mode.
+  // Bindless stateful ldraw.indexed loads are allowed (they are fast).
   if (isPromotable) {
     ModuleMetaData *modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
     const bool skipLoadPromotionForBindlessBufferOffset = modMD->compOpt.UseBindlessMode &&
@@ -978,8 +977,10 @@ void StatelessToStateful::addToPromotionMap(Instruction &I, Value *Ptr,
                                                           !modMD->compOpt.GreaterThan4GBBufferRequired;
 
     const bool isLoadPromotionCandidate = I.getOpcode() == Instruction::Load;
+    const bool isBindfulMode = m_targetAddressing == TargetAddressing::BINDFUL;
 
-    if (skipLoadPromotionForBindlessBufferOffset && isLoadPromotionCandidate) {
+    // Block only BINDFUL a32 loads which are slow; allow BINDLESS ldraw.indexed
+    if (skipLoadPromotionForBindlessBufferOffset && isLoadPromotionCandidate && isBindfulMode) {
       return;
     }
   }
@@ -1088,8 +1089,10 @@ void StatelessToStateful::visitLoadInst(LoadInst &I) {
                                                         modMD->compOpt.HasBufferOffsetArg &&
                                                         !modMD->compOpt.GreaterThan4GBBufferRequired;
 
-  // Keep bindless+buffer_offset load path stateless in no-large mode.
-  if (skipLoadPromotionForBindlessBufferOffset && ptr != nullptr && pointerIsFromKernelArgument(*ptr)) {
+  // Skip only bindful a32 loads in bindless+buffer_offset no-large mode.
+  // Bindless ldraw.indexed loads stay promotable (they are fast).
+  if (skipLoadPromotionForBindlessBufferOffset && ptr != nullptr && m_targetAddressing == TargetAddressing::BINDFUL &&
+      pointerIsFromKernelArgument(*ptr)) {
     return;
   }
 

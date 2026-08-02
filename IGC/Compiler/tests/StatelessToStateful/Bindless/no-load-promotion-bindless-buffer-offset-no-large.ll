@@ -9,14 +9,13 @@
 ; REQUIRES: llvm-16-plus
 ; RUN: igc_opt --opaque-pointers %s -S -o - -igc-stateless-to-stateful-resolution --target-addressing-mode bindless | FileCheck %s
 ;
-; In bindless + buffer-offset no-large mode, load promotion is intentionally
-; skipped for kernel-argument pointers. Store promotion remains enabled.
+; In bindless + buffer-offset no-large mode, load promotion is allowed for
+; bindless addressing mode (fast ldraw.indexed). Only BINDFUL a32 loads are
+; blocked. Store promotion remains enabled.
 
 ; CHECK-LABEL: @test_no_load_promotion
-; CHECK: [[IDX64:%.*]] = sext i32 %runtimeOffset to i64
-; CHECK: [[SRC_GEP:%.*]] = getelementptr inbounds i32, ptr addrspace(1) %src, i64 [[IDX64]]
-; CHECK: [[SRC_VAL:%.*]] = load i32, ptr addrspace(1) [[SRC_GEP]], align 4
-; CHECK-NOT: call i32 @llvm.genx.GenISA.ldraw.indexed
+; CHECK: [[SRCOFF:%.*]] = inttoptr i32 %bindlessOffset to ptr addrspace(2490368)
+; CHECK: call i32 @llvm.genx.GenISA.ldraw.indexed{{.*}}(ptr addrspace(2490368) [[SRCOFF]],
 ; CHECK: [[BASEPTR1:%.*]] = inttoptr i32 %bindlessOffset2 to ptr addrspace(2490368)
 ; CHECK: call void @llvm.genx.GenISA.storeraw.indexed{{.*}}(ptr addrspace(2490368) [[BASEPTR1]], i32
 
