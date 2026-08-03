@@ -145,6 +145,109 @@ short16 _Z38__builtin_spirv_ConvertE2M1ToBF16INTELDv16_i(char8 a) {
   return as_short16(__builtin_IB_shfl_idx4_to_fp16_8_packed(__builtin_IB_shfl_idx4_lut(LUT_e2m1_to_bfloat16), a));
 }
 
+// SPV_EXT_ocp_microscaling_types uses the same E2M1 representation as
+// SPV_INTEL_float4. Keep the manually mangled i4 ABI and forward the EXT
+// entry points to the existing implementations.
+uchar _Z36__builtin_spirv_ConvertE2M1ToE4M3EXTi(char a)
+{
+    return _Z38__builtin_spirv_ConvertE2M1ToE4M3INTELi(a);
+}
+uchar2 _Z36__builtin_spirv_ConvertE2M1ToE4M3EXTDv2_i(char1 a)
+{
+    return _Z38__builtin_spirv_ConvertE2M1ToE4M3INTELDv2_i(a);
+}
+uchar3 _Z36__builtin_spirv_ConvertE2M1ToE4M3EXTDv3_i(char2 a)
+{
+    return _Z38__builtin_spirv_ConvertE2M1ToE4M3INTELDv3_i(a);
+}
+uchar4 _Z36__builtin_spirv_ConvertE2M1ToE4M3EXTDv4_i(char2 a)
+{
+    return _Z38__builtin_spirv_ConvertE2M1ToE4M3INTELDv4_i(a);
+}
+uchar8 _Z36__builtin_spirv_ConvertE2M1ToE4M3EXTDv8_i(char4 a)
+{
+    return _Z38__builtin_spirv_ConvertE2M1ToE4M3INTELDv8_i(a);
+}
+uchar16 _Z36__builtin_spirv_ConvertE2M1ToE4M3EXTDv16_i(char8 a)
+{
+    return _Z38__builtin_spirv_ConvertE2M1ToE4M3INTELDv16_i(a);
+}
+
+uchar _Z36__builtin_spirv_ConvertE2M1ToE5M2EXTi(char a)
+{
+    return _Z38__builtin_spirv_ConvertE2M1ToE5M2INTELi(a);
+}
+uchar2 _Z36__builtin_spirv_ConvertE2M1ToE5M2EXTDv2_i(char1 a)
+{
+    return _Z38__builtin_spirv_ConvertE2M1ToE5M2INTELDv2_i(a);
+}
+uchar3 _Z36__builtin_spirv_ConvertE2M1ToE5M2EXTDv3_i(char2 a)
+{
+    return _Z38__builtin_spirv_ConvertE2M1ToE5M2INTELDv3_i(a);
+}
+uchar4 _Z36__builtin_spirv_ConvertE2M1ToE5M2EXTDv4_i(char2 a)
+{
+    return _Z38__builtin_spirv_ConvertE2M1ToE5M2INTELDv4_i(a);
+}
+uchar8 _Z36__builtin_spirv_ConvertE2M1ToE5M2EXTDv8_i(char4 a)
+{
+    return _Z38__builtin_spirv_ConvertE2M1ToE5M2INTELDv8_i(a);
+}
+uchar16 _Z36__builtin_spirv_ConvertE2M1ToE5M2EXTDv16_i(char8 a)
+{
+    return _Z38__builtin_spirv_ConvertE2M1ToE5M2INTELDv16_i(a);
+}
+
+half _Z36__builtin_spirv_ConvertE2M1ToFP16EXTi(char a)
+{
+    return _Z38__builtin_spirv_ConvertE2M1ToFP16INTELi(a);
+}
+half2 _Z36__builtin_spirv_ConvertE2M1ToFP16EXTDv2_i(char1 a)
+{
+    return _Z38__builtin_spirv_ConvertE2M1ToFP16INTELDv2_i(a);
+}
+half3 _Z36__builtin_spirv_ConvertE2M1ToFP16EXTDv3_i(char2 a)
+{
+    return _Z38__builtin_spirv_ConvertE2M1ToFP16INTELDv3_i(a);
+}
+half4 _Z36__builtin_spirv_ConvertE2M1ToFP16EXTDv4_i(char2 a)
+{
+    return _Z38__builtin_spirv_ConvertE2M1ToFP16INTELDv4_i(a);
+}
+half8 _Z36__builtin_spirv_ConvertE2M1ToFP16EXTDv8_i(char4 a)
+{
+    return _Z38__builtin_spirv_ConvertE2M1ToFP16INTELDv8_i(a);
+}
+half16 _Z36__builtin_spirv_ConvertE2M1ToFP16EXTDv16_i(char8 a)
+{
+    return _Z38__builtin_spirv_ConvertE2M1ToFP16INTELDv16_i(a);
+}
+
+short _Z36__builtin_spirv_ConvertE2M1ToBF16EXTi(char a)
+{
+    return _Z38__builtin_spirv_ConvertE2M1ToBF16INTELi(a);
+}
+short2 _Z36__builtin_spirv_ConvertE2M1ToBF16EXTDv2_i(char1 a)
+{
+    return _Z38__builtin_spirv_ConvertE2M1ToBF16INTELDv2_i(a);
+}
+short3 _Z36__builtin_spirv_ConvertE2M1ToBF16EXTDv3_i(char2 a)
+{
+    return _Z38__builtin_spirv_ConvertE2M1ToBF16INTELDv3_i(a);
+}
+short4 _Z36__builtin_spirv_ConvertE2M1ToBF16EXTDv4_i(char2 a)
+{
+    return _Z38__builtin_spirv_ConvertE2M1ToBF16INTELDv4_i(a);
+}
+short8 _Z36__builtin_spirv_ConvertE2M1ToBF16EXTDv8_i(char4 a)
+{
+    return _Z38__builtin_spirv_ConvertE2M1ToBF16INTELDv8_i(a);
+}
+short16 _Z36__builtin_spirv_ConvertE2M1ToBF16EXTDv16_i(char8 a)
+{
+    return _Z38__builtin_spirv_ConvertE2M1ToBF16INTELDv16_i(a);
+}
+
 // ConvertInt4ToBF16INTEL
 ushort _Z38__builtin_spirv_ConvertInt4ToBF16INTELi(char a) {
   return __builtin_IB_shfl_idx4_to_fp16(__builtin_IB_shfl_idx4_lut(LUT_int4_to_bfloat16), a);

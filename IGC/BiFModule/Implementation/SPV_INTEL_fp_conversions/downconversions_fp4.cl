@@ -150,6 +150,58 @@ uchar8 __attribute__((overloadable)) __builtin_spirv_ConvertBF16ToE2M1INTEL(shor
   return as_uchar8(result_uint2);
 }
 
+// SPV_EXT_ocp_microscaling_types uses the same E2M1 representation as
+// SPV_INTEL_float4, but the translator emits distinct EXT builtin names.
+uchar __attribute__((overloadable)) __builtin_spirv_ConvertFP16ToE2M1EXT(half a)
+{
+    return __builtin_spirv_ConvertFP16ToE2M1INTEL(a);
+}
+uchar1 __attribute__((overloadable)) __builtin_spirv_ConvertFP16ToE2M1EXT(half2 a)
+{
+    return __builtin_spirv_ConvertFP16ToE2M1INTEL(a);
+}
+uchar2 __attribute__((overloadable)) __builtin_spirv_ConvertFP16ToE2M1EXT(half3 a)
+{
+    return __builtin_spirv_ConvertFP16ToE2M1INTEL(a);
+}
+uchar2 __attribute__((overloadable)) __builtin_spirv_ConvertFP16ToE2M1EXT(half4 a)
+{
+    return __builtin_spirv_ConvertFP16ToE2M1INTEL(a);
+}
+uchar4 __attribute__((overloadable)) __builtin_spirv_ConvertFP16ToE2M1EXT(half8 a)
+{
+    return __builtin_spirv_ConvertFP16ToE2M1INTEL(a);
+}
+uchar8 __attribute__((overloadable)) __builtin_spirv_ConvertFP16ToE2M1EXT(half16 a)
+{
+    return __builtin_spirv_ConvertFP16ToE2M1INTEL(a);
+}
+
+uchar __attribute__((overloadable)) __builtin_spirv_ConvertBF16ToE2M1EXT(short a)
+{
+    return __builtin_spirv_ConvertBF16ToE2M1INTEL(a);
+}
+uchar1 __attribute__((overloadable)) __builtin_spirv_ConvertBF16ToE2M1EXT(short2 a)
+{
+    return __builtin_spirv_ConvertBF16ToE2M1INTEL(a);
+}
+uchar2 __attribute__((overloadable)) __builtin_spirv_ConvertBF16ToE2M1EXT(short3 a)
+{
+    return __builtin_spirv_ConvertBF16ToE2M1INTEL(a);
+}
+uchar2 __attribute__((overloadable)) __builtin_spirv_ConvertBF16ToE2M1EXT(short4 a)
+{
+    return __builtin_spirv_ConvertBF16ToE2M1INTEL(a);
+}
+uchar4 __attribute__((overloadable)) __builtin_spirv_ConvertBF16ToE2M1EXT(short8 a)
+{
+    return __builtin_spirv_ConvertBF16ToE2M1INTEL(a);
+}
+uchar8 __attribute__((overloadable)) __builtin_spirv_ConvertBF16ToE2M1EXT(short16 a)
+{
+    return __builtin_spirv_ConvertBF16ToE2M1INTEL(a);
+}
+
 // ConvertBF16ToInt4INTEL
 uchar __attribute__((overloadable)) __builtin_spirv_ConvertBF16ToInt4INTEL(short a) {
   short2 in0;
