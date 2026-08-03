@@ -271,6 +271,7 @@ void initializeHalfPromotionPass(llvm::PassRegistry &);
 void initializeCapLoopIterationsPass(llvm::PassRegistry &);
 void initializeFCmpPaternMatchPass(llvm::PassRegistry &);
 void initializeCodeAssumptionLPMPass(llvm::PassRegistry &);
+void initializeFoldZeroInitAllocaIntoMemsetLPMPass(llvm::PassRegistry &);
 void initializeIGCInstructionCombiningPassPass(llvm::PassRegistry &);
 void initializeIntDivConstantReductionPass(llvm::PassRegistry &);
 void initializeIntDivRemIncrementReductionPass(llvm::PassRegistry &);

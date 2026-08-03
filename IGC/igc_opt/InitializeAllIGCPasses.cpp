@@ -356,6 +356,7 @@ void initializeAllIGCPasses(llvm::PassRegistry &Registry) {
   initializeWaveBallotCSEPass(Registry);
   initializeSpvPredicatedIOResolutionLPMPass(Registry);
   initializeProcessBICodeAssumptionLPMPass(Registry);
+  initializeFoldZeroInitAllocaIntoMemsetLPMPass(Registry);
   initializePrintFPRangeAnalysisPass(Registry);
   initializeSimpleAluVectorizerPass(Registry);
   initializeRedundantOpsCSEPassPass(Registry);
