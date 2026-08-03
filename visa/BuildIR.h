@@ -627,6 +627,8 @@ public:
   bool tryToAlignOperand(G4_Operand *opnd, int alignByte) const;
   bool tryToAlignOperand(G4_Operand *opnd, unsigned short &offset,
                          int alignByte) const;
+  bool tryToAlignOperandRootDcl(G4_Operand *opnd, uint32_t &offset,
+                                int alignBytes);
 
   void setType(enum VISA_BUILD_TYPE _type) { type = _type; }
   bool getIsKernel() const { return type == VISA_BUILD_TYPE::KERNEL; }

@@ -336,6 +336,88 @@ static bool allowTrueRegionOnSrc0(G4_INST *inst) {
   return !(src2->isImm() || src2->asSrcRegRegion()->isScalar());
 }
 
+// Register region restrictions for MOV where one operand is an 8-bit float
+//   1. When doing down conversions to 9-bit float from fp16 && dst is
+//      packed (stride=1).
+//      1.1 Src0 restriction
+//          a. Src0 must be a packed GRF register.
+//          b. The subreg of fp16 Src0 should be either .0 or .16
+//          c. Src0 must not span more than 1 register.
+//      1.2 Dst restriction
+//          a. 8-bit Dst must use subreg .0, .16, .32 or .48.
+//      1.3 (dst.subreg%32) == src0.subreg;
+//   2. Otherwise, integer rules apply.
+void HWConformityPro::fixMovCvtByteFloat(INST_LIST_ITER it, G4_BB *bb) {
+  auto inst = *it;
+  auto dst = inst->getDst();
+  auto src = inst->getSrc(0);
+  auto dstTy = dst->getType();
+  auto srcTy = src->getType();
+
+  // Down-cvt rules apply to HF8/BF8; UE5M3 is handled with int pipe rules.
+  vISA_ASSERT(IS_BYTE_FLOAT(dstTy) || IS_BYTE_FLOAT(srcTy),
+              "expect byte-float mov");
+
+  const uint32_t BytesPerGrf = builder.numEltPerGRF<Type_UB>();
+  bool isPackedDst = dst->getHorzStride() == 1;
+  auto srcRgn = src->isSrcRegRegion() ? src->asSrcRegRegion() : nullptr;
+  bool isPackedSrc =
+      srcRgn ? srcRgn->getRegion()->isContiguous(inst->getExecSize()) : false;
+  if (IS_BYTE_FLOAT(dstTy) && isPackedDst && IS_FP16TYPE(srcTy)) {
+    // down conversion: 8-bit <- 16-bit
+    //   1. src0.subreg = 0|16  -> align src0's root dcl to GRF so its subreg
+    //      is known
+    //   2. dst.subreg = 0|16|32|48  -> align dst0's root dcl to 32 byte (half
+    //      GRF) so that (dst.subreg%32) is known
+    //   3. (dst.subreg%32) == src0.subreg
+    //      As both lhs and rhs are known, this condition can be checked.
+    uint32_t dstOff = 0, srcOff = 0;
+    bool isDstAligned32 = builder.tryToAlignOperandRootDcl(dst, dstOff, 32);
+    // As dst is 32-byte aligned, its real subreg isn't known, but
+    // its subreg%32 is known (dst.subreg=0|16|32|48 is equivalent to
+    // (dst.subreg%32) = 0|16).
+    uint32_t dstSubReg = dstOff % 32;
+    bool isSrcGrfAligned =
+        srcRgn ? builder.tryToAlignOperandRootDcl(src, srcOff, BytesPerGrf)
+               : false;
+    uint32_t srcSubReg = (srcOff % BytesPerGrf) / 2; // 16-bit element
+    bool isDstSubRegOk = (dstSubReg == 0 || dstSubReg == 16);
+    bool isSrcSubRegOk = (srcSubReg == 0 || srcSubReg == 16);
+    bool isMod32Ok = (dstSubReg == srcSubReg);
+    // SubReg check makes sense only if the root dcl is aligned. When mod32
+    // is mismatched, both operands are forced to be subreg 0
+    if (!isDstAligned32 || !isDstSubRegOk || (!isMod32Ok && dstSubReg != 0)) {
+      replaceDstWithRawMov(it, bb, 1, builder.getGRFAlign());
+    }
+
+    if (!isSrcGrfAligned || !isPackedSrc || !isSrcSubRegOk ||
+        (!isMod32Ok && srcSubReg != 0)) {
+      replaceSrcWithRawMov(it, bb, 0, /*stride*/ 1, builder.getGRFAlign());
+    }
+
+    // Src must not cross 1 grf (both dst and src should be packed now)
+    src = inst->getSrc(0);
+    vISA_ASSERT(src->isSrcRegRegion(), "ICE: expect src register region");
+    if (src->crossGRF(builder)) {
+      evenlySplitInst(it, bb);
+    }
+    return;
+  }
+
+  // Narrowing: 8-bit float <- F/HF/BF(src).
+  // Widening : F/HF/BF <-- 8-bit float
+  // Int packed-destination restriction:
+  //   execChannelWidth=4 for F src -> FP8 stride=4 (matches HW spec rule).
+  //   execChannelWidth=2 for HF/BF src -> FP8 stride=2.
+  auto execChannelWidth = inst->getExecTypeSizeXe3p();
+  auto dstStrideInBytes = dst->getTypeSize() * dst->getHorzStride();
+  if (inst->getExecSize() != g4::SIMD1 &&
+      (dstStrideInBytes < execChannelWidth ||
+       !isAllowedTrueRegionPatternOnSrc0(src))) {
+    replaceDstWithRawMov(it, bb, execChannelWidth / TypeSize(dstTy),
+                         builder.getGRFAlign());
+  }
+}
 
 // Alignment rule for down conversion from fp32 to fp16(bf/hf):
 //    1, If dst is packed(stride is 1) with subreg offset .0/.16, src must be
@@ -601,6 +683,13 @@ void HWConformityPro::fixRegRegionIntPipe(INST_LIST_ITER it, G4_BB *bb) {
     if (((IS_HFTYPE(dstTy) || IS_BFTYPE(dstTy)) && IS_FTYPE(src0Ty)) ||
         ((IS_HFTYPE(src0Ty) || IS_BFTYPE(src0Ty)) && IS_FTYPE(dstTy))) {
       fixMovCvtBetweenFp16AndFp32(it, bb);
+      return;
+    }
+
+    // Fix mov convert instructions with byte float as one of its operands.
+    if ((IS_BYTE_FLOAT(dstTy) && (IS_FTYPE(src0Ty) || IS_FP16TYPE(src0Ty))) ||
+        (IS_BYTE_FLOAT(src0Ty) && (IS_FTYPE(dstTy) || IS_FP16TYPE(dstTy)))) {
+      fixMovCvtByteFloat(it, bb);
       return;
     }
   }
