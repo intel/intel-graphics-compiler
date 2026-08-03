@@ -492,7 +492,7 @@ DEF_VISA_OPTION(vISA_LraFFWindowSize, ET_INT32, "-lraFFWindowSize", UNUSED, 12)
 // registers sets on targetd load blocks. The value is the rotation depth. 0
 // (and 1) disables the optimization.
 DEF_VISA_OPTION(vISA_RAAntiDepRecolorRotation, ET_INT32,
-                "-raAntiDepRecolorRotation", UNUSED, 0)
+                "-raAntiDepRecolorRotation", UNUSED, 3)
 DEF_VISA_OPTION(vISA_SplitGRFAlignedScalar, ET_BOOL, "-nosplitGRFalignedscalar",
                 UNUSED, true)
 DEF_VISA_OPTION(vISA_DoSplitOnSpill, ET_BOOL, "-nosplitonspill", UNUSED, true)
