@@ -284,6 +284,8 @@ bool PrivateMemoryResolution::runOnModule(llvm::Module &M) {
 
           maxPrivateMem = std::max(maxPrivateMem, Ctx.getPrivateMemoryMinimalSizePerThread());
           maxPrivateMem = std::max(maxPrivateMem, (uint32_t)(IGC_GET_FLAG_VALUE(ForcePerThreadPrivateMemorySize)));
+          // This is a per-HW-thread stride too; see the function group loop below.
+          maxPrivateMem = iSTD::Align(maxPrivateMem, m_ModAllocaInfo->getPrivateMemAlignment(m_currFunction));
           modMD.PrivateMemoryPerFG[m_currFunction] = maxPrivateMem;
 
           if (IGC_IS_FLAG_ENABLED(PrintStackCallDebugInfo)) {
@@ -409,6 +411,20 @@ bool PrivateMemoryResolution::runOnModule(llvm::Module &M) {
       }
       maxPrivateMem = std::max(maxPrivateMem, Ctx.getPrivateMemoryMinimalSizePerThread());
       maxPrivateMem = std::max(maxPrivateMem, (uint32_t)(IGC_GET_FLAG_VALUE(ForcePerThreadPrivateMemorySize)));
+
+      // When private memory lives on the stack this value becomes the per-HW-thread
+      // stride (SP = privateBase + HWTID * PrivateMemoryPerFG * simdSize), so round
+      // it up to the group's strictest alloca alignment; otherwise odd HW threads
+      // get an under-aligned base and e.g. an `alloca align 64` is only 32-byte
+      // aligned there. ModuleAllocaAnalysis::getPerThreadOffset() already rounds the
+      // non-stack path. Each sub-group has its own alloca layout, so take the max
+      // across the whole group. The condition matches privateOnStack above.
+      if (FG->hasStackCall() || FG->hasVariableLengthAlloca() || FGA->isIndirectCallGroup(FG)) {
+        unsigned maxAlign = 1;
+        for (Function *F : *FG)
+          maxAlign = std::max(maxAlign, m_ModAllocaInfo->getPrivateMemAlignment(F));
+        maxPrivateMem = iSTD::Align(maxPrivateMem, maxAlign);
+      }
 
       if (maxPrivateMem > 0) {
         modMD.PrivateMemoryPerFG[pKernel] = (unsigned)maxPrivateMem;
