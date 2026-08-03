@@ -158,6 +158,8 @@ bool LoopDeadCodeElimination::processLoop(Loop *L) {
       continue;
     bool ExitingOnTrue = !L->contains(BI->getSuccessor(0));
     auto Cond = BI->getCondition();
+    if (isa<ConstantData>(Cond))
+      continue;
     for (auto U : Cond->users()) {
 
       auto SI = dyn_cast<SelectInst>(U);
