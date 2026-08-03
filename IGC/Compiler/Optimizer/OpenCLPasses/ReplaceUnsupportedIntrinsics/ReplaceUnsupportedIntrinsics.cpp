@@ -112,6 +112,9 @@ private:
   void replaceI64MinMax(IntrinsicInst *I);
   void replaceHalvesDivsSqrts(IntrinsicInst *I);
   void replaceVectorReduce(IntrinsicInst *I);
+#if LLVM_VERSION_MAJOR >= 22
+  void replaceCmp(IntrinsicInst *I);
+#endif
 #if LLVM_VERSION_MAJOR >= 15
   void replaceIsFpClass(IntrinsicInst *I);
 #endif
@@ -168,6 +171,10 @@ const std::map<Intrinsic::ID, ReplaceUnsupportedIntrinsics::MemFuncPtr_t>
     { Intrinsic::vector_reduce_fmul,            &ReplaceUnsupportedIntrinsics::replaceVectorReduce },
     { Intrinsic::vector_reduce_fmax,            &ReplaceUnsupportedIntrinsics::replaceVectorReduce },
     { Intrinsic::vector_reduce_fmin,            &ReplaceUnsupportedIntrinsics::replaceVectorReduce },
+#if LLVM_VERSION_MAJOR >= 22
+    { Intrinsic::scmp,                          &ReplaceUnsupportedIntrinsics::replaceCmp },
+    { Intrinsic::ucmp,                          &ReplaceUnsupportedIntrinsics::replaceCmp },
+#endif
         // clang-format on
 };
 
@@ -1183,6 +1190,71 @@ void ReplaceUnsupportedIntrinsics::replaceI1MinMax(IntrinsicInst *I) {
     I->replaceAllUsesWith(Builder.CreateAnd(LHS, RHS));
 }
 
+#if LLVM_VERSION_MAJOR >= 22
+/*
+  Replaces calls to llvm.{s,u}cmp, which returns -1/0/1 depending on whether the
+  first operand is less than, equal to or greater than the second one when
+  both are interpreted as (un)signed integers.
+
+  E.g.:
+    %r = call i32 @llvm.scmp.i32.i64(i64 %a, i64 %b)
+  =>
+    %lt = icmp slt i64 %a, %b
+    %gt = icmp sgt i64 %a, %b
+    %gt.sel = select i1 %gt, i32 1, i32 0
+    %r = select i1 %lt, i32 -1, i32 %gt.sel
+
+    %r = call i32 @llvm.ucmp.i32.i64(i64 %a, i64 %b)
+  =>
+    %lt = icmp ult i64 %a, %b
+    %gt = icmp ugt i64 %a, %b
+    %gt.sel = select i1 %gt, i32 1, i32 0
+    %r = select i1 %lt, i32 -1, i32 %gt.sel
+
+*/
+void ReplaceUnsupportedIntrinsics::replaceCmp(IntrinsicInst *I) {
+  const Intrinsic::ID IID = I->getIntrinsicID();
+  IGC_ASSERT(IID == Intrinsic::scmp || IID == Intrinsic::ucmp);
+  bool IsSigned = IID == Intrinsic::scmp;
+  IGCLLVM::IRBuilder<> Builder(I);
+  Builder.SetCurrentDebugLocation(I->getDebugLoc());
+
+  Value *LHS = I->getArgOperand(0), *RHS = I->getArgOperand(1);
+  IGC_ASSERT_MESSAGE(LHS->getType() == RHS->getType(), "Operands of @llvm.{s,u}cmp must have the same type");
+  Type *ResTy = I->getType();
+  Value *Res = nullptr;
+
+  // This is needed as emission of vector cmp works only on SIMD16
+  // and at this state, we don't know what SIMD Width we will choose
+  // see EmitVISAPass.cpp:5658
+  if (ResTy->isVectorTy()) {
+    auto *VecTy = cast<IGCLLVM::FixedVectorType>(ResTy);
+    const unsigned NumElts = (unsigned)VecTy->getNumElements();
+    for (unsigned i = 0; i < NumElts; ++i) {
+      Value *LHS_i = Builder.CreateExtractElement(LHS, Builder.getInt32(i));
+      Value *RHS_i = Builder.CreateExtractElement(RHS, Builder.getInt32(i));
+      Value *IsLT = IsSigned ? Builder.CreateICmpSLT(LHS_i, RHS_i) : Builder.CreateICmpULT(LHS_i, RHS_i);
+      Value *IsGT = IsSigned ? Builder.CreateICmpSGT(LHS_i, RHS_i) : Builder.CreateICmpUGT(LHS_i, RHS_i);
+
+      Value *GTOrEQ = Builder.CreateSelect(IsGT, ConstantInt::get(ResTy->getScalarType(), 1),
+                                           ConstantInt::get(ResTy->getScalarType(), 0));
+      Value *Res_i = Builder.CreateSelect(IsLT, ConstantInt::get(ResTy->getScalarType(), -1), GTOrEQ);
+      if (!Res)
+        Res = PoisonValue::get(ResTy);
+      Res = Builder.CreateInsertElement(Res, Res_i, Builder.getInt32(i));
+    }
+  } else {
+    Value *IsLT = IsSigned ? Builder.CreateICmpSLT(LHS, RHS) : Builder.CreateICmpULT(LHS, RHS);
+    Value *IsGT = IsSigned ? Builder.CreateICmpSGT(LHS, RHS) : Builder.CreateICmpUGT(LHS, RHS);
+
+    Value *GTOrEQ = Builder.CreateSelect(IsGT, ConstantInt::get(ResTy, 1), ConstantInt::get(ResTy, 0));
+    Res = Builder.CreateSelect(IsLT, ConstantInt::get(ResTy, -1), GTOrEQ);
+  }
+
+  I->replaceAllUsesWith(Res);
+  I->eraseFromParent();
+}
+#endif
 /*
   Replaces half-precision llvm.experimental.constrained.fdiv and
   llvm.experimental.constrained.sqrt intrinsics by promoting operands to float,
