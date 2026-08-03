@@ -2109,7 +2109,7 @@ void DDD::createAddEdge(Node *pred, Node *succ, DepType d) {
     Edge &curSucc = pred->succs[i];
     // Keep the deptype that has the highest latency
     if (curSucc.getNode() == succ) {
-      uint32_t newEdgeLatency = getEdgeLatency(pred, d);
+      uint32_t newEdgeLatency = getEdgeLatency(pred, succ, d);
       if (newEdgeLatency > curSucc.getLatency()) {
         // Update with the dep type that causes the highest latency
         curSucc.setType(d);
@@ -2122,7 +2122,7 @@ void DDD::createAddEdge(Node *pred, Node *succ, DepType d) {
   }
 
   // No edge with the same successor exists. Append this edge.
-  uint32_t edgeLatency = getEdgeLatency(pred, d);
+  uint32_t edgeLatency = getEdgeLatency(pred, succ, d);
   pred->succs.emplace_back(succ, d, edgeLatency);
 
   uint32_t dumpSendDep = getOptions()->getuInt32Option(vISA_DumpSendDepLatency);
@@ -2212,7 +2212,7 @@ void DDD::dumpDagDot(G4_BB *bb) {
                              : (depType == WAW || depType == WAW_MEMORY)
                                  ? "orange"
                                  : "grey";
-      uint32_t edgeLatency = getEdgeLatency(node, depType);
+      uint32_t edgeLatency = getEdgeLatency(node, succNode, depType);
       // Example: 30->34[label="4",color="{red|black|yellow}"];
       ofile << node->nodeID << "->" << succNode->nodeID << "[label=\""
             << edgeLatency << "\""
@@ -2264,7 +2264,7 @@ void DDD::dumpNodes(G4_BB *bb) {
           : (depType == WAR || depType == WAR_MEMORY) ? "WAR"
           : (depType == WAW || depType == WAW_MEMORY) ? "WAW"
                                                       : "grey";
-      uint32_t edgeLatency = getEdgeLatency(node, depType);
+      uint32_t edgeLatency = getEdgeLatency(node, succNode, depType);
       // Example: 30->34[label="4",color="{red|black|yellow}"];
       ofile << node->nodeID << "->" << succNode->nodeID << "[label=\""
             << edgeLatency << "\""
@@ -3407,7 +3407,7 @@ uint32_t DDD::listSchedule(G4_BB_Schedule *schedule) {
 // instruction need not wait for completion of execution of first instruction.
 // So modeled latency is lower and equal to latency of first instruction (which
 // is initialized to either 1 or 2 depending on compression attribute).
-uint32_t DDD::getEdgeLatency_old(Node *node, DepType depT) const {
+uint32_t DDD::getEdgeLatency_old(Node *node, Node *succNode, DepType depT) const {
   // This is a prefetch read only depending on the terminator.
   // We pessimistically assume that it will be used right after the branch.
   G4_INST *inst = *node->getInstructions()->begin();
@@ -3432,12 +3432,16 @@ uint32_t DDD::getEdgeLatency_old(Node *node, DepType depT) const {
     latency = LT.getLatency(inst);
     break;
 
-  // FIXME:
-  // 1. for WAW/WAR, if the first instruction is send, need to consider
+  // FIXME: for WAW/WAR, if the first instruction is send, need to consider
   // getSendSrcReadLatency() as well.
-  // 2. UNCOMPR_LATENCY works only when the instructions are from same pipeline.
-  // If from different pipelines, getLatency() is the right latency
   case WAW:
+    if (kernel->fg.builder->modelSendSrcReadLatency() && inst->isSend()) {
+      latency = LT.getSendSrcReadLatency(inst);
+    } else {
+      latency = UNCOMPR_LATENCY;
+    }
+    break;
+
   case WAR:
     if (kernel->fg.builder->modelSendSrcReadLatency() && inst->isSend()) {
       latency = LT.getSendSrcReadLatency(inst);
@@ -3462,8 +3466,8 @@ uint32_t DDD::getEdgeLatency_old(Node *node, DepType depT) const {
   return latency;
 }
 
-uint32_t DDD::getEdgeLatency(Node *node, DepType depT) const {
-  uint32_t latency = getEdgeLatency_old(node, depT);
+uint32_t DDD::getEdgeLatency(Node *node, Node *succNode, DepType depT) const {
+  uint32_t latency = getEdgeLatency_old(node, succNode, depT);
   if (useMTLatencies) {
     float scale = float(HWthreadsPerEU) / getBuilder()->getCoIssueUints();
     latency = int(latency / scale);

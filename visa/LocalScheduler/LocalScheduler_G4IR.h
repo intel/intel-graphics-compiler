@@ -365,8 +365,8 @@ public:
                                     std::vector<BucketDescr> &BDvec);
   void getBucketDescrs(Node *inst, std::vector<BucketDescr> &bucketDescrs);
 
-  uint32_t getEdgeLatency_old(Node *node, DepType depT) const;
-  uint32_t getEdgeLatency(Node *node, DepType depT) const;
+  uint32_t getEdgeLatency_old(Node *node, Node *succNode, DepType depT) const;
+  uint32_t getEdgeLatency(Node *node, Node *succNode, DepType depT) const;
   Mem_Manager *get_mem() { return &DDDMem; }
   IR_Builder *getBuilder() const { return kernel->fg.builder; }
   const Options *getOptions() const { return kernel->getOptions(); }
