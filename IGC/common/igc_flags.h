@@ -439,6 +439,11 @@ DECLARE_IGC_REGKEY(bool, DisableEmptyBlockRemoval, false,
 DECLARE_IGC_REGKEY(bool, DisableSIMD32Slicing, false,
                    "Setting this to 1/true adds a compiler switch to disable emitting SIMD32 VISA code in slices",
                    false)
+DECLARE_IGC_REGKEY(bool, ZeroInactiveLanesForWaveShuffle, false,
+                   "Force-enable the ZeroInactiveLanesForWaveShuffle AIL: make WaveShuffleIndex read zero from "
+                   "source lanes that are inactive instead of stale register contents. Useful for testing without "
+                   "UMD AIL detection.",
+                   true)
 DECLARE_IGC_REGKEY(bool, DisableMatchMad, false,
                    "Setting this to 1/true adds a compiler switch to disable mul+add = mad optimization", false)
 DECLARE_IGC_REGKEY(bool, WaAllowMatchMadOptimizationforVS, false,

@@ -533,6 +533,10 @@ enum class ShaderTypeMD
         bool WaDisableDualSIMD8                         = false;
         bool EnableLdStCombineforLoad                   = false;
         bool EnableLdStCombinewithDummyLoad             = false;
+        // Read zero from WaveShuffleIndex source lanes that are inactive, rather than
+        // whatever the register happened to hold. For shaders that shuffle from a lane
+        // divergent control flow has deactivated, which HLSL leaves undefined.
+        bool WaZeroInactiveLanesForWaveShuffle          = false;
         bool ForceUniformBuffer                         = false;
         bool ForceUniformSurfaceSampler                 = false;
         bool EnableIndependentSharedMemoryFenceFunctionality = false;

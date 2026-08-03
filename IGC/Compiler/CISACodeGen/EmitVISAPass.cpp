@@ -6447,6 +6447,26 @@ void EmitPass::emitSimdShuffle(llvm::Instruction *inst) {
     m_encoder->Shl(pSrcElm, simdChannelUW, m_currShader->ImmToVariable(shtAmt, ISA_TYPE_UW));
     m_encoder->Push();
 
+    // ZeroInactiveLanesForWaveShuffle AIL. An application may shuffle from a lane that
+    // divergent control flow has deactivated; HLSL leaves that read undefined. Because
+    // `data` is produced under the execution mask, its inactive lanes still hold stale
+    // register contents, and those propagate into the result. Materialize the source into
+    // a temporary that reads zero in the inactive lanes so the undefined read is bounded
+    // and deterministic instead of arbitrary.
+    // The regkey is honoured here rather than in a frontend adaptor so that it applies to
+    // every API, and so that the sequence can be lit tested without UMD AIL detection.
+    if ((m_pCtx->getModuleMetaData()->compOpt.WaZeroInactiveLanesForWaveShuffle ||
+         IGC_IS_FLAG_ENABLED(ZeroInactiveLanesForWaveShuffle)) &&
+        !data->IsUniform() && m_currShader->m_numberInstance == 1) {
+      CVariable *zeroInactive = m_currShader->GetNewVariable(data, "ShuffleSrcZeroInactive");
+      m_encoder->SetNoMask();
+      m_encoder->Copy(zeroInactive, m_currShader->ImmToVariable(0, data->GetType()));
+      m_encoder->Push();
+      m_encoder->Copy(zeroInactive, data);
+      m_encoder->Push();
+      data = zeroInactive;
+    }
+
     CVariable *src = data;
     CVariable *lowerLaneFlag = nullptr;
     if (split4Movi) {
