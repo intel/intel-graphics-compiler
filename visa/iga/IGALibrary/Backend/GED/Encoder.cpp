@@ -1495,7 +1495,9 @@ void Encoder::encodeBasicDestination(const Instruction &inst,
     break;
   case Operand::Kind::INDIRECT:
     GED_ENCODE(DstAddrMode, GED_ADDR_MODE_Indirect);
-    GED_ENCODE(DstDataType, lowerDataType(dst.getType()));
+    {
+      GED_ENCODE(DstDataType, lowerDataType(dst.getType()));
+    }
     if (inst.getOpSpec().supportsSaturation()) {
       GED_ENCODE(Saturate, lowerSaturate(dst.getDstModifier()));
     }
