@@ -287,7 +287,7 @@ void SubGroupFuncsResolution::mediaBlockRead(llvm::CallInst &CI) {
 
   if (use && isa<BitCastInst>(use) &&
       (use->getType()->getScalarType()->isFloatTy() || use->getType()->getScalarType()->isHalfTy())) {
-    Type *types[] = {use->getType(), CI.getArgOperand(0)->getType()};
+    Type *types[] = {use->getType(), args[0]->getType()};
     BitCastInst *bitCast = cast<BitCastInst>(use);
     Function *simdMediaBlockReadFunc = GenISAIntrinsic::getDeclaration(
         CI.getCalledFunction()->getParent(), GenISAIntrinsic::GenISA_simdMediaBlockRead, types);
@@ -297,7 +297,7 @@ void SubGroupFuncsResolution::mediaBlockRead(llvm::CallInst &CI) {
     m_instsToDelete.push_back(bitCast);
     m_instsToDelete.push_back(&CI);
   } else {
-    Type *types[] = {CI.getType(), CI.getArgOperand(0)->getType()};
+    Type *types[] = {CI.getType(), args[0]->getType()};
     Function *simdMediaBlockReadFunc = GenISAIntrinsic::getDeclaration(
         CI.getCalledFunction()->getParent(), GenISAIntrinsic::GenISA_simdMediaBlockRead, types);
     Instruction *simdMediaBlockRead = CallInst::Create(simdMediaBlockReadFunc, args, "", IGCLLVM::insertPosition(&CI));
@@ -312,7 +312,7 @@ void SubGroupFuncsResolution::mediaBlockWrite(llvm::CallInst &CI) {
   pushMediaBlockArgs(args, CI);
   args.push_back(CI.getArgOperand(2)); // push data
 
-  Type *types[] = {CI.getArgOperand(0)->getType(), CI.getArgOperand(2)->getType()};
+  Type *types[] = {args[0]->getType(), CI.getArgOperand(2)->getType()};
   Function *simdMediaBlockWriteFunc = GenISAIntrinsic::getDeclaration(
       CI.getCalledFunction()->getParent(), GenISAIntrinsic::GenISA_simdMediaBlockWrite, types);
   Instruction *simdMediaBlockWrite = CallInst::Create(simdMediaBlockWriteFunc, args, "", IGCLLVM::insertPosition(&CI));
@@ -835,7 +835,7 @@ void SubGroupFuncsResolution::visitCallInst(CallInst &CI) {
     args.push_back(blockWidth);
     args.push_back(blockHeight);
 
-    Type *types[] = {CI.getCalledFunction()->getReturnType(), CI.getArgOperand(0)->getType()};
+    Type *types[] = {CI.getCalledFunction()->getReturnType(), args[0]->getType()};
     Function *MediaBlockReadFunc = GenISAIntrinsic::getDeclaration(CI.getCalledFunction()->getParent(),
                                                                    GenISAIntrinsic::GenISA_MediaBlockRead, types);
 
@@ -880,7 +880,7 @@ void SubGroupFuncsResolution::visitCallInst(CallInst &CI) {
     args.push_back(blockHeight);
     args.push_back(CI.getArgOperand(4)); // pixels
 
-    Type *types[] = {CI.getArgOperand(0)->getType(), CI.getArgOperand(4)->getType()};
+    Type *types[] = {args[0]->getType(), CI.getArgOperand(4)->getType()};
     Function *MediaBlockWriteFunc = GenISAIntrinsic::getDeclaration(CI.getCalledFunction()->getParent(),
                                                                     GenISAIntrinsic::GenISA_MediaBlockWrite, types);
 
