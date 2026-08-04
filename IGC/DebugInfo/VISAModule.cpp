@@ -442,6 +442,8 @@ VISAModule::GenISARange VISAModule::getGenISARange(const VISAObjectDebugInfo &VD
 
   auto startIndex = m_genISARangeIndex.find(start)->second;
   const auto endIndex = m_genISARangeIndex.find(end)->second;
+  if (startIndex > endIndex)
+    return GenISARange;
   while (startIndex != (endIndex + 1)) {
     if (!GenISARanges[startIndex].empty()) {
       GenISARange.insert(GenISARange.end(), GenISARanges[startIndex].begin(), GenISARanges[startIndex].end());
