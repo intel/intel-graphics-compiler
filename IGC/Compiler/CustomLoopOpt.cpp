@@ -1851,12 +1851,21 @@ static Value *getArrayIndex(const Instruction *I, unsigned &ArraySize) {
   if (GEPOp->countNonConstantIndices() != 1)
     return nullptr;
 
-  // If alloca type is array then GEP operand corresponding to
-  // array element is number 2
-  Type *AllocaTy = GEPOp->getSourceElementType();
-  if (AllocaTy->isArrayTy() && !isa<ConstantInt>(GEPOp->getOperand(2))) {
-    ArraySize = int_cast<unsigned>(AllocaTy->getArrayNumElements());
+  // Traditional `gep [N x T], ptr %alloca, 0, %idx` form.
+  Type *GEPTy = GEPOp->getSourceElementType();
+  if (GEPTy->isArrayTy() && GEPOp->getNumIndices() > 1 && !isa<ConstantInt>(GEPOp->getOperand(2))) {
+    ArraySize = int_cast<unsigned>(GEPTy->getArrayNumElements());
     return GEPOp->getOperand(2);
+  }
+
+  // `gep T, ptr %alloca, %idx` form
+  // InstCombine may strip the leading zero index. Recover the bound from the
+  // alloca when the single-index GEP still strides by its element type.
+  Type *AllocaTy = Alloca->getAllocatedType();
+  if (AllocaTy->isArrayTy() && AllocaTy->getArrayElementType() == GEPTy && GEPOp->getNumIndices() == 1 &&
+      !isa<ConstantInt>(GEPOp->getOperand(1))) {
+    ArraySize = int_cast<unsigned>(AllocaTy->getArrayNumElements());
+    return GEPOp->getOperand(1);
   }
   return nullptr;
 }
