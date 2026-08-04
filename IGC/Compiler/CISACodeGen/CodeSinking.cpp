@@ -327,24 +327,27 @@ bool CodeSinking::runOnFunction(Function &F) {
   LI = &getAnalysis<LoopInfoWrapperPass>().getLoopInfo();
   DL = &F.getParent()->getDataLayout();
 
-  // Compute once whether the function has GRF headroom for the latency-hiding sink.
-  // Extending a long-latency send result's live range spills in shaders already near
-  // the GRF budget (observed as large spill regressions), so gate the whole feature on
-  // the function's max register pressure staying under a fraction of the budget.
-  latencySinkHasHeadroom = false;
-  if (IGC_IS_FLAG_ENABLED(EnableSampleResultLatencySink)) {
-    auto &RPE = getAnalysis<IGCLivenessAnalysis>().getLivenessRunner();
+  // Latency-hiding sink (EnableSampleResultLatencySink) setup; the per-target-block gate
+  // lives in hasRegPressureHeadroomForLatencySink().
+  latencySinkEnabled = false;
+  RPE = nullptr;
+  WI = nullptr;
+  latencySinkBBPressure.clear();
+  // Pixel shaders are skipped due to the regressions in both spill and GPU-cycle.
+  // Retries are skipped too.
+  if (IGC_IS_FLAG_ENABLED(EnableSampleResultLatencySink) && CTX->platform.supportsSampleResultLatencySink() &&
+      CTX->type != ShaderType::PIXEL_SHADER && CTX->m_retryManager && CTX->m_retryManager->IsFirstTry()) {
+    RPE = &getAnalysis<IGCLivenessAnalysis>().getLivenessRunner();
     auto &FRPE = getAnalysis<IGCFunctionExternalRegPressureAnalysis>();
-    WIAnalysisRunner *WI = &FRPE.getWIAnalysis(&F);
-    GenXFunctionGroupAnalysis *FGA = getAnalysisIfAvailable<GenXFunctionGroupAnalysis>();
-    unsigned simd = numLanes(IGC::bestGuessSIMDSize(CTX, &F, FGA));
-    unsigned funcMaxPressure = RPE.getMaxRegCountForFunction(F, simd, WI) + FRPE.getExternalPressureForFunction(&F);
-    unsigned budget = CTX->getNumGRFPerThread(true, &F);
-    // Max register-pressure headroom, as a percent of the GRF budget, below which the
-    // latency sink is allowed. Fixed at 50 for now
-    const unsigned maxPercent = 50;
-    // Budget unknown (0): stay permissive for LIT tests
-    latencySinkHasHeadroom = (budget == 0) || ((uint64_t)funcMaxPressure * 100 <= (uint64_t)budget * maxPercent);
+    WI = &FRPE.getWIAnalysis(&F);
+    latencySinkExternalPressure = FRPE.getExternalPressureForFunction(&F);
+    // One IR feeds every SIMD mode's EmitPass and non-uniform live ranges cost 2x the GRF
+    // at SIMD32, so budget the widest mode. Guessing SIMD16 let sinks overflow SIMD32.
+    // Only an OCL required sub-group size pins it narrower.
+    unsigned pinnedSimd = (unsigned)IGC::getSIMDSize(CTX->getModuleMetaData(), &F);
+    latencySinkSimd = pinnedSimd ? pinnedSimd : numLanes(SIMDMode::SIMD32);
+    latencySinkBudget = CTX->getNumGRFPerThread(true, &F);
+    latencySinkEnabled = true;
   }
 
   bool Changed = treeSink(F);
@@ -435,6 +438,27 @@ bool CodeSinking::processBlock(BasicBlock &blk) {
   return madeChange;
 }
 
+// Is there GRF headroom in 'TgtBB' to absorb a latency sink? The send stays put and its
+// consumer moves into TgtBB, so TgtBB is the block whose pressure grows; unchecked, this
+// spills in shaders already near the budget.
+bool CodeSinking::hasRegPressureHeadroomForLatencySink(BasicBlock *TgtBB) {
+  if (!latencySinkEnabled)
+    return false;
+  // Budget unknown (0): stay permissive for LIT tests.
+  if (latencySinkBudget == 0)
+    return true;
+
+  auto It = latencySinkBBPressure.find(TgtBB);
+  if (It == latencySinkBBPressure.end()) {
+    unsigned Pressure = RPE->getMaxRegCountForBB(*TgtBB, latencySinkSimd, WI) + latencySinkExternalPressure;
+    It = latencySinkBBPressure.try_emplace(TgtBB, Pressure).first;
+  }
+
+  // Percent of the GRF budget below which the sink is allowed.
+  const unsigned MaxPercent = 50;
+  return (uint64_t)It->second * 100 <= (uint64_t)latencySinkBudget * MaxPercent;
+}
+
 bool CodeSinking::sinkInstruction(Instruction *InstToSink, SmallPtrSetImpl<Instruction *> &Stores) {
   // Check if it's safe to move the instruction.
   bool HasAliasConcern = false;
@@ -456,12 +480,11 @@ bool CodeSinking::sinkInstruction(Instruction *InstToSink, SmallPtrSetImpl<Instr
       // heuristic, avoid code-motion that does not reduce execution frequency
       // but may increase register usage
       bool ReducesFrequency = TgtBB && (IsOuterLoop || !PDT->dominates(TgtBB, InstToSink->getParent()));
-      // Latency-hiding sink: sink a long-latency send's consumer chain even with no RP
-      // or frequency win. Gated on register-pressure headroom: extending the send
-      // result's live range spills in shaders already near the GRF budget, so only fire
-      // when the block has room (see hasRegPressureHeadroomForLatencySink).
-      LatencySink = !ReducePressure && !ReducesFrequency && IGC_IS_FLAG_ENABLED(EnableSampleResultLatencySink) &&
-                    hasRegPressureHeadroomForLatencySink() && isLongLatencySendConsumer(InstToSink);
+      // Latency-hiding sink: sink a long-latency send's consumer chain with no RP or
+      // frequency win, if TgtBB has GRF headroom. Operands are ordered cheapest-first for
+      // compile time.
+      LatencySink = !ReducePressure && !ReducesFrequency && latencySinkEnabled &&
+                    isLongLatencySendConsumer(InstToSink) && hasRegPressureHeadroomForLatencySink(TgtBB);
       if (ReducePressure || ReducesFrequency || LatencySink) {
         SuccToSinkTo = TgtBB;
       }

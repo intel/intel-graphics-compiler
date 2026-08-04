@@ -10,22 +10,26 @@
 ;
 ; Test for EnableSampleResultLatencySink flag and its register-pressure headroom gate.
 ;
-; The consumer chain (extractelement + fmul) of a long-latency sample send is used
-; only in %merge, which POST-DOMINATES %entry. The default code-sinking heuristic
-; refuses to sink here: there is no execution-frequency win and register pressure is
-; not reduced. With EnableSampleResultLatencySink=1 the chain is sunk toward its use
-; to hide the send latency, while the sample send itself stays in %entry -- but only
-; when the function's max register pressure is within the fixed headroom threshold
-; (50% of the GRF budget). The threshold is exercised here by moving the GRF budget
-; via TotalGRFNum: a large budget leaves headroom (sink), a tiny budget puts this
-; function's pressure over the 50% line (suppress).
+; The consumer chain (extractelement + fmul) of a long-latency sample send is used only
+; in %merge, which POST-DOMINATES %entry, so the default heuristic refuses to sink: no
+; execution-frequency win, no pressure reduction. With the flag on the chain sinks toward
+; its use to hide the send latency while the send stays in %entry, but only when the
+; target block's pressure, scaled to the widest SIMD this function may compile, is under
+; the headroom threshold (50% of the GRF budget). TotalGRFNum moves the budget to cross
+; that line either way.
+;
+; The sink is also scoped to Xe3+ (supportsSampleResultLatencySink), non-pixel shaders,
+; and the first compilation try. --platformPtl covers the first; igc_opt's defaults
+; (OpenCL, first try) cover the rest.
 ;
 ; Flag off -> not sunk.
-; RUN: igc_opt --igc-code-sinking -S --regkey EnableSampleResultLatencySink=0,CodeSinkingMinSize=0 < %s 2>&1 | FileCheck %s --check-prefix=CHECK-NO-SINK
+; RUN: igc_opt --igc-code-sinking -S --platformPtl --regkey EnableSampleResultLatencySink=0,CodeSinkingMinSize=0 < %s 2>&1 | FileCheck %s --check-prefix=CHECK-NO-SINK
 ; Flag on, large GRF budget -> pressure well under 50% -> sunk.
-; RUN: igc_opt --igc-code-sinking -S --regkey EnableSampleResultLatencySink=1,TotalGRFNum=256,CodeSinkingMinSize=0 < %s 2>&1 | FileCheck %s --check-prefix=CHECK-SINK
+; RUN: igc_opt --igc-code-sinking -S --platformPtl --regkey EnableSampleResultLatencySink=1,TotalGRFNum=256,CodeSinkingMinSize=0 < %s 2>&1 | FileCheck %s --check-prefix=CHECK-SINK
 ; Flag on, tiny GRF budget -> pressure over 50% -> headroom gate suppresses the sink.
-; RUN: igc_opt --igc-code-sinking -S --regkey EnableSampleResultLatencySink=1,TotalGRFNum=2,CodeSinkingMinSize=0 < %s 2>&1 | FileCheck %s --check-prefix=CHECK-NO-SINK
+; RUN: igc_opt --igc-code-sinking -S --platformPtl --regkey EnableSampleResultLatencySink=1,TotalGRFNum=2,CodeSinkingMinSize=0 < %s 2>&1 | FileCheck %s --check-prefix=CHECK-NO-SINK
+; Flag on, large GRF budget, but pre-Xe3 platform -> platform gate suppresses the sink.
+; RUN: igc_opt --igc-code-sinking -S --platformdg2 --regkey EnableSampleResultLatencySink=1,TotalGRFNum=256,CodeSinkingMinSize=0 < %s 2>&1 | FileCheck %s --check-prefix=CHECK-NO-SINK
 
 ; Function Attrs: nounwind readnone willreturn
 declare <4 x float> @llvm.genx.GenISA.sampleLptr.v4f32.f32.p196608i8.p524293i8.p0i8(float, float, float, float, float, i8 addrspace(196608)*, i8 addrspace(524293)*, i8*, i32, i32, i32)

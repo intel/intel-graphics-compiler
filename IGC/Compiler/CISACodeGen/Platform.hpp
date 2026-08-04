@@ -834,6 +834,7 @@ public:
 
   bool supportsWriteableMSAATextures() const { return isCoreChildOf(IGFX_XE3_CORE); }
   bool supportsVRT() const { return isCoreChildOf(IGFX_XE3_CORE); }
+  bool supportsSampleResultLatencySink() const { return isCoreChildOf(IGFX_XE3_CORE); }
 
 
   bool supportsOutOfBoundsGrfAccess() const { return !isCoreChildOf(IGFX_XE3_CORE); }

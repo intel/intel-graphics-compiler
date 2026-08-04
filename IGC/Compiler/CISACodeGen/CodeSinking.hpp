@@ -74,7 +74,7 @@ private:
   void rollbackSinking(BasicBlock *BB);
 
   uint estimateLiveOutPressure(llvm::BasicBlock *blk, const llvm::DataLayout *DL);
-  bool hasRegPressureHeadroomForLatencySink() const { return latencySinkHasHeadroom; }
+  bool hasRegPressureHeadroomForLatencySink(llvm::BasicBlock *TgtBB);
 
   /// data members for local-sinking
   llvm::SmallPtrSet<llvm::BasicBlock *, 8> LocalBlkSet;
@@ -86,9 +86,18 @@ private:
   unsigned totalGradientMoved = 0;
   unsigned numGradientMovedOutBB = 0;
 
-  /// There's enough GRF headroom to apply the latency-hiding sink
-  /// (EnableSampleResultLatencySink) without risking spills.
-  bool latencySinkHasHeadroom = false;
+  /// State for the latency-hiding sink (EnableSampleResultLatencySink). Headroom is checked
+  /// per sink-target block: the target absorbs the extended send-result live range.
+  bool latencySinkEnabled = false;
+  IGCLivenessAnalysisRunner *RPE = nullptr;
+  WIAnalysisRunner *WI = nullptr;
+  /// GRF budget, and the SIMD width pressure is scaled to (widest mode this function may compile).
+  unsigned latencySinkBudget = 0;
+  unsigned latencySinkSimd = 0;
+  unsigned latencySinkExternalPressure = 0;
+  /// Memoized per-BB pressure. A pre-sinking snapshot, not a live value: liveness is
+  /// not recomputed as instructions move. Accepted to bound compile time.
+  llvm::DenseMap<llvm::BasicBlock *, unsigned> latencySinkBBPressure;
 };
 
 void initializeCodeSinkingPass(llvm::PassRegistry &);
