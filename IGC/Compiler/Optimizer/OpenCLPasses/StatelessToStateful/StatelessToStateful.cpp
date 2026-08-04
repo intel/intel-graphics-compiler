@@ -978,11 +978,8 @@ void StatelessToStateful::addToPromotionMap(Instruction &I, Value *Ptr,
 
     const bool isLoadPromotionCandidate = I.getOpcode() == Instruction::Load;
     const bool isBindfulMode = m_targetAddressing == TargetAddressing::BINDFUL;
-    const bool isMeteorLake = m_ctx->platform.getPlatformInfo().eProductFamily == IGFX_METEORLAKE;
 
-    // Keep MTL on the conservative path: bindless load promotion in this mode
-    // regresses performance there.
-    if (skipLoadPromotionForBindlessBufferOffset && isLoadPromotionCandidate && (isBindfulMode || isMeteorLake)) {
+    if (skipLoadPromotionForBindlessBufferOffset && isLoadPromotionCandidate && isBindfulMode) {
       return;
     }
   }
@@ -1091,13 +1088,10 @@ void StatelessToStateful::visitLoadInst(LoadInst &I) {
                                                         modMD->compOpt.HasBufferOffsetArg &&
                                                         !modMD->compOpt.GreaterThan4GBBufferRequired;
 
-  const bool isMeteorLake = m_ctx->platform.getPlatformInfo().eProductFamily == IGFX_METEORLAKE;
-
-  // Skip bindful a32 loads in bindless+buffer_offset no-large mode.
-  // On MTL, keep skipping bindless load promotion as well due to
-  // performance regression.
-  if (skipLoadPromotionForBindlessBufferOffset && ptr != nullptr &&
-      (m_targetAddressing == TargetAddressing::BINDFUL || isMeteorLake) && pointerIsFromKernelArgument(*ptr)) {
+  // Skip only bindful a32 loads in bindless+buffer_offset no-large mode.
+  // Bindless ldraw.indexed loads stay promotable (they are fast).
+  if (skipLoadPromotionForBindlessBufferOffset && ptr != nullptr && m_targetAddressing == TargetAddressing::BINDFUL &&
+      pointerIsFromKernelArgument(*ptr)) {
     return;
   }
 

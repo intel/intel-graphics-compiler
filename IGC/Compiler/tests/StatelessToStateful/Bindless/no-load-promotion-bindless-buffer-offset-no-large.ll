@@ -8,25 +8,16 @@
 ;
 ; REQUIRES: llvm-16-plus
 ; RUN: igc_opt --opaque-pointers %s -S -o - -igc-stateless-to-stateful-resolution --target-addressing-mode bindless | FileCheck %s
-; RUN: igc_opt --opaque-pointers %s -S -o - -igc-stateless-to-stateful-resolution --target-addressing-mode bindless -platformmtl | FileCheck %s --check-prefix=MTL
 ;
 ; In bindless + buffer-offset no-large mode, load promotion is allowed for
-; bindless addressing mode on non-MTL platforms (fast ldraw.indexed).
-; On MTL we keep load promotion disabled to avoid performance regression.
-; Store promotion remains enabled.
+; bindless addressing mode (fast ldraw.indexed). Only BINDFUL a32 loads are
+; blocked. Store promotion remains enabled.
 
 ; CHECK-LABEL: @test_no_load_promotion
 ; CHECK: [[SRCOFF:%.*]] = inttoptr i32 %bindlessOffset to ptr addrspace(2490368)
 ; CHECK: call i32 @llvm.genx.GenISA.ldraw.indexed{{.*}}(ptr addrspace(2490368) [[SRCOFF]],
 ; CHECK: [[BASEPTR1:%.*]] = inttoptr i32 %bindlessOffset2 to ptr addrspace(2490368)
 ; CHECK: call void @llvm.genx.GenISA.storeraw.indexed{{.*}}(ptr addrspace(2490368) [[BASEPTR1]], i32
-
-; MTL-LABEL: @test_no_load_promotion
-; MTL: [[SRC_GEP:%.*]] = getelementptr inbounds i32, ptr addrspace(1) %src,
-; MTL: [[SRC_VAL:%.*]] = load i32, ptr addrspace(1) [[SRC_GEP]], align 4
-; MTL-NOT: call i32 @llvm.genx.GenISA.ldraw.indexed
-; MTL: [[BASEPTR1:%.*]] = inttoptr i32 %bindlessOffset2 to ptr addrspace(2490368)
-; MTL: call void @llvm.genx.GenISA.storeraw.indexed{{.*}}(ptr addrspace(2490368) [[BASEPTR1]], i32
 
 define spir_kernel void @test_no_load_promotion(i32 addrspace(1)* %src, i32 addrspace(1)* %dst, i32 %runtimeOffset,
                                                 <8 x i32> %r0, <8 x i32> %payloadHeader, i32 %bufferOffset,
