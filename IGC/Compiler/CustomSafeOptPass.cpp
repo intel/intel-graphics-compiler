@@ -6015,10 +6015,16 @@ void SplitIndirectEEtoSel::visitExtractElementInst(llvm::ExtractElementInst &I) 
   auto pat_or = m_Or(m_Value(Val2), m_ConstantInt(ci_add));
   auto pat_shl = m_Shl(m_Value(Val1), m_ConstantInt(ci_mul));
 
+  // false if index is an `or` inst with operands that share active bits.
+  // `or` insts with overlapping active bits are not equivalent to `add` insts
+  // and don't qualify for this optimization.
+  bool opsAreDisjoint = true;
+
   if (match(index, pat_mul) || (match(index, pat_add) && match(Val2, pat_mul))) {
     mul = ci_mul ? ci_mul->getSExtValue() : 1;
   } else if (match(index, pat_shl) || (match(index, pat_or) && match(Val2, pat_shl))) {
     mul = ci_mul ? (1LL << ci_mul->getSExtValue()) : 1LL;
+    opsAreDisjoint = !Val2 || (ci_add && mul > 0 && ci_add->getValue().getActiveBits() <= Log2_64((uint64_t)mul));
   }
   // Instruction::hasPoisonGeneratingFlags() could be used instead
   // after llvm9 support is dropped
@@ -6032,7 +6038,7 @@ void SplitIndirectEEtoSel::visitExtractElementInst(llvm::ExtractElementInst &I) 
   if (Val1) {
     // Transformation could still be profitable,
     // but index and it's multiplier shouldn't be modified
-    if (!hasNoOverflow(index) || (Val2 && !hasNoOverflow(Val2))) {
+    if (!hasNoOverflow(index) || (Val2 && !hasNoOverflow(Val2)) || !opsAreDisjoint) {
       mul = 1;
     } else {
       add = ci_add ? ci_add->getSExtValue() : 0;

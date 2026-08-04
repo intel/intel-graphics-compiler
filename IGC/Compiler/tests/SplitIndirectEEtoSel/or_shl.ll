@@ -82,46 +82,49 @@ both:
 ; ------------------------------------------------
 ; Case2: shl + or pattern matched
 ;        flags on shl: none, nsw, nuw
+;
+;        The `or` operands must not share active
+;        bits for it to be equivalent to `add`.
 ; ------------------------------------------------
 
 define void @test_shl_or(i32 %src1, <12 x float> %src2, float* %dst) {
 none:
 ; CHECK-LABEL: @test_shl_or(
 ; CHECK:    [[TMP0:%.*]] = shl i32 [[SRC1:%.*]], 3
-; CHECK:    [[TMP1:%.*]] = or i32 [[TMP0]], -1
+; CHECK:    [[TMP1:%.*]] = or i32 [[TMP0]], 7
 ; CHECK:    [[TMP2:%.*]] = extractelement <12 x float> [[SRC2:%.*]], i32 [[TMP1]]
 ; CHECK:    store float [[TMP2]], float* [[DST:%.*]], align 4
 ;
   %0 = shl i32 %src1, 3
-  %1 = or i32 %0, -1
+  %1 = or i32 %0, 7
   %2 = extractelement <12 x float> %src2, i32 %1
   store float %2, float* %dst, align 4
   br label %nsw
 nsw:
 ; CHECK:    [[TMP3:%.*]] = shl nsw i32 [[SRC1]], 3
-; CHECK:    [[TMP4:%.*]] = or i32 [[TMP3]], -1
+; CHECK:    [[TMP4:%.*]] = or i32 [[TMP3]], 7
 ; CHECK:    [[TMP5:%.*]] = extractelement <12 x float> [[SRC2]], i32 [[TMP4]]
-; CHECK:    [[TMP6:%.*]] = icmp eq i32 [[SRC1]], 1
+; CHECK:    [[TMP6:%.*]] = icmp eq i32 [[SRC1]], 0
 ; CHECK:    [[TMP7:%.*]] = extractelement <12 x float> [[SRC2]], i32 7
 ; CHECK:    [[TMP8:%.*]] = select i1 [[TMP6]], float [[TMP7]], float undef
 ; CHECK:    store float [[TMP8]], float* [[DST]], align 4
 ;
   %3 = shl nsw i32 %src1, 3
-  %4 = or i32 %3, -1
+  %4 = or i32 %3, 7
   %5 = extractelement <12 x float> %src2, i32 %4
   store float %5, float* %dst, align 4
   br label %nsw
 nuw:
 ; CHECK:    [[TMP9:%.*]] = shl nuw i32 [[SRC1]], 3
-; CHECK:    [[TMP10:%.*]] = or i32 [[TMP9]], -1
+; CHECK:    [[TMP10:%.*]] = or i32 [[TMP9]], 7
 ; CHECK:    [[TMP11:%.*]] = extractelement <12 x float> [[SRC2]], i32 [[TMP10]]
-; CHECK:    [[TMP12:%.*]] = icmp eq i32 [[SRC1]], 1
+; CHECK:    [[TMP12:%.*]] = icmp eq i32 [[SRC1]], 0
 ; CHECK:    [[TMP13:%.*]] = extractelement <12 x float> [[SRC2]], i32 7
 ; CHECK:    [[TMP14:%.*]] = select i1 [[TMP12]], float [[TMP13]], float undef
 ; CHECK:    store float [[TMP14]], float* [[DST]], align 4
 ;
   %6 = shl nuw i32 %src1, 3
-  %7 = or i32 %6, -1
+  %7 = or i32 %6, 7
   %8 = extractelement <12 x float> %src2, i32 %7
   store float %8, float* %dst, align 4
   ret void
@@ -155,5 +158,33 @@ define void @test_shl_profit(i32 %src1, <4 x float> %src2, float* %dst) {
   %1 = shl i32 %src1, 3
   %2 = extractelement <4 x float> %src2, i32 %1
   store float %2, float* %dst, align 4
+  ret void
+}
+
+; ------------------------------------------------
+; Case4: shl + non-disjoint or, would be profitable
+;
+;        `or (shl %src1, 3), 8` shares bit 3 with the shl whenever %src1 is
+;        odd, so the index is not affine in %src1:
+;          %src1 = 0 -> 8    %src1 = 1 -> 8
+;          %src1 = 2 -> 24   %src1 = 3 -> 24
+;        Modelling it as 8 * %src1 + 8 would read element 16 for %src1 = 1
+;        and emit no case at all for %src1 = 3, leaving undef.
+;        The access must stay indirect.
+; ------------------------------------------------
+
+define void @test_shl_or_not_disjoint(i32 %src1, <32 x float> %src2, float* %dst) {
+; CHECK-LABEL: @test_shl_or_not_disjoint(
+; CHECK:    [[TMP0:%.*]] = shl nuw i32 [[SRC1:%.*]], 3
+; CHECK:    [[TMP1:%.*]] = or i32 [[TMP0]], 8
+; CHECK:    [[TMP2:%.*]] = extractelement <32 x float> [[SRC2:%.*]], i32 [[TMP1]]
+; CHECK-NOT:  icmp
+; CHECK-NOT:  select
+; CHECK:    store float [[TMP2]], float* [[DST:%.*]], align 4
+;
+  %1 = shl nuw i32 %src1, 3
+  %2 = or i32 %1, 8
+  %3 = extractelement <32 x float> %src2, i32 %2
+  store float %3, float* %dst, align 4
   ret void
 }
