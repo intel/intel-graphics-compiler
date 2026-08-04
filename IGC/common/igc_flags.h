@@ -1904,8 +1904,6 @@ DECLARE_IGC_REGKEY(DWORD, EnablePrivMemNewSOATranspose, 1,
                    true)
 DECLARE_IGC_REGKEY(bool, EnableSOAFallbackToOldAlgorithm, false,
                    "Enable fallback to old SOA algorithm when new algorithm is not applicable", true)
-DECLARE_IGC_REGKEY(bool, EnableLowerGEPPtrHoisting, false, "Enable hoisting loads past pointer-typed phi instructions",
-                   true)
 DECLARE_IGC_REGKEY(bool, EnablePrivMemNewSOAForScalarArrays, false,
                    "Enables new SOA algorithm also for scalar float/int arrays.", true)
 DECLARE_IGC_REGKEY(bool, NewSOATransposeForOpenCL, true,
@@ -1919,6 +1917,15 @@ DECLARE_IGC_REGKEY(bool, DisablePredicatedLoadForAllocaPtrSelectSplit, false,
                    "If true, the select-of-alloca-pointer split always emits regular loads, even when "
                    "private memory is in stateless global, instead of the predicated-load WA. "
                    "For testing/debugging the WA. May cause OOB reads in stateless global.",
+                   true)
+DECLARE_IGC_REGKEY(bool, EnablePHIOfAllocaPtrSplit, false,
+                   "If true, enables splitting PHI instruction containing pointers "
+                   "where at least one incoming value is alloca-derived (per-predecessor load + value phi). "
+                   "Enables SoA promotion for allocas otherwise blocked by PHI pattern.",
+                   true)
+DECLARE_IGC_REGKEY(DWORD, PHIOfAllocaPtrSplitMinSize, 64,
+                   "Minimum alloca size in bytes to be considered worthwhile for the "
+                   "EnablePHIOfAllocaPtrSplit pass.",
                    true)
 DECLARE_IGC_REGKEY(bool, EnableSOAPromotionDisablingHeuristic, false,
                    "Enable heuristic to disable SOA promotion when it may be not beneficial", false)

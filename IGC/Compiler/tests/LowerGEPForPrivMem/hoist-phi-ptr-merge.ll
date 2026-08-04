@@ -7,7 +7,8 @@
 ;============================ end_copyright_notice =============================
 ;
 ; REQUIRES: regkeys, llvm-14-plus
-; RUN: igc_opt --opaque-pointers -igc-priv-mem-to-reg --regkey EnableLowerGEPPtrHoisting=1 -S < %s 2>&1 | FileCheck %s
+; RUN: igc_opt --opaque-pointers --igc-split-phis-of-alloca-pointers -igc-priv-mem-to-reg \
+; RUN:   --regkey EnablePHIOfAllocaPtrSplit=1 -S < %s 2>&1 | FileCheck %s
 ; ------------------------------------------------
 ; LowerGEPForPrivMem: hoist load past phi-pointer merge
 ;
@@ -15,7 +16,7 @@
 ; pointer (here a function argument), SOALayoutChecker cannot walk through the
 ; phi and the alloca is rejected for GRF promotion.
 ;
-; tryHoistLoadsPastPointerMerges detects that every non-alloca phi operand
+; splitPHIsOfAllocaPointers detects that every non-alloca phi operand
 ; traces to a trusted root (function argument) and rewrites the pattern:
 ;
 ;   %phi = phi ptr [ alloca_gep, bb1 ], [ arg_gep, bb2 ]

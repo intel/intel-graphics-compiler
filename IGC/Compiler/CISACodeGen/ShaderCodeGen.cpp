@@ -61,6 +61,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CISACodeGen/VectorProcess.hpp"
 #include "Compiler/CISACodeGen/RuntimeValueLegalizationPass.h"
 #include "Compiler/CISACodeGen/LowerGEPForPrivMem.hpp"
+#include "Compiler/CISACodeGen/SplitPHIsOfAllocaPointers.hpp"
 #include "Compiler/CISACodeGen/MatchCommonKernelPatterns.hpp"
 #include "Compiler/CISACodeGen/POSH_RemoveNonPositionOutput.h"
 #include "Compiler/CISACodeGen/RegisterEstimator.hpp"
@@ -373,6 +374,9 @@ void AddAnalysisPasses(CodeGenContext &ctx, IGCPassManager &mpm) {
 
       if (IGC_IS_FLAG_DISABLED(DisablePromotePrivMem) &&
           !isOptDisabledForModule(ctx.getModuleMetaData(), IGCOpts::LowerGEPForPrivMemPass)) {
+        if (ctx.type == ShaderType::OPENCL_SHADER) {
+          mpm.add(createSplitPHIsOfAllocaPointers());
+        }
         mpm.add(createPromotePrivateArrayToReg());
         mpm.add(createCFGSimplificationPass());
       }
@@ -386,6 +390,9 @@ void AddAnalysisPasses(CodeGenContext &ctx, IGCPassManager &mpm) {
       mpm.add(createReplaceUnsupportedIntrinsicsPass());
     }
     // Resolving private memory allocas
+    if (ctx.type == ShaderType::OPENCL_SHADER) {
+      mpm.add(createSplitPHIsOfAllocaPointers(true));
+    }
     mpm.add(CreatePrivateMemoryResolution());
   }
 
@@ -721,6 +728,9 @@ void AddLegalizationPasses(CodeGenContext &ctx, IGCPassManager &mpm, PSSignature
 
       if (IGC_IS_FLAG_DISABLED(DisablePromotePrivMem) &&
           !isOptDisabledForModule(ctx.getModuleMetaData(), IGCOpts::LowerGEPForPrivMemPass)) {
+        if (ctx.type == ShaderType::OPENCL_SHADER) {
+          mpm.add(createSplitPHIsOfAllocaPointers());
+        }
         mpm.add(createPromotePrivateArrayToReg());
         mpm.add(createCFGSimplificationPass());
       }
@@ -777,6 +787,9 @@ void AddLegalizationPasses(CodeGenContext &ctx, IGCPassManager &mpm, PSSignature
     if (ctx.type == ShaderType::OPENCL_SHADER && !isOptDisabled && IGC_IS_FLAG_ENABLED(EnableExplicitCopyForByVal)) {
       mpm.add(new LowerByValAttribute());
       mpm.add(createReplaceUnsupportedIntrinsicsPass());
+    }
+    if (ctx.type == ShaderType::OPENCL_SHADER) {
+      mpm.add(createSplitPHIsOfAllocaPointers(true));
     }
     mpm.add(CreatePrivateMemoryResolution());
   }

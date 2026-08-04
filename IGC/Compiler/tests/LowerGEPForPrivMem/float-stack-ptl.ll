@@ -7,8 +7,8 @@
 ;============================ end_copyright_notice =============================
 ;
 ; REQUIRES: regkeys, llvm-14-plus
-; RUN: igc_opt --opaque-pointers -igc-priv-mem-to-reg --platformPtl \
-; RUN:         --regkey ByPassAllocaSizeHeuristic=132,EnableLowerGEPPtrHoisting=1 -S < %s 2>&1 | FileCheck %s
+; RUN: igc_opt --opaque-pointers --igc-split-phis-of-alloca-pointers -igc-priv-mem-to-reg --platformPtl \
+; RUN:         --regkey ByPassAllocaSizeHeuristic=132,EnablePHIOfAllocaPtrSplit=1 -S < %s 2>&1 | FileCheck %s
 ; ------------------------------------------------
 ; LowerGEPForPrivMem: float stack[33] → GRF vector on PTL
 ;
@@ -23,7 +23,7 @@
 ; non-alloca pointer (here %shader_data).  SOALayoutChecker cannot walk through
 ; phi nodes, so without intervention the alloca is rejected for GRF promotion.
 ;
-; tryHoistLoadsPastPointerMerges rewrites the pointer-phi into a value-phi:
+; splitPHIsOfAllocaPointers rewrites the pointer-phi into a value-phi:
 ;
 ;   bb1: v1 = load float, ptr alloca_gep
 ;   bb2: v2 = load float, ptr shader_data_gep

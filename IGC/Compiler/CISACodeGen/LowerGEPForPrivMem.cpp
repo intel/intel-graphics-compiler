@@ -23,7 +23,6 @@ SPDX-License-Identifier: MIT
 #include <llvm/Transforms/Utils/Local.h>
 #include "common/LLVMWarningsPop.hpp"
 #include "llvmWrapper/IR/DerivedTypes.h"
-#include "llvmWrapper/IR/Instructions.h"
 #include "llvmWrapper/IR/IRBuilder.h"
 #include <llvmWrapper/ADT/Optional.h>
 #include "Probe/Assertion.h"
@@ -115,8 +114,6 @@ IGC_INITIALIZE_PASS_END(LowerGEPForPrivMem, PASS_FLAG, PASS_DESCRIPTION, PASS_CF
 
 char LowerGEPForPrivMem::ID = 0;
 
-static constexpr int MAX_HOISTING_ITER = 16;
-
 LowerGEPForPrivMem::LowerGEPForPrivMem() : FunctionPass(ID), m_pFunc(nullptr) {
   initializeLowerGEPForPrivMemPass(*PassRegistry::getPassRegistry());
 }
@@ -138,8 +135,6 @@ llvm::AllocaInst *LowerGEPForPrivMem::createVectorForAlloca(llvm::AllocaInst *pA
 
   return pAllocaValue;
 }
-
-static bool hoistLoadsPastPointerMerges(llvm::Function &F);
 
 bool LowerGEPForPrivMem::runOnFunction(llvm::Function &F) {
   m_pFunc = &F;
@@ -168,7 +163,7 @@ bool LowerGEPForPrivMem::runOnFunction(llvm::Function &F) {
 
   m_allocasToPrivMem.clear();
   m_promotedLiveranges.clear();
-  bool hoistChanged = hoistLoadsPastPointerMerges(F);
+
   visit(F);
 
   std::vector<llvm::AllocaInst *> &allocaToHande = m_allocasToPrivMem;
@@ -183,8 +178,8 @@ bool LowerGEPForPrivMem::runOnFunction(llvm::Function &F) {
     }
   }
 
-  // IR changed only if we had alloca instruction to optimize or hoist rewrites
-  return hoistChanged || !allocaToHande.empty();
+  // IR changed only if we had alloca instruction to optimize
+  return !allocaToHande.empty();
 }
 
 void TransposeHelper::EraseDeadCode() {
@@ -985,295 +980,6 @@ void LowerGEPForPrivMem::MarkNotPromtedAllocas(llvm::AllocaInst &I, IGC::StatusP
   };
 
   markAS_PRIV(&I, node);
-}
-
-// Speculatively hoist loads past pointer-typed phi instructions that
-// merge pointers derived from an alloca with other dereferenceable pointers.
-// Rewrites:
-//
-// %phi = phi ptr [ alloca_gep, bb1 ], [ arg_gep, bb2 ]
-// %v   = load float, ptr %phi
-//
-// into:
-//
-// bb1: %v1 = load float, ptr alloca_gep
-// bb2: %v2 = load float, ptr arg_gep
-// merge: %v = phi float [ %v1, bb1 ], [ %v2, bb2 ]
-//
-// Why: LLVM's InstCombine may introduce a [N x T]* bitcast for strided array
-// accesses indexed dynamically, and the dynamic index can flow through a
-// phi merge with a pointer from another source. SOALayoutChecker cannot
-// walk through such merges, so the alloca would be rejected for SoA/GRF promotion.
-// Hoisting converts the merge from pointer-level to value-level, leaving a clean
-// GEP/load/store use chain that SOALayoutChecker can analyse.
-//
-// Returns true if any rewrite was applied.
-
-namespace {
-using MergeHoistRecord = SmallVector<LoadInst *, 4>;
-
-struct LoadVia {
-  LoadInst *LI;
-  SmallVector<CastInst *, 4> chain; // merge → chain[0] → ... → LI
-};
-} // anonymous namespace
-
-static void commitHoistRecord(MergeHoistRecord &r) {
-  // Seeding the recursive deleter with the (now trivially dead) original loads
-  // cascades the cleanup through the post-merge cast chains, the pointer merge,
-  // and the dead pre-merge cast chains automatically. The helper only removes
-  // genuinely unused instructions, so shared casts/GEPs and the alloca (still
-  // used by the replayed per-incoming chains) are preserved.
-  SmallVector<WeakTrackingVH, 8> DeadInsts;
-  for (LoadInst *LI : r) {
-    IGC_ASSERT(LI->use_empty());
-    DeadInsts.push_back(LI);
-  }
-  RecursivelyDeleteTriviallyDeadInstructionsPermissive(DeadInsts);
-}
-
-static void collectPtrPreservingOps(AllocaInst *allocaToHoist, SmallPtrSet<Value *, 32> &allocaDerived) {
-  {
-    SmallVector<Value *, 32> Worklist;
-    Worklist.push_back(allocaToHoist);
-    while (!Worklist.empty()) {
-      Value *Cur = Worklist.pop_back_val();
-      if (!allocaDerived.insert(Cur).second) {
-        continue;
-      }
-      llvm::for_each(Cur->users(), [&](User *U) {
-        if (isa<GetElementPtrInst, BitCastInst, AddrSpaceCastInst>(U))
-          Worklist.push_back(U);
-      });
-    }
-  }
-}
-
-// Gather pointer-typed phi candidates that consume any derived pointer.
-static void gatherPhiCandidates(SmallPtrSet<Value *, 32> &allocaDerived, SmallVectorImpl<PHINode *> &candidates) {
-  SmallPtrSet<PHINode *, 16> Seen;
-  for (Value *V : allocaDerived) {
-    for (User *U : V->users()) {
-      auto *I = dyn_cast<PHINode>(U);
-      if (!I || !I->getType()->isPointerTy()) {
-        continue;
-      }
-      if (Seen.insert(I).second) {
-        candidates.push_back(I);
-      }
-    }
-  }
-}
-
-static bool hasDuplicateIncomingBlocks(PHINode *phi) {
-  SmallPtrSet<BasicBlock *, 4> SeenBlocks;
-  for (BasicBlock *BB : phi->blocks()) {
-    if (!SeenBlocks.insert(BB).second) {
-      return true;
-    }
-  }
-  return false;
-}
-
-static bool collectLoadChains(SmallVectorImpl<LoadVia> &loads, PHINode *phi) {
-  struct Frame {
-    Instruction *node;
-    SmallVector<CastInst *, 4> chain;
-  };
-  SmallVector<Frame, 8> Stack;
-  Stack.push_back({phi, {}});
-  while (!Stack.empty()) {
-    Frame F = Stack.pop_back_val();
-    for (User *U : F.node->users()) {
-      if (auto *LI = dyn_cast<LoadInst>(U)) {
-        if (!LI->isSimple()) {
-          return false;
-        }
-        loads.push_back({LI, F.chain});
-      } else if (isa<BitCastInst, AddrSpaceCastInst>(U)) {
-        auto *CI = cast<CastInst>(U);
-        Frame Next{CI, F.chain};
-        Next.chain.push_back(CI);
-        Stack.push_back(std::move(Next));
-      } else {
-        return false;
-      }
-    }
-  }
-  return true;
-}
-
-static bool checkPHILoadSafety(PHINode *phi, SmallVectorImpl<LoadVia> &loads) {
-  BasicBlock *MergeBB = phi->getParent();
-
-  // Each hoisted load is inserted before the terminator of its incoming block.
-  // For that to be non-speculative the incoming block's sole successor must be
-  // mergeBB: otherwise the block ends in a conditional branch and the hoisted
-  // load would also execute on the edge(s) that bypass the merge, dereferencing
-  // an address the original load-through-PHI never touched on that path (and
-  // whose index may be out of range).
-  for (BasicBlock *BBIn : phi->blocks()) {
-    if (BBIn->getSingleSuccessor() != MergeBB) {
-      return false;
-    }
-  }
-
-  for (const LoadVia &LV : loads) {
-    LoadInst *LI = LV.LI;
-    // Reject cross-block loads: the load is in a successor block of the
-    // phi's block.  There may be memory-writing instructions between the
-    // phi's block terminator and the load that we cannot easily check.
-    if (LI->getParent() != MergeBB) {
-      return false;
-    }
-    // Same-block case: scan instructions between phi and load for any
-    // instruction that may write to memory (stores, calls, atomics, etc.).
-    auto It = std::next(phi->getIterator());
-    auto End = LI->getIterator();
-    for (; It != End; ++It) {
-      if (It->mayWriteToMemory()) {
-        return false;
-      }
-    }
-  }
-  return true;
-}
-
-static bool tryHoistLoadsPastPointerMerges(AllocaInst *allocaToHoist, SmallVectorImpl<MergeHoistRecord> &outRecords) {
-  if (IGC_IS_FLAG_DISABLED(EnableLowerGEPPtrHoisting)) {
-    return false;
-  }
-
-  SmallPtrSet<Value *, 32> AllocaDerived;
-  collectPtrPreservingOps(allocaToHoist, AllocaDerived);
-
-  SmallVector<PHINode *, 16> Candidates;
-  gatherPhiCandidates(AllocaDerived, Candidates);
-
-  bool Changed = false;
-  for (PHINode *Phi : Candidates) {
-    if (hasDuplicateIncomingBlocks(Phi)) {
-      continue;
-    }
-
-    SmallVector<LoadVia, 4> Loads;
-    bool Res = collectLoadChains(Loads, Phi);
-
-    if (!Res || Loads.empty()) {
-      continue;
-    }
-
-    // For PHI merges, the hoisted load for incoming arm i is inserted in
-    // phi->getIncomingBlock(i), i.e. the predecessor associated with that PHI arm.
-    // checkPHILoadSafety requires each incoming block's sole successor to be the
-    // merge block, so the hoisted load executes exactly on the paths where the
-    // original load-through-PHI would have used that incoming value: a faithful,
-    // non-speculative rewrite that needs no per-arm dereference proof, OOB clamp,
-    // or inbounds relaxation.
-    //
-    // The remaining safety condition checkPHILoadSafety enforces is memory
-    // freshness: every candidate load must be in the PHI's block with no
-    // memory-writing instruction between the PHI and the load.  Otherwise the
-    // hoisted load could observe a stale value, and proving safety would require
-    // a more complete dominance / memory-dependence analysis.
-    if (!checkPHILoadSafety(Phi, Loads)) {
-      continue;
-    }
-
-    // Replay a cast chain from startPtr, stripping alloca-derived pre-merge
-    // casts and clamping addrspacecasts to the alloca's address space.
-    auto ReplayChain = [&AllocaDerived](IRBuilder<> &B, Value *startPtr, ArrayRef<CastInst *> chain) -> Value * {
-      Value *Cur = startPtr;
-      std::optional<unsigned> AllocaAS;
-      if (AllocaDerived.contains(Cur)) {
-        while (auto *CI = dyn_cast<CastInst>(Cur)) {
-          if (!isa<BitCastInst, AddrSpaceCastInst>(CI)) {
-            break;
-          }
-          Value *Base = CI->getOperand(0);
-          if (!AllocaDerived.contains(Base)) {
-            break;
-          }
-          Cur = Base;
-        }
-        AllocaAS = Cur->getType()->getPointerAddressSpace();
-      }
-      for (CastInst *CI : chain) {
-        Type *DestTy = CI->getType();
-        // Clamp addrspacecast destinations to AllocaAS to prevent
-        // private→generic→global casts that cause GPU hangs when SoA/GRF
-        // promotion is rejected and the surviving load reads from wrong memory
-        if (AllocaAS.has_value()) {
-          if (auto *PT = dyn_cast<PointerType>(DestTy)) {
-            if (PT->getAddressSpace() != AllocaAS.value()) {
-              DestTy = IGCLLVM::PointerType::get(PT, AllocaAS.value());
-            }
-          }
-        }
-        if (Cur->getType() == DestTy) {
-          continue;
-        }
-        Cur = B.CreateCast(CastInst::getCastOpcode(Cur, false, DestTy, false), Cur, DestTy);
-      }
-      return Cur;
-    };
-
-    MergeHoistRecord Rec;
-
-    for (const LoadVia &LV : Loads) {
-      LoadInst *LI = LV.LI;
-      PHINode *NewPhi = PHINode::Create(LI->getType(), Phi->getNumIncomingValues(), Phi->getName() + ".lowered",
-                                        IGCLLVM::insertPosition(Phi));
-
-      for (unsigned I = 0; I < Phi->getNumIncomingValues(); ++I) {
-        BasicBlock *BBIn = Phi->getIncomingBlock(I);
-        IRBuilder<> IRB(BBIn->getTerminator());
-        Value *Ptr = ReplayChain(IRB, Phi->getIncomingValue(I), LV.chain);
-        LoadInst *NewLI = cast<LoadInst>(LI->clone());
-        NewLI->setOperand(0, Ptr);
-        IRB.Insert(NewLI);
-        NewPhi->addIncoming(NewLI, BBIn);
-      }
-      LI->replaceAllUsesWith(NewPhi);
-      Rec.push_back(LI);
-      IGC_ASSERT(LI->use_empty());
-    }
-
-    outRecords.push_back(std::move(Rec));
-    Changed = true;
-  }
-
-  return Changed;
-}
-
-// Normalize pointer select/phi patterns so SOALayoutChecker later sees a clean
-// GEP/load/store/lifetime use chain rooted at each alloca.
-static bool hoistLoadsPastPointerMerges(Function &F) {
-  SmallVector<AllocaInst *, 16> Allocas;
-  for (Instruction &I : instructions(F)) {
-    if (auto *AI = dyn_cast<AllocaInst>(&I)) {
-      Allocas.push_back(AI);
-    }
-  }
-
-  bool Changed = false;
-  for (AllocaInst *AI : Allocas) {
-    // Loop: each committed PHI merge may expose new inner candidates.
-    SmallVector<MergeHoistRecord, 4> HoistRecords;
-    for (int HoistIter = 0; HoistIter < MAX_HOISTING_ITER; ++HoistIter) {
-      const size_t PrevCount = HoistRecords.size();
-      tryHoistLoadsPastPointerMerges(AI, HoistRecords);
-      if (HoistRecords.size() == PrevCount) {
-        break;
-      }
-      // Commit only the newly added records.
-      for (size_t J = PrevCount; J < HoistRecords.size(); ++J) {
-        commitHoistRecord(HoistRecords[J]);
-        Changed = true;
-      }
-    }
-  }
-  return Changed;
 }
 
 void LowerGEPForPrivMem::visitAllocaInst(AllocaInst &I) {
