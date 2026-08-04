@@ -64,6 +64,26 @@ define <3 x float> @test_fneg_scalarization_f(<3 x float> %src) {
   ret <3 x float> %1
 }
 
+; Test checks that fast-math flags are preserved during scalarization
+
+define <3 x float> @test_fneg_scalarization_fast(<3 x float> %src) {
+; CHECK-LABEL: define <3 x float> @test_fneg_scalarization_fast(
+; CHECK-SAME: <3 x float> [[SRC:%.*]])
+; CHECK:    [[TMP1:%.*]] = extractelement <3 x float> [[SRC]], i32 0
+; CHECK:    [[TMP2:%.*]] = fneg fast float [[TMP1]]
+; CHECK:    [[TMP3:%.*]] = insertelement <3 x float> undef, float [[TMP2]], i32 0
+; CHECK:    [[TMP4:%.*]] = extractelement <3 x float> [[SRC]], i32 1
+; CHECK:    [[TMP5:%.*]] = fneg fast float [[TMP4]]
+; CHECK:    [[TMP6:%.*]] = insertelement <3 x float> [[TMP3]], float [[TMP5]], i32 1
+; CHECK:    [[TMP7:%.*]] = extractelement <3 x float> [[SRC]], i32 2
+; CHECK:    [[TMP8:%.*]] = fneg fast float [[TMP7]]
+; CHECK:    [[TMP9:%.*]] = insertelement <3 x float> [[TMP6]], float [[TMP8]], i32 2
+; CHECK:    ret <3 x float> [[TMP9]]
+;
+  %1 = fneg fast <3 x float> %src
+  ret <3 x float> %1
+}
+
 define <4 x double> @test_fneg_scalarization_d(<4 x double> %src) {
 ; CHECK-LABEL: define <4 x double> @test_fneg_scalarization_d(
 ; CHECK-SAME: <4 x double> [[SRC:%.*]])

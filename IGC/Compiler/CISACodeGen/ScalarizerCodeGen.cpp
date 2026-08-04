@@ -154,7 +154,8 @@ void ScalarizerCodeGen::visitFNeg(llvm::UnaryOperator &I) {
     for (unsigned Idx = 0; Idx < NumElements; Idx++) {
       Value *ConstIndex = ConstantInt::get(m_builder->getInt32Ty(), Idx);
       Value *EESrc0 = m_builder->CreateExtractElement(Src, ConstIndex);
-      Value *NewFNegInst = m_builder->CreateFNeg(EESrc0);
+      // Preserve the fast-math flags of the original vector fneg.
+      Value *NewFNegInst = m_builder->CreateFNegFMF(EESrc0, &I);
       LastOp = m_builder->CreateInsertElement(LastOp, NewFNegInst, ConstIndex);
     }
 
