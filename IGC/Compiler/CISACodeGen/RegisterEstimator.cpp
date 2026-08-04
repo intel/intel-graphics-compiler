@@ -20,6 +20,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/DataLayout.h>
 #include <llvm/IR/Instructions.h>
 #include "common/LLVMWarningsPop.hpp"
+#include "llvmWrapper/IR/Instructions.h"
 #include <llvmWrapper/IR/DerivedTypes.h>
 #include "Probe/Assertion.h"
 
@@ -360,10 +361,10 @@ void RegisterEstimator::print(raw_ostream &OS, BasicBlock *BB, int dumpLevel) {
     }
     OS << *I;
     if (!m_pBB2ID.empty()) {
-      if (BranchInst *BrI = dyn_cast<BranchInst>(I)) {
+      if (isa<IGCLLVM::CondBrInst, IGCLLVM::UncondBrInst>(I)) {
         OS << "  (";
-        for (int i = 0, e = (int)BrI->getNumSuccessors(); i < e; ++i) {
-          BasicBlock *b = BrI->getSuccessor(i);
+        for (int i = 0, e = (int)I->getNumSuccessors(); i < e; ++i) {
+          BasicBlock *b = I->getSuccessor(i);
           OS << " BB[" << m_pBB2ID[b] << "]";
         }
         OS << " )";

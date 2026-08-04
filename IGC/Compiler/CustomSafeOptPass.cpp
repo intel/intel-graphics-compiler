@@ -91,6 +91,7 @@ cmp+sel to avoid expensive VxH mov.
 #include "llvmWrapper/IR/IntrinsicInst.h"
 #include "llvmWrapper/IR/Intrinsics.h"
 #include "llvmWrapper/IR/Instructions.h"
+#include "llvmWrapper/IR/InstVisitor.h"
 #include "llvmWrapper/IR/DIBuilder.h"
 #include "llvmWrapper/IR/DebugInfo.h"
 #include "llvmWrapper/IR/DerivedTypes.h"
@@ -178,7 +179,7 @@ void CustomSafeOptPass::visitXor(Instruction &XorInstr) {
 
   for (const auto &U : ICmpInstr->uses()) {
     auto user = U.getUser();
-    if (isa<BranchInst>(user)) {
+    if (isa<IGCLLVM::CondBrInst>(user)) {
       UsersList.push_back(cast<Instruction>(user));
     } else if (SelectInst *S = dyn_cast<SelectInst>(user)) {
       constexpr uint32_t condIdx = 0;
@@ -205,9 +206,8 @@ void CustomSafeOptPass::visitXor(Instruction &XorInstr) {
       S->setTrueValue(FalseVal);
       S->setFalseValue(TrueVal);
     } else {
-      IGC_ASSERT(isa<BranchInst>(I));
-      BranchInst *B = cast<BranchInst>(I);
-      B->swapSuccessors();
+      IGC_ASSERT(isa<IGCLLVM::CondBrInst>(I));
+      llvm::cast<IGCLLVM::CondBrInst>(I)->swapSuccessors();
     }
   }
 
@@ -256,7 +256,7 @@ void CustomSafeOptPass::visitAnd(BinaryOperator &I) {
     return;
   }
 
-  if (!I.hasOneUse() || !isa<BranchInst>(*I.user_begin()) || !I.getType()->isIntegerTy(1)) {
+  if (!I.hasOneUse() || !isa<IGCLLVM::CondBrInst>(*I.user_begin()) || !I.getType()->isIntegerTy(1)) {
     return;
   }
 
@@ -272,7 +272,7 @@ void CustomSafeOptPass::visitAnd(BinaryOperator &I) {
       builder.CreateICmp(CompareInst->getInversePredicate(), CompareInst->getOperand(0), CompareInst->getOperand(1));
   auto OrInst = builder.CreateOr(XorArgValue, NegatedCompareInst);
 
-  auto BrInst = cast<BranchInst>(*I.user_begin());
+  auto *BrInst = cast<IGCLLVM::CondBrInst>(*I.user_begin());
   BrInst->setCondition(OrInst);
   BrInst->swapSuccessors();
 
@@ -5097,7 +5097,7 @@ IGC_INITIALIZE_PASS_BEGIN(IGCIndirectICBPropagaion, "IGCIndirectICBPropagaion", 
 IGC_INITIALIZE_PASS_END(IGCIndirectICBPropagaion, "IGCIndirectICBPropagaion", "IGCIndirectICBPropagaion", false, false)
 
 namespace {
-class NanHandling : public FunctionPass, public llvm::InstVisitor<NanHandling> {
+class NanHandling : public FunctionPass, public IGCLLVM::InstVisitor<NanHandling> {
 public:
   static char ID;
   NanHandling() : FunctionPass(ID) { initializeNanHandlingPass(*PassRegistry::getPassRegistry()); }
@@ -5109,13 +5109,13 @@ public:
 
   virtual llvm::StringRef getPassName() const { return "NAN handling"; }
   virtual bool runOnFunction(llvm::Function &F);
-  void visitBranchInst(llvm::BranchInst &I);
+  void visitCondBrInst(IGCLLVM::CondBrInst &I);
   void loopNanCases(Function &F);
 
 private:
   int longestPathInstCount(llvm::BasicBlock *BB, int &depth);
-  void swapBranch(llvm::Instruction *inst, llvm::BranchInst &BI);
-  SmallVector<llvm::BranchInst *, 10> visitedInst;
+  void swapBranch(llvm::Instruction *inst, IGCLLVM::CondBrInst &BI);
+  SmallVector<IGCLLVM::CondBrInst *, 10> visitedInst;
 };
 } // namespace
 
@@ -5136,9 +5136,9 @@ void NanHandling::loopNanCases(Function &F) {
     FastMathFlags FMF;
     FMF.clear();
     for (Loop *loop : *LI) {
-      BranchInst *br = cast<BranchInst>(loop->getLoopLatch()->getTerminator());
+      IGCLLVM::CondBrInst *br = dyn_cast<IGCLLVM::CondBrInst>(loop->getLoopLatch()->getTerminator());
       BasicBlock *header = loop->getHeader();
-      if (br && br->isConditional() && header) {
+      if (br && header) {
         visitedInst.push_back(br);
         if (FCmpInst *brCmpInst = dyn_cast<FCmpInst>(br->getCondition())) {
           FPMathOperator *FPO = dyn_cast<FPMathOperator>(brCmpInst);
@@ -5181,7 +5181,7 @@ int NanHandling::longestPathInstCount(llvm::BasicBlock *BB, int &depth) {
   return (int)(BB->size()) + sumSuccInstCount;
 }
 
-void NanHandling::swapBranch(llvm::Instruction *inst, llvm::BranchInst &BI) {
+void NanHandling::swapBranch(llvm::Instruction *inst, IGCLLVM::CondBrInst &BI) {
   if (FCmpInst *brCondition = dyn_cast<FCmpInst>(inst)) {
     if (inst->hasOneUse()) {
       brCondition->setPredicate(FCmpInst::getInversePredicate(brCondition->getPredicate()));
@@ -5193,10 +5193,7 @@ void NanHandling::swapBranch(llvm::Instruction *inst, llvm::BranchInst &BI) {
   }
 }
 
-void NanHandling::visitBranchInst(llvm::BranchInst &I) {
-  if (!I.isConditional())
-    return;
-
+void NanHandling::visitCondBrInst(IGCLLVM::CondBrInst &I) {
   // if this branch is part of a loop, it is taken care of already in loopNanCases
   if (std::find(visitedInst.begin(), visitedInst.end(), &I) != visitedInst.end())
     return;
@@ -5617,12 +5614,9 @@ bool FlattenSmallSwitch::processSwitchInst(SwitchInst *SI) {
   BasicBlock *Dest = nullptr;
   {
     const auto *CaseSucc = SI->case_begin()->getCaseSuccessor();
-    auto *BI = dyn_cast<BranchInst>(CaseSucc->getTerminator());
+    auto *BI = dyn_cast<IGCLLVM::UncondBrInst>(CaseSucc->getTerminator());
 
     if (BI == nullptr)
-      return false;
-
-    if (BI->isConditional())
       return false;
 
     // We know the first case jumps to this block.  Now let's
@@ -5632,12 +5626,9 @@ bool FlattenSmallSwitch::processSwitchInst(SwitchInst *SI) {
 
   // Does BB unconditionally branch to MergeBlock?
   auto branchPattern = [](const BasicBlock *BB, const BasicBlock *MergeBlock) {
-    auto *br = dyn_cast<BranchInst>(BB->getTerminator());
+    auto *br = dyn_cast<IGCLLVM::UncondBrInst>(BB->getTerminator());
 
     if (br == nullptr)
-      return false;
-
-    if (br->isConditional())
       return false;
 
     if (br->getSuccessor(0) != MergeBlock)
@@ -5662,7 +5653,7 @@ bool FlattenSmallSwitch::processSwitchInst(SwitchInst *SI) {
     for (auto &I : *BB) {
       auto *inst = &I;
 
-      if (isa<BranchInst>(inst))
+      if (isa<IGCLLVM::UncondBrInst>(inst))
         continue;
 
       // if there is any high-latency instruction in the switch,
@@ -5861,8 +5852,7 @@ void FCmpPaternMatch::visitSelectInst(SelectInst &I) {
 
               SmallVector<Instruction *, 4> matchedBrSelInsts;
               for (auto brOrSelI : iCmpInst->users()) {
-                BranchInst *brInst = dyn_cast<BranchInst>(brOrSelI);
-                if (brInst && brInst->isConditional()) {
+                if (IGCLLVM::CondBrInst *brInst = dyn_cast<IGCLLVM::CondBrInst>(brOrSelI)) {
                   // match
                   matchedBrSelInsts.push_back(brInst);
                   if (swapNodes) {
@@ -6737,7 +6727,7 @@ MergeMemFromBranchOpt::MergeMemFromBranchOpt() : FunctionPass(ID), changed(false
 void MergeMemFromBranchOpt::visitTypedWrite(llvm::CallInst *inst) {
   std::vector<CallInst *> callSet;
   // last instruction in the BB
-  if (dyn_cast<BranchInst>(inst->getNextNode())) {
+  if (isa<IGCLLVM::CondBrInst, IGCLLVM::UncondBrInst>(inst->getNextNode())) {
     BasicBlock *BB = inst->getParent();
     // the basicblock with inst has single successor BB
     if (BasicBlock *succBB = BB->getSingleSuccessor()) {

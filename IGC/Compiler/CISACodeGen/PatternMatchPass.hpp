@@ -22,6 +22,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/DataLayout.h>
 #include "common/LLVMWarningsPop.hpp"
 #include "llvmWrapper/IR/Instructions.h"
+#include "llvmWrapper/IR/InstVisitor.h"
 
 namespace llvm {
 class Value;
@@ -108,7 +109,7 @@ struct SBasicBlock {
   }
 };
 
-class CodeGenPatternMatch : public llvm::FunctionPass, public llvm::InstVisitor<CodeGenPatternMatch> {
+class CodeGenPatternMatch : public llvm::FunctionPass, public IGCLLVM::InstVisitor<CodeGenPatternMatch> {
 private:
   CodeGenPatternMatch(CodeGenPatternMatch &) = delete;
   CodeGenPatternMatch &operator=(CodeGenPatternMatch &) = delete;
@@ -156,7 +157,8 @@ public:
   void visitFPToUIInst(llvm::FPToUIInst &I);
   void visitDbgInfoIntrinsic(llvm::DbgInfoIntrinsic &I);
   void visitExtractValueInst(llvm::ExtractValueInst &I);
-  void visitBranchInst(llvm::BranchInst &I);
+  void visitCondBrInst(IGCLLVM::CondBrInst &I);
+  void visitUncondBrInst(IGCLLVM::UncondBrInst &I);
 
 public:
   void CodeGenBlock(llvm::BasicBlock *bb);
@@ -189,7 +191,7 @@ public:
   bool MatchModifier(llvm::Instruction &I, bool SupportSrc0Mod = true);
   bool MatchSingleInstruction(llvm::Instruction &I);
   bool MatchCanonicalizeInstruction(llvm::Instruction &I);
-  bool MatchBranch(llvm::BranchInst &I);
+  bool MatchBranch(llvm::Instruction &I);
   bool MatchShuffleBroadCast(llvm::GenIntrinsicInst &I);
   bool MatchWaveShuffleIndex(llvm::GenIntrinsicInst &I);
   bool MatchWaveInstruction(llvm::GenIntrinsicInst &I);

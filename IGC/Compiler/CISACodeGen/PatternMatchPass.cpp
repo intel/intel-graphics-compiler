@@ -1121,7 +1121,9 @@ void CodeGenPatternMatch::visitCmpInst(llvm::CmpInst &I) {
   IGC_ASSERT(match);
 }
 
-void CodeGenPatternMatch::visitBranchInst(llvm::BranchInst &I) { MatchBranch(I); }
+void CodeGenPatternMatch::visitCondBrInst(IGCLLVM::CondBrInst &I) { MatchBranch(I); }
+
+void CodeGenPatternMatch::visitUncondBrInst(IGCLLVM::UncondBrInst &I) { MatchBranch(I); }
 
 void CodeGenPatternMatch::visitCallInst(CallInst &I) {
   [[maybe_unused]] bool match = false;
@@ -4591,28 +4593,32 @@ bool CodeGenPatternMatch::MatchCanonicalizeInstruction(llvm::Instruction &I) {
   return true;
 }
 
-bool CodeGenPatternMatch::MatchBranch(llvm::BranchInst &I) {
+bool CodeGenPatternMatch::MatchBranch(llvm::Instruction &I) {
   using namespace llvm::PatternMatch;
   struct CondBrInstPattern : Pattern {
     SSource cond;
-    llvm::BranchInst *inst;
+    llvm::Instruction *inst;
     e_predMode predMode = EPRED_NORMAL;
     bool isDiscardBranch = false;
     virtual void Emit(EmitPass *pass, const DstModifier &modifier) {
-      if (isDiscardBranch) {
-        pass->emitDiscardBranch(inst, cond);
+      if (IGCLLVM::CondBrInst *condBr = dyn_cast<IGCLLVM::CondBrInst>(inst)) {
+        if (isDiscardBranch) {
+          pass->emitDiscardBranch(condBr, cond);
+        } else {
+          pass->emitCondBrInst(condBr, cond, predMode);
+        }
       } else {
-        pass->emitBranch(inst, cond, predMode);
+        pass->emitUncondBrInst(cast<IGCLLVM::UncondBrInst>(inst));
       }
     }
   };
   CondBrInstPattern *pattern = new (m_allocator) CondBrInstPattern();
   pattern->inst = &I;
 
-  if (!I.isUnconditional()) {
+  if (auto CBI = dyn_cast<IGCLLVM::CondBrInst>(&I)) {
     Value *orSrc0 = nullptr;
     Value *orSrc1 = nullptr;
-    Value *cond = I.getCondition();
+    Value *cond = CBI->getCondition();
     if (dyn_cast<GenIntrinsicInst>(cond, GenISAIntrinsic::GenISA_UpdateDiscardMask)) {
       pattern->isDiscardBranch = true;
     } else if (match(cond, m_Or(m_Value(orSrc0), m_Value(orSrc1)))) {
@@ -4629,7 +4635,7 @@ bool CodeGenPatternMatch::MatchBranch(llvm::BranchInst &I) {
         }
       }
     }
-    pattern->cond = GetSource(I.getCondition(), false, false, IsSourceOfSample(&I));
+    pattern->cond = GetSource(cast<IGCLLVM::CondBrInst>(&I)->getCondition(), false, false, IsSourceOfSample(&I));
   }
   AddPattern(pattern);
   return true;

@@ -197,8 +197,8 @@ bool PreRARematFlag::runOnFunction(Function &F) {
 
   bool Changed = false;
   for (auto &BB : F) {
-    BranchInst *BI = dyn_cast<BranchInst>(BB.getTerminator());
-    if (!BI || !BI->isConditional())
+    IGCLLVM::CondBrInst *BI = dyn_cast<IGCLLVM::CondBrInst>(BB.getTerminator());
+    if (!BI)
       continue;
 
     // DFS traverse logic expression to remove multi-use boolean values.

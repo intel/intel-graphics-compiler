@@ -94,7 +94,6 @@ private:
   }
 
   bool hoistUniform(BasicBlock *Src, BasicBlock *Dst) const;
-  __attr_unused bool hoistMost(bool InvPred, BasicBlock *IfBB, BasicBlock *TBB, BasicBlock *FBB, BasicBlock *JBB) const;
   bool hoistMost2(bool InvPred, BasicBlock *IfBB, BasicBlock *TBB, BasicBlock *FBB, BasicBlock *JBB) const;
 
   // Check whether any(Cond) is always true.
@@ -244,24 +243,6 @@ bool AdvCodeMotion::hoistUniform(BasicBlock *Src, BasicBlock *Dst) const {
   return Changed;
 }
 
-namespace {
-class RegionSubgraph {
-  BasicBlock *Exit;
-
-public:
-  RegionSubgraph(BasicBlock *E) : Exit(E) {}
-
-  // Visited-set for post_order_ext; false prunes the walk at Exit.
-  std::pair<SmallPtrSet<BasicBlock *, 32>::iterator, bool> insert(BasicBlock *BB) {
-    if (BB == Exit)
-      return {Visited.end(), false};
-    return Visited.insert(BB);
-  }
-
-  SmallPtrSet<BasicBlock *, 32> Visited;
-};
-} // End anonymous namespace
-
 static bool hasMemoryWrite(BasicBlock *BB) {
   for (auto II = BB->begin(), IE = BB->end(); II != IE; ++II)
     if (II->mayWriteToMemory())
@@ -280,14 +261,12 @@ static BasicBlock *getJointBasicBlock(PostDominatorTree *PDT, BasicBlock *BB, Ba
 static std::tuple<bool, BasicBlock *, BasicBlock *, BasicBlock *> getIfStatementBlock(PostDominatorTree *PDT,
                                                                                       BasicBlock *IfBB) {
   // Handle 'br' only.
-  if (!isa<BranchInst>(IfBB->getTerminator()))
+  auto *BI = dyn_cast<IGCLLVM::CondBrInst>(IfBB->getTerminator());
+  if (!BI)
     return std::make_tuple(false, nullptr, nullptr, nullptr);
 
-  auto SI = succ_begin(IfBB), SE = succ_end(IfBB);
-  BasicBlock *TBB = (SI != SE) ? *SI++ : nullptr;
-  BasicBlock *FBB = (SI != SE) ? *SI++ : nullptr;
-  if (!TBB || !FBB || SI != SE)
-    return std::make_tuple(false, nullptr, nullptr, nullptr);
+  BasicBlock *TBB = BI->getSuccessor(0);
+  BasicBlock *FBB = BI->getSuccessor(1);
 
   bool InvPred = false;
   BasicBlock *JBB = getJointBasicBlock(PDT, FBB, IfBB);
@@ -302,75 +281,6 @@ static std::tuple<bool, BasicBlock *, BasicBlock *, BasicBlock *> getIfStatement
   return std::make_tuple(InvPred, TBB, FBB, JBB);
 }
 
-bool AdvCodeMotion::hoistMost(bool InvPred, BasicBlock *IfBB, BasicBlock *TBB, BasicBlock *FBB, BasicBlock *JBB) const {
-  // Hoist most code from TBB into IfBB, where IfBB, TBB and JBB are
-  // if-statement blocks.
-  SmallVector<BasicBlock *, 2> Preds(pred_begin(JBB), pred_end(JBB));
-  if (Preds.size() != 2)
-    return false;
-  BasicBlock *Exit = Preds[0];
-  if (!DT->dominates(TBB, Exit))
-    Exit = Preds[1];
-  if (!DT->dominates(TBB, Exit))
-    return false;
-
-  bool Changed = false;
-  Instruction *Pos = IfBB->getTerminator();
-  auto Cond = cast<BranchInst>(Pos)->getCondition();
-  RegionSubgraph RSG(JBB);
-  // Check if there's any memory write.
-  for (auto *SI : post_order_ext(TBB, RSG))
-    if (hasMemoryWrite(SI))
-      return false;
-  // Check whether Cond is used in that region.
-  SmallPtrSet<BasicBlock *, 8> UserBlocks;
-  for (auto *User : Cond->users()) {
-    Instruction *I = dyn_cast<Instruction>(User);
-    if (!I)
-      continue;
-    BasicBlock *BB = I->getParent();
-    if (UserBlocks.count(BB))
-      continue;
-    if (RSG.Visited.count(BB))
-      return false;
-  }
-  // Split IfBB and merge TBB into upper part and Exit into lower part.
-  BasicBlock *Lower = IfBB->splitBasicBlock(Pos);
-  BasicBlock *Upper = *pred_begin(Lower);
-  // Merge entry block into upper part.
-  Pos = Upper->getTerminator();
-  for (auto BI = TBB->begin(), BE = TBB->end(); BI != BE; /*EMPTY*/) {
-    Instruction *Inst = &*BI++;
-    IGCLLVM::moveBefore(Inst, Pos);
-  }
-  Pos->eraseFromParent();
-  // Merge exit block into lower part.
-  Pos = &Lower->front();
-  for (auto BI = Exit->begin(), BE = Exit->end(); BI != BE; /*EMPTY*/) {
-    Instruction *Inst = &*BI++;
-    if (Inst->isTerminator())
-      break;
-    IGCLLVM::moveBefore(Inst, Pos);
-  }
-  Lower->moveBefore(JBB);
-  // Rebuild CFG.
-  Exit->replaceAllUsesWith(Lower);
-  TBB->replaceAllUsesWith(Exit);
-  TBB->eraseFromParent();
-  // Update PHI nodes.
-  for (auto BI = JBB->begin(), BE = JBB->end(); BI != BE; ++BI) {
-    PHINode *PN = dyn_cast<PHINode>(&*BI);
-    if (!PN)
-      break;
-    for (unsigned i = 0, e = PN->getNumIncomingValues(); i != e; ++i) {
-      if (PN->getIncomingBlock(i) == Lower)
-        PN->setIncomingBlock(i, Exit);
-    }
-  }
-  Changed = true;
-  return Changed;
-}
-
 bool AdvCodeMotion::hoistMost2(bool InvPred, BasicBlock *IfBB, BasicBlock *TBB, BasicBlock *FBB,
                                BasicBlock *JBB) const {
   auto [InvPred2, TBB2, FBB2, JBB2] = getIfStatementBlock(PDT, TBB);
@@ -380,7 +290,7 @@ bool AdvCodeMotion::hoistMost2(bool InvPred, BasicBlock *IfBB, BasicBlock *TBB, 
   if (hasMemoryWrite(TBB))
     return false;
   Instruction *Pos = IfBB->getTerminator();
-  auto Cond = cast<BranchInst>(Pos)->getCondition();
+  auto Cond = cast<IGCLLVM::CondBrInst>(Pos)->getCondition();
   for (auto *User : Cond->users()) {
     Instruction *I = dyn_cast<Instruction>(User);
     if (!I)
@@ -416,7 +326,7 @@ bool AdvCodeMotion::hoistMost2(bool InvPred, BasicBlock *IfBB, BasicBlock *TBB, 
   IRBuilder<> IRB(Pos);
 
   User *NewUser = nullptr;
-  auto Cond2 = cast<BranchInst>(Pos)->getCondition();
+  auto Cond2 = cast<IGCLLVM::CondBrInst>(Pos)->getCondition();
   auto C2 = Cond2;
   if (InvPred2) {
     C2 = IRB.CreateNot(C2);
@@ -526,7 +436,7 @@ bool AdvCodeMotion::runOnFunction(Function &F) {
 
   while (!Candidates.empty()) {
     auto [InvPred, IfBB, TBB, FBB, JBB] = Candidates.pop_back_val();
-    auto Cond = cast<BranchInst>(IfBB->getTerminator())->getCondition();
+    auto Cond = cast<IGCLLVM::CondBrInst>(IfBB->getTerminator())->getCondition();
     if (!isUniformlyAlwaysTaken(InvPred, Cond))
       continue;
     bool LocalChanged = false;
@@ -584,7 +494,7 @@ bool AdvCodeMotion::isCase1(bool InvPred, Value *Cond) const {
   BasicBlock *OuterExit = OutL->getExitingBlock();
   if (!OuterExit)
     return false;
-  auto Cond2 = cast<BranchInst>(OuterExit->getTerminator())->getCondition();
+  auto Cond2 = cast<IGCLLVM::CondBrInst>(OuterExit->getTerminator())->getCondition();
   auto OuterCmp = dyn_cast<ICmpInst>(Cond2);
   if (!OuterCmp || OuterCmp->getPredicate() != CmpInst::ICMP_ULT)
     return false;
@@ -838,8 +748,8 @@ bool MadLoopSlice::sliceLoop(Loop *L) const {
   auto *BB = L->getBlocks()[0];
   assert(BB == L->getLoopLatch() && "The single BB in that loop is not latch!");
 
-  BranchInst *BI = dyn_cast_or_null<BranchInst>(BB->getTerminator());
-  if (!BI)
+  llvm::Instruction *BI = BB->getTerminator();
+  if (!BI || !isa<IGCLLVM::CondBrInst, IGCLLVM::UncondBrInst>(BI))
     return false;
 
   EquivalenceClasses<Instruction *> ECs;

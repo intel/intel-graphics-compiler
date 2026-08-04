@@ -26,6 +26,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/Constants.h>
 #include <llvm/IR/ModuleSlotTracker.h>
 #include "common/LLVMWarningsPop.hpp"
+#include "llvmWrapper/IR/Instructions.h"
 
 #include <functional>
 #include <string>
@@ -1837,9 +1838,14 @@ WIAnalysis::WIDependancy WIAnalysisRunner::calculate_dep_terminator(const IGCLLV
   // because we may want to avoid predication if the control flows
   // in the function are uniform...
   switch (inst->getOpcode()) {
-  case Instruction::Br: {
-    const BranchInst *brInst = cast<BranchInst>(inst);
-    if (brInst->isConditional()) {
+#if LLVM_VERSION_MAJOR >= 23
+  case llvm::Instruction::UncondBr:
+  case llvm::Instruction::CondBr:
+#else
+  case llvm::Instruction::Br:
+#endif
+  {
+    if (const IGCLLVM::CondBrInst *brInst = llvm::dyn_cast<IGCLLVM::CondBrInst>(inst)) {
       // Conditional branch is uniform, if its condition is uniform
       Value *op = brInst->getCondition();
       WIAnalysis::WIDependancy dep = getDependency(op);

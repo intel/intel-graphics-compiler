@@ -16,6 +16,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/Transforms/Utils/Local.h>
 #include "common/LLVMWarningsPop.hpp"
 #include <llvmWrapper/IR/BasicBlock.h>
+#include "llvmWrapper/IR/Instructions.h"
 
 using namespace llvm;
 using namespace IGC;
@@ -56,7 +57,7 @@ void IGC::UnreachableHandling::replaceUnreachable(llvm::UnreachableInst *I) {
   BB->splitBasicBlock(I);
   auto BBWithRet = BasicBlock::Create(F->getContext(), "", F);
   IGCLLVM::pushBackInstruction(BBWithRet, ret);
-  cast<BranchInst>(BB->getTerminator())->setSuccessor(0, BBWithRet);
+  BB->getTerminator()->setSuccessor(0, BBWithRet);
   I->eraseFromParent();
 }
 

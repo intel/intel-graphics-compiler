@@ -551,8 +551,8 @@ bool ManageableBarriersResolution::isCallOnceInit(CallInst *pFunc) {
   while (BB) {
     if (BB->isEntryBlock())
       return true;
-    auto *BI = llvm::dyn_cast<BranchInst>(BB->getTerminator());
-    if (!BI || BI->isConditional())
+    auto *BI = dyn_cast<IGCLLVM::UncondBrInst>(BB->getTerminator());
+    if (!BI)
       return false;
     BB = BB->getSinglePredecessor();
   }

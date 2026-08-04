@@ -71,7 +71,7 @@ static void ProcessDbgValueInst(BasicBlock &blk, DominatorTree *DT) {
         ToMove.emplace_back(E, &*def->getParent()->getFirstInsertionPt());
       } else {
         ToMove.emplace_back(E, IGCLLVM::getNextNonDebugInstruction(def));
-        IGC_ASSERT(!isa<BranchInst>(def));
+        IGC_ASSERT((!isa<IGCLLVM::CondBrInst, IGCLLVM::UncondBrInst>(def)));
       }
     });
   }

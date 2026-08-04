@@ -15,6 +15,8 @@ SPDX-License-Identifier: MIT
 #include <llvm/Analysis/LoopInfo.h>
 #include <llvm/Analysis/LoopPass.h>
 #include "common/LLVMWarningsPop.hpp"
+#include "llvmWrapper/IR/Instructions.h"
+#include "llvmWrapper/IR/InstVisitor.h"
 #include "Compiler/IGCPassSupport.h"
 #include "Compiler/CodeGenPublic.h"
 
@@ -22,7 +24,7 @@ namespace IGC {
 // Forward declaration
 struct SInstrTypes;
 
-class CheckInstrTypes : public llvm::FunctionPass, public llvm::InstVisitor<CheckInstrTypes> {
+class CheckInstrTypes : public llvm::FunctionPass, public IGCLLVM::InstVisitor<CheckInstrTypes> {
   llvm::LoopInfo *LI = nullptr;
 
 public:
@@ -47,7 +49,8 @@ public:
   void visitInstruction(llvm::Instruction &I);
 
   void visitCallInst(llvm::CallInst &C);
-  void visitBranchInst(llvm::BranchInst &I);
+  void visitCondBrInst(IGCLLVM::CondBrInst &I);
+  void visitUncondBrInst(IGCLLVM::UncondBrInst &I);
   void visitSwitchInst(llvm::SwitchInst &I);
   void visitIndirectBrInst(llvm::IndirectBrInst &I);
   void visitICmpInst(llvm::ICmpInst &I);

@@ -70,10 +70,7 @@ bool CapLoopIterations::runOnFunction(Function &F) {
     loop->getExitEdges(exitedges);
 
     for (const auto &[exitingbb, exitbb] : exitedges) {
-      if (auto br = dyn_cast<BranchInst>(exitingbb->getTerminator())) {
-        if (!br->isConditional())
-          continue;
-
+      if (auto br = dyn_cast<IGCLLVM::CondBrInst>(exitingbb->getTerminator())) {
         IRB.SetInsertPoint(br);
 
         if (br->getSuccessor(0) == exitbb) // br i1 %cond, %exit, %notexit

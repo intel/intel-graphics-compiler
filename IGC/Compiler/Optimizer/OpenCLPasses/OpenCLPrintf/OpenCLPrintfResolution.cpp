@@ -1054,7 +1054,7 @@ Value *OpenCLPrintfResolution::emitStrlenWithNull(Value *strPtr, Instruction *in
 
   // Redirect entry's fallthrough (created by splitBasicBlock) to the loop.
   entryBB->getTerminator()->eraseFromParent();
-  BranchInst *toLoop = BranchInst::Create(loopBB, entryBB);
+  IGCLLVM::UncondBrInst *toLoop = IGCLLVM::UncondBrInst::Create(loopBB, entryBB);
   toLoop->setDebugLoc(m_DL);
 
   IRBuilder<> B(loopBB);

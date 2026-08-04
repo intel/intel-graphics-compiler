@@ -21,6 +21,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/ADT/DepthFirstIterator.h>
 #include <llvm/IR/InstIterator.h>
 #include <llvm/IR/Verifier.h>
+#include "llvmWrapper/IR/Instructions.h"
 #include <llvm/Analysis/LoopInfo.h>
 #include "common/LLVMWarningsPop.hpp"
 #include "llvmWrapper/IR/IRBuilder.h"
@@ -691,16 +692,17 @@ bool TraceRayInlineLoweringPass::forceShortCurcuitingOR_CommittedGeomIdx(RTBuild
   Instruction *lhs = nullptr;
   Instruction *rhs = nullptr;
   Instruction *orI = nullptr;
-  BranchInst *brI = nullptr;
+  Instruction *brI = nullptr;
   for (auto U1 : I->users()) {
     if (isa<ICmpInst>(U1)) { // found 2nd condition
       for (auto U2 : U1->users()) {
         if ((orI = dyn_cast<Instruction>(U2))) {
           if (orI->getOpcode() == Instruction::Or) {
-            brI = dyn_cast<llvm::BranchInst>(*orI->user_begin());
+            brI = dyn_cast<Instruction>(*orI->user_begin());
             lhs = dyn_cast<Instruction>(orI->getOperand(0));
             rhs = dyn_cast<Instruction>(orI->getOperand(1));
-            found = (orI->getOperand(1) == U1 && brI && lhs && rhs);
+            found =
+                (orI->getOperand(1) == U1 && brI && isa<IGCLLVM::CondBrInst, IGCLLVM::UncondBrInst>(brI) && lhs && rhs);
             if (found) {
               break;
             }

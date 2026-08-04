@@ -20,6 +20,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/IGCPassSupport.h"
 #include "Compiler/Legalizer/TypeLegalizer.h"
 #include "Probe/Assertion.h"
+#include "llvmWrapper/IR/Instructions.h"
 
 #define DEBUG_TYPE "PromoteToPredicatedMemoryAccess"
 
@@ -63,11 +64,11 @@ bool PromoteToPredicatedMemoryAccess::runOnFunction(Function &F) {
     return false;
   }
 
-  SmallVector<std::pair<BranchInst *, bool>, 8> WorkList;
+  SmallVector<std::pair<IGCLLVM::CondBrInst *, bool>, 8> WorkList;
 
   for (auto &BB : F) {
-    auto *BI = dyn_cast<BranchInst>(BB.getTerminator());
-    if (!BI || !BI->isConditional())
+    auto *BI = dyn_cast<IGCLLVM::CondBrInst>(BB.getTerminator());
+    if (!BI)
       continue;
 
     auto *Cond = BI->getCondition();

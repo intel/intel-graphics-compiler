@@ -16,6 +16,8 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/Function.h>
 #include "common/LLVMWarningsPop.hpp"
 
+#include "llvmWrapper/IR/Instructions.h"
+
 using namespace llvm;
 
 namespace IGC {
@@ -29,7 +31,7 @@ struct PropagateCmpUniformity : public FunctionPass {
   bool runOnFunction(Function &F) override;
 
 private:
-  bool getEqualityBranches(CmpInst *cmp, BranchInst *br, BasicBlock *&trueBranch, BasicBlock *&falseBranch,
+  bool getEqualityBranches(CmpInst *cmp, IGCLLVM::CondBrInst *br, BasicBlock *&trueBranch, BasicBlock *&falseBranch,
                            Value *&uniform, Value *&nonUniform);
   bool getUniformNonUniformPair(Value *op0, Value *op1, Value *&uniform, Value *&nonUniform);
   bool canReplaceUse(Use &U, BasicBlock *trueBranch, BasicBlock *cmpBB, DominatorTree &DT);

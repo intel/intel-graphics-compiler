@@ -20,6 +20,7 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/Support/CommandLine.h>
 #include "common/LLVMWarningsPop.hpp"
+#include "llvmWrapper/IR/Instructions.h"
 
 using namespace llvm;
 using namespace IGC;
@@ -247,8 +248,8 @@ unsigned Simd32ProfitabilityAnalysis::estimateLoopCount_CASE1(Loop *L) {
   if (!Exit)
     return LOOPCOUNT_UNKNOWN;
 
-  BranchInst *Br = dyn_cast<BranchInst>(Exit->getTerminator());
-  if (!Br || !Br->isConditional())
+  IGCLLVM::CondBrInst *Br = dyn_cast<IGCLLVM::CondBrInst>(Exit->getTerminator());
+  if (!Br)
     return LOOPCOUNT_UNKNOWN;
   if (!L->contains(Br->getSuccessor(0)))
     return LOOPCOUNT_UNKNOWN;
@@ -284,8 +285,8 @@ unsigned Simd32ProfitabilityAnalysis::estimateLoopCount_CASE1(Loop *L) {
     BasicBlock *IfBB = BB0->getSinglePredecessor();
     if (!IfBB)
       return LOOPCOUNT_UNKNOWN;
-    Br = dyn_cast<BranchInst>(IfBB->getTerminator());
-    if (!Br || !Br->isConditional())
+    Br = dyn_cast<IGCLLVM::CondBrInst>(IfBB->getTerminator());
+    if (!Br)
       return LOOPCOUNT_UNKNOWN;
     ICmpInst *Cmp = dyn_cast<ICmpInst>(Br->getCondition());
     if (!Cmp)
@@ -380,8 +381,8 @@ unsigned Simd32ProfitabilityAnalysis::estimateLoopCount_CASE2(Loop *L) {
     return LOOPCOUNT_UNKNOWN;
 
   for (auto BB : ExitingBBs) {
-    BranchInst *Br = dyn_cast<BranchInst>(BB->getTerminator());
-    if (!Br || !Br->isConditional())
+    IGCLLVM::CondBrInst *Br = dyn_cast<IGCLLVM::CondBrInst>(BB->getTerminator());
+    if (!Br)
       continue;
     if (!L->contains(Br->getSuccessor(0))) // Not condition of `continue`.
       continue;
@@ -613,13 +614,13 @@ bool Simd32ProfitabilityAnalysis::checkSimd32Profitable(CodeGenContext *ctx) {
 
       Instruction *term = block->getTerminator();
       if (!WI->isUniform(term)) {
-        auto Br = dyn_cast<BranchInst>(term);
+        auto Br = dyn_cast<IGCLLVM::CondBrInst>(term);
         // Check special case for non-uniform loop where, except the
         // initial, current, and next values, STEP and COUNT are
         // uniform. In such a case, the loop is only diverged at the
         // termination. It should be still profitable to be compiled
         // into SIMD32 mode.
-        if (Br && Br->isConditional()) {
+        if (Br) {
           auto ICmp = dyn_cast<ICmpInst>(Br->getCondition());
           if (ICmp) {
             auto [Init, Curr, Step, Next] = getInductionVariable(loop);

@@ -12,6 +12,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/Instructions.h>
 #include "common/LLVMWarningsPop.hpp"
 #include "llvmWrapper/IR/DerivedTypes.h"
+#include "llvmWrapper/IR/Instructions.h"
 #include "common/LLVMUtils.h"
 #include "LLVMWarningsPush.hpp"
 #include "llvm/IR/Instruction.h"
@@ -425,8 +426,8 @@ bool PushAnalysis::IsSafeToPushNonStaticBufferLoad(llvm::Instruction *inst) {
   if (searchForRetBBBeforeDiscard) {
     for (auto it = pred_begin(retBB), ie = pred_end(retBB); it != ie; ++it) {
       BasicBlock *predBB = *it;
-      BranchInst *br = cast<BranchInst>(predBB->getTerminator());
-      if (br->isUnconditional()) {
+      IGCLLVM::UncondBrInst *uncondBr = dyn_cast<IGCLLVM::UncondBrInst>(predBB->getTerminator());
+      if (uncondBr) {
         retBB = predBB;
         break;
       }

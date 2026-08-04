@@ -10,6 +10,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CodeGenContextWrapper.hpp"
 #include "Compiler/MetaDataUtilsWrapper.h"
 #include "Compiler/IGCPassSupport.h"
+#include "llvmWrapper/IR/Instructions.h"
 #include "common/igc_regkeys.hpp"
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/Analysis/IVDescriptors.h>
@@ -178,17 +179,16 @@ ICmpInst *LoopCountAnalysis::getLatchCmpInst(Loop *L) const {
   if (!Latch)
     return nullptr;
 
-  if (BranchInst *BI = dyn_cast_or_null<BranchInst>(Latch->getTerminator())) {
-    if (BI->isConditional()) {
+  llvm::Instruction *Terminator = Latch->getTerminator();
+  if (Terminator && isa<IGCLLVM::CondBrInst, IGCLLVM::UncondBrInst>(Terminator)) {
+    if (IGCLLVM::CondBrInst *BI = dyn_cast<IGCLLVM::CondBrInst>(Terminator)) {
       return dyn_cast<ICmpInst>(BI->getCondition());
     } else if (BasicBlock *PreBB = Latch->getUniquePredecessor()) {
-      if (BranchInst *br = dyn_cast_or_null<BranchInst>(PreBB->getTerminator())) {
-        if (br->isConditional()) {
-          if (ICmpInst *icmpInst = dyn_cast<ICmpInst>(br->getCondition())) {
-            return icmpInst;
-          }
-          // return dyn_cast<ICmpInst>(br->getCondition());
+      if (IGCLLVM::CondBrInst *br = dyn_cast_or_null<IGCLLVM::CondBrInst>(PreBB->getTerminator())) {
+        if (ICmpInst *icmpInst = dyn_cast<ICmpInst>(br->getCondition())) {
+          return icmpInst;
         }
+        // return dyn_cast<ICmpInst>(br->getCondition());
       }
     }
   }

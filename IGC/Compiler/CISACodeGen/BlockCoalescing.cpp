@@ -13,6 +13,9 @@ SPDX-License-Identifier: MIT
 #include "Probe/Assertion.h"
 #include "llvmWrapper/IR/BasicBlock.h"
 
+#include "llvmWrapper/IR/BasicBlock.h"
+#include "llvmWrapper/IR/Instructions.h"
+
 using namespace llvm;
 using namespace IGC;
 using namespace IGC::IGCMD;
@@ -65,29 +68,27 @@ bool BlockCoalescing::runOnFunction(Function &F) {
 
     // An empty block would have only one pattern matching the branch instruction
     if (block.m_dags.size() - dbgInstrInBB == 1) {
-      if (BranchInst *br = dyn_cast<BranchInst>(block.m_dags[0].m_root)) {
-        if (br->isUnconditional()) {
-          BasicBlock *const succ = br->getSuccessor(0);
-          IGC_ASSERT_MESSAGE(nullptr != succ, "Branch must have a successor!");
-          if (block.id >= patternMatch->GetBlockId(succ)) {
-            if (block.bb->getSinglePredecessor() == nullptr) {
-              // do not remove this BB that goes backward, otherwise
-              // one back edge becomes two back edges, and the
-              // control-flow reconverge point changes.
-              continue;
-            } else if (IGC_GET_FLAG_VALUE(EnableVISAStructurizer) == FLAG_SCF_Aggressive) {
-              // Do not remove the BB that goes backward, otherwise,
-              // a loop with break will end up with more than one exits,
-              // which will not be recognized as GEN while
-              continue;
-            }
+      if (IGCLLVM::UncondBrInst *br = dyn_cast<IGCLLVM::UncondBrInst>(block.m_dags[0].m_root)) {
+        BasicBlock *const succ = br->getSuccessor(0);
+        IGC_ASSERT_MESSAGE(nullptr != succ, "Branch must have a successor!");
+        if (block.id >= patternMatch->GetBlockId(succ)) {
+          if (block.bb->getSinglePredecessor() == nullptr) {
+            // do not remove this BB that goes backward, otherwise
+            // one back edge becomes two back edges, and the
+            // control-flow reconverge point changes.
+            continue;
+          } else if (IGC_GET_FLAG_VALUE(EnableVISAStructurizer) == FLAG_SCF_Aggressive) {
+            // Do not remove the BB that goes backward, otherwise,
+            // a loop with break will end up with more than one exits,
+            // which will not be recognized as GEN while
+            continue;
           }
+        }
 
-          // Make sure that if there is any loop, one of BBs in the loop will
-          // not be in the m_emptyBlocks (eventually condense it to a single BB).
-          if (!hasEmptyBlockLoop(block.bb)) {
-            m_emptyBlocks.insert(block.bb);
-          }
+        // Make sure that if there is any loop, one of BBs in the loop will
+        // not be in the m_emptyBlocks (eventually condense it to a single BB).
+        if (!hasEmptyBlockLoop(block.bb)) {
+          m_emptyBlocks.insert(block.bb);
         }
       }
     }

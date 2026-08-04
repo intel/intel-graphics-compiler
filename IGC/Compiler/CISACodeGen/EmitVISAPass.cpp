@@ -1071,7 +1071,7 @@ bool EmitPass::runOnFunction(llvm::Function &F) {
 
         // before inserting the terminator, initialize constant pool & insert
         // the de-ssa moves
-        if (isa<BranchInst>(llvmInst)) {
+        if (isa<IGCLLVM::CondBrInst, IGCLLVM::UncondBrInst>(llvmInst)) {
           m_encoder->SetSecondHalf(false);
           // insert constant initializations.
           InitConstant(block.bb);
@@ -13168,99 +13168,100 @@ void EmitPass::emitInsert(llvm::Instruction *inst) {
   }
 }
 
-void EmitPass::emitBranch(llvm::BranchInst *branch, const SSource &cond, e_predMode predMode) {
+void EmitPass::emitCondBrInst(IGCLLVM::CondBrInst *branch, const SSource &cond, e_predMode predMode) {
   llvm::BasicBlock *next = m_blockCoalescing->SkipEmptyBasicBlock(branch->getParent()->getNextNode());
-  if (branch->isConditional()) {
-    CVariable *flag = GetSrcVariable(cond);
-    bool inversePred = cond.mod == EMOD_NOT;
-    ;
-    // if it is not a fallthrough
-    BasicBlock *succ0 = m_blockCoalescing->FollowEmptyBlock(branch->getSuccessor(0));
-    BasicBlock *succ1 = m_blockCoalescing->FollowEmptyBlock(branch->getSuccessor(1));
-    uint label0 = m_pattern->GetBlockId(succ0);
-    uint label1 = m_pattern->GetBlockId(succ1);
+  CVariable *flag = GetSrcVariable(cond);
+  bool inversePred = cond.mod == EMOD_NOT;
+  ;
+  // if it is not a fallthrough
+  BasicBlock *succ0 = m_blockCoalescing->FollowEmptyBlock(branch->getSuccessor(0));
+  BasicBlock *succ1 = m_blockCoalescing->FollowEmptyBlock(branch->getSuccessor(1));
+  uint label0 = m_pattern->GetBlockId(succ0);
+  uint label1 = m_pattern->GetBlockId(succ1);
 
-    m_encoder->SetPredicateMode(predMode);
-    m_encoder->SetInversePredicate(inversePred);
+  m_encoder->SetPredicateMode(predMode);
+  m_encoder->SetInversePredicate(inversePred);
 
-    if (next == NULL || (next != succ0 && next != succ1)) {
-      // Both succ0 and succ1 are not next. Thus, need one conditional jump and
-      // one unconditional jump. There are three cases for selecting the target
-      // of the conditional jump:
-      //    1. both are backward, select one with the larger ID (closer to
-      //    branch) as target
-      //           L0:
-      //              ....
-      //           L1:
-      //              ...
-      //           [+-flag] goto L1
-      //           goto L0
-      //
-      //    2. both are forward,  select one with the larger ID (farther to
-      //    branch) as target
-      //           [+- flag] goto L1
-      //            goto L0
-      //            ...
-      //           L0:
-      //              ......
-      //           L1:
-      //       (making sense in this way ?)
-      //    3. one is backward and one is forward, select the backward one as
-      //    target.
-      //
-      uint label = m_pattern->GetBlockId(branch->getParent());
-      uint condTarget, uncondTarget;
-      if ((label0 <= label && label1 <= label) || (label0 > label && label1 > label)) {
-        // case 1 & 2
-        condTarget = (label0 < label1) ? label1 : label0;
-        uncondTarget = (label0 < label1) ? label0 : label1;
-      } else {
-        // case 3
-        condTarget = (label0 <= label) ? label0 : label1;
-        uncondTarget = (label0 <= label) ? label1 : label0;
-      }
+  if (next == NULL || (next != succ0 && next != succ1)) {
+    // Both succ0 and succ1 are not next. Thus, need one conditional jump and
+    // one unconditional jump. There are three cases for selecting the target
+    // of the conditional jump:
+    //    1. both are backward, select one with the larger ID (closer to
+    //    branch) as target
+    //           L0:
+    //              ....
+    //           L1:
+    //              ...
+    //           [+-flag] goto L1
+    //           goto L0
+    //
+    //    2. both are forward,  select one with the larger ID (farther to
+    //    branch) as target
+    //           [+- flag] goto L1
+    //            goto L0
+    //            ...
+    //           L0:
+    //              ......
+    //           L1:
+    //       (making sense in this way ?)
+    //    3. one is backward and one is forward, select the backward one as
+    //    target.
+    //
+    uint label = m_pattern->GetBlockId(branch->getParent());
+    uint condTarget, uncondTarget;
+    if ((label0 <= label && label1 <= label) || (label0 > label && label1 > label)) {
+      // case 1 & 2
+      condTarget = (label0 < label1) ? label1 : label0;
+      uncondTarget = (label0 < label1) ? label0 : label1;
+    } else {
+      // case 3
+      condTarget = (label0 <= label) ? label0 : label1;
+      uncondTarget = (label0 <= label) ? label1 : label0;
+    }
 
-      if (condTarget == uncondTarget) { // sanity check. label0 == label1 (we
-                                        // don't expect it, but it's legal)
-        m_encoder->Jump(condTarget);
-        m_encoder->Push();
-      } else {
-        if (condTarget != label0) {
-          m_encoder->SetInversePredicate(!inversePred);
-        }
-        m_encoder->Jump(flag, condTarget);
-        m_encoder->Push();
-
-        m_encoder->Jump(uncondTarget);
-        m_encoder->Push();
-      }
-    } else if (next != succ0) {
-      IGC_ASSERT_MESSAGE(next == succ1, "next should be succ1!");
-
-      m_encoder->Jump(flag, label0);
+    if (condTarget == uncondTarget) { // sanity check. label0 == label1 (we
+                                      // don't expect it, but it's legal)
+      m_encoder->Jump(condTarget);
       m_encoder->Push();
     } else {
-      IGC_ASSERT_MESSAGE(next == succ0, "next should be succ0");
+      if (condTarget != label0) {
+        m_encoder->SetInversePredicate(!inversePred);
+      }
+      m_encoder->Jump(flag, condTarget);
+      m_encoder->Push();
 
-      m_encoder->SetInversePredicate(!inversePred);
-      m_encoder->Jump(flag, label1);
+      m_encoder->Jump(uncondTarget);
       m_encoder->Push();
     }
+  } else if (next != succ0) {
+    IGC_ASSERT_MESSAGE(next == succ1, "next should be succ1!");
+
+    m_encoder->Jump(flag, label0);
+    m_encoder->Push();
   } else {
-    BasicBlock *succ = m_blockCoalescing->FollowEmptyBlock(branch->getSuccessor(0));
-    if ((next == NULL) || (next != succ)) {
-      uint label = m_pattern->GetBlockId(succ);
-      m_encoder->Jump(label);
-      m_encoder->Push();
-    }
+    IGC_ASSERT_MESSAGE(next == succ0, "next should be succ0");
+
+    m_encoder->SetInversePredicate(!inversePred);
+    m_encoder->Jump(flag, label1);
+    m_encoder->Push();
   }
 }
 
-void EmitPass::emitDiscardBranch(BranchInst *branch, const SSource &cond) {
+void EmitPass::emitUncondBrInst(IGCLLVM::UncondBrInst *branch) {
+  llvm::BasicBlock *next = m_blockCoalescing->SkipEmptyBasicBlock(branch->getParent()->getNextNode());
+  BasicBlock *succ = m_blockCoalescing->FollowEmptyBlock(branch->getSuccessor(0));
+  if ((next == NULL) || (next != succ)) {
+    uint label = m_pattern->GetBlockId(succ);
+    m_encoder->Jump(label);
+    m_encoder->Push();
+  }
+}
+
+void EmitPass::emitDiscardBranch(IGCLLVM::CondBrInst *branch, const SSource &cond) {
   if (m_pattern->NeedVMask()) {
-    emitBranch(branch, cond, EPRED_ALL);
+    emitCondBrInst(branch, cond, EPRED_ALL);
   } else {
-    emitBranch(branch, cond, EPRED_NORMAL);
+    emitCondBrInst(branch, cond, EPRED_NORMAL);
   }
 }
 

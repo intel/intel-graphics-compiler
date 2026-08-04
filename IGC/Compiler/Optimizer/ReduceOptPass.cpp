@@ -9,6 +9,7 @@ SPDX-License-Identifier: MIT
 #include "ReduceOptPass.hpp"
 #include "IGCIRBuilder.h"
 #include <llvm/IR/Function.h>
+#include "llvmWrapper/IR/Instructions.h"
 
 #include "Compiler/IGCPassSupport.h"
 
@@ -311,11 +312,11 @@ bool ReduceOptPass::checkBranch(BasicBlock *Bb) {
   if (!Pred)
     return false;
 
-  BranchInst *BrInst = dyn_cast<BranchInst>(Pred->getTerminator());
+  IGCLLVM::CondBrInst *BrInst = dyn_cast<IGCLLVM::CondBrInst>(Pred->getTerminator());
   if (!BrInst)
     return false;
 
-  if (BrInst->isConditional() && (BrInst->getSuccessor(0) == Bb)) {
+  if (BrInst->getSuccessor(0) == Bb) {
     return checkCmp(BrInst->getOperand(0));
   }
 

@@ -16,7 +16,9 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/Function.h>
 #include "llvm/IR/Verifier.h"
 #include "common/LLVMWarningsPop.hpp"
+#include "llvmWrapper/IR/Instructions.h"
 #include <llvmWrapper/IR/BasicBlock.h>
+#include <llvmWrapper/IR/IRBuilder.h>
 
 #include "GenerateBlockMemOpsPass.hpp"
 
@@ -133,7 +135,7 @@ bool GenerateBlockMemOpsPass::runOnFunction(Function &F) {
     BasicBlock *OldLatch = L->getLoopLatch();
     BasicBlock *OldPreheader = L->getLoopPreheader();
     PHINode *OldInductionPHI = L->getInductionVariable(*SE);
-    ICmpInst *OldLatchCmp = cast<ICmpInst>(cast<BranchInst>(OldLatch->getTerminator())->getCondition());
+    ICmpInst *OldLatchCmp = cast<ICmpInst>(cast<IGCLLVM::CondBrInst>(OldLatch->getTerminator())->getCondition());
     Value *OldLimit = OldLatchCmp->getOperand(1);
     Value *OldIncomingIndV = OldInductionPHI->getIncomingValueForBlock(OldPreheader);
 
@@ -142,9 +144,9 @@ bool GenerateBlockMemOpsPass::runOnFunction(Function &F) {
     BasicBlock *Exit = ExitBlocks[0];
 
     // Get BranchInst which defines the condition for entering the loop.
-    BranchInst *PreConditionBranch = cast<BranchInst>(OldPreheader->getTerminator());
-    if (!PreConditionBranch->isConditional())
-      PreConditionBranch = cast<BranchInst>((*pred_begin(OldPreheader))->getTerminator());
+    IGCLLVM::CondBrInst *PreConditionBranch = dyn_cast<IGCLLVM::CondBrInst>(OldPreheader->getTerminator());
+    if (!PreConditionBranch)
+      PreConditionBranch = cast<IGCLLVM::CondBrInst>((*pred_begin(OldPreheader))->getTerminator());
     ICmpInst *PreCondition = cast<ICmpInst>(PreConditionBranch->getCondition());
 
     // Get offset for the initial value of the induction variable..
@@ -165,14 +167,14 @@ bool GenerateBlockMemOpsPass::runOnFunction(Function &F) {
 
     // Clone the pre-condition and pre-condition branch instructions in the separator block.
     ICmpInst *ClonedPreCondition = cast<ICmpInst>(PreCondition->clone());
-    BranchInst *ClonedPreConditionBranch = cast<BranchInst>(PreConditionBranch->clone());
+    IGCLLVM::CondBrInst *ClonedPreConditionBranch = cast<IGCLLVM::CondBrInst>(PreConditionBranch->clone());
     IGCLLVM::pushBackInstruction(SeparatorBasicBlock, ClonedPreCondition);
     IGCLLVM::pushBackInstruction(SeparatorBasicBlock, ClonedPreConditionBranch);
 
     // Create empty exit for the new loop.
     BasicBlock *ExitForTheNewLoop = BasicBlock::Create(Context, ".new.exit", &F);
     ExitForTheNewLoop->moveAfter(ClonedLatch);
-    IRBuilder<> Builder(ExitForTheNewLoop);
+    IGCLLVM::IRBuilder<> Builder(ExitForTheNewLoop);
     Builder.CreateBr(Exit);
     Changed = true;
 
@@ -188,7 +190,7 @@ bool GenerateBlockMemOpsPass::runOnFunction(Function &F) {
     ClonedPreConditionBranch->setSuccessor(1, Exit);
 
     // Update the cloned latch branch successors.
-    BranchInst *ClonedLatchBranch = cast<BranchInst>(ClonedLatch->getTerminator());
+    IGCLLVM::CondBrInst *ClonedLatchBranch = cast<IGCLLVM::CondBrInst>(ClonedLatch->getTerminator());
     ClonedLatchBranch->setSuccessor(0, ClonedLatch);
     ClonedLatchBranch->setSuccessor(1, ExitForTheNewLoop);
 
@@ -292,7 +294,7 @@ bool GenerateBlockMemOpsPass::runOnFunction(Function &F) {
     }
 
     // Erase conditional branch from the old latch and creat unconditional branch.
-    BranchInst *OldLatchBranch = cast<BranchInst>(OldLatch->getTerminator());
+    IGCLLVM::CondBrInst *OldLatchBranch = cast<IGCLLVM::CondBrInst>(OldLatch->getTerminator());
     Builder.SetInsertPoint(OldLatchBranch);
     Builder.CreateBr(SeparatorBasicBlock);
     OldLatchBranch->eraseFromParent();
@@ -373,7 +375,7 @@ bool GenerateBlockMemOpsPass::isLoopPattern(Loop *L) {
   if (!Phi || !Preheader || !Latch || !Header)
     return false;
 
-  ICmpInst *LatchCmp = dyn_cast<ICmpInst>(cast<BranchInst>(Latch->getTerminator())->getCondition());
+  ICmpInst *LatchCmp = dyn_cast<ICmpInst>(cast<IGCLLVM::CondBrInst>(Latch->getTerminator())->getCondition());
   if (!LatchCmp)
     return false;
 
@@ -427,18 +429,16 @@ bool GenerateBlockMemOpsPass::isLoopPattern(Loop *L) {
   // Find a conditional branch that defines if the loop should be executed.
   // It can be placed in the preheader or in its single predecessor.
   // This condition should match the condition in the loop latch.
-  BranchInst *PreConditionBranch = cast<BranchInst>(Preheader->getTerminator());
-  if (!PreConditionBranch->isConditional()) {
+  IGCLLVM::CondBrInst *PreConditionBranch = dyn_cast<IGCLLVM::CondBrInst>(Preheader->getTerminator());
+  if (!PreConditionBranch) {
     if (Preheader->size() != 1)
       return false;
 
-    PreConditionBranch = nullptr;
-
     if (Preheader->hasNPredecessors(1))
-      PreConditionBranch = cast<BranchInst>((*pred_begin(Preheader))->getTerminator());
+      PreConditionBranch = dyn_cast<IGCLLVM::CondBrInst>((*pred_begin(Preheader))->getTerminator());
   }
 
-  if (!PreConditionBranch || !PreConditionBranch->isConditional())
+  if (!PreConditionBranch)
     return false;
 
   ICmpInst *PreCondition = dyn_cast<ICmpInst>(PreConditionBranch->getCondition());
@@ -453,8 +453,8 @@ bool GenerateBlockMemOpsPass::isLoopPattern(Loop *L) {
     if (Exit->size() != 1)
       return false;
 
-    BranchInst *ExitBranch = cast<BranchInst>(Exit->getTerminator());
-    if (ExitBranch->isConditional())
+    IGCLLVM::UncondBrInst *ExitBranch = dyn_cast<IGCLLVM::UncondBrInst>(Exit->getTerminator());
+    if (!ExitBranch)
       return false;
 
     if (ExitBranch->getSuccessor(0) != PreConditionBranch->getSuccessor(1))

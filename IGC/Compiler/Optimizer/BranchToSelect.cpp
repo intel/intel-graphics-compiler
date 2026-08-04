@@ -171,8 +171,8 @@ BranchToSelect::SuccessorKind BranchToSelect::classifySuccessor(BasicBlock *S, B
     return SuccessorKind::None;
 
   // Both foldable kinds fall through unconditionally to the merge block.
-  auto *Br = dyn_cast<BranchInst>(S->getTerminator());
-  if (!Br || Br->isConditional())
+  auto *Br = dyn_cast<IGCLLVM::UncondBrInst>(S->getTerminator());
+  if (!Br)
     return SuccessorKind::None;
 
   if (S->getSinglePredecessor() == P) {
@@ -251,8 +251,8 @@ void BranchToSelect::hoistInto(BasicBlock *Blk, BasicBlock *P) {
 }
 
 bool BranchToSelect::tryConvert(BasicBlock *P) {
-  auto *Br = dyn_cast<BranchInst>(P->getTerminator());
-  if (!Br || !Br->isConditional())
+  auto *Br = dyn_cast<IGCLLVM::CondBrInst>(P->getTerminator());
+  if (!Br)
     return false;
 
   Value *Cond = Br->getCondition();
@@ -379,7 +379,7 @@ bool BranchToSelect::tryConvert(BasicBlock *P) {
   // This also removes P's edge to any shared pad it was peeled off of.
   DebugLoc BrDL = Br->getDebugLoc();
   Br->eraseFromParent();
-  BranchInst::Create(MB, P)->setDebugLoc(BrDL);
+  IGCLLVM::UncondBrInst::Create(MB, P)->setDebugLoc(BrDL);
 
   // Private successors are now empty and unreferenced -- erase them, dropping any
   // region cost recorded against them so a recycled BasicBlock address cannot alias

@@ -216,15 +216,13 @@ bool AtomicOptPass::runOnFunction(Function &F) {
     if (BackBb == Bb)
       BackBb = Bb1;
 
-    BranchInst *BackBranch = cast<BranchInst>(BackBb->getTerminator());
-
-    if (BackBranch->isConditional()) {
+    if (IGCLLVM::CondBrInst *BackBranch = dyn_cast<IGCLLVM::CondBrInst>(BackBb->getTerminator())) {
       if (BackBranch->getSuccessor(0) == Bb) {
         BackBranch->setSuccessor(0, Bb1);
       } else if (BackBranch->getSuccessor(1) == Bb) {
         BackBranch->setSuccessor(1, Bb1);
       }
-    } else {
+    } else if (IGCLLVM::UncondBrInst *BackBranch = dyn_cast<IGCLLVM::UncondBrInst>(BackBb->getTerminator())) {
       BackBranch->setSuccessor(0, Bb1);
     }
     Changed = true;

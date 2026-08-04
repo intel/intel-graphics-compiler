@@ -20,6 +20,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/Intrinsics.h>
 #include <llvm/Support/CommandLine.h>
 #include "common/LLVMWarningsPop.hpp"
+#include "llvmWrapper/IR/Instructions.h"
 #include "GenISAIntrinsics/GenIntrinsicInst.h"
 
 using namespace llvm;
@@ -438,7 +439,12 @@ void CheckInstrTypes::visitCallInst(CallInst &C) {
   }
 }
 
-void CheckInstrTypes::visitBranchInst(BranchInst &I) {
+void CheckInstrTypes::visitCondBrInst(IGCLLVM::CondBrInst &I) {
+  g_InstrTypes.numInsts++;
+  checkGlobalLocal(I);
+}
+
+void CheckInstrTypes::visitUncondBrInst(IGCLLVM::UncondBrInst &I) {
   g_InstrTypes.numInsts++;
   checkGlobalLocal(I);
 }

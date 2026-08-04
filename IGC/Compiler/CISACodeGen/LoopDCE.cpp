@@ -22,6 +22,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/IRBuilder.h>
 #include <llvm/Pass.h>
 #include "common/LLVMWarningsPop.hpp"
+#include "llvmWrapper/IR/Instructions.h"
 #include "Probe/Assertion.h"
 #include <functional> // for std::function
 
@@ -152,9 +153,9 @@ bool LoopDeadCodeElimination::processLoop(Loop *L) {
 
   bool Changed = false;
   for (auto BB : ExitingBlocks) {
-    auto BI = dyn_cast<BranchInst>(BB->getTerminator());
+    auto BI = dyn_cast<IGCLLVM::CondBrInst>(BB->getTerminator());
     // Skip exiting block with non-conditional branch.
-    if (!BI || !BI->isConditional())
+    if (!BI)
       continue;
     bool ExitingOnTrue = !L->contains(BI->getSuccessor(0));
     auto Cond = BI->getCondition();

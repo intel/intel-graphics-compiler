@@ -15,6 +15,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/Instructions.h>
 #include "common/LLVMWarningsPop.hpp"
 
+#include "llvmWrapper/IR/Instructions.h"
 #include "Compiler/IGCPassSupport.h"
 #include "common/igc_regkeys.hpp"
 
@@ -124,7 +125,8 @@ bool DropTargetBBs::runOnFunction(Function &F) {
       auto *User = *BB->user_begin();
       if (auto *PHI = dyn_cast<PHINode>(User)) {
         PHI->removeIncomingValue(BB, true);
-      } else if (auto *Br = dyn_cast<BranchInst>(User)) {
+      } else if (isa<IGCLLVM::CondBrInst, IGCLLVM::UncondBrInst>(User)) {
+        auto *Br = cast<llvm::Instruction>(User);
         BasicBlock *NextBB = BB->getNextNode();
         if (NextBB) {
           Br->setSuccessor(Br->getSuccessor(0) == BB ? 0 : 1, NextBB);

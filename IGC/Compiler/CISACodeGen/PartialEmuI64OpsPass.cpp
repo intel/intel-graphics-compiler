@@ -25,6 +25,7 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPop.hpp"
 #include "llvmWrapper/IR/DerivedTypes.h"
 #include "llvmWrapper/IR/Instructions.h"
+#include "llvmWrapper/IR/InstVisitor.h"
 #include "llvmWrapper/Support/Alignment.h"
 #include "common/LLVMUtils.h"
 #include "common/IGCIRBuilder.h"
@@ -173,8 +174,9 @@ private:
   bool useMulEmu(Instruction *instr);
 };
 
-class InstExpander : public InstVisitor<InstExpander, bool> {
-  friend class InstVisitor<InstExpander, bool>;
+class InstExpander : public IGCLLVM::InstVisitor<InstExpander, bool> {
+  friend class IGCLLVM::InstVisitor<InstExpander, bool>;
+  friend class llvm::InstVisitor<InstExpander, bool>;
 
   PartialEmuI64Ops *Emu;
   BuilderType *IRB;
@@ -201,7 +203,8 @@ private:
   bool visitSelect(SelectInst &);
 
   bool visitRet(ReturnInst &) { return false; }
-  bool visitBr(BranchInst &) { return false; }
+  bool visitCondBrInst(IGCLLVM::CondBrInst &) { return false; }
+  bool visitUncondBrInst(IGCLLVM::UncondBrInst &) { return false; }
   bool visitSwitch(SwitchInst &) { return false; }
   bool visitIndirectBr(IndirectBrInst &) { return false; }
   bool visitInvoke(InvokeInst &) { return false; }

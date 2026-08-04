@@ -125,7 +125,12 @@ DECLARE_OPCODE(ExtractElement, Instruction, llvm_extract, false, false, false, f
 DECLARE_OPCODE(Select, Instruction, llvm_select, true, true, false, false, false, false, false)
 DECLARE_OPCODE(Ret, Instruction, llvm_return, false, false, false, false, false, false, false)
 DECLARE_OPCODE(FCmp, Instruction, llvm_fcmp, true, false, false, false, false, false, false)
+#if LLVM_VERSION_MAJOR >= 23
+DECLARE_OPCODE(UncondBr, Instruction, llvm_uncond_branch, false, false, false, false, false, false, false)
+DECLARE_OPCODE(CondBr, Instruction, llvm_cond_branch, false, false, false, false, false, false, false)
+#else
 DECLARE_OPCODE(Br, Instruction, llvm_branch, false, false, false, false, false, false, false)
+#endif
 DECLARE_OPCODE(PHI, Instruction, llvm_phi, false, false, false, false, false, false, false)
 DECLARE_OPCODE(ICmp, Instruction, llvm_icmp, true, false, false, false, false, false, false)
 DECLARE_OPCODE(Add, Instruction, llvm_add, true, true, true, true, false, false, true)

@@ -216,8 +216,8 @@ bool CustomLoopVersioning::detectLoop(Loop *loop, Value *&var_range_x, Value *&v
     return false;
   }
 
-  BranchInst *br = cast<BranchInst>(body->getTerminator());
-  if (!br->isConditional()) {
+  IGCLLVM::CondBrInst *br = dyn_cast<IGCLLVM::CondBrInst>(body->getTerminator());
+  if (!br) {
     return false;
   }
 
@@ -247,7 +247,7 @@ void CustomLoopVersioning::rewriteLoopSeg1(Loop *loop, Value *interval_x, Value 
   BasicBlock *body = loop->getLoopLatch();
   IGC_ASSERT(nullptr != body);
 
-  BranchInst *br = cast<BranchInst>(header->getTerminator());
+  IGCLLVM::CondBrInst *br = cast<IGCLLVM::CondBrInst>(header->getTerminator());
   IGC_ASSERT(nullptr != br);
   FCmpInst *fcmp = dyn_cast<FCmpInst>(br->getCondition());
   IGC_ASSERT(nullptr != fcmp);
@@ -341,7 +341,7 @@ void CustomLoopVersioning::rewriteLoopSeg2(Loop *loop, Value *interval_y, Value 
   BasicBlock *body = loop->getLoopLatch();
   IGC_ASSERT(nullptr != body);
 
-  BranchInst *br = cast<BranchInst>(header->getTerminator());
+  IGCLLVM::CondBrInst *br = cast<IGCLLVM::CondBrInst>(header->getTerminator());
   IGC_ASSERT(nullptr != br);
   FCmpInst *fcmp = dyn_cast<FCmpInst>(br->getCondition());
   IGC_ASSERT(nullptr != fcmp);
@@ -429,7 +429,8 @@ void CustomLoopVersioning::linkLoops(Loop *loopSeg1, Loop *loopSeg2, BasicBlock 
   BasicBlock *seg2PreHdr = loopSeg2->getLoopPreheader();
   BasicBlock *seg2Body = loopSeg2->getLoopLatch();
 
-  BranchInst *br = cast<BranchInst>(seg1Body->getTerminator());
+  llvm::Instruction *br = seg1Body->getTerminator();
+  IGC_ASSERT((isa<IGCLLVM::CondBrInst, IGCLLVM::UncondBrInst>(br)));
   unsigned idx = br->getSuccessor(0) == afterLoop ? 0 : 1;
   br->setSuccessor(idx, loopSeg2->getLoopPreheader());
 
@@ -893,7 +894,7 @@ bool LoopHoistConstant::runOnLoop(Loop *L, LPPassManager &LPM) {
   PHINode *InductionPreInc = nullptr;         // Induction variable pre-increment
   BinaryOperator *InductionPostInc = nullptr; // // Induction variable post-increment
   FCmpInst *LoopCond = nullptr;               // The loop exit condition
-  BranchInst *LoopBranch = nullptr;           // The pre-hoisted loop branching instruction
+  IGCLLVM::CondBrInst *LoopBranch = nullptr;  // The pre-hoisted loop branching instruction
   Value *LoopSize = nullptr;
   IntrinsicInst *MinInst = nullptr;
 
@@ -911,8 +912,8 @@ bool LoopHoistConstant::runOnLoop(Loop *L, LPPassManager &LPM) {
     return false;
 
   // Match the loop exit condition and branch
-  LoopBranch = dyn_cast<BranchInst>(LoopLatch->getTerminator());
-  if (LoopBranch && LoopBranch->isConditional()) {
+  LoopBranch = dyn_cast<IGCLLVM::CondBrInst>(LoopLatch->getTerminator());
+  if (LoopBranch) {
     LoopCond = dyn_cast<FCmpInst>(LoopBranch->getCondition());
     if (LoopCond && (LoopCond->getPredicate() == CmpInst::FCMP_ULT || LoopCond->getPredicate() == CmpInst::FCMP_OLT)) {
       if (LoopCond->getOperand(0) == InductionPostInc) {
@@ -1112,8 +1113,8 @@ bool SpecialCasesDisableLICM::LoopHasInvariantSwitchDispatch(const Loop &L) {
     if (BB->size() != 2) {
       continue;
     }
-    auto *BI = dyn_cast<BranchInst>(BB->getTerminator());
-    if (!BI || !BI->isConditional()) {
+    auto *BI = dyn_cast<IGCLLVM::CondBrInst>(BB->getTerminator());
+    if (!BI) {
       continue;
     }
     auto *Cmp = dyn_cast<ICmpInst>(BI->getCondition());
@@ -1882,12 +1883,12 @@ bool LoopAllocaUpperbound::runOnLoop(Loop *L, LPPassManager &LPM) {
   if (InductionInc->getNumUses() != 2)
     return false;
   ICmpInst *LoopCond = nullptr;     // The loop exit condition
-  BranchInst *LoopBranch = nullptr; // The loop branching instruction
+  IGCLLVM::CondBrInst *LoopBranch = nullptr; // The loop branching instruction
   Value *LoopSize = nullptr;        // Loop count
 
   // Match the loop exit condition and branch
-  LoopBranch = dyn_cast<BranchInst>(Header->getTerminator());
-  if (LoopBranch && LoopBranch->isConditional()) {
+  LoopBranch = dyn_cast<IGCLLVM::CondBrInst>(Header->getTerminator());
+  if (LoopBranch) {
     LoopCond = dyn_cast<ICmpInst>(LoopBranch->getCondition());
     if (LoopCond && (LoopCond->getPredicate() == CmpInst::ICMP_SLT)) {
       if (LoopCond->getOperand(0) == InductionInc) {

@@ -13,6 +13,7 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/IR/Function.h>
 #include "common/LLVMWarningsPop.hpp"
+#include "llvmWrapper/IR/Instructions.h"
 #include "MatchCommonKernelPatterns.hpp"
 
 using namespace llvm;
@@ -128,8 +129,8 @@ bool MatchCommonKernelPatterns::isBBBackEdge(const BasicBlock *BB, const BasicBl
 }
 
 Value *MatchCommonKernelPatterns::getInterpreterSwitchArg(const BasicBlock *BB) const {
-  const BranchInst *Br = dyn_cast<const BranchInst>(BB->getTerminator());
-  if (!Br || !Br->isConditional())
+  const IGCLLVM::CondBrInst *Br = dyn_cast<IGCLLVM::CondBrInst>(BB->getTerminator());
+  if (!Br)
     return nullptr;
 
   const Value *Condition = Br->getCondition();

@@ -16,6 +16,7 @@ SPDX-License-Identifier: MIT
 #include "debug/DebugMacros.hpp"
 #include "common/debug/Debug.hpp"
 #include "Compiler/CISACodeGen/WIAnalysis.hpp"
+#include "llvmWrapper/IR/Instructions.h"
 
 using namespace llvm;
 using namespace IGC;
@@ -55,8 +56,8 @@ bool PropagateCmpUniformity::runOnFunction(Function &F) {
 
   bool changed = false;
   for (BasicBlock &BB : F) {
-    BranchInst *br = dyn_cast<BranchInst>(BB.getTerminator());
-    if (!br || !br->isConditional())
+    IGCLLVM::CondBrInst *br = dyn_cast<IGCLLVM::CondBrInst>(BB.getTerminator());
+    if (!br)
       continue;
 
     CmpInst *cmp = dyn_cast<CmpInst>(br->getCondition());
@@ -74,7 +75,7 @@ bool PropagateCmpUniformity::runOnFunction(Function &F) {
   return changed;
 }
 
-bool PropagateCmpUniformity::getEqualityBranches(CmpInst *cmp, BranchInst *br, BasicBlock *&trueBranch,
+bool PropagateCmpUniformity::getEqualityBranches(CmpInst *cmp, IGCLLVM::CondBrInst *br, BasicBlock *&trueBranch,
                                                  BasicBlock *&falseBranch, Value *&uniform, Value *&nonUniform) {
   // First check if we have a uniform/non-uniform pair
   if (!getUniformNonUniformPair(cmp->getOperand(0), cmp->getOperand(1), uniform, nonUniform))
@@ -158,7 +159,7 @@ bool PropagateCmpUniformity::canReplaceUse(Use &U, BasicBlock *trueBranchBB, Bas
   // Compute falseBranchBB once for PHI uses; nullptr for non-PHI.
   BasicBlock *falseBranchBB = nullptr;
   if (isa<PHINode>(user)) {
-    BranchInst *cmpBr = cast<BranchInst>(cmpBB->getTerminator());
+    IGCLLVM::CondBrInst *cmpBr = cast<IGCLLVM::CondBrInst>(cmpBB->getTerminator());
     falseBranchBB = (cmpBr->getSuccessor(0) == trueBranchBB) ? cmpBr->getSuccessor(1) : cmpBr->getSuccessor(0);
   }
 
