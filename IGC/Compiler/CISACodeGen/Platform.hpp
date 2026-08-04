@@ -1160,8 +1160,10 @@ public:
     if (!supportsRayQueryThrottling())
       return false;
 
-    if (IGC_IS_FLAG_SET(OverrideRayQueryThrottling))
-      return IGC_GET_FLAG_VALUE(OverrideRayQueryThrottling);
+    const auto overrideValue = static_cast<IGC::TriboolFlag>(IGC_GET_FLAG_VALUE(OverrideRayQueryThrottling));
+
+    if (overrideValue != TriboolFlag::Default)
+      return static_cast<bool>(overrideValue);
 
     if (isCoreChildOf(IGFX_XE3P_CORE))
       return true;

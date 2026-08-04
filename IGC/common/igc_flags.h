@@ -2081,10 +2081,10 @@ DECLARE_IGC_REGKEY(DWORD, AddDummySlotsForNewInlineRaytracing, 0,
 DECLARE_IGC_REGKEY(
     bool, UseCrossBlockLoadVectorizationForInlineRaytracing, true,
     "If enabled, will try to vectorize loads that are not adjacent to each other. May increase GRF pressure", true)
-DECLARE_IGC_REGKEY(bool, OverrideRayQueryThrottling, false,
-                   "Force rayquery throttling (dynamic ray management) to be enabled or disabled. Default value of "
-                   "this key is ignored",
-                   true)
+DECLARE_IGC_REGKEY_ENUM(
+    OverrideRayQueryThrottling, -1,
+    "Controls rayquery throttling feature. 0: force disable, 1: force enable, -1: left for IGC to decide",
+    TRIBOOL_OPTIONS, false)
 DECLARE_IGC_REGKEY(bool, DisableRayQueryDynamicRayManagementMechanismForBarriers, false,
                    "Disable dynamic ray management mechanism for shaders with barriers", true)
 DECLARE_IGC_REGKEY(bool, EnableOuterLoopHoistingForRayQueryDynamicRayManagementMechanism, false,
