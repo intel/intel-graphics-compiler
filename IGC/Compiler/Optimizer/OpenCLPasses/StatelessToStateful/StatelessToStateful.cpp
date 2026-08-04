@@ -979,7 +979,6 @@ void StatelessToStateful::addToPromotionMap(Instruction &I, Value *Ptr,
     const bool isLoadPromotionCandidate = I.getOpcode() == Instruction::Load;
     const bool isBindfulMode = m_targetAddressing == TargetAddressing::BINDFUL;
 
-    // Block only BINDFUL a32 loads which are slow; allow BINDLESS ldraw.indexed
     if (skipLoadPromotionForBindlessBufferOffset && isLoadPromotionCandidate && isBindfulMode) {
       return;
     }
