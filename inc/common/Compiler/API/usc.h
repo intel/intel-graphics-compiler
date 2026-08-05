@@ -116,6 +116,7 @@ typedef struct _SUscAilInfo
     unsigned int WaHiddenIndexableTempSlot                        : 1;  // Reserve extra space for indexable temp for out-of-bound access
     unsigned int WaConvergentGradientsOnGenISA                    : 1;  // Mark gradient intrinsics convergent so code-motion passes cannot sink them across divergent branches
     unsigned int WaDisableDualSIMD8                               : 1;  // Force-disable dual SIMD8 PS compilation for titles that crash with it enabled
+    unsigned int WaDisableBitcastedLoadNarrowing                  : 1;  // Compiler WA to disable narrowing of bitcasted vector loads
 
     unsigned int VISASpillAllowed;                                      // Override spill size allowed without increasing GRF number
 } SUscAilInfo, SCompilerAilInfo;

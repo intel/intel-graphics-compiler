@@ -527,6 +527,7 @@ enum class ShaderTypeMD
         bool WaForceHalfPromotionComputeShader          = false;
         bool WaForceHalfPromotionPixelVertexShader      = false;
         bool DisableConstantCoalescing                  = false;
+        bool DisableBitcastedLoadNarrowing              = false;
         bool EnableUndefAlphaOutputAsRed                = true;
         bool WaEnableALTModeVisaWA                      = false;
         bool WaConvergentGradientsOnGenISA              = false;

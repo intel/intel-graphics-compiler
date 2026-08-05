@@ -398,6 +398,14 @@ private:
                               ValVector &NewMergeVals) const;
   bool processScalarLoadStore(Function &F);
 
+  // Narrowing of bitcasted vector loads. On top of the platform default (see
+  // CPlatform::enableBitcastedLoadNarrowing) an AIL may opt a workload out of
+  // the optimization.
+  bool enableBitcastedLoadNarrowing() const {
+    return m_CGCtx->platform.enableBitcastedLoadNarrowing() &&
+           !m_CGCtx->getModuleMetaData()->compOpt.DisableBitcastedLoadNarrowing;
+  }
+
 private:
   const DataLayout *m_DL;
   LLVMContext *m_C;
@@ -1381,7 +1389,7 @@ Instruction *VectorPreProcess::simplifyLoadStore(Instruction *Inst) {
       if (BC) {
         IGCLLVM::FixedVectorType *DstVTy = dyn_cast<IGCLLVM::FixedVectorType>(BC->getType());
         IGCLLVM::FixedVectorType *SrcVTy = dyn_cast<IGCLLVM::FixedVectorType>(BC->getOperand(0)->getType());
-        if (!m_CGCtx->platform.enableBitcastedLoadNarrowing() || !DstVTy || !SrcVTy ||
+        if (!enableBitcastedLoadNarrowing() || !DstVTy || !SrcVTy ||
             DstVTy->getNumElements() != SrcVTy->getNumElements()) {
           BC = nullptr;
         } else {

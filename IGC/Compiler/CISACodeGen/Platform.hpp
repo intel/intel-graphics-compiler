@@ -162,14 +162,19 @@ public:
   // set EnableBitcastedLoadNarrowing regkey (enable or disable) always takes
   // precedence.
   bool enableBitcastedLoadNarrowing() const {
-    return IGC_IS_FLAG_ENABLED(EnableBitcastedLoadNarrowing);
+    // Enabled by default on Panther Lake and later (Xe3+).
+    return IGC_IS_FLAG_SET(EnableBitcastedLoadNarrowing) ? IGC_IS_FLAG_ENABLED(EnableBitcastedLoadNarrowing)
+                                                         : isCoreChildOf(IGFX_XE3_CORE);
   }
 
   // Narrowing of bitcasted vector loads down to a scalar load (see
   // VectorPreProcess). An explicitly set EnableBitcastedLoadNarrowingToScalar
   // regkey always takes precedence.
   bool enableBitcastedLoadNarrowingToScalar() const {
-    return IGC_IS_FLAG_ENABLED(EnableBitcastedLoadNarrowingToScalar);
+    // Enabled by default on Panther Lake and later (Xe3+).
+    return IGC_IS_FLAG_SET(EnableBitcastedLoadNarrowingToScalar)
+               ? IGC_IS_FLAG_ENABLED(EnableBitcastedLoadNarrowingToScalar)
+               : isCoreChildOf(IGFX_XE3_CORE);
   }
 
   bool isCoreXE2() const { return (m_platformInfo.eRenderCoreFamily == IGFX_XE2_HPG_CORE); }
