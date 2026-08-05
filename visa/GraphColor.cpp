@@ -6700,12 +6700,16 @@ void GraphColor::computeSpillCosts(bool useSplitLLRHeuristic, const RPE *rpe) {
       indirectRefs;
   // when reg pressure is not very high in iter0, use spill cost function
   // that favors allocating large variables
+  //
+  // The spill cost also orders the coloring worklist (see compareSpillCost), so
+  // below this threshold - where RA is not expected to spill - the new cost
+  // would only perturb an allocation that was already succeeding.
   bool useNewSpillCost =
       (builder.getOption(vISA_NewSpillCostFunctionISPC) ||
-       builder.getOption(vISA_NewSpillCostFunction)) &&
+          builder.getOption(vISA_NewSpillCostFunction)) &&
       rpe &&
       !(gra.getIterNo() == 0 &&
-        (float)rpe->getMaxRP() < (float)kernel.getNumRegTotal() * 0.80f);
+          (float)rpe->getMaxRP() < (float)kernel.getNumRegTotal() * 0.90f);
 
   RA_TRACE({
     if (useNewSpillCost)
@@ -12520,19 +12524,6 @@ int GlobalRA::coloringRegAlloc() {
         }
       }
 
-      // When there are spills and -abortonspill is set, vISA will bump up the
-      // number of GRFs first and try to compile without spills under one of
-      // the following conditions:
-      //  - Variable with inf spill cost, or
-      //  - #GRFs selected and next larger one has same number of threads, or
-      //  - Spill ratio is above threshold
-      // If none of the conditions is met, vISA will abort and return VISA_SPILL.
-      if (VRTIncreasedGRF(coloring)) {
-        RA_TRACE(std::cout << "\t--VRT GRF bump to " << kernel.getNumRegTotal()
-                           << ". Re-run RA\n");
-        continue;
-      }
-
       if (auto bump = forceGRFBumpOnInfCostAddrTaken(coloring, liveAnalysis)) {
         if (*bump) {
           RA_TRACE(std::cout
@@ -12559,6 +12550,23 @@ int GlobalRA::coloringRegAlloc() {
 
       if (rerunGRAIter(rerunGRA1 || rerunGRA2 || rerunGRA3))
         continue;
+
+      // When there are spills and -abortonspill is set, vISA will bump up the
+      // number of GRFs and try to compile without spills under one of
+      // the following conditions:
+      //  - Variable with inf spill cost, or
+      //  - #GRFs selected and next larger one has same number of threads, or
+      //  - Spill ratio is above threshold
+      // If none of the conditions is met, vISA will abort and return VISA_SPILL.
+      //
+      // Checked after remat and split since bumping the GRF is not reversible and
+      // remat in some cases can achieve a spill-free allocation at the smaller GRF
+      // number.
+      if (VRTIncreasedGRF(coloring)) {
+          RA_TRACE(std::cout << "\t--VRT GRF bump to " << kernel.getNumRegTotal()
+              << ". Re-run RA\n");
+          continue;
+      }
 
       // For new platforms, check if there is local split space
       if (!loadSplitTryDone && builder.onlyDoLocalVariableSplitWhenSpill()) {
