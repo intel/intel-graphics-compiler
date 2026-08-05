@@ -1090,7 +1090,7 @@ void StatelessToStateful::visitLoadInst(LoadInst &I) {
 
   // Skip only bindful a32 loads in bindless+buffer_offset no-large mode.
   // Bindless ldraw.indexed loads stay promotable (they are fast).
-  if (skipLoadPromotionForBindlessBufferOffset && ptr != nullptr && m_targetAddressing == TargetAddressing::BINDFUL &&
+  if (skipLoadPromotionForBindlessBufferOffset && m_targetAddressing == TargetAddressing::BINDFUL &&
       pointerIsFromKernelArgument(*ptr)) {
     return;
   }
@@ -1098,7 +1098,7 @@ void StatelessToStateful::visitLoadInst(LoadInst &I) {
   addToPromotionMap(I, ptr, I.getAlign());
 
   // check if there's non-kernel-arg load/store
-  if (IGC_IS_FLAG_ENABLED(DumpHasNonKernelArgLdSt) && ptr != nullptr && !pointerIsFromKernelArgument(*ptr)) {
+  if (IGC_IS_FLAG_ENABLED(DumpHasNonKernelArgLdSt) && !pointerIsFromKernelArgument(*ptr)) {
     ModuleMetaData *modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
     FunctionMetaData *funcMD = &modMD->FuncMD[m_F];
     funcMD->hasNonKernelArgLoad = true;
@@ -1109,7 +1109,7 @@ void StatelessToStateful::visitStoreInst(StoreInst &I) {
   Value *ptr = I.getPointerOperand();
   addToPromotionMap(I, ptr, I.getAlign());
 
-  if (IGC_IS_FLAG_ENABLED(DumpHasNonKernelArgLdSt) && ptr != nullptr && !pointerIsFromKernelArgument(*ptr)) {
+  if (IGC_IS_FLAG_ENABLED(DumpHasNonKernelArgLdSt) && !pointerIsFromKernelArgument(*ptr)) {
     ModuleMetaData *modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
     FunctionMetaData *funcMD = &modMD->FuncMD[m_F];
     funcMD->hasNonKernelArgStore = true;
