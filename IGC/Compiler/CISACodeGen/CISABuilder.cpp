@@ -2141,7 +2141,8 @@ void CEncoder::RenderTargetWrite(CVariable *var[], bool isUndefined[], bool last
 }
 
 bool CEncoder::isSamplerIdxLT16(const SamplerDescriptor &sampler) {
-  if (sampler.m_samplerType == ESAMPLER_NORMAL) {
+  if (sampler.m_samplerType == ESAMPLER_NORMAL
+  ) {
     if (sampler.m_sampler->IsImmediate()) {
       uint immediate = int_cast<uint>(sampler.m_sampler->GetImmediateValue());
       if (immediate < 16)
