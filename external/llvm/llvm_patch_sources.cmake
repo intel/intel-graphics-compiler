@@ -33,6 +33,11 @@ if(EXISTS ${IGC_OPTION__LLVM_SOURCES_DIR}/cmake)
   execute_process(COMMAND ${CMAKE_COMMAND} -E copy_directory ${IGC_OPTION__LLVM_SOURCES_DIR}/cmake ${IGC_LLVM_WORKSPACE_SRC}/cmake)
 endif()
 
+if(IGC_OPTION__LLVM_PREFERRED_VERSION VERSION_GREATER_EQUAL 23 AND EXISTS ${IGC_OPTION__LLVM_SOURCES_DIR}/libc)
+  message(STATUS "[LLVM] : Copying LLVM libc common utils ${IGC_OPTION__LLVM_SOURCES_DIR}/libc to ${IGC_LLVM_WORKSPACE_SRC}/libc")
+  execute_process(COMMAND ${CMAKE_COMMAND} -E copy_directory ${IGC_OPTION__LLVM_SOURCES_DIR}/libc ${IGC_LLVM_WORKSPACE_SRC}/libc)
+endif()
+
 message(STATUS "[LLVM] : Applying patches for LLVM from version ${DIR_WITH_PATCHES}")
 
 # For Interim mode, dir with patches set to /trunk
