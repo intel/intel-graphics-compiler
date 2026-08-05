@@ -1929,17 +1929,18 @@ public:
   }
 
   unsigned get_bundle(unsigned baseReg, int offset) const {
-    if (builder.has64bundleSize2GRFPerBank()) {
+    // Note the order of check cannot be changed.
+    if (builder.has64bundleSize2GRFPerBank()) { // == Xe_ARL
       return (((baseReg + offset) % 32) / 4);
     }
-    if (builder.hasPartialInt64Support()) {
-      return (((baseReg + offset) % 32) / 2);
-    }
-    if (builder.has64bundleSize()) {
+    if (builder.has64bundleSize()) { // >= Xe2
       if (builder.kernel.getNumRegTotal() == 512) {
         return (((baseReg + offset) % 32) / 2);
       }
       return (((baseReg + offset) % 16) / 2);
+    }
+    if (builder.hasPartialInt64Support()) { // >= Xe_PVC
+      return (((baseReg + offset) % 32) / 2);
     }
     return (((baseReg + offset) % 64) / 4);
   }

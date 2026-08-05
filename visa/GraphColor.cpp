@@ -1021,11 +1021,11 @@ void BankConflictPass::setupBankConflictsforMad(G4_INST *inst) {
   // Add potential bundle conflicts, so that RA can handle it when option
   // -enableBundleCR with value 2 or 3
   if (gra.kernel.getuInt32Option(vISA_enableBundleCR) & 2) {
-    if (dcls[0] && dcls[1]) {
+    if (dcls[0] && dcls[1] && (dcls[0] != dcls[1])) {
       gra.addBundleConflictDcl(dcls[0], dcls[1], offset[0] - offset[1]);
       gra.addBundleConflictDcl(dcls[1], dcls[0], offset[1] - offset[0]);
     }
-    if (dcls[1] && dcls[2]) {
+    if (dcls[1] && dcls[2] && (dcls[1] != dcls[2])) {
       gra.addBundleConflictDcl(dcls[2], dcls[1], offset[2] - offset[1]);
       gra.addBundleConflictDcl(dcls[1], dcls[2], offset[1] - offset[2]);
     }
