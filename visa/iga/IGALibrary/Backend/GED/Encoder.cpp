@@ -1323,6 +1323,25 @@ void Encoder::encodeSendgDescsXe3(const Instruction &i) {
   int src1Len = i.getSrc1Length();
   if (src1Len > 0) {
     bool encoded = false;
+    // From XE3P_XPC on, GED treats the Src1.Length field of sendgx/sendgxc as
+    // Src0.SubRegNum once Src0.RegNum is GRF 510, and rejects a Src1Length
+    // access on such an instruction. Both fields occupy the same bits, so
+    // encode the length through Src0.SubRegNum to keep the encoding unchanged.
+    // Skipping this drops the write and emits an illegal send that declares
+    // Src1.Length == 0 while src1 still names a GRF.
+    if (m_model.platform >= Platform::XE3P_XPC &&
+        (i.getOp() == Op::SENDGX || i.getOp() == Op::SENDGXC)) {
+      auto &src0 = i.getSource(0);
+      assert(src0.getKind() == Operand::Kind::DIRECT);
+      if (src0.getDirRegName() == RegName::GRF_R &&
+          src0.getDirRegRef().regNum == 510) {
+        // Src0SubRegNum assumes bit[0] is 0. Left shift src1Len by 1 so that
+        // the encoded value is the same as when the field is treated as
+        // Src1Length
+        GED_ENCODE(Src0SubRegNum, (uint32_t)(src1Len << 1));
+        encoded = true;
+      }
+    }
     if (!encoded)
       GED_ENCODE(Src1Length, (uint32_t)src1Len);
   }

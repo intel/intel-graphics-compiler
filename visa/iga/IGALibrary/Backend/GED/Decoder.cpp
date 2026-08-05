@@ -1453,6 +1453,23 @@ Instruction *Decoder::decodeSendgxInstructionXe3p(Kernel &kernel) {
   decodeSendgxSource0Xe3p(inst);
   decodeSendgxSource1Xe3p(inst);
 
+
+  // From XE3P_XPC on, GED treats the Src1.Length field of sendgx/sendgxc as
+  // Src0.SubRegNum once Src0.RegNum is GRF 510. Decode the length back from
+  // Src0.SubRegNum to mirror the encoder; both fields occupy the same bits.
+  if (m_model.platform >= Platform::XE3P_XPC &&
+    (inst->getOp() == Op::SENDGX || inst->getOp() == Op::SENDGXC)) {
+    auto& src0 = inst->getSource(0);
+    assert(src0.getKind() == Operand::Kind::DIRECT);
+    if (src0.getDirRegName() == RegName::GRF_R &&
+      src0.getDirRegRef().regNum == 510) {
+      // Src0SubRegNum assumes bit[0] is 0. Right shift the decoded value
+      // by 1 to get Src1Length value
+      GED_DECODE_RAW(uint32_t, src1LenU, Src0SubRegNum);
+      inst->setSrc1Length(src1LenU >> 1);
+      return inst;
+    }
+  }
   // decode src1Len after decoding src0 reg number
   GED_DECODE_RAW(uint32_t, src1LenU, Src1Length);
   inst->setSrc1Length(src1LenU);
