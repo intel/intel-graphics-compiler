@@ -95,7 +95,7 @@ MDNode *CreateNode(unsigned char i, Module *module, StringRef name) {
 MDNode *CreateNode(int i, Module *module, StringRef name) {
   Metadata *v[] = {
       MDString::get(module->getContext(), name),
-      ValueAsMetadata::get(ConstantInt::get(Type::getInt32Ty(module->getContext()), i)),
+      ValueAsMetadata::get(llvm::ConstantInt::getSigned(Type::getInt32Ty(module->getContext()), i)),
   };
   MDNode *node = MDNode::get(module->getContext(), v);
   return node;

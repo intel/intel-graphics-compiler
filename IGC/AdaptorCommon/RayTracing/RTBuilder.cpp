@@ -735,7 +735,8 @@ Value *RTBuilder::alignVal(Value *V, uint64_t Align) {
 
   uint32_t NumBits = V->getType()->getIntegerBitWidth();
   uint64_t Mask = Align - 1;
-  Value *Aligned = this->CreateAnd(this->CreateAdd(V, this->getIntN(NumBits, Mask)), this->getIntN(NumBits, ~Mask),
+  Value *Aligned = this->CreateAnd(this->CreateAdd(V, this->getIntN(NumBits, Mask)),
+                                   this->getIntN(NumBits, ~Mask & llvm::maxUIntN(NumBits)),
                                    VALUE_NAME(V->getName() + Twine("-align-") + Twine(Align)));
 
   return Aligned;

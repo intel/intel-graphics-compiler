@@ -410,7 +410,7 @@ llvm::Constant *IGCConstantFolder::CreateFirstBitHi(llvm::Constant *C0) const {
   llvm::ConstantInt *CI0 = llvm::cast<llvm::ConstantInt>(C0);
   const unsigned fbh = CI0->getValue().countLeadingZeros();
   if (fbh == CI0->getType()->getIntegerBitWidth()) {
-    return llvm::ConstantInt::get(C0->getType(), -1);
+    return llvm::ConstantInt::getSigned(C0->getType(), -1);
   }
   return llvm::ConstantInt::get(C0->getType(), fbh);
 }
@@ -423,7 +423,7 @@ llvm::Constant *IGCConstantFolder::CreateFirstBitShi(llvm::Constant *C0) const {
   llvm::ConstantInt *CI0 = llvm::cast<llvm::ConstantInt>(C0);
   const uint32_t fbs = CI0->isNegative() ? CI0->getValue().countLeadingOnes() : CI0->getValue().countLeadingZeros();
   if (fbs == CI0->getType()->getIntegerBitWidth()) {
-    return llvm::ConstantInt::get(C0->getType(), -1);
+    return llvm::ConstantInt::getSigned(C0->getType(), -1);
   }
   return llvm::ConstantInt::get(C0->getType(), fbs);
 }
@@ -436,7 +436,7 @@ llvm::Constant *IGCConstantFolder::CreateFirstBitLo(llvm::Constant *C0) const {
   llvm::ConstantInt *CI0 = llvm::cast<llvm::ConstantInt>(C0);
   const unsigned fbl = CI0->getValue().countTrailingZeros();
   if (fbl == CI0->getType()->getIntegerBitWidth()) {
-    return llvm::ConstantInt::get(C0->getType(), -1);
+    return llvm::ConstantInt::getSigned(C0->getType(), -1);
   }
   return llvm::ConstantInt::get(C0->getType(), fbl);
 }

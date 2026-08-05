@@ -192,7 +192,7 @@ struct IntDivConstantReduction : public FunctionPass {
     if (isMod) {
       // C.f. Hacker's Delight 10-2
       // faster than using the re-multiply quotient and subtract
-      result = B.CreateAnd(result, -(1LL << shiftAmt));
+      result = B.CreateAnd(result, llvm::ConstantInt::getSigned(result->getType(), -(1LL << shiftAmt)));
       result = B.CreateSub(dividend, result, "rem");
     } else {
       if (divisor.isNegative()) {

@@ -2010,7 +2010,8 @@ void Legalization::visitIntrinsicInst(llvm::IntrinsicInst &I) {
       Value *const src0Int = Builder.CreateBitCast(src0, Builder.getIntNTy(srcTypeSize));
       Value *const src1Int = Builder.CreateBitCast(src1, Builder.getIntNTy(srcTypeSize));
 
-      Value *const src0NoSign = Builder.CreateAnd(src0Int, Builder.getIntN(srcTypeSize, ~signMask));
+      Value *const src0NoSign =
+          Builder.CreateAnd(src0Int, Builder.getIntN(srcTypeSize, ~signMask & llvm::maxUIntN(srcTypeSize)));
       Value *const src1Sign = Builder.CreateAnd(src1Int, Builder.getIntN(srcTypeSize, signMask));
 
       Value *newValue = static_cast<Value *>(Builder.CreateOr(src0NoSign, src1Sign));

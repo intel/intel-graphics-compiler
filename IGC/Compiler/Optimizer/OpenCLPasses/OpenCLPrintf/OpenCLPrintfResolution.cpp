@@ -222,7 +222,7 @@ Value *OpenCLPrintfResolution::processPrintfString(Value *arg, Function &F) {
     formatString = dyn_cast_or_null<GlobalVariable>(arg);
     if ((nullptr == formatString) || !formatString->hasInitializer()) {
       IGC_ASSERT_MESSAGE(0, "Unexpected printf argument (expected string literal)");
-      return ConstantInt::get(m_int32Type, -1);
+      return llvm::ConstantInt::getSigned(m_int32Type, -1);
     }
 
     ConstantDataArray *formatStringConst = dyn_cast<ConstantDataArray>(formatString->getInitializer());
@@ -278,7 +278,7 @@ Value *OpenCLPrintfResolution::processPrintfString(Value *arg, Function &F) {
     IGC_ASSERT_MESSAGE(0, "Unsupported Instruction!");
   }
 
-  return ConstantInt::get(m_int32Type, -1);
+  return llvm::ConstantInt::getSigned(m_int32Type, -1);
 }
 
 // The paths must not be looped. Accepted in-between nodes: CastInst, all-zero
@@ -680,7 +680,7 @@ void OpenCLPrintfResolution::expandPrintfCall(CallInst &printfCall, Function &F)
   condBrInst->setDebugLoc(m_DL);
 
   // *writeOffset = -1;
-  Value *constValErrStringIdx = ConstantInt::get(m_int32Type, -1);
+  Value *constValErrStringIdx = llvm::ConstantInt::getSigned(m_int32Type, -1);
   writeOffsetPtr = CastInst::Create(Instruction::CastOps::IntToPtr, writeOffsetAdd,
                                     IGCLLVM::PointerType::get(m_int32Type, ADDRESS_SPACE_GLOBAL), "write_offset_ptr",
                                     bblockErrorString);
@@ -696,7 +696,7 @@ void OpenCLPrintfResolution::expandPrintfCall(CallInst &printfCall, Function &F)
 
   // return_val = select cmp1, 0, -1
   Value *constVal0 = ConstantInt::get(m_int32Type, 0);
-  Value *constValm1 = ConstantInt::get(m_int32Type, -1);
+  Value *constValm1 = llvm::ConstantInt::getSigned(m_int32Type, -1);
   Instruction *returnVal =
       SelectInst::Create(cmp1, constVal0, constValm1, "printf_ret_val", IGCLLVM::insertPosition(&printfCall));
   returnVal->setDebugLoc(m_DL);

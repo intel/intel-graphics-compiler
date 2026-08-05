@@ -1236,9 +1236,9 @@ void ReplaceUnsupportedIntrinsics::replaceCmp(IntrinsicInst *I) {
       Value *IsLT = IsSigned ? Builder.CreateICmpSLT(LHS_i, RHS_i) : Builder.CreateICmpULT(LHS_i, RHS_i);
       Value *IsGT = IsSigned ? Builder.CreateICmpSGT(LHS_i, RHS_i) : Builder.CreateICmpUGT(LHS_i, RHS_i);
 
-      Value *GTOrEQ = Builder.CreateSelect(IsGT, ConstantInt::get(ResTy->getScalarType(), 1),
-                                           ConstantInt::get(ResTy->getScalarType(), 0));
-      Value *Res_i = Builder.CreateSelect(IsLT, ConstantInt::get(ResTy->getScalarType(), -1), GTOrEQ);
+      Value *GTOrEQ = Builder.CreateSelect(IsGT, llvm::ConstantInt::get(ResTy->getScalarType(), 1),
+                                           llvm::ConstantInt::get(ResTy->getScalarType(), 0));
+      Value *Res_i = Builder.CreateSelect(IsLT, llvm::ConstantInt::getSigned(ResTy->getScalarType(), -1), GTOrEQ);
       if (!Res)
         Res = PoisonValue::get(ResTy);
       Res = Builder.CreateInsertElement(Res, Res_i, Builder.getInt32(i));
@@ -1247,8 +1247,8 @@ void ReplaceUnsupportedIntrinsics::replaceCmp(IntrinsicInst *I) {
     Value *IsLT = IsSigned ? Builder.CreateICmpSLT(LHS, RHS) : Builder.CreateICmpULT(LHS, RHS);
     Value *IsGT = IsSigned ? Builder.CreateICmpSGT(LHS, RHS) : Builder.CreateICmpUGT(LHS, RHS);
 
-    Value *GTOrEQ = Builder.CreateSelect(IsGT, ConstantInt::get(ResTy, 1), ConstantInt::get(ResTy, 0));
-    Res = Builder.CreateSelect(IsLT, ConstantInt::get(ResTy, -1), GTOrEQ);
+    Value *GTOrEQ = Builder.CreateSelect(IsGT, llvm::ConstantInt::get(ResTy, 1), llvm::ConstantInt::get(ResTy, 0));
+    Res = Builder.CreateSelect(IsLT, llvm::ConstantInt::getSigned(ResTy, -1), GTOrEQ);
   }
 
   I->replaceAllUsesWith(Res);
@@ -1433,7 +1433,7 @@ Value *ReplaceUnsupportedIntrinsics::evaluateCtlzUpto32bit(IGCLLVM::IRBuilder<> 
   Value *retVal = Builder->CreateZExt(inVal, Builder->getInt32Ty());
   retVal = Builder->CreateIntrinsic(Intrinsic::ctlz, {Builder->getInt32Ty()}, {retVal, canBePoison});
   retVal = Builder->CreateTrunc(retVal, singleElementType);
-  auto constInt = Builder->getIntN(sizeInBits, sizeInBits - 32);
+  auto constInt = llvm::ConstantInt::getSigned(Builder->getIntNTy(sizeInBits), sizeInBits - 32);
   retVal = Builder->CreateNSWAdd(retVal, constInt);
   return retVal;
 }
