@@ -110,6 +110,11 @@ IGC::CodeGenContext *CreateCodeGenContext() {
       platform.usRevId = static_cast<unsigned short>(ACM_G10_GT_REV_ID_B0);
       break;
     case PRODUCT_FAMILY::IGFX_METEORLAKE:
+      platform.eRenderCoreFamily = IGFX_XE_HPG_CORE;
+      // MTL-H has GMDArch=12, GMDRelease=XE_LP_LG (71)
+      platform.sRenderBlockID.GmdID.GMDArch = GFX_GMD_ARCH_12;
+      platform.sRenderBlockID.GmdID.GMDRelease = GFX_GMD_ARCH_12_RELEASE_XE_LP_LG;
+      break;
     case PRODUCT_FAMILY::IGFX_ARROWLAKE:
       platform.eRenderCoreFamily = IGFX_XE_HPG_CORE;
       break;
