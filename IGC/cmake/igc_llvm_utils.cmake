@@ -100,7 +100,7 @@ endfunction()
 
 function(igc_add_lit_target target binary_dir comment)
   cmake_parse_arguments(ARG "" "" "EXTRA;DEPENDS;SOURCES" ${ARGN})
-  if(DEFINED ENV{COMPONENT_BRANCH})
+  if(DEFINED ENV{COMPONENT_BRANCH} OR DEFINED ENV{BUILD_VERSION} OR DEFINED ENV{CI})
     # Drop the default --succinct so passing tests are shown in CI.
     set(LIT_ARGS --verbose)
   else()
