@@ -197,7 +197,6 @@ static bool hasSamePredicator(const G4_INST *inst1, const G4_INST *inst2) {
     ;
     unsigned short refOff2 = pred2->getBase()->ExRegNum(flagRegNumValid);
     unsigned short subRefOff2 = pred2->getBase()->asRegVar()->getPhyRegOff();
-    ;
 
     if (refOff1 == refOff2 && subRefOff1 == subRefOff2) {
       return true;
@@ -209,6 +208,14 @@ static bool hasSamePredicator(const G4_INST *inst1, const G4_INST *inst2) {
     return false;
   }
 
+  if (inst1->isWriteEnableInst() || inst2->isWriteEnableInst()) {
+    return false;
+  }
+
+  return true;
+}
+
+static bool hasSameWriteEnable(const G4_INST *inst1, const G4_INST *inst2) {
   if (inst1->isWriteEnableInst() ^ inst2->isWriteEnableInst()) {
     return false;
   }
@@ -6816,7 +6823,8 @@ bool G4_BB_SB::isLastDpas(SBNode *curNode, SBNode *nextNode,
     return true;
   }
 
-  if (!hasSamePredicator(curInst, nextInst)) {
+  if (!hasSamePredicator(curInst, nextInst) ||
+      !hasSameWriteEnable(curInst, nextInst)) {
     return true;
   }
 
