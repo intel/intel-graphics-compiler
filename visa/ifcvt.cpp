@@ -532,13 +532,6 @@ void IfConverter::fullConvert(IfConvertible &IC) {
 
   // forward goto's behavior is platform dependent
   bool needReversePredicateForGoto = (isGoto && fg.builder->gotoJumpOnTrue());
-
-  // Record trailing gotos BEFORE the loops pop them; used below to fix CFG
-  // edges when !doTailMerging.
-  bool s0HasGoto = isGoto && !s0->empty() && (s0->getLastOpcode() == G4_goto);
-  bool s1HasGoto =
-      isGoto && s1 && !s1->empty() && (s1->getLastOpcode() == G4_goto);
-
   // Merge predicated 'if' into header.
   for (/* EMPTY */; !s0->empty(); s0->pop_front()) {
     auto I = s0->front();
@@ -612,59 +605,8 @@ void IfConverter::fullConvert(IfConvertible &IC) {
   // Remove 'if' instruction in head.
   head->erase(pos);
 
-  if (!doTailMerging) {
-    // When isGoto, gotos may have been moved between BBs.  Fix up Pred/Succ
-    // edges so the CFG reflects the new branching structure.
-    if (isGoto) {
-      if (s1) {
-        // if-else-fi: head's conditional goto (to s1) was erased.
-        // s1's goto to tail (if any) was moved into head.
-        //
-        // Before: head -[goto]-> s1 -[goto]-> tail  (if s1HasGoto)
-        //         head -[fall]-> s0 -[goto]-> tail  (if s0HasGoto)
-        //
-        // After (s1HasGoto):  head -[goto]-> tail
-        //                     head -[fall]-> s0  (removed; head now ends with goto)
-        //                     s1   -[goto]-> tail  (removed)
-        //                     s0   -[goto]-> tail  (removed if s0HasGoto)
-        // After (!s1HasGoto): head -[goto]-> s1  (removed; head erased its goto)
-        //                     s0   -[goto]-> tail  (removed if s0HasGoto)
-        fg.removePredSuccEdges(head, s1);
-        if (s1HasGoto) {
-          // head ends with the moved goto; it no longer falls through to s0.
-          fg.removePredSuccEdges(head, s0);
-          fg.addPredSuccEdges(head, tail);
-          fg.removePredSuccEdges(s1, tail);
-        }
-        // s0's goto to tail (if any) was dropped; remove the stale edge.
-        if (s0HasGoto)
-          fg.removePredSuccEdges(s0, tail);
-      } else {
-        // if-fi: head.Succs = {s0 (fall-through), tail (goto)}.
-        //
-        // Before (s0HasGoto):  head -[goto]-> tail
-        //                      head -[fall]-> s0 -[goto]-> tail
-        // After  (s0HasGoto):  head -[goto]-> tail  (fall-through to s0 removed)
-        //                      s0   -[goto]-> tail  (removed; s0 now empty)
-        //
-        // Before (!s0HasGoto): head -[goto]-> tail  (goto was erased from head)
-        //                      head -[fall]-> s0
-        // After  (!s0HasGoto): head -[fall]-> s0    (head-to-tail edge removed)
-        if (s0HasGoto) {
-          // s0's goto to tail was moved into head; head ends with goto tail,
-          // so it no longer falls through to s0.
-          fg.removePredSuccEdges(head, s0);
-          fg.removePredSuccEdges(s0, tail);
-          // head→tail already present; no new edge needed.
-        } else {
-          // No goto in s0; head's goto-to-tail was erased; head falls through
-          // to s0.
-          fg.removePredSuccEdges(head, tail);
-        }
-      }
-    }
+  if (!doTailMerging)
     return;
-  }
 
   // Remove 'label' and 'endif'/'join' instructions in tail.
   vISA_ASSERT(tail->front()->opcode() == G4_label,
@@ -677,35 +619,6 @@ void IfConverter::fullConvert(IfConvertible &IC) {
   // Merge head and tail to get more code scheduling chance.
   head->splice(head->end(), tail);
   tail->markEmpty(fg.builder);
-
-  // Update CFG edges: head has absorbed s0, s1, and tail.
-  // Remove the now-stale edges that pointed through the empty pass-through BBs.
-  //
-  // if-fi (no s1):      head -[goto]-> tail -[...]--> {S,...}
-  //                     head -[fall]-> s0   -[fall]-> tail
-  //
-  // if-else-fi (s1):    head -[goto]-> s1   -[goto]-> tail -[...]--> {S,...}
-  //                     head -[fall]-> s0   -[fall]-> tail
-  //
-  // After: head -[...]--> {S,...}  (s0, s1, tail all marked empty)
-  //
-  // Degenerate switchjmp example — tail has duplicate Succ entries:
-  //   tail -> {S, S}   (switchjmp with two identical case labels)
-  //   =>  head -> {S}  (addUniquePredSuccEdges deduplicates to a single edge)
-  fg.removePredSuccEdges(head, s0);
-  if (s1)
-    fg.removePredSuccEdges(head, s1);
-  fg.removePredSuccEdges(head, tail); // tail was a direct succ in the if-fi case
-  fg.removePredSuccEdges(s0, tail);
-  if (s1)
-    fg.removePredSuccEdges(s1, tail);
-  // Transfer tail's successors to head.  addUniquePredSuccEdges deduplicates
-  // edges that arise when a switchjmp in tail has all-identical case labels.
-  while (!tail->Succs.empty()) {
-    G4_BB *S = tail->Succs.front();
-    fg.removePredSuccEdges(tail, S);
-    fg.addUniquePredSuccEdges(head, S, false);
-  }
 }
 
 void IfConverter::partialConvert(IfConvertible &IC) {
