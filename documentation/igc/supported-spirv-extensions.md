@@ -224,7 +224,7 @@ This document lists all SPIR-V extensions supported by IGC and their platform re
 
 ## SPV_INTEL_float4
 
-**Specification**: https://github.com/intel/llvm/pull/20467
+**Specification**: https://github.com/intel/llvm/blob/sycl/sycl/doc/design/spirv-extensions/SPV_INTEL_float4.asciidoc
 
 > **Experimentally supported on**: XE3P+ (NVL, CRI)
 
@@ -237,13 +237,14 @@ This document lists all SPIR-V extensions supported by IGC and their platform re
 
 ## SPV_INTEL_fp_conversions
 
-**Specification**: https://github.com/intel/llvm/pull/20467
+**Specification**: https://github.com/intel/llvm/blob/sycl/sycl/doc/design/spirv-extensions/SPV_INTEL_fp_conversions.asciidoc
 
 > **Experimentally supported on**: XE3P+ (NVL, CRI)
 
 **Capabilities**:
 
-- **FloatConversionsINTEL**
+- **FloatConversionsFtoFINTEL**
+- **FloatConversionsFtoSINTEL**
 
 ---
 

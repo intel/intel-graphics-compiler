@@ -449,8 +449,9 @@ def SPV_INTEL_int4 : ExperimentalExtension<
 
 def SPV_INTEL_fp_conversions : ExperimentalExtension<
   "SPV_INTEL_fp_conversions",
-  [ Capability<"FloatConversionsINTEL"> ],
-  "https://github.com/intel/llvm/pull/20467",
+  [ Capability<"FloatConversionsFtoFINTEL">,
+    Capability<"FloatConversionsFtoSINTEL"> ],
+  "https://github.com/intel/llvm/blob/sycl/sycl/doc/design/spirv-extensions/SPV_INTEL_fp_conversions.asciidoc",
   isCoreChildOf<IGFX_XE3P_CORE>
 >;
 
@@ -458,7 +459,7 @@ def SPV_INTEL_float4 : ExperimentalExtension<
   "SPV_INTEL_float4",
   [ Capability<"Float4TypeINTEL">,
     Capability<"Float4CooperativeMatrixINTEL"> ],
-  "https://github.com/intel/llvm/pull/20467",
+  "https://github.com/intel/llvm/blob/sycl/sycl/doc/design/spirv-extensions/SPV_INTEL_float4.asciidoc",
   isCoreChildOf<IGFX_XE3P_CORE>
 >;
 

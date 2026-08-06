@@ -11026,16 +11026,16 @@ intrinsics:
         name: "GenISA_srnd_ftohf"
         comment: "stochastic rounding:  srnd dst  src0  src1"
         return_definition: !<ReturnDefinition>
-            type_definition: *any_float
+            type_definition: *tl_f16__v_f16_
             comment: "dst: HF"
         arguments:
             - !<ArgumentDefinition>
                 name: Arg0
-                type_definition: *any_float
+                type_definition: *tl_f32__v_f32_
                 comment: "src0: F"
             - !<ArgumentDefinition>
                 name: Arg1
-                type_definition: *any_int
+                type_definition: *tl_i16__v_i16_
                 comment: "src1: random number. UW"
             - !<ArgumentDefinition>
                 name: Arg2
