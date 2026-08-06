@@ -43,16 +43,10 @@ define i32 addrspace(4)* @should_add_addrspacecast_with_metadata(%st addrspace(1
   ret i32 addrspace(4)* %pointer_value
 }
 
-!IGCMetadata = !{!7}
 !igc.functions = !{!0}
 !0 = !{i32 addrspace(4)* (%st addrspace(1)*)* @should_add_addrspacecast_with_metadata, !1}
 !1 = !{!2}
 !2 = !{!"function_type", i32 0}
-!3 = !{!"functionType", !"KernelFunction"}
-!4 = !{!"FuncMDMap[0]", i32 addrspace(4)* (%st addrspace(1)*)* @should_add_addrspacecast_with_metadata}
-!5 = !{!"FuncMDValue[0]", !3}
-!6 = !{!"FuncMD", !4, !5}
-!7 = !{!"ModuleMD", !6}
 ;.
 ; CHECK: [[META3:![0-9]+]] = distinct !DICompileUnit(language: DW_LANG_C, file: [[META4:![0-9]+]], producer: "debugify", isOptimized: true, runtimeVersion: 0, emissionKind: FullDebug)
 ; CHECK: [[META4]] = !DIFile(filename: "<stdin>", directory: {{.*}})

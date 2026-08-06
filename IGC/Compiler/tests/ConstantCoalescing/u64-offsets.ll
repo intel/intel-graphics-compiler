@@ -38,14 +38,8 @@ define void @test_merge_add(ptr addrspace(1) %src) {
 
 declare void @use.i32(i32)
 
-!IGCMetadata = !{!7}
 !igc.functions = !{!0}
 
 !0 = !{ptr @test_merge_add, !1}
 !1 = !{!2}
 !2 = !{!"function_type", i32 0}
-!3 = !{!"functionType", !"KernelFunction"}
-!4 = !{!"FuncMDMap[0]", ptr @test_merge_add}
-!5 = !{!"FuncMDValue[0]", !3}
-!6 = !{!"FuncMD", !4, !5}
-!7 = !{!"ModuleMD", !6}

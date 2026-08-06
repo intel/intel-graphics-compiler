@@ -26,10 +26,6 @@ declare spir_func %spirv.Sampler addrspace(2)* @__bindless_sampler_initializer(i
 !0 = !{void ()* @test, !1}
 !1 = !{!2}
 !2 = !{!"function_type", i32 0}
-!3 = !{!"ModuleMD", !7}
-!4 = !{!"functionType", !"KernelFunction"}
-!5 = !{!"FuncMDMap[0]", void ()* @test}
-!6 = !{!"FuncMDValue[0]", !4}
-!7 = !{!"FuncMD", !5, !6}
+!3 = !{!"ModuleMD"}
 ; CHECK: !{{[0-9]*}} = !{!"inlineSamplersMDVec[0]",
 ; CHECK: !{{[0-9]*}} = !{!"m_Value", i32 17}

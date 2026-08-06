@@ -28,13 +28,7 @@ entry:
 declare <16 x i32> @llvm.genx.GenISA.ldptr.16i32(i32, i32, i32, i32, i8*, i8*, i32, i32, i32)
 declare i32 @llvm.genx.GenISA.DCL.input.i32(i32, i32)
 
-!IGCMetadata = !{!7}
 !igc.functions = !{!0}
 !0 = !{void (i8*, i32)* @test_coal, !1}
 !1 = !{!2}
 !2 = !{!"function_type", i32 0}
-!3 = !{!"functionType", !"KernelFunction"}
-!4 = !{!"FuncMDMap[0]", void (i8*, i32)* @test_coal}
-!5 = !{!"FuncMDValue[0]", !3}
-!6 = !{!"FuncMD", !4, !5}
-!7 = !{!"ModuleMD", !6}

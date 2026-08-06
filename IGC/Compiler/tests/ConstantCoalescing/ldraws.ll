@@ -136,7 +136,6 @@ declare float @llvm.genx.GenISA.ldraw.indexed.f32.p2490373(ptr addrspace(2490373
 declare void @llvm.genx.GenISA.storeraw.indexed.p2490373.f32(ptr addrspace(2490373), i32, float, i32, i1) argmemonly nounwind writeonly
 
 
-!IGCMetadata = !{!15}
 !igc.functions = !{!0, !3, !4}
 
 !0 = !{ptr @f0, !1}
@@ -145,15 +144,4 @@ declare void @llvm.genx.GenISA.storeraw.indexed.p2490373.f32(ptr addrspace(24903
 
 !1 = !{!2}
 !2 = !{!"function_type", i32 0}
-!5 = !{!"functionType", !"KernelFunction"}
-!6 = !{!"FuncMDMap[0]", ptr @f0}
-!7 = !{!"FuncMDValue[0]", !5}
-!8 = !{!"functionType", !"KernelFunction"}
-!9 = !{!"FuncMDMap[1]", ptr @f1}
-!10 = !{!"FuncMDValue[1]", !8}
-!11 = !{!"functionType", !"KernelFunction"}
-!12 = !{!"FuncMDMap[2]", ptr @f2}
-!13 = !{!"FuncMDValue[2]", !11}
-!14 = !{!"FuncMD", !6, !7, !9, !10, !12, !13}
-!15 = !{!"ModuleMD", !14}
 

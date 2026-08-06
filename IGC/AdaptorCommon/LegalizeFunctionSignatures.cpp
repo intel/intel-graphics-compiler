@@ -254,12 +254,13 @@ inline Value *LoadFromStruct(IGCLLVM::IRBuilder<> &builder, Value *strPtr, Type 
 
 void LegalizeFunctionSignatures::FixFunctionSignatures(Module &M) {
   auto pContext = m_pCtx;
+  auto pMdUtils = m_pMdUtils;
 
   for (auto &FI : M) {
     Function *pFunc = &FI;
 
     // Ignore the entry function
-    if (isEntryFunc(pContext->getModuleMetaData(), pFunc))
+    if (isEntryFunc(pMdUtils, pFunc))
       continue;
 
     // An internally-linked function that eventually gets inlined doesn't need this transformation

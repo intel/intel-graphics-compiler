@@ -1066,8 +1066,9 @@ bool PreBIImportAnalysis::run(Module &M, IGCMD::MetaDataUtils *pMdUtilsParam, Mo
 
     // To make the behavior predictable, fix the workgroup XYZ walk order here.
     if (IGC_IS_FLAG_ENABLED(ForceXYZworkGroupWalkOrder)) {
+      MetaDataUtils *pMdUtils = pMdUtilsParam;
       ModuleMetaData *modMD = pModMDParam;
-      if (isEntryFunc(modMD, pFunc)) {
+      if (isEntryFunc(pMdUtils, pFunc)) {
         uint32_t WGSize = IGCMetaDataHelper::getThreadGroupSize(modMD, pFunc);
         uint32_t WGSizeHint = IGCMetaDataHelper::getThreadGroupSizeHint(modMD, pFunc);
         if (WGSize != 1 && WGSizeHint != 1) {

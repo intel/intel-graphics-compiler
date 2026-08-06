@@ -71,7 +71,7 @@ bool AggregateArgumentsAnalysis::run(Module &M, IGCMD::MetaDataUtils *pMdUtils, 
       continue;
     }
 
-    if (!isEntryFunc(pCtx->getModuleMetaData(), &F)) {
+    if (!isEntryFunc(m_pMdUtils, &F)) {
       continue;
     }
 
@@ -225,7 +225,7 @@ ResolveAggregateArgumentsLPM::ResolveAggregateArgumentsLPM() : FunctionPass(ID) 
 
 bool ResolveAggregateArguments::runOnFunction(Function &F, IGCMD::MetaDataUtils *pMdUtils,
                                               IGC::ModuleMetaData *pModMD) {
-  if (!isEntryFunc(pModMD, &F)) {
+  if (!isEntryFunc(pMdUtils, &F)) {
     return false;
   }
 

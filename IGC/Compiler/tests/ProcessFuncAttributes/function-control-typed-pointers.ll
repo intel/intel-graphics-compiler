@@ -130,16 +130,10 @@ declare spir_func void @declared_foo(i32)
 attributes #0 = { noinline optnone }
 attributes #1 = { alwaysinline }
 
-!IGCMetadata = !{!8}
 !igc.functions = !{!1}
 !1 = !{void (i32*)* @test_kernel, !2}
 !2 = !{!3}
 !3 = !{!"function_type", i32 0}
-!4 = !{!"functionType", !"KernelFunction"}
-!5 = !{!"FuncMDMap[0]", void (i32*)* @test_kernel}
-!6 = !{!"FuncMDValue[0]", !4}
-!7 = !{!"FuncMD", !5, !6}
-!8 = !{!"ModuleMD", !7}
 ;.
 ; CHECK-FC0: attributes #[[ATTR0]] = { noinline optnone }
 ; CHECK-FC0: attributes #[[ATTR1]] = { alwaysinline }

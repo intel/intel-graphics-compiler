@@ -52,7 +52,7 @@ attributes #0 = { convergent noinline nounwind optnone "less-precise-fpmad"="tru
 !7 = !{!"FuncMD", !11, !12}
 !10 = !{!"privateMemoryPerWI", i32 0}
 !11 = !{!"FuncMDMap[0]", void (i32, i32, i32)* @test_skip}
-!12 = !{!"FuncMDValue[0]", !10, !34, !35}
+!12 = !{!"FuncMDValue[0]", !10, !34}
 !13 = !{!"MinNOSPushConstantSize", i32 0}
 !17 = !{void (i32, i32, i32)* @test_skip, !18}
 !18 = !{!19}
@@ -64,4 +64,3 @@ attributes #0 = { convergent noinline nounwind optnone "less-precise-fpmad"="tru
 !32 = !{!"explicitArgNum", i32 1}
 !33 = !{!"implicitArgInfoListVec[1]", !31, !32}
 !34 = !{!"implicitArgInfoList", !30, !33}
-!35 = !{!"functionType", !"UserFunction"}

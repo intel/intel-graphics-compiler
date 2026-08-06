@@ -47,14 +47,8 @@ bb79:                                             ; preds = %bb79, %bb
 
 declare <4 x float> @llvm.genx.GenISA.sub.group.dpas.v4f32.v4f32.v4i16.v4i32(<4 x float>, <4 x i16>, <4 x i32>, i32, i32, i32, i32, i1)
 
-!IGCMetadata = !{!7}
 !igc.functions = !{!0}
 
 !0 = distinct !{ptr @foo, !1}
 !1 = distinct !{!2}
 !2 = distinct !{!"function_type", i32 0}
-!3 = !{!"functionType", !"KernelFunction"}
-!4 = !{!"FuncMDMap[0]", ptr @foo}
-!5 = !{!"FuncMDValue[0]", !3}
-!6 = !{!"FuncMD", !4, !5}
-!7 = !{!"ModuleMD", !6}

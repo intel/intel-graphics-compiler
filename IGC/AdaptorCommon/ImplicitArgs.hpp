@@ -350,7 +350,8 @@ public:
   /// @param  implicitArg The associated implicit argument.
   int getExplicitArgNumForArg(llvm::Argument *implicitArg) const;
 
-  llvm::Value *getImplicitArgValue(llvm::Function &F, ImplicitArg::ArgType argType, const IGC::ModuleMetaData *modMD);
+  llvm::Value *getImplicitArgValue(llvm::Function &F, ImplicitArg::ArgType argType,
+                                   const IGCMD::MetaDataUtils *pMdUtils);
 
 private:
   /// @brief Copy of the function's implicit-arg list from ModuleMetaData::FuncMD.

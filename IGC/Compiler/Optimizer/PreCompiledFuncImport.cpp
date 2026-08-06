@@ -2102,7 +2102,7 @@ bool PreCompiledFuncImport::usePrivateMemory(Function *F) {
 void PreCompiledFuncImport::addMDFuncEntryForEmulationFunc(Function *F) {
   ModuleMetaData *modMD = m_pCtx->getModuleMetaData();
   FunctionInfoMetaDataHandle FH = FunctionInfoMetaDataHandle(new FunctionInfoMetaData());
-  modMD->FuncMD[F].functionType = FunctionTypeMD::UserFunction;
+  FH->setType(FunctionTypeMD::UserFunction);
   for (auto arg = F->arg_begin(); arg != F->arg_end(); ++arg) {
     IGC::ArgInfoMD a;
     a.explicitArgNum = arg->getArgNo();
@@ -2229,8 +2229,7 @@ void PreCompiledFuncImport::replaceFunc(Function *old_func, Function *new_func) 
       // non-entry function. This keeps the non-null path byte-identical and never pushes a
       // null operand (which would produce a malformed call and abort vISA emission).
       llvm::Value *iArgValOrIntrinsic =
-          iArgVal ? llvm::cast<llvm::Value>(iArgVal)
-                  : parentIA->getImplicitArgValue(*parent_func, argId, m_pCtx->getModuleMetaData());
+          iArgVal ? llvm::cast<llvm::Value>(iArgVal) : parentIA->getImplicitArgValue(*parent_func, argId, m_pMdUtils);
       IGC_ASSERT_MESSAGE(iArgValOrIntrinsic, "replaceFunc: could not resolve implicit argument for emulation call");
       if (!iArgValOrIntrinsic) {
         m_pCtx->EmitError("Internal error: missing implicit argument while linking an emulation function; "

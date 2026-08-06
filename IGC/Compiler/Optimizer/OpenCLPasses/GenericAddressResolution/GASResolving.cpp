@@ -51,16 +51,15 @@ llvm::PreservedAnalyses GASResolvingNPM::run(llvm::Module &M, llvm::ModuleAnalys
       continue;
     llvm::LoopInfo &LI = FAM.getResult<llvm::LoopAnalysis>(F);
     llvm::AAResults &AA = FAM.getResult<llvm::AAManager>(F);
-    changed |= impl.runOnFunction(F, LI, mdUtils, &AA, AM.getResult<MetaDataUtilsAnalysis>(M).ModMD);
+    changed |= impl.runOnFunction(F, LI, mdUtils, &AA);
   }
   return changed ? llvm::PreservedAnalyses::none() : llvm::PreservedAnalyses::all();
 }
 #endif // LLVM_VERSION_MAJOR >= 16
 
-bool GASResolving::runOnFunction(Function &F, llvm::LoopInfo &LI, IGCMD::MetaDataUtils *MdUtils, llvm::AAResults *AA,
-                                 IGC::ModuleMetaData *ModMD) {
+bool GASResolving::runOnFunction(Function &F, llvm::LoopInfo &LI, IGCMD::MetaDataUtils *MdUtils, llvm::AAResults *AA) {
   LLVMContext &Ctx = F.getContext();
-  m_modMD = ModMD;
+  m_pMdUtils = MdUtils;
   m_AA = AA;
   BuilderType TheBuilder(Ctx);
   GASPropagator ThePropagator(Ctx, &LI);
@@ -158,9 +157,10 @@ bool GASResolving::resolveOnBasicBlock(BasicBlock *BB) const {
 }
 
 bool GASResolving::resolveMemoryFromHost(Function &F) const {
+  MetaDataUtils *pMdUtils = m_pMdUtils;
 
   // skip all non-entry functions
-  if (!isEntryFunc(m_modMD, &F))
+  if (!isEntryFunc(pMdUtils, &F))
     return false;
 
   // early check in order not to iterate whole function
@@ -364,7 +364,7 @@ bool GASResolving::resolveKernelByValArgs(Function &F) const {
   if (!IGC_IS_FLAG_ENABLED(EnableGASKernelByValArgPtrInference)) {
     return false;
   }
-  if (!isEntryFunc(m_modMD, &F)) {
+  if (!isEntryFunc(m_pMdUtils, &F)) {
     return false;
   }
 

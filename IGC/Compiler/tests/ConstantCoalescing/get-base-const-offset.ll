@@ -81,7 +81,6 @@ define void @test_nonconst_gep(ptr addrspace(2) %src, i32 %off) {
 
 declare void @use.i32(i32)
 
-!IGCMetadata = !{!16}
 !igc.functions = !{!0, !4, !5}
 
 !0 = !{ptr @test_merge, !1}
@@ -89,14 +88,3 @@ declare void @use.i32(i32)
 !2 = !{!"function_type", i32 0}
 !4 = !{ptr @test_vectorize, !1}
 !5 = !{ptr @test_nonconst_gep, !1}
-!6 = !{!"functionType", !"KernelFunction"}
-!7 = !{!"FuncMDMap[0]", ptr @test_merge}
-!8 = !{!"FuncMDValue[0]", !6}
-!9 = !{!"functionType", !"KernelFunction"}
-!10 = !{!"FuncMDMap[1]", ptr @test_vectorize}
-!11 = !{!"FuncMDValue[1]", !9}
-!12 = !{!"functionType", !"KernelFunction"}
-!13 = !{!"FuncMDMap[2]", ptr @test_nonconst_gep}
-!14 = !{!"FuncMDValue[2]", !12}
-!15 = !{!"FuncMD", !7, !8, !10, !11, !13, !14}
-!16 = !{!"ModuleMD", !15}

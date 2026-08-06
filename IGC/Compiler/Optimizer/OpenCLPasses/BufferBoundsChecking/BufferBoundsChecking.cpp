@@ -56,7 +56,7 @@ bool BufferBoundsChecking::run(Module &M, IGCMD::MetaDataUtils *pMdUtils, Module
   }
 
   for (auto &function : M.functions()) {
-    if (!isEntryFunc(moduleMetadata, &function)) {
+    if (!isEntryFunc(metadataUtils, &function)) {
       continue;
     }
 

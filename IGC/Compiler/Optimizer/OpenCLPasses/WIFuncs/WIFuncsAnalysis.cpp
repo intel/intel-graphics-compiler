@@ -104,7 +104,7 @@ bool WIFuncsAnalysis::runOnFunction(Function &F) {
       AllowShortImplicitPayloadHeader(m_ctx) ? ImplicitArg::GLOBAL_OFFSET : ImplicitArg::PAYLOAD_HEADER;
 
   // All OpenCL kernels receive R0 and Payload Header implicitly
-  if (isEntryFunc(m_ctx->getModuleMetaData(), &F)) {
+  if (isEntryFunc(m_pMDUtils, &F)) {
     implicitArgs.push_back(ImplicitArg::R0);
     if (m_ctx->platform.isCoreChildOf(IGFX_XE3P_CORE) && m_ctx->platform.hasEfficient64bEnabled()) {
       implicitArgs.push_back(ImplicitArg::INDIRECT_DATA_POINTER);

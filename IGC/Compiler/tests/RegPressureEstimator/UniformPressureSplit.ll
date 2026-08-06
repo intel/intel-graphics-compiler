@@ -18,16 +18,10 @@ entry:
   ret void
 }
 
-!IGCMetadata = !{!7}
 !igc.functions = !{!0}
 !0 = !{void (i32 addrspace(1)*, i32)* @testUniform, !1}
 !1 = !{!2}
 !2 = !{!"function_type", i32 0}
-!3 = !{!"functionType", !"KernelFunction"}
-!4 = !{!"FuncMDMap[0]", void (i32 addrspace(1)*, i32)* @testUniform}
-!5 = !{!"FuncMDValue[0]", !3}
-!6 = !{!"FuncMD", !4, !5}
-!7 = !{!"ModuleMD", !6}
 
 ; CHECK: block: entry function: testUniform
 ; CHECK: U: UP: 1 NP: 0     12 (1)         %a = add i32 %n, 1

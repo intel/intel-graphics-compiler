@@ -96,7 +96,6 @@ entry:
 ; Function Attrs: nofree nosync nounwind readnone speculatable willreturn
 declare void @llvm.dbg.value(metadata, metadata, metadata) #0
 
-!IGCMetadata = !{!19}
 !igc.functions = !{!12}
 !llvm.dbg.cu = !{!0}
 !llvm.debugify = !{!3, !4}
@@ -117,8 +116,3 @@ declare void @llvm.dbg.value(metadata, metadata, metadata) #0
 !12 = !{ptr @f0, !13}
 !13 = !{!14}
 !14 = !{!"function_type", i32 0}
-!15 = !{!"functionType", !"KernelFunction"}
-!16 = !{!"FuncMDMap[0]", ptr @f0}
-!17 = !{!"FuncMDValue[0]", !15}
-!18 = !{!"FuncMD", !16, !17}
-!19 = !{!"ModuleMD", !18}
