@@ -16,7 +16,7 @@ PointsToAnalysis::PointsToAnalysis(const DECLARE_LIST &declares,
     : numBBs(numBB), numAddrs(0),
       indirectUses(std::make_unique<REGVAR_VECTOR[]>(numBB)) {
   for (auto decl : declares) {
-    if ((decl->getRegFile() == G4_ADDRESS || decl->getRegFile() == G4_SCALAR) &&
+    if ((decl->getRegFile() == G4_ADDRESS || decl->isIndirectScalar()) &&
         !decl->getAliasDeclare()) {
       auto regVarsSize = (unsigned)regVars.size();
       regVars.emplace(decl->getRegVar(), regVarsSize);
@@ -247,8 +247,7 @@ void PointsToAnalysis::doPointsToAnalysis(FlowGraph &fg) {
           if (src && src->isAddrExp()) {
             int offset = 0;
             if (dst && !dst->isNullReg() &&
-                dst->getBase()->asRegVar()->getDeclare()->getRegFile() ==
-                    G4_SCALAR) {
+                dst->getBase()->asRegVar()->getDeclare()->isIndirectScalar()) {
               offset = src->asAddrExp()->getOffset() / fg.builder->getGRFSize();
             }
             addrTakenMapping[ptr->asRegVar()].push_back(
@@ -277,7 +276,7 @@ void PointsToAnalysis::doPointsToAnalysis(FlowGraph &fg) {
         // Dst is address variable
         if (ptr->isRegVar() &&
             (ptr->asRegVar()->getDeclare()->getRegFile() == G4_ADDRESS ||
-             ptr->asRegVar()->getDeclare()->getRegFile() == G4_SCALAR) &&
+             ptr->asRegVar()->getDeclare()->isIndirectScalar()) &&
             !ptr->asRegVar()->getDeclare()->isMsgDesc())
         {
           // dst is an address variable.  ExDesc A0 may be ignored since they
@@ -307,8 +306,7 @@ void PointsToAnalysis::doPointsToAnalysis(FlowGraph &fg) {
 
                 if (addrTaken != NULL) {
                   unsigned char offset = 0;
-                  if (ptr->asRegVar()->getDeclare()->getRegFile() ==
-                      G4_SCALAR) {
+                  if (ptr->asRegVar()->getDeclare()->isIndirectScalar()) {
                     offset = src->asAddrExp()->getOffset() /
                              fg.builder->getGRFSize();
                   }

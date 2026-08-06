@@ -103,6 +103,11 @@ class G4_Declare {
   // any post RA pass that recomputes data flow sees it as
   // a global value that may be used in a later BB.
   uint16_t isForceGlobalVar : 1;
+  // Marks a G4_SCALAR declare created by SRSubstitution to hold GRF addresses
+  // (via G4_AddrExp) for indirect sendg. Scalars NOT marked with this flag
+  // (e.g. builtinS0 used by InsertS0Movs for raw descriptor values) do not
+  // participate in points-to analysis.
+  uint16_t isIndirectS0 : 1;
 
   unsigned declId; // global decl id for this builder
 
@@ -130,6 +135,8 @@ public:
 
   void setBuiltin() { builtin = true; }
   bool isBuiltin() const { return builtin; }
+  void setIsIndirectS0() { isIndirectS0 = true; }
+  bool isIndirectScalar() const { return regFile == G4_SCALAR && isIndirectS0; }
   void setLiveIn() { liveIn = true; }
   bool isLiveIn() const { return liveIn; }
   void setLiveOut() { liveOut = true; }

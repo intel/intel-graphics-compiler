@@ -804,6 +804,7 @@ bool SRSubPassAfterRA::replaceWithSendiAfterRA(G4_BB *bb,
     S0Sub = allocateS0RoundRobin(UQNum);
   }
   G4_Declare *s0Var = builder.createTempScalar(UQNum, "S0_");
+  s0Var->setIsIndirectS0();
   s0Var->getRegVar()->setPhyReg(builder.phyregpool.getScalarReg(), 0);
   G4_DstRegRegion *dst =
       builder.createDst(s0Var->getRegVar(), 0, S0Sub, 1, Type_UQ);
