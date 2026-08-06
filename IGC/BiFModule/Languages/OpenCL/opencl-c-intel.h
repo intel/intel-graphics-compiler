@@ -41,6 +41,11 @@ SPDX-License-Identifier: MIT
 #pragma OPENCL EXTENSION cl_khr_kernel_clock : enable
 #endif // cl_khr_kernel_clock
 
+#ifdef FP_ILOGBNAN
+#undef FP_ILOGBNAN
+#endif
+#define FP_ILOGBNAN INT_MIN
+
 // Internal helper macros used by the Intel sub-group reduce/scan declarations
 // below. These are CTH-internal and are not provided by the stock Clang OpenCL
 // header.

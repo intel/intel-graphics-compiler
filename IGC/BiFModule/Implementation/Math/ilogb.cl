@@ -17,8 +17,11 @@ int __attribute__((overloadable)) __spirv_ocl_ilogb( float x )
     {
         result = ( (as_int(x) & FLOAT_EXPONENT_MASK ) >> FLOAT_MANTISSA_BITS) - FLOAT_BIAS;
     }
-    else if( __intel_relaxed_isnan( x ) |
-             __intel_relaxed_isinf( x ) )
+    else if (__intel_relaxed_isinf(x))
+    {
+        result = INT_MAX;
+    }
+    else if (__intel_relaxed_isnan(x))
     {
         result = FP_ILOGBNAN;
     }
@@ -47,7 +50,11 @@ int __attribute__((overloadable)) __spirv_ocl_ilogb( double x )
     {
         result = ( (as_long(x) & DOUBLE_EXPONENT_MASK ) >> DOUBLE_MANTISSA_BITS) - DOUBLE_BIAS;
     }
-    else if( __spirv_IsNan( x ) | __spirv_IsInf( x ) )
+    else if (__spirv_IsInf(x))
+    {
+        result = INT_MAX;
+    }
+    else if (__spirv_IsNan(x))
     {
         result = FP_ILOGBNAN;
     }
