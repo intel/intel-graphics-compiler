@@ -106,6 +106,31 @@ struct fn_type_traits<R(A, B, C, D, E, F)> {
   using FTy = F;
 };
 
+template <typename R, typename A, typename B, typename C, typename D, typename E, typename F, typename G>
+struct fn_type_traits<R(A, B, C, D, E, F, G)> {
+  using RetTy = R;
+  using ATy = A;
+  using BTy = B;
+  using CTy = C;
+  using DTy = D;
+  using ETy = E;
+  using FTy = F;
+  using GTy = G;
+};
+
+template <typename R, typename A, typename B, typename C, typename D, typename E, typename F, typename G, typename H>
+struct fn_type_traits<R(A, B, C, D, E, F, G, H)> {
+  using RetTy = R;
+  using ATy = A;
+  using BTy = B;
+  using CTy = C;
+  using DTy = D;
+  using ETy = E;
+  using FTy = F;
+  using GTy = G;
+  using HTy = H;
+};
+
 #define IMPL_1ARG(F, GEN, FIMPL, A)                                                                                    \
   CREATE_PRIVATE auto F(fn_type_traits<decltype(FIMPL<GEN>)>::ATy A) { return FIMPL<GEN>(A); }
 
@@ -140,6 +165,22 @@ struct fn_type_traits<R(A, B, C, D, E, F)> {
     return FIMPL<GEN>(A, B, C, D, E, F0);                                                                              \
   }
 
+#define IMPL_7ARG(F, GEN, FIMPL, A, B, C, D, E, F0, G)                                                                 \
+  CREATE_PRIVATE auto F(fn_type_traits<decltype(FIMPL<GEN>)>::ATy A, fn_type_traits<decltype(FIMPL<GEN>)>::BTy B,      \
+                        fn_type_traits<decltype(FIMPL<GEN>)>::CTy C, fn_type_traits<decltype(FIMPL<GEN>)>::DTy D,      \
+                        fn_type_traits<decltype(FIMPL<GEN>)>::ETy E, fn_type_traits<decltype(FIMPL<GEN>)>::FTy F0,     \
+                        fn_type_traits<decltype(FIMPL<GEN>)>::GTy G) {                                                 \
+    return FIMPL<GEN>(A, B, C, D, E, F0, G);                                                                           \
+  }
+
+#define IMPL_8ARG(F, GEN, FIMPL, A, B, C, D, E, F0, G, H)                                                              \
+  CREATE_PRIVATE auto F(fn_type_traits<decltype(FIMPL<GEN>)>::ATy A, fn_type_traits<decltype(FIMPL<GEN>)>::BTy B,      \
+                        fn_type_traits<decltype(FIMPL<GEN>)>::CTy C, fn_type_traits<decltype(FIMPL<GEN>)>::DTy D,      \
+                        fn_type_traits<decltype(FIMPL<GEN>)>::ETy E, fn_type_traits<decltype(FIMPL<GEN>)>::FTy F0,     \
+                        fn_type_traits<decltype(FIMPL<GEN>)>::GTy G, fn_type_traits<decltype(FIMPL<GEN>)>::HTy H) {    \
+    return FIMPL<GEN>(A, B, C, D, E, F0, G, H);                                                                        \
+  }
+
 #define GEN_1ARG(F, Gen, A) IMPL_1ARG(F##_##Gen, Gen, F, A)
 
 #define GEN_2ARG(F, Gen, A, B) IMPL_2ARG(F##_##Gen, Gen, F, A, B)
@@ -151,6 +192,10 @@ struct fn_type_traits<R(A, B, C, D, E, F)> {
 #define GEN_5ARG(F, Gen, A, B, C, D, E) IMPL_5ARG(F##_##Gen, Gen, F, A, B, C, D, E)
 
 #define GEN_6ARG(F, Gen, A, B, C, D, E, F0) IMPL_6ARG(F##_##Gen, Gen, F, A, B, C, D, E, F0)
+
+#define GEN_7ARG(F, Gen, A, B, C, D, E, F0, G) IMPL_7ARG(F##_##Gen, Gen, F, A, B, C, D, E, F0, G)
+
+#define GEN_8ARG(F, Gen, A, B, C, D, E, F0, G, H) IMPL_8ARG(F##_##Gen, Gen, F, A, B, C, D, E, F0, G, H)
 
 #define IMPL_ALL_1ARG(F, A)                                                                                            \
   GEN_1ARG(F, Xe, A)                                                                                                   \

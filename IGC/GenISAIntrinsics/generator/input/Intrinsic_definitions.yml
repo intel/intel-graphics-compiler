@@ -11310,7 +11310,7 @@ intrinsics:
             - !AttributeID "NoUnwind"
     - !<IntrinsicDefinition>
         name: "GenISA_ConvertRayQueryHandleToRTStackPointer"
-        comment: "Raytracing: Return RTStack pointer associated with the given rayquery allocation"
+        comment: "Raytracing: Return the RTStack for a rayquery allocation"
         return_definition: !<ReturnDefinition>
             type_definition: *p_any_
             comment: "Pointer to the sync RTStack"
@@ -12181,6 +12181,19 @@ intrinsics:
         arguments:
             - !<ArgumentDefinition>
                 name: Arg0
+                type_definition: *i32
+                comment: ""
+        attributes:
+            - !AttributeID "NoUnwind"
+    - !<IntrinsicDefinition>
+        name: "GenISA_TraceRayInlinePotentialHitAsCommitted"
+        comment: "Returns whether the potential hit is treated as committed"
+        return_definition: !<ReturnDefinition>
+            type_definition: *i1
+            comment: ""
+        arguments:
+            - !<ArgumentDefinition>
+                name: RayQueryObjectIndex
                 type_definition: *i32
                 comment: ""
         attributes:
