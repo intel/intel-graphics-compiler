@@ -2069,6 +2069,7 @@ void Optimizer::insertFenceBeforeEOT() {
             fenceInst = builder.translateLscFence(
                 nullptr, SFID::UGM, LSC_FENCE_OP_TYPE6, LSC_SCOPE_TILE);
           }
+          fenceInst->invalidateVISAId();
           bb->insertBefore(iter, fenceInst);
         }
       }
@@ -2078,6 +2079,7 @@ void Optimizer::insertFenceBeforeEOT() {
           if (hasTypedWrites) {
             auto fenceInst = builder.translateLscFence(
                 nullptr, SFID::TGM, LSC_FENCE_OP_NONE, LSC_SCOPE_LOCAL);
+            fenceInst->invalidateVISAId();
             bb->insertBefore(iter, fenceInst);
           }
           // If needLSCFence is true, the fence has been added already, skip the
@@ -2085,12 +2087,14 @@ void Optimizer::insertFenceBeforeEOT() {
           if (hasUAVWrites && !needLscUgmFence) {
             auto fenceInst = builder.translateLscFence(
                 nullptr, SFID::UGM, LSC_FENCE_OP_NONE, LSC_SCOPE_LOCAL);
+            fenceInst->invalidateVISAId();
             bb->insertBefore(iter, fenceInst);
           }
           if (hasSLMWrites && !hasUAVWrites) {
             // UGM fence takes of SLM fence as well
             auto fenceInst = builder.translateLscFence(
                 nullptr, SFID::SLM, LSC_FENCE_OP_NONE, LSC_SCOPE_LOCAL);
+            fenceInst->invalidateVISAId();
             bb->insertBefore(iter, fenceInst);
           }
         } else {
@@ -2102,20 +2106,23 @@ void Optimizer::insertFenceBeforeEOT() {
           if (hasUAVWrites || hasTypedWrites) {
             auto fenceInst = builder.createFenceInstructionPreLSC(
                 nullptr, 0, true, true, false);
+            fenceInst->invalidateVISAId();
             bb->insertBefore(iter, fenceInst);
           }
           if (hasSLMWrites) {
             auto fenceInst = builder.createFenceInstructionPreLSC(
                 nullptr, 0, true, false, false);
+            fenceInst->invalidateVISAId();
             bb->insertBefore(iter, fenceInst);
           }
         }
       }
 
       if (clearWritesBeforeEOT && hasWrites) {
-        auto fenseInst = builder.translateLscFence(
+        auto fenceInst = builder.translateLscFence(
             nullptr, SFID::UGM, LSC_FENCE_OP_EVICT, LSC_SCOPE_TILE);
-        bb->insertBefore(iter, fenseInst);
+        fenceInst->invalidateVISAId();
+        bb->insertBefore(iter, fenceInst);
       }
 
       builder.instList.clear();
