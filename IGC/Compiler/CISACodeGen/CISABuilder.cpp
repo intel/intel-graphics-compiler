@@ -4455,17 +4455,15 @@ void CEncoder::InitVISABuilderOptions(TARGET_PLATFORM VISAPlatform, bool canAbor
     // GRF-mode bump is baked when the G4 kernel is built during emission.
     bool ForceBCRWorthwhile = getBankConflictALUDensity(m_program->GetParent()->getLLVMFunction()) * 100.0f >=
                               IGC_GET_FLAG_VALUE(BCRAluDensityThreshold);
-    bool BumpGRFForForceBCR =
-        context->supportsVRT() && m_program->m_Platform->getPlatformInfo().eProductFamily != IGFX_NVL;
     if (ForceBCRWorthwhile && m_program->GetParent()->getLLVMFunction()->size() == 1 &&
         m_program->m_Platform->getMinDispatchMode() != SIMDMode::SIMD8) {
       SaveOption(vISA_forceBCR, true);
-      if (BumpGRFForForceBCR)
+      if (context->supportsVRT())
         SaveOption(vISA_bumpGRFForForceBCR, true);
     }
     // For OCL shader with very low register pressure, it is safe to enable vISA_bumpGRFForForceBCR on platform with VRT
     // support.
-    if (ForceBCRWorthwhile && MaxRegPressure > 0 && MaxRegPressure < 32 && BumpGRFForForceBCR) {
+    if (ForceBCRWorthwhile && MaxRegPressure > 0 && MaxRegPressure < 32 && context->supportsVRT()) {
       SaveOption(vISA_forceBCR, true);
       SaveOption(vISA_bumpGRFForForceBCR, true);
       // For shader with very low register pressure, we want to restrict the RP
