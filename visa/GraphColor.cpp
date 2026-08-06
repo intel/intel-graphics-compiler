@@ -12240,6 +12240,22 @@ bool GlobalRA::kernelUsesDpas() const {
   return false;
 }
 
+// True if any operand still refers to a G4_RegVar with no physical register,
+// i.e. register allocation is incomplete. Post-RA passes dereference
+// G4_RegVar::getPhyReg() without a null check (G4_BB_SB::getFootprintForOperand,
+// DDD::getBucketsForOperand), so such a result must not be reported as success.
+static bool hasUnallocatedOperand(G4_Kernel &kernel) {
+  for (G4_BB *bb : kernel.fg)
+    for (G4_INST *inst : *bb)
+      for (int i = 0; i < Opnd_total_num; ++i) {
+        G4_Operand *opnd = inst->getOperand(Gen4_Operand_Number(i));
+        G4_VarBase *base = opnd ? opnd->getBase() : nullptr;
+        if (base && base->isRegVar() && !base->asRegVar()->getPhyReg())
+          return true;
+      }
+  return false;
+}
+
 //
 // graph coloring entry point.  returns nonzero if RA fails
 //
@@ -12690,9 +12706,17 @@ int GlobalRA::coloringRegAlloc() {
   // Report failure to allocate due to excessive register pressure.
   //
   // Failed to spill, or there is no stack call and the loop iterates to
-  // maxRAIterations
-  if (!reserveSpillReg &&
-      (failedToSpill || (!hasStackCall && iterationNo == maxRAIterations))) {
+  // maxRAIterations. The latter is normally benign under fail-safe RA
+  // (reserveSpillReg), which assigns the spill/fill temporaries it creates
+  // out of the reserved GRFs - but entered on the very first iteration
+  // (-maxRAIterations 1) it can itself leave operands unallocated, and
+  // returning success would make the post-RA passes dereference a null
+  // physical register. So report the exhaustion under fail-safe RA when, and
+  // only when, the allocation really is incomplete; a complete fail-safe
+  // result is a usable kernel and must not be discarded.
+  if ((!reserveSpillReg && failedToSpill) ||
+      (!hasStackCall && iterationNo == maxRAIterations &&
+       (!reserveSpillReg || hasUnallocatedOperand(kernel)))) {
     std::stringstream spilledVars;
     for (auto dcl : kernel.Declares) {
       if (dcl->isSpilled() && dcl->getRegFile() == G4_GRF) {
