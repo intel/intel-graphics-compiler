@@ -273,16 +273,16 @@ StreamEmitter::StreamEmitter(raw_pwrite_stream &outStream, const std::string &da
 #endif
   std::unique_ptr<MCCodeEmitter> pCodeEmitter = IGCLLVM::make_unique<VISAMCCodeEmitter>();
 
-  bool isRelaxAll = false;
-  bool isNoExecStack = false;
 #if LLVM_VERSION_MAJOR >= 22
   m_pMCStreamer =
       createELFStreamer(*m_pContext, std::move(pAsmBackend), std::move(pObjectWriter), std::move(pCodeEmitter));
 #else
+  bool isRelaxAll = false;
   m_pMCStreamer = createELFStreamer(*m_pContext, std::move(pAsmBackend), std::move(pObjectWriter),
                                     std::move(pCodeEmitter), isRelaxAll);
 #endif
 
+  bool isNoExecStack = false;
   IGCLLVM::initSections(m_pMCStreamer, isNoExecStack, m_pContext);
 }
 
