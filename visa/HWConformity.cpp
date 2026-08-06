@@ -3118,10 +3118,15 @@ bool HWConformity::emulate64bMov(INST_LIST_ITER iter, G4_BB *bb) {
       [[maybe_unused]] bool legal =
           src0RR->getRegion()->isSingleStride(inst->getExecSize(), stride);
       vISA_ASSERT(legal, "unsupported region");
+      // Reinterpreting each 64-bit element as a pair of dwords doubles the
+      // element stride, so the dword region's vertical stride is 2 * stride
+      // (e.g. <8;2,4>:df -> <8;1,0>:ud for a single stride of 4).
       if (stride == 1)
         rgnToUse = builder.getRegionStride2();
       else if (stride == 2)
         rgnToUse = builder.getRegionStride4();
+      else if (stride == 4)
+        rgnToUse = builder.createRegionDesc(8, 1, 0);
       else
         vISA_ASSERT(false, "unsupported stride");
     } else {
