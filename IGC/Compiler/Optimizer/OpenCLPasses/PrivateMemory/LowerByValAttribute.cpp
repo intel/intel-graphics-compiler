@@ -16,6 +16,7 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPop.hpp"
 #include <llvmWrapper/IR/Instructions.h>
 #include <llvmWrapper/IR/IRBuilder.h>
+#include <algorithm>
 
 using namespace llvm;
 using namespace IGC;
@@ -69,9 +70,11 @@ void LowerByValAttribute::visitCallInst(CallInst &CI) {
 
     if (CI.paramHasAttr(i, llvm::Attribute::ByVal) && !CI.paramHasAttr(i, llvm::Attribute::ReadOnly)) {
       Type *ElTy = CI.getParamByValType(i);
+      Align SrcAlign = std::max(DL.getABITypeAlign(ElTy), CI.getParamAlign(i).valueOrOne());
       IGCLLVM::IRBuilder<> builder(&CI);
-      Value *AI = builder.CreateAlloca(ElTy);
-      builder.CreateMemCpy(AI, OpI, DL.getTypeAllocSize(ElTy), DL.getABITypeAlign(ElTy).value());
+      AllocaInst *AI = builder.CreateAlloca(ElTy);
+      AI->setAlignment(std::max(AI->getAlign(), SrcAlign));
+      builder.CreateMemCpy(AI, AI->getAlign(), OpI, SrcAlign, DL.getTypeAllocSize(ElTy));
       auto AC = builder.CreateAddrSpaceCast(AI, OpITy);
       CI.replaceUsesOfWith(OpI, AC);
       m_changed = true;
