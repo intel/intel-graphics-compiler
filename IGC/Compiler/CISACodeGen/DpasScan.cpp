@@ -59,6 +59,7 @@ bool DpasScan::runOnFunction(Function &F) {
       case GenISAIntrinsic::GenISA_dpas:
       case GenISAIntrinsic::GenISA_sub_group_dpas:
       case GenISAIntrinsic::GenISA_sub_group_bdpas:
+      case GenISAIntrinsic::GenISA_sub_group_bdpas_packed:
         if (analysis->insideDivergentCF(I)) {
           modMD->compOpt.DisableEUFusion = true;
           return true;

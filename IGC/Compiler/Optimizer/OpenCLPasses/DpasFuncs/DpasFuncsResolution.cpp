@@ -273,6 +273,7 @@ static bool isDpasIntrinsicID(GenISAIntrinsic::ID ID) {
   case GenISAIntrinsic::GenISA_dpas:
   case GenISAIntrinsic::GenISA_sub_group_dpas:
   case GenISAIntrinsic::GenISA_sub_group_bdpas:
+  case GenISAIntrinsic::GenISA_sub_group_bdpas_packed:
     return true;
   default:
     return false;

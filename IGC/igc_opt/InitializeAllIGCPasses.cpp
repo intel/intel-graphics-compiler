@@ -88,6 +88,7 @@ void initializeAllIGCPasses(llvm::PassRegistry &Registry) {
   initializeConvertMSAAPayloadTo16BitPass(Registry);
   initializeCustomSafeOptPassPass(Registry);
   initializeCustomUnsafeOptPassPass(Registry);
+  initializeBdpasScaleCoalescingPass(Registry);
   initializeDpasScanPass(Registry);
   initializeDynamicTextureFoldingPass(Registry);
   initializeSampleMultiversioningPass(Registry);

@@ -2305,6 +2305,7 @@ bool CodeLoopSinking::isSafeToLoopSinkLoad(Instruction *InstToSink, Loop *L) {
         case GenISAIntrinsic::GenISA_dpas:
         case GenISAIntrinsic::GenISA_sub_group_dpas:
         case GenISAIntrinsic::GenISA_sub_group_bdpas:
+        case GenISAIntrinsic::GenISA_sub_group_bdpas_packed:
           PrintDump(VerbosityLevel::High, "Not a real store instruction, may not alias\n");
           continue;
 

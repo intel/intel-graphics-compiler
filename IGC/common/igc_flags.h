@@ -1191,6 +1191,8 @@ DECLARE_IGC_REGKEY(bool, EnableNativeFP32LocalAtomicAdd, true, "Enable native fp
 DECLARE_IGC_REGKEY(bool, EnableNativeTanh, true, "Enable native tanh instruction", true)
 DECLARE_IGC_REGKEY(bool, EnableFP64Dpas, false, "Enable fp64 dpas", true)
 DECLARE_IGC_REGKEY(bool, EnableFP4Dpas, true, "Enable fp4 dpas", true)
+DECLARE_IGC_REGKEY(bool, EnableBdpasScaleCoalescing, false,
+                   "Coalesce FP4 BDPAS block scaling operands into shared packed regions", true)
 DECLARE_IGC_REGKEY(bool, EnableOutOfBoundsBuiltinChecks, true, "Enable extra checks for OOB in builtins", true)
 DECLARE_IGC_REGKEY(bool, EnableNativeSinCos, true, "Enable native sin and cos", true)
 DECLARE_IGC_REGKEY(bool, ForceZeroTileID, false, "Use immediate 0 value as TileID instead of sr0.1 data", false)

@@ -7087,7 +7087,8 @@ GenPrecision ConvertPrecisionToVisaType(PrecisionType P) {
 
 void CEncoder::bdpas(CVariable *Dst, CVariable *Acc, CVariable *B, PrecisionType BPrecision, CVariable *A,
                      PrecisionType APrecision, CVariable *BScaling, CVariable *AScaling, uint8_t systolicDepth,
-                     uint8_t repeatCount) {
+                     uint8_t repeatCount, bool SkipScaleStriding, uint16_t BScaleSourceOffset,
+                     uint16_t AScaleSourceOffset, uint16_t ScaleSourceStride) {
 
   if (!m_program->GetContext()->platform.hasFP64DPAS() &&
       (APrecision == PrecisionType::DF || BPrecision == PrecisionType::DF)) {
@@ -7110,7 +7111,7 @@ void CEncoder::bdpas(CVariable *Dst, CVariable *Acc, CVariable *B, PrecisionType
   VISA_Exec_Size aluExecSize = GetAluExecSize(Dst);
   IGC_ASSERT(aluExecSize == EXEC_SIZE_16 || aluExecSize == EXEC_SIZE_32);
 
-  bool scaleNeedsStriding = BPrecision == E2M1;
+  bool scaleNeedsStriding = BPrecision == E2M1 && !SkipScaleStriding;
   IGC_ASSERT(!scaleNeedsStriding || APrecision == E2M1);
 
   // bdpas has a hardware requirement for k == 64
@@ -7118,9 +7119,10 @@ void CEncoder::bdpas(CVariable *Dst, CVariable *Acc, CVariable *B, PrecisionType
   // to provide double the amount of scaling parameters.
   // New part of scaling parameters needs to be separated
   // by a stride of 32 elements.
-  auto insertStrideIntoScaling = [this](CVariable *Src, CVariable *&Dst, uint16_t OriginalStride, uint16_t DataSize) {
-    IGC_ASSERT(DataSize <= OriginalStride);
-    IGC_ASSERT(OriginalStride * 2 <= Src->GetNumberElement());
+  auto insertStrideIntoScaling = [this](CVariable *Src, CVariable *&Dst, uint16_t FirstSourceOffset,
+                                        uint16_t SecondSourceOffset, uint16_t DataSize) {
+    IGC_ASSERT(FirstSourceOffset + DataSize <= Src->GetNumberElement());
+    IGC_ASSERT(SecondSourceOffset + DataSize <= Src->GetNumberElement());
     VISA_Exec_Size moveExecSize = visaExecSize(lanesToSIMDMode((DataSize)));
 
     const uint16_t stride = 32;
@@ -7135,14 +7137,15 @@ void CEncoder::bdpas(CVariable *Dst, CVariable *Acc, CVariable *B, PrecisionType
 
     // first part (before stride)
     V(vKernel->CreateVISADstOperand(dstOpnd, dstVisa, 1, 0, 0));
-    V(vKernel->CreateVISASrcOperand(srcOpnd, srcVisa, MODIFIER_NONE, 1, 1, 0, 0, 0));
+    V(vKernel->CreateVISASrcOperand(srcOpnd, srcVisa, MODIFIER_NONE, 1, 1, 0, FirstSourceOffset / getGRFSize(),
+                                    FirstSourceOffset % getGRFSize()));
 
     V(vKernel->AppendVISADataMovementInst(ISA_MOV, nullptr, false, GetAluEMask(Src), moveExecSize, dstOpnd, srcOpnd));
 
     // second part (after stride)
     V(vKernel->CreateVISADstOperand(dstOpnd, dstVisa, 1, 0, stride));
-    V(vKernel->CreateVISASrcOperand(srcOpnd, srcVisa, MODIFIER_NONE, 1, 1, 0, OriginalStride / getGRFSize(),
-                                    OriginalStride % getGRFSize()));
+    V(vKernel->CreateVISASrcOperand(srcOpnd, srcVisa, MODIFIER_NONE, 1, 1, 0, SecondSourceOffset / getGRFSize(),
+                                    SecondSourceOffset % getGRFSize()));
 
     V(vKernel->AppendVISADataMovementInst(ISA_MOV, nullptr, false, GetAluEMask(Src), moveExecSize, dstOpnd, srcOpnd));
   };
@@ -7197,8 +7200,10 @@ void CEncoder::bdpas(CVariable *Dst, CVariable *Acc, CVariable *B, PrecisionType
 
     for (unsigned i = 0; i < numParts; i++) {
       if (scaleNeedsStriding) {
-        insertStrideIntoScaling(scalingUnstridedPartsB[i], scalingPartsB[i], 16, 16);
-        insertStrideIntoScaling(scalingUnstridedPartsA[i], scalingPartsA[i], 16, 8);
+        insertStrideIntoScaling(scalingUnstridedPartsB[i], scalingPartsB[i], BScaleSourceOffset,
+                                BScaleSourceOffset + ScaleSourceStride, 16);
+        insertStrideIntoScaling(scalingUnstridedPartsA[i], scalingPartsA[i], AScaleSourceOffset,
+                                AScaleSourceOffset + ScaleSourceStride, 8);
       } else {
         scalingPartsB[i] = scalingUnstridedPartsB[i];
         scalingPartsA[i] = scalingUnstridedPartsA[i];
@@ -7228,8 +7233,9 @@ void CEncoder::bdpas(CVariable *Dst, CVariable *Acc, CVariable *B, PrecisionType
     if (scaleNeedsStriding) {
       CVariable *scalingStridedB = nullptr;
       CVariable *scalingStridedA = nullptr;
-      insertStrideIntoScaling(BScaling, scalingStridedB, 16, 16);
-      insertStrideIntoScaling(AScaling, scalingStridedA, 16, 8);
+      insertStrideIntoScaling(BScaling, scalingStridedB, BScaleSourceOffset, BScaleSourceOffset + ScaleSourceStride,
+                              16);
+      insertStrideIntoScaling(AScaling, scalingStridedA, AScaleSourceOffset, AScaleSourceOffset + ScaleSourceStride, 8);
       BScaling = scalingStridedB;
       AScaling = scalingStridedA;
     }

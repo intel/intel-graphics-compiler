@@ -97,6 +97,18 @@ public:
   }
 };
 
+class PackedBdpasIntrinsic : public GenIntrinsicInst {
+public:
+  Value *getAScaleOffset() const { return getArgOperand(arg_size() - 2); }
+  Value *getBScaleOffset() const { return getArgOperand(arg_size() - 1); }
+
+  static inline bool classof(const GenIntrinsicInst *I) {
+    return I->getIntrinsicID() == GenISAIntrinsic::GenISA_sub_group_bdpas_packed;
+  }
+
+  static inline bool classof(const Value *V) { return isa<GenIntrinsicInst>(V) && classof(cast<GenIntrinsicInst>(V)); }
+};
+
 class RTWriteIntrinsic : public GenIntrinsicInst {
 protected:
   Value *getOperand(unsigned i) const { return GenIntrinsicInst::getOperand(i); }

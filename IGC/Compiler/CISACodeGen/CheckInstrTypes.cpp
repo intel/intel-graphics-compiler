@@ -311,6 +311,7 @@ void CheckInstrTypes::visitCallInst(CallInst &C) {
     case GenISAIntrinsic::GenISA_dpas:
     case GenISAIntrinsic::GenISA_sub_group_dpas:
     case GenISAIntrinsic::GenISA_sub_group_bdpas:
+    case GenISAIntrinsic::GenISA_sub_group_bdpas_packed:
       g_InstrTypes.hasDPAS = true;
       break;
     case GenISAIntrinsic::GenISA_typedread:

@@ -10,6 +10,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/Intrinsics.h>
 #include "EmitVISAPass.hpp"
 #include "OpenCLKernelCodeGen.hpp"
+#include "Compiler/CISACodeGen/BdpasScaleCoalescing.hpp"
 #include "Compiler/CodeGenPublic.h"
 #include "Compiler/Optimizer/OpenCLPasses/NamedBarriers/NamedBarriersResolution.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/LSCFuncs/LSCFuncsResolution.hpp"
@@ -35,6 +36,7 @@ SPDX-License-Identifier: MIT
 #include "AdaptorCommon/ImplicitArgs.hpp"
 #include "Compiler/IGCPassSupport.h"
 #include "common/LLVMWarningsPush.hpp"
+#include "llvm/ADT/STLExtras.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/Path.h"
 #include "llvm/Support/FormattedStream.h"
@@ -968,6 +970,7 @@ bool EmitPass::runOnFunction(llvm::Function &F) {
 
   phiMovToBB.clear();
   m_SubDWLoadWideDst.clear();
+  m_PairedSubDWLoadWideDst.clear();
   unsigned int lineNo = 0;
   bool disableSlicing =
       IGC_IS_FLAG_ENABLED(DisableSIMD32Slicing) ||
@@ -9565,7 +9568,11 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst *inst) {
     emitAtomicTyped(inst);
     break;
   case GenISAIntrinsic::GenISA_sub_group_bdpas:
+  case GenISAIntrinsic::GenISA_sub_group_bdpas_packed:
     emitBdpas(inst);
+    break;
+  case GenISAIntrinsic::GenISA_byte_swizzle:
+    emitByteSwizzle(inst);
     break;
   case GenISAIntrinsic::GenISA_atomiccounterinc:
   case GenISAIntrinsic::GenISA_atomiccounterpredec:
@@ -18702,6 +18709,107 @@ CVariable *EmitPass::prepareDataForUniform(CVariable *DataVar, uint32_t Required
   return newVar;
 }
 
+
+// A d16u32 load first writes one zero-extended dword per lane to gatherDst.
+// Ordinary lowering then copies the low i16 from every dword into the load's
+// dense result. A user that can read gatherDst directly makes that copy dead.
+// This predicate recognizes such users. A byte swizzle is one of them because
+// emitByteSwizzle reads the useful bytes with source stride 4.
+bool EmitPass::readsWideSubDWLoadResult(LoadInst *Load, User *U) const {
+  auto *UserInst = dyn_cast<Instruction>(U);
+  if (!UserInst || UserInst->getParent() != Load->getParent())
+    return false;
+
+  if (isa<ZExtInst>(U) && U->getType()->isIntegerTy(32)) {
+    for (User *ZExtUser : U->users()) {
+      auto *ZExtUserInst = dyn_cast<Instruction>(ZExtUser);
+      if (!ZExtUserInst)
+        continue;
+      if (ZExtUserInst->getParent() != Load->getParent())
+        return false;
+      if (auto *IEI = dyn_cast<InsertElementInst>(ZExtUserInst);
+          IEI && (m_currShader->HasBecomeNoop(IEI) || m_currShader->CanTreatScalarSourceAsAlias(IEI)))
+        return false;
+    }
+    return true;
+  }
+
+  if (auto *SI = dyn_cast<StoreInst>(U))
+    return SI->getValueOperand() == Load;
+
+  auto *GII = dyn_cast<GenIntrinsicInst>(U);
+  return GII && GII->getIntrinsicID() == GenISAIntrinsic::GenISA_byte_swizzle;
+}
+
+static bool hasOnlyLocalPackedBdpasUsers(const GenIntrinsicInst *Swizzle) {
+  return !Swizzle->user_empty() && llvm::all_of(Swizzle->users(), [Swizzle](const User *SwizzleUser) {
+    auto *Bdpas = dyn_cast<GenIntrinsicInst>(SwizzleUser);
+    return Bdpas && Bdpas->getIntrinsicID() == GenISAIntrinsic::GenISA_sub_group_bdpas_packed &&
+           Bdpas->getParent() == Swizzle->getParent() &&
+           (Bdpas->getArgOperand(3) == Swizzle || Bdpas->getArgOperand(4) == Swizzle);
+  });
+}
+
+CVariable *EmitPass::getOrCreatePairedSubDWLoadWideDst(LoadInst *Load, uint16_t NumElts) {
+  auto Existing = m_PairedSubDWLoadWideDst.find(Load);
+  if (Existing != m_PairedSubDWLoadWideDst.end())
+    return Existing->second;
+
+  GenIntrinsicInst *Swizzle = nullptr;
+  LoadInst *First = nullptr;
+  LoadInst *Second = nullptr;
+  for (User *U : Load->users()) {
+    auto *GII = dyn_cast<GenIntrinsicInst>(U);
+    if (!GII || GII->getIntrinsicID() != GenISAIntrinsic::GenISA_byte_swizzle || GII->getParent() != Load->getParent())
+      continue;
+
+    auto *CandidateFirst = dyn_cast<LoadInst>(GII->getArgOperand(0));
+    auto *CandidateSecond = dyn_cast<LoadInst>(GII->getArgOperand(1));
+    if (!CandidateFirst || !CandidateSecond || CandidateFirst == CandidateSecond ||
+        CandidateFirst->getParent() != GII->getParent() || CandidateSecond->getParent() != GII->getParent() ||
+        m_currShader->GetIsUniform(CandidateFirst) || m_currShader->GetIsUniform(CandidateSecond))
+      continue;
+
+    auto *Indices = dyn_cast<Constant>(GII->getArgOperand(2));
+    bool HasPairableComponents = false;
+    if (Indices) {
+      for (unsigned Component = 0; Component != 4; Component += 2) {
+        auto *FirstIndex = dyn_cast_or_null<ConstantInt>(Indices->getAggregateElement(Component));
+        auto *SecondIndex = dyn_cast_or_null<ConstantInt>(Indices->getAggregateElement(Component + 1));
+        HasPairableComponents |= FirstIndex && SecondIndex && FirstIndex->getZExtValue() < 2 &&
+                                 SecondIndex->getZExtValue() == FirstIndex->getZExtValue() + 2;
+      }
+    }
+    if (!HasPairableComponents)
+      continue;
+
+    // The wider copy is no-mask. Restrict it to values used only by packed
+    // BDPAS calls in this block, where inactive lanes cannot reach another use.
+    if (!hasOnlyLocalPackedBdpasUsers(GII))
+      continue;
+
+    if (Swizzle && (First != CandidateFirst || Second != CandidateSecond))
+      return nullptr;
+    Swizzle = GII;
+    First = CandidateFirst;
+    Second = CandidateSecond;
+  }
+
+  if (!Swizzle)
+    return nullptr;
+
+  LoadInst *Earlier = First->comesBefore(Second) ? First : Second;
+  if (Load != Earlier)
+    return nullptr;
+
+  CVariable *Pair =
+      m_currShader->GetNewVariable(int_cast<uint16_t>(2 * NumElts), ISA_TYPE_UD, EALIGN_2GRF, false, CName::NONE);
+  m_PairedSubDWLoadWideDst[First] = m_currShader->GetNewAlias(Pair, ISA_TYPE_UD, 0, NumElts);
+  m_PairedSubDWLoadWideDst[Second] =
+      m_currShader->GetNewAlias(Pair, ISA_TYPE_UD, int_cast<uint16_t>(getGRFSize()), NumElts);
+  return m_PairedSubDWLoadWideDst[Load];
+}
+
 void EmitPass::emitLSCVectorLoad_subDW(LSC_CACHE_OPTS CacheOpts, bool UseA32, ResourceDescriptor &Resource,
                                        CVariable *Dest, CVariable *UniformBaseVar, CVariable *Offset, int ImmOffset,
                                        int ImmScale, uint32_t NumElts, uint32_t EltBytes, LSC_DOC_ADDR_SPACE AddrSpace,
@@ -18738,7 +18846,20 @@ void EmitPass::emitLSCVectorLoad_subDW(LSC_CACHE_OPTS CacheOpts, bool UseA32, Re
 
   // Need a temp as Dest is smaller than DW.
   e_alignment dataAlign = ((4 * alloc_nbelts) <= (uint32_t)getGRFSize()) ? EALIGN_GRF : EALIGN_2GRF;
-  CVariable *gatherDst = m_currShader->GetNewVariable(alloc_nbelts, ISA_TYPE_UD, dataAlign, doUniformLoad, CName::NONE);
+  // Place eligible one-GRF d16u32 responses next to each other so
+  // emitByteSwizzle can read the pair as one SIMD32 region. Otherwise, use an
+  // independent response temporary.
+  CVariable *gatherDst = nullptr;
+  if (EltBytes == 2 && !doUniformLoad && !mergeVal && 4 * alloc_nbelts == getGRFSize()) {
+    if (auto *Load = dyn_cast<LoadInst>(m_currentEmitInst)) {
+      auto Paired = m_PairedSubDWLoadWideDst.find(Load);
+      gatherDst = Paired != m_PairedSubDWLoadWideDst.end()
+                      ? Paired->second
+                      : getOrCreatePairedSubDWLoadWideDst(Load, int_cast<uint16_t>(alloc_nbelts));
+    }
+  }
+  if (!gatherDst)
+    gatherDst = m_currShader->GetNewVariable(alloc_nbelts, ISA_TYPE_UD, dataAlign, doUniformLoad, CName::NONE);
   if (alloc_nbelts > nbelts) {
     // This is for need4GRFAlign = true
     gatherDst = m_currShader->GetNewAlias(gatherDst, gatherDst->GetType(), 0, nbelts);
@@ -18795,53 +18916,15 @@ void EmitPass::emitLSCVectorLoad_subDW(LSC_CACHE_OPTS CacheOpts, bool UseA32, Re
                  m_encoder->Push();
                });
 
-  // If every user of this sub-dword load is a zext-to-i32 or a sub-dword
-  // store, the narrow Dest is never read:
-  //   - EmitZExtByteLoad remaps zext users to gatherDst directly
-  //   - emitLSCVectorStore_subDW looks up m_SubDWLoadWideDst for store users
+  // If every user reads gatherDst directly, the narrow Dest is never read.
   // Skip the copy to avoid emitting a dead mov.
   // This optimization is only safe on Xe2+ where the supporting infrastructure
   // (m_SubDWLoadWideDst map and MatchZExtByteLoad) is available.
   if (m_currShader->m_Platform->isCoreChildOf(IGFX_XE2_HPG_CORE) && !mergeVal) {
     if (auto *LI = dyn_cast<LoadInst>(m_currentEmitInst)) {
-      llvm::BasicBlock *loadBB = LI->getParent();
-      bool canSkipCopy = !LI->user_empty();
-      for (auto *U : LI->users()) {
-        // Only consider users in the same BB; cross-BB users need Dest.
-        auto *UI = dyn_cast<Instruction>(U);
-        if (!UI || UI->getParent() != loadBB) {
-          canSkipCopy = false;
-          break;
-        }
-        if (isa<ZExtInst>(U) && U->getType()->isIntegerTy(32)) {
-          // All zext users must be in loadBB (else MatchModifier reads Dest).
-          // Also bail if a zext user is a noop IEI (HasBecomeNoop or
-          // CanTreatScalarSourceAsAlias): EmitZExtByteLoad falls back to
-          // Cast in that case and reads from Dest, so Dest must be written.
-          bool zextUsersLocal = true;
-          for (auto *ZU : U->users()) {
-            if (auto *ZUI = dyn_cast<Instruction>(ZU)) {
-              if (ZUI->getParent() != loadBB) {
-                zextUsersLocal = false;
-                break;
-              }
-              if (auto *IEI = dyn_cast<InsertElementInst>(ZUI)) {
-                if (m_currShader->HasBecomeNoop(IEI) || m_currShader->CanTreatScalarSourceAsAlias(IEI)) {
-                  zextUsersLocal = false;
-                  break;
-                }
-              }
-            }
-          }
-          if (zextUsersLocal)
-            continue;
-        }
-        if (auto *SI = dyn_cast<StoreInst>(U); SI && SI->getValueOperand() == LI)
-          continue;
-        canSkipCopy = false;
-        break;
-      }
-      if (canSkipCopy)
+      const bool CanSkipCopy =
+          !LI->user_empty() && llvm::all_of(LI->users(), [&](User *U) { return readsWideSubDWLoadResult(LI, U); });
+      if (CanSkipCopy)
         return;
     }
   }
@@ -22375,6 +22458,114 @@ void EmitPass::emitLoadgetEngineID(llvm::GenIntrinsicInst *I) {
 }
 
 
+void EmitPass::emitByteSwizzle(GenIntrinsicInst *GII) {
+  // Currently only a narrow case is supported for efficient BDPAS scale params swizzle.
+  // The current contract has two i16 sources, four i8 results, and a constant
+  // four-entry mask whose indices are in [0, 3]. The paired-response path below
+  // additionally requires adjacent same-block d16u32 loads used only by packed
+  // BDPAS instructions in that block.
+  const bool DstUniform = m_destination->IsUniform();
+  const unsigned Width = DstUniform ? 1 : numLanes(m_SimdMode);
+  IGC_ASSERT(m_destination->GetNumberElement() >= 4 * Width);
+
+  CVariable *Sources[2] = {GetSymbol(GII->getArgOperand(0)), GetSymbol(GII->getArgOperand(1))};
+  IGC_ASSERT(Sources[0]->GetElemSize() == 2 && Sources[1]->GetElemSize() == 2);
+  IGC_ASSERT(m_destination->GetElemSize() == 1);
+  IGC_ASSERT(m_destination != Sources[0] && m_destination != Sources[1]);
+  IGC_ASSERT(!DstUniform || (Sources[0]->IsUniform() && Sources[1]->IsUniform()));
+
+  auto *Indices = dyn_cast<Constant>(GII->getArgOperand(2));
+  if (!Indices) {
+    IGC_ASSERT_MESSAGE(false, "Byte swizzle indices must be constant.");
+    return;
+  }
+  unsigned ByteIndices[4] = {};
+  for (unsigned Component = 0; Component != 4; ++Component) {
+    auto *Index = dyn_cast_or_null<ConstantInt>(Indices->getAggregateElement(Component));
+    if (!Index || Index->getZExtValue() >= 4) {
+      IGC_ASSERT_MESSAGE(false, "Byte swizzle indices must be in the range [0, 3].");
+      return;
+    }
+    ByteIndices[Component] = int_cast<unsigned>(Index->getZExtValue());
+  }
+
+  unsigned SourceStrides[2] = {Sources[0]->IsUniform() ? 0U : 2U, Sources[1]->IsUniform() ? 0U : 2U};
+  for (unsigned SourceIndex = 0; SourceIndex != 2; ++SourceIndex) {
+    auto *Load = dyn_cast<LoadInst>(GII->getArgOperand(SourceIndex));
+    auto WideDst = m_SubDWLoadWideDst.find(Sources[SourceIndex]);
+    if (Load && Load->getParent() == GII->getParent() && WideDst != m_SubDWLoadWideDst.end() &&
+        WideDst->second.second == GII->getParent()) {
+      // The ordinary source is a dense i16 vector and uses byte stride 2. A
+      // d16u32 response holds the same i16 in the low half of each dword, so
+      // byte stride 4 reads it in place and avoids the dense-result copy.
+      Sources[SourceIndex] = WideDst->second.first;
+      SourceStrides[SourceIndex] = Sources[SourceIndex]->IsUniform() ? 0U : 4U;
+    }
+  }
+
+  for (auto *&Source : Sources) {
+    if (!Source->IsImmediate())
+      continue;
+    CVariable *Reg = m_currShader->GetNewVariable(
+        1, Source->GetType(), m_encoder->GetCISADataTypeAlignment(Source->GetType()), true, CName::NONE);
+    m_encoder->SetSimdSize(SIMDMode::SIMD1);
+    m_encoder->SetNoMask();
+    m_encoder->Copy(Reg, Source);
+    m_encoder->Push();
+    Source = Reg;
+  }
+
+  CVariable *ByteSources[2] = {
+      m_currShader->GetNewAlias(Sources[0], m_destination->GetType(), 0, 0),
+      m_currShader->GetNewAlias(Sources[1], m_destination->GetType(), 0, 0),
+  };
+  CVariable *PairedByteSource = nullptr;
+  if (!DstUniform && hasOnlyLocalPackedBdpasUsers(GII) && 2 * Width <= 32 && 4 * Width == getGRFSize() &&
+      SourceStrides[0] == 4 && SourceStrides[1] == 4 && Sources[0]->GetAlias() &&
+      Sources[0]->GetAlias() == Sources[1]->GetAlias() && Sources[0]->GetAliasOffset() == 0 &&
+      Sources[1]->GetAliasOffset() == getGRFSize()) {
+    PairedByteSource = m_currShader->GetNewAlias(Sources[0]->GetAlias(), m_destination->GetType(), 0, 0);
+  }
+  for (unsigned Component = 0; Component != 4; ++Component) {
+    const unsigned ByteIndex = ByteIndices[Component];
+    const unsigned SourceIndex = ByteIndex / 2;
+    const unsigned SourceByte = ByteIndex % 2;
+    if (PairedByteSource && Component + 1 < 4 && SourceIndex == 0 && ByteIndices[Component + 1] == ByteIndex + 2) {
+      // This SIMD32 MOV flattens two 16-lane vector components into one write;
+      // its 32 positions are not 32 program lanes. Use NoMask so both packed
+      // components are initialized. hasOnlyLocalPackedBdpasUsers() restricts
+      // this path to same-block BDPAS instructions. Those instructions still
+      // use the program execution mask, so inactive lanes cannot observe the
+      // extra writes.
+      // The ordinary branch below writes one SIMD16 component, so its positions
+      // still correspond to program lanes and it keeps the current execution
+      // mask.
+      m_encoder->SetNoMask();
+      m_encoder->SetSimdSize(lanesToSIMDMode(2 * Width));
+      m_encoder->SetSrcRegion(0, 4, 1, 0);
+      m_encoder->SetSrcSubReg(0, SourceByte);
+      m_encoder->SetDstRegion(1);
+      m_encoder->SetDstSubReg(Component * Width);
+      m_encoder->Copy(m_destination, PairedByteSource);
+      m_encoder->Push();
+      ++Component;
+      continue;
+    }
+    if (DstUniform) {
+      m_encoder->SetSimdSize(SIMDMode::SIMD1);
+      m_encoder->SetNoMask();
+    } else {
+      m_encoder->SetSimdSize(m_SimdMode);
+    }
+    m_encoder->SetSrcRegion(0, SourceStrides[SourceIndex], 1, 0);
+    m_encoder->SetSrcSubReg(0, SourceByte);
+    m_encoder->SetDstRegion(1);
+    m_encoder->SetDstSubReg(Component * Width);
+    m_encoder->Copy(m_destination, ByteSources[SourceIndex]);
+    m_encoder->Push();
+  }
+}
+
 void EmitPass::emitBdpas(GenIntrinsicInst *GII) {
   // Note that in intrinsic's arguments, activation goes before weight;
   // But in visa (gen isa), weight goes before activation.
@@ -22393,6 +22584,17 @@ void EmitPass::emitBdpas(GenIntrinsicInst *GII) {
 
   PrecisionType PA = (PrecisionType)cast<ConstantInt>(GII->getOperand(5))->getSExtValue();
   PrecisionType PB = (PrecisionType)cast<ConstantInt>(GII->getOperand(6))->getSExtValue();
+  auto *PackedBdpas = dyn_cast<PackedBdpasIntrinsic>(GII);
+  const bool IsPackedIntrinsic = PackedBdpas != nullptr;
+  auto *AScaleOffsetValue = IsPackedIntrinsic ? dyn_cast<ConstantInt>(PackedBdpas->getAScaleOffset()) : nullptr;
+  auto *BScaleOffsetValue = IsPackedIntrinsic ? dyn_cast<ConstantInt>(PackedBdpas->getBScaleOffset()) : nullptr;
+  if (IsPackedIntrinsic && (!AScaleOffsetValue || !BScaleOffsetValue)) {
+    IGC_ASSERT_EXIT_MESSAGE(false, "Packed FP4 BDPAS scale offsets must be constants.");
+    return;
+  }
+  const uint64_t AScaleOffsetRaw = AScaleOffsetValue ? AScaleOffsetValue->getZExtValue() : 0;
+  const uint64_t BScaleOffsetRaw = BScaleOffsetValue ? BScaleOffsetValue->getZExtValue() : 0;
+  const bool ScaleOperandsVarying = !AScaling->IsUniform() && !BScaling->IsUniform();
   uint8_t systolicDepth = 8;
   uint8_t repeatCount = 8;
 
@@ -22445,7 +22647,53 @@ void EmitPass::emitBdpas(GenIntrinsicInst *GII) {
   if (BScaling->GetType() != BScaleType)
     BScaling = m_currShader->GetNewAlias(BScaling, BScaleType, 0, 0);
 
-  m_encoder->bdpas(Dst, Acc, B, PB, A, PA, BScaling, AScaling, systolicDepth, repeatCount);
+  auto IsPackedScaleType = [](Value *V) {
+    auto *Ty = dyn_cast<FixedVectorType>(V->getType());
+    return Ty && Ty->getNumElements() == 4 && Ty->getElementType()->isIntegerTy(8);
+  };
+  const bool PackedScaleLayoutValid =
+      IsPackedIntrinsic && m_pCtx->platform.hasFP4DPAS() && m_SimdMode == SIMDMode::SIMD16 &&
+      PA == PrecisionType::E2M1 && PB == PrecisionType::E2M1 && IsPackedScaleType(GII->getOperand(3)) &&
+      IsPackedScaleType(GII->getOperand(4)) && AScaleType == ISA_TYPE_UB && BScaleType == ISA_TYPE_UB &&
+      AScaleOffsetRaw <= BdpasPackedScaleLayout::MaxAOffset &&
+      AScaleOffsetRaw % BdpasPackedScaleLayout::AComponentBytes == 0 &&
+      BScaleOffsetRaw <= BdpasPackedScaleLayout::MaxBOffset &&
+      BScaleOffsetRaw % BdpasPackedScaleLayout::BComponentBytes == 0 &&
+      AScaleOffsetRaw + BdpasPackedScaleLayout::AReadExtent <= AScaling->GetSize() &&
+      BScaleOffsetRaw + BdpasPackedScaleLayout::BReadExtent <= BScaling->GetSize();
+  // Restrict direct aliasing to regions that were already varying before the
+  // broadcasts above. Originally uniform operands and varying operands without
+  // GRF alignment use the ordinary per-call copy.
+  const bool SkipScaleStriding = PackedScaleLayoutValid && ScaleOperandsVarying && AScaling->GetAlign() == EALIGN_GRF &&
+                                 BScaling->GetAlign() == EALIGN_GRF;
+
+  if (IsPackedIntrinsic && !PackedScaleLayoutValid) {
+    // The overload types cannot express the complete layout contract. Stop
+    // compilation before emitting an invalid BDPAS.
+    IGC_ASSERT_EXIT_MESSAGE(false, "Packed FP4 BDPAS scale layout is invalid.");
+    return;
+  }
+  // Keep intrinsic offsets full-width through validation. Narrowing first could
+  // reinterpret an invalid i32 value such as 65536 as a legal zero offset.
+  const uint16_t AScaleOffset = int_cast<uint16_t>(AScaleOffsetRaw);
+  const uint16_t BScaleOffset = int_cast<uint16_t>(BScaleOffsetRaw);
+
+  if (SkipScaleStriding) {
+    // These aliases select one tile and include both component reads.
+    AScaling = m_currShader->GetNewAlias(AScaling, AScaleType, AScaleOffset, BdpasPackedScaleLayout::AReadExtent);
+    BScaling = m_currShader->GetNewAlias(BScaling, BScaleType, BScaleOffset, BdpasPackedScaleLayout::BReadExtent);
+  }
+
+  const uint16_t AScaleSourceOffset = IsPackedIntrinsic ? AScaleOffset : 0;
+  const uint16_t BScaleSourceOffset = IsPackedIntrinsic ? BScaleOffset : 0;
+  // The normal component-major layout for a varying SIMD16 <2 x i8> places
+  // the high component immediately after the 16-byte low component. A packed
+  // <4 x i8> region interleaves another scale, so the selected scale's high
+  // component starts 32 bytes after its low component.
+  const uint16_t ScaleSourceStride =
+      IsPackedIntrinsic ? BdpasPackedScaleLayout::HighComponentStride : BdpasPackedScaleLayout::NormalComponentStride;
+  m_encoder->bdpas(Dst, Acc, B, PB, A, PA, BScaling, AScaling, systolicDepth, repeatCount, SkipScaleStriding,
+                   BScaleSourceOffset, AScaleSourceOffset, ScaleSourceStride);
   m_encoder->Push();
 }
 

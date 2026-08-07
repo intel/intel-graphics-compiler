@@ -28,6 +28,7 @@ void initializeAlignmentAnalysisLPMPass(llvm::PassRegistry &);
 void initializePreBIImportAnalysisLPMPass(llvm::PassRegistry &);
 void initializePromoteToPredicatedMemoryAccessPass(llvm::PassRegistry &);
 void initializeBIImportLPMPass(llvm::PassRegistry &);
+void initializeBdpasScaleCoalescingPass(llvm::PassRegistry &);
 void initializeBlockCoalescingPass(llvm::PassRegistry &);
 void initializeBlockMemOpAddrScalarizationPassPass(llvm::PassRegistry &);
 void initializeBranchToSelectPass(llvm::PassRegistry &);
