@@ -12758,6 +12758,7 @@ int GlobalRA::coloringRegAlloc() {
     kernel.getGTPinData()->setScratchNextFree(spillMemUsed +
                                               globalScratchOffset);
     jitInfo->stats.numGRFSpillFillWeighted = GRFSpillFillCount;
+    jitInfo->stats.numAsmCountUnweighted = instCount();
   }
 
   if (builder.getOption(vISA_LocalDeclareSplitInGlobalRA)) {

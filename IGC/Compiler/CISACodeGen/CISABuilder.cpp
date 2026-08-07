@@ -6392,12 +6392,14 @@ void CEncoder::SetKernelRetryState(CodeGenContext *context, vISA::FINALIZER_INFO
       ss << "  numGRFSpill = " << jitInfo->stats.numGRFSpillFillWeighted << std::endl;
       ss << "  TotalInsts = " << jitInfo->stats.numAsmCountUnweighted << std::endl;
     }
+    float thresholdFn = float(IGC_GET_FLAG_VALUE(RetryStackCallSpillCostThreshold)) / 100.0f;
     for (auto &func : stackFuncMap) {
       vISA::FINALIZER_INFO *f_jitInfo = nullptr;
       func.second->GetJitInfo(f_jitInfo);
-      // float spillCost = float(f_jitInfo->stats.numGRFSpillFillWeighted) /
-      // f_jitInfo->stats.numAsmCountUnweighted;
-      if (f_jitInfo->stats.numGRFSpillFillWeighted > 0) {
+      float spillCost = (f_jitInfo->stats.numAsmCountUnweighted > 0)
+                            ? float(f_jitInfo->stats.numGRFSpillFillWeighted) / f_jitInfo->stats.numAsmCountUnweighted
+                            : 0.0f;
+      if (spillCost > thresholdFn) {
         // Check each stackcall function
         noRetryForStack = false;
         string FName = StripCloneName(func.first->getName().str());

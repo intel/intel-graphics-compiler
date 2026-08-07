@@ -1811,6 +1811,8 @@ DECLARE_IGC_REGKEY(bool, FastCompileRA, false, "Provide the fast compilatoin pat
                    false)
 DECLARE_IGC_REGKEY(bool, HybridRAWithSpill, false, "Did Hybrid RA with Spill", false)
 DECLARE_IGC_REGKEY(bool, SelectiveFastRA, false, "Apply fast RA with spills selectively using heuristics", true)
+DECLARE_IGC_REGKEY(DWORD, RetryStackCallSpillCostThreshold, 5,
+                   "Only retry if the percentage of spills (over total instructions) is more than this value", false)
 DECLARE_IGC_REGKEY(DWORD, AllowStackCallRetry, 2,
                    "Enable/Disable retry when stack function spill. 0 - Don't allow, 1 - Allow retry on kernel group, "
                    "2 - Allow retry per function",
