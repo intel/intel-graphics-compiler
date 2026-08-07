@@ -753,6 +753,12 @@ static void setImpliedIGCKeys() {
   IGC_SET_IMPLIED_REGKEY(ForceOCLSIMDWidth, 16, EnableOCLSIMD16, true);
   IGC_SET_IMPLIED_REGKEY(ForceOCLSIMDWidth, 8, EnableOCLSIMD32, false);
   IGC_SET_IMPLIED_REGKEY(ForceOCLSIMDWidth, 8, EnableOCLSIMD16, false);
+
+  // Legacy alias for SupportEmitMoreMoviCases (IGC::TriboolFlag::Enabled).
+  // EnableEmitMoreMoviCases used to be the only lever for movi promotion on every frontend.
+  // After the more-movi refactor, it is no longer working on some API and AIL ability.
+  // Map it onto the new key
+  IGC_SET_IMPLIED_REGKEY(EnableEmitMoreMoviCases, 1, SupportEmitMoreMoviCases, 1);
 }
 
 void setImpliedRegkey(IGCFlag &name, const bool set, IGCFlag &subname, const unsigned subvalue) {
