@@ -32,7 +32,7 @@ config.name = 'OfflineCompilationTests'
 config.test_format = VerboseUnsupportedShTest(False)
 
 # suffixes: A list of file extensions to treat as test files.
-config.suffixes = ['.cl', '.ll', '.spvasm', '.spv-test']
+config.suffixes = ['.cl', '.cpp', '.ll', '.spvasm', '.spv-test']
 
 # test_source_root: The root path where tests are located.
 config.test_source_root = os.path.dirname(__file__)
