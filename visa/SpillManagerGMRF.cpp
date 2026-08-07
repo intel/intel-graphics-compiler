@@ -5940,11 +5940,10 @@ void GlobalRA::initAddrRegForImmOffUseNonStackCall() {
 void GlobalRA::expandSpillFillIntrinsicsXE3P(unsigned int spillSizeInBytes) {
   bool hasStackCall =
       kernel.fg.getHasStackCalls() || kernel.fg.getIsStackCallFunc();
-  // Effficient64b uses a simplified path.
-  //  Xe3p.v1: we allocate a zero register with DW aligned 0
-  //           for the spill header; this suffices all spill locations
-  //           within [0..256k]; addresses outside of this range will insert
-  //           extra emulation
+  // Efficient64b uses a simplified path: we allocate a zero register with
+  // DW aligned 0 for the spill header; this suffices all spill locations
+  // within [0..256k]; addresses outside of this range will insert extra
+  // emulation.
   vASSERT(builder.isEfficient64bEnabled());
 
   auto globalScratchOffset =
