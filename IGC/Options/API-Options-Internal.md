@@ -49,6 +49,7 @@ The `cl-` and `ze-` prefixes correspond to OpenCL and Level Zero specific option
 |`-[cl-\|ze-]force-enable-a64WA`|  | `KIND_FLAG` |
 |`-[cl-\|ze-]force-global-mem-allocation`|  | `KIND_FLAG` |
 |`-[cl-\|ze-]fp64-gen-emu`| Enable full FP64 emulation. | `KIND_FLAG` |
+|`-[cl-\|ze-]functionControl`|  | `KIND_SEPARATE` |
 |`-[cl-\|ze-]functonControl`|  | `KIND_SEPARATE` |
 |`-[cl-\|ze-]greater-than-4GB-buffer-required`| When this flag is present, it indicates that any OpenCL buffers can be more than 4GB in size. If it is absent,  all buffers are not more than 4GB in size. | `KIND_FLAG` |
 |`-[cl-\|ze-]has-buffer-offset-arg`| This flag, together with *[-cl-intel\|-ze-opt]-greater-than-4GB-buffer-required* is used to convert stateless memory accesses, called messages or load/store, into stateful ones. The OpenCL runtime can create a surface whose base is either *buffer_base* or *buffer_base + buffer_offset*, based on whether *buffer_offset* is used. | `KIND_FLAG` |
@@ -115,6 +116,7 @@ The `cl-` and `ze-` prefixes correspond to OpenCL and Level Zero specific option
 |`-<cl-\|ze->intel-force-enable-a64WA`|  | `KIND_FLAG` |
 |`-<cl-\|ze->intel-force-global-mem-allocation`|  | `KIND_FLAG` |
 |`-<cl-\|ze->intel-fp64-gen-emu`| Enable full FP64 emulation. | `KIND_FLAG` |
+|`-<cl-\|ze->intel-functionControl`|  | `KIND_SEPARATE` |
 |`-<cl-\|ze->intel-functonControl`|  | `KIND_SEPARATE` |
 |`-<cl-\|ze->intel-greater-than-4GB-buffer-required`| When this flag is present, it indicates that any OpenCL buffers can be more than 4GB in size. If it is absent,  all buffers are not more than 4GB in size. | `KIND_FLAG` |
 |`-<cl-\|ze->intel-has-buffer-offset-arg`| This flag, together with *[-cl-intel\|-ze-opt]-greater-than-4GB-buffer-required* is used to convert stateless memory accesses, called messages or load/store, into stateful ones. The OpenCL runtime can create a surface whose base is either *buffer_base* or *buffer_base + buffer_offset*, based on whether *buffer_offset* is used. | `KIND_FLAG` |
@@ -180,6 +182,7 @@ The `cl-` and `ze-` prefixes correspond to OpenCL and Level Zero specific option
 |`-ze-opt-force-enable-a64WA`|  | `KIND_FLAG` |
 |`-ze-opt-force-global-mem-allocation`|  | `KIND_FLAG` |
 |`-ze-opt-fp64-gen-emu`| Enable full FP64 emulation. | `KIND_FLAG` |
+|`-ze-opt-functionControl`|  | `KIND_SEPARATE` |
 |`-ze-opt-functonControl`|  | `KIND_SEPARATE` |
 |`-ze-opt-greater-than-4GB-buffer-required`| When this flag is present, it indicates that any OpenCL buffers can be more than 4GB in size. If it is absent,  all buffers are not more than 4GB in size. | `KIND_FLAG` |
 |`-ze-opt-has-buffer-offset-arg`| This flag, together with *[-cl-intel\|-ze-opt]-greater-than-4GB-buffer-required* is used to convert stateless memory accesses, called messages or load/store, into stateful ones. The OpenCL runtime can create a surface whose base is either *buffer_base* or *buffer_base + buffer_offset*, based on whether *buffer_offset* is used. | `KIND_FLAG` |
