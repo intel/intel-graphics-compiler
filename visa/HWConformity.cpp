@@ -1601,6 +1601,56 @@ bool HWConformity::fixMov(INST_LIST_ITER i, G4_BB *bb) {
   G4_Type srcType = inst->getSrc(0)->getType();
   auto src = inst->getSrc(0);
 
+  if (dstType == Type_TF32 || srcType == Type_TF32) {
+    if (srcType == Type_TF32 && (dstType == Type_TF32 || dstType == Type_F)) {
+      // f<-tf32 and tf32<-tf32 are raw copies, retype them to ud
+      inst->getDst()->setType(builder, Type_UD);
+      if (src->isSrcRegRegion()) {
+        src->asSrcRegRegion()->setType(builder, Type_UD);
+      } else {
+        G4_Imm *ImmFP = builder.createImm(src->asImm()->getImm(), Type_UD);
+        inst->setSrc(ImmFP, 0);
+      }
+      return true;
+    }
+
+    // [Copy it from fixFcvt()]
+    //      mov a:tf32   b:f
+    //   Make sure dst/src0 have the same subreg offset and stride, except for
+    //   scalar broadcast.
+    G4_DstRegRegion *regDst = inst->getDst();
+    if (src->isSrcRegRegion() &&
+        !src->asSrcRegRegion()->getRegion()->isScalar()) {
+      G4_SrcRegRegion *regSrc0 = src->asSrcRegRegion();
+      uint16_t srcSingleStride;
+      if (!regSrc0->getRegion()->isSingleStride(inst->getExecSize(),
+                                                srcSingleStride)) {
+        // set it to an invalid value as it has no single (uniform) stride
+        srcSingleStride = 0xFFFF;
+      }
+      if (srcSingleStride != regDst->getHorzStride() ||
+          !hasSameSubregOffset(inst)) {
+        // Need to force GRF-alignment and stride = 1
+        if (srcSingleStride != 1 || !regSrc0->checkGRFAlign(builder)) {
+          // Make sure to do UD copy for src
+          regSrc0->setType(builder, Type_UD);
+          replaceSrc(i, 0, Type_UD, bb, ThirtyTwo_Word);
+          // must have the original type (float) for i
+          inst->getSrc(0)->asSrcRegRegion()->setType(builder, Type_F);
+        }
+        if (regDst->getHorzStride() != 1 || !regDst->checkGRFAlign(builder)) {
+          replaceDst(i, regDst->getType(), ThirtyTwo_Word);
+        }
+      }
+    }
+    return true;
+  }
+
+  if (IS_FP8TYPE(dstType) || IS_FP8TYPE(srcType)) {
+    (void)fixMovCvtByteFloat(i, bb);
+    return true;
+  }
+
   bool scalarByteToFloat =
       builder.noScalarByteToFloat() && IS_BTYPE(srcType) &&
       (IS_FTYPE(dstType) || IS_HFTYPE(dstType)) &&
@@ -8322,6 +8372,12 @@ void HWConformity::fixUnalignedRegions(INST_LIST_ITER it, G4_BB *bb) {
   if (!isFloatOr64b(inst)) {
     return;
   }
+
+  if (isMovCvtByteFloat(inst)) {
+    // Handled by fixMovCvtByteFloat()
+    return;
+  }
+
   auto dst = inst->getDst();
   auto dstTy = dst->getType();
   G4_Type execTy = inst->getExecType();
@@ -8995,6 +9051,174 @@ bool HWConformity::fixFcvt(INST_LIST_ITER i, G4_BB *bb) {
   return false;
 }
 
+bool HWConformity::isMovCvtByteFloat(const G4_INST *inst) const {
+  if (inst->opcode() != G4_mov)
+    return false;
+  G4_Type dstTy = inst->getDst()->getType();
+  G4_Type srcTy = inst->getSrc(0)->getType();
+  return (IS_FP8TYPE(dstTy) && IS_HFTYPE(srcTy)) ||
+         (IS_FP8TYPE(srcTy) && IS_HFTYPE(dstTy));
+}
+
+// Format conversion allowed between fp16 and fp8 operands in the following
+// cases:
+//  1, Execution size must not be 1.
+//  2, fp8 operand is packed.
+//  3, Src and dst register offset is restricted to 0 (GRF aligned).
+//  4. no scalar fp8 broadcast (as there is no simd1, fp8 operand should
+//     not be a scalar).
+// This code is copied from fixFcvt()'s byte-float handling above: same PVC+
+// hardware rule, just operating on genuine BF8/HF8 types instead of fcvt's
+// UB-container representation.
+bool HWConformity::fixMovCvtByteFloat(INST_LIST_ITER i, G4_BB *bb) {
+  G4_INST *inst = *i;
+
+  if (inst->opcode() != G4_mov)
+    return false;
+
+  auto useIntForRawMov = [this](G4_INST *MovInst) {
+    vISA_ASSERT(MovInst && MovInst->opcode() == G4_mov, "Expect a mov!");
+    G4_Type movTy = MovInst->getSrc(0)->getType();
+    if (IS_HFTYPE(movTy)) {
+      MovInst->getSrc(0)->asSrcRegRegion()->setType(builder, Type_UW);
+      MovInst->getDst()->asDstRegRegion()->setType(builder, Type_UW);
+    } else if (IS_FP8TYPE(movTy)) {
+      MovInst->getSrc(0)->asSrcRegRegion()->setType(builder, Type_UB);
+      MovInst->getDst()->asDstRegRegion()->setType(builder, Type_UB);
+    }
+  };
+
+  G4_Type dstTy = inst->getDst()->getType();
+  G4_Type srcTy = inst->getSrc(0)->getType();
+  vISA_ASSERT(IS_FP8TYPE(dstTy) || IS_FP8TYPE(srcTy), "expect FP8 mov");
+  vISA_ASSERT(!inst->getPredicate() && !inst->getCondMod(),
+              "FP8<->HF move does not support pred/cond mod");
+  vISA_ASSERT(inst->getSrc(0)->isSrcRegRegion(),
+              "FP8<->HF currently supports non-imm source only");
+  vISA_ASSERT(inst->getSrc(0)->isSrcRegRegion() &&
+                  inst->getSrc(0)->asSrcRegRegion()->getRegAccess() == Direct &&
+                  inst->getSrc(0)->asSrcRegRegion()->getModifier() ==
+                      Mod_src_undef &&
+                  inst->getSaturate() == g4::NOSAT,
+              "FP8<->HF move does not support source modifier nor saturation");
+
+  if (dstTy == srcTy) {
+    // raw mov, use int type
+    useIntForRawMov(inst);
+    return true;
+  }
+
+  vISA_ASSERT(isMovCvtByteFloat(inst), "Only FP8<->HF conversion is supported");
+
+  if ((!builder.tryToAlignOperand(
+          inst->getSrc(0),
+          builder.numEltPerGRF<Type_UB>())) || // case 3 for src
+      (IS_FP8TYPE(srcTy) &&
+       !inst->getSrc(0)->asSrcRegRegion()->getRegion()->isContiguous(
+           inst->getExecSize()))) // case 2 for src
+  {
+    inst->setSrc(insertMovBefore(i, 0, srcTy, bb, builder.getGRFAlign()), 0);
+    G4_INST *newMovInst = *(std::prev(i));
+    useIntForRawMov(newMovInst);
+    newMovInst->getDst()->setHorzStride(1);
+    if (inst->getExecSize() != g4::SIMD1) {
+      inst->getSrc(0)->asSrcRegRegion()->setRegion(builder,
+                                                   builder.getRegionStride1());
+    }
+    inst->setOptionOn(InstOpt_WriteEnable);
+  }
+
+  if ((IS_FP8TYPE(dstTy) &&
+       inst->getDst()->getHorzStride() != 1) || // case 2 for dst
+      (!builder.tryToAlignOperand(
+          inst->getDst(),
+          builder.numEltPerGRF<Type_UB>()))) // case 3 for dst
+  {
+    replaceDst(i, dstTy, builder.getGRFAlign());
+    G4_INST *newMovInst = *(std::next(i));
+    useIntForRawMov(newMovInst);
+    if (inst->getExecSize() != g4::SIMD1) {
+      newMovInst->getSrc(0)->asSrcRegRegion()->setRegion(
+          builder, builder.getRegionStride1());
+    }
+    inst->getDst()->setHorzStride(1);
+    inst->setOptionOn(InstOpt_WriteEnable);
+  }
+
+  // case 1: SIMD1 hf<->fp8, in general we do below transform:
+  //     (W)  mov (1|M0)   r10.0<1>:bf8   r12.0<0;1,0>:hf
+  //     =>
+  //     (W)  mov (2|M0)   r20.0<1>:bf8   r12.0<0;1,0>:hf
+  //     (W)  mov (1|M0)   r10.0<1>:ub    r20.0<0;1,0>:ub
+  // If the root declare is fully used by dst, we can avoid generating the
+  // extra mov by enlarging the declares' size:
+  //      //.declare V0039 (41)  rf=r size=1 type=ub align=32 words (r10.0)
+  //      (W)  mov (1|M0)   r10.0<1>:bf8   r12.0<0;1,0>:hf
+  //      =>
+  //      //.declare V0039 (41)  rf=r size=2 type=ub align=32 words (r10.0)
+  //      (W)  mov (2|M0)   r10.0<1>:bf8   r12.0<0;1,0>:hf
+  // case 4: scalar fp8 src0
+  //      mov (2|M0)   r10.0<1>:hf  r12.0<0;1,0>:bf8
+  //   ==>
+  //      mov (2|M0)   r20.0<1>:ub  r12.0<0;1,0>:ub
+  //      mov (2|M0)   r10.0<1>:hf  r20.0<1;1,0>:bf8
+  //  Note if src0 dcl's size can be increased safely, it will be changed
+  //  directly to
+  //      mov (2|M0)   r10.0<1>:hf  r12.0<1;1,0>:bf8
+  //    where r12.1:bf8 is not used and isn't initialized.
+  if (inst->getExecSize() == g4::SIMD1) // case 1
+  {
+    G4_DstRegRegion *dst = inst->getDst();
+    G4_Declare *rootDcl = nullptr;
+    if (dst->getBase() && dst->getBase()->isRegVar()) {
+      rootDcl = dst->getBaseRegVarRootDeclare();
+    }
+    if (rootDcl && rootDcl->getByteSize() == dst->getTypeSize()) {
+      G4_Declare *dcl = dst->getBase()->asRegVar()->getDeclare();
+      while (dcl) {
+        dcl->setTotalElems(dcl->getTotalElems() * 2);
+        dcl = dcl->getAliasDeclare();
+      }
+      inst->setExecSize(g4::SIMD2);
+    } else {
+      G4_Declare *dcl = builder.createTempVar(2, dstTy, builder.getGRFAlign());
+      G4_SrcRegRegion *srcRegion =
+          builder.createSrcRegRegion(dcl, builder.getRegionScalar());
+      uint32_t newOption = InstOpt_WriteEnable | inst->getMaskOption();
+      G4_INST *newMovInst = builder.createMov(g4::SIMD1, inst->getDst(),
+                                              srcRegion, newOption, false);
+      bb->insertAfter(i, newMovInst);
+      useIntForRawMov(newMovInst);
+
+      G4_DstRegRegion *newDst = builder.createDstRegRegion(dcl, 1);
+      inst->setDest(newDst);
+      inst->setExecSize(g4::SIMD2);
+    }
+
+    // case 4: if src is fp8, may insert mov as scalar broadcast is not
+    // allowed.
+    G4_SrcRegRegion *src0 = inst->getSrc(0)->asSrcRegRegion();
+    vASSERT(src0->getRegion()->isScalar());
+    if (IS_FP8TYPE(srcTy)) {
+      G4_Declare *src0RootDcl = src0->getBaseRegVarRootDeclare();
+      if (src0RootDcl->getByteSize() == src0->getTypeSize()) {
+        G4_Declare *dcl = src0->getBase()->asRegVar()->getDeclare();
+        while (dcl) {
+          dcl->setTotalElems(dcl->getTotalElems() * 2);
+          dcl = dcl->getAliasDeclare();
+        }
+        src0->setRegion(builder, builder.getRegionStride1());
+      } else {
+        broadcast(bb, i, 0, builder.getGRFAlign());
+        G4_INST *newMovInst = *(std::prev(i));
+        useIntForRawMov(newMovInst);
+      }
+    }
+  }
+
+  return true;
+}
+
 // on PVC there are new restrictions on using byte/word region due to XBar
 // reduction
 void HWConformity::fixByteXBarRestriction(INST_LIST_ITER it, G4_BB *bb) {
@@ -9004,6 +9228,11 @@ void HWConformity::fixByteXBarRestriction(INST_LIST_ITER it, G4_BB *bb) {
   if (inst->opcode() == G4_fcvt || inst->opcode() == G4_srnd) {
     return;
   }
+
+  // byte conversion should be fixed in fixMovCvtByteFloat()
+  if (inst->opcode() == G4_mov && (IS_FP8TYPE(inst->getDst()->getType()) ||
+                                   IS_FP8TYPE(inst->getSrc(0)->getType())))
+    return;
 
   if (!inst->getDst() || inst->isSend() || inst->isDpas() ||
       inst->getExecSize() == g4::SIMD1) {
@@ -9630,7 +9859,7 @@ bool HWConformity::hasDedicateAlignRegionConformity(const G4_INST *I) const {
   default:
     break;
   }
-  return false;
+  return isMovCvtByteFloat(I);
 }
 
 // get rid of source modifiers on this inst[srcPos]

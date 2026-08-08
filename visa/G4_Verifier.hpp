@@ -87,6 +87,8 @@ private:
   void verifyAccMov(G4_INST *inst);
   void verifyBFMixedMode(G4_INST *inst);
   void verifyPureBFMode(G4_INST *inst);
+  void verifyByteFloatCvtMov(G4_INST *inst);
+  void verifyTF32Mov(G4_INST *inst);
   void verifyLfsr(G4_INST *inst);
   void verifyDnscl(G4_INST *inst);
 };

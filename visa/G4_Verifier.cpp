@@ -117,6 +117,8 @@ bool G4Verifier::verifyInst(G4_INST *inst) {
         passIndex == Optimizer::PI_addSWSBInfo) {
       // feature verification. Do it twice for now.
       verifyBFMixedMode(inst);
+      verifyByteFloatCvtMov(inst);
+      verifyTF32Mov(inst);
     }
   }
   return true;
@@ -1393,6 +1395,59 @@ void G4Verifier::verifyAccMov(G4_INST *inst) {
   }
 }
 
+// Legal mov pairings involving tf32 reaching this point:
+//   tf32 <- f      : real down-convert
+// Both f <- tf32 and tf32 <- tf32 should have been converted to UD <- UD
+// by HWConformity/HWConformityPro.
+void G4Verifier::verifyTF32Mov(G4_INST *inst) {
+  if (inst->opcode() != G4_mov)
+    return;
+  G4_Type dstTy = inst->getDst()->getType();
+  G4_Type srcTy = inst->getSrc(0)->getType();
+  if (dstTy != Type_TF32 && srcTy != Type_TF32)
+    return;
+  vISA_ASSERT((dstTy == Type_TF32 && srcTy == Type_F) &&
+                  inst->getPlatform() >= Xe_PVCXT,
+              "tf32 <- F is supported only on platform PVCXT or later");
+
+  [[maybe_unused]] auto *srcReg = inst->getSrc(0)->isSrcRegRegion()
+                                      ? inst->getSrc(0)->asSrcRegRegion()
+                                      : nullptr;
+  vISA_ASSERT(inst->getPredicate() == nullptr &&
+                  inst->getSaturate() == g4::NOSAT &&
+                  (!srcReg || !srcReg->hasModifier()),
+              "tf32<-f mov must not use predicate, saturation, or source "
+              "modifier");
+}
+
+void G4Verifier::verifyByteFloatCvtMov(G4_INST *inst) {
+  if (inst->opcode() != G4_mov)
+    return;
+  G4_Type dstTy = inst->getDst()->getType();
+  G4_Type srcTy = inst->getSrc(0)->getType();
+
+  // not conversion, skip
+  if (dstTy == srcTy)
+    return;
+
+  // Not byte float, skip
+  if (!(IS_BYTE_FLOAT(dstTy) || IS_BYTE_FLOAT(srcTy)))
+    return;
+
+  if (dstTy == Type_BF8 || srcTy == Type_BF8) {
+    // If one operand is BF8, the other must be HF [PVC+].
+    [[maybe_unused]] bool isBF8ToHF = (dstTy == Type_HF && srcTy == Type_BF8);
+    [[maybe_unused]] bool isHFToBF8 = (dstTy == Type_BF8 && srcTy == Type_HF);
+    vISA_ASSERT(inst->getPlatform() >= Xe_PVC && (isBF8ToHF || isHFToBF8),
+                "bf8 <-> hf is allowed only on PVC or later!");
+  } else if (dstTy == Type_HF8 || srcTy == Type_HF8) {
+    bool isHF8ToHF = (dstTy == Type_HF && srcTy == Type_HF8);
+    bool isHFToHF8 = (dstTy == Type_HF8 && srcTy == Type_HF);
+    [[maybe_unused]] bool isLegal =
+        inst->getPlatform() >= Xe3 && (isHF8ToHF || isHFToHF8);
+    vISA_ASSERT(isLegal, "hf8 <-> hf is allowed only on Xe3 or later");
+  }
+}
 
 //
 // Mixed mode instruction allows bfloat16 operands in the following cases:

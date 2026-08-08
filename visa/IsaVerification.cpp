@@ -1077,15 +1077,52 @@ void vISAVerifier::verifyInstructionMove(const CISA_INST *inst) {
       if (isRawMov)
         break;
 
-      if ((dstType != ISA_TYPE_HF && src0Type == ISA_TYPE_HF8) ||
-          (dstType == ISA_TYPE_HF8 && src0Type != ISA_TYPE_HF)) {
-        REPORT_INSTRUCTION(options, false,
-                           "Unsupported hf8 mov: the other type must be hf.");
-      }
-      if ((dstType == ISA_TYPE_BF8 && src0Type != ISA_TYPE_HF) ||
-          (dstType != ISA_TYPE_HF && src0Type == ISA_TYPE_BF8)) {
-        REPORT_INSTRUCTION(options, false,
-                           "Unsupported bf8 mov: the other type must be hf.");
+      // Verify each custom float at a time.
+      if (dstType == ISA_TYPE_TF32 || src0Type == ISA_TYPE_TF32) {
+        // If one operand is TF32, the other must be F or TF32 [PVCXT].
+        bool isTF32ToF = (dstType == ISA_TYPE_F && src0Type == ISA_TYPE_TF32);
+        bool isFToTF32 = (dstType == ISA_TYPE_TF32 && src0Type == ISA_TYPE_F);
+        REPORT_INSTRUCTION(
+            options,
+            irBuilder->getPlatform() >= Xe_PVCXT && (isTF32ToF || isFToTF32),
+            "Unsupported tf32 mov: must be {tf32, f} <- {tf32, f}.");
+
+        // The genuine tf32<-f down-convert may not use predicate, saturation,
+        // or source modifiers.
+        if (dstType == ISA_TYPE_TF32 && src0Type == ISA_TYPE_F) {
+          REPORT_INSTRUCTION(options,
+                             inst->pred.isNullPred() &&
+                                 dstModifier != MODIFIER_SAT &&
+                                 src0.getOperandModifier() == MODIFIER_NONE,
+                             "Predicate, saturation, and source modifier are "
+                             "not allowed for tf32<-f mov.");
+        }
+      } else if (dstType == ISA_TYPE_BF8 || src0Type == ISA_TYPE_BF8) {
+        // If one operand is BF8, the other must be HF [PVC].
+        bool isBF8ToHF = (dstType == ISA_TYPE_HF && src0Type == ISA_TYPE_BF8);
+        bool isHFToBF8 = (dstType == ISA_TYPE_BF8 && src0Type == ISA_TYPE_HF);
+        REPORT_INSTRUCTION(options,
+                           irBuilder->getPlatform() >= Xe_PVC &&
+                               (isBF8ToHF || isHFToBF8),
+                           "bf8 mov is not supported on the selected platform");
+        REPORT_INSTRUCTION(options,
+                           inst->pred.isNullPred() &&
+                               src0.getOperandModifier() == MODIFIER_NONE,
+                           "Predicate and source modifier of 8-bit float mov "
+                           "are not allowed.");
+      } else if (dstType == ISA_TYPE_HF8 || src0Type == ISA_TYPE_HF8) {
+        bool isHF8ToHF = (dstType == ISA_TYPE_HF && src0Type == ISA_TYPE_HF8);
+        bool isHFToHF8 = (dstType == ISA_TYPE_HF8 && src0Type == ISA_TYPE_HF);
+        bool isLegal =
+            irBuilder->getPlatform() >= Xe3 && (isHF8ToHF || isHFToHF8);
+        REPORT_INSTRUCTION(options, isLegal,
+                           "hf8 mov is not supported on the selected platform");
+
+        REPORT_INSTRUCTION(options,
+                           inst->pred.isNullPred() &&
+                               src0.getOperandModifier() == MODIFIER_NONE,
+                           "Predicate and source modifier of 8-bit float mov "
+                           "are not allowed.");
       }
     }
 

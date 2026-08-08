@@ -2919,6 +2919,14 @@ void HWConformityPro::fixMov(INST_LIST_ITER it, G4_BB *bb) {
   auto dstType = inst->getDst()->getType();
   auto srcType = inst->getSrc(0)->getType();
 
+  if (inst->getSrc(0)->isSrcRegRegion() && srcType == Type_TF32 &&
+      (dstType == Type_TF32 || dstType == Type_F)) {
+    // f<-tf32 and tf32<-tf32 are raw copies, retype both to ud.
+    inst->getDst()->setType(builder, Type_UD);
+    inst->getSrc(0)->asSrcRegRegion()->setType(builder, Type_UD);
+    return;
+  }
+
   bool dstByteSrc64b =
       IS_BTYPE(dstType) && (IS_DFTYPE(srcType) || IS_QTYPE(srcType));
   bool srcByteDst64b =

@@ -392,16 +392,24 @@ G4_Type G4_INST::getExecType() const {
     return Type_D;
   }
 
-  if (opcode() == G4_fcvt) {
-    // fcvt : cvt b/w standard type and other special float type.
-    //        execution type is the standard type.
+  if (isCustomFloatCvt()) {
+    // fcvt (or mov equivalent)
+    //   For cvt b/w a standard type and another special float type, execution
+    //   type is the standard type.
     G4_Type srcTy = srcs[0]->getType();
     if (IS_TYPE_FLOAT_ALL(srcTy)) {
       return srcTy;
     }
-    // If src isn't standard float type, dst must be!
-    return dst->getType();
+    G4_Type dstTy = dst->getType();
+    if (IS_TYPE_FLOAT_ALL(dstTy))
+      return dstTy;
+    else if (dstTy == Type_TF32)
+      return Type_F;
+    else if (dstTy == Type_HF8 || dstTy == Type_BF8)
+      return Type_HF;
+    return execType;
   }
+
   if (opcode() == G4_srnd) {
     // srnd: src0 is either hf or f
     return srcs[0]->getType();
@@ -1052,25 +1060,10 @@ bool G4_INST::isFloatInIntegerPipe() const {
 
   const G4_Operand *dst = getDst();
   const G4_Operand *src = getSrc(0);
-  if (opcode() == G4_fcvt) {
-    if (dst->getType() == Type_UD && // Type_UD: TF32
-        src->getType() == Type_F) {
-      return true;
-    }
-    if (dst->getType() == Type_HF) {
-      if (src->getType() == Type_UB || // Type_UB: BF8
-          src->getType() == Type_B) {  // Type_B: HF8
-        return true;
-      }
-    }
-    if (dst->getType() == Type_UB && src->getType() == Type_HF) { // Type_UB:
-                                                                  // BF8
-      return true;
-    }
-    if (dst->getType() == Type_B && src->getType() == Type_HF) { // Type_B: HF8
-      return true;
-    }
-  }
+  // fcvt (or equivalent mov)
+  if (isCustomFloatCvt())
+    return true;
+
   if (opcode() == G4_mov) {
     if (dst->getType() == Type_F) {
       if (src->getType() == Type_DF || src->getType() == Type_HF ||
@@ -1130,7 +1123,9 @@ bool G4_INST::isIntegerPipeInstructionXe() const {
   if (builder.hasFixedCycleMathPipeline() && isMath()) {
     return false;
   }
-  if (op == G4_fcvt) {
+
+  // fcvt (or equivalent mov)
+  if (isCustomFloatCvt()) {
     return false;
   }
   if (op == G4_srnd) {
@@ -1183,7 +1178,9 @@ bool G4_INST::isFloatPipeInstructionXe() const {
   if (builder.hasFixedCycleMathPipeline() && isMath()) {
     return false;
   }
-  if (opcode() == G4_fcvt) {
+
+  // fcvt (or equivalent mov)
+  if (isCustomFloatCvt()) {
     return true;
   }
   if (opcode() == G4_srnd) {
@@ -1702,6 +1699,11 @@ G4_INST::MovType G4_INST::canPropagate() const {
 
   G4_Type dstType = dst->getType();
   G4_Type srcType = src->getType();
+
+  if (IS_FP8TYPE(dstType) || IS_FP8TYPE(srcType)) {
+    // Skip if the inst has FP8 type.
+    return SuperMov;
+  }
 
   if (!builder.hasByteALU() &&
       (TypeSize(dstType) == 1 || TypeSize(srcType) == 1)) {
@@ -2262,8 +2264,8 @@ bool G4_INST::canPropagateTo(G4_INST *useInst, Gen4_Operand_Number opndNum,
     return false;
   }
 
-  if (useInst->opcode() == G4_fcvt) {
-    // fcvt is not allowed to have immediate src.
+  // fcvt (or equivalent mov) does not support imm
+  if (useInst->isCustomFloatCvt()) {
     if (src->isImm() || !src->isSrcRegRegion() ||
         !(src->asSrcRegRegion()->getRegion()->isContiguous(
             useInst->getExecSize()))) {
@@ -2630,6 +2632,11 @@ bool G4_INST::canHoist(bool simdBB, const Options *opt) const {
   dstType = dst->getType();
   srcType = src->getType();
 
+  if (IS_FP8TYPE(dstType) || IS_FP8TYPE(srcType)) {
+    // Skip if the inst has FP8 type.
+    return false;
+  }
+
   // no dst type promotion after hoisting but allow the copy case
   MovType MT = getMovType(this);
   if (!(Is_Type_Included(dstType, srcType, builder) || MT == G4_INST::Copy) ||
@@ -2942,7 +2949,8 @@ bool G4_INST::canHoistTo(const G4_INST *defInst, bool simdBB) const {
       return false;
     }
   }
-  if (defInst->opcode() == G4_fcvt) {
+  // no def hoisting for fcvt (or equivalent mov).
+  if (defInst->isCustomFloatCvt()) {
     return false;
   }
   if (defInst->opcode() == G4_srnd) {
