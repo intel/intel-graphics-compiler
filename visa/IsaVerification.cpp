@@ -4311,7 +4311,8 @@ struct LscInstVerifier {
     uint32_t enc = 0;
     LSC_CACHE_OPTS cacheOpts{l1, l2, l3};
     // set isBits17_19 to false to check for all cases
-    if (!LscTryEncodeCacheOptsL1L2L3(opInfo, cacheOpts, enc)) {
+    if (!LscTryEncodeCacheOptsL1L2L3(opInfo, cacheOpts, enc
+                                     )) {
       if (opInfo.isLoad()) {
         error("invalid cache-control options for load (#53560)");
       } else if (opInfo.isAtomic()) {

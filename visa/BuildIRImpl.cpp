@@ -3648,6 +3648,7 @@ uint32_t IR_Builder::LSCComputeCachingEncodingLoad(
       std::get<2>(cacheOpts) == l3;
   };
 
+
   if (matches(Caching::DF, Caching::DF, Caching::DF)) {
     cacheEnc = 0x0;
   } else if (matches(Caching::UC, Caching::UC, Caching::UC)) {
@@ -3691,6 +3692,7 @@ uint32_t IR_Builder::LSCComputeCachingEncodingStore(
       std::get<1>(cacheOpts) == l2) &&
       std::get<2>(cacheOpts) == l3;
   };
+
 
   if (matches(Caching::DF, Caching::DF, Caching::DF)) {
     cacheEnc = 0x0;

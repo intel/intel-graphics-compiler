@@ -3837,10 +3837,12 @@ bool LscTryEncodeCacheOptsBits17_19(const LscOpInfo &opInfo,
 }
 // return the encoding value for descriptor bits[19:17] for XE3P three cache control
 bool LscTryEncodeCacheOptsL1L2L3(const LscOpInfo &opInfo, LSC_CACHE_OPTS cacheOpts,
-                                 uint32_t &cacheEnc) {
+                                 uint32_t &cacheEnc
+) {
   auto matches = [&](LSC_CACHE_OPT l1, LSC_CACHE_OPT l2, LSC_CACHE_OPT l3) {
     return (cacheOpts.l1 == l1 && cacheOpts.l2 == l2 && cacheOpts.l3 == l3);
   };
+
 
   if (matches(LSC_CACHING_DEFAULT, LSC_CACHING_DEFAULT, LSC_CACHING_DEFAULT)) {
     // same for load/atomic/store

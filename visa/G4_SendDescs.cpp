@@ -679,6 +679,7 @@ static constexpr std::array<std::tuple<Caching,Caching,Caching>,16> STCCS {
 };
 
 
+
 std::tuple<Caching,Caching,Caching> G4_SendgDesc::getCaching() const {
   bool isLd = MsgOpIsLoad(getOp());
   bool isSt = MsgOpIsStore(getOp());
@@ -756,7 +757,7 @@ std::string G4_SendgDesc::getDescription() const {
     auto ast = getAddrSizeType();
     ss << "." << ToSymbol(ast);
     auto [l1,l2,l3] = getCaching();
-    ss << ToSymbol(l1, l2, l3);
+      ss << ToSymbol(l1, l2, l3);
 
     ss << " ";
     if (ast == AddrSizeType::GLB_STATE_A32) {

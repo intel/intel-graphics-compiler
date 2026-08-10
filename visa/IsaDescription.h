@@ -288,7 +288,8 @@ bool LscOpInfoFind(LSC_OP op, LscOpInfo &opInfo); // soft failure
 bool LscTryEncodeCacheOpts(const LscOpInfo &opInfo, LSC_CACHE_OPTS cacheOpts,
                            uint32_t &enc, bool isBits17_19);
 bool LscTryEncodeCacheOptsL1L2L3(const LscOpInfo &opInfo, LSC_CACHE_OPTS cacheOpts,
-                                 uint32_t &cacheEnc);
+                                 uint32_t &cacheEnc
+);
 
 extern struct ISA_Inst_Info ISA_Inst_Table[ISA_OPCODE_ENUM_SIZE];
 
