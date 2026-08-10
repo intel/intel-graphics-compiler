@@ -77,6 +77,8 @@ private:
 
   Value *createLibraryCall(Instruction &I, Function *Func,
                            ArrayRef<Value *> Args);
+  Value *createIntDivRemLibraryCall(BinaryOperator &I, StringRef Name,
+                                    bool IsSigned);
   Value *createAtomicLibraryCall(llvm::CallInst &II, StringRef Name);
 
   bool isHandleUgmAtomics(const CallInst &II) const;
@@ -247,7 +249,12 @@ Value *GenXBuiltinFunctions::visitFRem(BinaryOperator &I) {
   return createLibraryCall(I, Func, {I.getOperand(0), I.getOperand(1)});
 }
 
-Value *GenXBuiltinFunctions::visitSDiv(BinaryOperator &I) {
+// Emulate integer div/rem. The precise "__rtz_" builtin exists only for i32, so
+// promote narrower types to i32 to avoid the imprecise reciprocal path (which
+// mis-rounds the quotient) that LLVM 20+ srem/urem narrowing started hitting.
+Value *GenXBuiltinFunctions::createIntDivRemLibraryCall(BinaryOperator &I,
+                                                        StringRef Name,
+                                                        bool IsSigned) {
   auto &M = *I.getModule();
   auto *Ty = I.getType();
   auto *STy = Ty->getScalarType();
@@ -255,52 +262,52 @@ Value *GenXBuiltinFunctions::visitSDiv(BinaryOperator &I) {
   if (ST->hasIntDivRem32() && !STy->isIntegerTy(64))
     return nullptr;
 
-  StringRef Suffix = STy->isIntegerTy(32) ? "__rtz_" : "";
+  IRBuilder<> Builder(&I);
 
-  auto *Func = getBuiltinDeclaration(M, "sdiv", false, {Ty}, Suffix);
-  return createLibraryCall(I, Func, {I.getOperand(0), I.getOperand(1)});
+  auto *EmuTy = Ty;
+  bool Promote = STy->getIntegerBitWidth() < 32;
+  if (Promote) {
+    auto *I32Ty = Builder.getInt32Ty();
+    if (auto *VTy = dyn_cast<IGCLLVM::FixedVectorType>(Ty))
+      EmuTy = IGCLLVM::FixedVectorType::get(I32Ty, VTy->getNumElements());
+    else
+      EmuTy = I32Ty;
+  }
+
+  StringRef Suffix = EmuTy->getScalarType()->isIntegerTy(32) ? "__rtz_" : "";
+  auto *Func = getBuiltinDeclaration(M, Name, false, {EmuTy}, Suffix);
+  if (!Func)
+    return nullptr;
+
+  auto *Op0 = I.getOperand(0);
+  auto *Op1 = I.getOperand(1);
+  if (Promote) {
+    Op0 = IsSigned ? Builder.CreateSExt(Op0, EmuTy)
+                   : Builder.CreateZExt(Op0, EmuTy);
+    Op1 = IsSigned ? Builder.CreateSExt(Op1, EmuTy)
+                   : Builder.CreateZExt(Op1, EmuTy);
+  }
+
+  auto *Call = createLibraryCall(I, Func, {Op0, Op1});
+  if (!Promote)
+    return Call;
+  return Builder.CreateTrunc(Call, Ty);
+}
+
+Value *GenXBuiltinFunctions::visitSDiv(BinaryOperator &I) {
+  return createIntDivRemLibraryCall(I, "sdiv", /*IsSigned=*/true);
 }
 
 Value *GenXBuiltinFunctions::visitSRem(BinaryOperator &I) {
-  auto &M = *I.getModule();
-  auto *Ty = I.getType();
-  auto *STy = Ty->getScalarType();
-
-  if (ST->hasIntDivRem32() && !STy->isIntegerTy(64))
-    return nullptr;
-
-  StringRef Suffix = STy->isIntegerTy(32) ? "__rtz_" : "";
-
-  auto *Func = getBuiltinDeclaration(M, "srem", false, {Ty}, Suffix);
-  return createLibraryCall(I, Func, {I.getOperand(0), I.getOperand(1)});
+  return createIntDivRemLibraryCall(I, "srem", /*IsSigned=*/true);
 }
 
 Value *GenXBuiltinFunctions::visitUDiv(BinaryOperator &I) {
-  auto &M = *I.getModule();
-  auto *Ty = I.getType();
-  auto *STy = Ty->getScalarType();
-
-  if (ST->hasIntDivRem32() && !STy->isIntegerTy(64))
-    return nullptr;
-
-  StringRef Suffix = STy->isIntegerTy(32) ? "__rtz_" : "";
-
-  auto *Func = getBuiltinDeclaration(M, "udiv", false, {Ty}, Suffix);
-  return createLibraryCall(I, Func, {I.getOperand(0), I.getOperand(1)});
+  return createIntDivRemLibraryCall(I, "udiv", /*IsSigned=*/false);
 }
 
 Value *GenXBuiltinFunctions::visitURem(BinaryOperator &I) {
-  auto &M = *I.getModule();
-  auto *Ty = I.getType();
-  auto *STy = Ty->getScalarType();
-
-  if (ST->hasIntDivRem32() && !STy->isIntegerTy(64))
-    return nullptr;
-
-  StringRef Suffix = STy->isIntegerTy(32) ? "__rtz_" : "";
-
-  auto *Func = getBuiltinDeclaration(M, "urem", false, {Ty}, Suffix);
-  return createLibraryCall(I, Func, {I.getOperand(0), I.getOperand(1)});
+  return createIntDivRemLibraryCall(I, "urem", /*IsSigned=*/false);
 }
 
 bool GenXBuiltinFunctions::isHandleUgmAtomics(const CallInst &II) const {
