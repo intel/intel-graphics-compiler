@@ -928,14 +928,14 @@ void __attribute__((overloadable)) __spirv_GroupWaitEvents(int Execution, int Nu
 {
     if (Execution == Workgroup)
     {
-        __spirv_ControlBarrier(Execution,0, AcquireRelease | CrossWorkgroupMemory);
-        __spirv_ControlBarrier(Execution,0, AcquireRelease | WorkgroupMemory );
+        __spirv_ControlBarrier(
+            Execution, Workgroup, AcquireRelease | CrossWorkgroupMemory);
+        __spirv_ControlBarrier(Execution, Workgroup, AcquireRelease | WorkgroupMemory);
     }
     else if (Execution == Subgroup)
     {
         // This is a no op for now
     }
-
 }
 
 #if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
@@ -943,8 +943,9 @@ void __attribute__((overloadable)) __spirv_GroupWaitEvents(int Execution, int Nu
 {
     if (Execution == Workgroup)
     {
-        __spirv_ControlBarrier(Execution,0, AcquireRelease | CrossWorkgroupMemory);
-        __spirv_ControlBarrier(Execution,0, AcquireRelease | WorkgroupMemory);
+        __spirv_ControlBarrier(
+            Execution, Workgroup, AcquireRelease | CrossWorkgroupMemory);
+        __spirv_ControlBarrier(Execution, Workgroup, AcquireRelease | WorkgroupMemory);
     }
     else if (Execution == Subgroup)
     {
