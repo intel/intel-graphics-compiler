@@ -97,7 +97,7 @@ public:
   bool forceMaxGrf256() const {
     switch (m_platformInfo.eRenderCoreFamily) {
     case IGFX_XE3P_CORE:
-      return true;
+      return m_platformInfo.eProductFamily != IGFX_CRI || !IGC_IS_FLAG_ENABLED(EnableCRIDefault512GRF);
     default:
       return false;
     }

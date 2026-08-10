@@ -6,31 +6,16 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
-// REQUIRES: regkeys, cri-supported
+// REQUIRES: regkeys, nvl-s-supported
 
-// Tests the SIMD16 category (B) of the 512-GRF OCL retry gate for a no-DPAS
-// kernel with a required sub-group size of 16.
-//
-// 48 independent chains of int8 multiply-add drive sufficient live-range
-// pressure so that the first attempt at 256 GRF spills and the retry fires. On
-// retry the SIMD16 category lifts the VRT ceiling to 512 GRF.
-// The kernel has no DPAS, so the DPAS category does not apply.
+// The 512-GRF VRT default is CRI-only. NVL shares the XE3P render core with CRI
+// but should still have 256-GRF ceiling.
 
-// SIMD16 category on: category B lifts the ceiling and VRT picks 512 GRF.
-// RUN: ocloc compile -file %s -device cri -options "-igc_opts 'EnableCRIDefault512GRF=0,EnableOCL512GRFForSIMD16=1,DumpASMToConsole=1'" \
-// RUN: 2>&1 | FileCheck %s --check-prefix=COMPILE
+// RUN: ocloc compile -file %s -device nvl-s -options "-igc_opts 'DumpASMToConsole=1'" \
+// RUN: 2>&1 | FileCheck %s --implicit-check-not "numGRF=512"
 
-// COMPILE: numGRF=512
-// COMPILE: [RetryManager] Start recompilation of the kernel
-// COMPILE: Build succeeded.
-
-// Negative: SIMD16 category off (default). No DPAS, so neither category applies;
-// the retry still fires but the ceiling is not lifted - the kernel stays at 256.
-// RUN: ocloc compile -file %s -device cri -options "-igc_opts 'EnableCRIDefault512GRF=0,EnableOCL512GRFForSIMD16=0,DumpASMToConsole=1'" \
-// RUN: 2>&1 | FileCheck %s --check-prefix=NOLIFT --implicit-check-not "numGRF=512"
-
-// NOLIFT: [RetryManager] Start recompilation of the kernel
-// NOLIFT: Build succeeded.
+// CHECK: numGRF=256
+// CHECK: Build succeeded.
 
 // clang-format off
 #define CHAIN(N) \
