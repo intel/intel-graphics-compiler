@@ -854,6 +854,7 @@ public:
     base = b;
     elementSize = eltSize;
     vectorIO = vectorType;
+    m_idxUnitBytes = eltSize;
   }
   void handleLoadInst(LoadInst *pLoad, Value *pScalarizedIdx) {
     IGC_ASSERT(nullptr != pLoad);

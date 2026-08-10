@@ -1458,15 +1458,16 @@ void TransposeHelper::handleGEPInst(llvm::GetElementPtrInst *pGEP, llvm::Value *
   // If the GEP is on i8, its index is a byte offset and must be converted to an element index of the underlying base
   // type.
   if (pGEP->getSourceElementType()->isIntegerTy(8)) {
-    // Get the non-scalar/aggregate GEP source element type.
-    Type *baseAggregateTy = getFirstNonScalarSourceElementType(*pGEP);
-    // Find the scalar element type at the bottom of the aggregate.
-    Type *elementTy = baseAggregateTy;
-    while (elementTy->isStructTy() || elementTy->isArrayTy() || elementTy->isVectorTy()) {
-      elementTy = getArrSizeAndEltType(elementTy).second;
+    uint32_t elementBytes = m_idxUnitBytes;
+    // if elementBytes is 0, it means that scalarized index counts innermost scalas
+    if (elementBytes == 0) {
+      Type *elementTy = getFirstNonScalarSourceElementType(*pGEP);
+      while (elementTy->isStructTy() || elementTy->isArrayTy() || elementTy->isVectorTy()) {
+        elementTy = getArrSizeAndEltType(elementTy).second;
+      }
+      elementTy = elementTy->getScalarType();
+      elementBytes = (uint32_t)m_DL.getTypeAllocSize(elementTy);
     }
-    elementTy = elementTy->getScalarType();
-    uint32_t elementBytes = (uint32_t)m_DL.getTypeAllocSize(elementTy);
 
     // The 1st operand is the byte offset, convert bytes to element count.
     Value *byteIndex = IRB.CreateZExtOrTrunc(pGEP->getOperand(1), IRB.getInt32Ty());
