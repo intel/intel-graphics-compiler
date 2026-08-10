@@ -529,54 +529,83 @@ bool ConstantLoadHelper::visitCallInst(CallInst &CI) {
     if (II.isNull())
       return Modified;
     unsigned MaxRawOperands = II.getTrailingNullZoneStart(&CI);
+    // A RAW field whose arg index matches an ARGCOUNT field's base index
+    // (e.g. the "Srcs" field of sampler_load_bti and similar intrinsics)
+    // describes a variable-length group of raw source operands, not just a
+    // single operand. Find that base index so every real operand in the
+    // group (up to MaxRawOperands) is legalized below, not only the first
+    // one: otherwise a non-null/non-undef constant in the middle of the
+    // group is never loaded into a register and later crashes in
+    // GenXCisaBuilder when it is emitted as a raw source operand.
+    int RawGroupBaseArg = -1;
+    auto ArgCountIt = std::find_if(
+        II.getInstDesc().begin(), II.getInstDesc().end(), [](auto Arg) {
+          return Arg.getCategory() == GenXIntrinsicInfo::ARGCOUNT;
+        });
+    if (ArgCountIt != II.getInstDesc().end())
+      RawGroupBaseArg = ArgCountIt->getArgIdx();
+
+    bool StopAll = false;
     for (auto &AI : II.getInstDesc()) {
+      if (StopAll)
+        break;
       if (!AI.isArgOrRet() || AI.isRet())
         continue;
-      // This field relates to an operand.
-      U = &CI.getOperandUse(AI.getArgIdx());
-      auto *C = dyn_cast<Constant>(*U);
-      if (!C)
-        continue;
-      auto *CTy = C->getType()->getScalarType();
-      // Operand is constant.
-      // Allow constant if it is i1 or vector of i1 set to all ones; this
-      // represents an "all true" predication field.
-      if (CTy->isIntegerTy(1) && C->isAllOnesValue())
-        continue;
-      // Allow constant if intrinsic descriptor allows it for this arg.
-      if (AI.getCategory() == GenXIntrinsicInfo::CACHEOPTS)
-        continue;
-      // Allow constant, if it's undefined, and null register is allowed.
-      if (isa<UndefValue>(C) && AI.isNullAllowed())
-        continue;
-      // If it is a RAW operand, allow the constant if it's in the trailing
-      // null region (it must be a null constant if so).
-      if (AI.isRaw() && (unsigned)AI.getArgIdx() >= MaxRawOperands) {
-        IGC_ASSERT(C->isNullValue());
-        continue;
-      }
-      // Also allow constant if it is undef in a TWOADDR
-      if (isa<UndefValue>(C) && AI.getCategory() == GenXIntrinsicInfo::TWOADDR)
-        continue;
-      // Also allow constant if it is a reserved surface index.
-      if (AI.getCategory() == GenXIntrinsicInfo::SURFACE &&
-          visa::isReservedSurfaceIndex(visa::convertToSurfaceIndex(C))) {
-        continue;
-      }
-      if (AI.isImmediate16Only()) {
-        ConstantLoader CL(C, ST, DL, nullptr, AddedInst);
-        if (!CL.isPackedIntVector())
+      unsigned FirstIdx = AI.getArgIdx();
+      unsigned LastIdx = FirstIdx;
+      if (AI.isRaw() && FirstIdx == (unsigned)RawGroupBaseArg &&
+          MaxRawOperands > FirstIdx)
+        LastIdx = MaxRawOperands - 1;
+      for (unsigned Idx = FirstIdx; Idx <= LastIdx; ++Idx) {
+        // This field relates to an operand.
+        U = &CI.getOperandUse(Idx);
+        auto *C = dyn_cast<Constant>(*U);
+        if (!C)
           continue;
-        *U = CL.loadBig(&CI);
+        auto *CTy = C->getType()->getScalarType();
+        // Operand is constant.
+        // Allow constant if it is i1 or vector of i1 set to all ones; this
+        // represents an "all true" predication field.
+        if (CTy->isIntegerTy(1) && C->isAllOnesValue())
+          continue;
+        // Allow constant if intrinsic descriptor allows it for this arg.
+        if (AI.getCategory() == GenXIntrinsicInfo::CACHEOPTS)
+          continue;
+        // Allow constant, if it's undefined, and null register is allowed.
+        if (isa<UndefValue>(C) && AI.isNullAllowed())
+          continue;
+        // If it is a RAW operand, allow the constant if it's in the trailing
+        // null region (it must be a null constant or undef if so).
+        if (AI.isRaw() && Idx >= MaxRawOperands) {
+          IGC_ASSERT(C->isNullValue() || isa<UndefValue>(C));
+          continue;
+        }
+        // Also allow constant if it is undef in a TWOADDR
+        if (isa<UndefValue>(C) &&
+            AI.getCategory() == GenXIntrinsicInfo::TWOADDR)
+          continue;
+        // Also allow constant if it is a reserved surface index.
+        if (AI.getCategory() == GenXIntrinsicInfo::SURFACE &&
+            visa::isReservedSurfaceIndex(visa::convertToSurfaceIndex(C))) {
+          continue;
+        }
+        if (AI.isImmediate16Only()) {
+          ConstantLoader CL(C, ST, DL, nullptr, AddedInst);
+          if (!CL.isPackedIntVector())
+            continue;
+          *U = CL.loadBig(&CI);
+          Modified = true;
+          StopAll = true;
+          break;
+        }
+        // Allow non-bfloat constant if the instruction supports immediate
+        // values.
+        if (!AI.isImmediateDisallowed() && !CTy->isBFloatTy())
+          continue;
+        // Operand is not allowed to be constant. Insert code to load it.
+        *U = ConstantLoader(C, ST, DL, nullptr, AddedInst).loadBig(&CI);
         Modified = true;
-        break;
       }
-      // Allow non-bfloat constant if the instruction supports immediate values.
-      if (!AI.isImmediateDisallowed() && !CTy->isBFloatTy())
-        continue;
-      // Operand is not allowed to be constant. Insert code to load it.
-      *U = ConstantLoader(C, ST, DL, nullptr, AddedInst).loadBig(&CI);
-      Modified = true;
     }
     break;
   }

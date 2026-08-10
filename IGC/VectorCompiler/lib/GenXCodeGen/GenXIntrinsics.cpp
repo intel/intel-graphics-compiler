@@ -83,8 +83,12 @@ unsigned GenXIntrinsicInfo::getTrailingNullZoneStart(CallInst *CI) const {
   unsigned BaseArg = AI->getArgIdx();
   unsigned TrailingNullStart = BaseArg;
   for (unsigned Idx = BaseArg; Idx < IGCLLVM::getNumArgOperands(CI); ++Idx) {
+    // Undef is as good as null here: neither needs a real register, so
+    // both count as trailing (this must match GenXCisaBuilder's own
+    // GetArgCount, which treats null and undef the same way when deciding
+    // how many raw operands actually need to be emitted).
     if (auto CA = dyn_cast<Constant>(CI->getArgOperand(Idx)))
-      if (CA->isNullValue())
+      if (CA->isNullValue() || isa<UndefValue>(CA))
         continue;
     TrailingNullStart = Idx + 1;
   }
