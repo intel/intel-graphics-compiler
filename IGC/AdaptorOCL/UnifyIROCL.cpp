@@ -129,7 +129,6 @@ SPDX-License-Identifier: MIT
 #include "AdaptorCommon/MoveStaticAllocas.h"
 #include "preprocess_spvir/PreprocessSPVIR.h"
 #include "preprocess_spvir/ConvertUserSemanticDecoratorOnFunctions.h"
-#include "preprocess_spvir/ConvertSPIRVExecutionModes.h"
 #include "preprocess_spvir/PromoteSubByte.h"
 #include "preprocess_spvir/HandleSPIRVDecorations/HandleSpirvDecorationMetadata.h"
 #include "LowerInvokeSIMD.hpp"
@@ -311,7 +310,6 @@ static void CommonOCLBasedPasses(OpenCLProgramContext *pContext) {
   IGC_ADD_PASS(npmSPIR, lpmSPIR, TypesLegalizationPassNPM(), new TypesLegalizationPassLPM());
   IGC_ADD_PASS_AUTO(npmSPIR, lpmSPIR, SPIRMetaDataTranslation);
   IGC_ADD_PASS_AUTO(npmSPIR, lpmSPIR, ConvertUserSemanticDecoratorOnFunctions);
-  IGC_ADD_PASS_AUTO(npmSPIR, lpmSPIR, ConvertSPIRVExecutionModes);
   IGC_ADD_PASS_AUTO(npmSPIR, lpmSPIR, HandleSpirvDecorationMetadata);
   IGC_ADD_PASS(npmSPIR, lpmSPIR, FoldZeroInitAllocaIntoMemsetNPM(), new FoldZeroInitAllocaIntoMemsetLPM());
   IGC_ADD_PASS(npmSPIR, lpmSPIR, DCEPass(), createDeadCodeEliminationPass());

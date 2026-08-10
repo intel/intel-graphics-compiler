@@ -74,8 +74,7 @@ public:
   void setAsSPIRV();
   float getProfilingTimerResolution();
   uint32_t getNumGRFPerThread(bool returnDefault = true, const llvm::Function *F = nullptr) override;
-  int32_t getRequestedNumGRF(const llvm::Function *F) const;
-  bool kernelQualifiesFor512(bool hasDPAS, SIMDMode simd, const llvm::Function *F) const;
+  bool kernelQualifiesFor512(bool hasDPAS, SIMDMode simd) const;
   int32_t getNumThreadsPerEU() const override;
   uint32_t getExpGRFSize() const override;
   bool forceGlobalMemoryAllocation() const override;
