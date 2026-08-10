@@ -5540,6 +5540,7 @@ bool GenXLowering::widenByteOp(Instruction *Inst) {
   bool ExtendedIsZero = false;
   switch (Inst->getOpcode()) {
   case Instruction::SDiv:
+  case Instruction::SRem:
   case Instruction::AShr:
     ExtOpcode = Instruction::SExt;
     break;
