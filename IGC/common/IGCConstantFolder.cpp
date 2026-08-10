@@ -453,6 +453,7 @@ llvm::Constant *IGCConstantFolder::CreateBfi(llvm::Constant *C0, llvm::Constant 
   uint32_t width = int_cast<uint32_t>(CI0->getZExtValue());
   uint32_t offset = int_cast<uint32_t>(CI1->getZExtValue());
   uint32_t bitwidth = CI2->getType()->getIntegerBitWidth();
+  IGC_ASSERT((uint64_t)width + offset <= bitwidth);
   llvm::APInt bitmask = llvm::APInt::getBitsSet(bitwidth, offset, offset + width);
   llvm::APInt result = CI2->getValue();
   result = result.shl(offset);
