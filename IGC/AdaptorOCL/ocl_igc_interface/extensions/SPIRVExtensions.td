@@ -518,4 +518,10 @@ def SPV_EXT_ocp_microscaling_types : ExperimentalExtension<
   isCoreChildOf<IGFX_XE3P_CORE>
 >;
 
+def SPV_INTEL_maximum_registers : ExperimentalExtension<
+  "SPV_INTEL_maximum_registers",
+  [ Capability<"RegisterLimitsINTEL"> ],
+  "https://github.khronos.org/SPIRV-Registry/extensions/INTEL/SPV_INTEL_maximum_registers.html"
+>;
+
 // ----------------------------------------------

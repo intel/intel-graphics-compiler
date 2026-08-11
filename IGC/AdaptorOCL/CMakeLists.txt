@@ -22,6 +22,7 @@ set(IGC_BUILD__SRC__AdaptorOCL
     "${CMAKE_CURRENT_SOURCE_DIR}/preprocess_spvir/PromoteSubByte.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/preprocess_spvir/HandleSPIRVDecorations/HandleSpirvDecorationMetadata.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/preprocess_spvir/ConvertUserSemanticDecoratorOnFunctions.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/preprocess_spvir/ConvertSPIRVExecutionModes.cpp"
 )
 
 
@@ -31,6 +32,7 @@ set(IGC_BUILD__SRC__IGC_AdaptorOCL
     "${CMAKE_CURRENT_SOURCE_DIR}/preprocess_spvir/PreprocessSPVIR.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/preprocess_spvir/PromoteSubByte.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/preprocess_spvir/ConvertUserSemanticDecoratorOnFunctions.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/preprocess_spvir/ConvertSPIRVExecutionModes.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/preprocess_spvir/HandleSPIRVDecorations/HandleSpirvDecorationMetadata.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/ResolveConstExprCalls.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/LowerInvokeSIMD.cpp"
@@ -122,6 +124,7 @@ set(IGC_BUILD__HDR__AdaptorOCL
 
 list(APPEND IGC_BUILD__HDR__AdaptorOCL
     "${CMAKE_CURRENT_SOURCE_DIR}/preprocess_spvir/ConvertUserSemanticDecoratorOnFunctions.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/preprocess_spvir/ConvertSPIRVExecutionModes.h"
   )
 
 

@@ -322,6 +322,7 @@ void initializeAllIGCPasses(llvm::PassRegistry &Registry) {
   initializeVariableReuseAnalysisPass(Registry);
   initializePreprocessSPVIRLPMPass(Registry);
   initializeConvertUserSemanticDecoratorOnFunctionsLPMPass(Registry);
+  initializeConvertSPIRVExecutionModesLPMPass(Registry);
   initializePromoteSubByteLPMPass(Registry);
   initializeHandleSpirvDecorationMetadataLPMPass(Registry);
   initializeResolveConstExprCallsLPMPass(Registry);

@@ -4280,7 +4280,17 @@ void CEncoder::InitVISABuilderOptions(TARGET_PLATFORM VISAPlatform, bool canAbor
   if (context->type == ShaderType::OPENCL_SHADER) {
     auto ClContext = static_cast<OpenCLProgramContext *>(context);
     if (m_program->m_Platform->supportsStaticRegSharing()) {
-      if (m_program->IsRegularGRFRequested()) {
+
+      const int32_t requestedNumGRF = ClContext->getRequestedNumGRF(m_program->entry);
+
+      if (requestedNumGRF > 0) {
+
+        // Explicit per-kernel register budget from SPV_INTEL_maximum_registers.
+        // It has already been applied through NumGRFSetting/vISA_TotalGRFNum
+        // above
+      } else if (requestedNumGRF == 0) {
+        SaveOption(vISA_AutoGRFSelection, true);
+      } else if (m_program->IsRegularGRFRequested()) {
        // Number of threads per EU is set per kernel function (by compiler
        // option)
         SaveOption(vISA_HWThreadNumberPerEU, unsigned(8));
@@ -4445,7 +4455,7 @@ void CEncoder::InitVISABuilderOptions(TARGET_PLATFORM VISAPlatform, bool canAbor
   unsigned RegSize = context->platform.getGRFSize();
   unsigned MaxRegPressure = llvm::divideCeil(RegPressure, RegSize);
 
-  uint32_t RegPressureThreshold = (uint32_t)(context->getNumGRFPerThread(true) * 0.6);
+  uint32_t RegPressureThreshold = (uint32_t)(context->getNumGRFPerThread(true, m_program->entry) * 0.6);
 
   if (context->type == ShaderType::OPENCL_SHADER &&
       m_program->m_Platform->getPlatformInfo().eProductFamily != IGFX_DG2 &&
@@ -5071,7 +5081,8 @@ void CEncoder::InitEncoder(bool canAbortOnSpill, bool hasStackCall, bool hasInli
   // width and DPAS state; VRT still picks the count.
   if (context->type == ShaderType::OPENCL_SHADER) {
     auto *clCtx = static_cast<OpenCLProgramContext *>(context);
-    if (clCtx->kernelQualifiesFor512(m_program->m_State.GetHasDPAS(), m_program->m_State.m_dispatchSize))
+    if (clCtx->kernelQualifiesFor512(m_program->m_State.GetHasDPAS(), m_program->m_State.m_dispatchSize,
+                                     m_program->entry))
       userVRTGRFCeiling = 512;
   }
 

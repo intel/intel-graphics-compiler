@@ -74,8 +74,27 @@ uint32_t OpenCLProgramContext::getExpGRFSize() const {
   return 0;
 }
 
-uint32_t OpenCLProgramContext::getNumGRFPerThread(bool returnDefault, const llvm::Function *F) {
-  if (platform.supportsStaticRegSharing()) {
+int32_t OpenCLProgramContext::getRequestedNumGRF(const llvm::Function *F) const {
+  // The TotalGRFNum debug registry key forces a register budget and overrides
+  // every other source, this one included.
+  if (IGC_GET_FLAG_VALUE(TotalGRFNum) != 0)
+    return -1;
+
+  if (!F || !F->hasFnAttribute("num-grf-per-thread"))
+    return -1;
+
+  uint32_t numGRF = 0;
+  if (F->getFnAttribute("num-grf-per-thread").getValueAsString().getAsInteger(10, numGRF))
+    return -1;
+  return static_cast<int32_t>(numGRF);
+}
+
+uint32_t OpenCLProgramContext::getNumGRFPerThread(bool ReturnDefault, const llvm::Function *F) {
+  int32_t RequestedNumGRF = getRequestedNumGRF(F);
+  if (RequestedNumGRF > 0)
+    return static_cast<uint32_t>(RequestedNumGRF);
+
+  if (RequestedNumGRF < 0 && platform.supportsStaticRegSharing()) {
     if (m_InternalOptions.Intel128GRFPerThread || m_Options.Intel128GRFPerThread) {
       return 128;
     } else if (m_InternalOptions.Intel256GRFPerThread || m_Options.Intel256GRFPerThread ||
@@ -88,23 +107,23 @@ uint32_t OpenCLProgramContext::getNumGRFPerThread(bool returnDefault, const llvm
 
   // On recompilation, report the lifted 512 budget so RP optimizations plan for it.
   if (F && m_retryManager && !m_retryManager->IsFirstTry()) {
-    unsigned forcedSIMD = getModuleMetaData()->csInfo.forcedSIMDSize;
-    SIMDMode simd = forcedSIMD ? lanesToSIMDMode(forcedSIMD) : IGC::bestGuessSIMDSize(this, F);
-    const auto &funcMD = getModuleMetaData()->FuncMD;
-    auto it = funcMD.find(const_cast<llvm::Function *>(F));
-    bool hasDPAS = it != funcMD.end() && it->second.hasDPAS;
-    if (kernelQualifiesFor512(hasDPAS, simd))
+    unsigned ForcedSIMD = getModuleMetaData()->csInfo.forcedSIMDSize;
+    SIMDMode Simd = ForcedSIMD ? lanesToSIMDMode(ForcedSIMD) : IGC::bestGuessSIMDSize(this, F);
+    const auto &FuncMD = getModuleMetaData()->FuncMD;
+    auto It = FuncMD.find(const_cast<llvm::Function *>(F));
+    bool HasDPAS = It != FuncMD.end() && It->second.hasDPAS;
+    if (kernelQualifiesFor512(HasDPAS, Simd, F))
       return 512;
   }
 
-  return CodeGenContext::getNumGRFPerThread(returnDefault, F);
+  return CodeGenContext::getNumGRFPerThread(ReturnDefault, F);
 }
 
-bool OpenCLProgramContext::kernelQualifiesFor512(bool hasDPAS, SIMDMode simd) const {
+bool OpenCLProgramContext::kernelQualifiesFor512(bool hasDPAS, SIMDMode simd, const llvm::Function *F) const {
   if (!platform.supports512GRFPerThread())
     return false;
 
-  if (!isAutoGRFSelectionEnabled() || m_Options.IntelLargeRegisterFile || getExpGRFSize() != 0 ||
+  if (!isAutoGRFSelectionEnabled(F) || m_Options.IntelLargeRegisterFile || getExpGRFSize() != 0 ||
       getModuleMetaData()->compOpt.forceTotalGRFNum != 0)
     return false;
 
@@ -119,6 +138,13 @@ bool OpenCLProgramContext::kernelQualifiesFor512(bool hasDPAS, SIMDMode simd) co
 }
 
 bool OpenCLProgramContext::isAutoGRFSelectionEnabled(const llvm::Function *F) const {
+  // A per-kernel budget from SPV_INTEL_maximum_registers is authoritative:
+  // AutoINTEL asks for the heuristics, an explicit count must not be replaced by
+  // them even when a module-wide option enables auto mode.
+  int32_t requestedNumGRF = getRequestedNumGRF(F);
+  if (requestedNumGRF >= 0)
+    return requestedNumGRF == 0;
+
   if (getNumThreadsPerEU() == 0)
     return true;
 

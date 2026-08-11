@@ -300,6 +300,7 @@ void initializeLowerInvokeSIMDLPMPass(llvm::PassRegistry &);
 void initializeRemoveCodeAssumptionsPass(llvm::PassRegistry &);
 void initializePreprocessSPVIRLPMPass(llvm::PassRegistry &);
 void initializeConvertUserSemanticDecoratorOnFunctionsLPMPass(llvm::PassRegistry &);
+void initializeConvertSPIRVExecutionModesLPMPass(llvm::PassRegistry &);
 void initializePromoteSubByteLPMPass(llvm::PassRegistry &);
 void initializeResolveConstExprCallsLPMPass(llvm::PassRegistry &);
 void initializeHandleSpirvDecorationMetadataLPMPass(llvm::PassRegistry &);
