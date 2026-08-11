@@ -54,7 +54,6 @@ SPDX-License-Identifier: MIT
 #include "llvm/IR/TypeFinder.h"
 #include "llvm/IR/Dominators.h"
 #include "llvm/IR/LegacyPassManager.h"
-#include "llvm/Transforms/Utils/UnifyFunctionExitNodes.h"
 #include "llvm/Transforms/Utils.h"
 #include "llvm/Support/YAMLTraits.h"
 #include "llvm/Support/ManagedStatic.h"
@@ -66,6 +65,10 @@ SPDX-License-Identifier: MIT
 #include "llvmWrapper/IR/Intrinsics.h"
 #include "llvmWrapper/Support/YAMLParser.h"
 #include "llvmWrapper/IR/LLVMContext.h"
+
+#if LLVM_VERSION_MAJOR < 22
+#include "llvm/Transforms/Utils/UnifyFunctionExitNodes.h"
+#endif
 
 #include <map>
 #include <optional>
