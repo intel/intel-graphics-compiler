@@ -304,6 +304,36 @@ void vISAVerifier::verifyPredicateDecl(unsigned declID) {
   }
 }
 
+void vISAVerifier::verifyPredicateDstBound(const CISA_INST *inst,
+                                           const vector_opnd &dst) {
+  if (dst.getOperandClass() != OPERAND_PREDICATE)
+    return;
+
+  // low 12 bits = decl id; upper bits = control/inverse.
+  uint32_t predId = dst.opnd_val.pred_opnd.index & 0xFFF;
+
+  // P0 (null pred) and out-of-range ids have no user decl to check here.
+  if (predId < COMMON_ISA_NUM_PREDEFINED_PRED)
+    return;
+  uint32_t declID = predId - COMMON_ISA_NUM_PREDEFINED_PRED;
+  if (declID >= header->getPredCount())
+    return;
+
+  uint32_t numElements = header->getPred(declID)->num_elements;
+  // Bits written are [maskOffset, maskOffset + execSize); e.g. setp(M5_NM, 16)
+  // writes the upper 16 predicate bits, needing a 32-element decl.
+  uint32_t hiBit = getvISAMaskOffset(inst->getExecMask()) +
+                   Get_VISA_Exec_Size(inst->getExecSize());
+
+  REPORT_INSTRUCTION(
+      options, hiBit <= numElements,
+      "Predicate destination P%u is declared with %u element(s) but the "
+      "instruction writes predicate bits up to index %u (mask offset + "
+      "execution size); writing past the declared predicate size is out of "
+      "bounds.",
+      predId, numElements, hiBit);
+}
+
 void vISAVerifier::verifyAddressDecl(unsigned declID) {
   std::string declError = std::string(" Error in address variable decl: ") +
                           printAddressDecl(header, declID);
@@ -1257,6 +1287,8 @@ void vISAVerifier::verifyInstructionMove(const CISA_INST *inst) {
                            operand_class_src0 == OPERAND_IMMEDIATE,
                        "Source0 operand of CISA SETP instruction only "
                        "supports general, indirect, and immediate operands.");
+
+    verifyPredicateDstBound(inst, dst);
     break;
   }
   case ISA_SEL:
@@ -2433,6 +2465,10 @@ void vISAVerifier::verifyInstructionLogic(const CISA_INST *inst) {
                        "operands should all be BOOL "
                        "(ie if one operand is BOOL they all have to be BOOL).");
 
+    // opnd 0 is the dst; catch predicate-logic dst OOB writes.
+    if (i == 0)
+      verifyPredicateDstBound(inst, opnd);
+
     if (i == 0 && ((opcode == ISA_SHL &&
                     (opnd_type == ISA_TYPE_Q || opnd_type == ISA_TYPE_UQ)) ||
                    (opcode == ISA_SHR && opnd_type == ISA_TYPE_UQ))) {
@@ -2522,6 +2558,7 @@ void vISAVerifier::verifyInstructionCompare(const CISA_INST *inst) {
                                operand_class == OPERAND_GENERAL,
                            "CISA compare instruction destination only supports "
                            "a predicate operand.");
+        verifyPredicateDstBound(inst, getVectorOperand(inst, i));
         break;
       default:
         REPORT_INSTRUCTION(options,
