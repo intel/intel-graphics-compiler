@@ -45469,7 +45469,7 @@ const ged_ins_field_entry_t PositionInterpreterTable11[50] =
     { GED_PSEUDO_FIELD_DPOneAddrReg,                  GED_TABLE_ENTRY_TYPE_CONSECUTIVE,     4, /* {  25,  28,   0,  25, 0x1e000000 } */ { 0x19001c19, (void*)(g_uintptr_t)0x1e000000 }, RestrictionTable225 }, // 48
     { GED_PSEUDO_FIELD_DPCmask,                       GED_TABLE_ENTRY_TYPE_CONSECUTIVE,     4, /* {  12,  15,   0,  12,     0xf000 } */ {  0xc000f0c, (void*)(g_uintptr_t)    0xf000 }, RestrictionTable226 } // 49
 }; // PositionInterpreterTable11[]
-const ged_ins_field_entry_t PositionInterpreterTable12[63] =
+const ged_ins_field_entry_t PositionInterpreterTable12[65] =
 {
     { GED_PSEUDO_FIELD_ArchReg,                       GED_TABLE_ENTRY_TYPE_CONSECUTIVE,     4, /* {   4,   7,   0,   4,       0xf0 } */ {  0x4000704, (void*)(g_uintptr_t)      0xf0 }, RestrictionTable234 }, // 0
     { GED_PSEUDO_FIELD_ArchRegNum,                    GED_TABLE_ENTRY_TYPE_CONSECUTIVE,     4, /* {   0,   3,   0,   0,        0xf } */ {      0x300, (void*)(g_uintptr_t)       0xf }, NULL }, // 1
@@ -45533,5 +45533,7 @@ const ged_ins_field_entry_t PositionInterpreterTable12[63] =
     { GED_PSEUDO_FIELD_DP64Transpose,                 GED_TABLE_ENTRY_TYPE_CONSECUTIVE,     1, /* {  10,  10,   0,  10,      0x400 } */ {  0xa000a0a, (void*)(g_uintptr_t)     0x400 }, NULL }, // 59
     { GED_PSEUDO_FIELD_DP64GlobalAddressTypeSize,     GED_TABLE_ENTRY_TYPE_CONSECUTIVE,     2, /* {  14,  15,   0,  14,     0xc000 } */ {  0xe000f0e, (void*)(g_uintptr_t)    0xc000 }, RestrictionTable265 }, // 60
     { GED_PSEUDO_FIELD_DP64ScaleOffset,               GED_TABLE_ENTRY_TYPE_CONSECUTIVE,     2, /* {  44,  45,   1,  12,     0x3000 } */ {  0xc012d2c, (void*)(g_uintptr_t)    0x3000 }, RestrictionTable266 }, // 61
-    { GED_PSEUDO_FIELD_DP64FlushType,                 GED_TABLE_ENTRY_TYPE_CONSECUTIVE,     3, /* {   8,  10,   0,   8,      0x700 } */ {  0x8000a08, (void*)(g_uintptr_t)     0x700 }, RestrictionTable267 } // 62
+    { GED_PSEUDO_FIELD_DP64FlushType,                 GED_TABLE_ENTRY_TYPE_CONSECUTIVE,     3, /* {   8,  10,   0,   8,      0x700 } */ {  0x8000a08, (void*)(g_uintptr_t)     0x700 }, RestrictionTable267 }, // 62
+    { GED_PSEUDO_FIELD_DP64GlobalOffsetStateful,      GED_TABLE_ENTRY_TYPE_FRAGMENTED,     17, { 2, FragmentsTable89 }, NULL }, // 63
+    { GED_PSEUDO_FIELD_DP64GlobalOffsetStateless,     GED_TABLE_ENTRY_TYPE_FRAGMENTED,     22, { 2, FragmentsTable90 }, NULL } // 64
 }; // PositionInterpreterTable12[]

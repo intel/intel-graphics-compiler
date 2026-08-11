@@ -66,7 +66,7 @@ ModelData ModelsArray[17] =
     { GED_MODEL_NS_XE_LPG_MD::Opcodes, GED_MODEL_NAME_STRING("xe.lpg.md"), 162, (const ged_field_enum_table_t)OpcodeTable7, 45, PositionInterpreterTable8, 3, EnumInterpretersTable5, 0, NULL }, // 13
     { GED_MODEL_NS_XE2::Opcodes, GED_MODEL_NAME_STRING("xe2"), 162, (const ged_field_enum_table_t)OpcodeTable6, 51, PositionInterpreterTable10, 3, EnumInterpretersTable7, 0, NULL }, // 14
     { GED_MODEL_NS_XE3::Opcodes, GED_MODEL_NAME_STRING("xe3"), 162, (const ged_field_enum_table_t)OpcodeTable8, 50, PositionInterpreterTable11, 3, EnumInterpretersTable0, 0, NULL }, // 15
-    { GED_MODEL_NS_XE3P_CRI::Opcodes, GED_MODEL_NAME_STRING("xe3p.cri"), 162, (const ged_field_enum_table_t)OpcodeTable9, 63, PositionInterpreterTable12, 3, EnumInterpretersTable0, 0, NULL } // 16
+    { GED_MODEL_NS_XE3P_CRI::Opcodes, GED_MODEL_NAME_STRING("xe3p.cri"), 162, (const ged_field_enum_table_t)OpcodeTable9, 65, PositionInterpreterTable12, 3, EnumInterpretersTable0, 0, NULL } // 16
 }; // ModelsArray[]
 #endif // GED_MODELS_ARRAY_HIDDEN
 const unsigned int numOfSupportedModels = 17;
@@ -2813,6 +2813,26 @@ GED_DP64_FLUSH_TYPE GED_GetDP64FlushType(const uint64_t msgDesc64, const GED_MOD
 GED_RETURN_VALUE GED_SetDP64FlushType(uint64_t* msgDesc64, const GED_MODEL modelId, const GED_DP64_FLUSH_TYPE FlushType)
 {
     return GEDInterpreter::SetInterpretedPosition(*msgDesc64, GED_PSEUDO_FIELD_DP64FlushType, modelId, FlushType);
+}
+uint64_t GED_GetDP64GlobalOffsetStateful(const uint64_t msgDesc64, const GED_MODEL modelId, GED_RETURN_VALUE* result)
+{
+    GED_RETURN_VALUE localResult = GED_RETURN_VALUE_INVALID_FIELD;
+    if (NULL == result) result = &localResult;
+    return GEDInterpreter::InterpretPosition(msgDesc64, GED_PSEUDO_FIELD_DP64GlobalOffsetStateful, modelId, *result);
+}
+GED_RETURN_VALUE GED_SetDP64GlobalOffsetStateful(uint64_t* msgDesc64, const GED_MODEL modelId, const uint64_t GlobalOffsetStateful)
+{
+    return GEDInterpreter::SetInterpretedPosition(*msgDesc64, GED_PSEUDO_FIELD_DP64GlobalOffsetStateful, modelId, GlobalOffsetStateful);
+}
+uint64_t GED_GetDP64GlobalOffsetStateless(const uint64_t msgDesc64, const GED_MODEL modelId, GED_RETURN_VALUE* result)
+{
+    GED_RETURN_VALUE localResult = GED_RETURN_VALUE_INVALID_FIELD;
+    if (NULL == result) result = &localResult;
+    return GEDInterpreter::InterpretPosition(msgDesc64, GED_PSEUDO_FIELD_DP64GlobalOffsetStateless, modelId, *result);
+}
+GED_RETURN_VALUE GED_SetDP64GlobalOffsetStateless(uint64_t* msgDesc64, const GED_MODEL modelId, const uint64_t GlobalOffsetStateless)
+{
+    return GEDInterpreter::SetInterpretedPosition(*msgDesc64, GED_PSEUDO_FIELD_DP64GlobalOffsetStateless, modelId, GlobalOffsetStateless);
 }
 
 #if GED_EXPERIMENTAL

@@ -821,6 +821,8 @@ typedef enum
     GED_OPCODE_sendgx,  ///< XE3P.CRI
     GED_OPCODE_sendgxc, ///< XE3P.CRI
     GED_OPCODE_lfsr,    ///< XE3P.CRI
+    GED_OPCODE_qredmin, ///< XE3P.CRI
+    GED_OPCODE_qredmax, ///< XE3P.CRI
     GED_OPCODE_shfl,    ///< XE3P.CRI
     GED_OPCODE_dnscl,   ///< XE3P.CRI
     GED_OPCODE_bdpas,   ///< XE3P.CRI

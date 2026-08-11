@@ -3716,6 +3716,8 @@ static GED_OPCODE OpcodeVar90 = (GED_OPCODE)90;
 static GED_OPCODE OpcodeVar91 = (GED_OPCODE)91;
 static GED_OPCODE OpcodeVar92 = (GED_OPCODE)92;
 static GED_OPCODE OpcodeVar93 = (GED_OPCODE)93;
+static GED_OPCODE OpcodeVar94 = (GED_OPCODE)94;
+static GED_OPCODE OpcodeVar95 = (GED_OPCODE)95;
 const GED_OPCODE* OpcodeTable0[128] =
 {
     &OpcodeVar0, // 0
@@ -4955,8 +4957,8 @@ const GED_OPCODE* OpcodeTable9[128] =
     NULL, // 55
     &OpcodeVar40, // 56
     &OpcodeVar85, // 57
-    NULL, // 58
-    NULL, // 59
+    &OpcodeVar86, // 58
+    &OpcodeVar87, // 59
     NULL, // 60
     NULL, // 61
     NULL, // 62
@@ -4977,22 +4979,22 @@ const GED_OPCODE* OpcodeTable9[128] =
     &OpcodeVar54, // 77
     &OpcodeVar55, // 78
     &OpcodeVar56, // 79
-    &OpcodeVar86, // 80
+    &OpcodeVar88, // 80
     NULL, // 81
     &OpcodeVar73, // 82
     NULL, // 83
     &OpcodeVar78, // 84
-    &OpcodeVar87, // 85
+    &OpcodeVar89, // 85
     NULL, // 86
     NULL, // 87
     &OpcodeVar71, // 88
     &OpcodeVar74, // 89
     NULL, // 90
     &OpcodeVar65, // 91
-    &OpcodeVar88, // 92
+    &OpcodeVar90, // 92
     &OpcodeVar67, // 93
     NULL, // 94
-    &OpcodeVar89, // 95
+    &OpcodeVar91, // 95
     &OpcodeVar68, // 96
     &OpcodeVar2, // 97
     &OpcodeVar3, // 98
@@ -5013,7 +5015,7 @@ const GED_OPCODE* OpcodeTable9[128] =
     &OpcodeVar14, // 113
     &OpcodeVar15, // 114
     NULL, // 115
-    &OpcodeVar90, // 116
+    &OpcodeVar92, // 116
     NULL, // 117
     NULL, // 118
     &OpcodeVar16, // 119
@@ -5047,8 +5049,8 @@ const GED_OPCODE* OpcodeTable10[128] =
     &OpcodeVar13, // 16
     &OpcodeVar14, // 17
     &OpcodeVar15, // 18
-    &OpcodeVar91, // 19
-    &OpcodeVar92, // 20
+    &OpcodeVar93, // 19
+    &OpcodeVar94, // 20
     NULL, // 21
     NULL, // 22
     &OpcodeVar16, // 23
@@ -5169,7 +5171,7 @@ const GED_OPCODE* OpcodeTable11[128] =
     &OpcodeVar8, // 7
     &OpcodeVar9, // 8
     &OpcodeVar10, // 9
-    &OpcodeVar93, // 10
+    &OpcodeVar95, // 10
     NULL, // 11
     &OpcodeVar12, // 12
     NULL, // 13
@@ -5178,8 +5180,8 @@ const GED_OPCODE* OpcodeTable11[128] =
     &OpcodeVar13, // 16
     &OpcodeVar14, // 17
     &OpcodeVar15, // 18
-    &OpcodeVar91, // 19
-    &OpcodeVar92, // 20
+    &OpcodeVar93, // 19
+    &OpcodeVar94, // 20
     NULL, // 21
     NULL, // 22
     &OpcodeVar16, // 23

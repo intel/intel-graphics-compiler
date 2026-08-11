@@ -33,10 +33,38 @@ uint64_t GEDInterpreter::InterpretPositionInternal(uint64_t value, /* GED_PSEUDO
         return value;
     }
     ret = GED_RETURN_VALUE_SUCCESS; // if the interpreter is valid, extracting the value is bound to succeed
-    GEDASSERT(GED_TABLE_ENTRY_TYPE_CONSECUTIVE == dataEntry._entryType);
-    value &= dataEntry._consecutive._position._bitMask;
-    GEDASSERT(dataEntry._consecutive._position._shift >= 0);
-    value >>= dataEntry._consecutive._position._shift;
+    // The _bitMask and _shift are relative to the dword given by _dwordIndex, so account for the dword offset
+    // (32 bits per dword) when operating on the flat multi-dword value.
+    if (GED_TABLE_ENTRY_TYPE_CONSECUTIVE == dataEntry._entryType)
+    {
+        GEDASSERT(dataEntry._consecutive._position._shift >= 0);
+        const uint32_t dwordBitOffset = static_cast<uint32_t>(dataEntry._consecutive._position._dwordIndex) * 32;
+        value &= (static_cast<uint64_t>(dataEntry._consecutive._position._bitMask) << dwordBitOffset);
+        value >>= (dataEntry._consecutive._position._shift + dwordBitOffset);
+    }
+    else
+    {
+        GEDASSERT(GED_TABLE_ENTRY_TYPE_FRAGMENTED == dataEntry._entryType);
+        uint64_t fullValue = 0;
+        for (unsigned int i = 0; i < dataEntry._fragmented._numOfPositionFragments; ++i)
+        {
+            const ged_ins_field_position_fragment_t& fragment = dataEntry._fragmented._fragments[i];
+            const uint32_t dwordBitOffset = static_cast<uint32_t>(fragment._dwordIndex) * 32;
+            // Extract the fragment's bits from the dword it resides in.
+            uint64_t fragmentValue = (value >> dwordBitOffset) & fragment._bitMask;
+            // Align the fragment's bits to their position within the total value.
+            if (fragment._shift > 0)
+            {
+                fragmentValue >>= fragment._shift;
+            }
+            else if (fragment._shift < 0)
+            {
+                fragmentValue <<= abs(fragment._shift);
+            }
+            fullValue |= fragmentValue;
+        }
+        value = fullValue;
+    }
     if (GED_VALUE_TYPE_ENCODED == valueType) return value;
     GEDASSERT(GED_VALUE_TYPE_PROCESSED == valueType);
     value = GEDRestrictionsHandler::HandleDecodingRestrictions(&dataEntry, value, ret);
@@ -54,23 +82,56 @@ GED_RETURN_VALUE GEDInterpreter::SetInterpretedPositionInternal(uint64_t& writeT
 
     const ged_ins_field_entry_t& dataEntry = modelData.pseudoFields[interpId];
     if (GED_TABLE_ENTRY_TYPE_NOT_SUPPORTED == dataEntry._entryType) return GED_RETURN_VALUE_INVALID_INTERPRETER;
-    GEDASSERT(GED_TABLE_ENTRY_TYPE_CONSECUTIVE == dataEntry._entryType);
-    GEDASSERT(dataEntry._consecutive._position._shift >= 0);
 
     if (!GEDRestrictionsHandler::HandleEncodingRestrictions(&dataEntry, valueType, valueToWrite))
     {
         return GED_RETURN_VALUE_INVALID_VALUE;
     }
-    // Shift the value into position.
-    valueToWrite <<= dataEntry._consecutive._position._shift;
+    // The _bitMask and _shift are relative to the dword given by _dwordIndex, so account for the dword offset
+    // (32 bits per dword) when operating on the flat multi-dword value.
+    if (GED_TABLE_ENTRY_TYPE_CONSECUTIVE == dataEntry._entryType)
+    {
+        GEDASSERT(dataEntry._consecutive._position._shift >= 0);
+        const uint32_t dwordBitOffset = static_cast<uint32_t>(dataEntry._consecutive._position._dwordIndex) * 32;
 
-    // Clear the field in the destination.
-    writeTo &= ~dataEntry._consecutive._position._bitMask;
+        // Shift the value into position.
+        valueToWrite <<= (dataEntry._consecutive._position._shift + dwordBitOffset);
 
-    // No need to apply mask to valueToWrite, as it's always unsigned. If was signed, applying the mask was required (for negatives)
+        // Clear the field in the destination.
+        writeTo &= ~(static_cast<uint64_t>(dataEntry._consecutive._position._bitMask) << dwordBitOffset);
 
-    // Now set the field with the value itself.
-    writeTo |= valueToWrite;
+        // No need to apply mask to valueToWrite, as it's always unsigned. If was signed, applying the mask was required (for negatives)
+
+        // Now set the field with the value itself.
+        writeTo |= valueToWrite;
+    }
+    else
+    {
+        GEDASSERT(GED_TABLE_ENTRY_TYPE_FRAGMENTED == dataEntry._entryType);
+        for (unsigned int i = 0; i < dataEntry._fragmented._numOfPositionFragments; ++i)
+        {
+            const ged_ins_field_position_fragment_t& fragment = dataEntry._fragmented._fragments[i];
+            const uint32_t dwordBitOffset = static_cast<uint32_t>(fragment._dwordIndex) * 32;
+
+            // Shift the value into the fragment's position within its dword.
+            uint64_t fragmentValue = valueToWrite;
+            if (fragment._shift > 0)
+            {
+                fragmentValue <<= fragment._shift;
+            }
+            else if (fragment._shift < 0)
+            {
+                fragmentValue >>= abs(fragment._shift);
+            }
+            // Apply the dword-relative mask, then move the fragment to its dword in the flat value.
+            fragmentValue &= fragment._bitMask;
+            fragmentValue <<= dwordBitOffset;
+
+            // Clear the fragment in the destination and set the fragment's value.
+            writeTo &= ~(static_cast<uint64_t>(fragment._bitMask) << dwordBitOffset);
+            writeTo |= fragmentValue;
+        }
+    }
     return GED_RETURN_VALUE_SUCCESS;
 }
 

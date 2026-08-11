@@ -514,3 +514,13 @@ const ged_ins_field_position_fragment_t FragmentsTable88[5] =
     { 112, 112,   3,   9,    0x10000 }, // 3
     { 113, 113,   3,   9,    0x20000 } // 4
 }; // FragmentsTable88[]
+const ged_ins_field_position_fragment_t FragmentsTable89[2] =
+{
+    {  27,  31,   0,  27, 0xf8000000 }, // 0
+    {  32,  43,   1,  -5,      0xfff } // 1
+}; // FragmentsTable89[]
+const ged_ins_field_position_fragment_t FragmentsTable90[2] =
+{
+    {  22,  31,   0,  22, 0xffc00000 }, // 0
+    {  32,  43,   1, -10,      0xfff } // 1
+}; // FragmentsTable90[]

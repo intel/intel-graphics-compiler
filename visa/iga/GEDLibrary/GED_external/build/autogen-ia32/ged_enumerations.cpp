@@ -904,7 +904,7 @@ const char* NoSrcDepSetEnumeration[3] =
 #endif // GED_NO_SRC_DEP_SET_HIDDEN
 
 #ifndef GED_OPCODE_HIDDEN
-const char* OpcodeEnumeration[95] =
+const char* OpcodeEnumeration[97] =
 {
     "stub", // 0
     "illegal", // 1
@@ -992,15 +992,17 @@ const char* OpcodeEnumeration[95] =
     "sendgx", // 83
     "sendgxc", // 84
     "lfsr", // 85
-    "shfl", // 86
-    "dnscl", // 87
-    "bdpas", // 88
-    "mullh", // 89
-    "qmad", // 90
-    "f32to16", // 91
-    "f16to32", // 92
-    "dim", // 93
-    NULL // 94
+    "qredmin", // 86
+    "qredmax", // 87
+    "shfl", // 88
+    "dnscl", // 89
+    "bdpas", // 90
+    "mullh", // 91
+    "qmad", // 92
+    "f32to16", // 93
+    "f16to32", // 94
+    "dim", // 95
+    NULL // 96
 }; // OpcodeEnumeration[]
 #endif // GED_OPCODE_HIDDEN
 

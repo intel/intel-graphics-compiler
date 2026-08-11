@@ -348,7 +348,7 @@ const char* fieldNameByField[162] =
     "Src4RegNum8" // 161
 }; // fieldNameByField[]
 #endif // GED_VALIDATION_API
-GED_FIELD_TYPE pseudoFieldTypesByField[63] =
+GED_FIELD_TYPE pseudoFieldTypesByField[65] =
 {
     0x103, // 0
     0x100, // 1
@@ -412,11 +412,13 @@ GED_FIELD_TYPE pseudoFieldTypesByField[63] =
     0x100, // 59
     0x103, // 60
     0x103, // 61
-    0x103 // 62
+    0x103, // 62
+    0x100, // 63
+    0x100 // 64
 }; // pseudoFieldTypesByField[]
 
 #if GED_VALIDATION_API
-const char* fieldNameByPseudoField[63] =
+const char* fieldNameByPseudoField[65] =
 {
     "ArchReg", // 0
     "ArchRegNum", // 1
@@ -480,6 +482,8 @@ const char* fieldNameByPseudoField[63] =
     "DP64Transpose", // 59
     "DP64GlobalAddressTypeSize", // 60
     "DP64ScaleOffset", // 61
-    "DP64FlushType" // 62
+    "DP64FlushType", // 62
+    "DP64GlobalOffsetStateful", // 63
+    "DP64GlobalOffsetStateless" // 64
 }; // fieldNameByPseudoField[]
 #endif // GED_VALIDATION_API

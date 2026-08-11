@@ -2308,6 +2308,20 @@ typedef enum
      *
      * @par     Models:     XE3P.CRI
      */
-    GED_PSEUDO_FIELD_DP64FlushType
+    GED_PSEUDO_FIELD_DP64FlushType,
+
+    /*!
+     *
+     *
+     * @par     Models:     XE3P.CRI
+     */
+    GED_PSEUDO_FIELD_DP64GlobalOffsetStateful,
+
+    /*!
+     *
+     *
+     * @par     Models:     XE3P.CRI
+     */
+    GED_PSEUDO_FIELD_DP64GlobalOffsetStateless
 } GED_PSEUDO_FIELD;
 #endif // GED_INS_FIELD_H

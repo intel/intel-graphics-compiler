@@ -40,7 +40,7 @@ SPDX-License-Identifier: MIT
  */
 typedef struct
 {
-    char _dummy[40]; // dummy, do not access directly
+    uint64_t _dummy[5]; // dummy, do not access directly
 } ged_ins_t;
 
 /*!
@@ -6544,6 +6544,60 @@ extern GED_DP64_FLUSH_TYPE GED_CALLCONV GED_GetDP64FlushType(const uint64_t msgD
  */
 extern GED_RETURN_VALUE GED_CALLCONV GED_SetDP64FlushType(uint64_t* msgDesc64, const GED_MODEL modelId, const GED_DP64_FLUSH_TYPE
                                                           FlushType);
+
+/*!
+ * Get the value of the DP64GlobalOffsetStateful field from the given  (as obtained by @ref GED_GetMsgDesc64). See @ref
+ * GED_PSEUDO_FIELD_DP64GlobalOffsetStateful for the field's description.
+ *
+ * @param[in]       msgDesc64  The .
+ * @param[in]       modelId    The GED model by which to interpret.
+ * @param[out]      result     If non-null, the function stores the @ref GED_RETURN_VALUE result indicating success or the specific
+ *                             error which caused the failure.
+ *
+ * @return      The  if the field is valid, the unchanged msgDesc64 value otherwise.
+ */
+extern uint64_t GED_CALLCONV GED_GetDP64GlobalOffsetStateful(const uint64_t msgDesc64, const GED_MODEL modelId, GED_RETURN_VALUE*
+                                                             result);
+
+/*!
+ * Set the value of the DP64GlobalOffsetStateful field in the given . The latter can then be set to its appropriate field (@ref
+ * GED_SetMsgDesc64). See @ref GED_PSEUDO_FIELD_DP64GlobalOffsetStateful for the field's description.
+ *
+ * @param[in,out]   msgDesc64              The .
+ * @param[in]       modelId                The GED model by which to interpret.
+ * @param[in]       GlobalOffsetStateful   The .
+ *
+ * @return      GED_RETURN_VALUE indicating success or encoding error.
+ */
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetDP64GlobalOffsetStateful(uint64_t* msgDesc64, const GED_MODEL modelId, const uint64_t
+                                                                     GlobalOffsetStateful);
+
+/*!
+ * Get the value of the DP64GlobalOffsetStateless field from the given  (as obtained by @ref GED_GetMsgDesc64). See @ref
+ * GED_PSEUDO_FIELD_DP64GlobalOffsetStateless for the field's description.
+ *
+ * @param[in]       msgDesc64  The .
+ * @param[in]       modelId    The GED model by which to interpret.
+ * @param[out]      result     If non-null, the function stores the @ref GED_RETURN_VALUE result indicating success or the specific
+ *                             error which caused the failure.
+ *
+ * @return      The  if the field is valid, the unchanged msgDesc64 value otherwise.
+ */
+extern uint64_t GED_CALLCONV GED_GetDP64GlobalOffsetStateless(const uint64_t msgDesc64, const GED_MODEL modelId, GED_RETURN_VALUE*
+                                                              result);
+
+/*!
+ * Set the value of the DP64GlobalOffsetStateless field in the given . The latter can then be set to its appropriate field (@ref
+ * GED_SetMsgDesc64). See @ref GED_PSEUDO_FIELD_DP64GlobalOffsetStateless for the field's description.
+ *
+ * @param[in,out]   msgDesc64              The .
+ * @param[in]       modelId                The GED model by which to interpret.
+ * @param[in]       GlobalOffsetStateless  The .
+ *
+ * @return      GED_RETURN_VALUE indicating success or encoding error.
+ */
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetDP64GlobalOffsetStateless(uint64_t* msgDesc64, const GED_MODEL modelId, const uint64_t
+                                                                      GlobalOffsetStateless);
 
 #if GED_EXPERIMENTAL
 

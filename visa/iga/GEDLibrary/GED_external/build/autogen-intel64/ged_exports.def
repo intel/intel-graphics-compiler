@@ -512,6 +512,10 @@ EXPORTS
   GED_SetDP64ScaleOffset
   GED_GetDP64FlushType
   GED_SetDP64FlushType
+  GED_GetDP64GlobalOffsetStateful
+  GED_SetDP64GlobalOffsetStateful
+  GED_GetDP64GlobalOffsetStateless
+  GED_SetDP64GlobalOffsetStateless
   GED_SetRawBits
   GED_GetAccessModeString
   GED_GetAccWrCtrlString
