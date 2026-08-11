@@ -1165,6 +1165,10 @@ void ZEInfoBuilder::addGlobalHostAccessSymbol(const std::string &device_name, co
   mContainer.global_host_access_table.push_back(zeInfoHostAccess{device_name, host_name});
 }
 
+void ZEInfoBuilder::setL1CachePolicy(PreDefinedAttrGetter::ArgL1CachePolicy policy) {
+  mContainer.l1_cache_policy = PreDefinedAttrGetter::get(policy);
+}
+
 void ZEInfoBuilder::printZEInfoInYaml(raw_ostream &os) {
   // serialize mContainer
   llvm::yaml::Output yout(os);

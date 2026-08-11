@@ -416,6 +416,9 @@ public:
   // which is used by Runtime to identify a global variable based on host name
   void addGlobalHostAccessSymbol(const std::string &device_name, const std::string &host_name);
 
+  // setL1CachePolicy - set the module-level L1 cache policy
+  void setL1CachePolicy(PreDefinedAttrGetter::ArgL1CachePolicy policy);
+
   // addPayloadArgumentByPointer - add explicit kernel argument with pointer
   // type into given arg_list
   static zeInfoPayloadArgument &

@@ -14,6 +14,7 @@ SPDX-License-Identifier: MIT
 #include "IGC/common/Types.hpp"
 #include "IGC/common/shaderOverride.hpp"
 #include "Compiler/CISACodeGen/OpenCLKernelCodeGen.hpp"
+#include "AdaptorOCL/Utils/CacheControlsHelper.h"
 
 #include <iomanip>
 #include <iostream>
@@ -71,6 +72,47 @@ static void dumpZEInfo(const IGC::CodeGenContext &Ctx, ZEBinaryBuilder &ZEBuilde
   if (filename.allow()) {
     ZEBuilder.printZEInfo(filename.str());
   }
+}
+
+static std::optional<zebin::PreDefinedAttrGetter::ArgL1CachePolicy>
+getL1CachePolicy(const IGC::OpenCLProgramContext &Ctx) {
+  using ArgL1CachePolicy = zebin::PreDefinedAttrGetter::ArgL1CachePolicy;
+  using IGC::LoadCacheControl;
+  using IGC::StoreCacheControl;
+
+  const auto &CompOpt = Ctx.getModuleMetaData()->compOpt;
+  const int LoadDefault = CompOpt.LoadCacheDefault;
+  const int StoreDefault = CompOpt.StoreCacheDefault;
+
+  if (LoadDefault == -1 || StoreDefault == -1)
+    return std::nullopt;
+
+  auto LoadL1 = LoadDefault > LSC_CC_INVALID
+                    ? IGC::mapToSPIRVL1L2L3CacheControl<LoadCacheControl>(LoadDefault).L1
+                    : IGC::mapToSPIRVCacheControl<LoadCacheControl>(static_cast<LSC_L1_L3_CC>(LoadDefault)).L1;
+  auto StoreL1 = StoreDefault > LSC_CC_INVALID
+                     ? IGC::mapToSPIRVL1L2L3CacheControl<StoreCacheControl>(StoreDefault).L1
+                     : IGC::mapToSPIRVCacheControl<StoreCacheControl>(static_cast<LSC_L1_L3_CC>(StoreDefault)).L1;
+
+  // Mapping between these values should stay in sync with NEO
+  // https://github.com/intel/compute-runtime/blob/master/shared/source/helpers/cache_policy_from_xe_hpg_to_xe3.inl
+  // https://github.com/intel/compute-runtime/blob/master/shared/source/helpers/cache_policy_from_xe3p_and_later.inl
+  const struct {
+    LoadCacheControl Load;
+    StoreCacheControl Store;
+    ArgL1CachePolicy Policy;
+  } Policies[] = {
+      {LoadCacheControl::Cached, StoreCacheControl::Uncached, ArgL1CachePolicy::wbp},
+      {LoadCacheControl::Cached, StoreCacheControl::WriteBack, ArgL1CachePolicy::wb},
+      {LoadCacheControl::Uncached, StoreCacheControl::Uncached, ArgL1CachePolicy::uc},
+  };
+
+  for (const auto &P : Policies)
+    if (P.Load == LoadL1 && P.Store == StoreL1)
+      return P.Policy;
+
+  IGC_ASSERT_MESSAGE(false, "Unsupported L1 cache policy");
+  return std::nullopt;
 }
 
 static std::string getKernelDumpName(const IGC::COpenCLKernel *kernel) {
@@ -161,6 +203,8 @@ bool CGen8OpenCLProgram::GetZEBinary(llvm::raw_pwrite_stream &programBinary, uns
   zebuilder.setGfxCoreFamily(m_Platform.eRenderCoreFamily);
   zebuilder.setVISAABIVersion(m_Context.platform.getVISAABIVersion());
   zebuilder.setGmdID(m_Platform.sRenderBlockID);
+  if (auto L1CachePolicy = getL1CachePolicy(m_Context))
+    zebuilder.setL1CachePolicy(*L1CachePolicy);
 
   //
   // Creating ZE binary requires linking individual ELF files,

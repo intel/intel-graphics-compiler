@@ -65,6 +65,9 @@ public:
   // Set the GmdId as the specified value.
   void setGmdID(GFX_GMD_ID value);
 
+  // Set the module-level L1 cache policy.
+  void setL1CachePolicy(zebin::PreDefinedAttrGetter::ArgL1CachePolicy value);
+
   // Pair of name for the section (1st elem) and VISA asm text (2nd elem).
   using NamedVISAAsm = std::pair<std::string, std::string>;
 
