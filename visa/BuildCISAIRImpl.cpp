@@ -142,6 +142,9 @@ static const WA_TABLE *CreateVisaWaTable(TARGET_PLATFORM platform,
     break;
   case Xe_PVC:
     VISA_WA_ENABLE(pWaTable, Wa_16013338947);
+    if (step == Step_A) {
+      VISA_WA_ENABLE(pWaTable, Wa_14013677893);
+    }
     break;
   case Xe_PVCXT:
     VISA_WA_ENABLE(pWaTable, Wa_16013338947);

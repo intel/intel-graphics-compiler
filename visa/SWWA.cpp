@@ -2956,21 +2956,54 @@ void Optimizer::expandMadwPostSchedule() {
         movInst->setPredicate(origPredicate);
         endIter = bb->insertAfter(endIter, movInst);
       } else {
-        // 3, create a addc inst
-        auto dstLo32 = builder.createDst(dst->getBase(), dst->getRegOff(),
-                                         dst->getSubRegOff(), 1, tmpType);
+        // addc only operates on UD data, so the whole carry-producing step is
+        // built with the unsigned flavor of tmpType.
+        G4_Type tmpUnsignedType = getUnsignedType(TypeSize(tmpType));
         auto accSrcOpnd = builder.createSrc(
             builder.phyregpool.getAcc0Reg(), 0, 0,
             execSize == g4::SIMD1 ? builder.getRegionScalar()
                                   : builder.getRegionStride1(),
-            tmpType);
-        auto addcInst = builder.createBinOp(
-            G4_addc, execSize, dstLo32, accSrcOpnd,
-            builder.duplicateOperand(src2), origOptions, false);
+            tmpUnsignedType);
+
+        auto dstLo32 =
+            builder.createDst(dst->getBase(), dst->getRegOff(),
+                              dst->getSubRegOff(), 1, tmpUnsignedType);
+
+        // 3, copy the low 32 bits of the product out of the accumulator: on
+        //    the platforms handled here the accumulator is not allowed to be
+        //    an explicit source of addc/subb. Same expansion as fixMadwInst(),
+        //    except that this pass runs after RA and so cannot create a temp:
+        //    the low half is staged in dst_lo32, which addc then reads and
+        //    overwrites. fixMadwInst() guarantees dst does not alias src2 on
+        //    this path, so staging cannot clobber the addend.
+        auto lowProductMov = builder.createMov(
+            execSize, builder.duplicateOperand(dstLo32),
+            builder.duplicateOperand(accSrcOpnd), origOptions, false);
+        lowProductMov->setPredicate(builder.duplicateOperand(origPredicate));
+        endIter = bb->insertAfter(endIter, lowProductMov);
+
+        // 4, create a addc inst
+        auto lowProductSrc = builder.createSrc(
+            dstLo32->getBase(), dstLo32->getRegOff(), dstLo32->getSubRegOff(),
+            execSize == g4::SIMD1 ? builder.getRegionScalar()
+                                  : builder.getRegionStride1(),
+            tmpUnsignedType);
+        auto addcSrc1 = builder.duplicateOperand(src2);
+        if (addcSrc1->isImm())
+          addcSrc1 = builder.createImm(addcSrc1->asImm()->getImm(), Type_UD);
+        else
+          addcSrc1->asSrcRegRegion()->setType(builder, Type_UD);
+        auto addcInst =
+            builder.createBinOp(G4_addc, execSize, dstLo32, lowProductSrc,
+                                addcSrc1, origOptions, false);
         addcInst->setPredicate(origPredicate);
+        // addc writes the carry to acc0; model it so that the add below sees
+        // the dependency.
+        addcInst->setImplAccDst(builder.duplicateOperand(accDstOpnd));
+        addcInst->setOptionOn(InstOpt_AccWrCtrl);
         endIter = bb->insertAfter(endIter, addcInst);
 
-        // 4, create a add inst
+        // 5, create a add inst
         auto src1Add = builder.createSrc(
             dstHi32->getBase(), dstHi32->getRegOff(), dstHi32->getSubRegOff(),
             execSize == g4::SIMD1 ? builder.getRegionScalar()

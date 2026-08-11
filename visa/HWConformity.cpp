@@ -9907,11 +9907,27 @@ INST_LIST_ITER HWConformity::fixMadwInst(INST_LIST_ITER it, G4_BB *bb) {
     src0 = madwInst->getSrc(0);
   }
 
+  bool expandMadwPostSchedule =
+      VISA_WA_CHECK(builder.getPWaTable(), Wa_14013677893) &&
+      builder.getOption(vISA_expandMadwPostSchedule);
+
+  // expandMadwPostSchedule() runs after RA, so it cannot create a temp for the
+  // low half of the product and has to stage it in dst_lo32 itself. That
+  // staging mov would clobber src2 before addc reads it if the two share a
+  // declare, so route the dst through a temp here, while temps are still
+  // allowed. The check is on the top declares rather than the regions: it may
+  // be conservative, but the dst of the unexpanded madw only describes the low
+  // half, so a region compare would miss an src2 aliasing the high half.
+  bool dstMayAliasSrc2 = expandMadwPostSchedule && src2->isSrcRegRegion() &&
+                         dst->getTopDcl() &&
+                         dst->getTopDcl() == src2->getTopDcl();
+
   // sat cannot be used at all in the macro sequence
   // make the dst GRF-aligned before expanding to macro
   if (madwInst->getSaturate() || dst->getHorzStride() != 1 ||
       isPreAssignedRegOffsetNonZero<G4_DstRegRegion>(dst) ||
-      !builder.tryToAlignOperand(dst, builder.getGRFSize())) {
+      !builder.tryToAlignOperand(dst, builder.getGRFSize()) ||
+      dstMayAliasSrc2) {
     // add tmp mov instructions
     int dstLowGRFNum = (int)std::ceil(
         (float)(execSize * dst->getExecTypeSize()) / builder.getGRFSize());
@@ -9978,8 +9994,7 @@ INST_LIST_ITER HWConformity::fixMadwInst(INST_LIST_ITER it, G4_BB *bb) {
   }
 
   INST_LIST_ITER retIter = it;
-  if (VISA_WA_CHECK(builder.getPWaTable(), Wa_14013677893) &&
-      builder.getOption(vISA_expandMadwPostSchedule)) {
+  if (expandMadwPostSchedule) {
        // Here just create tmp variables to fix srcMod, cond modifier, saturate,
        // etc. And Madw->Mul+Mach+Addc+Add expanding will be done in
        // expandMadwPostSchedule pass.
@@ -9999,8 +10014,14 @@ INST_LIST_ITER HWConformity::fixMadwInst(INST_LIST_ITER it, G4_BB *bb) {
     // if src2 is not zero, then expand MADW(dst_hi32, dst_lo32) = src0 * src1 + src2 to:
     //     mul  (16) acc0.0<1>:d    src0<1;1,0>:d    src1<2;1,0>:uw
     //     mach (16) dst_hi32<1>:d  src0<1;1,0>:d    src1<1;1,0>:d
-    //     addc (16) dst_lo32<1>:d  acc0.0<1;1,0>:d  src2<1;1,0>:d     // Low 32 bits
-    //     add  (16) dst_hi32<1>:d  acc0.0<1;1,0>:d  dst_hi32<1;1,0>:d // High 32 bits
+    //     mov  (16) tmp_lo32<1>:ud acc0.0<1;1,0>:ud                    // Low 32 bits
+    //     addc (16) dst_lo32<1>:ud tmp_lo32<1;1,0>:ud src2<1;1,0>:ud   // Low 32 bits
+    //     add  (16) dst_hi32<1>:d  acc0.0<1;1,0>:ud dst_hi32<1;1,0>:d  // High 32 bits
+    // The extra mov is required because on the platforms handled here the
+    // accumulator is not allowed to be an explicit source of addc/subb (see
+    // canSrcBeAcc). The following add may still read acc0: that restriction is
+    // specific to addc/subb, and acc0 there holds the carry addc just wrote.
+    //
     // otherwise, expand to:
     //     mul  (16) acc0.0<1>:d    src0<1;1,0>:d    src1<2;1,0>:uw
     //     mach (16) dst_hi32<1>:d  src0<1;1,0>:d    src1<1;1,0>:d // High 32 bits
@@ -10061,29 +10082,44 @@ INST_LIST_ITER HWConformity::fixMadwInst(INST_LIST_ITER it, G4_BB *bb) {
       movInst->setPredicate(builder.duplicateOperand(origPredicate));
       endIter = bb->insertAfter(endIter, movInst);
     } else {
-      // 3, create a addc inst
       //    addc instruction can be :ud data type
-      auto dstLo32 = builder.createDst(dst->getBase(), dst->getRegOff(),
-                                       dst->getSubRegOff(), 1,
-                                       getUnsignedType(TypeSize(tmpType)));
+      G4_Type tmpUnsignedType = getUnsignedType(TypeSize(tmpType));
       auto accSrcOpnd =
           builder.createSrc(builder.phyregpool.getAcc0Reg(), 0, 0,
                             execSize == g4::SIMD1 ? builder.getRegionScalar()
                                                   : builder.getRegionStride1(),
-                            getUnsignedType(TypeSize(tmpType)));
+                            tmpUnsignedType);
+
+      // 3, copy the low 32 bits of the product out of the accumulator so that
+      //    addc does not read acc as an explicit source
+      G4_Declare *lowProductDcl = builder.createTempVar(
+          execSize, tmpUnsignedType, builder.getGRFAlign());
+      auto lowProductMov = builder.createMov(
+          execSize, builder.createDstRegRegion(lowProductDcl, 1),
+          builder.duplicateOperand(accSrcOpnd), origOptions, false);
+      lowProductMov->setPredicate(builder.duplicateOperand(origPredicate));
+      endIter = bb->insertAfter(endIter, lowProductMov);
+
+      // 4, create a addc inst
+      auto dstLo32 = builder.createDst(dst->getBase(), dst->getRegOff(),
+                                       dst->getSubRegOff(), 1, tmpUnsignedType);
+      auto lowProductSrc = builder.createSrcRegRegion(
+          lowProductDcl, execSize == g4::SIMD1 ? builder.getRegionScalar()
+                                               : builder.getRegionStride1());
       auto addcSrc1 = builder.duplicateOperand(src2);
       if (addcSrc1->isImm())
         addcSrc1 = builder.createImm(addcSrc1->asImm()->getImm(), Type_UD);
       else
         addcSrc1->asSrcRegRegion()->setType(builder, Type_UD);
-      auto addcInst = builder.createBinOp(
-          G4_addc, execSize, dstLo32, accSrcOpnd, addcSrc1, origOptions, false);
+      auto addcInst =
+          builder.createBinOp(G4_addc, execSize, dstLo32, lowProductSrc,
+                              addcSrc1, origOptions, false);
       addcInst->setPredicate(builder.duplicateOperand(origPredicate));
       addcInst->setImplAccDst(builder.duplicateOperand(accDstOpnd));
       addcInst->setOptionOn(InstOpt_AccWrCtrl);
       endIter = bb->insertAfter(endIter, addcInst);
 
-      // 4, create a add inst
+      // 5, create a add inst
       auto src1Add = builder.createSrc(
           dstHi32->getBase(), dstHi32->getRegOff(), dstHi32->getSubRegOff(),
           execSize == g4::SIMD1 ? builder.getRegionScalar()
