@@ -1739,12 +1739,6 @@ void OptimizeIR(CodeGenContext *const pContext) {
         mpm.add(llvm::createJumpThreadingPass(false, BBDuplicateThreshold));
 #endif // LLVM_VERSION_MAJOR
       }
-      // RT shaders have many short equality branches (dispatch patterns)
-      // where live range extension costs outweigh scalarization benefits at SIMD8,
-      // and FunctionMultiversioning is disabled for RT (no compounding benefit).
-      if (IGC_IS_FLAG_ENABLED(EnablePropagateCmpUniformity) && pContext->type != ShaderType::RAYTRACING_SHADER) {
-        mpm.add(createPropagateCmpUniformityPass());
-      }
       mpm.add(llvm::createCFGSimplificationPass());
       mpm.add(llvm::createEarlyCSEPass());
       if (pContext->m_instrTypes.hasNonPrimitiveAlloca) {
@@ -1762,6 +1756,13 @@ void OptimizeIR(CodeGenContext *const pContext) {
       }
       // some optimization can create switch statement we don't support
       mpm.add(llvm::createLowerSwitchPass());
+
+      // RT shaders have many short equality branches (dispatch patterns)
+      // where live range extension costs outweigh scalarization benefits at SIMD8,
+      // and FunctionMultiversioning is disabled for RT (no compounding benefit).
+      if (IGC_IS_FLAG_ENABLED(EnablePropagateCmpUniformity) && pContext->type != ShaderType::RAYTRACING_SHADER) {
+        mpm.add(createPropagateCmpUniformityPass());
+      }
 
       // preferred to be added after all LowerSwitch pass runs, as switch lowering is able
       // to benefit from unreachable instruction when it's in default switch case
