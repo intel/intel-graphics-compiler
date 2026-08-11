@@ -4853,11 +4853,6 @@ void CEncoder::InitVISABuilderOptions(TARGET_PLATFORM VISAPlatform, bool canAbor
     SaveOption(vISA_NewSpillCostFunction, true);
   }
 
-  // Force enabling vISA_NewSpillCostFunction with VISADynamicSpillAllowed
-  if (IGC_IS_FLAG_ENABLED(VISADynamicSpillAllowed) && m_program->m_Platform->isCoreChildOf(IGFX_XE3_CORE)) {
-    SaveOption(vISA_NewSpillCostFunction, true);
-  }
-
   // visaasm in ZeBinary will be used for parsing.
   // We need to set GenerateISAASM flag for the builder, because otherwise
   // VISAKernelImpl::generateVariableName will generate non-unique names.
