@@ -19,23 +19,23 @@
 ; original SPIR-V path.
 ;
 ; UNSUPPORTED: system-windows
-; REQUIRES: llvm-spirv, regkeys, pvc-supported, xe2-hpg-supported, llvm-16-plus
+; REQUIRES: llvm-spirv, regkeys, llvm-16-plus
 
 ; LLVM with opaque pointers:
 ; RUN: llvm-as %OPAQUE_PTR_FLAG% %s -o %t.bc
 ; RUN: %if !llvm-22-plus %{ llvm-spirv %t.bc %OPAQUE_PTR_FLAG% --spirv-ext=+SPV_INTEL_cache_controls,+SPV_INTEL_joint_matrix -o %t.spv %}
-; RUN: %if !llvm-22-plus %{ ocloc compile -spirv_input -file %t.spv -device pvc     -options " -igc_opts 'EnableOpaquePointersBackend=1,DumpVISAASMToConsole=1'" 2>&1 | FileCheck %s --check-prefixes=CHECK,CHECK-PVC %}
-; RUN: %if  llvm-22-plus %{ ocloc compile -llvm_input  -file %t.bc  -device pvc     -options " -igc_opts 'EnableOpaquePointersBackend=1,DumpVISAASMToConsole=1'" 2>&1 | FileCheck %s --check-prefixes=CHECK,CHECK-PVC %}
-; RUN: %if !llvm-22-plus %{ ocloc compile -spirv_input -file %t.spv -device xe2-hpg -options " -igc_opts 'EnableOpaquePointersBackend=1,DumpVISAASMToConsole=1'" 2>&1 | FileCheck %s --check-prefixes=CHECK,CHECK-BMG %}
-; RUN: %if  llvm-22-plus %{ ocloc compile -llvm_input  -file %t.bc  -device xe2-hpg -options " -igc_opts 'EnableOpaquePointersBackend=1,DumpVISAASMToConsole=1'" 2>&1 | FileCheck %s --check-prefixes=CHECK,CHECK-BMG %}
+; RUN: %if pvc-supported && !llvm-22-plus %{ ocloc compile -spirv_input -file %t.spv -device pvc     -options " -igc_opts 'EnableOpaquePointersBackend=1,DumpVISAASMToConsole=1'" 2>&1 | FileCheck %s --check-prefixes=CHECK,CHECK-PVC %}
+; RUN: %if pvc-supported &&  llvm-22-plus %{ ocloc compile -llvm_input  -file %t.bc  -device pvc     -options " -igc_opts 'EnableOpaquePointersBackend=1,DumpVISAASMToConsole=1'" 2>&1 | FileCheck %s --check-prefixes=CHECK,CHECK-PVC %}
+; RUN: %if xe2-hpg-supported && !llvm-22-plus %{ ocloc compile -spirv_input -file %t.spv -device xe2-hpg -options " -igc_opts 'EnableOpaquePointersBackend=1,DumpVISAASMToConsole=1'" 2>&1 | FileCheck %s --check-prefixes=CHECK,CHECK-BMG %}
+; RUN: %if xe2-hpg-supported &&  llvm-22-plus %{ ocloc compile -llvm_input  -file %t.bc  -device xe2-hpg -options " -igc_opts 'EnableOpaquePointersBackend=1,DumpVISAASMToConsole=1'" 2>&1 | FileCheck %s --check-prefixes=CHECK,CHECK-BMG %}
 
 ; LLVM with typed pointers/default pointer typing:
 ; RUN: llvm-as %TYPED_PTR_FLAG% %s -o %t.bc
 ; RUN: %if !llvm-22-plus %{ llvm-spirv %t.bc %TYPED_PTR_FLAG% --spirv-ext=+SPV_INTEL_cache_controls,+SPV_INTEL_joint_matrix -o %t.spv %}
-; RUN: %if !llvm-22-plus %{ ocloc compile -spirv_input -file %t.spv -device pvc     -options " -igc_opts 'DumpVISAASMToConsole=1'" 2>&1 | FileCheck %s --check-prefixes=CHECK,CHECK-PVC %}
-; RUN: %if  llvm-22-plus %{ ocloc compile -llvm_input  -file %t.bc  -device pvc     -options " -igc_opts 'DumpVISAASMToConsole=1'" 2>&1 | FileCheck %s --check-prefixes=CHECK,CHECK-PVC %}
-; RUN: %if !llvm-22-plus %{ ocloc compile -spirv_input -file %t.spv -device xe2-hpg -options " -igc_opts 'DumpVISAASMToConsole=1'" 2>&1 | FileCheck %s --check-prefixes=CHECK,CHECK-BMG %}
-; RUN: %if  llvm-22-plus %{ ocloc compile -llvm_input  -file %t.bc  -device xe2-hpg -options " -igc_opts 'DumpVISAASMToConsole=1'" 2>&1 | FileCheck %s --check-prefixes=CHECK,CHECK-BMG %}
+; RUN: %if pvc-supported && !llvm-22-plus %{ ocloc compile -spirv_input -file %t.spv -device pvc     -options " -igc_opts 'DumpVISAASMToConsole=1'" 2>&1 | FileCheck %s --check-prefixes=CHECK,CHECK-PVC %}
+; RUN: %if pvc-supported &&  llvm-22-plus %{ ocloc compile -llvm_input  -file %t.bc  -device pvc     -options " -igc_opts 'DumpVISAASMToConsole=1'" 2>&1 | FileCheck %s --check-prefixes=CHECK,CHECK-PVC %}
+; RUN: %if xe2-hpg-supported && !llvm-22-plus %{ ocloc compile -spirv_input -file %t.spv -device xe2-hpg -options " -igc_opts 'DumpVISAASMToConsole=1'" 2>&1 | FileCheck %s --check-prefixes=CHECK,CHECK-BMG %}
+; RUN: %if xe2-hpg-supported &&  llvm-22-plus %{ ocloc compile -llvm_input  -file %t.bc  -device xe2-hpg -options " -igc_opts 'DumpVISAASMToConsole=1'" 2>&1 | FileCheck %s --check-prefixes=CHECK,CHECK-BMG %}
 
 target triple = "spir64-unknown-unknown"
 

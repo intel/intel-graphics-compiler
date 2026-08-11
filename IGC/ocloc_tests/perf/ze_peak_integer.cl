@@ -7,9 +7,9 @@ SPDX-License-Identifier: MIT
 ============================= end_copyright_notice ===========================*/
 
 // REQUIRES: regkeys
-// RUN: ocloc compile -file %s -options "-igc_opts 'VISAOptions=-asmToConsole'" -device dg2 | FileCheck %s --check-prefix=CHECK
-// RUN: ocloc compile -file %s -options "-igc_opts 'VISAOptions=-asmToConsole'" -device mtl | FileCheck %s --check-prefix=CHECK
-// RUN: ocloc compile -file %s -options "-igc_opts 'VISAOptions=-asmToConsole'" -device arl-h | FileCheck %s --check-prefix=CHECK
+// RUN: %if dg2-supported %{ ocloc compile -file %s -options "-igc_opts 'VISAOptions=-asmToConsole'" -device dg2 | FileCheck %s --check-prefix=CHECK %}
+// RUN: %if mtl-supported %{ ocloc compile -file %s -options "-igc_opts 'VISAOptions=-asmToConsole'" -device mtl | FileCheck %s --check-prefix=CHECK %}
+// RUN: %if arl-h-supported %{ ocloc compile -file %s -options "-igc_opts 'VISAOptions=-asmToConsole'" -device arl-h | FileCheck %s --check-prefix=CHECK %}
 
 // ze_peak, compute_integer_vN kernel
 // This test checks that we generate the beneficial SIMD width for the kernels

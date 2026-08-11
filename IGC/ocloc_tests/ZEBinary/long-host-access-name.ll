@@ -13,7 +13,7 @@
 ; Device name length: 1095, Host name length: 1093.
 
 ; UNSUPPORTED: sys32
-; REQUIRES: llvm-spirv, oneapi-readelf
+; REQUIRES: llvm-spirv, oneapi-readelf, bmg-supported
 ; RUN: llvm-as %s -o %t.bc
 ; RUN: llvm-spirv %t.bc --spirv-ext=+SPV_INTEL_global_variable_host_access -o %t.spv
 ; RUN: ocloc compile -spirv_input -file %t.spv -o %t.progbin -device bmg

@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
-// REQUIRES: regkeys, llvm-16-plus
+// REQUIRES: regkeys, dg2-supported, llvm-16-plus
 // RUN: ocloc compile -file %s -device dg2 -options " -igc_opts 'PrintToConsole=1 PrintAfter=StatelessToStateful'" 2>&1 | FileCheck %s
 
 // This test verifies whether the bufferOffset argument is used when the base pointer is not guaranteed to be aligned to 4 bytes.

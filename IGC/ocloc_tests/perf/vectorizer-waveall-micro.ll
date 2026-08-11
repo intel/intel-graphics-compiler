@@ -6,7 +6,7 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; REQUIRES: llvm-16-plus, regkeys
+; REQUIRES: llvm-16-plus, regkeys, bmg-supported
 ; RUN: llvm-as %OPAQUE_PTR_FLAG% < %s -o %t.bc
 ; RUN: ocloc compile -llvm_input -file %t.bc -device bmg -options "-igc_opts 'VectorizerAllowWAVEALLJoint=1, PrintToConsole=1, PrintAfter=IGCVectorizer, EnableOpaquePointersBackend=1'" &> %t_output.ll
 ; RUN: FileCheck --input-file %t_output.ll %s

@@ -10,7 +10,7 @@ SPDX-License-Identifier: MIT
 // MAX_SYMBOL_NAME_LENGTH (1024) are correctly emitted in the ELF symbol table.
 // Symbol name length: 1098 characters.
 
-// REQUIRES: oneapi-readelf
+// REQUIRES: oneapi-readelf, bmg-supported
 // RUN: ocloc compile -file %s -options "-cl-std=CL3.0" -o %t.bin -device bmg
 // RUN: oneapi-readelf -Ws %t.bin | FileCheck %s
 

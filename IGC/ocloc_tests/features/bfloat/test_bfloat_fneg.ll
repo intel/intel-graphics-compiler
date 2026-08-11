@@ -6,11 +6,11 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; REQUIRES: llvm-spirv,pvc-supported,cri-supported
+; REQUIRES: llvm-spirv
 
 ; RUN: llvm-as %s -o %t.bc
 ; RUN: llvm-spirv %t.bc --spirv-ext=+SPV_KHR_bfloat16,+SPV_INTEL_bfloat16_arithmetic -o %t.spv
-; RUN: ocloc compile -spirv_input -file %t.spv -options "-igc_opts 'DumpVISAASMToConsole=1'" -device pvc 2>&1 | FileCheck %s --check-prefixes=CHECK-VISA-PVC
+; RUN: %if pvc-supported %{ ocloc compile -spirv_input -file %t.spv -options "-igc_opts 'DumpVISAASMToConsole=1'" -device pvc 2>&1 | FileCheck %s --check-prefixes=CHECK-VISA-PVC %}
 
 ; CHECK-VISA-PVC-DAG: mov (M1_NM, 1) [[RESVAR_PVC:.*]](0,0)<1> (-)[[SRCVAR_PVC:.*]](0,0)<0;1,0>
 ; CHECK-VISA-PVC-DAG: mov (M1_NM, 1) [[RESVARBF_PVC:.*]](0,0)<1> [[RESVAR_PVC]](0,0)<0;1,0>
@@ -18,7 +18,7 @@
 ; CHECK-VISA-PVC-DAG: .decl [[SRCVAR_PVC]] v_type=G type=f num_elts=1
 ; CHECK-VISA-PVC-DAG: .decl [[RESVARBF_PVC]] v_type=G type=bf num_elts=1
 
-; RUN: ocloc compile -spirv_input -file %t.spv -options "-igc_opts 'DumpVISAASMToConsole=1'" -device cri 2>&1 | FileCheck %s --check-prefixes=CHECK-VISA-CRI
+; RUN: %if cri-supported %{ ocloc compile -spirv_input -file %t.spv -options "-igc_opts 'DumpVISAASMToConsole=1'" -device cri 2>&1 | FileCheck %s --check-prefixes=CHECK-VISA-CRI %}
 
 ; CHECK-VISA-CRI-DAG: mov (M1_NM, 1) [[RESVAR_CRI:.*]](0,0)<1> (-)[[SRCVAR_CRI:.*]](0,0)<0;1,0>
 ; CHECK-VISA-CRI-DAG: .decl [[RESVAR_CRI]] v_type=G type=bf num_elts=1

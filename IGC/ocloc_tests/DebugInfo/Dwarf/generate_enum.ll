@@ -10,7 +10,7 @@
 
 ; UNSUPPORTED: sys32
 
-; REQUIRES: regkeys, oneapi-readelf, llvm-15-plus
+; REQUIRES: regkeys, oneapi-readelf, dg2-supported, llvm-15-plus
 
 ; LLVM with opaque pointers:
 ; RUN: llvm-as %OPAQUE_PTR_FLAG% %s -o %t

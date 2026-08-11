@@ -7,15 +7,14 @@
 ;============================ end_copyright_notice =============================
 
 ; UNSUPPORTED: system-windows
-; REQUIRES: llvm-spirv, regkeys, pvc-supported
+; REQUIRES: llvm-spirv, regkeys
 
 ; RUN: llvm-as %s -o %t.bc
 ; RUN: llvm-spirv %t.bc --spirv-ext=+SPV_INTEL_cache_controls -o %t.spv
-; RUN: ocloc compile -spirv_input -file %t.spv -device pvc -options " -igc_opts 'DumpVISAASMToConsole=1'" 2>&1 | FileCheck %s --check-prefixes=CHECK,CHECK-PVC
+; RUN: %if pvc-supported %{ ocloc compile -spirv_input -file %t.spv -device pvc -options " -igc_opts 'DumpVISAASMToConsole=1'" 2>&1 | FileCheck %s --check-prefixes=CHECK,CHECK-PVC %}
 
-; REQUIRES: xe2-hpg-supported
 ; We want to run these tests on Xe2. This is blocked by ocloc (NEO) which doesn't have any Xe2 platform in open source yet.
-; RUN: ocloc compile -spirv_input -file %t.spv -device xe2-hpg -options " -igc_opts 'DumpVISAASMToConsole=1'" 2>&1 | FileCheck %s --check-prefixes=CHECK,CHECK-BMG
+; RUN: %if xe2-hpg-supported %{ ocloc compile -spirv_input -file %t.spv -device xe2-hpg -options " -igc_opts 'DumpVISAASMToConsole=1'" 2>&1 | FileCheck %s --check-prefixes=CHECK,CHECK-BMG %}
 
 target triple = "spir64-unknown-unknown"
 

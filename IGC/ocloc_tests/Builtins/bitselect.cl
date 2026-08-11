@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 ============================= end_copyright_notice ===========================*/
 
-// REQUIRES: regkeys, xe2-supported, llvm-16-plus
+// REQUIRES: regkeys, bmg-supported, llvm-16-plus
 // UNSUPPORTED: sys32
 
 // RUN: ocloc compile -file %s -options " -igc_opts 'EnableOpaquePointersBackend=1 DumpVISAASMToConsole=1'" -device bmg | FileCheck %s --check-prefixes=CHECK,%if llvm-22-plus %{CHECK-LLVM22%} %else %{CHECK-PRE-LLVM22%}
