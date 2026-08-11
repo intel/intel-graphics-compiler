@@ -1342,7 +1342,6 @@ CREATE_PRIVATE void _createForwardRayMotionBlurPrologue_Xe3PEff64(RTSAS RTStack2
                                                                   uint32_t InstanceFlags, uint32_t HitGroupOffset) {
   return _createForwardRayMotionBlurPrologue(StackPtr, StartNodePtr, Origin, Dir, InstanceFlags, HitGroupOffset);
 }
-
 template <typename GenT>
 IMPL RTSAS void *_getHitAddress(RTSAS RTStack2<GenT> *__restrict__ HWStackPtr, bool Committed) {
   return Committed ? &HWStackPtr->committedHit : &HWStackPtr->potentialHit;
