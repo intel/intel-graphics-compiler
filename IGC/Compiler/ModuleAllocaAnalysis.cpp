@@ -162,36 +162,20 @@ bool ModuleAllocaAnalysis::safeToUseScratchSpace() const {
       }
     }
 
-    //
-    // Each thread has up to 2 MB scratch space to use. That is, each WI
-    // has up to (2*1024*1024 / 8) bytes of scratch space in SIMD8 mode.
-    //
-    bool isGeometryStageShader = Ctx.type == ShaderType::VERTEX_SHADER || Ctx.type == ShaderType::HULL_SHADER ||
-                                 Ctx.type == ShaderType::DOMAIN_SHADER || Ctx.type == ShaderType::GEOMETRY_SHADER;
-    bool isSimd32Mode = false;
-    SIMDMode simdGeometryShaderMode = SIMDMode::UNKNOWN;
-    if (Ctx.platform.supportsSimd32ForAllShaders() && isGeometryStageShader) {
-      if ((Ctx.type == ShaderType::VERTEX_SHADER) || (Ctx.type == ShaderType::HULL_SHADER) ||
-          (Ctx.type == ShaderType::DOMAIN_SHADER) || (Ctx.type == ShaderType::GEOMETRY_SHADER)) {
-        simdGeometryShaderMode = Ctx.GetSIMDMode();
-      } else {
-        IGC_ASSERT_MESSAGE(0, "Incorrect shader type");
-      }
-
-      if (simdGeometryShaderMode == SIMDMode::SIMD32) {
-        isSimd32Mode = true;
-      }
-    }
+    // Check for forced simd size for each shader type. If not forced, use the default simd size for each shader type.
+    auto [minSimdSize, maxSimdSize] = getMinMaxSimdSize(&F);
+    bool singleSimdSize = minSimdSize == maxSimdSize;
 
     // FIXME: Below heuristics is not a clean design. Revisit this!
     // Start with simd16 or simd32 correspondingly if MinDispatchMode() is 8 or 16, which allows the medium size of
     // space per WI
     //  (simd8: largest, simd32, smallest). In doing so, there will be
     //  some space left for spilling in simd8 if spilling happens.
-    int32_t simd_size = isGeometryStageShader
-                            ? (isSimd32Mode ? numLanes(SIMDMode::SIMD32) : numLanes(Ctx.platform.getMinDispatchMode()))
-                            : (Ctx.platform.getMinDispatchMode() == SIMDMode::SIMD8 ? numLanes(SIMDMode::SIMD16)
-                                                                                    : numLanes(SIMDMode::SIMD32));
+    int32_t simd_size = minSimdSize;
+    if (!singleSimdSize) {
+      simd_size = Ctx.platform.getMinDispatchMode() == SIMDMode::SIMD8 ? 16 : 32;
+    }
+
     const int32_t subGrpSize = IGC::getSIMDSize(&modMD, &F);
     if (subGrpSize > simd_size)
       simd_size = std::min(subGrpSize, static_cast<int32_t>(numLanes(SIMDMode::SIMD32)));
@@ -203,8 +187,8 @@ bool ModuleAllocaAnalysis::safeToUseScratchSpace() const {
 
     // if one API doesn't support stateless, we should try to use smallest dispatch mode
     // which can hold more pvt_data to avoid error out.
-    if (SeparateSpillAndScratch(&Ctx) && !supportsStatelessSpacePrivateMemory)
-      simd_size = isSimd32Mode ? numLanes(SIMDMode::SIMD32) : numLanes(Ctx.platform.getMinDispatchMode());
+    if (SeparateSpillAndScratch(&Ctx) && !supportsStatelessSpacePrivateMemory && !singleSimdSize)
+      simd_size = numLanes(Ctx.platform.getMinDispatchMode());
 
     unsigned maxScratchSpaceBytes =
         Ctx.platform.maxPerThreadScratchSpace(Ctx.m_DriverInfo.supports16MBPerThreadScratchSpace());
@@ -219,10 +203,12 @@ bool ModuleAllocaAnalysis::safeToUseScratchSpace() const {
     // FIXME: for now, to shrink size, let's use SIMD8 if have to.
     // later, maybe, we want to change to legacy behavior: SIMD16, to avoid potential spill.
     // but even so, when we support slot0 and slot1, then, we could still use SIMD8.
-    if (Ctx.platform.hasScratchSurface() && Ctx.hasSyncRTCalls() && totalPrivateMemPerWI > scratchSpaceLimitPerWI) {
-      simd_size = isSimd32Mode ? numLanes(SIMDMode::SIMD32) : numLanes(Ctx.platform.getMinDispatchMode());
+    if (Ctx.platform.hasScratchSurface() && Ctx.hasSyncRTCalls() && totalPrivateMemPerWI > scratchSpaceLimitPerWI &&
+        !singleSimdSize) {
+      simd_size = numLanes(Ctx.platform.getMinDispatchMode());
       scratchSpaceLimitPerWI = maxScratchSpaceBytes / simd_size;
     }
+
 
     if (totalPrivateMemPerWI > scratchSpaceLimitPerWI) {
       // IGC errors out when we are trying to remove statelesspvtmem of OCL (even though OCl still supports
@@ -368,7 +354,7 @@ unsigned ModuleAllocaAnalysis::getTotalPrivateMemPerWI(Function *F) const {
   // from simd size intrinsic calls instead.
   auto FI = getFuncAllocaInfo(F);
   if (FI) {
-    unsigned minSimdSize = getMinSimdSize(F);
+    auto [minSimdSize, maxSimdSize] = getMinMaxSimdSize(F);
     uint64_t totalSize = FI->MemoryDescription->GetTotalSize(minSimdSize);
     totalSize = iSTD::Align(totalSize, minSimdSize);
     totalSize = totalSize / minSimdSize;
@@ -555,29 +541,12 @@ void ModuleAllocaAnalysis::FunctionAllocaInfo::AssignAlloca(llvm::AllocaInst *AI
   }
 }
 
-unsigned ModuleAllocaAnalysis::getMinSimdSize(llvm::Function *pFunc) const {
+std::pair<uint32_t, uint32_t> ModuleAllocaAnalysis::getMinMaxSimdSize(llvm::Function *pFunc) const {
   ModuleMetaData &modMD = *getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
   CodeGenContext &Ctx = *getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
   uint32_t minSimdSize = numLanes(Ctx.platform.getMinDispatchMode());
+  uint32_t maxSimdSize = 32;
   switch (Ctx.type) {
-  case ShaderType::VERTEX_SHADER:
-  case ShaderType::HULL_SHADER:
-  case ShaderType::DOMAIN_SHADER:
-  case ShaderType::GEOMETRY_SHADER:
-    minSimdSize = numLanes(Ctx.GetSIMDMode());
-    break;
-  case ShaderType::TASK_SHADER:
-    minSimdSize = modMD.taskInfo.SubgroupSize > 0 ? modMD.taskInfo.SubgroupSize : minSimdSize;
-    break;
-  case ShaderType::MESH_SHADER:
-    minSimdSize = modMD.msInfo.SubgroupSize > 0 ? modMD.msInfo.SubgroupSize : minSimdSize;
-    break;
-  case ShaderType::COMPUTE_SHADER:
-    minSimdSize = modMD.csInfo.waveSize > 0 ? modMD.csInfo.waveSize : minSimdSize;
-    minSimdSize = modMD.csInfo.forcedSIMDSize > 0 ? modMD.csInfo.forcedSIMDSize : minSimdSize;
-    break;
-  case ShaderType::PIXEL_SHADER:
-    break;
   case ShaderType::OPENCL_SHADER: {
     const int32_t subGrpSize = IGC::getSIMDSize(&modMD, pFunc);
     if (subGrpSize > 0 && int_cast<uint16_t>(subGrpSize) > int_cast<uint16_t>(minSimdSize))
@@ -592,7 +561,7 @@ unsigned ModuleAllocaAnalysis::getMinSimdSize(llvm::Function *pFunc) const {
   default:
     break;
   }
-  return minSimdSize;
+  return std::make_pair(minSimdSize, maxSimdSize);
 }
 
 char ModuleAllocaAnalysis::ID = 0;

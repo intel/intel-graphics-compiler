@@ -78,8 +78,8 @@ public:
   unsigned getPrivateMemAlignment(llvm::Function *F) const;
 
 private:
-  /// \brief Return the total private memory size per WI of a given function.
-  unsigned getMinSimdSize(llvm::Function *F) const;
+  /// \brief Return the min and max simd size for the function.
+  std::pair<uint32_t, uint32_t> getMinMaxSimdSize(llvm::Function *F) const;
 
   struct PrivateMemoryDescription {
     /// \brief The total size for uniform allocas
