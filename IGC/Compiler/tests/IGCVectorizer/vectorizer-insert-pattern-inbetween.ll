@@ -21,7 +21,7 @@
 ; CHECK:   [[insrt_5:%.*]] = insertelement <8 x float> [[insrt_4]]
 ; CHECK:   [[insrt_6:%.*]] = insertelement <8 x float> [[insrt_5]], float [[fmul2]], i32 6
 ; CHECK:   [[insrt_7:%.*]] = insertelement <8 x float> [[insrt_6]]
-; CHECK:   %vectorized_binary = fmul <8 x float> [[insrt_7]], <float 1.250000e-01, float 0x3FF7154760000000, float 0x3FF7154760000000, float 0x3FF7154760000000, float 0x3FF7154760000000, float 0x3FF7154760000000, float 0x3FF7154760000000, float 0x3FF7154760000000>
+; CHECK:   %vectorized_binary = fmul <8 x float> [[insrt_7]], <float 1.250000e-01, float {{(0x3FF7154760000000|f0x3FB8AA3B)}}, float {{(0x3FF7154760000000|f0x3FB8AA3B)}}, float {{(0x3FF7154760000000|f0x3FB8AA3B)}}, float {{(0x3FF7154760000000|f0x3FB8AA3B)}}, float {{(0x3FF7154760000000|f0x3FB8AA3B)}}, float {{(0x3FF7154760000000|f0x3FB8AA3B)}}, float {{(0x3FF7154760000000|f0x3FB8AA3B)}}>
 ; CHECK:   [[extrct_0:%.*]] = extractelement <8 x float> %vectorized_binary, i32 0
 ; CHECK:   [[extrct_1:%.*]] = extractelement <8 x float> %vectorized_binary, i32 1
 ; CHECK:   [[extrct_2:%.*]] = extractelement <8 x float> %vectorized_binary, i32 2
@@ -36,14 +36,14 @@
 ; CHECK:   %22 = icmp slt i32 %4, 1
 ; CHECK:   %23 = icmp slt i32 %5, 1
 ; CHECK:   %24 = icmp slt i32 %6, %.pn1482
-; CHECK:   %25 = select i1 %19, float 0xFFF0000000000000, float [[extrct_0]]
-; CHECK:   %26 = select i1 %20, float 0xFFF0000000000000, float [[extrct_1]]
-; CHECK:   %27 = select i1 %21, float 0xFFF0000000000000, float [[extrct_2]]
-; CHECK:   %28 = select i1 %20, float 0xFFF0000000000000, float [[extrct_3]]
-; CHECK:   %29 = select i1 %22, float 0xFFF0000000000000, float [[extrct_4]]
-; CHECK:   %30 = select i1 %23, float 0xFFF0000000000000, float [[extrct_5]]
-; CHECK:   %31 = select i1 %24, float 0xFFF0000000000000, float [[extrct_6]]
-; CHECK:   %32 = select i1 %20, float 0xFFF0000000000000, float [[extrct_7]]
+; CHECK:   %25 = select i1 %19, float {{(0xFFF0000000000000|-inf)}}, float [[extrct_0]]
+; CHECK:   %26 = select i1 %20, float {{(0xFFF0000000000000|-inf)}}, float [[extrct_1]]
+; CHECK:   %27 = select i1 %21, float {{(0xFFF0000000000000|-inf)}}, float [[extrct_2]]
+; CHECK:   %28 = select i1 %20, float {{(0xFFF0000000000000|-inf)}}, float [[extrct_3]]
+; CHECK:   %29 = select i1 %22, float {{(0xFFF0000000000000|-inf)}}, float [[extrct_4]]
+; CHECK:   %30 = select i1 %23, float {{(0xFFF0000000000000|-inf)}}, float [[extrct_5]]
+; CHECK:   %31 = select i1 %24, float {{(0xFFF0000000000000|-inf)}}, float [[extrct_6]]
+; CHECK:   %32 = select i1 %20, float {{(0xFFF0000000000000|-inf)}}, float [[extrct_7]]
 
 
 ; ModuleID = 'reduced.ll'

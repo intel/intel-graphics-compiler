@@ -20,7 +20,7 @@
 
 define spir_kernel void @test_div(float %src1, float* %dst, float * %dst2) {
   %1 = fmul float 0x401921FB60000000, %src1
-; CHECK: fmul float 0x401921FB60000000
+; CHECK: fmul float {{(0x401921FB60000000|f0x40C90FDB)}}
   %2 = alloca float, align 4
   store float %1, float* %2
   %3 = load float, float* %2

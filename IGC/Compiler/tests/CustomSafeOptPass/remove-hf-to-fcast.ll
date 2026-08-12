@@ -37,7 +37,7 @@ define float @test_hf_fmad(float %a, float %b, float %c) {
 
 define float @test_hf_fmad_const_addend(float %a, float %b) {
 ; CHECK-LABEL: define float @test_hf_fmad_const_addend(
-; CHECK:    [[ADD:%.*]] = fadd fast half %{{.*}}, 0xH3C00
+; CHECK:    [[ADD:%.*]] = fadd fast half %{{.*}}, {{(0xH3C00|1\.000000e\+00)}}
 ; CHECK:    [[EXT:%.*]] = fpext half [[ADD]] to float
 ; CHECK:    ret float [[EXT]]
 ;

@@ -21,8 +21,8 @@
 
 define void @test_fmin(float %src1, float %src2) {
 ; CHECK-LABEL: @test_fmin(
-; CHECK:    [[TMP1:%.*]] = call float @llvm.minnum.f32(float %src1, float 0x7FF8000000000000)
-; CHECK:    [[TMP2:%.*]] = call float @llvm.minnum.f32(float %src2, float 0x7FF8000000000000)
+; CHECK:    [[TMP1:%.*]] = call float @llvm.minnum.f32(float %src1, float {{(0x7FF8000000000000|\+qnan)}})
+; CHECK:    [[TMP2:%.*]] = call float @llvm.minnum.f32(float %src2, float {{(0x7FF8000000000000|\+qnan)}})
 ; CHECK:    [[TMP3:%.*]] = call float @llvm.minnum.f32(float [[TMP1]], float [[TMP2]])
 ; CHECK:    ret void
 

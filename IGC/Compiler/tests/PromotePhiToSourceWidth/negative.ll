@@ -38,7 +38,7 @@ M:
 define void @nonzero_const_bitcast(i1 %c, i32 %a, ptr %p) {
 ; CHECK-LABEL: @nonzero_const_bitcast(
 ; CHECK:       M:
-; CHECK-NEXT:    %phi = phi half [ %h, %A ], [ 0xH3C00, %B ]
+; CHECK-NEXT:    %phi = phi half [ %h, %A ], [ {{(0xH3C00|1\.000000e\+00)}}, %B ]
 ; CHECK-NOT:     phi i32
 entry:
   br i1 %c, label %A, label %B
@@ -82,7 +82,7 @@ M:
 define void @neg_zero(i1 %c, float %a, ptr %p) {
 ; CHECK-LABEL: @neg_zero(
 ; CHECK:       M:
-; CHECK-NEXT:    %phi = phi half [ %t, %A ], [ 0xH8000, %B ]
+; CHECK-NEXT:    %phi = phi half [ %t, %A ], [ {{(0xH8000|-0\.000000e\+00)}}, %B ]
 ; CHECK-NOT:     phi float
 entry:
   br i1 %c, label %A, label %B
@@ -144,7 +144,7 @@ define void @narrowing_multiuse_no_bitcast(i1 %c, float %a, ptr %p, ptr %q) {
 ; CHECK:       A:
 ; CHECK:         %t = fptrunc float %a to half
 ; CHECK:       M:
-; CHECK-NEXT:    %phi = phi half [ %t, %A ], [ 0xH0000, %B ]
+; CHECK-NEXT:    %phi = phi half [ %t, %A ], [ {{(0xH0000|0\.000000e\+00)}}, %B ]
 ; CHECK-NOT:     phi float
 entry:
   br i1 %c, label %A, label %B

@@ -95,7 +95,7 @@ define i1 @test_class_is_inf_f32(float %x) {
 ; CHECK-NEXT:    [[TMP1:%.*]] = bitcast float [[X:%.*]] to i32
 ; CHECK-NEXT:    [[TMP2:%.*]] = and i32 [[TMP1]], 2147483647
 ; CHECK-NEXT:    [[TMP3:%.*]] = bitcast i32 [[TMP2]] to float
-; CHECK-NEXT:    [[TMP4:%.*]] = fcmp oeq float [[TMP3]], 0x7FF0000000000000
+; CHECK-NEXT:    [[TMP4:%.*]] = fcmp oeq float [[TMP3]], {{(0x7FF0000000000000|\+inf)}}
 ; CHECK-NEXT:    ret i1 [[TMP4]]
 ;
   %val = call i1 @llvm.is.fpclass.f32(float %x, i32 516)
@@ -109,7 +109,7 @@ define <2 x i1> @test_class_is_inf_v2f32(<2 x float> %x) {
 ; CHECK-LLVM22-NEXT:    [[TMP2:%.*]] = and <2 x i32> [[TMP1]], splat (i32 2147483647)
 ; CHECK-NEXT:    [[TMP3:%.*]] = bitcast <2 x i32> [[TMP2]] to <2 x float>
 ; CHECK-PRE22-NEXT:    [[TMP4:%.*]] = fcmp oeq <2 x float> [[TMP3]], <float 0x7FF0000000000000, float 0x7FF0000000000000>
-; CHECK-LLVM22-NEXT:    [[TMP4:%.*]] = fcmp oeq <2 x float> [[TMP3]], splat (float 0x7FF0000000000000)
+; CHECK-LLVM22-NEXT:    [[TMP4:%.*]] = fcmp oeq <2 x float> [[TMP3]], splat (float {{(0x7FF0000000000000|\+inf)}})
 ; CHECK-NEXT:    ret <2 x i1> [[TMP4]]
 ;
   %val = call <2 x i1> @llvm.is.fpclass.v2f32(<2 x float> %x, i32 516)
@@ -122,7 +122,7 @@ define i1 @test_class_is_pinf_f32(float %x) {
 ; CHECK-NEXT:    [[TMP1:%.*]] = bitcast float [[X:%.*]] to i32
 ; CHECK-NEXT:    [[TMP2:%.*]] = and i32 [[TMP1]], 2147483647
 ; CHECK-NEXT:    [[TMP3:%.*]] = bitcast i32 [[TMP2]] to float
-; CHECK-NEXT:    [[TMP4:%.*]] = fcmp oeq float [[TMP3]], 0x7FF0000000000000
+; CHECK-NEXT:    [[TMP4:%.*]] = fcmp oeq float [[TMP3]], {{(0x7FF0000000000000|\+inf)}}
 ; CHECK-NEXT:    [[TMP5:%.*]] = and i32 [[TMP1]], -2147483648
 ; CHECK-NEXT:    [[TMP6:%.*]] = icmp ne i32 [[TMP5]], 0
 ; CHECK-NEXT:    [[TMP7:%.*]] = xor i1 [[TMP6]], true
@@ -140,7 +140,7 @@ define <2 x i1> @test_class_is_pinf_v2f32(<2 x float> %x) {
 ; CHECK-LLVM22-NEXT:    [[TMP2:%.*]] = and <2 x i32> [[TMP1]], splat (i32 2147483647)
 ; CHECK-NEXT:    [[TMP3:%.*]] = bitcast <2 x i32> [[TMP2]] to <2 x float>
 ; CHECK-PRE22-NEXT:    [[TMP4:%.*]] = fcmp oeq <2 x float> [[TMP3]], <float 0x7FF0000000000000, float 0x7FF0000000000000>
-; CHECK-LLVM22-NEXT:    [[TMP4:%.*]] = fcmp oeq <2 x float> [[TMP3]], splat (float 0x7FF0000000000000)
+; CHECK-LLVM22-NEXT:    [[TMP4:%.*]] = fcmp oeq <2 x float> [[TMP3]], splat (float {{(0x7FF0000000000000|\+inf)}})
 ; CHECK-PRE22-NEXT:    [[TMP5:%.*]] = and <2 x i32> [[TMP1]], <i32 -2147483648, i32 -2147483648>
 ; CHECK-LLVM22-NEXT:    [[TMP5:%.*]] = and <2 x i32> [[TMP1]], splat (i32 -2147483648)
 ; CHECK-NEXT:    [[TMP6:%.*]] = icmp ne <2 x i32> [[TMP5]], zeroinitializer
@@ -159,7 +159,7 @@ define i1 @test_class_is_ninf_f32(float %x) {
 ; CHECK-NEXT:    [[TMP1:%.*]] = bitcast float [[X:%.*]] to i32
 ; CHECK-NEXT:    [[TMP2:%.*]] = and i32 [[TMP1]], 2147483647
 ; CHECK-NEXT:    [[TMP3:%.*]] = bitcast i32 [[TMP2]] to float
-; CHECK-NEXT:    [[TMP4:%.*]] = fcmp oeq float [[TMP3]], 0x7FF0000000000000
+; CHECK-NEXT:    [[TMP4:%.*]] = fcmp oeq float [[TMP3]], {{(0x7FF0000000000000|\+inf)}}
 ; CHECK-NEXT:    [[TMP5:%.*]] = and i32 [[TMP1]], -2147483648
 ; CHECK-NEXT:    [[TMP6:%.*]] = icmp ne i32 [[TMP5]], 0
 ; CHECK-NEXT:    [[TMP7:%.*]] = and i1 [[TMP6]], [[TMP4]]
@@ -176,7 +176,7 @@ define <2 x i1> @test_class_is_ninf_v2f32(<2 x float> %x) {
 ; CHECK-LLVM22-NEXT:    [[TMP2:%.*]] = and <2 x i32> [[TMP1]], splat (i32 2147483647)
 ; CHECK-NEXT:    [[TMP3:%.*]] = bitcast <2 x i32> [[TMP2]] to <2 x float>
 ; CHECK-PRE22-NEXT:    [[TMP4:%.*]] = fcmp oeq <2 x float> [[TMP3]], <float 0x7FF0000000000000, float 0x7FF0000000000000>
-; CHECK-LLVM22-NEXT:    [[TMP4:%.*]] = fcmp oeq <2 x float> [[TMP3]], splat (float 0x7FF0000000000000)
+; CHECK-LLVM22-NEXT:    [[TMP4:%.*]] = fcmp oeq <2 x float> [[TMP3]], splat (float {{(0x7FF0000000000000|\+inf)}})
 ; CHECK-PRE22-NEXT:    [[TMP5:%.*]] = and <2 x i32> [[TMP1]], <i32 -2147483648, i32 -2147483648>
 ; CHECK-LLVM22-NEXT:    [[TMP5:%.*]] = and <2 x i32> [[TMP1]], splat (i32 -2147483648)
 ; CHECK-NEXT:    [[TMP6:%.*]] = icmp ne <2 x i32> [[TMP5]], zeroinitializer
@@ -313,7 +313,7 @@ define i1 @test_class_is_ninf_or_nan_f32(float %x) {
 ; CHECK-NEXT:    [[TMP2:%.*]] = and i32 [[TMP1]], 2147483647
 ; CHECK-NEXT:    [[TMP3:%.*]] = icmp ugt i32 [[TMP2]], 2139095040
 ; CHECK-NEXT:    [[TMP4:%.*]] = bitcast i32 [[TMP2]] to float
-; CHECK-NEXT:    [[TMP5:%.*]] = fcmp oeq float [[TMP4]], 0x7FF0000000000000
+; CHECK-NEXT:    [[TMP5:%.*]] = fcmp oeq float [[TMP4]], {{(0x7FF0000000000000|\+inf)}}
 ; CHECK-NEXT:    [[TMP6:%.*]] = and i32 [[TMP1]], -2147483648
 ; CHECK-NEXT:    [[TMP7:%.*]] = icmp ne i32 [[TMP6]], 0
 ; CHECK-NEXT:    [[TMP8:%.*]] = and i1 [[TMP7]], [[TMP5]]
@@ -334,7 +334,7 @@ define i1 @test_class_neginf_posnormal_negsubnormal_poszero_snan_f64(double %arg
 ; CHECK-NEXT:    [[TMP5:%.*]] = xor i1 [[TMP4]], true
 ; CHECK-NEXT:    [[TMP6:%.*]] = and i1 [[TMP3]], [[TMP5]]
 ; CHECK-NEXT:    [[TMP7:%.*]] = bitcast i64 [[TMP2]] to double
-; CHECK-NEXT:    [[TMP8:%.*]] = fcmp oeq double [[TMP7]], 0x7FF0000000000000
+; CHECK-NEXT:    [[TMP8:%.*]] = fcmp oeq double [[TMP7]], {{(0x7FF0000000000000|\+inf)}}
 ; CHECK-NEXT:    [[TMP9:%.*]] = and i64 [[TMP1]], -9223372036854775808
 ; CHECK-NEXT:    [[TMP10:%.*]] = icmp ne i64 [[TMP9]], 0
 ; CHECK-NEXT:    [[TMP11:%.*]] = and i1 [[TMP10]], [[TMP8]]
@@ -405,7 +405,7 @@ define <2 x i1> @test_class_neginf_posnormal_negsubnormal_poszero_snan_v2f16(<2 
 ; CHECK-NEXT:    [[TMP6:%.*]] = and <2 x i1> [[TMP3]], [[TMP5]]
 ; CHECK-NEXT:    [[TMP7:%.*]] = bitcast <2 x i16> [[TMP2]] to <2 x half>
 ; CHECK-PRE22-NEXT:    [[TMP8:%.*]] = fcmp oeq <2 x half> [[TMP7]], <half 0xH7C00, half 0xH7C00>
-; CHECK-LLVM22-NEXT:    [[TMP8:%.*]] = fcmp oeq <2 x half> [[TMP7]], splat (half 0xH7C00)
+; CHECK-LLVM22-NEXT:    [[TMP8:%.*]] = fcmp oeq <2 x half> [[TMP7]], splat (half {{(0xH7C00|\+inf)}})
 ; CHECK-PRE22-NEXT:    [[TMP9:%.*]] = and <2 x i16> [[TMP1]], <i16 -32768, i16 -32768>
 ; CHECK-LLVM22-NEXT:    [[TMP9:%.*]] = and <2 x i16> [[TMP1]], splat (i16 -32768)
 ; CHECK-NEXT:    [[TMP10:%.*]] = icmp ne <2 x i16> [[TMP9]], zeroinitializer
@@ -440,7 +440,7 @@ define i1 @test_class_inverted_is_not_nan_f32(float %x) {
 ; CHECK-NEXT:    [[TMP1:%.*]] = bitcast float [[X:%.*]] to i32
 ; CHECK-NEXT:    [[TMP2:%.*]] = and i32 [[TMP1]], 2147483647
 ; CHECK-NEXT:    [[TMP3:%.*]] = bitcast i32 [[TMP2]] to float
-; CHECK-NEXT:    [[TMP4:%.*]] = fcmp oeq float [[TMP3]], 0x7FF0000000000000
+; CHECK-NEXT:    [[TMP4:%.*]] = fcmp oeq float [[TMP3]], {{(0x7FF0000000000000|\+inf)}}
 ; CHECK-NEXT:    [[TMP5:%.*]] = sub i32 [[TMP2]], 8388608
 ; CHECK-NEXT:    [[TMP6:%.*]] = icmp ult i32 [[TMP5]], 2130706432
 ; CHECK-NEXT:    [[TMP7:%.*]] = or i1 [[TMP4]], [[TMP6]]

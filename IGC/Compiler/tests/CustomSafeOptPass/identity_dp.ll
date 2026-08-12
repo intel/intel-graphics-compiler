@@ -110,7 +110,7 @@ define half @test_extract_identity16_half(i32 %src1, half %arg0, half %arg1, hal
 ; CHECK:    [[TMP2:%.*]] = icmp eq i32 [[SRC1]], 1
 ; CHECK:    [[TMP3:%.*]] = icmp eq i32 [[SRC1]], 2
 ; CHECK:    [[TMP4:%.*]] = icmp eq i32 [[SRC1]], 3
-; CHECK:    [[TMP5:%.*]] = select fast i1 [[TMP1]], half [[ARG0]], half 0xH0000
+; CHECK:    [[TMP5:%.*]] = select fast i1 [[TMP1]], half [[ARG0]], half {{(0xH0000|0\.000000e\+00)}}
 ; CHECK:    [[TMP6:%.*]] = select fast i1 [[TMP2]], half [[ARG1]], half [[TMP5]]
 ; CHECK:    [[TMP7:%.*]] = select fast i1 [[TMP3]], half [[ARG2]], half [[TMP6]]
 ; CHECK:    [[TMP8:%.*]] = select fast i1 [[TMP4]], half [[ARG3]], half [[TMP7]]

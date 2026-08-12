@@ -19,7 +19,7 @@ entry:
 ; CHECK-LABEL: test_fdiv_half
 ; CHECK:    %0 = load half, ptr addrspace(1) %a, align 2
 ; CHECK:    %1 = load half, ptr addrspace(1) %b, align 2
-; CHECK:    %2 = fdiv arcp half 0xH3C00, %1
+; CHECK:    %2 = fdiv arcp half {{(0xH3C00|1\.000000e\+00)}}, %1
 ; CHECK:    %3 = fmul arcp half %0, %2
 ; CHECK:    store half %3, ptr addrspace(1) %a, align 2
 ; CHECK:    ret void

@@ -29,7 +29,7 @@ define void @test_load_i32(i32 %src) {
 define void @test_load_f32(i32 %src) {
 ; CHECK-LABEL: @test_load_f32(
 ; CHECK:    [[TMP1:%.*]] = lshr i32 %src, 2
-; CHECK:    [[TMP2:%.*]] = extractelement <2 x float> <float 0x3880604020000000, float 0x3900E0C0A0000000>, i32 [[TMP1]]
+; CHECK:    [[TMP2:%.*]] = extractelement <2 x float> <float {{(0x3880604020000000|f0x04030201)}}, float {{(0x3900E0C0A0000000|f0x08070605)}}>, i32 [[TMP1]]
 ; CHECK:    call void @use.f32(float [[TMP2]])
 ; CHECK:    ret void
 

@@ -40,7 +40,7 @@ define float @test_load_f32(i32 %src) {
 ; CHECK:       [[SHIFT_VAL:%.*]] = shl i32 [[SUB_IDX]], 2
 ; CHECK:       [[SHIFTED_TABLE_VAL:%.*]] = lshr i32 [[TABLE_VAL]], [[SHIFT_VAL]]
 ; CHECK:       [[FINAL_IDX:%.*]] = and i32 [[SHIFTED_TABLE_VAL]], 15
-; CHECK:       [[VAL:%.*]] = extractelement <8 x float> <float 0x36A0000000000000, float 0x36B0000000000000, float 0x36B8000000000000, float 0x36C0000000000000, float 0x36C4000000000000, float 0x36C8000000000000, float 0x36CC000000000000, float 0x36D0000000000000>, i32 [[FINAL_IDX]]
+; CHECK:       [[VAL:%.*]] = extractelement <8 x float> <float {{(0x36A0000000000000|1\.401300e-45)}}, float {{(0x36B0000000000000|2\.802600e-45)}}, float {{(0x36B8000000000000|4\.203900e-45)}}, float {{(0x36C0000000000000|5\.605190e-45)}}, float {{(0x36C4000000000000|7\.006490e-45)}}, float {{(0x36C8000000000000|8\.407790e-45)}}, float {{(0x36CC000000000000|9\.809080e-45)}}, float {{(0x36D0000000000000|1\.121040e-44)}}>, i32 [[FINAL_IDX]]
 ; CHECK:       ret float [[VAL]]
   %1 = inttoptr i32 %src to float addrspace(65549)*
   %2 = load float, float addrspace(65549)* %1, align 4

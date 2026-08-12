@@ -11,7 +11,7 @@
 
 ; CHECK-LABEL: loop:
 ; CHECK-PRE22: [[VECT_PHI:%vectorized_phi.*]] = phi <8 x float> [ <float 0xFFF0000000000000, float 0xFFF0000000000000, float 0xFFF0000000000000, float 0xFFF0000000000000, float 0xFFF0000000000000, float 0xFFF0000000000000, float 0xFFF0000000000000, float 0xFFF0000000000000>, %.lr.ph ], [ [[VECTOR:%vector.*]], %._crit_edge ]
-; CHECK-LLVM22: [[VECT_PHI:%vectorized_phi.*]] = phi <8 x float> [ splat (float 0xFFF0000000000000), %.lr.ph ], [ [[VECTOR:%vector.*]], %._crit_edge ]
+; CHECK-LLVM22: [[VECT_PHI:%vectorized_phi.*]] = phi <8 x float> [ splat (float {{(0xFFF0000000000000|-inf)}}), %.lr.ph ], [ [[VECTOR:%vector.*]], %._crit_edge ]
 ; CHECK: br label %[[BB2:.*]]
 
 ; CHECK: [[BB2]]

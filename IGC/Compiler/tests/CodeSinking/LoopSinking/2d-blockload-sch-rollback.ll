@@ -140,8 +140,8 @@ define spir_kernel void @bar() {
 ; CHECK:         [[BLOCK2D_ADDRPAYLOAD456:%.*]] = call ptr @llvm.genx.GenISA.LSC2DBlockCreateAddrPayload.p0(i64 0, i32 0, i32 0, i32 0, i32 0, i32 0, i32 0, i32 0, i32 0)
 ; CHECK:         [[BLOCK2D_READADDRPAYLOAD457:%.*]] = call <8 x i32> @llvm.genx.GenISA.LSC2DBlockReadAddrPayload.v8i32.p0(ptr [[BLOCK2D_ADDRPAYLOAD456]], i32 0, i32 0, i32 0, i32 0, i32 0, i32 0, i1 false, i1 false, i32 0)
 ; CHECK:         [[TMP1:%.*]] = call <8 x float> @llvm.genx.GenISA.sub.group.dpas.v8f32.v8f32.v8i16.v8i32(<8 x float> zeroinitializer, <8 x i16> zeroinitializer, <8 x i32> [[BLOCK2D_READADDRPAYLOAD457]], i32 0, i32 0, i32 0, i32 0, i1 false)
-; CHECK:         [[TMP2:%.*]] = insertelement <8 x half> zeroinitializer, half 0xH0000, i64 0
-; CHECK:         [[TMP3:%.*]] = insertelement <8 x half> [[TMP2]], half 0xH0000, i64 0
+; CHECK:         [[TMP2:%.*]] = insertelement <8 x half> zeroinitializer, half {{(0xH0000|0\.000000e\+00)}}, i64 0
+; CHECK:         [[TMP3:%.*]] = insertelement <8 x half> [[TMP2]], half {{(0xH0000|0\.000000e\+00)}}, i64 0
 ; CHECK:         [[BLOCK2D_READADDRPAYLOAD459:%.*]] = call <8 x i32> @llvm.genx.GenISA.LSC2DBlockReadAddrPayload.v8i32.p0(ptr [[BLOCK2D_ADDRPAYLOAD456]], i32 0, i32 0, i32 0, i32 0, i32 0, i32 0, i1 false, i1 false, i32 0)
 ; CHECK:         [[TMP4:%.*]] = call <8 x float> @llvm.genx.GenISA.sub.group.dpas.v8f32.v8f32.v8i16.v8i32(<8 x float> zeroinitializer, <8 x i16> zeroinitializer, <8 x i32> [[BLOCK2D_READADDRPAYLOAD459]], i32 0, i32 0, i32 0, i32 0, i1 false)
 ; CHECK:         [[TMP5:%.*]] = call <8 x float> @llvm.genx.GenISA.sub.group.dpas.v8f32.v8f32.v8i16.v8i32(<8 x float> zeroinitializer, <8 x i16> zeroinitializer, <8 x i32> [[BLOCK2D_READADDRPAYLOAD457]], i32 0, i32 0, i32 0, i32 0, i1 false)

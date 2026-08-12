@@ -75,7 +75,7 @@ for.cond.i:                                       ; preds = %_ZZ4testIN4sycl3_V1
 ; CHECK: [[LOAD_1:%.*]] = load <8 x i16>, ptr addrspace(4) [[ASCAST_1]]
 ; CHECK: [[EXTRACT:%.*]] = extractelement <8 x i16> [[LOAD_1]], i64 %{{.*}}
 ; CHECK: [[BITCAST_1:%.*]] = bitcast i16 [[EXTRACT]] to half, !joint_matrix_apply !{{.*}}
-; CHECK: fcmp une half [[BITCAST_1]], 0xH0000
+; CHECK: fcmp une half [[BITCAST_1]], {{(0xH0000|0\.000000e\+00)}}
 
 for.body.i:                                       ; preds = %for.cond.i
   %call.i = call spir_func ptr addrspace(4) @_Z19__spirv_AccessChainPU3AS4PU3AS143__spirv_CooperativeMatrixKHR__half_3_8_16_0l(ptr addrspace(4) %sub_a.ascast.i, i64 %conv.i) #0

@@ -18,14 +18,14 @@
 ; CHECK-NEXT: Slice:   %43 = icmp slt i32 %9, %.pn1482
 ; CHECK-NEXT: Slice:   %44 = icmp slt i32 %10, %.pn1482
 
-; CHECK: User is not uniform:       {{%.*}} = select i1 {{.*}}, float 0xFFF0000000000000
-; CHECK-NEXT: User is not uniform:  {{%.*}} = select i1 {{.*}}, float 0xFFF0000000000000
-; CHECK-NEXT: User is not uniform:  {{%.*}} = select i1 {{.*}}, float 0xFFF0000000000000
-; CHECK-NEXT: User is not uniform:  {{%.*}} = select i1 {{.*}}, float 0xFFF0000000000000
-; CHECK-NEXT: User is not uniform:  {{%.*}} = select i1 {{.*}}, float 0xFFF0000000000000
-; CHECK-NEXT: User is not uniform:  {{%.*}} = select i1 {{.*}}, float 0xFFF0000000000000
-; CHECK-NEXT: User is not uniform:  {{%.*}} = select i1 {{.*}}, float 0xFFF0000000000000
-; CHECK-NEXT: User is not uniform:  {{%.*}} = select i1 {{.*}}, float 0xFFF0000000000000
+; CHECK: User is not uniform:       {{%.*}} = select i1 {{.*}}, float {{(0xFFF0000000000000|-inf)}}
+; CHECK-NEXT: User is not uniform:  {{%.*}} = select i1 {{.*}}, float {{(0xFFF0000000000000|-inf)}}
+; CHECK-NEXT: User is not uniform:  {{%.*}} = select i1 {{.*}}, float {{(0xFFF0000000000000|-inf)}}
+; CHECK-NEXT: User is not uniform:  {{%.*}} = select i1 {{.*}}, float {{(0xFFF0000000000000|-inf)}}
+; CHECK-NEXT: User is not uniform:  {{%.*}} = select i1 {{.*}}, float {{(0xFFF0000000000000|-inf)}}
+; CHECK-NEXT: User is not uniform:  {{%.*}} = select i1 {{.*}}, float {{(0xFFF0000000000000|-inf)}}
+; CHECK-NEXT: User is not uniform:  {{%.*}} = select i1 {{.*}}, float {{(0xFFF0000000000000|-inf)}}
+; CHECK-NEXT: User is not uniform:  {{%.*}} = select i1 {{.*}}, float {{(0xFFF0000000000000|-inf)}}
 ; CHECK-NEXT: Select is stub vectorized, not uniform
 
 
@@ -33,7 +33,7 @@
 ; CHECK-PRE22: [[VEC_BIN:%.*]] = fmul <8 x float> {{.*}}, <float 1.250000e-01, float 1.250000e-01, float 1.250000e-01, float 1.250000e-01, float 1.250000e-01, float 1.250000e-01, float 1.250000e-01, float 1.250000e-01>
 ; CHECK-LLVM22: [[VEC_BIN:%.*]] = fmul <8 x float> {{.*}}, splat (float 1.250000e-01)
 ; CHECK-PRE22: [[VEC_BIN_2:%.*]] = fmul <8 x float> [[VEC_BIN]], <float 0x3FF7154760000000, float 0x3FF7154760000000, float 0x3FF7154760000000, float 0x3FF7154760000000, float 0x3FF7154760000000, float 0x3FF7154760000000, float 0x3FF7154760000000, float 0x3FF7154760000000>
-; CHECK-LLVM22: [[VEC_BIN_2:%.*]] = fmul <8 x float> [[VEC_BIN]], splat (float 0x3FF7154760000000)
+; CHECK-LLVM22: [[VEC_BIN_2:%.*]] = fmul <8 x float> [[VEC_BIN]], splat (float {{(0x3FF7154760000000|f0x3FB8AA3B)}})
 ; CHECK: [[EXT_1_0:%.*]] = extractelement <8 x float> [[VEC_BIN_2]], i32 0
 ; CHECK: [[EXT_1_1:%.*]] = extractelement <8 x float> [[VEC_BIN_2]], i32 1
 ; CHECK: [[EXT_1_2:%.*]] = extractelement <8 x float> [[VEC_BIN_2]], i32 2
@@ -52,14 +52,14 @@
 ; CHECK: [[CMP_1_6:%.*]] = icmp slt i32 {{%.*}}, [[COMP]]
 ; CHECK: [[CMP_1_7:%.*]] = icmp slt i32 {{%.*}}, [[COMP]]
 
-; CHECK: [[SEL_2_0:%.*]] = select i1 [[CMP_1_0]], float 0xFFF0000000000000, float [[EXT_1_0]]
-; CHECK: [[SEL_2_1:%.*]] = select i1 [[CMP_1_1]], float 0xFFF0000000000000, float [[EXT_1_1]]
-; CHECK: [[SEL_2_2:%.*]] = select i1 [[CMP_1_2]], float 0xFFF0000000000000, float [[EXT_1_2]]
-; CHECK: [[SEL_2_3:%.*]] = select i1 [[CMP_1_3]], float 0xFFF0000000000000, float [[EXT_1_3]]
-; CHECK: [[SEL_2_4:%.*]] = select i1 [[CMP_1_4]], float 0xFFF0000000000000, float [[EXT_1_4]]
-; CHECK: [[SEL_2_5:%.*]] = select i1 [[CMP_1_5]], float 0xFFF0000000000000, float [[EXT_1_5]]
-; CHECK: [[SEL_2_6:%.*]] = select i1 [[CMP_1_6]], float 0xFFF0000000000000, float [[EXT_1_6]]
-; CHECK: [[SEL_2_7:%.*]] = select i1 [[CMP_1_7]], float 0xFFF0000000000000, float [[EXT_1_7]]
+; CHECK: [[SEL_2_0:%.*]] = select i1 [[CMP_1_0]], float {{(0xFFF0000000000000|-inf)}}, float [[EXT_1_0]]
+; CHECK: [[SEL_2_1:%.*]] = select i1 [[CMP_1_1]], float {{(0xFFF0000000000000|-inf)}}, float [[EXT_1_1]]
+; CHECK: [[SEL_2_2:%.*]] = select i1 [[CMP_1_2]], float {{(0xFFF0000000000000|-inf)}}, float [[EXT_1_2]]
+; CHECK: [[SEL_2_3:%.*]] = select i1 [[CMP_1_3]], float {{(0xFFF0000000000000|-inf)}}, float [[EXT_1_3]]
+; CHECK: [[SEL_2_4:%.*]] = select i1 [[CMP_1_4]], float {{(0xFFF0000000000000|-inf)}}, float [[EXT_1_4]]
+; CHECK: [[SEL_2_5:%.*]] = select i1 [[CMP_1_5]], float {{(0xFFF0000000000000|-inf)}}, float [[EXT_1_5]]
+; CHECK: [[SEL_2_6:%.*]] = select i1 [[CMP_1_6]], float {{(0xFFF0000000000000|-inf)}}, float [[EXT_1_6]]
+; CHECK: [[SEL_2_7:%.*]] = select i1 [[CMP_1_7]], float {{(0xFFF0000000000000|-inf)}}, float [[EXT_1_7]]
 
 ; CHECK-DAG: [[INSRT_2_0:%.*]] = insertelement <8 x float> undef,         float [[SEL_2_0]], i32 0
 ; CHECK-DAG: [[INSRT_2_1:%.*]] = insertelement <8 x float> [[INSRT_2_0]], float [[SEL_2_1]], i32 1

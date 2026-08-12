@@ -20,7 +20,7 @@ entry:
 
 ; CHECK-LABEL: define void @test_half
 ; CHECK-NOT: xor
-; CHECK: %0 = fsub half 0xH0000, %x
+; CHECK: %0 = fsub half {{(0xH0000|0\.000000e\+00)}}, %x
 
 define void @test_float(float %x) #0 {
 entry:

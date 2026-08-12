@@ -17,10 +17,10 @@
 ; CHECK: Slice Scope:   %tmp35 = call float @llvm.genx.GenISA.WaveAll.f32(float %tmp27, i8 12, i1 true, i32 0)
 ; CHECK: Slice Scope:   %tmp36 = call float @llvm.genx.GenISA.WaveAll.f32(float %tmp28, i8 12, i1 true, i32 0)
 ; CHECK: Slice Scope:   %tmp37 = call float @llvm.genx.GenISA.WaveAll.f32(float %tmp34, i8 12, i1 true, i32 0)
-; CHECK: Slice Scope:   %tmp30 = select i1 %tmp22, float 0xFFF0000000000000, float 0.000000e+00
-; CHECK: Slice Scope:   %tmp31 = select i1 %tmp23, float 0xFFF0000000000000, float 0.000000e+00
-; CHECK: Slice Scope:   %tmp32 = select i1 %tmp24, float 0xFFF0000000000000, float 0.000000e+00
-; CHECK: Slice Scope:   %tmp33 = select i1 %tmp25, float 0xFFF0000000000000, float 0.000000e+00
+; CHECK: Slice Scope:   %tmp30 = select i1 %tmp22, float {{(0xFFF0000000000000|-inf)}}, float 0.000000e+00
+; CHECK: Slice Scope:   %tmp31 = select i1 %tmp23, float {{(0xFFF0000000000000|-inf)}}, float 0.000000e+00
+; CHECK: Slice Scope:   %tmp32 = select i1 %tmp24, float {{(0xFFF0000000000000|-inf)}}, float 0.000000e+00
+; CHECK: Slice Scope:   %tmp33 = select i1 %tmp25, float {{(0xFFF0000000000000|-inf)}}, float 0.000000e+00
 ; CHECK: Slice Scope:   %tmp38 = call float @llvm.genx.GenISA.WaveAll.f32(float %tmp30, i8 12, i1 true, i32 0)
 ; CHECK: Slice Scope:   %tmp39 = call float @llvm.genx.GenISA.WaveAll.f32(float %tmp31, i8 12, i1 true, i32 0)
 ; CHECK: Slice Scope:   %tmp40 = call float @llvm.genx.GenISA.WaveAll.f32(float %tmp32, i8 12, i1 true, i32 0)

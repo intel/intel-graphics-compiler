@@ -58,7 +58,7 @@ define spir_kernel void @test_float_byte_gep_elem0(ptr %out) {
 ; CHECK-LABEL: @test_float_byte_gep_elem0(
 ; CHECK:  entry:
 ; Byte offset 0 = element 0
-; CHECK:    store float 0x3FDA07F920000000, ptr [[OUT:%.*]], align 4
+; CHECK:    store float {{(0x3FDA07F920000000|f0x3ED03FC9)}}, ptr [[OUT:%.*]], align 4
 ; CHECK:    ret void
 ;
 entry:
@@ -72,7 +72,7 @@ define spir_kernel void @test_float_byte_gep_elem1(ptr %out) {
 ; CHECK-LABEL: @test_float_byte_gep_elem1(
 ; CHECK:  entry:
 ; Byte offset 4 = element 1 (this was the buggy case)
-; CHECK:    store float 0x3FE7C7D7A0000000, ptr [[OUT:%.*]], align 4
+; CHECK:    store float {{(0x3FE7C7D7A0000000|f0x3F3E3EBD)}}, ptr [[OUT:%.*]], align 4
 ; CHECK:    ret void
 ;
 entry:
