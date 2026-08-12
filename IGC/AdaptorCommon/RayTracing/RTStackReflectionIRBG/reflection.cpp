@@ -1000,7 +1000,6 @@ IMPL bool _syncStackToShadowMemory(RTSAS RTStack2<GenT> *__restrict__ HWStackPtr
         // Quad or Procedural. It is enough for just candidate processing, as
         // we only need to distinguish Procedural from other type (e.g. Quad).
         // NODE_TYPE_PROCEDURAL has LSB bit set, while others not.
-
           CH.leafType =
               Data.committedStatus == COMMITTED_STATUS::COMMITTED_TRIANGLE_HIT ? NODE_TYPE_QUAD : NODE_TYPE_PROCEDURAL;
       }
