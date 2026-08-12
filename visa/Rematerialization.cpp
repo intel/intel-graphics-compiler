@@ -1086,6 +1086,9 @@ void Rematerialization::run() {
           bool canRemat =
               canRematerialize(src->asSrcRegRegion(), bb, uniqueDef, instIt);
           if (canRemat) {
+            // Replicated now or reused, so remat may erase it once dcl is dead.
+            rematedDefs.insert(uniqueDef->first);
+
             bool reUseRemat = false;
             auto prevRematIt = rematValues.find(uniqueDef);
             if (prevRematIt != rematValues.end()) {

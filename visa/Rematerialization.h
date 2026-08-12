@@ -74,6 +74,8 @@ private:
   std::vector<G4_Declare *> spills;
   // For each top dcl, this map holds all defs
   std::unordered_map<G4_Declare *, References> operations;
+  // Defs remat replicated, the only ones it may erase once dead
+  std::unordered_set<G4_INST *> rematedDefs;
   // This vector contains declares that could potentially save spill
   // if remat'd.
   std::vector<bool> rematCandidates;
@@ -105,6 +107,10 @@ private:
   unsigned int getLastUseLexId(G4_Declare *);
   bool checkLocalWAR(G4_INST *, G4_BB *, INST_LIST_ITER);
   void updateSplitInfo(G4_INST *dstInst, int srcNum);
+  // Drops the use count of dcl after one of its uses is remat'd. With no use
+  // left, the defs remat replicated are dead and get erased; the rest is left
+  // to dce(). A def is always replicated well before its use, so this never
+  // erases the instruction run() is iterating over.
   void reduceNumUses(G4_Declare *dcl) {
     auto opIt = operations.find(dcl);
     if (opIt != operations.end()) {
@@ -114,7 +120,8 @@ private:
 
       if (numUses == 1) {
         for (const auto &ref : opIt->second.def) {
-          ref.second->remove(ref.first);
+          if (rematedDefs.count(ref.first))
+            ref.second->remove(ref.first);
         }
         opIt->second.def.clear();
       }
