@@ -83,7 +83,7 @@ void AlignmentAnalysis::setArgumentAlignmentBasedOnOptionalMetadata(Function &F)
         // This can be e.g. a struct pointer passed byval.
         // DPC++ does not add "*" in this case and we will not be able to
         // set alignment for such arguments.
-        return;
+        continue;
       }
 
       // Remove the trailing '*' from the metadata string
@@ -355,6 +355,10 @@ bool AlignmentAnalysis::SetInstAlignment(LoadInst &I) {
   // alignment of its operand.
   Align curAlign = I.getAlign();
   Align newAlign = std::max(curAlign, getAlignValue(I.getPointerOperand()));
+  Type *Ty = I.getType();
+  // See if the loaded type needs a better alignment
+  if (Ty->isSized() && !IGCLLVM::isTargetExtTy(Ty))
+    newAlign = std::max(newAlign, m_DL->getABITypeAlign(Ty));
   I.setAlignment(newAlign);
   return curAlign != newAlign;
 }
@@ -364,6 +368,10 @@ bool AlignmentAnalysis::SetInstAlignment(StoreInst &I) {
   // alignment of its operand.
   Align curAlign = I.getAlign();
   Align newAlign = std::max(I.getAlign(), getAlignValue(I.getPointerOperand()));
+  Type *Ty = I.getValueOperand()->getType();
+  // See if the stored type needs a better alignment
+  if (Ty->isSized() && !IGCLLVM::isTargetExtTy(Ty))
+    newAlign = std::max(newAlign, m_DL->getABITypeAlign(Ty));
   I.setAlignment(newAlign);
   return curAlign != newAlign;
 }

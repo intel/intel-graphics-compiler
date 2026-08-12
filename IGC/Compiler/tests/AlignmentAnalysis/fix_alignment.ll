@@ -295,6 +295,15 @@ define void @globalgep() {
   ret void
 }
 
+; CHECK-LABEL: @from_load_store
+; CHECK: load float, ptr addrspace(1) %p, align 4
+; CHECK: store float %v, ptr addrspace(1) %p, align 4
+define void @from_load_store(ptr addrspace(1) %p) {
+  %v = load float, ptr addrspace(1) %p
+  store float %v, ptr addrspace(1) %p
+  ret void
+}
+
 ; -----------------------
 
 ; Function Attrs: alwaysinline nounwind
