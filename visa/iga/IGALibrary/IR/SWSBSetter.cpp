@@ -1109,8 +1109,15 @@ void SWSBAnalyzer::postProcessReadModifiedWriteOnByteDst() {
       InstList &instList = bb->getInstList();
     for (auto inst_it = instList.begin(); inst_it != instList.end();
          ++inst_it) {
+      // Treat any instruction with a byte GRF destination can be part of an
+      // input-provided write-combined Atomic block. Exclude dpas and send:
+      // IGA's own SWSB setting adds {Atomic} to dpas format instructions;
+      // Send must carry its own SBID.set and hence its SWSB cannot be moved.
+      // They anyway cannot be write-combined target.
       auto isWriteCombinedCandidate = [&](Instruction &inst) {
-        return (inst.is(Op::MOV) || inst.is(Op::SRND)) &&
+        const OpSpec &os = inst.getOpSpec();
+        return !os.isDpasFormat() && !os.isAnySendFormat() &&
+               os.supportsDestination() &&
                inst.getDestination().getKind() == Operand::Kind::DIRECT &&
                inst.getDestination().getDirRegName() == RegName::GRF_R &&
                TypeSizeInBitsWithDefault(inst.getDestination().getType(),
