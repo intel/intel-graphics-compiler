@@ -90,6 +90,7 @@ struct SemanticChecker : LOCChecker {
     }
   }
 
+
   // Scalar register on dst restrictions:
   // - Opcode must be mov
   // - Source and destination datatypes must be the same and must be integers

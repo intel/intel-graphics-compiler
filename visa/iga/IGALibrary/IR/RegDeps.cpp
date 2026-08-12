@@ -312,6 +312,7 @@ static void setDEPPipeClass_FiveDistPipe(DepSet &dep, const Instruction &inst,
   // TODO: Implement FiveDistPipe
   setDEPPipeClass_FourDistPipeReduction(dep, inst, model);
 
+
   // mov instructions with scalar dst and imm src goto SCALAR pipe
   if (isScalarPipeInst(inst)) {
     dep.setDepPipe(DEP_PIPE::SCALAR);

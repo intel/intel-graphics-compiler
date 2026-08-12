@@ -1213,6 +1213,10 @@ void Formatter::formatSrcOp(SourceIndex srcIx, const Instruction &i) {
   const Operand &src = i.getSource(srcIx);
   const OpSpec &os = i.getOpSpec();
 
+  // an immediate that is a bitmask rather than a value is always printed in hex
+  // regardless the type.
+  bool immIsBitMask = false;
+
   startColumn(os.isAnySendFormat() ? cols.sendSrcOp : cols.srcOp);
 
   switch (src.getKind()) {
@@ -1289,7 +1293,7 @@ void Formatter::formatSrcOp(SourceIndex srcIx, const Instruction &i) {
       break;
     case Type::F:
     case Type::TF32:
-      if (opts.hexFloats) {
+      if (opts.hexFloats || immIsBitMask) {
         emitHex(src.getImmediateValue().u32);
       } else {
         emitFloat(src.getImmediateValue().f32);
