@@ -401,6 +401,19 @@ bool oneGRFBankDivision() const {
           !(getPlatform() == Xe_PVC && !getOption(vISA_HasPartialInt64)));
 }
 
+// Bundle conflict reduction puts the operands of an instruction into different
+// GRF bundles. It is controlled by -enableBundleCR, which is a bit mask: bit 0
+// enables it for dpas instructions, bit 1 for non-dpas instructions.
+// Some platforms override the option default; an explicit user value always
+// wins.
+uint32_t getBundleCRMode() const {
+  return getuint32Option(vISA_enableBundleCR);
+}
+
+bool doBundleCR() const { return getBundleCRMode() != 0; }
+
+bool doBundleCRForNonDpas() const { return (getBundleCRMode() & 2) != 0; }
+
 bool hasMadm() const {
   return (getPlatform() != GENX_ICLLP && !isXeLP() && getPlatform() != Xe_DG2 &&
           getPlatform() != Xe_MTL && getPlatform() != Xe_ARL);

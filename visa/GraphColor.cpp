@@ -1018,9 +1018,9 @@ void BankConflictPass::setupBankConflictsforMad(G4_INST *inst) {
       }
     }
   }
-  // Add potential bundle conflicts, so that RA can handle it when option
-  // -enableBundleCR with value 2 or 3
-  if (gra.kernel.getuInt32Option(vISA_enableBundleCR) & 2) {
+  // Add potential bundle conflicts, so that RA can handle it when bundle
+  // conflict reduction covers non-dpas instructions.
+  if (gra.kernel.fg.builder->doBundleCRForNonDpas()) {
     if (dcls[0] && dcls[1] && (dcls[0] != dcls[1])) {
       gra.addBundleConflictDcl(dcls[0], dcls[1], offset[0] - offset[1]);
       gra.addBundleConflictDcl(dcls[1], dcls[0], offset[1] - offset[0]);
@@ -8100,10 +8100,9 @@ void GraphColor::gatherScatterForbiddenWA() {
 bool GraphColor::regAlloc(bool doBankConflictReduction,
                           bool highInternalConflict, const RPE *rpe) {
   bool useSplitLLRHeuristic = false;
-  // FIXME: This whole bundle thing is a mess, the flag is an int but we
-  // treat it as a bool when passing to assignColors, and it's not clear if it
-  // works for non-DPAS instructions.
-  unsigned doBundleConflictReduction = kernel.getuInt32Option(vISA_enableBundleCR);
+  // FIXME: It is not clear if this works for non-DPAS instructions, hence the
+  // per-instruction-kind mode of -enableBundleCR is collapsed to a bool here.
+  bool doBundleConflictReduction = builder.doBundleCR();
 
   RA_TRACE(std::cout << "\t--# variables: " << liveAnalysis.getNumSelectedVar()
                      << "\n");

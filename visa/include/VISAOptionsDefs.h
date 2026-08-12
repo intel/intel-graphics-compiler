@@ -484,6 +484,8 @@ DEF_VISA_OPTION(vISA_UseRelaxedDegree, ET_BOOL_TRUE, "-relaxedDegree", UNUSED, f
 // clang-format off
 // Enable bundle conflict reduction: put operands of instruction into different GRF bundles.
 // Value: 0 disable, 1 dpas instruction, 2 non-dpas instructions, 3 all instructions
+// Read this option through IR_Builder::getBundleCRMode() (HWCaps.inc), as some
+// platforms override the default below.
 // clang-format on
 DEF_VISA_OPTION(vISA_enableBundleCR, ET_INT32, "-enableBundleCR",
                 "USAGE: -enableBundleCR <0|1|2|3>: 0, disable, 1 dpas "
