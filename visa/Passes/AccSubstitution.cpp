@@ -998,7 +998,7 @@ struct AccAssignment {
     int step =
         builder.needBothAcc(interval->inst->getDst()) ? 2 : 1;
     int startReg = 0;
-    if (builder.getOption(vISA_EnableRRAccSub)) {
+    if (builder.doRoundRobinAccSub()) {
       startReg = curAcc;
     }
     int endReg = 0;
@@ -1040,7 +1040,7 @@ struct AccAssignment {
     }
 
     if (assignAcc(interval, startReg, endReg, step, forbidden)) {
-      if (builder.getOption(vISA_EnableRRAccSub)) {
+      if (builder.doRoundRobinAccSub()) {
         curAcc = interval->assignedAcc;
         curAcc += step;       // Assign to next start
         if (curAcc >= endReg) // Wrap back

@@ -593,6 +593,10 @@ bool enableACCBeforRA() const {
          getOption(vISA_enableAccSubBeforeRA);
 }
 
+bool doRoundRobinAccSub() const {
+  return getOption(vISA_EnableRRAccSub);
+}
+
 bool enablePreSchedACC() const {
   return getOption(vISA_PreSchedForAcc);
 }
