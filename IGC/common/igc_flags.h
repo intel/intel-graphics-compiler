@@ -1435,7 +1435,7 @@ DECLARE_IGC_REGKEY(debugString, SelectiveFunctionControlFile, 0,
 DECLARE_IGC_REGKEY(
     bool, EnableStackCallFuncCall, false,
     "If enabled, the default function call mode will be set to stack call. Otherwise, subroutine call is used.", true)
-DECLARE_IGC_REGKEY(bool, ForceStackCallForLargeKernel, true,
+DECLARE_IGC_REGKEY(bool, ForceStackCallForLargeKernel, false,
                    "When FunctionControl is default, force functions of kernels whose estimated size exceeds the "
                    "large-kernel threshold (KernelTotalSizeThreshold * LargeKernelThresholdMultiplier) to use stack "
                    "calls by default.",
