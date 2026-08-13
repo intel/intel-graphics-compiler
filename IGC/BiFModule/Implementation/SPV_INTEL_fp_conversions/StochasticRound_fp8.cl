@@ -62,37 +62,37 @@ char16 __attribute__((overloadable)) __builtin_spirv_StochasticRoundFP16ToE5M2IN
 char __attribute__((overloadable)) __builtin_spirv_ClampStochasticRoundFP16ToE4M3INTEL(half a, int seed) {
     int new_seed = __builtin_IB_lfsr_b8v4(seed, LfsrPolynomial_b8v4);
     char result = __builtin_IB_srnd_hftohf8_1_sat(a, as_char4(new_seed).x);
-    char isInf = convert_char(__spirv_IsInf(a));
+    char isInf    = -__spirv_IsInf(a);
     return select(result, (char)(result - 1), isInf);
 }
 char2 __attribute__((overloadable)) __builtin_spirv_ClampStochasticRoundFP16ToE4M3INTEL(half2 a, int seed) {
     int new_seed = __builtin_IB_lfsr_b8v4(seed, LfsrPolynomial_b8v4);
     char2 result = __builtin_IB_srnd_hftohf8_2_sat(a, as_char4(new_seed).xy);
-    char2 isInf = convert_char2(__spirv_IsInf(a));
+    char2 isInf    = -__spirv_IsInf(a);
     return select(result, result - (char2)(1), isInf);
 }
 char3 __attribute__((overloadable)) __builtin_spirv_ClampStochasticRoundFP16ToE4M3INTEL(half3 a, int seed) {
     int new_seed = __builtin_IB_lfsr_b8v4(seed, LfsrPolynomial_b8v4);
     char3 result = __builtin_IB_srnd_hftohf8_3_sat(a, as_char4(new_seed).xyz);
-    char3 isInf = convert_char3(__spirv_IsInf(a));
+    char3 isInf    = -__spirv_IsInf(a);
     return select(result, result - (char3)(1), isInf);
 }
 char4 __attribute__((overloadable)) __builtin_spirv_ClampStochasticRoundFP16ToE4M3INTEL(half4 a, int seed) {
     int new_seed = __builtin_IB_lfsr_b8v4(seed, LfsrPolynomial_b8v4);
     char4 result = __builtin_IB_srnd_hftohf8_4_sat(a, as_char4(new_seed));
-    char4 isInf = convert_char4(__spirv_IsInf(a));
+    char4 isInf    = -__spirv_IsInf(a);
     return select(result, result - (char4)(1), isInf);
 }
 char8 __attribute__((overloadable)) __builtin_spirv_ClampStochasticRoundFP16ToE4M3INTEL(half8 a, int seed) {
     uint2 new_seed = __builtin_IB_lfsr_helper_b8v4_to_b8v4x2(seed);
     char8 result = __builtin_IB_srnd_hftohf8_8_sat(a, as_char8(new_seed));
-    char8 isInf = convert_char8(__spirv_IsInf(a));
+    char8 isInf    = -__spirv_IsInf(a);
     return select(result, result - (char8)(1), isInf);
 }
 char16 __attribute__((overloadable)) __builtin_spirv_ClampStochasticRoundFP16ToE4M3INTEL(half16 a, int seed) {
     uint4 new_seed = __builtin_IB_lfsr_helper_b8v4_to_b8v4x4(seed);
     char16 result = __builtin_IB_srnd_hftohf8_16_sat(a, as_char16(new_seed));
-    char16 isInf = convert_char16(__spirv_IsInf(a));
+    char16 isInf    = -__spirv_IsInf(a);
     return select(result, result - (char16)(1), isInf);
 }
 
@@ -100,37 +100,37 @@ char16 __attribute__((overloadable)) __builtin_spirv_ClampStochasticRoundFP16ToE
 char __attribute__((overloadable)) __builtin_spirv_ClampStochasticRoundFP16ToE5M2INTEL(half a, int seed) {
     int new_seed = __builtin_IB_lfsr_b8v4(seed, LfsrPolynomial_b8v4);
     char result = __builtin_IB_srnd_hftobf8_1_sat(a, as_char4(new_seed).x);
-    char isInf = convert_char(__spirv_IsInf(a));
+    char isInf    = -__spirv_IsInf(a);
     return select(result, (char)(result - 1), isInf);
 }
 char2 __attribute__((overloadable)) __builtin_spirv_ClampStochasticRoundFP16ToE5M2INTEL(half2 a, int seed) {
     int new_seed = __builtin_IB_lfsr_b8v4(seed, LfsrPolynomial_b8v4);
     char2 result = __builtin_IB_srnd_hftobf8_2_sat(a, as_char4(new_seed).xy);
-    char2 isInf = convert_char2(__spirv_IsInf(a));
+    char2 isInf    = -__spirv_IsInf(a);
     return select(result, result - (char2)(1), isInf);
 }
 char3 __attribute__((overloadable)) __builtin_spirv_ClampStochasticRoundFP16ToE5M2INTEL(half3 a, int seed) {
     int new_seed = __builtin_IB_lfsr_b8v4(seed, LfsrPolynomial_b8v4);
     char3 result = __builtin_IB_srnd_hftobf8_3_sat(a, as_char4(new_seed).xyz);
-    char3 isInf = convert_char3(__spirv_IsInf(a));
+    char3 isInf    = -__spirv_IsInf(a);
     return select(result, result - (char3)(1), isInf);
 }
 char4 __attribute__((overloadable)) __builtin_spirv_ClampStochasticRoundFP16ToE5M2INTEL(half4 a, int seed) {
     int new_seed = __builtin_IB_lfsr_b8v4(seed, LfsrPolynomial_b8v4);
     char4 result = __builtin_IB_srnd_hftobf8_4_sat(a, as_char4(new_seed));
-    char4 isInf = convert_char4(__spirv_IsInf(a));
+    char4 isInf    = -__spirv_IsInf(a);
     return select(result, result - (char4)(1), isInf);
 }
 char8 __attribute__((overloadable)) __builtin_spirv_ClampStochasticRoundFP16ToE5M2INTEL(half8 a, int seed) {
     uint2 new_seed = __builtin_IB_lfsr_helper_b8v4_to_b8v4x2(seed);
     char8 result = __builtin_IB_srnd_hftobf8_8_sat(a, as_char8(new_seed));
-    char8 isInf = convert_char8(__spirv_IsInf(a));
+    char8 isInf    = -__spirv_IsInf(a);
     return select(result, result - (char8)(1), isInf);
 }
 char16 __attribute__((overloadable)) __builtin_spirv_ClampStochasticRoundFP16ToE5M2INTEL(half16 a, int seed) {
     uint4 new_seed = __builtin_IB_lfsr_helper_b8v4_to_b8v4x4(seed);
     char16 result = __builtin_IB_srnd_hftobf8_16_sat(a, as_char16(new_seed));
-    char16 isInf = convert_char16(__spirv_IsInf(a));
+    char16 isInf    = -convert_char16(__spirv_IsInf(a));
     return select(result, result - (char16)(1), isInf);
 }
 
@@ -342,42 +342,42 @@ char16 __attribute__((overloadable)) __builtin_spirv_StochasticRoundFP16ToE5M2IN
 char __attribute__((overloadable)) __builtin_spirv_ClampStochasticRoundFP16ToE4M3INTEL(half a, int seed, private int *output_seed) {
     int new_seed = __builtin_IB_lfsr_b8v4(seed, LfsrPolynomial_b8v4);
     char result = __builtin_IB_srnd_hftohf8_1_sat(a, as_char4(new_seed).x);
-    char isInf = convert_char(__spirv_IsInf(a));
+    char isInf    = -__spirv_IsInf(a);
     *output_seed = new_seed;
     return select(result, (char)(result - 1), isInf);
 }
 char2 __attribute__((overloadable)) __builtin_spirv_ClampStochasticRoundFP16ToE4M3INTEL(half2 a, int seed, private int *output_seed) {
     int new_seed = __builtin_IB_lfsr_b8v4(seed, LfsrPolynomial_b8v4);
     char2 result = __builtin_IB_srnd_hftohf8_2_sat(a, as_char4(new_seed).xy);
-    char2 isInf = convert_char2(__spirv_IsInf(a));
+    char2 isInf    = -__spirv_IsInf(a);
     *output_seed = new_seed;
     return select(result, result - (char2)(1), isInf);
 }
 char3 __attribute__((overloadable)) __builtin_spirv_ClampStochasticRoundFP16ToE4M3INTEL(half3 a, int seed, private int *output_seed) {
     int new_seed = __builtin_IB_lfsr_b8v4(seed, LfsrPolynomial_b8v4);
     char3 result = __builtin_IB_srnd_hftohf8_3_sat(a, as_char4(new_seed).xyz);
-    char3 isInf = convert_char3(__spirv_IsInf(a));
+    char3 isInf    = -__spirv_IsInf(a);
     *output_seed = new_seed;
     return select(result, result - (char3)(1), isInf);
 }
 char4 __attribute__((overloadable)) __builtin_spirv_ClampStochasticRoundFP16ToE4M3INTEL(half4 a, int seed, private int *output_seed) {
     int new_seed = __builtin_IB_lfsr_b8v4(seed, LfsrPolynomial_b8v4);
     char4 result = __builtin_IB_srnd_hftohf8_4_sat(a, as_char4(new_seed));
-    char4 isInf = convert_char4(__spirv_IsInf(a));
+    char4 isInf    = -__spirv_IsInf(a);
     *output_seed = new_seed;
     return select(result, result - (char4)(1), isInf);
 }
 char8 __attribute__((overloadable)) __builtin_spirv_ClampStochasticRoundFP16ToE4M3INTEL(half8 a, int seed, private int *output_seed) {
     uint2 new_seed = __builtin_IB_lfsr_helper_b8v4_to_b8v4x2(seed);
     char8 result = __builtin_IB_srnd_hftohf8_8_sat(a, as_char8(new_seed));
-    char8 isInf = convert_char8(__spirv_IsInf(a));
+    char8 isInf    = -__spirv_IsInf(a);
     *output_seed = new_seed.y;
     return select(result, result - (char8)(1), isInf);
 }
 char16 __attribute__((overloadable)) __builtin_spirv_ClampStochasticRoundFP16ToE4M3INTEL(half16 a, int seed, private int *output_seed) {
     uint4 new_seed = __builtin_IB_lfsr_helper_b8v4_to_b8v4x4(seed);
     char16 result = __builtin_IB_srnd_hftohf8_16_sat(a, as_char16(new_seed));
-    char16 isInf = convert_char16(__spirv_IsInf(a));
+    char16 isInf    = -__spirv_IsInf(a);
     *output_seed = new_seed.w;
     return select(result, result - (char16)(1), isInf);
 }
@@ -386,42 +386,42 @@ char16 __attribute__((overloadable)) __builtin_spirv_ClampStochasticRoundFP16ToE
 char __attribute__((overloadable)) __builtin_spirv_ClampStochasticRoundFP16ToE5M2INTEL(half a, int seed, private int *output_seed) {
     int new_seed = __builtin_IB_lfsr_b8v4(seed, LfsrPolynomial_b8v4);
     char result = __builtin_IB_srnd_hftobf8_1_sat(a, as_char4(new_seed).x);
-    char isInf = convert_char(__spirv_IsInf(a));
+    char isInf    = -__spirv_IsInf(a);
     *output_seed = new_seed;
     return select(result, (char)(result - 1), isInf);
 }
 char2 __attribute__((overloadable)) __builtin_spirv_ClampStochasticRoundFP16ToE5M2INTEL(half2 a, int seed, private int *output_seed) {
     int new_seed = __builtin_IB_lfsr_b8v4(seed, LfsrPolynomial_b8v4);
     char2 result = __builtin_IB_srnd_hftobf8_2_sat(a, as_char4(new_seed).xy);
-    char2 isInf = convert_char2(__spirv_IsInf(a));
+    char2 isInf    = -__spirv_IsInf(a);
     *output_seed = new_seed;
     return select(result, result - (char2)(1), isInf);
 }
 char3 __attribute__((overloadable)) __builtin_spirv_ClampStochasticRoundFP16ToE5M2INTEL(half3 a, int seed, private int *output_seed) {
     int new_seed = __builtin_IB_lfsr_b8v4(seed, LfsrPolynomial_b8v4);
     char3 result = __builtin_IB_srnd_hftobf8_3_sat(a, as_char4(new_seed).xyz);
-    char3 isInf = convert_char3(__spirv_IsInf(a));
+    char3 isInf    = -__spirv_IsInf(a);
     *output_seed = new_seed;
     return select(result, result - (char3)(1), isInf);
 }
 char4 __attribute__((overloadable)) __builtin_spirv_ClampStochasticRoundFP16ToE5M2INTEL(half4 a, int seed, private int *output_seed) {
     int new_seed = __builtin_IB_lfsr_b8v4(seed, LfsrPolynomial_b8v4);
     char4 result = __builtin_IB_srnd_hftobf8_4_sat(a, as_char4(new_seed));
-    char4 isInf = convert_char4(__spirv_IsInf(a));
+    char4 isInf    = -__spirv_IsInf(a);
     *output_seed = new_seed;
     return select(result, result - (char4)(1), isInf);
 }
 char8 __attribute__((overloadable)) __builtin_spirv_ClampStochasticRoundFP16ToE5M2INTEL(half8 a, int seed, private int *output_seed) {
     uint2 new_seed = __builtin_IB_lfsr_helper_b8v4_to_b8v4x2(seed);
     char8 result = __builtin_IB_srnd_hftobf8_8_sat(a, as_char8(new_seed));
-    char8 isInf = convert_char8(__spirv_IsInf(a));
+    char8 isInf    = -__spirv_IsInf(a);
     *output_seed = new_seed.y;
     return select(result, result - (char8)(1), isInf);
 }
 char16 __attribute__((overloadable)) __builtin_spirv_ClampStochasticRoundFP16ToE5M2INTEL(half16 a, int seed, private int *output_seed) {
     uint4 new_seed = __builtin_IB_lfsr_helper_b8v4_to_b8v4x4(seed);
     char16 result = __builtin_IB_srnd_hftobf8_16_sat(a, as_char16(new_seed));
-    char16 isInf = convert_char16(__spirv_IsInf(a));
+    char16 isInf    = -__spirv_IsInf(a);
     *output_seed = new_seed.w;
     return select(result, result - (char16)(1), isInf);
 }
