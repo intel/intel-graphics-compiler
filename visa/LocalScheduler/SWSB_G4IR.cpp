@@ -4769,6 +4769,11 @@ void SWSB::insertTokenSync() {
                 inst) || // Don't across any token instruction
             inst->isCFInst() ||
             inst->isLabel() || inst->isOptBarrier()) {
+          if (fg.builder->needFenceAfterReadSync()) {
+            G4_INST *syncARInst = insertSyncInstruction(bb, inst_it);
+            syncARInst->setToken(fenceToken);
+            syncARInst->setTokenType(SWSBTokenType::AFTER_READ);
+          }
           G4_INST *syncInst = insertSyncInstruction(bb, inst_it);
           syncInst->setToken(fenceToken);
           syncInst->setTokenType(SWSBTokenType::AFTER_WRITE);
@@ -4782,7 +4787,15 @@ void SWSB::insertTokenSync() {
         fenceToken = inst->getSBIDSetToken();
         if (iInstNext == bb->end()) { // In case the fence instruction is the
                                       // last instruction of BB
-          G4_INST *syncInst = insertSyncInstructionAfter(bb, inst_it);
+          if (fg.builder->needFenceAfterReadSync()) {
+            G4_INST *syncARInst = insertSyncInstructionAfter(bb, inst_it);
+            syncARInst->setToken(fenceToken);
+            syncARInst->setTokenType(SWSBTokenType::AFTER_READ);
+          }
+          // The fence is the last instruction of the BB, so appending at the
+          // end puts the AFTER_WRITE sync after the fence, and after the
+          // AFTER_READ sync when one was inserted.
+          G4_INST *syncInst = insertSyncInstruction(bb, bb->end());
           syncInst->setToken(fenceToken);
           syncInst->setTokenType(SWSBTokenType::AFTER_WRITE);
         }

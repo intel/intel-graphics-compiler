@@ -1094,4 +1094,8 @@ bool supportSendAddrScale(bool isSLM, bool isBTS) {
 bool hasSendPredication() const {
   return false;
 }
+
+bool needFenceAfterReadSync() const {
+  return false;
+}
 // end HW capabilities
