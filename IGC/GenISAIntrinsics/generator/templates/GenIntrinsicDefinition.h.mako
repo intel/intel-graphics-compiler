@@ -45,6 +45,8 @@ public:
 
     static const char* scFunctionRootName;
 
+    static constexpr bool scIsVariadic = ${str(getattr(el, 'is_variadic', False)).lower()};
+
     static constexpr TypeDescription scResTypes{
         ${IntrinsicFormatter.get_type_definition(el.return_definition.type_definition)}::scType
     };

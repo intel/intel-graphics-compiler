@@ -358,11 +358,18 @@ private:
 
     llvm::Type *resultTy = types.front();
     auto argBeg = types.data() + 1;
-    bool isVararg = types.size() > 1 && types.back()->isVoidTy();
-    uint32_t numArgs = isVararg ? static_cast<uint32_t>(types.size() - 2) : static_cast<uint32_t>(types.size() - 1);
+    // A trailing void argument in the YAML is a placeholder used to declare
+    // zero-argument (or reduced-argument) intrinsics; strip it from the actual
+    // function type. GenISA_UnmaskedRegionBegin / GenISA_UnmaskedRegionEnd rely
+    // on this convention to produce a `void()` function.
+    bool hasVoidMarker = types.size() > 1 && types.back()->isVoidTy();
+    uint32_t numArgs =
+        hasVoidMarker ? static_cast<uint32_t>(types.size() - 2) : static_cast<uint32_t>(types.size() - 1);
     llvm::ArrayRef<llvm::Type *> argTys(argBeg, numArgs);
-    // Disable this path because of GenISA_UnmaskedRegionBegin and GenISA_UnmaskedRegionEnd
-    return llvm::FunctionType::get(resultTy, argTys, false /*isVararg*/);
+    // Variadic LLVM signature is opt-in per intrinsic via the YAML `is_variadic`
+    // flag (emitted to `scIsVariadic` by the template). Default is false, so
+    // every intrinsic that does not opt in keeps its previous non-vararg shape.
+    return llvm::FunctionType::get(resultTy, argTys, IntrinsicDefinitionT::scIsVariadic);
   }
 
   static llvm::AttributeList GetAttributeList(llvm::Module &M,

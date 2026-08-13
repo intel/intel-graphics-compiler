@@ -952,11 +952,13 @@ class IntrinsicDefinition(SafeYAMLObject):
 
     def __init__(self, name : str, comment : str, return_definition : ReturnDefinition,
                  arguments : List[ArgumentDefinition], attributes : AttributeSet,
-                 memory_effects : List[MemoryRestriction] = [ MemoryRestriction() ]):
+                 memory_effects : List[MemoryRestriction] = [ MemoryRestriction() ],
+                 is_variadic : bool = False):
         self.name = QuotedString(name)
         self.comment = QuotedString(comment)
         self.return_definition = return_definition
         self.arguments = arguments
+        self.is_variadic = bool(is_variadic)
 
         self.attributes = [attr for attr in attributes if isinstance(attr, AttributeID)]
         self.attributes = sorted(self.attributes, key=lambda x: x.__str__())
@@ -985,7 +987,8 @@ class IntrinsicDefinition(SafeYAMLObject):
             "return_definition": self.return_definition.to_dict(),
             "arguments":[ el.to_dict() for el in self.arguments],
             "attributes": [str(el) for el in self.attributes],
-            "memory_effects": [ el.to_dict() for el in self.memory_effects ]
+            "memory_effects": [ el.to_dict() for el in self.memory_effects ],
+            "is_variadic": self.is_variadic,
         }
         return res
 
@@ -1003,7 +1006,8 @@ class IntrinsicDefinition(SafeYAMLObject):
         return IntrinsicDefinition(json_dct['name'], json_dct['comment'], return_definition,
                                    arguments,
                                    attributes
-                                   , memory_effects)
+                                   , memory_effects,
+                                   is_variadic=json_dct.get('is_variadic', False))
 
 class PrimitiveArgumentDefinition(SafeYAMLObject):
 
