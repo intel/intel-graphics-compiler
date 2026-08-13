@@ -1,0 +1,29 @@
+diff --git a/llvm/lib/Transforms/InstCombine/InstructionCombining.cpp b/llvm/lib/Transforms/InstCombine/InstructionCombining.cpp
+index 52c8916fcdeb..704bb70f7f24 100644
+--- a/llvm/lib/Transforms/InstCombine/InstructionCombining.cpp
++++ b/llvm/lib/Transforms/InstCombine/InstructionCombining.cpp
+@@ -3299,6 +3299,16 @@ Instruction *InstCombinerImpl::visitGetElementPtrInst(GetElementPtrInst &GEP) {
+   if (MadeChange)
+     return &GEP;
+ 
++  /*
++  This transformation causes all of the optimizations
++  in LowerGEPForPrivMem Pass not work for GEPs with constant
++  indexes, causing a lot of performance regressions.
++
++  Since GEPs are going to be removed in the near future
++  (https://discourse.llvm.org/t/rfc-replacing-getelementptr-with-ptradd/68699)
++  and fixing LowerGEPForPrivMem to work with GEPs would require
++  a lot of work, we are disabling this transformation for now.
++
+   // Canonicalize constant GEPs to i8 type.
+   if (!GEPEltType->isIntegerTy(8) && GEP.hasAllConstantIndices()) {
+     APInt Offset(DL.getIndexTypeSizeInBits(GEPType), 0);
+@@ -3307,6 +3317,7 @@ Instruction *InstCombinerImpl::visitGetElementPtrInst(GetElementPtrInst &GEP) {
+           GEP, Builder.CreatePtrAdd(PtrOp, Builder.getInt(Offset), "",
+                                     GEP.getNoWrapFlags()));
+   }
++  */
+ 
+   if (shouldCanonicalizeGEPToPtrAdd(GEP)) {
+     Value *Offset = EmitGEPOffset(cast<GEPOperator>(&GEP));
