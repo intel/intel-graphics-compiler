@@ -65,9 +65,6 @@ private:
 
   void verifyVariableDecl(unsigned declID);
   void verifyPredicateDecl(unsigned declID);
-  // Verify that a predicate destination operand is large enough to hold the
-  // predicate bits produced by the instruction's execution size.
-  void verifyPredicateDstBound(const CISA_INST *inst, const vector_opnd &dst);
   void verifyAddressDecl(unsigned declID);
   void verifyRegion(const CISA_INST *inst, unsigned i);
   void verifyRawOperandType(const CISA_INST *inst, const raw_opnd &opnd,
