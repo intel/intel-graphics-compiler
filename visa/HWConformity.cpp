@@ -78,6 +78,30 @@ G4_SubReg_Align HWConformity::getDclAlignment(int opndBytes, G4_INST *inst,
 
   return subAlign;
 }
+
+// The copy moves created by insertMovBefore()/insertMovAfter() keep the type of
+// the operand they replace, so copying a BF operand yields a mov with BF on
+// both ends. Such pure BF instructions are unsupported unless the platform sets
+// supportPureBF(), and the copy may be inserted at a position that fixBFMove()
+// no longer visits, so lower it here. A BF copy is a raw bit copy, hence uw is
+// an exact substitute.
+// Only the types of the copy's operands are changed; the temp keeps its BF type
+// so that the operand returned to the caller is unaffected.
+void HWConformity::lowerPureBFCopy(G4_INST *movInst) {
+  if (builder.supportPureBF())
+    return;
+
+  G4_Operand *src0 = movInst->getSrc(0);
+  if (movInst->getDst()->getType() != Type_BF || !src0->isSrcRegRegion() ||
+      src0->getType() != Type_BF)
+    return;
+
+  vISA_ASSERT(!movInst->getCondMod() && !movInst->getSaturate(),
+              "BF->BF move does not support cond mod/sat");
+  movInst->getDst()->setType(builder, Type_UW);
+  src0->asSrcRegRegion()->setType(builder, Type_UW);
+}
+
 /*
  *  create a new mov instruction and insert it after "it"
  *  mov (esize) dst tmp:type
@@ -198,6 +222,8 @@ G4_DstRegRegion *HWConformity::insertMovAfter(INST_LIST_ITER &it,
   } else if (type == Type_F || type == Type_DF) {
     inst->setSaturate(g4::NOSAT);
   }
+
+  lowerPureBFCopy(newInst);
 
   inst->setExecSize(newExecSize);
 
@@ -428,6 +454,8 @@ G4_Operand *HWConformity::insertMovBefore(INST_LIST_ITER it, uint32_t srcNum,
   bb->insertBefore(it, newInst);
   inst->transferDef(newInst, Gen4_Operand_Number(srcNum + 1), Opnd_src0);
   newInst->addDefUse(inst, Gen4_Operand_Number(srcNum + 1));
+
+  lowerPureBFCopy(newInst);
 
   G4_SrcModifier modifier = Mod_src_undef;
   if (src->isSrcRegRegion()) {
@@ -5613,15 +5641,6 @@ void HWConformity::avoidInstDstSrcOverlap(INST_LIST_ITER it, G4_BB *bb,
           insertMovAfter(it, inst->getDst(), inst->getDst()->getType(), bb);
       newDst->setAccRegSel(accSel);
       inst->setDest(newDst);
-
-      // The copy has the same type on both ends, so a BF dst gives a pure BF
-      // mov, which HW does not support. fixBFMove() already ran, so lower it
-      // to a uw copy here.
-      auto movIt = std::next(it);
-      if (!builder.supportPureBF() &&
-          (*movIt)->getDst()->getType() == Type_BF) {
-        fixBFMove(movIt, bb);
-      }
 
       // After inserting temp to avoid dst/src overlapping, need to check
       // additional region rules to ensure both the new instruction and the

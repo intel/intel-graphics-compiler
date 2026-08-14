@@ -1591,6 +1591,13 @@ void G4Verifier::verifyBFMixedMode(G4_INST *inst) {
   }
 
   uint32_t nativeES = kernel.fg.builder->getNativeExecSize();
+  // For SIMD1 an operand accesses a single element, so the packed/unpacked
+  // subreg rules do not apply (see example 3 above) and the dst horizontal
+  // stride is a don't-care. HWConformity::fixBFMixedMode() skips SIMD1 for the
+  // same reason, so requiring anything more here rejects legal code, such as
+  // the SIMD1 pieces of an unpacked BF dst split by fixUnalignedRegions():
+  //    mov (1|M0)  r6.2<2>:bf  r9.1<0;1,0>:f
+  const bool isSIMD1 = (inst->getExecSize() == g4::SIMD1);
   // verify dst
   G4_DstRegRegion *dreg = inst->getDst();
   if (dreg && !dreg->isNullReg() && !inst->isCompare()) {
@@ -1601,7 +1608,7 @@ void G4Verifier::verifyBFMixedMode(G4_INST *inst) {
     bool isLegitUnpackedBF =
         (dreg->getType() == Type_BF && (hs == 2 && (so == 0 || so == 1)));
     bool isLegitF = (dreg->getType() == Type_F && (hs == 1 && so == 0));
-    bool isLegitScalar = (inst->getExecSize() == g4::SIMD1 && hs == 1);
+    bool isLegitScalar = isSIMD1;
     if (!(isLegitPackedBF || isLegitUnpackedBF || isLegitF || isLegitScalar)) {
       // case 5 & 6
       DEBUG_VERBOSE("BF/F Dst has illegal region and type combination!");
@@ -1639,9 +1646,7 @@ void G4Verifier::verifyBFMixedMode(G4_INST *inst) {
         (srcTy == Type_F && !sreg->getRegion()->isScalar() &&
          sreg->getRegion()->isContiguous(inst->getExecSize()) && so == 0);
     bool isLegitScalar =
-        (sreg->getRegion()->isScalar() &&
-         (srcTy == Type_F ||
-          (srcTy == Type_BF && inst->getExecSize() == g4::SIMD1)));
+        isSIMD1 || (sreg->getRegion()->isScalar() && srcTy == Type_F);
     if (!(isLegitPackedBF || isLegitF || isLegitScalar)) {
       // case 5 & 6
       DEBUG_VERBOSE("Src has illegal region and type combination!");

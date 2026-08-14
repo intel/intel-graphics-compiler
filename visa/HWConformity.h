@@ -226,6 +226,9 @@ class HWConformity {
   void fixImmAddrOffsetOOB(INST_LIST_ITER it, G4_BB *bb);
 
 protected:
+  // lower a copy move with BF on both ends to a uw copy, if HW needs it
+  void lowerPureBFCopy(G4_INST *movInst);
+
   G4_DstRegRegion *insertMovAfter(INST_LIST_ITER &it, G4_DstRegRegion *dst,
                                   G4_Type type, G4_BB *bb,
                                   G4_SubReg_Align dstAlign = Any);
