@@ -4442,9 +4442,13 @@ uint8_t G4_SrcRegRegion::getMaxExecSize(const IR_Builder &builder, int pos,
   // conservative.
   // Here we assume that no cross width if row size is larger than width
   // mul (16) V112(0,0)<1>:f V111(0,0)<16;16,1>:f r1.0<1;4,0>:f
+  //
+  // The rest of the row is capped at maxExSize: the caller takes this result
+  // as its new exec size, so reporting more raises it above what the other
+  // operands allow.
   if (!alignToRow && desc->vertStride != 0 && desc->horzStride != 0) {
-    wd = vs =
-        (uint16_t)roundDownPow2((pos / desc->width + 1) * desc->width - pos);
+    wd = vs = (uint16_t)roundDownPow2(std::min<unsigned>(
+        maxExSize, (pos / desc->width + 1) * desc->width - pos));
 
     // Need to check whether this subregion crosses grf or not.
     // E.g. the second half does cross a grf:
@@ -4475,9 +4479,10 @@ uint8_t G4_SrcRegRegion::getMaxExecSize(const IR_Builder &builder, int pos,
   uint8_t pow2 = roundDownPow2(eleInFirstRow);
 
   if (eleInFirstRow != pow2) {
-    wd = pow2;
+    // rest of the row, capped at maxExSize as above
+    wd = (uint16_t)roundDownPow2(std::min<unsigned>(maxExSize, pow2));
     vs = wd * desc->horzStride;
-    return pow2;
+    return (uint8_t)wd;
   }
 
   uint32_t prevPos = (pos / desc->width * desc->vertStride +
