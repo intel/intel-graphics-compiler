@@ -1905,15 +1905,15 @@ DECLARE_IGC_REGKEY(bool, EnablePrivMemNewSOAForScalarArrays, false,
 DECLARE_IGC_REGKEY(bool, NewSOATransposeForOpenCL, true,
                    "If true, EnablePrivMemNewSOATranspose only applies to OpenCL kernels. For testing purpose", true)
 DECLARE_IGC_REGKEY(bool, EnableSelectOfAllocaPtrSplit, false,
-                   "If true, pre-pass in PrivateMemoryResolution splits select-of-pointer "
+                   "If true, enables splitting SELECT instruction containing pointers "
                    "where one operand is alloca-derived (load duplication / store branching). "
                    "Enables SoA promotion for allocas otherwise blocked by SELECT pattern.",
                    true)
 DECLARE_IGC_REGKEY(bool, DisablePredicatedLoadForAllocaPtrSelectSplit, false,
-                   "If true, the select-of-alloca-pointer split always emits regular loads, even when "
-                   "private memory is in stateless global, instead of the predicated-load WA. "
-                   "For testing/debugging the WA. May cause OOB reads in stateless global.",
-                   true)
+                   "If true, EnableSelectOfAllocaPtrSplit always emits regular loads, even when "
+                   "private memory is in stateless global, instead of the predicated-loads. "
+                   "For testing/debugging. May cause OOB reads in stateless global.",
+                   false)
 DECLARE_IGC_REGKEY(bool, EnablePHIOfAllocaPtrSplit, false,
                    "If true, enables splitting PHI instruction containing pointers "
                    "where at least one incoming value is alloca-derived (per-predecessor load + value phi). "

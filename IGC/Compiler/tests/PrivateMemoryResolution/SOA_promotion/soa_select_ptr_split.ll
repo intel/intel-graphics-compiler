@@ -9,7 +9,8 @@
 ; REQUIRES: regkeys
 ; UNSUPPORTED: llvm-17-plus
 ;
-; RUN: igc_opt --typed-pointers -regkey EnableSelectOfAllocaPtrSplit=1,EnablePrivMemNewSOAForScalarArrays=1 --ocl --platformPtl --igc-private-mem-resolution -S %s | FileCheck %s
+; RUN: igc_opt --typed-pointers -regkey EnableSelectOfAllocaPtrSplit=1,EnablePrivMemNewSOAForScalarArrays=1 --ocl --platformPtl \
+; RUN:   --igc-split-selects-of-alloca-pointers --igc-private-mem-resolution -S %s | FileCheck %s
 ;
 ; Test: SELECT-of-pointer with one alloca-derived operand is split before
 ; SOALayoutChecker so the underlying [33 x float] alloca becomes SoA.
@@ -33,8 +34,8 @@
 
 ; CHECK-LABEL: @test_load_select(
 ;;
-;; Pre-pass: SELECT bypassed -- one load on the extern arm and one load on the
-;; SoA-transposed stack arm, with a value-level SELECT merging them.
+;; SELECT bypassed -- one load on the extern operand and one load on the
+;; SoA-transposed stack operand, with a value-level SELECT merging them.
 ;;
 ; CHECK:       call i32 @llvm.genx.GenISA.simdSize()
 ; CHECK:       load float, float addrspace(4)*
@@ -43,7 +44,7 @@
 ;;
 ; CHECK-LABEL: @test_store_select(
 ;;
-;; STORE arm: SplitBlockAndInsertIfThenElse produces a conditional branch
+;; STORE operand: SplitBlockAndInsertIfThenElse produces a conditional branch
 ;; (br i1 %c) with one store in each successor (stack store goes to SoA float*).
 ;;
 ; CHECK:       br i1 %c

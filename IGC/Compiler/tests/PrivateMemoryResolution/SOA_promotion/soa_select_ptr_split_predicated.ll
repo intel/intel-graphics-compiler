@@ -9,7 +9,8 @@
 ; REQUIRES: regkeys
 ; UNSUPPORTED: llvm-17-plus
 ;
-; RUN: igc_opt --typed-pointers -regkey EnableSelectOfAllocaPtrSplit=1,EnablePrivMemNewSOAForScalarArrays=1 --ocl --platformPtl --igc-private-mem-resolution -S %s | FileCheck %s
+; RUN: igc_opt --typed-pointers -regkey EnableSelectOfAllocaPtrSplit=1,EnablePrivMemNewSOAForScalarArrays=1 --ocl --platformPtl \
+; RUN:   --igc-split-selects-of-alloca-pointers --igc-private-mem-resolution -S %s | FileCheck %s
 ;
 ; When private memory is using stateless global, to avoid OOB reads,
 ; loads lowered from select are changed to predicated loads.
@@ -18,9 +19,9 @@
 ; CHECK-LABEL: @test_load_select_no_scratch(
 ; CHECK:       [[SIMDSZ:%[A-Za-z0-9_.]+]] = call i32 @llvm.genx.GenISA.simdSize()
 ; CHECK:       [[NC:%[A-Za-z0-9_.]+]] = xor i1 %c, true
-;; extern arm: generic-AS, predicated on %c
+;; extern operand: generic-AS, predicated on %c
 ; CHECK:       call float @llvm.genx.GenISA.PredicatedLoad.f32.p4f32.f32(float addrspace(4)* {{.*}}, i64 4, i1 %c, float poison)
-;; stack arm: SoA element stride uses simdSize ...
+;; stack operand: SoA element stride uses simdSize ...
 ; CHECK:       mul i32 [[SIMDSZ]],
 ;; ... and lowers to a predicated load on a private (p0) pointer, predicate preserved
 ; CHECK:       call float @llvm.genx.GenISA.PredicatedLoad.f32.p0f32.f32(float* {{.*}}, i64 4, i1 [[NC]], float poison)

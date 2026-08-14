@@ -297,6 +297,7 @@ void initializeAllIGCPasses(llvm::PassRegistry &Registry) {
   initializeMemOpt2Pass(Registry);
   initializeSplitLoadsPass(Registry);
   initializeSplitPHIsOfAllocaPointersPass(Registry);
+  initializeSplitSelectsOfAllocaPointersPass(Registry);
   initializeResolveSampledImageBuiltinsLPMPass(Registry);
   initializeLowerImplicitArgIntrinsicsPass(Registry);
   initializeCanonicalizeMulAddPass(Registry);

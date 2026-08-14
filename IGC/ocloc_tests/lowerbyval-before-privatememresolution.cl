@@ -23,6 +23,7 @@ SPDX-License-Identifier: MIT
 // CHECK: LowerByValAttribute
 // CHECK-NEXT: ReplaceUnsupportedIntrinsics
 // CHECK-NEXT: SplitPHIsOfAllocaPointers
+// CHECK-NEXT: SplitSelectsOfAllocaPointers
 // CHECK-NEXT: PrivateMemoryResolution
 
 __kernel void foo(int a, int b, __global int *res) { *res = a + b; }

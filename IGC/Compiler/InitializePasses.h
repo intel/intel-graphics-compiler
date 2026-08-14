@@ -178,6 +178,7 @@ void initializeSpvPredicatedIOResolutionLPMPass(llvm::PassRegistry &);
 void initializeSpvSubgroupMMAResolutionLPMPass(llvm::PassRegistry &);
 void initializeSplitLoadsPass(llvm::PassRegistry &);
 void initializeSplitPHIsOfAllocaPointersPass(llvm::PassRegistry &);
+void initializeSplitSelectsOfAllocaPointersPass(llvm::PassRegistry &);
 void initializeStatelessToStatefulPass(llvm::PassRegistry &);
 void initializeStatelessOffsetNarrowingPass(llvm::PassRegistry &);
 void initializeSubGroupFuncsResolutionLPMPass(llvm::PassRegistry &);

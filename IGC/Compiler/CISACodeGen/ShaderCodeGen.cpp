@@ -62,6 +62,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CISACodeGen/RuntimeValueLegalizationPass.h"
 #include "Compiler/CISACodeGen/LowerGEPForPrivMem.hpp"
 #include "Compiler/CISACodeGen/SplitPHIsOfAllocaPointers.hpp"
+#include "Compiler/CISACodeGen/SplitSelectsOfAllocaPointers.hpp"
 #include "Compiler/CISACodeGen/MatchCommonKernelPatterns.hpp"
 #include "Compiler/CISACodeGen/POSH_RemoveNonPositionOutput.h"
 #include "Compiler/CISACodeGen/RegisterEstimator.hpp"
@@ -392,6 +393,10 @@ void AddAnalysisPasses(CodeGenContext &ctx, IGCPassManager &mpm) {
     // Resolving private memory allocas
     if (ctx.type == ShaderType::OPENCL_SHADER) {
       mpm.add(createSplitPHIsOfAllocaPointers(true));
+      // Must stay immediately before PrivateMemoryResolution: the pass decides
+      // between speculative and predicated loads from the scratch-space
+      // decision, which no later-inserted private memory may change.
+      mpm.add(createSplitSelectsOfAllocaPointers());
     }
     mpm.add(CreatePrivateMemoryResolution());
   }
@@ -790,6 +795,10 @@ void AddLegalizationPasses(CodeGenContext &ctx, IGCPassManager &mpm, PSSignature
     }
     if (ctx.type == ShaderType::OPENCL_SHADER) {
       mpm.add(createSplitPHIsOfAllocaPointers(true));
+      // Must stay immediately before PrivateMemoryResolution: the pass decides
+      // between speculative and predicated loads from the scratch-space
+      // decision, which no later-inserted private memory may change.
+      mpm.add(createSplitSelectsOfAllocaPointers());
     }
     mpm.add(CreatePrivateMemoryResolution());
   }
