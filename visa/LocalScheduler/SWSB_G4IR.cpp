@@ -215,7 +215,27 @@ static bool hasSamePredicator(const G4_INST *inst1, const G4_INST *inst2) {
   return true;
 }
 
-static bool hasSameWriteEnable(const G4_INST *inst1, const G4_INST *inst2) {
+static bool hasSamePredicatorAndWriteEnable(const G4_INST *inst1, const G4_INST *inst2) {
+  G4_Predicate *pred1 = inst1->getPredicate();
+  G4_Predicate *pred2 = inst2->getPredicate();
+
+  if (pred1 && pred2) {
+    bool flagRegNumValid = true;
+    unsigned short refOff1 = pred1->getBase()->ExRegNum(flagRegNumValid);
+    unsigned short subRefOff1 = pred1->getBase()->asRegVar()->getPhyRegOff();
+    unsigned short refOff2 = pred2->getBase()->ExRegNum(flagRegNumValid);
+    unsigned short subRefOff2 = pred2->getBase()->asRegVar()->getPhyRegOff();
+
+    if (refOff1 == refOff2 && subRefOff1 == subRefOff2) {
+      return true;
+    }
+    return false;
+  }
+
+  if (pred1 || pred2) {
+    return false;
+  }
+
   if (inst1->isWriteEnableInst() ^ inst2->isWriteEnableInst()) {
     return false;
   }
@@ -6836,8 +6856,7 @@ bool G4_BB_SB::isLastDpas(SBNode *curNode, SBNode *nextNode,
     return true;
   }
 
-  if (!hasSamePredicator(curInst, nextInst) ||
-      !hasSameWriteEnable(curInst, nextInst)) {
+  if (!hasSamePredicatorAndWriteEnable(curInst, nextInst)) {
     return true;
   }
 
