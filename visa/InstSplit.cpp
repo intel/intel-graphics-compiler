@@ -131,9 +131,15 @@ INST_LIST_ITER InstSplitPass::splitInstruction(INST_LIST_ITER it,
     G4_SrcModifier modifier = src->getModifier();
     src->setModifier(Mod_src_undef);
 
+    // The mov copies the source into a fresh temp that is read back by the
+    // (possibly further-split) parent instruction. It must be NoMask: it has
+    // to populate every lane the parent may read regardless of the parent's
+    // execution mask, and it lets the temp mov be split to any execution size
+    // -- including below SIMD4, where no legal emask offset exists (see the
+    // offsetToMask() based mask handling in the split loop below).
     G4_INST *movInst =
         m_builder->createMov(execSize, m_builder->createDstRegRegion(dcl, 1),
-                             src, inst->getOption(), false);
+                             src, InstOpt_WriteEnable, false);
     movInst->inheritDIFrom(inst);
 
     INST_LIST_ITER newMovIter = instList.insert(it, movInst);
@@ -227,7 +233,24 @@ INST_LIST_ITER InstSplitPass::splitInstruction(INST_LIST_ITER it,
         // Try splitting the inst if it's a mov. Otherwise, legalize
         // the inst by inserting a mov for the src, and split the new
         // mov if needed.
-        if (inst->opcode() == G4_mov) {
+        //
+        // Splitting halves the execution size. A sub-instruction that needs
+        // an execution-mask offset must not be halved below SIMD4: the upper
+        // half (e.g. the SIMD2 at mask offset 2) has no legal emask offset.
+        // Halve a mov in place only when the halves stay at least SIMD4, or
+        // when they carry no emask offset anyway. Otherwise fall through and
+        // legalize by copying the source into a NoMask temp, which can be
+        // split to any size, while the masked parent keeps its execution size
+        // and is left to fixUnalignedRegions in HWConformity.
+        bool isCMKernel = m_builder->kernel.getInt32KernelAttr(
+                              Attributes::ATTR_Target) == VISA_CM;
+        bool halvesNeedMaskOffset =
+            inst->getCondMod() || inst->getPredicate() ||
+            (!isCMKernel && !inst->isWriteEnableInst());
+        bool canHalveMovInPlace =
+            inst->opcode() == G4_mov &&
+            (execSize > g4::SIMD4 || !halvesNeedMaskOffset);
+        if (canHalveMovInPlace) {
           doSplit = true;
           break;
         }
@@ -391,7 +414,11 @@ INST_LIST_ITER InstSplitPass::splitInstruction(INST_LIST_ITER it,
                                       TypeSize(inst->getExecType()) == 8);
       G4_InstOption newMask =
           G4_INST::offsetToMask(newExecSize, newMaskOffset, nibOk);
-      newInst->setMaskOption(newMask);
+      if (newMask == InstOpt_NoOpt) {
+        vISA_ASSERT(false, "no legal emask found for the split instruction");
+      } else {
+        newInst->setMaskOption(newMask);
+      }
     }
 
     if (accDstRegion)

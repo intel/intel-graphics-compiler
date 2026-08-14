@@ -8355,16 +8355,25 @@ void HWConformity::split64bCopyToSIMD1Insts(INST_LIST_ITER it, G4_BB *bb) {
     }
 
     auto oldSrc = movInst->getSrc(0)->asSrcRegRegion();
+    // Walk the source by its own stride, which need not match the dst stride
+    // (e.g. a packed src feeding a stride-4 dst). Fall back to the dst stride
+    // for non-single-strided sources, which keeps the original behavior for
+    // element-aligned (matching-stride) copies.
+    uint16_t srcStrideElems = 0;
+    int srcStep = oldSrc->getRegion()->isSingleStride(movInst->getExecSize(),
+                                                      srcStrideElems)
+                      ? (int)srcStrideElems
+                      : stride;
     G4_SrcRegRegion *newSrc = nullptr;
     if (oldSrc->isIndirect()) {
       newSrc = builder.createIndirectSrc(
           oldSrc->getModifier(), oldSrc->getBase(), oldSrc->getRegOff(),
           oldSrc->getSubRegOff(), builder.getRegionScalar(), oldSrc->getType(),
-          oldSrc->getAddrImm() + stride * i * 8);
+          oldSrc->getAddrImm() + srcStep * i * oldSrc->getTypeSize());
     } else {
       newSrc = builder.createSrcRegRegion(
           oldSrc->getModifier(), oldSrc->getRegAccess(), oldSrc->getBase(),
-          oldSrc->getRegOff(), oldSrc->getSubRegOff() + stride * i,
+          oldSrc->getRegOff(), oldSrc->getSubRegOff() + srcStep * i,
           builder.getRegionScalar(), oldSrc->getType(), oldSrc->getAccRegSel());
     }
 
@@ -8472,13 +8481,43 @@ void HWConformity::fixUnalignedRegions(INST_LIST_ITER it, G4_BB *bb) {
           // For packed 64b copy moves that are not under divergent CF, we can
           // change its type to UD
           change64bCopyToUD(inst, srcStride / inst->getSrc(0)->getTypeSize());
-        } else if (isNoMaskInst && inst->getDst()->getHorzStride() == 4 &&
-                   srcStride != 0) {
-          // If the dst stride of the 64b copy moves is 4, we can't split it
-          // into 2 UD moves as the dst stride can't exceed 4. If it's not
-          // under divergent CF, we can change it to multiple SIMD1 insts.
-          // TODO: how to handle the case under divergent CF?
-          split64bCopyToSIMD1Insts(it, bb);
+        } else if (inst->getDst()->getHorzStride() == 4 &&
+                   (srcStride != 0 || src0RR->isIndirect()) &&
+                   (isNoMaskInst || builder.tryToAlignOperand(
+                                        inst->getDst(), builder.getGRFSize()))) {
+          // The dst stride of a 64b copy can't exceed 4, so a stride-4 copy
+          // can't be split into 2 UD moves; scalarize it into SIMD1 moves.
+          //
+          // split64bCopyToSIMD1Insts emits NoMask SIMD1 writes, which would
+          // clobber masked-off lanes under divergent CF. So for a masked copy,
+          // first repack the source into a matching stride-4 layout in a NoMask
+          // temp which can be further scalarized to SIMD1 freely:
+          //   mov (N) dst<4>:q  src<1;1,0>
+          //   =>
+          //   (W) mov (N) TV<4>:q   src<1;1,0>     ; NoMask -> split SIMD1
+          //       mov (N) dst<4>:q  TV<4;1,0>:q    ; masked, element-aligned
+          if (!isNoMaskInst) {
+            uint16_t dstHStride = inst->getDst()->getHorzStride();
+            G4_Declare* tmpDcl = builder.createTempVar(
+                dstHStride * (inst->getExecSize() - 1) + 1, dstTy,
+                builder.getGRFAlign());
+            // NoMask mov: repack the source into the stride-4 temp, then
+            // scalarize it. Duplicate src0 so an indirect source's address
+            // register/immediate is cloned rather than shared with inst.
+            G4_INST *tempMov = builder.createMov(
+                inst->getExecSize(),
+                builder.createDstRegRegion(tmpDcl, dstHStride),
+                builder.duplicateOperand(src0RR), InstOpt_WriteEnable, false);
+            tempMov->inheritDIFrom(inst);
+            INST_LIST_ITER movIt = bb->insertBefore(it, tempMov);
+            split64bCopyToSIMD1Insts(movIt, bb);
+            // Repoint the masked copy at the stride-matched temp.
+            inst->setSrc(builder.createSrcRegRegion(
+                             tmpDcl, builder.createRegionDesc(dstHStride, 1, 0)),
+                         0);
+          } else {
+            split64bCopyToSIMD1Insts(it, bb);
+          }
         } else if (inst->getDst()->getHorzStride() < 4 && srcStride != 0 &&
                    !(src0RR->isIndirect() && dst->isIndirect())) {
           // If both dst and src0 are indirect, do not split 64b moves into 2 UD
