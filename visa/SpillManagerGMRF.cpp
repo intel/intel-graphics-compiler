@@ -6090,7 +6090,7 @@ void vISA::BoundedRA::markBusyGRFs() {
               phyReg->asGreg()->getRegNum() * kernel.numEltPerGRF<Type_UB>();
           auto regRB =
               regLB +
-              pointee.var->getDeclare()->getRootDeclare()->getByteSize();
+              pointee.var->getDeclare()->getRootDeclare()->getByteSize() - 1;
           auto startGRF = regLB / kernel.numEltPerGRF<Type_UB>();
           auto endGRF = regRB / kernel.numEltPerGRF<Type_UB>();
           for (unsigned int reg = startGRF; reg != (endGRF + 1); ++reg)
@@ -6140,7 +6140,7 @@ void vISA::BoundedRA::markBusyGRFs() {
                 phyReg->asGreg()->getRegNum() * kernel.numEltPerGRF<Type_UB>();
             auto regRB =
                 regLB +
-                pointee.var->getDeclare()->getRootDeclare()->getByteSize();
+                pointee.var->getDeclare()->getRootDeclare()->getByteSize() - 1;
             auto startGRF = regLB / kernel.numEltPerGRF<Type_UB>();
             auto endGRF = regRB / kernel.numEltPerGRF<Type_UB>();
             for (unsigned int reg = startGRF; reg != (endGRF + 1); ++reg)
