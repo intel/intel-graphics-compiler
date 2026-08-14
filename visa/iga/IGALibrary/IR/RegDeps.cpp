@@ -1555,11 +1555,6 @@ void DepSet::setOutputsDstDep() {
   default:
     break;
   }
-
-  if (m_instruction->getOpSpec().isSendgFormat() &&
-      m_DB.needSyncAfterFence() &&
-      m_DB.isSendgFence(*m_instruction))
-    setDepType(DEP_TYPE::WRITE_ALWAYS_INTERFERE);
 }
 
 bool DepSetBuilder::isSendgFence(const Instruction& sendg) const {

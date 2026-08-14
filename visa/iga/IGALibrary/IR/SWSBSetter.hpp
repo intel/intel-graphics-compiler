@@ -204,6 +204,15 @@ private:
     return false;
   }
 
+  // Per HSD-16031253986/BSpec, a fence's src0 registers can't be reused
+  // before its src dependency clears, on platforms selecting this encode
+  // mode. IGA has no dedicated Platform enum value for those platforms
+  // (they share XE3P_XPC with other 3pv2+ platforms), so this checks the
+  // encode mode instead.
+  bool needsFenceSrcSync() const {
+    return false;
+  }
+
   /// ------------ HW Workaround Information ------------ ///
   // MathWAInfo: For a math instruction, when the following instruction has
   // different predication to the math, should assume the math taking the entire

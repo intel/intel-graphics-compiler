@@ -1595,6 +1595,26 @@ void SWSBAnalyzer::run() {
         if (inst->getOpSpec().is(Op::MATH)) {
           math_wa_info.math_sbid = assigned_id;
         }
+
+        // The fence's dst is null, so its own dst dependency must be
+        // synced right after it. On some platforms, its src0 registers
+        // additionally can't be reused before its src dependency clears,
+        // per BSpec.
+        if (inst->getOpSpec().isSendgFormat() && m_DB->needSyncAfterFence() &&
+            m_DB->isSendgFence(*inst)) {
+          if (needsFenceSrcSync()) {
+            SWSB srcDep(SWSB::DistType::NO_DIST, SWSB::TokenType::SRC, 0,
+                        assigned_id.sbid);
+            bb->insertInstBefore(std::next(instIter),
+                                 m_kernel.createSyncNopInstruction(srcDep));
+            ++instIter;
+          }
+          SWSB dstDep(SWSB::DistType::NO_DIST, SWSB::TokenType::DST, 0,
+                      assigned_id.sbid);
+          bb->insertInstBefore(std::next(instIter),
+                               m_kernel.createSyncNopInstruction(dstDep));
+          ++instIter;
+        }
       }
 
       clearBuckets(input, output);
