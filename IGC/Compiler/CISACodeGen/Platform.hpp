@@ -989,13 +989,6 @@ public:
     return hasScratchSurface() ? 0x40000 : 0x200000;
   }
 
-  // Whether the new (frequency/ref-count based) vISA spill cost function is on by
-  // default. Excluded on DG2 and older: pre-PVC platforms have no spill-size budget
-  // in the abort-on-spill gate.
-  bool enableNewSpillCostFunctionDefault() const {
-    return isProductChildOf(IGFX_DG2) && m_platformInfo.eProductFamily != IGFX_DG2;
-  }
-
   bool enableSpillCompressionCheckDefault() const {
     bool bEnabled = false;
     return bEnabled;

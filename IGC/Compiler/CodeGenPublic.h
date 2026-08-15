@@ -1165,23 +1165,6 @@ public:
   virtual uint32_t getPrivateMemoryMinimalSizePerThread() const;
   virtual uint32_t getIntelScratchSpacePrivateMemoryMinimalSizePerThread() const;
   bool isPOSH() const;
-
-  // True for 3D (graphics pipeline) shader stages.
-  bool isGraphicsShaderType() const {
-    switch (type) {
-    case ShaderType::VERTEX_SHADER:
-    case ShaderType::HULL_SHADER:
-    case ShaderType::DOMAIN_SHADER:
-    case ShaderType::GEOMETRY_SHADER:
-    case ShaderType::TASK_SHADER:
-    case ShaderType::MESH_SHADER:
-    case ShaderType::PIXEL_SHADER:
-      return true;
-    default:
-      return false;
-    }
-  }
-
   virtual bool isBufferBoundsChecking() const;
   virtual uint64_t getMinimumValidAddress() const;
 
