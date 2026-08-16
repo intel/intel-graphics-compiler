@@ -4858,6 +4858,7 @@ bool G4_DstRegRegion::isCrossGRFDst(const IR_Builder &builder) {
 }
 
 void G4_DstRegRegion::setDstBitVec(uint8_t exec_size) {
+  vISA_ASSERT(exec_size != UNDEFINED_EXEC_SIZE, "undefined exec size");
   // byte level footprint computing bit vectors.
   uint64_t footprint0 = 0;
   uint64_t footprint1 = 0;
@@ -4916,6 +4917,7 @@ unsigned G4_DstRegRegion::computeRightBound(uint8_t exec_size) {
 
     right_bound = left_bound + totalBits - 1;
 
+    vISA_ASSERT(totalBits != UNDEFINED_EXEC_SIZE, "undefined exec size");
     bitVec[0] = totalBits == 32 ? 0xFFFFFFFF : (1 << totalBits) - 1;
   } else {
     // For call, the return addr is always set as if simd2.
@@ -5855,6 +5857,7 @@ unsigned G4_Predicate::computeRightBound(uint8_t exec_size) {
 
     right_bound = left_bound + totalBits - 1;
 
+    vISA_ASSERT(exec_size != UNDEFINED_EXEC_SIZE, "undefined exec size");
     bitVec[0] = exec_size >= 32 ? 0xFFFFFFFF : (1 << exec_size) - 1;
   }
 
@@ -5966,6 +5969,7 @@ G4_CondMod::G4_CondMod(G4_CondMod &cMod)
 }
 
 unsigned G4_CondMod::computeRightBound(uint8_t exec_size) {
+  vISA_ASSERT(exec_size != UNDEFINED_EXEC_SIZE, "undefined exec size");
   bitVec[0] = 0;
   bitVec[1] = 0;
   rightBoundSet = true;
@@ -6410,6 +6414,7 @@ unsigned G4_SrcRegRegion::computeRightBound(uint8_t exec_size) {
 
     right_bound = left_bound + totalBits - 1;
 
+    vISA_ASSERT(totalBits != UNDEFINED_EXEC_SIZE, "undefined exec size");
     bitVec[0] = totalBits == 32 ? 0xFFFFFFFF : (1 << totalBits) - 1;
   } else {
     if (acc == Direct) {

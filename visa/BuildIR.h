@@ -236,7 +236,7 @@ public:
                             G4_Type ty, DeclareType kind = Regular,
                             G4_RegVar *base = nullptr,
                             G4_Operand *repRegion = nullptr,
-                            G4_ExecSize execSize = G4_ExecSize(0));
+                            G4_ExecSize execSize = g4::SIMD_UNDEFINED);
 
   G4_Declare *createPreVarDeclare(PreDefinedVarsInternal index,
                                   unsigned short n_elems, unsigned short n_rows,
@@ -755,7 +755,7 @@ public:
                             G4_Type ty, DeclareType kind = Regular,
                             G4_RegVar *base = NULL,
                             G4_Operand *repRegion = NULL,
-                            G4_ExecSize execSize = G4_ExecSize(0));
+                            G4_ExecSize execSize = g4::SIMD_UNDEFINED);
 
   G4_Declare *createPreVarDeclareNoLookup(PreDefinedVarsInternal index,
                                           unsigned short n_elems,

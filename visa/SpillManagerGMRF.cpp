@@ -1157,7 +1157,7 @@ SpillManagerGRF::createTemporaryRangeDeclare(G4_DstRegRegion *spilledRegion,
 
   G4_Declare *temporaryRangeDeclare =
       createRangeDeclare(name, G4_GRF, width, height, type, regVarKind,
-                         spilledRegVar, NULL, G4_ExecSize(0));
+                         spilledRegVar, NULL, g4::SIMD_UNDEFINED);
 
   if (failSafeSpill_) {
     if (!builder_->getOption(vISA_NewFailSafeRA)) {
@@ -1338,7 +1338,7 @@ G4_Declare *SpillManagerGRF::createMRangeDeclare(G4_RegVar *regVar) {
 
   G4_Declare *msgRangeDeclare = createRangeDeclare(
       name, G4_GRF, width, height, Type_UD, DeclareType::Tmp,
-      regVar->getNonTransientBaseRegVar(), NULL, G4_ExecSize(0));
+      regVar->getNonTransientBaseRegVar(), NULL, g4::SIMD_UNDEFINED);
 
   if (failSafeSpill_) {
     if (!builder_->getOption(vISA_NewFailSafeRA)) {
@@ -1385,7 +1385,7 @@ G4_Declare *SpillManagerGRF::createMRangeDeclare(G4_DstRegRegion *region,
   unsigned short width = builder_->numEltPerGRF<Type_UD>();
   G4_Declare *msgRangeDeclare =
       createRangeDeclare(name, G4_GRF, width, height, Type_UD, DeclareType::Tmp,
-                         region->getBase()->asRegVar(), NULL, G4_ExecSize(0));
+                         region->getBase()->asRegVar(), NULL, g4::SIMD_UNDEFINED);
 
   if (failSafeSpill_) {
     if (!builder_->getOption(vISA_NewFailSafeRA)) {
@@ -1433,7 +1433,7 @@ G4_Declare *SpillManagerGRF::createMRangeDeclare(G4_SrcRegRegion *region,
   unsigned width = builder_->numEltPerGRF<Type_UD>();
   G4_Declare *msgRangeDeclare = createRangeDeclare(
       name, G4_GRF, (unsigned short)width, (unsigned short)height, Type_UD,
-      DeclareType::Tmp, region->getBase()->asRegVar(), NULL, G4_ExecSize(0));
+      DeclareType::Tmp, region->getBase()->asRegVar(), NULL, g4::SIMD_UNDEFINED);
 
   if (failSafeSpill_) {
     if (!builder_->getOption(vISA_NewFailSafeRA)) {
@@ -3647,7 +3647,7 @@ void SpillManagerGRF::insertAddrTakenSpillAndFillCode(
             type = Type_UB;
           } else {
             vISA_ASSERT(false, "Cannot emit SIMD1 for byte");
-            curExSize = G4_ExecSize(0);
+            curExSize = g4::SIMD_UNDEFINED;
           }
 
           // If ExecSize = Width = 1, both VertStride and HorzStride must be 0.
@@ -3847,7 +3847,7 @@ void SpillManagerGRF::insertAddrTakenLSSpillAndFillCode(
             type = Type_UB;
           } else {
             vISA_ASSERT(false, "Cannot emit SIMD1 for byte");
-            curExSize = G4_ExecSize(0);
+            curExSize = g4::SIMD_UNDEFINED;
           }
 
           // If ExecSize = Width = 1, both VertStride and HorzStride must be 0.

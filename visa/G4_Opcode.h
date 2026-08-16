@@ -17,7 +17,7 @@ SPDX-License-Identifier: MIT
 #define G4_MAX_INTRINSIC_SRCS 8
 #define UNDEFINED_VAL 0xFFFFFFFF
 #define UNDEFINED_SHORT 0x8000
-#define UNDEFINED_EXEC_SIZE 0xFF
+#define UNDEFINED_EXEC_SIZE 0
 
 #define G4_WSIZE 2 // 2 bytes 16 bits
 #define G4_DSIZE 4 // 4 bytes 32 bits
@@ -125,7 +125,6 @@ constexpr G4_ExecSize SIMD4((unsigned char)4);
 constexpr G4_ExecSize SIMD8((unsigned char)8);
 constexpr G4_ExecSize SIMD16((unsigned char)16);
 constexpr G4_ExecSize SIMD32((unsigned char)32);
-// TODO: remove/merge with G4_ExecSize(0) uses
 constexpr G4_ExecSize SIMD_UNDEFINED((unsigned char)UNDEFINED_EXEC_SIZE);
 } // namespace g4
 
