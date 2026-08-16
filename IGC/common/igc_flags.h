@@ -516,6 +516,11 @@ DECLARE_IGC_REGKEY(DWORD, PromoteLoopUnrollwithAllocaCountThreshold, 256,
                    false)
 DECLARE_IGC_REGKEY(DWORD, SetRegisterPressureThresholdForLoopUnroll, 96,
                    "Set the register pressure threshold for limiting the loop unroll to smaller loops", false)
+DECLARE_IGC_REGKEY(DWORD, SetSelectPHICountThresholdForUnrollAnalysis, 256,
+                   "Skip LLVM's SCEV based full unroll cost analysis in functions with at least this many "
+                   "select-like (two-way) PHIs, where ScalarEvolution recursion can overflow the stack. "
+                   "Value 0 disables the limit.",
+                   false)
 DECLARE_IGC_REGKEY(DWORD, SetBranchSwapThreshold, 400, "Set the branch swaping threshold.", false)
 DECLARE_IGC_REGKEY(debugString, LLVMCommandLine, 0, "applies LLVM command line", false)
 DECLARE_IGC_REGKEY(debugString, SelectiveHashOptions, 0, "applies options to hash range via string", false)

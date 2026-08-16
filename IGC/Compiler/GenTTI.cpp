@@ -192,6 +192,26 @@ static TargetTransformInfo createTargetTransformInfo(const GenIntrinsicsTTIImpl 
   return IGCLLVM::TargetTransformInfo<GenIntrinsicsTTIImpl>(TTIImpl);
 }
 
+// Counts select-like (two-way) PHIs, stopping once the threshold is reached. ScalarEvolution models these as selects
+// and recurses once per chained PHI, so their number bounds how deep a single SCEV query can go. Counted function-wide,
+// since such chains are not confined to one loop.
+static bool hasLongSelectLikePHIChain(const Function *F, unsigned Threshold) {
+  unsigned Count = 0;
+  for (const BasicBlock &BB : *F) {
+    // Match the shape ScalarEvolution looks for (two-way join block).
+    if (!BB.hasNPredecessors(2))
+      continue;
+    for (const PHINode &PN : BB.phis()) {
+      // SCEV only walks values it can model, so only those can extend a chain.
+      if (PN.getNumIncomingValues() != 2 || !PN.getType()->isIntOrPtrTy())
+        continue;
+      if (++Count >= Threshold)
+        return true;
+    }
+  }
+  return false;
+}
+
 void GenIntrinsicsTTIImpl::getUnrollingPreferences(Loop *L, ScalarEvolution &SE, TTI::UnrollingPreferences &UP,
                                                    OptimizationRemarkEmitter *ORE) const {
   bool IsJointMatrixApplyLoop = false;
@@ -205,6 +225,13 @@ void GenIntrinsicsTTIImpl::getUnrollingPreferences(Loop *L, ScalarEvolution &SE,
     if (IsJointMatrixApplyLoop) {
       break;
     }
+  }
+
+  // Do not analyzeLoopUnrollCost() for long select-like PHI chains. The analysis is implemented in LLVM and recurses
+  // once per PHI in the chain. The recursion is unbounded, so otherwise can hit caller-thread stack limits.
+  const unsigned SelectPHIThreshold = IGC_GET_FLAG_VALUE(SetSelectPHICountThresholdForUnrollAnalysis);
+  if (SelectPHIThreshold != 0 && hasLongSelectLikePHIChain(L->getHeader()->getParent(), SelectPHIThreshold)) {
+    UP.MaxIterationsCountToAnalyze = 0;
   }
 
   unsigned LoopUnrollThreshold = ctx->m_DriverInfo.GetLoopUnrollThreshold();
