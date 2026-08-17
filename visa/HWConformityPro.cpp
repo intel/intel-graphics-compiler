@@ -392,7 +392,8 @@ void HWConformityPro::fixMovCvtByteFloat(INST_LIST_ITER it, G4_BB *bb) {
 
     if (!isSrcGrfAligned || !isPackedSrc || !isSrcSubRegOk ||
         (!isMod32Ok && srcSubReg != 0)) {
-      replaceSrcWithRawMov(it, bb, 0, /*stride*/ 1, builder.getGRFAlign());
+      replaceSrcWithRawMov(it, bb, 0, /*stride*/ 1, builder.getGRFAlign(),
+                           /*sameExecSize*/ true);
     }
 
     // Src must not cross 1 grf (both dst and src should be packed now)
@@ -2692,13 +2693,15 @@ G4_SubReg_Align HWConformityPro::getDclAlignment(int opndBytes,
   return subAlign;
 }
 
+// Insert a mov instruction from (*it)->getSrc(srcNum) to a tmp before 'it'.
+//
+// sameExecSize:
+//   if true, mov is forced to use the execSize of (*it); otherwise, mov
+//   generally uses SIMD1 if (*it)->getSrc(srcNum) is scalar (there may be
+//   special cases; see code for details).
 std::pair<G4_Operand *, bool> HWConformityPro::insertMovBeforeAndGetInserted(
-    INST_LIST_ITER it,
-                                                                              G4_BB *bb,
-                                                                              uint32_t srcNum,
-                                                                              G4_Type type,
-                                                                              uint16_t tmpStride,
-                                                                              G4_SubReg_Align tmpAlign) {
+    INST_LIST_ITER it, G4_BB *bb, uint32_t srcNum, G4_Type type,
+    uint16_t tmpStride, G4_SubReg_Align tmpAlign, bool sameExecSize) {
   G4_INST *inst = *it;
   G4_SubReg_Align subAlign;
   const RegionDesc *region = nullptr;
@@ -2713,10 +2716,12 @@ std::pair<G4_Operand *, bool> HWConformityPro::insertMovBeforeAndGetInserted(
       IS_BTYPE(src->getType()) && src->getType() == type ? 2 : 1;
 
   G4_ExecSize newExecSize =
-      (src->isImm() && !IS_VTYPE(src->getType())) ||
-              (src->isSrcRegRegion() && src->asSrcRegRegion()->isScalar())
-          ? g4::SIMD1
-          : execSize;
+      sameExecSize ? execSize
+                   : ((src->isImm() && !IS_VTYPE(src->getType())) ||
+                              (src->isSrcRegRegion() &&
+                               src->asSrcRegRegion()->isScalar())
+                          ? g4::SIMD1
+                          : execSize);
 
   if (newExecSize > 1) {
     if (tmpStride) {
@@ -2780,12 +2785,10 @@ std::pair<G4_Operand *, bool> HWConformityPro::insertMovBeforeAndGetInserted(
 }
 
 std::pair<G4_DstRegRegion *, bool>
-HWConformityPro::insertMovAfterAndGetInserted(INST_LIST_ITER it,
-                                                                                  G4_BB *bb,
-                                                                                  G4_DstRegRegion* dst,
-                                                                                  G4_Type type,
-                                                                                  uint16_t tmpStride,
-                                                                                  G4_SubReg_Align dstAlign) {
+HWConformityPro::insertMovAfterAndGetInserted(INST_LIST_ITER it, G4_BB *bb,
+                                              G4_DstRegRegion *dst,
+                                              G4_Type type, uint16_t tmpStride,
+                                              G4_SubReg_Align dstAlign) {
   G4_INST *inst = *it;
   bool wasMovInserted = false;
 
@@ -3876,9 +3879,13 @@ void HWConformityPro::fixVectSrc(INST_LIST_ITER it, G4_BB *bb) {
 
     G4_Type moveTy = (ty == Type_V) ? Type_W : Type_UW;
 
+    // A mov inserted is forced to use inst's execSize if sameExecSize=true.
+    bool sameExecSize = false;
+
     if (!dstAligned || IS_TYPE_FLOAT_ALL(dst->getType()) ||
         incompatibleSrcTypeFound) {
-      replaceSrc(it, bb, i, moveTy, /*tmpStride*/ 0, /*tmpAlign*/ Any);
+      replaceSrc(it, bb, i, moveTy, /*tmpStride*/ 0, /*tmpAlign*/ Any,
+                 sameExecSize);
     } else if (dstStrideInBytes != TypeSize(moveTy)) {
       if (dstStrideInBytes == 4 && execSize < 8) {
         // For the case where dst is dword and execution size is < 8,
@@ -3894,7 +3901,8 @@ void HWConformityPro::fixVectSrc(INST_LIST_ITER it, G4_BB *bb) {
         }
         inst->setSrc(builder.createImm(bitValue, ty), i);
       } else {
-        replaceSrc(it, bb, i, moveTy, /*tmpStride*/ 0, /*tmpAlign*/ Any);
+        replaceSrc(it, bb, i, moveTy, /*tmpStride*/ 0, /*tmpAlign*/ Any,
+                   sameExecSize);
       }
     }
   }

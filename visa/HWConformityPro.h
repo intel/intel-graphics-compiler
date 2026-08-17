@@ -143,19 +143,17 @@ private:
   // no mov will be inserted.
   // Pair's first is a new src operand and pair's second is boolean stating
   // whether mov was inserted or not.
-  std::pair<G4_Operand *, bool> insertMovBeforeAndGetInserted(INST_LIST_ITER it,
-                                                              G4_BB *bb,
-                                                              uint32_t srcNum,
-                                                              G4_Type type,
-                                                              uint16_t tmpStride,
-                                                              G4_SubReg_Align tmpAlign);
-  G4_Operand *insertMovBefore(INST_LIST_ITER it,
-                              G4_BB *bb,
-                              uint32_t srcNum,
-                              G4_Type type,
-                              uint16_t tmpStride,
-                              G4_SubReg_Align tmpAlign) {
-    return insertMovBeforeAndGetInserted(it, bb, srcNum, type, tmpStride, tmpAlign).first;
+  std::pair<G4_Operand *, bool>
+  insertMovBeforeAndGetInserted(INST_LIST_ITER it, G4_BB *bb, uint32_t srcNum,
+                                G4_Type type, uint16_t tmpStride,
+                                G4_SubReg_Align tmpAlign, bool sameExecSize);
+  G4_Operand *insertMovBefore(INST_LIST_ITER it, G4_BB *bb, uint32_t srcNum,
+                              G4_Type type, uint16_t tmpStride,
+                              G4_SubReg_Align tmpAlign,
+                              bool sameExecSize = false) {
+    return insertMovBeforeAndGetInserted(it, bb, srcNum, type, tmpStride,
+                                         tmpAlign, sameExecSize)
+        .first;
   }
 
   // After inst <*it>, insert a mov instruction from a tmp variable to dst with
@@ -163,16 +161,12 @@ private:
   // no mov will be inserted.
   // Pair's first is a new DstRegRegion and pair's second is boolean stating
   // whether mov was inserted or not.
-  std::pair<G4_DstRegRegion *, bool> insertMovAfterAndGetInserted(INST_LIST_ITER it,
-                                                                  G4_BB *bb,
-                                                                  G4_DstRegRegion *dst,
-                                                                  G4_Type type,
-                                                                  uint16_t tmpStride,
-                                                                  G4_SubReg_Align dstAlign);
-  G4_DstRegRegion *insertMovAfter(INST_LIST_ITER it,
-                                  G4_BB *bb,
-                                  G4_DstRegRegion *dst,
-                                  G4_Type type,
+  std::pair<G4_DstRegRegion *, bool>
+  insertMovAfterAndGetInserted(INST_LIST_ITER it, G4_BB *bb,
+                               G4_DstRegRegion *dst, G4_Type type,
+                               uint16_t tmpStride, G4_SubReg_Align dstAlign);
+  G4_DstRegRegion *insertMovAfter(INST_LIST_ITER it, G4_BB *bb,
+                                  G4_DstRegRegion *dst, G4_Type type,
                                   uint16_t tmpStride,
                                   G4_SubReg_Align dstAlign) {
     return insertMovAfterAndGetInserted(it, bb, dst, type, tmpStride, dstAlign).first;
@@ -183,23 +177,20 @@ private:
   // original src was null reg, in which case no new mov was created.
   // This is used to satisfy various HW restrictions on src
   // type/alignment/region/modifier.
-  void replaceSrc(INST_LIST_ITER it,
-                  G4_BB *bb,
-                  uint32_t srcNum,
-                  G4_Type type,
-                  uint16_t stride,
-                  G4_SubReg_Align tmpAlign) {
-    replaceSrcWasMovInserted(it, bb, srcNum, type, stride, tmpAlign);
+  void replaceSrc(INST_LIST_ITER it, G4_BB *bb, uint32_t srcNum, G4_Type type,
+                  uint16_t stride, G4_SubReg_Align tmpAlign,
+                  bool sameExecSize = false) {
+    replaceSrcWasMovInserted(it, bb, srcNum, type, stride, tmpAlign,
+                             sameExecSize);
   }
 
-  bool replaceSrcWasMovInserted(INST_LIST_ITER it,
-                                G4_BB *bb,
-                                uint32_t srcNum,
-                                G4_Type type,
-                                uint16_t stride,
-                                G4_SubReg_Align tmpAlign) {
+  bool replaceSrcWasMovInserted(INST_LIST_ITER it, G4_BB *bb, uint32_t srcNum,
+                                G4_Type type, uint16_t stride,
+                                G4_SubReg_Align tmpAlign,
+                                bool sameExecSize = false) {
     G4_INST *inst = *it;
-    auto [newSrc, wasMovInserted] = insertMovBeforeAndGetInserted(it, bb, srcNum, type, stride, tmpAlign);
+    auto [newSrc, wasMovInserted] = insertMovBeforeAndGetInserted(
+        it, bb, srcNum, type, stride, tmpAlign, sameExecSize);
     inst->setSrc(newSrc, srcNum);
 
     return wasMovInserted;
@@ -210,15 +201,13 @@ private:
   // original src has source modifier, the source modifier will be moved to
   // the new src of the inst. The new added mov instruction is a raw mov.
   // his is used to satisfy various HW restrictions on src alignment/region.
-  void replaceSrcWithRawMov(INST_LIST_ITER it,
-                            G4_BB* bb,
-                            uint32_t srcNum,
-                            uint16_t stride,
-                            G4_SubReg_Align tmpAlign) {
+  void replaceSrcWithRawMov(INST_LIST_ITER it, G4_BB *bb, uint32_t srcNum,
+                            uint16_t stride, G4_SubReg_Align tmpAlign,
+                            bool sameExecSize = false) {
     G4_INST *inst = *it;
     inst->setSrc(insertMovBefore(it, bb, srcNum,
                                  inst->getSrc(srcNum)->getType(), stride,
-                                 tmpAlign),
+                                 tmpAlign, sameExecSize),
                  srcNum);
     G4_INST *newMov = *(std::prev(it));
     if (newMov->getSrc(0)->isSrcRegRegion() &&
