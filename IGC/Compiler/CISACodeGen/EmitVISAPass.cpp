@@ -19029,7 +19029,9 @@ void EmitPass::emitLSCVectorLoad(Instruction *inst, Value *Ptr, Value *uniformBa
   }
 
   // if the merge value is dead after predicated load and is not immediate, and
-  // has other properties same as destination -> use it as destination
+  // has other properties same as destination -> use it as destination.
+  // Neither variable may be aliased: an alias shares storage with values that
+  // expect the load to write that storage.
   bool isDestReplacedWithMerge = false;
   CVariable *mergeVar = nullptr;
   if (predicatedLoad) {
@@ -19043,10 +19045,14 @@ void EmitPass::emitLSCVectorLoad(Instruction *inst, Value *Ptr, Value *uniformBa
     Value *mergeVal = inst->getOperand(3);
     LiveVars *pLV = m_deSSA->getLiveVars();
     mergeVar = GetSymbol(mergeVal);
+    auto isAliased = [&](CVariable *cv, Value *v) {
+      return cv->GetAlias() != nullptr || (m_VRA && m_VRA->isAliasedValue(v));
+    };
     if (!isa<Constant>(mergeVal) && !pLV->isLiveAt(mergeVal, &*instIt) && !mergeVar->IsImmediate() &&
         mergeVar->GetNumberElement() == m_destination->GetNumberElement() &&
         mergeVar->GetType() == m_destination->GetType() && mergeVar->GetAlign() == m_destination->GetAlign() &&
-        mergeVar->IsUniform() == m_destination->IsUniform()) {
+        mergeVar->IsUniform() == m_destination->IsUniform() && !isAliased(m_destination, inst) &&
+        !isAliased(mergeVar, mergeVal)) {
       m_destination = mergeVar;
       m_currShader->UpdateSymbolMap(inst, mergeVar);
       isDestReplacedWithMerge = true;
