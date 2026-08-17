@@ -57,6 +57,14 @@ bool SpvSubgroupMMAResolution::run(Module &M, CodeGenContext *pCtx, IGCMD::MetaD
   m_Changed = false;
   m_Ctx = pCtx;
   m_pMdUtils = pMdUtils;
+  // The SIMD size policy below assumes hasExecSize16DPAS() - see isDoubleSubgroup().
+  m_simdResolver = std::make_unique<KernelSIMDSizeResolver>(
+      m_Ctx, m_pMdUtils, [](int32_t SIMDSize) { return SIMDSize == 16 || SIMDSize == 32; },
+      [this]() {
+        IGC_ASSERT(m_Ctx->platform.hasExecSize16DPAS());
+        return 16;
+      },
+      "subgroup MMA");
 
   visit(M);
 
@@ -463,7 +471,7 @@ bool SpvSubgroupMMAResolution::validateScaleType(const Value *Scale, StringRef P
 bool SpvSubgroupMMAResolution::isDoubleSubgroup(CallInst &CI) {
   if (!m_Ctx->platform.hasExecSize16DPAS())
     return false;
-  return IGC::getSIMDSize(m_Ctx->getModuleMetaData(), CI.getParent()->getParent()) == 32;
+  return m_simdResolver->resolve(CI.getFunction()) == 32;
 }
 
 SpvSubgroupMMAResolution::SupportedTable *SpvSubgroupMMAResolution::getSupportedTable() {

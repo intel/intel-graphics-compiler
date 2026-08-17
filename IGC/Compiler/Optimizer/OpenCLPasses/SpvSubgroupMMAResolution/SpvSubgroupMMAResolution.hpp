@@ -8,6 +8,7 @@ SPDX-License-Identifier: MIT
 
 #pragma once
 
+#include <memory>
 #include <unordered_map>
 
 #include "common/LLVMWarningsPush.hpp"
@@ -21,6 +22,7 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPop.hpp"
 
 #include "Compiler/CodeGenContextWrapper.hpp"
+#include "Compiler/CISACodeGen/helper.h"
 #include "Compiler/MetaDataUtilsWrapper.h"
 
 namespace IGC {
@@ -96,6 +98,7 @@ private:
   void lowerToDpasBuiltin(llvm::CallInst &CI, llvm::Function *F);
   void lowerToBdpasBuiltin(llvm::CallInst &CI, llvm::Function *F);
 
+  std::unique_ptr<KernelSIMDSizeResolver> m_simdResolver;
   llvm::DenseSet<llvm::Function *> m_BuiltinsToRemove;
   bool m_Changed = false;
   IGC::CodeGenContext *m_Ctx = nullptr;
