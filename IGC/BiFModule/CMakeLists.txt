@@ -43,9 +43,10 @@ if(UNIX)
     #  0x000000000000000c (INIT)               0x7ab000
     #  0x000000000000000d (FINI)               0x53ed664
 
-    set(CLANG_LIB_REGEX "${COMMON_CLANG_LIB_NAME_WITH_PREFIX}([0-9]+|\\.|so)+")
-    string(REGEX MATCH  "${CLANG_LIB_REGEX}" IMPORTED_SONAME "${CCLANG_READELF_CALL}")
-    message("Extraced SONAME: ${IMPORTED_SONAME}")
+    # W/A for opencl-clang rc sonames (e.g. libopencl-clang2.so.23.1-rc2)
+    string(REGEX MATCH "\\(SONAME\\)[^[]*\\[([^]]+)\\]" _ "${CCLANG_READELF_CALL}")
+    set(IMPORTED_SONAME "${CMAKE_MATCH_1}")
+    message("Extracted SONAME: ${IMPORTED_SONAME}")
 
     set_property(TARGET opencl-clang-lib PROPERTY "IMPORTED_SONAME" "${IMPORTED_SONAME}")
   endif()
