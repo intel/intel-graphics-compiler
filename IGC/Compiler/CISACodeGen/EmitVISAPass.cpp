@@ -843,6 +843,11 @@ bool EmitPass::runOnFunction(llvm::Function &F) {
         if (FG)
           FG->setSimdModeInvalid(m_SimdMode);
       }
+      if (m_pDebugEmitter && !m_currShader->GetDebugInfoData().m_pDebugEmitter) {
+        IDebugEmitter::Release(m_pDebugEmitter);
+        m_pDebugEmitter = nullptr;
+      }
+      m_encoder->DestroyVISABuilder();
       return false;
     }
     m_currShader->BeginFunction(&F);
@@ -1275,6 +1280,7 @@ bool EmitPass::runOnFunction(llvm::Function &F) {
   if (destroyVISABuilder) {
     if (!m_currShader->GetDebugInfoData().m_pDebugEmitter) {
       IDebugEmitter::Release(m_pDebugEmitter);
+      m_pDebugEmitter = nullptr;
     }
 
     if (!m_encoder->IsCodePatchCandidate() || m_encoder->HasPrevKernel() ||

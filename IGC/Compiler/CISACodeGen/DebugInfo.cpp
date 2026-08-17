@@ -33,6 +33,16 @@ char CatchAllLineNumberLPM::ID = 0;
 IGC_INITIALIZE_PASS_BEGIN(DebugInfoPass, PASS_FLAG1, PASS_DESCRIPTION1, PASS_CFG_ONLY1, PASS_ANALYSIS1)
 IGC_INITIALIZE_PASS_END(DebugInfoPass, PASS_FLAG1, PASS_DESCRIPTION1, PASS_CFG_ONLY1, PASS_ANALYSIS1)
 
+DebugInfoData::~DebugInfoData() { releaseDebugEmitter(); }
+
+void DebugInfoData::releaseDebugEmitter() {
+  if (!m_pDebugEmitter)
+    return;
+
+  IDebugEmitter::Release(m_pDebugEmitter);
+  m_pDebugEmitter = nullptr;
+}
+
 // Used for opt testing, could be removed if KernelShaderMap is moved to ctx.
 static CShaderProgram::KernelShaderMap KernelShaderMap;
 
@@ -108,7 +118,6 @@ bool DebugInfoPass::runOnModule(llvm::Module &M) {
       continue;
 
     bool finalize = false;
-    unsigned int size = m_currShader->GetDebugInfoData().m_VISAModules.size();
     m_pDebugEmitter = m_currShader->GetDebugInfoData().m_pDebugEmitter;
     std::vector<std::pair<unsigned int, std::pair<llvm::Function *, IGC::VISAModule *>>> sortedVISAModules;
 
@@ -210,6 +219,7 @@ bool DebugInfoPass::runOnModule(llvm::Module &M) {
                 return p1.first < p2.first;
               });
 
+    unsigned int size = sortedVISAModules.size();
     m_pDebugEmitter->SetDISPCache(&DISPCache);
     for (auto &m : sortedVISAModules) {
       m_pDebugEmitter->registerVISA(m.second.second);
@@ -235,9 +245,8 @@ bool DebugInfoPass::runOnModule(llvm::Module &M) {
     currShader->ProgramOutput()->m_debugDataGenISASize = 0;
     currShader->ProgramOutput()->m_debugDataGenISA = nullptr;
 
-    if (finalize) {
-      IDebugEmitter::Release(m_pDebugEmitter);
-    }
+    if (finalize)
+      currShader->GetDebugInfoData().releaseDebugEmitter();
   }
 
   return false;

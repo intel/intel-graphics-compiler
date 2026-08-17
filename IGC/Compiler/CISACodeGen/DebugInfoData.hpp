@@ -30,6 +30,11 @@ class IDebugEmitter;
 
 class DebugInfoData {
 public:
+  DebugInfoData() = default;
+  DebugInfoData(const DebugInfoData &) = delete;
+  DebugInfoData &operator=(const DebugInfoData &) = delete;
+  ~DebugInfoData();
+
   llvm::DenseMap<llvm::Function *, VISAModule *> m_VISAModules;
   // Store mapping of llvm::Value->CVariable per llvm::Function.
   // The mapping is obtained from CShader at end of EmitVISAPass for F.
@@ -52,6 +57,7 @@ public:
 
   static bool hasDebugInfo(CShader *pShader);
 
+  void releaseDebugEmitter();
   void transferMappings(const llvm::Function &F);
   CVariable *getMapping(const llvm::Function &F, const llvm::Value *V);
 
