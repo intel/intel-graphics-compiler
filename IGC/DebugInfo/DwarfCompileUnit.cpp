@@ -1948,7 +1948,11 @@ void CompileUnit::buildLocation(const DbgVarInstEntry *dbgEntry, DbgVariable &DV
     } else {
       DwarfDebug::DataVector rawData;
       DD->ExtractConstantData(pConstVal, rawData);
-      addConstantData(VariableDie, rawData.data(), rawData.size());
+      const DIType *Ty = DV.getType();
+      const bool SizeMatches = !Ty || Ty->getSizeInBits() == 0 || rawData.size() * 8 == Ty->getSizeInBits();
+      IGC_ASSERT_MESSAGE(SizeMatches, "DW_AT_const_value size does not match the variable type size");
+      if (SizeMatches)
+        addConstantData(VariableDie, rawData.data(), rawData.size());
     }
     LLVM_DEBUG(dbgs() << "  location is built as an imm\n");
     DV.setDIE(VariableDie);
