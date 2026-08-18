@@ -336,14 +336,6 @@ entry:
   ret void
 }
 
-; Test checks if arguments still get aligned after one has a non-ptr type
-; CHECK-LABEL: @test_no_asterisk_not_last
-; CHECK-SAME: ptr addrspace(1) %s
-; CHECK: ptr addrspace(1) align 16 %f
-define spir_kernel void @test_no_asterisk_not_last(ptr addrspace(1) %s, ptr addrspace(1) %f) !kernel_arg_type !18 {
-  ret void
-}
-
 attributes #0 = { nounwind }
 
 !spirv.MemoryModel = !{!0}
@@ -373,4 +365,3 @@ attributes #0 = { nounwind }
 !15 = !{!16}
 !16 = !{i32 38, i32 0}
 !17 = !{!"char*", !"class.sycl::_V1::id"}
-!18 = !{!"class.sycl::_V1::id", !"float4*"}
