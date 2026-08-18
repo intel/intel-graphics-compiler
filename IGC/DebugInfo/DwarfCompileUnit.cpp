@@ -2435,8 +2435,8 @@ IGC::DIEBlock *CompileUnit::buildGeneral(DbgVariable &var, const VISAVariableLoc
   }
 
   if (skipOff) {
-    // In split SIMD case, we want to skip to DW_OP_stack_value at the end,
-    // not past it.
+    // In split SIMD, branch to a shared trailing DW_OP_stack_value when
+    // present; otherwise branch to the end of the expression.
     unsigned int offsetEnd = Block->ComputeSizeOnTheFly(Asm) - stackValueOffset;
     cast<DIEInteger>(skipOff)->setValue(offsetEnd - offsetTaken);
   }

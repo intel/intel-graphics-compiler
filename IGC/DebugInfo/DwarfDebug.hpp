@@ -206,8 +206,7 @@ public:
   /// storage required
   unsigned getRegisterValueSizeInBits(const DwarfDebug *DD) const;
 
-  // Location is implicit when it's DIExpression ends with
-  // !DIExpression(DW_OP_stack_value)
+  // Location is implicit when its DIExpression contains DW_OP_stack_value.
   bool currentLocationIsImplicit() const;
 
   // Location is memory address when it is described with llvm.dbg.declare

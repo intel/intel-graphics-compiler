@@ -143,6 +143,9 @@ void DbgVariable::emitExpression(CompileUnit *CU, IGC::DIEBlock *Block) const {
       continue;
     }
 
+    case dwarf::DW_OP_stack_value:
+      continue;
+
     case dwarf::DW_OP_LLVM_convert:
       if (I->getArg(1) == dwarf::DW_ATE_unsigned) {
         uint64_t bits = I->getArg(0);
@@ -168,26 +171,29 @@ void DbgVariable::emitExpression(CompileUnit *CU, IGC::DIEBlock *Block) const {
     I->appendToVector(Elements);
   }
   const bool isSimpleIndirect = currentLocationIsSimpleIndirectValue();
-  if (isSimpleIndirect)
+  if (isSimpleIndirect) {
     // drop OP_deref
     Elements.erase(Elements.begin());
-  bool shouldResetStackValue = currentLocationIsImplicit();
-  if (shouldResetStackValue && !Elements.empty() && *Elements.rbegin() == dwarf::DW_OP_stack_value) {
-    Elements.pop_back();
+
+    if (BitPieceIndex > 0)
+      --BitPieceIndex;
   }
-  const bool isFirstHalf = this->RegType == DbgRegisterType::FirstHalf;
+
+  const bool hasBitPiece = BitPieceIndex != -1;
+  const bool sharesTrailingStackValue = this->RegType == DbgRegisterType::FirstHalf && !hasBitPiece;
   bool isStackValueNeeded =
-      !isSimpleIndirect && !currentLocationIsMemoryAddress() && !currentLocationIsVector() && !isFirstHalf;
+      !isSimpleIndirect && !currentLocationIsMemoryAddress() && !currentLocationIsVector() && !sharesTrailingStackValue;
 
   if (isStackValueNeeded) {
+    // Rule 1: by default DW_OP_stack_value goes at the end of the expression.
     auto InsertPos = Elements.end();
 
-    // For expression with DW_OP_bit_piece, DW_OP_stack_value must be before it.
-    if (BitPieceIndex != -1) {
+    // Rule 5: for expression with DW_OP_bit_piece, DW_OP_stack_value must be before it.
+    if (hasBitPiece) {
       InsertPos = Elements.begin() + BitPieceIndex;
     }
     Elements.insert(InsertPos, dwarf::DW_OP_stack_value);
-    CU->stackValueOffset = 1;
+    CU->stackValueOffset = hasBitPiece ? 0 : 1;
   }
 
   for (auto elem : Elements) {
