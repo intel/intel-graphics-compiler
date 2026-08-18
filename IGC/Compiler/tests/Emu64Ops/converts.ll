@@ -33,7 +33,7 @@ define void @test_fptoui_f16(half %a) {
 
 define void @test_fptoui_f32(float %a) {
 ; CHECK-LABEL: @test_fptoui_f32
-; CHECK:    [[TMP1:%[A-z0-9]*]] = fmul float [[A:%[A-z0-9]*]], 0x3DF0000000000000
+; CHECK:    [[TMP1:%[A-z0-9]*]] = fmul float [[A:%[A-z0-9]*]], {{(0x3DF0000000000000|f0x2F800000)}}
 ; CHECK:    [[TMP2:%[A-z0-9]*]] = call float @llvm.trunc.f32(float [[TMP1]])
 ; CHECK:    [[TMP3:%[A-z0-9]*]] = fptoui float [[TMP2]] to i32
 ; CHECK:    [[TMP4:%[A-z0-9]*]] = call float @llvm.fma.f32(float [[TMP2]], float {{(0xC1F0000000000000|f0xCF800000)}}, float [[A]])
@@ -70,7 +70,7 @@ define void @test_fptosi_f64(double %a) {
 ; CHECK:    [[TMP2:%[A-z0-9]*]] = extractelement <2 x i32> [[TMP1]], i32 1
 ; CHECK:    [[TMP3:%[A-z0-9]*]] = ashr i32 [[TMP2]], 31
 ; CHECK:    [[TMP4:%[A-z0-9]*]] = call double @llvm.fabs.f64(double [[A]])
-; CHECK:    [[TMP5:%[A-z0-9]*]] = fmul double [[TMP4]], 0x3DF0000000000000
+; CHECK:    [[TMP5:%[A-z0-9]*]] = fmul double [[TMP4]], {{(0x3DF0000000000000|f0x3DF0000000000000)}}
 ; CHECK:    [[TMP6:%[A-z0-9]*]] = fptoui double [[TMP5]] to i32
 ; CHECK:    [[TMP7:%[A-z0-9]*]] = uitofp i32 [[TMP6]] to double
 ; CHECK:    [[TMP8:%[A-z0-9]*]] = call double @llvm.fma.f64(double [[TMP7]], double {{(0xC1F0000000000000|f0xC1F0000000000000)}}, double [[TMP4]])

@@ -108,7 +108,7 @@ define <2 x i1> @test_class_is_inf_v2f32(<2 x float> %x) {
 ; CHECK-PRE22-NEXT:    [[TMP2:%.*]] = and <2 x i32> [[TMP1]], <i32 2147483647, i32 2147483647>
 ; CHECK-LLVM22-NEXT:    [[TMP2:%.*]] = and <2 x i32> [[TMP1]], splat (i32 2147483647)
 ; CHECK-NEXT:    [[TMP3:%.*]] = bitcast <2 x i32> [[TMP2]] to <2 x float>
-; CHECK-PRE22-NEXT:    [[TMP4:%.*]] = fcmp oeq <2 x float> [[TMP3]], <float 0x7FF0000000000000, float 0x7FF0000000000000>
+; CHECK-PRE22-NEXT:    [[TMP4:%.*]] = fcmp oeq <2 x float> [[TMP3]], <float {{(0x7FF0000000000000|\+inf)}}, float {{(0x7FF0000000000000|\+inf)}}>
 ; CHECK-LLVM22-NEXT:    [[TMP4:%.*]] = fcmp oeq <2 x float> [[TMP3]], splat (float {{(0x7FF0000000000000|\+inf)}})
 ; CHECK-NEXT:    ret <2 x i1> [[TMP4]]
 ;
@@ -139,7 +139,7 @@ define <2 x i1> @test_class_is_pinf_v2f32(<2 x float> %x) {
 ; CHECK-PRE22-NEXT:    [[TMP2:%.*]] = and <2 x i32> [[TMP1]], <i32 2147483647, i32 2147483647>
 ; CHECK-LLVM22-NEXT:    [[TMP2:%.*]] = and <2 x i32> [[TMP1]], splat (i32 2147483647)
 ; CHECK-NEXT:    [[TMP3:%.*]] = bitcast <2 x i32> [[TMP2]] to <2 x float>
-; CHECK-PRE22-NEXT:    [[TMP4:%.*]] = fcmp oeq <2 x float> [[TMP3]], <float 0x7FF0000000000000, float 0x7FF0000000000000>
+; CHECK-PRE22-NEXT:    [[TMP4:%.*]] = fcmp oeq <2 x float> [[TMP3]], <float {{(0x7FF0000000000000|\+inf)}}, float {{(0x7FF0000000000000|\+inf)}}>
 ; CHECK-LLVM22-NEXT:    [[TMP4:%.*]] = fcmp oeq <2 x float> [[TMP3]], splat (float {{(0x7FF0000000000000|\+inf)}})
 ; CHECK-PRE22-NEXT:    [[TMP5:%.*]] = and <2 x i32> [[TMP1]], <i32 -2147483648, i32 -2147483648>
 ; CHECK-LLVM22-NEXT:    [[TMP5:%.*]] = and <2 x i32> [[TMP1]], splat (i32 -2147483648)
@@ -175,7 +175,7 @@ define <2 x i1> @test_class_is_ninf_v2f32(<2 x float> %x) {
 ; CHECK-PRE22-NEXT:    [[TMP2:%.*]] = and <2 x i32> [[TMP1]], <i32 2147483647, i32 2147483647>
 ; CHECK-LLVM22-NEXT:    [[TMP2:%.*]] = and <2 x i32> [[TMP1]], splat (i32 2147483647)
 ; CHECK-NEXT:    [[TMP3:%.*]] = bitcast <2 x i32> [[TMP2]] to <2 x float>
-; CHECK-PRE22-NEXT:    [[TMP4:%.*]] = fcmp oeq <2 x float> [[TMP3]], <float 0x7FF0000000000000, float 0x7FF0000000000000>
+; CHECK-PRE22-NEXT:    [[TMP4:%.*]] = fcmp oeq <2 x float> [[TMP3]], <float {{(0x7FF0000000000000|\+inf)}}, float {{(0x7FF0000000000000|\+inf)}}>
 ; CHECK-LLVM22-NEXT:    [[TMP4:%.*]] = fcmp oeq <2 x float> [[TMP3]], splat (float {{(0x7FF0000000000000|\+inf)}})
 ; CHECK-PRE22-NEXT:    [[TMP5:%.*]] = and <2 x i32> [[TMP1]], <i32 -2147483648, i32 -2147483648>
 ; CHECK-LLVM22-NEXT:    [[TMP5:%.*]] = and <2 x i32> [[TMP1]], splat (i32 -2147483648)
@@ -367,7 +367,7 @@ define i1 @test_class_neginf_posnormal_negsubnormal_poszero_snan_bf16(bfloat %ar
 ; CHECK-NEXT:    [[TMP5:%.*]] = xor i1 [[TMP4]], true
 ; CHECK-NEXT:    [[TMP6:%.*]] = and i1 [[TMP3]], [[TMP5]]
 ; CHECK-NEXT:    [[TMP7:%.*]] = bitcast i16 [[TMP2]] to bfloat
-; CHECK-NEXT:    [[TMP8:%.*]] = fcmp oeq bfloat [[TMP7]], 0xR7F80
+; CHECK-NEXT:    [[TMP8:%.*]] = fcmp oeq bfloat [[TMP7]], {{(0xR7F80|\+inf)}}
 ; CHECK-NEXT:    [[TMP9:%.*]] = and i16 [[TMP1]], -32768
 ; CHECK-NEXT:    [[TMP10:%.*]] = icmp ne i16 [[TMP9]], 0
 ; CHECK-NEXT:    [[TMP11:%.*]] = and i1 [[TMP10]], [[TMP8]]
@@ -404,7 +404,7 @@ define <2 x i1> @test_class_neginf_posnormal_negsubnormal_poszero_snan_v2f16(<2 
 ; CHECK-LLVM22-NEXT:    [[TMP5:%.*]] = xor <2 x i1> [[TMP4]], splat (i1 true)
 ; CHECK-NEXT:    [[TMP6:%.*]] = and <2 x i1> [[TMP3]], [[TMP5]]
 ; CHECK-NEXT:    [[TMP7:%.*]] = bitcast <2 x i16> [[TMP2]] to <2 x half>
-; CHECK-PRE22-NEXT:    [[TMP8:%.*]] = fcmp oeq <2 x half> [[TMP7]], <half 0xH7C00, half 0xH7C00>
+; CHECK-PRE22-NEXT:    [[TMP8:%.*]] = fcmp oeq <2 x half> [[TMP7]], <half {{(0xH7C00|\+inf)}}, half {{(0xH7C00|\+inf)}}>
 ; CHECK-LLVM22-NEXT:    [[TMP8:%.*]] = fcmp oeq <2 x half> [[TMP7]], splat (half {{(0xH7C00|\+inf)}})
 ; CHECK-PRE22-NEXT:    [[TMP9:%.*]] = and <2 x i16> [[TMP1]], <i16 -32768, i16 -32768>
 ; CHECK-LLVM22-NEXT:    [[TMP9:%.*]] = and <2 x i16> [[TMP1]], splat (i16 -32768)
