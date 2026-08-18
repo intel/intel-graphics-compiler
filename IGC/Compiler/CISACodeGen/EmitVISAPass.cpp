@@ -13064,8 +13064,8 @@ void EmitPass::emitInsert(llvm::Instruction *inst) {
     // a0 = addressof(vector variable) + offset2 <-- address of element to
     // insert at
     if (pIndexVar->IsUniform()) {
-      CVariable *pDstArrElm = m_currShader->GetNewAddressVariable(1, m_destination->GetType(), true,
-                                                                  pInstVar->IsUniform(), m_destination->getName());
+      CVariable *pDstArrElm = m_currShader->GetNewAddressVariable(1, pElemVar->GetType(), true, pInstVar->IsUniform(),
+                                                                  m_destination->getName());
       m_encoder->AddrAdd(pDstArrElm, m_destination, pOffset2, m_currentBlock);
       m_encoder->Push();
       m_encoder->Copy(pDstArrElm, pElemVar);
@@ -13140,7 +13140,7 @@ void EmitPass::emitInsert(llvm::Instruction *inst) {
           m_encoder->SetSrcSubReg(1, 16);
           dst = m_currShader->GetNewAlias(dst, dst->GetType(), 16 * dst->GetElemSize(), 0);
         }
-        CVariable *pDstArrElm = m_currShader->GetNewAddressVariable(numLanes(simdMode), m_destination->GetType(), false,
+        CVariable *pDstArrElm = m_currShader->GetNewAddressVariable(numLanes(simdMode), pElemVar->GetType(), false,
                                                                     pInstVar->IsUniform(), m_destination->getName());
 
         m_encoder->SetSimdSize(simdMode);
