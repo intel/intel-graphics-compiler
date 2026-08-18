@@ -38,29 +38,35 @@ if(IGC_OPTION__LLVM_PREFERRED_VERSION VERSION_GREATER_EQUAL 23 AND EXISTS ${IGC_
   execute_process(COMMAND ${CMAKE_COMMAND} -E copy_directory ${IGC_OPTION__LLVM_SOURCES_DIR}/libc ${IGC_LLVM_WORKSPACE_SRC}/libc)
 endif()
 
-message(STATUS "[LLVM] : Applying patches for LLVM from version ${DIR_WITH_PATCHES}")
+set(IGC_OPTION__APPLY_LLVM_PATCHES ON CACHE BOOL "Apply patches to LLVM sources during build")
 
-# For Interim mode, dir with patches set to /trunk
-if(IGC_OPTION__LLVM_INTERIM OR IGC_BUILD_LLVM_INTERIM)
-    set(IGC_LLVM_PATCHES_DIR ${CMAKE_CURRENT_SOURCE_DIR}/trunk)
-    set(IGC_LLVM_INTERIM_PATCHES ON)
-    message(STATUS "[LLVM] : IGC_LLVM_INTERIM mode is enabled, apply patches from /trunk dir")
+if(IGC_OPTION__APPLY_LLVM_PATCHES)
+  message(STATUS "[LLVM] : Applying patches for LLVM from version ${DIR_WITH_PATCHES}")
+
+  # For Interim mode, dir with patches set to /trunk
+  if(IGC_OPTION__LLVM_INTERIM OR IGC_BUILD_LLVM_INTERIM)
+      set(IGC_LLVM_PATCHES_DIR ${CMAKE_CURRENT_SOURCE_DIR}/trunk)
+      set(IGC_LLVM_INTERIM_PATCHES ON)
+      message(STATUS "[LLVM] : IGC_LLVM_INTERIM mode is enabled, apply patches from /trunk dir")
+  else()
+      set(IGC_LLVM_PATCHES_DIR ${CMAKE_CURRENT_SOURCE_DIR}/releases)
+      set(IGC_LLVM_INTERIM_PATCHES OFF)
+  endif()
+
+  execute_process(COMMAND
+    ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/apply_patches.py
+    --llvm-version ${IGC_OPTION__LLVM_PREFERRED_VERSION}
+    --patch-interim ${IGC_LLVM_INTERIM_PATCHES}
+    --llvm-project-dir ${IGC_LLVM_WORKSPACE_SRC}
+    --patches-dir ${IGC_LLVM_PATCHES_DIR}
+    --patch-executable ${Patch_EXECUTABLE}
+    --patch-disable ${PATCH_DISABLE}
+    RESULT_VARIABLE PATCH_SCRIPT_RESULT
+  )
+
+  if(NOT PATCH_SCRIPT_RESULT EQUAL 0)
+    message(FATAL_ERROR "[LLVM] : Could not apply LLVM patches.")
+  endif()
 else()
-    set(IGC_LLVM_PATCHES_DIR ${CMAKE_CURRENT_SOURCE_DIR}/releases)
-    set(IGC_LLVM_INTERIM_PATCHES OFF)
-endif()
-
-execute_process(COMMAND
-  ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/apply_patches.py
-  --llvm-version ${IGC_OPTION__LLVM_PREFERRED_VERSION}
-  --patch-interim ${IGC_LLVM_INTERIM_PATCHES}
-  --llvm-project-dir ${IGC_LLVM_WORKSPACE_SRC}
-  --patches-dir ${IGC_LLVM_PATCHES_DIR}
-  --patch-executable ${Patch_EXECUTABLE}
-  --patch-disable ${PATCH_DISABLE}
-  RESULT_VARIABLE PATCH_SCRIPT_RESULT
-)
-
-if(NOT PATCH_SCRIPT_RESULT EQUAL 0)
-  message(FATAL_ERROR "[LLVM] : Could not apply LLVM patches.")
+  message(STATUS "[LLVM] : Skipping internal LLVM patches (IGC_OPTION__APPLY_LLVM_PATCHES=OFF)")
 endif()
