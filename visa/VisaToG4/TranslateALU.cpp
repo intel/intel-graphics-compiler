@@ -439,7 +439,29 @@ int IR_Builder::translateVISADataMovementInst(
       return VISA_FAILURE;
     }
   } else if (opcode == ISA_FCVT) {
-    (void)createInst(nullptr, G4_fcvt, nullptr, saturate, exsize, dstOpnd,
+    // Lower fcvt to mov with fcvt's types retyped as follows:
+    //   UD == TF32, UB == BF8, B == HF8.
+    // (fcvt is to be deprecated)
+    auto containerToReal = [](G4_Type ty) -> G4_Type {
+      switch (ty) {
+      case Type_UD:
+        return Type_TF32;
+      case Type_UB:
+        return Type_BF8;
+      case Type_B:
+        return Type_HF8;
+      default:
+        return ty; // not the container side
+      }
+    };
+    G4_Type dstReal = containerToReal(dstOpnd->getType());
+    dstOpnd->setType(*this, dstReal);
+    // Check SrfRegRegion operand for safety (Src0 should not be imm)
+    if (src0Opnd->isSrcRegRegion()) {
+      G4_Type srcReal = containerToReal(src0Opnd->getType());
+      src0Opnd->asSrcRegRegion()->setType(*this, srcReal);
+    }
+    (void)createInst(nullptr, G4_mov, nullptr, saturate, exsize, dstOpnd,
                      src0Opnd, nullptr, inst_opt, true);
   } else {
     if (opcode == ISA_FMINMAX) {

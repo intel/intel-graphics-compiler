@@ -902,6 +902,7 @@ public:
   uint16_t getMaskOffset() const;
   static G4_InstOption offsetToMask(int execSize, int offset, bool nibOk);
   bool isRawMov() const;
+  void setIntTypeForRawMov();
   bool hasACCSrc() const;
   bool hasACCOpnd() const;
   G4_Type getOpExecType(int &extypesize) const;

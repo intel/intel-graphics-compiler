@@ -1370,10 +1370,44 @@ void G4Verifier::verifyDpas(G4_INST *inst) {
 }
 
 void G4Verifier::verifyAccMov(G4_INST *inst) {
+  if (inst->opcode() != G4_mov)
+    return;
   const G4_Operand *src = inst->getSrc(0);
   const G4_Operand *dst = inst->getDst();
+  if (kernel.fg.builder->removedAccRestrictionsAsGRF()) {
+    auto isAccType = [](G4_Type T) {
+      switch (T) {
+      case Type_DF:
+      case Type_F:
+      case Type_HF:
+      case Type_BF:
+      case Type_UW:
+      case Type_W:
+      case Type_D:
+      case Type_UD:
+      case Type_Q:
+      case Type_UQ:
+        return true;
+      default:
+        break;
+      }
+      return false;
+    };
+    bool isLegal = (!dst || !dst->isAccReg() || isAccType(dst->getType())) &&
+                   (!src || !src->isAccReg() || isAccType(src->getType()));
+    if (!isLegal) {
+      DEBUG_VERBOSE(
+          "Invalid Acc type used as src or dst of the mov instruction");
+      inst->emit(std::cerr);
+      DEBUG_VERBOSE("\n");
+      vISA_ASSERT(false,
+                  "Invalid Acc type used as src or dst of the mov instruction");
+    }
+    return;
+  }
+
   if (kernel.fg.builder->hasFormatConversionACCRestrictions() &&
-      inst->opcode() == G4_mov && (src->isAccReg() || dst->isAccReg())) {
+      (src->isAccReg() || dst->isAccReg())) {
     const bool allowedICombination =
         (IS_DTYPE(src->getType()) || src->getType() == Type_W ||
          src->getType() == Type_UW) &&

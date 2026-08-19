@@ -1492,6 +1492,55 @@ bool G4_INST::isRawMov() const {
            srcs[0]->asSrcRegRegion()->getModifier() == Mod_src_undef));
 }
 
+// Change dst/src types to int type
+//  FP8 <- FP8 : UB <- UB
+//  FP16 <- FP16 : UW <- UW
+//  F <- F : UD <- UD
+//  F/TF32 <- TF32 : UD <- UD
+//  DF <- DF : UQ <- UQ
+void G4_INST::setIntTypeForRawMov() {
+  if (opcode() != G4_mov)
+    return;
+  // Skip if dst is null or src is not srcRegRegion
+  if (!getSrc(0)->isSrcRegRegion() || getDst() == nullptr)
+    return;
+
+  auto *dstReg = getDst();
+  auto *srcReg = getSrc(0)->asSrcRegRegion();
+
+  // special handling of F < tf32:
+  //   change to F <- F so it passes raw mov checking
+  if (dstReg->getType() == Type_F && srcReg->getType() == Type_TF32)
+    srcReg->setType(getBuilder(), Type_F);
+
+  if (!isRawMov())
+    return;
+
+  G4_Type dstTy = dstReg->getType();
+  if (!IS_TYPE_FLOAT_ALL(dstTy) && !IS_BYTE_FLOAT(dstTy) && dstTy != Type_TF32)
+    return;
+
+  G4_Type intTy = dstTy;
+  switch (TypeSize(dstTy)) {
+  case 8:
+    intTy = Type_UQ;
+    break;
+  case 4:
+    intTy = Type_UD;
+    break;
+  case 2:
+    intTy = Type_UW;
+    break;
+  case 1:
+    intTy = Type_UB;
+    break;
+  default:
+    vISA_ASSERT_UNREACHABLE("Unexpected float Type");
+  }
+  dstReg->setType(getBuilder(), intTy);
+  srcReg->setType(getBuilder(), intTy);
+}
+
 bool G4_INST::hasACCSrc() const {
   if (getImplAccSrc() || (srcs[0] && srcs[0]->isSrcRegRegion() &&
                           srcs[0]->asSrcRegRegion()->isAccReg()))
@@ -7714,6 +7763,16 @@ bool G4_INST::canDstBeAcc() const {
     // disable for now since it's causing some SKL tests to fail
     return false;
   case G4_mov:
+    if (builder.removedAccRestrictionsAsGRF()) {
+      if ((IS_FTYPE(dst->getType()) && IS_BYTE_FLOAT(getSrc(0)->getType())) ||
+          (IS_HFTYPE(dst->getType()) && IS_BYTE_FLOAT(getSrc(0)->getType())) ||
+          (dst->getType() == Type_BF && IS_FTYPE(getSrc(0)->getType()))) {
+        return true;
+      } else if (IS_BYTE_FLOAT(dst->getType())) {
+        return false;
+      }
+    }
+
     if (builder.hasFormatConversionACCRestrictions()) {
       const bool allowedICombination =
           (IS_DTYPE(getSrc(0)->getType()) || getSrc(0)->getType() == Type_W ||
@@ -7723,6 +7782,7 @@ bool G4_INST::canDstBeAcc() const {
       const bool allowedFCombination =
           (getSrc(0)->getType() == Type_F || getSrc(0)->getType() == Type_HF) &&
           (dst->getType() == Type_F || dst->getType() == Type_HF);
+
       const bool allowedDFCombination =
           getSrc(0)->getType() == Type_DF && dst->getType() == Type_DF;
 
@@ -7881,6 +7941,19 @@ bool G4_INST::canSrcBeAccBeforeHWConform(Gen4_Operand_Number opndNum) const {
   case G4_ror:
     return true;
   case G4_mov:
+    if (builder.removedAccRestrictionsAsGRF()) {
+      auto isFP16OrF = [](G4_Type T) {
+        return T == Type_F || T == Type_BF || T == Type_HF;
+      };
+      if ((IS_BYTE_FLOAT(dst->getType()) && isFP16OrF(src->getType())) ||
+          (dst->getType() == Type_TF32 && IS_FTYPE(src->getType())) ||
+          (dst->getType() == Type_BF && IS_FTYPE(src->getType()))) {
+        return true;
+      } else if (IS_BYTE_FLOAT(src->getType())) {
+        return false;
+      }
+    }
+
     if (builder.hasFormatConversionACCRestrictions()) {
       const bool allowedICombination =
           (IS_DTYPE(src->getType()) || src->getType() == Type_W ||

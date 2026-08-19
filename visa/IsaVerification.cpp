@@ -1186,11 +1186,11 @@ void vISAVerifier::verifyInstructionMove(const CISA_INST *inst) {
 
     REPORT_INSTRUCTION(options, operand_class_dst == OPERAND_GENERAL,
                        "Destination operand of fcvt instruction only "
-                       "supports general and operands.");
+                       "supports general operands.");
 
     REPORT_INSTRUCTION(options, operand_class_src0 == OPERAND_GENERAL,
                        "Source0 operand of fcvt instruction only "
-                       "supports general,  operands.");
+                       "supports general operands.");
 
     VISA_Type dstType = getVectorOperandType(header, dst);
     VISA_Type src0Type = getVectorOperandType(header, src0);
