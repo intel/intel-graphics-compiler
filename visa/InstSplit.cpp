@@ -258,6 +258,20 @@ INST_LIST_ITER InstSplitPass::splitInstruction(INST_LIST_ITER it,
         auto tmpSrc = useTmpForSrc(src);
         vASSERT(tmpSrc->getRegion()->isSingleStride(execSize));
         inst->setSrc(tmpSrc, i);
+
+        // The packed temp can span more GRFs than the 2D region it replaces,
+        // so split the parent until every operand is back within 2 GRFs.
+        // For example:
+        //   (W) rol (32) v15th(0,0)<2>:uw 0xa1c5:w v12th(0,2)<8;16,0>:uq
+        //   =>
+        //   (W) mov (16) TV(0,0)<1>:uq v12th(0,2)<8;16,0>:uq
+        //   (W) mov (16) TV(2,0)<1>:uq v12th(1,2)<8;16,0>:uq  // temp: 4 GRFs
+        //   (W) rol (32) v15th(0,0)<2>:uw 0xa1c5:w TV(0,0)<1;1,0>:uq
+        // Need to split rol as the src1 operand spans more than 2 GRFs.
+        if (cross2GRF(tmpSrc)) {
+          doSplit = true;
+          break;
+        }
       }
     }
   }
