@@ -879,8 +879,11 @@ static int BuildOptionsAreValid(const std::string &options, std::string &exceptS
               (strcmp(pParam, "-cl-intel-disable-sendwarwa") == 0) ||
               (strcmp(pParam, "-ze-opt-disable-sendwarwa") == 0) ||
               (strcmp(pParam, "-cl-intel-static-profile-guided-trimming") ==
-               0) ||                                                           // used to enable profile-guided trimming
-              (strcmp(pParam, "-ze-opt-static-profile-guided-trimming") == 0); // used to enable profile-guided trimming
+               0) || // used to enable profile-guided trimming
+              (strcmp(pParam, "-ze-opt-static-profile-guided-trimming") ==
+               0) ||                                            // used to enable profile-guided trimming
+              (strcmp(pParam, "-library-compilation") == 0) ||  // used by LEO
+              (strcmp(pParam, "-ze-take-global-address") == 0); // used by LEO
 
           if (isCommonOption) {
             // check to see if they used a space immediately after
