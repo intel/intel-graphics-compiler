@@ -1,0 +1,133 @@
+/*========================== begin_copyright_notice ============================
+
+Copyright (C) 2026 Intel Corporation
+
+SPDX-License-Identifier: MIT
+
+============================= end_copyright_notice ===========================*/
+
+/*========================== begin_copyright_notice ============================
+
+Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
+See https://llvm.org/LICENSE.txt for license information.
+SPDX-License-Identifier: Apache-2.0 with LLVM-exception
+
+============================= end_copyright_notice ===========================*/
+
+--- a/llvm/include/llvm/TargetParser/Triple.h
++++ b/llvm/include/llvm/TargetParser/Triple.h
+@@ -1310,6 +1310,11 @@
+   /// Test whether the target triple is for a GPU.
+   bool isGPU() const { return isSPIRV() || isNVPTX() || isAMDGPU(); }
+ 
++  /// Returns true if a pointer known to be dereferenceable in address space
++  /// \p SrcAS is guaranteed to remain dereferenceable after an
++  /// `addrspacecast` to address space \p DstAS on this target.
++  LLVM_ABI bool isValidAddrSpaceCast(unsigned SrcAS, unsigned DstAS) const;
++
+   /// Merge target triples.
+   LLVM_ABI std::string merge(const Triple &Other) const;
+ 
+--- a/llvm/lib/Analysis/Loads.cpp
++++ b/llvm/lib/Analysis/Loads.cpp
+@@ -23,6 +23,7 @@
+ #include "llvm/IR/DataLayout.h"
+ #include "llvm/IR/GetElementPtrTypeIterator.h"
+ #include "llvm/IR/IntrinsicInst.h"
++#include "llvm/IR/Module.h"
+ #include "llvm/IR/Operator.h"
+ 
+ using namespace llvm;
+@@ -199,10 +200,24 @@
+                                               Alignment, Size, DL, CtxI, AC, DT,
+                                               TLI, Visited, MaxDepth);
+ 
+-  if (const AddrSpaceCastOperator *ASC = dyn_cast<AddrSpaceCastOperator>(V))
+-    return isDereferenceableAndAlignedPointer(ASC->getOperand(0), Alignment,
+-                                              Size, DL, CtxI, AC, DT, TLI,
+-                                              Visited, MaxDepth);
++  if (const AddrSpaceCastOperator *ASC = dyn_cast<AddrSpaceCastOperator>(V)) {
++    // Only look through the cast when the target guarantees that a
++    // dereferenceable pointer in the source AS is also dereferenceable in the
++    // destination AS. Otherwise the source's dereferenceability tells us
++    // nothing about the casted pointer, which may denote an unrelated
++    // location. Whether this holds depends on the target.
++    const Module *M = nullptr;
++    if (const auto *I = dyn_cast<Instruction>(ASC))
++      M = I->getModule();
++    else if (CtxI)
++      M = CtxI->getModule();
++    if (M && M->getTargetTriple().isValidAddrSpaceCast(
++            ASC->getSrcAddressSpace(), ASC->getDestAddressSpace()))
++      return isDereferenceableAndAlignedPointer(ASC->getOperand(0), Alignment,
++                                                Size, DL, CtxI, AC, DT, TLI,
++                                                Visited, MaxDepth);
++    return false;
++  }
+ 
+   return AC && isDereferenceableAndAlignedPointerViaAssumption(
+                    V, Alignment,
+--- a/llvm/lib/TargetParser/Triple.cpp
++++ b/llvm/lib/TargetParser/Triple.cpp
+@@ -2190,6 +2190,51 @@
+   return Other.str();
+ }
+ 
++bool Triple::isValidAddrSpaceCast(unsigned SrcAS, unsigned DstAS) const {
++  if (SrcAS == DstAS)
++    return true;
++
++  switch (getArch()) {
++  // X86 address spaces >= 256 are segment-relative offsets that refer to
++  // different memory; only casts within the first 256 spaces preserve
++  // dereferenceability.
++  case Triple::x86:
++  case Triple::x86_64:
++    return SrcAS < 256 && DstAS < 256;
++
++  // Mips reserves the first 256 address spaces for software use (e.g. OpenCL)
++  // and treats casts between them as noops.
++  case Triple::mips:
++  case Triple::mipsel:
++  case Triple::mips64:
++  case Triple::mips64el:
++    return SrcAS < 256 && DstAS < 256;
++
++  // These targets have no distinct hardware address spaces and their
++  // TargetMachine hooks unconditionally treat addrspacecasts as noops.
++  case Triple::arm:
++  case Triple::armeb:
++  case Triple::thumb:
++  case Triple::thumbeb:
++  case Triple::aarch64:
++  case Triple::aarch64_be:
++  case Triple::aarch64_32:
++  case Triple::hexagon:
++  case Triple::loongarch32:
++  case Triple::loongarch64:
++  case Triple::ppc:
++  case Triple::ppcle:
++  case Triple::ppc64:
++  case Triple::ppc64le:
++  case Triple::riscv32:
++  case Triple::riscv64:
++    return true;
++
++  default:
++    return false;
++  }
++}
++
+ bool Triple::isMacOSXVersionLT(unsigned Major, unsigned Minor,
+                                unsigned Micro) const {
+   assert(isMacOSX() && "Not an OS X triple!");
+--- a/llvm/test/Transforms/SROA/addrspacecast.ll
++++ b/llvm/test/Transforms/SROA/addrspacecast.ll
+@@ -3,6 +3,7 @@
+ ; RUN: opt < %s -passes='sroa<modify-cfg>' -S | FileCheck %s --check-prefixes=CHECK,CHECK-MODIFY-CFG
+ 
+ target datalayout = "e-p:64:64:64-p1:16:16:16-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:32:64-f32:32:32-f64:64:64-v64:64:64-v128:128:128-a0:0:64-n8:16:32:64"
++target triple = "x86_64-unknown-linux-gnu"
+ 
+ declare void @llvm.memcpy.p0.p1.i32(ptr nocapture writeonly, ptr addrspace(1) nocapture readonly, i32, i1 immarg) #0
+ declare void @llvm.memcpy.p1.p0.i32(ptr addrspace(1) nocapture writeonly, ptr nocapture readonly, i32, i1 immarg) #0
