@@ -1873,6 +1873,7 @@ if(IGC_BUILD__VC_ENABLED)
 endif()
 
 # Build-order dependencies for generated headers.
+add_dependencies("${IGC_BUILD__PROJ__igc_objs}" MDAutogen)
 add_dependencies("${IGC_BUILD__PROJ__igc_objs}" RTStackReflectionIRBG)
 add_dependencies("${IGC_BUILD__PROJ__igc_objs}" RenderSurfaceStateIRBG)
 add_dependencies("${IGC_BUILD__PROJ__igc_objs}" SPIRVExtensionsSupportGen)
@@ -2150,7 +2151,6 @@ set_property(TARGET "GenX_IR" PROPERTY PROJECT_LABEL "${IGC_BUILD__PROJ_LABEL__G
 
 foreach(_libBuildSuffix ${IGC_BUILD__MAIN_IGC_LIB_SUFFIXES})
   add_dependencies("${IGC_BUILD__PROJ${_libBuildSuffix}}"     "${IGC_BUILD__PROJ__GenISAIntrinsics}")
-  add_dependencies("${IGC_BUILD__PROJ${_libBuildSuffix}}"     MDAutogen)
   add_dependencies("${IGC_BUILD__PROJ${_libBuildSuffix}}"     RTStackReflectionIRBG)
   add_dependencies("${IGC_BUILD__PROJ${_libBuildSuffix}}"     RenderSurfaceStateIRBG)
 
