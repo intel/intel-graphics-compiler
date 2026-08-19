@@ -128,6 +128,9 @@ DECLARE_IGC_REGKEY(DWORD, BCRAluDensityThreshold, 10,
                    "Min percent of bank-conflict-candidate ALU instructions (2-/3-source ops) required to force BCR "
                    "for low register pressure OCL shaders. 0 disables the check.",
                    true)
+DECLARE_IGC_REGKEY(DWORD, BCRBumpGRFMaxRegPressure, 40,
+                   "Max register pressure, in GRFs, for which force BCR with GRF mode bump is applied to OCL shaders.",
+                   true)
 DECLARE_IGC_REGKEY(bool, EnableForceDebugSWSB, false,
                    "Enable force debugging functionality for software scoreboard generation", true)
 DECLARE_IGC_REGKEY(DWORD, EnableSWSBInstStall, 0,

@@ -4476,7 +4476,8 @@ void CEncoder::InitVISABuilderOptions(TARGET_PLATFORM VISAPlatform, bool canAbor
     }
     // For OCL shader with very low register pressure, it is safe to enable vISA_bumpGRFForForceBCR on platform with VRT
     // support.
-    if (ForceBCRWorthwhile && MaxRegPressure > 0 && MaxRegPressure < 32 && BumpGRFForForceBCR) {
+    if (ForceBCRWorthwhile && MaxRegPressure > 0 && MaxRegPressure < IGC_GET_FLAG_VALUE(BCRBumpGRFMaxRegPressure) &&
+        BumpGRFForForceBCR) {
       SaveOption(vISA_forceBCR, true);
       SaveOption(vISA_bumpGRFForForceBCR, true);
       // For shader with very low register pressure, we want to restrict the RP
