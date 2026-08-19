@@ -2634,6 +2634,13 @@ bool HWConformity::fixMULInst(INST_LIST_ITER &i, G4_BB *bb) {
 
   // src1 does not support modifier
   checkSrcMod(i, bb, 1);
+  // fix src1 region: stride can't exceed 4, otherwise the stride of src1 in the
+  // expanded mul will be invalid as fixMulSrc1() doubles it when retyping to UW
+  // mul dst:q src0:d src1:d
+  //  =>
+  // mul acc0:d src0:d src1:uw
+  // mach tmp:d src0:d src1:d
+  fixSrc1Region(i, bb);
   src1 = inst->getSrc(1);
 
   if (!builder.supportSrcModforMul()) {
