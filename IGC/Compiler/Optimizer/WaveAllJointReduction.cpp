@@ -11,7 +11,7 @@ SPDX-License-Identifier: MIT
 #include "Compiler/IGCPassSupport.h"
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/IR/InstVisitor.h>
-#include <llvm/ADT/SmallVector.h>
+#include <llvm/ADT/SetVector.h>
 #include "common/LLVMWarningsPop.hpp"
 
 #define DEBUG_TYPE "igc-wave-all-joint-reduction"
@@ -27,8 +27,8 @@ public:
   void visitCallInst(CallInst &callInst);
 
 private:
-  Value *createInsertElements(SmallVector<WaveAllIntrinsic *, 16> &mergeList);
-  void createExtractElements(SmallVector<WaveAllIntrinsic *, 16> &mergeList, WaveAllIntrinsic *waveAllJoint);
+  Value *createInsertElements(SetVector<WaveAllIntrinsic *> &mergeList);
+  void createExtractElements(SetVector<WaveAllIntrinsic *> &mergeList, WaveAllIntrinsic *waveAllJoint);
   Function &F;
   DenseSet<WaveAllIntrinsic *> ToDelete;
   bool Changed = false;
@@ -46,7 +46,7 @@ public:
 FunctionPass *createWaveAllJointReduction() { return new WaveAllJointReduction(); }
 } // namespace IGC
 
-Value *WaveAllJointReductionImpl::createInsertElements(SmallVector<WaveAllIntrinsic *, 16> &mergeList) {
+Value *WaveAllJointReductionImpl::createInsertElements(SetVector<WaveAllIntrinsic *> &mergeList) {
   IRBuilder<> builder(mergeList.front());
   auto *vecType = VectorType::get(mergeList.front()->getSrc()->getType(), mergeList.size(), false);
   auto *vec =
@@ -57,7 +57,7 @@ Value *WaveAllJointReductionImpl::createInsertElements(SmallVector<WaveAllIntrin
   return vec;
 }
 
-void WaveAllJointReductionImpl::createExtractElements(SmallVector<WaveAllIntrinsic *, 16> &mergeList,
+void WaveAllJointReductionImpl::createExtractElements(SetVector<WaveAllIntrinsic *> &mergeList,
                                                       WaveAllIntrinsic *waveAllJoint) {
   IRBuilder<> builder(mergeList.front());
   for (uint64_t i = 0; i < mergeList.size(); i++) {
@@ -79,7 +79,18 @@ void WaveAllJointReductionImpl::visitCallInst(CallInst &callInst) {
       return;
     }
 
-    SmallVector<WaveAllIntrinsic *, 16> mergeList{waveAllInst};
+    // TEMP: Handle 32-bit or lower data types for now
+    if (waveAllInst->getSrc()->getType()->getScalarSizeInBits() > 32) {
+      return;
+    }
+
+    // TEMP: Skip FMIN and FMAX for now
+    if (waveAllInst->getOpKind() == IGC::WaveOps::FMIN || waveAllInst->getOpKind() == IGC::WaveOps::FMAX) {
+      return;
+    }
+
+    SetVector<WaveAllIntrinsic *> mergeList;
+    mergeList.insert(waveAllInst);
 
     // For locality, only look at consecutive instructions since non-consecutive instructions may require sinking the
     // final vector WaveAll instruction to where the last joined WaveAll is to satisfy proper domination of each
@@ -97,7 +108,15 @@ void WaveAllJointReductionImpl::visitCallInst(CallInst &callInst) {
         break;
       }
 
-      mergeList.push_back(nextWaveAllInst);
+      // sanity check that nextWaveAllInst isn't a result of a WaveAll instruction that is already in the mergeList,
+      // although that would be unlikely given that the operand would be the same for each lane
+      if (auto *nextWaveAllInstOp = dyn_cast<WaveAllIntrinsic>(nextWaveAllInst->getSrc())) {
+        if (mergeList.count(nextWaveAllInstOp)) {
+          break;
+        }
+      }
+
+      mergeList.insert(nextWaveAllInst);
 
       I = I->getNextNode();
     }

@@ -695,7 +695,7 @@ DECLARE_IGC_REGKEY(bool, EnableWaveShuffleIndexSinking, true,
                    false)
 DECLARE_IGC_REGKEY(DWORD, WaveShuffleIndexSinkingMaxIterations, 3,
                    "Max number of iterations to run iterative WaveShuffleIndexSinking", false)
-DECLARE_IGC_REGKEY(bool, EnableWaveAllJointReduction, false, "Enable Joint Reduction Optimization.", false)
+DECLARE_IGC_REGKEY(bool, EnableWaveAllJointReduction, true, "Enable Joint Reduction Optimization.", false)
 DECLARE_IGC_REGKEY(bool, EnablePromoteToPredicatedMemoryAccess, false, "Enable predicated load/store if conversion.",
                    true)
 DECLARE_IGC_REGKEY(bool, EnableBranchToSelect, false,
