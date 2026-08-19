@@ -20,6 +20,7 @@ SPDX-License-Identifier: MIT
 #include "llvm/IR/GetElementPtrTypeIterator.h"
 #include <llvm/IR/Function.h>
 #include <llvm/ADT/SmallVector.h>
+#include <llvm/Support/SaveAndRestore.h>
 #include <llvm/Transforms/Utils/Local.h>
 #include "common/LLVMWarningsPop.hpp"
 #include "llvmWrapper/IR/DerivedTypes.h"
@@ -593,9 +594,10 @@ bool SOALayoutChecker::checkUsers(Instruction &I) {
     return false;
   }
 
-  parentLevelInst = &I;
+  llvm::SaveAndRestore<Instruction *> RestoreParentOnExit(parentLevelInst, &I);
   for (Value::user_iterator userIt = I.user_begin(), userE = I.user_end(); userIt != userE; ++userIt) {
     auto &userInst = *cast<Instruction>(*userIt);
+    parentLevelInst = &I;
     if (!visit(userInst))
       return false;
   }
@@ -735,6 +737,21 @@ static bool isSameSizeReinterpret(Type *UserTy, unsigned allocaStoreBits, const 
   return (unsigned)DL.getTypeStoreSizeInBits(UserTy) == allocaStoreBits;
 }
 
+// Also accepts a vector covering several whole lanes of laneStoreBits, which
+// loadEltsFromVecAlloca / storeEltsToVecAlloca split across K = size / lane lanes.
+static bool isWholeLaneReinterpret(Type *UserTy, unsigned laneStoreBits, const DataLayout &DL) {
+  if (isSameSizeReinterpret(UserTy, laneStoreBits, DL))
+    return true;
+
+  if (laneStoreBits == 0)
+    return false;
+  auto *FVTy = dyn_cast<IGCLLVM::FixedVectorType>(UserTy);
+  if (!FVTy || FVTy->getElementType()->isPointerTy())
+    return false;
+  unsigned userStoreBits = (unsigned)DL.getTypeStoreSizeInBits(UserTy);
+  return userStoreBits != 0 && (userStoreBits % laneStoreBits) == 0;
+}
+
 // Detect size mismatches between an alloca's element and the corresponding load/store element (directly or via a GEP).
 // Return true to disable SOA promotion.
 bool IGC::SOALayoutChecker::MismatchDetected(Instruction &I) {
@@ -847,7 +864,7 @@ bool IGC::SOALayoutChecker::MismatchDetected(Instruction &I) {
   if (auto *pgep = dyn_cast<GetElementPtrInst>(parentLevelInst)) {
     auto pgepTySize = pgep->getResultElementType()->getScalarSizeInBits();
     if (pgepTySize != vecTySize) {
-      // Allow reinterpretation when total store sizes match, but only for the
+      // Allow reinterpretation when access covers whole GEP elements, but only for the
       // LowerGEP register-promotion path whose lowering (loadEltsFromVecAlloca /
       // storeEltsToVecAlloca) handles cross-type bitcasts.  The legacy
       // TransposeHelperPrivateMem used by PrivateMemoryResolution asserts that
@@ -855,7 +872,7 @@ bool IGC::SOALayoutChecker::MismatchDetected(Instruction &I) {
       bool allowed = false;
       if (MismatchDetectionStrategy == DefaultLowerGEPStrategy) {
         unsigned pgepStoreBits = (unsigned)pDL->getTypeStoreSizeInBits(pgep->getResultElementType());
-        allowed = isSameSizeReinterpret(pUserTy, pgepStoreBits, *pDL);
+        allowed = isWholeLaneReinterpret(pUserTy, pgepStoreBits, *pDL);
       }
       if (!allowed) {
         pInfo->canUseSOALayout = false;
@@ -903,13 +920,15 @@ bool SOALayoutChecker::visitStoreInst(StoreInst &SI) {
   if (!SI.isSimple())
     return false;
   llvm::Value *pValueOp = SI.getValueOperand();
+
+  // If the value we came from is what gets written instead, the alloca pointer
+  // escapes into memory and cannot be promoted.
+  if (SI.getPointerOperand() != parentLevelInst || pValueOp == parentLevelInst)
+    return false;
+
   bool isVectorStore = pValueOp->getType()->isVectorTy();
   isVectorSOA &= isVectorStore;
   pInfo->allUsesAreVector &= isVectorStore;
-  if (pValueOp == parentLevelInst) {
-    // GEP instruction is the stored value of the StoreInst (unsupported case)
-    return false;
-  }
 
   if (MismatchDetected(SI))
     return false;
