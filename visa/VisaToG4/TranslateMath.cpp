@@ -74,6 +74,34 @@ static G4_SrcRegRegion *operandToDirectSrcRegRegion(IR_Builder &builder,
   }
 }
 
+//
+// Does a source of an IEEE math macro need to be copied into a temp first?
+//
+// The macros rebuild every source as a GRF-aligned, stride-1 region at subreg 0
+// covering the whole execution size, so a source can only be used in place when
+// reading it that way is equivalent to reading the original operand.
+//
+static bool needsSrcMove(IR_Builder &builder, G4_Operand *srcOpnd,
+                         G4_SrcRegRegion *srcRR, G4_ExecSize instExecSize,
+                         G4_ExecSize macroExecSize) {
+  // operandToDirectSrcRegRegion() already materializes indirect/immediate
+  // sources into a macroExecSize-sized temp; only direct register sources
+  // may still need a copy when instExecSize < macroExecSize.
+  bool srcIsDirect = srcOpnd->isSrcRegRegion() &&
+                     srcOpnd->asSrcRegRegion()->getRegAccess() == Direct;
+  if (instExecSize < macroExecSize && srcIsDirect)
+    return true;
+  if (srcRR->isScalar() || srcRR->getModifier() != Mod_src_undef)
+    return true;
+  if (!builder.tryToAlignOperand(srcRR, builder.getGRFSize()))
+    return true;
+  // A non-contiguous region must be copied too, as re-reading it as stride-1
+  // widens the access to instExecSize consecutive elements. For a variable with
+  // only 8 DF elements (one 64-byte GRF), div (16) with V(0,0)<4;8,0> would
+  // become math.invm (16) with V(0,0)<1;1,0>, reading 2 GRFs out of 1.
+  return !srcRR->getRegion()->isContiguous(instExecSize);
+}
+
 void IR_Builder::expandFdiv(G4_ExecSize exsize, G4_Predicate *predOpnd,
                             G4_Sat saturate, G4_DstRegRegion *dstOpnd,
                             G4_Operand *src0Opnd, G4_Operand *src1Opnd,
@@ -494,15 +522,8 @@ int IR_Builder::translateVISAArithmeticDoubleInst(
   G4_DstRegRegion tdst_src0(*this, Direct, t6->getRegVar(), 0, 0, 1, Type_DF);
   G4_DstRegRegion tdst_src1(*this, Direct, t7->getRegVar(), 0, 0, 1, Type_DF);
 
-  // operandToDirectSrcRegRegion() already materializes indirect/immediate
-  // sources into a macroExecSize-sized temp; only direct register sources
-  // may still need a copy when instExecSize < macroExecSize.
-  bool src0IsDirect = src0Opnd->isSrcRegRegion() &&
-                      src0Opnd->asSrcRegRegion()->getRegAccess() == Direct;
-  bool needsSrc0Move = (instExecSize < macroExecSize && src0IsDirect) ||
-                       src0RR->isScalar() ||
-                       src0RR->getModifier() != Mod_src_undef ||
-                       !tryToAlignOperand(src0RR, getGRFSize());
+  bool needsSrc0Move =
+      needsSrcMove(*this, src0Opnd, src0RR, instExecSize, macroExecSize);
   if (needsSrc0Move) {
     if (opcode == ISA_DIV || opcode == ISA_DIVM) {
       G4_DstRegRegion *t6_dst_src0_opnd = createDstRegRegion(tdst_src0);
@@ -529,12 +550,8 @@ int IR_Builder::translateVISAArithmeticDoubleInst(
       inst = createMov(instExecSize, t6_dst_src0_opnd, src0RR, instOpt, true);
     }
   }
-  bool src1IsDirect = src1Opnd->isSrcRegRegion() &&
-                      src1Opnd->asSrcRegRegion()->getRegAccess() == Direct;
-  bool needsSrc1Move = (instExecSize < macroExecSize && src1IsDirect) ||
-                       src1RR->isScalar() ||
-                       src1RR->getModifier() != Mod_src_undef ||
-                       !tryToAlignOperand(src1RR, getGRFSize());
+  bool needsSrc1Move =
+      needsSrcMove(*this, src1Opnd, src1RR, instExecSize, macroExecSize);
   if (needsSrc1Move) {
     G4_DstRegRegion *t7_dst_src1_opnd = createDstRegRegion(tdst_src1);
     // mov (instExecSize) t7_dst_src1_opnd, src1RR {Q1/N1}
@@ -1056,24 +1073,13 @@ int IR_Builder::translateVISAArithmeticSingleDivideIEEEInst(
   G4_SrcRegRegion *src1RR = operandToDirectSrcRegRegion(
       *this, src1Opnd, G4_ExecSize(elementSize), instExecSize);
 
-  // operandToDirectSrcRegRegion() already materializes indirect/immediate
-  // sources into a macroExecSize-sized temp; only direct register sources
-  // may still need a copy when instExecSize < macroExecSize.
-  bool src0IsDirect = src0Opnd->isSrcRegRegion() &&
-                      src0Opnd->asSrcRegRegion()->getRegAccess() == Direct;
-  if ((instExecSize < macroExecSize && src0IsDirect) || src0RR->isScalar() ||
-      src0RR->getModifier() != Mod_src_undef ||
-      !tryToAlignOperand(src0RR, getGRFSize())) {
+  if (needsSrcMove(*this, src0Opnd, src0RR, instExecSize, macroExecSize)) {
     G4_DstRegRegion *tmp = createDstRegRegion(t6, 1);
     // mov (instExecSize) t6, src0RR {Q1/H1}
     inst = createMov(instExecSize, tmp, src0RR, instOpt, true);
     src0RR = createSrcRegRegion(t6, getRegionStride1());
   }
-  bool src1IsDirect = src1Opnd->isSrcRegRegion() &&
-                      src1Opnd->asSrcRegRegion()->getRegAccess() == Direct;
-  if ((instExecSize < macroExecSize && src1IsDirect) || src1RR->isScalar() ||
-      src1RR->getModifier() != Mod_src_undef ||
-      !tryToAlignOperand(src1RR, getGRFSize())) {
+  if (needsSrcMove(*this, src1Opnd, src1RR, instExecSize, macroExecSize)) {
     G4_DstRegRegion *tmp = createDstRegRegion(t4, 1);
     // mov (instExecSize) t4, src1RR {Q1/H1}
     inst = createMov(instExecSize, tmp, src1RR, instOpt, true);
@@ -1414,14 +1420,7 @@ int IR_Builder::translateVISAArithmeticSingleSQRTIEEEInst(
   G4_SrcRegRegion *src0RR =
       operandToDirectSrcRegRegion(*this, src0Opnd, elementSize, instExecSize);
 
-  // operandToDirectSrcRegRegion() already materializes indirect/immediate
-  // sources into a macroExecSize-sized temp; only direct register sources
-  // may still need a copy when instExecSize < macroExecSize.
-  bool src0IsDirect = src0Opnd->isSrcRegRegion() &&
-                      src0Opnd->asSrcRegRegion()->getRegAccess() == Direct;
-  if ((instExecSize < macroExecSize && src0IsDirect) || src0RR->isScalar() ||
-      src0RR->getModifier() != Mod_src_undef ||
-      !tryToAlignOperand(src0RR, getGRFSize())) {
+  if (needsSrcMove(*this, src0Opnd, src0RR, instExecSize, macroExecSize)) {
     // expand src0 to vector src
     G4_DstRegRegion *t6_dst_src0_opnd = createDstRegRegion(t6, 1);
     // mov (instExecSize) t6, src0RR {Q1/H1}
@@ -1800,15 +1799,8 @@ int IR_Builder::translateVISAArithmeticDoubleSQRTInst(
   G4_SrcRegRegion *src0RR =
       operandToDirectSrcRegRegion(*this, src0Opnd, elementSize, instExecSize);
 
-  // operandToDirectSrcRegRegion() already materializes indirect/immediate
-  // sources into a macroExecSize-sized temp; only direct register sources
-  // may still need a copy when instExecSize < macroExecSize.
-  bool src0IsDirect = src0Opnd->isSrcRegRegion() &&
-                      src0Opnd->asSrcRegRegion()->getRegAccess() == Direct;
-  bool IsSrc0Moved = (instExecSize < macroExecSize && src0IsDirect) ||
-                     src0RR->getRegion()->isScalar() ||
-                     src0RR->getModifier() != Mod_src_undef ||
-                     !tryToAlignOperand(src0RR, getGRFSize());
+  bool IsSrc0Moved =
+      needsSrcMove(*this, src0Opnd, src0RR, instExecSize, macroExecSize);
   if (IsSrc0Moved) {
     // expand scale src0 to vector src
     dst0 = createDstRegRegion(t6, 1);
