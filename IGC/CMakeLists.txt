@@ -1878,6 +1878,7 @@ add_dependencies("${IGC_BUILD__PROJ__igc_objs}" RTStackReflectionIRBG)
 add_dependencies("${IGC_BUILD__PROJ__igc_objs}" RenderSurfaceStateIRBG)
 add_dependencies("${IGC_BUILD__PROJ__igc_objs}" SPIRVExtensionsSupportGen)
 add_dependencies("${IGC_BUILD__PROJ__igc_objs}" IGCOptionsTablegen)
+add_dependencies("${IGC_BUILD__PROJ__igc_objs}" "${IGC_BUILD__PROJ__GenISAIntrinsics}")
 
 # Main library targets: they consume the shared .obj set via
 # $<TARGET_OBJECTS:...> and only differ by output type + resources.
@@ -2095,8 +2096,6 @@ if(IGC_OPTION__BUILD_IGC_OPT OR IGC_OPTION__INCLUDE_IGC_COMPILER_TOOLS)
     )
   set_target_properties("${IGC_BUILD__PROJ__igc_lib}" PROPERTIES FOLDER "Libraries")
 
-  add_dependencies(${IGC_BUILD__PROJ__igc_lib} RTStackReflectionIRBG)
-  add_dependencies(${IGC_BUILD__PROJ__igc_lib} RenderSurfaceStateIRBG)
   if(IGC_OPTION__LINK_KHRONOS_SPIRV_TRANSLATOR)
     target_link_libraries("${IGC_BUILD__PROJ__igc_lib}" PRIVATE LLVMSPIRVLib)
   endif()
@@ -2150,12 +2149,6 @@ set_property(TARGET "GenX_IR" PROPERTY PROJECT_LABEL "${IGC_BUILD__PROJ_LABEL__G
 # =================================== Link targets and dependencies ====================================
 
 foreach(_libBuildSuffix ${IGC_BUILD__MAIN_IGC_LIB_SUFFIXES})
-  add_dependencies("${IGC_BUILD__PROJ${_libBuildSuffix}}"     "${IGC_BUILD__PROJ__GenISAIntrinsics}")
-  add_dependencies("${IGC_BUILD__PROJ${_libBuildSuffix}}"     RTStackReflectionIRBG)
-  add_dependencies("${IGC_BUILD__PROJ${_libBuildSuffix}}"     RenderSurfaceStateIRBG)
-
-  add_dependencies("${IGC_BUILD__PROJ${_libBuildSuffix}}"     SPIRVExtensionsSupportGen)
-
   if(MSVC AND IGC_OPTION__BIF_LINK_BC)
     add_dependencies("${IGC_BUILD__PROJ${_libBuildSuffix}}"   "${IGC_BUILD__PROJ__BiFModule_OCL}")
   add_dependencies("${IGC_BUILD__PROJ${_libBuildSuffix}}"   "${IGC_BUILD__PROJ__BiFModuleCache_OCL}")
