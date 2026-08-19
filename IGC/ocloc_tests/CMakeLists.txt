@@ -152,8 +152,8 @@ endif()
 # prebuild via IGC_LibClangOverride.
 if(TARGET igc-clang-lib AND ${CMAKE_VERSION} VERSION_GREATER_EQUAL "3.17")
   igc_add_lit_target(check-ocloc-igc-clang "${IGC_OCLOC_TEST_BINARY_DIR}"
-    "Running the offline compilation tests with IGC_LibClangOverride=${IGC_CLANG_LIB_FULL_NAME}"
-    EXTRA --param igc_libclang_override=${IGC_CLANG_LIB_FULL_NAME}
+    "Running the offline compilation tests with IGC_LibClangOverride=igc-clang"
+    EXTRA --param igc_libclang_override=igc-clang
           --param test_output_subdir=test_output_igc_clang
     DEPENDS ${IGC_OCLOC_TEST_DEPENDS} ${_tests}
     SOURCES ${_tests} ${IGC_OCLOC_TEST_SOURCE_DIR}/lit.cfg.py

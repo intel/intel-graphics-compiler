@@ -141,11 +141,17 @@ bool CClangTranslationBlock::Create(const STB_CreateArgs *pCreateArgs, STB_Trans
 
 #if defined(IGC_DEBUG_VARIABLES)
   debugString overrideNameBuffer = {0};
-  const char *overrideName = "";
   // Reading igc_opts in ::Create() is not possible without IGC <-> NEO CIF interface modification
   // For now, read IGC env/registry directly.
   ReadIGCRegistry("LibClangOverride", overrideNameBuffer, sizeof(overrideNameBuffer), IGCFlagType_debugString);
-  overrideName = overrideNameBuffer;
+  const char *overrideName = overrideNameBuffer;
+  if (strcmp(overrideName, "igc-clang") == 0) {
+#ifdef _WIN32
+    overrideName = "igc-clang64.dll";
+#else
+    overrideName = "libigc-clang.so";
+#endif
+  }
 #endif
 
   bool success = pTranslationBlock->Initialize(pCreateArgs);

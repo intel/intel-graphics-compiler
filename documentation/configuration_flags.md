@@ -506,7 +506,7 @@ $ export IGC_ShaderDumpEnable=1
 | `InitializeAddressRegistersBeforeUse` | Setting this to 1 (true) initializes address register to 0 before each use | - |
 | `InitializeRegistersEnable` | Setting this to 1/true initializes all GRFs, Flag and address registers to 0 at the beginning of the shader | - |
 | `InitializeUndefValueEnable` | Setting this to 1/true initializes all undefs in URB payload to 0 | - |
-| `LibClangOverride` | Override opencl-clang library loaded by FCL. Accepts bare name or absolute path. Empty = use default. | - |
+| `LibClangOverride` | Override opencl-clang library loaded by FCL. Accepts bare name, absolute path, or igc-clang for                   the OS specific igc-clang prebuild name. Empty = use default. | - |
 | `MinimumValidAddress` | If it's greater than 0, it enables minimal valid address checking where the threshold is the given                   value (in hex). | Available |
 | `NoCatchAllDebugLine` | Don't emit special placeholder instruction to map VISA orphan instructions | - |
 | `PrintDebugSettings` | Prints all non-default debug settings | - |
