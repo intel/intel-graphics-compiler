@@ -9575,8 +9575,13 @@ void HWConformity::fixByteXBarRestriction(INST_LIST_ITER it, G4_BB *bb) {
     // Also don't split if src and dst have overlap as it will introduce extra
     // mov which could be illegal. If we further fix the extra illegal mov
     // instruction, we will get worse codes compared to not splitting.
-    auto canDoSplit = [](G4_INST *inst, IR_Builder &builder) {
+    auto canDoSplit = [](G4_INST *inst, G4_BB *bb, IR_Builder &builder) {
       if (inst->getPredicate() || inst->getCondMod()) {
+        return false;
+      }
+      // Can not split SIMD2 instruction except for NoMask ones because there
+      // is no legal emask for the split instructions.
+      if (!inst->isWriteEnableInst() && !bb->isAllLaneActive()) {
         return false;
       }
       for (int i = 0, numSrc = inst->getNumSrc(); i < numSrc; ++i) {
@@ -9594,7 +9599,7 @@ void HWConformity::fixByteXBarRestriction(INST_LIST_ITER it, G4_BB *bb) {
     };
 
     if (inst->getExecSize() == g4::SIMD2 && allDirect &&
-        inst->getNumSrc() != 3 && canDoSplit(inst, builder)) {
+        inst->getNumSrc() != 3 && canDoSplit(inst, bb, builder)) {
       // just split the inst
       evenlySplitInst(it, bb);
       return;
