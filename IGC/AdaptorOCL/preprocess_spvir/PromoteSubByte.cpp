@@ -215,9 +215,9 @@ Value *PromoteSubByte::castTo(Value *value, Type *desiredType, IRBuilder<> &buil
   if (desiredType->isAggregateType())
     return castAggregate(value, desiredType, builder);
 
-  if (isIntegerTy(value, 8) && desiredType->isIntegerTy(1)) {
+  if (isIntegerTy(value, 8) && desiredType == createDemotedType(value->getType())) {
     return convertI8ToI1(value, builder);
-  } else if (isIntegerTy(value, 1) && desiredType->isIntegerTy(8)) {
+  } else if (isIntegerTy(value, 1) && desiredType == getOrCreatePromotedType(value->getType())) {
     return convertI1ToI8(value, builder);
   }
 
@@ -441,6 +441,8 @@ Value *PromoteSubByte::getOrCreatePromotedValue(Value *value) {
     newValue = promoteLoad(load);
   } else if (auto phi = dyn_cast<PHINode>(value)) {
     newValue = promotePHI(phi);
+  } else if (auto select = dyn_cast<SelectInst>(value)) {
+    newValue = promoteSelect(select);
   } else if (auto store = dyn_cast<StoreInst>(value)) {
     newValue = promoteStore(store);
   } else if (auto inttoptr = dyn_cast<IntToPtrInst>(value)) {
@@ -458,37 +460,7 @@ Value *PromoteSubByte::getOrCreatePromotedValue(Value *value) {
   } else if (auto sext = dyn_cast<SExtInst>(value)) {
     newValue = promoteSExt(sext);
   } else if (auto instruction = dyn_cast<Instruction>(value)) {
-    for (auto &operand : instruction->operands()) {
-      if (wasPromoted(operand)) {
-        auto promoted = getOrCreatePromotedValue(operand);
-        if (auto zext = dyn_cast<ZExtInst>(promoted)) {
-          instruction->replaceUsesOfWith(operand, zext->getOperand(0));
-        } else {
-          auto insertBefore = instruction;
-          if (auto operandInst = dyn_cast<Instruction>(operand)) {
-            insertBefore = operandInst->getNextNode();
-            while (isa_and_nonnull<PHINode>(insertBefore)) {
-              insertBefore = insertBefore->getNextNode();
-            }
-            if (!insertBefore) {
-              insertBefore = operandInst->getParent()->getTerminator();
-            }
-          }
-          auto trunc = convertI8ToI1(promoted, insertBefore);
-          if (isa<Instruction>(trunc) && isa<Instruction>(promoted)) {
-            cast<Instruction>(trunc)->setDebugLoc(cast<Instruction>(promoted)->getDebugLoc());
-          }
-          instruction->replaceUsesOfWith(operand, trunc);
-        }
-      }
-    }
-
-    if (isIntegerTy(value, 1)) {
-      auto clone = instruction->clone();
-      IGCLLVM::insertBefore(clone, instruction);
-      instruction->replaceAllUsesWith(clone);
-      newValue = convertI1ToI8(clone, instruction);
-    }
+    newValue = promoteGenericInstruction(instruction);
   }
 
   if (newValue != value) {
@@ -525,6 +497,45 @@ Value *PromoteSubByte::getOrCreatePromotedValue(Value *value) {
     }
   }
   return newValue;
+}
+
+// Fallback for instructions without a dedicated promote* handler. It only
+// rewrites the operands that have already been promoted back to the types the
+// instruction expects, and widens the instruction itself when it produces an i1.
+Value *PromoteSubByte::promoteGenericInstruction(Instruction *instruction) {
+  for (auto &operand : instruction->operands()) {
+    if (wasPromoted(operand)) {
+      auto promoted = getOrCreatePromotedValue(operand);
+      if (auto zext = dyn_cast<ZExtInst>(promoted)) {
+        instruction->replaceUsesOfWith(operand, zext->getOperand(0));
+      } else {
+        auto insertBefore = instruction;
+        if (auto operandInst = dyn_cast<Instruction>(operand)) {
+          insertBefore = operandInst->getNextNode();
+          while (isa_and_nonnull<PHINode>(insertBefore)) {
+            insertBefore = insertBefore->getNextNode();
+          }
+          if (!insertBefore) {
+            insertBefore = operandInst->getParent()->getTerminator();
+          }
+        }
+        auto trunc = convertI8ToI1(promoted, insertBefore);
+        if (isa<Instruction>(trunc) && isa<Instruction>(promoted)) {
+          cast<Instruction>(trunc)->setDebugLoc(cast<Instruction>(promoted)->getDebugLoc());
+        }
+        instruction->replaceUsesOfWith(operand, trunc);
+      }
+    }
+  }
+
+  if (isIntegerTy(instruction, 1)) {
+    auto clone = instruction->clone();
+    IGCLLVM::insertBefore(clone, instruction);
+    instruction->replaceAllUsesWith(clone);
+    return convertI1ToI8(clone, instruction);
+  }
+
+  return instruction;
 }
 
 template <typename T> void PromoteSubByte::setPromotedAttributes(T *newCallOrFunc, const AttributeList &attributeList) {
@@ -573,6 +584,10 @@ Function *PromoteSubByte::promoteFunction(Function *function) {
 
   auto newFunction = Function::Create(cast<FunctionType>(getOrCreatePromotedType(function->getFunctionType())),
                                       function->getLinkage(), function->getName() + ".promoted", function->getParent());
+
+  // Move the new function next to the old function to preserve original function order.
+  auto &functionList = function->getParent()->getFunctionList();
+  functionList.splice(function->getIterator(), functionList, newFunction->getIterator());
 
   newFunction->setCallingConv(function->getCallingConv());
 
@@ -652,7 +667,7 @@ GlobalVariable *PromoteSubByte::promoteGlobalVariable(GlobalVariable *globalVari
   auto newGlobalVariable = new GlobalVariable(
       *globalVariable->getParent(), getOrCreatePromotedType(globalVariable->getValueType()),
       globalVariable->isConstant(), globalVariable->getLinkage(), promoteConstant(globalVariable->getInitializer()),
-      globalVariable->getName() + ".promoted", nullptr, GlobalValue::ThreadLocalMode::NotThreadLocal,
+      globalVariable->getName() + ".promoted", globalVariable, GlobalValue::ThreadLocalMode::NotThreadLocal,
       globalVariable->getType()->getPointerAddressSpace());
 
   // Clone metadatas
@@ -991,6 +1006,47 @@ llvm::PHINode *PromoteSubByte::promotePHI(llvm::PHINode *phi) {
   }
   newPhi->setDebugLoc(phi->getDebugLoc());
   return newPhi;
+}
+
+Value *PromoteSubByte::promoteSelect(SelectInst *select) {
+  if (!select || (!wasPromotedAnyOf(select->operands()) && !typeNeedsPromotion(select->getType()))) {
+    return select;
+  }
+
+  if (select->getType()->isIntOrIntVectorTy(1) || !typeNeedsPromotion(select->getType())) {
+    return promoteGenericInstruction(select);
+  }
+
+  IRBuilder<> builder(select);
+  builder.SetCurrentDebugLocation(select->getDebugLoc());
+
+  // The condition keeps its original i1 type.
+  Value *condition = convertI8ToI1(getOrCreatePromotedValue(select->getCondition()), builder);
+
+  Value *trueValue = nullptr;
+  Value *falseValue = nullptr;
+  bool wasUnpacked = false;
+
+  if (condition->getType()->isVectorTy()) {
+    // A vector condition selects per element, so i4 has to be unpacked.
+    trueValue = promoteAndUnpackInt4Vector(select->getTrueValue(), builder);
+    falseValue = promoteAndUnpackInt4Vector(select->getFalseValue(), builder);
+    wasUnpacked = select->getType()->isIntOrIntVectorTy(4);
+  } else {
+    trueValue = getOrCreatePromotedValue(select->getTrueValue());
+    falseValue = getOrCreatePromotedValue(select->getFalseValue());
+  }
+
+  Value *newSelect = builder.CreateSelect(condition, trueValue, falseValue);
+
+  if (wasUnpacked) {
+    newSelect = packInt4Vector(newSelect, builder);
+  }
+
+  if (auto newSelectInstruction = dyn_cast<Instruction>(newSelect)) {
+    newSelectInstruction->takeName(select);
+  }
+  return newSelect;
 }
 
 StoreInst *PromoteSubByte::promoteStore(StoreInst *store) {
