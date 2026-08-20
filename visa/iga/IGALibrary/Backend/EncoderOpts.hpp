@@ -18,6 +18,9 @@ struct EncoderOpts {
   bool ignoreNoCompactFormFound = false;
   bool autoDepSet = false;
   bool autoSBIDCounter = false;
+  // Keep the instructions the caller handed us even if the dependency setter
+  // finds them redundant. e.g. a sync.nop carries no swsb.
+  bool autoDepPreserveInsts = false;
   bool forceNoCompact = false;
   // When autoCompact is set, avoid encoding a non-compacted (128b) instruction
   // that straddles a 64-byte cacheline boundary. This option takes effect when

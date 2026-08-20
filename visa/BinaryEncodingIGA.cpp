@@ -15,6 +15,7 @@ SPDX-License-Identifier: MIT
 
 #include <fstream>
 #include <map>
+#include <unordered_set>
 #include <utility>
 
 using namespace iga;
@@ -1382,6 +1383,10 @@ void BinaryEncodingIGA::Encode() {
 
     if (kernel.getOption(vISA_EnableIGASWSB)) {
       encoder.enableIGAAutoDeps();
+      // IGA must not erase any of the instructions during its AutoDeps set
+      // (which it may if the instruction is sync.nop with no swsb), so that
+      // each G4_INST can be mapped to an IGA instruction.
+      encoder.preserveIGAAutoDepsInsts();
     }
 
     encoder.encode(kernel.fg.builder->criticalMsgStream());
@@ -1391,6 +1396,20 @@ void BinaryEncodingIGA::Encode() {
     memcpy_s(m_kernelBuffer, m_kernelBufferSize, encoder.getBinary(),
              m_kernelBufferSize);
   }
+
+#ifdef _DEBUG
+  // Verify that IGA did not remove any instruction that G4_INST maps by gen
+  // offset
+  {
+    std::unordered_set<const Instruction *> encodedInIGA;
+    for (const Block *blk : IGAKernel->getBlockList())
+      for (const Instruction *igaInst : blk->getInstList())
+        encodedInIGA.insert(igaInst);
+    for (const auto &inst : encodedInsts)
+      vISA_ASSERT(encodedInIGA.count(inst.first) != 0,
+                  "IGA dropped an instruction vISA maps by gen offset");
+  }
+#endif // _DEBUG
 
   // encodedPC is available after encoding
   for (auto &&inst : encodedInsts) {

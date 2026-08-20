@@ -1751,70 +1751,49 @@ using BlockOffsets = std::map<int32_t, std::vector<std::string>>;
 
 static BlockOffsets precomputeBlockOffsets(std::ostream &os, G4_Kernel &g4k,
                                            const KernelView &kv) {
-  // pre-compute the PCs of each basic block
-  int32_t currPc = 0, lastInstSize = -1;
+  // IGA builds its own BB layout and label according to branch instructions.
+  // Also IGA could've inserted extra instructions (syncs, nops) for various
+  // reasons (e.g. debugging, instruction cache alignment). Hence IGA's label
+  // may not match to G4's. To keep the correct/named G4 label printed in asm
+  // dump, we need to pre-compute the PC of each BB so that we can emit G4 label
+  // at the right PC.
+
+  // A label takes the PC of the next encoded instruction. Find the next
+  // instruction's PC and associate the label with that PC. If there is no next
+  // instruction, associate the label with the end of the kernel.
   BlockOffsets blockOffsets;
-  for (BB_LIST_ITER itBB = g4k.fg.begin(); itBB != g4k.fg.end(); ++itBB) {
-    for (INST_LIST_ITER itInst = (*itBB)->begin(); itInst != (*itBB)->end();
-         ++itInst) {
-      if ((*itInst)->isLabel()) {
-        // G4 treats labels as special instructions
-        const char *lbl = (*itInst)->getLabelStr();
-        if (lbl && *lbl) {
-          blockOffsets[currPc].emplace_back(lbl);
-        }
-      } else {
-        // we are looking at the next G4 instruction,
-        // but reached the end of the decode stream
-        if (lastInstSize == 0) {
-          os << "// ERROR: deducing G4 block PCs "
-                "(IGA decoded stream ends early); falling back to IGA labels\n";
-          blockOffsets.clear(); // fallback to IGA default labels
-          return blockOffsets;
-        }
-        lastInstSize = kv.getInstSize(currPc);
-
-        G4_INST *inst = (*itInst);
-
-       // For HW WA.
-       // In which, vISA may ask IGA to emit some additional instructions.
-       // For example, sync is used to make instruction aligned, and nop is
-       // used to support stepping in debugger.
-       // However, due to compaction, we might not know the exact location of
-       // the instruction, the sync instruction insertion has to happen during
-       // encoding, which is unknown for the instruction size of kernel in the
-       // decoding. That's the issue we have to make these changes.
-        if (inst->isCachelineAligned()) {
-          iga::Op opcode = kv.getOpcode(currPc);
-          // There could be multiple sync.nop instructions emitted by IGA to
-          // make the instruction aligned. Here we continue to advance PC when
-          // seeing sync.nop so that vISA inst and IGA inst could match again.
-          while (opcode == iga::Op::SYNC) {
-            currPc += lastInstSize;
-            opcode = kv.getOpcode(currPc);
-            lastInstSize = kv.getInstSize(currPc);
-          }
-        }
-
-        // When the inst requires an additional nop after it, again we need to
-        // advance PC to consume NOP to make vISA inst and IGA inst match later.
-        if (inst->requireNopAfter()) {
-          currPc += lastInstSize;
-          lastInstSize = kv.getInstSize(currPc);
-          vASSERT(kv.getOpcode(currPc) == iga::Op::NOP);
-        }
-
-        currPc += lastInstSize;
+  std::vector<const char *> pendingLabels;
+  int32_t endPc = 0;
+  for (G4_BB *bb : g4k.fg) {
+    for (G4_INST *inst : *bb) {
+      if (inst->isLabel()) {
+        const char *lbl = inst->getLabelStr();
+        if (lbl && *lbl)
+          pendingLabels.push_back(lbl);
+        continue;
       }
+      if (inst->getGenOffset() == UNDEFINED_GEN_OFFSET)
+        continue; // never encoded; it occupies no PC of its own
+      const int32_t instPc = (int32_t)inst->getGenOffset();
+      const int32_t instSize = kv.getInstSize(instPc);
+      if (instSize == 0) {
+        // genOffset does not land on a decoded instruction: the offsets and
+        // the binary disagree
+        os << "// ERROR: deducing G4 block PCs "
+              "(gen offset outside the decoded stream); falling back to IGA "
+              "labels\n";
+        blockOffsets.clear();
+        return blockOffsets;
+      }
+      for (const char *lbl : pendingLabels)
+        blockOffsets[instPc].emplace_back(lbl);
+      pendingLabels.clear();
+      endPc = instPc + instSize;
     }
   }
-  if (kv.getInstSize(currPc) != 0) {
-    // we are looking at the next G4 instruction,
-    // but reached the end of the decode stream
-    os << "// ERROR: deducing G4 block PCs "
-          "(G4_INST stream ends early); falling back to IGA labels\n";
-    blockOffsets.clear(); // fallback to IGA default labels
-  }
+  // labels past the last instruction land at the end of the kernel
+  for (const char *lbl : pendingLabels)
+    blockOffsets[endPc].emplace_back(lbl);
   return blockOffsets;
 }
 
@@ -1923,6 +1902,48 @@ void G4_Kernel::emitDeviceAsmInstructionsIga(std::ostream &os,
   std::vector<char> igaStringBuffer;
   igaStringBuffer.resize(512); // TODO: expand default after testing
 
+  // PCs of the instructions that came from a G4_INST, in ascending order. Used
+  // to tell how many binary instructions IGA emitted on its own after each one.
+  std::vector<int32_t> instPcs;
+  for (G4_BB *bb : fg)
+    for (G4_INST *inst : *bb)
+      if (!inst->isLabel() && inst->getGenOffset() != UNDEFINED_GEN_OFFSET)
+        instPcs.push_back((int32_t)inst->getGenOffset());
+  std::sort(instPcs.begin(), instPcs.end());
+
+  uint32_t fmtOpts =
+      IGA_FORMATTING_OPTS_DEFAULT | IGA_FORMATTING_OPT_PRINT_BFNEXPRS;
+  if (getOption(vISA_PrintHexFloatInAsm))
+    fmtOpts |= IGA_FORMATTING_OPT_PRINT_HEX_FLOATS;
+  if (!getOption(vISA_noLdStAsmSyntax))
+    fmtOpts |= IGA_FORMATTING_OPT_PRINT_LDST;
+
+  auto formatToInstToStream = [&](int32_t pc, std::ostream &os) {
+    // multiple calls to getInstSyntax since we may have to
+    // dynamically resize buffer
+    while (true) {
+      size_t nw = kv.getInstSyntax(pc, igaStringBuffer.data(),
+                                   igaStringBuffer.size(), fmtOpts, labeler,
+                                   &ls);
+      if (nw == 0) {
+        os << "<<error formatting instruction at "
+              "PC 0x"
+           << std::uppercase << std::hex << pc << ">>\n";
+        break;
+      } else if (nw <= igaStringBuffer.size()) {
+        // print it (pad it out so comments line up on most instructions)
+        std::string line = igaStringBuffer.data();
+        while (line.size() < 100)
+          line += ' ';
+        os << line;
+        break;
+      } else {
+        igaStringBuffer.resize(igaStringBuffer.size() + 512);
+        // try again
+      }
+    }
+  };
+
   // printedLabels - tracked the labels those have been printed to the pc to
   // avoid printing the same label twice at the same pc. This can happen when
   // there's an empty BB contains only labels. The BB and the following BB will
@@ -1995,58 +2016,6 @@ void G4_Kernel::emitDeviceAsmInstructionsIga(std::ostream &os,
         (*itBB)->emitInstructionSourceLineMapping(os, itInst);
       }
 
-      uint32_t fmtOpts =
-          IGA_FORMATTING_OPTS_DEFAULT | IGA_FORMATTING_OPT_PRINT_BFNEXPRS;
-      if (getOption(vISA_PrintHexFloatInAsm))
-        fmtOpts |= IGA_FORMATTING_OPT_PRINT_HEX_FLOATS;
-      if (!getOption(vISA_noLdStAsmSyntax))
-        fmtOpts |= IGA_FORMATTING_OPT_PRINT_LDST;
-
-      auto formatToInstToStream = [&](int32_t pc, std::ostream &os) {
-        // multiple calls to getInstSyntax since we may have to
-        // dynamically resize buffer
-        while (true) {
-          size_t nw =
-              kv.getInstSyntax(pc, igaStringBuffer.data(),
-                               igaStringBuffer.size(), fmtOpts, labeler, &ls);
-          if (nw == 0) {
-            os << "<<error formatting instruction at "
-                  "PC 0x"
-               << std::uppercase << std::hex << pc << ">>\n";
-            break;
-          } else if (nw <= igaStringBuffer.size()) {
-            // print it (pad it out so comments line up on most instructions)
-            std::string line = igaStringBuffer.data();
-            while (line.size() < 100)
-              line += ' ';
-            os << line;
-            break;
-          } else {
-            igaStringBuffer.resize(igaStringBuffer.size() + 512);
-            // try again
-          }
-        }
-      };
-
-      // Advance PC when the vISA instruction needs to be cacheline-aligned or
-      // requires a Nop after. See comments in precomputeBlockOffsets for
-      // details.
-      if (i->isCachelineAligned()) {
-        iga::Op opcode = kv.getOpcode(pc);
-        while (opcode == iga::Op::SYNC) {
-          formatToInstToStream(pc, os);
-          os << "\n";
-          pc += kv.getInstSize(pc);
-          opcode = kv.getOpcode(pc);
-        }
-      }
-      if (i->requireNopAfter()) {
-        formatToInstToStream(pc, os);
-        os << "\n";
-        pc += kv.getInstSize(pc);
-        vASSERT(kv.getOpcode(pc) == iga::Op::NOP);
-      }
-
       formatToInstToStream(pc, os);
 
       (*itBB)->emitBasicInstructionComment(os, itInst, suppressRegs, lastRegs,
@@ -2054,8 +2023,30 @@ void G4_Kernel::emitDeviceAsmInstructionsIga(std::ostream &os,
       os << "\n";
 
       pc += kv.getInstSize(pc);
+
+      // IGA emits instructions that no G4_INST accounts for: syncs to keep an
+      // instruction cacheline aligned, a nop to let the debugger step, syncs
+      // from its automatic SWSB pass. Print everything up to the next encoded
+      // instruction verbatim, so that pc is back in sync -- and so that a
+      // label, which sits at the next instruction's PC, is printed after them.
+      auto nextInstPc = std::lower_bound(instPcs.begin(), instPcs.end(), pc);
+      if (nextInstPc != instPcs.end()) {
+        while (pc < *nextInstPc && kv.getInstSize(pc) != 0) {
+          formatToInstToStream(pc, os);
+          os << "\n";
+          pc += kv.getInstSize(pc);
+        }
+      }
     } // for insts in block
   }   // for blocks
+
+  // Any instructions IGA appended past the last G4_INST, e.g. the syncs its
+  // automatic SWSB pass adds after a trailing send.
+  while (kv.getInstSize(pc) != 0) {
+    formatToInstToStream(pc, os);
+    os << "\n";
+    pc += kv.getInstSize(pc);
+  }
 } // emitDeviceAsmInstructionsIga
 
 // Should be removed once we can confirm no one uses it
@@ -2098,24 +2089,18 @@ G4_BB *G4_Kernel::getNextBB(G4_BB *bb) const {
 }
 
 unsigned G4_Kernel::getBinOffsetOfBB(G4_BB *bb) const {
-  G4_INST *succInst = bb ? bb->getFirstInst() : nullptr;
-
-  if (succInst != nullptr) {
-    return (unsigned)succInst->getGenOffset();
-  } else {
-    G4_BB *succBB = bb ? getNextBB(bb) : nullptr;
-
-    while ((succBB != nullptr) && (succInst == nullptr)) {
-      succInst = succBB->getFirstInst();
-      succBB = getNextBB(succBB);
-    }
-
-    if (succInst != nullptr) {
-      return (unsigned)succInst->getGenOffset();
-    } else {
-      return 0;
+  // Find the first instruction at or after bb that has a known binary offset.
+  // A BB may hold nothing but labels, and an instruction that was never
+  // encoded keeps UNDEFINED_GEN_OFFSET, so walk forward in both dimensions.
+  for (G4_BB *currBB = bb; currBB != nullptr; currBB = getNextBB(currBB)) {
+    for (G4_INST *inst : *currBB) {
+      if (inst->isLabel())
+        continue;
+      if (inst->getGenOffset() != UNDEFINED_GEN_OFFSET)
+        return (unsigned)inst->getGenOffset();
     }
   }
+  return 0;
 }
 
 unsigned G4_Kernel::getPerThreadNextOff() const {

@@ -23,6 +23,8 @@ class KernelEncoder {
   bool m_compactRestrict = false;
   // enable IGA swsb set
   bool m_enableAutoDeps = false;
+  // keep the input instructions when IGA swsb set is enabled
+  bool m_autoDepPreserveInsts = false;
   // swsb encoding mode
   iga::SWSB_ENCODE_MODE m_swsbEncodeMode =
       iga::SWSB_ENCODE_MODE::SWSBInvalidMode;
@@ -60,6 +62,12 @@ public:
   // enable IGA swsb set. When enabled, the original swsb in the input
   // instructions will be obsoleted
   void enableIGAAutoDeps(bool enable = true) { m_enableAutoDeps = enable; }
+
+  // Keep the input instructions when IGA swsb set is enabled: a redundant
+  // sync.nop still has its SWSB cleared, but it is not erased from the kernel.
+  void preserveIGAAutoDepsInsts(bool enable = true) {
+    m_autoDepPreserveInsts = enable;
+  }
 
   // Avoid encoding a non-compacted (128b) instruction that straddles a
   // 64-byte cacheline boundary.  Takes effect only when autoCompact is set.

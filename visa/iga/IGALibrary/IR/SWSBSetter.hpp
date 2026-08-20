@@ -54,10 +54,12 @@ public:
   // Blocks have already been created
   SWSBAnalyzer(Kernel &k, ErrorHandler &errHandler,
                SWSB_ENCODE_MODE encode_mode, int sbid_count,
-               bool enableSBIDCounterAutoSet = false)
+               bool enableSBIDCounterAutoSet = false,
+               bool preserveInsts = false)
       : m_kernel(k), m_errorHandler(errHandler), m_SBIDRRCounter(0),
         m_initPoint(false),
         m_enableSBIDCounter(enableSBIDCounterAutoSet),
+        m_preserveInsts(preserveInsts),
         MAX_VALID_DISTANCE(k.getModel().getSWSBMaxValidDistance()) {
     // Set SWSB_ENCODE_MODE
     if (encode_mode != SWSB_ENCODE_MODE::SWSBInvalidMode)
@@ -283,6 +285,9 @@ private:
   const int MAX_VALID_DISTANCE;
 
   bool m_enableSBIDCounter = false;
+
+  // Set from EncoderOpts::autoDepPreserveInsts
+  bool m_preserveInsts = false;
 };
 } // namespace iga
 #endif

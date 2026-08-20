@@ -1293,9 +1293,13 @@ void SWSBAnalyzer::postProcessRemoveRedundantSync() {
       }
     }
     // remove the redundant sync.nop (sync.nop with no swsb)
-    instList.remove_if([](const Instruction *inst) {
-      return isSyncNop(*inst) && !inst->getSWSB().hasSWSB();
-    });
+    // When m_preserveInsts is set the caller maps its own IR back to these
+    // instructions by PC, leave them in place.
+    if (!m_preserveInsts) {
+      instList.remove_if([](const Instruction *inst) {
+        return isSyncNop(*inst) && !inst->getSWSB().hasSWSB();
+      });
+    }
   }
 }
 
