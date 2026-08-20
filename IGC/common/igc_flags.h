@@ -1098,7 +1098,6 @@ DECLARE_IGC_REGKEY(bool, VectorizerCheckScalarizer, false, "Add scalariser after
 DECLARE_IGC_REGKEY(DWORD, VectorizerList, -1, "Vectorize only one seed instruction with the provided number", true)
 DECLARE_IGC_REGKEY(debugString, VectorizerNameFilter, 0,
                    "Only run IGCVectorizer for functions matching the given regex", true)
-DECLARE_IGC_REGKEY(bool, VectorizerEnableVirtualSeeds, false, "Enable virtual seed creation", true)
 DECLARE_IGC_REGKEY(bool, EnableVectorEmitter, true, "Enable Vector Emission for a vectorizer", true)
 DECLARE_IGC_REGKEY(bool, VectorizerAllowI32, true, "Allow I32 versions of instructions inside vectorizer", true)
 DECLARE_IGC_REGKEY(bool, VectorizerAllowFPTRUNC, true, "Allow FPTRUNC instructions inside vectorizer", true)
@@ -1119,7 +1118,6 @@ DECLARE_IGC_REGKEY(bool, VectorizerAllowSamePredSelect, false,
                    "Allow Select instructions with identical predicate inside vectorizer", true)
 DECLARE_IGC_REGKEY(bool, VectorizerAllowFMADMatching, true,
                    "Allow FADD and FMUL instructions to be matched later in the pattern match pass", true)
-DECLARE_IGC_REGKEY(bool, VectorizerAllowBITCAST, false, "Allow BITCAST instructions inside vectorizer", true)
 DECLARE_IGC_REGKEY(bool, VectorizerAllowMUL, true, "Allow MUL instructions inside vectorizer", true)
 DECLARE_IGC_REGKEY(bool, VectorizerAllowADD, true, "Allow ADD instructions inside vectorizer", true)
 DECLARE_IGC_REGKEY(bool, VectorizerAllowSUB, true, "Allow SUB instructions inside vectorizer", true)
