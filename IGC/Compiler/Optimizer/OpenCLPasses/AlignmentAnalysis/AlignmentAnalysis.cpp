@@ -10,6 +10,8 @@ SPDX-License-Identifier: MIT
 #include "Compiler/IGCPassSupport.h"
 #include "Compiler/CodeGenPublic.h"
 #include "common/LLVMWarningsPush.hpp"
+#include "llvm/ADT/STLExtras.h"
+#include "llvm/ADT/StringExtras.h"
 #include "llvm/IR/InstIterator.h"
 #include "llvm/IR/GetElementPtrTypeIterator.h"
 #include "llvm/IR/DiagnosticInfo.h"
@@ -39,6 +41,55 @@ static const Align MinimumAlignment = Align(1);
 
 AlignmentAnalysisLPM::AlignmentAnalysisLPM() : FunctionPass(ID) {
   initializeAlignmentAnalysisLPMPass(*PassRegistry::getPassRegistry());
+}
+
+// Match an LLVM struct name to its OpenCL source name.
+// Also matches for renamed struct like %struct.test.5
+static bool matchesKernelArgTypeName(StructType *StTy, StringRef Name) {
+  if (!StTy->hasName())
+    return false;
+
+  StringRef TyName = StTy->getName();
+  // Drop LLVM's collision suffix.
+  auto [Base, Suffix] = TyName.rsplit('.');
+  if (!Suffix.empty() && llvm::all_of(Suffix, llvm::isDigit))
+    TyName = Base;
+
+  // Frontend emits either %name or %struct.name.
+  return TyName == Name || (TyName.consume_front("struct.") && TyName == Name);
+}
+
+// Match an LLVM struct type to arguments' OpenCL source name, by looking at the uses of the argument.
+// If OpenCL name is ambiguous, we treat the pointer as opaque.
+static StructType *getKernelArgStructType(const Argument &Arg, StringRef Name) {
+  // Drop the source qualifier.
+  Name.consume_front("struct ");
+
+  StructType *Found = nullptr;
+  for (const User *U : Arg.users()) {
+    Type *Ty = nullptr;
+    if (const auto *GEP = dyn_cast<GetElementPtrInst>(U)) {
+      Ty = GEP->getSourceElementType();
+    } else if (const auto *LI = dyn_cast<LoadInst>(U)) {
+      Ty = LI->getType();
+    } else if (const auto *SI = dyn_cast<StoreInst>(U)) {
+      Ty = SI->getValueOperand()->getType();
+    } else {
+      continue;
+    }
+
+    auto *StTy = dyn_cast<StructType>(Ty);
+    if (!StTy || !matchesKernelArgTypeName(StTy, Name))
+      continue;
+
+    // Found Uses with different types.
+    if (Found && Found != StTy)
+      return nullptr;
+    Found = StTy;
+  }
+
+  // Opaque types have no ABI alignment, see getAlignValue().
+  return (Found && Found->isSized()) ? Found : nullptr;
 }
 
 // Check if the function has OpenCL metadata that specifies the alignment of
@@ -83,7 +134,7 @@ void AlignmentAnalysis::setArgumentAlignmentBasedOnOptionalMetadata(Function &F)
         // This can be e.g. a struct pointer passed byval.
         // DPC++ does not add "*" in this case and we will not be able to
         // set alignment for such arguments.
-        return;
+        continue;
       }
 
       // Remove the trailing '*' from the metadata string
@@ -108,20 +159,23 @@ void AlignmentAnalysis::setArgumentAlignmentBasedOnOptionalMetadata(Function &F)
                                  .CaseLower("double", llvm::Align(8))
                                  .Default(std::nullopt);
 
-      if (!ScalarAlignment) {
-        // If the scalar type is not recognized, skip this argument - this can
-        // be e.g. a struct pointer
+      llvm::Align Alignment;
+      if (ScalarAlignment) {
+        Alignment = *ScalarAlignment;
+        uint64_t VectorSize = 0;
+        KernelArgType = KernelArgType.drop_front(ScalarType.size());
+        if (!KernelArgType.getAsInteger(10, VectorSize)) {
+          if (VectorSize == 3)
+            VectorSize = 4;
+          Alignment = Align(VectorSize * Alignment.value());
+        }
+      } else if (StructType *StTy = getKernelArgStructType(*Arg, KernelArgType)) {
+        Alignment = m_DL->getABITypeAlign(StTy);
+      } else {
+        // We know nothing about this argument, skip it.
         continue;
       }
 
-      llvm::Align Alignment = *ScalarAlignment;
-      uint64_t VectorSize = 0;
-      KernelArgType = KernelArgType.drop_front(ScalarType.size());
-      if (!KernelArgType.getAsInteger(10, VectorSize)) {
-        if (VectorSize == 3)
-          VectorSize = 4;
-        Alignment = Align(VectorSize * Alignment.value());
-      }
       assert(Alignment.value() && "Alignment should not be zero!");
 
       Arg->addAttr(llvm::Attribute::getWithAlignment(F.getContext(), Alignment));
@@ -131,9 +185,9 @@ void AlignmentAnalysis::setArgumentAlignmentBasedOnOptionalMetadata(Function &F)
 
 bool AlignmentAnalysis::run(Function &F) {
 
-  setArgumentAlignmentBasedOnOptionalMetadata(F);
-
   m_DL = &F.getParent()->getDataLayout();
+
+  setArgumentAlignmentBasedOnOptionalMetadata(F);
 
   // The work-list queue for the data flow algorithm
   std::deque<Instruction *> workList;
