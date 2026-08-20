@@ -31,6 +31,7 @@ public:
   typedef llvm::SmallVector<Constant *, 8> VecConst;
   typedef llvm::SmallVector<Value *, 8> VecVal;
   typedef llvm::SmallVector<VecArr, 8> VectorSliceChain;
+  typedef llvm::function_ref<bool(Use &U)> ReplaceCondition;
 
   struct Slice {
     unsigned int OpNum;
@@ -84,6 +85,8 @@ private:
 
   bool AllowedPlatform = true;
 
+  unsigned int PreferredVectorSize = 0;
+
   bool isSafeToVectorize(llvm::Instruction *I);
   bool isSafeToVectorizeSIMD16(llvm::Instruction *I);
   bool isSafeToVectorizeSIMD32(llvm::Instruction *I);
@@ -98,7 +101,7 @@ private:
   void printSlice(Slice *S);
   void printSlices(VecOfSlices &Chain);
 
-  Instruction *getInsertPointForVector(VecArr &Arr);
+  Instruction *getInsertPointForVector(VecArr &Arr, VecArr &Slice);
   Instruction *getInsertPointForCreatedInstruction(VecVal &Arr, VecArr &Slice);
 
   bool checkIsSameOrder(VecVal &Slice, InsertElementInst *Vectorized);
@@ -107,7 +110,8 @@ private:
   bool handlePHI(VecArr &Slice);
   bool checkInsertElement(Instruction *First, VecArr &Slice);
   bool handleInsertElement(VecArr &Slice, InsertElementInst *Final);
-  bool checkExtractElement(Instruction *Compare, VecArr &Slice);
+  bool checkNaiveSwizzle(VecArr &Slice);
+  bool checkExtractElement(VecArr &Slice);
   bool handleExtractElement(VecArr &Slice);
   bool handleCastInstruction(VecArr &Slice);
   bool handleSelectInstruction(VecArr &Slice);
@@ -123,12 +127,19 @@ private:
                                        VecArr &Slice, VecVal &Operands);
   bool handleIntrinsicInstruction(VecArr &Slice);
 
+  Instruction *createVirtualNode(VecArr &WorkSet);
+  void formVirtualNodesWhenPossible(VecArr &ToProcess, Function &F);
+  bool estimateVirtualSeedProfitability(VecArr &SeedSlice);
+  void checkPatternsForVirtualSeedCreation(VecArr &WorkSet, VecArr &ToProcess);
+  void processVirtualSeed(VecArr &VirtualSeeds);
+
   Value *checkOperandsToBeVectorized(Instruction *First, unsigned int OperNum, VecArr &Slice);
   Value *vectorizeSlice(VecArr &Slice, unsigned int OperNum);
 
   bool compareOperands(Value *A, Value *B);
-  InsertElementInst *createVector(VecArr &Slice, Instruction *InsertPoint);
-  void replaceSliceInstructionsWithExtract(VecArr &Slice, Instruction *CreatedInst);
+  InsertElementInst *createVector(VecArr &Slice, Instruction *InsertPoint, bool Register = true);
+  void replaceSliceInstructionsWithExtract(VecArr &Slice, Instruction *CreatedInst, bool Register = true,
+                                           ReplaceCondition = nullptr);
   void remapSliceToVector(VecArr &Slice, Value *Vectorized, Value *PrevVectorization = nullptr);
 
 public:
