@@ -1256,6 +1256,55 @@ static Value *createInverseSqrt(Value *Op, Instruction *InsertBefore) {
   return RSqrt;
 }
 
+// Match (splat (sqrt x)) -- the result of a scalar/narrow sqrt broadcast to a
+// wider vector -- and rewrite it in place to (splat (rsqrt x)), reusing the
+// broadcast. LLVM 20+ sinks the splat below the sqrt, turning a broadcast rsqrt
+// into a scalar sqrt + a wide reciprocal; folding the sqrt and the reciprocal
+// back into a scalar rsqrt keeps a single math-box op. The broadcast is a
+// shufflevector before GenXLowering and a genx.rdregion broadcast after it.
+// The caller must have checked that the reciprocal is the splat's only user.
+// Returns the broadcast rsqrt on success, nullptr otherwise.
+static Value *foldBroadcastInverseSqrt(Value *MaybeSplat, bool RequireApprox) {
+  auto *Splat = dyn_cast<Instruction>(MaybeSplat);
+  if (!Splat || !Splat->hasOneUse())
+    return nullptr;
+
+  // The broadcast reads element 0 of its source across all lanes; identify the
+  // operand that carries that source so it can be redirected to the rsqrt.
+  unsigned SrcOpNo = 0;
+  if (auto *SV = dyn_cast<ShuffleVectorInst>(Splat)) {
+    auto Mask = SV->getShuffleMask();
+    if (any_of(Mask,
+               [](int M) { return M != 0 && M != IGCLLVM::PoisonMaskElem; }))
+      return nullptr;
+    if (none_of(Mask, [](int M) { return M == 0; }))
+      return nullptr;
+    SrcOpNo = 0;
+  } else if (GenXIntrinsic::isRdRegion(Splat)) {
+    auto R = makeRegionFromBaleInfo(Splat, BaleInfo());
+    if (R.Indirect || R.Offset || R.Stride || R.VStride)
+      return nullptr;
+    SrcOpNo = GenXIntrinsic::GenXRegion::OldValueOperandNum;
+  } else {
+    return nullptr;
+  }
+
+  auto *Sqrt = dyn_cast<CallInst>(Splat->getOperand(SrcOpNo));
+  if (!Sqrt || !Sqrt->hasOneUse())
+    return nullptr;
+  auto IID = vc::getAnyIntrinsicID(Sqrt);
+  if (IID != GenXIntrinsic::genx_sqrt && IID != Intrinsic::sqrt)
+    return nullptr;
+  // genx_sqrt is already the approximate variant; llvm.sqrt must opt in.
+  if (RequireApprox && IID == Intrinsic::sqrt && !Sqrt->hasApproxFunc())
+    return nullptr;
+
+  auto *Rsqrt = createInverseSqrt(Sqrt->getOperand(0), Sqrt);
+  Splat->setOperand(SrcOpNo, Rsqrt);
+  Sqrt->eraseFromParent();
+  return Splat;
+}
+
 /***********************************************************************
  * GenXPatternMatch::flipBoolNot : attempt to flip (vector) bool not
  *
@@ -1339,6 +1388,13 @@ bool GenXPatternMatch::matchInverseSqrt(CallInst *I) {
     IGC_ASSERT_MESSAGE(0, "Unexpected intrinsic");
     return false;
   case GenXIntrinsic::genx_inv:
+    // (inv (splat (sqrt x))) -> (splat (rsqrt x))
+    if (auto *Splat = foldBroadcastInverseSqrt(I->getOperand(0),
+                                               /*RequireApprox=*/false)) {
+      I->replaceAllUsesWith(Splat);
+      I->eraseFromParent();
+      return true;
+    }
     if (NextIID != GenXIntrinsic::genx_sqrt && NextIID != Intrinsic::sqrt)
       return false;
 
@@ -2638,6 +2694,16 @@ void GenXPatternMatch::visitFDiv(BinaryOperator &I) {
       I.eraseFromParent();
       Divisor->eraseFromParent();
 
+      Changed |= true;
+      return;
+    }
+  }
+
+  // (fdiv 1., (splat (sqrt x))) -> (splat (rsqrt x))
+  if (match(Op0, m_FPOne())) {
+    if (auto *Splat = foldBroadcastInverseSqrt(Op1, /*RequireApprox=*/true)) {
+      I.replaceAllUsesWith(Splat);
+      I.eraseFromParent();
       Changed |= true;
       return;
     }
