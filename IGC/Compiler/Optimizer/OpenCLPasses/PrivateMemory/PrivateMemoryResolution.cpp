@@ -336,7 +336,8 @@ bool PrivateMemoryResolution::runOnModule(llvm::Module &M) {
       SmallSet<Function *, 16> childFuncs;
       // Collect the list of all direct callees
       for (auto FI = Node->begin(), FE = Node->end(); FI != FE; ++FI) {
-        if (Function *childF = FI->second->getFunction()) {
+        Function *childF = FI->second->getFunction();
+        if (childF && !childF->isDeclaration()) {
           childFuncs.insert(childF);
         }
       }
