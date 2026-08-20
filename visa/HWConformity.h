@@ -152,6 +152,7 @@ class HWConformity {
   void fixUnalignedRegions(INST_LIST_ITER it, G4_BB *bb);
   bool fixFcvt(INST_LIST_ITER i, G4_BB *bb);
   bool fixMovCvtByteFloat(INST_LIST_ITER i, G4_BB *bb);
+  bool isMovCvtByteFloat(const G4_INST *inst) const;
   void fixByteXBarRestriction(INST_LIST_ITER it, G4_BB *bb);
   void fixDPAS(INST_LIST_ITER it, G4_BB *bb);
   bool fixSrnd(INST_LIST_ITER i, G4_BB *bb);

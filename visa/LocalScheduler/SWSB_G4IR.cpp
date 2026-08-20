@@ -368,13 +368,12 @@ bool SBFootprint::hasOverlap(const SBFootprint *liveFootprint,
             curFootprintPtr->RightB >= curFootprint2Ptr->LeftB) {
           internalOffset = curFootprint2Ptr->offset;
           if (curFType == GRF_T && !isPrecision &&
-              (IS_BTYPE(curType) || IS_BYTE_FLOAT(curType) || isFcvtByteType)) {
+              (IS_BTYPE(curType) || isFcvtByteType)) {
             isRMWOverlap = true;
           }
           return true;
         } else if (curFType == GRF_T && !isPrecision &&
-                   (IS_BTYPE(curType) || IS_BYTE_FLOAT(curType) ||
-                    isFcvtByteType)) {
+                   (IS_BTYPE(curType) || isFcvtByteType)) {
           unsigned short w_LeftB = curFootprintPtr->LeftB / 2;
           unsigned short w_RightB = curFootprintPtr->RightB / 2;
           unsigned short w_curLeftB = curFootprint2Ptr->LeftB / 2;

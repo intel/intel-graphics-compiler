@@ -388,16 +388,12 @@ void HWConformityPro::fixMovCvtByteFloat(INST_LIST_ITER it, G4_BB *bb) {
     // is mismatched, both operands are forced to be subreg 0
     if (!isDstAligned32 || !isDstSubRegOk || (!isMod32Ok && dstSubReg != 0)) {
       replaceDstWithRawMov(it, bb, 1, builder.getGRFAlign());
-      auto *movInst = *std::next(it);
-      movInst->setIntTypeForRawMov();
     }
 
     if (!isSrcGrfAligned || !isPackedSrc || !isSrcSubRegOk ||
         (!isMod32Ok && srcSubReg != 0)) {
       replaceSrcWithRawMov(it, bb, 0, /*stride*/ 1, builder.getGRFAlign(),
                            /*sameExecSize*/ true);
-      auto *movInst = *std::prev(it);
-      movInst->setIntTypeForRawMov();
     }
 
     // Src must not cross 1 grf (both dst and src should be packed now)
@@ -421,8 +417,6 @@ void HWConformityPro::fixMovCvtByteFloat(INST_LIST_ITER it, G4_BB *bb) {
        !isAllowedTrueRegionPatternOnSrc0(src))) {
     replaceDstWithRawMov(it, bb, execChannelWidth / TypeSize(dstTy),
                          builder.getGRFAlign());
-    auto *movInst = *std::next(it);
-    movInst->setIntTypeForRawMov();
   }
 }
 
@@ -2931,7 +2925,8 @@ void HWConformityPro::fixMov(INST_LIST_ITER it, G4_BB *bb) {
   if (inst->getSrc(0)->isSrcRegRegion() && srcType == Type_TF32 &&
       (dstType == Type_TF32 || dstType == Type_F)) {
     // f<-tf32 and tf32<-tf32 are raw copies, retype both to ud.
-    inst->setIntTypeForRawMov();
+    inst->getDst()->setType(builder, Type_UD);
+    inst->getSrc(0)->asSrcRegRegion()->setType(builder, Type_UD);
     return;
   }
 
