@@ -152,9 +152,7 @@ This document lists all SPIR-V extensions supported by IGC and their platform re
 
 **Specification**: https://github.com/intel/llvm/blob/sycl/sycl/doc/design/spirv-extensions/SPV_INTEL_bfloat16_arithmetic.asciidoc
 
-> **Supported on**: XE3P+ (NVL P, CRI)
-
-> **Additionally experimentally supported on**: DG2, PVC, ARROWLAKE, BMG, LUNARLAKE, PTL, NVL S
+> **Experimentally supported on**: XE_HPG+ except METEORLAKE (DG2, PVC, ARROWLAKE, BMG, LUNARLAKE, PTL, NVL S, NVL P, CRI)
 
 **Capabilities**:
 

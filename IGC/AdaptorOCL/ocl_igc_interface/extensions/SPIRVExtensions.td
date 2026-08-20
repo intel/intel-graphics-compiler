@@ -422,22 +422,37 @@ def SPV_EXT_shader_atomic_float_min_max : Extension<
   InheritFromCapabilities
 >;
 
-def SPV_INTEL_bfloat16_arithmetic : Extension<
-  "SPV_INTEL_bfloat16_arithmetic",
-  [ CapabilityWithManualId<"BFloat16ArithmeticINTEL", 6226> ],
-  "https://github.com/intel/llvm/blob/sycl/sycl/doc/design/spirv-extensions/SPV_INTEL_bfloat16_arithmetic.asciidoc",
-  isCoreChildOf<IGFX_XE3P_CORE>
->;
-
+// NOTE: SPV_INTEL_bfloat16_arithmetic will be generalized into
+// SPV_EXT_bfloat16_arithmetic. Until that transition is complete, we retain
+// SPV_INTEL_bfloat16_arithmetic as an experimental extension to preserve
+// compatibility with SPIR-V producers that still emit it; it is not
+// advertised in the list of supported extensions.
+//
+// TODO: Uncomment the SPV_EXT_bfloat16_arithmetic definition below once
+// support for it is integrated into the SPIR-V LLVM Translator.
 def SPV_INTEL_bfloat16_arithmetic_experimental : ExperimentalExtension<
   "SPV_INTEL_bfloat16_arithmetic",
   [ CapabilityWithManualId<"BFloat16ArithmeticINTEL", 6226> ],
   "https://github.com/intel/llvm/blob/sycl/sycl/doc/design/spirv-extensions/SPV_INTEL_bfloat16_arithmetic.asciidoc",
-  // XE3P platforms are officially supported via the Extension definition above. This ExperimentalExtension covers
-  // older platforms (XE_HPG_CORE and newer, excluding METEORLAKE) to maintain compatibility with existing LIT tests
-  // for PVC and DG2. We may consider promoting those platforms to full support in the future.
   AllOf<[isCoreChildOf<IGFX_XE_HPG_CORE>, Not<ExactPlatform<IGFX_METEORLAKE>>]>
 >;
+
+// def SPV_EXT_bfloat16_arithmetic : Extension<
+//   "SPV_EXT_bfloat16_arithmetic",
+//   [ CapabilityWithManualId<"BFloat16ArithmeticEXT", 6226> ],
+//   "https://github.com/KhronosGroup/SPIRV-Registry/pull/444",
+//   isCoreChildOf<IGFX_XE3P_CORE>
+// >;
+//
+// def SPV_EXT_bfloat16_arithmetic_experimental : ExperimentalExtension<
+//   "SPV_EXT_bfloat16_arithmetic",
+//   [ CapabilityWithManualId<"BFloat16ArithmeticEXT", 6226> ],
+//   "https://github.com/KhronosGroup/SPIRV-Registry/pull/444",
+//   // XE3P platforms are officially supported via the Extension definition above. This ExperimentalExtension covers
+//   // older platforms (XE_HPG_CORE and newer, excluding METEORLAKE) to maintain compatibility with existing LIT tests
+//   // for PVC and DG2. We may consider promoting those platforms to full support in the future.
+//   AllOf<[isCoreChildOf<IGFX_XE_HPG_CORE>, Not<ExactPlatform<IGFX_METEORLAKE>>]>
+// >;
 
 def SPV_INTEL_int4 : ExperimentalExtension<
   "SPV_INTEL_int4",

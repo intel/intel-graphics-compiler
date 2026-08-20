@@ -62,12 +62,6 @@
 # CHECK-NEXT:     - id: 6256
 # CHECK-NEXT:       name: AtomicBFloat16MinMaxINTEL
 #
-# CHECK-NEXT: - name: SPV_INTEL_bfloat16_arithmetic
-# CHECK-NEXT:   spec_url: 'https://github.com/intel/llvm/blob/sycl/sycl/doc/design/spirv-extensions/SPV_INTEL_bfloat16_arithmetic.asciidoc'
-# CHECK-NEXT:   supported_capabilities:
-# CHECK-NEXT:     - id: 6226
-# CHECK-NEXT:       name: BFloat16ArithmeticINTEL
-#
 # CHECK-NEXT: - name: SPV_INTEL_bfloat16_conversion
 # CHECK-NEXT:   spec_url: 'https://github.khronos.org/SPIRV-Registry/extensions/INTEL/SPV_INTEL_bfloat16_conversion.html'
 # CHECK-NEXT:   supported_capabilities:
