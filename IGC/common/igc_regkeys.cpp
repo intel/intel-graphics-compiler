@@ -7,6 +7,187 @@ SPDX-License-Identifier: MIT
 ============================= end_copyright_notice ===========================*/
 
 #include "igc_regkeys.hpp"
+
+#include <charconv>
+#include <limits>
+#include <string_view>
+
+namespace {
+enum class UmdRegkeyType { Bool, Int, Uint, Enum, Bitmask, String };
+
+struct UmdRegkeyDescriptor {
+  std::string_view name;
+  UmdRegkeyType type;
+  std::string_view allowedValues;
+};
+
+#define UMD_REGKEY_TYPE_bool UmdRegkeyType::Bool
+#define UMD_REGKEY_TYPE_int UmdRegkeyType::Int
+#define UMD_REGKEY_TYPE_DWORD UmdRegkeyType::Uint
+#define UMD_REGKEY_TYPE_debugString UmdRegkeyType::String
+#define DECLARE_IGC_REGKEY(dataType, regkeyName, defaultValue, description, releaseMode)
+#define DECLARE_IGC_REGKEY_UMD(dataType, regkeyName, defaultValue, description, releaseMode)                           \
+  {#regkeyName, UMD_REGKEY_TYPE_##dataType, {}},
+#define DECLARE_IGC_REGKEY_ENUM_UMD(regkeyName, defaultValue, description, values, releaseMode)                        \
+  {#regkeyName, UmdRegkeyType::Enum, values},
+#define DECLARE_IGC_REGKEY_BITMASK_UMD(regkeyName, defaultValue, description, values, releaseMode)                     \
+  {#regkeyName, UmdRegkeyType::Bitmask, values},
+constexpr UmdRegkeyDescriptor UmdRegkeyDescriptors[] = {
+    {{}, UmdRegkeyType::Uint, {}},
+#include "igc_regkeys.h"
+};
+#undef DECLARE_IGC_REGKEY
+#undef DECLARE_IGC_REGKEY_UMD
+#undef DECLARE_IGC_REGKEY_ENUM_UMD
+#undef DECLARE_IGC_REGKEY_BITMASK_UMD
+#undef UMD_REGKEY_TYPE_bool
+#undef UMD_REGKEY_TYPE_int
+#undef UMD_REGKEY_TYPE_DWORD
+#undef UMD_REGKEY_TYPE_debugString
+
+thread_local const IGC::UmdRegkeyMap *CurrentUmdRegkeys = nullptr;
+
+std::string_view trim(std::string_view value) {
+  constexpr std::string_view Whitespace = " \t\r\n\v\f";
+  const size_t first = value.find_first_not_of(Whitespace);
+  if (first == std::string_view::npos)
+    return {};
+  return value.substr(first, value.find_last_not_of(Whitespace) - first + 1);
+}
+
+const UmdRegkeyDescriptor *findUmdRegkey(std::string_view name) {
+  for (const UmdRegkeyDescriptor &descriptor : UmdRegkeyDescriptors) {
+    if (descriptor.name == name)
+      return &descriptor;
+  }
+  return nullptr;
+}
+
+bool parseUnsignedInteger(std::string_view text, uint32_t &value) {
+  int base = 10;
+  if (text.size() > 2 && text[0] == '0' && (text[1] == 'x' || text[1] == 'X')) {
+    base = 16;
+    text.remove_prefix(2);
+  }
+  if (text.empty())
+    return false;
+
+  auto result = std::from_chars(text.data(), text.data() + text.size(), value, base);
+  return result.ec == std::errc() && result.ptr == text.data() + text.size();
+}
+
+bool parseSignedInteger(std::string_view text, int32_t &value) {
+  const bool negative = !text.empty() && text.front() == '-';
+  if (negative)
+    text.remove_prefix(1);
+
+  uint32_t magnitude = 0;
+  if (!parseUnsignedInteger(text, magnitude))
+    return false;
+
+  constexpr uint32_t MaxNegativeMagnitude = uint32_t{1} << 31;
+  if (negative) {
+    if (magnitude > MaxNegativeMagnitude)
+      return false;
+    value = magnitude == MaxNegativeMagnitude ? std::numeric_limits<int32_t>::min() : -static_cast<int32_t>(magnitude);
+    return true;
+  }
+
+  if (magnitude > static_cast<uint32_t>(std::numeric_limits<int32_t>::max()))
+    return false;
+  value = static_cast<int32_t>(magnitude);
+  return true;
+}
+
+bool isAllowedEnumValue(std::string_view allowedValues, int32_t value) {
+  while (!allowedValues.empty()) {
+    const size_t separator = allowedValues.find(',');
+    const std::string_view option = allowedValues.substr(0, separator);
+    allowedValues = separator == std::string_view::npos ? std::string_view{} : allowedValues.substr(separator + 1);
+
+    const size_t equal = option.rfind('=');
+    if (equal == std::string_view::npos)
+      continue;
+
+    const std::string_view numericText = trim(option.substr(equal + 1));
+    int32_t allowedValue = 0;
+    if (parseSignedInteger(numericText, allowedValue) && allowedValue == value)
+      return true;
+  }
+  return false;
+}
+
+bool parseUmdRegkeyValue(std::string_view text, const UmdRegkeyDescriptor &descriptor, uint32_t &value) {
+  if (text.empty() || descriptor.type == UmdRegkeyType::String)
+    return false;
+
+  if (descriptor.type == UmdRegkeyType::Int || descriptor.type == UmdRegkeyType::Enum) {
+    int32_t signedValue = 0;
+    if (!parseSignedInteger(text, signedValue))
+      return false;
+    if (descriptor.type == UmdRegkeyType::Enum && !isAllowedEnumValue(descriptor.allowedValues, signedValue))
+      return false;
+    value = static_cast<uint32_t>(signedValue);
+    return true;
+  }
+
+  uint32_t unsignedValue = 0;
+  if (!parseUnsignedInteger(text, unsignedValue))
+    return false;
+  if (descriptor.type == UmdRegkeyType::Bool && unsignedValue > 1)
+    return false;
+  value = unsignedValue;
+  return true;
+}
+} // namespace
+
+namespace IGC {
+UmdRegkeyMap ParseUmdRegkeys(const char *options, size_t size) {
+  UmdRegkeyMap parsedOptions;
+  if (!options || size == 0 || size > MaxUmdRegkeyOptionsSize)
+    return parsedOptions;
+
+  size_t optionCount = 1;
+  for (size_t index = 0; index < size; ++index) {
+    if (options[index] == ',' && ++optionCount > MaxUmdRegkeyOptionCount)
+      return parsedOptions;
+  }
+
+  std::string_view remaining(options, size);
+  while (!remaining.empty()) {
+    const size_t separator = remaining.find(',');
+    const std::string_view assignment = remaining.substr(0, separator);
+    remaining = separator == std::string_view::npos ? std::string_view{} : remaining.substr(separator + 1);
+
+    const size_t equal = assignment.find('=');
+    if (equal == std::string_view::npos)
+      continue;
+
+    const std::string_view name = trim(assignment.substr(0, equal));
+    const std::string_view text = trim(assignment.substr(equal + 1));
+    if (name.empty())
+      continue;
+    const UmdRegkeyDescriptor *descriptor = findUmdRegkey(name);
+    if (!descriptor)
+      continue;
+
+    uint32_t value = 0;
+    if (parseUmdRegkeyValue(text, *descriptor, value))
+      parsedOptions[std::string(name)] = value;
+  }
+  return parsedOptions;
+}
+
+UmdRegkeyScope::UmdRegkeyScope(const char *rawOptions, size_t size)
+    : options(ParseUmdRegkeys(rawOptions, size)), previous(CurrentUmdRegkeys) {
+  CurrentUmdRegkeys = options.empty() ? nullptr : &options;
+}
+
+UmdRegkeyScope::~UmdRegkeyScope() { CurrentUmdRegkeys = previous; }
+
+const UmdRegkeyMap *GetCurrentUmdRegkeys() { return CurrentUmdRegkeys; }
+} // namespace IGC
+
 #if defined(IGC_DEBUG_VARIABLES)
 
 #include "common/LLVMWarningsPush.hpp"
@@ -30,7 +211,6 @@ SPDX-License-Identifier: MIT
 #endif
 
 #include <algorithm>
-#include <charconv>
 #include <chrono>
 #include <fstream>
 #include <iomanip>

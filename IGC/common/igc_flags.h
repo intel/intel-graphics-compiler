@@ -775,8 +775,8 @@ DECLARE_IGC_REGKEY_BITMASK(
     SHADER_TYPE_MASKS, false)
 DECLARE_IGC_REGKEY(bool, ForceDisableShaderDebugHashCodeInKernel, false,
                    "Disable hash code addition to the binary after EOT", true)
-DECLARE_IGC_REGKEY(bool, EnableHashMovsAtPrologue, false,
-                   "Rather than after EOT, insert hash code movs at shader entry", true)
+DECLARE_IGC_REGKEY_UMD(bool, EnableHashMovsAtPrologue, false,
+                       "Rather than after EOT, insert hash code movs at shader entry", true)
 DECLARE_IGC_REGKEY(bool, ShaderDebugHashCodeInKernel, false, "Add hash code to the binary", true)
 DECLARE_IGC_REGKEY(
     int, ShaderDebugHashCode, 0,

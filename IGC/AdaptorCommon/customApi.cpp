@@ -169,6 +169,7 @@ void IGC_DEBUG_API_CALL SetCompilerOption(OptionFlag flag, debugString s) {
 #define DECLARE_IGC_REGKEY(dataType, regkeyName, defaultValue, description, releaseMode)                               \
   case OptionFlag::OPTION_##regkeyName:                                                                                \
     strcpy_s(IGC_GET_REGKEY(regkeyName).m_string, sizeof(debugString), s);                                             \
+    IGC_GET_REGKEY(regkeyName).isSet = true;                                                                           \
     break;
 #include "common/igc_regkeys.h"
 #undef DECLARE_IGC_REGKEY
@@ -182,6 +183,7 @@ void IGC_DEBUG_API_CALL SetCompilerOption(OptionFlag flag, int value) {
 #define DECLARE_IGC_REGKEY(dataType, regkeyName, defaultValue, description, releaseMode)                               \
   case OptionFlag::OPTION_##regkeyName:                                                                                \
     IGC_GET_REGKEY(regkeyName).m_Value = value;                                                                        \
+    IGC_GET_REGKEY(regkeyName).isSet = true;                                                                           \
     break;
 #include "common/igc_regkeys.h"
 #undef DECLARE_IGC_REGKEY

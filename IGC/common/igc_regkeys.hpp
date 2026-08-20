@@ -12,11 +12,82 @@ SPDX-License-Identifier: MIT
 #include "common/SysUtils.hpp"
 #include <array>
 #include <cstddef>
+#include <cstdint>
+#include <map>
 #include <regex>
 #include <string>
+#include <string_view>
+#include <variant>
 #include "CommonMacros.h"
 
 typedef char debugString[1024];
+
+namespace IGC {
+inline constexpr size_t MaxUmdRegkeyOptionsSize = 4096;
+inline constexpr size_t MaxUmdRegkeyOptionCount = 64;
+
+using UmdRegkeyValue = std::variant<uint32_t, std::string>;
+using UmdRegkeyMap = std::map<std::string, UmdRegkeyValue, std::less<>>;
+
+UmdRegkeyMap ParseUmdRegkeys(const char *options, size_t size);
+
+class UmdRegkeyScope {
+public:
+  UmdRegkeyScope(const char *options, size_t size);
+  ~UmdRegkeyScope();
+
+  UmdRegkeyScope(const UmdRegkeyScope &) = delete;
+  UmdRegkeyScope &operator=(const UmdRegkeyScope &) = delete;
+
+private:
+  UmdRegkeyMap options;
+  const UmdRegkeyMap *previous = nullptr;
+};
+
+const UmdRegkeyMap *GetCurrentUmdRegkeys();
+
+template <bool AllowPerPsoUmdOverride, typename T> T GetUmdOverrideOrDefault(const char *name, T defaultValue) {
+  if constexpr (!AllowPerPsoUmdOverride) {
+    return defaultValue;
+  } else {
+    const UmdRegkeyMap *options = GetCurrentUmdRegkeys();
+    if (!options)
+      return defaultValue;
+
+    auto value = options->find(name);
+    if (value == options->end())
+      return defaultValue;
+
+    const uint32_t *numericValue = std::get_if<uint32_t>(&value->second);
+    return numericValue ? static_cast<T>(*numericValue) : defaultValue;
+  }
+}
+
+template <bool AllowPerPsoUmdOverride> bool IsUmdRegkeySet(const char *name) {
+  if constexpr (!AllowPerPsoUmdOverride) {
+    return false;
+  } else {
+    const UmdRegkeyMap *options = GetCurrentUmdRegkeys();
+    return options && options->find(name) != options->end();
+  }
+}
+
+namespace UmdRegkeyMetadata {
+#define DECLARE_IGC_REGKEY(dataType, regkeyName, defaultValue, description, releaseMode)                               \
+  inline constexpr bool regkeyName = false;
+#define DECLARE_IGC_REGKEY_UMD(dataType, regkeyName, defaultValue, description, releaseMode)                           \
+  inline constexpr bool regkeyName = true;
+#define DECLARE_IGC_REGKEY_ENUM_UMD(regkeyName, defaultValue, description, values, releaseMode)                        \
+  inline constexpr bool regkeyName = true;
+#define DECLARE_IGC_REGKEY_BITMASK_UMD(regkeyName, defaultValue, description, values, releaseMode)                     \
+  inline constexpr bool regkeyName = true;
+#include "igc_regkeys.h"
+#undef DECLARE_IGC_REGKEY
+#undef DECLARE_IGC_REGKEY_UMD
+#undef DECLARE_IGC_REGKEY_ENUM_UMD
+#undef DECLARE_IGC_REGKEY_BITMASK_UMD
+} // namespace UmdRegkeyMetadata
+} // namespace IGC
 
 #if defined(_DEBUG) || defined(_INTERNAL)
 #define IGC_DEBUG_VARIABLES
@@ -121,32 +192,44 @@ inline bool doesRegexMatch(const std::string &src, const char *regex) {
   return (regex && *regex != '\0') ? std::regex_search(src, std::regex(regex)) : true;
 }
 
+template <bool AllowPerPsoUmdOverride> inline unsigned GetUmdAwareFlagValue(IGCFlag &flag, bool developerValueApplies) {
+  if (developerValueApplies && (flag.isSet || flag.m_Value != flag.defaultValue))
+    return flag.m_Value;
+  return IGC::GetUmdOverrideOrDefault<AllowPerPsoUmdOverride>(flag.name, flag.defaultValue);
+}
+
+template <bool AllowPerPsoUmdOverride> inline bool IsUmdAwareFlagSet(IGCFlag &flag, bool developerValueApplies) {
+  return (developerValueApplies && flag.isSet) || IGC::IsUmdRegkeySet<AllowPerPsoUmdOverride>(flag.name);
+}
+
 #if defined(LINUX_RELEASE_MODE)
 #define IGC_GET_FLAG_VALUE(name)                                                                                       \
-  (((CheckHashRange(IGC_GET_REGKEY(name)) || CheckEntryPoint(IGC_GET_REGKEY(name))) &&                                 \
-    IGC_GET_REGKEY(name).isReleaseMode)                                                                                \
-       ? IGC_GET_REGKEY(name).m_Value                                                                                  \
-       : IGC_GET_REGKEY(name).defaultValue)
+  (GetUmdAwareFlagValue<IGC::UmdRegkeyMetadata::name>(                                                                 \
+      IGC_GET_REGKEY(name), (CheckHashRange(IGC_GET_REGKEY(name)) || CheckEntryPoint(IGC_GET_REGKEY(name))) &&         \
+                                IGC_GET_REGKEY(name).isReleaseMode))
 #define IGC_GET_REGKEYSTRING(name)                                                                                     \
   (((CheckHashRange(IGC_GET_REGKEY(name)) || CheckEntryPoint(IGC_GET_REGKEY(name))) &&                                 \
     IGC_GET_REGKEY(name).isReleaseMode)                                                                                \
        ? IGC_GET_REGKEY(name).m_string                                                                                 \
        : "")
+#define IGC_IS_FLAG_SET(name)                                                                                          \
+  (IsUmdAwareFlagSet<IGC::UmdRegkeyMetadata::name>(IGC_GET_REGKEY(name), CheckHashRange(IGC_GET_REGKEY(name)) ||       \
+                                                                             CheckEntryPoint(IGC_GET_REGKEY(name))))
 #else
 #define IGC_GET_FLAG_VALUE(name)                                                                                       \
-  ((CheckHashRange(IGC_GET_REGKEY(name)) || CheckEntryPoint(IGC_GET_REGKEY(name)))                                     \
-       ? IGC_GET_REGKEY(name).m_Value                                                                                  \
-       : IGC_GET_REGKEY(name).defaultValue)
+  (GetUmdAwareFlagValue<IGC::UmdRegkeyMetadata::name>(                                                                 \
+      IGC_GET_REGKEY(name), CheckHashRange(IGC_GET_REGKEY(name)) || CheckEntryPoint(IGC_GET_REGKEY(name))))
 #define IGC_GET_REGKEYSTRING(name)                                                                                     \
   ((CheckHashRange(IGC_GET_REGKEY(name)) || CheckEntryPoint(IGC_GET_REGKEY(name))) ? IGC_GET_REGKEY(name).m_string : "")
+#define IGC_IS_FLAG_SET(name)                                                                                          \
+  (IsUmdAwareFlagSet<IGC::UmdRegkeyMetadata::name>(IGC_GET_REGKEY(name), CheckHashRange(IGC_GET_REGKEY(name)) ||       \
+                                                                             CheckEntryPoint(IGC_GET_REGKEY(name))))
 #endif
 
 #define IGC_GET_FLAG_DEFAULT_VALUE(name) (IGC_GET_REGKEY(name).defaultValue)
 #define IGC_IS_FLAG_ENABLED(name) (IGC_GET_FLAG_VALUE(name) != 0)
 #define IGC_IS_FLAG_DISABLED(name) (!IGC_IS_FLAG_ENABLED(name))
 #define IGC_SET_FLAG_VALUE(name, regkeyValue) (IGC_GET_REGKEY(name).m_Value = regkeyValue)
-#define IGC_IS_FLAG_SET(name)                                                                                          \
-  ((CheckHashRange(IGC_GET_REGKEY(name)) || CheckEntryPoint(IGC_GET_REGKEY(name))) ? IGC_GET_REGKEY(name).isSet : false)
 #define IGC_SET_IMPLIED_REGKEY(name, setOnValue, subname, subvalue)                                                    \
   (setImpliedRegkey(IGC_GET_REGKEY(name), (IGC_GET_REGKEY(name).m_Value == setOnValue), IGC_GET_REGKEY(subname),       \
                     subvalue))
@@ -210,11 +293,12 @@ public:
 
 template <typename T> bool IsEnabled(const T &value) { return value != 0; }
 
-#define IGC_GET_FLAG_VALUE(name) (IGC::DebugVariable::name##default)
+#define IGC_GET_FLAG_VALUE(name)                                                                                       \
+  (IGC::GetUmdOverrideOrDefault<IGC::UmdRegkeyMetadata::name>(#name, IGC::DebugVariable::name##default))
 #define IGC_IS_FLAG_ENABLED(name) (::IsEnabled(IGC_GET_FLAG_VALUE(name)))
 #define IGC_IS_FLAG_DISABLED(name) (!IGC_IS_FLAG_ENABLED(name))
-#define IGC_IS_FLAG_SET(name) (false)
-#define IGC_GET_FLAG_DEFAULT_VALUE(name) IGC_GET_FLAG_VALUE(name)
+#define IGC_IS_FLAG_SET(name) (IGC::IsUmdRegkeySet<IGC::UmdRegkeyMetadata::name>(#name))
+#define IGC_GET_FLAG_DEFAULT_VALUE(name) (IGC::DebugVariable::name##default)
 #define IGC_GET_REGKEYSTRING(name) ("")
 #define IGC_REGKEY_OR_FLAG_ENABLED(name, flag)                                                                         \
   (IGC_IS_FLAG_ENABLED(name) || IGC::Debug::GetDebugFlag(IGC::Debug::DebugFlag::flag))
