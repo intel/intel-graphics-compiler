@@ -503,19 +503,23 @@ void DwarfDebug::encodeRange(CompileUnit *TheCU, DIE *ScopeDIE, const llvm::Smal
   // In the latter case, the respected ranges are stored in
   // GenISADebugRangeSymbols (as a pair of <Label, RangesList>)
 
-  auto IsValidRange = [](const InsnRange &R) {
-    auto start = R.first;
-    auto end = R.second;
-    while (end != start && start) {
+  auto HasRealDebugLoc = [](const llvm::Instruction *I) {
 #if LLVM_VERSION_MAJOR < 22
-      // On LLVM < 22 debug intrinsics live in the instruction stream; skip
-      // them so that only real instructions with a DebugLoc validate the range.
-      if (!llvm::isa<llvm::DbgInfoIntrinsic>(start))
+    // On LLVM < 22 debug intrinsics live in the instruction stream; skip
+    // them so that only real instructions with a DebugLoc validate the range.
+    if (llvm::isa<llvm::DbgInfoIntrinsic>(I))
+      return false;
 #endif // LLVM_VERSION_MAJOR < 22
-        if (start->getDebugLoc())
-          return true;
+    return static_cast<bool>(I->getDebugLoc());
+  };
 
-      start = getNextInst(start);
+  auto IsValidRange = [&HasRealDebugLoc](const InsnRange &R) {
+    for (const llvm::Instruction *I = R.first; I; I = getNextInst(I)) {
+      if (HasRealDebugLoc(I))
+        return true;
+      // Break after check to include single-instruction scope which has R.first == R.second.
+      if (I == R.second)
+        break;
     }
     return false;
   };
