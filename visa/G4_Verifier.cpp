@@ -1372,6 +1372,13 @@ void G4Verifier::verifyDpas(G4_INST *inst) {
 void G4Verifier::verifyAccMov(G4_INST *inst) {
   const G4_Operand *src = inst->getSrc(0);
   const G4_Operand *dst = inst->getDst();
+  if (kernel.fg.builder->relaxedACCRestrictions()) {
+    // for mimic fcvt after translating fcvt to mov
+    if (dst && dst->isAccReg() && dst->getType() == Type_HF && src &&
+        !src->isAccReg() && IS_BYTE_FLOAT(src->getType()))
+      return;
+    // fall-thru
+  }
   if (kernel.fg.builder->hasFormatConversionACCRestrictions() &&
       inst->opcode() == G4_mov && (src->isAccReg() || dst->isAccReg())) {
     const bool allowedICombination =

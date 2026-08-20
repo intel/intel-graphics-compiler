@@ -1492,6 +1492,55 @@ bool G4_INST::isRawMov() const {
            srcs[0]->asSrcRegRegion()->getModifier() == Mod_src_undef));
 }
 
+// Change dst/src types to int type
+//  FP8 <- FP8 : UB <- UB
+//  FP16 <- FP16 : UW <- UW
+//  F <- F : UD <- UD
+//  F/TF32 <- TF32 : UD <- UD
+//  DF <- DF : UQ <- UQ
+void G4_INST::setIntTypeForRawMov() {
+  if (opcode() != G4_mov)
+    return;
+  // Skip if dst is null or src is not srcRegRegion
+  if (!getSrc(0)->isSrcRegRegion() || getDst() == nullptr)
+    return;
+
+  auto *dstReg = getDst();
+  auto *srcReg = getSrc(0)->asSrcRegRegion();
+
+  // special handling of F < tf32:
+  //   change to F <- F so it passes raw mov checking
+  if (dstReg->getType() == Type_F && srcReg->getType() == Type_TF32)
+    srcReg->setType(getBuilder(), Type_F);
+
+  if (!isRawMov())
+    return;
+
+  G4_Type dstTy = dstReg->getType();
+  if (!IS_TYPE_FLOAT_ALL(dstTy) && !IS_BYTE_FLOAT(dstTy) && dstTy != Type_TF32)
+    return;
+
+  G4_Type intTy = dstTy;
+  switch (TypeSize(dstTy)) {
+  case 8:
+    intTy = Type_UQ;
+    break;
+  case 4:
+    intTy = Type_UD;
+    break;
+  case 2:
+    intTy = Type_UW;
+    break;
+  case 1:
+    intTy = Type_UB;
+    break;
+  default:
+    vISA_ASSERT_UNREACHABLE("Unexpected float Type");
+  }
+  dstReg->setType(getBuilder(), intTy);
+  srcReg->setType(getBuilder(), intTy);
+}
+
 bool G4_INST::hasACCSrc() const {
   if (getImplAccSrc() || (srcs[0] && srcs[0]->isSrcRegRegion() &&
                           srcs[0]->asSrcRegRegion()->isAccReg()))
@@ -7714,6 +7763,13 @@ bool G4_INST::canDstBeAcc() const {
     // disable for now since it's causing some SKL tests to fail
     return false;
   case G4_mov:
+    if (builder.relaxedACCRestrictions()) {
+      // For minic fcvt
+      if (dst->getType() == Type_HF && getSrc(0) &&
+          IS_BYTE_FLOAT(getSrc(0)->getType()))
+        return true;
+      // fall-thru
+    }
     if (builder.hasFormatConversionACCRestrictions()) {
       const bool allowedICombination =
           (IS_DTYPE(getSrc(0)->getType()) || getSrc(0)->getType() == Type_W ||
@@ -7922,7 +7978,7 @@ bool G4_INST::canSrcBeAccBeforeHWConform(Gen4_Operand_Number opndNum) const {
     }
     if (builder.removedAccRestrictionsAsGRF()) {
       if (dst->getType() == Type_BF || dst->getType() == Type_HF ||
-          IS_BTYPE(dst->getType())) {
+          IS_BYTE_FLOAT(dst->getType())) {
         if (src->getType() != dst->getType() &&
             dst->getTypeSize() < src->getTypeSize() &&
             dst->getHorzStride() == 1) {
