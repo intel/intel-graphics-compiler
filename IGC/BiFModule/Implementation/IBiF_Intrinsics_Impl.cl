@@ -696,7 +696,9 @@ double __attribute__((overloadable)) __spirv_ocl_ceil(double x ){
     uint orDst = temp5 | temp6;
     ulong signAdjustedVal = (orDst == 0) ? 0 : (expBias);
     double output = as_double( signAdjustedVal << 32 ) + as_double( roundedToZeroVal );
-    return output;
+
+    // Restore the sign.
+    return as_double(((ulong)sign << 32) | as_ulong(output));
 }
 
 INLINE
@@ -726,7 +728,9 @@ double __attribute__((overloadable)) __spirv_ocl_floor(double x ){
     uint orDst = temp5 | temp6;
     ulong signAdjustedVal = (orDst == 0) ? 0 : (expBias);
     double output = as_double( signAdjustedVal << 32 ) + as_double( roundedToZeroVal );
-    return output;
+
+    // Restore the sign.
+    return as_double(((ulong)sign << 32) | as_ulong(output));
 }
 
 INLINE double __attribute__((overloadable)) __spirv_ocl_native_sqrt(double x ){
