@@ -17,6 +17,8 @@ SPDX-License-Identifier: MIT
 #include "common/LLVMWarningsPush.hpp"
 #include "llvm/IR/Function.h"
 #include "llvm/IR/Module.h"
+#include <llvm/IR/Constants.h>
+#include <llvm/IR/GlobalVariable.h>
 #include "common/LLVMWarningsPop.hpp"
 
 #include "Probe/Assertion.h"
@@ -330,8 +332,16 @@ VISAVariableLocation ScalarVisaModule::GetVariableLocation(const DbgVarInstEntry
     return VISAVariableLocation(this);
   }
 
+  bool slm = isa<GlobalVariable>(pVal) || isa<ConstantExpr>(pVal);
+
+  if (isDbgDclInst && pVal->use_empty() && !isa<Argument>(pVal) && !slm) {
+    // Don't drop unused Globals and constant expressions declare addresses. We rewrite their uses
+    // to a resolved SLM offset, which leaves the address use-empty while it still names valid loc.
+    return VISAVariableLocation(this);
+  }
+
   if (const Constant *pConstVal = dyn_cast<Constant>(pVal)) {
-    if (!isa<GlobalVariable>(pVal) && !isa<ConstantExpr>(pVal)) {
+    if (!slm) {
       return VISAVariableLocation(pConstVal, this);
     }
   }
