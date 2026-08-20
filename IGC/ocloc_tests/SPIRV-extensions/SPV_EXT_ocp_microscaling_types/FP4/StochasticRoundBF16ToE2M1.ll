@@ -30,8 +30,8 @@ declare spir_func i64 @_Z33__spirv_BuiltInGlobalInvocationIdi(i32)
 
 define spir_kernel void @BF16_to_E2M1_scalar(bfloat addrspace(1)* %input, i32 addrspace(1)* %seed, <2 x i4> addrspace(1)* %output) {
 ; CHECK-LABEL: .kernel "BF16_to_E2M1_scalar"
-; CHECK: lfsr.b8v4 (M1, 32) [[RAND:[A-z0-9]*]](0,0)<1> {{.*}}(0,0)<1;1,0> {{.*}}(0,0)<1;1,0>
-; CHECK-NOT: lfsr.b8v4
+; CHECK: lfsr.b16v2 (M1, 32) [[RAND:[A-z0-9]*]](0,0)<1> {{.*}}(0,0)<1;1,0> {{.*}}(0,0)<1;1,0>
+; CHECK-NOT: lfsr.b16v2
 ; CHECK-DAG: dnscl.bftoe2m1.mode0.srnd (M1, 32) [[DST:[A-z0-9]*]].0 [[INPUT0:[A-z0-9]*]].0 [[INPUT1:[A-z0-9]*]].0 [[RAND]].0
 ; CHECK-DAG: mov (M1, 32) [[INPUT1]](0,0)<1> 0x0:ud
 ; CHECK-DAG: // .decl [[RAND]] v_type=G type=ud num_elts=32
@@ -56,8 +56,8 @@ declare dso_local spir_func i4 @_Z46__builtin_spirv_StochasticRoundBF16ToE2M1INT
 
 define spir_kernel void @BF16_to_E2M1_vector2(<2 x bfloat> addrspace(1)* %input, i32 addrspace(1)* %seed, <2 x i4> addrspace(1)* %output) {
 ; CHECK-LABEL: .kernel "BF16_to_E2M1_vector2"
-; CHECK: lfsr.b8v4 (M1, 32) [[RAND:[A-z0-9]*]](0,0)<1> {{.*}}(0,0)<1;1,0> {{.*}}(0,0)<1;1,0>
-; CHECK-NOT: lfsr.b8v4
+; CHECK: lfsr.b16v2 (M1, 32) [[RAND:[A-z0-9]*]](0,0)<1> {{.*}}(0,0)<1;1,0> {{.*}}(0,0)<1;1,0>
+; CHECK-NOT: lfsr.b16v2
 ; CHECK-DAG: dnscl.bftoe2m1.mode0.srnd (M1, 32) [[DST:[A-z0-9]*]].0 [[INPUT0:[A-z0-9]*]].0 [[INPUT1:[A-z0-9]*]].0 [[RAND]].0
 ; CHECK-DAG: mov (M1, 32) [[INPUT1]](0,0)<1> 0x0:ud
 ; CHECK-DAG: // .decl [[RAND]] v_type=G type=ud num_elts=32
@@ -80,8 +80,8 @@ declare dso_local spir_func <2 x i4> @_Z46__builtin_spirv_StochasticRoundBF16ToE
 
 define spir_kernel void @BF16_to_E2M1_vector3(<3 x bfloat> addrspace(1)* %input, i32 addrspace(1)* %seed, <4 x i4> addrspace(1)* %output) {
 ; CHECK-LABEL: .kernel "BF16_to_E2M1_vector3"
-; CHECK: lfsr.b8v4 (M1, 32) [[RAND:[A-z0-9]*]](0,0)<1> {{.*}}(0,0)<1;1,0> {{.*}}(0,0)<1;1,0>
-; CHECK-NOT: lfsr.b8v4
+; CHECK: lfsr.b16v2 (M1, 32) [[RAND:[A-z0-9]*]](0,0)<1> {{.*}}(0,0)<1;1,0> {{.*}}(0,0)<1;1,0>
+; CHECK-NOT: lfsr.b16v2
 ; CHECK: dnscl.bftoe2m1.mode0.srnd (M1, 32) [[DST:[A-z0-9]*]].0 [[INPUT0:[A-z0-9]*]].0 [[INPUT1:[A-z0-9]*]].0 [[RAND]].0
 ; CHECK-NOT: dnscl.bftoe2m1
 ; CHECK-DAG: // .decl [[RAND]] v_type=G type=ud num_elts=32
@@ -105,8 +105,8 @@ declare dso_local spir_func <3 x i4> @_Z46__builtin_spirv_StochasticRoundBF16ToE
 
 define spir_kernel void @BF16_to_E2M1_vector4(<4 x bfloat> addrspace(1)* %input, i32 addrspace(1)* %seed, <4 x i4> addrspace(1)* %output) {
 ; CHECK-LABEL: .kernel "BF16_to_E2M1_vector4"
-; CHECK: lfsr.b8v4 (M1, 32) [[RAND:[A-z0-9]*]](0,0)<1> {{.*}}(0,0)<1;1,0> {{.*}}(0,0)<1;1,0>
-; CHECK-NOT: lfsr.b8v4
+; CHECK: lfsr.b16v2 (M1, 32) [[RAND:[A-z0-9]*]](0,0)<1> {{.*}}(0,0)<1;1,0> {{.*}}(0,0)<1;1,0>
+; CHECK-NOT: lfsr.b16v2
 ; CHECK: dnscl.bftoe2m1.mode0.srnd (M1, 32) [[DST:[A-z0-9]*]].0 [[INPUT:[A-z0-9]*]].0 [[INPUT]].128 [[RAND]].0
 ; CHECK-NOT: dnscl.bftoe2m1
 ; CHECK-DAG: // .decl [[RAND]] v_type=G type=ud num_elts=32
@@ -128,9 +128,9 @@ declare dso_local spir_func <4 x i4> @_Z46__builtin_spirv_StochasticRoundBF16ToE
 
 define spir_kernel void @BF16_to_E2M1_vector8(<8 x bfloat> addrspace(1)* %input, i32 addrspace(1)* %seed, <8 x i4> addrspace(1)* %output) {
 ; CHECK-LABEL: .kernel "BF16_to_E2M1_vector8"
-; CHECK: lfsr.b8v4 (M1, 32) [[RAND0:[A-z0-9]*]](0,0)<1> {{.*}}(0,0)<1;1,0> {{.*}}(0,0)<1;1,0>
-; CHECK: lfsr.b8v4 (M1, 32) [[RAND1:[A-z0-9]*]](0,0)<1> {{.*}}(0,0)<1;1,0> {{.*}}(0,0)<1;1,0>
-; CHECK-NOT: lfsr.b8v4
+; CHECK: lfsr.b16v2 (M1, 32) [[RAND0:[A-z0-9]*]](0,0)<1> {{.*}}(0,0)<1;1,0> {{.*}}(0,0)<1;1,0>
+; CHECK: lfsr.b16v2 (M1, 32) [[RAND1:[A-z0-9]*]](0,0)<1> {{.*}}(0,0)<1;1,0> {{.*}}(0,0)<1;1,0>
+; CHECK-NOT: lfsr.b16v2
 ; CHECK: dnscl.bftoe2m1.mode0.srnd (M1, 32) [[DST0:[A-z0-9]*]].0 [[INPUT:[A-z0-9]*]].0 [[INPUT]].256 [[RAND0]].0
 ; CHECK: dnscl.bftoe2m1.mode2.srnd (M1, 32) [[DST1:[A-z0-9]*]].0 [[INPUT]].128 [[INPUT]].384 [[RAND1]].0
 ; CHECK-NOT: dnscl.bftoe2m1
@@ -155,11 +155,11 @@ declare dso_local spir_func <8 x i4> @_Z46__builtin_spirv_StochasticRoundBF16ToE
 
 define spir_kernel void @BF16_to_E2M1_vector16(<16 x bfloat> addrspace(1)* %input, i32 addrspace(1)* %seed, <16 x i4> addrspace(1)* %output) {
 ; CHECK-LABEL: .kernel "BF16_to_E2M1_vector16"
-; CHECK: lfsr.b8v4 (M1, 32) [[RAND0:[A-z0-9]*]](0,0)<1> {{.*}}(0,0)<1;1,0> {{.*}}(0,0)<1;1,0>
-; CHECK: lfsr.b8v4 (M1, 32) [[RAND1:[A-z0-9]*]](0,0)<1> {{.*}}(0,0)<1;1,0> {{.*}}(0,0)<1;1,0>
-; CHECK: lfsr.b8v4 (M1, 32) [[RAND2:[A-z0-9]*]](0,0)<1> {{.*}}(0,0)<1;1,0> {{.*}}(0,0)<1;1,0>
-; CHECK: lfsr.b8v4 (M1, 32) [[RAND3:[A-z0-9]*]](0,0)<1> {{.*}}(0,0)<1;1,0> {{.*}}(0,0)<1;1,0>
-; CHECK-NOT: lfsr.b8v4
+; CHECK: lfsr.b16v2 (M1, 32) [[RAND0:[A-z0-9]*]](0,0)<1> {{.*}}(0,0)<1;1,0> {{.*}}(0,0)<1;1,0>
+; CHECK: lfsr.b16v2 (M1, 32) [[RAND1:[A-z0-9]*]](0,0)<1> {{.*}}(0,0)<1;1,0> {{.*}}(0,0)<1;1,0>
+; CHECK: lfsr.b16v2 (M1, 32) [[RAND2:[A-z0-9]*]](0,0)<1> {{.*}}(0,0)<1;1,0> {{.*}}(0,0)<1;1,0>
+; CHECK: lfsr.b16v2 (M1, 32) [[RAND3:[A-z0-9]*]](0,0)<1> {{.*}}(0,0)<1;1,0> {{.*}}(0,0)<1;1,0>
+; CHECK-NOT: lfsr.b16v2
 ; CHECK: dnscl.bftoe2m1.mode0.srnd (M1, 32) [[DST0:[A-z0-9]*]].0 [[INPUT:[A-z0-9]*]].0 [[INPUT]].256 [[RAND0]].0
 ; CHECK: dnscl.bftoe2m1.mode2.srnd (M1, 32) [[DST1:[A-z0-9]*]].0 [[INPUT]].128 [[INPUT]].384 [[RAND1]].0
 ; CHECK: dnscl.bftoe2m1.mode0.srnd (M1, 32) [[DST2:[A-z0-9]*]].0 [[INPUT]].512 [[INPUT]].768 [[RAND2]].0
@@ -194,8 +194,8 @@ declare dso_local spir_func <16 x i4> @_Z46__builtin_spirv_StochasticRoundBF16To
 
 define spir_kernel void @BF16_to_E2M1_ptr_scalar(bfloat addrspace(1)* %input, i32 addrspace(1)* %seed, <2 x i4> addrspace(1)* %output) {
 ; CHECK-LABEL: .kernel "BF16_to_E2M1_ptr_scalar"
-; CHECK: lfsr.b8v4 (M1, 32) [[RAND:[A-z0-9]*]](0,0)<1> {{.*}}(0,0)<1;1,0> {{.*}}(0,0)<1;1,0>
-; CHECK-NOT: lfsr.b8v4
+; CHECK: lfsr.b16v2 (M1, 32) [[RAND:[A-z0-9]*]](0,0)<1> {{.*}}(0,0)<1;1,0> {{.*}}(0,0)<1;1,0>
+; CHECK-NOT: lfsr.b16v2
 ; CHECK-DAG: dnscl.bftoe2m1.mode0.srnd (M1, 32) [[DST:[A-z0-9]*]].0 [[INPUT0:[A-z0-9]*]].0 [[INPUT1:[A-z0-9]*]].0 [[RAND]].0
 ; CHECK-DAG: mov (M1, 32) [[INPUT1]](0,0)<1> 0x0:ud
 ; CHECK-DAG: // .decl [[INPUT0]] v_type=G type=ud num_elts=32
@@ -223,8 +223,8 @@ declare dso_local spir_func i4 @_Z46__builtin_spirv_StochasticRoundBF16ToE2M1INT
 
 define spir_kernel void @BF16_to_E2M1_ptr_vector2(<2 x bfloat> addrspace(1)* %input, i32 addrspace(1)* %seed, <2 x i4> addrspace(1)* %output) {
 ; CHECK-LABEL: .kernel "BF16_to_E2M1_ptr_vector2"
-; CHECK: lfsr.b8v4 (M1, 32) [[RAND:[A-z0-9]*]](0,0)<1> {{.*}}(0,0)<1;1,0> {{.*}}(0,0)<1;1,0>
-; CHECK-NOT: lfsr.b8v4
+; CHECK: lfsr.b16v2 (M1, 32) [[RAND:[A-z0-9]*]](0,0)<1> {{.*}}(0,0)<1;1,0> {{.*}}(0,0)<1;1,0>
+; CHECK-NOT: lfsr.b16v2
 ; CHECK-DAG: dnscl.bftoe2m1.mode0.srnd (M1, 32) [[DST:[A-z0-9]*]].0 [[INPUT0:[A-z0-9]*]].0 [[INPUT1:[A-z0-9]*]].0 [[RAND]].0
 ; CHECK-DAG: mov (M1, 32) [[INPUT1]](0,0)<1> 0x0:ud
 ; CHECK-DAG: // .decl [[INPUT0]] v_type=G type=ud num_elts=32
@@ -250,8 +250,8 @@ declare dso_local spir_func <2 x i4> @_Z46__builtin_spirv_StochasticRoundBF16ToE
 
 define spir_kernel void @BF16_to_E2M1_ptr_vector3(<3 x bfloat> addrspace(1)* %input, i32 addrspace(1)* %seed, <4 x i4> addrspace(1)* %output) {
 ; CHECK-LABEL: .kernel "BF16_to_E2M1_ptr_vector3"
-; CHECK: lfsr.b8v4 (M1, 32) [[RAND:[A-z0-9]*]](0,0)<1> {{.*}}(0,0)<1;1,0> {{.*}}(0,0)<1;1,0>
-; CHECK-NOT: lfsr.b8v4
+; CHECK: lfsr.b16v2 (M1, 32) [[RAND:[A-z0-9]*]](0,0)<1> {{.*}}(0,0)<1;1,0> {{.*}}(0,0)<1;1,0>
+; CHECK-NOT: lfsr.b16v2
 ; CHECK: dnscl.bftoe2m1.mode0.srnd (M1, 32) [[DST:[A-z0-9]*]].0 [[INPUT0:[A-z0-9]*]].0 [[INPUT1:[A-z0-9]*]].0 [[RAND]].0
 ; CHECK-NOT: dnscl.bftoe2m1
 ; CHECK-DAG: // .decl [[INPUT0]] v_type=G type=ud num_elts=32
@@ -278,8 +278,8 @@ declare dso_local spir_func <3 x i4> @_Z46__builtin_spirv_StochasticRoundBF16ToE
 
 define spir_kernel void @BF16_to_E2M1_ptr_vector4(<4 x bfloat> addrspace(1)* %input, i32 addrspace(1)* %seed, <4 x i4> addrspace(1)* %output) {
 ; CHECK-LABEL: .kernel "BF16_to_E2M1_ptr_vector4"
-; CHECK: lfsr.b8v4 (M1, 32) [[RAND:[A-z0-9]*]](0,0)<1> {{.*}}(0,0)<1;1,0> {{.*}}(0,0)<1;1,0>
-; CHECK-NOT: lfsr.b8v4
+; CHECK: lfsr.b16v2 (M1, 32) [[RAND:[A-z0-9]*]](0,0)<1> {{.*}}(0,0)<1;1,0> {{.*}}(0,0)<1;1,0>
+; CHECK-NOT: lfsr.b16v2
 ; CHECK: dnscl.bftoe2m1.mode0.srnd (M1, 32) [[DST:[A-z0-9]*]].0 [[INPUT:[A-z0-9]*]].0 [[INPUT]].128 [[RAND]].0
 ; CHECK-NOT: dnscl.bftoe2m1
 ; CHECK-DAG: // .decl [[INPUT]] v_type=G type=ud num_elts=64
@@ -304,9 +304,9 @@ declare dso_local spir_func <4 x i4> @_Z46__builtin_spirv_StochasticRoundBF16ToE
 
 define spir_kernel void @BF16_to_E2M1_ptr_vector8(<8 x bfloat> addrspace(1)* %input, i32 addrspace(1)* %seed, <8 x i4> addrspace(1)* %output) {
 ; CHECK-LABEL: .kernel "BF16_to_E2M1_ptr_vector8"
-; CHECK: lfsr.b8v4 (M1, 32) [[RAND0:[A-z0-9]*]](0,0)<1> {{.*}}(0,0)<1;1,0> {{.*}}(0,0)<1;1,0>
-; CHECK: lfsr.b8v4 (M1, 32) [[RAND1:[A-z0-9]*]](0,0)<1> {{.*}}(0,0)<1;1,0> {{.*}}(0,0)<1;1,0>
-; CHECK-NOT: lfsr.b8v4
+; CHECK: lfsr.b16v2 (M1, 32) [[RAND0:[A-z0-9]*]](0,0)<1> {{.*}}(0,0)<1;1,0> {{.*}}(0,0)<1;1,0>
+; CHECK: lfsr.b16v2 (M1, 32) [[RAND1:[A-z0-9]*]](0,0)<1> {{.*}}(0,0)<1;1,0> {{.*}}(0,0)<1;1,0>
+; CHECK-NOT: lfsr.b16v2
 ; CHECK: dnscl.bftoe2m1.mode0.srnd (M1, 32) [[DST0:[A-z0-9]*]].0 [[INPUT:[A-z0-9]*]].0 [[INPUT]].256 [[RAND0]].0
 ; CHECK: dnscl.bftoe2m1.mode2.srnd (M1, 32) [[DST1:[A-z0-9]*]].0 [[INPUT]].128 [[INPUT]].384 [[RAND1]].0
 ; CHECK-NOT: dnscl.bftoe2m1
@@ -333,11 +333,11 @@ declare dso_local spir_func <8 x i4> @_Z46__builtin_spirv_StochasticRoundBF16ToE
 
 define spir_kernel void @BF16_to_E2M1_ptr_vector16(<16 x bfloat> addrspace(1)* %input, i32 addrspace(1)* %seed, <16 x i4> addrspace(1)* %output) {
 ; CHECK-LABEL: .kernel "BF16_to_E2M1_ptr_vector16"
-; CHECK: lfsr.b8v4 (M1, 32) [[RAND0:[A-z0-9]*]](0,0)<1> {{.*}}(0,0)<1;1,0> {{.*}}(0,0)<1;1,0>
-; CHECK: lfsr.b8v4 (M1, 32) [[RAND1:[A-z0-9]*]](0,0)<1> {{.*}}(0,0)<1;1,0> {{.*}}(0,0)<1;1,0>
-; CHECK: lfsr.b8v4 (M1, 32) [[RAND2:[A-z0-9]*]](0,0)<1> {{.*}}(0,0)<1;1,0> {{.*}}(0,0)<1;1,0>
-; CHECK: lfsr.b8v4 (M1, 32) [[RAND3:[A-z0-9]*]](0,0)<1> {{.*}}(0,0)<1;1,0> {{.*}}(0,0)<1;1,0>
-; CHECK-NOT: lfsr.b8v4
+; CHECK: lfsr.b16v2 (M1, 32) [[RAND0:[A-z0-9]*]](0,0)<1> {{.*}}(0,0)<1;1,0> {{.*}}(0,0)<1;1,0>
+; CHECK: lfsr.b16v2 (M1, 32) [[RAND1:[A-z0-9]*]](0,0)<1> {{.*}}(0,0)<1;1,0> {{.*}}(0,0)<1;1,0>
+; CHECK: lfsr.b16v2 (M1, 32) [[RAND2:[A-z0-9]*]](0,0)<1> {{.*}}(0,0)<1;1,0> {{.*}}(0,0)<1;1,0>
+; CHECK: lfsr.b16v2 (M1, 32) [[RAND3:[A-z0-9]*]](0,0)<1> {{.*}}(0,0)<1;1,0> {{.*}}(0,0)<1;1,0>
+; CHECK-NOT: lfsr.b16v2
 ; CHECK: dnscl.bftoe2m1.mode0.srnd (M1, 32) [[DST0:[A-z0-9]*]].0 [[INPUT:[A-z0-9]*]].0 [[INPUT]].256 [[RAND0]].0
 ; CHECK: dnscl.bftoe2m1.mode2.srnd (M1, 32) [[DST1:[A-z0-9]*]].0 [[INPUT]].128 [[INPUT]].384 [[RAND1]].0
 ; CHECK: dnscl.bftoe2m1.mode0.srnd (M1, 32) [[DST2:[A-z0-9]*]].0 [[INPUT]].512 [[INPUT]].768 [[RAND2]].0
