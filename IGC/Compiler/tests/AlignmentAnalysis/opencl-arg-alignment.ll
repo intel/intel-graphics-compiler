@@ -321,6 +321,50 @@ define spir_kernel void @test_no_override(
   entry:
     ret void
 }
+
+; Infer ptr type from GEP/load/store and the OpenCL kernel arg name.
+; CHECK-LABEL: @test_struct
+%complex = type { double, double }
+%struct.test = type { double, double }
+%struct.test_load = type { double, double }
+%struct.test_store = type { i16, i16 }
+define spir_kernel void @test_struct(ptr addrspace(1) %0,
+ ptr addrspace(1) %1,
+ ptr addrspace(1) %2,
+ ptr addrspace(1) %3
+ ; CHECK: ptr addrspace(1) align 8 %0
+ ; CHECK: ptr addrspace(1) align 8 %1
+ ; CHECK: ptr addrspace(1) align 8 %2
+ ; CHECK: ptr addrspace(1) align 2 %3
+ ) #0 !kernel_arg_type !18 {
+  %gep0 = getelementptr %complex, ptr addrspace(1) %0, i64 1
+  %gep1 = getelementptr %struct.test, ptr addrspace(1) %1, i64 1
+  %v = load %struct.test_load, ptr addrspace(1) %2
+  store %struct.test_store zeroinitializer, ptr addrspace(1) %3
+  ret void
+}
+
+; Use the GEP type despite LLVM's numeric collision suffix.
+; CHECK-LABEL: @test_renamed_struct
+; CHECK-SAME: ptr addrspace(1) align 2 %ren1
+%struct.ren = type { double, double }
+%struct.ren.3 = type { i16 }
+define spir_kernel void @test_renamed_struct(ptr addrspace(1) %ren1) #0 !kernel_arg_type !20 {
+  %gep = getelementptr %struct.ren.3, ptr addrspace(1) %ren1, i64 1
+  ret void
+}
+
+; Tests no alignement for conflicting GEP types ("struct amb*" could be either of them).
+; CHECK-LABEL: @test_ambiguous_uses
+; CHECK-SAME: ptr addrspace(1) %amb1
+%struct.amb = type { double, double }
+%struct.amb.0 = type { i8 }
+define spir_kernel void @test_ambiguous_uses(ptr addrspace(1) %amb1) #0 !kernel_arg_type !21 {
+  %gep0 = getelementptr %struct.amb, ptr addrspace(1) %amb1, i64 1
+  %gep1 = getelementptr %struct.amb.0, ptr addrspace(1) %amb1, i64 1
+  ret void
+}
+
 ; This case checks if the pass ignores that the argument with ptr byval does not have "*" in kernel_arg_type metadata and does not modify the alignment.
 ; CHECK-LABEL: @test_dpcpp_no_asterisk
 ; CHECK: ptr addrspace(1) align 1 %0
@@ -333,6 +377,14 @@ entry:
   %3 = load i64, ptr %2, align 8
   %4 = getelementptr inbounds i8, ptr addrspace(1) %0, i64 %3
   store i8 1, ptr addrspace(1) %4, align 1
+  ret void
+}
+
+; Test checks if arguments still get aligned after one has a non-ptr type
+; CHECK-LABEL: @test_no_asterisk_not_last
+; CHECK-SAME: ptr addrspace(1) %s
+; CHECK: ptr addrspace(1) align 16 %f
+define spir_kernel void @test_no_asterisk_not_last(ptr addrspace(1) %s, ptr addrspace(1) %f) !kernel_arg_type !19 {
   ret void
 }
 
@@ -365,3 +417,8 @@ attributes #0 = { nounwind }
 !15 = !{!16}
 !16 = !{i32 38, i32 0}
 !17 = !{!"char*", !"class.sycl::_V1::id"}
+!18 = !{!"complex*",!"struct test*", !"struct test_load*", !"struct test_store*"}
+!19 = !{!"class.sycl::_V1::id", !"float4*"}
+!20 = !{!"struct ren*"}
+!21 = !{!"struct amb*"}
+!22 = !{!"struct sim*"}
