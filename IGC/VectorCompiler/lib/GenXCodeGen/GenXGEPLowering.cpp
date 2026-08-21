@@ -228,7 +228,10 @@ Value *GenXGEPLowering::visitGetElementPtrInst(GetElementPtrInst &GEP) {
       if (const ConstantInt *CI = dyn_cast<ConstantInt>(Idx)) {
         if (!CI->isZero()) {
           uint64_t Offset = DL->getTypeAllocSize(Ty) * CI->getSExtValue();
-          Value *OffsetVal = Builder->getInt(APInt(PtrMathSizeInBits, Offset));
+          // PointerValue may be a vector (splat) for a vector GEP, so build the
+          // offset with a matching type instead of a bare scalar.
+          Value *OffsetVal = Constant::getIntegerValue(
+              PointerValue->getType(), APInt(PtrMathSizeInBits, Offset));
           PointerValue = Builder->CreateAdd(PointerValue, OffsetVal);
         }
       } else if (!isa<ConstantAggregateZero>(Idx)) {
