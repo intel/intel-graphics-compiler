@@ -157,6 +157,13 @@ typedef struct GFX_GMD_ID_DEF
 #define GFX_GMD_ARCH_30                          (30)
 #define GFX_GMD_ARCH_35                          (35)
 
+#define GFX_GMD_ARCH_12_RELEASE_XE_HPG_1255              (55)
+#define GFX_GMD_ARCH_12_RELEASE_XE_HPG_1256              (56)
+#define GFX_GMD_ARCH_12_RELEASE_XE_HPG_1257              (57)
+
+#define GFX_GMD_ARCH_12_RELEASE_XE_HPC_1260              (60)
+#define GFX_GMD_ARCH_12_RELEASE_XE_HPC_1261              (61)
+
 #define GFX_GMD_ARCH_12_RELEASE_XE_LP_MD                 (70)
 #define GFX_GMD_ARCH_12_RELEASE_XE_LP_LG                 (71)
 #define GFX_GMD_ARCH_12_RELEASE_XE_LPG_PLUS_1274         (74)
