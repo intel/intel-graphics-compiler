@@ -691,6 +691,7 @@ public:
                                     unsigned exec_size, VISA_opnd *dst,
                                     VISA_opnd *src0, int lineNum);
 
+
   bool CISA_create_nbarrier(bool isWait, VISA_opnd *barrierId,
                             VISA_opnd *threadCount, int lineNum);
   bool CISA_create_nbarrier_signal(VISA_opnd *barrierId, VISA_opnd *barrierType,

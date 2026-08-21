@@ -4194,6 +4194,7 @@ bool CISA_IR_Builder::CISA_create_fcvt_instruction(
   return true;
 }
 
+
 bool CISA_IR_Builder::CISA_create_lsc_extended_cache_ctrl_inst(
     VISA_opnd *pred, LSC_OP opcode, LSC_SFID sfid, LSC_CACHE_CTRL_OPERATION ccop,
     LSC_CACHE_CTRL_SIZE ccsize, LSC_CACHE_OPTS caching, VISA_Exec_Size execSize,

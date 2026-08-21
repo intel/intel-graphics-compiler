@@ -751,7 +751,11 @@ void vISAVerifier::verifyRegion(const CISA_INST *inst, unsigned i) {
 
       unsigned firstElementIndex = row_offset * grfSize + col_offset * VN_size;
 
-      for (int i = 0; i < exec_sz / width_val; i++) {
+      // Every fcvt4 operand is one GRF regardless of its exec size of 32.
+      // Changing bound_exec_sz to utilize the general checking
+      unsigned bound_exec_sz = exec_sz;
+
+      for (int i = 0; i < (int)bound_exec_sz / width_val; i++) {
         for (int j = 0; j < width_val; j++) {
           unsigned region_offset =
               firstElementIndex +
@@ -5357,6 +5361,7 @@ int vISAVerifier::verifyInstruction(const CISA_INST *inst) {
 
   return initialErrors == getNumErrors() ? VISA_SUCCESS : VISA_FAILURE;
 }
+
 
 void vISAVerifier::verifyInstructionShflIdx4(const CISA_INST *inst) {
   unsigned i = 0;

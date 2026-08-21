@@ -292,6 +292,7 @@ int IR_Builder::translateVISALogicInst(
     G4_Operand *src0, G4_Operand *src1, G4_Operand *src2, G4_Operand *src3) {
   TIME_SCOPE(VISA_BUILDER_IR_CONSTRUCTION);
 
+
   G4_ExecSize exsize = toExecSize(executionSize);
   G4_InstOpts inst_opt = Get_Gen4_Emask(emask, exsize, hasNibCtrl());
   G4_Operand *g4Srcs[] = {src0, src1, src2, src3};
@@ -371,6 +372,7 @@ int IR_Builder::translateVISALogicInst(
 
   return VISA_SUCCESS;
 }
+
 
 int IR_Builder::translateVISADataMovementInst(
     ISA_Opcode opcode, CISA_MIN_MAX_SUB_OPCODE subOpcode,

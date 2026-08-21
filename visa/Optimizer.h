@@ -288,6 +288,7 @@ private:
   void insertFenceAtEntry();
   void expandMulPostSchedule();
   void expandMadwPostSchedule();
+  void expandPseudoInstPostSchedule();
   void fixReadSuppressioninFPU0();
   void prepareDPASFuseRSWA();
   void applyBarrierWA(INST_LIST_ITER it, G4_BB *bb);
@@ -445,6 +446,7 @@ public:
     PI_zeroSomeARF,
     PI_addSWSBInfo,
     PI_expandMadwPostSchedule,
+    PI_expandPseudoInstPostSchedule,
     PI_ACCSchedule,
     PI_staticProfiling,
     PI_sinkBarrierWait,

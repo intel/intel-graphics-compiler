@@ -178,6 +178,9 @@ struct ISA_Inst_Info ISA_Inst_Table[ISA_OPCODE_ENUM_SIZE] = {
     {ISA_DNSCL, ISA_Inst_Mov, "dnscl", 3, 1},
     {ISA_INVM,  ISA_Inst_Arith, "invm",  2, 2},
     {ISA_RSQTM, ISA_Inst_Arith, "rsqtm", 1, 2},
+    { ISA_RESERVED_9D, ISA_Inst_Reserved, "reserved9d", 0, 0 },
+    { ISA_RESERVED_9E, ISA_Inst_Reserved, "reserved9e", 0, 0 },
+    { ISA_RESERVED_9F, ISA_Inst_Reserved, "reserved9f", 0, 0 },
 };
 
 VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] = {

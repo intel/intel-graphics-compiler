@@ -580,6 +580,7 @@ void G4Verifier::verifyOpnd(G4_Operand *opnd, G4_INST *inst) {
         }
       }
 
+
       if (opnd->getLeftBound() != newRgn.getLeftBound()) {
         DEBUG_VERBOSE(
             "Left bound mismatch for src opnd for following inst. Orig lb = "
@@ -660,6 +661,7 @@ void G4Verifier::verifyOpnd(G4_Operand *opnd, G4_INST *inst) {
                                (inst->getMaskOffset() * multiplicationFactor));
         }
       }
+
 
       if (opnd->getLeftBound() != newRgn.getLeftBound()) {
         DEBUG_VERBOSE(

@@ -821,6 +821,9 @@ void Optimizer::initOptimizations() {
   OPT_INITIALIZE_PASS(addSWSBInfo, vISA_addSWSBInfo, TimerID::SWSB);
   OPT_INITIALIZE_PASS(expandMadwPostSchedule, vISA_expandMadwPostSchedule,
                       TimerID::MISC_OPTS);
+  // A generic pass to expand any pseudo instructions after RA/postSchedule.
+  OPT_INITIALIZE_PASS(expandPseudoInstPostSchedule, vISA_EnableAlways,
+                      TimerID::MISC_OPTS);
   OPT_INITIALIZE_PASS(ACCSchedule, vISA_PreSchedForAcc,
                       TimerID::PRERA_SCHEDULING);
   OPT_INITIALIZE_PASS(staticProfiling, vISA_staticProfiling,
@@ -912,6 +915,30 @@ void Optimizer::accSubPostSchedule() {
 
   AccSubPass accSub(builder, kernel);
   accSub.run();
+}
+
+
+//
+// Expand the pseudo instructions that must survive scheduling intact, i.e. the
+// ones standing for a group of real instructions that nothing earlier may break
+// up or reorder. Each expansion emits HW-legal instructions as written: HW
+// conformity has already run and will not revisit them.
+//
+// Only the individual expansions are platform specific, so keep this dispatcher
+// unconditional and guard each case instead.
+//
+void Optimizer::expandPseudoInstPostSchedule() {
+  for (auto bb : kernel.fg) {
+    for (auto it = bb->begin(), ie = bb->end(); it != ie;) {
+      // Assume 'it' would be invalid after expansion, advance before expanding
+      auto next = std::next(it);
+      switch ((*it)->opcode()) {
+      default:
+        break;
+      }
+      it = next;
+    }
+  }
 }
 
 void Optimizer::s0SubAfterRA() {
@@ -1117,6 +1144,8 @@ int Optimizer::optimization() {
 
     runPass(PI_accSubPostSchedule);
   }
+
+  runPass(PI_expandPseudoInstPostSchedule);
 
   runPass(PI_legalizeType);
 

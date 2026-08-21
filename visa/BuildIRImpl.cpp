@@ -2003,6 +2003,7 @@ G4_INST *IR_Builder::createInternalDpasInst(
                         options, A, W, D, C, false);
 }
 
+
 G4_INST *IR_Builder::createBfnInst(uint8_t booleanFuncCtrl, G4_Predicate *prd,
                                    G4_CondMod *mod, G4_Sat sat,
                                    G4_ExecSize execSize, G4_DstRegRegion *dst,

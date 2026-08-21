@@ -1177,6 +1177,7 @@ FCvtInstruction: FCVT_OP SatModOpt ExecSize VecDstOperand_G VecSrcOperand_G_IMM
         pBuilder->CISA_create_fcvt_instruction($2, $3.emask, $3.exec_size, $4.cisa_gen_opnd, $5.cisa_gen_opnd, CISAlineno);
     }
 
+
                      //  1            2           3            4             5                6
 AntiTrigInstruction: Predicate ANTI_TRIG_OP SatModOpt ExecSize VecDstOperand_G_I VecSrcOperand_G_I_IMM
     {

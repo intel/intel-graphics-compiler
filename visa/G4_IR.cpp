@@ -7243,6 +7243,7 @@ bool G4_INST::canSupportSaturate() const {
     return false;
   }
 
+
   // note that IGA will return false for any opcode it does not recognize
   // If your psuedo opcode needs to support saturation you must add explicit
   // check before this
@@ -7338,6 +7339,7 @@ bool G4_INST::canSupportSrcModifier() const {
   if (opcode() == G4_pseudo_mad) {
     return true;
   }
+
 
   // note that IGA will return false for any opcode it does not recognize
   // If your psuedo opcode needs to support source modifier you must add
