@@ -7123,6 +7123,7 @@ void CEncoder::bdpas(CVariable *Dst, CVariable *Acc, CVariable *B, PrecisionType
     IGC_ASSERT(DataSize <= OriginalStride);
     IGC_ASSERT(OriginalStride * 2 <= Src->GetNumberElement());
     VISA_Exec_Size moveExecSize = visaExecSize(lanesToSIMDMode((DataSize)));
+    const VISA_EMask_Ctrl moveEMask = ConvertMaskToVisaType(m_encoderState.m_mask, true /*noMask*/);
 
     const uint16_t stride = 32;
     Dst = this->m_program->GetNewVariable(DataSize + stride, Src->GetType(), Src->GetAlign(), Src->IsUniform(),
@@ -7138,14 +7139,14 @@ void CEncoder::bdpas(CVariable *Dst, CVariable *Acc, CVariable *B, PrecisionType
     V(vKernel->CreateVISADstOperand(dstOpnd, dstVisa, 1, 0, 0));
     V(vKernel->CreateVISASrcOperand(srcOpnd, srcVisa, MODIFIER_NONE, 1, 1, 0, 0, 0));
 
-    V(vKernel->AppendVISADataMovementInst(ISA_MOV, nullptr, false, GetAluEMask(Src), moveExecSize, dstOpnd, srcOpnd));
+    V(vKernel->AppendVISADataMovementInst(ISA_MOV, nullptr, false, moveEMask, moveExecSize, dstOpnd, srcOpnd));
 
     // second part (after stride)
     V(vKernel->CreateVISADstOperand(dstOpnd, dstVisa, 1, 0, stride));
     V(vKernel->CreateVISASrcOperand(srcOpnd, srcVisa, MODIFIER_NONE, 1, 1, 0, OriginalStride / getGRFSize(),
                                     OriginalStride % getGRFSize()));
 
-    V(vKernel->AppendVISADataMovementInst(ISA_MOV, nullptr, false, GetAluEMask(Src), moveExecSize, dstOpnd, srcOpnd));
+    V(vKernel->AppendVISADataMovementInst(ISA_MOV, nullptr, false, moveEMask, moveExecSize, dstOpnd, srcOpnd));
   };
 
   if (aluExecSize == EXEC_SIZE_32) {
