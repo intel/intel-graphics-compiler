@@ -439,7 +439,7 @@ public:
                                     Value *InstanceInclusionMask, Value *ComparisonValue, Value *TMax,
                                     bool updateFlags = true, bool initialDoneBitValue = false,
                                     Value *MissShaderIndex = nullptr, Value *HitGroupIndex = nullptr,
-                                    Value *ShaderIndexMultiplier = nullptr, bool initializeHitRecords = true);
+                                    Value *ShaderIndexMultiplier = nullptr);
 
   void emitSingleRQMemRayWrite(SyncStackPointerVal *HWStackPtr, SyncStackPointerVal *SMStackPtr, bool singleRQProceed);
 
