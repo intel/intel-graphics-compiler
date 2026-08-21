@@ -3011,10 +3011,16 @@ bool CodeGenPatternMatch::MatchImmOffsetLSC(llvm::Instruction &I) {
       }
     }
 
-    llvm::Value *immOffset = isConstant0 ? addSubInst->getOperand(0) : addSubInst->getOperand(1);
+    // For "var - imm" the folded offset must carry the negation.
+    ConstantInt *immOffset = dyn_cast<ConstantInt>(isConstant0 ? addSubInst->getOperand(0) : addSubInst->getOperand(1));
+    if (immOffset && addSubInst->getOpcode() == Instruction::Sub) {
+      // A minimum signed value when negated is not representable in same data width, so bail out
+      if (immOffset->getValue().isMinSignedValue())
+        return false;
+      immOffset = ConstantInt::get(immOffset->getContext(), -immOffset->getValue());
+    }
 
-    LSCImmOffsetPattern *pattern =
-        new (m_allocator) LSCImmOffsetPattern(&I, varOffset, llvm::dyn_cast<llvm::ConstantInt>(immOffset));
+    LSCImmOffsetPattern *pattern = new (m_allocator) LSCImmOffsetPattern(&I, varOffset, immOffset);
     AddPattern(pattern);
     return true;
   }
