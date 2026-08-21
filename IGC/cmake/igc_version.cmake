@@ -6,7 +6,7 @@
 #
 #============================ end_copyright_notice =============================
 
-set(IGC_ROOT_SOURCE_DIR "${IGC_BUILD__IGC_SRC_DIR}/../..")
+set(IGC_ROOT_SOURCE_DIR "${IGC_BUILD__IGC_SRC_DIR}/..")
 
 find_program(GIT NAMES git)
 if(GIT)

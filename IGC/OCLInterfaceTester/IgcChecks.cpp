@@ -170,6 +170,24 @@ CHECK(system_routine, "Interface v2: test that system routine is returned correc
   return ExitCode::Success;
 }
 
+// Interface No. 3
+CHECK(revision, "Interface v3: test that revision is returned correctly") {
+  auto deviceCtx = cif->CreateInterface<IGC::IgcOclDeviceCtx<3>>();
+  if (!deviceCtx) {
+    std::cerr << "error: failed to create IGC::IgcOclDeviceCtx<3> interface\n";
+    return ExitCode::UnsupportedInterface;
+  }
+
+  const char *rev = deviceCtx->GetIGCRevision();
+  if (!rev || rev[0] == '\0') {
+    std::cerr << "error: GetIGCRevision() returned empty string\n";
+    return ExitCode::FailedToGetInterface;
+  }
+
+  std::cout << "revision=" << rev << "\n";
+  return ExitCode::Success;
+}
+
 // Interface No. 4
 CHECK(builtins, "Interface v4: test that builtin memory requirements are returned correctly") {
   auto deviceCtx = cif->CreateInterface<IGC::IgcOclDeviceCtx<4>>();
