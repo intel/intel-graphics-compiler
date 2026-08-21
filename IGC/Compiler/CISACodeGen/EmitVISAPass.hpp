@@ -536,7 +536,6 @@ public:
   void emitKSPPointer(llvm::KSPPointerIntrinsic *KPI);
   void emitInlinedDataValue(llvm::GenIntrinsicInst *I);
   void emitBdpas(llvm::GenIntrinsicInst *GII);
-  void emitByteSwizzle(llvm::GenIntrinsicInst *GII);
   void emitDpas(llvm::GenIntrinsicInst *GII, const SSource *source, const DstModifier &modifier);
   void emitfcvt(llvm::GenIntrinsicInst *GII);
   void emitLfsr(llvm::GenIntrinsicInst *GII);
@@ -917,15 +916,13 @@ private:
 
   llvm::DenseMap<llvm::Instruction *, bool> instrMap;
 
-  // Map a sub-dword load destination to its dword-typed LSC response and the
-  // block where that response may be reused. EmitZExtByteLoad,
-  // emitLSCVectorStore_subDW, and emitByteSwizzle require the consumer to be in
-  // the load's block before using the response.
+  // Map from sub-dword load destination (byte/word-typed) to the dword-typed
+  // LSC gatherDst variable (d8u32/d16u32) and the load's BasicBlock.
+  // Used by EmitZExtByteLoad and emitLSCVectorStore_subDW to read the
+  // already zero-extended dword result directly.  The BasicBlock is
+  // stored so consumers can verify the use is in the same block as the
+  // load (the gatherDst temporary is only valid within that block).
   llvm::DenseMap<CVariable *, std::pair<CVariable *, llvm::BasicBlock *>> m_SubDWLoadWideDst;
-
-  // Preallocated adjacent dword responses for a pair of i16 loads consumed by
-  // a local packed-BDPAS byte swizzle. This lets one source region read both.
-  llvm::DenseMap<const llvm::LoadInst *, CVariable *> m_PairedSubDWLoadWideDst;
 
   // caching the number of instances for the current inst.
   int16_t m_currInstNumInstances = -1;
@@ -1069,8 +1066,6 @@ private:
   CVariable *prepareAddressForUniform(CVariable *AddrVar, uint32_t EltBytes, uint32_t NElts, uint32_t ExecSz,
                                       e_alignment Align);
   CVariable *prepareDataForUniform(CVariable *DataVar, uint32_t ExecSz, e_alignment Align);
-  bool readsWideSubDWLoadResult(llvm::LoadInst *Load, llvm::User *U) const;
-  CVariable *getOrCreatePairedSubDWLoadWideDst(llvm::LoadInst *Load, uint16_t NumElts);
   // sub-function of vector load/store
   void emitLSCVectorLoad_subDW(LSC_CACHE_OPTS CacheOpts, bool UseA32, ResourceDescriptor &Resource, CVariable *Dest,
                                CVariable *UniformBaseVar, CVariable *Offset, int ImmOffset, int ImmScale,

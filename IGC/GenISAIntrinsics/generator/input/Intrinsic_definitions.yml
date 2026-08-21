@@ -1,6 +1,6 @@
 # ========================== begin_copyright_notice ============================
 #
-# Copyright (C) 2024-2026 Intel Corporation
+# Copyright (C) 2024-2025 Intel Corporation
 #
 # SPDX-License-Identifier: MIT
 #
@@ -40,10 +40,6 @@ types:
     - &v_i8_ !<TypeDefinition>
         ID: !TypeID "Vector"
         num_elements: 0
-        element_type: *i8
-    - &v4_i8_ !<TypeDefinition>
-        ID: !TypeID "Vector"
-        num_elements: 4
         element_type: *i8
     - &v_i16_ !<TypeDefinition>
         ID: !TypeID "Vector"
@@ -12843,83 +12839,6 @@ intrinsics:
                 comment: "precision of B matrix (uses PrecisionType enum)"
         attributes:
             - !AttributeID "Convergent"
-            - !AttributeID "NoUnwind"
-            - !AttributeID "WillReturn"
-        memory_effects:
-            - !<MemoryRestriction>
-                memory_access: !MemoryAccessType NoModRef
-    - !<IntrinsicDefinition>
-        name: "GenISA_sub_group_bdpas_packed"
-        comment: "bdpas with packed block scaling operands"
-        return_definition: !<ReturnDefinition>
-            type_definition: *any
-            comment: "dst (type: F,BF,HF)"
-        arguments:
-            - !<ArgumentDefinition>
-                name: Arg0
-                type_definition: *any
-                comment: "src0: C matrix (acc), can be null (type: F,BF,HF)"
-            - !<ArgumentDefinition>
-                name: Arg1
-                type_definition: *any
-                comment: "src1: A matrix (type: BF,HF,UD)"
-            - !<ArgumentDefinition>
-                name: Arg2
-                type_definition: *any
-                comment: "src2: B matrix (type: BF,HF,UD)"
-            - !<ArgumentDefinition>
-                name: Arg3
-                type_definition: *any
-                comment: "src3: packed block scaling operand for src1 (A matrix), can be null (type: UB)"
-            - !<ArgumentDefinition>
-                name: Arg4
-                type_definition: *any
-                comment: "src4: packed block scaling operand for src2 (B matrix), can be null (type: UB)"
-            - !<ArgumentDefinition>
-                name: Arg5
-                type_definition: *i32
-                comment: "precision of A matrix (uses PrecisionType enum)"
-            - !<ArgumentDefinition>
-                name: Arg6
-                type_definition: *i32
-                comment: "precision of B matrix (uses PrecisionType enum)"
-            - !<ArgumentDefinition>
-                name: AScaleOffset
-                type_definition: *i32
-                comment: "byte offset selecting the A block scale in its packed operand"
-            - !<ArgumentDefinition>
-                name: BScaleOffset
-                type_definition: *i32
-                comment: "byte offset selecting the B block scale in its packed operand"
-        attributes:
-            - !AttributeID "Convergent"
-            - !AttributeID "NoUnwind"
-            - !AttributeID "WillReturn"
-        memory_effects:
-            - !<MemoryRestriction>
-                memory_access: !MemoryAccessType NoModRef
-    - !<IntrinsicDefinition>
-        name: "GenISA_byte_swizzle"
-        comment: "Select four bytes from {First.b0, First.b1, Second.b0, Second.b1} using a constant mask. \
-            \ For mask <0, 2, 1, 3>, the result is {First.b0, Second.b0, First.b1, Second.b1}. \
-            \ It may be extended in the future to support arbitrary byte swizzles."
-        return_definition: !<ReturnDefinition>
-            type_definition: *v4_i8_
-            comment: "selected bytes in mask order"
-        arguments:
-            - !<ArgumentDefinition>
-                name: First
-                type_definition: *i16
-                comment: "supplies mask indices 0 and 1"
-            - !<ArgumentDefinition>
-                name: Second
-                type_definition: *i16
-                comment: "supplies mask indices 2 and 3"
-            - !<ArgumentDefinition>
-                name: Indices
-                type_definition: *v4_i32_
-                comment: "constant byte indices in the range [0, 3]"
-        attributes:
             - !AttributeID "NoUnwind"
             - !AttributeID "WillReturn"
         memory_effects:

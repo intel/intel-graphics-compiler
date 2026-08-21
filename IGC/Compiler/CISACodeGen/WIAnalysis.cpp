@@ -1484,8 +1484,7 @@ WIAnalysis::WIDependancy WIAnalysisRunner::calculate_dep(const CallInst *inst) {
       GII_id == GenISAIntrinsic::GenISA_srnd_bftohf8 || GII_id == GenISAIntrinsic::GenISA_dnscl ||
       GII_id == GenISAIntrinsic::GenISA_ShflIdx4Lut || GII_id == GenISAIntrinsic::GenISA_lfsr ||
       GII_id == GenISAIntrinsic::GenISA_Int4VectorUnpack || GII_id == GenISAIntrinsic::GenISA_Int4VectorPack ||
-      GII_id == GenISAIntrinsic::GenISA_byte_swizzle || GII_id == GenISAIntrinsic::GenISA_hftohf8 ||
-      GII_id == GenISAIntrinsic::GenISA_hf8tohf ||
+      GII_id == GenISAIntrinsic::GenISA_hftohf8 || GII_id == GenISAIntrinsic::GenISA_hf8tohf ||
       GII_id == GenISAIntrinsic::GenISA_ftotf32 || GII_id == GenISAIntrinsic::GenISA_GlobalBufferPointer ||
       GII_id == GenISAIntrinsic::GenISA_LocalBufferPointer || GII_id == GenISAIntrinsic::GenISA_KSPPointer ||
       GII_id == GenISAIntrinsic::GenISA_InlinedData ||

@@ -78,9 +78,8 @@ SPDX-License-Identifier: MIT
 #include "Compiler/CISACodeGen/PromoteInt8Type.hpp"
 #include "Compiler/CISACodeGen/PrepareLoadsStoresPass.h"
 #include "Compiler/CISACodeGen/CallMergerPass.hpp"
-#include "Compiler/CISACodeGen/BdpasScaleCoalescing.hpp"
-#include "Compiler/CISACodeGen/DpasScan.hpp"
 #include "Compiler/CISACodeGen/EvaluateFreeze.hpp"
+#include "Compiler/CISACodeGen/DpasScan.hpp"
 #include "Compiler/CISACodeGen/FPRoundingModeCoalescing.hpp"
 #include "Compiler/CISACodeGen/SimpleAluVectorizer.hpp"
 
@@ -422,11 +421,6 @@ void AddAnalysisPasses(CodeGenContext &ctx, IGCPassManager &mpm) {
 
   // clean up constexpressions after EarlyCSE
   mpm.add(new BreakConstantExprLPM());
-
-  // Avoid adding the pass and requesting its analyses when the optimization
-  // cannot run. Per-function eligibility remains the pass's responsibility.
-  if (ctx.platform.hasFP4DPAS() && IGC_IS_FLAG_ENABLED(EnableBdpasScaleCoalescing))
-    mpm.add(createBdpasScaleCoalescingPass());
 
   // This is for dumping register pressure info
   if (IGC_IS_FLAG_ENABLED(ForceRPE)) {

@@ -1282,7 +1282,6 @@ void COpenCLKernel::ParseShaderSpecificOpcode(llvm::Instruction *inst) {
       case GenISAIntrinsic::GenISA_dpas:
       case GenISAIntrinsic::GenISA_sub_group_dpas:
       case GenISAIntrinsic::GenISA_sub_group_bdpas:
-      case GenISAIntrinsic::GenISA_sub_group_bdpas_packed:
         m_State.SetHasDPAS();
         break;
       case GenISAIntrinsic::GenISA_ptr_to_pair:
