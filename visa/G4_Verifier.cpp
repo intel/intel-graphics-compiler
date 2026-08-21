@@ -375,6 +375,29 @@ void G4Verifier::verifySend(G4_INST *inst) {
   }
 }
 
+// Byte span of an indirect 1x1 source, relative to its address register's base.
+// Element offsets are f(i, j) = i * vertStride + j * horzStride, so the span is
+// the largest offset plus one element.
+static unsigned getIndirect1x1SpanInBytes(const G4_SrcRegRegion *src,
+                                          uint8_t execSize) {
+  const RegionDesc *desc = src->getRegion();
+  unsigned typeSize = src->getTypeSize();
+
+  if (desc->isScalar())
+    return typeSize;
+
+  unsigned width = desc->width;
+  unsigned hs = desc->horzStride;
+  // Single row, either because execSize < width or because a RegionV (<hs>
+  // only) leaves width undefined, making numRows 0.
+  unsigned numRows = width ? (execSize / width) : 0;
+  if (numRows == 0)
+    return (execSize - 1) * hs * typeSize + typeSize;
+
+  unsigned maxElemOff = (numRows - 1) * desc->vertStride + (width - 1) * hs;
+  return maxElemOff * typeSize + typeSize;
+}
+
 void G4Verifier::verifyOpnd(G4_Operand *opnd, G4_INST *inst) {
   if (inst->isDpas()) {
     // Temporarily skip for now
@@ -516,14 +539,23 @@ void G4Verifier::verifyOpnd(G4_Operand *opnd, G4_INST *inst) {
 
       if (kernel.fg.builder->supportNativeSIMD32() &&
           inst->getExecSize() == g4::SIMD32 && opnd->getTypeSize() == 8) {
-        [[maybe_unused]] bool indirect1x1 = opnd->isIndirect()  &&
-                           !opnd->asSrcRegRegion()->getRegion()->isRegionWH();
-        vISA_ASSERT(!indirect1x1,
-                    "Must not be indirect 1x1 addressing mode for SIMD32 "
-                    "instructions with 64b datatypes");
-        vISA_ASSERT((opnd->getRightBound() - opnd->getLeftBound()) <
-                        (4u * kernel.numEltPerGRF<Type_UB>()),
-                    "Src cannot span more than 4 GRFs!");
+        // The 4-GRF allowance applies to direct addressing only.
+        if (opnd->isIndirect()) {
+          // Only 1x1 mode is limited to 2 GRFs; VxH/Vx1 has no such
+          // restriction. An indirect operand's bounds cover its address
+          // registers, not the data addressed, so the span comes from the
+          // region instead.
+          if (!opnd->asSrcRegRegion()->getRegion()->isRegionWH()) {
+            [[maybe_unused]] unsigned spanBytes =
+                getIndirect1x1SpanInBytes(opnd->asSrcRegRegion(), execSize);
+            vISA_ASSERT(spanBytes <= (2u * kernel.numEltPerGRF<Type_UB>()),
+                        "Indirect 1x1 src cannot span more than 2 GRFs!");
+          }
+        } else {
+          vISA_ASSERT((opnd->getRightBound() - opnd->getLeftBound()) <
+                          (4u * kernel.numEltPerGRF<Type_UB>()),
+                      "Src cannot span more than 4 GRFs!");
+        }
       } else if ((opnd->getRightBound() / kernel.numEltPerGRF<Type_UB>()) -
                      (opnd->getLeftBound() / kernel.numEltPerGRF<Type_UB>()) +
                      1 >
