@@ -85,7 +85,6 @@ private:
   template <typename T> void setPromotedAttributes(T *callOrFunc, const llvm::AttributeList &attributeList);
 
   llvm::Value *getOrCreatePromotedValue(llvm::Value *value);
-  llvm::Value *promoteGenericInstruction(llvm::Instruction *instruction);
   llvm::Function *promoteFunction(llvm::Function *function);
   llvm::GlobalVariable *promoteGlobalVariable(llvm::GlobalVariable *globalVariable);
   llvm::Constant *promoteConstant(llvm::Constant *constant);
@@ -101,7 +100,6 @@ private:
   llvm::InsertValueInst *promoteInsertValue(llvm::InsertValueInst *insertValue);
   llvm::LoadInst *promoteLoad(llvm::LoadInst *load);
   llvm::PHINode *promotePHI(llvm::PHINode *phi);
-  llvm::Value *promoteSelect(llvm::SelectInst *select);
   llvm::StoreInst *promoteStore(llvm::StoreInst *store);
   llvm::IntToPtrInst *promoteIntToPtr(llvm::IntToPtrInst *inttoptr);
   llvm::Value *promoteExtractElement(llvm::ExtractElementInst *extractElement);
