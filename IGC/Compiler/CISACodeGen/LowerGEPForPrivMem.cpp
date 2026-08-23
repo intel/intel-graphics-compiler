@@ -673,40 +673,6 @@ bool SOALayoutChecker::visitBitCastInst(BitCastInst &BI) {
 
 bool SOALayoutChecker::visitAddrSpaceCastInst(AddrSpaceCastInst &ASC) { return checkUsers(ASC); }
 
-/// Is \p GEP a byte-offset ("ptradd") GEP, i.e. `getelementptr i8, ptr %p, i64 <n>`?
-/// InstCombine canonicalizes constant-index GEPs into this form, whose source and result
-/// element type are always i8 - so it says nothing about the type actually accessed.
-static bool isByteOffsetGEP(const GetElementPtrInst &GEP) {
-  return GEP.getSourceElementType()->isIntegerTy(8) && GEP.getNumIndices() == 1;
-}
-
-/// Does \p GEP address whole elements rather than a byte inside one?
-/// handleGEPInst already converts such an offset back to an element index
-/// (offset / m_idxUnitBytes), so only the pre-checks rejected these GEPs. The division
-/// must be exact: a sub-element offset is a genuine byte access no transpose helper can
-/// express, and a non-constant one cannot be proven aligned here.
-static bool isElementAlignedByteGEP(const GetElementPtrInst &GEP, uint64_t indexUnitBytes) {
-  if (indexUnitBytes == 0 || !isByteOffsetGEP(GEP))
-    return false;
-  auto *Offset = dyn_cast<ConstantInt>(GEP.getOperand(1));
-  // handleGEPInst zero-extends before dividing, so a negative offset would not round-trip.
-  if (!Offset || Offset->isNegative())
-    return false;
-  return (Offset->getZExtValue() % indexUnitBytes) == 0;
-}
-
-uint64_t SOALayoutChecker::getByteGEPIndexUnit() const {
-  if (!pInfo || !pInfo->baseType)
-    return 0;
-  // Mirror the helper's m_idxUnitBytes: TransposeHelperPromote indexes the promoted
-  // vector in lanes of the base scalar, TransposeHelperPrivateMem strides scratch by the
-  // whole baseType. Over-estimating only rejects more, which covers both the byte-precise
-  // new algo and a baseType that getOrGatherInfo scalarizes after the walk.
-  Type *unitTy =
-      (MismatchDetectionStrategy == DefaultLowerGEPStrategy) ? pInfo->baseType->getScalarType() : pInfo->baseType;
-  return pDL->getTypeAllocSize(unitTy);
-}
-
 bool SOALayoutChecker::visitGetElementPtrInst(GetElementPtrInst &GEP) {
   // If the GEP indexes through a simple scalar whose store size
   // differs from the alloca's base scalar type, the old algorithm's
@@ -720,11 +686,7 @@ bool SOALayoutChecker::visitGetElementPtrInst(GetElementPtrInst &GEP) {
     if (!gepSrcEltTy->isAggregateType() && !gepSrcEltTy->isVectorTy()) {
       uint64_t gepBits = pDL->getTypeStoreSizeInBits(gepSrcEltTy);
       uint64_t baseBits = pDL->getTypeStoreSizeInBits(pInfo->baseType->getScalarType());
-      // An element-aligned byte offset is element-granular despite the i8 source type;
-      // keep walking and let MismatchDetected validate the accesses reached through it.
-      // Tests GEP's own source type, not the unwrapped one, so [4 x i8] still rejects.
-      if (gepBits != 0 && baseBits != 0 && gepBits != baseBits &&
-          !isElementAlignedByteGEP(GEP, getByteGEPIndexUnit())) {
+      if (gepBits != 0 && baseBits != 0 && gepBits != baseBits) {
         return false;
       }
     }
@@ -807,7 +769,6 @@ bool IGC::SOALayoutChecker::MismatchDetected(Instruction &I) {
   // (e.g., [4 x float]) is accessed through i8 GEPs, which the promotion transformation cannot handle correctly.
   if (!allocaEltTy->isIntegerTy(8)) {
     if (allocaEltBitsSize > 8) {
-      const uint64_t indexUnitBytes = getByteGEPIndexUnit();
       SmallVector<Value *, 16> worklist;
       SmallPtrSet<Value *, 16> visited;
 
@@ -828,10 +789,7 @@ bool IGC::SOALayoutChecker::MismatchDetected(Instruction &I) {
             // this is a memcpy-like pattern that we cannot handle correctly.
             // The transformation would incorrectly treat each byte as a separate
             // element rather than accumulating bytes into complete lanes.
-            // Exempt the ptradd form: an exact multiple of the index unit still addresses
-            // whole elements, and handleGEPInst converts it back. The type of the access
-            // reached through it is validated below.
-            if (gepSrcTy->isIntegerTy(8) && !isElementAlignedByteGEP(*GEP, indexUnitBytes)) {
+            if (gepSrcTy->isIntegerTy(8)) {
               pInfo->canUseSOALayout = false;
               return true;
             }
@@ -885,15 +843,8 @@ bool IGC::SOALayoutChecker::MismatchDetected(Instruction &I) {
 
   auto vecTySize = pUserTy->getScalarSizeInBits();
 
-  auto *pgep = dyn_cast<GetElementPtrInst>(parentLevelInst);
-  // A byte-offset GEP's result element type is always i8, so it must not be compared
-  // against the access type. Its offset is already proven element-aligned; fall through
-  // to the access-vs-alloca-element check, which rejects a genuine byte access.
-  if (pgep && isByteOffsetGEP(*pgep))
-    pgep = nullptr;
-
   // if it's a GEP, we're actually interested in it's element type
-  if (pgep) {
+  if (auto *pgep = dyn_cast<GetElementPtrInst>(parentLevelInst)) {
     auto pgepTySize = pgep->getResultElementType()->getScalarSizeInBits();
     if (pgepTySize != vecTySize) {
       // Allow reinterpretation when total store sizes match, but only for the
@@ -1094,11 +1045,6 @@ public:
     llvm::Type *AllocTy = pAI->getAllocatedType();
     llvm::Type *LaneTy = AllocTy->isVectorTy() ? cast<IGCLLVM::FixedVectorType>(AllocTy)->getElementType() : AllocTy;
     m_promotedLaneBytes = (uint32_t)DL.getTypeAllocSize(LaneTy);
-    // The scalarized index counts promoted lanes, so that is the unit a byte offset
-    // divides by. State it instead of letting handleGEPInst infer it from the byte
-    // GEP's pointer operand: that inference only recognizes an alloca, global, load
-    // or store base and silently yields 1 behind a preceding GEP, select or phi.
-    m_idxUnitBytes = m_promotedLaneBytes;
   }
 };
 

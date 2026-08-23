@@ -8,9 +8,12 @@
 
 ; RUN: igc_opt --opaque-pointers --igc-private-mem-resolution --platformlnl -S %s | FileCheck %s
 
+; TODO: The GEP scalarization algorithm is disabled since it does not correctly handle remainders
+;       in byte-wise addressing into larger lanes. The algorithm can only write whole-lanes at a
+;       time. The test here demonstrates a case correctly handled by the algorithm.
+; XFAIL: *
+
 ; This test ensures GEP scalarization on i8*/opaque ptr offsets treats the index as bytes and converts to element index via recovered base type size.
-; The offset (64) is a whole multiple of the 4-byte lane, so it is scalarized to element index 16.
-; Offsets that land inside a lane are still rejected by SOALayoutChecker and left untouched.
 
 ; CHECK-NOT: mul i32 64
 ; CHECK: mul i32 16
