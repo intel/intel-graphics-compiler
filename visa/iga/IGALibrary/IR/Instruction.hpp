@@ -338,7 +338,7 @@ private:
   int m_instId = 0xFFFFFFFF; // unique id for this instruction
                              // (unique in the kernel)
 
-  int32_t m_pc = 0; // the encode/decode PC for this instruction
+  int32_t m_pc = NO_PC; // the encode/decode PC for this instruction
 
   // source location info we keep this
   // separate from the PC since we

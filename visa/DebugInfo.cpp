@@ -28,6 +28,13 @@ using std::fwrite;
 
 uint32_t getBinInstSize(G4_INST *inst);
 
+// An instruction that never made it into the binary has no IP to report, so
+// report it as absent.
+static G4_INST *instWithGenOffset(G4_INST *inst) {
+  return (inst && inst->getGenOffset() != UNDEFINED_GEN_OFFSET) ? inst
+                                                                : nullptr;
+}
+
 int32_t get32BitSignedIntFrom31BitSignedInt(uint32_t data) {
   // MSB of 32-bit input is discarded
   int32_t signedMemOffset = (int32_t)data;
@@ -533,7 +540,7 @@ void KernelDebugInfo::generateGenISAToVISAIndex() {
   // all instructions will be present in the vector.
   for (auto bb : kernel->fg) {
     for (auto inst : *bb) {
-      if (inst->getGenOffset() == -1)
+      if (inst->getGenOffset() == UNDEFINED_GEN_OFFSET)
         continue;
       genISAOffsetToVISAIndex.push_back(
           IDX_VDbgGen2CisaIndex{(unsigned int)inst->getGenOffset(),
@@ -1366,14 +1373,13 @@ void emitDataCallFrameInfo(VISAKernelImpl *visaKernel, T &t) {
     emitDataUInt8((uint8_t)0, t);
   }
 
-  if (kernel->getOption(vISA_storeCE) &&
-      kernel->getKernelDebugInfo()->getCESaveInst()) {
+  auto *ceSaveInst =
+      instWithGenOffset(kernel->getKernelDebugInfo()->getCESaveInst());
+  if (kernel->getOption(vISA_storeCE) && ceSaveInst) {
     uint16_t FPOffset = kernel->getKernelDebugInfo()->getCESaveOffset();
     emitDataUInt16(FPOffset, t);
-    auto GenOffset =
-        kernel->getKernelDebugInfo()->getCESaveInst()->getGenOffset() +
-        getBinInstSize(kernel->getKernelDebugInfo()->getCESaveInst()) -
-        kernel->getKernelDebugInfo()->getRelocOffset();
+    auto GenOffset = ceSaveInst->getGenOffset() + getBinInstSize(ceSaveInst) -
+                     kernel->getKernelDebugInfo()->getRelocOffset();
     vISA_ASSERT(GenOffset <= std::numeric_limits<uint16_t>::max(),
                 "GenOffset is OOB");
     emitDataUInt16((uint16_t)GenOffset, t);
@@ -1813,9 +1819,9 @@ void KernelDebugInfo::updateCallStackMain() {
   auto befp = getBEFP();
   if (befp) {
     uint32_t start = 0;
-    if (getBEFPSetupInst()) {
-      start = (uint32_t)getBEFPSetupInst()->getGenOffset() +
-              (uint32_t)getBinInstSize(getBEFPSetupInst());
+    if (auto *befpSetupInst = instWithGenOffset(getBEFPSetupInst())) {
+      start = (uint32_t)befpSetupInst->getGenOffset() +
+              (uint32_t)getBinInstSize(befpSetupInst);
     }
     updateDebugInfo(getKernel(), befp, start,
                     mapCISAIndexGenOffset.back().GenOffset);
@@ -1851,24 +1857,25 @@ void KernelDebugInfo::updateCallStackLiveIntervals() {
         break;
     }
 
-    uint32_t start = 0;
-    if (getBEFPSetupInst()) {
+    // Both ends have to be known to anchor the range. Leaving one of them at
+    // its initial value gives (0 - reloc_offset) as the trip count.
+    auto *befpSetupInst = instWithGenOffset(getBEFPSetupInst());
+    auto *callerBefpRestoreInst =
+        instWithGenOffset(getCallerBEFPRestoreInst());
+    if (befpSetupInst && callerBefpRestoreInst) {
       // Frame descriptor can be addressed once once BE_FP is defined
-      start = (uint32_t)getBEFPSetupInst()->getGenOffset() +
-              getBinInstSize(getBEFPSetupInst());
-    }
+      uint32_t start = (uint32_t)befpSetupInst->getGenOffset() +
+                       getBinInstSize(befpSetupInst);
+      end = (uint32_t)callerBefpRestoreInst->getGenOffset();
 
-    if (getCallerBEFPRestoreInst()) {
-      end = (uint32_t)getCallerBEFPRestoreInst()->getGenOffset();
-    }
-
-    vISA_ASSERT(end >= reloc_offset,
-                 "Failed to update live-interval for retval");
-    vISA_ASSERT(start >= reloc_offset, "Failed to update start for retval");
-    vISA_ASSERT(end >= start, "end less then start for retval");
-    vISA_ASSERT(end != 0xffffffff, "end uninitialized");
-    for (uint32_t i = start - reloc_offset; i <= end - reloc_offset; i++) {
-      updateDebugInfo(*kernel, fretVar, i);
+      vISA_ASSERT(end >= reloc_offset,
+                   "Failed to update live-interval for retval");
+      vISA_ASSERT(start >= reloc_offset, "Failed to update start for retval");
+      vISA_ASSERT(end >= start, "end less then start for retval");
+      vISA_ASSERT(end != 0xffffffff, "end uninitialized");
+      for (uint32_t i = start - reloc_offset; i <= end - reloc_offset; i++) {
+        updateDebugInfo(*kernel, fretVar, i);
+      }
     }
   }
 
@@ -1876,14 +1883,12 @@ void KernelDebugInfo::updateCallStackLiveIntervals() {
   if (befp) {
     auto befpLIInfo = getLiveIntervalInfo(befp);
     befpLIInfo->clearLiveIntervals();
-    auto befpSetupInst = getBEFPSetupInst();
-    if (befpSetupInst) {
+    auto *befpSetupInst = instWithGenOffset(getBEFPSetupInst());
+    auto *spRestoreInst = instWithGenOffset(getCallerSPRestoreInst());
+    if (befpSetupInst && spRestoreInst) {
       start = (uint32_t)befpSetupInst->getGenOffset() - reloc_offset +
               getBinInstSize(befpSetupInst);
-      auto spRestoreInst = getCallerSPRestoreInst();
-      if (spRestoreInst) {
-        end = (uint32_t)spRestoreInst->getGenOffset() - reloc_offset;
-      }
+      end = (uint32_t)spRestoreInst->getGenOffset() - reloc_offset;
       for (uint32_t i = start; i <= end; i++) {
         updateDebugInfo(*kernel, befp, i);
       }
@@ -1903,19 +1908,22 @@ void KernelDebugInfo::updateCallStackLiveIntervals() {
     //     in current frame
     auto callerbefpLIInfo = getLiveIntervalInfo(callerbefp);
     callerbefpLIInfo->clearLiveIntervals();
-    auto callerbeSaveInst = getCallerBEFPSaveInst();
+    auto *callerbeSaveInst = instWithGenOffset(getCallerBEFPSaveInst());
     if (callerbeSaveInst) {
-      auto callerbefpRestoreInst = getCallerBEFPRestoreInst();
-      vISA_ASSERT(callerbefpRestoreInst != nullptr,
+      vISA_ASSERT(getCallerBEFPRestoreInst() != nullptr,
                    "Instruction destroying caller be fp not found in epilog");
-      // Guarantee that start of FDE live-range is same as or after BE_FP
-      // of current frame is initialized
-      start =
-          std::max(start, (uint32_t)callerbeSaveInst->getGenOffset() -
-                              reloc_offset + getBinInstSize(callerbeSaveInst));
-      end = (uint32_t)callerbefpRestoreInst->getGenOffset() - reloc_offset;
-      for (uint32_t i = start; i <= end; i++) {
-        updateDebugInfo(*kernel, callerbefp, i);
+      auto *callerbefpRestoreInst =
+          instWithGenOffset(getCallerBEFPRestoreInst());
+      if (callerbefpRestoreInst) {
+        // Guarantee that start of FDE live-range is same as or after BE_FP
+        // of current frame is initialized
+        start = std::max(start,
+                         (uint32_t)callerbeSaveInst->getGenOffset() -
+                             reloc_offset + getBinInstSize(callerbeSaveInst));
+        end = (uint32_t)callerbefpRestoreInst->getGenOffset() - reloc_offset;
+        for (uint32_t i = start; i <= end; i++) {
+          updateDebugInfo(*kernel, callerbefp, i);
+        }
       }
     }
   }

@@ -17,6 +17,9 @@ SPDX-License-Identifier: MIT
 namespace iga {
 typedef int32_t PC;
 
+// PC of an instruction that never reached the binary
+constexpr PC NO_PC = -1;
+
 // a source location (can also be binary for things like decoding)
 struct Loc {
   // int      file; // an optional file index

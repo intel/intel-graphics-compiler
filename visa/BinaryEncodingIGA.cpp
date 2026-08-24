@@ -15,7 +15,6 @@ SPDX-License-Identifier: MIT
 
 #include <fstream>
 #include <map>
-#include <unordered_set>
 #include <utility>
 
 using namespace iga;
@@ -1397,23 +1396,13 @@ void BinaryEncodingIGA::Encode() {
              m_kernelBufferSize);
   }
 
-#ifdef _DEBUG
-  // Verify that IGA did not remove any instruction that G4_INST maps by gen
-  // offset
-  {
-    std::unordered_set<const Instruction *> encodedInIGA;
-    for (const Block *blk : IGAKernel->getBlockList())
-      for (const Instruction *igaInst : blk->getInstList())
-        encodedInIGA.insert(igaInst);
-    for (const auto &inst : encodedInsts)
-      vISA_ASSERT(encodedInIGA.count(inst.first) != 0,
-                  "IGA dropped an instruction vISA maps by gen offset");
-  }
-#endif // _DEBUG
-
   // encodedPC is available after encoding
   for (auto &&inst : encodedInsts) {
-    inst.second->setGenOffset(inst.first->getPC());
+    const PC pc = inst.first->getPC();
+    // vISA doesn't expect IGA to drop any instructions
+    vISA_ASSERT(pc != NO_PC,
+                "IGA dropped an instruction vISA maps by gen offset");
+    inst.second->setGenOffset(pc == NO_PC ? UNDEFINED_GEN_OFFSET : pc);
   }
   if (kernel.hasPerThreadPayloadBB()) {
     kernel.fg.builder->getJitInfo()->offsetToSkipPerThreadDataLoad =
