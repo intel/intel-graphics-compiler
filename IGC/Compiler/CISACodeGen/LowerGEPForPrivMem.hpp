@@ -164,6 +164,10 @@ private:
   bool visitLoadInst(llvm::LoadInst &);
   bool MismatchDetected(llvm::Instruction &LI);
   bool visitStoreInst(llvm::StoreInst &);
+
+  /// Divisor handleGEPInst will apply to a byte-offset ("ptradd") GEP's offset.
+  /// 0 until a base type has been determined.
+  uint64_t getByteGEPIndexUnit() const;
 };
 
 class TransposeHelper {
