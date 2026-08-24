@@ -331,6 +331,7 @@ lfsr"."(b32|b16v2|b8v4) {
         return LFSR_SUB_OP;
 }
 
+
 bdpas"."bf"."bf"."8"."8 {
         TRACE("** BDPAS");
         CISAlval.opcode = ISA_BDPAS;
@@ -1877,6 +1878,7 @@ static LFSR_FC str2lfsrfc(const char* str)
     YY_FATAL_ERROR("Invalid lfsr func control");
     return LFSR_FC::INVALID;
 }
+
 
 static DNSCL_CONVERT_TYPE str2DnsclConvertType(const char *str, int *offset) {
     DNSCL_CONVERT_TYPE type = DNSCL_CONVERT_TYPE::INVALID;

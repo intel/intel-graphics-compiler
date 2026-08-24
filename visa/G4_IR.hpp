@@ -538,6 +538,7 @@ public:
     return reinterpret_cast<const G4_InstDnscl *>(this);
   }
 
+
   bool isPseudoUse() const;
   G4_Type getExecType() const;
   G4_Type getExecType2() const;
@@ -1594,6 +1595,7 @@ private:
   DNSCL_MODE mode;
   DNSCL_RND_MODE rndMode;
 };
+
 } // namespace vISA
 
 enum class PseudoKillType { FromLiveness = 1, Src = 2, Other = 3 };

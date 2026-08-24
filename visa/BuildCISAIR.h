@@ -734,6 +734,7 @@ public:
                                      VISA_opnd *src0, VISA_opnd *src1,
                                      VISA_opnd *src2, int lineNum);
 
+
 private:
   const vISA::PlatformInfo *m_platformInfo;
 

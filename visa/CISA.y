@@ -2891,6 +2891,7 @@ LfsrInstruction:
             $4.cisa_gen_opnd, $5.cisa_gen_opnd, $6.cisa_gen_opnd, CISAlineno);
     }
 
+
 DnsclInstruction:
 //      1         2          3          4           5         6         7
      Predicate  DNSCL_OP  ExecSize  RawOperand RawOperand RawOperand  RawOperand

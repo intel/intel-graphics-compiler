@@ -8581,6 +8581,7 @@ G4_INST *G4_InstLfsr::cloneInst(const IR_Builder *b) {
                                          getLfsrFCtrl(), option, false);
 }
 
+
 bool G4_InstDpas::isInt() const {
   // Check Src1 is enough.
   switch (Src1Precision) {

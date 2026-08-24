@@ -5495,6 +5495,7 @@ void vISAVerifier::verifyInstructionLfsr(const CISA_INST* inst) {
         "src1 in ISA_LFSR must have region <1;1,0> or <0;1,0>.");
 }
 
+
 void vISAVerifier::verifyInstructionDnscl(const CISA_INST *inst) {
   // check the first 3 operands: conversion type, mode, rounding mode
   REPORT_INSTRUCTION(

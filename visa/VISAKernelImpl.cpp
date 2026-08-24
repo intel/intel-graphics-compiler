@@ -10029,6 +10029,7 @@ int VISAKernelImpl::AppendVISALfsrInst(VISA_PredOpnd *pred,
   return status;
 }
 
+
 int VISAKernelImpl::AppendVISADnsclInst(
     VISA_PredOpnd *pred, VISA_EMask_Ctrl emask, VISA_Exec_Size executionSize,
     DNSCL_CONVERT_TYPE type, DNSCL_MODE mode, DNSCL_RND_MODE rndMode,

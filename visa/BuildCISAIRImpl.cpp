@@ -4423,6 +4423,7 @@ bool CISA_IR_Builder::CISA_create_shfl_idx4_instruction(
   return true;
 }
 
+
 bool CISA_IR_Builder::CISA_create_dnscl_instruction(
     VISA_opnd *pred, VISA_EMask_Ctrl emask, VISA_Exec_Size execSize,
     DNSCL_CONVERT_TYPE type, DNSCL_MODE mode, DNSCL_RND_MODE rndMode,

@@ -4333,6 +4333,7 @@ G4_INST *IR_Builder::createDnsclInst(G4_Predicate *prd, G4_ExecSize execSize,
   return i;
 }
 
+
 // create an opnd without regpoff and subregoff
 G4_DstRegRegion *IR_Builder::createDstRegRegion(G4_Declare *dcl,
                                                 unsigned short hstride) {

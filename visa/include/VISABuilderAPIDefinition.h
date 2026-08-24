@@ -954,7 +954,8 @@ public:
                      VISA_VectorOpnd *src0,
                      VISA_VectorOpnd *src1) = 0;
 
-/// AppendVISADnsclInst -- append an dnscl instruction to this kernel
+
+  /// AppendVISADnsclInst -- append an dnscl instruction to this kernel
   ///    [pred] op.type.mode.rndMode (emask, execSize) dst src0 src1 src2
   /// @pred predicate variable
   /// @emask execution mask

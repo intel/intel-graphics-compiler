@@ -1458,6 +1458,7 @@ public:
                            DNSCL_RND_MODE rndMode, G4_InstOpts options,
                            bool addToInstList);
 
+
   static G4_MathOp Get_MathFuncCtrl(ISA_Opcode op, G4_Type type);
 
   void resizePredefinedStackVars();
@@ -1999,6 +2000,7 @@ public:
                              DNSCL_MODE mode, DNSCL_RND_MODE rndMode,
                              G4_DstRegRegion *dst, G4_Operand *src0,
                              G4_Operand *src1, G4_Operand *src2);
+
 
   ///////////////////////////////////////////////////////////////////////////
   ///////////////////////////////////////////////////////////////////////////

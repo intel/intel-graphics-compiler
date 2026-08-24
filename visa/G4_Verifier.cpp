@@ -1782,6 +1782,7 @@ void G4Verifier::verifyLfsr(G4_INST *inst) {
   }
 }
 
+
 void G4Verifier::verifyDnscl(G4_INST *inst) {
   const G4_InstDnscl *dnsclInst = inst->asDnsclInst();
 

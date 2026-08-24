@@ -707,6 +707,7 @@ enum class LFSR_FC {
   B8V4 = 2      // Four 8-bit seeds/polynomials packed in 32 bits
 };
 
+
 enum class DNSCL_CONVERT_TYPE {
   INVALID = -1,
   BFTOE2M1 = 1, // conversion from BF to E2M1

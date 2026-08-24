@@ -958,6 +958,7 @@ public:
                      VISA_VectorOpnd *dst, VISA_VectorOpnd *src0,
                      VISA_VectorOpnd *src1) override;
 
+
   VISA_BUILDER_API int
   AppendVISADnsclInst(VISA_PredOpnd *pred, VISA_EMask_Ctrl emask,
                       VISA_Exec_Size executionSize, DNSCL_CONVERT_TYPE type,

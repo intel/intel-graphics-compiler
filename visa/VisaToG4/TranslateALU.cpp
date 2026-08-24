@@ -531,3 +531,4 @@ int IR_Builder::translateVISADnsclInst(G4_Predicate *pred_opnd,
                  inst_opt, true /*addToInstList*/);
   return VISA_SUCCESS;
 }
+
