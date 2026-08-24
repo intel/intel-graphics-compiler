@@ -3824,11 +3824,18 @@ void HWConformityPro::fixAddcSubb(INST_LIST_ITER it, G4_BB *bb) {
   vISA_ASSERT(inst->getDst()->getType() == Type_UD,
               "dst of addc/subb must be :ud data type");
 
-  // Fix immediate src operand whose type can only be :ud
+  // addc/subb sources must be :ud.
   for (int i = 0; i < 2; i++) {
     G4_Operand *src = inst->getSrc(i);
-    if (src->isImm() && src->getType() == Type_UW) {
-      // Just change the immediate's type to :ud
+    if (src->isImm() && src->getType() == Type_UV) {
+      // A :uv immediate is per-lane; a scalar reinterpret would broadcast one
+      // value. Materialize it into a :ud temp (fixVectSrc() then legalizes the
+      // inserted mov's :uv source).
+      replaceSrc(it, bb, i, Type_UD, /*tmpStride*/ 0, /*tmpAlign*/ Any);
+    } else if (src->isImm() &&
+               (src->getType() == Type_UW || src->getType() == Type_D)) {
+      // Reinterpret the bit pattern as :ud. Safe for the low-32-bit sum and
+      // carry; sign extension of a :d addend is handled in fixMadw().
       uint32_t immVal = (uint32_t)src->asImm()->getImm();
       inst->setSrc(builder.createImm(immVal, Type_UD), i);
     } else if (src->isSrcRegRegion() && src->getType() == Type_D) {
