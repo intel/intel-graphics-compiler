@@ -747,32 +747,27 @@ void Legalization::visitExtractElementInst(ExtractElementInst &I) {
 void Legalization::visitBitCastInst(llvm::BitCastInst &I) {
   m_ctx->m_instrTypes.numInsts++;
   // This is the pass that folds 2x Float into a Double replacing the bitcast instruction
-  if (ConstantDataVector *vec = dyn_cast<ConstantDataVector>(I.getOperand(0))) {
-    unsigned int nbElement = vec->getNumElements();
+  // Since LLVM 23 an all-equal <float X, float X> is a vector ConstantFP, not a ConstantDataVector.
+  if (Constant *vec = dyn_cast<Constant>(I.getOperand(0))) {
+    auto *vecTy = dyn_cast<IGCLLVM::FixedVectorType>(vec->getType());
     // nbElement == 2 implies the bitcast instruction has a 2X Float src and we are checking if the destination is of
     // Type Double
-    if (nbElement == 2 && I.getType()->isDoubleTy() && vec->getElementType()->isFloatTy()) {
-      // Extracting LSB form srcVec
-      ConstantFP *srcLSB = cast<ConstantFP>(vec->getElementAsConstant(0));
-      uint64_t LSB = srcLSB->getValueAPF().bitcastToAPInt().getZExtValue();
+    if (vecTy && vecTy->getNumElements() == 2 && I.getType()->isDoubleTy() && vecTy->getElementType()->isFloatTy()) {
+      // Extracting LSB and MSB from srcVec
+      ConstantFP *srcLSB = dyn_cast_or_null<ConstantFP>(vec->getAggregateElement(0u));
+      ConstantFP *srcMSB = dyn_cast_or_null<ConstantFP>(vec->getAggregateElement(1u));
+      if (srcLSB && srcMSB) {
+        uint64_t LSB = srcLSB->getValueAPF().bitcastToAPInt().getZExtValue();
+        uint64_t MSB = srcMSB->getValueAPF().bitcastToAPInt().getZExtValue();
 
-      // Extracting MSB form srcVec
-      ConstantFP *srcMSB = cast<ConstantFP>(vec->getElementAsConstant(1));
-      uint64_t MSB = srcMSB->getValueAPF().bitcastToAPInt().getZExtValue();
+        // Replacing the bitcast instruction with 2x float to a emit a double value.
+        APInt bits(64, (MSB << 32) | LSB);
+        Constant *newVal = ConstantFP::get(I.getContext(), APFloat(APFloat::IEEEdouble(), bits));
 
-      // Replacing the bitcast instruction with 2x float to a emit a double value
-      uint64_t rslt = ((MSB << 32) | LSB);
-      // Yes, this is a hack. double result = static_cast<double>(rslt) didn't generate the correct double equivalent
-      // for rslt
-      double result = *(double *)&rslt;
-      ConstantFP *newVec = cast<ConstantFP>(ConstantFP::get(Type::getDoubleTy(I.getContext()), result));
-      auto tempInst = dyn_cast<Instruction>(newVec);
-      if (tempInst)
-        tempInst->setDebugLoc(I.getDebugLoc());
-
-      I.replaceAllUsesWith(newVec);
-      I.eraseFromParent();
-      return;
+        I.replaceAllUsesWith(newVal);
+        I.eraseFromParent();
+        return;
+      }
     }
   }
 
@@ -1229,42 +1224,14 @@ void Legalization::visitStoreInst(StoreInst &I) {
     return;
 
   m_ctx->m_instrTypes.numInsts++;
-  if (ConstantDataVector *vec = dyn_cast<ConstantDataVector>(I.getOperand(0))) {
+  Constant *vec = dyn_cast<Constant>(I.getOperand(0));
+  if (vec && isa<IGCLLVM::FixedVectorType>(vec->getType()) && !isa<UndefValue>(vec) &&
+      (isa<ConstantDataVector, ConstantVector, ConstantAggregateZero>(vec) || vec->getSplatValue() != nullptr)) {
     Value *newVec = UndefValue::get(vec->getType());
     unsigned int nbElement = (unsigned)cast<IGCLLVM::FixedVectorType>(vec->getType())->getNumElements();
     for (unsigned int i = 0; i < nbElement; i++) {
-      Constant *cst = vec->getElementAsConstant(i);
-      if (!isa<UndefValue>(cst)) {
-        newVec = InsertElementInst::Create(newVec, cst, ConstantInt::get(Type::getInt32Ty(I.getContext()), i), "",
-                                           IGCLLVM::insertPosition(&I));
-        Instruction *newVecAsTempInst = dyn_cast<Instruction>(newVec);
-        if (newVecAsTempInst)
-          newVecAsTempInst->setDebugLoc(I.getDebugLoc());
-      }
-    }
-    I.setOperand(0, newVec);
-  } else if (ConstantVector *vec = dyn_cast<ConstantVector>(I.getOperand(0))) {
-    Value *newVec = UndefValue::get(vec->getType());
-    unsigned int nbElement = (unsigned)cast<IGCLLVM::FixedVectorType>(vec->getType())->getNumElements();
-    for (unsigned int i = 0; i < nbElement; i++) {
-      Constant *cst = vec->getOperand(i);
-      if (!isa<UndefValue>(cst)) {
-        newVec = InsertElementInst::Create(newVec, cst, ConstantInt::get(Type::getInt32Ty(I.getContext()), i), "",
-                                           IGCLLVM::insertPosition(&I));
-        Instruction *newVecAsTempInst = dyn_cast<Instruction>(newVec);
-        if (newVecAsTempInst)
-          newVecAsTempInst->setDebugLoc(I.getDebugLoc());
-      }
-    }
-    I.setOperand(0, newVec);
-  } else if (ConstantAggregateZero *vec = dyn_cast<ConstantAggregateZero>(I.getOperand(0))) {
-    auto *vecTy = vec->getType();
-    IGC_ASSERT_MESSAGE(isa<FixedVectorType>(vecTy), "Unexpected aggregate type");
-    Value *newVec = UndefValue::get(vecTy);
-    unsigned nbElement = cast<FixedVectorType>(vecTy)->getNumElements();
-    for (unsigned int i = 0; i < nbElement; i++) {
-      Constant *cst = vec->getElementValue(i);
-      if (!isa<UndefValue>(cst)) {
+      Constant *cst = vec->getAggregateElement(i);
+      if (cst && !isa<UndefValue>(cst)) {
         newVec = InsertElementInst::Create(newVec, cst, ConstantInt::get(Type::getInt32Ty(I.getContext()), i), "",
                                            IGCLLVM::insertPosition(&I));
         Instruction *newVecAsTempInst = dyn_cast<Instruction>(newVec);
@@ -1394,52 +1361,20 @@ void Legalization::PromoteInsertElement(Value *I, Value *newVec) {
 
 void Legalization::visitInsertElementInst(InsertElementInst &I) {
   m_ctx->m_instrTypes.numInsts++;
-  if (ConstantDataVector *vec = dyn_cast<ConstantDataVector>(I.getOperand(0))) {
+  Constant *vec = dyn_cast<Constant>(I.getOperand(0));
+  if (vec && isa<IGCLLVM::FixedVectorType>(vec->getType()) && !isa<UndefValue>(vec) &&
+      (isa<ConstantDataVector, ConstantVector, ConstantAggregateZero>(vec) || vec->getSplatValue() != nullptr)) {
     Value *newVec = UndefValue::get(vec->getType());
     unsigned int nbElement = (unsigned)cast<IGCLLVM::FixedVectorType>(vec->getType())->getNumElements();
     for (unsigned int i = 0; i < nbElement; i++) {
-      Constant *cst = vec->getElementAsConstant(i);
-      if (!isa<UndefValue>(cst)) {
+      Constant *cst = vec->getAggregateElement(i);
+      if (cst && !isa<UndefValue>(cst)) {
         newVec = InsertElementInst::Create(newVec, cst, ConstantInt::get(Type::getInt32Ty(I.getContext()), i), "",
                                            IGCLLVM::insertPosition(&I));
         Instruction *newVecAsTempInst = dyn_cast<Instruction>(newVec);
         if (newVecAsTempInst)
           newVecAsTempInst->setDebugLoc(I.getDebugLoc());
       }
-    }
-    newVec = InsertElementInst::Create(newVec, I.getOperand(1), I.getOperand(2), "", IGCLLVM::insertPosition(&I));
-    Instruction *newVecAsTempInst = dyn_cast<Instruction>(newVec);
-    if (newVecAsTempInst)
-      newVecAsTempInst->setDebugLoc(I.getDebugLoc());
-    I.replaceAllUsesWith(newVec);
-  } else if (ConstantVector *vec = dyn_cast<ConstantVector>(I.getOperand(0))) {
-    Value *newVec = UndefValue::get(I.getType());
-    unsigned int nbElement = (unsigned)cast<IGCLLVM::FixedVectorType>(vec->getType())->getNumElements();
-    for (unsigned int i = 0; i < nbElement; i++) {
-      Constant *cst = vec->getOperand(i);
-      if (!isa<UndefValue>(cst)) {
-        newVec = InsertElementInst::Create(newVec, cst, ConstantInt::get(Type::getInt32Ty(I.getContext()), i), "",
-                                           IGCLLVM::insertPosition(&I));
-        Instruction *newVecAsTempInst = dyn_cast<Instruction>(newVec);
-        if (newVecAsTempInst)
-          newVecAsTempInst->setDebugLoc(I.getDebugLoc());
-      }
-    }
-    newVec = InsertElementInst::Create(newVec, I.getOperand(1), I.getOperand(2), "", IGCLLVM::insertPosition(&I));
-    Instruction *newVecAsTempInst = dyn_cast<Instruction>(newVec);
-    if (newVecAsTempInst)
-      newVecAsTempInst->setDebugLoc(I.getDebugLoc());
-    I.replaceAllUsesWith(newVec);
-  } else if (ConstantAggregateZero *vec = dyn_cast<ConstantAggregateZero>(I.getOperand(0))) {
-    Value *newVec = UndefValue::get(I.getType());
-    unsigned int nbElement = (unsigned)cast<IGCLLVM::FixedVectorType>(vec->getType())->getNumElements();
-    for (unsigned int i = 0; i < nbElement; i++) {
-      Constant *cst = vec->getElementValue(i);
-      newVec = InsertElementInst::Create(newVec, cst, ConstantInt::get(Type::getInt32Ty(I.getContext()), i), "",
-                                         IGCLLVM::insertPosition(&I));
-      Instruction *newVecAsTempInst = dyn_cast<Instruction>(newVec);
-      if (newVecAsTempInst)
-        newVecAsTempInst->setDebugLoc(I.getDebugLoc());
     }
     newVec = InsertElementInst::Create(newVec, I.getOperand(1), I.getOperand(2), "", IGCLLVM::insertPosition(&I));
     Instruction *newVecAsTempInst = dyn_cast<Instruction>(newVec);
