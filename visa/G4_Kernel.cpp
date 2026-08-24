@@ -2355,6 +2355,13 @@ unsigned GRFMode::getSpillThreshold(unsigned mode) const {
       return 0;
   }
 
+  // No auto-GRF selection, or an upper bound of 128: the 128-GRF config is the
+  // maximum available mode, so there is no larger config to bump into and the
+  // spill budget does not apply.
+  if (platform < Xe3 && numGRF == 128 &&
+      (!options->getOption(vISA_AutoGRFSelection) || getMaxGRF() == 128))
+    return 0;
+
   // Base spill threshold: when the dedicated regkey is enabled, use the
   // dynamic threshold pre-computed before RA via setDynamicSpillThreshold();
   // otherwise use the explicit vISA_SpillAllowed option.
