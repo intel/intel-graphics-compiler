@@ -897,7 +897,7 @@ bool GEPLowering::lowerGetElementPtrInst(GetElementPtrInst *GEP) {
       unsigned Field = int_cast<unsigned>(cast<ConstantInt>(Idx)->getZExtValue());
       if (Field) {
         uint64_t Offset = DL->getStructLayout(StTy)->getElementOffset(Field);
-        Value *OffsetValue = Builder->getInt(APInt(pointerMathSizeInBits, Offset));
+        Value *OffsetValue = ConstantInt::get(PtrMathTy, Offset);
         PointerValue = Builder->CreateAdd(PointerValue, OffsetValue);
       }
     } else {
@@ -905,8 +905,8 @@ bool GEPLowering::lowerGetElementPtrInst(GetElementPtrInst *GEP) {
 
       if (const ConstantInt *CI = dyn_cast<ConstantInt>(Idx)) {
         if (!CI->isZero()) {
-          uint64_t Offset = DL->getTypeAllocSize(Ty) * CI->getSExtValue();
-          Value *OffsetValue = Builder->getInt(APInt(pointerMathSizeInBits, Offset));
+          int64_t Offset = DL->getTypeAllocSize(Ty) * CI->getSExtValue();
+          Value *OffsetValue = ConstantInt::getSigned(PtrMathTy, Offset);
           PointerValue = Builder->CreateAdd(PointerValue, OffsetValue);
         }
       } else {
