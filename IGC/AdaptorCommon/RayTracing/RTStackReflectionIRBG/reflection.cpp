@@ -647,7 +647,8 @@ IMPL_ALL_1ARG_XE3PLUS(_createPotentialHit2CommittedHit, StackPtr)
 CREATE_PRIVATE void _createTraceRayInlinePrologue_Xe(RTSAS RTStack2<Xe> *__restrict__ StackPtr, _float8 RayInfo,
                                                      uint64_t RootNodePtr, uint32_t RayFlags,
                                                      uint32_t InstanceInclusionMask, uint32_t ComparisonValue,
-                                                     float TMax, bool updateFlags, bool initialDoneBitValue) {
+                                                     float TMax, bool updateFlags, bool initialDoneBitValue,
+                                                     bool initializeHitRecords) {
   *((RTSAS _float8 *)&StackPtr->ray0.org) = RayInfo;
 
   auto &ray0 = StackPtr->ray0;
@@ -672,30 +673,32 @@ CREATE_PRIVATE void _createTraceRayInlinePrologue_Xe(RTSAS RTStack2<Xe> *__restr
   ray0.rayMask = InstanceInclusionMask;
   ray0.pad2 = 0;
 
-  auto &CH = StackPtr->committedHit;
-  auto &PH = StackPtr->potentialHit;
+  if (initializeHitRecords) {
+    auto &CH = StackPtr->committedHit;
+    auto &PH = StackPtr->potentialHit;
 
-  CH.t = TMax;
-  CH.u = 0.0f;
-  CH.v = 0.0f;
+    CH.t = TMax;
+    CH.u = 0.0f;
+    CH.v = 0.0f;
 
-  CH.primIndexDelta = 0;
-  CH.valid = 0;
-  CH.leafType = 0;
-  CH.primLeafIndex = 0;
-  CH.bvhLevel = 0;
-  CH.frontFace = 0;
-  CH.done = 0;
-  CH.pad0 = 0;
+    CH.primIndexDelta = 0;
+    CH.valid = 0;
+    CH.leafType = 0;
+    CH.primLeafIndex = 0;
+    CH.bvhLevel = 0;
+    CH.frontFace = 0;
+    CH.done = 0;
+    CH.pad0 = 0;
 
-  PH.primIndexDelta = 0;
-  PH.valid = 0;
-  PH.leafType = 0;
-  PH.primLeafIndex = 0;
-  PH.bvhLevel = 0;
-  PH.frontFace = 0;
-  PH.done = initialDoneBitValue;
-  PH.pad0 = 0;
+    PH.primIndexDelta = 0;
+    PH.valid = 0;
+    PH.leafType = 0;
+    PH.primLeafIndex = 0;
+    PH.bvhLevel = 0;
+    PH.frontFace = 0;
+    PH.done = initialDoneBitValue;
+    PH.pad0 = 0;
+  }
 }
 
 template <typename RTStackT>
@@ -703,7 +706,7 @@ IMPL void _createTraceRayInlinePrologue(RTSAS RTStackT *__restrict__ StackPtr, _
                                         uint32_t RayFlags, uint32_t InstanceInclusionMask, uint32_t ComparisonValue,
                                         float TMax, bool updateFlags, bool initialDoneBitValue,
                                         uint32_t MissShaderIndex = 0, uint32_t HitGroupIndex = 0,
-                                        uint32_t ShaderIndexMultiplier = 0) {
+                                        uint32_t ShaderIndexMultiplier = 0, bool initializeHitRecords = true) {
   *((RTSAS _float8 *)&StackPtr->ray0.org) = RayInfo;
 
   auto &ray0 = StackPtr->ray0;
@@ -728,34 +731,36 @@ IMPL void _createTraceRayInlinePrologue(RTSAS RTStackT *__restrict__ StackPtr, _
 
   ray0.time = 0.0f;
 
-  auto &CH = StackPtr->committedHit;
-  auto &PH = StackPtr->potentialHit;
+  if (initializeHitRecords) {
+    auto &CH = StackPtr->committedHit;
+    auto &PH = StackPtr->potentialHit;
 
-  CH.t = TMax;
+    CH.t = TMax;
 
-  CH.primIndexDelta = 0;
-  CH.pad1 = 0;
-  CH.leafNodeSubType = 0;
-  CH.valid = 0;
-  CH.leafType = 0;
-  CH.primLeafIndex = 0;
-  CH.bvhLevel = 0;
-  CH.frontFace = 0;
-  CH.done = 0;
-  CH.needSWSTOC = 0;
-  CH.reserved = 0;
+    CH.primIndexDelta = 0;
+    CH.pad1 = 0;
+    CH.leafNodeSubType = 0;
+    CH.valid = 0;
+    CH.leafType = 0;
+    CH.primLeafIndex = 0;
+    CH.bvhLevel = 0;
+    CH.frontFace = 0;
+    CH.done = 0;
+    CH.needSWSTOC = 0;
+    CH.reserved = 0;
 
-  PH.primIndexDelta = 0;
-  PH.pad1 = 0;
-  PH.leafNodeSubType = 0;
-  PH.valid = 0;
-  PH.leafType = 0;
-  PH.primLeafIndex = 0;
-  PH.bvhLevel = 0;
-  PH.frontFace = 0;
-  PH.done = initialDoneBitValue;
-  PH.needSWSTOC = 0;
-  PH.reserved = 0;
+    PH.primIndexDelta = 0;
+    PH.pad1 = 0;
+    PH.leafNodeSubType = 0;
+    PH.valid = 0;
+    PH.leafType = 0;
+    PH.primLeafIndex = 0;
+    PH.bvhLevel = 0;
+    PH.frontFace = 0;
+    PH.done = initialDoneBitValue;
+    PH.needSWSTOC = 0;
+    PH.reserved = 0;
+  }
 }
 
 CREATE_PRIVATE void _createTraceRayInlinePrologue_Xe3(RTSAS RTStack2<Xe3> *__restrict__ StackPtr, _float8 RayInfo,
@@ -763,10 +768,11 @@ CREATE_PRIVATE void _createTraceRayInlinePrologue_Xe3(RTSAS RTStack2<Xe3> *__res
                                                       uint32_t InstanceInclusionMask, uint32_t ComparisonValue,
                                                       float TMax, bool updateFlags, bool initialDoneBitValue,
                                                       uint32_t MissShaderIndex = 0, uint32_t HitGroupIndex = 0,
-                                                      uint32_t ShaderIndexMultiplier = 0) {
+                                                      uint32_t ShaderIndexMultiplier = 0,
+                                                      bool initializeHitRecords = true) {
   _createTraceRayInlinePrologue(StackPtr, RayInfo, RootNodePtr, RayFlags, InstanceInclusionMask, ComparisonValue, TMax,
-                                updateFlags, initialDoneBitValue, MissShaderIndex, HitGroupIndex,
-                                ShaderIndexMultiplier);
+                                updateFlags, initialDoneBitValue, MissShaderIndex, HitGroupIndex, ShaderIndexMultiplier,
+                                initializeHitRecords);
 }
 
 CREATE_PRIVATE void _createTraceRayInlinePrologue_Xe3PEff64(RTSAS RTStack2<Xe3PEff64> *__restrict__ StackPtr,
@@ -774,10 +780,11 @@ CREATE_PRIVATE void _createTraceRayInlinePrologue_Xe3PEff64(RTSAS RTStack2<Xe3PE
                                                             uint32_t InstanceInclusionMask, uint32_t ComparisonValue,
                                                             float TMax, bool updateFlags, bool initialDoneBitValue,
                                                             uint32_t MissShaderIndex = 0, uint32_t HitGroupIndex = 0,
-                                                            uint32_t ShaderIndexMultiplier = 0) {
+                                                            uint32_t ShaderIndexMultiplier = 0,
+                                                            bool initializeHitRecords = true) {
   _createTraceRayInlinePrologue(StackPtr, RayInfo, RootNodePtr, RayFlags, InstanceInclusionMask, ComparisonValue, TMax,
-                                updateFlags, initialDoneBitValue, MissShaderIndex, HitGroupIndex,
-                                ShaderIndexMultiplier);
+                                updateFlags, initialDoneBitValue, MissShaderIndex, HitGroupIndex, ShaderIndexMultiplier,
+                                initializeHitRecords);
 }
 
 

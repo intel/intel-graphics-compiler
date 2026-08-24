@@ -406,9 +406,11 @@ void InlineRaytracing::LowerIntrinsics(Function &F) {
     IRB.SetInsertPoint(RQI);
 
     switch (RQI->getIntrinsicID()) {
-    case GenISAIntrinsic::GenISA_ConvertRayQueryHandleToRTStackPointer:
-      RQI->replaceAllUsesWith(getStackPtr(IRB, rqObject));
+    case GenISAIntrinsic::GenISA_ConvertRayQueryHandleToRTStackPointer: {
+      auto *stackPtr = getStackPtr(IRB, rqObject);
+      RQI->replaceAllUsesWith(stackPtr);
       break;
+    }
     case GenISAIntrinsic::GenISA_TraceRayInlineHL: {
       auto *I = cast<TraceRayInlineHLIntrinsic>(RQI);
       Value *Vec = UndefValue::get(IGCLLVM::FixedVectorType::get(IRB.getFloatTy(), I->getNumRayInfoFields()));
@@ -418,7 +420,8 @@ void InlineRaytracing::LowerIntrinsics(Function &F) {
       auto *flags = IRB.CreateOr(I->getFlag(), rqFlags);
 
       IRB.createTraceRayInlinePrologue(getStackPtr(IRB, rqObject), Vec, IRB.getRootNodePtr(I->getBVH()), flags,
-                                       I->getMask(), I->getComparisonValue(), I->getTMax(), false, true);
+                                       I->getMask(), I->getComparisonValue(), I->getTMax(), false, true, nullptr,
+                                       nullptr, nullptr, !m_pCGCtx->platform.isRayQueryReturnOptimizationEnabled());
 
       auto *hasAcceptHitAndEndSearchFlag =
           IRB.CreateAnd(flags, static_cast<uint32_t>(RTStackFormat::RayFlags::ACCEPT_FIRST_HIT_AND_END_SEARCH));
@@ -593,6 +596,11 @@ void InlineRaytracing::LowerIntrinsics(Function &F) {
       setPackedData(IRB, rqObject, data);
       break;
     }
+    case GenISAIntrinsic::GenISA_TraceRayInlinePotentialHitAsCommitted: {
+      RQI->replaceAllUsesWith(
+          IRB.CreateICmpEQ(getPackedData(IRB, rqObject).CommittedDataLocation, IRB.getInt32(PotentialHit)));
+      break;
+    }
     case GenISAIntrinsic::GenISA_TraceRayInlineCommittedStatus:
       RQI->replaceAllUsesWith(getPackedData(IRB, rqObject).CommittedStatus);
       break;
@@ -670,6 +678,13 @@ void InlineRaytracing::LowerIntrinsics(Function &F) {
 
     auto *shaderTy = IRB.CreateSelect(loadCommittedFromPotential, IRB.getInt32(AnyHit),
                                       IRB.getInt32(I->isCommitted() ? ClosestHit : AnyHit));
+
+    if (I->getInfoKind() == RAY_T_CURRENT && I->isCommitted() &&
+        m_pCGCtx->platform.isRayQueryReturnOptimizationEnabled()) {
+      auto *isMiss =
+          IRB.CreateICmpEQ(data.CommittedStatus, IRB.getInt32(RTStackFormat::COMMITTED_STATUS::COMMITTED_NOTHING));
+      shaderTy = IRB.CreateSelect(isMiss, IRB.getInt32(Miss), shaderTy);
+    }
 
     switch (I->getInfoKind()) {
     default:

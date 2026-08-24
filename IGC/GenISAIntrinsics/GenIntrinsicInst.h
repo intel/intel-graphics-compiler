@@ -1673,6 +1673,7 @@ public:
     case GenISAIntrinsic::GenISA_SyncStackToShadowMemory:
     case GenISAIntrinsic::GenISA_TraceRayInlineAbort:
     case GenISAIntrinsic::GenISA_TraceRayInlineCommittedStatus:
+    case GenISAIntrinsic::GenISA_TraceRayInlinePotentialHitAsCommitted:
     case GenISAIntrinsic::GenISA_TraceRayInlineCandidateType:
     case GenISAIntrinsic::GenISA_TraceRayInlineRayInfo:
     case GenISAIntrinsic::GenISA_TraceRayInlineCommitNonOpaqueTriangleHit:
