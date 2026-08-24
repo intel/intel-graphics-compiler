@@ -822,7 +822,9 @@ std::tuple<Value *, bool, bool> CodeGenPatternMatch::isIntegerSatTrunc(llvm::Sel
 
   // Truncate from signed integer. Need to check further for lower bound.
   Value *LHS = nullptr, *RHS = nullptr;
-  if (!match(Val, m_SMax(m_Value(LHS), m_Value(RHS))))
+  // LLVM 23+ m_SMax matches only llvm.smax, not the select idiom, so also
+  // check matchSelectPattern for select-based smax.
+  if (!match(Val, m_SMax(m_Value(LHS), m_Value(RHS))) && matchSelectPattern(Val, LHS, RHS).Flavor != SPF_SMAX)
     return std::make_tuple(nullptr, false, false);
 
   if (isa<ConstantInt>(LHS))
