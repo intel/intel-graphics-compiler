@@ -3941,6 +3941,9 @@ void vISAVerifier::verifyBFMixedMode(const CISA_INST *inst) {
   case ISA_MOV:
   case ISA_ADD:
   case ISA_SEL:
+  // fminmax is lowered to sel with a conditional modifier, so it has the same
+  // BF support as ISA_SEL.
+  case ISA_FMINMAX:
   case ISA_CMP:
     break;
   case ISA_COS:
@@ -3952,7 +3955,6 @@ void vISAVerifier::verifyBFMixedMode(const CISA_INST *inst) {
   case ISA_RSQRT:
   case ISA_SIN:
   case ISA_SQRT:
-  case ISA_FMINMAX:
   case ISA_TANH:
   case ISA_SIGM:
     if (irBuilder->supportPureBF())
