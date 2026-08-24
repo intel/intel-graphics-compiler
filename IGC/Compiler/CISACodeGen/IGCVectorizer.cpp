@@ -1625,7 +1625,7 @@ Instruction *IGCVectorizer::createVirtualNode(VecArr &WorkSet) {
   }
   auto Slice = createVector(WorkSet, IGCLLVM::getNextNonDebugInstruction(InsertPoint), false);
 
-  ReplaceCondition RepCondVirtualNodeFormation = [](Use &U) {
+  auto RepCondVirtualNodeFormation = [](Use &U) {
     if (llvm::isa<InsertElementInst>(U.getUser()))
       return false;
     return true;
