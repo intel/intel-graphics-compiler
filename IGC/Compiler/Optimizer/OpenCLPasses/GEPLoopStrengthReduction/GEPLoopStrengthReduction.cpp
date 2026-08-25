@@ -1,6 +1,6 @@
 /*========================== begin_copyright_notice ============================
 
-Copyright (C) 2023 Intel Corporation
+Copyright (C) 2023-2026 Intel Corporation
 
 SPDX-License-Identifier: MIT
 
@@ -433,6 +433,9 @@ bool ReductionCandidateGroup::addToGroup(ScalarEvolution &SE, GetElementPtrInst 
     return false;
 
   if (Base.GEP->getType() != GEP->getType())
+    return false;
+
+  if (Base.GEP->getSourceElementType() != GEP->getSourceElementType())
     return false;
 
   // Compare indices (except last one)
