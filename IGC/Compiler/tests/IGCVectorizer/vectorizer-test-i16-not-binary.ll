@@ -86,12 +86,8 @@ define spir_kernel void @quux() {
 ; Function Attrs: convergent nounwind readnone willreturn
 declare <8 x i16> @llvm.genx.GenISA.sub.group.dpas.v8i16.v8i16.v8i16.v8i16(<8 x i16>, <8 x i16>, <8 x i16>, i32, i32, i32, i32, i1) #1
 
-; Function Attrs: nofree nosync nounwind readnone speculatable willreturn
-declare i16 @llvm.exp2.i16(i16) #2
-
 attributes #0 = { convergent nounwind }
 attributes #1 = { convergent nounwind readnone willreturn }
-attributes #2 = { nofree nosync nounwind readnone speculatable willreturn }
 
 !igc.functions = !{!0}
 !0 = !{void ()* @quux, !1}

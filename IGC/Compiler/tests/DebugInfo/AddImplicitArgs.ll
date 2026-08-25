@@ -55,7 +55,9 @@ attributes #1 = { nounwind readnone }
 !9 = !DILocalVariable(name: "", line: 144, scope: !13, file: !15, type: !11)
 !12 = !DILocation(line: 0, column: 0, scope: !13)
 
-!13 = distinct !DISubprogram(unit: !14)
+!13 = distinct !DISubprogram(unit: !14, type: !25)
+!25 = !DISubroutineType(types: !26)
+!26 = !{null}
 
 !14 = distinct !DICompileUnit(language: DW_LANG_C, file: !15)
 
