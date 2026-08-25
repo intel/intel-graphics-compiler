@@ -22,6 +22,7 @@ SPDX-License-Identifier: MIT
 #include "vc/Support/GenXDiagnostic.h"
 #include "vc/Utils/GenX/IntrinsicsWrapper.h"
 #include "vc/Utils/GenX/KernelInfo.h"
+#include "vc/Utils/GenX/Region.h"
 #include "vc/Utils/General/BiF.h"
 
 #include <llvm/CodeGen/TargetPassConfig.h>
@@ -31,6 +32,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/Pass.h>
 
 #include "llvmWrapper/IR/Module.h"
+#include "llvmWrapper/Support/MathExtras.h"
 
 #include <string>
 
@@ -265,13 +267,63 @@ Value *GenXBuiltinFunctions::createIntDivRemLibraryCall(BinaryOperator &I,
   IRBuilder<> Builder(&I);
 
   auto *EmuTy = Ty;
+  auto *VTy = dyn_cast<IGCLLVM::FixedVectorType>(Ty);
   bool Promote = STy->getIntegerBitWidth() < 32;
   if (Promote) {
     auto *I32Ty = Builder.getInt32Ty();
-    if (auto *VTy = dyn_cast<IGCLLVM::FixedVectorType>(Ty))
+    if (VTy)
       EmuTy = IGCLLVM::FixedVectorType::get(I32Ty, VTy->getNumElements());
     else
       EmuTy = I32Ty;
+  }
+
+  // This pass runs after legalization, so promotion must not introduce calls
+  // whose operands exceed the two-GRF width invariant.
+  unsigned MaxPromotedWidth = 2 * ST->getGRFByteSize() / genx::DWordBytes;
+  if (Promote && VTy && VTy->getNumElements() > MaxPromotedWidth) {
+    SmallVector<std::pair<unsigned, Function *>, 4> SplitFuncs;
+    for (unsigned StartIdx = 0; StartIdx < VTy->getNumElements();) {
+      unsigned SplitWidth =
+          std::min(MaxPromotedWidth, static_cast<unsigned>(IGCLLVM::bit_floor(
+                                         VTy->getNumElements() - StartIdx)));
+      auto *SplitEmuTy =
+          IGCLLVM::FixedVectorType::get(Builder.getInt32Ty(), SplitWidth);
+      auto *Func =
+          getBuiltinDeclaration(M, Name, false, {SplitEmuTy}, "__rtz_");
+      if (!Func)
+        return nullptr;
+      SplitFuncs.emplace_back(SplitWidth, Func);
+      StartIdx += SplitWidth;
+    }
+
+    Value *Result = PoisonValue::get(Ty);
+    unsigned StartIdx = 0;
+    for (auto [SplitWidth, Func] : SplitFuncs) {
+      vc::Region SplitRegion{Ty};
+      SplitRegion.getSubregion(StartIdx, SplitWidth);
+      auto *Op0 = SplitRegion.createRdRegion(
+          I.getOperand(0), I.getName() + ".lhs.split" + Twine(StartIdx), &I,
+          I.getDebugLoc());
+      auto *Op1 = SplitRegion.createRdRegion(
+          I.getOperand(1), I.getName() + ".rhs.split" + Twine(StartIdx), &I,
+          I.getDebugLoc());
+
+      auto *SplitEmuTy =
+          IGCLLVM::FixedVectorType::get(Builder.getInt32Ty(), SplitWidth);
+      Value *ExtOp0 = IsSigned ? Builder.CreateSExt(Op0, SplitEmuTy)
+                               : Builder.CreateZExt(Op0, SplitEmuTy);
+      Value *ExtOp1 = IsSigned ? Builder.CreateSExt(Op1, SplitEmuTy)
+                               : Builder.CreateZExt(Op1, SplitEmuTy);
+      auto *Call = Builder.CreateCall(Func, {ExtOp0, ExtOp1},
+                                      I.getName() + ".split" + Twine(StartIdx));
+      auto *SplitTy = IGCLLVM::FixedVectorType::get(STy, SplitWidth);
+      Value *Trunc = Builder.CreateTrunc(Call, SplitTy);
+      Result = SplitRegion.createWrRegion(
+          Result, Trunc, I.getName() + ".join" + Twine(StartIdx), &I,
+          I.getDebugLoc());
+      StartIdx += SplitWidth;
+    }
+    return Result;
   }
 
   StringRef Suffix = EmuTy->getScalarType()->isIntegerTy(32) ? "__rtz_" : "";
