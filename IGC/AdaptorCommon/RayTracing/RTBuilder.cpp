@@ -1533,6 +1533,7 @@ Value *RTBuilder::canonizePointer(Value *Ptr) {
 }
 
 
+
 void RTBuilder::setReturnAlignment(CallInst *CI, uint32_t AlignVal) {
   Align Alt(AlignVal);
   CI->addRetAttr(Attribute::getWithAlignment(CI->getContext(), Alt));

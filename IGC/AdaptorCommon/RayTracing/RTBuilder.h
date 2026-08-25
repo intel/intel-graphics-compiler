@@ -381,6 +381,7 @@ public:
 
   Value *getSyncRTStackSize();
 
+
 private:
   TraceRayIntrinsic *createTraceRay(Value *bvhLevel, Value *traceRayCtrl, TraceRayMode mode,
                                     Value *globalBufferPointer = nullptr, const Twine &PayloadName = "");
