@@ -549,6 +549,60 @@ getVectorOperandStartByte(const print_format_provider_t *header,
              CISATypeTable[var->getType()].typeSize;
 }
 
+const input_info_t *vISAVerifier::getKernelInputDecl(const var_info_t *base) {
+  unsigned numPreDefinedVars = Get_CISA_PreDefined_Var_Count();
+  for (unsigned idx = 0; idx < header->getInputCount(); ++idx) {
+    const input_info_t *in = header->getInput(idx);
+    if (in->getInputClass() == INPUT_GENERAL &&
+        in->index >= numPreDefinedVars &&
+        header->getVar(in->index - numPreDefinedVars) == base) {
+      return in;
+    }
+  }
+  return nullptr;
+}
+
+void vISAVerifier::checkOperandAlignment(const CISA_INST *inst,
+                                         const var_info_t *base,
+                                         unsigned offset,
+                                         unsigned requiredAlign,
+                                         const char *operandName) {
+  if (!base)
+    return;
+  unsigned grfSize = irBuilder->getGRFSize();
+  ISA_Opcode opcode = (ISA_Opcode)inst->opcode;
+  unsigned baseAlignBytes = getAlignInBytes(base->getAlignment(), grfSize);
+  if (const input_info_t *iit = getKernelInputDecl(base)) {
+    // For input decl, check the alignment using its offset
+    baseAlignBytes = iit->offset;
+  }
+
+  bool isBaseAligned = (baseAlignBytes % requiredAlign) == 0;
+  bool isAligned = isBaseAligned && (offset % requiredAlign) == 0;
+  if (requiredAlign == grfSize) {
+    REPORT_INSTRUCTION(options, isAligned, "%s %s %s must be GRF-aligned",
+                       ISA_Inst_Table[opcode].str, operandName,
+                       isBaseAligned ? "operand" : "operand's base variable");
+  } else {
+    REPORT_INSTRUCTION(options, isAligned, "%s %s %s must be %d-byte aligned",
+                       ISA_Inst_Table[opcode].str, operandName,
+                       isBaseAligned ? "operand" : "operand's base variable",
+                       requiredAlign);
+  }
+}
+
+void vISAVerifier::checkVectorOperandAlignment(const CISA_INST *inst,
+                                               const vector_opnd &opnd,
+                                               unsigned requiredAlign,
+                                               const char *operandName) {
+  unsigned numPreDefinedVars = Get_CISA_PreDefined_Var_Count();
+  unsigned grfSize = irBuilder->getGRFSize();
+  const var_info_t *base;
+  unsigned offset = getVectorOperandStartByte(header, opnd, numPreDefinedVars,
+                                              grfSize, &base);
+  checkOperandAlignment(inst, base, offset, requiredAlign, operandName);
+}
+
 void vISAVerifier::verifyRegion(const CISA_INST *inst, unsigned i) {
   ISA_Opcode opcode = (ISA_Opcode)inst->opcode;
   /// Dataport instructions must be verified separately
@@ -1703,63 +1757,13 @@ void vISAVerifier::verifyInstructionDpas(const CISA_INST *inst, unsigned i) {
     return GenPrecisionTable[(int)P].BitSize;
   };
 
-  // Return input_info_t if var_info_t base is input; nullptr otherwise.
-  auto getKernelInputDecl = [&](const var_info_t *base) {
-    for (unsigned idx = 0; idx < header->getInputCount(); ++idx) {
-      const input_info_t *in = header->getInput(idx);
-      if (in->getInputClass() == INPUT_GENERAL &&
-          in->index >= numPreDefinedVars &&
-          header->getVar(in->index - numPreDefinedVars) == base) {
-        return in;
-      }
-    }
-    return (const input_info_t *)nullptr;
-  };
-
-  // Common dst/src0/src1/src2 alignment check: the operand's base declare
-  // must itself be aligned at least as strictly as required, and the
-  // operand's offset within that base must also be a multiple of it. Skipped
-  // when base is null (predefined operand, e.g. %null).
-  auto checkDpasOperandAlignment = [&](const var_info_t *base, unsigned offset,
-                                       unsigned align,
-                                       const char *operandName) {
-    if (!base)
-      return;
-    unsigned baseAlignBytes = getAlignInBytes(base->getAlignment(), grfSize);
-    if (const input_info_t *iit = getKernelInputDecl(base)) {
-      // For input decl, check the alignment using its offset
-      baseAlignBytes = iit->offset;
-    }
-
-    bool isBaseAligned = (baseAlignBytes % align) == 0;
-    bool isAligned = isBaseAligned && (offset % align) == 0;
-    if (align == grfSize) {
-      REPORT_INSTRUCTION(options, isAligned, "%s %s %s must be GRF-aligned",
-                         ISA_Inst_Table[opcode].str, operandName,
-                         isBaseAligned ? "operand" : "operand's base variable");
-    } else {
-      REPORT_INSTRUCTION(options, isAligned, "%s %s %s must be %d-byte aligned",
-                         ISA_Inst_Table[opcode].str, operandName,
-                         isBaseAligned ? "operand" : "operand's base variable",
-                         align);
-    }
-  };
-
   auto checkDpasRawOperandAlignment = [&](const raw_opnd &opnd, unsigned align,
                                           const char *operandName) {
     const var_info_t *base;
     unsigned offset =
         getRawOperandStartByte(header, opnd, numPreDefinedVars, &base);
-    checkDpasOperandAlignment(base, offset, align, operandName);
+    checkOperandAlignment(inst, base, offset, align, operandName);
   };
-
-  auto checkDpasVectorOperandAlignment =
-      [&](const vector_opnd &opnd, unsigned align, const char *operandName) {
-        const var_info_t *base;
-        unsigned offset = getVectorOperandStartByte(
-            header, opnd, numPreDefinedVars, grfSize, &base);
-        checkDpasOperandAlignment(base, offset, align, operandName);
-      };
 
   // No predicate
   REPORT_INSTRUCTION(options, inst->pred.isNullPred(),
@@ -1851,10 +1855,10 @@ void vISAVerifier::verifyInstructionDpas(const CISA_INST *inst, unsigned i) {
         if (isFp16OrFp8) {
           // Both base and offset must be 16-byte aligned
           //   subreg : {0,16,32,48}
-          checkDpasOperandAlignment(src3Base, src3Sub, 16, "Src3");
+          checkOperandAlignment(inst, src3Base, src3Sub, 16, "Src3");
         } else if (isE2M1) {
           // base is grf aligned
-          checkDpasOperandAlignment(src3Base, 0, grfSize, "Src3");
+          checkOperandAlignment(inst, src3Base, 0, grfSize, "Src3");
           {
             REPORT_INSTRUCTION(
                 options, src3Sub == 0 || src3Sub == 16,
@@ -1874,10 +1878,10 @@ void vISAVerifier::verifyInstructionDpas(const CISA_INST *inst, unsigned i) {
         if (isFp16OrFp8) {
           // Both base and offset must be 8-byte aligned
           //   subreg offset: {0,8,16,24,32,40,48,56}
-          checkDpasOperandAlignment(src4Base, src4Sub, 8, "Src4");
+          checkOperandAlignment(inst, src4Base, src4Sub, 8, "Src4");
         } else if (isE2M1) {
           // base should be GRF aligned
-          checkDpasOperandAlignment(src4Base, 0, grfSize, "Src4");
+          checkOperandAlignment(inst, src4Base, 0, grfSize, "Src4");
           {
             REPORT_INSTRUCTION(
                 options,
@@ -1966,7 +1970,7 @@ void vISAVerifier::verifyInstructionDpas(const CISA_INST *inst, unsigned i) {
       unsigned src2Align =
           (D * getPrecisionSizeInBits(A) * getDpasOpsPerChan(W, A)) / 8;
       if (src2Align != 0) {
-        checkDpasVectorOperandAlignment(src2, src2Align, "src2");
+        checkVectorOperandAlignment(inst, src2, src2Align, "src2");
       }
     }
 

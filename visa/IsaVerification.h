@@ -78,6 +78,23 @@ private:
   void verifyInstructionControlFlow(const CISA_INST *inst);
   void verifyInstructionMisc(const CISA_INST *inst);
   void verifyInstructionDpas(const CISA_INST *inst, unsigned i);
+
+  // Return input_info_t if var_info_t base is input; nullptr otherwise.
+  const input_info_t *getKernelInputDecl(const var_info_t *base);
+  // Common operand alignment check: the operand's base declare must itself
+  // be aligned at least as strictly as required, and the operand's offset
+  // within that base must also be a multiple of it. Skipped when base is
+  // null (predefined operand, e.g. %null).
+  //   operandName : used in error message
+  void checkOperandAlignment(const CISA_INST *inst, const var_info_t *base,
+                             unsigned offset, unsigned requiredAlign,
+                             const char *operandName);
+  // Vector-operand variant of checkOperandAlignment: computes the operand's
+  // base declare and byte offset first, then delegates.
+  void checkVectorOperandAlignment(const CISA_INST *inst,
+                                   const vector_opnd &opnd,
+                                   unsigned requiredAlign,
+                                   const char *operandName);
   void verifyInstructionArith(const CISA_INST *inst);
   void verifyInstructionLogic(const CISA_INST *inst);
   void verifyInstructionCompare(const CISA_INST *inst);
