@@ -1104,12 +1104,14 @@ bool CodeLoopSinking::loopSink(Loop *L, LoopSinkMode Mode) {
   for (BasicBlock *BB : L->blocks())
     AffectedBBs.insert(BB);
 
-  // Save original positions for rollback
+  // Save original positions for rollback. Skipping the terminator: re-moving it strands
+  // its DbgRecords in the block's trailing marker, and it won't be sunk anyway.
   DenseMap<BasicBlock *, InstrVec> OriginalPositions;
   for (BasicBlock *BB : AffectedBBs) {
     InstrVec BBInstructions;
     for (Instruction &I : *BB)
-      BBInstructions.push_back(&I);
+      if (!I.isTerminator())
+        BBInstructions.push_back(&I);
     OriginalPositions[BB] = std::move(BBInstructions);
   }
 

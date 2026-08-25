@@ -7,7 +7,7 @@
 ;============================ end_copyright_notice =============================
 ; REQUIRES: regkeys
 ; RUN: igc_opt --regkey LoopSinkMinSave=0 --regkey ForceLoopSink=1 --regkey CodeLoopSinkingMinSize=10 --CheckInstrTypes -igc-update-instrtypes-on-run --basic-aa --igc-code-loop-sinking --verify -S %s | FileCheck %s --check-prefixes=CHECK-SINK,%if llvm-22-plus %{CHECK-SINK-DBG-RECORDS%} %else %{CHECK-SINK-DBG-INTRINSIC%}
-; RUN: %if !llvm-22-plus %{ igc_opt --regkey LoopSinkMinSave=0 --regkey ForceLoopSink=1 --regkey LoopSinkForceRollback=1 --regkey CodeLoopSinkingMinSize=10 --CheckInstrTypes -igc-update-instrtypes-on-run --basic-aa --igc-code-loop-sinking --verify -S %s | FileCheck %s --check-prefix=CHECK-ROLLBACK %}
+; RUN: igc_opt --regkey LoopSinkMinSave=0 --regkey ForceLoopSink=1 --regkey LoopSinkForceRollback=1 --regkey CodeLoopSinkingMinSize=10 --CheckInstrTypes -igc-update-instrtypes-on-run --basic-aa --igc-code-loop-sinking --verify -S %s | FileCheck %s --check-prefixes=%if llvm-22-plus %{CHECK-ROLLBACK-DBG-RECORDS%} %else %{CHECK-ROLLBACK-DBG-INTRINSIC%}
 
 ; CHECK-LABEL: @foo(
 
@@ -26,8 +26,10 @@
 ; For rollback check the debug value is not duplicated
 ; Also --verify pass checks that the IR is correct
 
-; CHECK-ROLLBACK:     call void @llvm.dbg.value
-; CHECK-ROLLBACK-NOT: call void @llvm.dbg.value
+; CHECK-ROLLBACK-DBG-INTRINSIC:     call void @llvm.dbg.value
+; CHECK-ROLLBACK-DBG-INTRINSIC-NOT: call void @llvm.dbg.value
+; CHECK-ROLLBACK-DBG-RECORDS:     #dbg_value(
+; CHECK-ROLLBACK-DBG-RECORDS-NOT: #dbg_value(
 
 
 define spir_kernel void @foo(i32 %t, i32 %count) {
