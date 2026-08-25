@@ -19,6 +19,7 @@ SPDX-License-Identifier: MIT
 #include <llvm/IR/IntrinsicInst.h>
 #include <llvm/IR/PatternMatch.h>
 #include "llvm/Support/KnownBits.h"
+#include "llvm/Support/MathExtras.h"
 #include "common/LLVMWarningsPop.hpp"
 #include <llvmWrapper/IR/Instructions.h>
 #include "llvmWrapper/Support/Alignment.h"
@@ -3235,12 +3236,8 @@ bool CodeGenPatternMatch::MatchLoadStoreAtomicsStatelessUniformBase(llvm::Instru
       return false;
     }
 
-    // checks if input fits in allocated bits
-    // assumes signed
-    auto fitsIn = [](int what, int bits) { return what >= -(1 << (bits - 1)) && what <= (1 << (bits - 1)) - 1; };
-
     // 22 bits in the message descriptor for immediate offset
-    if (!fitsIn(static_cast<int>(ImmOffset->getSExtValue() / DataSizeInBytes), 22)) {
+    if (!llvm::isInt<22>(ImmOffset->getSExtValue() / DataSizeInBytes)) {
       return false;
     }
   }
@@ -3402,11 +3399,9 @@ bool CodeGenPatternMatch::MatchLoadStoreAtomicsStatefulEff64(GenIntrinsicInst *I
       bool CanFoldImmediate =
           valueIsPositive(TmpVarOffset, m_DL);
 
-      // checks if input fits in allocated bits
-      // assumes signed
-      auto fitsIn = [](int what, int bits) { return what >= -(1 << (bits - 1)) && what <= (1 << (bits - 1)) - 1; };
+      // 17 bits in the message descriptor for immediate offset
       if (ImmOffset->isNegative() || !CanFoldImmediate || (ImmOffset->getSExtValue() % DataSizeInBytes) != 0 ||
-          !fitsIn(static_cast<int>(ImmOffset->getSExtValue() / DataSizeInBytes), 17))
+          !llvm::isInt<17>(ImmOffset->getSExtValue() / DataSizeInBytes))
         ImmOffset = nullptr;
       else
         VarOffset = TmpVarOffset;
