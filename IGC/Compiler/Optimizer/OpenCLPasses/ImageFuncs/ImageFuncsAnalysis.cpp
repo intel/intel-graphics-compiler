@@ -49,6 +49,7 @@ bool ImageFuncsAnalysis::run(Module &M, IGCMD::MetaDataUtils *pMdUtils, IGC::Cod
   bool changed = false;
   m_pMDUtils = pMdUtils;
   CodeGenContext *ctx = pCtx;
+  m_pCtx = pCtx;
   m_modMD = ctx->getModuleMetaData();
 
   m_useAdvancedBindlessMode = m_modMD->UseBindlessImage;
@@ -183,9 +184,13 @@ void ImageFuncsAnalysis::visitCallInst(CallInst &CI) {
     }
   }
 
-  // Only these args should be hit by the indirect case
-  IGC_ASSERT(funcName == GET_SAMPLER_ADDRESS_MODE || funcName == GET_SAMPLER_NORMALIZED_COORDS ||
-             funcName == GET_SAMPLER_SNAP_WA_REQUIRED);
+  if (funcName != GET_SAMPLER_ADDRESS_MODE && funcName != GET_SAMPLER_NORMALIZED_COORDS &&
+      funcName != GET_SAMPLER_SNAP_WA_REQUIRED) {
+    m_pCtx->EmitError("Incorrect use of an image/sampler __builtin_IB_* function: the argument does "
+                      "not reference an image or sampler.",
+                      &CI);
+    return;
+  }
 }
 
 #if LLVM_VERSION_MAJOR >= 16

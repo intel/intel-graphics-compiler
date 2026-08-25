@@ -56,7 +56,8 @@ Function *CCommand::getFunctionDeclaration(IGCLLVM::Intrinsic id, ArrayRef<Type 
 
 void CCommand::replaceCallInst(IGCLLVM::Intrinsic intrinsicName, ArrayRef<Type *> Tys) {
   Function *func = getFunctionDeclaration(intrinsicName, Tys);
-  Instruction *newCall = CallInst::Create(func, m_args, m_pCallInst->getName(), IGCLLVM::insertPosition(m_pCallInst));
+  StringRef newCallName = func->getReturnType()->isVoidTy() ? "" : m_pCallInst->getName();
+  Instruction *newCall = CallInst::Create(func, m_args, newCallName, IGCLLVM::insertPosition(m_pCallInst));
 
   if (isa<FPMathOperator>(m_pCallInst)) {
     if (auto II = dyn_cast<IntrinsicInst>(newCall)) {
@@ -65,7 +66,7 @@ void CCommand::replaceCallInst(IGCLLVM::Intrinsic intrinsicName, ArrayRef<Type *
   }
 
   newCall->setDebugLoc(m_DL);
-  m_pCallInst->replaceAllUsesWith(newCall);
+  replaceCallInstUses(newCall);
 }
 
 void CCommand::replaceGenISACallInst(GenISAIntrinsic::ID intrinsicName, ArrayRef<Type *> Tys) {
@@ -84,22 +85,29 @@ void CCommand::replaceGenISACallInst(GenISAIntrinsic::ID intrinsicName, ArrayRef
   } break;
   }
   Function *func = getFunctionDeclaration(intrinsicName, Tys);
-  Instruction *newCall = CallInst::Create(func, m_args, m_pCallInst->getName(), IGCLLVM::insertPosition(m_pCallInst));
+  StringRef newCallName = func->getReturnType()->isVoidTy() ? "" : m_pCallInst->getName();
+  Instruction *newCall = CallInst::Create(func, m_args, newCallName, IGCLLVM::insertPosition(m_pCallInst));
   newCall->setDebugLoc(m_DL);
-  if (m_pCallInst->getType()->isVoidTy()) {
-    IGC_ASSERT_MESSAGE(newCall->getType()->isVoidTy(), "Wrong type");
-  } else {
-    if (newCall->getType()->isVoidTy()) {
-      IGC_ASSERT_MESSAGE(m_pCallInst->getNumUses() == 0, "invalid intrinsic replacement");
-    } else {
-      m_pCallInst->replaceAllUsesWith(newCall);
-    }
-  }
+  replaceCallInstUses(newCall);
 }
 
 void CCommand::emitError(const char *ErrorStr, const Value *Context) {
   m_pCodeGenContext->EmitError(ErrorStr, Context);
   m_bHasError = true;
+}
+
+bool CCommand::replaceCallInstUses(Value *newVal) {
+  if (m_pCallInst->getType() == newVal->getType()) {
+    m_pCallInst->replaceAllUsesWith(newVal);
+    return true;
+  }
+  if (m_pCallInst->use_empty()) {
+    return true;
+  }
+  emitError("Incorrect declaration of a __builtin_IB_* function: the declared "
+            "return type does not match the expected type.",
+            m_pCallInst);
+  return false;
 }
 
 void CImagesBI::prepareZeroOffsets() {
@@ -560,7 +568,8 @@ void CImagesBI::replaceGenISATypedRead() {
   Type *Tys[] = {m_args[0]->getType()};
 
   Function *func = getFunctionDeclaration(intrinsicName, Tys);
-  Instruction *newCall = CallInst::Create(func, m_args, m_pCallInst->getName(), IGCLLVM::insertPosition(m_pCallInst));
+  StringRef newCallName = func->getReturnType()->isVoidTy() ? "" : m_pCallInst->getName();
+  Instruction *newCall = CallInst::Create(func, m_args, newCallName, IGCLLVM::insertPosition(m_pCallInst));
   if (m_pCallInst->getType()->getScalarType() != m_pFloatType) {
     // GenISA_typedread intrinsic returns <4 x float>
     // therefore we do bitcast that should disappear in the final code.
@@ -571,7 +580,7 @@ void CImagesBI::replaceGenISATypedRead() {
     newCall = tmp;
   }
   newCall->setDebugLoc(m_DL);
-  m_pCallInst->replaceAllUsesWith(newCall);
+  replaceCallInstUses(newCall);
 }
 
 class COCL_sample : public CImagesBI {
@@ -1004,7 +1013,7 @@ public:
     default:
       emitError("Unsupported bindless image property requested.", NULL);
     }
-    m_pCallInst->replaceAllUsesWith(prop);
+    replaceCallInstUses(prop);
   }
 };
 
@@ -1293,7 +1302,7 @@ public:
 
     CallInst *pCall = IRB.CreateMemCpy(pDsti8, pSrci8, pNumBytes, int_cast<unsigned int>(Align));
     pCall->setDebugLoc(m_DL);
-    m_pCallInst->replaceAllUsesWith(pCall);
+    replaceCallInstUses(pCall);
   }
 };
 
@@ -1310,7 +1319,7 @@ public:
     Value *sampleIndex = m_pCallInst->getOperand(1);
     Value *samplePosPackedValues = builder.Create_SamplePos(textureOperand, sampleIndex);
     cast<llvm::Instruction>(samplePosPackedValues)->setDebugLoc(m_DL);
-    m_pCallInst->replaceAllUsesWith(samplePosPackedValues);
+    replaceCallInstUses(samplePosPackedValues);
   }
 };
 

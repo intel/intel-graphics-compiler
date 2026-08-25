@@ -86,6 +86,7 @@ private:
   IGCMD::MetaDataUtils *m_pMDUtils = nullptr;
   /// @brief  Module metadata, cached at run() entry
   ModuleMetaData *m_modMD = nullptr;
+  IGC::CodeGenContext *m_pCtx = nullptr;
 
   /// @brief Indicate whether advanced bindless mode is used.
   ///        If false, implicit image args for information like width, height, etc.

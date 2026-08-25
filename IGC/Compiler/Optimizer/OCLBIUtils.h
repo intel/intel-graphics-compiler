@@ -92,6 +92,8 @@ protected:
   /// @param Context Value to get debug location to print out the relevant info.
   void emitError(const char *ErrorStr, const llvm::Value *Context);
 
+  bool replaceCallInstUses(llvm::Value *newVal);
+
   llvm::Value *m_pFloatZero;
   llvm::Value *m_pIntZero;
   llvm::Value *m_pIntOne;

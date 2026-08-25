@@ -43,6 +43,8 @@ bool ImageFuncResolution::runOnFunction(Function &F, IGC::IGCMD::MetaDataUtils *
   m_implicitArgs = ImplicitArgs(F, pMdUtils, pModMD);
   m_pCtx = pCtx;
   m_changed = false;
+  if (m_pCtx->HasError())
+    return false;
   visit(F);
   return m_changed;
 }
