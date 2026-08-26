@@ -1278,11 +1278,19 @@ void InitializeRegKeys() {
       LoadDebugFlagsFromFile();
       LoadDebugFlagsFromString(IGC_GET_REGKEYSTRING(SelectiveHashOptions));
     }
-    if (IGC_IS_FLAG_ENABLED(LLVMCommandLine)) {
+    {
       std::vector<char *> args;
       args.push_back((char *)("IGC"));
-      ParseCStringVector(args, IGC_GET_REGKEYSTRING(LLVMCommandLine));
-      llvm::cl::ParseCommandLineOptions(args.size(), &args[0]);
+
+      auto &RegOpts = llvm::cl::getRegisteredOptions();
+      if (RegOpts.count("instcombine-code-sinking"))
+        args.push_back((char *)("-instcombine-code-sinking=0"));
+
+      if (IGC_IS_FLAG_ENABLED(LLVMCommandLine))
+        ParseCStringVector(args, IGC_GET_REGKEYSTRING(LLVMCommandLine));
+
+      if (args.size() > 1)
+        llvm::cl::ParseCommandLineOptions(args.size(), &args[0]);
     }
 
     setImpliedIGCKeys();

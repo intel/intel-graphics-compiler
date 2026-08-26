@@ -529,6 +529,11 @@ static void parseLLVMOptions(const std::string &Args) {
   SmallVector<const char *, 8> Argv{"vc-codegen"};
   cl::TokenizeGNUCommandLine(Args, Saver, Argv);
 
+  auto &RegOpts = cl::getRegisteredOptions();
+  if (RegOpts.count("instcombine-code-sinking") &&
+      Args.find("instcombine-code-sinking") == std::string::npos)
+    Argv.push_back("-instcombine-code-sinking=0");
+
   // Reset all options to ensure that scalar part does not affect
   // vector compilation.
   cl::ResetAllOptionOccurrences();
