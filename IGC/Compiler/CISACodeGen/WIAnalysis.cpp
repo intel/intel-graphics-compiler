@@ -280,6 +280,8 @@ void WIAnalysisRunner::init(llvm::Function *F, llvm::LoopInfo *LI, llvm::Dominat
   m_ModMD = ModMD;
   m_TT = TransTable;
 
+  m_partialEntryMask = !isEntryFunc(MDUtils, F);
+
   // CS uniformness
   m_localIDxUniform = false;
   m_localIDyUniform = false;

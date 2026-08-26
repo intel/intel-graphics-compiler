@@ -99,7 +99,8 @@ public:
 
   /// check if a value is defined inside divergent control-flow
   bool insideDivergentCF(const llvm::Value *val) const {
-    return (llvm::isa<llvm::Instruction>(val) &&
+    return llvm::isa<llvm::Instruction>(val) &&
+           (m_partialEntryMask ||
             m_ctrlBranches.find(llvm::cast<llvm::Instruction>(val)->getParent()) != m_ctrlBranches.end());
   }
 
@@ -277,6 +278,11 @@ private:
   /// Stores an updated list of all dependencies
   /// for each block, store the list of diverging branches that affect it
   llvm::DenseMap<const llvm::BasicBlock *, llvm::SmallPtrSet<const llvm::Instruction *, 4>> m_ctrlBranches;
+
+  /// True for non-entry functions, which the caller may have entered with a partial execution
+  /// mask. m_ctrlBranches is built from one function's own CFG and cannot see that mask, so
+  /// every block of such a function counts as divergent.
+  bool m_partialEntryMask = false;
 
   /// Iteratively one set holds the changed from the previous iteration and
   /// the other holds the new changed values from the current iteration.
