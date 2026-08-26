@@ -11304,6 +11304,7 @@ intrinsics:
                 comment: "rayQueryFlags"
         attributes:
             - !AttributeID "NoUnwind"
+            - !AttributeID "WillReturn"
     - !<IntrinsicDefinition>
         name: "GenISA_ConvertRayQueryHandleToRTStackPointer"
         comment: "Raytracing: Return the RTStack for a rayquery allocation"
