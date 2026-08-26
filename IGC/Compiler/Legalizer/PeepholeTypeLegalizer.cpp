@@ -1099,9 +1099,14 @@ void PeepholeTypeLegalizer::cleanupZExtInst(Instruction &I) {
       return;
     }
 
-    unsigned ipElmtSize = prevInst->getOperand(0)->getType()->getScalarSizeInBits();
-    unsigned ipVecSize = (unsigned)cast<IGCLLVM::FixedVectorType>(prevInst->getOperand(0)->getType())->getNumElements();
+    Value *ipVec = prevInst->getOperand(0);
+    unsigned ipElmtSize = ipVec->getType()->getScalarSizeInBits();
+    unsigned ipVecSize = (unsigned)cast<IGCLLVM::FixedVectorType>(ipVec->getType())->getNumElements();
     unsigned convFactor = promoteToInt / ipElmtSize;
+
+    if (!ipVec->getType()->getScalarType()->isIntegerTy())
+      ipVec = m_builder->CreateBitCast(
+          ipVec, IGCLLVM::FixedVectorType::get(Type::getIntNTy(I.getContext(), ipElmtSize), ipVecSize));
 
     Value *vecRes =
         UndefValue::get(IGCLLVM::FixedVectorType::get(llvm::Type::getIntNTy(I.getContext(), promoteToInt), quotient));
@@ -1112,14 +1117,13 @@ void PeepholeTypeLegalizer::cleanupZExtInst(Instruction &I) {
       Value *NewVal = nullptr, *Hi = nullptr;
       unsigned i = 0;
 
-      NewVal = m_builder->CreateZExt(
-          m_builder->CreateExtractElement(prevInst->getOperand(0), m_builder->getIntN(promoteToInt, Idx)), resElmtTy);
+      NewVal = m_builder->CreateZExt(m_builder->CreateExtractElement(ipVec, m_builder->getIntN(promoteToInt, Idx)),
+                                     resElmtTy);
       ++Idx;
       if (++i < convFactor) {
         if (Idx < ipVecSize) {
-          Hi = m_builder->CreateZExt(
-              m_builder->CreateExtractElement(prevInst->getOperand(0), m_builder->getIntN(promoteToInt, Idx)),
-              resElmtTy);
+          Hi = m_builder->CreateZExt(m_builder->CreateExtractElement(ipVec, m_builder->getIntN(promoteToInt, Idx)),
+                                     resElmtTy);
           NewVal = m_builder->CreateOr(m_builder->CreateShl(Hi, ipElmtSize), NewVal);
           ++Idx;
           vecRes = m_builder->CreateInsertElement(vecRes, NewVal, o);
