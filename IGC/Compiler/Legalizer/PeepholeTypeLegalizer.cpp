@@ -494,8 +494,8 @@ void PeepholeTypeLegalizer::legalizeBinaryOperator(Instruction &I) {
               return m_builder->CreateShl(Op0, ShiftAmt);
             };
             // V[Idx] = (V[EltIdx] >> NewShiftAmt) | (V[EltIdx + 1] << (promoteToInt - NewShiftAmt))
-            NewInst = m_builder->CreateOr(lshr(getElt(NewLargeSrc1VecForm, EltIdx), NewShiftAmt),
-                                          shl(getElt(NewLargeSrc1VecForm, EltIdx + 1), promoteToInt - NewShiftAmt));
+            Value *Carry = shl(getElt(NewLargeSrc1VecForm, EltIdx + 1), promoteToInt - NewShiftAmt);
+            NewInst = m_builder->CreateOr(lshr(getElt(NewLargeSrc1VecForm, EltIdx), NewShiftAmt), Carry);
           }
         } else {
           instSupported = false;
@@ -537,8 +537,8 @@ void PeepholeTypeLegalizer::legalizeBinaryOperator(Instruction &I) {
               return m_builder->CreateShl(Op0, ShiftAmt);
             };
             // V[Idx] = (V[SrcIdx] << NewShiftAmt) | (V[SrcIdx - 1] >> (promoteToInt - NewShiftAmt))
-            NewInst = m_builder->CreateOr(shl(getElt(NewLargeSrc1VecForm, SrcIdx), NewShiftAmt),
-                                          lshr(getElt(NewLargeSrc1VecForm, SrcIdx - 1), promoteToInt - NewShiftAmt));
+            Value *Carry = lshr(getElt(NewLargeSrc1VecForm, SrcIdx - 1), promoteToInt - NewShiftAmt);
+            NewInst = m_builder->CreateOr(shl(getElt(NewLargeSrc1VecForm, SrcIdx), NewShiftAmt), Carry);
           }
         } else {
           instSupported = false;
