@@ -12523,6 +12523,18 @@ int GlobalRA::coloringRegAlloc() {
         }
       }
 
+      // IGC sets vISA_GRFBumpUpNumber to 2 for OpenCL (default 1),
+      // declaring that registers per thread matter more than threads there and
+      // that stepping the GRF number up is cheap. Holding such kernels at a
+      // smaller GRF via remat regresses them, so keep the original eager bump.
+      if (builder.getuint32Option(vISA_GRFBumpUpNumber) > 1) {
+          if (VRTIncreasedGRF(coloring)) {
+              RA_TRACE(std::cout << "\t--VRT GRF bump to " << kernel.getNumRegTotal()
+                  << ". Re-run RA\n");
+              continue;
+          }
+      }
+
       if (auto bump = forceGRFBumpOnInfCostAddrTaken(coloring, liveAnalysis)) {
         if (*bump) {
           RA_TRACE(std::cout
