@@ -7446,7 +7446,7 @@ void InsertBranchOpt::atomicSplitOpt(Function &F, int mode) {
       //    use the original atomic inst
       // else
       //    use typedread or load (the atomic is a no-op)
-      Value *identity = ConstantInt::get(src->getType(), (op == AtomicOp::EATOMIC_AND) ? -1 : 0);
+      Value *identity = ConstantInt::getSigned(src->getType(), (op == AtomicOp::EATOMIC_AND) ? -1 : 0);
       Instruction *condInst = cast<Instruction>(builder.CreateICmp(ICmpInst::ICMP_NE, src, identity));
       splitBBAndName(condInst, inst, &ThenTerm, &ElseTerm, MergeBlock);
       IGCLLVM::moveBefore(inst, ThenTerm);

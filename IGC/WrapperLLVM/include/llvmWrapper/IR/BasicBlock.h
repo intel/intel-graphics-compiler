@@ -15,6 +15,14 @@ SPDX-License-Identifier: MIT
 #include "IGC/common/LLVMWarningsPop.hpp"
 
 namespace IGCLLVM {
+inline bool hasTerminator(const llvm::BasicBlock *BB) {
+#if LLVM_VERSION_MAJOR >= 23
+  return BB->hasTerminator();
+#else
+  return BB->getTerminator() != nullptr;
+#endif
+}
+
 inline size_t sizeWithoutDebug(const llvm::BasicBlock *BB) {
 #if LLVM_VERSION_MAJOR >= 22
   return BB->size();
