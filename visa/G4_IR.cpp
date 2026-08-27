@@ -213,14 +213,30 @@ void G4_INST::initOperands() {
   for (G4_Operand *src : srcs)
     resetRightBound(src);
   updatePredicateCtrl();
-  computeRightBound(predicate);
-  computeRightBound(mod);
 
   associateOpndWithInst(dst, this);
   for (G4_Operand *src : srcs)
     associateOpndWithInst(src, this);
   associateOpndWithInst(predicate, this);
   associateOpndWithInst(mod, this);
+
+  // This runs from G4_INST's ctor, so the object's dynamic type is still
+  // G4_INST and no derived class member has been initialized yet. That rules
+  // out going through computeRightBound(): even though the call is statically
+  // bound to G4_INST::computeRightBound(), that function inspects derived
+  // state (G4_InstIntrinsic::intrinsicId, via isPseudoKill()/isPseudoUse()/
+  // isFillIntrinsic()/isSpillIntrinsic()). Reading it here is UB, and when the
+  // recycled arena memory happens to hold Intrinsic::Spill or Intrinsic::Fill
+  // the asSpillIntrinsic()/asFillIntrinsic() virtual call lands back on
+  // G4_INST::computeRightBound() and recurses until the stack overflows.
+  //
+  // None of those special cases apply to a predicate or a cond modifier, so
+  // compute their bounds directly on the operand instead. dst/srcs keep an
+  // unset bound here and are computed lazily, once the object is complete.
+  if (predicate)
+    predicate->computeRightBound(execSize);
+  if (mod)
+    mod->computeRightBound(execSize);
 }
 
 G4_INST::G4_INST(const IR_Builder &irb, G4_Predicate *prd, G4_opcode o,
