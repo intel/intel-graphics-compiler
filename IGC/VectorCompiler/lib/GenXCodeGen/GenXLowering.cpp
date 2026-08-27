@@ -2648,40 +2648,50 @@ bool GenXLowering::lowerBoolScalarSelect(SelectInst *SI) {
  * try and work out how to stop LLVM generating it in the first place.
  */
 bool GenXLowering::lowerBoolVectorSelect(SelectInst *Inst) {
-  if (isa<CmpInst>(Inst->getTrueValue())) {
-    // Check for the condition being an EM value. It might be a shufflevector
-    // that slices the EM value at index 0.
-    bool IsEM = GotoJoin::isEMValue(Inst->getCondition());
-    if (!IsEM) {
-      if (auto SV = dyn_cast<ShuffleVectorInst>(Inst->getCondition())) {
-        ShuffleVectorAnalyzer SVA(SV);
-        if (!SVA.getAsSlice()) {
-          // Slice at index 0.
-          IsEM = GotoJoin::isEMValue(SV->getOperand(0));
-        }
+  // Check for the condition being an EM value. It might be a shufflevector
+  // that slices the EM value at index 0.
+  bool IsEM = GotoJoin::isEMValue(Inst->getCondition());
+  if (!IsEM) {
+    if (auto SV = dyn_cast<ShuffleVectorInst>(Inst->getCondition())) {
+      ShuffleVectorAnalyzer SVA(SV);
+      if (!SVA.getAsSlice()) {
+        // Slice at index 0.
+        IsEM = GotoJoin::isEMValue(SV->getOperand(0));
       }
     }
-    if (IsEM) {
-      // Can be lowered to llvm.genx.wrpredpredregion. It always has an index of
-      // 0 and the "new value" operand the same vector width as the whole vector
-      // here. That might get changed if it is split up in legalization.
-      auto NewInst = Region::createWrPredPredRegion(
-          Inst->getFalseValue(), Inst->getTrueValue(), 0, Inst->getCondition(),
-          "", Inst, Inst->getDebugLoc());
-      NewInst->takeName(Inst);
-      Inst->replaceAllUsesWith(NewInst);
-      ToErase.push_back(Inst);
-      return true;
-    }
+  }
+  if (IsEM && isa<CmpInst>(Inst->getTrueValue())) {
+    // Can be lowered to llvm.genx.wrpredpredregion. It always has an index of
+    // 0 and the "new value" operand the same vector width as the whole vector
+    // here. That might get changed if it is split up in legalization. Baling
+    // will bale the cmp into it, resulting in a masked cmp.
+    auto NewInst = Region::createWrPredPredRegion(
+        Inst->getFalseValue(), Inst->getTrueValue(), 0, Inst->getCondition(),
+        "", Inst, Inst->getDebugLoc());
+    NewInst->takeName(Inst);
+    Inst->replaceAllUsesWith(NewInst);
+    ToErase.push_back(Inst);
+    return true;
   }
   // Normal lowering to some bit twiddling.
-  Instruction *NewInst1 =
-      BinaryOperator::Create(BinaryOperator::And, Inst->getOperand(0),
-                             Inst->getOperand(1), Inst->getName(), Inst);
+  Value *Cond = Inst->getOperand(0);
+  if (IsEM) {
+    // The condition is an EM value but the "true" operand is not a cmp, so it
+    // cannot become a wrpredpredregion. Route the EM through simdcf.get_em so
+    // the bit twiddling uses a plain predicate copy: otherwise the raw and/xor
+    // on the EM value make the late SIMD-CF conformance pass reject the region.
+    auto *GetEMDecl = GenXIntrinsic::getGenXDeclaration(
+        Inst->getModule(), GenXIntrinsic::genx_simdcf_get_em,
+        {Cond->getType()});
+    Cond = CallInst::Create(GetEMDecl, {Cond}, "getEM", Inst);
+    cast<Instruction>(Cond)->setDebugLoc(Inst->getDebugLoc());
+  }
+  Instruction *NewInst1 = BinaryOperator::Create(
+      BinaryOperator::And, Cond, Inst->getOperand(1), Inst->getName(), Inst);
   NewInst1->setDebugLoc(Inst->getDebugLoc());
   Instruction *NewInst2 = BinaryOperator::Create(
-      BinaryOperator::Xor, Inst->getOperand(0),
-      Constant::getAllOnesValue(Inst->getType()), Inst->getName(), Inst);
+      BinaryOperator::Xor, Cond, Constant::getAllOnesValue(Inst->getType()),
+      Inst->getName(), Inst);
   NewInst2->setDebugLoc(Inst->getDebugLoc());
   Instruction *NewInst3 =
       BinaryOperator::Create(BinaryOperator::And, Inst->getOperand(2), NewInst2,
