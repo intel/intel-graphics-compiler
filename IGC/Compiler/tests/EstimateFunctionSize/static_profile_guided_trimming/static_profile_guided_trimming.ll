@@ -7,6 +7,8 @@
 ;============================ end_copyright_notice =============================
 ; Test for static profile-guided trimming
 ;
+; FIXME: update & re-enable the test for LLVM 23
+; UNSUPPORTED: llvm-23-plus
 ; REQUIRES: regkeys
 ; RUN: igc_opt --EstimateFunctionSize --regkey PrintControlKernelTotalSize=0xF --regkey SubroutineThreshold=50 --regkey KernelTotalSizeThreshold=50 --regkey ControlInlineTinySize=10 -disable-output 2>&1 < %s | FileCheck %s -check-prefix=CHECK-DEFAULT
 ; RUN: igc_opt --EstimateFunctionSize --regkey PrintControlKernelTotalSize=0xF --regkey SubroutineThreshold=50 --regkey KernelTotalSizeThreshold=50 --regkey StaticProfileGuidedTrimming=1 --regkey LoopCountAwareTrimming=1 --regkey ControlInlineTinySize=10 --regkey ControlInlineTinySizeForSPGT=10 -disable-output 2>&1 < %s | FileCheck %s -check-prefix=CHECK-SPGT

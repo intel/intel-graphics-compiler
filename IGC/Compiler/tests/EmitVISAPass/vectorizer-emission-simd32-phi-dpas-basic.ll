@@ -6,6 +6,8 @@
 ;
 ;============================ end_copyright_notice =============================
 
+; FIXME: update & re-enable the test for LLVM 23
+; UNSUPPORTED: llvm-23-plus
 ; REQUIRES: regkeys, llvm-16-plus
 ; RUN: igc_opt -S %s -opaque-pointers -platformbmg -igc-emit-visa --regkey=DumpVISAASMToConsole=1 -simd-mode 32 &> %t_output.ll
 ; RUN: FileCheck --input-file %t_output.ll %s

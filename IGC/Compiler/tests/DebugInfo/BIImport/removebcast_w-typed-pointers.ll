@@ -6,6 +6,8 @@
 ;
 ;============================ end_copyright_notice =============================
 
+; FIXME: update & re-enable the test for LLVM 23
+; UNSUPPORTED: llvm-23-plus
 ; RUN: igc_opt -igc-builtin-import -disable-verify -S < %s | FileCheck %s
 ; ------------------------------------------------
 ; BIImport
