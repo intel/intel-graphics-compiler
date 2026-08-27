@@ -304,7 +304,6 @@ void GenIntrinsicsTTIImpl::getUnrollingPreferences(Loop *L, ScalarEvolution &SE,
       // Disable unroll
       UP.Threshold = 0;
       UP.OptSizeThreshold = 0;
-      UP.Count = 1;
       UP.MaxCount = 1;
       UP.Partial = false;
       UP.Runtime = false;
@@ -480,8 +479,7 @@ void GenIntrinsicsTTIImpl::getUnrollingPreferences(Loop *L, ScalarEvolution &SE,
             // Disable loop unrolling for short loop with
             // barrier, where we prefer wider SIMD to mitigate
             // the barrier overhead.
-            UP.Count = 1;
-            UP.MaxCount = UP.Count;
+            UP.MaxCount = 1;
             UP.Partial = false;
             UP.Runtime = false;
             return;
@@ -554,8 +552,7 @@ void GenIntrinsicsTTIImpl::getUnrollingPreferences(Loop *L, ScalarEvolution &SE,
         if (C == 0)
           C = 4;
         UP.Runtime = true;
-        UP.Count = C;
-        UP.MaxCount = UP.Count;
+        UP.MaxCount = C;
         UP.Force |= ForceSamplerLoopUnroll;
         // The following is only available and required from LLVM 3.7+.
         UP.AllowExpensiveTripCount = true;
@@ -614,8 +611,7 @@ void GenIntrinsicsTTIImpl::getUnrollingPreferences(Loop *L, ScalarEvolution &SE,
   if (AllowSmallKernelOneBBLoopFullUnroll && ctx->type == ShaderType::OPENCL_SHADER && !hasCall(L->getHeader()) &&
       L->getHeader()->getParent()->size() < 5) {
     if (!L->getParentLoop() && TripCount != 0 && TripCount < 256) {
-      UP.Count = TripCount;
-      UP.MaxCount = UP.Count;
+      UP.MaxCount = TripCount;
       UP.Threshold = LoopUnrollThreshold * 4;
       UP.Runtime = false;
       UP.Partial = false;
@@ -642,11 +638,11 @@ void GenIntrinsicsTTIImpl::getUnrollingPreferences(Loop *L, ScalarEvolution &SE,
   if (!sendMessage) {
     // if the estimated unrolled instruction count is larger than the unrolling threshold, limit unrolling.
     if (limitUnrolling) {
-      UP.Count = MIN(unrollLimitInstCount / (instCount + sendMessage * 4), 4);
+      unsigned maxCount = MIN(unrollLimitInstCount / (instCount + sendMessage * 4), 4);
       if (TripCount != 0)
-        while (UP.Count != 0 && TripCount % UP.Count != 0)
-          UP.Count--;
-      UP.MaxCount = UP.Count;
+        while (maxCount != 0 && TripCount % maxCount != 0)
+          maxCount--;
+      UP.MaxCount = maxCount;
     }
     return;
   }
@@ -654,8 +650,7 @@ void GenIntrinsicsTTIImpl::getUnrollingPreferences(Loop *L, ScalarEvolution &SE,
   // if the TripCount is known, and the estimated unrolled count exceed LoopUnrollThreshold, set the unrolling count to
   // 4
   if (limitUnrolling) {
-    UP.Count = MIN(TripCount, 4);
-    UP.MaxCount = UP.Count;
+    UP.MaxCount = MIN(TripCount, 4);
   }
 
   unsigned int runtimeUnroll = IGC_GET_FLAG_VALUE(RuntimeLoopUnrolling); // 0: default, 1: on, 2: off
@@ -671,8 +666,7 @@ void GenIntrinsicsTTIImpl::getUnrollingPreferences(Loop *L, ScalarEvolution &SE,
 
   if (!limitUnrolling) {
     UP.Runtime = true;
-    UP.Count = 4;
-    UP.MaxCount = UP.Count;
+    UP.MaxCount = 4;
     // The following is only available and required from LLVM 3.7+.
     UP.AllowExpensiveTripCount = true;
   }
