@@ -23,6 +23,8 @@ SPDX-License-Identifier: MIT
 #include <cmath>
 #endif
 
+#include <common/BuiltinTypes.h>
+
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/IR/Function.h>
 #include <llvm/IR/Module.h>
@@ -634,6 +636,14 @@ bool BIImport::run(Module &M, CodeGenContext *Ctx, IGC::IGCMD::MetaDataUtils *Md
     bifLinker.LinkBiF(M);
   }
 #endif // BIF_LINK_BC
+
+#if LLVM_VERSION_MAJOR >= 16
+  // LLVM 17+ or patched LLVM 16 Clang generates TargetExtTy to represent OpenCL/SPIR-V builtin types (such as
+  // sampler_t). IGC expects these types to be represented using opaque pointers. Hence, here the types are
+  // retyped to allow BiF linking.
+  // TODO: Consider moving retyping to BiF modules generation stage to improve compilation time.
+  retypeOpenCLTargetExtTyAsPointers(&M);
+#endif
 
   InitializeBIFlags(M);
   removeFunctionBitcasts(M);
