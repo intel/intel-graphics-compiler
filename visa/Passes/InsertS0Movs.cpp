@@ -67,6 +67,24 @@ bool InsertS0Movs::eraseEntryByRegOperand(int64_t hash) {
   return hasErase;
 }
 
+// Return the s0 qword already holding this immediate, or -1. Unlike register ranges there is no
+// footprint to overlap, so equality of the immediate itself decides the hit.
+int InsertS0Movs::returnS0QWSubRegForImm(G4_Imm* imm) {
+  for (const auto& entry : immS0Vec) {
+    if (entry.imm->isEqualTo(imm))
+      return entry.s0QW;
+  }
+  return -1;
+}
+
+void InsertS0Movs::eraseImmEntryByS0Operand(int s0QW) {
+  immS0Vec.erase(std::remove_if(immS0Vec.begin(), immS0Vec.end(),
+                                [s0QW](const ImmS0Entry& entry) {
+                                  return entry.s0QW == s0QW;
+                                }),
+                 immS0Vec.end());
+}
+
 bool InsertS0Movs::eraseEntryByS0Operand(int s0QW) {
   auto entry = getEntryByS0Operand(s0QW);
 
@@ -111,16 +129,22 @@ G4_SrcRegRegion* InsertS0Movs::allocateS0(G4_Operand* ind, INST_LIST_ITER ii) {
   int s0QWSubReg = nextSurfaceS0QW;
 
   if (doOpt) {
-    auto regID = computeHash(ind);
-    auto s0QW = returnS0QWSubReg(regID);
+    // Static sampler descriptors reach us as immediates rather than as a staged register, so they
+    // are looked up in immS0Vec; everything else keeps matching on its register footprint.
+    auto s0QW = ind->isImm() ? returnS0QWSubRegForImm(ind->asImm())
+                             : returnS0QWSubReg(computeHash(ind));
 
-    // query the regS0Vec
     if (s0QW == -1) {
-      // Not a hit. Create an entry with pair <regID, s0qw>
-      // Before inserting this pair into regS0Vec, existing pair with the same s0qw must be
-      // removed
+      // Not a hit, so a mov will overwrite this s0 qword. Both vectors index the same physical
+      // qwords, so both must be cleared regardless of what kind of operand is being staged now -
+      // splitting this per operand kind would leave a stale entry in the other vector, and the
+      // next lookup that hits it would skip its mov and read a qword holding a different value.
       (void)eraseEntryByS0Operand(s0QWSubReg);
-      regS0Vec.emplace_back(std::make_pair(regID, s0QWSubReg));
+      eraseImmEntryByS0Operand(s0QWSubReg);
+      if (ind->isImm())
+        immS0Vec.push_back({ind->asImm(), s0QWSubReg});
+      else
+        regS0Vec.emplace_back(std::make_pair(computeHash(ind), s0QWSubReg));
       auto s0Dst = builder.createS0Dst(s0QWSubReg, IS_SIGNED_INT(ind->getType()) ? Type_Q : Type_UQ);
       // If ExecSize == 1, src must be scalar region
       if (ind->isSrcRegRegion() && !ind->isScalarSrc())
@@ -131,7 +155,7 @@ G4_SrcRegRegion* InsertS0Movs::allocateS0(G4_Operand* ind, INST_LIST_ITER ii) {
       nextSurfaceS0QW++;
     }
     else {
-      // Found a range; do not create a mov and reuse the s0
+      // Already in s0; do not create a mov and reuse the s0
       s0QWSubReg = s0QW;
       // Sampler instructions have two indirect descriptors (ind0 and ind1) to
       // store surface and sample base pointers. Consider a scenario where the

@@ -24,6 +24,18 @@ class InsertS0Movs {
     // account overlap of regsiter footprint
     // c.f computeHash and getEntryByRegOperand functions
     std::vector<std::pair<int64_t, int> >regS0Vec;
+
+    // Immediate sources are tracked separately from register ranges. An immediate has no register
+    // footprint for computeHash to describe, and it cannot be invalidated by a later write to a
+    // GRF, so it stays usable for the rest of the block. Matching is delegated to
+    // G4_Imm::isEqualTo, so two immediates are only merged when the bits landing in s0 are
+    // identical. The pass is constructed per basic block, so the IR outlives these entries.
+    struct ImmS0Entry {
+      G4_Imm *imm;
+      int s0QW;
+    };
+    std::vector<ImmS0Entry> immS0Vec;
+
     FlowGraph &fg;
     G4_BB *bb;
     IR_Builder &builder;
@@ -52,6 +64,8 @@ class InsertS0Movs {
     G4_SrcRegRegion* allocateS0(G4_Operand* ind, INST_LIST_ITER ii);
     int64_t computeHash(G4_Operand* operand);
     int returnS0QWSubReg(int64_t hash);
+    int returnS0QWSubRegForImm(G4_Imm* imm);
+    void eraseImmEntryByS0Operand(int s0QW);
     bool eraseEntryByRegOperand(int64_t hash);
     bool eraseEntryByS0Operand(int s0QW);
     std::vector<std::pair<int64_t, int> >::const_iterator getEntryByRegOperand(int64_t hash);
