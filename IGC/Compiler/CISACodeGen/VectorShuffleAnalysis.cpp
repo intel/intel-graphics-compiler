@@ -218,7 +218,9 @@ bool VectorShuffleAnalysis::runOnFunction(llvm::Function &F) {
   for (auto &BB : F) {
     for (Instruction &I : BB) {
       if (auto *IE = dyn_cast<InsertElementInst>(&I)) {
-        if (!isa<UndefValue>(IE->getOperand(0)) && !isa<ConstantAggregateZero>(IE->getOperand(0)))
+        Value *Base = IE->getOperand(0);
+        auto *BaseC = dyn_cast<Constant>(Base);
+        if (!isa<UndefValue>(Base) && !(BaseC && BaseC->isNullValue()))
           continue;
 
         std::unique_ptr<DestVector> DV = tryCreatingDestVectorForShufflePattern(IE);

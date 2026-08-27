@@ -6,8 +6,6 @@
 ;
 ;============================ end_copyright_notice =============================
 
-; FIXME: update & re-enable the test for LLVM 23
-; UNSUPPORTED: llvm-23-plus
 ; REQUIRES: regkeys
 ; RUN: igc_opt --opaque-pointers --regkey DisableCodeScheduling=0 --regkey EnableCodeSchedulingIfNoSpills=1 \
 ; RUN:         --regkey PrintToConsole=1 --regkey DumpCodeScheduling=1 --igc-code-scheduling \

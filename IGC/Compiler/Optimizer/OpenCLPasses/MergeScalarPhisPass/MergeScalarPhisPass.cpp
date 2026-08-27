@@ -177,7 +177,7 @@ bool MergeScalarPhisPass::makeChanges(Function *F) {
     for (unsigned i = 0; i < NumIncValues; ++i) {
       Value *Incoming = FirstPN->getIncomingValue(i);
       if (isa<Constant>(Incoming) && IGCLLVM::Constant::isNullValue(cast<Constant>(Incoming))) {
-        NewPhi->addIncoming(ConstantAggregateZero::get(VectorType), FirstPN->getIncomingBlock(i));
+        NewPhi->addIncoming(Constant::getNullValue(VectorType), FirstPN->getIncomingBlock(i));
         continue;
       }
       auto *EEI = cast<ExtractElementInst>(Incoming);

@@ -1388,8 +1388,8 @@ void EmitPass::MovPhiSources(llvm::BasicBlock *aBB) {
         if (isa<ConstantAggregateZero>(V)) {
           isSplat = true;
           splatValue = 0;
-        } else if (ConstantDataVector *CDV = dyn_cast<ConstantDataVector>(V)) {
-          if (Constant *C = CDV->getSplatValue()) {
+        } else if (Constant *CV = dyn_cast<Constant>(V)) {
+          if (Constant *C = CV->getSplatValue()) {
             if (ConstantInt *CInt = dyn_cast<ConstantInt>(C)) {
               isSplat = true;
               splatValue = CInt->getZExtValue();
