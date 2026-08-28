@@ -8,22 +8,21 @@
 ;
 ; REQUIRES: regkeys
 ;
-; RUN: igc_opt --verify --opaque-pointers --igc-break-const-expr --igc-programscope-constant-resolve -S < %s 2>&1 | FileCheck %s
+; RUN: igc_opt --verify --opaque-pointers --igc-break-const-expr --igc-programscope-constant-analysis --igc-programscope-constant-resolve -S < %s 2>&1 | FileCheck %s
 ; ------------------------------------------------
 ; ProgramScopeConstantResolution: GEP address space mismatch
 ; ------------------------------------------------
 ;
 ; @gVar is in addrspace(0) and SROA loads use constant GEP expressions
-; (ptr getelementptr(@gVar, offset)). Check that the new GEP has the correct result type
+; (ptr getelementptr(@gVar, offset)). The lowered pointer is cast back to
+; addrspace(0), so the expanded GEPs keep their result type.
 ;
 ; CHECK-LABEL: @test_kernel
 ; CHECK: %offgVar = getelementptr i8, ptr addrspace(2) %constBase, i64 0
-;
-; All loads must use ptr addrspace(2), not bare ptr:
-; CHECK: load <8 x float>, ptr addrspace(2) %offgVar
-; CHECK: load <8 x float>, ptr addrspace(2)
-; CHECK: load <8 x float>, ptr addrspace(2)
-; CHECK-NOT: load <8 x float>, ptr %
+; CHECK: %castgVar = addrspacecast ptr addrspace(2) %offgVar to ptr
+; CHECK: load <8 x float>, ptr %castgVar
+; CHECK: getelementptr inbounds [128 x i8], ptr %castgVar, i64 0, i64 32
+; CHECK: getelementptr inbounds [128 x i8], ptr %castgVar, i64 0, i64 64
 
 @gVar = internal global [128 x i8] zeroinitializer, align 32, !spirv.Decorations !0
 

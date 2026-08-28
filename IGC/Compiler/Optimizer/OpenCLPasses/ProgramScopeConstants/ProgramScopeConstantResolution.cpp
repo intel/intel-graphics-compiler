@@ -65,7 +65,8 @@ static bool isLoweredToRelocation(const GlobalVariable *GV) {
   return false;
 }
 
-bool ProgramScopeConstantResolution::run(Module &M, IGC::IGCMD::MetaDataUtils *pMdUtils, ModuleMetaData *pModMD) {
+bool ProgramScopeConstantResolution::run(Module &M, IGC::IGCMD::MetaDataUtils *pMdUtils, ModuleMetaData *pModMD,
+                                         CodeGenContext *ctx) {
   LLVMContext &C = M.getContext();
 
   MetaDataUtils *mdUtils = pMdUtils;
@@ -128,6 +129,11 @@ bool ProgramScopeConstantResolution::run(Module &M, IGC::IGCMD::MetaDataUtils *p
     if (offset == -1)
       continue;
 
+    // A private global's users get a private pointer into the constant buffer, which keeps
+    // the address only while private memory lives in the global buffer, forced via
+    // m_hasGlobalInPrivateAddressSpace.
+    IGC_ASSERT(AS != ADDRESS_SPACE_PRIVATE || ctx->allocatePrivateAsGlobalBuffer());
+
     ConstantInt *pOffset = ConstantInt::get(Type::getInt64Ty(C), offset);
     const ImplicitArg::ArgType argType =
         AS == ADDRESS_SPACE_GLOBAL ? ImplicitArg::GLOBAL_BASE : ImplicitArg::CONSTANT_BASE;
@@ -178,8 +184,7 @@ bool ProgramScopeConstantResolution::run(Module &M, IGC::IGCMD::MetaDataUtils *p
 
         Value *replacement = gep;
 
-        // TODO: Remove when typed pointers are no longer supported.
-        if (!IGCLLVM::isOpaque(ptrType))
+        if (gep->getType() != ptrType)
           replacement = CastInst::CreatePointerCast(gep, pGlobalVar->getType(), "cast" + pGlobalVar->getName(),
                                                     IGCLLVM::insertPosition(pEntryPoint));
 
@@ -189,27 +194,6 @@ bool ProgramScopeConstantResolution::run(Module &M, IGC::IGCMD::MetaDataUtils *p
 
       Value *bc = funcToVarSet[userFunc][pGlobalVar];
       IGC_ASSERT_MESSAGE(bc != nullptr, "Program Scope buffer handling is broken!");
-
-      // Create a new GEP with the correct base pointer and
-      // propagate the address space to all users.
-      if (auto *GEP = dyn_cast<GetElementPtrInst>(user)) {
-        if (GEP->getPointerOperand() == pGlobalVar) {
-          SmallVector<Value *, 4> Indices(GEP->indices());
-          auto *NewGEP = GetElementPtrInst::Create(GEP->getSourceElementType(), bc, Indices, GEP->getName(),
-                                                   IGCLLVM::insertPosition(GEP));
-          NewGEP->setIsInBounds(GEP->isInBounds());
-          NewGEP->setDebugLoc(GEP->getDebugLoc());
-          // Cannot use replaceAllUsesWith because the old GEP result type
-          // (ptr addrspace(0)) differs from the new one (ptr addrspace(2)).
-          // Update each user individually.
-          while (!GEP->use_empty()) {
-            Use &U = *GEP->use_begin();
-            U.set(NewGEP);
-          }
-          GEP->eraseFromParent();
-          continue;
-        }
-      }
 
       // And actually use the bitcast.
       user->replaceUsesOfWith(pGlobalVar, bc);
@@ -224,7 +208,7 @@ bool ProgramScopeConstantResolution::run(Module &M, IGC::IGCMD::MetaDataUtils *p
 #if LLVM_VERSION_MAJOR >= 16
 PreservedAnalyses ProgramScopeConstantResolutionNPM::run(Module &M, ModuleAnalysisManager &AM) {
   auto &MDU = AM.getResult<MetaDataUtilsAnalysis>(M);
-  bool changed = m_impl.run(M, MDU.MdUtils, MDU.ModMD);
+  bool changed = m_impl.run(M, MDU.MdUtils, MDU.ModMD, AM.getResult<CodeGenContextAnalysis>(M).Ctx);
   return changed ? PreservedAnalyses::none() : PreservedAnalyses::all();
 }
 #endif // LLVM_VERSION_MAJOR >= 16

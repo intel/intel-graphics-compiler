@@ -29,7 +29,7 @@ public:
 
   /// @brief  Main entry point.
   /// @param  M The destination module.
-  bool run(llvm::Module &M, IGC::IGCMD::MetaDataUtils *pMdUtils, ModuleMetaData *pModMD);
+  bool run(llvm::Module &M, IGC::IGCMD::MetaDataUtils *pMdUtils, ModuleMetaData *pModMD, CodeGenContext *ctx);
 
 private:
   bool RunCautiously;
@@ -53,7 +53,8 @@ public:
 
   virtual bool runOnModule(llvm::Module &M) override {
     return m_impl.run(M, getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils(),
-                      getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData());
+                      getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData(),
+                      getAnalysis<CodeGenContextWrapper>().getCodeGenContext());
   }
 
 private:
