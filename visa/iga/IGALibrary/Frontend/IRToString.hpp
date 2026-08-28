@@ -398,6 +398,16 @@ static inline std::string ToSymbol(CacheOpt x) {
   }
 }
 
+static inline std::string ToSymbol(Overfetch x) {
+
+  switch (x) {
+    MAKE_CASE(Overfetch, INVALID);
+    MAKE_CASE(Overfetch, LSC_DISABLED);
+    MAKE_CASE(Overfetch, LSC_ENABLED);
+    MAKE_DEFAULT_CASE(Overfetch);
+  }
+}
+
 static inline std::string ToSyntax(Type ot) {
   switch (ot) {
   case Type::UV:

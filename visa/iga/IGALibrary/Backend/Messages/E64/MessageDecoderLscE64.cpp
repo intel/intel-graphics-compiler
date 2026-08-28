@@ -1393,6 +1393,8 @@ void MessageDecoderLscE64::decodeCacheControl(SendOp sop) {
 void MessageDecoderLscE64::decodeOverfetch() {
   decodeField("Overfetch", 21, 1, [&] (uint32_t val, std::stringstream &ss) {
       ss << (val ? "LSC opportunistically fetches up to 256B" : "");
+      result.info.overfetch =
+          val ? Overfetch::LSC_ENABLED : Overfetch::LSC_DISABLED;
       if (val)
         ovfSyntax = ".ovf";
     });

@@ -638,6 +638,21 @@ IGA_API kv_status_t kv_get_cache_opt(const struct kv_t *kv, int32_t pc,
                                      int32_t *cacheopt_enum);
 
 /*
+ * This function returns the overfetch control of a send message.  The result
+ * is returned via the pointer 'overfetch_enum' - an iga::Overfetch value.
+ *
+ * RETURNS:
+ *  KV_SUCCESS               on success
+ *  KV_DECODE_ERROR          on decoding error
+ *  KV_NON_SEND_INSTRUCTION  if called on a non-send instruction
+ *  KV_DESCRIPTOR_INVALID    if the message has no overfetch field
+ *  KV_INVALID_ARGUMENT      if given a null parameter
+ *  KV_INVALID_PC            if called on a non-instruction address
+ */
+IGA_API kv_status_t kv_get_overfetch(const struct kv_t *kv, int32_t pc,
+                                     int32_t *overfetch_enum);
+
+/*
  * This function returns the sync function of a sync instruction
  */
 IGA_API int32_t kv_get_syncfc(const struct kv_t *kv, int32_t pc);

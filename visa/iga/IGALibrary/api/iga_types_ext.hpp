@@ -314,5 +314,14 @@ enum class CacheLevel {
   L3,
 };
 
+// The "overfetch" control of a send message.
+enum class Overfetch {
+  // The message has no overfetch control (or decode failed)
+  INVALID = 0,
+  // LSC overfetch (SFIDs UGM, UGML, SLM, TGM, URB)
+  LSC_DISABLED,
+  LSC_ENABLED,
+};
+
 } // namespace iga
 #endif

@@ -439,6 +439,11 @@ static void emitDecodeOutput(const Opts &opts, std::ostream &os,
         emitCaching("L2", dr.info.cachingL2);
       emitCaching("L3", dr.info.cachingL3);
     }
+    if (dr.info.overfetch != iga::Overfetch::INVALID) {
+      os << "  Overfetch:                  ";
+      emitYellowText(os, ToSymbol(dr.info.overfetch));
+      os << "\n";
+    }
     if (dr.info.immediateOffset != 0) {
       os << "\n";
       os << "  Immediate Offset:           ";

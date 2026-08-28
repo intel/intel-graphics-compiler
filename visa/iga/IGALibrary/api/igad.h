@@ -342,6 +342,9 @@ typedef kv_status_t(CDECLATTRIBUTE *pIGAKVGetCacheOpt)(const kv_t *kv,
                                                        int32_t pc,
                                                        int32_t cache_level,
                                                        int32_t *cacheopt_enum);
+#define IGA_KV_GET_OVERFETCH "kv_get_overfetch"
+typedef kv_status_t(CDECLATTRIBUTE *pIGAKVGetOverfetch)(
+    const kv_t *kv, int32_t pc, int32_t *overfetch_enum);
 /*
  * A table of IGA functions
  */
@@ -442,6 +445,7 @@ typedef struct {
   pIGAKVGetSrcMMENumber kv_get_source_mme_number;
   pIGAKVGetDstMMENumber kv_get_destination_mme_number;
   pIGAKVGetCacheOpt kv_get_cache_opt;
+  pIGAKVGetOverfetch kv_get_overfetch;
 } kv_functions_t;
 
 #endif // _IGAD_H_

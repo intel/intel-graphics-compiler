@@ -250,6 +250,10 @@ struct MessageInfo {
   // implement it though.
   CacheOpt cachingL3 = CacheOpt::INVALID;
   //
+  // The overfetch control (if the message has one); INVALID otherwise.
+  // Only supported for sendg (efficient64b feature).
+  Overfetch overfetch = Overfetch::INVALID;
+  //
   // The surface addressing model
   AddrType addrType = AddrType::INVALID;
   //

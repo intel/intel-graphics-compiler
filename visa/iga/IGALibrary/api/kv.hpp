@@ -309,6 +309,16 @@ public:
   kv_status_t getCacheOpt(int32_t pc, iga::CacheLevel cahceLevel,
                           iga::CacheOpt &cacheOpt) const;
 
+  // Fetches the overfetch control of a send message.
+  //
+  // Returns:
+  //   KV_SUCCESS on success and overfetch is assigned
+  //   KV_DECODE_ERROR on decoding error
+  //   KV_NON_SEND_INSTRUCTION if called on a non-send instruction
+  //   KV_DESCRIPTOR_INVALID if the message has no overfetch field
+  //   KV_INVALID_PC if called on a non-instruction address
+  kv_status_t getOverfetch(int32_t pc, iga::Overfetch &overfetch) const;
+
   // Returns message, extended message, and response lengths in units of
   // registers.  The count of length variables successfully set is returned.
   //
@@ -566,6 +576,16 @@ inline kv_status_t KernelView::getCacheOpt(int32_t pc,
   kv_status_t s =
       kv_get_cache_opt(m_kv, pc, static_cast<int32_t>(cahceLevel), &val);
   cacheOpt = static_cast<iga::CacheOpt>(val);
+  return s;
+}
+
+inline kv_status_t KernelView::getOverfetch(int32_t pc,
+                                            iga::Overfetch &overfetch) const {
+  if (m_disasm_status != IGA_SUCCESS)
+    return kv_status_t::KV_DECODE_ERROR;
+  int32_t val = 0;
+  kv_status_t s = kv_get_overfetch(m_kv, pc, &val);
+  overfetch = static_cast<iga::Overfetch>(val);
   return s;
 }
 

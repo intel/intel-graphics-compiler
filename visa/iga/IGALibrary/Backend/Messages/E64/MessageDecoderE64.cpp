@@ -194,6 +194,7 @@ void MessageDecoderE64::decodeSmsIdx() {
   result.info.samplerStateIndex = enc;
 }
 
+
 void MessageDecoderE64::decodeUvrOffsets() {
   auto decodeCoord = [&](const char *field, char which, int off) {
     auto encU = getDescBits(off, 4);

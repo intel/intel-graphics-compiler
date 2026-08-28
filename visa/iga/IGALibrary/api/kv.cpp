@@ -1241,6 +1241,32 @@ kv_status_t kv_get_cache_opt(const kv_t *kv, int32_t pc, int32_t cache_level,
   return kv_status_t::KV_SUCCESS;
 }
 
+kv_status_t kv_get_overfetch(const kv_t *kv, int32_t pc,
+                             int32_t *overfetch_enum) {
+  if (!kv || !overfetch_enum) {
+    return kv_status_t::KV_INVALID_ARGUMENT;
+  }
+  *overfetch_enum = static_cast<int32_t>(Overfetch::INVALID);
+
+  const Instruction *inst = getInstruction(kv, pc);
+  if (!inst) {
+    return kv_status_t::KV_INVALID_PC;
+  } else if (!inst->getOpSpec().isAnySendFormat()) {
+    return kv_status_t::KV_NON_SEND_INSTRUCTION;
+  }
+
+  const DecodeResult di = tryDecode(*inst, nullptr);
+  if (!di) {
+    return kv_status_t::KV_DECODE_ERROR;
+  }
+  if (di.info.overfetch == Overfetch::INVALID) {
+    return kv_status_t::KV_DESCRIPTOR_INVALID;
+  }
+
+  *overfetch_enum = static_cast<int32_t>(di.info.overfetch);
+  return kv_status_t::KV_SUCCESS;
+}
+
 int32_t kv_get_syncfc(const kv_t *kv, int32_t pc) {
   if (!kv) {
     return static_cast<int32_t>(iga::SyncFC::INVALID);

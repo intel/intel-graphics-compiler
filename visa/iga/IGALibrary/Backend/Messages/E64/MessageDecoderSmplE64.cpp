@@ -88,7 +88,7 @@ void MessageDecoderSamplerE64::decode() {
       }
     });
 
-  decodeCacheControlValue(opInfo.op);
+  decodeExpected(16, 4, "CacheModeLoad", 0);
 
   auto trtt = getDescBits(20, 1);
   if (trtt) {
