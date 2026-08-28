@@ -2,7 +2,7 @@
 ; UNSUPPORTED: release
 ; REQUIRES: regkeys, spirv-as, dg2-supported
 ; RUN: spirv-as --target-env spv1.4 -o %t.spv %s
-; RUN: ocloc compile -spirv_input -file %t.spv -device dg2 -options " -igc_opts 'ShaderDumpTranslationOnly=1 EnableOpaquePointersBackend=1'" 2>&1 | FileCheck %s
+; RUN: ocloc compile -spirv_input -file %t.spv -device dg2 -options " -igc_opts 'ShaderDumpTranslationOnly=1 EnableOpaquePointersBackend=1'" 2>&1 | FileCheck %s --check-prefixes=CHECK,%if llvm-23-plus %{CHECK-LLVM23%} %else %{CHECK-PRE-LLVM23%}
                OpCapability Addresses
                OpCapability Kernel
                OpMemoryModel Physical32 OpenCL
@@ -23,8 +23,16 @@
                OpFunctionEnd
 
 ; CHECK-LABEL: @testPtrDiff(
-; CHECK: [[TMP0:%.*]] = ptrtoint ptr addrspace(2) %a to i64
-; CHECK: [[TMP1:%.*]] = ptrtoint ptr addrspace(2) %b to i64
-; CHECK: [[TMP2:%.*]] = sub i64 [[TMP0]], [[TMP1]]
-; CHECK: {{.*}} = sdiv exact i64 [[TMP2]], ptrtoint (ptr getelementptr (float, ptr null, i32 1) to i64)
 
+; CHECK-PRE-LLVM23: [[TMP0:%.*]] = ptrtoint ptr addrspace(2) %a to i64
+; CHECK-PRE-LLVM23: [[TMP1:%.*]] = ptrtoint ptr addrspace(2) %b to i64
+; CHECK-PRE-LLVM23: [[TMP2:%.*]] = sub i64 [[TMP0]], [[TMP1]]
+; CHECK-PRE-LLVM23: {{.*}} = sdiv exact i64 [[TMP2]], ptrtoint (ptr getelementptr (float, ptr null, i32 1) to i64)
+
+; Since LLVM 23 OpPtrDiff is translated with ptrtoaddr, so the difference is computed in
+; the address width of the module (32 for Physical32) and the element size divisor is
+; already folded to a constant.
+; CHECK-LLVM23: [[TMP0:%.*]] = ptrtoaddr ptr addrspace(2) %a to i32
+; CHECK-LLVM23: [[TMP1:%.*]] = ptrtoaddr ptr addrspace(2) %b to i32
+; CHECK-LLVM23: [[TMP2:%.*]] = sub i32 [[TMP0]], [[TMP1]]
+; CHECK-LLVM23: {{.*}} = sdiv exact i32 [[TMP2]], 4
