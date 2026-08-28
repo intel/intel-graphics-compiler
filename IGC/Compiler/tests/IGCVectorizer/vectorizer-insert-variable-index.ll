@@ -1,0 +1,100 @@
+;=========================== begin_copyright_notice ============================
+;
+; Copyright (C) 2026 Intel Corporation
+;
+; SPDX-License-Identifier: MIT
+;
+;============================ end_copyright_notice =============================
+
+; REQUIRES: regkeys
+; RUN: igc_opt -S  --igc-vectorizer -dce --platformbmg --regkey=VectorizerEnablePartialVectorization=0 < %s 2>&1 | FileCheck %s
+
+; The insertelement chain feeding the dpas contains one insert with a variable
+; (non-constant) index. Such an insert has no constant lane to map into the
+; generated vector, so the vectorizer must leave the whole chain untouched.
+
+; CHECK-NOT: phi <8 x float>
+; CHECK-NOT: = fmul fast <8 x float>
+; CHECK: insertelement <8 x float> zeroinitializer, float %tmp25, i64 %idx
+
+define spir_kernel void @ham(i64 %idx) {
+bb:
+  br label %bb1
+
+bb1:                                              ; preds = %bb1, %bb
+  %tmp = phi float [ 0.000000e+00, %bb ], [ %tmp43, %bb1 ]
+  %tmp2 = phi float [ 0.000000e+00, %bb ], [ %tmp44, %bb1 ]
+  %tmp3 = phi float [ 0.000000e+00, %bb ], [ %tmp45, %bb1 ]
+  %tmp4 = phi float [ 0.000000e+00, %bb ], [ %tmp46, %bb1 ]
+  %tmp5 = phi float [ 0.000000e+00, %bb ], [ %tmp47, %bb1 ]
+  %tmp6 = phi float [ 0.000000e+00, %bb ], [ %tmp48, %bb1 ]
+  %tmp7 = phi float [ 0.000000e+00, %bb ], [ %tmp49, %bb1 ]
+  %tmp8 = phi float [ 0.000000e+00, %bb ], [ %tmp50, %bb1 ]
+  %tmp9 = call float @llvm.exp2.f32(float 0.000000e+00)
+  %tmp10 = call float @llvm.exp2.f32(float 1.000000e+00)
+  %tmp11 = call float @llvm.exp2.f32(float 2.000000e+00)
+  %tmp12 = call float @llvm.exp2.f32(float 3.000000e+00)
+  %tmp13 = fmul fast float %tmp9, %tmp
+  %tmp14 = fmul fast float %tmp10, %tmp2
+  %tmp15 = fmul fast float %tmp11, %tmp3
+  %tmp16 = fmul fast float %tmp12, %tmp4
+  %tmp17 = call float @llvm.exp2.f32(float 4.000000e+00)
+  %tmp18 = call float @llvm.exp2.f32(float 5.000000e+00)
+  %tmp19 = call float @llvm.exp2.f32(float 6.000000e+00)
+  %tmp20 = call float @llvm.exp2.f32(float 7.000000e+00)
+  %tmp21 = fsub fast float %tmp17, %tmp5
+  %tmp22 = fsub fast float %tmp18, %tmp6
+  %tmp23 = fsub fast float %tmp19, %tmp7
+  %tmp24 = fsub fast float %tmp20, %tmp8
+
+  %tmp25 = call float @llvm.exp2.f32(float %tmp21)
+  %tmp26 = call float @llvm.exp2.f32(float %tmp22)
+  %tmp27 = call float @llvm.exp2.f32(float %tmp23)
+  %tmp28 = call float @llvm.exp2.f32(float %tmp24)
+  %tmp29 = call float @llvm.exp2.f32(float %tmp13)
+  %tmp30 = call float @llvm.exp2.f32(float %tmp14)
+  %tmp31 = call float @llvm.exp2.f32(float %tmp15)
+  %tmp32 = call float @llvm.exp2.f32(float %tmp16)
+
+  ; variable index here -> chain must not be vectorized
+  %tmp33 = insertelement <8 x float> zeroinitializer, float %tmp25, i64 %idx
+  %tmp34 = insertelement <8 x float> %tmp33, float %tmp26, i64 1
+  %tmp35 = insertelement <8 x float> %tmp34, float %tmp27, i64 2
+  %tmp36 = insertelement <8 x float> %tmp35, float %tmp28, i64 3
+  %tmp37 = insertelement <8 x float> %tmp36, float %tmp29, i64 4
+  %tmp38 = insertelement <8 x float> %tmp37, float %tmp30, i64 5
+  %tmp39 = insertelement <8 x float> %tmp38, float %tmp31, i64 6
+  %tmp40 = insertelement <8 x float> %tmp39, float %tmp32, i64 7
+  %tmp41 = call <8 x float> @llvm.genx.GenISA.sub.group.dpas.v8f32.v8f32.v8i16.v8i32(<8 x float> %tmp40, <8 x i16> zeroinitializer, <8 x i32> zeroinitializer, i32 0, i32 0, i32 0, i32 0, i1 false)
+  %tmp42 = call <8 x float> @llvm.genx.GenISA.sub.group.dpas.v8f32.v8f32.v8i16.v8i32(<8 x float> %tmp41, <8 x i16> zeroinitializer, <8 x i32> zeroinitializer, i32 0, i32 0, i32 0, i32 0, i1 false)
+  %tmp43 = extractelement <8 x float> %tmp42, i64 0
+  %tmp44 = extractelement <8 x float> %tmp42, i64 1
+  %tmp45 = extractelement <8 x float> %tmp42, i64 2
+  %tmp46 = extractelement <8 x float> %tmp42, i64 3
+  %tmp47 = extractelement <8 x float> %tmp42, i64 4
+  %tmp48 = extractelement <8 x float> %tmp42, i64 5
+  %tmp49 = extractelement <8 x float> %tmp42, i64 6
+  %tmp50 = extractelement <8 x float> %tmp42, i64 7
+  br label %bb1
+}
+
+; Function Attrs: convergent nounwind readnone willreturn
+declare <8 x float> @llvm.genx.GenISA.sub.group.dpas.v8f32.v8f32.v8i16.v8i32(<8 x float>, <8 x i16>, <8 x i32>, i32, i32, i32, i32, i1) #0
+
+; Function Attrs: nocallback nofree nosync nounwind readnone speculatable willreturn
+declare float @llvm.exp2.f32(float) #1
+
+attributes #0 = { convergent nounwind readnone willreturn }
+attributes #1 = { nocallback nofree nosync nounwind readnone speculatable willreturn }
+
+!igc.functions = !{!0}
+
+!0 = !{void (i64)* @ham, !1}
+!1 = !{!2}
+!2 = !{!"function_type", i32 0}
+!4 = !{!"requiredSubGroupSize", i32 16}
+!5 = !{!"FuncMDValue[0]", !4}
+!6 = !{!"FuncMDMap[0]", void (i64)* @ham}
+!7 = !{!"FuncMD", !6, !5}
+!8 = !{!"ModuleMD", !7}
+!IGCMetadata = !{!8}

@@ -171,7 +171,6 @@ void IGCVectorizerCommon::initializeLogFile(Function &F, string FileName) {
 
 static unsigned int getConstantValueAsInt(Value *I) {
   ConstantInt *Value = dyn_cast<ConstantInt>(I);
-  IGC_ASSERT_MESSAGE(Value, "IGCVectorizer: trying to get an index from value that is not constant int");
   if (!Value)
     return -1;
   unsigned int Result = Value->getSExtValue();
@@ -275,7 +274,9 @@ bool isAllowedStub(Instruction *I) {
 
 bool IGCVectorizer::isSafeToVectorizeSIMD32(Instruction *I) {
   bool IsExtract = llvm::isa<ExtractElementInst>(I);
-  bool IsInsert = llvm::isa<InsertElementInst>(I);
+  // only insert elements with a constant index are supported, a variable
+  // index has no constant lane to map into the generated vector
+  bool IsInsert = llvm::isa<InsertElementInst>(I) && llvm::isa<ConstantInt>(I->getOperand(2));
   bool Result = isPHISafe(I) || IsExtract || IsInsert;
   return Result;
 }
@@ -283,7 +284,9 @@ bool IGCVectorizer::isSafeToVectorizeSIMD32(Instruction *I) {
 bool IGCVectorizer::isSafeToVectorizeSIMD16(Instruction *I) {
 
   bool IsExtract = llvm::isa<ExtractElementInst>(I);
-  bool IsInsert = llvm::isa<InsertElementInst>(I);
+  // only insert elements with a constant index are supported, a variable
+  // index has no constant lane to map into the generated vector
+  bool IsInsert = llvm::isa<InsertElementInst>(I) && llvm::isa<ConstantInt>(I->getOperand(2));
   bool IsFpTrunc = llvm::isa<FPTruncInst>(I) && IGC_GET_FLAG_VALUE(VectorizerAllowFPTRUNC);
   bool IsCmp = llvm::isa<CmpInst>(I) && IGC_GET_FLAG_VALUE(VectorizerAllowCMP);
   bool IsSelect = llvm::isa<SelectInst>(I) && IGC_GET_FLAG_VALUE(VectorizerAllowSelect);
